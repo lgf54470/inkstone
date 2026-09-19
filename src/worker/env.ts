@@ -23,6 +23,9 @@ export interface Env {
 
   PUBLIC_URL?: string
 
+  /** Instance secret (`wrangler secret put VISIT_FP_SECRET`) keying visitor fingerprints; unset means visit rows carry no fingerprint at all. */
+  VISIT_FP_SECRET?: string
+
   /** Workers AI binding for semantic search; optional so AI search degrades gracefully. */
   AI?: {
     run: <T = unknown>(model: string, inputs: unknown) => Promise<T>

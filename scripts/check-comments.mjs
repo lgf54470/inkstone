@@ -4129,6 +4129,7 @@ const allowed = new Map([
     '/** Keeps tags, backlinks, full-text indexes, and change records consistent with note writes. */',
   ]],
   ['src/worker/env.ts', [
+    '/** Instance secret (`wrangler secret put VISIT_FP_SECRET`) keying visitor fingerprints; unset means visit rows carry no fingerprint at all. */',
     '/** Workers AI binding for semantic search; optional so AI search degrades gracefully. */',
     '/** Present only in the dev-only wrangler.kv.toml; unlocks /api/dev/seed for local perf seeding. */',
   ]],
@@ -4447,6 +4448,8 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/share/public.ts', [
     '// The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.',
+    '// Without the instance secret record no fingerprint rather than fall back to the public date salt,',
+    '// and salt per owner so one browser is not linkable across accounts (SH-04).',
     '// The raw candidate may carry query tokens or fragments; only origin+path earns a column.',
     '/* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */',
     '/* An unparseable referer header simply means "no external referrer". */',

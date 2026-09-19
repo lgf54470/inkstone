@@ -15,11 +15,12 @@ import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { hashPassword } from '../src/worker/lib/password'
+import { computeVisitorFingerprint } from '../src/worker/lib/share-analytics'
 import { shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
 import { createD1Database as createDb, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
-const DB_ENV = { env: { DB: null as unknown as D1Database } }
+const DB_ENV = { env: { DB: null as unknown as D1Database, VISIT_FP_SECRET: undefined as string | undefined } }
 
 function shaOf(content: string): string {
   return createHash('sha256').update(content).digest('hex')
@@ -30,6 +31,7 @@ async function makeDb(): Promise<D1Shim> {
   for (const statement of TABLE_STATEMENTS) await runSql(db, statement)
   for (const statement of INDEX_STATEMENTS) await runSql(db, statement)
   DB_ENV.env.DB = db as unknown as D1Database
+  DB_ENV.env.VISIT_FP_SECRET = undefined
   return db
 }
 
@@ -50,7 +52,7 @@ async function seedNote(db: D1Shim, fields: Record<string, unknown>): Promise<st
     `INSERT INTO notes (id, user_id, folder_id, title, title_key, content, excerpt, rev, word_count, char_count,
        is_pinned, is_starred, is_archived, position, content_hash, created_at, updated_at)
      VALUES (?1, ?2, ?3, ?4, '', ?5, '', 1, 1, 1, ?6, ?7, 0, 0, ?8, ?9, ?9)`,
-    id, USER, fields.folder_id ?? null, fields.title ?? 'Note', content,
+    id, fields.user_id ?? USER, fields.folder_id ?? null, fields.title ?? 'Note', content,
     fields.is_pinned ? 1 : 0, fields.is_starred ? 1 : 0,
     shaOf(content), H.now,
   )
@@ -521,6 +523,7 @@ describe('share public note route (real D1)', () => {
     const n1 = await seedNote(db, {})
     await seedShare(db, { note_id: n1, slug: 'view-counted', is_enabled: 1 })
     const app = makeApp()
+    DB_ENV.env.VISIT_FP_SECRET = 'dedupe-test-secret'
 
     // visit recording runs via waitUntil; the test context must let us await it
     const pending: Promise<unknown>[] = []
@@ -670,5 +673,75 @@ describe('share public referrer hygiene (SH-08)', () => {
     const res = await postJson(app, '/api/public/ref-long', { referrer: 'https://a.example/?' + 'x'.repeat(600) })
 
     expect(res.status).toBe(400)
+  })
+})
+
+async function visitAccess(app: Hono<AppBindings>, slug: string, ua: string): Promise<Response> {
+  const pending: Promise<unknown>[] = []
+  const ctx = { waitUntil: (task: Promise<unknown>) => pending.push(task) } as unknown as ExecutionContext
+  const res = await app.request(`/api/public/${slug}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'user-agent': ua },
+    body: JSON.stringify({}),
+  }, DB_ENV.env as AppBindings['Bindings'], ctx)
+  await Promise.all(pending)
+  return res
+}
+
+describe('share visitor fingerprint secret (SH-04)', () => {
+  it('mints the fingerprint from the instance secret, not the public date salt', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'fp-secret', is_enabled: 1 })
+    DB_ENV.env.VISIT_FP_SECRET = 'instance-test-secret'
+    const app = makeApp()
+
+    await visitAccess(app, 'fp-secret', 'Mozilla/5.0 FpOne/1.0')
+    await visitAccess(app, 'fp-secret', 'Mozilla/5.0 FpTwo/1.0')
+
+    const row = await firstRow(db, 'SELECT visitor_fp FROM share_visits WHERE slug = ?1', 'fp-secret')
+    const fp = row?.visitor_fp as string | null
+    expect(fp).toBeTruthy()
+    const now = new Date()
+    expect(fp).not.toBe(await computeVisitorFingerprint('local', '', null, now))
+    expect(fp).not.toBe(await computeVisitorFingerprint('local', '', null, new Date(now.getTime() - 86_400_000)))
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE slug = ?1', 'fp-secret')).length).toBe(1)
+    const views = await firstRow(db, 'SELECT views FROM shares WHERE slug = ?1', 'fp-secret')
+    expect(views?.views).toBe(1)
+  })
+
+  it('separates the fingerprint per share owner so one visitor is not linkable across accounts', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedUser(db, 'user-2')
+    const n1 = await seedNote(db, { user_id: USER })
+    const n2 = await seedNote(db, { user_id: 'user-2' })
+    await seedShare(db, { note_id: n1, slug: 'fp-a', is_enabled: 1, user_id: USER })
+    await seedShare(db, { note_id: n2, slug: 'fp-b', is_enabled: 1, user_id: 'user-2' })
+    DB_ENV.env.VISIT_FP_SECRET = 'instance-test-secret'
+    const app = makeApp()
+
+    expect((await visitAccess(app, 'fp-a', 'Mozilla/5.0 FpLink/1.0')).status).toBe(200)
+    expect((await visitAccess(app, 'fp-b', 'Mozilla/5.0 FpLink/1.0')).status).toBe(200)
+
+    const a = await firstRow(db, 'SELECT visitor_fp FROM share_visits WHERE slug = ?1', 'fp-a')
+    const b = await firstRow(db, 'SELECT visitor_fp FROM share_visits WHERE slug = ?1', 'fp-b')
+    expect(a?.visitor_fp).toBeTruthy()
+    expect(b?.visitor_fp).toBeTruthy()
+    expect(a?.visitor_fp).not.toBe(b?.visitor_fp)
+  })
+
+  it('records no fingerprint when the instance secret is missing', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'fp-missing', is_enabled: 1 })
+    const app = makeApp()
+
+    expect((await visitAccess(app, 'fp-missing', 'Mozilla/5.0 FpNone/1.0')).status).toBe(200)
+
+    const row = await firstRow(db, 'SELECT visitor_fp FROM share_visits WHERE slug = ?1', 'fp-missing')
+    expect(row?.visitor_fp).toBeNull()
   })
 })

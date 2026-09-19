@@ -203,7 +203,10 @@ async function recordShareVisit(
     const clientIp = requestClientIp(c)
     const ua = c.req.header('user-agent') || ''
     // The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.
-    const visitorFp = await computeVisitorFingerprint(clientIp, '')
+    // Without the instance secret record no fingerprint rather than fall back to the public date salt,
+    // and salt per owner so one browser is not linkable across accounts (SH-04).
+    const fpSecret = c.env.VISIT_FP_SECRET ? `${c.env.VISIT_FP_SECRET}:${share.user_id}` : null
+    const visitorFp = fpSecret ? await computeVisitorFingerprint(clientIp, '', fpSecret) : null
     const referrerInfo = deriveShareReferrer(c, body, slug)
     const deviceType = parseDeviceType(ua)
     const os = parseOS(ua)
