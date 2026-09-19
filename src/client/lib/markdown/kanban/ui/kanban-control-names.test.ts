@@ -7,7 +7,7 @@
  */
 import { act, createElement } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { initI18n } from '../../../../lib/i18n'
+import { initI18n, t } from '../../../../lib/i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
 import { KanbanRoot } from './kanban-root'
 import type { KanbanData, KanbanViewType } from '../types'
@@ -111,7 +111,11 @@ function unnamedControls(root: ParentNode): string[] {
   return [...root.querySelectorAll<HTMLElement>(INTERACTIVE)]
     .filter((el) => !el.hasAttribute('aria-hidden'))
     .filter((el) => accessibleName(el) === '')
-    .map((el) => `<${el.tagName.toLowerCase()} class="${el.getAttribute('class') ?? ''}">${(el.textContent ?? '').trim().slice(0, 24)}`)
+    .map((el) => {
+      const icon = el.querySelector('svg[class]')?.getAttribute('class')?.replace('lucide ', '') ?? ''
+      const text = (el.textContent ?? '').trim().slice(0, 24)
+      return `<${el.tagName.toLowerCase()}${icon ? ` icon=${icon}` : ''} class="${el.getAttribute('class') ?? ''}">${text}`
+    })
 }
 
 function selectView(container: HTMLElement, type: KanbanViewType): void {
@@ -133,6 +137,30 @@ describe.each(VIEW_TYPES)('%s view controls are named', (type) => {
     selectView(container, type)
     expect(unnamedControls(container)).toEqual([])
   })
+})
+
+/** The subtask panels of a row are only in the document once its expander is open. */
+function expandSubtasks(container: HTMLElement): void {
+  const expanders = [...container.querySelectorAll<HTMLElement>(
+    `[aria-expanded="false"][aria-label="${t('preview.kanban_expand_subtasks')}"]`,
+  )]
+  expect(expanders.length, 'no subtask expander to open').toBeGreaterThan(0)
+  for (const expander of expanders) {
+    act(() => {
+      expander.click()
+    })
+  }
+}
+
+describe('expanded subtask panels', () => {
+  for (const type of ['table', 'list'] as const) {
+    it(`names every control of the ${type} view with its subtasks expanded`, () => {
+      const { container } = mountBoard()
+      selectView(container, type)
+      expandSubtasks(container)
+      expect(unnamedControls(container)).toEqual([])
+    })
+  }
 })
 
 describe('item detail controls', () => {

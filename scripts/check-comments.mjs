@@ -2734,6 +2734,7 @@ const allowed = new Map([
     '/**\n * Every control the board renders has to say what it does: an icon-only button with no name reads\n * as "Button" in a screen reader, which is the same gap the popover pass closed for panels\n * (review #29). Rather than trusting a hand-tallied list of suspects, this mounts the real board,\n * walks every interactive element of each view and of the detail dialog, and fails with the\n * offending markup — so a new control that forgets its name is named by the suite, not by a review.\n */',
     '/** A control is unnamed when none of the ways HTML and ARIA give it a name produce text. */',
     '// Without this the walk would silently re-measure whichever view mounted first.',
+    '/** The subtask panels of a row are only in the document once its expander is open. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-convert-subtask.test.ts', [
     '// mirrors useKanbanHistory: functional updaters resolve against the latest data',
