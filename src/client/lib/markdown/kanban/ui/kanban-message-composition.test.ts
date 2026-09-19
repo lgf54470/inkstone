@@ -5,58 +5,23 @@
  * single selected card reads "Selected 1 items". Each case asserts the whole phrase comes from one
  * resource entry with only the value substituted, in both languages the app ships.
  */
-import { act, createElement, type ReactElement } from 'react'
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { EN_US_MESSAGES } from '../../../../../shared/locales/en-US'
-import { ZH_CN_MESSAGES } from '../../../../../shared/locales/zh-CN'
-import { initI18n, setLocale } from '../../../i18n'
-import { installTestGlobals, renderElement } from '../../../test-render'
+import { act, createElement } from 'react'
+import { describe, expect, it, vi } from 'vitest'
 import type { KanbanItem, KanbanProperty, KanbanView } from '../types'
 import { KanbanBatchBar } from './kanban-batch-bar'
 import { buildKanbanContextMenuItems, type KanbanContextMenuProps } from './kanban-context-menu'
 import { CollapsedColumn } from './kanban-column-header'
+import {
+  installBilingualLabelHooks,
+  inLocale,
+  LOCALES,
+  type LocaleCode,
+  messageIn,
+  mountIn,
+} from './kanban-bilingual-labels.test-helpers'
 import { KanbanTableGroup } from './kanban-table-group'
 
-const LOCALES = ['en-US', 'zh-CN'] as const
-type LocaleCode = (typeof LOCALES)[number]
-
-const RESOURCES: Record<LocaleCode, Record<string, string | undefined>> = {
-  'en-US': EN_US_MESSAGES,
-  'zh-CN': ZH_CN_MESSAGES,
-}
-
-/** The phrase as the resource file has it, with only the caller's value in the placeholder. */
-function messageIn(code: LocaleCode, key: string, params: Record<string, string | number> = {}): string {
-  const template = RESOURCES[code][key]
-  if (template === undefined)
-    throw new Error(`${key} is not a message in the ${code} resource`)
-  return template.replace(/\{([A-Za-z0-9_]+)\}/g, (_, name: string) => String(params[name]))
-}
-
-async function inLocale(code: LocaleCode): Promise<void> {
-  await act(async () => {
-    await setLocale(code, false)
-  })
-}
-
-const mounted: { unmount: () => void }[] = []
-
-async function mount(code: LocaleCode, element: ReactElement): Promise<HTMLElement> {
-  await inLocale(code)
-  const rendered = renderElement(element)
-  mounted.push(rendered)
-  return rendered.container
-}
-
-beforeAll(async () => {
-  installTestGlobals()
-  await initI18n()
-})
-
-afterEach(() => {
-  while (mounted.length)
-    mounted.pop()!.unmount()
-})
+installBilingualLabelHooks()
 
 const titleColumn = { id: 'title', name: 'Title', type: 'title' } as KanbanProperty
 const statusColumn = { id: 'status', name: 'Status', type: 'select' } as KanbanProperty
@@ -73,7 +38,7 @@ describe('the batch bar counts its selection', () => {
   }
 
   function mountBar(code: LocaleCode, selectedCount: number): Promise<HTMLElement> {
-    return mount(code, createElement(KanbanBatchBar, {
+    return mountIn(code, createElement(KanbanBatchBar, {
       selectedCount,
       onBatchGroupChange: vi.fn(),
       onBatchDelete: vi.fn(),
@@ -96,7 +61,7 @@ describe('the batch bar counts its selection', () => {
 
 describe('a collapsed column names its group', () => {
   it.each(LOCALES)('keeps the group inside the message in %s', async (code) => {
-    const container = await mount(code, createElement(CollapsedColumn, {
+    const container = await mountIn(code, createElement(CollapsedColumn, {
       group: { groupKey: 'backlog', label: 'Backlog', items: [] },
       onExpand: vi.fn(),
       onDrop: vi.fn(),
@@ -110,7 +75,7 @@ describe('a collapsed column names its group', () => {
 })
 
 async function mountTableGroup(code: LocaleCode): Promise<HTMLElement> {
-  return mount(code, createElement(KanbanTableGroup, {
+  return mountIn(code, createElement(KanbanTableGroup, {
     groupKey: 'backlog',
     label: 'Backlog',
     items: [itemWithSubtask],

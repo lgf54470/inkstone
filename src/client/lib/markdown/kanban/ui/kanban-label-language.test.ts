@@ -1,0 +1,105 @@
+/**
+ * Three kanban controls named themselves in a language the reader may not speak: a tag chip's remove
+ * button borrowed the *mindmap* shortcut string, a subtask's completion toggle was the literal
+ * `'Mark complete'`, and the progress bar's catch-all segment was the literal `'Other'`. Both label
+ * probes that already existed pass on all three — the name is present, and nothing was concatenated —
+ * so each case mounts the real surface once per shipped language and requires the phrase to be the
+ * kanban resource's own entry for that action, with the thing it acts on named inside the message.
+ */
+import { createElement } from 'react'
+import { describe, expect, it, vi } from 'vitest'
+import type { KanbanItem, KanbanProperty } from '../types'
+import { KanbanProgressBar } from './kanban-progress-bar'
+import { KanbanSubtaskList } from './kanban-subtask-list'
+import { KanbanTagPicker } from './kanban-tag-picker'
+import {
+  installBilingualLabelHooks,
+  LOCALES,
+  type LocaleCode,
+  messageIn,
+  mountIn,
+} from './kanban-bilingual-labels.test-helpers'
+
+installBilingualLabelHooks()
+
+describe('a tag chip says which tag it removes', () => {
+  async function removeButton(code: LocaleCode): Promise<HTMLElement | null> {
+    const container = await mountIn(code, createElement(KanbanTagPicker, {
+      tags: ['x'],
+      options: [{ id: 'x', label: 'Spec', color: 'green' }],
+      onChangeTags: vi.fn(),
+    }))
+    return container.querySelector<HTMLElement>('button[aria-label]')
+  }
+
+  it.each(LOCALES)('uses the kanban resource in %s', async (code) => {
+    const button = await removeButton(code)
+    expect(button, 'the tag chip renders no remove control').not.toBeNull()
+    expect(button!.getAttribute('aria-label')).toBe(
+      messageIn(code, 'preview.kanban_remove_tag_named', { name: 'Spec' }),
+    )
+  })
+})
+
+describe('the subtask completion toggle', () => {
+  const subtasks = [
+    { id: 's1', title: 'Draft the outline', completed: false },
+    { id: 's2', title: 'Review it', completed: true },
+  ]
+
+  async function toggles(code: LocaleCode): Promise<HTMLElement[]> {
+    const container = await mountIn(code, createElement(KanbanSubtaskList, {
+      subtasks,
+      onUpdateSubtasks: vi.fn(),
+    }))
+    return [...container.querySelectorAll<HTMLElement>('button[aria-label]')]
+  }
+
+  it.each(LOCALES)('names both states after the subtask in %s', async (code) => {
+    const found = await toggles(code)
+    const open = found.find((el) => el.getAttribute('aria-label')?.includes('Draft the outline'))
+    const done = found.find((el) => el.getAttribute('aria-label')?.includes('Review it'))
+    expect(open, 'nothing names the incomplete subtask').not.toBeUndefined()
+    expect(done, 'nothing names the completed subtask').not.toBeUndefined()
+    expect(open!.getAttribute('aria-label')).toBe(
+      messageIn(code, 'preview.kanban_mark_complete_named', { name: 'Draft the outline' }),
+    )
+    expect(done!.getAttribute('aria-label')).toBe(
+      messageIn(code, 'preview.kanban_mark_incomplete_named', { name: 'Review it' }),
+    )
+  })
+})
+
+describe("the progress bar's catch-all segment", () => {
+  const statusColumn: KanbanProperty = {
+    id: 'status',
+    name: 'Status',
+    type: 'select',
+    options: [{ id: 'todo', label: 'To Do', color: 'gray' }],
+  }
+  const items: KanbanItem[] = [
+    { id: 'a', title: 'Planned', properties: { status: 'todo' } },
+    { id: 'b', title: 'Unfiled', properties: { status: 'archived' } },
+  ]
+
+  async function titles(code: LocaleCode): Promise<string[]> {
+    const container = await mountIn(code, createElement(KanbanProgressBar, {
+      items,
+      statusColumn,
+    }))
+    return [...container.querySelectorAll<HTMLElement>('[title]')].map((el) => el.getAttribute('title') ?? '')
+  }
+
+  it.each(LOCALES)('names itself in the reader language in %s while a group keeps its own name', async (code) => {
+    const found = await titles(code)
+    expect(found, 'the bar draws no segment').not.toHaveLength(0)
+    expect(
+      found.some((title) => title.startsWith(messageIn(code, 'preview.kanban_status_other'))),
+      `no segment is named after the reader language: ${found.join(' | ')}`,
+    ).toBe(true)
+    expect(
+      found.some((title) => title.startsWith('To Do')),
+      'a board-authored group name got translated away',
+    ).toBe(true)
+  })
+})

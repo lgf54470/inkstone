@@ -2701,6 +2701,11 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-bilingual-labels.test-helpers.ts', [
+    '/**\n * Shared fixture for the two label probes: both mount the real surface once per shipped language and\n * compare the rendered text with the resource entry itself — the expectation is read out of\n * `EN_US_MESSAGES`/`ZH_CN_MESSAGES` with only the caller\'s value substituted, so a resource rewrite\n * moves the test with it and a component that slides back to composing labels in JSX goes red.\n * Han literals cannot appear in a test file (`i18n:check` only allows them inside the zh-CN\n * resources), which is why the phrase is always looked up rather than written out.\n */',
+    '/** The phrase as the resource file has it, with only the caller\'s value in the placeholder. */',
+    '/** Registers what both probes need: i18n ready before the first case, every mount torn down after each. */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-board-dnd.test.ts', [
     '// a fresh arrow each render, like an unmemoized parent prop',
   ]],
@@ -2794,6 +2799,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-item-detail-fields.tsx', [
     '/** The listbox the status trigger opens; `id` is the target of its `aria-controls`. */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-label-language.test.ts', [
+    '/**\n * Three kanban controls named themselves in a language the reader may not speak: a tag chip\'s remove\n * button borrowed the *mindmap* shortcut string, a subtask\'s completion toggle was the literal\n * `\'Mark complete\'`, and the progress bar\'s catch-all segment was the literal `\'Other\'`. Both label\n * probes that already existed pass on all three — the name is present, and nothing was concatenated —\n * so each case mounts the real surface once per shipped language and requires the phrase to be the\n * kanban resource\'s own entry for that action, with the thing it acts on named inside the message.\n */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-manual-move.test.ts', [
     '// the app passes a freshly built filterSort object every render',
   ]],
@@ -2804,7 +2812,6 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-message-composition.test.ts', [
     '/**\n * Half a dozen kanban labels were assembled in JSX out of message fragments — `${action}: ${name}`,\n * `{label} {count} {noun}`, `{label} ({count})` — which freezes English word order into the\n * component: a Chinese reader of the same board hears an ASCII colon inside a Chinese phrase, and a\n * single selected card reads "Selected 1 items". Each case asserts the whole phrase comes from one\n * resource entry with only the value substituted, in both languages the app ships.\n */',
-    '/** The phrase as the resource file has it, with only the caller\'s value in the placeholder. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-move-announcement.test.ts', [
     '/**\n * Moving a card between columns is the one board action whose result is nowhere but on screen: the\n * drop and the Alt+arrow chord both just re-render the columns, so a screen reader user hears\n * nothing at all and cannot tell which group the card landed in (review #29, K2-03e5). The board\n * therefore carries a polite live region, and both move paths — keyboard and pointer — report\n * through it. These cases pin the three behaviours that make it usable rather than noisy: the\n * region exists before the first move (a live region added at the moment of the change is often not\n * announced), a move that changes the group speaks the item and its new column, and a reorder\n * inside one column stays silent.\n */',
@@ -2820,6 +2827,9 @@ const allowed = new Map([
     '/**\n * Every panel in this module is dismissed by the pointer today and by nobody with a keyboard:\n * `Escape` reaches the board, finds no handler, and the reader is left inside an open popover\n * with the rest of the board dimmed behind their own focus (review #26/#29). The contract\n * asserted here is the one `components/overlay` already gives the app\'s other popovers —\n * `useEscape` plus the shared `useClickOutside` — so the panels close the same way, and a click\n * that lands inside the panel is still not a click outside it.\n */',
     '/**\n * A test that fails mid-case never reaches its own `unmount()`, and a panel left in `document.body`\n * answers the next case\'s `querySelector` first — so teardown belongs to the harness.\n */',
     '/** The panels whose parent owns `open`, so dismissal is one callback to observe. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-progress-bar.tsx', [
+    '/** A real group shows the name the board author gave it; the catch-all bucket shows a translated label. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-property-cell.tsx', [
     '// Attachments live on the item, not in `properties`, so the table always has a',

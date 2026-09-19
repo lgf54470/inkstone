@@ -159,7 +159,10 @@ function SubtaskMainRow({
         type='button'
         onClick={onToggle}
         className='shrink-0 text-[var(--text-tertiary)] hover:text-[var(--accent)]'
-        aria-label={subtask.completed ? 'Mark incomplete' : 'Mark complete'}
+        aria-label={t(
+          subtask.completed ? 'preview.kanban_mark_incomplete_named' : 'preview.kanban_mark_complete_named',
+          { name: subtask.title },
+        )}
       >
         {subtask.completed ? <CheckSquare size={13} className='text-[var(--accent)]' /> : <Square size={13} />}
       </button>

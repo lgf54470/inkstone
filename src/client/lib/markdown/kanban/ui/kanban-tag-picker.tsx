@@ -36,14 +36,14 @@ function TagChip({
 }) {
   const opt = options?.find((o) => o.id === tag || o.label === tag)
   const color = resolveKanbanTagColor(tag, options)
-  const label = opt?.label ?? tag
+  const name = formatKanbanOptionLabel(opt?.label ?? tag, 'tags')
 
   return (
     <span
       style={getKanbanTagStyle(color)}
       className='inline-flex items-center gap-1 rounded-[var(--r-xs)] px-2 py-0.5 text-[length:var(--text-11)] font-semibold'
     >
-      <span>{formatKanbanOptionLabel(label, 'tags')}</span>
+      <span>{name}</span>
       <button
         type='button'
         onClick={(e) => {
@@ -51,7 +51,7 @@ function TagChip({
           onRemove(tag)
         }}
         className='opacity-60 transition-opacity hover:opacity-100'
-        aria-label={t('preview.mindmap_shortcut_remove')}
+        aria-label={t('preview.kanban_remove_tag_named', { name })}
       >
         <X size={10} />
       </button>

@@ -416,7 +416,7 @@ describe('KanbanTableView inline tag editing', () => {
     const onUpdateMultiSelect = vi.fn()
     const { container, unmount } = mountTable(schemaData, handlers({ onUpdateMultiSelect }))
     const cell = cellOf(container, 'a', 'tags')
-    act(() => { buttonNamed(cell, t('preview.mindmap_shortcut_remove')).click() })
+    act(() => { buttonNamed(cell, t('preview.kanban_remove_tag_named', { name: t('preview.kanban_tag_bug') })).click() })
     expect(onUpdateMultiSelect).toHaveBeenCalledWith('a', 'tags', [], undefined)
     act(() => { buttonNamed(cellOf(container, 'a', 'tags'), t('preview.kanban_new_tag')).click() })
     const popover = container.querySelector<HTMLElement>('[role="dialog"]')!
