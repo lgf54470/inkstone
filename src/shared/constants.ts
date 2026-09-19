@@ -83,6 +83,7 @@ export const LIMITS = {
   musicPlayEventsPerHour: 600,
   musicLibraryWritesPerHour: 1000,
   musicCoverLookupsPerHour: 60,
+  musicLyricLookupsPerHour: 60,
   musicTitleMaxLength: 200,
   musicArtistMaxLength: 200,
   musicAlbumMaxLength: 200,

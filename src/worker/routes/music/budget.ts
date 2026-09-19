@@ -4,7 +4,7 @@ import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 
 const HOUR_MS = 60 * 60 * 1000
 
-export type MusicBudgetFamily = 'webdav' | 'play' | 'write' | 'lookup'
+export type MusicBudgetFamily = 'webdav' | 'play' | 'write' | 'lookup' | 'lyric'
 
 // Each family that can trigger outbound requests or storage work gets one
 // named hourly key, so no music route can be looped into unbounded load.
@@ -13,6 +13,7 @@ const BUDGETS: Record<MusicBudgetFamily, { maxAttempts: number; message: string 
   play: { maxAttempts: LIMITS.musicPlayEventsPerHour, message: 'Too many play events' },
   write: { maxAttempts: LIMITS.musicLibraryWritesPerHour, message: 'Too many library writes' },
   lookup: { maxAttempts: LIMITS.musicCoverLookupsPerHour, message: 'Too many cover lookups' },
+  lyric: { maxAttempts: LIMITS.musicLyricLookupsPerHour, message: 'Too many lyric lookups' },
 }
 
 export async function enforceMusicBudget(db: D1Database, family: MusicBudgetFamily, userId: string): Promise<void> {

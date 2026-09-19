@@ -168,6 +168,8 @@ export interface MusicStoreState {
   ensureTrackLyric: (id: string) => Promise<void>
   refreshTrackMetadata: (ids: string[], force?: boolean) => Promise<number>
   matchMissingCovers: () => Promise<number>
+  // Menu action: fetch lyrics through the Worker relay and save the match as this track's lyric.
+  searchTrackLyric: (id: string) => Promise<void>
   toggleFavorite: (id: string) => Promise<void>
   togglePin: (id: string) => Promise<void>
   deleteTrack: (id: string) => Promise<void>

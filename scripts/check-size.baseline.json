@@ -5,6 +5,9 @@
   "src/client/features/music/music-share-page/page.test.ts": {
     "longFns": 1
   },
+  "src/client/features/music/music-track-menu.test.ts": {
+    "longFns": 1
+  },
   "src/client/lib/markdown/slides/body.test.ts": {
     "longFns": 1
   },
@@ -53,7 +56,7 @@
     "longFns": 1
   },
   "src/shared/constants.ts": {
-    "lines": 501
+    "lines": 502
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 579

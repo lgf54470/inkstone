@@ -1,9 +1,10 @@
 import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { act, createElement } from 'react'
+import { act, createElement, Fragment } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
+import { ConfirmHost } from '../../components/overlay'
 import { MusicTrackList } from './music-track-list'
 import { useMusic } from './music-store'
 
@@ -228,5 +229,66 @@ describe('playlist track menu', () => {
     })
     expect(movePlaylistItem).toHaveBeenCalledWith('p1', 'i1', -1)
     expect(useMusic.getState().trackMenu).toBeNull()
+  })
+})
+
+describe('track menu lyric search (M-52)', () => {
+  async function mountAndOpen(target: MusicTrack): Promise<void> {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    await act(async () => {
+      root?.render(createElement(Fragment, null,
+        createElement(ConfirmHost),
+        createElement(MusicTrackList, { tracks: [target], loading: false, emptyTitle: 'x', onEdit: () => {} })))
+    })
+    await act(async () => {
+      menuButtons()[0]?.click()
+    })
+  }
+
+  it('runs straight through for a track without stored lyrics', async () => {
+    const searchTrackLyric = vi.fn(async () => {})
+    useMusic.setState({ searchTrackLyric })
+    await mountAndOpen(track('t1', 'Alpha'))
+    await act(async () => {
+      menuItem(t('music.search_lyrics'))?.click()
+    })
+    expect(searchTrackLyric).toHaveBeenCalledWith('t1')
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+  })
+
+  it('asks before replacing the lyrics a track already carries', async () => {
+    const searchTrackLyric = vi.fn(async () => {})
+    useMusic.setState({ searchTrackLyric })
+    await mountAndOpen({ ...track('t1', 'Alpha'), hasLyric: true, lyric: '[00:01.000]kept' })
+    await act(async () => {
+      menuItem(t('music.search_lyrics'))?.click()
+    })
+    expect(searchTrackLyric).not.toHaveBeenCalled()
+    const dialog = document.querySelector('[role="dialog"]')
+    expect(dialog?.textContent).toContain(t('music.search_lyrics_confirm', { value0: 'Alpha' }))
+    const replace = [...(dialog?.querySelectorAll('button') ?? [])]
+      .find((button) => button.textContent?.includes(t('music.replace')))
+    expect(replace).toBeDefined()
+    await act(async () => {
+      replace?.click()
+    })
+    expect(searchTrackLyric).toHaveBeenCalledWith('t1')
+  })
+
+  it('keeps the stored lyrics when the replace prompt is declined', async () => {
+    const searchTrackLyric = vi.fn(async () => {})
+    useMusic.setState({ searchTrackLyric })
+    await mountAndOpen({ ...track('t1', 'Alpha'), hasLyric: true, lyric: '[00:01.000]kept' })
+    await act(async () => {
+      menuItem(t('music.search_lyrics'))?.click()
+    })
+    const cancel = [...(document.querySelector('[role="dialog"]')?.querySelectorAll('button') ?? [])]
+      .find((button) => button.textContent?.includes(t('common.cancel')))
+    await act(async () => {
+      cancel?.click()
+    })
+    expect(searchTrackLyric).not.toHaveBeenCalled()
   })
 })

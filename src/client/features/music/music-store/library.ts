@@ -5,6 +5,7 @@ import {
 } from './library-load'
 import { batchTracks, deleteTrack, ensureTrackLyric, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin } from './library-tracks'
 import { matchMissingCovers } from './library-covers'
+import { searchTrackLyric } from './library-lyrics'
 import { dismissDownload, dismissLibraryJob, downloadTracks, setTransfersOpen, setUploadTarget } from './transfers'
 import { setTracksOffline, syncOfflineTracks, toggleTrackOffline } from './offline'
 import {
@@ -20,7 +21,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'setViewMode' | 'openTrackMenu' | 'closeTrackMenu' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
-  | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
+  | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'searchTrackLyric' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
   | 'createTag' | 'patchTag' | 'deleteTag'
   | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'sharePlaylist' | 'unsharePlaylist' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
   | 'uploadFiles' | 'dismissUpload'
@@ -51,6 +52,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     ensureTrackLyric: (id) => ensureTrackLyric(set, get, id),
     refreshTrackMetadata: (ids, force) => refreshTrackMetadata(set, get, ids, force),
     matchMissingCovers: () => matchMissingCovers(set, get),
+    searchTrackLyric: (id) => searchTrackLyric(set, get, id),
     toggleFavorite: (id) => toggleFavorite(set, get, id),
     togglePin: (id) => togglePin(set, get, id),
     deleteTrack: (id) => deleteTrack(set, get, id),

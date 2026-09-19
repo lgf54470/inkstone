@@ -287,6 +287,7 @@
     - 已知限制：网格卡片不虚拟化（组数远小于曲目数，当前规模无感）；e2e-visual 未加真实浏览场景，断言由单测/DOM 测试与变异 M1-M8 覆盖。
   - ✅（M-51）歌单封面 + 歌单分享：封面为客户端派生（playlistCoverUrl 按手动条目顺序取首张有封面曲目，不存字段不设失效）；分享按歌单粒度 opt-in——迁移 v38 给 music_playlists 加 share_slug（NULL=未分享，唯一索引容忍多 NULL），POST/DELETE /playlists/:id/share 幂等发放与吊销，重放链接不换号。公开路由挂 /api/blog/public/music/playlists/:slug*，只认 share_slug、不受整库发布开关约束；stream/cover 以「曲目在该歌单内」的 JOIN 为授权（含 t.user_id=p.user_id 归属保险），投影复用 toPublicTrack 泛化出的路径参数、tagIds 恒空（不外泄标签结构）。匿名页 /playlist/:slug 服务端壳复用 renderShareShell（标题/noindex 走 share 模块公开接口），客户端查看器按 share-page 同构目录自成懒块（music-share-page/ 带 index，app.tsx 在该边界 code-split，音乐初始包不为此增长）：三态（加载/失效 404/失败）、键控 <audio controls autoPlay> 原生控件 + 播完自动下一曲。侧栏歌单行菜单按 shareSlug 出「分享歌单/取消分享」，分享即复制 /playlist/<slug> 链接，剪贴板失败必 toast（沿用 slides copy-link 先例）。demo 后端镜像 share/unshare/public 三路由并锁契约测试。
     - 已知限制：分享链接无过期与访问口令（笔记分享有密码/到期，歌单暂不设，吊销只能整单取消）；无访问量统计；链接随歌单删除而失效；智能歌单不在本项范围（FEAT-11~18 列表仍开放）。
+  - ✅（M-52）在线歌词搜索：Worker 代理 lrclib.net（页面 CSP 禁三方连接），路由 GET /tracks/:id/lyric-lookup 先按归属加载曲目（越权即 404 且不触网），再走 'lyric' 小时预算（60/时，独立键不与封面互挤），重定向逐跳复检抽为共享 outbound.ts 供封面/歌词两路复用。匹配优先带时间的 syncedLyrics（LRC 可直接进现有高亮）、退回 plainLyrics，超 128KB 存储上限的匹配按无匹配处理不外泄。路由只读不写：命中经普通 patchTrack 落库，已有歌词的曲目在菜单层弹 confirm 后才替换（拒绝即原样），无匹配走 notice 而非 error。已知限制：结果质量取决于 lrclib 众包覆盖；不缓存上游响应（缓存=落库这一份）；匿名分享页不展示歌词入口；demo 后端不镜像（封面代理同样未镜像）。
 
 ### 功能面核对通过项
 

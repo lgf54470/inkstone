@@ -858,6 +858,96 @@ describe('music cover lookup (real D1)', () => {
   })
 })
 
+describe('music lyric lookup (real D1)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function stubLyrics(payload: unknown, status = 200): string[] {
+    const calls: string[] = []
+    vi.stubGlobal('fetch', (url: string) => {
+      calls.push(String(url))
+      return Promise.resolve({ ok: status === 200, status, json: () => Promise.resolve(payload) })
+    })
+    return calls
+  }
+
+  async function appWithTrack(): Promise<{ app: Hono<AppBindings>; track: Record<string, unknown> }> {
+    await makeDb()
+    await seedUser(DB_ENV.env.DB as unknown as D1Shim)
+    const app = makeApp()
+    const track = await uploadTrack(app)
+    await json(app, `/api/music/tracks/${track.id}`, { title: 'Moonlight', artist: 'Hu Yanbin' }, 'PATCH')
+    return { app, track }
+  }
+
+  it('answers with the synced lyrics and asks upstream by title, artist and seconds', async () => {
+    const { app, track } = await appWithTrack()
+    const calls = stubLyrics({ syncedLyrics: '[00:12.00]written line', plainLyrics: 'written line' })
+    const res = await request(app, `/api/music/tracks/${track.id}/lyric-lookup`)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ lyric: '[00:12.00]written line' })
+    expect(calls[0]).toContain('https://lrclib.net/api/get?')
+    expect(calls[0]).toContain('track_name=Moonlight')
+    expect(calls[0]).toContain('artist_name=Hu+Yanbin')
+    expect(calls[0]).toContain('duration=123')
+  })
+
+  it('falls back to the plain text when no timed version exists', async () => {
+    const { app, track } = await appWithTrack()
+    stubLyrics({ syncedLyrics: null, plainLyrics: 'written line' })
+    const res = await request(app, `/api/music/tracks/${track.id}/lyric-lookup`)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ lyric: 'written line' })
+  })
+
+  it('reports no match and leaves the stored lyric untouched', async () => {
+    const { app, track } = await appWithTrack()
+    stubLyrics({}, 404)
+    const res = await request(app, `/api/music/tracks/${track.id}/lyric-lookup`)
+    expect(res.status).toBe(404)
+    const served = await (await request(app, `/api/music/tracks/${track.id}/lyric`)).json()
+    expect((served as { lyric: string | null }).lyric).toBe('[00:01.000]first line')
+  })
+
+  it('refuses to relay a lyric beyond the stored-size ceiling', async () => {
+    const { app, track } = await appWithTrack()
+    stubLyrics({ plainLyrics: 'x'.repeat(LIMITS.musicLyricMaxBytes + 1) })
+    const res = await request(app, `/api/music/tracks/${track.id}/lyric-lookup`)
+    expect(res.status).toBe(404)
+  })
+
+  it('refuses to follow a lyrics redirect off the allowed domain', async () => {
+    const { app, track } = await appWithTrack()
+    const calls: string[] = []
+    vi.stubGlobal('fetch', (url: string) => {
+      calls.push(String(url))
+      return Promise.resolve({
+        ok: false,
+        status: 302,
+        headers: { get: (name: string) => (name.toLowerCase() === 'location' ? 'http://169.254.169.254/latest/meta-data/' : null) },
+        json: () => Promise.resolve({}),
+      })
+    })
+    const res = await request(app, `/api/music/tracks/${track.id}/lyric-lookup`)
+    expect(res.status).toBe(404)
+    expect(calls.some((call) => call.includes('169.254.169.254'))).toBe(false)
+  })
+
+  it('never reaches upstream for a track the caller does not own', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedUser(db, 'user-2')
+    const app = makeApp()
+    const created = await uploadTrack(app)
+    await runSql(db, 'UPDATE music_tracks SET user_id = ?1 WHERE id = ?2', 'user-2', String(created.id))
+    const calls = stubLyrics({ plainLyrics: 'written line' })
+    const res = await request(app, `/api/music/tracks/${created.id}/lyric-lookup`)
+    expect(res.status).toBe(404)
+    expect(calls).toEqual([])
+  })
+})
+
 describe('music hourly budgets (real D1)', () => {
   afterEach(() => {
     vi.unstubAllGlobals()

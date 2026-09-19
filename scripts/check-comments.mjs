@@ -1499,6 +1499,12 @@ const allowed = new Map([
     '// The comparator describes the natural ascending order of the field; the',
     '// stored direction only flips it, and pins stay hoisted in both directions.',
   ]],
+  ['src/client/features/music/music-store/library-lyrics.ts', [
+    '// Lyrics are looked up per track on request and saved through the normal',
+    '// metadata patch, so the listener always sees exactly what lands in the library.',
+    '// Upstream answers "no match" with a 404; that is an empty-handed result,',
+    '// not a failure the listener needs an error toast for.',
+  ]],
   ['src/client/features/music/music-store/library-tracks.ts', [
     '// The library ships without lyric text, so the details views ask for it by id once.',
     '// Best effort: a failed lyric fetch only leaves the lyric view empty, the track still plays.',
@@ -1576,6 +1582,7 @@ const allowed = new Map([
     '// One pass of batch library work; kind is unique while running, so a second',
     '// click cannot stack a duplicate pass. Done passes leave the list.',
     '// Detail views call this for tracks the lazy library listed with a lyric but no text.',
+    '// Menu action: fetch lyrics through the Worker relay and save the match as this track\'s lyric.',
   ]],
   ['src/client/features/music/music-store/webdav.ts', [
     '// Appends give instant feedback mid-pass; one reload at the end restores server truth.',
@@ -1602,6 +1609,7 @@ const allowed = new Map([
     '// button. The visible list is derived when the item runs, not on every row render.',
     '// Checkmarks show the track\'s current tags; picking one toggles it.',
     '// Menu actions close the menu before they run, so focus returns to the list first.',
+    '/**\n * An online match is a guess from a public catalogue, so a track that already\n * carries lyrics is replaced only behind a confirm — never silently.\n */',
   ]],
   ['src/client/features/music/music-track-row.tsx', [
     '// Off-screen rows skip layout and paint; the intrinsic size reserves their height.',
@@ -2404,6 +2412,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/api/board-library.ts', [
     '/**\n * Whiteboard libraries (lib/markdown/excalidraw/library.ts) are a set of named documents\n * per account, so the API hands each one back verbatim and stores whatever it is given:\n * keeping the format knowledge on the client is what lets an `.excalidrawlib` body\n * round-trip with excalidraw.com untouched.\n */',
+  ]],
+  ['src/client/lib/api/music.ts', [
+    '// The Worker relays the catalogue request because the page\'s CSP forbids third party connections.',
   ]],
   ['src/client/lib/api/transport.ts', [
     '/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker\'s ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */',
@@ -4777,6 +4788,20 @@ const allowed = new Map([
     '// Apple serves artwork from its own CDN and its subdomains share DNS trust,',
     '// so the upstream-provided URL must never send the Worker to another origin —',
     '// including via redirects.',
+  ]],
+  ['src/worker/routes/music/lyrics.ts', [
+    '// lrclib aggregates crowd-sourced lyrics and needs no key; the fetch goes',
+    '// through the Worker because the page\'s CSP forbids third party connections.',
+    '// Read-only by design: the lookup answers with the match and the caller saves',
+    '// it through the normal metadata patch, so an unasked-for fetch can never',
+    '// rewrite a track the listener has hand-edited.',
+    '// Upstream answers 404 for "no match"; anything else that is not an OK body',
+    '// is the same no-match answer to the listener, and a 200 carries the text.',
+  ]],
+  ['src/worker/routes/music/outbound.ts', [
+    '// The page\'s CSP forbids third party connections, so every catalogue request the',
+    '// library makes runs through here. The allowlist is checked on each hop because a',
+    '// redirect the Worker follows is still the Worker fetching.',
   ]],
   ['src/worker/routes/music/page.ts', [
     '// The anonymous playlist page (M-51): the shell only decides the <title> and',

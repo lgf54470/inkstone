@@ -105,6 +105,10 @@ export const music = {
   trackLyric: (id: string) =>
     request<{ lyric: string | null }>(`/api/music/tracks/${encodeURIComponent(id)}/lyric`),
 
+  // The Worker relays the catalogue request because the page's CSP forbids third party connections.
+  searchTrackLyric: (id: string) =>
+    request<{ lyric: string }>(`/api/music/tracks/${encodeURIComponent(id)}/lyric-lookup`),
+
   deleteTrack: (id: string) =>
     request<{ ok: boolean }>(`/api/music/tracks/${encodeURIComponent(id)}`, { method: 'DELETE', timeoutMs: 30_000 }),
 
