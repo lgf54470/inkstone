@@ -51,7 +51,7 @@
 | F1 | SH-29 | `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，双侧回归 | P2 | ✅ | 1b502776 |
 | F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用），并做 all 整表拉行 SQL 下推（26 号遗留） | P2 | 排队 | |
 | F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后） | — | 排队 | |
-| F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | 待回填 |
+| F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | eff0a6b5 |
 | F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | 排队 | |
 | G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | 排队 | |
 
@@ -303,4 +303,4 @@
 - 测试（红先行）：blog-routes 5 例——去重测试反转为「同 IP 换 UA 仍去重、换 IP 才算新访客」（旧断言把「UA 轮换=新访客」这一缺陷当预期，属故意翻转并在此登记）、无 secret 时 `visitor_fp` 落 null 而非公开日期盐、referrer 三例（javascript: 丢弃、只存 origin+path 剥 query/fragment、512 截断）；新增 `requestWithIp` helper 经 `cf` 对象注入真实 IP（`requestClientIp` 无 cf 时返回 'local'）。share-routes 补 1 例钉住抽取后仍无人守的「referrer 指回本分享路径即丢弃」（否则 M4 变异存活=重构静默丢行为）。红 5 确认后修复转绿，blog 87/87 + share 67/67。
 - 变异 5 全杀：fp 键回加 UA、referrer 回填原文、去掉 scheme 白名单、去掉自路径丢弃、去掉缺 secret→null 门。/tmp/mutF4 备份逐一还原。
 - 部署注意：生产未 `wrangler secret put VISIT_FP_SECRET` 时，blog 与 share 同样记 null 指纹（UV 计数为 0、去重不生效）——这是 12 号已裁决的取向，非本次新增风险；上线前须确认 secret 已配。
-- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 105/105（blog-routes+share-routes+share-analytics）。全量回归待补。fix 提交待回填。
+- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 105/105（blog-routes+share-routes+share-analytics）。全量回归 236 文件/1821 测试绿（REGRESSION_EXIT=0）。fix 提交 eff0a6b5。
