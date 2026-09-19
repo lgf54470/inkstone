@@ -12,8 +12,9 @@ import {
     Trash2,
     User,
 } from 'lucide-react'
+import { useRef, useState } from 'react'
 import type { ShareVisitsResponse } from '@shared/types'
-import { Modal } from '../../components/overlay'
+import { Menu, Modal, type MenuItem } from '../../components/overlay'
 import { Button, IconButton } from '../../components/primitives'
 import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
@@ -147,41 +148,30 @@ function CleanLogsMenu({ isCleaning, onClean }: {
   isCleaning: boolean
   onClean: (type: 'bots' | 'older_than' | 'all', days?: number) => Promise<void>
 }) {
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  const items: MenuItem[] = [
+    { id: 'bots', label: t('share.clean_bots_only'), onSelect: () => void onClean('bots') },
+    { id: 'older', label: t('share.clean_older_30d'), onSelect: () => void onClean('older_than', 30) },
+    { id: 'all', label: t('share.clean_all_logs'), tone: 'danger', onSelect: () => void onClean('all') },
+  ]
   return (
-    <div className='relative group'>
+    <>
       <Button
+        ref={buttonRef}
         size='sm'
         variant='secondary'
         className='text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
         icon={<Trash2 size={12} />}
         disabled={isCleaning}
+        aria-haspopup='menu'
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
       >
         {t('share.clean_logs_btn')}
       </Button>
-      <div className='absolute right-0 top-full z-[var(--z-menu)] mt-1 hidden min-w-37.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1 shadow-[var(--shadow-pop)] group-hover:block'>
-        <button
-          type='button'
-          onClick={() => void onClean('bots')}
-          className='w-full rounded px-2 py-1 text-left text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-        >
-          {t('share.clean_bots_only')}
-        </button>
-        <button
-          type='button'
-          onClick={() => void onClean('older_than', 30)}
-          className='w-full rounded px-2 py-1 text-left text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-        >
-          {t('share.clean_older_30d')}
-        </button>
-        <button
-          type='button'
-          onClick={() => void onClean('all')}
-          className='w-full rounded px-2 py-1 text-left text-[length:var(--text-11)] text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
-        >
-          {t('share.clean_all_logs')}
-        </button>
-      </div>
-    </div>
+      {open && <Menu open={open} anchor={buttonRef} items={items} align='end' onClose={() => setOpen(false)} />}
+    </>
   )
 }
 
