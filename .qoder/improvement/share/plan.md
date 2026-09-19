@@ -48,7 +48,7 @@
 | 33 | SH-35 | 窄屏：侧栏折叠/宽模态 fullscreen/批量条换行/触控尺寸 | P2 | ✅ | b080398a |
 | 34 | SH-36 | 小项集合（口令长度统一、effect 重开、子模态重置、th scope、role=status 等） | P3 | ✅ | 21cbdddc |
 | T | SH-37 | 通病解冻：`--danger/warning/success-subtle` 全站引用无定义（渲染透明）→ 统一按 `-soft` 家族补定义并改名引用；三对色令牌按 AA 重校准 | P2 | ✅ | a5a02d38 |
-| F1 | SH-29 | `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，双侧回归 | P2 | ✅ | 待回填 |
+| F1 | SH-29 | `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，双侧回归 | P2 | ✅ | 1b502776 |
 | F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用），并做 all 整表拉行 SQL 下推（26 号遗留） | P2 | 排队 | |
 | F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后） | — | 排队 | |
 | F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | 排队 | |
@@ -294,4 +294,4 @@
 - 测试（红先行）：新 4 文件 `src/client/components/big-svg-chart.test.ts`、`dashboard-blocks.test.ts`（徽标三态+隐藏+sparkline 两态）、`features/share/share-devices-empty.test.ts`、`features/blog/blog-dashboard-view/audience-cards.test.ts`（无流量时三卡齐报空，原只有 2），改 `tests/share-analytics.test.ts` computeDelta 断言 undefined。红确认 6 失败/无收集错误后修复转绿（26/26）。`DevicesBreakdownCard` 提升为导出以供直测（仅测试脚手架，无行为变化）。
 - 变异 6 全杀：图表守卫回退 length===0、sparkline 门去掉 some、徽标 flat 分支失效、computeDelta 回填 0、两卡空态条件失效（share 侧 sed 因 JSX 换行未匹配=未变异，单独用 `{false ? (` 注入后杀掉）。/tmp/mutF1 备份逐一还原。
 - 坑：①lucide-react 本版本无 `TrendingFlat` 导出（React「Element type is invalid」红测抓出），中性趋势改 `Minus`（测试断言同步 `svg.lucide-minus`）；②`.test.ts` 不能含 JSX（rolldown PARSE_ERROR，且收集错误伪装成 1 failed 假象），一律 `createElement`；③`share-dashboard-view.tsx` 原 496 行贴着 size:check 的 500 上限（measure=wc+1），初版分支把文件顶到 503 触发基线漂移——把三元塞进既有 body div 内（对齐同文件 EmptyRow 先例）压回 498 行，未动基线。
-- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 26/26（F1 五文件）。全量回归待补（REGRESSION_EXIT 回填后以 docs 提交为准）。fix 提交待回填。
+- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 26/26（F1 五文件）。全量回归 236 文件/1816 测试绿（REGRESSION_EXIT=0，串行无并行）。fix 提交 1b502776。
