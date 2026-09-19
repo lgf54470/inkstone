@@ -22,6 +22,7 @@ function CardTagItem({
   const color = resolveKanbanTagColor(tag, options)
   const opt = options?.find((o) => o.id === tag || o.label === tag)
   const label = opt?.label ?? tag
+  const name = formatKanbanOptionLabel(label, 'tags')
 
   return (
     <span
@@ -39,7 +40,7 @@ function CardTagItem({
         className='hover:underline'
         title={t('preview.kanban_filter')}
       >
-        {formatKanbanOptionLabel(label, 'tags')}
+        {name}
       </button>
       {onRemove && (
         <button
@@ -50,7 +51,7 @@ function CardTagItem({
             onRemove(tag)
           }}
           className='ml-0.5 rounded-[var(--r-xs)] p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 group-hover/tag:!opacity-100 focus-visible:!opacity-100 hover:text-[var(--text-primary)]'
-          aria-label={t('preview.kanban_remove_tag')}
+          aria-label={t('preview.kanban_remove_tag_named', { name })}
         >
           <X size={10} />
         </button>

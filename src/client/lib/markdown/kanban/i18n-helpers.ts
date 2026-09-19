@@ -1,5 +1,5 @@
 import { t, type MessageKey } from '../../i18n'
-import type { KanbanOption, KanbanProperty, KanbanView } from './types'
+import type { KanbanColorName, KanbanOption, KanbanProperty, KanbanView } from './types'
 
 const VIEW_NAME_MAP: Record<string, MessageKey> = {
   board: 'preview.kanban_view_board',
@@ -64,6 +64,26 @@ const OPTION_LABEL_MAP: Record<string, MessageKey> = {
   improve: 'preview.kanban_tag_improve',
   improvement: 'preview.kanban_tag_improve',
   bug: 'preview.kanban_tag_bug',
+}
+
+const COLOR_NAME_MAP: Record<KanbanColorName, MessageKey> = {
+  gray: 'preview.kanban_color_gray',
+  brown: 'preview.kanban_color_brown',
+  orange: 'preview.kanban_color_orange',
+  yellow: 'preview.kanban_color_yellow',
+  green: 'preview.kanban_color_green',
+  blue: 'preview.kanban_color_blue',
+  purple: 'preview.kanban_color_purple',
+  pink: 'preview.kanban_color_pink',
+  red: 'preview.kanban_color_red',
+  coral: 'preview.kanban_color_coral',
+  teal: 'preview.kanban_color_teal',
+  slate: 'preview.kanban_color_slate',
+}
+
+/** The colour's name for a reader, since the token (`slate`) is what the fence stores. */
+export function formatKanbanColorName(color: KanbanColorName): string {
+  return t(COLOR_NAME_MAP[color])
 }
 
 export function formatKanbanOptionLabel(optionOrLabel: KanbanOption | string, propId?: string): string {

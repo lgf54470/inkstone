@@ -2670,6 +2670,9 @@ const allowed = new Map([
     '// board expects the option id; matching only by id would hide all of those',
     '// cards in No Status, so fall back to a case-insensitive label match.',
   ]],
+  ['src/client/lib/markdown/kanban/i18n-helpers.ts', [
+    '/** The colour\'s name for a reader, since the token (`slate`) is what the fence stores. */',
+  ]],
   ['src/client/lib/markdown/kanban/id.ts', [
     '// Kanban ids were built from Date.now() alone or with a short random suffix,',
     '// so a burst of creates inside one millisecond (paste, batch add, duplicated',
@@ -2807,6 +2810,14 @@ const allowed = new Map([
     '// that actually owns the focused element: focus on the surrounding note or on a',
     '// second board must not undo this instance\'s history.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-icon-badge.tsx', [
+    '/** The identifier the fence stores, as `lucide:<name>`. */',
+    '/**\n * The icons a board may use — one list for the picker that offers them and the badge that draws\n * them, so a name for a reader and the stored identifier cannot drift apart between the two.\n */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-icon-picker.tsx', [
+    '// No aria-label: the character is the option, and a reader tool speaks it from its own localised',
+    '// emoji data — a label we ship would replace that answer with one written in two languages.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-item-detail-fields.tsx', [
     '/** The listbox the status trigger opens; `id` is the target of its `aria-controls`. */',
   ]],
@@ -2844,6 +2855,13 @@ const allowed = new Map([
     '/** Scoped to the board region so the header\'s own save-status `role="status"` cannot stand in. */',
     '/** The chord is pressed on a real control inside the card, which is where keyboard focus lives. */',
     '/** What the browser hands the drop handler after a drag started on a card of this board. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-option-names.test.ts', [
+    '/**\n * The kanban pickers offer choices the reader cannot name: a lucide button was labelled with its\n * source identifier (`CheckCircle`, read out letter by letter), a colour dot with its token id\n * (`slate`), and the card header\'s remove button said only "Remove tag" next to several tags. Every\n * one of those identifiers is also the value written into the fence, so the *display* name is what\n * has to change while the stored string must not. Each case mounts the real surface once per shipped\n * language, asks for the option by the message the resources hold for it, and then checks what the\n * click persists.\n */',
+    '/** The icons the picker offers, by the same identifier the fence stores. */',
+    '/** The naming convention the pickers use: the identifier turned into a snake_case message key. */',
+    '// The picker writes the identifier and the badge reads it back; if those two drift, the icon stops',
+    '// drawing on the card and its raw stored text shows instead.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-popover-aria.test.ts', [
     '/**\n * A kanban panel that only answers the pointer is half a control: the trigger never says whether\n * it is open, and nothing points from the button to the panel it produced, so a reader pressing\n * Enter hears "button" and no state (review #26/#29). The contract asserted here is the one\n * `components/overlay/submenu.tsx` already keeps for the app\'s other popovers — `aria-haspopup`\n * with the panel\'s role, `aria-expanded` following `open`, and `aria-controls` naming a panel that\n * carries that `id` and has an accessible name of its own. The trigger and the panel usually live\n * in two components, so the relation is only observable by mounting whoever owns `open`.\n */',

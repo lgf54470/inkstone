@@ -1,45 +1,14 @@
 import { useRef, useState } from 'react'
-import {
-  AlertCircle,
-  Bookmark,
-  Calendar,
-  CheckCircle,
-  Clock,
-  FileText,
-  Flag,
-  Folder,
-  Layers,
-  Smile,
-  Sparkles,
-  Star,
-  Tag,
-  Trash2,
-  User,
-} from 'lucide-react'
+import { Smile, Trash2 } from 'lucide-react'
 import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
+import { KANBAN_ICONS } from './kanban-icon-badge'
 
 const KANBAN_COMMON_EMOJIS = [
   '📝', '🎯', '🚀', '💡', '📌', '🏷️', '⭐', '☕', '🎨', '📦',
   '🛠️', '✅', '⏳', '🛑', '🔍', '📊', '📈', '💬', '📅', '🐛',
   '🔥', '🎉', '⚡', '💻', '🔒', '📱', '🔔', '✨', '🌐', '📚',
   '💼', '🧠', '🗂️', '🏆', '🧩', '📋', '🔑', '💎', '🌈', '☀️',
-] as const
-
-const KANBAN_COMMON_ICONS = [
-  { name: 'CheckCircle', icon: CheckCircle },
-  { name: 'Clock', icon: Clock },
-  { name: 'AlertCircle', icon: AlertCircle },
-  { name: 'FileText', icon: FileText },
-  { name: 'Calendar', icon: Calendar },
-  { name: 'Star', icon: Star },
-  { name: 'Flag', icon: Flag },
-  { name: 'Bookmark', icon: Bookmark },
-  { name: 'Tag', icon: Tag },
-  { name: 'User', icon: User },
-  { name: 'Folder', icon: Folder },
-  { name: 'Layers', icon: Layers },
-  { name: 'Sparkles', icon: Sparkles },
 ] as const
 
 interface KanbanIconPickerProps {
@@ -56,14 +25,19 @@ function EmojiGrid({
 }: {
   onSelect: (emoji: string) => void
 }) {
+  // No aria-label: the character is the option, and a reader tool speaks it from its own localised
+  // emoji data — a label we ship would replace that answer with one written in two languages.
   return (
-    <div className='grid max-h-48 grid-cols-8 gap-1 overflow-y-auto p-2'>
+    <div
+      role='group'
+      aria-label={t('preview.kanban_tab_emoji')}
+      className='grid max-h-48 grid-cols-8 gap-1 overflow-y-auto p-2'
+    >
       {KANBAN_COMMON_EMOJIS.map((emoji) => (
         <button
           key={emoji}
           type='button'
           onClick={() => onSelect(emoji)}
-          aria-label={emoji}
           className='flex size-7 items-center justify-center rounded-[var(--r-sm)] text-[length:var(--text-14)] transition-transform hover:scale-125 hover:bg-[var(--bg-hover)]'
         >
           {emoji}
@@ -79,19 +53,26 @@ function LucideIconGrid({
   onSelect: (iconName: string) => void
 }) {
   return (
-    <div className='grid max-h-48 grid-cols-6 gap-1 overflow-y-auto p-2'>
-      {KANBAN_COMMON_ICONS.map(({ name, icon: IconComponent }) => (
-        <button
-          key={name}
-          type='button'
-          onClick={() => onSelect(`lucide:${name}`)}
-          title={name}
-          aria-label={name}
-          className='flex size-7 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-secondary)] transition-transform hover:scale-110 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-        >
-          <IconComponent size={15} />
-        </button>
-      ))}
+    <div
+      role='group'
+      aria-label={t('preview.kanban_tab_icons')}
+      className='grid max-h-48 grid-cols-6 gap-1 overflow-y-auto p-2'
+    >
+      {KANBAN_ICONS.map(({ name, icon: IconComponent, labelKey }) => {
+        const label = t(labelKey)
+        return (
+          <button
+            key={name}
+            type='button'
+            onClick={() => onSelect(`lucide:${name}`)}
+            title={label}
+            aria-label={label}
+            className='flex size-7 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-secondary)] transition-transform hover:scale-110 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+          >
+            <IconComponent size={15} />
+          </button>
+        )
+      })}
     </div>
   )
 }

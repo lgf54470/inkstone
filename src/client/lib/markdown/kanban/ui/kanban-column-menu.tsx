@@ -3,6 +3,7 @@ import { ChevronLeft, Palette, Trash2 } from 'lucide-react'
 import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanDotColor } from '../colors'
+import { formatKanbanColorName } from '../i18n-helpers'
 import type { KanbanColorName } from '../types'
 
 interface KanbanColumnMenuProps {
@@ -53,7 +54,7 @@ function ColorPaletteRow({
             className={`size-3.5 rounded-full transition-transform hover:scale-125 ${
               activeColor === c ? 'ring-2 ring-[var(--accent)] ring-offset-1' : ''
             }`}
-            aria-label={c}
+            aria-label={formatKanbanColorName(c)}
           />
         ))}
       </div>

@@ -3,7 +3,7 @@ import { Plus, X } from 'lucide-react'
 import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle, KANBAN_COLOR_NAMES, resolveKanbanTagColor } from '../colors'
-import { formatKanbanOptionLabel } from '../i18n-helpers'
+import { formatKanbanColorName, formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanOption } from '../types'
 
 interface KanbanTagPickerProps {
@@ -68,19 +68,22 @@ function ColorDotPicker({
 }) {
   return (
     <div className='flex flex-wrap gap-1'>
-      {KANBAN_COLOR_NAMES.slice(0, 8).map((c) => (
-        <button
-          key={c}
-          type='button'
-          onClick={() => onSelect(c)}
-          title={c}
-          aria-label={c}
-          className={`size-4 rounded-full transition-transform hover:scale-125 ${
-            selected === c ? 'ring-2 ring-[var(--accent)]' : ''
-          }`}
-          style={{ backgroundColor: `var(--kanban-tag-${c}-fg)` }}
-        />
-      ))}
+      {KANBAN_COLOR_NAMES.slice(0, 8).map((c) => {
+        const label = formatKanbanColorName(c)
+        return (
+          <button
+            key={c}
+            type='button'
+            onClick={() => onSelect(c)}
+            title={label}
+            aria-label={label}
+            className={`size-4 rounded-full transition-transform hover:scale-125 ${
+              selected === c ? 'ring-2 ring-[var(--accent)]' : ''
+            }`}
+            style={{ backgroundColor: `var(--kanban-tag-${c}-fg)` }}
+          />
+        )
+      })}
     </div>
   )
 }
