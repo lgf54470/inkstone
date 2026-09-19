@@ -957,6 +957,8 @@ const allowed = new Map([
     '/** Elements of a canvas widget (mind map) that give an event its own meaning. */',
   ]],
   ['src/client/components/overlay/menu.tsx', [
+    '// Optional: only callers that pair the menu with a trigger need the id, and the',
+    '// rest must not be made to invent one.',
     '// Escape closes one level at a time: useEscape runs the top of its stack and nothing',
     '// else, so the menu stays open behind the submenu, and a panel nested in the submenu',
     '// still closes before both of them.',
@@ -2847,6 +2849,13 @@ const allowed = new Map([
     '// A user clicks the card body, not one of its controls; in the list row that handler sits on an inner element.',
     '// The container is no longer focusable, so the chord is pressed on a control inside it.',
     '/** The bar keeps its visible "1/2" counter, so its action label comes from a screen-reader-only span. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-subtask-menu.test.ts', [
+    '/**\n * The subtask row\'s “…” panel was built by hand, so it opened on a click and did nothing else:\n * the focus stayed on the trigger, no arrow key reached another row, and Enter only worked because\n * the rows were plain buttons with a pointer on them (review #26/#29). It now renders\n * `components/overlay` `Menu`, so the asserted contract is that shared keyboard path — focus in on\n * open, cursor on the rows, Enter runs the highlighted row, Escape gives the focus back — plus the\n * clipboard behaviour the panel exists for. The panel is looked up through the trigger\'s\n * `aria-controls`, because `Menu` draws it in a portal.\n */',
+    '/** A case that fails on its first assertion never reaches its own teardown, and a panel left in `document.body` answers the next case first. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-subtask-menu.tsx', [
+    '// `Menu` closes after an item runs, so a row here only says what it does.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-table-semantics.test.ts', [
     '/**\n * The board\'s table view is laid out with flex containers, so the markup gives no\n * clue that a value belongs to a column: a reader walks a row as one\n * undifferentiated run of controls (review #29). The roles asserted here are the\n * ones that relationship needs — and a row that spans the grid has to say how many\n * columns it covers, otherwise the column count a reader announces stops matching\n * the header, including after a column is hidden.\n */',
