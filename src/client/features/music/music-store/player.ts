@@ -3,14 +3,16 @@ import { api } from '../../../lib/api'
 import { toastMusicError, toastMusicNotice } from '../music-feedback'
 import { computeNextIndex, computePrevIndex, nextPlayMode } from '../music-utils'
 import {
-  applyVolume, audioElement, bindMediaSessionActions, configureAudio, configureEqualizer, configureLoudnessNormalization,
+  applyVolume, audioElement, bindMediaSessionActions, cancelCrossfade, configureAudio, configureEqualizer, configureLoudnessNormalization,
   ensureAudioGraph, pausePlayback, publishMediaSession,
   resumePlayback, seekTo, startPlayback, updateMediaSessionPosition,
 } from '../audio-engine'
 import type { EqualizerSettings } from '../audio-engine'
+import { handleCrossfadeComplete, maybeStartCrossfade } from './crossfade'
 import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
-import { loadPreferences, readEqDb, savePreferences } from './state'
+import { persist } from './persist'
+import { loadPreferences, readEqDb } from './state'
 import type { MusicEqBand, MusicGet, MusicSet, MusicStoreState } from './types'
 
 const STREAM_START_TIMEOUT_MS = 20_000
@@ -27,6 +29,7 @@ export function connectAudio(set: MusicSet, get: MusicGet): void {
     onTime: (ms) => {
       setProgressTime(ms)
       updateMediaSessionPosition(ms, get().durationMs)
+      maybeStartCrossfade(get, ms)
     },
     onDuration: (ms) => {
       set({ durationMs: ms })
@@ -43,6 +46,7 @@ export function connectAudio(set: MusicSet, get: MusicGet): void {
       else clearStreamWatchdog()
     },
     onError: (code) => void handlePlaybackFailure(set, get, code === 'network' || code === 'unknown' ? 'auto' : 'failed'),
+    onCrossfadeComplete: (id) => handleCrossfadeComplete(set, get, id),
   })
   bindMediaSessionActions({
     play: () => void get().togglePlay(),
@@ -176,6 +180,8 @@ export function setSleepAfterCurrentTrack(set: MusicSet, get: MusicGet, enabled:
   }
   clearSleepTimer(get)
   set({ sleepAfterCurrentTrack: true, sleepEndsAt: null })
+  // A fade already running would deliver the next track anyway, voiding the promise.
+  cancelCrossfade()
   persist(get)
 }
 
@@ -384,54 +390,4 @@ function applyPlaybackRate(rate: number): void {
   if (!audio) return
   audio.playbackRate = rate
   audio.preservesPitch = true
-}
-
-const PREFS_WRITE_DEBOUNCE_MS = 250
-
-let prefsWriteTimer: number | null = null
-let persistGet: MusicGet | null = null
-
-// Volume drags and queue churn used to serialise and write localStorage per event.
-function persist(get: MusicGet): void {
-  persistGet = get
-  if (prefsWriteTimer !== null) window.clearTimeout(prefsWriteTimer)
-  prefsWriteTimer = window.setTimeout(() => {
-    prefsWriteTimer = null
-    writePreferences(get)
-  }, PREFS_WRITE_DEBOUNCE_MS)
-}
-
-// A tab closed inside the debounce window must not silently lose the last change.
-function flushPendingPreferences(): void {
-  if (prefsWriteTimer === null || !persistGet) return
-  window.clearTimeout(prefsWriteTimer)
-  prefsWriteTimer = null
-  writePreferences(persistGet)
-}
-
-if (typeof window !== 'undefined') window.addEventListener('pagehide', flushPendingPreferences)
-
-function writePreferences(get: MusicGet): void {
-  const state = get()
-  savePreferences({
-    volume: state.volume,
-    muted: state.muted,
-    mode: state.mode,
-    sort: state.sort,
-    sortDirection: state.sortDirection,
-    viewMode: state.viewMode,
-    sourceFilter: state.sourceFilter,
-    floatingVisible: state.floatingVisible,
-    floatingCollapsed: state.floatingCollapsed,
-    floatingPosition: state.floatingPosition,
-    sleepEndsAt: state.sleepEndsAt,
-    sleepAfterCurrentTrack: state.sleepAfterCurrentTrack,
-    playbackRate: state.playbackRate,
-    searchHistory: state.searchHistory,
-    eqEnabled: state.eqEnabled,
-    eqLowDb: state.eqLowDb,
-    eqMidDb: state.eqMidDb,
-    eqHighDb: state.eqHighDb,
-    normalizeEnabled: state.normalizeEnabled,
-  })
 }

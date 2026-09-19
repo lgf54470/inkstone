@@ -5,9 +5,12 @@ vi.mock('./audio-engine', () => ({
   applyVolume: vi.fn(),
   audioElement: vi.fn(() => null),
   bindMediaSessionActions: vi.fn(),
+  CROSSFADE_MS: 3_000,
+  cancelCrossfade: vi.fn(),
   configureAudio: vi.fn(),
   configureEqualizer: vi.fn(),
   configureLoudnessNormalization: vi.fn(),
+  crossfadeActive: vi.fn(() => false),
   ensureAudioGraph: vi.fn(async () => ({
     frequencyBinCount: 128,
     getByteFrequencyData: (bytes: Uint8Array) => { bytes[0] = 200 },
@@ -16,6 +19,7 @@ vi.mock('./audio-engine', () => ({
   publishMediaSession: vi.fn(),
   resumePlayback: vi.fn(async () => 'blocked'),
   seekTo: vi.fn(),
+  startCrossfade: vi.fn(() => false),
   startPlayback: vi.fn(async () => 'blocked'),
   stopPlayback: vi.fn(),
 }))

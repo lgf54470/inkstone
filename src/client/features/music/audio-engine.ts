@@ -8,6 +8,7 @@ export interface AudioBridge {
   onPlayingChange: (playing: boolean) => void
   onBuffering: (buffering: boolean) => void
   onError: (code: string) => void
+  onCrossfadeComplete: (trackId: string) => void
 }
 
 export interface EqualizerSettings {
@@ -17,19 +18,37 @@ export interface EqualizerSettings {
   highDb: number
 }
 
+// One WebAudio chain per element: a media element source can only ever be
+// attached once, so each of the two alternating playback elements keeps its
+// own gain/EQ/analyser set instead of rebuilding them at every swap.
+interface AudioChain {
+  analyser: AnalyserNode
+  eqNodes: BiquadFilterNode[]
+  normGain: GainNode
+  normTap: AnalyserNode
+  normDb: number
+}
+
+interface CrossfadeState {
+  outgoing: HTMLAudioElement
+  incoming: HTMLAudioElement
+  trackId: string
+  elapsed: number
+  timer: number
+}
+
 let element: HTMLAudioElement | null = null
+let spareElement: HTMLAudioElement | null = null
+let fade: CrossfadeState | null = null
 let bridge: AudioBridge | null = null
 let analyserContext: AudioContext | null = null
-let analyserNode: AnalyserNode | null = null
-let analyserElement: HTMLAudioElement | null = null
+let activeChain: AudioChain | null = null
+const chains = new WeakMap<HTMLAudioElement, AudioChain>()
+const knownChains: AudioChain[] = []
 let suspendTimer: number | null = null
-let eqNodes: BiquadFilterNode[] = []
 let equalizer: EqualizerSettings = { enabled: false, lowDb: 0, midDb: 0, highDb: 0 }
 let normalizeEnabled = false
-let normGainNode: GainNode | null = null
-let normTap: AnalyserNode | null = null
 let normPollTimer: number | null = null
-let normGainDb = 0
 const ANALYSER_FFT_SIZE = 256
 const ANALYSER_SMOOTHING = 0.82
 // ReplayGain approximation: RMS toward this level, judged on the pre-EQ element signal so
@@ -40,6 +59,8 @@ const NORM_SILENCE_DBFS = -60
 const NORM_POLL_MS = 500
 const NORM_SMOOTHING = 0.25
 const NORM_TAP_FFT_SIZE = 2_048
+export const CROSSFADE_MS = 3_000
+const CROSSFADE_STEP_MS = 50
 // A three-band shelf/peak chain covers bass, voice and treble shaping without the
 // node count of a graphic EQ; the fixed corners are the usual audible crossover points.
 const EQ_BANDS: Array<{ type: BiquadFilterType; frequencyHz: number; q?: number }> = [
@@ -68,28 +89,48 @@ function createAudioElement(): HTMLAudioElement {
   audio.setAttribute('data-inkstone-audio', 'music')
   audio.hidden = true
   document.body.append(audio)
-  audio.addEventListener('timeupdate', () => bridge?.onTime(audio.currentTime * 1000))
-  audio.addEventListener('durationchange', () => {
+  relayBridgeEvents(audio)
+  wirePlaybackLifecycle(audio)
+  return audio
+}
+
+// Every listener is gated on being the active element: the standby element is live
+// during a crossfade and its events must not drive progress, the bridge or the graph.
+function onActiveElement(audio: HTMLAudioElement, event: string, handle: () => void): void {
+  audio.addEventListener(event, () => {
+    if (audio === element) handle()
+  })
+}
+
+function relayBridgeEvents(audio: HTMLAudioElement): void {
+  onActiveElement(audio, 'timeupdate', () => bridge?.onTime(audio.currentTime * 1000))
+  onActiveElement(audio, 'durationchange', () => {
     if (Number.isFinite(audio.duration)) bridge?.onDuration(audio.duration * 1000)
   })
-  audio.addEventListener('ended', () => bridge?.onEnded())
-  audio.addEventListener('play', () => {
+  // A crossfade starting right at the end must not also trigger the store's advance.
+  audio.addEventListener('ended', () => {
+    if (audio !== element || fade) return
+    bridge?.onEnded()
+  })
+  onActiveElement(audio, 'waiting', () => bridge?.onBuffering(true))
+  onActiveElement(audio, 'stalled', () => bridge?.onBuffering(true))
+  onActiveElement(audio, 'playing', () => bridge?.onBuffering(false))
+  onActiveElement(audio, 'error', () => bridge?.onError(readMediaError(audio)))
+}
+
+function wirePlaybackLifecycle(audio: HTMLAudioElement): void {
+  onActiveElement(audio, 'play', () => {
     resumeAnalyserContext()
     // The play gesture is the retry window for a graph the browser blocked earlier.
     if (equalizer.enabled || normalizeEnabled) void ensureAudioGraph()
     startLoudnessPolling()
     bridge?.onPlayingChange(true)
   })
-  audio.addEventListener('waiting', () => bridge?.onBuffering(true))
-  audio.addEventListener('stalled', () => bridge?.onBuffering(true))
-  audio.addEventListener('playing', () => bridge?.onBuffering(false))
-  audio.addEventListener('pause', () => {
+  onActiveElement(audio, 'pause', () => {
     scheduleAnalyserSuspend()
     stopLoudnessPolling()
     bridge?.onPlayingChange(false)
   })
-  audio.addEventListener('error', () => bridge?.onError(readMediaError(audio)))
-  return audio
 }
 
 function scheduleAnalyserSuspend(): void {
@@ -126,6 +167,7 @@ function readMediaError(audio: HTMLAudioElement): string {
 export async function startPlayback(track: MusicTrack): Promise<'playing' | 'blocked' | 'unavailable'> {
   const audio = audioElement()
   if (!audio) return 'unavailable'
+  cancelCrossfade()
   const src = musicStreamUrl(track.id)
   if (!audio.src.endsWith(src)) audio.src = src
   try {
@@ -138,6 +180,7 @@ export async function startPlayback(track: MusicTrack): Promise<'playing' | 'blo
 }
 
 export function pausePlayback(): void {
+  cancelCrossfade()
   audioElement()?.pause()
 }
 
@@ -163,6 +206,7 @@ export function applyVolume(volume: number, muted: boolean): void {
 export function stopPlayback(): void {
   const audio = audioElement()
   if (!audio) return
+  cancelCrossfade()
   audio.pause()
   audio.removeAttribute('src')
   audio.load()
@@ -235,6 +279,8 @@ export function readCurrentTimeMs(): number {
 
 // Routing the element through a suspended context would silence playback, so the graph is only
 // built once the browser lets audio run; callers get null until then and retry on the next play.
+// Each element keeps its own chain in a cache because createMediaElementSource can only ever be
+// called once per element — the crossfade standby element gets its chain on the first swap.
 export async function ensureAudioGraph(): Promise<AnalyserNode | null> {
   const audio = audioElement()
   if (!audio || typeof AudioContext !== 'function') return null
@@ -249,29 +295,38 @@ export async function ensureAudioGraph(): Promise<AnalyserNode | null> {
     }
   }
   if (context.state !== 'running') return null
-  if (analyserElement === audio && analyserNode) return analyserNode
-  const node = context.createAnalyser()
-  node.fftSize = ANALYSER_FFT_SIZE
-  node.smoothingTimeConstant = ANALYSER_SMOOTHING
-  eqNodes = createEqualizerFilters(context)
-  const first = eqNodes[0] ?? node
-  normGainNode = context.createGain()
+  const cached = chains.get(audio)
+  if (cached) {
+    activeChain = cached
+    return cached.analyser
+  }
+  const chain = buildAudioChain(context, audio)
+  chains.set(audio, chain)
+  knownChains.push(chain)
+  activeChain = chain
+  applyEqualizerToGraph()
+  return chain.analyser
+}
+
+function buildAudioChain(context: AudioContext, audio: HTMLAudioElement): AudioChain {
+  const analyser = context.createAnalyser()
+  analyser.fftSize = ANALYSER_FFT_SIZE
+  analyser.smoothingTimeConstant = ANALYSER_SMOOTHING
+  const eqNodes = createEqualizerFilters(context)
+  const normGain = context.createGain()
+  const normTap = context.createAnalyser()
+  normTap.fftSize = NORM_TAP_FFT_SIZE
   const source = context.createMediaElementSource(audio)
   // The gain sits before the EQ so the loudness tap below measures the file's own
   // signal, not the user's volume or the EQ colouring layered on top of it.
-  source.connect(normGainNode)
-  normGainNode.connect(first)
-  normTap = context.createAnalyser()
-  normTap.fftSize = NORM_TAP_FFT_SIZE
+  source.connect(normGain)
+  normGain.connect(eqNodes[0] ?? analyser)
   source.connect(normTap)
   for (let index = 0; index < eqNodes.length; index += 1) {
-    eqNodes[index]?.connect(eqNodes[index + 1] ?? node)
+    eqNodes[index]?.connect(eqNodes[index + 1] ?? analyser)
   }
-  node.connect(context.destination)
-  analyserNode = node
-  analyserElement = audio
-  applyEqualizerToGraph()
-  return node
+  analyser.connect(context.destination)
+  return { analyser, eqNodes, normGain, normTap, normDb: 0 }
 }
 
 function createEqualizerFilters(context: AudioContext): BiquadFilterNode[] {
@@ -292,11 +347,12 @@ export function configureEqualizer(next: EqualizerSettings): void {
 }
 
 function applyEqualizerToGraph(): void {
-  if (!eqNodes.length) return
   const gains = equalizer.enabled ? [equalizer.lowDb, equalizer.midDb, equalizer.highDb] : EQ_BANDS.map(() => 0)
-  eqNodes.forEach((filter, index) => {
-    filter.gain.value = gains[index] ?? 0
-  })
+  for (const chain of knownChains) {
+    chain.eqNodes.forEach((filter, index) => {
+      filter.gain.value = gains[index] ?? 0
+    })
+  }
 }
 
 // Turning normalization off hands the level back to the user's volume immediately;
@@ -304,8 +360,10 @@ function applyEqualizerToGraph(): void {
 export function configureLoudnessNormalization(enabled: boolean): void {
   normalizeEnabled = enabled
   if (!enabled) {
-    normGainDb = 0
-    applyLoudnessGain()
+    if (activeChain) {
+      activeChain.normDb = 0
+      applyLoudnessGain()
+    }
     stopLoudnessPolling()
     return
   }
@@ -326,12 +384,12 @@ function stopLoudnessPolling(): void {
 
 function runLoudnessTick(): void {
   const audio = element
-  if (!normGainNode || !normTap || !audio) return
+  if (!activeChain || !audio || fade) return
   if (audio.muted || audio.volume <= 0) return
-  const measured = readLoudnessDbfs(normTap, audio.volume)
+  const measured = readLoudnessDbfs(activeChain.normTap, audio.volume)
   if (measured === null || measured < NORM_SILENCE_DBFS) return
   const desired = Math.min(NORM_MAX_GAIN_DB, Math.max(-NORM_MAX_GAIN_DB, NORM_TARGET_DBFS - measured))
-  normGainDb += (desired - normGainDb) * NORM_SMOOTHING
+  activeChain.normDb += (desired - activeChain.normDb) * NORM_SMOOTHING
   applyLoudnessGain()
 }
 
@@ -355,6 +413,78 @@ function linearGainFromDb(db: number): number {
 }
 
 function applyLoudnessGain(): void {
-  if (!normGainNode) return
-  normGainNode.gain.value = linearGainFromDb(normGainDb)
+  if (!activeChain) return
+  activeChain.normGain.gain.value = linearGainFromDb(activeChain.normDb)
+}
+
+export function crossfadeActive(): boolean {
+  return fade !== null
+}
+
+// Plays the next track on the standby element while the current one fades out on the
+// volume slider, absorbing any user volume change made mid-fade. Returns false when
+// there is nothing to fade (no active element yet, or a fade already running).
+export function startCrossfade(track: MusicTrack): boolean {
+  const outgoing = element
+  if (!outgoing || fade) return false
+  const incoming = spareElement ?? createAudioElement()
+  spareElement = incoming
+  incoming.volume = 0
+  incoming.muted = outgoing.muted
+  incoming.src = musicStreamUrl(track.id)
+  fade = {
+    outgoing, incoming, trackId: track.id, elapsed: 0,
+    timer: window.setInterval(stepCrossfade, CROSSFADE_STEP_MS),
+  }
+  void incoming.play().catch(() => cancelCrossfade())
+  return true
+}
+
+function stepCrossfade(): void {
+  if (!fade) return
+  const { outgoing, incoming } = fade
+  fade.elapsed += CROSSFADE_STEP_MS
+  const t = Math.min(1, fade.elapsed / CROSSFADE_MS)
+  // The two sliders always sum back to where the user's volume stands, so a drag
+  // during the fade is absorbed instead of being overwritten by the ramp.
+  const userVolume = Math.min(1, Math.max(0, outgoing.volume + incoming.volume))
+  outgoing.volume = userVolume * (1 - t)
+  incoming.volume = userVolume * t
+  incoming.muted = outgoing.muted
+  if (t >= 1) completeCrossfade()
+}
+
+function completeCrossfade(): void {
+  if (!fade) return
+  const { outgoing, incoming, trackId } = fade
+  window.clearInterval(fade.timer)
+  fade = null
+  const userVolume = Math.min(1, Math.max(0, outgoing.volume + incoming.volume))
+  // Swap the active element before pausing the old one so its pause listener is gated
+  // and cannot stop the polling or schedule a context suspend for the incoming audio.
+  element = incoming
+  spareElement = outgoing
+  outgoing.pause()
+  outgoing.removeAttribute('src')
+  outgoing.load()
+  incoming.volume = userVolume
+  activeChain = chains.get(incoming) ?? null
+  // The incoming element's own durationchange fired while it was still gated.
+  if (Number.isFinite(incoming.duration)) bridge?.onDuration(incoming.duration * 1000)
+  if (equalizer.enabled || normalizeEnabled) void ensureAudioGraph()
+  startLoudnessPolling()
+  bridge?.onCrossfadeComplete(trackId)
+}
+
+export function cancelCrossfade(): void {
+  if (!fade) return
+  const { outgoing, incoming } = fade
+  window.clearInterval(fade.timer)
+  fade = null
+  const userVolume = Math.min(1, Math.max(0, outgoing.volume + incoming.volume))
+  outgoing.volume = userVolume
+  incoming.pause()
+  incoming.removeAttribute('src')
+  incoming.load()
+  incoming.volume = 0
 }

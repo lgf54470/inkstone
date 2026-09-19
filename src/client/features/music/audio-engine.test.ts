@@ -1,115 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-interface FakeAnalyser {
-  label: string
-  fftSize: number
-  smoothingTimeConstant: number
-  frequencyBinCount: number
-  timeDomainByte: number
-  getByteTimeDomainData: (bytes: Uint8Array) => void
-  connect: (target: { label: string }) => void
-}
+import { FakeAudioContext, loadedEngine, normalizedEngine, useFakeAudioStack } from './audio-engine.test-helpers'
 
-interface FakeGain {
-  label: string
-  gain: { value: number }
-  connect: (target: { label: string }) => void
-}
+useFakeAudioStack()
 
-class FakeAudioContext {
-  static instances: FakeAudioContext[] = []
-  state = 'running'
-  suspendCalls = 0
-  resumeCalls = 0
-  destination = { label: 'destination' }
-  connections: Array<[string, string]> = []
-  biquads: Array<{ type: string; frequency: { value: number }; Q: { value: number }; gain: { value: number } }> = []
-  analysers: FakeAnalyser[] = []
-  gains: FakeGain[] = []
-  private biquadCount = 0
-  private analyserCount = 0
-
-  constructor() {
-    FakeAudioContext.instances.push(this)
-  }
-
-  createAnalyser() {
-    // The graph builds the visualiser analyser first and the loudness tap second,
-    // so the tap is distinguishable by position and by its larger fftSize.
-    const index = this.analyserCount++
-    const node: FakeAnalyser = {
-      label: index === 0 ? 'analyser' : 'loudness-tap',
-      fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 64, timeDomainByte: 128,
-      getByteTimeDomainData: (bytes) => { bytes.fill(node.timeDomainByte) },
-      connect: (target) => { this.connections.push([node.label, target.label]) },
-    }
-    this.analysers.push(node)
-    return node
-  }
-
-  createGain() {
-    const node: FakeGain = {
-      label: 'norm', gain: { value: 1 },
-      connect: (target) => { this.connections.push([node.label, target.label]) },
-    }
-    this.gains.push(node)
-    return node
-  }
-
-  createBiquadFilter() {
-    const node: {
-      label: string
-      type: string
-      frequency: { value: number }
-      Q: { value: number }
-      gain: { value: number }
-      connect: (target: { label: string }) => void
-    } = {
-      label: '', type: '', frequency: { value: 0 }, Q: { value: 0 }, gain: { value: 0 },
-      connect: (target) => { this.connections.push([node.label, target.label]) },
-    }
-    node.label = `filter${this.biquadCount++}`
-    this.biquads.push(node)
-    return node
-  }
-
-  createMediaElementSource() {
-    return { label: 'source', connect: (target: { label: string }) => { this.connections.push(['source', target.label]) } }
-  }
-
-  suspend() {
-    this.suspendCalls += 1
-    this.state = 'suspended'
-    return Promise.resolve()
-  }
-
-  resume() {
-    this.resumeCalls += 1
-    this.state = 'running'
-    return Promise.resolve()
-  }
-}
-
-beforeEach(() => {
-  FakeAudioContext.instances = []
-  vi.resetModules()
-  vi.useFakeTimers()
-  vi.stubGlobal('AudioContext', FakeAudioContext)
-})
-
-afterEach(() => {
-  vi.useRealTimers()
-  vi.unstubAllGlobals()
-})
-
-async function loadedEngine() {
-  const engine = await import('./audio-engine')
-  const analyser = await engine.ensureAudioGraph()
-  const context = FakeAudioContext.instances[0]
-  const audio = engine.audioElement()
-  if (!analyser || !context || !audio) throw new Error('the fake browser stack should have built an analyser graph')
-  return { engine, context, audio }
-}
 
 describe('analyser context lifecycle', () => {
   it('suspends the context only after a pause that stuck', async () => {
@@ -156,6 +50,13 @@ describe('equalizer graph', () => {
     expect(context.biquads.map((node) => node.frequency.value)).toEqual([180, 1_000, 4_500])
     expect(context.biquads[1]?.Q.value).toBe(1)
     expect(context.biquads.map((node) => node.gain.value)).toEqual([0, 0, 0])
+  })
+
+  it('reuses the chain when asked again for the same element', async () => {
+    const { context, engine } = await loadedEngine()
+    await engine.ensureAudioGraph()
+    expect(context.biquads).toHaveLength(3)
+    expect(context.analysers).toHaveLength(2)
   })
 
   it('applies stored settings to a graph built afterwards', async () => {
@@ -205,18 +106,6 @@ describe('play gesture graph retry', () => {
     expect(FakeAudioContext.instances[0]?.analysers[1]?.fftSize).toBe(2_048)
   })
 })
-
-async function normalizedEngine() {
-  const engine = await import('./audio-engine')
-  engine.configureLoudnessNormalization(true)
-  const analyser = await engine.ensureAudioGraph()
-  const context = FakeAudioContext.instances[0]
-  const audio = engine.audioElement()
-  const tap = context?.analysers[1]
-  const gain = context?.gains[0]
-  if (!analyser || !context || !audio || !tap || !gain) throw new Error('the fake browser stack should have built a normalization graph')
-  return { engine, context, audio, tap, gain }
-}
 
 describe('loudness normalization corrections', () => {
   it('boosts a quiet file back toward the target level', async () => {

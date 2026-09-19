@@ -25,6 +25,7 @@ export interface MusicPreferences {
   eqMidDb: number
   eqHighDb: number
   normalizeEnabled: boolean
+  crossfadeEnabled: boolean
 }
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
@@ -60,6 +61,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   eqMidDb: 0,
   eqHighDb: 0,
   normalizeEnabled: false,
+  crossfadeEnabled: false,
 }
 
 function readStored(key: string): Record<string, unknown> | null {
@@ -100,6 +102,7 @@ export function loadPreferences(): MusicPreferences {
     eqMidDb: readEqDb(parsed.eqMidDb),
     eqHighDb: readEqDb(parsed.eqHighDb),
     normalizeEnabled: parsed.normalizeEnabled === true,
+    crossfadeEnabled: parsed.crossfadeEnabled === true,
   }
 }
 

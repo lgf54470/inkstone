@@ -46,6 +46,7 @@ function initialMusicState(): Partial<MusicStoreState> {
     eqMidDb: prefs.eqMidDb,
     eqHighDb: prefs.eqHighDb,
     normalizeEnabled: prefs.normalizeEnabled,
+    crossfadeEnabled: prefs.crossfadeEnabled,
     floatingVisible: prefs.floatingVisible,
     floatingCollapsed: prefs.floatingCollapsed,
     floatingPosition: prefs.floatingPosition,

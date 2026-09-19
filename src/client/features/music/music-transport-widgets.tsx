@@ -237,6 +237,8 @@ export function MusicEqPanel({ className }: { className?: string }) {
   const setEqEnabled = useMusic((state) => state.setEqEnabled)
   const normalizeEnabled = useMusic((state) => state.normalizeEnabled)
   const setNormalizeEnabled = useMusic((state) => state.setNormalizeEnabled)
+  const crossfadeEnabled = useMusic((state) => state.crossfadeEnabled)
+  const setCrossfadeEnabled = useMusic((state) => state.setCrossfadeEnabled)
   return (
     <div className={cn('space-y-1 px-1.5 py-1', className)}>
       <div className='flex items-center justify-between gap-2'>
@@ -249,6 +251,10 @@ export function MusicEqPanel({ className }: { className?: string }) {
       <div className='flex items-center justify-between gap-2 border-t border-[var(--border-subtle)] pt-1'>
         <span className='text-[length:var(--text-11)] text-[var(--text-secondary)]'>{t('music.normalize')}</span>
         <Switch checked={normalizeEnabled} onChange={setNormalizeEnabled} label={t('music.normalize')} />
+      </div>
+      <div className='flex items-center justify-between gap-2'>
+        <span className='text-[length:var(--text-11)] text-[var(--text-secondary)]'>{t('music.crossfade')}</span>
+        <Switch checked={crossfadeEnabled} onChange={setCrossfadeEnabled} label={t('music.crossfade')} />
       </div>
     </div>
   )
