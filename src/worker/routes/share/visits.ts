@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { ShareVisitLog } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
+import { escapeLike } from '../../lib/like'
 import { parseBotName } from '../../lib/share-analytics'
 
 interface VisitLogRow {
@@ -113,8 +114,8 @@ function visitLogFilter(params: {
   const filterCondition = VISIT_FILTER_CONDITIONS[filter]
   if (filterCondition) conditions.push(filterCondition)
   if (search) {
-    conditions.push(`(n.title LIKE ?${bindIdx} OR sv.slug LIKE ?${bindIdx} OR sv.country LIKE ?${bindIdx} OR sv.referrer_host LIKE ?${bindIdx})`)
-    binds.push(`%${search}%`)
+    conditions.push(`(n.title LIKE ?${bindIdx} ESCAPE '\\' OR sv.slug LIKE ?${bindIdx} ESCAPE '\\' OR sv.country LIKE ?${bindIdx} ESCAPE '\\' OR sv.referrer_host LIKE ?${bindIdx} ESCAPE '\\')`)
+    binds.push(`%${escapeLike(search)}%`)
     bindIdx++
   }
   return { conditions, binds, bindIdx }

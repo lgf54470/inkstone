@@ -641,7 +641,8 @@ describe('share passcode brute-force window (SH-09)', () => {
     expect(res.status).toBe(400)
   })
 
-  it('locks the passcode gate on the tenth wrong guess even from fresh IPs', async () => {
+  // Eleven scrypt verifications need more than the 5s default budget on slow runners.
+  it('locks the passcode gate on the tenth wrong guess even from fresh IPs', { timeout: 30_000 }, async () => {
     const db = await makeDb()
     await seedUser(db)
     const n1 = await seedNote(db, {})
@@ -954,5 +955,50 @@ describe('share batch affected-row counts (SH-10)', () => {
 
     const res = await postJson(app, '/api/share/batch-folder', { folderId: 'f-1', enabled: false })
     expect(await res.json()).toEqual({ ok: true, count: 1 })
+  })
+})
+
+describe('share LIKE wildcard escaping (SH-11)', () => {
+  it('treats _ in the share list search as a literal underscore', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, { title: 'a_b report' })
+    await seedShare(db, { note_id: n1, slug: 'like-1' })
+    const n2 = await seedNote(db, { title: 'axb report' })
+    await seedShare(db, { note_id: n2, slug: 'like-2' })
+    const app = makeApp()
+
+    const body = await (await request(app, '/api/share?search=a_b')).json()
+    expect(body.shares.map((s: { slug: string }) => s.slug)).toEqual(['like-1'])
+  })
+
+  it('treats _ in the visit-log search as a literal underscore', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, { title: 'First' })
+    await seedShare(db, { note_id: n1, slug: 'a_b' })
+    await seedVisit(db, { note_id: n1, slug: 'a_b', visitor_fp: 'f1' })
+    const n2 = await seedNote(db, { title: 'Second' })
+    await seedShare(db, { note_id: n2, slug: 'axb' })
+    await seedVisit(db, { note_id: n2, slug: 'axb', visitor_fp: 'f2' })
+    const app = makeApp()
+
+    const body = await (await request(app, '/api/share/visits?search=a_b')).json()
+    expect(body.visits.map((v: { slug: string }) => v.slug)).toEqual(['a_b'])
+  })
+
+  it('treats _ in a tag name as a literal when toggling shares', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'wild-1', tags: '["a_b"]' })
+    const n2 = await seedNote(db, {})
+    await seedShare(db, { note_id: n2, slug: 'wild-2', tags: '["axb"]' })
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/share/batch-toggle-group', { type: 'tag', target: 'a_b', enabled: false })
+    expect(res.status).toBe(200)
+    expect((await firstRow(db, 'SELECT is_enabled FROM shares WHERE slug = ?1', 'wild-1'))!.is_enabled).toBe(0)
+    expect((await firstRow(db, 'SELECT is_enabled FROM shares WHERE slug = ?1', 'wild-2'))!.is_enabled).toBe(1)
   })
 })

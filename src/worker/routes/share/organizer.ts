@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { createScopedFolder, createScopedTag, deleteScopedFolder, deleteScopedTag, listScopedFolders, listScopedTags, updateScopedFolder, updateScopedTag } from '../../lib/scoped-organizer'
 import { JSON_BODY_LIMITS, readJson, readJsonValidated } from '../../lib/request'
+import { escapeLike } from '../../lib/like'
 import { ApiError } from '../../lib/errors'
 import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import { isValidCustomSlug } from '../../lib/share-analytics'
@@ -105,8 +106,8 @@ function registerShareGroupToggleRoute(shareManageRoutes: Hono<AppBindings>): vo
       ).bind(isEnabled, body.target, userId).run()
     } else if (body.type === 'tag') {
       await c.env.DB.prepare(
-        `UPDATE shares SET is_enabled = ?1 WHERE user_id = ?2 AND tags LIKE ?3`,
-      ).bind(isEnabled, userId, `%"${body.target}"%`).run()
+        `UPDATE shares SET is_enabled = ?1 WHERE user_id = ?2 AND tags LIKE ?3 ESCAPE '\\'`,
+      ).bind(isEnabled, userId, `%"${escapeLike(body.target)}"%`).run()
     }
     return c.json({ ok: true })
   })

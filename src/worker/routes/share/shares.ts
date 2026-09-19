@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { ShareInfo, ShareListResponse } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
+import { escapeLike } from '../../lib/like'
 import { buildVisitFilterSql, type ShareFilterOptions } from '../../lib/share-analytics'
 
 export interface ShareRow {
@@ -264,8 +265,8 @@ function shareListConditions(binds: Array<string | number>, params: ShareListPar
     bindIndex++
   }
   if (tag) {
-    conditions.push(`s.tags LIKE ?${bindIndex}`)
-    binds.push(`%"${tag}"%`)
+    conditions.push(`s.tags LIKE ?${bindIndex} ESCAPE '\\'`)
+    binds.push(`%"${escapeLike(tag)}"%`)
     bindIndex++
   }
   if (status === 'active') {
@@ -280,8 +281,8 @@ function shareListConditions(binds: Array<string | number>, params: ShareListPar
   const staticCondition = STATUS_CONDITIONS[status]
   if (staticCondition) conditions.push(staticCondition)
   if (search) {
-    conditions.push(`(n.title LIKE ?${bindIndex} OR n.excerpt LIKE ?${bindIndex} OR s.slug LIKE ?${bindIndex} OR s.tags LIKE ?${bindIndex})`)
-    binds.push(`%${search}%`)
+    conditions.push(`(n.title LIKE ?${bindIndex} ESCAPE '\\' OR n.excerpt LIKE ?${bindIndex} ESCAPE '\\' OR s.slug LIKE ?${bindIndex} ESCAPE '\\' OR s.tags LIKE ?${bindIndex} ESCAPE '\\')`)
+    binds.push(`%${escapeLike(search)}%`)
     bindIndex++
   }
   return conditions

@@ -4555,6 +4555,7 @@ const allowed = new Map([
   ]],
   ['tests/share-routes.test.ts', [
     '// visit recording runs via waitUntil; the test context must let us await it',
+    '// Eleven scrypt verifications need more than the 5s default budget on slow runners.',
     '// requestClientIp only trusts CF-Connecting-IP when the edge set `cf`, so the probe attaches it.',
   ]],
   ['tests/slides-interop.test.ts', [
