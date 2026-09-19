@@ -29,7 +29,7 @@
 | 14 | SH-07 | 公开失败分支统一（防枚举）+ 自定义 slug 最短 6 + check-slug 混淆 | P2 | ✅ | c525c8c7 |
 | 15 | SH-09 | 分享口令下限对齐 8、免费失败降 10、超长 400 不截断 | P2 | ✅ | e0b0e7cc |
 | 16 | SH-10 | batch 回真实受影响行数 + enable 原子化 | P2 | ✅ | ea51cc59 |
-| 17 | SH-11 | share 路由 LIKE 通配符转义（shares/visits/organizer 三处） | P3 | ✅ | 待回填 |
+| 17 | SH-11 | share 路由 LIKE 通配符转义（shares/visits/organizer 三处） | P3 | ✅ | 2ae84353 |
 | 18 | SH-12 | `DELETE /visits?type=all` 加 requireRecentAuth | P3 | ⬜ | |
 | 19 | SH-13 | slug 一致性：抢注 409、撤销清 share_asset_sessions | P3 | ⬜ | |
 | 20 | SH-18 | 搜索防抖 + AbortSignal + 在途去重 | P1 | ⬜ | |
