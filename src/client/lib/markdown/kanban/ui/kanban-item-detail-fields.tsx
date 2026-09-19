@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { Flag, Trash2 } from 'lucide-react'
+import { useId, useRef, useState } from 'react'
+import { ChevronDown, Flag, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanDotColor, getKanbanTagStyle } from '../colors'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
@@ -184,6 +184,65 @@ export function DetailPropertyField({
   )
 }
 
+/**
+ * Descriptions are free prose stored inside the note body, so the box bounds how far one can grow
+ * instead of letting a single card balloon the fence. Content a board already stores above the bound
+ * stays editable: clamping it on the first keystroke would delete what the note already holds.
+ */
+export const KANBAN_DESCRIPTION_MAX_CHARS = 5000
+/** The counter appears for the last stretch, so the bound is seen coming rather than only hit. */
+const KANBAN_DESCRIPTION_WARN_CHARS = KANBAN_DESCRIPTION_MAX_CHARS - 500
+const DESCRIPTION_ROWS = 4
+const EXPANDED_DESCRIPTION_ROWS = 16
+
+/** What the length bound has to say about the draft in progress: the notice only after a rejection. */
+function DescriptionFeedback({ count, trimmed }: { count: number; trimmed: boolean }) {
+  if (!trimmed && count < KANBAN_DESCRIPTION_WARN_CHARS) return null
+  return (
+    <>
+      {trimmed ? (
+        <p role='status' className='text-[length:var(--text-11)] text-[var(--text-secondary)]'>
+          {t('preview.kanban_desc_limit_reached', { limit: KANBAN_DESCRIPTION_MAX_CHARS })}
+        </p>
+      ) : null}
+      {count >= KANBAN_DESCRIPTION_WARN_CHARS ? (
+        <p data-kanban-desc-count className='text-[length:var(--text-11)] text-[var(--text-tertiary)] tabular'>
+          {t('preview.kanban_desc_count', { count, limit: KANBAN_DESCRIPTION_MAX_CHARS })}
+        </p>
+      ) : null}
+    </>
+  )
+}
+
+/** The heading plus the control that trades the box's height for a wider view of it. */
+function DescriptionHeader({
+  boxId,
+  expanded,
+  onToggle,
+}: {
+  boxId: string
+  expanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className='flex items-center justify-between gap-2'>
+      <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
+        {t('preview.kanban_card_description')}
+      </h4>
+      <button
+        type='button'
+        aria-expanded={expanded}
+        aria-controls={boxId}
+        aria-label={t(expanded ? 'preview.kanban_collapse_description' : 'preview.kanban_expand_description')}
+        onClick={onToggle}
+        className='flex items-center justify-center rounded-[var(--r-xs)] p-1 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+      >
+        <ChevronDown size={14} className={expanded ? 'rotate-180' : undefined} />
+      </button>
+    </div>
+  )
+}
+
 export function DetailDescription({
   itemId,
   content,
@@ -194,37 +253,51 @@ export function DetailDescription({
   onChange: (text: string) => void
 }) {
   const [draft, setDraft] = useState(content ?? '')
+  const [trimmed, setTrimmed] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const boxId = useId()
   const lastTarget = useRef(itemId)
   const lastSent = useRef(content ?? '')
   if (lastTarget.current !== itemId) {
     lastTarget.current = itemId
     lastSent.current = content ?? ''
     setDraft(content ?? '')
+    setTrimmed(false)
+    setExpanded(false)
   }
   const commitDraft = () => {
     if (draft === lastSent.current) return
     lastSent.current = draft
     onChange(draft)
   }
+  const handleChange = (next: string) => {
+    const ceiling = Math.max(KANBAN_DESCRIPTION_MAX_CHARS, draft.length)
+    const kept = next.slice(0, ceiling)
+    setTrimmed(kept.length < next.length)
+    setDraft(kept)
+  }
 
   return (
-    <div className='flex flex-col gap-2'>
-      <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
-        {t('preview.kanban_card_description')}
-      </h4>
+    <div data-kanban-description className='flex flex-col gap-2'>
+      <DescriptionHeader boxId={boxId} expanded={expanded} onToggle={() => setExpanded((prev) => !prev)} />
       <textarea
+        id={boxId}
         value={draft}
         data-owns-escape='true'
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         onBlur={commitDraft}
         // Enter commits nothing here: the description is the one multi-line field, so the key must stay a newline.
         onKeyDown={(e) => {
-          if (e.key === 'Escape') setDraft(lastSent.current)
+          if (e.key === 'Escape') {
+            setDraft(lastSent.current)
+            setTrimmed(false)
+          }
         }}
         placeholder={t('preview.kanban_card_description_placeholder')}
-        rows={4}
+        rows={expanded ? EXPANDED_DESCRIPTION_ROWS : DESCRIPTION_ROWS}
         className='w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-2.5 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none resize-y focus:border-[var(--accent)]'
       />
+      <DescriptionFeedback count={draft.length} trimmed={trimmed} />
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../../lib/i18n'
 import { installTestGlobals } from '../../../test-render'
 import { KanbanItemDetail } from './kanban-item-detail'
+import { KANBAN_DESCRIPTION_MAX_CHARS } from './kanban-item-detail-fields'
 import type { KanbanItem, KanbanProperty } from '../types'
 
 beforeAll(async () => {
@@ -101,6 +102,30 @@ function typeIntoBox(box: HTMLTextAreaElement, value: string) {
   box.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
+function descriptionBlock(): HTMLElement {
+  const block = descriptionBox().closest<HTMLElement>('[data-kanban-description]')
+  if (!block) throw new Error('description block not found')
+  return block
+}
+
+function descriptionPart(selector: string): HTMLElement | null {
+  return descriptionBlock().querySelector<HTMLElement>(selector)
+}
+
+function counterText(): string | undefined {
+  return descriptionPart('[data-kanban-desc-count]')?.textContent ?? undefined
+}
+
+function noticeText(): string | undefined {
+  return descriptionPart('[role="status"]')?.textContent ?? undefined
+}
+
+function descriptionToggle(): HTMLElement {
+  const el = descriptionPart('[aria-expanded]')
+  if (!el) throw new Error('description expander not found')
+  return el
+}
+
 describe('KanbanItemDetail title draft commit', () => {
   it('keeps typing local and commits once on Enter', () => {
     const view = renderDetail(item)
@@ -194,6 +219,73 @@ describe('KanbanItemDetail description draft keys and target', () => {
     act(() => { typeIntoBox(descriptionBox(), 'Dirty draft') })
     view.rerender({ ...item, id: 'item-2', content: 'External description' })
     expect(descriptionBox().value).toBe('External description')
+    view.dispose()
+  })
+})
+
+describe('KanbanItemDetail description length bound', () => {
+  it('stops growth at the bound and announces what was dropped', () => {
+    const view = renderDetail(item)
+    const box = descriptionBox()
+    act(() => { typeIntoBox(box, 'a'.repeat(KANBAN_DESCRIPTION_MAX_CHARS + 500)) })
+    expect(box.value).toHaveLength(KANBAN_DESCRIPTION_MAX_CHARS)
+    expect(noticeText()).toContain(String(KANBAN_DESCRIPTION_MAX_CHARS))
+    view.dispose()
+  })
+
+  it('keeps a stored description longer than the bound intact', () => {
+    const legacy = 'b'.repeat(KANBAN_DESCRIPTION_MAX_CHARS + 2000)
+    const view = renderDetail({ ...item, content: legacy })
+    const box = descriptionBox()
+    act(() => { typeIntoBox(box, `${legacy} typed`) })
+    expect(box.value).toBe(legacy)
+    act(() => { box.dispatchEvent(new FocusEvent('focusout', { bubbles: true })) })
+    expect(view.props.onUpdate).not.toHaveBeenCalled()
+    view.dispose()
+  })
+
+  it('counts characters once the bound is in sight', () => {
+    const view = renderDetail(item)
+    const box = descriptionBox()
+    act(() => { typeIntoBox(box, 'A short note') })
+    expect(counterText()).toBeUndefined()
+    const near = 'a'.repeat(KANBAN_DESCRIPTION_MAX_CHARS - 400)
+    act(() => { typeIntoBox(box, near) })
+    expect(counterText()).toContain(String(near.length))
+    expect(counterText()).toContain(String(KANBAN_DESCRIPTION_MAX_CHARS))
+    view.dispose()
+  })
+
+  it('commits the text the bound let through, not what was typed', () => {
+    const view = renderDetail(item)
+    const box = descriptionBox()
+    act(() => {
+      typeIntoBox(box, 'c'.repeat(KANBAN_DESCRIPTION_MAX_CHARS + 10))
+      box.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+    })
+    expect(view.props.onUpdate).toHaveBeenCalledTimes(1)
+    const committed = String(view.props.onUpdate.mock.calls[0][0].content)
+    expect(committed).toHaveLength(KANBAN_DESCRIPTION_MAX_CHARS)
+    view.dispose()
+  })
+})
+
+describe('KanbanItemDetail description expander', () => {
+  it('grows the box and says which state the control is in', () => {
+    const view = renderDetail(item)
+    const box = descriptionBox()
+    const collapsedRows = box.rows
+    expect(descriptionToggle().getAttribute('aria-expanded')).toBe('false')
+    expect(descriptionToggle().getAttribute('aria-controls')).toBe(box.id)
+    expect(descriptionToggle().getAttribute('aria-label')).toBe(t('preview.kanban_expand_description'))
+
+    act(() => { descriptionToggle().click() })
+    expect(box.rows).toBeGreaterThan(collapsedRows)
+    expect(descriptionToggle().getAttribute('aria-expanded')).toBe('true')
+    expect(descriptionToggle().getAttribute('aria-label')).toBe(t('preview.kanban_collapse_description'))
+
+    act(() => { descriptionToggle().click() })
+    expect(box.rows).toBe(collapsedRows)
     view.dispose()
   })
 })

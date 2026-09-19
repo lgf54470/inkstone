@@ -2921,6 +2921,10 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-item-detail-fields.tsx', [
     '/** The listbox the status trigger opens; `id` is the target of its `aria-controls`. */',
+    '/**\n * Descriptions are free prose stored inside the note body, so the box bounds how far one can grow\n * instead of letting a single card balloon the fence. Content a board already stores above the bound\n * stays editable: clamping it on the first keystroke would delete what the note already holds.\n */',
+    '/** The counter appears for the last stretch, so the bound is seen coming rather than only hit. */',
+    '/** What the length bound has to say about the draft in progress: the notice only after a rejection. */',
+    '/** The heading plus the control that trades the box\'s height for a wider view of it. */',
     '// Enter commits nothing here: the description is the one multi-line field, so the key must stay a newline.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-label-language.test.ts', [

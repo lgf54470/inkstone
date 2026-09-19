@@ -6,10 +6,11 @@
  * so each case mounts the real surface once per shipped language and requires the phrase to be the
  * kanban resource's own entry for that action, with the thing it acts on named inside the message.
  */
-import { createElement } from 'react'
+import { act, createElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { KanbanItem, KanbanProperty } from '../types'
 import { KanbanCard } from './kanban-card'
+import { DetailDescription, KANBAN_DESCRIPTION_MAX_CHARS } from './kanban-item-detail-fields'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSubtaskList } from './kanban-subtask-list'
 import { KanbanTagPicker } from './kanban-tag-picker'
@@ -137,5 +138,41 @@ describe("the progress bar's catch-all segment", () => {
       found.some((title) => title.startsWith('To Do')),
       'a board-authored group name got translated away',
     ).toBe(true)
+  })
+})
+
+describe('the description box length feedback', () => {
+  async function mounted(code: LocaleCode): Promise<HTMLElement> {
+    return mountIn(code, createElement(DetailDescription, {
+      itemId: 'item-1',
+      content: 'Some body',
+      onChange: vi.fn(),
+    }))
+  }
+
+  it.each(LOCALES)('names both expander states in %s', async (code) => {
+    const container = await mounted(code)
+    const expander = container.querySelector<HTMLElement>('[aria-expanded]')
+    expect(expander, 'the description box draws no expander').not.toBeNull()
+    expect(expander!.getAttribute('aria-label')).toBe(messageIn(code, 'preview.kanban_expand_description'))
+    await act(async () => { expander!.click() })
+    expect(expander!.getAttribute('aria-label')).toBe(messageIn(code, 'preview.kanban_collapse_description'))
+  })
+
+  it.each(LOCALES)('counts characters with one message in %s', async (code) => {
+    const container = await mounted(code)
+    const box = container.querySelector<HTMLTextAreaElement>('textarea')
+    expect(box, 'the description box is missing').not.toBeNull()
+    const typed = 'a'.repeat(KANBAN_DESCRIPTION_MAX_CHARS - 100)
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+      setter.call(box!, typed)
+      box!.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const counter = container.querySelector<HTMLElement>('[data-kanban-desc-count]')
+    expect(counter, 'the near-limit description draws no counter').not.toBeNull()
+    expect(counter!.textContent).toBe(
+      messageIn(code, 'preview.kanban_desc_count', { count: typed.length, limit: KANBAN_DESCRIPTION_MAX_CHARS }),
+    )
   })
 })
