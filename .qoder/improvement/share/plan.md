@@ -53,7 +53,7 @@
 | F2b | SH-16c | all 整表拉行 SQL 下推（26 号遗留）：`lib/visit-aggregates.ts` 聚合语句 + 行路/SQL 路同一 normalized 中间形态 + 等价测试 | P2 | ✅ | fd22e03b |
 | F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后） | — | 排队 | |
 | F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | eff0a6b5 |
-| F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | ✅ | 待回填 |
+| F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | ✅ | f812c7a7 |
 | H1 | SH-39 | `maxLogRecords`（设置模态「最多记录数」）全仓无消费者，属假设置：接入日志列表取数上限或删除控件+文案+本地键 | P3 | 排队 | |
 | H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby` | P2 | 排队 | |
 | G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | 排队 | |
@@ -339,4 +339,4 @@
 - 拆分（size:check 拦长函数）：新增 `share` 段后 `purgeExpiredOperationalData` 到 55 行，越过 50 行上限（且它给 maintenance.ts 记了 `baseline null -> longFns:1` 的漂移，按规则不得靠基线放行）。按职责拆成 `tokenSweeps`（自带过期列的四张表）与 `visitLogSweeps`（`share_visits` 两条：orphan 与按保留期），主函数只负责封顶参数、按序解构 batch 结果与映射计数；语句文本逐字未改，拆分后重跑 13 发变异仍全杀（M4/M5/M6/M7/M8 的锚点在新函数里唯一命中）。
 - 变异 13 发全杀（/tmp/mutF5 备份还原）：`> 0` 改 `>= 0`、默认值改 0、去掉 `json_valid`、`LEFT JOIN` 改 `INNER JOIN`、cutoff 不看保留期、`ORDER BY` 改最新先出、cutoff 的 `-` 改 `+`、bind 参数序交换、`'share'` 移出 `SETTINGS_SECTIONS`、`Math.min(1_000, …)` 的 1 改 0、模态保存 `maxLogRecords`、模态写死 30、store 重新持久化 `logRetentionDays`。其中 M4/M13 首轮存活 → 补「已删账号行仍清扫」与 store 那 3 例后转杀。
 - 遗留登记：SH-39（`maxLogRecords` 为无消费者的假设置——要么接进日志列表取数上限，要么删控件与文案）、SH-40（`RetentionField` 的可见标签未与 `Segmented` 的 `role=radiogroup` 关联，`Segmented` 已支持 `label`/`aria-labelledby`，两处控件同时缺名）。均按铁律14 不在本提交夹带。
-- 验证：tsc -b 绿；11 静态门禁全绿（escape:check 先报 user-settings.ts 双 cast，按改键既有豁免条目处理）；vitest 定向 32/32（share-visit-retention + user-settings + constants + 两个 client 保留期用例）。全量回归待回填。fix 提交 待回填。
+- 验证：tsc -b 绿；11 静态门禁全绿（escape:check 先报 user-settings.ts 双 cast，按改键既有豁免条目处理）；vitest 定向 32/32（share-visit-retention + user-settings + constants + 两个 client 保留期用例）。全量回归 241 文件/1857 测试绿（REGRESSION_EXIT=0，串行 372s）。fix 提交 f812c7a7。
