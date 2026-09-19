@@ -195,6 +195,30 @@ describe('KanbanChartView palette following', () => {
   })
 })
 
+describe('KanbanChartView completion metric', () => {
+  function rate(container: HTMLElement): string {
+    const cell = [...container.querySelectorAll('div')].find((el) => /^\d+%$/.test(el.textContent ?? ''))
+    return cell?.textContent ?? ''
+  }
+
+  // The count no longer lives in this file, so the wiring is what is asserted: one done card out of
+  // four has to reach the metric, and a metric that reads zero would print 0%.
+  it('reports the share of completed cards among the items it was given', async () => {
+    const { container, render, unmount } = setup()
+    const data = makeData()
+    render({
+      ...data,
+      items: [
+        ...items,
+        { id: '4', title: 'c', properties: { status: 'done' } },
+      ],
+    })
+    await flushCharts()
+    expect(rate(container)).toBe('25%')
+    unmount()
+  })
+})
+
 describe('KanbanChartView i18n', () => {
   it('labels the dataset through i18n instead of a hardcoded string', async () => {
     const { render, unmount } = setup()

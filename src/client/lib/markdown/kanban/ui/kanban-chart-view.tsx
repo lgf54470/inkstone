@@ -13,6 +13,7 @@ import { t, useLocaleRepaint } from '../../../i18n'
 import { aggregateKanbanChartData, buildChartJsConfig } from '../chart-helpers'
 import { readKanbanChartPalette } from '../chart-palette'
 import { formatKanbanPropertyName } from '../i18n-helpers'
+import { isKanbanItemDone } from '../item-status'
 import type { KanbanChartType, KanbanData, KanbanView } from '../types'
 
 interface KanbanChartViewProps {
@@ -184,10 +185,7 @@ function chartCanvasAriaLabel(
 }
 
 function countCompleted(items: KanbanData['items']): number {
-  return items.filter((it) => {
-    const s = String(it.properties.status || '').toLowerCase()
-    return s === 'done' || s === 'completed'
-  }).length
+  return items.filter(isKanbanItemDone).length
 }
 
 export const KanbanChartView = memo(function KanbanChartView({ data, view, onUpdateView }: KanbanChartViewProps) {

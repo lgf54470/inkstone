@@ -137,6 +137,7 @@ export const messages = {
 'preview.kanban_prop_end_date': '截止日期',
 'preview.kanban_prop_progress': '进度',
 'preview.kanban_prop_tags': '标签',
+'preview.kanban_overdue_days': '逾期 {count} 天',
 'preview.kanban_priority_low': '低',
 'preview.kanban_priority_medium': '中',
 'preview.kanban_priority_high': '高',

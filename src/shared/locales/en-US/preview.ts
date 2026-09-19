@@ -127,6 +127,7 @@ export const messages = {
 'preview.kanban_prop_end_date': 'End Date',
 'preview.kanban_prop_progress': 'Progress',
 'preview.kanban_prop_tags': 'Tags',
+'preview.kanban_overdue_days': '{count}d overdue',
 'preview.kanban_priority_low': 'Low',
 'preview.kanban_priority_medium': 'Medium',
 'preview.kanban_priority_high': 'High',

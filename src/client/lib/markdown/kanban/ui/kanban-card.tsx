@@ -1,13 +1,13 @@
 import { memo, useState, type KeyboardEvent } from 'react'
-import { Calendar, Flag, Paperclip } from 'lucide-react'
+import { Flag, Paperclip } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
 import { getKanbanCardDate } from '../date-fields'
-import { formatDateKey } from '../../../time'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { CardHeader } from './kanban-card-header'
 import { KanbanCardSubtasks } from './kanban-card-subtasks'
+import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanCardProps {
@@ -91,17 +91,16 @@ function CardTitle({
 }
 
 function CardFooter({
+  item,
   priorityOpt,
-  assignee,
-  dueDate,
   filesCount,
 }: {
+  item: KanbanItem
   priorityOpt?: { label: string; color?: KanbanColorName }
-  assignee?: unknown
-  dueDate?: unknown
   filesCount: number
 }) {
-  if (!priorityOpt && !assignee && !dueDate && filesCount === 0) return null
+  const assignee = item.properties.assignee
+  if (!priorityOpt && !assignee && !getKanbanCardDate(item) && filesCount === 0) return null
 
   return (
     <div className='flex flex-wrap items-center justify-between gap-1.5 pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
@@ -115,12 +114,7 @@ function CardFooter({
             <span>{formatKanbanOptionLabel(priorityOpt.label, 'priority')}</span>
           </span>
         )}
-        {Boolean(dueDate) && (
-          <span className='inline-flex items-center gap-1 rounded-[var(--r-xs)] bg-[var(--bg-inset)] px-1.5 py-0.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
-            <Calendar size={11} className='text-[var(--text-tertiary)]' />
-            <span>{String(dueDate)}</span>
-          </span>
-        )}
+        <KanbanDateBadge item={item} />
         {filesCount > 0 && (
           <span className='inline-flex items-center gap-0.5 text-[var(--text-tertiary)]'>
             <Paperclip size={11} />
@@ -174,8 +168,7 @@ function getCardDisplayProps(item: KanbanItem, columns: KanbanProperty[]) {
   const tagsCol = columns.find((c) => c.id === 'tags')
   const tagVals = Array.isArray(item.properties.tags) ? item.properties.tags : []
   const filesCount = item.files?.length ?? 0
-  const dueDate = formatDateKey(getKanbanCardDate(item))
-  return { priorityOpt, tagsCol, tagVals, filesCount, dueDate }
+  return { priorityOpt, tagsCol, tagVals, filesCount }
 }
 
 function CardDropIndicator({ dropIndicator }: { dropIndicator?: 'top' | 'bottom' | null }) {
@@ -244,9 +237,8 @@ function CardBody({
         onUpdateSubtasks={onUpdateSubtasks}
       />
       <CardFooter
+        item={item}
         priorityOpt={display.priorityOpt}
-        assignee={item.properties.assignee}
-        dueDate={display.dueDate}
         filesCount={display.filesCount}
       />
     </>

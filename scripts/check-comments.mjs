@@ -2677,8 +2677,12 @@ const allowed = new Map([
     '// what the token chain resolves to.',
   ]],
   ['src/client/lib/markdown/kanban/date-fields.ts', [
-    '/**\n * Which property holds which day is decided once here: every surface that prints a date reads it\n * through these accessors, so an item cannot show one day on the board and another in the gallery.\n * `dueDate` is what the detail modal\'s due field writes, `endDate` is the generated schema\'s own\n * end column, and both are deadlines — a card carries at most one of them.\n */',
+    '/**\n * Which property holds which day is decided once here: every surface that prints a date reads it\n * through these accessors, so an item cannot show one day on the board and another in the gallery.\n * `dueDate` is what the detail modal\'s due field writes, `endDate` is the generated schema\'s own\n * end column, and both are deadlines — a card carries at most one of them. Whether such a deadline\n * has been missed is decided here too, for the same reason: a badge that is late on one surface has\n * to be late on all of them.\n */',
+    '/**\n * A stored date value as the day it names, or `\'\'` when it names none. A board authored elsewhere\n * may carry a time after the day, so the leading `YYYY-MM-DD` of an ISO timestamp still counts.\n */',
     '/** The day a card badge prints: its deadline, or the start when the card only has one. */',
+    '/**\n * Whole days between the card\'s deadline and `now`, or 0 when nothing was missed. Only a deadline\n * can be missed — a card that merely started long ago is not late — and finished work stops being\n * late about a date it already met.\n */',
+    '/** The day the badge carries, already in the reader\'s own date format. */',
+    '/** Whole days the deadline was missed by; 0 when the card is not late. */',
   ]],
   ['src/client/lib/markdown/kanban/dnd.test.ts', [
     '// A filter hides item \'1\', so the visible column is [2, 3]. Dropping \'4\'',
@@ -2705,6 +2709,9 @@ const allowed = new Map([
     '// so a burst of creates inside one millisecond (paste, batch add, duplicated',
     '// subtasks) produced duplicate keys. The monotonic sequence pins uniqueness per',
     '// tab; the random tail keeps ids distinct across tabs that share a millisecond.',
+  ]],
+  ['src/client/lib/markdown/kanban/item-status.ts', [
+    '/**\n * Whether a card has reached its final state. A board imported from another tool may store either\n * the option id or the option label in `status`, so both spellings of the finished group count.\n * Lives apart from the date accessors because both the completion metrics and the overdue rule\n * need it, and the date module must stay importable by the filter module.\n */',
   ]],
   ['src/client/lib/markdown/kanban/outline.ts', [
     '// \\[ and \\] are literal brackets in a title, not the start of a property tag.',
@@ -2777,6 +2784,8 @@ const allowed = new Map([
     '// The real reader asks the document how it resolves each token, which jsdom',
     '// does not do; what matters here is *when* the view reads it and that the',
     '// colours it hands Chart.js come from that read rather than from itself.',
+    '// The count no longer lives in this file, so the wiring is what is asserted: one done card out of',
+    '// four has to reach the metric, and a metric that reads zero would print 0%.',
     '// The row that lays the metric cards out is the first grid ancestor of a metric label.',
     '// A row that asks for more columns than it has children leaves that many card',
     '// widths of empty track at the breakpoint and above.',
@@ -2803,9 +2812,20 @@ const allowed = new Map([
     '// mirrors useKanbanHistory: functional updaters resolve against the latest data',
     '// the detail modal portals onto document.body, so query the whole document',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-date-badge.tsx', [
+    '/**\n * The card date is printed by the board, the list and the gallery. Each of them used to paste its\n * own copy of that chip, which is how one card could read differently depending on where it was\n * looked at; the badge is drawn here once instead. A missed deadline is said in words and marked\n * with its own icon, because colour alone may not carry state (WCAG 1.4.1), and the day it refers\n * to stays reachable in the title.\n */',
+    '/** `chip` sits on the board and the gallery, `plain` on a list row, which carries no inset box. */',
+    '/** Layout extras the surrounding row needs (a responsive hiding class), never a colour. */',
+    '// `--danger` as text on the chip\'s inset measures 3.38 in the light theme, under AA at this size,',
+    '// so the red stays on the icon, where a graphic only needs 3, and the words carry the state.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-date-display.test.ts', [
     '/**\n * One card used to read differently depending on which view looked at it (review #25\'s only\n * correctness row): the board fell back to `startDate`, the gallery and the list never read the\n * schema\'s own `endDate` column at all, and every badge printed the raw `YYYY-MM-DD` key. The three\n * surfaces now derive one label from one accessor, so the contract asserted here is one item, three\n * surfaces, one date — and that the printed text is the reader\'s own date format, not the stored key.\n */',
     '// Both fixtures stay inside the running year so the label rule never has to carry a year.',
+    '// A missed deadline is the one thing a date badge has to work out for itself, and it has to work it',
+    '// out the same way on all three surfaces. It says the overrun in words, keeps the day it refers to',
+    '// reachable in the title and marks itself with the alert icon; the red token stays off its small',
+    '// text, where it measures under AA in the light theme, so colour never has to be read alone.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-date-picker.test.ts', [
     '/**\n * The picker draws its calendar from the shared locale derivation, where the `Intl` reading itself is\n * pinned (`lib/time.test.ts`). What is checked here is that the rendered picker follows that one\n * number: its weekday row and the cells spilling in front of the 1st are read off the same value, so\n * a change to the derivation cannot move one of them and leave the other on Sunday.\n */',

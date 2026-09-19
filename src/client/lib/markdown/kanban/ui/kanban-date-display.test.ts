@@ -8,12 +8,13 @@
 import { act, createElement, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { initI18n, localeTag } from '../../../i18n'
+import { initI18n, localeTag, t } from '../../../i18n'
 import { installTestGlobals } from '../../../test-render'
 import { KanbanCard } from './kanban-card'
 import { KanbanGalleryView } from './kanban-gallery-view'
 import { KanbanListView } from './kanban-list-view'
-import { getKanbanCardDate, getKanbanDueDate } from '../date-fields'
+import { getKanbanCardDate, getKanbanDueDate, getKanbanOverdueDays, kanbanDayKey } from '../date-fields'
+import { isKanbanItemDone } from '../item-status'
 import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
 
 beforeAll(async () => {
@@ -64,7 +65,7 @@ function dataFor(items: KanbanItem[]): KanbanData {
   return { columns, items, views: [{ id: 'v-list', name: 'List', type: 'list', groupBy: 'status' }] }
 }
 
-function surfacesFor(item: KanbanItem): Record<string, string> {
+function containersFor(item: KanbanItem): Record<string, HTMLElement> {
   const data = dataFor([item])
   const list = mount(createElement(KanbanListView, {
     data,
@@ -90,10 +91,64 @@ function surfacesFor(item: KanbanItem): Record<string, string> {
     onDragStart: vi.fn(),
     onDragEnd: vi.fn(),
   }))
-  return {
-    list: list.textContent ?? '',
-    gallery: gallery.textContent ?? '',
-    board: board.textContent ?? '',
+  return { list, gallery, board }
+}
+
+function surfacesFor(item: KanbanItem): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(containersFor(item)).map(([name, container]) => [name, container.textContent ?? '']),
+  )
+}
+
+// A missed deadline is the one thing a date badge has to work out for itself, and it has to work it
+// out the same way on all three surfaces. It says the overrun in words, keeps the day it refers to
+// reachable in the title and marks itself with the alert icon; the red token stays off its small
+// text, where it measures under AA in the light theme, so colour never has to be read alone.
+const TODAY = new Date(2026, 2, 15)
+
+interface Badge {
+  text: string
+  title: string
+  overdue: boolean
+  iconDanger: boolean
+  textDanger: boolean
+}
+
+interface Expectation {
+  text: string
+  overdue: boolean
+  title?: string
+}
+
+function badgesFor(item: KanbanItem): Record<string, Badge> {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(TODAY)
+  try {
+    return Object.fromEntries(Object.entries(containersFor(item)).map(([name, container]) => {
+      const badge = container.querySelector<HTMLElement>('[data-kanban-date]')
+      return [name, {
+        text: badge?.textContent ?? '',
+        title: badge?.getAttribute('title') ?? '',
+        overdue: badge?.hasAttribute('data-kanban-overdue') ?? false,
+        iconDanger: badge?.querySelector('svg')?.getAttribute('class')?.includes('var(--danger)') ?? false,
+        textDanger: badge?.className.includes('var(--danger)') ?? false,
+      }]
+    }))
+  }
+  finally {
+    vi.useRealTimers()
+  }
+}
+
+function expectOnEverySurface(item: KanbanItem, expected: Expectation) {
+  for (const [surface, badge] of Object.entries(badgesFor(item))) {
+    expect(badge.text, `${surface} prints the wrong thing`).toBe(expected.text)
+    if (expected.title !== undefined) {
+      expect(badge.title, `${surface} hides the day its badge talks about`).toBe(expected.title)
+    }
+    expect(badge.overdue, `${surface} calls the card the wrong kind of late`).toBe(expected.overdue)
+    expect(badge.iconDanger, `${surface} marks the deadline with the wrong icon`).toBe(expected.overdue)
+    expect(badge.textDanger, `${surface} puts sub-AA red on small text`).toBe(false)
   }
 }
 
@@ -132,8 +187,102 @@ describe('kanban date field resolution', () => {
     expect(getKanbanCardDate(makeItem('legacy', { date: DUE_KEY }))).toBe('')
   })
 
+  it('reads the day a stored value names, and none when it names none', () => {
+    expect(kanbanDayKey('2026-09-17')).toBe('2026-09-17')
+    expect(kanbanDayKey('2026-09-17T12:00:00Z')).toBe('2026-09-17')
+    expect(kanbanDayKey('tomorrow')).toBe('')
+    expect(kanbanDayKey('')).toBe('')
+    expect(kanbanDayKey(null)).toBe('')
+  })
+
   it('falls back to the start date only when there is no deadline', () => {
     expect(getKanbanCardDate(makeItem('start-only', { startDate: START_KEY }))).toBe(START_KEY)
     expect(getKanbanCardDate(makeItem('both', { dueDate: DUE_KEY, startDate: START_KEY }))).toBe(DUE_KEY)
+  })
+})
+
+describe('kanban overdue judgement', () => {
+  const due = (value: unknown) => makeItem('due', { dueDate: value })
+
+  it('counts whole days between the deadline and today', () => {
+    expect(getKanbanOverdueDays(due('2026-03-10'), TODAY)).toBe(5)
+    expect(getKanbanOverdueDays(due('2026-03-14'), TODAY)).toBe(1)
+  })
+
+  it('keeps the count across a month and a year boundary', () => {
+    expect(getKanbanOverdueDays(due('2026-02-27'), TODAY)).toBe(16)
+    expect(getKanbanOverdueDays(due('2025-12-30'), new Date(2026, 0, 3))).toBe(4)
+  })
+
+  it('is not overdue on the deadline itself or while it still lies ahead', () => {
+    expect(getKanbanOverdueDays(due('2026-03-15'), TODAY)).toBe(0)
+    expect(getKanbanOverdueDays(due('2026-04-02'), TODAY)).toBe(0)
+  })
+
+  it('counts the schema end column as a deadline', () => {
+    expect(getKanbanOverdueDays(makeItem('end', { endDate: '2026-03-01' }), TODAY)).toBe(14)
+  })
+
+  it('never calls a start date a missed deadline', () => {
+    expect(getKanbanOverdueDays(makeItem('start', { startDate: '2020-01-01' }), TODAY)).toBe(0)
+  })
+
+  it('stops counting once the card sits in a done group', () => {
+    expect(getKanbanOverdueDays(makeItem('done', { dueDate: '2026-03-01', status: 'Done' }), TODAY)).toBe(0)
+  })
+
+  it('reads a deadline stored with a time as that same day', () => {
+    expect(getKanbanOverdueDays(due('2026-03-10T12:00:00Z'), TODAY)).toBe(5)
+  })
+
+  it('has no opinion about a value that is not a day', () => {
+    expect(getKanbanOverdueDays(due('tomorrow'), TODAY)).toBe(0)
+    expect(getKanbanOverdueDays(due(1700000000000), TODAY)).toBe(0)
+    expect(getKanbanOverdueDays(makeItem('none', {}), TODAY)).toBe(0)
+  })
+})
+
+describe('kanban completion judgement', () => {
+  it('recognises the done option by id and by the label a foreign document stores', () => {
+    expect(isKanbanItemDone(makeItem('a', { status: 'done' }))).toBe(true)
+    expect(isKanbanItemDone(makeItem('b', { status: 'Completed' }))).toBe(true)
+    expect(isKanbanItemDone(makeItem('c', { status: 'in_progress' }))).toBe(false)
+    expect(isKanbanItemDone(makeItem('d', { status: 'todo' }))).toBe(false)
+    expect(isKanbanItemDone(makeItem('e', {}))).toBe(false)
+  })
+})
+
+describe('kanban overdue badge across surfaces', () => {
+  it('names a missed deadline in words and keeps its day in the badge title', () => {
+    expectOnEverySurface(makeItem('missed', { dueDate: '2026-03-12' }), {
+      text: t('preview.kanban_overdue_days', { count: 3 }),
+      title: labelFor('2026-03-12'),
+      overdue: true,
+    })
+  })
+
+  it('leaves a deadline that has not passed printing its day', () => {
+    expectOnEverySurface(makeItem('upcoming', { dueDate: '2026-03-20' }), {
+      text: labelFor('2026-03-20'),
+      overdue: false,
+    })
+  })
+
+  it('does not shout about work that is already done', () => {
+    expectOnEverySurface(makeItem('finished', { dueDate: '2026-03-12', status: 'done' }), {
+      text: labelFor('2026-03-12'),
+      overdue: false,
+    })
+  })
+
+  it('keeps a start-only card plain however long ago it began', () => {
+    expectOnEverySurface(makeItem('late-start', { startDate: '2026-03-01' }), {
+      text: labelFor('2026-03-01'),
+      overdue: false,
+    })
+  })
+
+  it('prints nothing for a card without dates', () => {
+    expectOnEverySurface(makeItem('no-date', {}), { text: '', overdue: false })
   })
 })

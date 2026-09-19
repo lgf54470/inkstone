@@ -1,4 +1,4 @@
-import { getKanbanDueDate, getKanbanStartDate } from './date-fields'
+import { getKanbanDueDate, getKanbanStartDate, kanbanDayKey } from './date-fields'
 import type { KanbanItem } from './types'
 
 export interface CalendarDay {
@@ -16,13 +16,6 @@ export interface WeekEventSegment {
   isSegmentStart: boolean
   isSegmentEnd: boolean
   track: number
-}
-
-export function parseDateKey(val: unknown): string | null {
-  if (!val) return null
-  const s = String(val).trim()
-  const match = s.match(/^\d{4}-\d{2}-\d{2}/)
-  return match ? match[0] : null
 }
 
 /**
@@ -68,14 +61,14 @@ export function getMonthWeeks(year: number, month: number, weekStart: number): C
 
 function resolveItemDateRange(item: KanbanItem, dateField?: string): { start: string; end: string } | null {
   const primary = dateField ? item.properties[dateField] : undefined
-  const startKey = parseDateKey(primary || getKanbanStartDate(item) || getKanbanDueDate(item))
-  const endKey = parseDateKey(getKanbanDueDate(item) || primary || getKanbanStartDate(item))
+  const startKey = kanbanDayKey(primary || getKanbanStartDate(item) || getKanbanDueDate(item))
+  const endKey = kanbanDayKey(getKanbanDueDate(item) || primary || getKanbanStartDate(item))
   if (!startKey && !endKey) return null
 
   if (startKey && endKey) {
     return startKey <= endKey ? { start: startKey, end: endKey } : { start: endKey, end: startKey }
   }
-  const single = (startKey || endKey)!
+  const single = startKey || endKey
   return { start: single, end: single }
 }
 

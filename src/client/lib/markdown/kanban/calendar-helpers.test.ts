@@ -1,16 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { getMonthWeeks, getWeekEventSegments, parseDateKey } from './calendar-helpers'
+import { getMonthWeeks, getWeekEventSegments } from './calendar-helpers'
 import type { KanbanItem } from './types'
 
 describe('calendar-helpers parsing & month generation', () => {
-  it('parseDateKey parses standard and ISO dates correctly', () => {
-    expect(parseDateKey('2026-09-17')).toBe('2026-09-17')
-    expect(parseDateKey('2026-09-17T12:00:00Z')).toBe('2026-09-17')
-    expect(parseDateKey('invalid')).toBeNull()
-    expect(parseDateKey('')).toBeNull()
-    expect(parseDateKey(null)).toBeNull()
-  })
-
   it('getMonthWeeks generates 7-day weeks spanning the month', () => {
     const weeks = getMonthWeeks(2026, 8, 0)
     expect(weeks.length).toBeGreaterThanOrEqual(4)

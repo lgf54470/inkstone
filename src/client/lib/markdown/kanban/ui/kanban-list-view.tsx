@@ -1,11 +1,10 @@
 import { memo, useState } from 'react'
-import { Calendar, Check, CheckSquare, ChevronDown, ChevronRight, Flag, Paperclip, Plus } from 'lucide-react'
+import { Check, CheckSquare, ChevronDown, ChevronRight, Flag, Paperclip, Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
-import { getKanbanCardDate } from '../date-fields'
-import { formatDateKey } from '../../../time'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
+import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanListViewProps {
@@ -144,11 +143,11 @@ function ListRowLeading({
 }
 
 function ListRowSubtasksAndDate({
+  item,
   subtasks,
-  dueDate,
 }: {
+  item: KanbanItem
   subtasks: KanbanSubtask[]
-  dueDate?: string
 }) {
   const completedCount = subtasks.filter((s) => s.completed).length
 
@@ -160,12 +159,7 @@ function ListRowSubtasksAndDate({
           <span>{completedCount}/{subtasks.length}</span>
         </span>
       )}
-      {dueDate && (
-        <span className='hidden sm:inline-flex items-center gap-1 text-[var(--text-secondary)]'>
-          <Calendar size={11} className='text-[var(--text-tertiary)]' />
-          <span>{dueDate}</span>
-        </span>
-      )}
+      <KanbanDateBadge item={item} variant='plain' className='hidden sm:inline-flex' />
     </>
   )
 }
@@ -174,12 +168,10 @@ function ListRowTrailing({
   item,
   statusOpt,
   priorityOpt,
-  dueDate,
 }: {
   item: KanbanItem
   statusOpt?: KanbanOption
   priorityOpt?: KanbanOption
-  dueDate?: string
 }) {
   const subtasks = item.subtasks ?? []
   const filesCount = item.files?.length ?? 0
@@ -187,7 +179,7 @@ function ListRowTrailing({
 
   return (
     <div className='flex shrink-0 items-center gap-2 text-[length:var(--text-11)]'>
-      <ListRowSubtasksAndDate subtasks={subtasks} dueDate={dueDate} />
+      <ListRowSubtasksAndDate item={item} subtasks={subtasks} />
       {statusOpt && (
         <span
           style={getKanbanTagStyle(statusOpt.color)}
@@ -257,8 +249,7 @@ function getListItemDisplay(item: KanbanItem, statusCol?: KanbanProperty, priori
   const priorityOpt = priorityCol?.options?.find((o: KanbanOption) => o.id === priorityVal || o.label === priorityVal)
   const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
   const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
-  const dueDate = formatDateKey(getKanbanCardDate(item))
-  return { statusOpt, priorityOpt, tagVals, desc, dueDate }
+  return { statusOpt, priorityOpt, tagVals, desc }
 }
 
 function KanbanListRow({
@@ -273,7 +264,7 @@ function KanbanListRow({
   onToggleTag,
 }: KanbanListRowProps) {
   const [expanded, setExpanded] = useState(false)
-  const { statusOpt, priorityOpt, tagVals, desc, dueDate } = getListItemDisplay(item, statusCol, priorityCol)
+  const { statusOpt, priorityOpt, tagVals, desc } = getListItemDisplay(item, statusCol, priorityCol)
   const subtasks = item.subtasks ?? []
 
   return (
@@ -301,7 +292,6 @@ function KanbanListRow({
           item={item}
           statusOpt={statusOpt}
           priorityOpt={priorityOpt}
-          dueDate={dueDate || undefined}
         />
       </div>
 

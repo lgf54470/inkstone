@@ -9,6 +9,7 @@
 import { createElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { KanbanItem, KanbanProperty } from '../types'
+import { KanbanCard } from './kanban-card'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSubtaskList } from './kanban-subtask-list'
 import { KanbanTagPicker } from './kanban-tag-picker'
@@ -67,6 +68,41 @@ describe('the subtask completion toggle', () => {
     expect(done!.getAttribute('aria-label')).toBe(
       messageIn(code, 'preview.kanban_mark_incomplete_named', { name: 'Review it' }),
     )
+  })
+})
+
+describe('a missed deadline on a card', () => {
+  const TODAY = new Date(2026, 2, 15)
+  const lateItem: KanbanItem = { id: 'late', title: 'Ship the spec', properties: { status: 'todo', dueDate: '2026-03-12' } }
+  const lateColumns: KanbanProperty[] = [
+    { id: 'status', name: 'Status', type: 'select', options: [{ id: 'todo', label: 'To Do', color: 'gray' }] },
+  ]
+
+  async function badge(code: LocaleCode): Promise<HTMLElement | null> {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(TODAY)
+    try {
+      const container = await mountIn(code, createElement(KanbanCard, {
+        item: lateItem,
+        columns: lateColumns,
+        isSelected: false,
+        onToggleSelect: vi.fn(),
+        onOpenDetail: vi.fn(),
+        onUpdateTitle: vi.fn(),
+        onDragStart: vi.fn(),
+        onDragEnd: vi.fn(),
+      }))
+      return container.querySelector<HTMLElement>('[data-kanban-date]')
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  }
+
+  it.each(LOCALES)('says how late it is in %s instead of leaning on the colour', async (code) => {
+    const found = await badge(code)
+    expect(found, 'the card draws no date badge').not.toBeNull()
+    expect(found!.textContent).toBe(messageIn(code, 'preview.kanban_overdue_days', { count: 3 }))
   })
 })
 
