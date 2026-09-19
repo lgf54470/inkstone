@@ -106,7 +106,7 @@ function ChartToolbar({
 function MetricCards({ total, completedCount }: { total: number; completedCount: number }) {
   const rate = total > 0 ? Math.round((completedCount / total) * 100) : 0
   return (
-    <div className='grid grid-cols-2 gap-4 p-4 md:grid-cols-4'>
+    <div className='grid grid-cols-2 gap-4 p-4'>
       <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 shadow-xs'>
         <div className='flex items-center justify-between text-[var(--text-tertiary)]'>
           <span className='text-[length:var(--text-11)] font-medium'>{t('preview.kanban_chart_total_items')}</span>

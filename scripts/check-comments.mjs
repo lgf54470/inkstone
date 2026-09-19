@@ -2777,6 +2777,9 @@ const allowed = new Map([
     '// The real reader asks the document how it resolves each token, which jsdom',
     '// does not do; what matters here is *when* the view reads it and that the',
     '// colours it hands Chart.js come from that read rather than from itself.',
+    '// The row that lays the metric cards out is the first grid ancestor of a metric label.',
+    '// A row that asks for more columns than it has children leaves that many card',
+    '// widths of empty track at the breakpoint and above.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-chart-view.tsx', [
     '// Chart.js bakes colours into the config at creation time, so the palette has',

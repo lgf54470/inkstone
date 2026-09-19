@@ -205,6 +205,33 @@ describe('KanbanChartView i18n', () => {
   })
 })
 
+describe('KanbanChartView metric cards', () => {
+  // The row that lays the metric cards out is the first grid ancestor of a metric label.
+  function metricGridRow(scope: HTMLElement, label: string): HTMLElement {
+    const span = [...scope.querySelectorAll('span')].find((el) => el.textContent === label)
+    expect(span, `metric label ${label} is drawn`).toBeTruthy()
+    let node: HTMLElement | null = span!.parentElement
+    while (node && !/(?:^|\s)(?:[\w-]+:)*grid-cols-\d/.test(node.className)) node = node.parentElement
+    expect(node, 'metric cards sit in a grid row').toBeTruthy()
+    return node!
+  }
+
+  function declaredColumns(row: HTMLElement): number[] {
+    return [...row.className.matchAll(/(?:^|\s)(?:[\w-]+:)*grid-cols-(\d+)/g)].map((match) => Number(match[1]))
+  }
+
+  it('never declares a wider grid than the metrics it actually draws', async () => {
+    const { container, render, unmount } = setup()
+    render(makeData())
+    await flushCharts()
+    const row = metricGridRow(container, t('preview.kanban_chart_total_items'))
+    // A row that asks for more columns than it has children leaves that many card
+    // widths of empty track at the breakpoint and above.
+    expect(Math.max(...declaredColumns(row))).toBeLessThanOrEqual(row.children.length)
+    unmount()
+  })
+})
+
 describe('KanbanChartView accessibility', () => {
   it('gives the canvas an image role and a readable summary', async () => {
     const { container, render, unmount } = setup()
