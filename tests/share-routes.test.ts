@@ -186,6 +186,36 @@ describe('share list route (real D1)', () => {
   })
 })
 
+describe('share summary route (real D1)', () => {
+  it('returns the share count and note id set for the current user only', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, { id: 'n-a', title: 'Active' })
+    const n2 = await seedNote(db, { id: 'n-b', title: 'Paused' })
+    await seedShare(db, { note_id: n1, slug: 'alpha' })
+    await seedShare(db, { note_id: n2, slug: 'beta', is_enabled: 0 })
+    await seedUser(db, 'user-2')
+    const foreignNote = await seedNote(db, { id: 'n-c', title: 'Foreign', user_id: 'user-2' })
+    await seedShare(db, { note_id: foreignNote, slug: 'gamma', user_id: 'user-2' })
+
+    const res = await request(makeApp(), '/api/share/summary')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect([...body.sharedNoteIds].sort()).toEqual(['n-a', 'n-b'])
+    expect(body.totalShares).toBe(2)
+  })
+
+  it('answers with just the count and ids, without visit aggregation', async () => {
+    const db = await makeDb()
+    await seedNote(db, { id: 'n-1' })
+    await seedShare(db, { note_id: 'n-1', slug: 's-1', views: 3 })
+    await seedVisit(db, { note_id: 'n-1', slug: 's-1' })
+
+    const body = await (await request(makeApp(), '/api/share/summary')).json()
+    expect(body).toEqual({ totalShares: 1, sharedNoteIds: ['n-1'] })
+  })
+})
+
 describe('share note-share & upsert routes (real D1)', () => {
   it('returns share:null for an unshared note', async () => {
     const db = await makeDb()

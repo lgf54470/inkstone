@@ -36,7 +36,7 @@
 | 21 | SH-21 | hub 打开重复拉 folders/tags；写操作全量重拉 → 定向 patch | P2 | ✅ | 0c3ec8a4 |
 | 22 | SH-23 | store 派生 `Map<noteId, ShareRow>`，行订阅改原始值 | P2 | ✅ | d291a2be |
 | 23 | SH-22 | 表格行 memo + 菜单 items 惰性构建 + folders Map | P2 | ✅ | 245c74ce |
-| 24 | SH-19 | App 启动瘦身：`/api/share/summary` 轻量端点 | P1 | ⬜ | |
+| 24 | SH-19 | App 启动瘦身：`/api/share/summary` 轻量端点 | P1 | ✅ | 待回填 |
 | 25 | SH-20 | code-split：barrel 拆 store/modals 入口（保持 blog 现有 import 不破） | P1 | ⬜ | |
 | 26 | SH-17a | 列表接口 5 个统计查询 `db.batch` 并行化（第一步，不拆端点） | P0 部分 | ⬜ | |
 | 27 | SH-28 | 实时访问日志补时间窗 + 文案改「最近访问」 | P2 | ⬜ | |
@@ -143,3 +143,18 @@
   - `share-grid-view/card.tsx`：目录 Menu 同样改条件挂载（同一惰性缺陷，一行）。网格卡 memo 未做（计划行只列表格）。
 - 测试 `share-table-view/table-view.test.ts` 5 例：行处理器收到 noteId；memo 标记（$$typeof）；目录菜单挂载前 `buildFolderMenuItems` 零调用、打开后恰一次且移动回调带 (noteId, folderId)（`vi.mock` 包装真实构建器做 spy）；useShareList 三 handler 跨渲染同身份；hub 三回调跨渲染同身份。变异验证：去 memo / 退回 eager `<Menu open=...>` 各自转红（/tmp 备份还原）。
 - 遗留：>100 行虚拟化未做——memo 后稳态重渲已是 O(脏行)，首挂载仍 O(n)，台账本就说「评估」，需要时另开项；`ShareGridCard` 的 `folders.find` 与内联回调同款问题留待网格行 memo 一并处理（本次只做台账点名的表格）。
+
+## 24 — SH-19 App 启动瘦身：/api/share/summary 轻量端点（2026-09-19）
+
+- 现象：`sidebar.tsx` mount 即 `loadShares()`，只为侧栏分享角标计数与笔记行「已共享」标记，却拖整个分析级列表（globalStats 5 串查询 + 最多 500 行 ShareInfo 常驻），99% 不开分享中心的会话白付这笔启动成本。
+- 修复：
+  - `src/shared/types/share.ts`：新增 `ShareSummaryResponse { totalShares, sharedNoteIds }`。
+  - `src/worker/routes/share/shares.ts`：新增 `GET /api/share/summary`——单条 `SELECT note_id FROM shares WHERE user_id`，计数=集合长度，无 stats/visits 聚合；静态路由优先于 `/:noteId`，回归用例同时守住该点。
+  - `src/client/lib/api/share.ts`：`share.summary(signal?)`。
+  - `share-store/`：`types.ts` 增 `ShareSummaryState`（sharedNoteIds 存 Set）+ `summary` 字段 + `loadSummary` action；`loaders.ts` 新增 `loadSummary`（在途去重；shares 已有行或 globalStats 已载则跳过，防止过期集合复活）；`runShareLoad` 成功时置 `summary: null`——完整列表一旦到手就是唯一真源；`index.ts` 可见性快照 `sharedNoteIds` 改为 rows ∪ summary（启动期「共享」视图筛选靠集合驱动）。
+  - `row-index.ts`：新增 `isNoteShared(state, noteId)`（行命中 ∪ summary 集合）与 `useNoteIsShared` 布尔订阅；`note-row-state.ts` 的 `computedIsShared` 换用它（noteShare 行订阅保留，供子菜单数据）；`use-workspace.ts` isShared 同换。
+  - `sidebar.tsx`：启动预取 `loadShares()` → `loadSummary()`；角标 `globalStats ?? shares.length ?? summary.totalShares`。
+  - `use-share-note-submenu.ts`：`ensureShare` 先 `api.share.getNoteShare(noteId)`（该 GET 端点此前无人使用）确认已有分享则直接用，确认未分享才走 create——否则启动瘦身后行内「复制链接」会把暂停中的分享静默 enable。
+  - `src/client/demo/backend/routes/share.ts`：demo 镜像 `/api/share/summary`（state.shares 键集）。
+- 测试：`tests/share-routes.test.ts` 2 例（跨用户隔离+精确响应体）；`share-store/summary-load.test.ts` 5 例（填充 Set/在途去重/列表到手丢集合/已载列表跳过/失败 warn+toast）；`row-index.test.ts` 增 `isNoteShared` 3 例；`use-share-note-submenu.test.ts` 2 例（有分享只 GET 不 create、真未分享仍 create）。变异四杀：不丢 summary / 删跳过守卫 / isNoteShared 去集合回退 / ensureShare 退回直接 create，各自转红（/tmp 备份还原）。
+- 遗留：`refreshSummary` 失败与 loadShares 一样走 toast（启动离线会弹一次），行为与修前一致；行内 Switch 首发/applyServerShare 未知行仍回退整列表（SH-21 既定语义，未动）。

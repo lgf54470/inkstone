@@ -29,6 +29,7 @@ function initialShareState(): Partial<ShareStoreState> {
         folders: [],
         tags: [],
         globalStats: null,
+        summary: null,
         loading: false,
         error: false,
         batchBusy: false,
@@ -42,7 +43,7 @@ function initialShareState(): Partial<ShareStoreState> {
 
 export type { ShareFolderNode, ShareStoreState } from './types'
 export { buildShareFolderTree } from './folders'
-export { selectShareRow, shareRowIndex, useShareRowForNote } from './row-index'
+export { isNoteShared, selectShareRow, shareRowIndex, useNoteIsShared, useShareRowForNote } from './row-index'
 
 // Feed the notes store's visibility projection (shared note ids) without
 // creating a store → feature import edge: selectors read the neutral registry
@@ -50,6 +51,11 @@ export { selectShareRow, shareRowIndex, useShareRowForNote } from './row-index'
 useShareStore.subscribe((state) => {
   pushVisibilitySnapshot({
     ...getVisibilitySnapshot(),
-    sharedNoteIds: new Set(state.shares.map((share) => share.noteId)),
+    // Before the hub loads the full list, the startup summary set carries the
+    // shared view's membership; list membership wins as soon as it exists.
+    sharedNoteIds: new Set([
+      ...state.shares.map((share) => share.noteId),
+      ...(state.summary?.sharedNoteIds ?? []),
+    ]),
   })
 })

@@ -11,6 +11,11 @@ export interface ShareFolderNode {
   depth: number
 }
 
+export interface ShareSummaryState {
+  totalShares: number
+  sharedNoteIds: Set<string>
+}
+
 
 
 export interface ShareStoreState {
@@ -26,6 +31,7 @@ export interface ShareStoreState {
   folders: ShareFolder[]
   tags: ShareTag[]
   globalStats: ShareListResponse['globalStats'] | null
+  summary: ShareSummaryState | null
   loading: boolean
   error: boolean
   batchBusy: boolean
@@ -58,6 +64,7 @@ export interface ShareStoreState {
   deleteTag: (id: string) => Promise<boolean>
 
   loadShares: () => Promise<void>
+  loadSummary: () => Promise<void>
   applyServerShare: (share: ShareInfo) => void
   toggleShare: (noteId: string, enabled: boolean) => Promise<boolean>
   togglePin: (noteId: string) => Promise<boolean>

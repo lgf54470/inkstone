@@ -399,6 +399,10 @@ export function registerShareRoutes(app: Hono, state: DemoState): void {
   app.get('/api/share/check-slug', shareCheckSlug)
   app.get('/api/share/analytics/global', (c) => shareGlobalAnalytics(c, state))
   app.get('/api/share/analytics/note/:noteId', (c) => shareNoteAnalytics(c, state))
+  app.get('/api/share/summary', (c) => c.json({
+    totalShares: state.shares.size,
+    sharedNoteIds: [...state.shares.keys()],
+  }))
   app.get('/api/share', (c) => listShares(c, state))
   app.get('/api/share/visits', listShareVisits)
   app.delete('/api/share/visits', (c) => clearShareVisits(c, state))

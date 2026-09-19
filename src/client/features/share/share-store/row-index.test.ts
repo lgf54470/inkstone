@@ -7,7 +7,7 @@ import type { Root } from 'react-dom/client'
 import type { ShareInfo } from '@shared/types'
 import { api } from '../../../lib/api'
 import { useShareStore } from './index'
-import { selectShareRow, shareRowIndex, useShareRowForNote } from './row-index'
+import { isNoteShared, selectShareRow, shareRowIndex, useShareRowForNote } from './row-index'
 
 const patchNote = vi.hoisted(() => vi.fn(async () => undefined))
 
@@ -130,5 +130,23 @@ describe('per-row appearance (SH-23)', () => {
 
     expect(renders['note-c']).toBe(2)
     expect(selectShareRow(useShareStore.getState().shares, 'note-c')).toBe(c)
+  })
+})
+
+describe('isNoteShared across the summary-only startup window (SH-19)', () => {
+  it('answers from the summary id set before the full list ever loads', () => {
+    const summary = { totalShares: 1, sharedNoteIds: new Set(['note-a']) }
+    expect(isNoteShared({ shares: [], summary }, 'note-a')).toBe(true)
+    expect(isNoteShared({ shares: [], summary }, 'note-b')).toBe(false)
+  })
+
+  it('follows list membership once the summary has been dropped by a list load', () => {
+    expect(isNoteShared({ shares: [shareRow('note-a')], summary: null }, 'note-a')).toBe(true)
+    expect(isNoteShared({ shares: [], summary: null }, 'note-a')).toBe(false)
+  })
+
+  it('keeps a visible row shared even if the stale summary missed it', () => {
+    const summary = { totalShares: 0, sharedNoteIds: new Set<string>() }
+    expect(isNoteShared({ shares: [shareRow('note-a')], summary }, 'note-a')).toBe(true)
   })
 })

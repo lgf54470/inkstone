@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { ShareInfo, ShareListResponse } from '@shared/types'
+import { ShareInfo, ShareListResponse, ShareSummaryResponse } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { escapeLike } from '../../lib/like'
@@ -87,6 +87,7 @@ export function toShareInfo(
 export function registerShareSharingRoutes(shareManageRoutes: Hono<AppBindings>): void {
   registerShareNoteShareRoute(shareManageRoutes)
   registerShareListRoute(shareManageRoutes)
+  registerShareSummaryRoute(shareManageRoutes)
 }
 
 function registerShareNoteShareRoute(shareManageRoutes: Hono<AppBindings>): void {
@@ -123,6 +124,18 @@ function registerShareListRoute(shareManageRoutes: Hono<AppBindings>): void {
       total: shares.length,
       globalStats,
     }
+    return c.json(response)
+  })
+}
+
+function registerShareSummaryRoute(shareManageRoutes: Hono<AppBindings>): void {
+  shareManageRoutes.get('/summary', async (c) => {
+    const userId = c.get('userId')
+    const { results } = await c.env.DB.prepare(`SELECT note_id FROM shares WHERE user_id = ?1`)
+      .bind(userId)
+      .all<{ note_id: string }>()
+    const sharedNoteIds = (results ?? []).map((r) => r.note_id)
+    const response: ShareSummaryResponse = { totalShares: sharedNoteIds.length, sharedNoteIds }
     return c.json(response)
   })
 }

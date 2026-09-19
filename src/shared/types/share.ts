@@ -147,6 +147,11 @@ export interface ShareNoteAnalytics {
   recentVisits: ShareVisitLog[]
 }
 
+export interface ShareSummaryResponse {
+  totalShares: number
+  sharedNoteIds: string[]
+}
+
 export interface ShareListResponse {
   shares: ShareInfo[]
   total: number

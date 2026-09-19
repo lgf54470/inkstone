@@ -78,6 +78,10 @@ async function ensureShare(noteId: string, currentShare: ShareInfo | null, setBu
   if (currentShare) return currentShare
   setBusy(true)
   try {
+    // Since SH-19 a row can be shared without being in the store yet (the
+    // startup summary only carries ids): ask the server before publishing.
+    const fetched = await api.share.getNoteShare(noteId)
+    if (fetched.share) return fetched.share
     const res = await api.share.create(noteId, { isEnabled: true })
     useShareStore.getState().applyServerShare(res.share)
     return res.share

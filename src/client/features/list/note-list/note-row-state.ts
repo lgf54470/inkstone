@@ -6,7 +6,7 @@ import { useContextMenu } from '../../../components/overlay'
 import { useUi } from '../../../store/ui'
 import { useNotes } from '../../../store/notes'
 import { useBlogStore } from '../../blog'
-import { useShareRowForNote } from '../../share'
+import { useNoteIsShared, useShareRowForNote } from '../../share'
 import { t, useLocale } from '../../../lib/i18n'
 
 export interface NoteRowProps {
@@ -21,7 +21,8 @@ export interface NoteRowProps {
 
 function useNoteRowShareState(noteId: string) {
   const noteShare = useShareRowForNote(noteId)
-  return { noteShare, computedIsShared: Boolean(noteShare) }
+  const computedIsShared = useNoteIsShared(noteId)
+  return { noteShare, computedIsShared }
 }
 
 function useNoteRowBlogState(noteId: string) {

@@ -1988,6 +1988,8 @@ const allowed = new Map([
     '// Feed the notes store\'s visibility projection (shared note ids) without',
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
+    '// Before the hub loads the full list, the startup summary set carries the',
+    '// shared view\'s membership; list membership wins as soon as it exists.',
   ]],
   ['src/client/features/share/share-store/loaders.ts', [
     '// The hub mounts several surfaces (sidebar, note submenu, edit modal) that all',
@@ -1996,12 +1998,18 @@ const allowed = new Map([
     '// The same query is already on the wire: reuse it instead of a parallel duplicate.',
     '// A different query makes the previous result stale: cancel it so it stops',
     '// consuming bandwidth and cannot surface its failure as a toast.',
+    '// The full list is now the shared-state truth; a summary kept beside',
+    '// it would only resurrect revoked shares in the note-row markers.',
     '// Compare the controller, not just the key: an aborted earlier run of the',
     '// same query must not free the slot owned by the run that superseded it.',
+    '// The sidebar prefetch and the hub open race each other only at startup;',
+    '// a second in-flight summary would fetch the same two numbers.',
   ]],
   ['src/client/features/share/share-store/row-index.ts', [
     '// The selector result is the row object itself, so a write touching other rows',
     '// keeps this subscriber\'s value referentially equal and skips its re-render.',
+    '// A boolean derived from either truth source: the startup summary until the',
+    '// hub (or a submenu action) has loaded the full list.',
   ]],
   ['src/client/features/share/share-store/search-load.test.ts', [
     '// A leaked debounce timer from a failed assertion would fire into the next case.',
@@ -2022,6 +2030,10 @@ const allowed = new Map([
   ['src/client/features/share/use-share-list.ts', [
     '// Stable identities keep the memoized table rows from re-rendering when an',
     '// unrelated row\'s selection changes.',
+  ]],
+  ['src/client/features/share/use-share-note-submenu.ts', [
+    '// Since SH-19 a row can be shared without being in the store yet (the',
+    '// startup summary only carries ids): ask the server before publishing.',
   ]],
   ['src/client/features/share/use-share-settings-modal.ts', [
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',

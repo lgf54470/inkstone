@@ -6,6 +6,7 @@ import type { ShareStoreState, SetShareStoreState } from './types'
 export let loadEpoch = 0
 
 let inflightShareLoad: { key: string; controller: AbortController; promise: Promise<void> } | null = null
+let inflightSummaryLoad: Promise<void> | null = null
 
 // The hub mounts several surfaces (sidebar, note submenu, edit modal) that all
 // want folders/tags on open; without this guard every hub open doubled both
@@ -17,10 +18,11 @@ type CollectionGuard = { inflight: Promise<void> | null; lastLoadedAt: number }
 const foldersGuard: CollectionGuard = { inflight: null, lastLoadedAt: 0 }
 const tagsGuard: CollectionGuard = { inflight: null, lastLoadedAt: 0 }
 
-export const shareLoadersActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'loadFolders' | 'loadTags' | 'loadShares'> => ({
+export const shareLoadersActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'loadFolders' | 'loadTags' | 'loadShares' | 'loadSummary'> => ({
   loadFolders: () => guardCollection(foldersGuard, () => refreshFolders(set, foldersGuard)),
   loadTags: () => guardCollection(tagsGuard, () => refreshTags(set, tagsGuard)),
   loadShares: () => loadSharesImpl(set, get),
+  loadSummary: () => loadSummaryImpl(set, get),
 })
 
 function guardCollection(guard: CollectionGuard, refresh: () => Promise<void>): Promise<void> {
@@ -99,6 +101,9 @@ async function runShareLoad({ set, params, controller, epoch }: ShareLoadRun): P
       set({
         shares: res.shares,
         globalStats: res.globalStats,
+        // The full list is now the shared-state truth; a summary kept beside
+        // it would only resurrect revoked shares in the note-row markers.
+        summary: null,
         loading: false,
         error: false,
       })
@@ -112,5 +117,27 @@ async function runShareLoad({ set, params, controller, epoch }: ShareLoadRun): P
     // Compare the controller, not just the key: an aborted earlier run of the
     // same query must not free the slot owned by the run that superseded it.
     if (inflightShareLoad?.controller === controller) inflightShareLoad = null
+  }
+}
+
+async function loadSummaryImpl(set: SetShareStoreState, get: () => ShareStoreState): Promise<void> {
+  // The sidebar prefetch and the hub open race each other only at startup;
+  // a second in-flight summary would fetch the same two numbers.
+  if (inflightSummaryLoad) return inflightSummaryLoad
+  const promise = refreshSummary(set, get).finally(() => {
+    inflightSummaryLoad = null
+  })
+  inflightSummaryLoad = promise
+  return promise
+}
+
+async function refreshSummary(set: SetShareStoreState, get: () => ShareStoreState): Promise<void> {
+  if (get().shares.length > 0 || get().globalStats) return
+  try {
+    const res = await api.share.summary()
+    set({ summary: { totalShares: res.totalShares, sharedNoteIds: new Set(res.sharedNoteIds) } })
+  } catch (error) {
+    console.warn('[share-store] failed to load share summary', error)
+    useUi.getState().toast({ title: t('share.could_not_load_sharing_status'), tone: 'danger' })
   }
 }
