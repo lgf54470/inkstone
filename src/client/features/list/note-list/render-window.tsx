@@ -100,7 +100,7 @@ export function useRenderWindow(input: RenderWindowInput) {
   return { renderLimit, rendered, renderedIds }
 }
 
-export function NoteListBody({ scope, groups, title, activeNoteId, renderedIds, onKeyDown, listRef, hydrated, loading, filteredCount, filter, dateFilter, selectedTags, latestEdit, weekFiltered, latestWeekRange, applyFixedRange, sharedNoteIds, density, tagColors, selectRange, renderLimit, loadMoreRef }: {
+export function NoteListBody({ scope, groups, title, activeNoteId, renderedIds, onKeyDown, listRef, hydrated, loading, filteredCount, filter, dateFilter, selectedTags, latestEdit, weekFiltered, latestWeekRange, applyFixedRange, density, tagColors, selectRange, renderLimit, loadMoreRef }: {
   scope: { view: ViewKind; folderId: string | null; tag: string | null }
   groups: ReturnType<typeof groupNotes>
   title: string
@@ -118,7 +118,6 @@ export function NoteListBody({ scope, groups, title, activeNoteId, renderedIds, 
   weekFiltered: boolean
   latestWeekRange: DateRangeFilter | null
   applyFixedRange: (range: DateRangeFilter | null) => void
-  sharedNoteIds: Set<string>
   density: UiDensity
   tagColors: Map<string, string | null | undefined>
   selectRange: (targetId: string) => void
@@ -133,7 +132,7 @@ export function NoteListBody({ scope, groups, title, activeNoteId, renderedIds, 
           {group.label}
         </div>)}
         <div role='presentation' className='space-y-px'>
-          {group.items.map(({ note, ranges, position }) => (<NoteRow key={note.id} note={note} isShared={sharedNoteIds.has(note.id)} highlight={ranges} density={density} tagColors={tagColors} position={position} total={filteredCount} onRangeSelect={selectRange}/>))}
+          {group.items.map(({ note, ranges, position }) => (<NoteRow key={note.id} note={note} highlight={ranges} density={density} tagColors={tagColors} position={position} total={filteredCount} onRangeSelect={selectRange}/>))}
         </div>
       </div>)))}
       {renderLimit < filteredCount && <div ref={loadMoreRef} aria-hidden='true' className='h-px'/>}

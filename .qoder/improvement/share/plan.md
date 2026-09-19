@@ -34,7 +34,7 @@
 | 19 | SH-13 | slug 一致性：抢注 409、撤销清 share_asset_sessions | P3 | ✅ | 7a6cf67c |
 | 20 | SH-18 | 搜索防抖 + AbortSignal + 在途去重 | P1 | ✅ | 31a63d93 |
 | 21 | SH-21 | hub 打开重复拉 folders/tags；写操作全量重拉 → 定向 patch | P2 | ✅ | 0c3ec8a4 |
-| 22 | SH-23 | store 派生 `Map<noteId, ShareRow>`，行订阅改原始值 | P2 | ⬜ | |
+| 22 | SH-23 | store 派生 `Map<noteId, ShareRow>`，行订阅改原始值 | P2 | ✅ | 待回填 |
 | 23 | SH-22 | 表格行 memo + 菜单 items 惰性构建 + folders Map | P2 | ⬜ | |
 | 24 | SH-19 | App 启动瘦身：`/api/share/summary` 轻量端点 | P1 | ⬜ | |
 | 25 | SH-20 | code-split：barrel 拆 store/modals 入口（保持 blog 现有 import 不破） | P1 | ⬜ | |
@@ -120,3 +120,14 @@
   - 测试：新增 `guards-writes.test.ts` 9 例（TTL 去重与到期重取、loadShares 不再拉集合、toggleShare 成功不重拉且换行、失败重同步 ×3、乐观组写不重拉、bulk batch 保留重拉、applyServerShare 回退）；SH-15 三个用例的 create 桩从 `{}` 改为完整 `{share}`（行为契约变化，桩随迁）。
   - 变异验证：删 TTL 早退或 applyServerShare 回退各自转红（/tmp 备份还原，不用 git checkout）。
 - 遗留：hub 开合跨 TTL 仍会重拉集合，属预期刷新。
+
+## 22 — SH-23 分享行派生索引 + 逐行订阅（2026-09-19）
+
+- 现象：每个笔记行 `useShareStore((s) => s.shares)` 订阅整个数组再线性 find（n 行 × m 记录，任一分享写操作让全列表行重渲）；列表层还额外 `useMemo` 造 `sharedNoteIds` 集合并以 `isShared` prop 逐行下发，写一次分享连列表组件本体都重渲。
+- 修复：
+  - 新增 `share-store/row-index.ts`：`shareRowIndex(shares)` 用 `WeakMap` 按数组身份缓存 `Map<noteId, ShareInfo>`；`selectShareRow(shares, noteId)` O(1) 取行（同数组重复选择返回同一行引用）；`useShareRowForNote(noteId)` 订阅选择器返回值而非数组。经 `share-store/index.ts` 具名再导出（走模块公开入口）。
+  - `note-list/note-row-state.ts`：`useNoteRowShareState` 改走 `useShareRowForNote`，删 `isShared` prop（唯一来源即列表层，`computedIsShared` 语义不变 = 该行在 shares 中是否存在）。
+  - `note-list.tsx` / `note-list/render-window.tsx`：删 `useShareStore` 订阅、`sharedNoteIds` 派生与整条 prop 透传链，列表本体不再因分享写而重渲。
+  - `workspace/use-workspace.ts:68`：布尔选择器里的线性 `some` 换成 `selectShareRow` 查表（本就是原始值订阅，只去掉 O(m) 扫描）。
+  - 测试 `row-index.test.ts` 4 例：selectShareRow 命中返回原对象/未命中 null；同数组复用同一 Map、新数组重建；双探针下写入他行不重渲本探针而行更新会重渲（变异验证：hook 退回整数组订阅即转红）；行从不存在到出现会重渲（变异验证：去掉 WeakMap 缓存则索引用例转红）。
+- 遗留：`note-row-state.ts` 的 `useNoteRowShareState` 孪生 `useNoteRowBlogState` 是同款「整数组订阅+find」，属博客管理中心读侧，按约束③不动、等裁决；`use-workspace.ts` 的 `isBlogPublished` 同理。

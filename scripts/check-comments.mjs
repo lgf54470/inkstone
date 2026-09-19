@@ -1999,6 +1999,10 @@ const allowed = new Map([
     '// Compare the controller, not just the key: an aborted earlier run of the',
     '// same query must not free the slot owned by the run that superseded it.',
   ]],
+  ['src/client/features/share/share-store/row-index.ts', [
+    '// The selector result is the row object itself, so a write touching other rows',
+    '// keeps this subscriber\'s value referentially equal and skips its re-render.',
+  ]],
   ['src/client/features/share/share-store/search-load.test.ts', [
     '// A leaked debounce timer from a failed assertion would fire into the next case.',
     '// Async advancing lets the first load settle first; otherwise in-flight',

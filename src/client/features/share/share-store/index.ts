@@ -42,6 +42,7 @@ function initialShareState(): Partial<ShareStoreState> {
 
 export type { ShareFolderNode, ShareStoreState } from './types'
 export { buildShareFolderTree } from './folders'
+export { selectShareRow, shareRowIndex, useShareRowForNote } from './row-index'
 
 // Feed the notes store's visibility projection (shared note ids) without
 // creating a store → feature import edge: selectors read the neutral registry
