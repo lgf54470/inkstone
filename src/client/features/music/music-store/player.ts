@@ -13,6 +13,7 @@ import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 const STREAM_START_TIMEOUT_MS = 20_000
 const RESUME_THRESHOLD_MS = 1_000
+const MAX_CONSECUTIVE_PLAY_FAILURES = 3
 
 export function connectAudio(set: MusicSet, get: MusicGet): void {
   configureAudio({
@@ -34,7 +35,7 @@ export function connectAudio(set: MusicSet, get: MusicGet): void {
       if (buffering) armStreamWatchdog(set, get)
       else clearStreamWatchdog()
     },
-    onError: (code) => reportPlaybackFailure(set, get, code === 'network' || code === 'unknown' ? 'auto' : 'failed'),
+    onError: (code) => void handlePlaybackFailure(set, get, code === 'network' || code === 'unknown' ? 'auto' : 'failed'),
   })
   bindMediaSessionActions({
     play: () => void get().togglePlay(),
@@ -59,6 +60,7 @@ export function currentTrack(state: MusicStoreState): MusicTrack | null {
 }
 
 export async function playTrack(set: MusicSet, get: MusicGet, id: string): Promise<void> {
+  playFailures = 0
   set({ queue: [id], currentIndex: 0, durationMs: 0 })
   setProgressTime(0)
   await loadAndPlay(set, get)
@@ -66,6 +68,7 @@ export async function playTrack(set: MusicSet, get: MusicGet, id: string): Promi
 
 export async function playCollection(set: MusicSet, get: MusicGet, ids: string[], startIndex = 0): Promise<void> {
   if (!ids.length) return
+  playFailures = 0
   const index = Math.max(0, Math.min(startIndex, ids.length - 1))
   set({ queue: ids, currentIndex: index, durationMs: 0 })
   setProgressTime(0)
@@ -288,9 +291,10 @@ async function loadAndPlay(set: MusicSet, get: MusicGet): Promise<void> {
   const outcome = await startPlayback(track)
   publishMediaSession(track, outcome === 'playing')
   if (outcome !== 'playing') {
-    reportPlaybackFailure(set, get, 'auto')
+    await handlePlaybackFailure(set, get, 'auto')
     return
   }
+  playFailures = 0
   set({ isPlaying: true })
   if (resumeMs > RESUME_THRESHOLD_MS) {
     seekTo(resumeMs)
@@ -312,9 +316,10 @@ async function handleEnded(set: MusicSet, get: MusicGet): Promise<void> {
 }
 
 // Both the media error event and the stall watchdog can fire for one attempt,
-// and they race: one reporter keeps the user from getting two messages.
-function reportPlaybackFailure(set: MusicSet, get: MusicGet, kind: 'slow' | 'failed' | 'auto'): void {
-  if (streamFailedReported) return
+// and they race: one reporter keeps the user from getting two messages, and
+// the loser of that race must not also trigger a second auto-advance.
+function reportPlaybackFailure(set: MusicSet, get: MusicGet, kind: 'slow' | 'failed' | 'auto'): boolean {
+  if (streamFailedReported) return false
   streamFailedReported = true
   clearStreamWatchdog()
   const audio = audioElement()
@@ -324,6 +329,20 @@ function reportPlaybackFailure(set: MusicSet, get: MusicGet, kind: 'slow' | 'fai
   publishMediaSession(currentTrack(get()), false)
   if (kind === 'slow' || (kind === 'auto' && !buffered)) toastMusicNotice('music.playback_slow')
   else toastMusicError(null, 'music.action_failed')
+  return true
+}
+
+// A broken file mid-playlist must not end the session, but an unbounded skip
+// chain would burn the whole queue on a network outage, hence the breaker.
+async function handlePlaybackFailure(set: MusicSet, get: MusicGet, kind: 'slow' | 'failed' | 'auto'): Promise<void> {
+  if (!reportPlaybackFailure(set, get, kind)) return
+  playFailures += 1
+  if (playFailures >= MAX_CONSECUTIVE_PLAY_FAILURES) {
+    toastMusicError(null, 'music.playback_repeated_failures')
+    return
+  }
+  if (get().mode === 'repeat-one') return
+  await playNext(set, get)
 }
 
 // A slow WebDAV object streams below realtime, so waiting for the first frame
@@ -333,7 +352,7 @@ function armStreamWatchdog(set: MusicSet, get: MusicGet): void {
   streamWatchdog = window.setTimeout(() => {
     streamWatchdog = null
     if (!get().streamLoading) return
-    reportPlaybackFailure(set, get, 'slow')
+    void handlePlaybackFailure(set, get, 'slow')
   }, STREAM_START_TIMEOUT_MS)
 }
 
@@ -345,6 +364,7 @@ function clearStreamWatchdog(): void {
 
 let streamWatchdog: number | null = null
 let streamFailedReported = false
+let playFailures = 0
 
 function applyPlaybackRate(rate: number): void {
   const audio = audioElement()

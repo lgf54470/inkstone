@@ -15,6 +15,7 @@ export const messages = {
 'music.load_failed': 'Could not load the music library',
 'music.retry': 'Retry',
 'music.playback_slow': 'This track streams too slowly to play. Try a local or R2 track.',
+'music.playback_repeated_failures': 'Several tracks in a row failed to play, so automatic skipping stopped. Check your network or the files.',
 'music.no_tracks': 'No tracks yet',
 'music.no_tracks_hint': 'Upload an audio file to start your library.',
 'music.no_favorites': 'No favorites yet',

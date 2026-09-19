@@ -15,6 +15,7 @@ export const messages = {
 'music.load_failed': '音乐库加载失败',
 'music.retry': '重试',
 'music.playback_slow': '这首歌的网络传输太慢，无法播放。请改用本地或 R2 曲目。',
+'music.playback_repeated_failures': '连续多首无法播放，已停止自动跳过。请检查网络或音频文件。',
 'music.no_tracks': '还没有歌曲',
 'music.no_tracks_hint': '上传一个音频文件即可开始建立曲库。',
 'music.no_favorites': '还没有收藏',
