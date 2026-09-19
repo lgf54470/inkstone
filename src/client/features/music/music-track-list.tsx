@@ -32,6 +32,8 @@ export const MusicTrackList = memo(function MusicTrackList({
   const isStreamLoading = useMusic((state) => state.streamLoading)
   const viewMode = useMusic((state) => state.viewMode)
   const scope = useMusic((state) => state.scope)
+  const query = useMusic((state) => state.query)
+  const setQuery = useMusic((state) => state.setQuery)
   const openTrackMenu = useMusic((state) => state.openTrackMenu)
   const actions = useTrackListActions(tracks, currentId, onEdit)
   const playlistDrag = usePlaylistDrag()
@@ -57,7 +59,7 @@ export const MusicTrackList = memo(function MusicTrackList({
   const playback = useMemo(() => ({ isPlaying, isStreamLoading }), [isPlaying, isStreamLoading])
 
   if (loading && !tracks.length) return <LoadingBlock label={t('music.loading')} />
-  if (!tracks.length) return <Empty art='search' title={emptyTitle} description={t('music.no_tracks_hint')} compact />
+  if (!tracks.length) return <NoTracks emptyTitle={emptyTitle} query={query} onClearQuery={() => setQuery('')} />
 
   return (
     <div className='flex h-full min-h-0 flex-col'>
@@ -70,6 +72,22 @@ export const MusicTrackList = memo(function MusicTrackList({
     </div>
   )
 })
+
+// A search that matched nothing is not an empty library; offer the way back rather than the upload pitch.
+function NoTracks({ emptyTitle, query, onClearQuery }: { emptyTitle: string; query: string; onClearQuery: () => void }) {
+  if (query.trim()) {
+    return (
+      <Empty
+        art='search'
+        title={t('music.no_results')}
+        description={t('music.search_results', { value0: query.trim() })}
+        action={<Button size='sm' onClick={onClearQuery}>{t('music.search_clear')}</Button>}
+        compact
+      />
+    )
+  }
+  return <Empty art='search' title={emptyTitle} description={t('music.no_tracks_hint')} compact />
+}
 
 // Inside a playlist the rows can be dragged onto each other; the manual order
 // is the only order there, so the drop maps to an index in the stored items.

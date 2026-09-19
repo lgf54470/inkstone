@@ -1408,6 +1408,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-track-list.tsx', [
     '// The menu itself is a single hub-wide instance; rows only post these requests.',
+    '// A search that matched nothing is not an empty library; offer the way back rather than the upload pitch.',
     '// Inside a playlist the rows can be dragged onto each other; the manual order',
     '// is the only order there, so the drop maps to an index in the stored items.',
     '// Ctrl/Cmd+A selects the visible list, matching the file-manager habit; text fields keep their own.',
@@ -1452,6 +1453,9 @@ const allowed = new Map([
     '// baseline stays in the layout, and a theme flip repaints it without restarting rAF.',
     '// The first callback fires when the canvas enters or leaves the viewport, the second',
     '// when the theme flips tokens on the document root while the frame loop is stopped.',
+  ]],
+  ['src/client/features/music/music-webdav-modal.tsx', [
+    '// A failed listing is not an empty folder; show the failure and let the user retry in place.',
   ]],
   ['src/client/features/music/use-track-list.ts', [
     '// File-manager semantics: click selects one row, Ctrl toggles a row, Shift extends from the anchor.',

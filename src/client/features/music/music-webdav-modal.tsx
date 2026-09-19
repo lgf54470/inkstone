@@ -93,7 +93,6 @@ function WebdavUploadInput({
 function Browser({ parentPath }: { parentPath: string }) {
   const webdav = useMusic((state) => state.webdav)
   const browseWebdav = useMusic((state) => state.browseWebdav)
-  const importWebdavTrack = useMusic((state) => state.importWebdavTrack)
   const directory = webdav.directory || webdav.dir
   return (
     <>
@@ -115,36 +114,55 @@ function Browser({ parentPath }: { parentPath: string }) {
 
       <WebdavNotices />
 
-      {webdav.loading && !webdav.entries.length
-        ? <p className='py-10 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]' role='status'>{t('music.webdav_loading')}</p>
-        : webdav.entries.length === 0
-          ? <Empty art='folder' title={t('music.webdav_empty')} description={t('music.music_dir_hint')} compact />
-          : (
-            <ul className='max-h-80 space-y-0.5 overflow-y-auto'>
-              {webdav.entries.map((entry) => (
-                <WebdavRow
-                  key={entry.path}
-                  name={entry.name}
-                  path={entry.path}
-                  isDirectory={entry.isDirectory}
-                  sizeBytes={entry.sizeBytes}
-                  importing={webdav.importingPaths.includes(entry.path)}
-                  onOpen={() => void browseWebdav(entry.path)}
-                  onImport={() => void importWebdavTrack(entry)}
-                />
-              ))}
-            </ul>
-          )}
+      <WebdavListing />
     </>
+  )
+}
+
+function WebdavListing() {
+  const webdav = useMusic((state) => state.webdav)
+  const browseWebdav = useMusic((state) => state.browseWebdav)
+  const importWebdavTrack = useMusic((state) => state.importWebdavTrack)
+  if (webdav.loading && !webdav.entries.length)
+    return <p className='py-10 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]' role='status'>{t('music.webdav_loading')}</p>
+  // A failed listing is not an empty folder; show the failure and let the user retry in place.
+  if (webdav.error && !webdav.entries.length)
+    return (
+      <Empty
+        art='folder'
+        title={t('music.webdav_failed')}
+        description={webdav.error}
+        action={<Button size='sm' icon={<RefreshCw size={13} />} onClick={() => void browseWebdav(webdav.path)}>{t('common.retry')}</Button>}
+        compact
+      />
+    )
+  if (webdav.entries.length === 0)
+    return <Empty art='folder' title={t('music.webdav_empty')} description={t('music.music_dir_hint')} compact />
+  return (
+    <ul className='max-h-80 space-y-0.5 overflow-y-auto'>
+      {webdav.entries.map((entry) => (
+        <WebdavRow
+          key={entry.path}
+          name={entry.name}
+          path={entry.path}
+          isDirectory={entry.isDirectory}
+          sizeBytes={entry.sizeBytes}
+          importing={webdav.importingPaths.includes(entry.path)}
+          onOpen={() => void browseWebdav(entry.path)}
+          onImport={() => void importWebdavTrack(entry)}
+        />
+      ))}
+    </ul>
   )
 }
 
 function WebdavNotices() {
   const error = useMusic((state) => state.webdav.error)
   const truncated = useMusic((state) => state.webdav.truncated)
+  const hasEntries = useMusic((state) => state.webdav.entries.length > 0)
   return (
     <>
-      {error ? (
+      {error && hasEntries ? (
         <p role='status' className='py-1 text-center text-[length:var(--text-11)] text-[var(--text-secondary)]'>
           {t('music.webdav_failed')}: {error}
         </p>
