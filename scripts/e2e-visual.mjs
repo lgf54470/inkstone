@@ -1351,6 +1351,10 @@ const TOOLBAR_SURFACES = [
   // under that bar, which is exactly what the sweep holds to its size: a panel drawn as a row of
   // the header would push the control that opened it out from under the pointer.
   { name: 'slides editor', open: openSlidesEditor, root: '.bento-slides-fullscreen', toolbar: '.bento-slides-fullscreen header', minToggles: 2, loaded: { selector: '.bento-canvas-stage [data-slide-element]', min: 3 } },
+  // The board's top bar is the third toolbar drawn inside the full screen modal shell. Its three
+  // controls each disclose a portaled dialog of their own, which is what the sweep dismisses between
+  // presses, and its content has arrived once the cards are drawn.
+  { name: 'kanban board', open: openKanbanBoard, root: '.kanban-fullscreen', toolbar: '.kanban-fullscreen [data-kanban-header]', minToggles: 3, loaded: { selector: '[data-item-id]', min: 2 } },
 ]
 
 /**
@@ -1424,6 +1428,60 @@ async function slidesDeckOnScreen(page) {
     const box = document.querySelector('.ink-prose [data-bento-slides] [data-slide-element]')
     return Boolean(box && box.getClientRects().length > 0)
   })
+}
+
+/**
+ * A board of two cards in two columns, each carrying a tag. The tags are what put the filter chips in
+ * the header, and the chips are where the tag palette is actually painted; the two statuses are what
+ * gives the board a column each, so the sweep finds the cards it needs.
+ */
+const KANBAN_FENCE = [
+  '',
+  '```kanban',
+  JSON.stringify(
+    {
+      title: 'Gate Board',
+      items: [
+        { id: 'gate-1', title: 'Gate first task', properties: { status: 'todo', tags: ['feat'] } },
+        { id: 'gate-2', title: 'Gate second task', properties: { status: 'done', tags: ['improve'] } },
+      ],
+    },
+    null,
+    2,
+  ),
+  '```',
+  '',
+].join('\n')
+
+/** Whether the note on screen already draws a board whose cards are laid out. */
+async function kanbanBoardOnScreen(page) {
+  return page.evaluate(() => {
+    const block = document.querySelector('.ink-prose [data-kanban]')
+    return Boolean(block && block.getClientRects().length > 0 && block.querySelectorAll('[data-item-id]').length >= 2)
+  })
+}
+
+/**
+ * The board's own card in the note opens the overlay. The fence is written here rather than assumed to
+ * be left over from an earlier scenario, which is also what keeps the sweep's entry runnable on its
+ * own, and the press waits until the block draws its cards: a fence that failed to parse offers a
+ * full screen control over an error message, and the sweep would read that empty surface as a stable
+ * one. The control is pressed inside the board's own block because every rich block in the note
+ * carries one under the same name.
+ */
+async function openKanbanBoard(page) {
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('kanban board: the preview pane never became visible')
+  if (!(await kanbanBoardOnScreen(page))) {
+    await ensurePaneVisible(page, '.cm-content')
+    await writeAtEndOfNote(page, KANBAN_FENCE, 'kanban board')
+    if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('kanban board: the preview pane never became visible')
+  }
+  const cards = await page.waitForFunction(() => {
+    const block = document.querySelector('.ink-prose [data-kanban]')
+    return Boolean(block && block.querySelectorAll('[data-item-id]').length >= 2)
+  }, { timeout: 30_000 }).then(() => true, () => false)
+  if (!cards) throw new Error('kanban board: the note holds no board for the sweep to open')
+  await pressOpener(page, { labels: ['全屏', 'Full screen'], scope: '.ink-prose [data-kanban]' })
 }
 
 /** The outline control of the pane on screen, pressed where it is drawn. */
@@ -1944,6 +2002,196 @@ async function assertSlidesPrint(page) {
   check('slides editor: the sheet is off screen and out of the tab order', Boolean(sheet) && sheet.offScreen && sheet.hidden && sheet.inert, JSON.stringify(sheet))
 }
 
+/**
+ * The two locales the app offers: the settings radios a language goes by — the option names are
+ * translated too, so each choice is looked up under both dialog languages — and the value its `lang`
+ * attribute takes once it is applied.
+ */
+const LANGUAGES = {
+  zh: { lang: 'zh-CN', radios: ['简体中文', 'Simplified Chinese'] },
+  en: { lang: 'en-US', radios: ['英文', 'English'] },
+}
+
+/**
+ * The count inside one of the board's tag chips. A chip paints itself as a 14% tint of its own text
+ * colour over whatever lies behind it, so axe cannot resolve that background and hands these nodes
+ * to a reviewer instead of judging them — which is not the same as leaving them unjudged:
+ * `scripts/check-contrast.mjs` measures every tag colour's text on its own tint in both themes.
+ */
+const TAG_CHIP_COUNT = /^<span class="text-\[length:var\(--text-10\)\]">\(\d+\)<\/span>$/
+
+/** Presses one of the board's own view tabs, with a real pointer, inside the overlay. */
+async function clickKanbanView(page, labels) {
+  const point = await page.evaluate((wanted) => {
+    const tab = [...document.querySelectorAll('.kanban-fullscreen [role="tab"]')]
+      .find((item) => wanted.includes(item.textContent.trim()))
+    if (!tab) return null
+    const box = tab.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, labels)
+  if (!point) throw new Error(`kanban board: the overlay offers no ${labels.join(' / ')} view`)
+  await page.mouse.click(point.x, point.y)
+  await sleep(500)
+}
+
+/** What the board has to repaint when the account's language changes: its view names and its controls. */
+async function readKanbanLocale(page) {
+  return page.evaluate(() => {
+    const overlay = document.querySelector('.kanban-fullscreen')
+    return {
+      lang: document.documentElement.lang,
+      open: Boolean(overlay),
+      views: [...(overlay?.querySelectorAll('[role="tab"]') ?? [])].map((tab) => tab.textContent.trim()),
+      controls: [...(overlay?.querySelectorAll('[data-kanban-header] button') ?? [])]
+        .map((button) => button.getAttribute('aria-label') ?? '')
+        .filter(Boolean),
+    }
+  })
+}
+
+/**
+ * Choosing another language in the settings dialog, which the app opens over whatever is already on
+ * screen, and closing the dialog again. The radio is pressed rather than the store written to: which
+ * control carries the choice is part of what this measures.
+ *
+ * The two waits stand where a pair of sleeps used to. The settings panel arrives in its own chunk, so
+ * on a cold cache the dialog is not drawn yet when the press is answered, and the `lang` attribute is
+ * updated before the board has repainted the labels it translates for itself.
+ */
+async function setAccountLanguage(page, { radios, lang }) {
+  await pressCombo(page, ['Control', ','])
+  const drawn = await page.waitForFunction((labels) => [...document.querySelectorAll('[role="dialog"] button[role="radio"]')]
+    .some((item) => labels.includes(item.getAttribute('aria-label') ?? item.textContent.trim())), { timeout: 20_000 }, radios)
+    .then(() => true, () => false)
+  const choice = await page.evaluate((labels) => {
+    const name = (radio) => radio.getAttribute('aria-label') ?? radio.textContent.trim()
+    const all = [...document.querySelectorAll('[role="dialog"] button[role="radio"]')]
+    const radio = all.find((item) => labels.includes(name(item)) && item.getAttribute('aria-checked') !== 'true')
+    if (radio) radio.click()
+    return { clicked: radio ? name(radio) : '', names: all.map(name).slice(0, 6), dialogs: document.querySelectorAll('[role="dialog"]').length }
+  }, radios)
+  const applied = drawn && choice.clicked
+    ? await page.waitForFunction((wanted) => document.documentElement.lang === wanted, { timeout: 10_000 }, lang).then(() => true, () => false)
+    : false
+  await sleep(600)
+  await page.keyboard.press('Escape')
+  await sleep(1_000)
+  return { ...choice, drawn, applied }
+}
+
+/** One axe pass over the board: nothing in violation, and nothing sent to a reviewer but its own chips. */
+function assertBoardAccessibility(where, report) {
+  check(`a11y: the ${where} has no axe violations`, report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
+  const chips = report.incomplete.filter((item) => item.id === 'color-contrast' && TAG_CHIP_COUNT.test(item.html))
+  check(`a11y: the ${where} sends axe only its tag chips to a reviewer`, report.incomplete.every((item) => chips.includes(item)) && chips.length <= 3, JSON.stringify(report.incomplete))
+  check(`a11y: axe inspected the ${where}`, report.passes >= 10, `passes=${report.passes}`)
+}
+
+/**
+ * The full screen board, which is where the block is actually used, and which until now no gate had
+ * ever opened. Three of its properties are asserted rather than assumed: the overlay borrows the one
+ * instance the block in the note mounted instead of mounting a second copy of the board (a copy would
+ * write back twice), the heading chain runs from the board's title down to its cards one level at a
+ * time, and the board repaints when the account's language changes while it sits open — the case a
+ * unit test cannot reach, because the board is a memo tree whose data did not change.
+ *
+ * The two axe passes are the first read of this surface at all, and they are what found the defects
+ * the fixes for this item carry: a chip dimmed by its own `opacity` (its colour is calibrated at full
+ * strength, so the fade took it under AA), a card title that skipped a heading level under the board
+ * title, the table's value editors carrying no accessible name, and a top bar that claimed the banner
+ * landmark from inside the region the board already names.
+ */
+async function assertKanbanBoard(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(500)
+  await openKanbanBoard(page)
+  const surfaced = await page
+    .waitForFunction(() => Boolean(document.querySelector('.kanban-fullscreen')), { timeout: 15_000 })
+    .then(() => true, () => false)
+  check('kanban board: the block card opens the overlay', surfaced)
+  if (!surfaced) return
+  await waitForPanelSettled(page, '.kanban-fullscreen')
+  await sleep(400)
+
+  const hosting = await page.evaluate(() => {
+    const overlay = document.querySelector('.kanban-fullscreen')
+    const block = document.querySelector('.ink-prose [data-kanban]')
+    return {
+      role: overlay?.getAttribute('role') ?? '',
+      name: overlay?.getAttribute('aria-label') ?? '',
+      dialogs: document.querySelectorAll('[role="dialog"]').length,
+      canvases: document.querySelectorAll('[data-kanban-canvas]').length,
+      inOverlay: overlay?.querySelectorAll('[data-kanban-canvas]').length ?? 0,
+      reserve: Boolean(block?.querySelector('[data-kanban-placeholder] .kanban-canvas.is-reserve')),
+      headings: [...(overlay?.querySelectorAll('h1,h2,h3,h4,h5,h6') ?? [])].map((heading) => heading.tagName),
+      banners: overlay?.querySelectorAll('header, [role="banner"]').length ?? 0,
+      cards: [...(overlay?.querySelectorAll('[data-item-id] h3') ?? [])].map((heading) => heading.textContent.trim()),
+    }
+  })
+  // The overlay is named after the board rather than after the control that opened it, which is what a
+  // reader hears first when the surface appears.
+  check('kanban board: the overlay is a dialog named after the board', hosting.role === 'dialog' && hosting.name === 'Gate Board', JSON.stringify(hosting))
+  check('kanban board: the overlay hosts the block\'s one instance', hosting.dialogs === 1 && hosting.canvases === 1 && hosting.inOverlay === 1, JSON.stringify(hosting))
+  check('kanban board: the block keeps its place in the note while the overlay holds the board', hosting.reserve, JSON.stringify(hosting))
+  check('kanban board: the cards hang one level under the board title', hosting.headings.join(',') === 'H2,H3,H3' && hosting.cards.length === 2, JSON.stringify(hosting))
+  check('kanban board: nothing inside the board claims the banner landmark', hosting.banners === 0, JSON.stringify(hosting))
+
+  await ensureAxe(page)
+  assertBoardAccessibility('kanban board', await runAxe(page, '.kanban-fullscreen'))
+
+  await clickKanbanView(page, ['表格', 'Table'])
+  const drawn = await page.waitForFunction(() => Boolean(document.querySelector('.kanban-fullscreen [role="table"]')), { timeout: 10_000 }).then(() => true, () => false)
+  const table = await page.evaluate(() => {
+    const grid = document.querySelector('.kanban-fullscreen [role="table"]')
+    const count = (role) => grid?.querySelectorAll(`[role="${role}"]`).length ?? 0
+    const editors = [...(grid?.querySelectorAll('select') ?? [])]
+    return {
+      name: grid?.getAttribute('aria-label') ?? '',
+      rows: count('row'),
+      headers: count('columnheader'),
+      cells: count('cell'),
+      editors: editors.length,
+      unnamed: editors.filter((editor) => !editor.getAttribute('aria-label')).length,
+      names: [...new Set(editors.map((editor) => editor.getAttribute('aria-label')))],
+    }
+  })
+  // A grid of boxes is not a table: the roles are what tell a reader which row a cell belongs to, and
+  // they have to be on the surface the note's own markup draws rather than on a copy of it.
+  check('kanban board: the table view is a named table of rows and cells', drawn && table.name !== '' && table.rows >= 3 && table.headers >= 2 && table.cells >= 2, JSON.stringify(table))
+  check('kanban board: every value editor in the table is named after its column', table.editors >= 1 && table.unnamed === 0, JSON.stringify(table))
+  assertBoardAccessibility('kanban table view', await runAxe(page, '.kanban-fullscreen'))
+  await clickKanbanView(page, ['看板', 'Board'])
+
+  // The language switch happens with the board on screen. What has to move is everything the board
+  // translates for itself — its view names and its controls — while the cards keep the words the
+  // author wrote, and the account is put back afterwards so the run leaves nothing behind.
+  const found = await readKanbanLocale(page)
+  const current = found.lang.startsWith('zh') ? LANGUAGES.zh : LANGUAGES.en
+  const other = current === LANGUAGES.zh ? LANGUAGES.en : LANGUAGES.zh
+  const choice = await setAccountLanguage(page, other)
+  const flipped = await readKanbanLocale(page)
+  const back = choice.applied ? await setAccountLanguage(page, current) : choice
+  const restored = choice.applied ? await readKanbanLocale(page) : flipped
+  check('kanban board: the settings dialog opens over it and the language can be changed', choice.drawn && choice.applied && flipped.open && flipped.lang === other.lang, JSON.stringify({ choice, found, flipped }))
+  check('kanban board: the board repaints the labels it translates while it stays open', flipped.views.length === found.views.length && flipped.views.length >= 4 && flipped.views.every((view, index) => view !== found.views[index] && view !== '') && flipped.controls.join() !== found.controls.join(), JSON.stringify({ choice, before: found, after: flipped }))
+  check('kanban board: the run leaves the account the language it found', back.applied && restored.lang === current.lang && JSON.stringify(restored.views) === JSON.stringify(found.views), JSON.stringify({ choice, back, restored }))
+
+  await page.keyboard.press('Escape')
+  const closed = await page.waitForFunction(() => !document.querySelector('.kanban-fullscreen'), { timeout: 10_000 }).then(() => true, () => false)
+  const returned = await page.evaluate(() => {
+    const block = document.querySelector('.ink-prose [data-kanban]')
+    return {
+      canvases: document.querySelectorAll('[data-kanban-canvas]').length,
+      inBlock: block?.querySelectorAll('[data-kanban-canvas]').length ?? 0,
+      cards: block?.querySelectorAll('[data-item-id]').length ?? 0,
+    }
+  })
+  check('kanban board: escape closes it', closed)
+  // The repaint above rebuilt the note under the open overlay, so this is the read of the borrow
+  // actually working: the instance still comes back to the block, and the block still draws it.
+  check('kanban board: closing hands the one instance back to the block', returned.canvases === 1 && returned.inBlock === 1 && returned.cards >= 2, JSON.stringify(returned))
+}
+
 async function assertFullscreenToolbars(page) {
   // The hotkeys below are the app's own, and half of them are refused while a text field has the
   // keyboard: each surface starts from no focus at all rather than from wherever the last scenario
@@ -2136,6 +2384,7 @@ async function main() {
     await assertMindmapBlock(page)
     await assertMindmapSplitEditing(page)
     await assertSlidesEditor(page)
+    await assertKanbanBoard(page)
     await assertFullscreenToolbars(page)
     await assertContextMenuNesting(page)
 
