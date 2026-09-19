@@ -4395,6 +4395,16 @@ const allowed = new Map([
     '/**\n * Whiteboard libraries as the API hands them around: an account owns a set of *named*\n * libraries — the same shape the public directory lists — and each one is a single\n * `.excalidrawlib` document stored as its own object. Boards draw from the one the user\n * selected (`preview.boardLibrary`), so every note sees the same items.\n */',
     '/**\n   * The library\'s items as JSON text: an `.excalidrawlib` body (the format is JSON, not an\n   * archive), kept verbatim so a file round-trips with excalidraw.com. Null before the\n   * first save, which the boards read as an empty library.\n   */',
   ]],
+  ['src/shared/types/export.ts', [
+    '// M-53b: additive and optional - older exporters simply omit the key, and the',
+    '// restore treats a missing section as "nothing to do".',
+    '// Metadata-level snapshot of the music library: every D1 row except playback',
+    '// position. Audio bytes live in R2/WebDAV and are deliberately out of reach of',
+    '// the 64MB import limit, so restoring re-links the rows, not the files.',
+    '// Like the view model plus the add timestamp the restore needs to keep rows',
+    '// byte-faithful; the API payload itself never carries it.',
+    '// R2 key or WebDAV remote path; re-validated row-by-row at restore time.',
+  ]],
   ['src/shared/types/graph.ts', [
     '/** Tags to filter by. Overrides `tag`; sent comma-separated. */',
     '/** How multiple tags combine: `any` (default) for union, `all` for intersection. */',
@@ -4458,6 +4468,13 @@ const allowed = new Map([
   ]],
   ['src/worker/backup/snapshot/index.ts', [
     '/** Produces restorable JSON, readable Markdown, and attachment files for every backup target. */',
+  ]],
+  ['src/worker/backup/snapshot/music-export.ts', [
+    '// The five scans that make up a music export, kept as bound statements so the',
+    '// caller runs them in a single batch.',
+    '// M-53b: the music section of a JSON export. Every read is a full-table scan',
+    '// bounded by the account\'s own library - the same shape /api/music/library',
+    '// already ships per request, plus the lyric text the API keeps out of payloads.',
   ]],
   ['src/worker/board-library/keys.ts', [
     '/**\n * Object layout for whiteboard libraries: `<prefix>/<account>/<name>.json`, one object per\n * named library, so what the user calls a library is exactly what the bucket holds.\n */',
@@ -4547,13 +4564,27 @@ const allowed = new Map([
     '/** Markdown-backup import: manifest parsing, entry verification and batch restore. */',
   ]],
   ['src/worker/import/bundle.ts', [
-    '/** Inkstone export-bundle import: folders, notes, tags and attachments restored from an export JSON. */',
+    '/** Inkstone export-bundle import: folders, notes, tags, attachments and music metadata. */',
   ]],
   ['src/worker/import/folders.ts', [
     '/** Folder creation for the import pipeline: prime the cache, then create paths segment by segment. */',
   ]],
   ['src/worker/import/markdown.ts', [
     '/** Plain .md/.markdown/.txt import with optional Obsidian asset resolution. */',
+  ]],
+  ['src/worker/import/music-bundle.ts', [
+    '/** M-53b: restore of the music section of an export bundle (metadata only, merge by id). */',
+    '// A restored row may only name a remote path the import route itself would accept.',
+    '// An R2 key must be exactly what this row\'s own upload would have derived,',
+    '// so a crafted bundle can never point a track at another account\'s object.',
+    '// Rows carried over by the legacy rebuild can hold a zero added timestamp.',
+    '// Validates one section row-by-row: a few bad rows must not sink the whole',
+    '// restore, but every drop is reported (counts are aggregated so a hostile file',
+    '// cannot flood the warnings list).',
+    '// Existing rows win: restore only creates what the account lost, it never',
+    '// rewrites current state.',
+    '// Rows arrive as column arrays in the table\'s column order; user_id is bound',
+    '// per statement and never taken from the file.',
   ]],
   ['src/worker/import/notes.ts', [
     '/** Note-level writes for the import pipeline: index lookup, insert and guarded update. */',
@@ -4802,7 +4833,15 @@ const allowed = new Map([
     '// Shared by the authenticated library and the public blog player.',
     '// Shared by uploads and metadata refreshes; a failed cover write must not fail the caller.',
   ]],
+  ['src/worker/routes/music/index.ts', [
+    '// M-53b: the bundle restore validates stored object references with the exact',
+    '// rules the upload and WebDAV import paths enforce.',
+  ]],
   ['src/worker/routes/music/keys.ts', [
+    '// WebDAV paths stay relative to the user\'s music directory: no traversal, no',
+    '// absolute paths, no control characters, and never inside the app\'s own',
+    '// storage namespace (those keys would enter the local object lifecycle).',
+    '// Shared by the import request schema and the M-53b bundle restore.',
     '// A stored key may only be deleted when it is exactly the object this row\'s',
     '// upload would have derived; forged keys must not turn a delete into',
     '// cross-account storage access.',
@@ -5036,6 +5075,9 @@ const allowed = new Map([
     '// Skeleton compares tag names and class tokens only (attribute order insensitive),',
     '// ignoring text: the root renderer emits i18n key literals without a provider in',
     '// tests, and both trees pin full output text via their own baseline snapshots.',
+  ]],
+  ['tests/music-bundle-transfer.test.ts', [
+    '// Rows the account already has must not count against the quota twice.',
   ]],
   ['tests/music-playlist-share.test.ts', [
     '// Manual order: second was added first, so the public page must show it first.',

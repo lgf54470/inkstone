@@ -6,7 +6,7 @@ export type { BackupMode, BackupRun, BackupTarget, BackupTargetConfig, BackupTar
 export type { BlogCategory, BlogComment, BlogCommentStatus, BlogFolder, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStats, BlogLinkStatus, BlogPost, BlogSettings, BlogStats, BlogTag, BlogVisitLog } from './blog'
 export type { BoardLibraryList, BoardLibrarySnapshot, BoardLibrarySummary } from './board-library'
 export type { ConflictPayload, CreateNoteBody, ListNotesQuery, ListNotesResponse, PatchNoteBody, SortKey, SortOrder, ViewKind } from './list'
-export type { ExportAttachment, ExportBundle, ImportResult } from './export'
+export type { ExportAttachment, ExportBundle, ExportBundleMusic, ExportedMusicPlaylistItem, ExportedMusicTrack, ImportResult } from './export'
 export type { GraphEdge, GraphNode, GraphQuery, GraphResponse } from './graph'
 export type { McpAiSearchStatus, McpApiKey, McpGrant, McpPreferences, McpSettingsInfo } from './mcp'
 export type { PasswordLoginResult, PublicUser, SessionInfo, TotpLoginChallenge, TotpLoginResult, TotpRecoveryCodesResult, TotpSetupInfo, TotpStatus, UserRole } from './auth'

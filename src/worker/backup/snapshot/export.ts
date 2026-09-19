@@ -10,6 +10,7 @@ import type { Snapshot } from './build'
 import { formatBytes } from './build'
 import { loadNotesPage } from './build'
 import { NOTE_PAGE_SIZE } from './build'
+import { loadMusicExportSection } from './music-export'
 import { encoder } from './files'
 
 export interface MaterializedBackupFile {
@@ -79,7 +80,9 @@ export async function buildJsonExport(env: Env, userId: string): Promise<Uint8Ar
     afterId = page.results.at(-1)!.id
     if (page.results.length < NOTE_PAGE_SIZE) break
   }
-  append('],"attachments":[]}')
+  append('],"attachments":[]')
+  const music = await loadMusicExportSection(env.DB, userId)
+  append(music ? `,"music":${JSON.stringify(music)}}` : '}')
 
   const bytes = concatChunks(chunks, byteLength)
   assertBundleCanBeRestored(bytes)

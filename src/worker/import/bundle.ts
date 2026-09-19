@@ -1,4 +1,4 @@
-/** Inkstone export-bundle import: folders, notes, tags and attachments restored from an export JSON. */
+/** Inkstone export-bundle import: folders, notes, tags, attachments and music metadata. */
 import { LIMITS } from '@shared/constants'
 import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
@@ -12,6 +12,7 @@ import {
   rewriteAttachmentReferences,
 } from './attachments'
 import { ensureFolderPath } from './folders'
+import { restoreMusicBundleSection } from './music-bundle'
 import { insertNote, loadExistingNoteIndex, updateImportedNote } from './notes'
 import { addWarning, finiteNumber, importedBundleTitle, isRecord, normalizeFolderSegment, sourceKey, validTimestamp } from './shared'
 import type { ExistingNoteIndex, ImportContext, InsertInput, SourceFolder } from './types'
@@ -312,6 +313,7 @@ export async function importBundle(
   }
 
   await restoreTagMetadata(c.env.DB, userId, rawTags)
+  await restoreMusicBundleSection(c.env.DB, userId, (raw as { music?: unknown }).music, ctx)
 }
 
 function collectBundleTagRows(rawTags: readonly unknown[]): Array<{ id: string; name: string; color: string | null }> {

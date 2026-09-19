@@ -70,6 +70,21 @@ export function isMusicObjectKey(key: string): boolean {
   return key.startsWith(MUSIC_OBJECT_PREFIX) && !key.includes('..') && key.length > MUSIC_OBJECT_PREFIX.length
 }
 
+// WebDAV paths stay relative to the user's music directory: no traversal, no
+// absolute paths, no control characters, and never inside the app's own
+// storage namespace (those keys would enter the local object lifecycle).
+// Shared by the import request schema and the M-53b bundle restore.
+export function isWebdavRelativePath(value: string): boolean {
+  return (
+    value.length > 0 &&
+    value.length <= 1024 &&
+    !value.split('/').some((segment) => segment === '..') &&
+    !value.startsWith('/') &&
+    !value.startsWith(MUSIC_OBJECT_PREFIX) &&
+    !/[\u0000-\u001f\u007f]/.test(value)
+  )
+}
+
 // A stored key may only be deleted when it is exactly the object this row's
 // upload would have derived; forged keys must not turn a delete into
 // cross-account storage access.

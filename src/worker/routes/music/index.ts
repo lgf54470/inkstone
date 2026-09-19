@@ -26,3 +26,6 @@ registerMusicSettingsRoutes(musicRoutes)
 
 export { registerMusicPublicRoutes } from './public'
 export { musicPageRoutes } from './page'
+// M-53b: the bundle restore validates stored object references with the exact
+// rules the upload and WebDAV import paths enforce.
+export { isDerivedMusicObjectKey, isWebdavRelativePath } from './keys'

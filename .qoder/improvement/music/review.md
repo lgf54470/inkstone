@@ -290,6 +290,8 @@
   - ✅（M-52）在线歌词搜索：Worker 代理 lrclib.net（页面 CSP 禁三方连接），路由 GET /tracks/:id/lyric-lookup 先按归属加载曲目（越权即 404 且不触网），再走 'lyric' 小时预算（60/时，独立键不与封面互挤），重定向逐跳复检抽为共享 outbound.ts 供封面/歌词两路复用。匹配优先带时间的 syncedLyrics（LRC 可直接进现有高亮）、退回 plainLyrics，超 128KB 存储上限的匹配按无匹配处理不外泄。路由只读不写：命中经普通 patchTrack 落库，已有歌词的曲目在菜单层弹 confirm 后才替换（拒绝即原样），无匹配走 notice 而非 error。已知限制：结果质量取决于 lrclib 众包覆盖；不缓存上游响应（缓存=落库这一份）；匿名分享页不展示歌词入口；demo 后端不镜像（封面代理同样未镜像）。
   - ✅（M-53a）重复文件检测：迁移 v39 给 music_tracks 加 content_hash TEXT + (user_id, content_hash) 索引（skipIfColumnExists 守卫，只增不改）。哈希只在字节经过 worker 时算——R2 上传与 WebDAV 上传两条路径落 sha256；WebDAV 元数据导入与建列前的旧行恒为 NULL，天然不进重复视图（回填=重新下载整库，不做）。契约字段 contentHash 走 rows.ts 逐字段 toTrack 出载荷；loadTrackRow 与 library 两处窄 SELECT 已补列，否则 PATCH 响应合并会把哈希静默洗掉、曲目从重复视图消失（有专测守住）；toPublicTrack 手工投影不含该字段，匿名不外泄（有断言）。客户端纯函数模块 music-duplicates.ts：按哈希成组（≥2）、组内最旧上传在前（保留的自然那份）、组间按可释放字节降序；新增 'duplicates' scope 走与歌单同样的排序/置顶豁免通道，侧栏导航带冗余计数，列表上方 role=status 汇总条（组数/多出份数/约可释放字节）。批量删除直接复用既有 bulk 删除链路，不新建入口。
     - 已知限制：只覆盖「字节完全相同」的文件（重编码/截断副本不识别）；旧库与 WebDAV 元数据导入曲目无哈希、不参与检测；视图只报告不自动清理。
+  - ✅（M-53b）整库纳入备份体系（元数据级）：JSON 导出 bundle（version 仍 1）新增可选 music 段——曲库行（含歌词全文、content_hash、封面与对象键）、音乐标签与链接、歌单与按序条目，五表单批读取；空库不出段，旧导出文件天然兼容。恢复接在 importBundle 尾部（notes/tags 之后），安全判定与在线路径同源：r2 行对象键必须等于本行 id+createdAt 自身推导键（复用删除守卫 isDerivedMusicObjectKey，伪造键不能把恢复变成跨账号存储访问），webdav 行复用抽出的 isWebdavRelativePath 谓词（与导入接口同一判定源，schemas.ts 已改走它）；user_id 服务端绑定，永不取自文件。合并语义「既有为准」：按表载 existing id 只补缺、INSERT OR IGNORE 纵深防御，配额只对 fresh 行求和（重导入不双计）。无效行/重复 id/悬挂标签链接与歌单条目一律计数聚合告警，恶意文件刷不爆告警列表。
+    - 已知限制：仅元数据入包，音频字节不随导出（单文件导入上限 64MB、ZIP 展开上限 80MB，均远小于曲库 4GB 配额，字节级不可行——计划既判定）；r2 行恢复后对象可能已被硬删（删除曲目即删对象不可撤回），播放届时 404、行在可重传；封面外链/dataURL 原样存不重验；导入结果无 music 专属计数器，只经 warnings 反馈；demo 后端不镜像（与 M-52 一致）。
 
 ### 功能面核对通过项
 

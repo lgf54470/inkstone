@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { LIMITS } from '@shared/constants'
-import { MUSIC_OBJECT_PREFIX, sanitizeCoverUrl } from './keys'
+import { isWebdavRelativePath, sanitizeCoverUrl } from './keys'
 
 const trimmed = (max: number) => z.string().trim().max(max)
 const optionalTrimmed = (max: number) => trimmed(max).optional()
@@ -99,12 +99,8 @@ export type WebdavPathBody = z.infer<typeof webdavPathSchema>
 // WebDAV paths stay relative to the user's music directory: no traversal, no
 // absolute paths, no control characters, and never inside the app's own
 // storage namespace (those keys would enter the local object lifecycle).
-const webdavRelativePath = z.string().min(1).max(1024).refine((value) =>
-  !value.split('/').some((segment) => segment === '..') &&
-  !value.startsWith('/') &&
-  !value.startsWith(MUSIC_OBJECT_PREFIX) &&
-  !/[\u0000-\u001f\u007f]/.test(value),
-{ message: 'Provide a relative WebDAV path outside the app namespace' })
+const webdavRelativePath = z.string().refine(isWebdavRelativePath,
+  { message: 'Provide a relative WebDAV path outside the app namespace' })
 
 export const importMusicSchema = z.object({
   path: webdavRelativePath,
