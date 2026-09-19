@@ -1,4 +1,4 @@
-import { ACCENTS } from '@shared/constants'
+import { ACCENTS, LIMITS } from '@shared/constants'
 import type { MusicPlayMode, MusicTag, MusicTrack } from '@shared/types'
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
@@ -64,6 +64,31 @@ export const SEEK_STEP_MS = 10_000
 export function seekTargetMs(currentMs: number, durationMs: number, deltaMs: number): number {
   const target = currentMs + deltaMs
   return Math.max(0, durationMs > 0 ? Math.min(target, durationMs) : target)
+}
+
+// Mirrors the worker's extension table so folder picks (which carry cover art, cue
+// sheets and other noise) only queue real audio, and nothing wastes a round trip
+// the server would reject. Empty files count as unsupported rather than vanishing.
+const UPLOAD_EXTENSIONS = new Set(['mp3', 'm4a', 'mp4', 'flac', 'wav', 'wave', 'ogg', 'oga', 'opus', 'aac', 'webm'])
+
+export interface UploadPartition {
+  accepted: File[]
+  unsupported: number
+  tooLarge: number
+}
+
+export function partitionUploadableFiles(files: File[]): UploadPartition {
+  const accepted: File[] = []
+  let unsupported = 0
+  let tooLarge = 0
+  for (const file of files) {
+    const dot = file.name.lastIndexOf('.')
+    const extension = dot > 0 ? file.name.slice(dot + 1).toLowerCase() : ''
+    if (!UPLOAD_EXTENSIONS.has(extension) || file.size === 0) unsupported += 1
+    else if (file.size > LIMITS.musicTrackMaxBytes) tooLarge += 1
+    else accepted.push(file)
+  }
+  return { accepted, unsupported, tooLarge }
 }
 
 export interface LyricLine {

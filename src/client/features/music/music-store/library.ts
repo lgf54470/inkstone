@@ -66,7 +66,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     importWebdavTrack: (entry) => importWebdavTrack(set, get, entry),
     importWebdavFolder: () => importWebdavFolder(set, get),
     deleteWebdavFiles: (paths) => deleteWebdavObjects(paths),
-    dismissUpload: (id) => dismissUpload(set, id),
+    dismissUpload: (id) => dismissUpload(set, get, id),
     downloadTracks: (ids) => downloadTracks(set, get, ids),
     dismissDownload: (id) => dismissDownload(set, id),
     dismissLibraryJob: (kind) => dismissLibraryJob(set, kind),

@@ -1,10 +1,10 @@
 import type { MusicPlaylistDetail, MusicTag } from '@shared/types'
 import { api, uploadMusicToWebdav, uploadMusicTrack, type MusicPlaylistPatch } from '../../../lib/api'
 import { mapWithConcurrency, throttledProgress } from '../../../lib/async'
-import { toastMusic, toastMusicError, toastUploadError } from '../music-feedback'
+import { toastMusic, toastMusicError, toastUploadError, toastUploadSkip } from '../music-feedback'
 import { readFileMetadata } from '../music-metadata'
 import { readDurationMs } from '../music-probe'
-import { TRACK_IO_CONCURRENCY } from '../music-utils'
+import { partitionUploadableFiles, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { summarizeLibrary } from './library-load'
 import type { MusicGet, MusicSet, MusicStoreState, MusicTransferTarget, MusicUploadTask } from './types'
 
@@ -256,16 +256,22 @@ function resummarizePlaylists(state: MusicStoreState, playlists: MusicPlaylistDe
 }
 
 export async function uploadFiles(set: MusicSet, get: MusicGet, files: File[], target: MusicTransferTarget = 'r2'): Promise<void> {
-  const accepted = files.filter((file) => file.size > 0)
+  const { accepted, unsupported, tooLarge } = partitionUploadableFiles(files)
+  if (unsupported) toastUploadSkip('music.upload_unsupported', unsupported)
+  if (tooLarge) toastUploadSkip('music.upload_too_large', tooLarge)
   if (!accepted.length) return
   const tasks = accepted.map((file, index) => makeUploadTask(file, index, target))
   set((state) => ({ uploads: [...state.uploads, ...tasks] }))
-  await mapWithConcurrency(accepted, TRACK_IO_CONCURRENCY, (file, index) => uploadOne(set, file, tasks[index]!))
+  const outcomes = await mapWithConcurrency(accepted, TRACK_IO_CONCURRENCY, (file, index) => uploadOne(set, file, tasks[index]!))
   await get().loadLibrary(true)
   set((state) => ({ uploads: state.uploads.filter((task) => task.status !== 'done') }))
+  const done = outcomes.filter((outcome) => outcome === 'done').length
+  if (done) toastMusic(target === 'webdav' ? 'music.upload_webdav_done' : 'music.upload_done', { value0: done })
+  const failure = outcomes.find((outcome) => outcome !== 'done' && outcome !== 'aborted')
+  if (failure) toastUploadError(failure)
 }
 
-async function uploadOne(set: MusicSet, file: File, task: MusicUploadTask): Promise<void> {
+async function uploadOne(set: MusicSet, file: File, task: MusicUploadTask): Promise<string> {
   const [durationMs, tags] = await Promise.all([
     readDurationMs(file).catch(() => 0),
     readFileMetadata(file).catch(() => null),
@@ -280,15 +286,16 @@ async function uploadOne(set: MusicSet, file: File, task: MusicUploadTask): Prom
   }
   const progress = throttledProgress((percent) => updateUpload(set, task.id, { percent }))
   const result = task.target === 'webdav'
-    ? await uploadMusicToWebdav(file, meta, progress)
-    : await uploadMusicTrack(file, { ...meta, tagIds: [] }, progress)
+    ? await uploadMusicToWebdav(file, meta, progress, task.controller.signal)
+    : await uploadMusicTrack(file, { ...meta, tagIds: [] }, progress, task.controller.signal)
   if (result.track) {
     updateUpload(set, task.id, { percent: 100, status: 'done' })
-    toastMusic(task.target === 'webdav' ? 'music.upload_webdav_done' : 'music.upload_done', { value0: 1 })
-    return
+    return 'done'
   }
+  // A canceled transfer is not a failure: the row is already gone and no toast should follow.
+  if (result.error === 'aborted') return 'aborted'
   updateUpload(set, task.id, { status: 'failed', error: result.error })
-  toastUploadError(result.error)
+  return result.error ?? 'unknown'
 }
 
 function makeUploadTask(file: File, index: number, target: MusicTransferTarget): MusicUploadTask {
@@ -299,6 +306,7 @@ function makeUploadTask(file: File, index: number, target: MusicTransferTarget):
     status: 'uploading',
     error: null,
     target,
+    controller: new AbortController(),
   }
 }
 
@@ -306,7 +314,9 @@ function updateUpload(set: MusicSet, id: string, patch: Partial<MusicUploadTask>
   set((state) => ({ uploads: state.uploads.map((task) => (task.id === id ? { ...task, ...patch } : task)) }))
 }
 
-export function dismissUpload(set: MusicSet, id: string): void {
+export function dismissUpload(set: MusicSet, get: MusicGet, id: string): void {
+  // The row's dismiss button is the user's cancel: stop the transfer, not just its display.
+  get().uploads.find((task) => task.id === id)?.controller.abort()
   set((state) => ({ uploads: state.uploads.filter((task) => task.id !== id) }))
 }
 

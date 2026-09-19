@@ -24,3 +24,11 @@ export function toastUploadError(code: string | null): void {
   const fallback = t('music.upload_failed')
   useUi.getState().toast({ title: translateApiError(code ?? 'unknown', fallback), tone: 'danger' })
 }
+
+export function toastUploadSkip(reasonKey: MessageKey, count: number): void {
+  useUi.getState().toast({
+    title: t(reasonKey),
+    description: t('music.upload_skipped_count', { value0: count }),
+    tone: 'warning',
+  })
+}

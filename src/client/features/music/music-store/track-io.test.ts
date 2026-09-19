@@ -12,6 +12,7 @@ vi.mock('../music-feedback', () => ({
   toastMusicError: vi.fn(),
   toastMusicNotice: vi.fn(),
   toastUploadError: vi.fn(),
+  toastUploadSkip: vi.fn(),
 }))
 vi.mock('../music-metadata', () => ({
   readFileMetadata: vi.fn(async () => null),
@@ -21,11 +22,13 @@ vi.mock('../music-metadata', () => ({
 vi.mock('../music-probe', () => ({ readDurationMs: vi.fn(async () => 0) }))
 vi.mock('../music-export', () => ({ saveBlob: vi.fn() }))
 
-import { uploadMusicTrack } from '../../../lib/api'
+import { uploadMusicToWebdav, uploadMusicTrack } from '../../../lib/api'
 import { saveBlob } from '../music-export'
-import { uploadFiles } from './library-collections'
+import { toastMusic, toastUploadError, toastUploadSkip } from '../music-feedback'
+import { dismissUpload, uploadFiles } from './library-collections'
 import { downloadTracks } from './transfers'
 import type { MusicStoreState } from './types'
+import { LIMITS } from '@shared/constants'
 
 function makeStore() {
   const loadLibrary = vi.fn(async () => {})
@@ -45,6 +48,7 @@ function audioFile(name: string): File {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.clearAllMocks()
 })
 
 function track(id: string): MusicTrack {
@@ -107,6 +111,104 @@ describe('uploadFiles progress', () => {
 
     expect(percents).toEqual([0, 1, 100])
     vi.useRealTimers()
+  })
+})
+
+describe('uploadFiles pre-check', () => {
+  it('skips files whose extension is not a supported audio format', async () => {
+    vi.mocked(uploadMusicTrack).mockResolvedValue({ track: track('uploaded'), error: null })
+    const store = makeStore()
+
+    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3'), audioFile('notes.txt'), audioFile('cover.JPG')])
+
+    expect(uploadMusicTrack).toHaveBeenCalledTimes(1)
+    expect(toastUploadSkip).toHaveBeenCalledWith('music.upload_unsupported', 2)
+  })
+
+  it('skips oversized files without a task row or a library reload', async () => {
+    const store = makeStore()
+    const big = audioFile('big.mp3')
+    Object.defineProperty(big, 'size', { value: LIMITS.musicTrackMaxBytes + 1 })
+
+    await uploadFiles(store.set as never, store.get as never, [big])
+
+    expect(uploadMusicTrack).not.toHaveBeenCalled()
+    expect(store.get().uploads).toEqual([])
+    expect(store.get().loadLibrary).not.toHaveBeenCalled()
+    expect(toastUploadSkip).toHaveBeenCalledWith('music.upload_too_large', 1)
+  })
+
+  it('uploads every file when all pass the pre-check', async () => {
+    vi.mocked(uploadMusicTrack).mockResolvedValue({ track: track('uploaded'), error: null })
+    const store = makeStore()
+
+    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3'), audioFile('b.flac')])
+
+    expect(uploadMusicTrack).toHaveBeenCalledTimes(2)
+    expect(toastUploadSkip).not.toHaveBeenCalled()
+  })
+})
+
+describe('upload cancellation', () => {
+  it('dismissing an in-flight upload aborts its request without an error toast', async () => {
+    let capturedSignal: AbortSignal | undefined
+    vi.mocked(uploadMusicTrack).mockImplementation((...args: unknown[]) => {
+      capturedSignal = args[3] as AbortSignal
+      return new Promise((resolve) => {
+        capturedSignal?.addEventListener('abort', () => resolve({ track: null, error: 'aborted' }))
+      })
+    })
+    const store = makeStore()
+    const run = uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3')])
+    await vi.waitFor(() => expect(uploadMusicTrack).toHaveBeenCalledTimes(1))
+    const id = store.get().uploads[0]!.id
+
+    dismissUpload(store.set as never, store.get as never, id)
+
+    expect(capturedSignal?.aborted).toBe(true)
+    expect(store.get().uploads).toEqual([])
+    await run
+    expect(toastUploadError).not.toHaveBeenCalled()
+    expect(toastMusic).not.toHaveBeenCalled()
+  })
+
+  it('hands the same cancellation plumbing to webdav uploads', async () => {
+    let webdavSignal: unknown
+    vi.mocked(uploadMusicToWebdav).mockImplementation((...args: unknown[]) => {
+      webdavSignal = args[3]
+      return Promise.resolve({ track: null, error: 'aborted' })
+    })
+    const store = makeStore()
+
+    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3')], 'webdav')
+
+    expect(webdavSignal).toBeInstanceOf(AbortSignal)
+    expect(toastUploadError).not.toHaveBeenCalled()
+  })
+})
+
+describe('upload batch feedback', () => {
+  it('reports one success toast carrying the whole batch count', async () => {
+    vi.mocked(uploadMusicTrack).mockResolvedValue({ track: track('uploaded'), error: null })
+    const store = makeStore()
+
+    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3'), audioFile('b.mp3'), audioFile('c.mp3')])
+
+    expect(toastMusic).toHaveBeenCalledTimes(1)
+    expect(toastMusic).toHaveBeenCalledWith('music.upload_done', { value0: 3 })
+  })
+
+  it('reports a single error toast for the batch and keeps failed rows visible', async () => {
+    vi.mocked(uploadMusicTrack).mockResolvedValue({ track: null, error: 'storage_unavailable' })
+    const store = makeStore()
+
+    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3'), audioFile('b.mp3')])
+
+    expect(toastUploadError).toHaveBeenCalledTimes(1)
+    expect(toastUploadError).toHaveBeenCalledWith('storage_unavailable')
+    expect(store.get().uploads).toHaveLength(2)
+    expect(store.get().uploads.every((task) => task.status === 'failed')).toBe(true)
+    expect(toastMusic).not.toHaveBeenCalled()
   })
 })
 

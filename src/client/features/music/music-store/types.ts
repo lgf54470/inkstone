@@ -41,6 +41,7 @@ export interface MusicUploadTask {
   status: 'uploading' | 'done' | 'failed'
   error: string | null
   target: MusicTransferTarget
+  controller: AbortController
 }
 
 export interface MusicDownloadTask {

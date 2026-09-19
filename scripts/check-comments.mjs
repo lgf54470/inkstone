@@ -1315,6 +1315,8 @@ const allowed = new Map([
     '// into the stored order rather than dropped like the single-step menu move.',
     '// addItem answers with the stored item id, so the row can be appended locally',
     '// instead of paying for a whole library reload after one tap.',
+    '// A canceled transfer is not a failure: the row is already gone and no toast should follow.',
+    '// The row\'s dismiss button is the user\'s cancel: stop the transfer, not just its display.',
   ]],
   ['src/client/features/music/music-store/library-covers.ts', [
     '// Cover lookup reaches a public catalogue, so it only runs while the listener asks for it.',
@@ -1437,6 +1439,7 @@ const allowed = new Map([
     '// wins (visibleTracks skips sorting), so offering a sort there would be a dead control.',
   ]],
   ['src/client/features/music/music-transfer-dialog.tsx', [
+    '// The directory picker relies on non-standard attributes React types do not carry.',
     '// dragenter and dragleave also fire when the pointer crosses a child, so the highlight',
     '// follows an enter/leave depth count and only clears once the pointer really leaves.',
   ]],
@@ -1444,6 +1447,9 @@ const allowed = new Map([
     '// Per-track network bursts (bulk upload/download/import/scan) stay pipelined but bounded:',
     '// enough to overlap latency, low enough to avoid hammering the worker or the browser\'s per-host cap.',
     '// The transport nudge buttons and the seek hotkeys move by the same amount.',
+    '// Mirrors the worker\'s extension table so folder picks (which carry cover art, cue',
+    '// sheets and other noise) only queue real audio, and nothing wastes a round trip',
+    '// the server would reject. Empty files count as unsupported rather than vanishing.',
     '// Shift-click selects everything between the anchor row and the clicked row.',
     '// Uploads name a track after its file; the tag title wins when the file only adds the artist.',
   ]],

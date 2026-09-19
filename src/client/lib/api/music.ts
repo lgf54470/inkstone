@@ -178,6 +178,7 @@ export function uploadMusicToWebdav(
   file: File,
   meta: { title: string; artist: string; album: string; durationMs: number; coverUrl: string | null; lyric?: string | null },
   onProgress: (percent: number) => void,
+  signal?: AbortSignal,
 ): Promise<MusicUploadResult> {
   const form = new FormData()
   form.append('file', file, file.name)
@@ -187,10 +188,10 @@ export function uploadMusicToWebdav(
   form.append('durationMs', String(meta.durationMs))
   if (meta.coverUrl) form.append('coverUrl', meta.coverUrl)
   if (meta.lyric) form.append('lyric', meta.lyric)
-  return sendUpload('/api/music/webdav/upload', form, onProgress)
+  return sendUpload('/api/music/webdav/upload', form, onProgress, signal)
 }
 
-function sendUpload(url: string, form: FormData, onProgress: (percent: number) => void): Promise<MusicUploadResult> {
+function sendUpload(url: string, form: FormData, onProgress: (percent: number) => void, signal?: AbortSignal): Promise<MusicUploadResult> {
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', url)
@@ -203,6 +204,7 @@ function sendUpload(url: string, form: FormData, onProgress: (percent: number) =
     xhr.addEventListener('load', () => resolve(parseUploadResponse(xhr)))
     xhr.addEventListener('error', () => resolve({ track: null, error: 'network' }))
     xhr.addEventListener('abort', () => resolve({ track: null, error: 'aborted' }))
+    signal?.addEventListener('abort', () => xhr.abort(), { once: true })
     xhr.send(form)
   })
 }

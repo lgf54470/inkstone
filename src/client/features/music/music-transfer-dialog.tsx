@@ -4,7 +4,7 @@ import { Button, IconButton, Spinner } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { Modal } from '../../components/overlay'
 import { cn } from '../../lib/cn'
-import { t } from '../../lib/i18n'
+import { t, type MessageKey } from '../../lib/i18n'
 import type { MusicDownloadTask, MusicLibraryJob, MusicLibraryJobKind, MusicTransferTarget, MusicUploadTask } from './music-store'
 import { useMusic } from './music-store'
 
@@ -67,9 +67,10 @@ function TransferBody() {
   )
 }
 
-function UploadPicker({ target }: { target: MusicTransferTarget }) {
+export function UploadPicker({ target }: { target: MusicTransferTarget }) {
   const uploadFiles = useMusic((state) => state.uploadFiles)
   const inputRef = useRef<HTMLInputElement>(null)
+  const folderInputRef = useRef<HTMLInputElement>(null)
 
   const accept = useCallback((files: FileList | null) => {
     if (files?.length) void uploadFiles([...files], target)
@@ -77,11 +78,30 @@ function UploadPicker({ target }: { target: MusicTransferTarget }) {
 
   return (
     <>
-      <DropZone onFiles={accept} onChoose={() => inputRef.current?.click()} />
+      <DropZone
+        onFiles={accept}
+        onChoose={() => inputRef.current?.click()}
+        onChooseFolder={() => folderInputRef.current?.click()}
+      />
       <input
         ref={inputRef}
         type='file'
         accept='audio/*'
+        multiple
+        hidden
+        onChange={(event) => {
+          accept(event.target.files)
+          event.target.value = ''
+        }}
+      />
+      <input
+        ref={(node) => {
+          folderInputRef.current = node
+          // The directory picker relies on non-standard attributes React types do not carry.
+          node?.setAttribute('webkitdirectory', '')
+          node?.setAttribute('directory', '')
+        }}
+        type='file'
         multiple
         hidden
         onChange={(event) => {
@@ -95,9 +115,10 @@ function UploadPicker({ target }: { target: MusicTransferTarget }) {
 
 // dragenter and dragleave also fire when the pointer crosses a child, so the highlight
 // follows an enter/leave depth count and only clears once the pointer really leaves.
-export function DropZone({ onFiles, onChoose }: {
+export function DropZone({ onFiles, onChoose, onChooseFolder }: {
   onFiles: (files: FileList | null) => void
   onChoose: () => void
+  onChooseFolder?: () => void
 }) {
   const depthRef = useRef(0)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -128,7 +149,10 @@ export function DropZone({ onFiles, onChoose }: {
     >
       <Upload size={20} className='text-[var(--text-quaternary)]' aria-hidden='true' />
       <p className='text-[length:var(--text-12)] text-[var(--text-tertiary)]'>{t('music.upload_hint')}</p>
-      <Button size='sm' onClick={onChoose}>{t('music.upload_choose')}</Button>
+      <div className='flex items-center gap-2'>
+        <Button size='sm' onClick={onChoose}>{t('music.upload_choose')}</Button>
+        {onChooseFolder && <Button size='sm' onClick={onChooseFolder}>{t('music.upload_choose_folder')}</Button>}
+      </div>
     </div>
   )
 }
@@ -142,14 +166,14 @@ function TaskSection({ label, children }: { label: string; children: ReactNode }
   )
 }
 
-function TaskRow({ children, name, onDismiss }: { children: ReactNode; name: string; onDismiss: () => void }) {
+function TaskRow({ children, name, onDismiss, label = 'music.upload_dismiss' }: { children: ReactNode; name: string; onDismiss: () => void; label?: MessageKey }) {
   return (
     <li className='flex items-center gap-2 rounded-[var(--r-md)] px-2 py-1.5 hover:bg-[var(--bg-hover)]'>
       <span className='min-w-0 flex-1'>
         <span className='block truncate text-[length:var(--text-12)] text-[var(--text-primary)]'>{name}</span>
         {children}
       </span>
-      <IconButton label={t('music.upload_dismiss')} size='sm' onClick={onDismiss}><X size={13} /></IconButton>
+      <IconButton label={t(label)} size='sm' onClick={onDismiss}><X size={13} /></IconButton>
     </li>
   )
 }
@@ -167,7 +191,7 @@ function Progress({ value, label }: { value: number; label: string }) {
 
 function UploadTaskRow({ task, onDismiss }: { task: MusicUploadTask; onDismiss: () => void }) {
   return (
-    <TaskRow name={task.name} onDismiss={onDismiss}>
+    <TaskRow name={task.name} onDismiss={onDismiss} label={task.status === 'uploading' ? 'music.upload_cancel' : 'music.upload_dismiss'}>
       <span className='flex items-center gap-1.5 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
         {task.status === 'uploading' && <Spinner size={11} />}
         {task.status === 'done' && <CheckCircle2 size={11} className='text-[var(--success)]' />}
