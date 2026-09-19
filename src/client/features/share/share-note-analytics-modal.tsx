@@ -245,17 +245,17 @@ function RecentVisitRow({ visit: v, locale }: { visit: ShareNoteAnalytics['recen
           {v.city ? ` · ${v.city}` : ''}
         </span>
         {v.isBot && (
-          <span className="rounded bg-[var(--danger-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--danger)]">
+          <span className="rounded bg-[var(--danger-soft)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--danger)]">
             🤖 {v.botName || t('share.badge_bot')}
           </span>
         )}
         {v.isOwner && (
-          <span className="rounded bg-[var(--accent-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--accent)]">
+          <span className="rounded bg-[var(--accent-soft)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--accent)]">
             👤 {t('share.badge_owner')}
           </span>
         )}
         {v.isSelfReferrer && (
-          <span className="rounded bg-[var(--warning-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--warning)]">
+          <span className="rounded bg-[var(--warning-soft)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--warning)]">
             {t('share.badge_self_referrer')}
           </span>
         )}

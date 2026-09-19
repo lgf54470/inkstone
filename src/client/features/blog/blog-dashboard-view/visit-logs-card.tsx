@@ -57,7 +57,7 @@ function VisitLogRow({ visit, locale }: {
           {visit.city ? ` · ${visit.city}` : ''})
         </span>
         {visit.isBot && (
-          <span className='rounded bg-[var(--danger-subtle)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--danger)]'>
+          <span className='rounded bg-[var(--danger-soft)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--danger)]'>
             🤖 {visit.botName || 'Bot'}
           </span>
         )}

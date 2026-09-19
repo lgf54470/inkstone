@@ -243,7 +243,7 @@ function ShareMenuButton({ icon, label, right, onClick, danger }: {
       className={cn(
         'flex h-11 w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left transition-colors md:h-7.5',
         danger
-          ? 'text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
+          ? 'text-[var(--danger)] hover:bg-[var(--danger-soft)]'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
       )}
     >

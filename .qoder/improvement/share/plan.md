@@ -47,11 +47,16 @@
 | 32 | SH-34 | 英文字面量进 locale + 服务端回落值改 null + countryName locale 显式 | P2 | ✅ | 91a10c0f |
 | 33 | SH-35 | 窄屏：侧栏折叠/宽模态 fullscreen/批量条换行/触控尺寸 | P2 | ✅ | b080398a |
 | 34 | SH-36 | 小项集合（口令长度统一、effect 重开、子模态重置、th scope、role=status 等） | P3 | ✅ | 21cbdddc |
-| F1 | SH-29 | 🧊 `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，等用户决定 | P2 | 🧊 | |
-| F2 | SH-16b | 🧊 若 range=all 分桶必须改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline` 行为（blog stats.ts 共用）——04 号做不完的部分挪到这里 | — | 🧊 | |
-| F3 | SH-05b | 🧊 `maintenance.ts` cron 若与 blog 附件/清理共用调度需触碰 blog 语义的部分 | — | 🧊 | |
-| F4 | SH-25b | 🧊 blog 侧同构缺陷同步（B2-01 等）——属博客任务 | — | 🧊 | |
-| F5 | SH-05c | 🧊 share_visits「按保留期分批清理」需把 logRetentionDays 从浏览器 localStorage 持久化到服务端 settings（blog 侧同构缺陷共用改动面），等用户决定 | P2 | 🧊 | |
+| T | SH-37 | 通病解冻：`--danger/warning/success-subtle` 全站引用无定义（渲染透明）→ 统一按 `-soft` 家族补定义并改名引用；三对色令牌按 AA 重校准 | P2 | 进行中 | |
+| F1 | SH-29 | `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，双侧回归 | P2 | 排队 | |
+| F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用），并做 all 整表拉行 SQL 下推（26 号遗留） | P2 | 排队 | |
+| F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后） | — | 排队 | |
+| F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | 排队 | |
+| F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | 排队 | |
+| G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | 排队 | |
+
+> 2026-09-20 用户裁决「全做，按照你认为最优方案修改，顺序自己定义」：F1-F5 与通病全部解冻，
+> 执行序 T→F1→F4→F2→F5→F3→G；跨模块共用件（blog/music/看板组件）改动均在本批准范围内。
 
 ## 进度日志
 
@@ -269,3 +274,15 @@
 - 测试：`share-small-defects.test.ts` 7 例（口令 7/8 字符对、重开守护、hub 开关重置、warn、radiogroup、status；`mounts`+afterEach 统一卸载）。坑：重开守护用例首跑不红——`mockResolvedValue` 同一对象引用让 `shares` 依赖根本不触发 effect，必须 `mockImplementation` 每次产新数组，这条写进测试内注释。静态守护 `tests/share-table-semantics.test.ts` 3 例（scope 扫描的 `<th(?=[\s>])` 负向前瞻防 `<thead>` 误报；`toLocaleTimeString([]` 禁令）。
 - 变异 9 发全杀（/tmp/mut34 还原）：min 回填 4 / 删 consumed 门 / 删两行 close 重置 / 删 warn / 删 Segmented label / 删 role / 删一个 scope / worker 回填 4——各杀各测试零串扰。`saveEditShareFlow` 的常量引用未单设变异：该函数未导出，其判定与被单测的 `needsNewSharePasscode` 共用同一常量。
 - 台账条目核销判定：「loadSession 在 share 子应用重复挂载」不存在于当前代码（`useAppBoot`/session load 全 client 仅 `app.tsx:29` 一个调用方，shareSlug 路径本就跳过——grep 证据），不修即销；口令可见性切换（eye toggle）全站无先例组件，登记暂缓不夹带；其余 hub 的视图切换统一不在本项范围。
+
+## 35 — T（SH-37）通病解冻：*-subtle 引用无定义 → -soft 家族统一 + 三对色 AA 重校准（2026-09-20）
+
+- 现状与根因：`--danger/warning/success/accent-subtle` 全站 49 处 `var()` 引用（share/blog/music/components），tokens.css 从无定义——`bg-[var(--danger-subtle)]` 实际渲染透明，hover 底色与软底徽章背景整体失效。30 号登记待裁决，本次解冻。
+- 方案（改名而非加别名）：tokens.css `:root` 软底家族补 `--success-soft/--warning-soft/--danger-soft`（14% color-mix，与 `--accent-soft` 同族同比例；后置于主题块所以两主题各自解析）；49 处引用机械改名 `*-subtle→*-soft`。`-subtle` 词义保留给边框（`--border-subtle`），不留双词汇。
+- 连带修复（改名使原本「不可见」的引用真实生效后暴露）：share 侧栏 `bg-[var(--bg-sidebar)]`（亦无定义）→`--bg-sunken`（blog/music 侧栏先例）；visit-logs 表头 `bg-[var(--bg-muted)]`（无定义）→`--bg-card`（share 表头先例）；big-svg-chart `var(--font-family-mono)`（无定义）→`var(--font-mono)`。
+- AA 重校准（可访问性红线，soft 底可见后必须）：小字号状态色文字落在自身 14% 软底上原先 light success/warning/danger=2.0/1.7/2.7、dark danger=4.0，全部不达 AA。按 `--accent-soft` 既定规则以离线复算（与 check-contrast.mjs 同一套色数学）取最小改动：light 默认 `:root` 三对色 `--success oklch(70%…→45%)、--warning 76%→48%、--danger 64%→49%`（复算最坏对 4.72-4.77）；dark 主题块 `--danger 68%→73%`（4.52，success/warning 原值已过不动）。blog-frontend tokens.css 镜像同值（共享契约），`check-token-drift.baseline.json` 重生成（89 令牌）。副带效应：light 主题原先不可读的 `text-[var(--success)]`-on-white（约 2:1）与 solid 底白字一并入 AA 区；dark solid danger 上的 `text-white`（primitives 危险按钮）3.14→2.70 仍属既有未达标组合，门禁现状不判（未入册），登记遗留。
+- 门禁自动化（能工具强制的不靠人记）：`scripts/check-contrast.mjs` 新增 `SEMANTIC_TINTS` 采集 + `judgeAccentMatrix(…, 'status color')` 复用同一判定，三对色×两主题×全表面自此由 CI 判（本地无干净 :7712 实例——attachments worktree 占用——离线复算先行，实时判定以 CI 为准，此点如实登记）。
+- 新守护 `tests/token-definitions.test.ts`（node 工程，3 例）：扫 `src/client` 全部 `var(--x)` 引用，定义=CSS 声明或 TS 引号字面量；断言无任何 `--*-subtle` 别名残留、无白名单外悬空引用。白名单 27 项=他任务欠账登记（kanban 6、preview 8、deck/excalidraw 注入 6、music/slides/attachments 等；`--bento-code-*` 6 项为守护首跑抓出、探针漏报的 slides 模板注入族）。变异两杀：删 `--danger-soft` 定义→19 处悬空报红；一处引用回填 `--danger-subtle`→别名报红（/tmp/mutT 还原）。
+- 通病登记（白名单归属，供各任务认领）：`--text-8/--text-20`（preview/kanban 字阶）、`--border-focus`（hub 行/attachments）、`--bg-subtle`（attachments）、`--sp-0/--sp-11/--sp-12`（preview/slides/music 私有间距）、`--surface-*` 四件与 `--danger-softer`（preview 属性编辑器）、`--bg-surface-subtle/--accent-fg/--kanban-tag-`（kanban）、`--code-font-size/--code-line-height`（JS 注入）、`--deck-*` 四件（presentation.css 注入）、`--bento-code-c/k/n/p/s/f`（slides code-palette 模板注入）。
+- 坑：①i18n:check 连测试文件里注释/字符串中的中文都拦（首挂 `通病` 二字），白名单理由与 describe 标题一律英文；②comments:check 不收 tokens.css 的 `/* */`（该文件历史上零注释），校准依据写本日志不写 CSS；③zsh 循环里 `npm run ${g}:check` 会把 `$g:c` 当修饰符吃掉，必须写 `"${g}:check"`；④悬空探针只扫 tokens.css 会漏报（第三方 css/JS 注入），首版守护即抓到 6 个探针漏项。
+- 验证：tsc -b 绿；11 静态门禁全绿（含 blog 两项）；vitest 定向 249/249（share/blog/music/components/token-drift/新守护）。全量回归见后。

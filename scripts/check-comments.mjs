@@ -105,6 +105,7 @@ const allowed = new Map([
     '// carries its own copy of the list. The accent-less fallback in the base :root',
     '// block is left out on purpose: the store pins data-accent on the root',
     '// (store/ui/theme.ts), so nothing paints without one.',
+    '/**\n * The same rule for the fixed status colors: --danger/--warning/--success are\n * not accent-swappable, but badges and alerts paint them as small text on their\n * own -soft tint (the SH-37 batch gave those tints real definitions), so each\n * one has to clear AA on every surface the tint can sit on.\n */',
     '/**\n * An accent painted as text sits on its own tint over some surface, so the tint\n * is composited first: the ratio depends on which surface is underneath, which\n * is why every one of them is measured instead of the editor\'s alone.\n */',
     '// A translucent surface (--bg-hover is a 4% wash) has no colour of its own:',
     '// what shows through it is whatever it is painted on, which is not a token',
@@ -3450,7 +3451,7 @@ const allowed = new Map([
     '/* The field label wraps its input: a number field with no name is the one control a\n                screen reader cannot describe, and an implicit label is the whole fix. */',
     '/* Three icon-only buttons in a group: the name says which alignment each one is,\n                    and the pressed state says which one the text is on. */',
     '/* A colour well and the hex field beside it are two controls for one value: the\n                    well carries the label, the field says it is the value written out. */',
-    '/* The label is the panel\'s own text colour, not the danger tone: `--danger` is\n              oklch(64% 0.19 22) in the light theme, which lands at 3.2:1 on its own tint — a\n              danger-coloured word here would be the one unreadable row of the panel. The tone\n              stays on the icon and the tint, where 3:1 is the bar. */',
+    '/* The label is the panel\'s own text colour, not the danger tone: the tone\n              rides the icon and the tint, where 3:1 is the bar, and the light theme\'s\n              --danger was only ~3.2:1 on its own tint when this was calibrated. The\n              SH-37 recalibration brought that pair above AA, but the neutral label\n              stays — a danger-coloured word was never the point of the row. */',
   ]],
   ['src/client/lib/markdown/slides/ui/inspector-theme.tsx', [
     '// The name is the visible label beside it: a colour well announces its value, never',
@@ -4732,6 +4733,14 @@ const allowed = new Map([
     '// Rewind the last attempt far enough to expire the window and the lock.',
     '// The 4th failure reached the escalation chain (fails 2 → locked for the',
     '// ip key); assertNotLocked must now throw for that key but not others.',
+  ]],
+  ['tests/token-definitions.test.ts', [
+    '// A token counts as defined either in a stylesheet or as a quoted \'--x\' literal',
+    '// in TS (runtime setProperty / inline-style keys resolve the same way).',
+    '// Debt owned by other audits (kanban, preview, attachments, music, slides,',
+    '// excalidraw). Registered in the plan.md common-defects section; fixing them',
+    '// here would be a drive-by. Removing an entry requires the owning module to',
+    '// define the token.',
   ]],
   ['vite.config.ts', [
     '// Keep optional preview renderers and their language modules behind dynamic-import boundaries.',

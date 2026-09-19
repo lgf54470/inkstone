@@ -189,7 +189,7 @@ function CleanupActions({ isBusy, onClean }: {
       <Button
         size='sm'
         variant='ghost'
-        className='text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
+        className='text-[var(--danger)] hover:bg-[var(--danger-soft)]'
         onClick={() => void onClean('all')}
         disabled={isBusy}
       >

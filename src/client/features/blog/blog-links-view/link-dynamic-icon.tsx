@@ -96,7 +96,7 @@ function FallbackAvatar({ name, size, className }: { name: string; size: number;
     return (
       <span
         style={{ width: size, height: size, fontSize: Math.max(MIN_FALLBACK_FONT_SIZE, Math.floor(size * FALLBACK_FONT_SCALE)) }}
-        className={`inline-flex items-center justify-center rounded font-semibold text-[var(--accent)] bg-[var(--accent-subtle)] shrink-0 select-none ${className}`}
+        className={`inline-flex items-center justify-center rounded font-semibold text-[var(--accent)] bg-[var(--accent-soft)] shrink-0 select-none ${className}`}
       >
         {char}
       </span>

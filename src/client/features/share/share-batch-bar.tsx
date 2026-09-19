@@ -107,7 +107,7 @@ function ShareBatchActionButton({
       size='sm'
       variant='ghost'
       disabled={bundle.batchBusy}
-      className={danger ? 'shrink-0 whitespace-nowrap text-[var(--danger)] hover:bg-[var(--danger-subtle)]' : 'shrink-0 whitespace-nowrap'}
+      className={danger ? 'shrink-0 whitespace-nowrap text-[var(--danger)] hover:bg-[var(--danger-soft)]' : 'shrink-0 whitespace-nowrap'}
       icon={icon}
       aria-haspopup={hasPopup ? 'menu' : undefined}
       aria-expanded={ariaExpanded}

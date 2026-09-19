@@ -117,7 +117,7 @@ export function PinStarButtons({ share, onTogglePin, onToggleStar, compact }: { 
           share.isPinned
             ? compact
               ? 'text-[var(--accent)]'
-              : 'text-[var(--accent)] bg-[var(--accent-subtle)]'
+              : 'text-[var(--accent)] bg-[var(--accent-soft)]'
             : 'text-[var(--text-quaternary)] opacity-40 hover:opacity-100 hover:text-[var(--accent)]',
         )}
         title={share.isPinned ? t('share.unpin_note') : t('share.pin_note')}
@@ -187,7 +187,7 @@ export function SlugChip({ share, copiedSlug, onCopy, className, grouped }: { sh
 
 function CustomBadge() {
   return (
-    <span className='rounded bg-[var(--accent-subtle)] px-1 py-0.2 text-[length:var(--text-9)] font-semibold text-[var(--accent)]'>
+    <span className='rounded bg-[var(--accent-soft)] px-1 py-0.2 text-[length:var(--text-9)] font-semibold text-[var(--accent)]'>
       {t('share.custom_slug_badge')}
     </span>
   )

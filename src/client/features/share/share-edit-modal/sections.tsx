@@ -11,7 +11,7 @@ export function ShareLinkCard({ b, onClose }: { b: ShareEditModalBundle; onClose
   const { share, isCopied, handleCopyLink, setIsAnalyticsOpen, setIsQrOpen, openPanel } = b
   if (!share?.url) return null
   return (
-    <div className='rounded-[var(--r-md)] border border-[var(--accent-subtle)] bg-[var(--accent-subtle)]/20 p-3 space-y-2.5'>
+    <div className='rounded-[var(--r-md)] border border-[var(--accent-soft)] bg-[var(--accent-soft)]/20 p-3 space-y-2.5'>
       <div className='flex items-center gap-2'>
         <Input
           type='text'
@@ -266,7 +266,7 @@ export function EditModalFooter({ b, onClose }: { b: ShareEditModalBundle; onClo
         <Button
           size='sm'
           variant='ghost'
-          className='text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
+          className='text-[var(--danger)] hover:bg-[var(--danger-soft)]'
           icon={<Trash2 size={13} />}
           loading={isRevoking}
           disabled={isSaving}

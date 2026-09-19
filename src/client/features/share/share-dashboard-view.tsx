@@ -456,17 +456,17 @@ function VisitBadges({ visit }: {
   return (
     <>
       {visit.isBot && (
-        <span className='rounded bg-[var(--danger-subtle)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--danger)]'>
+        <span className='rounded bg-[var(--danger-soft)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--danger)]'>
           🤖 {visit.botName || t('share.badge_bot')}
         </span>
       )}
       {visit.isOwner && (
-        <span className='rounded bg-[var(--accent-subtle)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--accent)]'>
+        <span className='rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--accent)]'>
           👤 {t('share.badge_owner')}
         </span>
       )}
       {visit.isSelfReferrer && (
-        <span className='rounded bg-[var(--warning-subtle)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--warning)]'>
+        <span className='rounded bg-[var(--warning-soft)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--warning)]'>
           {t('share.badge_self_referrer')}
         </span>
       )}

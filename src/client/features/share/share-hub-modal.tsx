@@ -105,7 +105,7 @@ function ListTruncatedNotice() {
   return (
     <div
       role='status'
-      className='shrink-0 border-b border-[var(--border-subtle)] bg-[var(--warning-subtle)] px-4 py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'
+      className='shrink-0 border-b border-[var(--border-subtle)] bg-[var(--warning-soft)] px-4 py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'
     >
       {t('share.list_truncated')}
     </div>

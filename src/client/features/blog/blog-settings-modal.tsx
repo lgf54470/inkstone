@@ -243,7 +243,7 @@ function CleanupActions({ busy, onClean }: { busy: boolean; onClean: (type: 'bot
         size='sm'
         variant='ghost'
         type='button'
-        className='text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
+        className='text-[var(--danger)] hover:bg-[var(--danger-soft)]'
         onClick={() => void onClean('all')}
         disabled={busy}
       >

@@ -171,9 +171,9 @@ export function FolderRow({ node, isExpanded, isSelected, isRenaming, isDragOver
         className={cn(
           'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[length:var(--text-12)] font-medium transition-colors cursor-pointer',
           isSelected
-            ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
+            ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
-          isDragOver && 'bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]',
+          isDragOver && 'bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]',
         )}
       >
         <FolderLeading node={node} isExpanded={isExpanded} onToggleExpand={handlers.onToggleExpand} />

@@ -369,11 +369,66 @@ const ACCENT_MATRIX = () => {
 }
 
 /**
+ * The same rule for the fixed status colors: --danger/--warning/--success are
+ * not accent-swappable, but badges and alerts paint them as small text on their
+ * own -soft tint (the SH-37 batch gave those tints real definitions), so each
+ * one has to clear AA on every surface the tint can sit on.
+ */
+const SEMANTIC_TINTS = () => {
+  const root = document.documentElement
+  const initial = { theme: root.dataset.theme ?? '' }
+  const surfaces = new Set()
+  for (const sheet of document.styleSheets) {
+    let rules = []
+    try {
+      rules = [...sheet.cssRules]
+    }
+    catch {
+      continue
+    }
+    for (const rule of rules) {
+      if (!(rule instanceof CSSStyleRule)) continue
+      for (const name of rule.style) {
+        if (/^--bg-(sunken|base|editor|surface|inset|overlay|hover)$/.test(name)) surfaces.add(name)
+      }
+    }
+  }
+  const probe = document.createElement('div')
+  probe.style.position = 'absolute'
+  probe.style.pointerEvents = 'none'
+  probe.style.width = '1px'
+  probe.style.height = '1px'
+  document.body.append(probe)
+  const resolve = (name) => {
+    probe.style.backgroundColor = 'transparent'
+    probe.style.backgroundColor = `var(${name})`
+    return getComputedStyle(probe).backgroundColor
+  }
+  const matrix = []
+  for (const theme of ['light', 'dark']) {
+    root.dataset.theme = theme
+    for (const color of ['danger', 'warning', 'success']) {
+      matrix.push({
+        theme,
+        accent: color,
+        text: resolve(`--${color}`),
+        tint: resolve(`--${color}-soft`),
+        surfaces: [...surfaces].sort().map((name) => ({ name, color: resolve(name) })),
+      })
+    }
+  }
+  probe.remove()
+  if (initial.theme) root.dataset.theme = initial.theme
+  else root.removeAttribute('data-theme')
+  return matrix
+}
+
+/**
  * An accent painted as text sits on its own tint over some surface, so the tint
  * is composited first: the ratio depends on which surface is underneath, which
  * is why every one of them is measured instead of the editor's alone.
  */
-function judgeAccentMatrix(matrix) {
+function judgeAccentMatrix(matrix, kindLabel = 'accent') {
   const failures = []
   let measured = 0
   for (const entry of matrix) {
@@ -394,10 +449,10 @@ function judgeAccentMatrix(matrix) {
   const byTheme = new Map()
   for (const entry of matrix) byTheme.set(entry.theme, (byTheme.get(entry.theme) ?? 0) + 1)
   for (const [theme, count] of byTheme) {
-    console.log(`  ${failures.some((item) => item.theme === theme) ? '✗' : '✓'} ${theme}: ${count} accent/tint pairs measured, ${failures.filter((item) => item.theme === theme).length} below AA`)
+    console.log(`  ${failures.some((item) => item.theme === theme) ? '✗' : '✓'} ${theme}: ${count} ${kindLabel}/tint pairs measured, ${failures.filter((item) => item.theme === theme).length} below AA`)
   }
   for (const item of failures.sort((a, b) => a.ratio - b.ratio)) {
-    console.log(`      ${item.ratio.toFixed(2)}:1 (needs ${AA_NORMAL}) [${item.theme}] accent '${item.accent}' as text on its tint over ${item.surface} — ${toHex(item.foreground)} on ${toHex(item.background)}`)
+    console.log(`      ${item.ratio.toFixed(2)}:1 (needs ${AA_NORMAL}) [${item.theme}] ${kindLabel} '${item.accent}' as text on its tint over ${item.surface} — ${toHex(item.foreground)} on ${toHex(item.background)}`)
   }
   return failures.length
 }
@@ -640,6 +695,9 @@ async function main() {
       }
     }
     failures += judgeAccentMatrix(matrix)
+    const semantic = await page.evaluate(SEMANTIC_TINTS)
+    if (semantic.length === 0) throw new Error('the stylesheet declares no status colors to measure')
+    failures += judgeAccentMatrix(semantic, 'status color')
     // Leave the instance in the theme it arrived in.
     await setAppTheme(page, initialTheme === 'dark' ? 'dark' : 'light')
   }
@@ -647,7 +705,7 @@ async function main() {
     await browser.close()
   }
   console.log(failures === 0
-    ? 'contrast gate passed: every text tier and accent painted on a tint clears AA in both themes'
+    ? 'contrast gate passed: every text tier, accent and status color painted on a tint clears AA in both themes'
     : `contrast gate failed: ${failures} tier/surface pairs below AA`)
   process.exit(failures === 0 ? 0 : 1)
 }

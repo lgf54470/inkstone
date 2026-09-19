@@ -350,7 +350,7 @@ function CommentCardActions({ bundle }: { bundle: CommentCardBundle }) {
         <CommentActionButton icon={<AlertTriangle size={12} className='mr-1' />} label={t('blog.status_spam')} onClick={() => onStatusChange(comment.id, 'spam')} className='text-[var(--warning)] hover:bg-[var(--warning)]/10' />
       )}
 
-      <CommentActionButton icon={<Trash2 size={12} className='mr-1' />} label={t('common.delete')} onClick={() => onDelete(comment.id)} className='text-[var(--danger)] hover:bg-[var(--danger-subtle)]' />
+      <CommentActionButton icon={<Trash2 size={12} className='mr-1' />} label={t('common.delete')} onClick={() => onDelete(comment.id)} className='text-[var(--danger)] hover:bg-[var(--danger-soft)]' />
     </div>
   )
 }

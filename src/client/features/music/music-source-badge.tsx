@@ -11,7 +11,7 @@ export function MusicSourceBadge({ source, className }: { source: MusicSource; c
       className={cn(
         'inline-flex items-center gap-1 rounded-[var(--r-full)] px-1.5 py-0.5 text-[length:var(--text-10)]',
         isRemote
-          ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
+          ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
           : 'bg-[var(--bg-inset)] text-[var(--text-tertiary)]',
         className,
       )}

@@ -49,7 +49,7 @@ function StatusFilterTabs() {
 
 function FilterChip({ icon, label, onClear }: { icon: ReactNode; label: string; onClear: () => void }) {
   return (
-    <span className='flex items-center gap-1 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] px-2.5 py-1 text-[length:var(--text-11)] font-medium'>
+    <span className='flex items-center gap-1 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] px-2.5 py-1 text-[length:var(--text-11)] font-medium'>
       {icon}
       <span>{label}</span>
       <button

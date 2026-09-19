@@ -160,7 +160,7 @@ function CleanLogsMenu({ isCleaning, onClean }: {
         ref={buttonRef}
         size='sm'
         variant='secondary'
-        className='text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
+        className='text-[var(--danger)] hover:bg-[var(--danger-soft)]'
         icon={<Trash2 size={12} />}
         disabled={isCleaning}
         aria-haspopup='menu'
@@ -200,7 +200,7 @@ function LogsTable({ bundle }: { bundle: LogsBundle }) {
 
 function LogsTableHeader() {
   return (
-    <thead className='sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[length:var(--text-11)] text-[var(--text-tertiary)] uppercase tracking-wider'>
+    <thead className='sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-card)] text-[length:var(--text-11)] text-[var(--text-tertiary)] uppercase tracking-wider'>
       <tr>
         <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_time')}</th>
         <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_note')}</th>

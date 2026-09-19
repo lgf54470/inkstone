@@ -72,7 +72,7 @@ function SidebarNav({ items }: { items: SidebarNavItem[] }) {
           className={cn(
             'group flex w-full h-8 items-center justify-between rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] font-medium transition-colors text-left',
             item.active
-              ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
+              ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
               : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
           )}
         >
@@ -280,7 +280,7 @@ function SidebarFooter({
           href={frontendBase}
           target='_blank'
           rel='noopener noreferrer'
-          className='flex items-center justify-center rounded-[var(--r-md)] p-1.5 text-[var(--accent)] hover:bg-[var(--accent-subtle)] transition-colors border border-[var(--border-subtle)]'
+          className='flex items-center justify-center rounded-[var(--r-md)] p-1.5 text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors border border-[var(--border-subtle)]'
           title={t('blog.frontend_site')}
         >
           <ExternalLink size={14} />

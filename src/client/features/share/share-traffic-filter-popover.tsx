@@ -24,8 +24,8 @@ export function ShareTrafficFilterPopover() {
   const tone = isFilteringBots
     ? 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--success)] hover:bg-[var(--bg-hover)]'
     : isAllTraffic
-      ? 'border-[var(--danger)]/30 bg-[var(--danger-subtle)] text-[var(--danger)]'
-      : 'border-[var(--warning)]/30 bg-[var(--warning-subtle)] text-[var(--warning)]'
+      ? 'border-[var(--danger)]/30 bg-[var(--danger-soft)] text-[var(--danger)]'
+      : 'border-[var(--warning)]/30 bg-[var(--warning-soft)] text-[var(--warning)]'
   const label = isFilteringBots
     ? t('share.filter_real_visitors_badge')
     : isAllTraffic

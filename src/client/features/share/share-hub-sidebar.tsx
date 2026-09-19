@@ -10,7 +10,7 @@ import { useShareHubSidebar } from './use-share-hub-sidebar'
 export function ShareHubSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const bundle = useShareHubSidebar(onNavigate)
   return (
-    <aside className='flex h-full w-65 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sidebar)]'>
+    <aside className='flex h-full w-65 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sunken)]'>
       <div className='flex-1 overflow-y-auto px-2 py-3'>
         <CategoryList bundle={bundle} />
         <div className='my-3 h-px bg-[var(--border-subtle)]' />
@@ -61,7 +61,7 @@ function CategoryList({ bundle }: { bundle: ShareHubSidebarBundle }) {
             className={cn(
               'flex h-8 w-full items-center gap-2 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] font-medium transition-colors',
               isSelected
-                ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
+                ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
             )}
           >

@@ -91,7 +91,7 @@ function PlaylistRow({
         className={cn(
           'group/row flex h-8 items-center gap-1 rounded-[var(--r-md)] px-2 text-[length:var(--text-12)] transition-colors',
           active
-            ? 'bg-[var(--accent-subtle)] font-semibold text-[var(--accent)]'
+            ? 'bg-[var(--accent-soft)] font-semibold text-[var(--accent)]'
             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
         )}
       >

@@ -306,10 +306,11 @@ export const InspectorElement = memo(function InspectorElement({
             </button>
           </div>
 
-          {/* The label is the panel's own text colour, not the danger tone: `--danger` is
-              oklch(64% 0.19 22) in the light theme, which lands at 3.2:1 on its own tint — a
-              danger-coloured word here would be the one unreadable row of the panel. The tone
-              stays on the icon and the tint, where 3:1 is the bar. */}
+          {/* The label is the panel's own text colour, not the danger tone: the tone
+              rides the icon and the tint, where 3:1 is the bar, and the light theme's
+              --danger was only ~3.2:1 on its own tint when this was calibrated. The
+              SH-37 recalibration brought that pair above AA, but the neutral label
+              stays — a danger-coloured word was never the point of the row. */}
           <button
             type='button'
             onClick={onDelete}

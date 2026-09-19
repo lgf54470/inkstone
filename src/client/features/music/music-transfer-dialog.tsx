@@ -117,7 +117,7 @@ function DropZone({
       }}
       className={cn(
         'flex flex-col items-center gap-2 rounded-[var(--r-lg)] border border-dashed px-4 py-8 text-center transition-colors',
-        isDragOver ? 'border-[var(--accent)] bg-[var(--accent-subtle)]' : 'border-[var(--border-default)] bg-[var(--bg-inset)]',
+        isDragOver ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--border-default)] bg-[var(--bg-inset)]',
       )}
     >
       <Upload size={20} className='text-[var(--text-quaternary)]' aria-hidden='true' />
