@@ -3,6 +3,7 @@ import { ShareBreakdownItem, ShareGlobalAnalytics, ShareNoteAnalytics, ShareTime
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { buildShareTimeline, buildVisitFilterSql, computeDelta, getRangeStartTimestamp, parseBotName, toBreakdown, type ShareFilterOptions } from '../../lib/share-analytics'
+import { firstOf, rowsOf } from './read-results'
 import { ShareRow } from './shares'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -22,6 +23,26 @@ interface AnalyticsContext {
   startTs: number
   duration: number
   prevStartTs: number
+}
+
+interface ShareSummaryRow {
+  total_shares: number
+  active_shares: number
+}
+
+interface PrevStatsRow {
+  prev_views: number
+  prev_uv: number
+}
+
+interface FilterStatsRow {
+  bots: number
+  self_referrals: number
+  owner: number
+}
+
+interface MinVisitedRow {
+  min_ts: number | null
 }
 
 interface VisitRow {
@@ -66,64 +87,95 @@ export function registerShareAnalyticsRoutes(shareManageRoutes: Hono<AppBindings
 
 function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void {
   shareManageRoutes.get('/analytics/global', async (c) => {
+    const db = c.env.DB
     const userId = c.get('userId')
     const ctx = analyticsContext(c)
-    await scopeAllRangeWindow(c.env.DB, ctx, { userId })
-    const summary = await loadShareSummary(c.env.DB, userId, ctx.now)
-    const rows = await loadRangeVisits(c.env.DB, { userId, startTs: ctx.startTs, clause: ctx.clause })
-    const prevStats = await loadPrevVisitStats(c.env.DB, userId, ctx.prevStartTs, ctx.startTs, ctx.clause)
-    const filterStatsRow = await loadVisitFilterStats(c.env.DB, userId, ctx.startTs)
-    const maps = aggregateVisitMaps(rows)
-    const topNotes = await loadTopNotes(c.env.DB, maps.topNoteMap)
-    const recentVisits = await loadRecentVisits(c.env.DB, { userId, clause: buildVisitFilterSql(ctx.filters, 'sv') })
-    const timeline = buildShareTimeline(rows, ctx.range, ctx.startTs, ctx.duration)
-    const stats = currentVisitStats(rows, prevStats, ctx.duration)
-    const breakdown = breakdownTotals(maps, stats.currentViews)
-
-    const response: ShareGlobalAnalytics = {
-      range: ctx.range,
-      totalShares: summary?.total_shares ?? 0,
-      activeShares: summary?.active_shares ?? 0,
-      totalViews: stats.currentViews,
-      totalVisitors: stats.currentVisitors,
-      viewsDelta: computeDelta(stats.currentViews, stats.prevViews),
-      visitorsDelta: computeDelta(stats.currentVisitors, stats.prevVisitors),
-      viewsPerDay: stats.viewsPerDay,
-      sparklineViews: timeline.map((t) => t.views),
-      sparklineVisitors: timeline.map((t) => t.visitors),
-      timeline,
-      topNotes,
-      topCountries: breakdown.countries.slice(0, 10),
-      topReferrers: breakdown.referrers.slice(0, 10),
-      devices: breakdown.devices,
-      osList: breakdown.osList,
-      browsers: breakdown.browsers,
-      recentVisits,
-      filterStats: {
-        bots: filterStatsRow?.bots ?? 0,
-        selfReferrals: filterStatsRow?.self_referrals ?? 0,
-        owner: filterStatsRow?.owner ?? 0,
-      },
+    if (ctx.range === 'all') {
+      const [minResult] = await db.batch([minVisitedAtStatement(db, { userId })])
+      applyAllRangeWindow(ctx, firstOf<MinVisitedRow>(minResult))
     }
-    return c.json(response)
+    const [summaryResult, visitsResult, prevStatsResult, filterStatsResult, recentResult] = await db.batch([
+      shareSummaryStatement(db, userId, ctx.now),
+      rangeVisitsStatement(db, { userId, startTs: ctx.startTs, clause: ctx.clause }),
+      prevVisitStatsStatement(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause),
+      visitFilterStatsStatement(db, userId, ctx.startTs),
+      recentVisitsStatement(db, { userId, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
+    ])
+    const rows = rowsOf<VisitRow>(visitsResult)
+    const maps = aggregateVisitMaps(rows)
+    const topNotes = await loadTopNotes(db, maps.topNoteMap)
+    return c.json(composeGlobalAnalytics({
+      ctx,
+      summary: firstOf<ShareSummaryRow>(summaryResult),
+      rows,
+      maps,
+      prevStats: firstOf<PrevStatsRow>(prevStatsResult),
+      filterStats: firstOf<FilterStatsRow>(filterStatsResult),
+      topNotes,
+      recentVisits: toVisitLogs(rowsOf<RecentVisitRow>(recentResult)),
+    }))
   })
+}
+
+function composeGlobalAnalytics(params: {
+  ctx: AnalyticsContext
+  summary: ShareSummaryRow | null
+  rows: VisitRow[]
+  maps: ReturnType<typeof aggregateVisitMaps>
+  prevStats: PrevStatsRow | null
+  filterStats: FilterStatsRow | null
+  topNotes: ShareGlobalAnalytics['topNotes']
+  recentVisits: ShareVisitLog[]
+}): ShareGlobalAnalytics {
+  const { ctx, summary, rows, maps, prevStats, filterStats, topNotes, recentVisits } = params
+  const timeline = buildShareTimeline(rows, ctx.range, ctx.startTs, ctx.duration)
+  const stats = currentVisitStats(rows, prevStats, ctx.duration)
+  const breakdown = breakdownTotals(maps, stats.currentViews)
+  return {
+    range: ctx.range,
+    totalShares: summary?.total_shares ?? 0,
+    activeShares: summary?.active_shares ?? 0,
+    totalViews: stats.currentViews,
+    totalVisitors: stats.currentVisitors,
+    viewsDelta: computeDelta(stats.currentViews, stats.prevViews),
+    visitorsDelta: computeDelta(stats.currentVisitors, stats.prevVisitors),
+    viewsPerDay: stats.viewsPerDay,
+    sparklineViews: timeline.map((t) => t.views),
+    sparklineVisitors: timeline.map((t) => t.visitors),
+    timeline,
+    topNotes,
+    topCountries: breakdown.countries.slice(0, 10),
+    topReferrers: breakdown.referrers.slice(0, 10),
+    devices: breakdown.devices,
+    osList: breakdown.osList,
+    browsers: breakdown.browsers,
+    recentVisits,
+    filterStats: {
+      bots: filterStats?.bots ?? 0,
+      selfReferrals: filterStats?.self_referrals ?? 0,
+      owner: filterStats?.owner ?? 0,
+    },
+  }
 }
 
 function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void {
   shareManageRoutes.get('/analytics/note/:noteId', async (c) => {
+    const db = c.env.DB
     const userId = c.get('userId')
     const noteId = c.req.param('noteId')
     const ctx = analyticsContext(c)
-    const row = await loadNoteShare(c.env.DB, userId, noteId)
+    const row = await loadNoteShare(db, userId, noteId)
     if (!row) throw ApiError.notFound('Share or note not found')
-    await scopeAllRangeWindow(c.env.DB, ctx, { userId, noteId })
-    const rows = await loadRangeVisits(c.env.DB, { userId, noteId, startTs: ctx.startTs, clause: ctx.clause })
-    const recentVisits = await loadRecentVisits(c.env.DB, {
-      userId,
-      noteId,
-      clause: buildVisitFilterSql(ctx.filters, 'sv'),
-      noteTitle: row.note_title,
-    })
+    if (ctx.range === 'all') {
+      const [minResult] = await db.batch([minVisitedAtStatement(db, { userId, noteId })])
+      applyAllRangeWindow(ctx, firstOf<MinVisitedRow>(minResult))
+    }
+    const [visitsResult, recentResult] = await db.batch([
+      rangeVisitsStatement(db, { userId, noteId, startTs: ctx.startTs, clause: ctx.clause }),
+      recentVisitsStatement(db, { userId, noteId, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
+    ])
+    const rows = rowsOf<VisitRow>(visitsResult)
+    const recentVisits = toVisitLogs(rowsOf<RecentVisitRow>(recentResult), row.note_title)
     const timeline = buildShareTimeline(rows, ctx.range, ctx.startTs, ctx.duration)
     const maps = aggregateVisitMaps(rows)
     const totalVisitors = currentVisitStats(rows, undefined, ctx.duration).currentVisitors
@@ -174,19 +226,16 @@ function analyticsContext(c: { req: { query(key: string): string | undefined } }
   }
 }
 
-async function scopeAllRangeWindow(
-  db: D1Database,
-  ctx: AnalyticsContext,
-  params: { userId: string; noteId?: string },
-): Promise<void> {
-  if (ctx.range !== 'all') return
+function minVisitedAtStatement(db: D1Database, params: { userId: string; noteId?: string }): D1PreparedStatement {
   const noteWhere = params.noteId ? 'note_id = ?1 AND user_id = ?2' : 'user_id = ?1'
   const binds = params.noteId ? [params.noteId, params.userId] : [params.userId]
-  const minRow = await db.prepare(
+  return db.prepare(
     `SELECT MIN(visited_at) as min_ts FROM share_visits WHERE ${noteWhere}`,
   )
     .bind(...binds)
-    .first<{ min_ts: number | null }>()
+}
+
+function applyAllRangeWindow(ctx: AnalyticsContext, minRow: MinVisitedRow | null): void {
   const startTs = minRow?.min_ts ?? ctx.now - 30 * DAY_MS
   const duration = Math.max(ctx.now - startTs, DAY_MS)
   ctx.startTs = startTs
@@ -194,7 +243,7 @@ async function scopeAllRangeWindow(
   ctx.prevStartTs = startTs - duration
 }
 
-async function loadShareSummary(db: D1Database, userId: string, now: number): Promise<{ total_shares: number; active_shares: number } | null> {
+function shareSummaryStatement(db: D1Database, userId: string, now: number): D1PreparedStatement {
   return db.prepare(
     `SELECT
        COUNT(*) as total_shares,
@@ -203,19 +252,18 @@ async function loadShareSummary(db: D1Database, userId: string, now: number): Pr
      FROM shares WHERE user_id = ?1`,
   )
     .bind(userId, now)
-    .first<{ total_shares: number; active_shares: number }>()
 }
 
-async function loadRangeVisits(db: D1Database, params: {
+function rangeVisitsStatement(db: D1Database, params: {
   userId: string
   noteId?: string
   startTs: number
   clause: string
-}): Promise<VisitRow[]> {
+}): D1PreparedStatement {
   const { userId, noteId, startTs, clause } = params
   const noteWhere = noteId ? `note_id = ?1 AND user_id = ?2 AND visited_at >= ?3` : `user_id = ?1 AND visited_at >= ?2`
   const binds = noteId ? [noteId, userId, startTs] : [userId, startTs]
-  const { results } = await db.prepare(
+  return db.prepare(
     `SELECT visited_at, visitor_fp, country, referrer_host, device_type, os, browser,
             is_bot, is_self_referrer, is_owner, note_id, slug
        FROM share_visits
@@ -223,27 +271,24 @@ async function loadRangeVisits(db: D1Database, params: {
       ORDER BY visited_at ASC`,
   )
     .bind(...binds)
-    .all<VisitRow>()
-  return results ?? []
 }
 
-async function loadPrevVisitStats(
+function prevVisitStatsStatement(
   db: D1Database,
   userId: string,
   prevStartTs: number,
   startTs: number,
   clause: string,
-): Promise<{ prev_views: number; prev_uv: number } | null> {
+): D1PreparedStatement {
   return db.prepare(
     `SELECT COUNT(*) as prev_views, COUNT(DISTINCT visitor_fp) as prev_uv
        FROM share_visits
       WHERE user_id = ?1 AND visited_at >= ?2 AND visited_at < ?3 ${clause}`,
   )
     .bind(userId, prevStartTs, startTs)
-    .first<{ prev_views: number; prev_uv: number }>()
 }
 
-async function loadVisitFilterStats(db: D1Database, userId: string, startTs: number): Promise<{ bots: number; self_referrals: number; owner: number } | null> {
+function visitFilterStatsStatement(db: D1Database, userId: string, startTs: number): D1PreparedStatement {
   return db.prepare(
     `SELECT
        COUNT(CASE WHEN is_bot = 1 THEN 1 END) as bots,
@@ -251,7 +296,7 @@ async function loadVisitFilterStats(db: D1Database, userId: string, startTs: num
        COUNT(CASE WHEN is_owner = 1 THEN 1 END) as owner
      FROM share_visits
     WHERE user_id = ?1 AND visited_at >= ?2`,
-  ).bind(userId, startTs).first<{ bots: number; self_referrals: number; owner: number }>()
+  ).bind(userId, startTs)
 }
 
 function currentVisitStats(
@@ -349,15 +394,14 @@ function breakdownTotals(
   }
 }
 
-async function loadRecentVisits(db: D1Database, params: {
+function recentVisitsStatement(db: D1Database, params: {
   userId: string
   noteId?: string
   clause: string
-  noteTitle?: string
-}): Promise<ShareVisitLog[]> {
-  const { userId, noteId, clause, noteTitle } = params
-  const { results } = noteId
-    ? await db.prepare(
+}): D1PreparedStatement {
+  const { userId, noteId, clause } = params
+  return noteId
+    ? db.prepare(
       `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
               sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser, sv.user_agent,
               sv.is_bot, sv.is_self_referrer, sv.is_owner
@@ -367,8 +411,7 @@ async function loadRecentVisits(db: D1Database, params: {
         LIMIT 20`,
     )
       .bind(noteId, userId)
-      .all<RecentVisitRow>()
-    : await db.prepare(
+    : db.prepare(
       `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
               sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser, sv.user_agent,
               sv.is_bot, sv.is_self_referrer, sv.is_owner,
@@ -380,8 +423,10 @@ async function loadRecentVisits(db: D1Database, params: {
         LIMIT 20`,
     )
       .bind(userId)
-      .all<RecentVisitRow>()
-  return (results ?? []).map((r) => toVisitLog(r, noteTitle))
+}
+
+function toVisitLogs(rows: RecentVisitRow[], noteTitle?: string): ShareVisitLog[] {
+  return rows.map((r) => toVisitLog(r, noteTitle))
 }
 
 function toVisitLog(r: RecentVisitRow, noteTitle?: string): ShareVisitLog {

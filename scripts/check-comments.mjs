@@ -4526,6 +4526,11 @@ const allowed = new Map([
     '// Sessions go first: their lookup is a subquery over shares and must read the',
     '// still-present rows inside the same transaction.',
   ]],
+  ['src/worker/routes/share/global-stats.ts', [
+    '// Statement builders + parsers for the share list\'s global stats (SH-17a):',
+    '// the list route batches these five statements with its rows query, so each',
+    '// side stays a pure piece the handler can reassemble.',
+  ]],
   ['src/worker/routes/share/note.ts', [
     '// The collision pre-check is not atomic: a concurrent registration can take the',
     '// slug between check and write, and then the UNIQUE index rejects us with 500.',
@@ -4546,6 +4551,10 @@ const allowed = new Map([
     '// The raw candidate may carry query tokens or fragments; only origin+path earns a column.',
     '/* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */',
     '/* An unparseable referer header simply means "no external referrer". */',
+  ]],
+  ['src/worker/routes/share/read-results.ts', [
+    '// D1 batch() answers with one result object per statement; these unpack them',
+    '// the way prepare().all()/.first() used to for serial reads.',
   ]],
   ['src/worker/routes/share/visits.ts', [
     '// Wiping the whole audit trail is unrecoverable, so a stolen session must',
@@ -4643,6 +4652,9 @@ const allowed = new Map([
     '// ban), computed by one reverse-DFS over static edges.',
   ]],
   ['tests/share-routes.test.ts', [
+    '// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =',
+    '// one round-trip however many statements ride along. Statements built through',
+    '// the wrapper still execute inside batch without being double-counted.',
     '// visit recording runs via waitUntil; the test context must let us await it',
     '// Eleven scrypt verifications need more than the 5s default budget on slow runners.',
     '// requestClientIp only trusts CF-Connecting-IP when the edge set `cf`, so the probe attaches it.',

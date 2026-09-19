@@ -38,7 +38,7 @@
 | 23 | SH-22 | 表格行 memo + 菜单 items 惰性构建 + folders Map | P2 | ✅ | 245c74ce |
 | 24 | SH-19 | App 启动瘦身：`/api/share/summary` 轻量端点 | P1 | ✅ | 2b04d5cc |
 | 25 | SH-20 | code-split：barrel 拆 store/modals 入口（保持 blog 现有 import 不破） | P1 | ✅ | 3d6496e0 |
-| 26 | SH-17a | 列表接口 5 个统计查询 `db.batch` 并行化（第一步，不拆端点） | P0 部分 | ⬜ | |
+| 26 | SH-17a | 列表接口 5 个统计查询 `db.batch` 并行化（第一步，不拆端点） | P0 部分 | ✅ | 待回填 |
 | 27 | SH-28 | 实时访问日志补时间窗 + 文案改「最近访问」 | P2 | ⬜ | |
 | 28 | SH-30 | 侧栏计数口径（软删过滤/expiring 互斥/全时段标注）+ LIMIT 500 truncated | P2 | ⬜ | |
 | 29 | SH-31 | a11y 批量：Switch label、IconButton、hub ariaLabel、行「更多」键盘入口 | P2 | ⬜ | |
@@ -170,3 +170,15 @@
   - `tests/share-code-split.test.ts`：AST 静态闭包守卫（动态 import 视作边界）——share 之外任何模块不得静态触达 modal 图；3 个消费文件必须经 `share/modals` 动态入口且不得 dynamic-import 根 barrel（防再退化）；带「被禁面必须存在」防空转。
 - 验证：红→绿；变异三杀（barrel 回流一个 modal / app-shell lazy 退回根 barrel——首版断言只数存在性被此变异漏过，加强为 barrel 禁止后杀死 / 删 modals 入口）。tsc+15 文件/138 测+十门禁全绿；`npm run build` 产物复核：qrcode 块（esm-*.js 15.8KB）不再出现在 shell 的 43 块静态闭包里，qr-colors 独立 0KB 块仅被 modals/account-settings/attachments 三个 lazy 块引用。
 - 遗留（按约束③不动）：shell 闭包内唯一残留 qrcode 触达来自 `blog-*.js`（link-qr-modal 静态并进 blog 块），与 blog barrel 宽导出同构，归 blog 管理中心任务；`vendor:check` 只算 index.html 静态闭包的盲区本次由新守卫在源码层补住，未改门禁脚本。
+
+## 26 — SH-17a 列表/分析接口 db.batch 并行化（2026-09-19）
+
+- 现象：`GET /api/share` 串行 7+ 次 D1 往返（5 个 globalStats 查询 + 列表行 + 每 50 note 一轮 visits 统计）；`GET /analytics/global` 串行 6 次往返、`/analytics/note/:id` 3 次（04 号遗留登记的 analytics 并入本项）。D1 按查询收费且每次往返吃 Worker I/O 等待，同依赖层的查询没有理由排队。
+- 修复：
+  - `src/worker/routes/share/shares.ts`：列表路由把 folderCounts/tagCounts/globalSummary/filteredGlobalStats/pinStar 五个统计与列表行查询合成一次 `db.batch`（6 语句 1 往返）；`loadNoteVisitStats` 的分块统计从「每块一次 await .all()」改为一组语句进单个 `db.batch`（120 note 由 3 往返降到 1）。原 `loadShare*` 系列拆成语句构建器 + 纯解析函数（`folderCountsStatement`/`toFolderCounts` 等），响应组装走 `buildShareGlobalStats`，输出与改前逐字段一致。
+  - `src/worker/routes/share/global-stats.ts`：新文件承接上述构建器/解析器与 `ShareGlobalStats`（shares.ts 借 size 门禁 500 行红线拆出）。
+  - `src/worker/routes/share/read-results.ts`：新增 `rowsOf/firstOf`——batch 响应按语句顺序回填，替代 `.all()/.first()` 的最小解包。
+  - `src/worker/routes/share/analytics.ts`：global 路由 range=all 的 MIN 扫描单独一次 batch，其余 summary/rangeVisits/prevStats/filterStats/recentVisits 五个互不依赖的查询并成第二次 batch，仅 `loadTopNotes`（依赖 visits 行）保持第二次之后直查——6 往返降到 2+1；note 路由 `loadNoteShare` 保持第一条直查（404 判定优先，不能让 ghost noteId 触发 visits 查询），其后 rangeVisits+recentVisits 一次 batch；`scopeAllRangeWindow` 拆为 `minVisitedAtStatement` + 纯函数 `applyAllRangeWindow`；响应字面量抽成 `composeGlobalAnalytics`（两处超 50 行函数红线）；五个 `load*` 改语句构建器。
+- 测试 `tests/share-routes.test.ts` 新 describe 4 例：`instrumentRoundTrips()` 包装 `DB_ENV.env.DB` 计「直接 .all/.first 串行往返」与「db.batch 次数」——列表恰 2 batch 0 直查、global 1 batch+topNotes 1 直查（总往返 ≤2）、note 1 batch+404 门 1 直查、ghost noteId 必须 0 batch（守住「gate 先行」不被顺手 batch 掉）。变异两杀：visits 分块退回逐块 await → 列表红；recentVisits 拆独立 batch → global 红（/tmp 备份还原）。既有行为用例（列表筛选/120 note 分块/all 分桶/bot 过滤/404 语义）59 例全绿，响应体不变。
+- 验证：红→绿；tsc + share 全套 13 文件/121 测 + 十门禁全绿（size 逼出 global-stats.ts 拆分与 compose 抽取）。
+- 遗留：`all` 区间「整表拉行再内存分桶」的 SQL 下推未做——`buildShareTimeline` 的分桶语义属冻结共用件 `lib/share-analytics.ts`（约束③/F 清单），忠实下推须改其行为，等裁决；`GET /note-share/:noteId` 本就单查询，无可并行项未动。

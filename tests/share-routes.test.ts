@@ -216,6 +216,94 @@ describe('share summary route (real D1)', () => {
   })
 })
 
+interface PreparedLike {
+  bind(...values: unknown[]): PreparedLike
+  all(): Promise<{ results: unknown[] }>
+  first(): Promise<Record<string, unknown> | null>
+  run(): Promise<unknown>
+}
+
+// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =
+// one round-trip however many statements ride along. Statements built through
+// the wrapper still execute inside batch without being double-counted.
+function instrumentRoundTrips(): { direct: number; batch: number } {
+  const calls = { direct: 0, batch: 0 }
+  const real = DB_ENV.env.DB as unknown as {
+    prepare(sql: string): PreparedLike
+    batch(statements: PreparedLike[]): Promise<unknown>
+  }
+  const wrap = (stmt: PreparedLike): PreparedLike => ({
+    bind: (...values: unknown[]) => wrap(stmt.bind(...values)),
+    all: async () => { calls.direct += 1; return stmt.all() },
+    first: async () => { calls.direct += 1; return stmt.first() },
+    run: async () => stmt.run(),
+  })
+  DB_ENV.env.DB = {
+    prepare: (sql: string) => wrap(real.prepare(sql)),
+    batch: (statements: PreparedLike[]) => { calls.batch += 1; return real.batch(statements) },
+  } as unknown as D1Database
+  return calls
+}
+
+describe('share list and analytics db.batch round-trips (SH-17a)', () => {
+  it('answers the share list in exactly two batches and no serial query', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Round trip' })
+    await seedShare(db, { note_id: n1, slug: 'rt-1' })
+    await seedVisit(db, { note_id: n1, slug: 'rt-1' })
+    const calls = instrumentRoundTrips()
+
+    const body = await (await request(makeApp(), '/api/share')).json()
+    expect(body.shares[0].views).toBe(1)
+    expect(body.shares[0].uniqueVisitors).toBe(1)
+    expect(body.globalStats.totalShares).toBe(1)
+    expect(calls.batch).toBe(2)
+    expect(calls.direct).toBe(0)
+  })
+
+  it('answers global analytics in one batch plus the dependent top-notes lookup', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Global rt' })
+    await seedShare(db, { note_id: n1, slug: 'ag-rt' })
+    await seedVisit(db, { note_id: n1, slug: 'ag-rt', visitor_fp: 'f-rt' })
+    const calls = instrumentRoundTrips()
+
+    const body = await (await request(makeApp(), '/api/share/analytics/global?range=30d')).json()
+    expect(body.totalViews).toBe(1)
+    expect(body.totalVisitors).toBe(1)
+    expect(body.topNotes[0].noteTitle).toBe('Global rt')
+    expect(body.recentVisits.length).toBe(1)
+    expect(body.filterStats.bots).toBe(0)
+    expect(calls.direct).toBe(1)
+    expect(calls.batch + calls.direct).toBeLessThanOrEqual(2)
+  })
+
+  it('answers note analytics with the share-gate query plus one batch', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { id: 'na-rt', title: 'Note rt' })
+    await seedShare(db, { note_id: n1, slug: 'an-rt' })
+    await seedVisit(db, { note_id: n1, slug: 'an-rt' })
+    const calls = instrumentRoundTrips()
+
+    const body = await (await request(makeApp(), '/api/share/analytics/note/na-rt?range=30d')).json()
+    expect(body.totalViews).toBe(1)
+    expect(body.noteTitle).toBe('Note rt')
+    expect(body.recentVisits.length).toBe(1)
+    expect(calls.direct).toBe(1)
+    expect(calls.batch + calls.direct).toBeLessThanOrEqual(2)
+  })
+
+  it('still answers 404 from the share gate alone, without visit queries', async () => {
+    await makeDb()
+    const calls = instrumentRoundTrips()
+
+    const res = await request(makeApp(), '/api/share/analytics/note/ghost?range=30d')
+    expect(res.status).toBe(404)
+    expect(calls.batch).toBe(0)
+    expect(calls.direct).toBe(1)
+  })
+})
+
 describe('share note-share & upsert routes (real D1)', () => {
   it('returns share:null for an unshared note', async () => {
     const db = await makeDb()
