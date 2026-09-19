@@ -45,7 +45,7 @@
 | 30 | SH-32 | 调色板类 → 设计令牌（visit-logs/sidebar/qr/dashboard 等） | P2 | ✅ | ac3941fb |
 | 31 | SH-33 | 裸控件换组件体系 + CSV 导出全量 + 复制失败 toast + 日志按分享过滤入口 | P2 | ✅ | c5824e95 |
 | 32 | SH-34 | 英文字面量进 locale + 服务端回落值改 null + countryName locale 显式 | P2 | ✅ | 91a10c0f |
-| 33 | SH-35 | 窄屏：侧栏折叠/宽模态 fullscreen/批量条换行/触控尺寸 | P2 | ✅ | 待回填 |
+| 33 | SH-35 | 窄屏：侧栏折叠/宽模态 fullscreen/批量条换行/触控尺寸 | P2 | ✅ | b080398a |
 | 34 | SH-36 | 小项集合（口令长度统一、effect 重开、子模态重置、th scope、role=status 等） | P3 | ⬜ | |
 | F1 | SH-29 | 🧊 `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，等用户决定 | P2 | 🧊 | |
 | F2 | SH-16b | 🧊 若 range=all 分桶必须改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline` 行为（blog stats.ts 共用）——04 号做不完的部分挪到这里 | — | 🧊 | |
