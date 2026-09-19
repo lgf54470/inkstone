@@ -26,6 +26,7 @@ export const messages = {
 'share.never_expires': '永久',
 'share.never_expires_71ab34': '永久有效',
 'share.open_link': '打开链接',
+'share.open_sidebar': '打开分类侧栏',
 'share.opening': '正在打开…',
 'share.passcode': '口令',
 'share.passcode_protected': '已加口令',

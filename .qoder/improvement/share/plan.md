@@ -45,7 +45,7 @@
 | 30 | SH-32 | 调色板类 → 设计令牌（visit-logs/sidebar/qr/dashboard 等） | P2 | ✅ | ac3941fb |
 | 31 | SH-33 | 裸控件换组件体系 + CSV 导出全量 + 复制失败 toast + 日志按分享过滤入口 | P2 | ✅ | c5824e95 |
 | 32 | SH-34 | 英文字面量进 locale + 服务端回落值改 null + countryName locale 显式 | P2 | ✅ | 91a10c0f |
-| 33 | SH-35 | 窄屏：侧栏折叠/宽模态 fullscreen/批量条换行/触控尺寸 | P2 | ⬜ | |
+| 33 | SH-35 | 窄屏：侧栏折叠/宽模态 fullscreen/批量条换行/触控尺寸 | P2 | ✅ | 待回填 |
 | 34 | SH-36 | 小项集合（口令长度统一、effect 重开、子模态重置、th scope、role=status 等） | P3 | ⬜ | |
 | F1 | SH-29 | 🧊 `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，等用户决定 | P2 | 🧊 | |
 | F2 | SH-16b | 🧊 若 range=all 分桶必须改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline` 行为（blog stats.ts 共用）——04 号做不完的部分挪到这里 | — | 🧊 | |
@@ -247,3 +247,13 @@
 - 客户端字面量：PV/UV → `share.unit_pv`/`unit_uv`（表格行 + 看板 TOP 行），`TOP 10` 徽章 → `share.top_notes_badge`，CUSTOM 徽章 → `share.custom_slug_badge`，`Untitled note`/`Bot`/`Unknown` 回落 → 既有 `common.untitled_note`/`share.badge_bot` + 新 `share.env_unknown`。
 - `share-helpers.ts`：`countryNameLocalized` locale 改必传（无默认 zh-CN；blog 两处调用点本就显式传 locale，编译面强制），`UNKNOWN`/null 令牌改回 `share.country_unknown`（顺带影响 blog 看板未知国行由回显 'UNKNOWN' 变为本地化标签，属该 helper 既定职责）；`Intl.DisplayNames` 加 `Map<locale, DisplayNames>` 缓存；新增 `localizeReferrerName`（'Direct'→direct_access）与 `localizeEnvName`（缺失/'other'→env_unknown），沿用 `localizeDeviceName` 的桶令牌本地化模式；看板来源/系统两卡与最近活动行、日志表格 LogRow（`useLocale()` 下发）全部改走这四个本地化器。`share-fallback-labels.test.ts` 6 例：locale 显式解析、UNKNOWN 哨兵、DisplayNames 每 locale 只构造一次（子类计数）、Direct/other 令牌、null 字段整表渲染无英文字面量。
 - 新增 6 个 locale 键（en/zh `share-2.ts`）。变异 5 发：去缓存读 → 计数例红；visits COALESCE 回填 → D1 visits 断言红；topNotes `|| 'Untitled note'` 回填 → D1 topNotes 断言红（recentVisits 断言不受扰，三条各守一路径）；`{'PV'}` 回填 → 守护红；UNKNOWN 哨兵回显回填 → 单测+渲染双红（均 /tmp/mut32 还原）。
+
+## 33 — SH-35 窄屏四件套：侧栏抽屉 / fullscreen 宽模态 / 批量条换行 / 44px 触控（2026-09-19）
+
+- 侧栏折叠（`share-hub-modal.tsx`/`share-hub-sidebar.tsx`/`use-share-hub-sidebar.tsx`）：`useBreakpoint()==='mobile'` 时 hub 不再内联渲染 `ShareHubSidebar`，Header 出现 `share.open_sidebar` IconButton（PanelLeft 图标），打开左 `Drawer`（宽 260 与桌面侧栏同、`zIndex=Z_INDEX.menuHigh` 压在 hub modal(--z-modal:250) 之上，先例 template-gallery 的 Menu）。抽屉内选中分类/文件夹/标签即关闭：hook 新增可选 `onNavigate`，store 的 `setCategory/setFolderId/setTag` 包成 `selectCategory/selectFolder/selectTag` 一并回调；桌面调用点不传，行为不变。
+- 宽模态（`share-hub-modal.tsx`）：mobile 下 `variant='fullscreen'` 且 className 换 `MOBILE_MODAL_CLASS`（去掉 `h-[84vh] min-h-145 max-h-220`）——Modal 面板类是 `cn(..., className)` 后置合并（tailwind-merge），不剥掉固定高度就会盖掉 fullscreen 的 `h-full max-h-none`；桌面保持 1300px dialog。顺手把原先卡在 import 中间的 `MODAL_WIDTH` 归位到常量区。
+- 批量条（`share-batch-bar.tsx`）：容器去 `shrink-0 whitespace-nowrap`，加 `flex-wrap justify-center`（max-w-[calc(100%-2rem)] 保留）——5 个动作按钮窄屏下换行而非溢出/裁切。按钮自身 `shrink-0 whitespace-nowrap` 不变，保证单个按钮不被拦腰折。
+- 触控尺寸（`share-note-submenu.tsx`）：`ShareMenuButton` 基准高 `h-7.5`(30px) → `h-11 … md:h-7.5`（移动端 44px，桌面不变）。守护拆到 `tests/share-touch-targets.test.ts`（node 工程静态扫描；client 工程无 node:fs 类型，`share-english-literals` 同款 `path.join('src',…)` 约定）。
+- 基础设施缺口（`src/client/lib/hooks.ts`）：`useMediaQuery` 未防 `window.matchMedia` 缺失——jsdom 不实现 matchMedia，任何挂载 `useBreakpoint` 消费者的测试直接 throw（share 三处既有测试实测炸出）。补 `typeof window.matchMedia === 'function'` 守卫（与 `motion.ts`/`link-hover.ts`/`tooltip.tsx` 全站既有惯例一致，浏览器行为零变化），缺失时读数与 SSR 回落同为 false。这是修 share 窄屏的必要前提，改动一行守卫、不动任何语义。
+- 测试 `share-narrow-screen.test.ts` 6 例（stub matchMedia 控制断点；afterEach 统一 unmount——断言失败不得把 portal 漏给下一个用例，变异跑时曾因此串扰误报）：mobile 无内联侧栏+有触发器、抽屉开→选 starred→store 生效且抽屉关、desktop 内联侧栏无触发器、mobile 面板无 `h-[84vh]` 且 maxWidth 空、desktop 面板 `h-[84vh]`+1300px、批量条 flex-wrap 且容器无 whitespace-nowrap；+ 静态 1 例触控高度。变异 6 发全杀（常渲染侧栏 / 删 onNavigate 调用 / 钉死 dialog variant / 钉死桌面 className / 批量条回填 nowrap / 子菜单回填 h-7.5），各杀各测试不串扰（/tmp/mut33 还原）。
+- 决策记录：台账标注「需人工确认是否有移动端设计稿」——本实现按 Modal/Drawer 现成移动形态（bottom-sheet 圆角、抽屉左侧滑入、全屏 dialog）落地，未发明新视觉；后续若有设计稿只需替换常量与断点判定。

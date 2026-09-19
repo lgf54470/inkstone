@@ -1,7 +1,10 @@
-import { Share2, X } from 'lucide-react'
-import { Modal } from '../../components/overlay'
+import { useState } from 'react'
+import { PanelLeft, Share2, X } from 'lucide-react'
+import { Drawer, Modal } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { t } from '../../lib/i18n'
+import { useBreakpoint } from '../../lib/hooks'
+import { Z_INDEX } from '../../lib/z-index'
 import type { ShareHubModalBundle } from './use-share-hub-modal'
 import { useShareHubModal } from './use-share-hub-modal'
 import { ShareHubSidebar } from './share-hub-sidebar'
@@ -14,11 +17,14 @@ import { LoadErrorState } from './share-load-error'
 import { useShareStore } from './share-store'
 import { ShareQrModal } from './share-qr-modal'
 import { ShareEditModal } from './share-edit-modal'
-
-const MODAL_WIDTH = 1300
 import { ShareNoteAnalyticsModal } from './share-note-analytics-modal'
 import { ShareVisitLogsModal } from './share-visit-logs-modal'
 import { ShareSettingsModal } from './share-settings-modal'
+
+const MODAL_WIDTH = 1300
+const SIDEBAR_DRAWER_WIDTH = 260
+const DESKTOP_MODAL_CLASS = 'h-[84vh] min-h-145 max-h-220 p-0 overflow-hidden flex flex-col'
+const MOBILE_MODAL_CLASS = 'p-0 overflow-hidden flex flex-col'
 
 export function ShareHubModal({
   open,
@@ -30,6 +36,9 @@ export function ShareHubModal({
   initialNoteId?: string
 }) {
   const hub = useShareHubModal(open, initialNoteId)
+  const isMobile = useBreakpoint() === 'mobile'
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const closeSidebar = () => setIsSidebarOpen(false)
   return (
     <>
       <Modal
@@ -37,22 +46,36 @@ export function ShareHubModal({
         onClose={onClose}
         ariaLabel={t('share.hub_title')}
         width={MODAL_WIDTH}
-        className='h-[84vh] min-h-145 max-h-220 p-0 overflow-hidden flex flex-col'
+        variant={isMobile ? 'fullscreen' : 'dialog'}
+        className={isMobile ? MOBILE_MODAL_CLASS : DESKTOP_MODAL_CLASS}
         bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'
       >
-        <HubHeader onClose={onClose} />
+        <HubHeader onClose={onClose} onOpenSidebar={isMobile ? () => setIsSidebarOpen(true) : undefined} />
         <div className='flex min-h-0 flex-1'>
-          <ShareHubSidebar />
+          {!isMobile && <ShareHubSidebar />}
           <HubContent hub={hub} />
         </div>
       </Modal>
+      {isSidebarOpen && (
+        <Drawer
+          open
+          onClose={closeSidebar}
+          side='left'
+          width={SIDEBAR_DRAWER_WIDTH}
+          zIndex={Z_INDEX.menuHigh}
+          title={t('share.hub_title')}
+        >
+          <ShareHubSidebar onNavigate={closeSidebar} />
+        </Drawer>
+      )}
       <HubOverlays hub={hub} />
     </>
   )
 }
 
-function HubHeader({ onClose }: {
+function HubHeader({ onClose, onOpenSidebar }: {
   onClose: () => void
+  onOpenSidebar?: () => void
 }) {
   return (
     <div className='flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]'>
@@ -62,9 +85,16 @@ function HubHeader({ onClose }: {
           {t('share.hub_title')}
         </h2>
       </div>
-      <IconButton label={t('common.close')} size='sm' onClick={onClose}>
-        <X size={15} />
-      </IconButton>
+      <div className='flex items-center gap-1'>
+        {onOpenSidebar && (
+          <IconButton label={t('share.open_sidebar')} size='sm' onClick={onOpenSidebar}>
+            <PanelLeft size={15} />
+          </IconButton>
+        )}
+        <IconButton label={t('common.close')} size='sm' onClick={onClose}>
+          <X size={15} />
+        </IconButton>
+      </div>
     </div>
   )
 }

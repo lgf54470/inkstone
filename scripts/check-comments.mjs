@@ -1988,6 +1988,9 @@ const allowed = new Map([
     '// The wipe-all-logs endpoint requires the current password (SH-12); both clean',
     '// entry points ask through this single prompt so wording stays identical.',
   ]],
+  ['src/client/features/share/share-narrow-screen.test.ts', [
+    '// A failed assertion must not leave a mounted portal behind: later tests query document.body.',
+  ]],
   ['src/client/features/share/share-page/index.ts', [
     '// Public interface of the share-page module. Kept separate from the parent',
     '// share module\'s index so the share page stays a self-contained lazy chunk',
@@ -2049,6 +2052,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-visit-logs-menu.test.ts', [
     '// Opens the clean menu with a real click and picks the wipe-everything entry.',
+  ]],
+  ['src/client/features/share/use-share-hub-sidebar.tsx', [
+    '// Inside the mobile drawer a pick is also the intent to return to the list, so navigation closes it.',
   ]],
   ['src/client/features/share/use-share-list.ts', [
     '// Stable identities keep the memoized table rows from re-rendering when an',
@@ -2384,6 +2390,7 @@ const allowed = new Map([
     '/** The graph settings toggles: the single source of truth for the panel, docs, and tests. */',
   ]],
   ['src/client/lib/hooks.ts', [
+    '// jsdom and other partial window implementations lack matchMedia; same reading as the SSR fallback.',
     '// Trailing debounce. `resetKey` names the subject the value belongs to: when it changes',
     '// (another note, a session that just started) the held value belongs to the previous',
     '// subject, so the current one is returned at once instead of after the delay.',
@@ -4687,6 +4694,9 @@ const allowed = new Map([
     '// visit recording runs via waitUntil; the test context must let us await it',
     '// Eleven scrypt verifications need more than the 5s default budget on slow runners.',
     '// requestClientIp only trusts CF-Connecting-IP when the edge set `cf`, so the probe attaches it.',
+  ]],
+  ['tests/share-touch-targets.test.ts', [
+    '/**\n * SH-35: the note submenu rows were 30px tall (`h-7.5`), below the 44px\n * touch target on phones. The base height must stay large for narrow\n * screens while desktop keeps the compact row.\n */',
   ]],
   ['tests/slides-interop.test.ts', [
     '/**\n * What happens when a note holds a deck this build did not author: a document in the\n * format\'s own shape, with the element kinds, slide fields and document tables an export\n * carries. Two things must hold, and neither is visible from the editor\'s side. The model\n * must carry every field through parse → edit → write (a field it drops is gone from the\n * note the next time anything is edited), and every element must DRAW SOMETHING — a deck\n * whose picture is missing an element looks finished, so the failure has no symptom until\n * the reader compares it with the original.\n */',

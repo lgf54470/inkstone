@@ -26,6 +26,7 @@ export const messages = {
 'share.never_expires': 'Never expires',
 'share.never_expires_71ab34': 'Never expires',
 'share.open_link': 'Open link',
+'share.open_sidebar': 'Open categories',
 'share.opening': 'Opening…',
 'share.passcode': 'Passcode',
 'share.passcode_protected': 'Passcode protected',

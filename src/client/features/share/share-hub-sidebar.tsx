@@ -7,8 +7,8 @@ import { Tooltip } from '../../components/overlay'
 import type { ShareHubSidebarBundle } from './use-share-hub-sidebar'
 import { useShareHubSidebar } from './use-share-hub-sidebar'
 
-export function ShareHubSidebar() {
-  const bundle = useShareHubSidebar()
+export function ShareHubSidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const bundle = useShareHubSidebar(onNavigate)
   return (
     <aside className='flex h-full w-65 shrink-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-sidebar)]'>
       <div className='flex-1 overflow-y-auto px-2 py-3'>
@@ -48,7 +48,7 @@ export function ShareHubSidebar() {
 }
 
 function CategoryList({ bundle }: { bundle: ShareHubSidebarBundle }) {
-  const { categories, category, selectedFolderId, selectedTag, setCategory } = bundle
+  const { categories, category, selectedFolderId, selectedTag, selectCategory } = bundle
   return (
     <div className='space-y-0.5'>
       {categories.map((cat) => {
@@ -57,7 +57,7 @@ function CategoryList({ bundle }: { bundle: ShareHubSidebarBundle }) {
           <button
             key={cat.id}
             type='button'
-            onClick={() => setCategory(cat.id)}
+            onClick={() => selectCategory(cat.id)}
             className={cn(
               'flex h-8 w-full items-center gap-2 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] font-medium transition-colors',
               isSelected

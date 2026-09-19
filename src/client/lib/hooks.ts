@@ -2,11 +2,17 @@ import { useEffect, useState } from 'react'
 import { relativeTime } from './time'
 
 
+function mediaMatches(query: string): boolean {
+  // jsdom and other partial window implementations lack matchMedia; same reading as the SSR fallback.
+  return typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia(query).matches
+}
+
 function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(() =>
-    typeof window === 'undefined' ? false : window.matchMedia(query).matches,
-  )
+  const [matches, setMatches] = useState(() => mediaMatches(query))
   useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
     const media = window.matchMedia(query)
     const onChange = () => setMatches(media.matches)
     onChange()

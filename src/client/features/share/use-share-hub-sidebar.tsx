@@ -54,7 +54,7 @@ function useShareHubSidebarState() {
   }
 }
 
-export function useShareHubSidebar() {
+export function useShareHubSidebar(onNavigate?: () => void) {
   const state = useShareHubSidebarState()
   const toast = useUi((s) => s.toast)
   const category = useShareStore((s) => s.category)
@@ -82,10 +82,15 @@ export function useShareHubSidebar() {
     void loadFolders(); void loadTags()
   }, [loadFolders, loadTags])
 
+  // Inside the mobile drawer a pick is also the intent to return to the list, so navigation closes it.
+  const selectCategory = (id: ShareCategory) => { setCategory(id); onNavigate?.() }
+  const selectFolder = (id: string | null) => { setFolderId(id); onNavigate?.() }
+  const selectTag = (name: string | null) => { setTag(name); onNavigate?.() }
+
   const ctx: SidebarCtx = {
     ...state,
     category, selectedFolderId, selectedTag,
-    setFolderId, setTag, globalStats, batchBusy,
+    selectFolder, selectTag, globalStats, batchBusy,
     batchToggleGroup, batchMoveToFolder,
     patchFolder, deleteFolder, createFolder, patchTag, deleteTag, toast,
   }
@@ -95,7 +100,7 @@ export function useShareHubSidebar() {
     categories: buildCategories(globalStats),
     renderFolderNode, renderTagNode,
     folderTree, tags, globalStats,
-    category, selectedFolderId, selectedTag, setCategory,
+    category, selectedFolderId, selectedTag, selectCategory,
     ...state,
   }
 }
@@ -110,8 +115,8 @@ type SidebarCtx = {
   category: ShareCategory
   selectedFolderId: string | null
   selectedTag: string | null
-  setFolderId: (id: string | null) => void
-  setTag: (tag: string | null) => void
+  selectFolder: (id: string | null) => void
+  selectTag: (name: string | null) => void
   globalStats: ShareStoreState['globalStats']
   batchBusy: ShareStoreState['batchBusy']
   batchToggleGroup: ShareStoreState['batchToggleGroup']
@@ -167,7 +172,7 @@ function buildFolderNode(node: ShareFolderNode, ctx: SidebarCtx): ReactNode {
         emptyHint: t('share.folder_empty_hint'),
       }}
       onToggleExpand={(e) => toggleFolderExpandFlow(folder.id, e, ctx)}
-      onSelect={() => ctx.setFolderId(folder.id)}
+      onSelect={() => ctx.selectFolder(folder.id)}
       onBatchToggle={(enabled) => toggleFolderBatchFlow(folder.id, enabled, ctx)}
       onStartRename={() => ctx.setRenamingFolderId(folder.id)}
       onFinishRename={(nextName) => finishFolderRenameFlow(folder, nextName, ctx)}
@@ -201,7 +206,7 @@ function buildTagNode(tag: ShareTag, ctx: SidebarCtx): ReactNode {
         toggleLabel: t('share.batch_toggle_label'),
         emptyHint: t('share.tag_empty_hint'),
       }}
-      onSelect={() => ctx.setTag(tag.name)}
+      onSelect={() => ctx.selectTag(tag.name)}
       onBatchToggle={(enabled) => toggleTagBatchFlow(tag.name, enabled, ctx)}
       onStartRename={() => ctx.setRenamingTagId(tag.id)}
       onFinishRename={(nextName) => finishTagRenameFlow(tag, nextName, ctx)}
