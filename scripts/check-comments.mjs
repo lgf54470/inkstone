@@ -1224,6 +1224,7 @@ const allowed = new Map([
   ['src/client/features/music/music-hub-toolbar.tsx', [
     '// Playlist scope shows the manual item order, so the sort control would change nothing.',
     '// The running guard lives in the store, so remounting the toolbar cannot stack a second pass.',
+    '// Force mode overwrites stored tags, so manual edits are lost — confirm before scanning everything visible.',
   ]],
   ['src/client/features/music/music-lyrics.ts', [
     '// The library ships tracks without lyric text; detail views mount this hook to',
@@ -1331,8 +1332,13 @@ const allowed = new Map([
     '// The library ships without lyric text, so the details views ask for it by id once.',
     '// Best effort: a failed lyric fetch only leaves the lyric view empty, the track still plays.',
     '// Imported tracks often arrive without artwork or lyrics; the ID3 tag still has them.',
+    '// Force mode is for tracks whose tags were written wrong the first time: whatever',
+    '// the file carries replaces the stored value, so the user must confirm it in the UI.',
     '// A malformed tag must only skip this track, never abort the whole scan.',
     '// A scan only fills gaps: manual edits and existing artwork always win.',
+    '// Force inverts that for the fields the tag carries, yet never rewrites the',
+    '// title (the suffixed-title repair applies in both modes) nor shortens a',
+    '// known duration, because those edits are the ones users cannot recover.',
     '// Server mutation responses carry the full record; merging it keeps the local',
     '// library authoritative without a reload.',
   ]],

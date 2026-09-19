@@ -28,13 +28,15 @@ export async function ensureTrackLyric(set: MusicSet, get: MusicGet, id: string)
 }
 
 // Imported tracks often arrive without artwork or lyrics; the ID3 tag still has them.
-export async function refreshTrackMetadata(set: MusicSet, get: MusicGet, ids: string[]): Promise<number> {
+// Force mode is for tracks whose tags were written wrong the first time: whatever
+// the file carries replaces the stored value, so the user must confirm it in the UI.
+export async function refreshTrackMetadata(set: MusicSet, get: MusicGet, ids: string[], force = false): Promise<number> {
   const counters = { updated: 0, unreadable: 0 }
   const byId = new Map(get().tracks.map((track) => [track.id, track]))
   const ordered = [...ids].sort((a, b) => Number(byId.get(a)?.source === 'webdav') - Number(byId.get(b)?.source === 'webdav'))
   const ran = await runLibraryJob(set, get, 'metadata', ids.length, async (advance) => {
     await mapWithConcurrency(ordered, TRACK_IO_CONCURRENCY, async (id) => {
-      await refreshOneTrack(set, byId, id, counters)
+      await refreshOneTrack(set, byId, id, counters, force)
       advance()
     })
   })
@@ -49,13 +51,14 @@ async function refreshOneTrack(
   byId: Map<string, MusicTrack>,
   id: string,
   counters: { updated: number; unreadable: number },
+  force: boolean,
 ): Promise<void> {
   const track = byId.get(id)
   if (!track) return
   let scanned: ScannedMetadata | null = null
   let durationMs = 0
   try {
-    scanned = needsTagScan(track) ? await scanTrackMetadata(track) : null
+    scanned = force || needsTagScan(track) ? await scanTrackMetadata(track) : null
     durationMs = track.durationMs > 0 ? 0 : (scanned?.durationMs ?? await probeTrackDuration(track))
   } catch (error) {
     // A malformed tag must only skip this track, never abort the whole scan.
@@ -63,7 +66,7 @@ async function refreshOneTrack(
     counters.unreadable += 1
     return
   }
-  const patch = scanPatch(track, scanned, durationMs)
+  const patch = scanPatch(track, scanned, durationMs, force)
   if (!Object.keys(patch).length) {
     if (!scanned?.coverDataUrl && !scanned?.lyric && !scanned?.artist) counters.unreadable += 1
     return
@@ -82,12 +85,15 @@ function needsTagScan(track: MusicTrack): boolean {
 }
 
 // A scan only fills gaps: manual edits and existing artwork always win.
-function scanPatch(track: MusicTrack, scanned: ScannedMetadata | null, durationMs: number): MusicTrackPatchInput {
+// Force inverts that for the fields the tag carries, yet never rewrites the
+// title (the suffixed-title repair applies in both modes) nor shortens a
+// known duration, because those edits are the ones users cannot recover.
+function scanPatch(track: MusicTrack, scanned: ScannedMetadata | null, durationMs: number, force = false): MusicTrackPatchInput {
   const patch: MusicTrackPatchInput = {}
-  if (scanned?.coverDataUrl && !track.coverUrl) patch.coverDataUrl = scanned.coverDataUrl
-  if (scanned?.lyric && !track.hasLyric && !track.lyric) patch.lyric = scanned.lyric
-  if (scanned?.artist && !track.artist) patch.artist = scanned.artist
-  if (scanned?.album && !track.album) patch.album = scanned.album
+  if (scanned?.coverDataUrl && (force || !track.coverUrl)) patch.coverDataUrl = scanned.coverDataUrl
+  if (scanned?.lyric && (force || (!track.hasLyric && !track.lyric))) patch.lyric = scanned.lyric
+  if (scanned?.artist && (force || !track.artist)) patch.artist = scanned.artist
+  if (scanned?.album && (force || !track.album)) patch.album = scanned.album
   if (scanned?.title && isArtistSuffixedTitle(track.title, scanned.title, scanned.artist ?? '')) patch.title = scanned.title
   if (durationMs > 0) patch.durationMs = durationMs
   return patch

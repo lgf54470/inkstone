@@ -157,7 +157,7 @@ export interface MusicStoreState {
   patchTrack: (id: string, patch: MusicTrackPatchInput) => Promise<void>
   // Detail views call this for tracks the lazy library listed with a lyric but no text.
   ensureTrackLyric: (id: string) => Promise<void>
-  refreshTrackMetadata: (ids: string[]) => Promise<number>
+  refreshTrackMetadata: (ids: string[], force?: boolean) => Promise<number>
   matchMissingCovers: () => Promise<number>
   toggleFavorite: (id: string) => Promise<void>
   togglePin: (id: string) => Promise<void>

@@ -46,7 +46,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     addSelectionToPlaylist: (playlistId) => addSelectionToPlaylist(set, get, playlistId),
     patchTrack: (id, patch) => patchTrack(set, get, id, patch),
     ensureTrackLyric: (id) => ensureTrackLyric(set, get, id),
-    refreshTrackMetadata: (ids) => refreshTrackMetadata(set, get, ids),
+    refreshTrackMetadata: (ids, force) => refreshTrackMetadata(set, get, ids, force),
     matchMissingCovers: () => matchMissingCovers(set, get),
     toggleFavorite: (id) => toggleFavorite(set, get, id),
     togglePin: (id) => togglePin(set, get, id),

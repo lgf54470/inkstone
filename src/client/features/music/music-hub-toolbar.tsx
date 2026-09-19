@@ -1,8 +1,8 @@
 import type { MusicTrack } from '@shared/types'
-import { CloudDownload, ImageDown, RefreshCw, Server, Upload } from 'lucide-react'
+import { CloudDownload, ImageDown, RefreshCw, RotateCw, Server, Upload } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
-import { Tooltip } from '../../components/overlay'
+import { Tooltip, confirm } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { SearchBox } from './music-search-box'
@@ -108,11 +108,27 @@ function MetadataButtons({ tracks }: { tracks: MusicTrack[] }) {
   const matchCovers = (): void => {
     if (coverlessCount) void matchMissingCovers()
   }
+  // Force mode overwrites stored tags, so manual edits are lost — confirm before scanning everything visible.
+  const forceScan = (): void => {
+    void confirm({
+      title: t('music.metadata_force'),
+      description: t('music.metadata_force_confirm'),
+      confirmLabel: t('music.metadata_force'),
+      tone: 'danger',
+    }).then((ok) => {
+      if (ok) void refreshTrackMetadata(tracks.map((track) => track.id), true)
+    })
+  }
   return (
     <>
       <Tooltip label={t('music.refresh_metadata')} side='left'>
         <IconButton label={t('music.refresh_metadata')} size='sm' disabled={!missingIds.length || scanning} onClick={scan}>
           <ImageDown size={14} className={scanning ? 'animate-pulse' : undefined} />
+        </IconButton>
+      </Tooltip>
+      <Tooltip label={t('music.metadata_force')} side='left'>
+        <IconButton label={t('music.metadata_force')} size='sm' disabled={!tracks.length || scanning} onClick={forceScan}>
+          <RotateCw size={14} className={scanning ? 'animate-pulse' : undefined} />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('music.match_covers')} side='left'>

@@ -118,6 +118,8 @@ export const messages = {
 'music.tags': 'Tags',
 'music.remove_tag': 'Remove tag from track',
 'music.refresh_metadata': 'Scan covers and lyrics',
+'music.metadata_force': 'Overwrite metadata from tags',
+'music.metadata_force_confirm': 'This rescans every track in the list and replaces stored covers, lyrics, artists, and albums with what the files carry. Manual edits will be lost.',
 'music.metadata_refreshed': 'Updated {value0} tracks',
 'music.metadata_unavailable': 'No cover or lyrics found in those files',
 'music.match_covers': 'Match covers online',

@@ -118,6 +118,8 @@ export const messages = {
 'music.tags': '标签',
 'music.remove_tag': '从歌曲中移除标签',
 'music.refresh_metadata': '扫描封面与歌词',
+'music.metadata_force': '按标签强制覆盖元数据',
+'music.metadata_force_confirm': '将重新扫描列表中的全部曲目，用文件里的标签覆盖已保存的封面、歌词、歌手与专辑。手动修改的内容会丢失。',
 'music.metadata_refreshed': '已更新 {value0} 首',
 'music.metadata_unavailable': '这些文件里没有可读取的封面或歌词',
 'music.match_covers': '联网补封面',

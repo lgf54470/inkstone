@@ -171,3 +171,54 @@ describe('single-record mutation merges', () => {
     expect(api.music.library).not.toHaveBeenCalled()
   })
 })
+
+describe('refreshTrackMetadata force mode (FEAT-6)', () => {
+  function filledTrack(id: string): MusicTrack {
+    return {
+      id, title: id, artist: 'Wrong Artist', album: 'Wrong Album', durationMs: 1000,
+      source: 'r2', coverUrl: 'https://cover/old', hasLyric: true, lyric: 'old lyric',
+    } as MusicTrack
+  }
+  const scanned = {
+    coverDataUrl: 'data:image/jpeg;base64,NEW', title: 'Real Song', artist: 'Right Artist',
+    album: 'Right Album', lyric: '[00:00.00]tag lyric', durationMs: 0,
+  }
+
+  it('force replaces stored artist, album, cover and lyric with the tag values', async () => {
+    vi.mocked(scanTrackMetadata).mockResolvedValue(scanned)
+    vi.mocked(api.music.patchTrack).mockClear()
+    const store = makeStore([filledTrack('a')])
+    const updated = await refreshTrackMetadata(store.set as never, store.get as never, ['a'], true)
+    expect(api.music.patchTrack).toHaveBeenCalledWith(
+      'a',
+      expect.objectContaining({ artist: 'Right Artist', album: 'Right Album', coverDataUrl: scanned.coverDataUrl, lyric: scanned.lyric }),
+    )
+    expect(updated).toBe(1)
+  })
+
+  it('fill-only mode still leaves a filled track untouched', async () => {
+    vi.mocked(scanTrackMetadata).mockResolvedValue(scanned)
+    vi.mocked(api.music.patchTrack).mockClear()
+    const store = makeStore([filledTrack('a')])
+    const updated = await refreshTrackMetadata(store.set as never, store.get as never, ['a'])
+    expect(api.music.patchTrack).not.toHaveBeenCalled()
+    expect(updated).toBe(0)
+  })
+
+  it('force rescans tracks that already look complete', async () => {
+    vi.mocked(scanTrackMetadata).mockClear()
+    vi.mocked(scanTrackMetadata).mockResolvedValue(scanned)
+    const store = makeStore([filledTrack('a')])
+    await refreshTrackMetadata(store.set as never, store.get as never, ['a'], true)
+    expect(scanTrackMetadata).toHaveBeenCalledTimes(1)
+  })
+
+  it('force never replaces the stored title even when the tag differs', async () => {
+    vi.mocked(scanTrackMetadata).mockResolvedValue(scanned)
+    vi.mocked(api.music.patchTrack).mockClear()
+    const store = makeStore([filledTrack('a')])
+    await refreshTrackMetadata(store.set as never, store.get as never, ['a'], true)
+    const patch = vi.mocked(api.music.patchTrack).mock.calls[0]?.[1] as Record<string, unknown>
+    expect(patch.title).toBeUndefined()
+  })
+})
