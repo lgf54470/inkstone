@@ -4449,6 +4449,11 @@ const allowed = new Map([
     '// notes and attachments carry several counts each; one pass over each table',
     '// replaces the four and two separate scans the per-metric subqueries made.',
   ]],
+  ['src/worker/routes/share/batch.ts', [
+    '// One upsert per note inside a chunked db.batch: the whole chunk commits together,',
+    '// and both arms are owner-guarded so a foreign note_id can neither be inserted over',
+    '// nor have its share flipped (the old read-then-insert crashed on exactly that).',
+  ]],
   ['src/worker/routes/share/organizer.ts', [
     '// Only the boolean ships: why a slug is unavailable (invalid vs taken) must not be a lookup oracle.',
   ]],

@@ -905,3 +905,54 @@ describe('share slug anti-enumeration (SH-07)', () => {
     expect(status).toBe(429)
   })
 })
+
+describe('share batch affected-row counts (SH-10)', () => {
+  it('reports the number of shares touched, not the request size', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedUser(db, 'user-2')
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'b10-own' })
+    const n2 = await seedNote(db, { user_id: 'user-2' })
+    await seedShare(db, { note_id: n2, slug: 'b10-other', user_id: 'user-2' })
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/share/batch', { action: 'disable', noteIds: [n1, n2, 'ghost-note'] })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, count: 1 })
+    expect((await firstRow(db, 'SELECT is_enabled FROM shares WHERE slug = ?1', 'b10-other'))!.is_enabled).toBe(1)
+  })
+
+  it('batch enable upserts own notes and skips foreign ones without a 500', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedUser(db, 'user-2')
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'b10-off', is_enabled: 0 })
+    const n3 = await seedNote(db, {})
+    const n2 = await seedNote(db, { user_id: 'user-2' })
+    await seedShare(db, { note_id: n2, slug: 'b10-other', user_id: 'user-2', is_enabled: 0 })
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/share/batch', { action: 'enable', noteIds: [n1, n3, n2, 'ghost-note'] })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, count: 2 })
+    expect((await firstRow(db, 'SELECT is_enabled FROM shares WHERE slug = ?1', 'b10-off'))!.is_enabled).toBe(1)
+    expect((await firstRow(db, 'SELECT is_enabled FROM shares WHERE slug = ?1', 'b10-other'))!.is_enabled).toBe(0)
+    const fresh = await firstRow(db, 'SELECT note_id, is_enabled FROM shares WHERE note_id = ?1 AND user_id = ?2', n3, USER)
+    expect(fresh!.is_enabled).toBe(1)
+  })
+
+  it('batch-folder disable counts shares, not notes in the folder', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await runSql(db, `INSERT INTO folders (id, user_id, name, created_at, updated_at) VALUES ('f-1', ?1, 'Work', ?2, ?2)`, USER, H.now)
+    const n1 = await seedNote(db, { folder_id: 'f-1' })
+    await seedShare(db, { note_id: n1, slug: 'b10-folder' })
+    await seedNote(db, { folder_id: 'f-1' })
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/share/batch-folder', { folderId: 'f-1', enabled: false })
+    expect(await res.json()).toEqual({ ok: true, count: 1 })
+  })
+})
