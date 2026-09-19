@@ -13,6 +13,11 @@ const BUDGETS = {
   'about-settings': 40_000,
   'backup-settings': 60_000,
   'mcp-settings': 60_000,
+  // 'music-' matches every music chunk: the hub modal, the shared lyrics/seek
+  // code, and the hash-named chunk the barrel splits into. Two of the three
+  // are statically reachable from the shell, so a heavy import landing in the
+  // music module used to inflate the first-paint path with no gate noticing.
+  music: 80_000,
 }
 
 /**

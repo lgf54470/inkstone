@@ -10,6 +10,10 @@ const allowed = new Map([
   ]],
   ['scripts/check-bundle-budget.mjs', [
     '// Chunk prefixes follow the kebab-case lazy import paths (settings dir → settings-*).',
+    '// \'music-\' matches every music chunk: the hub modal, the shared lyrics/seek',
+    '// code, and the hash-named chunk the barrel splits into. Two of the three',
+    '// are statically reachable from the shell, so a heavy import landing in the',
+    '// music module used to inflate the first-paint path with no gate noticing.',
     '/**\n * A lazy library whose chunks are named by its own build — and one of which is shared\n * with other node modules — cannot be watched by prefix, so it is watched by content:\n * every chunk carrying the needle counts towards one budget. The shared chunk makes the\n * total an upper bound, one that only falls when the library does.\n */',
   ]],
   ['scripts/check-code-style.mjs', [
