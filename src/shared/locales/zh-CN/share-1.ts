@@ -33,6 +33,7 @@ export const messages = {
 'share.public_link_created': '公开链接已生成',
 'share.public_links_are_read_only_visitors_can_see_only_the_latest_version_of_t': '公开链接为只读。访问者只能查看这篇笔记的最新内容，无法访问其他笔记。',
 'share.require_a_passcode_to_view_this_note': '开启后需要输入口令才能查看',
+'share.remove_tag': '移除标签',
 'share.revoke_link': '撤销链接',
 'share.revoke_this_public_link': '撤销这个公开链接？',
 'share.set_a_passcode': '设置一个口令',

@@ -68,7 +68,7 @@ export function ShareStatusCard({ b }: { b: ShareEditModalBundle }) {
           {isEnabled ? t('share.status_active_desc') : t('share.status_paused_desc')}
         </div>
       </div>
-      <Switch checked={isEnabled} onChange={setIsEnabled} />
+      <Switch checked={isEnabled} onChange={setIsEnabled} label={t('share.share_status')} />
     </div>
   )
 }
@@ -113,7 +113,7 @@ export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
             <span key={tagName} className='inline-flex items-center gap-1 rounded-[var(--r-sm)] bg-[var(--bg-hover)] border border-[var(--border-subtle)] px-2 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]'>
               <Hash size={10} className='text-[var(--accent)]' />
               <span>{tagName}</span>
-              <button type='button' onClick={() => handleRemoveTag(tagName)} className='text-[var(--text-quaternary)] hover:text-[var(--danger)]'>
+              <button type='button' onClick={() => handleRemoveTag(tagName)} aria-label={t('share.remove_tag')} className='text-[var(--text-quaternary)] hover:text-[var(--danger)]'>
                 <X size={11} />
               </button>
             </span>
@@ -155,7 +155,7 @@ export function ShareSlugCard({ b }: { b: ShareEditModalBundle }) {
             {t('share.custom_slug_hint')}
           </div>
         </div>
-        <Switch checked={shouldUseCustomSlug} onChange={setShouldUseCustomSlug} />
+        <Switch checked={shouldUseCustomSlug} onChange={setShouldUseCustomSlug} label={t('share.custom_slug')} />
       </div>
       {shouldUseCustomSlug && (
         <div className='pt-2'>
@@ -205,7 +205,7 @@ export function SharePasswordCard({ b }: { b: ShareEditModalBundle }) {
             {t('share.password_hint')}
           </div>
         </div>
-        <Switch checked={shouldUsePassword} onChange={setShouldUsePassword} />
+        <Switch checked={shouldUsePassword} onChange={setShouldUsePassword} label={t('share.access_password')} />
       </div>
       {shouldUsePassword && (
         <div className='pt-2'>

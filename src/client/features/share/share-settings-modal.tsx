@@ -93,7 +93,7 @@ function SettingsSwitchRow({ title, hint, checked, onChange }: {
           {hint}
         </div>
       </div>
-      <Switch checked={checked} onChange={onChange} />
+      <Switch checked={checked} onChange={onChange} label={title} />
     </div>
   )
 }

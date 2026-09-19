@@ -40,6 +40,8 @@ export function ShareTrafficFilterPopover() {
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn('flex h-7 items-center gap-1.5 rounded-[var(--r-md)] border px-2 text-[length:var(--text-12)] font-medium transition-colors', tone)}
         title={t('share.filter_traffic_title')}
+        aria-haspopup='true'
+        aria-expanded={isOpen}
       >
         {isFilteringBots ? <ShieldCheck size={13} /> : <ShieldAlert size={13} />}
         <span className='hidden sm:inline'>{label}</span>
@@ -113,6 +115,7 @@ function TrafficFilterRow({ icon, title, desc, checked, onChange }: {
       <Switch
         checked={checked}
         onChange={onChange}
+        label={title}
       />
     </div>
   )

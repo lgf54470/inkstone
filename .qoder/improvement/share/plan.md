@@ -41,7 +41,7 @@
 | 26 | SH-17a | 列表接口 5 个统计查询 `db.batch` 并行化（第一步，不拆端点） | P0 部分 | ✅ | 79748dbf |
 | 27 | SH-28 | 实时访问日志补时间窗 + 文案改「最近访问」 | P2 | ✅ | eca5e37b |
 | 28 | SH-30 | 侧栏计数口径（软删过滤/expiring 互斥/全时段标注）+ LIMIT 500 truncated | P2 | ✅ | c495cfd7 |
-| 29 | SH-31 | a11y 批量：Switch label、IconButton、hub ariaLabel、行「更多」键盘入口 | P2 | ⬜ | |
+| 29 | SH-31 | a11y 批量：Switch label、IconButton、hub ariaLabel、行「更多」键盘入口 | P2 | ✅ | 待回填 |
 | 30 | SH-32 | 调色板类 → 设计令牌（visit-logs/sidebar/qr/dashboard 等） | P2 | ⬜ | |
 | 31 | SH-33 | 裸控件换组件体系 + CSV 导出全量 + 复制失败 toast + 日志按分享过滤入口 | P2 | ⬜ | |
 | 32 | SH-34 | 英文字面量进 locale + 服务端回落值改 null + countryName locale 显式 | P2 | ⬜ | |
@@ -205,3 +205,17 @@
   - locales：`share.category_expiring` zh「有效期限制」→「有效期内」（新语义）；`share.total_pv_views`/`share.total_uv_visitors` 加「全部时间」限定；新键 `share.list_truncated`（en/zh）。blog 侧同名 key 不动（约束③）。
 - 测试 `tests/share-routes.test.ts` 新 describe 3 例：软删笔记分享不进徽章/目录/标签分母（列表本就不含）且 `truncated:false`；expiring/expired/permanent 三分类互斥各只含自己那条；种 501 条后 `shares.length===500 && truncated===true`（per-test timeout 30s）。变异三杀：folder 计数退回 `COUNT(s.slug)` / expiring 退回静态 `IS NOT NULL` / `truncated` 恒 false（连带 501 行泄漏即红）（/tmp/mut28 备份还原）。
 - 验证：红→绿；tsc + share 全套 + 十门禁全绿（size 逼出 HubListBody 拆分）。遗留：demo 的 `SHARE_STATUS_FILTERS` 本就没有 expiring/expired/permanent 三个谓词（演示数据小、口径缺失为既有缺口），未夹带补齐；「即将到期」提醒（台账第四节 4）不在本项。
+
+## 29 — SH-31 a11y 批量（2026-09-19）
+
+- 现象：Switch 无 label（traffic-filter-popover、edit-modal sections 三处、settings-modal）、批量条清空按钮是裸 `<button>`+图标无名称、hub 模态是六个模态里唯一无 title/ariaLabel 的（回落通用「对话框」）、行/卡片的复制-二维码-分析-撤销全套操作只有右键与 hover 图标可达（双击=编辑、拖拽=移动同样无键盘等价）、流量过滤触发器无 `aria-expanded`、编辑弹窗标签移除按钮无名称。
+- 修复（row.tsx/card.tsx 各加「更多」入口 + 逐处补名称与状态）：
+  - `share-table-view/row.tsx`、`share-grid-view/card.tsx`：`RowActions`/`CardActions` 末尾新增 `MoreHorizontal` 的 `IconButton`（`label=common.more_actions`、`aria-haspopup='menu'`、`aria-expanded` 随开合），打开的 `Menu` 与右键走同一份 `buildShareMenuItems`（编辑/移动目录本就在菜单内，双击与拖拽自此有了键盘等价）；目录按钮同步补 `aria-haspopup/aria-expanded`；右键打开时互斥关掉两个内联菜单。
+  - `share-batch-bar.tsx`：清空按钮换 `IconButton`（`common.clear_selection`）；移动/有效期两个菜单触发器补 `hasPopup`/`ariaExpanded`。
+  - `share-hub-modal.tsx`：`Modal` 补 `ariaLabel={t('share.hub_title')}`。
+  - `share-traffic-filter-popover.tsx`：触发器 `aria-haspopup='true'`+`aria-expanded={isOpen}`；`TrafficFilterRow` 的 Switch `label={title}`。
+  - `share-settings-modal.tsx`：`SettingsSwitchRow` Switch `label={title}`；`share-edit-modal/sections.tsx`：状态/自定义短链/口令三个 Switch 补 `label`，标签移除按钮补 `aria-label`。
+  - locales：新键 `share.remove_tag`（en/zh）；`common.more_actions`、`common.clear_selection` 为既有键复用。
+- 测试 `src/client/features/share/share-a11y.test.ts` 新文件 7 例（jsdom，行为断言：行/卡片「更多」开菜单并派发编辑回调、清空按钮名称与点击、hub dialog 可访问名称、popover aria-expanded 开合、三处 Switch 名称逐断言、移除标签按钮名称）。变异七杀：逐处删 label/ariaLabel/IconButton 替换回裸 button/删「更多」按钮块（/tmp/mut29 备份还原）。
+- 验证：红→绿；tsc + share 全套（13 文件/69 例）+ 十门禁全绿（size 逼出测试文件按表面拆 4 个 describe 与夹具提模块作用域）。
+- 决策记录：台账方案里的 `useContextMenu 增 openAtElement` 未做——行/卡片「更多」按钮已提供同一菜单的键盘入口，再给 `useContextMenu` 加无调用方的 API 违反禁止死代码；`share-note-submenu.tsx` 的手搓菜单面板与 `buildShareMenuItems` 双份实现未合并（改动面大且非本项验收点），登记为遗留。全站其他手搓 popover 的 `aria-expanded` 通病按台账只修本模块。

@@ -33,6 +33,7 @@ export const messages = {
 'share.public_link_created': 'Public link created',
 'share.public_links_are_read_only_visitors_can_see_only_the_latest_version_of_t': 'Public links are read-only. Visitors can view only the latest content of this note and cannot access other notes.',
 'share.require_a_passcode_to_view_this_note': 'Require a passcode to view this note',
+'share.remove_tag': 'Remove tag',
 'share.revoke_link': 'Revoke link',
 'share.revoke_this_public_link': 'Revoke this public link?',
 'share.set_a_passcode': 'Set a passcode',

@@ -1977,6 +1977,9 @@ const allowed = new Map([
     '// and the QR_BG_COLOR import would otherwise keep the qrcode chunk inside the',
     '// shell\'s static closure.',
   ]],
+  ['src/client/features/share/share-a11y.test.ts', [
+    '// Modal mounts its panel through a portal, so look in the document instead of the container.',
+  ]],
   ['src/client/features/share/share-form.ts', [
     '// A new or replaced passcode must be at least 4 characters (the server',
     '// enforces the same minimum); short codes are trivially brute-forced.',
