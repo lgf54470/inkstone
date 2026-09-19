@@ -6,6 +6,7 @@ import { isValidId, newSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { hashPassword } from '../../lib/password'
 import { isValidCustomSlug } from '../../lib/share-analytics'
+import { revokeSharesForNotes } from './batch'
 import { shareCreateSchema } from './schemas'
 import { ShareRow, toShareInfo } from './shares'
 
@@ -71,9 +72,7 @@ function registerShareNoteUpsertRoute(shareManageRoutes: Hono<AppBindings>): voi
 
 function registerShareNoteDeleteRoute(shareManageRoutes: Hono<AppBindings>): void {
   shareManageRoutes.delete('/:noteId', async (c) => {
-    await c.env.DB.prepare(`DELETE FROM shares WHERE note_id = ?1 AND user_id = ?2`)
-      .bind(c.req.param('noteId'), c.get('userId'))
-      .run()
+    await revokeSharesForNotes(c.env.DB, c.get('userId'), [c.req.param('noteId')])
     return c.json({ ok: true })
   })
 }

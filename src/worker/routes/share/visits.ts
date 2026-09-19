@@ -42,6 +42,7 @@ function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): voi
       search: (c.req.query('search') || '').trim(),
       userId,
     })
+    conditions.push('EXISTS (SELECT 1 FROM shares s WHERE s.slug = sv.slug)')
 
     const countRow = await c.env.DB.prepare(
       `SELECT COUNT(*) as total

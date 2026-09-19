@@ -16,6 +16,7 @@ import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { hashPassword } from '../src/worker/lib/password'
 import { computeVisitorFingerprint } from '../src/worker/lib/share-analytics'
+import { purgeExpiredOperationalData } from '../src/worker/lib/maintenance'
 import { shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
 import { createD1Database as createDb, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
@@ -281,6 +282,7 @@ describe('share visits route (real D1)', () => {
   it('paginates visit logs and filters by bot', async () => {
     const db = await makeDb()
     const n1 = await seedNote(db, { title: 'Visited' })
+    await seedShare(db, { note_id: n1, slug: 'v-1' })
     const base = Date.now()
     for (let i = 0; i < 12; i++) {
       await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: `fp-${i}`, visited_at: base + i })
@@ -352,9 +354,11 @@ describe('share list and batch beyond the D1 bind budget (real D1)', () => {
 
   it('lists 120 shares with per-note visit stats instead of failing on too many SQL variables', async () => {
     const { db, app, ids } = await seedScaleShares(120)
-    await seedVisit(db, { note_id: ids[0], slug: 'seen-1', visitor_fp: 'fa' })
-    await seedVisit(db, { note_id: ids[0], slug: 'seen-1', visitor_fp: 'fa' })
-    await seedVisit(db, { note_id: ids[1], slug: 'seen-2', visitor_fp: 'fb', is_bot: true })
+    const slugFirst = (await firstRow(db, 'SELECT slug FROM shares WHERE note_id = ?1', ids[0]))?.slug as string
+    const slugSecond = (await firstRow(db, 'SELECT slug FROM shares WHERE note_id = ?1', ids[1]))?.slug as string
+    await seedVisit(db, { note_id: ids[0], slug: slugFirst, visitor_fp: 'fa' })
+    await seedVisit(db, { note_id: ids[0], slug: slugFirst, visitor_fp: 'fa' })
+    await seedVisit(db, { note_id: ids[1], slug: slugSecond, visitor_fp: 'fb', is_bot: true })
 
     const res = await request(app, '/api/share')
     expect(res.status).toBe(200)
@@ -743,5 +747,79 @@ describe('share visitor fingerprint secret (SH-04)', () => {
 
     const row = await firstRow(db, 'SELECT visitor_fp FROM share_visits WHERE slug = ?1', 'fp-missing')
     expect(row?.visitor_fp).toBeNull()
+  })
+})
+
+describe('share visit log lifecycle (SH-05)', () => {
+  async function seedVisitRow(db: D1Shim, slug: string, noteId: string): Promise<void> {
+    await seedVisit(db, { slug, note_id: noteId, visitor_fp: `fp-${slug}` })
+  }
+
+  it('deleting a share through the manage route removes its visit rows', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { slug: 'gone-1', note_id: n1 })
+    await seedVisitRow(db, 'gone-1', n1)
+    const app = makeApp()
+
+    const res = await request(app, `/api/share/${n1}`, { method: 'DELETE' })
+    expect(res.status).toBe(200)
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE slug = ?1', 'gone-1')).length).toBe(0)
+  })
+
+  it('batch revoke removes visit rows for the revoked notes', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { slug: 'gone-2', note_id: n1 })
+    await seedVisitRow(db, 'gone-2', n1)
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/share/batch', { action: 'revoke', noteIds: [n1] })
+    expect(res.status).toBe(200)
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE slug = ?1', 'gone-2')).length).toBe(0)
+  })
+
+  it('the maintenance cron sweeps visit rows whose share no longer exists', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { slug: 'alive-1', note_id: n1 })
+    await seedVisitRow(db, 'alive-1', n1)
+    await seedVisitRow(db, 'ghost-1', n1)
+
+    await purgeExpiredOperationalData(db as unknown as D1Database)
+
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE slug = ?1', 'ghost-1')).length).toBe(0)
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE slug = ?1', 'alive-1')).length).toBe(1)
+  })
+
+  it('global stats ignore visit rows without a live share', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { slug: 'stats-1', note_id: n1 })
+    await seedVisitRow(db, 'stats-1', n1)
+    await seedVisitRow(db, 'stats-orphan', n1)
+    const app = makeApp()
+
+    const body = await (await request(app, '/api/share')).json()
+    expect(body.globalStats.totalViews).toBe(1)
+    expect(body.globalStats.totalVisitors).toBe(1)
+  })
+
+  it('the visit log list hides rows whose share was revoked', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { slug: 'list-1', note_id: n1 })
+    await seedVisitRow(db, 'list-1', n1)
+    await seedVisitRow(db, 'list-orphan', n1)
+    const app = makeApp()
+
+    const body = await (await request(app, '/api/share/visits')).json()
+    expect(body.total).toBe(1)
+    expect(body.visits.every((v: { slug: string }) => v.slug === 'list-1')).toBe(true)
   })
 })

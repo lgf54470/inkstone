@@ -120,13 +120,16 @@ async function disableSharesForNotes(db: D1Database, userId: string, noteIds: st
   await setSharesField(db, userId, noteIds, 'is_enabled', 0)
 }
 
-async function revokeSharesForNotes(db: D1Database, userId: string, noteIds: string[]): Promise<void> {
+export async function revokeSharesForNotes(db: D1Database, userId: string, noteIds: string[]): Promise<void> {
   for (const chunk of chunkNoteIds(noteIds)) {
-    await db.prepare(
-      `DELETE FROM shares WHERE user_id = ? AND note_id IN (${placeholdersFor(chunk)})`,
-    )
-      .bind(userId, ...chunk)
-      .run()
+    await db.batch([
+      db.prepare(
+        `DELETE FROM shares WHERE user_id = ? AND note_id IN (${placeholdersFor(chunk)})`,
+      ).bind(userId, ...chunk),
+      db.prepare(
+        `DELETE FROM share_visits WHERE user_id = ? AND note_id IN (${placeholdersFor(chunk)})`,
+      ).bind(userId, ...chunk),
+    ])
   }
 }
 

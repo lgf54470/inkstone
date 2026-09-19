@@ -217,7 +217,8 @@ async function loadShareGlobalStats(db: D1Database, userId: string, now: number,
   const filteredGlobalStats = await db.prepare(
     `SELECT COUNT(*) as total_views, COUNT(DISTINCT visitor_fp) as total_uv
        FROM share_visits
-      WHERE user_id = ?1 ${clause}`,
+      WHERE user_id = ?1
+        AND EXISTS (SELECT 1 FROM shares s WHERE s.slug = share_visits.slug) ${clause}`,
   )
     .bind(userId)
     .first<{ total_views: number; total_uv: number }>()
@@ -341,7 +342,8 @@ async function loadNoteVisitStats(
     const statsRows = await db.prepare(
       `SELECT note_id, COUNT(*) as pvs, COUNT(DISTINCT visitor_fp) as uvs
          FROM share_visits
-        WHERE note_id IN (${placeholders}) ${clause}
+        WHERE note_id IN (${placeholders})
+          AND EXISTS (SELECT 1 FROM shares s WHERE s.slug = share_visits.slug) ${clause}
         GROUP BY note_id`,
     )
       .bind(...chunk)

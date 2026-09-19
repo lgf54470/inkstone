@@ -244,6 +244,7 @@ function purgeCoreStatements(db: D1Database, params: {
           AND ${shiftSqlPlaceholders(TRASHED_GUARD, 2)}`,
     ).bind(id, userId, id, userId, row.rev),
     guarded(`DELETE FROM shares WHERE note_id = ?1`),
+    guarded(`DELETE FROM share_visits WHERE note_id = ?1`),
     guarded(`UPDATE attachments SET note_id = NULL WHERE note_id = ?1`),
     db.prepare(
       `DELETE FROM import_mappings

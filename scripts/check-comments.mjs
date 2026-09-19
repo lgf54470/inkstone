@@ -4175,6 +4175,9 @@ const allowed = new Map([
   ['src/worker/lib/image.ts', [
     '// Malformed or truncated image data is routine for probes; degrade to unknown dimensions.',
   ]],
+  ['src/worker/lib/maintenance.ts', [
+    '// Sweeps visit rows orphaned before the revoke/purge cascades existed (and by the MCP revoke tool).',
+  ]],
   ['src/worker/lib/outbound-url.ts', [
     '// Shared outbound-request guards: the hostname and IP safety checks back both',
     '// the backup adapters (HTTPS-only) and the blog link checker (HTTP allowed),',
