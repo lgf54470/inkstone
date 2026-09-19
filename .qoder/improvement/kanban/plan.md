@@ -177,7 +177,18 @@
   - 范围：看板模块渲染的 `<img>` 只有两处，需要改的只有 `GalleryCover`——`kanban-file-preview-modal.tsx:91` 是模态里放大的单张当前图，本就该立即加载，不改
   - 验证：`ui/kanban-gallery-cover.test.ts` 新增 3 例（**先红 2 例**，第三条为「无图卡片不画 `<img>`」钉桩，防前两条落在从未出现的图片上）；cover 字段与 `files` 兜底两条来源各测一次。变异自检 4 次全杀（去 `loading`／去 `decoding`／`lazy`→`eager`／占位分支改画一张 `<img>`）。驱动脚本坑（复现自 K3-03 同类）：perl 的 `\Q..\E` 已使元字符失效，模式里的 `[var(--accent-soft)]` 再写反斜杠就成了字面「反斜杠+方括号」，第四次最初报「pattern not found」，去掉转义后匹配成功。typecheck ✅，13 项静态门禁 exit=0 ✅（白名单跑门禁前重算至 595 文件 / 3857 条，diff +3 行），全量 test:unit（串行，最终树，start 21:25:11 > 最后编辑 21:23:17）257 文件 **2068** 测试 ✅
   - 局限：jsdom 只断到属性本身，「浏览器确实推迟了下载」无门禁覆盖（`e2e-visual` 的看板栅栏 fixture 没有带图的卡片，加一张要引网络资源，不在本批）；同一条约定在正文图片上已由 `renderer/media.ts` 的既有实现背书
-- [ ] K3-05 review #15「`data-kanban` 属性双份存储」从未排期：`renderer/fence.ts:206` 每次预览重渲染把全文档每个看板的整份 JSON `encodeDataValue + escapeAttr` 进 DOM 属性（大板拖慢防抖后的提交管线）；plan.md 全文对该行 0 命中，即它进了台账却没进任何批次。方案（超长走旁路 + 按 index 取缓存）代价中等，需单独评估最小解
+- [x] K3-05 review #15「`data-kanban` 属性双份存储」——实测成立，登记进下方「性能类缺口」，本批不动实现
+  - 事实：`renderer/fence.ts:206` 每次预览渲染把整份栅栏体经 `encodeDataValue`（UTF-8 → base64url）+ `escapeAttr` 写进根节点的 `data-kanban`，于是同一份内容同时存在于笔记源文本与预览 DOM（预览标记里没有第二份原文，只有错误态才由 `showKanbanError` 画一个 `<pre>`）；笔记其余部分每次改动都重跑这条编码。plan.md 全文对该行 0 命中——它进了台账却没进任何批次
+  - 实测（临时探针套件，跑完即删；同一篇正文 40 段填充 + 一个看板栅栏，`renderMarkdown` 与空栅栏文档的差值即本条代价）：
+    | 卡片数 | 栅栏体 | 属性 | encode+escape | renderMarkdown 差值 |
+    | --- | --- | --- | --- | --- |
+    | 20 | 10,984 B | 14,650 B | 0.97 ms | 4.83 ms |
+    | 50 | 26,964 B | 35,956 B | 2.50 ms | 8.58 ms |
+    | 200 | 107,264 B | 143,023 B | 7.01 ms | 26.04 ms |
+    另测 jsdom `innerHTML` 解析同一份 HTML：200 卡时 10.22 ms vs 去属性后 1.59 ms（+8.6 ms，真实 Chrome 快一个量级但同一形状）。结论：**指控成立且线性于板子大小**，不是假设；但它是「每次预览重渲染多 ~0.13 ms/卡」的钝痛，不是挂死
+  - 决策（自决）：登记不施工。该属性不是可有可无的缓存，而是 `kanbanBody()` 的**唯一载体**，五个消费者都从 DOM 读它——registry 挂载与 diff（`registry.ts:70,112,175`）、错误态与只读表面的源码显示（`view.ts:126,146`）、导出/打印/分享的静态快照（`static.ts:82`）、栅栏写回引用（`kanbanFenceRef`）。去掉它需要一条「渲染期旁路 + 按 index 取回」的通道，而 `data-mindmap`/`data-excalidraw`/`data-bento-slides` 是同一形状（`fence.ts:184,227`），只给看板开一条旁路等于把四个家族的分歧变成第五处特例——属跨模块架构改动，须单独批次走各目录公开入口
+  - 被否方案：①按 body 记忆化编码结果（省 7 ms 中的大部分）——需模块级可变缓存，键是百 KB 字符串，`module-state` 精神与内存都不划算，且对首次渲染无效；②属性改存原始 JSON 而非 base64（省 encode 的 29%）——动到 `encodeDataValue` 的四处共用线格式，收益不对等；③只存长度/哈希做 diff 提示——五个消费者仍要全文，问题没解决只是搬走
+  - 验证：本批为 docs；探针套件跑完删除，未留下依赖计时的 CI 断言（计时断言在并发门禁下必抖，记此为该条后续施工的验收方式风险）
 
 ### 功能类缺口（需产品决策，登记不施工）
 
@@ -186,7 +197,11 @@
 3. 空看板无引导/模板入口（空列只有一行 `preview.kanban_empty_column`）
 4. review #25 其余产品差距（CSV 导入导出、归档、评论/活动流、WIP 上限与泳道、详情 markdown 渲染、`person` 成员选择器、筛选算子缺数值/日期比较、日期徽章的逾期语义即「逾期 N 天」着色与排序权重——K3-03 只统一了读哪一天与怎么印，没有判定「今天是否已过期」）——原计划即「进独立 roadmap，不与止血批次混」
 5. 长列表虚拟化——AGENTS.md 依赖红线：需新依赖单独论证，且与原生 HTML5 DnD 组合复杂
-6. K-22 排除后无人回收的两项：`MetricCards` 声明 `md:grid-cols-4` 只画 2 卡（`kanban-chart-view.tsx:109`，md 以上半行留白）、描述框无长度约束与展开态；「history 合并窗口」在标题与描述都草稿化后是否仍成立，待 K3-02 时一并实测再判
+6. K-22 排除后无人回收的两项：`MetricCards` 声明 `md:grid-cols-4` 只画 2 卡（`kanban-chart-view.tsx:109`，md 以上半行留白）、描述框无长度约束与展开态。同条第三项「history 合并窗口」已就地结案：`ui/kanban-history.ts` 只有 `MAX_HISTORY_STEPS = 30` 的步数上限，全模块无 `coalesce`/`merge`/时间窗实现，而 K-22（标题）与 K3-01（描述）草稿化之后一次 `commitData` 恰对应一次用户动作——按键级历史洪水的前提已不存在，合并窗口从「待实测」改为「无必要的可选优化」
+
+### 性能类缺口（已实测，需单独批次）
+
+1. review #15：`data-kanban` 把整份栅栏体随每次预览重渲染重新编码进 DOM（`renderer/fence.ts:206`）。实测代价线性于板子大小：20/50/200 卡分别 4.8/8.6/26.0 ms 每次渲染（详见 K3-05 的表），jsdom 侧另有 +8.6 ms 的属性解析。修法必须同时服务 `kanbanBody()` 的五个 DOM 消费者（registry 挂载与 diff、错误态与只读表面的源码显示、导出/打印/分享静态快照、栅栏写回引用），并按同一形状覆盖 mindmap/excalidraw/bento-slides（`fence.ts:184,227`）——即「渲染期旁路 + 按 index 取回」的跨家族通道，走各目录公开入口，单独一批。验收方式风险：该批不能靠计时断言（并发门禁下必抖），需要以「同一文档渲染 N 次的属性字节数」这类确定性量测代替
 
 ## 进度日志
 
@@ -258,3 +273,4 @@
 | 2026-09-19 | K3-02 批量删除补反馈与一键撤销 | 1a4063c7 | `useKanbanSelection` 加第三入参（看板历史 `undo`），`handleBatchDelete` 经 `toastWithUndo` 报「已删除 N 项」（新键 `preview.kanban_batch_deleted_count`），撤销窗口 8s 对齐 notes 的 `DESTRUCTIVE_UNDO_TOAST_MS`；空选择提前返回，原实现零选择也 `commitData`＝凭空压一条 undo 历史并写回一次。决策（自决）：撤销用 toast 自带可点动作，不在提示里印 `⌘/Ctrl+Z`——实测 `store/ui` 的 `toastWithUndo` 支持 `action`，即全仓唯一撤销通道已有按钮。新增 4 例先红 4，变异自检 6 次全杀（去 toast／去 duration／撤销动作换空函数／去空选择守卫／条数写死／不清空选择）。`size:check` 拦 `useKanbanSelection` 体 52 行 → 门禁内收成单行表达式（49 行），未拆文件、未新增生产文件。typecheck ✅，13 项静态门禁 exit=0 ✅（`comments:check` 拦 1 条新注释，重算 592 文件 / 3850 条，本批 diff 只 +1 行），全量 test:unit（串行，最终树，start 20:41:07 > 最后编辑 20:40:41）255 文件 **2055** 测试 ✅。首提交被 pre-commit 的 `vitest related` 拦下：无关套件 `calendar-tree.test/activity.test.ts` 定时 fuzz 在多会话并发（load 27/16 核）下 5s 超时，非本批引入（同树串行回归已全绿），降载重试即过，未用 `--no-verify`。局限：toast 真实浏览器绘制与点击撤销未进 e2e，组件自身由 `components/feedback.test.ts` 覆盖 |
 | 2026-09-19 | K3-03 卡片日期跨视图统一并走 Intl | 1848fa71 | review #25 唯一「属正确性」的一条：四处各留一条回退链、画廊与列表从不读生成 schema 的 `endDate`、`properties.date` 无人写入却被读、徽章 `String(raw)` 打印存储键。新增 `date-fields.ts`（口径唯一来源）+ `lib/time.ts:formatDateKey()`（本地化、跨年才带年份、不可读键原样），卡片/列表/画廊/详情/日历/时间线六处改读同一 accessor，死键读取删除。决策（自决）：新建 10 行只读文件而非四处内联，也不塞进 `types.ts`；逾期语义与 picker/表格 date 列的原始键刻意保留，前者记入功能类缺口第 4 条。实现先于测试落笔（如实登记，未跑修复前红），判别力由变异自检提供：8/8 全杀，其中「卡片退回 `String(raw)`」「accessor 去掉 `endDate`」即修复前行为。坑：时间线变异首跑存活——测试取样日恰等于窗口 today，兜底值与真值同轨，改 06-17 才杀得掉（断言须避开被断逻辑的兜底值）；`typecheck` 拦下测试里凭印象传的 `view` 入参。typecheck ✅，13 项静态门禁 exit=0 ✅（门禁前重算白名单 594 文件 / 3856 条，diff +10 行逐条核过），全量 test:unit（串行，最终树，start 21:11:25 > 最后编辑 21:09:05）256 文件 **2065** 测试 ✅。局限：locale 渲染出的日期串未进浏览器门禁；`properties.date` 存量手写栅栏会显示为无日期（无写入点，按死代码处理）|
 | 2026-09-19 | K3-04 画廊封面按需加载 | 32d79f60 | 看板模块两处 `<img>` 里唯一缺加载提示的那处（模态放大图刻意不改，本就该立即加载）：`GalleryCover` 补 `loading='lazy' decoding='async'`，与 `renderer/media.ts` 对正文图片的既有约定同族——画廊封面是整档原图且网格可滚动，此前首屏一画即按卡片数全量下载。新增 `kanban-gallery-cover.test.ts` 3 例（先红 2，第三条「无图不画 `<img>`」防断言落在从未出现的元素上）。变异自检 4/4 全杀（去 loading／去 decoding／lazy→eager／占位分支改画图）；驱动脚本 `\Q..\E` 内方括号不得再转义，第四次最初因「pattern not found」未真正施加。typecheck ✅，13 项静态门禁 exit=0 ✅（白名单 595 文件 / 3857 条），全量 test:unit（串行，最终树，start 21:25:11 > 最后编辑 21:23:17）257 文件 **2068** 测试 ✅。局限：jsdom 只断属性，真实推迟下载无门禁（看板 e2e 栅栏 fixture 无图卡）|
+| 2026-09-19 | K3-05 `data-kanban` 双份存储实测与登记 | 本 docs 提交 | 结论＝指控成立、本批不施工。临时探针（20/50/200 卡，跑完即删）量得 `renderMarkdown` 相对空栅栏文档的差值 4.83/8.58/26.04 ms，栅栏体→属性编码 0.97/2.50/7.01 ms，线性于板子大小；jsdom 侧同一份 HTML 带属性 10.22 ms vs 去属性 1.59 ms。不施工原因：该属性是 `kanbanBody()` 的唯一载体（registry 挂载与 diff、错误态/只读源码显示、导出/打印/分享快照、栅栏写回引用共五处 DOM 消费者），且 mindmap/excalidraw/bento-slides 同形状，去掉它属跨模块架构改动 → 新增「性能类缺口（已实测，需单独批次）」第 1 条，记明修法约束与「不能靠计时断言验收」的风险。被否方案三条（记忆化编码／属性存原始 JSON／只存长度哈希）各附理由。顺带就地结案功能类缺口第 6 条的「history 合并窗口」：`kanban-history.ts` 只有 30 步上限、全模块无时间窗合并，K-22 与 K3-01 草稿化后一次 `commitData` 恰一次用户动作。本批为 docs，无 src 改动，故不重跑测试与门禁（树与 32d79f60 相同） |
