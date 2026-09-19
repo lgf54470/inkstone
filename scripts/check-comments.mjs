@@ -4443,6 +4443,7 @@ const allowed = new Map([
     '// replaces the four and two separate scans the per-metric subqueries made.',
   ]],
   ['src/worker/routes/share/public.ts', [
+    '// The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.',
     '/* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */',
     '/* An unparseable referer header simply means "no external referrer". */',
   ]],

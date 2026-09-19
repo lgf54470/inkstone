@@ -62,6 +62,7 @@ export function registerSharePublicRoutes(shareRoutes: Hono<AppBindings>): void 
   shareRoutes.post('/:slug', async (c) => {
     const slug = c.req.param('slug')
     if (!isValidSlug(slug)) throw ApiError.notFound('The link does not exist or has been revoked')
+    await enforceShareViewBudget(c, slug)
     const body = await readOptionalJsonValidated(c, shareAccessSchema, JSON_BODY_LIMITS.small, {}) as ShareAccessBody
     const password = typeof body.password === 'string'
       ? body.password.slice(0, LIMITS.passwordMaxLength)
@@ -84,6 +85,26 @@ export function registerSharePublicRoutes(shareRoutes: Hono<AppBindings>): void 
     }
     return c.json(response)
   })
+}
+
+const VIEW_SLUG_IP_BUDGET = { maxAttempts: 20, windowMs: 10 * 60 * 1000 }
+const VIEW_IP_BUDGET = { maxAttempts: 60, windowMs: 10 * 60 * 1000 }
+
+async function enforceShareViewBudget(c: Context<AppBindings>, slug: string): Promise<void> {
+  const clientIp = requestClientIp(c)
+  try {
+    await consumeAttemptBudget(c.env.DB, [
+      { key: `share-view:${slug}:ip:${clientIp}`, ...VIEW_SLUG_IP_BUDGET },
+      { key: `share-view:ip:${clientIp}`, ...VIEW_IP_BUDGET },
+    ])
+  } catch (error) {
+    if (error instanceof ThrottleError) {
+      throw new ApiError(429, 'too_many_attempts', `Too many attempts. Try again in ${error.retryAfterSec} seconds`, {
+        retryAfter: error.retryAfterSec,
+      })
+    }
+    throw error
+  }
 }
 
 async function loadShareOrThrow(db: D1Database, slug: string): Promise<ShareRow> {
@@ -181,7 +202,8 @@ async function recordShareVisit(
   try {
     const clientIp = requestClientIp(c)
     const ua = c.req.header('user-agent') || ''
-    const visitorFp = await computeVisitorFingerprint(clientIp, ua)
+    // The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.
+    const visitorFp = await computeVisitorFingerprint(clientIp, '')
     const referrerInfo = deriveShareReferrer(c, body, slug)
     const deviceType = parseDeviceType(ua)
     const os = parseOS(ua)
@@ -191,14 +213,8 @@ async function recordShareVisit(
     const isSelf = referrerInfo.selfReferrer ? 1 : 0
     const loggedInUserId = c.get('userId')
     const isOwner = loggedInUserId && loggedInUserId === share.user_id ? 1 : 0
-    let countsForViews = bot === 0
-    if (countsForViews && visitorFp) {
-      const seen = await c.env.DB
-        .prepare('SELECT 1 AS seen FROM share_visits WHERE slug = ?1 AND visitor_fp = ?2 AND visited_at > ?3')
-        .bind(slug, visitorFp, now - VIEW_DEDUPE_WINDOW_MS)
-        .first()
-      countsForViews = !seen
-    }
+    const recentlySeen = await isRecentlySeenVisit(c.env.DB, slug, visitorFp, now)
+    const countsForViews = bot === 0 && !recentlySeen
     const updateShareStmt = countsForViews
       ? c.env.DB.prepare(`UPDATE shares SET views = views + 1, last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)
       : c.env.DB.prepare(`UPDATE shares SET last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)
@@ -208,9 +224,9 @@ async function recordShareVisit(
       city: c.req.header('cf-ipcity') || null,
     }
 
-    await c.env.DB.batch([
-      updateShareStmt,
-      c.env.DB.prepare(
+    const statements = [updateShareStmt]
+    if (countsForViews) {
+      statements.push(c.env.DB.prepare(
         `INSERT INTO share_visits (
            user_id, note_id, slug, visited_at, visitor_fp, country, region, city,
            referrer, referrer_host, device_type, os, browser, language, user_agent,
@@ -218,11 +234,26 @@ async function recordShareVisit(
          ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`,
       ).bind(share.user_id, share.note_id, slug, now, visitorFp,
         geo.country, geo.region, geo.city, referrerInfo.referrer, referrerInfo.referrerHost,
-        deviceType, os, browser, language, ua.slice(0, 256), bot, isSelf, isOwner),
-    ])
+        deviceType, os, browser, language, ua.slice(0, 256), bot, isSelf, isOwner))
+    }
+    await c.env.DB.batch(statements)
   } catch (error) {
     console.warn('[share] failed to record visit', error)
   }
+}
+
+async function isRecentlySeenVisit(
+  db: D1Database,
+  slug: string,
+  visitorFp: string | null,
+  now: number,
+): Promise<boolean> {
+  if (!visitorFp) return false
+  const seen = await db
+    .prepare('SELECT 1 AS seen FROM share_visits WHERE slug = ?1 AND visitor_fp = ?2 AND visited_at > ?3')
+    .bind(slug, visitorFp, now - VIEW_DEDUPE_WINDOW_MS)
+    .first()
+  return Boolean(seen)
 }
 
 function deriveShareReferrer(

@@ -515,7 +515,7 @@ describe('share public note route (real D1)', () => {
     expect((await postJson(app, '/api/public/old-1', {})).status).toBe(404)
   })
 
-  it('counts share views once per visitor fingerprint within the dedupe window', async () => {
+  it('dedupes views per client IP, not per user-agent (SH-03)', async () => {
     const db = await makeDb()
     await seedUser(db)
     const n1 = await seedNote(db, {})
@@ -543,7 +543,45 @@ describe('share public note route (real D1)', () => {
 
     await access('Mozilla/5.0 ShareOther/1.0')
     row = await firstRow(db, 'SELECT views FROM shares WHERE slug = ?1', 'view-counted')
-    expect(row?.views).toBe(2)
+    expect(row?.views).toBe(1)
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE slug = ?1', 'view-counted')).length).toBe(1)
+  })
+
+  it('never writes a visit row for bot user-agents', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'bot-quiet', is_enabled: 1 })
+    const app = makeApp()
+
+    const pending: Promise<unknown>[] = []
+    const ctx = { waitUntil: (task: Promise<unknown>) => pending.push(task) } as unknown as ExecutionContext
+    const res = await app.request('/api/public/bot-quiet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'user-agent': 'Googlebot/2.1 (+http://www.google.com/bot.html)' },
+      body: JSON.stringify({}),
+    }, DB_ENV.env as AppBindings['Bindings'], ctx)
+    await Promise.all(pending)
+
+    expect(res.status).toBe(200)
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE slug = ?1', 'bot-quiet')).length).toBe(0)
+    const row = await firstRow(db, 'SELECT views FROM shares WHERE slug = ?1', 'bot-quiet')
+    expect(row?.views).toBe(0)
+  })
+
+  it('answers 429 once the slug+IP read budget is exhausted (SH-03)', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'budgeted', is_enabled: 1 })
+    const app = makeApp()
+
+    let status = 0
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      status = (await postJson(app, '/api/public/budgeted', {})).status
+      if (status === 429) break
+    }
+    expect(status).toBe(429)
   })
 
   it('requires the correct password for a password-protected share', async () => {
