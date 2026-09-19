@@ -146,6 +146,15 @@ function subscribeLocale(listener: () => void): () => void {
 export function useLocale(): AppLocale {
   return useSyncExternalStore(subscribeLocale, getLocale, getLocale)
 }
+/**
+ * Subscribe to the language, for a `memo` surface that renders translated text but never receives the
+ * locale as a prop. `t()` reads the live value, so a re-render is all a label needs — and `memo`
+ * stops exactly that: a skipped render keeps the whole subtree below it in the previous language.
+ * Call this in the memoized component itself; the subscription is per component, not per tree.
+ */
+export function useLocaleRepaint(): void {
+  useLocale()
+}
 export function localeTag(): string {
   return locale
 }

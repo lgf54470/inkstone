@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Calendar, Flag, Paperclip, Plus } from 'lucide-react'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
@@ -251,6 +251,7 @@ export const KanbanGalleryView = memo(function KanbanGalleryView({
   onAddItem,
   onUpdateSubtasks,
 }: KanbanGalleryViewProps) {
+  useLocaleRepaint()
   const statusCol = data.columns.find((c) => c.id === 'status')
   const priorityCol = data.columns.find((c) => c.id === 'priority')
   const tagsCol = data.columns.find((c) => c.id === 'tags')

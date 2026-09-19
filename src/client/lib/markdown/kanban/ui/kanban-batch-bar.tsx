@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Trash2, X } from 'lucide-react'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanProperty } from '../types'
 
@@ -49,6 +49,7 @@ export const KanbanBatchBar = memo(function KanbanBatchBar({
   onBatchDelete,
   onClearSelection,
 }: KanbanBatchBarProps) {
+  useLocaleRepaint()
   if (selectedCount === 0) return null
 
   return (

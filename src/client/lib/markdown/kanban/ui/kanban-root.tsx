@@ -1,5 +1,5 @@
 import { memo, useId, useRef } from 'react'
-import { useLocale } from '../../../i18n'
+import { useLocaleRepaint } from '../../../i18n'
 import type {
   KanbanColorName,
   KanbanData,
@@ -375,7 +375,7 @@ export const KanbanRoot = memo(function KanbanRoot({
   const viewPanelId = useId()
   // A host tree React did not make never re-renders this root, so the board listens
   // for language changes itself rather than trusting a mount option to carry them.
-  useLocale()
+  useLocaleRepaint()
   const state = useKanbanRootState(initialData, onUpdateData, containerRef)
   const menu = useKanbanContextMenuState(state.data, state.commitData)
 

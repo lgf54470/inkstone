@@ -1,6 +1,6 @@
 import { memo, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { groupKanbanItems } from '../filter-sort'
 import type { KanbanGroup } from '../filter-sort'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
@@ -159,6 +159,7 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn({
   onUpdateTags,
   onAddColumnOption,
 }: KanbanBoardColumnProps) {
+  useLocaleRepaint()
   return (
     <div
       onDragOver={onDragOver}
@@ -370,6 +371,7 @@ function BoardColumnItem(props: BoardColumnItemProps) {
 }
 
 export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardViewProps) {
+  useLocaleRepaint()
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const { groups, moveAnnouncement, handleMoveItem, handleMoveColumn } = useKanbanBoardMoves(props.data, props.view, props.onMoveItem)
   const dnd = useKanbanBoardDndState(handleMoveItem, props.onReorderColumns)

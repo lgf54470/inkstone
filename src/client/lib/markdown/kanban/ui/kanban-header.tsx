@@ -16,7 +16,7 @@ import type {
   KanbanSort,
   KanbanView,
 } from '../types'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { prettyCombo } from '../../../../lib/hotkeys'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanProgressBar } from './kanban-progress-bar'
@@ -451,6 +451,7 @@ function KanbanHeaderActions(props: HeaderActionsProps) {
 }
 
 export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps) {
+  useLocaleRepaint()
   const { data, activeView, isFullscreen, onUpdateBoardTitle } = props
   const tagsCol = data.columns.find((c) => c.id === 'tags')
 

@@ -9,7 +9,7 @@ import {
   PieChart as PieChartIcon,
   TrendingUp,
 } from 'lucide-react'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { aggregateKanbanChartData, buildChartJsConfig } from '../chart-helpers'
 import { readKanbanChartPalette } from '../chart-palette'
 import { formatKanbanPropertyName } from '../i18n-helpers'
@@ -191,6 +191,7 @@ function countCompleted(items: KanbanData['items']): number {
 }
 
 export const KanbanChartView = memo(function KanbanChartView({ data, view, onUpdateView }: KanbanChartViewProps) {
+  useLocaleRepaint()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [chartType, setChartType] = useState<KanbanChartType>(view.chartType || 'bar')
   const [groupBy, setGroupBy] = useState<string>(view.chartGroupBy || view.groupBy || 'status')

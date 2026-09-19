@@ -1,6 +1,6 @@
 import { memo, useState, type KeyboardEvent } from 'react'
 import { Calendar, Flag, Paperclip } from 'lucide-react'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
@@ -277,6 +277,7 @@ export const KanbanCard = memo(function KanbanCard({
   onUpdateTags,
   onAddColumnOption,
 }: KanbanCardProps) {
+  useLocaleRepaint()
   const titleState = useKanbanCardTitle(item.title, (t) => onUpdateTitle(item.id, t))
   const display = getCardDisplayProps(item, columns)
   const dndHandlers = useCardDragHandlers(item.id, onDragOverCard, onDropOnCard)

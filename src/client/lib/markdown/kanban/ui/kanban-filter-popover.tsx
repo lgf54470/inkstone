@@ -1,7 +1,7 @@
-import { memo, useMemo, useRef } from 'react'
+import { memo, useRef } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { useClickOutside, useEscape } from '../../../../components/overlay'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanFilter, KanbanFilterOperator, KanbanProperty } from '../types'
 
@@ -153,23 +153,22 @@ export const KanbanFilterPopover = memo(function KanbanFilterPopover({
   filters,
   onChangeFilters,
 }: KanbanFilterPopoverProps) {
+  useLocaleRepaint()
   const panelRef = useRef<HTMLDivElement>(null)
   useClickOutside([panelRef, anchorRef], open, onClose)
   useEscape(open, onClose)
 
-  const operators = useMemo<{ id: KanbanFilterOperator; label: string }[]>(
-    () => [
-      { id: 'equals', label: t('preview.kanban_op_equals') },
-      { id: 'not_equals', label: t('preview.kanban_op_not_equals') },
-      { id: 'contains', label: t('preview.kanban_op_contains') },
-      { id: 'not_contains', label: t('preview.kanban_op_not_contains') },
-      { id: 'is_empty', label: t('preview.kanban_op_is_empty') },
-      { id: 'is_not_empty', label: t('preview.kanban_op_is_not_empty') },
-    ],
-    [],
-  )
-
   if (!open) return null
+
+  // Read at render: caching these labels would freeze them in the language of the first open.
+  const operators: { id: KanbanFilterOperator; label: string }[] = [
+    { id: 'equals', label: t('preview.kanban_op_equals') },
+    { id: 'not_equals', label: t('preview.kanban_op_not_equals') },
+    { id: 'contains', label: t('preview.kanban_op_contains') },
+    { id: 'not_contains', label: t('preview.kanban_op_not_contains') },
+    { id: 'is_empty', label: t('preview.kanban_op_is_empty') },
+    { id: 'is_not_empty', label: t('preview.kanban_op_is_not_empty') },
+  ]
 
   const handleAddFilter = () => {
     const defaultProp = columns[0]?.id ?? 'title'

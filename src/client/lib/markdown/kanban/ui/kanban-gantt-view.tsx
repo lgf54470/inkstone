@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { Slider } from '../../../../components/form'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import {
   buildTimelineDays,
   calculateTimelineBarGeometry,
@@ -171,6 +171,7 @@ export const KanbanGanttView = memo(function KanbanGanttView({
   onAddItem,
   onUpdateProgress,
 }: KanbanGanttViewProps) {
+  useLocaleRepaint()
   const days = useMemo(() => buildTimelineDays(), [])
   const fields: TimelineDateFields = { startField: view?.startField, endField: view?.endField }
   const progressField = view?.progressField || 'progress'

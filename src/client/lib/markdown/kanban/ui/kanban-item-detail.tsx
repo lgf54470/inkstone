@@ -1,7 +1,7 @@
 import { memo, useEffect, useId, useRef, useState } from 'react'
 import { ChevronDown, Smile } from 'lucide-react'
 import { Modal, useClickOutside, useEscape } from '../../../../components/overlay'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanDotColor } from '../colors'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
@@ -342,6 +342,7 @@ function KanbanItemDetailBody({
 }
 
 export const KanbanItemDetail = memo(function KanbanItemDetail(props: KanbanItemDetailProps) {
+  useLocaleRepaint()
   if (!props.item) return null
   return <KanbanItemDetailBody {...props} item={props.item} />
 })

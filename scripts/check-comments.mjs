@@ -2346,6 +2346,7 @@ const allowed = new Map([
   ['src/client/lib/i18n.ts', [
     '/** Provides typed runtime localization with on-demand locale loading. */',
     '// Preload the other locale in background for instant switching, but don\'t block init',
+    '/**\n * Subscribe to the language, for a `memo` surface that renders translated text but never receives the\n * locale as a prop. `t()` reads the live value, so a re-render is all a label needs — and `memo`\n * stops exactly that: a skipped render keeps the whole subtree below it in the previous language.\n * Call this in the memoized component itself; the subscription is per component, not per tree.\n */',
   ]],
   ['src/client/lib/id.ts', [
     '/**\n * Client-side random ID helpers. Consolidates the crypto.randomUUID fallback\n * ladder that used to be duplicated across the API layer, markdown renderer\n * and the notes store.\n */',
@@ -2785,6 +2786,9 @@ const allowed = new Map([
     '// Which bucket new uploads land in. Deletions ignore it and address each file\'s',
     '// own stored location, so files uploaded before a namespace change still clear.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-filter-popover.tsx', [
+    '// Read at render: caching these labels would freeze them in the language of the first open.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-fullscreen.tsx', [
     '/**\n * Full screen view of one block. The overlay hosts the live instance the\n * preview mounted — the element is moved, never copied — so edits, history and\n * write-back stay with the single root that the inline block keeps using.\n */',
   ]],
@@ -2816,6 +2820,21 @@ const allowed = new Map([
     '// Identity tracks `moveItem` only: sorts are read at call time through the',
     '// ref, and `setSorts` is a stable state setter, so a stable moveItem yields',
     '// a stable handler for the whole drag.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-memo-locale.test.ts', [
+    '/**\n * `t()` reads the live locale, so a label only has to be *rendered* again to change language — but\n * `memo` stops exactly that render, and a stopped render takes its whole subtree with it. Nothing in\n * the app tree re-renders a mounted board, and a component mounted on its own has no parent to\n * re-render it either, so the only thing that keeps a memoized surface in the reader\'s language is\n * that surface subscribing to the locale itself.\n *\n * This mounts each memoized board surface once, with props that never change (the way a stabilized\n * callback would leave them), switches the language underneath it, and requires every message the\n * surface had printed to come back in the new one — collected from the rendered text and the naming\n * attributes rather than from a hand-tallied list of labels, so a surface that grows a new label\n * later is covered without this file being touched.\n */',
+    '/**\n * Authored board content deliberately avoids any string a message also produces: a group named after\n * a label would read as a stale translation that never was one.\n */',
+    '// ---------------------------------------------------------------------------',
+    '// Which of the rendered strings came from a message',
+    '// ---------------------------------------------------------------------------',
+    '/** The kanban and shared messages whose two locales differ, with `{param}` slots turned into captures. */',
+    '/** The same rendering with the captured slot values put into another locale\'s template. */',
+    '/** Every text node and naming attribute in `root`, collapsed the way a reader hears it. */',
+    '/** English resource text, collapsed, so a slot that carries a label of its own can be recognised. */',
+    '/**\n * Whether a slot holds text a component itself translated.\n *\n * Such a string has no predictable new-language reading: `Sort by {column}` regenerates the column name\n * in the same repaint, and the chart\'s aria label appends `{label}: {count}` pairs after the sentence.\n * The old-language half of the check still applies to them — see `messagesIn`.\n */',
+    '/** One rendered string, the message keys it can be, and the readings it has to offer in zh. */',
+    '/**\n * The messages `strings` are showing.\n *\n * Two things keep the expectation honest. Where two keys share one English literal (\'Medium\' is both a\n * priority and a card size) any of their readings counts, or the probe would demand text the board never\n * claimed to draw. Where a slot carries a label of its own no reading is predicted, but the string is\n * still watched for the old language lingering.\n */',
+    '/**\n * After the language changed under a mounted surface: nothing it showed in the old language may still\n * be showing, and every label with a predictable reading has to show it.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-message-composition.test.ts', [
     '/**\n * Half a dozen kanban labels were assembled in JSX out of message fragments — `${action}: ${name}`,\n * `{label} {count} {noun}`, `{label} ({count})` — which freezes English word order into the\n * component: a Chinese reader of the same board hears an ASCII colon inside a Chinese phrase, and a\n * single selected card reads "Selected 1 items". Each case asserts the whole phrase comes from one\n * resource entry with only the value substituted, in both languages the app ships.\n */',
@@ -4869,6 +4888,16 @@ const allowed = new Map([
   ]],
   ['tests/kanban-hover-focus.test.ts', [
     '/**\n * Hover-only controls (`opacity-0` until the card/row is hovered) are invisible\n * while being keyboard-focused, which strands Tab focus on an unseen button.\n * Every such control must also reveal itself on `focus-visible`; this keeps the\n * next `opacity-0` affordance from shipping without it.\n */',
+  ]],
+  ['tests/kanban-locale-repaint-policy.test.ts', [
+    '/**\n * A `memo` component keeps its whole subtree in the language it first rendered.\n *\n * `t()` reads the live locale, so a label only needs *a* re-render to change language — and `memo` is\n * precisely the thing that skips one: React bails out at the memo boundary, so the plain children below\n * it never run either. That made every board surface a stale translation waiting for a language switch\n * (K2-04f measured 12 of 16 probe cases red before anything was fixed), and the same defect has a second\n * shape: text read inside a `useMemo` factory is computed at data-change time and cached, which freezes\n * the language even in a component that does subscribe. Both shapes have to be caught structurally,\n * because neither is visible from the call site that introduces it.\n *\n * Scope: the kanban module. The same `useMemo` shape exists outside it (registered in\n * `.qoder/improvement/kanban/plan.md`, deliberately not fixed here), so widening this scan is a\n * separate change with a separate decision behind it.\n */',
+    '/** The `memo(…)` components of a file, with the name they carry and whether they listen for the locale. */',
+    '/** `t(…)` calls evaluated while a `useMemo` factory runs, i.e. cached with the data instead of the language. */',
+    '// A nested function is not the factory body; it runs later, on its own terms.',
+    '/**\n * A translation call outside any component body: the module evaluates it once at import, so the label is\n * the language whoever happened to load the chunk.\n */',
+    '// 19 at write time; the floor only has to be far from zero to keep a broken walk red.',
+    '// A useCallback body runs when the callback runs, so a label read there is translated at use.',
+    '/** Parse a snippet the same way a repo file is parsed, so the shape detectors are testable in isolation. */',
   ]],
   ['tests/kanban-orphan-reclaim.test.ts', [
     '// Another account naming the key cannot read it either: /api/kanban/file checks the',

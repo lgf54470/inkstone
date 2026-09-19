@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef } from 'react'
 import { Modal } from '../../../../components/overlay'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import type { KanbanSession } from '../session'
 
 interface KanbanFullscreenProps {
@@ -17,6 +17,7 @@ export const KanbanFullscreen = memo(function KanbanFullscreen({
   session,
   onClose,
 }: KanbanFullscreenProps) {
+  useLocaleRepaint()
   const stageRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

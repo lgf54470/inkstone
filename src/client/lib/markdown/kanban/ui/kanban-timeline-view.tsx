@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react'
 import { Plus } from 'lucide-react'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import {
   buildTimelineDays,
   calculateTimelineBarGeometry,
@@ -117,6 +117,7 @@ export const KanbanTimelineView = memo(function KanbanTimelineView({
   onOpenDetail,
   onAddItem,
 }: KanbanTimelineViewProps) {
+  useLocaleRepaint()
   const days = useMemo(() => buildTimelineDays(), [])
 
   return (

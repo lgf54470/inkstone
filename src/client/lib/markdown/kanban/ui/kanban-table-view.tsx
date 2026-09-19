@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Plus } from 'lucide-react'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { groupKanbanItems, type KanbanGroup } from '../filter-sort'
 import type { KanbanData, KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSort, KanbanSubtask, KanbanView } from '../types'
 import { KanbanTableHeaderCell, kanbanPropertyColumns, kanbanTableColumnCount, kanbanTitleColumn } from './kanban-property-cell'
@@ -156,6 +156,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   onAddColumn,
   onSortColumn,
 }: KanbanTableViewProps) {
+  useLocaleRepaint()
   const groupByProp = view?.groupBy || 'status'
   const groupCol = data.columns.find((c) => c.id === groupByProp)
   const groups = groupKanbanItems(data.items, groupByProp, groupCol)
