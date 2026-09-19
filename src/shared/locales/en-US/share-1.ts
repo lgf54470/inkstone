@@ -123,7 +123,7 @@ export const messages = {
 'share.qr_copied': 'Image copied',
 'share.range_all': 'All time',
 'share.realtime_stream': 'Latest 20 visits',
-'share.recent_activity_title': 'Live Activity Stream',
+'share.recent_activity_title': 'Recent Visits',
 'share.selected_count': '{count} notes selected',
 'share.share_status': 'Share Status',
 'share.shares_unit': 'notes',

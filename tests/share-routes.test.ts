@@ -619,6 +619,42 @@ describe('share analytics routes (real D1)', () => {
     expect(body.totalViews).toBe(1)
     expect(body.url).toContain('/s/p-1')
   })
+
+  it('keeps out-of-range visits out of the global recent visit list', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'rv-g' })
+    await seedVisit(db, { note_id: n1, slug: 'rv-g', visited_at: Date.now() - 14 * 86_400_000, visitor_fp: 'fp-rv-old' })
+    await seedVisit(db, { note_id: n1, slug: 'rv-g', visited_at: Date.now() - 60_000, visitor_fp: 'fp-rv-new' })
+
+    const body = await (await request(makeApp(), '/api/share/analytics/global?range=7d')).json()
+    expect(body.recentVisits.length).toBe(1)
+    expect(body.recentVisits[0].visitedAt).toBeGreaterThan(Date.now() - 7 * 86_400_000)
+  })
+
+  it('keeps out-of-range visits out of the per-note recent visit list', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'rv-n' })
+    await seedVisit(db, { note_id: n1, slug: 'rv-n', visited_at: Date.now() - 14 * 86_400_000, visitor_fp: 'fp-rv2-old' })
+    await seedVisit(db, { note_id: n1, slug: 'rv-n', visited_at: Date.now() - 60_000, visitor_fp: 'fp-rv2-new' })
+
+    const body = await (await request(makeApp(), `/api/share/analytics/note/${n1}?range=7d`)).json()
+    expect(body.recentVisits.length).toBe(1)
+    expect(body.recentVisits[0].visitedAt).toBeGreaterThan(Date.now() - 7 * 86_400_000)
+  })
+
+  it('still lists the full history in recent visits when the range is all', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'rv-a' })
+    await seedVisit(db, { note_id: n1, slug: 'rv-a', visited_at: Date.now() - 800 * 86_400_000, visitor_fp: 'fp-rv3-old' })
+    await seedVisit(db, { note_id: n1, slug: 'rv-a', visited_at: Date.now() - 60_000, visitor_fp: 'fp-rv3-new' })
+
+    const body = await (await request(makeApp(), '/api/share/analytics/global?range=all')).json()
+    expect(body.recentVisits.length).toBe(2)
+    expect(body.recentVisits[1].visitedAt).toBeLessThan(Date.now() - 700 * 86_400_000)
+  })
 })
 
 describe('share public note route (real D1)', () => {

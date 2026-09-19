@@ -123,7 +123,7 @@ export const messages = {
 'share.qr_copied': '已复制图片',
 'share.range_all': '全部',
 'share.realtime_stream': '最新 20 条访客记录',
-'share.recent_activity_title': '实时访问日志',
+'share.recent_activity_title': '最近访问',
 'share.selected_count': '已选择 {count} 篇笔记',
 'share.share_status': '分享状态',
 'share.shares_unit': '篇',

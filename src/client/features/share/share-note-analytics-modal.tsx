@@ -1,8 +1,8 @@
-import { Activity, BarChart2, Compass, ExternalLink, Globe, Lock, QrCode } from 'lucide-react'
+import { Activity, BarChart2, Compass, ExternalLink, Globe, Lock, QrCode, RefreshCw } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { ShareNoteAnalytics, ShareTimelineRange } from '@shared/types'
 import { Modal } from '../../components/overlay'
-import { Button } from '../../components/primitives'
+import { Button, IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
@@ -34,7 +34,7 @@ export function ShareNoteAnalyticsModal({
   noteId: string
   onOpenQr?: (url: string, title: string, slug: string) => void
 }) {
-  const { locale, range, setRange, metricMode, setMetricMode, data, error, loadData } = useShareNoteAnalytics(open, noteId)
+  const { locale, range, setRange, metricMode, setMetricMode, data, isLoading, error, loadData } = useShareNoteAnalytics(open, noteId)
   if (!open) return null
   const timelinePoints = data?.timeline || []
   const chartValues = timelinePoints.map((p) => (metricMode === 'views' ? p.views : p.visitors))
@@ -57,7 +57,7 @@ export function ShareNoteAnalyticsModal({
         ) : (
           <>
             {data && <AnalyticsLinkBar data={data} onOpenQr={onOpenQr} />}
-            <StatsAndRangeRow data={data} range={range} setRange={setRange} />
+            <StatsAndRangeRow data={data} range={range} setRange={setRange} isLoading={isLoading} onRefresh={() => void loadData(range)} />
             <TimelineCard metricMode={metricMode} setMetricMode={setMetricMode} chartValues={chartValues} timelinePoints={timelinePoints} />
             <NoteAnalyticsBreakdowns data={data} locale={locale} />
             <RecentActivityCard data={data} locale={locale} />
@@ -100,10 +100,12 @@ function AnalyticsLinkBar({ data, onOpenQr }: { data: ShareNoteAnalytics; onOpen
   )
 }
 
-function StatsAndRangeRow({ data, range, setRange }: {
+function StatsAndRangeRow({ data, range, setRange, isLoading, onRefresh }: {
   data: ShareNoteAnalytics | null
   range: ShareTimelineRange
   setRange: (range: ShareTimelineRange) => void
+  isLoading: boolean
+  onRefresh: () => void
 }) {
   return (
     <div className='flex items-center justify-between gap-2'>
@@ -111,6 +113,14 @@ function StatsAndRangeRow({ data, range, setRange }: {
       <div className='flex items-center gap-2'>
         <Segmented options={rangeOptions()} value={range} onChange={(val) => setRange(val as ShareTimelineRange)} />
         <ShareTrafficFilterPopover />
+        <IconButton
+          size='sm'
+          label={t('common.refresh')}
+          disabled={isLoading}
+          onClick={onRefresh}
+        >
+          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+        </IconButton>
       </div>
     </div>
   )

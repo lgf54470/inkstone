@@ -39,7 +39,7 @@
 | 24 | SH-19 | App 启动瘦身：`/api/share/summary` 轻量端点 | P1 | ✅ | 2b04d5cc |
 | 25 | SH-20 | code-split：barrel 拆 store/modals 入口（保持 blog 现有 import 不破） | P1 | ✅ | 3d6496e0 |
 | 26 | SH-17a | 列表接口 5 个统计查询 `db.batch` 并行化（第一步，不拆端点） | P0 部分 | ✅ | 79748dbf |
-| 27 | SH-28 | 实时访问日志补时间窗 + 文案改「最近访问」 | P2 | ⬜ | |
+| 27 | SH-28 | 实时访问日志补时间窗 + 文案改「最近访问」 | P2 | ✅ | 待回填 |
 | 28 | SH-30 | 侧栏计数口径（软删过滤/expiring 互斥/全时段标注）+ LIMIT 500 truncated | P2 | ⬜ | |
 | 29 | SH-31 | a11y 批量：Switch label、IconButton、hub ariaLabel、行「更多」键盘入口 | P2 | ⬜ | |
 | 30 | SH-32 | 调色板类 → 设计令牌（visit-logs/sidebar/qr/dashboard 等） | P2 | ⬜ | |
@@ -182,3 +182,13 @@
 - 测试 `tests/share-routes.test.ts` 新 describe 4 例：`instrumentRoundTrips()` 包装 `DB_ENV.env.DB` 计「直接 .all/.first 串行往返」与「db.batch 次数」——列表恰 2 batch 0 直查、global 1 batch+topNotes 1 直查（总往返 ≤2）、note 1 batch+404 门 1 直查、ghost noteId 必须 0 batch（守住「gate 先行」不被顺手 batch 掉）。变异两杀：visits 分块退回逐块 await → 列表红；recentVisits 拆独立 batch → global 红（/tmp 备份还原）。既有行为用例（列表筛选/120 note 分块/all 分桶/bot 过滤/404 语义）59 例全绿，响应体不变。
 - 验证：红→绿；tsc + share 全套 13 文件/121 测 + 十门禁全绿（size 逼出 global-stats.ts 拆分与 compose 抽取）。
 - 遗留：`all` 区间「整表拉行再内存分桶」的 SQL 下推未做——`buildShareTimeline` 的分桶语义属冻结共用件 `lib/share-analytics.ts`（约束③/F 清单），忠实下推须改其行为，等裁决；`GET /note-share/:noteId` 本就单查询，无可并行项未动。
+
+## 27 — SH-28 最近访问日志补时间窗 + 去「实时」文案（2026-09-19）
+
+- 现象：看板「实时访问日志」卡片在 7d 区间仍列出 14 天前的记录——`recentVisitsStatement` 只带过滤 clause 不带区间 `startTs`，与同页 timeline/KPI（`rangeVisitsStatement`）口径不一致；且「实时/Live」名不副实（无任何轮询/订阅，一次性 LIMIT 20）。
+- 修复：
+  - `src/worker/routes/share/analytics.ts`：`recentVisitsStatement` 新增 `startTs` 参数，两种 SQL（全局/note）各加 `sv.visited_at >= ?N`；两个调用点传 `ctx.startTs`。range=all 时 ctx.startTs 已由 `applyAllRangeWindow` 在主 batch 之前就位，故「全部」区间仍列全史，语义不变。
+  - locales：`share.recent_activity_title` zh「实时访问日志」→「最近访问」、en「Live Activity Stream」→「Recent Visits」（键名不动；`share.realtime_stream`「最新 20 条访客记录」为事实描述，保留）。blog 侧 `blog.realtime_logs` 同款文案属 blog 管理中心，按约束③不动。
+  - `share-note-analytics-modal.tsx`：笔记分析弹窗补手动刷新 IconButton（与看板头部同款 `common.refresh` + RefreshCw 旋转态），弹窗此前只能靠切区间/重开触发重拉；看板头部本就有刷新，未重复加。轮询（可见性门控）不做——文案已不再承诺实时。
+- 测试 `tests/share-routes.test.ts`：analytics describe 新增 3 例——global 7d 排除 14 天前记录、note 7d 同、range=all 仍含 800 天前记录（防未来把 all 也滤掉）。变异两杀：note SQL 删 `visited_at >= ?3` → note 例红；global 调用点 startTs 传 0 → global 例红（/tmp/mut27 备份还原）。
+- 验证：红→绿；tsc + share 全套 14 文件/141 测 + 十门禁全绿（无新注释，allowlist 无变化）。弹窗刷新按钮为既有 IconButton 原语复用，键盘/焦点由组件自身保证，未在 jsdom 另测。

@@ -99,7 +99,7 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
       rangeVisitsStatement(db, { userId, startTs: ctx.startTs, clause: ctx.clause }),
       prevVisitStatsStatement(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause),
       visitFilterStatsStatement(db, userId, ctx.startTs),
-      recentVisitsStatement(db, { userId, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
+      recentVisitsStatement(db, { userId, startTs: ctx.startTs, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
     ])
     const rows = rowsOf<VisitRow>(visitsResult)
     const maps = aggregateVisitMaps(rows)
@@ -172,7 +172,7 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
     }
     const [visitsResult, recentResult] = await db.batch([
       rangeVisitsStatement(db, { userId, noteId, startTs: ctx.startTs, clause: ctx.clause }),
-      recentVisitsStatement(db, { userId, noteId, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
+      recentVisitsStatement(db, { userId, noteId, startTs: ctx.startTs, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
     ])
     const rows = rowsOf<VisitRow>(visitsResult)
     const recentVisits = toVisitLogs(rowsOf<RecentVisitRow>(recentResult), row.note_title)
@@ -397,20 +397,21 @@ function breakdownTotals(
 function recentVisitsStatement(db: D1Database, params: {
   userId: string
   noteId?: string
+  startTs: number
   clause: string
 }): D1PreparedStatement {
-  const { userId, noteId, clause } = params
+  const { userId, noteId, startTs, clause } = params
   return noteId
     ? db.prepare(
       `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
               sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser, sv.user_agent,
               sv.is_bot, sv.is_self_referrer, sv.is_owner
          FROM share_visits sv
-        WHERE sv.note_id = ?1 AND sv.user_id = ?2 ${clause}
+        WHERE sv.note_id = ?1 AND sv.user_id = ?2 AND sv.visited_at >= ?3 ${clause}
         ORDER BY sv.visited_at DESC
         LIMIT 20`,
     )
-      .bind(noteId, userId)
+      .bind(noteId, userId, startTs)
     : db.prepare(
       `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
               sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser, sv.user_agent,
@@ -418,11 +419,11 @@ function recentVisitsStatement(db: D1Database, params: {
               COALESCE(n.title, 'Untitled note') as note_title
          FROM share_visits sv
          LEFT JOIN notes n ON n.id = sv.note_id
-        WHERE sv.user_id = ?1 ${clause}
+        WHERE sv.user_id = ?1 AND sv.visited_at >= ?2 ${clause}
         ORDER BY sv.visited_at DESC
         LIMIT 20`,
     )
-      .bind(userId)
+      .bind(userId, startTs)
 }
 
 function toVisitLogs(rows: RecentVisitRow[], noteTitle?: string): ShareVisitLog[] {
