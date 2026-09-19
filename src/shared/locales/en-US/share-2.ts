@@ -29,6 +29,7 @@ export const messages = {
 'share.category_pinned': 'Pinned',
 'share.category_starred': 'Starred',
 'share.clean_all_logs': 'Clear all visit logs',
+'share.clean_blocked_unlimited': 'Retention is set to Keep Forever, so there is no cutoff date to clean by.',
 'share.clean_bots_only': 'Clean crawler logs only',
 'share.clean_logs_btn': 'Clean Logs',
 'share.clean_logs_title': 'Clean Visit Logs',

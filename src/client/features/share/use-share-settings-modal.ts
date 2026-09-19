@@ -55,13 +55,24 @@ function saveSettingsFlow({ bots, selfRef, owner, retentionDays, maxRecords, set
   onClose()
 }
 
+/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */
+export function parseCleanDays(retentionDays: string): number | null {
+  const days = parseInt(retentionDays, 10)
+  return days >= 1 ? days : null
+}
+
 async function cleanVisitsFlow(
   type: 'bots' | 'older_than' | 'all',
   retentionDays: string,
   setIsBusy: (value: boolean) => void,
   toast: UiState['toast'],
 ): Promise<void> {
-  const days = parseInt(retentionDays, 10) || 30
+  const parsed = parseCleanDays(retentionDays)
+  if (type === 'older_than' && parsed === null) {
+    toast({ title: t('share.clean_blocked_unlimited'), tone: 'warning' })
+    return
+  }
+  const days = parsed ?? undefined
   const confirmMessage =
     type === 'all'
       ? t('share.confirm_clear_all_logs')

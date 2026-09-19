@@ -301,6 +301,42 @@ describe('share visits route (real D1)', () => {
     expect(bots.total).toBe(1)
     expect(bots.visits[0].isBot).toBe(true)
   })
+
+  it('rejects older_than cleanup with a non-positive or unparseable days instead of wiping logs', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, {})
+    const now = Date.now()
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-old', visited_at: now - 400 * 86_400_000 })
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-new', visited_at: now - 60_000 })
+    const app = makeApp()
+
+    for (const days of ['0', '-5', 'abc']) {
+      const res = await request(app, `/api/share/visits?type=older_than&days=${days}`, { method: 'DELETE' })
+      expect(res.status).toBe(400)
+      expect((await allRows(db, 'SELECT id FROM share_visits WHERE user_id = ?1', USER)).length).toBe(2)
+    }
+
+    const ok = await request(app, '/api/share/visits?type=older_than&days=30', { method: 'DELETE' })
+    expect(ok.status).toBe(200)
+    expect((await ok.json()).deleted).toBe(1)
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE user_id = ?1', USER)).length).toBe(1)
+  })
+
+  it('leaves bots/all cleanup untouched by the days validation', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, {})
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-bot', is_bot: true })
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-real' })
+    const app = makeApp()
+
+    const bots = await request(app, '/api/share/visits?type=bots', { method: 'DELETE' })
+    expect(bots.status).toBe(200)
+    expect((await bots.json()).deleted).toBe(1)
+
+    const all = await request(app, '/api/share/visits?type=all&days=0', { method: 'DELETE' })
+    expect(all.status).toBe(200)
+    expect((await all.json()).deleted).toBe(1)
+  })
 })
 
 describe('share analytics routes (real D1)', () => {

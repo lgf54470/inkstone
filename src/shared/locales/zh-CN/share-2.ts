@@ -29,6 +29,7 @@ export const messages = {
 'share.category_pinned': '已置顶',
 'share.category_starred': '已收藏',
 'share.clean_all_logs': '清空全部访问日志',
+'share.clean_blocked_unlimited': '当前保留期为「永久保留」，没有可清理的截止日期。',
 'share.clean_bots_only': '清理网络爬虫日志',
 'share.clean_logs_btn': '清理日志',
 'share.clean_logs_title': '清理访问日志',

@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { ShareVisitLog } from '@shared/types'
 import type { AppBindings } from '../../env'
+import { ApiError } from '../../lib/errors'
 import { parseBotName } from '../../lib/share-analytics'
 
 interface VisitLogRow {
@@ -78,6 +79,9 @@ function registerShareVisitsClearRoute(shareManageRoutes: Hono<AppBindings>): vo
     const userId = c.get('userId')
     const type = c.req.query('type') || 'all'
     const days = parseInt(c.req.query('days') || '30', 10)
+    if (type === 'older_than' && !(days >= 1)) {
+      throw ApiError.badRequest('Cleaning logs older than N days requires a positive integer for days')
+    }
     const res = await deleteVisitLogs(c.env.DB, userId, type, days)
     return c.json({ ok: true as const, deleted: res.meta.changes ?? 0 })
   })
@@ -120,7 +124,7 @@ async function deleteVisitLogs(db: D1Database, userId: string, type: string, day
     return db.prepare(`DELETE FROM share_visits WHERE user_id = ?1 AND is_bot = 1`).bind(userId).run()
   }
   if (type === 'older_than') {
-    const cutoff = Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
     return db.prepare(`DELETE FROM share_visits WHERE user_id = ?1 AND visited_at < ?2`).bind(userId, cutoff).run()
   }
   if (type === 'all') {

@@ -1978,6 +1978,9 @@ const allowed = new Map([
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
   ]],
+  ['src/client/features/share/use-share-settings-modal.ts', [
+    '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
+  ]],
   ['src/client/features/shell/app-shell.tsx', [
     '/* A show outlives the layout that started it: the desktop and mobile shells\n          mount different workspace subtrees, so hosting the overlay here keeps a\n          presentation alive across a breakpoint switch instead of dropping the\n          presenter back to the note mid-talk. */',
   ]],
