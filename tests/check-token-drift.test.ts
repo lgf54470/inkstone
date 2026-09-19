@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { driftProblems, normalizeName, normalizeValue, resolveVars, snapshotPayload, staleProblems, tokenEntries, tokenValues } from '../scripts/check-token-drift.mjs'
+import { collectVarUses, declaredNames, driftProblems, normalizeName, normalizeValue, repositoryUndefinedVarProblems, resolveVars, snapshotPayload, staleProblems, tokenEntries, tokenValues, undefinedUseProblems } from '../scripts/check-token-drift.mjs'
 
 describe('token name/value extraction', () => {
   it('normalizes CSS-escaped token names', () => {
     expect(normalizeName(String.raw`--text-13\.5`)).toBe('--text-13.5')
     expect(normalizeName(String.raw`--sp-0\25`)).toBe('--sp-0%')
+  })
+
+  it('normalizes double-escaped names as written in JS string literals', () => {
+    expect(normalizeName(String.raw`--text-10\\.5`)).toBe('--text-10.5')
   })
 
   it('collapses whitespace in values', () => {
@@ -182,5 +186,55 @@ describe('staleness detection', () => {
       },
     }
     expect(staleProblems(app, blog, current)).toEqual([])
+  })
+})
+describe('reverse var-use check', () => {
+  it('collects var() uses with line numbers, normalizing escapes and keeping fallbacks', () => {
+    const css = String.raw`.a {
+  color: var(--text-13\.5);
+  padding: var(--sp-1) var(--missing-side, 2px);
+  width: calc(100% - var(--gap));
+}`
+    const uses = collectVarUses(css)
+    expect([...uses.keys()].sort()).toEqual(['--gap', '--missing-side', '--sp-1', '--text-13.5'])
+    expect(uses.get('--gap')).toEqual([4])
+  })
+
+  it('collects Tailwind paren-shorthand uses', () => {
+    const uses = collectVarUses('w-(--sp-4) bg-[var(--bg-hover)]')
+    expect([...uses.keys()].sort()).toEqual(['--bg-hover', '--sp-4'])
+  })
+
+  it('skips names built at runtime from a finite key list', () => {
+    const uses = collectVarUses('color: var(--bento-code-n); border-color: var(--kanban-tag-red-fg)')
+    expect([...uses.keys()]).toEqual([])
+  })
+
+  it('skips interpolated names, which have no static spelling to check', () => {
+    const uses = collectVarUses(['x = `var(--panel-${name}-bg)`'].join(''))
+    expect([...uses.keys()]).toEqual([])
+  })
+
+  it('collects declarations and quoted property names as definitions', () => {
+    expect([...declaredNames(':root { --a: 1px; --b: var(--c) }')].sort()).toEqual(['--a', '--b'])
+    const code = "el.style.setProperty('--d', v); const vars = { '--e': '1px' }; const css = `--f: $'{x}px;`;"
+    expect([...declaredNames(code)].sort()).toEqual(['--d', '--e', '--f'])
+  })
+
+  it('flags undefined uses unless pre-approved, with the first site in the message', () => {
+    const uses = new Map([['--ghost', ['a.css:1']], ['--ok', ['b.css:2']], ['--grand', ['c.tsx:3']]])
+    const problems = undefinedUseProblems(uses, new Set(['--ok']), new Set(['--grand']))
+    expect(problems).toHaveLength(1)
+    expect(problems[0]).toContain('--ghost')
+    expect(problems[0]).toContain('a.css:1')
+  })
+
+  it('flags an approved entry whose uses were fixed away', () => {
+    const problems = undefinedUseProblems(new Map([['--ok', ['b.css:1']]]), new Set(['--ok']), new Set(['--gone']))
+    expect(problems.some((p) => p.includes('--gone') && p.includes('no longer used'))).toBe(true)
+  })
+
+  it('the shipped trees use no undefined var besides the recorded pre-existing ones', () => {
+    expect(repositoryUndefinedVarProblems()).toEqual([])
   })
 })

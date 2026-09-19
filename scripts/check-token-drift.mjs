@@ -26,9 +26,17 @@ const BASELINE = 'scripts/check-token-drift.baseline.json'
 const DECL_RE = /(--[A-Za-z0-9_.\\-]+)\s*:\s*([^;]*);/g
 
 function normalizeName(name) {
-  return name
-    .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/\\(.)/g, '$1')
+  let out = name
+  let last = null
+  // A class string in JS may carry the dot escape twice (TS source `\\.`
+  // becomes Tailwind's `\.` at runtime), so unescape until stable.
+  while (last !== out) {
+    last = out
+    out = out
+      .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/\\+(.)/g, '$1')
+  }
+  return out
 }
 
 // Color spellings are canonicalized so cosmetic edits (channel case, hex
@@ -245,6 +253,116 @@ function staleProblems(app, blog, baseline) {
     .map((name) => `${name} added to both trees but absent from the baseline`)
 }
 
+// --- Reverse check: every var(--x) use must name a declared token ----------
+// tokens:check only compared the shared layer to its own baseline, so a class
+// like bg-[var(--accent-subtle)] (a name nothing ever declared) passed every
+// gate while drawing a transparent selected row. The audit's M-17 fix removed
+// that one; this scan is the net that catches the next ghost.
+const USE_RE = /\(\s*(--[A-Za-z0-9_.\\-]+)(?=\s*[,/)])/g
+const DECL_NAME_RE = /(--[A-Za-z0-9_.\\-]+)\s*:/g
+const QUOTED_NAME_RE = /['"`](--[A-Za-z0-9_.\\-]+)['"`]/g
+
+// Names written from a finite key list at runtime (slides code palettes,
+// kanban tag colors); their static var() spellings cannot be resolved.
+const DYNAMIC_VAR_PREFIXES = ['--bento-code-', '--kanban-tag-']
+
+// Ghost uses that predate this gate, in modules outside the music audit's
+// scope. Each is reported in the ledger for its owning module to fix; fixing
+// one without dropping it here fails the gate in the other direction.
+const PREEXISTING_UNDEFINED_USES = new Set([
+  '--accent-fg',
+  '--bg-elevated',
+  '--bg-muted',
+  '--bg-sidebar',
+  '--bg-subtle',
+  '--bg-surface-subtle',
+  '--border-focus',
+  '--code-font-size',
+  '--code-line-height',
+  '--danger-softer',
+  '--danger-subtle',
+  '--font-family-mono',
+  '--sp-0.25',
+  '--sp-11',
+  '--success-subtle',
+  '--surface-hover',
+  '--surface-primary',
+  '--surface-secondary',
+  '--surface-tertiary',
+  '--text-20',
+  '--warning-subtle',
+])
+
+// name -> line numbers of every static var()/Tailwind-paren use. A name
+// ending in `$`-territory (interpolated) has no complete spelling to check.
+function collectVarUses(text) {
+  const uses = new Map()
+  text.split('\n').forEach((line, index) => {
+    for (const match of line.matchAll(USE_RE)) {
+      const name = normalizeName(match[1])
+      if (DYNAMIC_VAR_PREFIXES.some((prefix) => name.startsWith(prefix))) continue
+      const lines = uses.get(name) ?? []
+      lines.push(index + 1)
+      uses.set(name, lines)
+    }
+  })
+  return uses
+}
+
+// Declarations count wherever they appear: CSS blocks (including a final
+// declaration before `}` without its semicolon), template CSS written from
+// code, and quoted custom-property names used with setProperty or style
+// objects. Over-collection only softens the check; a quoted flag string like
+// '--update-baseline' becoming a phantom definition is the known trade.
+function declaredNames(text) {
+  const names = new Set()
+  for (const match of text.matchAll(DECL_NAME_RE)) names.add(normalizeName(match[1]))
+  for (const match of text.matchAll(QUOTED_NAME_RE)) names.add(normalizeName(match[1]))
+  return names
+}
+
+function undefinedUseProblems(uses, definitions, approved) {
+  const problems = []
+  for (const [name, sites] of uses) {
+    if (definitions.has(name) || approved.has(name)) continue
+    problems.push(`${name} used but never declared (first use at ${sites[0]})`)
+  }
+  for (const name of approved) {
+    if (!uses.has(name)) {
+      problems.push(`${name} is grandfathered but no longer used; drop it from PREEXISTING_UNDEFINED_USES`)
+    }
+  }
+  return problems
+}
+
+const UI_TREE_ROOTS = ['src', 'blog-frontend/src']
+const UI_TREE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.astro', '.css'])
+
+function uiTreeFiles(dir, out = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name.endsWith('.d.ts') || entry.name.includes('.test.')) continue
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) uiTreeFiles(full, out)
+    else if (UI_TREE_EXT.has(path.extname(entry.name))) out.push(full)
+  }
+  return out
+}
+
+function repositoryUndefinedVarProblems() {
+  const uses = new Map()
+  const definitions = new Set()
+  const roots = UI_TREE_ROOTS.filter((root) => fs.existsSync(root))
+  for (const file of roots.flatMap((root) => uiTreeFiles(root))) {
+    const text = fs.readFileSync(file, 'utf8')
+    for (const [name, lines] of collectVarUses(text)) {
+      const sites = uses.get(name) ?? []
+      uses.set(name, sites.concat(lines.map((line) => `${file}:${line}`)))
+    }
+    for (const name of declaredNames(text)) definitions.add(name)
+  }
+  return undefinedUseProblems(uses, definitions, PREEXISTING_UNDEFINED_USES)
+}
+
 // Importable by unit tests; the tree scan only runs when invoked as a CLI.
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
@@ -263,13 +381,22 @@ if (isMain) {
 
   const baseline = JSON.parse(fs.readFileSync(BASELINE, 'utf8'))
   const problems = [...driftProblems(app, blog, baseline, lists), ...staleProblems(app, blog, baseline)]
-  if (problems.length > 0) {
-    console.error(`token drift check failed: ${problems.length} shared-token problem(s)`)
-    for (const problem of problems) console.error(`  ${problem}`)
-    console.error('changing the shared token layer is a deliberate act: resnapshot with --update-baseline when intended')
+  const ghostProblems = repositoryUndefinedVarProblems()
+  if (problems.length > 0 || ghostProblems.length > 0) {
+    if (problems.length > 0) {
+      console.error(`token drift check failed: ${problems.length} shared-token problem(s)`)
+      for (const problem of problems) console.error(`  ${problem}`)
+      console.error('changing the shared token layer is a deliberate act: resnapshot with --update-baseline when intended')
+    }
+    if (ghostProblems.length > 0) {
+      console.error(`undefined-var check failed: ${ghostProblems.length} problem(s)`)
+      for (const problem of ghostProblems) console.error(`  ${problem}`)
+      console.error('a use must name a declared token; when a grandfathered ghost is fixed, delete its entry from PREEXISTING_UNDEFINED_USES')
+    }
     process.exit(1)
   }
   console.log(`token drift check passed: baseline matches the current shared token layer (${baseline.tokens.length} tokens, values stable)`)
+  console.log(`undefined-var check passed: every static var() use names a declared token (${PREEXISTING_UNDEFINED_USES.size} pre-existing ghosts grandfathered)`)
 }
 
-export { normalizeName, normalizeValue, normalizeColors, resolveVars, tokenEntries, tokenValues, snapshotPayload, snapshotPairPayload, driftProblems, staleProblems }
+export { normalizeName, normalizeValue, normalizeColors, resolveVars, tokenEntries, tokenValues, snapshotPayload, snapshotPairPayload, driftProblems, staleProblems, collectVarUses, declaredNames, undefinedUseProblems, repositoryUndefinedVarProblems, DYNAMIC_VAR_PREFIXES, PREEXISTING_UNDEFINED_USES }
