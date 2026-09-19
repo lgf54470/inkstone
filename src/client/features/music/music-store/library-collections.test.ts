@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MusicPlaylistDetail } from '@shared/types'
 
 vi.mock('../../../lib/api', () => ({
@@ -26,7 +26,7 @@ vi.mock('../music-feedback', () => ({
 
 import { api } from '../../../lib/api'
 import { toastMusicError } from '../music-feedback'
-import { addSelectionToPlaylist, createPlaylist, movePlaylistItem, renamePlaylist } from './library-collections'
+import { addSelectionToPlaylist, createPlaylist, movePlaylistItem, movePlaylistItemToIndex, renamePlaylist } from './library-collections'
 import type { MusicStoreState } from './types'
 
 function makeStore() {
@@ -91,6 +91,10 @@ describe('playlist multi-select add', () => {
 })
 
 describe('movePlaylistItem', () => {
+  beforeEach(() => {
+    vi.mocked(api.music.reorderPlaylist).mockClear()
+  })
+
   function makePlaylistStore() {
     let state = {
       playlists: [{
@@ -114,7 +118,6 @@ describe('movePlaylistItem', () => {
   }
 
   it('swaps the item with its neighbour and sends the full ordering', async () => {
-    vi.mocked(api.music.reorderPlaylist).mockClear()
     const store = makePlaylistStore()
     await movePlaylistItem(store.set, store.get, 'p1', 'i2', -1)
     expect(api.music.reorderPlaylist).toHaveBeenCalledWith('p1', ['i2', 'i1', 'i3'])
@@ -122,7 +125,6 @@ describe('movePlaylistItem', () => {
   })
 
   it('drops a move past the boundary without touching the server', async () => {
-    vi.mocked(api.music.reorderPlaylist).mockClear()
     const store = makePlaylistStore()
     await movePlaylistItem(store.set, store.get, 'p1', 'i1', -1)
     await movePlaylistItem(store.set, store.get, 'p1', 'i3', 1)
@@ -136,5 +138,51 @@ describe('movePlaylistItem', () => {
     await movePlaylistItem(store.set, store.get, 'p1', 'i2', 1)
     expect(store.get().playlists[0].items.map((item) => item.id)).toEqual(['i1', 'i2', 'i3'])
     expect(toastMusicError).toHaveBeenCalled()
+  })
+})
+
+describe('movePlaylistItemToIndex', () => {
+  beforeEach(() => {
+    vi.mocked(api.music.reorderPlaylist).mockClear()
+  })
+
+  function threeItemStore() {
+    let state = {
+      playlists: [{
+        id: 'p1',
+        name: 'Road',
+        items: [
+          { id: 'i1', playlistId: 'p1', trackId: 't1', sortOrder: 0 },
+          { id: 'i2', playlistId: 'p1', trackId: 't2', sortOrder: 1 },
+          { id: 'i3', playlistId: 'p1', trackId: 't3', sortOrder: 2 },
+        ],
+      } as unknown as MusicPlaylistDetail],
+    } as unknown as MusicStoreState
+    return {
+      set: (patch: unknown) => {
+        const next = typeof patch === 'function' ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state) : (patch as Partial<MusicStoreState>)
+        state = { ...state, ...next }
+      },
+      get: () => state,
+    }
+  }
+
+  it('extracts the item and reinserts it at the requested index', async () => {
+    const store = threeItemStore()
+    await movePlaylistItemToIndex(store.set, store.get, 'p1', 'i3', 0)
+    expect(api.music.reorderPlaylist).toHaveBeenLastCalledWith('p1', ['i3', 'i1', 'i2'])
+    expect(store.get().playlists[0].items.map((item) => item.id)).toEqual(['i3', 'i1', 'i2'])
+  })
+
+  it('clamps an out-of-range index to the end instead of dropping the item', async () => {
+    const store = threeItemStore()
+    await movePlaylistItemToIndex(store.set, store.get, 'p1', 'i1', 99)
+    expect(api.music.reorderPlaylist).toHaveBeenLastCalledWith('p1', ['i2', 'i3', 'i1'])
+  })
+
+  it('sends nothing when the item already sits at the index', async () => {
+    const store = threeItemStore()
+    await movePlaylistItemToIndex(store.set, store.get, 'p1', 'i2', 1)
+    expect(api.music.reorderPlaylist).not.toHaveBeenCalled()
   })
 })

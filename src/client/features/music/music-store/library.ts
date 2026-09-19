@@ -8,7 +8,7 @@ import { matchMissingCovers } from './library-covers'
 import { dismissDownload, dismissLibraryJob, downloadTracks, setTransfersOpen, setUploadTarget } from './transfers'
 import {
   addSelectionToPlaylist, addToPlaylist, createPlaylist, createTag, deletePlaylist, deleteTag, dismissUpload,
-  movePlaylistItem, moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist, uploadFiles,
+  movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist, uploadFiles,
 } from './library-collections'
 import { browseWebdav, deleteWebdavObjects, importWebdavFolder, importWebdavTrack } from './webdav'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
@@ -20,7 +20,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
   | 'createTag' | 'patchTag' | 'deleteTag'
-  | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem'
+  | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
   | 'uploadFiles' | 'dismissUpload'
   | 'downloadTracks' | 'dismissDownload' | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'>
 
@@ -73,12 +73,13 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     setUploadTarget: (target) => setUploadTarget(set, target),
   }
 }
-type PlaylistItemActions = Pick<MusicStoreState, 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem'>
+type PlaylistItemActions = Pick<MusicStoreState, 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'>
 
 function playlistActions(set: MusicSet, get: MusicGet): PlaylistItemActions {
   return {
     addToPlaylist: (playlistId, trackId) => addToPlaylist(set, get, playlistId, trackId),
     removeFromPlaylist: (playlistId, itemId) => removeFromPlaylist(set, playlistId, itemId),
     movePlaylistItem: (playlistId, itemId, delta) => movePlaylistItem(set, get, playlistId, itemId, delta),
+    movePlaylistItemToIndex: (playlistId, itemId, toIndex) => movePlaylistItemToIndex(set, get, playlistId, itemId, toIndex),
   }
 }

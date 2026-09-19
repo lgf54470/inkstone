@@ -183,17 +183,43 @@ export async function removeFromPlaylist(set: MusicSet, playlistId: string, item
 }
 
 // The reorder endpoint takes the complete item order, so a move is a local
-// neighbour swap sent whole; the response replaces the entry like a patch would.
+// swap sent whole; the response replaces the entry like a patch would.
 export async function movePlaylistItem(set: MusicSet, get: MusicGet, playlistId: string, itemId: string, delta: number): Promise<void> {
-  const playlist = get().playlists.find((entry) => entry.id === playlistId)
-  if (!playlist) return
-  const ordered = [...playlist.items].sort((a, b) => a.sortOrder - b.sortOrder)
+  const ordered = orderedPlaylistItems(get, playlistId)
+  if (!ordered) return
   const index = ordered.findIndex((item) => item.id === itemId)
   const neighbour = index + delta
   if (index < 0 || neighbour < 0 || neighbour >= ordered.length) return
+  await sendReorderedPlaylistItems(set, playlistId, ordered, index, neighbour)
+}
+
+// Drag and drop knows only where the pointer landed, so the index is clamped
+// into the stored order rather than dropped like the single-step menu move.
+export async function movePlaylistItemToIndex(set: MusicSet, get: MusicGet, playlistId: string, itemId: string, toIndex: number): Promise<void> {
+  const ordered = orderedPlaylistItems(get, playlistId)
+  if (!ordered) return
+  const index = ordered.findIndex((item) => item.id === itemId)
+  if (index < 0) return
+  const target = Math.max(0, Math.min(toIndex, ordered.length - 1))
+  if (target === index) return
+  await sendReorderedPlaylistItems(set, playlistId, ordered, index, target)
+}
+
+function orderedPlaylistItems(get: MusicGet, playlistId: string): MusicPlaylistDetail['items'] | null {
+  const playlist = get().playlists.find((entry) => entry.id === playlistId)
+  return playlist ? [...playlist.items].sort((a, b) => a.sortOrder - b.sortOrder) : null
+}
+
+async function sendReorderedPlaylistItems(
+  set: MusicSet,
+  playlistId: string,
+  ordered: MusicPlaylistDetail['items'],
+  from: number,
+  to: number,
+): Promise<void> {
   const itemIds = ordered.map((item) => item.id)
-  const [moved] = itemIds.splice(index, 1)
-  itemIds.splice(neighbour, 0, moved)
+  const [moved] = itemIds.splice(from, 1)
+  itemIds.splice(to, 0, moved)
   try {
     const updated = await api.music.reorderPlaylist(playlistId, itemIds)
     set((state) => ({ playlists: state.playlists.map((entry) => (entry.id === playlistId ? updated : entry)) }))

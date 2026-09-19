@@ -171,6 +171,7 @@ export interface MusicStoreState {
   addToPlaylist: (playlistId: string, trackId: string) => Promise<void>
   removeFromPlaylist: (playlistId: string, itemId: string) => Promise<void>
   movePlaylistItem: (playlistId: string, itemId: string, delta: number) => Promise<void>
+  movePlaylistItemToIndex: (playlistId: string, itemId: string, toIndex: number) => Promise<void>
 
   uploadFiles: (files: File[], target?: MusicTransferTarget) => Promise<void>
   dismissUpload: (id: string) => void

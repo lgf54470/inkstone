@@ -1261,6 +1261,9 @@ const allowed = new Map([
     '// The meta box carries its own version and flags before its children.',
     '// Metadata atoms wrap their value in a data box: version and flags, value type, locale, payload.',
   ]],
+  ['src/client/features/music/music-playlist-drag.test.ts', [
+    '// t1 (i1) dropped on the t2 row: i2 sits at index 2 in the manual order.',
+  ]],
   ['src/client/features/music/music-popover.tsx', [
     '// Anchored panel for the compact transports. It renders through a portal with',
     '// fixed coordinates because the note status bar clips its overflow: an inline',
@@ -1299,7 +1302,9 @@ const allowed = new Map([
     '// Multi-select actions: moving replaces the tag set, playlists append.',
     '// One request for the whole selection; the endpoint reports what it skipped.',
     '// The reorder endpoint takes the complete item order, so a move is a local',
-    '// neighbour swap sent whole; the response replaces the entry like a patch would.',
+    '// swap sent whole; the response replaces the entry like a patch would.',
+    '// Drag and drop knows only where the pointer landed, so the index is clamped',
+    '// into the stored order rather than dropped like the single-step menu move.',
     '// addItem answers with the stored item id, so the row can be appended locally',
     '// instead of paying for a whole library reload after one tap.',
   ]],
@@ -1384,6 +1389,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-track-list.tsx', [
     '// The menu itself is a single hub-wide instance; rows only post these requests.',
+    '// Inside a playlist the rows can be dragged onto each other; the manual order',
+    '// is the only order there, so the drop maps to an index in the stored items.',
     '// Ctrl/Cmd+A selects the visible list, matching the file-manager habit; text fields keep their own.',
   ]],
   ['src/client/features/music/music-track-menu.test.ts', [
@@ -1401,6 +1408,7 @@ const allowed = new Map([
   ['src/client/features/music/music-track-row.tsx', [
     '// Off-screen rows skip layout and paint; the intrinsic size reserves their height.',
     '// Clicks on the row\'s own controls must not change the selection.',
+    '// Drag handlers all need the row\'s track; spreading keeps the row itself presentational.',
     '// Row action buttons stay visible on touch; only from md up do they reveal on hover/focus.',
   ]],
   ['src/client/features/music/music-track-table.tsx', [

@@ -13,6 +13,14 @@ import { formatDuration } from './music-utils'
 // Off-screen rows skip layout and paint; the intrinsic size reserves their height.
 const ROW_CONTAINMENT = { contentVisibility: 'auto', containIntrinsicSize: 'auto var(--sp-12)' } as const
 
+export interface TrackRowDragHandlers {
+  onDragStart: (event: React.DragEvent, track: MusicTrack) => void
+  onDragOver: (event: React.DragEvent) => void
+  onDrop: (event: React.DragEvent, track: MusicTrack) => void
+  onDragEnd: () => void
+  isDragging: (track: MusicTrack) => boolean
+}
+
 export interface TrackRowHandlers {
   onPlay: (track: MusicTrack) => void
   onToggleFavorite: (id: string) => void
@@ -20,6 +28,7 @@ export interface TrackRowHandlers {
   onContextMenu: (event: React.MouseEvent, target: TrackMenuTarget) => void
   onMenuButton: (event: React.MouseEvent<HTMLElement>, target: TrackMenuTarget) => void
   onEdit: (track: MusicTrack) => void
+  drag?: TrackRowDragHandlers
 }
 
 // Clicks on the row's own controls must not change the selection.
@@ -61,6 +70,18 @@ export interface TrackRowProps {
   handlers: TrackRowHandlers
 }
 
+// Drag handlers all need the row's track; spreading keeps the row itself presentational.
+function dragProps(drag: TrackRowDragHandlers | undefined, track: MusicTrack) {
+  if (!drag) return { draggable: false as const }
+  return {
+    draggable: true as const,
+    onDragStart: (event: React.DragEvent) => drag.onDragStart(event, track),
+    onDragOver: drag.onDragOver,
+    onDrop: (event: React.DragEvent) => drag.onDrop(event, track),
+    onDragEnd: drag.onDragEnd,
+  }
+}
+
 export const MusicTrackRow = memo(function MusicTrackRow({
   track,
   index,
@@ -85,12 +106,14 @@ export const MusicTrackRow = memo(function MusicTrackRow({
       onClick={handleSelect}
       onDoubleClick={() => handlers.onPlay(track)}
       onContextMenu={(event) => handlers.onContextMenu(event, { track })}
+      {...dragProps(handlers.drag, track)}
       style={ROW_CONTAINMENT}
       className={cn(
         'group/row flex h-12 cursor-default items-center gap-2 rounded-[var(--r-md)] px-2 transition-colors',
         'hover:bg-[var(--bg-hover)]',
         isCurrent && 'bg-[var(--accent-soft)]',
         isSelected && 'bg-[var(--accent-softer)] ring-1 ring-[var(--accent)]',
+        handlers.drag?.isDragging(track) && 'opacity-40',
       )}
     >
       <RowSelectCell track={track} isSelected={isSelected} onSelect={handlers.onSelect} />

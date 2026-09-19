@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { Download, Play, Shuffle } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { Button } from '../../components/primitives'
@@ -12,7 +12,7 @@ import { MusicSelectionBar } from './music-selection-bar'
 import { MusicTrackCard } from './music-track-card'
 import { MusicTrackMenuHost } from './music-track-menu'
 import { MusicTrackTable } from './music-track-table'
-import type { TrackRowHandlers } from './music-track-row'
+import type { TrackRowDragHandlers, TrackRowHandlers } from './music-track-row'
 import { useTrackListActions, useTrackSelection, shuffledIds, type TrackSelection } from './use-track-list'
 import { downloadM3u } from './music-export'
 
@@ -34,6 +34,7 @@ export const MusicTrackList = memo(function MusicTrackList({
   const scope = useMusic((state) => state.scope)
   const openTrackMenu = useMusic((state) => state.openTrackMenu)
   const actions = useTrackListActions(tracks, currentId, onEdit)
+  const playlistDrag = usePlaylistDrag()
   const visibleIds = useMemo(() => tracks.map((track) => track.id), [tracks])
   const selection = useTrackSelection(visibleIds)
   useSelectAllShortcut(selection.selectAll)
@@ -49,8 +50,9 @@ export const MusicTrackList = memo(function MusicTrackList({
       },
       onMenuButton: (event, target) => openTrackMenu({ target, anchor: event.currentTarget }),
       onEdit,
+      drag: playlistDrag,
     }),
-    [actions, selection, onEdit, openTrackMenu],
+    [actions, selection, onEdit, openTrackMenu, playlistDrag],
   )
   const playback = useMemo(() => ({ isPlaying, isStreamLoading }), [isPlaying, isStreamLoading])
 
@@ -68,6 +70,48 @@ export const MusicTrackList = memo(function MusicTrackList({
     </div>
   )
 })
+
+// Inside a playlist the rows can be dragged onto each other; the manual order
+// is the only order there, so the drop maps to an index in the stored items.
+function usePlaylistDrag(): TrackRowDragHandlers | undefined {
+  const scope = useMusic((state) => state.scope)
+  const playlists = useMusic((state) => state.playlists)
+  const movePlaylistItemToIndex = useMusic((state) => state.movePlaylistItemToIndex)
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
+  const playlistId = scope.kind === 'playlist' ? scope.playlistId : null
+  const items = useMemo(
+    () => playlists.find((playlist) => playlist.id === playlistId)?.items ?? [],
+    [playlists, playlistId],
+  )
+  return useMemo(() => {
+    if (!playlistId) return undefined
+    const itemIdByTrack = new Map(items.map((item) => [item.trackId, item.id]))
+    const orderedIds = [...items].sort((a, b) => a.sortOrder - b.sortOrder).map((item) => item.id)
+    return {
+      onDragStart: (event, track) => {
+        const itemId = itemIdByTrack.get(track.id)
+        if (!itemId) return
+        event.dataTransfer.setData('text/plain', itemId)
+        event.dataTransfer.effectAllowed = 'move'
+        setDraggedItemId(itemId)
+      },
+      onDragOver: (event) => {
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+      },
+      onDrop: (event, track) => {
+        event.preventDefault()
+        const source = event.dataTransfer.getData('text/plain') || draggedItemId
+        setDraggedItemId(null)
+        const target = itemIdByTrack.get(track.id)
+        if (!source || !target || source === target) return
+        void movePlaylistItemToIndex(playlistId, source, orderedIds.indexOf(target))
+      },
+      onDragEnd: () => setDraggedItemId(null),
+      isDragging: (track) => itemIdByTrack.get(track.id) === draggedItemId,
+    }
+  }, [playlistId, items, draggedItemId, movePlaylistItemToIndex])
+}
 
 // Ctrl/Cmd+A selects the visible list, matching the file-manager habit; text fields keep their own.
 function useSelectAllShortcut(selectAll: () => void): void {
