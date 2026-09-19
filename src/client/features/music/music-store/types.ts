@@ -115,6 +115,7 @@ export interface MusicStoreState {
   trackMenu: TrackMenuRequest | null
   uploads: MusicUploadTask[]
   downloads: MusicDownloadTask[]
+  offlineTrackIds: string[]
   libraryJobs: MusicLibraryJob[]
   uploadTarget: MusicTransferTarget
   transfersOpen: boolean
@@ -183,6 +184,9 @@ export interface MusicStoreState {
   dismissUpload: (id: string) => void
   downloadTracks: (ids: string[]) => Promise<void>
   dismissDownload: (id: string) => void
+  syncOfflineTracks: () => Promise<void>
+  toggleTrackOffline: (id: string) => Promise<void>
+  setTracksOffline: (ids: string[], enabled: boolean) => Promise<void>
   dismissLibraryJob: (kind: MusicLibraryJobKind) => void
   setTransfersOpen: (open: boolean) => void
   setUploadTarget: (target: MusicTransferTarget) => void

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
-import { ArrowDownToLine, Heart, HeartOff, ListPlus, Pin, PinOff, Tag, Trash2 } from 'lucide-react'
+import { ArrowDownToLine, CloudDownload, Heart, HeartOff, ListPlus, Pin, PinOff, Tag, Trash2 } from 'lucide-react'
 import { Button } from '../../components/primitives'
 import { Menu, confirm, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
@@ -74,6 +74,7 @@ function SelectionBulkActions({
 }) {
   const batchTracks = useMusic((state) => state.batchTracks)
   const downloadTracks = useMusic((state) => state.downloadTracks)
+  const setTracksOffline = useMusic((state) => state.setTracksOffline)
 
   const removeSelected = (): void => {
     void confirm({
@@ -96,6 +97,9 @@ function SelectionBulkActions({
       <SelectionMenuButton label={t('music.add_to_playlist')} icon={<ListPlus size={12} />} items={playlistItems} empty={t('music.no_playlists')} />
       <Button size='sm' icon={<ArrowDownToLine size={12} />} onClick={() => void downloadTracks(selectedIds)}>
         {t('music.download_selected', { value0: selectedIds.length })}
+      </Button>
+      <Button size='sm' icon={<CloudDownload size={12} />} onClick={() => void setTracksOffline(selectedIds, true)}>
+        {t('music.make_offline_selected', { value0: selectedIds.length })}
       </Button>
       <Button size='sm' variant='danger' icon={<Trash2 size={12} />} onClick={removeSelected}>{t('music.batch_delete')}</Button>
     </>

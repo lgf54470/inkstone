@@ -1,5 +1,5 @@
 import { useMemo, type RefObject } from 'react'
-import { ArrowDown, ArrowUp, Download, Heart, ListEnd, ListPlus, ListStart, PencilLine, Pin, Server, Tag, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, CloudDownload, CloudOff, Download, Heart, ListEnd, ListPlus, ListStart, PencilLine, Pin, Server, Tag, Trash2, X } from 'lucide-react'
 import type { MusicTag, MusicTrack } from '@shared/types'
 import { Menu, confirm, submenuFor, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
@@ -58,6 +58,8 @@ function useTrackMenuItems(
   const deleteTrack = useMusic((state) => state.deleteTrack)
   const deleteWebdavFiles = useMusic((state) => state.deleteWebdavFiles)
   const downloadTracks = useMusic((state) => state.downloadTracks)
+  const offlineTrackIds = useMusic((state) => state.offlineTrackIds)
+  const toggleTrackOffline = useMusic((state) => state.toggleTrackOffline)
 
   return useMemo(() => {
     const track = target?.track
@@ -65,7 +67,7 @@ function useTrackMenuItems(
     const wrap = closeThenRun(onClose)
     const actions = {
       wrap, playlists, tags, playCollection, addToQueue, addToPlaylist, patchTrack,
-      toggleFavorite, togglePin, onEdit, downloadTracks,
+      toggleFavorite, togglePin, onEdit, downloadTracks, offlineTrackIds, toggleTrackOffline,
     }
     const items = baseMenuItems(track, actions)
     items.push(...playlistMenuItems({ target, playlists, wrap, movePlaylistItem, removeFromPlaylist }))
@@ -79,7 +81,7 @@ function useTrackMenuItems(
       onSelect: wrap(() => confirmDeleteTrack(track, deleteTrack)),
     })
     return items
-  }, [target, playlists, tags, playCollection, addToQueue, addToPlaylist, toggleFavorite, togglePin, patchTrack, removeFromPlaylist, movePlaylistItem, deleteTrack, deleteWebdavFiles, downloadTracks, onClose, onEdit])
+  }, [target, playlists, tags, playCollection, addToQueue, addToPlaylist, toggleFavorite, togglePin, patchTrack, removeFromPlaylist, movePlaylistItem, deleteTrack, deleteWebdavFiles, downloadTracks, offlineTrackIds, toggleTrackOffline, onClose, onEdit])
 }
 
 // Rows inside a playlist carry an item identity; these are the order-scoped actions.
@@ -115,10 +117,13 @@ interface TrackMenuActions {
   togglePin: (id: string) => Promise<void>
   onEdit: (track: MusicTrack) => void
   downloadTracks: (ids: string[]) => Promise<void>
+  offlineTrackIds: string[]
+  toggleTrackOffline: (id: string) => Promise<void>
 }
 
 function baseMenuItems(track: MusicTrack, actions: TrackMenuActions): MenuItem[] {
   const wrap = actions.wrap
+  const isOffline = actions.offlineTrackIds.includes(track.id)
   return [
     { id: 'play-next', label: t('music.play_next'), icon: <ListStart size={14} />, onSelect: wrap(() => actions.addToQueue(track.id, true)) },
     { id: 'queue', label: t('music.add_to_queue'), icon: <ListEnd size={14} />, onSelect: wrap(() => actions.addToQueue(track.id)) },
@@ -129,6 +134,12 @@ function baseMenuItems(track: MusicTrack, actions: TrackMenuActions): MenuItem[]
     { id: 'pin', label: track.isPinned ? t('music.unpin') : t('music.pin'), icon: <Pin size={14} />, onSelect: wrap(() => void actions.togglePin(track.id)) },
     { id: 'edit', label: t('music.edit_track'), icon: <PencilLine size={14} />, separatorBefore: true, onSelect: wrap(() => actions.onEdit(track)) },
     { id: 'download', label: t('music.download'), icon: <Download size={14} />, onSelect: wrap(() => void actions.downloadTracks([track.id])) },
+    {
+      id: 'offline',
+      label: isOffline ? t('music.remove_offline') : t('music.make_offline'),
+      icon: isOffline ? <CloudOff size={14} /> : <CloudDownload size={14} />,
+      onSelect: wrap(() => void actions.toggleTrackOffline(track.id)),
+    },
   ]
 }
 

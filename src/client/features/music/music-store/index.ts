@@ -48,6 +48,7 @@ function initialMusicState(): Partial<MusicStoreState> {
     trackMenu: null,
     uploads: [],
     downloads: [],
+    offlineTrackIds: [],
     libraryJobs: [],
     uploadTarget: 'r2',
     transfersOpen: false,

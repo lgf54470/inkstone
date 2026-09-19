@@ -6,6 +6,9 @@ export function MusicSessionSync(): null {
     const get = () => useMusic.getState()
     resumeSleepTimer(useMusic.setState, get)
     void restorePlayback(useMusic.setState, get)
+    // Offline availability is device state living in the service worker cache,
+    // so every session has to re-read it before the menu labels can be trusted.
+    void useMusic.getState().syncOfflineTracks()
     // The heartbeat lives in the progress store now, so the save scheduler watches
     // both stores and compares its own combined snapshots of queue and position.
     const snapshot = () => {

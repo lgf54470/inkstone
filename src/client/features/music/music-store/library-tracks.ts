@@ -5,6 +5,7 @@ import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback
 import { probeTrackDuration, scanTrackMetadata, type ScannedMetadata } from '../music-metadata'
 import { isArtistSuffixedTitle, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { summarizeLibrary } from './library-load'
+import { forgetOfflineTracks } from './offline'
 import { runLibraryJob } from './transfers'
 import type { MusicGet, MusicSet, MusicStoreState, MusicTrackPatchInput } from './types'
 
@@ -152,6 +153,7 @@ export async function deleteTrack(set: MusicSet, get: MusicGet, id: string): Pro
     await api.music.deleteTrack(id)
     dropFromQueue(set, get, new Set([id]))
     dropTracksLocally(set, new Set([id]))
+    forgetOfflineTracks(set, get, [id])
     toastMusic('music.deleted')
   } catch (error) {
     toastMusicError(error, 'music.delete_failed')
@@ -167,6 +169,7 @@ export async function batchTracks(set: MusicSet, get: MusicGet, action: MusicBat
     if (action === 'delete') {
       dropFromQueue(set, get, affected)
       dropTracksLocally(set, affected)
+      forgetOfflineTracks(set, get, ids)
     } else {
       applyFlagsLocally(set, affected, action)
     }

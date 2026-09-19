@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MusicTrack } from '@shared/types'
 
 vi.mock('../music-metadata', () => ({
@@ -23,11 +23,15 @@ vi.mock('../music-feedback', () => ({
   toastMusicError: vi.fn(),
   toastMusicNotice: vi.fn(),
 }))
+vi.mock('./offline', () => ({
+  forgetOfflineTracks: vi.fn(),
+}))
 
 import { api } from '../../../lib/api'
 import { scanTrackMetadata } from '../music-metadata'
 import { toastMusic, toastMusicNotice } from '../music-feedback'
 import { batchTracks, deleteTrack, ensureTrackLyric, refreshTrackMetadata } from './library-tracks'
+import { forgetOfflineTracks } from './offline'
 import type { MusicStoreState } from './types'
 
 afterEach(() => {
@@ -40,7 +44,7 @@ function track(id: string): MusicTrack {
 }
 
 function makeStore(tracks: MusicTrack[]) {
-  let state = { tracks, libraryJobs: [] } as unknown as MusicStoreState
+  let state = { tracks, libraryJobs: [], queue: [], currentIndex: 0, selectedIds: [], playlists: [], tags: [], stats: null } as unknown as MusicStoreState
   return {
     get: () => state,
     set: (patch: unknown) => {
@@ -220,5 +224,32 @@ describe('refreshTrackMetadata force mode (FEAT-6)', () => {
     await refreshTrackMetadata(store.set as never, store.get as never, ['a'], true)
     const patch = vi.mocked(api.music.patchTrack).mock.calls[0]?.[1] as Record<string, unknown>
     expect(patch.title).toBeUndefined()
+  })
+})
+
+describe('deleting forgets the offline copies', () => {
+  beforeEach(() => {
+    vi.mocked(forgetOfflineTracks).mockClear()
+  })
+
+  it('a single deleted track drops its device copy', async () => {
+    const store = makeStore([track('a')])
+    await deleteTrack(store.set as never, store.get as never, 'a')
+    expect(forgetOfflineTracks).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(forgetOfflineTracks).mock.calls[0]?.[2]).toEqual(['a'])
+  })
+
+  it('a batch delete drops every selected device copy', async () => {
+    const store = makeStore([track('a'), track('b')])
+    store.set({ selectedIds: ['a', 'b'] })
+    await batchTracks(store.set as never, store.get as never, 'delete')
+    expect(vi.mocked(forgetOfflineTracks).mock.calls[0]?.[2]).toEqual(['a', 'b'])
+  })
+
+  it('a non-delete batch action keeps device copies', async () => {
+    const store = makeStore([track('a')])
+    store.set({ selectedIds: ['a'] })
+    await batchTracks(store.set as never, store.get as never, 'favorite')
+    expect(forgetOfflineTracks).not.toHaveBeenCalled()
   })
 })

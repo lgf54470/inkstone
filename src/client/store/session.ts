@@ -7,6 +7,7 @@ import {
 } from '@shared/constants'
 import type { PublicUser, SessionInfo, SiteInfo, TotpLoginChallenge, UserSettings } from '@shared/types'
 import { api, ApiError } from '../lib/api'
+import { clearOfflineAudioTracks } from '../lib/offline-audio'
 import { setLocale, t } from '../lib/i18n'
 import { localDb } from '../lib/db'
 import { applyThemeToDom, useUi } from './ui'
@@ -254,6 +255,10 @@ async function logoutImpl(set: SessionSetter, get: () => SessionState): Promise<
     // A failed session-cache write only loses the offline copy; logout proceeds regardless.
     await pendingSessionCache.catch(() => {})
     await localDb.clear()
+    // Offline audio is private content cached on this device by the service
+    // worker; it must not outlive the account that saved it. The call resolves
+    // null (never rejects) when no worker controls the page.
+    await clearOfflineAudioTracks()
     set({ status: 'anonymous', user: null, settings: DEFAULT_SETTINGS })
     location.reload()
   })()

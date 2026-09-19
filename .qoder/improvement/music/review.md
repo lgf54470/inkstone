@@ -274,7 +274,9 @@
 - **FEAT-8** 无任何播放快捷键：命令面板只有 `mod+shift+m` 打开中枢，空格/←→/上下曲全无绑定；`music.keyboard_hint` 未引用。桌面播放器基本盘。S–M。
 - **FEAT-9** 最近播放纯客户端（旧 `state.ts` recentIds 上限 50），换设备即丢；`music_tracks` 无 `last_played_at` 列。加列 + 在已有 `POST /tracks/:id/play` 顺手写时间，成本低价值稳。M。✅（M-47 已修）
   - 落地：迁移 v37 加列+索引，play 路由写 `last_played_at`，rows/library 投影 `lastPlayedAt`；客户端 recentIds 全链路删除，recent scope/侧栏计数改读服务端时间戳；demo 后端对齐。排序下拉「最近添加」维持 createdAt 语义（本次仅改 scope）。
-- **FEAT-10** 离线播放明确不可能：`pwa.config.ts:161` 把 `/api/` 划为 network-only，而音频流是 `/api/music/tracks/:id/stream`；「下载」只是存系统目录。飞行模式一首都放不了。若定位为「随身音乐 app」这是分水岭功能：SW Cache Storage + 按曲下载 + 配额回收。L。✅（配置行已读）
+- **FEAT-10** 离线播放明确不可能：`pwa.config.ts:161` 把 `/api/` 划为 network-only，而音频流是 `/api/music/tracks/:id/stream`；「下载」只是存系统目录。飞行模式一首都放不了。若定位为「随身音乐 app」这是分水岭功能：SW Cache Storage + 按曲下载 + 配额回收。L。✅（M-49 已修）
+  - 落地：SW 对同源 stream 路由改 network-first + 断网缓存兜底（在线鉴权/Range/过期语义零改动）；页面侧带会话凭证拉 blob 投递 SW（`STORE_OFFLINE_AUDIO`），条目带 size/addedAt 元数据，200MB 预算 FIFO 逐出、单曲超预算先拒绝不损存量；断网 Range 由缓存切 206/416。曲目录制项与选中条批量入口、`offlineTrackIds` 随会话重读；单删/批删同步清除设备副本，登出在清库后清空整个音频缓存（私有内容不跨账号留在共享设备）。
+  - 已知限制：SW 仅存在于生产构建（dev/e2e 实例该路径惰性，与既有 PWA 预热同性质）；逐出按保存先后而非最近播放；他端删除的曲目在本端留到同设备删除/登出/预算逐出。
 
 ### FEAT-11~18 【P3，按 YAGNI 多数建议暂缓】
 

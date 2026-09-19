@@ -28,6 +28,10 @@ const CORE_LAZY_MODULES = [
   '/src/shared/locales/zh-CN.ts',
 ] as const
 
+// Cap for the per-track offline audio cache inside the service worker: when a
+// new save would cross it, the oldest-saved tracks are evicted first.
+const OFFLINE_AUDIO_BUDGET_BYTES = 200 * 1024 * 1024
+
 type BuildChunk = {
   type: 'chunk'
   fileName: string
@@ -146,7 +150,12 @@ function isCoreLazyChunk(chunk: BuildChunk): boolean {
   return Boolean(moduleId && CORE_LAZY_MODULES.some((suffix) => moduleId.endsWith(suffix)))
 }
 
-function serviceWorkerSource(buildId: string, coreUrls: string[], allUrls: string[]): string {
+export function serviceWorkerSource(
+  buildId: string,
+  coreUrls: string[],
+  allUrls: string[],
+  audioBudgetBytes: number = OFFLINE_AUDIO_BUDGET_BYTES,
+): string {
 	return `const BUILD_ID = ${JSON.stringify(buildId)}
 	const SHELL_CACHE = ${JSON.stringify(`inkstone-shell-${buildId}`)}
 	const ASSET_CACHE = 'inkstone-assets-v1'
@@ -159,6 +168,10 @@ function serviceWorkerSource(buildId: string, coreUrls: string[], allUrls: strin
 	const CURRENT_MANIFEST_URL = MANIFEST_META_PREFIX + BUILD_ID
 	const NETWORK_ONLY_EXACT_PATHS = ['/authorize', '/mcp']
 	const NETWORK_ONLY_PATH_PREFIXES = ['/api/', '/authorize/', '/mcp/', '/oauth/', '/.well-known/']
+	const AUDIO_CACHE = 'inkstone-audio-v1'
+	const AUDIO_META_HEADER = 'x-inkstone-audio-meta'
+	const AUDIO_STREAM_PATTERN = /^\\/api\\/music\\/tracks\\/[^/]+\\/stream$/
+	const AUDIO_BUDGET_BYTES = ${audioBudgetBytes}
 	let warmPromise = null
 
 self.addEventListener('install', (event) => {
@@ -181,6 +194,24 @@ self.addEventListener('message', (event) => {
   }
   if (event.data?.type === 'WARM_OFFLINE_CACHE') {
     event.waitUntil(warmOfflineCache(false))
+    return
+  }
+  if (event.data?.type === 'LIST_OFFLINE_AUDIO') {
+    event.waitUntil(listOfflineAudio().then((tracks) => {
+      event.source?.postMessage({ type: 'OFFLINE_AUDIO_LIST', requestId: event.data.requestId, tracks })
+    }))
+    return
+  }
+  if (event.data?.type === 'STORE_OFFLINE_AUDIO') {
+    event.waitUntil(storeOfflineAudio(event.source, event.data))
+    return
+  }
+  if (event.data?.type === 'REMOVE_OFFLINE_AUDIO') {
+    event.waitUntil(removeOfflineAudio(event.source, event.data))
+    return
+  }
+  if (event.data?.type === 'CLEAR_OFFLINE_AUDIO') {
+    event.waitUntil(clearOfflineAudio(event.source, event.data))
   }
 })
 
@@ -199,6 +230,12 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
 
   const url = new URL(request.url)
+  // Music streams stay network-only while online; the cache below only speaks
+  // up once the network is gone, so auth, expiry and range semantics are untouched.
+  if (url.origin === self.location.origin && AUDIO_STREAM_PATTERN.test(url.pathname)) {
+    event.respondWith(handleAudioStream(request, url.pathname))
+    return
+  }
 	  if (
 	    url.origin !== self.location.origin ||
 	    NETWORK_ONLY_EXACT_PATHS.includes(url.pathname) ||
@@ -227,6 +264,149 @@ self.addEventListener('fetch', (event) => {
     return response
   })())
 })
+
+async function handleAudioStream(request, pathname) {
+  const network = await fetch(request).catch(() => null)
+  if (network) return network
+  const cache = await caches.open(AUDIO_CACHE)
+  const cached = await cache.match(pathname)
+  if (!cached) return Response.error()
+  const rangeHeader = request.headers.get('Range')
+  if (!rangeHeader) return cached
+  return sliceCachedAudio(cached, rangeHeader)
+}
+
+async function sliceCachedAudio(cached, rangeHeader) {
+  const body = await cached.arrayBuffer()
+  const total = body.byteLength
+  const match = /^bytes=(\\d*)-(\\d*)$/.exec(rangeHeader.trim())
+  if (!match) return new Response(body, audioServedHeaders(cached, null))
+  let start
+  let end
+  if (match[1] === '') {
+    const suffix = Number(match[2])
+    if (!suffix) return rangeNotSatisfiable(total)
+    start = Math.max(0, total - suffix)
+    end = total - 1
+  } else {
+    start = Number(match[1])
+    end = match[2] === '' ? total - 1 : Math.min(Number(match[2]), total - 1)
+    if (!Number.isFinite(start) || start >= total || start > end) return rangeNotSatisfiable(total)
+  }
+  const headers = audioServedHeaders(cached, 'bytes ' + start + '-' + end + '/' + total)
+  return new Response(body.slice(start, end + 1), { status: 206, headers })
+}
+
+function audioServedHeaders(cached, contentRange) {
+  const headers = {
+    'Content-Type': cached.headers.get('Content-Type') || 'application/octet-stream',
+    'Accept-Ranges': 'bytes',
+    'X-Content-Type-Options': 'nosniff',
+  }
+  if (contentRange) headers['Content-Range'] = contentRange
+  return headers
+}
+
+function rangeNotSatisfiable(total) {
+  return new Response(null, {
+    status: 416,
+    headers: { 'Content-Range': 'bytes */' + total, 'Accept-Ranges': 'bytes' },
+  })
+}
+
+function audioMeta(response) {
+  try {
+    const meta = JSON.parse(response.headers.get(AUDIO_META_HEADER) || 'null')
+    return { sizeBytes: Number(meta.sizeBytes) || 0, addedAt: Number(meta.addedAt) || 0 }
+  } catch {
+    // Corrupt or missing meta only costs the eviction ordering for this one
+    // entry; treating it as an unknown-age zero-byte file keeps it droppable.
+    return { sizeBytes: 0, addedAt: 0 }
+  }
+}
+
+async function listOfflineAudio() {
+  const cache = await caches.open(AUDIO_CACHE)
+  const tracks = []
+  for (const request of await cache.keys()) {
+    const path = new URL(request.url).pathname
+    if (!AUDIO_STREAM_PATTERN.test(path)) continue
+    const response = await cache.match(request)
+    if (!response) continue
+    tracks.push({ path, sizeBytes: audioMeta(response).sizeBytes })
+  }
+  return tracks
+}
+
+async function storeOfflineAudio(source, data) {
+  const reply = (ok, reason) => source?.postMessage({
+    type: 'OFFLINE_AUDIO_STORED', requestId: data.requestId, ok, reason,
+  })
+  const path = String(data.path || '')
+  const blob = data.blob
+  if (!AUDIO_STREAM_PATTERN.test(path) || !(blob instanceof Blob) || !blob.size) {
+    await reply(false, 'invalid')
+    return
+  }
+  const cache = await caches.open(AUDIO_CACHE)
+  // Re-storing a path replaces its entry, so its old bytes do not count
+  // against the budget and it is never an eviction candidate.
+  const entries = (await listOfflineAudioWithAge()).filter((entry) => entry.path !== path)
+  let used = entries.reduce((sum, entry) => sum + entry.sizeBytes, 0)
+  const doomed = []
+  for (const entry of entries.sort((left, right) => left.addedAt - right.addedAt)) {
+    if (used + blob.size <= AUDIO_BUDGET_BYTES) break
+    doomed.push(entry)
+    used -= entry.sizeBytes
+  }
+  if (used + blob.size > AUDIO_BUDGET_BYTES) {
+    // A single track larger than the whole budget is refused before a single
+    // existing copy gets deleted.
+    await reply(false, 'quota')
+    return
+  }
+  for (const entry of doomed) await cache.delete(entry.path)
+  try {
+    await cache.put(path, new Response(blob, { headers: {
+      'Content-Type': String(data.mime || 'application/octet-stream'),
+      [AUDIO_META_HEADER]: JSON.stringify({ sizeBytes: blob.size, addedAt: Date.now() }),
+    } }))
+  } catch {
+    // Storage failures (disk full, quota enforced by the browser) surface to the
+    // page as a rejected save so the user sees the toast instead of silence.
+    await reply(false, 'error')
+    return
+  }
+  await reply(true, null)
+}
+
+async function listOfflineAudioWithAge() {
+  const cache = await caches.open(AUDIO_CACHE)
+  const entries = []
+  for (const request of await cache.keys()) {
+    const path = new URL(request.url).pathname
+    if (!AUDIO_STREAM_PATTERN.test(path)) continue
+    const response = await cache.match(request)
+    if (!response) continue
+    entries.push({ path, request, ...audioMeta(response) })
+  }
+  return entries
+}
+
+async function removeOfflineAudio(source, data) {
+  const path = String(data.path || '')
+  let ok = false
+  if (AUDIO_STREAM_PATTERN.test(path)) {
+    const cache = await caches.open(AUDIO_CACHE)
+    ok = await cache.delete(path)
+  }
+  source?.postMessage({ type: 'OFFLINE_AUDIO_REMOVED', requestId: data.requestId, ok })
+}
+
+async function clearOfflineAudio(source, data) {
+  await caches.delete(AUDIO_CACHE)
+  source?.postMessage({ type: 'OFFLINE_AUDIO_CLEARED', requestId: data.requestId, ok: true })
+}
 
 async function cacheCoreResources() {
   const shell = await caches.open(SHELL_CACHE)

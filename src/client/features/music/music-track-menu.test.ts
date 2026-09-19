@@ -164,6 +164,33 @@ describe('track menu singleton items', () => {
   })
 })
 
+describe('track menu offline item', () => {
+  it('offers saving a track that is not cached on this device and runs the toggle', async () => {
+    const toggleTrackOffline = vi.fn(async () => {})
+    useMusic.setState({ offlineTrackIds: [], toggleTrackOffline })
+    await mountList()
+    await act(async () => {
+      menuButtons()[1]?.click()
+    })
+    expect(menuItem(t('music.make_offline'))).toBeDefined()
+    expect(menuItem(t('music.remove_offline'))).toBeUndefined()
+    await act(async () => {
+      menuItem(t('music.make_offline'))?.click()
+    })
+    expect(toggleTrackOffline).toHaveBeenCalledWith('t2')
+  })
+
+  it('offers removing a track that is already cached on this device', async () => {
+    useMusic.setState({ offlineTrackIds: ['t2'], toggleTrackOffline: vi.fn(async () => {}) })
+    await mountList()
+    await act(async () => {
+      menuButtons()[1]?.click()
+    })
+    expect(menuItem(t('music.remove_offline'))).toBeDefined()
+    expect(menuItem(t('music.make_offline'))).toBeUndefined()
+  })
+})
+
 describe('playlist track menu', () => {
   async function openPlaylistMenu(rowIndex: number): Promise<ReturnType<typeof vi.fn>> {
     const movePlaylistItem = vi.fn(async () => {})

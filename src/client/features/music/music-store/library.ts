@@ -6,6 +6,7 @@ import {
 import { batchTracks, deleteTrack, ensureTrackLyric, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin } from './library-tracks'
 import { matchMissingCovers } from './library-covers'
 import { dismissDownload, dismissLibraryJob, downloadTracks, setTransfersOpen, setUploadTarget } from './transfers'
+import { setTracksOffline, syncOfflineTracks, toggleTrackOffline } from './offline'
 import {
   addSelectionToPlaylist, addToPlaylist, createPlaylist, createTag, deletePlaylist, deleteTag, dismissUpload,
   movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist, uploadFiles,
@@ -22,7 +23,8 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'createTag' | 'patchTag' | 'deleteTag'
   | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
   | 'uploadFiles' | 'dismissUpload'
-  | 'downloadTracks' | 'dismissDownload' | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'>
+  | 'downloadTracks' | 'dismissDownload' | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'
+  | 'syncOfflineTracks' | 'toggleTrackOffline' | 'setTracksOffline'>
 
 export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
   return {
@@ -62,16 +64,12 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     ...playlistActions(set, get),
 
     uploadFiles: (files, target) => uploadFiles(set, get, files, target),
+    dismissUpload: (id) => dismissUpload(set, get, id),
+    ...transferActions(set, get),
     browseWebdav: (path) => browseWebdav(set, path),
     importWebdavTrack: (entry) => importWebdavTrack(set, get, entry),
     importWebdavFolder: () => importWebdavFolder(set, get),
     deleteWebdavFiles: (paths) => deleteWebdavObjects(paths),
-    dismissUpload: (id) => dismissUpload(set, get, id),
-    downloadTracks: (ids) => downloadTracks(set, get, ids),
-    dismissDownload: (id) => dismissDownload(set, id),
-    dismissLibraryJob: (kind) => dismissLibraryJob(set, kind),
-    setTransfersOpen: (open) => setTransfersOpen(set, open),
-    setUploadTarget: (target) => setUploadTarget(set, target),
   }
 }
 type PlaylistItemActions = Pick<MusicStoreState, 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'>
@@ -82,5 +80,22 @@ function playlistActions(set: MusicSet, get: MusicGet): PlaylistItemActions {
     removeFromPlaylist: (playlistId, itemId) => removeFromPlaylist(set, playlistId, itemId),
     movePlaylistItem: (playlistId, itemId, delta) => movePlaylistItem(set, get, playlistId, itemId, delta),
     movePlaylistItemToIndex: (playlistId, itemId, toIndex) => movePlaylistItemToIndex(set, get, playlistId, itemId, toIndex),
+  }
+}
+
+type TransferActions = Pick<MusicStoreState,
+  | 'downloadTracks' | 'dismissDownload' | 'syncOfflineTracks' | 'toggleTrackOffline' | 'setTracksOffline'
+  | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'>
+
+function transferActions(set: MusicSet, get: MusicGet): TransferActions {
+  return {
+    downloadTracks: (ids) => downloadTracks(set, get, ids),
+    dismissDownload: (id) => dismissDownload(set, id),
+    syncOfflineTracks: () => syncOfflineTracks(set),
+    toggleTrackOffline: (id) => toggleTrackOffline(set, get, id),
+    setTracksOffline: (ids, enabled) => setTracksOffline(set, get, ids, enabled),
+    dismissLibraryJob: (kind) => dismissLibraryJob(set, kind),
+    setTransfersOpen: (open) => setTransfersOpen(set, open),
+    setUploadTarget: (target) => setUploadTarget(set, target),
   }
 }

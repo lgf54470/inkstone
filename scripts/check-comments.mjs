@@ -3,6 +3,10 @@ import path from 'node:path'
 import ts from 'typescript'
 
 const allowed = new Map([
+  ['pwa.config.ts', [
+    '// Cap for the per-track offline audio cache inside the service worker: when a',
+    '// new save would cross it, the oldest-saved tracks are evicted first.',
+  ]],
   ['scripts/bench-scrypt.mjs', [
     '/**\n * Measures scrypt cost with the production parameters\n * (SCRYPT_N = 2**14, r = 8, p = 5) so parameter and throttle-budget\n * decisions are grounded in measured numbers, not guesses.\n */',
     '// p worker threads need ~128 * N * r * p bytes of memory',
@@ -1425,6 +1429,8 @@ const allowed = new Map([
     '// Multi-select toolbar: file-manager style batches; select all and invert use the visible list.',
   ]],
   ['src/client/features/music/music-session-sync.tsx', [
+    '// Offline availability is device state living in the service worker cache,',
+    '// so every session has to re-read it before the menu labels can be trusted.',
     '// The heartbeat lives in the progress store now, so the save scheduler watches',
     '// both stores and compares its own combined snapshots of queue and position.',
     '// Position drift is measured against the last point a save was scheduled or',
@@ -1478,6 +1484,12 @@ const allowed = new Map([
     '// known duration, because those edits are the ones users cannot recover.',
     '// Server mutation responses carry the full record; merging it keeps the local',
     '// library authoritative without a reload.',
+  ]],
+  ['src/client/features/music/music-store/offline.ts', [
+    '// Offline availability lives in the service worker\'s cache, not in preferences:',
+    '// the bytes are per device, so every session re-reads what this device holds.',
+    '// Track deletion already succeeded server-side; this only drops the device copy',
+    '// and runs unannounced because the user just watched the track disappear.',
   ]],
   ['src/client/features/music/music-store/playback-sync.ts', [
     '// Position is quantized against the last saved anchor, not the previous tick:',
@@ -3982,6 +3994,13 @@ const allowed = new Map([
   ['src/client/lib/note-persist.ts', [
     '/**\n * Coalesces per-keystroke IndexedDB writes (outbox + cached content) behind\n * one short timer: only the latest payload per note is ever persisted, so a\n * burst of typing collapses into a single outbox rewrite per note instead of\n * serializing every pending note body on every keystroke.\n */',
   ]],
+  ['src/client/lib/offline-audio.ts', [
+    '// Bridge to the service worker\'s offline-audio cache. Every call degrades to',
+    '// null/false when no worker controls the page (plain dev mode, unsupported',
+    '// browsers) so callers can show a failure toast instead of pretending.',
+    '// A path we cannot decode is not any track this page can name; skipping it',
+    '// keeps one corrupt entry from emptying the whole offline list.',
+  ]],
   ['src/client/lib/qr-colors.ts', [
     '// QR codes are drawn into canvas/SVG at render time, where CSS variables',
     '// cannot be resolved, so the two colors are absolute values instead of design',
@@ -4210,6 +4229,9 @@ const allowed = new Map([
     '// they would be silently dropped. Dynamic import keeps the session',
     '// store free of a circular dependency on the notes store.',
     '// A failed session-cache write only loses the offline copy; logout proceeds regardless.',
+    '// Offline audio is private content cached on this device by the service',
+    '// worker; it must not outlive the account that saved it. The call resolves',
+    '// null (never rejects) when no worker controls the page.',
     '// A failed session-cache write only loses the offline copy; clearing proceeds regardless.',
     '// The cache tail must never reject; saveSession reports its own failures.',
   ]],
@@ -4898,6 +4920,9 @@ const allowed = new Map([
     '// The links that came back are the ones that were seeded, and the degrees still come from the one',
     '// pre-aggregated pass over links rather than from the chunking.',
   ]],
+  ['tests/logout-offline-audio.test.ts', [
+    '/**\n * Offline audio is private content the service worker caches on this device\n * (features/music plan FEAT-10). It must not outlive the account that saved\n * it, so the logout flow has to clear that cache — and it has to happen after\n * the local database wipe, never inside a branch that logout can return from\n * early. logoutImpl itself is tangled in settings flushing, session caching\n * and location.reload, none of which is cheap to mount; this source-order\n * guard keeps the privacy invariant pinned the same way the fullscreen policy\n * test pins its ownership rule.\n */',
+  ]],
   ['tests/markdown-renderer-parity.test.ts', [
     '// Structural parity baseline: root and blog renderers keep (and must not silently',
     '// change) these tag/class skeleton differences. Any baseline item that converges',
@@ -4919,6 +4944,14 @@ const allowed = new Map([
     '// Counts round trips, not statements: every execution inside one batch shares a',
     '// single call, while an execution outside a batch costs its own round trip.',
     '// Only the playback row itself stays outside the batch that reads the tracks.',
+  ]],
+  ['tests/offline-audio-sw.test.ts', [
+    '// Runs the ACTUAL generated service worker script (pwa.config.ts) inside a vm',
+    '// sandbox with fake caches/fetch so the offline audio protocol — network-first',
+    '// stream handling, Range slicing, quota eviction, list/remove/clear — is the',
+    '// shipped code being tested, not a re-implementation.',
+    '// A real Cache hands out a fresh body per match; cloning keeps that contract',
+    '// so one offline seek does not make the next one read a drained body.',
   ]],
   ['tests/schema-migrations.test.ts', [
     '// Simulate a database whose music tables came from an earlier build: different',
