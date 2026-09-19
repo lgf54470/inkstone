@@ -1,13 +1,18 @@
 import { act, createElement, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { initI18n } from '../../../../lib/i18n'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { initI18n, t } from '../../../../lib/i18n'
+import { useUi } from '../../../../store/ui'
 import { installTestGlobals } from '../../../test-render'
 import { useKanbanRootState } from './kanban-root-hooks'
 import type { KanbanData, KanbanFilter } from '../types'
 
 beforeAll(async () => {
   await initI18n()
+})
+
+beforeEach(() => {
+  useUi.setState({ toasts: [] })
 })
 
 function makeKanbanData(): KanbanData {
@@ -136,6 +141,74 @@ describe('kanban column visibility state', () => {
     const hidden = holder.state.filterSort.hiddenColumns
     act(() => { holder.state.filterSort.setCardSize('large') })
     expect(holder.state.filterSort.hiddenColumns).toBe(hidden)
+    unmount()
+  })
+})
+
+// The pure document edits are covered in ../view-ops.test.ts; what is only observable here is that
+// they go through the board's one commit path — which is what makes a deleted view recoverable by
+// the same undo that the toast hands the reader.
+describe('kanban view operations', () => {
+  it('commits a created view and puts it on screen', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.viewOps.createView('gantt') })
+    const added = commits.at(-1)!.views.at(-1)!
+    expect(commits.at(-1)!.views).toHaveLength(3)
+    expect(added.type).toBe('gantt')
+    expect(commits.at(-1)!.activeViewId).toBe(added.id)
+    expect(holder.state.filterSort.activeView.type).toBe('gantt')
+    unmount()
+  })
+
+  it('copies the view the reader is looking at, filters and all', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.filterSort.setFilters(boardFilters) })
+    act(() => { holder.state.viewOps.duplicateView('view-board') })
+    const next = commits.at(-1)!
+    expect(next.views[1]!.type).toBe('board')
+    expect(next.views[1]!.filters).toEqual(boardFilters)
+    expect(next.activeViewId).toBe(next.views[1]!.id)
+    unmount()
+  })
+
+  it('renames one view without rewriting the others', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.viewOps.renameView('view-table', 'Backlog') })
+    expect(commits.at(-1)!.views[1]!.name).toBe('Backlog')
+    expect(commits.at(-1)!.views[0]).toEqual(commits[0]!.views[0])
+    unmount()
+  })
+
+  it('steps a tab along the strip and keeps the view it shows', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.viewOps.moveView('view-table', -1) })
+    expect(commits.at(-1)!.views.map((v) => v.id)).toEqual(['view-table', 'view-board'])
+    expect(commits.at(-1)!.activeViewId).toBe('view-board')
+    unmount()
+  })
+})
+
+function lastToast() {
+  return useUi.getState().toasts.at(-1)
+}
+
+describe('undoing a view delete', () => {
+  it('runs a deleted view back in from the toast, through the board history', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.viewOps.deleteView('view-table') })
+    expect(commits.at(-1)!.views.map((v) => v.id)).toEqual(['view-board'])
+    expect(lastToast()).toMatchObject({ title: t('preview.kanban_view_deleted'), kind: 'undo' })
+    act(() => { lastToast()!.action!.run() })
+    expect(commits.at(-1)!.views.map((v) => v.id)).toEqual(['view-board', 'view-table'])
+    unmount()
+  })
+
+  it('leaves the last view on the board instead of emptying it', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.viewOps.deleteView('view-table') })
+    act(() => { holder.state.viewOps.deleteView('view-board') })
+    expect(holder.state.data.views.map((v) => v.id)).toEqual(['view-board'])
+    expect(commits).toHaveLength(1)
     unmount()
   })
 })

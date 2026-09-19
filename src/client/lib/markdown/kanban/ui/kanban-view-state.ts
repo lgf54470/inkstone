@@ -1,6 +1,16 @@
 import { useCallback } from 'react'
 import { toggleKanbanColumnSort, toggleKanbanHiddenColumn } from '../filter-sort'
-import type { KanbanFilter, KanbanSort, KanbanView } from '../types'
+import {
+  addKanbanView,
+  duplicateKanbanView,
+  moveKanbanView,
+  removeKanbanView,
+  renameKanbanView,
+} from '../view-ops'
+import { t } from '../../../i18n'
+import { toastWithUndo } from '../../../../store/ui'
+import type { KanbanFilter, KanbanSort, KanbanView, KanbanViewType } from '../types'
+import type { KanbanViewOperations } from './kanban-view-tabs'
 import type { CardSize } from './kanban-view-options'
 import type { CommitKanbanData } from './kanban-history'
 
@@ -72,4 +82,43 @@ export function useKanbanViewState(
     toggleHiddenColumn,
     updateActiveView,
   }
+}
+
+/** Destructive, so the way back stays on screen longer than an informational toast (as with cards). */
+const VIEW_DELETE_UNDO_TOAST_MS = 8000
+
+/**
+ * The view switcher's document edits, on the board's one commit path — which is what makes a
+ * deleted view recoverable by the same undo the toast hands over, and by nothing else.
+ */
+export function useKanbanViewOperations(
+  views: KanbanView[],
+  commitData: CommitKanbanData,
+  undo: () => void,
+): KanbanViewOperations {
+  const createView = useCallback((type: KanbanViewType) => {
+    commitData((prev) => addKanbanView(prev, type))
+  }, [commitData])
+
+  const renameView = useCallback((viewId: string, name: string) => {
+    commitData((prev) => renameKanbanView(prev, viewId, name))
+  }, [commitData])
+
+  const duplicateView = useCallback((viewId: string) => {
+    commitData((prev) => duplicateKanbanView(prev, viewId))
+  }, [commitData])
+
+  const moveView = useCallback((viewId: string, offset: -1 | 1) => {
+    commitData((prev) => moveKanbanView(prev, viewId, offset))
+  }, [commitData])
+
+  const deleteView = useCallback((viewId: string) => {
+    // The switcher already refuses, and a board cannot be left with no view to render — so neither
+    // can the toast promising a way back over an edit that changed nothing.
+    if (views.length < 1 + 1) return
+    commitData((prev) => removeKanbanView(prev, viewId))
+    toastWithUndo(t('preview.kanban_view_deleted'), undo, { duration: VIEW_DELETE_UNDO_TOAST_MS })
+  }, [views.length, commitData, undo])
+
+  return { createView, renameView, duplicateView, deleteView, moveView }
 }

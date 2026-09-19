@@ -1,5 +1,5 @@
 import { t, type MessageKey } from '../../i18n'
-import type { KanbanColorName, KanbanOption, KanbanProperty, KanbanView } from './types'
+import type { KanbanColorName, KanbanOption, KanbanProperty, KanbanView, KanbanViewType } from './types'
 
 const VIEW_NAME_MAP: Record<string, MessageKey> = {
   board: 'preview.kanban_view_board',
@@ -12,17 +12,28 @@ const VIEW_NAME_MAP: Record<string, MessageKey> = {
   chart: 'preview.kanban_view_chart',
 }
 
+// Only `<type> <n>`, the shape the view switcher generates, is taken apart for translating; a name
+// a reader typed that merely looks numbered stays exactly as they wrote it.
+const GENERATED_VIEW_NAME = /^(.*?)\s(\d+)$/
+
 export function formatKanbanViewName(view: KanbanView): string {
   const byTypeKey = VIEW_NAME_MAP[view.type]
   const isDefaultName = !view.name || view.name.toLowerCase() === view.type.toLowerCase()
   if (isDefaultName && byTypeKey) {
     return t(byTypeKey)
   }
-  const byNameKey = VIEW_NAME_MAP[view.name.toLowerCase()]
+  const numbered = GENERATED_VIEW_NAME.exec(view.name)
+  const byNameKey = VIEW_NAME_MAP[numbered ? numbered[1]!.toLowerCase() : view.name.toLowerCase()]
   if (byNameKey) {
-    return t(byNameKey)
+    return numbered ? `${t(byNameKey)} ${numbered[2]}` : t(byNameKey)
   }
   return view.name
+}
+
+/** The name of a view kind on its own, for lists of kinds rather than of the board's views. */
+export function formatKanbanViewTypeLabel(type: KanbanViewType): string {
+  const key = VIEW_NAME_MAP[type]
+  return key ? t(key) : type
 }
 
 const PROPERTY_NAME_MAP: Record<string, MessageKey> = {

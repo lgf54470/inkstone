@@ -109,6 +109,13 @@ function headerNode(): ReactNode {
     onChangeFilters: vi.fn(),
     onChangeSorts: vi.fn(),
     onAddItem: vi.fn(),
+    viewOps: {
+      createView: vi.fn(),
+      renameView: vi.fn(),
+      duplicateView: vi.fn(),
+      deleteView: vi.fn(),
+      moveView: vi.fn(),
+    },
     viewPanelId: 'view-panel',
   })
 }
@@ -179,6 +186,8 @@ const PAIRS: Pair[] = [
   { label: 'icon picker in the card detail', node: detailNode, trigger: (root) => titledButton(root, t('preview.kanban_icon_picker')), panelRole: 'dialog' },
   { label: 'icon picker on a subtask row', node: subtaskListNode, trigger: (root) => titledButton(root, t('preview.kanban_icon_picker')), panelRole: 'dialog' },
   { label: 'subtask action menu', node: subtaskListNode, trigger: (root) => namedButton(root, t('common.more_actions')), panelRole: 'menu' },
+  { label: 'new view menu', node: headerNode, trigger: (root) => namedButton(root, t('preview.kanban_new_view')), panelRole: 'menu' },
+  { label: 'active view menu', node: headerNode, trigger: (root) => namedButton(root, t('preview.kanban_view_actions')), panelRole: 'menu' },
   { label: 'status dropdown', node: detailNode, trigger: (root) => buttonByText(root, 'To Do'), panelRole: 'listbox' },
   {
     label: 'date calendar',

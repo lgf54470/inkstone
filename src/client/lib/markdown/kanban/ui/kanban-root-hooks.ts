@@ -22,7 +22,7 @@ import type {
   KanbanView,
 } from '../types'
 import { useKanbanHistory, type CommitKanbanData } from './kanban-history'
-import { useKanbanViewState } from './kanban-view-state'
+import { useKanbanViewOperations, useKanbanViewState } from './kanban-view-state'
 import { appendOptionToColumn, useKanbanColumnOperations } from './kanban-column-hooks'
 import { useMoveItemClearingSorts } from './kanban-manual-move'
 
@@ -367,9 +367,7 @@ export function useKanbanRootState(
   }, [commitData])
 
   const handleUpdateBoardTitle = useCallback(
-    (title: string) => {
-      commitData((prev: KanbanData) => ({ ...prev, title }))
-    },
+    (title: string) => commitData((prev: KanbanData) => ({ ...prev, title })),
     [commitData],
   )
 
@@ -386,6 +384,7 @@ export function useKanbanRootState(
   )
   const adds = useKanbanAddOperations(data, commitData, setDetailItem, filterSort.activeView)
   const columnOps = useKanbanColumnOperations(commitData, filterSort.activeView)
+  const viewOps = useKanbanViewOperations(data.views, commitData, history.undo)
 
   const handleMoveItem = useMoveItemClearingSorts(items.handleMoveItem, filterSort)
 
@@ -401,6 +400,7 @@ export function useKanbanRootState(
     items: { ...items, ...itemLifecycle, handleMoveItem },
     adds,
     columnOps,
+    viewOps,
     history,
     handleUpdateBoardTitle,
   }

@@ -35,6 +35,17 @@ const data: KanbanData = {
 
 type HeaderOverrides = Omit<Partial<ComponentProps<typeof KanbanHeader>>, 'viewPanelId'>
 
+/** The switcher's own contract is covered in kanban-view-tabs.test.ts; here it only has to exist. */
+function stubViewOps(): ComponentProps<typeof KanbanHeader>['viewOps'] {
+  return {
+    createView: vi.fn(),
+    renameView: vi.fn(),
+    duplicateView: vi.fn(),
+    deleteView: vi.fn(),
+    moveView: vi.fn(),
+  }
+}
+
 function headerProps(visibleItems: KanbanItem[], extra: HeaderOverrides = {}): ComponentProps<typeof KanbanHeader> {
   return {
     data,
@@ -48,6 +59,7 @@ function headerProps(visibleItems: KanbanItem[], extra: HeaderOverrides = {}): C
     onChangeFilters: vi.fn(),
     onChangeSorts: vi.fn(),
     onAddItem: vi.fn(),
+    viewOps: stubViewOps(),
     viewPanelId: 'view-panel',
     ...extra,
   }
@@ -105,6 +117,7 @@ function renderTableHeader(hiddenColumns: string[], onToggleHiddenColumn = vi.fn
       onChangeSorts: vi.fn(),
       onAddItem: vi.fn(),
       onToggleHiddenColumn,
+      viewOps: stubViewOps(),
       viewPanelId: 'view-panel',
     }),
   )

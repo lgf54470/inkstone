@@ -24,7 +24,7 @@ import { KanbanSearchBox } from './kanban-search-box'
 import { KanbanSortPopover } from './kanban-sort-popover'
 import { KanbanTagFilterBar } from './kanban-tag-filter-bar'
 import { KanbanViewOptions, type CardSize } from './kanban-view-options'
-import { KanbanViewTabs } from './kanban-view-tabs'
+import { KanbanViewTabs, type KanbanViewOperations } from './kanban-view-tabs'
 import { KanbanWriteStatus } from './kanban-write-status'
 
 interface KanbanHeaderProps {
@@ -56,34 +56,13 @@ interface KanbanHeaderProps {
   onToggleHiddenColumn?: (propertyId: string) => void
   onAddItem: () => void
   onToggleFullscreen?: () => void
+  viewOps: KanbanViewOperations
   viewPanelId: string
 }
 
-interface HeaderActionsProps {
-  columns: KanbanData['columns']
-  visibleItems: KanbanData['items']
-  filters: KanbanFilter[]
-  sorts: KanbanSort[]
-  searchQuery: string
-  activeView: KanbanView
-  cardSize?: CardSize
-  isFullscreen?: boolean
-  canUndo?: boolean
-  canRedo?: boolean
-  unsaved?: boolean
-  onUndo?: () => void
-  onRedo?: () => void
-  onRetryWrite?: () => void
-  onDiscardWrite?: () => void
-  onSearchChange: (q: string) => void
-  onChangeFilters: (filters: KanbanFilter[]) => void
-  onChangeSorts: (sorts: KanbanSort[]) => void
-  onChangeCardSize?: (size: CardSize) => void
-  onChangeGroupBy?: (propId: string) => void
-  onToggleHiddenColumn?: (propertyId: string) => void
-  onAddItem: () => void
-  onToggleFullscreen?: () => void
-}
+// The action cluster is the header minus the view switcher, so it takes the same props; `columns`
+// is the one thing it reads that the header spells out as `data`.
+type HeaderActionsProps = KanbanHeaderProps & { columns: KanbanData['columns'] }
 
 function KanbanViewOptionsAction({
   columns,
@@ -476,6 +455,7 @@ export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps)
             activeViewId={activeView.id}
             panelId={props.viewPanelId}
             onSelectView={props.onSelectView}
+            viewOps={props.viewOps}
           />
         </div>
         <KanbanHeaderActions

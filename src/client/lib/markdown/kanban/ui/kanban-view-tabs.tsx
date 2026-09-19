@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from 'react'
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import {
   BarChart2,
   Calendar,
@@ -6,10 +6,14 @@ import {
   Kanban,
   LayoutGrid,
   List,
+  MoreHorizontal,
+  Plus,
   Table,
   Timeline,
 } from 'lucide-react'
-import { formatKanbanViewName } from '../i18n-helpers'
+import { formatKanbanViewName, formatKanbanViewTypeLabel } from '../i18n-helpers'
+import { KANBAN_VIEW_TYPES } from '../view-ops'
+import { prompt, Menu, type MenuItem } from '../../../../components/overlay'
 import type { KanbanView, KanbanViewType } from '../types'
 import { t } from '../../../i18n'
 
@@ -58,17 +62,135 @@ function rovingTabIndex(current: number, key: string, count: number): number | n
   }
 }
 
-export function KanbanViewTabs({
+export interface KanbanViewOperations {
+  createView: (type: KanbanViewType) => void
+  renameView: (viewId: string, name: string) => void
+  duplicateView: (viewId: string) => void
+  deleteView: (viewId: string) => void
+  moveView: (viewId: string, offset: -1 | 1) => void
+}
+
+const TRIGGER_CLASS =
+  'inline-flex size-7 shrink-0 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+
+/** One control per menu: it says whether its own list is open and names the panel it opened. */
+function useMenuTrigger() {
+  const [open, setOpen] = useState(false)
+  const anchor = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
+  return { open, toggle: () => setOpen((o) => !o), close: () => setOpen(false), anchor, panelId }
+}
+
+interface MenuTriggerProps {
+  anchor: RefObject<HTMLButtonElement | null>
+  open: boolean
+  toggle: () => void
+  panelId: string
+  label: string
+  icon: ReactNode
+}
+
+function MenuTrigger({ anchor, open, toggle, panelId, label, icon }: MenuTriggerProps) {
+  return (
+    <button
+      ref={anchor}
+      type='button'
+      onClick={toggle}
+      className={TRIGGER_CLASS}
+      aria-label={label}
+      aria-haspopup='menu'
+      aria-expanded={open}
+      {...(open ? { 'aria-controls': panelId } : {})}
+    >
+      {icon}
+    </button>
+  )
+}
+
+function KanbanNewViewMenu({ onCreate }: { onCreate: (type: KanbanViewType) => void }) {
+  const { open, toggle, close, anchor, panelId } = useMenuTrigger()
+  const label = t('preview.kanban_new_view')
+  const items: MenuItem[] = KANBAN_VIEW_TYPES.map((type) => ({
+    id: type,
+    label: formatKanbanViewTypeLabel(type),
+    icon: viewIcon(type),
+    onSelect: () => onCreate(type),
+  }))
+
+  return (
+    <>
+      <MenuTrigger anchor={anchor} open={open} toggle={toggle} panelId={panelId} label={label} icon={<Plus size={14} />} />
+      <Menu anchor={anchor} open={open} onClose={close} items={items} panelId={panelId} label={label} align='end' />
+    </>
+  )
+}
+
+function KanbanActiveViewMenu({
   views,
   activeViewId,
-  panelId,
-  onSelectView,
+  viewOps,
 }: {
+  views: KanbanView[]
+  activeViewId: string
+  viewOps: KanbanViewOperations
+}) {
+  const { open, toggle, close, anchor, panelId } = useMenuTrigger()
+  const index = views.findIndex((v) => v.id === activeViewId)
+  const view = views[index]
+  if (!view) return null
+
+  const label = t('preview.kanban_view_actions')
+  async function handleRename() {
+    const name = await prompt({
+      title: t('preview.kanban_view_rename'),
+      defaultValue: formatKanbanViewName(view!),
+    })
+    // A blank answer is not a rename: committing one would push an undo step that changes nothing.
+    if (name?.trim()) viewOps.renameView(view!.id, name)
+  }
+
+  const items: MenuItem[] = [
+    { id: 'rename', label: t('preview.kanban_view_rename'), onSelect: () => { void handleRename() } },
+    { id: 'duplicate', label: t('preview.kanban_view_duplicate'), onSelect: () => viewOps.duplicateView(view.id) },
+    {
+      id: 'move-earlier',
+      label: t('preview.kanban_view_move_earlier'),
+      disabled: index <= 0,
+      onSelect: () => viewOps.moveView(view.id, -1),
+    },
+    {
+      id: 'move-later',
+      label: t('preview.kanban_view_move_later'),
+      disabled: index >= views.length - 1,
+      onSelect: () => viewOps.moveView(view.id, 1),
+    },
+    {
+      id: 'delete',
+      label: t('preview.kanban_view_delete'),
+      tone: 'danger',
+      separatorBefore: true,
+      // With its last view gone the board has nothing to render, so that one cannot be deleted.
+      disabled: views.length < 1 + 1,
+      onSelect: () => viewOps.deleteView(view.id),
+    },
+  ]
+
+  return (
+    <>
+      <MenuTrigger anchor={anchor} open={open} toggle={toggle} panelId={panelId} label={label} icon={<MoreHorizontal size={14} />} />
+      <Menu anchor={anchor} open={open} onClose={close} items={items} panelId={panelId} label={label} align='end' />
+    </>
+  )
+}
+
+interface TabListProps {
   views: KanbanView[]
   activeViewId: string
   panelId: string
   onSelectView: (viewId: string) => void
-}) {
+}
+
+function KanbanTabList({ views, activeViewId, panelId, onSelectView }: TabListProps) {
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([])
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
@@ -80,7 +202,11 @@ export function KanbanViewTabs({
   }
 
   return (
-    <div className='flex flex-wrap items-center gap-1' role='tablist' aria-label={t('preview.kanban_views')}>
+    <div
+      className='flex min-w-0 items-center gap-1 overflow-x-auto'
+      role='tablist'
+      aria-label={t('preview.kanban_views')}
+    >
       {views.map((v, index) => {
         const isActive = v.id === activeViewId
         return (
@@ -98,7 +224,7 @@ export function KanbanViewTabs({
             tabIndex={isActive ? 0 : -1}
             onClick={() => onSelectView(v.id)}
             onKeyDown={(event) => handleKeyDown(event, index)}
-            className={`flex items-center gap-1.5 rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-12)] font-medium transition-colors ${
+            className={`flex shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-12)] font-medium transition-colors ${
               isActive
                 ? 'bg-[var(--bg-raised)] text-[var(--text-primary)] shadow-[var(--shadow-xs)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
@@ -109,6 +235,33 @@ export function KanbanViewTabs({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+export function KanbanViewTabs({
+  views,
+  activeViewId,
+  panelId,
+  onSelectView,
+  viewOps,
+}: {
+  views: KanbanView[]
+  activeViewId: string
+  panelId: string
+  onSelectView: (viewId: string) => void
+  viewOps: KanbanViewOperations
+}) {
+  return (
+    // The strip holds one row however many views a board has: it sits in the header's own flex row,
+    // so wrapping would push the whole board down instead. `min-w-0` lets the list give way to the
+    // header's other controls and scroll sideways instead, and `shrink-0` keeps a tab from being
+    // squeezed below its own width by that scroll. The two management controls stay outside the
+    // list — anything inside a tablist is announced as a tab.
+    <div className='flex min-w-0 items-center gap-1'>
+      <KanbanTabList views={views} activeViewId={activeViewId} panelId={panelId} onSelectView={onSelectView} />
+      <KanbanNewViewMenu onCreate={viewOps.createView} />
+      <KanbanActiveViewMenu views={views} activeViewId={activeViewId} viewOps={viewOps} />
     </div>
   )
 }

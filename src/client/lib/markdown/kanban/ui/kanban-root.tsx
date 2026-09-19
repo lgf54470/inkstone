@@ -232,6 +232,7 @@ function KanbanTopBar({
       onRedo={state.history.redo}
       onUpdateBoardTitle={state.handleUpdateBoardTitle}
       onSelectView={state.setActiveViewId}
+      viewOps={state.viewOps}
       onSearchChange={state.filterSort.setSearchQuery}
       onChangeFilters={state.filterSort.setFilters}
       onChangeSorts={state.filterSort.setSorts}

@@ -49,6 +49,39 @@ describe('parseKanbanBody with JSON', () => {
   })
 })
 
+// Deleting a view is a thing a reader can now do from the header, so the parser must stop adding
+// one back: a fence that lists no chart view means a board whose chart view is gone, and a view
+// that returns after every save is a view nobody can remove.
+describe('parseKanbanBody with the views the fence states', () => {
+  it('keeps the view list the fence states, chart view or not', () => {
+    const json = JSON.stringify({
+      title: 'Lean',
+      columns: [{ id: 'status', name: 'Status', type: 'select', options: [{ id: 'todo', label: 'To Do', color: 'gray' }] }],
+      items: [],
+      views: [{ id: 'view-board', name: 'board', type: 'board', groupBy: 'status' }],
+    })
+    const result = parseKanbanBody(json)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.data.views.map((view) => view.type)).toEqual(['board'])
+    expect(result.data.activeViewId).toBe('view-board')
+  })
+
+  it('keeps a hand-written activeViewId that names a view the board has', () => {
+    const json = JSON.stringify({
+      title: 'Lean',
+      views: [
+        { id: 'view-board', name: 'board', type: 'board' },
+        { id: 'view-list', name: 'list', type: 'list' },
+      ],
+      activeViewId: 'view-list',
+    })
+    const result = parseKanbanBody(json)
+    if (!result.ok) throw new Error(result.error)
+    expect(result.data.activeViewId).toBe('view-list')
+  })
+})
+
 describe('parseKanbanBody URL whitelist', () => {
   it('keeps a board whose cover and file urls are on the whitelist', () => {
     const json = JSON.stringify({

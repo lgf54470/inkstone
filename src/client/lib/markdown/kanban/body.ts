@@ -81,10 +81,7 @@ function defaultKanbanViews(): KanbanView[] {
 
 function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
   const columns = Array.isArray(raw.columns) && raw.columns.length > 0 ? raw.columns : defaultKanbanColumns()
-  const baseViews = Array.isArray(raw.views) && raw.views.length > 0 ? raw.views : defaultKanbanViews()
-  const views = baseViews.some((v) => v.type === 'chart')
-    ? baseViews
-    : [...baseViews, { id: 'view-chart', name: 'Chart', type: 'chart' as const, chartType: 'bar' as const, chartGroupBy: 'status' }]
+  const views = Array.isArray(raw.views) && raw.views.length > 0 ? raw.views : defaultKanbanViews()
   const items = Array.isArray(raw.items) ? raw.items : []
   assertFenceUrlsAreSafe(items)
 
