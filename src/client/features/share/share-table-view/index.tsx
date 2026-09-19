@@ -70,7 +70,7 @@ function ShareTableHeader({ allSelected, onToggleAll }: { allSelected: boolean; 
   return (
     <thead className='sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-card)] shadow-[var(--shadow-xs)]'>
       <tr className='border-b border-[var(--border-subtle)] text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
-        <th className='w-10 px-3 py-2 text-center'>
+        <th scope='col' className='w-10 px-3 py-2 text-center'>
           <Checkbox
             checked={allSelected}
             onChange={onToggleAll}
@@ -78,13 +78,13 @@ function ShareTableHeader({ allSelected, onToggleAll }: { allSelected: boolean; 
             className='min-h-0'
           />
         </th>
-        <th className='px-3 py-2'>{t('share.table_note_title')}</th>
-        <th className='w-20 px-3 py-2 text-center'>{t('share.table_status')}</th>
-        <th className='w-48 px-3 py-2'>{t('share.table_link')}</th>
-        <th className='w-28 px-3 py-2'>{t('share.table_security_expiry')}</th>
-        <th className='w-24 px-3 py-2 text-right'>{t('share.table_pv_uv')}</th>
-        <th className='w-28 px-3 py-2 text-right'>{t('share.table_last_visit')}</th>
-        <th className='w-40 px-3 py-2 text-right'>{t('share.table_actions')}</th>
+        <th scope='col' className='px-3 py-2'>{t('share.table_note_title')}</th>
+        <th scope='col' className='w-20 px-3 py-2 text-center'>{t('share.table_status')}</th>
+        <th scope='col' className='w-48 px-3 py-2'>{t('share.table_link')}</th>
+        <th scope='col' className='w-28 px-3 py-2'>{t('share.table_security_expiry')}</th>
+        <th scope='col' className='w-24 px-3 py-2 text-right'>{t('share.table_pv_uv')}</th>
+        <th scope='col' className='w-28 px-3 py-2 text-right'>{t('share.table_last_visit')}</th>
+        <th scope='col' className='w-40 px-3 py-2 text-right'>{t('share.table_actions')}</th>
       </tr>
     </thead>
   )

@@ -1,6 +1,6 @@
 import { FileText, LayoutGrid, List, RefreshCw, Search, Settings } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
-import { Input, Select } from '../../components/form'
+import { Input, Segmented, Select } from '../../components/form'
 import { t } from '../../lib/i18n'
 import { useShareStore } from './share-store'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
@@ -91,13 +91,15 @@ function SortSelect({ value, onChange }: { value: string; onChange: (value: stri
 
 function ViewToggle({ value, onChange }: { value: 'table' | 'grid'; onChange: (value: 'table' | 'grid') => void }) {
   return (
-    <div className='flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-0.5'>
-      <IconButton size='sm' label={t('share.view_table')} active={value === 'table'} onClick={() => onChange('table')}>
-        <List size={13} />
-      </IconButton>
-      <IconButton size='sm' label={t('share.view_grid')} active={value === 'grid'} onClick={() => onChange('grid')}>
-        <LayoutGrid size={13} />
-      </IconButton>
-    </div>
+    <Segmented
+      size='sm'
+      value={value}
+      label={t('share.view_mode')}
+      onChange={onChange}
+      options={[
+        { value: 'table', label: <List size={13} />, title: t('share.view_table') },
+        { value: 'grid', label: <LayoutGrid size={13} />, title: t('share.view_grid') },
+      ]}
+    />
   )
 }

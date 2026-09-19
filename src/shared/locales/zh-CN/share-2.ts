@@ -4,6 +4,7 @@ export const messages = {
 'share.total_visitors_uv': '独立访客 (UV)',
 'share.traffic_sources': '来源网站',
 'share.view_grid': '卡片视图',
+'share.view_mode': '视图模式',
 'share.view_note_analytics': '查看此笔记详情分析',
 'share.view_table': '表格视图',
 'share.views_per_day': '日均访问量',

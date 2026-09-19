@@ -56,7 +56,7 @@ export function ShareHubModal({
           <HubContent hub={hub} />
         </div>
       </Modal>
-      {isSidebarOpen && (
+      {open && isSidebarOpen && (
         <Drawer
           open
           onClose={closeSidebar}

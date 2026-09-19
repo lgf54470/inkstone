@@ -202,13 +202,13 @@ function LogsTableHeader() {
   return (
     <thead className='sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[length:var(--text-11)] text-[var(--text-tertiary)] uppercase tracking-wider'>
       <tr>
-        <th className='px-3 py-2 font-medium'>{t('share.col_time')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_note')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_location')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_referrer')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_client')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_type')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_fp')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_time')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_note')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_location')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_referrer')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_client')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_type')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_fp')}</th>
       </tr>
     </thead>
   )
@@ -239,6 +239,7 @@ function LogRow({ log }: {
 }
 
 function VisitTimeCell({ log }: { log: VisitLog }) {
+  const locale = useLocale()
   return (
     <td className='whitespace-nowrap px-3 py-2'>
       <div className='flex flex-col'>
@@ -246,7 +247,7 @@ function VisitTimeCell({ log }: { log: VisitLog }) {
           {relativeTime(log.visitedAt)}
         </span>
         <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-          {new Date(log.visitedAt).toLocaleTimeString([], {
+          {new Date(log.visitedAt).toLocaleTimeString(locale, {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',

@@ -4,6 +4,7 @@ export const messages = {
 'share.total_visitors_uv': 'Unique Visitors (UV)',
 'share.traffic_sources': 'Referrers',
 'share.view_grid': 'Grid View',
+'share.view_mode': 'View mode',
 'share.view_note_analytics': 'View note analytics',
 'share.view_table': 'Table View',
 'share.views_per_day': 'Visits / Day',

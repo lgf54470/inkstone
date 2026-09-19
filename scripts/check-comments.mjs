@@ -1980,9 +1980,13 @@ const allowed = new Map([
   ['src/client/features/share/share-a11y.test.ts', [
     '// Modal mounts its panel through a portal, so look in the document instead of the container.',
   ]],
+  ['src/client/features/share/share-edit-modal/use-share-edit-modal.ts', [
+    '// Best-effort: a failure leaves the editor on the create form, but the user',
+    '// must be able to tell a missing share apart from a failed load in the logs.',
+  ]],
   ['src/client/features/share/share-form.ts', [
-    '// A new or replaced passcode must be at least 4 characters (the server',
-    '// enforces the same minimum); short codes are trivially brute-forced.',
+    '// A new or replaced passcode must meet LIMITS.sharePasscodeMinLength (the',
+    '// server enforces the same minimum); short codes are trivially brute-forced.',
   ]],
   ['src/client/features/share/share-helpers.ts', [
     '// The wipe-all-logs endpoint requires the current password (SH-12); both clean',
@@ -2005,6 +2009,10 @@ const allowed = new Map([
   ['src/client/features/share/share-qr-modal.tsx', [
     '// The plate stays white in both themes: the QR itself renders on fixed',
     '// white (QR_BG_COLOR), and a dark frame would cut into its quiet zone.',
+  ]],
+  ['src/client/features/share/share-small-defects.test.ts', [
+    '// Fresh array per call: a refresh that hands the store the same shares',
+    '// reference would never re-fire the initial-note effect.',
   ]],
   ['src/client/features/share/share-store/filters.ts', [
     '// The input is controlled by store state, so it stays responsive; only the',
@@ -2052,6 +2060,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-visit-logs-menu.test.ts', [
     '// Opens the clean menu with a real click and picks the wipe-everything entry.',
+  ]],
+  ['src/client/features/share/use-share-hub-modal.ts', [
+    '// One auto-open per hub session: `shares` refreshes after saving or a',
+    '// manual reload, and re-firing would reopen the modal the user closed.',
   ]],
   ['src/client/features/share/use-share-hub-sidebar.tsx', [
     '// Inside the mobile drawer a pick is also the intent to return to the list, so navigation closes it.',
@@ -4694,6 +4706,9 @@ const allowed = new Map([
     '// visit recording runs via waitUntil; the test context must let us await it',
     '// Eleven scrypt verifications need more than the 5s default budget on slow runners.',
     '// requestClientIp only trusts CF-Connecting-IP when the edge set `cf`, so the probe attaches it.',
+  ]],
+  ['tests/share-table-semantics.test.ts', [
+    '// (?=[\\s>]) keeps <thead> from reading as an unscoped <th>.',
   ]],
   ['tests/share-touch-targets.test.ts', [
     '/**\n * SH-35: the note submenu rows were 30px tall (`h-7.5`), below the 44px\n * touch target on phones. The base height must stay large for narrow\n * screens while desktop keeps the compact row.\n */',

@@ -25,8 +25,8 @@ export async function createMcpShare(
   if (typeof input.password === 'string' && input.password.length > LIMITS.passwordMaxLength) {
     throw ApiError.badRequest(`The access password must not exceed ${LIMITS.passwordMaxLength} characters`)
   }
-  if (typeof input.password === 'string' && input.password.length > 0 && input.password.length < 4) {
-    throw ApiError.badRequest('The access password must be at least 4 characters')
+  if (typeof input.password === 'string' && input.password.length > 0 && input.password.length < LIMITS.sharePasscodeMinLength) {
+    throw ApiError.badRequest(`The access password must be at least ${LIMITS.sharePasscodeMinLength} characters`)
   }
   return runIdempotent({
     db: context.env.DB,

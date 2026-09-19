@@ -176,8 +176,8 @@ async function createShareHandler(c: Context, state: DemoState): Promise<Respons
   if (typeof body.password === 'string' && body.password.length > LIMITS.passwordMaxLength) {
     return apiError(400, 'bad_request', `The access password must not exceed ${LIMITS.passwordMaxLength} characters`)
   }
-  if (typeof body.password === 'string' && body.password.length > 0 && body.password.length < 4) {
-    return apiError(400, 'bad_request', 'The access password must be at least 4 characters')
+  if (typeof body.password === 'string' && body.password.length > 0 && body.password.length < LIMITS.sharePasscodeMinLength) {
+    return apiError(400, 'bad_request', `The access password must be at least ${LIMITS.sharePasscodeMinLength} characters`)
   }
   const password = body.password === null || typeof body.password === 'string'
     ? body.password || null

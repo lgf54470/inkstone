@@ -46,7 +46,7 @@
 | 31 | SH-33 | 裸控件换组件体系 + CSV 导出全量 + 复制失败 toast + 日志按分享过滤入口 | P2 | ✅ | c5824e95 |
 | 32 | SH-34 | 英文字面量进 locale + 服务端回落值改 null + countryName locale 显式 | P2 | ✅ | 91a10c0f |
 | 33 | SH-35 | 窄屏：侧栏折叠/宽模态 fullscreen/批量条换行/触控尺寸 | P2 | ✅ | b080398a |
-| 34 | SH-36 | 小项集合（口令长度统一、effect 重开、子模态重置、th scope、role=status 等） | P3 | ⬜ | |
+| 34 | SH-36 | 小项集合（口令长度统一、effect 重开、子模态重置、th scope、role=status 等） | P3 | ✅ | 待回填 |
 | F1 | SH-29 | 🧊 `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，等用户决定 | P2 | 🧊 | |
 | F2 | SH-16b | 🧊 若 range=all 分桶必须改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline` 行为（blog stats.ts 共用）——04 号做不完的部分挪到这里 | — | 🧊 | |
 | F3 | SH-05b | 🧊 `maintenance.ts` cron 若与 blog 附件/清理共用调度需触碰 blog 语义的部分 | — | 🧊 | |
@@ -257,3 +257,15 @@
 - 基础设施缺口（`src/client/lib/hooks.ts`）：`useMediaQuery` 未防 `window.matchMedia` 缺失——jsdom 不实现 matchMedia，任何挂载 `useBreakpoint` 消费者的测试直接 throw（share 三处既有测试实测炸出）。补 `typeof window.matchMedia === 'function'` 守卫（与 `motion.ts`/`link-hover.ts`/`tooltip.tsx` 全站既有惯例一致，浏览器行为零变化），缺失时读数与 SSR 回落同为 false。这是修 share 窄屏的必要前提，改动一行守卫、不动任何语义。
 - 测试 `share-narrow-screen.test.ts` 6 例（stub matchMedia 控制断点；afterEach 统一 unmount——断言失败不得把 portal 漏给下一个用例，变异跑时曾因此串扰误报）：mobile 无内联侧栏+有触发器、抽屉开→选 starred→store 生效且抽屉关、desktop 内联侧栏无触发器、mobile 面板无 `h-[84vh]` 且 maxWidth 空、desktop 面板 `h-[84vh]`+1300px、批量条 flex-wrap 且容器无 whitespace-nowrap；+ 静态 1 例触控高度。变异 6 发全杀（常渲染侧栏 / 删 onNavigate 调用 / 钉死 dialog variant / 钉死桌面 className / 批量条回填 nowrap / 子菜单回填 h-7.5），各杀各测试不串扰（/tmp/mut33 还原）。
 - 决策记录：台账标注「需人工确认是否有移动端设计稿」——本实现按 Modal/Drawer 现成移动形态（bottom-sheet 圆角、抽屉左侧滑入、全屏 dialog）落地，未发明新视觉；后续若有设计稿只需替换常量与断点判定。
+
+## 34 — SH-36 小缺陷集合：口令标准统一 / 编辑弹窗重开 / 子浮层重置 / 表格语义 / 播报（2026-09-20）
+
+- 口令最小长度统一（新 `LIMITS.sharePasscodeMinLength = 8`，`src/shared/constants.ts`）：五处校验改引用常量——client `share-form.ts`（原 <4，注释「服务端同」为虚言）、`use-share-edit-modal.ts` 保存流（原裸 8）、worker `note.ts`（原裸 8，错误文案改常量插值）、demo `share-admin.ts`（原 <4）、MCP `library/shares.ts`（原 <4，15 号遗留的「MCP 侧下限留给 34 号统一」在此收口）。台账写的「客户端 ≥6/服务端 ≥4」是审查时点快照，按实况（4/8 混杂）执行。
+- 编辑弹窗自动重开（`use-share-hub-modal.ts`）：`useInitialNoteEdit` 加 `consumedRef`，每次打开 hub 只自动开一次编辑弹窗——此前 effect 依赖 `shares`，保存/手动刷新后引用换新，把用户刚关掉的弹窗重新弹开（app-shell 传 `initialNoteId` 的真实路径可复现）。`open` 回 false 时消费位复位。
+- 关 hub 重置子浮层：close 分支补 `setIsLogsOpen(false)/setIsSettingsOpen(false)`（logs/settings 渲染在 hub Modal 之外，不随模态关闭自行卸载）；`share-hub-modal.tsx` 抽屉改 `open && isSidebarOpen` 门控（33 号自引入的同类状态）。
+- 静默 catch（`use-share-edit-modal.ts` `loadNoteShare`）：失败补 `console.warn('[share] …', { noteId, error })`——弹窗停留在「新建」表单是既定 best-effort，但日志必须能区分「本无分享」与「加载失败」（catch 带注释说明）。
+- 表格语义与播报：table-view 8 个 + visit-logs 7 个 `<th>` 补 `scope='col'`；批量条「已选 N」span 补 `role='status'`（选择数变化对读屏播报）；`VisitTimeCell` 的 `toLocaleTimeString([], …)` 改显式传 `useLocale()`（与同文件 LogRow 的 countryName 同口径，不随运行时默认 locale 漂移）。
+- 视图切换（`share-hub-toolbar.tsx`）：`ViewToggle` 两个 IconButton 对（手写 active 态）换 `Segmented size='sm'`（radiogroup + `aria-checked` + 方向键，组件体系收口），新增 `share.view_mode` en/zh 键作组标签。
+- 测试：`share-small-defects.test.ts` 7 例（口令 7/8 字符对、重开守护、hub 开关重置、warn、radiogroup、status；`mounts`+afterEach 统一卸载）。坑：重开守护用例首跑不红——`mockResolvedValue` 同一对象引用让 `shares` 依赖根本不触发 effect，必须 `mockImplementation` 每次产新数组，这条写进测试内注释。静态守护 `tests/share-table-semantics.test.ts` 3 例（scope 扫描的 `<th(?=[\s>])` 负向前瞻防 `<thead>` 误报；`toLocaleTimeString([]` 禁令）。
+- 变异 9 发全杀（/tmp/mut34 还原）：min 回填 4 / 删 consumed 门 / 删两行 close 重置 / 删 warn / 删 Segmented label / 删 role / 删一个 scope / worker 回填 4——各杀各测试零串扰。`saveEditShareFlow` 的常量引用未单设变异：该函数未导出，其判定与被单测的 `needsNewSharePasscode` 共用同一常量。
+- 台账条目核销判定：「loadSession 在 share 子应用重复挂载」不存在于当前代码（`useAppBoot`/session load 全 client 仅 `app.tsx:29` 一个调用方，shareSlug 路径本就跳过——grep 证据），不修即销；口令可见性切换（eye toggle）全站无先例组件，登记暂缓不夹带；其余 hub 的视图切换统一不在本项范围。

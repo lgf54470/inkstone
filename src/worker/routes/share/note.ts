@@ -138,8 +138,8 @@ function validateShareAccessOptions(body: {
   if (typeof body.password === 'string' && body.password.length > LIMITS.passwordMaxLength) {
     throw ApiError.badRequest(`The access password must not exceed ${LIMITS.passwordMaxLength} characters`)
   }
-  if (typeof body.password === 'string' && body.password.length > 0 && body.password.length < 8) {
-    throw ApiError.badRequest('The access password must be at least 8 characters')
+  if (typeof body.password === 'string' && body.password.length > 0 && body.password.length < LIMITS.sharePasscodeMinLength) {
+    throw ApiError.badRequest(`The access password must be at least ${LIMITS.sharePasscodeMinLength} characters`)
   }
   if (typeof body.expiresIn === 'number' && (!Number.isFinite(body.expiresIn) || body.expiresIn < 0)) {
     throw ApiError.badRequest('expiresIn must be a non-negative number or null')

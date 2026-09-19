@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ShareInfo } from '@shared/types'
 import { useShareStore } from './share-store'
 
@@ -35,6 +35,8 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
       setEditShare(null)
       setAnalyticsNoteId(null)
       setLogsNoteId(null)
+      setIsLogsOpen(false)
+      setIsSettingsOpen(false)
     }
   }, [open, loadShares, clearSelection])
 
@@ -62,16 +64,23 @@ function useInitialNoteEdit({ open, initialNoteId, shares, setEditShare }: {
   shares: ShareInfo[]
   setEditShare: (data: ShareHubEditData) => void
 }) {
+  const consumedRef = useRef(false)
   useEffect(() => {
-    if (open && initialNoteId) {
-      const match = shares.find((s) => s.noteId === initialNoteId)
-      if (match) {
-        setEditShare({
-          share: match,
-          noteId: match.noteId,
-          title: match.noteTitle || '',
-        })
-      }
+    if (!open) {
+      consumedRef.current = false
+      return
+    }
+    if (!initialNoteId || consumedRef.current) return
+    const match = shares.find((s) => s.noteId === initialNoteId)
+    if (match) {
+      // One auto-open per hub session: `shares` refreshes after saving or a
+      // manual reload, and re-firing would reopen the modal the user closed.
+      consumedRef.current = true
+      setEditShare({
+        share: match,
+        noteId: match.noteId,
+        title: match.noteTitle || '',
+      })
     }
   }, [open, initialNoteId, shares, setEditShare])
 }
