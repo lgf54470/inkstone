@@ -98,6 +98,21 @@ async function requestWithIp(
   return app.request(req, undefined, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
 }
 
+async function seedVisitAt(
+  db: D1Shim,
+  postId: string,
+  slug: string,
+  visitedAt: number,
+  visitorFp: string,
+): Promise<void> {
+  await runSql(
+    db,
+    `INSERT INTO blog_visits (user_id, post_id, slug, visited_at, visitor_fp, country, is_bot, is_self_referrer, is_owner)
+     VALUES (?1, ?2, ?3, ?4, ?5, 'US', 0, 0, 0)`,
+    USER, postId, slug, visitedAt, visitorFp,
+  )
+}
+
 function postJson(app: Hono<AppBindings>, path: string, body: unknown): Promise<Response> {
   return request(app, path, {
     method: 'POST',
@@ -539,6 +554,48 @@ describe('blog organizer routes (real D1)', () => {
 })
 
 describe('blog analytics routes (real D1)', () => {
+  it('sanitizes an unknown range to the 30d window instead of answering with full history', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const { id, slug } = await seedBlogPost(db, { slug: 'rng-post' })
+    await seedVisitAt(db, id, slug, Date.now() - 400 * 86_400_000, 'fp-ancient')
+    await seedVisitAt(db, id, slug, Date.now() - 60_000, 'fp-recent')
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=zzz')).json()
+    expect(analytics.range).toBe('30d')
+    expect(analytics.totalViews).toBe(1)
+    expect(analytics.timeline.length).toBe(30)
+  })
+
+  it('buckets range=all from the earliest visit instead of 1970', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const { id, slug } = await seedBlogPost(db, { slug: 'all-post' })
+    const oldest = Date.now() - 800 * 86_400_000
+    await seedVisitAt(db, id, slug, oldest, 'fp-a')
+    await seedVisitAt(db, id, slug, Date.now() - 400 * 86_400_000, 'fp-b')
+    await seedVisitAt(db, id, slug, Date.now() - 60_000, 'fp-c')
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=all')).json()
+    expect(analytics.range).toBe('all')
+    expect(analytics.totalViews).toBe(3)
+    expect(analytics.timeline.length).toBe(12)
+    expect(analytics.timeline[0].timestamp).toBe(oldest)
+    expect(analytics.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(3)
+  })
+
+  it('keeps an empty range=all window recent rather than starting at epoch', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'quiet-post' })
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=all')).json()
+    expect(analytics.timeline.length).toBe(12)
+    expect(analytics.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(0)
+    expect(analytics.timeline[0].timestamp).toBeGreaterThan(0)
+  })
+
+
   it('returns totals, timeline, and breakdown derived from visits', async () => {
     const db = await makeDb()
     await seedUser(db)

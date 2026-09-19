@@ -1,17 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import {
+  analyticsWindow,
+  buildBucketedTimeline,
+  buildShareTimeline,
   buildVisitFilterSql,
+  bucketsFromVisitRows,
   computeDelta,
   computeVisitorFingerprint,
   isBot,
   isSelfReferrer,
   isValidCustomSlug,
   normalizeHost,
+  parseAnalyticsRequest,
   parseBotName,
   parseBrowser,
   parseDeviceType,
   parseOS,
   parseReferrerHost,
+  shareRangeFromQuery,
 } from '../src/worker/lib/share-analytics'
 import { countryFlag } from '../src/client/features/share/share-helpers'
 
@@ -142,6 +148,67 @@ describe('analytics math and country flag formatting', () => {
     expect(countryFlag('JP')).toBe('🇯🇵')
     expect(countryFlag('UNKNOWN')).toBe('🌐')
     expect(countryFlag(null)).toBe('🌐')
+  })
+})
+
+describe('analytics request parsing and window math', () => {
+  function query(values: Record<string, string>) {
+    return { req: { query: (key: string) => values[key] } }
+  }
+
+  it('falls back to 7d without a range and 30d for an unknown one', () => {
+    expect(shareRangeFromQuery(undefined)).toBe('7d')
+    expect(shareRangeFromQuery('24h')).toBe('24h')
+    expect(shareRangeFromQuery('all')).toBe('all')
+    expect(shareRangeFromQuery('zzz')).toBe('30d')
+  })
+
+  it('reads filters from the query with bots excluded by default', () => {
+    const parsed = parseAnalyticsRequest(query({ range: '7d' }))
+    expect(parsed.range).toBe('7d')
+    expect(parsed.filters.excludeBots).toBe(true)
+    expect(parsed.clause).toBe(' AND is_bot = 0')
+    const relaxed = parseAnalyticsRequest(query({ range: '7d', excludeBots: 'false', excludeSelf: 'true', excludeOwner: 'true' }))
+    expect(relaxed.clause).toBe(' AND is_self_referrer = 0 AND is_owner = 0')
+  })
+
+  it('scopes the all window to the earliest visit and keeps 30d without one', () => {
+    const now = 2_000_000_000_000
+    const day = 86_400_000
+    expect(analyticsWindow('all', now, now - 10 * day)).toEqual({
+      startTs: now - 10 * day,
+      duration: 10 * day,
+      prevStartTs: now - 20 * day,
+    })
+    const withoutVisits = analyticsWindow('all', now, null)
+    expect(withoutVisits.startTs).toBe(now - 30 * day)
+    expect(analyticsWindow('7d', now).startTs).toBe(now - 7 * day)
+    expect(analyticsWindow('7d', now).duration).toBe(7 * day)
+    expect(analyticsWindow('24h', now).prevStartTs).toBe(now - 48 * 3_600_000)
+  })
+
+  it('zero-fills buckets and matches the row path', () => {
+    const now = 2_000_000_000_000
+    const day = 86_400_000
+    const rows = [
+      { visited_at: now - 9 * day, visitor_fp: 'before' },
+      { visited_at: now - 2 * day, visitor_fp: 'a' },
+      { visited_at: now - 2 * day + 1, visitor_fp: 'a' },
+      { visited_at: now - day, visitor_fp: null },
+      { visited_at: now + day, visitor_fp: 'future' },
+    ]
+    const window = analyticsWindow('7d', now)
+    const buckets = bucketsFromVisitRows(rows, '7d', window.startTs, window.duration)
+    expect(buckets.length).toBe(7)
+    expect(buckets[5]).toEqual({ views: 2, visitors: 1 })
+    expect(buckets[6]).toEqual({ views: 1, visitors: 0 })
+    expect(buckets.reduce((sum, b) => sum + b.views, 0)).toBe(3)
+    expect(buildBucketedTimeline(buckets, '7d', window.startTs, window.duration)).toEqual(
+      buildShareTimeline(rows, '7d', window.startTs, window.duration),
+    )
+    const sparse = buildBucketedTimeline([], '7d', window.startTs, window.duration)
+    expect(sparse.every((p) => p.views === 0 && p.visitors === 0)).toBe(true)
+    expect(sparse.map((p) => p.timestamp)).toEqual(sparse.map((_, i) => window.startTs + i * day))
   })
 })
 

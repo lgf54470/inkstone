@@ -2,7 +2,18 @@ import { Hono } from 'hono'
 import type { BlogGlobalAnalytics, BlogStats, BlogVisitLog, ShareBreakdownItem, ShareTimelineRange } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { requireAuth } from '../../middleware/auth'
-import { parseBotName, getRangeStartTimestamp, computeDelta, buildVisitFilterSql, buildShareTimeline, toBreakdown, type ShareFilterOptions } from '../../lib/share-analytics'
+import {
+  analyticsWindow,
+  buildShareTimeline,
+  buildVisitFilterSql,
+  computeDelta,
+  parseAnalyticsRequest,
+  parseBotName,
+  toBreakdown,
+  type AnalyticsRequest,
+  type AnalyticsWindow,
+  type ShareFilterOptions,
+} from '../../lib/share-analytics'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -21,15 +32,11 @@ interface BlogVisitRow {
   slug: string
 }
 
-interface AnalyticsContext {
-  range: ShareTimelineRange
-  clause: string
-  filters: ShareFilterOptions
-  now: number
-  startTs: number
-  duration: number
-  prevStartTs: number
+interface MinVisitedRow {
+  min_ts: number | null
 }
+
+type AnalyticsContext = AnalyticsRequest & AnalyticsWindow
 
 export function registerBlogStatsRoutes(blogManageRoutes: Hono<AppBindings>): void {
   registerBlogStatsRoute(blogManageRoutes)
@@ -149,9 +156,18 @@ function accumulatePostTags(
 
 function registerBlogAnalyticsRoute(blogManageRoutes: Hono<AppBindings>): void {
   blogManageRoutes.get('/analytics', requireAuth, async (c) => {
-    const analytics = await loadBlogAnalyticsPayload(c.env.DB, analyticsContext(c), c.get('userId')!)
+    const userId = c.get('userId')!
+    const analytics = await loadBlogAnalyticsPayload(c.env.DB, await analyticsContext(c.env.DB, c, userId), userId)
     return c.json({ analytics })
   })
+}
+
+async function analyticsContext(db: D1Database, c: { req: { query(key: string): string | undefined } }, userId: string): Promise<AnalyticsContext> {
+  const request = parseAnalyticsRequest(c)
+  const minRow = request.range === 'all'
+    ? await db.prepare('SELECT MIN(visited_at) as min_ts FROM blog_visits WHERE user_id = ?1').bind(userId).first<MinVisitedRow>()
+    : null
+  return { ...request, ...analyticsWindow(request.range, request.now, minRow?.min_ts ?? null) }
 }
 
 async function loadBlogAnalyticsPayload(
@@ -203,24 +219,6 @@ async function loadBlogAnalyticsPayload(
     recentVisits,
     filterStats,
   }
-}
-
-function analyticsContext(c: { req: { query(key: string): string | undefined } }): AnalyticsContext {
-  const range = (c.req.query('range') || '7d') as ShareTimelineRange
-  const excludeBots = c.req.query('excludeBots') !== 'false'
-  const excludeSelf = c.req.query('excludeSelf') === 'true'
-  const excludeOwner = c.req.query('excludeOwner') === 'true'
-  const filters: ShareFilterOptions = {
-    excludeBots,
-    excludeSelfReferrers: excludeSelf,
-    excludeOwner,
-  }
-  const clause = buildVisitFilterSql(filters)
-
-  const now = Date.now()
-  const startTs = getRangeStartTimestamp(range, now)
-  const duration = startTs > 0 ? now - startTs : 30 * DAY_MS
-  return { range, clause, filters, now, startTs, duration, prevStartTs: startTs > 0 ? startTs - duration : 0 }
 }
 
 async function loadBlogPostsSummary(db: D1Database, userId: string): Promise<{ total_posts: number; published_posts: number; total_views: number } | null> {

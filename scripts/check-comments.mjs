@@ -4313,6 +4313,12 @@ const allowed = new Map([
     '// tokens or fragments, so http(s) stores origin+path only.',
     '/* An unparseable candidate degrades analytics to a null referrer. */',
     '// 0 vs 0 is indeterminate: reporting 0% would claim a trend measured against real traffic',
+    '// An unknown range is a client bug, not a request for the whole table: 30d is',
+    '// the widest window a sanitized query may ask for.',
+    '// `all` has no fixed span, so it is scoped by the earliest visit the caller can',
+    '// find; without one the window stays recent instead of starting at epoch.',
+    '// Buckets are addressed by index so both the row path and a SQL GROUP BY can',
+    '// fill the same array; missing indexes stay zero-filled.',
   ]],
   ['src/worker/lib/streams.ts', [
     '// Stream cancellation is a best-effort resource release: the read side is',

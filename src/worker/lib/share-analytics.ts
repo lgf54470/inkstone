@@ -318,6 +318,47 @@ export function getRangeStartTimestamp(range: ShareTimelineRange, now: number): 
   return 0
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+const SHARE_ANALYTICS_RANGES: readonly string[] = ['24h', '7d', '30d', 'all']
+
+// An unknown range is a client bug, not a request for the whole table: 30d is
+// the widest window a sanitized query may ask for.
+export function shareRangeFromQuery(raw: string | undefined): ShareTimelineRange {
+  if (!raw) return '7d'
+  return (SHARE_ANALYTICS_RANGES.includes(raw) ? raw : '30d') as ShareTimelineRange
+}
+
+export interface AnalyticsRequest {
+  range: ShareTimelineRange
+  filters: ShareFilterOptions
+  clause: string
+  now: number
+}
+
+export function parseAnalyticsRequest(c: { req: { query(key: string): string | undefined } }): AnalyticsRequest {
+  const range = shareRangeFromQuery(c.req.query('range'))
+  const filters: ShareFilterOptions = {
+    excludeBots: c.req.query('excludeBots') !== 'false',
+    excludeSelfReferrers: c.req.query('excludeSelf') === 'true',
+    excludeOwner: c.req.query('excludeOwner') === 'true',
+  }
+  return { range, filters, clause: buildVisitFilterSql(filters), now: Date.now() }
+}
+
+export interface AnalyticsWindow {
+  startTs: number
+  duration: number
+  prevStartTs: number
+}
+
+// `all` has no fixed span, so it is scoped by the earliest visit the caller can
+// find; without one the window stays recent instead of starting at epoch.
+export function analyticsWindow(range: ShareTimelineRange, now: number, minVisitedAt: number | null = null): AnalyticsWindow {
+  const startTs = range === 'all' ? (minVisitedAt ?? now - 30 * DAY_MS) : getRangeStartTimestamp(range, now)
+  const duration = range === 'all' ? Math.max(now - startTs, DAY_MS) : now - startTs
+  return { startTs, duration, prevStartTs: startTs - duration }
+}
+
 export function toBreakdown(map: Map<string, number>, total: number): ShareBreakdownItem[] {
   return Array.from(map.entries())
     .map(([name, count]) => ({
@@ -328,31 +369,73 @@ export function toBreakdown(map: Map<string, number>, total: number): ShareBreak
     .sort((a, b) => b.count - a.count)
 }
 
+export interface TimelineBucket {
+  views: number
+  visitors: number
+}
+
+export function timelineBucketCount(range: ShareTimelineRange): number {
+  if (range === '24h') return 24
+  if (range === '7d') return 7
+  if (range === '30d') return 30
+  return 12
+}
+
+function timelineBucketLabel(range: ShareTimelineRange, bucketStart: number): string {
+  const d = new Date(bucketStart)
+  if (range === '24h') return `${String(d.getHours()).padStart(2, '0')}:00`
+  if (range === 'all') return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Buckets are addressed by index so both the row path and a SQL GROUP BY can
+// fill the same array; missing indexes stay zero-filled.
+export function buildBucketedTimeline(
+  buckets: TimelineBucket[],
+  range: ShareTimelineRange,
+  startTs: number,
+  duration: number,
+): ShareTimelinePoint[] {
+  const numBuckets = timelineBucketCount(range)
+  const bucketDuration = duration / numBuckets
+  return Array.from({ length: numBuckets }, (_, index) => {
+    const bucketStart = startTs + index * bucketDuration
+    return {
+      label: timelineBucketLabel(range, bucketStart),
+      timestamp: bucketStart,
+      views: buckets[index]?.views ?? 0,
+      visitors: buckets[index]?.visitors ?? 0,
+    }
+  })
+}
+
+export function bucketsFromVisitRows(
+  rows: Array<{ visited_at: number; visitor_fp: string | null }>,
+  range: ShareTimelineRange,
+  startTs: number,
+  duration: number,
+): TimelineBucket[] {
+  const numBuckets = timelineBucketCount(range)
+  const bucketDuration = duration / numBuckets
+  const buckets: TimelineBucket[] = Array.from({ length: numBuckets }, () => ({ views: 0, visitors: 0 }))
+  const uniqueVisitors: Array<Set<string>> = Array.from({ length: numBuckets }, () => new Set<string>())
+  for (const row of rows) {
+    const index = Math.floor((row.visited_at - startTs) / bucketDuration)
+    if (index < 0 || index >= numBuckets) continue
+    buckets[index].views += 1
+    if (row.visitor_fp) uniqueVisitors[index].add(row.visitor_fp)
+  }
+  for (let i = 0; i < numBuckets; i++) {
+    buckets[i].visitors = uniqueVisitors[i].size
+  }
+  return buckets
+}
+
 export function buildShareTimeline(
   rows: Array<{ visited_at: number; visitor_fp: string | null }>,
   range: ShareTimelineRange,
   startTs: number,
   duration: number,
 ): ShareTimelinePoint[] {
-  const numBuckets = range === '24h' ? 24 : range === '7d' ? 7 : range === '30d' ? 30 : 12
-  const bucketDuration = duration / numBuckets
-  const timeline: ShareTimelinePoint[] = []
-  for (let i = 0; i < numBuckets; i++) {
-    const bucketStart = startTs + i * bucketDuration
-    const bucketEnd = bucketStart + bucketDuration
-    const bucketVisits = rows.filter((r) => r.visited_at >= bucketStart && r.visited_at < bucketEnd)
-    const d = new Date(bucketStart)
-    const label = range === '24h'
-      ? `${String(d.getHours()).padStart(2, '0')}:00`
-      : range === 'all'
-        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-        : `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
-    timeline.push({
-      label,
-      timestamp: bucketStart,
-      views: bucketVisits.length,
-      visitors: new Set(bucketVisits.map((r) => r.visitor_fp).filter(Boolean)).size,
-    })
-  }
-  return timeline
+  return buildBucketedTimeline(bucketsFromVisitRows(rows, range, startTs, duration), range, startTs, duration)
 }

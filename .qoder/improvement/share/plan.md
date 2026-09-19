@@ -49,7 +49,8 @@
 | 34 | SH-36 | 小项集合（口令长度统一、effect 重开、子模态重置、th scope、role=status 等） | P3 | ✅ | 21cbdddc |
 | T | SH-37 | 通病解冻：`--danger/warning/success-subtle` 全站引用无定义（渲染透明）→ 统一按 `-soft` 家族补定义并改名引用；三对色令牌按 AA 重校准 | P2 | ✅ | a5a02d38 |
 | F1 | SH-29 | `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，双侧回归 | P2 | ✅ | 1b502776 |
-| F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用），并做 all 整表拉行 SQL 下推（26 号遗留） | P2 | 排队 | |
+| F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用） | P2 | ✅ | 待回填 |
+| F2b | SH-16c | all 整表拉行 SQL 下推（26 号遗留）：`lib/visit-aggregates.ts` 聚合语句 + 行路/SQL 路同一 normalized 中间形态 + 等价测试 | P2 | 排队 | |
 | F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后） | — | 排队 | |
 | F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | eff0a6b5 |
 | F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | 排队 | |
@@ -304,3 +305,13 @@
 - 变异 5 全杀：fp 键回加 UA、referrer 回填原文、去掉 scheme 白名单、去掉自路径丢弃、去掉缺 secret→null 门。/tmp/mutF4 备份逐一还原。
 - 部署注意：生产未 `wrangler secret put VISIT_FP_SECRET` 时，blog 与 share 同样记 null 指纹（UV 计数为 0、去重不生效）——这是 12 号已裁决的取向，非本次新增风险；上线前须确认 secret 已配。
 - 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 105/105（blog-routes+share-routes+share-analytics）。全量回归 236 文件/1821 测试绿（REGRESSION_EXIT=0）。fix 提交 eff0a6b5。
+
+## 38 — F2（SH-16b）range=all 窗口与分桶行为收口：lib 单源 + blog 侧对称修复（2026-09-20）
+
+- 现状与根因：share 侧 04 号已把 `all` 窗口修好，但修法留在路由里（`analyticsContext` 建可变 ctx + `applyAllRangeWindow` 事后改写），blog `routes/blog/stats.ts` 三处未跟——①`analyticsContext` 把原始 `range` 直接 cast 成 `ShareTimelineRange`，无白名单：`?range=zzz` 经 `getRangeStartTimestamp` 返回 0，等于任意客户端可请求全表；②无 `all` 窗口收口：`startTs=0` + `duration` 兜 30 天，于是 `buildShareTimeline` 的 12 个桶全落在 1970 年（时间轴恒空、标签 `1970-01`），而 totalViews 又按无上限的 `visited_at >= 0` 统计，两数对不上；③`viewsPerDay` 按 30 天摊，实际窗口是全部历史。
+- 修法（单源，两路由共用）：lib/share-analytics.ts 新增 `shareRangeFromQuery`（白名单，未知→30d）、`parseAnalyticsRequest`（range+filters+clause+now，share/blog 两处逐行相同的查询解析自此一份）、`analyticsWindow(range, now, minVisitedAt?)`（非 all 照旧；all 以最早访问起算、无访问回落 30 天、窗口下限 1 天）、`timelineBucketCount`/`buildBucketedTimeline`（按下标零填充，缺失下标即 0 桶）/`bucketsFromVisitRows`（`Math.floor((visited_at-startTs)/bucketDuration)`，越界丢弃），`buildShareTimeline` 改为这两者的复合（行为不变，桶边界归属由「区间比较」改「下标取整」，两者在整数毫秒与均匀桶宽下等价）。share 路由删 `shareRangeFrom`/`applyAllRangeWindow`，`analyticsContext` 改 async：先按需查 `MIN(visited_at)`，再一次性构造不可变 ctx（不再有「建完再改」的中间态）。blog 路由同构接入：白名单 + `all` 窗口 + 复合时间轴。
+- 测试（红先行）：blog-routes 新 3 例——未知区间被清洗成 30d 且不再回全表、`range=all` 从最早访问起算且桶内 views 求和==行数、无访问时窗口留在近期（`timeline[0].timestamp > 0`）；红 3 确认（`expected 'zzz' to be '30d'`、`expected +0 to be 1720724527116`、`expected 0 to be greater than 0`）后转绿。share-analytics 新 describe 4 例覆盖 `shareRangeFromQuery` 三态、`parseAnalyticsRequest` 过滤组合、`analyticsWindow` 四组取值、`buildBucketedTimeline`+`bucketsFromVisitRows` 与 `buildShareTimeline` 全等（含越界行不计、null 指纹不计数、空 buckets 零填充）。既有 share `all` 用例（`timeline[0].timestamp===oldTs`、求和==3、空态 12 桶）不动并继续为绿，证明分桶重构行为保持。
+- 变异 8 发全杀（/tmp/mutF2a 备份还原）：未知区间→all、无访问回落改 epoch、去掉下标越界门、null 指纹计入 UV、`all` 桶数 12→24、两路由的 `min_ts` 传 null、查询解析回填裸 cast。
+- 坑：①blog 测试夹具的 `H.now=2_000_000_000_000`（2033）与路由真实 `Date.now()` 不同源，新用例的 `visited_at` 必须用真实时钟种，否则「未来行」永远落在所有窗口之外（share 侧用例本就这么写）；②`buildShareTimeline` 语义改动会同时影响 share/blog 两看板，故等价性靠既有路由用例 + 新单元全等断言双重守住，不做「只测新函数」。
+- 遗留拆行：`all` 仍整表拉行（下推 SQL 聚合），按批准范围另起 F2b（SH-16c）。
+- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 108/108（blog-routes+share-routes）+21/21（share-analytics）。全量回归待补。fix 提交待回填。

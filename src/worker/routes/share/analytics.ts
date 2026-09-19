@@ -1,29 +1,22 @@
 import { Hono } from 'hono'
-import { ShareBreakdownItem, ShareGlobalAnalytics, ShareNoteAnalytics, ShareTimelineRange, ShareVisitLog } from '@shared/types'
+import { ShareBreakdownItem, ShareGlobalAnalytics, ShareNoteAnalytics, ShareVisitLog } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
-import { buildShareTimeline, buildVisitFilterSql, computeDelta, getRangeStartTimestamp, parseBotName, toBreakdown, type ShareFilterOptions } from '../../lib/share-analytics'
+import {
+  analyticsWindow,
+  buildShareTimeline,
+  buildVisitFilterSql,
+  computeDelta,
+  parseAnalyticsRequest,
+  parseBotName,
+  toBreakdown,
+  type AnalyticsRequest,
+  type AnalyticsWindow,
+} from '../../lib/share-analytics'
 import { firstOf, rowsOf } from './read-results'
 import { ShareRow } from './shares'
 
 const DAY_MS = 24 * 60 * 60 * 1000
-
-const SHARE_ANALYTICS_RANGES: string[] = ['24h', '7d', '30d', 'all']
-
-function shareRangeFrom(raw: string | undefined): ShareTimelineRange {
-  if (!raw) return '7d'
-  return (SHARE_ANALYTICS_RANGES.includes(raw) ? raw : '30d') as ShareTimelineRange
-}
-
-interface AnalyticsContext {
-  range: ShareTimelineRange
-  clause: string
-  filters: ShareFilterOptions
-  now: number
-  startTs: number
-  duration: number
-  prevStartTs: number
-}
 
 interface ShareSummaryRow {
   total_shares: number
@@ -44,6 +37,8 @@ interface FilterStatsRow {
 interface MinVisitedRow {
   min_ts: number | null
 }
+
+type AnalyticsContext = AnalyticsRequest & AnalyticsWindow
 
 interface VisitRow {
   visited_at: number
@@ -89,11 +84,7 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
   shareManageRoutes.get('/analytics/global', async (c) => {
     const db = c.env.DB
     const userId = c.get('userId')
-    const ctx = analyticsContext(c)
-    if (ctx.range === 'all') {
-      const [minResult] = await db.batch([minVisitedAtStatement(db, { userId })])
-      applyAllRangeWindow(ctx, firstOf<MinVisitedRow>(minResult))
-    }
+    const ctx = await analyticsContext(db, c, { userId })
     const [summaryResult, visitsResult, prevStatsResult, filterStatsResult, recentResult] = await db.batch([
       shareSummaryStatement(db, userId, ctx.now),
       rangeVisitsStatement(db, { userId, startTs: ctx.startTs, clause: ctx.clause }),
@@ -163,13 +154,9 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
     const db = c.env.DB
     const userId = c.get('userId')
     const noteId = c.req.param('noteId')
-    const ctx = analyticsContext(c)
     const row = await loadNoteShare(db, userId, noteId)
     if (!row) throw ApiError.notFound('Share or note not found')
-    if (ctx.range === 'all') {
-      const [minResult] = await db.batch([minVisitedAtStatement(db, { userId, noteId })])
-      applyAllRangeWindow(ctx, firstOf<MinVisitedRow>(minResult))
-    }
+    const ctx = await analyticsContext(db, c, { userId, noteId })
     const [visitsResult, recentResult] = await db.batch([
       rangeVisitsStatement(db, { userId, noteId, startTs: ctx.startTs, clause: ctx.clause }),
       recentVisitsStatement(db, { userId, noteId, startTs: ctx.startTs, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
@@ -205,25 +192,16 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
   })
 }
 
-function analyticsContext(c: { req: { query(key: string): string | undefined } }): AnalyticsContext {
-  const range = shareRangeFrom(c.req.query('range'))
-  const filters: ShareFilterOptions = {
-    excludeBots: c.req.query('excludeBots') !== 'false',
-    excludeSelfReferrers: c.req.query('excludeSelf') === 'true',
-    excludeOwner: c.req.query('excludeOwner') === 'true',
-  }
-  const now = Date.now()
-  const startTs = getRangeStartTimestamp(range, now)
-  const duration = startTs > 0 ? now - startTs : 30 * DAY_MS
-  return {
-    range,
-    filters,
-    clause: buildVisitFilterSql(filters),
-    now,
-    startTs,
-    duration,
-    prevStartTs: startTs > 0 ? startTs - duration : 0,
-  }
+async function analyticsContext(
+  db: D1Database,
+  c: { req: { query(key: string): string | undefined } },
+  scope: { userId: string; noteId?: string },
+): Promise<AnalyticsContext> {
+  const request = parseAnalyticsRequest(c)
+  const minRow = request.range === 'all'
+    ? await minVisitedAtStatement(db, scope).first<MinVisitedRow>()
+    : null
+  return { ...request, ...analyticsWindow(request.range, request.now, minRow?.min_ts ?? null) }
 }
 
 function minVisitedAtStatement(db: D1Database, params: { userId: string; noteId?: string }): D1PreparedStatement {
@@ -233,14 +211,6 @@ function minVisitedAtStatement(db: D1Database, params: { userId: string; noteId?
     `SELECT MIN(visited_at) as min_ts FROM share_visits WHERE ${noteWhere}`,
   )
     .bind(...binds)
-}
-
-function applyAllRangeWindow(ctx: AnalyticsContext, minRow: MinVisitedRow | null): void {
-  const startTs = minRow?.min_ts ?? ctx.now - 30 * DAY_MS
-  const duration = Math.max(ctx.now - startTs, DAY_MS)
-  ctx.startTs = startTs
-  ctx.duration = duration
-  ctx.prevStartTs = startTs - duration
 }
 
 function shareSummaryStatement(db: D1Database, userId: string, now: number): D1PreparedStatement {
