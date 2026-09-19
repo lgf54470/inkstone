@@ -267,6 +267,7 @@ export const messages = {
 'music.eq_bass': '低音',
 'music.eq_mids': '中音',
 'music.eq_treble': '高音',
+'music.normalize': '音量归一化',
 'music.immersive': '沉浸式播放',
 'music.exit_immersive': '退出沉浸式',
 'music.export_m3u': '导出为 M3U',

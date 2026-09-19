@@ -120,6 +120,7 @@ export interface MusicStoreState {
   eqLowDb: number
   eqMidDb: number
   eqHighDb: number
+  normalizeEnabled: boolean
 
   floatingVisible: boolean
   floatingCollapsed: boolean
@@ -167,6 +168,7 @@ export interface MusicStoreState {
   setSleepAfterCurrentTrack: (enabled: boolean) => void
   setEqEnabled: (enabled: boolean) => void
   setEqBand: (band: MusicEqBand, db: number) => void
+  setNormalizeEnabled: (enabled: boolean) => void
   addToQueue: (id: string, next?: boolean) => void
   removeFromQueue: (index: number) => void
   moveQueueItem: (from: number, to: number) => void

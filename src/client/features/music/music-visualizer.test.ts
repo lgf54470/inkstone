@@ -7,6 +7,7 @@ vi.mock('./audio-engine', () => ({
   bindMediaSessionActions: vi.fn(),
   configureAudio: vi.fn(),
   configureEqualizer: vi.fn(),
+  configureLoudnessNormalization: vi.fn(),
   ensureAudioGraph: vi.fn(async () => ({
     frequencyBinCount: 128,
     getByteFrequencyData: (bytes: Uint8Array) => { bytes[0] = 200 },

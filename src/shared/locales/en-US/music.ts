@@ -267,6 +267,7 @@ export const messages = {
 'music.eq_bass': 'Bass',
 'music.eq_mids': 'Mids',
 'music.eq_treble': 'Treble',
+'music.normalize': 'Normalize volume',
 'music.immersive': 'Full screen player',
 'music.exit_immersive': 'Leave full screen',
 'music.export_m3u': 'Export as M3U',

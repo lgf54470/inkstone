@@ -24,6 +24,7 @@ export interface MusicPreferences {
   eqLowDb: number
   eqMidDb: number
   eqHighDb: number
+  normalizeEnabled: boolean
 }
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
@@ -58,6 +59,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   eqLowDb: 0,
   eqMidDb: 0,
   eqHighDb: 0,
+  normalizeEnabled: false,
 }
 
 function readStored(key: string): Record<string, unknown> | null {
@@ -97,6 +99,7 @@ export function loadPreferences(): MusicPreferences {
     eqLowDb: readEqDb(parsed.eqLowDb),
     eqMidDb: readEqDb(parsed.eqMidDb),
     eqHighDb: readEqDb(parsed.eqHighDb),
+    normalizeEnabled: parsed.normalizeEnabled === true,
   }
 }
 

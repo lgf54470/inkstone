@@ -1,15 +1,16 @@
 import {
-  addToQueue, clearQueue, connectAudio, currentTrack, cycleMode, moveQueueItem, playCollection,
-  playNext, playPrevious, playQueueAt, playTrack, removeFromQueue, seek, setEqBand, setEqEnabled,
-  setFloatingPosition, setImmersive, setPlaybackRate, setSleepAfterCurrentTrack, setSleepTimer, setVolume,
+  connectAudio, currentTrack, cycleMode, playCollection,
+  playNext, playPrevious, playQueueAt, playTrack, seek, setEqBand, setEqEnabled,
+  setFloatingPosition, setImmersive, setNormalizeEnabled, setPlaybackRate, setSleepAfterCurrentTrack, setSleepTimer, setVolume,
   toggleFloating, toggleFloatingCollapsed, toggleMute, togglePlay,
 } from './player'
+import { addToQueue, clearQueue, moveQueueItem, removeFromQueue } from './queue-ops'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type PlayerSlice = Pick<MusicStoreState,
   | 'playTrack' | 'playCollection' | 'playQueueAt' | 'togglePlay' | 'playNext' | 'playPrevious'
   | 'seek' | 'setVolume' | 'toggleMute' | 'cycleMode' | 'setPlaybackRate' | 'setSleepTimer' | 'setSleepAfterCurrentTrack' | 'setImmersive'
-  | 'setEqEnabled' | 'setEqBand'
+  | 'setEqEnabled' | 'setEqBand' | 'setNormalizeEnabled'
   | 'addToQueue' | 'removeFromQueue' | 'moveQueueItem' | 'clearQueue'
   | 'toggleFloating' | 'toggleFloatingCollapsed' | 'setFloatingPosition'>
 
@@ -31,6 +32,7 @@ export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
     setSleepAfterCurrentTrack: (enabled) => setSleepAfterCurrentTrack(set, get, enabled),
     setEqEnabled: (enabled) => setEqEnabled(set, get, enabled),
     setEqBand: (band, db) => setEqBand(set, get, band, db),
+    setNormalizeEnabled: (enabled) => setNormalizeEnabled(set, get, enabled),
     setImmersive: (open) => setImmersive(set, open),
     addToQueue: (id, next) => addToQueue(set, get, id, next),
     removeFromQueue: (index) => removeFromQueue(set, get, index),

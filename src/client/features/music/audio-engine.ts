@@ -25,8 +25,21 @@ let analyserElement: HTMLAudioElement | null = null
 let suspendTimer: number | null = null
 let eqNodes: BiquadFilterNode[] = []
 let equalizer: EqualizerSettings = { enabled: false, lowDb: 0, midDb: 0, highDb: 0 }
+let normalizeEnabled = false
+let normGainNode: GainNode | null = null
+let normTap: AnalyserNode | null = null
+let normPollTimer: number | null = null
+let normGainDb = 0
 const ANALYSER_FFT_SIZE = 256
 const ANALYSER_SMOOTHING = 0.82
+// ReplayGain approximation: RMS toward this level, judged on the pre-EQ element signal so
+// the user's own volume is factored out. RMS is not LUFS — see the documented limitation.
+const NORM_TARGET_DBFS = -16
+const NORM_MAX_GAIN_DB = 12
+const NORM_SILENCE_DBFS = -60
+const NORM_POLL_MS = 500
+const NORM_SMOOTHING = 0.25
+const NORM_TAP_FFT_SIZE = 2_048
 // A three-band shelf/peak chain covers bass, voice and treble shaping without the
 // node count of a graphic EQ; the fixed corners are the usual audible crossover points.
 const EQ_BANDS: Array<{ type: BiquadFilterType; frequencyHz: number; q?: number }> = [
@@ -63,7 +76,8 @@ function createAudioElement(): HTMLAudioElement {
   audio.addEventListener('play', () => {
     resumeAnalyserContext()
     // The play gesture is the retry window for a graph the browser blocked earlier.
-    if (equalizer.enabled) void ensureAudioGraph()
+    if (equalizer.enabled || normalizeEnabled) void ensureAudioGraph()
+    startLoudnessPolling()
     bridge?.onPlayingChange(true)
   })
   audio.addEventListener('waiting', () => bridge?.onBuffering(true))
@@ -71,6 +85,7 @@ function createAudioElement(): HTMLAudioElement {
   audio.addEventListener('playing', () => bridge?.onBuffering(false))
   audio.addEventListener('pause', () => {
     scheduleAnalyserSuspend()
+    stopLoudnessPolling()
     bridge?.onPlayingChange(false)
   })
   audio.addEventListener('error', () => bridge?.onError(readMediaError(audio)))
@@ -240,7 +255,15 @@ export async function ensureAudioGraph(): Promise<AnalyserNode | null> {
   node.smoothingTimeConstant = ANALYSER_SMOOTHING
   eqNodes = createEqualizerFilters(context)
   const first = eqNodes[0] ?? node
-  context.createMediaElementSource(audio).connect(first)
+  normGainNode = context.createGain()
+  const source = context.createMediaElementSource(audio)
+  // The gain sits before the EQ so the loudness tap below measures the file's own
+  // signal, not the user's volume or the EQ colouring layered on top of it.
+  source.connect(normGainNode)
+  normGainNode.connect(first)
+  normTap = context.createAnalyser()
+  normTap.fftSize = NORM_TAP_FFT_SIZE
+  source.connect(normTap)
   for (let index = 0; index < eqNodes.length; index += 1) {
     eqNodes[index]?.connect(eqNodes[index + 1] ?? node)
   }
@@ -274,4 +297,64 @@ function applyEqualizerToGraph(): void {
   eqNodes.forEach((filter, index) => {
     filter.gain.value = gains[index] ?? 0
   })
+}
+
+// Turning normalization off hands the level back to the user's volume immediately;
+// the graph itself stays because the element source can only ever be attached once.
+export function configureLoudnessNormalization(enabled: boolean): void {
+  normalizeEnabled = enabled
+  if (!enabled) {
+    normGainDb = 0
+    applyLoudnessGain()
+    stopLoudnessPolling()
+    return
+  }
+  const audio = element
+  if (audio && !audio.paused) startLoudnessPolling()
+}
+
+function startLoudnessPolling(): void {
+  if (!normalizeEnabled || normPollTimer !== null) return
+  normPollTimer = window.setInterval(runLoudnessTick, NORM_POLL_MS)
+}
+
+function stopLoudnessPolling(): void {
+  if (normPollTimer === null) return
+  window.clearInterval(normPollTimer)
+  normPollTimer = null
+}
+
+function runLoudnessTick(): void {
+  const audio = element
+  if (!normGainNode || !normTap || !audio) return
+  if (audio.muted || audio.volume <= 0) return
+  const measured = readLoudnessDbfs(normTap, audio.volume)
+  if (measured === null || measured < NORM_SILENCE_DBFS) return
+  const desired = Math.min(NORM_MAX_GAIN_DB, Math.max(-NORM_MAX_GAIN_DB, NORM_TARGET_DBFS - measured))
+  normGainDb += (desired - normGainDb) * NORM_SMOOTHING
+  applyLoudnessGain()
+}
+
+// The tap sees the signal after the element's own volume, so dividing that back out
+// keeps the gain decision about the file, not about where the user set the slider.
+function readLoudnessDbfs(tap: AnalyserNode, volume: number): number | null {
+  const bytes = new Uint8Array(tap.fftSize)
+  tap.getByteTimeDomainData(bytes)
+  let sum = 0
+  for (const byte of bytes) {
+    const sample = (byte - 128) / 128 / volume
+    sum += sample * sample
+  }
+  const rms = Math.sqrt(sum / bytes.length)
+  if (rms <= 0) return null
+  return 20 * Math.log10(rms)
+}
+
+function linearGainFromDb(db: number): number {
+  return 10 ** (db / 20)
+}
+
+function applyLoudnessGain(): void {
+  if (!normGainNode) return
+  normGainNode.gain.value = linearGainFromDb(normGainDb)
 }

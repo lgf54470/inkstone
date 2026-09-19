@@ -1,11 +1,11 @@
 import type { MusicTrack } from '@shared/types'
 import { api } from '../../../lib/api'
-import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
+import { toastMusicError, toastMusicNotice } from '../music-feedback'
 import { computeNextIndex, computePrevIndex, nextPlayMode } from '../music-utils'
 import {
-  applyVolume, audioElement, bindMediaSessionActions, configureAudio, configureEqualizer, ensureAudioGraph,
-  pausePlayback, publishMediaSession,
-  resumePlayback, seekTo, startPlayback, stopPlayback, updateMediaSessionPosition,
+  applyVolume, audioElement, bindMediaSessionActions, configureAudio, configureEqualizer, configureLoudnessNormalization,
+  ensureAudioGraph, pausePlayback, publishMediaSession,
+  resumePlayback, seekTo, startPlayback, updateMediaSessionPosition,
 } from '../audio-engine'
 import type { EqualizerSettings } from '../audio-engine'
 import { loadLibrary, visibleTracks } from './library-load'
@@ -20,7 +20,9 @@ const MAX_CONSECUTIVE_PLAY_FAILURES = 3
 export function connectAudio(set: MusicSet, get: MusicGet): void {
   // The engine holds the last known settings so a graph built later (or after a
   // browser-blocked start) picks up the stored sound without a store subscription.
-  configureEqualizer(readEqualizer(loadPreferences()))
+  const prefs = loadPreferences()
+  configureEqualizer(readEqualizer(prefs))
+  configureLoudnessNormalization(prefs.normalizeEnabled)
   configureAudio({
     onTime: (ms) => {
       setProgressTime(ms)
@@ -256,79 +258,20 @@ export function setEqBand(set: MusicSet, get: MusicGet, band: MusicEqBand, db: n
   persist(get)
 }
 
+export function setNormalizeEnabled(set: MusicSet, get: MusicGet, enabled: boolean): void {
+  set({ normalizeEnabled: enabled })
+  configureLoudnessNormalization(enabled)
+  // Enabling during playback is a user gesture, the one moment a blocked audio graph may start.
+  if (enabled) void ensureAudioGraph()
+  persist(get)
+}
+
 function readEqualizer(state: Pick<MusicStoreState, 'eqEnabled' | 'eqLowDb' | 'eqMidDb' | 'eqHighDb'>): EqualizerSettings {
   return { enabled: state.eqEnabled, lowDb: state.eqLowDb, midDb: state.eqMidDb, highDb: state.eqHighDb }
 }
 
 function applyEqualizer(state: MusicStoreState): void {
   configureEqualizer(readEqualizer(state))
-}
-
-export function addToQueue(set: MusicSet, get: MusicGet, id: string, next = false): void {
-  const { queue, currentIndex } = get()
-  if (!queue.length) {
-    set({ queue: [id], currentIndex: 0 })
-    toastMusic('music.added_to_queue')
-    return
-  }
-  const deduped = queue.filter((entry) => entry !== id)
-  if (next) {
-    deduped.splice(Math.min(currentIndex + 1, deduped.length), 0, id)
-    set({ queue: deduped })
-    toastMusic('music.added_to_queue')
-    return
-  }
-  set({ queue: [...deduped, id] })
-  toastMusic('music.added_to_queue')
-}
-
-export function removeFromQueue(set: MusicSet, get: MusicGet, index: number): void {
-  const { queue, currentIndex } = get()
-  if (index < 0 || index >= queue.length) return
-  const nextQueue = queue.filter((_entry, position) => position !== index)
-  if (index !== currentIndex) {
-    const nextIndex = index < currentIndex ? currentIndex - 1 : currentIndex
-    set({ queue: nextQueue, currentIndex: Math.max(0, Math.min(nextIndex, nextQueue.length - 1)) })
-    return
-  }
-  // Removing the playing track: keep the audio and the queue pointing at the same song.
-  const nextIndex = Math.max(0, Math.min(index, nextQueue.length - 1))
-  set({ queue: nextQueue, currentIndex: nextIndex })
-  if (get().isPlaying && nextQueue.length) {
-    void playQueueAt(set, get, nextIndex)
-    return
-  }
-  stopPlayback()
-  set({ isPlaying: false, durationMs: 0 })
-  setProgressTime(0)
-  publishMediaSession(nextQueue.length ? currentTrack(get()) : null, false)
-}
-
-export function clearQueue(set: MusicSet): void {
-  pausePlayback()
-  set({ queue: [], currentIndex: 0, isPlaying: false, durationMs: 0 })
-  setProgressTime(0)
-  publishMediaSession(null, false)
-}
-
-// The audio keeps playing while rows shuffle, so only the queue array and the
-// index pointing at the playing entry change — a new array reference is what
-// tells the session sync to persist the reordered queue.
-export function moveQueueItem(set: MusicSet, get: MusicGet, from: number, to: number): void {
-  const { queue, currentIndex } = get()
-  if (from === to || from < 0 || to < 0 || from >= queue.length || to >= queue.length) return
-  const nextQueue = [...queue]
-  const [moved] = nextQueue.splice(from, 1)
-  nextQueue.splice(to, 0, moved)
-  let nextIndex = currentIndex
-  if (from === currentIndex) {
-    nextIndex = to
-  } else if (from < currentIndex && to >= currentIndex) {
-    nextIndex = currentIndex - 1
-  } else if (from > currentIndex && to <= currentIndex) {
-    nextIndex = currentIndex + 1
-  }
-  set({ queue: nextQueue, currentIndex: nextIndex })
 }
 
 export function toggleFloating(set: MusicSet, get: MusicGet): void {
@@ -489,5 +432,6 @@ function writePreferences(get: MusicGet): void {
     eqLowDb: state.eqLowDb,
     eqMidDb: state.eqMidDb,
     eqHighDb: state.eqHighDb,
+    normalizeEnabled: state.normalizeEnabled,
   })
 }

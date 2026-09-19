@@ -12,6 +12,7 @@ vi.mock('../audio-engine', () => ({
   bindMediaSessionActions: vi.fn(),
   configureAudio: vi.fn(),
   configureEqualizer: vi.fn(),
+  configureLoudnessNormalization: vi.fn(),
   ensureAudioGraph: vi.fn(async () => null),
   pausePlayback: vi.fn(),
   publishMediaSession: vi.fn(),
@@ -22,17 +23,18 @@ vi.mock('../audio-engine', () => ({
   updateMediaSessionPosition: vi.fn(),
 }))
 
-import { configureEqualizer, ensureAudioGraph } from '../audio-engine'
+import { configureEqualizer, configureLoudnessNormalization, ensureAudioGraph } from '../audio-engine'
 import { useMusic } from './index'
 import { MUSIC_PREFS_KEY, loadPreferences, savePreferences } from './state'
 
 afterEach(() => {
   vi.useRealTimers()
   vi.mocked(configureEqualizer).mockClear()
+  vi.mocked(configureLoudnessNormalization).mockClear()
   vi.mocked(ensureAudioGraph).mockClear()
   window.localStorage.clear()
-  // The store module is shared across tests in this file; leave no EQ residue.
-  useMusic.setState({ eqEnabled: false, eqLowDb: 0, eqMidDb: 0, eqHighDb: 0 })
+  // The store module is shared across tests in this file; leave no sound-setting residue.
+  useMusic.setState({ eqEnabled: false, eqLowDb: 0, eqMidDb: 0, eqHighDb: 0, normalizeEnabled: false })
 })
 
 describe('equalizer preferences drive the engine', () => {
@@ -114,5 +116,47 @@ describe('equalizer boots from stored preferences', () => {
     const engine = await import('../audio-engine')
     await import('./index')
     expect(engine.configureEqualizer).toHaveBeenCalledWith({ enabled: true, lowDb: 8, midDb: 0, highDb: 0 })
+  })
+})
+
+describe('loudness normalization drives the engine', () => {
+  it('hands the enable flag to the engine and retries a blocked graph on', () => {
+    useMusic.getState().setNormalizeEnabled(true)
+    expect(useMusic.getState().normalizeEnabled).toBe(true)
+    expect(configureLoudnessNormalization).toHaveBeenLastCalledWith(true)
+    expect(ensureAudioGraph).toHaveBeenCalledTimes(1)
+  })
+
+  it('tells the engine to release the level when switched off, without a graph retry', () => {
+    useMusic.getState().setNormalizeEnabled(false)
+    expect(configureLoudnessNormalization).toHaveBeenLastCalledWith(false)
+    expect(ensureAudioGraph).not.toHaveBeenCalled()
+  })
+})
+
+describe('loudness normalization persists and boots', () => {
+  it('writes the flag into the debounced preference save', () => {
+    vi.useFakeTimers()
+    useMusic.getState().setNormalizeEnabled(true)
+    vi.advanceTimersByTime(250)
+    const raw = window.localStorage.getItem(MUSIC_PREFS_KEY)
+    const stored = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+    expect(stored.normalizeEnabled).toBe(true)
+  })
+
+  it('round-trips through localStorage and ignores junk', () => {
+    savePreferences({ ...loadPreferences(), normalizeEnabled: true })
+    expect(loadPreferences().normalizeEnabled).toBe(true)
+    window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({ normalizeEnabled: 'yes' }))
+    expect(loadPreferences().normalizeEnabled).toBe(false)
+  })
+
+  it('seeds the engine from the stored flag when a fresh store is created', async () => {
+    savePreferences({ ...loadPreferences(), normalizeEnabled: true })
+    vi.resetModules()
+    const engine = await import('../audio-engine')
+    const fresh = await import('./index')
+    expect(engine.configureLoudnessNormalization).toHaveBeenCalledWith(true)
+    expect(fresh.useMusic.getState().normalizeEnabled).toBe(true)
   })
 })

@@ -1248,7 +1248,15 @@ const allowed = new Map([
     '/** Subscribes to note saves: any edit mutates the notes store, so `latestEditKey` recomputes the moment a note is written and the window re-materializes with zero latency. A single midnight-aligned tick covers only the today-anchored direction. */',
     '/** Keeps the rolling date filter materialized: the window recomputes whenever a note save (or the day rollover) changes its anchor. Mount once, anywhere in the tree. */',
   ]],
+  ['src/client/features/music/audio-engine.test.ts', [
+    '// The graph builds the visualiser analyser first and the loudness tap second,',
+    '// so the tap is distinguishable by position and by its larger fftSize.',
+    '// At half volume the file already sits near the target; without dividing the',
+    '// volume back out this same signal would read 6 dB quieter and be boosted to ~1.19.',
+  ]],
   ['src/client/features/music/audio-engine.ts', [
+    '// ReplayGain approximation: RMS toward this level, judged on the pre-EQ element signal so',
+    '// the user\'s own volume is factored out. RMS is not LUFS — see the documented limitation.',
     '// A three-band shelf/peak chain covers bass, voice and treble shaping without the',
     '// node count of a graphic EQ; the fixed corners are the usual audible crossover points.',
     '// Suspend a little after the pause instead of at it: transport taps and track changes',
@@ -1260,8 +1268,14 @@ const allowed = new Map([
     '// The browser rejects a position past the end, and in-flight ticks can outrun a shrinking duration.',
     '// Routing the element through a suspended context would silence playback, so the graph is only',
     '// built once the browser lets audio run; callers get null until then and retry on the next play.',
+    '// The gain sits before the EQ so the loudness tap below measures the file\'s own',
+    '// signal, not the user\'s volume or the EQ colouring layered on top of it.',
     '// Stored first so a graph built later (or rebuilt after a page change) picks up the',
     '// current sound; a disabled EQ keeps every band at 0 dB instead of tearing the chain down.',
+    '// Turning normalization off hands the level back to the user\'s volume immediately;',
+    '// the graph itself stays because the element source can only ever be attached once.',
+    '// The tap sees the signal after the element\'s own volume, so dividing that back out',
+    '// keeps the gain decision about the file, not about where the user set the slider.',
   ]],
   ['src/client/features/music/music-cover-lookup.ts', [
     '// The Worker queries the catalogue and returns the image, keeping third party calls off the page.',
@@ -1485,7 +1499,7 @@ const allowed = new Map([
     '/* The slim bar only has room for the EQ from the wide breakpoint up. */',
   ]],
   ['src/client/features/music/music-store/eq.test.ts', [
-    '// The store module is shared across tests in this file; leave no EQ residue.',
+    '// The store module is shared across tests in this file; leave no sound-setting residue.',
   ]],
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
@@ -1568,10 +1582,7 @@ const allowed = new Map([
     '// The two sleep modes are exclusive: the minute timer counts wall time, this',
     '// one waits for the playing track to reach its end.',
     '// Enabling during playback is a user gesture, the one moment a blocked audio graph may start.',
-    '// Removing the playing track: keep the audio and the queue pointing at the same song.',
-    '// The audio keeps playing while rows shuffle, so only the queue array and the',
-    '// index pointing at the playing entry change — a new array reference is what',
-    '// tells the session sync to persist the reordered queue.',
+    '// Enabling during playback is a user gesture, the one moment a blocked audio graph may start.',
     '// Stopping after this track wins over repeat-one: a looping track would',
     '// otherwise never give the sleeper its cue.',
     '// Both the media error event and the stall watchdog can fire for one attempt,',
@@ -1591,6 +1602,12 @@ const allowed = new Map([
   ['src/client/features/music/music-store/progress.ts', [
     '// The ~250ms audio heartbeat lives here instead of the library store, so a tick',
     '// re-renders only the small leaves that display progress rather than the whole hub.',
+  ]],
+  ['src/client/features/music/music-store/queue-ops.ts', [
+    '// Removing the playing track: keep the audio and the queue pointing at the same song.',
+    '// The audio keeps playing while rows shuffle, so only the queue array and the',
+    '// index pointing at the playing entry change — a new array reference is what',
+    '// tells the session sync to persist the reordered queue.',
   ]],
   ['src/client/features/music/music-store/selectors.ts', [
     '// Ranking the whole library is the expensive part; React may paint the previous',

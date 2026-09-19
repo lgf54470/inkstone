@@ -235,6 +235,8 @@ export function MusicEqButton({ size = 'sm', className }: { size?: 'sm' | 'md'; 
 export function MusicEqPanel({ className }: { className?: string }) {
   const eqEnabled = useMusic((state) => state.eqEnabled)
   const setEqEnabled = useMusic((state) => state.setEqEnabled)
+  const normalizeEnabled = useMusic((state) => state.normalizeEnabled)
+  const setNormalizeEnabled = useMusic((state) => state.setNormalizeEnabled)
   return (
     <div className={cn('space-y-1 px-1.5 py-1', className)}>
       <div className='flex items-center justify-between gap-2'>
@@ -244,6 +246,10 @@ export function MusicEqPanel({ className }: { className?: string }) {
       <EqBandSlider band='low' label={t('music.eq_bass')} />
       <EqBandSlider band='mid' label={t('music.eq_mids')} />
       <EqBandSlider band='high' label={t('music.eq_treble')} />
+      <div className='flex items-center justify-between gap-2 border-t border-[var(--border-subtle)] pt-1'>
+        <span className='text-[length:var(--text-11)] text-[var(--text-secondary)]'>{t('music.normalize')}</span>
+        <Switch checked={normalizeEnabled} onChange={setNormalizeEnabled} label={t('music.normalize')} />
+      </div>
     </div>
   )
 }

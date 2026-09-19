@@ -1,5 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+interface FakeAnalyser {
+  label: string
+  fftSize: number
+  smoothingTimeConstant: number
+  frequencyBinCount: number
+  timeDomainByte: number
+  getByteTimeDomainData: (bytes: Uint8Array) => void
+  connect: (target: { label: string }) => void
+}
+
+interface FakeGain {
+  label: string
+  gain: { value: number }
+  connect: (target: { label: string }) => void
+}
+
 class FakeAudioContext {
   static instances: FakeAudioContext[] = []
   state = 'running'
@@ -8,17 +24,35 @@ class FakeAudioContext {
   destination = { label: 'destination' }
   connections: Array<[string, string]> = []
   biquads: Array<{ type: string; frequency: { value: number }; Q: { value: number }; gain: { value: number } }> = []
+  analysers: FakeAnalyser[] = []
+  gains: FakeGain[] = []
   private biquadCount = 0
+  private analyserCount = 0
 
   constructor() {
     FakeAudioContext.instances.push(this)
   }
 
   createAnalyser() {
-    const node = {
-      label: 'analyser', fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 64,
-      connect: (target: { label: string }) => { this.connections.push(['analyser', target.label]) },
+    // The graph builds the visualiser analyser first and the loudness tap second,
+    // so the tap is distinguishable by position and by its larger fftSize.
+    const index = this.analyserCount++
+    const node: FakeAnalyser = {
+      label: index === 0 ? 'analyser' : 'loudness-tap',
+      fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 64, timeDomainByte: 128,
+      getByteTimeDomainData: (bytes) => { bytes.fill(node.timeDomainByte) },
+      connect: (target) => { this.connections.push([node.label, target.label]) },
     }
+    this.analysers.push(node)
+    return node
+  }
+
+  createGain() {
+    const node: FakeGain = {
+      label: 'norm', gain: { value: 1 },
+      connect: (target) => { this.connections.push([node.label, target.label]) },
+    }
+    this.gains.push(node)
     return node
   }
 
@@ -106,15 +140,18 @@ describe('analyser context lifecycle', () => {
 })
 
 describe('equalizer graph', () => {
-  it('routes playback through three EQ filters before the analyser', async () => {
+  it('routes playback through a normalization gain and three EQ filters before the analyser', async () => {
     const { context } = await loadedEngine()
     expect(context.connections).toEqual([
-      ['source', 'filter0'],
+      ['source', 'norm'],
+      ['norm', 'filter0'],
+      ['source', 'loudness-tap'],
       ['filter0', 'filter1'],
       ['filter1', 'filter2'],
       ['filter2', 'analyser'],
       ['analyser', 'destination'],
     ])
+    expect(context.analysers[1]?.fftSize).toBe(2_048)
     expect(context.biquads.map((node) => node.type)).toEqual(['lowshelf', 'peaking', 'highshelf'])
     expect(context.biquads.map((node) => node.frequency.value)).toEqual([180, 1_000, 4_500])
     expect(context.biquads[1]?.Q.value).toBe(1)
@@ -135,7 +172,9 @@ describe('equalizer graph', () => {
     engine.configureEqualizer({ enabled: false, lowDb: 4, midDb: 0, highDb: -5 })
     expect(context.biquads.map((node) => node.gain.value)).toEqual([0, 0, 0])
   })
+})
 
+describe('play gesture graph retry', () => {
   it('retries the blocked graph on the play gesture once the EQ is on', async () => {
     const engine = await import('./audio-engine')
     const audio = engine.audioElement()
@@ -153,6 +192,128 @@ describe('equalizer graph', () => {
     if (!audio) throw new Error('jsdom should provide an Audio constructor')
     audio.dispatchEvent(new Event('play'))
     expect(FakeAudioContext.instances).toEqual([])
+  })
+
+  it('retries the blocked graph on the play gesture when only normalization is on', async () => {
+    const engine = await import('./audio-engine')
+    const audio = engine.audioElement()
+    if (!audio) throw new Error('jsdom should provide an Audio constructor')
+    engine.configureLoudnessNormalization(true)
+    expect(FakeAudioContext.instances).toEqual([])
+    audio.dispatchEvent(new Event('play'))
+    expect(FakeAudioContext.instances).toHaveLength(1)
+    expect(FakeAudioContext.instances[0]?.analysers[1]?.fftSize).toBe(2_048)
+  })
+})
+
+async function normalizedEngine() {
+  const engine = await import('./audio-engine')
+  engine.configureLoudnessNormalization(true)
+  const analyser = await engine.ensureAudioGraph()
+  const context = FakeAudioContext.instances[0]
+  const audio = engine.audioElement()
+  const tap = context?.analysers[1]
+  const gain = context?.gains[0]
+  if (!analyser || !context || !audio || !tap || !gain) throw new Error('the fake browser stack should have built a normalization graph')
+  return { engine, context, audio, tap, gain }
+}
+
+describe('loudness normalization corrections', () => {
+  it('boosts a quiet file back toward the target level', async () => {
+    const { audio, tap, gain } = await normalizedEngine()
+    audio.volume = 1
+    tap.timeDomainByte = 138
+    audio.dispatchEvent(new Event('play'))
+    vi.advanceTimersByTime(500)
+    expect(gain.gain.value).toBeGreaterThan(1)
+  })
+
+  it('turns a loud file down toward the target level', async () => {
+    const { audio, tap, gain } = await normalizedEngine()
+    audio.volume = 1
+    tap.timeDomainByte = 200
+    audio.dispatchEvent(new Event('play'))
+    vi.advanceTimersByTime(500)
+    expect(gain.gain.value).toBeLessThan(1)
+  })
+
+  it('caps the correction at the maximum gain', async () => {
+    const { audio, tap, gain } = await normalizedEngine()
+    audio.volume = 1
+    tap.timeDomainByte = 129
+    audio.dispatchEvent(new Event('play'))
+    vi.advanceTimersByTime(60_000)
+    expect(gain.gain.value).toBeLessThanOrEqual(10 ** (12 / 20) + 1e-9)
+    expect(gain.gain.value).toBeGreaterThan(3.9)
+  })
+
+  it('factors the user volume out of the measurement', async () => {
+    const { audio, tap, gain } = await normalizedEngine()
+    audio.volume = 0.5
+    tap.timeDomainByte = 138
+    audio.dispatchEvent(new Event('play'))
+    vi.advanceTimersByTime(500)
+    // At half volume the file already sits near the target; without dividing the
+    // volume back out this same signal would read 6 dB quieter and be boosted to ~1.19.
+    expect(gain.gain.value).toBeLessThan(1.05)
+  })
+})
+
+describe('loudness normalization guards', () => {
+  it('leaves the level alone on silence', async () => {
+    const { audio, gain } = await normalizedEngine()
+    audio.volume = 1
+    audio.dispatchEvent(new Event('play'))
+    vi.advanceTimersByTime(4_000)
+    expect(gain.gain.value).toBe(1)
+  })
+
+  it('does not chase the meter while the audio is muted', async () => {
+    const { audio, tap, gain } = await normalizedEngine()
+    audio.volume = 1
+    audio.muted = true
+    tap.timeDomainByte = 138
+    audio.dispatchEvent(new Event('play'))
+    vi.advanceTimersByTime(500)
+    expect(gain.gain.value).toBe(1)
+  })
+})
+
+describe('loudness normalization polling stops', () => {
+  it('stops polling once a pause sticks', async () => {
+    const { audio, tap, gain } = await normalizedEngine()
+    audio.volume = 1
+    tap.timeDomainByte = 138
+    audio.dispatchEvent(new Event('play'))
+    vi.advanceTimersByTime(500)
+    audio.dispatchEvent(new Event('pause'))
+    const frozen = gain.gain.value
+    expect(frozen).not.toBe(1)
+    vi.advanceTimersByTime(10_000)
+    expect(gain.gain.value).toBe(frozen)
+  })
+
+  it('releases the level and stops correcting when switched off', async () => {
+    const { engine, audio, tap, gain } = await normalizedEngine()
+    audio.volume = 1
+    tap.timeDomainByte = 138
+    audio.dispatchEvent(new Event('play'))
+    vi.advanceTimersByTime(500)
+    engine.configureLoudnessNormalization(false)
+    expect(gain.gain.value).toBe(1)
+    vi.advanceTimersByTime(5_000)
+    expect(gain.gain.value).toBe(1)
+  })
+
+  it('never polls while normalization is off', async () => {
+    const { context, audio } = await loadedEngine()
+    const tap = context.analysers[1]
+    if (!tap) throw new Error('the graph should carry a loudness tap')
+    audio.volume = 1
+    tap.timeDomainByte = 138
+    audio.dispatchEvent(new Event('play'))
+    vi.advanceTimersByTime(5_000)
+    expect(context.gains[0]?.gain.value).toBe(1)
   })
 })
 

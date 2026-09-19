@@ -8,7 +8,7 @@ vi.mock('../music-feedback', () => ({
 }))
 
 import { toastMusic } from '../music-feedback'
-import { addToQueue, moveQueueItem } from './player'
+import { addToQueue, moveQueueItem } from './queue-ops'
 import type { MusicStoreState } from './types'
 
 function makeStore(queue: string[], currentIndex = 0) {
