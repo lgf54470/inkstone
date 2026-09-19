@@ -330,40 +330,42 @@ function ReferrerBreakdownCard({ analytics }: { analytics: ShareGlobalAnalytics 
   )
 }
 
-function DevicesBreakdownCard({ analytics }: { analytics: ShareGlobalAnalytics | null }) {
+export function DevicesBreakdownCard({ analytics }: { analytics: ShareGlobalAnalytics | null }) {
   const devices = analytics?.devices ?? []
   const osList = analytics?.osList ?? []
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
       <CardHeader icon={<Laptop size={15} className='text-[var(--accent)]' />} title={t('share.devices_and_systems')} badge={t('share.client_environment')} />
       <div className='space-y-3 pt-3'>
-        <p className='text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider'>
-          {t('share.device_type')}
-        </p>
-        <div className='space-y-2'>
-          {devices.map((d) => (
-            <BreakdownRow
-              key={d.name}
-              name={localizeDeviceName(d.name)}
-              count={d.count}
-              percentage={d.percentage ?? 0}
-            />
-          ))}
-        </div>
+        {devices.length === 0 && osList.length === 0 ? <EmptyRow label={t('share.no_data_yet')} /> : (<>
+          <p className='text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider'>
+            {t('share.device_type')}
+          </p>
+          <div className='space-y-2'>
+            {devices.map((d) => (
+              <BreakdownRow
+                key={d.name}
+                name={localizeDeviceName(d.name)}
+                count={d.count}
+                percentage={d.percentage ?? 0}
+              />
+            ))}
+          </div>
 
-        <p className='pt-2 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider'>
-          {t('share.operating_system')}
-        </p>
-        <div className='space-y-2'>
-          {osList.slice(0, 5).map((os) => (
-            <BreakdownRow
-              key={os.name}
-              name={localizeEnvName(os.name)}
-              count={os.count}
-              percentage={os.percentage ?? 0}
-            />
-          ))}
-        </div>
+          <p className='pt-2 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider'>
+            {t('share.operating_system')}
+          </p>
+          <div className='space-y-2'>
+            {osList.slice(0, 5).map((os) => (
+              <BreakdownRow
+                key={os.name}
+                name={localizeEnvName(os.name)}
+                count={os.count}
+                percentage={os.percentage ?? 0}
+              />
+            ))}
+          </div>
+        </>)}
       </div>
     </div>
   )

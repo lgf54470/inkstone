@@ -131,7 +131,9 @@ describe('analytics math and country flag formatting', () => {
     expect(computeDelta(50, 100)).toBe(-50)
     expect(computeDelta(100, 100)).toBe(0)
     expect(computeDelta(50, 0)).toBe(100)
-    expect(computeDelta(0, 0)).toBe(0)
+    // A period that never saw traffic has no trend to report: 0/0 is
+    // indeterminate, so the server says "no delta" rather than "flat 0%".
+    expect(computeDelta(0, 0)).toBeUndefined()
   })
 
   it('formats country flags from 2-letter codes', () => {

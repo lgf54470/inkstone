@@ -280,7 +280,8 @@ export function isValidCustomSlug(slug: string): boolean {
 }
 
 export function computeDelta(current: number, previous: number): number | undefined {
-  if (previous === 0) return current > 0 ? 100 : 0
+  // 0 vs 0 is indeterminate: reporting 0% would claim a trend measured against real traffic
+  if (previous === 0) return current > 0 ? 100 : undefined
   return Math.round(((current - previous) / previous) * 100)
 }
 

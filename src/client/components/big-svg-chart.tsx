@@ -104,7 +104,7 @@ function ChartEmptyState({ emptyLabel }: { emptyLabel: string }) {
 export function BigSvgChart({ values, timeline, emptyLabel }: { values: number[]; timeline: ShareTimelinePoint[]; emptyLabel: string }) {
   const gradId = chartGradientId()
 
-  if (values.length === 0) {
+  if (!values.some((v) => v > 0)) {
     return <ChartEmptyState emptyLabel={emptyLabel} />
   }
 

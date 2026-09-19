@@ -4308,6 +4308,9 @@ const allowed = new Map([
   ['src/worker/lib/session-store.ts', [
     '/**\n * Extend a session back to the full TTL. Only call this from an authenticated\n * request whose session is inside the renewal window (see SESSION_RENEW_BEFORE_MS);\n * never call it from unauthenticated paths — renewal must not resurrect or\n * prolong a session the user has not just proven possession of.\n */',
   ]],
+  ['src/worker/lib/share-analytics.ts', [
+    '// 0 vs 0 is indeterminate: reporting 0% would claim a trend measured against real traffic',
+  ]],
   ['src/worker/lib/streams.ts', [
     '// Stream cancellation is a best-effort resource release: the read side is',
     '// already done or errored, so a failed cancel has nothing left to retry and',
@@ -4674,6 +4677,8 @@ const allowed = new Map([
     '// slashes',
     '// non-ascii',
     '// query symbols',
+    '// A period that never saw traffic has no trend to report: 0/0 is',
+    '// indeterminate, so the server says "no delta" rather than "flat 0%".',
     '// Default / All enabled:',
     '// Exclude bots only:',
     '// All disabled:',
