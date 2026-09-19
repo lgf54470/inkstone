@@ -1,4 +1,5 @@
 import type { ShareBreakdownItem, ShareTimelinePoint, ShareTimelineRange } from '@shared/types'
+import { LIMITS } from '@shared/constants'
 
 export function parseDeviceType(ua: string): string {
   if (!ua) return 'desktop'
@@ -186,6 +187,31 @@ export function parseReferrerHost(rawReferrer: string | null): string | null {
   } catch {
     return null
   }
+}
+
+const REFERRER_PROTOCOLS = new Set(['http:', 'https:', 'android-app:', 'ios-app:'])
+
+// Only browser-resolvable schemes earn a row; the raw candidate may carry query
+// tokens or fragments, so http(s) stores origin+path only.
+export function sanitizeVisitReferrer(
+  rawReferrer: string | null,
+  dropSelfPath?: string,
+): { referrer: string | null; referrerHost: string | null } {
+  if (!rawReferrer) return { referrer: null, referrerHost: null }
+  try {
+    const u = new URL(rawReferrer)
+    if (!REFERRER_PROTOCOLS.has(u.protocol)) return { referrer: null, referrerHost: null }
+    if (dropSelfPath && (u.pathname === dropSelfPath || u.pathname === `${dropSelfPath}/`)) {
+      return { referrer: null, referrerHost: null }
+    }
+    const referrer = u.protocol === 'http:' || u.protocol === 'https:'
+      ? `${u.origin}${u.pathname}`
+      : u.href
+    return {
+      referrer: referrer.slice(0, LIMITS.shareReferrerMaxLength),
+      referrerHost: parseReferrerHost(rawReferrer),
+    }
+  } catch { /* An unparseable candidate degrades analytics to a null referrer. */ return { referrer: null, referrerHost: null } }
 }
 
 export function isSelfReferrer(rawReferrer: string | null, requestHost: string, currentSlug?: string): boolean {

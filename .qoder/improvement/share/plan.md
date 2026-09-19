@@ -51,7 +51,7 @@
 | F1 | SH-29 | `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，双侧回归 | P2 | ✅ | 1b502776 |
 | F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用），并做 all 整表拉行 SQL 下推（26 号遗留） | P2 | 排队 | |
 | F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后） | — | 排队 | |
-| F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | 排队 | |
+| F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | 待回填 |
 | F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | 排队 | |
 | G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | 排队 | |
 
@@ -295,3 +295,12 @@
 - 变异 6 全杀：图表守卫回退 length===0、sparkline 门去掉 some、徽标 flat 分支失效、computeDelta 回填 0、两卡空态条件失效（share 侧 sed 因 JSX 换行未匹配=未变异，单独用 `{false ? (` 注入后杀掉）。/tmp/mutF1 备份逐一还原。
 - 坑：①lucide-react 本版本无 `TrendingFlat` 导出（React「Element type is invalid」红测抓出），中性趋势改 `Minus`（测试断言同步 `svg.lucide-minus`）；②`.test.ts` 不能含 JSX（rolldown PARSE_ERROR，且收集错误伪装成 1 failed 假象），一律 `createElement`；③`share-dashboard-view.tsx` 原 496 行贴着 size:check 的 500 上限（measure=wc+1），初版分支把文件顶到 503 触发基线漂移——把三元塞进既有 body div 内（对齐同文件 EmptyRow 先例）压回 498 行，未动基线。
 - 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 26/26（F1 五文件）。全量回归 236 文件/1816 测试绿（REGRESSION_EXIT=0，串行无并行）。fix 提交 1b502776。
+
+## 37 — F4（SH-25b）blog visits.ts 同构缺陷：指纹盐与 referrer 与 share 侧对称修复（2026-09-20）
+
+- 现状与根因：blog `recordBlogVisit` 记录面与 share（11、12 号已修）漂移三处——①`computeVisitorFingerprint(rawIp, ua)` 把 UA 键进去：浏览器轮换 UA 即铸造新访客（去重失效、PV/UV 虚高），且与 share「去重键不含 UA」的注释化规则相悖；②不传 `VISIT_FP_SECRET` → 走公开日期盐回落路径（`inkstone-default-salt:UTC日期` 可被任何知道算法的人按天预计算碰撞），且盐未按 owner 域分离；③`referrer: rawReferrer` 把任意 `referer` 头原文入库：无 scheme 白名单（`javascript:` 等垃圾进分析列）、无长度上限（远超 512 的任意大小载荷）、query/fragment（可能含 token）原样持久化，违反数据最小化。
+- 修法：lib/share-analytics.ts 新增导出 `sanitizeVisitReferrer(raw, dropSelfPath?)`（scheme 白名单 http/https/android-app/ios-app、http(s) 只存 origin+pathname、截断 `LIMITS.shareReferrerMaxLength`=512、解析失败→双 null），share `deriveShareReferrer` 的本地实现（`REFERRER_PROTOCOLS`+`storedReferrerValue` 约 15 行）改为复用该函数——同一逻辑第二次出现即抽取，DRY；share 行为不变（`/s/${slug}` 自路径排除经 `dropSelfPath` 参数保留）。blog visits.ts：fp 走 `VISIT_FP_SECRET ? \`${secret}:${row.user_id}\` : null`（缺 secret 记 null 指纹、宁缺毋滥，与 share 同裁定），UA 从去重键剔除（传 `''`），referrer 走 `sanitizeVisitReferrer`。`is_self_referrer` blog 侧仍为 0——不在本行范围，属 blog 独立缺陷。
+- 测试（红先行）：blog-routes 5 例——去重测试反转为「同 IP 换 UA 仍去重、换 IP 才算新访客」（旧断言把「UA 轮换=新访客」这一缺陷当预期，属故意翻转并在此登记）、无 secret 时 `visitor_fp` 落 null 而非公开日期盐、referrer 三例（javascript: 丢弃、只存 origin+path 剥 query/fragment、512 截断）；新增 `requestWithIp` helper 经 `cf` 对象注入真实 IP（`requestClientIp` 无 cf 时返回 'local'）。share-routes 补 1 例钉住抽取后仍无人守的「referrer 指回本分享路径即丢弃」（否则 M4 变异存活=重构静默丢行为）。红 5 确认后修复转绿，blog 87/87 + share 67/67。
+- 变异 5 全杀：fp 键回加 UA、referrer 回填原文、去掉 scheme 白名单、去掉自路径丢弃、去掉缺 secret→null 门。/tmp/mutF4 备份逐一还原。
+- 部署注意：生产未 `wrangler secret put VISIT_FP_SECRET` 时，blog 与 share 同样记 null 指纹（UV 计数为 0、去重不生效）——这是 12 号已裁决的取向，非本次新增风险；上线前须确认 secret 已配。
+- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 105/105（blog-routes+share-routes+share-analytics）。全量回归待补。fix 提交待回填。

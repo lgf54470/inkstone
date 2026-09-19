@@ -18,7 +18,7 @@ import { blogManageRoutes, blogPublicRoutes } from '../src/worker/routes/blog'
 import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
-const DB_ENV = { env: { DB: null as unknown as D1Database } }
+const DB_ENV = { env: { DB: null as unknown as D1Database, VISIT_FP_SECRET: undefined as string | undefined } }
 const EXECUTION_CTX = { waitUntil: vi.fn() } as unknown as ExecutionContext
 
 function shaOf(content: string): string {
@@ -30,6 +30,7 @@ async function makeDb(): Promise<D1Shim> {
   for (const statement of TABLE_STATEMENTS) await runSql(db, statement)
   for (const statement of INDEX_STATEMENTS) await runSql(db, statement)
   DB_ENV.env.DB = db as unknown as D1Database
+  DB_ENV.env.VISIT_FP_SECRET = undefined
   return db
 }
 
@@ -84,6 +85,17 @@ function firstRow(db: D1Shim, sql: string, ...values: unknown[]): Promise<Record
 
 function request(app: Hono<AppBindings>, path: string, init?: RequestInit): Promise<Response> {
   return app.request(path, init, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
+}
+
+async function requestWithIp(
+  app: Hono<AppBindings>,
+  path: string,
+  clientIp: string,
+  headers?: Record<string, string>,
+): Promise<Response> {
+  const req = new Request(`http://localhost${path}`, { headers: { 'CF-Connecting-IP': clientIp, ...headers } })
+  Object.defineProperty(req, 'cf', { value: { clientIp } })
+  return app.request(req, undefined, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
 }
 
 function postJson(app: Hono<AppBindings>, path: string, body: unknown): Promise<Response> {
@@ -228,20 +240,73 @@ describe('blog public routes (real D1)', () => {
     const db = await makeDb()
     await seedUser(db)
     await seedBlogPost(db, { slug: 'viewed-post', title: 'Viewed' })
+    DB_ENV.env.VISIT_FP_SECRET = 'blog-dedupe-secret'
 
     const app = makeApp()
-    const ua = { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' }
-    const first = await request(app, '/api/blog/public/posts/viewed-post', { headers: ua })
+    const first = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '203.0.113.11', { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' })
     expect((await first.json()).post.views).toBe(1)
-    const second = await request(app, '/api/blog/public/posts/viewed-post', { headers: ua })
+    const second = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '203.0.113.11', { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' })
     expect((await second.json()).post.views).toBe(1)
     const row = await firstRow(db, 'SELECT views FROM blog_posts WHERE slug = ?1', 'viewed-post')
     expect(row?.views).toBe(1)
 
-    const freshVisitor = await request(app, '/api/blog/public/posts/viewed-post', {
-      headers: { 'user-agent': 'Mozilla/5.0 FreshVisitor/1.0' },
-    })
+    const rotatedUa = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '203.0.113.11', { 'user-agent': 'Mozilla/5.0 Rotated/2.0' })
+    expect((await rotatedUa.json()).post.views).toBe(1)
+
+    const freshVisitor = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '198.51.100.99', { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' })
     expect((await freshVisitor.json()).post.views).toBe(2)
+  })
+
+  it('records no visitor fingerprint instead of a publicly-derivable date salt', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'nosecret-post', title: 'NoSecret' })
+
+    const app = makeApp()
+    await requestWithIp(app, '/api/blog/public/posts/nosecret-post', '203.0.113.11')
+    await requestWithIp(app, '/api/blog/public/posts/nosecret-post', '203.0.113.11')
+    const rows = await db.prepare('SELECT visitor_fp FROM blog_visits WHERE slug = ?1').bind('nosecret-post').all()
+    expect(rows.results).toHaveLength(2)
+    expect(rows.results.every((r: { visitor_fp: unknown }) => r.visitor_fp === null)).toBe(true)
+  })
+
+  it('drops non-browser scheme referrers instead of storing them raw', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'ref-js', title: 'RefJs' })
+    DB_ENV.env.VISIT_FP_SECRET = 'blog-ref-secret'
+
+    const app = makeApp()
+    await requestWithIp(app, '/api/blog/public/posts/ref-js', '203.0.113.11', { referer: 'javascript:alert(document.domain)' })
+    const row = await firstRow(db, 'SELECT referrer, referrer_host FROM blog_visits WHERE slug = ?1', 'ref-js')
+    expect(row?.referrer).toBeNull()
+    expect(row?.referrer_host).toBeNull()
+  })
+
+  it('stores only origin and path of an http referrer, never the query', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'ref-https', title: 'RefHttps' })
+    DB_ENV.env.VISIT_FP_SECRET = 'blog-ref-secret'
+
+    const app = makeApp()
+    await requestWithIp(app, '/api/blog/public/posts/ref-https', '203.0.113.11', { referer: 'https://news.example.com/article/42?token=secret#frag' })
+    const row = await firstRow(db, 'SELECT referrer, referrer_host FROM blog_visits WHERE slug = ?1', 'ref-https')
+    expect(row?.referrer).toBe('https://news.example.com/article/42')
+    expect(row?.referrer_host).toBe('news.example.com')
+  })
+
+  it('caps a stored referrer at the shared length limit', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'ref-long', title: 'RefLong' })
+    DB_ENV.env.VISIT_FP_SECRET = 'blog-ref-secret'
+
+    const app = makeApp()
+    await requestWithIp(app, '/api/blog/public/posts/ref-long', '203.0.113.11', { referer: `https://a.example.com/${'x'.repeat(600)}` })
+    const row = await firstRow(db, 'SELECT referrer FROM blog_visits WHERE slug = ?1', 'ref-long')
+    expect(typeof row?.referrer).toBe('string')
+    expect((row?.referrer as string).length).toBeLessThanOrEqual(512)
   })
 
   it('pushes tag hierarchy and pagination into SQL with correct totals', async () => {

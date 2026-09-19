@@ -962,6 +962,20 @@ describe('share public referrer hygiene (SH-08)', () => {
 
     expect(res.status).toBe(400)
   })
+
+  it('drops a referrer pointing at the same share path instead of storing it', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'ref-self' })
+
+    const res = await publicVisitAccess(makeApp(), 'ref-self', 'https://app.example/s/ref-self')
+
+    expect(res.status).toBe(200)
+    const row = await firstRow(db, 'SELECT referrer, referrer_host FROM share_visits WHERE slug = ?1', 'ref-self')
+    expect(row?.referrer).toBeNull()
+    expect(row?.referrer_host).toBeNull()
+  })
 })
 
 async function visitAccess(app: Hono<AppBindings>, slug: string, ua: string): Promise<Response> {

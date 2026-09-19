@@ -4309,6 +4309,9 @@ const allowed = new Map([
     '/**\n * Extend a session back to the full TTL. Only call this from an authenticated\n * request whose session is inside the renewal window (see SESSION_RENEW_BEFORE_MS);\n * never call it from unauthenticated paths — renewal must not resurrect or\n * prolong a session the user has not just proven possession of.\n */',
   ]],
   ['src/worker/lib/share-analytics.ts', [
+    '// Only browser-resolvable schemes earn a row; the raw candidate may carry query',
+    '// tokens or fragments, so http(s) stores origin+path only.',
+    '/* An unparseable candidate degrades analytics to a null referrer. */',
     '// 0 vs 0 is indeterminate: reporting 0% would claim a trend measured against real traffic',
   ]],
   ['src/worker/lib/streams.ts', [
@@ -4429,6 +4432,9 @@ const allowed = new Map([
   ['src/worker/routes/blog/visits.ts', [
     '// CF-Connecting-IP is injected by the Cloudflare edge (see requestClientIp);',
     '// raw x-forwarded-for is client-controlled and must not feed analytics.',
+    '// Same rules as share visit recording (SH-04/SH-08, mirrored for blog here):',
+    '// the dedupe key excludes the UA, salt is HMAC under the instance secret and',
+    '// per owner, and a missing secret records no fingerprint at all.',
     '// The analytics row is written for every visit; the boolean tells the caller',
     '// whether this visit should bump the post\'s views counter (new fingerprint',
     '// within the dedupe window, not a bot).',
@@ -4586,8 +4592,6 @@ const allowed = new Map([
     '// The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.',
     '// Without the instance secret record no fingerprint rather than fall back to the public date salt,',
     '// and salt per owner so one browser is not linkable across accounts (SH-04).',
-    '// The raw candidate may carry query tokens or fragments; only origin+path earns a column.',
-    '/* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */',
     '/* An unparseable referer header simply means "no external referrer". */',
   ]],
   ['src/worker/routes/share/read-results.ts', [

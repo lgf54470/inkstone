@@ -1,6 +1,5 @@
 import { Hono, type Context } from 'hono'
 import { setCookie } from 'hono/cookie'
-import { LIMITS } from '@shared/constants'
 import { escapeHtml } from '@shared/escape'
 import { PublicNote } from '@shared/types'
 import type { AppBindings } from '../../env'
@@ -8,7 +7,7 @@ import { ApiError } from '../../lib/errors'
 import { isValidSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readOptionalJsonValidated, requestClientIp } from '../../lib/request'
 import { verifyPassword } from '../../lib/password'
-import { VIEW_DEDUPE_WINDOW_MS, computeVisitorFingerprint, isBot, isSelfReferrer, parseBrowser, parseDeviceType, parseOS, parseReferrerHost } from '../../lib/share-analytics'
+import { VIEW_DEDUPE_WINDOW_MS, computeVisitorFingerprint, isBot, isSelfReferrer, parseBrowser, parseDeviceType, parseOS, sanitizeVisitReferrer } from '../../lib/share-analytics'
 import { createShareAssetSession, shareAssetCookieName } from '../../lib/share-asset-session'
 import { assertNotLocked, clearLoginFailures, consumeAttemptBudget, recordLoginFailure, ThrottleError } from '../../lib/throttle'
 import { shareAccessSchema } from './schemas'
@@ -259,16 +258,6 @@ async function isRecentlySeenVisit(
   return Boolean(seen)
 }
 
-const REFERRER_PROTOCOLS = new Set(['http:', 'https:', 'android-app:', 'ios-app:'])
-
-function storedReferrerValue(u: URL): string {
-  // The raw candidate may carry query tokens or fragments; only origin+path earns a column.
-  if (u.protocol === 'http:' || u.protocol === 'https:') {
-    return `${u.origin}${u.pathname}`.slice(0, LIMITS.shareReferrerMaxLength)
-  }
-  return u.href.slice(0, LIMITS.shareReferrerMaxLength)
-}
-
 function deriveShareReferrer(
   c: Context<AppBindings>,
   body: ShareAccessBody,
@@ -278,17 +267,7 @@ function deriveShareReferrer(
   const candidateReferrer = clientReferrer ?? headerReferrerCandidate(c, slug)
   const requestHost = new URL(c.req.url).host
   const selfReferrer = isSelfReferrer(candidateReferrer, requestHost, slug)
-  let referrer: string | null = null
-  let referrerHost: string | null = null
-  if (candidateReferrer) {
-    try {
-      const u = new URL(candidateReferrer)
-      if (REFERRER_PROTOCOLS.has(u.protocol) && u.pathname !== `/s/${slug}` && u.pathname !== `/s/${slug}/`) {
-        referrer = storedReferrerValue(u)
-        referrerHost = parseReferrerHost(candidateReferrer)
-      }
-    } catch { /* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */ }
-  }
+  const { referrer, referrerHost } = sanitizeVisitReferrer(candidateReferrer, `/s/${slug}`)
   return { selfReferrer, referrer, referrerHost }
 }
 
