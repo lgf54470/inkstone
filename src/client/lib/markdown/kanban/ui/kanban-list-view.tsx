@@ -101,6 +101,8 @@ function ListRowLeading({
             e.stopPropagation()
             onToggleExpand?.()
           }}
+          aria-expanded={expanded}
+          aria-label={t(expanded ? 'preview.kanban_collapse_subtasks' : 'preview.kanban_expand_subtasks')}
           className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
         >
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}

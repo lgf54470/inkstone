@@ -126,34 +126,40 @@ describe('KanbanViewTabs keyboard', () => {
   })
 })
 
+describe('KanbanViewTabs pointer', () => {
+  it('selects the view whose tab is clicked', () => {
+    const { container, onSelectView } = mountTabs('v-board')
+    const target = tabByView('v-gantt', container)
+    act(() => target.click())
+    expect(onSelectView).toHaveBeenCalledWith('v-gantt')
+  })
+})
+
+const boardData: KanbanData = {
+  columns: [
+    { id: 'title', name: 'Title', type: 'title' },
+    {
+      id: 'status',
+      name: 'Status',
+      type: 'select',
+      options: [
+        { id: 'todo', label: 'To Do', color: 'gray' },
+        { id: 'doing', label: 'In Progress', color: 'blue' },
+      ],
+    },
+  ],
+  items: [{ id: 'a', title: 'Design spec', properties: { status: 'todo' } }],
+  views: [
+    { id: 'v1', name: 'Board', type: 'board', groupBy: 'status' },
+    { id: 'v2', name: 'Table', type: 'table', groupBy: 'status' },
+  ],
+}
+
+function mountBoard() {
+  return mount(createElement(KanbanRoot, { initialData: boardData, onUpdateData: vi.fn() }))
+}
+
 describe('KanbanRoot view panel', () => {
-  const data: KanbanData = {
-    columns: [
-      { id: 'title', name: 'Title', type: 'title' },
-      {
-        id: 'status',
-        name: 'Status',
-        type: 'select',
-        options: [
-          { id: 'todo', label: 'To Do', color: 'gray' },
-          { id: 'doing', label: 'In Progress', color: 'blue' },
-        ],
-      },
-    ],
-    items: [{ id: 'a', title: 'Design spec', properties: { status: 'todo' } }],
-    views: [
-      { id: 'v1', name: 'Board', type: 'board', groupBy: 'status' },
-      { id: 'v2', name: 'Table', type: 'table', groupBy: 'status' },
-    ],
-  }
-
-  function mountBoard() {
-    const rendered = mount(
-      createElement(KanbanRoot, { initialData: data, onUpdateData: vi.fn() }),
-    )
-    return rendered
-  }
-
   it('exposes the rendered view as the panel the selected tab controls', () => {
     const { container } = mountBoard()
     const selected = container.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
@@ -172,5 +178,15 @@ describe('KanbanRoot view panel', () => {
     expect(nowSelected?.textContent).toContain('Table')
     const panel = document.getElementById(nowSelected!.getAttribute('aria-controls')!)
     expect(panel?.getAttribute('aria-labelledby')).toBe(nowSelected!.id)
+  })
+
+  it('switches the mounted board to the tab a pointer clicked', () => {
+    const { container } = mountBoard()
+    const tableTab = container.querySelector<HTMLElement>('[role="tab"][data-view-type="table"]')!
+    act(() => tableTab.click())
+    const selected = container.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+    expect(selected?.getAttribute('data-view-type')).toBe('table')
+    const panel = document.getElementById(selected!.getAttribute('aria-controls')!)
+    expect(panel?.getAttribute('aria-labelledby')).toBe(selected!.id)
   })
 })

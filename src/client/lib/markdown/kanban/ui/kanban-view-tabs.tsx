@@ -96,6 +96,7 @@ export function KanbanViewTabs({
             data-view-type={v.type}
             type='button'
             tabIndex={isActive ? 0 : -1}
+            onClick={() => onSelectView(v.id)}
             onKeyDown={(event) => handleKeyDown(event, index)}
             className={`flex items-center gap-1.5 rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-12)] font-medium transition-colors ${
               isActive

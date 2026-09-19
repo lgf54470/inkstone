@@ -41,6 +41,7 @@ function SubitemItemRow({
           type='checkbox'
           checked={subtask.completed}
           onChange={onToggle}
+          aria-label={subtask.title}
           className='size-3 rounded-[var(--r-xs)] accent-[var(--accent)]'
         />
         {subtask.icon && <KanbanIconBadge icon={subtask.icon} size={13} />}
@@ -50,6 +51,7 @@ function SubitemItemRow({
         <button
           type='button'
           onClick={onDelete}
+          aria-label={`${t('preview.kanban_delete_subitem')}: ${subtask.title}`}
           className='text-[var(--text-tertiary)] hover:text-[var(--danger)]'
         >
           <Trash2 size={11} />
@@ -145,6 +147,8 @@ function ItemTitleCell({
         <button
           type='button'
           onClick={onToggleExpand}
+          aria-expanded={expanded}
+          aria-label={t(expanded ? 'preview.kanban_collapse_subtasks' : 'preview.kanban_expand_subtasks')}
           className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
         >
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -166,6 +170,7 @@ function ItemTitleCell({
       <button
         type='button'
         onClick={onOpenDetail}
+        aria-label={t('preview.kanban_card_details')}
         className='ml-auto text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
       >
         <MessageSquare size={13} />
@@ -199,6 +204,7 @@ export function KanbanTableRow({
             type='checkbox'
             checked={isSelected}
             onChange={onToggleSelect}
+            aria-label={t('preview.kanban_select_card')}
             className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)]'
           />
         </div>

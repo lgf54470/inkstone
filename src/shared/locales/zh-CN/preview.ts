@@ -149,6 +149,8 @@ export const messages = {
 'preview.kanban_delete_column': '删除分组',
 'preview.kanban_collapse_column': '收起此列',
 'preview.kanban_expand_column': '展开此列',
+'preview.kanban_collapse_group': '折叠分组',
+'preview.kanban_expand_group': '展开分组',
 'preview.kanban_column_color': '分组颜色',
 'preview.kanban_column_name_placeholder': '分组名称…',
 'preview.kanban_group_by': '分组依据',

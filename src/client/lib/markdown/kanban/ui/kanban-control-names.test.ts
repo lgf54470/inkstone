@@ -120,6 +120,11 @@ function selectView(container: HTMLElement, type: KanbanViewType): void {
   act(() => {
     tab!.click()
   })
+  // Without this the walk would silently re-measure whichever view mounted first.
+  const selected = container.querySelector<HTMLElement>(
+    `[role="tab"][data-view-type="${type}"][aria-selected="true"]`,
+  )
+  expect(selected, `clicking the ${type} tab did not select it`).not.toBeNull()
 }
 
 describe.each(VIEW_TYPES)('%s view controls are named', (type) => {

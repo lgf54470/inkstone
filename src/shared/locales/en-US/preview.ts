@@ -139,6 +139,8 @@ export const messages = {
 'preview.kanban_delete_column': 'Delete Group',
 'preview.kanban_collapse_column': 'Collapse Column',
 'preview.kanban_expand_column': 'Expand Column',
+'preview.kanban_collapse_group': 'Collapse group',
+'preview.kanban_expand_group': 'Expand group',
 'preview.kanban_column_color': 'Group Color',
 'preview.kanban_column_name_placeholder': 'Group name…',
 'preview.kanban_group_by': 'Group By',
