@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import {
   Archive,
   CheckSquare2,
@@ -21,11 +22,14 @@ import type { MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { MoveToFolderSubmenu } from '../../folders'
 import { BlogNoteSubmenu, useBlogStore } from '../../blog'
-import { ShareNoteSubmenu } from '../../share'
 import { useUi } from '../../../store/ui'
 import type { NoteRowState } from './note-row-state'
 import { openNoteFloatingWindow } from './note-row-actions'
 import type { NoteRowActions } from './note-row-actions'
+
+// SH-20: part of the share modal graph, so it loads when the submenu first
+// opens instead of joining the note list's chunk.
+const ShareNoteSubmenu = lazy(() => import('../../share/modals').then((m) => ({ default: m.ShareNoteSubmenu })))
 
 export function useNoteRowMenuItems(state: NoteRowState, actions: NoteRowActions): MenuItem[] {
     if (state.inTrash)
@@ -99,16 +103,18 @@ function shareMenuItem(state: NoteRowState): MenuItem {
         label: t('workspace.share'),
         icon: <Share2 size={13}/>,
         ...(computedIsShared ? {
-            submenu: ({ closeMenu }) => (
-                <ShareNoteSubmenu
-                    noteId={note.id}
-                    noteTitle={note.title || t('common.untitled_note')}
-                    share={noteShare}
-                    closeMenu={closeMenu}
-                    onOpenSettings={() => setIsShareModalOpen(true)}
-                    onOpenQr={(url, title, slug) => setQrModalData({ url, title, slug })}
-                    onOpenAnalytics={() => setIsAnalyticsOpen(true)}
-                />
+            submenu: ({ closeMenu }: { closeMenu: () => void }) => (
+                <Suspense fallback={null}>
+                    <ShareNoteSubmenu
+                        noteId={note.id}
+                        noteTitle={note.title || t('common.untitled_note')}
+                        share={noteShare}
+                        closeMenu={closeMenu}
+                        onOpenSettings={() => setIsShareModalOpen(true)}
+                        onOpenQr={(url, title, slug) => setQrModalData({ url, title, slug })}
+                        onOpenAnalytics={() => setIsAnalyticsOpen(true)}
+                    />
+                </Suspense>
             ),
         } : {
             onSelect: () => setIsShareModalOpen(true),

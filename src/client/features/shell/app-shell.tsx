@@ -26,8 +26,8 @@ const CommandPalette = lazy(() => import('../command').then((m) => ({ default: m
 const SettingsPanel = lazy(() => import('../settings').then((m) => ({ default: m.SettingsPanel })))
 const ShortcutsPanel = lazy(() => import('../command').then((m) => ({ default: m.ShortcutsPanel })))
 const GraphPanel = lazy(() => import('../graph').then((m) => ({ default: m.GraphPanel })))
-const ShareHubModal = lazy(() => import('../share').then((m) => ({ default: m.ShareHubModal })))
-const ShareEditModal = lazy(() => import('../share').then((m) => ({ default: m.ShareEditModal })))
+const ShareHubModal = lazy(() => import('../share/modals').then((m) => ({ default: m.ShareHubModal })))
+const ShareEditModal = lazy(() => import('../share/modals').then((m) => ({ default: m.ShareEditModal })))
 const BlogHubModal = lazy(() => import('../blog').then((m) => ({ default: m.BlogHubModal })))
 
 const NAV_DRAWER_WIDTH = 272

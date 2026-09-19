@@ -1125,7 +1125,13 @@ const allowed = new Map([
     '// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.',
     '// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.',
   ]],
+  ['src/client/features/list/note-list/note-row-items.tsx', [
+    '// SH-20: part of the share modal graph, so it loads when the submenu first',
+    '// opens instead of joining the note list\'s chunk.',
+  ]],
   ['src/client/features/list/note-list/note-row-ui.tsx', [
+    '// SH-20: these carry qrcode.react and the analytics charts, so they must not',
+    '// join the note list\'s chunk — they load on first open instead.',
     '// containIntrinsicSize hints reserve the row height before content renders',
     '// under content-visibility: auto; one value per density.',
   ]],
@@ -1960,6 +1966,16 @@ const allowed = new Map([
   ]],
   ['src/client/features/settings/totp-settings/use-totp-settings.ts', [
     '// Best-effort server cleanup; an orphaned pending setup expires server-side.',
+  ]],
+  ['src/client/features/share/modals/index.ts', [
+    '// Lazy-only surface (SH-20): these components drag in qrcode.react and the',
+    '// analytics charts, so a static import here regrows the shell chunk the note',
+    '// list already loads. Reach them only via `lazy(() => import(\'.../share/modals\'))`.',
+  ]],
+  ['src/client/features/share/qr-export.ts', [
+    '// Lives outside the static barrel (SH-20): only the lazy QR modal calls these,',
+    '// and the QR_BG_COLOR import would otherwise keep the qrcode chunk inside the',
+    '// shell\'s static closure.',
   ]],
   ['src/client/features/share/share-form.ts', [
     '// A new or replaced passcode must be at least 4 characters (the server',
@@ -4618,6 +4634,13 @@ const allowed = new Map([
     '// Exclude bots only:',
     '// All disabled:',
     '// With table alias:',
+  ]],
+  ['tests/share-code-split.test.ts', [
+    '/**\n * The share feature must stay code-split (SH-20): its five modals carry\n * qrcode.react and the analytics charts, so any *static* import that reaches\n * them regrows the shell chunk the note list already loads. The modals are\n * only allowed behind `src/client/features/share/modals` and must arrive via\n * `lazy(() => import(...))`.\n *\n * The build itself is too heavy for CI-level feedback, so this test walks the\n * static import graph (dynamic `import()` calls are boundaries, not edges)\n * and asserts no module outside the share feature reaches the modal graph —\n * which is exactly the state the 2026-09-17 dist measurement contradicted.\n */',
+    '// The lazy-only surface: the five modal components plus their dedicated entry.',
+    '// Files that must pull the modals in dynamically instead of statically.',
+    '// Files whose static closure touches each banned module (pre-image of the',
+    '// ban), computed by one reverse-DFS over static edges.',
   ]],
   ['tests/share-routes.test.ts', [
     '// visit recording runs via waitUntil; the test context must let us await it',

@@ -37,7 +37,7 @@
 | 22 | SH-23 | store 派生 `Map<noteId, ShareRow>`，行订阅改原始值 | P2 | ✅ | d291a2be |
 | 23 | SH-22 | 表格行 memo + 菜单 items 惰性构建 + folders Map | P2 | ✅ | 245c74ce |
 | 24 | SH-19 | App 启动瘦身：`/api/share/summary` 轻量端点 | P1 | ✅ | 2b04d5cc |
-| 25 | SH-20 | code-split：barrel 拆 store/modals 入口（保持 blog 现有 import 不破） | P1 | ⬜ | |
+| 25 | SH-20 | code-split：barrel 拆 store/modals 入口（保持 blog 现有 import 不破） | P1 | ✅ | 待回填 |
 | 26 | SH-17a | 列表接口 5 个统计查询 `db.batch` 并行化（第一步，不拆端点） | P0 部分 | ⬜ | |
 | 27 | SH-28 | 实时访问日志补时间窗 + 文案改「最近访问」 | P2 | ⬜ | |
 | 28 | SH-30 | 侧栏计数口径（软删过滤/expiring 互斥/全时段标注）+ LIMIT 500 truncated | P2 | ⬜ | |
@@ -158,3 +158,15 @@
   - `src/client/demo/backend/routes/share.ts`：demo 镜像 `/api/share/summary`（state.shares 键集）。
 - 测试：`tests/share-routes.test.ts` 2 例（跨用户隔离+精确响应体）；`share-store/summary-load.test.ts` 5 例（填充 Set/在途去重/列表到手丢集合/已载列表跳过/失败 warn+toast）；`row-index.test.ts` 增 `isNoteShared` 3 例；`use-share-note-submenu.test.ts` 2 例（有分享只 GET 不 create、真未分享仍 create）。变异四杀：不丢 summary / 删跳过守卫 / isNoteShared 去集合回退 / ensureShare 退回直接 create，各自转红（/tmp 备份还原）。
 - 遗留：`refreshSummary` 失败与 loadShares 一样走 toast（启动离线会弹一次），行为与修前一致；行内 Switch 首发/applyServerShare 未知行仍回退整列表（SH-21 既定语义，未动）。
+
+## 25 — SH-20 share modals 退出 shell 首载块（2026-09-19）
+
+- 现象（2026-09-17 dist 实测）：`qrcode.react`（16.2KB）+ 分享 modal 群（143.6KB raw）全在 shell 块，登录后必载；根因是 `features/share/index.ts` 宽 barrel 同时导出 store 与 5 个 modal，`note-row-ui.tsx`/`note-row-items.tsx` 静态 import 让 `app-shell.tsx` 的两处 `lazy()` 退化为同块。
+- 修复：
+  - `features/share/modals/index.ts`：新增 lazy-only 入口，具名再导出 5 个 modal（ShareHubModal/ShareEditModal/ShareNoteAnalyticsModal/ShareNoteSubmenu/ShareQrModal）。
+  - `features/share/index.ts`：只留静态安全面（share-helpers + share-store），blog 两处 `countryFlag/countryNameLocalized` 的 `from '../../share'` 原样不破。
+  - `note-row-ui.tsx`：3 个行内 modal 改模块级 `lazy(() => import('../../share/modals'))` + 条件渲染处包 `<Suspense fallback={null}>`；`note-row-items.tsx` 的 ShareNoteSubmenu 同改（子菜单首次展开才拉块）；`app-shell.tsx` 两处 lazy 指向 `../share/modals`。
+  - `qr-export.ts`：downloadQrSvg/downloadQrPng/copyQrImageToClipboard 从 share-helpers 迁出（只被 share-qr-modal 使用）——实测发现它们在静态 barrel 时，`QR_BG_COLOR` 常量边把整个 qrcode 库块拽进 shell 的静态闭包；share-helpers 删三函数与 qr-colors 依赖。
+  - `tests/share-code-split.test.ts`：AST 静态闭包守卫（动态 import 视作边界）——share 之外任何模块不得静态触达 modal 图；3 个消费文件必须经 `share/modals` 动态入口且不得 dynamic-import 根 barrel（防再退化）；带「被禁面必须存在」防空转。
+- 验证：红→绿；变异三杀（barrel 回流一个 modal / app-shell lazy 退回根 barrel——首版断言只数存在性被此变异漏过，加强为 barrel 禁止后杀死 / 删 modals 入口）。tsc+15 文件/138 测+十门禁全绿；`npm run build` 产物复核：qrcode 块（esm-*.js 15.8KB）不再出现在 shell 的 43 块静态闭包里，qr-colors 独立 0KB 块仅被 modals/account-settings/attachments 三个 lazy 块引用。
+- 遗留（按约束③不动）：shell 闭包内唯一残留 qrcode 触达来自 `blog-*.js`（link-qr-modal 静态并进 blog 块），与 blog barrel 宽导出同构，归 blog 管理中心任务；`vendor:check` 只算 index.html 静态闭包的盲区本次由新守卫在源码层补住，未改门禁脚本。
