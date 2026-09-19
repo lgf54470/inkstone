@@ -51,10 +51,13 @@
 | F1 | SH-29 | `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，双侧回归 | P2 | ✅ | 1b502776 |
 | F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用） | P2 | ✅ | 9621ab0d |
 | F2b | SH-16c | all 整表拉行 SQL 下推（26 号遗留）：`lib/visit-aggregates.ts` 聚合语句 + 行路/SQL 路同一 normalized 中间形态 + 等价测试 | P2 | ✅ | fd22e03b |
-| F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后） | — | 排队 | |
+| F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后）：blog_visits 级联 + 孤儿清扫 | P2 | ✅ | 待回填 |
 | F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | eff0a6b5 |
 | F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | ✅ | f812c7a7 |
 | H1 | SH-39 | `maxLogRecords`（设置模态「最多记录数」）全仓无消费者，属假设置：接入日志列表取数上限或删除控件+文案+本地键 | P3 | 排队 | |
+| H3 | SH-41 | 安全：`blog_posts` 删除的两条 `DELETE FROM blog_comments WHERE post_id …` 不带 user 限定——按 id 点名他人文章即可删其评论（跨账号写），须与同批 posts 语句同口径加 `user_id` | P1 | 排队 | |
+| H4 | SH-42 | `POST /api/blog/posts/batch` 的 `postIds` 无长度上限，`IN (…)` 直接拼占位符——>100 个 id 必 500（share 侧 02 号同款 D1 变量上限），需分块或 schema 上限 | P1 | 排队 | |
+| H5 | SH-43 | `blog_visits` 无保留期设置（share 已有 `share.visitLogRetentionDays`）：cron 只扫孤儿行，需要 blog settings 段落 + 模态接线，属产品决策 | P2 | 排队 | |
 | H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby` | P2 | 排队 | |
 | G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | 排队 | |
 
@@ -340,3 +343,13 @@
 - 变异 13 发全杀（/tmp/mutF5 备份还原）：`> 0` 改 `>= 0`、默认值改 0、去掉 `json_valid`、`LEFT JOIN` 改 `INNER JOIN`、cutoff 不看保留期、`ORDER BY` 改最新先出、cutoff 的 `-` 改 `+`、bind 参数序交换、`'share'` 移出 `SETTINGS_SECTIONS`、`Math.min(1_000, …)` 的 1 改 0、模态保存 `maxLogRecords`、模态写死 30、store 重新持久化 `logRetentionDays`。其中 M4/M13 首轮存活 → 补「已删账号行仍清扫」与 store 那 3 例后转杀。
 - 遗留登记：SH-39（`maxLogRecords` 为无消费者的假设置——要么接进日志列表取数上限，要么删控件与文案）、SH-40（`RetentionField` 的可见标签未与 `Segmented` 的 `role=radiogroup` 关联，`Segmented` 已支持 `label`/`aria-labelledby`，两处控件同时缺名）。均按铁律14 不在本提交夹带。
 - 验证：tsc -b 绿；11 静态门禁全绿（escape:check 先报 user-settings.ts 双 cast，按改键既有豁免条目处理）；vitest 定向 32/32（share-visit-retention + user-settings + constants + 两个 client 保留期用例）。全量回归 241 文件/1857 测试绿（REGRESSION_EXIT=0，串行 372s）。fix 提交 f812c7a7。
+
+## 41 — F3（SH-05b）blog 访问日志生命周期：删除文章级联 + 共用 cron 扫孤儿（2026-09-20）
+
+- 现状与根因：13 号在 share 侧做的「级联 + cron 兜底」在 blog 侧完全没做——`DELETE /api/blog/posts/:id` 与 `POST /api/blog/posts/batch {action:'delete'}` 只删 `blog_posts`+`blog_comments`，`blog_visits` 永久留存；共用调度的 `purgeExpiredOperationalData` 也不碰 `blog_visits`（`maintenance.ts` 与 `runAttachmentCleanup` 同批被 blog 侧依赖，属当时冻结面）。后果与 share 侧同构：博客看板 `range=all` 的 `COUNT(*)`（`stats.ts` 按 user 统计，不 join posts）把已删文章的访问继续计入 totalViews，`loadBlogRecentVisits` 的 `LEFT JOIN blog_posts` 落空后以 `COALESCE(p.title, bv.slug)` 顶替，日志列表出现「只有 slug」的幽灵行。
+- 修法（级联）：posts.ts 单篇删除从两条独立 `run()` 改为一次 `db.batch`（posts/comments/visits 三条，不再可能出现「文章在、日志没了」或反向的半删），新增 `DELETE FROM blog_visits WHERE post_id = ?1 AND user_id = ?2`；批量删除的 `blogBatchStatements('delete')` 同样补一条按 `user_id + post_id IN (…)` 限定的语句。两条新语句都带 owner 限定（`blog_visits.user_id` 本就存在），不复制评论删除那段的跨账号缺口（见 H3/SH-41）。
+- 修法（cron）：`visitLogSweeps` 尾部加第三条——`blog_visits` 中 `NOT EXISTS (SELECT 1 FROM blog_posts bp WHERE bp.id = bv.post_id)` 的行按 `visited_at, id` 升序、`LIMIT ?1`（与 share 孤儿清扫同界），结果计数 `orphanBlogVisits`。索引 `idx_blog_visits_post_time(post_id, visited_at DESC)` 已在，无需迁移。**不做** blog 侧保留期：那需要新的 settings 段落 + 设置界面（产品决策），记 H5/SH-43。
+- 看板计数不另加 `EXISTS` 过滤：share 侧需要它是因为 revoke 与笔记存活可以解耦，而 blog 侧文章一旦删除其日志即刻级联消失、历史脏行由同一 cron 兜底——两条路径合起来已保证聚合面不再有幽灵行，多一处 join 只增加每次看板的扫描成本。
+- 测试（红先行）：`tests/blog-routes.test.ts` 新两个 describe 共 4 例——单篇删除带走该文 2 行且不动他文、批量删除带走被删两文而留下的那篇保有 1 行（红态 `expected { 'p-doomed': 2, 'p-kept': 1 } to deeply equal { 'p-kept': 1 }`）；隔离 2 例点名 `p-foreign`（他人文章+其 visit 行必须原样存活，钉住 owner 限定）。`tests/blog-visit-cleanup.test.ts`（新文件，注册进 vitest 双列表）2 例——cron 删孤儿留存活文并回计数 1、`limit=2` 两次 tick 由旧到新抽干（红态 `expected [ 'alive', 'ghost' ] to deeply equal [ 'alive' ]`）。
+- 变异 9 发全杀（/tmp/mutF3 备份还原）：单篇/批量各去掉 visits 语句、两路各去掉 `user_id` 限定、cron 去掉 `NOT EXISTS`、join 列改错、去掉 `LIMIT`、`ORDER BY` 改最新优先、去掉 `bind(capped)`。
+- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 109/109（blog-routes 30 + blog-visit-cleanup 2 + share-visit-retention 8 + share-routes 69）。全量回归待回填。fix 提交 待回填。

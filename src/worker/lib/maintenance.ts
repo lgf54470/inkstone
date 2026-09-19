@@ -23,6 +23,7 @@ interface OperationalPurgeResult {
   loginAttempts: number
   orphanShareVisits: number
   shareVisitLogs: number
+  orphanBlogVisits: number
 }
 
 export async function purgeExpiredOperationalData(
@@ -32,7 +33,7 @@ export async function purgeExpiredOperationalData(
 ): Promise<OperationalPurgeResult> {
   const capped = Math.max(1, Math.min(1_000, Math.trunc(limit)))
   // Order matters: the destructuring below lines up with these statements.
-  const [sessions, shareAssetSessions, totpLoginChallenges, loginAttempts, orphanShareVisits, shareVisitLogs] =
+  const [sessions, shareAssetSessions, totpLoginChallenges, loginAttempts, orphanShareVisits, shareVisitLogs, orphanBlogVisits] =
     await db.batch([...tokenSweeps(db, now, capped), ...visitLogSweeps(db, now, capped)])
   return {
     sessions: sessions.meta.changes ?? 0,
@@ -41,6 +42,7 @@ export async function purgeExpiredOperationalData(
     loginAttempts: loginAttempts.meta.changes ?? 0,
     orphanShareVisits: orphanShareVisits.meta.changes ?? 0,
     shareVisitLogs: shareVisitLogs.meta.changes ?? 0,
+    orphanBlogVisits: orphanBlogVisits.meta.changes ?? 0,
   }
 }
 
@@ -91,5 +93,13 @@ function visitLogSweeps(db: D1Database, now: number, capped: number): D1Prepared
           ORDER BY sv.visited_at, sv.id LIMIT ?3
        )`,
     ).bind(now, DAY_MS, capped),
+    // Blog visits have no retention setting yet, so only rows whose post is gone are swept here.
+    db.prepare(
+      `DELETE FROM blog_visits WHERE id IN (
+         SELECT bv.id FROM blog_visits bv
+          WHERE NOT EXISTS (SELECT 1 FROM blog_posts bp WHERE bp.id = bv.post_id)
+          ORDER BY bv.visited_at, bv.id LIMIT ?1
+       )`,
+    ).bind(capped),
   ]
 }

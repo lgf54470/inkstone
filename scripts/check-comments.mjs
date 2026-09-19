@@ -4293,6 +4293,7 @@ const allowed = new Map([
     '/** Bounded deletes for rows that carry their own expiry, plus stale login attempts. */',
     '/** Visit log rows are the only purge without an expiry column: they go by ownership and age. */',
     '// Sweeps rows orphaned before the revoke/purge cascades existed (and by the MCP revoke tool).',
+    '// Blog visits have no retention setting yet, so only rows whose post is gone are swept here.',
   ]],
   ['src/worker/lib/outbound-url.ts', [
     '// Shared outbound-request guards: the hostname and IP safety checks back both',
@@ -4446,6 +4447,9 @@ const allowed = new Map([
     '// into private or reserved networks; relative redirects resolve against the',
     '// current hop. The caller receives the first non-redirect response.',
     '// Best-effort body release; a failed cancel does not change the verdict.',
+  ]],
+  ['src/worker/routes/blog/posts.ts', [
+    '// One batch, so a post cannot survive while its log rows go missing (or the other way round).',
   ]],
   ['src/worker/routes/blog/public-links.ts', [
     '/**\n * The budget one visitor gets for applying: the count used to be over the whole table, so\n * five applications from anywhere took the endpoint down for everyone for a minute while\n * doing nothing to stop the one source that sent them.\n */',

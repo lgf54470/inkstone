@@ -709,3 +709,99 @@ describe('blog note-post lookup route (real D1)', () => {
     expect((await missing.json()).post).toBeNull()
   })
 })
+describe('blog visit log lifecycle (SH-05b)', () => {
+  async function visitCounts(db: D1Shim): Promise<Record<string, number>> {
+    const rows = await db.prepare('SELECT post_id, COUNT(*) AS n FROM blog_visits GROUP BY post_id').all()
+    const counts: Record<string, number> = {}
+    for (const row of rows.results ?? []) counts[String(row.post_id)] = Number(row.n)
+    return counts
+  }
+
+  it('deleting a post deletes its visit log rows', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const doomed = await seedBlogPost(db, { id: 'p-doomed', slug: 'doomed' })
+    const kept = await seedBlogPost(db, { id: 'p-kept', slug: 'kept' })
+    await seedVisitAt(db, doomed.id, doomed.slug, H.now - 1_000, 'fp-a')
+    await seedVisitAt(db, doomed.id, doomed.slug, H.now - 2_000, 'fp-b')
+    await seedVisitAt(db, kept.id, kept.slug, H.now - 1_000, 'fp-c')
+    const app = makeApp()
+
+    expect((await request(app, `/api/blog/posts/${doomed.id}`, { method: 'DELETE' })).status).toBe(200)
+
+    expect(await visitCounts(db)).toEqual({ [kept.id]: 1 })
+  })
+
+  it('a batch delete removes the visit rows of every post it removed', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const first = await seedBlogPost(db, { id: 'p-one', slug: 'one' })
+    const second = await seedBlogPost(db, { id: 'p-two', slug: 'two' })
+    const kept = await seedBlogPost(db, { id: 'p-three', slug: 'three' })
+    await seedVisitAt(db, first.id, first.slug, H.now - 1_000, 'fp-a')
+    await seedVisitAt(db, second.id, second.slug, H.now - 1_000, 'fp-b')
+    await seedVisitAt(db, kept.id, kept.slug, H.now - 1_000, 'fp-c')
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/blog/posts/batch', {
+      action: 'delete',
+      postIds: [first.id, second.id],
+    })
+
+    expect(res.status).toBe(200)
+    expect(await visitCounts(db)).toEqual({ [kept.id]: 1 })
+  })
+})
+
+describe('blog visit log cascade isolation (SH-05b)', () => {
+  async function seedForeignPost(db: D1Shim): Promise<{ id: string; slug: string }> {
+    const owner = 'user-2'
+    await runSql(
+      db,
+      `INSERT INTO users (id, username, password_hash, login, name, avatar_url, created_at, last_seen_at)
+       VALUES (?1, ?1, 'x', 'login', 'Other', '', ?2, ?2)`,
+      owner, H.now,
+    )
+    await runSql(
+      db,
+      `INSERT INTO blog_posts (id, slug, note_id, user_id, title, content, tags, published_at, created_at, updated_at)
+       VALUES ('p-foreign', 'foreign', 'n-foreign', ?1, 'Foreign', 'body', '[]', ?2, ?2, ?2)`,
+      owner, H.now,
+    )
+    await runSql(
+      db,
+      `INSERT INTO blog_visits (user_id, post_id, slug, visited_at, visitor_fp, is_bot, is_self_referrer, is_owner)
+       VALUES (?1, 'p-foreign', 'foreign', ?2, 'fp-f', 0, 0, 0)`,
+      owner, H.now,
+    )
+    return { id: 'p-foreign', slug: 'foreign' }
+  }
+
+  async function foreignRowCounts(db: D1Shim): Promise<{ posts: number; visits: number }> {
+    const posts = await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_posts WHERE id = ?1', 'p-foreign')
+    const visits = await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_visits WHERE post_id = ?1', 'p-foreign')
+    return { posts: Number(posts?.n ?? 0), visits: Number(visits?.n ?? 0) }
+  }
+
+  it('a delete that names another account post leaves it alone', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const foreign = await seedForeignPost(db)
+    const app = makeApp()
+
+    expect((await request(app, `/api/blog/posts/${foreign.id}`, { method: 'DELETE' })).status).toBe(200)
+
+    expect(await foreignRowCounts(db)).toEqual({ posts: 1, visits: 1 })
+  })
+
+  it('a batch delete that names another account post leaves it alone', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const foreign = await seedForeignPost(db)
+    const app = makeApp()
+
+    expect((await postJson(app, '/api/blog/posts/batch', { action: 'delete', postIds: [foreign.id] })).status).toBe(200)
+
+    expect(await foreignRowCounts(db)).toEqual({ posts: 1, visits: 1 })
+  })
+})

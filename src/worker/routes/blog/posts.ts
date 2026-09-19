@@ -356,15 +356,12 @@ function registerBlogPostsDeleteRoute(blogManageRoutes: Hono<AppBindings>): void
     const id = c.req.param('id')
     const userId = c.get('userId')!
 
-    await c.env.DB
-      .prepare('DELETE FROM blog_posts WHERE id = ?1 AND user_id = ?2')
-      .bind(id, userId)
-      .run()
-
-    await c.env.DB
-      .prepare('DELETE FROM blog_comments WHERE post_id = ?1')
-      .bind(id)
-      .run()
+    // One batch, so a post cannot survive while its log rows go missing (or the other way round).
+    await c.env.DB.batch([
+      c.env.DB.prepare('DELETE FROM blog_posts WHERE id = ?1 AND user_id = ?2').bind(id, userId),
+      c.env.DB.prepare('DELETE FROM blog_comments WHERE post_id = ?1').bind(id),
+      c.env.DB.prepare('DELETE FROM blog_visits WHERE post_id = ?1 AND user_id = ?2').bind(id, userId),
+    ])
 
     return c.json({ ok: true })
   })
@@ -455,6 +452,7 @@ function blogBatchStatements(
       return [
         { sql: `DELETE FROM blog_posts${withIds}`, binds: [userId, ...postIds] },
         { sql: `DELETE FROM blog_comments WHERE post_id IN (${placeholders})`, binds: [...postIds] },
+        { sql: `DELETE FROM blog_visits WHERE user_id = ? AND post_id IN (${placeholders})`, binds: [userId, ...postIds] },
       ]
     case 'setCategory':
       return [{ sql: `UPDATE blog_posts SET category_id = ?, updated_at = ?${withIds}`, binds: [body.categoryId || null, now, userId, ...postIds] }]
