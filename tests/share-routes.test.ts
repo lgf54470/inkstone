@@ -1063,3 +1063,56 @@ describe('share visit wipe requires the current password (SH-12)', () => {
     expect((await older.json()).deleted).toBe(1)
   })
 })
+
+describe('share slug consistency (SH-13)', () => {
+  it('turns a concurrent slug race into 409 instead of a 500', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, { id: 'race-1' })
+    const n2 = await seedNote(db, { id: 'race-2' })
+    const app = makeApp()
+
+    const [resA, resB] = await Promise.all([
+      postJson(app, `/api/share/${n1}`, { customSlug: 'taken-race' }),
+      postJson(app, `/api/share/${n2}`, { customSlug: 'taken-race' }),
+    ])
+    const statuses = [resA.status, resB.status].sort()
+    expect(statuses).toEqual([200, 409])
+    expect((await allRows(db, 'SELECT slug FROM shares WHERE slug = ?1', 'taken-race')).length).toBe(1)
+  })
+
+  it('re-points visit rows when the slug is renamed', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, { id: 'rename-1' })
+    await seedShare(db, { note_id: n1, slug: 'old-name' })
+    await seedVisit(db, { note_id: n1, slug: 'old-name', visitor_fp: 'fp-r' })
+    const app = makeApp()
+
+    const res = await postJson(app, `/api/share/${n1}`, { customSlug: 'new-name' })
+    expect(res.status).toBe(200)
+    expect((await firstRow(db, 'SELECT slug FROM share_visits WHERE note_id = ?1', n1))!.slug).toBe('new-name')
+
+    const body = await (await request(app, '/api/share/visits?search=new-name')).json()
+    expect(body.total).toBe(1)
+  })
+
+  it('revoking a share also clears its asset sessions', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, { id: 'sess-1' })
+    await seedShare(db, { note_id: n1, slug: 'sess-slug' })
+    await runSql(
+      db,
+      `INSERT INTO share_asset_sessions (id, slug, password_hash, expires_at, created_at)
+       VALUES ('sas-1', 'sess-slug', 'x', ?1, ?1)`,
+      H.now + 3_600_000,
+    )
+    const app = makeApp()
+
+    const res = await request(app, `/api/share/${n1}`, { method: 'DELETE' })
+    expect(res.status).toBe(200)
+    expect(await firstRow(db, 'SELECT id FROM share_asset_sessions WHERE slug = ?1', 'sess-slug')).toBeNull()
+    expect(await firstRow(db, 'SELECT slug FROM shares WHERE note_id = ?1', n1)).toBeNull()
+  })
+})

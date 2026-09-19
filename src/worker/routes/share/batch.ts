@@ -119,7 +119,12 @@ async function disableSharesForNotes(db: D1Database, userId: string, noteIds: st
 export async function revokeSharesForNotes(db: D1Database, userId: string, noteIds: string[]): Promise<number> {
   let affected = 0
   for (const chunk of chunkNoteIds(noteIds)) {
-    const [sharesDeleted] = await db.batch([
+    // Sessions go first: their lookup is a subquery over shares and must read the
+    // still-present rows inside the same transaction.
+    const [, sharesDeleted] = await db.batch([
+      db.prepare(
+        `DELETE FROM share_asset_sessions WHERE slug IN (SELECT slug FROM shares WHERE user_id = ? AND note_id IN (${placeholdersFor(chunk)}))`,
+      ).bind(userId, ...chunk),
       db.prepare(
         `DELETE FROM shares WHERE user_id = ? AND note_id IN (${placeholdersFor(chunk)})`,
       ).bind(userId, ...chunk),

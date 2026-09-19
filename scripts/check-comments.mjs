@@ -4463,6 +4463,14 @@ const allowed = new Map([
     '// One upsert per note inside a chunked db.batch: the whole chunk commits together,',
     '// and both arms are owner-guarded so a foreign note_id can neither be inserted over',
     '// nor have its share flipped (the old read-then-insert crashed on exactly that).',
+    '// Sessions go first: their lookup is a subquery over shares and must read the',
+    '// still-present rows inside the same transaction.',
+  ]],
+  ['src/worker/routes/share/note.ts', [
+    '// The collision pre-check is not atomic: a concurrent registration can take the',
+    '// slug between check and write, and then the UNIQUE index rejects us with 500.',
+    '// Visit rows keep the slug they were recorded under; without this rename the',
+    '// log\'s slug column and search would strand on the dead link.',
   ]],
   ['src/worker/routes/share/organizer.ts', [
     '// Only the boolean ships: why a slug is unavailable (invalid vs taken) must not be a lookup oracle.',

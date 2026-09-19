@@ -31,7 +31,7 @@
 | 16 | SH-10 | batch 回真实受影响行数 + enable 原子化 | P2 | ✅ | ea51cc59 |
 | 17 | SH-11 | share 路由 LIKE 通配符转义（shares/visits/organizer 三处） | P3 | ✅ | 2ae84353 |
 | 18 | SH-12 | `DELETE /visits?type=all` 加 requireRecentAuth | P3 | ✅ | bf2c2f35 |
-| 19 | SH-13 | slug 一致性：抢注 409、撤销清 share_asset_sessions | P3 | ⬜ | |
+| 19 | SH-13 | slug 一致性：抢注 409、撤销清 share_asset_sessions | P3 | ✅ | 待回填 |
 | 20 | SH-18 | 搜索防抖 + AbortSignal + 在途去重 | P1 | ⬜ | |
 | 21 | SH-21 | hub 打开重复拉 folders/tags；写操作全量重拉 → 定向 patch | P2 | ⬜ | |
 | 22 | SH-23 | store 派生 `Map<noteId, ShareRow>`，行订阅改原始值 | P2 | ⬜ | |
@@ -90,3 +90,11 @@
 - 测试：SH-12 三个用例（无体/错口令 401 且行全保留、正确口令全清、bots/older_than 不受影响）；seedUser 增 passwordHash 形参；既有 days 验证用例的 all 段改带口令。日志弹窗菜单测试改 mock prompt（断言带 `type:'password'` 调用、cleanVisits 收到密码、取消即不调用）。变异核查：摘掉服务端守卫 → refuse 用例变红 → 恢复。
 - 门禁：size 基线首次报 3 个新长函数，全部以真实拆分通过（helper 提取 + footer 组件 + 测试公共步骤 clickCleanAllItem），未使用 --update-baseline。
 - 验证：定向 50/50、client 相关 89/89；tsc=0；10 门禁全绿；串行全量 211 文件 / 1702 用例绿（REGRESSION_EXIT=0）。
+
+### 19 · SH-13 · slug 一致性三小修（2026-09-19）
+
+- 抢注竞态：`note.ts` upsert 写 shares 处包 try/catch，命中 `UNIQUE constraint failed: shares.slug` 转 409（与预检查同文案）；预检查本身不动。并发双 POST 同 customSlug 用例断言状态集合 [200,409]，修复前实测为 [200,500]。
+- 改 slug 悬空：UPDATE 分支改 `db.batch`，targetSlug 变化时同事务追加 `UPDATE share_visits SET slug=新 WHERE slug=旧 AND user_id AND note_id`（带 note_id 限定，别家孤儿行留给 13 号的 cron 收）。日志 search 用新 slug 能命中该 visit。
+- 撤销残留：`revokeSharesForNotes` 事务内第一条改为按 shares 子查询删 `share_asset_sessions`（子查询必须在 shares 删除前读，故置首），其后 shares/visits 不变；count 仍只算 shares 行（解构占位 `[, sharesDeleted]`）。单篇 DELETE 路由、批量 revoke、lifecycle 共用此 helper，一处覆盖三入口。
+- 未做（超出行范围）：note_id 双建竞态（同笔记并发首建仍 500）台账未列，不夹带。
+- 验证：SH-13 三用例红→绿 53/53；tsc=0；10 门禁全绿（白名单同步）；串行全量 211 文件 / 1705 用例绿（REGRESSION_EXIT=0）。
