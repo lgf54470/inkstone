@@ -117,6 +117,7 @@ function SelectValue({
     <select
       value={current?.id ?? String(value ?? '')}
       onChange={(e) => onChange(e.target.value)}
+      aria-label={formatKanbanPropertyName(column)}
       style={getKanbanTagStyle(current?.color)}
       className='h-7 w-full cursor-pointer rounded-[var(--r-sm)] border-none px-2 text-[length:var(--text-11)] font-bold outline-none'
     >

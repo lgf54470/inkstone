@@ -456,7 +456,10 @@ export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps)
   const tagsCol = data.columns.find((c) => c.id === 'tags')
 
   return (
-    <header className='flex flex-col gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'>
+    <div
+      data-kanban-header
+      className='flex flex-col gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'
+    >
       <div className='flex flex-wrap items-center justify-between gap-2.5'>
         <div className='flex items-center gap-2.5 min-w-0'>
           {isFullscreen && (
@@ -489,6 +492,6 @@ export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps)
         onToggleTag={props.onToggleTag}
         onClearTags={props.onClearTags}
       />
-    </header>
+    </div>
   )
 })

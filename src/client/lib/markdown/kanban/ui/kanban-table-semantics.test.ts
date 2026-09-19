@@ -171,6 +171,22 @@ describe('rows and cells', () => {
       expect(cell.parentElement?.getAttribute('role'), `a ${cell.getAttribute('role')} is not in a row`).toBe('row')
     }
   })
+
+  // A `select` announces its current option and nothing else, so an unnamed one in a grid is read as
+  // "To Do" with no hint of which column that value belongs to — the axe pass over the real overlay
+  // reported `select-name` for every one of them. The text and checkbox editors in the same cell
+  // already name themselves after their column; a dropdown has to do the same.
+  it('names each value editor after the column it writes', () => {
+    const container = mount()
+    const selects = [...container.querySelectorAll<HTMLSelectElement>('select')]
+
+    expect(selects.length, 'the grid offers no dropdown to name').toBeGreaterThan(0)
+    for (const select of selects) {
+      expect(select.getAttribute('aria-label'), 'a dropdown is announced by its value alone').toBe(
+        formatKanbanPropertyName(statusColumn),
+      )
+    }
+  })
 })
 
 describe('grouped rows', () => {

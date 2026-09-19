@@ -215,3 +215,40 @@ describe('the card subtask bar is a real button', () => {
     expect(container.querySelector('[data-item-id="a"]')?.textContent).toContain('Draft the outline')
   })
 })
+
+// Both rules below are things the axe pass over the real overlay found broken: the board's top bar
+// was a `<header>`, which inside the board's own region landmark is a second banner of the page, and
+// a card title was an `<h4>` under the board title's `<h2>`, which skips the level a reader expects
+// between the two. The inline block is measured by the same two assertions, because it is the same
+// markup moved to a different host.
+describe('the board does not claim landmarks twice', () => {
+  it('keeps its top bar out of the banner landmark', () => {
+    const { container } = mountBoard()
+
+    expect(container.querySelector('header'), 'the top bar is a second banner inside the board').toBeNull()
+    expect(container.querySelector('[role="banner"]')).toBeNull()
+    expect(container.querySelector('[data-kanban-header]'), 'the top bar no longer has a hook of its own').not.toBeNull()
+  })
+
+  it.each(['board', 'gallery'] as KanbanViewType[])(
+    'titles a card one level under the board title in the %s view',
+    (type) => {
+      const { container } = mountBoard()
+      selectView(container, type)
+
+      expect(container.querySelector<HTMLElement>('[data-item-id="a"] h3')?.textContent).toContain('Design spec')
+      expect(container.querySelectorAll('h4'), `a ${type} card title skips a level under the board title`).toHaveLength(0)
+    },
+  )
+
+  it('offers the list row a button rather than a heading', () => {
+    const { container } = mountBoard()
+    selectView(container, 'list')
+
+    expect(container.querySelector('[data-item-id="a"] h3'), 'the list would need the same level as the cards').toBeNull()
+    expect(
+      [...container.querySelectorAll<HTMLElement>('[data-item-id="a"] button')].some((button) => button.textContent?.includes('Design spec')),
+      'the list row offers no control that opens the item',
+    ).toBe(true)
+  })
+})

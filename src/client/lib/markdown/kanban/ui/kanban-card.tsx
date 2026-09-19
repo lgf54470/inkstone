@@ -71,7 +71,7 @@ function CardTitle({
   }
 
   return (
-    <h4
+    <h3
       onDoubleClick={(e) => {
         e.stopPropagation()
         onStartEditing()
@@ -84,7 +84,7 @@ function CardTitle({
         </span>
       )}
       <span className='line-clamp-2'>{title || t('preview.kanban_untitled')}</span>
-    </h4>
+    </h3>
   )
 }
 

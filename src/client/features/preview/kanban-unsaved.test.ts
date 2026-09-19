@@ -65,7 +65,7 @@ async function mountSurface(): Promise<Surface> {
 
 async function renameFirstCard(block: HTMLElement, title: string): Promise<void> {
   await act(async () => {})
-  const heading = block.querySelector<HTMLElement>('[data-item-id] h4')!
+  const heading = block.querySelector<HTMLElement>('[data-item-id] h3')!
   await act(async () => {
     heading.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
   })
@@ -107,7 +107,7 @@ describe('kanban conflict write-back', () => {
     expect(badge!.textContent).toContain(t('preview.kanban_unsaved'))
     expect(statusButton(surface.block, t('common.retry'))).not.toBeNull()
     expect(statusButton(surface.block, t('preview.kanban_discard_changes'))).not.toBeNull()
-    expect(surface.block.querySelector('[data-item-id] h4')!.textContent).toBe('Renamed Task')
+    expect(surface.block.querySelector('[data-item-id] h3')!.textContent).toBe('Renamed Task')
   })
 })
 
@@ -151,7 +151,7 @@ describe('kanban conflict discard', () => {
     await flush()
 
     expect(statusBadge(surface.block)).toBeNull()
-    expect(surface.block.querySelector('[data-item-id] h4')!.textContent).toBe('Renamed Task')
+    expect(surface.block.querySelector('[data-item-id] h3')!.textContent).toBe('Renamed Task')
     expect(surface.writeCount()).toBe(1)
   })
 })

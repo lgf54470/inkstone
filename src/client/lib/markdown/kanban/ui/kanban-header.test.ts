@@ -234,3 +234,51 @@ describe('KanbanHeader history shortcut hints', () => {
     }
   })
 })
+
+// The tag filter bar sits in the second row of the header, and an unselected chip used to be drawn at
+// reduced opacity. The axe pass over the real overlay measured that: the tag colour pair is calibrated
+// to AA at full strength (see the `--kanban-tag-*` tokens), so dimming it to 70% put the label at
+// 2.9:1. "Not selected" has to be said by the ring the selected chip adds, not by the text's own
+// contrast.
+describe('KanbanHeader tag filter chips', () => {
+  const tagData: KanbanData = {
+    columns: [
+      statusColumn,
+      {
+        id: 'tags',
+        name: 'Tags',
+        type: 'multi-select',
+        options: [
+          { id: 'tag-a', label: 'Alpha', color: 'green' as const },
+          { id: 'tag-b', label: 'Beta', color: 'blue' as const },
+        ],
+      },
+    ],
+    items: [{ id: 'a', title: 'a', properties: { status: 'done', tags: ['tag-a'] } }],
+    views: [{ id: 'v', name: 'Board', type: 'board', groupBy: 'status' }],
+  }
+
+  function chip(container: HTMLElement, label: string): HTMLElement {
+    const button = [...container.querySelectorAll<HTMLElement>('button')].find((el) => el.textContent.includes(label))
+    if (!button) throw new Error(`the filter bar shows no "${label}" chip to measure`)
+    return button
+  }
+
+  it('states an unselected chip without dimming its text', () => {
+    const rendered = renderHeader(allItems, {
+      data: tagData,
+      activeView: tagData.views[0]!,
+      onToggleTag: vi.fn(),
+    })
+    try {
+      for (const label of ['Alpha', 'Beta']) {
+        const unselected = chip(rendered.container, label)
+        expect(unselected.className, `${label} dims its own label`).not.toMatch(/opacity-\d/)
+        const count = unselected.querySelector('span:nth-child(2)')
+        expect(count?.className ?? '', `${label} dims its own count`).not.toMatch(/opacity-\d/)
+      }
+    } finally {
+      rendered.unmount()
+    }
+  })
+})

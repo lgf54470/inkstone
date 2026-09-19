@@ -232,10 +232,10 @@ describe('kanban full screen edit carry-over', () => {
       rendered.container.querySelector<HTMLButtonElement>('[data-kanban-fullscreen-trigger]')!.click()
     })
 
-    const titleOf = () => canvas.querySelector<HTMLElement>('[data-item-id] h4')?.textContent
+    const titleOf = () => canvas.querySelector<HTMLElement>('[data-item-id] h3')?.textContent
     expect(titleOf()).toBe('First Task')
     await act(async () => {
-      canvas.querySelector<HTMLElement>('[data-item-id] h4')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+      canvas.querySelector<HTMLElement>('[data-item-id] h3')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
     })
     const input = canvas.querySelector<HTMLInputElement>('input[data-owns-escape="true"]')!
     await act(async () => {
@@ -257,7 +257,7 @@ describe('kanban full screen edit carry-over', () => {
     expect(surface.writes.at(-1)).toContain('Renamed Task')
 
     await act(async () => {
-      canvas.querySelector<HTMLElement>('[data-item-id] h4')!.dispatchEvent(
+      canvas.querySelector<HTMLElement>('[data-item-id] h3')!.dispatchEvent(
         new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }),
       )
     })

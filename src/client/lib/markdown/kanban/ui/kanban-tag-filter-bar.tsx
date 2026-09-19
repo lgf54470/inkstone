@@ -75,11 +75,11 @@ export function KanbanTagFilterBar({
             onClick={() => onToggleTag(tagItem.id)}
             style={style}
             className={`inline-flex items-center gap-1 rounded-[var(--r-xs)] px-2 py-0.5 font-medium transition-all ${
-              isSelected ? 'ring-2 ring-[var(--accent)] shadow-2xs font-semibold' : 'opacity-70 hover:opacity-100'
+              isSelected ? 'ring-2 ring-[var(--accent)] shadow-2xs font-semibold' : 'hover:ring-1 hover:ring-[var(--border-strong)]'
             }`}
           >
             <span>{formatKanbanOptionLabel(tagItem.label, 'tags')}</span>
-            <span className='text-[length:var(--text-10)] opacity-75'>({tagItem.count})</span>
+            <span className='text-[length:var(--text-10)]'>({tagItem.count})</span>
           </button>
         )
       })}
