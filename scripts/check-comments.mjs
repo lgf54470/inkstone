@@ -2826,6 +2826,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-fullscreen.tsx', [
     '/**\n * Full screen view of one block. The overlay hosts the live instance the\n * preview mounted — the element is moved, never copied — so edits, history and\n * write-back stay with the single root that the inline block keeps using.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-gallery-cover.test.ts', [
+    '/**\n * The gallery is a scrolling grid of cards whose covers are full-size files stored per card, so a\n * board with fifty image cards used to ask the browser for fifty downloads the moment it painted the\n * first row. These cases pin the two attributes that make the grid load what the reader can reach —\n * the same pair `lib/markdown/renderer/media.ts` sets for images in a note body — and keep the\n * no-image case rendering a placeholder rather than an `<img>`, so the assertions cannot pass on a\n * grid that simply never drew a cover.\n */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-header.test.ts', [
     '// A hint assembled in JSX outlives a locale switch only in its parentheses; reading the expected',
     '// text from the zh-CN resource is what proves the whole message, wrapper included, is translated.',
