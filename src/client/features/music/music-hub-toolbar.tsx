@@ -62,19 +62,26 @@ function SourceFilter() {
 function ToolbarActions({ onUpload, onBrowseWebdav }: { onUpload: () => void; onBrowseWebdav: () => void }) {
   const sort = useMusic((state) => state.sort)
   const loading = useMusic((state) => state.loading)
+  const scope = useMusic((state) => state.scope)
   const setSort = useMusic((state) => state.setSort)
   const loadLibrary = useMusic((state) => state.loadLibrary)
   const tracks = useVisibleTracks()
+  // Playlist scope shows the manual item order, so the sort control would change nothing.
+  const showSort = scope.kind !== 'playlist'
   return (
     <div className='flex items-center gap-2'>
-      <Segmented
-        label={t('music.sort')}
-        size='sm'
-        value={sort}
-        onChange={setSort}
-        options={SORT_OPTIONS.map((option) => ({ value: option.value, label: t(option.label) }))}
-      />
-      <span className='h-4 w-px bg-[var(--border-subtle)]' />
+      {showSort && (
+        <>
+          <Segmented
+            label={t('music.sort')}
+            size='sm'
+            value={sort}
+            onChange={setSort}
+            options={SORT_OPTIONS.map((option) => ({ value: option.value, label: t(option.label) }))}
+          />
+          <span className='h-4 w-px bg-[var(--border-subtle)]' />
+        </>
+      )}
       <Button size='sm' variant='primary' icon={<Upload size={12} />} onClick={onUpload}>{t('music.upload')}</Button>
       <Button size='sm' icon={<Server size={12} />} onClick={onBrowseWebdav}>{t('music.webdav_title')}</Button>
       <Tooltip label={t('common.refresh')} side='left'>

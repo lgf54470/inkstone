@@ -149,7 +149,10 @@ export function clearSelection(set: MusicSet): void {
 export function visibleTracks(state: MusicStoreState): MusicTrack[] {
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
   const query = state.query.trim()
-  return sortTracks(query ? filterByQuery(scoped, state, query) : scoped, state.sort)
+  const filtered = query ? filterByQuery(scoped, state, query) : scoped
+  // A playlist row carries the order the user arranged; sorting or hoisting pins would rewrite it.
+  if (state.scope.kind === 'playlist') return filtered
+  return sortTracks(filtered, state.sort)
 }
 
 function applySourceFilter(tracks: MusicTrack[], filter: MusicSourceFilter): MusicTrack[] {

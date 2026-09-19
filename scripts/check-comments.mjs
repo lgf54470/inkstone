@@ -1222,6 +1222,7 @@ const allowed = new Map([
     '// Stable callbacks: the memoised panels below must not re-render when a dialog opens.',
   ]],
   ['src/client/features/music/music-hub-toolbar.tsx', [
+    '// Playlist scope shows the manual item order, so the sort control would change nothing.',
     '// The running guard lives in the store, so remounting the toolbar cannot stack a second pass.',
   ]],
   ['src/client/features/music/music-lyrics.ts', [
@@ -1312,6 +1313,7 @@ const allowed = new Map([
     '// The pinyin dictionary is only needed for search, so loading the library stays cheap.',
     '// One dictionary load and one romanization pass at a time; debounced keystrokes',
     '// and lazy fetches can otherwise pile up identical whole-library work.',
+    '// A playlist row carries the order the user arranged; sorting or hoisting pins would rewrite it.',
   ]],
   ['src/client/features/music/music-store/library-tracks.ts', [
     '// The library ships without lyric text, so the details views ask for it by id once.',

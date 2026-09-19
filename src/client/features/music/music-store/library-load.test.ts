@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { MusicStats, MusicTrack } from '@shared/types'
+import type { MusicPlaylistDetail, MusicStats, MusicTrack } from '@shared/types'
 
 vi.mock('../../../lib/api', () => ({
   api: { music: { library: vi.fn() } },
@@ -11,7 +11,7 @@ vi.mock('../music-search', async (importOriginal) => {
 
 import { api } from '../../../lib/api'
 import { ensureRomanized } from '../music-search'
-import { loadLibrary, prepareRomanization } from './library-load'
+import { loadLibrary, prepareRomanization, visibleTracks } from './library-load'
 import type { MusicSet, MusicStoreState } from './types'
 
 const libraryPayload = { tracks: [] as MusicTrack[], tags: [], playlists: [], stats: statsFixture() }
@@ -89,6 +89,43 @@ describe('loadLibrary freshness window', () => {
     await loadLibrary(store.set, store.get)
     await loadLibrary(store.set, store.get, true)
     expect(api.music.library).toHaveBeenCalledTimes(2)
+  })
+})
+
+function selectorTrack(id: string, createdAt: number, isPinned = false): MusicTrack {
+  return { id, title: id, artist: '', album: '', createdAt, isPinned } as MusicTrack
+}
+
+function playlistScopeState(): MusicStoreState {
+  return {
+    scope: { kind: 'playlist', playlistId: 'p1' },
+    sourceFilter: 'all',
+    query: '',
+    sort: 'title',
+    tracks: [selectorTrack('t1', 3, true), selectorTrack('t2', 1), selectorTrack('t3', 2)],
+    playlists: [{
+      id: 'p1',
+      name: 'Road',
+      trackCount: 3,
+      items: [
+        { id: 'i1', playlistId: 'p1', trackId: 't3', sortOrder: 0 },
+        { id: 'i2', playlistId: 'p1', trackId: 't1', sortOrder: 1 },
+        { id: 'i3', playlistId: 'p1', trackId: 't2', sortOrder: 2 },
+      ],
+    } as unknown as MusicPlaylistDetail],
+  } as unknown as MusicStoreState
+}
+
+describe('visibleTracks in playlist scope', () => {
+  it('keeps the manual item order instead of sorting or hoisting pins', () => {
+    expect(visibleTracks(playlistScopeState()).map((track) => track.id)).toEqual(['t3', 't1', 't2'])
+  })
+
+  it('still applies the query filter inside a playlist', () => {
+    const state = playlistScopeState()
+    state.romanized = {}
+    const searched = visibleTracks({ ...state, query: 't2' })
+    expect(searched.map((track) => track.title)).toEqual(['t2'])
   })
 })
 
