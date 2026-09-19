@@ -2754,8 +2754,16 @@ const allowed = new Map([
     '// mirrors useKanbanHistory: functional updaters resolve against the latest data',
     '// the detail modal portals onto document.body, so query the whole document',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-date-picker.test.ts', [
+    '/**\n * Which weekday opens a calendar is a fact about the reader\'s calendar, not about the two languages\n * this app happens to ship: `locale === \'zh-CN\' ? 1 : 0` gets today\'s locales right only because\n * they are the two it names, and would quietly open a German or Arabic board on Sunday the day a\n * third locale lands. These cases pin the derivation to locale data plus one explicit fallback for\n * a runtime without `Intl.Locale#getWeekInfo`, then check the rendered picker — its weekday labels\n * and the cells that spill in front of the 1st — both follow that number.\n */',
+    '// Sunday for the US, Monday for China and Germany, Saturday for Egypt — all CLDR, none of them',
+    '// a language the board\'s own locale switch can even select today.',
+    '// 2024-01-07 is a Sunday, the same reference date the picker\'s own week row walks from.',
+    '// 2026-09-01 is a Tuesday, so a Monday-start month leads with one spilled day.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-date-picker.tsx', [
     '/**\n   * The property this picker edits. The visible text is only the date, so a\n   * table row of dates would read as bare numbers; the name goes in beside it.\n   */',
+    '/**\n * Which weekday opens the calendar is a fact about the reader\'s calendar, so it is read off locale\n * data: `firstDay` is ISO-numbered (Monday = 1 … Sunday = 7) while `buildMonthCalendarDays` and\n * `DatePickerWeekRow` index JS `getDay()`, where Sunday is 0 — hence the modulo. Runtimes without\n * `getWeekInfo` get the answer this picker shipped with before the API existed.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.tsx', [
     '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',
