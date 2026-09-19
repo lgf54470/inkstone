@@ -43,7 +43,7 @@
 | 28 | SH-30 | 侧栏计数口径（软删过滤/expiring 互斥/全时段标注）+ LIMIT 500 truncated | P2 | ✅ | c495cfd7 |
 | 29 | SH-31 | a11y 批量：Switch label、IconButton、hub ariaLabel、行「更多」键盘入口 | P2 | ✅ | 0526b88e |
 | 30 | SH-32 | 调色板类 → 设计令牌（visit-logs/sidebar/qr/dashboard 等） | P2 | ✅ | ac3941fb |
-| 31 | SH-33 | 裸控件换组件体系 + CSV 导出全量 + 复制失败 toast + 日志按分享过滤入口 | P2 | ⬜ | |
+| 31 | SH-33 | 裸控件换组件体系 + CSV 导出全量 + 复制失败 toast + 日志按分享过滤入口 | P2 | ✅ | 待回填 |
 | 32 | SH-34 | 英文字面量进 locale + 服务端回落值改 null + countryName locale 显式 | P2 | ⬜ | |
 | 33 | SH-35 | 窄屏：侧栏折叠/宽模态 fullscreen/批量条换行/触控尺寸 | P2 | ⬜ | |
 | 34 | SH-36 | 小项集合（口令长度统一、effect 重开、子模态重置、th scope、role=status 等） | P3 | ⬜ | |
@@ -230,3 +230,12 @@
   - `share-qr-modal.tsx`：卡片 `bg-white` → `bg-[var(--swatch-white)]`，附注释——QR 底不随主题（`qr-colors.ts` 固定白码点），深色框会侵入静区。
 - 测试 `tests/share-palette-tokens.test.ts` 新文件（静态扫描，先红后绿）：遍历 `features/share/**`（排除测试）断言零调色板类；`bg-transparent`/`border-transparent` 属结构用途不在黑名单。变异：把 human 徽章退回 `bg-emerald-500/10` → 红（/tmp 备份还原）。
 - 决策记录：台账方案预设 `--info` 系令牌，实际 `tokens.css` 无 `--info`/`--purple`，且 `--*-subtle`（danger/warning/success）系令牌全站被引用却无一处定义（`bg-[var(--danger-subtle)]` 实际渲染为透明）——新增/补定义属共享设计令牌层，超出本任务「只动 share」红线，登记为通病遗留待裁决；owner/self 徽章按现成令牌就近映射（accent/中性）而非发明新色相。门禁补调色板扫描（`check-hardcoded` 扩展）按台账另批。
+
+## 31 — SH-33 裸控件换组件体系 + CSV 导出全量 + 复制失败 toast + 日志按分享过滤入口（2026-09-19）
+
+- 裸控件（`tests/share-bare-controls.test.ts` 静态扫描，先红 5 处后绿）：`share-hub-toolbar.tsx` SearchField、`share-visit-logs-modal.tsx` SearchBox、`share-edit-modal/sections.tsx` 链接只读框/新标签输入/slug 复合框共 5 处 `<input>` → `Input`（leading 图标插槽、aria-label 齐），dice 按钮 → `Button variant='ghost'`；`share-note-submenu.tsx` 2 处内嵌搜索框进白名单（属第 29 项子菜单去重遗留，随该批处理）。
+- CSV 导出全量（`use-share-visit-logs-modal.ts`）：旧实现只导当前页 25 条；新 `collectAllVisits` 按服务端上限 `EXPORT_PAGE_SIZE=100` 逐页拉齐再导出，带当前 filter/search/note 作用域；`isExporting` 期间按钮禁用；成功 toast 改带 `{count}`（en/zh `share.export_success` 同步改写）；`share-visit-logs-export.test.ts` 三例：260 条按 [1,2,3] 页收集、过滤+笔记作用域、失败 toast 且按钮恢复。
+- 复制失败不再静默（`use-share-list.ts`）：`copyShareLink` catch 增 `preview.could_not_copy` danger toast（console.warn 保留为开发者侧上下文）；`handleCopy` 依赖 toast（store action 引用稳定，行 memo 不受影响）。
+- 日志按分享过滤入口：`use-share-hub-modal.ts` 新增 `logsNoteId` + `openLogs(noteId?)`（关日志时清空），hub 三处入口改走 `openLogs`（`() => hub.openLogs()` 包裹，防事件对象误作 noteId）；`share-note-analytics-modal.tsx` RecentActivityCard 头部新增 `share.view_all_logs` 按钮（仅宿主传入 `onOpenLogs` 时渲染），hub 里传 `openLogs(analyticsNoteId)`——`ShareVisitLogsModal` 的 `initialNoteId` prop 由死参转正。
+- 新增 locale 键 `share.share_link`（en/zh）。尺寸门禁 6 个新超 50 行函数全部真实拆分（RecentVisitRow / HubInsightOverlays / SlugEditorRow / 两 hook 压缩 + 测试 mount/export 公共步骤），未动基线。
+- 变异：`<Input`→`<input` → 守护红；`EXPORT_PAGE_SIZE`→25 → 导出两例红；删 copy toast → 静默断言红；`onOpenLogs&&`→`false&&` → 入口断言红（均 /tmp/mut31 还原）。

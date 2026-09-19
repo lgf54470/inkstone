@@ -53,7 +53,7 @@ export const messages = {
 'share.confirm_publish_desc': '「{title}」将生成公开链接，任何拿到该 URL 的人都能阅读。',
 'share.direct_access': '直接访问',
 'share.export_csv': '导出 CSV',
-'share.export_success': '访问日志已成功导出',
+'share.export_success': '已导出 {count} 条访问日志',
 'share.filter_all_traffic': '全部流量',
 'share.filter_bot_only': '爬虫抓取',
 'share.filter_exclude_bots': '过滤网络爬虫与蜘蛛',

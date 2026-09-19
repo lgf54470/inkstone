@@ -13,11 +13,12 @@ export function ShareLinkCard({ b, onClose }: { b: ShareEditModalBundle; onClose
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--accent-subtle)] bg-[var(--accent-subtle)]/20 p-3 space-y-2.5'>
       <div className='flex items-center gap-2'>
-        <input
+        <Input
           type='text'
           readOnly
           value={share.url}
-          className="flex-1 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 font-mono text-[length:var(--text-11\.5)] text-[var(--text-primary)] select-all outline-hidden"
+          aria-label={t('share.share_link')}
+          className="flex-1 font-mono text-[length:var(--text-11\.5)] bg-[var(--bg-surface)] select-all"
         />
         <Button size='sm' variant='secondary' icon={isCopied ? <Check size={13} className='text-[var(--success)]' /> : <Copy size={13} />} onClick={() => void handleCopyLink()}>
           {isCopied ? t('common.copied') : t('common.copy')}
@@ -121,7 +122,7 @@ export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
         )}
       </div>
       <div className='flex items-center gap-1.5 pt-1'>
-        <input
+        <Input
           type='text'
           value={newTagInput}
           onChange={(e) => setNewTagInput(e.target.value)}
@@ -132,7 +133,8 @@ export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
             }
           }}
           placeholder={t('tags.new_placeholder')}
-          className='flex-1 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2.5 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
+          aria-label={t('tags.new_placeholder')}
+          className='flex-1 text-xs'
         />
         <Button size='sm' variant='secondary' icon={<Plus size={12} />} onClick={handleAddTag}>
           {t('tags.create')}
@@ -159,35 +161,53 @@ export function ShareSlugCard({ b }: { b: ShareEditModalBundle }) {
       </div>
       {shouldUseCustomSlug && (
         <div className='pt-2'>
-          <div className='flex items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 py-1.5 focus-within:border-[var(--accent)]'>
-            <span className='text-[length:var(--text-12)] font-mono text-[var(--text-quaternary)]'>{'/s/'}</span>
-            <input
-              type='text'
-              value={customSlug}
-              onChange={(e) => setCustomSlug(e.target.value)}
-              placeholder={t('share.custom_slug_placeholder')}
-              className='flex-1 bg-transparent text-[length:var(--text-12)] font-mono text-[var(--text-primary)] outline-none placeholder:text-[var(--text-quaternary)]'
-            />
-            <button
-              type='button'
-              onClick={() => setCustomSlug(generateRandomSlug(6))}
-              className='flex items-center gap-1 rounded bg-[var(--bg-card)] px-2 py-1 text-[length:var(--text-11)] font-medium text-[var(--accent)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all'
-              title={t('share.generate_random_slug')}
-            >
-              <Dices size={12} />
-              <span>{t('share.random_slug_btn')}</span>
-            </button>
-            {isSlugChecking && <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{t('common.checking')}</span>}
-            {!isSlugChecking && slugAvailable === true && (
-              <Check size={14} className='text-[var(--success)]' />
-            )}
-            {!isSlugChecking && slugAvailable === false && (
-              <ShieldAlert size={14} className='text-[var(--danger)]' />
-            )}
-          </div>
+          <SlugEditorRow
+            customSlug={customSlug}
+            setCustomSlug={setCustomSlug}
+            isSlugChecking={isSlugChecking}
+            slugAvailable={slugAvailable}
+          />
           {slugError && <p className='pt-1 text-[length:var(--text-11)] text-[var(--danger)]'>{slugError}</p>}
         </div>
       )}
+    </div>
+  )
+}
+
+function SlugEditorRow({ customSlug, setCustomSlug, isSlugChecking, slugAvailable }: {
+  customSlug: string
+  setCustomSlug: (slug: string) => void
+  isSlugChecking: boolean
+  slugAvailable: boolean | null
+}) {
+  return (
+    <div className='flex items-center gap-1.5'>
+      <span className='text-[length:var(--text-12)] font-mono text-[var(--text-quaternary)]'>{'/s/'}</span>
+      <Input
+        type='text'
+        value={customSlug}
+        onChange={(e) => setCustomSlug(e.target.value)}
+        placeholder={t('share.custom_slug_placeholder')}
+        aria-label={t('share.custom_slug')}
+        className='flex-1 font-mono text-[length:var(--text-12)]'
+      />
+      {isSlugChecking && <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{t('common.checking')}</span>}
+      {!isSlugChecking && slugAvailable === true && (
+        <Check size={14} className='text-[var(--success)]' />
+      )}
+      {!isSlugChecking && slugAvailable === false && (
+        <ShieldAlert size={14} className='text-[var(--danger)]' />
+      )}
+      <Button
+        size='sm'
+        variant='ghost'
+        icon={<Dices size={12} />}
+        onClick={() => setCustomSlug(generateRandomSlug(6))}
+        title={t('share.generate_random_slug')}
+        className='shrink-0 text-[var(--accent)]'
+      >
+        {t('share.random_slug_btn')}
+      </Button>
     </div>
   )
 }

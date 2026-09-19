@@ -89,7 +89,7 @@ function HubContent({ hub }: { hub: ShareHubModalBundle }) {
       <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden'>
         <ShareDashboardView
           onSelectNoteAnalytics={(noteId) => hub.setAnalyticsNoteId(noteId)}
-          onOpenLogs={() => hub.setIsLogsOpen(true)}
+          onOpenLogs={() => hub.openLogs()}
         />
       </div>
     )
@@ -97,7 +97,7 @@ function HubContent({ hub }: { hub: ShareHubModalBundle }) {
   return (
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden'>
       <ShareHubToolbar
-        onOpenLogs={() => hub.setIsLogsOpen(true)}
+        onOpenLogs={() => hub.openLogs()}
         onOpenSettings={() => hub.setIsSettingsOpen(true)}
       />
       <ListTruncatedNotice />
@@ -142,7 +142,7 @@ function HubListBody({ hub }: { hub: ShareHubModalBundle }) {
 }
 
 function HubOverlays({ hub }: { hub: ShareHubModalBundle }) {
-  const { qrShare, setQrShare, editShare, setEditShare, analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, isSettingsOpen, setIsSettingsOpen, loadShares } = hub
+  const { qrShare, setQrShare, editShare, setEditShare, loadShares } = hub
   return (
     <>
       {qrShare && (
@@ -165,20 +165,33 @@ function HubOverlays({ hub }: { hub: ShareHubModalBundle }) {
           onSaved={() => void loadShares()}
         />
       )}
+      <HubInsightOverlays hub={hub} />
+    </>
+  )
+}
 
+function HubInsightOverlays({ hub }: { hub: ShareHubModalBundle }) {
+  const { analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, logsNoteId, setLogsNoteId, isSettingsOpen, setIsSettingsOpen, openLogs, setQrShare } = hub
+  return (
+    <>
       {analyticsNoteId && (
         <ShareNoteAnalyticsModal
           open={Boolean(analyticsNoteId)}
           onClose={() => setAnalyticsNoteId(null)}
           noteId={analyticsNoteId}
           onOpenQr={(url, title, slug) => setQrShare({ url, title, slug })}
+          onOpenLogs={() => openLogs(analyticsNoteId)}
         />
       )}
 
       {isLogsOpen && (
         <ShareVisitLogsModal
           open={isLogsOpen}
-          onClose={() => setIsLogsOpen(false)}
+          onClose={() => {
+            setIsLogsOpen(false)
+            setLogsNoteId(null)
+          }}
+          initialNoteId={logsNoteId ?? undefined}
         />
       )}
 

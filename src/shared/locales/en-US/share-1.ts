@@ -127,6 +127,7 @@ export const messages = {
 'share.realtime_stream': 'Latest 20 visits',
 'share.recent_activity_title': 'Recent Visits',
 'share.selected_count': '{count} notes selected',
+'share.share_link': 'Share link',
 'share.share_status': 'Share Status',
 'share.shares_unit': 'notes',
 'share.sort_created_desc': 'Recently Created',

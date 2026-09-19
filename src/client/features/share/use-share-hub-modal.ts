@@ -23,6 +23,7 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
   const [editShare, setEditShare] = useState<ShareHubEditData | null>(null)
   const [analyticsNoteId, setAnalyticsNoteId] = useState<string | null>(null)
   const [isLogsOpen, setIsLogsOpen] = useState(false)
+  const [logsNoteId, setLogsNoteId] = useState<string | null>(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   useEffect(() => {
@@ -33,26 +34,25 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
       setQrShare(null)
       setEditShare(null)
       setAnalyticsNoteId(null)
+      setLogsNoteId(null)
     }
   }, [open, loadShares, clearSelection])
 
   useInitialNoteEdit({ open, initialNoteId, shares, setEditShare })
 
-  const openQr = useCallback((share: ShareInfo) => {
-    setQrShare({ url: share.url, title: share.noteTitle || '', slug: share.slug })
-  }, [])
-  const openAnalytics = useCallback((share: ShareInfo) => {
-    setAnalyticsNoteId(share.noteId)
-  }, [])
-  const openEdit = useCallback((share: ShareInfo) => {
-    setEditShare({ share: share.slug ? share : null, noteId: share.noteId, title: share.noteTitle || '' })
+  const openQr = useCallback((share: ShareInfo) => setQrShare({ url: share.url, title: share.noteTitle || '', slug: share.slug }), [])
+  const openAnalytics = useCallback((share: ShareInfo) => setAnalyticsNoteId(share.noteId), [])
+  const openEdit = useCallback((share: ShareInfo) => setEditShare({ share: share.slug ? share : null, noteId: share.noteId, title: share.noteTitle || '' }), [])
+  const openLogs = useCallback((noteId?: string) => {
+    setLogsNoteId(noteId ?? null)
+    setIsLogsOpen(true)
   }, [])
 
   return {
     category, viewMode, shares, loading, error, selectedNoteIds, clearSelection, loadShares,
     qrShare, setQrShare, editShare, setEditShare,
-    openQr, openAnalytics, openEdit,
-    analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, isSettingsOpen, setIsSettingsOpen,
+    openQr, openAnalytics, openEdit, openLogs,
+    analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, logsNoteId, setLogsNoteId, isSettingsOpen, setIsSettingsOpen,
   }
 }
 

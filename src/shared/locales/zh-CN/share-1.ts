@@ -127,6 +127,7 @@ export const messages = {
 'share.realtime_stream': '最新 20 条访客记录',
 'share.recent_activity_title': '最近访问',
 'share.selected_count': '已选择 {count} 篇笔记',
+'share.share_link': '分享链接',
 'share.share_status': '分享状态',
 'share.shares_unit': '篇',
 'share.sort_created_desc': '最新分享',

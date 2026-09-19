@@ -23,7 +23,7 @@ export function useShareList() {
 
   // Stable identities keep the memoized table rows from re-rendering when an
   // unrelated row's selection changes.
-  const handleCopy = useCallback((url: string, slug: string) => copyShareLink(url, slug, setCopiedSlug), [])
+  const handleCopy = useCallback((url: string, slug: string) => copyShareLink(url, slug, setCopiedSlug, toast), [toast])
   const handleMoveToFolder = useCallback((noteId: string, folderId: string | null) => moveShareToFolder(noteId, folderId, batchMoveToFolder, toast), [batchMoveToFolder, toast])
   const handleRevoke = useCallback((share: ShareInfo) => revokeShareFlow(share, batchToggle), [batchToggle])
 
@@ -38,6 +38,7 @@ async function copyShareLink(
   url: string,
   slug: string,
   setCopiedSlug: (slug: string | null) => void,
+  toast: UiState['toast'],
 ): Promise<void> {
   try {
     const full = typeof window !== 'undefined' ? new URL(url, window.location.origin).href : url
@@ -46,6 +47,7 @@ async function copyShareLink(
     setTimeout(() => setCopiedSlug(null), COPY_FEEDBACK_MS)
   } catch (error) {
     console.warn('[share] failed to copy link', error)
+    toast({ title: t('preview.could_not_copy'), tone: 'danger' })
   }
 }
 

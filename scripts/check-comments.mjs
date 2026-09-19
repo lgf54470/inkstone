@@ -2061,6 +2061,10 @@ const allowed = new Map([
   ['src/client/features/share/use-share-settings-modal.ts', [
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
   ]],
+  ['src/client/features/share/use-share-visit-logs-modal.ts', [
+    '// The visits endpoint caps limit at 100; exporting at that page size keeps a',
+    '// large history to a linear walk instead of hundreds of 25-row pages.',
+  ]],
   ['src/client/features/shell/app-shell.tsx', [
     '/* A show outlives the layout that started it: the desktop and mobile shells\n          mount different workspace subtrees, so hosting the overlay here keeps a\n          presentation alive across a breakpoint switch instead of dropping the\n          presenter back to the note mid-talk. */',
   ]],
@@ -4650,6 +4654,9 @@ const allowed = new Map([
     '// Exclude bots only:',
     '// All disabled:',
     '// With table alias:',
+  ]],
+  ['tests/share-bare-controls.test.ts', [
+    '/**\n * SH-33: interactive controls inside the share feature must come from the\n * component system (`components/form`, `components/primitives`), not bare\n * `<input>` markup with hand-written styles. `share-note-submenu.tsx` keeps\n * two embedded search inputs out of this rule for now — they belong to the\n * hand-rolled submenu panel whose dedup is already a registered leftover.\n */',
   ]],
   ['tests/share-code-split.test.ts', [
     '/**\n * The share feature must stay code-split (SH-20): its five modals carry\n * qrcode.react and the analytics charts, so any *static* import that reaches\n * them regrows the shell chunk the note list already loads. The modals are\n * only allowed behind `src/client/features/share/modals` and must arrive via\n * `lazy(() => import(...))`.\n *\n * The build itself is too heavy for CI-level feedback, so this test walks the\n * static import graph (dynamic `import()` calls are boundaries, not edges)\n * and asserts no module outside the share feature reaches the modal graph —\n * which is exactly the state the 2026-09-17 dist measurement contradicted.\n */',

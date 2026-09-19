@@ -53,7 +53,7 @@ export const messages = {
 'share.confirm_publish_desc': '"{title}" will get a public link that anyone with the URL can read.',
 'share.direct_access': 'Direct access',
 'share.export_csv': 'Export CSV',
-'share.export_success': 'Visit logs exported successfully',
+'share.export_success': 'Exported {count} visit logs',
 'share.filter_all_traffic': 'All Traffic',
 'share.filter_bot_only': 'Crawlers & Bots',
 'share.filter_exclude_bots': 'Filter Bots & Crawlers',

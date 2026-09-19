@@ -15,6 +15,7 @@ import {
 import { useRef, useState } from 'react'
 import type { ShareVisitsResponse } from '@shared/types'
 import { Menu, Modal, type MenuItem } from '../../components/overlay'
+import { Input } from '../../components/form'
 import { Button, IconButton } from '../../components/primitives'
 import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
@@ -64,7 +65,7 @@ export function ShareVisitLogsModal({
 }
 
 function VisitLogsToolbar({ bundle }: { bundle: LogsBundle }) {
-  const { filter, handleFilterChange, isLoading, isCleaning, data, handleExport, handleClean, search, setSearch, handleSearchSubmit, fetchVisits, page } = bundle
+  const { filter, handleFilterChange, isLoading, isExporting, isCleaning, data, handleExport, handleClean, search, setSearch, handleSearchSubmit, fetchVisits, page } = bundle
   return (
     <div className='flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2.5'>
       <div className='flex items-center gap-1'>
@@ -81,8 +82,8 @@ function VisitLogsToolbar({ bundle }: { bundle: LogsBundle }) {
           size='sm'
           variant='secondary'
           icon={<Download size={12} />}
-          onClick={handleExport}
-          disabled={!data || data.visits.length === 0}
+          onClick={() => void handleExport()}
+          disabled={!data || data.visits.length === 0 || isExporting}
         >
           {t('share.export_csv')}
         </Button>
@@ -128,17 +129,15 @@ function SearchBox({ value, onChange, onSubmit }: {
   onSubmit: (e: React.FormEvent) => void
 }) {
   return (
-    <form onSubmit={onSubmit} className='relative'>
-      <input
+    <form onSubmit={onSubmit}>
+      <Input
         type='text'
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={t('share.search_logs_placeholder')}
-        className='h-7 w-44 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-7 pr-2 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
-      />
-      <Search
-        size={12}
-        className='absolute left-2 top-1/2 -translate-y-1/2 text-[var(--text-quaternary)]'
+        aria-label={t('share.search_logs_placeholder')}
+        leading={<Search size={12} />}
+        className='h-7 w-44 text-[length:var(--text-11)] bg-[var(--bg-base)]'
       />
     </form>
   )

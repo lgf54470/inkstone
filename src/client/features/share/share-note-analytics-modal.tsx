@@ -28,11 +28,13 @@ export function ShareNoteAnalyticsModal({
   onClose,
   noteId,
   onOpenQr,
+  onOpenLogs,
 }: {
   open: boolean
   onClose: () => void
   noteId: string
   onOpenQr?: (url: string, title: string, slug: string) => void
+  onOpenLogs?: () => void
 }) {
   const { locale, range, setRange, metricMode, setMetricMode, data, isLoading, error, loadData } = useShareNoteAnalytics(open, noteId)
   if (!open) return null
@@ -60,7 +62,7 @@ export function ShareNoteAnalyticsModal({
             <StatsAndRangeRow data={data} range={range} setRange={setRange} isLoading={isLoading} onRefresh={() => void loadData(range)} />
             <TimelineCard metricMode={metricMode} setMetricMode={setMetricMode} chartValues={chartValues} timelinePoints={timelinePoints} />
             <NoteAnalyticsBreakdowns data={data} locale={locale} />
-            <RecentActivityCard data={data} locale={locale} />
+            <RecentActivityCard data={data} locale={locale} onOpenLogs={onOpenLogs} />
           </>
         )}
       </div>
@@ -205,13 +207,20 @@ function BreakdownCard({ title, icon, emptyLabel, isEmpty, children }: { title: 
   )
 }
 
-function RecentActivityCard({ data, locale }: { data: ShareNoteAnalytics | null; locale: string }) {
+function RecentActivityCard({ data, locale, onOpenLogs }: { data: ShareNoteAnalytics | null; locale: string; onOpenLogs?: () => void }) {
   const visits = data?.recentVisits ?? []
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
-      <div className='flex items-center gap-1.5 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
-        <Activity size={13} className='text-[var(--accent)]' />
-        <span>{t('share.recent_activity_title')}</span>
+      <div className='flex items-center justify-between gap-2 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
+        <div className='flex items-center gap-1.5'>
+          <Activity size={13} className='text-[var(--accent)]' />
+          <span>{t('share.recent_activity_title')}</span>
+        </div>
+        {onOpenLogs && (
+          <Button size='sm' variant='ghost' icon={<ExternalLink size={12} />} onClick={onOpenLogs}>
+            {t('share.view_all_logs')}
+          </Button>
+        )}
       </div>
       <div className='divide-y divide-[var(--border-subtle)] pt-1'>
         {visits.length === 0 ? (
@@ -219,37 +228,41 @@ function RecentActivityCard({ data, locale }: { data: ShareNoteAnalytics | null;
             {t('share.no_visits_yet')}
           </p>
         ) : (
-          visits.slice(0, 8).map((v) => (
-            <div key={v.id} className='flex items-center justify-between py-1.5 text-[length:var(--text-11)]'>
-              <div className='flex items-center gap-1.5'>
-                <span>{countryFlag(v.country)}</span>
-                <span className='text-[var(--text-secondary)]'>
-                  {countryNameLocalized(v.country, locale)}
-                  {v.city ? ` · ${v.city}` : ''}
-                </span>
-                {v.isBot && (
-                  <span className="rounded bg-[var(--danger-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--danger)]">
-                    🤖 {v.botName || t('share.badge_bot')}
-                  </span>
-                )}
-                {v.isOwner && (
-                  <span className="rounded bg-[var(--accent-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--accent)]">
-                    👤 {t('share.badge_owner')}
-                  </span>
-                )}
-                {v.isSelfReferrer && (
-                  <span className="rounded bg-[var(--warning-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--warning)]">
-                    {t('share.badge_self_referrer')}
-                  </span>
-                )}
-              </div>
-              <div className='flex items-center gap-2 text-[var(--text-quaternary)] font-mono'>
-                <span>{v.browser} / {v.os}</span>
-                <span>{relativeTime(v.visitedAt)}</span>
-              </div>
-            </div>
-          ))
+          visits.slice(0, 8).map((v) => <RecentVisitRow key={v.id} visit={v} locale={locale} />)
         )}
+      </div>
+    </div>
+  )
+}
+
+function RecentVisitRow({ visit: v, locale }: { visit: ShareNoteAnalytics['recentVisits'][number]; locale: string }) {
+  return (
+    <div className='flex items-center justify-between py-1.5 text-[length:var(--text-11)]'>
+      <div className='flex items-center gap-1.5'>
+        <span>{countryFlag(v.country)}</span>
+        <span className='text-[var(--text-secondary)]'>
+          {countryNameLocalized(v.country, locale)}
+          {v.city ? ` · ${v.city}` : ''}
+        </span>
+        {v.isBot && (
+          <span className="rounded bg-[var(--danger-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--danger)]">
+            🤖 {v.botName || t('share.badge_bot')}
+          </span>
+        )}
+        {v.isOwner && (
+          <span className="rounded bg-[var(--accent-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--accent)]">
+            👤 {t('share.badge_owner')}
+          </span>
+        )}
+        {v.isSelfReferrer && (
+          <span className="rounded bg-[var(--warning-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--warning)]">
+            {t('share.badge_self_referrer')}
+          </span>
+        )}
+      </div>
+      <div className='flex items-center gap-2 text-[var(--text-quaternary)] font-mono'>
+        <span>{v.browser} / {v.os}</span>
+        <span>{relativeTime(v.visitedAt)}</span>
       </div>
     </div>
   )
