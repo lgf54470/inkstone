@@ -1,4 +1,4 @@
-import { mergeSettings } from '@shared/constants'
+import { mergeSettings } from '@shared/user-settings'
 import { normalizeMusicDir } from '@shared/music-path'
 import type { MusicWebdavEntry, WebdavConfig } from '@shared/types'
 import type { AppBindings } from '../../env'

@@ -2078,6 +2078,7 @@ const allowed = new Map([
     '// startup summary only carries ids): ask the server before publishing.',
   ]],
   ['src/client/features/share/use-share-settings-modal.ts', [
+    '// The sweep runs on the server, so the value it reads has to be the account\'s.',
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
   ]],
   ['src/client/features/share/use-share-visit-logs-modal.ts', [
@@ -4052,12 +4053,6 @@ const allowed = new Map([
     '/**\n * Session lifetime design (sliding window):\n * - `SESSION_TTL_MS` (90d): absolute cap. A session row/cookie never outlives 90 days,\n *   bounding the window in which a stolen session token stays usable.\n * - `SESSION_RENEW_BEFORE_MS` (45d = TTL/2): renewal threshold. On an authenticated\n *   request, if less than this much TTL remains, the session is extended back to the\n *   full 90 days (see middleware/auth.ts and lib/session-store.ts).\n *\n * Trade-offs: renewal only happens for requests that already presented a valid\n * session, so an abandoned session dies within at most 90 days (no idle-forever\n * sessions, maintenance sweeps the rows), while an active user never gets logged out\n * as long as they authenticate at least once per 45 days. The half-life threshold\n * also bounds write amplification: each session triggers at most one DB renewal\n * write per 45 days of activity. The 45-day window is generous enough to survive\n * the app\'s offline period (offline edits are queued locally and flushed on\n * reconnect, which needs a still-valid session) yet short enough that a freshly\n * stolen cookie\'s remaining lifetime stays bounded.\n */',
     '/** The library a board starts from: a named one like any other, shown as the default. */',
     '/**\n * Default template inserted at the top of new notes. Keep placeholders ASCII:\n * they are filled in at creation time with the localized note title and the\n * current date/time. First line must be `---` (a leading blank line would\n * prevent the front matter from being parsed).\n */',
-    '// External https images are blocked by default (renderer placeholder + CSP',
-    '// `img-src` without `https:`); opt in per user. Share pages stay blocked',
-    '// regardless of this value.',
-    '/** Built-in floating-window sizes; `custom` reads width/height from the settings. */',
-    '/**\n * Merge a partial patch into the current settings.\n *\n * Sections that the patch does not touch are passed through by reference,\n * so subscribers observing a specific section (e.g. `settings.editor`) are\n * not re-rendered when an unrelated section changes.\n */',
-    '/**\n * Guards the referential-stability contract of mergeSettingsPatch: sections\n * the patch did not touch must keep their object identity, otherwise narrow\n * store subscriptions silently regress into full-app re-renders on every\n * settings change.\n */',
   ]],
   ['src/shared/escape.ts', [
     '/**\n * HTML-escape untrusted text (all five metacharacters: & < > " \').\n * Single canonical implementation shared by client and worker so escaping\n * semantics never drift between layers.\n */',
@@ -4123,10 +4118,22 @@ const allowed = new Map([
     '/** Load external (https) images in rendered notes. Off by default: external\n   *  images are replaced with a blocked placeholder (renderer-level), and the\n   *  server drops `https:` from CSP `img-src` while it is off — so raw-HTML\n   *  images in notes stay blocked on the app page and are ALWAYS blocked on\n   *  share pages (/s/*), where visitors never opt in. */',
     '/** Name of the whiteboard library the boards open; `default` is the reserved one. */',
     '/** Tag(s, comma-separated) that file notes into the sidebar to-do tree; null falls back to the locale default. */',
+    '/** Share-center preferences the server acts on, not just the UI. */',
+    '/**\n   * Days a visit log row survives before the maintenance cron deletes it;\n   * 0 keeps every row. It has to live here rather than in the browser so the\n   * sweep runs whether or not the owner ever opens the app again.\n   */',
   ]],
   ['src/shared/types/share.ts', [
     '// Null when the note was deleted but its visit rows survive; the client',
     '// labels it (SH-34), the worker must not bake in an English fallback.',
+  ]],
+  ['src/shared/user-settings.ts', [
+    '/** The retention the cron applies when a user never chose one. */',
+    '/** A decade: beyond this a sweep is indistinguishable from "keep forever". */',
+    '// External https images are blocked by default (renderer placeholder + CSP',
+    '// `img-src` without `https:`); opt in per user. Share pages stay blocked',
+    '// regardless of this value.',
+    '/** Built-in floating-window sizes; `custom` reads width/height from the settings. */',
+    '/**\n * Merge a partial patch into the current settings.\n *\n * Sections that the patch does not touch are passed through by reference,\n * so subscribers observing a specific section (e.g. `settings.editor`) are\n * not re-rendered when an unrelated section changes.\n */',
+    '/**\n * Guards the referential-stability contract of mergeSettingsPatch: sections\n * the patch did not touch must keep their object identity, otherwise narrow\n * store subscriptions silently regress into full-app re-renders on every\n * settings change.\n */',
   ]],
   ['src/worker/app.ts', [
     '// Ensure the schema exists (WeakMap-cached), then read against the raw D1.',
@@ -4281,7 +4288,11 @@ const allowed = new Map([
     '// Malformed or truncated image data is routine for probes; degrade to unknown dimensions.',
   ]],
   ['src/worker/lib/maintenance.ts', [
-    '// Sweeps visit rows orphaned before the revoke/purge cascades existed (and by the MCP revoke tool).',
+    '/**\n * Per-account visit log retention in days, read from the stored settings\n * document: 0 keeps every row, while a missing or unparsable value falls back\n * to the shipped default so an account that never opened the settings modal\n * still has a bounded log. `json_valid` guards a corrupt document, which would\n * otherwise make `json_extract` throw and take the whole sweep down.\n */',
+    '// Order matters: the destructuring below lines up with these statements.',
+    '/** Bounded deletes for rows that carry their own expiry, plus stale login attempts. */',
+    '/** Visit log rows are the only purge without an expiry column: they go by ownership and age. */',
+    '// Sweeps rows orphaned before the revoke/purge cascades existed (and by the MCP revoke tool).',
   ]],
   ['src/worker/lib/outbound-url.ts', [
     '// Shared outbound-request guards: the hostname and IP safety checks back both',
@@ -4751,6 +4762,10 @@ const allowed = new Map([
   ]],
   ['tests/share-touch-targets.test.ts', [
     '/**\n * SH-35: the note submenu rows were 30px tall (`h-7.5`), below the 44px\n * touch target on phones. The base height must stay large for narrow\n * screens while desktop keeps the compact row.\n */',
+  ]],
+  ['tests/share-visit-retention.test.ts', [
+    '/** `settings` is written verbatim, so a test can store a corrupt document too. */',
+    '/** A visit needs its share to stay, otherwise the orphan sweep deletes it first. */',
   ]],
   ['tests/slides-interop.test.ts', [
     '/**\n * What happens when a note holds a deck this build did not author: a document in the\n * format\'s own shape, with the element kinds, slide fields and document tables an export\n * carries. Two things must hold, and neither is visible from the editor\'s side. The model\n * must carry every field through parse → edit → write (a field it drops is gone from the\n * note the next time anything is edited), and every element must DRAW SOMETHING — a deck\n * whose picture is missing an element looks finished, so the failure has no symptom until\n * the reader compares it with the original.\n */',

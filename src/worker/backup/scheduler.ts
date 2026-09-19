@@ -1,4 +1,5 @@
-import { BACKUP_INTERVALS, LIMITS, mergeSettings } from '@shared/constants'
+import { BACKUP_INTERVALS, LIMITS } from '@shared/constants'
+import { mergeSettings } from '@shared/user-settings'
 import type { Env } from '../env'
 import { initializeDatabase } from '../db/schema'
 import { getMeta, setMeta } from '../db/metadata'

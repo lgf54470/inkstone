@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { DemoState } from '../../state'
-import { APP_VERSION, mergeSettingsPatch } from '@shared/constants'
+import { APP_VERSION } from '@shared/constants'
+import { mergeSettingsPatch } from '@shared/user-settings'
 import { extractWikiLinks } from '@shared/markdown-utils'
 import { listTags } from '../../state'
 import { jsonBody } from '../helpers/info'

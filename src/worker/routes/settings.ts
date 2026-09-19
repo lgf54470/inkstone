@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { Hono } from 'hono'
-import { mergeSettings, mergeSettingsPatch } from '@shared/constants'
+import { mergeSettings, mergeSettingsPatch } from '@shared/user-settings'
 import type { UserSettings } from '@shared/types'
 import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'

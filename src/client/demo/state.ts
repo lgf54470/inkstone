@@ -1,4 +1,5 @@
-import { LIMITS, mergeSettings } from '@shared/constants'
+import { LIMITS } from '@shared/constants'
+import { mergeSettings } from '@shared/user-settings'
 import { countText, deriveExcerpt, deriveTitle, extractTags, sortTagNames } from '@shared/markdown-utils'
 import { truncateText } from '@shared/text-utils'
 import { welcomeNoteTemplates } from '@shared/welcome-notes'

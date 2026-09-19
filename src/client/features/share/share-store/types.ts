@@ -39,7 +39,6 @@ export interface ShareStoreState {
   excludeBots: boolean
   excludeSelfReferrers: boolean
   excludeOwner: boolean
-  logRetentionDays: number
   maxLogRecords: number
 
   setCategory: (category: ShareCategory) => void
@@ -50,7 +49,7 @@ export interface ShareStoreState {
   setSort: (sort: string) => void
   setViewMode: (mode: 'table' | 'grid') => void
   setFilters: (filters: Partial<{ excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }>) => void
-  setRetentionSettings: (settings: { logRetentionDays?: number; maxLogRecords?: number }) => void
+  setRetentionSettings: (settings: { maxLogRecords?: number }) => void
   toggleSelect: (noteId: string) => void
   toggleSelectAll: () => void
   clearSelection: () => void

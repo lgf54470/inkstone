@@ -1,4 +1,4 @@
-import { PINNED_WINDOW_PRESETS } from '@shared/constants'
+import { PINNED_WINDOW_PRESETS } from '@shared/user-settings'
 import { useSession } from '../store/session'
 
 export function pinnedWindowSize(): { width: number; height: number } {

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { Hono, type Context } from 'hono'
 import { getCookie } from 'hono/cookie'
-import { DEFAULT_SETTINGS } from '@shared/constants'
+import { DEFAULT_SETTINGS } from '@shared/user-settings'
 import { isBitmapAvatarDataUrl, PROFILE_NAME_MAX_LENGTH } from '@shared/avatar'
 import type { AppLocale, SessionInfo, UserSettings } from '@shared/types'
 import type { AppBindings, Env } from '../env'

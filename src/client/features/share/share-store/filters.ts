@@ -65,22 +65,19 @@ function setRetentionSettingsImpl(
   set: SetShareStoreState,
 ): void {
   set((state) => {
-    const updated = {
-      logRetentionDays: settings.logRetentionDays ?? state.logRetentionDays,
-      maxLogRecords: settings.maxLogRecords ?? state.maxLogRecords,
-    }
-    persistShareRetention(updated)
+    const updated = { maxLogRecords: settings.maxLogRecords ?? state.maxLogRecords }
+    persistMaxLogRecords(updated)
     return updated
   })
 }
 
-function persistShareRetention(updated: { logRetentionDays: number; maxLogRecords: number }): void {
+function persistMaxLogRecords(updated: { maxLogRecords: number }): void {
   try {
     if (typeof window !== 'undefined') {
       localStorage.setItem('inkstone_share_retention', JSON.stringify(updated))
     }
   } catch (error) {
-    console.warn('[share-store] failed to persist retention settings', error)
+    console.warn('[share-store] failed to persist the visit log record cap', error)
   }
 }
 

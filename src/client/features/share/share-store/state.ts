@@ -2,20 +2,19 @@
 
 
 
-export function loadInitialRetention(): { logRetentionDays: number; maxLogRecords: number } {
+const DEFAULT_MAX_LOG_RECORDS = 10_000
+
+export function loadInitialMaxLogRecords(): number {
   try {
     const raw = typeof window !== 'undefined' ? localStorage.getItem('inkstone_share_retention') : null
     if (raw) {
       const parsed = JSON.parse(raw)
-      return {
-        logRetentionDays: typeof parsed.logRetentionDays === 'number' ? parsed.logRetentionDays : 30,
-        maxLogRecords: typeof parsed.maxLogRecords === 'number' ? parsed.maxLogRecords : 10000,
-      }
+      return typeof parsed.maxLogRecords === 'number' ? parsed.maxLogRecords : DEFAULT_MAX_LOG_RECORDS
     }
   } catch (error) {
-    console.warn('[share-store] failed to load retention settings', error)
+    console.warn('[share-store] failed to load the visit log record cap', error)
   }
-  return { logRetentionDays: 30, maxLogRecords: 10000 }
+  return DEFAULT_MAX_LOG_RECORDS
 }
 
 
@@ -46,4 +45,4 @@ export function loadInitialFilters(): { excludeBots: boolean; excludeSelfReferre
 export const initialFilters = loadInitialFilters()
 
 
-export const initialRetention = loadInitialRetention()
+export const initialMaxLogRecords = loadInitialMaxLogRecords()

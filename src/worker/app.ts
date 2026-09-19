@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono'
 import { getCookie } from 'hono/cookie'
-import { SESSION_COOKIE, LEGACY_SESSION_COOKIE, mergeSettings } from '@shared/constants'
+import { SESSION_COOKIE, LEGACY_SESSION_COOKIE } from '@shared/constants'
+import { mergeSettings } from '@shared/user-settings'
 import { initializeDatabase } from './db/schema'
 import { ApiError, errorResponse } from './lib/errors'
 import { loadSession, requireClientHeader } from './middleware/auth'
