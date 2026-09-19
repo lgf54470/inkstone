@@ -233,6 +233,7 @@ function KanbanTopBar({
       onUpdateBoardTitle={state.handleUpdateBoardTitle}
       onSelectView={state.setActiveViewId}
       viewOps={state.viewOps}
+      schemaOps={state.schemaOps}
       onSearchChange={state.filterSort.setSearchQuery}
       onChangeFilters={state.filterSort.setFilters}
       onChangeSorts={state.filterSort.setSorts}

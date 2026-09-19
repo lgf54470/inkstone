@@ -23,7 +23,7 @@ import type {
 } from '../types'
 import { useKanbanHistory, type CommitKanbanData } from './kanban-history'
 import { useKanbanViewOperations, useKanbanViewState } from './kanban-view-state'
-import { appendOptionToColumn, useKanbanColumnOperations } from './kanban-column-hooks'
+import { appendOptionToColumn, useKanbanColumnOperations, useKanbanSchemaOperations } from './kanban-column-hooks'
 import { useMoveItemClearingSorts } from './kanban-manual-move'
 
 function filterAndSortItems(
@@ -352,6 +352,20 @@ export function useKanbanSelection(
   }
 }
 
+/** The two writers of the document itself rather than of a view: which view is open, and the board's title. */
+function useKanbanDocumentWriters(commitData: CommitKanbanData) {
+  const setActiveViewId = useCallback((viewId: string) => {
+    commitData((prev) => ({ ...prev, activeViewId: viewId }))
+  }, [commitData])
+
+  const handleUpdateBoardTitle = useCallback(
+    (title: string) => commitData((prev: KanbanData) => ({ ...prev, title })),
+    [commitData],
+  )
+
+  return { setActiveViewId, handleUpdateBoardTitle }
+}
+
 export function useKanbanRootState(
   initialData: KanbanData,
   onUpdateData: (next: KanbanData) => void,
@@ -362,15 +376,7 @@ export function useKanbanRootState(
   const activeViewId = data.activeViewId || data.views[0]?.id || 'view-board'
   const [detailItem, setDetailItem] = useState<KanbanItem | null>(null)
 
-  const setActiveViewId = useCallback((viewId: string) => {
-    commitData((prev) => ({ ...prev, activeViewId: viewId }))
-  }, [commitData])
-
-  const handleUpdateBoardTitle = useCallback(
-    (title: string) => commitData((prev: KanbanData) => ({ ...prev, title })),
-    [commitData],
-  )
-
+  const { setActiveViewId, handleUpdateBoardTitle } = useKanbanDocumentWriters(commitData)
   const filterSort = useKanbanFilterSort(data, activeViewId, commitData)
   const groupColumn = data.columns.find((c) => c.id === (filterSort.activeView.groupBy || 'status'))
   const selection = useKanbanSelection(commitData, groupColumn, history.undo)
@@ -384,6 +390,7 @@ export function useKanbanRootState(
   )
   const adds = useKanbanAddOperations(data, commitData, setDetailItem, filterSort.activeView)
   const columnOps = useKanbanColumnOperations(commitData, filterSort.activeView)
+  const schemaOps = useKanbanSchemaOperations(commitData, history.undo)
   const viewOps = useKanbanViewOperations(data.views, commitData, history.undo)
 
   const handleMoveItem = useMoveItemClearingSorts(items.handleMoveItem, filterSort)
@@ -400,6 +407,7 @@ export function useKanbanRootState(
     items: { ...items, ...itemLifecycle, handleMoveItem },
     adds,
     columnOps,
+    schemaOps,
     viewOps,
     history,
     handleUpdateBoardTitle,

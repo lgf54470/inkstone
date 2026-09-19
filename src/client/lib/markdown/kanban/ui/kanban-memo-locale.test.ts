@@ -219,13 +219,22 @@ const TRANSLATED = Object.entries(EN_US_MESSAGES)
     key,
     en,
     zh: (ZH_CN_MESSAGES as Record<string, string>)[key]!,
+    // The names the English template asks its values by, in the order its captures arrive.
+    params: [...en.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((match) => match[1]!),
     pattern: new RegExp(`^${en.split(/\{[A-Za-z0-9_]+\}/).map(escapeRegExp).join('([\\s\\S]+?)')}$`),
   }))
 
-/** The same rendering with the captured slot values put into another locale's template. */
-function renderIn(template: string, captured: string[]): string {
-  let index = 0
-  return template.replace(/\{[A-Za-z0-9_]+\}/g, () => captured[index++] ?? '')
+/**
+ * The same rendering with the captured slot values put into another locale's template.
+ *
+ * Matched by name rather than by position: a language is free to ask the values of a sentence in
+ * another order than English does, and filling by position would predict a reading no locale draws.
+ */
+function renderIn(template: string, captured: string[], params: string[]): string {
+  return template.replace(
+    /\{([A-Za-z0-9_]+)\}/g,
+    (_match, name: string) => captured[params.indexOf(name)] ?? '',
+  )
 }
 
 function collapse(value: string): string {
@@ -295,7 +304,7 @@ function messagesIn(strings: string[]): Seen[] {
       zh: [...new Set(
         matched
           .filter((match) => !match.slots.some(slotCarriesLabel))
-          .map((match) => renderIn(match.entry.zh, match.slots)),
+          .map((match) => renderIn(match.entry.zh, match.slots, match.entry.params)),
       )],
     })
   }

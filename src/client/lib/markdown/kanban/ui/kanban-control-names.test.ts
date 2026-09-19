@@ -187,6 +187,29 @@ describe('rule popovers', () => {
   })
 })
 
+/**
+ * The columns panel and whatever it discloses are only in the document once the reader opens them,
+ * so the view walks above never see those controls either.
+ */
+describe('column schema panel', () => {
+  it('names every control of the columns panel with a column editor open', () => {
+    const { container } = mountBoard()
+    selectView(container, 'table')
+    const trigger = [...container.querySelectorAll<HTMLElement>('button')].find(
+      (b) => b.textContent?.includes(t('preview.kanban_columns')),
+    )
+    expect(trigger, 'the table view has no columns trigger').toBeTruthy()
+    act(() => { trigger!.click() })
+    const panel = container.querySelector<HTMLElement>('[role="dialog"]')
+    if (!panel) throw new Error('the columns panel did not open')
+    const toggle = panel.querySelector<HTMLElement>('button[aria-expanded]')
+    expect(toggle, 'the panel lists no editable column').toBeTruthy()
+    act(() => { toggle!.click() })
+    expect(document.getElementById(toggle!.getAttribute('aria-controls')!), 'the editor did not mount').toBeTruthy()
+    expect(unnamedControls(panel)).toEqual([])
+  })
+})
+
 describe('item detail controls', () => {
   it('names every control of the detail dialog opened from a card', () => {
     const { container } = mountBoard()

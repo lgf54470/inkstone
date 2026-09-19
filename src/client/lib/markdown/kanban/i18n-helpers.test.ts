@@ -54,6 +54,23 @@ describe('formatKanbanPropertyName', () => {
   it('preserves custom property names', () => {
     expect(formatKanbanPropertyName('Custom Field')).toBe('Custom Field')
   })
+
+  // A column the reader renamed has to read as they wrote it in every language; only a column still
+  // carrying the name the fence generated for its id is taken apart for translating.
+  it('shows a renamed built-in column the way the reader named it', () => {
+    expect(formatKanbanPropertyName({ id: 'status', name: 'Board state', type: 'select' })).toBe('Board state')
+    expect(formatKanbanPropertyName({ id: 'priority', name: 'Severity', type: 'select' })).toBe('Severity')
+  })
+
+  it('still translates a built-in column whose name only differs in case or spacing', () => {
+    expect(formatKanbanPropertyName({ id: 'status', name: 'status', type: 'select' })).toBe(t('preview.kanban_prop_status'))
+    expect(formatKanbanPropertyName({ id: 'startDate', name: 'Start Date', type: 'date' })).toBe(t('preview.kanban_prop_start_date'))
+    expect(formatKanbanPropertyName({ id: 'end_date', name: 'end date', type: 'date' })).toBe(t('preview.kanban_prop_end_date'))
+  })
+
+  it('falls back to the built-in name when a column carries none', () => {
+    expect(formatKanbanPropertyName({ id: 'tags', name: '', type: 'multi-select' })).toBe(t('preview.kanban_prop_tags'))
+  })
 })
 
 describe('formatKanbanOptionLabel', () => {

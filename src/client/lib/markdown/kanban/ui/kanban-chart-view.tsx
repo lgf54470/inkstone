@@ -179,9 +179,8 @@ function chartCanvasAriaLabel(
   dataset: ReturnType<typeof aggregateKanbanChartData>,
 ): string {
   const groupLabel = groupProp ? formatKanbanPropertyName(groupProp) : t('preview.kanban_chart_no_group')
-  const summary = t('preview.kanban_chart_canvas_aria', { value0: dataset.total, value1: groupLabel })
   const counts = dataset.labels.map((label, i) => `${label}: ${dataset.data[i]}`).join(', ')
-  return `${summary}: ${counts}`
+  return t('preview.kanban_chart_canvas_aria', { value0: dataset.total, value1: groupLabel, value2: counts })
 }
 
 function countCompleted(items: KanbanData['items']): number {

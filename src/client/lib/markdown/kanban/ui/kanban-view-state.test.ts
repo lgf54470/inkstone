@@ -192,6 +192,42 @@ function lastToast() {
   return useUi.getState().toasts.at(-1)
 }
 
+// The pure document edits are covered in ./kanban-column-schema.test.ts; what is only observable
+// here is that they go through the board's one commit path, which is what makes a deleted column
+// come back through the same undo the toast hands the reader.
+describe('kanban column schema operations', () => {
+  it('adds a column through the boards one commit path', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.schemaOps.addColumn('Sprint', 'date') })
+    expect(commits.at(-1)!.columns.at(-1)).toMatchObject({ name: 'Sprint', type: 'date' })
+    expect(holder.state.data.columns).toHaveLength(2)
+    unmount()
+  })
+
+  it('renames, retypes and moves a column on the active document', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.schemaOps.addColumn('Sprint', 'date') })
+    const id = commits.at(-1)!.columns.at(-1)!.id
+    act(() => { holder.state.schemaOps.renameColumn(id, 'Iteration') })
+    expect(commits.at(-1)!.columns.at(-1)!.name).toBe('Iteration')
+    act(() => { holder.state.schemaOps.changeColumnType(id, 'text') })
+    expect(commits.at(-1)!.columns.at(-1)!.type).toBe('text')
+    act(() => { holder.state.schemaOps.moveColumn(id, -1) })
+    expect(commits.at(-1)!.columns.map((c) => c.name)).toEqual(['Iteration', 'Status'])
+    unmount()
+  })
+
+  it('runs a deleted column back in from the toast, through the board history', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.schemaOps.deleteColumn('status') })
+    expect(commits.at(-1)!.columns).toHaveLength(0)
+    expect(lastToast()).toMatchObject({ title: t('preview.kanban_column_deleted'), kind: 'undo' })
+    act(() => { lastToast()!.action!.run() })
+    expect(commits.at(-1)!.columns.map((c) => c.id)).toEqual(['status'])
+    unmount()
+  })
+})
+
 describe('undoing a view delete', () => {
   it('runs a deleted view back in from the toast, through the board history', () => {
     const { holder, commits, unmount } = renderRootStateProbe()

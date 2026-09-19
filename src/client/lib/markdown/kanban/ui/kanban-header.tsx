@@ -18,6 +18,7 @@ import type {
 } from '../types'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { prettyCombo } from '../../../../lib/hotkeys'
+import type { KanbanSchemaOperations } from './kanban-column-hooks'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSearchBox } from './kanban-search-box'
@@ -57,6 +58,7 @@ interface KanbanHeaderProps {
   onAddItem: () => void
   onToggleFullscreen?: () => void
   viewOps: KanbanViewOperations
+  schemaOps?: KanbanSchemaOperations
   viewPanelId: string
 }
 
@@ -72,6 +74,7 @@ function KanbanViewOptionsAction({
   onChangeGroupBy,
   onChangeCardSize,
   onToggleHiddenColumn,
+  schemaOps,
 }: {
   columns: KanbanData['columns']
   groupBy: string
@@ -80,6 +83,7 @@ function KanbanViewOptionsAction({
   onChangeGroupBy?: (propId: string) => void
   onChangeCardSize?: (size: CardSize) => void
   onToggleHiddenColumn?: (propertyId: string) => void
+  schemaOps?: KanbanSchemaOperations
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -117,6 +121,7 @@ function KanbanViewOptionsAction({
         onChangeGroupBy={onChangeGroupBy}
         onChangeCardSize={onChangeCardSize}
         onToggleHiddenColumn={onToggleHiddenColumn}
+        schemaOps={schemaOps}
       />
     </>
   )
@@ -413,6 +418,7 @@ function KanbanHeaderActions(props: HeaderActionsProps) {
           onChangeGroupBy={activeView.type === 'board' ? props.onChangeGroupBy : undefined}
           onChangeCardSize={activeView.type === 'board' ? props.onChangeCardSize : undefined}
           onToggleHiddenColumn={activeView.type === 'table' ? props.onToggleHiddenColumn : undefined}
+          schemaOps={activeView.type === 'table' ? props.schemaOps : undefined}
         />
       )}
       <KanbanWriteStatus unsaved={props.unsaved} onRetry={props.onRetryWrite} onDiscard={props.onDiscardWrite} />

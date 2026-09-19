@@ -51,14 +51,22 @@ const PROPERTY_NAME_MAP: Record<string, MessageKey> = {
   subtasks: 'preview.kanban_subtasks',
 }
 
+// The id is what the fence stores values under, so it is also what names a built-in column — but only
+// while the column still carries that name. A reader who renamed it wrote the phrase they want shown,
+// and no locale may replace it.
+function normalizedName(text: string): string {
+  return text.toLowerCase().replace(/[\s_-]+/g, '')
+}
+
 export function formatKanbanPropertyName(prop: KanbanProperty | string): string {
-  const idOrName = typeof prop === 'string' ? prop : prop.id || prop.name
-  const normalized = idOrName.toLowerCase().replace(/[\s_-]+/g, '')
+  const fallback = typeof prop === 'string' ? prop : prop.name
+  const normalized = normalizedName(typeof prop === 'string' ? prop : prop.id || prop.name)
   const key = PROPERTY_NAME_MAP[normalized]
-  if (key) {
-    return t(key)
-  }
-  return typeof prop === 'string' ? prop : prop.name
+  if (!key) return fallback
+  if (typeof prop === 'string') return t(key)
+  const typed = prop.name.trim()
+  if (typed && normalizedName(typed) !== normalized) return prop.name
+  return t(key)
 }
 
 const OPTION_LABEL_MAP: Record<string, MessageKey> = {

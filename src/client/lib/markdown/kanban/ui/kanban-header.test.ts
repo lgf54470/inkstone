@@ -5,6 +5,7 @@ import { renderElement } from '../../../test-render'
 import { formatKanbanPropertyName } from '../i18n-helpers'
 import { ZH_CN_MESSAGES } from '../../../../../shared/locales/zh-CN'
 import { KanbanHeader } from './kanban-header'
+import type { KanbanSchemaOperations } from './kanban-column-hooks'
 import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
 
 beforeAll(async () => {
@@ -43,6 +44,19 @@ function stubViewOps(): ComponentProps<typeof KanbanHeader>['viewOps'] {
     duplicateView: vi.fn(),
     deleteView: vi.fn(),
     moveView: vi.fn(),
+  }
+}
+
+/** The schema writers only have to reach the panel here; ./kanban-column-schema-editor.test.ts asserts what it does with them. */
+type SchemaOps = KanbanSchemaOperations
+
+function stubSchemaOps(): SchemaOps {
+  return {
+    addColumn: vi.fn(),
+    renameColumn: vi.fn(),
+    changeColumnType: vi.fn(),
+    deleteColumn: vi.fn(),
+    moveColumn: vi.fn(),
   }
 }
 
@@ -97,7 +111,11 @@ const tableColumns: KanbanProperty[] = [
   { id: 'spec', name: 'Spec file', type: 'text' },
 ]
 
-function renderTableHeader(hiddenColumns: string[], onToggleHiddenColumn = vi.fn()) {
+function renderTableHeader(
+  hiddenColumns: string[],
+  onToggleHiddenColumn = vi.fn(),
+  schemaOps: SchemaOps = stubSchemaOps(),
+) {
   const tableData: KanbanData = {
     columns: tableColumns,
     items: allItems,
@@ -117,11 +135,12 @@ function renderTableHeader(hiddenColumns: string[], onToggleHiddenColumn = vi.fn
       onChangeSorts: vi.fn(),
       onAddItem: vi.fn(),
       onToggleHiddenColumn,
+      schemaOps,
       viewOps: stubViewOps(),
       viewPanelId: 'view-panel',
     }),
   )
-  return { ...rendered, onToggleHiddenColumn }
+  return { ...rendered, onToggleHiddenColumn, schemaOps }
 }
 
 function columnToggle(container: HTMLElement, columnName: string): HTMLInputElement | null {
