@@ -12,7 +12,7 @@ import { act, createElement } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n } from '../../../../lib/i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
-import type { KanbanData, KanbanView } from '../types'
+import type { KanbanData, KanbanView, KanbanViewType } from '../types'
 import { KanbanRoot } from './kanban-root'
 import { KanbanViewTabs } from './kanban-view-tabs'
 
@@ -20,6 +20,8 @@ beforeAll(async () => {
   installTestGlobals()
   await initI18n()
 })
+
+const VIEW_TYPES: KanbanViewType[] = ['board', 'table', 'list', 'gallery', 'calendar', 'timeline', 'gantt']
 
 const views: KanbanView[] = [
   { id: 'v-board', name: 'Board', type: 'board' },
@@ -149,10 +151,7 @@ const boardData: KanbanData = {
     },
   ],
   items: [{ id: 'a', title: 'Design spec', properties: { status: 'todo' } }],
-  views: [
-    { id: 'v1', name: 'Board', type: 'board', groupBy: 'status' },
-    { id: 'v2', name: 'Table', type: 'table', groupBy: 'status' },
-  ],
+  views: VIEW_TYPES.map((type) => ({ id: `v-${type}`, name: type, type, groupBy: 'status' })),
 }
 
 function mountBoard() {
@@ -188,5 +187,28 @@ describe('KanbanRoot view panel', () => {
     expect(selected?.getAttribute('data-view-type')).toBe('table')
     const panel = document.getElementById(selected!.getAttribute('aria-controls')!)
     expect(panel?.getAttribute('aria-labelledby')).toBe(selected!.id)
+  })
+})
+
+describe('KanbanRoot view naming', () => {
+  // The panel already carries the name of the tab that controls it, and every view used to wrap
+  // itself in a named region holding the very same string — a reader entering one view heard it
+  // twice. The rest of the app has no such inner landmark (its only other tab surface, the markdown
+  // tabs block, names the panel and stops there), so the panel is the one named container.
+  it.each(VIEW_TYPES)('the %s view leaves the naming to the panel its tab controls', (type) => {
+    const { container } = mountBoard()
+    const tab = container.querySelector<HTMLElement>(`[role="tab"][data-view-type="${type}"]`)
+    expect(tab, `no tab for the ${type} view`).not.toBeNull()
+    act(() => {
+      tab!.click()
+    })
+    const selected = container.querySelector<HTMLElement>(`[role="tab"][data-view-type="${type}"][aria-selected="true"]`)
+    expect(selected, `clicking the ${type} tab did not select it`).not.toBeNull()
+
+    const panel = document.getElementById(selected!.getAttribute('aria-controls')!)
+    expect(panel?.getAttribute('role'), 'the container the tab controls is no longer the panel').toBe('tabpanel')
+    expect(panel?.getAttribute('aria-labelledby')).toBe(selected!.id)
+    expect(panel?.firstElementChild, `the ${type} view mounted nothing`).not.toBeNull()
+    expect(panel?.querySelectorAll('[role="region"]').length, 'a view named itself again inside the panel').toBe(0)
   })
 })

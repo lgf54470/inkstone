@@ -117,15 +117,13 @@ function itemRowheader(container: ParentNode, itemId: string): HTMLElement {
 }
 
 describe('table structure', () => {
-  it('marks the grid as a table inside the region that names it', () => {
+  it('names the grid itself instead of wrapping it in a region', () => {
     const container = mount()
-    const region = container.querySelector<HTMLElement>('[role="region"]')
     const table = container.querySelector<HTMLElement>('[role="table"]')
 
-    expect(text(region), 'the view stopped naming itself').not.toBe('')
-    expect(region?.getAttribute('aria-label')).toBe(t('preview.kanban_view_table'))
     expect(table, 'the grid is still an anonymous pile of boxes').not.toBeNull()
-    expect(region?.contains(table!), 'the table escaped the region a reader navigates by').toBe(true)
+    expect(table?.getAttribute('aria-label'), 'the grid carries no name of its own').toBe(t('preview.kanban_view_table'))
+    expect(container.querySelector('[role="region"]'), 'the view names itself a second time around the grid').toBeNull()
   })
 
   it('names every column in a header row', () => {

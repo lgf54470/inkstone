@@ -2882,6 +2882,10 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-tabs.test.ts', [
     '/**\n * The view switcher announces itself as a tablist, but a reader who arrives there is still\n * navigating by accident: every tab is its own Tab stop, so crossing three views takes three\n * presses and the arrow keys do nothing, and nothing points from the selected tab to the region\n * it produced — the panel is reachable only by guessing it is further down the page (review #29).\n * The contract here is the one a horizontal tablist has to keep: one roving stop, Arrow/Home/End\n * moving both focus and selection, and `aria-controls` resolving to a real `role=\'tabpanel\'` that\n * names the selected tab back. The pair is only observable from whoever owns the panel, so the\n * last group mounts the whole board rather than the tabs alone.\n */',
+    '// The panel already carries the name of the tab that controls it, and every view used to wrap',
+    '// itself in a named region holding the very same string — a reader entering one view heard it',
+    '// twice. The rest of the app has no such inner landmark (its only other tab surface, the markdown',
+    '// tabs block, names the panel and stops there), so the panel is the one named container.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-tabs.tsx', [
     '// The whole list drives one panel, so a tab\'s own name has to be derivable from that panel\'s id —',

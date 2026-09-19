@@ -162,8 +162,8 @@ export const KanbanTableView = memo(function KanbanTableView({
   const { isAllSelected, handleToggleAll } = useTableToggleAll(data.items, selectedIds, onToggleAll)
 
   return (
-    <div className='h-full w-full overflow-auto p-4' role='region' aria-label={t('preview.kanban_view_table')}>
-      <div role='table' className='w-full min-w-max rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
+    <div className='h-full w-full overflow-auto p-4'>
+      <div role='table' aria-label={t('preview.kanban_view_table')} className='w-full min-w-max rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         <TableHeaderRow
           columns={data.columns}
           hiddenColumns={view?.hiddenColumns}

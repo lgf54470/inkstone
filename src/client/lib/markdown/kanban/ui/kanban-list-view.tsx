@@ -322,7 +322,7 @@ export const KanbanListView = memo(function KanbanListView({
   const tagsCol = data.columns.find((c) => c.id === 'tags')
 
   return (
-    <div className='flex h-full w-full flex-col overflow-y-auto p-4' role='region' aria-label={t('preview.kanban_view_list')}>
+    <div className='flex h-full w-full flex-col overflow-y-auto p-4'>
       <div className='divide-y divide-[var(--border-subtle)] rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         {data.items.map((item) => (
           <KanbanListRow

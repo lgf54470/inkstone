@@ -221,7 +221,7 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
   const dateField = view?.dateField
 
   return (
-    <div className='flex h-full w-full flex-col overflow-hidden p-4' role='region' aria-label={t('preview.kanban_view_calendar')}>
+    <div className='flex h-full w-full flex-col overflow-hidden p-4'>
       <CalendarHeader
         year={year}
         month={month}

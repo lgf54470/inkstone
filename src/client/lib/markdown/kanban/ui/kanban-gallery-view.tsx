@@ -256,7 +256,7 @@ export const KanbanGalleryView = memo(function KanbanGalleryView({
   const tagsCol = data.columns.find((c) => c.id === 'tags')
 
   return (
-    <div className='h-full w-full overflow-y-auto p-4' role='region' aria-label={t('preview.kanban_view_gallery')}>
+    <div className='h-full w-full overflow-y-auto p-4'>
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
         {data.items.map((item) => (
           <GalleryCard

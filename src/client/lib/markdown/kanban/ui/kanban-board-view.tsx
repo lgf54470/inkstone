@@ -384,7 +384,7 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
   }
 
   return (
-    <div data-kanban-board className='flex h-full w-full gap-4 overflow-x-auto p-4' role='region' aria-label={t('preview.kanban_view_board')}>
+    <div data-kanban-board className='flex h-full w-full gap-4 overflow-x-auto p-4'>
       {groups.map((group) => (
         <BoardColumnItem
           key={group.groupKey}

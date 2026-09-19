@@ -176,7 +176,7 @@ export const KanbanGanttView = memo(function KanbanGanttView({
   const progressField = view?.progressField || 'progress'
 
   return (
-    <div className='flex h-full w-full flex-col overflow-hidden p-4' role='region' aria-label={t('preview.kanban_view_gantt')}>
+    <div className='flex h-full w-full flex-col overflow-hidden p-4'>
       <div className='flex flex-1 overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         <GanttTaskSidebar
           items={data.items}

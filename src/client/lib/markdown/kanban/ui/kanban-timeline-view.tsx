@@ -120,7 +120,7 @@ export const KanbanTimelineView = memo(function KanbanTimelineView({
   const days = useMemo(() => buildTimelineDays(), [])
 
   return (
-    <div className='flex h-full w-full flex-col overflow-hidden p-4' role='region' aria-label={t('preview.kanban_view_timeline')}>
+    <div className='flex h-full w-full flex-col overflow-hidden p-4'>
       <div className='flex flex-1 overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         <TimelineTaskSidebar items={data.items} onOpenDetail={onOpenDetail} onAddItem={onAddItem} />
         <TimelineChart items={data.items} days={days} fields={{ startField: view?.startField, endField: view?.endField }} onOpenDetail={onOpenDetail} />
