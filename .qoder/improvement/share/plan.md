@@ -50,7 +50,7 @@
 | T | SH-37 | 通病解冻：`--danger/warning/success-subtle` 全站引用无定义（渲染透明）→ 统一按 `-soft` 家族补定义并改名引用；三对色令牌按 AA 重校准 | P2 | ✅ | a5a02d38 |
 | F1 | SH-29 | `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，双侧回归 | P2 | ✅ | 1b502776 |
 | F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用） | P2 | ✅ | 9621ab0d |
-| F2b | SH-16c | all 整表拉行 SQL 下推（26 号遗留）：`lib/visit-aggregates.ts` 聚合语句 + 行路/SQL 路同一 normalized 中间形态 + 等价测试 | P2 | ✅ | 待回填 |
+| F2b | SH-16c | all 整表拉行 SQL 下推（26 号遗留）：`lib/visit-aggregates.ts` 聚合语句 + 行路/SQL 路同一 normalized 中间形态 + 等价测试 | P2 | ✅ | fd22e03b |
 | F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后） | — | 排队 | |
 | F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | eff0a6b5 |
 | F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | 排队 | |
@@ -324,4 +324,4 @@
 - 测试（红先行）：三条守卫先红——share 全局 `range=all`、share 单笔记 `range=all`、blog `range=all`，各断言响应数值（totalViews/totalVisitors/桶求和/topNotes[0].views）之外，还断言 `captureSql` 里出现了 `GROUP BY` 且**没有**任何以 `SELECT visited_at, visitor_fp` 开头的语句（红态：`expected [ Array(1) ] to deeply equal []`）；为此 `tests/d1-harness.ts` 新增 `captureSql(db)` 记录每条 prepare 的 SQL（含 batch 内语句，空白归一）。新增 `tests/visit-aggregates.test.ts`（注册进 node 工程）以 8 种边界行（null 与空串指纹、大小写国家、空 referrer、缺 device/os/browser、同 target 两个 slug、窗口外两侧、机器人、他人数据）做**两路全等**断言 + 逐维度显式取值（防「两路同错」），并含空结果集全零填充用例；per-note scope 亦做全等（覆盖 `?1` targetId 参数序）。
 - 变异 12 发全杀（/tmp/mutF2b 备份还原）：all 强行走行路、桶语句去掉上界、`COUNT(DISTINCT visitor_fp)` 不做 NULLIF、国家回退值不升格（真错，实测发现并已修）、target slug 改 MIN、device 回退值改名、os 语句漏绑一个参数、桶下标 +1 位移、countries/referrers 结果顺序错位、单笔记 scope 丢 targetId、blog 估算分布条件取反（首轮存活→补第 5 条 blog 用例后杀）、行路 where 丢过滤 clause。
 - 坑：①两条路的 `Map` 插入序天然不同，`toEqual` 对 Map 不比序，故全等断言可靠，但显式取值断言仍要逐维度写（否则「两路同错」测不出，国家回退值即由此暴露）；②`views` 上界只由 totals 约束、桶另加上界，「未来行」进总数不进时间轴是**既有行为**（行路 `rows.length` 同构），等价测试把它显式钉住而不是顺手改；③新测试文件必须同时进 `vitest.config.ts` 的 node include 与 jsdom exclude，否则 `node:sqlite` 走 jsdom 工程。
-- 验证：tsc -b 绿；11 静态门禁全绿（size:check 先报 blog/stats.ts longFns=1，按拆分而非改基线处理）；vitest 定向 121/121（visit-aggregates+share-routes+blog-routes+share-analytics）。全量回归 待回填。fix 提交 待回填。
+- 验证：tsc -b 绿；11 静态门禁全绿（size:check 先报 blog/stats.ts longFns=1，按拆分而非改基线处理）；vitest 定向 121/121（visit-aggregates+share-routes+blog-routes+share-analytics）。全量回归 237 文件/1837 测试绿（REGRESSION_EXIT=0）。fix 提交 fd22e03b。
