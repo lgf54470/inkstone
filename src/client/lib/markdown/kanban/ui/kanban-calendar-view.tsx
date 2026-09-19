@@ -1,14 +1,8 @@
 import { memo, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { t, useLocale } from '../../../i18n'
-import {
-  getMonthWeeks,
-  getWeekEventSegments,
-  kanbanNarrowWeekdays,
-  kanbanWeekStartFor,
-  type CalendarDay,
-  type WeekEventSegment,
-} from '../calendar-helpers'
+import { narrowWeekdayLabels, weekStartFor, type WeekStartDay } from '../../../time'
+import { getMonthWeeks, getWeekEventSegments, type CalendarDay, type WeekEventSegment } from '../calendar-helpers'
 import { getKanbanTagStyle } from '../colors'
 import type { KanbanData, KanbanItem, KanbanProperty, KanbanView } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
@@ -64,10 +58,10 @@ function CalendarHeader({ year, month, onPrevMonth, onNextMonth, onToday }: Cale
   )
 }
 
-function CalendarWeekHeader({ locale, weekStart }: { locale: string; weekStart: number }) {
+function CalendarWeekHeader({ locale, weekStart }: { locale: string; weekStart: WeekStartDay }) {
   return (
     <div className='grid grid-cols-7 border-b border-[var(--border-subtle)] pb-1 text-center text-[length:var(--text-12)] font-medium text-[var(--text-tertiary)]'>
-      {kanbanNarrowWeekdays(locale, weekStart).map((label, index) => (
+      {narrowWeekdayLabels(locale, weekStart).map((label, index) => (
         <span key={(weekStart + index) % 7}>{label}</span>
       ))}
     </div>
@@ -218,7 +212,7 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
 }: KanbanCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const locale = useLocale()
-  const weekStart = kanbanWeekStartFor(locale)
+  const weekStart = weekStartFor(locale)
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
   const weeks = useMemo(() => getMonthWeeks(year, month, weekStart), [year, month, weekStart])

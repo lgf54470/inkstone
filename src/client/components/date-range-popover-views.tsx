@@ -3,6 +3,7 @@ import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, GripVe
 import type { DateRangeFilter, RelativeFilter } from '@shared/types'
 import { cn } from '../lib/cn'
 import { t } from '../lib/i18n'
+import type { WeekStartDay } from '../lib/time'
 import { MonthGrid } from './calendar-grids'
 import { FIXED_PRESET_LABELS, FIXED_PRESETS } from './date-range-popover-core'
 import { RANGE_PRESET_MAX, type RangePresetConfig } from '../features/list'
@@ -128,7 +129,7 @@ function PresetRow({ preset, presetIndex, total, drag, onUpdate, onRemove, onMov
 export function RangeMonthGrid({ gridRef, cursor, weekStart, weekdayLabels, todayKey, monthTitle, current, editing, onPick }: {
   gridRef: React.RefObject<HTMLDivElement | null>
   cursor: { year: number; month: number }
-  weekStart: 0 | 1
+  weekStart: WeekStartDay
   weekdayLabels: string[]
   todayKey: string
   monthTitle: string

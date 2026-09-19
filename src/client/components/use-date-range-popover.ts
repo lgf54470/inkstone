@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { DateRangeFilter, RelativeFilter } from '@shared/types'
 import { getVisibleViewport } from '../lib/viewport'
 import { useLocale } from '../lib/i18n'
-import { dateKey, parseDateKey } from '../lib/time'
+import { dateKey, narrowWeekdayLabels, parseDateKey, weekStartFor, type WeekStartDay } from '../lib/time'
 import { useClickOutside, useEscape } from './overlay'
 import { RANGE_PRESET_MAX, loadRangePresets, saveRangePresets, type RangePresetConfig } from '../features/list'
 import { movePresetInList, presetRange, type RangePreset } from './date-range-popover-core'
@@ -81,7 +81,7 @@ function useRangeGridFlash(open: boolean, editing: 'start' | 'end', range: DateR
 
 
 interface DateRangeCore {
-  weekStart: 0 | 1
+  weekStart: WeekStartDay
   editing: 'start' | 'end'
   setEditing: React.Dispatch<React.SetStateAction<'start' | 'end'>>
   isEditorOpen: boolean
@@ -104,7 +104,7 @@ interface DateRangeCore {
 
 function useDateRangeCore(props: DateRangePopoverProps): DateRangeCore {
   const locale = useLocale()
-  const weekStart = locale === 'zh-CN' ? 1 : 0
+  const weekStart = weekStartFor(locale)
   const [editing, setEditing] = useState<'start' | 'end'>('start')
   const base = props.range ? new Date(props.range.end) : new Date()
   const [cursor, setCursor] = useState({ year: base.getFullYear(), month: base.getMonth() })
@@ -117,10 +117,7 @@ function useDateRangeCore(props: DateRangePopoverProps): DateRangeCore {
   usePopoverPosition(props.open, isEditorOpen, props.anchor, setPosition)
   useGridFocus(props.open, editing, cursor, gridRef)
   const todayKey = useMemo(() => dateKey(new Date()), [])
-  const weekdayLabels = useMemo(() => {
-    const formatter = new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
-    return Array.from({ length: 7 }, (_, index) => formatter.format(new Date(2024, 0, 7 + ((weekStart + index) % 7))))
-  }, [locale, weekStart])
+  const weekdayLabels = useMemo(() => narrowWeekdayLabels(locale, weekStart), [locale, weekStart])
   const monthTitle = useMemo(() => new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long' }).format(new Date(cursor.year, cursor.month, 1)), [cursor, locale])
   const current = props.range ?? { start: dateKey(new Date()), end: dateKey(new Date()) }
   const shiftMonth = (delta: number) => {

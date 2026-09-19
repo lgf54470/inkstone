@@ -1,4 +1,5 @@
 import type { DateRangeFilter } from '@shared/types'
+import type { WeekStartDay } from '../../lib/time'
 import type { CalendarDayNote } from './strip'
 import type { YearGridColumnsPref } from '../calendar-grids'
 
@@ -9,7 +10,7 @@ export interface ActivityCalendarProps {
   notesByDay?: ReadonlyMap<string, CalendarDayNote[]>
   getDiaryId?: (key: string) => string | null
   locale: string
-  weekStart?: 0 | 1
+  weekStart?: WeekStartDay
   today?: Date
   range?: { start: Date; end: Date }
   selectedRange?: DateRangeFilter | null

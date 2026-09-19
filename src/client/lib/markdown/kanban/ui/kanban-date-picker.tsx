@@ -2,7 +2,7 @@ import { useId, useRef, useState } from 'react'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocale } from '../../../i18n'
-import { kanbanNarrowWeekdays, kanbanWeekStartFor } from '../calendar-helpers'
+import { narrowWeekdayLabels, weekStartFor, type WeekStartDay } from '../../../time'
 
 interface KanbanDatePickerProps {
   /**
@@ -123,8 +123,8 @@ function DatePickerHeader({
   )
 }
 
-function DatePickerWeekRow({ weekStart, locale }: { weekStart: number; locale: string }) {
-  const weekList = kanbanNarrowWeekdays(locale, weekStart)
+function DatePickerWeekRow({ weekStart, locale }: { weekStart: WeekStartDay; locale: string }) {
+  const weekList = narrowWeekdayLabels(locale, weekStart)
 
   return (
     <div className='grid grid-cols-7 pt-2 text-center text-[length:var(--text-10)] font-semibold text-[var(--text-tertiary)]'>
@@ -250,7 +250,7 @@ function DatePickerPopover({
   onChange: (dateStr: string) => void
 }) {
   const locale = useLocale()
-  const weekStart = kanbanWeekStartFor(locale)
+  const weekStart = weekStartFor(locale)
   const popoverRef = useRef<HTMLDivElement>(null)
   const { cursor, prevMonth, nextMonth, resetToday } = useCalendarCursor(value)
   const todayStr = getTodayDateStr()

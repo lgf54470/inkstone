@@ -1,6 +1,6 @@
 import { Fragment, useMemo, type ReactNode } from 'react'
 import { cn } from '../lib/cn'
-import { dateKey } from '../lib/time'
+import { dateKey, type WeekStartDay } from '../lib/time'
 
 
 interface MonthGridCell {
@@ -11,7 +11,7 @@ interface MonthGridCell {
   date: Date
 }
 
-export function buildMonthGridCells(year: number, month: number, weekStart: 0 | 1, todayKey?: string): MonthGridCell[] {
+export function buildMonthGridCells(year: number, month: number, weekStart: WeekStartDay, todayKey?: string): MonthGridCell[] {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const offset = (new Date(year, month, 1).getDay() - weekStart + 7) % 7
   const rows = Math.ceil((offset + daysInMonth) / 7)
@@ -29,7 +29,7 @@ export function buildMonthGridCells(year: number, month: number, weekStart: 0 | 
 interface MonthGridProps {
   year: number
   month: number
-  weekStart?: 0 | 1
+  weekStart?: WeekStartDay
   weekdayLabels: readonly string[]
   todayKey?: string
   className?: string
@@ -57,7 +57,7 @@ interface YearGridMonth {
   cells: MonthGridCell[]
 }
 
-export function buildYearGridMonths(year: number, weekStart: 0 | 1, todayKey?: string): YearGridMonth[] {
+export function buildYearGridMonths(year: number, weekStart: WeekStartDay, todayKey?: string): YearGridMonth[] {
   return Array.from({ length: 12 }, (_, month) => ({ month, cells: buildMonthGridCells(year, month, weekStart, todayKey) }))
 }
 
@@ -72,7 +72,7 @@ export function yearGridColumns(width: number): YearGridColumns {
 
 interface YearGridProps {
   year: number
-  weekStart?: 0 | 1
+  weekStart?: WeekStartDay
   todayKey?: string
   columns?: YearGridColumns
   className?: string

@@ -2646,9 +2646,6 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/calendar-helpers.ts', [
     '/**\n * How many cells precede the first of the month in a grid that opens on `weekStart`. Both calendar\n * surfaces index JS `getDay()` (Sunday = 0), so `weekStart` is 0-based here too.\n */',
-    '/**\n * Which weekday opens a kanban calendar is a fact about the reader\'s calendar, so it is read off\n * locale data: `firstDay` is ISO-numbered (Monday = 1 … Sunday = 7) while the grids here index JS\n * `getDay()`, where Sunday is 0 — hence the modulo. Runtimes without `getWeekInfo` get the answer\n * these calendars shipped with before the API existed.\n */',
-    '/** The grid\'s seven column labels, in the same order as its columns. */',
-    '// 2024-01-07 is a Sunday, so the offset alone selects the weekday.',
   ]],
   ['src/client/lib/markdown/kanban/chart-palette.ts', [
     '// A probe that is in the document but not painted: `:root` custom properties',
@@ -2773,9 +2770,7 @@ const allowed = new Map([
     '// the detail modal portals onto document.body, so query the whole document',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-date-picker.test.ts', [
-    '/**\n * Which weekday opens a calendar is a fact about the reader\'s calendar, not about the two languages\n * this app happens to ship: `locale === \'zh-CN\' ? 1 : 0` gets today\'s locales right only because\n * they are the two it names, and would quietly open a German or Arabic board on Sunday the day a\n * third locale lands. These cases pin the derivation to locale data plus one explicit fallback for\n * a runtime without `Intl.Locale#getWeekInfo`, then check the rendered picker — its weekday labels\n * and the cells that spill in front of the 1st — both follow that number.\n */',
-    '// Sunday for the US, Monday for China and Germany, Saturday for Egypt — all CLDR, none of them',
-    '// a language the board\'s own locale switch can even select today.',
+    '/**\n * The picker draws its calendar from the shared locale derivation, where the `Intl` reading itself is\n * pinned (`lib/time.test.ts`). What is checked here is that the rendered picker follows that one\n * number: its weekday row and the cells spilling in front of the 1st are read off the same value, so\n * a change to the derivation cannot move one of them and leave the other on Sunday.\n */',
     '// 2024-01-07 is a Sunday, the same reference date the picker\'s own week row walks from.',
     '// 2026-09-01 is a Tuesday, so a Monday-start month leads with one spilled day.',
   ]],
@@ -4049,10 +4044,20 @@ const allowed = new Map([
     '/** Idempotent jsdom shims needed to render React components in unit tests. */',
     '/** Render a React node into a fresh container appended to document.body (portals land on body as usual). */',
   ]],
+  ['src/client/lib/time.test.ts', [
+    '/**\n * Which weekday opens a calendar is a fact about the reader\'s calendar, not about the two languages\n * this app happens to ship: `locale === \'zh-CN\' ? 1 : 0` gets today\'s locales right only because\n * they are the two it names, and would quietly open a German or Arabic calendar on Sunday the day a\n * third locale lands. These cases pin the derivation to locale data plus one explicit fallback for\n * a runtime without `Intl.Locale#getWeekInfo`.\n */',
+    '// Sunday for the US, Monday for China and Germany, Saturday for Egypt — all CLDR, none of them',
+    '// a language this app\'s own locale switch can even select today.',
+    '// 2024-01-07 is a Sunday, the same reference date the derivation walks from.',
+  ]],
   ['src/client/lib/time.ts', [
     '/** Day-key arithmetic: the key `delta` days after (or before) `key`. */',
     '/** Inclusive day window of `days` entries ending at `anchor` (1 = a single day). */',
     '/** Whole days from `a` to `b` (negative when `b` is earlier), using UTC day math to stay DST-safe. */',
+    '/**\n * The weekday that opens a week grid, as a JS `getDay()` number. Not `0 | 1`: CLDR gives whole\n * calendars that open on Saturday, and every grid here takes this same 0-based index.\n */',
+    '/**\n * Which weekday opens a reader\'s calendar is locale data, so it is read off `Intl` rather than off\n * the languages this app ships. `firstDay` is ISO-numbered (Monday = 1 … Sunday = 7) while the\n * grids index JS `getDay()`, where Sunday is 0 — hence the modulo. Runtimes without `getWeekInfo`\n * get the answer these calendars shipped with before the API existed.\n */',
+    '/** The seven column labels of a grid, in the same order as that grid\'s columns. */',
+    '// 2024-01-07 is a Sunday, so the offset alone selects the weekday.',
     '/** Key of the week\'s first day (per `weekStart`) containing `key`. */',
     '/** Whether an inclusive day-key range spans exactly one aligned week. */',
   ]],
@@ -4938,6 +4943,9 @@ const allowed = new Map([
     '// Rewind the last attempt far enough to expire the window and the lock.',
     '// The 4th failure reached the escalation chain (fails 2 → locked for the',
     '// ip key); assertNotLocked must now throw for that key but not others.',
+  ]],
+  ['tests/week-start-policy.test.ts', [
+    '/**\n * Which weekday opens a calendar is derived once, from `Intl` locale data, in `src/client/lib/time.ts`.\n *\n * Before that, the answer was written out per component — and it was the same wrong sentence each\n * time: `locale === \'zh-CN\' ? 1 : 0` names the two languages this app ships, so a German or Arabic\n * reader would have gotten Sunday, and the grid, its header and the picker each carried their own\n * copy of the labels. A fix that only changes one of those copies leaves the reader with a month\n * grid whose columns disagree with the row above it, which is exactly what happened inside the\n * kanban module (K2-04b fixed the picker, K2-04g1 the view). These cases keep the next calendar\n * from re-deriving the week on its own.\n */',
   ]],
   ['vite.config.ts', [
     '// Keep optional preview renderers and their language modules behind dynamic-import boundaries.',

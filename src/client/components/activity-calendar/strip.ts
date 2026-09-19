@@ -1,5 +1,5 @@
 import type { DateRangeFilter } from '@shared/types'
-import { dateKey } from '../../lib/time'
+import { dateKey, type WeekStartDay } from '../../lib/time'
 import { alignWeekStart } from './range'
 
 
@@ -40,7 +40,7 @@ export interface WeekCell {
 
 export interface BuildStripWeeksOptions {
   range?: { start: Date; end: Date }
-  weekStart?: 0 | 1
+  weekStart?: WeekStartDay
   now?: Date
   todayKey?: string
   selectedRange?: DateRangeFilter | null

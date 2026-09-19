@@ -1,16 +1,13 @@
 /**
- * Which weekday opens a calendar is a fact about the reader's calendar, not about the two languages
- * this app happens to ship: `locale === 'zh-CN' ? 1 : 0` gets today's locales right only because
- * they are the two it names, and would quietly open a German or Arabic board on Sunday the day a
- * third locale lands. These cases pin the derivation to locale data plus one explicit fallback for
- * a runtime without `Intl.Locale#getWeekInfo`, then check the rendered picker — its weekday labels
- * and the cells that spill in front of the 1st — both follow that number.
+ * The picker draws its calendar from the shared locale derivation, where the `Intl` reading itself is
+ * pinned (`lib/time.test.ts`). What is checked here is that the rendered picker follows that one
+ * number: its weekday row and the cells spilling in front of the 1st are read off the same value, so
+ * a change to the derivation cannot move one of them and leave the other on Sunday.
  */
 import { act, createElement } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, setLocale } from '../../../../lib/i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
-import { kanbanWeekStartFor } from '../calendar-helpers'
 import { KanbanDatePicker } from './kanban-date-picker'
 
 beforeAll(async () => {
@@ -20,31 +17,6 @@ beforeAll(async () => {
 
 afterEach(async () => {
   await setLocale('en-US', false)
-})
-
-describe('kanban calendar week start', () => {
-  it('reads the first column off the locale, not off the languages the app ships', () => {
-    // Sunday for the US, Monday for China and Germany, Saturday for Egypt — all CLDR, none of them
-    // a language the board's own locale switch can even select today.
-    expect(kanbanWeekStartFor('en-US')).toBe(0)
-    expect(kanbanWeekStartFor('zh-CN')).toBe(1)
-    expect(kanbanWeekStartFor('de-DE')).toBe(1)
-    expect(kanbanWeekStartFor('ar-EG')).toBe(6)
-  })
-
-  it('keeps a documented answer when the runtime has no week data', () => {
-    const descriptor = Object.getOwnPropertyDescriptor(Intl.Locale.prototype, 'getWeekInfo')
-    Object.defineProperty(Intl.Locale.prototype, 'getWeekInfo', { value: undefined, configurable: true })
-    try {
-      expect(kanbanWeekStartFor('en-US')).toBe(0)
-      expect(kanbanWeekStartFor('zh-CN')).toBe(1)
-    } finally {
-      if (descriptor)
-        Object.defineProperty(Intl.Locale.prototype, 'getWeekInfo', descriptor)
-      else
-        delete Intl.Locale.prototype.getWeekInfo
-    }
-  })
 })
 
 async function openCalendar(localeCode: 'en-US' | 'zh-CN') {

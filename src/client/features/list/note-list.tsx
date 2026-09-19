@@ -9,7 +9,7 @@ import { fuzzyFilter } from '../../lib/fuzzy'
 import { Menu, type MenuItem } from '../../components/overlay'
 import { TagFilterPopover } from '../../components/tag-filter-popover'
 import { DateRangePopover } from '../../components/date-range-popover'
-import { addDaysKey, isWeekRangeKey, parseDateKey, weekStartKeyOf } from '../../lib/time'
+import { addDaysKey, isWeekRangeKey, parseDateKey, weekStartFor, weekStartKeyOf } from '../../lib/time'
 import { memoLatestEditKey } from './use-rolling-filter'
 import { useGapIndicatorStore } from './use-gap-indicator'
 
@@ -349,7 +349,7 @@ function useListGap() {
 }
 
 function useWeekRange(locale: string, dateFilter: DateRangeFilter | null, latestEdit: { key: string; label: string } | null) {
-    const weekStart = locale === 'zh-CN' ? 1 : 0
+    const weekStart = weekStartFor(locale)
     const weekFiltered = dateFilter ? isWeekRangeKey(dateFilter.start, dateFilter.end, weekStart) : false
     const latestWeekRange = latestEdit
         ? (() => {
