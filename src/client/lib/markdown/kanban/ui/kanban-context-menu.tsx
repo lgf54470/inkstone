@@ -78,7 +78,7 @@ function buildSelectionItems(props: KanbanContextMenuProps): MenuItem[] {
   return [
     {
       id: 'kanban-batch-delete',
-      label: `${t('preview.kanban_batch_delete')} (${props.selectedCount})`,
+      label: t('preview.kanban_batch_delete_count', { count: props.selectedCount }),
       icon: <Trash2 size={14} />,
       tone: 'danger',
       separatorBefore: true,

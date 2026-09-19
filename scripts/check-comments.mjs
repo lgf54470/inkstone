@@ -2802,6 +2802,10 @@ const allowed = new Map([
     '// ref, and `setSorts` is a stable state setter, so a stable moveItem yields',
     '// a stable handler for the whole drag.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-message-composition.test.ts', [
+    '/**\n * Half a dozen kanban labels were assembled in JSX out of message fragments — `${action}: ${name}`,\n * `{label} {count} {noun}`, `{label} ({count})` — which freezes English word order into the\n * component: a Chinese reader of the same board hears an ASCII colon inside a Chinese phrase, and a\n * single selected card reads "Selected 1 items". Each case asserts the whole phrase comes from one\n * resource entry with only the value substituted, in both languages the app ships.\n */',
+    '/** The phrase as the resource file has it, with only the caller\'s value in the placeholder. */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-move-announcement.test.ts', [
     '/**\n * Moving a card between columns is the one board action whose result is nowhere but on screen: the\n * drop and the Alt+arrow chord both just re-render the columns, so a screen reader user hears\n * nothing at all and cannot tell which group the card landed in (review #29, K2-03e5). The board\n * therefore carries a polite live region, and both move paths — keyboard and pointer — report\n * through it. These cases pin the three behaviours that make it usable rather than noisy: the\n * region exists before the first move (a live region added at the moment of the change is often not\n * announced), a move that changes the group speaks the item and its new column, and a reorder\n * inside one column stays silent.\n */',
     '/** Scoped to the board region so the header\'s own save-status `role="status"` cannot stand in. */',

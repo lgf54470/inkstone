@@ -51,7 +51,7 @@ function SubitemItemRow({
         <button
           type='button'
           onClick={onDelete}
-          aria-label={`${t('preview.kanban_delete_subitem')}: ${subtask.title}`}
+          aria-label={t('preview.kanban_delete_named', { name: subtask.title })}
           className='text-[var(--text-tertiary)] hover:text-[var(--danger)]'
         >
           <Trash2 size={11} />
@@ -91,7 +91,7 @@ function SubitemsNestedTable({
     <div role='row' className='border-t border-[var(--border-subtle)] bg-[var(--bg-inset)]'>
       <div role='cell' aria-colspan={columnCount} className='py-2 pl-12 pr-4'>
         <div className='mb-1.5 text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
-          {t('preview.kanban_subtasks')} ({subtasks.length})
+          {t('preview.kanban_subtasks_count', { count: subtasks.length })}
         </div>
         <div className='flex flex-col gap-1'>
           {subtasks.map((st) => (

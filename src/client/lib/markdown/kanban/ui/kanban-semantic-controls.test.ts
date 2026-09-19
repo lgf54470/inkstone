@@ -184,7 +184,7 @@ describe('the collapsed column is a real button', () => {
     )
     const column = container.querySelector<HTMLElement>('button')
     expect(column?.tagName).toBe('BUTTON')
-    expect(column?.getAttribute('aria-label')).toBe(`${t('preview.kanban_expand_column')}: To Do`)
+    expect(column?.getAttribute('aria-label')).toBe(t('preview.kanban_expand_column_named', { name: 'To Do' }))
     act(() => {
       column!.click()
     })

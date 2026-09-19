@@ -50,7 +50,7 @@ function GroupHeader({
             type='button'
             onClick={onToggleCollapse}
             aria-expanded={!collapsed}
-            aria-label={`${t(collapsed ? 'preview.kanban_expand_group' : 'preview.kanban_collapse_group')}: ${localizedLabel}`}
+            aria-label={t(collapsed ? 'preview.kanban_expand_group_named' : 'preview.kanban_collapse_group_named', { name: localizedLabel })}
             className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
           >
             {collapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />}

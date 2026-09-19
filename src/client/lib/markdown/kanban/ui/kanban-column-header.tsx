@@ -114,7 +114,7 @@ export function CollapsedColumn({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onClick={onExpand}
-      aria-label={`${t('preview.kanban_expand_column')}: ${localizedLabel}`}
+      aria-label={t('preview.kanban_expand_column_named', { name: localizedLabel })}
       className={`flex w-10 shrink-0 cursor-pointer flex-col items-center rounded-[var(--r-lg)] border py-3 transition-colors ${
         isDragOver
           ? 'border-[var(--accent)] bg-[var(--accent-softer)]'
