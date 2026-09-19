@@ -165,6 +165,7 @@ export const messages = {
 'preview.kanban_add_property': '添加属性',
 'preview.kanban_copy_card': '复制卡片',
 'preview.kanban_move_to_column': '移动到列',
+'preview.kanban_moved_to_group': '已将“{title}”移动到{group}',
 'preview.kanban_new_group_title': '新分组 {value0}',
 'preview.kanban_untitled': '未命名任务',
 'preview.kanban_view_chart': '图表',

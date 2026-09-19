@@ -2717,6 +2717,11 @@ const allowed = new Map([
     '// time through this ref, so their identity survives re-renders while the',
     '// drop still routes to the latest onMoveItem.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-board-view.tsx', [
+    '// A move that leaves the card in the same group is a reorder, not a change of place, so it gets no',
+    '// announcement; an item the board does not list has no known source group, and guessing would mean',
+    '// reading out a column the card may not have left.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-card.tsx', [
     '// The container is only a pointer hit-area; keyboard users open the card through CardHeader\'s details button.',
   ]],
@@ -2776,6 +2781,12 @@ const allowed = new Map([
     '// Identity tracks `moveItem` only: sorts are read at call time through the',
     '// ref, and `setSorts` is a stable state setter, so a stable moveItem yields',
     '// a stable handler for the whole drag.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-move-announcement.test.ts', [
+    '/**\n * Moving a card between columns is the one board action whose result is nowhere but on screen: the\n * drop and the Alt+arrow chord both just re-render the columns, so a screen reader user hears\n * nothing at all and cannot tell which group the card landed in (review #29, K2-03e5). The board\n * therefore carries a polite live region, and both move paths — keyboard and pointer — report\n * through it. These cases pin the three behaviours that make it usable rather than noisy: the\n * region exists before the first move (a live region added at the moment of the change is often not\n * announced), a move that changes the group speaks the item and its new column, and a reorder\n * inside one column stays silent.\n */',
+    '/** Scoped to the board region so the header\'s own save-status `role="status"` cannot stand in. */',
+    '/** The chord is pressed on a real control inside the card, which is where keyboard focus lives. */',
+    '/** What the browser hands the drop handler after a drag started on a card of this board. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-popover-aria.test.ts', [
     '/**\n * A kanban panel that only answers the pointer is half a control: the trigger never says whether\n * it is open, and nothing points from the button to the panel it produced, so a reader pressing\n * Enter hears "button" and no state (review #26/#29). The contract asserted here is the one\n * `components/overlay/submenu.tsx` already keeps for the app\'s other popovers — `aria-haspopup`\n * with the panel\'s role, `aria-expanded` following `open`, and `aria-controls` naming a panel that\n * carries that `id` and has an accessible name of its own. The trigger and the panel usually live\n * in two components, so the relation is only observable by mounting whoever owns `open`.\n */',

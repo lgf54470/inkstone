@@ -2,6 +2,8 @@ import { memo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { groupKanbanItems } from '../filter-sort'
+import type { KanbanGroup } from '../filter-sort'
+import { formatKanbanGroupLabel } from '../i18n-helpers'
 import type { KanbanMovePivot } from '../dnd'
 import type { KanbanColorName, KanbanData, KanbanItem, KanbanOption, KanbanSubtask, KanbanView } from '../types'
 import { useKanbanBoardDndState, type CardDropTarget } from './kanban-board-dnd'
@@ -20,7 +22,7 @@ interface KanbanBoardViewProps {
   onToggleTag?: (tag: string) => void
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
-  onMoveItem: (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void
+  onMoveItem: MoveItemFn
   onAddItem: (groupKey?: string) => void
   onAddColumn: () => void
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void
@@ -218,25 +220,52 @@ function AddColumnButton({ onAddColumn }: { onAddColumn: () => void }) {
   )
 }
 
-function useKanbanGroups(
+type MoveItemFn = (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void
+
+// A move that leaves the card in the same group is a reorder, not a change of place, so it gets no
+// announcement; an item the board does not list has no known source group, and guessing would mean
+// reading out a column the card may not have left.
+function kanbanMoveAnnouncement(
+  groups: KanbanGroup[],
+  itemId: string,
+  targetGroupKey: string,
+): string | null {
+  const source = groups.find((group) => group.items.some((item) => item.id === itemId))
+  const target = groups.find((group) => group.groupKey === targetGroupKey)
+  const item = source?.items.find((i) => i.id === itemId)
+  if (!source || !target || !item || source.groupKey === target.groupKey) return null
+  return t('preview.kanban_moved_to_group', {
+    title: item.title || t('preview.kanban_untitled'),
+    group: formatKanbanGroupLabel(target.groupKey, target.label),
+  })
+}
+
+function useKanbanBoardMoves(
   data: KanbanData,
   view: KanbanView,
-  onMoveItem: (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void,
+  moveItem: MoveItemFn,
 ) {
   const groupPropertyId = view.groupBy || 'status'
   const groupProperty = data.columns.find((c) => c.id === groupPropertyId)
   const groups = groupKanbanItems(data.items, groupPropertyId, groupProperty)
+  const [moveAnnouncement, setMoveAnnouncement] = useState('')
+
+  const handleMoveItem: MoveItemFn = (itemId, targetGroupKey, pivot) => {
+    const message = kanbanMoveAnnouncement(groups, itemId, targetGroupKey)
+    if (message) setMoveAnnouncement(message)
+    moveItem(itemId, targetGroupKey, pivot)
+  }
 
   const handleMoveColumn = (itemId: string, currentGroupKey: string, direction: 'prev' | 'next') => {
     const currentIndex = groups.findIndex((g) => g.groupKey === currentGroupKey)
     if (currentIndex === -1) return
     const targetIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1
     if (targetIndex >= 0 && targetIndex < groups.length) {
-      onMoveItem(itemId, groups[targetIndex]!.groupKey)
+      handleMoveItem(itemId, groups[targetIndex]!.groupKey)
     }
   }
 
-  return { groups, handleMoveColumn }
+  return { groups, moveAnnouncement, handleMoveItem, handleMoveColumn }
 }
 
 interface BoardColumnItemProps {
@@ -342,8 +371,8 @@ function BoardColumnItem(props: BoardColumnItemProps) {
 
 export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardViewProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
-  const dnd = useKanbanBoardDndState(props.onMoveItem, props.onReorderColumns)
-  const { groups, handleMoveColumn } = useKanbanGroups(props.data, props.view, props.onMoveItem)
+  const { groups, moveAnnouncement, handleMoveItem, handleMoveColumn } = useKanbanBoardMoves(props.data, props.view, props.onMoveItem)
+  const dnd = useKanbanBoardDndState(handleMoveItem, props.onReorderColumns)
 
   const toggleCollapse = (groupKey: string) => {
     setCollapsedGroups((prev) => {
@@ -383,6 +412,9 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
         />
       ))}
       <AddColumnButton onAddColumn={props.onAddColumn} />
+      <span role='status' aria-live='polite' className='sr-only'>
+        {moveAnnouncement}
+      </span>
     </div>
   )
 })
