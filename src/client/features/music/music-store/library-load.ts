@@ -1,5 +1,6 @@
 import type { MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack } from '@shared/types'
 import { api } from '../../../lib/api'
+import { duplicateTracks } from '../music-duplicates'
 import { buildSearchIndex, ensureRomanized, needsRomanization, rankTracks } from '../music-search'
 import { collectTagIds } from '../music-utils'
 import { pushHistory } from './state'
@@ -167,7 +168,8 @@ export function visibleTracks(state: MusicStoreState): MusicTrack[] {
   const query = state.query.trim()
   const filtered = query ? filterByQuery(scoped, state, query) : scoped
   // A playlist row carries the order the user arranged; sorting or hoisting pins would rewrite it.
-  if (state.scope.kind === 'playlist') return filtered
+  // The duplicates view carries its own group order, so the same bypass applies.
+  if (state.scope.kind === 'playlist' || state.scope.kind === 'duplicates') return filtered
   return sortTracks(filtered, state.sort, state.sortDirection)
 }
 
@@ -183,6 +185,7 @@ function applyScope(state: MusicStoreState): MusicTrack[] {
   if (scope.kind === 'recent') return recentTracks(state)
   // The browse kinds draw a grouped grid, not a track list; the list stays empty on purpose.
   if (scope.kind === 'albums' || scope.kind === 'artists') return []
+  if (scope.kind === 'duplicates') return duplicateTracks(state.tracks)
   if (scope.kind === 'album') return state.tracks.filter((track) => track.artist === scope.artist && track.album === scope.album)
   if (scope.kind === 'artist') return state.tracks.filter((track) => track.artist === scope.artist)
   if (scope.kind === 'tag') return filterByTag(state, scope.tagId)

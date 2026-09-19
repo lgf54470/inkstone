@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createHash } from 'node:crypto'
 import { Hono } from 'hono'
 
 const H = vi.hoisted(() => ({ counter: 0, now: 2_000_000_000_000 }))
@@ -418,6 +419,59 @@ describe('music routes (real D1 + fake R2)', () => {
     const ownKey = deleted.mock.calls.at(-1)![0] as string[]
     expect(ownKey).toHaveLength(1)
     expect(ownKey[0]).toMatch(new RegExp(`^music/\\d{4}-\\d{2}-\\d{2}/${mine.id}\\.mp3$`))
+  })
+})
+
+describe('music content hash for duplicate detection (real D1 + fake R2)', () => {
+  it('checksums uploaded bytes so identical files share one hash', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const first = await uploadTrack(app, 'one.mp3')
+    const copy = await uploadTrack(app, 'another copy.mp3')
+    const expected = createHash('sha256').update(AUDIO).digest('hex')
+    expect(first.contentHash).toBe(expected)
+    expect(copy.contentHash).toBe(expected)
+
+    const library = await (await request(app, '/api/music/library')).json()
+    expect(library.tracks.map((track: { contentHash: string }) => track.contentHash)).toEqual([expected, expected])
+  })
+
+  it('links only byte-identical files', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const mine = await uploadTrack(app, 'one.mp3')
+    const form = new FormData()
+    form.append('file', new File([new TextEncoder().encode('different bytes!!')], 'other.mp3', { type: 'audio/mpeg' }))
+    const other = await (await request(app, '/api/music/tracks', { method: 'POST', body: form })).json()
+    expect(other.contentHash).not.toBeNull()
+    expect(other.contentHash).not.toBe(mine.contentHash)
+  })
+
+  it('keeps the hash through a metadata patch so the client merge does not drop it', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const uploaded = await uploadTrack(app)
+    const patched = await (await json(app, `/api/music/tracks/${uploaded.id}`, { title: 'Renamed' }, 'PATCH')).json()
+    expect(patched.title).toBe('Renamed')
+    expect(patched.contentHash).toBe(uploaded.contentHash)
+  })
+
+  it('leaves rows stored before hashing with a null hash', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES ('legacy-1', ?1, 'Legacy', '', '', 0, 'r2', 'music/2024-05-01/legacy.mp3', 'audio/mpeg', 16, NULL, NULL, 0, 0, 0, ?2, ?2)`,
+      USER, H.now,
+    )
+    const app = makeApp()
+    const library = await (await request(app, '/api/music/library')).json()
+    expect(library.tracks[0].contentHash).toBeNull()
   })
 })
 

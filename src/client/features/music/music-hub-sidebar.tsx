@@ -1,9 +1,10 @@
 import { memo, useMemo } from 'react'
-import { Clock3, Disc, FolderHeart, Heart, Library, Pin, Users } from 'lucide-react'
+import { Clock3, Copy, Disc, FolderHeart, Heart, Library, Pin, Users } from 'lucide-react'
 import { Tooltip } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { MusicHubPlaylists } from './music-hub-playlists'
+import { redundantTrackCount } from './music-duplicates'
 import { buildGroups } from './music-grouping'
 import { MusicHubTags } from './music-hub-tags'
 import { useMusic } from './music-store'
@@ -37,6 +38,7 @@ function CollectionNav() {
   const tracks = useMusic((state) => state.tracks)
   const albumCount = useMemo(() => buildGroups(tracks, 'albums').length, [tracks])
   const artistCount = useMemo(() => buildGroups(tracks, 'artists').length, [tracks])
+  const duplicateCount = useMemo(() => redundantTrackCount(tracks), [tracks])
   const items: { scope: MusicScope; icon: React.ReactNode; label: string; count: number }[] = [
     { scope: { kind: 'all' }, icon: <Library size={13} />, label: t('music.all_tracks'), count: stats?.trackCount ?? 0 },
     { scope: { kind: 'favorites' }, icon: <Heart size={13} />, label: t('music.favorites'), count: stats?.favoriteCount ?? 0 },
@@ -44,14 +46,12 @@ function CollectionNav() {
     { scope: { kind: 'recent' }, icon: <Clock3 size={13} />, label: t('music.recently_played'), count: recentCount },
     { scope: { kind: 'albums' }, icon: <Disc size={13} />, label: t('music.albums'), count: albumCount },
     { scope: { kind: 'artists' }, icon: <Users size={13} />, label: t('music.artists'), count: artistCount },
+    { scope: { kind: 'duplicates' }, icon: <Copy size={13} />, label: t('music.duplicates'), count: duplicateCount },
   ]
   return (
     <div className='space-y-0.5'>
       {items.map((item) => {
-        // A drilled-down album/artist keeps its browse entry highlighted as the owning view.
-        const active = scope.kind === item.scope.kind
-          || (item.scope.kind === 'albums' && scope.kind === 'album')
-          || (item.scope.kind === 'artists' && scope.kind === 'artist')
+        const active = isNavActive(scope, item.scope)
         return (
           <button
             key={item.scope.kind}
@@ -78,6 +78,13 @@ function CollectionNav() {
       })}
     </div>
   )
+}
+
+// A drilled-down album/artist keeps its browse entry highlighted as the owning view.
+function isNavActive(scope: MusicScope, item: MusicScope): boolean {
+  return scope.kind === item.kind
+    || (item.kind === 'albums' && scope.kind === 'album')
+    || (item.kind === 'artists' && scope.kind === 'artist')
 }
 
 function SidebarStats() {

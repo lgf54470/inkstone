@@ -16,6 +16,7 @@ export const MUSIC_TABLE_STATEMENTS: readonly string[] = [
       is_pinned INTEGER NOT NULL DEFAULT 0,
       play_count INTEGER NOT NULL DEFAULT 0,
       last_played_at INTEGER,
+      content_hash TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`,
@@ -63,6 +64,7 @@ export const MUSIC_INDEX_STATEMENTS: readonly string[] = [
   'CREATE INDEX IF NOT EXISTS idx_music_tracks_favorite ON music_tracks(user_id, is_favorite)',
   'CREATE INDEX IF NOT EXISTS idx_music_tracks_source ON music_tracks(user_id, source)',
   'CREATE INDEX IF NOT EXISTS idx_music_tracks_recent_play ON music_tracks(user_id, last_played_at DESC)',
+  'CREATE INDEX IF NOT EXISTS idx_music_tracks_hash ON music_tracks(user_id, content_hash)',
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_music_tags_parent_name ON music_tags(user_id, COALESCE(parent_id, ''), name)`,
   'CREATE INDEX IF NOT EXISTS idx_music_tags_list ON music_tags(user_id, sort_order ASC)',
   'CREATE INDEX IF NOT EXISTS idx_music_track_tags_tag ON music_track_tags(user_id, tag_id)',

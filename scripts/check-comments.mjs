@@ -1279,6 +1279,18 @@ const allowed = new Map([
     '// The card is dragged by a handle inside it, so the clamp has to track the card',
     '// box itself: a fixed size would let either variant hang off-screen.',
   ]],
+  ['src/client/features/music/music-duplicates.test.ts', [
+    '// The oldest copy per group is not wasted; only the extras count.',
+  ]],
+  ['src/client/features/music/music-duplicates.ts', [
+    '// M-53: duplicates are detected from the checksum the worker recorded when the',
+    '// upload carried the bytes. Rows imported by WebDAV path and everything stored',
+    '// before hashing began have no checksum, so they simply never form a group.',
+    '// Oldest upload first: that copy has the longest-lived playlists and edits,',
+    '// so it reads as the natural one to keep.',
+    '// The biggest space savings lead the list; ties fall back to upload order.',
+    '// Every group member is listed, but only the extras are redundant.',
+  ]],
   ['src/client/features/music/music-duration.test.ts', [
     '// STREAMINFO starts after the 4 byte magic and its block header; sample rate and total samples are adjacent.',
   ]],
@@ -1328,6 +1340,8 @@ const allowed = new Map([
     '// Dialog state lives here, so the panels below are memoised: opening a dialog must',
     '// not re-render the whole library (hundreds of rows).',
     '// The drawers portal over the hub modal itself, so they take the next tier above --z-modal.',
+    '// The list only shows copies side by side; the strip states what the view is',
+    '// worth so cleaning up does not require doing the arithmetic by hand.',
     '// Stable callbacks: the memoised panels below must not re-render when a dialog opens.',
   ]],
   ['src/client/features/music/music-hub-playlists.tsx', [
@@ -1335,8 +1349,8 @@ const allowed = new Map([
     '/* The active row\'s accent tint puts the dim tiers under AA, so its count takes the row\'s\n          accent — the one pairing the token system calibrates (accent as text on its own tint). */',
   ]],
   ['src/client/features/music/music-hub-sidebar.tsx', [
-    '// A drilled-down album/artist keeps its browse entry highlighted as the owning view.',
     '/* The active row\'s 14% accent tint puts the dim tiers under AA (tertiary measures\n                4.16–4.28 in light), so its count takes the row\'s accent — the one pairing the\n                token system calibrates (accent as text on its own tint). */',
+    '// A drilled-down album/artist keeps its browse entry highlighted as the owning view.',
   ]],
   ['src/client/features/music/music-hub-toolbar.tsx', [
     '// Playlist scope shows the manual item order, so the sort control would change nothing;',
@@ -1481,6 +1495,10 @@ const allowed = new Map([
   ['src/client/features/music/music-store/library-covers.ts', [
     '// Cover lookup reaches a public catalogue, so it only runs while the listener asks for it.',
   ]],
+  ['src/client/features/music/music-store/library-load.test.ts', [
+    '// h1 wastes more (two extras) so it leads despite uploading after h2;',
+    '// within a group the oldest copy comes first even when a later one is pinned.',
+  ]],
   ['src/client/features/music/music-store/library-load.ts', [
     '// Opening the hub, retrying, and several mutations all want the library at once;',
     '// one in-flight request is shared and a just-loaded library is trusted briefly.',
@@ -1494,6 +1512,7 @@ const allowed = new Map([
     '// One dictionary load and one romanization pass at a time; debounced keystrokes',
     '// and lazy fetches can otherwise pile up identical whole-library work.',
     '// A playlist row carries the order the user arranged; sorting or hoisting pins would rewrite it.',
+    '// The duplicates view carries its own group order, so the same bypass applies.',
     '// The browse kinds draw a grouped grid, not a track list; the list stays empty on purpose.',
     '// FEAT-9: recency is the server-stamped last play, so the list survives a device switch.',
     '// The comparator describes the natural ascending order of the field; the',
@@ -1576,6 +1595,7 @@ const allowed = new Map([
     '// pass per kind can run at a time: a second call returns without stacking.',
   ]],
   ['src/client/features/music/music-store/types.ts', [
+    '// M-53: a flat list of the tracks whose upload checksum matches another copy.',
     '// A drilled-down album has to carry the artist too: different artists can share an album title.',
     '// The anchor is the trigger element for a button-opened menu and the pointer for a',
     '// right-click; it only lives in the store while the single menu instance is open.',
@@ -4387,6 +4407,9 @@ const allowed = new Map([
     '// list views know a track has lyrics worth fetching lazily by id.',
     '// FEAT-9: stamped server-side by the play route, so the recently-played list',
     '// survives a device switch instead of living in one browser\'s preferences.',
+    '// M-53: sha256 of the audio bytes, computed when an upload passes through the',
+    '// worker. Null for rows stored before hashing began and for WebDAV metadata',
+    '// imports, which never move the bytes - those tracks stay out of the duplicates view.',
     '// M-51: set when the owner shares this playlist publicly; null means not shared.',
   ]],
   ['src/shared/types/notes.ts', [
@@ -4491,6 +4514,10 @@ const allowed = new Map([
     '// timestamp lives on the row instead of only in one browser\'s preferences.',
     '// M-51: sharing is per playlist, so the public slug lives on the playlist row.',
     '// NULL means not shared; the unique index tolerates many NULLs.',
+    '// M-53: duplicate detection needs a content checksum per track. It is computed',
+    '// when the bytes pass through the worker (uploads), so rows stored before this',
+    '// migration keep NULL and simply stay out of the duplicate view - hashing old',
+    '// objects would mean re-downloading the whole library.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
@@ -4834,6 +4861,8 @@ const allowed = new Map([
     '// any future cache key) bounded by the window instead of the whole object.',
   ]],
   ['src/worker/routes/music/rows.ts', [
+    '// M-53: sha256 of the stored audio bytes, computed at upload time. NULL for',
+    '// rows written before the column existed and for WebDAV metadata imports.',
     '// WebDAV keys are the user\'s own remote paths, already listed in the browse UI;',
     '// internal R2 storage keys must never reach the browser or a downloaded M3U.',
     '// An http cover would be blocked as mixed content on our https pages.',
@@ -4873,6 +4902,8 @@ const allowed = new Map([
   ['src/worker/routes/music/webdav-routes.ts', [
     '// GET must stay side-effect free: the directory is created by the first',
     '// upload (putMusicObject ensures it), browsing a missing one is simply empty.',
+    '// The import only registers the remote path; the bytes never pass through the',
+    '// worker, so there is nothing to checksum without downloading the whole file.',
     '// Artwork is a nicety: a failed cover write must not fail the track upload.',
   ]],
   ['src/worker/routes/music/webdav-xml.ts', [
@@ -5019,6 +5050,10 @@ const allowed = new Map([
     '// Counts round trips, not statements: every execution inside one batch shares a',
     '// single call, while an execution outside a batch costs its own round trip.',
     '// Only the playback row itself stays outside the batch that reads the tracks.',
+  ]],
+  ['tests/music-webdav-routes.test.ts', [
+    '// The import never moves the bytes, so there is nothing to checksum (M-53).',
+    '// M-53: an upload carries the bytes, so the row keeps their checksum.',
   ]],
   ['tests/offline-audio-sw.test.ts', [
     '// Runs the ACTUAL generated service worker script (pwa.config.ts) inside a vm',

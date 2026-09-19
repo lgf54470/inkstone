@@ -3,6 +3,7 @@ import type { Hono } from 'hono'
 import { LIMITS } from '@shared/constants'
 import type { MusicTrack } from '@shared/types'
 import type { AppBindings } from '../../env'
+import { sha256Hex } from '../../lib/encoding'
 import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
 import { FORM_BODY_LIMITS, readFormDataWithinLimit } from '../../lib/request'
@@ -61,6 +62,7 @@ export function registerMusicUploadRoutes(routes: Hono<AppBindings>): void {
       is_pinned: 0,
       play_count: 0,
       last_played_at: null,
+      content_hash: await sha256Hex(bytes),
       created_at: now,
       updated_at: now,
     }
@@ -87,11 +89,11 @@ async function insertTrack(db: D1Database, userId: string, row: MusicTrackRow, t
   const statements = [
     db.prepare(
       `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
-         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)`,
+         cover_url, lyric, is_favorite, is_pinned, play_count, content_hash, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`,
     ).bind(
       row.id, userId, row.title, row.artist, row.album, row.duration_ms, row.source, row.object_key, row.mime, row.size_bytes,
-      row.cover_url, row.lyric, row.is_favorite, row.is_pinned, row.play_count, row.created_at, row.updated_at,
+      row.cover_url, row.lyric, row.is_favorite, row.is_pinned, row.play_count, row.content_hash, row.created_at, row.updated_at,
     ),
     ...tagIds.map((tagId) =>
       db.prepare('INSERT OR IGNORE INTO music_track_tags (user_id, track_id, tag_id) VALUES (?1, ?2, ?3)')

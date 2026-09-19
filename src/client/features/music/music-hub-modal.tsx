@@ -9,6 +9,7 @@ import { useMediaQuery } from '../../lib/hooks'
 import { Z_INDEX } from '../../lib/z-index'
 import { t } from '../../lib/i18n'
 import { MusicEditTrackModal } from './music-edit-track-modal'
+import { findDuplicateGroups, duplicateWastedBytes, redundantTrackCount } from './music-duplicates'
 import { MusicGroupBrowse, MusicGroupDetailHeader } from './music-group-browse'
 import { MusicHubSidebar } from './music-hub-sidebar'
 import { MusicHubToolbar } from './music-hub-toolbar'
@@ -22,7 +23,7 @@ import { MusicTransferDialog } from './music-transfer-dialog'
 import { MusicWebdavModal } from './music-webdav-modal'
 import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicScope } from './music-store'
-import { MUSIC_NARROW_BREAKPOINT } from './music-utils'
+import { MUSIC_NARROW_BREAKPOINT, formatBytes } from './music-utils'
 
 const HUB_WIDTH = 1240
 // The side columns are fixed-width (224 + 256px); below the shared narrow breakpoint they
@@ -194,6 +195,7 @@ const HubCentre = memo(function HubCentre({
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)]'>
       <MusicHubToolbar onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} />
       {detail && <MusicGroupDetailHeader scope={detail} />}
+      {scope.kind === 'duplicates' && tracks.length > 0 && <MusicDuplicatesSummary />}
       <div className='min-h-0 flex-1'>
         {loadError && !tracks.length && !loading
           ? <Empty
@@ -215,7 +217,22 @@ function emptyTitle(scope: MusicScope): string {
   if (scope.kind === 'favorites') return t('music.no_favorites')
   if (scope.kind === 'pinned') return t('music.no_pinned')
   if (scope.kind === 'playlist') return t('music.playlist_empty')
+  if (scope.kind === 'duplicates') return t('music.no_duplicates')
   return t('music.no_tracks')
+}
+
+// The list only shows copies side by side; the strip states what the view is
+// worth so cleaning up does not require doing the arithmetic by hand.
+function MusicDuplicatesSummary() {
+  const tracks = useMusic((state) => state.tracks)
+  const groups = useMemo(() => findDuplicateGroups(tracks), [tracks])
+  const redundant = useMemo(() => redundantTrackCount(tracks), [tracks])
+  const wastedBytes = useMemo(() => duplicateWastedBytes(tracks), [tracks])
+  return (
+    <div role='status' className='flex shrink-0 items-center gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+      {t('music.duplicates_summary', { value0: groups.length, value1: redundant, value2: formatBytes(wastedBytes) })}
+    </div>
+  )
 }
 
 interface HubSetters {

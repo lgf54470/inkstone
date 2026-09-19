@@ -18,6 +18,8 @@ export type MusicScope =
   | { kind: 'recent' }
   | { kind: 'albums' }
   | { kind: 'artists' }
+  // M-53: a flat list of the tracks whose upload checksum matches another copy.
+  | { kind: 'duplicates' }
   // A drilled-down album has to carry the artist too: different artists can share an album title.
   | { kind: 'album'; artist: string; album: string }
   | { kind: 'artist'; artist: string }

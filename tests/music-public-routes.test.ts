@@ -155,6 +155,7 @@ describe('public music routes (real D1 + fake R2)', () => {
     expect(String(entry.streamUrl)).toMatch(/\/api\/blog\/public\/music\/tracks\/.+\/stream$/)
     expect(entry.objectKey).toBeUndefined()
     expect(entry.sizeBytes).toBeUndefined()
+    expect(entry.contentHash).toBeUndefined()
     expect(payload.queue).toEqual({ ids: [track.id], currentId: track.id })
 
     const full = await request(app, `/api/blog/public/music/tracks/${track.id}/stream`)

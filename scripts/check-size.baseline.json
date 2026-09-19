@@ -1,4 +1,7 @@
 {
+  "src/client/features/music/music-duplicates.test.ts": {
+    "longFns": 1
+  },
   "src/client/features/music/music-hub-playlists.test.ts": {
     "longFns": 1
   },
@@ -59,6 +62,6 @@
     "lines": 502
   },
   "src/worker/db/schema/migrations.ts": {
-    "lines": 579
+    "lines": 591
   }
 }

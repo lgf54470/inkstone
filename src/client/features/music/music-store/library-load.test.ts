@@ -129,6 +129,41 @@ describe('visibleTracks in playlist scope', () => {
   })
 })
 
+function hashedTrack(id: string, contentHash: string | null, createdAt: number, isPinned = false): MusicTrack {
+  return { id, title: id, artist: '', album: '', createdAt, isPinned, contentHash, sizeBytes: 10 } as MusicTrack
+}
+
+function duplicatesScopeState(): MusicStoreState {
+  return {
+    scope: { kind: 'duplicates' },
+    sourceFilter: 'all',
+    query: '',
+    sort: 'title',
+    tracks: [
+      hashedTrack('a1', 'h1', 5, true),
+      hashedTrack('a2', 'h1', 2),
+      hashedTrack('a3', 'h1', 8),
+      hashedTrack('b1', 'h2', 1),
+      hashedTrack('b2', 'h2', 3),
+      hashedTrack('solo', null, 9),
+    ],
+  } as unknown as MusicStoreState
+}
+
+describe('visibleTracks in duplicates scope', () => {
+  it('keeps the group order instead of sorting or hoisting pins, and omits unhashed tracks', () => {
+    // h1 wastes more (two extras) so it leads despite uploading after h2;
+    // within a group the oldest copy comes first even when a later one is pinned.
+    expect(visibleTracks(duplicatesScopeState()).map((track) => track.id)).toEqual(['a2', 'a1', 'a3', 'b1', 'b2'])
+  })
+
+  it('shows nothing when no two tracks share a checksum', () => {
+    const state = duplicatesScopeState()
+    const unique = state.tracks.map((track) => hashedTrack(track.id, track.id === 'solo' ? null : `solo-${track.id}`, track.createdAt))
+    expect(visibleTracks({ ...state, tracks: unique })).toEqual([])
+  })
+})
+
 function romanizeStore() {
   let state = {
     tracks: [{ id: 't1', title: '月光', artist: '', album: '' } as MusicTrack],

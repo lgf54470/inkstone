@@ -32,7 +32,7 @@ function playingTrack(): MusicTrack {
     isFavorite: false,
     isPinned: false,
     playCount: 0,
-    lastPlayedAt: null,
+    lastPlayedAt: null, contentHash: null,
     createdAt: 0,
     updatedAt: 0,
   }

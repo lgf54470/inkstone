@@ -28,6 +28,10 @@ export interface MusicTrack {
   // FEAT-9: stamped server-side by the play route, so the recently-played list
   // survives a device switch instead of living in one browser's preferences.
   lastPlayedAt: number | null
+  // M-53: sha256 of the audio bytes, computed when an upload passes through the
+  // worker. Null for rows stored before hashing began and for WebDAV metadata
+  // imports, which never move the bytes - those tracks stay out of the duplicates view.
+  contentHash: string | null
   createdAt: number
   updatedAt: number
 }

@@ -154,7 +154,7 @@ async function loadOwnedObjectKeys(db: D1Database, userId: string, ids: string[]
 async function loadTrackRow(db: D1Database, userId: string, id: string): Promise<MusicTrackRow | null> {
   return db.prepare(
     `SELECT id, title, artist, album, duration_ms, source, object_key, mime, size_bytes, cover_url, lyric,
-            is_favorite, is_pinned, play_count, created_at, updated_at
+            is_favorite, is_pinned, play_count, content_hash, created_at, updated_at
        FROM music_tracks WHERE id = ?1 AND user_id = ?2`,
   ).bind(id, userId).first<MusicTrackRow>()
 }

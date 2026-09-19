@@ -575,4 +575,16 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_music_playlists_share ON music_playlists(share_slug)',
     ],
   },
+  {
+    // M-53: duplicate detection needs a content checksum per track. It is computed
+    // when the bytes pass through the worker (uploads), so rows stored before this
+    // migration keep NULL and simply stay out of the duplicate view - hashing old
+    // objects would mean re-downloading the whole library.
+    version: 39,
+    skipIfColumnExists: { table: 'music_tracks', column: 'content_hash' },
+    statements: [
+      `ALTER TABLE music_tracks ADD COLUMN content_hash TEXT`,
+      'CREATE INDEX IF NOT EXISTS idx_music_tracks_hash ON music_tracks(user_id, content_hash)',
+    ],
+  },
 ]

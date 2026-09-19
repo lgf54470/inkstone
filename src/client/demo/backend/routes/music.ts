@@ -5,6 +5,7 @@ import type { DemoState } from '../../state'
 import { demoMusicLibrary, newDemoId } from '../../state'
 import { apiError, jsonBody } from '../helpers/info'
 import { findTrack, parseByteRange, patchTrack, removeTrackEverywhere } from '../helpers/music'
+import { sha256Hex } from '../helpers/transfer'
 
 function libraryHandler(c: Context, state: DemoState): Response {
   const library = demoMusicLibrary(state)
@@ -55,6 +56,7 @@ async function createTrackHandler(c: Context, state: DemoState): Promise<Respons
     isPinned: false,
     playCount: 0,
     lastPlayedAt: null,
+    contentHash: await sha256Hex(new Uint8Array(await file.arrayBuffer())),
     createdAt: now,
     updatedAt: now,
   }

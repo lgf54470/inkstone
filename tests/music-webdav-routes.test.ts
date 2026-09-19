@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createHash } from 'node:crypto'
 import { Hono } from 'hono'
 
 vi.mock('../src/worker/lib/crypto', () => ({
@@ -225,6 +226,8 @@ describe('music webdav routes', () => {
     expect(track.format).toBe('mp3')
     expect(track.sizeBytes).toBe(16)
     expect(track.mime).toBe('audio/mpeg')
+    // The import never moves the bytes, so there is nothing to checksum (M-53).
+    expect(track.contentHash).toBeNull()
 
     const full = await request(app, `/api/music/tracks/${track.id}/stream`)
     expect(full.status).toBe(200)
@@ -282,6 +285,8 @@ describe('music webdav routes', () => {
     expect(track.objectKey).toBeUndefined()
     expect(String(track.webdavPath)).toMatch(/^local-.*\.mp3$/)
     expect(track.format).toBe('mp3')
+    // M-53: an upload carries the bytes, so the row keeps their checksum.
+    expect(track.contentHash).toBe(createHash('sha256').update(AUDIO).digest('hex'))
     expect(puts).toHaveLength(1)
     expect([...puts[0]!.body]).toEqual([...AUDIO])
 
