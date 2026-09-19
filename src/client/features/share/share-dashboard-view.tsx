@@ -22,6 +22,7 @@ import { Segmented } from '../../components/form'
 import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
 import { countryFlag, countryNameLocalized } from './share-helpers'
+import { AnalyticsLoadError } from './share-analytics-error'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import type { useShareDashboardView } from './use-share-dashboard-view'
 import { useShareDashboardView as useDashboardView } from './use-share-dashboard-view'
@@ -36,20 +37,26 @@ export function ShareDashboardView({
   onOpenLogs?: () => void
 }) {
   const bundle = useDashboardView()
-  const { analytics, totalFilteredCount } = bundle
+  const { analytics, error, loadData, range, totalFilteredCount } = bundle
   return (
     <div className='flex h-full flex-col overflow-y-auto bg-[var(--bg-base)] p-5'>
       <DashboardHeader bundle={bundle} />
-      {totalFilteredCount > 0 && <FilterSummaryBanner bundle={bundle} />}
-      <KpiGrid analytics={analytics} />
-      <TimelineCard bundle={bundle} />
-      <div className='mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2'>
-        <TopNotesCard analytics={analytics} onSelectNoteAnalytics={onSelectNoteAnalytics} />
-        <CountryBreakdownCard analytics={analytics} locale={bundle.locale} />
-        <ReferrerBreakdownCard analytics={analytics} />
-        <DevicesBreakdownCard analytics={analytics} />
-      </div>
-      <RecentActivityCard analytics={analytics} onOpenLogs={onOpenLogs} locale={bundle.locale} />
+      {error ? (
+        <AnalyticsLoadError onRetry={() => void loadData(range)} />
+      ) : (
+        <>
+          {totalFilteredCount > 0 && <FilterSummaryBanner bundle={bundle} />}
+          <KpiGrid analytics={analytics} />
+          <TimelineCard bundle={bundle} />
+          <div className='mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2'>
+            <TopNotesCard analytics={analytics} onSelectNoteAnalytics={onSelectNoteAnalytics} />
+            <CountryBreakdownCard analytics={analytics} locale={bundle.locale} />
+            <ReferrerBreakdownCard analytics={analytics} />
+            <DevicesBreakdownCard analytics={analytics} />
+          </div>
+          <RecentActivityCard analytics={analytics} onOpenLogs={onOpenLogs} locale={bundle.locale} />
+        </>
+      )}
     </div>
   )
 }

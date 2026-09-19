@@ -9,12 +9,16 @@ export function useShareNoteAnalytics(open: boolean, noteId: string) {
   const [range, setRange] = useState<ShareTimelineRange>('7d')
   const [metricMode, setMetricMode] = useState<'views' | 'visitors'>('views')
   const [data, setData] = useState<ShareNoteAnalytics | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(false)
 
   const excludeBots = useShareStore((s) => s.excludeBots)
   const excludeSelfReferrers = useShareStore((s) => s.excludeSelfReferrers)
   const excludeOwner = useShareStore((s) => s.excludeOwner)
 
   const loadData = async (selectedRange = range) => {
+    setIsLoading(true)
+    setError(false)
     try {
       const res = await api.share.noteAnalytics(noteId, selectedRange, {
         excludeBots,
@@ -22,8 +26,12 @@ export function useShareNoteAnalytics(open: boolean, noteId: string) {
         excludeOwner,
       })
       setData(res)
-    } catch (error) {
-      console.warn('[share] failed to load note analytics', error)
+    } catch (loadError: unknown) {
+      setData(null)
+      setError(true)
+      console.warn('[share] failed to load note analytics', loadError)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -33,5 +41,5 @@ export function useShareNoteAnalytics(open: boolean, noteId: string) {
     }
   }, [open, noteId, range, excludeBots, excludeSelfReferrers, excludeOwner])
 
-  return { locale, range, setRange, metricMode, setMetricMode, data }
+  return { locale, range, setRange, metricMode, setMetricMode, data, isLoading, error, loadData }
 }

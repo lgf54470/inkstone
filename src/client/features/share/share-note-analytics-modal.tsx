@@ -8,6 +8,7 @@ import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
 import { BigSvgChart } from '../../components/big-svg-chart'
 import { countryFlag, countryNameLocalized } from './share-helpers'
+import { AnalyticsLoadError } from './share-analytics-error'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import { useShareNoteAnalytics } from './use-share-note-analytics'
 
@@ -33,7 +34,7 @@ export function ShareNoteAnalyticsModal({
   noteId: string
   onOpenQr?: (url: string, title: string, slug: string) => void
 }) {
-  const { locale, range, setRange, metricMode, setMetricMode, data } = useShareNoteAnalytics(open, noteId)
+  const { locale, range, setRange, metricMode, setMetricMode, data, error, loadData } = useShareNoteAnalytics(open, noteId)
   if (!open) return null
   const timelinePoints = data?.timeline || []
   const chartValues = timelinePoints.map((p) => (metricMode === 'views' ? p.views : p.visitors))
@@ -51,28 +52,17 @@ export function ShareNoteAnalyticsModal({
       width={MODAL_WIDTH}
     >
       <div className='flex flex-col gap-4 py-1 max-h-[75vh] overflow-y-auto pr-1'>
-        {data && <AnalyticsLinkBar data={data} onOpenQr={onOpenQr} />}
-        <div className='flex items-center justify-between gap-2'>
-          <StatCards data={data} />
-          <div className='flex items-center gap-2'>
-            <Segmented options={rangeOptions()} value={range} onChange={(val) => setRange(val as ShareTimelineRange)} />
-            <ShareTrafficFilterPopover />
-          </div>
-        </div>
-        <TimelineCard metricMode={metricMode} setMetricMode={setMetricMode} chartValues={chartValues} timelinePoints={timelinePoints} />
-        <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
-          <BreakdownCard title={t('share.top_countries_title')} icon={<Globe size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topCountries || data.topCountries.length === 0}>
-            {data?.topCountries.slice(0, 5).map((item) => (
-              <BreakdownMiniRow key={item.name} name={countryNameLocalized(item.name, locale)} flag={countryFlag(item.name)} count={item.count} percentage={item.percentage ?? 0} />
-            ))}
-          </BreakdownCard>
-          <BreakdownCard title={t('share.top_referrers_title')} icon={<Compass size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topReferrers || data.topReferrers.length === 0}>
-            {data?.topReferrers.slice(0, 5).map((item) => (
-              <BreakdownMiniRow key={item.name} name={item.name} count={item.count} percentage={item.percentage ?? 0} />
-            ))}
-          </BreakdownCard>
-        </div>
-        <RecentActivityCard data={data} locale={locale} />
+        {error ? (
+          <AnalyticsLoadError onRetry={() => void loadData(range)} />
+        ) : (
+          <>
+            {data && <AnalyticsLinkBar data={data} onOpenQr={onOpenQr} />}
+            <StatsAndRangeRow data={data} range={range} setRange={setRange} />
+            <TimelineCard metricMode={metricMode} setMetricMode={setMetricMode} chartValues={chartValues} timelinePoints={timelinePoints} />
+            <NoteAnalyticsBreakdowns data={data} locale={locale} />
+            <RecentActivityCard data={data} locale={locale} />
+          </>
+        )}
       </div>
     </Modal>
   )
@@ -106,6 +96,39 @@ function AnalyticsLinkBar({ data, onOpenQr }: { data: ShareNoteAnalytics; onOpen
           <span>{t('preview.open_in_new_tab')}</span>
         </a>
       </div>
+    </div>
+  )
+}
+
+function StatsAndRangeRow({ data, range, setRange }: {
+  data: ShareNoteAnalytics | null
+  range: ShareTimelineRange
+  setRange: (range: ShareTimelineRange) => void
+}) {
+  return (
+    <div className='flex items-center justify-between gap-2'>
+      <StatCards data={data} />
+      <div className='flex items-center gap-2'>
+        <Segmented options={rangeOptions()} value={range} onChange={(val) => setRange(val as ShareTimelineRange)} />
+        <ShareTrafficFilterPopover />
+      </div>
+    </div>
+  )
+}
+
+function NoteAnalyticsBreakdowns({ data, locale }: { data: ShareNoteAnalytics | null, locale: string }) {
+  return (
+    <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+      <BreakdownCard title={t('share.top_countries_title')} icon={<Globe size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topCountries || data.topCountries.length === 0}>
+        {data?.topCountries.slice(0, 5).map((item) => (
+          <BreakdownMiniRow key={item.name} name={countryNameLocalized(item.name, locale)} flag={countryFlag(item.name)} count={item.count} percentage={item.percentage ?? 0} />
+        ))}
+      </BreakdownCard>
+      <BreakdownCard title={t('share.top_referrers_title')} icon={<Compass size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topReferrers || data.topReferrers.length === 0}>
+        {data?.topReferrers.slice(0, 5).map((item) => (
+          <BreakdownMiniRow key={item.name} name={item.name} count={item.count} percentage={item.percentage ?? 0} />
+        ))}
+      </BreakdownCard>
     </div>
   )
 }

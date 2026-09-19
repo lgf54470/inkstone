@@ -17,7 +17,7 @@
 | 02 | SH-02 | 分享 ≥100 条时列表/批量必 500（D1 变量上限，分块 + 上限 400） | P0 | ✅ | 4ee9b55c |
 | 03 | SH-01 | 暂停分享不切断附件下载通道（files/library.ts + public.ts） | P0 | ✅ | 3d2dafd4 |
 | 04 | SH-06+16 | `range` 白名单校验 + `all` 分桶起点（限 share 路由内，不碰 lib 行为） | P0/P1 | ✅ | 6a67f695 |
-| 05 | SH-24 | 看板/单篇分析失败态（三态铁律） | P1 | ⬜ | |
+| 05 | SH-24 | 看板/单篇分析失败态（三态铁律） | P1 | ✅ | 待回填 |
 | 06 | SH-25 | 列表首屏失败渲染成空态 → error + 重试 | P1 | ⬜ | |
 | 07 | SH-26 | 文件夹/标签 CRUD 六处静默失败（content.ts） | P1 | ⬜ | |
 | 08 | SH-27 | 「清理日志」hover-only 破坏性菜单 → `Menu` 组件 | P1 | ⬜ | |
@@ -60,3 +60,4 @@
 - 2026-09-19 02 SH-02 ✅ worker：列表 `loadNoteVisitStats` 按 `VISIT_STATS_NOTE_CHUNK=50` 分块绑定 note_id（此前 120 条分享 → 120 变量 → 必 500）；`batch.ts` disable/revoke/expire/move 与 batch-folder/batch-tag 停用改走 `chunkNoteIds`+`placeholdersFor`（`setSharesField` 统一三种 UPDATE，列名收窄为字面量联合非用户输入）；enable 本就逐条无上限问题（其 N+1 属 16 号）。先红后绿：`tests/share-routes.test.ts` 新增 describe 3 例（红时 stderr 正是 `too many SQL variables — 120/121 bound`）。size:check 一度拦到 batch 处理器 >50 行，按职责拆出三个小函数后通过（未动基线）。commit 4ee9b55c（全量回归 207 文件 / 1648 测试 ✅，typecheck ✅）。
 - 2026-09-19 03 SH-01 ✅ worker：`files/library.ts` `loadAttachmentShare` 的 WHERE 补 `s.is_enabled = 1`（暂停/撤销后匿名与旧口令 cookie 一律 401，正文端点本就有同一判定）；核查确认 `share/public.ts` 全部公开端点（含发 `share_asset_sessions` cookie 的口令端点）都经 `loadShareOrThrow` 挡住 is_enabled=0，无需改动；撤销路径清 session 属 19 号（SH-13）。先红后绿：`tests/files-routes.test.ts` 新增暂停分享→附件 401 一例（红时 200）。commit 3d2dafd4（全量回归 207 文件 / 1649 测试 ✅，typecheck ✅）。
 - 2026-09-19 04 SH-06+16 ✅ worker（限 share 路由，未动 lib）：SH-06——`analyticsContext` 的 range 改走 `shareRangeFrom` 白名单（缺省 `7d`、非法回退 `30d`，响应回显净化后的值；此前 `zzz` 等任意串等价全历史载入）。SH-16 正确性一半——新增 `scopeAllRangeWindow`（global 与 per-note 两路共用）：`all` 以该用户（或该笔记）`MIN(visited_at)` 为分桶起点、真实跨度为 duration（下限 1 天，空历史回退近 30 天窗口），时间轴不再恒为空 1970；MIN 查询不带 clause，保住 filterStats 全量口径。先红后绿：`tests/share-routes.test.ts` 新增 3 例（zzz→30d 只读近窗、all 从最早访问分桶且总和=行数、空 all 不落 epoch）。**遗留**：`all` 仍整表拉行（SQL 下推聚合）与时序 await 并 `db.batch` 未做——前者是 SH-16 成本一半（路由内可做、代价中），并入 26 号（SH-17a 并行化）一起排。
+- 2026-09-19 05 SH-24 ✅ client：看板与单篇分析补上失败态（三态铁律）。`use-share-dashboard-view` 新增 `error` 状态，catch 里清空 `analytics` 并置 error（不再以 0 卡冒充数据）；`use-share-note-analytics` 新增 `isLoading`+`error` 并导出 `loadData` 供重试；新共享组件 `share-analytics-error.tsx`（`AnalyticsLoadError`：`<p role='alert'>` + 语义 `Button` 重试，参照本模块合规面 share-page/page.tsx）；看板主体与笔记分析弹窗体在 error 时以该告警替换零数据（弹窗为满足 size:check 50 行限拆出 `StatsAndRangeRow` 与 `NoteAnalyticsBreakdowns` 两个子组件，未动基线）；新增文案键 `share.analytics_load_failed`（en+zh）。先红后绿：`share-analytics-error.test.ts` 5 例（hook 3 例：失败置 error+清数据、陈旧数据被清、note 加载态；视图 2 例：role=alert+无零卡+点重试恢复）。commit 待回填（全量回归 208 文件 / 1657 测试 ✅，typecheck ✅，i18n/size/style/comments/empty-catch/deep-imports 门禁 ✅）。

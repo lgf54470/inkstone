@@ -10,6 +10,7 @@ export function useShareDashboardView() {
   const [metricMode, setMetricMode] = useState<'views' | 'visitors'>('views')
   const [analytics, setAnalytics] = useState<ShareGlobalAnalytics | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   const excludeBots = useShareStore((s) => s.excludeBots)
   const excludeSelfReferrers = useShareStore((s) => s.excludeSelfReferrers)
@@ -17,6 +18,7 @@ export function useShareDashboardView() {
 
   const loadData = async (selectedRange = range) => {
     setIsLoading(true)
+    setError(false)
     try {
       const data = await api.share.globalAnalytics(selectedRange, {
         excludeBots,
@@ -25,6 +27,8 @@ export function useShareDashboardView() {
       })
       setAnalytics(data)
     } catch {
+      setAnalytics(null)
+      setError(true)
       console.warn('[share] failed to load dashboard analytics')
     } finally {
       setIsLoading(false)
@@ -45,7 +49,7 @@ export function useShareDashboardView() {
 
   return {
     locale, range, setRange, metricMode, setMetricMode,
-    analytics, isLoading, loadData,
+    analytics, isLoading, error, loadData,
     timelinePoints, chartValues,
     filteredBots, filteredSelf, filteredOwner, totalFilteredCount,
   }

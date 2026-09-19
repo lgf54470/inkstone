@@ -55,6 +55,7 @@ export const messages = {
 'share.no_tags': '暂无标签',
 'share.analytics_dashboard_subtitle': '全站公开笔记访问趋势、独立访客分析与受众画像',
 'share.analytics_dashboard_title': '分享访问看板',
+'share.analytics_load_failed': '无法加载分析数据。',
 'share.batch_disable': '批量暂停',
 'share.batch_enable': '批量开启',
 'share.batch_move_success': '已移动 {count} 篇分享',
