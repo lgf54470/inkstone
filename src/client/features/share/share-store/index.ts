@@ -26,6 +26,7 @@ function initialShareState(): Partial<ShareStoreState> {
         viewMode: 'table',
         selectedNoteIds: new Set<string>(),
         shares: [],
+        truncated: false,
         folders: [],
         tags: [],
         globalStats: null,

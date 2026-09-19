@@ -100,6 +100,7 @@ async function runShareLoad({ set, params, controller, epoch }: ShareLoadRun): P
     if (epoch === loadEpoch) {
       set({
         shares: res.shares,
+        truncated: res.truncated === true,
         globalStats: res.globalStats,
         // The full list is now the shared-state truth; a summary kept beside
         // it would only resurrect revoked shares in the note-row markers.

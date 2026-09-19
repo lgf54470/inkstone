@@ -48,10 +48,11 @@ export interface PinStarRow {
 export function folderCountsStatement(db: D1Database, userId: string, now: number): D1PreparedStatement {
   return db.prepare(
     `SELECT sf.id as folder_id,
-            COUNT(s.slug) as total_shares,
-            COUNT(CASE WHEN s.slug IS NOT NULL AND (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) as shared_notes
+            COUNT(CASE WHEN s.slug IS NOT NULL AND n.deleted_at IS NULL THEN 1 END) as total_shares,
+            COUNT(CASE WHEN s.slug IS NOT NULL AND n.deleted_at IS NULL AND (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) as shared_notes
        FROM share_folders sf
        LEFT JOIN shares s ON s.folder_id = sf.id AND s.user_id = sf.user_id
+       LEFT JOIN notes n ON n.id = s.note_id
       WHERE sf.user_id = ?1
       GROUP BY sf.id`,
   )
@@ -69,10 +70,11 @@ export function toFolderCounts(rows: FolderCountRow[]): Record<string, { total: 
 export function tagCountsStatement(db: D1Database, userId: string, now: number): D1PreparedStatement {
   return db.prepare(
     `SELECT t.name AS name,
-            COUNT(s.slug) AS total,
-            COUNT(CASE WHEN (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) AS shared
+            COUNT(CASE WHEN s.slug IS NOT NULL AND n.deleted_at IS NULL THEN 1 END) AS total,
+            COUNT(CASE WHEN s.slug IS NOT NULL AND n.deleted_at IS NULL AND (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) AS shared
        FROM share_tags t
        LEFT JOIN shares s ON s.user_id = t.user_id AND s.tags LIKE '%' || '"' || t.name || '"' || '%'
+       LEFT JOIN notes n ON n.id = s.note_id
       WHERE t.user_id = ?1
       GROUP BY t.name`,
   ).bind(userId, now)
@@ -89,12 +91,13 @@ export function toTagCounts(rows: TagCountRow[]): Record<string, { total: number
 export function globalSummaryStatement(db: D1Database, userId: string, now: number): D1PreparedStatement {
   return db.prepare(
     `SELECT COUNT(*) as total_shares,
-            COUNT(CASE WHEN (is_enabled = 1 OR is_enabled IS NULL) AND (expires_at IS NULL OR expires_at > ?2) THEN 1 END) as active_shares,
-            COUNT(CASE WHEN is_enabled = 0 THEN 1 END) as paused_shares,
-            COUNT(CASE WHEN expires_at IS NOT NULL AND expires_at <= ?2 THEN 1 END) as expired_shares,
-            COALESCE(SUM(views), 0) as total_views
-       FROM shares
-      WHERE user_id = ?1`,
+            COUNT(CASE WHEN (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) as active_shares,
+            COUNT(CASE WHEN s.is_enabled = 0 THEN 1 END) as paused_shares,
+            COUNT(CASE WHEN s.expires_at IS NOT NULL AND s.expires_at <= ?2 THEN 1 END) as expired_shares,
+            COALESCE(SUM(s.views), 0) as total_views
+       FROM shares s
+       JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
+      WHERE s.user_id = ?1 AND n.deleted_at IS NULL`,
   )
     .bind(userId, now)
 }

@@ -28,6 +28,7 @@ export interface ShareStoreState {
   viewMode: 'table' | 'grid'
   selectedNoteIds: Set<string>
   shares: ShareInfo[]
+  truncated: boolean
   folders: ShareFolder[]
   tags: ShareTag[]
   globalStats: ShareListResponse['globalStats'] | null

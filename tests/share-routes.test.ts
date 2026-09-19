@@ -304,6 +304,63 @@ describe('share list and analytics db.batch round-trips (SH-17a)', () => {
   })
 })
 
+describe('share sidebar count parity (SH-30)', () => {
+  it('excludes shares of soft-deleted notes from badge, folder and tag counts', async () => {
+    const db = await makeDb()
+    await runSql(
+      db,
+      `INSERT INTO share_folders (id, user_id, parent_id, name, position, created_at, updated_at)
+       VALUES ('sf-p', ?1, NULL, 'Shared', 0, ?2, ?2)`,
+      USER, H.now,
+    )
+    await runSql(db, `INSERT INTO share_tags (id, user_id, name, created_at) VALUES ('st-p', ?1, 'alpha', ?2)`, USER, H.now)
+    const live = await seedNote(db, { title: 'Live' })
+    const trashed = await seedNote(db, { title: 'Trashed' })
+    await runSql(db, 'UPDATE notes SET deleted_at = ?1 WHERE id = ?2', H.now, trashed)
+    await seedShare(db, { note_id: live, slug: 'parity-live', folder_id: 'sf-p', tags: '["alpha"]' })
+    await seedShare(db, { note_id: trashed, slug: 'parity-trash', folder_id: 'sf-p', tags: '["alpha"]' })
+
+    const body = await (await request(makeApp(), '/api/share')).json()
+    expect(body.shares.map((s: { slug: string }) => s.slug)).toEqual(['parity-live'])
+    expect(body.globalStats.totalShares).toBe(1)
+    expect(body.globalStats.activeShares).toBe(1)
+    expect(body.globalStats.folderCounts['sf-p']).toEqual({ total: 1, shared: 1 })
+    expect(body.globalStats.tagCounts['alpha']).toEqual({ total: 1, shared: 1 })
+    expect(body.truncated).toBe(false)
+  })
+
+  it('keeps the expiring category disjoint from expired and permanent', async () => {
+    const db = await makeDb()
+    const now = Date.now()
+    const n1 = await seedNote(db, {})
+    const n2 = await seedNote(db, {})
+    const n3 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'ex-future', expires_at: now + 86_400_000 })
+    await seedShare(db, { note_id: n2, slug: 'ex-past', expires_at: now - 86_400_000 })
+    await seedShare(db, { note_id: n3, slug: 'ex-none' })
+    const app = makeApp()
+    const slugs = async (status: string) =>
+      (await (await request(app, `/api/share?status=${status}`)).json()).shares.map((s: { slug: string }) => s.slug)
+
+    expect(await slugs('expiring')).toEqual(['ex-future'])
+    expect(await slugs('expired')).toEqual(['ex-past'])
+    expect(await slugs('permanent')).toEqual(['ex-none'])
+  })
+
+  it('marks the list truncated when it exceeds the server row limit', async () => {
+    const db = await makeDb()
+    for (let i = 0; i < 501; i++) {
+      const id = await seedNote(db, { title: `Bulk ${i}` })
+      await seedShare(db, { note_id: id })
+    }
+
+    const body = await (await request(makeApp(), '/api/share')).json()
+    expect(body.shares.length).toBe(500)
+    expect(body.total).toBe(500)
+    expect(body.truncated).toBe(true)
+  }, 30_000)
+})
+
 describe('share note-share & upsert routes (real D1)', () => {
   it('returns share:null for an unshared note', async () => {
     const db = await makeDb()

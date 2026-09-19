@@ -40,7 +40,7 @@
 | 25 | SH-20 | code-split：barrel 拆 store/modals 入口（保持 blog 现有 import 不破） | P1 | ✅ | 3d6496e0 |
 | 26 | SH-17a | 列表接口 5 个统计查询 `db.batch` 并行化（第一步，不拆端点） | P0 部分 | ✅ | 79748dbf |
 | 27 | SH-28 | 实时访问日志补时间窗 + 文案改「最近访问」 | P2 | ✅ | eca5e37b |
-| 28 | SH-30 | 侧栏计数口径（软删过滤/expiring 互斥/全时段标注）+ LIMIT 500 truncated | P2 | ⬜ | |
+| 28 | SH-30 | 侧栏计数口径（软删过滤/expiring 互斥/全时段标注）+ LIMIT 500 truncated | P2 | ✅ | 待回填 |
 | 29 | SH-31 | a11y 批量：Switch label、IconButton、hub ariaLabel、行「更多」键盘入口 | P2 | ⬜ | |
 | 30 | SH-32 | 调色板类 → 设计令牌（visit-logs/sidebar/qr/dashboard 等） | P2 | ⬜ | |
 | 31 | SH-33 | 裸控件换组件体系 + CSV 导出全量 + 复制失败 toast + 日志按分享过滤入口 | P2 | ⬜ | |
@@ -192,3 +192,16 @@
   - `share-note-analytics-modal.tsx`：笔记分析弹窗补手动刷新 IconButton（与看板头部同款 `common.refresh` + RefreshCw 旋转态），弹窗此前只能靠切区间/重开触发重拉；看板头部本就有刷新，未重复加。轮询（可见性门控）不做——文案已不再承诺实时。
 - 测试 `tests/share-routes.test.ts`：analytics describe 新增 3 例——global 7d 排除 14 天前记录、note 7d 同、range=all 仍含 800 天前记录（防未来把 all 也滤掉）。变异两杀：note SQL 删 `visited_at >= ?3` → note 例红；global 调用点 startTs 传 0 → global 例红（/tmp/mut27 备份还原）。
 - 验证：红→绿；tsc + share 全套 14 文件/141 测 + 十门禁全绿（无新注释，allowlist 无变化）。弹窗刷新按钮为既有 IconButton 原语复用，键盘/焦点由组件自身保证，未在 jsdom 另测。
+
+## 28 — SH-30 侧栏计数口径 + LIMIT 500 truncated（2026-09-19）
+
+- 现象（三个叠加口径缺陷 + 一个静默截断）：(a) 徽章/目录/标签统计 `FROM shares` 不 join notes，分母含回收站笔记的分享，而列表强制 `n.deleted_at IS NULL`；(b) `status=expiring` 条件 `expires_at IS NOT NULL` 与 expired 重叠非互斥（已失效链接出现在「有效期限制」分类）；(c) 侧栏底部 PV/UV 是全时段值、看板同名标签是区间值，同屏近义混淆；(d) 列表 `LIMIT 500` 且 `total = shares.length`，超 500 静默截断无提示。
+- 修复：
+  - `routes/share/global-stats.ts`：`globalSummaryStatement` 改 `JOIN notes … AND n.deleted_at IS NULL`；`folderCountsStatement`/`tagCountsStatement` 各加 `LEFT JOIN notes n ON n.id = s.note_id`，计数谓词补 `s.slug IS NOT NULL AND n.deleted_at IS NULL`（空目录行 n 全 NULL 仍计 0，语义不变）。
+  - `routes/share/shares.ts`：expiring 从静态 `STATUS_CONDITIONS` 表移出，改绑 `now` 的动态分支 `expires_at IS NOT NULL AND expires_at > ?N`，与 expired/permanent 三方互斥；行查询 `LIMIT 501`（常量 `SHARE_LIST_ROW_LIMIT`+1），路由比对多取的一行得出 `truncated` 并切片，响应新增 `truncated` 字段。
+  - `shared/types/share.ts`：`ShareListResponse.truncated: boolean`（必填）；demo 后端镜像 `truncated: false`。
+  - `share-store`（types/index/loaders）：`truncated` 随每次成功列表加载入库（`res.truncated === true`，失败路径不动）。
+  - `share-hub-modal.tsx`：工具栏下方 `<ListTruncatedNotice/>`（`role='status'`，仅截断时渲染）；`HubContent` 因新行超 50 行红线，把列表主体拆成 `HubListBody`。
+  - locales：`share.category_expiring` zh「有效期限制」→「有效期内」（新语义）；`share.total_pv_views`/`share.total_uv_visitors` 加「全部时间」限定；新键 `share.list_truncated`（en/zh）。blog 侧同名 key 不动（约束③）。
+- 测试 `tests/share-routes.test.ts` 新 describe 3 例：软删笔记分享不进徽章/目录/标签分母（列表本就不含）且 `truncated:false`；expiring/expired/permanent 三分类互斥各只含自己那条；种 501 条后 `shares.length===500 && truncated===true`（per-test timeout 30s）。变异三杀：folder 计数退回 `COUNT(s.slug)` / expiring 退回静态 `IS NOT NULL` / `truncated` 恒 false（连带 501 行泄漏即红）（/tmp/mut28 备份还原）。
+- 验证：红→绿；tsc + share 全套 + 十门禁全绿（size 逼出 HubListBody 拆分）。遗留：demo 的 `SHARE_STATUS_FILTERS` 本就没有 expiring/expired/permanent 三个谓词（演示数据小、口径缺失为既有缺口），未夹带补齐；「即将到期」提醒（台账第四节 4）不在本项。

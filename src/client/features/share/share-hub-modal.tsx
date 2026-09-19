@@ -11,6 +11,7 @@ import { ShareGridView } from './share-grid-view'
 import { ShareDashboardView } from './share-dashboard-view'
 import { ShareBatchBar } from './share-batch-bar'
 import { LoadErrorState } from './share-load-error'
+import { useShareStore } from './share-store'
 import { ShareQrModal } from './share-qr-modal'
 import { ShareEditModal } from './share-edit-modal'
 
@@ -67,14 +68,27 @@ function HubHeader({ onClose }: {
   )
 }
 
+function ListTruncatedNotice() {
+  const truncated = useShareStore((s) => s.truncated)
+  if (!truncated) return null
+  return (
+    <div
+      role='status'
+      className='shrink-0 border-b border-[var(--border-subtle)] bg-[var(--warning-subtle)] px-4 py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'
+    >
+      {t('share.list_truncated')}
+    </div>
+  )
+}
+
 function HubContent({ hub }: { hub: ShareHubModalBundle }) {
-  const { category, viewMode, shares, loading, error, selectedNoteIds, clearSelection, loadShares, setAnalyticsNoteId, setIsLogsOpen, setIsSettingsOpen, openQr, openAnalytics, openEdit } = hub
+  const { category, selectedNoteIds, clearSelection } = hub
   if (category === 'dashboard') {
     return (
       <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden'>
         <ShareDashboardView
-          onSelectNoteAnalytics={(noteId) => setAnalyticsNoteId(noteId)}
-          onOpenLogs={() => setIsLogsOpen(true)}
+          onSelectNoteAnalytics={(noteId) => hub.setAnalyticsNoteId(noteId)}
+          onOpenLogs={() => hub.setIsLogsOpen(true)}
         />
       </div>
     )
@@ -82,38 +96,46 @@ function HubContent({ hub }: { hub: ShareHubModalBundle }) {
   return (
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden'>
       <ShareHubToolbar
-        onOpenLogs={() => setIsLogsOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenLogs={() => hub.setIsLogsOpen(true)}
+        onOpenSettings={() => hub.setIsSettingsOpen(true)}
       />
-      <div className='flex-1 overflow-y-auto'>
-        {loading && shares.length === 0 ? (
-          <div className='flex h-64 items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
-            {t('common.loading')}
-          </div>
-        ) : error && shares.length === 0 ? (
-          <div className='p-5'>
-            <LoadErrorState label={t('share.list_load_failed')} onRetry={() => void loadShares()} />
-          </div>
-        ) : viewMode === 'table' ? (
-          <ShareTableView
-            shares={shares}
-            onOpenQr={openQr}
-            onOpenAnalytics={openAnalytics}
-            onOpenEdit={openEdit}
-          />
-        ) : (
-          <ShareGridView
-            shares={shares}
-            onOpenQr={openQr}
-            onOpenAnalytics={openAnalytics}
-            onOpenEdit={openEdit}
-          />
-        )}
-      </div>
+      <ListTruncatedNotice />
+      <HubListBody hub={hub} />
       <ShareBatchBar
         selectedCount={selectedNoteIds.size}
         onClearSelection={clearSelection}
       />
+    </div>
+  )
+}
+
+function HubListBody({ hub }: { hub: ShareHubModalBundle }) {
+  const { viewMode, shares, loading, error, loadShares, openQr, openAnalytics, openEdit } = hub
+  return (
+    <div className='flex-1 overflow-y-auto'>
+      {loading && shares.length === 0 ? (
+        <div className='flex h-64 items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
+          {t('common.loading')}
+        </div>
+      ) : error && shares.length === 0 ? (
+        <div className='p-5'>
+          <LoadErrorState label={t('share.list_load_failed')} onRetry={() => void loadShares()} />
+        </div>
+      ) : viewMode === 'table' ? (
+        <ShareTableView
+          shares={shares}
+          onOpenQr={openQr}
+          onOpenAnalytics={openAnalytics}
+          onOpenEdit={openEdit}
+        />
+      ) : (
+        <ShareGridView
+          shares={shares}
+          onOpenQr={openQr}
+          onOpenAnalytics={openAnalytics}
+          onOpenEdit={openEdit}
+        />
+      )}
     </div>
   )
 }

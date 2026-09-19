@@ -20,6 +20,7 @@ export const messages = {
 'share.leave_blank_to_keep_the_current_passcode': 'Leave blank to keep the current passcode',
 'share.link_revoked': 'Link revoked',
 'share.list_load_failed': 'Could not load the shared links.',
+'share.list_truncated': 'Over 500 shares exist — showing the first 500 only.',
 'share.loading_share_status': 'Loading share status…',
 'share.could_not_load_sharing_status': 'Could not load sharing status',
 'share.never_expires': 'Never expires',
@@ -152,6 +153,6 @@ export const messages = {
 'share.top_countries_title': 'Geographic Distribution',
 'share.top_notes_title': 'Top Notes',
 'share.top_referrers_title': 'Traffic Sources',
-'share.total_pv_views': 'Total Pageviews (PV)',
+'share.total_pv_views': 'All-time Pageviews (PV)',
 'share.total_shares_count': 'Total Shares',
 }

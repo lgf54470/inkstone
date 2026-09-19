@@ -277,6 +277,7 @@ function listShares(c: Context, state: DemoState): Response {
   const res: ShareListResponse = {
     shares: filtered,
     total: filtered.length,
+    truncated: false,
     globalStats: buildShareListStats(allShares, folderCounts, tagCounts),
   }
   return c.json(res)

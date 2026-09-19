@@ -1,5 +1,5 @@
 export const messages = {
-'share.total_uv_visitors': '独立访客数 (UV)',
+'share.total_uv_visitors': '全部时间独立访客数 (UV)',
 'share.total_views_pv': '总访问量 (PV)',
 'share.total_visitors_uv': '独立访客 (UV)',
 'share.traffic_sources': '来源网站',

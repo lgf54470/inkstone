@@ -1,5 +1,5 @@
 export const messages = {
-'share.total_uv_visitors': 'Unique Visitors (UV)',
+'share.total_uv_visitors': 'All-time Unique Visitors (UV)',
 'share.total_views_pv': 'Total Views (PV)',
 'share.total_visitors_uv': 'Unique Visitors (UV)',
 'share.traffic_sources': 'Referrers',

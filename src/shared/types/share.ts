@@ -155,6 +155,7 @@ export interface ShareSummaryResponse {
 export interface ShareListResponse {
   shares: ShareInfo[]
   total: number
+  truncated: boolean
   globalStats: {
     totalShares: number
     activeShares: number

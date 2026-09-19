@@ -147,11 +147,14 @@ function registerShareListRoute(shareManageRoutes: Hono<AppBindings>): void {
       firstOf<PinStarRow>(pinStarResult),
     )
     const rows = rowsOf<ShareListRow>(listResult)
-    const noteStatsMap = await loadNoteVisitStats(db, rows, params.clause)
-    const shares = rows.map((r) => shareListInfo(r, noteStatsMap.get(r.note_id), params.origin))
+    const truncated = rows.length > SHARE_LIST_ROW_LIMIT
+    const visibleRows = truncated ? rows.slice(0, SHARE_LIST_ROW_LIMIT) : rows
+    const noteStatsMap = await loadNoteVisitStats(db, visibleRows, params.clause)
+    const shares = visibleRows.map((r) => shareListInfo(r, noteStatsMap.get(r.note_id), params.origin))
     const response: ShareListResponse = {
       shares,
       total: shares.length,
+      truncated,
       globalStats,
     }
     return c.json(response)
@@ -200,7 +203,6 @@ const STATUS_CONDITIONS: Record<string, string> = {
   starred: `n.is_starred = 1`,
   pinned: `n.is_pinned = 1`,
   password: `s.password_hash IS NOT NULL`,
-  expiring: `s.expires_at IS NOT NULL`,
   permanent: `s.expires_at IS NULL`,
 }
 
@@ -224,6 +226,10 @@ function shareListConditions(binds: Array<string | number>, params: ShareListPar
     bindIndex++
   } else if (status === 'expired') {
     conditions.push(`s.expires_at IS NOT NULL AND s.expires_at <= ?${bindIndex}`)
+    binds.push(now)
+    bindIndex++
+  } else if (status === 'expiring') {
+    conditions.push(`s.expires_at IS NOT NULL AND s.expires_at > ?${bindIndex}`)
     binds.push(now)
     bindIndex++
   }
@@ -259,6 +265,8 @@ async function loadShareListRow(db: D1Database, userId: string, noteId: string):
   ).bind(noteId, userId).first<ShareListRow>()
 }
 
+const SHARE_LIST_ROW_LIMIT = 500
+
 function shareListRowsStatement(
   db: D1Database,
   binds: Array<string | number>,
@@ -274,7 +282,7 @@ function shareListRowsStatement(
       JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
      WHERE ${conditions.join(' AND ')}
      ${orderClause}
-     LIMIT 500
+     LIMIT ${SHARE_LIST_ROW_LIMIT + 1}
   `)
     .bind(...binds)
 }
