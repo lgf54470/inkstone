@@ -120,4 +120,14 @@ describe('webdav browse failure (UI-11)', () => {
     expect(document.body.textContent).toContain(t('music.webdav_empty'))
     expect(document.body.textContent).not.toContain(t('music.webdav_failed'))
   })
+
+  it('lets the keyboard scroll a long folder listing (UI-17)', async () => {
+    const entry: MusicWebdavEntry = { name: 'a.mp3', path: 'jazz/a.mp3', isDirectory: false, sizeBytes: 1024, mime: 'audio/mpeg', modifiedAt: null }
+    useMusic.setState({ webdav: webdavState({ entries: [entry] }) })
+    await mount(createElement(MusicWebdavModal, { open: true, onClose: () => {} }))
+    const list = document.querySelector('ul.overflow-y-auto') as HTMLElement | null
+    expect(list).not.toBeNull()
+    expect(list?.getAttribute('tabindex')).toBe('0')
+    expect(list?.getAttribute('aria-label')).toBe(t('music.webdav_title'))
+  })
 })

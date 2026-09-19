@@ -47,7 +47,13 @@ export function MusicNowPlaying({
           ]}
         />
       </div>
-      <div ref={scrollerRef} className='min-h-0 flex-1 overflow-y-auto px-3 pb-3'>
+      {/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */}
+      <div
+        ref={scrollerRef}
+        tabIndex={0}
+        aria-label={tab === 'lyrics' ? t('music.lyrics') : t('music.details')}
+        className='min-h-0 flex-1 overflow-y-auto px-3 pb-3'
+      >
         {tab === 'lyrics'
           ? <Lyrics lines={lyrics} activeIndex={activeIndex} />
           : <Details track={track} onEditTags={onEditTags} />}

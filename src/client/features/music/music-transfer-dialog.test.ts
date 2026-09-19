@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { t } from '../../lib/i18n'
-import { DropZone, UploadPicker } from './music-transfer-dialog'
+import { DropZone, MusicTransferDialog, UploadPicker } from './music-transfer-dialog'
 import { useMusic } from './music-store'
 
 beforeAll(() => {
@@ -89,5 +89,28 @@ describe('UploadPicker folder support', () => {
     const folderInput = container.querySelector('input[webkitdirectory]')
     expect(folderInput).not.toBeNull()
     expect([...container.querySelectorAll('button')].some((button) => button.textContent?.includes(t('music.upload_choose_folder')))).toBe(true)
+  })
+})
+
+describe('transfer task list scroll (UI-17)', () => {
+  it('lets the keyboard scroll the uploads list under its section name', async () => {
+    useMusic.setState({
+      uploads: [{ id: 'u1', name: 'a.mp3', percent: 30, status: 'uploading', error: null, target: 'r2', controller: new AbortController() }],
+    })
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    await act(async () => {
+      root?.render(createElement(MusicTransferDialog, { open: true, onClose: () => {} }))
+    })
+    const section = [...document.querySelectorAll('section')].find((node) => (
+      node.querySelector('h3')?.textContent === t('music.transfers_uploads')
+    ))
+    expect(section).toBeDefined()
+    const list = section?.querySelector('ul') as HTMLElement | null
+    expect(list).not.toBeNull()
+    expect(list?.getAttribute('tabindex')).toBe('0')
+    expect(list?.getAttribute('aria-label')).toBe(t('music.transfers_uploads'))
+    useMusic.setState({ uploads: [] })
   })
 })

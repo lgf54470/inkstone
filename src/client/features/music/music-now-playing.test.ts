@@ -112,3 +112,16 @@ describe('MusicNowPlaying lyrics', () => {
     expect(activeTexts()).toEqual(['Second'])
   })
 })
+
+// A scrollable pane the keyboard can never reach hides its overflow from
+// keyboard and screen-reader users; it must be a focus stop with a name.
+describe('MusicNowPlaying scroll region (UI-17)', () => {
+  it('lets the keyboard scroll the details pane under its own name', async () => {
+    seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn() })
+    const container = await mountPanel('details')
+    const scroller = container.querySelector('.overflow-y-auto') as HTMLElement | null
+    expect(scroller).not.toBeNull()
+    expect(scroller?.getAttribute('tabindex')).toBe('0')
+    expect(scroller?.getAttribute('aria-label')).toBe(t('music.details'))
+  })
+})

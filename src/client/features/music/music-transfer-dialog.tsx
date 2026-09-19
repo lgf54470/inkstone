@@ -161,7 +161,7 @@ function TaskSection({ label, children }: { label: string; children: ReactNode }
   return (
     <section className='space-y-1'>
       <h3 className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{label}</h3>
-      <ul className='max-h-52 space-y-1 overflow-y-auto'>{children}</ul>
+      <ul tabIndex={0} aria-label={label} className='max-h-52 space-y-1 overflow-y-auto'>{children}</ul>
     </section>
   )
 }

@@ -1233,6 +1233,9 @@ const allowed = new Map([
     '// The running guard lives in the store, so remounting the toolbar cannot stack a second pass.',
     '// Force mode overwrites stored tags, so manual edits are lost — confirm before scanning everything visible.',
   ]],
+  ['src/client/features/music/music-immersive-player.tsx', [
+    '/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */',
+  ]],
   ['src/client/features/music/music-lyrics.ts', [
     '// The library ships tracks without lyric text; detail views mount this hook to',
     '// have the store fetch it by id once, then read the merged `track.lyric` themselves.',
@@ -1268,6 +1271,13 @@ const allowed = new Map([
     '// MP4/M4A keeps duration in mvhd and artwork in the ilst covr atom, all inside moov.',
     '// The meta box carries its own version and flags before its children.',
     '// Metadata atoms wrap their value in a data box: version and flags, value type, locale, payload.',
+  ]],
+  ['src/client/features/music/music-now-playing.test.ts', [
+    '// A scrollable pane the keyboard can never reach hides its overflow from',
+    '// keyboard and screen-reader users; it must be a focus stop with a name.',
+  ]],
+  ['src/client/features/music/music-now-playing.tsx', [
+    '/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */',
   ]],
   ['src/client/features/music/music-playlist-drag.test.ts', [
     '// t1 (i1) dropped on the t2 row: i2 sits at index 2 in the manual order.',
@@ -1442,6 +1452,10 @@ const allowed = new Map([
     '// The directory picker relies on non-standard attributes React types do not carry.',
     '// dragenter and dragleave also fire when the pointer crosses a child, so the highlight',
     '// follows an enter/leave depth count and only clears once the pointer really leaves.',
+  ]],
+  ['src/client/features/music/music-transport-widgets.tsx', [
+    '// A per-second countdown as a polite live region re-reads itself every tick;',
+    '// the timer\'s on/off state lives on the sleep button\'s aria-pressed instead.',
   ]],
   ['src/client/features/music/music-utils.ts', [
     '// Per-track network bursts (bulk upload/download/import/scan) stay pipelined but bounded:',

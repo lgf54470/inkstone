@@ -218,7 +218,9 @@ export function MusicSleepStatus() {
   const seconds = Math.floor((remaining % 60_000) / 1000)
   const label = minutes + ':' + String(seconds).padStart(2, '0')
   return (
-    <span role='status' aria-live='polite' className='tabular shrink-0 text-[length:var(--text-10)] text-[var(--accent)]'>
+    // A per-second countdown as a polite live region re-reads itself every tick;
+    // the timer's on/off state lives on the sleep button's aria-pressed instead.
+    <span role='timer' aria-live='off' className='tabular shrink-0 text-[length:var(--text-10)] text-[var(--accent)]'>
       {t('music.sleep_remaining', { value0: label })}
     </span>
   )

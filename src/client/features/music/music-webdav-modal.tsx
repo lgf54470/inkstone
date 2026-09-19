@@ -139,7 +139,7 @@ function WebdavListing() {
   if (webdav.entries.length === 0)
     return <Empty art='folder' title={t('music.webdav_empty')} description={t('music.music_dir_hint')} compact />
   return (
-    <ul className='max-h-80 space-y-0.5 overflow-y-auto'>
+    <ul tabIndex={0} aria-label={t('music.webdav_title')} className='max-h-80 space-y-0.5 overflow-y-auto'>
       {webdav.entries.map((entry) => (
         <WebdavRow
           key={entry.path}

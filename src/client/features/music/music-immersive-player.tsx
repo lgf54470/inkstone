@@ -50,10 +50,16 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
               <IconButton label={t('music.exit_immersive')} size='sm' onClick={onClose}><X size={15} /></IconButton>
             </span>
           </div>
-          <div ref={scrollerRef} className='min-h-0 flex-1 overflow-y-auto px-6 py-4'>
+          {/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */}
+          <div
+            ref={scrollerRef}
+            tabIndex={0}
+            aria-label={t('music.lyrics')}
+            className='min-h-0 flex-1 overflow-y-auto px-6 py-4'
+          >
             <Lyrics lines={lyrics} activeIndex={activeIndex} />
           </div>
-          <div className='max-h-40 shrink-0 overflow-y-auto border-t border-[var(--border-subtle)] p-2'>
+          <div tabIndex={0} aria-label={t('music.queue')} className='max-h-40 shrink-0 overflow-y-auto border-t border-[var(--border-subtle)] p-2'>
             <MusicQueueList />
           </div>
         </section>
