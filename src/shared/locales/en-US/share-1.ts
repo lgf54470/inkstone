@@ -19,6 +19,7 @@ export const messages = {
 'share.keep_current_expiration': 'Keep current',
 'share.leave_blank_to_keep_the_current_passcode': 'Leave blank to keep the current passcode',
 'share.link_revoked': 'Link revoked',
+'share.list_load_failed': 'Could not load the shared links.',
 'share.loading_share_status': 'Loading share status…',
 'share.could_not_load_sharing_status': 'Could not load sharing status',
 'share.never_expires': 'Never expires',

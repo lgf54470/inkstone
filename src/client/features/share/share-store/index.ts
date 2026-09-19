@@ -30,6 +30,7 @@ function initialShareState(): Partial<ShareStoreState> {
         tags: [],
         globalStats: null,
         loading: false,
+        error: false,
         batchBusy: false,
         excludeBots: initialFilters.excludeBots,
         excludeSelfReferrers: initialFilters.excludeSelfReferrers,

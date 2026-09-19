@@ -8,7 +8,7 @@ import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
 import { BigSvgChart } from '../../components/big-svg-chart'
 import { countryFlag, countryNameLocalized } from './share-helpers'
-import { AnalyticsLoadError } from './share-analytics-error'
+import { LoadErrorState } from './share-load-error'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import { useShareNoteAnalytics } from './use-share-note-analytics'
 
@@ -53,7 +53,7 @@ export function ShareNoteAnalyticsModal({
     >
       <div className='flex flex-col gap-4 py-1 max-h-[75vh] overflow-y-auto pr-1'>
         {error ? (
-          <AnalyticsLoadError onRetry={() => void loadData(range)} />
+          <LoadErrorState label={t('share.analytics_load_failed')} onRetry={() => void loadData(range)} />
         ) : (
           <>
             {data && <AnalyticsLinkBar data={data} onOpenQr={onOpenQr} />}

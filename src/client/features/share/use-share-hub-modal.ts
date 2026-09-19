@@ -14,6 +14,7 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
   const viewMode = useShareStore((s) => s.viewMode)
   const shares = useShareStore((s) => s.shares)
   const loading = useShareStore((s) => s.loading)
+  const error = useShareStore((s) => s.error)
   const selectedNoteIds = useShareStore((s) => s.selectedNoteIds)
   const clearSelection = useShareStore((s) => s.clearSelection)
   const loadShares = useShareStore((s) => s.loadShares)
@@ -49,7 +50,7 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
   }, [open, initialNoteId, shares])
 
   return {
-    category, viewMode, shares, loading, selectedNoteIds, clearSelection, loadShares,
+    category, viewMode, shares, loading, error, selectedNoteIds, clearSelection, loadShares,
     qrShare, setQrShare, editShare, setEditShare,
     analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, isSettingsOpen, setIsSettingsOpen,
   }

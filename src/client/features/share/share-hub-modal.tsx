@@ -10,6 +10,7 @@ import { ShareTableView } from './share-table-view'
 import { ShareGridView } from './share-grid-view'
 import { ShareDashboardView } from './share-dashboard-view'
 import { ShareBatchBar } from './share-batch-bar'
+import { LoadErrorState } from './share-load-error'
 import { ShareQrModal } from './share-qr-modal'
 import { ShareEditModal } from './share-edit-modal'
 
@@ -67,7 +68,7 @@ function HubHeader({ onClose }: {
 }
 
 function HubContent({ hub }: { hub: ShareHubModalBundle }) {
-  const { category, viewMode, shares, loading, selectedNoteIds, clearSelection, setAnalyticsNoteId, setIsLogsOpen, setIsSettingsOpen, setQrShare, setEditShare } = hub
+  const { category, viewMode, shares, loading, error, selectedNoteIds, clearSelection, loadShares, setAnalyticsNoteId, setIsLogsOpen, setIsSettingsOpen, setQrShare, setEditShare } = hub
   if (category === 'dashboard') {
     return (
       <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden'>
@@ -88,6 +89,10 @@ function HubContent({ hub }: { hub: ShareHubModalBundle }) {
         {loading && shares.length === 0 ? (
           <div className='flex h-64 items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
             {t('common.loading')}
+          </div>
+        ) : error && shares.length === 0 ? (
+          <div className='p-5'>
+            <LoadErrorState label={t('share.list_load_failed')} onRetry={() => void loadShares()} />
           </div>
         ) : viewMode === 'table' ? (
           <ShareTableView

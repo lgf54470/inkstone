@@ -51,11 +51,12 @@ async function loadSharesImpl(set: SetShareStoreState, get: () => ShareStoreStat
         shares: res.shares,
         globalStats: res.globalStats,
         loading: false,
+        error: false,
       })
     }
   } catch {
     if (epoch === loadEpoch) {
-      set({ loading: false })
+      set({ loading: false, error: true })
       useUi.getState().toast({ title: t('share.could_not_load_sharing_status'), tone: 'danger' })
     }
   }

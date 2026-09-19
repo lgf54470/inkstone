@@ -27,6 +27,7 @@ export interface ShareStoreState {
   tags: ShareTag[]
   globalStats: ShareListResponse['globalStats'] | null
   loading: boolean
+  error: boolean
   batchBusy: boolean
   excludeBots: boolean
   excludeSelfReferrers: boolean

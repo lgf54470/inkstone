@@ -22,7 +22,7 @@ import { Segmented } from '../../components/form'
 import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
 import { countryFlag, countryNameLocalized } from './share-helpers'
-import { AnalyticsLoadError } from './share-analytics-error'
+import { LoadErrorState } from './share-load-error'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import type { useShareDashboardView } from './use-share-dashboard-view'
 import { useShareDashboardView as useDashboardView } from './use-share-dashboard-view'
@@ -42,7 +42,7 @@ export function ShareDashboardView({
     <div className='flex h-full flex-col overflow-y-auto bg-[var(--bg-base)] p-5'>
       <DashboardHeader bundle={bundle} />
       {error ? (
-        <AnalyticsLoadError onRetry={() => void loadData(range)} />
+        <LoadErrorState label={t('share.analytics_load_failed')} onRetry={() => void loadData(range)} />
       ) : (
         <>
           {totalFilteredCount > 0 && <FilterSummaryBanner bundle={bundle} />}

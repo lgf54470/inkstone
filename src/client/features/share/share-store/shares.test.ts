@@ -22,7 +22,7 @@ vi.mock('../../../lib/api', () => ({
 
 beforeEach(() => {
   useUi.setState({ toasts: [] })
-  useShareStore.setState({ shares: [], loading: false, batchBusy: false })
+  useShareStore.setState({ shares: [], loading: false, batchBusy: false, error: false })
   vi.clearAllMocks()
 })
 
@@ -62,5 +62,29 @@ describe('share store error surfacing', () => {
 
     expect(ok).toBe(true)
     expect(useUi.getState().toasts).toHaveLength(0)
+  })
+})
+
+describe('share list error state', () => {
+  it('loadShares records an error state when the first screen fails', async () => {
+    vi.mocked(api.share.list).mockRejectedValueOnce(new Error('network down'))
+
+    await useShareStore.getState().loadShares()
+
+    expect(useShareStore.getState().error).toBe(true)
+    expect(useShareStore.getState().loading).toBe(false)
+    expect(useShareStore.getState().shares).toEqual([])
+  })
+
+  it('loadShares clears the error state once a retry succeeds', async () => {
+    vi.mocked(api.share.list).mockRejectedValueOnce(new Error('network down'))
+    await useShareStore.getState().loadShares()
+    expect(useShareStore.getState().error).toBe(true)
+
+    vi.mocked(api.share.list).mockResolvedValueOnce({ shares: [], globalStats: null } as never)
+    await useShareStore.getState().loadShares()
+
+    expect(useShareStore.getState().error).toBe(false)
+    expect(useShareStore.getState().loading).toBe(false)
   })
 })
