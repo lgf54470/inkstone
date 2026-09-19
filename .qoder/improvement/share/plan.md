@@ -47,7 +47,7 @@
 | 32 | SH-34 | 英文字面量进 locale + 服务端回落值改 null + countryName locale 显式 | P2 | ✅ | 91a10c0f |
 | 33 | SH-35 | 窄屏：侧栏折叠/宽模态 fullscreen/批量条换行/触控尺寸 | P2 | ✅ | b080398a |
 | 34 | SH-36 | 小项集合（口令长度统一、effect 重开、子模态重置、th scope、role=status 等） | P3 | ✅ | 21cbdddc |
-| T | SH-37 | 通病解冻：`--danger/warning/success-subtle` 全站引用无定义（渲染透明）→ 统一按 `-soft` 家族补定义并改名引用；三对色令牌按 AA 重校准 | P2 | 进行中 | |
+| T | SH-37 | 通病解冻：`--danger/warning/success-subtle` 全站引用无定义（渲染透明）→ 统一按 `-soft` 家族补定义并改名引用；三对色令牌按 AA 重校准 | P2 | ✅ | a5a02d38 |
 | F1 | SH-29 | `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，双侧回归 | P2 | 排队 | |
 | F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用），并做 all 整表拉行 SQL 下推（26 号遗留） | P2 | 排队 | |
 | F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后） | — | 排队 | |
@@ -285,4 +285,4 @@
 - 新守护 `tests/token-definitions.test.ts`（node 工程，3 例）：扫 `src/client` 全部 `var(--x)` 引用，定义=CSS 声明或 TS 引号字面量；断言无任何 `--*-subtle` 别名残留、无白名单外悬空引用。白名单 27 项=他任务欠账登记（kanban 6、preview 8、deck/excalidraw 注入 6、music/slides/attachments 等；`--bento-code-*` 6 项为守护首跑抓出、探针漏报的 slides 模板注入族）。变异两杀：删 `--danger-soft` 定义→19 处悬空报红；一处引用回填 `--danger-subtle`→别名报红（/tmp/mutT 还原）。
 - 通病登记（白名单归属，供各任务认领）：`--text-8/--text-20`（preview/kanban 字阶）、`--border-focus`（hub 行/attachments）、`--bg-subtle`（attachments）、`--sp-0/--sp-11/--sp-12`（preview/slides/music 私有间距）、`--surface-*` 四件与 `--danger-softer`（preview 属性编辑器）、`--bg-surface-subtle/--accent-fg/--kanban-tag-`（kanban）、`--code-font-size/--code-line-height`（JS 注入）、`--deck-*` 四件（presentation.css 注入）、`--bento-code-c/k/n/p/s/f`（slides code-palette 模板注入）。
 - 坑：①i18n:check 连测试文件里注释/字符串中的中文都拦（首挂 `通病` 二字），白名单理由与 describe 标题一律英文；②comments:check 不收 tokens.css 的 `/* */`（该文件历史上零注释），校准依据写本日志不写 CSS；③zsh 循环里 `npm run ${g}:check` 会把 `$g:c` 当修饰符吃掉，必须写 `"${g}:check"`；④悬空探针只扫 tokens.css 会漏报（第三方 css/JS 注入），首版守护即抓到 6 个探针漏项。
-- 验证：tsc -b 绿；11 静态门禁全绿（含 blog 两项）；vitest 定向 249/249（share/blog/music/components/token-drift/新守护）。全量回归见后。
+- 验证：tsc -b 绿；11 静态门禁全绿（含 blog 两项）；vitest 定向 249/249（share/blog/music/components/token-drift/新守护）。全量回归 232 文件/1807 测试绿（REGRESSION_EXIT=0），fix 提交 a5a02d38。
