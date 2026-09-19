@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { MusicTag } from '@shared/types'
+import type { MusicPlaylistDetail, MusicTag, MusicTrack } from '@shared/types'
 import {
   activeLyricIndex, collectTagIds, computeNextIndex, computePrevIndex, flattenTags,
   formatBytes, formatDuration, formatTotalDuration, isArtistSuffixedTitle, nextPlayMode, parseLyric,
-  rangeIds, tagColorValue,
+  playlistCoverUrl, rangeIds, tagColorValue,
 } from './music-utils'
 
 function tag(id: string, parentId: string | null, name = id, isPinned = false): MusicTag {
@@ -147,5 +147,30 @@ describe('tag tree helpers', () => {
     expect(tagColorValue('#ef4444')).toBe('#ef4444')
     expect(tagColorValue('oklch(0.6 0.2 20)')).toBe('oklch(0.6 0.2 20)')
     expect(tagColorValue('#ef4444', 'var(--accent)')).toBe('#ef4444')
+  })
+})
+
+describe('playlistCoverUrl (M-51)', () => {
+  function coverTrack(id: string, coverUrl: string | null): MusicTrack {
+    return { id, title: id, coverUrl } as unknown as MusicTrack
+  }
+  function playlistWith(trackIds: string[]): MusicPlaylistDetail {
+    return { items: trackIds.map((trackId, index) => ({ id: `i${index}`, playlistId: 'p', trackId, sortOrder: index })) } as unknown as MusicPlaylistDetail
+  }
+
+  it('takes the first item in the manual order that carries a cover', () => {
+    const tracks = [coverTrack('a', '/c/a.png'), coverTrack('b', null), coverTrack('c', '/c/c.png')]
+    expect(playlistCoverUrl(playlistWith(['b', 'c', 'a']), tracks)).toBe('/c/c.png')
+    expect(playlistCoverUrl(playlistWith(['a', 'c']), tracks)).toBe('/c/a.png')
+  })
+
+  it('returns null when nothing in the playlist has a cover', () => {
+    expect(playlistCoverUrl(playlistWith(['b']), [coverTrack('b', null)])).toBeNull()
+    expect(playlistCoverUrl(playlistWith([]), [coverTrack('a', '/c/a.png')])).toBeNull()
+  })
+
+  it('ignores item ids that left the library', () => {
+    expect(playlistCoverUrl(playlistWith(['gone', 'a']), [coverTrack('a', '/c/a.png')])).toBe('/c/a.png')
+    expect(playlistCoverUrl(playlistWith(['gone']), [])).toBeNull()
   })
 })

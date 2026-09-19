@@ -5,12 +5,15 @@ import { IconButton } from '../../components/primitives'
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
+import { MusicArtwork } from './music-artwork'
 import { useMusic } from './music-store'
+import { playlistCoverUrl } from './music-utils'
 
 const PLAYLIST_MENU_WIDTH = 180
 
 export function MusicHubPlaylists({ onCreate }: { onCreate: () => void }) {
   const playlists = useMusic((state) => state.playlists)
+  const tracks = useMusic((state) => state.tracks)
   const scope = useMusic((state) => state.scope)
   const setScope = useMusic((state) => state.setScope)
   const playCollection = useMusic((state) => state.playCollection)
@@ -45,6 +48,7 @@ export function MusicHubPlaylists({ onCreate }: { onCreate: () => void }) {
               <PlaylistRow
                 key={playlist.id}
                 playlist={playlist}
+                coverUrl={playlistCoverUrl(playlist, tracks)}
                 active={scope.kind === 'playlist' && scope.playlistId === playlist.id}
                 onSelect={() => setScope({ kind: 'playlist', playlistId: playlist.id })}
                 onPlay={() => void playCollection(playlist.items.map((item) => item.trackId))}
@@ -71,6 +75,7 @@ function confirmDeletePlaylist(playlist: MusicPlaylistDetail, deletePlaylist: (i
 
 function PlaylistRow({
   playlist,
+  coverUrl,
   active,
   onSelect,
   onPlay,
@@ -78,6 +83,7 @@ function PlaylistRow({
   onDelete,
 }: {
   playlist: MusicPlaylistDetail
+  coverUrl: string | null
   active: boolean
   onSelect: () => void
   onPlay: () => void
@@ -107,7 +113,7 @@ function PlaylistRow({
         )}
       >
         {draft === null
-          ? <PlaylistSelectButton playlist={playlist} onSelect={onSelect} />
+          ? <PlaylistSelectButton playlist={playlist} coverUrl={coverUrl} onSelect={onSelect} />
           : <PlaylistRenameInput draft={draft} onChange={setDraft} onCommit={onRename} originalName={playlist.name} />}
         <PlaylistBadges playlist={playlist} active={active} />
         <IconButton
@@ -157,10 +163,20 @@ function PlaylistRenameInput({
   )
 }
 
-function PlaylistSelectButton({ playlist, onSelect }: { playlist: MusicPlaylistDetail; onSelect: () => void }) {
+function PlaylistSelectButton({
+  playlist,
+  coverUrl,
+  onSelect,
+}: {
+  playlist: MusicPlaylistDetail
+  coverUrl: string | null
+  onSelect: () => void
+}) {
   return (
     <button type='button' onClick={onSelect} className='flex min-w-0 flex-1 items-center gap-1.5 truncate text-left'>
-      <ListMusic size={12} className='shrink-0 opacity-70' />
+      {coverUrl
+        ? <MusicArtwork url={coverUrl} alt='' className='size-4 shrink-0 rounded-[var(--r-sm)]' iconSize={10} />
+        : <ListMusic size={12} className='shrink-0 opacity-70' />}
       <span className='truncate'>{playlist.name}</span>
     </button>
   )

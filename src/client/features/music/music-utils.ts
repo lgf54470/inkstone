@@ -1,5 +1,5 @@
 import { ACCENTS, LIMITS } from '@shared/constants'
-import type { MusicPlayMode, MusicTag, MusicTrack } from '@shared/types'
+import type { MusicPlaylistDetail, MusicPlayMode, MusicTag, MusicTrack } from '@shared/types'
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
 
@@ -173,6 +173,17 @@ export function collectTagIds(tagId: string, tags: MusicTag[]): Set<string> {
     }
   }
   return ids
+}
+
+// A playlist's cover is derived, not stored: the first item (in the user's manual
+// order) whose track carries a cover. Empty playlist or coverless library → no cover.
+export function playlistCoverUrl(playlist: MusicPlaylistDetail, tracks: MusicTrack[]): string | null {
+  const byId = new Map(tracks.map((track) => [track.id, track]))
+  for (const item of playlist.items) {
+    const cover = byId.get(item.trackId)?.coverUrl
+    if (cover) return cover
+  }
+  return null
 }
 
 export const MUSIC_TAG_COLORS = ACCENTS.map((accent) => ({ name: accent.name, value: accent.swatch }))

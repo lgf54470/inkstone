@@ -1631,6 +1631,8 @@ const allowed = new Map([
     '// the server would reject. Empty files count as unsupported rather than vanishing.',
     '// Shift-click selects everything between the anchor row and the clicked row.',
     '// Uploads name a track after its file; the tag title wins when the file only adds the artist.',
+    '// A playlist\'s cover is derived, not stored: the first item (in the user\'s manual',
+    '// order) whose track carries a cover. Empty playlist or coverless library → no cover.',
   ]],
   ['src/client/features/music/music-view-toggles.test.ts', [
     '// The old hand-written group stole \'List view\' as its name; it must not exist twice.',
