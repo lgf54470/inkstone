@@ -67,6 +67,8 @@ export const messages = {
 'preview.kanban_no_sort_rules': 'No sort rules',
 'preview.kanban_add_sort': 'Add sort',
 'preview.kanban_delete_sort': 'Delete sort',
+'preview.kanban_sort_property': 'Sort field',
+'preview.kanban_sort_direction': 'Sort direction',
 'preview.kanban_sort_asc': 'Ascending',
 'preview.kanban_sort_desc': 'Descending',
 'preview.kanban_sort_by_column': 'Sort by {column}',

@@ -10,6 +10,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../../lib/i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
 import { KanbanRoot } from './kanban-root'
+import { KanbanSortPopover } from './kanban-sort-popover'
 import type { KanbanData, KanbanViewType } from '../types'
 
 beforeAll(async () => {
@@ -100,6 +101,9 @@ function accessibleName(el: Element): string {
   }
   const label = (el as HTMLInputElement).labels?.[0] ?? el.closest('label')
   if (label?.textContent?.trim()) return label.textContent.trim()
+  // A select's text is the list of values it offers, which is its contents rather than a name — an
+  // unlabeled choice control would otherwise read as named by every option it contains.
+  if (el.tagName === 'SELECT') return ''
   const image = el.querySelector('img[alt]')
   if (image?.getAttribute('alt')?.trim()) return image.getAttribute('alt')!.trim()
   return el.textContent?.trim() ?? ''
@@ -161,6 +165,26 @@ describe('expanded subtask panels', () => {
       expect(unnamedControls(container)).toEqual([])
     })
   }
+})
+
+/**
+ * A rule row is a line of bare choice controls, and the header only mounts one after its trigger is
+ * clicked — so the walks above never see it.
+ */
+describe('rule popovers', () => {
+  it('names the field and the direction of a sort rule', () => {
+    const rendered = renderElement(createElement(KanbanSortPopover, {
+      open: true,
+      panelId: 'sort-panel',
+      onClose: () => {},
+      anchorRef: { current: null as HTMLElement | null },
+      columns,
+      sorts: [{ propertyId: 'status', direction: 'asc' }],
+      onChangeSorts: () => {},
+    }))
+    mounted.push(rendered)
+    expect(unnamedControls(rendered.container)).toEqual([])
+  })
 })
 
 describe('item detail controls', () => {

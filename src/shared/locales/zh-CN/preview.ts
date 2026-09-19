@@ -77,6 +77,8 @@ export const messages = {
 'preview.kanban_no_sort_rules': '暂无排序规则',
 'preview.kanban_add_sort': '添加排序',
 'preview.kanban_delete_sort': '删除排序',
+'preview.kanban_sort_property': '排序字段',
+'preview.kanban_sort_direction': '排序方向',
 'preview.kanban_sort_asc': '升序',
 'preview.kanban_sort_desc': '降序',
 'preview.kanban_sort_by_column': '按{column}排序',

@@ -51,6 +51,7 @@ function SortRow({
       <select
         value={sort.propertyId}
         onChange={(e) => onUpdate(index, { propertyId: e.target.value })}
+        aria-label={t('preview.kanban_sort_property')}
         className='h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
       >
         {columns.map((c) => (
@@ -63,6 +64,7 @@ function SortRow({
       <select
         value={sort.direction}
         onChange={(e) => onUpdate(index, { direction: e.target.value as 'asc' | 'desc' })}
+        aria-label={t('preview.kanban_sort_direction')}
         className='h-7 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
       >
         <option value='asc'>{t('preview.kanban_sort_asc')}</option>
