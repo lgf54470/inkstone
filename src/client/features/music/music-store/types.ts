@@ -28,6 +28,8 @@ export type MusicScope =
 
 export type MusicTransferTarget = 'r2' | 'webdav'
 
+export type MusicEqBand = 'low' | 'mid' | 'high'
+
 export interface TrackMenuTarget {
   track: MusicTrack
   itemId?: string
@@ -114,6 +116,10 @@ export interface MusicStoreState {
   playbackRate: number
   sleepEndsAt: number | null
   sleepAfterCurrentTrack: boolean
+  eqEnabled: boolean
+  eqLowDb: number
+  eqMidDb: number
+  eqHighDb: number
 
   floatingVisible: boolean
   floatingCollapsed: boolean
@@ -159,6 +165,8 @@ export interface MusicStoreState {
   setPlaybackRate: (rate: number) => void
   setSleepTimer: (minutes: number | null) => void
   setSleepAfterCurrentTrack: (enabled: boolean) => void
+  setEqEnabled: (enabled: boolean) => void
+  setEqBand: (band: MusicEqBand, db: number) => void
   addToQueue: (id: string, next?: boolean) => void
   removeFromQueue: (index: number) => void
   moveQueueItem: (from: number, to: number) => void

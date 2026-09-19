@@ -9,7 +9,7 @@ import { MusicArtwork } from './music-artwork'
 import { MusicPlayButtons } from './music-play-buttons'
 import { MusicSeekBar } from './music-seek-bar'
 import {
-  MusicModeButton, MusicNudgeButton, MusicQueueButton, MusicRateButton, MusicSleepButton, MusicSleepStatus,
+  MusicEqButton, MusicModeButton, MusicNudgeButton, MusicQueueButton, MusicRateButton, MusicSleepButton, MusicSleepStatus,
   MusicVolumeButton,
 } from './music-transport-widgets'
 
@@ -86,6 +86,8 @@ function Extras() {
       <MusicQueueButton />
       <MusicSleepButton />
       <MusicRateButton />
+      {/* The slim bar only has room for the EQ from the wide breakpoint up. */}
+      <MusicEqButton className='hidden lg:inline-flex' />
       <MusicVolumeButton />
       <Tooltip label={t('music.expand_player')} side='top'>
         <IconButton label={t('music.expand_player')} size='sm' onClick={openHub}><Maximize2 size={12} /></IconButton>

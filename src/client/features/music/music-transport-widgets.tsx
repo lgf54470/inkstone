@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, Square, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, SlidersHorizontal, Square, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
+import { Slider, Switch } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import type { CSSProperties } from 'react'
 import { t } from '../../lib/i18n'
-import { PLAYBACK_RATES, progressTimeMs } from './music-store'
+import { EQ_GAIN_RANGE_DB, PLAYBACK_RATES, progressTimeMs } from './music-store'
 import { useMusic } from './music-store'
+import type { MusicEqBand } from './music-store'
 import { MusicPopover } from './music-popover'
 import { MusicQueueBrowser } from './music-queue-browser'
 import { PlayModeIcon } from './music-play-buttons'
@@ -209,6 +211,59 @@ export function MusicRateButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
         ))}
       </MusicPopover>
     </>
+  )
+}
+
+export function MusicEqButton({ size = 'sm', className }: { size?: 'sm' | 'md'; className?: string }) {
+  const eqEnabled = useMusic((state) => state.eqEnabled)
+  const [open, setOpen] = useState(false)
+  const anchorRef = useRef<HTMLButtonElement>(null)
+  return (
+    <>
+      <Tooltip label={t('music.eq')} side='top'>
+        <IconButton ref={anchorRef} label={t('music.eq')} size={size} active={eqEnabled} className={className} onClick={() => setOpen((value) => !value)}>
+          <SlidersHorizontal size={14} />
+        </IconButton>
+      </Tooltip>
+      <MusicPopover open={open} onClose={() => setOpen(false)} label={t('music.eq')} anchorRef={anchorRef} className='w-56'>
+        <MusicEqPanel />
+      </MusicPopover>
+    </>
+  )
+}
+
+export function MusicEqPanel({ className }: { className?: string }) {
+  const eqEnabled = useMusic((state) => state.eqEnabled)
+  const setEqEnabled = useMusic((state) => state.setEqEnabled)
+  return (
+    <div className={cn('space-y-1 px-1.5 py-1', className)}>
+      <div className='flex items-center justify-between gap-2'>
+        <span className='text-[length:var(--text-11)] text-[var(--text-secondary)]'>{t('music.eq_enable')}</span>
+        <Switch checked={eqEnabled} onChange={setEqEnabled} label={t('music.eq_enable')} />
+      </div>
+      <EqBandSlider band='low' label={t('music.eq_bass')} />
+      <EqBandSlider band='mid' label={t('music.eq_mids')} />
+      <EqBandSlider band='high' label={t('music.eq_treble')} />
+    </div>
+  )
+}
+
+function EqBandSlider({ band, label }: { band: MusicEqBand; label: string }) {
+  const value = useMusic((state) => band === 'low' ? state.eqLowDb : band === 'mid' ? state.eqMidDb : state.eqHighDb)
+  const setEqBand = useMusic((state) => state.setEqBand)
+  return (
+    <div className='flex items-center gap-2'>
+      <span className='w-11 shrink-0 text-[length:var(--text-11)] text-[var(--text-secondary)]'>{label}</span>
+      <Slider
+        label={label}
+        value={value}
+        min={-EQ_GAIN_RANGE_DB}
+        max={EQ_GAIN_RANGE_DB}
+        suffix='dB'
+        onChange={(next) => setEqBand(band, next)}
+        className='min-w-0 flex-1'
+      />
+    </div>
   )
 }
 

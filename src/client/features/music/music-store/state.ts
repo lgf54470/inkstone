@@ -20,6 +20,10 @@ export interface MusicPreferences {
   searchHistory: string[]
   sleepEndsAt: number | null
   sleepAfterCurrentTrack: boolean
+  eqEnabled: boolean
+  eqLowDb: number
+  eqMidDb: number
+  eqHighDb: number
 }
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
@@ -28,6 +32,12 @@ const SORT_DIRECTIONS: MusicSortDirection[] = ['asc', 'desc']
 const VIEW_MODES: MusicViewMode[] = ['list', 'grid']
 const SOURCE_FILTERS: MusicSourceFilter[] = ['all', 'r2', 'webdav']
 export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
+export const EQ_GAIN_RANGE_DB = 12
+
+export function readEqDb(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0
+  return Math.min(EQ_GAIN_RANGE_DB, Math.max(-EQ_GAIN_RANGE_DB, Math.round(value)))
+}
 
 export const DEFAULT_PREFERENCES: MusicPreferences = {
   volume: 0.8,
@@ -44,6 +54,10 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   searchHistory: [],
   sleepEndsAt: null,
   sleepAfterCurrentTrack: false,
+  eqEnabled: false,
+  eqLowDb: 0,
+  eqMidDb: 0,
+  eqHighDb: 0,
 }
 
 function readStored(key: string): Record<string, unknown> | null {
@@ -79,6 +93,10 @@ export function loadPreferences(): MusicPreferences {
     searchHistory: readStrings(parsed.searchHistory, SEARCH_HISTORY_MAX),
     sleepEndsAt: readTimestamp(parsed.sleepEndsAt),
     sleepAfterCurrentTrack: parsed.sleepAfterCurrentTrack === true,
+    eqEnabled: parsed.eqEnabled === true,
+    eqLowDb: readEqDb(parsed.eqLowDb),
+    eqMidDb: readEqDb(parsed.eqMidDb),
+    eqHighDb: readEqDb(parsed.eqHighDb),
   }
 }
 

@@ -1249,14 +1249,19 @@ const allowed = new Map([
     '/** Keeps the rolling date filter materialized: the window recomputes whenever a note save (or the day rollover) changes its anchor. Mount once, anywhere in the tree. */',
   ]],
   ['src/client/features/music/audio-engine.ts', [
+    '// A three-band shelf/peak chain covers bass, voice and treble shaping without the',
+    '// node count of a graphic EQ; the fixed corners are the usual audible crossover points.',
     '// Suspend a little after the pause instead of at it: transport taps and track changes',
     '// resume within this window and must not churn the audio hardware.',
     '// Kept in the document so browsers that require a live node keep routing media keys.',
+    '// The play gesture is the retry window for a graph the browser blocked earlier.',
     '// Lock-screen and car-kit progress bars are built from positionState and committed',
     '// through seekto; without them the scrubber is dead even though metadata shows.',
     '// The browser rejects a position past the end, and in-flight ticks can outrun a shrinking duration.',
     '// Routing the element through a suspended context would silence playback, so the graph is only',
     '// built once the browser lets audio run; callers get null until then and retry on the next play.',
+    '// Stored first so a graph built later (or rebuilt after a page change) picks up the',
+    '// current sound; a disabled EQ keeps every band at 0 dB instead of tearing the chain down.',
   ]],
   ['src/client/features/music/music-cover-lookup.ts', [
     '// The Worker queries the catalogue and returns the image, keeping third party calls off the page.',
@@ -1476,6 +1481,12 @@ const allowed = new Map([
     '// /playlist/:slug with no session, so this page never touches the music store.',
     '/* Keyed on the track id: the browser restarts playback of the new src, and the\n            native controls stay the only transport a reader without a session needs. */',
   ]],
+  ['src/client/features/music/music-status-bar.tsx', [
+    '/* The slim bar only has room for the EQ from the wide breakpoint up. */',
+  ]],
+  ['src/client/features/music/music-store/eq.test.ts', [
+    '// The store module is shared across tests in this file; leave no EQ residue.',
+  ]],
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
     '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
@@ -1549,11 +1560,14 @@ const allowed = new Map([
     '// adjacent progress updates land ~250ms apart and would never cross the step.',
   ]],
   ['src/client/features/music/music-store/player.ts', [
+    '// The engine holds the last known settings so a graph built later (or after a',
+    '// browser-blocked start) picks up the stored sound without a store subscription.',
     '// Imported tracks can arrive without a duration; the decoder knows it once played.',
     '// The hub loads the library lazily, so the transport has to fetch it itself',
     '// rather than dropping the click on an empty store.',
     '// The two sleep modes are exclusive: the minute timer counts wall time, this',
     '// one waits for the playing track to reach its end.',
+    '// Enabling during playback is a user gesture, the one moment a blocked audio graph may start.',
     '// Removing the playing track: keep the audio and the queue pointing at the same song.',
     '// The audio keeps playing while rows shuffle, so only the queue array and the',
     '// index pointing at the playing entry change — a new array reference is what',

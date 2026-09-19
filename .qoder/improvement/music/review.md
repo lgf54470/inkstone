@@ -292,6 +292,7 @@
     - 已知限制：只覆盖「字节完全相同」的文件（重编码/截断副本不识别）；旧库与 WebDAV 元数据导入曲目无哈希、不参与检测；视图只报告不自动清理。
   - ✅（M-53b）整库纳入备份体系（元数据级）：JSON 导出 bundle（version 仍 1）新增可选 music 段——曲库行（含歌词全文、content_hash、封面与对象键）、音乐标签与链接、歌单与按序条目，五表单批读取；空库不出段，旧导出文件天然兼容。恢复接在 importBundle 尾部（notes/tags 之后），安全判定与在线路径同源：r2 行对象键必须等于本行 id+createdAt 自身推导键（复用删除守卫 isDerivedMusicObjectKey，伪造键不能把恢复变成跨账号存储访问），webdav 行复用抽出的 isWebdavRelativePath 谓词（与导入接口同一判定源，schemas.ts 已改走它）；user_id 服务端绑定，永不取自文件。合并语义「既有为准」：按表载 existing id 只补缺、INSERT OR IGNORE 纵深防御，配额只对 fresh 行求和（重导入不双计）。无效行/重复 id/悬挂标签链接与歌单条目一律计数聚合告警，恶意文件刷不爆告警列表。
     - 已知限制：仅元数据入包，音频字节不随导出（单文件导入上限 64MB、ZIP 展开上限 80MB，均远小于曲库 4GB 配额，字节级不可行——计划既判定）；r2 行恢复后对象可能已被硬删（删除曲目即删对象不可撤回），播放届时 404、行在可重传；封面外链/dataURL 原样存不重验；导入结果无 music 专属计数器，只经 warnings 反馈；demo 后端不镜像（与 M-52 一致）。
+  - ✅（M-54a）三段均衡器：音频图升级为 source→lowshelf(180Hz)/peaking(1kHz,Q1)/highshelf(4.5kHz)→analyser→destination，configureEqualizer 存配置并即时重写活图 gain；禁用=全带归零而非拆链——元素 createMediaElementSource 只能接一次，图一旦建成永不重建；play 手势为被 autoplay 封锁的 AudioContext 的重试窗口，EQ 未开启时建图零发生、直出路径不受影响。偏好入 localStorage MusicPreferences（eqEnabled + 三带 ±12dB 整数，readEqDb 单一钳位判定，v2 键不升版）；setEqEnabled/setEqBand 同步引擎并走既有 250ms 防抖持久化，启动时 connectAudio 把已存配置注入引擎。UI 走 MusicEqButton 弹层（Switch + 三组 Slider 组件控件），与倍速按钮同排入主传输、全屏、状态栏（<lg 隐藏）与浮动展开行四处。EQ 增益变化不做响度补偿，归 M-54b。
 
 ### 功能面核对通过项
 

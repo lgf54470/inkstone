@@ -12,7 +12,7 @@ import { MusicPlayButtons } from './music-play-buttons'
 import { MusicQueueList } from './music-queue-list'
 import { MusicSeekBar } from './music-seek-bar'
 import {
-  MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicVolumeButton,
+  MusicEqButton, MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicVolumeButton,
 } from './music-transport-widgets'
 import { useTrackLyric } from './music-lyrics'
 import {
@@ -95,6 +95,7 @@ function ImmersiveButtons({ track, stacked }: { track: ReturnType<typeof useCurr
       <div className='flex items-center gap-0.5'>
         <MusicModeButton />
         <MusicRateButton />
+        <MusicEqButton />
         <MusicVolumeButton />
         <MusicSleepButton />
         {track && (

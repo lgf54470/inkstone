@@ -41,6 +41,10 @@ function initialMusicState(): Partial<MusicStoreState> {
     playbackRate: prefs.playbackRate,
     sleepEndsAt: prefs.sleepEndsAt,
     sleepAfterCurrentTrack: prefs.sleepAfterCurrentTrack,
+    eqEnabled: prefs.eqEnabled,
+    eqLowDb: prefs.eqLowDb,
+    eqMidDb: prefs.eqMidDb,
+    eqHighDb: prefs.eqHighDb,
     floatingVisible: prefs.floatingVisible,
     floatingCollapsed: prefs.floatingCollapsed,
     floatingPosition: prefs.floatingPosition,
@@ -57,11 +61,11 @@ function initialMusicState(): Partial<MusicStoreState> {
 }
 
 export type {
-  MusicBatch, MusicDownloadTask, MusicLibraryJob, MusicLibraryJobKind, MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
+  MusicBatch, MusicDownloadTask, MusicEqBand, MusicLibraryJob, MusicLibraryJobKind, MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
   MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,
 } from './types'
 export { currentTrack } from './player'
-export { PLAYBACK_RATES } from './state'
+export { PLAYBACK_RATES, EQ_GAIN_RANGE_DB } from './state'
 export { hasPlaybackChanged, restorePlayback, savePlayback, schedulePlaybackSave } from './playback-sync'
 export { progressTimeMs, setProgressTime, useProgress } from './progress'
 export { resumeSleepTimer } from './player'

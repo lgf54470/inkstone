@@ -5,18 +5,42 @@ class FakeAudioContext {
   state = 'running'
   suspendCalls = 0
   resumeCalls = 0
-  destination = {}
+  destination = { label: 'destination' }
+  connections: Array<[string, string]> = []
+  biquads: Array<{ type: string; frequency: { value: number }; Q: { value: number }; gain: { value: number } }> = []
+  private biquadCount = 0
 
   constructor() {
     FakeAudioContext.instances.push(this)
   }
 
   createAnalyser() {
-    return { fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 64, connect: () => {} }
+    const node = {
+      label: 'analyser', fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 64,
+      connect: (target: { label: string }) => { this.connections.push(['analyser', target.label]) },
+    }
+    return node
+  }
+
+  createBiquadFilter() {
+    const node: {
+      label: string
+      type: string
+      frequency: { value: number }
+      Q: { value: number }
+      gain: { value: number }
+      connect: (target: { label: string }) => void
+    } = {
+      label: '', type: '', frequency: { value: 0 }, Q: { value: 0 }, gain: { value: 0 },
+      connect: (target) => { this.connections.push([node.label, target.label]) },
+    }
+    node.label = `filter${this.biquadCount++}`
+    this.biquads.push(node)
+    return node
   }
 
   createMediaElementSource() {
-    return { connect: () => {} }
+    return { label: 'source', connect: (target: { label: string }) => { this.connections.push(['source', target.label]) } }
   }
 
   suspend() {
@@ -46,7 +70,7 @@ afterEach(() => {
 
 async function loadedEngine() {
   const engine = await import('./audio-engine')
-  const analyser = await engine.ensureAudioAnalyser()
+  const analyser = await engine.ensureAudioGraph()
   const context = FakeAudioContext.instances[0]
   const audio = engine.audioElement()
   if (!analyser || !context || !audio) throw new Error('the fake browser stack should have built an analyser graph')
@@ -77,6 +101,57 @@ describe('analyser context lifecycle', () => {
     if (!audio) throw new Error('jsdom should provide an Audio constructor')
     audio.dispatchEvent(new Event('pause'))
     vi.advanceTimersByTime(10_000)
+    expect(FakeAudioContext.instances).toEqual([])
+  })
+})
+
+describe('equalizer graph', () => {
+  it('routes playback through three EQ filters before the analyser', async () => {
+    const { context } = await loadedEngine()
+    expect(context.connections).toEqual([
+      ['source', 'filter0'],
+      ['filter0', 'filter1'],
+      ['filter1', 'filter2'],
+      ['filter2', 'analyser'],
+      ['analyser', 'destination'],
+    ])
+    expect(context.biquads.map((node) => node.type)).toEqual(['lowshelf', 'peaking', 'highshelf'])
+    expect(context.biquads.map((node) => node.frequency.value)).toEqual([180, 1_000, 4_500])
+    expect(context.biquads[1]?.Q.value).toBe(1)
+    expect(context.biquads.map((node) => node.gain.value)).toEqual([0, 0, 0])
+  })
+
+  it('applies stored settings to a graph built afterwards', async () => {
+    const engine = await import('./audio-engine')
+    engine.configureEqualizer({ enabled: true, lowDb: 6, midDb: -3, highDb: 2 })
+    const { context } = await loadedEngine()
+    expect(context.biquads.map((node) => node.gain.value)).toEqual([6, -3, 2])
+  })
+
+  it('retunes a live graph and silences every band when disabled', async () => {
+    const { engine, context } = await loadedEngine()
+    engine.configureEqualizer({ enabled: true, lowDb: 4, midDb: 0, highDb: -5 })
+    expect(context.biquads.map((node) => node.gain.value)).toEqual([4, 0, -5])
+    engine.configureEqualizer({ enabled: false, lowDb: 4, midDb: 0, highDb: -5 })
+    expect(context.biquads.map((node) => node.gain.value)).toEqual([0, 0, 0])
+  })
+
+  it('retries the blocked graph on the play gesture once the EQ is on', async () => {
+    const engine = await import('./audio-engine')
+    const audio = engine.audioElement()
+    if (!audio) throw new Error('jsdom should provide an Audio constructor')
+    engine.configureEqualizer({ enabled: true, lowDb: 3, midDb: 0, highDb: 0 })
+    expect(FakeAudioContext.instances).toEqual([])
+    audio.dispatchEvent(new Event('play'))
+    expect(FakeAudioContext.instances).toHaveLength(1)
+    expect(FakeAudioContext.instances[0]?.biquads.map((node) => node.gain.value)).toEqual([3, 0, 0])
+  })
+
+  it('leaves a plain play event without a graph while the EQ is off', async () => {
+    const engine = await import('./audio-engine')
+    const audio = engine.audioElement()
+    if (!audio) throw new Error('jsdom should provide an Audio constructor')
+    audio.dispatchEvent(new Event('play'))
     expect(FakeAudioContext.instances).toEqual([])
   })
 })

@@ -10,14 +10,30 @@ export interface AudioBridge {
   onError: (code: string) => void
 }
 
+export interface EqualizerSettings {
+  enabled: boolean
+  lowDb: number
+  midDb: number
+  highDb: number
+}
+
 let element: HTMLAudioElement | null = null
 let bridge: AudioBridge | null = null
 let analyserContext: AudioContext | null = null
 let analyserNode: AnalyserNode | null = null
 let analyserElement: HTMLAudioElement | null = null
 let suspendTimer: number | null = null
+let eqNodes: BiquadFilterNode[] = []
+let equalizer: EqualizerSettings = { enabled: false, lowDb: 0, midDb: 0, highDb: 0 }
 const ANALYSER_FFT_SIZE = 256
 const ANALYSER_SMOOTHING = 0.82
+// A three-band shelf/peak chain covers bass, voice and treble shaping without the
+// node count of a graphic EQ; the fixed corners are the usual audible crossover points.
+const EQ_BANDS: Array<{ type: BiquadFilterType; frequencyHz: number; q?: number }> = [
+  { type: 'lowshelf', frequencyHz: 180 },
+  { type: 'peaking', frequencyHz: 1_000, q: 1 },
+  { type: 'highshelf', frequencyHz: 4_500 },
+]
 // Suspend a little after the pause instead of at it: transport taps and track changes
 // resume within this window and must not churn the audio hardware.
 const PAUSE_SUSPEND_DELAY_MS = 5_000
@@ -46,6 +62,8 @@ function createAudioElement(): HTMLAudioElement {
   audio.addEventListener('ended', () => bridge?.onEnded())
   audio.addEventListener('play', () => {
     resumeAnalyserContext()
+    // The play gesture is the retry window for a graph the browser blocked earlier.
+    if (equalizer.enabled) void ensureAudioGraph()
     bridge?.onPlayingChange(true)
   })
   audio.addEventListener('waiting', () => bridge?.onBuffering(true))
@@ -202,7 +220,7 @@ export function readCurrentTimeMs(): number {
 
 // Routing the element through a suspended context would silence playback, so the graph is only
 // built once the browser lets audio run; callers get null until then and retry on the next play.
-export async function ensureAudioAnalyser(): Promise<AnalyserNode | null> {
+export async function ensureAudioGraph(): Promise<AnalyserNode | null> {
   const audio = audioElement()
   if (!audio || typeof AudioContext !== 'function') return null
   const context = analyserContext ?? new AudioContext()
@@ -220,9 +238,40 @@ export async function ensureAudioAnalyser(): Promise<AnalyserNode | null> {
   const node = context.createAnalyser()
   node.fftSize = ANALYSER_FFT_SIZE
   node.smoothingTimeConstant = ANALYSER_SMOOTHING
-  context.createMediaElementSource(audio).connect(node)
+  eqNodes = createEqualizerFilters(context)
+  const first = eqNodes[0] ?? node
+  context.createMediaElementSource(audio).connect(first)
+  for (let index = 0; index < eqNodes.length; index += 1) {
+    eqNodes[index]?.connect(eqNodes[index + 1] ?? node)
+  }
   node.connect(context.destination)
   analyserNode = node
   analyserElement = audio
+  applyEqualizerToGraph()
   return node
+}
+
+function createEqualizerFilters(context: AudioContext): BiquadFilterNode[] {
+  return EQ_BANDS.map((band) => {
+    const filter = context.createBiquadFilter()
+    filter.type = band.type
+    filter.frequency.value = band.frequencyHz
+    if (band.q !== undefined) filter.Q.value = band.q
+    return filter
+  })
+}
+
+// Stored first so a graph built later (or rebuilt after a page change) picks up the
+// current sound; a disabled EQ keeps every band at 0 dB instead of tearing the chain down.
+export function configureEqualizer(next: EqualizerSettings): void {
+  equalizer = next
+  applyEqualizerToGraph()
+}
+
+function applyEqualizerToGraph(): void {
+  if (!eqNodes.length) return
+  const gains = equalizer.enabled ? [equalizer.lowDb, equalizer.midDb, equalizer.highDb] : EQ_BANDS.map(() => 0)
+  eqNodes.forEach((filter, index) => {
+    filter.gain.value = gains[index] ?? 0
+  })
 }

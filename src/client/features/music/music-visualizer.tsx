@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { cn } from '../../lib/cn'
-import { ensureAudioAnalyser } from './audio-engine'
+import { ensureAudioGraph } from './audio-engine'
 import { useMusic } from './music-store'
 
 const BAR_COUNT = 26
@@ -44,7 +44,7 @@ export function MusicVisualizer({
   useEffect(() => {
     if (!isPlaying || analyserRef.current) return
     let cancelled = false
-    void ensureAudioAnalyser().then((node) => {
+    void ensureAudioGraph().then((node) => {
       if (!cancelled && node) analyserRef.current = node
     })
     return () => {

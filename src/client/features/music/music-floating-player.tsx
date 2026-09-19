@@ -13,7 +13,7 @@ import { MusicPlayButtons } from './music-play-buttons'
 import { MusicQueueBrowser } from './music-queue-browser'
 import { MusicSeekBar } from './music-seek-bar'
 import {
-  MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicSleepStatus, MusicVolumeSlider,
+  MusicEqButton, MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicSleepStatus, MusicVolumeSlider,
 } from './music-transport-widgets'
 import { MusicVisualizer } from './music-visualizer'
 
@@ -217,6 +217,7 @@ function FloatExtras() {
     <div className='flex shrink-0 items-center gap-0.5 px-2.5 pb-2.5'>
       <MusicVolumeSlider className='min-w-0 flex-1' />
       <MusicRateButton />
+      <MusicEqButton />
       <MusicSleepButton />
       <Tooltip label={t('music.immersive')} side='top'>
         <IconButton label={t('music.immersive')} size='sm' onClick={() => setImmersive(true)}><Maximize2 size={14} /></IconButton>

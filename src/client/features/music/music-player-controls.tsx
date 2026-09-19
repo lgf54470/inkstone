@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { Heart, ListMusic, Maximize2, Music, PictureInPicture2, Pin, Volume1, Volume2, VolumeX } from 'lucide-react'
-import { MusicModeButton, MusicRateButton, MusicSleepButton } from './music-transport-widgets'
+import { MusicEqButton, MusicModeButton, MusicRateButton, MusicSleepButton } from './music-transport-widgets'
 import type { MusicTrack } from '@shared/types'
 import { IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
@@ -35,6 +35,7 @@ export function MusicPlayerControls({
         <MusicModeButton />
         <MusicSleepButton />
         <MusicRateButton />
+        <MusicEqButton />
         <VolumeControl />
         <IconButton label={t('music.queue')} size='sm' active={queueOpen} onClick={onToggleQueue}>
           <ListMusic size={14} />

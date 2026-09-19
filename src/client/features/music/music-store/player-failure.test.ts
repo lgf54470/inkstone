@@ -12,6 +12,8 @@ vi.mock('../audio-engine', () => ({
   audioElement: vi.fn(() => null),
   bindMediaSessionActions: vi.fn(),
   configureAudio: vi.fn(),
+  configureEqualizer: vi.fn(),
+  ensureAudioGraph: vi.fn(async () => null),
   pausePlayback: vi.fn(),
   publishMediaSession: vi.fn(),
   resumePlayback: vi.fn(async () => 'playing' as const),

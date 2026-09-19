@@ -3,19 +3,24 @@ import { api } from '../../../lib/api'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import { computeNextIndex, computePrevIndex, nextPlayMode } from '../music-utils'
 import {
-  applyVolume, audioElement, bindMediaSessionActions, configureAudio, pausePlayback, publishMediaSession,
+  applyVolume, audioElement, bindMediaSessionActions, configureAudio, configureEqualizer, ensureAudioGraph,
+  pausePlayback, publishMediaSession,
   resumePlayback, seekTo, startPlayback, stopPlayback, updateMediaSessionPosition,
 } from '../audio-engine'
+import type { EqualizerSettings } from '../audio-engine'
 import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
-import { savePreferences } from './state'
-import type { MusicGet, MusicSet, MusicStoreState } from './types'
+import { loadPreferences, readEqDb, savePreferences } from './state'
+import type { MusicEqBand, MusicGet, MusicSet, MusicStoreState } from './types'
 
 const STREAM_START_TIMEOUT_MS = 20_000
 const RESUME_THRESHOLD_MS = 1_000
 const MAX_CONSECUTIVE_PLAY_FAILURES = 3
 
 export function connectAudio(set: MusicSet, get: MusicGet): void {
+  // The engine holds the last known settings so a graph built later (or after a
+  // browser-blocked start) picks up the stored sound without a store subscription.
+  configureEqualizer(readEqualizer(loadPreferences()))
   configureAudio({
     onTime: (ms) => {
       setProgressTime(ms)
@@ -232,6 +237,31 @@ export function toggleMute(set: MusicSet, get: MusicGet): void {
 export function cycleMode(set: MusicSet, get: MusicGet): void {
   set({ mode: nextPlayMode(get().mode) })
   persist(get)
+}
+
+export function setEqEnabled(set: MusicSet, get: MusicGet, enabled: boolean): void {
+  set({ eqEnabled: enabled })
+  applyEqualizer(get())
+  // Enabling during playback is a user gesture, the one moment a blocked audio graph may start.
+  if (enabled) void ensureAudioGraph()
+  persist(get)
+}
+
+export function setEqBand(set: MusicSet, get: MusicGet, band: MusicEqBand, db: number): void {
+  const value = readEqDb(db)
+  if (band === 'low') set({ eqLowDb: value })
+  else if (band === 'mid') set({ eqMidDb: value })
+  else set({ eqHighDb: value })
+  applyEqualizer(get())
+  persist(get)
+}
+
+function readEqualizer(state: Pick<MusicStoreState, 'eqEnabled' | 'eqLowDb' | 'eqMidDb' | 'eqHighDb'>): EqualizerSettings {
+  return { enabled: state.eqEnabled, lowDb: state.eqLowDb, midDb: state.eqMidDb, highDb: state.eqHighDb }
+}
+
+function applyEqualizer(state: MusicStoreState): void {
+  configureEqualizer(readEqualizer(state))
 }
 
 export function addToQueue(set: MusicSet, get: MusicGet, id: string, next = false): void {
@@ -455,5 +485,9 @@ function writePreferences(get: MusicGet): void {
     sleepAfterCurrentTrack: state.sleepAfterCurrentTrack,
     playbackRate: state.playbackRate,
     searchHistory: state.searchHistory,
+    eqEnabled: state.eqEnabled,
+    eqLowDb: state.eqLowDb,
+    eqMidDb: state.eqMidDb,
+    eqHighDb: state.eqHighDb,
   })
 }
