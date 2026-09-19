@@ -147,9 +147,9 @@ export function DetailPropertyField({
   if (column.type === 'date') {
     return (
       <div className='flex flex-col gap-1'>
-        <label className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
+        <span className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
           {formatKanbanPropertyName(column)}
-        </label>
+        </span>
         <KanbanDatePicker
           propertyName={formatKanbanPropertyName(column)}
           value={String(value ?? '')}
@@ -160,10 +160,10 @@ export function DetailPropertyField({
   }
 
   return (
-    <div className='flex flex-col gap-1'>
-      <label className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
+    <label className='flex flex-col gap-1'>
+      <span className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
         {formatKanbanPropertyName(column)}
-      </label>
+      </span>
       {column.type === 'number' ? (
         <input
           type='number'
@@ -179,7 +179,7 @@ export function DetailPropertyField({
           className='h-8 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
         />
       )}
-    </div>
+    </label>
   )
 }
 

@@ -84,6 +84,7 @@ export const messages = {
 'preview.kanban_delete_card': 'Delete card',
 'preview.kanban_subtasks': 'Subtasks',
 'preview.kanban_add_subtask': 'Add subtask...',
+'preview.kanban_subtask_title': 'Subtask title',
 'preview.kanban_expand_subtasks': 'Expand subtasks',
 'preview.kanban_collapse_subtasks': 'Collapse subtasks',
 'preview.kanban_empty_column': 'Empty column',

@@ -100,7 +100,7 @@ function FileUploadButton({
 
   return (
     <>
-      <input ref={inputRef} type='file' multiple onChange={handleUpload} className='hidden' />
+      <input ref={inputRef} type='file' multiple onChange={handleUpload} aria-label={t('preview.kanban_upload_file')} className='hidden' />
       <button
         type='button'
         disabled={uploading}

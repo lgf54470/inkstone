@@ -2730,6 +2730,10 @@ const allowed = new Map([
     '// Identity must survive unrelated commits: a fresh dataset object every',
     '// render tears the Chart.js instance down and rebuilds it.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-control-names.test.ts', [
+    '/**\n * Every control the board renders has to say what it does: an icon-only button with no name reads\n * as "Button" in a screen reader, which is the same gap the popover pass closed for panels\n * (review #29). Rather than trusting a hand-tallied list of suspects, this mounts the real board,\n * walks every interactive element of each view and of the detail dialog, and fails with the\n * offending markup — so a new control that forgets its name is named by the suite, not by a review.\n */',
+    '/** A control is unnamed when none of the ways HTML and ARIA give it a name produce text. */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-convert-subtask.test.ts', [
     '// mirrors useKanbanHistory: functional updaters resolve against the latest data',
     '// the detail modal portals onto document.body, so query the whole document',

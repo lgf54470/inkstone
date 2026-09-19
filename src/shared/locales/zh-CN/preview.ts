@@ -94,6 +94,7 @@ export const messages = {
 'preview.kanban_delete_card': '删除卡片',
 'preview.kanban_subtasks': '子任务',
 'preview.kanban_add_subtask': '添加子任务…',
+'preview.kanban_subtask_title': '子任务标题',
 'preview.kanban_expand_subtasks': '展开子任务',
 'preview.kanban_collapse_subtasks': '折叠子任务',
 'preview.kanban_empty_column': '空列',

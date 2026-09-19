@@ -172,6 +172,7 @@ function SubtaskMainRow({
       <input
         type='text'
         defaultValue={subtask.title}
+        aria-label={t('preview.kanban_subtask_title')}
         onBlur={(e) => {
           if (e.target.value !== subtask.title) {
             onUpdateTitle(e.target.value)
