@@ -49,7 +49,7 @@
 | 34 | SH-36 | 小项集合（口令长度统一、effect 重开、子模态重置、th scope、role=status 等） | P3 | ✅ | 21cbdddc |
 | T | SH-37 | 通病解冻：`--danger/warning/success-subtle` 全站引用无定义（渲染透明）→ 统一按 `-soft` 家族补定义并改名引用；三对色令牌按 AA 重校准 | P2 | ✅ | a5a02d38 |
 | F1 | SH-29 | `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，双侧回归 | P2 | ✅ | 1b502776 |
-| F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用） | P2 | ✅ | 待回填 |
+| F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用） | P2 | ✅ | 9621ab0d |
 | F2b | SH-16c | all 整表拉行 SQL 下推（26 号遗留）：`lib/visit-aggregates.ts` 聚合语句 + 行路/SQL 路同一 normalized 中间形态 + 等价测试 | P2 | 排队 | |
 | F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后） | — | 排队 | |
 | F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | eff0a6b5 |
@@ -314,4 +314,4 @@
 - 变异 8 发全杀（/tmp/mutF2a 备份还原）：未知区间→all、无访问回落改 epoch、去掉下标越界门、null 指纹计入 UV、`all` 桶数 12→24、两路由的 `min_ts` 传 null、查询解析回填裸 cast。
 - 坑：①blog 测试夹具的 `H.now=2_000_000_000_000`（2033）与路由真实 `Date.now()` 不同源，新用例的 `visited_at` 必须用真实时钟种，否则「未来行」永远落在所有窗口之外（share 侧用例本就这么写）；②`buildShareTimeline` 语义改动会同时影响 share/blog 两看板，故等价性靠既有路由用例 + 新单元全等断言双重守住，不做「只测新函数」。
 - 遗留拆行：`all` 仍整表拉行（下推 SQL 聚合），按批准范围另起 F2b（SH-16c）。
-- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 108/108（blog-routes+share-routes）+21/21（share-analytics）。全量回归待补。fix 提交待回填。
+- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 108/108（blog-routes+share-routes）+21/21（share-analytics）。全量回归 236 文件/1828 测试绿（REGRESSION_EXIT=0）。fix 提交 9621ab0d。
