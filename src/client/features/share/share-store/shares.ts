@@ -1,7 +1,9 @@
 import { api } from '../../../lib/api'
+import { confirm } from '../../../components/overlay'
+import { t } from '../../../lib/i18n'
 import { useNotes } from '../../../store/notes'
 import type { ShareStoreState, SetShareStoreState } from './types'
-import { notifyActionFailed } from './notify'
+import { notifyActionFailed, notifySharePublished } from './notify'
 
 export const shareSharesActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'batchToggleGroup' | 'toggleShare' | 'togglePin' | 'toggleStar' | 'batchToggle' | 'batchMoveToFolder' | 'batchFolderToggle' | 'batchTagToggle'> => ({
   batchToggleGroup: (type, target, enabled) => batchToggleGroupImpl(type, target, enabled, set, get),
@@ -97,6 +99,7 @@ function toggledShareStats(
 }
 
 async function toggleShareImpl(noteId: string, enabled: boolean, set: SetShareStoreState, get: () => ShareStoreState): Promise<boolean> {
+  if (enabled && !await publishConfirmedFor(noteId, get)) return false
   set((state) => ({
     shares: state.shares.map((s) =>
       s.noteId === noteId ? { ...s, isEnabled: enabled } : s,
@@ -104,6 +107,7 @@ async function toggleShareImpl(noteId: string, enabled: boolean, set: SetShareSt
   }))
   try {
     await api.share.create(noteId, { isEnabled: enabled })
+    if (enabled) notifySharePublished()
     await get().loadShares()
     return true
   } catch {
@@ -111,6 +115,17 @@ async function toggleShareImpl(noteId: string, enabled: boolean, set: SetShareSt
     await get().loadShares()
     return false
   }
+}
+
+async function publishConfirmedFor(noteId: string, get: () => ShareStoreState): Promise<boolean> {
+  const row = get().shares.find((s) => s.noteId === noteId)
+  // Zero views on a paused row is the only client-side signal that this note has never been public.
+  if (!row || row.isEnabled || row.views > 0) return true
+  return confirm({
+    title: t('share.confirm_publish_title'),
+    description: t('share.confirm_publish_desc', { title: row.noteTitle || t('common.untitled_note') }),
+    confirmLabel: t('share.publish'),
+  })
 }
 
 async function togglePinImpl(noteId: string, set: SetShareStoreState, get: () => ShareStoreState): Promise<boolean> {

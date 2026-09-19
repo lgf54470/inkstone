@@ -1978,6 +1978,9 @@ const allowed = new Map([
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
   ]],
+  ['src/client/features/share/share-store/shares.ts', [
+    '// Zero views on a paused row is the only client-side signal that this note has never been public.',
+  ]],
   ['src/client/features/share/use-share-settings-modal.ts', [
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
   ]],

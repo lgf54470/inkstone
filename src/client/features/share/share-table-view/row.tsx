@@ -48,7 +48,7 @@ export function ShareTableRow({ share, isSelected, folders, copiedSlug, onToggle
         <RowTitleCell share={share} folders={folders} onTogglePin={onTogglePin} onToggleStar={onToggleStar} onOpenEdit={() => onOpenEdit(share)} />
       </td>
       <td className='px-3 py-2.5 text-center'>
-        <Switch checked={share.isEnabled} onChange={onToggleShare} />
+        <Switch checked={share.isEnabled} onChange={onToggleShare} label={t('share.share_switch_aria', { title: share.noteTitle || t('common.untitled_note') })} />
       </td>
       <td className='px-3 py-2.5'>
         {share.slug ? (

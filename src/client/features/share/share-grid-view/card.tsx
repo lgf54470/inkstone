@@ -78,7 +78,7 @@ function CardHeader({ share, isSelected, onToggleSelect, onTogglePin, onToggleSt
           {share.noteTitle || t('common.untitled_note')}
         </button>
       </div>
-      <Switch checked={share.isEnabled} onChange={onToggleShare} />
+      <Switch checked={share.isEnabled} onChange={onToggleShare} label={t('share.share_switch_aria', { title: share.noteTitle || t('common.untitled_note') })} />
     </div>
   )
 }
