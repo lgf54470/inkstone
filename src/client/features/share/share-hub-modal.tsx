@@ -68,7 +68,7 @@ function HubHeader({ onClose }: {
 }
 
 function HubContent({ hub }: { hub: ShareHubModalBundle }) {
-  const { category, viewMode, shares, loading, error, selectedNoteIds, clearSelection, loadShares, setAnalyticsNoteId, setIsLogsOpen, setIsSettingsOpen, setQrShare, setEditShare } = hub
+  const { category, viewMode, shares, loading, error, selectedNoteIds, clearSelection, loadShares, setAnalyticsNoteId, setIsLogsOpen, setIsSettingsOpen, openQr, openAnalytics, openEdit } = hub
   if (category === 'dashboard') {
     return (
       <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden'>
@@ -97,16 +97,16 @@ function HubContent({ hub }: { hub: ShareHubModalBundle }) {
         ) : viewMode === 'table' ? (
           <ShareTableView
             shares={shares}
-            onOpenQr={(s) => setQrShare({ url: s.url, title: s.noteTitle || '', slug: s.slug })}
-            onOpenAnalytics={(s) => setAnalyticsNoteId(s.noteId)}
-            onOpenEdit={(s) => setEditShare({ share: s.slug ? s : null, noteId: s.noteId, title: s.noteTitle || '' })}
+            onOpenQr={openQr}
+            onOpenAnalytics={openAnalytics}
+            onOpenEdit={openEdit}
           />
         ) : (
           <ShareGridView
             shares={shares}
-            onOpenQr={(s) => setQrShare({ url: s.url, title: s.noteTitle || '', slug: s.slug })}
-            onOpenAnalytics={(s) => setAnalyticsNoteId(s.noteId)}
-            onOpenEdit={(s) => setEditShare({ share: s.slug ? s : null, noteId: s.noteId, title: s.noteTitle || '' })}
+            onOpenQr={openQr}
+            onOpenAnalytics={openAnalytics}
+            onOpenEdit={openEdit}
           />
         )}
       </div>

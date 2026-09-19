@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Share2 } from 'lucide-react'
 import type { ShareInfo } from '@shared/types'
 import { Checkbox } from '../../../components/form'
@@ -18,6 +19,7 @@ export function ShareTableView({
 }) {
   const list = useShareList()
   const allSelected = shares.length > 0 && list.selectedNoteIds.size === shares.length
+  const folderById = useMemo(() => new Map(list.folders.map((f) => [f.id, f])), [list.folders])
 
   if (shares.length === 0) {
     return (
@@ -44,17 +46,18 @@ export function ShareTableView({
               share={share}
               isSelected={list.selectedNoteIds.has(share.noteId)}
               folders={list.folders}
+              folderById={folderById}
               copiedSlug={list.copiedSlug}
-              onToggleSelect={() => list.toggleSelect(share.noteId)}
-              onTogglePin={() => void list.togglePin(share.noteId)}
-              onToggleStar={() => void list.toggleStar(share.noteId)}
-              onToggleShare={(checked) => void list.toggleShare(share.noteId, checked)}
+              onToggleSelect={list.toggleSelect}
+              onTogglePin={list.togglePin}
+              onToggleStar={list.toggleStar}
+              onToggleShare={list.toggleShare}
               onCopyLink={list.handleCopy}
-              onOpenQrModal={onOpenQrModal}
+              onOpenQr={onOpenQrModal}
               onOpenAnalytics={onOpenAnalytics}
               onOpenEdit={onOpenEdit}
-              onMoveToFolder={(folderId) => void list.handleMoveToFolder(share.noteId, folderId)}
-              onRevoke={() => void list.handleRevoke(share)}
+              onMoveToFolder={list.handleMoveToFolder}
+              onRevoke={list.handleRevoke}
             />
           ))}
         </tbody>

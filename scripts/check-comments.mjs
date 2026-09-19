@@ -2019,6 +2019,10 @@ const allowed = new Map([
   ['src/client/features/share/share-visit-logs-menu.test.ts', [
     '// Opens the clean menu with a real click and picks the wipe-everything entry.',
   ]],
+  ['src/client/features/share/use-share-list.ts', [
+    '// Stable identities keep the memoized table rows from re-rendering when an',
+    '// unrelated row\'s selection changes.',
+  ]],
   ['src/client/features/share/use-share-settings-modal.ts', [
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
   ]],

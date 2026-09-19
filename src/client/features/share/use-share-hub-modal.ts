@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ShareInfo } from '@shared/types'
 import { useShareStore } from './share-store'
 
@@ -36,6 +36,32 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
     }
   }, [open, loadShares, clearSelection])
 
+  useInitialNoteEdit({ open, initialNoteId, shares, setEditShare })
+
+  const openQr = useCallback((share: ShareInfo) => {
+    setQrShare({ url: share.url, title: share.noteTitle || '', slug: share.slug })
+  }, [])
+  const openAnalytics = useCallback((share: ShareInfo) => {
+    setAnalyticsNoteId(share.noteId)
+  }, [])
+  const openEdit = useCallback((share: ShareInfo) => {
+    setEditShare({ share: share.slug ? share : null, noteId: share.noteId, title: share.noteTitle || '' })
+  }, [])
+
+  return {
+    category, viewMode, shares, loading, error, selectedNoteIds, clearSelection, loadShares,
+    qrShare, setQrShare, editShare, setEditShare,
+    openQr, openAnalytics, openEdit,
+    analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, isSettingsOpen, setIsSettingsOpen,
+  }
+}
+
+function useInitialNoteEdit({ open, initialNoteId, shares, setEditShare }: {
+  open: boolean
+  initialNoteId: string | undefined
+  shares: ShareInfo[]
+  setEditShare: (data: ShareHubEditData) => void
+}) {
   useEffect(() => {
     if (open && initialNoteId) {
       const match = shares.find((s) => s.noteId === initialNoteId)
@@ -47,11 +73,5 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
         })
       }
     }
-  }, [open, initialNoteId, shares])
-
-  return {
-    category, viewMode, shares, loading, error, selectedNoteIds, clearSelection, loadShares,
-    qrShare, setQrShare, editShare, setEditShare,
-    analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, isSettingsOpen, setIsSettingsOpen,
-  }
+  }, [open, initialNoteId, shares, setEditShare])
 }

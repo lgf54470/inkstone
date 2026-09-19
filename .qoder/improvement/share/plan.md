@@ -35,7 +35,7 @@
 | 20 | SH-18 | 搜索防抖 + AbortSignal + 在途去重 | P1 | ✅ | 31a63d93 |
 | 21 | SH-21 | hub 打开重复拉 folders/tags；写操作全量重拉 → 定向 patch | P2 | ✅ | 0c3ec8a4 |
 | 22 | SH-23 | store 派生 `Map<noteId, ShareRow>`，行订阅改原始值 | P2 | ✅ | d291a2be |
-| 23 | SH-22 | 表格行 memo + 菜单 items 惰性构建 + folders Map | P2 | ⬜ | |
+| 23 | SH-22 | 表格行 memo + 菜单 items 惰性构建 + folders Map | P2 | ✅ | 待回填 |
 | 24 | SH-19 | App 启动瘦身：`/api/share/summary` 轻量端点 | P1 | ⬜ | |
 | 25 | SH-20 | code-split：barrel 拆 store/modals 入口（保持 blog 现有 import 不破） | P1 | ⬜ | |
 | 26 | SH-17a | 列表接口 5 个统计查询 `db.batch` 并行化（第一步，不拆端点） | P0 部分 | ⬜ | |
@@ -131,3 +131,15 @@
   - `workspace/use-workspace.ts:68`：布尔选择器里的线性 `some` 换成 `selectShareRow` 查表（本就是原始值订阅，只去掉 O(m) 扫描）。
   - 测试 `row-index.test.ts` 4 例：selectShareRow 命中返回原对象/未命中 null；同数组复用同一 Map、新数组重建；双探针下写入他行不重渲本探针而行更新会重渲（变异验证：hook 退回整数组订阅即转红）；行从不存在到出现会重渲（变异验证：去掉 WeakMap 缓存则索引用例转红）。
 - 遗留：`note-row-state.ts` 的 `useNoteRowShareState` 孪生 `useNoteRowBlogState` 是同款「整数组订阅+find」，属博客管理中心读侧，按约束③不动、等裁决；`use-workspace.ts` 的 `isBlogPublished` 同理。
+
+## 23 — SH-22 表格行 memo + 菜单惰性 + folders Map（2026-09-19）
+
+- 现象：分享中心表格每次渲染为 500 行 × 20 目录无条件构建目录菜单（行内 `items={buildFolderMenuItems(...)}` 即使菜单关闭也建）；`RowTitleCell` 每行 `folders.find` O(行×目录)；容器 11 个内联回调 + hub 三个内联箭头使任一勾选全表重渲。
+- 修复：
+  - `share-table-view/row.tsx`：`ShareTableRow` 包 `React.memo`；props 契约改为携带 noteId 的稳定回调（`onToggleSelect(noteId)` / `onToggleShare(noteId, checked)` / `onMoveToFolder(noteId, folderId)` / `onRevoke(share)`），行内自己补 noteId；目录 Menu 改 `{isFolderMenuOpen && <Menu .../>}` 条件挂载（items 构建随挂载惰性化，与上下文菜单既有模式一致）；`RowTitleCell` 改用容器下发的 `folderById: Map` 查目录；PV/UV+最近访问两个 td 拆出 `RowStatsCells` 过 50 行 size 门禁。
+  - `share-table-view/index.tsx`：`folderById` 用 `useMemo` 按 `list.folders` 建一次；行 props 全部换成稳定引用（store action + list.handleXxx + 容器透传的 onOpenQr/Analytics/Edit）。
+  - `use-share-list.ts`：handleCopy/handleMoveToFolder/handleRevoke 包 `useCallback`（依赖均为稳定 store action）。
+  - `use-share-hub-modal.ts`：新增稳定 `openQr/openAnalytics/openEdit`（useCallback 包 setState setter），initialNoteId 自动开编辑 effect 拆为 `useInitialNoteEdit`（对象传参）过 size 门禁；`share-hub-modal.tsx` 两视图改传这三个稳定回调（原为 HubContent 内联箭头）。
+  - `share-grid-view/card.tsx`：目录 Menu 同样改条件挂载（同一惰性缺陷，一行）。网格卡 memo 未做（计划行只列表格）。
+- 测试 `share-table-view/table-view.test.ts` 5 例：行处理器收到 noteId；memo 标记（$$typeof）；目录菜单挂载前 `buildFolderMenuItems` 零调用、打开后恰一次且移动回调带 (noteId, folderId)（`vi.mock` 包装真实构建器做 spy）；useShareList 三 handler 跨渲染同身份；hub 三回调跨渲染同身份。变异验证：去 memo / 退回 eager `<Menu open=...>` 各自转红（/tmp 备份还原）。
+- 遗留：>100 行虚拟化未做——memo 后稳态重渲已是 O(脏行)，首挂载仍 O(n)，台账本就说「评估」，需要时另开项；`ShareGridCard` 的 `folders.find` 与内联回调同款问题留待网格行 memo 一并处理（本次只做台账点名的表格）。

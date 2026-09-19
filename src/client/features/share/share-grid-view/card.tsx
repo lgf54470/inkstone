@@ -62,7 +62,7 @@ export function ShareGridCard({ share, isSelected, folders, copiedSlug, onToggle
         <CardMetrics share={share} />
         <CardActions share={share} onOpenQr={onOpenQr} onOpenAnalytics={onOpenAnalytics} onOpenEdit={onOpenEdit} folderButtonRef={folderButtonRef} onToggleFolderMenu={() => setIsFolderMenuOpen((prev) => !prev)} />
       </div>
-      <Menu open={isFolderMenuOpen} anchor={folderButtonRef} items={buildFolderMenuItems(share, folders, onMoveToFolder)} onClose={() => setIsFolderMenuOpen(false)} />
+      {isFolderMenuOpen && <Menu open anchor={folderButtonRef} items={buildFolderMenuItems(share, folders, onMoveToFolder)} onClose={() => setIsFolderMenuOpen(false)} />}
       {contextMenu.point && <Menu open anchor={contextMenu.point} items={buildShareMenuItems(share, folders, cbs)} onClose={contextMenu.close} />}
     </div>
   )
