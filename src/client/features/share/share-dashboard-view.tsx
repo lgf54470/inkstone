@@ -242,7 +242,7 @@ function TopNoteRow({ note, index, maxVal, onSelect }: {
       <span
         className={`flex h-5 w-5 items-center justify-center rounded-full text-[length:var(--text-10)] font-bold ${
           index < 3
-            ? 'bg-[var(--accent)] text-white'
+            ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
             : 'bg-[var(--bg-base)] text-[var(--text-tertiary)]'
         }`}
       >

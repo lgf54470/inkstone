@@ -42,7 +42,7 @@
 | 27 | SH-28 | 实时访问日志补时间窗 + 文案改「最近访问」 | P2 | ✅ | eca5e37b |
 | 28 | SH-30 | 侧栏计数口径（软删过滤/expiring 互斥/全时段标注）+ LIMIT 500 truncated | P2 | ✅ | c495cfd7 |
 | 29 | SH-31 | a11y 批量：Switch label、IconButton、hub ariaLabel、行「更多」键盘入口 | P2 | ✅ | 0526b88e |
-| 30 | SH-32 | 调色板类 → 设计令牌（visit-logs/sidebar/qr/dashboard 等） | P2 | ⬜ | |
+| 30 | SH-32 | 调色板类 → 设计令牌（visit-logs/sidebar/qr/dashboard 等） | P2 | ✅ | 待回填 |
 | 31 | SH-33 | 裸控件换组件体系 + CSV 导出全量 + 复制失败 toast + 日志按分享过滤入口 | P2 | ⬜ | |
 | 32 | SH-34 | 英文字面量进 locale + 服务端回落值改 null + countryName locale 显式 | P2 | ⬜ | |
 | 33 | SH-35 | 窄屏：侧栏折叠/宽模态 fullscreen/批量条换行/触控尺寸 | P2 | ⬜ | |
@@ -219,3 +219,14 @@
 - 测试 `src/client/features/share/share-a11y.test.ts` 新文件 7 例（jsdom，行为断言：行/卡片「更多」开菜单并派发编辑回调、清空按钮名称与点击、hub dialog 可访问名称、popover aria-expanded 开合、三处 Switch 名称逐断言、移除标签按钮名称）。变异七杀：逐处删 label/ariaLabel/IconButton 替换回裸 button/删「更多」按钮块（/tmp/mut29 备份还原）。
 - 验证：红→绿；tsc + share 全套（13 文件/69 例）+ 十门禁全绿（size 逼出测试文件按表面拆 4 个 describe 与夹具提模块作用域）。
 - 决策记录：台账方案里的 `useContextMenu 增 openAtElement` 未做——行/卡片「更多」按钮已提供同一菜单的键盘入口，再给 `useContextMenu` 加无调用方的 API 违反禁止死代码；`share-note-submenu.tsx` 的手搓菜单面板与 `buildShareMenuItems` 双份实现未合并（改动面大且非本项验收点），登记为遗留。全站其他手搓 popover 的 `aria-expanded` 通病按台账只修本模块。
+
+## 30 — SH-32 调色板类 → 设计令牌（2026-09-19）
+
+- 现象：share 有 12 处直接写 Tailwind 调色板类绕过令牌——日志/看板选中态与 TOP3 徽章 `text-white`（暗色主题下白字压 accent 尚可、亮色主题不随 `--accent-contrast` 反转）、访问类型四徽章 amber/blue/purple/emerald-500、星标三处 amber-500、QR 卡片 `bg-white`。`check-hardcoded` 只扫 hex 与任意值，调色板类是门禁盲区（台账预判，本项以测试补上）。
+- 修复（全部换成已定义令牌，`tokens.css` 一字未动）：
+  - `share-visit-logs-modal.tsx` / `share-dashboard-view.tsx`：`bg-[var(--accent)] text-white` → `text-[var(--accent-contrast)]`（亮 #99% 白、暗 #16% 深，两主题各自校准过）。
+  - `share-visit-logs-modal.tsx` `VisitTypeBadge`：bot→`--warning`、human→`--success`（含 `/10` `/20` 透明度修饰符，等价原 `bg-amber-500/10` 结构）；owner→`--accent` 系；self-referrer→中性（`--bg-hover`/`--text-secondary`/`--border-default`）。
+  - `share-item-common.tsx` / `use-share-hub-sidebar.tsx`：星标 `text-amber-500 fill-amber-500` → `text-[var(--warning)] fill-current`（fill-current 与行内星标既有写法一致）。
+  - `share-qr-modal.tsx`：卡片 `bg-white` → `bg-[var(--swatch-white)]`，附注释——QR 底不随主题（`qr-colors.ts` 固定白码点），深色框会侵入静区。
+- 测试 `tests/share-palette-tokens.test.ts` 新文件（静态扫描，先红后绿）：遍历 `features/share/**`（排除测试）断言零调色板类；`bg-transparent`/`border-transparent` 属结构用途不在黑名单。变异：把 human 徽章退回 `bg-emerald-500/10` → 红（/tmp 备份还原）。
+- 决策记录：台账方案预设 `--info` 系令牌，实际 `tokens.css` 无 `--info`/`--purple`，且 `--*-subtle`（danger/warning/success）系令牌全站被引用却无一处定义（`bg-[var(--danger-subtle)]` 实际渲染为透明）——新增/补定义属共享设计令牌层，超出本任务「只动 share」红线，登记为通病遗留待裁决；owner/self 徽章按现成令牌就近映射（accent/中性）而非发明新色相。门禁补调色板扫描（`check-hardcoded` 扩展）按台账另批。

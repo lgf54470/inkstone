@@ -1999,6 +1999,10 @@ const allowed = new Map([
     '// server enforces this too by omitting `https:` from CSP img-src on /s/*.',
     '// Invalid URLs are skipped; the attribute keeps its original value.',
   ]],
+  ['src/client/features/share/share-qr-modal.tsx', [
+    '// The plate stays white in both themes: the QR itself renders on fixed',
+    '// white (QR_BG_COLOR), and a dark frame would cut into its quiet zone.',
+  ]],
   ['src/client/features/share/share-store/filters.ts', [
     '// The input is controlled by store state, so it stays responsive; only the',
     '// reload waits, so a burst of keystrokes costs one request.',
@@ -4653,6 +4657,9 @@ const allowed = new Map([
     '// Files that must pull the modals in dynamically instead of statically.',
     '// Files whose static closure touches each banned module (pre-image of the',
     '// ban), computed by one reverse-DFS over static edges.',
+  ]],
+  ['tests/share-palette-tokens.test.ts', [
+    '/**\n * SH-32: the share feature styled some states with raw Tailwind palette\n * classes (`text-amber-500`, `bg-white`, `text-white`), which bypass the\n * theme tokens and keep one hue across both themes. `check-hardcoded` only\n * scans hex literals and arbitrary values, so palette classes need this\n * narrower guard: every drawn color inside `features/share` must come from\n * `src/client/styles/tokens.css`.\n */',
   ]],
   ['tests/share-routes.test.ts', [
     '// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =',

@@ -113,7 +113,7 @@ function FilterTab({ active, label, onClick }: {
       onClick={onClick}
       className={`rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-11)] font-medium transition-colors ${
         active
-          ? 'bg-[var(--accent)] text-white'
+          ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
       }`}
     >
@@ -322,27 +322,27 @@ function VisitTypeBadge({ log }: {
 }) {
   if (log.isBot) {
     return (
-      <span className='inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-amber-500 border border-amber-500/20'>
+      <span className='inline-flex items-center gap-1 rounded bg-[var(--warning)]/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--warning)] border border-[var(--warning)]/20'>
         <Bot size={11} /> {log.botName || 'Bot'}
       </span>
     )
   }
   if (log.isOwner) {
     return (
-      <span className='inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-blue-500 border border-blue-500/20'>
+      <span className='inline-flex items-center gap-1 rounded bg-[var(--accent)]/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--accent)] border border-[var(--accent)]/20'>
         <User size={11} /> {t('share.badge_owner')}
       </span>
     )
   }
   if (log.isSelfReferrer) {
     return (
-      <span className='inline-flex items-center gap-1 rounded bg-purple-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-purple-500 border border-purple-500/20'>
+      <span className='inline-flex items-center gap-1 rounded bg-[var(--bg-hover)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--text-secondary)] border border-[var(--border-default)]'>
         {t('share.badge_self_referrer')}
       </span>
     )
   }
   return (
-    <span className='inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-emerald-500 border border-emerald-500/20'>
+    <span className='inline-flex items-center gap-1 rounded bg-[var(--success)]/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--success)] border border-[var(--success)]/20'>
       {t('share.badge_human')}
     </span>
   )
