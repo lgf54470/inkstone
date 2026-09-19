@@ -5,6 +5,7 @@ import {
   searchKanbanItems,
 } from '../filter-sort'
 import { t } from '../../../i18n'
+import { toastWithUndo } from '../../../../store/ui'
 import { reorderKanbanItems } from '../dnd'
 import type { KanbanMovePivot } from '../dnd'
 import { createKanbanId } from '../id'
@@ -287,9 +288,13 @@ export function computeSelectionAfterToggleAll(prev: Set<string>, ids: string[])
   return next
 }
 
+/** Batch deletes are destructive, so their undo window stays open longer than an informational toast. */
+const BATCH_DELETE_UNDO_TOAST_MS = 8000
+
 export function useKanbanSelection(
   commitData: CommitKanbanData,
-  groupColumn?: KanbanProperty,
+  groupColumn: KanbanProperty | undefined,
+  undo: () => void,
 ) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -323,12 +328,12 @@ export function useKanbanSelection(
   }, [selectedIds, commitData, groupColumn?.id, groupColumn?.type])
 
   const handleBatchDelete = useCallback(() => {
-    commitData((prev) => ({
-      ...prev,
-      items: prev.items.filter((item) => !selectedIds.has(item.id)),
-    }))
+    const count = selectedIds.size
+    if (count === 0) return
+    commitData((prev) => ({ ...prev, items: prev.items.filter((item) => !selectedIds.has(item.id)) }))
     setSelectedIds(new Set())
-  }, [selectedIds, commitData])
+    toastWithUndo(t('preview.kanban_batch_deleted_count', { count }), undo, { duration: BATCH_DELETE_UNDO_TOAST_MS })
+  }, [selectedIds, commitData, undo])
 
   return {
     selectedIds,
@@ -364,7 +369,7 @@ export function useKanbanRootState(
 
   const filterSort = useKanbanFilterSort(data, activeViewId, commitData)
   const groupColumn = data.columns.find((c) => c.id === (filterSort.activeView.groupBy || 'status'))
-  const selection = useKanbanSelection(commitData, groupColumn)
+  const selection = useKanbanSelection(commitData, groupColumn, history.undo)
   const items = useKanbanItemMutations(commitData, filterSort.activeView, setDetailItem)
   const itemLifecycle = useKanbanItemLifecycle(
     data,

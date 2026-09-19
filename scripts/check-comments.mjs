@@ -2926,6 +2926,7 @@ const allowed = new Map([
     '// property, which is not necessarily `status`.',
     '// The add-group button targets the column the active view groups by;',
     '// option-less properties (text, date, ...) have no groups to add.',
+    '/** Batch deletes are destructive, so their undo window stays open longer than an informational toast. */',
     '// Batch assignment follows the active view\'s grouping property; a',
     '// multi-select column keeps its array shape.',
   ]],

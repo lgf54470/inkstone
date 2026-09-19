@@ -88,6 +88,7 @@ export const messages = {
 'preview.kanban_batch_change_group': '变更分组…',
 'preview.kanban_batch_delete': '批量删除',
 'preview.kanban_batch_delete_count': '批量删除（{count}）',
+'preview.kanban_batch_deleted_count': '已删除 {count} 项',
 'preview.kanban_clear_selection': '清除选择',
 'preview.kanban_select_all': '全选',
 'preview.kanban_card_details': '卡片详情',

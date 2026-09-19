@@ -1,7 +1,8 @@
 import { act, createElement } from 'react'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../../lib/i18n'
 import { renderElement } from '../../../test-render'
+import { useUi } from '../../../../store/ui'
 import { useKanbanSelection } from './kanban-root-hooks'
 import { KanbanBatchBar } from './kanban-batch-bar'
 import type { CommitKanbanData } from './kanban-history'
@@ -53,7 +54,7 @@ const baseData: KanbanData = {
 
 type SelectionApi = ReturnType<typeof useKanbanSelection>
 
-function renderSelection(groupColumn?: KanbanProperty) {
+function renderSelection(groupColumn?: KanbanProperty, undo = vi.fn()) {
   const commits: KanbanData[] = []
   const commitData: CommitKanbanData = (next) => {
     const resolved = typeof next === 'function' ? next(baseData) : next
@@ -62,13 +63,28 @@ function renderSelection(groupColumn?: KanbanProperty) {
   }
   let api: SelectionApi | null = null
   function Probe() {
-    api = useKanbanSelection(commitData, groupColumn)
+    api = useKanbanSelection(commitData, groupColumn, undo)
     return null
   }
   const rendered = renderElement(createElement(Probe))
   if (!api) throw new Error('probe did not expose the hook api')
   const current = () => api!
   return { current, commits, unmount: rendered.unmount }
+}
+
+function deleteTwoSelected() {
+  const undo = vi.fn()
+  const harness = renderSelection(undefined, undo)
+  act(() => { harness.current().handleToggleSelect('a') })
+  act(() => { harness.current().handleToggleSelect('b') })
+  act(() => { harness.current().handleBatchDelete() })
+  return { ...harness, undo }
+}
+
+function lastToast() {
+  const toast = useUi.getState().toasts.at(-1)
+  if (!toast) throw new Error('batch delete posted no toast')
+  return toast
 }
 
 describe('useKanbanSelection batch group change', () => {
@@ -100,6 +116,49 @@ describe('useKanbanSelection batch group change', () => {
     act(() => { current().handleBatchGroupChange('feat') })
     expect(commits[0]!.items.find((i) => i.id === 'a')!.properties.tags).toEqual(['feat'])
     expect(commits[0]!.items.find((i) => i.id === 'a')!.properties.status).toBe('todo')
+    unmount()
+  })
+})
+
+describe('useKanbanSelection batch delete feedback', () => {
+  beforeEach(() => {
+    useUi.setState({ toasts: [] })
+  })
+
+  it('reports how many cards the batch removed', () => {
+    const { current, commits, unmount } = deleteTwoSelected()
+    expect(commits[0]!.items.map((i) => i.id)).toEqual(['c'])
+    expect(current().selectedIds.size).toBe(0)
+    expect(lastToast()).toMatchObject({
+      title: t('preview.kanban_batch_deleted_count', { count: 2 }),
+      kind: 'undo',
+    })
+    unmount()
+  })
+
+  it('runs the board history undo instead of a second restore path', () => {
+    const { undo, commits, unmount } = deleteTwoSelected()
+    const action = lastToast().action
+    expect(action?.label).toBe(t('common.undo'))
+    const commitsBefore = commits.length
+    act(() => { action!.run() })
+    expect(undo).toHaveBeenCalledTimes(1)
+    expect(commits).toHaveLength(commitsBefore)
+    unmount()
+  })
+
+  it('keeps the undo window open longer than an informational toast', () => {
+    const { unmount } = deleteTwoSelected()
+    expect(lastToast().duration).toBeGreaterThan(3800)
+    unmount()
+  })
+
+  it('deletes nothing and says nothing when no card is selected', () => {
+    const undo = vi.fn()
+    const { current, commits, unmount } = renderSelection(undefined, undo)
+    act(() => { current().handleBatchDelete() })
+    expect(commits).toHaveLength(0)
+    expect(useUi.getState().toasts).toHaveLength(0)
     unmount()
   })
 })

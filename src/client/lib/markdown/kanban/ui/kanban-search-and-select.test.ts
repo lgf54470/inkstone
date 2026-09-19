@@ -49,7 +49,7 @@ function renderSelectionProbe() {
   const commitData: CommitKanbanData = vi.fn()
   let api: SelectionApi | null = null
   function Probe() {
-    api = useKanbanSelection(commitData, undefined)
+    api = useKanbanSelection(commitData, undefined, vi.fn())
     return null
   }
   const container = document.createElement('div')
