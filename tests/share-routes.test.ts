@@ -339,6 +339,76 @@ describe('share visits route (real D1)', () => {
   })
 })
 
+describe('share list and batch beyond the D1 bind budget (real D1)', () => {
+  async function seedScaleShares(count: number): Promise<{ db: D1Shim; app: ReturnType<typeof makeApp>; ids: string[] }> {
+    const db = await makeDb()
+    const ids: string[] = []
+    for (let i = 0; i < count; i++) ids.push(await seedNote(db, { title: `Scale ${i}` }))
+    for (const id of ids) await seedShare(db, { note_id: id })
+    return { db, app: makeApp(), ids }
+  }
+
+  it('lists 120 shares with per-note visit stats instead of failing on too many SQL variables', async () => {
+    const { db, app, ids } = await seedScaleShares(120)
+    await seedVisit(db, { note_id: ids[0], slug: 'seen-1', visitor_fp: 'fa' })
+    await seedVisit(db, { note_id: ids[0], slug: 'seen-1', visitor_fp: 'fa' })
+    await seedVisit(db, { note_id: ids[1], slug: 'seen-2', visitor_fp: 'fb', is_bot: true })
+
+    const res = await request(app, '/api/share')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.shares.length).toBe(120)
+    const seen = body.shares.find((s: { noteId: string }) => s.noteId === ids[0])
+    expect(seen.views).toBe(2)
+    expect(seen.uniqueVisitors).toBe(1)
+    const botOnly = body.shares.find((s: { noteId: string }) => s.noteId === ids[1])
+    expect(botOnly.views).toBe(0)
+    expect(botOnly.uniqueVisitors).toBe(0)
+  })
+
+  it('runs disable, revoke, expire and move batches over 120 notes', async () => {
+    const { db, app, ids } = await seedScaleShares(120)
+
+    const disable = await postJson(app, '/api/share/batch', { action: 'disable', noteIds: ids })
+    expect(disable.status).toBe(200)
+    expect(((await disable.json()).count)).toBe(120)
+    expect((await firstRow(db, 'SELECT COUNT(*) as c FROM shares WHERE user_id = ?1 AND is_enabled = 0', USER))!.c).toBe(120)
+
+    const expire = await postJson(app, '/api/share/batch', { action: 'expire', noteIds: ids, expiresIn: 3_600_000 })
+    expect(expire.status).toBe(200)
+    expect((await firstRow(db, 'SELECT COUNT(*) as c FROM shares WHERE user_id = ?1 AND expires_at IS NOT NULL', USER))!.c).toBe(120)
+
+    const move = await postJson(app, '/api/share/batch', { action: 'move', noteIds: ids, folderId: null })
+    expect(move.status).toBe(200)
+
+    const revoke = await postJson(app, '/api/share/batch', { action: 'revoke', noteIds: ids })
+    expect(revoke.status).toBe(200)
+    expect((await firstRow(db, 'SELECT COUNT(*) as c FROM shares WHERE user_id = ?1', USER))!.c).toBe(0)
+  })
+
+  it('toggles a whole folder of 120 notes without exceeding the bind budget', async () => {
+    const db = await makeDb()
+    await runSql(
+      db,
+      `INSERT INTO share_folders (id, user_id, parent_id, name, position, created_at, updated_at)
+       VALUES ('f-1', ?1, NULL, 'Big folder', 0, ?2, ?2)`,
+      USER, H.now,
+    )
+    const ids: string[] = []
+    for (let i = 0; i < 120; i++) ids.push(await seedNote(db, { folder_id: 'f-1' }))
+    for (const id of ids) await seedShare(db, { note_id: id, is_enabled: 0 })
+    const app = makeApp()
+
+    const enable = await postJson(app, '/api/share/batch-folder', { folderId: 'f-1', enabled: true })
+    expect(enable.status).toBe(200)
+    expect((await firstRow(db, 'SELECT COUNT(*) as c FROM shares WHERE user_id = ?1 AND is_enabled = 1', USER))!.c).toBe(120)
+
+    const disable = await postJson(app, '/api/share/batch-folder', { folderId: 'f-1', enabled: false })
+    expect(disable.status).toBe(200)
+    expect((await firstRow(db, 'SELECT COUNT(*) as c FROM shares WHERE user_id = ?1 AND is_enabled = 0', USER))!.c).toBe(120)
+  })
+})
+
 describe('share analytics routes (real D1)', () => {
   it('computes global analytics from visits and excludes bots by default', async () => {
     const db = await makeDb()

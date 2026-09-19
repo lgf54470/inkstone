@@ -326,6 +326,8 @@ async function loadShareListRows(db: D1Database, binds: Array<string | number>, 
   return rows.results ?? []
 }
 
+const VISIT_STATS_NOTE_CHUNK = 50
+
 async function loadNoteVisitStats(
   db: D1Database,
   rows: ShareListRow[],
@@ -333,18 +335,20 @@ async function loadNoteVisitStats(
 ): Promise<Map<string, { pvs: number; uvs: number }>> {
   const noteStatsMap = new Map<string, { pvs: number; uvs: number }>()
   const noteIds = rows.map((r) => r.note_id)
-  if (!noteIds.length) return noteStatsMap
-  const placeholders = noteIds.map(() => '?').join(',')
-  const statsRows = await db.prepare(
-    `SELECT note_id, COUNT(*) as pvs, COUNT(DISTINCT visitor_fp) as uvs
-       FROM share_visits
-      WHERE note_id IN (${placeholders}) ${clause}
-      GROUP BY note_id`,
-  )
-    .bind(...noteIds)
-    .all<{ note_id: string; pvs: number; uvs: number }>()
-  for (const sr of statsRows.results ?? []) {
-    noteStatsMap.set(sr.note_id, { pvs: sr.pvs, uvs: sr.uvs })
+  for (let index = 0; index < noteIds.length; index += VISIT_STATS_NOTE_CHUNK) {
+    const chunk = noteIds.slice(index, index + VISIT_STATS_NOTE_CHUNK)
+    const placeholders = chunk.map(() => '?').join(',')
+    const statsRows = await db.prepare(
+      `SELECT note_id, COUNT(*) as pvs, COUNT(DISTINCT visitor_fp) as uvs
+         FROM share_visits
+        WHERE note_id IN (${placeholders}) ${clause}
+        GROUP BY note_id`,
+    )
+      .bind(...chunk)
+      .all<{ note_id: string; pvs: number; uvs: number }>()
+    for (const sr of statsRows.results ?? []) {
+      noteStatsMap.set(sr.note_id, { pvs: sr.pvs, uvs: sr.uvs })
+    }
   }
   return noteStatsMap
 }
