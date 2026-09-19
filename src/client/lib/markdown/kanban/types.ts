@@ -105,6 +105,13 @@ export type KanbanFilterOperator =
   | 'not_equals'
   | 'contains'
   | 'not_contains'
+  | 'greater_than'
+  | 'less_than'
+  | 'greater_or_equal'
+  | 'less_or_equal'
+  | 'before'
+  | 'after'
+  | 'is_overdue'
   | 'is_empty'
   | 'is_not_empty'
 

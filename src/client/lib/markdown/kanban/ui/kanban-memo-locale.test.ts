@@ -146,7 +146,13 @@ const SUBJECTS: { name: string, element: ReactElement }[] = [
       onClose: noop,
       anchorRef,
       columns,
-      filters: [{ propertyId: 'status', operator: 'equals', value: 'Kappa' }],
+      // One rule per kind of column, so the operator lists a reader can pick from are all painted
+      // before the language changes underneath them.
+      filters: [
+        { propertyId: 'status', operator: 'equals', value: 'Kappa' },
+        { propertyId: 'progress', operator: 'greater_than', value: '40' },
+        { propertyId: 'startDate', operator: 'is_overdue' },
+      ],
       onChangeFilters: noop,
     }),
   },

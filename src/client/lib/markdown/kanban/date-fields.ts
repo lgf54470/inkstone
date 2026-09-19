@@ -39,14 +39,25 @@ export function getKanbanCardDate(item: KanbanItem): string {
 }
 
 /**
- * Whole days between the card's deadline and `now`, or 0 when nothing was missed. Only a deadline
- * can be missed — a card that merely started long ago is not late — and finished work stops being
- * late about a date it already met.
+ * Whole days between a missed day and `now`, or 0 when nothing was missed. Only a deadline can be
+ * missed — a card that merely started long ago is not late — and finished work stops being late
+ * about a date it already met.
  */
-export function getKanbanOverdueDays(item: KanbanItem, now = new Date()): number {
-  const deadline = kanbanDayKey(getKanbanDueDate(item))
+function overdueDaysFrom(item: KanbanItem, deadline: string, now: Date): number {
   if (!deadline || isKanbanItemDone(item)) return 0
   return Math.max(0, daysBetweenKeys(deadline, dateKey(now)))
+}
+
+export function getKanbanOverdueDays(item: KanbanItem, now = new Date()): number {
+  return overdueDaysFrom(item, kanbanDayKey(getKanbanDueDate(item)), now)
+}
+
+/**
+ * How late a card is according to one of its own date columns, which is the question a filter
+ * asking "overdue" of a chosen column has to answer — a board may keep several dates per card.
+ */
+export function getKanbanPropertyOverdueDays(item: KanbanItem, propertyId: string, now = new Date()): number {
+  return overdueDaysFrom(item, kanbanDayKey(readDayKey(item, propertyId)), now)
 }
 
 export interface KanbanCardDate {

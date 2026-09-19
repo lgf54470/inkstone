@@ -30,8 +30,7 @@ function filterAndSortItems(
   items: KanbanItem[],
   searchQuery: string,
   selectedTags: string[],
-  filters: KanbanFilter[],
-  sorts: KanbanSort[],
+  rules: { filters: KanbanFilter[]; sorts: KanbanSort[]; columns: KanbanProperty[] },
 ): KanbanItem[] {
   let result = searchKanbanItems(items, searchQuery)
   if (selectedTags.length > 0) {
@@ -42,8 +41,11 @@ function filterAndSortItems(
       return selectedTags.some((tag) => combined.includes(tag))
     })
   }
-  result = applyKanbanFilters(result, filters)
-  return applyKanbanSorts(result, sorts)
+  // The schema travels with the rules: a comparison is only meaningful as a question about the kind
+  // of column the rule points at.
+  const context = { columns: rules.columns }
+  result = applyKanbanFilters(result, rules.filters, context)
+  return applyKanbanSorts(result, rules.sorts, context)
 }
 
 export function useKanbanFilterSort(
@@ -72,8 +74,12 @@ export function useKanbanFilterSort(
   }, [])
 
   const filteredItems = useMemo(
-    () => filterAndSortItems(data.items, viewState.searchQuery, selectedTags, viewState.filters, viewState.sorts),
-    [data.items, viewState.searchQuery, selectedTags, viewState.filters, viewState.sorts],
+    () => filterAndSortItems(data.items, viewState.searchQuery, selectedTags, {
+      filters: viewState.filters,
+      sorts: viewState.sorts,
+      columns: data.columns,
+    }),
+    [data.items, data.columns, viewState.searchQuery, selectedTags, viewState.filters, viewState.sorts],
   )
 
   const viewData: KanbanData = useMemo(() => ({ ...data, items: filteredItems }), [data, filteredItems])
