@@ -28,6 +28,6 @@ export const shareCreateSchema = z.object({
 })
 
 export const shareAccessSchema = z.object({
-  password: z.string().optional(),
+  password: z.string().max(LIMITS.passwordMaxLength).optional(),
   referrer: z.string().max(LIMITS.shareReferrerMaxLength).optional(),
 })

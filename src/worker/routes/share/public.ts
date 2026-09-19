@@ -64,9 +64,8 @@ export function registerSharePublicRoutes(shareRoutes: Hono<AppBindings>): void 
     if (!isValidSlug(slug)) throw ApiError.notFound('The link does not exist or has been revoked')
     await enforceShareViewBudget(c, slug)
     const body = await readOptionalJsonValidated(c, shareAccessSchema, JSON_BODY_LIMITS.small, {}) as ShareAccessBody
-    const password = typeof body.password === 'string'
-      ? body.password.slice(0, LIMITS.passwordMaxLength)
-      : ''
+    // The schema caps the guess at LIMITS.passwordMaxLength; oversized ones answer 400 rather than being truncated.
+    const password = typeof body.password === 'string' ? body.password : ''
     const share = await loadShareOrThrow(c.env.DB, slug)
     const denied = await authenticateShareAccess(c, share, slug, password)
     if (denied) return denied
@@ -131,7 +130,8 @@ async function authenticateShareAccess(
   const clientIp = requestClientIp(c)
   const throttleKeys = [
     `share:${slug}:ip:${clientIp}`,
-    { key: `share-slug:${slug}`, freeFails: 40 },
+    // Ten wrong guesses per hour per slug (was 40): paired with the 8-char floor this bounds the offline-free window.
+    { key: `share-slug:${slug}`, freeFails: 10 },
   ]
   const workKeys = [
     {

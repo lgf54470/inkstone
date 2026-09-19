@@ -4453,7 +4453,9 @@ const allowed = new Map([
     '// Only the boolean ships: why a slug is unavailable (invalid vs taken) must not be a lookup oracle.',
   ]],
   ['src/worker/routes/share/public.ts', [
+    '// The schema caps the guess at LIMITS.passwordMaxLength; oversized ones answer 400 rather than being truncated.',
     '// One identical answer for disabled, expired and unknown: the status of a share is not public information.',
+    '// Ten wrong guesses per hour per slug (was 40): paired with the 8-char floor this bounds the offline-free window.',
     '// Same body as "password required": a wrong guess must be indistinguishable from no guess.',
     '// The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.',
     '// Without the instance secret record no fingerprint rather than fall back to the public date salt,',
@@ -4548,6 +4550,7 @@ const allowed = new Map([
   ]],
   ['tests/share-routes.test.ts', [
     '// visit recording runs via waitUntil; the test context must let us await it',
+    '// requestClientIp only trusts CF-Connecting-IP when the edge set `cf`, so the probe attaches it.',
   ]],
   ['tests/slides-interop.test.ts', [
     '/**\n * What happens when a note holds a deck this build did not author: a document in the\n * format\'s own shape, with the element kinds, slide fields and document tables an export\n * carries. Two things must hold, and neither is visible from the editor\'s side. The model\n * must carry every field through parse → edit → write (a field it drops is gone from the\n * note the next time anything is edited), and every element must DRAW SOMETHING — a deck\n * whose picture is missing an element looks finished, so the failure has no symptom until\n * the reader compares it with the original.\n */',

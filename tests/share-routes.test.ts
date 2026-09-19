@@ -608,7 +608,7 @@ describe('share public note route (real D1)', () => {
     expect(wrongBody).toEqual(missingBody)
   })
 
-  it('enforces the 6-character minimum on new passwords but keeps legacy 4-character ones verifiable', async () => {
+  it('enforces the 8-character minimum on new passwords but keeps legacy 4-character ones verifiable', async () => {
     const db = await makeDb()
     await seedUser(db)
     const n1 = await seedNote(db, { title: 'Short' })
@@ -616,11 +616,11 @@ describe('share public note route (real D1)', () => {
     const n2 = await seedNote(db, { title: 'New' })
     const app = makeApp()
 
-    const tooShort = await postJson(app, `/api/share/${n2}`, { password: 'abcde' })
+    const tooShort = await postJson(app, `/api/share/${n2}`, { password: 'abcdef' })
     expect(tooShort.status).toBe(400)
-    expect((await tooShort.json()).error.message).toContain('at least 6')
+    expect((await tooShort.json()).error.message).toContain('at least 8')
 
-    const accepted = await postJson(app, `/api/share/${n2}`, { password: 'abcdef' })
+    const accepted = await postJson(app, `/api/share/${n2}`, { password: 'abcdefgh' })
     expect(accepted.status).toBe(200)
     expect((await accepted.json()).share.hasPassword).toBe(true)
 
@@ -628,6 +628,48 @@ describe('share public note route (real D1)', () => {
     expect(legacy.status).toBe(200)
   })
 })
+
+describe('share passcode brute-force window (SH-09)', () => {
+  it('rejects an overlong passcode guess with 400 instead of truncating it', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'pw9-1', password_hash: await hashPassword('right-passcode') })
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/public/pw9-1', { password: 'x'.repeat(129) })
+    expect(res.status).toBe(400)
+  })
+
+  it('locks the passcode gate on the tenth wrong guess even from fresh IPs', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'pw9-2', password_hash: await hashPassword('right-passcode') })
+    const app = makeApp()
+
+    for (let attempt = 1; attempt <= 11; attempt++) {
+      const res = await postJsonWithIp(app, '/api/public/pw9-2', { password: 'nope' }, `203.0.113.${attempt}`)
+      expect(res.status, `attempt ${attempt}`).toBe(attempt <= 10 ? 401 : 429)
+    }
+  })
+})
+
+// requestClientIp only trusts CF-Connecting-IP when the edge set `cf`, so the probe attaches it.
+async function postJsonWithIp(
+  app: Hono<AppBindings>,
+  path: string,
+  body: unknown,
+  clientIp: string,
+): Promise<Response> {
+  const request = new Request(`http://localhost${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': clientIp },
+    body: JSON.stringify(body),
+  })
+  Object.defineProperty(request, 'cf', { value: { clientIp } })
+  return app.request(request, undefined, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
+}
 
 async function publicVisitAccess(app: Hono<AppBindings>, slug: string, referrer: string): Promise<Response> {
   const pending: Promise<unknown>[] = []
