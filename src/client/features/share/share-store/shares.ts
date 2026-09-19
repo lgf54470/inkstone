@@ -1,12 +1,7 @@
 import { api } from '../../../lib/api'
-import { t } from '../../../lib/i18n'
 import { useNotes } from '../../../store/notes'
-import { useUi } from '../../../store/ui'
 import type { ShareStoreState, SetShareStoreState } from './types'
-
-function notifyActionFailed(): void {
-  useUi.getState().toast({ title: t('common.action_failed'), tone: 'danger' })
-}
+import { notifyActionFailed } from './notify'
 
 export const shareSharesActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'batchToggleGroup' | 'toggleShare' | 'togglePin' | 'toggleStar' | 'batchToggle' | 'batchMoveToFolder' | 'batchFolderToggle' | 'batchTagToggle'> => ({
   batchToggleGroup: (type, target, enabled) => batchToggleGroupImpl(type, target, enabled, set, get),

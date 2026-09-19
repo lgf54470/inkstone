@@ -1,5 +1,6 @@
 import { api } from '../../../lib/api'
 import type { ShareStoreState, SetShareStoreState } from './types'
+import { notifyActionFailed } from './notify'
 
 export const shareContentActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'createFolder' | 'patchFolder' | 'deleteFolder' | 'createTag' | 'patchTag' | 'deleteTag'> => ({
   createFolder: (name, parentId, color, icon) => createFolderImpl(name, parentId, color, icon, set),
@@ -32,7 +33,9 @@ async function createFolderImpl(
         : null,
     }))
     return folder
-  } catch {
+  } catch (error: unknown) {
+    console.warn('[share-store] failed to create folder', error)
+    notifyActionFailed()
     return null
   }
 }
@@ -48,7 +51,9 @@ async function patchFolderImpl(
       folders: s.folders.map((f) => (f.id === id ? folder : f)),
     }))
     return folder
-  } catch {
+  } catch (error: unknown) {
+    console.warn('[share-store] failed to patch folder', error)
+    notifyActionFailed()
     return null
   }
 }
@@ -62,7 +67,9 @@ async function deleteFolderImpl(id: string, set: SetShareStoreState, get: () => 
     }))
     await get().loadShares()
     return true
-  } catch {
+  } catch (error: unknown) {
+    console.warn('[share-store] failed to delete folder', error)
+    notifyActionFailed()
     return false
   }
 }
@@ -87,7 +94,9 @@ async function createTagImpl(
         : null,
     }))
     return tag
-  } catch {
+  } catch (error: unknown) {
+    console.warn('[share-store] failed to create tag', error)
+    notifyActionFailed()
     return null
   }
 }
@@ -103,7 +112,9 @@ async function patchTagImpl(
       tags: s.tags.map((t) => (t.id === id ? tag : t)),
     }))
     return tag
-  } catch {
+  } catch (error: unknown) {
+    console.warn('[share-store] failed to patch tag', error)
+    notifyActionFailed()
     return null
   }
 }
@@ -118,7 +129,9 @@ async function deleteTagImpl(id: string, set: SetShareStoreState, get: () => Sha
     }))
     await get().loadShares()
     return true
-  } catch {
+  } catch (error: unknown) {
+    console.warn('[share-store] failed to delete tag', error)
+    notifyActionFailed()
     return false
   }
 }
