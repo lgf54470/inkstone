@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { useClickOutside, useEscape } from '../../components/overlay'
+import { useClickOutside, useDialogFocus, useEscape } from '../../components/overlay'
 import { getVisibleViewport } from '../../lib/viewport'
 import { cn } from '../../lib/cn'
 
@@ -72,6 +72,8 @@ export function MusicPopover({
   useClickOutside([panelRef, anchorRef], open, onClose)
   useEscape(open, onClose)
   useCloseOnResize(open, onClose)
+  useDialogFocus(open, panelRef)
+  useAnchorAria(anchorRef, open)
 
   if (!open) return null
   return createPortal(
@@ -79,6 +81,7 @@ export function MusicPopover({
       ref={panelRef}
       role='dialog'
       aria-label={label}
+      tabIndex={-1}
       style={{
         left: placement.left,
         top: placement.top,
@@ -103,4 +106,15 @@ function useCloseOnResize(open: boolean, onClose: () => void): void {
     window.addEventListener('resize', onClose)
     return () => window.removeEventListener('resize', onClose)
   }, [open, onClose])
+}
+
+// The four anchors are shared IconButtons, which expose no slot for these
+// attributes; the panel owns the open state, so it publishes them itself.
+function useAnchorAria(anchorRef: RefObject<HTMLElement | null>, open: boolean): void {
+  useEffect(() => {
+    const anchor = anchorRef.current
+    if (!anchor) return
+    anchor.setAttribute('aria-haspopup', 'dialog')
+    anchor.setAttribute('aria-expanded', String(open))
+  }, [open, anchorRef])
 }

@@ -1282,11 +1282,17 @@ const allowed = new Map([
   ['src/client/features/music/music-playlist-drag.test.ts', [
     '// t1 (i1) dropped on the t2 row: i2 sits at index 2 in the manual order.',
   ]],
+  ['src/client/features/music/music-popover.test.ts', [
+    '// UI-21: the popover panels are dialogs. Opening one must move focus inside,',
+    '// Tab must not walk out of it, and closing must hand focus back to the anchor.',
+  ]],
   ['src/client/features/music/music-popover.tsx', [
     '// Anchored panel for the compact transports. It renders through a portal with',
     '// fixed coordinates because the note status bar clips its overflow: an inline',
     '// panel would be invisible there, and the floating card has to escape its own',
     '// stacking context too.',
+    '// The four anchors are shared IconButtons, which expose no slot for these',
+    '// attributes; the panel owns the open state, so it publishes them itself.',
   ]],
   ['src/client/features/music/music-probe.ts', [
     '// Containers the browser never decodes must not hang the serial upload chain forever.',
@@ -1295,9 +1301,17 @@ const allowed = new Map([
     '// Duplicated tracks occupy several queue positions; each rendered occurrence',
     '// takes the next free one so play/remove hit the right row.',
   ]],
+  ['src/client/features/music/music-search-box.test.ts', [
+    '// UI-22: the history dropdown is a popup list attached to the input; without',
+    '// combobox semantics a screen-reader user cannot see it open or walk its rows.',
+  ]],
   ['src/client/features/music/music-search-box.tsx', [
     '// Every store query write re-filters the library; typing must not pay for that per keystroke.',
     '// Store writes this box did not send (cleared elsewhere, another surface) must still adopt.',
+    '// The ARIA projection of the popup state onto the combobox input.',
+    '// The popup half of the combobox contract: open/highlight state plus the input\'s',
+    '// ARIA wiring and handlers. Arrows walk a wrapping highlight, Enter takes the',
+    '// highlighted entry or else what was typed.',
   ]],
   ['src/client/features/music/music-search.ts', [
     '// The pinyin-pro dictionary is large: keep it behind this dynamic import so the always-mounted player never pulls it into the entry bundle.',
