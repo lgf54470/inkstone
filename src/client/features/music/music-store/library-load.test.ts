@@ -11,7 +11,7 @@ vi.mock('../music-search', async (importOriginal) => {
 
 import { api } from '../../../lib/api'
 import { ensureRomanized } from '../music-search'
-import { loadLibrary, openTrackMenu, prepareRomanization, visibleTracks } from './library-load'
+import { loadLibrary, openTrackMenu, prepareRomanization, setSort, setSortDirection, sortTracks, visibleTracks } from './library-load'
 import type { MusicSet, MusicStoreState } from './types'
 
 const libraryPayload = { tracks: [] as MusicTrack[], tags: [], playlists: [], stats: statsFixture() }
@@ -215,5 +215,55 @@ describe('openTrackMenu playlist identity', () => {
     const track = { id: 't1', title: 'x' } as MusicTrack
     openTrackMenu(menuSetter(holder), () => holder.current, { target: { track, itemId: 'iX', playlistId: 'p9' }, anchor: { x: 0, y: 0 } })
     expect(holder.current.trackMenu?.target).toEqual({ track, itemId: 'iX', playlistId: 'p9' })
+  })
+})
+
+function sortableTrack(id: string, artist: string, album: string, durationMs: number, isPinned = false): MusicTrack {
+  return { id, title: id, artist, album, durationMs, playCount: 0, createdAt: 0, isPinned } as MusicTrack
+}
+
+describe('sortTracks field and direction coverage (UI-9)', () => {
+  const tracks = [
+    sortableTrack('a', 'Zoe', 'Spark', 300),
+    sortableTrack('b', 'Ann', 'Fog', 100),
+    sortableTrack('c', 'Bob', 'Mist', 200, true),
+  ]
+  const ids = (sort: 'album' | 'duration', direction: 'asc' | 'desc') => sortTracks(tracks, sort, direction).map((track) => track.id)
+
+  it('orders by album with pinned tracks kept first', () => {
+    expect(ids('album', 'asc')).toEqual(['c', 'b', 'a'])
+  })
+
+  it('orders by duration ascending and descending', () => {
+    expect(ids('duration', 'asc')).toEqual(['c', 'b', 'a'])
+    expect(ids('duration', 'desc')).toEqual(['c', 'a', 'b'])
+  })
+
+  it('reverses the comparator for descending while pins stay hoisted', () => {
+    expect(ids('album', 'desc')).toEqual(['c', 'a', 'b'])
+  })
+})
+
+describe('setSort and setSortDirection', () => {
+  it('choosing a new sort field resets the direction to ascending', () => {
+    const store = makeStore()
+    setSort(store.set, 'title')
+    setSortDirection(store.set, 'desc')
+    expect(store.get().sortDirection).toBe('desc')
+    setSort(store.set, 'album')
+    expect(store.get().sort).toBe('album')
+    expect(store.get().sortDirection).toBe('asc')
+  })
+
+  it('visibleTracks honours the stored direction', () => {
+    const store = makeStore()
+    const state = store.get()
+    Object.assign(state, {})
+    store.set({
+      tracks: [sortableTrack('a', 'Zoe', 'Spark', 300), sortableTrack('b', 'Ann', 'Fog', 100)],
+      tags: [], playlists: [], query: '', sourceFilter: 'all', scope: { kind: 'all' },
+      sort: 'duration', sortDirection: 'desc', recentIds: [], romanized: {}, lastLoadedAt: 0,
+    } as Partial<MusicStoreState>)
+    expect(visibleTracks(store.get()).map((track) => track.id)).toEqual(['a', 'b'])
   })
 })

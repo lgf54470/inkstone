@@ -1,5 +1,5 @@
 import type { MusicPlayMode } from '@shared/types'
-import type { MusicSort, MusicSourceFilter, MusicViewMode } from './types'
+import type { MusicSort, MusicSortDirection, MusicSourceFilter, MusicViewMode } from './types'
 
 export const MUSIC_PREFS_KEY = 'inkstone.music-prefs.v2'
 export const LEGACY_PREFS_KEY = 'inkstone.music-prefs.v1'
@@ -11,6 +11,7 @@ export interface MusicPreferences {
   muted: boolean
   mode: MusicPlayMode
   sort: MusicSort
+  sortDirection: MusicSortDirection
   viewMode: MusicViewMode
   sourceFilter: MusicSourceFilter
   floatingVisible: boolean
@@ -23,7 +24,8 @@ export interface MusicPreferences {
 }
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
-const SORTS: MusicSort[] = ['recent', 'title', 'artist', 'plays']
+const SORTS: MusicSort[] = ['recent', 'title', 'artist', 'album', 'duration', 'plays']
+const SORT_DIRECTIONS: MusicSortDirection[] = ['asc', 'desc']
 const VIEW_MODES: MusicViewMode[] = ['list', 'grid']
 const SOURCE_FILTERS: MusicSourceFilter[] = ['all', 'r2', 'webdav']
 export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
@@ -33,6 +35,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   muted: false,
   mode: 'order',
   sort: 'recent',
+  sortDirection: 'asc',
   viewMode: 'list',
   sourceFilter: 'all',
   floatingVisible: true,
@@ -63,6 +66,9 @@ export function loadPreferences(): MusicPreferences {
     muted: parsed.muted === true,
     mode: PLAY_MODES.includes(parsed.mode as MusicPlayMode) ? (parsed.mode as MusicPlayMode) : DEFAULT_PREFERENCES.mode,
     sort: SORTS.includes(parsed.sort as MusicSort) ? (parsed.sort as MusicSort) : DEFAULT_PREFERENCES.sort,
+    sortDirection: SORT_DIRECTIONS.includes(parsed.sortDirection as MusicSortDirection)
+      ? (parsed.sortDirection as MusicSortDirection)
+      : DEFAULT_PREFERENCES.sortDirection,
     viewMode: VIEW_MODES.includes(parsed.viewMode as MusicViewMode) ? (parsed.viewMode as MusicViewMode) : DEFAULT_PREFERENCES.viewMode,
     sourceFilter: SOURCE_FILTERS.includes(parsed.sourceFilter as MusicSourceFilter)
       ? (parsed.sourceFilter as MusicSourceFilter)

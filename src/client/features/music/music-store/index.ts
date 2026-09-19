@@ -24,6 +24,7 @@ function initialMusicState(): Partial<MusicStoreState> {
     scope: { kind: 'all' },
     query: '',
     sort: prefs.sort,
+    sortDirection: prefs.sortDirection,
     viewMode: prefs.viewMode,
     sourceFilter: prefs.sourceFilter,
     selectedIds: [],

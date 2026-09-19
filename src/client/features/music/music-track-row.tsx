@@ -128,6 +128,7 @@ export const MusicTrackRow = memo(function MusicTrackRow({
       />
 
       <TrackTitle track={track} isCurrent={isCurrent} onPlay={handlers.onPlay} />
+      <RowArtist track={track} />
       <RowMeta track={track} />
       <RowActions
         isFavorite={track.isFavorite}
@@ -148,7 +149,7 @@ function RowSelectCell({
   onSelect: TrackRowHandlers['onSelect']
 }) {
   return (
-    <span role='gridcell' className='flex w-6 shrink-0 items-center justify-center'>
+    <span role='cell' className='flex w-6 shrink-0 items-center justify-center'>
       <TrackCheckbox
         checked={isSelected}
         label={t('music.select_track') + ': ' + track.title}
@@ -161,20 +162,30 @@ function RowSelectCell({
 function RowMeta({ track }: { track: MusicTrack }) {
   return (
     <>
-      <span className='hidden w-40 shrink-0 truncate text-[length:var(--text-11)] text-[var(--text-quaternary)] xl:block'>
+      <span role='cell' className='hidden w-40 shrink-0 truncate text-[length:var(--text-11)] text-[var(--text-quaternary)] xl:block'>
         {track.album || '—'}
       </span>
-      <MusicSourceBadge source={track.source} className='hidden shrink-0 sm:inline-flex' />
-      <span className='tabular w-11 shrink-0 text-right text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+      <span role='cell' className='hidden w-16 shrink-0 sm:block'>
+        <MusicSourceBadge source={track.source} className='inline-flex' />
+      </span>
+      <span role='cell' className='tabular w-11 shrink-0 text-right text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {formatDuration(track.durationMs)}
       </span>
     </>
   )
 }
 
+function RowArtist({ track }: { track: MusicTrack }) {
+  return (
+    <span role='cell' className='hidden w-32 shrink-0 truncate text-[length:var(--text-11)] text-[var(--text-quaternary)] xl:block'>
+      {track.artist || t('music.unknown_artist')}
+    </span>
+  )
+}
+
 function RowIndex({ index, isPlaying }: { index: number; isPlaying: boolean }) {
   return (
-    <span className='tabular w-5 shrink-0 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+    <span role='cell' className='tabular w-5 shrink-0 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
       {isPlaying ? <Pause size={11} className='mx-auto text-[var(--accent)]' /> : index + 1}
     </span>
   )
@@ -196,17 +207,19 @@ function RowArtwork({
   onPlay: () => void
 }) {
   return (
-    <button
-      type='button'
-      onClick={onPlay}
-      aria-label={label + ': ' + track.title}
-      className='group/art relative size-9 shrink-0 rounded-[var(--r-sm)]'
-    >
-      <MusicArtwork url={track.coverUrl} alt={track.title} className='size-9 rounded-[var(--r-sm)]' />
-      <span className='absolute inset-0 flex items-center justify-center rounded-[var(--r-sm)] bg-[var(--scrim)] text-[var(--text-inverse)] opacity-0 transition-opacity group-hover/art:opacity-100 group-focus-visible/art:opacity-100'>
-        {isStreamLoading && isCurrent ? <Spinner size={12} /> : isCurrent && isPlaying ? <Pause size={13} /> : <Play size={13} />}
-      </span>
-    </button>
+    <span role='cell' className='size-9 shrink-0'>
+      <button
+        type='button'
+        onClick={onPlay}
+        aria-label={label + ': ' + track.title}
+        className='group/art relative size-9 rounded-[var(--r-sm)]'
+      >
+        <MusicArtwork url={track.coverUrl} alt={track.title} className='size-9 rounded-[var(--r-sm)]' />
+        <span className='absolute inset-0 flex items-center justify-center rounded-[var(--r-sm)] bg-[var(--scrim)] text-[var(--text-inverse)] opacity-0 transition-opacity group-hover/art:opacity-100 group-focus-visible/art:opacity-100'>
+          {isStreamLoading && isCurrent ? <Spinner size={12} /> : isCurrent && isPlaying ? <Pause size={13} /> : <Play size={13} />}
+        </span>
+      </button>
+    </span>
   )
 }
 
@@ -223,22 +236,26 @@ function RowActions({
   const revealActions = 'opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto'
   return (
     <>
-      <IconButton
-        label={isFavorite ? t('music.unfavorite') : t('music.favorite')}
-        size='sm'
-        onClick={onToggleFavorite}
-        className={cn(revealActions, isFavorite && 'md:opacity-100 md:pointer-events-auto text-[var(--accent)]')}
-      >
-        <Heart size={13} className={isFavorite ? 'fill-current' : undefined} />
-      </IconButton>
-      <IconButton
-        label={t('music.open_menu')}
-        size='sm'
-        onClick={onOpenMenu}
-        className={revealActions}
-      >
-        <MoreHorizontal size={14} />
-      </IconButton>
+      <span role='cell' className='flex w-6 shrink-0 items-center justify-center'>
+        <IconButton
+          label={isFavorite ? t('music.unfavorite') : t('music.favorite')}
+          size='sm'
+          onClick={onToggleFavorite}
+          className={cn(revealActions, isFavorite && 'md:opacity-100 md:pointer-events-auto text-[var(--accent)]')}
+        >
+          <Heart size={13} className={isFavorite ? 'fill-current' : undefined} />
+        </IconButton>
+      </span>
+      <span role='cell' className='flex w-6 shrink-0 items-center justify-center'>
+        <IconButton
+          label={t('music.open_menu')}
+          size='sm'
+          onClick={onOpenMenu}
+          className={revealActions}
+        >
+          <MoreHorizontal size={14} />
+        </IconButton>
+      </span>
     </>
   )
 }
@@ -253,7 +270,7 @@ function TrackTitle({
   onPlay: (track: MusicTrack) => void
 }) {
   return (
-    <div className='flex min-w-0 flex-1 flex-col'>
+    <div role='cell' className='flex min-w-0 flex-1 flex-col'>
       <button type='button' onClick={() => onPlay(track)} className='min-w-0 text-left'>
         <span className={cn('block truncate text-[length:var(--text-12\\.5)] font-medium', isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]')}>
           {track.title}
@@ -261,7 +278,7 @@ function TrackTitle({
       </button>
       <div className='flex min-w-0 items-center gap-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {track.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--warning)]' aria-hidden='true' />}
-        <button type='button' onClick={() => onPlay(track)} className='min-w-0 shrink truncate text-left hover:text-[var(--text-secondary)]'>
+        <button type='button' onClick={() => onPlay(track)} className='min-w-0 shrink truncate text-left hover:text-[var(--text-secondary)] xl:hidden'>
           {track.artist || t('music.unknown_artist')}
         </button>
         <MusicTrackTags track={track} max={2} />

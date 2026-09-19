@@ -1316,6 +1316,7 @@ const allowed = new Map([
     '// one in-flight request is shared and a just-loaded library is trusted briefly.',
     '// Mirrors the worker\'s summarize; mutations that merge single records keep stats honest',
     '// without paying for a full reload.',
+    '// Picking a new field starts at its natural direction; the header toggles from there.',
     '// One menu instance for the whole hub; the rows only ever post requests to it.',
     '// Rows only post the track; inside a playlist the item identity is restored here,',
     '// which is what lets the menu offer unlink and move actions on that row.',
@@ -1323,6 +1324,8 @@ const allowed = new Map([
     '// One dictionary load and one romanization pass at a time; debounced keystrokes',
     '// and lazy fetches can otherwise pile up identical whole-library work.',
     '// A playlist row carries the order the user arranged; sorting or hoisting pins would rewrite it.',
+    '// The comparator describes the natural ascending order of the field; the',
+    '// stored direction only flips it, and pins stay hoisted in both directions.',
   ]],
   ['src/client/features/music/music-store/library-tracks.ts', [
     '// The library ships without lyric text, so the details views ask for it by id once.',
@@ -1413,6 +1416,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-track-table.tsx', [
     '// The header box shows a dash while only part of the visible list is selected.',
+    '// Header sorting mirrors the toolbar: in playlist scope the manual item order',
+    '// wins (visibleTracks skips sorting), so offering a sort there would be a dead control.',
   ]],
   ['src/client/features/music/music-transfer-dialog.tsx', [
     '// dragenter and dragleave also fire when the pointer crosses a child, so the highlight',

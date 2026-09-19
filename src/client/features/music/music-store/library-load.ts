@@ -3,7 +3,7 @@ import { api } from '../../../lib/api'
 import { buildSearchIndex, ensureRomanized, needsRomanization, rankTracks } from '../music-search'
 import { collectTagIds } from '../music-utils'
 import { pushHistory } from './state'
-import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest, TrackMenuTarget } from './types'
+import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSortDirection, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest, TrackMenuTarget } from './types'
 
 // Opening the hub, retrying, and several mutations all want the library at once;
 // one in-flight request is shared and a just-loaded library is trusted briefly.
@@ -68,8 +68,13 @@ export function setScope(set: MusicSet, scope: MusicScope): void {
   set({ scope, selectedIds: [] })
 }
 
+// Picking a new field starts at its natural direction; the header toggles from there.
 export function setSort(set: MusicSet, sort: MusicSort): void {
-  set({ sort })
+  set({ sort, sortDirection: 'asc' })
+}
+
+export function setSortDirection(set: MusicSet, sortDirection: MusicSortDirection): void {
+  set({ sortDirection })
 }
 
 export function setViewMode(set: MusicSet, viewMode: MusicViewMode): void {
@@ -163,7 +168,7 @@ export function visibleTracks(state: MusicStoreState): MusicTrack[] {
   const filtered = query ? filterByQuery(scoped, state, query) : scoped
   // A playlist row carries the order the user arranged; sorting or hoisting pins would rewrite it.
   if (state.scope.kind === 'playlist') return filtered
-  return sortTracks(filtered, state.sort)
+  return sortTracks(filtered, state.sort, state.sortDirection)
 }
 
 function applySourceFilter(tracks: MusicTrack[], filter: MusicSourceFilter): MusicTrack[] {
@@ -207,11 +212,19 @@ function filterByQuery(tracks: MusicTrack[], state: MusicStoreState, query: stri
   return tracks.filter((track) => order.has(track.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!)
 }
 
-export function sortTracks(tracks: MusicTrack[], sort: MusicSort): MusicTrack[] {
-  const sorted = [...tracks]
-  if (sort === 'title') sorted.sort((a, b) => a.title.localeCompare(b.title))
-  else if (sort === 'artist') sorted.sort((a, b) => a.artist.localeCompare(b.artist) || a.title.localeCompare(b.title))
-  else if (sort === 'plays') sorted.sort((a, b) => b.playCount - a.playCount)
-  else sorted.sort((a, b) => b.createdAt - a.createdAt)
-  return sorted.sort((a, b) => Number(b.isPinned) - Number(a.isPinned))
+// The comparator describes the natural ascending order of the field; the
+// stored direction only flips it, and pins stay hoisted in both directions.
+function compareByField(a: MusicTrack, b: MusicTrack, sort: MusicSort): number {
+  if (sort === 'title') return a.title.localeCompare(b.title)
+  if (sort === 'artist') return a.artist.localeCompare(b.artist) || a.title.localeCompare(b.title)
+  if (sort === 'album') return a.album.localeCompare(b.album) || a.title.localeCompare(b.title)
+  if (sort === 'duration') return a.durationMs - b.durationMs
+  if (sort === 'plays') return b.playCount - a.playCount
+  return b.createdAt - a.createdAt
+}
+
+export function sortTracks(tracks: MusicTrack[], sort: MusicSort, direction: MusicSortDirection = 'asc'): MusicTrack[] {
+  const flip = direction === 'desc' ? -1 : 1
+  return [...tracks].sort((a, b) =>
+    Number(b.isPinned) - Number(a.isPinned) || flip * compareByField(a, b, sort))
 }

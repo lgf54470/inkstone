@@ -385,6 +385,7 @@ function writePreferences(get: MusicGet): void {
     muted: state.muted,
     mode: state.mode,
     sort: state.sort,
+    sortDirection: state.sortDirection,
     viewMode: state.viewMode,
     sourceFilter: state.sourceFilter,
     floatingVisible: state.floatingVisible,

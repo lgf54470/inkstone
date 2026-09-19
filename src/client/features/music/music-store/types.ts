@@ -3,7 +3,8 @@ import type {
   MusicPlayMode, MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry,
 } from '@shared/types'
 
-export type MusicSort = 'recent' | 'title' | 'artist' | 'plays'
+export type MusicSort = 'recent' | 'title' | 'artist' | 'album' | 'duration' | 'plays'
+export type MusicSortDirection = 'asc' | 'desc'
 export type MusicViewMode = 'list' | 'grid'
 export type MusicSourceFilter = 'all' | 'r2' | 'webdav'
 export type MusicBatch = 'favorite' | 'unfavorite' | 'pin' | 'unpin' | 'delete'
@@ -87,6 +88,7 @@ export interface MusicStoreState {
   scope: MusicScope
   query: string
   sort: MusicSort
+  sortDirection: MusicSortDirection
   viewMode: MusicViewMode
   sourceFilter: MusicSourceFilter
   selectedIds: string[]
@@ -123,6 +125,7 @@ export interface MusicStoreState {
   commitQuery: (query: string) => void
   clearSearchHistory: () => void
   setSort: (sort: MusicSort) => void
+  setSortDirection: (direction: MusicSortDirection) => void
   setViewMode: (mode: MusicViewMode) => void
   openTrackMenu: (menu: TrackMenuRequest) => void
   closeTrackMenu: () => void
