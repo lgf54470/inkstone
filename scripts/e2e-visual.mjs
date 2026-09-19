@@ -97,6 +97,18 @@ const LABELS = {
   insert: ['插入', 'Insert'],
   mindMap: ['思维导图', 'Mind map'],
   mindMapOutline: ['大纲思维导图', 'Outline Mind Map'],
+  musicHub: ['音乐库', 'Music library'],
+  musicOpenHub: ['打开音乐库', 'Open music library'],
+  musicExpandPlayer: ['展开播放器', 'Expand the player'],
+  musicAddToQueue: ['添加到队列', 'Add to queue'],
+  musicGridView: ['网格视图', 'Grid view'],
+  musicListView: ['列表视图', 'List view'],
+  musicFavorite: ['收藏', 'Add to favorites'],
+  musicMoreActions: ['更多操作', 'More actions'],
+  musicQueue: ['播放队列', 'Play queue'],
+  musicRemoveFromQueue: ['从队列移除', 'Remove from the queue'],
+  musicMiniPlayer: ['浮动播放器', 'Floating player'],
+  musicMobileNav: ['手机端导航', 'Mobile navigation'],
 }
 
 async function activeProse(page) {
@@ -2098,6 +2110,237 @@ async function assertContextMenuNesting(page) {
   await sleep(300)
 }
 
+// --- music surfaces -------------------------------------------------------------
+//
+// The library hub, the floating player and their queue ride on rules the rest of the gate never
+// touches: controls that reveal on hover from md up but must stay tappable below it (the M-18
+// rule), entrance animations that a reduced-motion preference has to silence, and a floating
+// card that may not sit on top of the surfaces it shares the window edge with. The tracks are
+// seeded through the real upload endpoint because the scenario reads what the library draws;
+// nothing here ever starts audio, so the probe bytes are never decoded.
+
+const MUSIC_TRACK_TITLES = ['E2E Probe Audio One', 'E2E Probe Audio Two']
+
+const ariaAttr = (labels) => labels.map((label) => `@aria-label="${label}"`).join(' or ')
+const cssByLabels = (base, labels) => labels.map((label) => `${base}[aria-label="${label}"]`).join(', ')
+const overlaps = (a, b) => a && b
+  && a.x < b.x + b.width && b.x < a.x + a.width
+  && a.y < b.y + b.height && b.y < a.y + a.height
+
+const HUB_DIALOG_XPATH = `xpath/.//div[@role="dialog" and ${ariaAttr(LABELS.musicHub)}]`
+
+async function seedMusicLibrary(page) {
+  return page.evaluate(async (titles) => {
+    const statuses = []
+    for (const title of titles) {
+      const body = new FormData()
+      body.set('file', new File(
+        [new TextEncoder().encode('e2e-visual probe, not real audio')],
+        `${title}.mp3`,
+        { type: 'audio/mpeg' },
+      ))
+      body.set('title', title)
+      body.set('artist', 'E2E Probe Artist')
+      body.set('album', 'E2E Probe Album')
+      body.set('durationMs', '61000')
+      // requireClientHeader answers 403 to any non-GET API call without the client marker the
+      // app transport always sends; seeding goes through the same gate as the app would.
+      const response = await fetch('/api/music/tracks', {
+        method: 'POST',
+        body,
+        headers: { 'X-Inkstone-Client': '1' },
+      })
+      statuses.push(response.status)
+    }
+    return statuses
+  }, MUSIC_TRACK_TITLES)
+}
+
+async function openMusicHub(page) {
+  // A playback session restored from the server (music-session-sync) leaves a current track, and
+  // the footer then carries the transport row instead of the hub icon — its expand button opens
+  // the very same hub, so both footer states are a person's path to it.
+  const opener = `xpath/.//footer//button[${ariaAttr(LABELS.musicOpenHub)} or ${ariaAttr(LABELS.musicExpandPlayer)}]`
+  try {
+    await page.waitForSelector(opener, { timeout: 15_000 })
+  } catch {
+    return false
+  }
+  await (await page.$$(opener)).at(-1).click()
+  try {
+    await page.waitForSelector(HUB_DIALOG_XPATH, { timeout: 15_000 })
+  } catch {
+    return false
+  }
+  await sleep(400)
+  return true
+}
+
+async function hubMotionDurations(page) {
+  return page.evaluate((hubLabels) => {
+    const dialog = [...document.querySelectorAll('[role="dialog"]')]
+      .find((candidate) => hubLabels.includes(candidate.getAttribute('aria-label') ?? ''))
+    if (!dialog) return null
+    const scrim = (dialog.parentElement ?? dialog).querySelector('.anim-fade')
+    const milliseconds = (element) =>
+      element ? Number.parseFloat(getComputedStyle(element).animationDuration) * 1000 : null
+    return { scrim: milliseconds(scrim), panel: milliseconds(dialog) }
+  }, LABELS.musicHub)
+}
+
+async function rectOf(page, selector) {
+  return page.evaluate((sel) => {
+    const box = document.querySelector(sel)?.getBoundingClientRect()
+    return box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null
+  }, selector)
+}
+
+// The reveal rules live on the control itself for rows and on a wrapper for cards, and a hidden
+// ancestor's opacity never shows up on the child's own computed style — so the readable element
+// is picked per surface rather than assumed to be the button.
+async function controlState(page, selector, { fromWrapper = false } = {}) {
+  return page.evaluate(({ sel, wrapper }) => {
+    const button = document.querySelector(sel)
+    if (!button) return null
+    const element = wrapper ? button.parentElement : button
+    if (!element) return null
+    const style = getComputedStyle(element)
+    const box = element.getBoundingClientRect()
+    return {
+      opacity: Number(style.opacity),
+      pointerEvents: style.pointerEvents,
+      width: box.width,
+      height: box.height,
+    }
+  }, { sel: selector, wrapper: fromWrapper })
+}
+
+// At md and up the row actions reveal on pointer-events-gated hover, but the headless shell
+// reports `hover: none`, so the hover branch of the rule can never fire inside this gate. The
+// focus-within sibling of that rule is what a keyboard user walks, and it is what gets pressed
+// here: focus the control, activate it with Enter, no pointer involved.
+async function focusRevealedActivate(page, selector) {
+  const handle = (await page.$$(selector)).at(0)
+  if (!handle) return false
+  await page.evaluate((element) => element.focus(), handle)
+  await sleep(200)
+  await handle.press('Enter')
+  return true
+}
+
+async function assertMusicSurface(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(500)
+
+  const statuses = await seedMusicLibrary(page)
+  const seeded = statuses.every((status) => status === 201)
+  check('music: the probe library seeded two tracks', seeded, JSON.stringify(statuses))
+  if (!seeded) return
+  if (!(await openMusicHub(page))) {
+    check('music: the status bar opens the library hub', false)
+    return
+  }
+  check('music: the status bar opens the library hub', true)
+
+  const rowsReady = await page
+    .waitForFunction(() => [...document.querySelectorAll('[role="row"]')]
+      .some((row) => row.textContent.includes('E2E Probe Audio One')), { timeout: 15_000 })
+    .then(() => true, () => false)
+  check('music: the hub lists the seeded tracks', rowsReady)
+  if (!rowsReady) return
+
+  const motion = await hubMotionDurations(page)
+  check('music: the hub opens with an entrance animation',
+    Boolean(motion) && motion.scrim > 1 && motion.panel > 1, JSON.stringify(motion))
+
+  const playerBox = await rectOf(page, cssByLabels('aside', LABELS.musicMiniPlayer))
+  const statusBarBox = await rectOf(page, cssByLabels('footer button', [...LABELS.musicOpenHub, ...LABELS.musicExpandPlayer]))
+  check('music: the floating player does not cover the music status bar',
+    Boolean(playerBox) && Boolean(statusBarBox) && !overlaps(playerBox, statusBarBox),
+    `player=${JSON.stringify(playerBox)} status=${JSON.stringify(statusBarBox)}`)
+
+  // The reduced-motion check reopens the hub from the status bar footer, so it has to run before
+  // anything is queued: once a track is current, the footer swaps the hub opener for the transport
+  // row, and the 'Added to the queue' toast covers the floating player's own opener for seconds.
+  await page.keyboard.press('Escape')
+  await sleep(300)
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  await openMusicHub(page)
+  const reduced = await hubMotionDurations(page)
+  check('music: reduced motion silences the hub entrance',
+    Boolean(reduced) && reduced.scrim <= 1 && reduced.panel <= 1, JSON.stringify(reduced))
+  await page.emulateMediaFeatures([])
+  await page.keyboard.press('Escape')
+  await sleep(300)
+  await openMusicHub(page)
+
+  const menuQueued = await focusRevealedActivate(page, cssByLabels('div[role="row"] button', LABELS.musicMoreActions))
+    && await page.waitForSelector('xpath/.//div[@role="menu"]', { timeout: 15_000 })
+      .then(() => clickButton(page, LABELS.musicAddToQueue).then(() => true, () => false), () => false)
+  check('music: the row menu queues a track without playing it', menuQueued)
+  await sleep(300)
+
+  await clickButton(page, LABELS.musicGridView)
+  await page.waitForSelector(cssByLabels('div.grid-cols-2 button', LABELS.musicFavorite), { timeout: 15_000 })
+
+  await page.setViewport({ width: 700, height: 900 })
+  await sleep(500)
+  const cardActions = await controlState(page, cssByLabels('div.grid-cols-2 button', LABELS.musicFavorite), { fromWrapper: true })
+  check('music: card actions stay visible and clickable below md',
+    Boolean(cardActions) && cardActions.opacity === 1 && cardActions.pointerEvents !== 'none' && cardActions.width > 0,
+    JSON.stringify(cardActions))
+
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(400)
+  await clickButton(page, LABELS.musicListView)
+  await page.setViewport({ width: 700, height: 900 })
+  await sleep(500)
+  const rowFavorite = await controlState(page, cssByLabels('div[role="row"] button', LABELS.musicFavorite))
+  const rowMenu = await controlState(page, cssByLabels('div[role="row"] button', LABELS.musicMoreActions))
+  check('music: row actions stay visible and clickable below md',
+    [rowFavorite, rowMenu].every((control) => control
+      && control.opacity === 1 && control.pointerEvents !== 'none' && control.width > 0),
+    `favorite=${JSON.stringify(rowFavorite)} menu=${JSON.stringify(rowMenu)}`)
+
+  await page.setViewport({ width: 375, height: 667 })
+  await sleep(500)
+  // At 375 the hub's fixed-width side columns squeeze the centre away (the deferred UI-14 layout
+  // decision), so only the reveal rule — never opacity-hidden or click-blocked on touch — is
+  // re-asserted here; a laid-out, clickable control is what the 700px checks above prove.
+  const narrowFavorite = await controlState(page, cssByLabels('div[role="row"] button', LABELS.musicFavorite))
+  check('music: row actions keep the touch reveal rule at 375px',
+    Boolean(narrowFavorite) && narrowFavorite.opacity === 1 && narrowFavorite.pointerEvents !== 'none',
+    JSON.stringify(narrowFavorite))
+
+  await page.keyboard.press('Escape')
+  await sleep(400)
+  const narrowPlayer = await rectOf(page, cssByLabels('aside', LABELS.musicMiniPlayer))
+  const navBar = await rectOf(page, cssByLabels('nav', LABELS.musicMobileNav))
+  check('music: the floating player clears the mobile navigation bar',
+    Boolean(narrowPlayer) && Boolean(navBar) && !overlaps(narrowPlayer, navBar)
+    && narrowPlayer.x >= 0 && narrowPlayer.x + narrowPlayer.width <= 375.5,
+    `player=${JSON.stringify(narrowPlayer)} nav=${JSON.stringify(navBar)}`)
+
+  const queueButton = cssByLabels('aside button', LABELS.musicQueue)
+  await (await page.$$(queueButton)).at(-1).click()
+  const removeSelector = cssByLabels('aside button', LABELS.musicRemoveFromQueue)
+  const queueShown = await page.waitForFunction((sel) => Boolean(document.querySelector(sel)),
+    undefined, removeSelector).then(() => true, () => false)
+  const queueRowText = await page.evaluate((sel) => {
+    const button = document.querySelector(sel)
+    return button?.parentElement?.textContent ?? null
+  }, removeSelector)
+  check('music: the floating player shows the track queued from the row menu',
+    queueShown && Boolean(queueRowText?.includes('E2E Probe Audio')), String(queueRowText))
+  const queueRemove = await controlState(page, removeSelector)
+  check('music: queue actions stay visible and clickable on touch',
+    Boolean(queueRemove) && queueRemove.opacity === 1 && queueRemove.pointerEvents !== 'none',
+    JSON.stringify(queueRemove))
+
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(400)
+}
+
 async function main() {
   console.log(`visual e2e against ${BASE}`)
   const browser = await puppeteer.launch({
@@ -2138,6 +2381,7 @@ async function main() {
     await assertSlidesEditor(page)
     await assertFullscreenToolbars(page)
     await assertContextMenuNesting(page)
+    await assertMusicSurface(page)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.
