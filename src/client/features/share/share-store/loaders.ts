@@ -7,24 +7,46 @@ export let loadEpoch = 0
 
 let inflightShareLoad: { key: string; controller: AbortController; promise: Promise<void> } | null = null
 
+// The hub mounts several surfaces (sidebar, note submenu, edit modal) that all
+// want folders/tags on open; without this guard every hub open doubled both
+// requests and every list reload fetched them again.
+const COLLECTION_TTL_MS = 30_000
+
+type CollectionGuard = { inflight: Promise<void> | null; lastLoadedAt: number }
+
+const foldersGuard: CollectionGuard = { inflight: null, lastLoadedAt: 0 }
+const tagsGuard: CollectionGuard = { inflight: null, lastLoadedAt: 0 }
+
 export const shareLoadersActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'loadFolders' | 'loadTags' | 'loadShares'> => ({
-  loadFolders: () => loadFoldersImpl(set),
-  loadTags: () => loadTagsImpl(set),
+  loadFolders: () => guardCollection(foldersGuard, () => refreshFolders(set, foldersGuard)),
+  loadTags: () => guardCollection(tagsGuard, () => refreshTags(set, tagsGuard)),
   loadShares: () => loadSharesImpl(set, get),
 })
 
-async function loadFoldersImpl(set: SetShareStoreState): Promise<void> {
+function guardCollection(guard: CollectionGuard, refresh: () => Promise<void>): Promise<void> {
+  if (guard.inflight) return guard.inflight
+  if (Date.now() - guard.lastLoadedAt < COLLECTION_TTL_MS) return Promise.resolve()
+  const inflight = refresh().finally(() => {
+    guard.inflight = null
+  })
+  guard.inflight = inflight
+  return inflight
+}
+
+async function refreshFolders(set: SetShareStoreState, guard: CollectionGuard): Promise<void> {
   try {
     const folders = await api.share.folders.list()
+    guard.lastLoadedAt = Date.now()
     set({ folders })
   } catch (error) {
     console.warn('[share-store] failed to load folders', error)
   }
 }
 
-async function loadTagsImpl(set: SetShareStoreState): Promise<void> {
+async function refreshTags(set: SetShareStoreState, guard: CollectionGuard): Promise<void> {
   try {
     const tags = await api.share.tags.list()
+    guard.lastLoadedAt = Date.now()
     set({ tags })
   } catch (error) {
     console.warn('[share-store] failed to load tags', error)
@@ -48,7 +70,6 @@ function shareListParams(state: ShareStoreState): ShareListParams {
 
 type ShareLoadRun = {
   set: SetShareStoreState
-  get: () => ShareStoreState
   params: ShareListParams
   controller: AbortController
   epoch: number
@@ -66,16 +87,14 @@ async function loadSharesImpl(set: SetShareStoreState, get: () => ShareStoreStat
   const epoch = ++loadEpoch
   const controller = new AbortController()
   set({ loading: true })
-  const promise = runShareLoad({ set, get, params, controller, epoch })
+  const promise = runShareLoad({ set, params, controller, epoch })
   inflightShareLoad = { key, controller, promise }
   return promise
 }
 
-async function runShareLoad({ set, get, params, controller, epoch }: ShareLoadRun): Promise<void> {
+async function runShareLoad({ set, params, controller, epoch }: ShareLoadRun): Promise<void> {
   try {
     const res = await api.share.list(params, controller.signal)
-    void get().loadFolders()
-    void get().loadTags()
     if (epoch === loadEpoch) {
       set({
         shares: res.shares,

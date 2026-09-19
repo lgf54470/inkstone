@@ -79,7 +79,7 @@ async function ensureShare(noteId: string, currentShare: ShareInfo | null, setBu
   setBusy(true)
   try {
     const res = await api.share.create(noteId, { isEnabled: true })
-    await useShareStore.getState().loadShares()
+    useShareStore.getState().applyServerShare(res.share)
     return res.share
   } catch {
     toast({ title: t('common.action_failed'), tone: 'danger' })
@@ -144,8 +144,8 @@ async function selectFolderFlow(
     if (currentShare) {
       await useShareStore.getState().batchMoveToFolder([noteId], folderId)
     } else {
-      await api.share.create(noteId, { isEnabled: true, folderId })
-      await useShareStore.getState().loadShares()
+      const res = await api.share.create(noteId, { isEnabled: true, folderId })
+      useShareStore.getState().applyServerShare(res.share)
     }
     const targetFolder = shareFolders.find((f) => f.id === folderId)
     toast({
@@ -180,8 +180,8 @@ async function addTagFlow(
   const nextTags = [...existingTags, tag]
   setBusy(true)
   try {
-    await api.share.create(noteId, { isEnabled: true, tags: nextTags })
-    await useShareStore.getState().loadShares()
+    const res = await api.share.create(noteId, { isEnabled: true, tags: nextTags })
+    useShareStore.getState().applyServerShare(res.share)
     setNewTagInput('')
   } catch {
     toast({ title: t('common.action_failed'), tone: 'danger' })
@@ -201,8 +201,8 @@ async function removeTagFlow(
   const nextTags = existingTags.filter((t) => t !== tagToRemove)
   setBusy(true)
   try {
-    await api.share.create(noteId, { isEnabled: true, tags: nextTags })
-    await useShareStore.getState().loadShares()
+    const res = await api.share.create(noteId, { isEnabled: true, tags: nextTags })
+    useShareStore.getState().applyServerShare(res.share)
   } catch {
     toast({ title: t('common.action_failed'), tone: 'danger' })
   } finally {

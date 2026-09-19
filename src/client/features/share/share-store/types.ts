@@ -58,6 +58,7 @@ export interface ShareStoreState {
   deleteTag: (id: string) => Promise<boolean>
 
   loadShares: () => Promise<void>
+  applyServerShare: (share: ShareInfo) => void
   toggleShare: (noteId: string, enabled: boolean) => Promise<boolean>
   togglePin: (noteId: string) => Promise<boolean>
   toggleStar: (noteId: string) => Promise<boolean>

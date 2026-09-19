@@ -249,7 +249,7 @@ async function saveEditShareFlow({ share, noteId, fields, slug, setIsSaving, toa
   }
   setIsSaving(true)
   try {
-    await api.share.create(noteId, {
+    const res = await api.share.create(noteId, {
       password: fields.shouldUsePassword ? fields.password || undefined : null,
       expiresIn: expiresInForSelection(fields.expiry),
       customSlug: fields.shouldUseCustomSlug && fields.customSlug.trim() ? fields.customSlug.trim() : undefined,
@@ -261,7 +261,7 @@ async function saveEditShareFlow({ share, noteId, fields, slug, setIsSaving, toa
       title: share ? t('share.sharing_settings_updated') : t('share.public_link_created'),
       tone: 'success',
     })
-    void useShareStore.getState().loadShares()
+    useShareStore.getState().applyServerShare(res.share)
     onSaved?.()
     onClose()
   } catch (err) {

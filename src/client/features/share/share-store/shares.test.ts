@@ -118,8 +118,7 @@ describe('inline switch first publish (SH-15)', () => {
   it('asks before enabling a share that has never been public', async () => {
     useShareStore.setState({ shares: [shareRow({ isEnabled: false, views: 0 })] })
     vi.mocked(confirm).mockResolvedValueOnce(true)
-    vi.mocked(api.share.create).mockResolvedValueOnce({} as never)
-    vi.mocked(api.share.list).mockResolvedValueOnce({ shares: [], globalStats: null } as never)
+    vi.mocked(api.share.create).mockResolvedValueOnce({ share: shareRow({ isEnabled: true, views: 0 }) } as never)
 
     const ok = await useShareStore.getState().toggleShare('note-1', true)
 
@@ -144,8 +143,7 @@ describe('inline switch first publish (SH-15)', () => {
 describe('inline switch immediate paths (SH-15)', () => {
   it('re-enables a previously viewed share without confirmation', async () => {
     useShareStore.setState({ shares: [shareRow({ isEnabled: false, views: 5 })] })
-    vi.mocked(api.share.create).mockResolvedValueOnce({} as never)
-    vi.mocked(api.share.list).mockResolvedValueOnce({ shares: [], globalStats: null } as never)
+    vi.mocked(api.share.create).mockResolvedValueOnce({ share: shareRow({ isEnabled: true, views: 5 }) } as never)
 
     const ok = await useShareStore.getState().toggleShare('note-1', true)
 
@@ -156,8 +154,7 @@ describe('inline switch immediate paths (SH-15)', () => {
 
   it('disabling stays immediate', async () => {
     useShareStore.setState({ shares: [shareRow({ isEnabled: true, views: 5 })] })
-    vi.mocked(api.share.create).mockResolvedValueOnce({} as never)
-    vi.mocked(api.share.list).mockResolvedValueOnce({ shares: [], globalStats: null } as never)
+    vi.mocked(api.share.create).mockResolvedValueOnce({ share: shareRow({ isEnabled: false, views: 5 }) } as never)
 
     const ok = await useShareStore.getState().toggleShare('note-1', false)
 

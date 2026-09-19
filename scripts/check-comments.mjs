@@ -1990,6 +1990,9 @@ const allowed = new Map([
     '// in store/visibility-sources.ts, not this module.',
   ]],
   ['src/client/features/share/share-store/loaders.ts', [
+    '// The hub mounts several surfaces (sidebar, note submenu, edit modal) that all',
+    '// want folders/tags on open; without this guard every hub open doubled both',
+    '// requests and every list reload fetched them again.',
     '// The same query is already on the wire: reuse it instead of a parallel duplicate.',
     '// A different query makes the previous result stale: cancel it so it stops',
     '// consuming bandwidth and cannot surface its failure as a toast.',
@@ -2007,6 +2010,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-store/shares.ts', [
     '// Zero views on a paused row is the only client-side signal that this note has never been public.',
+    '/* The row is outside the current filter (e.g. just enabled under the\n       paused filter); only a reload knows whether and where it now belongs. */',
   ]],
   ['src/client/features/share/share-visit-logs-menu.test.ts', [
     '// Opens the clean menu with a real click and picks the wipe-everything entry.',

@@ -33,7 +33,7 @@
 | 18 | SH-12 | `DELETE /visits?type=all` 加 requireRecentAuth | P3 | ✅ | bf2c2f35 |
 | 19 | SH-13 | slug 一致性：抢注 409、撤销清 share_asset_sessions | P3 | ✅ | 7a6cf67c |
 | 20 | SH-18 | 搜索防抖 + AbortSignal + 在途去重 | P1 | ✅ | 31a63d93 |
-| 21 | SH-21 | hub 打开重复拉 folders/tags；写操作全量重拉 → 定向 patch | P2 | ⬜ | |
+| 21 | SH-21 | hub 打开重复拉 folders/tags；写操作全量重拉 → 定向 patch | P2 | ✅ | 待回填 |
 | 22 | SH-23 | store 派生 `Map<noteId, ShareRow>`，行订阅改原始值 | P2 | ⬜ | |
 | 23 | SH-22 | 表格行 memo + 菜单 items 惰性构建 + folders Map | P2 | ⬜ | |
 | 24 | SH-19 | App 启动瘦身：`/api/share/summary` 轻量端点 | P1 | ⬜ | |
@@ -109,3 +109,14 @@
 - 验证：目标 20/20 绿；`tsc=0`；十门禁全 0（含 size 拆分两个 describe 回调后）。全量串行回归见下方提交记录。
 - 补：`runShareLoad` 参数收敛为单对象（AGENTS「参数超过 3 个改对象传参」）；释放在途槽位改按 `controller` 身份而非 key 比对——被中止的同参旧 run 不得释放继任 run 的槽位，新增第 6 例「an aborted run does not free the dedup slot of its replacement」锁住（变异验证：改回 key 比对即转红）。
 - 事故记录：验证变异时用 `git checkout --` 还原，误将未提交的 loaders.ts 整体退回 HEAD，第一次全量回归（1710/1711）唯一失败即此竞态产物；重写后以 `/tmp` 备份做变异还原，并跑第二次干净回归。
+
+## 21 — SH-21 folders/tags 加载守卫 + 写成功定向 patch（2026-09-19）
+
+- 现象：开一次 hub 固定 6 请求（folders/tags 各 2 份：runShareLoad 隐式 + sidebar effect；edit-modal/submenu 打开再各 1 份）；pin/toggle 等行级写成功后又 `loadShares()` 全量重拉（叠加隐式 folders/tags = 台账「1 PUT + 7 往返」）。
+- 修复：
+  - `share-store/loaders.ts`：loadFolders/loadTags 加 `guardCollection`（在途去重 + 30s TTL，失败不记 lastLoadedAt 故下次开 hub 重试）；删掉 runShareLoad 成功后的两行隐式 fetch（四个 UI 表面各自 mount 时已显式加载，sidebar 启动预取也不再捎带 2 请求，为 24 号 SH-19 减负）。
+  - `share-store/shares.ts`：新增 `applyServerShare(share)`（types 同步）——命中当前列表则整行换成服务端响应（含新建 slug），未命中（行被筛选器挡住）回退一次 loadShares；toggleShare 成功走 applyServerShare；togglePin/toggleStar/batchToggleGroup/batchMoveToFolder 的乐观 patch 已是服务器真相，删成功路径重拉，失败路径保留 loadShares 重同步；batchToggle/batchFolderToggle/batchTagToggle 影响不可见行与统计，刻意保留一次重拉。
+  - 特性层 create 响应体即完整 ShareInfo 的流程改走 patch：`use-share-edit-modal.ts` 保存、`use-share-note-submenu.ts` 的 ensureShare/selectFolder(新建分支)/addTag/removeTag；两处 revoke 后行形状未知仍 loadShares。
+  - 测试：新增 `guards-writes.test.ts` 9 例（TTL 去重与到期重取、loadShares 不再拉集合、toggleShare 成功不重拉且换行、失败重同步 ×3、乐观组写不重拉、bulk batch 保留重拉、applyServerShare 回退）；SH-15 三个用例的 create 桩从 `{}` 改为完整 `{share}`（行为契约变化，桩随迁）。
+  - 变异验证：删 TTL 早退或 applyServerShare 回退各自转红（/tmp 备份还原，不用 git checkout）。
+- 遗留：hub 开合跨 TTL 仍会重拉集合，属预期刷新。
