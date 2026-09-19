@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { Flag, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanDotColor, getKanbanTagStyle } from '../colors'
@@ -184,20 +185,42 @@ export function DetailPropertyField({
 }
 
 export function DetailDescription({
+  itemId,
   content,
   onChange,
 }: {
+  itemId: string
   content?: string
   onChange: (text: string) => void
 }) {
+  const [draft, setDraft] = useState(content ?? '')
+  const lastTarget = useRef(itemId)
+  const lastSent = useRef(content ?? '')
+  if (lastTarget.current !== itemId) {
+    lastTarget.current = itemId
+    lastSent.current = content ?? ''
+    setDraft(content ?? '')
+  }
+  const commitDraft = () => {
+    if (draft === lastSent.current) return
+    lastSent.current = draft
+    onChange(draft)
+  }
+
   return (
     <div className='flex flex-col gap-2'>
       <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
         {t('preview.kanban_card_description')}
       </h4>
       <textarea
-        value={content ?? ''}
-        onChange={(e) => onChange(e.target.value)}
+        value={draft}
+        data-owns-escape='true'
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commitDraft}
+        // Enter commits nothing here: the description is the one multi-line field, so the key must stay a newline.
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setDraft(lastSent.current)
+        }}
         placeholder={t('preview.kanban_card_description_placeholder')}
         rows={4}
         className='w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-2.5 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none resize-y focus:border-[var(--accent)]'

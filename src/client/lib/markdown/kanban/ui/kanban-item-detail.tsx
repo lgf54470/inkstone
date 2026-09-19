@@ -243,6 +243,7 @@ function DetailModalContent({
       />
 
       <DetailDescription
+        itemId={item.id}
         content={item.content || item.description}
         onChange={(desc) => onUpdate({ ...item, content: desc, description: desc })}
       />

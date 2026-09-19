@@ -2848,6 +2848,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-item-detail-fields.tsx', [
     '/** The listbox the status trigger opens; `id` is the target of its `aria-controls`. */',
+    '// Enter commits nothing here: the description is the one multi-line field, so the key must stay a newline.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-label-language.test.ts', [
     '/**\n * Three kanban controls named themselves in a language the reader may not speak: a tag chip\'s remove\n * button borrowed the *mindmap* shortcut string, a subtask\'s completion toggle was the literal\n * `\'Mark complete\'`, and the progress bar\'s catch-all segment was the literal `\'Other\'`. Both label\n * probes that already existed pass on all three — the name is present, and nothing was concatenated —\n * so each case mounts the real surface once per shipped language and requires the phrase to be the\n * kanban resource\'s own entry for that action, with the thing it acts on named inside the message.\n */',

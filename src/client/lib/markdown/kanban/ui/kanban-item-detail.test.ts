@@ -1,6 +1,6 @@
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../../lib/i18n'
 import { installTestGlobals } from '../../../test-render'
 import { KanbanItemDetail } from './kanban-item-detail'
@@ -52,6 +52,8 @@ function typeInto(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
+let mounted: ReturnType<typeof renderDetail> | null = null
+
 function renderDetail(nextItem: KanbanItem | null) {
   installTestGlobals()
   const container = document.createElement('div')
@@ -59,20 +61,44 @@ function renderDetail(nextItem: KanbanItem | null) {
   const root = createRoot(container)
   const p = propsFor(nextItem)
   act(() => root.render(createElement(KanbanItemDetail, p)))
-  return {
+  let disposed = false
+  const view = {
     props: p,
     rerender(next: KanbanItem | null) {
       act(() => root.render(createElement(KanbanItemDetail, propsFor(next))))
     },
     dispose() {
+      if (disposed) return
+      disposed = true
       act(() => root.unmount())
       container.remove()
     },
   }
+  mounted = view
+  return view
 }
+
+afterEach(() => {
+  mounted?.dispose()
+  mounted = null
+})
 
 function pressKey(el: HTMLElement, key: string) {
   el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
+}
+
+function descriptionBox(): HTMLTextAreaElement {
+  const el = document.querySelector<HTMLTextAreaElement>(
+    `textarea[placeholder="${t('preview.kanban_card_description_placeholder')}"]`,
+  )
+  if (!el) throw new Error('description textarea not found')
+  return el
+}
+
+function typeIntoBox(box: HTMLTextAreaElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+  setter.call(box, value)
+  box.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
 describe('KanbanItemDetail title draft commit', () => {
@@ -108,6 +134,66 @@ describe('KanbanItemDetail title draft commit', () => {
     act(() => { typeInto(titleInput(), 'Dirty draft') })
     view.rerender({ ...item, id: 'item-2', title: 'External title' })
     expect(titleInput().value).toBe('External title')
+    view.dispose()
+  })
+})
+
+describe('KanbanItemDetail description draft commit', () => {
+  it('keeps typing local and commits once on blur', () => {
+    const view = renderDetail(item)
+    const box = descriptionBox()
+    act(() => {
+      typeIntoBox(box, 'Line one')
+      typeIntoBox(box, 'Line one\nLine two')
+    })
+    expect(view.props.onUpdate).not.toHaveBeenCalled()
+    act(() => { box.dispatchEvent(new FocusEvent('focusout', { bubbles: true })) })
+    expect(view.props.onUpdate).toHaveBeenCalledTimes(1)
+    expect(view.props.onUpdate.mock.calls[0][0]).toMatchObject({
+      content: 'Line one\nLine two',
+      description: 'Line one\nLine two',
+    })
+    view.dispose()
+  })
+
+  it('does not commit a blur that changed nothing', () => {
+    const view = renderDetail({ ...item, content: 'Unchanged' })
+    const box = descriptionBox()
+    act(() => { box.dispatchEvent(new FocusEvent('focusout', { bubbles: true })) })
+    expect(view.props.onUpdate).not.toHaveBeenCalled()
+    view.dispose()
+  })
+})
+
+describe('KanbanItemDetail description draft keys and target', () => {
+  it('does not commit on Enter so line breaks stay typable', () => {
+    const view = renderDetail(item)
+    const box = descriptionBox()
+    act(() => {
+      typeIntoBox(box, 'Multi')
+      pressKey(box, 'Enter')
+    })
+    expect(view.props.onUpdate).not.toHaveBeenCalled()
+    expect(box.value).toBe('Multi')
+    view.dispose()
+  })
+
+  it('discards the draft on Escape and leaves the modal open', () => {
+    const view = renderDetail({ ...item, content: 'Saved description' })
+    const box = descriptionBox()
+    act(() => { typeIntoBox(box, 'Abandoned') })
+    act(() => { pressKey(box, 'Escape') })
+    expect(view.props.onUpdate).not.toHaveBeenCalled()
+    expect(view.props.onClose).not.toHaveBeenCalled()
+    expect(box.value).toBe('Saved description')
+    view.dispose()
+  })
+
+  it('shows the new item description when the detail target changes', () => {
+    const view = renderDetail(item)
+    act(() => { typeIntoBox(descriptionBox(), 'Dirty draft') })
+    view.rerender({ ...item, id: 'item-2', content: 'External description' })
+    expect(descriptionBox().value).toBe('External description')
     view.dispose()
   })
 })
