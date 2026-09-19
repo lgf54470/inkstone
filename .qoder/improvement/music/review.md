@@ -175,6 +175,7 @@
 - **UI-27** 双击复位/双击静音隐藏手势、`120` 魔法数（`music-floating-player.tsx:99`）。代价：S。◐
 - **UI-28** `as never` 断言（`selectors.ts:18,28`）、`pane` 死属性、占位 lambda 误读。代价：S。◐
 - **UI-29** 格式化不统一：`formatTotalDuration` 硬编码英文单位、模块内重复 `formatBytes`、`toLocaleDateString()` 用浏览器 locale 而非应用 locale（`music-utils.ts:19-33`、`music-now-playing.tsx:102`）。→ `Intl` + 复用 `lib/time.ts`。代价：S。◐
+- **UI-30** 桌面浮动播放器停靠位压住状态栏右端（UI-14 预告的子项，由 M-44b 视觉门禁实测复现）：`md:bottom-4`=16px < `--statusbar-h`=26px，卡片与折叠徽标盖住状态栏底部约 10px；播放会话恢复后状态栏换成交替控制行，右端的「展开播放器」按钮正落在被盖区域（既遮显示又拦点击）。修复：两处停靠改 `md:bottom-[calc(var(--statusbar-h)+1rem)]`，视觉门禁断言播放器矩形与状态栏按钮矩形不相交。375px 挤压主项仍留 UI-14/批次⑦。代价：S。✅（M-45 已修，门禁断言守住）
 
 ### UI 正面结论
 

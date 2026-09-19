@@ -55,7 +55,7 @@ export function MusicFloatingPlayer() {
       className={cn(
         'absolute z-[var(--z-float)] flex w-72 flex-col overflow-hidden rounded-[var(--r-lg)]',
         'border border-[var(--border-default)] bg-[var(--bg-overlay)] shadow-[var(--shadow-float)]',
-        !position && 'right-3 bottom-[calc(64px+env(safe-area-inset-bottom))] md:right-4 md:bottom-4',
+        !position && 'right-3 bottom-[calc(64px+env(safe-area-inset-bottom))] md:right-4 md:bottom-[calc(var(--statusbar-h)+1rem)]',
       )}
     >
       <FloatHeader drag={drag} />
@@ -98,7 +98,7 @@ function CollapsedBadge({ drag, cardRef }: {
         'border border-[var(--border-default)] bg-[var(--bg-overlay)] shadow-[var(--shadow-float)]',
         'cursor-grab transition-transform active:scale-95',
         drag.isDragging && 'cursor-grabbing',
-        !drag.style && 'right-4 bottom-[calc(64px+env(safe-area-inset-bottom))] md:bottom-4',
+        !drag.style && 'right-4 bottom-[calc(64px+env(safe-area-inset-bottom))] md:bottom-[calc(var(--statusbar-h)+1rem)]',
       )}
       onDoubleClick={() => setPosition(useMusic.getState().floatingPosition ?? { x: window.innerWidth - 120, y: window.innerHeight - 120 })}
     >
