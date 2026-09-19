@@ -145,3 +145,49 @@ describe('useKanbanHistory commitData stability', () => {
     }
   })
 })
+
+// A toast that offers a way back keeps the `undo` it was handed at the moment of the edit, and runs
+// it later — that is the only way the reader can reach it after the board has re-rendered. Reading
+// the step lists off the render-time state left that captured undo looking at the history from
+// before its own edit, so the first delete of the session found nothing to undo and said nothing.
+describe('useKanbanHistory undo outliving its render', () => {
+  it('runs back the edit that was committed just before it was handed over', () => {
+    const { holder, rendered, onUpdate } = renderStabilityProbe()
+    const undo = holder.api!.undo
+    const initial = holder.api!.data
+    try {
+      act(() => holder.api!.commitData(makeData('s2')))
+      act(() => undo())
+      expect(holder.api!.data).toBe(initial)
+      expect((onUpdate.mock.calls.at(-1)![0] as KanbanData).title).toBe('s1')
+    } finally {
+      rendered.unmount()
+    }
+  })
+
+  it('runs the edit forward again from a captured redo', () => {
+    const { holder, rendered } = renderStabilityProbe()
+    act(() => holder.api!.commitData(makeData('s2')))
+    const redo = holder.api!.redo
+    act(() => holder.api!.undo())
+    try {
+      act(() => redo())
+      expect(holder.api!.data.title).toBe('s2')
+    } finally {
+      rendered.unmount()
+    }
+  })
+
+  it('still leaves nothing alone when there is no step to run back', () => {
+    const { holder, rendered, onUpdate } = renderStabilityProbe()
+    const undo = holder.api!.undo
+    const committed = holder.api!.data
+    try {
+      act(() => undo())
+      expect(holder.api!.data).toBe(committed)
+      expect(onUpdate).not.toHaveBeenCalled()
+    } finally {
+      rendered.unmount()
+    }
+  })
+})

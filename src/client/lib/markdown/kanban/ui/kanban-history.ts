@@ -93,6 +93,10 @@ export function useKanbanHistory(
 
   const dataRef = useRef(state.data)
   dataRef.current = state.data
+  // Undo and redo resolve against the newest history, not the one this render saw: a callback that
+  // outlives its render — the way back a toast keeps — has to step over the edit it was handed for.
+  const historyRef = useRef(state)
+  historyRef.current = state
   const onUpdateRef = useRef(onUpdateData)
   onUpdateRef.current = onUpdateData
 
@@ -106,18 +110,18 @@ export function useKanbanHistory(
   )
 
   const undo = useCallback(() => {
-    if (state.past.length === 0) return
-    const prev = state.past[state.past.length - 1]
+    const previous = historyRef.current.past.at(-1)
+    if (!previous) return
     dispatch({ type: 'undo' })
-    onUpdateRef.current(prev)
-  }, [state.past])
+    onUpdateRef.current(previous)
+  }, [])
 
   const redo = useCallback(() => {
-    if (state.future.length === 0) return
-    const next = state.future[0]
+    const next = historyRef.current.future[0]
+    if (!next) return
     dispatch({ type: 'redo' })
     onUpdateRef.current(next)
-  }, [state.future])
+  }, [])
 
   useHistoryKeyboardShortcuts(undo, redo, containerRef)
 

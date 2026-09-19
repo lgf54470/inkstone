@@ -2916,10 +2916,18 @@ const allowed = new Map([
     '// The column panel needs nothing but its toggle; the board panel keeps its',
     '// older rule of showing up only once both of its own writers are wired.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-history.test.ts', [
+    '// A toast that offers a way back keeps the `undo` it was handed at the moment of the edit, and runs',
+    '// it later — that is the only way the reader can reach it after the board has re-rendered. Reading',
+    '// the step lists off the render-time state left that captured undo looking at the history from',
+    '// before its own edit, so the first delete of the session found nothing to undo and said nothing.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-history.ts', [
     '// Listening on the instance container (not window) keeps Ctrl+Z with the board',
     '// that actually owns the focused element: focus on the surrounding note or on a',
     '// second board must not undo this instance\'s history.',
+    '// Undo and redo resolve against the newest history, not the one this render saw: a callback that',
+    '// outlives its render — the way back a toast keeps — has to step over the edit it was handed for.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-icon-badge.tsx', [
     '/** The identifier the fence stores, as `lucide:<name>`. */',
