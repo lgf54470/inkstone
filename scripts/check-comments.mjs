@@ -1670,6 +1670,14 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-store/library-covers.ts', [
     '// Cover lookup reaches a public catalogue, so it only runs while the listener asks for it.',
+    '// One lookup at a time made the pass as slow as the sum of every catalogue round trip. The',
+    '// pool overlaps them, while a step and a store write still belong to a single track.',
+  ]],
+  ['src/client/features/music/music-store/library-jobs.test.ts', [
+    '// A lookup that parks until it is let through, so a test can count how many the pass runs at once.',
+    '// One lookup after another made a whole library take the sum of its lookups: 300 coverless',
+    '// tracks at a second each is five minutes of a frozen bar. A small pool keeps the same number',
+    '// of steps while overlapping the round trips.',
   ]],
   ['src/client/features/music/music-store/library-load.test.ts', [
     '// h1 wastes more (two extras) so it leads despite uploading after h2;',
@@ -1894,6 +1902,8 @@ const allowed = new Map([
   ['src/client/features/music/music-utils.ts', [
     '// Per-track network bursts (bulk upload/download/import/scan) stay pipelined but bounded:',
     '// enough to overlap latency, low enough to avoid hammering the worker or the browser\'s per-host cap.',
+    '// Cover matching asks a public catalogue once per coverless track. Those calls are fast but',
+    '// plentiful, so they overlap through a small pool instead of waiting for each other in turn.',
     '// Below this viewport width the music surfaces\' fixed-width side columns squeeze the main area',
     '// toward zero, so they fold (UI-14): the hub into drawers, the immersive player into a stack.',
     '// The transport nudge buttons and the seek hotkeys move by the same amount.',

@@ -1,6 +1,8 @@
 import { api } from '../../../lib/api'
+import { mapWithConcurrency } from '../../../lib/async'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import { lookupCoverDataUrl } from '../music-cover-lookup'
+import { COVER_LOOKUP_CONCURRENCY } from '../music-utils'
 import { runLibraryJob } from './transfers'
 import type { MusicGet, MusicSet } from './types'
 
@@ -13,10 +15,12 @@ export async function matchMissingCovers(set: MusicSet, get: MusicGet): Promise<
   }
   const counters = { matched: 0, failed: false }
   const ran = await runLibraryJob(set, get, 'covers', coverless.length, async (advance) => {
-    for (const track of coverless) {
+    // One lookup at a time made the pass as slow as the sum of every catalogue round trip. The
+    // pool overlaps them, while a step and a store write still belong to a single track.
+    await mapWithConcurrency(coverless, COVER_LOOKUP_CONCURRENCY, async (track) => {
       const coverDataUrl = await lookupCoverDataUrl(track.title, track.artist)
       advance()
-      if (!coverDataUrl) continue
+      if (!coverDataUrl) return
       try {
         const updated = await api.music.patchTrack(track.id, { coverDataUrl })
         set((state) => ({ tracks: state.tracks.map((entry) => (entry.id === track.id ? updated : entry)) }))
@@ -25,7 +29,7 @@ export async function matchMissingCovers(set: MusicSet, get: MusicGet): Promise<
         counters.failed = true
         toastMusicError(error, 'music.save_failed')
       }
-    }
+    })
   })
   if (!ran) return 0
   if (counters.matched > 0) toastMusic('music.covers_matched', { value0: counters.matched })

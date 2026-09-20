@@ -5,6 +5,7 @@ export interface MusicStoreStub {
   set: MusicSet
   get: MusicGet
   read: () => MusicStoreState
+  subscribe: (listener: (state: MusicStoreState) => void) => () => void
 }
 
 // Store actions take the pair Zustand hands them (set, get), so the fixture hands back those same
@@ -14,5 +15,5 @@ export interface MusicStoreStub {
 // the action set the live store holds.
 export function musicStoreStub(initial: Partial<MusicStoreState>): MusicStoreStub {
   const store = createStore<MusicStoreState>()(() => initial as MusicStoreState)
-  return { set: store.setState, get: store.getState, read: store.getState }
+  return { set: store.setState, get: store.getState, read: store.getState, subscribe: store.subscribe }
 }

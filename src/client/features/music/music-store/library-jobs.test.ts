@@ -35,6 +35,24 @@ function makeStore(tracks: MusicTrack[]) {
   return { ...store, state: store.read }
 }
 
+// A lookup that parks until it is let through, so a test can count how many the pass runs at once.
+function gatedLookup() {
+  let open = false
+  const waiting: (() => void)[] = []
+  return {
+    start: () => new Promise<string | null>((resolve) => {
+      const answer = (): void => resolve(null)
+      if (open) answer()
+      else waiting.push(answer)
+    }),
+    inFlight: () => waiting.length,
+    open: () => {
+      open = true
+      waiting.splice(0).forEach((answer) => answer())
+    },
+  }
+}
+
 afterEach(() => {
   vi.mocked(scanTrackMetadata).mockReset()
   vi.mocked(lookupCoverDataUrl).mockReset()
@@ -78,13 +96,31 @@ describe('metadata scan jobs', () => {
 describe('cover match jobs', () => {
   it('reports one step of progress per lookup', async () => {
     const store = makeStore([track('a'), track('b'), track('c')])
-    const doneAtLookup: number[] = []
-    vi.mocked(lookupCoverDataUrl).mockImplementation(async () => {
-      doneAtLookup.push(store.state().libraryJobs[0]?.done ?? -1)
-      return null
+    const steps: number[] = []
+    const unsubscribe = store.subscribe((state) => {
+      const done = state.libraryJobs.find((job) => job.kind === 'covers')?.done
+      if (done !== undefined && steps[steps.length - 1] !== done) steps.push(done)
     })
+    vi.mocked(lookupCoverDataUrl).mockResolvedValue(null)
     expect(await matchMissingCovers(store.set, store.get)).toBe(0)
-    expect(doneAtLookup).toEqual([0, 1, 2])
+    unsubscribe()
+    expect(steps).toEqual([0, 1, 2, 3])
+    expect(store.state().libraryJobs).toEqual([])
+  })
+
+  // One lookup after another made a whole library take the sum of its lookups: 300 coverless
+  // tracks at a second each is five minutes of a frozen bar. A small pool keeps the same number
+  // of steps while overlapping the round trips.
+  it('starts several lookups before the first one answers', async () => {
+    const store = makeStore([track('a'), track('b'), track('c'), track('d'), track('e'), track('f')])
+    const gate = gatedLookup()
+    vi.mocked(lookupCoverDataUrl).mockImplementation(gate.start)
+    const pass = matchMissingCovers(store.set, store.get)
+
+    expect(gate.inFlight()).toBeGreaterThan(1)
+
+    gate.open()
+    await pass
     expect(store.state().libraryJobs).toEqual([])
   })
 

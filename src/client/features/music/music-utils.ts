@@ -7,6 +7,10 @@ const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuff
 // enough to overlap latency, low enough to avoid hammering the worker or the browser's per-host cap.
 export const TRACK_IO_CONCURRENCY = 4
 
+// Cover matching asks a public catalogue once per coverless track. Those calls are fast but
+// plentiful, so they overlap through a small pool instead of waiting for each other in turn.
+export const COVER_LOOKUP_CONCURRENCY = 4
+
 // Below this viewport width the music surfaces' fixed-width side columns squeeze the main area
 // toward zero, so they fold (UI-14): the hub into drawers, the immersive player into a stack.
 export const MUSIC_NARROW_BREAKPOINT = 900
