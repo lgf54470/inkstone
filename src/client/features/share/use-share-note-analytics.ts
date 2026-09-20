@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ShareNoteAnalytics, ShareTimelineRange } from '@shared/types'
 import { useLocale } from '../../lib/i18n'
 import { api } from '../../lib/api'
+import { cancelLatestAnalyticsRequest, runLatestAnalyticsRequest } from './analytics-request'
 import { useShareStore } from './share-store'
 
 export function useShareNoteAnalytics(open: boolean, noteId: string) {
@@ -11,34 +12,27 @@ export function useShareNoteAnalytics(open: boolean, noteId: string) {
   const [data, setData] = useState<ShareNoteAnalytics | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(false)
+  const requestRef = useRef<AbortController | null>(null)
 
   const excludeBots = useShareStore((s) => s.excludeBots)
   const excludeSelfReferrers = useShareStore((s) => s.excludeSelfReferrers)
   const excludeOwner = useShareStore((s) => s.excludeOwner)
+  const filters = { excludeBots, excludeSelf: excludeSelfReferrers, excludeOwner }
 
-  const loadData = async (selectedRange = range) => {
-    setIsLoading(true)
-    setError(false)
-    try {
-      const res = await api.share.noteAnalytics(noteId, selectedRange, {
-        excludeBots,
-        excludeSelf: excludeSelfReferrers,
-        excludeOwner,
-      })
-      setData(res)
-    } catch (loadError: unknown) {
-      setData(null)
-      setError(true)
-      console.warn('[share] failed to load note analytics', loadError)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const loadData = (selectedRange: ShareTimelineRange = range) =>
+    runLatestAnalyticsRequest({
+      requestRef,
+      load: (signal) => api.share.noteAnalytics(noteId, selectedRange, filters, signal),
+      apply: setData,
+      clear: () => setData(null),
+      setIsLoading,
+      setError,
+      logLabel: '[share] failed to load note analytics',
+    })
 
   useEffect(() => {
-    if (open && noteId) {
-      void loadData(range)
-    }
+    if (open && noteId) void loadData(range)
+    return () => cancelLatestAnalyticsRequest(requestRef)
   }, [open, noteId, range, excludeBots, excludeSelfReferrers, excludeOwner])
 
   return { locale, range, setRange, metricMode, setMetricMode, data, isLoading, error, loadData }

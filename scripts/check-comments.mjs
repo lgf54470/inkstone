@@ -2942,6 +2942,10 @@ const allowed = new Map([
   ['src/client/features/settings/totp-settings/use-totp-settings.ts', [
     '// Best-effort server cleanup; an orphaned pending setup expires server-side.',
   ]],
+  ['src/client/features/share/analytics-request.ts', [
+    '/**\n * Runs one analytics request per hook. The newest call aborts the one before it and\n * owns the loading and error state, so a slow earlier range can neither overwrite\n * the latest answer nor clear its spinner — the same shape as the share page loader.\n */',
+    '/** Aborts whatever analytics request is in flight, e.g. when its view closes. */',
+  ]],
   ['src/client/features/share/modals/index.ts', [
     '// Lazy-only surface (SH-20): these components drag in qrcode.react and the',
     '// analytics charts, so a static import here regrows the shell chunk the note',

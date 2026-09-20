@@ -85,6 +85,102 @@ describe('share analytics failure surfacing (dashboard hook)', () => {
   })
 })
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
+async function resolveWith<T>(pending: { promise: Promise<T>; resolve: (value: T) => void }, value: unknown) {
+  await act(async () => {
+    pending.resolve(value as T)
+    await Promise.resolve()
+  })
+}
+
+describe('share analytics request ordering (SH-71)', () => {
+  async function mountAndSwitchRange() {
+    const rendered = renderElement(createElement(DashboardProbe))
+    await flush()
+    await act(async () => {
+      dashboardBundle!.setRange('24h')
+    })
+    await flush()
+    return rendered
+  }
+
+  it('lets the newest dashboard request own the data and the spinner', async () => {
+    const older = deferred<never>()
+    const newer = deferred<never>()
+    vi.mocked(api.share.globalAnalytics).mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+    const rendered = await mountAndSwitchRange()
+
+    const [firstCall, secondCall] = vi.mocked(api.share.globalAnalytics).mock.calls
+    expect(firstCall[0]).toBe('7d')
+    expect(secondCall[0]).toBe('24h')
+    expect(firstCall[2]?.aborted).toBe(true)
+    expect(secondCall[2]?.aborted).toBe(false)
+
+    await resolveWith(older, { marker: 'older' })
+    expect(dashboardBundle!.analytics).toBeNull()
+    expect(dashboardBundle!.isLoading).toBe(true)
+
+    await resolveWith(newer, { marker: 'newer' })
+    expect(dashboardBundle!.analytics).toEqual({ marker: 'newer' })
+    expect(dashboardBundle!.isLoading).toBe(false)
+    rendered.unmount()
+  })
+
+  it('ignores a failure from the request it already replaced', async () => {
+    const older = deferred<never>()
+    const newer = deferred<never>()
+    vi.mocked(api.share.globalAnalytics).mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+    const rendered = await mountAndSwitchRange()
+
+    await resolveWith(newer, { marker: 'newer' })
+    await act(async () => {
+      older.reject(new Error('late failure'))
+      await Promise.resolve()
+    })
+
+    expect(dashboardBundle!.analytics).toEqual({ marker: 'newer' })
+    expect(dashboardBundle!.error).toBe(false)
+    rendered.unmount()
+  })
+})
+
+describe('share analytics request ordering (SH-71, note modal)', () => {
+  it('keeps the note modal data of the newest request', async () => {
+    const older = deferred<never>()
+    const newer = deferred<never>()
+    vi.mocked(api.share.noteAnalytics).mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+    const rendered = renderElement(createElement(NoteProbe))
+    await flush()
+
+    await act(async () => {
+      noteBundle!.setRange('30d')
+    })
+    await flush()
+
+    const [firstCall, secondCall] = vi.mocked(api.share.noteAnalytics).mock.calls
+    expect(firstCall[1]).toBe('7d')
+    expect(secondCall[1]).toBe('30d')
+    expect(firstCall[3]?.aborted).toBe(true)
+
+    await resolveWith(older, { marker: 'older' })
+    expect(noteBundle!.data).toBeNull()
+
+    await resolveWith(newer, { marker: 'newer' })
+    expect(noteBundle!.data).toEqual({ marker: 'newer' })
+    expect(noteBundle!.isLoading).toBe(false)
+    rendered.unmount()
+  })
+})
+
 describe('share analytics failure surfacing (note hook)', () => {
   it('note analytics hook exposes loading and failure state', async () => {
     vi.mocked(api.share.noteAnalytics).mockReturnValueOnce(new Promise(() => {}))
