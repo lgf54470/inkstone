@@ -2877,6 +2877,20 @@ const allowed = new Map([
     '// below would otherwise drop it at the bottom of a column it is still standing in.',
     '/**\n * Whether the card already names this column as its value. Deliberately stricter than the drawing,\n * which also reads a label where the board expects an id: a card that only *looks* misplaced gets the\n * reorder it asked for, which is the previous behaviour, rather than being left in place by mistake.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/templates.test.ts', [
+    '/**\n * F-07. A template is what a reader presses when the board they just inserted is empty, so the one\n * thing these cases insist on is that what a template writes is a document the rest of the module\n * can already read: stages the cards are actually filed in, views whose fields exist, ids used once,\n * and nothing shared between two boards that started from the same blueprint.\n */',
+    '/** What each built-in column id has to be for the control behind it to exist at all. */',
+    '/** Every column a view reads by id, so a template cannot leave a view pointing at nothing. */',
+    '// Not a stylistic choice: the tag filter bar only collects multi-selects, the member picker only',
+    '// opens on a person column, and a date badge needs a date — mislabel one and the control behind',
+    '// that id silently stops existing.',
+  ]],
+  ['src/client/lib/markdown/kanban/templates.ts', [
+    '/**\n * F-07. The structures a reader can start an empty board from.\n *\n * A template hands over a whole document rather than a pile of cards, because a board\'s views, its\n * columns and the stages its cards sit in have to agree the moment it is drawn: adding a group to a\n * board with no grouping column is what the error state is for. So each blueprint below declares the\n * three together, keeps the grouping column under the id `status` (the id the rest of the module\n * treats as the workflow, from `handleAddItem` to the WIP limits), and builds its other columns out\n * of the ids the board already knows how to read — dates a calendar can point at, a person field the\n * picker fills, tags the filter bar collects.\n *\n * Only the *id* of a stage is fixed: what a reader sees is written in the language they are working\n * in, so the fence holds ordinary text afterwards and stops following the interface the moment they\n * rename a stage, which is what a template is for.\n */',
+    '/** One choice as a blueprint states it: the id the cards carry, the name to print, the tint. */',
+    '/** One stage per seeded card, so a reader sees a card in the places a card is meant to sit. */',
+    '/**\n * Writes a blueprint over the document it is given, keeping the board\'s own name — an unnamed board\n * stays unnamed. One commit, so one undo takes a template back off.\n */',
+  ]],
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
     '/** Cards this workflow state may hold at once; absent means the reader set no rule. See `filter-sort.ts`. */',
@@ -3172,6 +3186,16 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-date-picker.tsx', [
     '/**\n   * The property this picker edits. The visible text is only the date, so a\n   * table row of dates would read as bare numbers; the name goes in beside it.\n   */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-empty-board.test.ts', [
+    '/**\n * F-07. A board that arrives as one blank rectangle tells the reader nothing about what it can hold,\n * so an empty one now answers with the two things they can do next: write the first card, or take a\n * structure — stages, views, a couple of examples — and rename it. These mount the real root, since\n * the guide is a decision about the whole document rather than about one view: what is filtered out,\n * or archived, is still there, and the board should keep showing that.\n */',
+    '/** A board with the default one-column, one-view shape: everything a template has to replace. */',
+    '// The board repaints from the document it was just handed, stages and all.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-empty-board.tsx', [
+    '// The names say what a structure is for, not which fields it holds: a reader who cannot tell a',
+    '// roadmap from a triage queue learns that by opening one, and both rename to whatever they need.',
+    '/**\n * What the board shows in place of its views while the document holds no card at all — see\n * `templates.ts` for what each structure actually writes.\n */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.tsx', [
     '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',
     '// document is guaranteed blank; offer the file as an explicit new-tab action.',
@@ -3398,6 +3422,11 @@ const allowed = new Map([
     '/** Passed down from the mount options: how the host renders description markdown. */',
     '// Views edit one item\'s own fields; the writer keeps that shape in one place',
     '// while still committing the whole document like every other edit does.',
+    '// What fills the panel turns on one question: does this board hold a card anywhere? A board that holds',
+    '// none has nothing for any view to lay out, so the guide stands in for the view; a board that merely',
+    '// looks empty — filtered down, or with its cards archived — keeps showing what it has.',
+    '// Resolving against the newest document keeps this one commit, so one undo step takes the',
+    '// whole structure back off rather than leaving half of a blueprint behind.',
     '// The selected view is what its tab controls, so this box is the panel; hanging the role here',
     '// rather than on a wrapper keeps the geometry untouched and avoids a second landmark in the shell.',
     '// One id names the panel and, through `kanbanViewTabId`, the tab that controls it; the header and',

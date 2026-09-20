@@ -16,6 +16,8 @@ import { KanbanCalendarView } from './kanban-calendar-view'
 import { KanbanChartView } from './kanban-chart-view'
 import { KanbanContextMenu } from './kanban-context-menu'
 import { useKanbanCsvEntry } from './kanban-csv'
+import { KanbanEmptyBoard } from './kanban-empty-board'
+import { applyKanbanTemplate } from '../templates'
 import { KanbanFilesScope } from './kanban-files-cell'
 import { KanbanGalleryView } from './kanban-gallery-view'
 import { KanbanGanttView } from './kanban-gantt-view'
@@ -270,6 +272,53 @@ function KanbanTopBar({
   )
 }
 
+// What fills the panel turns on one question: does this board hold a card anywhere? A board that holds
+// none has nothing for any view to lay out, so the guide stands in for the view; a board that merely
+// looks empty — filtered down, or with its cards archived — keeps showing what it has.
+function KanbanViewArea({ state }: { state: ReturnType<typeof useKanbanRootState> }) {
+  if (state.data.items.length === 0) {
+    return (
+      <KanbanEmptyBoard
+        onAddItem={state.adds.handleAddItem}
+        // Resolving against the newest document keeps this one commit, so one undo step takes the
+        // whole structure back off rather than leaving half of a blueprint behind.
+        onApplyTemplate={(kind) => state.commitData((prev) => applyKanbanTemplate(prev, kind))}
+      />
+    )
+  }
+  return (
+    <KanbanViewRenderer
+      activeView={state.filterSort.activeView}
+      viewData={state.filterSort.viewData}
+      data={state.data}
+      selectedIds={state.selection.selectedIds}
+      cardSize={state.filterSort.cardSize}
+      selectedTags={state.filterSort.selectedTags}
+      onToggleTag={state.filterSort.onToggleTag}
+      commitData={state.commitData}
+      handleToggleSelect={state.selection.handleToggleSelect}
+      handleToggleAll={state.selection.handleToggleAll}
+      setDetailItem={state.setDetailItem}
+      handleUpdateTitle={state.items.handleUpdateTitle}
+      handleUpdateFiles={state.items.handleUpdateFiles}
+      handleUpdateMultiSelect={state.items.handleUpdateMultiSelect}
+      handleMoveItem={state.items.handleMoveItem}
+      handleAddItem={state.adds.handleAddItem}
+      handleAddItemInGroup={state.adds.handleAddItemInGroup}
+      handleAddColumn={state.adds.handleAddColumn}
+      handleUpdateView={state.filterSort.updateActiveView}
+      handleToggleSortColumn={state.filterSort.toggleSortColumn}
+      handleReorderColumns={state.columnOps.handleReorderColumns}
+      handleUpdateColumn={state.columnOps.handleUpdateColumn}
+      handleDeleteColumn={state.columnOps.handleDeleteColumn}
+      handleResizeColumn={state.schemaOps.resizeColumn}
+      people={state.people}
+      handleUpdateTags={state.items.handleUpdateTags}
+      handleAddColumnOption={state.columnOps.handleAddColumnOption}
+    />
+  )
+}
+
 function KanbanMain({
   state,
   viewPanelId,
@@ -286,35 +335,7 @@ function KanbanMain({
       aria-labelledby={kanbanViewTabId(viewPanelId, state.filterSort.activeView.id)}
       className='relative flex-1 overflow-hidden'
     >
-      <KanbanViewRenderer
-        activeView={state.filterSort.activeView}
-        viewData={state.filterSort.viewData}
-        data={state.data}
-        selectedIds={state.selection.selectedIds}
-        cardSize={state.filterSort.cardSize}
-        selectedTags={state.filterSort.selectedTags}
-        onToggleTag={state.filterSort.onToggleTag}
-        commitData={state.commitData}
-        handleToggleSelect={state.selection.handleToggleSelect}
-        handleToggleAll={state.selection.handleToggleAll}
-        setDetailItem={state.setDetailItem}
-        handleUpdateTitle={state.items.handleUpdateTitle}
-        handleUpdateFiles={state.items.handleUpdateFiles}
-        handleUpdateMultiSelect={state.items.handleUpdateMultiSelect}
-        handleMoveItem={state.items.handleMoveItem}
-        handleAddItem={state.adds.handleAddItem}
-        handleAddItemInGroup={state.adds.handleAddItemInGroup}
-        handleAddColumn={state.adds.handleAddColumn}
-        handleUpdateView={state.filterSort.updateActiveView}
-        handleToggleSortColumn={state.filterSort.toggleSortColumn}
-        handleReorderColumns={state.columnOps.handleReorderColumns}
-        handleUpdateColumn={state.columnOps.handleUpdateColumn}
-        handleDeleteColumn={state.columnOps.handleDeleteColumn}
-        handleResizeColumn={state.schemaOps.resizeColumn}
-        people={state.people}
-        handleUpdateTags={state.items.handleUpdateTags}
-        handleAddColumnOption={state.columnOps.handleAddColumnOption}
-      />
+      <KanbanViewArea state={state} />
       <KanbanBatchBar
         selectedCount={state.selection.selectedIds.size}
         groupColumn={state.groupColumn}

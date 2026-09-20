@@ -20,6 +20,7 @@ import { installTestGlobals, renderElement } from '../../../test-render'
 import type { KanbanData, KanbanView, KanbanViewType } from '../types'
 import { KanbanBatchBar } from './kanban-batch-bar'
 import { KanbanColumnMenu } from './kanban-column-menu'
+import { KanbanEmptyBoard } from './kanban-empty-board'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanGalleryView } from './kanban-gallery-view'
 import { KanbanListView } from './kanban-list-view'
@@ -139,6 +140,10 @@ const SUBJECTS: { name: string, element: ReactElement }[] = [
       onCollapse: noop,
       onDelete: noop,
     }),
+  },
+  {
+    name: 'KanbanEmptyBoard',
+    element: createElement(KanbanEmptyBoard, { onAddItem: noop, onApplyTemplate: noop }),
   },
   {
     name: 'KanbanFilterPopover',
