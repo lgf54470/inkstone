@@ -3,8 +3,7 @@ import { act, createElement } from 'react'
 
 vi.mock('./audio-engine', () => ({
   applyVolume: vi.fn(),
-  audioElement: vi.fn(() => null),
-  bindMediaSessionActions: vi.fn(),
+  mediaElement: vi.fn(() => null),
   CROSSFADE_MS: 3_000,
   cancelCrossfade: vi.fn(),
   configureAudio: vi.fn(),
@@ -16,7 +15,6 @@ vi.mock('./audio-engine', () => ({
     getByteFrequencyData: (bytes: Uint8Array) => { bytes[0] = 200 },
   })),
   pausePlayback: vi.fn(),
-  publishMediaSession: vi.fn(),
   resumePlayback: vi.fn(async () => 'blocked'),
   seekTo: vi.fn(),
   startCrossfade: vi.fn(() => false),

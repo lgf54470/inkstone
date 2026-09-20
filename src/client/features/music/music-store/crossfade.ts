@@ -1,7 +1,6 @@
 import { api } from '../../../lib/api'
-import {
-  CROSSFADE_MS, cancelCrossfade, crossfadeActive, publishMediaSession, startCrossfade,
-} from '../audio-engine'
+import { CROSSFADE_MS, cancelCrossfade, crossfadeActive, startCrossfade } from '../audio-engine'
+import { publishMediaSession } from '../media-session'
 import { computeNextIndex } from '../music-utils'
 import { setProgressTime } from './progress'
 import { persist } from './persist'

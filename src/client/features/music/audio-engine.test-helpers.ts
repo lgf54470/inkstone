@@ -114,7 +114,7 @@ export async function loadedEngine() {
   const engine = await import('./audio-engine')
   const analyser = await engine.ensureAudioGraph()
   const context = FakeAudioContext.instances[0]
-  const audio = engine.audioElement()
+  const audio = engine.mediaElement()
   if (!analyser || !context || !audio) throw new Error('the fake browser stack should have built an analyser graph')
   return { engine, context, audio }
 }
@@ -124,7 +124,7 @@ export async function normalizedEngine() {
   engine.configureLoudnessNormalization(true)
   const analyser = await engine.ensureAudioGraph()
   const context = FakeAudioContext.instances[0]
-  const audio = engine.audioElement()
+  const audio = engine.mediaElement()
   const tap = context?.analysers[1]
   const gain = context?.gains[0]
   if (!analyser || !context || !audio || !tap || !gain) throw new Error('the fake browser stack should have built a normalization graph')
@@ -158,8 +158,8 @@ export function installMediaElementPlayback(): void {
   vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
 }
 
-export function standbyAudio(active: HTMLAudioElement): HTMLAudioElement {
+export function standbyAudio(active: HTMLMediaElement): HTMLMediaElement {
   const standby = Array.from(document.body.querySelectorAll('audio')).find((node) => node !== active)
   if (!standby) throw new Error('the crossfade should have created a standby audio element')
-  return standby as HTMLAudioElement
+  return standby
 }

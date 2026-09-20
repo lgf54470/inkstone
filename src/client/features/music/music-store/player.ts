@@ -3,11 +3,12 @@ import { api } from '../../../lib/api'
 import { toastMusicError, toastMusicNotice } from '../music-feedback'
 import { computeNextIndex, computePrevIndex, nextPlayMode } from '../music-utils'
 import {
-  applyVolume, audioElement, bindMediaSessionActions, cancelCrossfade, configureAudio, configureEqualizer, configureLoudnessNormalization,
-  ensureAudioGraph, pausePlayback, publishMediaSession,
-  resumePlayback, seekTo, startPlayback, updateMediaSessionPosition,
+  applyVolume, mediaElement, cancelCrossfade, configureAudio, configureEqualizer, configureLoudnessNormalization,
+  ensureAudioGraph, pausePlayback,
+  resumePlayback, seekTo, startPlayback,
 } from '../audio-engine'
 import type { EqualizerSettings } from '../audio-engine'
+import { bindMediaSessionActions, publishMediaSession, updateMediaSessionPosition } from '../media-session'
 import { handleCrossfadeComplete, maybeStartCrossfade } from './crossfade'
 import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
@@ -28,7 +29,7 @@ export function connectAudio(set: MusicSet, get: MusicGet): void {
   configureAudio({
     onTime: (ms) => {
       setProgressTime(ms)
-      updateMediaSessionPosition(ms, get().durationMs)
+      updateMediaSessionPosition(ms, get().durationMs, mediaElement()?.playbackRate ?? 1)
       maybeStartCrossfade(get, ms)
     },
     onDuration: (ms) => {
@@ -94,7 +95,7 @@ export async function playQueueAt(set: MusicSet, get: MusicGet, index: number): 
 }
 
 export async function togglePlay(set: MusicSet, get: MusicGet): Promise<void> {
-  const audio = audioElement()
+  const audio = mediaElement()
   if (!audio) return
   if (!currentTrack(get())) {
     await playFirstTrack(set, get)
@@ -341,7 +342,7 @@ function reportPlaybackFailure(set: MusicSet, get: MusicGet, kind: 'slow' | 'fai
   if (streamFailedReported) return false
   streamFailedReported = true
   clearStreamWatchdog()
-  const audio = audioElement()
+  const audio = mediaElement()
   const buffered = audio !== null && audio.readyState >= 3 && Number.isFinite(audio.duration)
   pausePlayback()
   set({ streamLoading: false, isPlaying: false })
@@ -386,7 +387,7 @@ let streamFailedReported = false
 let playFailures = 0
 
 function applyPlaybackRate(rate: number): void {
-  const audio = audioElement()
+  const audio = mediaElement()
   if (!audio) return
   audio.playbackRate = rate
   audio.preservesPitch = true

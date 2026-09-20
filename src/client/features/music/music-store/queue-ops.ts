@@ -1,5 +1,6 @@
 import { toastMusic } from '../music-feedback'
-import { pausePlayback, publishMediaSession, stopPlayback } from '../audio-engine'
+import { pausePlayback, stopPlayback } from '../audio-engine'
+import { publishMediaSession } from '../media-session'
 import { setProgressTime } from './progress'
 import { currentTrack, playQueueAt } from './player'
 import type { MusicGet, MusicSet } from './types'

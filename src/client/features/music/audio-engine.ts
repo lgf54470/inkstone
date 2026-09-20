@@ -1,4 +1,5 @@
 import type { MusicTrack } from '@shared/types'
+import { isVideoMime } from '@shared/music-media'
 import { musicStreamUrl } from '../../lib/api'
 
 export interface AudioBridge {
@@ -30,20 +31,25 @@ interface AudioChain {
 }
 
 interface CrossfadeState {
-  outgoing: HTMLAudioElement
-  incoming: HTMLAudioElement
+  outgoing: HTMLMediaElement
+  incoming: HTMLMediaElement
   trackId: string
   elapsed: number
   timer: number
 }
 
-let element: HTMLAudioElement | null = null
-let spareElement: HTMLAudioElement | null = null
+// The stored mime decides which kind of element carries the track: an <audio> element
+// refuses a container with a video track outright, and a picture needs a real <video>.
+type MediaKind = 'audio' | 'video'
+
+let element: HTMLMediaElement | null = null
+let spareElement: HTMLMediaElement | null = null
 let fade: CrossfadeState | null = null
 let bridge: AudioBridge | null = null
 let analyserContext: AudioContext | null = null
 let activeChain: AudioChain | null = null
-const chains = new WeakMap<HTMLAudioElement, AudioChain>()
+const chains = new WeakMap<HTMLMediaElement, AudioChain>()
+const elementsByKind = new Map<MediaKind, HTMLMediaElement>()
 const knownChains: AudioChain[] = []
 let suspendTimer: number | null = null
 let equalizer: EqualizerSettings = { enabled: false, lowDb: 0, midDb: 0, highDb: 0 }
@@ -76,33 +82,75 @@ export function configureAudio(next: AudioBridge): void {
   bridge = next
 }
 
-export function audioElement(): HTMLAudioElement | null {
-  if (typeof window === 'undefined' || typeof window.Audio !== 'function') return null
-  element ??= createAudioElement()
+export function mediaElement(): HTMLMediaElement | null {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return null
+  element ??= acquireMediaElement('audio')
   return element
 }
 
-function createAudioElement(): HTMLAudioElement {
-  const audio = new Audio()
-  audio.preload = 'metadata'
+function kindOfTrack(track: MusicTrack): MediaKind {
+  return isVideoMime(track.mime) ? 'video' : 'audio'
+}
+
+// The active element's kind is what the current track asked for; the standby element a
+// crossfade borrows must be the same kind, so the pair never disagrees about the picture.
+function kindOfElement(media: HTMLMediaElement): MediaKind {
+  return media.getAttribute('data-inkstone-media') === 'video' ? 'video' : 'audio'
+}
+
+function createMediaElement(kind: MediaKind): HTMLMediaElement {
+  const media: HTMLMediaElement = kind === 'video' ? createVideoElement() : new Audio()
+  media.preload = 'metadata'
   // Kept in the document so browsers that require a live node keep routing media keys.
-  audio.setAttribute('data-inkstone-audio', 'music')
-  audio.hidden = true
-  document.body.append(audio)
-  relayBridgeEvents(audio)
-  wirePlaybackLifecycle(audio)
-  return audio
+  media.setAttribute('data-inkstone-media', kind)
+  // A video element stays hidden until the UI offers it a stage to be seen from.
+  media.hidden = true
+  document.body.append(media)
+  elementsByKind.set(kind, media)
+  relayBridgeEvents(media)
+  wirePlaybackLifecycle(media)
+  return media
+}
+
+// The browser's own transport controls on the element: a picture nobody can pause is
+// worse than no picture, and native controls keep keyboard and screen-reader behaviour.
+function createVideoElement(): HTMLVideoElement {
+  const video = document.createElement('video')
+  video.controls = true
+  video.playsInline = true
+  return video
+}
+
+function acquireMediaElement(kind: MediaKind): HTMLMediaElement {
+  return elementsByKind.get(kind) ?? createMediaElement(kind)
+}
+
+// Only one element may hold the stream at a time: the previous kind is released before the
+// next track loads, and its cached graph chain stays behind for when that kind comes back.
+function setActiveElement(kind: MediaKind): HTMLMediaElement {
+  // The element that is already playing decides: after a crossfade swapped to its standby,
+  // the per-kind table would still name the element the fade handed over.
+  if (element && kindOfElement(element) === kind) return element
+  const next = acquireMediaElement(kind)
+  const previous = element
+  if (previous && previous !== next) {
+    previous.pause()
+    previous.removeAttribute('src')
+    previous.load()
+  }
+  element = next
+  return next
 }
 
 // Every listener is gated on being the active element: the standby element is live
 // during a crossfade and its events must not drive progress, the bridge or the graph.
-function onActiveElement(audio: HTMLAudioElement, event: string, handle: () => void): void {
+function onActiveElement(audio: HTMLMediaElement, event: string, handle: () => void): void {
   audio.addEventListener(event, () => {
     if (audio === element) handle()
   })
 }
 
-function relayBridgeEvents(audio: HTMLAudioElement): void {
+function relayBridgeEvents(audio: HTMLMediaElement): void {
   onActiveElement(audio, 'timeupdate', () => bridge?.onTime(audio.currentTime * 1000))
   onActiveElement(audio, 'durationchange', () => {
     if (Number.isFinite(audio.duration)) bridge?.onDuration(audio.duration * 1000)
@@ -118,7 +166,7 @@ function relayBridgeEvents(audio: HTMLAudioElement): void {
   onActiveElement(audio, 'error', () => bridge?.onError(readMediaError(audio)))
 }
 
-function wirePlaybackLifecycle(audio: HTMLAudioElement): void {
+function wirePlaybackLifecycle(audio: HTMLMediaElement): void {
   onActiveElement(audio, 'play', () => {
     resumeAnalyserContext()
     // The play gesture is the retry window for a graph the browser blocked earlier.
@@ -156,7 +204,7 @@ function resumeAnalyserContext(): void {
   }
 }
 
-function readMediaError(audio: HTMLAudioElement): string {
+function readMediaError(audio: HTMLMediaElement): string {
   const code = audio.error?.code
   if (code === MediaError.MEDIA_ERR_NETWORK) return 'network'
   if (code === MediaError.MEDIA_ERR_DECODE) return 'decode'
@@ -165,9 +213,9 @@ function readMediaError(audio: HTMLAudioElement): string {
 }
 
 export async function startPlayback(track: MusicTrack): Promise<'playing' | 'blocked' | 'unavailable'> {
-  const audio = audioElement()
-  if (!audio) return 'unavailable'
+  if (typeof document === 'undefined') return 'unavailable'
   cancelCrossfade()
+  const audio = setActiveElement(kindOfTrack(track))
   const src = musicStreamUrl(track.id)
   if (!audio.src.endsWith(src)) audio.src = src
   try {
@@ -181,30 +229,30 @@ export async function startPlayback(track: MusicTrack): Promise<'playing' | 'blo
 
 export function pausePlayback(): void {
   cancelCrossfade()
-  audioElement()?.pause()
+  mediaElement()?.pause()
 }
 
 export function resumePlayback(): Promise<'playing' | 'blocked' | 'unavailable'> {
-  const audio = audioElement()
+  const audio = mediaElement()
   if (!audio || !audio.src) return Promise.resolve('unavailable')
   return audio.play().then(() => 'playing' as const).catch(() => 'blocked' as const)
 }
 
 export function seekTo(ms: number): void {
-  const audio = audioElement()
+  const audio = mediaElement()
   if (!audio) return
   audio.currentTime = Math.max(0, ms / 1000)
 }
 
 export function applyVolume(volume: number, muted: boolean): void {
-  const audio = audioElement()
+  const audio = mediaElement()
   if (!audio) return
   audio.volume = Math.min(1, Math.max(0, volume))
   audio.muted = muted
 }
 
 export function stopPlayback(): void {
-  const audio = audioElement()
+  const audio = mediaElement()
   if (!audio) return
   cancelCrossfade()
   audio.pause()
@@ -212,69 +260,8 @@ export function stopPlayback(): void {
   audio.load()
 }
 
-export function publishMediaSession(track: MusicTrack | null, playing: boolean): void {
-  const session = typeof navigator !== 'undefined' ? navigator.mediaSession : undefined
-  if (!session) return
-  try {
-    session.metadata = track && typeof MediaMetadata === 'function'
-      ? new MediaMetadata({
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        artwork: track.coverUrl ? [{ src: track.coverUrl }] : undefined,
-      })
-      : null
-    session.playbackState = playing ? 'playing' : 'paused'
-  } catch (error) {
-    console.warn('[inkstone] media session metadata rejected:', error)
-  }
-}
-
-// Lock-screen and car-kit progress bars are built from positionState and committed
-// through seekto; without them the scrubber is dead even though metadata shows.
-export function updateMediaSessionPosition(positionMs: number, durationMs: number): void {
-  const session = typeof navigator !== 'undefined' ? navigator.mediaSession : undefined
-  if (!session?.setPositionState || !(durationMs > 0) || !(positionMs >= 0)) return
-  const duration = durationMs / 1000
-  // The browser rejects a position past the end, and in-flight ticks can outrun a shrinking duration.
-  const position = Math.min(positionMs / 1000, duration)
-  try {
-    session.setPositionState({ duration, position, playbackRate: audioElement()?.playbackRate ?? 1 })
-  } catch (error) {
-    console.warn('[inkstone] media session position rejected:', error)
-  }
-}
-
-export function bindMediaSessionActions(handlers: {
-  play: () => void
-  pause: () => void
-  next: () => void
-  prev: () => void
-  seek: (ms: number) => void
-}): void {
-  const session = typeof navigator !== 'undefined' ? navigator.mediaSession : undefined
-  if (!session?.setActionHandler) return
-  const entries: Array<[MediaSessionAction, MediaSessionActionHandler]> = [
-    ['play', handlers.play],
-    ['pause', handlers.pause],
-    ['nexttrack', handlers.next],
-    ['previoustrack', handlers.prev],
-    ['seekto', (details) => {
-      if (details.seekTime === undefined) return
-      handlers.seek(details.seekTime * 1000)
-    }],
-  ]
-  for (const [action, handler] of entries) {
-    try {
-      session.setActionHandler(action, handler)
-    } catch (error) {
-      console.warn('[inkstone] media session action unsupported:', action, error)
-    }
-  }
-}
-
 export function readCurrentTimeMs(): number {
-  return (audioElement()?.currentTime ?? 0) * 1000
+  return (mediaElement()?.currentTime ?? 0) * 1000
 }
 
 // Routing the element through a suspended context would silence playback, so the graph is only
@@ -282,7 +269,7 @@ export function readCurrentTimeMs(): number {
 // Each element keeps its own chain in a cache because createMediaElementSource can only ever be
 // called once per element — the crossfade standby element gets its chain on the first swap.
 export async function ensureAudioGraph(): Promise<AnalyserNode | null> {
-  const audio = audioElement()
+  const audio = mediaElement()
   if (!audio || typeof AudioContext !== 'function') return null
   const context = analyserContext ?? new AudioContext()
   analyserContext = context
@@ -308,7 +295,7 @@ export async function ensureAudioGraph(): Promise<AnalyserNode | null> {
   return chain.analyser
 }
 
-function buildAudioChain(context: AudioContext, audio: HTMLAudioElement): AudioChain {
+function buildAudioChain(context: AudioContext, audio: HTMLMediaElement): AudioChain {
   const analyser = context.createAnalyser()
   analyser.fftSize = ANALYSER_FFT_SIZE
   analyser.smoothingTimeConstant = ANALYSER_SMOOTHING
@@ -427,7 +414,11 @@ export function crossfadeActive(): boolean {
 export function startCrossfade(track: MusicTrack): boolean {
   const outgoing = element
   if (!outgoing || fade) return false
-  const incoming = spareElement ?? createAudioElement()
+  // The ramp only blends sound: the standby element holds no picture slot, so a video
+  // hand-over would still cut hard mid-fade. Video takes the plain track-end path.
+  const kind = kindOfElement(outgoing)
+  if (kind !== 'audio' || kindOfTrack(track) !== 'audio') return false
+  const incoming = spareElement && kindOfElement(spareElement) === kind ? spareElement : createMediaElement(kind)
   spareElement = incoming
   incoming.volume = 0
   incoming.muted = outgoing.muted

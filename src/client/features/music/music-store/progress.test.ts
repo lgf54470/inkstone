@@ -3,8 +3,9 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { api } from '../../../lib/api'
-import { audioElement } from '../audio-engine'
+import { mediaElement } from '../audio-engine'
 import { MusicSessionSync } from '../music-session-sync'
+import { updateMediaSessionPosition } from '../media-session'
 import { useMusic } from './index'
 import { progressTimeMs, setProgressTime } from './progress'
 
@@ -29,6 +30,12 @@ vi.mock('../music-feedback', () => ({
   toastError: vi.fn(),
   toastMusicError: vi.fn(),
   toastMusicNotice: vi.fn(),
+}))
+
+vi.mock('../media-session', () => ({
+  bindMediaSessionActions: vi.fn(),
+  publishMediaSession: vi.fn(),
+  updateMediaSessionPosition: vi.fn(),
 }))
 
 afterEach(() => {
@@ -56,7 +63,7 @@ describe('playback progress decoupled from the library store', () => {
   })
 
   it('routes the audio timeupdate to the progress store only', () => {
-    const audio = audioElement()
+    const audio = mediaElement()
     expect(audio).not.toBeNull()
     const libraryBefore = useMusic.getState()
     act(() => {
@@ -65,6 +72,20 @@ describe('playback progress decoupled from the library store', () => {
     })
     expect(progressTimeMs()).toBe(12_500)
     expect(useMusic.getState()).toBe(libraryBefore)
+  })
+
+  it('forwards the element playback rate to the lock-screen position', () => {
+    const audio = mediaElement()
+    if (!audio) throw new Error('jsdom should provide an Audio constructor')
+    const { durationMs } = useMusic.getState()
+    vi.mocked(updateMediaSessionPosition).mockClear()
+    act(() => {
+      audio.playbackRate = 1.5
+      audio.currentTime = 12.5
+      audio.dispatchEvent(new Event('timeupdate'))
+    })
+    expect(updateMediaSessionPosition).toHaveBeenCalledWith(12_500, durationMs, 1.5)
+    audio.playbackRate = 1
   })
 
   it('writes a seek to the progress store without touching the library store', () => {

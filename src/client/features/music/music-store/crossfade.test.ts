@@ -9,8 +9,7 @@ vi.mock('../music-feedback', () => ({
 }))
 vi.mock('../audio-engine', () => ({
   applyVolume: vi.fn(),
-  audioElement: vi.fn(() => null),
-  bindMediaSessionActions: vi.fn(),
+  mediaElement: vi.fn(() => null),
   CROSSFADE_MS: 3_000,
   cancelCrossfade: vi.fn(),
   configureAudio: vi.fn(),
@@ -19,17 +18,21 @@ vi.mock('../audio-engine', () => ({
   crossfadeActive: vi.fn(() => false),
   ensureAudioGraph: vi.fn(async () => null),
   pausePlayback: vi.fn(),
-  publishMediaSession: vi.fn(),
   resumePlayback: vi.fn(async () => 'playing' as const),
   seekTo: vi.fn(),
   startCrossfade: vi.fn(() => true),
   startPlayback: vi.fn(async () => 'playing' as const),
   stopPlayback: vi.fn(),
+}))
+vi.mock('../media-session', () => ({
+  bindMediaSessionActions: vi.fn(),
+  publishMediaSession: vi.fn(),
   updateMediaSessionPosition: vi.fn(),
 }))
 
 import { api } from '../../../lib/api'
-import { cancelCrossfade, configureAudio, crossfadeActive, publishMediaSession, startCrossfade } from '../audio-engine'
+import { cancelCrossfade, configureAudio, crossfadeActive, startCrossfade } from '../audio-engine'
+import { publishMediaSession } from '../media-session'
 import { useMusic } from './index'
 import { progressTimeMs, setProgressTime } from './progress'
 import { MUSIC_PREFS_KEY, loadPreferences, savePreferences } from './state'

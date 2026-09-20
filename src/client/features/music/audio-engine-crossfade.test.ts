@@ -11,7 +11,7 @@ async function crossfadeEngine() {
   installMediaElementPlayback()
   const { calls, bridge } = recordingBridge()
   engine.configureAudio(bridge)
-  const outgoing = engine.audioElement()
+  const outgoing = engine.mediaElement()
   if (!outgoing) throw new Error('jsdom should provide an Audio constructor')
   return { calls, engine, outgoing }
 }
@@ -58,7 +58,7 @@ describe('crossfade handover', () => {
     const incoming = standbyAudio(outgoing)
     Object.defineProperty(incoming, 'duration', { value: 120, configurable: true })
     vi.advanceTimersByTime(3_000)
-    expect(engine.audioElement()).toBe(incoming)
+    expect(engine.mediaElement()).toBe(incoming)
     expect(engine.crossfadeActive()).toBe(false)
     expect(calls).toContainEqual(['complete', 'b'])
     expect(calls).toContainEqual(['duration', 120_000])
@@ -96,7 +96,7 @@ describe('crossfade gating and cancellation', () => {
     const incoming = standbyAudio(outgoing)
     vi.advanceTimersByTime(1_000)
     engine.cancelCrossfade()
-    expect(engine.audioElement()).toBe(outgoing)
+    expect(engine.mediaElement()).toBe(outgoing)
     expect(outgoing.volume).toBeCloseTo(0.6, 6)
     expect(incoming.getAttribute('src')).toBeNull()
     vi.advanceTimersByTime(5_000)
@@ -113,7 +113,7 @@ describe('crossfade yields to transport commands', () => {
     vi.advanceTimersByTime(1_500)
     engine.pausePlayback()
     expect(engine.crossfadeActive()).toBe(false)
-    expect(engine.audioElement()).toBe(outgoing)
+    expect(engine.mediaElement()).toBe(outgoing)
     expect(outgoing.volume).toBeCloseTo(0.6, 6)
   })
 
@@ -124,7 +124,7 @@ describe('crossfade yields to transport commands', () => {
     expect(engine.startCrossfade(fadeTrack('b'))).toBe(true)
     await vi.advanceTimersByTimeAsync(0)
     expect(engine.crossfadeActive()).toBe(false)
-    expect(engine.audioElement()).toBe(outgoing)
+    expect(engine.mediaElement()).toBe(outgoing)
     expect(outgoing.volume).toBeCloseTo(0.6, 6)
   })
 
@@ -135,7 +135,7 @@ describe('crossfade yields to transport commands', () => {
     vi.advanceTimersByTime(1_000)
     await engine.startPlayback(fadeTrack('c'))
     expect(engine.crossfadeActive()).toBe(false)
-    expect(engine.audioElement()).toBe(outgoing)
+    expect(engine.mediaElement()).toBe(outgoing)
     expect(outgoing.volume).toBeCloseTo(0.6, 6)
     expect(engine.startCrossfade(fadeTrack('d'))).toBe(true)
     engine.stopPlayback()

@@ -9,8 +9,7 @@ vi.mock('../music-feedback', () => ({
 }))
 vi.mock('../audio-engine', () => ({
   applyVolume: vi.fn(),
-  audioElement: vi.fn(() => null),
-  bindMediaSessionActions: vi.fn(),
+  mediaElement: vi.fn(() => null),
   CROSSFADE_MS: 3_000,
   cancelCrossfade: vi.fn(),
   configureAudio: vi.fn(),
@@ -19,13 +18,11 @@ vi.mock('../audio-engine', () => ({
   crossfadeActive: vi.fn(() => false),
   ensureAudioGraph: vi.fn(async () => null),
   pausePlayback: vi.fn(),
-  publishMediaSession: vi.fn(),
   resumePlayback: vi.fn(async () => 'playing' as const),
   seekTo: vi.fn(),
   startCrossfade: vi.fn(() => false),
   startPlayback: vi.fn(async () => 'unavailable' as const),
   stopPlayback: vi.fn(),
-  updateMediaSessionPosition: vi.fn(),
 }))
 
 import { startPlayback } from '../audio-engine'

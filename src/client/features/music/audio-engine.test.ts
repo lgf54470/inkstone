@@ -1,9 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { FakeAudioContext, loadedEngine, normalizedEngine, useFakeAudioStack } from './audio-engine.test-helpers'
 
 useFakeAudioStack()
-
 
 describe('analyser context lifecycle', () => {
   it('suspends the context only after a pause that stuck', async () => {
@@ -25,7 +24,7 @@ describe('analyser context lifecycle', () => {
 
   it('never builds a context when the analyser graph was never requested', async () => {
     const engine = await import('./audio-engine')
-    const audio = engine.audioElement()
+    const audio = engine.mediaElement()
     if (!audio) throw new Error('jsdom should provide an Audio constructor')
     audio.dispatchEvent(new Event('pause'))
     vi.advanceTimersByTime(10_000)
@@ -78,7 +77,7 @@ describe('equalizer graph', () => {
 describe('play gesture graph retry', () => {
   it('retries the blocked graph on the play gesture once the EQ is on', async () => {
     const engine = await import('./audio-engine')
-    const audio = engine.audioElement()
+    const audio = engine.mediaElement()
     if (!audio) throw new Error('jsdom should provide an Audio constructor')
     engine.configureEqualizer({ enabled: true, lowDb: 3, midDb: 0, highDb: 0 })
     expect(FakeAudioContext.instances).toEqual([])
@@ -89,7 +88,7 @@ describe('play gesture graph retry', () => {
 
   it('leaves a plain play event without a graph while the EQ is off', async () => {
     const engine = await import('./audio-engine')
-    const audio = engine.audioElement()
+    const audio = engine.mediaElement()
     if (!audio) throw new Error('jsdom should provide an Audio constructor')
     audio.dispatchEvent(new Event('play'))
     expect(FakeAudioContext.instances).toEqual([])
@@ -97,7 +96,7 @@ describe('play gesture graph retry', () => {
 
   it('retries the blocked graph on the play gesture when only normalization is on', async () => {
     const engine = await import('./audio-engine')
-    const audio = engine.audioElement()
+    const audio = engine.mediaElement()
     if (!audio) throw new Error('jsdom should provide an Audio constructor')
     engine.configureLoudnessNormalization(true)
     expect(FakeAudioContext.instances).toEqual([])
@@ -203,75 +202,5 @@ describe('loudness normalization polling stops', () => {
     audio.dispatchEvent(new Event('play'))
     vi.advanceTimersByTime(5_000)
     expect(context.gains[0]?.gain.value).toBe(1)
-  })
-})
-
-class FakeMediaSession {
-  metadata: unknown = null
-  playbackState = ''
-  positions: Array<{ duration: number; position: number; playbackRate: number }> = []
-  handlers = new Map<string, ((details: { seekTime?: number }) => void) | null>()
-
-  setPositionState(state: { duration: number; position: number; playbackRate: number }): void {
-    if (!(state.duration > 0)) throw new RangeError('duration must be positive')
-    if (state.position > state.duration) throw new RangeError('position past the end')
-    this.positions.push(state)
-  }
-
-  setActionHandler(action: string, handler: ((details: { seekTime?: number }) => void) | null): void {
-    this.handlers.set(action, handler)
-  }
-}
-
-async function loadedEngineWithMediaSession() {
-  const session = new FakeMediaSession()
-  Object.defineProperty(navigator, 'mediaSession', { value: session, configurable: true })
-  const engine = await import('./audio-engine')
-  return { engine, session }
-}
-
-describe('media session position state', () => {
-  afterEach(() => {
-    Object.defineProperty(navigator, 'mediaSession', { value: undefined, configurable: true })
-  })
-
-  it('publishes seconds measured against the element playback rate', async () => {
-    const { engine, session } = await loadedEngineWithMediaSession()
-    const audio = engine.audioElement()
-    if (!audio) throw new Error('jsdom should provide an Audio constructor')
-    audio.playbackRate = 1.5
-    engine.updateMediaSessionPosition(90_500, 120_000)
-    expect(session.positions).toEqual([{ duration: 120, position: 90.5, playbackRate: 1.5 }])
-  })
-
-  it('stays silent until a positive duration exists and clamps stale ticks to the end', async () => {
-    const { engine, session } = await loadedEngineWithMediaSession()
-    engine.updateMediaSessionPosition(1_000, 0)
-    engine.updateMediaSessionPosition(Number.NaN, 120_000)
-    expect(session.positions).toEqual([])
-    engine.updateMediaSessionPosition(130_000, 120_000)
-    expect(session.positions).toEqual([{ duration: 120, position: 120, playbackRate: 1 }])
-  })
-
-  it('routes the lock-screen seekto handler into millisecond seeks', async () => {
-    const { engine, session } = await loadedEngineWithMediaSession()
-    const seeks: number[] = []
-    engine.bindMediaSessionActions({
-      play: () => {}, pause: () => {}, next: () => {}, prev: () => {},
-      seek: (ms) => { seeks.push(ms) },
-    })
-    const seekTo = session.handlers.get('seekto')
-    if (!seekTo) throw new Error('the seekto handler should be bound')
-    seekTo({ seekTime: 12.5 })
-    seekTo({})
-    expect(seeks).toEqual([12_500])
-  })
-
-  it('tolerates browsers without a media session at all', async () => {
-    const engine = await import('./audio-engine')
-    engine.updateMediaSessionPosition(1_000, 2_000)
-    engine.bindMediaSessionActions({
-      play: () => {}, pause: () => {}, next: () => {}, prev: () => {}, seek: () => {},
-    })
   })
 })
