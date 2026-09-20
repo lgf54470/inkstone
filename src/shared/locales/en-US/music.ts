@@ -183,7 +183,7 @@ export const messages = {
 'music.stats_tracks': 'Tracks',
 'music.stats_duration': 'Total length',
 'music.stats_size': 'Storage used',
-'music.play_count': '{value0} plays',
+'music.play_count': 'Play count',
 'music.track_duration': 'Duration',
 'music.unknown_artist': 'Unknown artist',
 'music.unknown_album': 'Unknown album',

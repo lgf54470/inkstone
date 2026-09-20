@@ -1494,6 +1494,8 @@ const allowed = new Map([
     '// Metadata atoms wrap their value in a data box: version and flags, value type, locale, payload.',
   ]],
   ['src/client/features/music/music-now-playing.test.ts', [
+    '// Every row here is a label beside its own value cell, so the message has to be a plain',
+    '// label: a placeholder would reach the screen verbatim instead of the number.',
     '// The date belongs to the reader\'s language like everything else on the panel; the',
     '// browser default would answer in whatever language the OS is set to instead.',
     '// The playback element is engine-owned; a surface only lends it a box, so a track with a',

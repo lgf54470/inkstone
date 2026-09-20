@@ -166,6 +166,18 @@ describe('MusicNowPlaying details panel', () => {
     expect(useMusic.getState().togglePin).toHaveBeenCalledWith(track.id)
   })
 
+  // Every row here is a label beside its own value cell, so the message has to be a plain
+  // label: a placeholder would reach the screen verbatim instead of the number.
+  it('shows the play count as a number in the value cell, with no unfilled placeholder', async () => {
+    const track = seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn() })
+    track.playCount = 7
+    const container = await mountPanel()
+    expect(t('music.play_count')).not.toContain('{')
+    expect(container.textContent).toContain(t('music.play_count'))
+    expect(container.textContent).toContain('7')
+    expect(container.textContent).not.toContain('{value0}')
+  })
+
   // The date belongs to the reader's language like everything else on the panel; the
   // browser default would answer in whatever language the OS is set to instead.
   it('writes the added-at date in the app locale, not in the browser default', async () => {
