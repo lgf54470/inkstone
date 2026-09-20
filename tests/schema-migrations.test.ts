@@ -7,6 +7,7 @@ import {
   REQUIRED_TABLES,
 } from '../src/worker/db/schema/checks'
 import { initializeDatabase } from '../src/worker/db/schema/runtime'
+import { drainFtsQueue } from '../src/worker/db/fts'
 import type { Env } from '../src/worker/env'
 import type { D1Database } from '@cloudflare/workers-types'
 import { createD1Database, queryFirst, queryRows, runSql } from './d1-harness'
@@ -148,6 +149,52 @@ describe('schema migrations and convergence', () => {
     await runSql(db, 'DELETE FROM app_meta WHERE key = ?', DATABASE_STATE_KEY)
     const reconvergedState = await initializeDatabase(env)
     expect(reconvergedState).toBeDefined()
+  })
+
+  it('rebuilds a full text index whose note ids were unindexed and requeues every live note', async () => {
+    const db = createD1Database()
+    const env = makeEnv(db)
+
+    await initializeDatabase(env)
+
+    // The shipped index marked note_id UNINDEXED, so the deletes that reach a row through
+    // MATCH('note_id : …') matched nothing and left the previous body behind.
+    await runSql(db, 'DROP TABLE notes_fts')
+    await runSql(
+      db,
+      `CREATE VIRTUAL TABLE notes_fts USING fts5(
+         note_id UNINDEXED, user_id UNINDEXED, title, body,
+         tokenize = "unicode61 remove_diacritics 2")`,
+    )
+    await runSql(
+      db,
+      `INSERT INTO notes (id, user_id, title, content, rev, content_hash, created_at, updated_at)
+        VALUES ('n-live', 'u', 'Live', 'keepneedle', 1, 'h', 10, 10)`,
+    )
+    await runSql(
+      db,
+      `INSERT INTO notes (id, user_id, title, content, rev, content_hash, created_at, updated_at, deleted_at)
+        VALUES ('n-gone', 'u', 'Gone', 'gone body', 1, 'h', 10, 10, 20)`,
+    )
+    await runSql(db, `INSERT INTO notes_fts (note_id, user_id, title, body) VALUES ('n-live', 'u', 'Live', 'stale body')`)
+    await runSql(db, `INSERT INTO fts_index_queue (user_id, note_id, kind, created_at) VALUES ('u', 'n-live', 'delete', 5)`)
+    await runSql(db, 'DELETE FROM schema_migrations WHERE version = 40')
+    await runSql(db, 'DELETE FROM app_meta WHERE key = ?1', DATABASE_STATE_KEY)
+
+    await initializeDatabase(makeEnv({ ...db }))
+
+    expect(await queryRows(db, 'SELECT note_id FROM notes_fts')).toEqual([])
+    expect(await queryRows(db, 'SELECT note_id, kind FROM fts_index_queue ORDER BY note_id')).toEqual([
+      { note_id: 'n-live', kind: 'upsert' },
+    ])
+
+    await drainFtsQueue(db, 'u', 10, true)
+    expect(
+      await queryRows(db, `SELECT note_id FROM notes_fts WHERE notes_fts MATCH '"keepneedle"'`),
+    ).toEqual([{ note_id: 'n-live' }])
+    expect(
+      await queryRows(db, `SELECT note_id FROM notes_fts WHERE notes_fts MATCH '"stale"'`),
+    ).toEqual([])
   })
 
   it('rejects an incompatible schema if a required column is missing', async () => {

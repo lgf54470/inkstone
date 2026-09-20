@@ -587,4 +587,25 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       'CREATE INDEX IF NOT EXISTS idx_music_tracks_hash ON music_tracks(user_id, content_hash)',
     ],
   },
+  {
+    // The index is dropped rather than reshaped because fts5 has no ALTER: note_id moves from
+    // UNINDEXED to indexed so the deletes that reach a row through MATCH stop scanning the table,
+    // which is also what they silently stopped doing (a no-op delete left every edit's previous
+    // body behind and grew a duplicate row per rebuild). Repopulating is the queue's job, not this
+    // migration's: the stored body is segmented for CJK, and that transform only exists in code.
+    // Until the drain catches up the search falls back to LIKE, which answers from the note rows.
+    version: 40,
+    statements: [
+      `DROP TABLE IF EXISTS notes_fts`,
+      `INSERT INTO fts_index_queue (user_id, note_id, kind, created_at)
+         SELECT user_id, id, 'upsert', CAST(strftime('%s', 'now') AS INTEGER) * 1000
+           FROM notes WHERE deleted_at IS NULL
+         ON CONFLICT(user_id, note_id) DO UPDATE SET
+           kind = excluded.kind,
+           created_at = CASE
+             WHEN excluded.created_at > fts_index_queue.created_at THEN excluded.created_at
+             ELSE fts_index_queue.created_at + 1
+           END`,
+    ],
+  },
 ]

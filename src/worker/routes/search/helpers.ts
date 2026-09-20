@@ -147,13 +147,16 @@ export async function searchUserNotes(
 }
 
 
+// The terms are scoped to the two columns a person searches. The index also carries note_id (so
+// deletes can reach a row without scanning the table), and an unscoped query would answer with
+// whatever note happens to hold the term inside its id.
 function buildFtsQuery(terms: string[]): string {
   const parts: string[] = []
   for (const term of terms) {
     const seg = segmentCJK(term).trim().replace(/"/g, '')
     if (!seg) continue
-    if (seg.includes(' ')) parts.push(`"${seg}"`)
-    else parts.push(`"${seg}"*`)
+    if (seg.includes(' ')) parts.push(`{title body} : "${seg}"`)
+    else parts.push(`{title body} : "${seg}"*`)
   }
   return parts.join(' AND ')
 }

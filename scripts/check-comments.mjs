@@ -4855,6 +4855,12 @@ const allowed = new Map([
     '// when the bytes pass through the worker (uploads), so rows stored before this',
     '// migration keep NULL and simply stay out of the duplicate view - hashing old',
     '// objects would mean re-downloading the whole library.',
+    '// The index is dropped rather than reshaped because fts5 has no ALTER: note_id moves from',
+    '// UNINDEXED to indexed so the deletes that reach a row through MATCH stop scanning the table,',
+    '// which is also what they silently stopped doing (a no-op delete left every edit\'s previous',
+    '// body behind and grew a duplicate row per rebuild). Repopulating is the queue\'s job, not this',
+    '// migration\'s: the stored body is segmented for CJK, and that transform only exists in code.',
+    '// Until the drain catches up the search falls back to LIKE, which answers from the note rows.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
@@ -4868,6 +4874,12 @@ const allowed = new Map([
     '// Existing installations must converge additively. CREATE IF NOT EXISTS',
     '// never rewrites user data; running table creation before indexes also',
     '// lets a partially initialized database recover missing feature tables.',
+  ]],
+  ['src/worker/db/schema/statements.ts', [
+    '// `note_id` is indexed so a delete can reach the row through MATCH instead of scanning the whole',
+    '// table; the search query names the columns it searches ({title body}), so the id is matchable for',
+    '// bookkeeping without ever answering a user\'s term. `user_id` stays unindexed: every read and',
+    '// delete filters it as a plain column.',
   ]],
   ['src/worker/db/writes.ts', [
     '/** Keeps tags, backlinks, full-text indexes, and change records consistent with note writes. */',
@@ -5363,6 +5375,11 @@ const allowed = new Map([
     '// would have produced: the edge cap keeps whichever rows come first, and those should not depend',
     '// on how the id list happened to be split. Tags are grouped per note, so they need no reordering.',
   ]],
+  ['src/worker/routes/search/helpers.ts', [
+    '// The terms are scoped to the two columns a person searches. The index also carries note_id (so',
+    '// deletes can reach a row without scanning the table), and an unscoped query would answer with',
+    '// whatever note happens to hold the term inside its id.',
+  ]],
   ['src/worker/routes/search/query.ts', [
     '// Drain synchronously (up to the read-path cap) before querying: a search',
     '// that follows note edits within the FTS drain delay should still hit the',
@@ -5415,6 +5432,12 @@ const allowed = new Map([
     '// here instead of in the browser.',
     '// Real D1 batch commits atomically; a savepoint reproduces that here and',
     '// still works when a test drives nested batches.',
+  ]],
+  ['tests/fts-index.test.ts', [
+    '// The schema under test is the one the Worker creates, not a hand-written copy: a copy here',
+    '// once declared note_id as an indexed column while production marked it UNINDEXED, so the',
+    '// deletes that reach the index through `MATCH(\'note_id : …\')` matched rows in the test and',
+    '// nothing at all in production.',
   ]],
   ['tests/fullscreen-policy.test.ts', [
     '/**\n * The browser\'s own full screen belongs to exactly one surface: the presentation\n * panel, which owns a stable element and tracks `fullscreenchange` itself.\n *\n * Everything else that offers "full screen" goes through an in-app overlay\n * instead. A widget cannot hold the browser\'s full screen in this app: the\n * preview re-renders the note\'s markup on every commit and re-parents (or\n * rebuilds) the widget\'s element, and the browser drops out of full screen the\n * moment its full screen element leaves the document — mid-edit, with the user\n * watching. The mind map library shipped exactly that button; it is disarmed and\n * routed to the overlay (lib/markdown/mindmap/view.ts `disarmNativeFullscreen`,\n * asserted in features/preview/mindmap-fullscreen.test.ts and in the visual\n * gate). This test keeps the next such button from being wired straight to the\n * browser API.\n */',
@@ -5507,6 +5530,8 @@ const allowed = new Map([
     '// Simulate a database whose music tables came from an earlier build: different',
     '// column names, tag links by name, seconds instead of milliseconds.',
     '// A new handle and a cleared fingerprint force the migration pass to run again.',
+    '// The shipped index marked note_id UNINDEXED, so the deletes that reach a row through',
+    '// MATCH(\'note_id : …\') matched nothing and left the previous body behind.',
   ]],
   ['tests/share-analytics.test.ts', [
     '// too short (< 3)',
