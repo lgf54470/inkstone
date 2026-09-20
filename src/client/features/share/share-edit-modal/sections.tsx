@@ -1,4 +1,5 @@
 import { BarChart3, Check, Copy, Dices, ExternalLink, FolderClosed, Hash, LayoutGrid, Plus, QrCode, ShieldAlert, Trash2, X } from 'lucide-react'
+import { useId } from 'react'
 import { LIMITS } from '@shared/constants'
 import { Button } from '../../../components/primitives'
 import { Input, Segmented, Select, Switch } from '../../../components/form'
@@ -244,12 +245,14 @@ export function SharePasswordCard({ b }: { b: ShareEditModalBundle }) {
 
 export function ShareExpiryCard({ b }: { b: ShareEditModalBundle }) {
   const { share, EXPIRY_OPTIONS, expiry, setExpiry } = b
+  const titleId = useId()
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
-      <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] pb-1.5'>
+      <div id={titleId} className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] pb-1.5'>
         {t('share.expiration_title')}
       </div>
       <Segmented
+        aria-labelledby={titleId}
         options={share?.expiresAt ? [{ value: KEEP_CURRENT_EXPIRY, label: t('share.keep_current') }, ...EXPIRY_OPTIONS] : EXPIRY_OPTIONS}
         value={expiry}
         onChange={setExpiry}

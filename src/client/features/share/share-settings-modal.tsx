@@ -1,5 +1,5 @@
 import { Database, Save, Settings, Shield } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { Modal } from '../../components/overlay'
 import { Button } from '../../components/primitives'
 import { Segmented, Switch } from '../../components/form'
@@ -131,10 +131,11 @@ function RetentionField({ label, valueText, value, onChange, options }: {
   onChange: (value: string) => void
   options: { value: string; label: string }[]
 }) {
+  const labelId = useId()
   return (
     <div>
       <div className='flex items-center justify-between pb-1.5'>
-        <span className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
+        <span id={labelId} className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
           {label}
         </span>
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
@@ -142,6 +143,7 @@ function RetentionField({ label, valueText, value, onChange, options }: {
         </span>
       </div>
       <Segmented
+        aria-labelledby={labelId}
         value={value}
         onChange={onChange}
         options={options}

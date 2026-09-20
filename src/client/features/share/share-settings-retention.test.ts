@@ -133,3 +133,33 @@ describe('share settings modal draws no record cap control (SH-39)', () => {
     rendered.unmount()
   })
 })
+
+describe('the retention control has a name and a keyboard path (SH-40)', () => {
+  it('names the retention control with the label the eye reads', () => {
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 30 } }
+
+    const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
+    const group = retentionGroup()
+    const labelledBy = group.getAttribute('aria-labelledby')
+    expect(labelledBy).toBeTruthy()
+    expect(document.getElementById(labelledBy as string)?.textContent).toBe(t('share.retention_days_label'))
+    // The visible text is the name; a second hidden label would only drift.
+    expect(group.getAttribute('aria-label')).toBeNull()
+    rendered.unmount()
+  })
+
+  it('moves the retention choice with the arrow keys and keeps focus on the new option', () => {
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 30 } }
+
+    const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
+    const checked = retentionGroup().querySelector('[aria-checked="true"]') as HTMLElement
+    act(() => { checked.focus() })
+    act(() => {
+      checked.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    })
+
+    expect(optionLabel(retentionGroup())).toBe('90d')
+    expect(document.activeElement?.textContent).toBe('90d')
+    rendered.unmount()
+  })
+})

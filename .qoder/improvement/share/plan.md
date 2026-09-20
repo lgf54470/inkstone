@@ -60,7 +60,8 @@
 | H5 | SH-43 | `blog_visits` 无保留期设置（share 已有 `share.visitLogRetentionDays`）：cron 只扫孤儿行，需要 blog settings 段落 + 模态接线，属产品决策 | P2 | 排队 | |
 | H6 | SH-44 | 调色板类存量清偿：SH-38 门禁已按文件计数冻结 218 处/62 文件，各模块降到 0 后 `--update-baseline` 收账（attachments 77/7 文件、blog-frontend 48/17、blog 39/11、lib·markdown 24/12、preview 17/4、components 5/4、settings 4/3、folders 2、tags 2） | P3 | 排队 | |
 | H7 | SH-45 | blog 侧同族假设置：`blog-store` 的 `maxLogRecords`/`setRetentionSettings` 与设置模态的「最多记录数」分段控件同样全仓无消费者（SH-39 在 share 侧删除的那一套，blog 侧是第二处），且 `blog-settings-modal.tsx:190-191` 跨模块读 `share.max_records_label`/`share.max_records_val` 两个键——故 share 侧本次保留键不删。修法：blog 侧删控件+删 store 字段，文案键随最后一处使用者一并迁到 blog 命名空间或删除 | P3 | 排队 | |
-| H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby` | P2 | 排队 | |
+| H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby`；执行时按同一口径扩到 share 全部 6 处 `Segmented` 并加静态门禁 | P2 | ✅ | 待回填 |
+| H8 | SH-46 | share 外的 `Segmented` 仍缺可访问名称（实测 5 处：`blog-dashboard-view/index.tsx:135,272`、`blog-settings-modal.tsx:31,228`、`settings/backup-settings/target-form.tsx:45`）：与 SH-40 同一缺陷族，按铁律14 不在本批夹带；各模块自行接入后把 `tests/share-radiogroup-names.test.ts` 的扫描根从 `features/share` 提到全站 | P2 | 排队 | |
 | G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | ✅ | be162df2 |
 
 > 2026-09-20 用户裁决「全做，按照你认为最优方案修改，顺序自己定义」：F1-F5 与通病全部解冻，
@@ -398,3 +399,14 @@
 - 变异 6 发全杀（/tmp/mutH1 备份还原，全部 `cmp` 逐字节复核）：store 初值重挂 `maxLogRecords: 5000`、`setFiltersImpl` 重新回写 retention key、模态重新挂上带 `10K` 的 `RetentionField`、重挂一个不含 `10K` 字样的第二分段控件（证明长度断言独立承载，不靠文案）、`saveSettingsFlow` 不再写流量过滤、`setVisitLogRetentionDays(0)` 忽略所选天数。后两发是本次动了保存路径后补的守卫——先前它们无人断言（`setFilters` mock 只 reset 不 assert）。
 - 踩坑（同机负载下的假绿/假红）：初版 store 测试用 `vi.resetModules()` + 测试体内 `await import('./index')` 来构造「先种缓存再建 store」，把整条 store 依赖链的冷转译算进了 5s 用例超时——空闲 1.1s，load average 12 时 1.7s，人为压到 18 即 `Error: Test timed out in 5000ms`（同目录其余 22 文件全绿，只它红）。改为顶层静态 import + `vi.hoisted` 在 import 之前种 key：vitest 的文件级模块注册表本就保证「本文件首次 import 即冷建 store」，缓存种得更早而不必重转依赖链，用例耗时降到 10ms，压测 load 18 下 108/108 绿。教训：`resetModules` 式隔离在共享机器上不是免费的，能在文件级拿到的顺序保证就别在测试体里重付。
 - 验证：tsc -b 绿；13 项静态门禁全绿；vitest 定向 8/8，share 目录全量 23 文件/108 测试绿（含压测复跑）。全量回归 241 文件/1883 测试绿（REGRESSION_EXIT=0，串行 449s；较上轮 1882 多 1 例，即本次新增的保存落地断言）。fix 提交 446451be。
+
+## 46 — SH-40（H2）share 的每个 `Segmented` 都要有可访问名称（2026-09-20）
+
+- 现状与根因：`Segmented` 渲染 `role='radiogroup'`，而它的可访问名称只来自 `label`（写成 `aria-label`）或 `aria-labelledby` 两个 prop（`src/client/components/form.tsx` 的 `SegmentedInner`）。share 里 6 处 `Segmented` 只有工具栏的 `ViewToggle` 传了 `label`，其余 5 处把名字寄托在「旁边有一行可见标题」上——radiogroup 与那行字**没有任何关联**，屏幕阅读器读到的是一组无名单选钮（键盘用户还能靠方向键走，读屏用户不知道这组是干什么的）。台账原本只记 `RetentionField` 一处，执行时按同一口径把 share 全部 6 处一起收口，并加静态门禁守住，避免「修一个漏五个」。
+- 命名取法（两条规则，不是一刀切）：**旁边就是可见标签文本**的用 `aria-labelledby` 指向那个节点（保留期字段的 `<span>` 标签、看板与笔记弹窗的「访问趋势」标题、编辑弹窗的「分享有效期」标题）——名字与眼睛读到的同一份文本，不会各说各话；** toolbar 上本就没有可见标签**的区间选择器用 `label`（与新键 `share.range_label`「Analytics time range / 分析时间范围」，同 `ViewToggle` 既有做法）。刻意不给已被 `aria-labelledby` 命名的控件再补 `aria-label`：两者同在时 `labelledby` 赢，多出来的隐藏名字只会与可见文案漂移，故行为用例明确断言 `aria-label` 为空。
+- 尺寸逼出的真拆分：`share-dashboard-view.tsx` 原本 498 行（`measure = wc + 1`，上限 500），加 `useId` 与 `id`/`aria-labelledby` 三行即越线。按本台账既有处置（真拆不刷基线）把 `TimelineCard` 整体移到新文件 `share-dashboard-timeline-card.tsx`（40 行），主文件回到 468 行、重新有余量；`src/client/features/share/share-settings-retention.test.ts` 同样因 `describe` 回调超 50 行被 `size:check` 拒（`longFns:1`），按表面把 SH-40 两例拆成独立 describe。
+- 守卫：新 `tests/share-radiogroup-names.test.ts`（AST 扫 `features/share` 全部非测试 `.tsx`，含子目录如 `share-edit-modal/`），断言每处 `<Segmented>` 都带 `label` 或 `aria-labelledby`，报 `文件:行`。它只查「有没有名字」，不查「名字对不对」——后者由行为用例把守（见下），两者分工由变异 A2 钉死。
+- 测试（红先行）：守卫首红实测 6 处（`share-dashboard-view.tsx:84,193`、`share-note-analytics-modal.tsx:116,174`、`share-settings-modal.tsx:144`、`share-edit-modal/sections.tsx:252`）。行为用例两例（`share-settings-retention.test.ts`）：`aria-labelledby` 解出来的节点文本必须等于 `share.retention_days_label`（红态 `expected null to be truthy`），以及方向键 ArrowRight 从 30d 走到 90d 且焦点落在新选项上（键盘路径此前无人断言）。修后 share 目录 24 文件/112 测试全绿。
+- 变异 7 发全杀（/tmp/mutH2 备份还原，逐文件 `cmp` 复核）：A1 去掉保留期 `aria-labelledby`（守卫 + 行为双杀）、A2 把 `aria-labelledby` 接到「当前值」那个 span（只被行为用例杀，`expected 'share.retention_days_val' to be 'share.retention_days_label'`，即守卫与行为的确互补）、A3 去掉看板区间 `label`、A4 去掉编辑弹窗有效期名字（验子目录被扫到）、A5 去掉新文件里看板趋势的名字（验新文件在扫描范围内）、A6 把 `SegmentedButton` 的方向键处理改成只 `preventDefault`（键盘用例杀）、A7 同时给 `label` 与 `aria-labelledby`（`aria-label` 断言杀）。
+- 局限（如实登记）：live axe 门禁（`scripts/check-contrast.mjs` 的场景是外壳 aside、命令面板、应用设置对话框）不打开分享中心模态，`scripts/e2e-visual.mjs` 亦无看板块卡场景，本次命名的正确性只由 jsdom 断言把守，未在真实浏览器读一遍；share 外的 5 处同缺陷（blog 4 + settings 备份目标 1）已量测并登记 H8/SH-46，未在本批动（铁律14）。
+- 验证：tsc -b 绿；13 项静态门禁全绿；vitest 定向 10/10，share 目录 24 文件/112 测试绿。全量回归待回填。fix 提交 待回填。

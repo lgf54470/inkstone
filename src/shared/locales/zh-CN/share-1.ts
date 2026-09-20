@@ -125,6 +125,7 @@ export const messages = {
 'share.qr_code_title': '分享二维码',
 'share.qr_copied': '已复制图片',
 'share.range_all': '全部',
+'share.range_label': '分析时间范围',
 'share.realtime_stream': '最新 20 条访客记录',
 'share.recent_activity_title': '最近访问',
 'share.selected_count': '已选择 {count} 篇笔记',

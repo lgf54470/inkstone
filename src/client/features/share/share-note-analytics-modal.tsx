@@ -1,5 +1,5 @@
 import { Activity, BarChart2, Compass, ExternalLink, Globe, Lock, QrCode, RefreshCw } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import type { ShareNoteAnalytics, ShareTimelineRange } from '@shared/types'
 import { Modal } from '../../components/overlay'
 import { Button, IconButton } from '../../components/primitives'
@@ -113,7 +113,7 @@ function StatsAndRangeRow({ data, range, setRange, isLoading, onRefresh }: {
     <div className='flex items-center justify-between gap-2'>
       <StatCards data={data} />
       <div className='flex items-center gap-2'>
-        <Segmented options={rangeOptions()} value={range} onChange={(val) => setRange(val as ShareTimelineRange)} />
+        <Segmented label={t('share.range_label')} options={rangeOptions()} value={range} onChange={(val) => setRange(val as ShareTimelineRange)} />
         <ShareTrafficFilterPopover />
         <IconButton
           size='sm'
@@ -165,13 +165,15 @@ function StatCards({ data }: { data: ShareNoteAnalytics | null }) {
 }
 
 function TimelineCard({ metricMode, setMetricMode, chartValues, timelinePoints }: { metricMode: 'views' | 'visitors'; setMetricMode: (mode: 'views' | 'visitors') => void; chartValues: number[]; timelinePoints: ShareNoteAnalytics['timeline'] }) {
+  const titleId = useId()
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
       <div className='flex items-center justify-between pb-2'>
-        <span className='text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
+        <span id={titleId} className='text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
           {t('share.timeline_trend_title')}
         </span>
         <Segmented
+          aria-labelledby={titleId}
           options={[
             { value: 'views', label: t('share.metric_pv') },
             { value: 'visitors', label: t('share.metric_uv') },

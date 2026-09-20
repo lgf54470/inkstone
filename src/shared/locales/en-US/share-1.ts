@@ -125,6 +125,7 @@ export const messages = {
 'share.qr_code_title': 'Share QR Code',
 'share.qr_copied': 'Image copied',
 'share.range_all': 'All time',
+'share.range_label': 'Analytics time range',
 'share.realtime_stream': 'Latest 20 visits',
 'share.recent_activity_title': 'Recent Visits',
 'share.selected_count': '{count} notes selected',

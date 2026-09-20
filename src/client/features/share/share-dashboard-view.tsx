@@ -15,7 +15,6 @@ import type {
     ShareGlobalAnalytics,
     ShareTimelineRange,
 } from '@shared/types'
-import { BigSvgChart } from '../../components/big-svg-chart'
 import { BreakdownRow, KpiCard } from '../../components/dashboard-blocks'
 import { IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
@@ -23,6 +22,7 @@ import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
 import { countryFlag, countryNameLocalized, localizeEnvName, localizeReferrerName } from './share-helpers'
 import { LoadErrorState } from './share-load-error'
+import { TimelineCard } from './share-dashboard-timeline-card'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import type { useShareDashboardView } from './use-share-dashboard-view'
 import { useShareDashboardView as useDashboardView } from './use-share-dashboard-view'
@@ -82,6 +82,7 @@ function DashboardHeader({ bundle }: { bundle: DashboardBundle }) {
 
       <div className='flex items-center gap-2'>
         <Segmented
+          label={t('share.range_label')}
           options={RANGE_OPTIONS}
           value={range}
           onChange={(val) => setRange(val as ShareTimelineRange)}
@@ -171,37 +172,6 @@ function ActiveSharesCard({ analytics }: { analytics: ShareGlobalAnalytics | nul
         <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)] pt-1'>
           {t('share.active_shares_hint')}
         </p>
-      </div>
-    </div>
-  )
-}
-
-function TimelineCard({ bundle }: { bundle: DashboardBundle }) {
-  const { metricMode, setMetricMode, timelinePoints, chartValues } = bundle
-  return (
-    <div className='mt-4 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
-      <div className='flex flex-wrap items-center justify-between gap-2 pb-3'>
-        <div>
-          <h3 className='text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
-            {t('share.timeline_trend_title')}
-          </h3>
-          <p className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
-            {metricMode === 'views' ? t('share.timeline_pv_desc') : t('share.timeline_uv_desc')}
-          </p>
-        </div>
-
-        <Segmented
-          options={[
-            { value: 'views', label: t('share.metric_pv') },
-            { value: 'visitors', label: t('share.metric_uv') },
-          ]}
-          value={metricMode}
-          onChange={(val) => setMetricMode(val as 'views' | 'visitors')}
-        />
-      </div>
-
-      <div className='h-60 w-full pt-2'>
-        <BigSvgChart values={chartValues} timeline={timelinePoints} emptyLabel={t('share.no_data_yet')} />
       </div>
     </div>
   )

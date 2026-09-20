@@ -2029,6 +2029,9 @@ const allowed = new Map([
     '// The plate stays white in both themes: the QR itself renders on fixed',
     '// white (QR_BG_COLOR), and a dark frame would cut into its quiet zone.',
   ]],
+  ['src/client/features/share/share-settings-retention.test.ts', [
+    '// The visible text is the name; a second hidden label would only drift.',
+  ]],
   ['src/client/features/share/share-small-defects.test.ts', [
     '// Fresh array per call: a refresh that hands the store the same shares',
     '// reference would never re-fire the initial-note effect.',
@@ -4775,6 +4778,9 @@ const allowed = new Map([
     '// is banned here.',
     '// The public reader page renders without the app\'s i18n runtime; its title',
     '// fallback is tracked outside SH-34.',
+  ]],
+  ['tests/share-radiogroup-names.test.ts', [
+    '/**\n * SH-40: a `Segmented` renders a `role=\'radiogroup\'`, and the component only\n * names it through `label` (an `aria-label`) or `aria-labelledby`. Every share\n * control that sits under a visible heading instead of passing one of those is\n * announced as an unnamed group of options, so the scan below is the guard: a\n * new `Segmented` must say what it is.\n */',
   ]],
   ['tests/share-routes.test.ts', [
     '// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =',
