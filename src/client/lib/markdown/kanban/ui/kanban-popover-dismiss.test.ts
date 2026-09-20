@@ -91,6 +91,7 @@ const controlled: [string, (onClose: () => void) => ReactNode][] = [
       color: 'gray',
       onRename: vi.fn(),
       onChangeColor: vi.fn(),
+      onChangeWipLimit: vi.fn(),
       onCollapse: vi.fn(),
       onDelete: vi.fn(),
     }),

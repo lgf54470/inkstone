@@ -1,7 +1,7 @@
 import { memo, useId, useRef } from 'react'
 import { useLocaleRepaint } from '../../../i18n'
 import type {
-  KanbanColorName,
+  KanbanColumnPatch,
   KanbanData,
   KanbanFile,
   KanbanItem,
@@ -62,7 +62,7 @@ interface KanbanViewRendererProps {
   handleUpdateView: (patch: Partial<KanbanData['views'][number]>) => void
   handleToggleSortColumn: (propertyId: string) => void
   handleReorderColumns: (sourceGroupKey: string, targetGroupKey: string) => void
-  handleUpdateColumn: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
+  handleUpdateColumn: (groupKey: string, patch: KanbanColumnPatch) => void
   handleDeleteColumn: (groupKey: string) => void
   handleResizeColumn: (propertyId: string, width: number | undefined) => void
   handleUpdateTags?: (id: string, tags: string[], newOption?: KanbanOption) => void

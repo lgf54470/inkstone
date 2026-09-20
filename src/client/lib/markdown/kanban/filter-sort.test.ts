@@ -4,6 +4,8 @@ import {
   applyKanbanSorts,
   groupKanbanItems,
   kanbanFilterOperatorsForType,
+  kanbanWipOver,
+  normalizeKanbanWipLimit,
   searchKanbanItems,
   toggleKanbanColumnSort,
   toggleKanbanHiddenColumn,
@@ -395,5 +397,60 @@ describe('applyKanbanSorts by the day a date column names', () => {
     // the board spelled it — the day-key order above puts the two on the same rung instead.
     const ordered = applyKanbanSorts(tieItems, [{ propertyId: 'deadline', direction: 'asc' }])
     expect(ordered.map((i) => i.id)).toEqual(['t-early', 't-bare', 't-full', 't-none'])
+  })
+})
+
+// F-09. A work-in-progress limit is a rule about a column of the board, and the only thing that makes
+// it a rule rather than a decoration is that everything asking the question — the header pill, the
+// collapsed strip, the move announcement — gets the same answer. The number arrives from a fence a
+// reader may have written by hand, so it is validated on the way in, not trusted.
+describe('the work-in-progress limit of a column', () => {
+  const limitColumn = {
+    id: 'status',
+    name: 'Status',
+    type: 'select',
+    options: [
+      { id: 'todo', label: 'To Do', color: 'gray', wipLimit: 2 },
+      { id: 'in_progress', label: 'In Progress', color: 'blue' },
+      { id: 'done', label: 'Done', color: 'green', wipLimit: 'three' },
+    ],
+  } as unknown as KanbanProperty
+
+  function groupOf(groupKey: string) {
+    return groupKanbanItems(items, 'status', limitColumn).find((g) => g.groupKey === groupKey)
+  }
+
+  it('carries the limit the option says onto the group that draws it', () => {
+    expect(groupOf('todo')?.wipLimit).toBe(2)
+  })
+
+  it('leaves a column nobody limited unlimited', () => {
+    expect(groupOf('in_progress')?.wipLimit).toBeUndefined()
+  })
+
+  it('refuses a stored limit it cannot read as a count of cards', () => {
+    expect(groupOf('done')?.wipLimit).toBeUndefined()
+  })
+
+  it('says a column filled exactly to its limit is not yet over', () => {
+    const todo = groupOf('todo')!
+    expect(todo.items).toHaveLength(2)
+    expect(kanbanWipOver(todo.items.length, todo.wipLimit)).toBe(0)
+  })
+
+  it('counts how far past the limit a column is', () => {
+    expect(kanbanWipOver(5, 2)).toBe(3)
+    expect(kanbanWipOver(1, 2)).toBe(0)
+  })
+
+  it('finds nothing over when no limit was set', () => {
+    expect(kanbanWipOver(99, undefined)).toBe(0)
+  })
+
+  it('drops a limit that is not a whole positive count of cards', () => {
+    for (const junk of [0, -3, 1.5, Number.NaN, Number.POSITIVE_INFINITY, '2', null, undefined, true]) {
+      expect(normalizeKanbanWipLimit(junk), `read back ${String(junk)}`).toBeUndefined()
+    }
+    expect(normalizeKanbanWipLimit(1)).toBe(1)
   })
 })

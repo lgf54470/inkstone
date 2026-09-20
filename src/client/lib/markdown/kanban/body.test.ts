@@ -238,3 +238,42 @@ describe('a column width through the fence', () => {
     expect(onlyColumn(again.data)?.width).toBe(320)
   })
 })
+
+// F-09. A limit lives on the workflow state rather than on the column, and a fence may have been
+// written by hand or exported by another tool, so what comes through here is only as trustworthy as
+// the reader that draws the rule from it.
+describe('a work-in-progress limit through the fence', () => {
+  const authored = JSON.stringify({
+    title: 'Sprint',
+    columns: [{
+      id: 'status',
+      name: 'Status',
+      type: 'select',
+      options: [
+        { id: 'doing', label: 'Doing', color: 'blue', wipLimit: 3 },
+        { id: 'gate', label: 'Gate', color: 'red', wipLimit: 'lots' },
+      ],
+    }],
+    items: [],
+  })
+
+  function option(data: KanbanData, optionId: string) {
+    return data.columns.find((column) => column.id === 'status')?.options?.find((o) => o.id === optionId)
+  }
+
+  it('keeps the limit the fence authored', () => {
+    const result = parseKanbanBody(authored)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(option(result.data, 'doing')?.wipLimit).toBe(3)
+  })
+
+  it('writes the limit back out, so the next parse draws the same rule', () => {
+    const parsed = parseKanbanBody(authored)
+    if (!parsed.ok) throw new Error('the fixture should parse')
+    const again = parseKanbanBody(serializeKanban(parsed.data, 'json'))
+    if (!again.ok) throw new Error('the written fence should parse back')
+    expect(option(again.data, 'doing')?.wipLimit).toBe(3)
+    expect(option(again.data, 'gate')?.wipLimit).toBe('lots' as unknown as number)
+  })
+})

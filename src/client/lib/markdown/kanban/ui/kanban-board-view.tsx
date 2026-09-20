@@ -1,11 +1,11 @@
 import { memo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
-import { groupKanbanItems } from '../filter-sort'
+import { groupKanbanItems, kanbanWipOver } from '../filter-sort'
 import type { KanbanGroup } from '../filter-sort'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
 import type { KanbanMovePivot } from '../dnd'
-import type { KanbanColorName, KanbanData, KanbanItem, KanbanOption, KanbanSubtask, KanbanView } from '../types'
+import type { KanbanColorName, KanbanColumnPatch, KanbanData, KanbanItem, KanbanOption, KanbanSubtask, KanbanView } from '../types'
 import { useKanbanBoardDndState, type CardDropTarget } from './kanban-board-dnd'
 import { KanbanCard } from './kanban-card'
 import { CollapsedColumn, KanbanColumnHeader } from './kanban-column-header'
@@ -26,7 +26,7 @@ interface KanbanBoardViewProps {
   onAddItem: (groupKey?: string) => void
   onAddColumn: () => void
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void
-  onUpdateColumn?: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
+  onUpdateColumn?: (groupKey: string, patch: KanbanColumnPatch) => void
   onDeleteColumn?: (groupKey: string) => void
   onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
@@ -124,6 +124,7 @@ interface KanbanBoardColumnProps {
   onAddItem: () => void
   onRenameColumn: (newLabel: string) => void
   onChangeColumnColor: (newColor: KanbanColorName) => void
+  onChangeColumnWipLimit: (limit: number | undefined) => void
   onCollapseColumn: () => void
   onDeleteColumn?: () => void
   onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
@@ -154,6 +155,7 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn({
   onAddItem,
   onRenameColumn,
   onChangeColumnColor,
+  onChangeColumnWipLimit,
   onCollapseColumn,
   onDeleteColumn,
   onUpdateTags,
@@ -162,6 +164,7 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn({
   useLocaleRepaint()
   return (
     <div
+      data-kanban-group={group.groupKey}
       onDragOver={onDragOver}
       onDrop={onDrop}
       className={`flex w-72 shrink-0 flex-col rounded-[var(--r-lg)] border bg-[var(--bg-raised)] p-2 transition-colors ${
@@ -173,9 +176,11 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn({
         label={group.label}
         count={group.items.length}
         color={group.color}
+        wipLimit={group.wipLimit}
         onDragStart={onDragStartColumn}
         onRename={onRenameColumn}
         onChangeColor={onChangeColumnColor}
+        onChangeWipLimit={onChangeColumnWipLimit}
         onCollapse={onCollapseColumn}
         onDelete={onDeleteColumn}
       />
@@ -235,10 +240,13 @@ function kanbanMoveAnnouncement(
   const target = groups.find((group) => group.groupKey === targetGroupKey)
   const item = source?.items.find((i) => i.id === itemId)
   if (!source || !target || !item || source.groupKey === target.groupKey) return null
-  return t('preview.kanban_moved_to_group', {
-    title: item.title || t('preview.kanban_untitled'),
-    group: formatKanbanGroupLabel(target.groupKey, target.label),
-  })
+  const title = item.title || t('preview.kanban_untitled')
+  const group = formatKanbanGroupLabel(target.groupKey, target.label)
+  // This is read before the card has moved, so the column it would fill is still one card short.
+  const over = kanbanWipOver(target.items.length + 1, target.wipLimit)
+  if (over > 0)
+    return t('preview.kanban_moved_to_group_over', { title, group, over, limit: target.wipLimit ?? 0 })
+  return t('preview.kanban_moved_to_group', { title, group })
 }
 
 function useKanbanBoardMoves(
@@ -287,7 +295,7 @@ interface BoardColumnItemProps {
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onMoveColumn: (itemId: string, dir: 'prev' | 'next') => void
   onAddItem: (groupKey: string) => void
-  onUpdateColumn?: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
+  onUpdateColumn?: (groupKey: string, patch: KanbanColumnPatch) => void
   onDeleteColumn?: (groupKey: string) => void
   onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
@@ -348,6 +356,7 @@ function ExpandedBoardColumn(props: BoardColumnItemProps) {
       onAddItem={() => props.onAddItem(group.groupKey)}
       onRenameColumn={(newLabel) => props.onUpdateColumn?.(group.groupKey, { label: newLabel })}
       onChangeColumnColor={(newColor) => props.onUpdateColumn?.(group.groupKey, { color: newColor })}
+      onChangeColumnWipLimit={(wipLimit) => props.onUpdateColumn?.(group.groupKey, { wipLimit })}
       onCollapseColumn={() => props.onToggleCollapse(group.groupKey)}
       onDeleteColumn={() => props.onDeleteColumn?.(group.groupKey)}
       onUpdateTags={props.onUpdateTags}

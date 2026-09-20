@@ -170,6 +170,7 @@ const PAIRS: Pair[] = [
       onDragStart: vi.fn(),
       onRename: vi.fn(),
       onChangeColor: vi.fn(),
+      onChangeWipLimit: vi.fn(),
       onCollapse: vi.fn(),
     }),
     trigger: (root) => namedButton(root, formatKanbanGroupLabel('section', 'Backlog')),

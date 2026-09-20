@@ -2671,6 +2671,9 @@ const allowed = new Map([
     '// A width the reader dragged to is a fact about the document, not about this render, so it has to',
     '// leave in the fence and come back out of it: otherwise every reload puts the columns back to the',
     '// guess the type makes. Only the JSON body carries it, since an outline has no columns of its own.',
+    '// F-09. A limit lives on the workflow state rather than on the column, and a fence may have been',
+    '// written by hand or exported by another tool, so what comes through here is only as trustworthy as',
+    '// the reader that draws the rule from it.',
   ]],
   ['src/client/lib/markdown/kanban/body.ts', [
     '/**\n * DOM-free helpers behind the ```kanban fence: format detection, JSON/Outline parsing\n * and fence surgery that two-way editing needs.\n */',
@@ -2730,6 +2733,10 @@ const allowed = new Map([
     '// in the cell, which is the same ambiguity groupKanbanItems already resolves both ways.',
     '// Without the schema a timestamped day sorts after its own bare prefix, which is exactly how',
     '// the board spelled it — the day-key order above puts the two on the same rung instead.',
+    '// F-09. A work-in-progress limit is a rule about a column of the board, and the only thing that makes',
+    '// it a rule rather than a decoration is that everything asking the question — the header pill, the',
+    '// collapsed strip, the move announcement — gets the same answer. The number arrives from a fence a',
+    '// reader may have written by hand, so it is validated on the way in, not trusted.',
   ]],
   ['src/client/lib/markdown/kanban/filter-sort.ts', [
     '/**\n * What the caller knows besides the cards: the schema, so a rule can be read as a question about\n * that kind of column, and the clock, so a missed deadline is decidable without a test having to\n * move time. Both are optional — a board read without a schema asks text questions, as it did.\n */',
@@ -2749,6 +2756,9 @@ const allowed = new Map([
     '// way, and a tie hands the decision to the next rule.',
     '// A header click sorts by that column alone, so it replaces the rules the sort',
     '// popover wrote; the popover and undo history remain the way back to them.',
+    '/** How many cards the reader allows here; absent means no rule was written. */',
+    '/**\n * A limit is a count of cards, so anything else — text from a hand-written fence, zero, a fraction —\n * reads as no rule rather than as one that rejects every card on the column.\n */',
+    '/** How far past the limit a column of `count` cards is; filling it exactly is not yet over. */',
     '// Documents imported from other tools may store the option label where this',
     '// board expects the option id; matching only by id would hide all of those',
     '// cards in No Status, so fall back to a case-insensitive label match.',
@@ -2815,6 +2825,8 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/types.ts', [
     '/**\n * Core type definitions for the Kanban and Notion-style database block.\n */',
+    '/** Cards this workflow state may hold at once; absent means the reader set no rule. See `filter-sort.ts`. */',
+    '/**\n * What a reader may change about one column of the board. `wipLimit` is optional in the patch and\n * also clearable: a patch that names it at all answers the question, so `undefined` removes the\n * rule, while leaving the key out keeps the rule the column has.\n */',
     '/** Pixels the reader sized this column to; absent means the type decides. See `column-width.ts`. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-bilingual-labels.test-helpers.ts', [
@@ -2844,6 +2856,7 @@ const allowed = new Map([
     '// A move that leaves the card in the same group is a reorder, not a change of place, so it gets no',
     '// announcement; an item the board does not list has no known source group, and guessing would mean',
     '// reading out a column the card may not have left.',
+    '// This is read before the card has moved, so the column it would fill is still one card short.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-calendar-view.test.ts', [
     '/**\n * The calendar view drew its own week twice over: seven message keys listed Sunday→Saturday, and the\n * cells under them were generated assuming Sunday as well — self-consistent, so nothing looked wrong,\n * but neither half could follow the reader. Both now come off one locale-derived number, and these\n * probes read the pair the reader actually sees: the label sitting over the column, and the date that\n * column\'s first cell creates an item for. Asserting one against the other is what catches a header\n * that moved while the grid stayed put, which neither half alone would notice.\n */',
@@ -2870,7 +2883,18 @@ const allowed = new Map([
     '// Identity must survive unrelated commits: a fresh dataset object every',
     '// render tears the Chart.js instance down and rebuilds it.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-column-count.tsx', [
+    '/**\n * F-09. The count of cards in a column is read in three places — the board header, the collapsed\n * strip and the grouped table — and a work-in-progress limit is only a rule if all three answer from\n * the same number, so the pill is drawn here once instead of pasted a third time. Being over the\n * limit is said in words and marked with an icon rather than painted red: `--danger` as text at this\n * size measures under AA on the inset surfaces, so the red stays on the graphic and the words carry\n * the state (WCAG 1.4.1), same as the overdue date badge does.\n */',
+    '/** The rule the reader set for this column; `undefined` means there is none to show. */',
+    '/** Shape classes of the surface drawing it (radius, padding, size), never a text colour. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-column-header.tsx', [
+    '// The strip\'s own label replaces everything inside the button, so the state the pill shows has to',
+    '// be said here too or a screen reader gets the count of no column at all.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-column-hooks.ts', [
+    '// Renaming and limiting share this one writer, so a patch that merely omits `wipLimit` must not',
+    '// read as "clear it". The value is validated here too because a patch can come from anywhere.',
     '/** The types the reader can put on a column. `title` and `files` are the two the table draws itself. */',
     '/** The name of a column type for the type picker, which is a message rather than the token the fence stores. */',
     '// A column the table has to draw itself cannot be edited away from under the reader: the title column',
@@ -2890,6 +2914,12 @@ const allowed = new Map([
     '/** The document-level writers of the table\'s column schema, on the board\'s one commit path. */',
     '// Retyping rewrites the values of every card, so it is undoable on the same terms as a delete.',
     '// No undo toast of its own: a drag commits on release and the reader is still holding the mouse.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-column-menu.tsx', [
+    '/** Below this the field is not asking for a count of cards, so nothing is written. */',
+    '/**\n * A limit is a count of cards, so a draft that is not one is refused where it is typed, and the\n * notice sits in the dialog rather than in a popup. Blank means no rule, which is what the hint\n * says. The same number is validated again by the writer and again by the reader, because it may\n * also have arrived in a fence someone wrote by hand.\n */',
+    '// No Status is not a workflow state the board owns — it is wherever the cards that named none',
+    '// landed — so there is no option to write a name, a colour or a limit onto.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-column-resize-handle.tsx', [
     '/**\n * The splitter on the edge of a table column. It is the only control that answers for a column\'s\n * width, and it is its own unit because that width has one owner: the drag and the keyboard have to\n * agree on the same range, the same draft, and the one moment the document gets written.\n */',
@@ -2960,6 +2990,11 @@ const allowed = new Map([
     '// is dropped rather than trusted, so it reads as the type default instead of a broken layout.',
     '// Sizing is about the column the reader sees, not the kind of value in it: retyping must not quietly',
     '// throw the width away, and a width aimed at no column at all must not reach any of them.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-column-wip.test.ts', [
+    '/**\n * F-09. A work-in-progress limit is a rule about a column, and a rule is only worth having because\n * every surface that asks "how full is this column" answers the same way: the board header, the\n * collapsed strip, the grouped table, and the sentence read out after a card lands. So this file\n * reads the same number off all four, and reads it off the same mount path a reader uses — the\n * column menu that already holds the name and the colour.\n *\n * The limit may also have been written by hand in the fence or imported from another tool, so what\n * the board cannot read as a count of cards is treated as no limit at all rather than as a rule\n * that rejects every card; a column filled exactly to its limit is not yet over it.\n */',
+    '/** What the pill draws, with the screen-reader sentence left out of the way. */',
+    '// The strip is one button, so its label has to carry the state the collapsed pill cannot show.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-context-menu.test.ts', [
     '// A literal \'Ctrl+Y\' would be a dead promise on macOS, where `kanban-history.ts` binds',
@@ -3254,6 +3289,8 @@ const allowed = new Map([
     '// come back through the same undo the toast hands the reader.',
     '// A resize is the one schema edit with no toast of its own — it happens in a drag — so this is',
     '// the only place that proves Ctrl+Z reaches it.',
+    '// A limit is set once and read everywhere after that, so the two things that would eat it silently',
+    '// are the undo the reader reaches for straight after, and the rename that shares this one writer.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-state.ts', [
     '// Unset lists reuse these constants so memoized consumers keep the same',

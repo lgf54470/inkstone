@@ -3,11 +3,12 @@ import { t } from '../../../i18n'
 import { toastWithUndo } from '../../../../store/ui'
 import { getDeterministicTagColor } from '../colors'
 import { clampKanbanColumnWidth, kanbanColumnWidthPx } from '../column-width'
+import { normalizeKanbanWipLimit } from '../filter-sort'
 import { createKanbanId } from '../id'
 import { reorderKanbanColumns } from '../dnd'
 import type { CommitKanbanData } from './kanban-history'
 import type {
-  KanbanColorName,
+  KanbanColumnPatch,
   KanbanData,
   KanbanFilter,
   KanbanOption,
@@ -30,15 +31,27 @@ function deleteColumnFromData(data: KanbanData, groupKey: string, groupByPropert
   return { ...data, columns: nextCols, items: nextItems }
 }
 
+// Renaming and limiting share this one writer, so a patch that merely omits `wipLimit` must not
+// read as "clear it". The value is validated here too because a patch can come from anywhere.
+function applyColumnPatch(opt: KanbanOption, patch: KanbanColumnPatch): KanbanOption {
+  const next: KanbanOption = { ...opt, ...patch }
+  if ('wipLimit' in patch) {
+    const limit = normalizeKanbanWipLimit(patch.wipLimit)
+    if (limit === undefined) delete next.wipLimit
+    else next.wipLimit = limit
+  }
+  return next
+}
+
 function updateColumnInList(
   columns: KanbanProperty[],
   groupByPropertyId: string,
   groupKey: string,
-  patch: { label?: string; color?: KanbanColorName },
+  patch: KanbanColumnPatch,
 ): KanbanProperty[] {
   return columns.map((col) => {
     if (col.id !== groupByPropertyId || !col.options) return col
-    const nextOptions = col.options.map((opt: KanbanOption) => (opt.id === groupKey ? { ...opt, ...patch } : opt))
+    const nextOptions = col.options.map((opt: KanbanOption) => (opt.id === groupKey ? applyColumnPatch(opt, patch) : opt))
     return { ...col, options: nextOptions }
   })
 }
@@ -73,7 +86,7 @@ export function useKanbanColumnOperations(commitData: CommitKanbanData, activeVi
   )
 
   const handleUpdateColumn = useCallback(
-    (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => commitData((prev) => ({
+    (groupKey: string, patch: KanbanColumnPatch) => commitData((prev) => ({
       ...prev,
       columns: updateColumnInList(prev.columns, groupByPropertyId, groupKey, patch),
     })),

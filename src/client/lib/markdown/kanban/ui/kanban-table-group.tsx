@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
+import { KanbanColumnCount } from './kanban-column-count'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { kanbanTableColumnCount } from './kanban-property-cell'
 import { KanbanTableRow } from './kanban-table-row'
@@ -11,6 +12,7 @@ interface KanbanTableGroupProps {
   groupKey: string
   label: string
   color?: KanbanColorName
+  wipLimit?: number
   items: KanbanItem[]
   columns: KanbanProperty[]
   hiddenColumns?: string[]
@@ -29,6 +31,7 @@ function GroupHeader({
   localizedLabel,
   color,
   count,
+  wipLimit,
   columnCount,
   onToggleCollapse,
   onAddItem,
@@ -37,6 +40,7 @@ function GroupHeader({
   localizedLabel: string
   color?: KanbanColorName
   count: number
+  wipLimit?: number
   columnCount: number
   onToggleCollapse: () => void
   onAddItem: () => void
@@ -56,9 +60,11 @@ function GroupHeader({
             {collapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
           </button>
           <span style={{ color: colorVar }}>{localizedLabel}</span>
-          <span className='rounded-[var(--r-full)] bg-[var(--bg-hover)] px-2 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
-            {count}
-          </span>
+          <KanbanColumnCount
+            count={count}
+            limit={wipLimit}
+            className='rounded-[var(--r-full)] bg-[var(--bg-hover)] px-2 py-0.5 text-[length:var(--text-10)]'
+          />
         </div>
 
         <button
@@ -112,6 +118,7 @@ export function KanbanTableGroup({
   groupKey,
   label,
   color,
+  wipLimit,
   items,
   columns,
   hiddenColumns,
@@ -129,12 +136,13 @@ export function KanbanTableGroup({
   const columnCount = kanbanTableColumnCount(columns, hiddenColumns)
 
   return (
-    <div role='rowgroup' className='mb-6 overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-subtle)] shadow-2xs'>
+    <div data-kanban-group={groupKey} role='rowgroup' className='mb-6 overflow-hidden rounded-[var(--r-lg)] border border-[var(--border-subtle)] shadow-2xs'>
       <GroupHeader
         collapsed={collapsed}
         localizedLabel={localizedLabel}
         color={color}
         count={items.length}
+        wipLimit={wipLimit}
         columnCount={columnCount}
         onToggleCollapse={() => setCollapsed((c) => !c)}
         onAddItem={onAddItemInGroup}

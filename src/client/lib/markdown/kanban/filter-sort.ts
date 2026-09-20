@@ -241,6 +241,22 @@ export interface KanbanGroup {
   label: string
   color?: KanbanColorName
   items: KanbanItem[]
+  /** How many cards the reader allows here; absent means no rule was written. */
+  wipLimit?: number
+}
+
+/**
+ * A limit is a count of cards, so anything else — text from a hand-written fence, zero, a fraction —
+ * reads as no rule rather than as one that rejects every card on the column.
+ */
+export function normalizeKanbanWipLimit(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined
+}
+
+/** How far past the limit a column of `count` cards is; filling it exactly is not yet over. */
+export function kanbanWipOver(count: number, limit: number | undefined): number {
+  if (limit === undefined) return 0
+  return Math.max(0, count - limit)
 }
 
 // Documents imported from other tools may store the option label where this
@@ -267,6 +283,7 @@ export function groupKanbanItems(
       groupKey: opt.id,
       label: opt.label,
       color: opt.color,
+      wipLimit: normalizeKanbanWipLimit(opt.wipLimit),
       items: [],
     })
   }

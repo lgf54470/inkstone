@@ -31,7 +31,16 @@ export interface KanbanOption {
   id: string
   label: string
   color: KanbanColorName
+  /** Cards this workflow state may hold at once; absent means the reader set no rule. See `filter-sort.ts`. */
+  wipLimit?: number
 }
+
+/**
+ * What a reader may change about one column of the board. `wipLimit` is optional in the patch and
+ * also clearable: a patch that names it at all answers the question, so `undefined` removes the
+ * rule, while leaving the key out keeps the rule the column has.
+ */
+export type KanbanColumnPatch = Partial<Pick<KanbanOption, 'label' | 'color' | 'wipLimit'>>
 
 export interface KanbanProperty {
   id: string

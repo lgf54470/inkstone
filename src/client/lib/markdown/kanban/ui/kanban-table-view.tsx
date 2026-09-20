@@ -118,6 +118,7 @@ function TableGroupList({
           groupKey={group.groupKey}
           label={group.label}
           color={group.color}
+          wipLimit={group.wipLimit}
           items={group.items}
           columns={columns}
           hiddenColumns={hiddenColumns}

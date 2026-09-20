@@ -239,6 +239,46 @@ describe('kanban column schema operations', () => {
   })
 })
 
+// A limit is set once and read everywhere after that, so the two things that would eat it silently
+// are the undo the reader reaches for straight after, and the rename that shares this one writer.
+describe('the work-in-progress limit of a column', () => {
+  function writtenOption(commits: KanbanData[]) {
+    return commits.at(-1)!.columns[0]!.options![0]!
+  }
+
+  it('writes a limit onto the option and hands the step back to the board history', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.columnOps.handleUpdateColumn('todo', { wipLimit: 3 }) })
+    expect(writtenOption(commits).wipLimit).toBe(3)
+    act(() => { holder.state.history.undo() })
+    expect(holder.state.data.columns[0]!.options![0]!.wipLimit).toBeUndefined()
+    unmount()
+  })
+
+  it('leaves the limit alone when only the name of the column changes', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.columnOps.handleUpdateColumn('todo', { wipLimit: 3 }) })
+    act(() => { holder.state.columnOps.handleUpdateColumn('todo', { label: 'Backlog' }) })
+    expect(writtenOption(commits)).toMatchObject({ label: 'Backlog', wipLimit: 3 })
+    unmount()
+  })
+
+  it('lets go of the rule when the reader blanks the field', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.columnOps.handleUpdateColumn('todo', { wipLimit: 3 }) })
+    act(() => { holder.state.columnOps.handleUpdateColumn('todo', { wipLimit: undefined }) })
+    expect('wipLimit' in writtenOption(commits)).toBe(false)
+    unmount()
+  })
+
+  it('refuses to store a limit that is not a whole positive count of cards', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.columnOps.handleUpdateColumn('todo', { wipLimit: 0 }) })
+    expect('wipLimit' in writtenOption(commits)).toBe(false)
+    unmount()
+  })
+})
+
 describe('undoing a view delete', () => {
   it('runs a deleted view back in from the toast, through the board history', () => {
     const { holder, commits, unmount } = renderRootStateProbe()

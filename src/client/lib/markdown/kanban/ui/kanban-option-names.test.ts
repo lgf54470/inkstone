@@ -187,6 +187,7 @@ describe('a column colour dot', () => {
       onRename: vi.fn(),
       onClose: vi.fn(),
       onChangeColor,
+      onChangeWipLimit: vi.fn(),
       onCollapse: vi.fn(),
     }))
     const dot = byName(container, messageIn(code, colorKey('red')))

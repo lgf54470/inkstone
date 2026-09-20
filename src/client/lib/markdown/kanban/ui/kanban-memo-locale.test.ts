@@ -134,6 +134,7 @@ const SUBJECTS: { name: string, element: ReactElement }[] = [
       color: 'blue',
       onRename: noop,
       onChangeColor: noop,
+      onChangeWipLimit: noop,
       onCollapse: noop,
       onDelete: noop,
     }),
