@@ -132,7 +132,7 @@ export function registerBlogRoutes(app: Hono, state: DemoState): void {
   registerBlogTagRoutes(app, data)
   registerBlogCategoryRoutes(app, data)
   registerBlogToggleGroupRoute(app, data)
-  registerBlogVisitsRoute(app, data)
+  registerBlogVisitsRoute(app, data, state)
   registerBlogCommentRoutes(app, data)
   registerBlogAnalyticsRoute(app, data)
 }

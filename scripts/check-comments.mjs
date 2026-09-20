@@ -1056,6 +1056,8 @@ const allowed = new Map([
     '// Every /api/blog/* route the client calls via src/client/lib/api/share.ts, with',
     '// representative payloads. Any gap here fails the smoke test instead of surfacing',
     '// as a silent 404 console flood in demo mode.',
+    '// The demo backend mirrors the worker guard (SH-47): wiping every visit log has',
+    '// to re-prove the password, and a stale session must not get a silent delete.',
   ]],
   ['src/client/demo/state.ts', [
     '/** Named whiteboard libraries, exactly as the endpoint stores them: name -> items JSON. */',
@@ -1124,6 +1126,7 @@ const allowed = new Map([
     '// A test that fails before its unmount would otherwise leave its modal in the',
     '// document, and the next test\'s button lookup would drive that stale instance.',
     '// The period belongs to the account: nothing in this save may re-cache it.',
+    '// Cleaning by age needs no re-authentication, so the password stays unset.',
     '// The tab switcher and the retention period; nothing else asks for a count.',
   ]],
   ['src/client/features/blog/blog-store/index.ts', [
@@ -2020,10 +2023,6 @@ const allowed = new Map([
   ['src/client/features/share/share-form.ts', [
     '// A new or replaced passcode must meet LIMITS.sharePasscodeMinLength (the',
     '// server enforces the same minimum); short codes are trivially brute-forced.',
-  ]],
-  ['src/client/features/share/share-helpers.ts', [
-    '// The wipe-all-logs endpoint requires the current password (SH-12); both clean',
-    '// entry points ask through this single prompt so wording stays identical.',
   ]],
   ['src/client/features/share/share-narrow-screen.test.ts', [
     '// A failed assertion must not leave a mounted portal behind: later tests query document.body.',
@@ -3861,6 +3860,11 @@ const allowed = new Map([
     '// Quota or private-mode writes can throw; the pref stays authoritative in memory.',
     '/** Whether undo toasts should auto-focus their action button (explicit "no-distraction" opt-out). */',
   ]],
+  ['src/client/lib/wipe-password-prompt.ts', [
+    '// Clearing every visit log is unrecoverable, so the endpoint requires the current',
+    '// password (SH-12, and SH-47 for the blog twin). Every clean entry point asks',
+    '// through this single prompt so the wording cannot drift between the two modules.',
+  ]],
   ['src/client/lib/year-grid-prefs.ts', [
     '// Corrupt or missing stored prefs fall back to the default below.',
     '// Quota or private-mode writes can throw; the pref stays authoritative in memory.',
@@ -4509,8 +4513,14 @@ const allowed = new Map([
     '// JSON-escaped tag text, LIKE-escaped on top (ESCAPE \'\\\\\'); the second',
     '// pattern keeps the parent-tag-matches-descendants hierarchy semantics.',
   ]],
+  ['src/worker/routes/blog/schemas.ts', [
+    '// Body of DELETE /api/blog/visits?type=all: the wipe is unrecoverable, so the',
+    '// current password travels in the body rather than the query string (SH-47).',
+  ]],
   ['src/worker/routes/blog/stats.ts', [
     '/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */',
+    '// Wiping the whole trail is unrecoverable, so a stolen session must re-prove',
+    '// it holds the account password before the delete runs (same as share SH-12).',
   ]],
   ['src/worker/routes/blog/visits.ts', [
     '// CF-Connecting-IP is injected by the Cloudflare edge (see requestClientIp);',

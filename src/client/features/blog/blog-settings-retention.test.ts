@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS } from '@shared/user-settings'
 import { renderElement, type RenderedElement } from '../../lib/test-render'
 import { t } from '../../lib/i18n'
 import { api } from '../../lib/api'
-import { confirm } from '../../components/overlay'
+import { confirm, prompt } from '../../components/overlay'
 import { BlogSettingsModal } from './blog-settings-modal'
 
 const session = vi.hoisted(() => ({
@@ -38,7 +38,11 @@ vi.mock('../../lib/api', () => ({
 
 vi.mock('../../components/overlay', async (importOriginal) => {
   const module = await importOriginal<typeof import('../../components/overlay')>()
-  return { ...module, confirm: vi.fn(async () => true) }
+  return {
+    ...module,
+    confirm: vi.fn(async () => true),
+    prompt: vi.fn(async () => 'wipe-password-1'),
+  }
 })
 
 function buttonByText(root: ParentNode, label: string): HTMLElement {
@@ -87,6 +91,11 @@ async function cleanOlderLogs(): Promise<void> {
   await act(async () => { button.click() })
 }
 
+async function cleanAllLogs(): Promise<void> {
+  const button = buttonByText(document, t('share.clean_all_logs'))
+  await act(async () => { button.click() })
+}
+
 beforeEach(() => {
   localStorage.clear()
   session.state.updateSettings.mockReset()
@@ -97,6 +106,8 @@ beforeEach(() => {
   blogStore.state.excludeOwner = false
   vi.mocked(api.blog.cleanVisits).mockClear()
   vi.mocked(confirm).mockClear()
+  vi.mocked(prompt).mockClear()
+  vi.mocked(prompt).mockResolvedValue('wipe-password-1')
 })
 
 afterEach(() => {
@@ -161,7 +172,8 @@ describe('blog log cleanup honours the account retention (SH-43)', () => {
     openTrafficTab()
     await cleanOlderLogs()
 
-    expect(api.blog.cleanVisits).toHaveBeenCalledWith('older_than', 30)
+    // Cleaning by age needs no re-authentication, so the password stays unset.
+    expect(api.blog.cleanVisits).toHaveBeenCalledWith('older_than', 30, undefined)
   })
 })
 
@@ -193,5 +205,39 @@ describe('blog settings modal draws no record cap control (SH-45)', () => {
     })
     expect(session.state.updateSettings).toHaveBeenCalledTimes(1)
     expect(session.state.updateSettings).toHaveBeenCalledWith({ blog: { visitLogRetentionDays: 30 } })
+  })
+})
+
+describe('blog log wipe re-asks for the current password (SH-47)', () => {
+  async function wipeWithPrompt(): Promise<void> {
+    session.state.settings = { ...DEFAULT_SETTINGS, blog: { visitLogRetentionDays: 30 } }
+    openModal()
+    openTrafficTab()
+    await cleanAllLogs()
+  }
+
+  it('forwards the entered password with the all-scope cleanup', async () => {
+    await wipeWithPrompt()
+
+    expect(prompt).toHaveBeenCalledTimes(1)
+    expect(api.blog.cleanVisits).toHaveBeenCalledWith('all', 30, 'wipe-password-1')
+  })
+
+  it('sends nothing when the password prompt is dismissed', async () => {
+    vi.mocked(prompt).mockResolvedValueOnce(null)
+
+    await wipeWithPrompt()
+
+    expect(api.blog.cleanVisits).not.toHaveBeenCalled()
+  })
+
+  it('does not ask for a password to clean bots', async () => {
+    session.state.settings = { ...DEFAULT_SETTINGS, blog: { visitLogRetentionDays: 30 } }
+    openModal()
+    openTrafficTab()
+    await act(async () => { buttonByText(document, t('share.clean_bots_only')).click() })
+
+    expect(prompt).not.toHaveBeenCalled()
+    expect(api.blog.cleanVisits).toHaveBeenCalledWith('bots', 30, undefined)
   })
 })

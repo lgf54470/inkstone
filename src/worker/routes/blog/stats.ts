@@ -2,6 +2,10 @@ import { Hono } from 'hono'
 import type { BlogGlobalAnalytics, BlogStats, BlogVisitLog, ShareBreakdownItem, ShareTimelineRange } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { requireAuth } from '../../middleware/auth'
+import { ApiError } from '../../lib/errors'
+import { JSON_BODY_LIMITS, readOptionalJsonValidated } from '../../lib/request'
+import { requireCurrentPassword } from '../../lib/reauth'
+import { blogVisitWipeSchema } from './schemas'
 import {
   analyticsWindow,
   buildBucketedTimeline,
@@ -416,6 +420,15 @@ function registerBlogVisitsDeleteRoute(blogManageRoutes: Hono<AppBindings>): voi
     const userId = c.get('userId')!
     const type = c.req.query('type') || 'all'
     const days = parseInt(c.req.query('days') || '30', 10)
+    if (type === 'older_than' && !(days >= 1)) {
+      throw ApiError.badRequest('Cleaning visit logs older than N days requires a positive integer for days')
+    }
+    if (type === 'all') {
+      // Wiping the whole trail is unrecoverable, so a stolen session must re-prove
+      // it holds the account password before the delete runs (same as share SH-12).
+      const body = await readOptionalJsonValidated(c, blogVisitWipeSchema, JSON_BODY_LIMITS.small, {})
+      await requireCurrentPassword(c.env.DB, userId, body.password ?? '')
+    }
     const deleted = await deleteBlogVisitLogs(c.env.DB, userId, type, days)
     return c.json({ ok: true as const, deleted })
   })
@@ -429,7 +442,7 @@ async function deleteBlogVisitLogs(db: D1Database, userId: string, type: string,
     return res.meta.changes ?? 0
   }
   if (type === 'older_than') {
-    const cutoff = Date.now() - Math.max(1, days) * DAY_MS
+    const cutoff = Date.now() - days * DAY_MS
     const res = await db.prepare(
       `DELETE FROM blog_visits WHERE user_id = ?1 AND visited_at < ?2`,
     ).bind(userId, cutoff).run()

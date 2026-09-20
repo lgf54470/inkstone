@@ -5,7 +5,7 @@ import { t } from '../../lib/i18n'
 import { useSession } from '../../store/session'
 import { useUi } from '../../store/ui'
 import type { UiState } from '../../store/ui'
-import { promptWipePassword } from './share-helpers'
+import { promptWipePassword } from '../../lib/wipe-password-prompt'
 import { useShareStore } from './share-store'
 
 export function useShareSettingsModal(onClose: () => void) {

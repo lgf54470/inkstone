@@ -5,7 +5,8 @@ import { api, ApiError } from '../../lib/api'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import type { UiState } from '../../store/ui'
-import { exportVisitsToCsv, promptWipePassword } from './share-helpers'
+import { exportVisitsToCsv } from './share-helpers'
+import { promptWipePassword } from '../../lib/wipe-password-prompt'
 
 
 type VisitFilter = 'all' | 'real' | 'bot' | 'owner' | 'self'

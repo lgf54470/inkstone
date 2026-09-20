@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import { api } from '../../lib/api'
 import { t } from '../../lib/i18n'
+import { promptWipePassword } from '../../lib/wipe-password-prompt'
 import type { UiState } from '../../store/ui'
 import { useUi } from '../../store/ui'
 import { useSession } from '../../store/session'
@@ -219,9 +220,16 @@ async function cleanVisitLogs(
   })
   if (!ok) return
 
+  let password: string | undefined
+  if (type === 'all') {
+    const entered = await promptWipePassword()
+    if (entered === null) return
+    password = entered
+  }
+
   setIsCleanBusy(true)
   try {
-    const res = await api.blog.cleanVisits(type, days)
+    const res = await api.blog.cleanVisits(type, days, password)
     toast({
       title: t('share.clean_success', { count: res.deleted }),
       tone: 'default',
