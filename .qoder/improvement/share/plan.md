@@ -51,7 +51,7 @@
 | F1 | SH-29 | `big-svg-chart` 全 0 空态 / `dashboard-blocks` delta 0% / `computeDelta(0,0)` — blog 看板共用，双侧回归 | P2 | ✅ | 1b502776 |
 | F2 | SH-16b | range=all 行为改 `lib/share-analytics.ts` 的 `getRangeStartTimestamp`/`buildShareTimeline`（blog stats.ts 共用） | P2 | ✅ | 9621ab0d |
 | F2b | SH-16c | all 整表拉行 SQL 下推（26 号遗留）：`lib/visit-aggregates.ts` 聚合语句 + 行路/SQL 路同一 normalized 中间形态 + 等价测试 | P2 | ✅ | fd22e03b |
-| F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后）：blog_visits 级联 + 孤儿清扫 | P2 | ✅ | 待回填 |
+| F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后）：blog_visits 级联 + 孤儿清扫 | P2 | ✅ | 79c25248 |
 | F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | eff0a6b5 |
 | F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | ✅ | f812c7a7 |
 | H1 | SH-39 | `maxLogRecords`（设置模态「最多记录数」）全仓无消费者，属假设置：接入日志列表取数上限或删除控件+文案+本地键 | P3 | 排队 | |
@@ -352,4 +352,4 @@
 - 看板计数不另加 `EXISTS` 过滤：share 侧需要它是因为 revoke 与笔记存活可以解耦，而 blog 侧文章一旦删除其日志即刻级联消失、历史脏行由同一 cron 兜底——两条路径合起来已保证聚合面不再有幽灵行，多一处 join 只增加每次看板的扫描成本。
 - 测试（红先行）：`tests/blog-routes.test.ts` 新两个 describe 共 4 例——单篇删除带走该文 2 行且不动他文、批量删除带走被删两文而留下的那篇保有 1 行（红态 `expected { 'p-doomed': 2, 'p-kept': 1 } to deeply equal { 'p-kept': 1 }`）；隔离 2 例点名 `p-foreign`（他人文章+其 visit 行必须原样存活，钉住 owner 限定）。`tests/blog-visit-cleanup.test.ts`（新文件，注册进 vitest 双列表）2 例——cron 删孤儿留存活文并回计数 1、`limit=2` 两次 tick 由旧到新抽干（红态 `expected [ 'alive', 'ghost' ] to deeply equal [ 'alive' ]`）。
 - 变异 9 发全杀（/tmp/mutF3 备份还原）：单篇/批量各去掉 visits 语句、两路各去掉 `user_id` 限定、cron 去掉 `NOT EXISTS`、join 列改错、去掉 `LIMIT`、`ORDER BY` 改最新优先、去掉 `bind(capped)`。
-- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 109/109（blog-routes 30 + blog-visit-cleanup 2 + share-visit-retention 8 + share-routes 69）。全量回归待回填。fix 提交 待回填。
+- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 109/109（blog-routes 30 + blog-visit-cleanup 2 + share-visit-retention 8 + share-routes 69）。全量回归 242 文件/1863 测试绿（REGRESSION_EXIT=0，串行 466s，同机另有 slides 与 attachments 会话争 CPU）。fix 提交 79c25248。
