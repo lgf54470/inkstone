@@ -20,6 +20,7 @@ vi.mock('../../../lib/api', () => ({
       unsharePlaylist: vi.fn(async (id: string) => ({ id, items: [], shareSlug: null })),
       batchTracks: vi.fn(async () => ({ ok: true, updated: 0 })),
       patchTrack: vi.fn(async (id: string, patch: object) => ({ id, ...patch })),
+      createTag: vi.fn(async (input: { name: string }) => ({ id: `tag-${input.name}`, ...input })),
     },
   },
 }))
@@ -32,11 +33,11 @@ vi.mock('../music-feedback', () => ({
 
 import { api } from '../../../lib/api'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
-import { addSelectionToPlaylist, createPlaylist, movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, renamePlaylist, sharePlaylist, unsharePlaylist } from './library-collections'
+import { addSelectionToPlaylist, createPlaylist, createTag, movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, renamePlaylist, sharePlaylist, unsharePlaylist } from './library-collections'
 import type { MusicStoreState } from './types'
 
 function makeStore() {
-  let state = { playlists: [] as MusicPlaylistDetail[] } as unknown as MusicStoreState
+  let state = { playlists: [] as MusicPlaylistDetail[], tags: [] } as unknown as MusicStoreState
   return {
     set: (patch: unknown) => {
       const next = typeof patch === 'function' ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state) : (patch as Partial<MusicStoreState>)
@@ -264,6 +265,43 @@ describe('movePlaylistItemToIndex', () => {
     const store = threeItemStore()
     await movePlaylistItemToIndex(store.set, store.get, 'p1', 'i2', 1)
     expect(api.music.reorderPlaylist).not.toHaveBeenCalled()
+  })
+})
+
+describe('duplicate tag names (UI-12)', () => {
+  // The toast spies are module-level, so each case starts from a clean record.
+  beforeEach(() => {
+    vi.mocked(api.music.createTag).mockClear()
+    vi.mocked(toastMusic).mockClear()
+    vi.mocked(toastMusicNotice).mockClear()
+  })
+
+  function tagStore() {
+    const store = makeStore()
+    store.set({ tags: [{ id: 'tag-work', name: 'work', parentId: null }] as unknown as MusicStoreState['tags'] })
+    return store
+  }
+
+  it('tells the user the tag already exists instead of answering the click with nothing', async () => {
+    const store = tagStore()
+    await createTag(store.set, store.get, 'work')
+    expect(api.music.createTag).not.toHaveBeenCalled()
+    expect(toastMusicNotice).toHaveBeenCalledWith('music.tag_exists', { value0: 'work' })
+  })
+
+  it('keeps the duplicate rule per parent path', async () => {
+    const store = makeStore()
+    store.set({ tags: [{ id: 'tag-work', name: 'work', parentId: null }] as unknown as MusicStoreState['tags'] })
+    await createTag(store.set, store.get, 'archive/work')
+    expect(api.music.createTag).toHaveBeenCalledWith({ name: 'work', color: null, parentId: 'tag-archive' })
+    expect(toastMusicNotice).not.toHaveBeenCalled()
+  })
+
+  it('still reports a fresh tag as created', async () => {
+    const store = tagStore()
+    await createTag(store.set, store.get, 'late night')
+    expect(api.music.createTag).toHaveBeenCalledWith({ name: 'late night', color: null, parentId: null })
+    expect(toastMusic).toHaveBeenCalledWith('music.tag_created')
   })
 })
 

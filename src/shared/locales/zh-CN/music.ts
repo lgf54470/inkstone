@@ -161,6 +161,7 @@ export const messages = {
 'music.covers_matched': '已匹配 {value0} 首封面',
 'music.covers_unmatched': '没有在线匹配到封面',
 'music.tag_created': '标签已创建',
+'music.tag_exists': '标签“{value0}”已存在',
 'music.tag_renamed': '标签已重命名',
 'music.tag_deleted': '标签已删除',
 'music.no_tags': '还没有标签',

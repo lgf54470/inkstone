@@ -161,6 +161,7 @@ export const messages = {
 'music.covers_matched': 'Matched {value0} covers',
 'music.covers_unmatched': 'No cover matched online',
 'music.tag_created': 'Tag created',
+'music.tag_exists': 'Tag "{value0}" already exists',
 'music.tag_renamed': 'Tag renamed',
 'music.tag_deleted': 'Tag deleted',
 'music.no_tags': 'No tags yet',

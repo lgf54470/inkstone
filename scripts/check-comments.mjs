@@ -1601,9 +1601,12 @@ const allowed = new Map([
   ['src/client/features/music/music-store/library-collections.test.ts', [
     '// A whole library of ids and the selection that points at all of them, which is what the',
     '// multi-select actions walk.',
+    '// The toast spies are module-level, so each case starts from a clean record.',
   ]],
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
+    '// A taken name is a no-op, not a failure: the tag the user asked for is already',
+    '// there, and saying so is the only feedback the click would otherwise get.',
     '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
     '// The dialog keeps its draft open until the write lands; the success flag is how it knows.',
     '// An absent description stays untouched: the sidebar rename only edits the name.',

@@ -15,10 +15,15 @@ import type { MusicGet, MusicSet, MusicStoreState, MusicTransferTarget, MusicUpl
 export async function createTag(set: MusicSet, get: MusicGet, name: string, color?: string | null): Promise<void> {
   const segments = splitTagPath(name)
   if (!segments.length) return
+  const leaf = segments[segments.length - 1]!
   try {
     const parentId = await ensureTagPath(set, get, segments.slice(0, -1))
-    const leaf = segments[segments.length - 1]!
-    if (get().tags.some((tag) => tag.name === leaf && (tag.parentId ?? null) === parentId)) return
+    // A taken name is a no-op, not a failure: the tag the user asked for is already
+    // there, and saying so is the only feedback the click would otherwise get.
+    if (get().tags.some((tag) => tag.name === leaf && (tag.parentId ?? null) === parentId)) {
+      toastMusicNotice('music.tag_exists', { value0: leaf })
+      return
+    }
     const created = await api.music.createTag({ name: leaf, color: color ?? null, parentId })
     set((state) => ({ tags: [...state.tags, created].sort(byTagOrder) }))
     toastMusic('music.tag_created')
