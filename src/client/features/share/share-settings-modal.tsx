@@ -99,19 +99,12 @@ function SettingsSwitchRow({ title, hint, checked, onChange }: {
 }
 
 function RetentionSection({ bundle }: { bundle: SettingsBundle }) {
-  const { retentionDays, setRetentionDays, maxRecords, setMaxRecords, isBusy, handleClean } = bundle
+  const { retentionDays, setRetentionDays, isBusy, handleClean } = bundle
   const retentionOptions = [
     { value: '7', label: '7d' },
     { value: '30', label: '30d' },
     { value: '90', label: '90d' },
     { value: '180', label: '180d' },
-    { value: '0', label: t('share.retention_unlimited') },
-  ]
-  const recordOptions = [
-    { value: '1000', label: '1K' },
-    { value: '5000', label: '5K' },
-    { value: '10000', label: '10K' },
-    { value: '50000', label: '50K' },
     { value: '0', label: t('share.retention_unlimited') },
   ]
   return (
@@ -124,13 +117,6 @@ function RetentionSection({ bundle }: { bundle: SettingsBundle }) {
           value={retentionDays}
           onChange={setRetentionDays}
           options={retentionOptions}
-        />
-        <RetentionField
-          label={t('share.max_records_label')}
-          valueText={maxRecords === '0' ? t('share.retention_unlimited') : t('share.max_records_val', { count: maxRecords })}
-          value={maxRecords}
-          onChange={setMaxRecords}
-          options={recordOptions}
         />
         <CleanupActions isBusy={isBusy} onClean={handleClean} />
       </div>

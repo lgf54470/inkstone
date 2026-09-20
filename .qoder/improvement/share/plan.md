@@ -54,11 +54,12 @@
 | F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后）：blog_visits 级联 + 孤儿清扫 | P2 | ✅ | 79c25248 |
 | F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | eff0a6b5 |
 | F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | ✅ | f812c7a7 |
-| H1 | SH-39 | `maxLogRecords`（设置模态「最多记录数」）全仓无消费者，属假设置：接入日志列表取数上限或删除控件+文案+本地键 | P3 | 排队 | |
+| H1 | SH-39 | `maxLogRecords`（设置模态「最多记录数」）全仓无消费者，属假设置：接入日志列表取数上限或删除控件+文案+本地键 | P3 | ✅ | 待回填 |
 | H3 | SH-41 | 安全：`blog_posts` 删除的两条 `DELETE FROM blog_comments WHERE post_id …` 不带 user 限定——按 id 点名他人文章即可删其评论（跨账号写），须与同批 posts 语句同口径加 `user_id` | P1 | ✅ | 6cda419e |
 | H4 | SH-42 | `POST /api/blog/posts/batch` 的 `postIds` 无长度上限，`IN (…)` 直接拼占位符——>100 个 id 必 500（share 侧 02 号同款 D1 变量上限），需分块或 schema 上限 | P1 | ✅ | 0e00fa6a |
 | H5 | SH-43 | `blog_visits` 无保留期设置（share 已有 `share.visitLogRetentionDays`）：cron 只扫孤儿行，需要 blog settings 段落 + 模态接线，属产品决策 | P2 | 排队 | |
 | H6 | SH-44 | 调色板类存量清偿：SH-38 门禁已按文件计数冻结 218 处/62 文件，各模块降到 0 后 `--update-baseline` 收账（attachments 77/7 文件、blog-frontend 48/17、blog 39/11、lib·markdown 24/12、preview 17/4、components 5/4、settings 4/3、folders 2、tags 2） | P3 | 排队 | |
+| H7 | SH-45 | blog 侧同族假设置：`blog-store` 的 `maxLogRecords`/`setRetentionSettings` 与设置模态的「最多记录数」分段控件同样全仓无消费者（SH-39 在 share 侧删除的那一套，blog 侧是第二处），且 `blog-settings-modal.tsx:190-191` 跨模块读 `share.max_records_label`/`share.max_records_val` 两个键——故 share 侧本次保留键不删。修法：blog 侧删控件+删 store 字段，文案键随最后一处使用者一并迁到 blog 命名空间或删除 | P3 | 排队 | |
 | H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby` | P2 | 排队 | |
 | G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | ✅ | be162df2 |
 
@@ -387,3 +388,13 @@
 - 变异 8 发全杀（/tmp/mutG 备份还原）：预算判定改 `> budget + 1`（S2 静默放行，被「超预算」单例杀）、缩小不再报（S3 静默放行）、`isZeroTolerance` 恒 false（share 退化为普通基线文件，被零预算单例杀——注意此 mutants 下场景 S1 仍红，因为 share 不在基线里，两路只是文案不同）、常量表豁免重开、white/black 移出色名表、palette 问题路由写反、`visitPalette` 未挂载、基线失效条目扫描跳过。
 - 遗留登记：H6/SH-44 存量清偿（218 处按模块分账，各模块自行降到 0 后收账）。其中 folders/tags/kanban 的「用户自选色」与 lightbox/slides 的「媒体之上的白」很可能该改成永久豁免而非清偿——那需要设计裁决，本项不替它们决定，只在基线里原样记账。
 - 验证：tsc -b 绿；11 静态门禁全绿（`hardcoded:check` 现含 Part 5）；vitest 定向 52/52。全量回归 241 文件/1882 测试绿（REGRESSION_EXIT=0，串行 438s；较上轮少一个文件、多 13 例，即删掉的 share 专用测试与迁入门禁套的 16 例）。fix 提交 be162df2。
+
+## 45 — SH-39（H1）删除无消费者的「最多记录数」假设置（2026-09-20）
+
+- 现状与根因：设置模态的第二个分段控件（1K/5K/10K/50K/不限）经 `useShareStore` 的 `maxLogRecords` 存进 `localStorage.inkstone_share_retention`，但**全仓没有任何读端**——访问日志列表走服务端分页（SH-33 导出按 100 行翻页拉全量），实时日志与看板统计由 SQL 聚合，条数上界只有 F5/SH-05c 之后那条**服务端账号保留期**。于是该控件唯一效果是往浏览器写一个没人看的数字，且 `persistMaxLogRecords` 写的是整个 key（`{ maxLogRecords }`），会把 SH-05c 遗留在同一 key 里的旧 `logRetentionDays` 一并抹掉——假设置顺带真清掉了别处的缓存。删除，不接线：把「最多记录数」接进取数上限会与刚建立的服务端保留期口径打架（两个上界、两处真相），而账号级「记录数上限」本不是产品语义。
+- 改动面（生产代码净删 73 行，8 文件总 -107/+55）：`share-store/state.ts` 删 `DEFAULT_MAX_LOG_RECORDS`/`loadInitialMaxLogRecords()`/`initialMaxLogRecords`（share 侧自此不再读写 `inkstone_share_retention`）；`types.ts` 删 `maxLogRecords` 字段与 `setRetentionSettings` 动作；`filters.ts` 删 `setRetentionSettingsImpl`/`persistMaxLogRecords` 及其 Pick 项；`index.ts` 删初值一行；`use-share-settings-modal.ts` 删两处 store 订阅、`maxRecords` 草稿态、`SaveSettingsFlow` 的两个字段与 `saveSettingsFlow` 的那次写入；`share-settings-modal.tsx` 删 `recordOptions` 与第二个 `RetentionField`。`ShareSettingsModal` 的 `SettingsBundle` 由 `ReturnType<typeof useShareSettingsModal>` 派生，故控件删除后类型自动收紧（漏删一处解构即 tsc 红）。
+- 保留项：`share.max_records_label`/`share.max_records_val` 两个 locale 键**不删**——`src/client/features/blog/blog-settings-modal.tsx:190-191` 仍引用它们。据此登记 H7/SH-45：blog 侧有同一套假设置（`blog-store` 的 `maxLogRecords`/`setRetentionSettings` 亦无消费者），本项按铁律14 不夹带。
+- 测试（红先行）：`share-store/retention.test.ts` 重写为 2 例（缓存里放着 `{maxLogRecords:5000}` 时 store 初值既无该字段也无 `setRetentionSettings`；改流量过滤不再写 `inkstone_share_retention`），`share-settings-retention.test.ts` 由 4 例扩到 6 例（保留期成为模态里唯一的 `role=radiogroup`、正文不再出现 `10K`；点保存仍按剩下的两项落地——`setFilters` 与 `updateSettings` 各恰好一次且取值正确）。红态实测 `expected …(2) to have a length of 1 but got 2` 与 `expected true to be false`。
+- 变异 6 发全杀（/tmp/mutH1 备份还原，全部 `cmp` 逐字节复核）：store 初值重挂 `maxLogRecords: 5000`、`setFiltersImpl` 重新回写 retention key、模态重新挂上带 `10K` 的 `RetentionField`、重挂一个不含 `10K` 字样的第二分段控件（证明长度断言独立承载，不靠文案）、`saveSettingsFlow` 不再写流量过滤、`setVisitLogRetentionDays(0)` 忽略所选天数。后两发是本次动了保存路径后补的守卫——先前它们无人断言（`setFilters` mock 只 reset 不 assert）。
+- 踩坑（同机负载下的假绿/假红）：初版 store 测试用 `vi.resetModules()` + 测试体内 `await import('./index')` 来构造「先种缓存再建 store」，把整条 store 依赖链的冷转译算进了 5s 用例超时——空闲 1.1s，load average 12 时 1.7s，人为压到 18 即 `Error: Test timed out in 5000ms`（同目录其余 22 文件全绿，只它红）。改为顶层静态 import + `vi.hoisted` 在 import 之前种 key：vitest 的文件级模块注册表本就保证「本文件首次 import 即冷建 store」，缓存种得更早而不必重转依赖链，用例耗时降到 10ms，压测 load 18 下 108/108 绿。教训：`resetModules` 式隔离在共享机器上不是免费的，能在文件级拿到的顺序保证就别在测试体里重付。
+- 验证：tsc -b 绿；13 项静态门禁全绿；vitest 定向 8/8，share 目录全量 23 文件/108 测试绿（含压测复跑）。全量回归待回填。fix 提交 待回填。

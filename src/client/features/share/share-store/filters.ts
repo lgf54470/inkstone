@@ -5,8 +5,7 @@ const SEARCH_DEBOUNCE_MS = 300
 
 let searchReloadTimer: ReturnType<typeof setTimeout> | undefined
 
-export const shareFiltersActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'setCategory' | 'setFolderId' | 'setTag' | 'setStatusFilter' | 'setSearch' | 'setSort' | 'setViewMode' | 'setFilters' | 'setRetentionSettings' | 'toggleSelect' | 'toggleSelectAll' | 'clearSelection'> => ({
-  setRetentionSettings: (settings) => setRetentionSettingsImpl(settings, set),
+export const shareFiltersActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'setCategory' | 'setFolderId' | 'setTag' | 'setStatusFilter' | 'setSearch' | 'setSort' | 'setViewMode' | 'setFilters' | 'toggleSelect' | 'toggleSelectAll' | 'clearSelection'> => ({
   setFilters: (newFilters) => setFiltersImpl(newFilters, set, get),
   setCategory: (category) => setCategoryImpl(category, set, get),
   setFolderId: (folderId) => setFolderIdImpl(folderId, set, get),
@@ -57,27 +56,6 @@ function toggleSelectAllImpl(get: () => ShareStoreState, set: SetShareStoreState
     set({ selectedNoteIds: new Set() })
   } else {
     set({ selectedNoteIds: new Set(shares.map((s) => s.noteId)) })
-  }
-}
-
-function setRetentionSettingsImpl(
-  settings: Parameters<ShareStoreState['setRetentionSettings']>[0],
-  set: SetShareStoreState,
-): void {
-  set((state) => {
-    const updated = { maxLogRecords: settings.maxLogRecords ?? state.maxLogRecords }
-    persistMaxLogRecords(updated)
-    return updated
-  })
-}
-
-function persistMaxLogRecords(updated: { maxLogRecords: number }): void {
-  try {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('inkstone_share_retention', JSON.stringify(updated))
-    }
-  } catch (error) {
-    console.warn('[share-store] failed to persist the visit log record cap', error)
   }
 }
 

@@ -21,9 +21,7 @@ const shareStore = vi.hoisted(() => ({
     excludeBots: true,
     excludeSelfReferrers: false,
     excludeOwner: false,
-    maxLogRecords: 5000,
     setFilters: vi.fn(),
-    setRetentionSettings: vi.fn(),
   },
   useShareStore: (selector: (state: typeof shareStore.state) => unknown) => selector(shareStore.state),
 }))
@@ -58,8 +56,10 @@ async function save(): Promise<void> {
 beforeEach(() => {
   localStorage.clear()
   session.state.updateSettings.mockReset()
-  shareStore.state.setRetentionSettings.mockReset()
   shareStore.state.setFilters.mockReset()
+  shareStore.state.excludeBots = true
+  shareStore.state.excludeSelfReferrers = false
+  shareStore.state.excludeOwner = false
 })
 
 describe('share settings modal keeps visit-log retention on the account (SH-05c)', () => {
@@ -100,6 +100,36 @@ describe('share settings modal keeps visit-log retention on the account (SH-05c)
 
     const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
     expect(optionLabel(retentionGroup())).toBe('180d')
+    rendered.unmount()
+  })
+})
+
+describe('share settings modal draws no record cap control (SH-39)', () => {
+  it('leaves the retention period as the only segmented control', () => {
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 30 } }
+
+    const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
+    const groups = document.querySelectorAll('[role="radiogroup"]')
+    expect(groups).toHaveLength(1)
+    expect(document.body.textContent).not.toContain('10K')
+    rendered.unmount()
+  })
+
+  it('saves what is left: the traffic filters and the account retention', async () => {
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 30 } }
+    shareStore.state.excludeBots = false
+
+    const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
+    await save()
+
+    expect(shareStore.state.setFilters).toHaveBeenCalledTimes(1)
+    expect(shareStore.state.setFilters).toHaveBeenCalledWith({
+      excludeBots: false,
+      excludeSelfReferrers: false,
+      excludeOwner: false,
+    })
+    expect(session.state.updateSettings).toHaveBeenCalledTimes(1)
+    expect(session.state.updateSettings).toHaveBeenCalledWith({ share: { visitLogRetentionDays: 30 } })
     rendered.unmount()
   })
 })

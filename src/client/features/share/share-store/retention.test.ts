@@ -1,33 +1,24 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { useShareStore } from './index'
 
-const KEY = 'inkstone_share_retention'
-
-async function freshStore() {
-  vi.resetModules()
-  const { useShareStore } = await import('./index')
-  return useShareStore
-}
-
-beforeEach(() => {
-  localStorage.clear()
+// Seeded before the store module above is evaluated, so the cached cap is
+// already in browser storage when the store builds its initial state.
+const KEY = vi.hoisted(() => {
+  const key = 'inkstone_share_retention'
+  localStorage.setItem(key, JSON.stringify({ maxLogRecords: 5000 }))
+  return key
 })
 
-describe('share visit log record cap', () => {
-  it('reads the cap this browser cached', async () => {
-    localStorage.setItem(KEY, JSON.stringify({ maxLogRecords: 5000 }))
-    const useShareStore = await freshStore()
-    expect(useShareStore.getState().maxLogRecords).toBe(5000)
+describe('share store carries no record cap (SH-39)', () => {
+  it('ignores the cap a browser cached before the setting went away', () => {
+    const state = useShareStore.getState()
+    expect('maxLogRecords' in state).toBe(false)
+    expect('setRetentionSettings' in state).toBe(false)
   })
 
-  it('no longer carries a retention period, which the server owns now', async () => {
-    localStorage.setItem(KEY, JSON.stringify({ logRetentionDays: 7, maxLogRecords: 5000 }))
-    const useShareStore = await freshStore()
-    expect('logRetentionDays' in useShareStore.getState()).toBe(false)
-  })
-
-  it('stores only the cap, so a stale retention cannot come back from this browser', async () => {
-    const useShareStore = await freshStore()
-    useShareStore.getState().setRetentionSettings({ maxLogRecords: 1000 })
-    expect(JSON.parse(localStorage.getItem(KEY) ?? '{}')).toEqual({ maxLogRecords: 1000 })
+  it('never writes the record-cap key while the traffic filters change', () => {
+    localStorage.removeItem(KEY)
+    useShareStore.getState().setFilters({ excludeBots: false })
+    expect(localStorage.getItem(KEY)).toBeNull()
   })
 })

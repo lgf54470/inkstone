@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ShareStoreState } from './types'
-import { initialFilters, initialMaxLogRecords } from './state'
+import { initialFilters } from './state'
 import { shareFiltersActions } from './filters'
 import { shareLoadersActions } from './loaders'
 import { shareContentActions } from './content'
@@ -37,7 +37,6 @@ function initialShareState(): Partial<ShareStoreState> {
         excludeBots: initialFilters.excludeBots,
         excludeSelfReferrers: initialFilters.excludeSelfReferrers,
         excludeOwner: initialFilters.excludeOwner,
-        maxLogRecords: initialMaxLogRecords,
     }
 }
 

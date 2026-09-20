@@ -2058,6 +2058,10 @@ const allowed = new Map([
     '// The sidebar prefetch and the hub open race each other only at startup;',
     '// a second in-flight summary would fetch the same two numbers.',
   ]],
+  ['src/client/features/share/share-store/retention.test.ts', [
+    '// Seeded before the store module above is evaluated, so the cached cap is',
+    '// already in browser storage when the store builds its initial state.',
+  ]],
   ['src/client/features/share/share-store/row-index.ts', [
     '// The selector result is the row object itself, so a write touching other rows',
     '// keeps this subscriber\'s value referentially equal and skips its re-render.',
