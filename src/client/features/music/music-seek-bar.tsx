@@ -1,6 +1,6 @@
 import { useCallback, useState, type CSSProperties } from 'react'
 import { cn } from '../../lib/cn'
-import { formatDuration } from './music-utils'
+import { formatTimecode } from '../../lib/time'
 
 export function MusicSeekBar({
   valueMs,
@@ -28,7 +28,7 @@ export function MusicSeekBar({
   }, [onSeek])
   return (
     <div className={cn('flex min-w-0 flex-1 items-center gap-2', className)}>
-      {showTime && <span className='tabular shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{formatDuration(value)}</span>}
+      {showTime && <span className='tabular shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{formatTimecode(value)}</span>}
       <input
         type='range'
         className='ink-slider h-3.5 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent outline-none'
@@ -38,13 +38,13 @@ export function MusicSeekBar({
         step={1000}
         value={value}
         aria-label={label}
-        aria-valuetext={formatDuration(value)}
+        aria-valuetext={formatTimecode(value)}
         onChange={(event) => setDraggingMs(Number(event.target.value))}
         onPointerUp={commit}
         onKeyUp={commit}
         onBlur={commit}
       />
-      {showTime && <span className='tabular shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{formatDuration(durationMs)}</span>}
+      {showTime && <span className='tabular shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{formatTimecode(durationMs)}</span>}
     </div>
   )
 }

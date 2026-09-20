@@ -7,8 +7,8 @@ import { Logo } from '../../../components/primitives'
 import { Empty, LoadingBlock } from '../../../components/feedback'
 import { Tooltip } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
+import { formatTimecode, formatTotalDuration } from '../../../lib/time'
 import { MusicArtwork } from '../music-artwork'
-import { formatDuration, formatTotalDuration } from '../music-utils'
 
 type Load =
   | { status: 'loading' }
@@ -162,7 +162,7 @@ function PlaylistBody({ load, currentId, onPlay, coverUrl, trackCount, totalDura
                       {track.artist || t('music.unknown_artist')}
                     </span>
                   </span>
-                  <span className='tabular shrink-0 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{formatDuration(track.durationMs)}</span>
+                  <span className='tabular shrink-0 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{formatTimecode(track.durationMs)}</span>
                 </button>
               </li>
             ))}

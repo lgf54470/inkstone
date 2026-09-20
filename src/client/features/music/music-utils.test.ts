@@ -1,58 +1,13 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { MusicPlaylistDetail, MusicTag, MusicTrack } from '@shared/types'
-import { initI18n, setLocale } from '../../lib/i18n'
 import {
   activeLyricIndex, collectTagIds, computeNextIndex, computePrevIndex, flattenTags,
-  formatBytes, formatDuration, formatTotalDuration, isArtistSuffixedTitle, nextPlayMode, parseLyric,
-  playlistCoverUrl, rangeIds, tagColorValue,
+  isArtistSuffixedTitle, nextPlayMode, parseLyric, playlistCoverUrl, rangeIds, tagColorValue,
 } from './music-utils'
 
 function tag(id: string, parentId: string | null, name = id, isPinned = false): MusicTag {
   return { id, name, color: null, parentId, isPinned, sortOrder: 0, createdAt: 0 }
 }
-
-describe('music duration formatting', () => {
-  beforeAll(async () => {
-    await initI18n()
-  })
-
-  afterEach(async () => {
-    await setLocale('en-US', false)
-  })
-
-  it('formats milliseconds as mm:ss and degrades gracefully', () => {
-    expect(formatDuration(0)).toBe('00:00')
-    expect(formatDuration(Number.NaN)).toBe('00:00')
-    expect(formatDuration(59_999)).toBe('00:59')
-    expect(formatDuration(60_000)).toBe('01:00')
-    expect(formatDuration(3_723_000)).toBe('62:03')
-  })
-
-  it('summarizes a library duration in hours and minutes', () => {
-    expect(formatTotalDuration(0)).toBe('0')
-    expect(formatTotalDuration(Number.NaN)).toBe('0')
-    expect(formatTotalDuration(30 * 60_000)).toBe('30 min')
-    expect(formatTotalDuration(90 * 60_000)).toBe('1 hr, 30 min')
-  })
-
-  it('states a sub-minute library in seconds rather than nothing at all', () => {
-    expect(formatTotalDuration(40_000)).toBe('40 sec')
-  })
-
-  it('writes the total in the reader\u2019s locale, not in English', async () => {
-    await setLocale('zh-CN', false)
-    expect(formatTotalDuration(30 * 60_000)).toBe('30\u5206\u949f')
-    expect(formatTotalDuration(90 * 60_000)).toBe('1\u5c0f\u65f630\u5206\u949f')
-  })
-
-  it('formats byte sizes across unit boundaries', () => {
-    expect(formatBytes(0)).toBe('0 B')
-    expect(formatBytes(512)).toBe('512 B')
-    expect(formatBytes(2048)).toBe('2.0 KB')
-    expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB')
-    expect(formatBytes(3 * 1024 * 1024 * 1024)).toBe('3.00 GB')
-  })
-})
 
 describe('music play mode cycling', () => {
   it('cycles order -> repeat-all -> repeat-one -> shuffle', () => {

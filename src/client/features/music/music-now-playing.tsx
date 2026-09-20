@@ -6,10 +6,11 @@ import { Segmented } from '../../components/form'
 import { cn } from '../../lib/cn'
 import { t, type MessageKey } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
+import { formatBytes, formatTimecode, fullTime } from '../../lib/time'
 import { useCurrentTrack, useMusic, useProgress } from './music-store'
 import { useTrackLyric } from './music-lyrics'
 import { MusicVideoStage } from './music-video-stage'
-import { activeLyricIndex, formatBytes, formatDuration, parseLyric } from './music-utils'
+import { activeLyricIndex, parseLyric } from './music-utils'
 
 export type MusicDetailTab = 'lyrics' | 'details'
 
@@ -144,10 +145,10 @@ function Details({ track, onEditTags }: { track: ReturnType<typeof useCurrentTra
   const rows = [
     { label: t('music.field_artist'), value: track.artist || t('music.unknown_artist') },
     { label: t('music.field_album'), value: track.album || t('music.unknown_album') },
-    { label: t('music.track_duration'), value: formatDuration(track.durationMs) },
+    { label: t('music.track_duration'), value: formatTimecode(track.durationMs) },
     { label: t('music.file_size'), value: formatBytes(track.sizeBytes) },
     { label: t('music.play_count'), value: String(track.playCount) },
-    { label: t('music.added_at'), value: new Date(track.createdAt).toLocaleDateString() },
+    { label: t('music.added_at'), value: fullTime(track.createdAt) },
   ]
   return (
     <div className='space-y-2 py-1'>

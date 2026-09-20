@@ -4,7 +4,8 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import type { MusicTrack } from '@shared/types'
-import { t } from '../../lib/i18n'
+import { t, setLocale } from '../../lib/i18n'
+import { fullTime } from '../../lib/time'
 import { MusicNowPlaying } from './music-now-playing'
 import { setProgressTime, useMusic } from './music-store'
 
@@ -59,12 +60,13 @@ function buttonByLabel(container: HTMLElement, label: string): HTMLButtonElement
   return [...container.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === label)
 }
 
-afterEach(() => {
+afterEach(async () => {
   act(() => root?.unmount())
   root = null
   document.body.innerHTML = ''
   vi.restoreAllMocks()
   setProgressTime(0)
+  await setLocale('en-US', false)
 })
 
 function seedStore(overrides: Record<string, unknown>) {
@@ -162,6 +164,18 @@ describe('MusicNowPlaying details panel', () => {
       pin?.click()
     })
     expect(useMusic.getState().togglePin).toHaveBeenCalledWith(track.id)
+  })
+
+  // The date belongs to the reader's language like everything else on the panel; the
+  // browser default would answer in whatever language the OS is set to instead.
+  it('writes the added-at date in the app locale, not in the browser default', async () => {
+    const createdAt = Date.UTC(2026, 8, 3, 10, 24)
+    const track = seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn() })
+    track.createdAt = createdAt
+    await setLocale('zh-CN', false)
+    const container = await mountPanel()
+    expect(container.textContent).toContain(fullTime(createdAt))
+    expect(container.textContent).not.toContain(new Date(createdAt).toLocaleDateString())
   })
 })
 

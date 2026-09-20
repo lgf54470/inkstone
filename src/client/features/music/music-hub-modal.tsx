@@ -8,6 +8,7 @@ import { cn } from '../../lib/cn'
 import { useMediaQuery } from '../../lib/hooks'
 import { Z_INDEX } from '../../lib/z-index'
 import { t } from '../../lib/i18n'
+import { formatBytes } from '../../lib/time'
 import { MusicEditTrackModal } from './music-edit-track-modal'
 import { findDuplicateGroups, duplicateWastedBytes, redundantTrackCount } from './music-duplicates'
 import { MusicGroupBrowse, MusicGroupDetailHeader } from './music-group-browse'
@@ -23,7 +24,7 @@ import { MusicTransferDialog } from './music-transfer-dialog'
 import { MusicWebdavModal } from './music-webdav-modal'
 import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicScope } from './music-store'
-import { MUSIC_NARROW_BREAKPOINT, formatBytes } from './music-utils'
+import { MUSIC_NARROW_BREAKPOINT } from './music-utils'
 
 const HUB_WIDTH = 1240
 // The side columns are fixed-width (224 + 256px); below the shared narrow breakpoint they

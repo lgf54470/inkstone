@@ -3,13 +3,13 @@ import { Clock3, Copy, Disc, FolderHeart, Heart, Library, Pin, Users } from 'luc
 import { Tooltip } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
+import { formatBytes, formatTotalDuration } from '../../lib/time'
 import { MusicHubPlaylists } from './music-hub-playlists'
 import { redundantTrackCount } from './music-duplicates'
 import { buildGroups } from './music-grouping'
 import { MusicHubTags } from './music-hub-tags'
 import { useMusic } from './music-store'
 import type { MusicScope } from './music-store'
-import { formatBytes, formatTotalDuration } from './music-utils'
 
 export const MusicHubSidebar = memo(function MusicHubSidebar({
   onCreatePlaylist,

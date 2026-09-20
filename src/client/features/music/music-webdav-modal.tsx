@@ -5,9 +5,9 @@ import { Modal, Tooltip } from '../../components/overlay'
 import { Empty } from '../../components/feedback'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
+import { formatBytes } from '../../lib/time'
 import { useUi } from '../../store/ui'
 import { useMusic } from './music-store'
-import { formatBytes } from './music-utils'
 
 const WEBDAV_WIDTH = 640
 

@@ -7,6 +7,7 @@ import { cn } from '../../lib/cn'
 import { useMediaQuery } from '../../lib/hooks'
 import { t } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
+import { formatBytes, formatTimecode } from '../../lib/time'
 import { useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { MusicPlayButtons } from './music-play-buttons'
@@ -17,9 +18,7 @@ import {
   MusicEqButton, MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicVolumeButton,
 } from './music-transport-widgets'
 import { useTrackLyric } from './music-lyrics'
-import {
-  activeLyricIndex, formatBytes, formatDuration, MUSIC_NARROW_BREAKPOINT, parseLyric,
-} from './music-utils'
+import { activeLyricIndex, MUSIC_NARROW_BREAKPOINT, parseLyric } from './music-utils'
 
 const IMMERSIVE_WIDTH = 1000
 
@@ -117,7 +116,7 @@ function ImmersiveButtons({ track, stacked }: { track: ReturnType<typeof useCurr
       {!stacked && (
         <>
           <p className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-            {track ? formatDuration(track.durationMs) + ' · ' + formatBytes(track.sizeBytes) : ''}
+            {track ? formatTimecode(track.durationMs) + ' · ' + formatBytes(track.sizeBytes) : ''}
           </p>
           <p className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
             {t('music.keyboard_hint')}

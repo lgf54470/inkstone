@@ -141,6 +141,28 @@ export function formatBytes(bytes: number): string {
   return `${value >= 100 || i === 0 ? Math.round(value) : value.toFixed(1)} ${units[i]}`
 }
 
+/** Media position or track length, as a mm:ss timecode (minutes are not capped at 60). */
+export function formatTimecode(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return '00:00'
+  const totalSeconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+// The units belong to the locale, not to the source, so no English literal leaks into a
+// translated UI. DurationFormat leaves zero-valued parts out entirely, so the sub-minute
+// case is stated in seconds instead of collapsing to an empty string.
+export function formatTotalDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return '0'
+  const seconds = Math.round(ms / 1000)
+  const formatter = new Intl.DurationFormat(localeTag(), { style: 'short' })
+  if (seconds < 60) return formatter.format({ seconds })
+  const minutes = Math.round(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  return formatter.format(hours > 0 ? { hours, minutes: minutes % 60 } : { minutes })
+}
+
 export function formatDuration(ms: number): string {
   const duration = Number.isFinite(ms) ? Math.max(0, ms) : 0
   if (duration < 1000) return formatUnit(Math.round(duration), 'millisecond')

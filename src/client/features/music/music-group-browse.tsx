@@ -4,12 +4,12 @@ import type { MusicTrack } from '@shared/types'
 import { Button, IconButton } from '../../components/primitives'
 import { Empty } from '../../components/feedback'
 import { t } from '../../lib/i18n'
+import { formatTotalDuration } from '../../lib/time'
 import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicScope } from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { buildGroups, groupMatchesQuery, groupScopeOf } from './music-grouping'
 import type { MusicGroup, MusicGroupKind } from './music-grouping'
-import { formatTotalDuration } from './music-utils'
 
 // Albums and artists arrive as flat tag fields on each track (FEAT-10-era library),
 // so the whole grouping view is derived client-side and never needs a server round-trip.

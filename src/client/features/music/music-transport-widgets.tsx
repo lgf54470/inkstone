@@ -5,6 +5,7 @@ import { Slider, Switch } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import type { CSSProperties } from 'react'
 import { t } from '../../lib/i18n'
+import { formatTimecode } from '../../lib/time'
 import { EQ_GAIN_RANGE_DB, PLAYBACK_RATES, progressTimeMs } from './music-store'
 import { useMusic } from './music-store'
 import type { MusicEqBand } from './music-store'
@@ -300,10 +301,7 @@ export function MusicSleepStatus() {
       </span>
     )
   }
-  const remaining = Math.max(0, sleepEndsAt - now)
-  const minutes = Math.floor(remaining / 60_000)
-  const seconds = Math.floor((remaining % 60_000) / 1000)
-  const label = minutes + ':' + String(seconds).padStart(2, '0')
+  const label = formatTimecode(Math.max(0, sleepEndsAt - now))
   return (
     // A per-second countdown as a polite live region re-reads itself every tick;
     // the timer's on/off state lives on the sleep button's aria-pressed instead.

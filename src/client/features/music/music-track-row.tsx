@@ -4,11 +4,11 @@ import type { MusicTrack } from '@shared/types'
 import { IconButton, Spinner } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
+import { formatTimecode } from '../../lib/time'
 import { MusicArtwork } from './music-artwork'
 import type { TrackMenuTarget } from './music-track-menu'
 import { MusicSourceBadge } from './music-source-badge'
 import { MusicTrackTags } from './music-track-tags'
-import { formatDuration } from './music-utils'
 
 // Off-screen rows skip layout and paint; the intrinsic size reserves their height.
 const ROW_CONTAINMENT = { contentVisibility: 'auto', containIntrinsicSize: 'auto var(--sp-12)' } as const
@@ -176,7 +176,7 @@ function RowMeta({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean }
         <MusicSourceBadge source={track.source} className='inline-flex' />
       </span>
       <span role='cell' className={cn('tabular w-11 shrink-0 text-right text-[length:var(--text-11)]', dim)}>
-        {formatDuration(track.durationMs)}
+        {formatTimecode(track.durationMs)}
       </span>
     </>
   )
