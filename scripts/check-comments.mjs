@@ -1860,6 +1860,9 @@ const allowed = new Map([
     '// enough to overlap latency, low enough to avoid hammering the worker or the browser\'s per-host cap.',
     '// Below this viewport width the music surfaces\' fixed-width side columns squeeze the main area',
     '// toward zero, so they fold (UI-14): the hub into drawers, the immersive player into a stack.',
+    '// The units belong to the locale, not to the source, so no English literal leaks into a',
+    '// translated UI. DurationFormat leaves zero-valued parts out entirely, so the sub-minute',
+    '// case is stated in seconds instead of collapsing to an empty string.',
     '// The transport nudge buttons and the seek hotkeys move by the same amount.',
     '// Mirrors the worker\'s resolver so folder picks (which carry cover art, cue sheets and',
     '// other noise) only queue files the server will accept, and nothing wastes a round trip',
@@ -4542,6 +4545,11 @@ const allowed = new Map([
     '// neither side.',
     '/** Replaces the projection when either id set changed; no-op otherwise. */',
     '/** Reactive read of the shared/published note-id projection for selectors. */',
+  ]],
+  ['src/client/types/shims.d.ts', [
+    '// Intl.DurationFormat is available in every engine this app targets, but the',
+    '// TypeScript 5.9 lib files still stop short of declaring it, so the surface the',
+    '// client actually calls is spelled out here (same reason as node-crypto.d.ts).',
   ]],
   ['src/shared/chunk.ts', [
     '// D1 binds at most 100 parameters per statement, and a list of ids is the tail of the bind list:',

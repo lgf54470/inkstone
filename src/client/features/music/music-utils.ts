@@ -1,5 +1,6 @@
 import { ACCENTS, LIMITS } from '@shared/constants'
 import type { MusicPlaylistDetail, MusicPlayMode, MusicTag, MusicTrack } from '@shared/types'
+import { localeTag } from '../../lib/i18n'
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
 
@@ -24,12 +25,17 @@ export function formatDuration(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+// The units belong to the locale, not to the source, so no English literal leaks into a
+// translated UI. DurationFormat leaves zero-valued parts out entirely, so the sub-minute
+// case is stated in seconds instead of collapsing to an empty string.
 export function formatTotalDuration(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return '0'
-  const minutes = Math.round(ms / 60000)
-  if (minutes < 60) return `${minutes} min`
+  const seconds = Math.round(ms / 1000)
+  const formatter = new Intl.DurationFormat(localeTag(), { style: 'short' })
+  if (seconds < 60) return formatter.format({ seconds })
+  const minutes = Math.round(seconds / 60)
   const hours = Math.floor(minutes / 60)
-  return `${hours} h ${minutes % 60} min`
+  return formatter.format(hours > 0 ? { hours, minutes: minutes % 60 } : { minutes })
 }
 
 export function formatBytes(bytes: number): string {

@@ -1,6 +1,26 @@
 
 
 
+// Intl.DurationFormat is available in every engine this app targets, but the
+// TypeScript 5.9 lib files still stop short of declaring it, so the surface the
+// client actually calls is spelled out here (same reason as node-crypto.d.ts).
+declare namespace Intl {
+  interface DurationFormatInput {
+    years?: number
+    months?: number
+    weeks?: number
+    days?: number
+    hours?: number
+    minutes?: number
+    seconds?: number
+    milliseconds?: number
+  }
+  class DurationFormat {
+    constructor(locale?: string | readonly string[], options?: { style?: 'long' | 'short' | 'narrow' })
+    format(duration: DurationFormatInput): string
+  }
+}
+
 declare module 'markdown-it-task-lists' {
   import type MarkdownIt from 'markdown-it'
   const plugin: (md: MarkdownIt, options?: Record<string, unknown>) => void
