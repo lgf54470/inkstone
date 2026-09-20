@@ -71,7 +71,6 @@ function setRetentionSettingsImpl(
   set: SetBlogStoreState,
 ): void {
   set({
-    logRetentionDays: newSettings.logRetentionDays,
     maxLogRecords: newSettings.maxLogRecords,
   })
   persistRetentionSettings(newSettings)

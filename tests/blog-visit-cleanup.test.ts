@@ -42,8 +42,10 @@ describe('blog visit log orphan sweep (SH-05b)', () => {
   it('deletes rows whose post is gone and keeps rows of live posts', async () => {
     const db = await makeDb()
     await seedPost(db, 'p-alive', 'alive')
-    await seedVisit(db, 'p-alive', 'alive', NOW - 400 * 24 * 60 * 60 * 1000)
-    await seedVisit(db, 'p-gone', 'ghost', NOW - 400 * 24 * 60 * 60 * 1000)
+    // Recent by design: a row older than the account retention is now the
+    // retention sweep's business, not this one's (SH-43).
+    await seedVisit(db, 'p-alive', 'alive', NOW - 24 * 60 * 60 * 1000)
+    await seedVisit(db, 'p-gone', 'ghost', NOW - 24 * 60 * 60 * 1000)
 
     const result = await purgeExpiredOperationalData(db as unknown as D1Database, NOW)
 

@@ -50,7 +50,6 @@ function initialBlogState(): Partial<BlogStoreState> {
         excludeBots: initialFilters.excludeBots,
         excludeSelfReferrers: initialFilters.excludeSelfReferrers,
         excludeOwner: initialFilters.excludeOwner,
-        logRetentionDays: initialRetention.logRetentionDays,
         maxLogRecords: initialRetention.maxLogRecords,
     }
 }

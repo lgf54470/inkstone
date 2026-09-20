@@ -1,4 +1,4 @@
-import { SHARE_VISIT_RETENTION_DEFAULT_DAYS } from '@shared/user-settings'
+import { VISIT_LOG_RETENTION_DEFAULT_DAYS } from '@shared/user-settings'
 
 const LOGIN_ATTEMPT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -10,10 +10,33 @@ const DAY_MS = 24 * 60 * 60 * 1000
  * still has a bounded log. `json_valid` guards a corrupt document, which would
  * otherwise make `json_extract` throw and take the whole sweep down.
  */
-const VISIT_LOG_RETENTION_DAYS_SQL = `COALESCE(
-  CASE WHEN json_valid(u.settings)
-    THEN CAST(json_extract(u.settings, '$.share.visitLogRetentionDays') AS INTEGER)
-  END, ${SHARE_VISIT_RETENTION_DEFAULT_DAYS})`
+function visitLogRetentionDaysSql(section: 'share' | 'blog'): string {
+  return `COALESCE(
+    CASE WHEN json_valid(u.settings)
+      THEN CAST(json_extract(u.settings, '$.${section}.visitLogRetentionDays') AS INTEGER)
+    END, ${VISIT_LOG_RETENTION_DEFAULT_DAYS})`
+}
+
+/** The aged rows of one visit table, judged by the owner's own retention. */
+function visitRetentionSweep(
+  db: D1Database,
+  table: 'share_visits' | 'blog_visits',
+  alias: string,
+  section: 'share' | 'blog',
+  now: number,
+  capped: number,
+): D1PreparedStatement {
+  const retention = visitLogRetentionDaysSql(section)
+  return db.prepare(
+    `DELETE FROM ${table} WHERE id IN (
+       SELECT ${alias}.id FROM ${table} ${alias}
+         LEFT JOIN users u ON u.id = ${alias}.user_id
+        WHERE ${retention} > 0
+          AND ${alias}.visited_at < ?1 - ${retention} * ?2
+        ORDER BY ${alias}.visited_at, ${alias}.id LIMIT ?3
+     )`,
+  ).bind(now, DAY_MS, capped)
+}
 
 
 interface OperationalPurgeResult {
@@ -24,6 +47,7 @@ interface OperationalPurgeResult {
   orphanShareVisits: number
   shareVisitLogs: number
   orphanBlogVisits: number
+  blogVisitLogs: number
 }
 
 export async function purgeExpiredOperationalData(
@@ -33,8 +57,10 @@ export async function purgeExpiredOperationalData(
 ): Promise<OperationalPurgeResult> {
   const capped = Math.max(1, Math.min(1_000, Math.trunc(limit)))
   // Order matters: the destructuring below lines up with these statements.
-  const [sessions, shareAssetSessions, totpLoginChallenges, loginAttempts, orphanShareVisits, shareVisitLogs, orphanBlogVisits] =
-    await db.batch([...tokenSweeps(db, now, capped), ...visitLogSweeps(db, now, capped)])
+  const [
+    sessions, shareAssetSessions, totpLoginChallenges, loginAttempts,
+    orphanShareVisits, shareVisitLogs, orphanBlogVisits, blogVisitLogs,
+  ] = await db.batch([...tokenSweeps(db, now, capped), ...visitLogSweeps(db, now, capped)])
   return {
     sessions: sessions.meta.changes ?? 0,
     shareAssetSessions: shareAssetSessions.meta.changes ?? 0,
@@ -43,6 +69,7 @@ export async function purgeExpiredOperationalData(
     orphanShareVisits: orphanShareVisits.meta.changes ?? 0,
     shareVisitLogs: shareVisitLogs.meta.changes ?? 0,
     orphanBlogVisits: orphanBlogVisits.meta.changes ?? 0,
+    blogVisitLogs: blogVisitLogs.meta.changes ?? 0,
   }
 }
 
@@ -84,16 +111,7 @@ function visitLogSweeps(db: D1Database, now: number, capped: number): D1Prepared
           ORDER BY sv.visited_at, sv.id LIMIT ?1
        )`,
     ).bind(capped),
-    db.prepare(
-      `DELETE FROM share_visits WHERE id IN (
-         SELECT sv.id FROM share_visits sv
-           LEFT JOIN users u ON u.id = sv.user_id
-          WHERE ${VISIT_LOG_RETENTION_DAYS_SQL} > 0
-            AND sv.visited_at < ?1 - ${VISIT_LOG_RETENTION_DAYS_SQL} * ?2
-          ORDER BY sv.visited_at, sv.id LIMIT ?3
-       )`,
-    ).bind(now, DAY_MS, capped),
-    // Blog visits have no retention setting yet, so only rows whose post is gone are swept here.
+    visitRetentionSweep(db, 'share_visits', 'sv', 'share', now, capped),
     db.prepare(
       `DELETE FROM blog_visits WHERE id IN (
          SELECT bv.id FROM blog_visits bv
@@ -101,5 +119,6 @@ function visitLogSweeps(db: D1Database, now: number, capped: number): D1Prepared
           ORDER BY bv.visited_at, bv.id LIMIT ?1
        )`,
     ).bind(capped),
+    visitRetentionSweep(db, 'blog_visits', 'bv', 'blog', now, capped),
   ]
 }

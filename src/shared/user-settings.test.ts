@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { UserSettings } from './types'
 import {
   DEFAULT_SETTINGS,
-  SHARE_VISIT_RETENTION_DEFAULT_DAYS,
-  SHARE_VISIT_RETENTION_MAX_DAYS,
+  VISIT_LOG_RETENTION_DEFAULT_DAYS,
+  VISIT_LOG_RETENTION_MAX_DAYS,
   assertUnchangedSettingsSections,
   mergeSettings,
   mergeSettingsPatch,
@@ -28,6 +28,7 @@ describe('mergeSettingsPatch', () => {
     expect(next.sync).toBe(current.sync)
     expect(next.notes).toBe(current.notes)
     expect(next.share).toBe(current.share)
+    expect(next.blog).toBe(current.blog)
   })
 
   it('backfills missing sections when merging patch onto incomplete settings', () => {
@@ -43,6 +44,7 @@ describe('mergeSettingsPatch', () => {
     expect(next.notes.todoTag).toBeNull()
     expect(next.preview.layout).toBe('preview')
     expect(next.share.visitLogRetentionDays).toBe(DEFAULT_SETTINGS.share.visitLogRetentionDays)
+    expect(next.blog.visitLogRetentionDays).toBe(DEFAULT_SETTINGS.blog.visitLogRetentionDays)
   })
 })
 
@@ -141,7 +143,7 @@ describe('mergeSettings', () => {
 
 describe('share visit log retention setting (SH-05c)', () => {
   it('ships a bounded default so the sweep works without the browser that set it', () => {
-    expect(mergeSettings({}).share.visitLogRetentionDays).toBe(SHARE_VISIT_RETENTION_DEFAULT_DAYS)
+    expect(mergeSettings({}).share.visitLogRetentionDays).toBe(VISIT_LOG_RETENTION_DEFAULT_DAYS)
   })
 
   it('keeps "keep forever" as zero instead of falling back to the default', () => {
@@ -152,7 +154,7 @@ describe('share visit log retention setting (SH-05c)', () => {
   it('clamps retention into the supported range', () => {
     const current = mergeSettingsPatch(mergeSettings({}), { share: { visitLogRetentionDays: 90 } })
     expect(mergeSettingsPatch(current, { share: { visitLogRetentionDays: 100_000 } }).share.visitLogRetentionDays)
-      .toBe(SHARE_VISIT_RETENTION_MAX_DAYS)
+      .toBe(VISIT_LOG_RETENTION_MAX_DAYS)
     expect(mergeSettingsPatch(current, { share: { visitLogRetentionDays: -3 } }).share.visitLogRetentionDays).toBe(0)
     expect(mergeSettingsPatch(current, { share: { visitLogRetentionDays: 90.6 } }).share.visitLogRetentionDays).toBe(91)
   })
@@ -166,5 +168,30 @@ describe('share visit log retention setting (SH-05c)', () => {
   it('survives a settings round-trip through stored JSON', () => {
     const saved = JSON.stringify(mergeSettingsPatch(mergeSettings({}), { share: { visitLogRetentionDays: 180 } }))
     expect(mergeSettings(JSON.parse(saved)).share.visitLogRetentionDays).toBe(180)
+  })
+})
+
+describe('blog visit log retention setting (SH-43)', () => {
+  it('ships a bounded default so the sweep works without the browser that set it', () => {
+    expect(mergeSettings({}).blog.visitLogRetentionDays).toBe(VISIT_LOG_RETENTION_DEFAULT_DAYS)
+  })
+
+  it('keeps "keep forever" as zero instead of falling back to the default', () => {
+    const next = mergeSettingsPatch(mergeSettings({}), { blog: { visitLogRetentionDays: 0 } })
+    expect(next.blog.visitLogRetentionDays).toBe(0)
+  })
+
+  it('clamps retention into the supported range', () => {
+    const current = mergeSettingsPatch(mergeSettings({}), { blog: { visitLogRetentionDays: 90 } })
+    expect(mergeSettingsPatch(current, { blog: { visitLogRetentionDays: 100_000 } }).blog.visitLogRetentionDays)
+      .toBe(VISIT_LOG_RETENTION_MAX_DAYS)
+    expect(mergeSettingsPatch(current, { blog: { visitLogRetentionDays: '30' } }).blog.visitLogRetentionDays).toBe(90)
+  })
+
+  it('saves the blog knob without disturbing the share twin', () => {
+    const before = mergeSettingsPatch(mergeSettings({}), { share: { visitLogRetentionDays: 7 } })
+    const next = mergeSettingsPatch(before, { blog: { visitLogRetentionDays: 180 } })
+    expect(next.blog.visitLogRetentionDays).toBe(180)
+    expect(next.share.visitLogRetentionDays).toBe(7)
   })
 })

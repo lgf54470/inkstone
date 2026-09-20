@@ -16,9 +16,9 @@ import type {
 } from './types'
 
 /** The retention the cron applies when a user never chose one. */
-export const SHARE_VISIT_RETENTION_DEFAULT_DAYS = 30
+export const VISIT_LOG_RETENTION_DEFAULT_DAYS = 30
 /** A decade: beyond this a sweep is indistinguishable from "keep forever". */
-export const SHARE_VISIT_RETENTION_MAX_DAYS = 3_650
+export const VISIT_LOG_RETENTION_MAX_DAYS = 3_650
 
 export const DEFAULT_SETTINGS: UserSettings = {
   appearance: {
@@ -79,7 +79,10 @@ export const DEFAULT_SETTINGS: UserSettings = {
     todoTag: null,
   },
   share: {
-    visitLogRetentionDays: SHARE_VISIT_RETENTION_DEFAULT_DAYS,
+    visitLogRetentionDays: VISIT_LOG_RETENTION_DEFAULT_DAYS,
+  },
+  blog: {
+    visitLogRetentionDays: VISIT_LOG_RETENTION_DEFAULT_DAYS,
   },
 }
 
@@ -104,7 +107,7 @@ export const PINNED_WINDOW_PRESETS: Record<'small' | 'medium' | 'large', { width
 export const PINNED_WINDOW_WIDTH_RANGE = [260, 1200] as const
 export const PINNED_WINDOW_HEIGHT_RANGE = [140, 2000] as const
 
-const SETTINGS_SECTIONS = ['appearance', 'editor', 'preview', 'backup', 'sync', 'notes', 'share'] as const
+const SETTINGS_SECTIONS = ['appearance', 'editor', 'preview', 'backup', 'sync', 'notes', 'share', 'blog'] as const
 type SettingsSection = (typeof SETTINGS_SECTIONS)[number]
 
 export function mergeSettings(partial: unknown): UserSettings {
@@ -120,6 +123,7 @@ function cloneDefaultSettings(): UserSettings {
     sync: { ...DEFAULT_SETTINGS.sync },
     notes: { ...DEFAULT_SETTINGS.notes },
     share: { ...DEFAULT_SETTINGS.share },
+    blog: { ...DEFAULT_SETTINGS.blog },
   }
 }
 
@@ -320,12 +324,19 @@ function mergeNotes(current: Record<string, unknown>, patch: Record<string, unkn
   }
 }
 
-function mergeShare(current: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+/**
+ * Both visit-log surfaces keep the same single knob, so the same cleaner backs
+ * `share` and `blog`: 0 means "keep forever" and must survive as 0.
+ */
+function mergeVisitLogRetention(
+  current: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
   return {
     visitLogRetentionDays: integerInRange(
       patch.visitLogRetentionDays,
       0,
-      SHARE_VISIT_RETENTION_MAX_DAYS,
+      VISIT_LOG_RETENTION_MAX_DAYS,
       current.visitLogRetentionDays as number,
     ),
   }
@@ -350,7 +361,8 @@ function mergeSettingsSection(
     case 'notes':
       return mergeNotes(current, patch)
     case 'share':
-      return mergeShare(current, patch)
+    case 'blog':
+      return mergeVisitLogRetention(current, patch)
   }
 }
 

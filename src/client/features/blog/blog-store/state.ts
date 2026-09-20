@@ -34,23 +34,19 @@ export function loadInitialFilters(): { excludeBots: boolean; excludeSelfReferre
 
 
 
-export function loadInitialRetention(): { logRetentionDays: number; maxLogRecords: number } {
+export function loadInitialRetention(): { maxLogRecords: number } {
   if (typeof window !== 'undefined') {
     try {
       const stored = localStorage.getItem(RETENTION_SETTINGS_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
-        return {
-          logRetentionDays: typeof parsed.logRetentionDays === 'number' ? parsed.logRetentionDays : 30,
-          maxLogRecords: typeof parsed.maxLogRecords === 'number' ? parsed.maxLogRecords : 1000,
-        }
+        return { maxLogRecords: typeof parsed.maxLogRecords === 'number' ? parsed.maxLogRecords : 1000 }
       }
     } catch (error) {
       console.warn('[blog-store] failed to load retention settings', error)
     }
   }
   return {
-    logRetentionDays: 30,
     maxLogRecords: 1000,
   }
 }

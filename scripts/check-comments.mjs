@@ -1120,10 +1120,26 @@ const allowed = new Map([
     '// Rebuilt only when the folders change: every consumer of the tree reads it on each',
     '// render, and a new array each time would invalidate theirs as well.',
   ]],
+  ['src/client/features/blog/blog-settings-retention.test.ts', [
+    '// A test that fails before its unmount would otherwise leave its modal in the',
+    '// document, and the next test\'s button lookup would drive that stale instance.',
+    '// The period belongs to the account: nothing in this save may re-cache it.',
+  ]],
   ['src/client/features/blog/blog-store/index.ts', [
     '// Feed the notes store\'s visibility projection (published note ids) without',
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
+  ]],
+  ['src/client/features/blog/blog-store/retention.test.ts', [
+    '// Seeded before the store module above is evaluated, so the cached retention',
+    '// period is already in browser storage when the store builds its initial state.',
+  ]],
+  ['src/client/features/blog/blog-store/types.ts', [
+    '/** Retention days is an account setting (SH-43); only the record cap is cached here. */',
+  ]],
+  ['src/client/features/blog/use-blog-settings-modal.ts', [
+    '// The sweep runs on the server, so the value it reads has to be the account\'s.',
+    '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
   ]],
   ['src/client/features/command/command-palette/index.tsx', [
     '// Counts each note once per ancestor folder (its own folder and every parent).',
@@ -4145,6 +4161,8 @@ const allowed = new Map([
     '/** Tag(s, comma-separated) that file notes into the sidebar to-do tree; null falls back to the locale default. */',
     '/** Share-center preferences the server acts on, not just the UI. */',
     '/**\n   * Days a visit log row survives before the maintenance cron deletes it;\n   * 0 keeps every row. It has to live here rather than in the browser so the\n   * sweep runs whether or not the owner ever opens the app again.\n   */',
+    '/** Blog-center preferences the server acts on, not just the UI. */',
+    '/**\n   * Days a `blog_visits` row survives before the maintenance cron deletes it;\n   * 0 keeps every row. Same reasoning as the share twin.\n   */',
   ]],
   ['src/shared/types/share.ts', [
     '// Null when the note was deleted but its visit rows survive; the client',
@@ -4159,6 +4177,7 @@ const allowed = new Map([
     '/** Built-in floating-window sizes; `custom` reads width/height from the settings. */',
     '/**\n * Merge a partial patch into the current settings.\n *\n * Sections that the patch does not touch are passed through by reference,\n * so subscribers observing a specific section (e.g. `settings.editor`) are\n * not re-rendered when an unrelated section changes.\n */',
     '/**\n * Guards the referential-stability contract of mergeSettingsPatch: sections\n * the patch did not touch must keep their object identity, otherwise narrow\n * store subscriptions silently regress into full-app re-renders on every\n * settings change.\n */',
+    '/**\n * Both visit-log surfaces keep the same single knob, so the same cleaner backs\n * `share` and `blog`: 0 means "keep forever" and must survive as 0.\n */',
   ]],
   ['src/worker/app.ts', [
     '// Ensure the schema exists (WeakMap-cached), then read against the raw D1.',
@@ -4314,11 +4333,11 @@ const allowed = new Map([
   ]],
   ['src/worker/lib/maintenance.ts', [
     '/**\n * Per-account visit log retention in days, read from the stored settings\n * document: 0 keeps every row, while a missing or unparsable value falls back\n * to the shipped default so an account that never opened the settings modal\n * still has a bounded log. `json_valid` guards a corrupt document, which would\n * otherwise make `json_extract` throw and take the whole sweep down.\n */',
+    '/** The aged rows of one visit table, judged by the owner\'s own retention. */',
     '// Order matters: the destructuring below lines up with these statements.',
     '/** Bounded deletes for rows that carry their own expiry, plus stale login attempts. */',
     '/** Visit log rows are the only purge without an expiry column: they go by ownership and age. */',
     '// Sweeps rows orphaned before the revoke/purge cascades existed (and by the MCP revoke tool).',
-    '// Blog visits have no retention setting yet, so only rows whose post is gone are swept here.',
   ]],
   ['src/worker/lib/outbound-url.ts', [
     '// Shared outbound-request guards: the hostname and IP safety checks back both',
@@ -4699,6 +4718,14 @@ const allowed = new Map([
     '// Every request in the harness arrives from the same client, which is what makes the',
     '// budget observable at all: the count used to be over the whole table, so the sixth',
     '// application here would have been the sixth from anywhere.',
+  ]],
+  ['tests/blog-visit-cleanup.test.ts', [
+    '// Recent by design: a row older than the account retention is now the',
+    '// retention sweep\'s business, not this one\'s (SH-43).',
+  ]],
+  ['tests/blog-visit-retention.test.ts', [
+    '/** `settings` is written verbatim, so a test can store a corrupt document too. */',
+    '/** A visit needs its post to stay, otherwise the orphan sweep deletes it first. */',
   ]],
   ['tests/board-library-routes.test.ts', [
     '/** A bucket that keeps what it is given, so a test can count the objects it holds. */',

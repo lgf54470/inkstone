@@ -95,6 +95,15 @@ export interface ShareSettings {
   visitLogRetentionDays: number
 }
 
+/** Blog-center preferences the server acts on, not just the UI. */
+export interface BlogSettings {
+  /**
+   * Days a `blog_visits` row survives before the maintenance cron deletes it;
+   * 0 keeps every row. Same reasoning as the share twin.
+   */
+  visitLogRetentionDays: number
+}
+
 export interface UserSettings {
   appearance: AppearanceSettings
   editor: EditorSettings
@@ -103,4 +112,5 @@ export interface UserSettings {
   sync: SyncSettings
   notes: NoteSettings
   share: ShareSettings
+  blog: BlogSettings
 }

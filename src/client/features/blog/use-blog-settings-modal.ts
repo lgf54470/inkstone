@@ -4,6 +4,7 @@ import { api } from '../../lib/api'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
 import { useUi } from '../../store/ui'
+import { useSession } from '../../store/session'
 import { confirm } from '../../components/overlay'
 import { useBlogStore, type BlogStoreState } from './blog-store'
 
@@ -19,57 +20,45 @@ export function useBlogSettingsModal({
   const excludeSelfReferrers = useBlogStore((s) => s.excludeSelfReferrers)
   const excludeOwner = useBlogStore((s) => s.excludeOwner)
   const setFilters = useBlogStore((s) => s.setFilters)
-  const logRetentionDays = useBlogStore((s) => s.logRetentionDays)
   const maxLogRecords = useBlogStore((s) => s.maxLogRecords)
   const setRetentionSettings = useBlogStore((s) => s.setRetentionSettings)
+  // The sweep runs on the server, so the value it reads has to be the account's.
+  const visitLogRetentionDays = useSession((s) => s.settings.blog.visitLogRetentionDays)
+  const updateSettings = useSession((s) => s.updateSettings)
 
   const [activeTab, setActiveTab] = useState<'site' | 'traffic'>('site')
-  const fields = useSettingsFields({ excludeBots, excludeSelfReferrers, excludeOwner, logRetentionDays, maxLogRecords })
-  const { siteName, setSiteName, subtitle, setSubtitle, bio, setBio, authorName, setAuthorName, authorAvatar, setAuthorAvatar, github, setGithub, twitter, setTwitter, email, setEmail, website, setWebsite, frontendUrl, setFrontendUrl, requireCommentApproval, setRequireCommentApproval, postsPerPage, setPostsPerPage, bots, setBots, selfRef, setSelfRef, owner, setOwner,    retentionDays, setRetentionDays, maxRecords, setMaxRecords, isSaving, setIsSaving, isCleanBusy, setIsCleanBusy } = fields
+  const fields = useSettingsFields({ excludeBots, excludeSelfReferrers, excludeOwner, visitLogRetentionDays, maxLogRecords })
 
   useEffect(() => {
     applySettingsToForm({
-      settings, excludeBots, excludeSelfReferrers, excludeOwner, logRetentionDays, maxLogRecords,
-      setSiteName, setSubtitle, setBio, setAuthorName, setAuthorAvatar, setGithub, setTwitter,
-      setEmail, setWebsite, setFrontendUrl, setRequireCommentApproval, setPostsPerPage,
-      setBots, setSelfRef, setOwner, setRetentionDays, setMaxRecords,
+      settings, excludeBots, excludeSelfReferrers, excludeOwner, visitLogRetentionDays, maxLogRecords,
+      ...fields,
     })
-  }, [settings, excludeBots, excludeSelfReferrers, excludeOwner, logRetentionDays, maxLogRecords])
+  }, [settings, excludeBots, excludeSelfReferrers, excludeOwner, visitLogRetentionDays, maxLogRecords])
 
   const handleSave = (e: FormEvent) => saveSettingsFlow(e, {
-    bots, selfRef, owner, retentionDays, maxRecords,
-    siteName, subtitle, bio, authorName, authorAvatar, frontendUrl,
-    requireCommentApproval, postsPerPage, github, twitter, email, website,
-    setFilters, setRetentionSettings, saveSettings, toast, setIsSaving, onClose,
+    ...fields,
+    setFilters, setRetentionSettings, saveSettings,
+    setVisitLogRetentionDays: (days) => updateSettings({ blog: { visitLogRetentionDays: days } }),
+    toast, onClose,
   })
 
-  const handleClean = (type: 'bots' | 'older_than' | 'all') => cleanVisitLogs(type, retentionDays, toast, setIsCleanBusy)
+  const handleClean = (type: 'bots' | 'older_than' | 'all') => cleanVisitLogs(type, fields.retentionDays, toast, fields.setIsCleanBusy)
 
-  return {
-    activeTab, setActiveTab,
-    siteName, setSiteName, subtitle, setSubtitle, bio, setBio,
-    authorName, setAuthorName, authorAvatar, setAuthorAvatar,
-    github, setGithub, twitter, setTwitter, email, setEmail, website, setWebsite,
-    frontendUrl, setFrontendUrl,
-    requireCommentApproval, setRequireCommentApproval,
-    postsPerPage, setPostsPerPage,
-    bots, setBots, selfRef, setSelfRef, owner, setOwner,
-    retentionDays, setRetentionDays, maxRecords, setMaxRecords,
-    isSaving, isCleanBusy, handleSave, handleClean,
-  }
+  return { activeTab, setActiveTab, ...fields, handleSave, handleClean }
 }
 
 function useSettingsFields({
   excludeBots,
   excludeSelfReferrers,
   excludeOwner,
-  logRetentionDays,
+  visitLogRetentionDays,
   maxLogRecords,
 }: {
   excludeBots: boolean
   excludeSelfReferrers: boolean
   excludeOwner: boolean
-  logRetentionDays: number
+  visitLogRetentionDays: number
   maxLogRecords: number
 }) {
   const [siteName, setSiteName] = useState('')
@@ -87,7 +76,7 @@ function useSettingsFields({
   const [bots, setBots] = useState(excludeBots)
   const [selfRef, setSelfRef] = useState(excludeSelfReferrers)
   const [owner, setOwner] = useState(excludeOwner)
-  const [retentionDays, setRetentionDays] = useState(String(logRetentionDays))
+  const [retentionDays, setRetentionDays] = useState(String(visitLogRetentionDays))
   const [maxRecords, setMaxRecords] = useState(String(maxLogRecords))
   const [isSaving, setIsSaving] = useState(false)
   const [isCleanBusy, setIsCleanBusy] = useState(false)
@@ -131,7 +120,7 @@ function applySettingsToForm(ctx: SettingsFormCtx & SettingsFormSetters): void {
   ctx.setBots(ctx.excludeBots)
   ctx.setSelfRef(ctx.excludeSelfReferrers)
   ctx.setOwner(ctx.excludeOwner)
-  ctx.setRetentionDays(String(ctx.logRetentionDays))
+  ctx.setRetentionDays(String(ctx.visitLogRetentionDays))
   ctx.setMaxRecords(String(ctx.maxLogRecords))
 }
 
@@ -140,7 +129,7 @@ interface SettingsFormCtx {
   excludeBots: boolean
   excludeSelfReferrers: boolean
   excludeOwner: boolean
-  logRetentionDays: number
+  visitLogRetentionDays: number
   maxLogRecords: number
 }
 
@@ -165,6 +154,7 @@ interface SaveSettingsCtx {
   setFilters: BlogStoreState['setFilters']
   setRetentionSettings: BlogStoreState['setRetentionSettings']
   saveSettings: BlogStoreState['saveSettings']
+  setVisitLogRetentionDays: (days: number) => void
   toast: UiState['toast']
   setIsSaving: (v: boolean) => void
   onClose: () => void
@@ -179,10 +169,8 @@ async function saveSettingsFlow(e: FormEvent, ctx: SaveSettingsCtx): Promise<voi
     excludeSelfReferrers: ctx.selfRef,
     excludeOwner: ctx.owner,
   })
-  ctx.setRetentionSettings({
-    logRetentionDays: parseInt(ctx.retentionDays, 10),
-    maxLogRecords: parseInt(ctx.maxRecords, 10),
-  })
+  ctx.setRetentionSettings({ maxLogRecords: parseInt(ctx.maxRecords, 10) })
+  ctx.setVisitLogRetentionDays(parseInt(ctx.retentionDays, 10))
 
   try {
     await ctx.saveSettings({
@@ -210,13 +198,24 @@ async function saveSettingsFlow(e: FormEvent, ctx: SaveSettingsCtx): Promise<voi
   }
 }
 
+/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */
+export function parseBlogCleanDays(retentionDays: string): number | null {
+  const days = parseInt(retentionDays, 10)
+  return days >= 1 ? days : null
+}
+
 async function cleanVisitLogs(
   type: 'bots' | 'older_than' | 'all',
   retentionDays: string,
   toast: UiState['toast'],
   setIsCleanBusy: (v: boolean) => void,
 ): Promise<void> {
-  const days = parseInt(retentionDays, 10) || 30
+  const parsed = parseBlogCleanDays(retentionDays)
+  if (type === 'older_than' && parsed === null) {
+    toast({ title: t('share.clean_blocked_unlimited'), tone: 'warning' })
+    return
+  }
+  const days = parsed ?? undefined
   const confirmMessage = type === 'all'
     ? t('share.confirm_clear_all_logs')
     : type === 'bots'
