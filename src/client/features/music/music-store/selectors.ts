@@ -1,7 +1,7 @@
 import { useDeferredValue, useMemo } from 'react'
 import type { MusicTrack } from '@shared/types'
 import { useMusic } from './index'
-import { visibleTracks } from './library-load'
+import { hiddenMatchCount, visibleTracks } from './library-load'
 import { currentTrack } from './player'
 
 export function useVisibleTracks(): MusicTrack[] {
@@ -19,6 +19,23 @@ export function useVisibleTracks(): MusicTrack[] {
   return useMemo(
     () => visibleTracks({ tracks, playlists, tags, scope, query: deferredQuery, sort, sourceFilter, romanized } as never),
     [tracks, playlists, tags, scope, deferredQuery, sort, sourceFilter, romanized],
+  )
+}
+
+// Same inputs as the list — including the deferred query — so the "matches left out"
+// notice can never describe a result the list has not painted yet.
+export function useHiddenMatchCount(): number {
+  const tracks = useMusic((s) => s.tracks)
+  const playlists = useMusic((s) => s.playlists)
+  const tags = useMusic((s) => s.tags)
+  const scope = useMusic((s) => s.scope)
+  const query = useMusic((s) => s.query)
+  const sourceFilter = useMusic((s) => s.sourceFilter)
+  const romanized = useMusic((s) => s.romanized)
+  const deferredQuery = useDeferredValue(query)
+  return useMemo(
+    () => hiddenMatchCount({ tracks, playlists, tags, scope, query: deferredQuery, sourceFilter, romanized } as never),
+    [tracks, playlists, tags, scope, deferredQuery, sourceFilter, romanized],
   )
 }
 

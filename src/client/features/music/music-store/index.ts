@@ -72,4 +72,4 @@ export { hasPlaybackChanged, restorePlayback, savePlayback, schedulePlaybackSave
 export { progressTimeMs, setProgressTime, useProgress } from './progress'
 export { resumeSleepTimer } from './player'
 export { visibleTracks, sortTracks } from './library-load'
-export { useCurrentTrack, useTagCounts, useVisibleTracks, buildTagCounts } from './selectors'
+export { useCurrentTrack, useHiddenMatchCount, useTagCounts, useVisibleTracks, buildTagCounts } from './selectors'

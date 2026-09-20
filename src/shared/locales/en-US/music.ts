@@ -111,6 +111,7 @@ export const messages = {
 'music.search_clear_history': 'Clear history',
 'music.search_clear': 'Clear search',
 'music.search_results': 'Results for "{value0}"',
+'music.search_truncated': 'Top {value0} of {value1} matches — narrow the search to see the rest',
 'music.more_from': 'More from {value0}',
 'music.queue': 'Play queue',
 'music.queue_empty': 'The queue is empty',

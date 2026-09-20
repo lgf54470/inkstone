@@ -11,7 +11,7 @@ vi.mock('../music-search', async (importOriginal) => {
 
 import { api } from '../../../lib/api'
 import { ensureRomanized } from '../music-search'
-import { loadLibrary, openTrackMenu, prepareRomanization, setSort, setSortDirection, sortTracks, visibleTracks } from './library-load'
+import { hiddenMatchCount, loadLibrary, openTrackMenu, prepareRomanization, setSort, setSortDirection, sortTracks, visibleTracks } from './library-load'
 import type { MusicSet, MusicStoreState } from './types'
 
 const libraryPayload = { tracks: [] as MusicTrack[], tags: [], playlists: [], stats: statsFixture() }
@@ -35,6 +35,63 @@ afterEach(() => {
   vi.useRealTimers()
   vi.mocked(api.music.library).mockReset()
   vi.mocked(ensureRomanized).mockReset()
+})
+
+function searchableTrack(id: string): MusicTrack {
+  return {
+    id,
+    title: `moonlight ${id}`,
+    artist: '',
+    album: '',
+    durationMs: 0,
+    source: 'r2',
+    format: 'mp3',
+    webdavPath: null,
+    mime: 'audio/mpeg',
+    sizeBytes: 0,
+    coverUrl: null,
+    lyric: null,
+    hasLyric: false,
+    tagIds: [],
+    isFavorite: false,
+    isPinned: false,
+    playCount: 0,
+    lastPlayedAt: null,
+    contentHash: null,
+    createdAt: 0,
+    updatedAt: 0,
+  }
+}
+
+function queryStore(count: number) {
+  const store = makeStore()
+  const tracks = Array.from({ length: count }, (_, index) => searchableTrack(String(index)))
+  store.set({ tracks, query: 'moonlight', romanized: {}, scope: { kind: 'all' }, sourceFilter: 'all', sort: 'recent', sortDirection: 'asc' })
+  return store
+}
+
+describe('search hit truncation (UI-16)', () => {
+  it('counts the matches that the capped list leaves out', () => {
+    const store = queryStore(250)
+    expect(visibleTracks(store.get())).toHaveLength(200)
+    expect(hiddenMatchCount(store.get())).toBe(50)
+  })
+
+  it('counts nothing hidden when every match fits', () => {
+    expect(hiddenMatchCount(queryStore(120).get())).toBe(0)
+  })
+
+  it('counts nothing hidden without a query', () => {
+    const store = queryStore(250)
+    store.set({ query: '' })
+    expect(hiddenMatchCount(store.get())).toBe(0)
+  })
+
+  it('counts nothing hidden when the query matches fewer tracks than the cap', () => {
+    const store = queryStore(250)
+    store.set({ query: 'moonlight 24' })
+    expect(hiddenMatchCount(store.get())).toBe(0)
+  })
 })
 
 describe('loadLibrary in-flight dedup', () => {

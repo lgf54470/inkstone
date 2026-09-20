@@ -70,7 +70,11 @@ export async function ensureRomanized(
   return next
 }
 
-export function rankTracks(index: MusicSearchIndex, query: string, limit = 200): string[] {
+// A broad query can match the whole library; a row per hit is what the list mounts, so
+// matches past this many stay out of the DOM and the view says how many that left out.
+export const SEARCH_RESULT_LIMIT = 200
+
+export function rankTracks(index: MusicSearchIndex, query: string, limit = SEARCH_RESULT_LIMIT): string[] {
   const trimmed = query.trim()
   if (!trimmed) return index.rows.slice(0, limit).map((row) => row.id)
   const scored: { id: string; score: number }[] = []
@@ -82,4 +86,17 @@ export function rankTracks(index: MusicSearchIndex, query: string, limit = 200):
   }
   scored.sort((a, b) => b.score - a.score)
   return scored.slice(0, limit).map((entry) => entry.id)
+}
+
+// The list and the "matches left out" count ask the same question about the same
+// library, so the last ranking is remembered by the inputs it was computed from.
+let lastSearch: { tracks: MusicTrack[]; romanized: Record<string, string>; query: string; ids: string[] } | null = null
+
+export function searchTracks(tracks: MusicTrack[], romanized: Record<string, string>, query: string): string[] {
+  if (lastSearch && lastSearch.tracks === tracks && lastSearch.romanized === romanized && lastSearch.query === query) {
+    return lastSearch.ids
+  }
+  const ids = rankTracks(buildSearchIndex(tracks, romanized), query, Number.POSITIVE_INFINITY)
+  lastSearch = { tracks, romanized, query, ids }
+  return ids
 }

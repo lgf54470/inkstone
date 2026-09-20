@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vite
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
+import type { MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { MusicHubModal } from './music-hub-modal'
 import { useMusic } from './music-store'
@@ -69,6 +70,32 @@ describe('MusicHubModal load failure state', () => {
     await mountHub()
     const dialog = document.querySelector('[role="dialog"]')
     expect(dialog?.textContent).not.toContain(t('music.load_failed'))
+  })
+})
+
+describe('MusicHubModal search truncation — UI-16', () => {
+  function manyTracks(count: number): MusicTrack[] {
+    return Array.from({ length: count }, (_, index) => ({
+      id: `t${index}`, title: `moonlight ${index}`, artist: '', album: '', durationMs: 0, source: 'r2',
+      format: 'mp3', webdavPath: null, mime: 'audio/mpeg', sizeBytes: 0, coverUrl: null, lyric: null,
+      hasLyric: false, tagIds: [], isFavorite: false, isPinned: false, playCount: 0, lastPlayedAt: null,
+      contentHash: null, createdAt: 0, updatedAt: 0,
+    }))
+  }
+
+  async function mountQueryResults(count: number): Promise<void> {
+    useMusic.setState({ loadLibrary: vi.fn(async () => {}), tracks: manyTracks(count), query: 'moonlight' })
+    await mountHub()
+  }
+
+  it('says how many matches the capped list leaves out', async () => {
+    await mountQueryResults(250)
+    expect(document.body.textContent).toContain(t('music.search_truncated', { value0: 200, value1: 250 }))
+  })
+
+  it('stays quiet while every match is on screen', async () => {
+    await mountQueryResults(120)
+    expect(document.body.textContent).not.toContain(t('music.search_truncated', { value0: 200, value1: 120 }))
   })
 })
 

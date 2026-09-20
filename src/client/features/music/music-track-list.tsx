@@ -7,7 +7,7 @@ import { Empty, LoadingBlock } from '../../components/feedback'
 import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
-import { useMusic } from './music-store'
+import { useHiddenMatchCount, useMusic } from './music-store'
 import type { MusicViewMode } from './music-store'
 import { MusicSelectionBar } from './music-selection-bar'
 import { MusicTrackCard } from './music-track-card'
@@ -153,6 +153,9 @@ function ListHeader({ tracks, scopeKind }: { tracks: MusicTrack[]; scopeKind: st
   const playCollection = useMusic((state) => state.playCollection)
   const viewMode = useMusic((state) => state.viewMode)
   const setViewMode = useMusic((state) => state.setViewMode)
+  // A broad query fills the whole page and stops; the rows it left out are named here
+  // so the count on the right is not read as the whole answer.
+  const hiddenMatches = useHiddenMatchCount()
   const ids = tracks.map((track) => track.id)
   return (
     <div className='flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2'>
@@ -168,6 +171,11 @@ function ListHeader({ tracks, scopeKind }: { tracks: MusicTrack[]; scopeKind: st
             {t('music.export_m3u')}
           </Button>
         </Tooltip>
+      )}
+      {hiddenMatches > 0 && (
+        <span role='status' className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+          {t('music.search_truncated', { value0: tracks.length, value1: tracks.length + hiddenMatches })}
+        </span>
       )}
       <span className='ml-auto text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {t('music.playlist_track_count', { value0: tracks.length })}

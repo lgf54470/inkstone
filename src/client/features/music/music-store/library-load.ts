@@ -1,7 +1,7 @@
 import type { MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack } from '@shared/types'
 import { api } from '../../../lib/api'
 import { duplicateTracks } from '../music-duplicates'
-import { buildSearchIndex, ensureRomanized, needsRomanization, rankTracks } from '../music-search'
+import { ensureRomanized, needsRomanization, SEARCH_RESULT_LIMIT, searchTracks } from '../music-search'
 import { collectTagIds } from '../music-utils'
 import { pushHistory } from './state'
 import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSortDirection, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest, TrackMenuTarget } from './types'
@@ -215,8 +215,20 @@ function playlistTracks(state: MusicStoreState, playlistId: string): MusicTrack[
 }
 
 function filterByQuery(tracks: MusicTrack[], state: MusicStoreState, query: string): MusicTrack[] {
-  const order = new Map(rankTracks(buildSearchIndex(tracks, state.romanized), query).map((id, index) => [id, index]))
+  const ranked = searchTracks(tracks, state.romanized, query).slice(0, SEARCH_RESULT_LIMIT)
+  const order = new Map(ranked.map((id, index) => [id, index]))
   return tracks.filter((track) => order.has(track.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!)
+}
+
+// The list stops at SEARCH_RESULT_LIMIT matches; the ones that did not fit are counted
+// here so the header can say the list is a prefix rather than the whole answer. A scope
+// that cannot hold more matches than the cap short-circuits before ranking anything.
+export function hiddenMatchCount(state: MusicStoreState): number {
+  const query = state.query.trim()
+  if (!query) return 0
+  const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
+  if (scoped.length <= SEARCH_RESULT_LIMIT) return 0
+  return Math.max(0, searchTracks(scoped, state.romanized, query).length - SEARCH_RESULT_LIMIT)
 }
 
 // The comparator describes the natural ascending order of the field; the

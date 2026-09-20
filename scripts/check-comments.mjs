@@ -1565,6 +1565,10 @@ const allowed = new Map([
     '// The pinyin-pro dictionary is large: keep it behind this dynamic import so the always-mounted player never pulls it into the entry bundle.',
     '// Romanizing a whole library blocks the thread per item; the loop yields between',
     '// batches so typing stays responsive during the first latin search.',
+    '// A broad query can match the whole library; a row per hit is what the list mounts, so',
+    '// matches past this many stay out of the DOM and the view says how many that left out.',
+    '// The list and the "matches left out" count ask the same question about the same',
+    '// library, so the last ranking is remembered by the inputs it was computed from.',
   ]],
   ['src/client/features/music/music-selection-bar.tsx', [
     '// Multi-select toolbar: file-manager style batches; select all and invert use the visible list.',
@@ -1670,6 +1674,9 @@ const allowed = new Map([
     '// The duplicates view carries its own group order, so the same bypass applies.',
     '// The browse kinds draw a grouped grid, not a track list; the list stays empty on purpose.',
     '// FEAT-9: recency is the server-stamped last play, so the list survives a device switch.',
+    '// The list stops at SEARCH_RESULT_LIMIT matches; the ones that did not fit are counted',
+    '// here so the header can say the list is a prefix rather than the whole answer. A scope',
+    '// that cannot hold more matches than the cap short-circuits before ranking anything.',
     '// The comparator describes the natural ascending order of the field; the',
     '// stored direction only flips it, and pins stay hoisted in both directions.',
   ]],
@@ -1756,6 +1763,8 @@ const allowed = new Map([
   ['src/client/features/music/music-store/selectors.ts', [
     '// Ranking the whole library is the expensive part; React may paint the previous',
     '// result once more rather than block typing while a fresh query settles.',
+    '// Same inputs as the list — including the deferred query — so the "matches left out"',
+    '// notice can never describe a result the list has not painted yet.',
     '// Counts tracks per tag directly; the sidebar tree rolls descendants into the parent\'s total.',
   ]],
   ['src/client/features/music/music-store/state.ts', [
@@ -1793,6 +1802,8 @@ const allowed = new Map([
     '// Inside a playlist the rows can be dragged onto each other; the manual order',
     '// is the only order there, so the drop maps to an index in the stored items.',
     '// Ctrl/Cmd+A selects the visible list, matching the file-manager habit; text fields keep their own.',
+    '// A broad query fills the whole page and stops; the rows it left out are named here',
+    '// so the count on the right is not read as the whole answer.',
   ]],
   ['src/client/features/music/music-track-menu.test.ts', [
     '// row t1: second in the manual order, so move-down is at the boundary',

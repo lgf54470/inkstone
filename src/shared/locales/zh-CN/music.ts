@@ -111,6 +111,7 @@ export const messages = {
 'music.search_clear_history': '清空历史',
 'music.search_clear': '清除搜索',
 'music.search_results': '“{value0}”的搜索结果',
+'music.search_truncated': '共 {value1} 条匹配，仅显示前 {value0} 条——请缩小搜索范围',
 'music.more_from': '更多来自 {value0} 的歌曲',
 'music.queue': '播放队列',
 'music.queue_empty': '队列为空',
