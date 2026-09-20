@@ -54,7 +54,7 @@
 | F3 | SH-05b | `maintenance.ts` cron 与 blog 附件/清理共用调度中触碰 blog 语义的部分（排在 F5 之后）：blog_visits 级联 + 孤儿清扫 | P2 | ✅ | 79c25248 |
 | F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | eff0a6b5 |
 | F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | ✅ | f812c7a7 |
-| H1 | SH-39 | `maxLogRecords`（设置模态「最多记录数」）全仓无消费者，属假设置：接入日志列表取数上限或删除控件+文案+本地键 | P3 | ✅ | 待回填 |
+| H1 | SH-39 | `maxLogRecords`（设置模态「最多记录数」）全仓无消费者，属假设置：接入日志列表取数上限或删除控件+文案+本地键 | P3 | ✅ | 446451be |
 | H3 | SH-41 | 安全：`blog_posts` 删除的两条 `DELETE FROM blog_comments WHERE post_id …` 不带 user 限定——按 id 点名他人文章即可删其评论（跨账号写），须与同批 posts 语句同口径加 `user_id` | P1 | ✅ | 6cda419e |
 | H4 | SH-42 | `POST /api/blog/posts/batch` 的 `postIds` 无长度上限，`IN (…)` 直接拼占位符——>100 个 id 必 500（share 侧 02 号同款 D1 变量上限），需分块或 schema 上限 | P1 | ✅ | 0e00fa6a |
 | H5 | SH-43 | `blog_visits` 无保留期设置（share 已有 `share.visitLogRetentionDays`）：cron 只扫孤儿行，需要 blog settings 段落 + 模态接线，属产品决策 | P2 | 排队 | |
@@ -397,4 +397,4 @@
 - 测试（红先行）：`share-store/retention.test.ts` 重写为 2 例（缓存里放着 `{maxLogRecords:5000}` 时 store 初值既无该字段也无 `setRetentionSettings`；改流量过滤不再写 `inkstone_share_retention`），`share-settings-retention.test.ts` 由 4 例扩到 6 例（保留期成为模态里唯一的 `role=radiogroup`、正文不再出现 `10K`；点保存仍按剩下的两项落地——`setFilters` 与 `updateSettings` 各恰好一次且取值正确）。红态实测 `expected …(2) to have a length of 1 but got 2` 与 `expected true to be false`。
 - 变异 6 发全杀（/tmp/mutH1 备份还原，全部 `cmp` 逐字节复核）：store 初值重挂 `maxLogRecords: 5000`、`setFiltersImpl` 重新回写 retention key、模态重新挂上带 `10K` 的 `RetentionField`、重挂一个不含 `10K` 字样的第二分段控件（证明长度断言独立承载，不靠文案）、`saveSettingsFlow` 不再写流量过滤、`setVisitLogRetentionDays(0)` 忽略所选天数。后两发是本次动了保存路径后补的守卫——先前它们无人断言（`setFilters` mock 只 reset 不 assert）。
 - 踩坑（同机负载下的假绿/假红）：初版 store 测试用 `vi.resetModules()` + 测试体内 `await import('./index')` 来构造「先种缓存再建 store」，把整条 store 依赖链的冷转译算进了 5s 用例超时——空闲 1.1s，load average 12 时 1.7s，人为压到 18 即 `Error: Test timed out in 5000ms`（同目录其余 22 文件全绿，只它红）。改为顶层静态 import + `vi.hoisted` 在 import 之前种 key：vitest 的文件级模块注册表本就保证「本文件首次 import 即冷建 store」，缓存种得更早而不必重转依赖链，用例耗时降到 10ms，压测 load 18 下 108/108 绿。教训：`resetModules` 式隔离在共享机器上不是免费的，能在文件级拿到的顺序保证就别在测试体里重付。
-- 验证：tsc -b 绿；13 项静态门禁全绿；vitest 定向 8/8，share 目录全量 23 文件/108 测试绿（含压测复跑）。全量回归待回填。fix 提交 待回填。
+- 验证：tsc -b 绿；13 项静态门禁全绿；vitest 定向 8/8，share 目录全量 23 文件/108 测试绿（含压测复跑）。全量回归 241 文件/1883 测试绿（REGRESSION_EXIT=0，串行 449s；较上轮 1882 多 1 例，即本次新增的保存落地断言）。fix 提交 446451be。
