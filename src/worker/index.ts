@@ -2,7 +2,7 @@ import { runAttachmentCleanup } from './attachments/cleanup'
 import { runScheduledBackups } from './backup/scheduler'
 import type { Env } from './env'
 import { initializeDatabase } from './db/schema'
-import { drainAllFtsQueues } from './db/fts'
+import { auditFtsIndexes, drainAllFtsQueues } from './db/fts'
 import { drainAiIndexQueue } from './mcp/ai-search'
 import { createOAuthProvider, providerForScheduled } from './mcp/oauth'
 import { purgeRevokedMcpApiKeys } from './mcp/api-keys'
@@ -43,6 +43,10 @@ export default {
         drainAiIndexQueue(env, 300),
         drainAllFtsQueues(env.DB),
       ])
+      // After the drain, so what it reads is the index the queue has caught up to rather than one
+      // that is still being written: the audit answers "did the writes land", which is a different
+      // question from "is the backlog empty".
+      await auditFtsIndexes(env.DB)
     })())
   },
 } satisfies ExportedHandler<Env>

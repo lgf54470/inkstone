@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { initializeDatabase } from './db/schema'
+import { auditFtsIndex } from './db/fts'
 import { ApiError, errorResponse } from './lib/errors'
 import { loadSession, requireClientHeader } from './middleware/auth'
 import { registerSecurityHeaders } from './middleware/security-headers'
@@ -79,7 +80,8 @@ function registerAuthMiddleware(app: Hono<AppBindings>): void {
 function registerHealthRoute(app: Hono<AppBindings>): void {
   app.get('/api/health', async (c) => {
     const database = c.get('database')
-    if (!c.get('userId')) return c.json({ ok: true })
+    const userId = c.get('userId')
+    if (!userId) return c.json({ ok: true })
     return c.json({
       ok: true,
       database: 'ready',
@@ -90,6 +92,11 @@ function registerHealthRoute(app: Hono<AppBindings>): void {
       realtime: Boolean(c.env.SYNC_HUB),
       credentialVault: Boolean(c.env.CREDENTIAL_VAULT),
       mcp: Boolean(c.env.OAUTH_KV),
+      // Integrity of the caller's own index: rows beyond the first for a note, and rows whose note
+      // is gone. Both read zero when every delete along the maintenance path is doing its job, so
+      // they belong where a signed-in caller asks about this instance — the anonymous shape stays
+      // free of database work.
+      ftsIndex: database.ftsEnabled ? await auditFtsIndex(c.env.DB, userId) : null,
       time: Date.now(),
     })
   })

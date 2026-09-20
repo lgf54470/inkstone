@@ -13,6 +13,69 @@ interface IndexableNote {
 }
 
 const FTS_DRAIN_CURSOR_META_KEY = 'fts-index-drain-user-v1'
+const FTS_AUDIT_CURSOR_META_KEY = 'fts-index-audit-user-v1'
+
+// The rows an index may not keep: one whose note is gone (or trashed), and any row beyond the first
+// one for the same note. A delete that silently matched nothing leaves exactly these — the shape a
+// wrong `MATCH` produced for five days — so both are what the audit counts and what maintenance
+// refuses to walk away from.
+const FTS_ORPHAN_SQL = `NOT EXISTS (SELECT 1 FROM notes n
+  WHERE n.id = notes_fts.note_id AND n.user_id = ?1 AND n.deleted_at IS NULL)`
+
+export interface FtsIndexAudit {
+  notes: number
+  rows: number
+  indexed: number
+  duplicateRows: number
+  orphanRows: number
+}
+
+/** Counts what the index holds against what it should hold, per account. */
+export async function auditFtsIndex(db: D1Database, userId: string): Promise<FtsIndexAudit> {
+  const notes = await db
+    .prepare(`SELECT COUNT(*) AS n FROM notes WHERE user_id = ?1 AND deleted_at IS NULL`)
+    .bind(userId)
+    .first<{ n: number }>()
+  const rows = await db
+    .prepare(
+      `SELECT COUNT(*) AS rows, COUNT(DISTINCT note_id) AS indexed,
+              COUNT(*) - COUNT(DISTINCT note_id) AS duplicates
+         FROM notes_fts WHERE user_id = ?1`,
+    )
+    .bind(userId)
+    .first<{ rows: number; indexed: number; duplicates: number }>()
+  const orphans = await db
+    .prepare(`SELECT COUNT(*) AS n FROM notes_fts WHERE user_id = ?1 AND ${FTS_ORPHAN_SQL}`)
+    .bind(userId)
+    .first<{ n: number }>()
+  return {
+    notes: notes?.n ?? 0,
+    rows: rows?.rows ?? 0,
+    indexed: rows?.indexed ?? 0,
+    duplicateRows: rows?.duplicates ?? 0,
+    orphanRows: orphans?.n ?? 0,
+  }
+}
+
+// Reported rather than repaired: a duplicate or an orphan row means a delete did not do its job,
+// and the account to look at is the one named here. The sweep rotates by account so every account
+// with notes is audited eventually, not only the ones with queued writes.
+export async function auditFtsIndexes(db: D1Database, maxUsers = 20): Promise<number> {
+  const users = await selectQueueUsersRoundRobin(db, 'notes', FTS_AUDIT_CURSOR_META_KEY, maxUsers)
+  let drifting = 0
+  for (const userId of users) {
+    const audit = await auditFtsIndex(db, userId)
+    if (!audit.duplicateRows && !audit.orphanRows) continue
+    drifting++
+    console.warn(
+      '[inkstone] the full text index drifted:',
+      `${audit.duplicateRows} rows beyond the first for their note,`,
+      `${audit.orphanRows} rows whose note is gone,`,
+      `${audit.indexed} of ${audit.notes} notes indexed`,
+    )
+  }
+  return drifting
+}
 
 // Every delete below targets one note_id, and an FTS5 table only reaches its
 // own index through MATCH, so without this each delete scans the whole table.
@@ -52,14 +115,19 @@ export async function rebuildFtsIndex(db: D1Database, userId: string): Promise<n
   }
 
   await db
-    .prepare(
-      `DELETE FROM notes_fts WHERE user_id = ?1 AND NOT EXISTS (
-         SELECT 1 FROM notes n WHERE n.id = notes_fts.note_id
-           AND n.user_id = ?1 AND n.deleted_at IS NULL
-       )`,
-    )
+    .prepare(`DELETE FROM notes_fts WHERE user_id = ?1 AND ${FTS_ORPHAN_SQL}`)
     .bind(userId)
     .run()
+  // The rebuild is the repair path, so it is also where the result is checked: a delete that
+  // matched nothing leaves duplicates or orphans behind, and reporting a finished rebuild over a
+  // drifted index is exactly the silence this whole path exists to break.
+  const audit = await auditFtsIndex(db, userId)
+  if (audit.duplicateRows || audit.orphanRows) {
+    throw new Error(
+      `The full text index did not converge: ${audit.duplicateRows} rows beyond the first for their note, ` +
+      `${audit.orphanRows} rows whose note is gone, ${audit.indexed} of ${audit.notes} notes indexed`,
+    )
+  }
   return indexed
 }
 

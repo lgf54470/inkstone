@@ -348,6 +348,15 @@ console.log('[search filters and stable backlinks]')
     `reindex=${reindexed.status} edit=${editedDuringReindex.status}`,
   )
 
+  const health = await owner.req('GET', '/api/health')
+  const indexAudit = health.data?.ftsIndex
+  check(
+    'health reports the index it just rebuilt as holding one row per note',
+    health.status === 200 && indexAudit?.duplicateRows === 0 && indexAudit?.orphanRows === 0 &&
+      indexAudit.rows > 0 && indexAudit.notes > 0 && indexAudit.indexed <= indexAudit.rows,
+    JSON.stringify(indexAudit),
+  )
+
   const targetA = await owner.req('POST', '/api/notes', {
     title: 'Stable Link Target',
     content: '# Stable Link Target\n\nA',
