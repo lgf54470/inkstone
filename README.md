@@ -183,10 +183,13 @@ Existing databases are upgraded automatically through versioned, idempotent migr
 | `npm run deploy:demo` | Build and deploy the static browser-only demo |
 | `npm run test:e2e` | Exercise the API against a running disposable local instance |
 | `node scripts/measure-preflight.mjs` | Measure what the presentation's background deck measurement costs the main thread |
+| `node scripts/check-merge-preflight.mjs [branch]` | Report what merging a diverged branch into this one would collide with |
 
 The end-to-end script creates, changes, and deletes data at `http://localhost:7712`. Run it only against a fresh local state dedicated to testing.
 
 The preflight measurement is a manual harness rather than a gate: frame timing on shared CI runners is not a stable signal, so it prints the numbers and a verdict for a human. It signs in with `INKSTONE_VISUAL_USERNAME`/`INKSTONE_VISUAL_PASSWORD` and builds its own long, diagram-heavy deck.
+
+The merge preflight is the other manual harness, and it is about reading a merge before running it. It reports the paths git will conflict on, the files one side deleted while the other changed them, and the test files that exist on only one side. When the runner config is itself in conflict it compares each side's lists against every test in the merge result and names what taking one side alone would leave unrun or hand to the other project — the two ways a suite shrinks or fails that no conflict marker shows. It changes nothing: `git merge-tree` computes the merge in memory and writes only tree objects, and every other read is `rev-list`, `diff`, `ls-tree` or `show`. It exits non-zero when it found a hazard, so a merge script can branch on it.
 
 ### Local dev account
 
