@@ -30,6 +30,7 @@ import {
   nodeInclude,
   parseMergeTreeOutput,
   parseRunnerProjects,
+  reexportSources,
   relocationCrossings,
   resolvedImports,
   runnerIssues,
@@ -487,6 +488,27 @@ import type { OnlyTypes } from './types'
   })
 })
 
+// Where a barrel presents a name from, which is the edge the chain walk follows.
+describe('reading the re-exports out of a barrel', () => {
+  it('reads the explicit entries, keyed by the name the barrel presents', () => {
+    expect(reexportSources({ text: `export { a, b as c } from './x'\n`, name: 'c' })).toEqual(['./x'])
+    expect(reexportSources({ text: `export { a, b as c } from './x'\n`, name: 'a' })).toEqual(['./x'])
+    expect(reexportSources({ text: `export { a, b as c } from './x'\n`, name: 'b' })).toEqual([])
+  })
+
+  it('takes a star as the answer only when nothing names the export', () => {
+    const text = `export * from './wide'\nexport { mergeSettings } from './narrow'\n`
+    expect(reexportSources({ text, name: 'mergeSettings' })).toEqual(['./narrow'])
+    expect(reexportSources({ text: `export * from './wide'\n`, name: 'anything' })).toEqual(['./wide'])
+  })
+
+  it('ignores namespace re-exports, imports and type-only sources it cannot present', () => {
+    expect(reexportSources({ text: `export * as ns from './x'\n`, name: 'ns' })).toEqual([])
+    expect(reexportSources({ text: `import { mergeSettings } from './x'\n`, name: 'mergeSettings' })).toEqual([])
+    expect(reexportSources({ text: `export type { Options } from './x'\n`, name: 'Options' })).toEqual(['./x'])
+  })
+})
+
 // The alias table the resolver needs, as the tsconfig files write it.
 const TS_CONFIG = `
   {
@@ -546,11 +568,14 @@ export const settings = (raw: string): string => mergeSettings(raw) + OTHER
   const readText = (side: string) => (side === 'base' ? BASE_CONSTANTS : THEIRS_CONSTANTS)
   const imports = resolvedImports({ files: ['src/worker/middleware/security-headers.ts'], readText: () => IMPORTER, aliases })
   const movedInto = new Map([['mergeSettings', 'src/shared/user-settings.ts']])
+  const noBarrels = () => null
 
   it('reports the import that points at the module the other side emptied', () => {
     const crossings = relocationCrossings({
       droppedBy: 'theirs',
       imports,
+      aliases,
+      readModule: noBarrels,
       changedByOther: new Set(['src/shared/constants.ts']),
       readText,
       movedInto,
@@ -561,7 +586,7 @@ export const settings = (raw: string): string => mergeSettings(raw) + OTHER
       file: 'src/worker/middleware/security-headers.ts',
       name: 'mergeSettings',
       side: 'ours',
-      from: 'src/shared/constants.ts',
+      chain: ['src/shared/constants.ts'],
       into: 'src/shared/user-settings.ts',
     })
     expect(describeCrossing(crossings[0]!)).toBe(
@@ -573,6 +598,8 @@ export const settings = (raw: string): string => mergeSettings(raw) + OTHER
     expect(relocationCrossings({
       droppedBy: 'theirs',
       imports,
+      aliases,
+      readModule: noBarrels,
       changedByOther: new Set(['src/shared/other.ts']),
       readText,
       movedInto,
@@ -583,6 +610,8 @@ export const settings = (raw: string): string => mergeSettings(raw) + OTHER
     expect(relocationCrossings({
       droppedBy: 'theirs',
       imports,
+      aliases,
+      readModule: noBarrels,
       changedByOther: new Set(['src/shared/constants.ts']),
       readText: () => BASE_CONSTANTS,
       movedInto,
@@ -592,6 +621,75 @@ export const settings = (raw: string): string => mergeSettings(raw) + OTHER
   it('reads the dropped names of one file against the base version', () => {
     expect([...droppedNamesIn({ file: 'src/shared/constants.ts', side: 'theirs', readText })])
       .toEqual(['mergeSettings'])
+  })
+
+  // The importer can be two files away from the change: a barrel that still re-exports from the
+  // module whose contents moved keeps the stale edge alive, and the direct check sees nothing.
+  describe('through a re-export chain', () => {
+    const IMPORTER_FROM_BARREL = `import { mergeSettings } from '@shared/index'
+
+export const settings = (raw: string): string => mergeSettings(raw)
+`
+    const barrelImports = resolvedImports({ files: ['src/worker/middleware/security-headers.ts'], readText: () => IMPORTER_FROM_BARREL, aliases })
+    const fromBarrel = (modules: Record<string, string>) => (file: string) => modules[file] ?? null
+
+    const relocate = (modules: Record<string, string>, changed = ['src/shared/constants.ts']) => relocationCrossings({
+      droppedBy: 'theirs',
+      imports: barrelImports,
+      aliases,
+      readModule: fromBarrel(modules),
+      changedByOther: new Set(changed),
+      readText,
+      movedInto,
+    })
+
+    it('follows one barrel to the module that lost the name', () => {
+      const crossings = relocate({ 'src/shared/index.ts': `export { mergeSettings } from './constants'\n` })
+      expect(crossings).toHaveLength(1)
+      expect(crossings[0]).toMatchObject({
+        file: 'src/worker/middleware/security-headers.ts',
+        name: 'mergeSettings',
+        chain: ['src/shared/index.ts', 'src/shared/constants.ts'],
+      })
+      expect(describeCrossing(crossings[0]!)).toBe(
+        'src/worker/middleware/security-headers.ts: this side still imports mergeSettings from src/shared/index.ts (re-exported through src/shared/constants.ts), which the other side moved into src/shared/user-settings.ts',
+      )
+    })
+
+    it('follows a barrel that re-exports everything', () => {
+      expect(relocate({ 'src/shared/index.ts': `export * from './constants'\n` })[0]).toMatchObject({
+        chain: ['src/shared/index.ts', 'src/shared/constants.ts'],
+      })
+    })
+
+    it('walks more than one hop', () => {
+      const crossings = relocate({
+        'src/shared/index.ts': `export { mergeSettings } from './settings'\n`,
+        'src/shared/settings.ts': `export { mergeSettings } from './constants'\n`,
+      })
+      expect(crossings[0]).toMatchObject({
+        chain: ['src/shared/index.ts', 'src/shared/settings.ts', 'src/shared/constants.ts'],
+      })
+    })
+
+    // A barrel that names the new source and still stars the old one is not stale: reporting it
+    // would be a false alarm every time a module is split and the barrel is updated in name only.
+    it('prefers an explicit re-export over a star when both could provide the name', () => {
+      expect(relocate({
+        'src/shared/index.ts': `export { mergeSettings } from './user-settings'\nexport * from './constants'\n`,
+      })).toEqual([])
+    })
+
+    it('does not follow a namespace re-export', () => {
+      expect(relocate({ 'src/shared/index.ts': `export * as settings from './constants'\n` })).toEqual([])
+    })
+
+    it('terminates on a cycle of barrels', () => {
+      expect(relocate({
+        'src/shared/index.ts': `export * from './a'\n`,
+        'src/shared/a.ts': `export * from './index'\n`,
+      })).toEqual([])
+    })
   })
 
   // A module-wide move makes one crossing per name; printing them all is how a gate stops being read.

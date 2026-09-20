@@ -234,7 +234,7 @@ function sideCrossings({ file, side, into, declared }) {
 export function crossingGroups(entries, namesShown = 3) {
   const groups = new Map()
   for (const entry of entries) {
-    const key = [entry.kind, entry.file, entry.side, entry.into ?? '', entry.from ?? ''].join('\u0000')
+    const key = [entry.kind, entry.file, entry.side, entry.into ?? '', (entry.chain ?? []).join('>')].join('\u0000')
     if (!groups.has(key)) groups.set(key, { ...entry, names: [], namesShown })
     groups.get(key).names.push(entry.name)
   }
@@ -250,7 +250,9 @@ export function describeCrossing(group) {
   const subject = names.length === 1 ? names[0] : `${names.length} declarations (${shown.join(', ')}${rest > 0 ? ` +${rest} more` : ''})`
   if (group.kind === 'relocated') {
     const fate = group.into ? `moved into ${group.into}` : 'stopped exporting'
-    return `${group.file}: ${here} still imports ${subject} from ${group.from}, which ${there} ${fate}`
+    const [first = '', ...rest] = group.chain ?? []
+    const via = rest.length ? ` (re-exported through ${rest.join(' → ')})` : ''
+    return `${group.file}: ${here} still imports ${subject} from ${first}${via}, which ${there} ${fate}`
   }
   return group.kind === 'moved'
     ? `${group.file}: ${here} moved ${subject} into ${group.into} while ${there} edited the file in place`
@@ -343,30 +345,100 @@ export function resolvedImports({ files, readText, aliases }) {
   return imports
 }
 
-// A name one side took out of a module that the other side's files still import it from. The two
-// edits live in different files, which is why no conflict marker points at either: replayed on the
-// merge this was written for, the extracted `security-headers.ts` — auto-merged whole — keeps
-// importing `mergeSettings` from `@shared/constants` while the `constants.ts` the merge keeps has
-// stopped exporting it, and neither path is in the conflict list.
+// The specifiers a module re-exports a name from: `export { a as n } from './x'` presents `n` from
+// `./x`, and `export * from './x'` presents whatever `./x` exports. Explicit entries win over the
+// star ones — a barrel that names the new source and still stars the old one is not stale, and
+// treating the star as another candidate would report it as if it were.
+const REEXPORT_RE = /(?:^|[\s;])export\s+([^'"]*?)\s*from\s*'([^']+)'/gm
+
+export function reexportSources({ text, name }) {
+  const explicit = []
+  const starred = []
+  for (const match of text.matchAll(REEXPORT_RE)) {
+    const clause = match[1].trim()
+    if (clause.startsWith('*')) {
+      // `export * as ns from …` presents `ns`, not the names behind it.
+      if (!/^\*\s+as\s/.test(clause)) starred.push(match[2])
+      continue
+    }
+    const braced = clause.replace(/^type\s+/, '').match(/\{([\s\S]*)\}/)
+    if (!braced) continue
+    for (const part of braced[1].split(',')) {
+      const entry = part.trim().replace(/^type\s+/, '')
+      if (!entry) continue
+      const [source = '', exported = source] = entry.split(/\s+as\s+/).map((piece) => piece.trim())
+      if (exported === name && source) explicit.push(match[2])
+    }
+  }
+  return explicit.length ? explicit : starred
+}
+
+// Walks out from the modules an import names until one of them turns out to be a module the other
+// side emptied. One hop is not enough: a barrel that still re-exports from the module whose
+// contents moved keeps the stale edge alive, and the importer is two files away from the change.
+// Returns the path of modules walked, or null. Breadth first with a visited set, so a cycle of
+// barrels terminates instead of looping — depth caps the walk either way.
+const CHAIN_DEPTH = 5
+
+export function reexportChain({ starts, name, aliases, readModule, changedByOther, droppedIn }) {
+  const parents = new Map()
+  let frontier = []
+  for (const start of starts) {
+    if (parents.has(start)) continue
+    parents.set(start, [])
+    frontier.push(start)
+  }
+  for (let hop = 0; hop <= CHAIN_DEPTH && frontier.length; hop++) {
+    const next = []
+    for (const module of frontier) {
+      if (changedByOther.has(module) && droppedIn(module).has(name)) return [...parents.get(module), module]
+      const text = readModule(module)
+      if (!text) continue
+      for (const specifier of reexportSources({ text, name })) {
+        for (const candidate of moduleCandidates({ specifier, fromFile: module, aliases })) {
+          if (parents.has(candidate)) continue
+          parents.set(candidate, [...parents.get(module), module])
+          next.push(candidate)
+        }
+      }
+    }
+    frontier = next
+  }
+  return null
+}
+
+// A name one side took out of a module that the other side's files still import it from, directly or
+// through a barrel. The edits live in different files, which is why no conflict marker points at
+// either: replayed on the merge this was written for, the extracted `security-headers.ts` —
+// auto-merged whole — keeps importing `mergeSettings` from `@shared/constants` while the
+// `constants.ts` the merge keeps has stopped exporting it, and neither path is in the conflict list.
 //
 // Only the modules some import actually names are read back, which is what keeps this affordable: a
-// merge that touched 484 files asks for a few dozen blob reads, not a thousand.
-export function relocationCrossings({ droppedBy, imports, changedByOther, readText, movedInto }) {
+// merge that touched 484 files asks for a few dozen blob reads, not a thousand. The barrel walk
+// reads more of them, and the caller caches what it reads for that reason.
+export function relocationCrossings({ droppedBy, imports, changedByOther, readModule, readText, movedInto, aliases = new Map() }) {
   const importer = droppedBy === 'theirs' ? 'ours' : 'theirs'
+  // What the other side stopped exporting anywhere it changed, read once. An import can only be
+  // stale if it names one of these, and the answer is small: everything else is skipped without
+  // walking a chain or reading a barrel, which is what keeps this cheap on a 500-file merge.
   const dropped = new Map()
-  const droppedIn = (file) => {
-    if (!dropped.has(file)) dropped.set(file, droppedNamesIn({ file, side: droppedBy, readText }))
-    return dropped.get(file)
+  const staleNames = new Set()
+  for (const file of changedByOther) {
+    const names = droppedNamesIn({ file, side: droppedBy, readText })
+    dropped.set(file, names)
+    for (const name of names) staleNames.add(name)
   }
+  const droppedIn = (file) => dropped.get(file) ?? new Set()
   const entries = []
   const seen = new Set()
   for (const { file, name, candidates } of imports) {
-    const from = candidates.find((candidate) => changedByOther.has(candidate) && droppedIn(candidate).has(name))
-    if (!from) continue
-    const key = `${file}\u0000${name}\u0000${from}`
+    if (!staleNames.has(name)) continue
+    const chain = reexportChain({ starts: candidates, name, aliases, readModule, changedByOther, droppedIn })
+    if (!chain) continue
+    const key = `${file}\u0000${name}\u0000${chain.join('>')}`
     if (seen.has(key)) continue
     seen.add(key)
-    entries.push({ kind: 'relocated', file, name, side: importer, from, into: movedInto.get(name) ?? null })
+    entries.push({ kind: 'relocated', file, name, side: importer, chain, into: movedInto.get(name) ?? null })
   }
   return entries.sort((a, b) => a.file.localeCompare(b.file) || a.name.localeCompare(b.name))
 }
