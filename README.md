@@ -193,6 +193,8 @@ The merge preflight is the other manual harness, and it is about reading a merge
 
 That check also stands in the way of the merge itself, because the same findings are invisible in the conflict list: `.githooks/pre-merge-commit` runs it against the resolution whenever `git merge` is about to create the commit, and `.githooks/pre-commit` runs it for a merge committed by hand after resolving conflicts. A merge is refused while a test file would be left in no project, a test the other side had put in the node project would run under jsdom, a file either side added under `src/`, `tests/`, `scripts/` or `blog-frontend/` is missing from the result, or a conflict marker is still in the staged content. `INKSTONE_ALLOW_MERGE_HAZARDS=1` accepts those findings deliberately — it skips this one check rather than every gate, which is what `--no-verify` would do.
 
+`pre-merge-commit` then also runs `--verify`, which is the part no finding can decide: `tsc -b` over the merge result, plus the tests related to the files a refactor crossing passed through — a declaration one side took out of a file the other side was editing in place, reported with the module it landed in. It is there because `git merge` runs `pre-merge-commit` *instead of* `pre-commit` (with no `pre-merge-commit` in place, no hook runs at all), so a merge commit would otherwise be the one commit in the repository that skips both the compile and the tests. `INKSTONE_SKIP_MERGE_VERIFY=1` skips that step deliberately, separately from the findings, so that a tree which cannot be compiled mid-refactor does not push anyone to `--no-verify`.
+
 ### Local dev account
 
 ```bash

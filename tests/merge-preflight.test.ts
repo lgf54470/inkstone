@@ -1,17 +1,26 @@
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  addedDeclarations,
   classifyChanges,
+  declaredNames,
   deletionHazards,
+  describeCrossing,
   environmentIssues,
   matchesPattern,
   mergeBlockers,
+  mergeVerificationPlan,
+  mergeVerificationSteps,
+  mergedHead,
+  moveCrossings,
   nodeInclude,
   parseMergeTreeOutput,
   parseRunnerProjects,
   readRunnerSnapshot,
+  runMergeVerification,
   runnerIssues,
   singleSideFiles,
   unselectedTests,
@@ -311,5 +320,257 @@ describe('this repository runs every test file exactly once', () => {
     const { neverRuns, runTwice } = unselectedTests(projects, files)
     expect(neverRuns).toEqual([])
     expect(runTwice).toEqual([])
+  })
+})
+
+// The declaration one side takes out of a file the other side is editing. Export-only would see
+// nothing here, and that is the point: the merge this comes from moved a *private* function out of
+// app.ts, so no export list changed while the file lost the declaration.
+describe('top-level declarations in a file', () => {
+  it('collects them whether or not they are exported', () => {
+    const names = declaredNames(`
+export async function createApp(): Promise<void> {}
+function helper(): void {}
+export interface Extras {}
+type Local = string
+class Registry {}
+export const LIMIT = 3
+`)
+    expect([...names].sort()).toEqual(['Extras', 'LIMIT', 'Local', 'Registry', 'createApp', 'helper'])
+  })
+
+  it('ignores declarations nested inside a function or a block', () => {
+    expect([...declaredNames(`
+export function outer(): void {
+  const inner = 1
+  function nested(): void {}
+}
+`)]).toEqual(['outer'])
+  })
+})
+
+const BASE_APP = `import { OTHER } from './shared/constants'
+
+function helper(app: { use: () => void }): void {
+  app.use()
+}
+
+export function createApp(): string {
+  return 'app'
+}
+`
+
+const OURS_APP = `import { OTHER } from './shared/constants'
+import { helper } from './helper-module'
+
+export function createApp(): string {
+  return 'app'
+}
+`
+
+const HELPER_MODULE = `export function helper(app: { use: () => void }): void {
+  app.use()
+}
+`
+
+const THEIRS_APP = `${BASE_APP}\nexport function footer(): string {
+  return 'footer'
+}
+`
+
+describe('a declaration that left a file the other side was editing', () => {
+  const readApp = (side: 'base' | 'ours' | 'theirs') => ({ base: BASE_APP, ours: OURS_APP, theirs: THEIRS_APP })[side]
+
+  it('names the file it left and the file it landed in', () => {
+    const crossings = moveCrossings({
+      shared: ['src/app.ts'],
+      readText: (side, file) => (file === 'src/app.ts' ? readApp(side) : ''),
+      movedInto: {
+        ours: addedDeclarations({ files: ['src/helper-module.ts'], readText: () => HELPER_MODULE }),
+        theirs: new Map(),
+      },
+    })
+    expect(crossings).toHaveLength(1)
+    expect(crossings[0]).toMatchObject({
+      file: 'src/app.ts',
+      name: 'helper',
+      side: 'ours',
+      into: 'src/helper-module.ts',
+    })
+    expect(describeCrossing(crossings[0]!)).toBe(
+      'src/app.ts: this side moved helper into src/helper-module.ts while the other side edited the file in place',
+    )
+  })
+
+  it('reports a removal with no destination when the other side still declares the name', () => {
+    const crossings = moveCrossings({
+      shared: ['src/app.ts'],
+      readText: (side, file) => (file === 'src/app.ts' ? readApp(side) : ''),
+      movedInto: { ours: new Map(), theirs: new Map() },
+    })
+    expect(crossings.map((entry) => entry.name)).toEqual(['helper'])
+    expect(describeCrossing(crossings[0]!)).toBe(
+      'src/app.ts: this side removed helper, which the other side still declares in the file both sides changed',
+    )
+  })
+
+  // A name both sides removed is a rename or a deletion they agreed on, not a collision.
+  it('stays quiet when neither side kept the name', () => {
+    const crossings = moveCrossings({
+      shared: ['src/app.ts'],
+      readText: (side) => (side === 'base' ? BASE_APP : OURS_APP),
+      movedInto: { ours: new Map(), theirs: new Map() },
+    })
+    expect(crossings).toEqual([])
+  })
+
+  it('looks at TypeScript files only', () => {
+    const crossings = moveCrossings({
+      shared: ['src/styles/tokens.css'],
+      readText: () => BASE_APP,
+      movedInto: { ours: new Map(), theirs: new Map() },
+    })
+    expect(crossings).toEqual([])
+  })
+})
+
+describe('what a merge commit owes before it is written', () => {
+  const crossing = { file: 'src/app.ts', name: 'helper', side: 'ours' as const, into: 'src/helper-module.ts' }
+
+  it('asks for the compile whenever the merge brings in TypeScript', () => {
+    expect(mergeVerificationPlan({ stagedTs: ['src/app.ts'], crossings: [] }))
+      .toEqual({ typecheck: true, smokeFiles: [] })
+  })
+
+  it('adds the files a crossing passed through to the smoke group, once each', () => {
+    expect(mergeVerificationPlan({ stagedTs: ['src/app.ts'], crossings: [crossing, crossing] }))
+      .toEqual({ typecheck: true, smokeFiles: ['src/app.ts', 'src/helper-module.ts'] })
+  })
+
+  it('owes nothing for a merge that brings in no TypeScript and re-arranged no file', () => {
+    expect(mergeVerificationPlan({ stagedTs: [], crossings: [] }))
+      .toEqual({ typecheck: false, smokeFiles: [] })
+  })
+
+  const roots: string[] = []
+  afterEach(() => {
+    for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true })
+  })
+
+  function fixture(files: string[]): string {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'merge-verify-'))
+    roots.push(root)
+    for (const file of files) {
+      fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
+      fs.writeFileSync(path.join(root, file), '')
+    }
+    return root
+  }
+
+  it('runs the compile first and the related tests over the crossing files', () => {
+    const root = fixture(['src/app.ts', 'src/helper-module.ts'])
+    const plan = mergeVerificationPlan({ stagedTs: ['src/app.ts'], crossings: [crossing] })
+    const steps = mergeVerificationSteps({ plan, root })
+    expect(steps.map((step) => step.command)).toEqual(['npm', 'npx'])
+    expect(steps[0]!.args).toEqual(['run', 'typecheck', '--silent'])
+    expect(steps[1]!.args).toContain('src/helper-module.ts')
+  })
+
+  // A destination the resolution deleted is not a file the runner can be pointed at.
+  it('drops a smoke file that is not on disk', () => {
+    const root = fixture(['src/app.ts'])
+    const plan = mergeVerificationPlan({ stagedTs: ['src/app.ts'], crossings: [crossing] })
+    const steps = mergeVerificationSteps({ plan, root })
+    expect(steps).toHaveLength(2)
+    expect(steps[1]!.args).not.toContain('src/helper-module.ts')
+  })
+
+  it('collects the failing step together with the output that explains it', () => {
+    const root = fixture(['src/app.ts', 'src/helper-module.ts'])
+    const plan = mergeVerificationPlan({ stagedTs: ['src/app.ts'], crossings: [crossing] })
+    const called: string[] = []
+    const { failures } = runMergeVerification({
+      plan,
+      root,
+      log: () => {},
+      run: ({ command, args }) => {
+        called.push([command, ...args].join(' '))
+        return { status: 1, output: "error TS2305: Module has no exported member 'mergeSettings'." }
+      },
+    })
+    expect(failures).toHaveLength(1)
+    expect(failures[0]!.label).toBe('typecheck')
+    expect(failures[0]!.output).toMatch(/TS2305/)
+    // The second step is not worth waiting for once the result is known to be broken.
+    expect(called).toHaveLength(1)
+  })
+
+  it('runs both steps and reports nothing when they pass', () => {
+    const root = fixture(['src/app.ts', 'src/helper-module.ts'])
+    const plan = mergeVerificationPlan({ stagedTs: ['src/app.ts'], crossings: [crossing] })
+    const called: string[] = []
+    const { failures } = runMergeVerification({
+      plan,
+      root,
+      log: () => {},
+      run: ({ command, args }) => {
+        called.push([command, ...args].join(' '))
+        return { status: 0, output: '' }
+      },
+    })
+    expect(failures).toEqual([])
+    expect(called).toEqual([
+      'npm run typecheck --silent',
+      'npx --no-install vitest related --run src/app.ts src/helper-module.ts --passWithNoTests --testTimeout=30000',
+    ])
+  })
+})
+
+// The head being merged, which git does not leave in MERGE_HEAD while it is making the merge
+// commit itself. Reading only that file made the gate pass in silence for a clean merge — which
+// is what the first run of the end-to-end fixture did, and why the relay exists.
+describe('finding the head being merged', () => {
+  it('falls back to the head git relays when MERGE_HEAD is not there', () => {
+    const sha = 'a'.repeat(40)
+    expect(mergedHead({ [`GITHEAD_${sha}`]: 'dev' }))
+      .toEqual({ revision: sha, from: `GITHEAD_${sha}=dev` })
+  })
+
+  it('ignores a relay that is not an object id', () => {
+    expect(mergedHead({ GITHEAD_short: 'dev' })).toBeNull()
+  })
+
+  it('finds nothing in a tree where no merge is being recorded', () => {
+    expect(mergedHead({})).toBeNull()
+  })
+})
+
+// The gate only works if the hook git runs for a merge asks for it: `git merge` invokes
+// pre-merge-commit *instead of* pre-commit, so a hook that stops at the findings leaves the
+// compile and the tests unasked (measured: with no pre-merge-commit in place, no hook runs at all).
+describe('the hook git runs for a merge', () => {
+  it('asks for the verification and not only the findings', () => {
+    expect(fs.readFileSync('.githooks/pre-merge-commit', 'utf8'))
+      .toMatch(/check-merge-preflight\.mjs --in-progress --verify/)
+  })
+})
+
+// Reached through a symlink — how a hook or a scratch fixture installs it — the script has to run.
+// It did not, and said nothing: node resolves a symlinked entry point to its real path in
+// import.meta.url but leaves argv[1] as the symlink, so the "am I the main module" comparison was
+// false and the whole gate exited 0 in silence. That is the failure mode this file is about.
+describe('running the script as a program', () => {
+  const roots: string[] = []
+  afterEach(() => {
+    for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true })
+  })
+
+  it('still runs when it is reached through a symlink', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'merge-preflight-link-'))
+    roots.push(dir)
+    const link = path.join(dir, 'check-merge-preflight.mjs')
+    fs.symlinkSync(path.resolve('scripts/check-merge-preflight.mjs'), link)
+    const output = execFileSync(process.execPath, [link, '--in-progress'], { encoding: 'utf8' })
+    expect(output).toMatch(/no merge is being recorded|merge in progress/)
   })
 })

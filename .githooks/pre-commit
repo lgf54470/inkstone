@@ -8,7 +8,9 @@ cd "$(git rev-parse --show-toplevel)"
 # other gate asks: is every test file still in the project that owned it, and is any conflict
 # marker left in the staged content? pre-merge-commit asks them when git makes the merge commit
 # itself; this asks them here. It runs before the static block so a merge that dropped a test
-# fails in a second rather than a minute.
+# fails in a second rather than a minute. `--verify` is left off on purpose: the tail of this
+# hook already ends in `npm run typecheck` and `vitest related` over the staged files, which is
+# the merge's whole changeset, so the compile and the tests happen either way.
 if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
   node scripts/check-merge-preflight.mjs --in-progress
 fi

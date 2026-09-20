@@ -1,14 +1,20 @@
 #!/bin/sh
 # Merge-time gate. A merge may only be recorded once its resolution kept every test file in the
-# project that owned it, kept the files the other side added, and left no conflict marker in the
-# staged content. None of the three shows up in the conflict list git prints, which is why this
-# refuses the commit instead of printing advice: the two suites this caught in a real merge had
-# moved between projects, and reading the conflicts by eye found neither.
+# project that owned it, kept the files the other side added, left no conflict marker in the
+# staged content, and then compiles with the tests its re-arranged files pull in. None of the
+# first three shows up in the conflict list git prints, which is why this refuses the commit
+# instead of printing advice: the two suites this caught in a real merge had moved between
+# projects, and reading the conflicts by eye found neither.
 #
-# `git merge` runs this hook instead of pre-commit whenever it creates the commit itself. The
-# conflicted path — resolve by hand, then `git commit` — is covered by the same check inside
-# pre-commit. INKSTONE_ALLOW_MERGE_HAZARDS=1 accepts the findings deliberately; that skips only
-# this check, unlike --no-verify, which skips every gate.
+# `git merge` runs this hook instead of pre-commit whenever it creates the commit itself —
+# measured with a probe repository: with no pre-merge-commit in place, `git merge` runs no hook
+# at all. So this is the only place those checks can happen for an auto-created merge commit, and
+# `--verify` is what asks for the compile and the related tests rather than only the findings.
+# A merge committed by hand after resolving conflicts runs pre-commit instead, which already ends
+# in `npm run typecheck` and `vitest related` over the staged files.
+#
+# INKSTONE_ALLOW_MERGE_HAZARDS=1 accepts the findings deliberately and INKSTONE_SKIP_MERGE_VERIFY=1
+# skips the compile and tests; each names one thing, unlike --no-verify, which skips every gate.
 set -e
 cd "$(git rev-parse --show-toplevel)"
-node scripts/check-merge-preflight.mjs --in-progress
+node scripts/check-merge-preflight.mjs --in-progress --verify

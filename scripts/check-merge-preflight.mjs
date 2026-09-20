@@ -24,8 +24,24 @@
 // INKSTONE_ALLOW_MERGE_HAZARDS=1 to accept the findings deliberately (the message says so too),
 // which is still better than --no-verify, because it skips only this check.
 //
+// `--verify` (used by the hook) then runs what no finding above can decide: `tsc -b` on the merge
+// result, and the tests related to the files a refactor crossing passed through. A merge commit is
+// a commit, and git runs pre-merge-commit *instead of* pre-commit when it creates one — measured:
+// with no pre-merge-commit in place, `git merge` runs no hook at all — so whatever pre-commit
+// would have checked has to be asked here. The compile step is what catches the hazards where the
+// conflict list points at the wrong files. Replaying the merge this was written for
+// (`git merge-tree --write-tree 9351a982 022aaf46`) conflicts on eight paths — app.ts, hooks.ts,
+// vite.config.ts, vitest.config.ts, the comment allowlist and three components — and silently
+// auto-merges two others: security-headers.ts, the module ours had just extracted, still imports
+// mergeSettings from @shared/constants, and the constants.ts the merge keeps no longer exports it.
+// Neither of those two is in the conflict list, so nothing a human reads while resolving app.ts
+// says the resolution will not compile.
+// Set INKSTONE_SKIP_MERGE_VERIFY=1 to skip the compile and the tests deliberately; it is a
+// separate switch from the findings so that a tree which cannot be compiled mid-refactor does not
+// push anyone to --no-verify, which would skip the findings too.
+//
 // Usage: node scripts/check-merge-preflight.mjs [other-branch] [this-branch] [--report]
-//        node scripts/check-merge-preflight.mjs --in-progress
+//        node scripts/check-merge-preflight.mjs --in-progress [--verify]
 //   other-branch defaults to `dev`, this-branch to `HEAD`: it reports what merging the first
 //   into the second would hit. `--report` also lists every file both sides changed.
 //   The exit code is 1 when it found a hazard (or, with --in-progress, a blocker) and 0
@@ -36,10 +52,12 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const TEST_FILE_RE = /\.test\.tsx?$/
+const TS_FILE_RE = /\.(ts|tsx|mts|cts)$/
 const CONFIG_PATH = 'vitest.config.ts'
 const CONFLICT_MARKER = '<<<<<<<'
 const START_MARKER_RE = '^<<<<<<< '
 const OVERRIDE_ENV = 'INKSTONE_ALLOW_MERGE_HAZARDS'
+const SKIP_VERIFY_ENV = 'INKSTONE_SKIP_MERGE_VERIFY'
 // A merge that drops a file one side added has thrown away somebody's work, but only the code
 // and test trees are worth refusing the commit over: `.qoder/`-style bookkeeping is per branch by
 // nature, so a drop there is reported and not enforced.
@@ -386,11 +404,158 @@ export function mergeBlockers({ markers, runner, lostAdditions }) {
   ]
 }
 
-// A hook can be run by hand, so "no merge is in progress" is an answer, not an error: it reads
-// MERGE_HEAD rather than requiring it.
+// --- hazards only the compiler settles -----------------------------------------------------
+
+// Top-level declaration names, exported or not. Exported-only would be the wrong view: the merge
+// this was written for moved a *private* function out of app.ts into a new module, so nothing in
+// an export list changed while the file the other side kept editing lost the declaration.
+const DECLARATION_RE = /^(?:export\s+)?(?:declare\s+)?(?:default\s+)?(?:async\s+)?(?:function|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/gm
+
+export function declaredNames(text) {
+  const names = new Set()
+  for (const match of text.matchAll(DECLARATION_RE)) names.add(match[1])
+  return names
+}
+
+// Where a side put the declarations in the files it created: the destination a dissolved
+// declaration normally reappears in, and what lets the report name it instead of only saying
+// "one side removed something".
+export function addedDeclarations({ files, readText }) {
+  const byName = new Map()
+  for (const file of files) {
+    if (!TS_FILE_RE.test(file)) continue
+    for (const name of declaredNames(readText(file))) if (!byName.has(name)) byName.set(name, file)
+  }
+  return byName
+}
+
+// A declaration one side took out of a file the other side was editing in place. Both edits are
+// individually fine and only the merge is broken, so git reports nothing for either file —
+// whichever way the resolution goes, the result has to be compiled before it is believed.
+export function moveCrossings({ shared, readText, movedInto }) {
+  const entries = []
+  for (const file of shared) {
+    if (!TS_FILE_RE.test(file)) continue
+    const declared = {
+      base: declaredNames(readText('base', file)),
+      ours: declaredNames(readText('ours', file)),
+      theirs: declaredNames(readText('theirs', file)),
+    }
+    entries.push(...sideCrossings({ file, side: 'ours', into: movedInto.ours, declared }))
+    entries.push(...sideCrossings({ file, side: 'theirs', into: movedInto.theirs, declared }))
+  }
+  return entries.sort((a, b) => a.file.localeCompare(b.file) || a.name.localeCompare(b.name))
+}
+
+function sideCrossings({ file, side, into, declared }) {
+  const other = side === 'ours' ? 'theirs' : 'ours'
+  const removed = [...declared.base].filter((name) => !declared[side].has(name))
+  return removed.map((name) => ({
+    file,
+    name,
+    side,
+    into: into.get(name) ?? null,
+    // Without a destination this is still the same collision as long as the other side kept the
+    // declaration: one side's deletion has to survive a file the other side was writing to.
+    stillThereOnTheOtherSide: declared[other].has(name),
+  })).filter((entry) => entry.into || entry.stillThereOnTheOtherSide)
+}
+
+export function describeCrossing(entry) {
+  const here = entry.side === 'ours' ? 'this side' : 'the other side'
+  const there = entry.side === 'ours' ? 'the other side' : 'this side'
+  return entry.into
+    ? `${entry.file}: ${here} moved ${entry.name} into ${entry.into} while ${there} edited the file in place`
+    : `${entry.file}: ${here} removed ${entry.name}, which ${there} still declares in the file both sides changed`
+}
+
+// A merge commit is a commit, so it gets the compile and the related tests a hand-made one gets —
+// git runs pre-merge-commit *instead of* pre-commit, which is why this is asked here. The smoke
+// group is the crossings' own files rather than everything the merge touched: the two sides of the
+// last real merge shared 30 files, whose related tests measured 179 files / 1447 tests / 132s,
+// while the crossing files alone pulled in exactly the one test that covers the semantics at
+// issue (tests/security-headers.test.ts, 3 tests).
+export function mergeVerificationPlan({ stagedTs, crossings }) {
+  const rearranged = crossings.flatMap((entry) => [entry.file, entry.into]).filter(Boolean)
+  return {
+    typecheck: stagedTs.length > 0,
+    smokeFiles: [...new Set(rearranged)].sort(),
+  }
+}
+
+export function mergeVerificationSteps({ plan, root }) {
+  const steps = []
+  if (plan.typecheck) steps.push({ label: 'typecheck', command: 'npm', args: ['run', 'typecheck', '--silent'] })
+  const smokeFiles = plan.smokeFiles.filter((file) => fs.existsSync(path.join(root, file)))
+  if (smokeFiles.length) {
+    steps.push({
+      label: `the tests related to ${smokeFiles.length} file(s) the merge re-arranged`,
+      command: 'npx',
+      args: ['--no-install', 'vitest', 'related', '--run', ...smokeFiles, '--passWithNoTests', '--testTimeout=30000'],
+    })
+  }
+  return steps
+}
+
+function runCommand({ command, args, cwd }) {
+  try {
+    const output = execFileSync(command, args, {
+      cwd,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    return { status: 0, output: String(output) }
+  } catch (error) {
+    return {
+      status: typeof error.status === 'number' ? error.status : 1,
+      output: `${error.stdout ?? ''}${error.stderr ?? ''}`.trim() || String(error.message ?? error),
+    }
+  }
+}
+
+// The command runner is injected so the decision (which steps, in what order) stays testable
+// without compiling anything; the CLI passes the real one.
+export function runMergeVerification({ plan, root, run = runCommand, log = console.log }) {
+  const steps = mergeVerificationSteps({ plan, root })
+  const failures = []
+  for (const step of steps) {
+    log(`[verify] ${step.label}: ${step.command} ${step.args.join(' ')}`)
+    const result = run({ command: step.command, args: step.args, cwd: root })
+    if (result.status === 0) {
+      log(`[verify] ok: ${step.label}`)
+      continue
+    }
+    // Stop at the first failure: the second step's answer is not worth waiting for once the merge
+    // result is known to be broken, and the first one is the cheaper of the two.
+    failures.push({ label: step.label, output: result.output })
+    break
+  }
+  return { failures, steps }
+}
+
+// Which head is being merged in. The merge git commits itself is the case that made this
+// necessary: a merge with no conflicts is recorded by `git merge`, and when pre-merge-commit runs
+// for it MERGE_HEAD does not exist yet — measured on git 2.55, the hook sees ORIG_HEAD, AUTO_MERGE
+// and the index, and no MERGE_HEAD, so reading only that file made the whole gate pass in silence
+// for exactly the merges it exists to judge. Git does relay the head being merged to the hook as
+// GITHEAD_<sha>=<ref> (not in the documentation; measured), which is what the fallback reads. The
+// conflicted and --no-commit paths keep MERGE_HEAD, which is the documented state and wins when
+// both are present.
+export function mergedHead(environment = process.env) {
+  const head = gitOrEmpty(['rev-parse', '--verify', 'MERGE_HEAD'], [128])
+  if (head) return { revision: head, from: 'MERGE_HEAD' }
+  const relayed = Object.keys(environment).find((key) => /^GITHEAD_[0-9a-f]{40,64}$/.test(key))
+  if (!relayed) return null
+  return { revision: relayed.slice('GITHEAD_'.length), from: `${relayed}=${environment[relayed]}` }
+}
+
+// A hook can be run by hand, so "no merge is being recorded" is an answer, not an error: it asks for
+// the merge state rather than requiring it.
 export function inspectInProgress(root = process.cwd()) {
-  const other = gitOrEmpty(['rev-parse', '--verify', 'MERGE_HEAD'], [128])
-  if (!other) return null
+  const merged = mergedHead()
+  if (!merged) return null
+  const other = merged.revision
   const base = git(['merge-base', 'HEAD', other])
   const snapshot = readRunnerSnapshot(root)
   const nodeOwned = [...new Set([
@@ -398,42 +563,103 @@ export function inspectInProgress(root = process.cwd()) {
     ...nodeInclude(parseRunnerProjects(configOf(other))),
   ])].filter((file) => snapshot.tests.includes(file)).sort()
   const markers = lines(gitOrEmpty(['grep', '--cached', '-l', '-e', START_MARKER_RE], [1]))
+  const addedBy = (side) => lines(gitOrEmpty(['diff', '--name-only', '--diff-filter=A', base, side]))
   const lostAdditions = ['HEAD', other]
-    .flatMap((side) => lines(gitOrEmpty(['diff', '--name-only', '--diff-filter=A', base, side])))
+    .flatMap((side) => addedBy(side))
     .filter((file) => !fs.existsSync(path.join(root, file)))
     .sort()
-  return { other, base, snapshot, nodeOwned, markers, lostAdditions }
+  const changedBy = (side) => new Set(lines(gitOrEmpty(['diff', '--name-only', base, side])))
+  const theirsChanged = changedBy(other)
+  const shared = lines(gitOrEmpty(['diff', '--name-only', base, 'HEAD']))
+    .filter((file) => theirsChanged.has(file))
+    .sort()
+  const revisions = { base, ours: 'HEAD', theirs: other }
+  const readText = (side, file) => gitOrEmpty(['show', `${revisions[side]}:${file}`])
+  // A merge is only as safe as its result, so the plan is built from the index git is about to
+  // commit rather than from either side: `--cached` against HEAD is what the merge brings in.
+  const stagedTs = lines(gitOrEmpty(['diff', '--cached', '--name-only', '--diff-filter=ACM', '--', '*.ts', '*.tsx']))
+  const crossings = moveCrossings({
+    shared,
+    readText,
+    movedInto: {
+      ours: addedDeclarations({ files: addedBy('HEAD'), readText: (file) => readText('ours', file) }),
+      theirs: addedDeclarations({ files: addedBy(other), readText: (file) => readText('theirs', file) }),
+    },
+  })
+  return { other, base, snapshot, nodeOwned, markers, lostAdditions, shared, crossings, stagedTs, mergedFrom: merged.from }
 }
 
-function mainInProgress() {
-  const facts = inspectInProgress()
+// How much of a failing command's output to show: the tail is where tsc and vitest put the
+// errors, and reading them in the hook's own output is what makes the refusal actionable.
+const OUTPUT_TAIL_LINES = 15
+
+function mainInProgress({ verify = false, root = process.cwd() } = {}) {
+  const facts = inspectInProgress(root)
   if (!facts) {
-    console.log('[preflight] no merge in progress: nothing to check (the branch form inspects one before it starts)')
+    console.log('[preflight] no merge is being recorded (no MERGE_HEAD, no GITHEAD_* relay): nothing to check')
     return
   }
   const runner = { issues: runnerIssues(facts.snapshot.projects, facts.snapshot.tests, facts.nodeOwned) }
-  const blockers = mergeBlockers({ markers: facts.markers, runner, lostAdditions: facts.lostAdditions })
-  const ignored = facts.lostAdditions.length - blockers.filter((entry) => entry.includes('absent from the result')).length
-  console.log(`[preflight] merge in progress: ${facts.other.slice(0, 8)} into HEAD, base ${facts.base.slice(0, 8)}`)
+  const findings = mergeBlockers({ markers: facts.markers, runner, lostAdditions: facts.lostAdditions })
+  const accepted = process.env[OVERRIDE_ENV] === '1'
+  const ignored = facts.lostAdditions.length - findings.filter((entry) => entry.includes('absent from the result')).length
+  console.log(`[preflight] merge in progress: ${facts.other.slice(0, 8)} into HEAD, base ${facts.base.slice(0, 8)} (head from ${facts.mergedFrom})`)
   console.log(`[preflight] result on disk: ${facts.snapshot.tests.length} test file(s), ${facts.nodeOwned.length} of them node-owned before the merge`)
   if (ignored > 0) console.log(`[preflight] ${ignored} addition(s) outside the code and test trees are absent and not enforced`)
-  printList('[blockers]', blockers)
-  if (!blockers.length) {
-    console.log('[preflight] no blocker: the resolution keeps every test where it belonged')
+  printList('[blockers]', findings)
+  if (!findings.length) console.log('[preflight] no blocker: the resolution keeps every test where it belonged')
+  console.log(`[crossings] both sides changed ${facts.shared.length} file(s); ${facts.crossings.length} declaration(s) left a file the other side was editing`)
+  for (const entry of facts.crossings) console.log(`  - ${describeCrossing(entry)}`)
+
+  const plan = mergeVerificationPlan({ stagedTs: facts.stagedTs, crossings: facts.crossings })
+  const owed = mergeVerificationSteps({ plan, root })
+  console.log(owed.length
+    ? `[verify] owed by this merge: ${owed.map((step) => step.label).join('; ')}`
+    : '[verify] nothing owed: the merge brings in no TypeScript and re-arranged no file')
+
+  // Fail fast: a resolution already refused should not cost a compile.
+  if (findings.length && !accepted) {
+    console.log(`[preflight] refusing this merge commit: resolve the entries above, or set ${OVERRIDE_ENV}=1 to accept them deliberately`)
+    process.exitCode = 1
     return
   }
-  if (process.env[OVERRIDE_ENV] === '1') {
-    console.log(`[preflight] accepted deliberately through ${OVERRIDE_ENV}=1: the findings above are on the record, not resolved`)
+  if (findings.length) console.log(`[preflight] accepted deliberately through ${OVERRIDE_ENV}=1: the findings above are on the record, not resolved`)
+  if (!verify) return
+  if (process.env[SKIP_VERIFY_ENV] === '1') {
+    console.log(`[verify] skipped through ${SKIP_VERIFY_ENV}=1: the compile and the related tests did not run`)
     return
   }
-  console.log(`[preflight] refusing this merge commit: resolve the entries above, or set ${OVERRIDE_ENV}=1 to accept them deliberately`)
+  const { failures, steps } = runMergeVerification({ plan, root })
+  if (!steps.length) return
+  for (const failure of failures) {
+    console.log(`[verify] ${failure.label} failed:`)
+    for (const line of failure.output.split('\n').slice(-OUTPUT_TAIL_LINES)) console.log(`    ${line}`)
+  }
+  if (!failures.length) {
+    console.log('[verify] the result compiles and the tests related to what it re-arranged pass')
+    return
+  }
+  console.log(`[verify] refusing this merge commit: the result on disk does not pass the ${failures.length} check(s) above`)
   process.exitCode = 1
 }
 
 // The analysis above is imported by tests/merge-preflight.test.ts, so running the report is
-// reserved for the command line rather than for importing the module.
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+// reserved for the command line rather than for importing the module. Both sides are resolved
+// through the filesystem: node resolves a symlinked entry point to its real path in
+// import.meta.url but leaves argv[1] as the symlink, so comparing the two as written made a
+// symlinked invocation — how a hook or a fixture can install this script — print nothing and exit
+// 0, which is the silent pass this gate exists to prevent.
+const isMain = (() => {
+  const entry = process.argv[1]
+  if (!entry) return false
+  try {
+    return fs.realpathSync(entry) === fs.realpathSync(fileURLToPath(import.meta.url))
+  } catch {
+    return path.resolve(entry) === fileURLToPath(import.meta.url)
+  }
+})()
 if (isMain) {
-  if (process.argv.slice(2).includes('--in-progress')) mainInProgress()
+  const argv = process.argv.slice(2)
+  if (argv.includes('--in-progress')) mainInProgress({ verify: argv.includes('--verify') })
   else main()
 }
