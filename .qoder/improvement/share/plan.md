@@ -58,8 +58,9 @@
 | H3 | SH-41 | 安全：`blog_posts` 删除的两条 `DELETE FROM blog_comments WHERE post_id …` 不带 user 限定——按 id 点名他人文章即可删其评论（跨账号写），须与同批 posts 语句同口径加 `user_id` | P1 | ✅ | 6cda419e |
 | H4 | SH-42 | `POST /api/blog/posts/batch` 的 `postIds` 无长度上限，`IN (…)` 直接拼占位符——>100 个 id 必 500（share 侧 02 号同款 D1 变量上限），需分块或 schema 上限 | P1 | ✅ | 0e00fa6a |
 | H5 | SH-43 | `blog_visits` 无保留期设置（share 已有 `share.visitLogRetentionDays`）：cron 只扫孤儿行，需要 blog settings 段落 + 模态接线，属产品决策 | P2 | 排队 | |
+| H6 | SH-44 | 调色板类存量清偿：SH-38 门禁已按文件计数冻结 218 处/62 文件，各模块降到 0 后 `--update-baseline` 收账（attachments 77/7 文件、blog-frontend 48/17、blog 39/11、lib·markdown 24/12、preview 17/4、components 5/4、settings 4/3、folders 2、tags 2） | P3 | 排队 | |
 | H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby` | P2 | 排队 | |
-| G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | 排队 | |
+| G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | ✅ | 待回填 |
 
 > 2026-09-20 用户裁决「全做，按照你认为最优方案修改，顺序自己定义」：F1-F5 与通病全部解冻，
 > 执行序 T→F1→F4→F2→F5→F3→G；跨模块共用件（blog/music/看板组件）改动均在本批准范围内。
@@ -373,3 +374,16 @@
 - 测试（红先行）：`tests/blog-routes.test.ts` 新 describe 2 例，`seedManyPosts` 种 120 篇（各带 1 行 visit）——120 个 id 的 `delete` 必须 200 且 `blog_posts`/`blog_visits` 归零；120 个 id 的 `publish` 必须 200 且 120 篇 `is_published=1`（钉住分块对所有动作生效，不只 delete 那条恰好加了子查询的路径）。红态实测 `D1_ERROR: too many SQL variables — 121 bound` / `— 122 bound`，响应 500。
 - 变异 4 发全杀（/tmp/mutF3 备份还原）：块宽改 200（回到超上限）、去掉分块整个数组一把梭、只执行第一组（其余静默不删）、某组切掉第一个 id（部分删除）。
 - 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 38/38（blog-routes 36 + blog-visit-cleanup 2）。全量回归 242 文件/1869 测试绿（REGRESSION_EXIT=0，串行 460s）。fix 提交 0e00fa6a。
+
+## 44 — SH-38（G）调色板类全站门禁：AST 扫描 + 按文件计数基线 + share 零预算（2026-09-20）
+
+- 现状与根因：调色板类（`text-amber-500`、`bg-white`）直接画 Tailwind 的一个固定色相，绕开 `src/client/styles/tokens.css`，暗色主题下不随 `--accent-contrast` 等层级反转。`check-hardcoded` 的 AST 扫描原本只有两族——hex 字面量与 JSX 任意值/魔法数，调色板族是盲区（30 号当时判定「门禁扩展另批」，先用 `tests/share-palette-tokens.test.ts` 在 share 目录代守）。G 的采纳范围必须先量违规面再定，故本项先量测后设计。
+- 量测（走真实 AST 的字符串字面量，不是行匹配）：**218 处 / 62 文件 / 55 个不同类**。两类构成——white/black 114 处（`text-white` 73、`bg-black` 21、`bg-white` 17、`border-white` 2、`border-black` 1），具名色相 104 处（amber 系 38 最重，再 emerald/rose/blue/purple/zinc/…）。按模块：attachments 77/7 文件、blog-frontend 48/17、blog 39/11、`lib/markdown`（slides 13 + kanban 9 等）24/12、preview 17/4、components 5/4、settings 4/3、folders 2、tags 2。另有 6 处在 `.astro` 模板文本里，落在本门禁 `.ts/.tsx/.js` 的既有扫描边界之外（不为它另接一套解析器）。
+- 采纳范围（决策）：**全站扫描 + 按文件计数基线**，照 `check-size.mjs` 的 grandfathered 语义（`scripts/check-hardcoded.palette-baseline.json`，`--update-baseline` 重生成）。**不做「立刻全站禁止」**：218 处分布在 attachments、blog、preview、slides、kanban、blog-frontend 六个各有在途台账的模块，一刀切既是夹带别模块的改动（铁律14），也要先把「分类色」与「媒体遮罩上的白」发明成令牌（设计裁决）。基线的两条性质钉死方向：任一文件计数只能降不能升；降了同样报 stale，必须显式 `--update-baseline` 收账，所以基线始终描述当前树而不是历史某天。
+- share 零预算：share 在 30 号已清零，因此**不进基线**——`PALETTE_ZERO_TOLERANCE_PREFIXES` 使 `src/client/features/share/` 的命中直接硬失败，且重生成基线时把这些键过滤掉，否则一次 `--update-baseline` 就会把 share 的新债合法化。据此删除 `tests/share-palette-tokens.test.ts`，其两条断言（share 源集非空、share 零调色板类）迁入 `tests/check-hardcoded.test.ts`，改由门禁同一把扫描把守：覆盖面比原行匹配更准（注释里的类名不算数，常量表里的类名要算数）。
+- 与 Part 3/4 的口径差（写在扫描里）：调色板族**不给具名常量表豁免**——把 `text-amber-500` 提出去只是给色相起了名字，并没有接进主题（与 Part 4 的令牌族规则同理）；且扫描所有字符串/模板字面量而不只看 `className`/`cn()`，因为 `attachment-helpers.ts` 这类 helper 直接 `return { bg: 'bg-blue-500/10 …' }`，只看 JSX 属性会漏掉最大的一处存量。
+- 测试（红先行）：`tests/check-hardcoded.test.ts` 从 36 例扩到 52 例——Part 5 规则 8 例（内联色相、固定白底、常量表内的色相、非 JSX helper 返回值、token 引用放行、`bg-transparent`/`border-transparent` 放行、注释里的类名不算），基线漂移 6 例（等于预算放行、基线外新文件、超预算、缩小、归零、零容忍模块即便等于基线也失败），share 树 2 例（源集非空 + 零调色板）。红态实测 9 例失败（`paletteDriftProblems is not a function` 与 palette 断言取到空数组）。
+- 场景三发（真门禁 + 真树，备份还原）：share 文件加一处色相 → 红（零预算文案）；attachments 加恰好一处 → 红（`28 grandfathered, 29 now`）；attachments 减恰好一处 → 红（stale，逼显式收账）。另验 `--update-baseline` 在当前树是幂等的（重生成的 JSON 与已提交基线逐字节相同）。
+- 变异 8 发全杀（/tmp/mutG 备份还原）：预算判定改 `> budget + 1`（S2 静默放行，被「超预算」单例杀）、缩小不再报（S3 静默放行）、`isZeroTolerance` 恒 false（share 退化为普通基线文件，被零预算单例杀——注意此 mutants 下场景 S1 仍红，因为 share 不在基线里，两路只是文案不同）、常量表豁免重开、white/black 移出色名表、palette 问题路由写反、`visitPalette` 未挂载、基线失效条目扫描跳过。
+- 遗留登记：H6/SH-44 存量清偿（218 处按模块分账，各模块自行降到 0 后收账）。其中 folders/tags/kanban 的「用户自选色」与 lightbox/slides 的「媒体之上的白」很可能该改成永久豁免而非清偿——那需要设计裁决，本项不替它们决定，只在基线里原样记账。
+- 验证：tsc -b 绿；11 静态门禁全绿（`hardcoded:check` 现含 Part 5）；vitest 定向 52/52。全量回归 待回填。提交 待回填。

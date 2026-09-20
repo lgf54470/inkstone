@@ -1,5 +1,7 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { arbitraryUnitProblems, problemsFor } from '../scripts/check-hardcoded.mjs'
+import { arbitraryUnitProblems, paletteDriftProblems, problemsFor } from '../scripts/check-hardcoded.mjs'
 
 describe('arbitrary-value unit scan', () => {
   it('flags raw px values in brackets', () => {
@@ -158,6 +160,98 @@ describe('token-family rule (Part 4) via problemsFor', () => {
 
   it('keeps the hairline exemption in named constants', () => {
     expect(problemsFor(rel, `const H = 'gap-[1px]'`)).toEqual([])
+  })
+})
+
+describe('palette class rule (Part 5)', () => {
+  const rel = 'probe.tsx'
+
+  it('flags a raw hue drawn as text color', () => {
+    const problems = problemsFor(rel, `function P() { return <div className='text-amber-500'/> }`)
+    expect(problems.join('\n')).toContain('raw Tailwind palette class text-amber-500')
+  })
+
+  it('flags a fixed white or black surface', () => {
+    expect(problemsFor(rel, `function P() { return <div className='bg-white text-white'/> }`)).toHaveLength(2)
+  })
+
+  it('flags a hue inside a hoisted class table, closing the constant escape hatch', () => {
+    const problems = problemsFor(rel, `const BADGE = 'bg-emerald-500/10 text-emerald-600'`)
+    const text = problems.join('\n')
+    expect(text).toContain('raw Tailwind palette class bg-emerald-500/10')
+    expect(text).toContain('raw Tailwind palette class text-emerald-600')
+  })
+
+  it('flags a hue returned from a non-JSX helper', () => {
+    const problems = problemsFor('probe.ts', `export function tone() { return { bg: 'bg-blue-500/10' } }`)
+    expect(problems.join('\n')).toContain('raw Tailwind palette class bg-blue-500/10')
+  })
+
+  it('accepts token-referencing colors', () => {
+    expect(problemsFor(rel, `function P() { return <div className='bg-[var(--accent)] text-[var(--accent-contrast)]'/> }`)).toEqual([])
+  })
+
+  it('accepts structural transparency utilities', () => {
+    expect(problemsFor(rel, `function P() { return <div className='border-transparent bg-transparent'/> }`)).toEqual([])
+  })
+
+  it('does not flag a palette class that only appears in a comment', () => {
+    expect(problemsFor(rel, `// text-amber-500 was replaced by a token\nfunction P() { return <div/> }`)).toEqual([])
+  })
+})
+
+describe('palette baseline drift', () => {
+  it('accepts the grandfathered count', () => {
+    expect(paletteDriftProblems({ 'a.tsx': 2 }, { 'a.tsx': 2 })).toEqual([])
+  })
+
+  it('rejects a violation in a file the baseline never carried', () => {
+    expect(paletteDriftProblems({ 'new.tsx': 1 }, {}).join('\n')).toContain('new.tsx: 1 new raw Tailwind palette class')
+  })
+
+  it('rejects a count that grows past the grandfathered budget', () => {
+    expect(paletteDriftProblems({ 'a.tsx': 3 }, { 'a.tsx': 2 }).join('\n')).toContain('1 new raw Tailwind palette class')
+  })
+
+  it('asks for a resnapshot when a file drains below its budget', () => {
+    const text = paletteDriftProblems({ 'a.tsx': 1 }, { 'a.tsx': 2 }).join('\n')
+    expect(text).toContain('a.tsx: palette baseline is stale')
+    expect(text).toContain('--update-baseline')
+  })
+
+  it('asks for a resnapshot when a file reaches zero', () => {
+    expect(paletteDriftProblems({}, { 'a.tsx': 4 }).join('\n')).toContain('a.tsx: palette baseline is stale (4 grandfathered, 0 now)')
+  })
+
+  it('gives a zero-tolerance module no grandfathered budget even at the baseline count', () => {
+    const current = { 'src/client/features/share/badge.tsx': 1 }
+    const text = paletteDriftProblems(current, current, ['src/client/features/share/']).join('\n')
+    expect(text).toContain('no grandfathered budget')
+  })
+})
+
+describe('share keeps every colour on tokens (SH-32, now gated by Part 5)', () => {
+  const SHARE_DIR = 'src/client/features/share'
+
+  function sourceFiles(dir: string, out: string[] = []): string[] {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) sourceFiles(full, out)
+      else if (/\.(ts|tsx)$/.test(entry.name) && !/\.test\.(ts|tsx)$/.test(entry.name)) out.push(full)
+    }
+    return out
+  }
+
+  it('scans a non-empty share source set', () => {
+    const files = sourceFiles(SHARE_DIR)
+    expect(files.length).toBeGreaterThan(10)
+    expect(files.some((file) => file.endsWith('share-visit-logs-modal.tsx'))).toBe(true)
+  })
+
+  it('draws no raw Tailwind palette class', () => {
+    const violations = sourceFiles(SHARE_DIR).flatMap((file) =>
+      problemsFor(file, fs.readFileSync(file, 'utf8')).filter((problem) => problem.includes(' raw Tailwind palette class ')))
+    expect(violations).toEqual([])
   })
 })
 
