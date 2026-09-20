@@ -207,3 +207,34 @@ describe('applyKanbanBodyAtFence & kanbanFenceRange', () => {
     expect(nextDoc).toBeNull()
   })
 })
+
+// A width the reader dragged to is a fact about the document, not about this render, so it has to
+// leave in the fence and come back out of it: otherwise every reload puts the columns back to the
+// guess the type makes. Only the JSON body carries it, since an outline has no columns of its own.
+describe('a column width through the fence', () => {
+  const authored = JSON.stringify({
+    title: 'Wide',
+    columns: [{ id: 'spec', name: 'Spec file', type: 'text', width: 320 }],
+    items: [],
+  })
+
+  function onlyColumn(data: KanbanData) {
+    return data.columns.find((column) => column.id === 'spec')
+  }
+
+  it('reads the width the fence authored', () => {
+    const result = parseKanbanBody(authored)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(onlyColumn(result.data)?.width).toBe(320)
+  })
+
+  it('writes it back out, so the next parse draws the same table', () => {
+    const parsed = parseKanbanBody(authored)
+    if (!parsed.ok) throw new Error('the fixture should parse')
+    const again = parseKanbanBody(serializeKanban(parsed.data, 'json'))
+    expect(again.ok).toBe(true)
+    if (!again.ok) return
+    expect(onlyColumn(again.data)?.width).toBe(320)
+  })
+})

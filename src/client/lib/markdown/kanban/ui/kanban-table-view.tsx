@@ -20,6 +20,8 @@ interface KanbanTableViewProps {
   onAddItem: (propertyDefaults?: Record<string, unknown>) => void
   onAddColumn: () => void
   onSortColumn: (propertyId: string) => void
+  /** Absent when nothing can store a width, which is also what removes the resize handles. */
+  onResizeColumn?: (propertyId: string, width: number | undefined) => void
 }
 
 interface TableHeaderRowProps {
@@ -29,9 +31,10 @@ interface TableHeaderRowProps {
   isAllSelected: boolean
   onToggleAll: () => void
   onSortColumn: (propertyId: string) => void
+  onResizeColumn?: (propertyId: string, width: number | undefined) => void
 }
 
-function TableHeaderRow({ columns, hiddenColumns, sorts, isAllSelected, onToggleAll, onSortColumn }: TableHeaderRowProps) {
+function TableHeaderRow({ columns, hiddenColumns, sorts, isAllSelected, onToggleAll, onSortColumn, onResizeColumn }: TableHeaderRowProps) {
   const titleColumn = kanbanTitleColumn(columns)
   const sortFor = (columnId: string) => sorts.find((sort) => sort.propertyId === columnId)
   return (
@@ -49,9 +52,16 @@ function TableHeaderRow({ columns, hiddenColumns, sorts, isAllSelected, onToggle
         column={titleColumn}
         sort={sortFor(titleColumn.id)}
         onSort={onSortColumn}
+        onResize={onResizeColumn}
       />
       {kanbanPropertyColumns(columns, hiddenColumns).map((column) => (
-        <KanbanTableHeaderCell key={column.id} column={column} sort={sortFor(column.id)} onSort={onSortColumn} />
+        <KanbanTableHeaderCell
+          key={column.id}
+          column={column}
+          sort={sortFor(column.id)}
+          onSort={onSortColumn}
+          onResize={onResizeColumn}
+        />
       ))}
     </div>
   )
@@ -155,6 +165,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   onAddItem,
   onAddColumn,
   onSortColumn,
+  onResizeColumn,
 }: KanbanTableViewProps) {
   useLocaleRepaint()
   const groupByProp = view?.groupBy || 'status'
@@ -172,6 +183,7 @@ export const KanbanTableView = memo(function KanbanTableView({
           isAllSelected={isAllSelected}
           onToggleAll={handleToggleAll}
           onSortColumn={onSortColumn}
+          onResizeColumn={onResizeColumn}
         />
         <TableGroupList
           groups={groups}

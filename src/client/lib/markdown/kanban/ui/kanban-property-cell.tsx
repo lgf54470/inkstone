@@ -2,8 +2,11 @@ import { useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
+import { kanbanColumnWidthPx } from '../column-width'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
+import type { CSSProperties } from 'react'
 import type { KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanPropertyType, KanbanSort } from '../types'
+import { ColumnResizeHandle } from './kanban-column-resize-handle'
 import { KanbanDatePicker } from './kanban-date-picker'
 import { KanbanFilesCell } from './kanban-files-cell'
 import { KanbanTagPicker } from './kanban-tag-picker'
@@ -44,8 +47,25 @@ const COLUMN_WIDTH: Record<KanbanPropertyType, string> = {
   files: 'w-40 shrink-0',
 }
 
-export function kanbanColumnWidth(column: KanbanProperty): string {
+function kanbanColumnTypeWidth(column: KanbanProperty): string {
   return COLUMN_WIDTH[column.type] ?? COLUMN_WIDTH.text
+}
+
+/**
+ * How wide a column is drawn: a width the reader stored wins, and only the column's own default
+ * remains otherwise. A stored width replaces the type's classes rather than adding to them, because
+ * the title column's `flex-1 min-w-48` would grow past or floor whatever was asked for.
+ */
+export function kanbanColumnSize(column: KanbanProperty): { className: string; style: CSSProperties } {
+  const authored = kanbanColumnWidthPx(column)
+  if (authored === undefined) return { className: kanbanColumnTypeWidth(column), style: {} }
+  return { className: 'shrink-0', style: { width: `${authored}px` } }
+}
+
+// The two columns the table draws itself have no entry in the document to store a width on, so a
+// handle on one of them would be a control that silently forgets what it was told.
+export function isSizableColumn(column: KanbanProperty): boolean {
+  return column !== KANBAN_TITLE_COLUMN && column !== KANBAN_FILES_COLUMN
 }
 
 function readValues(value: unknown): string[] {
@@ -206,11 +226,13 @@ function CellContent({
 }
 
 export function KanbanPropertyCell(props: KanbanPropertyCellProps) {
+  const size = kanbanColumnSize(props.column)
   return (
     <div
       role='cell'
       data-kanban-column={props.column.id}
-      className={`border-l border-[var(--border-subtle)] px-2.5 py-1.5 text-[length:var(--text-12)] text-[var(--text-secondary)] ${kanbanColumnWidth(props.column)}`}
+      style={size.style}
+      className={`border-l border-[var(--border-subtle)] px-2.5 py-1.5 text-[length:var(--text-12)] text-[var(--text-secondary)] ${size.className}`}
     >
       <CellContent {...props} />
     </div>
@@ -221,15 +243,18 @@ export function KanbanTableHeaderCell({
   column,
   sort,
   onSort,
+  onResize,
 }: {
   column: KanbanProperty
   sort?: KanbanSort
   onSort?: (propertyId: string) => void
+  onResize?: (propertyId: string, width: number | undefined) => void
 }) {
   const label = formatKanbanPropertyName(column)
-  // Sorts read `properties[columnId]`, which attachments are not stored in, so
-  // the files column stays a plain label.
+  // Sorts read `properties[columnId]`, which attachments are not stored in, so the files column stays
+  // a plain label.
   const sortable = column.type !== 'files' && onSort !== undefined
+  const size = kanbanColumnSize(column)
   const ariaLabel = !sort
     ? t('preview.kanban_sort_by_column', { column: label })
     : t(sort.direction === 'asc' ? 'preview.kanban_sorted_ascending' : 'preview.kanban_sorted_descending', { column: label })
@@ -237,7 +262,8 @@ export function KanbanTableHeaderCell({
     <div
       role='columnheader'
       data-kanban-column={column.id}
-      className={`border-l border-[var(--border-subtle)] px-3 py-2 ${column.type === 'checkbox' || column.type === 'files' ? 'text-center' : ''} ${kanbanColumnWidth(column)}`}
+      style={size.style}
+      className={`relative border-l border-[var(--border-subtle)] px-3 py-2 ${column.type === 'checkbox' || column.type === 'files' ? 'text-center' : ''} ${size.className}`}
     >
       {sortable ? (
         <button
@@ -252,6 +278,7 @@ export function KanbanTableHeaderCell({
       ) : (
         <span>{label}</span>
       )}
+      {onResize && isSizableColumn(column) ? <ColumnResizeHandle column={column} onResize={(width) => onResize(column.id, width)} /> : null}
     </div>
   )
 }

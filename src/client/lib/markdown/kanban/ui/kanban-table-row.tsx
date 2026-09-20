@@ -6,7 +6,7 @@ import type { KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtas
 import { KanbanIconBadge } from './kanban-icon-badge'
 import {
   KanbanPropertyCell,
-  kanbanColumnWidth,
+  kanbanColumnSize,
   kanbanPropertyColumns,
   kanbanTableColumnCount,
   kanbanTitleColumn,
@@ -137,11 +137,13 @@ function ItemTitleCell({
   onToggleExpand: () => void
   onOpenDetail: () => void
 }) {
+  const titleSize = kanbanColumnSize(column)
   return (
     <div
       role='rowheader'
       data-kanban-column={column.id}
-      className={`flex items-center gap-2 border-l border-[var(--border-subtle)] px-3 py-2 ${kanbanColumnWidth(column)}`}
+      style={titleSize.style}
+      className={`flex items-center gap-2 border-l border-[var(--border-subtle)] px-3 py-2 ${titleSize.className}`}
     >
       {subtasksCount > 0 && (
         <button

@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { t } from '../../../i18n'
 import { toastWithUndo } from '../../../../store/ui'
 import { getDeterministicTagColor } from '../colors'
+import { clampKanbanColumnWidth, kanbanColumnWidthPx } from '../column-width'
 import { createKanbanId } from '../id'
 import { reorderKanbanColumns } from '../dnd'
 import type { CommitKanbanData } from './kanban-history'
@@ -195,6 +196,21 @@ export function movePropertyColumn(data: KanbanData, propertyId: string, offset:
   return { ...data, columns }
 }
 
+/**
+ * Sizes a column for every view that draws it. Absent means the type decides, and a width already
+ * exactly where it is asked to be leaves the document alone rather than spending an undo step.
+ */
+export function resizePropertyColumn(data: KanbanData, propertyId: string, width?: number): KanbanData {
+  const column = findColumn(data, propertyId)
+  if (!column) return data
+  const next = width === undefined ? undefined : clampKanbanColumnWidth(width)
+  if (kanbanColumnWidthPx(column) === next) return data
+  const sized: KanbanProperty = { ...column }
+  if (next === undefined) delete sized.width
+  else sized.width = next
+  return replaceColumn(data, propertyId, sized)
+}
+
 /** The distinct values a column holds, in the order the items say them. */
 function storedValues(data: KanbanData, propertyId: string): string[] {
   const seen: string[] = []
@@ -262,7 +278,9 @@ export function changePropertyColumnType(data: KanbanData, propertyId: string, t
   const wasChoice = column.type === 'select' || column.type === 'multi-select'
   const isChoice = type === 'select' || type === 'multi-select'
   const options = isChoice ? optionsForValues(data, column) : undefined
-  const nextColumn: KanbanProperty = options ? { ...column, type, options } : { id: column.id, name: column.name, type }
+  // A width is about the column the reader sees, not about the kind of value now in it, so retyping
+  // keeps it; the options of a column leaving the choice family have nowhere left to live.
+  const nextColumn: KanbanProperty = { ...column, type, ...(isChoice ? { options } : { options: undefined }) }
 
   let next = replaceColumn(data, propertyId, nextColumn)
   if (wasChoice || isChoice) {
@@ -317,6 +335,7 @@ export interface KanbanSchemaOperations {
   changeColumnType: (propertyId: string, type: KanbanPropertyType) => void
   deleteColumn: (propertyId: string) => void
   moveColumn: (propertyId: string, offset: -1 | 1) => void
+  resizeColumn: (propertyId: string, width: number | undefined) => void
 }
 
 export function useKanbanSchemaOperations(
@@ -355,5 +374,11 @@ export function useKanbanSchemaOperations(
     [commitData],
   )
 
-  return { addColumn, renameColumn, changeColumnType, deleteColumn, moveColumn }
+  // No undo toast of its own: a drag commits on release and the reader is still holding the mouse.
+  const resizeColumn = useCallback(
+    (propertyId: string, width: number | undefined) => commitData((prev) => resizePropertyColumn(prev, propertyId, width)),
+    [commitData],
+  )
+
+  return { addColumn, renameColumn, changeColumnType, deleteColumn, moveColumn, resizeColumn }
 }

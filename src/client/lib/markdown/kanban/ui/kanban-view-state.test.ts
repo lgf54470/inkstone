@@ -226,6 +226,17 @@ describe('kanban column schema operations', () => {
     expect(commits.at(-1)!.columns.map((c) => c.id)).toEqual(['status'])
     unmount()
   })
+
+  // A resize is the one schema edit with no toast of its own — it happens in a drag — so this is
+  // the only place that proves Ctrl+Z reaches it.
+  it('sizes a column and hands the step back to the board history', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.schemaOps.resizeColumn('status', 240) })
+    expect(commits.at(-1)!.columns.find((c) => c.id === 'status')!.width).toBe(240)
+    act(() => { holder.state.history.undo() })
+    expect(holder.state.data.columns.find((c) => c.id === 'status')!.width).toBeUndefined()
+    unmount()
+  })
 })
 
 describe('undoing a view delete', () => {

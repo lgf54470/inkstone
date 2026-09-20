@@ -64,6 +64,7 @@ interface KanbanViewRendererProps {
   handleReorderColumns: (sourceGroupKey: string, targetGroupKey: string) => void
   handleUpdateColumn: (groupKey: string, patch: { label?: string; color?: KanbanColorName }) => void
   handleDeleteColumn: (groupKey: string) => void
+  handleResizeColumn: (propertyId: string, width: number | undefined) => void
   handleUpdateTags?: (id: string, tags: string[], newOption?: KanbanOption) => void
   handleAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
@@ -143,6 +144,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
       onAddItem={props.handleAddItem}
       onAddColumn={props.handleAddColumn}
       onSortColumn={props.handleToggleSortColumn}
+      onResizeColumn={props.handleResizeColumn}
     />
   )
 }
@@ -296,6 +298,7 @@ function KanbanMain({
         handleReorderColumns={state.columnOps.handleReorderColumns}
         handleUpdateColumn={state.columnOps.handleUpdateColumn}
         handleDeleteColumn={state.columnOps.handleDeleteColumn}
+        handleResizeColumn={state.schemaOps.resizeColumn}
         handleUpdateTags={state.items.handleUpdateTags}
         handleAddColumnOption={state.columnOps.handleAddColumnOption}
       />

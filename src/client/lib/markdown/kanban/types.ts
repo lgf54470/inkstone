@@ -38,6 +38,8 @@ export interface KanbanProperty {
   name: string
   type: KanbanPropertyType
   options?: KanbanOption[]
+  /** Pixels the reader sized this column to; absent means the type decides. See `column-width.ts`. */
+  width?: number
 }
 
 export interface KanbanFile {

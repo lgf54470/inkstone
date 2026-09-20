@@ -57,6 +57,7 @@ function stubSchemaOps(): SchemaOps {
     changeColumnType: vi.fn(),
     deleteColumn: vi.fn(),
     moveColumn: vi.fn(),
+    resizeColumn: vi.fn(),
   }
 }
 

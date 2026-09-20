@@ -6,7 +6,9 @@ import {
   movePropertyColumn,
   removePropertyColumn,
   renamePropertyColumn,
+  resizePropertyColumn,
 } from './kanban-column-hooks'
+import { KANBAN_COLUMN_MAX_WIDTH, KANBAN_COLUMN_MIN_WIDTH, kanbanColumnWidthPx } from '../column-width'
 import type { KanbanData, KanbanProperty } from '../types'
 
 beforeAll(async () => {
@@ -272,3 +274,69 @@ describe('movePropertyColumn', () => {
     expect(movePropertyColumn(data, 'nope', 1)).toBe(data)
   })
 })
+
+function widthOf(data: KanbanData, id: string): unknown {
+  return findColumn(data, id).width
+}
+
+// The width a column is drawn with has to live in the document, so the writer that owns the
+// document is where its rules are checked: clamping, clearing, and not spending an undo step on a
+// column that already has the width.
+describe('resizePropertyColumn', () => {
+  it('stores the width the reader dragged to', () => {
+    expect(widthOf(resizePropertyColumn(board(), 'spec', 240), 'spec')).toBe(240)
+  })
+
+  it('keeps every other column as it was', () => {
+    const next = resizePropertyColumn(board(), 'spec', 240)
+    expect(next.columns.find((c) => c.id === 'status')).toEqual(findColumn(board(), 'status'))
+  })
+
+  it('refuses to draw narrower than the narrowest column or wider than the fence', () => {
+    expect(widthOf(resizePropertyColumn(board(), 'spec', 1), 'spec')).toBe(KANBAN_COLUMN_MIN_WIDTH)
+    expect(widthOf(resizePropertyColumn(board(), 'spec', 99999), 'spec')).toBe(KANBAN_COLUMN_MAX_WIDTH)
+  })
+
+  it('rounds a width that lands between pixels', () => {
+    expect(widthOf(resizePropertyColumn(board(), 'spec', 239.6), 'spec')).toBe(240)
+  })
+
+  it('clears the width back to the type default', () => {
+    const sized = resizePropertyColumn(board(), 'spec', 240)
+    const cleared = resizePropertyColumn(sized, 'spec', undefined)
+    expect(widthOf(cleared, 'spec')).toBeUndefined()
+    expect(Object.keys(findColumn(cleared, 'spec'))).not.toContain('width')
+  })
+
+  it('writes nothing when the column already has that width', () => {
+    const sized = resizePropertyColumn(board(), 'spec', 240)
+    expect(resizePropertyColumn(sized, 'spec', 240)).toBe(sized)
+    const unsized = board()
+    expect(resizePropertyColumn(unsized, 'spec', undefined)).toBe(unsized)
+  })
+
+  // A hand-written or imported fence can carry anything under `width`; a value the table cannot draw
+  // is dropped rather than trusted, so it reads as the type default instead of a broken layout.
+  it('drops a stored width it cannot read as a number', () => {
+    const data = board()
+    const authored = { ...data, columns: data.columns.map((c) => (c.id === 'spec' ? { ...c, width: 'wide' } : c)) } as KanbanData
+    expect(kanbanColumnWidthPx(findColumn(authored, 'spec'))).toBeUndefined()
+    expect(widthOf(resizePropertyColumn(authored, 'spec', 240), 'spec')).toBe(240)
+  })
+
+})
+
+// Sizing is about the column the reader sees, not the kind of value in it: retyping must not quietly
+// throw the width away, and a width aimed at no column at all must not reach any of them.
+describe('a width only the column it belongs to carries', () => {
+  it('ignores an id that is not on the board', () => {
+    const data = board()
+    expect(resizePropertyColumn(data, 'nope', 240)).toBe(data)
+  })
+
+  it('keeps the width through a retype', () => {
+    const sized = resizePropertyColumn(board(), 'spec', 240)
+    expect(widthOf(changePropertyColumnType(sized, 'spec', 'number'), 'spec')).toBe(240)
+  })
+})
+
