@@ -241,3 +241,34 @@ describe('blog log wipe re-asks for the current password (SH-47)', () => {
     expect(api.blog.cleanVisits).toHaveBeenCalledWith('bots', 30, undefined)
   })
 })
+
+describe('blog settings radiogroups carry accessible names (SH-46)', () => {
+  function nameOf(group: HTMLElement): string | null {
+    const id = group.getAttribute('aria-labelledby')
+    return id === null ? group.getAttribute('aria-label') : (document.getElementById(id)?.textContent ?? null)
+  }
+
+  function tabGroup(): HTMLElement {
+    const group = Array.from(document.querySelectorAll('[role="radiogroup"]'))
+      .find((element) => element.textContent?.includes(t('blog.site_basic_info')))
+    if (!group) throw new Error('the tab switcher did not render')
+    return group as HTMLElement
+  }
+
+  it('names the retention period with its own visible label', () => {
+    session.state.settings = { ...DEFAULT_SETTINGS, blog: { visitLogRetentionDays: 30 } }
+
+    openModal()
+    openTrafficTab()
+
+    expect(nameOf(retentionGroup())).toBe(t('share.retention_days_label'))
+  })
+
+  it('names the section switcher that has no visible heading of its own', () => {
+    session.state.settings = { ...DEFAULT_SETTINGS, blog: { visitLogRetentionDays: 30 } }
+
+    openModal()
+
+    expect(nameOf(tabGroup())).toBe(t('blog.settings_tab_label'))
+  })
+})

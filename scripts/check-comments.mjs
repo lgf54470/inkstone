@@ -932,6 +932,9 @@ const allowed = new Map([
     '// Landing focus on the undo action is the keyboard fast-path, but it must never',
     '// interrupt typing, steal from an open dialog, or fight another undo toast.',
   ]],
+  ['src/client/components/form-segmented.test.ts', [
+    '/**\n * SH-46: the client-wide radiogroup guard (tests/radiogroup-names.test.ts) lets a\n * `Segmented` stay attribute-free when `Field` wraps it alone, because `Field`\n * clones `aria-labelledby` onto its control. That exemption is only legitimate if\n * the wiring really reaches the `role=\'radiogroup\'`, which is what these two cases\n * pin down.\n */',
+  ]],
   ['src/client/components/overlay/hooks.test.ts', [
     '/**\n * Dialog harness for the focus-return contract: the opener stays mounted under\n * the open dialog (the preview with its block buttons keeps rendering under the\n * full screen mind map), and the panel only exists while open.\n */',
     '// The mind map block\'s fullscreen button renders `data-mindmap-fullscreen`',
@@ -1121,6 +1124,11 @@ const allowed = new Map([
   ['src/client/features/attachments/attachment-store.ts', [
     '// Rebuilt only when the folders change: every consumer of the tree reads it on each',
     '// render, and a new array each time would invalidate theirs as well.',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/radiogroup-names.test.ts', [
+    '/**\n * SH-46 brought the blog dashboard\'s two `Segmented` controls under the same rules\n * the share dashboard already follows: the toolbar range picker carries its own\n * `label`, and the metric picker is named by the card heading it sits beside. The\n * locale is not loaded in this harness, so `t()` echoes the key and the assertions\n * compare against keys.\n */',
+    '// A failed assertion must not leave its tree behind: the next case reads the',
+    '// first radiogroup in the document, so stale DOM would be attributed to it.',
   ]],
   ['src/client/features/blog/blog-settings-retention.test.ts', [
     '// A test that fails before its unmount would otherwise leave its modal in the',
@@ -4776,6 +4784,15 @@ const allowed = new Map([
     '// ignoring text: the root renderer emits i18n key literals without a provider in',
     '// tests, and both trees pin full output text via their own baseline snapshots.',
   ]],
+  ['tests/radiogroup-names.test.ts', [
+    '/**\n * SH-40 named every `Segmented` inside the share feature; SH-46 lifted the scan to\n * the whole client tree, because the same defect kept appearing in other modules\'\n * toolbars. A `Segmented` renders a `role=\'radiogroup\'`, and the component only\n * names it through `label` (an `aria-label`) or `aria-labelledby`.\n *\n * One site may stay attribute-free: a `Segmented` that is the single child of a\n * `Field`, because `Field` clones `aria-labelledby` onto its control. That\n * exemption is proved behaviourally in src/client/components/form-segmented.test.ts\n * rather than trusted from here.\n */',
+    '// Indentation inside JSX survives the parse as whitespace-only text children.',
+    '// Field clones its label id onto the child only when `children` is a single',
+    '// valid element, and the id is worthless without a `label`, so a multi-child or',
+    '// label-less Field must still be reported. Line numbers are the fixture\'s own.',
+    '// `aria-label` is not a Segmented prop at all (it renders one from `label`), so',
+    '// writing it on the control names nothing and must not satisfy the guard.',
+  ]],
   ['tests/schema-migrations.test.ts', [
     '// Simulate a database whose music tables came from an earlier build: different',
     '// column names, tag links by name, seconds instead of milliseconds.',
@@ -4813,9 +4830,6 @@ const allowed = new Map([
     '// is banned here.',
     '// The public reader page renders without the app\'s i18n runtime; its title',
     '// fallback is tracked outside SH-34.',
-  ]],
-  ['tests/share-radiogroup-names.test.ts', [
-    '/**\n * SH-40: a `Segmented` renders a `role=\'radiogroup\'`, and the component only\n * names it through `label` (an `aria-label`) or `aria-labelledby`. Every share\n * control that sits under a visible heading instead of passing one of those is\n * announced as an unnamed group of options, so the scan below is the guard: a\n * new `Segmented` must say what it is.\n */',
   ]],
   ['tests/share-routes.test.ts', [
     '// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =',

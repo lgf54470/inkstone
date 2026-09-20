@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import type { ReactNode } from 'react'
 import { Database, Save, Settings, Shield, X } from 'lucide-react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
@@ -29,6 +30,7 @@ export function BlogSettingsModal({
 
       <div className='border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-2'>
         <Segmented
+          label={t('blog.settings_tab_label')}
           value={form.activeTab}
           onChange={(v) => form.setActiveTab(v as 'site' | 'traffic')}
           options={[
@@ -204,13 +206,14 @@ function RetentionField({
   onChange: (v: string) => void
   options: Array<{ value: string; label: string }>
 }) {
+  const labelId = useId()
   return (
     <div>
       <div className='flex items-center justify-between pb-1.5'>
-        <span className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>{label}</span>
+        <span id={labelId} className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>{label}</span>
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{valueLabel}</span>
       </div>
-      <Segmented value={value} onChange={onChange} options={options} />
+      <Segmented aria-labelledby={labelId} value={value} onChange={onChange} options={options} />
     </div>
   )
 }

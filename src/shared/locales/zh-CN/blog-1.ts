@@ -125,6 +125,7 @@ export const messages = {
 'blog.allow_comments_hint': '访客可以在此文章正文下方提交评论，后台可进行审核管理',
 'blog.frontend_preview': '前台预览',
 'blog.site_basic_info': '站点基础信息',
+'blog.settings_tab_label': '博客设置分组',
 'blog.site_name_placeholder': 'Inkstone Blog',
 'blog.site_subtitle_placeholder': '静水流深，石上墨香',
 'blog.author_profile_settings': '博主名片设置',
