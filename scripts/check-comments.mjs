@@ -1596,6 +1596,9 @@ const allowed = new Map([
     '// A video container in an <audio> element plays its sound and hides its picture, so the',
     '// anonymous reader gets a black box for a clip; the element follows the stored mime.',
   ]],
+  ['src/client/features/music/music-source-badge.tsx', [
+    '// The label wraps inside a narrow column and inflates the row, so it never breaks.',
+  ]],
   ['src/client/features/music/music-status-bar.tsx', [
     '/* The slim bar only has room for the EQ from the wide breakpoint up. */',
   ]],
@@ -1806,6 +1809,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-track-row.tsx', [
     '// Off-screen rows skip layout and paint; the intrinsic size reserves their height.',
+    '// The badge never wraps, so the column has to fit its longest label ("Cloud (R2)");',
+    '// the header cell and every row cell take this one budget so they cannot drift apart.',
     '// Clicks on the row\'s own controls must not change the selection.',
     '// Drag handlers all need the row\'s track; spreading keeps the row itself presentational.',
     '// The current row\'s 14% accent tint puts the dim tiers under AA (quaternary measures 4.08 in',
@@ -1813,6 +1818,8 @@ const allowed = new Map([
     '// Row action buttons stay visible on touch; only from md up do they reveal on hover/focus.',
   ]],
   ['src/client/features/music/music-track-table.test.ts', [
+    '// The longest label ("Cloud (R2)") has to fit the cell the header also uses;',
+    '// 4rem clipped it, so both sides take the wider budget together.',
     '// Artwork, favourite and menu columns carry nothing a screen reader could read, so they',
     '// align through an empty spacer rather than an empty columnheader (axe empty-table-header).',
     '// aria-multiselectable is not allowed on role=\'table\'; selection is carried per row checkbox.',

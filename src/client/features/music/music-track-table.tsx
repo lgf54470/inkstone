@@ -5,7 +5,7 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useMusic } from './music-store'
 import type { MusicSort } from './music-store'
-import { MusicTrackRow, type TrackRowHandlers } from './music-track-row'
+import { MusicTrackRow, SOURCE_COLUMN_CELL, type TrackRowHandlers } from './music-track-row'
 import type { TrackSelection } from './use-track-list'
 
 export const MusicTrackTable = memo(function MusicTrackTable({
@@ -81,7 +81,7 @@ function TableHeader({
       <SortableColumn field='title' label={t('music.table_title')} className='min-w-0 flex-1' />
       <SortableColumn field='artist' label={t('music.table_artist')} className='hidden w-32 shrink-0 truncate xl:block' />
       <SortableColumn field='album' label={t('music.table_album')} className='hidden w-40 shrink-0 truncate xl:block' />
-      <span role='columnheader' className='hidden w-16 shrink-0 sm:block'>{t('music.source')}</span>
+      <span role='columnheader' className={SOURCE_COLUMN_CELL}>{t('music.source')}</span>
       <SortableColumn field='duration' label={t('music.table_duration')} className='w-11 shrink-0 text-right' />
       <span className='w-6 shrink-0' />
       <span className='w-6 shrink-0' />

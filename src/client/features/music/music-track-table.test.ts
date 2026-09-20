@@ -138,6 +138,35 @@ describe('table header sorting', () => {
   })
 })
 
+describe('source column wrapping contract (UI-15)', () => {
+  function sourceCell(): Element | undefined {
+    const row = document.querySelectorAll('[role="rowgroup"] > [role="row"]')[0]
+    return [...(row?.children ?? [])].find((cell) => cell.querySelector('span[title]')) ?? undefined
+  }
+
+  function badge(): Element | undefined {
+    return sourceCell()?.querySelector('span[title]') ?? undefined
+  }
+
+  it('keeps the source badge on a single line', async () => {
+    await mountList()
+    const label = badge()
+    expect(label?.textContent).toBe(t('music.source_r2'))
+    expect(label?.classList.contains('whitespace-nowrap')).toBe(true)
+  })
+
+  // The longest label ("Cloud (R2)") has to fit the cell the header also uses;
+  // 4rem clipped it, so both sides take the wider budget together.
+  it('gives the header and the rows the same width for that column', async () => {
+    await mountList()
+    const header = columnheaderOf(t('music.source'))
+    const cell = sourceCell()
+    expect(header?.classList.contains('w-24')).toBe(true)
+    expect(cell?.classList.contains('w-24')).toBe(true)
+    expect(cell?.classList.contains('shrink-0')).toBe(true)
+  })
+})
+
 describe('table ARIA structure', () => {
   it('rows expose a cell per column instead of bare spans', async () => {
     await mountList()

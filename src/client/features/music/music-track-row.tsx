@@ -13,6 +13,10 @@ import { formatDuration } from './music-utils'
 // Off-screen rows skip layout and paint; the intrinsic size reserves their height.
 const ROW_CONTAINMENT = { contentVisibility: 'auto', containIntrinsicSize: 'auto var(--sp-12)' } as const
 
+// The badge never wraps, so the column has to fit its longest label ("Cloud (R2)");
+// the header cell and every row cell take this one budget so they cannot drift apart.
+export const SOURCE_COLUMN_CELL = 'hidden w-24 shrink-0 sm:block'
+
 export interface TrackRowDragHandlers {
   onDragStart: (event: React.DragEvent, track: MusicTrack) => void
   onDragOver: (event: React.DragEvent) => void
@@ -168,7 +172,7 @@ function RowMeta({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean }
       <span role='cell' className={cn('hidden w-40 shrink-0 truncate text-[length:var(--text-11)] xl:block', dim)}>
         {track.album || '—'}
       </span>
-      <span role='cell' className='hidden w-16 shrink-0 sm:block'>
+      <span role='cell' className={SOURCE_COLUMN_CELL}>
         <MusicSourceBadge source={track.source} className='inline-flex' />
       </span>
       <span role='cell' className={cn('tabular w-11 shrink-0 text-right text-[length:var(--text-11)]', dim)}>
