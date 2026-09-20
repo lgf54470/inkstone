@@ -23,6 +23,8 @@ interface KanbanTableRowProps {
   onUpdateMultiSelect: (itemId: string, columnId: string, values: string[], newOption?: KanbanOption) => void
   onUpdateSubtasks?: (itemId: string, subtasks: KanbanSubtask[]) => void
   onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
+  /** Who the member picker may offer, per member column. */
+  people?: Record<string, string[]>
 }
 
 function SubitemItemRow({
@@ -181,6 +183,21 @@ function ItemTitleCell({
   )
 }
 
+/** The row's own checkbox: selecting a card is the one thing a row does outside its columns. */
+function RowSelectionCell({ isSelected, onToggleSelect }: { isSelected: boolean; onToggleSelect: () => void }) {
+  return (
+    <div role='cell' className='w-10 shrink-0 p-2.5 text-center'>
+      <input
+        type='checkbox'
+        checked={isSelected}
+        onChange={onToggleSelect}
+        aria-label={t('preview.kanban_select_card')}
+        className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)]'
+      />
+    </div>
+  )
+}
+
 export function KanbanTableRow({
   item,
   columns,
@@ -192,6 +209,7 @@ export function KanbanTableRow({
   onUpdateMultiSelect,
   onUpdateSubtasks,
   onUpdateFiles,
+  people,
 }: KanbanTableRowProps) {
   const [expanded, setExpanded] = useState(false)
   const titleColumn = kanbanTitleColumn(columns)
@@ -201,16 +219,7 @@ export function KanbanTableRow({
   return (
     <div role='presentation' data-item-id={item.id} className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-colors hover:bg-[var(--bg-hover)]'>
       <div role='row' className='flex min-h-10 items-center text-[length:var(--text-12)]'>
-        <div role='cell' className='w-10 shrink-0 p-2.5 text-center'>
-          <input
-            type='checkbox'
-            checked={isSelected}
-            onChange={onToggleSelect}
-            aria-label={t('preview.kanban_select_card')}
-            className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)]'
-          />
-        </div>
-
+        <RowSelectionCell isSelected={isSelected} onToggleSelect={onToggleSelect} />
         <ItemTitleCell
           item={item}
           column={titleColumn}
@@ -228,6 +237,7 @@ export function KanbanTableRow({
             onUpdateProperty={onUpdateProperty}
             onUpdateMultiSelect={onUpdateMultiSelect}
             onUpdateFiles={onUpdateFiles}
+            people={people}
           />
         ))}
       </div>

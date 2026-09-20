@@ -9,6 +9,7 @@ import type { KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanProper
 import { ColumnResizeHandle } from './kanban-column-resize-handle'
 import { KanbanDatePicker } from './kanban-date-picker'
 import { KanbanFilesCell } from './kanban-files-cell'
+import { KanbanPersonPicker } from './kanban-person-picker'
 import { KanbanTagPicker } from './kanban-tag-picker'
 
 export const KANBAN_TITLE_COLUMN: KanbanProperty = { id: 'title', name: 'Title', type: 'title' }
@@ -176,6 +177,8 @@ interface KanbanPropertyCellProps {
   onUpdateProperty: (itemId: string, propertyId: string, value: unknown) => void
   onUpdateMultiSelect: (itemId: string, columnId: string, values: string[], newOption?: KanbanOption) => void
   onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
+  /** Who the member picker may offer, per member column. Absent means only typed names are offered. */
+  people?: Record<string, string[]>
 }
 
 function CellContent({
@@ -184,12 +187,23 @@ function CellContent({
   onUpdateProperty,
   onUpdateMultiSelect,
   onUpdateFiles,
+  people,
 }: KanbanPropertyCellProps) {
   const value = item.properties[column.id]
   const write = (next: unknown) => onUpdateProperty(item.id, column.id, next)
 
   if (column.type === 'select') {
     return <SelectValue column={column} value={value} onChange={write} />
+  }
+  if (column.type === 'person') {
+    return (
+      <KanbanPersonPicker
+        propertyName={formatKanbanPropertyName(column)}
+        value={value}
+        candidates={people?.[column.id]}
+        onChange={write}
+      />
+    )
   }
   if (column.type === 'multi-select') {
     return (

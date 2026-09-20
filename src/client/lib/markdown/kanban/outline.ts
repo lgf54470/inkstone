@@ -73,7 +73,7 @@ function createDefaultColumns(options: KanbanOption[]): KanbanProperty[] {
       { id: 'medium', label: 'Medium', color: 'yellow' },
       { id: 'high', label: 'High', color: 'red' },
     ]},
-    { id: 'assignee', name: 'Assignee', type: 'text' },
+    { id: 'assignee', name: 'Assignee', type: 'person' },
     { id: 'startDate', name: 'Start Date', type: 'date' },
     { id: 'endDate', name: 'End Date', type: 'date' },
     { id: 'progress', name: 'Progress', type: 'number' },

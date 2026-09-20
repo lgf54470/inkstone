@@ -64,6 +64,7 @@ function mount(overrides: Partial<{ hiddenColumns: string[] }> = {}) {
     onUpdateFiles: vi.fn(),
     onAddItem: vi.fn(),
     onAddColumn: vi.fn(),
+    people: {},
     onSortColumn: vi.fn(),
   }))
   mounted.push(rendered)

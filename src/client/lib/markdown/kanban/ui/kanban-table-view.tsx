@@ -22,6 +22,9 @@ interface KanbanTableViewProps {
   onSortColumn: (propertyId: string) => void
   /** Absent when nothing can store a width, which is also what removes the resize handles. */
   onResizeColumn?: (propertyId: string, width: number | undefined) => void
+  /** Who the member picker may offer, per member column. Derived from every card on the board, so
+   *  a filter cannot make a teammate unassignable. */
+  people: Record<string, string[]>
 }
 
 interface TableHeaderRowProps {
@@ -92,6 +95,8 @@ interface TableGroupListProps {
   onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
   onAddItem: (propertyDefaults?: Record<string, unknown>) => void
   onAddColumn: () => void
+  /** Who the member picker may offer, per member column. */
+  people: Record<string, string[]>
 }
 
 function TableGroupList({
@@ -108,6 +113,7 @@ function TableGroupList({
   onUpdateFiles,
   onAddItem,
   onAddColumn,
+  people,
 }: TableGroupListProps) {
   const columnCount = kanbanTableColumnCount(columns, hiddenColumns)
   return (
@@ -129,6 +135,7 @@ function TableGroupList({
           onUpdateMultiSelect={onUpdateMultiSelect}
           onUpdateSubtasks={onUpdateSubtasks}
           onUpdateFiles={onUpdateFiles}
+          people={people}
           onAddItemInGroup={() => {
             const defaults = group.groupKey !== '__none__' ? { [groupByProp]: group.groupKey } : {}
             onAddItem(defaults)
@@ -167,6 +174,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   onAddColumn,
   onSortColumn,
   onResizeColumn,
+  people,
 }: KanbanTableViewProps) {
   useLocaleRepaint()
   const groupByProp = view?.groupBy || 'status'
@@ -200,6 +208,7 @@ export const KanbanTableView = memo(function KanbanTableView({
           onUpdateFiles={onUpdateFiles}
           onAddItem={onAddItem}
           onAddColumn={onAddColumn}
+          people={people}
         />
       </div>
     </div>

@@ -3,10 +3,12 @@ import { Flag, Paperclip, Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
+import { kanbanPersonName } from '../person'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanCardSubtasks } from './kanban-card-subtasks'
 import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanPersonAvatar } from './kanban-person-picker'
 
 interface KanbanGalleryViewProps {
   data: KanbanData
@@ -139,14 +141,7 @@ function GalleryFooterMeta({
           </span>
         )}
       </div>
-      {assignee && (
-        <div
-          title={assignee}
-          className='flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[length:var(--text-10)] font-bold text-[var(--accent)]'
-        >
-          {assignee.slice(0, 2).toUpperCase()}
-        </div>
-      )}
+      {assignee && <KanbanPersonAvatar name={assignee} />}
     </div>
   )
 }
@@ -203,7 +198,7 @@ function GalleryCard({
   const priorityOpt = priorityCol?.options?.find((o) => o.id === priorityVal || o.label === priorityVal)
   const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
   const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
-  const assignee = String(item.properties.assignee || '')
+  const assignee = kanbanPersonName(item.properties.assignee)
   const filesCount = item.files?.length ?? 0
 
   return (

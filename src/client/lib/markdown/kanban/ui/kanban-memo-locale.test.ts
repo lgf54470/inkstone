@@ -195,6 +195,7 @@ const SUBJECTS: { name: string, element: ReactElement }[] = [
       onUpdateMultiSelect: noop,
       onUpdateFiles: noop,
       onAddColumn: noop,
+      people: {},
       onSortColumn: noop,
     }),
   },

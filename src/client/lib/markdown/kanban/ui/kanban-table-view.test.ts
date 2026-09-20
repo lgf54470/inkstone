@@ -22,6 +22,7 @@ type TableHandlers = Pick<
   | 'onUpdateSubtasks'
   | 'onUpdateFiles'
   | 'selectedIds'
+  | 'people'
 >
 
 function mountTable(data: KanbanData, props: TableHandlers) {
@@ -177,6 +178,7 @@ function handlers(overrides: Partial<TableHandlers> = {}): TableHandlers {
     onUpdateProperty: vi.fn(),
     onUpdateMultiSelect: vi.fn(),
     onUpdateFiles: vi.fn(),
+    people: {},
     ...overrides,
   }
 }
@@ -195,7 +197,7 @@ describe('KanbanTableView schema columns', () => {
     const { container, unmount } = mountTable(schemaData, handlers())
     expect(cellInput(container, 'a', 'spec').value).toBe('docs/a.md')
     expect(cellInput(container, 'a', 'story').value).toBe('5')
-    expect(cellInput(container, 'a', 'reviewer').value).toBe('Nora')
+    expect(personTrigger(container, 'a', 'reviewer').textContent).toContain('Nora')
     expect(cellText(container, 'a', 'deadline')).toContain('2026-09-30')
     expect(cellText(container, 'a', 'priority')).toContain(t('preview.kanban_priority_high'))
     expect(cellText(container, 'a', 'tags')).toContain(t('preview.kanban_tag_bug'))
@@ -286,6 +288,14 @@ function buttonNamed(cell: HTMLElement, name: string): HTMLButtonElement {
   const button = [...cell.querySelectorAll('button')].find((el) => el.getAttribute('aria-label') === name)
   if (!button) throw new Error(`no button named "${name}" in ${cell.dataset.kanbanColumn}`)
   return button
+}
+
+function personTrigger(container: HTMLElement, itemId: string, columnId: string): HTMLButtonElement {
+  const column = schemaColumns.find((col) => col.id === columnId)
+  return buttonNamed(
+    cellOf(container, itemId, columnId),
+    t('preview.kanban_person_change', { property: formatKanbanPropertyName(column!) }),
+  )
 }
 
 describe('KanbanTableView inline editing', () => {

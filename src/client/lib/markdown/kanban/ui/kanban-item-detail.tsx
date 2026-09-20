@@ -8,13 +8,13 @@ import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpe
 import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanIconPicker } from './kanban-icon-picker'
-import { KanbanTagPicker } from './kanban-tag-picker'
 import { DetailDescription } from './kanban-item-detail-description'
 import {
   DetailAttachmentsAndSubtasks,
   DetailDatesGrid,
   DetailFooter,
   DetailPropertiesGrid,
+  DetailTagsField,
   PriorityChips,
   StatusOptionList,
 } from './kanban-item-detail-fields'
@@ -27,6 +27,8 @@ interface KanbanItemDetailProps {
   onDelete: (id: string) => void
   onConvertSubtask: (subtaskId: string) => void
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
+  /** Who each member column may offer, keyed by column id. */
+  people?: Record<string, string[]>
   /** How this host turns description markdown into HTML; absent means the description stays source-only. */
   renderDescription?: (source: string) => string
 }
@@ -186,6 +188,22 @@ function DetailHeader({
   )
 }
 
+interface DetailModalContentProps {
+  item: KanbanItem
+  columns: KanbanProperty[]
+  tagVals: string[]
+  priorityCol?: KanbanProperty
+  startDateVal: unknown
+  dueDateVal: unknown
+  localTagOptions: KanbanOption[]
+  onPropertyChange: (propertyId: string, value: unknown) => void
+  onAddTagOption: (option: KanbanOption) => void
+  onUpdate: (updated: KanbanItem) => void
+  onConvertSubtask: (subtaskId: string) => void
+  people?: Record<string, string[]>
+  renderDescription?: (source: string) => string
+}
+
 function DetailModalContent({
   item,
   columns,
@@ -198,36 +216,19 @@ function DetailModalContent({
   onAddTagOption,
   onUpdate,
   onConvertSubtask,
+  people,
   renderDescription,
-}: {
-  item: KanbanItem
-  columns: KanbanProperty[]
-  tagVals: string[]
-  priorityCol?: KanbanProperty
-  startDateVal: unknown
-  dueDateVal: unknown
-  localTagOptions: KanbanOption[]
-  onPropertyChange: (propertyId: string, value: unknown) => void
-  onAddTagOption: (option: KanbanOption) => void
-  onUpdate: (updated: KanbanItem) => void
-  onConvertSubtask: (subtaskId: string) => void
-  renderDescription?: (source: string) => string
-}) {
+}: DetailModalContentProps) {
   return (
     <div className='flex flex-col gap-5 py-2'>
-      <div className='flex flex-col gap-1.5'>
-        <label className='text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
-          {t('preview.kanban_prop_tags')}
-        </label>
-        <KanbanTagPicker
-          tags={tagVals}
-          options={localTagOptions}
-          onChangeTags={(nextTags, newOption) => {
-            onPropertyChange('tags', nextTags)
-            if (newOption) onAddTagOption(newOption)
-          }}
-        />
-      </div>
+      <DetailTagsField
+        tagVals={tagVals}
+        options={localTagOptions}
+        onChangeTags={(nextTags, newOption) => {
+          onPropertyChange('tags', nextTags)
+          if (newOption) onAddTagOption(newOption)
+        }}
+      />
 
       <PriorityChips
         priorityCol={priorityCol}
@@ -244,6 +245,7 @@ function DetailModalContent({
       <DetailPropertiesGrid
         columns={columns}
         properties={item.properties}
+        people={people}
         onChangeProperty={onPropertyChange}
       />
 
@@ -304,6 +306,7 @@ function KanbanItemDetailBody({
   onDelete,
   onConvertSubtask,
   onAddColumnOption,
+  people,
   renderDescription,
 }: KanbanItemDetailProps & { item: KanbanItem }) {
   const { statusCol, priorityCol, localTagOptions, handlePropertyChange, handleAddTagOption } =
@@ -344,6 +347,7 @@ function KanbanItemDetailBody({
         onAddTagOption={handleAddTagOption}
         onUpdate={onUpdate}
         onConvertSubtask={onConvertSubtask}
+        people={people}
         renderDescription={renderDescription}
       />
     </Modal>

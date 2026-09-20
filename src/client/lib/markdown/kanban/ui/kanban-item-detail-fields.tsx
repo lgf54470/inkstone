@@ -2,10 +2,13 @@ import { Flag, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanDotColor, getKanbanTagStyle } from '../colors'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
+import type { ReactNode } from 'react'
 import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
 import { KanbanDatePicker } from './kanban-date-picker'
 import { KanbanFilesCell } from './kanban-files-cell'
+import { KanbanPersonPicker } from './kanban-person-picker'
 import { KanbanSubtaskList } from './kanban-subtask-list'
+import { KanbanTagPicker } from './kanban-tag-picker'
 
 export function StatusOptionItem({
   option,
@@ -135,27 +138,52 @@ export function DetailFooter({ onDelete, onClose }: { onDelete: () => void; onCl
   )
 }
 
+/** A property whose control brings its own focus semantics: the label is not its `<label>`. */
+function LabelledField({ column, children }: { column: KanbanProperty; children: ReactNode }) {
+  return (
+    <div className='flex flex-col gap-1'>
+      <span className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
+        {formatKanbanPropertyName(column)}
+      </span>
+      {children}
+    </div>
+  )
+}
+
 export function DetailPropertyField({
   column,
   value,
+  people,
   onChange,
 }: {
   column: KanbanProperty
   value: unknown
+  /** Who this member picker may offer; only the cards that already name someone fill it in. */
+  people?: string[]
   onChange: (value: unknown) => void
 }) {
   if (column.type === 'date') {
     return (
-      <div className='flex flex-col gap-1'>
-        <span className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
-          {formatKanbanPropertyName(column)}
-        </span>
+      <LabelledField column={column}>
         <KanbanDatePicker
           propertyName={formatKanbanPropertyName(column)}
           value={String(value ?? '')}
           onChange={onChange}
         />
-      </div>
+      </LabelledField>
+    )
+  }
+
+  if (column.type === 'person') {
+    return (
+      <LabelledField column={column}>
+        <KanbanPersonPicker
+          propertyName={formatKanbanPropertyName(column)}
+          value={value}
+          candidates={people}
+          onChange={onChange}
+        />
+      </LabelledField>
     )
   }
 
@@ -186,10 +214,13 @@ export function DetailPropertyField({
 export function DetailPropertiesGrid({
   columns,
   properties,
+  people,
   onChangeProperty,
 }: {
   columns: KanbanProperty[]
   properties: Record<string, unknown>
+  /** Who each member column may offer, keyed by column id. */
+  people?: Record<string, string[]>
   onChangeProperty: (id: string, val: unknown) => void
 }) {
   const handledIds = new Set(['title', 'status', 'priority', 'tags', 'dueDate', 'startDate', 'endDate', 'files'])
@@ -203,6 +234,7 @@ export function DetailPropertiesGrid({
           key={col.id}
           column={col}
           value={properties[col.id]}
+          people={people?.[col.id]}
           onChange={(val) => onChangeProperty(col.id, val)}
         />
       ))}
@@ -275,6 +307,25 @@ export function DetailDatesGrid({
           onChange={(val) => onPropertyChange('dueDate', val)}
         />
       </div>
+    </div>
+  )
+}
+
+export function DetailTagsField({
+  tagVals,
+  options,
+  onChangeTags,
+}: {
+  tagVals: string[]
+  options: KanbanOption[]
+  onChangeTags: (tags: string[], newOption?: KanbanOption) => void
+}) {
+  return (
+    <div className='flex flex-col gap-1.5'>
+      <label className='text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
+        {t('preview.kanban_prop_tags')}
+      </label>
+      <KanbanTagPicker tags={tagVals} options={options} onChangeTags={onChangeTags} />
     </div>
   )
 }

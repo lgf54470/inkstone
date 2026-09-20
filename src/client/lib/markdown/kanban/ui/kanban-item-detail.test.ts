@@ -30,7 +30,7 @@ const item: KanbanItem = {
 type DetailTestProps = Parameters<typeof KanbanItemDetail>[0] & { renderDescription?: (source: string) => string }
 /** The spies the cases assert on, plus whichever optional prop a case wants to hand the component. */
 type SpiedProps = DetailTestProps & { onUpdate: Mock<(updated: KanbanItem) => void> }
-type ExtraProps = Pick<DetailTestProps, 'renderDescription'>
+type ExtraProps = Partial<Pick<DetailTestProps, 'renderDescription' | 'columns' | 'people'>>
 
 function propsFor(nextItem: KanbanItem | null, extra: ExtraProps = {}): SpiedProps {
   return {
@@ -351,6 +351,66 @@ describe('KanbanItemDetail description markdown preview', () => {
     expect(previewToggle()).toBeNull()
     act(() => { typeIntoBox(descriptionBox(), 'x') })
     expect(previewToggle()).not.toBeNull()
+    view.dispose()
+  })
+})
+
+describe('KanbanItemDetail member field', () => {
+  const memberColumns: KanbanProperty[] = [...columns, { id: 'reviewer', name: 'Reviewer', type: 'person' }]
+
+  function memberTrigger(): HTMLButtonElement {
+    const label = t('preview.kanban_person_change', { property: 'Reviewer' })
+    const el = [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.getAttribute('aria-label') === label)
+    if (!el) throw new Error('no member control in the detail body')
+    return el
+  }
+
+  it('shows who is assigned and hands the panel the board roster', () => {
+    const view = renderDetail(
+      { ...item, properties: { status: 'todo', reviewer: 'Nora' } },
+      { columns: memberColumns, people: { reviewer: ['Nora', 'Otto'] } },
+    )
+    expect(memberTrigger().textContent).toContain('Nora')
+    act(() => { memberTrigger().click() })
+    expect([...document.querySelectorAll('[data-kanban-person-name]')].map((el) => el.textContent)).toEqual(['Nora', 'Otto'])
+    view.dispose()
+  })
+
+  it('saves the chosen member once and closes the panel', () => {
+    const view = renderDetail(item, { columns: memberColumns, people: { reviewer: ['Nora'] } })
+    act(() => { memberTrigger().click() })
+    const choice = document.querySelector<HTMLButtonElement>('[data-kanban-person-choice]')!
+    act(() => { choice.click() })
+    expect(view.props.onUpdate).toHaveBeenCalledTimes(1)
+    expect(view.props.onUpdate.mock.calls[0][0]).toMatchObject({ properties: { reviewer: 'Nora' } })
+    expect(document.querySelector('[data-kanban-person-choice]')).toBeNull()
+    view.dispose()
+  })
+})
+
+describe('KanbanItemDetail tags field', () => {
+  const taggedColumns: KanbanProperty[] = [
+    ...columns,
+    { id: 'tags', name: 'Tags', type: 'multi-select', options: [{ id: 'bug', label: 'Bug', color: 'red' }] },
+  ]
+
+  it('keeps the tag picker wired to the property writer', () => {
+    const view = renderDetail(
+      { ...item, properties: { status: 'todo', tags: ['ship'] } },
+      { columns: taggedColumns },
+    )
+    expect(document.body.textContent).toContain(t('preview.kanban_prop_tags'))
+    expect(document.body.textContent).toContain('ship')
+    const add = document.querySelector<HTMLButtonElement>(`button[aria-label="${t('preview.kanban_new_tag')}"]`)
+    if (!add) throw new Error('no tag field in the detail body')
+    act(() => { add.click() })
+    const existing = [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) =>
+      b.textContent?.trim().endsWith('Bug'),
+    )
+    if (!existing) throw new Error('the declared tag option is not offered')
+    act(() => { existing.click() })
+    expect(view.props.onUpdate).toHaveBeenCalledTimes(1)
+    expect(view.props.onUpdate.mock.calls[0]![0].properties.tags).toEqual(['ship', 'bug'])
     view.dispose()
   })
 })

@@ -7,6 +7,7 @@ import {
 import { t } from '../../../i18n'
 import { toastWithUndo } from '../../../../store/ui'
 import type { KanbanMovePivot } from '../dnd'
+import { kanbanPeopleDirectory } from '../person'
 import { kanbanBoardLayout, moveKanbanItemToCell } from '../swimlane'
 import type { KanbanBoardCell } from '../swimlane'
 import { createKanbanId } from '../id'
@@ -400,9 +401,13 @@ export function useKanbanRootState(
   const viewOps = useKanbanViewOperations(data.views, commitData, history.undo)
 
   const handleMoveItem = useMoveItemClearingSorts(items.handleMoveItem, filterSort)
+  // The roster a member picker offers: read off every card, so filtering the board down never
+  // removes a teammate from the list of people who can be assigned.
+  const people = useMemo(() => kanbanPeopleDirectory(data.columns, data.items), [data])
 
   return {
     data,
+    people,
     detailItem,
     setDetailItem,
     setActiveViewId,

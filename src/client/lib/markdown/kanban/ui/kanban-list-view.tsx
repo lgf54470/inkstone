@@ -3,9 +3,11 @@ import { Check, CheckSquare, ChevronDown, ChevronRight, Flag, Paperclip, Plus } 
 import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
+import { kanbanPersonName } from '../person'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanPersonAvatar } from './kanban-person-picker'
 
 interface KanbanListViewProps {
   data: KanbanData
@@ -175,7 +177,7 @@ function ListRowTrailing({
 }) {
   const subtasks = item.subtasks ?? []
   const filesCount = item.files?.length ?? 0
-  const assignee = String(item.properties.assignee || '')
+  const assignee = kanbanPersonName(item.properties.assignee)
 
   return (
     <div className='flex shrink-0 items-center gap-2 text-[length:var(--text-11)]'>
@@ -203,14 +205,7 @@ function ListRowTrailing({
           <span>{filesCount}</span>
         </span>
       )}
-      {assignee && (
-        <div
-          title={assignee}
-          className='flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[length:var(--text-10)] font-bold text-[var(--accent)]'
-        >
-          {assignee.slice(0, 2).toUpperCase()}
-        </div>
-      )}
+      {assignee && <KanbanPersonAvatar name={assignee} />}
     </div>
   )
 }

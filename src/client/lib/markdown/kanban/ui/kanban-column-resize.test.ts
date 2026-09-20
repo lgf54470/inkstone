@@ -73,6 +73,7 @@ function mountTable(
       onUpdateFiles: vi.fn(),
       onAddItem: vi.fn(),
       onAddColumn: vi.fn(),
+      people: {},
       onSortColumn,
       onResizeColumn,
     })
@@ -193,6 +194,7 @@ describe('the resize handle', () => {
       onUpdateFiles: vi.fn(),
       onAddItem: vi.fn(),
       onAddColumn: vi.fn(),
+      people: {},
       onSortColumn: vi.fn(),
     }))
     mounted.push(rendered)

@@ -2791,6 +2791,12 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/outline.ts', [
     '// \\[ and \\] are literal brackets in a title, not the start of a property tag.',
   ]],
+  ['src/client/lib/markdown/kanban/person.ts', [
+    '/**\n * A person is stored as the name the author typed. Anything that is not a name — a blank, an\n * object, a list of tags — means the card holds nobody, so no surface has to re-derive it.\n */',
+    '/** The two letters an avatar shows. Every surface that draws a person uses these same two. */',
+    '/**\n * Who a member picker may offer: the directory the author declared for the column first, then the\n * people the cards already name by how often they appear and who showed up first. Names that differ\n * only in case or surrounding blanks are one person, spelled as they were first seen.\n */',
+    '/** The roster for every member column of a board, keyed by column id. */',
+  ]],
   ['src/client/lib/markdown/kanban/registry-description-renderer.test.ts', [
     '/**\n * A card description is rendered by the host, not by this module — the markdown renderer already\n * imports the kanban, so importing it back would close a cycle, and the renderer therefore travels\n * down as a mount option. That makes four layers of pass-through no unit test of the detail modal can\n * see: if the option stopped at the board root, the modal would quietly offer nothing while every\n * modal test stayed green. These cases mount a real board through the registry and read the result.\n */',
     '// The registry defers the root unmount by a microtask, and the detail modal lives in that root, so',
@@ -2909,6 +2915,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-calendar-view.test.ts', [
     '/**\n * The calendar view drew its own week twice over: seven message keys listed Sunday→Saturday, and the\n * cells under them were generated assuming Sunday as well — self-consistent, so nothing looked wrong,\n * but neither half could follow the reader. Both now come off one locale-derived number, and these\n * probes read the pair the reader actually sees: the label sitting over the column, and the date that\n * column\'s first cell creates an item for. Asserting one against the other is what catches a header\n * that moved while the grid stayed put, which neither half alone would notice.\n */',
     '// CLDR: the week opens Sunday in the US, Monday in China.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-card.test.ts', [
+    '/** The only `role=img` a card or a gallery tile draws is the one standing for a person. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-card.tsx', [
     '/** Alt+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */',
@@ -3168,6 +3177,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-item-detail-fields.tsx', [
     '/** The listbox the status trigger opens; `id` is the target of its `aria-controls`. */',
+    '/** A property whose control brings its own focus semantics: the label is not its `<label>`. */',
+    '/** Who this member picker may offer; only the cards that already name someone fill it in. */',
+    '/** Who each member column may offer, keyed by column id. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-item-detail.test.ts', [
     '/** The spies the cases assert on, plus whichever optional prop a case wants to hand the component. */',
@@ -3175,6 +3187,7 @@ const allowed = new Map([
     '// Previewing shows what the note will hold, so entering it is also the commit.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-item-detail.tsx', [
+    '/** Who each member column may offer, keyed by column id. */',
     '/** How this host turns description markdown into HTML; absent means the description stays source-only. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-label-language.test.ts', [
@@ -3222,6 +3235,19 @@ const allowed = new Map([
     '// The picker writes the identifier and the badge reads it back; if those two drift, the icon stops',
     '// drawing on the card and its raw stored text shows instead.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-person-picker.tsx', [
+    '/**\n * The one way a person is drawn. The cards, the list rows and the gallery footer all showed the\n * same two letters, so the letters and the name they stand for live here.\n */',
+    '/** What the column is called, so the control says whose member it picks. */',
+    '// A search that still leaves a teammate on screen means that teammate; creating a near-duplicate',
+    '// spelling of them is what the separate add button is for.',
+    '/** Everything about the panel that is not how it looks: what is open, what the search leaves. */',
+    '// Closing from inside the panel hands focus back to the trigger; a click elsewhere already put',
+    '// focus where the reader aimed it.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-person-roster.test.ts', [
+    '/**\n * F-11. Who a member picker may offer is decided where the board is mounted, not in the cell that\n * draws it, so these cases read a board end to end: the roster has to survive the current filter —\n * hiding a card must not make its teammate unassignable — and one choice has to reach the document\n * through the board\'s single commit path.\n */',
+    '/** `Otto` is the only name no visible card carries. */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-popover-aria.test.ts', [
     '/**\n * A kanban panel that only answers the pointer is half a control: the trigger never says whether\n * it is open, and nothing points from the button to the panel it produced, so a reader pressing\n * Enter hears "button" and no state (review #26/#29). The contract asserted here is the one\n * `components/overlay/submenu.tsx` already keeps for the app\'s other popovers — `aria-haspopup`\n * with the panel\'s role, `aria-expanded` following `open`, and `aria-controls` naming a panel that\n * carries that `id` and has an accessible name of its own. The trigger and the panel usually live\n * in two components, so the relation is only observable by mounting whoever owns `open`.\n */',
     '/**\n * Teardown belongs to the harness: a case that fails on its first assertion never reaches its own\n * `unmount()`, and the panel it left in `document.body` answers the next case\'s lookup first.\n */',
@@ -3244,6 +3270,7 @@ const allowed = new Map([
     '/**\n * How wide a column is drawn: a width the reader stored wins, and only the column\'s own default\n * remains otherwise. A stored width replaces the type\'s classes rather than adding to them, because\n * the title column\'s `flex-1 min-w-48` would grow past or floor whatever was asked for.\n */',
     '// The two columns the table draws itself have no entry in the document to store a width on, so a',
     '// handle on one of them would be a control that silently forgets what it was told.',
+    '/** Who the member picker may offer, per member column. Absent means only typed names are offered. */',
     '// Sorts read `properties[columnId]`, which attachments are not stored in, so the files column stays',
     '// a plain label.',
   ]],
@@ -3268,6 +3295,8 @@ const allowed = new Map([
     '// Batch assignment follows the active view\'s grouping property; a',
     '// multi-select column keeps its array shape.',
     '/** The two writers of the document itself rather than of a view: which view is open, and the board\'s title. */',
+    '// The roster a member picker offers: read off every card, so filtering the board down never',
+    '// removes a teammate from the list of people who can be assigned.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root.tsx', [
     '/** Passed down from the mount options: how the host renders description markdown. */',
@@ -3308,6 +3337,13 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-subtask-menu.tsx', [
     '// `Menu` closes after an item runs, so a row here only says what it does.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-table-group.tsx', [
+    '/** Who the member picker may offer, per member column. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-table-row.tsx', [
+    '/** Who the member picker may offer, per member column. */',
+    '/** The row\'s own checkbox: selecting a card is the one thing a row does outside its columns. */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-table-semantics.test.ts', [
     '/**\n * The board\'s table view is laid out with flex containers, so the markup gives no\n * clue that a value belongs to a column: a reader walks a row as one\n * undifferentiated run of controls (review #29). The roles asserted here are the\n * ones that relationship needs — and a row that spans the grid has to say how many\n * columns it covers, otherwise the column count a reader announces stops matching\n * the header, including after a column is hidden.\n */',
     '// selection column + title + status + spec + the appended attachments column',
@@ -3320,7 +3356,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-table-view.tsx', [
     '/** Absent when nothing can store a width, which is also what removes the resize handles. */',
+    '/** Who the member picker may offer, per member column. Derived from every card on the board, so\n   *  a filter cannot make a teammate unassignable. */',
     '// One batch commit: per-row toggles would queue one state update per item.',
+    '/** Who the member picker may offer, per member column. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-tag-picker.tsx', [
     '// The autoFocused input takes focus when the panel opens, so closing has to hand it',

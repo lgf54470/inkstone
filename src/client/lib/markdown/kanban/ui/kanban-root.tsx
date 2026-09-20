@@ -66,6 +66,7 @@ interface KanbanViewRendererProps {
   handleUpdateColumn: (groupKey: string, patch: KanbanColumnPatch) => void
   handleDeleteColumn: (groupKey: string) => void
   handleResizeColumn: (propertyId: string, width: number | undefined) => void
+  people: Record<string, string[]>
   handleUpdateTags?: (id: string, tags: string[], newOption?: KanbanOption) => void
   handleAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
@@ -97,6 +98,14 @@ function KanbanTimelineViews({ activeView, viewData, data, commitData, setDetail
 function kanbanItemWriter(data: KanbanData, commitData: (next: KanbanData) => void) {
   return (id: string, patch: Partial<KanbanItem>) =>
     commitData({ ...data, items: data.items.map((item) => (item.id === id ? { ...item, ...patch } : item)) })
+}
+
+function kanbanPropertyWriter(data: KanbanData, commitData: (next: KanbanData) => void) {
+  return (id: string, propertyId: string, value: unknown) => commitData({
+    ...data,
+    items: data.items.map((item) =>
+      item.id === id ? { ...item, properties: { ...item.properties, [propertyId]: value } } : item),
+  })
 }
 
 function BoardTableView(props: KanbanViewRendererProps) {
@@ -135,10 +144,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
       onToggleSelect={props.handleToggleSelect}
       onToggleAll={props.handleToggleAll}
       onOpenDetail={props.setDetailItem}
-      onUpdateProperty={(id, prop, val) => {
-        const next = props.data.items.map((it) => (it.id === id ? { ...it, properties: { ...it.properties, [prop]: val } } : it))
-        props.commitData({ ...props.data, items: next })
-      }}
+      onUpdateProperty={kanbanPropertyWriter(props.data, props.commitData)}
       onUpdateSubtasks={handleUpdateSubtasks}
       onUpdateFiles={props.handleUpdateFiles}
       onUpdateMultiSelect={props.handleUpdateMultiSelect}
@@ -146,6 +152,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
       onAddColumn={props.handleAddColumn}
       onSortColumn={props.handleToggleSortColumn}
       onResizeColumn={props.handleResizeColumn}
+      people={props.people}
     />
   )
 }
@@ -301,6 +308,7 @@ function KanbanMain({
         handleUpdateColumn={state.columnOps.handleUpdateColumn}
         handleDeleteColumn={state.columnOps.handleDeleteColumn}
         handleResizeColumn={state.schemaOps.resizeColumn}
+        people={state.people}
         handleUpdateTags={state.items.handleUpdateTags}
         handleAddColumnOption={state.columnOps.handleAddColumnOption}
       />
@@ -333,6 +341,7 @@ function KanbanRootOverlays({
       <KanbanItemDetail
         item={state.detailItem}
         columns={state.data.columns}
+        people={state.people}
         onClose={() => state.setDetailItem(null)}
         onUpdate={state.items.handleUpdateItem}
         onDelete={state.items.handleDeleteItem}

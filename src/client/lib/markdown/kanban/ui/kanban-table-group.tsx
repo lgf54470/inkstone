@@ -23,6 +23,8 @@ interface KanbanTableGroupProps {
   onUpdateMultiSelect: (itemId: string, columnId: string, values: string[], newOption?: KanbanOption) => void
   onUpdateSubtasks?: (itemId: string, subtasks: KanbanSubtask[]) => void
   onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
+  /** Who the member picker may offer, per member column. */
+  people?: Record<string, string[]>
   onAddItemInGroup: () => void
 }
 
@@ -129,6 +131,7 @@ export function KanbanTableGroup({
   onUpdateMultiSelect,
   onUpdateSubtasks,
   onUpdateFiles,
+  people,
   onAddItemInGroup,
 }: KanbanTableGroupProps) {
   const [collapsed, setCollapsed] = useState(false)
@@ -164,6 +167,7 @@ export function KanbanTableGroup({
                 onUpdateMultiSelect={onUpdateMultiSelect}
                 onUpdateSubtasks={onUpdateSubtasks}
                 onUpdateFiles={onUpdateFiles}
+                people={people}
               />
             ))}
           </div>

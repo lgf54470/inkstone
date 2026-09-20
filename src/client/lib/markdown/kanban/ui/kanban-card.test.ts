@@ -51,6 +51,36 @@ function renderCard(item: KanbanItem) {
   }
 }
 
+function renderGallery(items: KanbanItem[]) {
+  installTestGlobals()
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  const root = createRoot(container)
+  act(() => {
+    root.render(
+      createElement(KanbanGalleryView, {
+        data: { views: [], columns, items },
+        selectedIds: new Set<string>(),
+        onToggleSelect: vi.fn(),
+        onOpenDetail: vi.fn(),
+        onAddItem: vi.fn(),
+      })
+    )
+  })
+  return {
+    container,
+    dispose() {
+      act(() => root.unmount())
+      container.remove()
+    },
+  }
+}
+
+/** The only `role=img` a card or a gallery tile draws is the one standing for a person. */
+function avatarOf(container: HTMLElement): HTMLElement | null {
+  return container.querySelector<HTMLElement>('[role="img"]')
+}
+
 function cardCheckbox(container: HTMLElement): HTMLInputElement {
   const el = container.querySelector<HTMLInputElement>(
     `input[aria-label="${t('preview.kanban_select_card')}"]`,
@@ -73,32 +103,30 @@ describe('KanbanCard hover-only header row', () => {
   })
 })
 
-describe('KanbanGalleryView hover-only header row', () => {
-  function renderGallery(items: KanbanItem[]) {
-    installTestGlobals()
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    const root = createRoot(container)
-    act(() => {
-      root.render(
-        createElement(KanbanGalleryView, {
-          data: { views: [], columns, items },
-          selectedIds: new Set<string>(),
-          onToggleSelect: vi.fn(),
-          onOpenDetail: vi.fn(),
-          onAddItem: vi.fn(),
-        })
-      )
-    })
-    return {
-      container,
-      dispose() {
-        act(() => root.unmount())
-        container.remove()
-      },
-    }
-  }
+describe('the member an assignee row shows', () => {
+  const memberCard: KanbanItem = { id: 'c-3', title: 'Owned', properties: { assignee: 'Nora' } }
 
+  it('names a card avatar with the whole name, not with the two letters it shows', () => {
+    const { container, dispose } = renderCard(memberCard)
+    expect(avatarOf(container)?.getAttribute('aria-label')).toBe('Nora')
+    expect(avatarOf(container)?.textContent).toBe('NO')
+    dispose()
+  })
+
+  it('draws no avatar on a card nobody is assigned to', () => {
+    const { container, dispose } = renderCard(bareCard)
+    expect(avatarOf(container)).toBeNull()
+    dispose()
+  })
+
+  it('names the gallery footer avatar the same way', () => {
+    const { container, dispose } = renderGallery([memberCard])
+    expect(avatarOf(container)?.getAttribute('aria-label')).toBe('Nora')
+    dispose()
+  })
+})
+
+describe('KanbanGalleryView hover-only header row', () => {
   it('floats the checkbox row over the cover when the card has no tags', () => {
     const { container, dispose } = renderGallery([bareCard])
     expect(cardCheckbox(container).closest('.absolute')).not.toBeNull()

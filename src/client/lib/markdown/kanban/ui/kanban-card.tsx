@@ -4,11 +4,13 @@ import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
 import { getKanbanCardDate } from '../date-fields'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
+import { kanbanPersonName } from '../person'
 import type { KanbanColorName, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { CardHeader } from './kanban-card-header'
 import { KanbanCardSubtasks } from './kanban-card-subtasks'
 import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanPersonAvatar } from './kanban-person-picker'
 
 /** Alt+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */
 export type CardMoveDirection = 'prev' | 'next' | 'up' | 'down'
@@ -102,7 +104,7 @@ function CardFooter({
   priorityOpt?: { label: string; color?: KanbanColorName }
   filesCount: number
 }) {
-  const assignee = item.properties.assignee
+  const assignee = kanbanPersonName(item.properties.assignee)
   if (!priorityOpt && !assignee && !getKanbanCardDate(item) && filesCount === 0) return null
 
   return (
@@ -125,14 +127,7 @@ function CardFooter({
           </span>
         )}
       </div>
-      {Boolean(assignee) && (
-        <div
-          title={String(assignee)}
-          className='flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[length:var(--text-10)] font-bold text-[var(--accent)]'
-        >
-          {String(assignee).slice(0, 2).toUpperCase()}
-        </div>
-      )}
+      {assignee && <KanbanPersonAvatar name={assignee} />}
     </div>
   )
 }
