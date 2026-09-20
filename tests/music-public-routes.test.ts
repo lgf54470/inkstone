@@ -252,6 +252,20 @@ describe('public music routes (real D1 + fake R2)', () => {
     expect((await requestAs(app, `/api/blog/public/music/tracks/${track.id}/cover`, visitor)).status).toBe(200)
   })
 
+  // A preflight is an invitation: answering one for the music subtree with POST advertised
+  // claims a write surface the music routes do not have.
+  it('advertises only the methods each public surface answers', async () => {
+    await makeDb()
+    const app = makeApp()
+    const music = await request(app, '/api/blog/public/music/library', { method: 'OPTIONS' })
+    expect(music.status).toBe(204)
+    expect(music.headers.get('Access-Control-Allow-Origin')).toBe('*')
+    expect(music.headers.get('Access-Control-Allow-Methods')).toBe('GET, OPTIONS')
+
+    const blog = await request(app, '/api/blog/public/comments', { method: 'OPTIONS' })
+    expect(blog.headers.get('Access-Control-Allow-Methods')).toBe('GET, POST, OPTIONS')
+  })
+
   it('restricts the global publish switch to the owner account', async () => {
     const db = await makeDb()
     const app = makeApp()

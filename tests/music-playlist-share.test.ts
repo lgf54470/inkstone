@@ -123,6 +123,24 @@ describe('playlist share routes (real D1 + fake R2)', () => {
     expect(listed.playlists.find((entry) => entry.id === playlistId)?.shareSlug).toBe(payload.shareSlug)
   })
 
+  // The slug is the capability and the page that renders it is served from this origin, so no
+  // other site needs to read this JSON: it does not get the open origin the published library
+  // gets, which would let any page that learns a slug read the playlist in a visitor's browser.
+  it('withholds the open cross-origin grant from a shared playlist and its media', async () => {
+    await makeDb()
+    const app = makeApp()
+    const playlistId = await createPlaylist(app, 'Night Drive')
+    const track = await uploadTrack(app, 'first.mp3')
+    await addItem(app, playlistId, track.id!)
+    const slug = (await (await share(app, playlistId)).json() as { shareSlug: string }).shareSlug
+
+    const page = await request(app, `/api/blog/public/music/playlists/${slug}`)
+    expect(page.status, await page.clone().text()).toBe(200)
+    expect(page.headers.get('Access-Control-Allow-Origin')).toBeNull()
+    expect((await request(app, `/api/blog/public/music/playlists/${slug}/tracks/${track.id}/stream`)).headers.get('Access-Control-Allow-Origin')).toBeNull()
+    expect((await request(app, `/api/blog/public/music/playlists/${slug}/tracks/${track.id}/cover`)).headers.get('Access-Control-Allow-Origin')).toBeNull()
+  })
+
   it('keeps the handed-out link stable when sharing again', async () => {
     await makeDb()
     const app = makeApp()

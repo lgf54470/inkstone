@@ -33,18 +33,36 @@ function registerPublicMusicRoutes(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.route('/music', musicPublicRoutes)
 }
 
+const MUSIC_PREFIX = '/api/blog/public/music'
+const SHARED_PLAYLIST_PREFIX = '/api/blog/public/music/playlists/'
+
+// The published library and the media it points at are read by the blog player from another
+// origin, so those answers keep the open origin. A shared playlist is not in that position: its
+// slug is the capability and the page that renders it is served from this origin, so granting it
+// `*` would let any page that learns a slug read the playlist out of a visitor's browser.
+function openToAnyOrigin(path: string): boolean {
+  return !path.startsWith(SHARED_PLAYLIST_PREFIX)
+}
+
+// A preflight is an invitation, so it advertises only what the path really answers: the music
+// subtree underneath is read-only, and the POST belongs to the blog's comment form.
+function allowedMethods(path: string): string {
+  return path.startsWith(MUSIC_PREFIX) ? 'GET, OPTIONS' : 'GET, POST, OPTIONS'
+}
+
 // Audio and artwork routes build their own Response, which drops headers set on the context,
 // so the origin has to be stamped on the final response to keep cross-origin playback working.
 function registerBlogCorsMiddleware(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.use('*', async (c, next) => {
+    const path = c.req.path
     if (c.req.method === 'OPTIONS') {
       c.header('Access-Control-Allow-Origin', '*')
-      c.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      c.header('Access-Control-Allow-Methods', allowedMethods(path))
       c.header('Access-Control-Allow-Headers', 'Content-Type')
       return c.body(null, 204)
     }
     await next()
-    c.res.headers.set('Access-Control-Allow-Origin', '*')
+    if (openToAnyOrigin(path)) c.res.headers.set('Access-Control-Allow-Origin', '*')
   })
 }
 

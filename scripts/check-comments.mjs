@@ -5078,6 +5078,12 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/blog/public.ts', [
     '// The blog player reads the owner\'s music library read-only, gated by the publish switch.',
+    '// The published library and the media it points at are read by the blog player from another',
+    '// origin, so those answers keep the open origin. A shared playlist is not in that position: its',
+    '// slug is the capability and the page that renders it is served from this origin, so granting it',
+    '// `*` would let any page that learns a slug read the playlist out of a visitor\'s browser.',
+    '// A preflight is an invitation, so it advertises only what the path really answers: the music',
+    '// subtree underneath is read-only, and the POST belongs to the blog\'s comment form.',
     '// Audio and artwork routes build their own Response, which drops headers set on the context,',
     '// so the origin has to be stamped on the final response to keep cross-origin playback working.',
     '// Routes that know their own lifetime (artwork, audio) keep the header they set.',
@@ -5429,6 +5435,9 @@ const allowed = new Map([
     '// Rows the account already has must not count against the quota twice.',
   ]],
   ['tests/music-playlist-share.test.ts', [
+    '// The slug is the capability and the page that renders it is served from this origin, so no',
+    '// other site needs to read this JSON: it does not get the open origin the published library',
+    '// gets, which would let any page that learns a slug read the playlist in a visitor\'s browser.',
     '// Manual order: second was added first, so the public page must show it first.',
     '// The container extension is not the kind: a shared page that cannot read the mime has',
     '// to guess, and guessing wrong gives a reader a silent box instead of a picture.',
@@ -5446,6 +5455,8 @@ const allowed = new Map([
     '// of the deployment as fast as it could open sockets.',
     '// The next visitor is not charged for the first one\'s traffic.',
     '// Spending the playback allowance leaves the artwork allowance intact.',
+    '// A preflight is an invitation: answering one for the music subtree with POST advertised',
+    '// claims a write surface the music routes do not have.',
   ]],
   ['tests/music-routes.test.ts', [
     '// Rows straight into the table, no upload round trip: these tests are about the size of the',
