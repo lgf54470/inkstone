@@ -482,3 +482,10 @@
 - 局限（如实登记）：①这条行为**无法用 vitest 断言**——测试走 `vitest.config.ts`，`server.fs.*` 只在 dev 服务器生效，仓内也没有 vite.config 级别的测试基座；证据是 curl 状态码 + 变异，属「手动验证步骤」而非自动化门禁，将来谁把这一行删掉不会有测试变红。②`blog-frontend/` 的 Astro dev（4321）在 worktree 里是否同病**未验证**（其 `astro.config.mjs` 没有任何 `fs` 配置，也没跑起来看）；若复现，按同一手法补，不猜。③`npm run build` 不走 `fs.allow`，SH-46 轮次已在同一 worktree 里构建成功，故本缺陷不影响构建产物。
 - 副作用一条（如实报）：用户那个 7712 实例是**前台跑着的 dev 服务器**，而 `vite.config.ts` 是它的监听目标——我为了让补丁生效而反复改这一个文件（写补丁 → M1 变异 → 还原），每次都触发它 `restarting server...`。改完后该进程仍持旧配置（字体照旧 403），且 `/` 现在回 404（`Cannot GET /`，带 Worker 的 CSP 头，即 worker 在、静态资源路由没接上），是连续重启把 `@cloudflare/vite-plugin` 的 assets 通道留在了坏状态。**处置**：在那个终端按 Ctrl-C 后重跑 `npm run dev`，起来即是补丁后的配置；我没有替用户杀进程。给下一次的动作约束：**用户实例跑着时不要改它监听的配置文件**，验证一律另起端口（本次 7799 用的就是 `INKSTONE_EPHEMERAL_DEV=1 npx vite --port 7799`，不碰持久化状态）。
 - 验证：`tsc -b --force` 绿；13 项静态门禁全绿（`comments:check` 首跑拦下新注释，按流程 `sync-comments-allowlist.mjs` 登记后复绿：564 文件/3760 条）；pre-commit 钩子的增量 `vitest related` 报 "No test files found"（配置与门禁脚本没有相关测试，属预期，不是跳过）；全量回归 249 文件/1928 测试绿（REGRESSION_EXIT=0，detached 快照 `/tmp/snapI`，按本文件标准串行 `--no-file-parallelism --testTimeout=30000`，543.44s；与 SH-46 轮次同基数 249/1928，本批改动的确不带测试）。fix 提交 ceec8088。
+
+## 53 — 分支合入本地 dev（2026-09-20）
+
+- 用户指示 "merge to dev branch"。合并前实测：主检出 `dev` 工作区干净（`git status --porcelain --untracked-files=no` 空），`origin/dev...dev` 为 `0 0`（无远端分叉），`dev...share-improvement-qoder-qwen38f` 为 `0 103`（share 分支完整包含 dev 顶点），且 `git rev-list --merges --count dev` 为 **0**——本仓 dev 历史是线性的。因此用 `git merge --ff-only`，不造 merge commit，与既有历史形态一致。
+- 合并后 dev == ffe92db9，领先 `origin/dev` 103 个提交。**远端未 push**（用户此前定的口径：push 需先征询）。
+- 合并后在主检出（`node_modules` 是真实目录而非 worktree 软链，与快照环境不同）复验两条：`npx tsc -b --force` exit 0（71.68s）、`npm run build` exit 0。全量测试未在此重跑——合并的树与 §52 里 detached 快照跑过串行全量回归（249 文件/1928 测试，exit 0，543.44s）的是同一个提交，字节等价。
+- 副作用一条：其余审计分支（attachments `38cf4766`、music `31a26d14`、slides `efe50499`、blog `68788fac`、kanban 若干）现在都落后 dev 103 个提交，其中与 share 分支重叠的文件（`src/shared/locales/*`、`scripts/check-comments.mjs` 白名单、`tests/`、`components/form.tsx` 等）在各自 rebase/合并时预期会冲突，届时以 dev 为准逐块复核，不要整文件取一侧。
