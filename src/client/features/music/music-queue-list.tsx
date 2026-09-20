@@ -139,10 +139,13 @@ function QueueRowItem({
       <MusicArtwork url={row.track.coverUrl} alt='' className='size-6 rounded-[var(--r-xs)]' iconSize={10} />
       <button
         type='button'
+        aria-current={isCurrent ? 'true' : undefined}
         onClick={() => void playQueueAt(row.index)}
         className='min-w-0 flex-1 truncate text-left text-[length:var(--text-12)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
       >
-        {row.track.title}{isCurrent && isPlaying ? ' ♪' : ''}
+        {row.track.title}
+        {/* Decorative: the note is the visual twin of aria-current, so it stays out of the name. */}
+        {isCurrent && isPlaying && <span aria-hidden='true'> ♪</span>}
       </button>
       {/* The current row carries a 14% accent tint; the dim tiers fall under AA on it — even
           tertiary, measured over the immersive player's --bg-overlay — so that row's duration

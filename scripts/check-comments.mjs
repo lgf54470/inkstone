@@ -1542,6 +1542,7 @@ const allowed = new Map([
     '// takes the next free one so play/remove hit the right row.',
     '// The dragged row\'s queue position travels as plain text, same as the playlist',
     '// rows, so a drop outside any queue row simply cannot reorder anything.',
+    '/* Decorative: the note is the visual twin of aria-current, so it stays out of the name. */',
     '/* The current row carries a 14% accent tint; the dim tiers fall under AA on it — even\n          tertiary, measured over the immersive player\'s --bg-overlay — so that row\'s duration\n          takes two tiers up, same rule as the sidebar\'s count badge. */',
   ]],
   ['src/client/features/music/music-search-box.test.ts', [

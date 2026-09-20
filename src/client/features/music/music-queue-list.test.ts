@@ -124,6 +124,44 @@ function seedQueue(moveQueueItem = vi.fn()) {
   return moveQueueItem
 }
 
+describe('MusicQueueList current row semantics (UI-19)', () => {
+  function titleButton(title: string): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('button')].find((button) => button.textContent?.startsWith(title))
+  }
+
+  function seedPlaying(currentIndex: number): void {
+    useMusic.setState({
+      tracks: [track('a'), track('b')],
+      queue: ['a', 'b'],
+      currentIndex,
+      isPlaying: true,
+      removeFromQueue: vi.fn(),
+      playQueueAt: vi.fn(async () => {}),
+      moveQueueItem: vi.fn(),
+    })
+  }
+
+  it('marks the row of the playing track as the current one', async () => {
+    seedPlaying(1)
+    await mountList()
+    expect(titleButton('a')?.getAttribute('aria-current')).toBeNull()
+    expect(titleButton('b')?.getAttribute('aria-current')).toBe('true')
+  })
+
+  it('keeps the playing note out of the button text a screen reader reads', async () => {
+    seedPlaying(0)
+    await mountList()
+    const marker = titleButton('a')?.querySelector('[aria-hidden="true"]')
+    expect(marker?.textContent?.trim()).toBe('♪')
+  })
+
+  it('leaves the rows that are not playing unmarked', async () => {
+    seedPlaying(0)
+    await mountList()
+    expect(titleButton('b')?.querySelector('[aria-hidden="true"]')).toBeNull()
+  })
+})
+
 describe('MusicQueueList reorder affordances', () => {
   it('moves a dragged row onto the queue position it was dropped on', async () => {
     const moveQueueItem = seedQueue()
