@@ -297,11 +297,15 @@ const RESERVED_SLUGS = new Set([
   'logout',
 ])
 
+export function isReservedSlug(slug: string): boolean {
+  return RESERVED_SLUGS.has(slug.trim().toLowerCase())
+}
+
 export function isValidCustomSlug(slug: string): boolean {
   if (!slug || typeof slug !== 'string') return false
   const trimmed = slug.trim()
-  if (trimmed.length < 6 || trimmed.length > 64) return false
-  if (RESERVED_SLUGS.has(trimmed.toLowerCase())) return false
+  if (trimmed.length < LIMITS.shareSlugMinLength || trimmed.length > LIMITS.shareSlugMaxLength) return false
+  if (isReservedSlug(trimmed)) return false
   return /^[a-zA-Z0-9_-]+$/.test(trimmed)
 }
 

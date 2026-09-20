@@ -7,7 +7,7 @@ import { errorMessage } from '../../../lib/errors'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
 import type { UiState } from '../../../store/ui'
-import { KEEP_CURRENT_EXPIRY, expiresInForSelection, needsNewSharePasscode } from '../share-form'
+import { KEEP_CURRENT_EXPIRY, expiresInForSelection, isValidCustomSlugFormat, needsNewSharePasscode } from '../share-form'
 import { useShareStore } from '../share-store'
 
 export function useShareEditModal({
@@ -112,6 +112,13 @@ function useShareEditFields(open: boolean, share: ShareInfo | null) {
   }
 }
 
+function slugRejectionMessage(): string {
+  return t('share.custom_slug_invalid', {
+    min: LIMITS.shareSlugMinLength,
+    max: LIMITS.shareSlugMaxLength,
+  })
+}
+
 function useCustomSlugCheck(open: boolean, enabled: boolean, customSlug: string, currentSlug: string | null, noteId: string) {
   const [isSlugChecking, setIsSlugChecking] = useState(false)
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
@@ -124,9 +131,9 @@ function useCustomSlugCheck(open: boolean, enabled: boolean, customSlug: string,
       return
     }
     const trimmed = customSlug.trim()
-    if (!/^[a-zA-Z0-9_-]{6,64}$/.test(trimmed)) {
+    if (!isValidCustomSlugFormat(trimmed)) {
       setSlugAvailable(false)
-      setSlugError(t('share.custom_slug_invalid'))
+      setSlugError(slugRejectionMessage())
       return
     }
     if (currentSlug === trimmed) {
@@ -250,7 +257,7 @@ async function saveEditShareFlow({ share, noteId, fields, slug, setIsSaving, toa
     return
   }
   if (fields.shouldUseCustomSlug && slug.slugAvailable === false) {
-    toast({ title: slug.slugError || t('share.custom_slug_invalid'), tone: 'danger' })
+    toast({ title: slug.slugError || slugRejectionMessage(), tone: 'danger' })
     return
   }
   setIsSaving(true)

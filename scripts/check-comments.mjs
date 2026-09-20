@@ -2960,6 +2960,7 @@ const allowed = new Map([
     '// must be able to tell a missing share apart from a failed load in the logs.',
   ]],
   ['src/client/features/share/share-form.ts', [
+    '/**\n * The client half of the custom slug rule: the same LIMITS the server enforces,\n * so the hint a person reads can never promise a length the API then rejects.\n */',
     '// A new or replaced passcode must meet LIMITS.sharePasscodeMinLength (the',
     '// server enforces the same minimum); short codes are trivially brute-forced.',
   ]],

@@ -5,7 +5,7 @@ import { ApiError } from '../../lib/errors'
 import { isValidId, newSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { hashPassword } from '../../lib/password'
-import { isValidCustomSlug } from '../../lib/share-analytics'
+import { isReservedSlug, isValidCustomSlug } from '../../lib/share-analytics'
 import { revokeSharesForNotes } from './batch'
 import { shareCreateSchema } from './schemas'
 import { ShareRow, toShareInfo } from './shares'
@@ -118,7 +118,7 @@ async function resolveShareSlug(
   const custom = customSlug.trim()
   if (!custom) return targetSlug
   if (!isValidCustomSlug(custom)) {
-    throw ApiError.badRequest('Custom slug can only contain letters, numbers, hyphens, and underscores (3-64 chars)')
+    throw ApiError.badRequest(customSlugRejectionMessage(custom))
   }
   const collision = await db.prepare(
     `SELECT note_id FROM shares WHERE slug = ?1 AND note_id != ?2`,
@@ -129,6 +129,11 @@ async function resolveShareSlug(
     throw ApiError.conflict('This custom link is already in use by another share')
   }
   return custom
+}
+
+function customSlugRejectionMessage(slug: string): string {
+  if (isReservedSlug(slug)) return 'This custom link is reserved by the app; choose another one'
+  return `Custom slug can only contain letters, numbers, hyphens, and underscores (${LIMITS.shareSlugMinLength}-${LIMITS.shareSlugMaxLength} chars)`
 }
 
 function validateShareAccessOptions(body: {

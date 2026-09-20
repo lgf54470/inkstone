@@ -8,6 +8,18 @@ export function expiresInForSelection(selection: string): number | null | undefi
   return Number.isFinite(milliseconds) && milliseconds > 0 ? milliseconds : null
 }
 
+const CUSTOM_SLUG_PATTERN = new RegExp(
+  `^[a-zA-Z0-9_-]{${LIMITS.shareSlugMinLength},${LIMITS.shareSlugMaxLength}}$`,
+)
+
+/**
+ * The client half of the custom slug rule: the same LIMITS the server enforces,
+ * so the hint a person reads can never promise a length the API then rejects.
+ */
+export function isValidCustomSlugFormat(value: string): boolean {
+  return CUSTOM_SLUG_PATTERN.test(value)
+}
+
 export function needsNewSharePasscode(
   enabled: boolean,
   alreadyProtected: boolean,

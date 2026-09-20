@@ -17,6 +17,7 @@ import { errorResponse } from '../src/worker/lib/errors'
 import { hashPassword } from '../src/worker/lib/password'
 import { computeVisitorFingerprint } from '../src/worker/lib/share-analytics'
 import { purgeExpiredOperationalData } from '../src/worker/lib/maintenance'
+import { LIMITS } from '../src/shared/constants'
 import { shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
 import { createD1Database as createDb, captureSql, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
@@ -1421,5 +1422,46 @@ describe('share slug consistency (SH-13)', () => {
     expect(res.status).toBe(200)
     expect(await firstRow(db, 'SELECT id FROM share_asset_sessions WHERE slug = ?1', 'sess-slug')).toBeNull()
     expect(await firstRow(db, 'SELECT slug FROM shares WHERE note_id = ?1', n1)).toBeNull()
+  })
+})
+
+describe('custom slug rejection copy (SH-84)', () => {
+  async function appWithNote() {
+    const db = await makeDb()
+    await seedUser(db)
+    const noteId = await seedNote(db, { title: 'Slug note' })
+    return { db, noteId, app: makeApp() }
+  }
+
+  it('reports the real 6-64 bound instead of the stale 3-64 copy', async () => {
+    const { app, noteId } = await appWithNote()
+    const res = await postJson(app, `/api/share/${noteId}`, { customSlug: 'abc' })
+
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error.message).toContain(`${LIMITS.shareSlugMinLength}-${LIMITS.shareSlugMaxLength} chars`)
+    expect(body.error.message).not.toContain('3-64')
+  })
+
+  it('names the reserved list when that is the rule that was broken', async () => {
+    const { app, noteId } = await appWithNote()
+    const res = await postJson(app, `/api/share/${noteId}`, { customSlug: 'dashboard' })
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error.message).toMatch(/reserved/i)
+  })
+
+  it('accepts both boundary lengths and rejects one over the ceiling', async () => {
+    const { app, noteId } = await appWithNote()
+    const shortest = await postJson(app, `/api/share/${noteId}`, { customSlug: 'a'.repeat(LIMITS.shareSlugMinLength) })
+    expect(shortest.status).toBe(200)
+
+    const tooLong = await postJson(app, `/api/share/${noteId}`, {
+      customSlug: 'b'.repeat(LIMITS.shareSlugMaxLength + 1),
+    })
+    expect(tooLong.status).toBe(400)
+
+    const longest = await postJson(app, `/api/share/${noteId}`, { customSlug: 'c'.repeat(LIMITS.shareSlugMaxLength) })
+    expect(longest.status).toBe(200)
   })
 })

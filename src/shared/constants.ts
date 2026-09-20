@@ -38,6 +38,8 @@ export const SESSION_RENEW_BEFORE_MS = SESSION_TTL_MS / 2
 export const LIMITS = {
   passwordMaxLength: 128,
   sharePasscodeMinLength: 8,
+  shareSlugMinLength: 6,
+  shareSlugMaxLength: 64,
   titleMaxLength: 512,
   shareReferrerMaxLength: 512,
   contentMaxBytes: 2 * 1024 * 1024,

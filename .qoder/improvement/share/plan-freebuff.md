@@ -30,8 +30,8 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | 01 | — | — | 落盘复评报告 `review-round2.md` + 本台账 | 小 | ✅ | ef056537 |
 | 02 | A | SH-78 | `GET /api/share/visits` 的 `page`/`limit` 未校验 → NaN 绑定必现 500 | 极小 | ✅ | 76a1f76a |
-| 03 | A | SH-79 | 日志 CSV 未做 RFC 4180 转义 + 无公式注入防护 | 极小 | ✅ | ⏳ 下项回填 |
-| 04 | A | SH-84 | 自定义 slug 报错文案写 "3-64 chars"，实际 6–64 | 极小 | ⬜ | |
+| 03 | A | SH-79 | 日志 CSV 未做 RFC 4180 转义 + 无公式注入防护 | 极小 | ✅ | d7eadd4a |
+| 04 | A | SH-84 | 自定义 slug 报错文案写 "3-64 chars"，实际 6–64 | 极小 | ✅ | ⏳ 下项回填 |
 | 05 | A | SH-80 | `loadTopNotes` 查笔记标题不带 `user_id` | 极小 | ⬜ | |
 | 06 | A | SH-82 | 日志接口下发完整指纹 + SELECT 从不返回的 `user_agent` | 极小 | ⬜ | |
 | 07 | A | SH-71 | 两个 analytics hook 无 abort/epoch → 慢请求覆盖新请求 | 小 | ⬜ | |
@@ -92,4 +92,22 @@
 - 复现（先红）：新增 `share-visit-logs-csv.test.ts`（5 用例，先红 3 红 2 绿），断言「每列都引用、引号翻倍、逗号/引号/换行留在列内、`= + - @` 前缀被中和、Type 列标注不变」。
 - 改动面（3 文件）：`share-helpers.ts` 新增 `csvCell()`——所有单元格一律引用并翻倍内部引号，C0 控制字符（含 CR/LF）替换为空格以保证「一条访问一行」，首字符为 `= + - @` 时前缀 `'` 中和公式；表头同样走该函数，行分隔符改用 RFC 4180 的 `CRLF`。`share-visit-logs-csv.test.ts` 新文件（含 12 列名的往返解析断言，证明没有单元格漏进下一列）。`scripts/check-comments.mjs` 同步登记本项新增注释。
 - 验证：定向 5/5 绿；`npx vitest run src/client/features/share tests/share-routes.test.ts` 25 文件 / 185 用例全绿（含既有被 mock 的 `share-visit-logs-export.test.ts`，导出分页契约未破）；`npx tsc -b --force` exit 0；`comments:check`（4943 条 / 680 文件）、`style:check`、`escape:check`、`hardcoded:check`、`size:check` 全绿。
-- 局限（如实登记）：`markdown/table-editor.ts` 的 `tableToCsv()` 与 `blog-links-view/link-import-export-modal.tsx` 的 `generateCsv()` 是同类 CSV 写入点、同样未做转义/中和，本项按「不顺手改无关模块」只记录不修改，另立条目跟踪。`URL.revokeObjectURL` 紧跟 `a.click()` 调用在部分浏览器上可能打断下载，同样登记为后续条目。全量串行回归放在批次 A 收尾。
+- 局限（如实登记）：`markdown/table-editor.ts` 的 `tableToCsv()` 与 `blog-links-view/link-import-export-modal.tsx` 的 `generateCsv()` 是同类 CSV 写入点、同样未做转义/中和，本项按「不顺手改无关模块」只记录不修改，只能另立条目跟踪（见文末新发现）。`URL.revokeObjectURL` 紧跟 `a.click()` 调用在部分浏览器上可能打断下载，同样登记为后续条目。全量串行回归放在批次 A 收尾。
+
+### 04 — SH-84 自定义 slug 报错文案与实际规则不符（2026-09-21）
+
+- 根因：`src/worker/routes/share/note.ts` 的拒绝文案写死 `(3-64 chars)`，而 `isValidCustomSlug()` 实际要求 6–64；同一文案还拿来解释“保留字”失败——`settings`/`dashboard` 这类 6 位以上的保留字会被指控长度不对。`6`/`64` 本身是散落在服务端校验、客户端正则、locales 三处的魔法数字。
+- 复现（先红）：`tests/share-routes.test.ts` 新增 `custom slug rejection copy (SH-84)` 三条（修复前 3 红：文案仍含 `3-64`、保留字不提“reserved”、超长 slug 因 `LIMITS.shareSlugMaxLength` 未定义而误判为“没传 slug”并通过）。
+- 改动面（7 文件）：`src/shared/constants.ts` 新增 `LIMITS.shareSlugMinLength/MaxLength`（与 `sharePasscodeMinLength` 同位置的单一真相源）；`share-analytics.ts` 的校验改读 LIMITS 并新增导出的 `isReservedSlug()`；`note.ts` 新增 `customSlugRejectionMessage()`——保留字与格式/长度各给各的文案；客户端 `share-form.ts` 新增 `isValidCustomSlugFormat()`（正则由 LIMITS 拼出，替换 `use-share-edit-modal.ts` 里写死的 `{6,64}`）；locales 的 `share.custom_slug_invalid` 改为 `{min}-{max}` 插值并在两个调用点传参；新增 `share-form.test.ts`（3 用例，含“文案里的数字必须来自 LIMITS”）。
+- 验证：`tests/share-routes.test.ts` 73/73；`share-form.test.ts` 3/3；`npx tsc -b --force` exit 0；`i18n:check` 3139 键通过（首跑拦下测试里的中文字面量，已改为 `café-slug`）；`comments:check`（+1 条）、`style:check`、`size:check` 全绿；偏一起跑 `src/client/features/share` + `share-routes` + `share-analytics` + `i18n.test.ts` 共 28 文件 / 214 用例绿。
+- 设计取舍（如实登记）：可用性检查端点 `organizer.ts` 仍只回 `available: false`，**故意**不区分“非法”与“已被占用”（避免成为探测接口），因此客户端在保留字上仍显示“已被占用”文案；这是原设计意图，本项未改。演示模式 `demo/backend/routes/share-admin.ts` 根本不校验 slug，登记为新发现 SH-88 待批入队。
+
+## 新发现（本轮执行中登记，尚未并入已批准的 39 项队列）
+
+> 按 AGENTS「不顺手修无关问题」，这些不在当前批次里顺手改；等批准后再入队，编号从 SH-86 起。
+
+| 编号 | 位置 | 问题 | 建议 |
+| --- | --- | --- | --- |
+| SH-86 | `src/client/lib/markdown/table-editor.ts` 的 `tableToCsv()`、`src/client/features/blog/blog-links-view/link-import-export-modal.tsx` 的 `generateCsv()` | 与 SH-79 同类的 CSV 写入点：未做全列引用/引号翻倍，也未中和 `= + - @` 开头（复制表格为 CSV 与导出友链 CSV 都受影响） | 把 `csvCell()` 提到 `src/client/lib/csv.ts` 共享，三处共用同一实现与测试 |
+| SH-87 | `src/client/features/share/share-helpers.ts` 的 `exportVisitsToCsv()` 尾部 | `URL.revokeObjectURL(url)` 紧跟 `a.click()` 同步执行，部分浏览器上会在下载开始前撤销 blob URL | 改到 `setTimeout(..., 0)` 或 `requestAnimationFrame` 后撤销，并加回归测试 |
+| SH-88 | `src/client/demo/backend/routes/share-admin.ts` | 演示模式完全跳过 slug 校验（直接取 `body.customSlug`），真人可在体验版里设出真实 API 会拒绝的短链/保留字 | 复用 `isValidCustomSlug()` 与 `LIMITS.shareSlugMinLength/MaxLength`，行为与真实后端对齐 |
