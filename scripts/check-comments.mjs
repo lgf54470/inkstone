@@ -2722,6 +2722,20 @@ const allowed = new Map([
     '/** The name the card was last written under: what the composer offers so the next one need not type it. */',
     '/** A comment\'s first line, in as many characters as a control has room to name it with. */',
   ]],
+  ['src/client/lib/markdown/kanban/csv.test.ts', [
+    '/** The rows of an export, read back through the parser so a test never counts commas. */',
+  ]],
+  ['src/client/lib/markdown/kanban/csv.ts', [
+    '/**\n * CSV is how a board travels to and from a spreadsheet, so this layer has to answer two questions\n * nothing else in the module answers: how a stored value prints into one cell, and how the text a\n * spreadsheet wrote back becomes a stored value again.\n *\n * Two fields are named rather than declared, because a card keeps them outside `properties`: the\n * title, which leads every row, and the description, which the column with the id `description`\n * carries (the same three-way read the gallery excerpt uses). Everything else is the document\'s own\n * schema, so a board with no `Status` column exports no `Status` header either.\n */',
+    '/** More rows than this is the wrong file; importing it would bury the board the reader is on. */',
+    '/** What a filesystem refuses in a name, plus the control characters a path may not hold. */',
+    '/** The card\'s own text, read the way the surfaces that print it already read it. */',
+    '/** Read from just past a cell\'s opening quote to the quote that closes it, or to the end. */',
+    '// Only a quote at the start of a cell opens one; anywhere else it is the cell\'s own text.',
+    '/** The document\'s columns, extended with whatever groups the file named for the first time. */',
+    '/** A group the file mentions but the column never declared gets an option, so an imported card is\n *  not filed nowhere; the id follows the same slug rule the tag picker uses. */',
+    '// The description is the card\'s own body, not a stored value, so it travels outside `properties`.',
+  ]],
   ['src/client/lib/markdown/kanban/date-fields.ts', [
     '/**\n * Which property holds which day is decided once here: every surface that prints a date reads it\n * through these accessors, so an item cannot show one day on the board and another in the gallery.\n * `dueDate` is what the detail modal\'s due field writes, `endDate` is the generated schema\'s own\n * end column, and both are deadlines — a card carries at most one of them. Whether such a deadline\n * has been missed is decided here too, for the same reason: a badge that is late on one surface has\n * to be late on all of them.\n */',
     '/**\n * A stored date value as the day it names, or `\'\'` when it names none. A board authored elsewhere\n * may carry a time after the day, so the leading `YYYY-MM-DD` of an ISO timestamp still counts.\n */',
@@ -3118,6 +3132,22 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-convert-subtask.test.ts', [
     '// mirrors useKanbanHistory: functional updaters resolve against the latest data',
     '// the detail modal portals onto document.body, so query the whole document',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-csv.test.ts', [
+    '/**\n * F-08. A board that cannot leave for a spreadsheet has to be retyped by hand, and one that cannot\n * take a spreadsheet in cannot start from the rows someone else already wrote. These cases read the\n * header\'s CSV detour end to end: what lands in the browser\'s download, how a chosen file travels\n * into the document through the board\'s single commit path, and what the panel says when a file is\n * not what a board can swallow.\n */',
+    '/** The document the host was last handed — what one step of the board history wrote. */',
+    '// A chooser keeps whatever it was last given, so a second pick of the same file is only a',
+    '// change if the control is emptied behind the reader\'s back.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-csv.tsx', [
+    '/**\n * F-08. The fence is the board\'s own format, so a reader who works in a spreadsheet — or arrived\n * with one — needs a door in both directions. Both directions read and write through one document:\n * the file a reader picks is appended to the board in a single step of history, and the file the\n * board writes is the live board, so nothing that was filed away travels along.\n */',
+    '/** Only read through a call, so the message resolves against the live locale. */',
+    '/** The live board: an archived card is not part of what a spreadsheet should be handed. */',
+    '/** Stable across renders, so the memoised header is not woken by an unrelated keystroke. */',
+    '/**\n * The two doors themselves: what each writes, and the last thing either one answered. The file\n * chooser belongs here too, since emptying it is part of the import step rather than the toggle.\n */',
+    '// Empty the chooser first: the same file picked twice is not a change otherwise.',
+    '// The schema is only rewritten when the file named groups the board had never declared.',
+    '/**\n * The board\'s CSV door. The panel stays open after either direction runs, because its answer —\n * how many rows went out, which file the board refused — is the one thing the reader still needs\n * once the browser has taken the file or the picker has closed.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-date-badge.tsx', [
     '/**\n * The card date is printed by the board, the list and the gallery. Each of them used to paste its\n * own copy of that chip, which is how one card could read differently depending on where it was\n * looked at; the badge is drawn here once instead. A missed deadline is said in words and marked\n * with its own icon, because colour alone may not carry state (WCAG 1.4.1), and the day it refers\n * to stays reachable in the title.\n */',

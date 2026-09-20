@@ -12,6 +12,7 @@ import { initI18n, t } from '../../../i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
 import { KanbanArchiveAction } from './kanban-archive'
 import { KanbanColumnMenu } from './kanban-column-menu'
+import { KanbanCsvAction } from './kanban-csv'
 import { KanbanDatePicker } from './kanban-date-picker'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanIconPicker } from './kanban-icon-picker'
@@ -233,6 +234,33 @@ describe('KanbanArchiveAction dismissal', () => {
     const panel = openPanels()
     pressMouseDown(panel!)
     expect(openPanels(), 'a click inside the shelf dismissed it').toBe(panel)
+    pressMouseDown(document.body)
+    expect(openPanels()).toBeNull()
+  })
+})
+
+describe('KanbanCsvAction dismissal', () => {
+  function openDoor(): void {
+    mount(createElement(KanbanCsvAction, { title: 'Board', columns: COLUMNS, items: [], commitData: vi.fn() }))
+    const trigger = document.querySelector<HTMLButtonElement>('[data-kanban-csv]')
+    if (!trigger) throw new Error('the CSV trigger was not rendered')
+    act(() => {
+      trigger.click()
+    })
+  }
+
+  it('puts the CSV panel away with Escape', () => {
+    openDoor()
+    expect(openPanels(), 'the CSV panel did not open').not.toBeNull()
+    pressEscape()
+    expect(openPanels()).toBeNull()
+  })
+
+  it('puts the CSV panel away on a click outside, but not on a click inside it', () => {
+    openDoor()
+    const panel = openPanels()
+    pressMouseDown(panel!)
+    expect(openPanels(), 'a click inside the panel dismissed it').toBe(panel)
     pressMouseDown(document.body)
     expect(openPanels()).toBeNull()
   })

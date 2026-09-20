@@ -15,6 +15,7 @@ import { KanbanBoardView } from './kanban-board-view'
 import { KanbanCalendarView } from './kanban-calendar-view'
 import { KanbanChartView } from './kanban-chart-view'
 import { KanbanContextMenu } from './kanban-context-menu'
+import { useKanbanCsvEntry } from './kanban-csv'
 import { KanbanFilesScope } from './kanban-files-cell'
 import { KanbanGalleryView } from './kanban-gallery-view'
 import { KanbanGanttView } from './kanban-gantt-view'
@@ -225,6 +226,7 @@ function KanbanTopBar({
   onDiscardWrite?: () => void
   onToggleFullscreen?: () => void
 }) {
+  const csv = useKanbanCsvEntry(state.data, state.commitData)
   return (
     <KanbanHeader
       data={state.data}
@@ -256,6 +258,7 @@ function KanbanTopBar({
       onAddItem={() => state.adds.handleAddItem()}
       onToggleFullscreen={onToggleFullscreen}
       archive={state.archive}
+      csv={csv}
       viewPanelId={viewPanelId}
       unsaved={unsaved}
       onRetryWrite={onRetryWrite}

@@ -15,6 +15,7 @@ import { formatKanbanGroupLabel, formatKanbanPropertyName } from '../i18n-helper
 import { KanbanArchiveAction } from './kanban-archive'
 import { CardHeader } from './kanban-card-header'
 import { KanbanColumnHeader } from './kanban-column-header'
+import { KanbanCsvAction } from './kanban-csv'
 import { KanbanDatePicker } from './kanban-date-picker'
 import { KanbanHeader } from './kanban-header'
 import { KanbanItemDetail } from './kanban-item-detail'
@@ -208,6 +209,17 @@ const PAIRS: Pair[] = [
     panelRole: 'dialog',
   },
   { label: 'tag popover on a card', node: cardHeaderNode, trigger: (root) => namedButton(root, t('preview.kanban_new_tag')), panelRole: 'dialog' },
+  {
+    label: 'CSV door',
+    node: () => createElement(KanbanCsvAction, {
+      title: 'Board',
+      columns: COLUMNS,
+      items: [item],
+      commitData: vi.fn(),
+    }),
+    trigger: (root) => root.querySelector<HTMLElement>('[data-kanban-csv]'),
+    panelRole: 'dialog',
+  },
   {
     label: 'archive shelf',
     node: () => createElement(KanbanArchiveAction, {

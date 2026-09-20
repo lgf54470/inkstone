@@ -10,16 +10,12 @@ import {
   SlidersHorizontal,
   Undo2,
 } from 'lucide-react'
-import type {
-  KanbanData,
-  KanbanFilter,
-  KanbanSort,
-  KanbanView,
-} from '../types'
+import type { KanbanData, KanbanFilter, KanbanSort, KanbanView } from '../types'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { prettyCombo } from '../../../../lib/hotkeys'
 import { kanbanActiveItems } from '../archive'
 import { KanbanArchiveAction, type KanbanArchiveEntry } from './kanban-archive'
+import { KanbanCsvAction, type KanbanCsvEntry } from './kanban-csv'
 import type { KanbanSchemaOperations } from './kanban-column-hooks'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanProgressBar } from './kanban-progress-bar'
@@ -61,6 +57,7 @@ interface KanbanHeaderProps {
   onAddItem: () => void
   onToggleFullscreen?: () => void
   archive?: KanbanArchiveEntry
+  csv?: KanbanCsvEntry
   viewOps: KanbanViewOperations
   schemaOps?: KanbanSchemaOperations
   viewPanelId: string
@@ -420,6 +417,7 @@ function KanbanHeaderActions(props: HeaderActionsProps) {
       <KanbanFilterAction columns={columns} filters={filters} onChangeFilters={props.onChangeFilters} />
       <KanbanSortAction columns={columns} sorts={sorts} onChangeSorts={props.onChangeSorts} />
       {props.archive && <KanbanArchiveAction {...props.archive} />}
+      {props.csv && <KanbanCsvAction {...props.csv} />}
       {(activeView.type === 'board' || activeView.type === 'table') && (
         <KanbanViewOptionsAction
           columns={columns}
