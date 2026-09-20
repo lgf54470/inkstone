@@ -14,6 +14,12 @@ import { pathParam } from './params'
 
 const PLAYLIST_SELECT = 'id, name, description, is_pinned, is_favorite, share_slug, sort_order, created_at, updated_at'
 
+// Both write paths (one item, or a batch) answer to the same cap, so the rule lives in one
+// place: a request that would cross it is a full playlist, not an oversized payload.
+export function assertPlaylistHasRoom(current: number, incoming: number): void {
+  if (current + incoming > LIMITS.musicPlaylistItemsMax) throw ApiError.playlistFull()
+}
+
 export function registerMusicPlaylistRoutes(routes: Hono<AppBindings>): void {
   routes.get('/playlists', requireAuth, (c) => listPlaylists(c))
   routes.post('/playlists', requireAuth, (c) => createPlaylist(c))
@@ -120,7 +126,7 @@ async function addItem(c: Context<AppBindings>): Promise<Response> {
   if (!reads[0]?.results?.length) throw ApiError.notFound('Playlist not found')
   if (!reads[1]?.results?.length) throw ApiError.badRequest('The track does not exist')
   const count = countOf(reads[2])
-  if (count >= LIMITS.musicPlaylistItemsMax) throw ApiError.tooLarge('This playlist is full')
+  assertPlaylistHasRoom(count, 1)
   const id = newId()
   const [inserted] = await c.env.DB.batch([
     c.env.DB.prepare(
@@ -153,7 +159,7 @@ async function addItems(c: Context<AppBindings>): Promise<Response> {
   const existing = new Set(columnOf(reads[1], 'track_id'))
   const owned = new Set(reads.slice(2).flatMap((result) => columnOf(result, 'id')))
   const toInsert = wanted.filter((trackId) => owned.has(trackId) && !existing.has(trackId))
-  if (existing.size + toInsert.length > LIMITS.musicPlaylistItemsMax) throw ApiError.tooLarge('This playlist is full')
+  assertPlaylistHasRoom(existing.size, toInsert.length)
   const created = toInsert.map((trackId) => ({ id: newId(), trackId }))
   if (created.length) {
     const now = Date.now()

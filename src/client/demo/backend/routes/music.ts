@@ -49,9 +49,9 @@ async function createTrackHandler(c: Context, state: DemoState): Promise<Respons
   const trackType = demoTrackType(file)
   if (!trackType) return apiError(400, 'bad_request', 'Unsupported media format')
   if (file.size === 0) return apiError(400, 'bad_request', 'The media file is empty')
-  if (file.size > LIMITS.musicTrackMaxBytes) return apiError(413, 'payload_too_large', 'The media file exceeds the limit')
+  if (file.size > LIMITS.musicTrackMaxBytes) return apiError(413, 'media_too_large', 'The media file exceeds the limit')
   const used = [...state.musicTracks.values()].reduce((total, entry) => total + entry.track.sizeBytes, 0)
-  if (used + file.size > LIMITS.musicQuotaBytes) return apiError(413, 'payload_too_large', 'The music storage quota has been reached')
+  if (used + file.size > LIMITS.musicQuotaBytes) return apiError(413, 'storage_quota_reached', 'The music storage quota has been reached')
 
   const readText = (key: string): string => {
     const value = form.get(key)

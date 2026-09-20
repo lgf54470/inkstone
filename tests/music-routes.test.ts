@@ -302,6 +302,27 @@ describe('music routes (real D1 + fake R2)', () => {
     expect(empty.status).toBe(400)
   })
 
+  // The client turns this code into the sentence the reader sees, so a full library has to
+  // arrive as "out of space" rather than as the generic "the content is too large".
+  it('reports a full library as its own code, not as a payload that was too large', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES ('full-1', ?1, 'Space eater', '', '', 0, 'r2', '/music/full-1.mp3', 'audio/mpeg', ?2, NULL, NULL, 0, 0, 0, ?3, ?3)`,
+      USER, LIMITS.musicQuotaBytes, H.now,
+    )
+
+    const form = new FormData()
+    form.append('file', new File([AUDIO], 'next.mp3', { type: 'audio/mpeg' }))
+    const res = await request(app, '/api/music/tracks', { method: 'POST', body: form })
+    expect(res.status).toBe(413)
+    expect((await res.json() as { error: { code: string } }).error.code).toBe('storage_quota_reached')
+  })
+
   it('streams the whole object and honours a byte range', async () => {
     const db = await makeDb()
     await seedUser(db)
@@ -653,6 +674,19 @@ describe('music tag routes (real D1)', () => {
     expect(siblingDuplicate.status).toBe(409)
     const rootDuplicate = await json(app, '/api/music/tags', { name: 'Left' })
     expect(rootDuplicate.status).toBe(409)
+  })
+
+  // A name that is taken is not a stale write: the client would tell the reader to refresh
+  // and try again, which can never help. The code has to say what actually happened.
+  it('reports a taken tag name as its own code, not as a stale conflict', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    await json(app, '/api/music/tags', { name: 'Work' })
+
+    const duplicate = await json(app, '/api/music/tags', { name: 'Work' })
+    expect(duplicate.status).toBe(409)
+    expect((await duplicate.json() as { error: { code: string } }).error.code).toBe('tag_name_taken')
   })
 
   it('promotes children on delete without breaking scoped uniqueness', async () => {

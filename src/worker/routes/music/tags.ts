@@ -36,7 +36,7 @@ async function createTag(c: Context<AppBindings>): Promise<Response> {
     `INSERT OR IGNORE INTO music_tags (id, user_id, name, color, parent_id, is_pinned, sort_order, created_at)
      VALUES (?1, ?2, ?3, ?4, ?5, 0, 0, ?6)`,
   ).bind(id, userId, body.name, body.color ?? null, parentId, now).run()
-  if (!result.meta.changes) throw ApiError.conflict('A tag with this name already exists')
+  if (!result.meta.changes) throw ApiError.tagNameTaken()
   const created = await loadTag(c.env.DB, userId, id)
   if (!created) throw ApiError.internal('The tag could not be loaded after creation')
   return c.json(created, 201)
@@ -55,7 +55,7 @@ async function patchTag(c: Context<AppBindings>): Promise<Response> {
     await updateTag(c.env.DB, userId, id, body, parentId)
   } catch (error) {
     if (/UNIQUE constraint failed/i.test(error instanceof Error ? error.message : '')) {
-      throw ApiError.conflict('A tag with this name already exists')
+      throw ApiError.tagNameTaken()
     }
     throw error
   }

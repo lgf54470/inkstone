@@ -227,7 +227,7 @@ export async function putMusicObject(
   }, ctx.base.origin, false)
   if (response.status === 401) throw new ApiError(401, 'unauthenticated', 'The WebDAV credentials were rejected')
   if (response.status === 403) throw ApiError.forbidden('The WebDAV account has no write access')
-  if (response.status === 507) throw ApiError.tooLarge('The WebDAV server is out of storage')
+  if (response.status === 507) throw ApiError.storageQuotaReached('The WebDAV server is out of storage')
   if (!response.ok) throw new ApiError(502, 'storage_unavailable', `WebDAV upload failed: HTTP ${response.status}`)
 }
 

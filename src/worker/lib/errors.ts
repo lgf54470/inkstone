@@ -36,6 +36,21 @@ export class ApiError extends Error {
   static tooLarge(message: string) {
     return new ApiError(413, 'payload_too_large', message)
   }
+  /** The file itself is bigger than this deployment accepts, whatever the request size was. */
+  static mediaTooLarge(message: string) {
+    return new ApiError(413, 'media_too_large', message)
+  }
+  /** The library, or the upstream host behind it, is out of space rather than out of payload room. */
+  static storageQuotaReached(message: string) {
+    return new ApiError(413, 'storage_quota_reached', message)
+  }
+  /** A 409 that is not a stale write: the name is simply taken. */
+  static playlistFull() {
+    return new ApiError(413, 'playlist_full', 'This playlist is full')
+  }
+  static tagNameTaken() {
+    return new ApiError(409, 'tag_name_taken', 'A tag with this name already exists')
+  }
   static tooManyRequests(message = 'Too many requests') {
     return new ApiError(429, 'too_many_attempts', message)
   }

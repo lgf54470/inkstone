@@ -146,10 +146,10 @@ function stripExtension(filename: string): string {
   return (dot > 0 ? filename.slice(0, dot) : filename).slice(0, LIMITS.musicTitleMaxLength) || 'Untitled track'
 }
 
-function assertUploadSize(size: number, storage: ReturnType<typeof requireMusicStorage>): void {
-  if (size > MUSIC_MAX_BYTES) throw ApiError.tooLarge('The media file exceeds the 64 MB limit')
+export function assertUploadSize(size: number, storage: ReturnType<typeof requireMusicStorage>): void {
+  if (size > MUSIC_MAX_BYTES) throw ApiError.mediaTooLarge('The media file exceeds the 64 MB limit')
   if (size > maxUploadBytes(storage)) {
-    throw ApiError.tooLarge('This deployment stores music in KV, which caps a single file at 25 MB')
+    throw ApiError.mediaTooLarge('This deployment stores music in KV, which caps a single file at 25 MB')
   }
   if (size === 0) throw ApiError.badRequest('The media file is empty')
 }
@@ -158,7 +158,7 @@ async function assertQuota(db: D1Database, userId: string, incoming: number): Pr
   const row = await db.prepare('SELECT COALESCE(SUM(size_bytes), 0) AS bytes FROM music_tracks WHERE user_id = ?1')
     .bind(userId).first<{ bytes: number }>()
   if ((row?.bytes ?? 0) + incoming > LIMITS.musicQuotaBytes) {
-    throw ApiError.tooLarge('The music storage quota has been reached')
+    throw ApiError.storageQuotaReached('The music storage quota has been reached')
   }
 }
 

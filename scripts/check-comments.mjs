@@ -2899,6 +2899,13 @@ const allowed = new Map([
   ['src/client/lib/hotkeys.ts', [
     '// Gate consulted after the combo matched; returning false leaves the key to the page.',
   ]],
+  ['src/client/lib/i18n.test.ts', [
+    '// A music failure carries its own code, so the reader gets the reason it actually hit:',
+    '// borrowing the generic sentence for that status rewrote the story (a full playlist came',
+    '// back as "the content is too large", a taken tag name as "refresh and try again").',
+    '// The fallback stays for codes nobody wrote copy for; what it must not do is swallow a',
+    '// code that does have copy, which is how these music failures reached a generic sentence.',
+  ]],
   ['src/client/lib/i18n.ts', [
     '/** Provides typed runtime localization with on-demand locale loading. */',
     '// Preload the other locale in background for instant switching, but don\'t block init',
@@ -4847,6 +4854,9 @@ const allowed = new Map([
   ]],
   ['src/worker/lib/errors.ts', [
     '/**\n * Worker-side ApiError (producer of the HTTP boundary). Deliberately mirrors\n * the client\'s ApiError (src/client/lib/api.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the worker adds static\n * factories and a strict status union the client does not need.\n */',
+    '/** The file itself is bigger than this deployment accepts, whatever the request size was. */',
+    '/** The library, or the upstream host behind it, is out of space rather than out of payload room. */',
+    '/** A 409 that is not a stale write: the name is simply taken. */',
   ]],
   ['src/worker/lib/image.ts', [
     '// Malformed or truncated image data is routine for probes; degrade to unknown dimensions.',
@@ -5072,6 +5082,12 @@ const allowed = new Map([
     '// Shared by the authenticated library and the public blog player.',
     '// Shared by uploads and metadata refreshes; a failed cover write must not fail the caller.',
   ]],
+  ['src/worker/routes/music/error-codes.test.ts', [
+    '// A rejection only tells the reader what happened if it names its own reason, so these assert',
+    '// the status and code a boundary hands back rather than the English sentence it carries: the',
+    '// client turns the code into the localized copy, and a borrowed generic one rewrites the story',
+    '// (a full playlist read as "the content is too large").',
+  ]],
   ['src/worker/routes/music/index.ts', [
     '// M-53b: the bundle restore validates stored object references with the exact',
     '// rules the upload and WebDAV import paths enforce.',
@@ -5129,6 +5145,8 @@ const allowed = new Map([
     '// chunk serially used to cost the whole queue\'s latency.',
   ]],
   ['src/worker/routes/music/playlists.ts', [
+    '// Both write paths (one item, or a batch) answer to the same cap, so the rule lives in one',
+    '// place: a request that would cross it is a full playlist, not an oversized payload.',
     '// Idempotent: re-sharing keeps the link already handed out stable.',
     '// Existence, ownership and the cap probe share one read round trip; the write shares another.',
     '// Multi-select "add to playlist": one request for the whole selection. Ids the',
@@ -5355,6 +5373,10 @@ const allowed = new Map([
     '// Records every statement the route prepares, so round-trip redundancy is assertable.',
     '// Counts round trips, not statements: every execution inside one batch shares a',
     '// single call, while an execution outside a batch costs its own round trip.',
+    '// The client turns this code into the sentence the reader sees, so a full library has to',
+    '// arrive as "out of space" rather than as the generic "the content is too large".',
+    '// A name that is taken is not a stale write: the client would tell the reader to refresh',
+    '// and try again, which can never help. The code has to say what actually happened.',
     '// Only the playback row itself stays outside the batch that reads the tracks.',
   ]],
   ['tests/music-webdav-routes.test.ts', [
