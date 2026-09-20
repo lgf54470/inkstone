@@ -412,6 +412,53 @@ describe('music routes (real D1 + fake R2)', () => {
     expect(((await (await request(app, '/api/music/library')).json()).tracks)).toHaveLength(0)
   })
 
+  it('applies one tag to many tracks in a single batch request', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const first = await uploadTrack(app, 'one.mp3')
+    const second = await uploadTrack(app, 'two.mp3')
+    const tag = await (await json(app, '/api/music/tags', { name: 'Soundtrack' })).json()
+    const previous = await (await json(app, '/api/music/tags', { name: 'Previous' })).json()
+    await json(app, `/api/music/tracks/${first.id}`, { tagIds: [previous.id] }, 'PATCH')
+
+    const tagged = await json(app, '/api/music/tracks/batch', {
+      ids: [first.id, second.id], action: 'tag', tagIds: [tag.id],
+    })
+    expect(tagged.status).toBe(200)
+    expect((await tagged.json()).updated).toBe(2)
+
+    const library = await (await request(app, '/api/music/library')).json()
+    const tagsById = new Map(library.tracks.map((entry) => [entry.id, entry.tagIds]))
+    expect(tagsById.get(first.id)).toEqual([tag.id])
+    expect(tagsById.get(second.id)).toEqual([tag.id])
+  })
+
+  it('rejects a batch tag without tags and links nothing for tracks that are not the caller\'s', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const mine = await uploadTrack(app, 'mine.mp3')
+    const tag = await (await json(app, '/api/music/tags', { name: 'Soundtrack' })).json()
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES (?1, ?2, 'Theirs', '', '', 0, 'r2', ?3, 'audio/mpeg', 16, NULL, NULL, 0, 0, 0, ?4, ?4)`,
+      'foreign-1', 'user-2', 'music/2024-05-01/foreign-1.mp3', H.now,
+    )
+
+    const missingTags = await json(app, '/api/music/tracks/batch', { ids: [mine.id], action: 'tag' })
+    expect(missingTags.status).toBe(400)
+
+    const mixed = await json(app, '/api/music/tracks/batch', {
+      ids: [mine.id, 'foreign-1', 'ghost-1'], action: 'tag', tagIds: [tag.id],
+    })
+    expect(mixed.status).toBe(200)
+    const links = await queryRows(db, 'SELECT track_id FROM music_track_tags WHERE user_id = ?1 ORDER BY track_id', USER)
+    expect(links.map((row) => row.track_id)).toEqual([mine.id])
+  })
+
   it('batches a big selection without binding more ids than D1 accepts', async () => {
     const db = await makeDb()
     await seedUser(db)
@@ -423,6 +470,12 @@ describe('music routes (real D1 + fake R2)', () => {
     expect((await starred.json()).updated).toBe(150)
     const favorites = await queryRows(db, 'SELECT COUNT(*) AS count FROM music_tracks WHERE user_id = ?1 AND is_favorite = 1', USER)
     expect(Number(favorites[0]?.count)).toBe(150)
+
+    const tag = await (await json(app, '/api/music/tags', { name: 'Bulk' })).json()
+    const tagged = await json(app, '/api/music/tracks/batch', { ids, action: 'tag', tagIds: [tag.id] })
+    expect(tagged.status).toBe(200)
+    const links = await queryRows(db, 'SELECT COUNT(*) AS count FROM music_track_tags WHERE user_id = ?1', USER)
+    expect(Number(links[0]?.count)).toBe(150)
 
     const removed = await json(app, '/api/music/tracks/batch', { ids, action: 'delete' })
     expect(removed.status).toBe(200)

@@ -73,7 +73,11 @@ function registerBatchRoute(routes: Hono<AppBindings>): void {
   routes.post('/tracks/batch', requireAuth, async (c) => {
     const userId = c.get('userId')
     await enforceMusicBudget(c.env.DB, 'write', userId)
-    const { ids, action } = await readJsonValidated(c, batchTrackSchema, JSON_BODY_LIMITS.small)
+    const { ids, action, tagIds } = await readJsonValidated(c, batchTrackSchema, JSON_BODY_LIMITS.small)
+    if (action === 'tag') {
+      await tagTracks(c.env.DB, userId, ids, tagIds ?? [])
+      return c.json({ ok: true, updated: ids.length })
+    }
     const keys = await loadOwnedObjectKeys(c.env.DB, userId, ids)
     if (action === 'delete') {
       await deleteTracks(c.env, userId, ids, keys)
@@ -132,6 +136,30 @@ async function deleteTracks(env: AppBindings['Bindings'], userId: string, ids: s
       console.warn('[inkstone] music object cleanup failed:', error)
     })
   }
+}
+
+// One request replaces the tag set of every selected track, instead of one PATCH per track
+// burning through the hourly write budget and leaving half-applied batches behind. Ownership is
+// enforced inside the insert-select (a tag or track that is not the caller's links nothing), and
+// since the ids travel as JSON the bound-parameter count stays constant however long the list is.
+async function tagTracks(db: D1Database, userId: string, ids: string[], tagIds: string[]): Promise<void> {
+  const uniqueTags = [...new Set(tagIds)]
+  const statements: D1PreparedStatement[] = []
+  for (const part of chunkIds(ids, LIMITS.musicSqlIdChunkMax)) {
+    const placeholders = part.map((_, index) => `?${index + 2}`).join(', ')
+    statements.push(
+      db.prepare(`DELETE FROM music_track_tags WHERE user_id = ?1 AND track_id IN (${placeholders})`).bind(userId, ...part),
+      db.prepare(
+        `INSERT OR IGNORE INTO music_track_tags (user_id, track_id, tag_id)
+         SELECT ?1, tracks.value, tags.value
+           FROM json_each(?2) AS tracks
+           CROSS JOIN json_each(?3) AS tags
+           JOIN music_tags t ON t.id = tags.value AND t.user_id = ?1
+           JOIN music_tracks r ON r.id = tracks.value AND r.user_id = ?1`,
+      ).bind(userId, JSON.stringify(part), JSON.stringify(uniqueTags)),
+    )
+  }
+  await db.batch(statements)
 }
 
 async function setFlagForTracks(db: D1Database, userId: string, ids: string[], column: string, value: number): Promise<void> {

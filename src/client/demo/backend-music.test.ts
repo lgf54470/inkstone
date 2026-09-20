@@ -221,4 +221,21 @@ describe('demo music batch endpoints', () => {
     const library = await (await call(backend, '/api/music/library')).json()
     expect(library.tracks.every((entry: { isFavorite: boolean }) => entry.isFavorite)).toBe(true)
   })
+
+  it('tags a whole selection, dropping ids the demo does not know', async () => {
+    const backend = await authedBackend()
+    const first = await uploadTrack(backend)
+    const second = await uploadTrack(backend)
+    const tag = await call(backend, '/api/music/tags', jsonInit({ name: 'Bulk' }))
+    const tagId = (await tag.json()).id as string
+
+    const missing = await call(backend, '/api/music/tracks/batch', jsonInit({ ids: [first.id], action: 'tag' }))
+    expect(missing.status).toBe(400)
+
+    const batch = await call(backend, '/api/music/tracks/batch',
+      jsonInit({ ids: [first.id, second.id], action: 'tag', tagIds: [tagId, 'ghost'] }))
+    expect((await batch.json()).updated).toBe(2)
+    const library = await (await call(backend, '/api/music/library')).json()
+    expect(library.tracks.every((entry: { tagIds: string[] }) => entry.tagIds.join() === tagId)).toBe(true)
+  })
 })

@@ -138,11 +138,19 @@ async function batchTracksHandler(c: Context, state: DemoState): Promise<Respons
   const ids = Array.isArray(body.ids) ? body.ids.filter((id): id is string => typeof id === 'string') : []
   const action = String(body.action ?? '')
   if (!ids.length) return apiError(400, 'bad_request', 'Select at least one track')
+  const tagIds = Array.isArray(body.tagIds) ? body.tagIds.filter((id): id is string => typeof id === 'string') : []
+  if (action === 'tag' && !tagIds.length) return apiError(400, 'bad_request', 'Provide at least one tag')
   for (const id of ids) {
     const entry = state.musicTracks.get(id)
     if (!entry) continue
     if (action === 'delete') {
       removeTrackEverywhere(state, id)
+      continue
+    }
+    if (action === 'tag') {
+      // Same lens the single-track PATCH uses, so unknown tag ids are dropped in one place.
+      const next = { ...patchTrack(state, entry.track, { tagIds }), updatedAt: Date.now() }
+      state.musicTracks.set(id, { track: next, file: entry.file })
       continue
     }
     const flag = action === 'favorite' || action === 'unfavorite' ? 'isFavorite' : 'isPinned'

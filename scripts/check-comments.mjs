@@ -1120,6 +1120,7 @@ const allowed = new Map([
     '// Mirrors the worker\'s resolver: only containers a browser decodes are accepted, and a',
     '// declared video type outranks the filename because mp4 and webm carry either kind. The',
     '// demo keeps no storage keys, so `format` only names the download extension.',
+    '// Same lens the single-track PATCH uses, so unknown tag ids are dropped in one place.',
   ]],
   ['src/client/demo/blog-smoke.test.ts', [
     '// Every /api/blog/* route the client calls via src/client/lib/api/share.ts, with',
@@ -5084,6 +5085,8 @@ const allowed = new Map([
     '// else goes through the same whitelist the upload path uses.',
     '// The cap is shared with the client, which splits a bigger selection into several',
     '// requests rather than sending one this schema must reject.',
+    '// `tag` replaces the tags of every listed track with `tagIds`, the same way a single',
+    '// PATCH does, so moving a selection onto a tag costs one request instead of one per track.',
     '// WebDAV paths stay relative to the user\'s music directory: no traversal, no',
     '// absolute paths, no control characters, and never inside the app\'s own',
     '// storage namespace (those keys would enter the local object lifecycle).',
@@ -5109,6 +5112,10 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/music/tracks.ts', [
     '// Scanned artwork replaces the stored object; a decode failure keeps the previous cover.',
+    '// One request replaces the tag set of every selected track, instead of one PATCH per track',
+    '// burning through the hourly write budget and leaving half-applied batches behind. Ownership is',
+    '// enforced inside the insert-select (a tag or track that is not the caller\'s links nothing), and',
+    '// since the ids travel as JSON the bound-parameter count stays constant however long the list is.',
     '// Ownership is enforced by the insert-select, so a foreign tag id links nothing',
     '// and the whole rewrite stays inside one batched round trip.',
   ]],

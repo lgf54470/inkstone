@@ -44,10 +44,17 @@ export type SavePlaybackBody = z.infer<typeof savePlaybackSchema>
 
 // The cap is shared with the client, which splits a bigger selection into several
 // requests rather than sending one this schema must reject.
-export const batchTrackSchema = z.object({
-  ids: z.array(z.string().max(64)).min(1).max(LIMITS.musicBatchItemsMax),
-  action: z.enum(['favorite', 'unfavorite', 'pin', 'unpin', 'delete']),
-})
+// `tag` replaces the tags of every listed track with `tagIds`, the same way a single
+// PATCH does, so moving a selection onto a tag costs one request instead of one per track.
+export const batchTrackSchema = z
+  .object({
+    ids: z.array(z.string().max(64)).min(1).max(LIMITS.musicBatchItemsMax),
+    action: z.enum(['favorite', 'unfavorite', 'pin', 'unpin', 'delete', 'tag']),
+    tagIds: z.array(z.string().max(64)).max(50).optional(),
+  })
+  .refine((value) => value.action !== 'tag' || (value.tagIds?.length ?? 0) > 0, {
+    message: 'Provide at least one tag id for the tag action',
+  })
 
 export type BatchTrackBody = z.infer<typeof batchTrackSchema>
 
