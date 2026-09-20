@@ -9,6 +9,7 @@ import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { blogPublicRoutes } from '../src/worker/routes/blog'
 import { musicPageRoutes, musicRoutes } from '../src/worker/routes/music'
+import { MUSIC_PUBLIC_CACHE } from '../src/worker/routes/music/cache'
 import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
@@ -126,6 +127,20 @@ describe('playlist share routes (real D1 + fake R2)', () => {
   // The slug is the capability and the page that renders it is served from this origin, so no
   // other site needs to read this JSON: it does not get the open origin the published library
   // gets, which would let any page that learns a slug read the playlist in a visitor's browser.
+  // Revoking a link has to reach the media too: a cached public answer is served without asking
+  // the Worker whether the slug still exists. Artwork is covered by the library-wide case.
+  it('states a revocation window on a shared playlist and its playback', async () => {
+    await makeDb()
+    const app = makeApp()
+    const playlistId = await createPlaylist(app, 'Night Drive')
+    const track = await uploadTrack(app, 'first.mp3')
+    await addItem(app, playlistId, track.id!)
+    const slug = (await (await share(app, playlistId)).json() as { shareSlug: string }).shareSlug
+
+    expect((await request(app, `/api/blog/public/music/playlists/${slug}`)).headers.get('Cache-Control')).toBe(MUSIC_PUBLIC_CACHE.listing)
+    expect((await request(app, `/api/blog/public/music/playlists/${slug}/tracks/${track.id}/stream`)).headers.get('Cache-Control')).toBe(MUSIC_PUBLIC_CACHE.stream)
+  })
+
   it('withholds the open cross-origin grant from a shared playlist and its media', async () => {
     await makeDb()
     const app = makeApp()
@@ -177,7 +192,7 @@ describe('playlist share routes (real D1 + fake R2)', () => {
 
     const stream = await request(app, `/api/blog/public/music/playlists/${slug}/tracks/${t1.id}/stream`)
     expect(stream.status).toBe(200)
-    expect(stream.headers.get('Cache-Control')).toBe('public, max-age=600')
+    expect(stream.headers.get('Cache-Control')).toBe(MUSIC_PUBLIC_CACHE.stream)
     expect(new Uint8Array(await stream.arrayBuffer())).toEqual(AUDIO)
   })
 

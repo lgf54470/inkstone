@@ -9,6 +9,7 @@ import { errorResponse } from '../src/worker/lib/errors'
 import { getMeta } from '../src/worker/db/metadata'
 import { LIMITS } from '../src/shared/constants'
 import { enforceMusicPublicBudget, MUSIC_PUBLIC_BUDGETS } from '../src/worker/routes/music/budget'
+import { MUSIC_PUBLIC_CACHE } from '../src/worker/routes/music/cache'
 import { blogPublicRoutes } from '../src/worker/routes/blog'
 import { musicRoutes } from '../src/worker/routes/music'
 import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
@@ -189,7 +190,7 @@ describe('public music routes (real D1 + fake R2)', () => {
     expect(cover.status).toBe(200)
     expect(cover.headers.get('Access-Control-Allow-Origin')).toBe('*')
     expect(cover.headers.get('Content-Type')).toBe('image/jpeg')
-    expect(cover.headers.get('Cache-Control')).toBe('public, max-age=86400')
+    expect(cover.headers.get('Cache-Control')).toBe(MUSIC_PUBLIC_CACHE.cover)
     expect(new Uint8Array(await cover.arrayBuffer())).toEqual(COVER)
   })
 
@@ -250,6 +251,22 @@ describe('public music routes (real D1 + fake R2)', () => {
     expect((await requestAs(app, `/api/blog/public/music/tracks/${track.id}/stream`, visitor)).status).toBe(429)
     // Spending the playback allowance leaves the artwork allowance intact.
     expect((await requestAs(app, `/api/blog/public/music/tracks/${track.id}/cover`, visitor)).status).toBe(200)
+  })
+
+  // A cached public response outlives the switch that turned it off: unpublishing never reaches
+  // into a cache, so each public surface carries an explicit window, and the app's own surfaces
+  // keep the private one they had.
+  it('states a revocation window on each public surface', async () => {
+    await makeDb()
+    const app = makeApp()
+    const track = await uploadTrack(app)
+    await publish(app, true)
+
+    expect((await request(app, '/api/blog/public/music/library')).headers.get('Cache-Control')).toBe(MUSIC_PUBLIC_CACHE.listing)
+    expect((await request(app, `/api/blog/public/music/tracks/${track.id}/stream`)).headers.get('Cache-Control')).toBe(MUSIC_PUBLIC_CACHE.stream)
+    expect((await request(app, `/api/blog/public/music/tracks/${track.id}/cover`)).headers.get('Cache-Control')).toBe(MUSIC_PUBLIC_CACHE.cover)
+    // The same track served to its owner is not a public answer.
+    expect((await request(app, `/api/music/tracks/${track.id}/stream`)).headers.get('Cache-Control')).toBe('private, max-age=3600')
   })
 
   // A preflight is an invitation: answering one for the music subtree with POST advertised
