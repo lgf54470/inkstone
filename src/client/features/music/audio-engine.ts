@@ -1,6 +1,7 @@
 import type { MusicTrack } from '@shared/types'
 import { isVideoMime } from '@shared/music-media'
 import { musicStreamUrl } from '../../lib/api'
+import { currentMediaStage, registerMediaStagePlacer } from './media-stage'
 
 export interface AudioBridge {
   onTime: (ms: number) => void
@@ -137,10 +138,28 @@ function setActiveElement(kind: MediaKind): HTMLMediaElement {
     previous.pause()
     previous.removeAttribute('src')
     previous.load()
+    // A retired element goes back to the engine's shelf: it may still sit in a surface's
+    // container, and that container being unmounted would take the element out of the document.
+    document.body.append(previous)
+    previous.hidden = true
   }
   element = next
+  placeOnStage(next)
   return next
 }
+
+// The picture lives wherever the topmost now-playing surface put its container; everything
+// else about the element is unchanged, so seeking and the graph survive the move.
+function placeOnStage(media: HTMLMediaElement): void {
+  const host = kindOfElement(media) === 'video' ? currentMediaStage() : null
+  const target = host ?? document.body
+  if (media.parentElement !== target) target.append(media)
+  media.hidden = target === document.body
+}
+
+registerMediaStagePlacer(() => {
+  if (element) placeOnStage(element)
+})
 
 // Every listener is gated on being the active element: the standby element is live
 // during a crossfade and its events must not drive progress, the bridge or the graph.

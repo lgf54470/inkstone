@@ -114,6 +114,29 @@ describe('MusicNowPlaying lyrics', () => {
   })
 })
 
+// The playback element is engine-owned; a surface only lends it a box, so a track with a
+// picture replaces the cover tile rather than rendering a second video player.
+describe('MusicNowPlaying video picture', () => {
+  it('shows the stage instead of the cover tile for a video track', async () => {
+    const track = playingTrack()
+    track.mime = 'video/mp4'
+    track.coverUrl = 'https://example.test/cover.png'
+    seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn(), tracks: [track] })
+    const container = await mountPanel()
+    expect(container.querySelector('.music-video-stage')).not.toBeNull()
+    expect(container.querySelector('img')).toBeNull()
+  })
+
+  it('keeps the cover tile for an audio track', async () => {
+    const track = playingTrack()
+    track.coverUrl = 'https://example.test/cover.png'
+    seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn(), tracks: [track] })
+    const container = await mountPanel()
+    expect(container.querySelector('.music-video-stage')).toBeNull()
+    expect(container.querySelector('img')).not.toBeNull()
+  })
+})
+
 // A scrollable pane the keyboard can never reach hides its overflow from
 // keyboard and screen-reader users; it must be a focus stop with a name.
 describe('MusicNowPlaying scroll region (UI-17)', () => {

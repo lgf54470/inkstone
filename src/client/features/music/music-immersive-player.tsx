@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Heart, ListMusic, Pin, X } from 'lucide-react'
+import { isVideoMime } from '@shared/music-media'
 import { Modal } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
@@ -11,6 +12,7 @@ import { MusicArtwork } from './music-artwork'
 import { MusicPlayButtons } from './music-play-buttons'
 import { MusicQueueList } from './music-queue-list'
 import { MusicSeekBar } from './music-seek-bar'
+import { MusicVideoStage } from './music-video-stage'
 import {
   MusicEqButton, MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicVolumeButton,
 } from './music-transport-widgets'
@@ -135,17 +137,22 @@ function ImmersiveLeft({
   stacked: boolean
 }) {
   const currentTimeMs = useProgress((state) => state.currentTimeMs)
+  const picture = cn('aspect-square rounded-[var(--r-xl)] shadow-[var(--shadow-modal)]', stacked ? 'w-20 shrink-0' : 'w-64')
   return (
     <section className={cn(
       'flex shrink-0 border-[var(--border-subtle)]',
       stacked ? 'w-full flex-row items-center gap-3 p-4' : 'w-96 flex-col items-center gap-4 border-r p-6',
     )}>
-      <MusicArtwork
-        url={track?.coverUrl ?? null}
-        alt={track?.title ?? ''}
-        className={cn('aspect-square rounded-[var(--r-xl)] shadow-[var(--shadow-modal)]', stacked ? 'w-20 shrink-0' : 'w-64')}
-        iconSize={stacked ? 28 : 48}
-      />
+      {isVideoMime(track?.mime)
+        ? <MusicVideoStage track={track} className={picture} />
+        : (
+          <MusicArtwork
+            url={track?.coverUrl ?? null}
+            alt={track?.title ?? ''}
+            className={picture}
+            iconSize={stacked ? 28 : 48}
+          />
+        )}
       <div className={cn('min-w-0', stacked ? 'flex flex-1 flex-col items-center gap-1.5' : 'flex w-full flex-col items-center gap-4 text-center')}>
         <ImmersiveMeta track={track} stacked={stacked} />
         <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} showTime className='w-full' />

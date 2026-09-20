@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Heart, Music, Pin, Tags } from 'lucide-react'
+import { isVideoMime } from '@shared/music-media'
 import { IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { cn } from '../../lib/cn'
@@ -7,6 +8,7 @@ import { t } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { useCurrentTrack, useMusic, useProgress } from './music-store'
 import { useTrackLyric } from './music-lyrics'
+import { MusicVideoStage } from './music-video-stage'
 import { activeLyricIndex, formatBytes, formatDuration, parseLyric } from './music-utils'
 
 export type MusicDetailTab = 'lyrics' | 'details'
@@ -64,13 +66,18 @@ export function MusicNowPlaying({
 }
 
 function Artwork({ track }: { track: ReturnType<typeof useCurrentTrack> }) {
+  const box = 'aspect-square w-full overflow-hidden rounded-[var(--r-lg)] shadow-[var(--shadow-soft)]'
   return (
     <div className='p-3'>
-      <div className='aspect-square w-full overflow-hidden rounded-[var(--r-lg)] bg-[var(--bg-inset)] shadow-[var(--shadow-soft)]'>
-        {track?.coverUrl
-          ? <img src={track.coverUrl} alt='' className='size-full object-cover' />
-          : <span className='flex size-full items-center justify-center text-[var(--text-quaternary)]'><Music size={28} /></span>}
-      </div>
+      {isVideoMime(track?.mime)
+        ? <MusicVideoStage track={track} className={box} />
+        : (
+          <div className={cn(box, 'bg-[var(--bg-inset)]')}>
+            {track?.coverUrl
+              ? <img src={track.coverUrl} alt='' className='size-full object-cover' />
+              : <span className='flex size-full items-center justify-center text-[var(--text-quaternary)]'><Music size={28} /></span>}
+          </div>
+        )}
     </div>
   )
 }

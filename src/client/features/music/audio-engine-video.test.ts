@@ -67,3 +67,73 @@ describe('crossfade yields to video', () => {
     expect(engine.crossfadeActive()).toBe(false)
   })
 })
+
+// The engine registers its stage placer as the module loads, and useFakeAudioStack() resets the
+// registry per case; claiming through a statically imported copy would talk to a dead instance.
+async function engineWithStage() {
+  const engine = await engineUnderTest()
+  const { claimMediaStage } = await import('./media-stage')
+  return { claim: claimMediaStage, engine }
+}
+
+function host(): HTMLElement {
+  const node = document.createElement('div')
+  document.body.append(node)
+  return node
+}
+
+describe('the video stage', () => {
+  it('moves the playing element into a claimed stage and takes it back out', async () => {
+    const { claim, engine } = await engineWithStage()
+    await engine.startPlayback(trackWithMime('v1', 'video/mp4'))
+    const media = engine.mediaElement()
+    const stage = host()
+    const release = claim(stage)
+    expect(media?.parentElement).toBe(stage)
+    expect(media?.hidden).toBe(false)
+    release()
+    expect(media?.parentElement).toBe(document.body)
+    expect(media?.hidden).toBe(true)
+  })
+
+  it('hands the picture to the surface underneath when the topmost one unmounts', async () => {
+    const { claim, engine } = await engineWithStage()
+    await engine.startPlayback(trackWithMime('v1', 'video/mp4'))
+    const media = engine.mediaElement()
+    const hub = host()
+    const overlay = host()
+    const releaseHub = claim(hub)
+    const releaseOverlay = claim(overlay)
+    expect(media?.parentElement).toBe(overlay)
+    releaseOverlay()
+    expect(media?.parentElement).toBe(hub)
+    releaseHub()
+    expect(media?.parentElement).toBe(document.body)
+  })
+})
+
+describe('what may not be staged', () => {
+  it('keeps the audio element off a stage that a video surface claimed', async () => {
+    const { claim, engine } = await engineWithStage()
+    await engine.startPlayback(trackWithMime('a1', 'audio/mpeg'))
+    const media = engine.mediaElement()
+    const stage = host()
+    claim(stage)
+    expect(media?.parentElement).toBe(document.body)
+    expect(media?.hidden).toBe(true)
+    expect(stage.childElementCount).toBe(0)
+  })
+
+  it('retires a staged video element before its container can be unmounted with it', async () => {
+    const { claim, engine } = await engineWithStage()
+    await engine.startPlayback(trackWithMime('v1', 'video/mp4'))
+    const video = engine.mediaElement()
+    const stage = host()
+    claim(stage)
+    expect(video?.parentElement).toBe(stage)
+    await engine.startPlayback(trackWithMime('a1', 'audio/mpeg'))
+    expect(video?.parentElement).toBe(document.body)
+    expect(video?.hidden).toBe(true)
+    expect(stage.querySelector('video')).toBeNull()
+  })
+})

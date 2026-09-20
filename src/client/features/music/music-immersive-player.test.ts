@@ -94,6 +94,42 @@ describe('MusicImmersivePlayer column stacking — UI-14', () => {
   })
 })
 
+describe('MusicImmersivePlayer video picture', () => {
+  function videoTrack(): MusicTrack {
+    return {
+      id: 'video-1',
+      title: 'Concert',
+      artist: 'Hu Yanbin',
+      album: 'Live',
+      durationMs: 200_000,
+      source: 'r2',
+      format: 'mp4',
+      webdavPath: null,
+      mime: 'video/mp4',
+      sizeBytes: 1024,
+      coverUrl: 'https://example.test/cover.png',
+      lyric: null,
+      hasLyric: false,
+      tagIds: [],
+      isFavorite: false,
+      isPinned: false,
+      playCount: 0,
+      lastPlayedAt: null, contentHash: null,
+      createdAt: 0,
+      updatedAt: 0,
+    }
+  }
+
+  it('shows the stage instead of a cover tile when the playing track has a picture', async () => {
+    const track = videoTrack()
+    useMusic.setState({ tracks: [track], queue: [track.id], currentIndex: 0 })
+    await mountPlayer(vi.fn())
+    const pane = document.querySelector('[role="dialog"] section')
+    expect(pane?.querySelector('.music-video-stage')).not.toBeNull()
+    expect(pane?.querySelector('img')).toBeNull()
+  })
+})
+
 describe('MusicImmersivePlayer scroll regions (UI-17)', () => {
   it('gives the lyrics and queue panes a keyboard focus stop each', async () => {
     const track: MusicTrack = {

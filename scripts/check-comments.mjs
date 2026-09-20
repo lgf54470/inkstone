@@ -1257,6 +1257,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/audio-engine-video.test.ts', [
     '// An <audio> element would refuse this container outright, so making one first is a bug.',
+    '// The engine registers its stage placer as the module loads, and useFakeAudioStack() resets the',
+    '// registry per case; claiming through a statically imported copy would talk to a dead instance.',
   ]],
   ['src/client/features/music/audio-engine.test-helpers.ts', [
     '// Each element chain builds its visualiser analyser first and its loudness tap',
@@ -1291,6 +1293,10 @@ const allowed = new Map([
     '// next track loads, and its cached graph chain stays behind for when that kind comes back.',
     '// The element that is already playing decides: after a crossfade swapped to its standby,',
     '// the per-kind table would still name the element the fade handed over.',
+    '// A retired element goes back to the engine\'s shelf: it may still sit in a surface\'s',
+    '// container, and that container being unmounted would take the element out of the document.',
+    '// The picture lives wherever the topmost now-playing surface put its container; everything',
+    '// else about the element is unchanged, so seeking and the graph survive the move.',
     '// Every listener is gated on being the active element: the standby element is live',
     '// during a crossfade and its events must not drive progress, the bridge or the graph.',
     '// A crossfade starting right at the end must not also trigger the store\'s advance.',
@@ -1325,6 +1331,14 @@ const allowed = new Map([
     '// Lock-screen and car-kit progress bars are built from positionState and committed',
     '// through seekto; without them the scrubber is dead even though metadata shows.',
     '// The browser rejects a position past the end, and in-flight ticks can outrun a shrinking duration.',
+  ]],
+  ['src/client/features/music/media-stage.ts', [
+    '// The playback element belongs to the engine, not to whichever panel is showing it: surfaces',
+    '// unmount on breakpoint changes and when overlays close, and an element that holds the stream',
+    '// cannot be recreated without losing playback. So a surface claims a container and the engine',
+    '// moves its element in. This module owns only the question "which container is showing it".',
+    '// A stack, because now-playing surfaces nest: the hub column stays mounted under the immersive',
+    '// overlay, and closing the overlay has to hand the picture back to what was underneath it.',
   ]],
   ['src/client/features/music/music-cover-lookup.ts', [
     '// The Worker queries the catalogue and returns the image, keeping third party calls off the page.',
@@ -1471,6 +1485,8 @@ const allowed = new Map([
     '// Metadata atoms wrap their value in a data box: version and flags, value type, locale, payload.',
   ]],
   ['src/client/features/music/music-now-playing.test.ts', [
+    '// The playback element is engine-owned; a surface only lends it a box, so a track with a',
+    '// picture replaces the cover tile rather than rendering a second video player.',
     '// A scrollable pane the keyboard can never reach hides its overflow from',
     '// keyboard and screen-reader users; it must be a focus stop with a name.',
   ]],
@@ -1777,6 +1793,12 @@ const allowed = new Map([
     '// Uploads name a track after its file; the tag title wins when the file only adds the artist.',
     '// A playlist\'s cover is derived, not stored: the first item (in the user\'s manual',
     '// order) whose track carries a cover. Empty playlist or coverless library → no cover.',
+  ]],
+  ['src/client/features/music/music-video-stage.tsx', [
+    '// The element that carries a video track belongs to the engine, so a surface only lends it a box',
+    '// to be seen in: unmounting on a breakpoint change hands the picture back instead of rebuilding',
+    '// the player in the middle of playback. The element is created in JS and carries no classes of',
+    '// its own, so styles/music.css reaches it through the kind marker the engine sets on it.',
   ]],
   ['src/client/features/music/music-view-toggles.test.ts', [
     '// The old hand-written group stole \'List view\' as its name; it must not exist twice.',
