@@ -9,6 +9,7 @@ import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanIconPicker } from './kanban-icon-picker'
 import { DetailDescription } from './kanban-item-detail-description'
+import { DetailComments } from './kanban-comments'
 import {
   DetailAttachmentsAndSubtasks,
   DetailDatesGrid,
@@ -249,18 +250,19 @@ function DetailModalContent({
         onChangeProperty={onPropertyChange}
       />
 
+      {/* A box that holds an uncommitted draft is keyed by the card it belongs to, so switching cards
+      gives a fresh one. The section name is part of the key because two such boxes sit side by side
+      here, and React reads a repeated key as two children being the same child. */}
       <DetailDescription
-        key={item.id}
+        key={`description-${item.id}`}
         content={item.content || item.description}
         renderDescription={renderDescription}
         onChange={(desc) => onUpdate({ ...item, content: desc, description: desc })}
       />
 
-      <DetailAttachmentsAndSubtasks
-        item={item}
-        onUpdate={onUpdate}
-        onConvertSubtask={onConvertSubtask}
-      />
+      <DetailAttachmentsAndSubtasks item={item} onUpdate={onUpdate} onConvertSubtask={onConvertSubtask} />
+
+      <DetailComments key={`comments-${item.id}`} item={item} people={people} onUpdate={onUpdate} />
     </div>
   )
 }

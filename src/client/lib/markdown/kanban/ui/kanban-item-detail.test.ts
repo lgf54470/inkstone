@@ -331,7 +331,8 @@ describe('KanbanItemDetail description markdown preview', () => {
     expect(toggle, 'the host renderer draws no preview control').not.toBeNull()
 
     act(() => { toggle!.click() })
-    expect(document.querySelector('textarea[placeholder]')).toBeNull()
+    // Scoped to the description: the modal holds other boxes with placeholders (a comment draft).
+    expect(descriptionPart('textarea')).toBeNull()
     // Previewing shows what the note will hold, so entering it is also the commit.
     expect(view.props.onUpdate).toHaveBeenCalledTimes(1)
     expect(view.props.onUpdate.mock.calls[0][0]).toMatchObject({ content: '**ship it now**' })
@@ -351,6 +352,28 @@ describe('KanbanItemDetail description markdown preview', () => {
     expect(previewToggle()).toBeNull()
     act(() => { typeIntoBox(descriptionBox(), 'x') })
     expect(previewToggle()).not.toBeNull()
+    view.dispose()
+  })
+})
+
+describe('KanbanItemDetail comments section', () => {
+  const commented: KanbanItem = {
+    ...item,
+    comments: [{ id: 'c1', text: 'Stored note', author: 'Ada', at: '2026-09-20T12:00:00.000Z' }],
+  }
+
+  function commentDraft(): HTMLTextAreaElement {
+    return document.querySelector<HTMLTextAreaElement>('[data-kanban-comment-draft]')!
+  }
+
+  it('shows what the card holds and starts a fresh box for the next card', () => {
+    const view = renderDetail(commented)
+    expect(document.body.textContent).toContain(t('preview.kanban_comments'))
+    expect(document.body.textContent).toContain('Stored note')
+    act(() => { typeIntoBox(commentDraft(), 'Half written') })
+    view.rerender({ ...item, id: 'item-2' })
+    expect(commentDraft().value).toBe('')
+    expect(document.body.textContent).not.toContain('Stored note')
     view.dispose()
   })
 })

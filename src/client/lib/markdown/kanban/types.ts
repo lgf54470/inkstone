@@ -74,6 +74,20 @@ export interface KanbanSubtask {
   tags?: string[]
 }
 
+/**
+ * What someone said about a card. A board is a document, so the note it carries has no account to
+ * attribute a comment to: the name is whatever the writer typed, and a comment without one is simply
+ * unattributed rather than filed under somebody guessed at.
+ */
+export interface KanbanComment {
+  id: string
+  text: string
+  /** Who wrote it, as they chose to be called; absent means the writer stayed anonymous. */
+  author?: string
+  /** When it was written, in UTC. The reader's own locale is what prints it. */
+  at?: string
+}
+
 export interface KanbanItem {
   id: string
   title: string
@@ -83,6 +97,8 @@ export interface KanbanItem {
   description?: string
   files?: KanbanFile[]
   subtasks?: KanbanSubtask[]
+  /** What the board's readers have said about this card, oldest first. See `comments.ts`. */
+  comments?: KanbanComment[]
   /** Set only while the card is archived; restoring deletes the key. See `archive.ts`. */
   archived?: boolean
   properties: Record<string, unknown>
