@@ -1,9 +1,8 @@
-import { TRAFFIC_FILTERS_KEY, RETENTION_SETTINGS_KEY } from './state'
+import { TRAFFIC_FILTERS_KEY } from './state'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
-export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'setActiveTab' | 'setStatusFilter' | 'setCategoryId' | 'setFolderId' | 'setTag' | 'setSearch' | 'setSort' | 'setViewMode' | 'toggleSelectPost' | 'selectAllPosts' | 'clearPostSelection' | 'setCommentStatusFilter' | 'setCommentSearch' | 'toggleSelectComment' | 'selectAllComments' | 'clearCommentSelection' | 'setFilters' | 'setRetentionSettings'> => ({
+export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'setActiveTab' | 'setStatusFilter' | 'setCategoryId' | 'setFolderId' | 'setTag' | 'setSearch' | 'setSort' | 'setViewMode' | 'toggleSelectPost' | 'selectAllPosts' | 'clearPostSelection' | 'setCommentStatusFilter' | 'setCommentSearch' | 'toggleSelectComment' | 'selectAllComments' | 'clearCommentSelection' | 'setFilters'> => ({
   setFilters: (newFilters) => setFiltersImpl(newFilters, set, get),
-  setRetentionSettings: (newSettings) => setRetentionSettingsImpl(newSettings, set),
   setActiveTab: (activeTab) => set({ activeTab }),
   setStatusFilter: (statusFilter) => applyPostFilter(set, get, { statusFilter, folderId: null, tag: null, activeTab: 'posts' }),
   setCategoryId: (categoryId) => applyPostFilter(set, get, { categoryId, activeTab: 'posts' }),
@@ -63,24 +62,5 @@ function persistTrafficFilters(updated: { excludeBots: boolean; excludeSelfRefer
     localStorage.setItem(TRAFFIC_FILTERS_KEY, JSON.stringify(updated))
   } catch (error) {
     console.warn('[blog-store] failed to persist traffic filters', error)
-  }
-}
-
-function setRetentionSettingsImpl(
-  newSettings: Parameters<BlogStoreState['setRetentionSettings']>[0],
-  set: SetBlogStoreState,
-): void {
-  set({
-    maxLogRecords: newSettings.maxLogRecords,
-  })
-  persistRetentionSettings(newSettings)
-}
-
-function persistRetentionSettings(settings: Parameters<BlogStoreState['setRetentionSettings']>[0]): void {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(RETENTION_SETTINGS_KEY, JSON.stringify(settings))
-  } catch (error) {
-    console.warn('[blog-store] failed to persist retention settings', error)
   }
 }

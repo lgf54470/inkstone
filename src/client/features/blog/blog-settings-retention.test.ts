@@ -25,9 +25,7 @@ const blogStore = vi.hoisted(() => ({
     excludeBots: true,
     excludeSelfReferrers: false,
     excludeOwner: false,
-    maxLogRecords: 1000,
     setFilters: vi.fn(),
-    setRetentionSettings: vi.fn(),
   },
   useBlogStore: (selector: (state: typeof blogStore.state) => unknown) => selector(blogStore.state),
 }))
@@ -93,8 +91,10 @@ beforeEach(() => {
   localStorage.clear()
   session.state.updateSettings.mockReset()
   blogStore.state.setFilters.mockReset()
-  blogStore.state.setRetentionSettings.mockReset()
   blogStore.state.saveSettings.mockClear()
+  blogStore.state.excludeBots = true
+  blogStore.state.excludeSelfReferrers = false
+  blogStore.state.excludeOwner = false
   vi.mocked(api.blog.cleanVisits).mockClear()
   vi.mocked(confirm).mockClear()
 })
@@ -125,7 +125,6 @@ describe('blog settings modal keeps visit-log retention on the account (SH-43)',
 
     expect(session.state.updateSettings).toHaveBeenCalledTimes(1)
     expect(session.state.updateSettings).toHaveBeenCalledWith({ blog: { visitLogRetentionDays: 7 } })
-    expect(blogStore.state.setRetentionSettings).toHaveBeenCalledWith({ maxLogRecords: 1000 })
     // The period belongs to the account: nothing in this save may re-cache it.
     expect(localStorage.getItem('inkstone_blog_retention_settings')).toBeNull()
   })
@@ -163,5 +162,36 @@ describe('blog log cleanup honours the account retention (SH-43)', () => {
     await cleanOlderLogs()
 
     expect(api.blog.cleanVisits).toHaveBeenCalledWith('older_than', 30)
+  })
+})
+
+describe('blog settings modal draws no record cap control (SH-45)', () => {
+  it('leaves the retention period as the only traffic segmented control', () => {
+    session.state.settings = { ...DEFAULT_SETTINGS, blog: { visitLogRetentionDays: 30 } }
+
+    openModal()
+    openTrafficTab()
+
+    // The tab switcher and the retention period; nothing else asks for a count.
+    expect(document.querySelectorAll('[role="radiogroup"]')).toHaveLength(2)
+    expect(document.body.textContent).not.toContain('10K')
+  })
+
+  it('saves what is left: the traffic filters and the account retention', async () => {
+    session.state.settings = { ...DEFAULT_SETTINGS, blog: { visitLogRetentionDays: 30 } }
+    blogStore.state.excludeBots = false
+
+    openModal()
+    openTrafficTab()
+    await save()
+
+    expect(blogStore.state.setFilters).toHaveBeenCalledTimes(1)
+    expect(blogStore.state.setFilters).toHaveBeenCalledWith({
+      excludeBots: false,
+      excludeSelfReferrers: false,
+      excludeOwner: false,
+    })
+    expect(session.state.updateSettings).toHaveBeenCalledTimes(1)
+    expect(session.state.updateSettings).toHaveBeenCalledWith({ blog: { visitLogRetentionDays: 30 } })
   })
 })

@@ -69,8 +69,6 @@ export const messages = {
 'share.filter_owner_only': '作者访问',
 'share.filter_real_only': '真实读者',
 'share.generate_random_slug': '随机生成短链',
-'share.max_records_label': '日志最大保留条数',
-'share.max_records_val': '最多 {count} 条',
 'share.next_page': '下一页',
 'share.no_logs_found': '未找到符合条件的访问日志',
 'share.no_logs_to_export': '当前没有可导出的日志',

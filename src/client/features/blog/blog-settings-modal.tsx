@@ -92,8 +92,6 @@ interface SettingsFormBundle {
   setOwner: (v: boolean) => void
   retentionDays: string
   setRetentionDays: (v: string) => void
-  maxRecords: string
-  setMaxRecords: (v: string) => void
   isCleanBusy: boolean
   handleClean: (type: 'bots' | 'older_than' | 'all') => Promise<void>
   siteName: string
@@ -183,19 +181,6 @@ function RetentionSection({ form }: { form: SettingsFormBundle }) {
             { value: '30', label: '30d' },
             { value: '90', label: '90d' },
             { value: '180', label: '180d' },
-            { value: '0', label: t('share.retention_unlimited') },
-          ]}
-        />
-        <RetentionField
-          label={t('share.max_records_label')}
-          valueLabel={form.maxRecords === '0' ? t('share.retention_unlimited') : t('share.max_records_val', { count: form.maxRecords })}
-          value={form.maxRecords}
-          onChange={form.setMaxRecords}
-          options={[
-            { value: '1000', label: '1K' },
-            { value: '5000', label: '5K' },
-            { value: '10000', label: '10K' },
-            { value: '50000', label: '50K' },
             { value: '0', label: t('share.retention_unlimited') },
           ]}
         />

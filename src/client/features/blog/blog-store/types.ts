@@ -149,9 +149,5 @@ export interface BlogStoreState {
   excludeOwner: boolean
   setFilters: (filters: Partial<{ excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }>) => void
 
-  /** Retention days is an account setting (SH-43); only the record cap is cached here. */
-  maxLogRecords: number
-  setRetentionSettings: (settings: { maxLogRecords: number }) => void
-
   saveSettings: (settings: Partial<BlogSettings>) => Promise<void>
 }

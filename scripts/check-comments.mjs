@@ -1124,6 +1124,7 @@ const allowed = new Map([
     '// A test that fails before its unmount would otherwise leave its modal in the',
     '// document, and the next test\'s button lookup would drive that stale instance.',
     '// The period belongs to the account: nothing in this save may re-cache it.',
+    '// The tab switcher and the retention period; nothing else asks for a count.',
   ]],
   ['src/client/features/blog/blog-store/index.ts', [
     '// Feed the notes store\'s visibility projection (published note ids) without',
@@ -1131,11 +1132,8 @@ const allowed = new Map([
     '// in store/visibility-sources.ts, not this module.',
   ]],
   ['src/client/features/blog/blog-store/retention.test.ts', [
-    '// Seeded before the store module above is evaluated, so the cached retention',
-    '// period is already in browser storage when the store builds its initial state.',
-  ]],
-  ['src/client/features/blog/blog-store/types.ts', [
-    '/** Retention days is an account setting (SH-43); only the record cap is cached here. */',
+    '// Seeded before the store module above is evaluated, so the cached record cap',
+    '// is already in browser storage when the store builds its initial state.',
   ]],
   ['src/client/features/blog/use-blog-settings-modal.ts', [
     '// The sweep runs on the server, so the value it reads has to be the account\'s.',
