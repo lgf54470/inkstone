@@ -62,7 +62,7 @@
 | H7 | SH-45 | blog 侧同族假设置：`blog-store` 的 `maxLogRecords`/`setRetentionSettings` 与设置模态的「最多记录数」分段控件同样全仓无消费者（SH-39 在 share 侧删除的那一套，blog 侧是第二处），且 `blog-settings-modal.tsx:190-191` 跨模块读 `share.max_records_label`/`share.max_records_val` 两个键——故 share 侧本次保留键不删。修法：blog 侧删控件+删 store 字段，文案键随最后一处使用者一并迁到 blog 命名空间或删除 | P3 | ✅ | 28b175b6 |
 | H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby`；执行时按同一口径扩到 share 全部 6 处 `Segmented` 并加静态门禁 | P2 | ✅ | 1a3e4dae |
 | H8 | SH-46 | share 外的 `Segmented` 仍缺可访问名称（实测 5 处：`blog-dashboard-view/index.tsx:135,272`、`blog-settings-modal.tsx:31,228`、`settings/backup-settings/target-form.tsx:45`）：与 SH-40 同一缺陷族，按铁律14 不在本批夹带；各模块自行接入后把 `tests/share-radiogroup-names.test.ts` 的扫描根从 `features/share` 提到全站 | P2 | 排队 | |
-| H9 | SH-47 | `/api/blog/visits` 的 DELETE 缺 share 侧那两道护栏（SH-14/SH-12 双生）：`older_than` 无 `days >= 1` 服务端校验（客户端已在 SH-43 拦住 0，信任边界仍裸），`type=all` 清空全站日志不要求当前密码重认证 | P1 | ✅ | 待回填 |
+| H9 | SH-47 | `/api/blog/visits` 的 DELETE 缺 share 侧那两道护栏（SH-14/SH-12 双生）：`older_than` 无 `days >= 1` 服务端校验（客户端已在 SH-43 拦住 0，信任边界仍裸），`type=all` 清空全站日志不要求当前密码重认证 | P1 | ✅ | d08bd94d |
 | G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | ✅ | be162df2 |
 
 > 2026-09-20 用户裁决「全做，按照你认为最优方案修改，顺序自己定义」：F1-F5 与通病全部解冻，
@@ -446,4 +446,4 @@
 - 变异 7 发全杀（/tmp/mutH9 备份还原，进程内逐字节校验 clean）：M1 worker 删 400 分支、M2 worker 删重认证分支、M3 worker 只在带了口令时才校验（空 body 变旁路）、M4 客户端不再提示口令、M5 客户端忽略提示取消（把 `null` 当口令发出去）、M6 客户端把口令提示扩到 `bots`、M7 demo 删 401 分支。
 - 踩坑一条：`size:check` 因新 it 塞进既有 describe 而把该回调推过 50 行——按先例真拆分（登录 + `analytics.filterStats.bots` 读数量提成模块作用域 helper，新用例单开 describe），不刷基线；同一轮里 `api.blog.cleanVisits(type, days, password)` 恒定三元参数让 vitest 的 `toHaveBeenCalledWith`  arity 变严，两条旧断言必须显式写 `undefined` 而不是被静默放过。
 - 局限（如实登记）：未跑真实浏览器（`e2e-visual`/`check-contrast` 都不开博客设置模态），提示流程只由 jsdom 断言把守；`type=all` 的 401 依赖账号密码哈希存在，MCP/API-Key 会话与 share 侧同样受此约束，本批未扩；口令文案键仍叫 `share.*`（迁移到中立命名空间另开）。
-- 验证：待回填。
+- 验证：tsc -b 绿；13 项静态门禁全绿；vitest 定向 worker 4 + blog 客户端 10 + demo 4 + share 侧 25 文件/215 测试绿（pre-commit 钩子另跑相关 85 文件/556 测试绿）。全量回归 247 文件/1921 测试绿（REGRESSION_EXIT=0，串行 59.08s，本轮同机无争用；较 SH-45 轮次 246/1912 多 1 文件/9 例，即 SH-47 新增的 worker 护栏 4 例 + blog 客户端 3 例 + demo 2 例）。fix 提交 d08bd94d。
