@@ -36,7 +36,7 @@
 | 06 | A | SH-82 | 日志接口下发完整指纹 + SELECT 从不返回的 `user_agent` | 极小 | ✅ | f95e92ef |
 | 07 | A | SH-71 | 两个 analytics hook 无 abort/epoch → 慢请求覆盖新请求 | 小 | ✅ | 3cd48d9b |
 | 08 | A | SH-55 | 首屏 `isLoading` 时 KPI 全渲染 0（缺"加载中"态） | 小 | ✅ | ⏳ 下项回填 |
-| 09 | A | — | 批次 A 收尾：全量串行回归 | — | ⬜ | |
+| 09 | A | — | 批次 A 收尾：全量串行回归 | — | ✅ | ⏳ 下项回填 |
 | 10 | B | SH-85 | 分享中心浏览器级门禁（e2e-visual 场景 + surface coverage） | 中 | ⬜ | |
 | 11 | C | SH-49 | 裸 `<button>` 绕过组件体系 + 新守卫 | 中 | ⬜ | |
 | 12 | C | SH-50 | 流量过滤浮层：焦点管理 / role / 窄屏裁切 | 小–中 | ⬜ | |
@@ -144,3 +144,13 @@
 - 改动面（4 文件）：新增 `share-dashboard-loading.tsx`（复用 `components/feedback` 的 `Skeleton`，`.skeleton` 的 shimmer 在 `prefers-reduced-motion` 下由 `motion.css` 关闭；`role="status" aria-busy="true"` + `common.loading` 文案，与音乐、模板库的既有加载写法一致）；`share-dashboard-view.tsx` 在 error 分支后插入 `isLoading && !analytics` 分支（区间切换时保留旧卡片，不闪骨架）；新增测试文件；`scripts/check-comments.mjs` 登记新注释（682 文件 / 4954 条）。
 - 验证：新文件 3/3 绿（修复前 1 红）；共享面回归 `src/client/features/share` + `src/client/features/blog` 共 31 文件 / 144 用例绿；`npx tsc -b --force` exit 0；`size:check`、`hardcoded:check`、`comments:check`、`i18n:check`（3139 键）通过。
 - 局限（如实登记）：看板仍复用 `components/dashboard-blocks.tsx` 的 KpiCard（与博客看板共用），本项**没有**动共用组件，因此博客看板的同类「加载即 0」问题仍在，登记为新发现 SH-89；骨架用固定高度近似卡片高度（不做真实测量），故首屏切换有一处轻微跳变。
+### 09 — 批次 A 收尾：全量串行回归（2026-09-21）
+
+在批次 A 的 8 项（SH-78/79/84/80/82/71/55 + 文档）全部提交后，按 CI 的门禁顺序对工作区跑了一次完整回归，读数如下：
+
+- 类型检查：`npx tsc -b --force` → exit 0（client/worker/node 三项目）。
+- 静态门禁 12 项全绿：`style:check`（2 空格/无分号/单引号）、`size:check`（1417 文件扫描，20 处既存grandfather）、`comments:check`（682 文件 / 4954 条注释）、`escape:check`（无 `any`/`@ts-*`/非法断言）、`empty-catch:check`、`hardcoded:check`（218 处调色板类为既存豁免）、`tokens:check`（14 处既存 ghost 变量豁免）、`i18n:check`（3139 键，en-US/zh-CN 齐全）、`module-state:check`、`deep-imports:check`、`surfaces:check`（8 个全屏表面全部被浏览器门禁打开并读取）、`vendor:check`。
+- 全量单元/集成测试：`npm run test:unit` → **314 文件 / 2568 通过，1 skipped，0 失败**（约 96s）。
+- 构建与预算：`npm run budget:check`（先 `tsc -b` + `vite build`）→ 构建成功，9 个受监控分块全部在预算内（最大 `@excalidraw/excalidraw` 1081.8 KiB / 预算 1464.8 KiB）。
+- 本批次累计改动：6 个提交（`76a1f76a`、`d7eadd4a`、`ccfc69f7`、`4d5cf737`、`f95e92ef`、`3cd48d9b`、`8a0cdfc7` + 文档 `afa9b286`），3 个新测试文件（`share-visit-logs-csv`、`share-form`、`share-dashboard-loading`）+ 既有文件里 9 条新用例，均按「先红后绿」。
+- **未跑**（如实登记）：`test:e2e` 与 `scripts/e2e-visual.mjs` / `check-contrast.mjs`。原因：浏览器级门禁目前**没有任何分享中心场景**（这正是批次 B 的 SH-85 要补的），现在跑只能验证外壳未回归，且需要本地实例 + Puppeteer/Chrome，耗时远大于收益；批次 B 落地分享场景后会连同外壳一起跑这两个脚本，届时读数回填在 10 项里。
