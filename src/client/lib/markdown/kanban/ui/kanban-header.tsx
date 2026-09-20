@@ -18,6 +18,8 @@ import type {
 } from '../types'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { prettyCombo } from '../../../../lib/hotkeys'
+import { kanbanActiveItems } from '../archive'
+import { KanbanArchiveAction, type KanbanArchiveEntry } from './kanban-archive'
 import type { KanbanSchemaOperations } from './kanban-column-hooks'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanProgressBar } from './kanban-progress-bar'
@@ -58,6 +60,7 @@ interface KanbanHeaderProps {
   onToggleHiddenColumn?: (propertyId: string) => void
   onAddItem: () => void
   onToggleFullscreen?: () => void
+  archive?: KanbanArchiveEntry
   viewOps: KanbanViewOperations
   schemaOps?: KanbanSchemaOperations
   viewPanelId: string
@@ -416,6 +419,7 @@ function KanbanHeaderActions(props: HeaderActionsProps) {
       <KanbanSearchBox searchQuery={searchQuery} onSearchChange={props.onSearchChange} />
       <KanbanFilterAction columns={columns} filters={filters} onChangeFilters={props.onChangeFilters} />
       <KanbanSortAction columns={columns} sorts={sorts} onChangeSorts={props.onChangeSorts} />
+      {props.archive && <KanbanArchiveAction {...props.archive} />}
       {(activeView.type === 'board' || activeView.type === 'table') && (
         <KanbanViewOptionsAction
           columns={columns}
@@ -448,6 +452,9 @@ export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps)
   useLocaleRepaint()
   const { data, activeView, isFullscreen, onUpdateBoardTitle } = props
   const tagsCol = data.columns.find((c) => c.id === 'tags')
+  // The tag bar offers values a reader could filter the live board down to; a tag that only
+  // survives on archived cards would promise an empty result.
+  const activeItems = kanbanActiveItems(data.items)
 
   return (
     <div
@@ -482,7 +489,7 @@ export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps)
 
       <KanbanTagFilterBar
         tagsColumn={tagsCol}
-        items={data.items}
+        items={activeItems}
         selectedTags={props.selectedTags}
         onToggleTag={props.onToggleTag}
         onClearTags={props.onClearTags}

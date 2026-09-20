@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Trash2, X } from 'lucide-react'
+import { Archive, Trash2, X } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanProperty } from '../types'
@@ -8,6 +8,7 @@ interface KanbanBatchBarProps {
   selectedCount: number
   groupColumn?: KanbanProperty
   onBatchGroupChange: (groupId: string) => void
+  onBatchArchive: () => void
   onBatchDelete: () => void
   onClearSelection: () => void
 }
@@ -46,6 +47,7 @@ export const KanbanBatchBar = memo(function KanbanBatchBar({
   selectedCount,
   groupColumn,
   onBatchGroupChange,
+  onBatchArchive,
   onBatchDelete,
   onClearSelection,
 }: KanbanBatchBarProps) {
@@ -64,6 +66,16 @@ export const KanbanBatchBar = memo(function KanbanBatchBar({
           onBatchGroupChange={onBatchGroupChange}
         />
       )}
+
+      <button
+        type='button'
+        data-kanban-batch-archive
+        onClick={onBatchArchive}
+        className='flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+      >
+        <Archive size={13} aria-hidden />
+        <span>{t('preview.kanban_archive_item')}</span>
+      </button>
 
       <button
         type='button'

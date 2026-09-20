@@ -41,6 +41,7 @@ describe('the batch bar counts its selection', () => {
     return mountIn(code, createElement(KanbanBatchBar, {
       selectedCount,
       onBatchGroupChange: vi.fn(),
+      onBatchArchive: vi.fn(),
       onBatchDelete: vi.fn(),
       onClearSelection: vi.fn(),
     }))

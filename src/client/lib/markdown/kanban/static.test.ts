@@ -93,6 +93,19 @@ describe('renderStaticKanbans — the board it draws', () => {
     expect(node.getAttribute('aria-busy')).toBe('false')
   })
 
+  it('keeps a card the board filed away out of the still', () => {
+    const body = boardBody({
+      ...BOARD,
+      items: [...BOARD.items, { id: 'i4', title: 'An old experiment', properties: { status: 'doing' }, archived: true }],
+    })
+    const node = boardNode(body)
+    renderStaticKanbans(node.parentElement!)
+
+    const snapshot = node.querySelector<HTMLElement>('[data-kanban-snapshot]')!
+    expect(snapshot.textContent).toContain('Tag the build')
+    expect(snapshot.textContent, 'a still of the live board resurrected an archived card').not.toContain('An old experiment')
+  })
+
   it('says a board is empty rather than leaving an empty box', () => {
     const node = boardNode(boardBody({ ...BOARD, items: [] }))
     renderStaticKanbans(node.parentElement!)

@@ -83,6 +83,8 @@ export interface KanbanItem {
   description?: string
   files?: KanbanFile[]
   subtasks?: KanbanSubtask[]
+  /** Set only while the card is archived; restoring deletes the key. See `archive.ts`. */
+  archived?: boolean
   properties: Record<string, unknown>
 }
 

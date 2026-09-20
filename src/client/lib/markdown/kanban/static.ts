@@ -7,6 +7,7 @@
  * applied, because a still has no control that could tell the reader it is looking at a subset.
  */
 import { t } from '../../i18n'
+import { kanbanActiveItems } from './archive'
 import { parseKanbanBody } from './body'
 import { groupKanbanItems, type KanbanGroup } from './filter-sort'
 import { formatKanbanGroupLabel } from './i18n-helpers'
@@ -17,7 +18,8 @@ function snapshotGroups(data: KanbanData): KanbanGroup[] {
   const activeView = data.views.find((view) => view.id === data.activeViewId)
   const groupBy = activeView?.groupBy || 'status'
   const groupProperty = data.columns.find((column) => column.id === groupBy)
-  return groupKanbanItems(data.items, groupBy, groupProperty).filter((group) => group.items.length > 0)
+  // Archived cards are invisible on the live board, so a still of that board must not resurrect them.
+  return groupKanbanItems(kanbanActiveItems(data.items), groupBy, groupProperty).filter((group) => group.items.length > 0)
 }
 
 function cardList(items: KanbanItem[]): HTMLUListElement {

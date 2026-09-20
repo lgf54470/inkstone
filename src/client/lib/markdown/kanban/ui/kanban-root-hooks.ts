@@ -8,8 +8,10 @@ import { t } from '../../../i18n'
 import { toastWithUndo } from '../../../../store/ui'
 import type { KanbanMovePivot } from '../dnd'
 import { kanbanPeopleDirectory } from '../person'
+import { kanbanActiveItems } from '../archive'
 import { kanbanBoardLayout, moveKanbanItemToCell } from '../swimlane'
 import type { KanbanBoardCell } from '../swimlane'
+import { useKanbanArchive } from './kanban-archive'
 import { createKanbanId } from '../id'
 import type {
   KanbanColorName,
@@ -76,7 +78,9 @@ export function useKanbanFilterSort(
   }, [])
 
   const filteredItems = useMemo(
-    () => filterAndSortItems(data.items, viewState.searchQuery, selectedTags, {
+    // An archived card is not part of the board any view can show, count or chart; the archive
+    // panel is what brings it back.
+    () => filterAndSortItems(kanbanActiveItems(data.items), viewState.searchQuery, selectedTags, {
       filters: viewState.filters,
       sorts: viewState.sorts,
       columns: data.columns,
@@ -388,13 +392,7 @@ export function useKanbanRootState(
   const groupColumn = data.columns.find((c) => c.id === (filterSort.activeView.groupBy || 'status'))
   const selection = useKanbanSelection(commitData, groupColumn, history.undo)
   const items = useKanbanItemMutations(commitData, filterSort.activeView, setDetailItem)
-  const itemLifecycle = useKanbanItemLifecycle(
-    data,
-    commitData,
-    detailItem,
-    setDetailItem,
-    selection.setSelectedIds,
-  )
+  const itemLifecycle = useKanbanItemLifecycle(data, commitData, detailItem, setDetailItem, selection.setSelectedIds)
   const adds = useKanbanAddOperations(data, commitData, setDetailItem, filterSort.activeView)
   const columnOps = useKanbanColumnOperations(commitData, filterSort.activeView)
   const schemaOps = useKanbanSchemaOperations(commitData, history.undo)
@@ -404,10 +402,19 @@ export function useKanbanRootState(
   // The roster a member picker offers: read off every card, so filtering the board down never
   // removes a teammate from the list of people who can be assigned.
   const people = useMemo(() => kanbanPeopleDirectory(data.columns, data.items), [data])
+  const archive = useKanbanArchive(
+    data,
+    commitData,
+    detailItem,
+    setDetailItem,
+    selection.setSelectedIds,
+    itemLifecycle.handleDeleteItem,
+  )
 
   return {
     data,
     people,
+    ...archive,
     detailItem,
     setDetailItem,
     setActiveViewId,

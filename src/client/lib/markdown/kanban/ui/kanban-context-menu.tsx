@@ -1,4 +1,5 @@
 import {
+  Archive,
   Copy,
   FileText,
   LayoutGrid,
@@ -32,11 +33,13 @@ export interface KanbanContextMenuProps {
   onClose: () => void
   onOpenDetail?: (item: KanbanItem) => void
   onDuplicateItem?: (item: KanbanItem) => void
+  onArchiveItem?: (item: KanbanItem) => void
   onDeleteItem?: (id: string) => void
   onAddItem: () => void
   onAddColumn?: () => void
   onSelectView?: (viewId: string) => void
   onChangeCardSize?: (size: CardSize) => void
+  onBatchArchive?: () => void
   onBatchDelete?: () => void
   onClearSelection?: () => void
   onUndo?: () => void
@@ -61,6 +64,14 @@ function buildItemSpecificItems(props: KanbanContextMenuProps, item: KanbanItem)
       onSelect: () => props.onDuplicateItem?.(item),
     })
   }
+  if (props.onArchiveItem) {
+    items.push({
+      id: 'kanban-item-archive',
+      label: t('preview.kanban_archive_item'),
+      icon: <Archive size={14} />,
+      onSelect: () => props.onArchiveItem?.(item),
+    })
+  }
   if (props.onDeleteItem) {
     items.push({
       id: 'kanban-item-delete',
@@ -74,23 +85,34 @@ function buildItemSpecificItems(props: KanbanContextMenuProps, item: KanbanItem)
 }
 
 function buildSelectionItems(props: KanbanContextMenuProps): MenuItem[] {
-  if (props.selectedCount <= 0 || !props.onBatchDelete) return []
-  return [
-    {
+  if (props.selectedCount <= 0 || (!props.onBatchDelete && !props.onBatchArchive)) return []
+  const items: MenuItem[] = []
+  if (props.onBatchArchive) {
+    items.push({
+      id: 'kanban-batch-archive',
+      label: t('preview.kanban_batch_archive_count', { count: props.selectedCount }),
+      icon: <Archive size={14} />,
+      separatorBefore: true,
+      onSelect: props.onBatchArchive,
+    })
+  }
+  if (props.onBatchDelete) {
+    items.push({
       id: 'kanban-batch-delete',
       label: t('preview.kanban_batch_delete_count', { count: props.selectedCount }),
       icon: <Trash2 size={14} />,
       tone: 'danger',
-      separatorBefore: true,
+      ...(items.length === 0 ? { separatorBefore: true } : {}),
       onSelect: props.onBatchDelete,
-    },
-    {
-      id: 'kanban-clear-selection',
-      label: t('preview.kanban_clear_selection'),
-      icon: <X size={14} />,
-      onSelect: props.onClearSelection,
-    },
-  ]
+    })
+  }
+  items.push({
+    id: 'kanban-clear-selection',
+    label: t('preview.kanban_clear_selection'),
+    icon: <X size={14} />,
+    onSelect: props.onClearSelection,
+  })
+  return items
 }
 
 function buildHistoryItems(props: KanbanContextMenuProps): MenuItem[] {

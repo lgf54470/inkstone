@@ -77,6 +77,7 @@ describe('card context menu items', () => {
     expect(items.find((i) => i.id === 'kanban-toggle-fullscreen')?.combo).toBe('Esc')
   })
 
+
   // A literal 'Ctrl+Y' would be a dead promise on macOS, where `kanban-history.ts` binds
   // mod+Shift+Z; the canonical token is what lets the shared row render the real glyph.
   it('names the history chords in the canonical form the menu renders per platform', () => {
@@ -114,5 +115,52 @@ describe('board context menu items', () => {
 
     expect(items.find((i) => i.id === 'kanban-batch-delete')?.label).toContain('3')
     expect(items.find((i) => i.id === 'kanban-clear-selection')).toBeDefined()
+  })
+
+})
+describe('archive steps in the context menu', () => {  it('files the card away on the way to the trash, before it', () => {
+    const onArchiveItem = vi.fn()
+    const onDeleteItem = vi.fn()
+    const items = buildKanbanContextMenuItems(
+      createDummyProps({ targetItem: dummyItem, onArchiveItem, onDeleteItem }),
+    )
+    const order = items.map((i) => i.id)
+    expect(order.indexOf('kanban-item-archive')).toBeLessThan(order.indexOf('kanban-item-delete'))
+    items.find((i) => i.id === 'kanban-item-archive')?.onSelect?.()
+    expect(onArchiveItem).toHaveBeenCalledWith(dummyItem)
+  })
+
+  it('offers no archive step where nothing can file a card away', () => {
+    const items = buildKanbanContextMenuItems(createDummyProps({ targetItem: dummyItem, onDeleteItem: vi.fn() }))
+    expect(items.find((i) => i.id === 'kanban-item-archive')).toBeUndefined()
+  })
+  it('files the whole selection away as one batch step', () => {
+    const onBatchArchive = vi.fn()
+    const items = buildKanbanContextMenuItems(
+      createDummyProps({ selectedCount: 3, onBatchArchive, onBatchDelete: vi.fn(), onClearSelection: vi.fn() }),
+    )
+    const archive = items.find((i) => i.id === 'kanban-batch-archive')
+    expect(archive?.label).toContain('3')
+    archive?.onSelect?.()
+    expect(onBatchArchive).toHaveBeenCalledOnce()
+  })
+
+  it('opens the batch group with one divider whichever of the two steps is present', () => {
+    const dividers = (batch: Partial<KanbanContextMenuProps>) =>
+      buildKanbanContextMenuItems(
+        createDummyProps({
+          selectedCount: 2,
+          onClearSelection: vi.fn(),
+          onUndo: undefined,
+          onRedo: undefined,
+          ...batch,
+        }),
+      )
+        .filter((i) => i.separatorBefore)
+        .map((i) => i.id)
+
+    expect(dividers({ onBatchArchive: vi.fn() })).toEqual(['kanban-batch-archive'])
+    expect(dividers({ onBatchDelete: vi.fn() })).toEqual(['kanban-batch-delete'])
+    expect(dividers({ onBatchArchive: vi.fn(), onBatchDelete: vi.fn() })).toEqual(['kanban-batch-archive'])
   })
 })

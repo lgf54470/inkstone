@@ -12,6 +12,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
 import { formatKanbanGroupLabel, formatKanbanPropertyName } from '../i18n-helpers'
+import { KanbanArchiveAction } from './kanban-archive'
 import { CardHeader } from './kanban-card-header'
 import { KanbanColumnHeader } from './kanban-column-header'
 import { KanbanDatePicker } from './kanban-date-picker'
@@ -207,6 +208,16 @@ const PAIRS: Pair[] = [
     panelRole: 'dialog',
   },
   { label: 'tag popover on a card', node: cardHeaderNode, trigger: (root) => namedButton(root, t('preview.kanban_new_tag')), panelRole: 'dialog' },
+  {
+    label: 'archive shelf',
+    node: () => createElement(KanbanArchiveAction, {
+      items: [{ ...item, archived: true }],
+      onRestore: vi.fn(),
+      onDelete: vi.fn(),
+    }),
+    trigger: (root) => root.querySelector<HTMLElement>('[data-kanban-archive]'),
+    panelRole: 'dialog',
+  },
 ]
 
 function requireTrigger(pair: Pair, root: ParentNode): HTMLElement {

@@ -255,6 +255,7 @@ function KanbanTopBar({
       onToggleHiddenColumn={state.filterSort.toggleHiddenColumn}
       onAddItem={() => state.adds.handleAddItem()}
       onToggleFullscreen={onToggleFullscreen}
+      archive={state.archive}
       viewPanelId={viewPanelId}
       unsaved={unsaved}
       onRetryWrite={onRetryWrite}
@@ -274,9 +275,8 @@ function KanbanMain({
   viewPanelId: string
 }) {
   return (
-    // The selected view is what its tab controls, so this box is the panel — hanging the role here
-    // rather than on a wrapper keeps the geometry untouched, and the board stops nesting a second
-    // `main` landmark inside the app shell's own one.
+    // The selected view is what its tab controls, so this box is the panel; hanging the role here
+    // rather than on a wrapper keeps the geometry untouched and avoids a second landmark in the shell.
     <div
       id={viewPanelId}
       role='tabpanel'
@@ -316,6 +316,7 @@ function KanbanMain({
         selectedCount={state.selection.selectedIds.size}
         groupColumn={state.groupColumn}
         onBatchGroupChange={state.selection.handleBatchGroupChange}
+        onBatchArchive={() => state.handleArchiveItems(state.selection.selectedIds)}
         onBatchDelete={state.selection.handleBatchDelete}
         onClearSelection={state.selection.handleClearSelection}
       />
@@ -364,11 +365,13 @@ function KanbanRootOverlays({
         onClose={menu.handleClose}
         onOpenDetail={state.setDetailItem}
         onDuplicateItem={menu.handleDuplicateItem}
+        onArchiveItem={(item) => state.handleArchiveItems([item.id])}
         onDeleteItem={state.items.handleDeleteItem}
         onAddItem={() => state.adds.handleAddItem()}
         onAddColumn={state.adds.handleAddColumn}
         onSelectView={state.setActiveViewId}
         onChangeCardSize={state.filterSort.setCardSize}
+        onBatchArchive={() => state.handleArchiveItems(state.selection.selectedIds)}
         onBatchDelete={state.selection.handleBatchDelete}
         onClearSelection={state.selection.handleClearSelection}
         onUndo={state.history.undo}

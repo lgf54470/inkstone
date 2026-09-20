@@ -10,6 +10,7 @@ import { act, createElement, type ReactNode, type RefObject } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
+import { KanbanArchiveAction } from './kanban-archive'
 import { KanbanColumnMenu } from './kanban-column-menu'
 import { KanbanDatePicker } from './kanban-date-picker'
 import { KanbanFilterPopover } from './kanban-filter-popover'
@@ -204,6 +205,34 @@ describe('KanbanTagPicker dismissal', () => {
 
   it('puts the tag popover away on a click outside', () => {
     openTagPopover()
+    pressMouseDown(document.body)
+    expect(openPanels()).toBeNull()
+  })
+})
+
+describe('KanbanArchiveAction dismissal', () => {
+  function openShelf(): void {
+    const archived: KanbanItem = { id: 'z', title: 'Filed away', properties: { status: 'todo' }, archived: true }
+    mount(createElement(KanbanArchiveAction, { items: [archived], onRestore: vi.fn(), onDelete: vi.fn() }))
+    const trigger = document.querySelector<HTMLButtonElement>('[data-kanban-archive]')
+    if (!trigger) throw new Error('the archive trigger was not rendered')
+    act(() => {
+      trigger.click()
+    })
+  }
+
+  it('puts the shelf away with Escape', () => {
+    openShelf()
+    expect(openPanels(), 'the archive panel did not open').not.toBeNull()
+    pressEscape()
+    expect(openPanels()).toBeNull()
+  })
+
+  it('puts the shelf away on a click outside, but not on a click inside it', () => {
+    openShelf()
+    const panel = openPanels()
+    pressMouseDown(panel!)
+    expect(openPanels(), 'a click inside the shelf dismissed it').toBe(panel)
     pressMouseDown(document.body)
     expect(openPanels()).toBeNull()
   })

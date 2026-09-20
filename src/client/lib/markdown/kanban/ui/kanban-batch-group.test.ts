@@ -169,6 +169,7 @@ function renderBatchBar(groupColumn: KanbanProperty | undefined, onBatchGroupCha
       selectedCount: 2,
       groupColumn,
       onBatchGroupChange,
+      onBatchArchive: vi.fn(),
       onBatchDelete: vi.fn(),
       onClearSelection: vi.fn(),
     }),

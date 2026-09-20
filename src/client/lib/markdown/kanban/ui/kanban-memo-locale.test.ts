@@ -118,6 +118,7 @@ const SUBJECTS: { name: string, element: ReactElement }[] = [
       selectedCount: 2,
       groupColumn: columns[1],
       onBatchGroupChange: noop,
+      onBatchArchive: noop,
       onBatchDelete: noop,
       onClearSelection: noop,
     }),

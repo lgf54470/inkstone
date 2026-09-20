@@ -2664,6 +2664,11 @@ const allowed = new Map([
     '/** Rewrites the whole block as plain text: the fence, its body and its closing line all go. */',
     '/** Inserts text on its own lines right after the block, leaving the fence alone. */',
   ]],
+  ['src/client/lib/markdown/kanban/archive.ts', [
+    '/**\n * The archive: cards a board has finished with but must not lose. An archived card leaves every\n * view, every count and every still snapshot, and comes back only through restore — deletion, by\n * contrast, is the operation the archive exists to keep people away from.\n */',
+    '/** Only a literal `true` archives a card: whatever else an author wrote is noise, not an archive. */',
+    '/**\n * Archive or restore the cards named by `ids`; ids the document does not hold are ignored. A batch\n * that changes nothing returns the very same array, so a writer can commit zero steps of undo\n * instead of a rewrite that looks like an edit.\n */',
+  ]],
   ['src/client/lib/markdown/kanban/body.test.ts', [
     '// Deleting a view is a thing a reader can now do from the header, so the parser must stop adding',
     '// one back: a fence that lists no chart view means a board whose chart view is gone, and a view',
@@ -2827,6 +2832,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/static.ts', [
     '/**\n * A board as a still list, for every surface that serializes or prints its markup: an exported\n * document, a shared note, a slide, a link hover card, the editor\'s live preview. Those channels\n * cannot host a live board — a React root there would outlive the page it was drawn for, and every\n * control on it would be a button nobody can press — so the cards travel as the list the fence\n * describes. Grouping follows the board\'s own group column; the view\'s filters are deliberately not\n * applied, because a still has no control that could tell the reader it is looking at a subset.\n */',
+    '// Archived cards are invisible on the live board, so a still of that board must not resurrect them.',
     '/** Draws every kanban block in `root` as a still list instead of a board that never arrives. */',
   ]],
   ['src/client/lib/markdown/kanban/swimlane.test.ts', [
@@ -2850,7 +2856,16 @@ const allowed = new Map([
     '/** Cards this workflow state may hold at once; absent means the reader set no rule. See `filter-sort.ts`. */',
     '/**\n * What a reader may change about one column of the board. `wipLimit` is optional in the patch and\n * also clearable: a patch that names it at all answers the question, so `undefined` removes the\n * rule, while leaving the key out keeps the rule the column has.\n */',
     '/** Pixels the reader sized this column to; absent means the type decides. See `column-width.ts`. */',
+    '/** Set only while the card is archived; restoring deletes the key. See `archive.ts`. */',
     '/** Board only: a second field the cards are cut into horizontal bands by. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-archive.test.ts', [
+    '/**\n * F-12. Filing a card away takes it out of every view, count and chart at once, and the archive\n * panel is the only way back — so these cases read a mounted board end to end: what the reader no\n * longer sees, what the panel offers, and how one click travels back into the document through the\n * board\'s single commit path.\n */',
+    '/** The document the host was last handed — what one step of the board history wrote. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-archive.tsx', [
+    '/**\n * The one writer of the archive flag. A batch that changes nothing hands the history back the very\n * same document, so filing away a card that was already filed away costs no step of undo.\n */',
+    '/**\n * The only way back to an archived card. With nothing filed away the control is absent rather than\n * a button that opens an empty list — and because it is absent, bringing the last card back closes\n * the shelf by itself: no second path has to remember to shut the panel.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-bilingual-labels.test-helpers.ts', [
     '/**\n * Shared fixture for the two label probes: both mount the real surface once per shipped language and\n * compare the rendered text with the resource entry itself — the expectation is read out of\n * `EN_US_MESSAGES`/`ZH_CN_MESSAGES` with only the caller\'s value substituted, so a resource rewrite\n * moves the test with it and a component that slides back to composing labels in JSX goes red.\n * Han literals cannot appear in a test file (`i18n:check` only allows them inside the zh-CN\n * resources), which is why the phrase is always looked up rather than written out.\n */',
@@ -3141,6 +3156,8 @@ const allowed = new Map([
     '// is the one thing it reads that the header spells out as `data`.',
     '// The column panel needs nothing but its toggle; the board panel keeps its',
     '// older rule of showing up only once both of its own writers are wired.',
+    '// The tag bar offers values a reader could filter the live board down to; a tag that only',
+    '// survives on archived cards would promise an empty result.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-history.test.ts', [
     '// A toast that offers a way back keeps the `undo` it was handed at the moment of the edit, and runs',
@@ -3282,6 +3299,8 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-root-hooks.ts', [
     '// The schema travels with the rules: a comparison is only meaningful as a question about the kind',
     '// of column the rule points at.',
+    '// An archived card is not part of the board any view can show, count or chart; the archive',
+    '// panel is what brings it back.',
     '// The view is read at drop time through this ref, so the mover keeps one identity for the whole',
     '// drag (the board memoizes on it) while still honouring the grouping the view has by then.',
     '// Keeps `data`: the stripped parent shown in the detail panel must be the',
@@ -3302,9 +3321,8 @@ const allowed = new Map([
     '/** Passed down from the mount options: how the host renders description markdown. */',
     '// Views edit one item\'s own fields; the writer keeps that shape in one place',
     '// while still committing the whole document like every other edit does.',
-    '// The selected view is what its tab controls, so this box is the panel — hanging the role here',
-    '// rather than on a wrapper keeps the geometry untouched, and the board stops nesting a second',
-    '// `main` landmark inside the app shell\'s own one.',
+    '// The selected view is what its tab controls, so this box is the panel; hanging the role here',
+    '// rather than on a wrapper keeps the geometry untouched and avoids a second landmark in the shell.',
     '// One id names the panel and, through `kanbanViewTabId`, the tab that controls it; the header and',
     '// the view render in two branches of this tree, so the pair is minted here.',
     '// A host tree React did not make never re-renders this root, so the board listens',
