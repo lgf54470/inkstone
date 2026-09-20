@@ -429,13 +429,25 @@ function registerBlogPostsBatchRoute(blogManageRoutes: Hono<AppBindings>): void 
     if (!body.postIds?.length) return c.json({ ok: true, count: 0 })
 
     const now = Date.now()
-    const statements = blogBatchStatements(userId, body.action, body.postIds, body, now)
-    for (const stmt of statements) {
-      await c.env.DB.prepare(stmt.sql).bind(...stmt.binds).run()
+    // One statement per group: D1 rejects a statement that binds more than 100 variables.
+    for (const group of chunkPostIds(body.postIds)) {
+      for (const stmt of blogBatchStatements(userId, body.action, group, body, now)) {
+        await c.env.DB.prepare(stmt.sql).bind(...stmt.binds).run()
+      }
     }
 
     return c.json({ ok: true, count: body.postIds.length })
   })
+}
+
+const BLOG_POST_ID_CHUNK = 50
+
+function chunkPostIds(postIds: string[]): string[][] {
+  const groups: string[][] = []
+  for (let index = 0; index < postIds.length; index += BLOG_POST_ID_CHUNK) {
+    groups.push(postIds.slice(index, index + BLOG_POST_ID_CHUNK))
+  }
+  return groups
 }
 
 function blogBatchStatements(

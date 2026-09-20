@@ -879,3 +879,42 @@ describe('blog comment cascade ownership (SH-41)', () => {
     expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 0 })
   })
 })
+
+describe('blog batch statements stay inside the D1 bind limit (SH-42)', () => {
+  async function seedManyPosts(db: D1Shim, count: number): Promise<string[]> {
+    const ids: string[] = []
+    for (let index = 0; index < count; index++) {
+      const post = await seedBlogPost(db, { id: `many-${index}`, slug: `many-${index}` })
+      await seedVisitAt(db, post.id, post.slug, H.now - 1_000, `fp-${index}`)
+      ids.push(post.id)
+    }
+    return ids
+  }
+
+  it('deletes more posts than one statement can bind', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const ids = await seedManyPosts(db, 120)
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/blog/posts/batch', { action: 'delete', postIds: ids })
+
+    expect(res.status).toBe(200)
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_posts')).toMatchObject({ n: 0 })
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_visits')).toMatchObject({ n: 0 })
+  })
+
+  it('publishes more posts than one statement can bind', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const ids = await seedManyPosts(db, 120)
+    await runSql(db, 'UPDATE blog_posts SET is_published = 0')
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/blog/posts/batch', { action: 'publish', postIds: ids })
+
+    expect(res.status).toBe(200)
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_posts WHERE is_published = 1'))
+      .toMatchObject({ n: 120 })
+  })
+})

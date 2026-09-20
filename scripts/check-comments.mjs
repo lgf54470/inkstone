@@ -4452,6 +4452,7 @@ const allowed = new Map([
     '// One batch, so a post cannot survive while its log rows go missing (or the other way round).',
     '// `blog_comments` has no owner column, so the delete asks blog_posts who owns the post and has to',
     '// run before the post row itself disappears.',
+    '// One statement per group: D1 rejects a statement that binds more than 100 variables.',
     '// Comments have no owner column: both child deletes must land before the post rows go.',
   ]],
   ['src/worker/routes/blog/public-links.ts', [

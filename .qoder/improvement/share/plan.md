@@ -56,7 +56,7 @@
 | F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | ✅ | f812c7a7 |
 | H1 | SH-39 | `maxLogRecords`（设置模态「最多记录数」）全仓无消费者，属假设置：接入日志列表取数上限或删除控件+文案+本地键 | P3 | 排队 | |
 | H3 | SH-41 | 安全：`blog_posts` 删除的两条 `DELETE FROM blog_comments WHERE post_id …` 不带 user 限定——按 id 点名他人文章即可删其评论（跨账号写），须与同批 posts 语句同口径加 `user_id` | P1 | ✅ | 6cda419e |
-| H4 | SH-42 | `POST /api/blog/posts/batch` 的 `postIds` 无长度上限，`IN (…)` 直接拼占位符——>100 个 id 必 500（share 侧 02 号同款 D1 变量上限），需分块或 schema 上限 | P1 | 排队 | |
+| H4 | SH-42 | `POST /api/blog/posts/batch` 的 `postIds` 无长度上限，`IN (…)` 直接拼占位符——>100 个 id 必 500（share 侧 02 号同款 D1 变量上限），需分块或 schema 上限 | P1 | ✅ | 待回填 |
 | H5 | SH-43 | `blog_visits` 无保留期设置（share 已有 `share.visitLogRetentionDays`）：cron 只扫孤儿行，需要 blog settings 段落 + 模态接线，属产品决策 | P2 | 排队 | |
 | H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby` | P2 | 排队 | |
 | G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | 排队 | |
@@ -364,3 +364,12 @@
 - 测试（红先行）：`tests/blog-routes.test.ts` 新 describe 4 例（`seedTwoOwners` 种「本人一篇 + 他人一篇 + 各带一条已审评论」，他人文章经 `UPDATE blog_posts SET user_id` 改主）——单篇点名他人文章：他人评论必须存活（红态 `expected { kept: +0, gone: 1 } to deeply equal { kept: 1, gone: 1 }`，即真删掉了）；批量点名他人文章：同上；删自己的文章仍能带走自己那条评论（单篇与批量各一例，防「为了安全把级联删空」）。红 2 确认后转绿，blog-routes 34/34。
 - 变异 4 发全杀（/tmp/mutF3 备份还原，脚本 /tmp/mutf41.py）：单篇 comments 退回不带 owner、批量同退、单篇把 posts 删除排到最前（子表反查落空、评论删不掉）、批量同排错。后两发专杀「先删父表再靠父表判归属」这一顺序陷阱。
 - 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 44/44（blog-routes 34 + blog-visit-cleanup 2 + share-visit-retention 8）。全量回归 242 文件/1867 测试绿（REGRESSION_EXIT=0，串行 502s）。fix 提交 6cda419e。
+
+## 43 — SH-42（H4）博客批量删除的 D1 变量上限：按 50 个 id 分块执行（2026-09-20）
+
+- 现状与根因：`blogBatchSchema.postIds` 只校验「字符串数组」而无长度上限，`blogBatchStatements` 又把每个 id 展开成一个 `?` 占位符（`postIds.map(() => '?').join(',')`），一条语句的绑定变量数 = id 数 + 该动作自带的参数（`user_id`、`categoryId`、`folderId`、`now`…）。D1 单语句绑定上限是 100 个变量（`tests/d1-harness.ts` 的 `D1_BOUND_PARAMETER_LIMIT` 正是模拟它），所以选中 100 篇以上文章点「删除/发布/置顶/移入分类」必然 500——share 侧 02 号（图谱 e668f20c 同款）已踩过一次，blog 侧是同一个坑的第二处。`{action:'delete'}` 在 F3/SH-41 之后一次组内有 3 条语句，其中 comments 那条走 `IN (SELECT id FROM blog_posts WHERE user_id = ? AND IN (…))`，实测 121 绑定、posts 那条 122 绑定。
+- 修法：路由侧按 `BLOG_POST_ID_CHUNK = 50` 分块（`chunkPostIds`），每块独立生成并执行自己的语句组，`count` 仍回全量 id 数。取 50 与 `share/batch.ts` 的 `SHARE_NOTE_ID_CHUNK` 同界：分块后最宽的一条语句是 `setPinned`（取值 + `now` + `user_id` + 50 个 id = 54 绑定），距离 100 还有一屏余量，不必为每个动作各自换算。**不给 schema 加 max**——「全选 120 篇删除」是合法用户意图，把上限换成 400 只是把 500 变成另一种失败。
+- 不做的事：不把 chunker 抽成跨模块共用工具（铁律3 跨模块只经公开入口，`deep-imports:check` 会拒；仓库惯例是各模块自带本地 chunker，两处 10 行不满足第三次出现的抽取条件）。
+- 测试（红先行）：`tests/blog-routes.test.ts` 新 describe 2 例，`seedManyPosts` 种 120 篇（各带 1 行 visit）——120 个 id 的 `delete` 必须 200 且 `blog_posts`/`blog_visits` 归零；120 个 id 的 `publish` 必须 200 且 120 篇 `is_published=1`（钉住分块对所有动作生效，不只 delete 那条恰好加了子查询的路径）。红态实测 `D1_ERROR: too many SQL variables — 121 bound` / `— 122 bound`，响应 500。
+- 变异 4 发全杀（/tmp/mutF3 备份还原）：块宽改 200（回到超上限）、去掉分块整个数组一把梭、只执行第一组（其余静默不删）、某组切掉第一个 id（部分删除）。
+- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 38/38（blog-routes 36 + blog-visit-cleanup 2）。全量回归 待回填。fix 提交 待回填。
