@@ -88,15 +88,29 @@ export function rankTracks(index: MusicSearchIndex, query: string, limit = SEARC
   return scored.slice(0, limit).map((entry) => entry.id)
 }
 
-// The list and the "matches left out" count ask the same question about the same
-// library, so the last ranking is remembered by the inputs it was computed from.
-let lastSearch: { tracks: MusicTrack[]; romanized: Record<string, string>; query: string; ids: string[] } | null = null
+// The haystacks are a function of the library, not of the query, so they are built once per
+// library array and reused while that array and its romanization live on: typing another letter
+// then re-ranks the rows it already has instead of lower-casing the whole library again.
+const indexCache = new WeakMap<MusicTrack[], { romanized: Record<string, string>; index: MusicSearchIndex }>()
+
+export function searchIndexFor(tracks: MusicTrack[], romanized: Record<string, string>): MusicSearchIndex {
+  const cached = indexCache.get(tracks)
+  if (cached && cached.romanized === romanized) return cached.index
+  const index = buildSearchIndex(tracks, romanized)
+  indexCache.set(tracks, { romanized, index })
+  return index
+}
+
+// The list and the "matches left out" count ask the same question about the same library, so the
+// last ranking is remembered per index: they hand in different arrays and would otherwise evict
+// each other, scoring every keystroke twice.
+const rankingCache = new WeakMap<MusicSearchIndex, { query: string; ids: string[] }>()
 
 export function searchTracks(tracks: MusicTrack[], romanized: Record<string, string>, query: string): string[] {
-  if (lastSearch && lastSearch.tracks === tracks && lastSearch.romanized === romanized && lastSearch.query === query) {
-    return lastSearch.ids
-  }
-  const ids = rankTracks(buildSearchIndex(tracks, romanized), query, Number.POSITIVE_INFINITY)
-  lastSearch = { tracks, romanized, query, ids }
+  const index = searchIndexFor(tracks, romanized)
+  const cached = rankingCache.get(index)
+  if (cached && cached.query === query) return cached.ids
+  const ids = rankTracks(index, query, Number.POSITIVE_INFINITY)
+  rankingCache.set(index, { query, ids })
   return ids
 }

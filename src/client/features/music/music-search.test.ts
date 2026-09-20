@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MusicTrack } from '@shared/types'
-import { buildSearchIndex, ensureRomanized, needsRomanization, rankTracks, ROMANIZATION_BATCH } from './music-search'
+import { buildSearchIndex, ensureRomanized, needsRomanization, rankTracks, ROMANIZATION_BATCH, searchTracks } from './music-search'
 
 function track(id: string, title: string, artist = '', album = ''): MusicTrack {
   return {
@@ -60,6 +60,52 @@ describe('music search', () => {
     expect(missing).not.toBe(preset)
     expect(missing.cached).toBe('anything')
     expect(missing.fresh).toBeTruthy()
+  })
+})
+
+// A track whose title read is counted, because reading the title is exactly the work the index
+// does: if a fresh query pays for it again, the haystack was rebuilt from the library.
+function countedTrack(id: string, title: string, onRead: () => void): MusicTrack {
+  const base = track(id, title)
+  return {
+    ...base,
+    get title() {
+      onRead()
+      return title
+    },
+  }
+}
+
+describe('search index reuse', () => {
+  it('builds the haystacks once per library instead of once per keystroke', () => {
+    const reads: string[] = []
+    const tracks = [countedTrack('1', 'Moonlight', () => reads.push('title'))]
+    const romanized = {}
+
+    expect(searchTracks(tracks, romanized, 'moon')).toEqual(['1'])
+    expect(searchTracks(tracks, romanized, 'moonl')).toEqual(['1'])
+
+    expect(reads).toHaveLength(1)
+  })
+
+  it('answers the same query again without ranking it twice', () => {
+    const tracks = [countedTrack('2', 'Tian Xing', () => {})]
+    const romanized = {}
+
+    const first = searchTracks(tracks, romanized, 'tian')
+    const second = searchTracks(tracks, romanized, 'tian')
+
+    expect(second).toBe(first)
+  })
+
+  it('rebuilds once the romanization for the library arrives', () => {
+    const reads: string[] = []
+    const tracks = [countedTrack('3', '月光', () => reads.push('title'))]
+
+    searchTracks(tracks, {}, 'yueguang')
+    searchTracks(tracks, { '3': 'yueguang yuegg' }, 'yueguang')
+
+    expect(reads).toHaveLength(2)
   })
 })
 
