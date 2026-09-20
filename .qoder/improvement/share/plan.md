@@ -56,7 +56,7 @@
 | F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | ✅ | f812c7a7 |
 | H1 | SH-39 | `maxLogRecords`（设置模态「最多记录数」）全仓无消费者，属假设置：接入日志列表取数上限或删除控件+文案+本地键 | P3 | 排队 | |
 | H3 | SH-41 | 安全：`blog_posts` 删除的两条 `DELETE FROM blog_comments WHERE post_id …` 不带 user 限定——按 id 点名他人文章即可删其评论（跨账号写），须与同批 posts 语句同口径加 `user_id` | P1 | ✅ | 6cda419e |
-| H4 | SH-42 | `POST /api/blog/posts/batch` 的 `postIds` 无长度上限，`IN (…)` 直接拼占位符——>100 个 id 必 500（share 侧 02 号同款 D1 变量上限），需分块或 schema 上限 | P1 | ✅ | 待回填 |
+| H4 | SH-42 | `POST /api/blog/posts/batch` 的 `postIds` 无长度上限，`IN (…)` 直接拼占位符——>100 个 id 必 500（share 侧 02 号同款 D1 变量上限），需分块或 schema 上限 | P1 | ✅ | 0e00fa6a |
 | H5 | SH-43 | `blog_visits` 无保留期设置（share 已有 `share.visitLogRetentionDays`）：cron 只扫孤儿行，需要 blog settings 段落 + 模态接线，属产品决策 | P2 | 排队 | |
 | H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby` | P2 | 排队 | |
 | G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | 排队 | |
@@ -372,4 +372,4 @@
 - 不做的事：不把 chunker 抽成跨模块共用工具（铁律3 跨模块只经公开入口，`deep-imports:check` 会拒；仓库惯例是各模块自带本地 chunker，两处 10 行不满足第三次出现的抽取条件）。
 - 测试（红先行）：`tests/blog-routes.test.ts` 新 describe 2 例，`seedManyPosts` 种 120 篇（各带 1 行 visit）——120 个 id 的 `delete` 必须 200 且 `blog_posts`/`blog_visits` 归零；120 个 id 的 `publish` 必须 200 且 120 篇 `is_published=1`（钉住分块对所有动作生效，不只 delete 那条恰好加了子查询的路径）。红态实测 `D1_ERROR: too many SQL variables — 121 bound` / `— 122 bound`，响应 500。
 - 变异 4 发全杀（/tmp/mutF3 备份还原）：块宽改 200（回到超上限）、去掉分块整个数组一把梭、只执行第一组（其余静默不删）、某组切掉第一个 id（部分删除）。
-- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 38/38（blog-routes 36 + blog-visit-cleanup 2）。全量回归 待回填。fix 提交 待回填。
+- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 38/38（blog-routes 36 + blog-visit-cleanup 2）。全量回归 242 文件/1869 测试绿（REGRESSION_EXIT=0，串行 460s）。fix 提交 0e00fa6a。
