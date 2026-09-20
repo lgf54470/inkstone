@@ -8,6 +8,7 @@ import { t } from '../../lib/i18n'
 import { formatBytes } from '../../lib/time'
 import { useUi } from '../../store/ui'
 import { useMusic } from './music-store'
+import { UPLOAD_ACCEPT } from './music-utils'
 
 const WEBDAV_WIDTH = 640
 
@@ -78,7 +79,7 @@ function WebdavUploadInput({
     <input
       ref={inputRef}
       type='file'
-      accept='audio/*,video/*'
+      accept={UPLOAD_ACCEPT}
       multiple
       hidden
       onChange={(event) => {

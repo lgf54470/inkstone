@@ -1897,7 +1897,12 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-upload-accept.test.ts', [
     '// The folder picker deliberately carries no accept - the pre-check filters noise there -',
-    '// so every picker that does advertise containers must promise the same kinds.',
+    '// while every picker that does advertise containers must promise exactly the kinds the',
+    '// upload path accepts. A wider list (audio/*, video/*) let the chooser offer files the',
+    '// pre-check then skipped, which reads as an upload that failed without ever starting, and',
+    '// the picker is the only place where the type filter can run before the user commits.',
+    '// Extensions, not MIME families: every entry must name a container the gate accepts.',
+    '// Video containers stay pickable, which is what M-55a added them for.',
   ]],
   ['src/client/features/music/music-utils.ts', [
     '// Per-track network bursts (bulk upload/download/import/scan) stay pipelined but bounded:',
@@ -1910,6 +1915,8 @@ const allowed = new Map([
     '// Mirrors the worker\'s resolver so folder picks (which carry cover art, cue sheets and',
     '// other noise) only queue files the server will accept, and nothing wastes a round trip',
     '// it would reject. Empty files count as unsupported rather than vanishing.',
+    '// The file choosers promise the very containers the pre-check accepts, derived from that set so',
+    '// the two cannot drift. `audio/*,video/*` looked friendlier but offered kinds the upload skipped.',
     '// Shift-click selects everything between the anchor row and the clicked row.',
     '// Uploads name a track after its file; the tag title wins when the file only adds the artist.',
     '// A playlist\'s cover is derived, not stored: the first item (in the user\'s manual',

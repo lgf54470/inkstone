@@ -7,6 +7,7 @@ import { cn } from '../../lib/cn'
 import { t, type MessageKey } from '../../lib/i18n'
 import type { MusicDownloadTask, MusicLibraryJob, MusicLibraryJobKind, MusicTransferTarget, MusicUploadTask } from './music-store'
 import { useMusic } from './music-store'
+import { UPLOAD_ACCEPT } from './music-utils'
 
 const TRANSFER_WIDTH = 520
 const TARGETS: { value: MusicTransferTarget; label: 'music.source_r2' | 'music.source_webdav' }[] = [
@@ -86,7 +87,7 @@ export function UploadPicker({ target }: { target: MusicTransferTarget }) {
       <input
         ref={inputRef}
         type='file'
-        accept='audio/*,video/*'
+        accept={UPLOAD_ACCEPT}
         multiple
         hidden
         onChange={(event) => {

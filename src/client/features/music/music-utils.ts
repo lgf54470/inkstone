@@ -55,6 +55,10 @@ export function seekTargetMs(currentMs: number, durationMs: number, deltaMs: num
 // it would reject. Empty files count as unsupported rather than vanishing.
 const UPLOAD_EXTENSIONS = new Set(['mp3', 'm4a', 'mp4', 'flac', 'wav', 'wave', 'ogg', 'oga', 'opus', 'aac', 'webm', 'mov', 'm4v'])
 
+// The file choosers promise the very containers the pre-check accepts, derived from that set so
+// the two cannot drift. `audio/*,video/*` looked friendlier but offered kinds the upload skipped.
+export const UPLOAD_ACCEPT = [...UPLOAD_EXTENSIONS].map((extension) => '.' + extension).join(',')
+
 export interface UploadPartition {
   accepted: File[]
   unsupported: number

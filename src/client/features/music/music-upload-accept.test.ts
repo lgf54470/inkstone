@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { UploadPicker } from './music-transfer-dialog'
 import { MusicWebdavModal } from './music-webdav-modal'
 import { useMusic } from './music-store'
+import { partitionUploadableFiles } from './music-utils'
 
 beforeAll(() => {
   ;(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
@@ -57,25 +58,33 @@ afterEach(() => {
 })
 
 // The folder picker deliberately carries no accept - the pre-check filters noise there -
-// so every picker that does advertise containers must promise the same kinds.
-describe('upload pickers advertise video containers (M-55a)', () => {
-  it('lets the file chooser in the upload dialog pick a clip, not only audio', async () => {
-    const container = await mount(createElement(UploadPicker, { target: 'r2' }))
-    const accepts = acceptingInputs(container)
-    expect(accepts.length).toBeGreaterThan(0)
-    for (const accept of accepts) {
-      expect(accept).toContain('audio/')
-      expect(accept).toContain('video/')
+// while every picker that does advertise containers must promise exactly the kinds the
+// upload path accepts. A wider list (audio/*, video/*) let the chooser offer files the
+// pre-check then skipped, which reads as an upload that failed without ever starting, and
+// the picker is the only place where the type filter can run before the user commits.
+function expectAdvertisesUploadable(scope: ParentNode): void {
+  const accepts = acceptingInputs(scope)
+  expect(accepts.length).toBeGreaterThan(0)
+  for (const accept of accepts) {
+    const entries = accept.split(',').map((entry) => entry.trim())
+    // Extensions, not MIME families: every entry must name a container the gate accepts.
+    expect(entries.filter((entry) => !entry.startsWith('.'))).toEqual([])
+    for (const entry of entries) {
+      const file = new File([new Uint8Array([1])], `sample${entry}`)
+      expect(partitionUploadableFiles([file]).accepted).toHaveLength(1)
     }
+    // Video containers stay pickable, which is what M-55a added them for.
+    expect(entries).toEqual(expect.arrayContaining(['.mp4', '.mov', '.webm']))
+  }
+}
+
+describe('upload pickers advertise what the upload accepts', () => {
+  it('narrows the file chooser in the upload dialog to those containers', async () => {
+    expectAdvertisesUploadable(await mount(createElement(UploadPicker, { target: 'r2' })))
   })
 
-  it('lets the file chooser in the WebDAV dialog pick a clip, not only audio', async () => {
+  it('narrows the file chooser in the WebDAV dialog to the same ones', async () => {
     await mount(createElement(MusicWebdavModal, { open: true, onClose: () => {} }))
-    const accepts = acceptingInputs(document.body)
-    expect(accepts.length).toBeGreaterThan(0)
-    for (const accept of accepts) {
-      expect(accept).toContain('audio/')
-      expect(accept).toContain('video/')
-    }
+    expectAdvertisesUploadable(document.body)
   })
 })
