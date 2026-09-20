@@ -24,6 +24,12 @@ node scripts/check-migration-immutability.mjs
 # stay fast; the full suite still runs in CI. `tsc -b` is incremental (via
 # .tsbuildinfo it only re-checks the modules affected by this change), and
 # vitest "related" runs only the unit tests that import the staged files.
+#
+# The 30s per-test timeout is the one the documented full run uses. Several
+# tests here render hundreds of rows or project a 19.8k-note vault, so they
+# pass in ~1-3s alone but cross vitest's 5s default once this gate runs a
+# hundred files in parallel — twice that turned into a "--no-verify" commit,
+# which is the opposite of what a gate is for.
 staged_ts="$(git diff --cached --name-only --diff-filter=ACM -- '*.ts' '*.tsx')"
 if [ -z "$staged_ts" ]; then
   exit 0
@@ -32,4 +38,4 @@ fi
 npm run typecheck --silent
 
 # shellcheck disable=SC2086  # word-splitting is intended for the file list
-npx --no-install vitest related --run $staged_ts --passWithNoTests
+npx --no-install vitest related --run $staged_ts --passWithNoTests --testTimeout=30000
