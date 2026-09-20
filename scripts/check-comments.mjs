@@ -2963,6 +2963,9 @@ const allowed = new Map([
     '// A new or replaced passcode must meet LIMITS.sharePasscodeMinLength (the',
     '// server enforces the same minimum); short codes are trivially brute-forced.',
   ]],
+  ['src/client/features/share/share-helpers.ts', [
+    '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
+  ]],
   ['src/client/features/share/share-narrow-screen.test.ts', [
     '// A failed assertion must not leave a mounted portal behind: later tests query document.body.',
   ]],
@@ -3035,6 +3038,13 @@ const allowed = new Map([
   ['src/client/features/share/share-store/shares.ts', [
     '// Zero views on a paused row is the only client-side signal that this note has never been public.',
     '/* The row is outside the current filter (e.g. just enabled under the\n       paused filter); only a reload knows whether and where it now belongs. */',
+  ]],
+  ['src/client/features/share/share-visit-logs-csv.test.ts', [
+    '/** Minimal RFC 4180 reader: enough to prove no cell leaked into a second column. */',
+    '// The download is the module\'s only side effect; capture the blob it hands the',
+    '// browser and stub the anchor click so jsdom never tries to navigate.',
+    '// The anchor has to really land in the body: the module removes it again, and a',
+    '// mock that swallows the append turns that removal into a not-a-child throw.',
   ]],
   ['src/client/features/share/share-visit-logs-menu.test.ts', [
     '// Opens the clean menu with a real click and picks the wipe-everything entry.',

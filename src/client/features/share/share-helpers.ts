@@ -45,6 +45,22 @@ export function generateRandomSlug(length = 6): string {
   return res
 }
 
+const CSV_CONTROL_CHARS = /[\u0000-\u001f\u007f]/g
+const CSV_FORMULA_LEAD = /^[=+\-@]/
+
+/**
+ * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or
+ * a line break can never split a visit into extra columns or rows. Controlling
+ * characters become spaces (these fields are all single line values) and a
+ * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text
+ * instead of evaluating a remote formula (CSV injection).
+ */
+function csvCell(value: string | number | null | undefined): string {
+  const text = String(value ?? '').replace(CSV_CONTROL_CHARS, ' ')
+  const safe = CSV_FORMULA_LEAD.test(text) ? `'${text}` : text
+  return `"${safe.replace(/"/g, '""')}"`
+}
+
 export function exportVisitsToCsv(visits: Array<{
   id: number
   visitedAt: number
@@ -79,18 +95,19 @@ export function exportVisitsToCsv(visits: Array<{
   const rows = visits.map((v) => [
     v.id,
     new Date(v.visitedAt).toISOString(),
-    `"${(v.noteTitle || '').replace(/"/g, '""')}"`,
+    v.noteTitle || '',
     v.slug,
     v.country || '',
     v.city || '',
-    `"${(v.referrer || '').replace(/"/g, '""')}"`,
+    v.referrer || '',
     v.referrerHost || '',
     v.deviceType || '',
     v.os || '',
     v.browser || '',
     v.isBot ? `Bot (${v.botName || 'Crawler'})` : v.isOwner ? 'Author' : v.isSelfReferrer ? 'Self' : 'Real',
   ])
-  const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
+  const csvContent =
+    '\uFEFF' + [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n')
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
