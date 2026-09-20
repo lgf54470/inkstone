@@ -5306,6 +5306,8 @@ const allowed = new Map([
   ]],
   ['vite.config.ts', [
     '// Keep optional preview renderers and their language modules behind dynamic-import boundaries.',
+    '// Replaces Vite\'s default allow list, so the project root is named explicitly here.',
+    '/**\n * Where the dependency install actually lives. node_modules is frequently a symlink into\n * a shared or sibling checkout (worktrees, deduplicated installs), and Vite checks the real\n * path of every served file against `server.fs.allow` — without the dependency directory\'s\n * real path, the packages\' own assets (the @fontsource woff2 that\n * src/client/styles/inter.css references, KaTeX\'s font files) are answered with 403 in dev.\n */',
     '/**\n * The whiteboard library resolves the fonts it draws with at runtime, from paths\n * relative to the app root (`/fonts/<family>/<file>`), and falls back to its own CDN\n * when they are missing — which a self-hosted instance\'s CSP blocks, leaving the board\n * drawn with system fonts instead of the hand-drawn ones. The package\'s font files are\n * therefore materialized into public/ (generated output, gitignored) before dev and\n * build; the copy is skipped while it is current, and refreshed when the package moves.\n */',
   ]],
 ])
