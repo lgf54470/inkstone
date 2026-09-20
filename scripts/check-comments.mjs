@@ -1501,6 +1501,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-now-playing.tsx', [
     '/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */',
+    '// The column holds the artwork alone otherwise, so the playing track is named here',
+    '// too: the lyrics pane can be scrolled far from its headings.',
+    '// Three silences look alike but are not: nothing is playing, the words are still on',
+    '// their way, and the file really carries none.',
   ]],
   ['src/client/features/music/music-playlist-drag.test.ts', [
     '// t1 (i1) dropped on the t2 row: i2 sits at index 2 in the manual order.',

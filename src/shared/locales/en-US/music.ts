@@ -34,6 +34,7 @@ export const messages = {
 'music.no_results': 'No matching tracks',
 'music.open_lyrics': 'Open full lyrics',
 'music.no_lyrics': 'No lyrics for this track',
+'music.lyrics_loading': 'Loading lyrics',
 'music.nothing_playing': 'Nothing playing',
 'music.now_playing': 'Now playing',
 'music.play': 'Play',

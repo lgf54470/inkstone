@@ -34,6 +34,7 @@ export const messages = {
 'music.no_results': '没有匹配的歌曲',
 'music.open_lyrics': '打开完整歌词',
 'music.no_lyrics': '这首歌没有歌词',
+'music.lyrics_loading': '正在加载歌词',
 'music.nothing_playing': '未在播放',
 'music.now_playing': '正在播放',
 'music.play': '播放',

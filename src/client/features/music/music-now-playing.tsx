@@ -4,7 +4,7 @@ import { isVideoMime } from '@shared/music-media'
 import { IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { cn } from '../../lib/cn'
-import { t } from '../../lib/i18n'
+import { t, type MessageKey } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { useCurrentTrack, useMusic, useProgress } from './music-store'
 import { useTrackLyric } from './music-lyrics'
@@ -27,6 +27,7 @@ export function MusicNowPlaying({
   const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
   const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs))
   const scrollerRef = useRef<HTMLDivElement>(null)
+  const lyricPending = Boolean(track && track.hasLyric && track.lyric === null)
 
   useEffect(() => {
     if (tab !== 'lyrics' || activeIndex < 0) return
@@ -37,6 +38,7 @@ export function MusicNowPlaying({
   return (
     <aside className='flex w-64 shrink-0 flex-col border-l border-[var(--border-subtle)] bg-[var(--bg-sunken)]'>
       <Artwork track={track} />
+      <NowPlayingMeta track={track} />
       <div className='px-3 pb-2'>
         <Segmented
           label={t('music.details')}
@@ -58,7 +60,7 @@ export function MusicNowPlaying({
         className='min-h-0 flex-1 overflow-y-auto px-3 pb-3'
       >
         {tab === 'lyrics'
-          ? <Lyrics lines={lyrics} activeIndex={activeIndex} />
+          ? <Lyrics lines={lyrics} activeIndex={activeIndex} emptyKey={lyricsEmptyKey(Boolean(track), lyricPending)} pending={lyricPending} />
           : <Details track={track} onEditTags={onEditTags} />}
       </div>
     </aside>
@@ -82,9 +84,38 @@ function Artwork({ track }: { track: ReturnType<typeof useCurrentTrack> }) {
   )
 }
 
-function Lyrics({ lines, activeIndex }: { lines: ReturnType<typeof parseLyric>; activeIndex: number }) {
+// The column holds the artwork alone otherwise, so the playing track is named here
+// too: the lyrics pane can be scrolled far from its headings.
+function NowPlayingMeta({ track }: { track: ReturnType<typeof useCurrentTrack> }) {
+  return (
+    <header className='px-3 pb-2'>
+      {track
+        ? (
+          <>
+            <p className='truncate text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>{track.title}</p>
+            <p className='truncate text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{track.artist || t('music.unknown_artist')}</p>
+          </>
+        )
+        : <p className='truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.nothing_playing')}</p>}
+    </header>
+  )
+}
+
+// Three silences look alike but are not: nothing is playing, the words are still on
+// their way, and the file really carries none.
+function lyricsEmptyKey(playing: boolean, pending: boolean): MessageKey {
+  if (!playing) return 'music.nothing_playing'
+  return pending ? 'music.lyrics_loading' : 'music.no_lyrics'
+}
+
+function Lyrics({ lines, activeIndex, emptyKey, pending }: {
+  lines: ReturnType<typeof parseLyric>
+  activeIndex: number
+  emptyKey: MessageKey
+  pending: boolean
+}) {
   if (!lines.length) {
-    return <p className='py-8 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.no_lyrics')}</p>
+    return <p role={pending ? 'status' : undefined} className='py-8 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t(emptyKey)}</p>
   }
   return (
     <div className='space-y-1.5 py-1'>

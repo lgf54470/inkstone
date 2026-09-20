@@ -73,6 +73,74 @@ function seedStore(overrides: Record<string, unknown>) {
   return track
 }
 
+describe('MusicNowPlaying header (UI-20)', () => {
+  it('names the playing track above the tabs', async () => {
+    seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn() })
+    const container = await mountPanel('lyrics')
+    const header = container.querySelector('header')
+    expect(header?.textContent).toContain('Moonlight')
+    expect(header?.textContent).toContain('Hu Yanbin')
+  })
+
+  it('falls back to the unknown artist when the file carries none', async () => {
+    const track = playingTrack()
+    track.artist = ''
+    seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn(), tracks: [track] })
+    const container = await mountPanel('lyrics')
+    expect(container.querySelector('header')?.textContent).toContain(t('music.unknown_artist'))
+  })
+
+  it('says nothing is playing when the queue is empty', async () => {
+    useMusic.setState({ tracks: [], queue: [], currentIndex: 0 })
+    const container = await mountPanel('lyrics')
+    expect(container.querySelector('header')?.textContent).toContain(t('music.nothing_playing'))
+  })
+})
+
+describe('MusicNowPlaying lyrics empty states (UI-20)', () => {
+  function lyricPaneText(container: HTMLElement): string {
+    return container.querySelector(`[aria-label="${t('music.lyrics')}"]`)?.textContent ?? ''
+  }
+
+  it('does not claim a track has no lyrics while the lyric is still on its way', async () => {
+    const track = playingTrack()
+    track.hasLyric = true
+    track.lyric = null
+    seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn(), tracks: [track], ensureTrackLyric: vi.fn(async () => {}) })
+    const container = await mountPanel('lyrics')
+    expect(lyricPaneText(container)).toContain(t('music.lyrics_loading'))
+    expect(lyricPaneText(container)).not.toContain(t('music.no_lyrics'))
+    expect(container.querySelector('[role="status"]')).not.toBeNull()
+  })
+
+  it('swaps the loading line for the words once the lyric arrives', async () => {
+    const track = playingTrack()
+    track.hasLyric = true
+    track.lyric = null
+    seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn(), tracks: [track], ensureTrackLyric: vi.fn(async () => {}) })
+    const container = await mountPanel('lyrics')
+    await act(async () => {
+      useMusic.setState({ tracks: [{ ...track, lyric: '[00:00.00]First' }] })
+    })
+    expect(lyricPaneText(container)).toContain('First')
+    expect(lyricPaneText(container)).not.toContain(t('music.lyrics_loading'))
+  })
+
+  it('reports a track without lyrics as such', async () => {
+    seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn() })
+    const container = await mountPanel('lyrics')
+    expect(lyricPaneText(container)).toContain(t('music.no_lyrics'))
+    expect(container.querySelector('[role="status"]')).toBeNull()
+  })
+
+  it('says nothing is playing instead of blaming the track for having no lyrics', async () => {
+    useMusic.setState({ tracks: [], queue: [], currentIndex: 0 })
+    const container = await mountPanel('lyrics')
+    expect(lyricPaneText(container)).toContain(t('music.nothing_playing'))
+    expect(lyricPaneText(container)).not.toContain(t('music.no_lyrics'))
+  })
+})
+
 describe('MusicNowPlaying details panel', () => {
   it('routes a favorite click to the store toggle for the playing track', async () => {
     const track = seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn() })
