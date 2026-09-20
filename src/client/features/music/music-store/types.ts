@@ -177,7 +177,8 @@ export interface MusicStoreState {
   clearQueue: () => void
   playQueueAt: (index: number) => Promise<void>
 
-  patchTrack: (id: string, patch: MusicTrackPatchInput) => Promise<void>
+  // `false` means the write never landed; form owners stay open on it.
+  patchTrack: (id: string, patch: MusicTrackPatchInput) => Promise<boolean>
   // Detail views call this for tracks the lazy library listed with a lyric but no text.
   ensureTrackLyric: (id: string) => Promise<void>
   refreshTrackMetadata: (ids: string[], force?: boolean) => Promise<number>
@@ -193,8 +194,8 @@ export interface MusicStoreState {
   patchTag: (id: string, patch: { name?: string; color?: string | null; isPinned?: boolean }) => Promise<void>
   deleteTag: (id: string) => Promise<void>
 
-  createPlaylist: (name: string, description?: string) => Promise<void>
-  renamePlaylist: (id: string, name: string, description?: string) => Promise<void>
+  createPlaylist: (name: string, description?: string) => Promise<boolean>
+  renamePlaylist: (id: string, name: string, description?: string) => Promise<boolean>
   deletePlaylist: (id: string) => Promise<void>
   sharePlaylist: (id: string) => Promise<string | null>
   unsharePlaylist: (id: string) => Promise<void>

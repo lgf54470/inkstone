@@ -102,21 +102,25 @@ function scanPatch(track: MusicTrack, scanned: ScannedMetadata | null, durationM
   return patch
 }
 
+// Callers that own a form (the edit dialog) need to know whether the write
+// landed before they close over the draft, so the outcome is part of the result.
 export async function patchTrack(
   set: MusicSet,
   get: MusicGet,
   id: string,
   patch: MusicTrackPatchInput,
-): Promise<void> {
+): Promise<boolean> {
   const previous = get().tracks.find((track) => track.id === id)
-  if (!previous) return
+  if (!previous) return false
   applyLocal(set, id, patch)
   try {
     const updated = await api.music.patchTrack(id, patch)
     mergeTrack(set, id, updated)
+    return true
   } catch (error) {
     applyLocal(set, id, previous)
     toastMusicError(error, 'music.save_failed')
+    return false
   }
 }
 

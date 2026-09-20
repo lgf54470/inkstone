@@ -77,7 +77,7 @@ beforeEach(() => {
     currentIndex: 0,
     setScope: vi.fn(),
     playCollection: vi.fn(async () => {}),
-    renamePlaylist: vi.fn(async () => {}),
+    renamePlaylist: vi.fn(async () => true),
     deletePlaylist: vi.fn(async () => {}),
     sharePlaylist: vi.fn(async () => 'share-slug-1'),
     unsharePlaylist: vi.fn(async () => {}),

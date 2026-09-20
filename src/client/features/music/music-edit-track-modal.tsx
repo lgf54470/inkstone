@@ -7,6 +7,7 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useMusic } from './music-store'
 import { tagColorValue } from './music-utils'
+import { useSaveAction } from './use-save-action'
 
 const EDIT_WIDTH = 520
 
@@ -28,17 +29,17 @@ export function MusicEditTrackModal({
 }) {
   const patchTrack = useMusic((state) => state.patchTrack)
   const { form, setForm, tagIds, setTagIds, lyricPending } = useTrackDraft(track)
+  const { saving, run } = useSaveAction(onClose)
 
   if (!track) return null
   const save = (): void => {
-    void patchTrack(track.id, {
+    void run(() => patchTrack(track.id, {
       title: form.title.trim() || track.title,
       artist: form.artist.trim(),
       album: form.album.trim(),
       lyric: form.lyric.trim() ? form.lyric : null,
       tagIds,
-    })
-    onClose()
+    }))
   }
 
   return (
@@ -50,7 +51,7 @@ export function MusicEditTrackModal({
       footer={
         <>
           <Button size='sm' onClick={onClose}>{t('common.cancel')}</Button>
-          <Button size='sm' variant='primary' disabled={lyricPending} onClick={save}>{t('music.save')}</Button>
+          <Button size='sm' variant='primary' disabled={lyricPending || saving} onClick={() => void save()}>{t('music.save')}</Button>
         </>
       }
     >

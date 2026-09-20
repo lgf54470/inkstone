@@ -1480,6 +1480,11 @@ const allowed = new Map([
     '// accumulated bytes re-copied the whole span once per chunk.',
     '// A short chunk means the object ended before the requested span.',
   ]],
+  ['src/client/features/music/music-modal-draft.test.ts', [
+    '// The dialogs are driven by the store actions they call, so the actions are the seam to stub.',
+    '// A close is only real if the surface goes away, so the harness owns the same',
+    '// open/close pair the hub does.',
+  ]],
   ['src/client/features/music/music-mp4.ts', [
     '// MP4/M4A keeps duration in mvhd and artwork in the ilst covr atom, all inside moov.',
     '// The meta box carries its own version and flags before its children.',
@@ -1600,6 +1605,7 @@ const allowed = new Map([
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
     '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
+    '// The dialog keeps its draft open until the write lands; the success flag is how it knows.',
     '// An absent description stays untouched: the sidebar rename only edits the name.',
     '// The share endpoint is idempotent, so the slug a visitor already holds keeps working.',
     '// Multi-select actions: moving replaces the tag set, playlists append. The move travels as one',
@@ -1664,6 +1670,8 @@ const allowed = new Map([
     '// Force inverts that for the fields the tag carries, yet never rewrites the',
     '// title (the suffixed-title repair applies in both modes) nor shortens a',
     '// known duration, because those edits are the ones users cannot recover.',
+    '// Callers that own a form (the edit dialog) need to know whether the write',
+    '// landed before they close over the draft, so the outcome is part of the result.',
     '// Rows whose request never landed stay selected, so a retry does not start over.',
     '// One request per chunk: the first rejected chunk ends the walk, and the ids that',
     '// already landed are handed back so the caller keeps the local state honest.',
@@ -1743,6 +1751,7 @@ const allowed = new Map([
     '// right-click; it only lives in the store while the single menu instance is open.',
     '// One pass of batch library work; kind is unique while running, so a second',
     '// click cannot stack a duplicate pass. Done passes leave the list.',
+    '// `false` means the write never landed; form owners stay open on it.',
     '// Detail views call this for tracks the lazy library listed with a lyric but no text.',
     '// Menu action: fetch lyrics through the Worker relay and save the match as this track\'s lyric.',
   ]],
@@ -1838,6 +1847,12 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-webdav-modal.tsx', [
     '// A failed listing is not an empty folder; show the failure and let the user retry in place.',
+  ]],
+  ['src/client/features/music/use-save-action.ts', [
+    '// Both edit dialogs save the same way: run the write, keep the dialog (and the',
+    '// draft the user typed) on screen when it is rejected, and close only once it',
+    '// has landed. The in-flight guard lives in a ref so a second click cannot start',
+    '// a duplicate write before React has re-rendered the disabled button.',
   ]],
   ['src/client/features/music/use-track-list.ts', [
     '// File-manager semantics: click selects one row, Ctrl toggles a row, Shift extends from the anchor.',

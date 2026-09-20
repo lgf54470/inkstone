@@ -113,7 +113,7 @@ interface TrackMenuActions {
   playCollection: (ids: string[], startIndex?: number) => Promise<void>
   addToQueue: (id: string, next?: boolean) => void
   addToPlaylist: (playlistId: string, trackId: string) => Promise<void>
-  patchTrack: (id: string, patch: { tagIds: string[] }) => Promise<void>
+  patchTrack: (id: string, patch: { tagIds: string[] }) => Promise<boolean>
   searchTrackLyric: (id: string) => Promise<void>
   toggleFavorite: (id: string) => Promise<void>
   togglePin: (id: string) => Promise<void>
@@ -159,7 +159,7 @@ function tagSubmenu(
   tags: MusicTag[],
   track: MusicTrack,
   wrap: MenuRunner,
-  patchTrack: (id: string, patch: { tagIds: string[] }) => Promise<void>,
+  patchTrack: (id: string, patch: { tagIds: string[] }) => Promise<boolean>,
 ): MenuItem[] {
   const selected = new Set(track.tagIds)
   if (!tags.length) return [{ id: 'tag-empty', label: t('music.no_tags'), disabled: true }]

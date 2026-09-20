@@ -84,18 +84,21 @@ export async function deleteTag(set: MusicSet, id: string): Promise<void> {
   }
 }
 
-export async function createPlaylist(set: MusicSet, name: string, description?: string): Promise<void> {
+export async function createPlaylist(set: MusicSet, name: string, description?: string): Promise<boolean> {
   try {
     const trimmed = description?.trim()
     const created = await api.music.createPlaylist({ name: name.trim(), description: trimmed || undefined })
     set((state) => resummarizePlaylists(state, [...state.playlists, created]))
     toastMusic('music.playlist_created')
+    return true
   } catch (error) {
     toastMusicError(error, 'music.action_failed')
+    return false
   }
 }
 
-export async function renamePlaylist(set: MusicSet, id: string, name: string, description?: string): Promise<void> {
+// The dialog keeps its draft open until the write lands; the success flag is how it knows.
+export async function renamePlaylist(set: MusicSet, id: string, name: string, description?: string): Promise<boolean> {
   try {
     // An absent description stays untouched: the sidebar rename only edits the name.
     const patch: MusicPlaylistPatch = description === undefined
@@ -104,8 +107,10 @@ export async function renamePlaylist(set: MusicSet, id: string, name: string, de
     const updated = await api.music.patchPlaylist(id, patch)
     set((state) => ({ playlists: state.playlists.map((entry) => (entry.id === id ? updated : entry)) }))
     toastMusic('music.saved')
+    return true
   } catch (error) {
     toastMusicError(error, 'music.save_failed')
+    return false
   }
 }
 

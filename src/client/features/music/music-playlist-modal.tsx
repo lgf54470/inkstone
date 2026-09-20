@@ -5,6 +5,7 @@ import { Field, Input, Textarea } from '../../components/form'
 import { Modal } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { useMusic } from './music-store'
+import { useSaveAction } from './use-save-action'
 
 const PLAYLIST_WIDTH = 420
 
@@ -21,6 +22,7 @@ export function MusicPlaylistModal({
   const renamePlaylist = useMusic((state) => state.renamePlaylist)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const { saving, run } = useSaveAction(onClose)
 
   useEffect(() => {
     setName(playlist?.name ?? '')
@@ -30,9 +32,7 @@ export function MusicPlaylistModal({
   const save = (): void => {
     const trimmed = name.trim()
     if (!trimmed) return
-    if (playlist) void renamePlaylist(playlist.id, trimmed, description)
-    else void createPlaylist(trimmed, description)
-    onClose()
+    void run(() => (playlist ? renamePlaylist(playlist.id, trimmed, description) : createPlaylist(trimmed, description)))
   }
 
   return (
@@ -44,7 +44,7 @@ export function MusicPlaylistModal({
       footer={
         <>
           <Button size='sm' onClick={onClose}>{t('common.cancel')}</Button>
-          <Button size='sm' variant='primary' disabled={!name.trim()} onClick={save}>{t('music.save')}</Button>
+          <Button size='sm' variant='primary' disabled={!name.trim() || saving} onClick={() => void save()}>{t('music.save')}</Button>
         </>
       }
     >
@@ -54,7 +54,7 @@ export function MusicPlaylistModal({
             autoFocus
             value={name}
             onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => { if (event.key === 'Enter') save() }}
+            onKeyDown={(event) => { if (event.key === 'Enter') void save() }}
           />
         </Field>
         <Field label={t('music.playlist_description')}>
