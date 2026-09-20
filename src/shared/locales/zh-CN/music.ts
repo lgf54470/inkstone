@@ -205,6 +205,7 @@ export const messages = {
 'music.batch_delete': '删除',
 'music.batch_delete_confirm': '确定删除选中的 {value0} 首歌曲吗？',
 'music.batch_done': '已更新 {value0} 首歌曲',
+'music.batch_partial': '已更新 {value0} 首，另 {value1} 首失败仍保持选中',
 'music.selection': '多选',
 'music.selection_hint': '单击选中，Ctrl 点击多选，Shift 点击连选',
 'music.invert_selection': '反选',

@@ -12,8 +12,8 @@ export function toastMusic(titleKey: MessageKey, params?: Record<string, string 
   useUi.getState().toast({ title: t(titleKey, params), tone: 'success' })
 }
 
-export function toastMusicNotice(titleKey: MessageKey): void {
-  useUi.getState().toast({ title: t(titleKey), tone: 'warning' })
+export function toastMusicNotice(titleKey: MessageKey, params?: Record<string, string | number>): void {
+  useUi.getState().toast({ title: t(titleKey, params), tone: 'warning' })
 }
 
 export function toastMusicError(error: unknown, fallbackKey: MessageKey): void {

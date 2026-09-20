@@ -42,8 +42,10 @@ export const savePlaybackSchema = z.object({
 
 export type SavePlaybackBody = z.infer<typeof savePlaybackSchema>
 
+// The cap is shared with the client, which splits a bigger selection into several
+// requests rather than sending one this schema must reject.
 export const batchTrackSchema = z.object({
-  ids: z.array(z.string().max(64)).min(1).max(500),
+  ids: z.array(z.string().max(64)).min(1).max(LIMITS.musicBatchItemsMax),
   action: z.enum(['favorite', 'unfavorite', 'pin', 'unpin', 'delete']),
 })
 
@@ -116,7 +118,7 @@ export const playlistItemSchema = z.object({ trackId: z.string().max(64) })
 
 export type PlaylistItemBody = z.infer<typeof playlistItemSchema>
 
-export const batchPlaylistItemsSchema = z.object({ trackIds: z.array(z.string().max(64)).min(1).max(500) })
+export const batchPlaylistItemsSchema = z.object({ trackIds: z.array(z.string().max(64)).min(1).max(LIMITS.musicBatchItemsMax) })
 
 export type BatchPlaylistItemsBody = z.infer<typeof batchPlaylistItemsSchema>
 

@@ -205,6 +205,7 @@ export const messages = {
 'music.batch_delete': 'Delete',
 'music.batch_delete_confirm': 'Delete {value0} selected track(s)?',
 'music.batch_done': 'Updated {value0} track(s)',
+'music.batch_partial': 'Updated {value0} track(s); {value1} still selected after a failure',
 'music.selection': 'Selection',
 'music.selection_hint': 'Click a row to select it, Ctrl-click to add, Shift-click to select a range',
 'music.invert_selection': 'Invert selection',

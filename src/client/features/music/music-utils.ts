@@ -11,6 +11,15 @@ export const TRACK_IO_CONCURRENCY = 4
 // toward zero, so they fold (UI-14): the hub into drawers, the immersive player into a stack.
 export const MUSIC_NARROW_BREAKPOINT = 900
 
+// A batch request may carry at most LIMITS.musicBatchItemsMax ids (the server schema
+// enforces the same number); a bigger selection becomes several requests instead of
+// one the server has to reject wholesale.
+export function chunkIds(ids: string[], size: number = LIMITS.musicBatchItemsMax): string[][] {
+  const chunks: string[][] = []
+  for (let start = 0; start < ids.length; start += size) chunks.push(ids.slice(start, start + size))
+  return chunks
+}
+
 export function nextPlayMode(mode: MusicPlayMode): MusicPlayMode {
   const index = PLAY_MODES.indexOf(mode)
   return PLAY_MODES[(index + 1) % PLAY_MODES.length]!

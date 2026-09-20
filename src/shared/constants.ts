@@ -91,6 +91,9 @@ export const LIMITS = {
   musicPlaylistNameMaxLength: 120,
   musicPlaylistDescriptionMaxLength: 500,
   musicPlaylistItemsMax: 5000,
+  // One batch request may carry at most this many ids; the client splits a bigger
+  // selection into several requests instead of sending one the server must reject.
+  musicBatchItemsMax: 500,
 
   boardLibraryMaxBytes: 8 * 1024 * 1024,
   boardLibraryNameMaxLength: 60,

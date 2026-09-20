@@ -1,10 +1,10 @@
 import type { MusicPlaylistDetail, MusicTag } from '@shared/types'
 import { api, uploadMusicToWebdav, uploadMusicTrack, type MusicPlaylistPatch } from '../../../lib/api'
 import { mapWithConcurrency, throttledProgress } from '../../../lib/async'
-import { toastMusic, toastMusicError, toastUploadError, toastUploadSkip } from '../music-feedback'
+import { toastMusic, toastMusicError, toastMusicNotice, toastUploadError, toastUploadSkip } from '../music-feedback'
 import { readFileMetadata } from '../music-metadata'
 import { readDurationMs } from '../music-probe'
-import { partitionUploadableFiles, TRACK_IO_CONCURRENCY } from '../music-utils'
+import { chunkIds, partitionUploadableFiles, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { summarizeLibrary } from './library-load'
 import type { MusicGet, MusicSet, MusicStoreState, MusicTransferTarget, MusicUploadTask } from './types'
 
@@ -163,15 +163,25 @@ export async function addSelectionToPlaylist(set: MusicSet, get: MusicGet, playl
   const ids = get().selectedIds
   if (!ids.length) return
   const name = get().playlists.find((entry) => entry.id === playlistId)?.name ?? ''
-  try {
-    // One request for the whole selection; the endpoint reports what it skipped.
-    const result = await api.music.addPlaylistItems(playlistId, ids)
-    set({ selectedIds: [] })
-    if (result.items.length) mergePlaylistItems(set, playlistId, result.items)
-    toastMusic('music.added_to_playlist', { value0: name })
-  } catch (error) {
-    toastMusicError(error, 'music.action_failed')
+  const entries: { id: string; trackId: string }[] = []
+  const applied: string[] = []
+  for (const part of chunkIds(ids)) {
+    try {
+      const result = await api.music.addPlaylistItems(playlistId, part)
+      entries.push(...result.items)
+      applied.push(...part)
+    } catch (error) {
+      toastMusicError(error, 'music.action_failed')
+      break
+    }
   }
+  if (!applied.length) return
+  if (entries.length) mergePlaylistItems(set, playlistId, entries)
+  // The rows that never reached the server stay selected so the user can retry them.
+  const added = new Set(applied)
+  set((state) => ({ selectedIds: state.selectedIds.filter((id) => !added.has(id)) }))
+  if (applied.length === ids.length) toastMusic('music.added_to_playlist', { value0: name })
+  else toastMusicNotice('music.batch_partial', { value0: applied.length, value1: ids.length - applied.length })
 }
 
 export async function addToPlaylist(set: MusicSet, get: MusicGet, playlistId: string, trackId: string): Promise<void> {

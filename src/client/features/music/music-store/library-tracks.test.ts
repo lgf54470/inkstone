@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { LIMITS } from '@shared/constants'
 import type { MusicTrack } from '@shared/types'
 
 vi.mock('../music-metadata', () => ({
@@ -29,7 +30,7 @@ vi.mock('./offline', () => ({
 
 import { api } from '../../../lib/api'
 import { scanTrackMetadata } from '../music-metadata'
-import { toastMusic, toastMusicNotice } from '../music-feedback'
+import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import { batchTracks, deleteTrack, ensureTrackLyric, refreshTrackMetadata } from './library-tracks'
 import { forgetOfflineTracks } from './offline'
 import type { MusicStoreState } from './types'
@@ -37,6 +38,11 @@ import type { MusicStoreState } from './types'
 afterEach(() => {
   vi.mocked(api.music.trackLyric).mockClear()
   vi.mocked(api.music.library).mockClear()
+  // A case that makes the batch request fail must not leak that rejection into the next one.
+  vi.mocked(api.music.batchTracks).mockReset().mockResolvedValue({ ok: true, updated: 0 })
+  vi.mocked(toastMusic).mockClear()
+  vi.mocked(toastMusicError).mockClear()
+  vi.mocked(toastMusicNotice).mockClear()
 })
 
 function track(id: string): MusicTrack {
@@ -173,6 +179,38 @@ describe('single-record mutation merges', () => {
     expect(store.get().stats).toMatchObject({ trackCount: 2, favoriteCount: 1 })
     expect(store.get().selectedIds).toEqual([])
     expect(api.music.library).not.toHaveBeenCalled()
+  })
+})
+
+// The server caps one batch request at a fixed id count; a larger selection must
+// become several requests rather than one rejected request that changes nothing.
+describe('batch requests over the server cap', () => {
+  const cap = LIMITS.musicBatchItemsMax
+
+  it('splits a selection larger than one batch and applies every chunk locally', async () => {
+    const tracks = Array.from({ length: cap + 1 }, (_, index) => storedTrack('t' + index))
+    const store = fullStore({ tracks, stats: { ...emptyStats, trackCount: tracks.length }, selectedIds: tracks.map((entry) => entry.id) })
+    vi.mocked(api.music.batchTracks).mockClear()
+    await batchTracks(store.set as never, store.get as never, 'favorite')
+    expect(vi.mocked(api.music.batchTracks).mock.calls.map((call) => call[0].length)).toEqual([cap, 1])
+    expect(store.get().tracks.every((entry) => entry.isFavorite)).toBe(true)
+    expect(store.get().selectedIds).toEqual([])
+    expect(toastMusic).toHaveBeenCalledWith('music.batch_done', { value0: cap + 1 })
+    expect(api.music.library).not.toHaveBeenCalled()
+  })
+
+  it('keeps the chunks that succeeded when a later chunk is rejected', async () => {
+    const tracks = Array.from({ length: cap + 1 }, (_, index) => storedTrack('t' + index))
+    const store = fullStore({ tracks, stats: { ...emptyStats, trackCount: tracks.length }, selectedIds: tracks.map((entry) => entry.id) })
+    vi.mocked(api.music.batchTracks)
+      .mockClear()
+      .mockResolvedValueOnce({ ok: true, updated: cap })
+      .mockRejectedValueOnce(new Error('too_many_attempts'))
+    await batchTracks(store.set as never, store.get as never, 'favorite')
+    expect(store.get().tracks[0].isFavorite).toBe(true)
+    expect(store.get().tracks[cap]!.isFavorite).toBe(false)
+    expect(vi.mocked(toastMusicError)).toHaveBeenCalled()
+    expect(vi.mocked(toastMusic)).not.toHaveBeenCalledWith('music.batch_done', expect.anything())
   })
 })
 

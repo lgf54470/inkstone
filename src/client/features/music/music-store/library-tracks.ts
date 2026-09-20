@@ -3,7 +3,7 @@ import { api, type MusicBatchAction } from '../../../lib/api'
 import { mapWithConcurrency } from '../../../lib/async'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import { probeTrackDuration, scanTrackMetadata, type ScannedMetadata } from '../music-metadata'
-import { isArtistSuffixedTitle, TRACK_IO_CONCURRENCY } from '../music-utils'
+import { chunkIds, isArtistSuffixedTitle, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { summarizeLibrary } from './library-load'
 import { forgetOfflineTracks } from './offline'
 import { runLibraryJob } from './transfers'
@@ -163,21 +163,36 @@ export async function deleteTrack(set: MusicSet, get: MusicGet, id: string): Pro
 export async function batchTracks(set: MusicSet, get: MusicGet, action: MusicBatchAction): Promise<void> {
   const ids = get().selectedIds
   if (!ids.length) return
-  try {
-    await api.music.batchTracks(ids, action)
-    const affected = new Set(ids)
-    if (action === 'delete') {
-      dropFromQueue(set, get, affected)
-      dropTracksLocally(set, affected)
-      forgetOfflineTracks(set, get, ids)
-    } else {
-      applyFlagsLocally(set, affected, action)
-    }
-    set({ selectedIds: [] })
-    toastMusic('music.batch_done', { value0: ids.length })
-  } catch (error) {
-    toastMusicError(error, 'music.action_failed')
+  const { applied, error } = await sendBatches(ids, action)
+  if (error) toastMusicError(error, 'music.action_failed')
+  if (!applied.length) return
+  const affected = new Set(applied)
+  if (action === 'delete') {
+    dropFromQueue(set, get, affected)
+    dropTracksLocally(set, affected)
+    forgetOfflineTracks(set, get, applied)
+  } else {
+    applyFlagsLocally(set, affected, action)
   }
+  // Rows whose request never landed stay selected, so a retry does not start over.
+  set((state) => ({ selectedIds: state.selectedIds.filter((id) => !affected.has(id)) }))
+  if (!error) toastMusic('music.batch_done', { value0: applied.length })
+  else toastMusicNotice('music.batch_partial', { value0: applied.length, value1: ids.length - applied.length })
+}
+
+// One request per chunk: the first rejected chunk ends the walk, and the ids that
+// already landed are handed back so the caller keeps the local state honest.
+async function sendBatches(ids: string[], action: MusicBatchAction): Promise<{ applied: string[]; error: unknown }> {
+  const applied: string[] = []
+  for (const part of chunkIds(ids)) {
+    try {
+      await api.music.batchTracks(part, action)
+    } catch (error) {
+      return { applied, error }
+    }
+    applied.push(...part)
+  }
+  return { applied, error: null }
 }
 
 function applyLocal(set: MusicSet, id: string, patch: Partial<MusicTrack>): void {
