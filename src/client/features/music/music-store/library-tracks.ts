@@ -1,9 +1,11 @@
+import { LIMITS } from '@shared/constants'
+import { chunkIds } from '@shared/chunk'
 import type { MusicTrack } from '@shared/types'
 import { api, type MusicBatchAction } from '../../../lib/api'
 import { mapWithConcurrency } from '../../../lib/async'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import { probeTrackDuration, scanTrackMetadata, type ScannedMetadata } from '../music-metadata'
-import { chunkIds, isArtistSuffixedTitle, TRACK_IO_CONCURRENCY } from '../music-utils'
+import { isArtistSuffixedTitle, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { summarizeLibrary } from './library-load'
 import { forgetOfflineTracks } from './offline'
 import { runLibraryJob } from './transfers'
@@ -184,7 +186,7 @@ export async function batchTracks(set: MusicSet, get: MusicGet, action: MusicBat
 // already landed are handed back so the caller keeps the local state honest.
 async function sendBatches(ids: string[], action: MusicBatchAction): Promise<{ applied: string[]; error: unknown }> {
   const applied: string[] = []
-  for (const part of chunkIds(ids)) {
+  for (const part of chunkIds(ids, LIMITS.musicBatchItemsMax)) {
     try {
       await api.music.batchTracks(part, action)
     } catch (error) {

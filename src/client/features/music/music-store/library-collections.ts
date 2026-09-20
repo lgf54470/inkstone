@@ -1,10 +1,12 @@
+import { LIMITS } from '@shared/constants'
+import { chunkIds } from '@shared/chunk'
 import type { MusicPlaylistDetail, MusicTag } from '@shared/types'
 import { api, uploadMusicToWebdav, uploadMusicTrack, type MusicPlaylistPatch } from '../../../lib/api'
 import { mapWithConcurrency, throttledProgress } from '../../../lib/async'
 import { toastMusic, toastMusicError, toastMusicNotice, toastUploadError, toastUploadSkip } from '../music-feedback'
 import { readFileMetadata } from '../music-metadata'
 import { readDurationMs } from '../music-probe'
-import { chunkIds, partitionUploadableFiles, TRACK_IO_CONCURRENCY } from '../music-utils'
+import { partitionUploadableFiles, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { summarizeLibrary } from './library-load'
 import type { MusicGet, MusicSet, MusicStoreState, MusicTransferTarget, MusicUploadTask } from './types'
 
@@ -165,7 +167,7 @@ export async function addSelectionToPlaylist(set: MusicSet, get: MusicGet, playl
   const name = get().playlists.find((entry) => entry.id === playlistId)?.name ?? ''
   const entries: { id: string; trackId: string }[] = []
   const applied: string[] = []
-  for (const part of chunkIds(ids)) {
+  for (const part of chunkIds(ids, LIMITS.musicBatchItemsMax)) {
     try {
       const result = await api.music.addPlaylistItems(playlistId, part)
       entries.push(...result.items)

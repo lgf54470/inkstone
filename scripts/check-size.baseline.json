@@ -59,7 +59,7 @@
     "longFns": 1
   },
   "src/shared/constants.ts": {
-    "lines": 505
+    "lines": 508
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 591

@@ -94,6 +94,9 @@ export const LIMITS = {
   // One batch request may carry at most this many ids; the client splits a bigger
   // selection into several requests instead of sending one the server must reject.
   musicBatchItemsMax: 500,
+  // How many ids a single D1 statement may carry: the platform binds at most 100 parameters,
+  // and the user id occupies the first slot. One request is executed as several such statements.
+  musicSqlIdChunkMax: 96,
 
   boardLibraryMaxBytes: 8 * 1024 * 1024,
   boardLibraryNameMaxLength: 60,

@@ -1,4 +1,6 @@
 import type { Hono } from 'hono'
+import { LIMITS } from '@shared/constants'
+import { chunkIds } from '@shared/chunk'
 import type { MusicPlayback, MusicTrack } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
@@ -6,9 +8,6 @@ import { requireAuth } from '../../middleware/auth'
 import { TRACK_COLUMNS, toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
 import { savePlaybackSchema } from './schemas'
-
-// D1 allows at most 100 bound parameters per statement; ids are the tail of the bind list.
-const QUEUE_CHUNK = 96
 
 // Shared with the public blog projection so both sides read a stored queue the same way.
 export function parseStoredMusicQueue(raw: string): string[] {
@@ -56,7 +55,7 @@ async function loadQueueTracks(db: D1Database, userId: string, queue: string[]):
   if (!queue.length) return []
   // One batch keeps even a full 500-track queue at a single round trip; awaiting each
   // chunk serially used to cost the whole queue's latency.
-  const results = await db.batch(chunks(queue).map((chunk) => {
+  const results = await db.batch(chunkIds(queue, LIMITS.musicSqlIdChunkMax).map((chunk) => {
     const placeholders = chunk.map((_id, index) => '?' + (index + 2)).join(', ')
     return db.prepare(
       `SELECT ${TRACK_COLUMNS} FROM music_tracks t WHERE t.user_id = ?1 AND t.id IN (${placeholders})`,
@@ -69,8 +68,3 @@ async function loadQueueTracks(db: D1Database, userId: string, queue: string[]):
   return queue.map((id) => byId.get(id)).filter((track): track is MusicTrack => Boolean(track))
 }
 
-function chunks(ids: string[]): string[][] {
-  const out: string[][] = []
-  for (let start = 0; start < ids.length; start += QUEUE_CHUNK) out.push(ids.slice(start, start + QUEUE_CHUNK))
-  return out
-}

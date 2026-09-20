@@ -17,7 +17,7 @@ import { MUSIC_PLAYBACK_MIGRATION_STATEMENTS } from '../src/worker/db/schema/mus
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { musicRoutes } from '../src/worker/routes/music'
-import { createD1Database as createDb, runSql, type D1Prepared, type D1Shim } from './d1-harness'
+import { createD1Database as createDb, queryRows, runSql, type D1Prepared, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
 const AUDIO = new TextEncoder().encode('0123456789abcdef')
@@ -147,6 +147,24 @@ async function uploadTrack(app: Hono<AppBindings>, name = 'song.mp3', type = 'au
   const res = await request(app, '/api/music/tracks', { method: 'POST', body: form })
   expect(res.status).toBe(201)
   return res.json() as Promise<Record<string, unknown>>
+}
+
+// Rows straight into the table, no upload round trip: these tests are about the size of the
+// id list a batch carries, not about how the rows got there.
+async function seedTracks(db: D1Shim, count: number): Promise<string[]> {
+  const ids: string[] = []
+  for (let index = 0; index < count; index += 1) {
+    const id = `bulk-${String(index).padStart(3, '0')}`
+    ids.push(id)
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES (?1, ?2, ?3, '', '', 0, 'webdav', ?4, 'audio/mpeg', 16, NULL, NULL, 0, 0, 0, ?5, ?5)`,
+      id, USER, `Bulk ${index}`, `/music/bulk-${index}.mp3`, H.now,
+    )
+  }
+  return ids
 }
 
 // Records every statement the route prepares, so round-trip redundancy is assertable.
@@ -392,6 +410,24 @@ describe('music routes (real D1 + fake R2)', () => {
     const single = await request(app, `/api/music/tracks/${first.id}`, { method: 'DELETE' })
     expect(single.status).toBe(200)
     expect(((await (await request(app, '/api/music/library')).json()).tracks)).toHaveLength(0)
+  })
+
+  it('batches a big selection without binding more ids than D1 accepts', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const ids = await seedTracks(db, 150)
+
+    const starred = await json(app, '/api/music/tracks/batch', { ids, action: 'favorite' })
+    expect(starred.status).toBe(200)
+    expect((await starred.json()).updated).toBe(150)
+    const favorites = await queryRows(db, 'SELECT COUNT(*) AS count FROM music_tracks WHERE user_id = ?1 AND is_favorite = 1', USER)
+    expect(Number(favorites[0]?.count)).toBe(150)
+
+    const removed = await json(app, '/api/music/tracks/batch', { ids, action: 'delete' })
+    expect(removed.status).toBe(200)
+    const left = await queryRows(db, 'SELECT COUNT(*) AS count FROM music_tracks WHERE user_id = ?1', USER)
+    expect(Number(left[0]?.count)).toBe(0)
   })
 
   it('deletes only the track object derived from the row itself', async () => {

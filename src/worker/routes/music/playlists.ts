@@ -1,5 +1,6 @@
 import type { Context, Hono } from 'hono'
 import { LIMITS } from '@shared/constants'
+import { chunkIds } from '@shared/chunk'
 import type { MusicPlaylistDetail } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
@@ -144,7 +145,7 @@ async function addItems(c: Context<AppBindings>): Promise<Response> {
     c.env.DB.prepare(
       'SELECT track_id FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2',
     ).bind(userId, playlistId),
-    ...chunks(wanted).map((chunk) => c.env.DB.prepare(
+    ...chunkIds(wanted, LIMITS.musicSqlIdChunkMax).map((chunk) => c.env.DB.prepare(
       `SELECT id FROM music_tracks WHERE user_id = ?1 AND id IN (${chunk.map((_, index) => `?${index + 2}`).join(', ')})`,
     ).bind(userId, ...chunk)),
   ])
@@ -213,13 +214,6 @@ async function playlistExists(db: D1Database, userId: string, id: string): Promi
   const row = await db.prepare('SELECT id FROM music_playlists WHERE user_id = ?1 AND id = ?2')
     .bind(userId, id).first<{ id: string }>()
   return Boolean(row)
-}
-
-// D1 allows at most 100 bound parameters per statement; ids are the tail of the bind list.
-function chunks(ids: string[]): string[][] {
-  const out: string[][] = []
-  for (let start = 0; start < ids.length; start += 96) out.push(ids.slice(start, start + 96))
-  return out
 }
 
 function columnOf(result: D1Result<unknown> | undefined, column: string): string[] {

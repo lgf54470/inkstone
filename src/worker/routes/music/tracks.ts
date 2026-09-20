@@ -1,4 +1,6 @@
 import type { Hono } from 'hono'
+import { LIMITS } from '@shared/constants'
+import { chunkIds } from '@shared/chunk'
 import type { MusicTrack } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
@@ -114,12 +116,16 @@ function registerLyricRoute(routes: Hono<AppBindings>): void {
 
 
 async function deleteTracks(env: AppBindings['Bindings'], userId: string, ids: string[], keys: string[]): Promise<void> {
-  const placeholders = ids.map((_, index) => `?${index + 2}`).join(', ')
-  await env.DB.batch([
-    env.DB.prepare(`DELETE FROM music_track_tags WHERE user_id = ?1 AND track_id IN (${placeholders})`).bind(userId, ...ids),
-    env.DB.prepare(`DELETE FROM music_playlist_items WHERE user_id = ?1 AND track_id IN (${placeholders})`).bind(userId, ...ids),
-    env.DB.prepare(`DELETE FROM music_tracks WHERE user_id = ?1 AND id IN (${placeholders})`).bind(userId, ...ids),
-  ])
+  const statements: D1PreparedStatement[] = []
+  for (const part of chunkIds(ids, LIMITS.musicSqlIdChunkMax)) {
+    const placeholders = part.map((_, index) => `?${index + 2}`).join(', ')
+    statements.push(
+      env.DB.prepare(`DELETE FROM music_track_tags WHERE user_id = ?1 AND track_id IN (${placeholders})`).bind(userId, ...part),
+      env.DB.prepare(`DELETE FROM music_playlist_items WHERE user_id = ?1 AND track_id IN (${placeholders})`).bind(userId, ...part),
+      env.DB.prepare(`DELETE FROM music_tracks WHERE user_id = ?1 AND id IN (${placeholders})`).bind(userId, ...part),
+    )
+  }
+  await env.DB.batch(statements)
   if (keys.length) {
     const { deleteMusicObjects } = await import('./storage')
     await deleteMusicObjects(env, requireMusicStorage(env), keys).catch((error: unknown) => {
@@ -130,23 +136,36 @@ async function deleteTracks(env: AppBindings['Bindings'], userId: string, ids: s
 
 async function setFlagForTracks(db: D1Database, userId: string, ids: string[], column: string, value: number): Promise<void> {
   if (!isFlagColumn(column)) throw ApiError.internal('Unsupported track flag')
-  const placeholders = ids.map((_, index) => `?${index + 4}`).join(', ')
-  await db.prepare(
-    `UPDATE music_tracks SET ${column} = ?1, updated_at = ?2 WHERE user_id = ?3 AND id IN (${placeholders})`,
-  ).bind(value, Date.now(), userId, ...ids).run()
+  const now = Date.now()
+  await db.batch(chunkIds(ids, LIMITS.musicSqlIdChunkMax).map((part) => {
+    const placeholders = part.map((_, index) => `?${index + 4}`).join(', ')
+    return db.prepare(
+      `UPDATE music_tracks SET ${column} = ?1, updated_at = ?2 WHERE user_id = ?3 AND id IN (${placeholders})`,
+    ).bind(value, now, userId, ...part)
+  }))
 }
 
 function isFlagColumn(column: string): column is 'is_favorite' | 'is_pinned' {
   return column === 'is_favorite' || column === 'is_pinned'
 }
 
+interface OwnedObjectRow {
+  id: string
+  source: string
+  created_at: number
+  object_key: string
+}
+
 async function loadOwnedObjectKeys(db: D1Database, userId: string, ids: string[]): Promise<string[]> {
   if (!ids.length) return []
-  const placeholders = ids.map((_, index) => `?${index + 2}`).join(', ')
-  const rows = await db.prepare(
-    `SELECT id, source, created_at, object_key FROM music_tracks WHERE user_id = ?1 AND id IN (${placeholders})`,
-  ).bind(userId, ...ids).all<{ id: string; source: string; created_at: number; object_key: string }>()
-  return rows.results
+  const results = await db.batch(chunkIds(ids, LIMITS.musicSqlIdChunkMax).map((part) => {
+    const placeholders = part.map((_, index) => `?${index + 2}`).join(', ')
+    return db.prepare(
+      `SELECT id, source, created_at, object_key FROM music_tracks WHERE user_id = ?1 AND id IN (${placeholders})`,
+    ).bind(userId, ...part)
+  }))
+  return results
+    .flatMap((result) => (result.results ?? []) as OwnedObjectRow[])
     .filter((row) => row.source === 'r2' && isDerivedMusicObjectKey(row.id, row.created_at, row.object_key))
     .map((row) => row.object_key)
 }
