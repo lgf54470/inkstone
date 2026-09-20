@@ -95,7 +95,6 @@ function NowPlayingBar({ track, onNext }: {
   // Keyed on the track id: the browser restarts playback of the new src, and the
   // native controls stay the only transport a reader without a session needs.
   const media = {
-    key: track.id,
     src: track.streamUrl,
     controls: true,
     autoPlay: true,
@@ -112,8 +111,8 @@ function NowPlayingBar({ track, onNext }: {
           {track.artist ? <span className='font-normal text-[var(--text-tertiary)]'> · {track.artist}</span> : null}
         </p>
         {isVideo
-          ? <video {...media} playsInline className='max-h-60 w-full' />
-          : <audio {...media} className='w-full' />}
+          ? <video key={track.id} {...media} playsInline className='max-h-60 w-full' />
+          : <audio key={track.id} {...media} className='w-full' />}
       </div>
     </div>
   )

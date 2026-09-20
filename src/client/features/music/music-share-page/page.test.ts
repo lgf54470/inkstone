@@ -111,8 +111,8 @@ describe('anonymous playlist page (M-51)', () => {
 
   it('plays a shared video track on a video element that shows its own picture', async () => {
     vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([
-      track('t1'),
       track('clip', { mime: 'video/mp4' }),
+      track('clip2', { mime: 'video/mp4' }),
     ]))
     await mount()
     await act(async () => { trackRow('clip').click() })
@@ -121,6 +121,9 @@ describe('anonymous playlist page (M-51)', () => {
     expect(element?.hasAttribute('controls')).toBe(true)
     expect(element?.hasAttribute('playsinline')).toBe(true)
     expect(document.querySelector('audio')).toBeNull()
+    await act(async () => { media()!.dispatchEvent(new Event('ended', { bubbles: true })) })
+    expect(media()).not.toBe(element)
+    expect((media() as HTMLVideoElement).tagName).toBe('VIDEO')
   })
 
   it('keeps an audio track on an audio element, not a black video box', async () => {
