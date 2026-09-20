@@ -11,6 +11,8 @@ import { MusicArtwork } from './music-artwork'
 interface QueueRow {
   track: MusicTrack
   index: number
+  /** Identity, not position: a reorder or a removal must not remount a row that stayed queued. */
+  rowKey: string
 }
 
 // Touch shows row actions by default; desktop reveals them on hover/focus only.
@@ -45,7 +47,7 @@ export function MusicQueueList({
     <div className={cn('space-y-0.5', className)}>
       {rows.map((row) => (
         <QueueRowItem
-          key={`${row.track.id}-${row.index}`}
+          key={row.rowKey}
           row={row}
           rowClassName={rowClassName}
           reorderable={reorderable}
@@ -60,7 +62,9 @@ export function MusicQueueList({
 }
 
 // Duplicated tracks occupy several queue positions; each rendered occurrence
-// takes the next free one so play/remove hit the right row.
+// takes the next free one so play/remove hit the right row. The occurrence count
+// is also what keys the row: it survives the position shifts a reorder or a
+// removal causes, and two rows of the same track still get distinct keys.
 function buildQueueRows(queue: string[], selected: string[], byId: Map<string, MusicTrack>): QueueRow[] {
   const positions = new Map<string, number[]>()
   queue.forEach((id, index) => {
@@ -69,10 +73,14 @@ function buildQueueRows(queue: string[], selected: string[], byId: Map<string, M
     else positions.set(id, [index])
   })
   const rows: QueueRow[] = []
+  const occurrences = new Map<string, number>()
   for (const id of selected) {
     const track = byId.get(id)
     const index = positions.get(id)?.shift()
-    if (track && index !== undefined) rows.push({ track, index })
+    if (!track || index === undefined) continue
+    const occurrence = occurrences.get(id) ?? 0
+    occurrences.set(id, occurrence + 1)
+    rows.push({ track, index, rowKey: `${id}#${occurrence}` })
   }
   return rows
 }

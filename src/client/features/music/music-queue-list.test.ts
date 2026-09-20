@@ -162,6 +162,51 @@ describe('MusicQueueList current row semantics (UI-19)', () => {
   })
 })
 
+describe('MusicQueueList row identity', () => {
+  function rows(): HTMLElement[] {
+    return [...document.querySelectorAll('[draggable="true"]')] as HTMLElement[]
+  }
+
+  function seed(): void {
+    useMusic.setState({
+      tracks: [track('a'), track('b'), track('c')],
+      queue: ['a', 'b', 'c'],
+      currentIndex: 0,
+      isPlaying: false,
+      removeFromQueue: vi.fn(),
+      playQueueAt: vi.fn(async () => {}),
+      moveQueueItem: vi.fn(),
+    })
+  }
+
+  it('keeps the rows that stayed in the queue instead of rebuilding them', async () => {
+    seed()
+    await mountList()
+    const before = rows()
+    expect(before).toHaveLength(3)
+    await act(async () => {
+      useMusic.setState({ queue: ['b', 'c'] })
+    })
+    const after = rows()
+    expect(after).toHaveLength(2)
+    expect(after[0]).toBe(before[1])
+    expect(after[1]).toBe(before[2])
+  })
+
+  it('keeps them when a reorder only moves them', async () => {
+    seed()
+    await mountList()
+    const before = rows()
+    await act(async () => {
+      useMusic.setState({ queue: ['c', 'a', 'b'] })
+    })
+    const after = rows()
+    expect(after[0]).toBe(before[2])
+    expect(after[1]).toBe(before[0])
+    expect(after[2]).toBe(before[1])
+  })
+})
+
 describe('MusicQueueList reorder affordances', () => {
   it('moves a dragged row onto the queue position it was dropped on', async () => {
     const moveQueueItem = seedQueue()
