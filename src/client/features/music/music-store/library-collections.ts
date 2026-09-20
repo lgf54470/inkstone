@@ -7,6 +7,7 @@ import { toastMusic, toastMusicError, toastMusicNotice, toastUploadError, toastU
 import { readFileMetadata } from '../music-metadata'
 import { readDurationMs } from '../music-probe'
 import { partitionUploadableFiles, TRACK_IO_CONCURRENCY } from '../music-utils'
+import { applyTagsLocally, sendBatches } from './library-tracks'
 import { summarizeLibrary } from './library-load'
 import type { MusicGet, MusicSet, MusicStoreState, MusicTransferTarget, MusicUploadTask } from './types'
 
@@ -146,19 +147,24 @@ export async function deletePlaylist(set: MusicSet, id: string): Promise<void> {
   }
 }
 
-// Multi-select actions: moving replaces the tag set, playlists append.
+// Multi-select actions: moving replaces the tag set, playlists append. The move travels as one
+// batch request per chunk instead of a PATCH per track: on a large library the per-track walk
+// burned the hourly write budget and tripped it mid-selection, leaving the batch half applied.
 export async function moveSelectionToTag(set: MusicSet, get: MusicGet, tagId: string): Promise<void> {
   const ids = get().selectedIds
   if (!ids.length) return
-  try {
-    const updated = await Promise.all(ids.map((id) => api.music.patchTrack(id, { tagIds: [tagId] })))
-    const byId = new Map(updated.map((track) => [track.id, track]))
-    set((state) => ({ tracks: state.tracks.map((track) => byId.get(track.id) ?? track), selectedIds: [] }))
-    toastMusic('music.moved_to_tag', { value0: updated.length })
-  } catch (error) {
+  const { applied, error } = await sendBatches(ids, 'tag', [tagId])
+  if (!applied.length) {
     toastMusicError(error, 'music.action_failed')
     await get().loadLibrary(true)
+    return
   }
+  const affected = new Set(applied)
+  applyTagsLocally(set, affected, [tagId])
+  // Rows whose request never landed stay selected, so a retry does not start over.
+  set((state) => ({ selectedIds: state.selectedIds.filter((id) => !affected.has(id)) }))
+  if (!error) toastMusic('music.moved_to_tag', { value0: applied.length })
+  else toastMusicNotice('music.batch_partial', { value0: applied.length, value1: ids.length - applied.length })
 }
 
 export async function addSelectionToPlaylist(set: MusicSet, get: MusicGet, playlistId: string): Promise<void> {

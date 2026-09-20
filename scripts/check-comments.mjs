@@ -1593,12 +1593,19 @@ const allowed = new Map([
   ['src/client/features/music/music-store/eq.test.ts', [
     '// The store module is shared across tests in this file; leave no sound-setting residue.',
   ]],
+  ['src/client/features/music/music-store/library-collections.test.ts', [
+    '// A whole library of ids and the selection that points at all of them, which is what the',
+    '// multi-select actions walk.',
+  ]],
   ['src/client/features/music/music-store/library-collections.ts', [
     '// "demo/test" creates the parent path first, matching how note tags nest by name.',
     '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
     '// An absent description stays untouched: the sidebar rename only edits the name.',
     '// The share endpoint is idempotent, so the slug a visitor already holds keeps working.',
-    '// Multi-select actions: moving replaces the tag set, playlists append.',
+    '// Multi-select actions: moving replaces the tag set, playlists append. The move travels as one',
+    '// batch request per chunk instead of a PATCH per track: on a large library the per-track walk',
+    '// burned the hourly write budget and tripped it mid-selection, leaving the batch half applied.',
+    '// Rows whose request never landed stay selected, so a retry does not start over.',
     '// The rows that never reached the server stay selected so the user can retry them.',
     '// The reorder endpoint takes the complete item order, so a move is a local',
     '// swap sent whole; the response replaces the entry like a patch would.',
@@ -1662,6 +1669,7 @@ const allowed = new Map([
     '// already landed are handed back so the caller keeps the local state honest.',
     '// Server mutation responses carry the full record; merging it keeps the local',
     '// library authoritative without a reload.',
+    '// A tag move replaces the set rather than adding to it, matching what the endpoint does.',
   ]],
   ['src/client/features/music/music-store/offline.ts', [
     '// Offline availability lives in the service worker\'s cache, not in preferences:',
@@ -2579,6 +2587,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/api/music.ts', [
     '// The Worker relays the catalogue request because the page\'s CSP forbids third party connections.',
+    '// `tag` carries the tag ids the whole selection is rewritten onto; the other actions carry none.',
   ]],
   ['src/client/lib/api/transport.ts', [
     '/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker\'s ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */',

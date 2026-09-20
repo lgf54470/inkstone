@@ -23,7 +23,7 @@ export interface MusicTrackPatch {
   tagIds?: string[]
 }
 
-export type MusicBatchAction = 'favorite' | 'unfavorite' | 'pin' | 'unpin' | 'delete'
+export type MusicBatchAction = 'favorite' | 'unfavorite' | 'pin' | 'unpin' | 'delete' | 'tag'
 
 export interface MusicPlaylistPatch {
   name?: string
@@ -113,8 +113,11 @@ export const music = {
   deleteTrack: (id: string) =>
     request<{ ok: boolean }>(`/api/music/tracks/${encodeURIComponent(id)}`, { method: 'DELETE', timeoutMs: 30_000 }),
 
-  batchTracks: (ids: string[], action: MusicBatchAction) =>
-    request<{ ok: boolean; updated: number }>('/api/music/tracks/batch', { method: 'POST', body: { ids, action }, timeoutMs: 30_000 }),
+  // `tag` carries the tag ids the whole selection is rewritten onto; the other actions carry none.
+  batchTracks: (ids: string[], action: MusicBatchAction, tagIds?: string[]) =>
+    request<{ ok: boolean; updated: number }>('/api/music/tracks/batch', {
+      method: 'POST', body: { ids, action, ...(tagIds?.length ? { tagIds } : {}) }, timeoutMs: 30_000,
+    }),
 
   countPlay: (id: string) =>
     request<{ ok: boolean }>(`/api/music/tracks/${encodeURIComponent(id)}/play`, { method: 'POST', body: {} }),

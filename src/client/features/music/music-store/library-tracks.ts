@@ -184,11 +184,11 @@ export async function batchTracks(set: MusicSet, get: MusicGet, action: MusicBat
 
 // One request per chunk: the first rejected chunk ends the walk, and the ids that
 // already landed are handed back so the caller keeps the local state honest.
-async function sendBatches(ids: string[], action: MusicBatchAction): Promise<{ applied: string[]; error: unknown }> {
+export async function sendBatches(ids: string[], action: MusicBatchAction, tagIds?: string[]): Promise<{ applied: string[]; error: unknown }> {
   const applied: string[] = []
   for (const part of chunkIds(ids, LIMITS.musicBatchItemsMax)) {
     try {
-      await api.music.batchTracks(part, action)
+      await api.music.batchTracks(part, action, tagIds)
     } catch (error) {
       return { applied, error }
     }
@@ -231,6 +231,14 @@ function applyFlagsLocally(set: MusicSet, affected: Set<string>, action: MusicBa
   const value = action === 'favorite' || action === 'pin'
   set((state) => {
     const tracks = state.tracks.map((entry) => (affected.has(entry.id) ? { ...entry, [field]: value } : entry))
+    return resummarize(state, { tracks })
+  })
+}
+
+// A tag move replaces the set rather than adding to it, matching what the endpoint does.
+export function applyTagsLocally(set: MusicSet, affected: Set<string>, tagIds: string[]): void {
+  set((state) => {
+    const tracks = state.tracks.map((entry) => (affected.has(entry.id) ? { ...entry, tagIds } : entry))
     return resummarize(state, { tracks })
   })
 }

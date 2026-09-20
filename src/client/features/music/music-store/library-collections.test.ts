@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { MusicPlaylistDetail } from '@shared/types'
+import { LIMITS } from '@shared/constants'
+import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 
 vi.mock('../../../lib/api', () => ({
   api: {
@@ -17,18 +18,21 @@ vi.mock('../../../lib/api', () => ({
       })),
       sharePlaylist: vi.fn(async (id: string) => ({ id, items: [], shareSlug: 'slug-1' })),
       unsharePlaylist: vi.fn(async (id: string) => ({ id, items: [], shareSlug: null })),
+      batchTracks: vi.fn(async () => ({ ok: true, updated: 0 })),
+      patchTrack: vi.fn(async (id: string, patch: object) => ({ id, ...patch })),
     },
   },
 }))
 vi.mock('../music-feedback', () => ({
   toastMusic: vi.fn(),
   toastMusicError: vi.fn(),
+  toastMusicNotice: vi.fn(),
   toastUploadError: vi.fn(),
 }))
 
 import { api } from '../../../lib/api'
-import { toastMusic, toastMusicError } from '../music-feedback'
-import { addSelectionToPlaylist, createPlaylist, movePlaylistItem, movePlaylistItemToIndex, renamePlaylist, sharePlaylist, unsharePlaylist } from './library-collections'
+import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
+import { addSelectionToPlaylist, createPlaylist, movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, renamePlaylist, sharePlaylist, unsharePlaylist } from './library-collections'
 import type { MusicStoreState } from './types'
 
 function makeStore() {
@@ -89,6 +93,80 @@ describe('playlist multi-select add', () => {
     expect(merged.map((item) => item.trackId)).toEqual(['t9', 't1', 't2'])
     expect(merged.map((item) => item.sortOrder)).toEqual([0, 1, 2])
     expect(store.get().selectedIds).toEqual([])
+  })
+})
+
+function stubTrack(id: string): MusicTrack {
+  return { id, title: id, artist: '', album: '', durationMs: 0, source: 'r2', coverUrl: null, lyric: null, tagIds: [] } as unknown as MusicTrack
+}
+
+// A whole library of ids and the selection that points at all of them, which is what the
+// multi-select actions walk.
+function selectionStore(ids: string[]) {
+  let state = {
+    tracks: ids.map(stubTrack),
+    selectedIds: ids,
+    playlists: [],
+    tags: [],
+    stats: null,
+  } as unknown as MusicStoreState
+  return {
+    set: (patch: unknown) => {
+      const next = typeof patch === 'function' ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state) : (patch as Partial<MusicStoreState>)
+      state = { ...state, ...next }
+    },
+    get: () => state,
+  }
+}
+
+describe('moving the selection onto a tag', () => {
+  beforeEach(() => {
+    vi.mocked(api.music.batchTracks).mockReset().mockResolvedValue({ ok: true, updated: 0 })
+    vi.mocked(api.music.patchTrack).mockClear()
+    vi.mocked(toastMusic).mockClear()
+    vi.mocked(toastMusicError).mockClear()
+    vi.mocked(toastMusicNotice).mockClear()
+  })
+
+  it('replaces the tag set of the whole selection with one batch request', async () => {
+    const store = selectionStore(['t1', 't2'])
+
+    await moveSelectionToTag(store.set, store.get, 'tag-1')
+
+    expect(api.music.batchTracks).toHaveBeenCalledTimes(1)
+    expect(api.music.batchTracks).toHaveBeenCalledWith(['t1', 't2'], 'tag', ['tag-1'])
+    expect(api.music.patchTrack).not.toHaveBeenCalled()
+    expect(store.get().tracks.map((entry) => entry.tagIds)).toEqual([['tag-1'], ['tag-1']])
+    expect(store.get().selectedIds).toEqual([])
+    expect(toastMusic).toHaveBeenCalledWith('music.moved_to_tag', { value0: 2 })
+  })
+
+  it('splits a selection past the request cap and keeps the rows that never landed selected', async () => {
+    const ids = Array.from({ length: LIMITS.musicBatchItemsMax + 1 }, (_, index) => `t-${index}`)
+    const store = selectionStore(ids)
+    vi.mocked(api.music.batchTracks)
+      .mockResolvedValueOnce({ ok: true, updated: LIMITS.musicBatchItemsMax })
+      .mockRejectedValueOnce(new Error('offline'))
+
+    await moveSelectionToTag(store.set, store.get, 'tag-1')
+
+    expect(api.music.batchTracks).toHaveBeenCalledTimes(2)
+    const moved = store.get().tracks.filter((entry) => entry.tagIds?.[0] === 'tag-1')
+    expect(moved).toHaveLength(LIMITS.musicBatchItemsMax)
+    expect(store.get().selectedIds).toEqual([ids[ids.length - 1]])
+    expect(toastMusicNotice).toHaveBeenCalledWith('music.batch_partial', { value0: LIMITS.musicBatchItemsMax, value1: 1 })
+  })
+
+  it('reloads the library when nothing landed', async () => {
+    const store = selectionStore(['t1'])
+    const loadLibrary = vi.fn(async () => {})
+    vi.mocked(api.music.batchTracks).mockRejectedValueOnce(new Error('offline'))
+    store.set({ loadLibrary })
+
+    await moveSelectionToTag(store.set, store.get, 'tag-1')
+
+    expect(toastMusicError).toHaveBeenCalledWith(expect.anything(), 'music.action_failed')
+    expect(loadLibrary).toHaveBeenCalledWith(true)
   })
 })
 
