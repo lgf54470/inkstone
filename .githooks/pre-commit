@@ -4,6 +4,15 @@
 set -e
 cd "$(git rev-parse --show-toplevel)"
 
+# A merge committed by hand (conflicts resolved, then `git commit`) carries two questions no
+# other gate asks: is every test file still in the project that owned it, and is any conflict
+# marker left in the staged content? pre-merge-commit asks them when git makes the merge commit
+# itself; this asks them here. It runs before the static block so a merge that dropped a test
+# fails in a second rather than a minute.
+if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+  node scripts/check-merge-preflight.mjs --in-progress
+fi
+
 # Static policy gates — always on (fast, whole-tree by design). Parity with
 # the CI static block (i18n/comments/escape/module-state/deep-imports/size);
 # the build/budget/vendor/e2e steps remain CI-only (slow or server-bound).

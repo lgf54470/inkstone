@@ -1,13 +1,17 @@
 import fs from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import os from 'node:os'
+import path from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
   classifyChanges,
   deletionHazards,
   environmentIssues,
   matchesPattern,
+  mergeBlockers,
   nodeInclude,
   parseMergeTreeOutput,
   parseRunnerProjects,
+  readRunnerSnapshot,
   runnerIssues,
   singleSideFiles,
   unselectedTests,
@@ -211,6 +215,84 @@ describe('which project would run a test file', () => {
         'tests/a.test.ts: selected by no project',
         'tests/b.test.ts: runs under jsdom although a node project owned it',
       ])
+  })
+})
+
+// `--in-progress` reads the merge result off disk instead of out of two branches, which is the
+// difference between advising a resolution and judging one: the config and the test files it has
+// to cover are both the working tree's at that point.
+describe('reading the merge result off disk', () => {
+  const roots: string[] = []
+  afterEach(() => {
+    for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true })
+  })
+
+  function fixture(files: Record<string, string>): string {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'merge-preflight-'))
+    roots.push(root)
+    for (const [name, content] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(root, name)), { recursive: true })
+      fs.writeFileSync(path.join(root, name), content)
+    }
+    return root
+  }
+
+  const CONFIG_FILE = `
+    test: { projects: [
+      { test: { name: 'jsdom', include: ['src/**/*.test.ts', 'tests/**/*.test.ts'], exclude: ['tests/a.test.ts'] } },
+      { test: { name: 'node', include: ['tests/a.test.ts'] } },
+    ] },
+  `
+
+  it('reads the config and the test files from the tree it is given', () => {
+    const root = fixture({
+      'vitest.config.ts': CONFIG_FILE,
+      'tests/a.test.ts': '// a\n',
+      'src/client/b.test.ts': '// b\n',
+      'src/client/b.ts': '// not a test\n',
+    })
+    const snapshot = readRunnerSnapshot(root)
+    expect(snapshot.tests).toEqual(['src/client/b.test.ts', 'tests/a.test.ts'])
+    expect(runnerIssues(snapshot.projects, snapshot.tests, ['tests/a.test.ts'])).toEqual([])
+  })
+
+  it('names the test a resolution left with no project', () => {
+    const root = fixture({ 'vitest.config.ts': CONFIG_FILE.replace("include: ['tests/a.test.ts']", 'include: []') })
+    const snapshot = readRunnerSnapshot(root)
+    expect(runnerIssues(snapshot.projects, ['tests/a.test.ts'], ['tests/a.test.ts']))
+      .toEqual(['tests/a.test.ts: selected by no project'])
+  })
+
+  it('survives a tree without the runner config rather than throwing', () => {
+    const root = fixture({ 'tests/a.test.ts': '// a\n' })
+    expect(readRunnerSnapshot(root)).toEqual({ projects: [], tests: ['tests/a.test.ts'] })
+  })
+})
+
+describe('what refuses a merge commit', () => {
+  it('blocks on a staged conflict marker', () => {
+    expect(mergeBlockers({ markers: ['src/worker/app.ts'], runner: { issues: [] }, lostAdditions: [] }))
+      .toEqual(['src/worker/app.ts: a conflict marker is still in the staged content'])
+  })
+
+  it('blocks on every runner finding', () => {
+    const blockers = mergeBlockers({
+      markers: [],
+      runner: { issues: ['tests/a.test.ts: selected by no project'] },
+      lostAdditions: [],
+    })
+    expect(blockers).toEqual(['tests/a.test.ts: selected by no project'])
+  })
+
+  it('blocks an added test file the resolution dropped', () => {
+    expect(mergeBlockers({ markers: [], runner: { issues: [] }, lostAdditions: ['tests/new.test.ts'] }))
+      .toEqual(['tests/new.test.ts: added on one side of this merge but absent from the result'])
+  })
+
+  // Branch bookkeeping is per branch by nature, so it is reported without being enforced.
+  it('does not enforce a dropped addition outside the code and test trees', () => {
+    expect(mergeBlockers({ markers: [], runner: { issues: [] }, lostAdditions: ['.qoder/improvement/plan.md'] }))
+      .toEqual([])
   })
 })
 

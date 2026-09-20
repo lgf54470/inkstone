@@ -1,0 +1,14 @@
+#!/bin/sh
+# Merge-time gate. A merge may only be recorded once its resolution kept every test file in the
+# project that owned it, kept the files the other side added, and left no conflict marker in the
+# staged content. None of the three shows up in the conflict list git prints, which is why this
+# refuses the commit instead of printing advice: the two suites this caught in a real merge had
+# moved between projects, and reading the conflicts by eye found neither.
+#
+# `git merge` runs this hook instead of pre-commit whenever it creates the commit itself. The
+# conflicted path — resolve by hand, then `git commit` — is covered by the same check inside
+# pre-commit. INKSTONE_ALLOW_MERGE_HAZARDS=1 accepts the findings deliberately; that skips only
+# this check, unlike --no-verify, which skips every gate.
+set -e
+cd "$(git rev-parse --show-toplevel)"
+node scripts/check-merge-preflight.mjs --in-progress

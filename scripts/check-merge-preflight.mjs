@@ -15,17 +15,35 @@
 // tree objects (no ref, no index, no working tree); everything else is `rev-list`, `diff`,
 // `ls-tree` and `show`. Run it before the merge, not after.
 //
+// `--in-progress` is the same question asked once the resolution is on disk, which is why it is
+// what `.githooks/pre-merge-commit` and the merge branch of `.githooks/pre-commit` run: a merge
+// that is about to be recorded has to have kept every test in the project that owned it, kept
+// every file the other side added, and kept no conflict marker in the staged content. Blocking
+// there is the point — the two hazards this script exists for are both invisible in the conflict
+// list, so "run it if you remember" would have caught neither. Set
+// INKSTONE_ALLOW_MERGE_HAZARDS=1 to accept the findings deliberately (the message says so too),
+// which is still better than --no-verify, because it skips only this check.
+//
 // Usage: node scripts/check-merge-preflight.mjs [other-branch] [this-branch] [--report]
+//        node scripts/check-merge-preflight.mjs --in-progress
 //   other-branch defaults to `dev`, this-branch to `HEAD`: it reports what merging the first
 //   into the second would hit. `--report` also lists every file both sides changed.
-//   The exit code is 1 when it found a hazard and 0 otherwise, so a caller can branch on it.
+//   The exit code is 1 when it found a hazard (or, with --in-progress, a blocker) and 0
+//   otherwise, so a caller can branch on it.
 import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const TEST_FILE_RE = /\.test\.tsx?$/
 const CONFIG_PATH = 'vitest.config.ts'
 const CONFLICT_MARKER = '<<<<<<<'
+const START_MARKER_RE = '^<<<<<<< '
+const OVERRIDE_ENV = 'INKSTONE_ALLOW_MERGE_HAZARDS'
+// A merge that drops a file one side added has thrown away somebody's work, but only the code
+// and test trees are worth refusing the commit over: `.qoder/`-style bookkeeping is per branch by
+// nature, so a drop there is reported and not enforced.
+const ENFORCED_PREFIXES = ['src/', 'tests/', 'scripts/', 'blog-frontend/']
 
 // Every branch name, path and tree id below arrives as the raw output of a git command, so the
 // parsing helpers stay pure and take that text instead of reaching for git themselves.
@@ -336,7 +354,86 @@ function bothChanged(facts) {
     .sort()
 }
 
+// --- the same question, asked of a resolution already made ---------------------------------
+
+// The merge result is the working tree, so the runner is read from disk: the config that is
+// about to be committed, against the test files that are about to be committed.
+export function readRunnerSnapshot(root) {
+  const configPath = path.join(root, CONFIG_PATH)
+  return {
+    projects: fs.existsSync(configPath) ? parseRunnerProjects(fs.readFileSync(configPath, 'utf8')) : [],
+    tests: testFilesUnder(root),
+  }
+}
+
+function testFilesUnder(root) {
+  return ['src', 'tests'].flatMap((dir) => {
+    const full = path.join(root, dir)
+    if (!fs.existsSync(full)) return []
+    return fs.readdirSync(full, { recursive: true, encoding: 'utf8' })
+      .filter((entry) => TEST_FILE_RE.test(entry))
+      .map((entry) => `${dir}/${entry.split(path.sep).join('/')}`)
+  }).sort()
+}
+
+export function mergeBlockers({ markers, runner, lostAdditions }) {
+  return [
+    ...markers.map((file) => `${file}: a conflict marker is still in the staged content`),
+    ...runner.issues,
+    ...lostAdditions
+      .filter((file) => ENFORCED_PREFIXES.some((prefix) => file.startsWith(prefix)))
+      .map((file) => `${file}: added on one side of this merge but absent from the result`),
+  ]
+}
+
+// A hook can be run by hand, so "no merge is in progress" is an answer, not an error: it reads
+// MERGE_HEAD rather than requiring it.
+export function inspectInProgress(root = process.cwd()) {
+  const other = gitOrEmpty(['rev-parse', '--verify', 'MERGE_HEAD'], [128])
+  if (!other) return null
+  const base = git(['merge-base', 'HEAD', other])
+  const snapshot = readRunnerSnapshot(root)
+  const nodeOwned = [...new Set([
+    ...nodeInclude(parseRunnerProjects(configOf('HEAD'))),
+    ...nodeInclude(parseRunnerProjects(configOf(other))),
+  ])].filter((file) => snapshot.tests.includes(file)).sort()
+  const markers = lines(gitOrEmpty(['grep', '--cached', '-l', '-e', START_MARKER_RE], [1]))
+  const lostAdditions = ['HEAD', other]
+    .flatMap((side) => lines(gitOrEmpty(['diff', '--name-only', '--diff-filter=A', base, side])))
+    .filter((file) => !fs.existsSync(path.join(root, file)))
+    .sort()
+  return { other, base, snapshot, nodeOwned, markers, lostAdditions }
+}
+
+function mainInProgress() {
+  const facts = inspectInProgress()
+  if (!facts) {
+    console.log('[preflight] no merge in progress: nothing to check (the branch form inspects one before it starts)')
+    return
+  }
+  const runner = { issues: runnerIssues(facts.snapshot.projects, facts.snapshot.tests, facts.nodeOwned) }
+  const blockers = mergeBlockers({ markers: facts.markers, runner, lostAdditions: facts.lostAdditions })
+  const ignored = facts.lostAdditions.length - blockers.filter((entry) => entry.includes('absent from the result')).length
+  console.log(`[preflight] merge in progress: ${facts.other.slice(0, 8)} into HEAD, base ${facts.base.slice(0, 8)}`)
+  console.log(`[preflight] result on disk: ${facts.snapshot.tests.length} test file(s), ${facts.nodeOwned.length} of them node-owned before the merge`)
+  if (ignored > 0) console.log(`[preflight] ${ignored} addition(s) outside the code and test trees are absent and not enforced`)
+  printList('[blockers]', blockers)
+  if (!blockers.length) {
+    console.log('[preflight] no blocker: the resolution keeps every test where it belonged')
+    return
+  }
+  if (process.env[OVERRIDE_ENV] === '1') {
+    console.log(`[preflight] accepted deliberately through ${OVERRIDE_ENV}=1: the findings above are on the record, not resolved`)
+    return
+  }
+  console.log(`[preflight] refusing this merge commit: resolve the entries above, or set ${OVERRIDE_ENV}=1 to accept them deliberately`)
+  process.exitCode = 1
+}
+
 // The analysis above is imported by tests/merge-preflight.test.ts, so running the report is
 // reserved for the command line rather than for importing the module.
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-if (isMain) main()
+if (isMain) {
+  if (process.argv.slice(2).includes('--in-progress')) mainInProgress()
+  else main()
+}
