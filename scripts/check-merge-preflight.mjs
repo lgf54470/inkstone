@@ -147,7 +147,7 @@ function namedInRunner(facts) {
 // crossings and says so: what a reader has to do about it is read, not fix a type.
 function printShapes(shapes) {
   if (!shapes.length) return
-  console.log(`[shapes] ${shapes.length} signature change(s) under code that reads them: a declaration one side reshaped while the other side left it alone`)
+  console.log(`[shapes] ${shapes.length} signature change(s) under code that reads them: a declaration one side reshaped, or both sides did`)
   for (const entry of shapes) console.log(`  - ${describeShape(entry)}`)
 }
 

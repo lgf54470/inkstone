@@ -243,9 +243,14 @@ export function crossingGroups(entries, namesShown = 3) {
 
 // The shape finding is phrased from the side that is reading the declaration, like the crossings:
 // the reader is the one whose new code was written against the signature that no longer exists.
+// When both sides reshaped it there is no base signature to point at, so both are named instead: what
+// git writes in that case is a signature neither side wrote against.
 export function describeShape(entry) {
   const here = entry.side === 'ours' ? 'this side' : 'the other side'
   const there = entry.side === 'ours' ? 'the other side' : 'this side'
+  if (entry.otherShape) {
+    return `${entry.file}: ${here} reads ${entry.name}; both sides reshaped it in ${entry.shaperFile} (${there}: ${entry.changed}; ${here}: ${entry.otherShape}) and git merges the two unless they share lines`
+  }
   return `${entry.file}: ${here} reads ${entry.name}, which ${there} reshaped in ${entry.shaperFile} (${entry.base} → ${entry.changed}); a compile refuses this only if a type broke`
 }
 

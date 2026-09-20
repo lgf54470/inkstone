@@ -2,8 +2,11 @@
 //
 // The name-level detectors in merge-preflight-analysis.mjs answer "will this build?" — an import of a
 // name the other side moved away cannot resolve, so the compile step confirms the finding. This one
-// answers the question the compiler cannot: one side re-shaped a declaration (a default, a parameter,
-// its order, its return), the other side's new code reads it, and every type still lines up. It is
+// answers the question the compiler cannot: a declaration re-shaped (a default, a parameter, its
+// order, its return) under code that reads it, while every type still lines up. Both sides reshaping
+// the same declaration belongs to it too, and is the more interesting half: when the two edits are
+// not on the same lines git merges them into a signature neither side wrote against, no conflict
+// marker appears, and the resolution a human is supposed to make has nothing pointing at it. It is
 // the compiler doing the positioning — the declaration node and the exact text of its signature —
 // while the pairing logic stays name-level, which is why this module is separate: the analysis module
 // is deliberately free of the compiler, and this one exists because that freedom has a ceiling.
@@ -65,12 +68,13 @@ export function declarationShapes(text, fileName = 'module.ts') {
   return shapes
 }
 
-// The declarations one side re-shaped while the other side left them alone. Files are filtered by the
-// names they declare — the same regex pass the name-level detectors use — before anything is parsed,
-// and the other two revisions of a file are only parsed once one of its names turns out to matter.
-// Both matter for the cost: measured on the merge this was written for, filtering by a substring
-// instead let almost every touched file through and parsing three versions of each cost 6.8s, while
-// the names a file declares cut it to the handful below.
+// The declarations one side re-shaped under code that reads them, whether the other side left them
+// alone or re-shaped them too. Files are filtered by the names they declare — the same regex pass the
+// name-level detectors use — before anything is parsed, and the other two revisions of a file are only
+// parsed once one of its names turns out to matter. Both matter for the cost: measured on the merge
+// this was written for, filtering by a substring instead let almost every touched file through and
+// parsing three versions of each cost 6.8s, while the names a file declares cut it to the handful
+// below.
 export function reshapedNames({ files, shaper, other, readText, namesOfInterest, declaredNames }) {
   const entries = []
   for (const file of files) {
@@ -86,11 +90,17 @@ export function reshapedNames({ files, shaper, other, readText, namesOfInterest,
       const before = base.get(name)
       if (before === undefined || before === shape) continue
       otherSide ??= declarationShapes(readText(other, file) || '', file)
-      // The reading side has to have left it alone: if it re-shaped or removed the same declaration
-      // the conflict list and the compile step both point at that file, and this list is for what
-      // neither of them sees.
-      if (otherSide.get(name) !== before) continue
-      entries.push({ shaper, file, name, base: before, changed: shape })
+      const others = otherSide.get(name)
+      // The other side removed it: what it leaves behind is a name that cannot resolve, which is the
+      // compile step's and the conflict list's to report.
+      if (others === undefined) continue
+      // Both sides re-shaped it. Git merges the two edits whenever they are not on the same lines,
+      // and what it writes is a signature neither side wrote against: no conflict marker appears, the
+      // compile step has no type to object to, and the resolution that is supposed to decide has
+      // nothing to decide. Reported with both shapes for that reason.
+      entries.push(others === before
+        ? { shaper, file, name, base: before, changed: shape }
+        : { shaper, file, name, base: before, changed: shape, otherShape: others })
     }
   }
   return entries
@@ -120,6 +130,7 @@ export function shapeCrossings({ reshaped, reads }) {
         shaperFile: shaped.file,
         base: shaped.base,
         changed: shaped.changed,
+        ...(shaped.otherShape ? { otherShape: shaped.otherShape } : {}),
       })
     }
   }

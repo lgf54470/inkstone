@@ -951,8 +951,32 @@ describe('a signature change under code that reads it', () => {
     expect(reshaped({ ours: `${OURS}export function added(bytes: number): string {\n  return String(bytes)\n}\n`, names: new Set(['added']) })).toEqual([])
   })
 
-  it('stays quiet when both sides reshaped it, where the conflict list points', () => {
-    expect(reshaped({ theirs: RESHAPED_BY_BOTH })).toEqual([])
+  // Git merges two edits to one declaration whenever they are not on the same lines, so the result
+  // is a signature neither side wrote against and no conflict marker says so. Both shapes are the
+  // finding, which is why this no longer stays quiet.
+  it('reports both shapes when both sides reshaped it', () => {
+    expect(reshaped({ theirs: RESHAPED_BY_BOTH })).toEqual([{
+      shaper: 'ours',
+      file: 'src/shared/format.ts',
+      name: 'formatTotal',
+      base: 'export function formatTotal(bytes: number, unit = 1024): string',
+      changed: 'export function formatTotal(bytes: number, unit = 1000): string',
+      otherShape: 'export function formatTotal(bytes: number, unit = 512): string',
+    }])
+  })
+
+  it('names which side wrote each of the two shapes', () => {
+    const entries = shapeCrossings({
+      reshaped: reshaped({ theirs: RESHAPED_BY_BOTH }),
+      reads: [{ file: 'src/consumer-format.ts', name: 'formatTotal', side: 'theirs' }],
+    })
+    expect(entries).toHaveLength(1)
+    expect(describeShape(entries[0]!)).toBe(
+      'src/consumer-format.ts: the other side reads formatTotal; both sides reshaped it in src/shared/format.ts'
+      + ' (this side: export function formatTotal(bytes: number, unit = 1000): string;'
+      + ' the other side: export function formatTotal(bytes: number, unit = 512): string)'
+      + ' and git merges the two unless they share lines',
+    )
   })
 
   it('stays quiet when the other side removed it, which will not compile', () => {
