@@ -1867,6 +1867,10 @@ const allowed = new Map([
     '// follows an enter/leave depth count and only clears once the pointer really leaves.',
   ]],
   ['src/client/features/music/music-transport-widgets.tsx', [
+    '// A click opens the volume panel, which is where muting lives: the double-click shortcut that',
+    '// used to sit here had no label, no keyboard equivalent and no way to discover it, and muting',
+    '// is already offered by a named button in the panel. The trigger is named for what it does — it',
+    '// opens the volume panel, it no longer mutes — so the name cannot promise an action it lacks.',
     '// A single static line about what the sleeper will do; announcing it once',
     '// is the point, so a polite status fits while the countdown stays a timer.',
     '// A per-second countdown as a polite live region re-reads itself every tick;',
@@ -1909,6 +1913,17 @@ const allowed = new Map([
     '// baseline stays in the layout, and a theme flip repaints it without restarting rAF.',
     '// The first callback fires when the canvas enters or leaves the viewport, the second',
     '// when the theme flips tokens on the document root while the frame loop is stopped.',
+  ]],
+  ['src/client/features/music/music-volume.test.ts', [
+    '// Both surfaces draw the same control, so neither may hand-roll its own range input: the shared',
+    '// slider is what gives the control a readable value instead of a bare number, and keeps its fill,',
+    '// keyboard step and accessible value in one place. The hub bar and the transport popover used to',
+    '// be two different sliders; only one of them announced its value, so the same control read',
+    '// differently depending on which surface it was opened from.',
+    '// Muting here used to double as a hidden double-click gesture on the panel\'s trigger: no label',
+    '// named it, no keyboard reached it, and a quick double tap flipped the state twice, which read',
+    '// as one tap being ignored. The trigger now says only what it does — it opens the panel — and',
+    '// the mute button inside the panel is the one named control for that job.',
   ]],
   ['src/client/features/music/music-webdav-modal.tsx', [
     '// A failed listing is not an empty folder; show the failure and let the user retry in place.',

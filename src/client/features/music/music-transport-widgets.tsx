@@ -3,7 +3,6 @@ import { Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, SlidersHorizontal,
 import { IconButton } from '../../components/primitives'
 import { Slider, Switch } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
-import type { CSSProperties } from 'react'
 import { t } from '../../lib/i18n'
 import { formatTimecode } from '../../lib/time'
 import { EQ_GAIN_RANGE_DB, PLAYBACK_RATES, progressTimeMs } from './music-store'
@@ -90,16 +89,19 @@ export function MusicQueueButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   )
 }
 
+// A click opens the volume panel, which is where muting lives: the double-click shortcut that
+// used to sit here had no label, no keyboard equivalent and no way to discover it, and muting
+// is already offered by a named button in the panel. The trigger is named for what it does — it
+// opens the volume panel, it no longer mutes — so the name cannot promise an action it lacks.
 export function MusicVolumeButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   const volume = useMusic((state) => state.volume)
   const muted = useMusic((state) => state.muted)
-  const toggleMute = useMusic((state) => state.toggleMute)
   const [open, setOpen] = useState(false)
   const anchorRef = useRef<HTMLButtonElement>(null)
   return (
     <>
-      <Tooltip label={muted ? t('music.unmute') : t('music.mute')} side='top'>
-        <IconButton ref={anchorRef} label={muted ? t('music.unmute') : t('music.mute')} size={size} onClick={() => setOpen((value) => !value)} onDoubleClick={toggleMute}>
+      <Tooltip label={t('music.volume')} side='top'>
+        <IconButton ref={anchorRef} label={t('music.volume')} size={size} active={open} onClick={() => setOpen((value) => !value)}>
           {muted || volume === 0 ? <VolumeX size={14} /> : volume < 0.5 ? <Volume1 size={14} /> : <Volume2 size={14} />}
         </IconButton>
       </Tooltip>
@@ -125,19 +127,15 @@ export function MusicVolumeSlider({ className }: { className?: string }) {
           {shown === 0 ? <VolumeX size={14} /> : shown < 0.5 ? <Volume1 size={14} /> : <Volume2 size={14} />}
         </IconButton>
       </Tooltip>
-      <input
-        type='range'
-        className='ink-slider h-3.5 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent outline-none'
-        style={{ '--pct': shown * 100 + '%' } as CSSProperties}
+      <Slider
         min={0}
         max={100}
         value={Math.round(shown * 100)}
-        aria-label={t('music.volume')}
-        onChange={(event) => setVolume(Number(event.target.value) / 100)}
+        suffix='%'
+        label={t('music.volume')}
+        className='min-w-0 flex-1'
+        onChange={(next) => setVolume(next / 100)}
       />
-      <span className='tabular w-6 shrink-0 text-right text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-        {Math.round(shown * 100)}
-      </span>
     </div>
   )
 }

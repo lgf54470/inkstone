@@ -1,6 +1,5 @@
-import type { CSSProperties } from 'react'
-import { Heart, ListMusic, Maximize2, Music, PictureInPicture2, Pin, Volume1, Volume2, VolumeX } from 'lucide-react'
-import { MusicEqButton, MusicModeButton, MusicRateButton, MusicSleepButton } from './music-transport-widgets'
+import { Heart, ListMusic, Maximize2, Music, PictureInPicture2, Pin } from 'lucide-react'
+import { MusicEqButton, MusicModeButton, MusicRateButton, MusicSleepButton, MusicVolumeSlider } from './music-transport-widgets'
 import type { MusicTrack } from '@shared/types'
 import { IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
@@ -36,7 +35,7 @@ export function MusicPlayerControls({
         <MusicSleepButton />
         <MusicRateButton />
         <MusicEqButton />
-        <VolumeControl />
+        <MusicVolumeSlider className='w-36' />
         <IconButton label={t('music.queue')} size='sm' active={queueOpen} onClick={onToggleQueue}>
           <ListMusic size={14} />
         </IconButton>
@@ -100,35 +99,3 @@ function TrackSummary({ track }: { track: MusicTrack | null }) {
   )
 }
 
-function VolumeControl() {
-  const volume = useMusic((state) => state.volume)
-  const muted = useMusic((state) => state.muted)
-  const setVolume = useMusic((state) => state.setVolume)
-  const toggleMute = useMusic((state) => state.toggleMute)
-  const shown = muted ? 0 : volume
-  return (
-    <>
-      <Tooltip label={muted ? t('music.unmute') : t('music.mute')} side='top'>
-        <IconButton label={muted ? t('music.unmute') : t('music.mute')} size='sm' onClick={toggleMute}>
-          <VolumeIcon volume={volume} muted={muted} />
-        </IconButton>
-      </Tooltip>
-      <input
-        type='range'
-        className='ink-slider h-3.5 w-20 cursor-pointer appearance-none bg-transparent outline-none'
-        style={{ '--pct': `${shown * 100}%` } as CSSProperties}
-        min={0}
-        max={100}
-        value={Math.round(shown * 100)}
-        aria-label={t('music.volume')}
-        onChange={(event) => setVolume(Number(event.target.value) / 100)}
-      />
-    </>
-  )
-}
-
-function VolumeIcon({ volume, muted }: { volume: number; muted: boolean }) {
-  if (muted || volume === 0) return <VolumeX size={14} />
-  if (volume < 0.5) return <Volume1 size={14} />
-  return <Volume2 size={14} />
-}
