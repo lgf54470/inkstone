@@ -2959,6 +2959,9 @@ const allowed = new Map([
   ['src/client/features/share/share-a11y.test.ts', [
     '// Modal mounts its panel through a portal, so look in the document instead of the container.',
   ]],
+  ['src/client/features/share/share-dashboard-loading.tsx', [
+    '/**\n * First load of the dashboard. Zero-filled cards would be a claim about the data\n * ("no visits in this window") rather than a state of the request, so the KPI grid,\n * the trend and the four breakdown cards all stand in as shimmer placeholders until\n * the first answer arrives. Later range switches keep the previous cards instead.\n */',
+  ]],
   ['src/client/features/share/share-edit-modal/use-share-edit-modal.ts', [
     '// Best-effort: a failure leaves the editor on the create form, but the user',
     '// must be able to tell a missing share apart from a failed load in the logs.',

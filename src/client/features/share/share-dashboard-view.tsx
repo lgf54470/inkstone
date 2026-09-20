@@ -22,6 +22,7 @@ import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
 import { countryFlag, countryNameLocalized, localizeEnvName, localizeReferrerName } from './share-helpers'
 import { LoadErrorState } from './share-load-error'
+import { ShareDashboardLoading } from './share-dashboard-loading'
 import { TimelineCard } from './share-dashboard-timeline-card'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import type { useShareDashboardView } from './use-share-dashboard-view'
@@ -37,12 +38,14 @@ export function ShareDashboardView({
   onOpenLogs?: () => void
 }) {
   const bundle = useDashboardView()
-  const { analytics, error, loadData, range, totalFilteredCount } = bundle
+  const { analytics, error, isLoading, loadData, range, totalFilteredCount } = bundle
   return (
     <div className='flex h-full flex-col overflow-y-auto bg-[var(--bg-base)] p-5'>
       <DashboardHeader bundle={bundle} />
       {error ? (
         <LoadErrorState label={t('share.analytics_load_failed')} onRetry={() => void loadData(range)} />
+      ) : isLoading && !analytics ? (
+        <ShareDashboardLoading />
       ) : (
         <>
           {totalFilteredCount > 0 && <FilterSummaryBanner bundle={bundle} />}

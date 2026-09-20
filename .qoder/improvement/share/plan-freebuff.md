@@ -34,8 +34,8 @@
 | 04 | A | SH-84 | 自定义 slug 报错文案写 "3-64 chars"，实际 6–64 | 极小 | ✅ | ccfc69f7 |
 | 05 | A | SH-80 | `loadTopNotes` 查笔记标题不带 `user_id` | 极小 | ✅ | 4d5cf737 |
 | 06 | A | SH-82 | 日志接口下发完整指纹 + SELECT 从不返回的 `user_agent` | 极小 | ✅ | f95e92ef |
-| 07 | A | SH-71 | 两个 analytics hook 无 abort/epoch → 慢请求覆盖新请求 | 小 | ✅ | ⏳ 下项回填 |
-| 08 | A | SH-55 | 首屏 `isLoading` 时 KPI 全渲染 0（缺"加载中"态） | 小 | ⬜ | |
+| 07 | A | SH-71 | 两个 analytics hook 无 abort/epoch → 慢请求覆盖新请求 | 小 | ✅ | 3cd48d9b |
+| 08 | A | SH-55 | 首屏 `isLoading` 时 KPI 全渲染 0（缺"加载中"态） | 小 | ✅ | ⏳ 下项回填 |
 | 09 | A | — | 批次 A 收尾：全量串行回归 | — | ⬜ | |
 | 10 | B | SH-85 | 分享中心浏览器级门禁（e2e-visual 场景 + surface coverage） | 中 | ⬜ | |
 | 11 | C | SH-49 | 裸 `<button>` 绕过组件体系 + 新守卫 | 中 | ⬜ | |
@@ -135,3 +135,12 @@
 - 改动面（5 文件）：新增 `src/client/features/share/analytics-request.ts`——`runLatestAnalyticsRequest()`（先 abort 前一个、只有最新 controller 才能写数据与收尾加载态、AbortError 静默返回并记 `console.warn`）与 `cancelLatestAnalyticsRequest()`；两个 hook 改为调用它并下传 signal，卸载/关闭时取消在途请求；`loadData` 仍返回 Promise（重试按钮照旧 `await`）。形状与仓内既有的 `share-page/use-share-page.ts: loadShare()` 一致（同一 feature 内的既有约定，未新造抽象）。
 - 验证：`share-analytics-error.test.ts` 8/8 绿（新增 3 条，修复前 2 红）；`src/client/features/share` + `share-routes` 共 26 文件 / 196 用例绿；`npx tsc -b --force` exit 0；`size:check` 首跑因两个 hook 函数体 65/54 行超 50 行而失败，因此把重复的请求编排抽到共享模块、并把派生值留在 hook 内，复跑通过；`comments:check`（681 文件 / 4953 条，共享模块的注释取代了 hook 里那两条重复注释，总数 -2）、`style:check` 通过。
 - 局限（如实登记）：共享模块本身没有再写单元测试，它的行为由两个 hook 的用例（真实 React 渲染 + 延迟 Promise）间接覆盖；`console.warn` 在用例里会打印预期内的堆栈。全量串行回归仍在批次 A 收尾统一跑。
+
+### 08 — SH-55 首屏加载时 KPI 与各卡片渲染成 0 与「暂无数据」（2026-09-21）
+
+- 根因：`share-dashboard-view.tsx` 只在 `error` 与正常两条分支里二选一；`analytics === null && isLoading`（首次加载、刷新）时 KpiGrid 用 `analytics?.totalViews ?? 0` 画出 **0**、活跃分享卡画 `0 / 0 篇`、四个分析卡画「统计周期内暂无访问数据」。对用户而言这是**关于数据的断言**（该窗口没有访问），而不是请求状态——用户截图里的全零看板正是这一态。
+- 复现（先红）：新增 `share-dashboard-loading.test.ts`（3 用例）：首屏未返回时必须出现 `role="status"` 且页面上不得出现 `share.total_views_pv` / `share.no_data_yet`；返回后骨架换成真卡片；已加载数据时点刷新（在途）**不得**退回骨架。
+- 改动面（4 文件）：新增 `share-dashboard-loading.tsx`（复用 `components/feedback` 的 `Skeleton`，`.skeleton` 的 shimmer 在 `prefers-reduced-motion` 下由 `motion.css` 关闭；`role="status" aria-busy="true"` + `common.loading` 文案，与音乐、模板库的既有加载写法一致）；`share-dashboard-view.tsx` 在 error 分支后插入 `isLoading && !analytics` 分支（区间切换时保留旧卡片，不闪骨架）；新增测试文件；`scripts/check-comments.mjs` 登记新注释（682 文件 / 4954 条）。
+- 验证：新文件 3/3 绿（修复前 1 红）；共享面回归 `src/client/features/share` + `src/client/features/blog` 共 31 文件 / 144 用例绿；`npx tsc -b --force` exit 0；`size:check`、`hardcoded:check`、`comments:check`、`i18n:check`（3139 键）通过。
+- 局限（如实登记）：看板仍复用 `components/dashboard-blocks.tsx` 的 KpiCard（与博客看板共用），本项**没有**动共用组件，因此博客看板的同类「加载即 0」问题仍在，登记为新发现 SH-89；骨架用固定高度近似卡片高度（不做真实测量），故首屏切换有一处轻微跳变。
+| SH-89 | `src/client/features/blog/blog-dashboard-view/*` + `components/dashboard-blocks.tsx` | 与 SH-55 同类：博客看板首次加载时 KPI 也把 `null` 画成 0（共用 KpiCard），同样没有加载态 | 与 SH-55 同法加 `isLoading` 分支；若要共用则给 KpiCard 加可选 loading 属性，并跑 blog 侧回归 |
