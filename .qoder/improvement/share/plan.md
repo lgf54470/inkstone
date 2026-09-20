@@ -60,7 +60,7 @@
 | H5 | SH-43 | `blog_visits` 无保留期设置（share 已有 `share.visitLogRetentionDays`）：cron 只扫孤儿行，需要 blog settings 段落 + 模态接线，属产品决策 | P2 | 排队 | |
 | H6 | SH-44 | 调色板类存量清偿：SH-38 门禁已按文件计数冻结 218 处/62 文件，各模块降到 0 后 `--update-baseline` 收账（attachments 77/7 文件、blog-frontend 48/17、blog 39/11、lib·markdown 24/12、preview 17/4、components 5/4、settings 4/3、folders 2、tags 2） | P3 | 排队 | |
 | H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby` | P2 | 排队 | |
-| G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | ✅ | 待回填 |
+| G | SH-38 | `check-hardcoded` 扩展调色板类全站禁令（30 号以 share 测试代守，先量全站违规面再定采纳范围） | P3 | ✅ | be162df2 |
 
 > 2026-09-20 用户裁决「全做，按照你认为最优方案修改，顺序自己定义」：F1-F5 与通病全部解冻，
 > 执行序 T→F1→F4→F2→F5→F3→G；跨模块共用件（blog/music/看板组件）改动均在本批准范围内。
@@ -386,4 +386,4 @@
 - 场景三发（真门禁 + 真树，备份还原）：share 文件加一处色相 → 红（零预算文案）；attachments 加恰好一处 → 红（`28 grandfathered, 29 now`）；attachments 减恰好一处 → 红（stale，逼显式收账）。另验 `--update-baseline` 在当前树是幂等的（重生成的 JSON 与已提交基线逐字节相同）。
 - 变异 8 发全杀（/tmp/mutG 备份还原）：预算判定改 `> budget + 1`（S2 静默放行，被「超预算」单例杀）、缩小不再报（S3 静默放行）、`isZeroTolerance` 恒 false（share 退化为普通基线文件，被零预算单例杀——注意此 mutants 下场景 S1 仍红，因为 share 不在基线里，两路只是文案不同）、常量表豁免重开、white/black 移出色名表、palette 问题路由写反、`visitPalette` 未挂载、基线失效条目扫描跳过。
 - 遗留登记：H6/SH-44 存量清偿（218 处按模块分账，各模块自行降到 0 后收账）。其中 folders/tags/kanban 的「用户自选色」与 lightbox/slides 的「媒体之上的白」很可能该改成永久豁免而非清偿——那需要设计裁决，本项不替它们决定，只在基线里原样记账。
-- 验证：tsc -b 绿；11 静态门禁全绿（`hardcoded:check` 现含 Part 5）；vitest 定向 52/52。全量回归 待回填。提交 待回填。
+- 验证：tsc -b 绿；11 静态门禁全绿（`hardcoded:check` 现含 Part 5）；vitest 定向 52/52。全量回归 241 文件/1882 测试绿（REGRESSION_EXIT=0，串行 438s；较上轮少一个文件、多 13 例，即删掉的 share 专用测试与迁入门禁套的 16 例）。fix 提交 be162df2。
