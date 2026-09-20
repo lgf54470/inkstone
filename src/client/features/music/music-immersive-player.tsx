@@ -33,6 +33,9 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
   const track = useCurrentTrack()
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
+  // A render-time getState() read only looked fresh because the track subscription
+  // above happens to cover the queue too; subscribing keeps the count its own concern.
+  const queueLength = useMusic((state) => state.queue.length)
   const stacked = !useMediaQuery(`(min-width: ${MUSIC_NARROW_BREAKPOINT}px)`)
   useTrackLyric(track)
   const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
@@ -52,7 +55,7 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
           <div className='flex h-10 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4'>
             <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>{t('music.lyrics')}</span>
             <span className='flex items-center gap-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-              <ListMusic size={12} />{t('music.queue_count', { value0: useMusic.getState().queue.length })}
+              <ListMusic size={12} />{t('music.queue_count', { value0: queueLength })}
               <IconButton label={t('music.exit_immersive')} size='sm' onClick={onClose}><X size={15} /></IconButton>
             </span>
           </div>

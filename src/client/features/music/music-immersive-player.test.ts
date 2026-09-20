@@ -3,12 +3,14 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import type { MusicTrack } from '@shared/types'
-import { t } from '../../lib/i18n'
+import { initI18n, t } from '../../lib/i18n'
 import { MusicImmersivePlayer } from './music-immersive-player'
 import { useMusic } from './music-store'
 import { MUSIC_NARROW_BREAKPOINT } from './music-utils'
 
-beforeAll(() => {
+// The count is a formatted string, so the assertions need the real resources.
+beforeAll(async () => {
+  await initI18n()
   ;(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
   Element.prototype.scrollIntoView = vi.fn()
 })
@@ -91,6 +93,24 @@ describe('MusicImmersivePlayer column stacking — UI-14', () => {
     expect(pane?.classList.contains('w-full')).toBe(true)
     expect(pane?.classList.contains('w-96')).toBe(false)
     expect(pane?.parentElement?.classList.contains('flex-col')).toBe(true)
+  })
+})
+
+describe('MusicImmersivePlayer queue count (UI-18)', () => {
+  function header(): HTMLElement | null {
+    return document.querySelector('[role="dialog"]')
+  }
+
+  it('follows the queue instead of reading it once at mount', async () => {
+    useMusic.setState({ tracks: [], queue: ['t1'], currentIndex: 0 })
+    await mountPlayer(vi.fn())
+    expect(header()?.textContent).toContain(t('music.queue_count', { value0: 1 }))
+
+    await act(async () => {
+      useMusic.setState({ queue: ['t1', 't2', 't3'] })
+    })
+
+    expect(header()?.textContent).toContain(t('music.queue_count', { value0: 3 }))
   })
 })
 

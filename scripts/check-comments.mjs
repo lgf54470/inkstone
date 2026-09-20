@@ -1442,9 +1442,12 @@ const allowed = new Map([
     '// Force mode overwrites stored tags, so manual edits are lost — confirm before scanning everything visible.',
   ]],
   ['src/client/features/music/music-immersive-player.test.ts', [
+    '// The count is a formatted string, so the assertions need the real resources.',
     '// This jsdom ships no matchMedia at all; the player reads one media query now.',
   ]],
   ['src/client/features/music/music-immersive-player.tsx', [
+    '// A render-time getState() read only looked fresh because the track subscription',
+    '// above happens to cover the queue too; subscribing keeps the count its own concern.',
     '/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */',
     '// Mode/rate/volume/sleep plus the per-track favours; the wide layout also carries the',
     '// file metadata and keyboard hint under these.',
