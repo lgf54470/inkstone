@@ -183,6 +183,7 @@ describe('demo music playlists', () => {
     const body = await page.json()
     expect(body.name).toBe('Shared')
     expect(body.tracks.map((entry: { id: string }) => entry.id)).toEqual([track.id])
+    expect(body.tracks[0].mime).toBe('audio/mpeg')
 
     const revoked = await call(backend, `/api/music/playlists/${playlistId}/share`, { method: 'DELETE' })
     expect((await revoked.json()).shareSlug).toBeNull()

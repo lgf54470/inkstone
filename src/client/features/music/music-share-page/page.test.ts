@@ -28,7 +28,7 @@ beforeAll(() => {
 
 const SLUG = 'abc234def567ghi890jkl'
 
-function track(id: string, over: Partial<{ artist: string; coverUrl: string | null }> = {}) {
+function track(id: string, over: Partial<{ artist: string; coverUrl: string | null; mime: string }> = {}) {
   return {
     id,
     title: `Track ${id}`,
@@ -36,6 +36,7 @@ function track(id: string, over: Partial<{ artist: string; coverUrl: string | nu
     album: '',
     durationMs: 60_000,
     lyric: null,
+    mime: over.mime ?? 'audio/mpeg',
     coverUrl: over.coverUrl ?? null,
     streamUrl: `/api/blog/public/music/playlists/${SLUG}/tracks/${id}/stream`,
     tagIds: [],
@@ -63,8 +64,10 @@ function trackRow(id: string): HTMLButtonElement {
   return [...document.querySelectorAll('ol button')].find((button) => button.textContent?.includes(`Track ${id}`)) as HTMLButtonElement
 }
 
-function audio(): HTMLAudioElement | null {
-  return document.querySelector('audio')
+// The page picks the element itself, so the helper that reads it has to follow the tag
+// rather than assume audio: which element a track got is part of what these tests assert.
+function media(): HTMLAudioElement | null {
+  return document.querySelector('audio, video')
 }
 
 beforeEach(() => {
@@ -94,27 +97,53 @@ describe('anonymous playlist page (M-51)', () => {
     expect(document.querySelectorAll('ol li')).toHaveLength(2)
     expect(document.body.textContent).toContain('late-night drives')
     expect(document.body.textContent).toContain(t('music.unknown_artist'))
-    expect(audio()).toBeNull()
+    expect(media()).toBeNull()
   })
 
   it('picking a track starts the keyed audio element at its stream url', async () => {
     vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('t1'), track('t2')]))
     await mount()
     await act(async () => { trackRow('t2').click() })
-    expect(audio()?.getAttribute('src')).toContain('/tracks/t2/stream')
+    expect(media()?.getAttribute('src')).toContain('/tracks/t2/stream')
     expect(trackRow('t2').getAttribute('aria-current')).toBe('true')
-    expect(audio()?.hasAttribute('controls')).toBe(true)
+    expect(media()?.hasAttribute('controls')).toBe(true)
+  })
+
+  it('plays a shared video track on a video element that shows its own picture', async () => {
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([
+      track('t1'),
+      track('clip', { mime: 'video/mp4' }),
+    ]))
+    await mount()
+    await act(async () => { trackRow('clip').click() })
+    const element = document.querySelector('video') as HTMLVideoElement | null
+    expect(element?.getAttribute('src')).toContain('/tracks/clip/stream')
+    expect(element?.hasAttribute('controls')).toBe(true)
+    expect(element?.hasAttribute('playsinline')).toBe(true)
+    expect(document.querySelector('audio')).toBeNull()
+  })
+
+  it('keeps an audio track on an audio element, not a black video box', async () => {
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('t1')]))
+    await mount()
+    await act(async () => { trackRow('t1').click() })
+    expect(media()?.tagName).toBe('AUDIO')
+    expect(document.querySelector('video')).toBeNull()
   })
 
   it('advances to the next track when the current one ends', async () => {
     vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('t1'), track('t2')]))
     await mount()
     await act(async () => { trackRow('t1').click() })
-    expect(audio()?.getAttribute('src')).toContain('/tracks/t1/stream')
-    await act(async () => { audio()!.dispatchEvent(new Event('ended', { bubbles: true })) })
-    expect(audio()?.getAttribute('src')).toContain('/tracks/t2/stream')
-    await act(async () => { audio()!.dispatchEvent(new Event('ended', { bubbles: true })) })
-    expect(audio()?.getAttribute('src')).toContain('/tracks/t2/stream')
+    expect(media()?.getAttribute('src')).toContain('/tracks/t1/stream')
+    const first = media()
+    await act(async () => { media()!.dispatchEvent(new Event('ended', { bubbles: true })) })
+    expect(media()?.getAttribute('src')).toContain('/tracks/t2/stream')
+    // Advancing must hand the browser a fresh element: swapping src on the live one would keep
+    // the previous track's decoder and buffer, which is what the key on the track id prevents.
+    expect(media()).not.toBe(first)
+    await act(async () => { media()!.dispatchEvent(new Event('ended', { bubbles: true })) })
+    expect(media()?.getAttribute('src')).toContain('/tracks/t2/stream')
   })
 
   it('a revoked or unknown link reads as gone, not broken', async () => {
@@ -137,6 +166,6 @@ describe('anonymous playlist page (M-51)', () => {
     await mount()
     expect(document.body.textContent).toContain('Night Drive')
     expect(document.body.textContent).toContain(t('music.playlist_empty'))
-    expect(audio()).toBeNull()
+    expect(media()).toBeNull()
   })
 })

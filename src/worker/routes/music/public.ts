@@ -157,6 +157,9 @@ function toPublicTrack(row: MusicTrackRow, origin: string, tagIds: string[], pat
     artist: row.artist,
     album: row.album,
     durationMs: row.duration_ms,
+    // The kind travels because the container extension does not decide it: an .mp4 in this
+    // library can be a song or a clip, and only the stored mime says which.
+    mime: row.mime,
     lyric: row.lyric,
     coverUrl: row.cover_url ? `${origin}${path}/cover` : null,
     streamUrl: `${origin}${path}/stream`,

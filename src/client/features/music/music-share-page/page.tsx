@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
+import { isVideoMime } from '@shared/music-media'
 import type { PublicPlaylist } from '../../../lib/api'
 import { api, ApiError } from '../../../lib/api'
 import { Logo } from '../../../components/primitives'
@@ -91,6 +92,18 @@ function NowPlayingBar({ track, onNext }: {
   track: PublicPlaylist['tracks'][number]
   onNext?: () => void
 }) {
+  // Keyed on the track id: the browser restarts playback of the new src, and the
+  // native controls stay the only transport a reader without a session needs.
+  const media = {
+    key: track.id,
+    src: track.streamUrl,
+    controls: true,
+    autoPlay: true,
+    onEnded: () => onNext?.(),
+  }
+  // A video container in an <audio> element plays its sound and hides its picture, so the
+  // anonymous reader gets a black box for a clip; the element follows the stored mime.
+  const isVideo = isVideoMime(track.mime)
   return (
     <div className='fixed inset-x-0 bottom-0 z-[var(--z-sticky)] border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 px-4 pb-[env(safe-area-inset-bottom)] backdrop-blur'>
       <div className='mx-auto max-w-215 py-2 md:px-1'>
@@ -98,16 +111,9 @@ function NowPlayingBar({ track, onNext }: {
           {track.title}
           {track.artist ? <span className='font-normal text-[var(--text-tertiary)]'> · {track.artist}</span> : null}
         </p>
-        {/* Keyed on the track id: the browser restarts playback of the new src, and the
-            native controls stay the only transport a reader without a session needs. */}
-        <audio
-          key={track.id}
-          src={track.streamUrl}
-          controls
-          autoPlay
-          className='w-full'
-          onEnded={() => onNext?.()}
-        />
+        {isVideo
+          ? <video {...media} playsInline className='max-h-60 w-full' />
+          : <audio {...media} className='w-full' />}
       </div>
     </div>
   )

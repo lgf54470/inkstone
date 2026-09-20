@@ -151,6 +151,7 @@ describe('public music routes (real D1 + fake R2)', () => {
     expect(entry.title).toBe('song')
     expect(entry.artist).toBe('Hu Yanbin')
     expect(entry.durationMs).toBe(200_000)
+    expect(entry.mime).toBe('audio/mpeg')
     expect(String(entry.coverUrl)).toMatch(/\/api\/blog\/public\/music\/tracks\/.+\/cover$/)
     expect(String(entry.streamUrl)).toMatch(/\/api\/blog\/public\/music\/tracks\/.+\/stream$/)
     expect(entry.objectKey).toBeUndefined()

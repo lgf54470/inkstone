@@ -130,6 +130,7 @@ function publicPlaylistHandler(c: Context, state: DemoState): Response {
       artist: track.artist,
       album: track.album,
       durationMs: track.durationMs,
+      mime: track.mime,
       lyric: track.lyric,
       coverUrl: track.coverUrl,
       streamUrl: `/api/music/tracks/${encodeURIComponent(track.id)}/stream`,

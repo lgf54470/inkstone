@@ -1557,10 +1557,19 @@ const allowed = new Map([
     '// the parent music module\'s index so the viewer stays a self-contained lazy',
     '// chunk (app.tsx code-splits on this boundary and must not pull the library UI in).',
   ]],
+  ['src/client/features/music/music-share-page/page.test.ts', [
+    '// The page picks the element itself, so the helper that reads it has to follow the tag',
+    '// rather than assume audio: which element a track got is part of what these tests assert.',
+    '// Advancing must hand the browser a fresh element: swapping src on the live one would keep',
+    '// the previous track\'s decoder and buffer, which is what the key on the track id prevents.',
+  ]],
   ['src/client/features/music/music-share-page/page.tsx', [
     '// The anonymous half of M-51: a shared playlist opens for anyone at',
     '// /playlist/:slug with no session, so this page never touches the music store.',
-    '/* Keyed on the track id: the browser restarts playback of the new src, and the\n            native controls stay the only transport a reader without a session needs. */',
+    '// Keyed on the track id: the browser restarts playback of the new src, and the',
+    '// native controls stay the only transport a reader without a session needs.',
+    '// A video container in an <audio> element plays its sound and hides its picture, so the',
+    '// anonymous reader gets a black box for a clip; the element follows the stored mime.',
   ]],
   ['src/client/features/music/music-status-bar.tsx', [
     '/* The slim bar only has room for the EQ from the wide breakpoint up. */',
@@ -5037,6 +5046,8 @@ const allowed = new Map([
     '// playlist\'s share_slug alone, never the library-wide public toggle.',
     '// The blog mirrors the queue the owner is listening to, so ids that left the library are dropped.',
     '// Membership is the authorization: the track must sit in the playlist this slug points at.',
+    '// The kind travels because the container extension does not decide it: an .mp4 in this',
+    '// library can be a song or a clip, and only the stored mime says which.',
   ]],
   ['src/worker/routes/music/range.ts', [
     '// Workers KV cannot range-read server-side, so a ranged GET is served by streaming',
@@ -5227,6 +5238,8 @@ const allowed = new Map([
   ]],
   ['tests/music-playlist-share.test.ts', [
     '// Manual order: second was added first, so the public page must show it first.',
+    '// The container extension is not the kind: a shared page that cannot read the mime has',
+    '// to guess, and guessing wrong gives a reader a silent box instead of a picture.',
     '// The outside track sits in another playlist that was never shared: only',
     '// the share_slug condition may keep it out of this link\'s reach.',
     '// The SPA asset fallback would otherwise swallow /playlist/:slug before the',

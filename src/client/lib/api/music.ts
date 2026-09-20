@@ -44,6 +44,7 @@ export interface PublicPlaylistTrack {
   artist: string
   album: string
   durationMs: number
+  mime: string
   lyric: string | null
   coverUrl: string | null
   streamUrl: string

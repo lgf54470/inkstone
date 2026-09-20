@@ -76,9 +76,9 @@ function request(app: Hono<AppBindings>, path: string, init?: RequestInit): Prom
   return app.request(path, init, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
 }
 
-async function uploadTrack(app: Hono<AppBindings>, name: string): Promise<Record<string, string>> {
+async function uploadTrack(app: Hono<AppBindings>, name: string, type = 'audio/mpeg'): Promise<Record<string, string>> {
   const form = new FormData()
-  form.append('file', new File([AUDIO], name, { type: 'audio/mpeg' }))
+  form.append('file', new File([AUDIO], name, { type }))
   form.append('durationMs', '200000')
   const res = await request(app, '/api/music/tracks', { method: 'POST', body: form })
   expect(res.status, await res.clone().text()).toBe(201)
@@ -161,6 +161,24 @@ describe('playlist share routes (real D1 + fake R2)', () => {
     expect(stream.status).toBe(200)
     expect(stream.headers.get('Cache-Control')).toBe('public, max-age=600')
     expect(new Uint8Array(await stream.arrayBuffer())).toEqual(AUDIO)
+  })
+
+  it('hands the stored mime to the shared page so a video reads as video', async () => {
+    await makeDb()
+    const app = makeApp()
+    const playlistId = await createPlaylist(app, 'Clips')
+    const song = await uploadTrack(app, 'song.mp3')
+    const clip = await uploadTrack(app, 'clip.mp4', 'video/mp4')
+    await addItem(app, playlistId, song.id!)
+    await addItem(app, playlistId, clip.id!)
+    const slug = (await (await share(app, playlistId)).json() as { shareSlug: string }).shareSlug
+
+    const page = await (await request(app, `/api/blog/public/music/playlists/${slug}`)).json() as {
+      tracks: Array<Record<string, unknown>>
+    }
+    // The container extension is not the kind: a shared page that cannot read the mime has
+    // to guess, and guessing wrong gives a reader a silent box instead of a picture.
+    expect(page.tracks.map((entry) => [entry.title, entry.mime])).toEqual([['song', 'audio/mpeg'], ['clip', 'video/mp4']])
   })
 
   it('rejects streaming a track that is not inside the shared playlist', async () => {
