@@ -357,10 +357,15 @@ function registerBlogPostsDeleteRoute(blogManageRoutes: Hono<AppBindings>): void
     const userId = c.get('userId')!
 
     // One batch, so a post cannot survive while its log rows go missing (or the other way round).
+    // `blog_comments` has no owner column, so the delete asks blog_posts who owns the post and has to
+    // run before the post row itself disappears.
     await c.env.DB.batch([
-      c.env.DB.prepare('DELETE FROM blog_posts WHERE id = ?1 AND user_id = ?2').bind(id, userId),
-      c.env.DB.prepare('DELETE FROM blog_comments WHERE post_id = ?1').bind(id),
+      c.env.DB.prepare(
+        `DELETE FROM blog_comments
+          WHERE post_id = ?1 AND EXISTS (SELECT 1 FROM blog_posts bp WHERE bp.id = ?1 AND bp.user_id = ?2)`,
+      ).bind(id, userId),
       c.env.DB.prepare('DELETE FROM blog_visits WHERE post_id = ?1 AND user_id = ?2').bind(id, userId),
+      c.env.DB.prepare('DELETE FROM blog_posts WHERE id = ?1 AND user_id = ?2').bind(id, userId),
     ])
 
     return c.json({ ok: true })
@@ -450,9 +455,14 @@ function blogBatchStatements(
       return [{ sql: `UPDATE blog_posts SET is_published = 0, updated_at = ?${withIds}`, binds: [now, userId, ...postIds] }]
     case 'delete':
       return [
-        { sql: `DELETE FROM blog_posts${withIds}`, binds: [userId, ...postIds] },
-        { sql: `DELETE FROM blog_comments WHERE post_id IN (${placeholders})`, binds: [...postIds] },
+        // Comments have no owner column: both child deletes must land before the post rows go.
+        {
+          sql: `DELETE FROM blog_comments WHERE post_id IN (
+                  SELECT id FROM blog_posts WHERE user_id = ? AND id IN (${placeholders}))`,
+          binds: [userId, ...postIds],
+        },
         { sql: `DELETE FROM blog_visits WHERE user_id = ? AND post_id IN (${placeholders})`, binds: [userId, ...postIds] },
+        { sql: `DELETE FROM blog_posts${withIds}`, binds: [userId, ...postIds] },
       ]
     case 'setCategory':
       return [{ sql: `UPDATE blog_posts SET category_id = ?, updated_at = ?${withIds}`, binds: [body.categoryId || null, now, userId, ...postIds] }]

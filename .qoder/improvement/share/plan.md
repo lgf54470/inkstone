@@ -55,7 +55,7 @@
 | F4 | SH-25b | blog `visits.ts` 同构缺陷（与 11、12 号对称）：指纹盐走 HMAC+`VISIT_FP_SECRET`、referrer 上限+scheme 白名单+origin/pathname 剥离 | P1 | ✅ | eff0a6b5 |
 | F5 | SH-05c | 日志保留期持久化到服务端 share settings（现只在浏览器 localStorage），cron 按保留期分批清理 share_visits | P2 | ✅ | f812c7a7 |
 | H1 | SH-39 | `maxLogRecords`（设置模态「最多记录数」）全仓无消费者，属假设置：接入日志列表取数上限或删除控件+文案+本地键 | P3 | 排队 | |
-| H3 | SH-41 | 安全：`blog_posts` 删除的两条 `DELETE FROM blog_comments WHERE post_id …` 不带 user 限定——按 id 点名他人文章即可删其评论（跨账号写），须与同批 posts 语句同口径加 `user_id` | P1 | 排队 | |
+| H3 | SH-41 | 安全：`blog_posts` 删除的两条 `DELETE FROM blog_comments WHERE post_id …` 不带 user 限定——按 id 点名他人文章即可删其评论（跨账号写），须与同批 posts 语句同口径加 `user_id` | P1 | ✅ | 待回填 |
 | H4 | SH-42 | `POST /api/blog/posts/batch` 的 `postIds` 无长度上限，`IN (…)` 直接拼占位符——>100 个 id 必 500（share 侧 02 号同款 D1 变量上限），需分块或 schema 上限 | P1 | 排队 | |
 | H5 | SH-43 | `blog_visits` 无保留期设置（share 已有 `share.visitLogRetentionDays`）：cron 只扫孤儿行，需要 blog settings 段落 + 模态接线，属产品决策 | P2 | 排队 | |
 | H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby` | P2 | 排队 | |
@@ -353,3 +353,14 @@
 - 测试（红先行）：`tests/blog-routes.test.ts` 新两个 describe 共 4 例——单篇删除带走该文 2 行且不动他文、批量删除带走被删两文而留下的那篇保有 1 行（红态 `expected { 'p-doomed': 2, 'p-kept': 1 } to deeply equal { 'p-kept': 1 }`）；隔离 2 例点名 `p-foreign`（他人文章+其 visit 行必须原样存活，钉住 owner 限定）。`tests/blog-visit-cleanup.test.ts`（新文件，注册进 vitest 双列表）2 例——cron 删孤儿留存活文并回计数 1、`limit=2` 两次 tick 由旧到新抽干（红态 `expected [ 'alive', 'ghost' ] to deeply equal [ 'alive' ]`）。
 - 变异 9 发全杀（/tmp/mutF3 备份还原）：单篇/批量各去掉 visits 语句、两路各去掉 `user_id` 限定、cron 去掉 `NOT EXISTS`、join 列改错、去掉 `LIMIT`、`ORDER BY` 改最新优先、去掉 `bind(capped)`。
 - 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 109/109（blog-routes 30 + blog-visit-cleanup 2 + share-visit-retention 8 + share-routes 69）。全量回归 242 文件/1863 测试绿（REGRESSION_EXIT=0，串行 466s，同机另有 slides 与 attachments 会话争 CPU）。fix 提交 79c25248。
+
+## 42 — SH-41（H3）博客评论删除的跨账号写：owner 限定 + 子表先删（2026-09-20）
+
+- 现状与根因：`blog_comments` 表**没有 owner 列**（只挂 `post_id`），而两条删除路径都按「拿到的 id」直接删评论——`DELETE /api/blog/posts/:id` 与 `POST /api/blog/posts/batch {action:'delete'}` 的 `DELETE FROM blog_comments WHERE post_id …` 均不带用户限定。`blog_posts` 那条本有 `AND user_id = ?`，于是形成缺口：点名他人的 postId，自己的文章没删掉，**他人的评论却被删干净**（跨账号写；share 侧 13/19 号的级联一开始就带 owner 守卫，blog 这段是本仓同族写法里唯一漏的）。F3（41 号）新加的 `blog_visits` 级联刻意带了 `user_id`，未复制该缺陷。
+- 修法：`blog_comments` 加不了 user_id（不改既有迁移，已应用迁移只增不改），改为**经 owner 的 post 反查**并**把子表删除排在 posts 之前**：
+  - 单篇：`db.batch` 顺序改 [comments, visits, posts]，comments 走 `WHERE post_id = ?1 AND EXISTS (SELECT 1 FROM blog_posts bp WHERE bp.id = ?1 AND bp.user_id = ?2)`（先删才查得到归属，D1 batch 按序执行，同 19 号「session 清理必须排在删 shares 之前」的教训）。
+  - 批量：`blogBatchStatements('delete')` 返回顺序改 [comments, visits, posts]，comments 走 `post_id IN (SELECT id FROM blog_posts WHERE user_id = ? AND id IN (…))`。
+  - 响应契约不动（非本人/不存在仍 200 `{ok:true}`，与改前一致；是否统一改 404 与 patch/sync 两路对齐属 blog 侧契约决策，本项不夹带）。
+- 测试（红先行）：`tests/blog-routes.test.ts` 新 describe 4 例（`seedTwoOwners` 种「本人一篇 + 他人一篇 + 各带一条已审评论」，他人文章经 `UPDATE blog_posts SET user_id` 改主）——单篇点名他人文章：他人评论必须存活（红态 `expected { kept: +0, gone: 1 } to deeply equal { kept: 1, gone: 1 }`，即真删掉了）；批量点名他人文章：同上；删自己的文章仍能带走自己那条评论（单篇与批量各一例，防「为了安全把级联删空」）。红 2 确认后转绿，blog-routes 34/34。
+- 变异 4 发全杀（/tmp/mutF3 备份还原，脚本 /tmp/mutf41.py）：单篇 comments 退回不带 owner、批量同退、单篇把 posts 删除排到最前（子表反查落空、评论删不掉）、批量同排错。后两发专杀「先删父表再靠父表判归属」这一顺序陷阱。
+- 验证：tsc -b 绿；11 静态门禁全绿；vitest 定向 44/44（blog-routes 34 + blog-visit-cleanup 2 + share-visit-retention 8）。全量回归待回填。fix 提交 待回填。

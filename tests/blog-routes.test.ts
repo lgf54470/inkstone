@@ -805,3 +805,77 @@ describe('blog visit log cascade isolation (SH-05b)', () => {
     expect(await foreignRowCounts(db)).toEqual({ posts: 1, visits: 1 })
   })
 })
+
+describe('blog comment cascade ownership (SH-41)', () => {
+  async function seedComment(db: D1Shim, id: string, postId: string): Promise<void> {
+    await runSql(
+      db,
+      `INSERT INTO blog_comments (id, post_id, author_name, author_email, content, status, created_at)
+       VALUES (?1, ?2, 'Reader', 'reader@example.com', 'A comment', 'approved', ?3)`,
+      id, postId, H.now,
+    )
+  }
+
+  async function foreignCommentState(db: D1Shim): Promise<{ kept: number; gone: number }> {
+    const kept = await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_comments WHERE id = ?1', 'c-foreign')
+    const gone = await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_comments WHERE id = ?1', 'c-mine')
+    return { kept: Number(kept?.n ?? 0), gone: Number(gone?.n ?? 0) }
+  }
+
+  /** Seeds one post of this account and one of another, each with a comment. */
+  async function seedTwoOwners(db: D1Shim): Promise<void> {
+    await seedUser(db)
+    await runSql(
+      db,
+      `INSERT INTO users (id, username, password_hash, login, name, avatar_url, created_at, last_seen_at)
+       VALUES ('user-2', 'user-2', 'x', 'login', 'Other', '', ?1, ?1)`,
+      H.now,
+    )
+    await seedBlogPost(db, { id: 'p-foreign', slug: 'foreign', note_id: 'n-foreign' })
+    await runSql(db, 'UPDATE blog_posts SET user_id = ?1 WHERE id = ?2', 'user-2', 'p-foreign')
+    await runSql(db, 'UPDATE blog_visits SET user_id = ?1 WHERE post_id = ?2', 'user-2', 'p-foreign')
+    await seedBlogPost(db, { id: 'p-mine', slug: 'mine', note_id: 'n-mine' })
+    await seedComment(db, 'c-foreign', 'p-foreign')
+    await seedComment(db, 'c-mine', 'p-mine')
+  }
+
+  it('a single delete of another account post leaves its comment', async () => {
+    const db = await makeDb()
+    await seedTwoOwners(db)
+    const app = makeApp()
+
+    expect((await request(app, '/api/blog/posts/p-foreign', { method: 'DELETE' })).status).toBe(200)
+
+    expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 1 })
+  })
+
+  it('a batch delete naming another account post leaves its comment', async () => {
+    const db = await makeDb()
+    await seedTwoOwners(db)
+    const app = makeApp()
+
+    expect((await postJson(app, '/api/blog/posts/batch', { action: 'delete', postIds: ['p-foreign'] })).status).toBe(200)
+
+    expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 1 })
+  })
+
+  it('a batch delete of an own post removes that post comment', async () => {
+    const db = await makeDb()
+    await seedTwoOwners(db)
+    const app = makeApp()
+
+    expect((await postJson(app, '/api/blog/posts/batch', { action: 'delete', postIds: ['p-mine'] })).status).toBe(200)
+
+    expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 0 })
+  })
+
+  it("deleting an own post still removes that post's comment", async () => {
+    const db = await makeDb()
+    await seedTwoOwners(db)
+    const app = makeApp()
+
+    expect((await request(app, '/api/blog/posts/p-mine', { method: 'DELETE' })).status).toBe(200)
+
+    expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 0 })
+  })
+})

@@ -4450,6 +4450,9 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/blog/posts.ts', [
     '// One batch, so a post cannot survive while its log rows go missing (or the other way round).',
+    '// `blog_comments` has no owner column, so the delete asks blog_posts who owns the post and has to',
+    '// run before the post row itself disappears.',
+    '// Comments have no owner column: both child deletes must land before the post rows go.',
   ]],
   ['src/worker/routes/blog/public-links.ts', [
     '/**\n * The budget one visitor gets for applying: the count used to be over the whole table, so\n * five applications from anywhere took the endpoint down for everyone for a minute while\n * doing nothing to stop the one source that sent them.\n */',
