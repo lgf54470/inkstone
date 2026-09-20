@@ -9,6 +9,7 @@ import { EQ_GAIN_RANGE_DB, PLAYBACK_RATES, progressTimeMs } from './music-store'
 import { useMusic } from './music-store'
 import type { MusicEqBand } from './music-store'
 import { MusicPopover } from './music-popover'
+import { confirmClearQueue } from './music-queue-clear'
 import { MusicQueueBrowser } from './music-queue-browser'
 import { PlayModeIcon } from './music-play-buttons'
 import { playModeLabel } from './music-play-buttons'
@@ -78,7 +79,7 @@ export function MusicQueueButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
           <span className='text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]'>
             {t('music.queue_count', { value0: queueLength })}
           </span>
-          <button type='button' onClick={clearQueue} className='rounded px-1 text-[length:var(--text-10)] text-[var(--text-quaternary)] hover:text-[var(--text-primary)]'>
+          <button type='button' onClick={() => void confirmClearQueue(queueLength, clearQueue)} className='rounded px-1 text-[length:var(--text-10)] text-[var(--text-quaternary)] hover:text-[var(--text-primary)]'>
             {t('music.clear_queue')}
           </button>
         </div>

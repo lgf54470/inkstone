@@ -2,6 +2,7 @@ import { ListMusic, Trash2, X } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { t } from '../../lib/i18n'
 import { useMusic } from './music-store'
+import { confirmClearQueue } from './music-queue-clear'
 import { MusicQueueBrowser } from './music-queue-browser'
 
 export function MusicQueuePanel({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -16,7 +17,7 @@ export function MusicQueuePanel({ open, onClose }: { open: boolean; onClose: () 
           {t('music.queue_count', { value0: queueLength })}
         </span>
         <div className='flex items-center gap-0.5'>
-          <IconButton label={t('music.clear_queue')} size='sm' onClick={clearQueue}><Trash2 size={13} /></IconButton>
+          <IconButton label={t('music.clear_queue')} size='sm' onClick={() => void confirmClearQueue(queueLength, clearQueue)}><Trash2 size={13} /></IconButton>
           <IconButton label={t('common.close')} size='sm' onClick={onClose}><X size={14} /></IconButton>
         </div>
       </div>

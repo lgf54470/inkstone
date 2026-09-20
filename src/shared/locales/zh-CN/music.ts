@@ -117,6 +117,7 @@ export const messages = {
 'music.play_next': '下一首播放',
 'music.add_to_queue': '添加到队列',
 'music.clear_queue': '清空队列',
+'music.clear_queue_confirm': '清空队列中的 {value0} 首歌曲？播放将停止。',
 'music.added_to_queue': '已添加到队列',
 'music.add_to_playlist': '添加到歌单',
 'music.remove_from_playlist': '从歌单移除',

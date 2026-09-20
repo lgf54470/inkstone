@@ -117,6 +117,7 @@ export const messages = {
 'music.play_next': 'Play next',
 'music.add_to_queue': 'Add to queue',
 'music.clear_queue': 'Clear queue',
+'music.clear_queue_confirm': 'Clear all {value0} queued track(s)? Playback stops.',
 'music.added_to_queue': 'Added to the queue',
 'music.add_to_playlist': 'Add to playlist',
 'music.remove_from_playlist': 'Remove from playlist',

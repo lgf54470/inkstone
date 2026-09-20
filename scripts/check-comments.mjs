@@ -1519,6 +1519,17 @@ const allowed = new Map([
     '// An <audio> element refuses containers that carry a video track, so the probe',
     '// has to match the kind the library will later play this file as.',
   ]],
+  ['src/client/features/music/music-queue-clear.test.ts', [
+    '// The real English strings are the point here: both surfaces have to ask the same question.',
+    '// The queue popover is a dialog too, so the prompt is named by the pair of',
+    '// buttons only the archive-style confirm carries.',
+    '// Both surfaces ask the same question, so both are driven the same way.',
+  ]],
+  ['src/client/features/music/music-queue-clear.ts', [
+    '// Clearing the queue drops every queued track and stops playback, so both places',
+    '// that offer it (the transport popover and the immersive queue panel) ask the',
+    '// same question from here rather than each rolling its own.',
+  ]],
   ['src/client/features/music/music-queue-list.tsx', [
     '// Touch shows row actions by default; desktop reveals them on hover/focus only.',
     '// Reordering only reads sensibly over the whole queue: with the browser\'s',
