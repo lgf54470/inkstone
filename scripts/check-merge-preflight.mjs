@@ -50,170 +50,40 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  CONFIG_PATH,
+  CONFLICT_MARKER,
+  ENFORCED_PREFIXES,
+  OVERRIDE_ENV,
+  SKIP_VERIFY_ENV,
+  START_MARKER_RE,
+  TEST_FILE_RE,
+  addedDeclarations,
+  classifyChanges,
+  declaredNames,
+  deletionHazards,
+  crossingGroups,
+  describeCrossing,
+  environmentIssues,
+  matchesPattern,
+  mergeVerificationPlan,
+  moduleAliases,
+  moveCrossings,
+  nodeInclude,
+  parseMergeTreeOutput,
+  parseRunnerProjects,
+  relocationCrossings,
+  resolvedImports,
+  runnerIssues,
+  selects,
+  singleSideFiles,
+  unselectedTests,
+} from './merge-preflight-analysis.mjs'
 
-const TEST_FILE_RE = /\.test\.tsx?$/
-const TS_FILE_RE = /\.(ts|tsx|mts|cts)$/
-const CONFIG_PATH = 'vitest.config.ts'
-const CONFLICT_MARKER = '<<<<<<<'
-const START_MARKER_RE = '^<<<<<<< '
-const OVERRIDE_ENV = 'INKSTONE_ALLOW_MERGE_HAZARDS'
-const SKIP_VERIFY_ENV = 'INKSTONE_SKIP_MERGE_VERIFY'
-// A merge that drops a file one side added has thrown away somebody's work, but only the code
-// and test trees are worth refusing the commit over: `.qoder/`-style bookkeeping is per branch by
-// nature, so a drop there is reported and not enforced.
-const ENFORCED_PREFIXES = ['src/', 'tests/', 'scripts/', 'blog-frontend/']
+// Where the alias tables live. Read as text rather than loaded, so the analysis stays free of the
+// TypeScript compiler.
+const TS_CONFIG_PATH = ['tsconfig.json', 'tsconfig.client.json', 'tsconfig.node.json', 'tsconfig.worker.json']
 
-// Every branch name, path and tree id below arrives as the raw output of a git command, so the
-// parsing helpers stay pure and take that text instead of reaching for git themselves.
-export function parseMergeTreeOutput(text) {
-  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean)
-  return { tree: lines[0] ?? null, conflicts: lines.slice(1) }
-}
-
-export function classifyChanges(nameStatusText) {
-  const changes = { added: [], modified: [], deleted: [], renamed: [] }
-  for (const line of nameStatusText.split('\n')) {
-    if (!line.trim()) continue
-    const [status, ...paths] = line.split('\t')
-    if (status.startsWith('A')) changes.added.push(paths[0])
-    else if (status.startsWith('D')) changes.deleted.push(paths[0])
-    else if (status.startsWith('R')) changes.renamed.push({ from: paths[0], to: paths[1] ?? paths[0] })
-    else if (status.startsWith('M') || status.startsWith('T')) changes.modified.push(paths[0])
-  }
-  return changes
-}
-
-// A delete on one side against a change on the other is the collision git reports worst: the
-// side that kept the file usually holds the newer intent, and "take theirs" throws it away.
-// Add/add is the same question for a whole file.
-export function deletionHazards({ mine, theirs }) {
-  const hazards = []
-  const touched = (side) => new Set([
-    ...side.added,
-    ...side.modified,
-    ...side.renamed.flatMap((entry) => [entry.from, entry.to]),
-  ])
-  const mineTouched = touched(mine)
-  const theirsTouched = touched(theirs)
-  for (const path of theirs.deleted) {
-    if (mineTouched.has(path)) hazards.push(`${path}: deleted on the other side, changed on this one`)
-  }
-  for (const path of mine.deleted) {
-    if (theirsTouched.has(path)) hazards.push(`${path}: deleted on this side, changed on the other`)
-  }
-  for (const path of theirs.added) {
-    if (mine.added.includes(path)) hazards.push(`${path}: added on both sides`)
-  }
-  return hazards
-}
-
-// Files that exist on one side only are a merge's quietest loss: nothing conflicts about them,
-// and when they are test files the runner just runs fewer of them than either branch did.
-export function singleSideFiles(mineFiles, theirsFiles) {
-  const theirs = new Set(theirsFiles)
-  const mine = new Set(mineFiles)
-  return {
-    onlyMine: mineFiles.filter((file) => !theirs.has(file)),
-    onlyTheirs: theirsFiles.filter((file) => !mine.has(file)),
-  }
-}
-
-// The runner's projects are read out of the config text rather than imported: the copy in the
-// merge result may still carry conflict markers, which no module loader would accept.
-export function parseRunnerProjects(configText) {
-  const marks = [...configText.matchAll(/name:\s*'(jsdom|node)'/g)]
-    .map((match) => ({ name: match[1], at: match.index ?? 0 }))
-  return marks.map((mark, index) => {
-    const end = index + 1 < marks.length ? marks[index + 1].at : configText.length
-    const block = configText.slice(mark.at, end)
-    return { name: mark.name, include: readArray(block, 'include'), exclude: readArray(block, 'exclude') }
-  })
-}
-
-// `tests/**/*.test.ts` has to match `tests/one.test.ts` as well as `tests/a/b.test.ts`: the
-// glob `**/` stands for zero or more directories, which is exactly how the runner reads it.
-export function matchesPattern(pattern, file) {
-  if (!pattern.includes('*')) return pattern === file
-  const source = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*\//g, '\u0000/')
-    .replace(/\*\*/g, '\u0001')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\u0000\//g, '(?:[^/]*/)*')
-    .replace(/\u0001/g, '.*')
-  return new RegExp(`^${source}$`).test(file)
-}
-
-// Both projects select from the same tree: a test file the jsdom project excludes has to be in
-// the node project's include list, or nothing runs it and the suite simply shrinks.
-export function selects(project, file) {
-  return Boolean(project) &&
-    project.include.some((pattern) => matchesPattern(pattern, file)) &&
-    !project.exclude.some((pattern) => matchesPattern(pattern, file))
-}
-
-export function unselectedTests(projects, tests) {
-  const selected = tests.map((file) => ({ file, by: projects.filter((project) => selects(project, file)) }))
-  return {
-    neverRuns: selected.filter((entry) => entry.by.length === 0).map((entry) => entry.file),
-    runTwice: selected.filter((entry) => entry.by.length > 1).map((entry) => entry.file),
-  }
-}
-
-export function nodeInclude(projects) {
-  return projects.find((project) => project.name === 'node')?.include ?? []
-}
-
-// The trap this script exists for: a test file one side's config put in the node project, which
-// a config taking the other side's list would hand back to jsdom. It fails on the harness it
-// imports rather than staying silent, but CI should not be where the merge finds that out.
-export function environmentIssues(projects, nodeOwned) {
-  const node = projects.find((project) => project.name === 'node')
-  const jsdom = projects.find((project) => project.name === 'jsdom')
-  return nodeOwned
-    .filter((file) => !selects(node, file) && selects(jsdom, file))
-    .map((file) => `${file}: runs under jsdom although a node project owned it`)
-}
-
-export function runnerIssues(projects, tests, nodeOwned) {
-  const { neverRuns, runTwice } = unselectedTests(projects, tests)
-  return [
-    ...neverRuns.map((file) => `${file}: selected by no project`),
-    ...runTwice.map((file) => `${file}: selected by both projects`),
-    ...environmentIssues(projects, nodeOwned),
-  ]
-}
-
-function readArray(block, key) {
-  const at = block.indexOf(`${key}: [`)
-  if (at < 0) return []
-  const start = block.indexOf('[', at)
-  const end = closingBracket(block, start)
-  if (end < 0) return []
-  return [...block.slice(start + 1, end).matchAll(/'([^']+)'/g)].map((match) => match[1])
-}
-
-// Quoted strings may hold brackets of their own; entries here are paths, but a glob like
-// `src/**/[id].ts` would otherwise close the array early.
-function closingBracket(text, start) {
-  let depth = 0
-  for (let index = start; index < text.length; index++) {
-    const character = text[index]
-    if (character === "'" || character === '"' || character === '`') {
-      const quote = character
-      index++
-      while (index < text.length && text[index] !== quote) index += text[index] === '\\' ? 2 : 1
-      continue
-    }
-    if (character === '[') depth++
-    else if (character === ']' && --depth === 0) return index
-  }
-  return -1
-}
-
-// Only stdout is read: merge-tree narrates what it merged on stderr, in the machine's own
-// language, and none of that belongs in a report whose whole point is the file list. LC_ALL=C
-// keeps path order and any message text the same on every machine.
 function git(args) {
   return execFileSync('git', args, {
     encoding: 'utf8',
@@ -404,85 +274,6 @@ export function mergeBlockers({ markers, runner, lostAdditions }) {
   ]
 }
 
-// --- hazards only the compiler settles -----------------------------------------------------
-
-// Top-level declaration names, exported or not. Exported-only would be the wrong view: the merge
-// this was written for moved a *private* function out of app.ts into a new module, so nothing in
-// an export list changed while the file the other side kept editing lost the declaration.
-const DECLARATION_RE = /^(?:export\s+)?(?:declare\s+)?(?:default\s+)?(?:async\s+)?(?:function|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/gm
-
-export function declaredNames(text) {
-  const names = new Set()
-  for (const match of text.matchAll(DECLARATION_RE)) names.add(match[1])
-  return names
-}
-
-// Where a side put the declarations in the files it created: the destination a dissolved
-// declaration normally reappears in, and what lets the report name it instead of only saying
-// "one side removed something".
-export function addedDeclarations({ files, readText }) {
-  const byName = new Map()
-  for (const file of files) {
-    if (!TS_FILE_RE.test(file)) continue
-    for (const name of declaredNames(readText(file))) if (!byName.has(name)) byName.set(name, file)
-  }
-  return byName
-}
-
-// A declaration one side took out of a file the other side was editing in place. Both edits are
-// individually fine and only the merge is broken, so git reports nothing for either file —
-// whichever way the resolution goes, the result has to be compiled before it is believed.
-export function moveCrossings({ shared, readText, movedInto }) {
-  const entries = []
-  for (const file of shared) {
-    if (!TS_FILE_RE.test(file)) continue
-    const declared = {
-      base: declaredNames(readText('base', file)),
-      ours: declaredNames(readText('ours', file)),
-      theirs: declaredNames(readText('theirs', file)),
-    }
-    entries.push(...sideCrossings({ file, side: 'ours', into: movedInto.ours, declared }))
-    entries.push(...sideCrossings({ file, side: 'theirs', into: movedInto.theirs, declared }))
-  }
-  return entries.sort((a, b) => a.file.localeCompare(b.file) || a.name.localeCompare(b.name))
-}
-
-function sideCrossings({ file, side, into, declared }) {
-  const other = side === 'ours' ? 'theirs' : 'ours'
-  const removed = [...declared.base].filter((name) => !declared[side].has(name))
-  return removed.map((name) => ({
-    file,
-    name,
-    side,
-    into: into.get(name) ?? null,
-    // Without a destination this is still the same collision as long as the other side kept the
-    // declaration: one side's deletion has to survive a file the other side was writing to.
-    stillThereOnTheOtherSide: declared[other].has(name),
-  })).filter((entry) => entry.into || entry.stillThereOnTheOtherSide)
-}
-
-export function describeCrossing(entry) {
-  const here = entry.side === 'ours' ? 'this side' : 'the other side'
-  const there = entry.side === 'ours' ? 'the other side' : 'this side'
-  return entry.into
-    ? `${entry.file}: ${here} moved ${entry.name} into ${entry.into} while ${there} edited the file in place`
-    : `${entry.file}: ${here} removed ${entry.name}, which ${there} still declares in the file both sides changed`
-}
-
-// A merge commit is a commit, so it gets the compile and the related tests a hand-made one gets —
-// git runs pre-merge-commit *instead of* pre-commit, which is why this is asked here. The smoke
-// group is the crossings' own files rather than everything the merge touched: the two sides of the
-// last real merge shared 30 files, whose related tests measured 179 files / 1447 tests / 132s,
-// while the crossing files alone pulled in exactly the one test that covers the semantics at
-// issue (tests/security-headers.test.ts, 3 tests).
-export function mergeVerificationPlan({ stagedTs, crossings }) {
-  const rearranged = crossings.flatMap((entry) => [entry.file, entry.into]).filter(Boolean)
-  return {
-    typecheck: stagedTs.length > 0,
-    smokeFiles: [...new Set(rearranged)].sort(),
-  }
-}
-
 export function mergeVerificationSteps({ plan, root }) {
   const steps = []
   if (plan.typecheck) steps.push({ label: 'typecheck', command: 'npm', args: ['run', 'typecheck', '--silent'] })
@@ -574,19 +365,47 @@ export function inspectInProgress(root = process.cwd()) {
     .filter((file) => theirsChanged.has(file))
     .sort()
   const revisions = { base, ours: 'HEAD', theirs: other }
-  const readText = (side, file) => gitOrEmpty(['show', `${revisions[side]}:${file}`])
+  // A path one side deleted or renamed away is not in that side's revision, and `git show` fails
+  // with 128 rather than saying so: an absent file has no declarations and no imports, which is the
+  // answer every caller wants. Measured on the real merge this was written for, whose sides deleted
+  // paths that the other side still had.
+  const readText = (side, file) => gitOrEmpty(['show', `${revisions[side]}:${file}`], [128])
   // A merge is only as safe as its result, so the plan is built from the index git is about to
   // commit rather than from either side: `--cached` against HEAD is what the merge brings in.
   const stagedTs = lines(gitOrEmpty(['diff', '--cached', '--name-only', '--diff-filter=ACM', '--', '*.ts', '*.tsx']))
-  const crossings = moveCrossings({
-    shared,
-    readText,
-    movedInto: {
-      ours: addedDeclarations({ files: addedBy('HEAD'), readText: (file) => readText('ours', file) }),
-      theirs: addedDeclarations({ files: addedBy(other), readText: (file) => readText('theirs', file) }),
-    },
-  })
+  const movedInto = {
+    ours: addedDeclarations({ files: addedBy('HEAD'), readText: (file) => readText('ours', file) }),
+    theirs: addedDeclarations({ files: addedBy(other), readText: (file) => readText('theirs', file) }),
+  }
+  const touchedBy = (side) => [...changedBy(side), ...addedBy(side)]
+  const aliases = moduleAliases(TS_CONFIG_PATH.map((file) => readConfig(root, file)))
+  // Both directions: either side can be the one holding an import of a name the other moved away.
+  const relocations = [
+    ...relocationCrossings({
+      droppedBy: 'theirs',
+      readText,
+      changedByOther: new Set(touchedBy(other)),
+      imports: resolvedImports({ files: touchedBy('HEAD'), readText: (file) => readText('ours', file), aliases }),
+      movedInto: movedInto.theirs,
+    }),
+    ...relocationCrossings({
+      droppedBy: 'ours',
+      readText,
+      changedByOther: new Set(touchedBy('HEAD')),
+      imports: resolvedImports({ files: touchedBy(other), readText: (file) => readText('theirs', file), aliases }),
+      movedInto: movedInto.ours,
+    }),
+  ]
+  const crossings = [...moveCrossings({ shared, readText, movedInto }), ...relocations]
+    .sort((a, b) => a.file.localeCompare(b.file) || a.name.localeCompare(b.name))
   return { other, base, snapshot, nodeOwned, markers, lostAdditions, shared, crossings, stagedTs, mergedFrom: merged.from }
+}
+
+// The alias tables the resolution has to know about, as text: whatever the tree being judged
+// declares. Missing files are simply not part of the table.
+function readConfig(root, file) {
+  const full = path.join(root, file)
+  return fs.existsSync(full) ? fs.readFileSync(full, 'utf8') : ''
 }
 
 // How much of a failing command's output to show: the tail is where tsc and vitest put the
@@ -608,8 +427,9 @@ function mainInProgress({ verify = false, root = process.cwd() } = {}) {
   if (ignored > 0) console.log(`[preflight] ${ignored} addition(s) outside the code and test trees are absent and not enforced`)
   printList('[blockers]', findings)
   if (!findings.length) console.log('[preflight] no blocker: the resolution keeps every test where it belonged')
-  console.log(`[crossings] both sides changed ${facts.shared.length} file(s); ${facts.crossings.length} declaration(s) left a file the other side was editing`)
-  for (const entry of facts.crossings) console.log(`  - ${describeCrossing(entry)}`)
+  const groups = crossingGroups(facts.crossings)
+  console.log(`[crossings] both sides changed ${facts.shared.length} file(s); ${facts.crossings.length} crossing(s) in ${groups.length} group(s) between a declaration and the files that read it`)
+  for (const group of groups) console.log(`  - ${describeCrossing(group)}`)
 
   const plan = mergeVerificationPlan({ stagedTs: facts.stagedTs, crossings: facts.crossings })
   const owed = mergeVerificationSteps({ plan, root })

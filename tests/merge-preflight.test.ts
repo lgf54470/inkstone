@@ -3,28 +3,39 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+// The pieces that decide come from the analysis module; the ones that read git or run a command
+// come from the script, which is also what the hook invokes.
+import {
+  mergeBlockers,
+  mergeVerificationSteps,
+  mergedHead,
+  readRunnerSnapshot,
+  runMergeVerification,
+} from '../scripts/check-merge-preflight.mjs'
 import {
   addedDeclarations,
   classifyChanges,
+  crossingGroups,
   declaredNames,
   deletionHazards,
   describeCrossing,
+  droppedNamesIn,
   environmentIssues,
+  importBindings,
   matchesPattern,
-  mergeBlockers,
   mergeVerificationPlan,
-  mergeVerificationSteps,
-  mergedHead,
+  moduleAliases,
+  moduleCandidates,
   moveCrossings,
   nodeInclude,
   parseMergeTreeOutput,
   parseRunnerProjects,
-  readRunnerSnapshot,
-  runMergeVerification,
+  relocationCrossings,
+  resolvedImports,
   runnerIssues,
   singleSideFiles,
   unselectedTests,
-} from '../scripts/check-merge-preflight.mjs'
+} from '../scripts/merge-preflight-analysis.mjs'
 
 // The two commands below are what the script reads: merge-tree's conflicted-path list, and a
 // `--name-status` diff. Both are shapes the real commands produce, kept as text here so the
@@ -431,6 +442,176 @@ describe('a declaration that left a file the other side was editing', () => {
       movedInto: { ours: new Map(), theirs: new Map() },
     })
     expect(crossings).toEqual([])
+  })
+})
+
+describe('reading the imports out of a file', () => {
+  it('takes the names the module has to export, not the local ones', () => {
+    expect(importBindings(`import { a, b as c } from './x'
+import Default from './y'
+`)).toEqual([
+      { name: 'a', from: './x' },
+      { name: 'b', from: './x' },
+      { name: 'Default', from: './y' },
+    ])
+  })
+
+  // A fifth of this repository's imports are written across lines; a line-based reader would drop
+  // them without saying so.
+  it('reads an import that spans lines', () => {
+    expect(importBindings(`import {
+  LEGACY_SESSION_COOKIE,
+  SESSION_COOKIE,
+  mergeSettings,
+} from '@shared/constants'
+`)).toEqual([
+      { name: 'LEGACY_SESSION_COOKIE', from: '@shared/constants' },
+      { name: 'SESSION_COOKIE', from: '@shared/constants' },
+      { name: 'mergeSettings', from: '@shared/constants' },
+    ])
+  })
+
+  it('counts a re-export as an import of the same name', () => {
+    expect(importBindings(`export { MAX, MIN as LOW } from './limits'
+`)).toEqual([
+      { name: 'MAX', from: './limits' },
+      { name: 'MIN', from: './limits' },
+    ])
+  })
+
+  it('skips the clauses that name no export', () => {
+    expect(importBindings(`import './side-effect'
+import * as ns from './all'
+import type { OnlyTypes } from './types'
+`)).toEqual([{ name: 'OnlyTypes', from: './types' }])
+  })
+})
+
+// The alias table the resolver needs, as the tsconfig files write it.
+const TS_CONFIG = `
+  {
+    "compilerOptions": {
+      "paths": {
+        "@/*": ["./src/client/*"],
+        "@shared/*": ["./src/shared/*"]
+      }
+    },
+    "include": ["src/client/**/*", "src/shared/**/*", "package.json"]
+  }
+`
+
+describe('resolving a specifier to the files it could name', () => {
+  const aliases = moduleAliases([TS_CONFIG])
+
+  it('reads the alias table and not the include globs', () => {
+    expect([...aliases]).toEqual([['@/', 'src/client/'], ['@shared/', 'src/shared/']])
+  })
+
+  it('tries the extensions and the index files TypeScript would', () => {
+    expect(moduleCandidates({ specifier: '@shared/constants', fromFile: 'src/worker/app.ts', aliases }))
+      .toEqual([
+        'src/shared/constants',
+        'src/shared/constants.ts',
+        'src/shared/constants.tsx',
+        'src/shared/constants/index.ts',
+        'src/shared/constants/index.tsx',
+      ])
+  })
+
+  it('resolves a relative path against the file that imports it', () => {
+    expect(moduleCandidates({ specifier: '../../shared/user-settings', fromFile: 'src/worker/middleware/security-headers.ts', aliases }))
+      .toContain('src/shared/user-settings.ts')
+  })
+
+  it('has no answer for a bare package name', () => {
+    expect(moduleCandidates({ specifier: 'hono', fromFile: 'src/worker/app.ts', aliases })).toEqual([])
+  })
+})
+
+// The hazard this half of the detector exists for: one side moves a name out of a module, the other
+// side's files keep importing it from there, and the two edits are in different files, so git has
+// nothing to conflict about. On the real merge the pair was security-headers.ts and constants.ts.
+describe('a name that moved between modules', () => {
+  const BASE_CONSTANTS = `export const OTHER = 1
+export const mergeSettings = (raw: string): string => raw.trim()
+`
+  const THEIRS_CONSTANTS = `export const OTHER = 1
+`
+  const IMPORTER = `import { OTHER } from '@shared/constants'
+import { mergeSettings } from '@shared/constants'
+
+export const settings = (raw: string): string => mergeSettings(raw) + OTHER
+`
+  const aliases = moduleAliases([TS_CONFIG])
+  const readText = (side: string) => (side === 'base' ? BASE_CONSTANTS : THEIRS_CONSTANTS)
+  const imports = resolvedImports({ files: ['src/worker/middleware/security-headers.ts'], readText: () => IMPORTER, aliases })
+  const movedInto = new Map([['mergeSettings', 'src/shared/user-settings.ts']])
+
+  it('reports the import that points at the module the other side emptied', () => {
+    const crossings = relocationCrossings({
+      droppedBy: 'theirs',
+      imports,
+      changedByOther: new Set(['src/shared/constants.ts']),
+      readText,
+      movedInto,
+    })
+    expect(crossings).toHaveLength(1)
+    expect(crossings[0]).toMatchObject({
+      kind: 'relocated',
+      file: 'src/worker/middleware/security-headers.ts',
+      name: 'mergeSettings',
+      side: 'ours',
+      from: 'src/shared/constants.ts',
+      into: 'src/shared/user-settings.ts',
+    })
+    expect(describeCrossing(crossings[0]!)).toBe(
+      'src/worker/middleware/security-headers.ts: this side still imports mergeSettings from src/shared/constants.ts, which the other side moved into src/shared/user-settings.ts',
+    )
+  })
+
+  it('stays quiet when the other side did not touch that module', () => {
+    expect(relocationCrossings({
+      droppedBy: 'theirs',
+      imports,
+      changedByOther: new Set(['src/shared/other.ts']),
+      readText,
+      movedInto,
+    })).toEqual([])
+  })
+
+  it('stays quiet while the name is still exported', () => {
+    expect(relocationCrossings({
+      droppedBy: 'theirs',
+      imports,
+      changedByOther: new Set(['src/shared/constants.ts']),
+      readText: () => BASE_CONSTANTS,
+      movedInto,
+    })).toEqual([])
+  })
+
+  it('reads the dropped names of one file against the base version', () => {
+    expect([...droppedNamesIn({ file: 'src/shared/constants.ts', side: 'theirs', readText })])
+      .toEqual(['mergeSettings'])
+  })
+
+  // A module-wide move makes one crossing per name; printing them all is how a gate stops being read.
+  it('groups the crossings that differ only in the name', () => {
+    const many = Array.from({ length: 36 }, (_, index) => ({
+      kind: 'moved',
+      file: 'src/shared/constants.ts',
+      name: `MOVE_${String(index).padStart(2, '0')}`,
+      side: 'theirs',
+      into: 'src/shared/user-settings.ts',
+    }))
+    const groups = crossingGroups([...many, { kind: 'moved', file: 'src/shared/constants.ts', name: 'OTHER', side: 'theirs', into: 'src/other.ts' }])
+    expect(groups).toHaveLength(2)
+    expect(groups[0]!.names).toHaveLength(36)
+    expect(describeCrossing(groups[0]!)).toBe(
+      'src/shared/constants.ts: the other side moved 36 declarations (MOVE_00, MOVE_01, MOVE_02 +33 more) into src/shared/user-settings.ts while this side edited the file in place',
+    )
+    expect(describeCrossing(groups[1]!)).toBe(
+      'src/shared/constants.ts: the other side moved OTHER into src/other.ts while this side edited the file in place',
+    )
   })
 })
 

@@ -9,7 +9,9 @@
 # `git merge` runs this hook instead of pre-commit whenever it creates the commit itself —
 # measured with a probe repository: with no pre-merge-commit in place, `git merge` runs no hook
 # at all. So this is the only place those checks can happen for an auto-created merge commit, and
-# `--verify` is what asks for the compile and the related tests rather than only the findings.
+# `--verify` is what asks for the compile and the related tests rather than only the findings. The
+# compile is what catches the collisions git merges without a word: a refactor on one side and an
+# edit on the other, whether that is a declaration leaving a file or an export leaving a module.
 # A merge committed by hand after resolving conflicts runs pre-commit instead, which already ends
 # in `npm run typecheck` and `vitest related` over the staged files.
 #
