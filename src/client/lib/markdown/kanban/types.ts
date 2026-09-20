@@ -142,6 +142,8 @@ export interface KanbanView {
   name: string
   type: KanbanViewType
   groupBy?: string
+  /** Board only: a second field the cards are cut into horizontal bands by. */
+  swimlaneBy?: string
   dateField?: string
   startField?: string
   endField?: string

@@ -10,6 +10,9 @@ import { KanbanCardSubtasks } from './kanban-card-subtasks'
 import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
+/** Alt+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */
+export type CardMoveDirection = 'prev' | 'next' | 'up' | 'down'
+
 interface KanbanCardProps {
   item: KanbanItem
   columns: KanbanProperty[]
@@ -26,7 +29,7 @@ interface KanbanCardProps {
   onDragEnd: (e: React.DragEvent) => void
   onDragOverCard?: (e: React.DragEvent, id: string) => void
   onDropOnCard?: (e: React.DragEvent, id: string) => void
-  onMoveColumn?: (id: string, direction: 'prev' | 'next') => void
+  onMoveColumn?: (id: string, direction: CardMoveDirection) => void
   onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
@@ -154,12 +157,18 @@ function useKanbanCardTitle(initialTitle: string, onUpdate: (title: string) => v
 
 function handleCardKeyDown(
   e: KeyboardEvent<HTMLDivElement>,
-  onMove?: (direction: 'prev' | 'next') => void,
+  onMove?: (direction: CardMoveDirection) => void,
 ) {
-  if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
-    e.preventDefault()
-    onMove?.(e.key === 'ArrowRight' ? 'next' : 'prev')
-  }
+  if (!e.altKey) return
+  const direction: CardMoveDirection | undefined =
+    e.key === 'ArrowRight' ? 'next'
+      : e.key === 'ArrowLeft' ? 'prev'
+        : e.key === 'ArrowDown' ? 'down'
+          : e.key === 'ArrowUp' ? 'up'
+            : undefined
+  if (!direction) return
+  e.preventDefault()
+  onMove?.(direction)
 }
 
 function getCardDisplayProps(item: KanbanItem, columns: KanbanProperty[]) {

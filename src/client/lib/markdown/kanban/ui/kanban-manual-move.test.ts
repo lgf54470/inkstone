@@ -2,13 +2,16 @@ import { createElement, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../../test-render'
 import { makeMoveItemClearingSorts, useMoveItemClearingSorts } from './kanban-manual-move'
+import type { KanbanBoardCell } from '../swimlane'
 import type { KanbanSort } from '../types'
+
+const doingCell: KanbanBoardCell = { groupKey: 'doing' }
 
 const activeSorts: KanbanSort[] = [{ propertyId: 'title', direction: 'asc' }]
 
 describe('useMoveItemClearingSorts stability', () => {
   it('returns a stable reference across re-renders when moveItem is unchanged', () => {
-    const identities: ((id: string, group: string) => void)[] = []
+    const identities: ((id: string, cell: KanbanBoardCell) => void)[] = []
     const moveItem = vi.fn()
     const setSorts = vi.fn()
     function Probe() {
@@ -36,8 +39,8 @@ describe('manual card move while sorted', () => {
       clearSorts,
       notifySortCleared,
     })
-    onMove('i-1', 'doing', { itemId: 'i-2', position: 'before' })
-    expect(moveItem).toHaveBeenCalledWith('i-1', 'doing', { itemId: 'i-2', position: 'before' })
+    onMove('i-1', doingCell, { itemId: 'i-2', position: 'before' })
+    expect(moveItem).toHaveBeenCalledWith('i-1', doingCell, { itemId: 'i-2', position: 'before' })
     expect(clearSorts).toHaveBeenCalledTimes(1)
     expect(notifySortCleared).toHaveBeenCalledTimes(1)
   })
@@ -52,8 +55,8 @@ describe('manual card move while sorted', () => {
       clearSorts,
       notifySortCleared,
     })
-    onMove('i-1', 'done')
-    expect(moveItem).toHaveBeenCalledWith('i-1', 'done', undefined)
+    onMove('i-1', { groupKey: 'done' })
+    expect(moveItem).toHaveBeenCalledWith('i-1', { groupKey: 'done' }, undefined)
     expect(clearSorts).not.toHaveBeenCalled()
     expect(notifySortCleared).not.toHaveBeenCalled()
   })

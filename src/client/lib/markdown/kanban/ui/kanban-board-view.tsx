@@ -5,10 +5,13 @@ import { groupKanbanItems, kanbanWipOver } from '../filter-sort'
 import type { KanbanGroup } from '../filter-sort'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
 import type { KanbanMovePivot } from '../dnd'
+import { kanbanBoardLayout, kanbanCellKey, kanbanSwimlanes } from '../swimlane'
+import type { KanbanBoardCell, KanbanSwimlane } from '../swimlane'
 import type { KanbanColorName, KanbanColumnPatch, KanbanData, KanbanItem, KanbanOption, KanbanSubtask, KanbanView } from '../types'
 import { useKanbanBoardDndState, type CardDropTarget } from './kanban-board-dnd'
-import { KanbanCard } from './kanban-card'
+import { KanbanCard, type CardMoveDirection } from './kanban-card'
 import { CollapsedColumn, KanbanColumnHeader } from './kanban-column-header'
+import { KanbanBoardSwimlanes } from './kanban-board-swimlanes'
 import type { CardSize } from './kanban-view-options'
 
 interface KanbanBoardViewProps {
@@ -23,7 +26,7 @@ interface KanbanBoardViewProps {
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onMoveItem: MoveItemFn
-  onAddItem: (groupKey?: string) => void
+  onAddItem: (cell: KanbanBoardCell) => void
   onAddColumn: () => void
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void
   onUpdateColumn?: (groupKey: string, patch: KanbanColumnPatch) => void
@@ -39,17 +42,16 @@ interface ColumnCardsListProps {
   cardSize?: CardSize
   selectedTags?: string[]
   cardDropTarget: CardDropTarget | null
-  groupKey: string
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
   onToggleTag?: (tag: string) => void
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
-  onDragStartCard: (e: React.DragEvent, id: string, sourceGroupKey: string) => void
+  onDragStartCard: (e: React.DragEvent, id: string) => void
   onDragEnd: () => void
   onDragOverCard: (e: React.DragEvent, id: string) => void
   onDropCard: (e: React.DragEvent, id: string) => void
-  onMoveColumn: (itemId: string, dir: 'prev' | 'next') => void
+  onMoveColumn: (itemId: string, dir: CardMoveDirection) => void
   onAddItem: () => void
   onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
@@ -77,7 +79,7 @@ function ColumnCardsList(props: ColumnCardsListProps) {
             onToggleTag={props.onToggleTag}
             onUpdateTitle={props.onUpdateTitle}
             onUpdateSubtasks={props.onUpdateSubtasks}
-            onDragStart={(e) => props.onDragStartCard(e, item.id, props.groupKey)}
+            onDragStart={(e, id) => props.onDragStartCard(e, id)}
             onDragEnd={props.onDragEnd}
             onDragOverCard={props.onDragOverCard}
             onDropOnCard={props.onDropCard}
@@ -100,113 +102,56 @@ function ColumnCardsList(props: ColumnCardsListProps) {
   )
 }
 
-interface KanbanBoardColumnProps {
-  group: ReturnType<typeof groupKanbanItems>[number]
-  columns: KanbanData['columns']
-  selectedIds: Set<string>
-  cardSize?: CardSize
-  selectedTags?: string[]
-  cardDropTarget: CardDropTarget | null
+interface KanbanBoardColumnProps extends Omit<ColumnCardsListProps, 'items'> {
+  group: KanbanGroup
+  /** Set when the column is one cell of a band, so the frame says which band it is. */
+  laneKey?: string
+  /** The strip draws the column and none of its cards; a band cell draws the cards and no title. */
+  headOnly?: boolean
+  bodyOnly?: boolean
   isDragOver: boolean
   onDragOver: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent) => void
-  onDragStartCard: (e: React.DragEvent, id: string, sourceGroupKey: string) => void
-  onDragEnd: () => void
-  onDragOverCard: (e: React.DragEvent, id: string) => void
-  onDropCard: (e: React.DragEvent, group: ReturnType<typeof groupKanbanItems>[number], id: string) => void
   onDragStartColumn: (e: React.DragEvent) => void
-  onToggleSelect: (id: string) => void
-  onOpenDetail: (item: KanbanItem) => void
-  onToggleTag?: (tag: string) => void
-  onUpdateTitle: (id: string, newTitle: string) => void
-  onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
-  onMoveColumn: (itemId: string, dir: 'prev' | 'next') => void
-  onAddItem: () => void
   onRenameColumn: (newLabel: string) => void
   onChangeColumnColor: (newColor: KanbanColorName) => void
   onChangeColumnWipLimit: (limit: number | undefined) => void
-  onCollapseColumn: () => void
+  /** Absent on the strip of a banded board: there is nothing to expand back into above it. */
+  onCollapseColumn?: () => void
   onDeleteColumn?: () => void
-  onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
-  onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
-const KanbanBoardColumn = memo(function KanbanBoardColumn({
-  group,
-  columns,
-  selectedIds,
-  cardSize,
-  selectedTags,
-  cardDropTarget,
-  isDragOver,
-  onDragOver,
-  onDrop,
-  onDragStartCard,
-  onDragEnd,
-  onDragOverCard,
-  onDropCard,
-  onDragStartColumn,
-  onToggleSelect,
-  onOpenDetail,
-  onToggleTag,
-  onUpdateTitle,
-  onUpdateSubtasks,
-  onMoveColumn,
-  onAddItem,
-  onRenameColumn,
-  onChangeColumnColor,
-  onChangeColumnWipLimit,
-  onCollapseColumn,
-  onDeleteColumn,
-  onUpdateTags,
-  onAddColumnOption,
-}: KanbanBoardColumnProps) {
+const KanbanBoardColumn = memo(function KanbanBoardColumn(props: KanbanBoardColumnProps) {
+  const { group, laneKey, headOnly, bodyOnly, isDragOver, onDragOver, onDrop, onDragStartColumn } = props
   useLocaleRepaint()
   return (
     <div
       data-kanban-group={group.groupKey}
+      {...(laneKey === undefined ? {} : { 'data-kanban-lane': laneKey })}
       onDragOver={onDragOver}
       onDrop={onDrop}
       className={`flex w-72 shrink-0 flex-col rounded-[var(--r-lg)] border bg-[var(--bg-raised)] p-2 transition-colors ${
         isDragOver ? 'border-[var(--accent)] bg-[var(--accent-softer)]' : 'border-[var(--border-subtle)]'
       }`}
     >
-      <KanbanColumnHeader
-        groupKey={group.groupKey}
-        label={group.label}
-        count={group.items.length}
-        color={group.color}
-        wipLimit={group.wipLimit}
-        onDragStart={onDragStartColumn}
-        onRename={onRenameColumn}
-        onChangeColor={onChangeColumnColor}
-        onChangeWipLimit={onChangeColumnWipLimit}
-        onCollapse={onCollapseColumn}
-        onDelete={onDeleteColumn}
-      />
+      {bodyOnly ? null : (
+        <KanbanColumnHeader
+          groupKey={group.groupKey}
+          label={group.label}
+          // A band cell has no header, and the strip counts the whole column rather than its slice.
+          count={group.items.length}
+          color={group.color}
+          wipLimit={group.wipLimit}
+          onDragStart={onDragStartColumn}
+          onRename={props.onRenameColumn}
+          onChangeColor={props.onChangeColumnColor}
+          onChangeWipLimit={props.onChangeColumnWipLimit}
+          onCollapse={props.onCollapseColumn}
+          onDelete={props.onDeleteColumn}
+        />
+      )}
 
-      <ColumnCardsList
-        items={group.items}
-        columns={columns}
-        selectedIds={selectedIds}
-        cardSize={cardSize}
-        selectedTags={selectedTags}
-        cardDropTarget={cardDropTarget}
-        groupKey={group.groupKey}
-        onToggleSelect={onToggleSelect}
-        onOpenDetail={onOpenDetail}
-        onToggleTag={onToggleTag}
-        onUpdateTitle={onUpdateTitle}
-        onUpdateSubtasks={onUpdateSubtasks}
-        onDragStartCard={onDragStartCard}
-        onDragEnd={onDragEnd}
-        onDragOverCard={onDragOverCard}
-        onDropCard={(e, id) => onDropCard(e, group, id)}
-        onMoveColumn={onMoveColumn}
-        onAddItem={onAddItem}
-        onUpdateTags={onUpdateTags}
-        onAddColumnOption={onAddColumnOption}
-      />
+      {headOnly ? null : <ColumnCardsList {...props} items={group.items} />}
     </div>
   )
 })
@@ -226,27 +171,46 @@ function AddColumnButton({ onAddColumn }: { onAddColumn: () => void }) {
   )
 }
 
-type MoveItemFn = (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void
+type MoveItemFn = (itemId: string, cell: KanbanBoardCell, pivot?: KanbanMovePivot) => void
 
-// A move that leaves the card in the same group is a reorder, not a change of place, so it gets no
-// announcement; an item the board does not list has no known source group, and guessing would mean
-// reading out a column the card may not have left.
+/**
+ * A move that leaves the card in the cell it already sits in is a reorder, not a change of place, so
+ * it gets no announcement; an item the board does not list has no known source, and guessing would
+ * mean reading out a column the card may not have left. The band is named only when the drop lands
+ * in one, because a drop on the strip changes the column and keeps the band the card was in.
+ */
 function kanbanMoveAnnouncement(
   groups: KanbanGroup[],
+  bands: KanbanSwimlane[],
   itemId: string,
-  targetGroupKey: string,
+  cell: KanbanBoardCell,
 ): string | null {
   const source = groups.find((group) => group.items.some((item) => item.id === itemId))
-  const target = groups.find((group) => group.groupKey === targetGroupKey)
+  const target = groups.find((group) => group.groupKey === cell.groupKey)
   const item = source?.items.find((i) => i.id === itemId)
-  if (!source || !target || !item || source.groupKey === target.groupKey) return null
+  if (!source || !target || !item) return null
+  const currentBand = bands.find((lane) => lane.lane.items.some((i) => i.id === itemId))
+  if (source.groupKey === target.groupKey && currentBand?.lane.groupKey === cell.laneKey) return null
+  const band = bands.find((lane) => lane.lane.groupKey === cell.laneKey)?.lane
   const title = item.title || t('preview.kanban_untitled')
   const group = formatKanbanGroupLabel(target.groupKey, target.label)
   // This is read before the card has moved, so the column it would fill is still one card short.
   const over = kanbanWipOver(target.items.length + 1, target.wipLimit)
+  if (band) {
+    const bandLabel = formatKanbanGroupLabel(band.groupKey, band.label)
+    return over > 0
+      ? t('preview.kanban_moved_to_band_over', { title, group, band: bandLabel, over, limit: target.wipLimit ?? 0 })
+      : t('preview.kanban_moved_to_band', { title, group, band: bandLabel })
+  }
   if (over > 0)
     return t('preview.kanban_moved_to_group_over', { title, group, over, limit: target.wipLimit ?? 0 })
   return t('preview.kanban_moved_to_group', { title, group })
+}
+
+/** The key `offset` places from `keys`, or nothing when the walk runs off either end of the board. */
+function neighbourKey(keys: string[], current: string, offset: -1 | 1): string | undefined {
+  const index = keys.indexOf(current)
+  return index === -1 ? undefined : keys[index + offset]
 }
 
 function useKanbanBoardMoves(
@@ -254,38 +218,38 @@ function useKanbanBoardMoves(
   view: KanbanView,
   moveItem: MoveItemFn,
 ) {
-  const groupPropertyId = view.groupBy || 'status'
-  const groupProperty = data.columns.find((c) => c.id === groupPropertyId)
-  const groups = groupKanbanItems(data.items, groupPropertyId, groupProperty)
+  const layout = kanbanBoardLayout(data, view)
+  const groups = groupKanbanItems(data.items, layout.groupPropertyId, layout.groupProperty)
+  const bands = kanbanSwimlanes(data.items, layout)
   const [moveAnnouncement, setMoveAnnouncement] = useState('')
 
-  const handleMoveItem: MoveItemFn = (itemId, targetGroupKey, pivot) => {
-    const message = kanbanMoveAnnouncement(groups, itemId, targetGroupKey)
+  const handleMoveItem: MoveItemFn = (itemId, cell, pivot) => {
+    const message = kanbanMoveAnnouncement(groups, bands, itemId, cell)
     if (message) setMoveAnnouncement(message)
-    moveItem(itemId, targetGroupKey, pivot)
+    moveItem(itemId, cell, pivot)
   }
 
-  const handleMoveColumn = (itemId: string, currentGroupKey: string, direction: 'prev' | 'next') => {
-    const currentIndex = groups.findIndex((g) => g.groupKey === currentGroupKey)
-    if (currentIndex === -1) return
-    const targetIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1
-    if (targetIndex >= 0 && targetIndex < groups.length) {
-      handleMoveItem(itemId, groups[targetIndex]!.groupKey)
-    }
+  /** Alt+Arrow walks one step of the grid the card is in, keeping the coordinate it did not touch. */
+  const handleMoveCell = (itemId: string, cell: KanbanBoardCell, direction: CardMoveDirection) => {
+    const step = direction === 'next' || direction === 'prev'
+      ? neighbourKey(groups.map((group) => group.groupKey), cell.groupKey, direction === 'next' ? 1 : -1)
+      : undefined
+    const laneStep = direction === 'down' || direction === 'up'
+      ? neighbourKey(bands.map((band) => band.lane.groupKey), cell.laneKey ?? '', direction === 'down' ? 1 : -1)
+      : undefined
+    if (step === undefined && laneStep === undefined) return
+    handleMoveItem(itemId, { ...cell, groupKey: step ?? cell.groupKey, laneKey: laneStep ?? cell.laneKey })
   }
 
-  return { groups, moveAnnouncement, handleMoveItem, handleMoveColumn }
+  return { groups, bands, moveAnnouncement, handleMoveItem, handleMoveCell }
 }
 
-interface BoardColumnItemProps {
-  group: ReturnType<typeof groupKanbanItems>[number]
+/** Everything a cell of the board needs to draw, whichever of the three shapes it is. */
+interface BoardCellBundle {
   columns: KanbanData['columns']
-  isCollapsed: boolean
-  isDragOver: boolean
   cardSize?: CardSize
   selectedIds: Set<string>
   selectedTags?: string[]
-  cardDropTarget: CardDropTarget | null
   dnd: ReturnType<typeof useKanbanBoardDndState>
   onToggleCollapse: (groupKey: string) => void
   onToggleSelect: (id: string) => void
@@ -293,98 +257,146 @@ interface BoardColumnItemProps {
   onToggleTag?: (tag: string) => void
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
-  onMoveColumn: (itemId: string, dir: 'prev' | 'next') => void
-  onAddItem: (groupKey: string) => void
+  onMoveCell: (itemId: string, cell: KanbanBoardCell, dir: CardMoveDirection) => void
+  onAddItem: (cell: KanbanBoardCell) => void
   onUpdateColumn?: (groupKey: string, patch: KanbanColumnPatch) => void
   onDeleteColumn?: (groupKey: string) => void
   onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
-function CollapsedColumnItem({
-  group,
-  isDragOver,
-  dnd,
-  onToggleCollapse,
-}: {
-  group: ReturnType<typeof groupKanbanItems>[number]
-  isDragOver: boolean
-  dnd: ReturnType<typeof useKanbanBoardDndState>
-  onToggleCollapse: (key: string) => void
-}) {
-  return (
-    <CollapsedColumn
-      group={group}
-      isDragOver={isDragOver}
-      onExpand={() => onToggleCollapse(group.groupKey)}
-      onDragOver={(e) => {
-        e.preventDefault()
-        dnd.setDragOverGroupKey(group.groupKey)
-      }}
-      onDrop={(e) => dnd.handleColumnDrop(e, group.groupKey)}
-    />
-  )
+interface BoardColumnCellProps extends BoardCellBundle {
+  cell: KanbanBoardCell
+  group: KanbanGroup
+  /** `column` is the plain board, `head` and `body` are the two halves of a banded board. */
+  variant: 'column' | 'head' | 'body'
+  isCollapsed: boolean
 }
 
-function ExpandedBoardColumn(props: BoardColumnItemProps) {
-  const { group, dnd } = props
+function ExpandedBoardColumn(props: BoardColumnCellProps) {
+  const { cell, group, dnd, variant } = props
   return (
     <KanbanBoardColumn
-      group={group}
-      columns={props.columns}
-      selectedIds={props.selectedIds}
-      cardSize={props.cardSize}
-      selectedTags={props.selectedTags}
-      cardDropTarget={props.cardDropTarget}
-      isDragOver={props.isDragOver}
+      {...props}
+      laneKey={cell.laneKey}
+      headOnly={variant === 'head'}
+      bodyOnly={variant === 'body'}
+      isDragOver={dnd.isDragOverCell(cell)}
+      cardDropTarget={dnd.cardDropTarget}
       onDragOver={(e) => {
         e.preventDefault()
-        dnd.setDragOverGroupKey(group.groupKey)
+        dnd.setDragOverCell(cell)
       }}
-      onDrop={(e) => dnd.handleColumnDrop(e, group.groupKey)}
-      onDragStartCard={dnd.handleCardDragStart}
+      onDrop={(e) => dnd.handleColumnDrop(e, cell)}
+      onDragStartCard={(e, id) => dnd.handleCardDragStart(e, id, group.groupKey)}
       onDragEnd={dnd.handleDragEnd}
       onDragOverCard={dnd.handleCardDragOver}
-      onDropCard={dnd.handleCardDrop}
+      onDropCard={(e, id) => dnd.handleCardDrop(e, cell, id)}
       onDragStartColumn={(e) => dnd.handleColumnDragStart(e, group.groupKey)}
-      onToggleSelect={props.onToggleSelect}
-      onOpenDetail={props.onOpenDetail}
-      onToggleTag={props.onToggleTag}
-      onUpdateTitle={props.onUpdateTitle}
-      onUpdateSubtasks={props.onUpdateSubtasks}
-      onMoveColumn={props.onMoveColumn}
-      onAddItem={() => props.onAddItem(group.groupKey)}
       onRenameColumn={(newLabel) => props.onUpdateColumn?.(group.groupKey, { label: newLabel })}
       onChangeColumnColor={(newColor) => props.onUpdateColumn?.(group.groupKey, { color: newColor })}
       onChangeColumnWipLimit={(wipLimit) => props.onUpdateColumn?.(group.groupKey, { wipLimit })}
-      onCollapseColumn={() => props.onToggleCollapse(group.groupKey)}
+      // A banded column is the strip's title, and has no narrower form to fold into.
+      onCollapseColumn={variant === 'column' ? () => props.onToggleCollapse(group.groupKey) : undefined}
       onDeleteColumn={() => props.onDeleteColumn?.(group.groupKey)}
-      onUpdateTags={props.onUpdateTags}
-      onAddColumnOption={props.onAddColumnOption}
+      onAddItem={() => props.onAddItem(cell)}
+      onMoveColumn={(itemId, dir) => props.onMoveCell(itemId, cell, dir)}
     />
   )
 }
 
-function BoardColumnItem(props: BoardColumnItemProps) {
-  if (props.isCollapsed) {
-    return (
-      <CollapsedColumnItem
-        group={props.group}
-        isDragOver={props.isDragOver}
-        dnd={props.dnd}
-        onToggleCollapse={props.onToggleCollapse}
-      />
-    )
-  }
+function CollapsedColumnItem(props: BoardColumnCellProps) {
+  const { cell, group, dnd } = props
+  return (
+    <CollapsedColumn
+      group={group}
+      isDragOver={dnd.isDragOverCell(cell)}
+      onExpand={() => props.onToggleCollapse(group.groupKey)}
+      onDragOver={(e) => {
+        e.preventDefault()
+        dnd.setDragOverCell(cell)
+      }}
+      onDrop={(e) => dnd.handleColumnDrop(e, cell)}
+    />
+  )
+}
+
+function BoardColumnCell(props: BoardColumnCellProps) {
+  if (props.variant === 'column' && props.isCollapsed) return <CollapsedColumnItem {...props} />
   return <ExpandedBoardColumn {...props} />
 }
 
-export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardViewProps) {
-  useLocaleRepaint()
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
-  const { groups, moveAnnouncement, handleMoveItem, handleMoveColumn } = useKanbanBoardMoves(props.data, props.view, props.onMoveItem)
-  const dnd = useKanbanBoardDndState(handleMoveItem, props.onReorderColumns)
+/** The board scrolls sideways when it is a row of columns, and both ways once it is a grid. */
+const PLAIN_BOARD_ROOT = 'flex h-full w-full gap-4 overflow-x-auto p-4'
+const BANDED_BOARD_ROOT = 'flex h-full w-full flex-col gap-4 overflow-auto p-4'
 
+function PlainBoardColumns({
+  groups,
+  cells,
+  collapsedGroups,
+  onAddColumn,
+}: {
+  groups: KanbanGroup[]
+  cells: BoardCellBundle
+  collapsedGroups: Set<string>
+  onAddColumn: () => void
+}) {
+  return (
+    <>
+      {groups.map((group) => (
+        <BoardColumnCell
+          key={group.groupKey}
+          {...cells}
+          cell={{ groupKey: group.groupKey }}
+          group={group}
+          variant='column'
+          isCollapsed={collapsedGroups.has(group.groupKey)}
+        />
+      ))}
+      <AddColumnButton onAddColumn={onAddColumn} />
+    </>
+  )
+}
+
+/**
+ * A board nobody asked to band stays a single row of columns; asking for a second field turns that row
+ * into a grid whose columns are titled once, above every band, and whose cells are that column within
+ * one band. Both are the same columns and the same cards — only the arrangement differs.
+ */
+function BandedBoardGrid({
+  bands,
+  groups,
+  cells,
+  onAddColumn,
+}: {
+  bands: KanbanSwimlane[]
+  groups: KanbanGroup[]
+  cells: BoardCellBundle
+  onAddColumn: () => void
+}) {
+  return (
+    <KanbanBoardSwimlanes
+      bands={bands}
+      groups={groups}
+      addColumnSlot={<AddColumnButton onAddColumn={onAddColumn} />}
+      renderCell={({ cell, group, variant }) => (
+        // Collapsing a column is the plain board's arrangement: a band row has no narrower form.
+        <BoardColumnCell
+          key={kanbanCellKey(cell)}
+          {...cells}
+          cell={cell}
+          group={group}
+          variant={variant}
+          isCollapsed={false}
+        />
+      )}
+    />
+  )
+}
+
+/** Which columns the reader has folded away. Only the plain board can fold one. */
+function useCollapsedColumns() {
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const toggleCollapse = (groupKey: string) => {
     setCollapsedGroups((prev) => {
       const next = new Set(prev)
@@ -393,40 +405,49 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
       return next
     })
   }
+  return { collapsedGroups, toggleCollapse }
+}
+
+export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardViewProps) {
+  useLocaleRepaint()
+  const { collapsedGroups, toggleCollapse } = useCollapsedColumns()
+  const { groups, bands, moveAnnouncement, handleMoveItem, handleMoveCell } = useKanbanBoardMoves(
+    props.data,
+    props.view,
+    props.onMoveItem,
+  )
+  const dnd = useKanbanBoardDndState(handleMoveItem, props.onReorderColumns)
+
+  const cells: BoardCellBundle = {
+    columns: props.data.columns,
+    cardSize: props.cardSize,
+    selectedIds: props.selectedIds,
+    selectedTags: props.selectedTags,
+    dnd,
+    onToggleCollapse: toggleCollapse,
+    onToggleSelect: props.onToggleSelect,
+    onOpenDetail: props.onOpenDetail,
+    onToggleTag: props.onToggleTag,
+    onUpdateTitle: props.onUpdateTitle,
+    onUpdateSubtasks: props.onUpdateSubtasks,
+    onMoveCell: handleMoveCell,
+    onAddItem: props.onAddItem,
+    onUpdateColumn: props.onUpdateColumn,
+    onDeleteColumn: props.onDeleteColumn,
+    onUpdateTags: props.onUpdateTags,
+    onAddColumnOption: props.onAddColumnOption,
+  }
 
   return (
-    <div data-kanban-board className='flex h-full w-full gap-4 overflow-x-auto p-4'>
-      {groups.map((group) => (
-        <BoardColumnItem
-          key={group.groupKey}
-          group={group}
-          columns={props.data.columns}
-          isCollapsed={collapsedGroups.has(group.groupKey)}
-          isDragOver={dnd.dragOverGroupKey === group.groupKey}
-          cardSize={props.cardSize}
-          selectedIds={props.selectedIds}
-          selectedTags={props.selectedTags}
-          cardDropTarget={dnd.cardDropTarget}
-          dnd={dnd}
-          onToggleCollapse={toggleCollapse}
-          onToggleSelect={props.onToggleSelect}
-          onOpenDetail={props.onOpenDetail}
-          onToggleTag={props.onToggleTag}
-          onUpdateTitle={props.onUpdateTitle}
-          onUpdateSubtasks={props.onUpdateSubtasks}
-          onMoveColumn={(itemId, dir) => handleMoveColumn(itemId, group.groupKey, dir)}
-          onAddItem={props.onAddItem}
-          onUpdateColumn={props.onUpdateColumn}
-          onDeleteColumn={props.onDeleteColumn}
-          onUpdateTags={props.onUpdateTags}
-          onAddColumnOption={props.onAddColumnOption}
-        />
-      ))}
-      <AddColumnButton onAddColumn={props.onAddColumn} />
+    <div data-kanban-board className={bands.length > 0 ? BANDED_BOARD_ROOT : PLAIN_BOARD_ROOT}>
+      {bands.length > 0 ? (
+        <BandedBoardGrid bands={bands} groups={groups} cells={cells} onAddColumn={props.onAddColumn} />
+      ) : (
+        <PlainBoardColumns groups={groups} cells={cells} collapsedGroups={collapsedGroups} onAddColumn={props.onAddColumn} />
+      )}
       <span role='status' aria-live='polite' className='sr-only'>
         {moveAnnouncement}
       </span>
     </div>
   )
 })
-

@@ -84,16 +84,30 @@ describe('useKanbanAddOperations', () => {
 
   it('handleAddItemInGroup targets the active view groupBy property, not status', () => {
     const { api, addedItem } = captureCommit(makeData(), { id: 'v', name: 'Board', type: 'board', groupBy: 'priority' })
-    api.handleAddItemInGroup('high')
+    api.handleAddItemInGroup({ groupKey: 'high' })
     expect(addedItem().properties.priority).toBe('high')
     expect(addedItem().properties.status).toBe('todo')
   })
 
   it('handleAddItemInGroup with the no-group sentinel creates a plain default item', () => {
     const { api, addedItem } = captureCommit(makeData(), { id: 'v', name: 'Board', type: 'board', groupBy: 'priority' })
-    api.handleAddItemInGroup('__none__')
+    api.handleAddItemInGroup({ groupKey: '__none__' })
     expect(addedItem().properties.status).toBe('todo')
     expect(addedItem().properties.priority).toBeUndefined()
+  })
+
+  it('handleAddItemInGroup on a cell of a banded row writes that row into the lane field', () => {
+    const { api, addedItem } = captureCommit(makeData(), { id: 'v', name: 'Board', type: 'board', groupBy: 'priority', swimlaneBy: 'assignee' })
+    api.handleAddItemInGroup({ groupKey: 'high', laneKey: 'bob' })
+    expect(addedItem().properties.priority).toBe('high')
+    expect(addedItem().properties.assignee).toBe('bob')
+  })
+
+  it('handleAddItemInGroup on the unassigned row leaves the lane field empty', () => {
+    const { api, addedItem } = captureCommit(makeData(), { id: 'v', name: 'Board', type: 'board', groupBy: 'priority', swimlaneBy: 'assignee' })
+    api.handleAddItemInGroup({ groupKey: 'high', laneKey: '__none__' })
+    expect(addedItem().properties.priority).toBe('high')
+    expect(addedItem().properties.assignee).toBeUndefined()
   })
 })
 

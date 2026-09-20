@@ -54,6 +54,7 @@ interface KanbanHeaderProps {
   onClearTags?: () => void
   onChangeCardSize?: (size: CardSize) => void
   onChangeGroupBy?: (propId: string) => void
+  onChangeSwimlaneBy?: (propId: string | undefined) => void
   onToggleHiddenColumn?: (propertyId: string) => void
   onAddItem: () => void
   onToggleFullscreen?: () => void
@@ -69,18 +70,22 @@ type HeaderActionsProps = KanbanHeaderProps & { columns: KanbanData['columns'] }
 function KanbanViewOptionsAction({
   columns,
   groupBy,
+  swimlaneBy,
   cardSize,
   hiddenColumns,
   onChangeGroupBy,
+  onChangeSwimlaneBy,
   onChangeCardSize,
   onToggleHiddenColumn,
   schemaOps,
 }: {
   columns: KanbanData['columns']
   groupBy: string
+  swimlaneBy?: string
   cardSize?: CardSize
   hiddenColumns?: string[]
   onChangeGroupBy?: (propId: string) => void
+  onChangeSwimlaneBy?: (propId: string | undefined) => void
   onChangeCardSize?: (size: CardSize) => void
   onToggleHiddenColumn?: (propertyId: string) => void
   schemaOps?: KanbanSchemaOperations
@@ -116,9 +121,11 @@ function KanbanViewOptionsAction({
         anchorRef={btnRef}
         columns={columns}
         groupBy={groupBy}
+        swimlaneBy={swimlaneBy}
         cardSize={cardSize}
         hiddenColumns={hiddenColumns}
         onChangeGroupBy={onChangeGroupBy}
+        onChangeSwimlaneBy={onChangeSwimlaneBy}
         onChangeCardSize={onChangeCardSize}
         onToggleHiddenColumn={onToggleHiddenColumn}
         schemaOps={schemaOps}
@@ -413,9 +420,11 @@ function KanbanHeaderActions(props: HeaderActionsProps) {
         <KanbanViewOptionsAction
           columns={columns}
           groupBy={activeView.groupBy || 'status'}
+          swimlaneBy={activeView.swimlaneBy}
           cardSize={activeView.type === 'board' ? cardSize : undefined}
           hiddenColumns={activeView.hiddenColumns}
           onChangeGroupBy={activeView.type === 'board' ? props.onChangeGroupBy : undefined}
+          onChangeSwimlaneBy={activeView.type === 'board' ? props.onChangeSwimlaneBy : undefined}
           onChangeCardSize={activeView.type === 'board' ? props.onChangeCardSize : undefined}
           onToggleHiddenColumn={activeView.type === 'table' ? props.onToggleHiddenColumn : undefined}
           schemaOps={activeView.type === 'table' ? props.schemaOps : undefined}

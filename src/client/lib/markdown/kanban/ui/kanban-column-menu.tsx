@@ -19,7 +19,7 @@ interface KanbanColumnMenuProps {
   onRename: (newLabel: string) => void
   onChangeColor: (newColor: KanbanColorName) => void
   onChangeWipLimit: (limit: number | undefined) => void
-  onCollapse: () => void
+  onCollapse?: () => void
   onDelete?: () => void
 }
 
@@ -174,24 +174,26 @@ function ColumnActionButtons({
   onClose,
   isNoneGroup,
 }: {
-  onCollapse: () => void
+  onCollapse?: () => void
   onDelete?: () => void
   onClose: () => void
   isNoneGroup: boolean
 }) {
   return (
     <>
-      <button
-        type='button'
-        onClick={() => {
-          onCollapse()
-          onClose()
-        }}
-        className='flex items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-      >
-        <ChevronLeft size={14} />
-        <span>{t('preview.kanban_collapse_column')}</span>
-      </button>
+      {onCollapse && (
+        <button
+          type='button'
+          onClick={() => {
+            onCollapse()
+            onClose()
+          }}
+          className='flex items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+        >
+          <ChevronLeft size={14} />
+          <span>{t('preview.kanban_collapse_column')}</span>
+        </button>
+      )}
 
       {onDelete && !isNoneGroup && (
         <button

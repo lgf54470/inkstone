@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type RefObject } from 'react'
+import { useCallback, useMemo, useRef, useState, type RefObject } from 'react'
 import {
   applyKanbanFilters,
   applyKanbanSorts,
@@ -6,8 +6,9 @@ import {
 } from '../filter-sort'
 import { t } from '../../../i18n'
 import { toastWithUndo } from '../../../../store/ui'
-import { reorderKanbanItems } from '../dnd'
 import type { KanbanMovePivot } from '../dnd'
+import { kanbanBoardLayout, moveKanbanItemToCell } from '../swimlane'
+import type { KanbanBoardCell } from '../swimlane'
 import { createKanbanId } from '../id'
 import type {
   KanbanColorName,
@@ -135,15 +136,19 @@ export function useKanbanItemMutations(
 ) {
   const valueWrites = useKanbanValueWrites(commitData)
 
+  // The view is read at drop time through this ref, so the mover keeps one identity for the whole
+  // drag (the board memoizes on it) while still honouring the grouping the view has by then.
+  const viewRef = useRef(activeView)
+  viewRef.current = activeView
+
   const handleMoveItem = useCallback(
-    (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => {
-      const groupPropertyId = activeView.groupBy || 'status'
+    (itemId: string, cell: KanbanBoardCell, pivot?: KanbanMovePivot) => {
       commitData((prev) => ({
         ...prev,
-        items: reorderKanbanItems(prev.items, itemId, groupPropertyId, targetGroupKey, pivot),
+        items: moveKanbanItemToCell(prev.items, { itemId, cell, pivot, layout: kanbanBoardLayout(prev, viewRef.current) }),
       }))
     },
-    [activeView.groupBy, commitData],
+    [commitData],
   )
 
   const handleUpdateTitle = useCallback((id: string, newTitle: string) => {
@@ -255,15 +260,16 @@ export function useKanbanAddOperations(
     setDetailItem(newItem)
   }, [data, commitData, setDetailItem])
 
-  // Board columns hand over their group key; it belongs to the view's groupBy
-  // property, which is not necessarily `status`.
-  const handleAddItemInGroup = useCallback((groupKey?: string) => {
-    if (!groupKey || groupKey === '__none__') {
-      handleAddItem()
-      return
-    }
-    handleAddItem({ [activeView.groupBy || 'status']: groupKey })
-  }, [activeView.groupBy, handleAddItem])
+  // A board cell hands over both of its coordinates: the group belongs to the view's groupBy
+  // property (not necessarily `status`), the band to its lane property. Either may be the
+  // unassigned one, which asks for nothing rather than writing a sentinel into the new card.
+  const handleAddItemInGroup = useCallback((cell?: KanbanBoardCell) => {
+    const defaults: Record<string, unknown> = {}
+    if (cell?.groupKey && cell.groupKey !== '__none__') defaults[activeView.groupBy || 'status'] = cell.groupKey
+    const lanePropertyId = activeView.swimlaneBy
+    if (lanePropertyId && cell?.laneKey && cell.laneKey !== '__none__') defaults[lanePropertyId] = cell.laneKey
+    handleAddItem(defaults)
+  }, [activeView.groupBy, activeView.swimlaneBy, handleAddItem])
 
   // The add-group button targets the column the active view groups by;
   // option-less properties (text, date, ...) have no groups to add.

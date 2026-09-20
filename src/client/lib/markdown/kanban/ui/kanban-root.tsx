@@ -9,6 +9,7 @@ import type {
   KanbanSubtask,
 } from '../types'
 import type { KanbanMovePivot } from '../dnd'
+import type { KanbanBoardCell } from '../swimlane'
 import { KanbanBatchBar } from './kanban-batch-bar'
 import { KanbanBoardView } from './kanban-board-view'
 import { KanbanCalendarView } from './kanban-calendar-view'
@@ -55,9 +56,9 @@ interface KanbanViewRendererProps {
   handleUpdateTitle: (id: string, title: string) => void
   handleUpdateFiles: (id: string, files: KanbanFile[]) => void
   handleUpdateMultiSelect: (itemId: string, columnId: string, values: string[], newOption?: KanbanOption) => void
-  handleMoveItem: (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void
+  handleMoveItem: (itemId: string, cell: KanbanBoardCell, pivot?: KanbanMovePivot) => void
   handleAddItem: (defaults?: Record<string, unknown>) => void
-  handleAddItemInGroup: (groupKey?: string) => void
+  handleAddItemInGroup: (cell?: KanbanBoardCell) => void
   handleAddColumn: () => void
   handleUpdateView: (patch: Partial<KanbanData['views'][number]>) => void
   handleToggleSortColumn: (propertyId: string) => void
@@ -243,6 +244,7 @@ function KanbanTopBar({
       onClearTags={state.filterSort.onClearTags}
       onChangeCardSize={state.filterSort.setCardSize}
       onChangeGroupBy={state.columnOps.handleChangeGroupBy}
+      onChangeSwimlaneBy={(propId) => state.filterSort.updateActiveView({ swimlaneBy: propId })}
       onToggleHiddenColumn={state.filterSort.toggleHiddenColumn}
       onAddItem={() => state.adds.handleAddItem()}
       onToggleFullscreen={onToggleFullscreen}

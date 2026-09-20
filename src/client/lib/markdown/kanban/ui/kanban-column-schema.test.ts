@@ -44,6 +44,7 @@ function board(overrides: Partial<KanbanData> = {}): KanbanData {
         name: 'Table',
         type: 'table',
         groupBy: 'review',
+        swimlaneBy: 'review',
         hiddenColumns: ['spec', 'review'],
         filters: [{ propertyId: 'review', operator: 'equals', value: 'High' }],
         sorts: [{ propertyId: 'review', direction: 'asc' }, { propertyId: 'spec', direction: 'desc' }],
@@ -231,6 +232,7 @@ describe('removePropertyColumn', () => {
     const next = removePropertyColumn(board(), 'review')
     const view = next.views[0]!
     expect(view.groupBy).toBeUndefined()
+    expect(view.swimlaneBy).toBeUndefined()
     expect(view.filters).toEqual([])
     expect(view.sorts).toEqual([{ propertyId: 'spec', direction: 'desc' }])
     expect(view.hiddenColumns).toEqual(['spec'])
@@ -240,6 +242,7 @@ describe('removePropertyColumn', () => {
     const next = removePropertyColumn(board(), 'spec')
     const view = next.views[0]!
     expect(view.groupBy).toBe('review')
+    expect(view.swimlaneBy).toBe('review')
     expect(view.filters).toEqual([{ propertyId: 'review', operator: 'equals', value: 'High' }])
     expect(view.sorts).toEqual([{ propertyId: 'review', direction: 'asc' }])
     expect(view.hiddenColumns).toEqual(['review'])

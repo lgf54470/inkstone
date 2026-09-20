@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../../test-render'
 import { useKanbanBoardDndState } from './kanban-board-dnd'
 import type { KanbanMovePivot } from '../dnd'
+import type { KanbanBoardCell } from '../swimlane'
 
 function fakeDataTransfer(values: Record<string, string>) {
   return {
@@ -35,7 +36,7 @@ function boardDom(cardIds: string[]) {
   return { board, cleanup: () => board.remove() }
 }
 
-function renderDndHook(onMoveItem: (itemId: string, groupKey: string, pivot?: KanbanMovePivot) => void) {
+function renderDndHook(onMoveItem: (itemId: string, cell: KanbanBoardCell, pivot?: KanbanMovePivot) => void) {
   let api: ReturnType<typeof useKanbanBoardDndState> | null = null
   function Probe() {
     api = useKanbanBoardDndState(onMoveItem)
@@ -46,7 +47,7 @@ function renderDndHook(onMoveItem: (itemId: string, groupKey: string, pivot?: Ka
   return { api: api as ReturnType<typeof useKanbanBoardDndState>, unmount: rendered.unmount }
 }
 
-const todoGroup = { groupKey: 'todo' } as never
+const todoCell: KanbanBoardCell = { groupKey: 'todo' }
 
 describe('kanban board drop trust check for external drops', () => {
   it('ignores a text/plain drop whose value matches no card on this board', () => {
@@ -55,7 +56,7 @@ describe('kanban board drop trust check for external drops', () => {
     const { api, unmount } = renderDndHook(onMoveItem)
     try {
       act(() => {
-        api.handleColumnDrop(fakeDragEvent(board.board, { 'text/plain': 'external-file-name.md' }), 'todo')
+        api.handleColumnDrop(fakeDragEvent(board.board, { 'text/plain': 'external-file-name.md' }), todoCell)
       })
       expect(onMoveItem).not.toHaveBeenCalled()
     } finally {
@@ -71,7 +72,7 @@ describe('kanban board drop trust check for external drops', () => {
     const { api, unmount } = renderDndHook(onMoveItem)
     try {
       act(() => {
-        api.handleColumnDrop(fakeDragEvent(here.board, { 'text/plain': 'other-board-card' }), 'todo')
+        api.handleColumnDrop(fakeDragEvent(here.board, { 'text/plain': 'other-board-card' }), todoCell)
       })
       expect(onMoveItem).not.toHaveBeenCalled()
     } finally {
@@ -88,7 +89,7 @@ describe('kanban board drop trust check for external drops', () => {
     const { api, unmount } = renderDndHook(onMoveItem)
     try {
       act(() => {
-        api.handleCardDrop(fakeDragEvent(here.board, { 'text/plain': 'shared-id' }), todoGroup, 'local-card')
+        api.handleCardDrop(fakeDragEvent(here.board, { 'text/plain': 'shared-id' }), todoCell, 'local-card')
       })
       expect(onMoveItem).not.toHaveBeenCalled()
     } finally {
@@ -109,10 +110,10 @@ describe('kanban board drop trust check for internal drags', () => {
       act(() => {
         api.handleColumnDrop(
           fakeDragEvent(board.board, { 'application/json': payload, 'text/plain': 'real-card' }),
-          'todo',
+          todoCell,
         )
       })
-      expect(onMoveItem).toHaveBeenCalledWith('real-card', 'todo')
+      expect(onMoveItem).toHaveBeenCalledWith('real-card', todoCell)
     } finally {
       unmount()
       board.cleanup()
@@ -130,9 +131,9 @@ describe('kanban board drop trust check for internal drags', () => {
       })
       const payload = JSON.stringify({ type: 'card', itemId: 'real-card', sourceGroupKey: 'todo' })
       act(() => {
-        api.handleCardDrop(fakeDragEvent(board.board, { 'application/json': payload }), todoGroup, 'real-card')
+        api.handleCardDrop(fakeDragEvent(board.board, { 'application/json': payload }), todoCell, 'real-card')
       })
-      expect(onMoveItem).toHaveBeenCalledWith('real-card', 'todo', { itemId: 'real-card', position: 'before' })
+      expect(onMoveItem).toHaveBeenCalledWith('real-card', todoCell, { itemId: 'real-card', position: 'before' })
     } finally {
       unmount()
       board.cleanup()
@@ -146,7 +147,7 @@ describe('useKanbanBoardDndState handler stability', () => {
     function Probe() {
       const [tick, setTick] = useState(0)
       // a fresh arrow each render, like an unmemoized parent prop
-      snapshots.push(useKanbanBoardDndState(((_id: string, _group: string, _pivot?: KanbanMovePivot) => {})))
+      snapshots.push(useKanbanBoardDndState(((_id: string, _cell: KanbanBoardCell, _pivot?: KanbanMovePivot) => {})))
       if (tick < 3) setTick((n) => n + 1)
       return null
     }
@@ -178,11 +179,47 @@ describe('useKanbanBoardDndState handler stability', () => {
     try {
       const payload = JSON.stringify({ type: 'card', itemId: 'real-card', sourceGroupKey: 'todo' })
       act(() => {
-        holder.api!.handleColumnDrop(fakeDragEvent(board.board, { 'application/json': payload }), 'doing')
+        holder.api!.handleColumnDrop(fakeDragEvent(board.board, { 'application/json': payload }), { groupKey: 'doing' })
       })
       expect(moves).toEqual([['real-card', '2']])
     } finally {
       rendered.unmount()
+      board.cleanup()
+    }
+  })
+})
+
+describe('the cell a drag is over', () => {
+  it('lights one cell of a column rather than every band that column is drawn in', () => {
+    const holder: { api: ReturnType<typeof useKanbanBoardDndState> | null } = { api: null }
+    function Probe() {
+      holder.api = useKanbanBoardDndState(() => {})
+      return null
+    }
+    const rendered = renderElement(createElement(Probe))
+    try {
+      act(() => { holder.api!.setDragOverCell({ groupKey: 'todo', laneKey: 'alice' }) })
+      expect(holder.api!.isDragOverCell({ groupKey: 'todo', laneKey: 'alice' })).toBe(true)
+      expect(holder.api!.isDragOverCell({ groupKey: 'todo', laneKey: 'bob' })).toBe(false)
+      expect(holder.api!.isDragOverCell({ groupKey: 'todo' })).toBe(false)
+    } finally {
+      rendered.unmount()
+    }
+  })
+
+  it('carries the band of the cell a card was dropped into to the writer', () => {
+    const board = boardDom(['real-card'])
+    const onMoveItem = vi.fn()
+    const { api, unmount } = renderDndHook(onMoveItem)
+    const bandedCell: KanbanBoardCell = { groupKey: 'todo', laneKey: 'bob' }
+    try {
+      const payload = JSON.stringify({ type: 'card', itemId: 'real-card', sourceGroupKey: 'doing' })
+      act(() => {
+        api.handleColumnDrop(fakeDragEvent(board.board, { 'application/json': payload }), bandedCell)
+      })
+      expect(onMoveItem).toHaveBeenCalledWith('real-card', bandedCell)
+    } finally {
+      unmount()
       board.cleanup()
     }
   })

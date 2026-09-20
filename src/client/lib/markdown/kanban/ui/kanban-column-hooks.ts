@@ -312,7 +312,7 @@ export function changePropertyColumnType(data: KanbanData, propertyId: string, t
 
 /** A view field that names a column has to let go of it when the column goes. */
 function releaseColumnField<T extends KanbanView>(view: T, propertyId: string): T {
-  const fields = ['groupBy', 'dateField', 'startField', 'endField', 'progressField', 'chartGroupBy'] as const
+  const fields = ['groupBy', 'swimlaneBy', 'dateField', 'startField', 'endField', 'progressField', 'chartGroupBy'] as const
   const next = { ...view }
   for (const field of fields) {
     if (next[field] === propertyId) delete next[field]

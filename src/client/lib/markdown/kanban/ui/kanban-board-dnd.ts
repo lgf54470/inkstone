@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { parseKanbanDragData } from '../dnd'
 import type { KanbanDragPayload, KanbanMovePivot } from '../dnd'
-import type { groupKanbanItems } from '../filter-sort'
+import { kanbanCellKey } from '../swimlane'
+import type { KanbanBoardCell } from '../swimlane'
 
 export type { KanbanMovePivot }
 
@@ -15,9 +16,7 @@ export interface CardDropTarget {
   position: 'top' | 'bottom'
 }
 
-type KanbanGroupType = ReturnType<typeof groupKanbanItems>[number]
-
-type MoveCardFn = (itemId: string, targetGroupKey: string, pivot?: KanbanMovePivot) => void
+type MoveCardFn = (itemId: string, cell: KanbanBoardCell, pivot?: KanbanMovePivot) => void
 
 function initDragData(e: React.DragEvent, payload: unknown, text: string) {
   e.dataTransfer.setData('application/json', JSON.stringify(payload))
@@ -49,7 +48,7 @@ function resolveDroppedCardId(
 function processCardDrop(
   e: React.DragEvent,
   draggedItem: DragItemState,
-  targetGroup: KanbanGroupType,
+  targetCell: KanbanBoardCell,
   targetCardId: string,
   cardDropTarget: CardDropTarget | null,
   onMoveItem: MoveCardFn,
@@ -59,24 +58,24 @@ function processCardDrop(
   if (cardId) {
     const position: KanbanMovePivot['position'] =
       cardDropTarget?.cardId === targetCardId && cardDropTarget.position === 'bottom' ? 'after' : 'before'
-    onMoveItem(cardId, targetGroup.groupKey, { itemId: targetCardId, position })
+    onMoveItem(cardId, targetCell, { itemId: targetCardId, position })
   }
 }
 
 function processColumnDrop(
   e: React.DragEvent,
   draggedItem: DragItemState,
-  targetGroupKey: string,
+  targetCell: KanbanBoardCell,
   onMoveItem: MoveCardFn,
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void,
 ) {
   const data = parseKanbanDragData(e.dataTransfer)
   if (data?.type === 'column' || draggedItem?.type === 'column') {
     const sourceKey = data?.type === 'column' ? data.groupKey : (draggedItem as { groupKey: string }).groupKey
-    if (sourceKey && onReorderColumns) onReorderColumns(sourceKey, targetGroupKey)
+    if (sourceKey && onReorderColumns) onReorderColumns(sourceKey, targetCell.groupKey)
   } else {
     const cardId = resolveDroppedCardId(e, data, draggedItem)
-    if (cardId) onMoveItem(cardId, targetGroupKey)
+    if (cardId) onMoveItem(cardId, targetCell)
   }
 }
 
@@ -112,13 +111,58 @@ function useDndStartHandlers(
   return { handleCardDragStart, handleColumnDragStart, handleCardDragOver }
 }
 
+// The cell a drag is over, keyed on the whole cell: a column of a banded board is drawn once per
+// row, and a highlight keyed on the column alone would light all of them up at once.
+function useDragOverCell() {
+  const [dragOverCellKey, setDragOverCellKey] = useState<string | null>(null)
+  return {
+    setDragOverCell: useCallback((cell: KanbanBoardCell) => setDragOverCellKey(kanbanCellKey(cell)), []),
+    clearDragOverCell: useCallback(() => setDragOverCellKey(null), []),
+    isDragOverCell: (cell: KanbanBoardCell) => dragOverCellKey === kanbanCellKey(cell),
+  }
+}
+
+interface DragRef {
+  current: {
+    draggedItem: DragItemState
+    cardDropTarget: CardDropTarget | null
+    onMoveItem: MoveCardFn
+    onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void
+  }
+}
+
+function useCellDropHandlers(dragRef: DragRef, handleDragEnd: () => void) {
+  const handleCardDrop = useCallback(
+    (e: React.DragEvent, targetCell: KanbanBoardCell, targetCardId: string) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const { draggedItem: dragged, cardDropTarget: target, onMoveItem: move } = dragRef.current
+      processCardDrop(e, dragged, targetCell, targetCardId, target, move)
+      handleDragEnd()
+    },
+    [handleDragEnd],
+  )
+
+  const handleColumnDrop = useCallback(
+    (e: React.DragEvent, targetCell: KanbanBoardCell) => {
+      e.preventDefault()
+      const { draggedItem: dragged, onMoveItem: move, onReorderColumns: reorder } = dragRef.current
+      processColumnDrop(e, dragged, targetCell, move, reorder)
+      handleDragEnd()
+    },
+    [handleDragEnd],
+  )
+
+  return { handleCardDrop, handleColumnDrop }
+}
+
 export function useKanbanBoardDndState(
   onMoveItem: MoveCardFn,
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void,
 ) {
   const [draggedItem, setDraggedItem] = useState<DragItemState>(null)
-  const [dragOverGroupKey, setDragOverGroupKey] = useState<string | null>(null)
   const [cardDropTarget, setCardDropTarget] = useState<CardDropTarget | null>(null)
+  const { setDragOverCell, clearDragOverCell, isDragOverCell } = useDragOverCell()
 
   // Drop handlers read the in-flight drag state and the move callbacks at call
   // time through this ref, so their identity survives re-renders while the
@@ -128,41 +172,20 @@ export function useKanbanBoardDndState(
 
   const handleDragEnd = useCallback(() => {
     setDraggedItem(null)
-    setDragOverGroupKey(null)
+    clearDragOverCell()
     setCardDropTarget(null)
-  }, [])
+  }, [clearDragOverCell])
 
   const startHandlers = useDndStartHandlers(setDraggedItem, setCardDropTarget)
-
-  const handleCardDrop = useCallback(
-    (e: React.DragEvent, targetGroup: KanbanGroupType, targetCardId: string) => {
-      e.preventDefault()
-      e.stopPropagation()
-      const { draggedItem: dragged, cardDropTarget: target, onMoveItem: move } = dragRef.current
-      processCardDrop(e, dragged, targetGroup, targetCardId, target, move)
-      handleDragEnd()
-    },
-    [handleDragEnd],
-  )
-
-  const handleColumnDrop = useCallback(
-    (e: React.DragEvent, targetGroupKey: string) => {
-      e.preventDefault()
-      const { draggedItem: dragged, onMoveItem: move, onReorderColumns: reorder } = dragRef.current
-      processColumnDrop(e, dragged, targetGroupKey, move, reorder)
-      handleDragEnd()
-    },
-    [handleDragEnd],
-  )
+  const dropHandlers = useCellDropHandlers(dragRef, handleDragEnd)
 
   return {
-    dragOverGroupKey,
-    setDragOverGroupKey,
+    isDragOverCell,
+    setDragOverCell,
     cardDropTarget,
     handleDragEnd,
     ...startHandlers,
-    handleCardDrop,
-    handleColumnDrop,
+    ...dropHandlers,
   }
 }
 

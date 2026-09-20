@@ -57,7 +57,8 @@ export function KanbanColumnHeader({
   onRename: (newLabel: string) => void
   onChangeColor: (newColor: KanbanColorName) => void
   onChangeWipLimit: (limit: number | undefined) => void
-  onCollapse: () => void
+  /** Absent where a column has no narrower form to fold into — the strip of a banded board. */
+  onCollapse?: () => void
   onDelete?: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)

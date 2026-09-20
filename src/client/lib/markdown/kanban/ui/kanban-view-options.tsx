@@ -1,5 +1,5 @@
 import { memo, useId, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, Columns3, Pencil, Plus, Settings2, Sliders, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Columns3, Pencil, Plus, Rows3, Settings2, Sliders, Trash2 } from 'lucide-react'
 import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { formatKanbanPropertyName } from '../i18n-helpers'
@@ -20,9 +20,11 @@ interface KanbanViewOptionsProps {
   anchorRef: React.RefObject<HTMLElement | null>
   columns: KanbanProperty[]
   groupBy?: string
+  swimlaneBy?: string
   cardSize?: CardSize
   hiddenColumns?: string[]
   onChangeGroupBy?: (propId: string) => void
+  onChangeSwimlaneBy?: (propId: string | undefined) => void
   onChangeCardSize?: (size: CardSize) => void
   onToggleHiddenColumn?: (propertyId: string) => void
   schemaOps?: KanbanSchemaOperations
@@ -56,6 +58,57 @@ function GroupBySection({
         className='h-8 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
       >
         {eligibleColumns.map((col) => (
+          <option key={col.id} value={col.id}>
+            {formatKanbanPropertyName(col)}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+/**
+ * A band is a named row of the board, so only a field with a list of named values can cut one, and
+ * the field the columns already use would give a board where every band holds exactly one column.
+ */
+function swimlaneCandidates(columns: KanbanProperty[], groupBy: string, current?: string): KanbanProperty[] {
+  const eligible = columns.filter(
+    (col) => col.id !== groupBy && col.id !== 'title' && (col.options?.length ?? 0) > 0,
+  )
+  if (!current || eligible.some((col) => col.id === current)) return eligible
+  // A field set before it stopped qualifying stays listed, so the board does not read as unbanded
+  // while it is still drawing bands off it.
+  const pinned = columns.find((col) => col.id === current)
+  return pinned ? [...eligible, pinned] : eligible
+}
+
+function SwimlaneBySection({
+  swimlaneBy,
+  groupBy,
+  columns,
+  onChangeSwimlaneBy,
+}: {
+  swimlaneBy?: string
+  groupBy: string
+  columns: KanbanProperty[]
+  onChangeSwimlaneBy: (propId: string | undefined) => void
+}) {
+  const candidates = swimlaneCandidates(columns, groupBy, swimlaneBy)
+  const fieldId = useId()
+  return (
+    <div className='flex flex-col gap-1.5'>
+      <div className='flex items-center gap-1.5 text-[length:var(--text-12)] font-semibold text-[var(--text-secondary)]'>
+        <Rows3 size={13} aria-hidden />
+        <label htmlFor={fieldId}>{t('preview.kanban_swimlane_by')}</label>
+      </div>
+      <select
+        id={fieldId}
+        value={swimlaneBy ?? ''}
+        onChange={(e) => onChangeSwimlaneBy(e.target.value || undefined)}
+        className='h-8 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
+      >
+        <option value=''>{t('preview.kanban_swimlane_off')}</option>
+        {candidates.map((col) => (
           <option key={col.id} value={col.id}>
             {formatKanbanPropertyName(col)}
           </option>
@@ -364,9 +417,11 @@ export const KanbanViewOptions = memo(function KanbanViewOptions({
   anchorRef,
   columns,
   groupBy,
+  swimlaneBy,
   cardSize,
   hiddenColumns,
   onChangeGroupBy,
+  onChangeSwimlaneBy,
   onChangeCardSize,
   onToggleHiddenColumn,
   schemaOps,
@@ -390,6 +445,14 @@ export const KanbanViewOptions = memo(function KanbanViewOptions({
     >
       {onChangeGroupBy && groupBy !== undefined && (
         <GroupBySection groupBy={groupBy} columns={columns} onChangeGroupBy={onChangeGroupBy} />
+      )}
+      {onChangeSwimlaneBy && groupBy !== undefined && (
+        <SwimlaneBySection
+          swimlaneBy={swimlaneBy}
+          groupBy={groupBy}
+          columns={columns}
+          onChangeSwimlaneBy={onChangeSwimlaneBy}
+        />
       )}
       {onChangeCardSize && cardSize !== undefined && (
         <CardSizeSection cardSize={cardSize} onChangeCardSize={onChangeCardSize} />
