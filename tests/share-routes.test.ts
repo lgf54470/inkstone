@@ -83,13 +83,14 @@ async function seedVisit(db: D1Shim, fields: Record<string, unknown>): Promise<v
   await runSql(
     db,
     `INSERT INTO share_visits (user_id, note_id, slug, visited_at, visitor_fp, country, referrer_host,
-       device_type, os, browser, is_bot, is_self_referrer, is_owner)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'desktop', 'os', 'browser', ?8, 0, 0)`,
+       device_type, os, browser, user_agent, is_bot, is_self_referrer, is_owner)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'desktop', 'os', 'browser', ?8, ?9, 0, 0)`,
     USER, fields.note_id, fields.slug ?? 'share-1',
     fields.visited_at ?? Date.now() - 60_000,
     fields.visitor_fp ?? `fp-${++H.counter}`,
     fields.country ?? 'US',
     fields.referrer_host ?? null,
+    fields.user_agent ?? null,
     fields.is_bot ? 1 : 0,
   )
 }
@@ -489,6 +490,28 @@ describe('share visits route (real D1)', () => {
     const bots = await (await request(app, '/api/share/visits?filter=bot')).json()
     expect(bots.total).toBe(1)
     expect(bots.visits[0].isBot).toBe(true)
+  })
+
+  it('ships only the display prefix of a fingerprint and nothing on non-bot rows', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Hashed' })
+    await seedShare(db, { note_id: n1, slug: 'h-1' })
+    const base = Date.now()
+    await seedVisit(db, { note_id: n1, slug: 'h-1', visited_at: base, visitor_fp: '0123456789abcdef0123456789abcdef' })
+    await seedVisit(db, {
+      note_id: n1,
+      slug: 'h-1',
+      visited_at: base + 1,
+      is_bot: true,
+      visitor_fp: 'fedcba9876543210fedcba9876543210',
+      user_agent: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    })
+
+    const body = await (await request(makeApp(), '/api/share/visits')).json()
+    expect(body.visits.map((v: { visitorFp: string }) => v.visitorFp)).toEqual(['fedcba98', '01234567'])
+    expect(body.visits[0].botName).toBe('Googlebot')
+    expect(body.visits[1].botName).toBeNull()
+    expect(JSON.stringify(body)).not.toContain('7654321')
   })
 
   it('falls back to page/limit defaults for unparseable numbers instead of binding NaN', async () => {

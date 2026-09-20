@@ -93,6 +93,8 @@ export interface ShareVisitLog {
   isSelfReferrer?: boolean
   isOwner?: boolean
   botName?: string | null
+  // A short display label, never the stored digest: the worker truncates the
+  // visitor fingerprint before it leaves the API (SH-82).
   visitorFp?: string | null
 }
 

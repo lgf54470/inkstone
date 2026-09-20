@@ -232,7 +232,7 @@ function LogRow({ log }: {
         <VisitTypeBadge log={log} />
       </td>
       <td className='whitespace-nowrap px-3 py-2 font-mono text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-        {log.visitorFp ? log.visitorFp.slice(0, 8) : '-'}
+        {log.visitorFp || '-'}
       </td>
     </tr>
   )

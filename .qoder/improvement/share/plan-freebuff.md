@@ -32,8 +32,8 @@
 | 02 | A | SH-78 | `GET /api/share/visits` 的 `page`/`limit` 未校验 → NaN 绑定必现 500 | 极小 | ✅ | 76a1f76a |
 | 03 | A | SH-79 | 日志 CSV 未做 RFC 4180 转义 + 无公式注入防护 | 极小 | ✅ | d7eadd4a |
 | 04 | A | SH-84 | 自定义 slug 报错文案写 "3-64 chars"，实际 6–64 | 极小 | ✅ | ccfc69f7 |
-| 05 | A | SH-80 | `loadTopNotes` 查笔记标题不带 `user_id` | 极小 | ✅ | ⏳ 下项回填 |
-| 06 | A | SH-82 | 日志接口下发完整指纹 + SELECT 从不返回的 `user_agent` | 极小 | ⬜ | |
+| 05 | A | SH-80 | `loadTopNotes` 查笔记标题不带 `user_id` | 极小 | ✅ | 4d5cf737 |
+| 06 | A | SH-82 | 日志接口下发完整指纹 + SELECT 从不返回的 `user_agent` | 极小 | ✅ | ⏳ 下项回填 |
 | 07 | A | SH-71 | 两个 analytics hook 无 abort/epoch → 慢请求覆盖新请求 | 小 | ⬜ | |
 | 08 | A | SH-55 | 首屏 `isLoading` 时 KPI 全渲染 0（缺"加载中"态） | 小 | ⬜ | |
 | 09 | A | — | 批次 A 收尾：全量串行回归 | — | ⬜ | |
@@ -119,3 +119,11 @@
 - 改动面（3 文件）：`analytics.ts` 的 `loadTopNotes()` 增加 `userId` 入参，SQL 改为 `WHERE user_id = ?1 AND id IN (?2…?N)`（占位符显式编号，与同文件其它语句风格一致）；`tests/share-routes.test.ts` 新增 1 条用例；`scripts/check-comments.mjs` 登记用例里的说明注释（4946 条）。
 - 验证：`tests/share-routes.test.ts` 74/74 绿（修复前 73 绿 + 新用例红）；`npx tsc -b --force` exit 0；`comments:check`（+2 条）通过。
 - 局限（如实登记）：`WHERE deleted_at IS NULL` **故意没加**——软删除笔记的历史访问仍应能画出当年的热门标题，这是既有行为，本项不改；全量串行回归仍在批次 A 收尾统一跑。
+
+### 06 — SH-82 访问日志下发完整访客指纹（2026-09-21）
+
+- 根因：`src/worker/routes/share/visits.ts` 把 `visitor_fp`（SHA-256 摘要前 32 位，按 IP+UA+按日盐算出的假名标识）整条随日志列表下发；客户端只 `slice(0, 8)` 当标签显示。等于把假名标识的完整值交给浏览器与任何抓取日志的扩展，而产品只需要 8 位。
+- 复现（先红）：`tests/share-routes.test.ts` 新增「ships only the display prefix of a fingerprint and nothing on non-bot rows」——修复前实测整条 32 位原样返回（`'fedcba98…'`），修复后为 `'fedcba98'`，并断言响应体里不存在被截掉的尾串。
+- 改动面（5 文件）：`visits.ts` 新增 `VISITOR_FP_DISPLAY_CHARS = 8` 并在 `toVisitLogRow()` 截断；同一条 SELECT 里 `sv.user_agent` 改为 `CASE WHEN sv.is_bot = 1 THEN sv.user_agent END`（该列只用于推 bot 名称，非 bot 行不再把 UA 从 D1 搬进 worker），bot 行仍能得出 `Googlebot`；客户端 `share-visit-logs-modal.tsx` 去掉已冗余的 `.slice(0, 8)`；`src/shared/types/share.ts` 的 `visitorFp` 注释改为声明「这是展示标签而非存储摘要」；测试助手 `seedVisit` 增加可选 `user_agent` 列。
+- 验证：`tests/share-routes.test.ts` 75/75 绿；`src/client/features/share` 25 文件 / 118 用例绿；`npx tsc -b --force` exit 0；`comments:check`（+5 条，4951 条）、`size:check`、`hardcoded:check` 通过。
+- 局限（如实登记）：博客侧 `/api/blog/stats` 的最近访问**本来就不查** `visitor_fp`（只取最近 20 条），所以没有同类改动；截断只影响展示，去重与 UV 统计仍在 SQL 里对完整列做 `COUNT(DISTINCT)`。`CASE WHEN` 只减少跨进程传输，不减少 SQLite 读列的成本。

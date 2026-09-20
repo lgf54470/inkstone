@@ -41,6 +41,11 @@ const VISITS_LIMIT_DEFAULT = 50
 const CLEANUP_DAYS_DEFAULT = 30
 const CLEANUP_DAYS_PATTERN = /^\d+$/
 
+// The log table labels a visitor by the head of its fingerprint and nothing more;
+// the stored digest is a pseudonymous identifier, so only this much of it is ever
+// allowed to leave the worker.
+const VISITOR_FP_DISPLAY_CHARS = 8
+
 export function registerShareVisitsRoutes(shareManageRoutes: Hono<AppBindings>): void {
   registerShareVisitsListRoute(shareManageRoutes)
   registerShareVisitsClearRoute(shareManageRoutes)
@@ -70,7 +75,8 @@ function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): voi
 
     const rows = await c.env.DB.prepare(
       `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
-              sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser, sv.user_agent,
+              sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser,
+              CASE WHEN sv.is_bot = 1 THEN sv.user_agent END as user_agent,
               sv.visitor_fp, sv.is_bot, sv.is_self_referrer, sv.is_owner,
               n.title as note_title
          FROM share_visits sv
@@ -183,7 +189,7 @@ function toVisitLogRow(r: VisitLogRow): ShareVisitLog {
     deviceType: r.device_type,
     os: r.os,
     browser: r.browser,
-    visitorFp: r.visitor_fp,
+    visitorFp: r.visitor_fp ? r.visitor_fp.slice(0, VISITOR_FP_DISPLAY_CHARS) : null,
     isBot: r.is_bot === 1,
     isSelfReferrer: r.is_self_referrer === 1,
     isOwner: r.is_owner === 1,

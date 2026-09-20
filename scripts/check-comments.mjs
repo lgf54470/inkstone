@@ -5196,6 +5196,8 @@ const allowed = new Map([
   ['src/shared/types/share.ts', [
     '// Null when the note was deleted but its visit rows survive; the client',
     '// labels it (SH-34), the worker must not bake in an English fallback.',
+    '// A short display label, never the stored digest: the worker truncates the',
+    '// visitor fingerprint before it leaves the API (SH-82).',
   ]],
   ['src/shared/user-settings.ts', [
     '/** The retention the cron applies when a user never chose one. */',
@@ -5966,6 +5968,9 @@ const allowed = new Map([
     '// binding: `parseInt(\'abc\')` is NaN and `Math.max(1, NaN)` stays NaN, which SQLite',
     '// rejects as a datatype mismatch (a 500 for a malformed query). The ceiling on',
     '// `page` is what keeps a caller from asking for an unbounded OFFSET.',
+    '// The log table labels a visitor by the head of its fingerprint and nothing more;',
+    '// the stored digest is a pseudonymous identifier, so only this much of it is ever',
+    '// allowed to leave the worker.',
     '// Wiping the whole audit trail is unrecoverable, so a stolen session must',
     '// re-prove it holds the account password before the delete runs.',
     '/**\n * `older_than` must be given an explicit positive day count: silently falling back\n * to a default would delete a window the caller never asked for, so an unparseable\n * or non-positive value is a 400. The other cleanup types never read it.\n */',
