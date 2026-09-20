@@ -125,6 +125,19 @@ describe('uploadFiles pre-check', () => {
     expect(toastUploadSkip).toHaveBeenCalledWith('music.upload_unsupported', 2)
   })
 
+  it('uploads a video container instead of skipping it as unsupported', async () => {
+    vi.mocked(uploadMusicTrack).mockResolvedValue({ track: track('uploaded'), error: null })
+    const store = makeStore()
+
+    await uploadFiles(store.set as never, store.get as never, [
+      new File(['some bytes'], 'concert.mov', { type: 'video/quicktime' }),
+      new File(['some bytes'], 'clip.m4v', { type: 'video/x-m4v' }),
+    ])
+
+    expect(uploadMusicTrack).toHaveBeenCalledTimes(2)
+    expect(toastUploadSkip).not.toHaveBeenCalled()
+  })
+
   it('skips oversized files without a task row or a library reload', async () => {
     const store = makeStore()
     const big = audioFile('big.mp3')

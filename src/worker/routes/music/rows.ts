@@ -1,6 +1,6 @@
 import type { MusicPlaylist, MusicPlaylistDetail, MusicPlaylistItem, MusicStats, MusicTag, MusicTrack } from '@shared/types'
 import { isCoverObjectKey } from './cover'
-import { resolveMusicFormat, sanitizeCoverUrl } from './keys'
+import { resolveMusicTrackType, sanitizeCoverUrl } from './keys'
 
 export interface MusicTrackRow {
   id: string
@@ -70,7 +70,7 @@ export function toTrack(row: MusicTrackRow, tagIds: string[]): MusicTrack {
     album: row.album,
     durationMs: row.duration_ms,
     source: row.source === 'webdav' ? 'webdav' : 'r2',
-    format: resolveMusicFormat(row.object_key, row.mime),
+    format: resolveMusicTrackType(row.object_key, row.mime)?.format ?? null,
     // WebDAV keys are the user's own remote paths, already listed in the browse UI;
     // internal R2 storage keys must never reach the browser or a downloaded M3U.
     webdavPath: row.source === 'webdav' ? row.object_key : null,

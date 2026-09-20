@@ -10,7 +10,7 @@ import { FORM_BODY_LIMITS, readFormDataWithinLimit } from '../../lib/request'
 import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import { requireAuth } from '../../middleware/auth'
 import { storeCoverObject } from './cover'
-import { mimeForFormat, MUSIC_MAX_BYTES, musicObjectKey, resolveMusicFormat, sanitizeCoverUrl } from './keys'
+import { MUSIC_MAX_BYTES, musicObjectKey, resolveMusicTrackType, sanitizeCoverUrl } from './keys'
 import { toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
 import { maxUploadBytes, putMusicObject, requireMusicStorage } from './storage'
@@ -34,15 +34,15 @@ export function registerMusicUploadRoutes(routes: Hono<AppBindings>): void {
     await enforceUploadThrottle(c.env.DB, userId)
     const fields = await readUploadFields(c)
     const storage = requireMusicStorage(c.env)
-    const format = resolveMusicFormat(fields.file.name, fields.file.type)
-    if (!format) throw ApiError.badRequest('Unsupported audio format')
+    const trackType = resolveMusicTrackType(fields.file.name, fields.file.type)
+    if (!trackType) throw ApiError.badRequest('Unsupported media format')
     assertUploadSize(fields.file.size, storage)
     await assertQuota(c.env.DB, userId, fields.file.size)
 
     const id = newId()
     const now = Date.now()
-    const mime = mimeForFormat(format)
-    const key = musicObjectKey(format, id, now)
+    const mime = trackType.mime
+    const key = musicObjectKey(trackType.format, id, now)
     const bytes = new Uint8Array(await fields.file.arrayBuffer())
     await putMusicObject(c.env, storage, key, bytes, mime)
 
@@ -147,11 +147,11 @@ function stripExtension(filename: string): string {
 }
 
 function assertUploadSize(size: number, storage: ReturnType<typeof requireMusicStorage>): void {
-  if (size > MUSIC_MAX_BYTES) throw ApiError.tooLarge('The audio file exceeds the 64 MB limit')
+  if (size > MUSIC_MAX_BYTES) throw ApiError.tooLarge('The media file exceeds the 64 MB limit')
   if (size > maxUploadBytes(storage)) {
     throw ApiError.tooLarge('This deployment stores music in KV, which caps a single file at 25 MB')
   }
-  if (size === 0) throw ApiError.badRequest('The audio file is empty')
+  if (size === 0) throw ApiError.badRequest('The media file is empty')
 }
 
 async function assertQuota(db: D1Database, userId: string, incoming: number): Promise<void> {

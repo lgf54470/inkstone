@@ -70,10 +70,10 @@ export function seekTargetMs(currentMs: number, durationMs: number, deltaMs: num
   return Math.max(0, durationMs > 0 ? Math.min(target, durationMs) : target)
 }
 
-// Mirrors the worker's extension table so folder picks (which carry cover art, cue
-// sheets and other noise) only queue real audio, and nothing wastes a round trip
-// the server would reject. Empty files count as unsupported rather than vanishing.
-const UPLOAD_EXTENSIONS = new Set(['mp3', 'm4a', 'mp4', 'flac', 'wav', 'wave', 'ogg', 'oga', 'opus', 'aac', 'webm'])
+// Mirrors the worker's resolver so folder picks (which carry cover art, cue sheets and
+// other noise) only queue files the server will accept, and nothing wastes a round trip
+// it would reject. Empty files count as unsupported rather than vanishing.
+const UPLOAD_EXTENSIONS = new Set(['mp3', 'm4a', 'mp4', 'flac', 'wav', 'wave', 'ogg', 'oga', 'opus', 'aac', 'webm', 'mov', 'm4v'])
 
 export interface UploadPartition {
   accepted: File[]

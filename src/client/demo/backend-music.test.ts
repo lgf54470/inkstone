@@ -56,6 +56,34 @@ describe('demo music backend', () => {
   })
 })
 
+describe('demo video upload', () => {
+  async function uploadNamed(backend: DemoBackend, name: string, type: string): Promise<Response> {
+    const form = new FormData()
+    form.append('file', new File([AUDIO], name, { type }))
+    form.append('title', 'Demo clip')
+    return call(backend, '/api/music/tracks', { method: 'POST', body: form })
+  }
+
+  it('accepts a video container and serves it back with its own type', async () => {
+    const backend = await authedBackend()
+    const created = await uploadNamed(backend, 'concert.mov', '')
+    expect(created.status).toBe(201)
+    const track = await created.json()
+    expect(track.mime).toBe('video/quicktime')
+    expect(track.format).toBe('mov')
+
+    const streamed = await call(backend, `/api/music/tracks/${track.id}/stream`)
+    expect(streamed.headers.get('Content-Type')).toBe('video/quicktime')
+  })
+
+  it('rejects a video container no browser decodes instead of filing it as audio', async () => {
+    const backend = await authedBackend()
+    const rejected = await uploadNamed(backend, 'clip.avi', 'video/x-msvideo')
+    expect(rejected.status).toBe(400)
+    expect((await rejected.json()).error.message).toBe('Unsupported media format')
+  })
+})
+
 describe('demo music streaming', () => {
   it('serves whole objects and byte ranges', async () => {
     const backend = await authedBackend()

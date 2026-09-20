@@ -1,6 +1,6 @@
 import { Hono, type Context } from 'hono'
 import { LIMITS } from '@shared/constants'
-import type { MusicTrack } from '@shared/types'
+import type { MusicFormat, MusicTrack } from '@shared/types'
 import type { DemoState } from '../../state'
 import { demoMusicLibrary, newDemoId } from '../../state'
 import { apiError, jsonBody } from '../helpers/info'
@@ -13,6 +13,29 @@ function libraryHandler(c: Context, state: DemoState): Response {
   return c.json({ ...library, tracks: library.tracks.map((track) => ({ ...track, lyric: null })) })
 }
 
+// Mirrors the worker's resolver: only containers a browser decodes are accepted, and a
+// declared video type outranks the filename because mp4 and webm carry either kind. The
+// demo keeps no storage keys, so `format` only names the download extension.
+const DEMO_VIDEO_MIME: Record<string, MusicFormat> = {
+  'video/mp4': 'mp4',
+  'video/x-m4v': 'mp4',
+  'video/quicktime': 'mov',
+  'video/webm': 'webm',
+}
+const DEMO_VIDEO_NAME: Record<string, MusicFormat> = { mov: 'mov', m4v: 'mp4' }
+const DEMO_AUDIO_NAME = /\.(mp3|m4a|mp4|flac|wav|wave|ogg|oga|opus|aac|webm)$/i
+
+function demoTrackType(file: File): { format: MusicFormat; mime: string } | null {
+  const extension = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase() : ''
+  const declared = file.type.toLowerCase().split(';', 1)[0]!.trim()
+  const byMime = DEMO_VIDEO_MIME[declared]
+  if (byMime) return { format: byMime, mime: declared === 'video/x-m4v' ? 'video/mp4' : declared }
+  const byName = DEMO_VIDEO_NAME[extension]
+  if (byName) return { format: byName, mime: byName === 'mov' ? 'video/quicktime' : 'video/mp4' }
+  if (declared.startsWith('audio/') || DEMO_AUDIO_NAME.test(file.name)) return { format: 'mp3', mime: declared || 'audio/mpeg' }
+  return null
+}
+
 function lyricHandler(c: Context, state: DemoState): Response {
   const track = findTrack(state, c.req.param('id') ?? '')
   if (!track) return apiError(404, 'not_found', 'Track not found')
@@ -23,11 +46,10 @@ async function createTrackHandler(c: Context, state: DemoState): Promise<Respons
   const form = await c.req.raw.formData()
   const file = form.get('file')
   if (!(file instanceof File)) return apiError(400, 'bad_request', 'Missing file field')
-  if (!/^audio\//.test(file.type) && !/\.(mp3|m4a|flac|wav|ogg|opus|aac|webm)$/i.test(file.name)) {
-    return apiError(400, 'bad_request', 'Unsupported audio format')
-  }
-  if (file.size === 0) return apiError(400, 'bad_request', 'The audio file is empty')
-  if (file.size > LIMITS.musicTrackMaxBytes) return apiError(413, 'payload_too_large', 'The audio file exceeds the limit')
+  const trackType = demoTrackType(file)
+  if (!trackType) return apiError(400, 'bad_request', 'Unsupported media format')
+  if (file.size === 0) return apiError(400, 'bad_request', 'The media file is empty')
+  if (file.size > LIMITS.musicTrackMaxBytes) return apiError(413, 'payload_too_large', 'The media file exceeds the limit')
   const used = [...state.musicTracks.values()].reduce((total, entry) => total + entry.track.sizeBytes, 0)
   if (used + file.size > LIMITS.musicQuotaBytes) return apiError(413, 'payload_too_large', 'The music storage quota has been reached')
 
@@ -44,9 +66,9 @@ async function createTrackHandler(c: Context, state: DemoState): Promise<Respons
     album: readText('album'),
     durationMs: Number(readText('durationMs')) || 0,
     source: 'r2',
-    format: 'mp3',
+    format: trackType.format,
     webdavPath: null,
-    mime: file.type || 'audio/mpeg',
+    mime: trackType.mime,
     sizeBytes: file.size,
     coverUrl: null,
     lyric: null,

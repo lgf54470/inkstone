@@ -7,7 +7,7 @@ import { ApiError } from '../../lib/errors'
 import { authHeader, baseUrl, childUrl, ensureDirs, webdavFetch, type WebdavSecret } from '../../backup/webdav'
 import { readResponseBytesWithinLimit, ResponseTooLargeError } from '../../backup/common'
 import { cancelStreamBestEffort } from '../../lib/streams'
-import { decodeHrefPath, isAudioEntry, parseMultistatus } from './webdav-xml'
+import { decodeHrefPath, isMediaEntry, parseMultistatus } from './webdav-xml'
 
 const PROPFIND_MAX_BYTES = 512 * 1024
 const PROPFIND_DEPTH = '1'
@@ -140,7 +140,7 @@ export async function listMusicDirectory(ctx: MusicWebdavContext, subPath: strin
   const entries = parsed.entries
     .map((entry) => toMusicEntry(entry, absoluteDir, subPath))
     .filter((entry): entry is MusicWebdavEntry => entry !== null)
-    .filter((entry) => isAudioEntry({
+    .filter((entry) => isMediaEntry({
       href: entry.name, isCollection: entry.isDirectory, sizeBytes: entry.sizeBytes, mime: entry.mime, modifiedAt: entry.modifiedAt,
     }))
     .sort((left, right) => Number(right.isDirectory) - Number(left.isDirectory) || left.name.localeCompare(right.name))

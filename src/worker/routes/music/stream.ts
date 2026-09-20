@@ -2,7 +2,7 @@ import type { Context } from 'hono'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { cancelStreamBestEffort } from '../../lib/streams'
-import { isMusicObjectKey, safeAudioMime } from './keys'
+import { isMusicObjectKey, safeStreamMime } from './keys'
 import { alignKvRangeWindow, contentRangeHeader, parseByteRange } from './range'
 import type { MusicTrackRow } from './rows'
 import { readMusicObjectStream, requireMusicStorage } from './storage'
@@ -44,7 +44,7 @@ export async function streamTrackResponse(
   const object = await readMusicObjectStream(c.env, storage, row.object_key, range)
   if (!object) throw ApiError.notFound('Track data is missing')
 
-  const safeMime = safeAudioMime(row.mime)
+  const safeMime = safeStreamMime(row.mime)
   const headers: Record<string, string> = {
     'Content-Type': safeMime ?? 'application/octet-stream',
     'Content-Length': String(object.length),
@@ -74,7 +74,7 @@ async function streamWebdavTrack(
     await cancelStreamBestEffort(upstream.body)
     throw new ApiError(502, 'storage_unavailable', `WebDAV playback failed: HTTP ${upstream.status}`)
   }
-  const safeMime = safeAudioMime(row.mime)
+  const safeMime = safeStreamMime(row.mime)
   const headers: Record<string, string> = {
     'Content-Type': safeMime ?? 'application/octet-stream',
     'Accept-Ranges': 'bytes',

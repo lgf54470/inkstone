@@ -87,8 +87,10 @@ export function decodeHrefPath(href: string): string {
   return segments.join('/')
 }
 
-export function isAudioEntry(entry: WebdavPropfindEntry): boolean {
+// The remote listing is only useful as far as it shows what can actually be
+// imported, and the import resolver accepts exactly this set of containers.
+export function isMediaEntry(entry: WebdavPropfindEntry): boolean {
   if (entry.isCollection) return true
-  if (entry.mime && /^audio\//i.test(entry.mime)) return true
-  return /\.(mp3|m4a|flac|wav|ogg|oga|opus|aac|webm)$/i.test(entry.href)
+  if (entry.mime && /^(?:audio|video)\//i.test(entry.mime)) return true
+  return /\.(mp3|m4a|mp4|flac|wav|wave|ogg|oga|opus|aac|webm|mov|m4v)$/i.test(entry.href)
 }

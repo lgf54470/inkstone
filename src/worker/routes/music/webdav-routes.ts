@@ -8,7 +8,7 @@ import { FORM_BODY_LIMITS, JSON_BODY_LIMITS, readFormDataWithinLimit, readJsonVa
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
 import { coverObjectKey, decodeCoverDataUrl } from './cover'
-import { mimeForFormat, resolveMusicFormat, safeAudioMime } from './keys'
+import { resolveMusicTrackType } from './keys'
 import { toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
 import { importMusicSchema, webdavPathSchema } from './schemas'
@@ -68,8 +68,8 @@ async function importTrack(c: Context<AppBindings>): Promise<Response> {
   if (!stat) throw ApiError.notFound('The selected file no longer exists on the WebDAV server')
 
   const name = body.path.split('/').filter(Boolean).pop() ?? body.path
-  const format = resolveMusicFormat(name, stat.mime ?? '')
-  if (!format) throw ApiError.badRequest('Unsupported audio format')
+  const trackType = resolveMusicTrackType(name, stat.mime ?? '')
+  if (!trackType) throw ApiError.badRequest('Unsupported media format')
 
   const id = newId()
   const now = Date.now()
@@ -81,7 +81,7 @@ async function importTrack(c: Context<AppBindings>): Promise<Response> {
     duration_ms: body.durationMs ?? 0,
     source: 'webdav',
     object_key: body.path,
-    mime: safeAudioMime(stat.mime) ?? mimeForFormat(format),
+    mime: trackType.mime,
     size_bytes: stat.sizeBytes,
     cover_url: null,
     lyric: null,
@@ -105,16 +105,16 @@ async function uploadTrack(c: Context<AppBindings>): Promise<Response> {
   const form = await readFormDataWithinLimit(c.req, FORM_BODY_LIMITS.music)
   const file = form.get('file')
   if (!(file instanceof File)) throw ApiError.badRequest('Missing file field')
-  if (file.size === 0) throw ApiError.badRequest('The audio file is empty')
-  if (file.size > LIMITS.musicTrackMaxBytes) throw ApiError.tooLarge('The audio file exceeds the 64 MB limit')
-  const format = resolveMusicFormat(file.name, file.type)
-  if (!format) throw ApiError.badRequest('Unsupported audio format')
+  if (file.size === 0) throw ApiError.badRequest('The media file is empty')
+  if (file.size > LIMITS.musicTrackMaxBytes) throw ApiError.tooLarge('The media file exceeds the 64 MB limit')
+  const trackType = resolveMusicTrackType(file.name, file.type)
+  if (!trackType) throw ApiError.badRequest('Unsupported media format')
 
   const ctx = await resolveMusicWebdav(c.env, c.get('user'), userId)
   const safeName = sanitizeFileName(file.name)
   const remotePath = uniqueRemotePath(safeName)
   const bytes = new Uint8Array(await file.arrayBuffer())
-  const mime = mimeForFormat(format)
+  const mime = trackType.mime
   await putMusicObject(ctx, remotePath, bytes, mime)
 
   const id = newId()

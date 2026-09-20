@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decodeHrefPath, isAudioEntry, parseMultistatus } from './webdav-xml'
+import { decodeHrefPath, isMediaEntry, parseMultistatus } from './webdav-xml'
 
 const MULTISTATUS = `<?xml version="1.0" encoding="utf-8"?>
 <D:multistatus xmlns:D="DAV:">
@@ -61,18 +61,6 @@ describe('webdav multistatus parsing', () => {
     expect(decodeHrefPath('https://cloud.example.com/dav/a%20b.mp3')).toBe('/dav/a b.mp3')
   })
 
-  it('keeps collections and audio files, dropping other files', () => {
-    const [root, , song, notes] = parseMultistatus(MULTISTATUS).entries
-    expect(isAudioEntry(root!)).toBe(true)
-    expect(isAudioEntry(song!)).toBe(true)
-    expect(isAudioEntry(notes!)).toBe(false)
-  })
-
-  it('treats an audio mime without a known extension as audio', () => {
-    expect(isAudioEntry({ href: 'track.bin', isCollection: false, sizeBytes: 1, mime: 'audio/flac', modifiedAt: null })).toBe(true)
-    expect(isAudioEntry({ href: 'track.opus', isCollection: false, sizeBytes: 1, mime: null, modifiedAt: null })).toBe(true)
-  })
-
   it('keeps out-of-range numeric entities as literal text instead of throwing', () => {
     const xml = '<D:multistatus><D:response><D:href>/dav/music/song&#99999999999;.mp3</D:href><D:propstat><D:prop><D:resourcetype/><D:getcontenttype>audio/mpeg</D:getcontenttype></D:prop></D:propstat></D:response>'
       + '<D:response><D:href>/dav/music/night&#77;song.mp3</D:href><D:propstat><D:prop><D:resourcetype/></D:prop></D:propstat></D:response></D:multistatus>'
@@ -80,6 +68,26 @@ describe('webdav multistatus parsing', () => {
     expect(entries).toHaveLength(2)
     expect(entries[0]!.href).toBe('/dav/music/song&#99999999999;.mp3')
     expect(entries[1]!.href).toBe('/dav/music/nightMsong.mp3')
+  })
+})
+
+describe('webdav listing filter', () => {
+  it('keeps collections and audio files, dropping other files', () => {
+    const [root, , song, notes] = parseMultistatus(MULTISTATUS).entries
+    expect(isMediaEntry(root!)).toBe(true)
+    expect(isMediaEntry(song!)).toBe(true)
+    expect(isMediaEntry(notes!)).toBe(false)
+  })
+
+  it('treats an audio mime without a known extension as audio', () => {
+    expect(isMediaEntry({ href: 'track.bin', isCollection: false, sizeBytes: 1, mime: 'audio/flac', modifiedAt: null })).toBe(true)
+    expect(isMediaEntry({ href: 'track.opus', isCollection: false, sizeBytes: 1, mime: null, modifiedAt: null })).toBe(true)
+  })
+
+  it('lists video files so a remote clip can be imported', () => {
+    expect(isMediaEntry({ href: 'concert.mov', isCollection: false, sizeBytes: 1, mime: null, modifiedAt: null })).toBe(true)
+    expect(isMediaEntry({ href: 'clip.bin', isCollection: false, sizeBytes: 1, mime: 'video/mp4', modifiedAt: null })).toBe(true)
+    expect(isMediaEntry({ href: 'readme.md', isCollection: false, sizeBytes: 1, mime: 'text/markdown', modifiedAt: null })).toBe(false)
   })
 })
 

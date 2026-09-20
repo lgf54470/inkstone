@@ -78,7 +78,7 @@ function WebdavUploadInput({
     <input
       ref={inputRef}
       type='file'
-      accept='audio/*'
+      accept='audio/*,video/*'
       multiple
       hidden
       onChange={(event) => {

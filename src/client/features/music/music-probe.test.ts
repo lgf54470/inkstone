@@ -25,9 +25,12 @@ function probeFile(): File {
 }
 
 const revoke = vi.fn()
+const createHostElement = document.createElement.bind(document)
+const createdTags: string[] = []
 
 beforeEach(() => {
   FakeAudio.instances = []
+  createdTags.length = 0
   revoke.mockClear()
   vi.useFakeTimers()
   vi.stubGlobal('Audio', function () {
@@ -35,11 +38,19 @@ beforeEach(() => {
     FakeAudio.instances.push(audio)
     return audio
   })
+  vi.spyOn(document, 'createElement').mockImplementation(((tag: string) => {
+    createdTags.push(tag)
+    if (tag !== 'video') return createHostElement(tag)
+    const video = new FakeAudio()
+    FakeAudio.instances.push(video)
+    return video as unknown as HTMLElement
+  }) as typeof document.createElement)
   vi.stubGlobal('URL', { createObjectURL: () => 'blob:probe', revokeObjectURL: revoke })
 })
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
 
@@ -70,5 +81,14 @@ describe('readDurationMs', () => {
     FakeAudio.instances[0]!.emit('error')
     expect(await pending).toBe(0)
     expect(revoke).toHaveBeenCalledTimes(1)
+  })
+
+  it('probes a declared video container through a video element', async () => {
+    const pending = readDurationMs(new File([new Uint8Array(8)], 'clip.mp4', { type: 'video/mp4' }))
+    expect(createdTags).toEqual(['video'])
+    const video = FakeAudio.instances[0]!
+    video.duration = 12
+    video.emit('loadedmetadata')
+    expect(await pending).toBe(12_000)
   })
 })

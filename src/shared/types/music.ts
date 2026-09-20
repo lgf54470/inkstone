@@ -1,7 +1,10 @@
 
 export type MusicPlayMode = 'order' | 'repeat-all' | 'repeat-one' | 'shuffle'
 
-export type MusicFormat = 'mp3' | 'm4a' | 'flac' | 'wav' | 'ogg' | 'opus' | 'aac' | 'webm'
+// Video containers are part of this union because `format` names the stored object's
+// container (it becomes the storage key extension and the download filename), not
+// whether the track is audio or video - that distinction lives in `mime`.
+export type MusicFormat = 'mp3' | 'm4a' | 'flac' | 'wav' | 'ogg' | 'opus' | 'aac' | 'webm' | 'mp4' | 'mov'
 
 export type MusicSource = 'r2' | 'webdav'
 

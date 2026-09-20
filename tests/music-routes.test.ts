@@ -1052,3 +1052,89 @@ describe('music hourly budgets (real D1)', () => {
     )
   })
 })
+
+async function postTrackFile(app: Hono<AppBindings>, name: string, type: string): Promise<Response> {
+  const form = new FormData()
+  form.append('file', new File([AUDIO], name, { type }))
+  form.append('title', 'Clip')
+  return request(app, '/api/music/tracks', { method: 'POST', body: form })
+}
+
+function storageSpy(): { put: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> } {
+  return DB_ENV.env.FILES as unknown as { put: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> }
+}
+
+function storedKeyAt(index: number): string {
+  const calls = storageSpy().put.mock.calls
+  return String(calls[index < 0 ? calls.length + index : index]![0])
+}
+
+describe('video containers in the music library (real D1 + fake R2)', () => {
+  it('stores a declared video container as video and streams it inline', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app, 'concert.mp4', 'video/mp4')
+    expect(track.mime).toBe('video/mp4')
+    expect(track.format).toBe('mp4')
+    expect(storedKeyAt(-1)).toMatch(/\.mp4$/)
+
+    const streamed = await request(app, `/api/music/tracks/${track.id}/stream`)
+    expect(streamed.headers.get('Content-Type')).toBe('video/mp4')
+    expect(streamed.headers.get('Content-Disposition')).toBeNull()
+  })
+
+  it('keeps reading an audio mp4 as the audio container it was always stored as', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app, 'song.mp4', 'audio/mp4')
+    expect(track.mime).toBe('audio/mp4')
+    expect(track.format).toBe('m4a')
+    expect(storedKeyAt(-1)).toMatch(/\.m4a$/)
+  })
+
+  it('separates a video webm from an audio webm by the declared mime, not the key', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const clip = await uploadTrack(app, 'clip.webm', 'video/webm')
+    expect(clip.mime).toBe('video/webm')
+    expect(clip.format).toBe('webm')
+    const song = await uploadTrack(app, 'track.webm', 'audio/webm')
+    expect(song.mime).toBe('audio/webm')
+    expect(song.format).toBe('webm')
+    expect(storedKeyAt(-2)).not.toBe(storedKeyAt(-1))
+
+    for (const track of [clip, song]) {
+      const streamed = await request(app, `/api/music/tracks/${track.id}/stream`)
+      expect(streamed.headers.get('Content-Type')).toBe(track.mime)
+    }
+  })
+
+  it('canonicalizes a m4v to the mp4 mime and rejects containers no browser decodes', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app, 'clip.m4v', 'video/x-m4v')
+    expect(track.mime).toBe('video/mp4')
+    expect(track.format).toBe('mp4')
+
+    const rejected = await postTrackFile(app, 'clip.avi', 'video/x-msvideo')
+    expect(rejected.status).toBe(400)
+    expect((await rejected.json()).error.code).toBe('bad_request')
+  })
+
+  it('deletes the video object the row derived and nothing else', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app, 'concert.mp4', 'video/mp4')
+    const key = storedKeyAt(-1)
+
+    const removed = await request(app, `/api/music/tracks/${track.id}`, { method: 'DELETE' })
+    expect(removed.status).toBe(200)
+    const deletedKeys = storageSpy().delete.mock.calls.flatMap((call) => call[0] as string[])
+    expect(deletedKeys).toContain(key)
+  })
+})
