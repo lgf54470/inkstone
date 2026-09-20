@@ -995,6 +995,13 @@ const allowed = new Map([
     '// Landing focus on the undo action is the keyboard fast-path, but it must never',
     '// interrupt typing, steal from an open dialog, or fight another undo toast.',
   ]],
+  ['src/client/components/form.tsx', [
+    '// `min-w-0` because a range input\'s automatic minimum size is its intrinsic width: without',
+    '// it the track refuses to shrink, and a caller that constrains the slider (the music',
+    '// transport\'s `w-36` volume control) pushes the value readout out of its own box and under',
+    '// the next button — which the contrast gate then reads as text painted over by another',
+    '// element.',
+  ]],
   ['src/client/components/overlay/hooks.test.ts', [
     '/**\n * Dialog harness for the focus-return contract: the opener stays mounted under\n * the open dialog (the preview with its block buttons keeps rendering under the\n * full screen mind map), and the panel only exists while open.\n */',
     '// The mind map block\'s fullscreen button renders `data-mindmap-fullscreen`',

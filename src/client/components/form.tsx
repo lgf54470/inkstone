@@ -353,7 +353,12 @@ function SliderInner({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className='ink-slider h-4.5 flex-1 cursor-pointer appearance-none bg-transparent'
+        // `min-w-0` because a range input's automatic minimum size is its intrinsic width: without
+        // it the track refuses to shrink, and a caller that constrains the slider (the music
+        // transport's `w-36` volume control) pushes the value readout out of its own box and under
+        // the next button — which the contrast gate then reads as text painted over by another
+        // element.
+        className='ink-slider h-4.5 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent'
         style={{ '--pct': `${pct}%` } as React.CSSProperties}
       />
       <span className='w-11 shrink-0 text-right text-[length:var(--text-12)] tabular text-[var(--text-tertiary)]'>
