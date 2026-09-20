@@ -149,9 +149,5 @@ export interface BlogStoreState {
   excludeOwner: boolean
   setFilters: (filters: Partial<{ excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }>) => void
 
-  logRetentionDays: number
-  maxLogRecords: number
-  setRetentionSettings: (settings: { logRetentionDays: number; maxLogRecords: number }) => void
-
   saveSettings: (settings: Partial<BlogSettings>) => Promise<void>
 }

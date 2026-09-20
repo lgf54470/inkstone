@@ -1,4 +1,5 @@
-import { APP_VERSION, mergeSettings } from '@shared/constants'
+import { APP_VERSION } from '@shared/constants'
+import { mergeSettings } from '@shared/user-settings'
 import type { PublicUser, SessionInfo, SiteInfo } from '@shared/types'
 import { selectAttachmentStorage } from '../attachments/backend'
 import type { Env, Variables } from '../env'

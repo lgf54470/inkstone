@@ -1,7 +1,7 @@
 import { Hono, type Context } from 'hono'
 import type { DemoState } from '../../state'
 import type { ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareTimelinePoint, ShareTimelineRange, ShareVisitLog, ShareVisitsResponse } from '@shared/types'
-import { jsonBody } from '../helpers/info'
+import { apiError, jsonBody } from '../helpers/info'
 
 const SHARE_TOP_COUNTRIES = [
   { name: 'US', count: 120, percentage: 30 },
@@ -277,6 +277,7 @@ function listShares(c: Context, state: DemoState): Response {
   const res: ShareListResponse = {
     shares: filtered,
     total: filtered.length,
+    truncated: false,
     globalStats: buildShareListStats(allShares, folderCounts, tagCounts),
   }
   return c.json(res)
@@ -365,7 +366,13 @@ function listShareVisits(c: Context): Response {
   return c.json(visitsRes)
 }
 
-function clearShareVisits(c: Context): Response {
+async function clearShareVisits(c: Context, state: DemoState): Promise<Response> {
+  if ((c.req.query('type') || 'all') === 'all') {
+    const body = await jsonBody(c.req.raw)
+    if (body.password !== state.password) {
+      return apiError(401, 'wrong_password', 'The current password is incorrect')
+    }
+  }
   return c.json({ ok: true as const, deleted: 10 })
 }
 
@@ -393,8 +400,12 @@ export function registerShareRoutes(app: Hono, state: DemoState): void {
   app.get('/api/share/check-slug', shareCheckSlug)
   app.get('/api/share/analytics/global', (c) => shareGlobalAnalytics(c, state))
   app.get('/api/share/analytics/note/:noteId', (c) => shareNoteAnalytics(c, state))
+  app.get('/api/share/summary', (c) => c.json({
+    totalShares: state.shares.size,
+    sharedNoteIds: [...state.shares.keys()],
+  }))
   app.get('/api/share', (c) => listShares(c, state))
   app.get('/api/share/visits', listShareVisits)
-  app.delete('/api/share/visits', clearShareVisits)
+  app.delete('/api/share/visits', (c) => clearShareVisits(c, state))
   app.post('/api/share/batch', (c) => batchShareAction(c, state))
 }

@@ -356,15 +356,17 @@ function registerBlogPostsDeleteRoute(blogManageRoutes: Hono<AppBindings>): void
     const id = c.req.param('id')
     const userId = c.get('userId')!
 
-    await c.env.DB
-      .prepare('DELETE FROM blog_posts WHERE id = ?1 AND user_id = ?2')
-      .bind(id, userId)
-      .run()
-
-    await c.env.DB
-      .prepare('DELETE FROM blog_comments WHERE post_id = ?1')
-      .bind(id)
-      .run()
+    // One batch, so a post cannot survive while its log rows go missing (or the other way round).
+    // `blog_comments` has no owner column, so the delete asks blog_posts who owns the post and has to
+    // run before the post row itself disappears.
+    await c.env.DB.batch([
+      c.env.DB.prepare(
+        `DELETE FROM blog_comments
+          WHERE post_id = ?1 AND EXISTS (SELECT 1 FROM blog_posts bp WHERE bp.id = ?1 AND bp.user_id = ?2)`,
+      ).bind(id, userId),
+      c.env.DB.prepare('DELETE FROM blog_visits WHERE post_id = ?1 AND user_id = ?2').bind(id, userId),
+      c.env.DB.prepare('DELETE FROM blog_posts WHERE id = ?1 AND user_id = ?2').bind(id, userId),
+    ])
 
     return c.json({ ok: true })
   })
@@ -427,13 +429,25 @@ function registerBlogPostsBatchRoute(blogManageRoutes: Hono<AppBindings>): void 
     if (!body.postIds?.length) return c.json({ ok: true, count: 0 })
 
     const now = Date.now()
-    const statements = blogBatchStatements(userId, body.action, body.postIds, body, now)
-    for (const stmt of statements) {
-      await c.env.DB.prepare(stmt.sql).bind(...stmt.binds).run()
+    // One statement per group: D1 rejects a statement that binds more than 100 variables.
+    for (const group of chunkPostIds(body.postIds)) {
+      for (const stmt of blogBatchStatements(userId, body.action, group, body, now)) {
+        await c.env.DB.prepare(stmt.sql).bind(...stmt.binds).run()
+      }
     }
 
     return c.json({ ok: true, count: body.postIds.length })
   })
+}
+
+const BLOG_POST_ID_CHUNK = 50
+
+function chunkPostIds(postIds: string[]): string[][] {
+  const groups: string[][] = []
+  for (let index = 0; index < postIds.length; index += BLOG_POST_ID_CHUNK) {
+    groups.push(postIds.slice(index, index + BLOG_POST_ID_CHUNK))
+  }
+  return groups
 }
 
 function blogBatchStatements(
@@ -453,8 +467,14 @@ function blogBatchStatements(
       return [{ sql: `UPDATE blog_posts SET is_published = 0, updated_at = ?${withIds}`, binds: [now, userId, ...postIds] }]
     case 'delete':
       return [
+        // Comments have no owner column: both child deletes must land before the post rows go.
+        {
+          sql: `DELETE FROM blog_comments WHERE post_id IN (
+                  SELECT id FROM blog_posts WHERE user_id = ? AND id IN (${placeholders}))`,
+          binds: [userId, ...postIds],
+        },
+        { sql: `DELETE FROM blog_visits WHERE user_id = ? AND post_id IN (${placeholders})`, binds: [userId, ...postIds] },
         { sql: `DELETE FROM blog_posts${withIds}`, binds: [userId, ...postIds] },
-        { sql: `DELETE FROM blog_comments WHERE post_id IN (${placeholders})`, binds: [...postIds] },
       ]
     case 'setCategory':
       return [{ sql: `UPDATE blog_posts SET category_id = ?, updated_at = ?${withIds}`, binds: [body.categoryId || null, now, userId, ...postIds] }]

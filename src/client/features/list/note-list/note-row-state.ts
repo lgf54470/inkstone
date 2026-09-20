@@ -6,7 +6,7 @@ import { useContextMenu } from '../../../components/overlay'
 import { useUi } from '../../../store/ui'
 import { useNotes } from '../../../store/notes'
 import { useBlogStore } from '../../blog'
-import { useShareStore } from '../../share'
+import { useNoteIsShared, useShareRowForNote } from '../../share'
 import { t, useLocale } from '../../../lib/i18n'
 
 export interface NoteRowProps {
@@ -17,13 +17,11 @@ export interface NoteRowProps {
   position: number
   total: number
   onRangeSelect: (noteId: string) => void
-  isShared?: boolean
 }
 
-function useNoteRowShareState(noteId: string, isShared?: boolean) {
-  const shares = useShareStore((s) => s.shares)
-  const noteShare = useMemo(() => shares.find((s) => s.noteId === noteId) ?? null, [shares, noteId])
-  const computedIsShared = isShared ?? Boolean(noteShare)
+function useNoteRowShareState(noteId: string) {
+  const noteShare = useShareRowForNote(noteId)
+  const computedIsShared = useNoteIsShared(noteId)
   return { noteShare, computedIsShared }
 }
 
@@ -33,7 +31,7 @@ function useNoteRowBlogState(noteId: string) {
   return { noteBlogPost, isBlogPublished: Boolean(noteBlogPost && noteBlogPost.isPublished) }
 }
 
-export function useNoteRowState({ note, highlight, density, tagColors, position, total, onRangeSelect, isShared }: NoteRowProps) {
+export function useNoteRowState({ note, highlight, density, tagColors, position, total, onRangeSelect }: NoteRowProps) {
   const breakpoint = useBreakpoint()
   const locale = useLocale()
   const toast = useUi((s) => s.toast)
@@ -64,13 +62,13 @@ export function useNoteRowState({ note, highlight, density, tagColors, position,
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [qrModalData, setQrModalData] = useState<{ url: string; title: string; slug: string } | null>(null)
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false)
-  const { noteShare, computedIsShared } = useNoteRowShareState(note.id, isShared)
+  const { noteShare, computedIsShared } = useNoteRowShareState(note.id)
   const [isBlogPublishOpen, setIsBlogPublishOpen] = useState(false)
   const { noteBlogPost, isBlogPublished } = useNoteRowBlogState(note.id)
   const inTrash = Boolean(note.deletedAt)
   const titleParts = splitByRanges(note.title || t('common.untitled_note'), highlight)
   return {
-    note, highlight, density, tagColors, position, total, onRangeSelect, isShared,
+    note, highlight, density, tagColors, position, total, onRangeSelect,
     breakpoint, locale, toast, active, openInSecondary, selected, selectionHighlighted, selectedIds,
     toggleSelected, openNote, deleteNote, setArchived, setStarred, setPinned, moveNotes, restoreNote,
     purgeNote, duplicateNote, folders, view, activeFolderId, noteFolder, showFolderPill,

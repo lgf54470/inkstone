@@ -55,7 +55,7 @@ function violations(file, text) {
 // repo-relative; line numbers are intentionally absent so edits nearby do not
 // silently invalidate the entry (the AST scan still pins the exact expression).
 const ALLOWED_DOUBLE_CASTS = new Map([
-  ['src/shared/constants.ts', 'deep-merge of recursive partials: the combined object type cannot be expressed without a recursive conditional type'],
+  ['src/shared/user-settings.ts', 'deep-merge of recursive partials: the combined object type cannot be expressed without a recursive conditional type'],
   ['src/client/lib/db/core.ts', 'shell cache load: validators above confirm the stored session shape; the composite SessionInfo type is reconstructed from validated parts'],
   ['src/client/lib/test-render.ts', 'jsdom shim: stub constructor is structurally compatible but not assignable to the DOM lib type'],
   ['src/client/lib/markdown/mindmap/registry.test-helpers.ts', 'jsdom test stub: ResizeObserver/ResizeObserverEntry cannot be constructed in jsdom; the stubs are structurally compatible'],

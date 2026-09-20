@@ -1,4 +1,4 @@
-import { TrendingDown, TrendingUp } from 'lucide-react'
+import { Minus, TrendingDown, TrendingUp } from 'lucide-react'
 
 export function KpiCard({
   icon,
@@ -28,16 +28,16 @@ export function KpiCard({
         {delta !== undefined && (
           <span
             className={`inline-flex items-center gap-0.5 text-[length:var(--text-11)] font-medium ${
-              delta >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
+              delta === 0 ? 'text-[var(--text-tertiary)]' : delta > 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
             }`}
           >
-            {delta >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            {delta === 0 ? <Minus size={12} /> : delta > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
             {delta > 0 ? `+${delta}%` : `${delta}%`}
           </span>
         )}
       </div>
 
-      {sparkline && sparkline.length > 1 && (
+      {sparkline && sparkline.length > 1 && sparkline.some((v) => v > 0) && (
         <div className='mt-2 h-7 w-full'>
           <MiniSparkline values={sparkline} />
         </div>

@@ -1,6 +1,5 @@
 import { Hono, type Context } from 'hono'
 import { setCookie } from 'hono/cookie'
-import { LIMITS } from '@shared/constants'
 import { escapeHtml } from '@shared/escape'
 import { PublicNote } from '@shared/types'
 import type { AppBindings } from '../../env'
@@ -8,7 +7,7 @@ import { ApiError } from '../../lib/errors'
 import { isValidSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readOptionalJsonValidated, requestClientIp } from '../../lib/request'
 import { verifyPassword } from '../../lib/password'
-import { VIEW_DEDUPE_WINDOW_MS, computeVisitorFingerprint, isBot, isSelfReferrer, parseBrowser, parseDeviceType, parseOS, parseReferrerHost } from '../../lib/share-analytics'
+import { VIEW_DEDUPE_WINDOW_MS, computeVisitorFingerprint, isBot, isSelfReferrer, parseBrowser, parseDeviceType, parseOS, sanitizeVisitReferrer } from '../../lib/share-analytics'
 import { createShareAssetSession, shareAssetCookieName } from '../../lib/share-asset-session'
 import { assertNotLocked, clearLoginFailures, consumeAttemptBudget, recordLoginFailure, ThrottleError } from '../../lib/throttle'
 import { shareAccessSchema } from './schemas'
@@ -62,10 +61,10 @@ export function registerSharePublicRoutes(shareRoutes: Hono<AppBindings>): void 
   shareRoutes.post('/:slug', async (c) => {
     const slug = c.req.param('slug')
     if (!isValidSlug(slug)) throw ApiError.notFound('The link does not exist or has been revoked')
+    await enforceShareViewBudget(c, slug)
     const body = await readOptionalJsonValidated(c, shareAccessSchema, JSON_BODY_LIMITS.small, {}) as ShareAccessBody
-    const password = typeof body.password === 'string'
-      ? body.password.slice(0, LIMITS.passwordMaxLength)
-      : ''
+    // The schema caps the guess at LIMITS.passwordMaxLength; oversized ones answer 400 rather than being truncated.
+    const password = typeof body.password === 'string' ? body.password : ''
     const share = await loadShareOrThrow(c.env.DB, slug)
     const denied = await authenticateShareAccess(c, share, slug, password)
     if (denied) return denied
@@ -86,15 +85,34 @@ export function registerSharePublicRoutes(shareRoutes: Hono<AppBindings>): void 
   })
 }
 
+const VIEW_SLUG_IP_BUDGET = { maxAttempts: 20, windowMs: 10 * 60 * 1000 }
+const VIEW_IP_BUDGET = { maxAttempts: 60, windowMs: 10 * 60 * 1000 }
+
+async function enforceShareViewBudget(c: Context<AppBindings>, slug: string): Promise<void> {
+  const clientIp = requestClientIp(c)
+  try {
+    await consumeAttemptBudget(c.env.DB, [
+      { key: `share-view:${slug}:ip:${clientIp}`, ...VIEW_SLUG_IP_BUDGET },
+      { key: `share-view:ip:${clientIp}`, ...VIEW_IP_BUDGET },
+    ])
+  } catch (error) {
+    if (error instanceof ThrottleError) {
+      throw new ApiError(429, 'too_many_attempts', `Too many attempts. Try again in ${error.retryAfterSec} seconds`, {
+        retryAfter: error.retryAfterSec,
+      })
+    }
+    throw error
+  }
+}
+
 async function loadShareOrThrow(db: D1Database, slug: string): Promise<ShareRow> {
   const share = await db.prepare(`SELECT * FROM shares WHERE slug = ?1`)
     .bind(slug)
     .first<ShareRow>()
-  if (!share) throw ApiError.notFound('The link does not exist or has been revoked')
-  if (share.is_enabled === 0) {
-    throw ApiError.forbidden('This share link has been temporarily disabled by the author')
+  // One identical answer for disabled, expired and unknown: the status of a share is not public information.
+  if (!share || share.is_enabled === 0 || (share.expires_at && share.expires_at < Date.now())) {
+    throw ApiError.notFound('The link does not exist or has been revoked')
   }
-  if (share.expires_at && share.expires_at < Date.now()) throw ApiError.notFound('The link has expired')
   return share
 }
 
@@ -111,7 +129,8 @@ async function authenticateShareAccess(
   const clientIp = requestClientIp(c)
   const throttleKeys = [
     `share:${slug}:ip:${clientIp}`,
-    { key: `share-slug:${slug}`, freeFails: 40 },
+    // Ten wrong guesses per hour per slug (was 40): paired with the 8-char floor this bounds the offline-free window.
+    { key: `share-slug:${slug}`, freeFails: 10 },
   ]
   const workKeys = [
     {
@@ -138,7 +157,8 @@ async function authenticateShareAccess(
   }
   if (!(await verifyPassword(password, share.password_hash))) {
     await recordLoginFailure(c.env.DB, throttleKeys)
-    return c.json({ error: { code: 'password_invalid', message: 'Incorrect passcode' } }, 401)
+    // Same body as "password required": a wrong guess must be indistinguishable from no guess.
+    return c.json({ error: { code: 'password_required', message: 'An access password is required' } }, 401)
   }
   await clearLoginFailures(c.env.DB, [
     ...throttleKeys,
@@ -181,7 +201,11 @@ async function recordShareVisit(
   try {
     const clientIp = requestClientIp(c)
     const ua = c.req.header('user-agent') || ''
-    const visitorFp = await computeVisitorFingerprint(clientIp, ua)
+    // The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.
+    // Without the instance secret record no fingerprint rather than fall back to the public date salt,
+    // and salt per owner so one browser is not linkable across accounts (SH-04).
+    const fpSecret = c.env.VISIT_FP_SECRET ? `${c.env.VISIT_FP_SECRET}:${share.user_id}` : null
+    const visitorFp = fpSecret ? await computeVisitorFingerprint(clientIp, '', fpSecret) : null
     const referrerInfo = deriveShareReferrer(c, body, slug)
     const deviceType = parseDeviceType(ua)
     const os = parseOS(ua)
@@ -191,14 +215,8 @@ async function recordShareVisit(
     const isSelf = referrerInfo.selfReferrer ? 1 : 0
     const loggedInUserId = c.get('userId')
     const isOwner = loggedInUserId && loggedInUserId === share.user_id ? 1 : 0
-    let countsForViews = bot === 0
-    if (countsForViews && visitorFp) {
-      const seen = await c.env.DB
-        .prepare('SELECT 1 AS seen FROM share_visits WHERE slug = ?1 AND visitor_fp = ?2 AND visited_at > ?3')
-        .bind(slug, visitorFp, now - VIEW_DEDUPE_WINDOW_MS)
-        .first()
-      countsForViews = !seen
-    }
+    const recentlySeen = await isRecentlySeenVisit(c.env.DB, slug, visitorFp, now)
+    const countsForViews = bot === 0 && !recentlySeen
     const updateShareStmt = countsForViews
       ? c.env.DB.prepare(`UPDATE shares SET views = views + 1, last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)
       : c.env.DB.prepare(`UPDATE shares SET last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)
@@ -208,9 +226,9 @@ async function recordShareVisit(
       city: c.req.header('cf-ipcity') || null,
     }
 
-    await c.env.DB.batch([
-      updateShareStmt,
-      c.env.DB.prepare(
+    const statements = [updateShareStmt]
+    if (countsForViews) {
+      statements.push(c.env.DB.prepare(
         `INSERT INTO share_visits (
            user_id, note_id, slug, visited_at, visitor_fp, country, region, city,
            referrer, referrer_host, device_type, os, browser, language, user_agent,
@@ -218,11 +236,26 @@ async function recordShareVisit(
          ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`,
       ).bind(share.user_id, share.note_id, slug, now, visitorFp,
         geo.country, geo.region, geo.city, referrerInfo.referrer, referrerInfo.referrerHost,
-        deviceType, os, browser, language, ua.slice(0, 256), bot, isSelf, isOwner),
-    ])
+        deviceType, os, browser, language, ua.slice(0, 256), bot, isSelf, isOwner))
+    }
+    await c.env.DB.batch(statements)
   } catch (error) {
     console.warn('[share] failed to record visit', error)
   }
+}
+
+async function isRecentlySeenVisit(
+  db: D1Database,
+  slug: string,
+  visitorFp: string | null,
+  now: number,
+): Promise<boolean> {
+  if (!visitorFp) return false
+  const seen = await db
+    .prepare('SELECT 1 AS seen FROM share_visits WHERE slug = ?1 AND visitor_fp = ?2 AND visited_at > ?3')
+    .bind(slug, visitorFp, now - VIEW_DEDUPE_WINDOW_MS)
+    .first()
+  return Boolean(seen)
 }
 
 function deriveShareReferrer(
@@ -234,17 +267,7 @@ function deriveShareReferrer(
   const candidateReferrer = clientReferrer ?? headerReferrerCandidate(c, slug)
   const requestHost = new URL(c.req.url).host
   const selfReferrer = isSelfReferrer(candidateReferrer, requestHost, slug)
-  let referrer: string | null = null
-  let referrerHost: string | null = null
-  if (candidateReferrer) {
-    try {
-      const u = new URL(candidateReferrer)
-      if (u.pathname !== `/s/${slug}` && u.pathname !== `/s/${slug}/`) {
-        referrer = candidateReferrer
-        referrerHost = parseReferrerHost(candidateReferrer)
-      }
-    } catch { /* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */ }
-  }
+  const { referrer, referrerHost } = sanitizeVisitReferrer(candidateReferrer, `/s/${slug}`)
   return { selfReferrer, referrer, referrerHost }
 }
 

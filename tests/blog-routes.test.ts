@@ -15,10 +15,10 @@ import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { blogManageRoutes, blogPublicRoutes } from '../src/worker/routes/blog'
-import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
+import { createD1Database as createDb, captureSql, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
-const DB_ENV = { env: { DB: null as unknown as D1Database } }
+const DB_ENV = { env: { DB: null as unknown as D1Database, VISIT_FP_SECRET: undefined as string | undefined } }
 const EXECUTION_CTX = { waitUntil: vi.fn() } as unknown as ExecutionContext
 
 function shaOf(content: string): string {
@@ -30,6 +30,7 @@ async function makeDb(): Promise<D1Shim> {
   for (const statement of TABLE_STATEMENTS) await runSql(db, statement)
   for (const statement of INDEX_STATEMENTS) await runSql(db, statement)
   DB_ENV.env.DB = db as unknown as D1Database
+  DB_ENV.env.VISIT_FP_SECRET = undefined
   return db
 }
 
@@ -84,6 +85,32 @@ function firstRow(db: D1Shim, sql: string, ...values: unknown[]): Promise<Record
 
 function request(app: Hono<AppBindings>, path: string, init?: RequestInit): Promise<Response> {
   return app.request(path, init, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
+}
+
+async function requestWithIp(
+  app: Hono<AppBindings>,
+  path: string,
+  clientIp: string,
+  headers?: Record<string, string>,
+): Promise<Response> {
+  const req = new Request(`http://localhost${path}`, { headers: { 'CF-Connecting-IP': clientIp, ...headers } })
+  Object.defineProperty(req, 'cf', { value: { clientIp } })
+  return app.request(req, undefined, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
+}
+
+async function seedVisitAt(
+  db: D1Shim,
+  postId: string,
+  slug: string,
+  visitedAt: number,
+  visitorFp: string,
+): Promise<void> {
+  await runSql(
+    db,
+    `INSERT INTO blog_visits (user_id, post_id, slug, visited_at, visitor_fp, country, is_bot, is_self_referrer, is_owner)
+     VALUES (?1, ?2, ?3, ?4, ?5, 'US', 0, 0, 0)`,
+    USER, postId, slug, visitedAt, visitorFp,
+  )
 }
 
 function postJson(app: Hono<AppBindings>, path: string, body: unknown): Promise<Response> {
@@ -228,20 +255,73 @@ describe('blog public routes (real D1)', () => {
     const db = await makeDb()
     await seedUser(db)
     await seedBlogPost(db, { slug: 'viewed-post', title: 'Viewed' })
+    DB_ENV.env.VISIT_FP_SECRET = 'blog-dedupe-secret'
 
     const app = makeApp()
-    const ua = { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' }
-    const first = await request(app, '/api/blog/public/posts/viewed-post', { headers: ua })
+    const first = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '203.0.113.11', { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' })
     expect((await first.json()).post.views).toBe(1)
-    const second = await request(app, '/api/blog/public/posts/viewed-post', { headers: ua })
+    const second = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '203.0.113.11', { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' })
     expect((await second.json()).post.views).toBe(1)
     const row = await firstRow(db, 'SELECT views FROM blog_posts WHERE slug = ?1', 'viewed-post')
     expect(row?.views).toBe(1)
 
-    const freshVisitor = await request(app, '/api/blog/public/posts/viewed-post', {
-      headers: { 'user-agent': 'Mozilla/5.0 FreshVisitor/1.0' },
-    })
+    const rotatedUa = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '203.0.113.11', { 'user-agent': 'Mozilla/5.0 Rotated/2.0' })
+    expect((await rotatedUa.json()).post.views).toBe(1)
+
+    const freshVisitor = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '198.51.100.99', { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' })
     expect((await freshVisitor.json()).post.views).toBe(2)
+  })
+
+  it('records no visitor fingerprint instead of a publicly-derivable date salt', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'nosecret-post', title: 'NoSecret' })
+
+    const app = makeApp()
+    await requestWithIp(app, '/api/blog/public/posts/nosecret-post', '203.0.113.11')
+    await requestWithIp(app, '/api/blog/public/posts/nosecret-post', '203.0.113.11')
+    const rows = await db.prepare('SELECT visitor_fp FROM blog_visits WHERE slug = ?1').bind('nosecret-post').all()
+    expect(rows.results).toHaveLength(2)
+    expect(rows.results.every((r: { visitor_fp: unknown }) => r.visitor_fp === null)).toBe(true)
+  })
+
+  it('drops non-browser scheme referrers instead of storing them raw', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'ref-js', title: 'RefJs' })
+    DB_ENV.env.VISIT_FP_SECRET = 'blog-ref-secret'
+
+    const app = makeApp()
+    await requestWithIp(app, '/api/blog/public/posts/ref-js', '203.0.113.11', { referer: 'javascript:alert(document.domain)' })
+    const row = await firstRow(db, 'SELECT referrer, referrer_host FROM blog_visits WHERE slug = ?1', 'ref-js')
+    expect(row?.referrer).toBeNull()
+    expect(row?.referrer_host).toBeNull()
+  })
+
+  it('stores only origin and path of an http referrer, never the query', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'ref-https', title: 'RefHttps' })
+    DB_ENV.env.VISIT_FP_SECRET = 'blog-ref-secret'
+
+    const app = makeApp()
+    await requestWithIp(app, '/api/blog/public/posts/ref-https', '203.0.113.11', { referer: 'https://news.example.com/article/42?token=secret#frag' })
+    const row = await firstRow(db, 'SELECT referrer, referrer_host FROM blog_visits WHERE slug = ?1', 'ref-https')
+    expect(row?.referrer).toBe('https://news.example.com/article/42')
+    expect(row?.referrer_host).toBe('news.example.com')
+  })
+
+  it('caps a stored referrer at the shared length limit', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'ref-long', title: 'RefLong' })
+    DB_ENV.env.VISIT_FP_SECRET = 'blog-ref-secret'
+
+    const app = makeApp()
+    await requestWithIp(app, '/api/blog/public/posts/ref-long', '203.0.113.11', { referer: `https://a.example.com/${'x'.repeat(600)}` })
+    const row = await firstRow(db, 'SELECT referrer FROM blog_visits WHERE slug = ?1', 'ref-long')
+    expect(typeof row?.referrer).toBe('string')
+    expect((row?.referrer as string).length).toBeLessThanOrEqual(512)
   })
 
   it('pushes tag hierarchy and pagination into SQL with correct totals', async () => {
@@ -474,6 +554,64 @@ describe('blog organizer routes (real D1)', () => {
 })
 
 describe('blog analytics routes (real D1)', () => {
+  it('sanitizes an unknown range to the 30d window instead of answering with full history', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const { id, slug } = await seedBlogPost(db, { slug: 'rng-post' })
+    await seedVisitAt(db, id, slug, Date.now() - 400 * 86_400_000, 'fp-ancient')
+    await seedVisitAt(db, id, slug, Date.now() - 60_000, 'fp-recent')
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=zzz')).json()
+    expect(analytics.range).toBe('30d')
+    expect(analytics.totalViews).toBe(1)
+    expect(analytics.timeline.length).toBe(30)
+  })
+
+  it('buckets range=all from the earliest visit instead of 1970', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const { id, slug } = await seedBlogPost(db, { slug: 'all-post' })
+    const oldest = Date.now() - 800 * 86_400_000
+    await seedVisitAt(db, id, slug, oldest, 'fp-a')
+    await seedVisitAt(db, id, slug, Date.now() - 400 * 86_400_000, 'fp-b')
+    await seedVisitAt(db, id, slug, Date.now() - 60_000, 'fp-c')
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=all')).json()
+    expect(analytics.range).toBe('all')
+    expect(analytics.totalViews).toBe(3)
+    expect(analytics.timeline.length).toBe(12)
+    expect(analytics.timeline[0].timestamp).toBe(oldest)
+    expect(analytics.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(3)
+  })
+
+  it('keeps an empty range=all window recent rather than starting at epoch', async () => {    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'quiet-post' })
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=all')).json()
+    expect(analytics.timeline.length).toBe(12)
+    expect(analytics.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(0)
+    expect(analytics.timeline[0].timestamp).toBeGreaterThan(0)
+  })
+
+  it('estimates the breakdown from stored post views while no visit was logged', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'legacy-post', views: 20 })
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=all')).json()
+    expect(analytics.totalViews).toBe(20)
+    expect(analytics.totalVisitors).toBe(15)
+    expect(analytics.topCountries).toEqual([{ name: 'CN', count: 20, percentage: 100 }])
+    expect(analytics.devices.find((d: { name: string }) => d.name === 'desktop')).toEqual({
+      name: 'desktop', count: 12, percentage: 60,
+    })
+    expect(analytics.osList.find((o: { name: string }) => o.name === 'iOS')).toEqual({
+      name: 'iOS', count: 4, percentage: 20,
+    })
+  })
+
+
   it('returns totals, timeline, and breakdown derived from visits', async () => {
     const db = await makeDb()
     await seedUser(db)
@@ -504,7 +642,25 @@ describe('blog analytics routes (real D1)', () => {
     expect(analytics.topPosts[0].slug).toBe('stats-post')
   })
 
+  it('answers range=all with SQL aggregation instead of fetching every visit row', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const { id, slug } = await seedBlogPost(db, { slug: 'push-post' })
+    await seedVisitAt(db, id, slug, Date.now() - 800 * 86_400_000, 'fp-pd-1')
+    await seedVisitAt(db, id, slug, Date.now() - 60_000, 'fp-pd-2')
+    const statements = captureSql(db)
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=all')).json()
+    expect(analytics.totalViews).toBe(2)
+    expect(analytics.totalVisitors).toBe(2)
+    expect(analytics.timeline.reduce((sum: number, p: { views: number }) => sum + p.views, 0)).toBe(2)
+    expect(analytics.topPosts[0].views).toBe(2)
+    expect(statements.some((sql) => sql.includes('GROUP BY'))).toBe(true)
+    expect(statements.filter((sql) => /^SELECT visited_at, visitor_fp/.test(sql))).toEqual([])
+  })
+
   it('deletes visit logs by type', async () => {
+
     const db = await makeDb()
     await seedUser(db)
     const { id, slug } = await seedBlogPost(db, { slug: 'clean-post' })
@@ -551,5 +707,214 @@ describe('blog note-post lookup route (real D1)', () => {
     const missing = await request(app, '/api/blog/note-post/n-absent')
     expect(missing.status).toBe(200)
     expect((await missing.json()).post).toBeNull()
+  })
+})
+describe('blog visit log lifecycle (SH-05b)', () => {
+  async function visitCounts(db: D1Shim): Promise<Record<string, number>> {
+    const rows = await db.prepare('SELECT post_id, COUNT(*) AS n FROM blog_visits GROUP BY post_id').all()
+    const counts: Record<string, number> = {}
+    for (const row of rows.results ?? []) counts[String(row.post_id)] = Number(row.n)
+    return counts
+  }
+
+  it('deleting a post deletes its visit log rows', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const doomed = await seedBlogPost(db, { id: 'p-doomed', slug: 'doomed' })
+    const kept = await seedBlogPost(db, { id: 'p-kept', slug: 'kept' })
+    await seedVisitAt(db, doomed.id, doomed.slug, H.now - 1_000, 'fp-a')
+    await seedVisitAt(db, doomed.id, doomed.slug, H.now - 2_000, 'fp-b')
+    await seedVisitAt(db, kept.id, kept.slug, H.now - 1_000, 'fp-c')
+    const app = makeApp()
+
+    expect((await request(app, `/api/blog/posts/${doomed.id}`, { method: 'DELETE' })).status).toBe(200)
+
+    expect(await visitCounts(db)).toEqual({ [kept.id]: 1 })
+  })
+
+  it('a batch delete removes the visit rows of every post it removed', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const first = await seedBlogPost(db, { id: 'p-one', slug: 'one' })
+    const second = await seedBlogPost(db, { id: 'p-two', slug: 'two' })
+    const kept = await seedBlogPost(db, { id: 'p-three', slug: 'three' })
+    await seedVisitAt(db, first.id, first.slug, H.now - 1_000, 'fp-a')
+    await seedVisitAt(db, second.id, second.slug, H.now - 1_000, 'fp-b')
+    await seedVisitAt(db, kept.id, kept.slug, H.now - 1_000, 'fp-c')
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/blog/posts/batch', {
+      action: 'delete',
+      postIds: [first.id, second.id],
+    })
+
+    expect(res.status).toBe(200)
+    expect(await visitCounts(db)).toEqual({ [kept.id]: 1 })
+  })
+})
+
+describe('blog visit log cascade isolation (SH-05b)', () => {
+  async function seedForeignPost(db: D1Shim): Promise<{ id: string; slug: string }> {
+    const owner = 'user-2'
+    await runSql(
+      db,
+      `INSERT INTO users (id, username, password_hash, login, name, avatar_url, created_at, last_seen_at)
+       VALUES (?1, ?1, 'x', 'login', 'Other', '', ?2, ?2)`,
+      owner, H.now,
+    )
+    await runSql(
+      db,
+      `INSERT INTO blog_posts (id, slug, note_id, user_id, title, content, tags, published_at, created_at, updated_at)
+       VALUES ('p-foreign', 'foreign', 'n-foreign', ?1, 'Foreign', 'body', '[]', ?2, ?2, ?2)`,
+      owner, H.now,
+    )
+    await runSql(
+      db,
+      `INSERT INTO blog_visits (user_id, post_id, slug, visited_at, visitor_fp, is_bot, is_self_referrer, is_owner)
+       VALUES (?1, 'p-foreign', 'foreign', ?2, 'fp-f', 0, 0, 0)`,
+      owner, H.now,
+    )
+    return { id: 'p-foreign', slug: 'foreign' }
+  }
+
+  async function foreignRowCounts(db: D1Shim): Promise<{ posts: number; visits: number }> {
+    const posts = await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_posts WHERE id = ?1', 'p-foreign')
+    const visits = await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_visits WHERE post_id = ?1', 'p-foreign')
+    return { posts: Number(posts?.n ?? 0), visits: Number(visits?.n ?? 0) }
+  }
+
+  it('a delete that names another account post leaves it alone', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const foreign = await seedForeignPost(db)
+    const app = makeApp()
+
+    expect((await request(app, `/api/blog/posts/${foreign.id}`, { method: 'DELETE' })).status).toBe(200)
+
+    expect(await foreignRowCounts(db)).toEqual({ posts: 1, visits: 1 })
+  })
+
+  it('a batch delete that names another account post leaves it alone', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const foreign = await seedForeignPost(db)
+    const app = makeApp()
+
+    expect((await postJson(app, '/api/blog/posts/batch', { action: 'delete', postIds: [foreign.id] })).status).toBe(200)
+
+    expect(await foreignRowCounts(db)).toEqual({ posts: 1, visits: 1 })
+  })
+})
+
+describe('blog comment cascade ownership (SH-41)', () => {
+  async function seedComment(db: D1Shim, id: string, postId: string): Promise<void> {
+    await runSql(
+      db,
+      `INSERT INTO blog_comments (id, post_id, author_name, author_email, content, status, created_at)
+       VALUES (?1, ?2, 'Reader', 'reader@example.com', 'A comment', 'approved', ?3)`,
+      id, postId, H.now,
+    )
+  }
+
+  async function foreignCommentState(db: D1Shim): Promise<{ kept: number; gone: number }> {
+    const kept = await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_comments WHERE id = ?1', 'c-foreign')
+    const gone = await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_comments WHERE id = ?1', 'c-mine')
+    return { kept: Number(kept?.n ?? 0), gone: Number(gone?.n ?? 0) }
+  }
+
+  /** Seeds one post of this account and one of another, each with a comment. */
+  async function seedTwoOwners(db: D1Shim): Promise<void> {
+    await seedUser(db)
+    await runSql(
+      db,
+      `INSERT INTO users (id, username, password_hash, login, name, avatar_url, created_at, last_seen_at)
+       VALUES ('user-2', 'user-2', 'x', 'login', 'Other', '', ?1, ?1)`,
+      H.now,
+    )
+    await seedBlogPost(db, { id: 'p-foreign', slug: 'foreign', note_id: 'n-foreign' })
+    await runSql(db, 'UPDATE blog_posts SET user_id = ?1 WHERE id = ?2', 'user-2', 'p-foreign')
+    await runSql(db, 'UPDATE blog_visits SET user_id = ?1 WHERE post_id = ?2', 'user-2', 'p-foreign')
+    await seedBlogPost(db, { id: 'p-mine', slug: 'mine', note_id: 'n-mine' })
+    await seedComment(db, 'c-foreign', 'p-foreign')
+    await seedComment(db, 'c-mine', 'p-mine')
+  }
+
+  it('a single delete of another account post leaves its comment', async () => {
+    const db = await makeDb()
+    await seedTwoOwners(db)
+    const app = makeApp()
+
+    expect((await request(app, '/api/blog/posts/p-foreign', { method: 'DELETE' })).status).toBe(200)
+
+    expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 1 })
+  })
+
+  it('a batch delete naming another account post leaves its comment', async () => {
+    const db = await makeDb()
+    await seedTwoOwners(db)
+    const app = makeApp()
+
+    expect((await postJson(app, '/api/blog/posts/batch', { action: 'delete', postIds: ['p-foreign'] })).status).toBe(200)
+
+    expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 1 })
+  })
+
+  it('a batch delete of an own post removes that post comment', async () => {
+    const db = await makeDb()
+    await seedTwoOwners(db)
+    const app = makeApp()
+
+    expect((await postJson(app, '/api/blog/posts/batch', { action: 'delete', postIds: ['p-mine'] })).status).toBe(200)
+
+    expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 0 })
+  })
+
+  it("deleting an own post still removes that post's comment", async () => {
+    const db = await makeDb()
+    await seedTwoOwners(db)
+    const app = makeApp()
+
+    expect((await request(app, '/api/blog/posts/p-mine', { method: 'DELETE' })).status).toBe(200)
+
+    expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 0 })
+  })
+})
+
+describe('blog batch statements stay inside the D1 bind limit (SH-42)', () => {
+  async function seedManyPosts(db: D1Shim, count: number): Promise<string[]> {
+    const ids: string[] = []
+    for (let index = 0; index < count; index++) {
+      const post = await seedBlogPost(db, { id: `many-${index}`, slug: `many-${index}` })
+      await seedVisitAt(db, post.id, post.slug, H.now - 1_000, `fp-${index}`)
+      ids.push(post.id)
+    }
+    return ids
+  }
+
+  it('deletes more posts than one statement can bind', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const ids = await seedManyPosts(db, 120)
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/blog/posts/batch', { action: 'delete', postIds: ids })
+
+    expect(res.status).toBe(200)
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_posts')).toMatchObject({ n: 0 })
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_visits')).toMatchObject({ n: 0 })
+  })
+
+  it('publishes more posts than one statement can bind', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const ids = await seedManyPosts(db, 120)
+    await runSql(db, 'UPDATE blog_posts SET is_published = 0')
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/blog/posts/batch', { action: 'publish', postIds: ids })
+
+    expect(res.status).toBe(200)
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_posts WHERE is_published = 1'))
+      .toMatchObject({ n: 120 })
   })
 })

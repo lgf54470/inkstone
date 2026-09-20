@@ -85,6 +85,25 @@ export interface NoteSettings {
   todoTag: string | null
 }
 
+/** Share-center preferences the server acts on, not just the UI. */
+export interface ShareSettings {
+  /**
+   * Days a visit log row survives before the maintenance cron deletes it;
+   * 0 keeps every row. It has to live here rather than in the browser so the
+   * sweep runs whether or not the owner ever opens the app again.
+   */
+  visitLogRetentionDays: number
+}
+
+/** Blog-center preferences the server acts on, not just the UI. */
+export interface BlogSettings {
+  /**
+   * Days a `blog_visits` row survives before the maintenance cron deletes it;
+   * 0 keeps every row. Same reasoning as the share twin.
+   */
+  visitLogRetentionDays: number
+}
+
 export interface UserSettings {
   appearance: AppearanceSettings
   editor: EditorSettings
@@ -92,4 +111,6 @@ export interface UserSettings {
   backup: BackupSettings
   sync: SyncSettings
   notes: NoteSettings
+  share: ShareSettings
+  blog: BlogSettings
 }

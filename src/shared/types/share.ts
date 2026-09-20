@@ -76,7 +76,9 @@ export interface ShareAnalyticsFilters {
 export interface ShareVisitLog {
   id: number
   noteId: string
-  noteTitle: string
+  // Null when the note was deleted but its visit rows survive; the client
+  // labels it (SH-34), the worker must not bake in an English fallback.
+  noteTitle: string | null
   slug: string
   visitedAt: number
   country: string | null
@@ -108,7 +110,7 @@ export interface ShareGlobalAnalytics {
   timeline: ShareTimelinePoint[]
   topNotes: Array<{
     noteId: string
-    noteTitle: string
+    noteTitle: string | null
     slug: string
     views: number
     visitors: number
@@ -147,9 +149,15 @@ export interface ShareNoteAnalytics {
   recentVisits: ShareVisitLog[]
 }
 
+export interface ShareSummaryResponse {
+  totalShares: number
+  sharedNoteIds: string[]
+}
+
 export interface ShareListResponse {
   shares: ShareInfo[]
   total: number
+  truncated: boolean
   globalStats: {
     totalShares: number
     activeShares: number

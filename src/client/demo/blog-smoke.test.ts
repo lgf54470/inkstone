@@ -12,6 +12,10 @@ function json(init: Record<string, unknown>): RequestInit {
   return { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(init) }
 }
 
+function delJson(init: Record<string, unknown>): RequestInit {
+  return { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(init) }
+}
+
 interface RouteProbe {
   path: string
   init?: RequestInit
@@ -69,14 +73,24 @@ const CLIENT_ROUTES: RouteProbe[] = [
   { path: '/api/blog/comments/batch', init: json({ action: 'delete', commentIds: ['demo-comment-3'] }) },
   { path: '/api/blog/visits?type=bots', init: { method: 'DELETE' } },
   { path: '/api/blog/visits?type=older_than&days=7', init: { method: 'DELETE' } },
-  { path: '/api/blog/visits?type=all', init: { method: 'DELETE' } },
-  { path: '/api/blog/visits', init: { method: 'DELETE' } },
+  { path: '/api/blog/visits?type=all', init: delJson({ password: DEMO_CREDENTIALS.password }) },
+  { path: '/api/blog/visits', init: delJson({ password: DEMO_CREDENTIALS.password }) },
 ]
+
+async function loggedInBackend(): Promise<DemoBackend> {
+  const backend = createDemoBackend()
+  await call(backend, '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(DEMO_CREDENTIALS) })
+  return backend
+}
+
+async function botVisitCount(backend: DemoBackend): Promise<number> {
+  const body = await (await call(backend, '/api/blog/analytics')).json()
+  return body.analytics.filterStats.bots
+}
 
 describe('demo blog route coverage', () => {
   it('answers 2xx for every /api/blog/* route the client calls', async () => {
-    const backend = createDemoBackend()
-    await call(backend, '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(DEMO_CREDENTIALS) })
+    const backend = await loggedInBackend()
 
     const failures: string[] = []
     for (const probe of CLIENT_ROUTES) {
@@ -89,8 +103,7 @@ describe('demo blog route coverage', () => {
   })
 
   it('mutations round-trip through in-memory state', async () => {
-    const backend = createDemoBackend()
-    await call(backend, '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(DEMO_CREDENTIALS) })
+    const backend = await loggedInBackend()
 
     const created = await (await call(backend, '/api/blog/posts', json({ noteId: 'demo-note-roundtrip', title: 'Round Trip', isPublished: true }))).json()
     expect(created).toMatchObject({ ok: true, slug: expect.any(String) })
@@ -104,10 +117,38 @@ describe('demo blog route coverage', () => {
     const category = await (await call(backend, '/api/blog/categories', json({ name: '回环分类' }))).json()
     expect(category.category).toMatchObject({ id: expect.any(String), slug: '回环分类' })
 
-    const visits = await (await call(backend, '/api/blog/visits?type=all', { method: 'DELETE' })).json()
+    const visits = await (await call(backend, '/api/blog/visits?type=all', delJson({ password: DEMO_CREDENTIALS.password }))).json()
     expect(visits).toMatchObject({ ok: true, deleted: expect.any(Number) })
 
     const posts = await (await call(backend, '/api/blog/posts')).json()
     expect(posts.posts.some((post: { id: string }) => post.id === created.id)).toBe(true)
+  })
+})
+
+// The demo backend mirrors the worker guard (SH-47): wiping every visit log has
+// to re-prove the password, and a stale session must not get a silent delete.
+describe('demo blog whole-log wipe re-authentication (SH-47)', () => {
+  it('refuses a wipe that carries no or a wrong password and keeps every row', async () => {
+    const backend = await loggedInBackend()
+    const seededBots = await botVisitCount(backend)
+    expect(seededBots).toBeGreaterThan(0)
+
+    const missing = await call(backend, '/api/blog/visits?type=all', { method: 'DELETE' })
+    expect(missing.status).toBe(401)
+
+    const wrong = await call(backend, '/api/blog/visits?type=all', delJson({ password: 'not-the-password' }))
+    expect(wrong.status).toBe(401)
+    expect(await wrong.json()).toMatchObject({ error: { code: 'wrong_password' } })
+
+    expect(await botVisitCount(backend)).toBe(seededBots)
+  })
+
+  it('wipes once the current demo password is sent', async () => {
+    const backend = await loggedInBackend()
+    expect(await botVisitCount(backend)).toBeGreaterThan(0)
+
+    const accepted = await call(backend, '/api/blog/visits?type=all', delJson({ password: DEMO_CREDENTIALS.password }))
+    expect(accepted.status).toBe(200)
+    expect(await botVisitCount(backend)).toBe(0)
   })
 })

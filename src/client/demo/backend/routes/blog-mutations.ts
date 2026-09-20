@@ -310,10 +310,16 @@ function registerBlogToggleGroupRoute(app: Hono, data: BlogDemoData): void {
   })
 }
 
-function registerBlogVisitsRoute(app: Hono, data: BlogDemoData): void {
-  app.delete('/api/blog/visits', (c) => {
+function registerBlogVisitsRoute(app: Hono, data: BlogDemoData, state: DemoState): void {
+  app.delete('/api/blog/visits', async (c) => {
     const type = c.req.query('type') ?? 'all'
     const days = parseInt(c.req.query('days') ?? '30', 10)
+    if (type === 'all') {
+      const body = await jsonBody(c.req.raw)
+      if (body.password !== state.password) {
+        return apiError(401, 'wrong_password', 'The current password is incorrect')
+      }
+    }
     const before = data.visits.length
     if (type === 'bots') {
       data.visits = data.visits.filter((visit) => !visit.isBot)

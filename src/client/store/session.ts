@@ -4,7 +4,7 @@ import {
   assertUnchangedSettingsSections,
   mergeSettings,
   mergeSettingsPatch,
-} from '@shared/constants'
+} from '@shared/user-settings'
 import type { PublicUser, SessionInfo, SiteInfo, TotpLoginChallenge, UserSettings } from '@shared/types'
 import { api, ApiError } from '../lib/api'
 import { clearOfflineAudioTracks } from '../lib/offline-audio'

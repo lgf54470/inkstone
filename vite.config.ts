@@ -9,18 +9,6 @@ import { inkstonePwa } from './pwa.config.ts'
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 const ephemeralDevState = process.env.INKSTONE_EPHEMERAL_DEV === '1'
 
-/**
- * Where the dependency install actually lives. node_modules is frequently a symlink into
- * a shared or sibling checkout (worktrees, deduplicated installs), and Vite checks the real
- * path of every served file against `server.fs.allow` — without the dependency directory's
- * real path, the packages' own assets (the @fontsource woff2 that
- * src/client/styles/inter.css references, KaTeX's font files) are answered with 403 in dev.
- */
-const resolveRealPath = (target: string): string | null =>
-  fs.existsSync(target) ? fs.realpathSync(target) : null
-
-const dependencyRealPath = resolveRealPath(r('./node_modules'))
-
 const normalizeModuleId = (id: string) => id.replace(/\\/g, '/')
 
 
@@ -38,6 +26,18 @@ const preservesOnDemandBoundary = (id: string) => {
 
 const isLucideModule = (id: string) =>
   normalizeModuleId(id).includes('/node_modules/lucide-react/')
+
+/**
+ * Vite serves `node_modules` assets (webfonts, mostly) by their resolved path and only
+ * below `server.fs.allow`. A git worktree whose install is a symlink into the main
+ * checkout therefore answers 403 for every font.
+ */
+const servedFsRoots = () => {
+  const root = fileURLToPath(new URL('.', import.meta.url))
+  const modules = path.join(root, 'node_modules')
+  const link = fs.lstatSync(modules, { throwIfNoEntry: false })
+  return link?.isSymbolicLink() ? [root, fs.realpathSync(modules)] : [root]
+}
 
 const isReactModule = (id: string) => {
   const path = normalizeModuleId(id)
@@ -140,11 +140,7 @@ const config: UserConfigFnPromise = async ({ mode, command }) => ({
 
     port: 7712,
     strictPort: false,
-
-    fs: {
-      // Replaces Vite's default allow list, so the project root is named explicitly here.
-      allow: [r('./'), ...(dependencyRealPath ? [dependencyRealPath] : [])],
-    },
+    fs: { allow: servedFsRoots() },
   },
 
   preview: {

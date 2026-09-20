@@ -332,7 +332,7 @@ function HealthBadge({ result }: { result?: HealthResult }) {
   }
   if (result.level === 'ok') {
     return (
-      <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-semibold bg-[var(--success-subtle)] text-[var(--success)]'>
+      <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-semibold bg-[var(--success-soft)] text-[var(--success)]'>
         <CheckCircle2 size={10} />
         <span>{result.status || 200}</span>
       </span>
@@ -347,7 +347,7 @@ function HealthBadge({ result }: { result?: HealthResult }) {
     )
   }
   return (
-    <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-semibold bg-[var(--danger-subtle)] text-[var(--danger)]'>
+    <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-semibold bg-[var(--danger-soft)] text-[var(--danger)]'>
       <XCircle size={10} />
       <span>{result.status ? `${result.status} ${t('blog.link_check_error')}` : t('blog.link_check_broken')}</span>
     </span>

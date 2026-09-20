@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ShareStoreState } from './types'
-import { initialFilters, initialRetention } from './state'
+import { initialFilters } from './state'
 import { shareFiltersActions } from './filters'
 import { shareLoadersActions } from './loaders'
 import { shareContentActions } from './content'
@@ -26,21 +26,23 @@ function initialShareState(): Partial<ShareStoreState> {
         viewMode: 'table',
         selectedNoteIds: new Set<string>(),
         shares: [],
+        truncated: false,
         folders: [],
         tags: [],
         globalStats: null,
+        summary: null,
         loading: false,
+        error: false,
         batchBusy: false,
         excludeBots: initialFilters.excludeBots,
         excludeSelfReferrers: initialFilters.excludeSelfReferrers,
         excludeOwner: initialFilters.excludeOwner,
-        logRetentionDays: initialRetention.logRetentionDays,
-        maxLogRecords: initialRetention.maxLogRecords,
     }
 }
 
 export type { ShareFolderNode, ShareStoreState } from './types'
 export { buildShareFolderTree } from './folders'
+export { isNoteShared, selectShareRow, shareRowIndex, useNoteIsShared, useShareRowForNote } from './row-index'
 
 // Feed the notes store's visibility projection (shared note ids) without
 // creating a store → feature import edge: selectors read the neutral registry
@@ -48,6 +50,11 @@ export { buildShareFolderTree } from './folders'
 useShareStore.subscribe((state) => {
   pushVisibilitySnapshot({
     ...getVisibilitySnapshot(),
-    sharedNoteIds: new Set(state.shares.map((share) => share.noteId)),
+    // Before the hub loads the full list, the startup summary set carries the
+    // shared view's membership; list membership wins as soon as it exists.
+    sharedNoteIds: new Set([
+      ...state.shares.map((share) => share.noteId),
+      ...(state.summary?.sharedNoteIds ?? []),
+    ]),
   })
 })

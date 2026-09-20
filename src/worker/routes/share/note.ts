@@ -6,6 +6,7 @@ import { isValidId, newSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { hashPassword } from '../../lib/password'
 import { isValidCustomSlug } from '../../lib/share-analytics'
+import { revokeSharesForNotes } from './batch'
 import { shareCreateSchema } from './schemas'
 import { ShareRow, toShareInfo } from './shares'
 
@@ -52,7 +53,16 @@ function registerShareNoteUpsertRoute(shareManageRoutes: Hono<AppBindings>): voi
     const targetSlug = await resolveShareSlug(c.env.DB, noteId, body.customSlug, existingShare?.slug)
     validateShareAccessOptions(body)
     const fields = await computeShareFields(body, existingShare)
-    await upsertShareRow(c.env.DB, userId, noteId, existingShare, targetSlug, fields)
+    try {
+      await upsertShareRow(c.env.DB, userId, noteId, existingShare, targetSlug, fields)
+    } catch (error) {
+      // The collision pre-check is not atomic: a concurrent registration can take the
+      // slug between check and write, and then the UNIQUE index rejects us with 500.
+      if (error instanceof Error && /UNIQUE constraint failed: shares\.slug/.test(error.message)) {
+        throw ApiError.conflict('This custom link is already in use by another share')
+      }
+      throw error
+    }
     const row = await c.env.DB.prepare(`SELECT * FROM shares WHERE note_id = ?1 AND user_id = ?2`)
       .bind(noteId, userId)
       .first<ShareRow>()
@@ -71,9 +81,7 @@ function registerShareNoteUpsertRoute(shareManageRoutes: Hono<AppBindings>): voi
 
 function registerShareNoteDeleteRoute(shareManageRoutes: Hono<AppBindings>): void {
   shareManageRoutes.delete('/:noteId', async (c) => {
-    await c.env.DB.prepare(`DELETE FROM shares WHERE note_id = ?1 AND user_id = ?2`)
-      .bind(c.req.param('noteId'), c.get('userId'))
-      .run()
+    await revokeSharesForNotes(c.env.DB, c.get('userId'), [c.req.param('noteId')])
     return c.json({ ok: true })
   })
 }
@@ -130,8 +138,8 @@ function validateShareAccessOptions(body: {
   if (typeof body.password === 'string' && body.password.length > LIMITS.passwordMaxLength) {
     throw ApiError.badRequest(`The access password must not exceed ${LIMITS.passwordMaxLength} characters`)
   }
-  if (typeof body.password === 'string' && body.password.length > 0 && body.password.length < 6) {
-    throw ApiError.badRequest('The access password must be at least 6 characters')
+  if (typeof body.password === 'string' && body.password.length > 0 && body.password.length < LIMITS.sharePasscodeMinLength) {
+    throw ApiError.badRequest(`The access password must be at least ${LIMITS.sharePasscodeMinLength} characters`)
   }
   if (typeof body.expiresIn === 'number' && (!Number.isFinite(body.expiresIn) || body.expiresIn < 0)) {
     throw ApiError.badRequest('expiresIn must be a non-negative number or null')
@@ -175,18 +183,28 @@ async function upsertShareRow(
   fields: { passwordHash: string | null; expiresAt: number | null; isEnabled: number; folderId: string | null; tagsJson: string },
 ): Promise<void> {
   if (existingShare) {
-    await db.prepare(
-      `UPDATE shares
-          SET slug = ?1,
-              password_hash = ?2,
-              expires_at = ?3,
-              is_enabled = ?4,
-              folder_id = ?5,
-              tags = ?6
-        WHERE note_id = ?7 AND user_id = ?8`,
-    )
-      .bind(targetSlug, fields.passwordHash, fields.expiresAt, fields.isEnabled, fields.folderId, fields.tagsJson, noteId, userId)
-      .run()
+    const statements = [
+      db.prepare(
+        `UPDATE shares
+            SET slug = ?1,
+                password_hash = ?2,
+                expires_at = ?3,
+                is_enabled = ?4,
+                folder_id = ?5,
+                tags = ?6
+          WHERE note_id = ?7 AND user_id = ?8`,
+      )
+        .bind(targetSlug, fields.passwordHash, fields.expiresAt, fields.isEnabled, fields.folderId, fields.tagsJson, noteId, userId),
+    ]
+    if (targetSlug !== existingShare.slug) {
+      // Visit rows keep the slug they were recorded under; without this rename the
+      // log's slug column and search would strand on the dead link.
+      statements.push(
+        db.prepare(`UPDATE share_visits SET slug = ?1 WHERE slug = ?2 AND user_id = ?3 AND note_id = ?4`)
+          .bind(targetSlug, existingShare.slug, userId, noteId),
+      )
+    }
+    await db.batch(statements)
   } else {
     await db.prepare(
       `INSERT INTO shares (slug, note_id, user_id, password_hash, expires_at, views, is_enabled, folder_id, tags, created_at)

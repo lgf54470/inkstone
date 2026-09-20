@@ -29,6 +29,7 @@ export const messages = {
 'blog.device_type': '设备类型',
 'blog.operating_system': '操作系统',
 'blog.range_all': '全部',
+'blog.range_label': '分析时间范围',
 'blog.real_visitors': '真实访客',
 'blog.real_visitors_active': '已开启真实访客过滤（排除自动化爬虫）',
 'blog.folders': '文件夹',

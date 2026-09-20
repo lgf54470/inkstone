@@ -13,6 +13,8 @@ export interface PromptOptions {
   defaultValue?: string
   confirmLabel?: string
   cancelLabel?: string
+  type?: 'text' | 'password'
+  autoComplete?: string
 }
 
 interface PromptRequest {
@@ -67,18 +69,38 @@ function usePromptQueue() {
   return { current, finish }
 }
 
+function PromptFooter({ options, canSubmit, onCancel, onConfirm }: {
+  options: PromptOptions
+  canSubmit: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <>
+      <Button variant='ghost' onClick={onCancel}>
+        {options.cancelLabel ?? t('common.cancel')}
+      </Button>
+      <Button variant='primary' disabled={!canSubmit} onClick={onConfirm}>
+        {options.confirmLabel ?? t('overlay.confirm')}
+      </Button>
+    </>
+  )
+}
+
 function PromptDialog({ request, finish }: {
   request: PromptRequest
   finish: (result: string | null) => void
 }) {
   const [value, setValue] = useState(request.options.defaultValue ?? '')
   const options = request.options
-  const canSubmit = Boolean(value.trim())
+  // Passwords keep leading/trailing spaces, so they must not go through trim.
+  const submitValue = options.type === 'password' ? value : value.trim()
+  const canSubmit = Boolean(submitValue)
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (canSubmit)
-      finish(value.trim())
+      finish(submitValue)
   }
 
   return (
@@ -88,25 +110,14 @@ function PromptDialog({ request, finish }: {
       title={options.title}
       description={options.description}
       width={MODAL_WIDTH}
-      footer={
-        <>
-          <Button variant='ghost' onClick={() => finish(null)}>
-            {options.cancelLabel ?? t('common.cancel')}
-          </Button>
-          <Button
-            variant='primary'
-            disabled={!canSubmit}
-            onClick={() => finish(value.trim())}
-          >
-            {options.confirmLabel ?? t('overlay.confirm')}
-          </Button>
-        </>
-      }
+      footer={<PromptFooter options={options} canSubmit={canSubmit} onCancel={() => finish(null)} onConfirm={() => finish(submitValue)} />}
     >
       <form onSubmit={handleSubmit} className='mt-2'>
         <Input
           autoFocus
           data-autofocus
+          type={options.type ?? 'text'}
+          autoComplete={options.autoComplete}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={options.placeholder}

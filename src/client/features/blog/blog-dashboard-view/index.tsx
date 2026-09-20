@@ -1,12 +1,12 @@
-import { Activity, ExternalLink, FileText, MousePointerClick, RefreshCw, ShieldCheck, Users } from 'lucide-react'
-import type { BlogGlobalAnalytics, BlogStats, ShareTimelineRange } from '@shared/types'
-import { BigSvgChart } from '../../../components/big-svg-chart'
+import { Activity, ExternalLink, FileText, MousePointerClick, Users } from 'lucide-react'
+import type { BlogGlobalAnalytics, BlogStats } from '@shared/types'
 import { KpiCard } from '../../../components/dashboard-blocks'
-import { Button, IconButton } from '../../../components/primitives'
-import { Segmented } from '../../../components/form'
+import { Button } from '../../../components/primitives'
 import { t } from '../../../lib/i18n'
 import type { BlogTab } from '../blog-store'
 import { useBlogDashboardView } from './use-blog-dashboard-view'
+import { DashboardControls } from './dashboard-controls'
+import { TrendChartCard } from './trend-chart-card'
 import { TopPostsCard } from './top-posts-card'
 import { AudienceCards } from './audience-cards'
 import { VisitLogsCard } from './visit-logs-card'
@@ -105,71 +105,6 @@ function DashboardWelcomeBanner({
   )
 }
 
-function DashboardControls({
-  range,
-  onRangeChange,
-  excludeBots,
-  onToggleBots,
-  loading,
-  onRefresh,
-}: {
-  range: ShareTimelineRange
-  onRangeChange: (range: ShareTimelineRange) => void
-  excludeBots: boolean
-  onToggleBots: () => void
-  loading: boolean
-  onRefresh: () => void
-}) {
-  return (
-    <div className='flex flex-wrap items-center justify-between gap-3'>
-      <div>
-        <h3 className='text-[length:var(--text-15)] font-bold text-[var(--text-primary)]'>
-          {t('blog.analytics_dashboard_title')}
-        </h3>
-        <p className="text-[length:var(--text-11\.5)] text-[var(--text-tertiary)]">
-          {t('blog.analytics_dashboard_subtitle')}
-        </p>
-      </div>
-
-      <div className='flex items-center gap-2'>
-        <Segmented
-          options={[
-            { value: '24h', label: '24h' },
-            { value: '7d', label: '7d' },
-            { value: '30d', label: '30d' },
-            { value: 'all', label: t('blog.range_all') },
-          ]}
-          value={range}
-          onChange={(val) => onRangeChange(val as ShareTimelineRange)}
-        />
-
-        <button
-          type='button'
-          onClick={onToggleBots}
-          className={`inline-flex items-center gap-1.5 rounded-[var(--r-md)] border px-2.5 py-1 text-[length:var(--text-11\\.5)] font-medium transition-colors ${
-            excludeBots
-              ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
-              : 'border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
-          }`}
-          title={excludeBots ? t('blog.real_visitors_active') : t('blog.real_visitors')}
-        >
-          <ShieldCheck size={13} />
-          <span>{t('blog.real_visitors')}</span>
-        </button>
-
-        <IconButton
-          size='sm'
-          label={t('common.refresh')}
-          disabled={loading}
-          onClick={onRefresh}
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-        </IconButton>
-      </div>
-    </div>
-  )
-}
-
 function BotsFilterBanner({ filteredBots }: { filteredBots: number }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]">
@@ -241,46 +176,6 @@ function PublishedPostsCard({ published, total }: { published: number; total: nu
         <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)] pt-1'>
           {t('blog.active_posts_hint')}
         </p>
-      </div>
-    </div>
-  )
-}
-
-function TrendChartCard({
-  metricMode,
-  onMetricModeChange,
-  chartValues,
-  timeline,
-}: {
-  metricMode: 'views' | 'visitors'
-  onMetricModeChange: (mode: 'views' | 'visitors') => void
-  chartValues: number[]
-  timeline: NonNullable<BlogGlobalAnalytics['timeline']>
-}) {
-  return (
-    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-soft)]'>
-      <div className='flex flex-wrap items-center justify-between gap-2 pb-3'>
-        <div>
-          <h3 className='text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
-            {t('blog.timeline_trend_title')}
-          </h3>
-          <p className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
-            {metricMode === 'views' ? t('blog.timeline_pv_desc') : t('blog.timeline_uv_desc')}
-          </p>
-        </div>
-
-        <Segmented
-          options={[
-            { value: 'views', label: t('blog.metric_pv') },
-            { value: 'visitors', label: t('blog.metric_uv') },
-          ]}
-          value={metricMode}
-          onChange={(val) => onMetricModeChange(val as 'views' | 'visitors')}
-        />
-      </div>
-
-      <div className='h-60 w-full pt-2'>
-        <BigSvgChart values={chartValues} timeline={timeline} emptyLabel={t('blog.no_visit_data')} />
       </div>
     </div>
   )

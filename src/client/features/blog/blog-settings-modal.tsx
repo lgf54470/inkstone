@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import type { ReactNode } from 'react'
 import { Database, Save, Settings, Shield, X } from 'lucide-react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
@@ -29,6 +30,7 @@ export function BlogSettingsModal({
 
       <div className='border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-2'>
         <Segmented
+          label={t('blog.settings_tab_label')}
           value={form.activeTab}
           onChange={(v) => form.setActiveTab(v as 'site' | 'traffic')}
           options={[
@@ -92,8 +94,6 @@ interface SettingsFormBundle {
   setOwner: (v: boolean) => void
   retentionDays: string
   setRetentionDays: (v: string) => void
-  maxRecords: string
-  setMaxRecords: (v: string) => void
   isCleanBusy: boolean
   handleClean: (type: 'bots' | 'older_than' | 'all') => Promise<void>
   siteName: string
@@ -186,19 +186,6 @@ function RetentionSection({ form }: { form: SettingsFormBundle }) {
             { value: '0', label: t('share.retention_unlimited') },
           ]}
         />
-        <RetentionField
-          label={t('share.max_records_label')}
-          valueLabel={form.maxRecords === '0' ? t('share.retention_unlimited') : t('share.max_records_val', { count: form.maxRecords })}
-          value={form.maxRecords}
-          onChange={form.setMaxRecords}
-          options={[
-            { value: '1000', label: '1K' },
-            { value: '5000', label: '5K' },
-            { value: '10000', label: '10K' },
-            { value: '50000', label: '50K' },
-            { value: '0', label: t('share.retention_unlimited') },
-          ]}
-        />
 
         <CleanupActions busy={form.isCleanBusy} onClean={form.handleClean} />
       </div>
@@ -219,13 +206,14 @@ function RetentionField({
   onChange: (v: string) => void
   options: Array<{ value: string; label: string }>
 }) {
+  const labelId = useId()
   return (
     <div>
       <div className='flex items-center justify-between pb-1.5'>
-        <span className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>{label}</span>
+        <span id={labelId} className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>{label}</span>
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{valueLabel}</span>
       </div>
-      <Segmented value={value} onChange={onChange} options={options} />
+      <Segmented aria-labelledby={labelId} value={value} onChange={onChange} options={options} />
     </div>
   )
 }
@@ -243,7 +231,7 @@ function CleanupActions({ busy, onClean }: { busy: boolean; onClean: (type: 'bot
         size='sm'
         variant='ghost'
         type='button'
-        className='text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
+        className='text-[var(--danger)] hover:bg-[var(--danger-soft)]'
         onClick={() => void onClean('all')}
         disabled={busy}
       >

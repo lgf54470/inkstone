@@ -11,6 +11,11 @@ export interface ShareFolderNode {
   depth: number
 }
 
+export interface ShareSummaryState {
+  totalShares: number
+  sharedNoteIds: Set<string>
+}
+
 
 
 export interface ShareStoreState {
@@ -23,16 +28,17 @@ export interface ShareStoreState {
   viewMode: 'table' | 'grid'
   selectedNoteIds: Set<string>
   shares: ShareInfo[]
+  truncated: boolean
   folders: ShareFolder[]
   tags: ShareTag[]
   globalStats: ShareListResponse['globalStats'] | null
+  summary: ShareSummaryState | null
   loading: boolean
+  error: boolean
   batchBusy: boolean
   excludeBots: boolean
   excludeSelfReferrers: boolean
   excludeOwner: boolean
-  logRetentionDays: number
-  maxLogRecords: number
 
   setCategory: (category: ShareCategory) => void
   setFolderId: (folderId: string | null) => void
@@ -42,7 +48,6 @@ export interface ShareStoreState {
   setSort: (sort: string) => void
   setViewMode: (mode: 'table' | 'grid') => void
   setFilters: (filters: Partial<{ excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }>) => void
-  setRetentionSettings: (settings: { logRetentionDays?: number; maxLogRecords?: number }) => void
   toggleSelect: (noteId: string) => void
   toggleSelectAll: () => void
   clearSelection: () => void
@@ -57,6 +62,8 @@ export interface ShareStoreState {
   deleteTag: (id: string) => Promise<boolean>
 
   loadShares: () => Promise<void>
+  loadSummary: () => Promise<void>
+  applyServerShare: (share: ShareInfo) => void
   toggleShare: (noteId: string, enabled: boolean) => Promise<boolean>
   togglePin: (noteId: string) => Promise<boolean>
   toggleStar: (noteId: string) => Promise<boolean>

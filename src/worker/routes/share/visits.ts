@@ -1,7 +1,12 @@
 import { Hono } from 'hono'
 import { ShareVisitLog } from '@shared/types'
 import type { AppBindings } from '../../env'
+import { ApiError } from '../../lib/errors'
+import { escapeLike } from '../../lib/like'
+import { JSON_BODY_LIMITS, readOptionalJsonValidated } from '../../lib/request'
+import { requireCurrentPassword } from '../../lib/reauth'
 import { parseBotName } from '../../lib/share-analytics'
+import { shareVisitWipeSchema } from './schemas'
 
 interface VisitLogRow {
   id: number
@@ -21,7 +26,7 @@ interface VisitLogRow {
   is_bot: number
   is_self_referrer: number
   is_owner: number
-  note_title: string
+  note_title: string | null
 }
 
 export function registerShareVisitsRoutes(shareManageRoutes: Hono<AppBindings>): void {
@@ -41,6 +46,7 @@ function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): voi
       search: (c.req.query('search') || '').trim(),
       userId,
     })
+    conditions.push('EXISTS (SELECT 1 FROM shares s WHERE s.slug = sv.slug)')
 
     const countRow = await c.env.DB.prepare(
       `SELECT COUNT(*) as total
@@ -54,7 +60,7 @@ function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): voi
       `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
               sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser, sv.user_agent,
               sv.visitor_fp, sv.is_bot, sv.is_self_referrer, sv.is_owner,
-              COALESCE(n.title, 'Untitled note') as note_title
+              n.title as note_title
          FROM share_visits sv
          LEFT JOIN notes n ON n.id = sv.note_id
         WHERE ${conditions.join(' AND ')}
@@ -78,6 +84,15 @@ function registerShareVisitsClearRoute(shareManageRoutes: Hono<AppBindings>): vo
     const userId = c.get('userId')
     const type = c.req.query('type') || 'all'
     const days = parseInt(c.req.query('days') || '30', 10)
+    if (type === 'older_than' && !(days >= 1)) {
+      throw ApiError.badRequest('Cleaning logs older than N days requires a positive integer for days')
+    }
+    if (type === 'all') {
+      // Wiping the whole audit trail is unrecoverable, so a stolen session must
+      // re-prove it holds the account password before the delete runs.
+      const body = await readOptionalJsonValidated(c, shareVisitWipeSchema, JSON_BODY_LIMITS.small, {})
+      await requireCurrentPassword(c.env.DB, userId, body.password ?? '')
+    }
     const res = await deleteVisitLogs(c.env.DB, userId, type, days)
     return c.json({ ok: true as const, deleted: res.meta.changes ?? 0 })
   })
@@ -108,8 +123,8 @@ function visitLogFilter(params: {
   const filterCondition = VISIT_FILTER_CONDITIONS[filter]
   if (filterCondition) conditions.push(filterCondition)
   if (search) {
-    conditions.push(`(n.title LIKE ?${bindIdx} OR sv.slug LIKE ?${bindIdx} OR sv.country LIKE ?${bindIdx} OR sv.referrer_host LIKE ?${bindIdx})`)
-    binds.push(`%${search}%`)
+    conditions.push(`(n.title LIKE ?${bindIdx} ESCAPE '\\' OR sv.slug LIKE ?${bindIdx} ESCAPE '\\' OR sv.country LIKE ?${bindIdx} ESCAPE '\\' OR sv.referrer_host LIKE ?${bindIdx} ESCAPE '\\')`)
+    binds.push(`%${escapeLike(search)}%`)
     bindIdx++
   }
   return { conditions, binds, bindIdx }
@@ -120,7 +135,7 @@ async function deleteVisitLogs(db: D1Database, userId: string, type: string, day
     return db.prepare(`DELETE FROM share_visits WHERE user_id = ?1 AND is_bot = 1`).bind(userId).run()
   }
   if (type === 'older_than') {
-    const cutoff = Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
     return db.prepare(`DELETE FROM share_visits WHERE user_id = ?1 AND visited_at < ?2`).bind(userId, cutoff).run()
   }
   if (type === 'all') {

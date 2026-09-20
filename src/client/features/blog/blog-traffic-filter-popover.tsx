@@ -16,8 +16,8 @@ function trafficTone(excludeBots: boolean, excludeSelfReferrers: boolean, exclud
   if (excludeBots)
     return 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--success)] hover:bg-[var(--bg-hover)]'
   if (!excludeSelfReferrers && !excludeOwner)
-    return 'border-[var(--danger)]/30 bg-[var(--danger-subtle)] text-[var(--danger)]'
-  return 'border-[var(--warning)]/30 bg-[var(--warning-subtle)] text-[var(--warning)]'
+    return 'border-[var(--danger)]/30 bg-[var(--danger-soft)] text-[var(--danger)]'
+  return 'border-[var(--warning)]/30 bg-[var(--warning-soft)] text-[var(--warning)]'
 }
 
 function TrafficToggleButton({ onToggle }: { onToggle: () => void }) {

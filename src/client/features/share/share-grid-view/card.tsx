@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { BarChart2, ExternalLink, Eye, FolderClosed, FolderInput, Lock, QrCode, Settings2, Timer, Users } from 'lucide-react'
+import { BarChart2, ExternalLink, Eye, FolderClosed, FolderInput, Lock, MoreHorizontal, QrCode, Settings2, Timer, Users } from 'lucide-react'
 import type { ShareFolder, ShareInfo } from '@shared/types'
 import { Checkbox, Switch } from '../../../components/form'
 import { IconButton } from '../../../components/primitives'
@@ -31,6 +31,8 @@ export function ShareGridCard({ share, isSelected, folders, copiedSlug, onToggle
   const contextMenu = useContextMenu()
   const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
   const folderButtonRef = useRef<HTMLButtonElement>(null)
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false)
+  const moreButtonRef = useRef<HTMLButtonElement>(null)
   const isExpired = share.expiresAt ? share.expiresAt < Date.now() : false
   const folder = share.shareFolderId ? (folders.find((f) => f.id === share.shareFolderId) ?? null) : null
   const cbs: ShareItemCallbacks = { onCopyLink: onCopy, onOpenQr, onOpenAnalytics, onOpenEdit, onMoveToFolder, onToggleShare, onToggleStar, onTogglePin, onRevoke }
@@ -38,7 +40,7 @@ export function ShareGridCard({ share, isSelected, folders, copiedSlug, onToggle
     <div
       draggable
       onDragStart={(e) => { e.dataTransfer.setData('application/inkstone-share-note-ids', JSON.stringify([share.noteId])); e.dataTransfer.effectAllowed = 'copyMove' }}
-      onContextMenu={(e) => { setIsFolderMenuOpen(false); contextMenu.onContextMenu(e) }}
+      onContextMenu={(e) => { setIsFolderMenuOpen(false); setIsMoreMenuOpen(false); contextMenu.onContextMenu(e) }}
       onDoubleClick={onOpenEdit}
       className={cn('group relative flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 shadow-[var(--shadow-soft)] transition-all hover:border-[var(--border-default)] hover:shadow-[var(--shadow-hover)] cursor-grab active:cursor-grabbing select-none', isSelected ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]' : '')}
     >
@@ -60,9 +62,10 @@ export function ShareGridCard({ share, isSelected, folders, copiedSlug, onToggle
       </div>
       <div className='mt-3 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2'>
         <CardMetrics share={share} />
-        <CardActions share={share} onOpenQr={onOpenQr} onOpenAnalytics={onOpenAnalytics} onOpenEdit={onOpenEdit} folderButtonRef={folderButtonRef} onToggleFolderMenu={() => setIsFolderMenuOpen((prev) => !prev)} />
+        <CardActions share={share} onOpenQr={onOpenQr} onOpenAnalytics={onOpenAnalytics} onOpenEdit={onOpenEdit} folderButtonRef={folderButtonRef} isFolderMenuOpen={isFolderMenuOpen} onToggleFolderMenu={() => setIsFolderMenuOpen((prev) => !prev)} moreButtonRef={moreButtonRef} isMoreMenuOpen={isMoreMenuOpen} onToggleMoreMenu={() => { setIsFolderMenuOpen(false); setIsMoreMenuOpen((prev) => !prev) }} />
       </div>
-      <Menu open={isFolderMenuOpen} anchor={folderButtonRef} items={buildFolderMenuItems(share, folders, onMoveToFolder)} onClose={() => setIsFolderMenuOpen(false)} />
+      {isFolderMenuOpen && <Menu open anchor={folderButtonRef} items={buildFolderMenuItems(share, folders, onMoveToFolder)} onClose={() => setIsFolderMenuOpen(false)} />}
+      {isMoreMenuOpen && <Menu open anchor={moreButtonRef} items={buildShareMenuItems(share, folders, cbs)} onClose={() => setIsMoreMenuOpen(false)} />}
       {contextMenu.point && <Menu open anchor={contextMenu.point} items={buildShareMenuItems(share, folders, cbs)} onClose={contextMenu.close} />}
     </div>
   )
@@ -78,7 +81,7 @@ function CardHeader({ share, isSelected, onToggleSelect, onTogglePin, onToggleSt
           {share.noteTitle || t('common.untitled_note')}
         </button>
       </div>
-      <Switch checked={share.isEnabled} onChange={onToggleShare} />
+      <Switch checked={share.isEnabled} onChange={onToggleShare} label={t('share.share_switch_aria', { title: share.noteTitle || t('common.untitled_note') })} />
     </div>
   )
 }
@@ -127,10 +130,10 @@ function CardMetrics({ share }: { share: ShareInfo }) {
   )
 }
 
-function CardActions({ share, onOpenQr, onOpenAnalytics, onOpenEdit, folderButtonRef, onToggleFolderMenu }: { share: ShareInfo; onOpenQr: () => void; onOpenAnalytics: () => void; onOpenEdit: () => void; folderButtonRef: React.Ref<HTMLButtonElement>; onToggleFolderMenu: () => void }) {
+function CardActions({ share, onOpenQr, onOpenAnalytics, onOpenEdit, folderButtonRef, isFolderMenuOpen, onToggleFolderMenu, moreButtonRef, isMoreMenuOpen, onToggleMoreMenu }: { share: ShareInfo; onOpenQr: () => void; onOpenAnalytics: () => void; onOpenEdit: () => void; folderButtonRef: React.Ref<HTMLButtonElement>; isFolderMenuOpen: boolean; onToggleFolderMenu: () => void; moreButtonRef: React.Ref<HTMLButtonElement>; isMoreMenuOpen: boolean; onToggleMoreMenu: () => void }) {
   return (
     <div className='flex items-center gap-0.5'>
-      <IconButton ref={folderButtonRef} size='sm' label={t('share.batch_move_to_folder')} onClick={onToggleFolderMenu}>
+      <IconButton ref={folderButtonRef} size='sm' label={t('share.batch_move_to_folder')} aria-haspopup='menu' aria-expanded={isFolderMenuOpen} onClick={onToggleFolderMenu}>
         <FolderInput size={13} />
       </IconButton>
       <IconButton size='sm' label={t('share.qr_code_title')} onClick={onOpenQr}>
@@ -147,6 +150,9 @@ function CardActions({ share, onOpenQr, onOpenAnalytics, onOpenEdit, folderButto
           <ExternalLink size={13} />
         </a>
       )}
+      <IconButton ref={moreButtonRef} size='sm' label={t('common.more_actions')} aria-haspopup='menu' aria-expanded={isMoreMenuOpen} onClick={onToggleMoreMenu}>
+        <MoreHorizontal size={13} />
+      </IconButton>
     </div>
   )
 }

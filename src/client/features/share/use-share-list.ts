@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { COPY_FEEDBACK_MS } from '@shared/constants'
 import type { ShareInfo } from '@shared/types'
 import { confirm } from '../../components/overlay'
@@ -21,9 +21,11 @@ export function useShareList() {
 
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
 
-  const handleCopy = (url: string, slug: string) => copyShareLink(url, slug, setCopiedSlug)
-  const handleMoveToFolder = (noteId: string, folderId: string | null) => moveShareToFolder(noteId, folderId, batchMoveToFolder, toast)
-  const handleRevoke = (share: ShareInfo) => revokeShareFlow(share, batchToggle)
+  // Stable identities keep the memoized table rows from re-rendering when an
+  // unrelated row's selection changes.
+  const handleCopy = useCallback((url: string, slug: string) => copyShareLink(url, slug, setCopiedSlug, toast), [toast])
+  const handleMoveToFolder = useCallback((noteId: string, folderId: string | null) => moveShareToFolder(noteId, folderId, batchMoveToFolder, toast), [batchMoveToFolder, toast])
+  const handleRevoke = useCallback((share: ShareInfo) => revokeShareFlow(share, batchToggle), [batchToggle])
 
   return {
     folders, selectedNoteIds, toggleSelect, toggleSelectAll,
@@ -36,6 +38,7 @@ async function copyShareLink(
   url: string,
   slug: string,
   setCopiedSlug: (slug: string | null) => void,
+  toast: UiState['toast'],
 ): Promise<void> {
   try {
     const full = typeof window !== 'undefined' ? new URL(url, window.location.origin).href : url
@@ -44,6 +47,7 @@ async function copyShareLink(
     setTimeout(() => setCopiedSlug(null), COPY_FEEDBACK_MS)
   } catch (error) {
     console.warn('[share] failed to copy link', error)
+    toast({ title: t('preview.could_not_copy'), tone: 'danger' })
   }
 }
 

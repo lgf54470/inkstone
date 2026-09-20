@@ -51,6 +51,7 @@ function trashPurgeStatements(db: D1Database, params: {
        )`,
     ).bind(userId),
     db.prepare(`DELETE FROM shares WHERE note_id IN (${trashed})`).bind(userId),
+    db.prepare(`DELETE FROM share_visits WHERE user_id = ?1 AND note_id IN (${trashed})`).bind(userId),
     db.prepare(`UPDATE attachments SET note_id = NULL WHERE note_id IN (${trashed})`).bind(userId),
     db.prepare(
       `DELETE FROM import_mappings

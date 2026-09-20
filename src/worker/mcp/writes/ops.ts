@@ -1,4 +1,4 @@
-import { mergeSettings } from '@shared/constants'
+import { mergeSettings } from '@shared/user-settings'
 import { countText, deriveExcerpt, deriveTitle } from '@shared/markdown-utils'
 import type { Note } from '@shared/types'
 import type { NoteRow } from '../../db/rows'

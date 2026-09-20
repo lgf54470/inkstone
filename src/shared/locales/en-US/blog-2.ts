@@ -29,6 +29,7 @@ export const messages = {
 'blog.device_type': 'Device Type',
 'blog.operating_system': 'Operating System',
 'blog.range_all': 'All',
+'blog.range_label': 'Analytics time range',
 'blog.real_visitors': 'Real Visitors',
 'blog.real_visitors_active': 'Filtering bots and automated crawlers',
 'blog.folders': 'Folders',

@@ -125,6 +125,7 @@ export const messages = {
 'blog.allow_comments_hint': 'Visitors can leave comments under this post, subject to moderation',
 'blog.frontend_preview': 'Preview in Blog',
 'blog.site_basic_info': 'Basic Site Information',
+'blog.settings_tab_label': 'Blog settings section',
 'blog.site_name_placeholder': 'Inkstone Blog',
 'blog.site_subtitle_placeholder': 'Quiet waters run deep, ink on stone',
 'blog.author_profile_settings': 'Author Profile',

@@ -1,6 +1,7 @@
 import type { Context, Hono } from 'hono'
 import { getCookie } from 'hono/cookie'
-import { LEGACY_SESSION_COOKIE, SESSION_COOKIE, mergeSettings } from '@shared/constants'
+import { LEGACY_SESSION_COOKIE, SESSION_COOKIE } from '@shared/constants'
+import { mergeSettings } from '@shared/user-settings'
 import { initializeDatabase } from '../db/schema'
 import type { AppBindings } from '../env'
 import { hashToken, isSessionToken } from '../lib/session-store'

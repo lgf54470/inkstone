@@ -271,26 +271,19 @@ const DYNAMIC_VAR_PREFIXES = ['--bento-code-', '--kanban-tag-']
 // one without dropping it here fails the gate in the other direction.
 const PREEXISTING_UNDEFINED_USES = new Set([
   '--accent-fg',
-  '--bg-elevated',
-  '--bg-muted',
-  '--bg-sidebar',
   '--bg-subtle',
   '--bg-surface-subtle',
   '--border-focus',
   '--code-font-size',
   '--code-line-height',
   '--danger-softer',
-  '--danger-subtle',
-  '--font-family-mono',
   '--sp-0.25',
   '--sp-11',
-  '--success-subtle',
   '--surface-hover',
   '--surface-primary',
   '--surface-secondary',
   '--surface-tertiary',
   '--text-20',
-  '--warning-subtle',
 ])
 
 // name -> line numbers of every static var()/Tailwind-paren use. A name

@@ -1,5 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
-import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import { LIMITS } from '@shared/constants'
+import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -16,6 +17,7 @@ export const share = {
       },
       signal?: AbortSignal,
     ) => request<ShareListResponse>(`/api/share${toQuery((params ?? {}) as Record<string, string | number | boolean | undefined>)}`, { signal }),
+    summary: (signal?: AbortSignal) => request<ShareSummaryResponse>('/api/share/summary', { signal }),
     globalAnalytics: (
       range?: ShareTimelineRange,
       filters?: { excludeBots?: boolean; excludeSelf?: boolean; excludeOwner?: boolean },
@@ -57,8 +59,11 @@ export const share = {
       },
       signal?: AbortSignal,
     ) => request<ShareVisitsResponse>(`/api/share/visits${toQuery(params ?? {})}`, { signal }),
-    cleanVisits: (type: 'bots' | 'older_than' | 'all', days?: number) =>
-      request<{ ok: true; deleted: number }>(`/api/share/visits${toQuery({ type, days })}`, { method: 'DELETE' }),
+    cleanVisits: (type: 'bots' | 'older_than' | 'all', days?: number, password?: string) =>
+      request<{ ok: true; deleted: number }>(`/api/share/visits${toQuery({ type, days })}`, {
+        method: 'DELETE',
+        ...(password === undefined ? {} : { body: { password } }),
+      }),
     batch: (
       action: 'enable' | 'disable' | 'revoke' | 'expire' | 'move',
       noteIds: string[],
@@ -104,7 +109,8 @@ export const share = {
     ) => request<{ share: ShareInfo }>(`/api/share/${noteId}`, { method: 'POST', body }),
     remove: (noteId: string) => request<{ ok: true }>(`/api/share/${noteId}`, { method: 'DELETE' }),
     read: (slug: string, password?: string, signal?: AbortSignal, referrer?: string) =>
-      request<PublicNote>(`/api/public/${slug}`, { method: 'POST', body: { password, referrer }, signal }),
+      // A long document.referrer must not turn into a 400 for a legitimate viewer; the server caps at the same length.
+      request<PublicNote>(`/api/public/${slug}`, { method: 'POST', body: { password, referrer: referrer?.slice(0, LIMITS.shareReferrerMaxLength) }, signal }),
   },
   blog: {
     stats: (signal?: AbortSignal) =>
@@ -183,8 +189,11 @@ export const share = {
     },
     batchToggleGroup: (type: 'folder' | 'tag', target: string, enabled: boolean) =>
       request<{ ok: true }>('/api/blog/batch-toggle-group', { method: 'POST', body: { type, target, enabled } }),
-    cleanVisits: (type: 'bots' | 'older_than' | 'all', days?: number) =>
-      request<{ ok: true; deleted: number }>(`/api/blog/visits${toQuery({ type, days })}`, { method: 'DELETE' }),
+    cleanVisits: (type: 'bots' | 'older_than' | 'all', days?: number, password?: string) =>
+      request<{ ok: true; deleted: number }>(`/api/blog/visits${toQuery({ type, days })}`, {
+        method: 'DELETE',
+        ...(password === undefined ? {} : { body: { password } }),
+      }),
     categories: {
       list: (signal?: AbortSignal) =>
         request<{ categories: BlogCategory[] }>('/api/blog/categories', { signal }),

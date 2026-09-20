@@ -1,4 +1,5 @@
 import { BarChart3, Check, Copy, Dices, ExternalLink, FolderClosed, Hash, LayoutGrid, Plus, QrCode, ShieldAlert, Trash2, X } from 'lucide-react'
+import { useId } from 'react'
 import { LIMITS } from '@shared/constants'
 import { Button } from '../../../components/primitives'
 import { Input, Segmented, Select, Switch } from '../../../components/form'
@@ -13,11 +14,12 @@ export function ShareLinkCard({ b, onClose }: { b: ShareEditModalBundle; onClose
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--accent-soft)] bg-[var(--accent-soft)]/20 p-3 space-y-2.5'>
       <div className='flex items-center gap-2'>
-        <input
+        <Input
           type='text'
           readOnly
           value={share.url}
-          className="flex-1 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 font-mono text-[length:var(--text-11\.5)] text-[var(--text-primary)] select-all outline-hidden"
+          aria-label={t('share.share_link')}
+          className="flex-1 font-mono text-[length:var(--text-11\.5)] bg-[var(--bg-surface)] select-all"
         />
         <Button size='sm' variant='secondary' icon={isCopied ? <Check size={13} className='text-[var(--success)]' /> : <Copy size={13} />} onClick={() => void handleCopyLink()}>
           {isCopied ? t('common.copied') : t('common.copy')}
@@ -68,7 +70,7 @@ export function ShareStatusCard({ b }: { b: ShareEditModalBundle }) {
           {isEnabled ? t('share.status_active_desc') : t('share.status_paused_desc')}
         </div>
       </div>
-      <Switch checked={isEnabled} onChange={setIsEnabled} />
+      <Switch checked={isEnabled} onChange={setIsEnabled} label={t('share.share_status')} />
     </div>
   )
 }
@@ -113,7 +115,7 @@ export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
             <span key={tagName} className='inline-flex items-center gap-1 rounded-[var(--r-sm)] bg-[var(--bg-hover)] border border-[var(--border-subtle)] px-2 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]'>
               <Hash size={10} className='text-[var(--accent)]' />
               <span>{tagName}</span>
-              <button type='button' onClick={() => handleRemoveTag(tagName)} className='text-[var(--text-quaternary)] hover:text-[var(--danger)]'>
+              <button type='button' onClick={() => handleRemoveTag(tagName)} aria-label={t('share.remove_tag')} className='text-[var(--text-quaternary)] hover:text-[var(--danger)]'>
                 <X size={11} />
               </button>
             </span>
@@ -121,7 +123,7 @@ export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
         )}
       </div>
       <div className='flex items-center gap-1.5 pt-1'>
-        <input
+        <Input
           type='text'
           value={newTagInput}
           onChange={(e) => setNewTagInput(e.target.value)}
@@ -132,7 +134,8 @@ export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
             }
           }}
           placeholder={t('tags.new_placeholder')}
-          className='flex-1 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2.5 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
+          aria-label={t('tags.new_placeholder')}
+          className='flex-1 text-xs'
         />
         <Button size='sm' variant='secondary' icon={<Plus size={12} />} onClick={handleAddTag}>
           {t('tags.create')}
@@ -155,39 +158,57 @@ export function ShareSlugCard({ b }: { b: ShareEditModalBundle }) {
             {t('share.custom_slug_hint')}
           </div>
         </div>
-        <Switch checked={shouldUseCustomSlug} onChange={setShouldUseCustomSlug} />
+        <Switch checked={shouldUseCustomSlug} onChange={setShouldUseCustomSlug} label={t('share.custom_slug')} />
       </div>
       {shouldUseCustomSlug && (
         <div className='pt-2'>
-          <div className='flex items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 py-1.5 focus-within:border-[var(--accent)]'>
-            <span className='text-[length:var(--text-12)] font-mono text-[var(--text-quaternary)]'>{'/s/'}</span>
-            <input
-              type='text'
-              value={customSlug}
-              onChange={(e) => setCustomSlug(e.target.value)}
-              placeholder={t('share.custom_slug_placeholder')}
-              className='flex-1 bg-transparent text-[length:var(--text-12)] font-mono text-[var(--text-primary)] outline-none placeholder:text-[var(--text-quaternary)]'
-            />
-            <button
-              type='button'
-              onClick={() => setCustomSlug(generateRandomSlug(6))}
-              className='flex items-center gap-1 rounded bg-[var(--bg-card)] px-2 py-1 text-[length:var(--text-11)] font-medium text-[var(--accent)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all'
-              title={t('share.generate_random_slug')}
-            >
-              <Dices size={12} />
-              <span>{t('share.random_slug_btn')}</span>
-            </button>
-            {isSlugChecking && <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{t('common.checking')}</span>}
-            {!isSlugChecking && slugAvailable === true && (
-              <Check size={14} className='text-[var(--success)]' />
-            )}
-            {!isSlugChecking && slugAvailable === false && (
-              <ShieldAlert size={14} className='text-[var(--danger)]' />
-            )}
-          </div>
+          <SlugEditorRow
+            customSlug={customSlug}
+            setCustomSlug={setCustomSlug}
+            isSlugChecking={isSlugChecking}
+            slugAvailable={slugAvailable}
+          />
           {slugError && <p className='pt-1 text-[length:var(--text-11)] text-[var(--danger)]'>{slugError}</p>}
         </div>
       )}
+    </div>
+  )
+}
+
+function SlugEditorRow({ customSlug, setCustomSlug, isSlugChecking, slugAvailable }: {
+  customSlug: string
+  setCustomSlug: (slug: string) => void
+  isSlugChecking: boolean
+  slugAvailable: boolean | null
+}) {
+  return (
+    <div className='flex items-center gap-1.5'>
+      <span className='text-[length:var(--text-12)] font-mono text-[var(--text-quaternary)]'>{'/s/'}</span>
+      <Input
+        type='text'
+        value={customSlug}
+        onChange={(e) => setCustomSlug(e.target.value)}
+        placeholder={t('share.custom_slug_placeholder')}
+        aria-label={t('share.custom_slug')}
+        className='flex-1 font-mono text-[length:var(--text-12)]'
+      />
+      {isSlugChecking && <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{t('common.checking')}</span>}
+      {!isSlugChecking && slugAvailable === true && (
+        <Check size={14} className='text-[var(--success)]' />
+      )}
+      {!isSlugChecking && slugAvailable === false && (
+        <ShieldAlert size={14} className='text-[var(--danger)]' />
+      )}
+      <Button
+        size='sm'
+        variant='ghost'
+        icon={<Dices size={12} />}
+        onClick={() => setCustomSlug(generateRandomSlug(6))}
+        title={t('share.generate_random_slug')}
+        className='shrink-0 text-[var(--accent)]'
+      >
+        {t('share.random_slug_btn')}
+      </Button>
     </div>
   )
 }
@@ -205,7 +226,7 @@ export function SharePasswordCard({ b }: { b: ShareEditModalBundle }) {
             {t('share.password_hint')}
           </div>
         </div>
-        <Switch checked={shouldUsePassword} onChange={setShouldUsePassword} />
+        <Switch checked={shouldUsePassword} onChange={setShouldUsePassword} label={t('share.access_password')} />
       </div>
       {shouldUsePassword && (
         <div className='pt-2'>
@@ -224,12 +245,14 @@ export function SharePasswordCard({ b }: { b: ShareEditModalBundle }) {
 
 export function ShareExpiryCard({ b }: { b: ShareEditModalBundle }) {
   const { share, EXPIRY_OPTIONS, expiry, setExpiry } = b
+  const titleId = useId()
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
-      <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] pb-1.5'>
+      <div id={titleId} className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)] pb-1.5'>
         {t('share.expiration_title')}
       </div>
       <Segmented
+        aria-labelledby={titleId}
         options={share?.expiresAt ? [{ value: KEEP_CURRENT_EXPIRY, label: t('share.keep_current') }, ...EXPIRY_OPTIONS] : EXPIRY_OPTIONS}
         value={expiry}
         onChange={setExpiry}
@@ -246,7 +269,7 @@ export function EditModalFooter({ b, onClose }: { b: ShareEditModalBundle; onClo
         <Button
           size='sm'
           variant='ghost'
-          className='text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
+          className='text-[var(--danger)] hover:bg-[var(--danger-soft)]'
           icon={<Trash2 size={13} />}
           loading={isRevoking}
           disabled={isSaving}

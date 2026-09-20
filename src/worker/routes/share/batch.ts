@@ -16,45 +16,33 @@ function registerShareBatchRoute(shareManageRoutes: Hono<AppBindings>): void {
     const body = await readJsonValidated(c, shareBatchSchema, JSON_BODY_LIMITS.small)
     const noteIds = body.noteIds.slice(0, 1000)
     const now = Date.now()
-    const placeholders = noteIds.map(() => '?').join(',')
 
+    let count = 0
     switch (body.action) {
       case 'enable':
-        await enableNoteShares(c.env.DB, userId, noteIds, now)
+        count = await enableNoteShares(c.env.DB, userId, noteIds, now)
         break
       case 'disable':
-        await disableSharesForNotes(c.env.DB, userId, noteIds, placeholders)
+        count = await disableSharesForNotes(c.env.DB, userId, noteIds)
         break
       case 'revoke':
-        await c.env.DB.prepare(
-          `DELETE FROM shares WHERE user_id = ? AND note_id IN (${placeholders})`,
-        )
-          .bind(userId, ...noteIds)
-          .run()
+        count = await revokeSharesForNotes(c.env.DB, userId, noteIds)
         break
       case 'expire': {
         const expiresAt =
           typeof body.expiresIn === 'number' && body.expiresIn > 0
             ? now + Math.min(body.expiresIn, 365 * 24 * 60 * 60 * 1000)
             : null
-        await c.env.DB.prepare(
-          `UPDATE shares SET expires_at = ? WHERE user_id = ? AND note_id IN (${placeholders})`,
-        )
-          .bind(expiresAt, userId, ...noteIds)
-          .run()
+        count = await setSharesField(c.env.DB, userId, noteIds, 'expires_at', expiresAt)
         break
       }
       case 'move': {
         const targetFolderId = body.folderId && isValidId(body.folderId) ? body.folderId : null
-        await c.env.DB.prepare(
-          `UPDATE shares SET folder_id = ? WHERE user_id = ? AND note_id IN (${placeholders})`,
-        )
-          .bind(targetFolderId, userId, ...noteIds)
-          .run()
+        count = await setSharesField(c.env.DB, userId, noteIds, 'folder_id', targetFolderId)
         break
       }
     }
-    return c.json({ ok: true, count: noteIds.length })
+    return c.json({ ok: true, count })
   })
 }
 
@@ -68,12 +56,13 @@ function registerShareFolderToggleRoute(shareManageRoutes: Hono<AppBindings>): v
       .bind(body.folderId, userId)
       .all<{ id: string }>()
     const noteList = notes.results ?? []
+    let count = 0
     if (body.enabled) {
-      await enableNoteShares(c.env.DB, userId, noteList.map((n) => n.id), Date.now())
+      count = await enableNoteShares(c.env.DB, userId, noteList.map((n) => n.id), Date.now())
     } else if (noteList.length > 0) {
-      await disableSharesForNotes(c.env.DB, userId, noteList.map((n) => n.id), noteList.map(() => '?').join(','))
+      count = await disableSharesForNotes(c.env.DB, userId, noteList.map((n) => n.id))
     }
-    return c.json({ ok: true, count: noteList.length })
+    return c.json({ ok: true, count })
   })
 }
 
@@ -96,43 +85,87 @@ function registerShareTagToggleRoute(shareManageRoutes: Hono<AppBindings>): void
       .bind(tagRow.id, userId)
       .all<{ id: string }>()
     const noteList = notes.results ?? []
+    let count = 0
     if (body.enabled) {
-      await enableNoteShares(c.env.DB, userId, noteList.map((n) => n.id), Date.now())
+      count = await enableNoteShares(c.env.DB, userId, noteList.map((n) => n.id), Date.now())
     } else if (noteList.length > 0) {
-      await disableSharesForNotes(c.env.DB, userId, noteList.map((n) => n.id), noteList.map(() => '?').join(','))
+      count = await disableSharesForNotes(c.env.DB, userId, noteList.map((n) => n.id))
     }
-    return c.json({ ok: true, count: noteList.length })
+    return c.json({ ok: true, count })
   })
 }
 
-async function enableNoteShares(db: D1Database, userId: string, noteIds: string[], now: number): Promise<void> {
-  for (const noteId of noteIds) {
-    const existing = await db.prepare(
-      `SELECT slug FROM shares WHERE note_id = ?1 AND user_id = ?2`,
-    )
-      .bind(noteId, userId)
-      .first<{ slug: string }>()
-    if (existing) {
-      await db.prepare(
-        `UPDATE shares SET is_enabled = 1 WHERE note_id = ?1 AND user_id = ?2`,
-      )
-        .bind(noteId, userId)
-        .run()
-    } else {
-      await db.prepare(
-        `INSERT INTO shares (slug, note_id, user_id, password_hash, expires_at, views, is_enabled, created_at)
-         VALUES (?1, ?2, ?3, NULL, NULL, 0, 1, ?4)`,
-      )
-        .bind(newSlug(), noteId, userId, now)
-        .run()
-    }
+async function enableNoteShares(db: D1Database, userId: string, noteIds: string[], now: number): Promise<number> {
+  let affected = 0
+  for (const chunk of chunkNoteIds(noteIds)) {
+    // One upsert per note inside a chunked db.batch: the whole chunk commits together,
+    // and both arms are owner-guarded so a foreign note_id can neither be inserted over
+    // nor have its share flipped (the old read-then-insert crashed on exactly that).
+    const statements = chunk.map((noteId) => db.prepare(
+      `INSERT INTO shares (slug, note_id, user_id, password_hash, expires_at, views, is_enabled, created_at)
+       SELECT ?1, id, ?2, NULL, NULL, 0, 1, ?3 FROM notes WHERE id = ?4 AND user_id = ?2
+       ON CONFLICT(note_id) DO UPDATE SET is_enabled = 1 WHERE shares.user_id = ?2`,
+    ).bind(newSlug(), userId, now, noteId))
+    const results = await db.batch(statements)
+    for (const result of results) affected += result.meta.changes ?? 0
   }
+  return affected
 }
 
-async function disableSharesForNotes(db: D1Database, userId: string, noteIds: string[], placeholders: string): Promise<void> {
-  await db.prepare(
-    `UPDATE shares SET is_enabled = 0 WHERE user_id = ? AND note_id IN (${placeholders})`,
-  )
-    .bind(userId, ...noteIds)
-    .run()
+async function disableSharesForNotes(db: D1Database, userId: string, noteIds: string[]): Promise<number> {
+  return setSharesField(db, userId, noteIds, 'is_enabled', 0)
+}
+
+export async function revokeSharesForNotes(db: D1Database, userId: string, noteIds: string[]): Promise<number> {
+  let affected = 0
+  for (const chunk of chunkNoteIds(noteIds)) {
+    // Sessions go first: their lookup is a subquery over shares and must read the
+    // still-present rows inside the same transaction.
+    const [, sharesDeleted] = await db.batch([
+      db.prepare(
+        `DELETE FROM share_asset_sessions WHERE slug IN (SELECT slug FROM shares WHERE user_id = ? AND note_id IN (${placeholdersFor(chunk)}))`,
+      ).bind(userId, ...chunk),
+      db.prepare(
+        `DELETE FROM shares WHERE user_id = ? AND note_id IN (${placeholdersFor(chunk)})`,
+      ).bind(userId, ...chunk),
+      db.prepare(
+        `DELETE FROM share_visits WHERE user_id = ? AND note_id IN (${placeholdersFor(chunk)})`,
+      ).bind(userId, ...chunk),
+    ])
+    affected += sharesDeleted.meta.changes ?? 0
+  }
+  return affected
+}
+
+async function setSharesField(
+  db: D1Database,
+  userId: string,
+  noteIds: string[],
+  column: 'is_enabled' | 'expires_at' | 'folder_id',
+  value: string | number | null,
+): Promise<number> {
+  let affected = 0
+  for (const chunk of chunkNoteIds(noteIds)) {
+    const result = await db.prepare(
+      `UPDATE shares SET ${column} = ? WHERE user_id = ? AND note_id IN (${placeholdersFor(chunk)})`,
+    )
+      .bind(value, userId, ...chunk)
+      .run()
+    affected += result.meta.changes ?? 0
+  }
+  return affected
+}
+
+const SHARE_NOTE_ID_CHUNK = 50
+
+function chunkNoteIds(noteIds: string[]): string[][] {
+  const chunks: string[][] = []
+  for (let index = 0; index < noteIds.length; index += SHARE_NOTE_ID_CHUNK) {
+    chunks.push(noteIds.slice(index, index + SHARE_NOTE_ID_CHUNK))
+  }
+  return chunks
+}
+
+function placeholdersFor(ids: string[]): string {
+  return ids.map(() => '?').join(',')
 }

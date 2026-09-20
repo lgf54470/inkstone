@@ -42,7 +42,7 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
     const counts = useNavigationCounts()
 
     useEffect(() => {
-      void useShareStore.getState().loadShares()
+      void useShareStore.getState().loadSummary()
       void useBlogStore.getState().loadPosts()
     }, [])
 
@@ -112,7 +112,8 @@ function QuickNavGrid({ view, panel, counts, onGo }: {
     const patchNote = useNotes((s) => s.patchNote)
     const globalStats = useShareStore((s) => s.globalStats)
     const shares = useShareStore((s) => s.shares)
-    const shareCount = globalStats?.totalShares ?? (shares.length > 0 ? shares.length : undefined)
+    const summary = useShareStore((s) => s.summary)
+    const shareCount = globalStats?.totalShares ?? (shares.length > 0 ? shares.length : summary?.totalShares)
     const blogPosts = useBlogStore((s) => s.posts)
     const publishedCount = useMemo(() => {
       const count = blogPosts.filter((p) => p.isPublished).length

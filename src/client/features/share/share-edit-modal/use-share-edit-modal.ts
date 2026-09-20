@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LIMITS } from '@shared/constants'
 import type { ShareInfo } from '@shared/types'
 import { confirm } from '../../../components/overlay'
 import { api } from '../../../lib/api'
@@ -123,7 +124,7 @@ function useCustomSlugCheck(open: boolean, enabled: boolean, customSlug: string,
       return
     }
     const trimmed = customSlug.trim()
-    if (!/^[a-zA-Z0-9_-]{3,64}$/.test(trimmed)) {
+    if (!/^[a-zA-Z0-9_-]{6,64}$/.test(trimmed)) {
       setSlugAvailable(false)
       setSlugError(t('share.custom_slug_invalid'))
       return
@@ -180,7 +181,12 @@ async function loadNoteShare(
   setShare: (share: ShareInfo | null) => void,
   setIsLoadingShare: (value: boolean) => void,
 ): Promise<void> {
-  const res = await api.share.getNoteShare(noteId).catch(() => null)
+  // Best-effort: a failure leaves the editor on the create form, but the user
+  // must be able to tell a missing share apart from a failed load in the logs.
+  const res = await api.share.getNoteShare(noteId).catch((error) => {
+    console.warn('[share] failed to load note share for the edit modal', { noteId, error })
+    return null
+  })
   if (res) setShare(res.share)
   setIsLoadingShare(false)
 }
@@ -235,7 +241,7 @@ type SaveEditFlow = {
 }
 
 async function saveEditShareFlow({ share, noteId, fields, slug, setIsSaving, toast, onSaved, onClose }: SaveEditFlow): Promise<void> {
-  if (fields.shouldUsePassword && fields.password.length > 0 && fields.password.length < 6) {
+  if (fields.shouldUsePassword && fields.password.length > 0 && fields.password.length < LIMITS.sharePasscodeMinLength) {
     toast({ title: t('share.passcode_too_short'), tone: 'danger' })
     return
   }
@@ -249,7 +255,7 @@ async function saveEditShareFlow({ share, noteId, fields, slug, setIsSaving, toa
   }
   setIsSaving(true)
   try {
-    await api.share.create(noteId, {
+    const res = await api.share.create(noteId, {
       password: fields.shouldUsePassword ? fields.password || undefined : null,
       expiresIn: expiresInForSelection(fields.expiry),
       customSlug: fields.shouldUseCustomSlug && fields.customSlug.trim() ? fields.customSlug.trim() : undefined,
@@ -261,7 +267,7 @@ async function saveEditShareFlow({ share, noteId, fields, slug, setIsSaving, toa
       title: share ? t('share.sharing_settings_updated') : t('share.public_link_created'),
       tone: 'success',
     })
-    void useShareStore.getState().loadShares()
+    useShareStore.getState().applyServerShare(res.share)
     onSaved?.()
     onClose()
   } catch (err) {

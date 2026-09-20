@@ -23,7 +23,6 @@ import { useNoteTemplates } from '../../store/note-templates'
 import { createNoteFromTemplate } from '../../lib/template-notes'
 import { CALENDAR_TREE, isTodoFolderId, isVirtualFolderId, resolveTodoTag, TODO_TREE, virtualPathSegments } from '../../lib/calendar-tree'
 import { folderPathLabel } from '../../lib/folders'
-import { useShareStore } from '../share'
 import { t, useLocale, type MessageKey } from '../../lib/i18n'
 import { BulkBar } from './note-list/bulk-bar'
 import { NoteListHeader } from './note-list/header'
@@ -306,8 +305,6 @@ function useListData() {
     const todoTagText = resolveTodoTag(useSession((s) => s.settings.notes?.todoTag), locale)
     const breakpoint = useBreakpoint()
     const notes = useVisibleNotes()
-    const shares = useShareStore((s) => s.shares)
-    const sharedNoteIds = useMemo(() => new Set(shares.map((s) => s.noteId)), [shares])
     const { emptyTrash, isEmptyingTrash } = useEmptyTrash()
     const { rememberFilters, setRememberFilters } = usePersistedListFilters()
     const filter = listQuery
@@ -320,7 +317,7 @@ function useListData() {
         else
             saveRememberedFilter(null)
     }, [filter, dateFilter, relativeFilter, selectedTags, selectedTagsMatch, rememberFilters])
-    return { locale, view, folderId, tag, sort, order, density, setSort, activeNoteId, toggleNavDrawer, selectedTags, selectedTagsMatch, setSelectedTagsMatch, dateFilter, relativeFilter, listQuery, setListQuery, folders, tags, loading, hydrated, openNote, allNotes, todoTagText, breakpoint, notes, sharedNoteIds, emptyTrash, isEmptyingTrash, rememberFilters, setRememberFilters, filter, deferredFilter }
+    return { locale, view, folderId, tag, sort, order, density, setSort, activeNoteId, toggleNavDrawer, selectedTags, selectedTagsMatch, setSelectedTagsMatch, dateFilter, relativeFilter, listQuery, setListQuery, folders, tags, loading, hydrated, openNote, allNotes, todoTagText, breakpoint, notes, emptyTrash, isEmptyingTrash, rememberFilters, setRememberFilters, filter, deferredFilter }
 }
 
 function useListLayout() {
@@ -416,7 +413,7 @@ function useListDerived(data: ReturnType<typeof useListData>, layout: ReturnType
         gapShown, displayGap, gapCapsuleRef, peekUsed, peekRange, latestEdit, tagColors, selectedTags, selectedTagsMatch, setSelectedTagsMatch,
         rememberFilters: data.rememberFilters, setRememberFilters: data.setRememberFilters, isEmptyingTrash: data.isEmptyingTrash, emptyTrash: data.emptyTrash,
         notes, groups, activeNoteId, renderedIds, onKeyDown, hydrated: data.hydrated, loading: data.loading, filteredCount, weekFiltered, latestWeekRange,
-        applyFixedRange, sharedNoteIds: data.sharedNoteIds, density, selectRange, renderLimit, loadMoreRef,
+        applyFixedRange, density, selectRange, renderLimit, loadMoreRef,
         isSortMenuOpen, sortItems, tagFilterItem, isFavMenuOpen, favItems, isTagFilterOpen, setIsTagFilterOpen,
     }
 }
@@ -428,7 +425,7 @@ export function NoteList() {
     return (<section className='relative flex h-full min-h-0 flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-base)]'>
       <NoteListHeader title={d.title} view={d.view} folderId={d.folderId} todoTagText={d.todoTagText} breakpoint={d.breakpoint} toggleNavDrawer={d.toggleNavDrawer} sortButtonRef={d.sortButtonRef} setIsSortMenuOpen={d.setIsSortMenuOpen} favButtonRef={d.favButtonRef} setIsFavMenuOpen={d.setIsFavMenuOpen} filter={d.filter} setListQuery={d.setListQuery} listRef={d.listRef} filteredIds={d.filteredIds} openNote={d.openNote} dateFilter={d.dateFilter} rangeChipRef={d.rangeChipRef} isRangeEditorOpen={d.isRangeEditorOpen} setIsRangeEditorOpen={d.setIsRangeEditorOpen} dayFilterLabel={d.dayFilterLabel} dayFilterLabelEnd={d.dayFilterLabelEnd} relativeFilter={d.relativeFilter} gapShown={d.gapShown} displayGap={d.displayGap} gapCapsuleRef={d.gapCapsuleRef} peekUsed={d.peekUsed} peekRange={d.peekRange} latestEdit={d.latestEdit} tagColors={d.tagColors} selectedTags={d.selectedTags} selectedTagsMatch={d.selectedTagsMatch} setSelectedTagsMatch={d.setSelectedTagsMatch} rememberFilters={d.rememberFilters} setRememberFilters={d.setRememberFilters} clearAllFilters={() => useUi.getState().clearAllFilters()} isEmptyingTrash={d.isEmptyingTrash} emptyTrash={d.emptyTrash} notes={d.notes}/>
 
-      <NoteListBody scope={{ view: d.view, folderId: d.folderId, tag: d.tag }} groups={d.groups} title={d.title} activeNoteId={d.activeNoteId} renderedIds={d.renderedIds} onKeyDown={d.onKeyDown} listRef={d.listRef} hydrated={d.hydrated} loading={d.loading} filteredCount={d.filteredCount} filter={d.filter} dateFilter={d.dateFilter} selectedTags={d.selectedTags} latestEdit={d.latestEdit} weekFiltered={d.weekFiltered} latestWeekRange={d.latestWeekRange} applyFixedRange={d.applyFixedRange} sharedNoteIds={d.sharedNoteIds} density={d.density} tagColors={d.tagColors} selectRange={d.selectRange} renderLimit={d.renderLimit} loadMoreRef={d.loadMoreRef}/>
+      <NoteListBody scope={{ view: d.view, folderId: d.folderId, tag: d.tag }} groups={d.groups} title={d.title} activeNoteId={d.activeNoteId} renderedIds={d.renderedIds} onKeyDown={d.onKeyDown} listRef={d.listRef} hydrated={d.hydrated} loading={d.loading} filteredCount={d.filteredCount} filter={d.filter} dateFilter={d.dateFilter} selectedTags={d.selectedTags} latestEdit={d.latestEdit} weekFiltered={d.weekFiltered} latestWeekRange={d.latestWeekRange} applyFixedRange={d.applyFixedRange} density={d.density} tagColors={d.tagColors} selectRange={d.selectRange} renderLimit={d.renderLimit} loadMoreRef={d.loadMoreRef}/>
 
       <BulkBar />
 

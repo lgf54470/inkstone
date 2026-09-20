@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LIMITS } from '@shared/constants'
 
 export const shareBatchSchema = z.object({
   action: z.enum(['enable', 'disable', 'revoke', 'expire', 'move']),
@@ -17,6 +18,10 @@ export const shareTagToggleSchema = z.object({
   enabled: z.boolean(),
 })
 
+export const shareVisitWipeSchema = z.object({
+  password: z.string().max(LIMITS.passwordMaxLength).optional(),
+})
+
 export const shareCreateSchema = z.object({
   password: z.string().nullable().optional(),
   expiresIn: z.number().nullable().optional(),
@@ -27,6 +32,6 @@ export const shareCreateSchema = z.object({
 })
 
 export const shareAccessSchema = z.object({
-  password: z.string().optional(),
-  referrer: z.string().optional(),
+  password: z.string().max(LIMITS.passwordMaxLength).optional(),
+  referrer: z.string().max(LIMITS.shareReferrerMaxLength).optional(),
 })

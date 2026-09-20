@@ -222,6 +222,24 @@ describe('files library routes (real D1)', () => {
     const anonymous = await request(app, `/api/files/${attachmentId}`)
     expect(anonymous.status).toBe(401)
   })
+
+  it('cuts attachment access once the share is paused', async () => {
+    const db = await makeDb()
+    DB_ENV.env.FILES = fakeR2() as unknown as AppBindings['Bindings']['FILES']
+    await seedUser(db)
+    const attachmentId = await seedAttachment(db, { filename: 'photo.png' })
+    const noteId = await seedNote(db, `See ![pic](/api/files/${attachmentId})`)
+    await runSql(
+      db,
+      `INSERT INTO shares (slug, note_id, user_id, password_hash, is_enabled, created_at)
+       VALUES (?1, ?2, ?3, NULL, 0, ?4)`,
+      'paused-post', noteId, USER, H.now,
+    )
+
+    const app = makeApp(false)
+    const res = await request(app, `/api/files/${attachmentId}?share=paused-post`)
+    expect(res.status).toBe(401)
+  })
 })
 
 describe('files update & maintenance routes (real D1)', () => {

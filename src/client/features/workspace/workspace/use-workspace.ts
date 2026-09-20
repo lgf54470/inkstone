@@ -10,7 +10,7 @@ import { useBreakpoint, useRelativeTime } from '../../../lib/hooks'
 import { setActiveEditorView } from '../../../editor/commands'
 import { optimizeImageFile } from '../../../lib/image'
 import { useBlogStore } from '../../blog'
-import { useShareStore } from '../../share'
+import { isNoteShared, useShareStore } from '../../share'
 import { type Heading } from '../../../lib/markdown/renderer'
 import type { WorkspacePane, UiState } from '../../../store/ui'
 import { useUi } from '../../../store/ui'
@@ -65,7 +65,7 @@ function useWorkspaceStore(pane: WorkspacePane | 'active') {
   const setWorkspacePaneLayout = useUi((s) => s.setWorkspacePaneLayout)
   const activateWorkspacePane = useUi((s) => s.activateWorkspacePane)
   const closeSecondaryNote = useUi((s) => s.closeSecondaryNote)
-  const isShared = useShareStore((s) => Boolean(note && s.shares.some((sh) => sh.noteId === note.id)))
+  const isShared = useShareStore((s) => (note ? isNoteShared(s, note.id) : false))
   const isBlogPublished = useBlogStore((s) => Boolean(note && s.posts.some((p) => p.noteId === note.id && p.isPublished)))
   const breakpoint = useBreakpoint()
   return {

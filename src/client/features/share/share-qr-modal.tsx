@@ -6,7 +6,7 @@ import { Modal } from '../../components/overlay'
 import { Button } from '../../components/primitives'
 import { t } from '../../lib/i18n'
 import { QR_BG_COLOR, QR_FG_COLOR } from '../../lib/qr-colors'
-import { copyQrImageToClipboard, downloadQrPng, downloadQrSvg } from './share-helpers'
+import { copyQrImageToClipboard, downloadQrPng, downloadQrSvg } from './qr-export'
 
 const MODAL_WIDTH = 420
 
@@ -101,7 +101,9 @@ function QrCodeCard({ svgRef, fullUrl }: {
   return (
     <div
       ref={svgRef}
-      className='rounded-[var(--r-2xl)] border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.02]'
+      // The plate stays white in both themes: the QR itself renders on fixed
+      // white (QR_BG_COLOR), and a dark frame would cut into its quiet zone.
+      className='rounded-[var(--r-2xl)] border border-[var(--border-default)] bg-[var(--swatch-white)] p-4 shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.02]'
     >
       <QRCodeSVG
         value={fullUrl}

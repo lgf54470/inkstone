@@ -15,13 +15,14 @@ import type {
     ShareGlobalAnalytics,
     ShareTimelineRange,
 } from '@shared/types'
-import { BigSvgChart } from '../../components/big-svg-chart'
 import { BreakdownRow, KpiCard } from '../../components/dashboard-blocks'
 import { IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
-import { countryFlag, countryNameLocalized } from './share-helpers'
+import { countryFlag, countryNameLocalized, localizeEnvName, localizeReferrerName } from './share-helpers'
+import { LoadErrorState } from './share-load-error'
+import { TimelineCard } from './share-dashboard-timeline-card'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import type { useShareDashboardView } from './use-share-dashboard-view'
 import { useShareDashboardView as useDashboardView } from './use-share-dashboard-view'
@@ -36,20 +37,26 @@ export function ShareDashboardView({
   onOpenLogs?: () => void
 }) {
   const bundle = useDashboardView()
-  const { analytics, totalFilteredCount } = bundle
+  const { analytics, error, loadData, range, totalFilteredCount } = bundle
   return (
     <div className='flex h-full flex-col overflow-y-auto bg-[var(--bg-base)] p-5'>
       <DashboardHeader bundle={bundle} />
-      {totalFilteredCount > 0 && <FilterSummaryBanner bundle={bundle} />}
-      <KpiGrid analytics={analytics} />
-      <TimelineCard bundle={bundle} />
-      <div className='mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2'>
-        <TopNotesCard analytics={analytics} onSelectNoteAnalytics={onSelectNoteAnalytics} />
-        <CountryBreakdownCard analytics={analytics} locale={bundle.locale} />
-        <ReferrerBreakdownCard analytics={analytics} />
-        <DevicesBreakdownCard analytics={analytics} />
-      </div>
-      <RecentActivityCard analytics={analytics} onOpenLogs={onOpenLogs} locale={bundle.locale} />
+      {error ? (
+        <LoadErrorState label={t('share.analytics_load_failed')} onRetry={() => void loadData(range)} />
+      ) : (
+        <>
+          {totalFilteredCount > 0 && <FilterSummaryBanner bundle={bundle} />}
+          <KpiGrid analytics={analytics} />
+          <TimelineCard bundle={bundle} />
+          <div className='mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2'>
+            <TopNotesCard analytics={analytics} onSelectNoteAnalytics={onSelectNoteAnalytics} />
+            <CountryBreakdownCard analytics={analytics} locale={bundle.locale} />
+            <ReferrerBreakdownCard analytics={analytics} />
+            <DevicesBreakdownCard analytics={analytics} />
+          </div>
+          <RecentActivityCard analytics={analytics} onOpenLogs={onOpenLogs} locale={bundle.locale} />
+        </>
+      )}
     </div>
   )
 }
@@ -75,6 +82,7 @@ function DashboardHeader({ bundle }: { bundle: DashboardBundle }) {
 
       <div className='flex items-center gap-2'>
         <Segmented
+          label={t('share.range_label')}
           options={RANGE_OPTIONS}
           value={range}
           onChange={(val) => setRange(val as ShareTimelineRange)}
@@ -169,37 +177,6 @@ function ActiveSharesCard({ analytics }: { analytics: ShareGlobalAnalytics | nul
   )
 }
 
-function TimelineCard({ bundle }: { bundle: DashboardBundle }) {
-  const { metricMode, setMetricMode, timelinePoints, chartValues } = bundle
-  return (
-    <div className='mt-4 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
-      <div className='flex flex-wrap items-center justify-between gap-2 pb-3'>
-        <div>
-          <h3 className='text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>
-            {t('share.timeline_trend_title')}
-          </h3>
-          <p className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
-            {metricMode === 'views' ? t('share.timeline_pv_desc') : t('share.timeline_uv_desc')}
-          </p>
-        </div>
-
-        <Segmented
-          options={[
-            { value: 'views', label: t('share.metric_pv') },
-            { value: 'visitors', label: t('share.metric_uv') },
-          ]}
-          value={metricMode}
-          onChange={(val) => setMetricMode(val as 'views' | 'visitors')}
-        />
-      </div>
-
-      <div className='h-60 w-full pt-2'>
-        <BigSvgChart values={chartValues} timeline={timelinePoints} emptyLabel={t('share.no_data_yet')} />
-      </div>
-    </div>
-  )
-}
-
 function TopNotesCard({ analytics, onSelectNoteAnalytics }: {
   analytics: ShareGlobalAnalytics | null
   onSelectNoteAnalytics?: (noteId: string) => void
@@ -207,7 +184,7 @@ function TopNotesCard({ analytics, onSelectNoteAnalytics }: {
   const topNotes = analytics?.topNotes ?? []
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
-      <CardHeader icon={<BarChart3 size={15} className='text-[var(--accent)]' />} title={t('share.top_notes_title')} badge='TOP 10' />
+      <CardHeader icon={<BarChart3 size={15} className='text-[var(--accent)]' />} title={t('share.top_notes_title')} badge={t('share.top_notes_badge')} />
       <div className='divide-y divide-[var(--border-subtle)] pt-1'>
         {topNotes.length === 0 ? (
           <EmptyRow label={t('share.no_data_yet')} />
@@ -235,7 +212,7 @@ function TopNoteRow({ note, index, maxVal, onSelect }: {
       <span
         className={`flex h-5 w-5 items-center justify-center rounded-full text-[length:var(--text-10)] font-bold ${
           index < 3
-            ? 'bg-[var(--accent)] text-white'
+            ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
             : 'bg-[var(--bg-base)] text-[var(--text-tertiary)]'
         }`}
       >
@@ -245,10 +222,10 @@ function TopNoteRow({ note, index, maxVal, onSelect }: {
       <div className='flex-1 min-w-0'>
         <div className='flex items-center justify-between text-[length:var(--text-12)]'>
           <span className='truncate font-medium text-[var(--text-primary)]'>
-            {note.noteTitle}
+            {note.noteTitle || t('common.untitled_note')}
           </span>
           <span className='font-mono font-semibold text-[var(--text-primary)] ml-2'>
-            {note.views} <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>{'PV'}</span>
+            {note.views} <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>{t('share.unit_pv')}</span>
           </span>
         </div>
         <div className='mt-1 h-1.5 w-full rounded-full bg-[var(--bg-base)] overflow-hidden'>
@@ -312,7 +289,7 @@ function ReferrerBreakdownCard({ analytics }: { analytics: ShareGlobalAnalytics 
           topReferrers.map((item) => (
             <BreakdownRow
               key={item.name}
-              name={item.name}
+              name={localizeReferrerName(item.name)}
               count={item.count}
               percentage={item.percentage ?? 0}
             />
@@ -323,40 +300,42 @@ function ReferrerBreakdownCard({ analytics }: { analytics: ShareGlobalAnalytics 
   )
 }
 
-function DevicesBreakdownCard({ analytics }: { analytics: ShareGlobalAnalytics | null }) {
+export function DevicesBreakdownCard({ analytics }: { analytics: ShareGlobalAnalytics | null }) {
   const devices = analytics?.devices ?? []
   const osList = analytics?.osList ?? []
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
       <CardHeader icon={<Laptop size={15} className='text-[var(--accent)]' />} title={t('share.devices_and_systems')} badge={t('share.client_environment')} />
       <div className='space-y-3 pt-3'>
-        <p className='text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider'>
-          {t('share.device_type')}
-        </p>
-        <div className='space-y-2'>
-          {devices.map((d) => (
-            <BreakdownRow
-              key={d.name}
-              name={localizeDeviceName(d.name)}
-              count={d.count}
-              percentage={d.percentage ?? 0}
-            />
-          ))}
-        </div>
+        {devices.length === 0 && osList.length === 0 ? <EmptyRow label={t('share.no_data_yet')} /> : (<>
+          <p className='text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider'>
+            {t('share.device_type')}
+          </p>
+          <div className='space-y-2'>
+            {devices.map((d) => (
+              <BreakdownRow
+                key={d.name}
+                name={localizeDeviceName(d.name)}
+                count={d.count}
+                percentage={d.percentage ?? 0}
+              />
+            ))}
+          </div>
 
-        <p className='pt-2 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider'>
-          {t('share.operating_system')}
-        </p>
-        <div className='space-y-2'>
-          {osList.slice(0, 5).map((os) => (
-            <BreakdownRow
-              key={os.name}
-              name={os.name}
-              count={os.count}
-              percentage={os.percentage ?? 0}
-            />
-          ))}
-        </div>
+          <p className='pt-2 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] uppercase tracking-wider'>
+            {t('share.operating_system')}
+          </p>
+          <div className='space-y-2'>
+            {osList.slice(0, 5).map((os) => (
+              <BreakdownRow
+                key={os.name}
+                name={localizeEnvName(os.name)}
+                count={os.count}
+                percentage={os.percentage ?? 0}
+              />
+            ))}
+          </div>
+        </>)}
       </div>
     </div>
   )
@@ -421,7 +400,7 @@ function RecentVisitRow({ visit, locale }: {
       <div className='flex items-center gap-2'>
         <span>{countryFlag(visit.country)}</span>
         <span className='font-medium text-[var(--text-primary)]'>
-          {visit.noteTitle || 'Untitled note'}
+          {visit.noteTitle || t('common.untitled_note')}
         </span>
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
           ({countryNameLocalized(visit.country, locale)}
@@ -432,7 +411,7 @@ function RecentVisitRow({ visit, locale }: {
 
       <div className='flex items-center gap-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         <span className='rounded bg-[var(--bg-base)] px-1.5 py-0.5 font-mono'>
-          {visit.browser || 'Other'} / {visit.os || 'other'}
+          {localizeEnvName(visit.browser)} / {localizeEnvName(visit.os)}
         </span>
         {visit.referrerHost && (
           <span className='truncate max-w-30'>{visit.referrerHost}</span>
@@ -449,7 +428,7 @@ function VisitBadges({ visit }: {
   return (
     <>
       {visit.isBot && (
-        <span className='rounded bg-[var(--danger-subtle)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--danger)]'>
+        <span className='rounded bg-[var(--danger-soft)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--danger)]'>
           🤖 {visit.botName || t('share.badge_bot')}
         </span>
       )}
@@ -459,7 +438,7 @@ function VisitBadges({ visit }: {
         </span>
       )}
       {visit.isSelfReferrer && (
-        <span className='rounded bg-[var(--warning-subtle)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--warning)]'>
+        <span className='rounded bg-[var(--warning-soft)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--warning)]'>
           {t('share.badge_self_referrer')}
         </span>
       )}

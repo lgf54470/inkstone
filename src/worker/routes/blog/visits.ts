@@ -1,7 +1,7 @@
 import type { Context } from 'hono'
 import type { AppBindings } from '../../env'
 import { requestClientIp } from '../../lib/request'
-import { VIEW_DEDUPE_WINDOW_MS, isBot, parseDeviceType, parseOS, parseBrowser, parseReferrerHost, computeVisitorFingerprint } from '../../lib/share-analytics'
+import { VIEW_DEDUPE_WINDOW_MS, isBot, parseDeviceType, parseOS, parseBrowser, computeVisitorFingerprint, sanitizeVisitReferrer } from '../../lib/share-analytics'
 import type { BlogPostPublicRow } from '../../db/rows'
 
 interface BlogVisitParams {
@@ -29,19 +29,24 @@ async function collectVisitParams(c: Context<AppBindings>, row: BlogPostPublicRo
   // raw x-forwarded-for is client-controlled and must not feed analytics.
   const rawIp = requestClientIp(c) || ''
   const ua = c.req.header('user-agent') || ''
-  const rawReferrer = c.req.header('referer') || null
   const loggedInUserId = c.get('userId')
+  // Same rules as share visit recording (SH-04/SH-08, mirrored for blog here):
+  // the dedupe key excludes the UA, salt is HMAC under the instance secret and
+  // per owner, and a missing secret records no fingerprint at all.
+  const fpSecret = c.env.VISIT_FP_SECRET ? `${c.env.VISIT_FP_SECRET}:${row.user_id}` : null
+  const visitorFp = fpSecret ? await computeVisitorFingerprint(rawIp, '', fpSecret) : null
+  const referrerInfo = sanitizeVisitReferrer(c.req.header('referer') || null)
   return {
     userId: row.user_id,
     postId: row.id,
     slug: row.slug,
     visitedAt: now,
-    visitorFp: await computeVisitorFingerprint(rawIp, ua),
+    visitorFp,
     country: c.req.header('cf-ipcountry') || c.req.header('x-country') || null,
     region: c.req.header('cf-region') || c.req.header('x-region') || null,
     city: c.req.header('cf-city') || c.req.header('x-city') || null,
-    referrer: rawReferrer,
-    referrerHost: parseReferrerHost(rawReferrer),
+    referrer: referrerInfo.referrer,
+    referrerHost: referrerInfo.referrerHost,
     deviceType: parseDeviceType(ua),
     os: parseOS(ua),
     browser: parseBrowser(ua),

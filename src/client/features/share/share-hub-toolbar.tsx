@@ -1,6 +1,6 @@
 import { FileText, LayoutGrid, List, RefreshCw, Search, Settings } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
-import { Select } from '../../components/form'
+import { Input, Segmented, Select } from '../../components/form'
 import { t } from '../../lib/i18n'
 import { useShareStore } from './share-store'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
@@ -45,17 +45,16 @@ export function ShareHubToolbar({ onOpenLogs, onOpenSettings }: { onOpenLogs?: (
 
 function SearchField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <div className='flex flex-1 items-center gap-2 max-w-sm'>
-      <div className='flex h-7 w-full items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2.5 focus-within:border-[var(--accent)]'>
-        <Search size={13} className='text-[var(--text-quaternary)]' />
-        <input
-          type='text'
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={t('share.search_placeholder')}
-          className='w-full bg-transparent text-[length:var(--text-12)] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-quaternary)]'
-        />
-      </div>
+    <div className='flex flex-1 items-center max-w-sm'>
+      <Input
+        type='text'
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t('share.search_placeholder')}
+        aria-label={t('share.search_placeholder')}
+        leading={<Search size={13} />}
+        className='h-7 w-full bg-[var(--bg-card)] text-[length:var(--text-12)]'
+      />
     </div>
   )
 }
@@ -92,13 +91,15 @@ function SortSelect({ value, onChange }: { value: string; onChange: (value: stri
 
 function ViewToggle({ value, onChange }: { value: 'table' | 'grid'; onChange: (value: 'table' | 'grid') => void }) {
   return (
-    <div className='flex items-center rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-0.5'>
-      <IconButton size='sm' label={t('share.view_table')} active={value === 'table'} onClick={() => onChange('table')}>
-        <List size={13} />
-      </IconButton>
-      <IconButton size='sm' label={t('share.view_grid')} active={value === 'grid'} onClick={() => onChange('grid')}>
-        <LayoutGrid size={13} />
-      </IconButton>
-    </div>
+    <Segmented
+      size='sm'
+      value={value}
+      label={t('share.view_mode')}
+      onChange={onChange}
+      options={[
+        { value: 'table', label: <List size={13} />, title: t('share.view_table') },
+        { value: 'grid', label: <LayoutGrid size={13} />, title: t('share.view_grid') },
+      ]}
+    />
   )
 }

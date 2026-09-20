@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ShareInfo } from '@shared/types'
 import { useShareStore } from './share-store'
 
@@ -14,6 +14,7 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
   const viewMode = useShareStore((s) => s.viewMode)
   const shares = useShareStore((s) => s.shares)
   const loading = useShareStore((s) => s.loading)
+  const error = useShareStore((s) => s.error)
   const selectedNoteIds = useShareStore((s) => s.selectedNoteIds)
   const clearSelection = useShareStore((s) => s.clearSelection)
   const loadShares = useShareStore((s) => s.loadShares)
@@ -22,6 +23,7 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
   const [editShare, setEditShare] = useState<ShareHubEditData | null>(null)
   const [analyticsNoteId, setAnalyticsNoteId] = useState<string | null>(null)
   const [isLogsOpen, setIsLogsOpen] = useState(false)
+  const [logsNoteId, setLogsNoteId] = useState<string | null>(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   useEffect(() => {
@@ -32,25 +34,53 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
       setQrShare(null)
       setEditShare(null)
       setAnalyticsNoteId(null)
+      setLogsNoteId(null)
+      setIsLogsOpen(false)
+      setIsSettingsOpen(false)
     }
   }, [open, loadShares, clearSelection])
 
-  useEffect(() => {
-    if (open && initialNoteId) {
-      const match = shares.find((s) => s.noteId === initialNoteId)
-      if (match) {
-        setEditShare({
-          share: match,
-          noteId: match.noteId,
-          title: match.noteTitle || '',
-        })
-      }
-    }
-  }, [open, initialNoteId, shares])
+  useInitialNoteEdit({ open, initialNoteId, shares, setEditShare })
+
+  const openQr = useCallback((share: ShareInfo) => setQrShare({ url: share.url, title: share.noteTitle || '', slug: share.slug }), [])
+  const openAnalytics = useCallback((share: ShareInfo) => setAnalyticsNoteId(share.noteId), [])
+  const openEdit = useCallback((share: ShareInfo) => setEditShare({ share: share.slug ? share : null, noteId: share.noteId, title: share.noteTitle || '' }), [])
+  const openLogs = useCallback((noteId?: string) => {
+    setLogsNoteId(noteId ?? null)
+    setIsLogsOpen(true)
+  }, [])
 
   return {
-    category, viewMode, shares, loading, selectedNoteIds, clearSelection, loadShares,
+    category, viewMode, shares, loading, error, selectedNoteIds, clearSelection, loadShares,
     qrShare, setQrShare, editShare, setEditShare,
-    analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, isSettingsOpen, setIsSettingsOpen,
+    openQr, openAnalytics, openEdit, openLogs,
+    analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, logsNoteId, setLogsNoteId, isSettingsOpen, setIsSettingsOpen,
   }
+}
+
+function useInitialNoteEdit({ open, initialNoteId, shares, setEditShare }: {
+  open: boolean
+  initialNoteId: string | undefined
+  shares: ShareInfo[]
+  setEditShare: (data: ShareHubEditData) => void
+}) {
+  const consumedRef = useRef(false)
+  useEffect(() => {
+    if (!open) {
+      consumedRef.current = false
+      return
+    }
+    if (!initialNoteId || consumedRef.current) return
+    const match = shares.find((s) => s.noteId === initialNoteId)
+    if (match) {
+      // One auto-open per hub session: `shares` refreshes after saving or a
+      // manual reload, and re-firing would reopen the modal the user closed.
+      consumedRef.current = true
+      setEditShare({
+        share: match,
+        noteId: match.noteId,
+        title: match.noteTitle || '',
+      })
+    }
+  }, [open, initialNoteId, shares, setEditShare])
 }

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { confirm } from '../../components/overlay'
-import { api } from '../../lib/api'
+import { api, ApiError } from '../../lib/api'
 import { t } from '../../lib/i18n'
+import { useSession } from '../../store/session'
 import { useUi } from '../../store/ui'
 import type { UiState } from '../../store/ui'
+import { promptWipePassword } from '../../lib/wipe-password-prompt'
 import { useShareStore } from './share-store'
 
 export function useShareSettingsModal(onClose: () => void) {
@@ -12,23 +14,31 @@ export function useShareSettingsModal(onClose: () => void) {
   const excludeSelfReferrers = useShareStore((s) => s.excludeSelfReferrers)
   const excludeOwner = useShareStore((s) => s.excludeOwner)
   const setFilters = useShareStore((s) => s.setFilters)
-  const logRetentionDays = useShareStore((s) => s.logRetentionDays)
-  const maxLogRecords = useShareStore((s) => s.maxLogRecords)
-  const setRetentionSettings = useShareStore((s) => s.setRetentionSettings)
+  // The sweep runs on the server, so the value it reads has to be the account's.
+  const visitLogRetentionDays = useSession((s) => s.settings.share.visitLogRetentionDays)
+  const updateSettings = useSession((s) => s.updateSettings)
 
   const [bots, setBots] = useState(excludeBots)
   const [selfRef, setSelfRef] = useState(excludeSelfReferrers)
   const [owner, setOwner] = useState(excludeOwner)
-  const [retentionDays, setRetentionDays] = useState(String(logRetentionDays))
-  const [maxRecords, setMaxRecords] = useState(String(maxLogRecords))
+  const [retentionDays, setRetentionDays] = useState(String(visitLogRetentionDays))
   const [isBusy, setIsBusy] = useState(false)
 
-  const handleSave = () => saveSettingsFlow({ bots, selfRef, owner, retentionDays, maxRecords, setFilters, setRetentionSettings, toast, onClose })
+  const handleSave = () => saveSettingsFlow({
+    bots,
+    selfRef,
+    owner,
+    retentionDays,
+    setFilters,
+    setVisitLogRetentionDays: (days) => updateSettings({ share: { visitLogRetentionDays: days } }),
+    toast,
+    onClose,
+  })
   const handleClean = (type: 'bots' | 'older_than' | 'all') => void cleanVisitsFlow(type, retentionDays, setIsBusy, toast)
 
   return {
     bots, setBots, selfRef, setSelfRef, owner, setOwner,
-    retentionDays, setRetentionDays, maxRecords, setMaxRecords,
+    retentionDays, setRetentionDays,
     isBusy, handleSave, handleClean,
   }
 }
@@ -38,21 +48,23 @@ type SaveSettingsFlow = {
   selfRef: boolean
   owner: boolean
   retentionDays: string
-  maxRecords: string
   setFilters: (filters: { excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }) => void
-  setRetentionSettings: (settings: { logRetentionDays: number; maxLogRecords: number }) => void
+  setVisitLogRetentionDays: (days: number) => void
   toast: UiState['toast']
   onClose: () => void
 }
 
-function saveSettingsFlow({ bots, selfRef, owner, retentionDays, maxRecords, setFilters, setRetentionSettings, toast, onClose }: SaveSettingsFlow): void {
+function saveSettingsFlow({ bots, selfRef, owner, retentionDays, setFilters, setVisitLogRetentionDays, toast, onClose }: SaveSettingsFlow): void {
   setFilters({ excludeBots: bots, excludeSelfReferrers: selfRef, excludeOwner: owner })
-  setRetentionSettings({
-    logRetentionDays: parseInt(retentionDays, 10),
-    maxLogRecords: parseInt(maxRecords, 10),
-  })
+  setVisitLogRetentionDays(parseInt(retentionDays, 10))
   toast({ title: t('share.settings_saved'), tone: 'default' })
   onClose()
+}
+
+/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */
+export function parseCleanDays(retentionDays: string): number | null {
+  const days = parseInt(retentionDays, 10)
+  return days >= 1 ? days : null
 }
 
 async function cleanVisitsFlow(
@@ -61,7 +73,12 @@ async function cleanVisitsFlow(
   setIsBusy: (value: boolean) => void,
   toast: UiState['toast'],
 ): Promise<void> {
-  const days = parseInt(retentionDays, 10) || 30
+  const parsed = parseCleanDays(retentionDays)
+  if (type === 'older_than' && parsed === null) {
+    toast({ title: t('share.clean_blocked_unlimited'), tone: 'warning' })
+    return
+  }
+  const days = parsed ?? undefined
   const confirmMessage =
     type === 'all'
       ? t('share.confirm_clear_all_logs')
@@ -77,15 +94,25 @@ async function cleanVisitsFlow(
   })
   if (!ok) return
 
+  let password: string | undefined
+  if (type === 'all') {
+    const entered = await promptWipePassword()
+    if (entered === null) return
+    password = entered
+  }
+
   setIsBusy(true)
   try {
-    const res = await api.share.cleanVisits(type, days)
+    const res = await api.share.cleanVisits(type, days, password)
     toast({
       title: t('share.clean_success', { count: res.deleted }),
       tone: 'default',
     })
-  } catch {
-    toast({ title: t('common.action_failed'), tone: 'danger' })
+  } catch (error) {
+    toast({
+      title: error instanceof ApiError ? error.message : t('common.action_failed'),
+      tone: 'danger',
+    })
   } finally {
     setIsBusy(false)
   }

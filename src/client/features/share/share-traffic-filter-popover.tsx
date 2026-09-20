@@ -24,8 +24,8 @@ export function ShareTrafficFilterPopover() {
   const tone = isFilteringBots
     ? 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--success)] hover:bg-[var(--bg-hover)]'
     : isAllTraffic
-      ? 'border-[var(--danger)]/30 bg-[var(--danger-subtle)] text-[var(--danger)]'
-      : 'border-[var(--warning)]/30 bg-[var(--warning-subtle)] text-[var(--warning)]'
+      ? 'border-[var(--danger)]/30 bg-[var(--danger-soft)] text-[var(--danger)]'
+      : 'border-[var(--warning)]/30 bg-[var(--warning-soft)] text-[var(--warning)]'
   const label = isFilteringBots
     ? t('share.filter_real_visitors_badge')
     : isAllTraffic
@@ -40,6 +40,8 @@ export function ShareTrafficFilterPopover() {
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn('flex h-7 items-center gap-1.5 rounded-[var(--r-md)] border px-2 text-[length:var(--text-12)] font-medium transition-colors', tone)}
         title={t('share.filter_traffic_title')}
+        aria-haspopup='true'
+        aria-expanded={isOpen}
       >
         {isFilteringBots ? <ShieldCheck size={13} /> : <ShieldAlert size={13} />}
         <span className='hidden sm:inline'>{label}</span>
@@ -113,6 +115,7 @@ function TrafficFilterRow({ icon, title, desc, checked, onChange }: {
       <Switch
         checked={checked}
         onChange={onChange}
+        label={title}
       />
     </div>
   )

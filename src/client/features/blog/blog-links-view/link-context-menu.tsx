@@ -288,7 +288,7 @@ function ContextMenuItem({
       onClick={onClick}
       className={`flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12)] transition-colors ${
         danger
-          ? 'text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
+          ? 'text-[var(--danger)] hover:bg-[var(--danger-soft)]'
           : 'hover:bg-[var(--bg-hover)]'
       }`}
     >

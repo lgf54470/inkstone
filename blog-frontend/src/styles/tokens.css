@@ -56,9 +56,9 @@
   --text-13: 13px;
 
 
-  --success: oklch(70% 0.14 155);
-  --warning: oklch(76% 0.145 80);
-  --danger: oklch(64% 0.19 22);
+  --success: oklch(45% 0.14 155);
+  --warning: oklch(48% 0.145 80);
+  --danger: oklch(49% 0.19 22);
 
   --info: oklch(60% 0.13 245);
   --file-slide: oklch(62% 0.19 40);
@@ -112,7 +112,7 @@
   --selection: color-mix(in oklab, var(--accent) 30%, transparent);
   --success: oklch(72% 0.145 155);
   --warning: oklch(80% 0.15 82);
-  --danger: oklch(68% 0.185 22);
+  --danger: oklch(73% 0.185 22);
 
 
   --code-fg: #adbac7;

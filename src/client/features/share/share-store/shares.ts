@@ -1,14 +1,13 @@
 import { api } from '../../../lib/api'
+import { confirm } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { useNotes } from '../../../store/notes'
-import { useUi } from '../../../store/ui'
+import type { ShareInfo } from '@shared/types'
 import type { ShareStoreState, SetShareStoreState } from './types'
+import { notifyActionFailed, notifySharePublished } from './notify'
 
-function notifyActionFailed(): void {
-  useUi.getState().toast({ title: t('common.action_failed'), tone: 'danger' })
-}
-
-export const shareSharesActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'batchToggleGroup' | 'toggleShare' | 'togglePin' | 'toggleStar' | 'batchToggle' | 'batchMoveToFolder' | 'batchFolderToggle' | 'batchTagToggle'> => ({
+export const shareSharesActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'applyServerShare' | 'batchToggleGroup' | 'toggleShare' | 'togglePin' | 'toggleStar' | 'batchToggle' | 'batchMoveToFolder' | 'batchFolderToggle' | 'batchTagToggle'> => ({
+  applyServerShare: (share) => applyServerShareImpl(share, set, get),
   batchToggleGroup: (type, target, enabled) => batchToggleGroupImpl(type, target, enabled, set, get),
   toggleShare: (noteId, enabled) => toggleShareImpl(noteId, enabled, set, get),
   togglePin: (noteId) => togglePinImpl(noteId, set, get),
@@ -33,7 +32,6 @@ async function batchToggleGroupImpl(
   }))
   try {
     await api.share.batchToggleGroup(type, target, enabled)
-    await get().loadShares()
     return true
   } catch {
     notifyActionFailed()
@@ -102,20 +100,33 @@ function toggledShareStats(
 }
 
 async function toggleShareImpl(noteId: string, enabled: boolean, set: SetShareStoreState, get: () => ShareStoreState): Promise<boolean> {
+  if (enabled && !await publishConfirmedFor(noteId, get)) return false
   set((state) => ({
     shares: state.shares.map((s) =>
       s.noteId === noteId ? { ...s, isEnabled: enabled } : s,
     ),
   }))
   try {
-    await api.share.create(noteId, { isEnabled: enabled })
-    await get().loadShares()
+    const res = await api.share.create(noteId, { isEnabled: enabled })
+    get().applyServerShare(res.share)
+    if (enabled) notifySharePublished()
     return true
   } catch {
     notifyActionFailed()
     await get().loadShares()
     return false
   }
+}
+
+async function publishConfirmedFor(noteId: string, get: () => ShareStoreState): Promise<boolean> {
+  const row = get().shares.find((s) => s.noteId === noteId)
+  // Zero views on a paused row is the only client-side signal that this note has never been public.
+  if (!row || row.isEnabled || row.views > 0) return true
+  return confirm({
+    title: t('share.confirm_publish_title'),
+    description: t('share.confirm_publish_desc', { title: row.noteTitle || t('common.untitled_note') }),
+    confirmLabel: t('share.publish'),
+  })
 }
 
 async function togglePinImpl(noteId: string, set: SetShareStoreState, get: () => ShareStoreState): Promise<boolean> {
@@ -128,7 +139,6 @@ async function togglePinImpl(noteId: string, set: SetShareStoreState, get: () =>
   }))
   try {
     await useNotes.getState().patchNote(noteId, { isPinned: nextVal })
-    await get().loadShares()
     return true
   } catch {
     notifyActionFailed()
@@ -147,7 +157,6 @@ async function toggleStarImpl(noteId: string, set: SetShareStoreState, get: () =
   }))
   try {
     await useNotes.getState().patchNote(noteId, { isStarred: nextVal })
-    await get().loadShares()
     return true
   } catch {
     notifyActionFailed()
@@ -197,7 +206,6 @@ async function batchMoveToFolderImpl(
   })
   try {
     await api.share.batch('move', noteIds, undefined, folderId)
-    await get().loadShares()
     return true
   } catch {
     notifyActionFailed()
@@ -236,3 +244,14 @@ async function batchTagToggleImpl(tag: string, enabled: boolean, set: SetShareSt
   }
 }
 
+
+function applyServerShareImpl(share: ShareInfo, set: SetShareStoreState, get: () => ShareStoreState): void {
+  const { shares } = get()
+  if (!shares.some((s) => s.noteId === share.noteId)) {
+    /* The row is outside the current filter (e.g. just enabled under the
+       paused filter); only a reload knows whether and where it now belongs. */
+    void get().loadShares()
+    return
+  }
+  set({ shares: shares.map((s) => (s.noteId === share.noteId ? share : s)) })
+}

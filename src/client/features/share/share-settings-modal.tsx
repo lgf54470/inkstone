@@ -1,5 +1,5 @@
 import { Database, Save, Settings, Shield } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { Modal } from '../../components/overlay'
 import { Button } from '../../components/primitives'
 import { Segmented, Switch } from '../../components/form'
@@ -93,25 +93,18 @@ function SettingsSwitchRow({ title, hint, checked, onChange }: {
           {hint}
         </div>
       </div>
-      <Switch checked={checked} onChange={onChange} />
+      <Switch checked={checked} onChange={onChange} label={title} />
     </div>
   )
 }
 
 function RetentionSection({ bundle }: { bundle: SettingsBundle }) {
-  const { retentionDays, setRetentionDays, maxRecords, setMaxRecords, isBusy, handleClean } = bundle
+  const { retentionDays, setRetentionDays, isBusy, handleClean } = bundle
   const retentionOptions = [
     { value: '7', label: '7d' },
     { value: '30', label: '30d' },
     { value: '90', label: '90d' },
     { value: '180', label: '180d' },
-    { value: '0', label: t('share.retention_unlimited') },
-  ]
-  const recordOptions = [
-    { value: '1000', label: '1K' },
-    { value: '5000', label: '5K' },
-    { value: '10000', label: '10K' },
-    { value: '50000', label: '50K' },
     { value: '0', label: t('share.retention_unlimited') },
   ]
   return (
@@ -124,13 +117,6 @@ function RetentionSection({ bundle }: { bundle: SettingsBundle }) {
           value={retentionDays}
           onChange={setRetentionDays}
           options={retentionOptions}
-        />
-        <RetentionField
-          label={t('share.max_records_label')}
-          valueText={maxRecords === '0' ? t('share.retention_unlimited') : t('share.max_records_val', { count: maxRecords })}
-          value={maxRecords}
-          onChange={setMaxRecords}
-          options={recordOptions}
         />
         <CleanupActions isBusy={isBusy} onClean={handleClean} />
       </div>
@@ -145,10 +131,11 @@ function RetentionField({ label, valueText, value, onChange, options }: {
   onChange: (value: string) => void
   options: { value: string; label: string }[]
 }) {
+  const labelId = useId()
   return (
     <div>
       <div className='flex items-center justify-between pb-1.5'>
-        <span className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
+        <span id={labelId} className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
           {label}
         </span>
         <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
@@ -156,6 +143,7 @@ function RetentionField({ label, valueText, value, onChange, options }: {
         </span>
       </div>
       <Segmented
+        aria-labelledby={labelId}
         value={value}
         onChange={onChange}
         options={options}
@@ -189,7 +177,7 @@ function CleanupActions({ isBusy, onClean }: {
       <Button
         size='sm'
         variant='ghost'
-        className='text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
+        className='text-[var(--danger)] hover:bg-[var(--danger-soft)]'
         onClick={() => void onClean('all')}
         disabled={isBusy}
       >

@@ -1,5 +1,4 @@
-import { QR_BG_COLOR } from '../../lib/qr-colors'
-
+import { t } from '../../lib/i18n'
 
 export function countryFlag(countryCode: string | null | undefined): string {
   if (!countryCode || countryCode === 'UNKNOWN' || countryCode.length !== 2) {
@@ -9,105 +8,32 @@ export function countryFlag(countryCode: string | null | undefined): string {
   return code.replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
 }
 
-export function countryNameLocalized(countryCode: string | null | undefined, locale = 'zh-CN'): string {
-  if (!countryCode || countryCode === 'UNKNOWN') return countryCode || ''
+const displayNamesByLocale = new Map<string, Intl.DisplayNames>()
+
+function regionNames(locale: string): Intl.DisplayNames {
+  const cached = displayNamesByLocale.get(locale)
+  if (cached) return cached
+  const names = new Intl.DisplayNames([locale], { type: 'region' })
+  displayNamesByLocale.set(locale, names)
+  return names
+}
+
+export function countryNameLocalized(countryCode: string | null | undefined, locale: string): string {
+  if (!countryCode || countryCode === 'UNKNOWN') return t('share.country_unknown')
   try {
-    const names = new Intl.DisplayNames([locale], { type: 'region' })
-    return names.of(countryCode.toUpperCase()) || countryCode
+    return regionNames(locale).of(countryCode.toUpperCase()) || countryCode
   } catch {
     return countryCode
   }
 }
 
-export function downloadQrSvg(svgElement: SVGElement, filename = 'share-qr.svg') {
-  const xml = new XMLSerializer().serializeToString(svgElement)
-  const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+export function localizeReferrerName(name: string): string {
+  return name === 'Direct' ? t('share.direct_access') : name
 }
 
-export async function downloadQrPng(svgElement: SVGElement, filename = 'share-qr.png', size = 800) {
-  const xml = new XMLSerializer().serializeToString(svgElement)
-  const svgBlob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
-  const url = URL.createObjectURL(svgBlob)
-
-  const img = new Image()
-  img.crossOrigin = 'anonymous'
-
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve()
-    img.onerror = reject
-    img.src = url
-  })
-
-  const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  ctx.fillStyle = QR_BG_COLOR
-  ctx.fillRect(0, 0, size, size)
-  ctx.drawImage(img, 0, 0, size, size)
-
-  URL.revokeObjectURL(url)
-
-  canvas.toBlob((blob) => {
-    if (!blob) return
-    const pngUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = pngUrl
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(pngUrl)
-  }, 'image/png')
-}
-
-export async function copyQrImageToClipboard(svgElement: SVGElement): Promise<boolean> {
-  try {
-    const xml = new XMLSerializer().serializeToString(svgElement)
-    const svgBlob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
-    const url = URL.createObjectURL(svgBlob)
-
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve()
-      img.onerror = reject
-      img.src = url
-    })
-
-    const canvas = document.createElement('canvas')
-    canvas.width = 600
-    canvas.height = 600
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return false
-
-    ctx.fillStyle = QR_BG_COLOR
-    ctx.fillRect(0, 0, 600, 600)
-    ctx.drawImage(img, 0, 0, 600, 600)
-
-    URL.revokeObjectURL(url)
-
-    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/png'))
-    if (!blob) return false
-
-    await navigator.clipboard.write([
-      new ClipboardItem({ 'image/png': blob }),
-    ])
-    return true
-  } catch {
-    return false
-  }
+export function localizeEnvName(name: string | null | undefined): string {
+  if (!name || name.toLowerCase() === 'other') return t('share.env_unknown')
+  return name
 }
 
 export function generateRandomSlug(length = 6): string {
@@ -122,7 +48,7 @@ export function generateRandomSlug(length = 6): string {
 export function exportVisitsToCsv(visits: Array<{
   id: number
   visitedAt: number
-  noteTitle?: string
+  noteTitle?: string | null
   slug: string
   country?: string | null
   city?: string | null

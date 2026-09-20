@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { DEFAULT_NEW_NOTE_TEMPLATE, DEFAULT_SETTINGS } from '@shared/constants'
+import { DEFAULT_NEW_NOTE_TEMPLATE } from '@shared/constants'
+import { DEFAULT_SETTINGS } from '@shared/user-settings'
 import { renderNewNoteTemplate } from '@shared/markdown-utils'
 import { Input, SettingRow, Switch, Textarea } from '../../components/form'
 import { Button } from '../../components/primitives'

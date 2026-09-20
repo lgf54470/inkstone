@@ -20,7 +20,7 @@ export function PendingCommentsCard({ pendingComments, totalComments, totalPosts
           {t('blog.pending_comments')}
         </h3>
         {pendingComments.length > 0 && (
-          <span className="rounded-full bg-[var(--danger-subtle)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-bold text-[var(--danger)]">
+          <span className="rounded-full bg-[var(--danger-soft)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-bold text-[var(--danger)]">
             {pendingComments.length}
           </span>
         )}

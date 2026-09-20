@@ -368,3 +368,45 @@ describe('notes list route (real D1)', () => {
     expect(trashBody.notes.map((n: { id: string }) => n.id)).toEqual(['n-3'])
   })
 })
+
+describe('note purge share-visit cascade (real D1, SH-05)', () => {
+  async function seedShareWithVisit(db: D1Shim, noteId: string, slug: string): Promise<void> {
+    await runSql(
+      db,
+      `INSERT INTO shares (slug, note_id, user_id, folder_id, tags, password_hash, expires_at, views, is_enabled, created_at)
+       VALUES (?1, ?2, ?3, NULL, '[]', NULL, NULL, 1, 1, ?4)`,
+      slug, noteId, USER, H.now,
+    )
+    await runSql(
+      db,
+      `INSERT INTO share_visits (user_id, note_id, slug, visited_at, visitor_fp, is_bot, is_self_referrer, is_owner)
+       VALUES (?1, ?2, ?3, ?4, ?5, 0, 0, 0)`,
+      USER, noteId, slug, H.now, `fp-${slug}`,
+    )
+  }
+
+  it('purging a trashed note removes its share visits', async () => {
+    const db = await makeDb()
+    await seedNote(db, { id: 'n-1', content: 'x', deleted_at: H.now, rev: 2 })
+    await seedShareWithVisit(db, 'n-1', 'purge-1')
+    const app = makeApp()
+
+    const res = await request(app, '/api/notes/n-1/purge', { method: 'DELETE' })
+    expect(res.status).toBe(200)
+    expect((await allRows(db, 'SELECT id FROM share_visits WHERE slug = ?1', 'purge-1')).length).toBe(0)
+    expect((await allRows(db, 'SELECT slug FROM shares WHERE slug = ?1', 'purge-1')).length).toBe(0)
+  })
+
+  it('emptying the trash removes share visits of every purged note', async () => {
+    const db = await makeDb()
+    await seedNote(db, { id: 'n-1', content: 'x', deleted_at: H.now, rev: 2 })
+    await seedNote(db, { id: 'n-2', content: 'y', deleted_at: H.now, rev: 2 })
+    await seedShareWithVisit(db, 'n-1', 'empty-1')
+    await seedShareWithVisit(db, 'n-2', 'empty-2')
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/notes/trash/empty', {})
+    expect(res.status).toBe(200)
+    expect((await allRows(db, 'SELECT id FROM share_visits', )).length).toBe(0)
+  })
+})

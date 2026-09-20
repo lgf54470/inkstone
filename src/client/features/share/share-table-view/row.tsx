@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { BarChart2, ExternalLink, FolderClosed, FolderInput, Lock, QrCode, Settings2 } from 'lucide-react'
+import { memo, useRef, useState } from 'react'
+import { BarChart2, ExternalLink, FolderClosed, FolderInput, Lock, MoreHorizontal, QrCode, Settings2 } from 'lucide-react'
 import type { ShareFolder, ShareInfo } from '@shared/types'
 import { Checkbox, Switch } from '../../../components/form'
 import { IconButton } from '../../../components/primitives'
@@ -9,46 +9,49 @@ import { relativeTime } from '../../../lib/time'
 import { t } from '../../../lib/i18n'
 import { buildFolderMenuItems, buildShareMenuItems, PinStarButtons, SlugChip, type ShareItemCallbacks } from '../share-item-common'
 
-
 interface ShareTableRowProps {
   share: ShareInfo
   isSelected: boolean
   folders: ShareFolder[]
+  folderById: Map<string, ShareFolder>
   copiedSlug: string | null
-  onToggleSelect: () => void
-  onTogglePin: () => void
-  onToggleStar: () => void
-  onToggleShare: (checked: boolean) => void
+  onToggleSelect: (noteId: string) => void
+  onTogglePin: (noteId: string) => void
+  onToggleStar: (noteId: string) => void
+  onToggleShare: (noteId: string, checked: boolean) => void
   onCopyLink: (url: string, slug: string) => void
-  onOpenQrModal: (share: ShareInfo) => void
+  onOpenQr: (share: ShareInfo) => void
   onOpenAnalytics: (share: ShareInfo) => void
   onOpenEdit: (share: ShareInfo) => void
-  onMoveToFolder: (folderId: string | null) => void
-  onRevoke: () => void
+  onMoveToFolder: (noteId: string, folderId: string | null) => void
+  onRevoke: (share: ShareInfo) => void
 }
 
-export function ShareTableRow({ share, isSelected, folders, copiedSlug, onToggleSelect, onTogglePin, onToggleStar, onToggleShare, onCopyLink, onOpenQrModal, onOpenAnalytics, onOpenEdit, onMoveToFolder, onRevoke }: ShareTableRowProps) {
+export const ShareTableRow = memo(function ShareTableRow({ share, isSelected, folders, folderById, copiedSlug, onToggleSelect, onTogglePin, onToggleStar, onToggleShare, onCopyLink, onOpenQr, onOpenAnalytics, onOpenEdit, onMoveToFolder, onRevoke }: ShareTableRowProps) {
   const contextMenu = useContextMenu()
   const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
   const folderButtonRef = useRef<HTMLButtonElement>(null)
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false)
+  const moreButtonRef = useRef<HTMLButtonElement>(null)
   const isExpired = share.expiresAt ? share.expiresAt < Date.now() : false
-  const cbs: ShareItemCallbacks = { onCopyLink, onOpenQr: () => onOpenQrModal(share), onOpenAnalytics: () => onOpenAnalytics(share), onOpenEdit: () => onOpenEdit(share), onMoveToFolder, onToggleShare, onToggleStar, onTogglePin, onRevoke }
+  const noteId = share.noteId
+  const cbs: ShareItemCallbacks = { onCopyLink, onOpenQr: () => onOpenQr(share), onOpenAnalytics: () => onOpenAnalytics(share), onOpenEdit: () => onOpenEdit(share), onMoveToFolder: (folderId) => onMoveToFolder(noteId, folderId), onToggleShare: (checked) => onToggleShare(noteId, checked), onToggleStar: () => onToggleStar(noteId), onTogglePin: () => onTogglePin(noteId), onRevoke: () => onRevoke(share) }
   return (
     <tr
       draggable
       onDragStart={(e) => { e.dataTransfer.setData('application/inkstone-share-note-ids', JSON.stringify([share.noteId])); e.dataTransfer.effectAllowed = 'copyMove' }}
-      onContextMenu={(e) => { setIsFolderMenuOpen(false); contextMenu.onContextMenu(e) }}
+      onContextMenu={(e) => { setIsFolderMenuOpen(false); setIsMoreMenuOpen(false); contextMenu.onContextMenu(e) }}
       onDoubleClick={() => onOpenEdit(share)}
       className={cn('group transition-colors hover:bg-[var(--bg-hover)] cursor-grab active:cursor-grabbing select-none', isSelected ? 'bg-[var(--accent-soft)]/30' : '')}
     >
       <td className='px-3 py-2.5 text-center'>
-        <Checkbox checked={isSelected} onChange={onToggleSelect} aria-label={share.noteTitle || t('common.untitled_note')} className='min-h-0' />
+        <Checkbox checked={isSelected} onChange={() => onToggleSelect(noteId)} aria-label={share.noteTitle || t('common.untitled_note')} className='min-h-0' />
       </td>
       <td className='px-3 py-2.5'>
-        <RowTitleCell share={share} folders={folders} onTogglePin={onTogglePin} onToggleStar={onToggleStar} onOpenEdit={() => onOpenEdit(share)} />
+        <RowTitleCell share={share} folderById={folderById} onTogglePin={() => onTogglePin(noteId)} onToggleStar={() => onToggleStar(noteId)} onOpenEdit={() => onOpenEdit(share)} />
       </td>
       <td className='px-3 py-2.5 text-center'>
-        <Switch checked={share.isEnabled} onChange={onToggleShare} />
+        <Switch checked={share.isEnabled} onChange={(checked) => onToggleShare(noteId, checked)} label={t('share.share_switch_aria', { title: share.noteTitle || t('common.untitled_note') })} />
       </td>
       <td className='px-3 py-2.5'>
         {share.slug ? (
@@ -62,24 +65,33 @@ export function ShareTableRow({ share, isSelected, folders, copiedSlug, onToggle
       <td className='px-3 py-2.5'>
         <AccessCell share={share} isExpired={isExpired} />
       </td>
-      <td className='px-3 py-2.5 text-right font-mono text-[length:var(--text-12)]'>
-        <div className='text-[var(--text-primary)] font-semibold'>{share.views} <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>{'PV'}</span></div>
-        <div className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{share.uniqueVisitors ?? 0} <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{'UV'}</span></div>
-      </td>
-      <td className='px-3 py-2.5 text-right text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
-        {share.lastViewedAt ? relativeTime(share.lastViewedAt) : t('share.never_visited')}
-      </td>
+      <RowStatsCells share={share} />
       <td className='px-3 py-2.5 text-right'>
-        <RowActions share={share} onOpenQr={() => onOpenQrModal(share)} onOpenAnalytics={() => onOpenAnalytics(share)} onOpenEdit={() => onOpenEdit(share)} folderButtonRef={folderButtonRef} onToggleFolderMenu={() => setIsFolderMenuOpen((prev) => !prev)} />
-        <Menu open={isFolderMenuOpen} anchor={folderButtonRef} items={buildFolderMenuItems(share, folders, onMoveToFolder)} onClose={() => setIsFolderMenuOpen(false)} />
+        <RowActions share={share} onOpenQr={() => onOpenQr(share)} onOpenAnalytics={() => onOpenAnalytics(share)} onOpenEdit={() => onOpenEdit(share)} folderButtonRef={folderButtonRef} isFolderMenuOpen={isFolderMenuOpen} onToggleFolderMenu={() => setIsFolderMenuOpen((prev) => !prev)} moreButtonRef={moreButtonRef} isMoreMenuOpen={isMoreMenuOpen} onToggleMoreMenu={() => { setIsFolderMenuOpen(false); setIsMoreMenuOpen((prev) => !prev) }} />
+        {isFolderMenuOpen && <Menu open anchor={folderButtonRef} items={buildFolderMenuItems(share, folders, (folderId) => onMoveToFolder(noteId, folderId))} onClose={() => setIsFolderMenuOpen(false)} />}
+        {isMoreMenuOpen && <Menu open anchor={moreButtonRef} items={buildShareMenuItems(share, folders, cbs)} onClose={() => setIsMoreMenuOpen(false)} />}
         {contextMenu.point && <Menu open anchor={contextMenu.point} items={buildShareMenuItems(share, folders, cbs)} onClose={contextMenu.close} />}
       </td>
     </tr>
   )
+})
+
+function RowStatsCells({ share }: { share: ShareInfo }) {
+  return (
+    <>
+      <td className='px-3 py-2.5 text-right font-mono text-[length:var(--text-12)]'>
+        <div className='text-[var(--text-primary)] font-semibold'>{share.views} <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>{t('share.unit_pv')}</span></div>
+        <div className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{share.uniqueVisitors ?? 0} <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{t('share.unit_uv')}</span></div>
+      </td>
+      <td className='px-3 py-2.5 text-right text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+        {share.lastViewedAt ? relativeTime(share.lastViewedAt) : t('share.never_visited')}
+      </td>
+    </>
+  )
 }
 
-function RowTitleCell({ share, folders, onTogglePin, onToggleStar, onOpenEdit }: { share: ShareInfo; folders: ShareFolder[]; onTogglePin: () => void; onToggleStar: () => void; onOpenEdit: () => void }) {
-  const folder = share.shareFolderId ? folders.find((f) => f.id === share.shareFolderId) : null
+function RowTitleCell({ share, folderById, onTogglePin, onToggleStar, onOpenEdit }: { share: ShareInfo; folderById: Map<string, ShareFolder>; onTogglePin: () => void; onToggleStar: () => void; onOpenEdit: () => void }) {
+  const folder = share.shareFolderId ? folderById.get(share.shareFolderId) ?? null : null
   return (
     <div className='flex flex-col'>
       <div className='flex items-center gap-1.5'>
@@ -132,10 +144,10 @@ function AccessCell({ share, isExpired }: { share: ShareInfo; isExpired: boolean
   )
 }
 
-function RowActions({ share, onOpenQr, onOpenAnalytics, onOpenEdit, folderButtonRef, onToggleFolderMenu }: { share: ShareInfo; onOpenQr: () => void; onOpenAnalytics: () => void; onOpenEdit: () => void; folderButtonRef: React.Ref<HTMLButtonElement>; onToggleFolderMenu: () => void }) {
+function RowActions({ share, onOpenQr, onOpenAnalytics, onOpenEdit, folderButtonRef, isFolderMenuOpen, onToggleFolderMenu, moreButtonRef, isMoreMenuOpen, onToggleMoreMenu }: { share: ShareInfo; onOpenQr: () => void; onOpenAnalytics: () => void; onOpenEdit: () => void; folderButtonRef: React.Ref<HTMLButtonElement>; isFolderMenuOpen: boolean; onToggleFolderMenu: () => void; moreButtonRef: React.Ref<HTMLButtonElement>; isMoreMenuOpen: boolean; onToggleMoreMenu: () => void }) {
   return (
     <div className='flex items-center justify-end gap-1'>
-      <IconButton ref={folderButtonRef} size='sm' label={t('share.batch_move_to_folder')} onClick={onToggleFolderMenu}>
+      <IconButton ref={folderButtonRef} size='sm' label={t('share.batch_move_to_folder')} aria-haspopup='menu' aria-expanded={isFolderMenuOpen} onClick={onToggleFolderMenu}>
         <FolderInput size={13} />
       </IconButton>
       <IconButton size='sm' label={t('share.qr_code_title')} onClick={onOpenQr}>
@@ -152,6 +164,9 @@ function RowActions({ share, onOpenQr, onOpenAnalytics, onOpenEdit, folderButton
           <ExternalLink size={13} />
         </a>
       )}
+      <IconButton ref={moreButtonRef} size='sm' label={t('common.more_actions')} aria-haspopup='menu' aria-expanded={isMoreMenuOpen} onClick={onToggleMoreMenu}>
+        <MoreHorizontal size={13} />
+      </IconButton>
     </div>
   )
 }

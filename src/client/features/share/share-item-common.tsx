@@ -60,7 +60,7 @@ export function buildShareMenuItems(share: ShareInfo, folders: ShareFolder[], cb
       ),
     },
     { id: 'toggle', label: share.isEnabled ? t('share.batch_disable') : t('share.batch_enable'), icon: share.isEnabled ? <PauseCircle size={13} className='text-[var(--warning)]' /> : <PlayCircle size={13} className='text-[var(--success)]' />, onSelect: () => cbs.onToggleShare(!share.isEnabled) },
-    { id: 'star', label: share.isStarred ? t('share.unstar_note') : t('share.star_note'), icon: <Star size={13} className={share.isStarred ? 'text-amber-500 fill-amber-500' : ''} />, onSelect: cbs.onToggleStar },
+    { id: 'star', label: share.isStarred ? t('share.unstar_note') : t('share.star_note'), icon: <Star size={13} className={share.isStarred ? 'text-[var(--warning)] fill-current' : ''} />, onSelect: cbs.onToggleStar },
     { id: 'pin', label: share.isPinned ? t('share.unpin_note') : t('share.pin_note'), icon: <Pin size={13} className={share.isPinned ? 'text-[var(--accent)] fill-current' : ''} />, onSelect: cbs.onTogglePin },
     { id: 'revoke', label: t('share.revoke_link'), icon: <Trash2 size={13} />, tone: 'danger', separatorBefore: true, onSelect: cbs.onRevoke },
   ]
@@ -135,9 +135,9 @@ export function PinStarButtons({ share, onTogglePin, onToggleStar, compact }: { 
           'rounded transition-colors',
           share.isStarred
             ? compact
-              ? 'text-amber-500'
-              : 'text-amber-500 bg-amber-500/10'
-            : 'text-[var(--text-quaternary)] opacity-40 hover:opacity-100 hover:text-amber-500',
+              ? 'text-[var(--warning)]'
+              : 'text-[var(--warning)] bg-[var(--warning)]/10'
+            : 'text-[var(--text-quaternary)] opacity-40 hover:opacity-100 hover:text-[var(--warning)]',
         )}
         title={share.isStarred ? t('share.unstar_note') : t('share.star_note')}
       >
@@ -188,7 +188,7 @@ export function SlugChip({ share, copiedSlug, onCopy, className, grouped }: { sh
 function CustomBadge() {
   return (
     <span className='rounded bg-[var(--accent-soft)] px-1 py-0.2 text-[length:var(--text-9)] font-semibold text-[var(--accent)]'>
-      {'CUSTOM'}
+      {t('share.custom_slug_badge')}
     </span>
   )
 }

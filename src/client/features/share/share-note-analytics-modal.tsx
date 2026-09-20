@@ -1,13 +1,14 @@
-import { Activity, BarChart2, Compass, ExternalLink, Globe, Lock, QrCode } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Activity, BarChart2, Compass, ExternalLink, Globe, Lock, QrCode, RefreshCw } from 'lucide-react'
+import { useId, type ReactNode } from 'react'
 import type { ShareNoteAnalytics, ShareTimelineRange } from '@shared/types'
 import { Modal } from '../../components/overlay'
-import { Button } from '../../components/primitives'
+import { Button, IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
 import { BigSvgChart } from '../../components/big-svg-chart'
 import { countryFlag, countryNameLocalized } from './share-helpers'
+import { LoadErrorState } from './share-load-error'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import { useShareNoteAnalytics } from './use-share-note-analytics'
 
@@ -27,13 +28,15 @@ export function ShareNoteAnalyticsModal({
   onClose,
   noteId,
   onOpenQr,
+  onOpenLogs,
 }: {
   open: boolean
   onClose: () => void
   noteId: string
   onOpenQr?: (url: string, title: string, slug: string) => void
+  onOpenLogs?: () => void
 }) {
-  const { locale, range, setRange, metricMode, setMetricMode, data } = useShareNoteAnalytics(open, noteId)
+  const { locale, range, setRange, metricMode, setMetricMode, data, isLoading, error, loadData } = useShareNoteAnalytics(open, noteId)
   if (!open) return null
   const timelinePoints = data?.timeline || []
   const chartValues = timelinePoints.map((p) => (metricMode === 'views' ? p.views : p.visitors))
@@ -51,28 +54,17 @@ export function ShareNoteAnalyticsModal({
       width={MODAL_WIDTH}
     >
       <div className='flex flex-col gap-4 py-1 max-h-[75vh] overflow-y-auto pr-1'>
-        {data && <AnalyticsLinkBar data={data} onOpenQr={onOpenQr} />}
-        <div className='flex items-center justify-between gap-2'>
-          <StatCards data={data} />
-          <div className='flex items-center gap-2'>
-            <Segmented options={rangeOptions()} value={range} onChange={(val) => setRange(val as ShareTimelineRange)} />
-            <ShareTrafficFilterPopover />
-          </div>
-        </div>
-        <TimelineCard metricMode={metricMode} setMetricMode={setMetricMode} chartValues={chartValues} timelinePoints={timelinePoints} />
-        <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
-          <BreakdownCard title={t('share.top_countries_title')} icon={<Globe size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topCountries || data.topCountries.length === 0}>
-            {data?.topCountries.slice(0, 5).map((item) => (
-              <BreakdownMiniRow key={item.name} name={countryNameLocalized(item.name, locale)} flag={countryFlag(item.name)} count={item.count} percentage={item.percentage ?? 0} />
-            ))}
-          </BreakdownCard>
-          <BreakdownCard title={t('share.top_referrers_title')} icon={<Compass size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topReferrers || data.topReferrers.length === 0}>
-            {data?.topReferrers.slice(0, 5).map((item) => (
-              <BreakdownMiniRow key={item.name} name={item.name} count={item.count} percentage={item.percentage ?? 0} />
-            ))}
-          </BreakdownCard>
-        </div>
-        <RecentActivityCard data={data} locale={locale} />
+        {error ? (
+          <LoadErrorState label={t('share.analytics_load_failed')} onRetry={() => void loadData(range)} />
+        ) : (
+          <>
+            {data && <AnalyticsLinkBar data={data} onOpenQr={onOpenQr} />}
+            <StatsAndRangeRow data={data} range={range} setRange={setRange} isLoading={isLoading} onRefresh={() => void loadData(range)} />
+            <TimelineCard metricMode={metricMode} setMetricMode={setMetricMode} chartValues={chartValues} timelinePoints={timelinePoints} />
+            <NoteAnalyticsBreakdowns data={data} locale={locale} />
+            <RecentActivityCard data={data} locale={locale} onOpenLogs={onOpenLogs} />
+          </>
+        )}
       </div>
     </Modal>
   )
@@ -110,6 +102,49 @@ function AnalyticsLinkBar({ data, onOpenQr }: { data: ShareNoteAnalytics; onOpen
   )
 }
 
+function StatsAndRangeRow({ data, range, setRange, isLoading, onRefresh }: {
+  data: ShareNoteAnalytics | null
+  range: ShareTimelineRange
+  setRange: (range: ShareTimelineRange) => void
+  isLoading: boolean
+  onRefresh: () => void
+}) {
+  return (
+    <div className='flex items-center justify-between gap-2'>
+      <StatCards data={data} />
+      <div className='flex items-center gap-2'>
+        <Segmented label={t('share.range_label')} options={rangeOptions()} value={range} onChange={(val) => setRange(val as ShareTimelineRange)} />
+        <ShareTrafficFilterPopover />
+        <IconButton
+          size='sm'
+          label={t('common.refresh')}
+          disabled={isLoading}
+          onClick={onRefresh}
+        >
+          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+        </IconButton>
+      </div>
+    </div>
+  )
+}
+
+function NoteAnalyticsBreakdowns({ data, locale }: { data: ShareNoteAnalytics | null, locale: string }) {
+  return (
+    <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+      <BreakdownCard title={t('share.top_countries_title')} icon={<Globe size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topCountries || data.topCountries.length === 0}>
+        {data?.topCountries.slice(0, 5).map((item) => (
+          <BreakdownMiniRow key={item.name} name={countryNameLocalized(item.name, locale)} flag={countryFlag(item.name)} count={item.count} percentage={item.percentage ?? 0} />
+        ))}
+      </BreakdownCard>
+      <BreakdownCard title={t('share.top_referrers_title')} icon={<Compass size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topReferrers || data.topReferrers.length === 0}>
+        {data?.topReferrers.slice(0, 5).map((item) => (
+          <BreakdownMiniRow key={item.name} name={item.name} count={item.count} percentage={item.percentage ?? 0} />
+        ))}
+      </BreakdownCard>
+    </div>
+  )
+}
+
 function StatCards({ data }: { data: ShareNoteAnalytics | null }) {
   return (
     <div className='grid grid-cols-2 gap-3 w-full sm:w-auto'>
@@ -130,13 +165,15 @@ function StatCards({ data }: { data: ShareNoteAnalytics | null }) {
 }
 
 function TimelineCard({ metricMode, setMetricMode, chartValues, timelinePoints }: { metricMode: 'views' | 'visitors'; setMetricMode: (mode: 'views' | 'visitors') => void; chartValues: number[]; timelinePoints: ShareNoteAnalytics['timeline'] }) {
+  const titleId = useId()
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
       <div className='flex items-center justify-between pb-2'>
-        <span className='text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
+        <span id={titleId} className='text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
           {t('share.timeline_trend_title')}
         </span>
         <Segmented
+          aria-labelledby={titleId}
           options={[
             { value: 'views', label: t('share.metric_pv') },
             { value: 'visitors', label: t('share.metric_uv') },
@@ -172,13 +209,20 @@ function BreakdownCard({ title, icon, emptyLabel, isEmpty, children }: { title: 
   )
 }
 
-function RecentActivityCard({ data, locale }: { data: ShareNoteAnalytics | null; locale: string }) {
+function RecentActivityCard({ data, locale, onOpenLogs }: { data: ShareNoteAnalytics | null; locale: string; onOpenLogs?: () => void }) {
   const visits = data?.recentVisits ?? []
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
-      <div className='flex items-center gap-1.5 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
-        <Activity size={13} className='text-[var(--accent)]' />
-        <span>{t('share.recent_activity_title')}</span>
+      <div className='flex items-center justify-between gap-2 pb-2 text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
+        <div className='flex items-center gap-1.5'>
+          <Activity size={13} className='text-[var(--accent)]' />
+          <span>{t('share.recent_activity_title')}</span>
+        </div>
+        {onOpenLogs && (
+          <Button size='sm' variant='ghost' icon={<ExternalLink size={12} />} onClick={onOpenLogs}>
+            {t('share.view_all_logs')}
+          </Button>
+        )}
       </div>
       <div className='divide-y divide-[var(--border-subtle)] pt-1'>
         {visits.length === 0 ? (
@@ -186,37 +230,41 @@ function RecentActivityCard({ data, locale }: { data: ShareNoteAnalytics | null;
             {t('share.no_visits_yet')}
           </p>
         ) : (
-          visits.slice(0, 8).map((v) => (
-            <div key={v.id} className='flex items-center justify-between py-1.5 text-[length:var(--text-11)]'>
-              <div className='flex items-center gap-1.5'>
-                <span>{countryFlag(v.country)}</span>
-                <span className='text-[var(--text-secondary)]'>
-                  {countryNameLocalized(v.country, locale)}
-                  {v.city ? ` · ${v.city}` : ''}
-                </span>
-                {v.isBot && (
-                  <span className="rounded bg-[var(--danger-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--danger)]">
-                    🤖 {v.botName || t('share.badge_bot')}
-                  </span>
-                )}
-                {v.isOwner && (
-                  <span className="rounded bg-[var(--accent-soft)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--accent)]">
-                    👤 {t('share.badge_owner')}
-                  </span>
-                )}
-                {v.isSelfReferrer && (
-                  <span className="rounded bg-[var(--warning-subtle)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--warning)]">
-                    {t('share.badge_self_referrer')}
-                  </span>
-                )}
-              </div>
-              <div className='flex items-center gap-2 text-[var(--text-quaternary)] font-mono'>
-                <span>{v.browser} / {v.os}</span>
-                <span>{relativeTime(v.visitedAt)}</span>
-              </div>
-            </div>
-          ))
+          visits.slice(0, 8).map((v) => <RecentVisitRow key={v.id} visit={v} locale={locale} />)
         )}
+      </div>
+    </div>
+  )
+}
+
+function RecentVisitRow({ visit: v, locale }: { visit: ShareNoteAnalytics['recentVisits'][number]; locale: string }) {
+  return (
+    <div className='flex items-center justify-between py-1.5 text-[length:var(--text-11)]'>
+      <div className='flex items-center gap-1.5'>
+        <span>{countryFlag(v.country)}</span>
+        <span className='text-[var(--text-secondary)]'>
+          {countryNameLocalized(v.country, locale)}
+          {v.city ? ` · ${v.city}` : ''}
+        </span>
+        {v.isBot && (
+          <span className="rounded bg-[var(--danger-soft)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--danger)]">
+            🤖 {v.botName || t('share.badge_bot')}
+          </span>
+        )}
+        {v.isOwner && (
+          <span className="rounded bg-[var(--accent-soft)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--accent)]">
+            👤 {t('share.badge_owner')}
+          </span>
+        )}
+        {v.isSelfReferrer && (
+          <span className="rounded bg-[var(--warning-soft)] px-1.5 py-0.2 text-[length:var(--text-9\.5)] font-semibold text-[var(--warning)]">
+            {t('share.badge_self_referrer')}
+          </span>
+        )}
+      </div>
+      <div className='flex items-center gap-2 text-[var(--text-quaternary)] font-mono'>
+        <span>{v.browser} / {v.os}</span>
+        <span>{relativeTime(v.visitedAt)}</span>
       </div>
     </div>
   )

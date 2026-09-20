@@ -134,6 +134,7 @@ const allowed = new Map([
     '// carries its own copy of the list. The accent-less fallback in the base :root',
     '// block is left out on purpose: the store pins data-accent on the root',
     '// (store/ui/theme.ts), so nothing paints without one.',
+    '/**\n * The same rule for the fixed status colors: --danger/--warning/--success are\n * not accent-swappable, but badges and alerts paint them as small text on their\n * own -soft tint (the SH-37 batch gave those tints real definitions), so each\n * one has to clear AA on every surface the tint can sit on.\n */',
     '/**\n * An accent painted as text sits on its own tint over some surface, so the tint\n * is composited first: the ratio depends on which surface is underneath, which\n * is why every one of them is measured instead of the editor\'s alone.\n */',
     '// A translucent surface (--bg-hover is a 4% wash) has no colour of its own:',
     '// what shows through it is whatever it is painted on, which is not a token',
@@ -272,11 +273,21 @@ const allowed = new Map([
     '//     and the runtime class then never matches the compiled selector. Direct',
     '//     JSX attribute values (className="...") keep the backslash verbatim and',
     '//     are correct with a single one, so they are not flagged.',
+    '// Part 5 is the palette rule: bg-/text-/border-... followed by a Tailwind',
+    '//     color name or white/black draws one fixed hue in both themes instead of a',
+    '//     token, so it is banned even inside a named constant table (hoisting a hue',
+    '//     does not theme it). Existing call sites are grandfathered per file in',
+    '//     check-hardcoded.palette-baseline.json the way check-size.mjs grandfathers',
+    '//     oversized files: a file\'s count may only go down, and going down still',
+    '//     needs an explicit --update-baseline so the baseline stays the truth about',
+    '//     the tree.',
     '// Numeric literals in .ts (non-JSX) files are out of scope: without a type',
     '// checker a bare number cannot be told apart from data, and the visual',
     '// surface is JSX by construction.',
     '// The & lookbehind keeps HTML entities (&#039;) out of the hex scan.',
     '// Unit values inside Tailwind arbitrary-value brackets and parens; also matches .06em.',
+    '// Modules that already draw every colour from tokens keep a zero budget: they',
+    '// never enter the baseline, so resnapshotting cannot absorb new debt there.',
     '// Files whose hex literals are authored content or a self-contained',
     '// stylesheet, not UI values that could consume the token layer. Each entry',
     '// carries the reason; add a new file here only when the same argument holds.',
@@ -321,6 +332,14 @@ const allowed = new Map([
     '// cn() arguments and className expressions can be ternaries/logicals',
     '// wrapping the class strings; collect every string literal beneath them —',
     '// including object-literal keys, which clsx treats as classes by definition.',
+    '// Part 5: a Tailwind palette color class keeps one hue in both themes, so it',
+    '// must become a token reference. Unlike the arbitrary-value rules this has no',
+    '// named-constant exemption: hoisting `text-amber-500` names the hue, it does',
+    '// not theme it. Every string is read, so a hue returned from a plain helper',
+    '// counts the same as one written inline in JSX.',
+    '// Grandfathered palette debt, compared per file: a count may not grow, and a',
+    '// count that shrank still has to be resnapshotted so the baseline keeps',
+    '// describing the tree instead of the day it was written.',
     '// Importable by unit tests; the tree scan only runs when invoked as a CLI.',
   ]],
   ['scripts/check-i18n.mjs', [
@@ -995,6 +1014,9 @@ const allowed = new Map([
     '// Landing focus on the undo action is the keyboard fast-path, but it must never',
     '// interrupt typing, steal from an open dialog, or fight another undo toast.',
   ]],
+  ['src/client/components/form-segmented.test.ts', [
+    '/**\n * SH-46: the client-wide radiogroup guard (tests/radiogroup-names.test.ts) lets a\n * `Segmented` stay attribute-free when `Field` wraps it alone, because `Field`\n * clones `aria-labelledby` onto its control. That exemption is only legitimate if\n * the wiring really reaches the `role=\'radiogroup\'`, which is what these two cases\n * pin down.\n */',
+  ]],
   ['src/client/components/form.tsx', [
     '// `min-w-0` because a range input\'s automatic minimum size is its intrinsic width: without',
     '// it the track refuses to shrink, and a caller that constrains the slider (the music',
@@ -1033,6 +1055,9 @@ const allowed = new Map([
   ['src/client/components/overlay/modal.tsx', [
     '/** `fullscreen` fills the viewport and hands the body to a single surface (e.g. a mind map). */',
     '/** Accessible name for a surface that renders its own heading instead of using `title`. */',
+  ]],
+  ['src/client/components/overlay/prompt.tsx', [
+    '// Passwords keep leading/trailing spaces, so they must not go through trim.',
   ]],
   ['src/client/components/overlay/submenu.test.ts', [
     '/**\n * A list that nests one level deeper: the second row opens a panel of its own, and the\n * third row is disabled — the one the arrow keys have to step over rather than onto.\n */',
@@ -1133,6 +1158,8 @@ const allowed = new Map([
     '// Every /api/blog/* route the client calls via src/client/lib/api/share.ts, with',
     '// representative payloads. Any gap here fails the smoke test instead of surfacing',
     '// as a silent 404 console flood in demo mode.',
+    '// The demo backend mirrors the worker guard (SH-47): wiping every visit log has',
+    '// to re-prove the password, and a stale session must not get a silent delete.',
   ]],
   ['src/client/demo/state.ts', [
     '/** Named whiteboard libraries, exactly as the endpoint stores them: name -> items JSON. */',
@@ -1197,10 +1224,30 @@ const allowed = new Map([
     '// Rebuilt only when the folders change: every consumer of the tree reads it on each',
     '// render, and a new array each time would invalidate theirs as well.',
   ]],
+  ['src/client/features/blog/blog-dashboard-view/radiogroup-names.test.ts', [
+    '/**\n * SH-46 brought the blog dashboard\'s two `Segmented` controls under the same rules\n * the share dashboard already follows: the toolbar range picker carries its own\n * `label`, and the metric picker is named by the card heading it sits beside. The\n * locale is not loaded in this harness, so `t()` echoes the key and the assertions\n * compare against keys.\n */',
+    '// A failed assertion must not leave its tree behind: the next case reads the',
+    '// first radiogroup in the document, so stale DOM would be attributed to it.',
+  ]],
+  ['src/client/features/blog/blog-settings-retention.test.ts', [
+    '// A test that fails before its unmount would otherwise leave its modal in the',
+    '// document, and the next test\'s button lookup would drive that stale instance.',
+    '// The period belongs to the account: nothing in this save may re-cache it.',
+    '// Cleaning by age needs no re-authentication, so the password stays unset.',
+    '// The tab switcher and the retention period; nothing else asks for a count.',
+  ]],
   ['src/client/features/blog/blog-store/index.ts', [
     '// Feed the notes store\'s visibility projection (published note ids) without',
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
+  ]],
+  ['src/client/features/blog/blog-store/retention.test.ts', [
+    '// Seeded before the store module above is evaluated, so the cached record cap',
+    '// is already in browser storage when the store builds its initial state.',
+  ]],
+  ['src/client/features/blog/use-blog-settings-modal.ts', [
+    '// The sweep runs on the server, so the value it reads has to be the account\'s.',
+    '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
   ]],
   ['src/client/features/command/command-palette/index.tsx', [
     '// Counts each note once per ancestor folder (its own folder and every parent).',
@@ -1224,7 +1271,13 @@ const allowed = new Map([
     '// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.',
     '// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.',
   ]],
+  ['src/client/features/list/note-list/note-row-items.tsx', [
+    '// SH-20: part of the share modal graph, so it loads when the submenu first',
+    '// opens instead of joining the note list\'s chunk.',
+  ]],
   ['src/client/features/list/note-list/note-row-ui.tsx', [
+    '// SH-20: these carry qrcode.react and the analytics charts, so they must not',
+    '// join the note list\'s chunk — they load on first open instead.',
     '// containIntrinsicSize hints reserve the row height before content renders',
     '// under content-visibility: auto; one value per density.',
   ]],
@@ -2621,9 +2674,29 @@ const allowed = new Map([
   ['src/client/features/settings/totp-settings/use-totp-settings.ts', [
     '// Best-effort server cleanup; an orphaned pending setup expires server-side.',
   ]],
+  ['src/client/features/share/modals/index.ts', [
+    '// Lazy-only surface (SH-20): these components drag in qrcode.react and the',
+    '// analytics charts, so a static import here regrows the shell chunk the note',
+    '// list already loads. Reach them only via `lazy(() => import(\'.../share/modals\'))`.',
+  ]],
+  ['src/client/features/share/qr-export.ts', [
+    '// Lives outside the static barrel (SH-20): only the lazy QR modal calls these,',
+    '// and the QR_BG_COLOR import would otherwise keep the qrcode chunk inside the',
+    '// shell\'s static closure.',
+  ]],
+  ['src/client/features/share/share-a11y.test.ts', [
+    '// Modal mounts its panel through a portal, so look in the document instead of the container.',
+  ]],
+  ['src/client/features/share/share-edit-modal/use-share-edit-modal.ts', [
+    '// Best-effort: a failure leaves the editor on the create form, but the user',
+    '// must be able to tell a missing share apart from a failed load in the logs.',
+  ]],
   ['src/client/features/share/share-form.ts', [
-    '// A new or replaced passcode must be at least 4 characters (the server',
-    '// enforces the same minimum); short codes are trivially brute-forced.',
+    '// A new or replaced passcode must meet LIMITS.sharePasscodeMinLength (the',
+    '// server enforces the same minimum); short codes are trivially brute-forced.',
+  ]],
+  ['src/client/features/share/share-narrow-screen.test.ts', [
+    '// A failed assertion must not leave a mounted portal behind: later tests query document.body.',
   ]],
   ['src/client/features/share/share-page/index.ts', [
     '// Public interface of the share-page module. Kept separate from the parent',
@@ -2636,10 +2709,90 @@ const allowed = new Map([
     '// server enforces this too by omitting `https:` from CSP img-src on /s/*.',
     '// Invalid URLs are skipped; the attribute keeps its original value.',
   ]],
+  ['src/client/features/share/share-qr-modal.tsx', [
+    '// The plate stays white in both themes: the QR itself renders on fixed',
+    '// white (QR_BG_COLOR), and a dark frame would cut into its quiet zone.',
+  ]],
+  ['src/client/features/share/share-settings-retention.test.ts', [
+    '// The visible text is the name; a second hidden label would only drift.',
+  ]],
+  ['src/client/features/share/share-small-defects.test.ts', [
+    '// Fresh array per call: a refresh that hands the store the same shares',
+    '// reference would never re-fire the initial-note effect.',
+  ]],
+  ['src/client/features/share/share-store/filters.ts', [
+    '// The input is controlled by store state, so it stays responsive; only the',
+    '// reload waits, so a burst of keystrokes costs one request.',
+  ]],
   ['src/client/features/share/share-store/index.ts', [
     '// Feed the notes store\'s visibility projection (shared note ids) without',
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
+    '// Before the hub loads the full list, the startup summary set carries the',
+    '// shared view\'s membership; list membership wins as soon as it exists.',
+  ]],
+  ['src/client/features/share/share-store/loaders.ts', [
+    '// The hub mounts several surfaces (sidebar, note submenu, edit modal) that all',
+    '// want folders/tags on open; without this guard every hub open doubled both',
+    '// requests and every list reload fetched them again.',
+    '// The same query is already on the wire: reuse it instead of a parallel duplicate.',
+    '// A different query makes the previous result stale: cancel it so it stops',
+    '// consuming bandwidth and cannot surface its failure as a toast.',
+    '// The full list is now the shared-state truth; a summary kept beside',
+    '// it would only resurrect revoked shares in the note-row markers.',
+    '// Compare the controller, not just the key: an aborted earlier run of the',
+    '// same query must not free the slot owned by the run that superseded it.',
+    '// The sidebar prefetch and the hub open race each other only at startup;',
+    '// a second in-flight summary would fetch the same two numbers.',
+  ]],
+  ['src/client/features/share/share-store/retention.test.ts', [
+    '// Seeded before the store module above is evaluated, so the cached cap is',
+    '// already in browser storage when the store builds its initial state.',
+  ]],
+  ['src/client/features/share/share-store/row-index.ts', [
+    '// The selector result is the row object itself, so a write touching other rows',
+    '// keeps this subscriber\'s value referentially equal and skips its re-render.',
+    '// A boolean derived from either truth source: the startup summary until the',
+    '// hub (or a submenu action) has loaded the full list.',
+  ]],
+  ['src/client/features/share/share-store/search-load.test.ts', [
+    '// A leaked debounce timer from a failed assertion would fire into the next case.',
+    '// Async advancing lets the first load settle first; otherwise in-flight',
+    '// dedup would mask a leaked debounce timer as a harmless duplicate.',
+    '// params P',
+    '// aborts p1',
+    '// params P again, aborts p2',
+    '// p1/p2 settling runs their finally hooks while p3 still owns the slot.',
+  ]],
+  ['src/client/features/share/share-store/shares.ts', [
+    '// Zero views on a paused row is the only client-side signal that this note has never been public.',
+    '/* The row is outside the current filter (e.g. just enabled under the\n       paused filter); only a reload knows whether and where it now belongs. */',
+  ]],
+  ['src/client/features/share/share-visit-logs-menu.test.ts', [
+    '// Opens the clean menu with a real click and picks the wipe-everything entry.',
+  ]],
+  ['src/client/features/share/use-share-hub-modal.ts', [
+    '// One auto-open per hub session: `shares` refreshes after saving or a',
+    '// manual reload, and re-firing would reopen the modal the user closed.',
+  ]],
+  ['src/client/features/share/use-share-hub-sidebar.tsx', [
+    '// Inside the mobile drawer a pick is also the intent to return to the list, so navigation closes it.',
+  ]],
+  ['src/client/features/share/use-share-list.ts', [
+    '// Stable identities keep the memoized table rows from re-rendering when an',
+    '// unrelated row\'s selection changes.',
+  ]],
+  ['src/client/features/share/use-share-note-submenu.ts', [
+    '// Since SH-19 a row can be shared without being in the store yet (the',
+    '// startup summary only carries ids): ask the server before publishing.',
+  ]],
+  ['src/client/features/share/use-share-settings-modal.ts', [
+    '// The sweep runs on the server, so the value it reads has to be the account\'s.',
+    '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
+  ]],
+  ['src/client/features/share/use-share-visit-logs-modal.ts', [
+    '// The visits endpoint caps limit at 100; exporting at that page size keeps a',
+    '// large history to a linear walk instead of hundreds of 25-row pages.',
   ]],
   ['src/client/features/shell/app-shell.tsx', [
     '/* A show outlives the layout that started it: the desktop and mobile shells\n          mount different workspace subtrees, so hosting the overlay here keeps a\n          presentation alive across a breakpoint switch instead of dropping the\n          presenter back to the note mid-talk. */',
@@ -2718,6 +2871,9 @@ const allowed = new Map([
   ['src/client/lib/api/music.ts', [
     '// The Worker relays the catalogue request because the page\'s CSP forbids third party connections.',
     '// `tag` carries the tag ids the whole selection is rewritten onto; the other actions carry none.',
+  ]],
+  ['src/client/lib/api/share.ts', [
+    '// A long document.referrer must not turn into a 400 for a legitimate viewer; the server caps at the same length.',
   ]],
   ['src/client/lib/api/transport.ts', [
     '/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker\'s ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */',
@@ -2963,6 +3119,8 @@ const allowed = new Map([
     '/** The graph settings toggles: the single source of truth for the panel, docs, and tests. */',
   ]],
   ['src/client/lib/hooks.ts', [
+    '// jsdom and other partial window implementations lack matchMedia; same reading as the SSR fallback.',
+    '// Exported for the music hub\'s narrow-screen layouts, which read the same breakpoint.',
     '// Trailing debounce. `resetKey` names the subject the value belongs to: when it changes',
     '// (another note, a session that just started) the held value belongs to the previous',
     '// subject, so the current one is returned at once instead of after the delay.',
@@ -4020,7 +4178,7 @@ const allowed = new Map([
     '/* The field label wraps its input: a number field with no name is the one control a\n                screen reader cannot describe, and an implicit label is the whole fix. */',
     '/* Three icon-only buttons in a group: the name says which alignment each one is,\n                    and the pressed state says which one the text is on. */',
     '/* A colour well and the hex field beside it are two controls for one value: the\n                    well carries the label, the field says it is the value written out. */',
-    '/* The label is the panel\'s own text colour, not the danger tone: `--danger` is\n              oklch(64% 0.19 22) in the light theme, which lands at 3.2:1 on its own tint — a\n              danger-coloured word here would be the one unreadable row of the panel. The tone\n              stays on the icon and the tint, where 3:1 is the bar. */',
+    '/* The label is the panel\'s own text colour, not the danger tone: the tone\n              rides the icon and the tint, where 3:1 is the bar, and the light theme\'s\n              --danger was only ~3.2:1 on its own tint when this was calibrated. The\n              SH-37 recalibration brought that pair above AA, but the neutral label\n              stays — a danger-coloured word was never the point of the row. */',
   ]],
   ['src/client/lib/markdown/slides/ui/inspector-theme.tsx', [
     '// The name is the visible label beside it: a colour well announces its value, never',
@@ -4401,6 +4559,11 @@ const allowed = new Map([
     '// Quota or private-mode writes can throw; the pref stays authoritative in memory.',
     '/** Whether undo toasts should auto-focus their action button (explicit "no-distraction" opt-out). */',
   ]],
+  ['src/client/lib/wipe-password-prompt.ts', [
+    '// Clearing every visit log is unrecoverable, so the endpoint requires the current',
+    '// password (SH-12, and SH-47 for the blog twin). Every clean entry point asks',
+    '// through this single prompt so the wording cannot drift between the two modules.',
+  ]],
   ['src/client/lib/year-grid-prefs.ts', [
     '// Corrupt or missing stored prefs fall back to the default below.',
     '// Quota or private-mode writes can throw; the pref stays authoritative in memory.',
@@ -4654,12 +4817,6 @@ const allowed = new Map([
     '// and the user id occupies the first slot. One request is executed as several such statements.',
     '/** The library a board starts from: a named one like any other, shown as the default. */',
     '/**\n * Default template inserted at the top of new notes. Keep placeholders ASCII:\n * they are filled in at creation time with the localized note title and the\n * current date/time. First line must be `---` (a leading blank line would\n * prevent the front matter from being parsed).\n */',
-    '// External https images are blocked by default (renderer placeholder + CSP',
-    '// `img-src` without `https:`); opt in per user. Share pages stay blocked',
-    '// regardless of this value.',
-    '/** Built-in floating-window sizes; `custom` reads width/height from the settings. */',
-    '/**\n * Merge a partial patch into the current settings.\n *\n * Sections that the patch does not touch are passed through by reference,\n * so subscribers observing a specific section (e.g. `settings.editor`) are\n * not re-rendered when an unrelated section changes.\n */',
-    '/**\n * Guards the referential-stability contract of mergeSettingsPatch: sections\n * the patch did not touch must keep their object identity, otherwise narrow\n * store subscriptions silently regress into full-app re-renders on every\n * settings change.\n */',
   ]],
   ['src/shared/escape.ts', [
     '/**\n * HTML-escape untrusted text (all five metacharacters: & < > " \').\n * Single canonical implementation shared by client and worker so escaping\n * semantics never drift between layers.\n */',
@@ -4752,6 +4909,25 @@ const allowed = new Map([
     '/** Load external (https) images in rendered notes. Off by default: external\n   *  images are replaced with a blocked placeholder (renderer-level), and the\n   *  server drops `https:` from CSP `img-src` while it is off — so raw-HTML\n   *  images in notes stay blocked on the app page and are ALWAYS blocked on\n   *  share pages (/s/*), where visitors never opt in. */',
     '/** Name of the whiteboard library the boards open; `default` is the reserved one. */',
     '/** Tag(s, comma-separated) that file notes into the sidebar to-do tree; null falls back to the locale default. */',
+    '/** Share-center preferences the server acts on, not just the UI. */',
+    '/**\n   * Days a visit log row survives before the maintenance cron deletes it;\n   * 0 keeps every row. It has to live here rather than in the browser so the\n   * sweep runs whether or not the owner ever opens the app again.\n   */',
+    '/** Blog-center preferences the server acts on, not just the UI. */',
+    '/**\n   * Days a `blog_visits` row survives before the maintenance cron deletes it;\n   * 0 keeps every row. Same reasoning as the share twin.\n   */',
+  ]],
+  ['src/shared/types/share.ts', [
+    '// Null when the note was deleted but its visit rows survive; the client',
+    '// labels it (SH-34), the worker must not bake in an English fallback.',
+  ]],
+  ['src/shared/user-settings.ts', [
+    '/** The retention the cron applies when a user never chose one. */',
+    '/** A decade: beyond this a sweep is indistinguishable from "keep forever". */',
+    '// External https images are blocked by default (renderer placeholder + CSP',
+    '// `img-src` without `https:`); opt in per user. Share pages stay blocked',
+    '// regardless of this value.',
+    '/** Built-in floating-window sizes; `custom` reads width/height from the settings. */',
+    '/**\n * Merge a partial patch into the current settings.\n *\n * Sections that the patch does not touch are passed through by reference,\n * so subscribers observing a specific section (e.g. `settings.editor`) are\n * not re-rendered when an unrelated section changes.\n */',
+    '/**\n * Guards the referential-stability contract of mergeSettingsPatch: sections\n * the patch did not touch must keep their object identity, otherwise narrow\n * store subscriptions silently regress into full-app re-renders on every\n * settings change.\n */',
+    '/**\n * Both visit-log surfaces keep the same single knob, so the same cleaner backs\n * `share` and `blog`: 0 means "keep forever" and must survive as 0.\n */',
   ]],
   ['src/worker/app.ts', [
     '// Integrity of the caller\'s own index: rows beyond the first for a note, and rows whose note',
@@ -4906,6 +5082,7 @@ const allowed = new Map([
     '/** Keeps tags, backlinks, full-text indexes, and change records consistent with note writes. */',
   ]],
   ['src/worker/env.ts', [
+    '/** Instance secret (`wrangler secret put VISIT_FP_SECRET`) keying visitor fingerprints; unset means visit rows carry no fingerprint at all. */',
     '/** Workers AI binding for semantic search; optional so AI search degrades gracefully. */',
     '/** Present only in the dev-only wrangler.kv.toml; unlocks /api/dev/seed for local perf seeding. */',
   ]],
@@ -4971,6 +5148,14 @@ const allowed = new Map([
   ['src/worker/lib/image.ts', [
     '// Malformed or truncated image data is routine for probes; degrade to unknown dimensions.',
   ]],
+  ['src/worker/lib/maintenance.ts', [
+    '/**\n * Per-account visit log retention in days, read from the stored settings\n * document: 0 keeps every row, while a missing or unparsable value falls back\n * to the shipped default so an account that never opened the settings modal\n * still has a bounded log. `json_valid` guards a corrupt document, which would\n * otherwise make `json_extract` throw and take the whole sweep down.\n */',
+    '/** The aged rows of one visit table, judged by the owner\'s own retention. */',
+    '// Order matters: the destructuring below lines up with these statements.',
+    '/** Bounded deletes for rows that carry their own expiry, plus stale login attempts. */',
+    '/** Visit log rows are the only purge without an expiry column: they go by ownership and age. */',
+    '// Sweeps rows orphaned before the revoke/purge cascades existed (and by the MCP revoke tool).',
+  ]],
   ['src/worker/lib/outbound-url.ts', [
     '// Shared outbound-request guards: the hostname and IP safety checks back both',
     '// the backup adapters (HTTPS-only) and the blog link checker (HTTP allowed),',
@@ -4996,6 +5181,18 @@ const allowed = new Map([
   ['src/worker/lib/session-store.ts', [
     '/**\n * Extend a session back to the full TTL. Only call this from an authenticated\n * request whose session is inside the renewal window (see SESSION_RENEW_BEFORE_MS);\n * never call it from unauthenticated paths — renewal must not resurrect or\n * prolong a session the user has not just proven possession of.\n */',
   ]],
+  ['src/worker/lib/share-analytics.ts', [
+    '// Only browser-resolvable schemes earn a row; the raw candidate may carry query',
+    '// tokens or fragments, so http(s) stores origin+path only.',
+    '/* An unparseable candidate degrades analytics to a null referrer. */',
+    '// 0 vs 0 is indeterminate: reporting 0% would claim a trend measured against real traffic',
+    '// An unknown range is a client bug, not a request for the whole table: 30d is',
+    '// the widest window a sanitized query may ask for.',
+    '// `all` has no fixed span, so it is scoped by the earliest visit the caller can',
+    '// find; without one the window stays recent instead of starting at epoch.',
+    '// Buckets are addressed by index so both the row path and a SQL GROUP BY can',
+    '// fill the same array; missing indexes stay zero-filled.',
+  ]],
   ['src/worker/lib/streams.ts', [
     '// Stream cancellation is a best-effort resource release: the read side is',
     '// already done or errored, so a failed cancel has nothing left to retry and',
@@ -5003,6 +5200,22 @@ const allowed = new Map([
     '// inline `.catch(() => {})` at every upload/download/rollback site.',
     '// Best-effort release; a failed cancel leaks only until the runtime',
     '// reclaims the stream, with no correctness impact on the operation.',
+  ]],
+  ['src/worker/lib/visit-aggregates.ts', [
+    '// Both visit tables answer the same questions (totals, timeline buckets, five',
+    '// distributions, per-target stats). A bounded range can be answered by grouping',
+    '// the fetched rows in JS, but `all` has no bound on the row count, so it must be',
+    '// answered by SQL aggregation. Both paths build the same normalized shape, which',
+    '// is what the dashboards actually consume.',
+    '// Visits keep their stored slug after the target is renamed, so a target can',
+    '// have several; MAX() is what the SQL path answers with, so this matches it.',
+    '// One statement for a bounded range (the rows themselves), eight for `all`',
+    '// (totals, buckets, five distributions, per-target). `visitAggregateFromResults`',
+    '// unpacks them back in the same order.',
+    '// The OS bucket falls back to a per-source label, so that one statement binds an',
+    '// extra parameter the others do not.',
+    '// The fallback has to be uppercased too: the client matches the country',
+    '// bucket on \'UNKNOWN\' to show its "unknown country" label.',
   ]],
   ['src/worker/mcp/ai-search.ts', [
     '/**\n * Private AI semantic search for the MCP module.\n *\n * Notes are embedded with Workers AI (`@cf/baai/bge-m3`, 1024 dims,\n * multilingual) and the vectors live in D1 — no public query endpoint, one\n * index per account. Content changes are queued and drained in the\n * background; when the AI binding is missing or the model call fails the\n * feature degrades to plain lexical search instead of failing (the old\n * behavior that surfaced as HTTP 503s).\n */',
@@ -5116,6 +5329,13 @@ const allowed = new Map([
     '// current hop. The caller receives the first non-redirect response.',
     '// Best-effort body release; a failed cancel does not change the verdict.',
   ]],
+  ['src/worker/routes/blog/posts.ts', [
+    '// One batch, so a post cannot survive while its log rows go missing (or the other way round).',
+    '// `blog_comments` has no owner column, so the delete asks blog_posts who owns the post and has to',
+    '// run before the post row itself disappears.',
+    '// One statement per group: D1 rejects a statement that binds more than 100 variables.',
+    '// Comments have no owner column: both child deletes must land before the post rows go.',
+  ]],
   ['src/worker/routes/blog/public-links.ts', [
     '/**\n * The budget one visitor gets for applying: the count used to be over the whole table, so\n * five applications from anywhere took the endpoint down for everyone for a minute while\n * doing nothing to stop the one source that sent them.\n */',
   ]],
@@ -5134,12 +5354,21 @@ const allowed = new Map([
     '// JSON-escaped tag text, LIKE-escaped on top (ESCAPE \'\\\\\'); the second',
     '// pattern keeps the parent-tag-matches-descendants hierarchy semantics.',
   ]],
+  ['src/worker/routes/blog/schemas.ts', [
+    '// Body of DELETE /api/blog/visits?type=all: the wipe is unrecoverable, so the',
+    '// current password travels in the body rather than the query string (SH-47).',
+  ]],
   ['src/worker/routes/blog/stats.ts', [
     '/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */',
+    '// Wiping the whole trail is unrecoverable, so a stolen session must re-prove',
+    '// it holds the account password before the delete runs (same as share SH-12).',
   ]],
   ['src/worker/routes/blog/visits.ts', [
     '// CF-Connecting-IP is injected by the Cloudflare edge (see requestClientIp);',
     '// raw x-forwarded-for is client-controlled and must not feed analytics.',
+    '// Same rules as share visit recording (SH-04/SH-08, mirrored for blog here):',
+    '// the dedupe key excludes the UA, salt is HMAC under the instance secret and',
+    '// per owner, and a missing secret records no fingerprint at all.',
     '// The analytics row is written for every visit; the boolean tells the caller',
     '// whether this visit should bump the post\'s views counter (new fingerprint',
     '// within the dedupe window, not a bot).',
@@ -5414,9 +5643,48 @@ const allowed = new Map([
     '// notes and attachments carry several counts each; one pass over each table',
     '// replaces the four and two separate scans the per-metric subqueries made.',
   ]],
+  ['src/worker/routes/share/analytics.ts', [
+    '// Equal view counts have no order out of a GROUP BY, so ties break by note id',
+    '// and both aggregation paths list the same top ten.',
+  ]],
+  ['src/worker/routes/share/batch.ts', [
+    '// One upsert per note inside a chunked db.batch: the whole chunk commits together,',
+    '// and both arms are owner-guarded so a foreign note_id can neither be inserted over',
+    '// nor have its share flipped (the old read-then-insert crashed on exactly that).',
+    '// Sessions go first: their lookup is a subquery over shares and must read the',
+    '// still-present rows inside the same transaction.',
+  ]],
+  ['src/worker/routes/share/global-stats.ts', [
+    '// Statement builders + parsers for the share list\'s global stats (SH-17a):',
+    '// the list route batches these five statements with its rows query, so each',
+    '// side stays a pure piece the handler can reassemble.',
+  ]],
+  ['src/worker/routes/share/note.ts', [
+    '// The collision pre-check is not atomic: a concurrent registration can take the',
+    '// slug between check and write, and then the UNIQUE index rejects us with 500.',
+    '// Visit rows keep the slug they were recorded under; without this rename the',
+    '// log\'s slug column and search would strand on the dead link.',
+  ]],
+  ['src/worker/routes/share/organizer.ts', [
+    '// Only the boolean ships: why a slug is unavailable (invalid vs taken) must not be a lookup oracle.',
+  ]],
   ['src/worker/routes/share/public.ts', [
-    '/* Unparseable referer candidates are skipped; analytics degrade to a null referrer. */',
+    '// The schema caps the guess at LIMITS.passwordMaxLength; oversized ones answer 400 rather than being truncated.',
+    '// One identical answer for disabled, expired and unknown: the status of a share is not public information.',
+    '// Ten wrong guesses per hour per slug (was 40): paired with the 8-char floor this bounds the offline-free window.',
+    '// Same body as "password required": a wrong guess must be indistinguishable from no guess.',
+    '// The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.',
+    '// Without the instance secret record no fingerprint rather than fall back to the public date salt,',
+    '// and salt per owner so one browser is not linkable across accounts (SH-04).',
     '/* An unparseable referer header simply means "no external referrer". */',
+  ]],
+  ['src/worker/routes/share/read-results.ts', [
+    '// D1 batch() answers with one result object per statement; these unpack them',
+    '// the way prepare().all()/.first() used to for serial reads.',
+  ]],
+  ['src/worker/routes/share/visits.ts', [
+    '// Wiping the whole audit trail is unrecoverable, so a stolen session must',
+    '// re-prove it holds the account password before the delete runs.',
   ]],
   ['src/worker/routes/sync.ts', [
     '// A non-empty `after` key always means the caller is mid-way through a',
@@ -5446,6 +5714,14 @@ const allowed = new Map([
     '// budget observable at all: the count used to be over the whole table, so the sixth',
     '// application here would have been the sixth from anywhere.',
   ]],
+  ['tests/blog-visit-cleanup.test.ts', [
+    '// Recent by design: a row older than the account retention is now the',
+    '// retention sweep\'s business, not this one\'s (SH-43).',
+  ]],
+  ['tests/blog-visit-retention.test.ts', [
+    '/** `settings` is written verbatim, so a test can store a corrupt document too. */',
+    '/** A visit needs its post to stay, otherwise the orphan sweep deletes it first. */',
+  ]],
   ['tests/board-library-routes.test.ts', [
     '/** A bucket that keeps what it is given, so a test can count the objects it holds. */',
   ]],
@@ -5456,6 +5732,9 @@ const allowed = new Map([
     '// here instead of in the browser.',
     '// Real D1 batch commits atomically; a savepoint reproduces that here and',
     '// still works when a test drives nested batches.',
+    '// Records every SQL string the code under test prepares (both serial reads and',
+    '// statements that ride a batch), so a test can assert on the shape of the query,',
+    '// not just on the response it produced.',
   ]],
   ['tests/fts-index.test.ts', [
     '// The schema under test is the one the Worker creates, not a hand-written copy: a copy here',
@@ -5556,6 +5835,15 @@ const allowed = new Map([
     '// A real Cache hands out a fresh body per match; cloning keeps that contract',
     '// so one offline seek does not make the next one read a drained body.',
   ]],
+  ['tests/radiogroup-names.test.ts', [
+    '/**\n * SH-40 named every `Segmented` inside the share feature; SH-46 lifted the scan to\n * the whole client tree, because the same defect kept appearing in other modules\'\n * toolbars. A `Segmented` renders a `role=\'radiogroup\'`, and the component only\n * names it through `label` (an `aria-label`) or `aria-labelledby`.\n *\n * One site may stay attribute-free: a `Segmented` that is the single child of a\n * `Field`, because `Field` clones `aria-labelledby` onto its control. That\n * exemption is proved behaviourally in src/client/components/form-segmented.test.ts\n * rather than trusted from here.\n */',
+    '// Indentation inside JSX survives the parse as whitespace-only text children.',
+    '// Field clones its label id onto the child only when `children` is a single',
+    '// valid element, and the id is worthless without a `label`, so a multi-child or',
+    '// label-less Field must still be reported. Line numbers are the fixture\'s own.',
+    '// `aria-label` is not a Segmented prop at all (it renders one from `label`), so',
+    '// writing it on the control names nothing and must not satisfy the guard.',
+  ]],
   ['tests/schema-migrations.test.ts', [
     '// Simulate a database whose music tables came from an earlier build: different',
     '// column names, tag links by name, seconds instead of milliseconds.',
@@ -5564,19 +5852,55 @@ const allowed = new Map([
     '// MATCH(\'note_id : …\') matched nothing and left the previous body behind.',
   ]],
   ['tests/share-analytics.test.ts', [
-    '// too short (< 3)',
+    '// too short (< 6)',
+    '// just below the 6-char floor',
     '// too long (> 64)',
     '// spaces',
     '// slashes',
     '// non-ascii',
     '// query symbols',
+    '// A period that never saw traffic has no trend to report: 0/0 is',
+    '// indeterminate, so the server says "no delta" rather than "flat 0%".',
     '// Default / All enabled:',
     '// Exclude bots only:',
     '// All disabled:',
     '// With table alias:',
   ]],
+  ['tests/share-bare-controls.test.ts', [
+    '/**\n * SH-33: interactive controls inside the share feature must come from the\n * component system (`components/form`, `components/primitives`), not bare\n * `<input>` markup with hand-written styles. `share-note-submenu.tsx` keeps\n * two embedded search inputs out of this rule for now — they belong to the\n * hand-rolled submenu panel whose dedup is already a registered leftover.\n */',
+  ]],
+  ['tests/share-code-split.test.ts', [
+    '/**\n * The share feature must stay code-split (SH-20): its five modals carry\n * qrcode.react and the analytics charts, so any *static* import that reaches\n * them regrows the shell chunk the note list already loads. The modals are\n * only allowed behind `src/client/features/share/modals` and must arrive via\n * `lazy(() => import(...))`.\n *\n * The build itself is too heavy for CI-level feedback, so this test walks the\n * static import graph (dynamic `import()` calls are boundaries, not edges)\n * and asserts no module outside the share feature reaches the modal graph —\n * which is exactly the state the 2026-09-17 dist measurement contradicted.\n */',
+    '// The lazy-only surface: the five modal components plus their dedicated entry.',
+    '// Files that must pull the modals in dynamically instead of statically.',
+    '// Files whose static closure touches each banned module (pre-image of the',
+    '// ban), computed by one reverse-DFS over static edges.',
+  ]],
+  ['tests/share-english-literals.test.ts', [
+    '/**\n * SH-34: the share UI drew English-only literals (\'PV\', \'CUSTOM\', \'Untitled\n * note\', machine fallback tokens) straight into the page, and the worker\n * baked \'Untitled note\' into visit rows instead of reporting the missing\n * note to the client. Every user-visible string must go through i18n\n * message ids, so these banned substrings must not reappear.\n */',
+    '// Worker aggregate buckets keep machine tokens on purpose (they are Map keys',
+    '// the client localizes via share-helpers); only the row-level title fallback',
+    '// is banned here.',
+    '// The public reader page renders without the app\'s i18n runtime; its title',
+    '// fallback is tracked outside SH-34.',
+  ]],
   ['tests/share-routes.test.ts', [
+    '// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =',
+    '// one round-trip however many statements ride along. Statements built through',
+    '// the wrapper still execute inside batch without being double-counted.',
     '// visit recording runs via waitUntil; the test context must let us await it',
+    '// Eleven scrypt verifications need more than the 5s default budget on slow runners.',
+    '// requestClientIp only trusts CF-Connecting-IP when the edge set `cf`, so the probe attaches it.',
+  ]],
+  ['tests/share-table-semantics.test.ts', [
+    '// (?=[\\s>]) keeps <thead> from reading as an unscoped <th>.',
+  ]],
+  ['tests/share-touch-targets.test.ts', [
+    '/**\n * SH-35: the note submenu rows were 30px tall (`h-7.5`), below the 44px\n * touch target on phones. The base height must stay large for narrow\n * screens while desktop keeps the compact row.\n */',
+  ]],
+  ['tests/share-visit-retention.test.ts', [
+    '/** `settings` is written verbatim, so a test can store a corrupt document too. */',
+    '/** A visit needs its share to stay, otherwise the orphan sweep deletes it first. */',
   ]],
   ['tests/slides-interop.test.ts', [
     '/**\n * What happens when a note holds a deck this build did not author: a document in the\n * format\'s own shape, with the element kinds, slide fields and document tables an export\n * carries. Two things must hold, and neither is visible from the editor\'s side. The model\n * must carry every field through parse → edit → write (a field it drops is gone from the\n * note the next time anything is edited), and every element must DRAW SOMETHING — a deck\n * whose picture is missing an element looks finished, so the failure has no symptom until\n * the reader compares it with the original.\n */',
@@ -5598,11 +5922,30 @@ const allowed = new Map([
     '// The 4th failure reached the escalation chain (fails 2 → locked for the',
     '// ip key); assertNotLocked must now throw for that key but not others.',
   ]],
+  ['tests/token-definitions.test.ts', [
+    '// A token counts as defined either in a stylesheet or as a quoted \'--x\' literal',
+    '// in TS (runtime setProperty / inline-style keys resolve the same way).',
+    '// Debt owned by other audits (kanban, preview, attachments, music, slides,',
+    '// excalidraw). Registered in the plan.md common-defects section; fixing them',
+    '// here would be a drive-by. Removing an entry requires the owning module to',
+    '// define the token.',
+  ]],
+  ['tests/visit-aggregates.test.ts', [
+    '// In scope: two visitors on note-a (one of them twice), one empty-fp visit on',
+    '// note-b, and a visit the clock put past the window, which the totals still count.',
+    '// Out of scope: a bot, another owner, and a visit before the window opens.',
+    '// The row path is what a bounded range answers with, so asking the same builder',
+    '// for a bounded range yields exactly the rows the SQL path has to summarize.',
+    '// 12 monthly-ish buckets over the whole window; the out-of-window visit is',
+    '// counted in the totals only, so the buckets sum to one less than `views`.',
+  ]],
   ['vite.config.ts', [
-    '/**\n * Where the dependency install actually lives. node_modules is frequently a symlink into\n * a shared or sibling checkout (worktrees, deduplicated installs), and Vite checks the real\n * path of every served file against `server.fs.allow` — without the dependency directory\'s\n * real path, the packages\' own assets (the @fontsource woff2 that\n * src/client/styles/inter.css references, KaTeX\'s font files) are answered with 403 in dev.\n */',
     '// Keep optional preview renderers and their language modules behind dynamic-import boundaries.',
+    '/**\n * Vite serves `node_modules` assets (webfonts, mostly) by their resolved path and only\n * below `server.fs.allow`. A git worktree whose install is a symlink into the main\n * checkout therefore answers 403 for every font.\n */',
     '/**\n * The whiteboard library resolves the fonts it draws with at runtime, from paths\n * relative to the app root (`/fonts/<family>/<file>`), and falls back to its own CDN\n * when they are missing — which a self-hosted instance\'s CSP blocks, leaving the board\n * drawn with system fonts instead of the hand-drawn ones. The package\'s font files are\n * therefore materialized into public/ (generated output, gitignored) before dev and\n * build; the copy is skipped while it is current, and refreshed when the package moves.\n */',
-    '// Replaces Vite\'s default allow list, so the project root is named explicitly here.',
+  ]],
+  ['vitest.config.ts', [
+    '// Only on this side of the merge: dev never had these three files.',
   ]],
 ])
 const found = new Map()

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { BlogStoreState } from './types'
-import { initialFilters, initialRetention } from './state'
+import { initialFilters } from './state'
 import { blogFiltersActions } from './filters'
 import { blogLoadersActions } from './loaders'
 import { blogContentActions } from './content'
@@ -50,8 +50,6 @@ function initialBlogState(): Partial<BlogStoreState> {
         excludeBots: initialFilters.excludeBots,
         excludeSelfReferrers: initialFilters.excludeSelfReferrers,
         excludeOwner: initialFilters.excludeOwner,
-        logRetentionDays: initialRetention.logRetentionDays,
-        maxLogRecords: initialRetention.maxLogRecords,
     }
 }
 

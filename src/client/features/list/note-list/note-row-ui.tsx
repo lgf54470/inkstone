@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Columns2, FolderClosed, MoreHorizontal, PictureInPicture2, Pin, Share2, Star, Globe } from 'lucide-react'
 import type { Folder } from '@shared/types'
 import { cn } from '../../../lib/cn'
@@ -8,11 +9,18 @@ import { openFolderView } from '../../../lib/folders'
 import { openNoteFloatingWindow } from './note-row-actions'
 import { CreateFolderModal } from '../../folders'
 import { BlogPublishModal } from '../../blog'
-import { ShareEditModal, ShareNoteAnalyticsModal, ShareQrModal } from '../../share'
 import { TagPill } from '../../../components/tag-pill'
 import { removeTagFromNote } from '../../tags'
 import { t } from '../../../lib/i18n'
 import type { NoteRowState } from './note-row-state'
+
+// SH-20: these carry qrcode.react and the analytics charts, so they must not
+// join the note list's chunk — they load on first open instead.
+const shareModal = (name: 'ShareEditModal' | 'ShareQrModal' | 'ShareNoteAnalyticsModal') =>
+  lazy(() => import('../../share/modals').then((m) => ({ default: m[name] })))
+const ShareEditModal = shareModal('ShareEditModal')
+const ShareQrModal = shareModal('ShareQrModal')
+const ShareNoteAnalyticsModal = shareModal('ShareNoteAnalyticsModal')
 
 const ACTIONS_MENU_WIDTH = 240
 import type { NoteRowActions } from './note-row-actions'
@@ -229,12 +237,14 @@ function NoteRowOverlays({ state, actions, items }: { state: NoteRowState; actio
       />
     )}
     {isShareModalOpen && (
-      <ShareEditModal
-        open={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        noteId={note.id}
-        noteTitle={note.title || t('common.untitled_note')}
-      />
+      <Suspense fallback={null}>
+        <ShareEditModal
+          open={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          noteId={note.id}
+          noteTitle={note.title || t('common.untitled_note')}
+        />
+      </Suspense>
     )}
   </>)
 }
@@ -242,22 +252,24 @@ function NoteRowOverlays({ state, actions, items }: { state: NoteRowState; actio
 function NoteRowModalOverlays({ state }: { state: NoteRowState }) {
   const { qrModalData, setQrModalData, isAnalyticsOpen, setIsAnalyticsOpen, isBlogPublishOpen, setIsBlogPublishOpen, note, noteBlogPost } = state
   return (<>
-    {qrModalData && (
-      <ShareQrModal
-        open={Boolean(qrModalData)}
-        onClose={() => setQrModalData(null)}
-        url={qrModalData.url}
-        title={qrModalData.title}
-        slug={qrModalData.slug}
-      />
-    )}
-    {isAnalyticsOpen && (
-      <ShareNoteAnalyticsModal
-        open={isAnalyticsOpen}
-        onClose={() => setIsAnalyticsOpen(false)}
-        noteId={note.id}
-      />
-    )}
+    <Suspense fallback={null}>
+      {qrModalData && (
+        <ShareQrModal
+          open={Boolean(qrModalData)}
+          onClose={() => setQrModalData(null)}
+          url={qrModalData.url}
+          title={qrModalData.title}
+          slug={qrModalData.slug}
+        />
+      )}
+      {isAnalyticsOpen && (
+        <ShareNoteAnalyticsModal
+          open={isAnalyticsOpen}
+          onClose={() => setIsAnalyticsOpen(false)}
+          noteId={note.id}
+        />
+      )}
+    </Suspense>
     {isBlogPublishOpen && (
       <BlogPublishModal
         open={isBlogPublishOpen}

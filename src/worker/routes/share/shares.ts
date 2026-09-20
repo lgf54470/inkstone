@@ -1,8 +1,25 @@
 import { Hono } from 'hono'
-import { ShareInfo, ShareListResponse } from '@shared/types'
+import { ShareInfo, ShareListResponse, ShareSummaryResponse } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
+import { escapeLike } from '../../lib/like'
 import { buildVisitFilterSql, type ShareFilterOptions } from '../../lib/share-analytics'
+import {
+  buildShareGlobalStats,
+  folderCountsStatement,
+  filteredGlobalStatsStatement,
+  globalSummaryStatement,
+  pinStarStatement,
+  tagCountsStatement,
+  toFolderCounts,
+  toTagCounts,
+  type FilteredStatsRow,
+  type FolderCountRow,
+  type GlobalSummaryRow,
+  type PinStarRow,
+  type TagCountRow,
+} from './global-stats'
+import { firstOf, rowsOf } from './read-results'
 
 export interface ShareRow {
   slug: string
@@ -86,6 +103,7 @@ export function toShareInfo(
 export function registerShareSharingRoutes(shareManageRoutes: Hono<AppBindings>): void {
   registerShareNoteShareRoute(shareManageRoutes)
   registerShareListRoute(shareManageRoutes)
+  registerShareSummaryRoute(shareManageRoutes)
 }
 
 function registerShareNoteShareRoute(shareManageRoutes: Hono<AppBindings>): void {
@@ -108,20 +126,49 @@ function registerShareNoteShareRoute(shareManageRoutes: Hono<AppBindings>): void
 
 function registerShareListRoute(shareManageRoutes: Hono<AppBindings>): void {
   shareManageRoutes.get('/', async (c) => {
+    const db = c.env.DB
     const userId = c.get('userId')
     const params = shareListParams(c)
-    const globalStats = await loadShareGlobalStats(c.env.DB, userId, params.now, params.clause)
     const binds: Array<string | number> = [userId]
     const conditions = shareListConditions(binds, params)
-    const orderClause = shareListOrderClause(params.sort)
-    const rows = await loadShareListRows(c.env.DB, binds, conditions, orderClause)
-    const noteStatsMap = await loadNoteVisitStats(c.env.DB, rows, params.clause)
-    const shares = rows.map((r) => shareListInfo(r, noteStatsMap.get(r.note_id), params.origin))
+    const [folderResult, tagResult, summaryResult, filteredResult, pinStarResult, listResult] = await db.batch([
+      folderCountsStatement(db, userId, params.now),
+      tagCountsStatement(db, userId, params.now),
+      globalSummaryStatement(db, userId, params.now),
+      filteredGlobalStatsStatement(db, userId, params.clause),
+      pinStarStatement(db, userId),
+      shareListRowsStatement(db, binds, conditions, shareListOrderClause(params.sort)),
+    ])
+    const globalStats = buildShareGlobalStats(
+      toFolderCounts(rowsOf<FolderCountRow>(folderResult)),
+      toTagCounts(rowsOf<TagCountRow>(tagResult)),
+      firstOf<GlobalSummaryRow>(summaryResult),
+      firstOf<FilteredStatsRow>(filteredResult),
+      firstOf<PinStarRow>(pinStarResult),
+    )
+    const rows = rowsOf<ShareListRow>(listResult)
+    const truncated = rows.length > SHARE_LIST_ROW_LIMIT
+    const visibleRows = truncated ? rows.slice(0, SHARE_LIST_ROW_LIMIT) : rows
+    const noteStatsMap = await loadNoteVisitStats(db, visibleRows, params.clause)
+    const shares = visibleRows.map((r) => shareListInfo(r, noteStatsMap.get(r.note_id), params.origin))
     const response: ShareListResponse = {
       shares,
       total: shares.length,
+      truncated,
       globalStats,
     }
+    return c.json(response)
+  })
+}
+
+function registerShareSummaryRoute(shareManageRoutes: Hono<AppBindings>): void {
+  shareManageRoutes.get('/summary', async (c) => {
+    const userId = c.get('userId')
+    const { results } = await c.env.DB.prepare(`SELECT note_id FROM shares WHERE user_id = ?1`)
+      .bind(userId)
+      .all<{ note_id: string }>()
+    const sharedNoteIds = (results ?? []).map((r) => r.note_id)
+    const response: ShareSummaryResponse = { totalShares: sharedNoteIds.length, sharedNoteIds }
     return c.json(response)
   })
 }
@@ -151,105 +198,11 @@ function shareListParams(c: { req: { query(key: string): string | undefined; url
   }
 }
 
-interface ShareGlobalStats {
-  totalShares: number
-  activeShares: number
-  pinnedShares: number
-  starredShares: number
-  pausedShares: number
-  expiredShares: number
-  totalViews: number
-  totalVisitors: number
-  folderCounts: Record<string, { total: number; shared: number }>
-  tagCounts: Record<string, { total: number; shared: number }>
-}
-
-async function loadShareFolderCounts(db: D1Database, userId: string, now: number): Promise<Record<string, { total: number; shared: number }>> {
-  const rows = await db.prepare(
-    `SELECT sf.id as folder_id,
-            COUNT(s.slug) as total_shares,
-            COUNT(CASE WHEN s.slug IS NOT NULL AND (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) as shared_notes
-       FROM share_folders sf
-       LEFT JOIN shares s ON s.folder_id = sf.id AND s.user_id = sf.user_id
-      WHERE sf.user_id = ?1
-      GROUP BY sf.id`,
-  )
-    .bind(userId, now)
-    .all<{ folder_id: string; total_shares: number; shared_notes: number }>()
-  const folderCounts: Record<string, { total: number; shared: number }> = {}
-  for (const r of rows.results ?? []) {
-    folderCounts[r.folder_id] = { total: r.total_shares, shared: Math.min(r.shared_notes, r.total_shares) }
-  }
-  return folderCounts
-}
-
-async function loadShareTagCounts(db: D1Database, userId: string, now: number): Promise<Record<string, { total: number; shared: number }>> {
-  const { results } = await db.prepare(
-    `SELECT t.name AS name,
-            COUNT(s.slug) AS total,
-            COUNT(CASE WHEN (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) AS shared
-       FROM share_tags t
-       LEFT JOIN shares s ON s.user_id = t.user_id AND s.tags LIKE '%' || '"' || t.name || '"' || '%'
-      WHERE t.user_id = ?1
-      GROUP BY t.name`,
-  ).bind(userId, now).all<{ name: string; total: number; shared: number }>()
-  const tagCounts: Record<string, { total: number; shared: number }> = {}
-  for (const row of results ?? []) {
-    tagCounts[row.name] = { total: row.total, shared: Math.min(row.shared, row.total) }
-  }
-  return tagCounts
-}
-
-async function loadShareGlobalStats(db: D1Database, userId: string, now: number, clause: string): Promise<ShareGlobalStats> {
-  const folderCounts = await loadShareFolderCounts(db, userId, now)
-  const tagCounts = await loadShareTagCounts(db, userId, now)
-  const globalSummary = await db.prepare(
-    `SELECT COUNT(*) as total_shares,
-            COUNT(CASE WHEN (is_enabled = 1 OR is_enabled IS NULL) AND (expires_at IS NULL OR expires_at > ?2) THEN 1 END) as active_shares,
-            COUNT(CASE WHEN is_enabled = 0 THEN 1 END) as paused_shares,
-            COUNT(CASE WHEN expires_at IS NOT NULL AND expires_at <= ?2 THEN 1 END) as expired_shares,
-            COALESCE(SUM(views), 0) as total_views
-       FROM shares
-      WHERE user_id = ?1`,
-  )
-    .bind(userId, now)
-    .first<{ total_shares: number; active_shares: number; paused_shares: number; expired_shares: number; total_views: number }>()
-  const filteredGlobalStats = await db.prepare(
-    `SELECT COUNT(*) as total_views, COUNT(DISTINCT visitor_fp) as total_uv
-       FROM share_visits
-      WHERE user_id = ?1 ${clause}`,
-  )
-    .bind(userId)
-    .first<{ total_views: number; total_uv: number }>()
-  const pinStarRow = await db.prepare(
-    `SELECT
-       COUNT(CASE WHEN n.is_pinned = 1 THEN 1 END) as pinned_shares,
-       COUNT(CASE WHEN n.is_starred = 1 THEN 1 END) as starred_shares
-      FROM shares s
-      JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
-     WHERE s.user_id = ?1 AND n.deleted_at IS NULL`,
-  ).bind(userId).first<{ pinned_shares: number; starred_shares: number }>()
-
-  return {
-    totalShares: globalSummary?.total_shares ?? 0,
-    activeShares: globalSummary?.active_shares ?? 0,
-    pinnedShares: pinStarRow?.pinned_shares ?? 0,
-    starredShares: pinStarRow?.starred_shares ?? 0,
-    pausedShares: globalSummary?.paused_shares ?? 0,
-    expiredShares: globalSummary?.expired_shares ?? 0,
-    totalViews: filteredGlobalStats?.total_views ?? (globalSummary?.total_views ?? 0),
-    totalVisitors: filteredGlobalStats?.total_uv ?? 0,
-    folderCounts,
-    tagCounts,
-  }
-}
-
 const STATUS_CONDITIONS: Record<string, string> = {
   paused: `s.is_enabled = 0`,
   starred: `n.is_starred = 1`,
   pinned: `n.is_pinned = 1`,
   password: `s.password_hash IS NOT NULL`,
-  expiring: `s.expires_at IS NOT NULL`,
   permanent: `s.expires_at IS NULL`,
 }
 
@@ -263,8 +216,8 @@ function shareListConditions(binds: Array<string | number>, params: ShareListPar
     bindIndex++
   }
   if (tag) {
-    conditions.push(`s.tags LIKE ?${bindIndex}`)
-    binds.push(`%"${tag}"%`)
+    conditions.push(`s.tags LIKE ?${bindIndex} ESCAPE '\\'`)
+    binds.push(`%"${escapeLike(tag)}"%`)
     bindIndex++
   }
   if (status === 'active') {
@@ -275,12 +228,16 @@ function shareListConditions(binds: Array<string | number>, params: ShareListPar
     conditions.push(`s.expires_at IS NOT NULL AND s.expires_at <= ?${bindIndex}`)
     binds.push(now)
     bindIndex++
+  } else if (status === 'expiring') {
+    conditions.push(`s.expires_at IS NOT NULL AND s.expires_at > ?${bindIndex}`)
+    binds.push(now)
+    bindIndex++
   }
   const staticCondition = STATUS_CONDITIONS[status]
   if (staticCondition) conditions.push(staticCondition)
   if (search) {
-    conditions.push(`(n.title LIKE ?${bindIndex} OR n.excerpt LIKE ?${bindIndex} OR s.slug LIKE ?${bindIndex} OR s.tags LIKE ?${bindIndex})`)
-    binds.push(`%${search}%`)
+    conditions.push(`(n.title LIKE ?${bindIndex} ESCAPE '\\' OR n.excerpt LIKE ?${bindIndex} ESCAPE '\\' OR s.slug LIKE ?${bindIndex} ESCAPE '\\' OR s.tags LIKE ?${bindIndex} ESCAPE '\\')`)
+    binds.push(`%${escapeLike(search)}%`)
     bindIndex++
   }
   return conditions
@@ -308,8 +265,15 @@ async function loadShareListRow(db: D1Database, userId: string, noteId: string):
   ).bind(noteId, userId).first<ShareListRow>()
 }
 
-async function loadShareListRows(db: D1Database, binds: Array<string | number>, conditions: string[], orderClause: string): Promise<ShareListRow[]> {
-  const query = `
+const SHARE_LIST_ROW_LIMIT = 500
+
+function shareListRowsStatement(
+  db: D1Database,
+  binds: Array<string | number>,
+  conditions: string[],
+  orderClause: string,
+): D1PreparedStatement {
+  return db.prepare(`
     SELECT n.id as note_id, n.title as note_title, n.excerpt as note_excerpt,
            n.is_pinned, n.is_starred,
            s.slug, s.folder_id, s.tags as share_tags_json,
@@ -318,13 +282,12 @@ async function loadShareListRows(db: D1Database, binds: Array<string | number>, 
       JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
      WHERE ${conditions.join(' AND ')}
      ${orderClause}
-     LIMIT 500
-  `
-  const rows = await db.prepare(query)
+     LIMIT ${SHARE_LIST_ROW_LIMIT + 1}
+  `)
     .bind(...binds)
-    .all<ShareListRow>()
-  return rows.results ?? []
 }
+
+const VISIT_STATS_NOTE_CHUNK = 50
 
 async function loadNoteVisitStats(
   db: D1Database,
@@ -333,18 +296,25 @@ async function loadNoteVisitStats(
 ): Promise<Map<string, { pvs: number; uvs: number }>> {
   const noteStatsMap = new Map<string, { pvs: number; uvs: number }>()
   const noteIds = rows.map((r) => r.note_id)
-  if (!noteIds.length) return noteStatsMap
-  const placeholders = noteIds.map(() => '?').join(',')
-  const statsRows = await db.prepare(
-    `SELECT note_id, COUNT(*) as pvs, COUNT(DISTINCT visitor_fp) as uvs
-       FROM share_visits
-      WHERE note_id IN (${placeholders}) ${clause}
-      GROUP BY note_id`,
-  )
-    .bind(...noteIds)
-    .all<{ note_id: string; pvs: number; uvs: number }>()
-  for (const sr of statsRows.results ?? []) {
-    noteStatsMap.set(sr.note_id, { pvs: sr.pvs, uvs: sr.uvs })
+  const statements: D1PreparedStatement[] = []
+  for (let index = 0; index < noteIds.length; index += VISIT_STATS_NOTE_CHUNK) {
+    const chunk = noteIds.slice(index, index + VISIT_STATS_NOTE_CHUNK)
+    const placeholders = chunk.map(() => '?').join(',')
+    statements.push(db.prepare(
+      `SELECT note_id, COUNT(*) as pvs, COUNT(DISTINCT visitor_fp) as uvs
+         FROM share_visits
+        WHERE note_id IN (${placeholders})
+          AND EXISTS (SELECT 1 FROM shares s WHERE s.slug = share_visits.slug) ${clause}
+        GROUP BY note_id`,
+    )
+      .bind(...chunk))
+  }
+  if (!statements.length) return noteStatsMap
+  const statsResults = await db.batch(statements)
+  for (const result of statsResults) {
+    for (const sr of rowsOf<{ note_id: string; pvs: number; uvs: number }>(result)) {
+      noteStatsMap.set(sr.note_id, { pvs: sr.pvs, uvs: sr.uvs })
+    }
   }
   return noteStatsMap
 }

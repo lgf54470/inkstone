@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LIMITS } from '@shared/constants'
 
 export const blogPostWriteSchema = z.object({
   noteId: z.string().min(1, 'noteId is required'),
@@ -218,3 +219,8 @@ export const blogLinkImportSchema = z.object({
   ).optional().default([]),
 })
 
+// Body of DELETE /api/blog/visits?type=all: the wipe is unrecoverable, so the
+// current password travels in the body rather than the query string (SH-47).
+export const blogVisitWipeSchema = z.object({
+  password: z.string().max(LIMITS.passwordMaxLength).optional(),
+})

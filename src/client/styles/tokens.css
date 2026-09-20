@@ -132,9 +132,9 @@
   --tracking-share-h1: -0.03em;
 
 
-  --success: oklch(70% 0.14 155);
-  --warning: oklch(76% 0.145 80);
-  --danger: oklch(64% 0.19 22);
+  --success: oklch(45% 0.14 155);
+  --warning: oklch(48% 0.145 80);
+  --danger: oklch(49% 0.19 22);
   --brand-accent: #bb4430;
   --swatch-paper: #f7f5f1;
   --swatch-white: #ffffff;
@@ -211,7 +211,7 @@
   --selection: color-mix(in oklab, var(--accent) 30%, transparent);
   --success: oklch(72% 0.145 155);
   --warning: oklch(80% 0.15 82);
-  --danger: oklch(68% 0.185 22);
+  --danger: oklch(73% 0.185 22);
   --brand-accent: #e0664a;
 
 
@@ -348,6 +348,9 @@
   --accent-ring: color-mix(in oklab, var(--accent) 34%, transparent);
   --accent-muted: color-mix(in oklab, var(--accent) 62%, var(--text-tertiary));
   --list-marker: var(--accent-muted);
+  --success-soft: color-mix(in oklab, var(--success) 14%, transparent);
+  --warning-soft: color-mix(in oklab, var(--warning) 14%, transparent);
+  --danger-soft: color-mix(in oklab, var(--danger) 14%, transparent);
 }
 
 

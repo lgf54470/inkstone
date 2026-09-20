@@ -71,18 +71,20 @@ function DevicesCard({ analytics }: { analytics: BlogGlobalAnalytics | null }) {
         </h3>
       </div>
       <div className='space-y-3 pt-3'>
-        <DeviceSubheading label={t('blog.device_type')} />
-        <div className='space-y-2'>
-          {devices.map((device) => (
-            <BreakdownRow key={device.name} name={deviceNameOf(device.name)} count={device.count} percentage={device.percentage ?? 0} />
-          ))}
-        </div>
-        <DeviceSubheading label={t('blog.operating_system')} />
-        <div className='space-y-2'>
-          {osList.map((os) => (
-            <BreakdownRow key={os.name} name={os.name} count={os.count} percentage={os.percentage ?? 0} />
-          ))}
-        </div>
+        {devices.length === 0 && osList.length === 0 ? <NoVisitData /> : (<>
+          <DeviceSubheading label={t('blog.device_type')} />
+          <div className='space-y-2'>
+            {devices.map((device) => (
+              <BreakdownRow key={device.name} name={deviceNameOf(device.name)} count={device.count} percentage={device.percentage ?? 0} />
+            ))}
+          </div>
+          <DeviceSubheading label={t('blog.operating_system')} />
+          <div className='space-y-2'>
+            {osList.map((os) => (
+              <BreakdownRow key={os.name} name={os.name} count={os.count} percentage={os.percentage ?? 0} />
+            ))}
+          </div>
+        </>)}
       </div>
     </div>
   )

@@ -50,6 +50,14 @@
 //     and the runtime class then never matches the compiled selector. Direct
 //     JSX attribute values (className="...") keep the backslash verbatim and
 //     are correct with a single one, so they are not flagged.
+// Part 5 is the palette rule: bg-/text-/border-... followed by a Tailwind
+//     color name or white/black draws one fixed hue in both themes instead of a
+//     token, so it is banned even inside a named constant table (hoisting a hue
+//     does not theme it). Existing call sites are grandfathered per file in
+//     check-hardcoded.palette-baseline.json the way check-size.mjs grandfathers
+//     oversized files: a file's count may only go down, and going down still
+//     needs an explicit --update-baseline so the baseline stays the truth about
+//     the tree.
 // Numeric literals in .ts (non-JSX) files are out of scope: without a type
 // checker a bare number cannot be told apart from data, and the visual
 // surface is JSX by construction.
@@ -75,6 +83,14 @@ const VISUAL_ATTRS = new Set([
   'zIndex', 'gap', 'top', 'left', 'right', 'bottom', 'padding', 'margin',
   'inset', 'radius', 'blur',
 ])
+
+const PALETTE_COLORS = 'slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose'
+const PALETTE_CLASS_RE = new RegExp(`\\b(?:bg|text|border|fill|ring|shadow|outline|decoration|divide|from|via|to)-(?:white|black|(?:${PALETTE_COLORS})-\\d{2,3}(?:/\\d{1,3})?)`, 'g')
+const PALETTE_MESSAGE = 'raw Tailwind palette class'
+const PALETTE_BASELINE_PATH = path.join(import.meta.dirname, 'check-hardcoded.palette-baseline.json')
+// Modules that already draw every colour from tokens keep a zero budget: they
+// never enter the baseline, so resnapshotting cannot absorb new debt there.
+const PALETTE_ZERO_TOLERANCE_PREFIXES = ['src/client/features/share/']
 
 // Files whose hex literals are authored content or a self-contained
 // stylesheet, not UI values that could consume the token layer. Each entry
@@ -347,10 +363,52 @@ function problemsFor(rel, text) {
     ts.forEachChild(node, visitClasses)
   }
 
+  // Part 5: a Tailwind palette color class keeps one hue in both themes, so it
+  // must become a token reference. Unlike the arbitrary-value rules this has no
+  // named-constant exemption: hoisting `text-amber-500` names the hue, it does
+  // not theme it. Every string is read, so a hue returned from a plain helper
+  // counts the same as one written inline in JSX.
+  function visitPalette(node) {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)
+      || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+      for (const match of node.text.matchAll(PALETTE_CLASS_RE)) {
+        push(lineOf(node), `${PALETTE_MESSAGE} ${match[0]} (AGENTS.md rule 2): draw a design token instead of a fixed palette hue`)
+      }
+      return
+    }
+    ts.forEachChild(node, visitPalette)
+  }
+
   visitHex(sf)
   if (rel.endsWith('.tsx')) visitNumbers(sf)
   visitClasses(sf)
   visitTokenFamilies(sf)
+  visitPalette(sf)
+  return found
+}
+
+// Grandfathered palette debt, compared per file: a count may not grow, and a
+// count that shrank still has to be resnapshotted so the baseline keeps
+// describing the tree instead of the day it was written.
+function paletteDriftProblems(current, baseline, prefixes = []) {
+  const found = []
+  const isZeroTolerance = (rel) => prefixes.some((prefix) => rel.startsWith(prefix))
+  for (const [rel, count] of Object.entries(current)) {
+    if (isZeroTolerance(rel)) {
+      found.push(`${rel}: ${count} ${PALETTE_MESSAGE}(es) in a module that keeps every colour on design tokens (AGENTS.md rule 2): this module has no grandfathered budget`)
+      continue
+    }
+    const budget = baseline[rel] ?? 0
+    if (count > budget) {
+      found.push(`${rel}: ${count - budget} new ${PALETTE_MESSAGE}(es) (AGENTS.md rule 2): ${budget} grandfathered, ${count} now — draw a design token instead`)
+    } else if (count < budget) {
+      found.push(`${rel}: palette baseline is stale (${budget} grandfathered, ${count} now) — resnapshot with "node scripts/check-hardcoded.mjs --update-baseline"`)
+    }
+  }
+  for (const [rel, budget] of Object.entries(baseline)) {
+    if (rel in current || isZeroTolerance(rel)) continue
+    found.push(`${rel}: palette baseline is stale (${budget} grandfathered, 0 now) — resnapshot with "node scripts/check-hardcoded.mjs --update-baseline"`)
+  }
   return found
 }
 
@@ -358,21 +416,38 @@ function problemsFor(rel, text) {
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
   const problems = []
+  const paletteCounts = new Map()
   for (const root of ROOTS) {
     for (const file of walk(path.resolve(root))) {
       const rel = path.relative(process.cwd(), file).replaceAll('\\\\', '/')
       if (isExemptFile(rel)) continue
       if (ALLOWED_CONTENT_FILES.has(rel)) continue
-      problems.push(...problemsFor(rel, fs.readFileSync(file, 'utf8')))
+      for (const problem of problemsFor(rel, fs.readFileSync(file, 'utf8'))) {
+        if (problem.includes(` ${PALETTE_MESSAGE} `)) paletteCounts.set(rel, (paletteCounts.get(rel) ?? 0) + 1)
+        else problems.push(problem)
+      }
     }
   }
+
+  const currentPalette = Object.fromEntries([...paletteCounts.entries()].sort())
+  const updateBaseline = process.argv.includes('--update-baseline')
+  if (updateBaseline || !fs.existsSync(PALETTE_BASELINE_PATH)) {
+    const next = Object.fromEntries(Object.entries(currentPalette)
+      .filter(([rel]) => !PALETTE_ZERO_TOLERANCE_PREFIXES.some((prefix) => rel.startsWith(prefix))))
+    fs.writeFileSync(PALETTE_BASELINE_PATH, `${JSON.stringify(next, null, 2)}\n`)
+    console.log(`palette baseline regenerated: ${Object.keys(next).length} files carry raw palette classes`)
+    if (updateBaseline) process.exit(0)
+  }
+  const baseline = JSON.parse(fs.readFileSync(PALETTE_BASELINE_PATH, 'utf8'))
+  problems.push(...paletteDriftProblems(currentPalette, baseline, PALETTE_ZERO_TOLERANCE_PREFIXES))
 
   if (problems.length > 0) {
     console.error(`hardcoded value check failed: ${problems.length} violation(s)`)
     for (const problem of problems) console.error(`  ${problem}`)
     process.exit(1)
   }
-  console.log('hardcoded value check passed: no bare hex colors or magic numbers in JSX styles/visual attrs across src + blog-frontend/src')
+  const debt = Object.values(baseline).reduce((total, count) => total + count, 0)
+  console.log(`hardcoded value check passed: no bare hex colors or magic numbers in JSX styles/visual attrs across src + blog-frontend/src (${debt} palette classes grandfathered in ${Object.keys(baseline).length} files)`)
 }
 
-export { arbitraryUnitProblems, problemsFor }
+export { arbitraryUnitProblems, paletteDriftProblems, problemsFor }

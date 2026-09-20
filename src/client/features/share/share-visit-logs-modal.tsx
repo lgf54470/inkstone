@@ -12,12 +12,14 @@ import {
     Trash2,
     User,
 } from 'lucide-react'
+import { useRef, useState } from 'react'
 import type { ShareVisitsResponse } from '@shared/types'
-import { Modal } from '../../components/overlay'
+import { Menu, Modal, type MenuItem } from '../../components/overlay'
+import { Input } from '../../components/form'
 import { Button, IconButton } from '../../components/primitives'
 import { relativeTime } from '../../lib/time'
-import { t } from '../../lib/i18n'
-import { countryFlag, countryNameLocalized } from './share-helpers'
+import { t, useLocale } from '../../lib/i18n'
+import { countryFlag, countryNameLocalized, localizeEnvName } from './share-helpers'
 import type { useShareVisitLogs } from './use-share-visit-logs-modal'
 import { useShareVisitLogs as useVisitLogs } from './use-share-visit-logs-modal'
 
@@ -63,7 +65,7 @@ export function ShareVisitLogsModal({
 }
 
 function VisitLogsToolbar({ bundle }: { bundle: LogsBundle }) {
-  const { filter, handleFilterChange, isLoading, isCleaning, data, handleExport, handleClean, search, setSearch, handleSearchSubmit, fetchVisits, page } = bundle
+  const { filter, handleFilterChange, isLoading, isExporting, isCleaning, data, handleExport, handleClean, search, setSearch, handleSearchSubmit, fetchVisits, page } = bundle
   return (
     <div className='flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2.5'>
       <div className='flex items-center gap-1'>
@@ -80,8 +82,8 @@ function VisitLogsToolbar({ bundle }: { bundle: LogsBundle }) {
           size='sm'
           variant='secondary'
           icon={<Download size={12} />}
-          onClick={handleExport}
-          disabled={!data || data.visits.length === 0}
+          onClick={() => void handleExport()}
+          disabled={!data || data.visits.length === 0 || isExporting}
         >
           {t('share.export_csv')}
         </Button>
@@ -112,7 +114,7 @@ function FilterTab({ active, label, onClick }: {
       onClick={onClick}
       className={`rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-11)] font-medium transition-colors ${
         active
-          ? 'bg-[var(--accent)] text-white'
+          ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
       }`}
     >
@@ -127,17 +129,15 @@ function SearchBox({ value, onChange, onSubmit }: {
   onSubmit: (e: React.FormEvent) => void
 }) {
   return (
-    <form onSubmit={onSubmit} className='relative'>
-      <input
+    <form onSubmit={onSubmit}>
+      <Input
         type='text'
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={t('share.search_logs_placeholder')}
-        className='h-7 w-44 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] pl-7 pr-2 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
-      />
-      <Search
-        size={12}
-        className='absolute left-2 top-1/2 -translate-y-1/2 text-[var(--text-quaternary)]'
+        aria-label={t('share.search_logs_placeholder')}
+        leading={<Search size={12} />}
+        className='h-7 w-44 text-[length:var(--text-11)] bg-[var(--bg-base)]'
       />
     </form>
   )
@@ -147,41 +147,30 @@ function CleanLogsMenu({ isCleaning, onClean }: {
   isCleaning: boolean
   onClean: (type: 'bots' | 'older_than' | 'all', days?: number) => Promise<void>
 }) {
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  const items: MenuItem[] = [
+    { id: 'bots', label: t('share.clean_bots_only'), onSelect: () => void onClean('bots') },
+    { id: 'older', label: t('share.clean_older_30d'), onSelect: () => void onClean('older_than', 30) },
+    { id: 'all', label: t('share.clean_all_logs'), tone: 'danger', onSelect: () => void onClean('all') },
+  ]
   return (
-    <div className='relative group'>
+    <>
       <Button
+        ref={buttonRef}
         size='sm'
         variant='secondary'
-        className='text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
+        className='text-[var(--danger)] hover:bg-[var(--danger-soft)]'
         icon={<Trash2 size={12} />}
         disabled={isCleaning}
+        aria-haspopup='menu'
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
       >
         {t('share.clean_logs_btn')}
       </Button>
-      <div className='absolute right-0 top-full z-[var(--z-menu)] mt-1 hidden min-w-37.5 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1 shadow-[var(--shadow-pop)] group-hover:block'>
-        <button
-          type='button'
-          onClick={() => void onClean('bots')}
-          className='w-full rounded px-2 py-1 text-left text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-        >
-          {t('share.clean_bots_only')}
-        </button>
-        <button
-          type='button'
-          onClick={() => void onClean('older_than', 30)}
-          className='w-full rounded px-2 py-1 text-left text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-        >
-          {t('share.clean_older_30d')}
-        </button>
-        <button
-          type='button'
-          onClick={() => void onClean('all')}
-          className='w-full rounded px-2 py-1 text-left text-[length:var(--text-11)] text-[var(--danger)] hover:bg-[var(--danger-subtle)]'
-        >
-          {t('share.clean_all_logs')}
-        </button>
-      </div>
-    </div>
+      {open && <Menu open={open} anchor={buttonRef} items={items} align='end' onClose={() => setOpen(false)} />}
+    </>
   )
 }
 
@@ -211,15 +200,15 @@ function LogsTable({ bundle }: { bundle: LogsBundle }) {
 
 function LogsTableHeader() {
   return (
-    <thead className='sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[length:var(--text-11)] text-[var(--text-tertiary)] uppercase tracking-wider'>
+    <thead className='sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-card)] text-[length:var(--text-11)] text-[var(--text-tertiary)] uppercase tracking-wider'>
       <tr>
-        <th className='px-3 py-2 font-medium'>{t('share.col_time')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_note')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_location')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_referrer')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_client')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_type')}</th>
-        <th className='px-3 py-2 font-medium'>{t('share.col_fp')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_time')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_note')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_location')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_referrer')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_client')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_type')}</th>
+        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_fp')}</th>
       </tr>
     </thead>
   )
@@ -231,7 +220,7 @@ function LogRow({ log }: {
   log: VisitLog
 }) {
   const flag = countryFlag(log.country)
-  const countryName = countryNameLocalized(log.country)
+  const countryName = countryNameLocalized(log.country, useLocale())
   return (
     <tr className='transition-colors hover:bg-[var(--bg-hover)]'>
       <VisitTimeCell log={log} />
@@ -250,6 +239,7 @@ function LogRow({ log }: {
 }
 
 function VisitTimeCell({ log }: { log: VisitLog }) {
+  const locale = useLocale()
   return (
     <td className='whitespace-nowrap px-3 py-2'>
       <div className='flex flex-col'>
@@ -257,7 +247,7 @@ function VisitTimeCell({ log }: { log: VisitLog }) {
           {relativeTime(log.visitedAt)}
         </span>
         <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-          {new Date(log.visitedAt).toLocaleTimeString([], {
+          {new Date(log.visitedAt).toLocaleTimeString(locale, {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
@@ -273,7 +263,7 @@ function VisitNoteCell({ log }: { log: VisitLog }) {
     <td className='px-3 py-2'>
       <div className='flex flex-col max-w-40'>
         <span className='truncate font-medium text-[length:var(--text-12)] text-[var(--text-primary)]'>
-          {log.noteTitle}
+          {log.noteTitle || t('common.untitled_note')}
         </span>
         <span className='truncate font-mono text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
           {`/s/${log.slug}`}
@@ -320,7 +310,7 @@ function VisitClientCell({ log }: { log: VisitLog }) {
       <div className='flex items-center gap-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
         {deviceIcon(log.deviceType)}
         <span>
-          {log.browser || 'Unknown'} / {log.os || 'Unknown'}
+          {localizeEnvName(log.browser)} / {localizeEnvName(log.os)}
         </span>
       </div>
     </td>
@@ -332,27 +322,27 @@ function VisitTypeBadge({ log }: {
 }) {
   if (log.isBot) {
     return (
-      <span className='inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-amber-500 border border-amber-500/20'>
-        <Bot size={11} /> {log.botName || 'Bot'}
+      <span className='inline-flex items-center gap-1 rounded bg-[var(--warning)]/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--warning)] border border-[var(--warning)]/20'>
+        <Bot size={11} /> {log.botName || t('share.badge_bot')}
       </span>
     )
   }
   if (log.isOwner) {
     return (
-      <span className='inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-blue-500 border border-blue-500/20'>
+      <span className='inline-flex items-center gap-1 rounded bg-[var(--accent)]/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--accent)] border border-[var(--accent)]/20'>
         <User size={11} /> {t('share.badge_owner')}
       </span>
     )
   }
   if (log.isSelfReferrer) {
     return (
-      <span className='inline-flex items-center gap-1 rounded bg-purple-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-purple-500 border border-purple-500/20'>
+      <span className='inline-flex items-center gap-1 rounded bg-[var(--bg-hover)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--text-secondary)] border border-[var(--border-default)]'>
         {t('share.badge_self_referrer')}
       </span>
     )
   }
   return (
-    <span className='inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-emerald-500 border border-emerald-500/20'>
+    <span className='inline-flex items-center gap-1 rounded bg-[var(--success)]/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--success)] border border-[var(--success)]/20'>
       {t('share.badge_human')}
     </span>
   )
