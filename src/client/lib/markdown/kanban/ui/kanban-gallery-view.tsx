@@ -9,6 +9,7 @@ import { KanbanCardSubtasks } from './kanban-card-subtasks'
 import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanPersonAvatar } from './kanban-person-picker'
+import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
 
 interface KanbanGalleryViewProps {
   data: KanbanData
@@ -244,6 +245,7 @@ export const KanbanGalleryView = memo(function KanbanGalleryView({
   onUpdateSubtasks,
 }: KanbanGalleryViewProps) {
   useLocaleRepaint()
+  const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(data.items)
   const statusCol = data.columns.find((c) => c.id === 'status')
   const priorityCol = data.columns.find((c) => c.id === 'priority')
   const tagsCol = data.columns.find((c) => c.id === 'tags')
@@ -251,7 +253,7 @@ export const KanbanGalleryView = memo(function KanbanGalleryView({
   return (
     <div className='h-full w-full overflow-y-auto p-4'>
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
-        {data.items.map((item) => (
+        {visible.map((item) => (
           <GalleryCard
             key={item.id}
             item={item}
@@ -274,6 +276,8 @@ export const KanbanGalleryView = memo(function KanbanGalleryView({
           <span className='text-[length:var(--text-13)] font-medium'>{t('preview.kanban_new_card')}</span>
         </button>
       </div>
+
+      <KanbanRenderTail hiddenCount={hiddenCount} setTailElement={setTailElement} onReveal={revealMore} />
     </div>
   )
 })

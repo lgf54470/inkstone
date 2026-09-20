@@ -3324,6 +3324,20 @@ const allowed = new Map([
     '// Sorts read `properties[columnId]`, which attachments are not stored in, so the files column stays',
     '// a plain label.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-render-window.test.ts', [
+    '/**\n * A board only ever shows the cards inside a 480px canvas, but until now it *mounted* every card on\n * the board to do so. Each surface that owns a scroll area now renders a window of\n * `KANBAN_RENDER_WINDOW` items per list and reveals further ones as the reader approaches the end —\n * by IntersectionObserver when the browser has one, by the tail button when it does not.\n *\n * These mount the real surfaces through `KanbanRoot`, because the window belongs to the list a reader\n * scrolls: the counts are what one column, one group or the whole list puts in the document.\n */',
+    '/** Four columns of `CARDS / 4` cards each, so a window is smaller than one column. */',
+    '/** The observers a browser would build, captured so a test can deliver an intersection itself. */',
+    '/** The margin the hook asked for, which is what makes it reveal before the reader hits the end. */',
+    '/** The tail is the observer\'s target, so a collapsed group must give its watcher up rather than\n   *  leave it pointed at a detached node the reader can never scroll back into. */',
+    '/** A window is a rendering decision, so the readouts that summarise a group must keep counting the\n   *  whole group — otherwise hiding rows would quietly change what the board says about them. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-render-window.tsx', [
+    '/**\n * A board shows the cards that fit its canvas — a 480px window with a dozen rows in it — but it used\n * to build one for every card on the board to do so. Measured in jsdom on a 400 card board: the table\n * view put 33k DOM nodes on screen and took 3.5s to switch into, the gallery 17.5k and 1.8s.\n *\n * So each list that owns a scroll area renders a window and hands out the rest as the reader\n * approaches its end. The tail is a real button for that: the observer only pre-fetches, so a browser\n * without one (or a keyboard that never scrolls) still reaches every card. Adding a card does not\n * widen the window — a new card opens in the detail dialog, so it never had to be mounted to be seen.\n */',
+    '/** Pass to the tail button\'s `ref`; the observer follows the element, so a tail that is not\n   *  rendered (a collapsed group) simply has nothing to watch until it appears. */',
+    '// Growing the window is what scrolling does, so it must not block the scroll it answers.',
+    '/** Given on a table surface, where anything between rows has to be a row of the grid itself. */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root-boundary.tsx', [
     '// Each kanban block is its own React root outside the host tree, so without a',
     '// boundary one throwing board whites out just that card with no failure state.',

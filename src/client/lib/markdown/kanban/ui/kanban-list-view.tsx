@@ -8,6 +8,7 @@ import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtas
 import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanPersonAvatar } from './kanban-person-picker'
+import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
 
 interface KanbanListViewProps {
   data: KanbanData
@@ -305,6 +306,7 @@ export const KanbanListView = memo(function KanbanListView({
   onAddItem,
 }: KanbanListViewProps) {
   useLocaleRepaint()
+  const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(data.items)
   const statusCol = data.columns.find((c) => c.id === 'status')
   const priorityCol = data.columns.find((c) => c.id === 'priority')
   const tagsCol = data.columns.find((c) => c.id === 'tags')
@@ -312,7 +314,7 @@ export const KanbanListView = memo(function KanbanListView({
   return (
     <div className='flex h-full w-full flex-col overflow-y-auto p-4'>
       <div className='divide-y divide-[var(--border-subtle)] rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
-        {data.items.map((item) => (
+        {visible.map((item) => (
           <KanbanListRow
             key={item.id}
             item={item}
@@ -326,6 +328,8 @@ export const KanbanListView = memo(function KanbanListView({
             onToggleTag={onToggleTag}
           />
         ))}
+
+        <KanbanRenderTail hiddenCount={hiddenCount} setTailElement={setTailElement} onReveal={revealMore} />
 
         <div className='p-2'>
           <button

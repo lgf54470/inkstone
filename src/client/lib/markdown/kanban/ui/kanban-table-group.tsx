@@ -6,6 +6,7 @@ import type { KanbanColorName, KanbanFile, KanbanItem, KanbanOption, KanbanPrope
 import { KanbanColumnCount } from './kanban-column-count'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { kanbanTableColumnCount } from './kanban-property-cell'
+import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
 import { KanbanTableRow } from './kanban-table-row'
 
 interface KanbanTableGroupProps {
@@ -135,6 +136,7 @@ export function KanbanTableGroup({
   onAddItemInGroup,
 }: KanbanTableGroupProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(items)
   const localizedLabel = formatKanbanGroupLabel(groupKey, label)
   const columnCount = kanbanTableColumnCount(columns, hiddenColumns)
 
@@ -154,7 +156,7 @@ export function KanbanTableGroup({
       {!collapsed && (
         <>
           <div role='presentation' className='flex flex-col'>
-            {items.map((item) => (
+            {visible.map((item) => (
               <KanbanTableRow
                 key={item.id}
                 item={item}
@@ -170,6 +172,7 @@ export function KanbanTableGroup({
                 people={people}
               />
             ))}
+            <KanbanRenderTail hiddenCount={hiddenCount} setTailElement={setTailElement} onReveal={revealMore} columnCount={columnCount} />
           </div>
           <GroupFooter items={items} columns={columns} columnCount={columnCount} onAddItem={onAddItemInGroup} />
         </>

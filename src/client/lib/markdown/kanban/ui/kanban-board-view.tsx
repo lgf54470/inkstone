@@ -10,6 +10,7 @@ import type { KanbanBoardCell, KanbanSwimlane } from '../swimlane'
 import type { KanbanColorName, KanbanColumnPatch, KanbanData, KanbanItem, KanbanOption, KanbanSubtask, KanbanView } from '../types'
 import { useKanbanBoardDndState, type CardDropTarget } from './kanban-board-dnd'
 import { KanbanCard, type CardMoveDirection } from './kanban-card'
+import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
 import { CollapsedColumn, KanbanColumnHeader } from './kanban-column-header'
 import { KanbanBoardSwimlanes } from './kanban-board-swimlanes'
 import type { CardSize } from './kanban-view-options'
@@ -58,6 +59,7 @@ interface ColumnCardsListProps {
 }
 
 function ColumnCardsList(props: ColumnCardsListProps) {
+  const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(props.items)
   return (
     <div className='mt-2 flex flex-1 flex-col gap-2 overflow-y-auto'>
       {props.items.length === 0 ? (
@@ -65,7 +67,7 @@ function ColumnCardsList(props: ColumnCardsListProps) {
           {t('preview.kanban_empty_column')}
         </div>
       ) : (
-        props.items.map((item) => (
+        visible.map((item) => (
           <KanbanCard
             key={item.id}
             item={item}
@@ -89,6 +91,8 @@ function ColumnCardsList(props: ColumnCardsListProps) {
           />
         ))
       )}
+
+      <KanbanRenderTail hiddenCount={hiddenCount} setTailElement={setTailElement} onReveal={revealMore} />
 
       <button
         type='button'
