@@ -70,6 +70,7 @@ function normalizeMusicTrack(value: unknown): BlogMusicTrack {
     lyric: typeof row.lyric === 'string' && row.lyric.trim() !== '' ? row.lyric : null,
     coverUrl: typeof row.coverUrl === 'string' && row.coverUrl !== '' ? row.coverUrl : null,
     streamUrl: asString(row.streamUrl),
+    mime: asString(row.mime),
     tagIds: asArray(row.tagIds).filter((id): id is string => typeof id === 'string'),
     createdAt: toNumber(row.createdAt),
   }

@@ -16,6 +16,7 @@ function track(overrides: Partial<BlogMusicTrack> = {}): BlogMusicTrack {
     streamUrl: `https://api.test/api/blog/public/music/tracks/${id}/stream`,
     tagIds: [],
     createdAt: 1,
+    mime: 'audio/mpeg',
     ...overrides,
   }
 }

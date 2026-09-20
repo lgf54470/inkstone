@@ -29,10 +29,11 @@ export function visualizerLevels(spectrum: Uint8Array, barCount: number): number
 export function MusicVisualizer({ className = '' }: { className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
-  const playing = useMusicPlayer().playing
+  const { playing, currentId } = useMusicPlayer()
 
+  // 频谱节点跟着元素走，换曲可能换了元素种类，所以播放态或当前曲目一变就重新取一次
   useEffect(() => {
-    if (!playing || analyserRef.current) return
+    if (!playing) return
     let cancelled = false
     void ensureMusicAnalyser().then((node) => {
       if (!cancelled && node) analyserRef.current = node
@@ -40,7 +41,7 @@ export function MusicVisualizer({ className = '' }: { className?: string }) {
     return () => {
       cancelled = true
     }
-  }, [playing])
+  }, [playing, currentId])
 
   useEffect(() => paintLoop(canvasRef.current, analyserRef, playing), [playing])
 

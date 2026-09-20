@@ -132,6 +132,8 @@ export interface BlogMusicTrack {
   lyric: string | null
   coverUrl: string | null
   streamUrl: string
+  /** 库里存的 mime：容器扩展名不足以判定音视频，缺失时按音频读 */
+  mime: string
   tagIds: string[]
   createdAt: number
 }

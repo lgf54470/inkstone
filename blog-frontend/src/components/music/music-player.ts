@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { api } from '../../lib/api'
+import { mediaKindOfMime, type MediaKind } from '../../lib/music-media'
 import type { BlogMusicLibrary, BlogMusicTag, BlogMusicTrack } from '../../lib/types'
 
 export type MusicStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
@@ -54,16 +55,20 @@ let snapshot: MusicPlayerSnapshot = {
 }
 
 const listeners = new Set<() => void>()
-let audioElement: HTMLAudioElement | null = null
+// 每种媒体各留一只元素：库里既有纯音频轨也有片段，切换类型时释放另一只而不是重建
+const elementsByKind = new Map<MediaKind, HTMLMediaElement>()
+let mediaElement: HTMLMediaElement | null = null
+let stageHost: HTMLElement | null = null
 const ANALYSER_FFT_SIZE = 256
 const ANALYSER_SMOOTHING = 0.82
 let analyserContext: AudioContext | null = null
-let analyserNode: AnalyserNode | null = null
+// 一只媒体元素只能接入音频图一次，所以频谱节点按元素缓存，不能全局共用一只
+const analysers = new WeakMap<HTMLMediaElement, AnalyserNode>()
 let corsBlocked = false
 // 初始队列来自笔记应用；用户从队列之外点歌后，队列改回跟随当前筛选结果
 let queueSeeded = false
 
-/** 单例 store + 单个 audio 元素：博客前台只需要一条播放通道，无需引入状态库 */
+/** 单例 store + 每类一只媒体元素：博客前台只需要一条播放通道，无需引入状态库 */
 export function subscribeMusic(listener: () => void): () => void {
   listeners.add(listener)
   return () => {
@@ -84,10 +89,29 @@ function setMusicState(patch: Partial<MusicPlayerSnapshot>): void {
   for (const listener of listeners) listener()
 }
 
-function ensureAudio(): HTMLAudioElement | null {
-  if (typeof Audio !== 'function') return null
-  if (audioElement) return audioElement
-  const element = new Audio()
+function activeMedia(): HTMLMediaElement | null {
+  return ensureMedia(currentMusicTrack())
+}
+
+// 存储的 mime 决定用哪种元素承载：音频元素会直接拒绝带视频轨的容器，画面也只有真 <video> 才有
+function ensureMedia(track: BlogMusicTrack | null): HTMLMediaElement | null {
+  const kind = mediaKindOfMime(track?.mime)
+  const existing = elementsByKind.get(kind)
+  const element = existing ?? createMediaElement(kind)
+  if (!element) return null
+  const previous = mediaElement
+  // 先交接活动元素再退休旧元素：旧元素自己的 pause 事件因此不会再改播放状态
+  mediaElement = element
+  if (previous && previous !== element) retireMedia(previous)
+  placeOnStage(element)
+  return element
+}
+
+function createMediaElement(kind: MediaKind): HTMLMediaElement | null {
+  // Astro 预渲染与测试环境里不一定有这些构造器，缺谁就说谁承载不了
+  if (kind === 'audio' && typeof Audio !== 'function') return null
+  if (kind === 'video' && typeof document === 'undefined') return null
+  const element = kind === 'video' ? createVideoElement() : new Audio()
   element.preload = 'metadata'
   element.volume = snapshot.volume
   element.playbackRate = snapshot.rate
@@ -96,20 +120,65 @@ function ensureAudio(): HTMLAudioElement | null {
   // 保活到文档里，Safari 与媒体键只有在挂载的媒体元素上才稳定工作
   element.hidden = true
   if (typeof document !== 'undefined') document.body.appendChild(element)
-  element.addEventListener('timeupdate', () => setMusicState({ timeMs: element.currentTime * 1000 }))
-  element.addEventListener('durationchange', () => {
-    if (Number.isFinite(element.duration)) setMusicState({ durationMs: element.duration * 1000 })
-  })
-  element.addEventListener('play', () => setMusicState({ playing: true }))
-  element.addEventListener('pause', () => setMusicState({ playing: false }))
-  element.addEventListener('ended', handleTrackEnded)
-  element.addEventListener('error', () => handleMediaError(element))
-  audioElement = element
+  wireMediaEvents(element)
+  elementsByKind.set(kind, element)
   return element
 }
 
+// 卡片自带传输控件，画面只需要被看见；playsInline 让移动端内联播放而不是跳到系统全屏播放器
+function createVideoElement(): HTMLVideoElement {
+  const video = document.createElement('video')
+  video.playsInline = true
+  return video
+}
+
+function retireMedia(media: HTMLMediaElement): void {
+  media.pause()
+  media.removeAttribute('src')
+  media.load()
+  // 退休的元素可能还留在某个舞台盒子里，那个容器随组件卸载会把它一起带出文档
+  if (typeof document !== 'undefined') document.body.appendChild(media)
+  media.hidden = true
+}
+
+// 画面住在展开卡片借出的盒子里；音频永不上台
+function placeOnStage(media: HTMLMediaElement): void {
+  if (typeof document === 'undefined') return
+  const host = media instanceof HTMLVideoElement ? stageHost : null
+  const target = host ?? document.body
+  if (media.parentElement !== target) target.appendChild(media)
+  media.hidden = target === document.body
+}
+
+/** 展开的卡片把封面位借给画面；同一时刻只有一个悬浮播放器，所以一只盒子即可 */
+export function claimVideoStage(host: HTMLElement): () => void {
+  stageHost = host
+  if (mediaElement) placeOnStage(mediaElement)
+  return () => {
+    stageHost = null
+    if (mediaElement) placeOnStage(mediaElement)
+  }
+}
+
+function wireMediaEvents(element: HTMLMediaElement): void {
+  // 每个监听都要求「自己仍是活动元素」：退休元素的 timeupdate 与 pause 不得移动快照
+  const onActive = (type: string, handle: () => void): void => {
+    element.addEventListener(type, () => {
+      if (element === mediaElement) handle()
+    })
+  }
+  onActive('timeupdate', () => setMusicState({ timeMs: element.currentTime * 1000 }))
+  onActive('durationchange', () => {
+    if (Number.isFinite(element.duration)) setMusicState({ durationMs: element.duration * 1000 })
+  })
+  onActive('play', () => setMusicState({ playing: true }))
+  onActive('pause', () => setMusicState({ playing: false }))
+  onActive('ended', handleTrackEnded)
+  onActive('error', () => handleMediaError(element))
+}
+
 // 旧版接口的音频响应没有 CORS 头，带 crossOrigin 会整段加载失败：降级为普通加载并放弃频谱
-function handleMediaError(element: HTMLAudioElement): void {
+function handleMediaError(element: HTMLMediaElement): void {
   if (element.crossOrigin !== 'anonymous') return
   corsBlocked = true
   element.removeAttribute('crossorigin')
@@ -129,7 +198,7 @@ function handleTrackEnded(): void {
 }
 
 function replayCurrentTrack(): void {
-  const element = ensureAudio()
+  const element = activeMedia()
   if (!element) return
   element.currentTime = 0
   setMusicState({ timeMs: 0 })
@@ -218,7 +287,7 @@ function visibleQueue(id: string): string[] {
 
 export function playTrack(id: string): void {
   const track = snapshot.tracks.find((entry) => entry.id === id)
-  const element = track ? ensureAudio() : null
+  const element = track ? ensureMedia(track) : null
   if (!track) return
   // 应用队列仍在时点歌保留其顺序，否则按当前筛选结果重建
   const keepSeeded = queueSeeded && snapshot.queue.includes(id)
@@ -231,7 +300,7 @@ export function playTrack(id: string): void {
 }
 
 export function togglePlay(): void {
-  const element = ensureAudio()
+  const element = activeMedia()
   if (!element) return
   if (!snapshot.currentId) {
     const first = filterTracks(snapshot.tracks, snapshot.query, snapshot.tagId)[0]
@@ -261,7 +330,7 @@ function playQueueOffset(delta: 1 | -1): void {
 }
 
 export function seekTo(ms: number): void {
-  const element = ensureAudio()
+  const element = activeMedia()
   if (!element) return
   element.currentTime = Math.max(0, ms / 1000)
   setMusicState({ timeMs: Math.max(0, ms) })
@@ -269,7 +338,7 @@ export function seekTo(ms: number): void {
 
 export function setVolume(value: number): void {
   const volume = Math.min(1, Math.max(0, value))
-  const element = ensureAudio()
+  const element = activeMedia()
   if (element) {
     element.volume = volume
     element.muted = volume === 0
@@ -279,7 +348,7 @@ export function setVolume(value: number): void {
 
 export function toggleMute(): void {
   const muted = !snapshot.muted
-  const element = ensureAudio()
+  const element = activeMedia()
   if (element) element.muted = muted
   setMusicState({ muted })
 }
@@ -294,7 +363,7 @@ export function nudgeMusicSeek(deltaMs: number): void {
 }
 
 export function setMusicRate(rate: number): void {
-  const element = ensureAudio()
+  const element = activeMedia()
   if (element) {
     element.playbackRate = rate
     element.preservesPitch = true
@@ -308,8 +377,10 @@ export function setFloatPosition(position: { x: number; y: number } | null): voi
 
 // 媒体元素只能接入音频图一次；上下文未运行时返回 null，组件在下次播放时重试
 export async function ensureMusicAnalyser(): Promise<AnalyserNode | null> {
-  const element = ensureAudio()
+  const element = activeMedia()
   if (!element || corsBlocked || typeof AudioContext !== 'function') return null
+  const cached = analysers.get(element)
+  if (cached) return cached
   const context = analyserContext ?? new AudioContext()
   analyserContext = context
   if (context.state === 'suspended') {
@@ -320,13 +391,12 @@ export async function ensureMusicAnalyser(): Promise<AnalyserNode | null> {
     }
   }
   if (context.state !== 'running') return null
-  if (analyserNode) return analyserNode
   const node = context.createAnalyser()
   node.fftSize = ANALYSER_FFT_SIZE
   node.smoothingTimeConstant = ANALYSER_SMOOTHING
   context.createMediaElementSource(element).connect(node)
   node.connect(context.destination)
-  analyserNode = node
+  analysers.set(element, node)
   return node
 }
 

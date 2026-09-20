@@ -180,3 +180,10 @@ html[data-density='comfortable'] {
   display: none;
 }
 
+/* 片段元素由 store 创建并挂进卡片借出的盒子：盒子给尺寸，元素铺满且不裁 */
+.music-video-stage > video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}

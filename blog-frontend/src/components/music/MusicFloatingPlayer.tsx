@@ -5,6 +5,7 @@ import type { BlogMusicTrack } from '../../lib/types'
 import { MusicIconButton, MusicSeekBar } from './music-controls'
 import MusicFloatingLyrics from './music-floating-lyrics'
 import MusicQueuePanel from './music-queue-panel'
+import { MusicVideoStage } from './MusicVideoStage'
 import { MusicModeButton, MusicNudgeButton, MusicPlayButtons, MusicRateButton, MusicVolumeControl } from './music-transport'
 import { MusicVisualizer } from './music-visualizer'
 import { clampPosition, preventNativeDrag, useCardDrag, useMeasuredSize, type CardDrag } from './music-drag'
@@ -115,6 +116,7 @@ function MusicCard({ state, track, drag, cardRef, locale }: PlayerProps) {
       className={`${CARD_SHELL} w-72 ${drag.style ? '' : DEFAULT_ANCHOR}`}
     >
       <FloatHeader drag={drag} locale={locale} />
+      <MusicVideoStage track={track} className='mx-2.5 mt-2.5 aspect-video shrink-0 self-stretch' />
       <FloatTrack track={track} locale={locale} />
       <MusicFloatingLyrics />
       <div className='shrink-0 px-2.5 pb-1'>
