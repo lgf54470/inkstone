@@ -11,14 +11,15 @@ export function useVisibleTracks(): MusicTrack[] {
   const scope = useMusic((s) => s.scope)
   const query = useMusic((s) => s.query)
   const sort = useMusic((s) => s.sort)
+  const sortDirection = useMusic((s) => s.sortDirection)
   const sourceFilter = useMusic((s) => s.sourceFilter)
   const romanized = useMusic((s) => s.romanized)
   // Ranking the whole library is the expensive part; React may paint the previous
   // result once more rather than block typing while a fresh query settles.
   const deferredQuery = useDeferredValue(query)
   return useMemo(
-    () => visibleTracks({ tracks, playlists, tags, scope, query: deferredQuery, sort, sourceFilter, romanized } as never),
-    [tracks, playlists, tags, scope, deferredQuery, sort, sourceFilter, romanized],
+    () => visibleTracks({ tracks, playlists, tags, scope, query: deferredQuery, sort, sortDirection, sourceFilter, romanized }),
+    [tracks, playlists, tags, scope, deferredQuery, sort, sortDirection, sourceFilter, romanized],
   )
 }
 
@@ -34,7 +35,7 @@ export function useHiddenMatchCount(): number {
   const romanized = useMusic((s) => s.romanized)
   const deferredQuery = useDeferredValue(query)
   return useMemo(
-    () => hiddenMatchCount({ tracks, playlists, tags, scope, query: deferredQuery, sourceFilter, romanized } as never),
+    () => hiddenMatchCount({ tracks, playlists, tags, scope, query: deferredQuery, sourceFilter, romanized }),
     [tracks, playlists, tags, scope, deferredQuery, sourceFilter, romanized],
   )
 }
@@ -44,7 +45,7 @@ export function useCurrentTrack(): MusicTrack | null {
   const currentIndex = useMusic((s) => s.currentIndex)
   const tracks = useMusic((s) => s.tracks)
   return useMemo(
-    () => currentTrack({ queue, currentIndex, tracks } as never),
+    () => currentTrack({ queue, currentIndex, tracks }),
     [queue, currentIndex, tracks],
   )
 }

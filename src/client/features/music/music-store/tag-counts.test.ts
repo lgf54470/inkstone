@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { musicStoreStub } from './store.test-helpers'
 import type { MusicTag, MusicTrack } from '@shared/types'
 import { buildTagTree } from '../../../lib/tag-tree'
 import { toTagRows } from '../music-tag-rows'
@@ -27,17 +28,8 @@ function track(id: string, tagIds: string[]): MusicTrack {
 }
 
 function makeStore(initial: Partial<MusicStoreState>) {
-  let state = initial as MusicStoreState
-  return {
-    get: () => state,
-    set: (patch: unknown) => {
-      const next = typeof patch === 'function'
-        ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state)
-        : (patch as Partial<MusicStoreState>)
-      state = { ...state, ...next }
-    },
-    state: () => state,
-  }
+  const store = musicStoreStub(initial)
+  return { ...store, state: store.read }
 }
 
 describe('music tag counts', () => {
@@ -68,7 +60,7 @@ describe('deleteTag cascades', () => {
       tracks: [track('moonlight', ['pop', 'rock'])],
       scope: { kind: 'tag', tagId: 'rock' },
     })
-    await deleteTag(store.set as never, 'rock')
+    await deleteTag(store.set, 'rock')
     expect(store.state().tags.map((entry) => [entry.id, entry.parentId])).toEqual([['pop', null]])
     expect(store.state().tracks[0]!.tagIds).toEqual(['pop'])
     expect(store.state().scope).toEqual({ kind: 'all' })
@@ -80,7 +72,7 @@ describe('deleteTag cascades', () => {
       tracks: [track('moonlight', ['pop'])],
       scope: { kind: 'all' },
     })
-    await deleteTag(store.set as never, 'rock')
+    await deleteTag(store.set, 'rock')
     const child = store.state().tags.find((entry) => entry.id === 'pop')!
     expect(child.parentId).toBe('rock')
     expect(store.state().tracks[0]!.tagIds).toEqual(['pop'])

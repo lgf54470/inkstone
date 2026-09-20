@@ -65,7 +65,7 @@ function recordLearnedDuration(get: MusicGet, ms: number): void {
   void get().patchTrack(track.id, { durationMs: Math.round(ms) })
 }
 
-export function currentTrack(state: MusicStoreState): MusicTrack | null {
+export function currentTrack(state: Pick<MusicStoreState, 'queue' | 'currentIndex' | 'tracks'>): MusicTrack | null {
   const id = state.queue[state.currentIndex]
   if (!id) return null
   return state.tracks.find((track) => track.id === id) ?? null

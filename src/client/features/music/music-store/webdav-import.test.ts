@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { musicStoreStub } from './store.test-helpers'
 import type { MusicTrack, MusicWebdavEntry } from '@shared/types'
 
 vi.mock('../../../lib/api', () => ({
@@ -15,7 +16,6 @@ vi.mock('../music-metadata', () => ({ probeTrackDuration: vi.fn(async () => 4500
 
 import { api } from '../../../lib/api'
 import { browseWebdav, importWebdavFolder, importWebdavTrack } from './webdav'
-import type { MusicStoreState } from './types'
 
 function entry(name: string): MusicWebdavEntry {
   return { name, path: `/dav/${name}`, isDirectory: false } as MusicWebdavEntry
@@ -27,19 +27,12 @@ function imported(id: string): MusicTrack {
 
 function makeStore(entries: MusicWebdavEntry[]) {
   const loadLibrary = vi.fn(async () => {})
-  let state = {
+  const store = musicStoreStub({
     tracks: [],
-    webdav: { loading: false, configured: true, dir: 'music', directory: '', path: '/dav', entries, error: null, importingPaths: [] },
+    webdav: { loading: false, configured: true, dir: 'music', directory: '', path: '/dav', entries, truncated: false, error: null, importingPaths: [] },
     loadLibrary,
-  } as unknown as MusicStoreState
-  return {
-    loadLibrary,
-    get: () => state,
-    set: (patch: unknown) => {
-      const next = typeof patch === 'function' ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state) : (patch as Partial<MusicStoreState>)
-      state = { ...state, ...next }
-    },
-  }
+  })
+  return { ...store, loadLibrary }
 }
 
 describe('importWebdavFolder', () => {
@@ -49,7 +42,7 @@ describe('importWebdavFolder', () => {
     let tracksAtReload = 0
     store.loadLibrary.mockImplementation(async () => { tracksAtReload = store.get().tracks.length })
 
-    await importWebdavFolder(store.set as never, store.get as never)
+    await importWebdavFolder(store.set, store.get)
 
     expect(api.music.importWebdav).toHaveBeenCalledTimes(5)
     expect(store.loadLibrary).toHaveBeenCalledTimes(1)
@@ -62,7 +55,7 @@ describe('importWebdavFolder', () => {
     })
     const store = makeStore(['ok-1.mp3', 'bad.mp3', 'ok-2.mp3'].map(entry))
 
-    await importWebdavFolder(store.set as never, store.get as never)
+    await importWebdavFolder(store.set, store.get)
 
     expect(store.get().tracks.map((track) => track.id)).toEqual(['dav/ok-1.mp3', 'dav/ok-2.mp3'])
     expect(store.loadLibrary).toHaveBeenCalledTimes(1)
@@ -83,7 +76,7 @@ describe('importWebdavFolder concurrency', () => {
     const names = Array.from({ length: 8 }, (_, index) => `f${index}.mp3`)
     const store = makeStore(names.map(entry))
 
-    await importWebdavFolder(store.set as never, store.get as never)
+    await importWebdavFolder(store.set, store.get)
 
     expect(maxActive).toBeGreaterThan(1)
     expect(maxActive).toBeLessThanOrEqual(4)
@@ -99,7 +92,7 @@ describe('importWebdavFolder concurrency', () => {
       return imported(path.slice(1))
     })
     const store = makeStore([entry('gated.mp3')])
-    const running = importWebdavFolder(store.set as never, store.get as never)
+    const running = importWebdavFolder(store.set, store.get)
     await Promise.resolve()
 
     expect(store.get().webdav.importingPaths).toEqual(['/dav/gated.mp3'])
@@ -114,7 +107,7 @@ describe('importWebdavTrack', () => {
     vi.mocked(api.music.importWebdav).mockResolvedValue(imported('solo.mp3'))
     const store = makeStore([entry('solo.mp3')])
 
-    await importWebdavTrack(store.set as never, store.get as never, entry('solo.mp3'))
+    await importWebdavTrack(store.set, store.get, entry('solo.mp3'))
 
     expect(api.music.importWebdav).toHaveBeenCalledWith({ path: '/dav/solo.mp3', title: 'solo', artist: '' })
     expect(store.loadLibrary).toHaveBeenCalledTimes(1)
@@ -129,7 +122,7 @@ describe('browseWebdav truncation', () => {
     })
     const store = makeStore([])
 
-    await browseWebdav(store.set as never, '/dav')
+    await browseWebdav(store.set, '/dav')
 
     expect(store.get().webdav.truncated).toBe(true)
   })
@@ -138,7 +131,7 @@ describe('browseWebdav truncation', () => {
     const store = makeStore([])
     store.set({ webdav: { ...store.get().webdav, truncated: true } })
 
-    await browseWebdav(store.set as never, '/dav')
+    await browseWebdav(store.set, '/dav')
 
     expect(store.get().webdav.truncated).toBe(false)
   })

@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
+import { musicStoreStub } from './store.test-helpers'
 import type { MusicTrack } from '@shared/types'
 import { saveBlob } from '../music-export'
 import { toastMusicError } from '../music-feedback'
 import { downloadFileName } from '../music-utils'
 import { downloadTracks, streamToBlob } from './transfers'
-import type { MusicDownloadTask, MusicStoreState } from './types'
+import type { MusicSet } from './types'
 
 vi.mock('../music-export', () => ({ saveBlob: vi.fn() }))
 vi.mock('../music-feedback', () => ({ toastMusic: vi.fn(), toastMusicError: vi.fn(), toastMusicNotice: vi.fn() }))
@@ -53,15 +54,8 @@ function respond(body: unknown[], totalBytes?: number): unknown {
 }
 
 function makeStore(tracks: MusicTrack[]) {
-  let state = { tracks, downloads: [] as MusicDownloadTask[], transfersOpen: false } as unknown as MusicStoreState
-  return {
-    get: () => state,
-    set: (patch: unknown) => {
-      const next = typeof patch === 'function' ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state) : (patch as Partial<MusicStoreState>)
-      state = { ...state, ...next }
-    },
-    state: () => state,
-  }
+  const store = musicStoreStub({ tracks, downloads: [], transfersOpen: false })
+  return { ...store, state: store.read }
 }
 
 afterEach(() => {
@@ -102,7 +96,7 @@ describe('downloadTracks', () => {
   it('saves the fetched file and drops the finished task', async () => {
     const store = makeStore([track()])
     vi.stubGlobal('fetch', () => Promise.resolve(respond(chunks(120, 180), 300)))
-    await downloadTracks(store.set as never, store.get as never, ['track-1'])
+    await downloadTracks(store.set, store.get, ['track-1'])
     expect(saveBlob).toHaveBeenCalledTimes(1)
     const [blob, filename] = (saveBlob as unknown as Mock).mock.calls[0]!
     expect(filename).toBe('Hu Yanbin - Moonlight.flac')
@@ -113,7 +107,7 @@ describe('downloadTracks', () => {
   it('keeps a failed task and reports it', async () => {
     const store = makeStore([track()])
     vi.stubGlobal('fetch', () => Promise.resolve({ ok: false, status: 404 }))
-    await downloadTracks(store.set as never, store.get as never, ['track-1'])
+    await downloadTracks(store.set, store.get, ['track-1'])
     expect(saveBlob).not.toHaveBeenCalled()
     expect(toastMusicError).toHaveBeenCalledTimes(1)
     expect(store.state().downloads).toHaveLength(1)
@@ -123,7 +117,7 @@ describe('downloadTracks', () => {
   it('fails the task when the body turns out empty', async () => {
     const store = makeStore([track()])
     vi.stubGlobal('fetch', () => Promise.resolve(respond([], 0)))
-    await downloadTracks(store.set as never, store.get as never, ['track-1'])
+    await downloadTracks(store.set, store.get, ['track-1'])
     expect(saveBlob).not.toHaveBeenCalled()
     expect(String(vi.mocked(toastMusicError).mock.calls[0]![0])).toBe('Error: The downloaded file is empty')
     expect(store.state().downloads[0]?.status).toBe('failed')
@@ -132,9 +126,9 @@ describe('downloadTracks', () => {
   it('opens the transfer dialog and ignores unknown ids', async () => {
     const store = makeStore([track()])
     vi.stubGlobal('fetch', () => Promise.resolve(respond(chunks(300), 300)))
-    await downloadTracks(store.set as never, store.get as never, ['missing'])
+    await downloadTracks(store.set, store.get, ['missing'])
     expect(store.state().transfersOpen).toBe(false)
-    await downloadTracks(store.set as never, store.get as never, ['track-1'])
+    await downloadTracks(store.set, store.get, ['track-1'])
     expect(store.state().transfersOpen).toBe(true)
   })
 })
@@ -153,12 +147,12 @@ describe('download progress writes', () => {
     vi.useFakeTimers()
     const store = makeStore([track()])
     const percents: number[] = []
-    const record = (patch: never) => {
+    const record: MusicSet = (patch) => {
       store.set(patch)
       percents.push(store.state().downloads[0]?.percent ?? -1)
     }
     vi.stubGlobal('fetch', () => Promise.resolve(respond(chunks(...Array.from({ length: 40 }, () => 10)), 400)))
-    await downloadTracks(record as never, store.get as never, ['track-1'])
+    await downloadTracks(record, store.get, ['track-1'])
     const interim = percents.filter((percent) => percent > 0 && percent < 100)
     expect(interim.length).toBeGreaterThan(0)
     expect(interim.length).toBeLessThanOrEqual(2)
@@ -170,7 +164,7 @@ describe('download progress writes', () => {
     vi.useFakeTimers()
     const store = makeStore([track()])
     const percents: number[] = []
-    const record = (patch: never) => {
+    const record: MusicSet = (patch) => {
       store.set(patch)
       percents.push(store.state().downloads[0]?.percent ?? -1)
     }
@@ -189,7 +183,7 @@ describe('download progress writes', () => {
       },
     }
     vi.stubGlobal('fetch', () => Promise.resolve(response))
-    await downloadTracks(record as never, store.get as never, ['track-1'])
+    await downloadTracks(record, store.get, ['track-1'])
     expect(percents.filter((percent) => percent > 0 && percent < 100)).toEqual([20, 40, 60, 80, 99])
     vi.useRealTimers()
   })

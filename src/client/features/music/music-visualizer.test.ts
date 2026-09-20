@@ -68,19 +68,25 @@ beforeEach(() => {
   cancelCount = 0
   drawCount = 0
   ioCallback = null
-  const original = HTMLCanvasElement.prototype.getContext
-  HTMLCanvasElement.prototype.getContext = (() => ({
-    clearRect: () => { drawCount += 1 },
-    beginPath: () => {},
-    roundRect: () => {},
-    fill: () => {},
-    moveTo: () => {},
-    lineTo: () => {},
-    stroke: () => {},
-    closePath: () => {},
-  })) as never
+  const original = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'getContext')!
+  // jsdom has no canvas backend. Defining the property (rather than assigning a cast) installs a
+  // stub the type checker can still see through, and keeps the original descriptor to restore.
+  Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+    configurable: true,
+    writable: true,
+    value: () => ({
+      clearRect: () => { drawCount += 1 },
+      beginPath: () => {},
+      roundRect: () => {},
+      fill: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      stroke: () => {},
+      closePath: () => {},
+    }),
+  })
   restoreContext = () => {
-    HTMLCanvasElement.prototype.getContext = original
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', original)
   }
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: false,

@@ -4,7 +4,11 @@ import type { MusicTrack } from '@shared/types'
 // what the engine already knows and writes into navigator.mediaSession, so the engine stays
 // free to host the media elements themselves.
 
-export function publishMediaSession(track: MusicTrack | null, playing: boolean): void {
+// The lock screen only ever reads these four fields, so that is what it asks for: a caller
+// holding a partial track can publish it without fabricating the rest of one.
+export type MediaSessionTrack = Pick<MusicTrack, 'title' | 'artist' | 'album' | 'coverUrl'>
+
+export function publishMediaSession(track: MediaSessionTrack | null, playing: boolean): void {
   const session = typeof navigator !== 'undefined' ? navigator.mediaSession : undefined
   if (!session) return
   try {

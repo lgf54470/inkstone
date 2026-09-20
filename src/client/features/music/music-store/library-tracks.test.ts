@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { musicStoreStub } from './store.test-helpers'
 import { LIMITS } from '@shared/constants'
 import type { MusicTrack } from '@shared/types'
 
@@ -50,14 +51,7 @@ function track(id: string): MusicTrack {
 }
 
 function makeStore(tracks: MusicTrack[]) {
-  let state = { tracks, libraryJobs: [], queue: [], currentIndex: 0, selectedIds: [], playlists: [], tags: [], stats: null } as unknown as MusicStoreState
-  return {
-    get: () => state,
-    set: (patch: unknown) => {
-      const next = typeof patch === 'function' ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state) : (patch as Partial<MusicStoreState>)
-      state = { ...state, ...next }
-    },
-  }
+  return musicStoreStub({ tracks, libraryJobs: [], queue: [], currentIndex: 0, selectedIds: [], playlists: [], tags: [], stats: null })
 }
 
 describe('refreshTrackMetadata', () => {
@@ -67,8 +61,8 @@ describe('refreshTrackMetadata', () => {
       .mockResolvedValueOnce({ coverDataUrl: null, title: null, artist: 'Someone', album: null, lyric: null, durationMs: 0 })
     const store = makeStore([track('poison-1'), track('good-1')])
     const updated = await refreshTrackMetadata(
-      store.set as never,
-      store.get as never,
+      store.set,
+      store.get,
       ['poison-1', 'good-1'],
     )
     expect(updated).toBe(1)
@@ -78,7 +72,7 @@ describe('refreshTrackMetadata', () => {
   it('notices the user when every scanned track was unreadable', async () => {
     vi.mocked(scanTrackMetadata).mockRejectedValueOnce(new Error('malformed tag'))
     const store = makeStore([track('poison-1')])
-    const updated = await refreshTrackMetadata(store.set as never, store.get as never, ['poison-1'])
+    const updated = await refreshTrackMetadata(store.set, store.get, ['poison-1'])
     expect(updated).toBe(0)
     expect(toastMusicNotice).toHaveBeenCalledWith('music.metadata_unavailable')
   })
@@ -96,7 +90,7 @@ describe('refreshTrackMetadata', () => {
     const ids = Array.from({ length: 8 }, (_, index) => `c${index}`)
     const store = makeStore(ids.map(track))
 
-    const updated = await refreshTrackMetadata(store.set as never, store.get as never, ids)
+    const updated = await refreshTrackMetadata(store.set, store.get, ids)
 
     expect(updated).toBe(8)
     expect(maxActive).toBeGreaterThan(1)
@@ -131,7 +125,7 @@ const emptyStats = { trackCount: 0, favoriteCount: 0, pinnedCount: 0, playlistCo
 describe('ensureTrackLyric', () => {
   it('fetches the lyric text once for a track the library shipped without it', async () => {
     const store = fullStore({ tracks: [{ ...storedTrack('a'), hasLyric: true }] })
-    await ensureTrackLyric(store.set as never, store.get as never, 'a')
+    await ensureTrackLyric(store.set, store.get, 'a')
     expect(api.music.trackLyric).toHaveBeenCalledTimes(1)
     expect(store.get().tracks[0].lyric).toBe('[00:00.00]fetched')
   })
@@ -140,8 +134,8 @@ describe('ensureTrackLyric', () => {
     let release: (value: { lyric: string }) => void = () => {}
     vi.mocked(api.music.trackLyric).mockReturnValueOnce(new Promise((resolve) => { release = resolve }))
     const store = fullStore({ tracks: [{ ...storedTrack('a'), hasLyric: true }] })
-    const first = ensureTrackLyric(store.set as never, store.get as never, 'a')
-    const second = ensureTrackLyric(store.set as never, store.get as never, 'a')
+    const first = ensureTrackLyric(store.set, store.get, 'a')
+    const second = ensureTrackLyric(store.set, store.get, 'a')
     release({ lyric: '[00:00.00]fetched' })
     await Promise.all([first, second])
     expect(api.music.trackLyric).toHaveBeenCalledTimes(1)
@@ -149,7 +143,7 @@ describe('ensureTrackLyric', () => {
 
   it('never asks the server for a track without a lyric', async () => {
     const store = fullStore({ tracks: [storedTrack('a')] })
-    await ensureTrackLyric(store.set as never, store.get as never, 'a')
+    await ensureTrackLyric(store.set, store.get, 'a')
     expect(api.music.trackLyric).not.toHaveBeenCalled()
   })
 })
@@ -161,7 +155,7 @@ describe('single-record mutation merges', () => {
       stats: { ...emptyStats, trackCount: 2, totalBytes: 2000, totalDurationMs: 120_000 },
       queue: ['a'], currentIndex: 0,
     })
-    await deleteTrack(store.set as never, store.get as never, 'a')
+    await deleteTrack(store.set, store.get, 'a')
     expect(store.get().tracks.map((entry) => entry.id)).toEqual(['b'])
     expect(store.get().stats).toMatchObject({ trackCount: 1, totalBytes: 1000 })
     expect(store.get().queue).toEqual([])
@@ -174,7 +168,7 @@ describe('single-record mutation merges', () => {
       stats: { ...emptyStats, trackCount: 2 },
       selectedIds: ['a'],
     })
-    await batchTracks(store.set as never, store.get as never, 'favorite' as never)
+    await batchTracks(store.set, store.get, 'favorite')
     expect(store.get().tracks.map((entry) => entry.isFavorite)).toEqual([true, false])
     expect(store.get().stats).toMatchObject({ trackCount: 2, favoriteCount: 1 })
     expect(store.get().selectedIds).toEqual([])
@@ -191,7 +185,7 @@ describe('batch requests over the server cap', () => {
     const tracks = Array.from({ length: cap + 1 }, (_, index) => storedTrack('t' + index))
     const store = fullStore({ tracks, stats: { ...emptyStats, trackCount: tracks.length }, selectedIds: tracks.map((entry) => entry.id) })
     vi.mocked(api.music.batchTracks).mockClear()
-    await batchTracks(store.set as never, store.get as never, 'favorite')
+    await batchTracks(store.set, store.get, 'favorite')
     expect(vi.mocked(api.music.batchTracks).mock.calls.map((call) => call[0].length)).toEqual([cap, 1])
     expect(store.get().tracks.every((entry) => entry.isFavorite)).toBe(true)
     expect(store.get().selectedIds).toEqual([])
@@ -206,7 +200,7 @@ describe('batch requests over the server cap', () => {
       .mockClear()
       .mockResolvedValueOnce({ ok: true, updated: cap })
       .mockRejectedValueOnce(new Error('too_many_attempts'))
-    await batchTracks(store.set as never, store.get as never, 'favorite')
+    await batchTracks(store.set, store.get, 'favorite')
     expect(store.get().tracks[0].isFavorite).toBe(true)
     expect(store.get().tracks[cap]!.isFavorite).toBe(false)
     expect(vi.mocked(toastMusicError)).toHaveBeenCalled()
@@ -230,7 +224,7 @@ describe('refreshTrackMetadata force mode (FEAT-6)', () => {
     vi.mocked(scanTrackMetadata).mockResolvedValue(scanned)
     vi.mocked(api.music.patchTrack).mockClear()
     const store = makeStore([filledTrack('a')])
-    const updated = await refreshTrackMetadata(store.set as never, store.get as never, ['a'], true)
+    const updated = await refreshTrackMetadata(store.set, store.get, ['a'], true)
     expect(api.music.patchTrack).toHaveBeenCalledWith(
       'a',
       expect.objectContaining({ artist: 'Right Artist', album: 'Right Album', coverDataUrl: scanned.coverDataUrl, lyric: scanned.lyric }),
@@ -242,7 +236,7 @@ describe('refreshTrackMetadata force mode (FEAT-6)', () => {
     vi.mocked(scanTrackMetadata).mockResolvedValue(scanned)
     vi.mocked(api.music.patchTrack).mockClear()
     const store = makeStore([filledTrack('a')])
-    const updated = await refreshTrackMetadata(store.set as never, store.get as never, ['a'])
+    const updated = await refreshTrackMetadata(store.set, store.get, ['a'])
     expect(api.music.patchTrack).not.toHaveBeenCalled()
     expect(updated).toBe(0)
   })
@@ -251,7 +245,7 @@ describe('refreshTrackMetadata force mode (FEAT-6)', () => {
     vi.mocked(scanTrackMetadata).mockClear()
     vi.mocked(scanTrackMetadata).mockResolvedValue(scanned)
     const store = makeStore([filledTrack('a')])
-    await refreshTrackMetadata(store.set as never, store.get as never, ['a'], true)
+    await refreshTrackMetadata(store.set, store.get, ['a'], true)
     expect(scanTrackMetadata).toHaveBeenCalledTimes(1)
   })
 
@@ -259,7 +253,7 @@ describe('refreshTrackMetadata force mode (FEAT-6)', () => {
     vi.mocked(scanTrackMetadata).mockResolvedValue(scanned)
     vi.mocked(api.music.patchTrack).mockClear()
     const store = makeStore([filledTrack('a')])
-    await refreshTrackMetadata(store.set as never, store.get as never, ['a'], true)
+    await refreshTrackMetadata(store.set, store.get, ['a'], true)
     const patch = vi.mocked(api.music.patchTrack).mock.calls[0]?.[1] as Record<string, unknown>
     expect(patch.title).toBeUndefined()
   })
@@ -272,7 +266,7 @@ describe('deleting forgets the offline copies', () => {
 
   it('a single deleted track drops its device copy', async () => {
     const store = makeStore([track('a')])
-    await deleteTrack(store.set as never, store.get as never, 'a')
+    await deleteTrack(store.set, store.get, 'a')
     expect(forgetOfflineTracks).toHaveBeenCalledTimes(1)
     expect(vi.mocked(forgetOfflineTracks).mock.calls[0]?.[2]).toEqual(['a'])
   })
@@ -280,14 +274,14 @@ describe('deleting forgets the offline copies', () => {
   it('a batch delete drops every selected device copy', async () => {
     const store = makeStore([track('a'), track('b')])
     store.set({ selectedIds: ['a', 'b'] })
-    await batchTracks(store.set as never, store.get as never, 'delete')
+    await batchTracks(store.set, store.get, 'delete')
     expect(vi.mocked(forgetOfflineTracks).mock.calls[0]?.[2]).toEqual(['a', 'b'])
   })
 
   it('a non-delete batch action keeps device copies', async () => {
     const store = makeStore([track('a')])
     store.set({ selectedIds: ['a'] })
-    await batchTracks(store.set as never, store.get as never, 'favorite')
+    await batchTracks(store.set, store.get, 'favorite')
     expect(forgetOfflineTracks).not.toHaveBeenCalled()
   })
 })

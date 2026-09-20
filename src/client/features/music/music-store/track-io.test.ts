@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { musicStoreStub } from './store.test-helpers'
 import type { MusicTrack } from '@shared/types'
+import type { MusicSet } from './types'
 
 vi.mock('../../../lib/api', () => ({
   api: { music: {} },
@@ -27,19 +29,11 @@ import { saveBlob } from '../music-export'
 import { toastMusic, toastUploadError, toastUploadSkip } from '../music-feedback'
 import { dismissUpload, uploadFiles } from './library-collections'
 import { downloadTracks } from './transfers'
-import type { MusicStoreState } from './types'
 import { LIMITS } from '@shared/constants'
 
 function makeStore() {
   const loadLibrary = vi.fn(async () => {})
-  let state = { tracks: [], uploads: [], downloads: [], loadLibrary } as unknown as MusicStoreState
-  return {
-    get: () => state,
-    set: (patch: unknown) => {
-      const next = typeof patch === 'function' ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state) : (patch as Partial<MusicStoreState>)
-      state = { ...state, ...next }
-    },
-  }
+  return { ...musicStoreStub({ tracks: [], uploads: [], downloads: [], loadLibrary }), loadLibrary }
 }
 
 function audioFile(name: string): File {
@@ -72,7 +66,7 @@ describe('uploadFiles', () => {
     const store = makeStore()
     const files = Array.from({ length: 6 }, (_, index) => audioFile(`s${index}.mp3`))
 
-    await uploadFiles(store.set as never, store.get as never, files)
+    await uploadFiles(store.set, store.get, files)
 
     expect(maxActive).toBeGreaterThan(1)
     expect(maxActive).toBeLessThanOrEqual(4)
@@ -83,7 +77,7 @@ describe('uploadFiles', () => {
     vi.mocked(uploadMusicTrack).mockResolvedValue({ track: track('uploaded'), error: null })
     const store = makeStore()
 
-    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3'), audioFile('b.mp3')])
+    await uploadFiles(store.set, store.get, [audioFile('a.mp3'), audioFile('b.mp3')])
 
     expect(store.get().loadLibrary).toHaveBeenCalledTimes(1)
   })
@@ -101,13 +95,14 @@ describe('uploadFiles progress', () => {
     const percents: number[] = []
     const store = makeStore()
     const record = store.set
-    store.set = ((patch: unknown) => {
+    const capturing: MusicSet = (patch) => {
       record(patch)
-      const percent = (store.get() as { uploads: { percent: number }[] }).uploads[0]?.percent
+      const percent = store.get().uploads[0]?.percent
       if (percent !== undefined) percents.push(percent)
-    }) as never
+    }
+    store.set = capturing
 
-    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3')])
+    await uploadFiles(store.set, store.get, [audioFile('a.mp3')])
 
     expect(percents).toEqual([0, 1, 100])
     vi.useRealTimers()
@@ -119,7 +114,7 @@ describe('uploadFiles pre-check', () => {
     vi.mocked(uploadMusicTrack).mockResolvedValue({ track: track('uploaded'), error: null })
     const store = makeStore()
 
-    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3'), audioFile('notes.txt'), audioFile('cover.JPG')])
+    await uploadFiles(store.set, store.get, [audioFile('a.mp3'), audioFile('notes.txt'), audioFile('cover.JPG')])
 
     expect(uploadMusicTrack).toHaveBeenCalledTimes(1)
     expect(toastUploadSkip).toHaveBeenCalledWith('music.upload_unsupported', 2)
@@ -129,7 +124,7 @@ describe('uploadFiles pre-check', () => {
     vi.mocked(uploadMusicTrack).mockResolvedValue({ track: track('uploaded'), error: null })
     const store = makeStore()
 
-    await uploadFiles(store.set as never, store.get as never, [
+    await uploadFiles(store.set, store.get, [
       new File(['some bytes'], 'concert.mov', { type: 'video/quicktime' }),
       new File(['some bytes'], 'clip.m4v', { type: 'video/x-m4v' }),
     ])
@@ -143,7 +138,7 @@ describe('uploadFiles pre-check', () => {
     const big = audioFile('big.mp3')
     Object.defineProperty(big, 'size', { value: LIMITS.musicTrackMaxBytes + 1 })
 
-    await uploadFiles(store.set as never, store.get as never, [big])
+    await uploadFiles(store.set, store.get, [big])
 
     expect(uploadMusicTrack).not.toHaveBeenCalled()
     expect(store.get().uploads).toEqual([])
@@ -155,7 +150,7 @@ describe('uploadFiles pre-check', () => {
     vi.mocked(uploadMusicTrack).mockResolvedValue({ track: track('uploaded'), error: null })
     const store = makeStore()
 
-    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3'), audioFile('b.flac')])
+    await uploadFiles(store.set, store.get, [audioFile('a.mp3'), audioFile('b.flac')])
 
     expect(uploadMusicTrack).toHaveBeenCalledTimes(2)
     expect(toastUploadSkip).not.toHaveBeenCalled()
@@ -172,11 +167,11 @@ describe('upload cancellation', () => {
       })
     })
     const store = makeStore()
-    const run = uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3')])
+    const run = uploadFiles(store.set, store.get, [audioFile('a.mp3')])
     await vi.waitFor(() => expect(uploadMusicTrack).toHaveBeenCalledTimes(1))
     const id = store.get().uploads[0]!.id
 
-    dismissUpload(store.set as never, store.get as never, id)
+    dismissUpload(store.set, store.get, id)
 
     expect(capturedSignal?.aborted).toBe(true)
     expect(store.get().uploads).toEqual([])
@@ -193,7 +188,7 @@ describe('upload cancellation', () => {
     })
     const store = makeStore()
 
-    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3')], 'webdav')
+    await uploadFiles(store.set, store.get, [audioFile('a.mp3')], 'webdav')
 
     expect(webdavSignal).toBeInstanceOf(AbortSignal)
     expect(toastUploadError).not.toHaveBeenCalled()
@@ -205,7 +200,7 @@ describe('upload batch feedback', () => {
     vi.mocked(uploadMusicTrack).mockResolvedValue({ track: track('uploaded'), error: null })
     const store = makeStore()
 
-    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3'), audioFile('b.mp3'), audioFile('c.mp3')])
+    await uploadFiles(store.set, store.get, [audioFile('a.mp3'), audioFile('b.mp3'), audioFile('c.mp3')])
 
     expect(toastMusic).toHaveBeenCalledTimes(1)
     expect(toastMusic).toHaveBeenCalledWith('music.upload_done', { value0: 3 })
@@ -215,7 +210,7 @@ describe('upload batch feedback', () => {
     vi.mocked(uploadMusicTrack).mockResolvedValue({ track: null, error: 'storage_unavailable' })
     const store = makeStore()
 
-    await uploadFiles(store.set as never, store.get as never, [audioFile('a.mp3'), audioFile('b.mp3')])
+    await uploadFiles(store.set, store.get, [audioFile('a.mp3'), audioFile('b.mp3')])
 
     expect(toastUploadError).toHaveBeenCalledTimes(1)
     expect(toastUploadError).toHaveBeenCalledWith('storage_unavailable')
@@ -248,7 +243,7 @@ describe('downloadTracks', () => {
     const ids = ['t1', 't2', 't3', 't4', 't5']
     store.set({ tracks: ids.map(track) })
 
-    await downloadTracks(store.set as never, store.get as never, ids)
+    await downloadTracks(store.set, store.get, ids)
 
     expect(maxActive).toBeGreaterThan(1)
     expect(maxActive).toBeLessThanOrEqual(4)

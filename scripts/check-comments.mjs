@@ -1329,6 +1329,8 @@ const allowed = new Map([
     '// The lock-screen / car-kit surface is a separate concern from playback: it only ever reads',
     '// what the engine already knows and writes into navigator.mediaSession, so the engine stays',
     '// free to host the media elements themselves.',
+    '// The lock screen only ever reads these four fields, so that is what it asks for: a caller',
+    '// holding a partial track can publish it without fabricating the rest of one.',
     '// Lock-screen and car-kit progress bars are built from positionState and committed',
     '// through seekto; without them the scrubber is dead even though metadata shows.',
     '// The browser rejects a position past the end, and in-flight ticks can outrun a shrinking duration.',
@@ -1674,6 +1676,10 @@ const allowed = new Map([
     '// The pinyin dictionary is only needed for search, so loading the library stays cheap.',
     '// One dictionary load and one romanization pass at a time; debounced keystrokes',
     '// and lazy fetches can otherwise pile up identical whole-library work.',
+    '// Ranking reads these fields and nothing else, so the hook that feeds it subscribes to exactly',
+    '// this set: declaring the slice keeps the subscription list and the memo dependencies honest',
+    '// instead of letting a cast hide a field the view reads but never watches.',
+    '// The "matches left out" notice ranks the same way, minus the order it never applies.',
     '// A playlist row carries the order the user arranged; sorting or hoisting pins would rewrite it.',
     '// The duplicates view carries its own group order, so the same bypass applies.',
     '// The browse kinds draw a grouped grid, not a track list; the list stays empty on purpose.',
@@ -1764,6 +1770,10 @@ const allowed = new Map([
     '// index pointing at the playing entry change — a new array reference is what',
     '// tells the session sync to persist the reordered queue.',
   ]],
+  ['src/client/features/music/music-store/selectors.test.ts', [
+    '// The list is ranked by the selector hook, so the probe renders exactly what the hook hands',
+    '// back: a stale memo here shows up as the old order, whatever the header arrow says.',
+  ]],
   ['src/client/features/music/music-store/selectors.ts', [
     '// Ranking the whole library is the expensive part; React may paint the previous',
     '// result once more rather than block typing while a fresh query settles.',
@@ -1773,6 +1783,13 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-store/state.ts', [
     '// Quota or private-mode writes can throw; in-memory preferences stay authoritative.',
+  ]],
+  ['src/client/features/music/music-store/store.test-helpers.ts', [
+    '// Store actions take the pair Zustand hands them (set, get), so the fixture hands back those same',
+    '// two types from a real store rather than a hand-rolled pair: a call site needs no cast, and a',
+    '// signature change to an action surfaces as a type error in the test that covers it instead of',
+    '// being widened away. Fixtures stay partial on purpose — they carry the data an action reads, not',
+    '// the action set the live store holds.',
   ]],
   ['src/client/features/music/music-store/transfers.ts', [
     '// Downloads report real byte progress per chunk and save the assembled Blob at the end.',
@@ -1881,6 +1898,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-view-toggles.test.ts', [
     '// The old hand-written group stole \'List view\' as its name; it must not exist twice.',
+  ]],
+  ['src/client/features/music/music-visualizer.test.ts', [
+    '// jsdom has no canvas backend. Defining the property (rather than assigning a cast) installs a',
+    '// stub the type checker can still see through, and keeps the original descriptor to restore.',
   ]],
   ['src/client/features/music/music-visualizer.tsx', [
     '// Frequencies are sampled on a curve so the bass bins do not swallow the whole picture.',

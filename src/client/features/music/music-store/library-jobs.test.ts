@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { musicStoreStub } from './store.test-helpers'
 import type { MusicTrack } from '@shared/types'
 
 vi.mock('../music-metadata', () => ({
@@ -23,22 +24,15 @@ import { toastMusicError, toastMusicNotice } from '../music-feedback'
 import { matchMissingCovers } from './library-covers'
 import { refreshTrackMetadata } from './library-tracks'
 import { dismissLibraryJob } from './transfers'
-import type { MusicLibraryJob, MusicStoreState } from './types'
+import type { MusicLibraryJob } from './types'
 
 function track(id: string, coverUrl: string | null = null): MusicTrack {
   return { id, title: id, artist: '', album: '', durationMs: 60_000, source: 'r2', coverUrl, lyric: null, hasLyric: false } as MusicTrack
 }
 
 function makeStore(tracks: MusicTrack[]) {
-  let state = { tracks, libraryJobs: [] as MusicLibraryJob[], transfersOpen: false } as unknown as MusicStoreState
-  return {
-    get: () => state,
-    set: (patch: unknown) => {
-      const next = typeof patch === 'function' ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state) : (patch as Partial<MusicStoreState>)
-      state = { ...state, ...next }
-    },
-    state: () => state,
-  }
+  const store = musicStoreStub({ tracks, libraryJobs: [], transfersOpen: false })
+  return { ...store, state: store.read }
 }
 
 afterEach(() => {
@@ -56,7 +50,7 @@ describe('metadata scan jobs', () => {
       seen.push(...store.state().libraryJobs)
       return { coverDataUrl: null, title: null, artist: 'Someone', album: null, lyric: null, durationMs: 0 }
     })
-    expect(await refreshTrackMetadata(store.set as never, store.get as never, ['a', 'b'])).toBe(2)
+    expect(await refreshTrackMetadata(store.set, store.get, ['a', 'b'])).toBe(2)
     expect(seen).toHaveLength(2)
     expect(seen.every((job) => job.kind === 'metadata' && job.status === 'running')).toBe(true)
     expect(store.state().libraryJobs).toEqual([])
@@ -71,9 +65,9 @@ describe('metadata scan jobs', () => {
       await gate
       return { coverDataUrl: null, title: null, artist: 'Someone', album: null, lyric: null, durationMs: 0 }
     })
-    const first = refreshTrackMetadata(store.set as never, store.get as never, ['a'])
+    const first = refreshTrackMetadata(store.set, store.get, ['a'])
     expect(store.state().libraryJobs).toHaveLength(1)
-    expect(await refreshTrackMetadata(store.set as never, store.get as never, ['b'])).toBe(0)
+    expect(await refreshTrackMetadata(store.set, store.get, ['b'])).toBe(0)
     expect(store.state().libraryJobs).toHaveLength(1)
     release()
     await first
@@ -89,7 +83,7 @@ describe('cover match jobs', () => {
       doneAtLookup.push(store.state().libraryJobs[0]?.done ?? -1)
       return null
     })
-    expect(await matchMissingCovers(store.set as never, store.get as never)).toBe(0)
+    expect(await matchMissingCovers(store.set, store.get)).toBe(0)
     expect(doneAtLookup).toEqual([0, 1, 2])
     expect(store.state().libraryJobs).toEqual([])
   })
@@ -97,16 +91,16 @@ describe('cover match jobs', () => {
   it('leaves a dismissible task when a lookup fails and says so', async () => {
     const store = makeStore([track('a')])
     vi.mocked(lookupCoverDataUrl).mockRejectedValueOnce(new TypeError('offline'))
-    expect(await matchMissingCovers(store.set as never, store.get as never)).toBe(0)
+    expect(await matchMissingCovers(store.set, store.get)).toBe(0)
     expect(store.state().libraryJobs).toEqual([{ kind: 'covers', done: 0, total: 1, status: 'failed' }])
     expect(toastMusicError).toHaveBeenCalledTimes(1)
-    dismissLibraryJob(store.set as never, 'covers')
+    dismissLibraryJob(store.set, 'covers')
     expect(store.state().libraryJobs).toEqual([])
   })
 
   it('opens no task when there is nothing to look for', async () => {
     const store = makeStore([track('a', 'cover-key')])
-    expect(await matchMissingCovers(store.set as never, store.get as never)).toBe(0)
+    expect(await matchMissingCovers(store.set, store.get)).toBe(0)
     expect(toastMusicNotice).toHaveBeenCalledWith('music.covers_unmatched')
     expect(store.state().libraryJobs).toEqual([])
     expect(store.state().transfersOpen).toBe(false)

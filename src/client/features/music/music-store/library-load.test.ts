@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { musicStoreStub } from './store.test-helpers'
 import type { MusicPlaylistDetail, MusicStats, MusicTrack } from '@shared/types'
 
 vi.mock('../../../lib/api', () => ({
@@ -21,14 +22,7 @@ function statsFixture(): MusicStats {
 }
 
 function makeStore() {
-  let state = { lastLoadedAt: 0 } as unknown as MusicStoreState
-  const set: MusicSet = (patch) => {
-    const next = typeof patch === 'function'
-      ? (patch as (current: MusicStoreState) => Partial<MusicStoreState>)(state)
-      : (patch as Partial<MusicStoreState>)
-    state = { ...state, ...next }
-  }
-  return { set, get: () => state }
+  return musicStoreStub({ lastLoadedAt: 0 })
 }
 
 afterEach(() => {

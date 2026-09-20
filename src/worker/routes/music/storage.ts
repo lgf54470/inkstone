@@ -100,21 +100,6 @@ function sliceKvStream(source: ReadableStream<Uint8Array>, range: ByteRange): Re
   })
 }
 
-export async function musicObjectSize(
-  env: Env,
-  storage: AttachmentObjectStorage,
-  key: string,
-): Promise<number | null> {
-  if (storage === 'r2') {
-    if (!env.FILES) throw new ApiError(503, 'storage_unavailable', 'R2 storage is not bound')
-    const head = await env.FILES.head(key)
-    return head ? head.size : null
-  }
-  if (!env.FILES_KV) throw new ApiError(503, 'storage_unavailable', 'KV storage is not bound')
-  const value = await env.FILES_KV.get(key, 'arrayBuffer')
-  return value ? value.byteLength : null
-}
-
 export async function deleteMusicObjects(
   env: Env,
   storage: AttachmentObjectStorage,

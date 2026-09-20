@@ -84,12 +84,6 @@ function base64ToBytes(payload: string): Uint8Array | null {
   }
 }
 
-export function bytesToBase64(bytes: Uint8Array): string {
-  let binary = ''
-  for (const byte of bytes) binary += String.fromCharCode(byte)
-  return btoa(binary)
-}
-
 export function isCoverObjectKey(value: string | null | undefined): boolean {
   return Boolean(value && value.startsWith(`${MUSIC_OBJECT_PREFIX}cover/`))
 }

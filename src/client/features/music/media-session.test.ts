@@ -38,7 +38,7 @@ describe('media session metadata', () => {
     })
     const session = installMediaSession()
     publishMediaSession(
-      { title: 'River', artist: 'Ada', album: 'Silt', coverUrl: 'https://x/cover.png' } as never,
+      { title: 'River', artist: 'Ada', album: 'Silt', coverUrl: 'https://x/cover.png' },
       true,
     )
     expect(session.metadata).toEqual({
@@ -52,7 +52,7 @@ describe('media session metadata', () => {
 
   it('keeps publishing the transport state when the browser has no MediaMetadata', () => {
     const session = installMediaSession()
-    publishMediaSession({ title: 'River', artist: '', album: '' } as never, true)
+    publishMediaSession({ title: 'River', artist: '', album: '', coverUrl: null }, true)
     expect(session.playbackState).toBe('playing')
   })
 })

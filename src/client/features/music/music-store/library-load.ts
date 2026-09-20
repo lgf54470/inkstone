@@ -163,7 +163,16 @@ export function clearSelection(set: MusicSet): void {
   set({ selectedIds: [] })
 }
 
-export function visibleTracks(state: MusicStoreState): MusicTrack[] {
+// Ranking reads these fields and nothing else, so the hook that feeds it subscribes to exactly
+// this set: declaring the slice keeps the subscription list and the memo dependencies honest
+// instead of letting a cast hide a field the view reads but never watches.
+type MusicScopeView = Pick<MusicStoreState, 'tracks' | 'playlists' | 'tags' | 'scope'>
+export type MusicLibraryView = MusicScopeView & Pick<MusicStoreState, 'sourceFilter' | 'query' | 'sort' | 'sortDirection' | 'romanized'>
+
+// The "matches left out" notice ranks the same way, minus the order it never applies.
+export type MusicMatchCountView = MusicScopeView & Pick<MusicStoreState, 'sourceFilter' | 'query' | 'romanized'>
+
+export function visibleTracks(state: MusicLibraryView): MusicTrack[] {
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
   const query = state.query.trim()
   const filtered = query ? filterByQuery(scoped, state, query) : scoped
@@ -178,7 +187,7 @@ function applySourceFilter(tracks: MusicTrack[], filter: MusicSourceFilter): Mus
   return tracks.filter((track) => track.source === filter)
 }
 
-function applyScope(state: MusicStoreState): MusicTrack[] {
+function applyScope(state: MusicScopeView): MusicTrack[] {
   const scope = state.scope
   if (scope.kind === 'favorites') return state.tracks.filter((track) => track.isFavorite)
   if (scope.kind === 'pinned') return state.tracks.filter((track) => track.isPinned)
@@ -194,18 +203,18 @@ function applyScope(state: MusicStoreState): MusicTrack[] {
 }
 
 // FEAT-9: recency is the server-stamped last play, so the list survives a device switch.
-function recentTracks(state: MusicStoreState): MusicTrack[] {
+function recentTracks(state: MusicScopeView): MusicTrack[] {
   return state.tracks
     .filter((track) => track.lastPlayedAt !== null)
     .sort((a, b) => (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0))
 }
 
-function filterByTag(state: MusicStoreState, tagId: string): MusicTrack[] {
+function filterByTag(state: MusicScopeView, tagId: string): MusicTrack[] {
   const ids = collectTagIds(tagId, state.tags)
   return state.tracks.filter((track) => track.tagIds.some((id) => ids.has(id)))
 }
 
-function playlistTracks(state: MusicStoreState, playlistId: string): MusicTrack[] {
+function playlistTracks(state: MusicScopeView, playlistId: string): MusicTrack[] {
   const playlist = state.playlists.find((entry) => entry.id === playlistId)
   if (!playlist) return []
   const byId = new Map(state.tracks.map((track) => [track.id, track]))
@@ -214,7 +223,7 @@ function playlistTracks(state: MusicStoreState, playlistId: string): MusicTrack[
     .filter((track): track is MusicTrack => Boolean(track))
 }
 
-function filterByQuery(tracks: MusicTrack[], state: MusicStoreState, query: string): MusicTrack[] {
+function filterByQuery(tracks: MusicTrack[], state: MusicLibraryView, query: string): MusicTrack[] {
   const ranked = searchTracks(tracks, state.romanized, query).slice(0, SEARCH_RESULT_LIMIT)
   const order = new Map(ranked.map((id, index) => [id, index]))
   return tracks.filter((track) => order.has(track.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!)
@@ -223,7 +232,7 @@ function filterByQuery(tracks: MusicTrack[], state: MusicStoreState, query: stri
 // The list stops at SEARCH_RESULT_LIMIT matches; the ones that did not fit are counted
 // here so the header can say the list is a prefix rather than the whole answer. A scope
 // that cannot hold more matches than the cap short-circuits before ranking anything.
-export function hiddenMatchCount(state: MusicStoreState): number {
+export function hiddenMatchCount(state: MusicMatchCountView): number {
   const query = state.query.trim()
   if (!query) return 0
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)

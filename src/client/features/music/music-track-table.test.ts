@@ -115,6 +115,7 @@ describe('table header sorting', () => {
     expect(columnheaderOf(t('music.table_title'))?.getAttribute('aria-sort')).toBe('descending')
   })
 
+
   it('the artist column sorts by artist', async () => {
     await mountList()
     const button = headerButton(t('music.table_artist'))
