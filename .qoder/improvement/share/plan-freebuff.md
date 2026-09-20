@@ -31,8 +31,8 @@
 | 01 | — | — | 落盘复评报告 `review-round2.md` + 本台账 | 小 | ✅ | ef056537 |
 | 02 | A | SH-78 | `GET /api/share/visits` 的 `page`/`limit` 未校验 → NaN 绑定必现 500 | 极小 | ✅ | 76a1f76a |
 | 03 | A | SH-79 | 日志 CSV 未做 RFC 4180 转义 + 无公式注入防护 | 极小 | ✅ | d7eadd4a |
-| 04 | A | SH-84 | 自定义 slug 报错文案写 "3-64 chars"，实际 6–64 | 极小 | ✅ | ⏳ 下项回填 |
-| 05 | A | SH-80 | `loadTopNotes` 查笔记标题不带 `user_id` | 极小 | ⬜ | |
+| 04 | A | SH-84 | 自定义 slug 报错文案写 "3-64 chars"，实际 6–64 | 极小 | ✅ | ccfc69f7 |
+| 05 | A | SH-80 | `loadTopNotes` 查笔记标题不带 `user_id` | 极小 | ✅ | ⏳ 下项回填 |
 | 06 | A | SH-82 | 日志接口下发完整指纹 + SELECT 从不返回的 `user_agent` | 极小 | ⬜ | |
 | 07 | A | SH-71 | 两个 analytics hook 无 abort/epoch → 慢请求覆盖新请求 | 小 | ⬜ | |
 | 08 | A | SH-55 | 首屏 `isLoading` 时 KPI 全渲染 0（缺"加载中"态） | 小 | ⬜ | |
@@ -111,3 +111,11 @@
 | SH-86 | `src/client/lib/markdown/table-editor.ts` 的 `tableToCsv()`、`src/client/features/blog/blog-links-view/link-import-export-modal.tsx` 的 `generateCsv()` | 与 SH-79 同类的 CSV 写入点：未做全列引用/引号翻倍，也未中和 `= + - @` 开头（复制表格为 CSV 与导出友链 CSV 都受影响） | 把 `csvCell()` 提到 `src/client/lib/csv.ts` 共享，三处共用同一实现与测试 |
 | SH-87 | `src/client/features/share/share-helpers.ts` 的 `exportVisitsToCsv()` 尾部 | `URL.revokeObjectURL(url)` 紧跟 `a.click()` 同步执行，部分浏览器上会在下载开始前撤销 blob URL | 改到 `setTimeout(..., 0)` 或 `requestAnimationFrame` 后撤销，并加回归测试 |
 | SH-88 | `src/client/demo/backend/routes/share-admin.ts` | 演示模式完全跳过 slug 校验（直接取 `body.customSlug`），真人可在体验版里设出真实 API 会拒绝的短链/保留字 | 复用 `isValidCustomSlug()` 与 `LIMITS.shareSlugMinLength/MaxLength`，行为与真实后端对齐 |
+
+### 05 — SH-80 `loadTopNotes` 按 note id 查标题、不带 `user_id`（2026-09-21）
+
+- 根因：`src/worker/routes/share/analytics.ts` 的 `loadTopNotes()` 用 `SELECT id, title FROM notes WHERE id IN (...)` 取「最受关注笔记」的标题，只按 id 过滤。`notes.id` 是主键，正常写入路径下 visit 行只会指向本人笔记，所以这是**纵深防御**缺口而非已知可触达的越权：任何将来丢掉归属校验的写路径都会让看板把别人笔记的标题画出来。
+- 复现（先红）：`tests/share-routes.test.ts` 新增用例「does not resolve a top note title across accounts」——播种 `user-2` 的笔记 + 一条挂在当前账号名下、却指向该笔记 id 的 visit 行，修复前实测 `topNotes[0].noteTitle === 'Foreign secret'`（跨账号标题泄漏），修复后为 `null`。
+- 改动面（3 文件）：`analytics.ts` 的 `loadTopNotes()` 增加 `userId` 入参，SQL 改为 `WHERE user_id = ?1 AND id IN (?2…?N)`（占位符显式编号，与同文件其它语句风格一致）；`tests/share-routes.test.ts` 新增 1 条用例；`scripts/check-comments.mjs` 登记用例里的说明注释（4946 条）。
+- 验证：`tests/share-routes.test.ts` 74/74 绿（修复前 73 绿 + 新用例红）；`npx tsc -b --force` exit 0；`comments:check`（+2 条）通过。
+- 局限（如实登记）：`WHERE deleted_at IS NULL` **故意没加**——软删除笔记的历史访问仍应能画出当年的热门标题，这是既有行为，本项不改；全量串行回归仍在批次 A 收尾统一跑。

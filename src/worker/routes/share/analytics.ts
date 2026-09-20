@@ -86,7 +86,7 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
       ...visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId }, ctx),
     ])
     const aggregate = visitAggregateFromResults(visitResults, ctx, SHARE_VISIT_SOURCE)
-    const topNotes = await loadTopNotes(db, aggregate.targets)
+    const topNotes = await loadTopNotes(db, userId, aggregate.targets)
     return c.json(composeGlobalAnalytics({
       ctx,
       aggregate,
@@ -240,6 +240,7 @@ function visitFilterStatsStatement(db: D1Database, userId: string, startTs: numb
 
 async function loadTopNotes(
   db: D1Database,
+  userId: string,
   targets: Map<string, VisitTargetStat>,
 ): Promise<Array<{ noteId: string; noteTitle: string | null; slug: string; views: number; visitors: number }>> {
   // Equal view counts have no order out of a GROUP BY, so ties break by note id
@@ -248,11 +249,12 @@ async function loadTopNotes(
     .sort((a, b) => b.views - a.views || (a.noteId < b.noteId ? -1 : 1))
     .slice(0, 10)
   if (!topNotesRaw.length) return []
-  const placeholders = topNotesRaw.map(() => '?').join(',')
+  const noteIds = topNotesRaw.map((n) => n.noteId)
+  const placeholders = noteIds.map((_, index) => `?${index + 2}`).join(',')
   const noteRows = await db.prepare(
-    `SELECT id, title FROM notes WHERE id IN (${placeholders})`,
+    `SELECT id, title FROM notes WHERE user_id = ?1 AND id IN (${placeholders})`,
   )
-    .bind(...topNotesRaw.map((n) => n.noteId))
+    .bind(userId, ...noteIds)
     .all<{ id: string; title: string }>()
   const noteTitles = new Map<string, string>()
   for (const r of noteRows.results ?? []) {

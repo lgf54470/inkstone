@@ -6248,6 +6248,8 @@ const allowed = new Map([
     '// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =',
     '// one round-trip however many statements ride along. Statements built through',
     '// the wrapper still execute inside batch without being double-counted.',
+    '// Any write path that ever loses its ownership check would leave a visit row',
+    '// pointing at another account\'s note; the title lookup must not follow it.',
     '// visit recording runs via waitUntil; the test context must let us await it',
     '// Eleven scrypt verifications need more than the 5s default budget on slow runners.',
     '// requestClientIp only trusts CF-Connecting-IP when the edge set `cf`, so the probe attaches it.',

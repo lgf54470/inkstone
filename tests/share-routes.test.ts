@@ -668,6 +668,20 @@ describe('share analytics routes (real D1)', () => {
     expect(body.filterStats.bots).toBe(1)
   })
 
+  it('does not resolve a top note title across accounts', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedUser(db, 'user-2')
+    const foreign = await seedNote(db, { user_id: 'user-2', title: 'Foreign secret' })
+    // Any write path that ever loses its ownership check would leave a visit row
+    // pointing at another account's note; the title lookup must not follow it.
+    await seedVisit(db, { note_id: foreign, slug: 'x-1', visitor_fp: 'fp-x' })
+
+    const body = await (await request(makeApp(), '/api/share/analytics/global?range=30d')).json()
+    expect(body.totalViews).toBe(1)
+    expect(body.topNotes.map((n: { noteTitle: string | null }) => n.noteTitle)).toEqual([null])
+  })
+
   it('sanitizes an unknown range to the 30d window instead of answering with full history', async () => {
     const db = await makeDb()
     const n1 = await seedNote(db, {})
