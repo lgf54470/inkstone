@@ -59,7 +59,7 @@
 | H4 | SH-42 | `POST /api/blog/posts/batch` 的 `postIds` 无长度上限，`IN (…)` 直接拼占位符——>100 个 id 必 500（share 侧 02 号同款 D1 变量上限），需分块或 schema 上限 | P1 | ✅ | 0e00fa6a |
 | H5 | SH-43 | `blog_visits` 无保留期设置（share 已有 `share.visitLogRetentionDays`）：cron 只扫孤儿行，需要 blog settings 段落 + 模态接线，属产品决策 | P2 | ✅ | b1d358ad |
 | H6 | SH-44 | 调色板类存量清偿：SH-38 门禁已按文件计数冻结 218 处/62 文件，各模块降到 0 后 `--update-baseline` 收账（attachments 77/7 文件、blog-frontend 48/17、blog 39/11、lib·markdown 24/12、preview 17/4、components 5/4、settings 4/3、folders 2、tags 2） | P3 | 排队 | |
-| H7 | SH-45 | blog 侧同族假设置：`blog-store` 的 `maxLogRecords`/`setRetentionSettings` 与设置模态的「最多记录数」分段控件同样全仓无消费者（SH-39 在 share 侧删除的那一套，blog 侧是第二处），且 `blog-settings-modal.tsx:190-191` 跨模块读 `share.max_records_label`/`share.max_records_val` 两个键——故 share 侧本次保留键不删。修法：blog 侧删控件+删 store 字段，文案键随最后一处使用者一并迁到 blog 命名空间或删除 | P3 | ✅ | 待回填 |
+| H7 | SH-45 | blog 侧同族假设置：`blog-store` 的 `maxLogRecords`/`setRetentionSettings` 与设置模态的「最多记录数」分段控件同样全仓无消费者（SH-39 在 share 侧删除的那一套，blog 侧是第二处），且 `blog-settings-modal.tsx:190-191` 跨模块读 `share.max_records_label`/`share.max_records_val` 两个键——故 share 侧本次保留键不删。修法：blog 侧删控件+删 store 字段，文案键随最后一处使用者一并迁到 blog 命名空间或删除 | P3 | ✅ | 28b175b6 |
 | H2 | SH-40 | `RetentionField` 可见标签未关联 `Segmented` 的 `role=radiogroup`（两个控件均无可访问名称），`Segmented` 已具 `label`/`aria-labelledby`；执行时按同一口径扩到 share 全部 6 处 `Segmented` 并加静态门禁 | P2 | ✅ | 1a3e4dae |
 | H8 | SH-46 | share 外的 `Segmented` 仍缺可访问名称（实测 5 处：`blog-dashboard-view/index.tsx:135,272`、`blog-settings-modal.tsx:31,228`、`settings/backup-settings/target-form.tsx:45`）：与 SH-40 同一缺陷族，按铁律14 不在本批夹带；各模块自行接入后把 `tests/share-radiogroup-names.test.ts` 的扫描根从 `features/share` 提到全站 | P2 | 排队 | |
 | H9 | SH-47 | `/api/blog/visits` 的 DELETE 缺 share 侧那两道护栏（SH-14/SH-12 双生）：`older_than` 无 `days >= 1` 服务端校验（客户端已在 SH-43 拦住 0，信任边界仍裸），`type=all` 清空全站日志不要求当前密码重认证 | P1 | 排队 | |
@@ -434,4 +434,4 @@
 - 变异 6 发全杀（/tmp/mutH7 备份还原）：M1 store 初值重挂 `maxLogRecords: 5000`、M2 `persistTrafficFilters` 顺手回写 retention key、M3 模态重挂带 `10K` 的第二个 `RetentionField`、M4 重挂一个措辞不含 `10K` 的等效第二分段控件（证明「计数」断言独立承载，不靠文案命中）、M5 `saveSettingsFlow` 不再写流量过滤、M6 保存忽略所选天数钉死 30。后两发是删掉一次写入后补的守卫——先前无人断言保存路径的另两项。
 - 踩坑一条：还原校验第一版用 `bash -c` 里的 `cmp -q` 比较，四个文件报 MISMATCH，而文件大小与内容其实一致（改用进程内 `read_bytes()` 逐字节比对后为 clean，六发变异随后都跑在干净基线上）。教训是校验手段出错时先怀疑校验，别拿它当证据；本轮因此重跑了一次全序列。
 - 局限（如实登记）：未跑真实浏览器（`scripts/e2e-visual.mjs`/`check-contrast.mjs` 都不开博客设置模态），控件消失与保存路径只由 jsdom 断言把守；老用户浏览器里残留的 `inkstone_blog_retention_settings` 不做清理迁移——纯客户端缓存、读端已全删即无害（与 SH-39 同口径）；同模态里那 2 处无名 `Segmented` 仍挂 H8/SH-46，`/api/blog/visits` 的服务端护栏仍挂 H9/SH-47（铁律14 不夹带）。
-- 验证：tsc -b 绿；13 项静态门禁全绿（含 `i18n:check`——两语言同步删键、键数仍对齐）；vitest 定向 blog + share retention 5 文件/22 测试绿。全量回归 待回填。fix 提交 待回填。
+- 验证：tsc -b 绿；13 项静态门禁全绿（含 `i18n:check`——两语言同步删键、键数仍对齐）；vitest 定向 blog + share retention 5 文件/22 测试绿（pre-commit 钩子另跑相关 117 文件/776 测试绿）。全量回归 246 文件/1912 测试绿（REGRESSION_EXIT=0，串行 364.94s；较 SH-43 轮次 246/1910 多 2 例，即 SH-45 在 `blog-settings-retention.test.ts` 补的那两例）。fix 提交 28b175b6。
