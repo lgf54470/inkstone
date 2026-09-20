@@ -2,10 +2,14 @@
 //
 // Written after a 115-commit branch was merged into `dev` and two of the collisions were only
 // visible by reading them. The runner config listed test files that exist on one side only, so
-// resolving that conflict the easy way (take one side) would have silently stopped three suites
-// from running at all. And app.ts had moved its security-header code into a module on one side
-// while the other edited it in place, so git produced code that did not compile while reporting
-// no conflict for either file. Reading the conflict list by eye found neither.
+// resolving that conflict the easy way (take one side) moves them between projects. Measured on
+// that tree afterwards: a file dropped from the node include and left to jsdom either passes
+// there anyway (offline-audio-sw) or fails with errors that read like product bugs — `The upload
+// form is invalid`, expected 400 to be 201 — as music-playlist-share does; and a file missing
+// from both lists is run by nothing at all. And app.ts had moved its security-header code into a
+// module on one side while the other edited it in place, so git produced code that did not
+// compile while reporting no conflict for either file. Reading the conflict list by eye found
+// neither.
 //
 // It changes nothing: `git merge-tree --write-tree` computes the merge in memory and writes only
 // tree objects (no ref, no index, no working tree); everything else is `rev-list`, `diff`,
