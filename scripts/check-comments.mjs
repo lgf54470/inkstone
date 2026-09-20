@@ -4638,6 +4638,9 @@ const allowed = new Map([
     '// Blog settings fallback used across the worker default, the demo seed, and',
     '// every client consumer that renders links before the user configures a URL.',
     '/**\n * Session lifetime design (sliding window):\n * - `SESSION_TTL_MS` (90d): absolute cap. A session row/cookie never outlives 90 days,\n *   bounding the window in which a stolen session token stays usable.\n * - `SESSION_RENEW_BEFORE_MS` (45d = TTL/2): renewal threshold. On an authenticated\n *   request, if less than this much TTL remains, the session is extended back to the\n *   full 90 days (see middleware/auth.ts and lib/session-store.ts).\n *\n * Trade-offs: renewal only happens for requests that already presented a valid\n * session, so an abandoned session dies within at most 90 days (no idle-forever\n * sessions, maintenance sweeps the rows), while an active user never gets logged out\n * as long as they authenticate at least once per 45 days. The half-life threshold\n * also bounds write amplification: each session triggers at most one DB renewal\n * write per 45 days of activity. The 45-day window is generous enough to survive\n * the app\'s offline period (offline edits are queued locally and flushed on\n * reconnect, which needs a still-valid session) yet short enough that a freshly\n * stolen cookie\'s remaining lifetime stays bounded.\n */',
+    '// Anonymous readers of a published library are metered by client IP, per surface:',
+    '// the listing is one query per open, while a player issues a stream request per',
+    '// range it needs, so playback gets the wider allowance.',
     '// One batch request may carry at most this many ids; the client splits a bigger',
     '// selection into several requests instead of sending one the server must reject.',
     '// How many ids a single D1 statement may carry: the platform binds at most 100 parameters,',
@@ -5141,6 +5144,10 @@ const allowed = new Map([
   ['src/worker/routes/music/budget.ts', [
     '// Each family that can trigger outbound requests or storage work gets one',
     '// named hourly key, so no music route can be looped into unbounded load.',
+    '// A published library has no account to charge, so the public surfaces are metered by client IP',
+    '// instead. Each family keeps its own key: loading a page of album art must not spend the same',
+    '// allowance that streaming a track draws on. The cap is deliberately per visitor rather than',
+    '// per owner — one scraper must not be able to exhaust a budget every listener shares.',
   ]],
   ['src/worker/routes/music/cover.ts', [
     '// Shared by the authenticated library and the public blog player.',
@@ -5430,6 +5437,15 @@ const allowed = new Map([
     '// The SPA asset fallback would otherwise swallow /playlist/:slug before the',
     '// worker ever renders its shell (title and noindex), so both deployments must',
     '// keep the path worker-first.',
+  ]],
+  ['tests/music-public-routes.test.ts', [
+    '// The Worker trusts CF-Connecting-IP only when the edge stamped the request, which it marks',
+    '// with a `cf` property; the harness supplies both so a test can play two different visitors.',
+    '// A published library is anonymous read traffic, so the only identity left to meter is the',
+    '// client IP. Without this, one caller could drive every listing query and every range request',
+    '// of the deployment as fast as it could open sockets.',
+    '// The next visitor is not charged for the first one\'s traffic.',
+    '// Spending the playback allowance leaves the artwork allowance intact.',
   ]],
   ['tests/music-routes.test.ts', [
     '// Rows straight into the table, no upload round trip: these tests are about the size of the',

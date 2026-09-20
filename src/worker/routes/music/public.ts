@@ -1,6 +1,8 @@
 import type { Context, Hono } from 'hono'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
+import { requestClientIp } from '../../lib/request'
+import { enforceMusicPublicBudget } from './budget'
 import { coverResponse } from './cover'
 import { pathParam } from './params'
 import { TRACK_COLUMNS } from './rows'
@@ -26,6 +28,7 @@ interface TrackTagRow {
 // Read-only projection of the owner's library for the blog player: no keys, sizes or flags.
 export function registerMusicPublicRoutes(routes: Hono<AppBindings>): void {
   routes.get('/library', async (c) => {
+    await enforceMusicPublicBudget(c.env.DB, 'library', requestClientIp(c))
     const scope = await loadMusicPublicScope(c.env.DB)
     if (!scope) return c.json({ enabled: false, tracks: [], tags: [], queue: { ids: [], currentId: null } })
     const [tracks, tags, links, playback] = await Promise.all([
@@ -54,11 +57,13 @@ export function registerMusicPublicRoutes(routes: Hono<AppBindings>): void {
   })
 
   routes.get('/tracks/:id/stream', async (c) => {
+    await enforceMusicPublicBudget(c.env.DB, 'stream', requestClientIp(c))
     const target = await loadPublicTrack(c, pathParam(c, 'id'))
     return streamTrackResponse(c, target.row, target.owner, { download: false, cacheControl: 'public, max-age=600' })
   })
 
   routes.get('/tracks/:id/cover', async (c) => {
+    await enforceMusicPublicBudget(c.env.DB, 'cover', requestClientIp(c))
     const target = await loadPublicTrack(c, pathParam(c, 'id'))
     return coverResponse(c.env, target.row, 'public, max-age=86400')
   })
@@ -70,6 +75,7 @@ export function registerMusicPublicRoutes(routes: Hono<AppBindings>): void {
 // playlist's share_slug alone, never the library-wide public toggle.
 function registerSharedPlaylistRoutes(routes: Hono<AppBindings>): void {
   routes.get('/playlists/:slug', async (c) => {
+    await enforceMusicPublicBudget(c.env.DB, 'library', requestClientIp(c))
     const slug = pathParam(c, 'slug')
     const playlist = await c.env.DB
       .prepare('SELECT id, name, description FROM music_playlists WHERE share_slug = ?1')
@@ -88,11 +94,13 @@ function registerSharedPlaylistRoutes(routes: Hono<AppBindings>): void {
   })
 
   routes.get('/playlists/:slug/tracks/:id/stream', async (c) => {
+    await enforceMusicPublicBudget(c.env.DB, 'stream', requestClientIp(c))
     const target = await loadSharedPlaylistTrack(c, pathParam(c, 'slug'), pathParam(c, 'id'))
     return streamTrackResponse(c, target.row, target.owner, { download: false, cacheControl: 'public, max-age=600' })
   })
 
   routes.get('/playlists/:slug/tracks/:id/cover', async (c) => {
+    await enforceMusicPublicBudget(c.env.DB, 'cover', requestClientIp(c))
     const target = await loadSharedPlaylistTrack(c, pathParam(c, 'slug'), pathParam(c, 'id'))
     return coverResponse(c.env, target.row, 'public, max-age=86400')
   })

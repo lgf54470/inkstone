@@ -84,6 +84,12 @@ export const LIMITS = {
   musicLibraryWritesPerHour: 1000,
   musicCoverLookupsPerHour: 60,
   musicLyricLookupsPerHour: 60,
+  // Anonymous readers of a published library are metered by client IP, per surface:
+  // the listing is one query per open, while a player issues a stream request per
+  // range it needs, so playback gets the wider allowance.
+  musicPublicLibraryPerHour: 120,
+  musicPublicStreamsPerHour: 600,
+  musicPublicCoversPerHour: 600,
   musicTitleMaxLength: 200,
   musicArtistMaxLength: 200,
   musicAlbumMaxLength: 200,

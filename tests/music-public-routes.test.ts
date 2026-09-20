@@ -7,6 +7,8 @@ import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { getMeta } from '../src/worker/db/metadata'
+import { LIMITS } from '../src/shared/constants'
+import { enforceMusicPublicBudget, MUSIC_PUBLIC_BUDGETS } from '../src/worker/routes/music/budget'
 import { blogPublicRoutes } from '../src/worker/routes/blog'
 import { musicRoutes } from '../src/worker/routes/music'
 import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
@@ -83,6 +85,17 @@ function makeApp(userId = USER, row = USER_ROW): Hono<AppBindings> {
 
 function request(app: Hono<AppBindings>, path: string, init?: RequestInit): Promise<Response> {
   return app.request(path, init, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
+}
+
+// The Worker trusts CF-Connecting-IP only when the edge stamped the request, which it marks
+// with a `cf` property; the harness supplies both so a test can play two different visitors.
+function requestAs(app: Hono<AppBindings>, path: string, ip: string, init?: RequestInit): Promise<Response> {
+  const incoming = new Request(`http://localhost${path}`, {
+    ...init,
+    headers: { ...(init?.headers as Record<string, string> | undefined), 'CF-Connecting-IP': ip },
+  })
+  Object.defineProperty(incoming, 'cf', { value: {} })
+  return app.request(incoming, undefined, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
 }
 
 async function uploadTrack(app: Hono<AppBindings>, name = 'song.mp3'): Promise<Record<string, string>> {
@@ -200,6 +213,43 @@ describe('public music routes (real D1 + fake R2)', () => {
     expect(hidden.enabled).toBe(false)
     expect(hidden.tracks).toEqual([])
     expect((await request(app, `/api/blog/public/music/tracks/${track.id}/stream`)).status).toBe(404)
+  })
+
+  // A published library is anonymous read traffic, so the only identity left to meter is the
+  // client IP. Without this, one caller could drive every listing query and every range request
+  // of the deployment as fast as it could open sockets.
+  it('meters the public library by visitor IP', async () => {
+    await makeDb()
+    const app = makeApp()
+    await uploadTrack(app)
+    await publish(app, true)
+    const visitor = '198.51.100.7'
+
+    for (let i = 0; i < LIMITS.musicPublicLibraryPerHour; i += 1) {
+      expect((await requestAs(app, '/api/blog/public/music/library', visitor)).status).toBe(200)
+    }
+    const blocked = await requestAs(app, '/api/blog/public/music/library', visitor)
+    expect(blocked.status).toBe(429)
+    expect(await blocked.json()).toMatchObject({ error: { code: 'too_many_attempts' } })
+
+    // The next visitor is not charged for the first one's traffic.
+    expect((await requestAs(app, '/api/blog/public/music/library', '203.0.113.9')).status).toBe(200)
+  })
+
+  it('meters each public surface on its own budget', async () => {
+    await makeDb()
+    const app = makeApp()
+    const track = await uploadTrack(app)
+    await publish(app, true)
+    const visitor = '198.51.100.7'
+    const db = DB_ENV.env.DB
+
+    for (let i = 0; i < MUSIC_PUBLIC_BUDGETS.stream.maxAttempts; i += 1) {
+      await enforceMusicPublicBudget(db, 'stream', visitor)
+    }
+    expect((await requestAs(app, `/api/blog/public/music/tracks/${track.id}/stream`, visitor)).status).toBe(429)
+    // Spending the playback allowance leaves the artwork allowance intact.
+    expect((await requestAs(app, `/api/blog/public/music/tracks/${track.id}/cover`, visitor)).status).toBe(200)
   })
 
   it('restricts the global publish switch to the owner account', async () => {
