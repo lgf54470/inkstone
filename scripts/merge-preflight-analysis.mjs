@@ -241,6 +241,14 @@ export function crossingGroups(entries, namesShown = 3) {
   return [...groups.values()].map((group) => ({ ...group, names: group.names.sort() }))
 }
 
+// The shape finding is phrased from the side that is reading the declaration, like the crossings:
+// the reader is the one whose new code was written against the signature that no longer exists.
+export function describeShape(entry) {
+  const here = entry.side === 'ours' ? 'this side' : 'the other side'
+  const there = entry.side === 'ours' ? 'the other side' : 'this side'
+  return `${entry.file}: ${here} reads ${entry.name}, which ${there} reshaped in ${entry.shaperFile} (${entry.base} → ${entry.changed}); a compile refuses this only if a type broke`
+}
+
 export function describeCrossing(group) {
   const here = group.side === 'ours' ? 'this side' : 'the other side'
   const there = group.side === 'ours' ? 'the other side' : 'this side'
@@ -452,8 +460,13 @@ export function relocationCrossings({ droppedBy, imports, changedByOther, readMo
 // stale imports of them) pulls 179 files / 1447 tests / 67s, because those files are the ones half
 // the tree imports. That is the price of judging a refactor's merge, and it is paid only when a
 // crossing exists — with INKSTONE_SKIP_MERGE_VERIFY=1 named in the output as the way out.
-export function mergeVerificationPlan({ stagedTs, crossings }) {
-  const rearranged = crossings.flatMap((entry) => [entry.file, entry.into]).filter(Boolean)
+export function mergeVerificationPlan({ stagedTs, crossings, shapes = [] }) {
+  const rearranged = [
+    ...crossings.flatMap((entry) => [entry.file, entry.into]),
+    // A reshaped signature has no wrong type to point at, so its files can only be read by the tests
+    // around them: the same smoke group, for a finding the compile step passes.
+    ...shapes.flatMap((entry) => [entry.file, entry.shaperFile]),
+  ].filter(Boolean)
   return {
     typecheck: stagedTs.length > 0,
     smokeFiles: [...new Set(rearranged)].sort(),

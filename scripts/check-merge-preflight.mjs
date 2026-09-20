@@ -58,38 +58,20 @@ import {
   SKIP_VERIFY_ENV,
   START_MARKER_RE,
   TEST_FILE_RE,
-  addedDeclarations,
   classifyChanges,
-  declaredNames,
   deletionHazards,
   crossingGroups,
   describeCrossing,
-  environmentIssues,
-  matchesPattern,
+  describeShape,
   mergeVerificationPlan,
-  moduleAliases,
-  moveCrossings,
   nodeInclude,
   parseMergeTreeOutput,
   parseRunnerProjects,
-  relocationCrossings,
-  resolvedImports,
   runnerIssues,
-  selects,
   singleSideFiles,
-  unselectedTests,
 } from './merge-preflight-analysis.mjs'
-import {
-  TS_CONFIG_PATH,
-  configOf,
-  git,
-  gitOrEmpty,
-  lines,
-  readBlobs,
-  readConfig,
-  testsInTree,
-  treeFile,
-} from './merge-git.mjs'
+import { crossingFacts } from './merge-crossings.mjs'
+import { configOf, git, gitOrEmpty, lines, testsInTree, treeFile } from './merge-git.mjs'
 
 export function inspect({ mine, other }) {
   const base = git(['merge-base', mine, other])
@@ -102,12 +84,18 @@ export function inspect({ mine, other }) {
   const theirsChanges = classifyChanges(gitOrEmpty(['diff', '--name-status', '-M', base, other]))
   const theirsTests = testsInTree(other)
   const { onlyMine, onlyTheirs } = singleSideFiles(testsInTree(mine), theirsTests)
+  // The same crossing judgment the hook runs on a resolution, asked before the merge is attempted:
+  // read from the two revisions, so it needs neither a working tree nor an index.
+  const { shared, crossings, shapes } = crossingFacts({ ours: mine, theirs: other })
   return {
     mine,
     other,
     base,
     ahead,
     behind,
+    shared,
+    crossings,
+    shapes,
     merge,
     mineChanges,
     theirsChanges,
@@ -155,6 +143,14 @@ function namedInRunner(facts) {
   return [...facts.onlyMine, ...facts.onlyTheirs].filter((file) => named.includes(file)).sort()
 }
 
+// A shape finding is the one kind the compile step cannot confirm, so it is reported apart from the
+// crossings and says so: what a reader has to do about it is read, not fix a type.
+function printShapes(shapes) {
+  if (!shapes.length) return
+  console.log(`[shapes] ${shapes.length} signature change(s) under code that reads them: a declaration one side reshaped while the other side left it alone`)
+  for (const entry of shapes) console.log(`  - ${describeShape(entry)}`)
+}
+
 function printList(heading, entries, limit = Infinity) {
   if (!entries.length) return
   console.log(`${heading} (${entries.length}):`)
@@ -181,6 +177,10 @@ function main() {
   if (!facts.merge.conflicts.length) console.log('[conflicts] none')
   printList('[deletions] delete/add collision', deletions)
   if (!deletions.length) console.log('[deletions] none')
+  const groups = crossingGroups(facts.crossings)
+  console.log(`[crossings] ${facts.crossings.length} crossing(s) in ${groups.length} group(s) between a declaration and the files that read it; the hook puts their files into the smoke group`)
+  for (const group of groups) console.log(`  - ${describeCrossing(group)}`)
+  printShapes(facts.shapes)
   console.log(`[tests] one side only: ${facts.onlyMine.length} here, ${facts.onlyTheirs.length} there; a runner config names ${namedTests.length} of them`)
   if (withReport) printList('[tests] named in one side\'s config', namedTests)
   for (const note of runner.notes) console.log(`[runner] ${note}`)
@@ -308,100 +308,21 @@ export function inspectInProgress(root = process.cwd()) {
   const merged = mergedHead()
   if (!merged) return null
   const other = merged.revision
-  const base = git(['merge-base', 'HEAD', other])
+  const { base, shared, crossings, shapes, addedBy } = crossingFacts({ ours: 'HEAD', theirs: other, root })
   const snapshot = readRunnerSnapshot(root)
   const nodeOwned = [...new Set([
     ...nodeInclude(parseRunnerProjects(configOf('HEAD'))),
     ...nodeInclude(parseRunnerProjects(configOf(other))),
   ])].filter((file) => snapshot.tests.includes(file)).sort()
   const markers = lines(gitOrEmpty(['grep', '--cached', '-l', '-e', START_MARKER_RE], [1]))
-  const addedBy = (side) => lines(gitOrEmpty(['diff', '--name-only', '--diff-filter=A', base, side]))
   const lostAdditions = ['HEAD', other]
     .flatMap((side) => addedBy(side))
     .filter((file) => !fs.existsSync(path.join(root, file)))
     .sort()
-  const changedBy = (side) => new Set(lines(gitOrEmpty(['diff', '--name-only', base, side])))
-  const theirsChanged = changedBy(other)
-  const shared = lines(gitOrEmpty(['diff', '--name-only', base, 'HEAD']))
-    .filter((file) => theirsChanged.has(file))
-    .sort()
-  const revisions = { base, ours: 'HEAD', theirs: other }
-  const touchedBy = (side) => [...changedBy(side), ...addedBy(side)]
-  const touched = { ours: new Set(touchedBy('HEAD')), theirs: new Set(touchedBy(other)) }
-  // Which paths each side actually has. A specifier resolves to candidates in the order TypeScript
-  // would try them, and most of them do not exist: without this list every candidate costs a `git
-  // show` that fails, which measured at twenty-five seconds on one real merge instead of two.
-  const present = {
-    base: new Set(lines(gitOrEmpty(['ls-tree', '-r', '--name-only', base]))),
-    ours: new Set(lines(gitOrEmpty(['ls-tree', '-r', '--name-only', 'HEAD']))),
-    theirs: new Set(lines(gitOrEmpty(['ls-tree', '-r', '--name-only', other]))),
-  }
-  // A path one side deleted or renamed away is not in that side's revision, and `git show` fails
-  // with 128 rather than saying so: an absent file has no declarations and no imports, which is the
-  // answer every caller wants. Measured on the real merge this was written for, whose sides deleted
-  // paths that the other side still had. What the detectors ask for most — both sides' touched files
-  // and both versions of every file they changed — is read in three batches up front, so a spawn is
-  // paid only for what the batches did not cover.
-  const texts = new Map()
-  const key = (side, file) => `${side}\u0000${file}`
-  const remember = (side, blobs) => {
-    for (const [file, text] of blobs) texts.set(key(side, file), text)
-  }
-  remember('ours', readBlobs('HEAD', touchedBy('HEAD')))
-  remember('theirs', readBlobs(other, touchedBy(other)))
-  remember('base', readBlobs(base, [...new Set([...changedBy('HEAD'), ...changedBy(other)])]))
-  const readText = (side, file) => {
-    if (!texts.has(key(side, file))) {
-      const absent = present[side].has(file) ? null : ''
-      texts.set(key(side, file), absent ?? gitOrEmpty(['show', `${revisions[side]}:${file}`], [128]))
-    }
-    return texts.get(key(side, file))
-  }
   // A merge is only as safe as its result, so the plan is built from the index git is about to
   // commit rather than from either side: `--cached` against HEAD is what the merge brings in.
   const stagedTs = lines(gitOrEmpty(['diff', '--cached', '--name-only', '--diff-filter=ACM', '--', '*.ts', '*.tsx']))
-  const movedInto = {
-    ours: addedDeclarations({ files: addedBy('HEAD'), readText: (file) => readText('ours', file) }),
-    theirs: addedDeclarations({ files: addedBy(other), readText: (file) => readText('theirs', file) }),
-  }
-  const aliases = moduleAliases(TS_CONFIG_PATH.map((file) => readConfig(root, file)))
-  // What the merge would leave a module as. A file only one side touched is that side's version; a
-  // file both touched is decided by the resolution, which the conflict list already points at, so
-  // the barrel walk stops there rather than guessing. Cached because the walk revisits barrels.
-  const mergedModules = new Map()
-  const readMerged = (file) => {
-    if (mergedModules.has(file)) return mergedModules.get(file)
-    const ours = touched.ours.has(file)
-    const theirs = touched.theirs.has(file)
-    const side = ours === theirs ? (ours ? null : 'base') : (ours ? 'ours' : 'theirs')
-    const text = side && present[side].has(file) ? readText(side, file) || null : null
-    mergedModules.set(file, text)
-    return text
-  }
-  // Both directions: either side can be the one holding an import of a name the other moved away.
-  const relocations = [
-    ...relocationCrossings({
-      droppedBy: 'theirs',
-      readText,
-      aliases,
-      readModule: readMerged,
-      changedByOther: touched.theirs,
-      imports: resolvedImports({ files: touchedBy('HEAD'), readText: (file) => readText('ours', file), aliases }),
-      movedInto: movedInto.theirs,
-    }),
-    ...relocationCrossings({
-      droppedBy: 'ours',
-      readText,
-      aliases,
-      readModule: readMerged,
-      changedByOther: touched.ours,
-      imports: resolvedImports({ files: touchedBy(other), readText: (file) => readText('theirs', file), aliases }),
-      movedInto: movedInto.ours,
-    }),
-  ]
-  const crossings = [...moveCrossings({ shared, readText, movedInto }), ...relocations]
-    .sort((a, b) => a.file.localeCompare(b.file) || a.name.localeCompare(b.name))
-  return { other, base, snapshot, nodeOwned, markers, lostAdditions, shared, crossings, stagedTs, mergedFrom: merged.from }
+  return { other, base, snapshot, nodeOwned, markers, lostAdditions, shared, crossings, shapes, stagedTs, mergedFrom: merged.from }
 }
 
 // How much of a failing command's output to show: the tail is where tsc and vitest put the
@@ -426,8 +347,9 @@ function mainInProgress({ verify = false, root = process.cwd() } = {}) {
   const groups = crossingGroups(facts.crossings)
   console.log(`[crossings] both sides changed ${facts.shared.length} file(s); ${facts.crossings.length} crossing(s) in ${groups.length} group(s) between a declaration and the files that read it`)
   for (const group of groups) console.log(`  - ${describeCrossing(group)}`)
+  printShapes(facts.shapes)
 
-  const plan = mergeVerificationPlan({ stagedTs: facts.stagedTs, crossings: facts.crossings })
+  const plan = mergeVerificationPlan({ stagedTs: facts.stagedTs, crossings: facts.crossings, shapes: facts.shapes })
   const owed = mergeVerificationSteps({ plan, root })
   console.log(owed.length
     ? `[verify] owed by this merge: ${owed.map((step) => step.label).join('; ')}`

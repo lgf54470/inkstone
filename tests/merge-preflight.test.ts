@@ -19,6 +19,7 @@ import {
   declaredNames,
   deletionHazards,
   describeCrossing,
+  describeShape,
   droppedNamesIn,
   environmentIssues,
   importBindings,
@@ -37,6 +38,7 @@ import {
   singleSideFiles,
   unselectedTests,
 } from '../scripts/merge-preflight-analysis.mjs'
+import { declarationShapes, reshapedNames, shapeCrossings } from '../scripts/merge-shapes.mjs'
 
 // The two commands below are what the script reads: merge-tree's conflicted-path list, and a
 // `--name-status` diff. Both are shapes the real commands produce, kept as text here so the
@@ -851,5 +853,136 @@ describe('running the script as a program', () => {
     fs.symlinkSync(path.resolve('scripts/check-merge-preflight.mjs'), link)
     const output = execFileSync(process.execPath, [link, '--in-progress'], { encoding: 'utf8' })
     expect(output).toMatch(/no merge is being recorded|merge in progress/)
+  })
+})
+
+// The class of merge that compiles and means something else: one side re-shaped a declaration, the
+// other side's new code reads it, and every type still lines up. The positioning is the compiler's
+// (the declaration node and the text of its signature), so these fixtures are real TypeScript.
+describe('reading a declaration down to its signature', () => {
+  const SOURCE = [
+    'export function formatTotal(bytes: number, unit = 1024): string {',
+    '  return String(Math.round(bytes / unit))',
+    '}',
+    '',
+    "export const label = (bytes: number): string => formatTotal(bytes) + 'B'",
+    '',
+    'export interface Size { bytes: number }',
+    '',
+    "export type Unit = 'kb' | 'mb'",
+    '',
+    'export class Formatter {',
+    '  render(bytes: number): string {',
+    '    return String(bytes)',
+    '  }',
+    '}',
+    '',
+  ].join('\n')
+
+  it('keeps the parameters, the defaults and the return type, and drops the body', () => {
+    const shapes = declarationShapes(SOURCE, 'src/shared/format.ts')
+    expect(shapes.get('formatTotal')).toBe('export function formatTotal(bytes: number, unit = 1024): string')
+    expect(shapes.get('label')).toBe('label = (bytes: number): string =>')
+    expect(shapes.get('Formatter.render')).toBe('render(bytes: number): string')
+  })
+
+  it('has nothing to say about types, which the compile step already owns', () => {
+    const shapes = declarationShapes(SOURCE, 'src/shared/format.ts')
+    expect(shapes.has('Size')).toBe(false)
+    expect(shapes.has('Unit')).toBe(false)
+  })
+
+  it('ignores the body, so rewriting one is not a signature change', () => {
+    const rewritten = SOURCE.replace('return String(Math.round(bytes / unit))', 'return String(bytes / unit)')
+    expect(declarationShapes(rewritten, 'src/shared/format.ts').get('formatTotal'))
+      .toBe(declarationShapes(SOURCE, 'src/shared/format.ts').get('formatTotal'))
+  })
+
+  it('reads a signature spread over lines as the one line it means', () => {
+    const spread = 'export function formatTotal(\n  bytes: number,\n  unit = 1024,\n): string {\n  return String(bytes)\n}\n'
+    expect(declarationShapes(spread, 'src/shared/format.ts').get('formatTotal'))
+      .toBe('export function formatTotal( bytes: number, unit = 1024, ): string')
+  })
+
+  it('keeps a default that is spaces, which normalizing line breaks must not eat', () => {
+    const text = "export function pad(s: string, fill = '  '): string {\n  return s + fill\n}\n"
+    expect(declarationShapes(text, 'src/shared/pad.ts').get('pad'))
+      .toBe("export function pad(s: string, fill = '  '): string")
+  })
+})
+
+describe('a signature change under code that reads it', () => {
+  const BASE = 'export function formatTotal(bytes: number, unit = 1024): string {\n  return String(bytes)\n}\n'
+  const OURS = BASE.replace('unit = 1024', 'unit = 1000')
+  const RESHAPED_BY_BOTH = BASE.replace('unit = 1024', 'unit = 512')
+  const versions = (ours: string, theirs: string) => {
+    const files: Record<string, string> = {
+      'ours:src/shared/format.ts': ours,
+      'theirs:src/shared/format.ts': theirs,
+      'base:src/shared/format.ts': BASE,
+    }
+    return (side: string, file: string) => files[`${side}:${file}`] ?? ''
+  }
+  const interest = new Set(['formatTotal'])
+  const reshaped = (options: { ours?: string; theirs?: string; names?: Set<string>; file?: string } = {}) => reshapedNames({
+    files: [options.file ?? 'src/shared/format.ts'],
+    shaper: 'ours',
+    other: 'theirs',
+    readText: versions(options.ours ?? OURS, options.theirs ?? BASE),
+    declaredNames,
+    namesOfInterest: options.names ?? interest,
+  })
+
+  it('names the declaration the compiler found reshaped, with both signatures', () => {
+    expect(reshaped()).toEqual([{
+      shaper: 'ours',
+      file: 'src/shared/format.ts',
+      name: 'formatTotal',
+      base: 'export function formatTotal(bytes: number, unit = 1024): string',
+      changed: 'export function formatTotal(bytes: number, unit = 1000): string',
+    }])
+  })
+
+  it('stays quiet when only the body changed', () => {
+    expect(reshaped({ ours: BASE.replace('return String(bytes)', 'return String(bytes).trim()') })).toEqual([])
+  })
+
+  it('stays quiet when the declaration is new on this side, so nothing was written against the old one', () => {
+    expect(reshaped({ ours: `${OURS}export function added(bytes: number): string {\n  return String(bytes)\n}\n`, names: new Set(['added']) })).toEqual([])
+  })
+
+  it('stays quiet when both sides reshaped it, where the conflict list points', () => {
+    expect(reshaped({ theirs: RESHAPED_BY_BOTH })).toEqual([])
+  })
+
+  it('stays quiet when the other side removed it, which will not compile', () => {
+    expect(reshaped({ theirs: '' })).toEqual([])
+  })
+
+  it('does not pay to parse a file whose declarations nobody reads', () => {
+    expect(reshaped({ names: new Set(['somethingElse']) })).toEqual([])
+  })
+
+  it('pairs the reshaped declaration with the file that reads it', () => {
+    const entries = shapeCrossings({
+      reshaped: reshaped(),
+      reads: [{ file: 'src/consumer-format.ts', name: 'formatTotal', side: 'theirs' }],
+    })
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({
+      kind: 'reshaped',
+      side: 'theirs',
+      file: 'src/consumer-format.ts',
+      name: 'formatTotal',
+      shaper: 'ours',
+      shaperFile: 'src/shared/format.ts',
+    })
+    expect(describeShape(entries[0]!)).toBe(
+      'src/consumer-format.ts: the other side reads formatTotal, which this side reshaped in src/shared/format.ts'
+      + ' (export function formatTotal(bytes: number, unit = 1024): string → export function formatTotal(bytes: number, unit = 1000): string)'
+      + '; a compile refuses this only if a type broke',
+    )
+    expect(mergeVerificationPlan({ stagedTs: ['src/consumer-format.ts'], crossings: [], shapes: entries }).smokeFiles)
+      .toEqual(['src/consumer-format.ts', 'src/shared/format.ts'])
   })
 })
