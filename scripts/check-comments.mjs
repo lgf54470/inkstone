@@ -5951,8 +5951,13 @@ const allowed = new Map([
     '// the way prepare().all()/.first() used to for serial reads.',
   ]],
   ['src/worker/routes/share/visits.ts', [
+    '// Unparseable page/limit values must fall back to a default rather than reach the',
+    '// binding: `parseInt(\'abc\')` is NaN and `Math.max(1, NaN)` stays NaN, which SQLite',
+    '// rejects as a datatype mismatch (a 500 for a malformed query). The ceiling on',
+    '// `page` is what keeps a caller from asking for an unbounded OFFSET.',
     '// Wiping the whole audit trail is unrecoverable, so a stolen session must',
     '// re-prove it holds the account password before the delete runs.',
+    '/**\n * `older_than` must be given an explicit positive day count: silently falling back\n * to a default would delete a window the caller never asked for, so an unparseable\n * or non-positive value is a 400. The other cleanup types never read it.\n */',
   ]],
   ['src/worker/routes/sync.ts', [
     '// A non-empty `after` key always means the caller is mid-way through a',

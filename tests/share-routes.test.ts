@@ -490,6 +490,36 @@ describe('share visits route (real D1)', () => {
     expect(bots.visits[0].isBot).toBe(true)
   })
 
+  it('falls back to page/limit defaults for unparseable numbers instead of binding NaN', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Paged' })
+    await seedShare(db, { note_id: n1, slug: 'p-1' })
+    const base = Date.now()
+    for (let i = 0; i < 3; i++) {
+      await seedVisit(db, { note_id: n1, slug: 'p-1', visitor_fp: `fp-${i}`, visited_at: base + i })
+    }
+    const app = makeApp()
+
+    const garbage = await request(app, '/api/share/visits?page=abc&limit=abc')
+    expect(garbage.status).toBe(200)
+    const body = await garbage.json()
+    expect(body.page).toBe(1)
+    expect(body.limit).toBe(50)
+    expect(body.visits.length).toBe(3)
+
+    const negative = await (await request(app, '/api/share/visits?page=-3&limit=1')).json()
+    expect(negative.page).toBe(1)
+    expect(negative.limit).toBe(10)
+
+    const wild = await request(app, '/api/share/visits?page=999999999999&limit=99999')
+    expect(wild.status).toBe(200)
+    const clamped = await wild.json()
+    expect(clamped.limit).toBe(100)
+    expect(Number.isInteger(clamped.page)).toBe(true)
+    expect(clamped.page).toBeGreaterThanOrEqual(1)
+    expect(clamped.visits.length).toBe(0)
+  })
+
   it('rejects older_than cleanup with a non-positive or unparseable days instead of wiping logs', async () => {
     const db = await makeDb()
     const n1 = await seedNote(db, {})

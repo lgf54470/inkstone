@@ -3,7 +3,7 @@ import { ShareVisitLog } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { escapeLike } from '../../lib/like'
-import { JSON_BODY_LIMITS, readOptionalJsonValidated } from '../../lib/request'
+import { JSON_BODY_LIMITS, clampInt, readOptionalJsonValidated } from '../../lib/request'
 import { requireCurrentPassword } from '../../lib/reauth'
 import { parseBotName } from '../../lib/share-analytics'
 import { shareVisitWipeSchema } from './schemas'
@@ -29,6 +29,18 @@ interface VisitLogRow {
   note_title: string | null
 }
 
+// Unparseable page/limit values must fall back to a default rather than reach the
+// binding: `parseInt('abc')` is NaN and `Math.max(1, NaN)` stays NaN, which SQLite
+// rejects as a datatype mismatch (a 500 for a malformed query). The ceiling on
+// `page` is what keeps a caller from asking for an unbounded OFFSET.
+const VISITS_PAGE_DEFAULT = 1
+const VISITS_PAGE_MAX = 1_000_000
+const VISITS_LIMIT_MIN = 10
+const VISITS_LIMIT_MAX = 100
+const VISITS_LIMIT_DEFAULT = 50
+const CLEANUP_DAYS_DEFAULT = 30
+const CLEANUP_DAYS_PATTERN = /^\d+$/
+
 export function registerShareVisitsRoutes(shareManageRoutes: Hono<AppBindings>): void {
   registerShareVisitsListRoute(shareManageRoutes)
   registerShareVisitsClearRoute(shareManageRoutes)
@@ -37,8 +49,8 @@ export function registerShareVisitsRoutes(shareManageRoutes: Hono<AppBindings>):
 function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): void {
   shareManageRoutes.get('/visits', async (c) => {
     const userId = c.get('userId')
-    const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
-    const limit = Math.min(100, Math.max(10, parseInt(c.req.query('limit') || '50', 10)))
+    const page = clampInt(c.req.query('page'), VISITS_PAGE_DEFAULT, VISITS_PAGE_MAX, VISITS_PAGE_DEFAULT)
+    const limit = clampInt(c.req.query('limit'), VISITS_LIMIT_MIN, VISITS_LIMIT_MAX, VISITS_LIMIT_DEFAULT)
     const offset = (page - 1) * limit
     const { conditions, binds, bindIdx } = visitLogFilter({
       noteId: c.req.query('noteId'),
@@ -83,10 +95,7 @@ function registerShareVisitsClearRoute(shareManageRoutes: Hono<AppBindings>): vo
   shareManageRoutes.delete('/visits', async (c) => {
     const userId = c.get('userId')
     const type = c.req.query('type') || 'all'
-    const days = parseInt(c.req.query('days') || '30', 10)
-    if (type === 'older_than' && !(days >= 1)) {
-      throw ApiError.badRequest('Cleaning logs older than N days requires a positive integer for days')
-    }
+    const days = cleanupDays(c.req.query('days'), type)
     if (type === 'all') {
       // Wiping the whole audit trail is unrecoverable, so a stolen session must
       // re-prove it holds the account password before the delete runs.
@@ -96,6 +105,21 @@ function registerShareVisitsClearRoute(shareManageRoutes: Hono<AppBindings>): vo
     const res = await deleteVisitLogs(c.env.DB, userId, type, days)
     return c.json({ ok: true as const, deleted: res.meta.changes ?? 0 })
   })
+}
+
+/**
+ * `older_than` must be given an explicit positive day count: silently falling back
+ * to a default would delete a window the caller never asked for, so an unparseable
+ * or non-positive value is a 400. The other cleanup types never read it.
+ */
+function cleanupDays(raw: string | undefined, type: string): number {
+  if (type !== 'older_than') return CLEANUP_DAYS_DEFAULT
+  const value = (raw ?? '').trim()
+  const days = Number(value)
+  if (!CLEANUP_DAYS_PATTERN.test(value) || !Number.isSafeInteger(days) || days < 1) {
+    throw ApiError.badRequest('Cleaning logs older than N days requires a positive integer for days')
+  }
+  return days
 }
 
 const VISIT_FILTER_CONDITIONS: Record<string, string> = {
