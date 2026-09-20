@@ -27,6 +27,18 @@ const preservesOnDemandBoundary = (id: string) => {
 const isLucideModule = (id: string) =>
   normalizeModuleId(id).includes('/node_modules/lucide-react/')
 
+/**
+ * Vite serves `node_modules` assets (webfonts, mostly) by their resolved path and only
+ * below `server.fs.allow`. A git worktree whose install is a symlink into the main
+ * checkout therefore answers 403 for every font.
+ */
+const servedFsRoots = () => {
+  const root = fileURLToPath(new URL('.', import.meta.url))
+  const modules = path.join(root, 'node_modules')
+  const link = fs.lstatSync(modules, { throwIfNoEntry: false })
+  return link?.isSymbolicLink() ? [root, fs.realpathSync(modules)] : [root]
+}
+
 const isReactModule = (id: string) => {
   const path = normalizeModuleId(id)
   return (
@@ -128,6 +140,7 @@ const config: UserConfigFnPromise = async ({ mode, command }) => ({
 
     port: 7712,
     strictPort: false,
+    fs: { allow: servedFsRoots() },
   },
 
   preview: {

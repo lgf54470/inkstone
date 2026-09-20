@@ -4888,6 +4888,7 @@ const allowed = new Map([
   ]],
   ['vite.config.ts', [
     '// Keep optional preview renderers and their language modules behind dynamic-import boundaries.',
+    '/**\n * Vite serves `node_modules` assets (webfonts, mostly) by their resolved path and only\n * below `server.fs.allow`. A git worktree whose install is a symlink into the main\n * checkout therefore answers 403 for every font.\n */',
     '/**\n * The whiteboard library resolves the fonts it draws with at runtime, from paths\n * relative to the app root (`/fonts/<family>/<file>`), and falls back to its own CDN\n * when they are missing — which a self-hosted instance\'s CSP blocks, leaving the board\n * drawn with system fonts instead of the hand-drawn ones. The package\'s font files are\n * therefore materialized into public/ (generated output, gitignored) before dev and\n * build; the copy is skipped while it is current, and refreshed when the package moves.\n */',
   ]],
 ])
