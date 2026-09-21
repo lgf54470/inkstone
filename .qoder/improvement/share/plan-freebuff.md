@@ -58,8 +58,8 @@
 | 28 | D | SH-75 | 全量导出串行分页无进度/无取消/无上限提示 | 小–中 | ✅ | 1976371e |
 | 29 | D | SH-76 | `useShareStore.subscribe` 每次写入重建共享 id 快照 | 极小 | ✅ | 3a58c21d |
 | 30 | D | SH-77 | 500 行全量渲染无虚拟化（无规模证据则关闭） | 中 | ✅ | 35cc631b（关闭 + 修正截断文案） |
-| 31 | E | SH-62 | 到期治理：即将到期列表 + 批量续期 | 中 | ✅ | ⏳ 下项回填 |
-| 32 | E | SH-63 | 单条分享的访客数据删除 / 导出 | 小–中 | ⬜ | |
+| 31 | E | SH-62 | 到期治理：即将到期列表 + 批量续期 | 中 | ✅ | 24ee5937 |
+| 32 | E | SH-63 | 单条分享的访客数据删除 / 导出 | 小–中 | ✅ | ⏳ 下项回填 |
 | 33 | E | SH-69 | 批量二维码打印表 / 复制全部链接 | 小–中 | ⬜ | |
 | 34 | E | SH-65 | 无自动刷新 / 无新鲜度标识 | 中 | ⬜ | |
 | 35 | E | SH-64 | 看板无法导出（区间 CSV / PNG / PDF） | 中 | ⬜ | |
@@ -459,3 +459,19 @@
 - 变异 5 发全杀（3 服务端 + 3 客户端去掉重复那发）：M1 去掉 `expires_at IS NOT NULL` → 永久链接被上钟（`count: 3`）；M2 `MAX(expires_at, now)` 改 `COALESCE` → 已过期链接仍停在过去（`2592000000 to be less than 5000`）；客户端 M1 恒走成功分支 → 后两例红；M2 去掉「其中 N 个永不过期」描述 → 成功例红；M3 把天数写成固定 30 → 成功例红。
 - 验证读数：`tsc -b --force` exit 0；`features/share` 全目录 + `tests/share-routes.test.ts` + `tests/share-english-literals.test.ts` **39 文件 / 240 用例全绿**；12 项静态门禁全绿（`i18n` 3157 键，±5；`comments` 5126 条 / 723 文件）。中间 `size:check` 报过两处 `longFns`（`ShareBatchBar` 59 行、新测试的 describe 体），按门禁意见拆出 `useShareBatchBarBundle()` 与两段 describe 归零，未 resnapshot 基线。
 - 局限：① `extend` 不重新启用被暂停的链接，也不改 `is_enabled`（两件事，“续期”不隐含“开启”）；② 上限 365 天与 `expire` 的 365 天一致，但两个分支各写一份常量，未提取共用常量（差异会各自被测试发现，暂不抽象）；③ 「N 天 0 访问自动暂停」（报告里的可选项）未做；④ 每条链接的续期是同一段天数（不能按行不同）；⑤ 未在真实 D1 上验证 `MAX()` 标量函数与多块并发（本地 `node:sqlite` 同引擎，但索引/并发行为不等价）。
+
+### 32 — SH-63 单条分享的访客数据删除（2026-09-21）
+
+- 根因：`DELETE /api/share/visits` 只有三种范围（bots / older_than / all），**没有任何按链接收窄的口径**。于是「链接还活着，只把这个链接的访客记录清掉」只能拿全量清空冒充，而后者会连带清掉账号下所有其它链接的审计记录。导出侧早已支持 `noteId`（日志弹窗的 `initialNoteId`），缺的只有删。
+- **一个被测出错暴露出来的真问题**：实现前，`?type=all&noteId=`（空值）走的是 `type === 'all'` 分支，即**把空作用域当成了无作用域**——一个想「只删这一个链接」的请求会静默变成全量清空（测试实测：期望 400，实得 401，即已进入全量路径，只差一个口令就会删光）。这正是 AGENTS 铁律 2（不静默降级）与铁律 1（权限最小化）交叉处的那类缺陷，已用 400 封死。
+- 改动面（6 文件，恰 1 新增）：
+  - `routes/share/visits.ts`：新增 `scopedNoteId()` —— 参数**存在但为空** ⇒ 400（不得回落成全量）、`noteId` 配非 `all` 的 `type` ⇒ 400（否则删的就不是调用方描述的东西）；口令层级与 `type=all` 同级（同样不可恢复）；`deleteVisitLogs()` 多一个 `noteId` 分支，按 `user_id + note_id` 收口。
+  - `lib/api/share.ts` 新增 `cleanVisitsForNote(noteId, password)`（不扩 `cleanVisits` 的位置参数，避免第 4 个位置参数让人写错顺序）。
+  - `lib/wipe-password-prompt.ts`：`promptWipePassword(description?)` —— 标题/输入类型/确认按钮仍是共用的一份，**只有描述改成可传**：在链接级删除面前说「清空全部访问日志」是假话。
+  - `use-share-note-submenu.ts`：新增 `clearNoteVisitsFlow()`，二次确认（danger）→ 口令提示 → 删除 → 报数 → **重拉列表**（行上的访问计数就是刚被删掉的那些行，不重拉就是屏幕上撒谎）；顺手把八条命令从 hook 里拆到 `noteSubmenuActions()`（派生 vs 命令，与仓内 `*-actions` 形状一致）。
+  - `share-note-submenu.tsx`：末尾危险区在「取消分享」之上加「清除该链接的访问记录」（Eraser，非 danger 色：它不动链接本身）。
+  - 两个 locale 各 +6 键（菜单/确认题/确认正文/口令描述/成功/无记录）。
+- 先红后绿：worker 侧先写断言（未改路由前实测 401 而非 400，即空作用域确实回落到了全量路径），一条用例钉四件事：空 `noteId` 400、无口令 401 且一行未删、`bots`+`noteId` 400、带口令只删该笔记的两行且另一笔记的行还在。
+- 变异 7 发全杀（3 服务端 + 4 客户端）：M1 空值当无作用域 → ①红；M2 允许过滤类型带 `noteId` → 空值例红；M3 收了 `noteId` 却不生效 → 删除断言红（`expected 3 to be 2`）；客户端 M1 不问确认 → 取消例红；M2 口令被取消仍删 → 口令例红；M3 空删除报成功 → 0 记录例红；M4 口令提示用全量文案 → 描述断言红；M5 不重拉列表 → 新增的 `list` 断言红。
+- 验证读数：`tsc -b --force` exit 0；`features/share` 全目录 + `tests/share-routes.test.ts` + `tests/share-english-literals.test.ts` **40 文件 / 245 用例全绿**；12 项静态门禁全绿（`i18n` 3163 键，±6；`comments` 5137 条 / 724 文件；`size` 通过——中间被报过一次 `longFns`，按“不 resnapshot”的原则抽了 `noteSubmenuActions()` 归零）。
+- 局限：① 客户端 `toQuery` 会丢弃空值，所以「空作用域」这个危险形状只能由外部/手写请求产生，服务端守卫仍是必需的（它就是入口）；② 未提供「导出此链接访客数据」的独立入口——日志弹窗已能按 `initialNoteId` 打开并在内部导出 CSV，因此没有再添一个重复入口（与 SH-64 的看板导出不是同一件事）；③ 删除不可撤销，也没有「删除最近 N 天」的更细粒度（粒度就是「这条链接的全部记录」）；④ 博客侧（`/api/blog/visits`）有同名缺口，登记为新编号待办；⑤ 未在真实 D1 上验证 `note_id` 上的删除计划（现有索引是 `idx_share_visits_user_time`，本项按 `user_id + note_id` 过滤，属小量行删除）。

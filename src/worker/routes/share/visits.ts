@@ -104,15 +104,31 @@ function registerShareVisitsClearRoute(shareManageRoutes: Hono<AppBindings>): vo
     const userId = c.get('userId')
     const type = c.req.query('type') || 'all'
     const days = cleanupDays(c.req.query('days'), type)
-    if (type === 'all') {
-      // Wiping the whole audit trail is unrecoverable, so a stolen session must
-      // re-prove it holds the account password before the delete runs.
+    const noteId = scopedNoteId(c.req.query('noteId'), type)
+    if (type === 'all' || noteId) {
+      // Wiping the whole audit trail — or one link's whole history, which is just as
+      // unrecoverable — means a stolen session must re-prove it holds the account password.
       const body = await readOptionalJsonValidated(c, shareVisitWipeSchema, JSON_BODY_LIMITS.small, {})
       await requireCurrentPassword(c.env.DB, userId, body.password ?? '')
     }
-    const res = await deleteVisitLogs(c.env.DB, userId, type, days)
+    const res = await deleteVisitLogs(c.env.DB, userId, type, days, noteId)
     return c.json({ ok: true as const, deleted: res.meta.changes ?? 0 })
   })
+}
+
+/**
+ * The note a delete is scoped to, when one was asked for. An empty value is the dangerous
+ * case: it is present but names nothing, and letting it through would fall back to the
+ * account-wide delete — the widest possible reading of a request that asked for the
+ * narrowest. Only `type=all` can be scoped this way; pairing a note with a filtered type
+ * would delete something other than what the caller described, so it is rejected too.
+ */
+function scopedNoteId(raw: string | undefined, type: string): string | null {
+  if (raw === undefined) return null
+  const noteId = raw.trim()
+  if (!noteId) throw ApiError.badRequest('Clearing one link’s visit log requires the note id it belongs to')
+  if (type !== 'all') throw ApiError.badRequest('A note-scoped visit cleanup only supports type=all')
+  return noteId
 }
 
 /**
@@ -162,7 +178,16 @@ function visitLogFilter(params: {
   return { conditions, binds, bindIdx }
 }
 
-async function deleteVisitLogs(db: D1Database, userId: string, type: string, days: number): Promise<{ meta: { changes: number } }> {
+async function deleteVisitLogs(
+  db: D1Database,
+  userId: string,
+  type: string,
+  days: number,
+  noteId: string | null,
+): Promise<{ meta: { changes: number } }> {
+  if (noteId) {
+    return db.prepare(`DELETE FROM share_visits WHERE user_id = ?1 AND note_id = ?2`).bind(userId, noteId).run()
+  }
   if (type === 'bots') {
     return db.prepare(`DELETE FROM share_visits WHERE user_id = ?1 AND is_bot = 1`).bind(userId).run()
   }

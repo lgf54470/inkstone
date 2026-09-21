@@ -4,6 +4,7 @@ import {
   Check,
   ChevronRight,
   Copy,
+  Eraser,
   FolderClosed,
   FolderMinus,
   Hash,
@@ -289,6 +290,7 @@ function ShareMainMenu({ bundle, closeMenu, onOpenSettings }: {
       {bundle.currentShare && (
         <>
           <div role='separator' className='my-1 h-px bg-[var(--border-subtle)]' />
+          <ShareMenuButton icon={<Eraser size={13} className='shrink-0 text-[var(--text-tertiary)]' />} label={t('share.clear_note_visits')} onClick={() => void bundle.handleClearVisits()} />
           <ShareMenuButton icon={<Trash2 size={13} className='shrink-0 text-[var(--danger)]' />} label={t('share.cancel_share')} danger onClick={() => void bundle.handleRevoke()} />
         </>
       )}

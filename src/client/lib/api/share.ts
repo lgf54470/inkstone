@@ -68,6 +68,11 @@ export const share = {
         method: 'DELETE',
         ...(password === undefined ? {} : { body: { password } }),
       }),
+    cleanVisitsForNote: (noteId: string, password: string) =>
+      request<{ ok: true; deleted: number }>(`/api/share/visits${toQuery({ type: 'all', noteId })}`, {
+        method: 'DELETE',
+        body: { password },
+      }),
     batch: (
       action: 'enable' | 'disable' | 'revoke' | 'expire' | 'move',
       noteIds: string[],

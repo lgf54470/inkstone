@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ShareInfo } from '@shared/types'
-import { api } from '../../lib/api'
+import type { ShareFolder, ShareInfo } from '@shared/types'
+import { api, ApiError } from '../../lib/api'
 import { t } from '../../lib/i18n'
+import { promptWipePassword } from '../../lib/wipe-password-prompt'
 import type { UiState } from '../../store/ui'
 import { useUi } from '../../store/ui'
 import { confirm } from '../../components/overlay'
@@ -58,19 +59,86 @@ export function useShareNoteSubmenu({
 
   const currentFolder = shareFolders.find((f) => f.id === currentShare?.shareFolderId)
 
-  const handleOpenQr = () => openQrFlow(noteId, noteTitle, currentShare, setBusy, toast, closeMenu, onOpenQr)
-  const handleCopyLink = () => copyLinkFlow(noteId, currentShare, setBusy, toast, closeMenu)
-  const handleOpenAnalytics = () => openAnalyticsFlow(noteId, currentShare, setBusy, toast, closeMenu, onOpenAnalytics)
-  const handleSelectFolder = (folderId: string | null) => selectFolderFlow(noteId, currentShare, folderId, shareFolders, setBusy, toast, closeMenu)
-  const handleAddTag = (tagName: string) => addTagFlow(noteId, tagName, currentShare, setBusy, setNewTagInput, toast)
-  const handleRemoveTag = (tagToRemove: string) => removeTagFlow(noteId, tagToRemove, currentShare, setBusy, toast)
-  const handleRevoke = () => revokeShareFlow(noteId, setBusy, toast, closeMenu)
+  const actions = noteSubmenuActions({
+    noteId, noteTitle, currentShare, folders: shareFolders, setBusy, toast,
+    closeMenu, onOpenQr, onOpenAnalytics, setNewTagInput,
+  })
 
   return {
     view, setView, folderQuery, setFolderQuery, newTagInput, setNewTagInput,
     currentShare, currentFolder, currentTags, filteredFolders, availableSuggestedTags,
-    handleOpenQr, handleCopyLink, handleOpenAnalytics, handleSelectFolder,
-    handleAddTag, handleRemoveTag, handleRevoke,
+    ...actions,
+  }
+}
+
+/**
+ * The commands the submenu can issue, kept out of the hook that derives what to draw: every one
+ * of them takes the share as it stands at the moment of the click, closes the menu and reports
+ * through the same toast, which is the whole of what they have in common.
+ */
+function noteSubmenuActions(params: {
+  noteId: string
+  noteTitle: string
+  currentShare: ShareInfo | null
+  folders: ShareFolder[]
+  setBusy: (v: boolean) => void
+  toast: UiState['toast']
+  closeMenu: () => void
+  onOpenQr: (url: string, title: string, slug: string) => void
+  onOpenAnalytics: (share: ShareInfo) => void
+  setNewTagInput: (v: string) => void
+}) {
+  const { noteId, noteTitle, currentShare, folders, setBusy, toast, closeMenu, setNewTagInput } = params
+  return {
+    handleOpenQr: () => openQrFlow(noteId, noteTitle, currentShare, setBusy, toast, closeMenu, params.onOpenQr),
+    handleCopyLink: () => copyLinkFlow(noteId, currentShare, setBusy, toast, closeMenu),
+    handleOpenAnalytics: () => openAnalyticsFlow(noteId, currentShare, setBusy, toast, closeMenu, params.onOpenAnalytics),
+    handleSelectFolder: (folderId: string | null) => selectFolderFlow(noteId, currentShare, folderId, folders, setBusy, toast, closeMenu),
+    handleAddTag: (tagName: string) => addTagFlow(noteId, tagName, currentShare, setBusy, setNewTagInput, toast),
+    handleRemoveTag: (tagToRemove: string) => removeTagFlow(noteId, tagToRemove, currentShare, setBusy, toast),
+    handleRevoke: () => revokeShareFlow(noteId, setBusy, toast, closeMenu),
+    handleClearVisits: () => clearNoteVisitsFlow(noteId, setBusy, toast, closeMenu),
+  }
+}
+
+/**
+ * Deleting one link's visitor history is the same kind of act as revoking it — nothing brings it
+ * back — so it asks twice (a danger confirm, then the account password the endpoint demands) and
+ * reloads the list afterwards, because the row counts on screen come from the rows just deleted.
+ */
+async function clearNoteVisitsFlow(
+  noteId: string,
+  setBusy: (v: boolean) => void,
+  toast: UiState['toast'],
+  closeMenu: () => void,
+): Promise<void> {
+  closeMenu()
+  const ok = await confirm({
+    title: t('share.clear_note_visits_title'),
+    description: t('share.clear_note_visits_confirm'),
+    confirmLabel: t('share.clean_now'),
+    tone: 'danger',
+  })
+  if (!ok) return
+  const password = await promptWipePassword(t('share.verify_password_clear_note'))
+  if (password === null) return
+  setBusy(true)
+  try {
+    const res = await api.share.cleanVisitsForNote(noteId, password)
+    toast({
+      title: res.deleted > 0
+        ? t('share.clear_note_visits_success', { count: res.deleted })
+        : t('share.clear_note_visits_none'),
+      tone: res.deleted > 0 ? 'success' : 'warning',
+    })
+    await useShareStore.getState().loadShares()
+  } catch (error) {
+    toast({
+      title: error instanceof ApiError ? error.message : t('common.action_failed'),
+      tone: 'danger',
+    })
+  } finally {
+    setBusy(false)
   }
 }
 

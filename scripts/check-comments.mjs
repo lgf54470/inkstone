@@ -3041,6 +3041,11 @@ const allowed = new Map([
   ['src/client/features/share/share-category-status.test.ts', [
     '/**\n * The record is the exhaustiveness check: `Record<ShareCategory, ...>` stops compiling the moment\n * a category joins the union without being mapped here, and the loop below then proves the mapping\n * the list query actually gets. A category that fell through to `all` would look like a filter that\n * silently does nothing — the failure this pins down.\n */',
   ]],
+  ['src/client/features/share/share-clear-note-visits.test.ts', [
+    '/**\n * SH-63: a live link\'s visitor history could only be deleted by wiping every log of the account.\n * The scoped delete has to be a deliberate act — a danger confirm plus the account password the\n * endpoint demands — and a link with nothing to delete must not be reported as a success.\n */',
+    '// The prompt has to name this scope: "every visit log" is the wrong sentence here.',
+    '// The rows\' visit counts are what was just deleted, so the list is fetched again.',
+  ]],
   ['src/client/features/share/share-dashboard-activity.tsx', [
     '/** The newest visits, with a way into the full logs. */',
     '/** The flags that say why a visit may not be a plain reader. */',
@@ -3278,6 +3283,8 @@ const allowed = new Map([
     '// unrelated row\'s selection changes.',
   ]],
   ['src/client/features/share/use-share-note-submenu.ts', [
+    '/**\n * The commands the submenu can issue, kept out of the hook that derives what to draw: every one\n * of them takes the share as it stands at the moment of the click, closes the menu and reports\n * through the same toast, which is the whole of what they have in common.\n */',
+    '/**\n * Deleting one link\'s visitor history is the same kind of act as revoking it — nothing brings it\n * back — so it asks twice (a danger confirm, then the account password the endpoint demands) and\n * reloads the list afterwards, because the row counts on screen come from the rows just deleted.\n */',
     '// Since SH-19 a row can be shared without being in the store yet (the',
     '// startup summary only carries ids): ask the server before publishing.',
   ]],
@@ -5064,9 +5071,11 @@ const allowed = new Map([
     '/** Whether undo toasts should auto-focus their action button (explicit "no-distraction" opt-out). */',
   ]],
   ['src/client/lib/wipe-password-prompt.ts', [
-    '// Clearing every visit log is unrecoverable, so the endpoint requires the current',
-    '// password (SH-12, and SH-47 for the blog twin). Every clean entry point asks',
-    '// through this single prompt so the wording cannot drift between the two modules.',
+    '// Clearing visit logs is unrecoverable, so the endpoint requires the current password',
+    '// (SH-12, SH-47 for the blog twin, SH-63 for a single link\'s history). Every clean entry',
+    '// point asks through this single prompt so the title, the input type and the confirm label',
+    '// cannot drift between modules; the description is the one part that has to name the scope,',
+    '// because "all logs" is the wrong sentence in front of a link-scoped wipe.',
   ]],
   ['src/client/lib/year-grid-prefs.ts', [
     '// Corrupt or missing stored prefs fall back to the default below.',
@@ -6216,8 +6225,9 @@ const allowed = new Map([
     '// The log table labels a visitor by the head of its fingerprint and nothing more;',
     '// the stored digest is a pseudonymous identifier, so only this much of it is ever',
     '// allowed to leave the worker.',
-    '// Wiping the whole audit trail is unrecoverable, so a stolen session must',
-    '// re-prove it holds the account password before the delete runs.',
+    '// Wiping the whole audit trail — or one link\'s whole history, which is just as',
+    '// unrecoverable — means a stolen session must re-prove it holds the account password.',
+    '/**\n * The note a delete is scoped to, when one was asked for. An empty value is the dangerous\n * case: it is present but names nothing, and letting it through would fall back to the\n * account-wide delete — the widest possible reading of a request that asked for the\n * narrowest. Only `type=all` can be scoped this way; pairing a note with a filtered type\n * would delete something other than what the caller described, so it is rejected too.\n */',
     '/**\n * `older_than` must be given an explicit positive day count: silently falling back\n * to a default would delete a window the caller never asked for, so an unparseable\n * or non-positive value is a 400. The other cleanup types never read it.\n */',
   ]],
   ['src/worker/routes/sync.ts', [
@@ -6518,6 +6528,9 @@ const allowed = new Map([
     '// visit recording runs via waitUntil; the test context must let us await it',
     '// Eleven scrypt verifications need more than the 5s default budget on slow runners.',
     '// requestClientIp only trusts CF-Connecting-IP when the edge set `cf`, so the probe attaches it.',
+    '// `noteId=` must never read as "no scope": that would delete every log of the account.',
+    '// A narrower delete is still a whole history: same password tier as the full wipe.',
+    '// A filtered scope wearing a noteId would delete something other than what was asked for.',
   ]],
   ['tests/share-table-semantics.test.ts', [
     '// (?=[\\s>]) keeps <thead> from reading as an unscoped <th>.',

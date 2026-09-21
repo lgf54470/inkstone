@@ -1564,6 +1564,32 @@ describe('share visit wipe requires the current password (SH-12)', () => {
     expect((await allRows(db, 'SELECT id FROM share_visits WHERE user_id = ?1', USER)).length).toBe(0)
   })
 
+  it('clears one link’s whole log with the password, and refuses an empty scope instead of widening it', async () => {
+    const db = await makeDb()
+    await seedUser(db, USER, await hashPassword('wipe-12345678'))
+    const n1 = await seedNote(db, {})
+    const n2 = await seedNote(db, {})
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-1' })
+    await seedVisit(db, { note_id: n1, slug: 'v-1', visitor_fp: 'fp-2' })
+    await seedVisit(db, { note_id: n2, slug: 'v-2', visitor_fp: 'fp-3' })
+    const app = makeApp()
+
+    // `noteId=` must never read as "no scope": that would delete every log of the account.
+    expect((await deleteJson(app, '/api/share/visits?type=all&noteId=')).status).toBe(400)
+    // A narrower delete is still a whole history: same password tier as the full wipe.
+    const noPassword = await deleteJson(app, `/api/share/visits?type=all&noteId=${n1}`)
+    expect(noPassword.status).toBe(401)
+    expect(await allRows(db, 'SELECT id FROM share_visits WHERE user_id = ?1', USER)).toHaveLength(3)
+    // A filtered scope wearing a noteId would delete something other than what was asked for.
+    expect((await deleteJson(app, `/api/share/visits?type=bots&noteId=${n1}`)).status).toBe(400)
+
+    const cleared = await deleteJson(app, `/api/share/visits?type=all&noteId=${n1}`, { password: 'wipe-12345678' })
+    expect(cleared.status).toBe(200)
+    expect((await cleared.json()).deleted).toBe(2)
+    const left = await allRows(db, 'SELECT note_id FROM share_visits WHERE user_id = ?1', USER)
+    expect(left).toEqual([{ note_id: n2 }])
+  })
+
   it('keeps targeted cleanup (bots/older_than) free of the password requirement', async () => {
     const db = await makeDb()
     const n1 = await seedNote(db, {})
