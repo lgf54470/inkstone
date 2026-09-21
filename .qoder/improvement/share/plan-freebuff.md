@@ -669,3 +669,16 @@
 - 一处**如实说明**：最终树第一次全量跑（端口 7762）在第 5 个场景「思维导图」处以 `Waiting failed: 30000ms exceeded` 崩掉，`collection:` 断言一条都没跑；同时该实例（以及更早的 7761）在几分钟内被**别的线程的清理**停掉了（`ss` 里三个端口全消失、`ps` 里只剩另一条线程的 vite）。这次崩溃没有被算作绿、也没有被当成读数；换端口重跑后上述读数成立。它与 SH-90/SH-97 同性质（环境负载与进程被别人收走），本项不顺手改。
 - 验证读数：`tsc -b --force` exit 0；11 项静态门禁全绿（`comments` 用 `sync-comments-allowlist.mjs` 重建，新增 2 条）；`src/client/features/share` + `src/shared` + `tests/share-routes.test.ts` + `src/client/demo/backend` **61 文件 / 473 用例全绿**；提交前另按文档流程把**暂存快照**单独验证过（`git archive HEAD` ＋ 暂存补丁，`comments`/`style`/`size`/`i18n`/`surfaces` 全绿），确认 `check-comments.mjs` 被两个提交切开后各自自洽。
 - 局限：① 收尾用的是产品自己的删除接口（访问日志那条需要当前口令），因此「门禁知道账号口令」这件事又深了一层；口令策略若变化，收尾会先红——这是有意的（见上）；② 探针**留下笔记与它的分享行**（只收回标签、集合与访问行）：它们与 `e2e.mjs` 自己留下的笔记同性质，实测不影响下一次运行；③ 场景只在桌面视口跑，手机断点下 `/c/:slug` 的口令门落版没有断言；④ 本轮量到的两条产品缺陷（SH-102 的 delta 徽标、SH-93 的 hub 行）只登记不修：前者在共用 `dashboard-blocks.tsx`，改了要跑 blog 双侧回归；后者是 SH-93 的既定范围。
+
+### 49 — 四项任务（§45–§48）收尾：全量串行回归（2026-09-22）
+
+- 触发条件（与 §40/§44 同一口径）：本批触碰了**共用的服务端面与 SQL**——`share-selection`/`share-selection-sql` 被列表、侧栏计数、集合成员谓词、批量开关与日志筛选共用，`share-channel` 被写路径与读路径共用，analytics 的两条批处理里新增了 labels 语句——因此必须在**全量串行**下全绿才算收尾。本批**没有**新 migration（无 schema 变更）、没有动 lockfile 或依赖。
+- 读数：`npx vitest run --config vitest.config.ts --no-file-parallelism --testTimeout=30000` → **346 文件 / 2781 用例通过 ＋ 1 skipped，0 失败**；耗时 623.91s（transform 14.35s、import 104.82s、tests 100.28s、environment 344.30s）。
+- 与 §44（341 文件 / 2755 用例）对账，增量 **+5 文件 / +26 用例**，逐项可核：
+  - 新增 5 个测试文件合计 **21 例**：`src/shared/share-selection.test.ts` 10、`tests/share-selection-parity.test.ts` 6、`share-hub-views.test.ts` 3、`share-hub-preload.test.ts` 1、`share-collection-link.test.ts` 1（文件数 341 → 346 正好等于这 5 个）。
+  - 既有文件内 **+5 例**：`tests/share-routes.test.ts` 109 → 111、`share-dashboard-channels.test.ts` 4 → 5、`src/shared/share-channel.test.ts` 9 → 10、`tests/share-collections.test.ts` 14 → 15。
+  - 其余被动过的测试文件（`share-category-status.test.ts`、`table-view.test.ts`、`tests/share-analytics.test.ts`）只有夹具或断言内容变化，用例数不变，因此不计入增量。
+- 规模：本批从 §45 到本节之前共 **50 文件、+2398 / −499 行**（`git diff cbe3d9de..HEAD --shortstat`）。
+- 过程：与 §40/§44 相同的 `setsid nohup … &` 脱离进程组后一次跑完，未被调用窗口打断；跑的时候同机另一条线程（`inkstone-blog-improvement-…`）正在跑自己的 vite，未去动它；本线程自己的临时实例在收尾时已停掉（`ss` 无遗留监听）。
+- 台账闭合情况：四项任务全部交付并各自成一次提交——§45 共享谓词层 `9b8b7644`、§46 hub 视图自洽 `4cae175b`、§47 逐集合读数 `49ec94d6`、§48 浏览器级场景 `483418c8`；队列表状态列更正为「SH-66 ✅、SH-68 🟡 但写明三期已交付／集合级资产会话按记录不做」并补了一行状态图例（`02e74108`）；本轮新登记的 SH-101（并发访问去重是先查后写，无 `VISIT_FP_SECRET` 时去重窗口不生效）、SH-102（KPI delta 徽标的 `aria-label` 违规）、SH-103（分享中心的 axe 断言只在空账号上成立）与 SH-93 的现场补充都已写进「新发现」表，**未夹带修复**。
+- 局限（如实登记）：① 本次比 §44 快（623.91s vs 760.74s），但两次的机器负载不同（§44 当时别的线程正在跑浏览器门禁），**这不构成性能对比**，只当「全绿」这一件事的证据；② 全量跑的是本机 `node:sqlite` 测试基座，不代表真实 D1 上的行为与成本；③ 浏览器级门禁没有在这一次里重跑（§47 与 §48 各自报了同一实例上的 231/0 与可重跑性读数），本节只回答「单元／集成层在全量串行下是否全绿」；④ 仍有未闭合的登记项：SH-69 的二维码打印表、SH-64 的 PNG/PDF（重开条件已写）、SH-90/SH-97 的负载敏感断言、SH-100 的音乐夹具契约、SH-93/SH-102/SH-103 的 a11y、SH-101 的访问去重——它们都不在本批范围内。
