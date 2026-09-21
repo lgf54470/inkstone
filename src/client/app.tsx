@@ -18,6 +18,9 @@ const SharePage = lazy(() =>
 const MusicPlaylistSharePage = lazy(() =>
   import('./features/music/music-share-page').then((module) => ({ default: module.MusicPlaylistSharePage })),
 )
+const CollectionPage = lazy(() =>
+  import('./features/share/collection-page').then((module) => ({ default: module.CollectionPage })),
+)
 
 function useShareSlug(): string | null {
   const [shareSlug] = useState(() => {
@@ -25,6 +28,14 @@ function useShareSlug(): string | null {
     return match?.[1] ?? null
   })
   return shareSlug
+}
+
+function useCollectionSlug(): string | null {
+  const [collectionSlug] = useState(() => {
+    const match = /^\/c\/([A-Za-z0-9_-]+)/.exec(location.pathname)
+    return match?.[1] ?? null
+  })
+  return collectionSlug
 }
 
 function usePlaylistShareSlug(): string | null {
@@ -90,6 +101,19 @@ function ShareRoute({ slug }: { slug: string }) {
   )
 }
 
+function CollectionRoute({ slug }: { slug: string }) {
+  return (
+    <>
+      <ErrorBoundary>
+        <Suspense fallback={<PageFallback />}>
+          <CollectionPage slug={slug} />
+        </Suspense>
+      </ErrorBoundary>
+      <Toaster />
+    </>
+  )
+}
+
 function PlaylistShareRoute({ slug }: { slug: string }) {
   return (
     <>
@@ -122,12 +146,23 @@ export function App() {
   useLocale()
   const shareSlug = useShareSlug()
   const playlistSlug = usePlaylistShareSlug()
-  useAppBoot(shareSlug ?? playlistSlug)
+  const collectionSlug = useCollectionSlug()
+  useAppBoot(shareSlug ?? playlistSlug ?? collectionSlug)
 
   if (shareSlug) {
     return (
       <>
         <ShareRoute slug={shareSlug} />
+        <ConfirmHost />
+        <PromptHost />
+      </>
+    )
+  }
+
+  if (collectionSlug) {
+    return (
+      <>
+        <CollectionRoute slug={collectionSlug} />
         <ConfirmHost />
         <PromptHost />
       </>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   AlertTriangle,
+  FolderTree,
   Globe,
   Infinity as InfinityIcon,
   KeyRound,
@@ -137,6 +138,7 @@ function buildCategories(globalStats: ShareStoreState['globalStats']): {
 }[] {
   return [
     { id: 'dashboard', label: t('share.category_dashboard'), icon: <LayoutDashboard size={14} className='text-[var(--accent)]' /> },
+    { id: 'collections', label: t('share.category_collections'), icon: <FolderTree size={14} className='text-[var(--accent)]' /> },
     { id: 'all', label: t('share.category_all'), icon: <Globe size={14} />, count: globalStats?.totalShares },
     { id: 'active', label: t('share.category_active'), icon: <PlayCircle size={14} className='text-[var(--success)]' />, count: globalStats?.activeShares },
     { id: 'pinned', label: t('share.category_pinned'), icon: <Pin size={14} className='text-[var(--accent)]' />, count: globalStats?.pinnedShares },

@@ -76,7 +76,11 @@ function useHubOpenLifecycle({ open, initialNoteId, clearSelection, closeOverlay
       closeOverlays()
       return
     }
-    if (initialNoteId || useShareStore.getState().category !== 'dashboard') void loadShares()
+    // The two self-loading categories ask only for the counters; a note handed in to edit needs the
+    // list itself, since that is where the row to edit lives.
+    const category = useShareStore.getState().category
+    const isSelfLoading = category === 'dashboard' || category === 'collections'
+    if (initialNoteId || !isSelfLoading) void loadShares()
     else void loadStats()
   }, [open, initialNoteId, loadShares, loadStats, clearSelection, closeOverlays])
 }

@@ -10,6 +10,9 @@ import { statusForCategory } from './share-store/filters'
  */
 const EXPECTED_STATUS: Record<ShareCategory, string> = {
   dashboard: 'all',
+  // Inert by design: this category renders the collections panel, which reads its own endpoint, so
+  // the list status it maps to is never sent. It still has to be a value the store accepts.
+  collections: 'all',
   all: 'all',
   active: 'active',
   paused: 'paused',

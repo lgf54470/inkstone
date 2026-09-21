@@ -7,7 +7,7 @@ import { errorMessage } from '../../../lib/errors'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
 import type { UiState } from '../../../store/ui'
-import { KEEP_CURRENT_EXPIRY, expiresInForSelection, isValidCustomSlugFormat, needsNewSharePasscode } from '../share-form'
+import { KEEP_CURRENT_EXPIRY, expiresInForSelection, isValidCustomSlugFormat, needsNewSharePasscode, shareExpiryOptions } from '../share-form'
 import { useShareStore } from '../share-store'
 
 export function useShareEditModal({
@@ -59,7 +59,7 @@ export function useShareEditModal({
     setIsAnalyticsOpen,
     isQrOpen,
     setIsQrOpen,
-    EXPIRY_OPTIONS: buildExpiryOptions(),
+    EXPIRY_OPTIONS: shareExpiryOptions(),
     handleCopyLink,
     handleAddTag,
     handleRemoveTag,
@@ -198,14 +198,7 @@ async function loadNoteShare(
   setIsLoadingShare(false)
 }
 
-function buildExpiryOptions() {
-  return [
-    { value: '0', label: t('share.never_expires') },
-    { value: String(24 * 3600000), label: t('share.1_day') },
-    { value: String(7 * 24 * 3600000), label: t('share.7_days') },
-    { value: String(30 * 24 * 3600000), label: t('share.30_days') },
-  ]
-}
+
 
 async function copyEditLinkFlow(
   share: ShareInfo | null,

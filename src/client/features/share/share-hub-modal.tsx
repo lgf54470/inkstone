@@ -13,6 +13,7 @@ import { ShareHubToolbar } from './share-hub-toolbar'
 import { ShareTableView } from './share-table-view'
 import { ShareGridView } from './share-grid-view'
 import { ShareDashboardView } from './share-dashboard-view'
+import { ShareCollectionsPanel } from './share-collections-panel'
 import { ShareBatchBar } from './share-batch-bar'
 import { LoadErrorState } from './share-load-error'
 import { useShareStore } from './share-store'
@@ -118,6 +119,16 @@ function ListTruncatedNotice() {
 
 function HubContent({ hub }: { hub: ShareHubModalBundle }) {
   const { category, selectedNoteIds, clearSelection } = hub
+  // Two categories paint themselves: the dashboard reads the analytics endpoints and the collections
+  // panel reads the collections endpoint, so neither may be handed the share list's toolbar and
+  // selection bar — those act on rows that are not on screen.
+  if (category === 'collections') {
+    return (
+      <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden'>
+        <ShareCollectionsPanel />
+      </div>
+    )
+  }
   if (category === 'dashboard') {
     return (
       <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden'>

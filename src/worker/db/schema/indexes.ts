@@ -41,6 +41,13 @@ export const INDEX_STATEMENTS: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_share_folders_user ON share_folders(user_id, position)`,
   `CREATE INDEX IF NOT EXISTS idx_share_folders_parent ON share_folders(parent_id)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_share_tags_user ON share_tags(user_id, name)`,
+  // The collection's address and its target are both lookup keys, and the target one is unique per
+  // account *while enabled*: a revoked collection must not block republishing the same folder, so the
+  // uniqueness is partial rather than a plain unique index that would also forbid the second insert.
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_share_collections_slug ON share_collections(slug)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_share_collections_target
+       ON share_collections(user_id, target_type, target_value) WHERE is_enabled = 1`,
+  `CREATE INDEX IF NOT EXISTS idx_share_collections_user ON share_collections(user_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_share_visits_user_time ON share_visits(user_id, visited_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_share_visits_slug_time ON share_visits(slug, visited_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_share_visits_note_time ON share_visits(note_id, visited_at DESC)`,

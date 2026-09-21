@@ -1468,6 +1468,12 @@ const allowed = new Map([
   ['src/client/demo/backend/routes/board-library.ts', [
     '/**\n * The demo keeps the named whiteboard libraries in memory like the rest of its state, with\n * the same contract as the worker route: one JSON document per name, stored verbatim, so\n * the picker and the boards behave here exactly as they do against a real instance within\n * one session.\n */',
   ]],
+  ['src/client/demo/backend/routes/collections.ts', [
+    '/**\n * Collections in the demo backend (ADR-0005). The members are computed from `state.shares` on every\n * request, exactly as the worker computes them from the shares table, so the demo shows the same\n * behaviour the real build has: publish a folder, then move a share out of it and watch the page\n * change without republishing.\n */',
+    '/** The demo\'s membership rule, written to match the worker\'s two predicates. */',
+    '// Re-publishing states the policy again, which is how the password and the end date are changed.',
+    '// The same answer for "no password" and "wrong password", as the worker gives.',
+  ]],
   ['src/client/demo/backend/routes/files.ts', [
     '// Match the real worker contract: facetsFull may only be true when the response carries the',
     '// complete folders/tags lists. The demo always sends full snapshots when anything changed, so',
@@ -1502,10 +1508,13 @@ const allowed = new Map([
     '// to re-prove the password, and a stale session must not get a silent delete.',
   ]],
   ['src/client/demo/state.ts', [
+    '/**\n * A published collection in the demo backend: the target it lists and the access policy on the page.\n * The members are not stored here, for the same reason the worker does not store them — the demo\'s\n * directory is computed from `shares` so it moves when the folder does.\n */',
     '/** Named whiteboard libraries, exactly as the endpoint stores them: name -> items JSON. */',
     '// Welcome notes are deliberately dated a few weeks back: with no edits within the last ~10 days,',
     '// the rolling date filter\'s follow-edit window stays parked at the newest edit and the gap hint',
     '// (newest edit outside a today-anchored window) is directly visible in the demo.',
+    '// One collection is seeded so the panel and the public page both have something to show: the',
+    '// folder the welcome share already lives in, published with no password.',
   ]],
   ['src/client/editor/code-editor.tsx', [
     '// Sticky mount: CodeMirror is built the first time its pane is shown and then',
@@ -3018,6 +3027,21 @@ const allowed = new Map([
     '/**\n * Runs one analytics request per hook. The newest call aborts the one before it and\n * owns the loading and error state, so a slow earlier range can neither overwrite\n * the latest answer nor clear its spinner — the same shape as the share page loader.\n */',
     '/** Aborts whatever analytics request is in flight, e.g. when its view closes. */',
   ]],
+  ['src/client/features/share/collection-page/index.ts', [
+    '// Public interface of the collection-page module. It stays a separate lazy chunk, loaded only when a',
+    '// visitor opens a `/c/…` address, so the editor and the share hub never travel with it.',
+  ]],
+  ['src/client/features/share/collection-page/page.tsx', [
+    '/**\n * The collection a visitor lands on (ADR-0005). It is a directory and nothing more: every entry is a\n * link to that note\'s own page, carrying `?ref=collection` so the owner can see which visits came\n * from here. A member that has its own password says so, because clicking through and meeting a\n * password prompt without warning reads as a broken link.\n */',
+    '/** One entry: the link, an excerpt to recognise it by, and whether it will ask for its own password. */',
+    '/**\n * Where a directory entry goes: the note\'s own share page, marked as having come from here. The\n * marker is the same `?ref=` contract the rest of the module uses (ADR-0004), so a visit from a\n * collection is counted as a visit to that note — with the collection as its channel.\n */',
+  ]],
+  ['src/client/features/share/collection-page/use-collection-page.ts', [
+    '/**\n * The visitor\'s side of a collection (ADR-0005). Same three states as the note page — loading,\n * password required, unavailable — because the two pages present the same kind of thing: an address\n * that is either open, locked, or gone, and which one it is has to be the same shape in both so a\n * probe cannot tell a locked collection from a missing one.\n */',
+    '// A wrong passcode and a missing one look the same to the visitor: the server answers them',
+    '// identically, and the only difference here is that a guess gets told it was a guess.',
+    '/** The directory\'s title is the collection\'s, and the tab says so — then gives the old one back. */',
+  ]],
   ['src/client/features/share/modals/index.ts', [
     '// Lazy-only surface (SH-20): these components drag in qrcode.react and the',
     '// analytics charts, so a static import here regrows the shell chunk the note',
@@ -3078,11 +3102,37 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-category-status.test.ts', [
     '/**\n * The record is the exhaustiveness check: `Record<ShareCategory, ...>` stops compiling the moment\n * a category joins the union without being mapped here, and the loop below then proves the mapping\n * the list query actually gets. A category that fell through to `all` would look like a filter that\n * silently does nothing — the failure this pins down.\n */',
+    '// Inert by design: this category renders the collections panel, which reads its own endpoint, so',
+    '// the list status it maps to is never sent. It still has to be a value the store accepts.',
   ]],
   ['src/client/features/share/share-clear-note-visits.test.ts', [
     '/**\n * SH-63: a live link\'s visitor history could only be deleted by wiping every log of the account.\n * The scoped delete has to be a deliberate act — a danger confirm plus the account password the\n * endpoint demands — and a link with nothing to delete must not be reported as a success.\n */',
     '// The prompt has to name this scope: "every visit log" is the wrong sentence here.',
     '// The rows\' visit counts are what was just deleted, so the list is fetched again.',
+  ]],
+  ['src/client/features/share/share-collection-publish-dialog.tsx', [
+    '/** Wide enough for the four labels at their longest, narrow enough to stay a form. */',
+    '/**\n * Publishing a collection (ADR-0005): pick a folder or a tag, optionally put a password and an end\n * date on it. It is also the *edit* path — re-publishing the same target re-states the policy, so\n * changing a password or an end date goes through the same call that created the page. The hint says\n * what publishing does not do (enable paused links) and what an empty password means (the page goes\n * back to public), because both are easy to assume the other way round.\n */',
+    '/**\n * The form\'s state and its one rule: the select\'s value is the target that will be sent, so an empty\n * selection is the honest state of a form nobody has finished — not a silently defaulted first folder.\n */',
+    '// The same selection-to-milliseconds rule the share editor uses, so a week is a week here too.',
+  ]],
+  ['src/client/features/share/share-collections-panel.test.ts', [
+    '/**\n * Row actions are icon buttons: their visible content is a glyph, so the name a person hears is the\n * one to look them up by — the same name, which is also what makes the lookup a check on it.\n */',
+    '// A Modal renders into a portal on document.body; without clearing it, a later test\'s lookup can',
+    '// find the previous test\'s dialog and click the wrong button.',
+    '// A controlled input ignores a plain `value` assignment (React\'s tracker sees no change), so the',
+    '// value goes in through the prototype setter and then announces itself the way typing does.',
+    '// `undefined` rather than an empty string: the worker reads the field\'s absence as "no password",',
+    '// and a hashed empty string would be a password nobody can type.',
+  ]],
+  ['src/client/features/share/share-collections-panel.tsx', [
+    '/**\n * The owner\'s view of what has been published as a collection (ADR-0005). A real table, because the\n * question this panel answers is a comparison across rows: which folders are public, under what\n * access, and how much is in each one. The three actions are named after what they do to the *page*\n * — pause, republish, revoke — and the revoke confirmation states outright that the shares it lists\n * are untouched, which is the one thing people assume the other way round.\n */',
+    '/**\n * Revoking is the one action here that cannot be undone, so it asks first — and the description says\n * what stays behind, because "revoke" reads like it takes the links with it.\n */',
+    '/** Publishing, and republishing: the route re-states the policy, so both paths are this one call. */',
+  ]],
+  ['src/client/features/share/share-collections.ts', [
+    '/**\n * A collection\'s public address, built in one place: the panel copies it, the QR sheet would show it,\n * and the visitor-facing directory links back to it. A second builder would be a second answer to\n * "where does this page live".\n */',
+    '/**\n * How a collection describes what it holds. The target\'s own name is the title; this is the label for\n * the *kind*, which is what tells the owner whether a link came from a folder they reorganised or a\n * tag they added later.\n */',
   ]],
   ['src/client/features/share/share-dashboard-activity.tsx', [
     '/** The newest visits, with a way into the full logs. */',
@@ -3187,6 +3237,7 @@ const allowed = new Map([
     '// must be able to tell a missing share apart from a failed load in the logs.',
   ]],
   ['src/client/features/share/share-form.ts', [
+    '/**\n * The expiry choices the module offers, in one place: {never, a day, a week, a month}. The share\n * editor and the collection publishing dialog both read them, so "a week from now" cannot mean two\n * different spans depending on which surface asked.\n */',
     '/**\n * The client half of the custom slug rule: the same LIMITS the server enforces,\n * so the hint a person reads can never promise a length the API then rejects.\n */',
     '// A new or replaced passcode must meet LIMITS.sharePasscodeMinLength (the',
     '// server enforces the same minimum); short codes are trivially brute-forced.',
@@ -3210,6 +3261,9 @@ const allowed = new Map([
   ['src/client/features/share/share-hub-modal.tsx', [
     '// The row count, not a number copied into the sentence: the server\'s ceiling can be raised,',
     '// and a sentence that spelled "500" out would go on saying it whatever the list now holds.',
+    '// Two categories paint themselves: the dashboard reads the analytics endpoints and the collections',
+    '// panel reads the collections endpoint, so neither may be handed the share list\'s toolbar and',
+    '// selection bar — those act on rows that are not on screen.',
   ]],
   ['src/client/features/share/share-hub-open-loads.test.ts', [
     '/** Drain the mocked request\'s microtasks inside act, so the store write is not a stray update. */',
@@ -3418,6 +3472,13 @@ const allowed = new Map([
   ['src/client/features/share/share-visitor-count-note.test.ts', [
     '/**\n * SH-83: UV is a salted fingerprint count — once per person per UTC day, and one bucket per address\n * however many people sit behind it. Neither the KPI nor the log table could be read that way from\n * the screen alone, so the log view now states it; this pins that the sentence is really there.\n */',
   ]],
+  ['src/client/features/share/use-share-collections.ts', [
+    '/**\n * The owner\'s published collections: the list, what is being done to it, and the two mutations the\n * panel offers. Every mutation reloads the list rather than patching it in place — the count beside\n * each row is read live by the worker, so a locally edited number would be a guess.\n */',
+    '/** Reading the list, and the four states a caller has to paint for it. */',
+    '/** The two things the panel does to a page: pause or republish it, and revoke it. */',
+    '// The failure keeps its own message: "the folder already has a published collection" is the',
+    '// one answer that tells the owner what to do about it.',
+  ]],
   ['src/client/features/share/use-share-dashboard-view.ts', [
     '/**\n * The dashboard answers one question per window, so this is its data layer: the request, the\n * in-flight cancellation, the age of what came back, and the optional cadence that re-asks.\n * Everything the view needs about *how* it is drawn stays out of here.\n */',
     '// Stamped together with the data: the age line describes the numbers on screen, so it must',
@@ -3427,6 +3488,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/use-share-hub-modal.ts', [
     '/**\n * What opening and closing the hub means: closing drops the selection and every overlay,\n * opening fetches what this session will read first. The hub lands on the dashboard, which\n * paints the sidebar counters but none of the rows — and both come from the same list\n * response, so the counters are asked for alone unless the list is really needed (a note\n * handed in to edit, or a list category as the landing view). Picking a category loads the\n * list through the store either way.\n */',
+    '// The two self-loading categories ask only for the counters; a note handed in to edit needs the',
+    '// list itself, since that is where the row to edit lives.',
     '// One auto-open per hub session: `shares` refreshes after saving or a',
     '// manual reload, and re-firing would reopen the modal the user closed.',
   ]],
@@ -5510,6 +5573,9 @@ const allowed = new Map([
     '// The distribution marker (?ref=) of ADR-0004: what it is, what the two miss rows mean, and the',
     '// switch that decides whether the write path records it at all.',
     '// The session view of the log panel (ADR-0003): what a session is, and the four columns.',
+    '// Collections (ADR-0005): a published folder or tag as one page. The copy separates the three',
+    '// things that are easy to conflate — what publishing does, what pausing does, and what revoking',
+    '// does (the last one touches the collection and nothing else).',
   ]],
   ['src/shared/markdown-utils/front-matter.ts', [
     '/**\n * Update an existing front matter property in-place, keeping the body and all\n * other properties untouched. Returns the rewritten content, or `null` when\n * the content has no parseable front matter, the property does not exist, or\n * nothing changes. Passing `null` as `value` deletes the property.\n */',
@@ -5632,6 +5698,10 @@ const allowed = new Map([
     '/**\n * One note inside a session: the path the visitor took through it is the order of the array, not a\n * timestamp per row, because a session is about "what they read" rather than when exactly.\n */',
     '/**\n * One sitting by one visitor (ADR-0003): consecutive visits of the same fingerprint within the\n * session gap, never crossing a UTC day. `fingerprint` is the same 8-char head the log rows show;\n * a session is not a person, and nothing in this shape is named after one.\n */',
     '/** Opaque; null when the page was the last one. */',
+    '/**\n * One published collection (ADR-0005): a stable address plus the access policy for "everything in\n * this folder" or "everything with this tag". The members are not part of this shape — they are\n * derived per request from the shares themselves, so `count` is a reading taken now, not a stored\n * snapshot.\n */',
+    '/**\n * One member of a public collection\'s directory. `hasPassword` is the member\'s own lock, not the\n * collection\'s: opening it asks for that password, and the collection\'s password does not stand in\n * for it.\n */',
+    '/**\n * What a collection page shows once its own password has been accepted — or immediately, for a\n * collection that has none. Nothing about the directory is answered before that, including its size.\n */',
+    '/** Opaque; null when the page was the last one. */',
   ]],
   ['src/shared/user-settings.test.ts', [
     '// Both live in the share section, which used to be one knob: the second must not be wiped by a',
@@ -5748,6 +5818,11 @@ const allowed = new Map([
   ['src/worker/db/schema/index.ts', [
     '/** Defines the idempotent final D1 schema initialized by every Worker isolate. */',
   ]],
+  ['src/worker/db/schema/indexes.ts', [
+    '// The collection\'s address and its target are both lookup keys, and the target one is unique per',
+    '// account *while enabled*: a revoked collection must not block republishing the same folder, so the',
+    '// uniqueness is partial rather than a plain unique index that would also forbid the second insert.',
+  ]],
   ['src/worker/db/schema/migrations.ts', [
     '// Explicit whitelist (not a regex over SCHEMA_STATEMENTS) so later',
     '// additions like mcp_api_keys can never be picked up accidentally.',
@@ -5791,6 +5866,9 @@ const allowed = new Map([
     '// The distribution marker a visit\'s URL carried (ADR-0004). Nullable and unindexed: existing',
     '// rows mean "no marker", and the dashboard reads the column only inside an already-narrowed',
     '// range, so a partial index over a mostly-null column would buy nothing.',
+    '// Published collection pages (ADR-0005). The table holds only what must be stored — the address',
+    '// and the access policy — because the members are derived from the shares on every request; a',
+    '// member snapshot would need double writes and would silently go stale.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
@@ -5928,6 +6006,17 @@ const allowed = new Map([
     '// find; without one the window stays recent instead of starting at epoch.',
     '// Buckets are addressed by index so both the row path and a SQL GROUP BY can',
     '// fill the same array; missing indexes stay zero-filled.',
+  ]],
+  ['src/worker/lib/share-collections.ts', [
+    '/**\n * Published collections (ADR-0005): the address and the access policy are stored, the members are\n * derived. This module owns the two things that must not be stated twice — what counts as a member,\n * and how a page of members is walked — so the public directory and the owner\'s live count cannot\n * disagree about which shares a collection holds.\n */',
+    '/**\n * The membership condition of a collection, as SQL plus the binds it needs. A share belongs to a\n * folder collection by `folder_id` and to a tag collection by the tag id appearing in its JSON tag\n * array — the same two predicates the share list filters by, because a collection that selected\n * differently from the list it was created from would be a bug nobody could see.\n */',
+    '/**\n * One page of a collection\'s members, newest first. Pinned notes lead, exactly as they do in the\n * share list: a collection is the same list seen by a visitor, so the order they meet it in is the\n * order the owner arranged.\n */',
+    '// The member value is the third bind, after the account and "now": the same two the count uses,',
+    '// so the listing and the counting cannot disagree about what they are selecting.',
+    '/** How many members a collection has right now, by the same predicate the page lists with. */',
+    '/**\n * The cursor names where the last page stopped, in the order the page was sorted by. Opaque because\n * it exposes the owner\'s arrangement; a client that composed one itself would be reimplementing the\n * ordering rule, and would go on working after that rule changed.\n */',
+    '/** Null for an absent cursor; a malformed one is an error the caller must answer, not a first page. */',
+    '/**\n * A collection\'s title is its folder\'s or tag\'s name, read at request time: renaming a folder renames\n * the page it published. The stored record keeps the target value only, so there is no second name to\n * fall out of date.\n */',
   ]],
   ['src/worker/lib/share-sessions.ts', [
     '/**\n * The visitor session view (ADR-0003): one visitor\'s visits, folded into "sittings" so the owner can\n * answer "did this person read it through" instead of reading rows one by one.\n *\n * Three consequences of how fingerprints work are baked into the query rather than documented and\n * hoped for:\n *\n * 1. **A session cannot cross a UTC day.** The fingerprint\'s salt rotates at UTC midnight, so two\n *    rows on either side of it belong to two different fingerprints by construction. The derivation\n *    partitions by `(fingerprint, UTC day)` anyway: the guarantee then lives where it is relied on\n *    and a change to the salt cannot silently start merging two days into one session.\n * 2. **A session is not a person.** Everyone behind one NAT can share a fingerprint and one person\n *    on two devices gets two — which is why nothing here is named after a person.\n * 3. **Sessions are derived, never stored.** They are computed from the visit rows, so the retention\n *    sweep and the link-scoped delete remove them by removing their rows.\n */',
@@ -6420,10 +6509,46 @@ const allowed = new Map([
     '/**\n * Which copy of a link each visit came from (ADR-0004), for the same rows the visit aggregate\n * beside it summarizes.\n *\n * It lives here rather than in `visit-aggregates` because only the share table has a marker\n * column, and both dashboards read that module\'s statement list positionally.\n *\n * A visit with no marker and a visit whose marker was refused are counted in separate rows and\n * never merged: a marker that quietly stopped matching has to be visible, not averaged into\n * "direct". The two reserved names cannot collide with a stored token, which always starts with a\n * letter or digit (see `share-channel`).\n */',
     '/** Percentages share the dashboard\'s denominator, so the split sums against the KPI row. */',
   ]],
+  ['src/worker/routes/share/collection-page.ts', [
+    '/**\n * `/c/:slug` (ADR-0005) exists for one reason: a collection is opened by pasting its address, so it\n * needs an HTML shell that can then load the directory. The shell is the share page\'s, unchanged —\n * same `noindex, nofollow`, same `Cache-Control: no-store` — because a set of pages that blocked\n * indexing while the page listing them allowed it would be an SEO hole in exactly one direction.\n */',
+    '// The collection\'s own title is a member-facing fact — it is the folder\'s or tag\'s name — so it',
+    '// reaches the meta tags through the same path a password-protected share\'s title does, which is',
+    '// to say it does not reach them at all when there is a password.',
+  ]],
+  ['src/worker/routes/share/collection-public.ts', [
+    '/** One page of a directory, and a ceiling on how much of an account one request can walk. */',
+    '/**\n * The public side of a published collection (ADR-0005). Before the password is accepted this answers\n * the directory to nobody — not the note titles, not the member count, and not the collection\'s own\n * title. A missing collection, a paused one and an expired one answer with the same response, because\n * whether a given address exists is not public information.\n */',
+    '// The marker that says "arrived from a directory" is not stored on the member: the client puts',
+    '// `?ref=collection` on the links it renders, so the visit row keeps its own share link as the',
+    '// smallest unit of the analytics (ADR-0004, ADR-0005 phase 3).',
+    '// One identical answer for paused, expired and unknown: the status of a collection is not public.',
+    '/**\n * The collection\'s own password gate. It is deliberately the same shape as the per-share one — the\n * same throttle keys under a different prefix, the same body for "required" and "wrong" — because two\n * gates that answered differently would let a probe tell them apart.\n */',
+    '/** A cursor this worker did not mint is a client bug, so it is a 400 rather than a silent first page. */',
+  ]],
+  ['src/worker/routes/share/collections.ts', [
+    '/**\n * The owner\'s side of a published collection (ADR-0005). Publishing writes one record and derives\n * nothing; revoking deletes that record and leaves every member\'s own share exactly as it was, which\n * is why the confirm copy has to say so rather than the documentation.\n */',
+    '/** The ceiling keeps the batched live counts — one statement per collection — from growing with abuse. */',
+    '/**\n * The count is read now, not stored: a folder collection whose folder gained a share a second ago\n * reports the new number, because the number and the page both come from the same predicate.\n */',
+    '/**\n * A paused collection can be resumed and a live one paused; nothing else is patched here. The\n * password and the end date are part of what "published" means, so they are re-stated through the\n * publish route — one write path for the policy rather than two that could disagree about whether a\n * password-less update means "leave it" or "remove it".\n */',
+    '// The name is read before the record is written, so a collection can never address a folder the',
+    '// account does not own — the same check that would otherwise be a lookup the page has to repeat.',
+    '// Re-publishing an already published folder is a re-statement of its policy, not a second page:',
+    '// two live addresses for one folder would mean two passwords to remember and two links to revoke.',
+    '// Resuming is not always possible: the target may have been published again while this record',
+    '// was paused, and two live records for one folder is exactly what the partial unique index',
+    '// forbids. Answering 400 names the conflict instead of failing on a constraint.',
+    '// Revoking removes the record and nothing else: the shares it listed keep their own links, their',
+    '// own passwords and their own visit history.',
+  ]],
   ['src/worker/routes/share/global-stats.ts', [
     '// Statement builders + parsers for the share list\'s global stats (SH-17a):',
     '// the list route batches these five statements with its rows query, so each',
     '// side stays a pure piece the handler can reassemble.',
+  ]],
+  ['src/worker/routes/share/index.ts', [
+    '// Before the note routes: `/:noteId` is a single segment and would swallow `/collections`, answering',
+    '// "note not found" for a route that exists. Every single-segment route has to be registered ahead of',
+    '// it, which is why the collection routes sit here rather than with the public ones.',
   ]],
   ['src/worker/routes/share/note.ts', [
     '// The collision pre-check is not atomic: a concurrent registration can take the',
@@ -6759,6 +6884,24 @@ const allowed = new Map([
     '// Files that must pull the modals in dynamically instead of statically.',
     '// Files whose static closure touches each banned module (pre-image of the',
     '// ban), computed by one reverse-DFS over static edges.',
+  ]],
+  ['tests/share-collections.test.ts', [
+    '/**\n * Folder and tag ids are 26-character ids (`newId`), and the publish route validates them as such —\n * the same check the organizer applies — so the fixtures use real ids rather than readable ones.\n */',
+    '// The derivation is the point: a share added after publishing appears without republishing.',
+    '// Paused and expired members were never in it; the rest are, because they are live shares of a',
+    '// live folder — being about to be tested is not a membership rule.',
+    '// Pausing the last member empties the directory rather than leaving a stale row behind.',
+    '// Membership is "this id is a whole element of the tag array", not "this id appears somewhere in',
+    '// it": a restored share can carry an id this code did not mint, and one that merely contains the',
+    '// target\'s characters must stay out of the collection.',
+    '// Not even the code that says "no such collection" may differ between the three.',
+    '// Nothing about the directory leaks through the refusal, not even how big it is.',
+    '// Putting a password on it later is a re-statement of the same policy, so the address does not',
+    '// move — and the shell stops naming the folder, exactly as a protected share\'s shell does.',
+    '// A cursor the worker did not mint is a client bug, not a first page.',
+    '// The pause route answers to a pause and nothing else: a patch that tried to change the',
+    '// password would be a second, quietly different way to write the access policy.',
+    '// Revoking the collection is not revoking the shares it listed.',
   ]],
   ['tests/share-english-literals.test.ts', [
     '/**\n * SH-34: the share UI drew English-only literals (\'PV\', \'CUSTOM\', \'Untitled\n * note\', machine fallback tokens) straight into the page, and the worker\n * baked \'Untitled note\' into visit rows instead of reporting the missing\n * note to the client. Every user-visible string must go through i18n\n * message ids, so these banned substrings must not reappear.\n */',

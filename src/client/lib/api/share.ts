@@ -1,6 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
-import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -146,6 +146,20 @@ export const share = {
       },
     ) => request<{ share: ShareInfo }>(`/api/share/${noteId}`, { method: 'POST', body }),
     remove: (noteId: string) => request<{ ok: true }>(`/api/share/${noteId}`, { method: 'DELETE' }),
+    collections: {
+      list: (signal?: AbortSignal) =>
+        request<ShareCollectionListResponse>('/api/share/collections', { signal }),
+      publish: (body: { targetType: 'folder' | 'tag'; targetValue: string; password?: string; expiresAt?: number | null }) =>
+        request<{ id: string; slug: string }>('/api/share/collections', { method: 'POST', body }),
+      patch: (id: string, body: { isEnabled?: boolean; password?: string | null; expiresAt?: number | null }) =>
+        request<{ ok: true }>(`/api/share/collections/${id}`, { method: 'PATCH', body }),
+      revoke: (id: string) => request<{ ok: true }>(`/api/share/collections/${id}`, { method: 'DELETE' }),
+    },
+    readCollection: (params: { slug: string; password?: string; cursor?: string; signal?: AbortSignal }) =>
+      request<PublicCollection>(
+        `/api/public/collection/${params.slug}${toQuery({ cursor: params.cursor })}`,
+        { method: 'POST', body: { password: params.password }, signal: params.signal },
+      ),
     read: (params: {
       slug: string
       password?: string

@@ -618,4 +618,28 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `ALTER TABLE share_visits ADD COLUMN channel TEXT`,
     ],
   },
+  {
+    // Published collection pages (ADR-0005). The table holds only what must be stored — the address
+    // and the access policy — because the members are derived from the shares on every request; a
+    // member snapshot would need double writes and would silently go stale.
+    version: 42,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS share_collections (
+         id TEXT PRIMARY KEY,
+         slug TEXT NOT NULL,
+         user_id TEXT NOT NULL,
+         target_type TEXT NOT NULL,
+         target_value TEXT NOT NULL,
+         password_hash TEXT,
+         expires_at INTEGER,
+         is_enabled INTEGER NOT NULL DEFAULT 1,
+         created_at INTEGER NOT NULL,
+         updated_at INTEGER NOT NULL
+       )`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_share_collections_slug ON share_collections(slug)`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_share_collections_target
+         ON share_collections(user_id, target_type, target_value) WHERE is_enabled = 1`,
+      `CREATE INDEX IF NOT EXISTS idx_share_collections_user ON share_collections(user_id, created_at DESC)`,
+    ],
+  },
 ]

@@ -39,6 +39,22 @@ interface DemoShare {
   password: string | null
 }
 
+/**
+ * A published collection in the demo backend: the target it lists and the access policy on the page.
+ * The members are not stored here, for the same reason the worker does not store them — the demo's
+ * directory is computed from `shares` so it moves when the folder does.
+ */
+export interface DemoShareCollection {
+  id: string
+  slug: string
+  targetType: 'folder' | 'tag'
+  targetValue: string
+  password: string | null
+  expiresAt: number | null
+  isEnabled: boolean
+  createdAt: number
+}
+
 export interface DemoState {
   authenticated: boolean
   password: string
@@ -57,6 +73,7 @@ export interface DemoState {
   shares: Map<string, DemoShare>
   shareFolders: Map<string, ShareFolder>
   shareTags: Map<string, ShareTag>
+  shareCollections: Map<string, DemoShareCollection>
   backupTargets: Map<string, BackupTarget>
   backupRuns: BackupRun[]
   communityTemplates: CommunityTemplate[]
@@ -118,10 +135,23 @@ function welcomeShareSeed(now: number, welcomeNoteId: string) {
     shareFolderId: demoShareFolder.id,
     shareTags: [demoShareTag.name],
   }
+  // One collection is seeded so the panel and the public page both have something to show: the
+  // folder the welcome share already lives in, published with no password.
+  const demoCollection: DemoShareCollection = {
+    id: seedId(301),
+    slug: 'demo-collection',
+    targetType: 'folder',
+    targetValue: demoShareFolder.id,
+    password: null,
+    expiresAt: null,
+    isEnabled: true,
+    createdAt: now - 86_400_000 * 4,
+  }
   return {
     shares: new Map([[welcomeShare.noteId, { info: welcomeShare, password: null }]]),
     shareFolders: new Map([[demoShareFolder.id, demoShareFolder]]),
     shareTags: new Map([[demoShareTag.id, demoShareTag]]),
+    collections: new Map([[demoCollection.id, demoCollection]]),
   }
 }
 
@@ -268,6 +298,7 @@ export function createDemoState(): DemoState {
     shares: shareSeed.shares,
     shareFolders: shareSeed.shareFolders,
     shareTags: shareSeed.shareTags,
+    shareCollections: shareSeed.collections,
     backupTargets: new Map(),
     backupRuns: [],
     communityTemplates: communityTemplatesSeed(now),

@@ -199,6 +199,18 @@ export const TABLE_STATEMENTS: readonly string[] = [
       is_pinned INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     )`,
+  `CREATE TABLE IF NOT EXISTS share_collections (
+      id TEXT PRIMARY KEY,
+      slug TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      target_value TEXT NOT NULL,
+      password_hash TEXT,
+      expires_at INTEGER,
+      is_enabled INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
   `CREATE TABLE IF NOT EXISTS share_visits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,

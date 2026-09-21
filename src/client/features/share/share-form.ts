@@ -1,6 +1,21 @@
+import { t } from '../../lib/i18n'
 import { LIMITS } from '@shared/constants'
 
 export const KEEP_CURRENT_EXPIRY = 'current'
+
+/**
+ * The expiry choices the module offers, in one place: {never, a day, a week, a month}. The share
+ * editor and the collection publishing dialog both read them, so "a week from now" cannot mean two
+ * different spans depending on which surface asked.
+ */
+export function shareExpiryOptions(): { value: string; label: string }[] {
+  return [
+    { value: '0', label: t('share.never_expires') },
+    { value: String(24 * 3600000), label: t('share.1_day') },
+    { value: String(7 * 24 * 3600000), label: t('share.7_days') },
+    { value: String(30 * 24 * 3600000), label: t('share.30_days') },
+  ]
+}
 
 export function expiresInForSelection(selection: string): number | null | undefined {
   if (selection === KEEP_CURRENT_EXPIRY) return undefined

@@ -31,6 +31,7 @@ export const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   shares: ['slug', 'note_id', 'user_id', 'folder_id', 'tags', 'password_hash', 'expires_at', 'views', 'is_enabled', 'last_viewed_at', 'created_at'],
   share_folders: ['id', 'user_id', 'parent_id', 'name', 'icon', 'color', 'position', 'created_at', 'updated_at'],
   share_tags: ['id', 'user_id', 'name', 'color', 'is_pinned', 'created_at'],
+  share_collections: ['id', 'slug', 'user_id', 'target_type', 'target_value', 'password_hash', 'expires_at', 'is_enabled', 'created_at', 'updated_at'],
   share_visits: ['id', 'user_id', 'note_id', 'slug', 'visited_at', 'visitor_fp', 'country', 'region', 'city', 'referrer', 'referrer_host', 'device_type', 'os', 'browser', 'language', 'user_agent', 'is_bot', 'is_self_referrer', 'is_owner', 'channel'],
   share_asset_sessions: ['id', 'slug', 'password_hash', 'expires_at', 'created_at'],
   changes: ['seq', 'user_id', 'entity', 'entity_id', 'op', 'at'],

@@ -59,6 +59,6 @@
     "longFns": 1
   },
   "src/worker/db/schema/migrations.ts": {
-    "lines": 622
+    "lines": 646
   }
 }

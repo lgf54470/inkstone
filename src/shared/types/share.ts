@@ -42,6 +42,7 @@ export interface ShareInfo {
 
 export type ShareCategory =
   | 'dashboard'
+  | 'collections'
   | 'all'
   | 'active'
   | 'paused'
@@ -251,6 +252,54 @@ export interface ShareSession {
 
 export interface ShareSessionsResponse {
   sessions: ShareSession[]
+  /** Opaque; null when the page was the last one. */
+  nextCursor: string | null
+  limit: number
+}
+
+/**
+ * One published collection (ADR-0005): a stable address plus the access policy for "everything in
+ * this folder" or "everything with this tag". The members are not part of this shape — they are
+ * derived per request from the shares themselves, so `count` is a reading taken now, not a stored
+ * snapshot.
+ */
+export interface ShareCollection {
+  id: string
+  slug: string
+  title: string
+  targetType: 'folder' | 'tag'
+  targetValue: string
+  count: number
+  hasPassword: boolean
+  expiresAt: number | null
+  isEnabled: boolean
+  createdAt: number
+}
+
+export interface ShareCollectionListResponse {
+  collections: ShareCollection[]
+}
+
+/**
+ * One member of a public collection's directory. `hasPassword` is the member's own lock, not the
+ * collection's: opening it asks for that password, and the collection's password does not stand in
+ * for it.
+ */
+export interface PublicCollectionNote {
+  slug: string
+  title: string
+  excerpt: string
+  hasPassword: boolean
+}
+
+/**
+ * What a collection page shows once its own password has been accepted — or immediately, for a
+ * collection that has none. Nothing about the directory is answered before that, including its size.
+ */
+export interface PublicCollection {
+  title: string
+  count: number
+  notes: PublicCollectionNote[]
   /** Opaque; null when the page was the last one. */
   nextCursor: string | null
   limit: number

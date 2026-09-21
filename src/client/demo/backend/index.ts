@@ -10,6 +10,7 @@ import { registerSearchRoutes } from './routes/search'
 import { registerFilesRoutes } from './routes/files'
 import { registerSettingsRoutes } from './routes/settings'
 import { registerBoardLibraryRoutes } from './routes/board-library'
+import { registerDemoCollectionRoutes } from './routes/collections'
 import { registerShareRoutes } from './routes/share'
 import { registerShareAdminRoutes } from './routes/share-admin'
 import { registerBackupRoutes } from './routes/backup'
@@ -49,6 +50,7 @@ export function createDemoBackend(): DemoBackend {
   registerSettingsRoutes(app, state)
   registerBoardLibraryRoutes(app, state)
   registerShareRoutes(app, state)
+  registerDemoCollectionRoutes(app, state)
   registerShareAdminRoutes(app, state)
   registerBackupRoutes(app, state)
   registerBlogRoutes(app, state)

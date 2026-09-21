@@ -18,7 +18,7 @@ import { backupRoutes } from './routes/backup'
 import { settingsRoutes } from './routes/settings'
 import { boardLibraryRoutes } from './routes/board-library'
 import { kanbanRoutes } from './routes/kanban'
-import { shareManageRoutes, sharePageRoutes, shareRoutes } from './routes/share'
+import { collectionPageRoutes, shareManageRoutes, sharePageRoutes, shareRoutes } from './routes/share'
 import { blogManageRoutes, blogPublicRoutes } from './routes/blog'
 import { transferRoutes } from './routes/transfer'
 import { updateRoutes } from './routes/update'
@@ -44,6 +44,7 @@ export function createApp() {
   })
 
   app.route('/s', sharePageRoutes)
+  app.route('/c', collectionPageRoutes)
   app.route('/playlist', musicPageRoutes)
   app.route('/', mcpAuthorizeRoutes)
 
