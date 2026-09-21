@@ -590,6 +590,32 @@ describe('share batch routes (real D1)', () => {
     expect(typeof row!.expires_at).toBe('number')
   })
 
+  it('extends each link from the later of its own expiry and now, leaving permanent links alone', async () => {
+    const db = await makeDb()
+    const soon = await seedNote(db, {})
+    const lapsed = await seedNote(db, {})
+    const permanent = await seedNote(db, {})
+    const now = Date.now()
+    const day = 24 * 60 * 60 * 1000
+    await seedShare(db, { note_id: soon, slug: 'soon', expires_at: now + 2 * day })
+    await seedShare(db, { note_id: lapsed, slug: 'lapsed', expires_at: now - 30 * day })
+    await seedShare(db, { note_id: permanent, slug: 'permanent', expires_at: null })
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/share/batch', { action: 'extend', noteIds: [soon, lapsed, permanent], extendDays: 7 })
+    expect(res.status).toBe(200)
+    // The permanent link is reported rather than counted: nothing about it changed.
+    expect(await res.json()).toMatchObject({ ok: true, count: 2, permanent: 1 })
+
+    const extended = await firstRow(db, 'SELECT expires_at FROM shares WHERE slug = ?1', 'soon')
+    expect(Math.abs((extended!.expires_at as number) - (now + 9 * day))).toBeLessThan(5_000)
+    // A lapsed link extends from now: counting from its own past expiry would leave it lapsed.
+    const restarted = await firstRow(db, 'SELECT expires_at FROM shares WHERE slug = ?1', 'lapsed')
+    expect(Math.abs((restarted!.expires_at as number) - (now + 7 * day))).toBeLessThan(5_000)
+    const untouched = await firstRow(db, 'SELECT expires_at FROM shares WHERE slug = ?1', 'permanent')
+    expect(untouched!.expires_at).toBeNull()
+  })
+
   it('enables every note in a folder through batch-folder', async () => {
     const db = await makeDb()
     const n1 = await seedNote(db, { folder_id: 'f-1' })

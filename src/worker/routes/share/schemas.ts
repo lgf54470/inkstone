@@ -2,9 +2,10 @@ import { z } from 'zod'
 import { LIMITS } from '@shared/constants'
 
 export const shareBatchSchema = z.object({
-  action: z.enum(['enable', 'disable', 'revoke', 'expire', 'move']),
+  action: z.enum(['enable', 'disable', 'revoke', 'expire', 'extend', 'move']),
   noteIds: z.array(z.string()).min(1, 'noteIds must be a non-empty array'),
   expiresIn: z.number().nullable().optional(),
+  extendDays: z.number().optional(),
   folderId: z.string().nullable().optional(),
 })
 

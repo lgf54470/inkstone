@@ -28,6 +28,48 @@ async function batchSetExpiry(batchToggle: ShareStoreState['batchToggle'], noteI
   await batchToggle('expire', noteIds, millis)
 }
 
+const RENEWAL_DAYS = [7, 30]
+
+/**
+ * Renewal sits beside the absolute expiry entries, and the two are not the same action:
+ * `expire` writes a moment, so picking "7 days" on a link that runs for a year would cut it
+ * short. Adding days is what "keep these alive a bit longer" means, which is why the result
+ * is reported — a permanent link has no clock to move and must not look like it changed.
+ */
+export function buildRenewalMenuItems(params: {
+  batchExtend: ShareStoreState['batchExtend']
+  noteIds: string[]
+  toast: UiState['toast']
+}): MenuItem[] {
+  const { batchExtend, noteIds, toast } = params
+  return RENEWAL_DAYS.map((days, index) => ({
+    id: `extend-${days}`,
+    separatorBefore: index === 0,
+    label: t('share.batch_extend_days', { days }),
+    onSelect: async () => {
+      const result = await batchExtend(noteIds, days)
+      if (!result) return
+      if (result.extended > 0) {
+        toast({
+          title: t('share.batch_extend_success', { count: result.extended, days }),
+          description: result.permanent > 0
+            ? t('share.batch_extend_kept_permanent', { count: result.permanent })
+            : undefined,
+          tone: 'success',
+        })
+        return
+      }
+      // Nothing moved: say which of the two reasons it was instead of reporting success.
+      toast({
+        title: result.permanent > 0
+          ? t('share.batch_extend_all_permanent', { count: result.permanent })
+          : t('share.batch_extend_none'),
+        tone: 'warning',
+      })
+    },
+  }))
+}
+
 export function buildExpiryMenuItems(batchToggle: ShareStoreState['batchToggle'], noteIds: string[]): MenuItem[] {
   return [
     { id: 'perm', label: t('share.never_expires'), onSelect: () => void batchSetExpiry(batchToggle, noteIds, null) },

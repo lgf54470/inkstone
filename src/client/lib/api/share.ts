@@ -74,6 +74,11 @@ export const share = {
       expiresIn?: number | null,
       folderId?: string | null,
     ) => request<{ ok: true; count: number }>('/api/share/batch', { method: 'POST', body: { action, noteIds, expiresIn, folderId } }),
+    extend: (noteIds: string[], days: number) =>
+      request<{ ok: true; count: number; permanent: number }>('/api/share/batch', {
+        method: 'POST',
+        body: { action: 'extend', noteIds, extendDays: days },
+      }),
     batchFolder: (folderId: string, enabled: boolean) =>
       request<{ ok: true; count: number }>('/api/share/batch-folder', { method: 'POST', body: { folderId, enabled } }),
     batchTag: (tag: string, enabled: boolean) =>

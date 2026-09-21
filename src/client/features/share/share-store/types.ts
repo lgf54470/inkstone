@@ -74,6 +74,8 @@ export interface ShareStoreState {
     expiresIn?: number | null,
     folderId?: string | null,
   ) => Promise<boolean>
+  /** Renewal: adds days to each link's own expiry. Null means the request failed. */
+  batchExtend: (noteIds: string[], days: number) => Promise<{ extended: number; permanent: number } | null>
   batchMoveToFolder: (noteIds: string[], folderId: string | null) => Promise<boolean>
   batchToggleGroup: (type: 'folder' | 'tag', target: string, enabled: boolean) => Promise<boolean>
   batchFolderToggle: (folderId: string, enabled: boolean) => Promise<boolean>

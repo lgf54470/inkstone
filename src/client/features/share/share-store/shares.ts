@@ -6,13 +6,14 @@ import type { ShareInfo } from '@shared/types'
 import type { ShareStoreState, SetShareStoreState } from './types'
 import { notifyActionFailed, notifySharePublished } from './notify'
 
-export const shareSharesActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'applyServerShare' | 'batchToggleGroup' | 'toggleShare' | 'togglePin' | 'toggleStar' | 'batchToggle' | 'batchMoveToFolder' | 'batchFolderToggle' | 'batchTagToggle'> => ({
+export const shareSharesActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'applyServerShare' | 'batchToggleGroup' | 'toggleShare' | 'togglePin' | 'toggleStar' | 'batchToggle' | 'batchExtend' | 'batchMoveToFolder' | 'batchFolderToggle' | 'batchTagToggle'> => ({
   applyServerShare: (share) => applyServerShareImpl(share, set, get),
   batchToggleGroup: (type, target, enabled) => batchToggleGroupImpl(type, target, enabled, set, get),
   toggleShare: (noteId, enabled) => toggleShareImpl(noteId, enabled, set, get),
   togglePin: (noteId) => togglePinImpl(noteId, set, get),
   toggleStar: (noteId) => toggleStarImpl(noteId, set, get),
   batchToggle: (action, noteIds, expiresIn, folderId) => batchToggleImpl(action, noteIds, expiresIn, folderId, set, get),
+  batchExtend: (noteIds, days) => batchExtendImpl(noteIds, days, set, get),
   batchMoveToFolder: (noteIds, folderId) => batchMoveToFolderImpl(noteIds, folderId, set, get),
   batchFolderToggle: (folderId, enabled) => batchFolderToggleImpl(folderId, enabled, set, get),
   batchTagToggle: (tag, enabled) => batchTagToggleImpl(tag, enabled, set, get),
@@ -182,6 +183,26 @@ async function batchToggleImpl(
   } catch {
     notifyActionFailed()
     return false
+  } finally {
+    set({ batchBusy: false })
+  }
+}
+
+async function batchExtendImpl(
+  noteIds: string[],
+  days: number,
+  set: SetShareStoreState,
+  get: () => ShareStoreState,
+): Promise<{ extended: number; permanent: number } | null> {
+  set({ batchBusy: true })
+  try {
+    const result = await api.share.extend(noteIds, days)
+    set({ selectedNoteIds: new Set() })
+    await get().loadShares()
+    return { extended: result.count, permanent: result.permanent }
+  } catch {
+    notifyActionFailed()
+    return null
   } finally {
     set({ batchBusy: false })
   }

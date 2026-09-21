@@ -18,10 +18,18 @@ function registerShareBatchRoute(shareManageRoutes: Hono<AppBindings>): void {
     const now = Date.now()
 
     let count = 0
+    let permanent = 0
     switch (body.action) {
       case 'enable':
         count = await enableNoteShares(c.env.DB, userId, noteIds, now)
         break
+      case 'extend': {
+        const days = clampExtendDays(body.extendDays)
+        const result = await extendSharesForNotes(c.env.DB, userId, noteIds, days * DAY_MS, now)
+        count = result.extended
+        permanent = result.permanent
+        break
+      }
       case 'disable':
         count = await disableSharesForNotes(c.env.DB, userId, noteIds)
         break
@@ -42,8 +50,56 @@ function registerShareBatchRoute(shareManageRoutes: Hono<AppBindings>): void {
         break
       }
     }
-    return c.json({ ok: true, count })
+    // `permanent` is reported only by `extend`: no other action can leave a link alone, and a
+    // field that is always 0 in the response invites reading it as the answer to the request.
+    return body.action === 'extend'
+      ? c.json({ ok: true, count, permanent })
+      : c.json({ ok: true, count })
   })
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const MAX_EXTEND_DAYS = 365
+
+/** A missing or nonsensical day count means the shipped default, never a wild expiry. */
+function clampExtendDays(raw: number | undefined): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 1) return 7
+  return Math.min(Math.trunc(raw), MAX_EXTEND_DAYS)
+}
+
+/**
+ * Renewal, as opposed to `expire`: `expire` writes an absolute moment, so applying it to
+ * a link that already runs longer would *shorten* it. Adding days is what a person means by
+ * "keep these alive a bit longer", and the two boundaries are the whole of the semantics:
+ * a permanent link has no clock to move (it stays null and is reported back), and a lapsed
+ * link starts from now — adding to its own past expiry could leave it lapsed again.
+ */
+async function extendSharesForNotes(
+  db: D1Database,
+  userId: string,
+  noteIds: string[],
+  extendMs: number,
+  now: number,
+): Promise<{ extended: number; permanent: number }> {
+  let extended = 0
+  let permanent = 0
+  for (const chunk of chunkNoteIds(noteIds)) {
+    const stuck = await db.prepare(
+      `SELECT COUNT(*) AS n FROM shares
+        WHERE user_id = ?1 AND note_id IN (${placeholdersFor(chunk)}) AND expires_at IS NULL`,
+    )
+      .bind(userId, ...chunk)
+      .first<{ n: number }>()
+    permanent += stuck?.n ?? 0
+    const result = await db.prepare(
+      `UPDATE shares SET expires_at = MAX(expires_at, ?2) + ?3
+        WHERE user_id = ?1 AND note_id IN (${placeholdersFor(chunk)}) AND expires_at IS NOT NULL`,
+    )
+      .bind(userId, now, extendMs, ...chunk)
+      .run()
+    extended += result.meta.changes ?? 0
+  }
+  return { extended, permanent }
 }
 
 function registerShareFolderToggleRoute(shareManageRoutes: Hono<AppBindings>): void {

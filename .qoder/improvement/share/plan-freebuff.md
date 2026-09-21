@@ -57,8 +57,8 @@
 | 27 | D | SH-81 | 读侧无限流（分析/日志对已认证会话全开放） | 小–中 | ✅ | b6ce939a |
 | 28 | D | SH-75 | 全量导出串行分页无进度/无取消/无上限提示 | 小–中 | ✅ | 1976371e |
 | 29 | D | SH-76 | `useShareStore.subscribe` 每次写入重建共享 id 快照 | 极小 | ✅ | 3a58c21d |
-| 30 | D | SH-77 | 500 行全量渲染无虚拟化（无规模证据则关闭） | 中 | ✅ | ⏳ 下项回填（关闭 + 修正截断文案） |
-| 31 | E | SH-62 | 到期治理：即将到期列表 + 批量续期 | 中 | ⬜ | |
+| 30 | D | SH-77 | 500 行全量渲染无虚拟化（无规模证据则关闭） | 中 | ✅ | 35cc631b（关闭 + 修正截断文案） |
+| 31 | E | SH-62 | 到期治理：即将到期列表 + 批量续期 | 中 | ✅ | ⏳ 下项回填 |
 | 32 | E | SH-63 | 单条分享的访客数据删除 / 导出 | 小–中 | ⬜ | |
 | 33 | E | SH-69 | 批量二维码打印表 / 复制全部链接 | 小–中 | ⬜ | |
 | 34 | E | SH-65 | 无自动刷新 / 无新鲜度标识 | 中 | ⬜ | |
@@ -443,3 +443,19 @@
 - 变异 3 发，各自只杀一条：M1 组件不再传实际计数（改 `formatNumber(500)`）→ 第 ① 例红；M2 文案退回写死的「the first 500 only」→ 第 ② 例红（第 ① 例仍绿——因为两边都读同一份 locale，只有「是不是模板」这条能看见它）；M3 去掉 `truncated` 判断→ 第 ③ 例红。
 - 验证读数：`tsc -b --force` exit 0；`features/share` 全目录 + `tests/share-routes.test.ts` + `tests/share-english-literals.test.ts` **38 文件 / 234 用例全绿**（服务端一侧本就有 `truncated` 的真假两例：`tests/share-routes.test.ts:441/498`）；12 项静态门禁全绿（`i18n` 键位一致、`size` 通过、`comments` 5114 条 / 719 文件）。
 - 局限与重开条件：① `shares.length` 作为计数是准确的**因为**截断时服务端恰好给满 500 行（若将来服务端改成稀疏截断，这句要改成读 `total`）；② 关闭虚拟化的前提是「列表有上限」，因此**重开条件写死**：服务端上限提到 2000 以上、或列表被嵌进不通向 modal 的更长表面（需要无限滚动）时，重新评估；③ 提示不是可关闭的（消息本身是「你现在看到的不全」，关闭它等于藏信息）；④ 未用真实浏览器测 500 行的滚动帧率——本项结论建立在「上限固定 + 行级重绘」的代码事实上，不建立在一个没量过的帧率数字上。
+
+### 31 — SH-62 批量续期：相对延长与绝对到期的区分（2026-09-21）
+
+- 根因：批量菜单只有绝对赋值——`batch.ts` 的 `expire` 分支把 `now + expiresIn` 写进 `expires_at`（且 `folder_id`/`is_enabled`/`expires_at` 共用同一个 `setSharesField` 的绝对赋值语义）。于是到期前最高频的动作「再续一段」只能靠「设置有效期」冒充，而它会**缩短**一个本来更长的链接（剩 300 天的链接选「7 天」→ 只剩 7 天）。
+- 两个边界就是全部语义（也是本项按台账要求先写成断言的两条）：
+  - **永久链接没有钟可拨**：`expires_at IS NULL` 的行不参与更新，且数量在响应里单独回报（`permanent`），不当作「已延长 0 条」；
+  - **已过期链接从 now 起算**：`MAX(expires_at, now) + N 天`——若从它自己的过去起算（`COALESCE`），给一个已停用 30 天的链接续 7 天会依旧停用，而界面会报「已延长 1 条」。
+- 改动面（7 文件，恰 1 新增）：
+  - `routes/share/schemas.ts` + `batch.ts`：新增 `extend` 动作与 `extendDays`（缺省/非法回退 7 天，上限 365）；`extendSharesForNotes()` 按块先数永久的、再 `UPDATE ... WHERE expires_at IS NOT NULL`。
+  - **一次被既有断言拦下的响应形状错误**：我最初给所有动作都加上 `permanent: 0`，`tests/share-routes.test.ts` 的 SH-10 两例（`toEqual({ ok: true, count: N })`）立刻红。改为**只有 `extend` 回报 `permanent`**——其他动作不可能「留下没动的链接」，一个恒为 0 的字段反而会被读成「答案」。这又一次说明严格相等断言在守「响应契约长什么样」。
+  - `lib/api/share.ts` 新增 `extend(noteIds, days)`；store 新增 `batchExtend`（返回 `{extended, permanent} | null`，失败走既有 `notifyActionFailed`）；**不动 `batchToggle` 的签名**，续期这条路径自带自己的诚实反馈。
+  - 新增 `buildRenewalMenuItems()` 接在既有 `buildExpiryMenuItems()` 后面（第一项带 `separatorBefore`，把绝对/相对两组在视觉上也分开）；选中条交回三种结果：延成了（success + 「其中 N 个永不过期」描述）、全是永久（warning，不说延了 0 条）、没一个带到期（warning）。
+- 先红后绿：worker 侧先写断言后实现（未改 schema 前实测 400，即 `extend` 被拒），一条用例同时钉三个断言：`{count: 2, permanent: 1}`、活的链接 ≈ now+9d、已过期约为 now+7d、永久的仍为 null。客户端新增 `share-batch-extend.test.ts` 5 例（菜单里两组共 6 项、`aria-expanded` 真假、成功反馈、全永久警告、无到期警告）。
+- 变异 5 发全杀（3 服务端 + 3 客户端去掉重复那发）：M1 去掉 `expires_at IS NOT NULL` → 永久链接被上钟（`count: 3`）；M2 `MAX(expires_at, now)` 改 `COALESCE` → 已过期链接仍停在过去（`2592000000 to be less than 5000`）；客户端 M1 恒走成功分支 → 后两例红；M2 去掉「其中 N 个永不过期」描述 → 成功例红；M3 把天数写成固定 30 → 成功例红。
+- 验证读数：`tsc -b --force` exit 0；`features/share` 全目录 + `tests/share-routes.test.ts` + `tests/share-english-literals.test.ts` **39 文件 / 240 用例全绿**；12 项静态门禁全绿（`i18n` 3157 键，±5；`comments` 5126 条 / 723 文件）。中间 `size:check` 报过两处 `longFns`（`ShareBatchBar` 59 行、新测试的 describe 体），按门禁意见拆出 `useShareBatchBarBundle()` 与两段 describe 归零，未 resnapshot 基线。
+- 局限：① `extend` 不重新启用被暂停的链接，也不改 `is_enabled`（两件事，“续期”不隐含“开启”）；② 上限 365 天与 `expire` 的 365 天一致，但两个分支各写一份常量，未提取共用常量（差异会各自被测试发现，暂不抽象）；③ 「N 天 0 访问自动暂停」（报告里的可选项）未做；④ 每条链接的续期是同一段天数（不能按行不同）；⑤ 未在真实 D1 上验证 `MAX()` 标量函数与多块并发（本地 `node:sqlite` 同引擎，但索引/并发行为不等价）。

@@ -3027,6 +3027,17 @@ const allowed = new Map([
     '// the animated modal it can be opened inside — so its switches live on the document.',
     '// Modal mounts its panel through a portal, so look in the document instead of the container.',
   ]],
+  ['src/client/features/share/share-batch-bar-actions.tsx', [
+    '/**\n * Renewal sits beside the absolute expiry entries, and the two are not the same action:\n * `expire` writes a moment, so picking "7 days" on a link that runs for a year would cut it\n * short. Adding days is what "keep these alive a bit longer" means, which is why the result\n * is reported — a permanent link has no clock to move and must not look like it changed.\n */',
+    '// Nothing moved: say which of the two reasons it was instead of reporting success.',
+  ]],
+  ['src/client/features/share/share-batch-bar.tsx', [
+    '/**\n * The bar\'s props, read from the store and the menu lists built from them. It runs even when\n * nothing is selected (hooks cannot be conditional) so the early return stays where it is;\n * the menu items it assembles for an empty selection are simply never drawn.\n */',
+  ]],
+  ['src/client/features/share/share-batch-extend.test.ts', [
+    '/**\n * SH-62: renewal is the action a person reaches for before a link lapses, and the two ways it\n * can come back with nothing done — a permanent link has no clock to move, and a selection may\n * not be shared at all — have to read differently from "extended 0 links".\n */',
+    '// Real messages, so the toast assertions read sentences rather than message ids.',
+  ]],
   ['src/client/features/share/share-category-status.test.ts', [
     '/**\n * The record is the exhaustiveness check: `Record<ShareCategory, ...>` stops compiling the moment\n * a category joins the union without being mapped here, and the loop below then proves the mapping\n * the list query actually gets. A category that fell through to `all` would look like a filter that\n * silently does nothing — the failure this pins down.\n */',
   ]],
@@ -3202,6 +3213,9 @@ const allowed = new Map([
   ['src/client/features/share/share-store/shares.ts', [
     '// Zero views on a paused row is the only client-side signal that this note has never been public.',
     '/* The row is outside the current filter (e.g. just enabled under the\n       paused filter); only a reload knows whether and where it now belongs. */',
+  ]],
+  ['src/client/features/share/share-store/types.ts', [
+    '/** Renewal: adds days to each link\'s own expiry. Null means the request failed. */',
   ]],
   ['src/client/features/share/share-store/visibility-subscribe.test.ts', [
     '/**\n * SH-76: the projection the notes store reads is derived from `shares` and `summary` alone,\n * but the subscriber used to rebuild its id set on every store write — including every\n * keystroke and every row selection — and then compare it to the previous one to discover\n * nothing had changed. The test distinguishes the two behaviours at the boundary it can\n * observe: whether the push happens at all for a write that cannot have changed the answer.\n */',
@@ -6147,6 +6161,10 @@ const allowed = new Map([
     '// and both aggregation paths list the same top ten.',
   ]],
   ['src/worker/routes/share/batch.ts', [
+    '// `permanent` is reported only by `extend`: no other action can leave a link alone, and a',
+    '// field that is always 0 in the response invites reading it as the answer to the request.',
+    '/** A missing or nonsensical day count means the shipped default, never a wild expiry. */',
+    '/**\n * Renewal, as opposed to `expire`: `expire` writes an absolute moment, so applying it to\n * a link that already runs longer would *shorten* it. Adding days is what a person means by\n * "keep these alive a bit longer", and the two boundaries are the whole of the semantics:\n * a permanent link has no clock to move (it stays null and is reported back), and a lapsed\n * link starts from now — adding to its own past expiry could leave it lapsed again.\n */',
     '// One upsert per note inside a chunked db.batch: the whole chunk commits together,',
     '// and both arms are owner-guarded so a foreign note_id can neither be inserted over',
     '// nor have its share flipped (the old read-then-insert crashed on exactly that).',
@@ -6493,6 +6511,8 @@ const allowed = new Map([
     '// full table scan, which is what a rewrite dropping the note_id predicate would cause.',
     '// "Has expiry" stays the superset of every future date — including the soon ones, so no row',
     '// disappears from the wider category — while "soon" narrows it, and expired stays disjoint.',
+    '// The permanent link is reported rather than counted: nothing about it changed.',
+    '// A lapsed link extends from now: counting from its own past expiry would leave it lapsed.',
     '// Any write path that ever loses its ownership check would leave a visit row',
     '// pointing at another account\'s note; the title lookup must not follow it.',
     '// visit recording runs via waitUntil; the test context must let us await it',

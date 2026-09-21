@@ -7,7 +7,7 @@ import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
 import { useUi } from '../../store/ui'
 import { useShareStore, type ShareStoreState } from './share-store'
-import { batchDisableAll, batchEnableAll, batchRevokeAll, buildExpiryMenuItems, buildShareFolderMenuItems } from './share-batch-bar-actions'
+import { batchDisableAll, batchEnableAll, batchRevokeAll, buildExpiryMenuItems, buildRenewalMenuItems, buildShareFolderMenuItems } from './share-batch-bar-actions'
 
 export function ShareBatchBar({
   selectedCount,
@@ -16,28 +16,8 @@ export function ShareBatchBar({
   selectedCount: number
   onClearSelection: () => void
 }) {
-  const toast = useUi((s) => s.toast)
-  const batchToggle = useShareStore((s) => s.batchToggle)
-  const batchMoveToFolder = useShareStore((s) => s.batchMoveToFolder)
-  const folders = useShareStore((s) => s.folders)
-  const selectedNoteIds = useShareStore((s) => s.selectedNoteIds)
-  const batchBusy = useShareStore((s) => s.batchBusy)
-
-  const [isExpiryMenuOpen, setIsExpiryMenuOpen] = useState(false)
-  const expiryButtonRef = useRef<HTMLButtonElement>(null)
-  const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
-  const folderButtonRef = useRef<HTMLButtonElement>(null)
-
+  const bundle = useShareBatchBarBundle(selectedCount)
   if (selectedCount === 0) return null
-
-  const noteIds = Array.from(selectedNoteIds)
-  const bundle: ShareBatchBarBundle = {
-    batchToggle, batchMoveToFolder, noteIds, selectedCount, batchBusy, toast,
-    isExpiryMenuOpen, setIsExpiryMenuOpen, expiryButtonRef, isFolderMenuOpen,
-    setIsFolderMenuOpen, folderButtonRef,
-    expiryMenuItems: buildExpiryMenuItems(batchToggle, noteIds),
-    folderMenuItems: buildShareFolderMenuItems(folders, noteIds, batchMoveToFolder, selectedCount, () => setIsFolderMenuOpen(false), toast),
-  }
 
   return (
     <div className='absolute bottom-6 left-1/2 z-[var(--z-float)] flex max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-4 py-2 shadow-[var(--shadow-pop)] backdrop-blur-md'>
@@ -63,6 +43,38 @@ export function ShareBatchBar({
       {bundle.isFolderMenuOpen && <Menu open={bundle.isFolderMenuOpen} onClose={() => bundle.setIsFolderMenuOpen(false)} items={bundle.folderMenuItems} anchor={bundle.folderButtonRef} />}
     </div>
   )
+}
+
+/**
+ * The bar's props, read from the store and the menu lists built from them. It runs even when
+ * nothing is selected (hooks cannot be conditional) so the early return stays where it is;
+ * the menu items it assembles for an empty selection are simply never drawn.
+ */
+function useShareBatchBarBundle(selectedCount: number): ShareBatchBarBundle {
+  const toast = useUi((s) => s.toast)
+  const batchToggle = useShareStore((s) => s.batchToggle)
+  const batchExtend = useShareStore((s) => s.batchExtend)
+  const batchMoveToFolder = useShareStore((s) => s.batchMoveToFolder)
+  const folders = useShareStore((s) => s.folders)
+  const selectedNoteIds = useShareStore((s) => s.selectedNoteIds)
+  const batchBusy = useShareStore((s) => s.batchBusy)
+
+  const [isExpiryMenuOpen, setIsExpiryMenuOpen] = useState(false)
+  const expiryButtonRef = useRef<HTMLButtonElement>(null)
+  const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
+  const folderButtonRef = useRef<HTMLButtonElement>(null)
+
+  const noteIds = Array.from(selectedNoteIds)
+  return {
+    batchToggle, batchMoveToFolder, noteIds, selectedCount, batchBusy, toast,
+    isExpiryMenuOpen, setIsExpiryMenuOpen, expiryButtonRef, isFolderMenuOpen,
+    setIsFolderMenuOpen, folderButtonRef,
+    expiryMenuItems: [
+      ...buildExpiryMenuItems(batchToggle, noteIds),
+      ...buildRenewalMenuItems({ batchExtend, noteIds, toast }),
+    ],
+    folderMenuItems: buildShareFolderMenuItems(folders, noteIds, batchMoveToFolder, selectedCount, () => setIsFolderMenuOpen(false), toast),
+  }
 }
 
 interface ShareBatchBarBundle {
