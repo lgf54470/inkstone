@@ -1,11 +1,10 @@
 import { useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronRight } from 'lucide-react'
 import { cn } from '../../lib/cn'
-import { Kbd } from '../primitives'
 import { t } from '../../lib/i18n'
 import { Z_INDEX } from '../../lib/z-index'
 import { useEscape, useClickOutside } from './hooks'
+import { MenuRow } from './menu-row'
 import { useCursorFocus, useFocusRestore, useMenuActionKeys, useMenuCursorKeys, useMenuPosition, useMenuReset, useSubmenuPosition, type MenuItem } from './use-menu'
 
 const SUBMENU_STACK_DELTA = 10
@@ -21,25 +20,24 @@ interface MenuItemRowProps {
 function MenuItemRow({ item, index, cursor, onHover, onClick }: MenuItemRowProps) {
   return (<div key={item.id}>
     {item.separatorBefore && <div role='separator' className='my-1 h-px bg-[var(--border-subtle)]'/>}
-    <button type='button' role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'} aria-checked={item.checked === undefined ? undefined : item.checked} tabIndex={index === cursor ? 0 : -1} data-menu-index={index} disabled={item.disabled} onMouseEnter={(e) => {
-      if (!item.disabled)
-        onHover(index, item, e.currentTarget)
-    }}        onClick={(e) => onClick(item, e.currentTarget)} className={cn('flex h-10 w-full items-center gap-2.5 rounded-[var(--r-sm)] px-2 text-left text-[length:var(--text-12\\.5)] md:h-7.5', 'transition-colors duration-[var(--dur-xs)] disabled:pointer-events-none disabled:opacity-40', index === cursor ? 'bg-[var(--bg-hover)]' : '', item.tone === 'danger'
-      ? 'text-[var(--danger)]'
-      : index === cursor
-        ? 'text-[var(--text-primary)]'
-        : 'text-[var(--text-secondary)]')}>
-      {item.icon && (<span className='flex size-4 shrink-0 items-center justify-center opacity-85'>
-        {item.icon}
-      </span>)}
-      <span className='min-w-0 flex-1 truncate'>{item.label}</span>
-      {item.checked && <span className='text-[var(--accent)]'>✓</span>}
-      {item.submenu ? (
-        <ChevronRight size={13} className='ml-auto shrink-0 opacity-70' />
-      ) : (
-        item.combo && <Kbd combo={item.combo}/>
-      )}
-    </button>
+    <MenuRow
+      item={item}
+      tabIndex={index === cursor ? 0 : -1}
+      data-menu-index={index}
+      onMouseEnter={(e) => {
+        if (!item.disabled)
+          onHover(index, item, e.currentTarget)
+      }}
+      onClick={(e) => onClick(item, e.currentTarget)}
+      // The mark the menu draws on its checked row, and the arrow it pushes to the far edge.
+      check={<span className='text-[var(--accent)]'>✓</span>}
+      arrowClassName='ml-auto'
+      className={cn(index === cursor ? 'bg-[var(--bg-hover)]' : '', item.tone === 'danger'
+        ? 'text-[var(--danger)]'
+        : index === cursor
+          ? 'text-[var(--text-primary)]'
+          : 'text-[var(--text-secondary)]')}
+    />
   </div>)
 }
 

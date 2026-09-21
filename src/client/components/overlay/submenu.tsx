@@ -12,11 +12,11 @@
  * named after its row, and Escape (the menu's own) or a press elsewhere closes it.
  */
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { Check, ChevronRight } from 'lucide-react'
-import { Kbd } from '../primitives'
+import { Check } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { getVisibleViewport } from '../../lib/viewport'
 import { useEscape } from './hooks'
+import { MenuRow } from './menu-row'
 import type { MenuItem } from './use-menu'
 
 /** The gap a nested panel leaves beside the row that opened it. */
@@ -35,11 +35,8 @@ export function submenuFor(items: MenuItem[], width?: number) {
   )
 }
 
-/** The row's own look, before the tone it is given decides the colour of its text. */
-const ROW_CLASS = cn(
-  'flex h-10 w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[length:var(--text-12\\.5)] md:h-7.5',
-  'transition-colors duration-[var(--dur-xs)] hover:bg-[var(--bg-hover)] disabled:pointer-events-none disabled:opacity-40',
-)
+/** What a nested row adds to the shared track: a hover wash, since no cursor marks a row here. */
+const ROW_TONE = 'hover:bg-[var(--bg-hover)]'
 
 /** A row that opens a panel steps into it on these keys, rather than only opening it. */
 const STEP_IN_KEYS = ['Enter', ' ', 'ArrowRight']
@@ -169,15 +166,15 @@ function RowButton({ item, open, panelId, listRef, leavePanel, onOpen, onSelect 
   onSelect: () => void
 }) {
   return (
-    <button
-      type='button'
-      role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
-      aria-checked={item.checked}
+    <MenuRow
+      item={item}
+      tight
+      // What the row states about the panel it opens: this list's rows move the DOM focus, so the
+      // row is found by the id it is marked with rather than by a cursor index.
       {...(item.submenu
         ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': open, ...(open ? { 'aria-controls': panelId } : {}) }
         : {})}
       data-submenu-row={item.id}
-      disabled={item.disabled}
       onMouseEnter={() => onOpen(false)}
       onKeyDown={(event) => rowKeyDown(event, {
         item,
@@ -192,17 +189,11 @@ function RowButton({ item, open, panelId, listRef, leavePanel, onOpen, onSelect 
         }
         onSelect()
       }}
-      className={cn(ROW_CLASS, item.tone === 'danger'
+      check={<Check size={13} className='shrink-0 text-[var(--accent)]' />}
+      className={cn(ROW_TONE, item.tone === 'danger'
         ? 'text-[var(--danger)]'
         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]')}
-    >
-      {item.icon && <span className='flex size-4 shrink-0 items-center justify-center opacity-85'>{item.icon}</span>}
-      <span className='min-w-0 flex-1 truncate'>{item.label}</span>
-      {item.checked && <Check size={13} className='shrink-0 text-[var(--accent)]' />}
-      {item.submenu
-        ? <ChevronRight size={13} className='shrink-0 opacity-70' />
-        : item.combo && <Kbd combo={item.combo} />}
-    </button>
+    />
   )
 }
 
