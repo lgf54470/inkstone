@@ -1,7 +1,8 @@
 import { useId } from 'react'
 import type { BlogGlobalAnalytics } from '@shared/types'
-import { BigSvgChart } from '../../../components/big-svg-chart'
+import { BigSvgChart, chartSummary } from '../../../components/big-svg-chart'
 import { Segmented } from '../../../components/form'
+import { formatNumber } from '../../../lib/time'
 import { t } from '../../../lib/i18n'
 
 export function TrendChartCard({
@@ -16,6 +17,7 @@ export function TrendChartCard({
   timeline: NonNullable<BlogGlobalAnalytics['timeline']>
 }) {
   const titleId = useId()
+  const summary = chartSummary(chartValues, timeline.map((point) => point.label))
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-soft)]'>
       <div className='flex flex-wrap items-center justify-between gap-2 pb-3'>
@@ -40,7 +42,16 @@ export function TrendChartCard({
       </div>
 
       <div className='h-60 w-full pt-2'>
-        <BigSvgChart values={chartValues} timeline={timeline} emptyLabel={t('blog.no_visit_data')} />
+        <BigSvgChart
+          values={chartValues}
+          timeline={timeline}
+          emptyLabel={t('blog.no_visit_data')}
+          ariaLabel={t('blog.timeline_chart_aria', {
+            total: formatNumber(summary.total),
+            peak: formatNumber(summary.peak),
+            at: summary.peakLabel,
+          })}
+        />
       </div>
     </div>
   )

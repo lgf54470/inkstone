@@ -1,6 +1,7 @@
 import { useId } from 'react'
-import { BigSvgChart } from '../../components/big-svg-chart'
+import { BigSvgChart, chartSummary } from '../../components/big-svg-chart'
 import { Segmented } from '../../components/form'
+import { formatNumber } from '../../lib/time'
 import { t } from '../../lib/i18n'
 import type { useShareDashboardView } from './use-share-dashboard-view'
 
@@ -9,6 +10,7 @@ type DashboardBundle = ReturnType<typeof useShareDashboardView>
 export function TimelineCard({ bundle }: { bundle: DashboardBundle }) {
   const { metricMode, setMetricMode, timelinePoints, chartValues } = bundle
   const titleId = useId()
+  const summary = chartSummary(chartValues, timelinePoints.map((point) => point.label))
   return (
     <div className='mt-4 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-soft)]'>
       <div className='flex flex-wrap items-center justify-between gap-2 pb-3'>
@@ -33,7 +35,16 @@ export function TimelineCard({ bundle }: { bundle: DashboardBundle }) {
       </div>
 
       <div className='h-60 w-full pt-2'>
-        <BigSvgChart values={chartValues} timeline={timelinePoints} emptyLabel={t('share.no_data_yet')} />
+        <BigSvgChart
+          values={chartValues}
+          timeline={timelinePoints}
+          emptyLabel={t('share.no_data_yet')}
+          ariaLabel={t('share.timeline_chart_aria', {
+            total: formatNumber(summary.total),
+            peak: formatNumber(summary.peak),
+            at: summary.peakLabel,
+          })}
+        />
       </div>
     </div>
   )

@@ -4,9 +4,9 @@ import type { ShareNoteAnalytics, ShareTimelineRange } from '@shared/types'
 import { Modal } from '../../components/overlay'
 import { Button, IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
-import { relativeTime } from '../../lib/time'
+import { formatNumber, relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
-import { BigSvgChart } from '../../components/big-svg-chart'
+import { BigSvgChart, chartSummary } from '../../components/big-svg-chart'
 import { countryFlag, countryNameLocalized, rangeOptions } from './share-helpers'
 import { LoadErrorState } from './share-load-error'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
@@ -157,6 +157,7 @@ function StatCards({ data }: { data: ShareNoteAnalytics | null }) {
 
 function TimelineCard({ metricMode, setMetricMode, chartValues, timelinePoints }: { metricMode: 'views' | 'visitors'; setMetricMode: (mode: 'views' | 'visitors') => void; chartValues: number[]; timelinePoints: ShareNoteAnalytics['timeline'] }) {
   const titleId = useId()
+  const summary = chartSummary(chartValues, timelinePoints.map((point) => point.label))
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3'>
       <div className='flex items-center justify-between pb-2'>
@@ -174,7 +175,16 @@ function TimelineCard({ metricMode, setMetricMode, chartValues, timelinePoints }
         />
       </div>
       <div className='h-48 w-full pt-1'>
-        <BigSvgChart values={chartValues} timeline={timelinePoints} emptyLabel={t('share.no_data_yet')} />
+        <BigSvgChart
+          values={chartValues}
+          timeline={timelinePoints}
+          emptyLabel={t('share.no_data_yet')}
+          ariaLabel={t('share.timeline_chart_aria', {
+            total: formatNumber(summary.total),
+            peak: formatNumber(summary.peak),
+            at: summary.peakLabel,
+          })}
+        />
       </div>
     </div>
   )

@@ -1291,6 +1291,15 @@ const allowed = new Map([
   ['src/client/components/activity-calendar/use-activity-calendar.ts', [
     '// Marks an external month jump (settings preview click) or an internal jump (week click, gap-cell follow, endpoint locate) with the same fade-in + receding accent ring.',
   ]],
+  ['src/client/components/big-svg-chart.tsx', [
+    '/**\n * What the chart says in words: the zone\'s total, and the peak with the label it happened under.\n * Callers put those three into their own localized sentence for the chart\'s accessible name — the\n * drawing itself is not readable by a screen reader, and the per-point `<title>` only answers a\n * pointer.\n */',
+  ]],
+  ['src/client/components/dashboard-blocks.tsx', [
+    '/** What the percentage is measured against, read to screen readers only ("vs previous period"). */',
+    '// The arrow says nothing to a screen reader, so the change is announced as words: the',
+    '// percentage it reads on screen plus what it was measured against.',
+    '// The line repeats the number above it, so it stays out of the reading order.',
+  ]],
   ['src/client/components/date-range-popover-core.ts', [
     '/** Compute the day keys for a fixed quick preset range anchored at `today`. */',
     '/** Move a preset within its list by one position (no-op at the edges). */',

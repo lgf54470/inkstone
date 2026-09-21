@@ -11,6 +11,24 @@ const GRID_STEPS = [0, 0.25, 0.5, 0.75, 1]
 const LABEL_STEP_MIN = { 10: 2, 20: 4 } as const
 const AXIS_LABEL_FONT_SIZE = '9'
 
+/**
+ * What the chart says in words: the zone's total, and the peak with the label it happened under.
+ * Callers put those three into their own localized sentence for the chart's accessible name — the
+ * drawing itself is not readable by a screen reader, and the per-point `<title>` only answers a
+ * pointer.
+ */
+export function chartSummary(values: number[], labels: string[]): { total: number; peak: number; peakLabel: string } {
+  let peakIndex = 0
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] > values[peakIndex]) peakIndex = i
+  }
+  return {
+    total: values.reduce((sum, v) => sum + v, 0),
+    peak: values[peakIndex] ?? 0,
+    peakLabel: labels[peakIndex] ?? '',
+  }
+}
+
 interface ChartGeometry {
   maxVal: number
   innerH: number
@@ -101,7 +119,7 @@ function ChartEmptyState({ emptyLabel }: { emptyLabel: string }) {
   )
 }
 
-export function BigSvgChart({ values, timeline, emptyLabel }: { values: number[]; timeline: ShareTimelinePoint[]; emptyLabel: string }) {
+export function BigSvgChart({ values, timeline, emptyLabel, ariaLabel }: { values: number[]; timeline: ShareTimelinePoint[]; emptyLabel: string; ariaLabel: string }) {
   const gradId = chartGradientId()
 
   if (!values.some((v) => v > 0)) {
@@ -111,7 +129,7 @@ export function BigSvgChart({ values, timeline, emptyLabel }: { values: number[]
   const geometry = chartGeometryOf(values)
 
   return (
-    <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio='none' className='h-full w-full'>
+    <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio='none' className='h-full w-full' role='img' aria-label={ariaLabel} focusable='false'>
       <defs>
         <linearGradient id={gradId} x1='0' y1='0' x2='0' y2='1'>
           <stop offset='0%' stopColor='var(--accent)' stopOpacity='0.35' />

@@ -10,6 +10,8 @@ export const messages = {
 'blog.posts_unit': '篇',
 'blog.views_per_day': '日均访问量',
 'blog.timeline_trend_title': '访问流量趋势',
+'blog.timeline_chart_aria': '访问流量趋势图：本区间共 {total}，{at} 前后为峰值 {peak}',
+'blog.delta_vs_previous': '对比上一周期',
 'blog.timeline_pv_desc': '统计周期内每日或每小时的浏览量 (PV)',
 'blog.timeline_uv_desc': '统计周期内每日或每小时的独立访客 (UV)',
 'blog.metric_pv': '浏览量 PV',

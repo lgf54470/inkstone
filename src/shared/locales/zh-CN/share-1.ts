@@ -156,6 +156,8 @@ export const messages = {
 'share.tags_isolation': '标签',
 'share.timeline_pv_desc': '统计周期内每日或每小时的浏览量 (PV)',
 'share.timeline_trend_title': '访问流量趋势',
+'share.timeline_chart_aria': '访问流量趋势图：本区间共 {total}，{at} 前后为峰值 {peak}',
+'share.delta_vs_previous': '对比上一周期',
 'share.timeline_uv_desc': '统计周期内去重独立访客数 (UV)',
 'share.top_countries_title': '访客地域分布',
 'share.top_notes_title': '最受关注笔记',

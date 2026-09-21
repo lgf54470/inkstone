@@ -43,8 +43,8 @@
 | 13 | C | SH-51 | hover-only「新建文件夹/标签」键盘不可见、触屏不可发现 | 小 | ✅ | 3096be8a |
 | 14 | C | SH-53 | `expiring` 语义与标签不符，缺 ≤7d「即将到期」桶 | 小 | ✅ | 4c84878f |
 | 15 | C | SH-60 | 看板 468/500 行 + range 选项重复 → 拆分 | 小–中 | ✅ | 71d711be |
-| 16 | C | SH-59 | 网格卡未 memo + 内联闭包 + 每卡 `folders.find` | 小 | ✅ | ⏳ 下项回填 |
-| 17 | C | SH-57 | `toLocaleString()` 跟随 OS / delta 无语义 / 图表无文本替代 | 小–中 | ⬜ | |
+| 16 | C | SH-59 | 网格卡未 memo + 内联闭包 + 每卡 `folders.find` | 小 | ✅ | 8cda369d |
+| 17 | C | SH-57 | `toLocaleString()` 跟随 OS / delta 无语义 / 图表无文本替代 | 小–中 | ✅ | ⏳ 下项回填 |
 | 18 | C | SH-56 | 「日均访问量」口径错误 + sparkline 与 PV 卡重复 | 小 | ⬜ | |
 | 19 | C | SH-58 | hub 分类徽标未走 `countBadgeTone`（且不在对比度门禁内） | 小 | ⬜ | |
 | 20 | C | SH-52 | 侧栏计数缺 password/expiring/permanent 三类 | 小 | ⬜ | |
@@ -262,3 +262,18 @@
 - 先红后绿 ＋ 变异：新增 `share-grid-render-count.test.ts`（1 例，按行为不是按「有没有写 memo」）：把 `PinStarButtons` 桩成渲染计数器（每张卡每次渲染正好调一次），三张卡渲染后计数各为 1，把选择切到中间那张后断言 **a/c 仍为 1、b 为 2**；变异测试：把 `memo` 去掉后守卫立刻红（`expected 2 to be 1`，证明它真的在守 memo 与稳定 handler），还原复绿。
 - 验证读数：`npx tsc -b --force` exit 0；**`features/share` 全目录 + `tests/share-table-semantics.test.ts` 共 30 文件 / 134 用例全绿**（含新守卫与 a11y）；11 项静态门禁全绿（`comments` 5035 条 / 705 文件，`size` 通过）。
 - 局限：① 网格与表格的**卡片/行**已对齐，但两者仍各有一套 DOM（没有合并成一个组件）——形态差异（列表行 vs 卡片）真实存在，不强行合并；② 空态文案统一为表格那句 hint，网格侧此前从未有过自己的 hint，属新增可见文案（复用既有 i18n 键，无需新翻译）；③ 未做虚拟化（SH-77，无规模证据）。
+
+### 17 — SH-57 数字本地化 / delta 语义 / 图表文本替代（2026-09-21）
+
+- 根因（三件事同一类：组件按「看起来对」写，没按「读得出来」写）：
+  ① `KpiCard` 用 `value.toLocaleString()`——**跟随 OS 而不是应用 locale**（应用可切语言，`i18n:check` 抳不到这类；仓内 `lib/time.ts` 早有 `formatNumber()`，内部走 `localeTag()`）；`BreakdownRow` 的计数与百分比则连格式化都没有。
+  ② delta 只有裸文本 `+12%`，没有「对比上一周期」这层可访问语义，箭头图标也无 `aria-hidden`（屏幕阅读器会读成图标名）。
+  ③ `BigSvgChart` 没有 `role`/`aria-label`/文本替代，唯一信息载体是每个点的 8px `<title>`（只有指针悬停才看得到）。
+- 改动面：
+  - `src/client/components/dashboard-blocks.tsx`：`KpiCard` 改 `formatNumber()`；新增可选 `deltaHint`（调用方传入本语言文案），delta 容器据此得到 `aria-label` ＝「屏幕上的百分比 ＋ 对比口径」，箭头图标 `aria-hidden`；sparkline 容器加 `aria-hidden`（它只是上方数字的图形回声，不应进阅读顺序）；`BreakdownRow` 的计数与百分比走 `formatNumber()`。
+  - `src/client/components/big-svg-chart.tsx`：新增 `export function chartSummary(values, labels)`（区间总量、峰值、峰值所在标签）与必填 `ariaLabel`，图表本体变 `role='img'` ＋ `aria-label` ＋ `focusable='false'`；每个点的 `<title>` 保留给指针用户。
+  - 三个调用点各自把数字与口径填进自己的文案：`share-dashboard-timeline-card.tsx`、`share-note-analytics-modal.tsx`（`share.timeline_chart_aria`）、blog 的 `trend-chart-card.tsx`（`blog.timeline_chart_aria`）；KPI 的 6 个调用点（share 三张卡中两张 ＋ blog 两张）传入 `deltaHint`。
+  - 两个 locale 各新增 `*.timeline_chart_aria`（带 `{total}/{peak}/{at}` 参数）与 `*.delta_vs_previous`（share + blog 各一套，en + zh）。
+- 先红后绿：新增两个测试文件——`components/dashboard-blocks.test.ts`（4 例：按应用 locale 格式化（断言 `Intl.NumberFormat('en-US')` 的结果而不是 OS 默认）、delta 的可访问名等于「+12% + 该语言的口径」、sparkline 容器 `aria-hidden` 且里面有 svg、breakdown 计数也格式化；两段 describe 分开以免撞 `size:check` 的 50 行上限）与 `components/big-svg-chart.test.ts`（3 例：`chartSummary` 的总量/峰值/峰值标签（含空数组）、`svg[role='img']` 的可访问名就是调用方传的那句、空数据时画空态而不是无名图表）。
+- 验证读数：`npx tsc -b --force` exit 0；**共用面双侧回归 `features/share` ＋ `features/blog` ＋ `components`：47 文件 / 217 用例全绿**；11 项静态门禁全绿（`i18n` 3146 键，新增 4；`size` 通过，`comments` 5040 条 / 707 文件）。中间 `dashboard-blocks.test.ts` 被 `size:check` 报过一次 `longFns`（describe 体超 50 行），拆成两段后归零。
+- 局限（如实登记）：① `deltaHint` 是可选的（不传就没有可访问名），没有加类型强制——现六个调用点都传了，但新写的 KPI 卡可以忘记，这层需要 review 把关（也可后续改成必填）；② `BreakdownRow` 的百分比仍是整数取整展示（未加小数位），与 SH-56 的「日均取整规则」是两件事；③ 图表的“文本替代”是 `aria-label` 一句话，没有另做视觉隐藏的极值列表（审查曾提到可补，但 `aria-label` 已能完整读出区间与峰值，先不加冗余隐藏文本）；④ sparkline 标为装饰，因此它自身的形态信息（单点、阶梯）对屏幕阅读器不可得——有意取舍：上方数字已是同一信息的精确形式。

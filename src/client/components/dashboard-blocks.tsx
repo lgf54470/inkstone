@@ -1,16 +1,20 @@
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react'
+import { formatNumber } from '../lib/time'
 
 export function KpiCard({
   icon,
   label,
   value,
   delta,
+  deltaHint,
   sparkline,
 }: {
   icon: React.ReactNode
   label: string
   value: number
   delta?: number
+  /** What the percentage is measured against, read to screen readers only ("vs previous period"). */
+  deltaHint?: string
   sparkline?: number[]
 }) {
   return (
@@ -21,24 +25,28 @@ export function KpiCard({
       </div>
 
       <div className='flex items-baseline justify-between pt-2'>
-        <span className='text-[length:var(--text-24)] font-bold tracking-tight text-[var(--text-primary)] font-mono'>
-          {value.toLocaleString()}
+        <span className='font-mono text-[length:var(--text-24)] font-bold tracking-tight text-[var(--text-primary)]'>
+          {formatNumber(value)}
         </span>
 
         {delta !== undefined && (
           <span
+            // The arrow says nothing to a screen reader, so the change is announced as words: the
+            // percentage it reads on screen plus what it was measured against.
+            aria-label={deltaHint ? `${delta > 0 ? '+' : ''}${delta}% ${deltaHint}` : undefined}
             className={`inline-flex items-center gap-0.5 text-[length:var(--text-11)] font-medium ${
               delta === 0 ? 'text-[var(--text-tertiary)]' : delta > 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
             }`}
           >
-            {delta === 0 ? <Minus size={12} /> : delta > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            {delta === 0 ? <Minus size={12} aria-hidden /> : delta > 0 ? <TrendingUp size={12} aria-hidden /> : <TrendingDown size={12} aria-hidden />}
             {delta > 0 ? `+${delta}%` : `${delta}%`}
           </span>
         )}
       </div>
 
       {sparkline && sparkline.length > 1 && sparkline.some((v) => v > 0) && (
-        <div className='mt-2 h-7 w-full'>
+        // The line repeats the number above it, so it stays out of the reading order.
+        <div className='mt-2 h-7 w-full' aria-hidden>
           <MiniSparkline values={sparkline} />
         </div>
       )}
@@ -65,8 +73,8 @@ export function BreakdownRow({
           <span className='truncate'>{name}</span>
         </span>
         <div className='flex items-center gap-2 font-mono text-[length:var(--text-11)]'>
-          <span className='font-semibold text-[var(--text-primary)]'>{count}</span>
-          <span className='w-8 text-right text-[var(--text-tertiary)]'>{percentage}%</span>
+          <span className='font-semibold text-[var(--text-primary)]'>{formatNumber(count)}</span>
+          <span className='w-8 text-right text-[var(--text-tertiary)]'>{formatNumber(percentage)}%</span>
         </div>
       </div>
       <div className='h-1.5 w-full rounded-full bg-[var(--bg-base)] overflow-hidden'>

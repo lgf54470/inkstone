@@ -12,6 +12,7 @@ export function KpiGrid({ analytics }: { analytics: ShareGlobalAnalytics | null 
         label={t('share.total_views_pv')}
         value={analytics?.totalViews ?? 0}
         delta={analytics?.viewsDelta}
+        deltaHint={t('share.delta_vs_previous')}
         sparkline={analytics?.sparklineViews}
       />
 
@@ -20,6 +21,7 @@ export function KpiGrid({ analytics }: { analytics: ShareGlobalAnalytics | null 
         label={t('share.total_visitors_uv')}
         value={analytics?.totalVisitors ?? 0}
         delta={analytics?.visitorsDelta}
+        deltaHint={t('share.delta_vs_previous')}
         sparkline={analytics?.sparklineVisitors}
       />
 

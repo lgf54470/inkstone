@@ -133,6 +133,7 @@ function DashboardKpis({ stats, analytics, postsCount }: { stats: BlogStats | nu
         label={t('blog.total_views_pv')}
         value={analytics?.totalViews ?? stats?.totalViews ?? 0}
         delta={analytics?.viewsDelta}
+        deltaHint={t('blog.delta_vs_previous')}
         sparkline={analytics?.sparklineViews}
       />
 
@@ -141,6 +142,7 @@ function DashboardKpis({ stats, analytics, postsCount }: { stats: BlogStats | nu
         label={t('blog.total_visitors_uv')}
         value={analytics?.totalVisitors ?? 0}
         delta={analytics?.visitorsDelta}
+        deltaHint={t('blog.delta_vs_previous')}
         sparkline={analytics?.sparklineVisitors}
       />
 

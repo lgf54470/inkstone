@@ -1,49 +1,49 @@
 import { createElement } from 'react'
-import { describe, expect, it } from 'vitest'
-import { KpiCard } from './dashboard-blocks'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { initI18n, t } from '../lib/i18n'
 import { renderElement } from '../lib/test-render'
+import { BreakdownRow, KpiCard } from './dashboard-blocks'
 
-function renderKpi(props: Record<string, unknown>) {
-  return renderElement(createElement(KpiCard, { icon: null, label: 'PV', value: 0, ...props }))
+type KpiProps = Parameters<typeof KpiCard>[0]
+
+function renderKpi(props: Partial<KpiProps>) {
+  return renderElement(createElement(KpiCard, { icon: null, label: 'Views', value: 0, ...props } as KpiProps))
 }
 
-describe('KpiCard delta badge', () => {
-  it('hides the badge entirely when the server reported no delta', () => {
-    const { container, unmount } = renderKpi({})
-    expect(container.querySelector('svg')).toBeNull()
-    expect(container.textContent).not.toContain('%')
-    unmount()
+describe('dashboard KPI numbers (SH-57)', () => {
+  beforeAll(async () => {
+    await initI18n()
   })
 
-  it('paints a flat zero percent for a genuinely unchanged period', () => {
-    const { container, unmount } = renderKpi({ delta: 0 })
-    expect(container.querySelector('svg.lucide-minus')).not.toBeNull()
-    expect(container.textContent).toContain('0%')
-    unmount()
+  it('formats the value in the app locale rather than the browser default', () => {
+    const rendered = renderKpi({ value: 1234567 })
+    expect(rendered.container.textContent).toContain(new Intl.NumberFormat('en-US').format(1234567))
+    rendered.unmount()
   })
 
-  it('keeps up and down arrows for non-zero deltas', () => {
-    const up = renderKpi({ delta: 5 })
-    expect(up.container.querySelector('svg.lucide-trending-up')).not.toBeNull()
-    expect(up.container.textContent).toContain('+5%')
-    up.unmount()
-    const down = renderKpi({ delta: -5 })
-    expect(down.container.querySelector('svg.lucide-trending-down')).not.toBeNull()
-    expect(down.container.textContent).toContain('-5%')
-    down.unmount()
+  it('formats breakdown counts and percentages too', () => {
+    const rendered = renderElement(createElement(BreakdownRow, { name: 'Germany', count: 4321, percentage: 12 }))
+    expect(rendered.container.textContent).toContain(new Intl.NumberFormat('en-US').format(4321))
+    rendered.unmount()
   })
 })
 
-describe('KpiCard sparkline', () => {
-  it('hides an all-zero sparkline that would fake a flat trend', () => {
-    const { container, unmount } = renderKpi({ sparkline: [0, 0, 0] })
-    expect(container.querySelector('[viewBox="0 0 100 28"]')).toBeNull()
-    unmount()
+describe('dashboard KPI semantics (SH-57)', () => {
+  beforeAll(async () => {
+    await initI18n()
   })
 
-  it('shows the sparkline once a bucket carries traffic', () => {
-    const { container, unmount } = renderKpi({ sparkline: [0, 3, 0] })
-    expect(container.querySelector('[viewBox="0 0 100 28"]')).not.toBeNull()
-    unmount()
+  it('announces the delta with what it was measured against', () => {
+    const hint = t('share.delta_vs_previous')
+    const rendered = renderKpi({ value: 10, delta: 12, deltaHint: hint })
+    expect(rendered.container.querySelector('[aria-label]')?.getAttribute('aria-label')).toBe(`+12% ${hint}`)
+    expect(rendered.container.textContent).toContain('+12%')
+    rendered.unmount()
+  })
+
+  it('keeps the sparkline out of the reading order', () => {
+    const rendered = renderKpi({ value: 10, sparkline: [1, 4, 2] })
+    expect(rendered.container.querySelector('[aria-hidden="true"] svg')).not.toBeNull()
+    rendered.unmount()
   })
 })

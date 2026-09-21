@@ -156,6 +156,8 @@ export const messages = {
 'share.tags_isolation': 'Tags',
 'share.timeline_pv_desc': 'Hourly or daily pageviews over the selected period',
 'share.timeline_trend_title': 'Traffic Trends',
+'share.timeline_chart_aria': 'Traffic trend chart: {total} in this range, peaking at {peak} around {at}',
+'share.delta_vs_previous': 'vs the previous period',
 'share.timeline_uv_desc': 'Hourly or daily unique visitors over the selected period',
 'share.top_countries_title': 'Geographic Distribution',
 'share.top_notes_title': 'Top Notes',

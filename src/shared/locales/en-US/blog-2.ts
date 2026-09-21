@@ -10,6 +10,8 @@ export const messages = {
 'blog.posts_unit': 'posts',
 'blog.views_per_day': 'Daily Average',
 'blog.timeline_trend_title': 'Visitor Traffic Trend',
+'blog.timeline_chart_aria': 'Visitor traffic chart: {total} in this range, peaking at {peak} around {at}',
+'blog.delta_vs_previous': 'vs the previous period',
 'blog.timeline_pv_desc': 'Page views (PV) per day or hour during the selected range',
 'blog.timeline_uv_desc': 'Unique visitors (UV) per day or hour during the selected range',
 'blog.metric_pv': 'Page Views PV',
