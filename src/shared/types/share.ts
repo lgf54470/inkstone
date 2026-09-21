@@ -48,6 +48,7 @@ export type ShareCategory =
   | 'pinned'
   | 'starred'
   | 'password'
+  | 'expiring_soon'
   | 'expiring'
   | 'permanent'
   | 'expired'
@@ -166,6 +167,7 @@ export interface ShareListResponse {
     pinnedShares?: number
     starredShares?: number
     pausedShares?: number
+    expiringSoonShares?: number
     expiredShares?: number
     totalViews: number
     totalVisitors: number

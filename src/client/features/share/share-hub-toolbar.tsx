@@ -68,6 +68,7 @@ function StatusSelect({ value, onChange }: { value: string; onChange: (value: st
       <option value='starred'>{t('share.category_starred')}</option>
       <option value='paused'>{t('share.status_paused')}</option>
       <option value='password'>{t('share.category_password')}</option>
+      <option value='expiring_soon'>{t('share.category_expiring_soon')}</option>
       <option value='expiring'>{t('share.category_expiring')}</option>
       <option value='permanent'>{t('share.category_permanent')}</option>
       <option value='expired'>{t('share.category_expired')}</option>

@@ -349,6 +349,28 @@ describe('share sidebar count parity (SH-30)', () => {
     expect(await slugs('permanent')).toEqual(['ex-none'])
   })
 
+  it('separates the shares that expire within a week from the ones merely having a date (SH-53)', async () => {
+    const db = await makeDb()
+    const now = Date.now()
+    const soon = await seedNote(db, {})
+    const later = await seedNote(db, {})
+    const gone = await seedNote(db, {})
+    await seedShare(db, { note_id: soon, slug: 'soon-3d', expires_at: now + 3 * 86_400_000 })
+    await seedShare(db, { note_id: later, slug: 'later-30d', expires_at: now + 30 * 86_400_000 })
+    await seedShare(db, { note_id: gone, slug: 'gone', expires_at: now - 86_400_000 })
+    const app = makeApp()
+    const slugs = async (status: string) =>
+      (await (await request(app, `/api/share?status=${status}`)).json()).shares.map((s: { slug: string }) => s.slug)
+
+    expect(await slugs('expiring_soon')).toEqual(['soon-3d'])
+    // "Has expiry" stays the superset of every future date — including the soon ones, so no row
+    // disappears from the wider category — while "soon" narrows it, and expired stays disjoint.
+    expect((await slugs('expiring')).sort()).toEqual(['later-30d', 'soon-3d'])
+    expect(await slugs('expired')).toEqual(['gone'])
+    const stats = (await (await request(app, '/api/share')).json()).globalStats
+    expect(stats.expiringSoonShares).toBe(1)
+  })
+
   it('marks the list truncated when it exceeds the server row limit', async () => {
     const db = await makeDb()
     for (let i = 0; i < 501; i++) {

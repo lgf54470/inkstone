@@ -99,12 +99,13 @@ function setCategoryImpl(category: ShareCategory, set: SetShareStoreState, get: 
   void get().loadShares()
 }
 
-function statusForCategory(category: ShareCategory): ShareStoreState['statusFilter'] {
+export function statusForCategory(category: ShareCategory): ShareStoreState['statusFilter'] {
   if (category === 'active') return 'active'
   if (category === 'paused') return 'paused'
   if (category === 'pinned') return 'pinned'
   if (category === 'starred') return 'starred'
   if (category === 'password') return 'password'
+  if (category === 'expiring_soon') return 'expiring_soon'
   if (category === 'expiring') return 'expiring'
   if (category === 'permanent') return 'permanent'
   if (category === 'expired') return 'expired'

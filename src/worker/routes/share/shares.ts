@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { ShareInfo, ShareListResponse, ShareSummaryResponse } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
+import { EXPIRING_SOON_DAYS } from '@shared/constants'
 import { escapeLike } from '../../lib/like'
 import { buildVisitFilterSql, type ShareFilterOptions } from '../../lib/share-analytics'
 import {
@@ -198,6 +199,23 @@ function shareListParams(c: { req: { query(key: string): string | undefined; url
   }
 }
 
+/**
+ * The status categories that read the clock. Each returns its SQL with bare `?` placeholders plus
+ * the values they take, so the caller can hand out binding numbers in the order it builds the
+ * clause — the categories that need no clock ride along in STATUS_CONDITIONS below.
+ */
+function statusTimeCondition(status: string, now: number): { sql: string; binds: Array<string | number> } | null {
+  if (status === 'active')
+    return { sql: `(s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?)`, binds: [now] }
+  if (status === 'expired')
+    return { sql: `s.expires_at IS NOT NULL AND s.expires_at <= ?`, binds: [now] }
+  if (status === 'expiring')
+    return { sql: `s.expires_at IS NOT NULL AND s.expires_at > ?`, binds: [now] }
+  if (status === 'expiring_soon')
+    return { sql: `s.expires_at IS NOT NULL AND s.expires_at > ? AND s.expires_at <= ?`, binds: [now, now + EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000] }
+  return null
+}
+
 const STATUS_CONDITIONS: Record<string, string> = {
   paused: `s.is_enabled = 0`,
   starred: `n.is_starred = 1`,
@@ -220,18 +238,10 @@ function shareListConditions(binds: Array<string | number>, params: ShareListPar
     binds.push(`%"${escapeLike(tag)}"%`)
     bindIndex++
   }
-  if (status === 'active') {
-    conditions.push(`(s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?${bindIndex})`)
-    binds.push(now)
-    bindIndex++
-  } else if (status === 'expired') {
-    conditions.push(`s.expires_at IS NOT NULL AND s.expires_at <= ?${bindIndex}`)
-    binds.push(now)
-    bindIndex++
-  } else if (status === 'expiring') {
-    conditions.push(`s.expires_at IS NOT NULL AND s.expires_at > ?${bindIndex}`)
-    binds.push(now)
-    bindIndex++
+  const timeCondition = statusTimeCondition(status, now)
+  if (timeCondition) {
+    conditions.push(timeCondition.sql.replace(/\?/g, () => `?${bindIndex++}`))
+    binds.push(...timeCondition.binds)
   }
   const staticCondition = STATUS_CONDITIONS[status]
   if (staticCondition) conditions.push(staticCondition)

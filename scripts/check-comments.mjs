@@ -1465,6 +1465,10 @@ const allowed = new Map([
     '// demo keeps no storage keys, so `format` only names the download extension.',
     '// Same lens the single-track PATCH uses, so unknown tag ids are dropped in one place.',
   ]],
+  ['src/client/demo/backend/routes/share.ts', [
+    '// The remaining categories read the same rules as the worker\'s list query, so the',
+    '// demo build does not quietly return everything for a filter it never learned.',
+  ]],
   ['src/client/demo/blog-smoke.test.ts', [
     '// Every /api/blog/* route the client calls via src/client/lib/api/share.ts, with',
     '// representative payloads. Any gap here fails the smoke test instead of surfacing',
@@ -3004,6 +3008,9 @@ const allowed = new Map([
     '// the animated modal it can be opened inside — so its switches live on the document.',
     '// Modal mounts its panel through a portal, so look in the document instead of the container.',
   ]],
+  ['src/client/features/share/share-category-status.test.ts', [
+    '/**\n * The record is the exhaustiveness check: `Record<ShareCategory, ...>` stops compiling the moment\n * a category joins the union without being mapped here, and the loop below then proves the mapping\n * the list query actually gets. A category that fell through to `all` would look like a filter that\n * silently does nothing — the failure this pins down.\n */',
+  ]],
   ['src/client/features/share/share-dashboard-loading.tsx', [
     '/**\n * First load of the dashboard. Zero-filled cards would be a claim about the data\n * ("no visits in this window") rather than a state of the request, so the KPI grid,\n * the trend and the four breakdown cards all stand in as shimmer placeholders until\n * the first answer arrives. Later range switches keep the previous cards instead.\n */',
   ]],
@@ -3097,6 +3104,10 @@ const allowed = new Map([
   ['src/client/features/share/share-store/shares.ts', [
     '// Zero views on a paused row is the only client-side signal that this note has never been public.',
     '/* The row is outside the current filter (e.g. just enabled under the\n       paused filter); only a reload knows whether and where it now belongs. */',
+  ]],
+  ['src/client/features/share/share-table-view/row.tsx', [
+    '// A date inside EXPIRING_SOON_DAYS is the row a person may want to extend, so it wears the',
+    '// warning tone the category and the batch-extension flow use for the same deadline.',
   ]],
   ['src/client/features/share/share-traffic-filter-popover.test.ts', [
     '/**\n * SH-50: the traffic filters were a hand-rolled panel — no role, no accessible name, focus left\n * where it was when it opened and never handed back when it closed. What the dialog has to keep is\n * the non-modal contract: it is named, the focus enters it, Escape (or a press outside) closes it,\n * and the control that opened it gets the keyboard back rather than the body.\n */',
@@ -5160,6 +5171,7 @@ const allowed = new Map([
     '// Blog settings fallback used across the worker default, the demo seed, and',
     '// every client consumer that renders links before the user configures a URL.',
     '/**\n * Session lifetime design (sliding window):\n * - `SESSION_TTL_MS` (90d): absolute cap. A session row/cookie never outlives 90 days,\n *   bounding the window in which a stolen session token stays usable.\n * - `SESSION_RENEW_BEFORE_MS` (45d = TTL/2): renewal threshold. On an authenticated\n *   request, if less than this much TTL remains, the session is extended back to the\n *   full 90 days (see middleware/auth.ts and lib/session-store.ts).\n *\n * Trade-offs: renewal only happens for requests that already presented a valid\n * session, so an abandoned session dies within at most 90 days (no idle-forever\n * sessions, maintenance sweeps the rows), while an active user never gets logged out\n * as long as they authenticate at least once per 45 days. The half-life threshold\n * also bounds write amplification: each session triggers at most one DB renewal\n * write per 45 days of activity. The 45-day window is generous enough to survive\n * the app\'s offline period (offline edits are queued locally and flushed on\n * reconnect, which needs a still-valid session) yet short enough that a freshly\n * stolen cookie\'s remaining lifetime stays bounded.\n */',
+    '/**\n * How close a share\'s expiry has to be before the list calls it "expiring soon".\n * The category, the row\'s warning tone and the batch-extension flow all read this\n * one number, so "soon" means the same thing in each of them.\n */',
     '// Anonymous readers of a published library are metered by client IP, per surface:',
     '// the listing is one query per open, while a player issues a stream request per',
     '// range it needs, so playback gets the wider allowance.',
@@ -6036,6 +6048,9 @@ const allowed = new Map([
     '// D1 batch() answers with one result object per statement; these unpack them',
     '// the way prepare().all()/.first() used to for serial reads.',
   ]],
+  ['src/worker/routes/share/shares.ts', [
+    '/**\n * The status categories that read the clock. Each returns its SQL with bare `?` placeholders plus\n * the values they take, so the caller can hand out binding numbers in the order it builds the\n * clause — the categories that need no clock ride along in STATUS_CONDITIONS below.\n */',
+  ]],
   ['src/worker/routes/share/visits.ts', [
     '// Unparseable page/limit values must fall back to a default rather than reach the',
     '// binding: `parseInt(\'abc\')` is NaN and `Math.max(1, NaN)` stays NaN, which SQLite',
@@ -6333,6 +6348,8 @@ const allowed = new Map([
     '// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =',
     '// one round-trip however many statements ride along. Statements built through',
     '// the wrapper still execute inside batch without being double-counted.',
+    '// "Has expiry" stays the superset of every future date — including the soon ones, so no row',
+    '// disappears from the wider category — while "soon" narrows it, and expired stays disjoint.',
     '// Any write path that ever loses its ownership check would leave a visit row',
     '// pointing at another account\'s note; the title lookup must not follow it.',
     '// visit recording runs via waitUntil; the test context must let us await it',

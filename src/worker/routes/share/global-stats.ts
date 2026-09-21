@@ -1,3 +1,5 @@
+import { EXPIRING_SOON_DAYS } from '@shared/constants'
+
 // Statement builders + parsers for the share list's global stats (SH-17a):
 // the list route batches these five statements with its rows query, so each
 // side stays a pure piece the handler can reassemble.
@@ -8,6 +10,7 @@ export interface ShareGlobalStats {
   pinnedShares: number
   starredShares: number
   pausedShares: number
+  expiringSoonShares: number
   expiredShares: number
   totalViews: number
   totalVisitors: number
@@ -31,6 +34,7 @@ export interface GlobalSummaryRow {
   total_shares: number
   active_shares: number
   paused_shares: number
+  expiring_soon_shares: number
   expired_shares: number
   total_views: number
 }
@@ -93,13 +97,14 @@ export function globalSummaryStatement(db: D1Database, userId: string, now: numb
     `SELECT COUNT(*) as total_shares,
             COUNT(CASE WHEN (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) as active_shares,
             COUNT(CASE WHEN s.is_enabled = 0 THEN 1 END) as paused_shares,
+            COUNT(CASE WHEN s.expires_at IS NOT NULL AND s.expires_at > ?2 AND s.expires_at <= ?3 THEN 1 END) as expiring_soon_shares,
             COUNT(CASE WHEN s.expires_at IS NOT NULL AND s.expires_at <= ?2 THEN 1 END) as expired_shares,
             COALESCE(SUM(s.views), 0) as total_views
        FROM shares s
        JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
       WHERE s.user_id = ?1 AND n.deleted_at IS NULL`,
   )
-    .bind(userId, now)
+    .bind(userId, now, now + EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000)
 }
 
 export function filteredGlobalStatsStatement(db: D1Database, userId: string, clause: string): D1PreparedStatement {
@@ -136,6 +141,7 @@ export function buildShareGlobalStats(
     pinnedShares: pinStarRow?.pinned_shares ?? 0,
     starredShares: pinStarRow?.starred_shares ?? 0,
     pausedShares: globalSummary?.paused_shares ?? 0,
+    expiringSoonShares: globalSummary?.expiring_soon_shares ?? 0,
     expiredShares: globalSummary?.expired_shares ?? 0,
     totalViews: filteredGlobalStats?.total_views ?? (globalSummary?.total_views ?? 0),
     totalVisitors: filteredGlobalStats?.total_uv ?? 0,

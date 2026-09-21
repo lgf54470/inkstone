@@ -1,6 +1,7 @@
 import { memo, useRef, useState } from 'react'
 import { BarChart2, ExternalLink, FolderClosed, FolderInput, Lock, MoreHorizontal, QrCode, Settings2 } from 'lucide-react'
 import type { ShareFolder, ShareInfo } from '@shared/types'
+import { EXPIRING_SOON_DAYS } from '@shared/constants'
 import { Checkbox, Switch } from '../../../components/form'
 import { Button, IconButton } from '../../../components/primitives'
 import { Menu, useContextMenu } from '../../../components/overlay'
@@ -133,7 +134,9 @@ function AccessCell({ share, isExpired }: { share: ShareInfo; isExpired: boolean
         {isExpired ? (
           <span className='text-[var(--danger)]'>{t('share.status_expired')}</span>
         ) : share.expiresAt ? (
-          <span className='text-[var(--text-tertiary)]'>
+          // A date inside EXPIRING_SOON_DAYS is the row a person may want to extend, so it wears the
+          // warning tone the category and the batch-extension flow use for the same deadline.
+          <span className={share.expiresAt - Date.now() <= EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000 ? 'text-[var(--warning)]' : 'text-[var(--text-tertiary)]'}>
             {relativeTime(share.expiresAt)}
           </span>
         ) : (

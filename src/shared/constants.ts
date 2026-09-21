@@ -35,6 +35,13 @@ export const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000
 export const SESSION_RENEW_BEFORE_MS = SESSION_TTL_MS / 2
 
 
+/**
+ * How close a share's expiry has to be before the list calls it "expiring soon".
+ * The category, the row's warning tone and the batch-extension flow all read this
+ * one number, so "soon" means the same thing in each of them.
+ */
+export const EXPIRING_SOON_DAYS = 7
+
 export const LIMITS = {
   passwordMaxLength: 128,
   sharePasscodeMinLength: 8,

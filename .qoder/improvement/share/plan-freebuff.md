@@ -40,8 +40,8 @@
 | 10 | B | SH-85 | 分享中心浏览器级门禁（e2e-visual 场景 + surface coverage） | 中 | ✅ | c62c1635 |
 | 11 | C | SH-49 | 裸 `<button>` 绕过组件体系 + 新守卫 | 中 | ✅ | aa0ca70b + 5ae18926 |
 | 12 | C | SH-50 | 流量过滤浮层：焦点管理 / role / 窄屏裁切 | 小–中 | ✅ | bf09dbce |
-| 13 | C | SH-51 | hover-only「新建文件夹/标签」键盘不可见、触屏不可发现 | 小 | ✅ | ⏳ 下项回填 |
-| 14 | C | SH-53 | `expiring` 语义与标签不符，缺 ≤7d「即将到期」桶 | 小 | ⬜ | |
+| 13 | C | SH-51 | hover-only「新建文件夹/标签」键盘不可见、触屏不可发现 | 小 | ✅ | 3096be8a |
+| 14 | C | SH-53 | `expiring` 语义与标签不符，缺 ≤7d「即将到期」桶 | 小 | ✅ | ⏳ 下项回填 |
 | 15 | C | SH-60 | 看板 468/500 行 + range 选项重复 → 拆分 | 小–中 | ⬜ | |
 | 16 | C | SH-59 | 网格卡未 memo + 内联闭包 + 每卡 `folders.find` | 小 | ⬜ | |
 | 17 | C | SH-57 | `toLocaleString()` 跟随 OS / delta 无语义 / 图表无文本替代 | 小–中 | ⬜ | |
@@ -223,3 +223,19 @@
 - 先红后绿：新增守卫 `tests/share-hidden-controls.test.ts`（4 例）——扫 `features/share` 里所有会隐藏的类，要求 ① 隐藏控件带 `focus-visible` 揭示、② 只在 `md:` 及以上隐藏（更窄的宽度没有 hover 可依赖）；两个方向都失败（新长出一处 hover-only 会红，白名单里留下已不再隐藏的条目也会红；白名单当前为空）。
 - 验证读数：`tests/share-hidden-controls.test.ts` 4/4（修复前 1 红）；`npx tsc -b --force` exit 0；11 项静态门禁绿；浏览器门禁里分享场景会在两个宽度打开侧栏并跑 axe，因此这条修法在真实渲染中有读者（同第 12 项的两次读数，分享场景 15/15 全绿）。
 - 局限：① 守卫只覆盖 `features/share`，共用组件里的同类写法属 SH-93；② 按钮常显后由既有 i18n 文案提供可访问名（`share.new_folder`/`share.new_tag`），未额外加图标名；③ 常显对标题行右侧宽度的像素影响未专门核对（门禁只读 a11y 与布局稳定性）。
+
+### 14 — SH-53「即将到期」桶与「有到期时间」语义对齐（2026-09-21）
+
+- 根因：列表查询与 `STATUS_CONDITIONS` 里 `expiring` 的条件是 `expires_at IS NOT NULL AND expires_at > now`——**任何**未来到期（含 200 天后）都落进这个桶，而中英标签（有效期内 / Expiring）都在暗示「快到期了」；真正可行动的「7 天内到期」桶不存在，侧栏与工具栏都没有入口。
+- 决定（写进代码，不靠文案）：新增 `EXPIRING_SOON_DAYS = 7`（`src/shared/constants.ts`，分类、行的告警色、后续批量续期共读同一个数），新增分类 `expiring_soon`，并把旧分类正名为「有到期时间 / Has Expiry」。两者是**包含**而非互斥：`expiring` 保留所有未来到期（含即将到期的那些）——按「有到期时间」的字面意思，窄集里的行不该从这个更宽的桶里消失；与 `expired` 仍然互斥。（审查文档里写的是「与 expired 互斥」，本项按此实现并把「包含」写入测试与台账。）
+- 改动面：
+  - `src/shared/constants.ts`：`EXPIRING_SOON_DAYS`；`src/shared/types/share.ts`：`ShareCategory` 加 `'expiring_soon'`、`globalStats` 加 `expiringSoonShares?`。
+  - `src/worker/routes/share/shares.ts`：四个读时钟的状态条件（active/expired/expiring/expiring_soon）从原来的 if/else-if 链提成 `statusTimeCondition()`（返回待编号的 SQL ＋ 待绑定值），列表查询只在 `bindIndex` 处编号——这样既是新分类的落点，也把嵌套降回阈值内（见验证读数）。
+  - `src/worker/routes/share/global-stats.ts`：同一条 summary 语句加 `expiring_soon_shares` 计数（只多一个 `COUNT(CASE …)` 与一个绑定）并进 `buildShareGlobalStats`，侧栏徐章因此有真实数字。
+  - `src/client/features/share/share-store/filters.ts`：分类→状态映射；`statusForCategory` 改为导出（让守卫能读）。
+  - `src/client/features/share/use-share-hub-sidebar.tsx` 新增分类行（Timer ＋ warning 色 ＋ 计数）；`share-hub-toolbar.tsx` 状态筛选补上该选项；`share-table-view/row.tsx` 到期时间落在 7 天内时用 warning 色（同一个常量）。
+  - `src/client/demo/backend/routes/share.ts`：体验版补 `expiringSoonShares` 与状态映射——同一张表原本还漏了 `expiring`/`permanent`/`expired` 三项（点这些分类会返回全部，即「筛选默默无效」），本项一并补齐（同类缺陷、同一张记录）。
+  - 两个 locale：新增 `share.category_expiring_soon`；`share.category_expiring` 改为「有到期时间 / Has Expiry」。
+- 先红后绿：`tests/share-routes.test.ts` 新增一例（3 天／30 天／已过期三行的划分、与 `expired` 互斥、`globalStats.expiringSoonShares === 1`），实现前红；新增守卫 `src/client/features/share/share-category-status.test.ts`（2 例）——用 `Record<ShareCategory, string>` 做**类型级穷举**（新增分类不登记就编译不过）＋ 逐项断言映射结果；变异测试：删掉映射里那一行，守卫立刻红（1 failed），还原复绿。
+- 验证读数：`tests/share-routes.test.ts` **76/76**；新守卫 **2/2**；`npx tsc -b --force` exit 0；**全量串行回归 319 文件 / 2591 通过 + 1 skipped / 0 失败**（`--no-file-parallelism --testTimeout=30000`，本项碰了 worker SQL 与共享类型，故跑全量）；静态门禁 11 项全绿（`i18n` 3142 键，新增 1；`hardcoded` 无新增字面量）。中间红过一次值得记下：加上第四个 `else if` 后 `size:check` 报 `shares.ts ... {"deepFns":1}`（嵌套超 3 层）——提成 `statusTimeCondition()` 后归零，同样**没有**用 `--update-baseline` 遮盖。
+- 局限：① `expiring_soon` 与 `expiring` 有意重叠（见上），UI 未额外标注这层包含关系；② 侧栏 `password`/`expiring`/`permanent` 三个分类仍无计数（属 SH-52，本项只补了新分类）；③ 到期提醒（通知/邮件）与批量续期（SH-62）仍未做，本项只把「看得见」补齐。

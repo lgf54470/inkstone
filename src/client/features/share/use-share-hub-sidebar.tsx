@@ -143,6 +143,7 @@ function buildCategories(globalStats: ShareStoreState['globalStats']): {
     { id: 'starred', label: t('share.category_starred'), icon: <Star size={14} className='text-[var(--warning)] fill-current' />, count: globalStats?.starredShares },
     { id: 'paused', label: t('share.category_paused'), icon: <PauseCircle size={14} className='text-[var(--warning)]' />, count: globalStats?.pausedShares },
     { id: 'password', label: t('share.category_password'), icon: <KeyRound size={14} /> },
+    { id: 'expiring_soon', label: t('share.category_expiring_soon'), icon: <Timer size={14} className='text-[var(--warning)]' />, count: globalStats?.expiringSoonShares },
     { id: 'expiring', label: t('share.category_expiring'), icon: <Timer size={14} /> },
     { id: 'permanent', label: t('share.category_permanent'), icon: <InfinityIcon size={14} /> },
     { id: 'expired', label: t('share.category_expired'), icon: <AlertTriangle size={14} className='text-[var(--danger)]' />, count: globalStats?.expiredShares },

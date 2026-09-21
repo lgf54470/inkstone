@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono'
 import type { DemoState } from '../../state'
 import type { ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareTimelinePoint, ShareTimelineRange, ShareVisitLog, ShareVisitsResponse } from '@shared/types'
 import { apiError, jsonBody } from '../helpers/info'
+import { EXPIRING_SOON_DAYS } from '@shared/constants'
 
 const SHARE_TOP_COUNTRIES = [
   { name: 'US', count: 120, percentage: 30 },
@@ -310,12 +311,25 @@ function filterShares(
   return filtered
 }
 
+function isExpiringSoon(share: ShareInfo): boolean {
+  if (!share.expiresAt)
+    return false
+  const left = share.expiresAt - Date.now()
+  return left > 0 && left <= EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000
+}
+
 const SHARE_STATUS_FILTERS: Record<string, (s: ShareInfo) => boolean | undefined> = {
   active: (s) => s.isEnabled,
   paused: (s) => !s.isEnabled,
   password: (s) => s.hasPassword,
   pinned: (s) => s.isPinned,
   starred: (s) => s.isStarred,
+  // The remaining categories read the same rules as the worker's list query, so the
+  // demo build does not quietly return everything for a filter it never learned.
+  permanent: (s) => !s.expiresAt,
+  expiring: (s) => Boolean(s.expiresAt && s.expiresAt > Date.now()),
+  expiring_soon: (s) => isExpiringSoon(s),
+  expired: (s) => Boolean(s.expiresAt && s.expiresAt <= Date.now()),
 }
 
 function buildShareListStats(
@@ -329,6 +343,7 @@ function buildShareListStats(
     pinnedShares: allShares.filter((s) => s.isPinned).length,
     starredShares: allShares.filter((s) => s.isStarred).length,
     pausedShares: allShares.filter((s) => !s.isEnabled).length,
+    expiringSoonShares: allShares.filter((s) => isExpiringSoon(s)).length,
     expiredShares: allShares.filter((s) => Boolean(s.expiresAt && s.expiresAt <= Date.now())).length,
     totalViews: allShares.reduce((acc, s) => acc + s.views, 0),
     totalVisitors: allShares.reduce((acc, s) => acc + (s.uniqueVisitors ?? 0), 0),
