@@ -6,8 +6,18 @@ import { escapeLike } from '../../lib/like'
 import { JSON_BODY_LIMITS, clampInt, readOptionalJsonValidated } from '../../lib/request'
 import { requireCurrentPassword } from '../../lib/reauth'
 import { parseBotName, publicVisitorFingerprint } from '../../lib/share-analytics'
+import { isVisitLogFilter, type VisitLogFilter } from '@shared/share-selection'
+import { visitLogFilterSql } from '../../lib/share-selection-sql'
 import { consumeShareReadBudget } from './read-budget'
 import { shareVisitWipeSchema } from './schemas'
+
+/** An unknown log filter is refused, for the same reason an unknown status is: silently answering
+ * with every row looks like a filter that matched everything. */
+function visitLogFilterParam(raw: string | undefined): VisitLogFilter {
+  if (!raw) return 'all'
+  if (!isVisitLogFilter(raw)) throw ApiError.badRequest(`Unknown visit filter: ${raw}`)
+  return raw
+}
 
 interface VisitLogRow {
   id: number
@@ -57,7 +67,7 @@ function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): voi
     const offset = (page - 1) * limit
     const { conditions, binds, bindIdx } = visitLogFilter({
       noteId: c.req.query('noteId'),
-      filter: c.req.query('filter') || 'all',
+      filter: visitLogFilterParam(c.req.query('filter')),
       search: (c.req.query('search') || '').trim(),
       userId,
     })
@@ -142,17 +152,10 @@ function cleanupDays(raw: string | undefined, type: string): number {
   return days
 }
 
-const VISIT_FILTER_CONDITIONS: Record<string, string> = {
-  real: `sv.is_bot = 0 AND sv.is_self_referrer = 0 AND sv.is_owner = 0`,
-  bot: `sv.is_bot = 1`,
-  owner: `sv.is_owner = 1`,
-  self: `sv.is_self_referrer = 1`,
-}
-
 function visitLogFilter(params: {
   userId: string
   noteId: string | undefined
-  filter: string
+  filter: VisitLogFilter
   search: string
 }): { conditions: string[]; binds: Array<string | number>; bindIdx: number } {
   const { userId, noteId, filter, search } = params
@@ -164,7 +167,7 @@ function visitLogFilter(params: {
     binds.push(noteId)
     bindIdx++
   }
-  const filterCondition = VISIT_FILTER_CONDITIONS[filter]
+  const filterCondition = visitLogFilterSql(filter, 'sv')
   if (filterCondition) conditions.push(filterCondition)
   if (search) {
     conditions.push(`(n.title LIKE ?${bindIdx} ESCAPE '\\' OR sv.slug LIKE ?${bindIdx} ESCAPE '\\' OR sv.country LIKE ?${bindIdx} ESCAPE '\\' OR sv.referrer_host LIKE ?${bindIdx} ESCAPE '\\')`)

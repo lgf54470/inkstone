@@ -214,24 +214,55 @@ describe('collection membership derivation (ADR-0005)', () => {
     expect(emptied.count).toBe(0)
   })
 
-  it('matches a tag collection by tag id, and never across accounts', async () => {
+  it('matches a tag collection by the name its shares store, and never across accounts', async () => {
     const db = await makeDb()
     await seedTag(db, { id: tagId(1), name: 'Research' })
     const mine = await seedNote(db, { title: 'Mine' })
-    await seedShare(db, { slug: 's-mine', note_id: mine, tags: JSON.stringify([tagId(1)]) })
+    // Two different addresses meet here, and the fixtures have to respect that or the test proves
+    // nothing: the collection stores the tag *id* (it is what renames the page), while a share stores
+    // the tag *name* — the value the edit modal writes and the list's own `?tag=` matches.
+    await seedShare(db, { slug: 's-mine', note_id: mine, tags: JSON.stringify(['Research']) })
     const otherNote = await seedNote(db, { user_id: OTHER_USER, title: 'Theirs' })
-    await seedShare(db, { user_id: OTHER_USER, slug: 's-theirs', note_id: otherNote, tags: JSON.stringify([tagId(1)]) })
-    // Membership is "this id is a whole element of the tag array", not "this id appears somewhere in
-    // it": a restored share can carry an id this code did not mint, and one that merely contains the
-    // target's characters must stay out of the collection.
+    await seedShare(db, { user_id: OTHER_USER, slug: 's-theirs', note_id: otherNote, tags: JSON.stringify(['Research']) })
+    // Membership is "the name is a whole element of the array", not "it appears somewhere in it": a
+    // name that merely carries the target's characters must stay out of the collection.
     const nearMiss = await seedNote(db, { title: 'Near miss' })
-    await seedShare(db, { slug: 's-near', note_id: nearMiss, tags: JSON.stringify([`${tagId(1)}0`]) })
+    await seedShare(db, { slug: 's-near', note_id: nearMiss, tags: JSON.stringify(['Research papers']) })
     const app = makeApp()
     const slug = await publishFolder(app, tagId(1), { targetType: 'tag' })
 
     const body = await (await readCollection(app, slug)).json() as CollectionBody
     expect(body.title).toBe('Research')
+    expect(body.count).toBe(1)
     expect(body.notes.map((note) => note.slug)).toEqual(['s-mine'])
+    // The directory and the owner's list have to answer this by the same rule: a collection that
+    // selected differently from the list it was created from is a bug nobody could see.
+    const filtered = await (await request(app, '/api/share?tag=Research')).json() as { shares: Array<{ slug: string }> }
+    expect(filtered.shares.map((share) => share.slug)).toEqual(body.notes.map((note) => note.slug))
+  })
+
+  it('reads a renamed or deleted tag at request time, and covers nothing when it is gone', async () => {
+    const db = await makeDb()
+    await seedTag(db, { id: tagId(1), name: 'Research' })
+    const note = await seedNote(db, { title: 'Mine' })
+    await seedShare(db, { slug: 's-mine', note_id: note, tags: JSON.stringify(['Research']) })
+    const app = makeApp()
+    const slug = await publishFolder(app, tagId(1), { targetType: 'tag' })
+
+    // Renaming follows the record: the page takes the new name. The shares still carry the name they
+    // were written with, so the page stops matching them — the same staleness the list's `?tag=`
+    // filter has, registered as a ledger item rather than papered over here.
+    await runSql(db, `UPDATE share_tags SET name = 'Review' WHERE id = ?1`, tagId(1))
+    const renamed = await (await readCollection(app, slug)).json() as CollectionBody
+    expect(renamed.title).toBe('Review')
+    expect(renamed.notes).toEqual([])
+
+    // A tag row that is gone leaves neither a name to show nor a name to match.
+    await runSql(db, `DELETE FROM share_tags WHERE id = ?1`, tagId(1))
+    const gone = await (await readCollection(app, slug)).json() as CollectionBody
+    expect(gone.title).toBe('')
+    expect(gone.count).toBe(0)
+    expect(gone.notes).toEqual([])
   })
 })
 

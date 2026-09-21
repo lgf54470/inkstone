@@ -4,8 +4,8 @@ import { z } from 'zod'
 
 import { createScopedFolder, createScopedTag, deleteScopedFolder, deleteScopedTag, listScopedFolders, listScopedTags, updateScopedFolder, updateScopedTag } from '../../lib/scoped-organizer'
 import { JSON_BODY_LIMITS, readJson, readJsonValidated } from '../../lib/request'
-import { escapeLike } from '../../lib/like'
 import { ApiError } from '../../lib/errors'
+import { shareSelectionSql } from '../../lib/share-selection-sql'
 import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import { isValidCustomSlug } from '../../lib/share-analytics'
 
@@ -100,15 +100,15 @@ function registerShareGroupToggleRoute(shareManageRoutes: Hono<AppBindings>): vo
     const body = await readJsonValidated(c, shareGroupToggleSchema, JSON_BODY_LIMITS.small)
     const isEnabled = body.enabled ? 1 : 0
 
-    if (body.type === 'folder') {
-      await c.env.DB.prepare(
-        `UPDATE shares SET is_enabled = ?1 WHERE folder_id = ?2 AND user_id = ?3`,
-      ).bind(isEnabled, body.target, userId).run()
-    } else if (body.type === 'tag') {
-      await c.env.DB.prepare(
-        `UPDATE shares SET is_enabled = ?1 WHERE user_id = ?2 AND tags LIKE ?3 ESCAPE '\\'`,
-      ).bind(isEnabled, userId, `%"${escapeLike(body.target)}"%`).run()
-    }
+    // The body names a folder by id and a tag by its stored value, exactly as the list's own filters
+    // do, so the two never disagree about which shares a group covers. The statement addresses the
+    // table without an alias, so the fragment is told that: `?1` is the new flag and `?2` the account,
+    // which is where the fragment starts numbering.
+    const target = { type: body.type, value: body.target }
+    const selection = shareSelectionSql({ target }, { now: Date.now(), firstBind: 3, aliases: { share: 'shares' } })
+    await c.env.DB.prepare(
+      `UPDATE shares SET is_enabled = ?1 WHERE user_id = ?2 AND ${selection.conditions.join(' AND ')}`,
+    ).bind(isEnabled, userId, ...selection.binds).run()
     return c.json({ ok: true })
   })
 }

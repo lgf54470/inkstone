@@ -1,31 +1,43 @@
-import { escapeLike } from './like'
+import { resolveShareTarget, type ShareTarget, type ShareTargetRecord } from '@shared/share-selection'
 import { isValidId, isValidSlug } from './id'
+import { shareSelectionSql, type ShareSqlConditions } from './share-selection-sql'
 
 /**
  * Published collections (ADR-0005): the address and the access policy are stored, the members are
  * derived. This module owns the two things that must not be stated twice — what counts as a member,
  * and how a page of members is walked — so the public directory and the owner's live count cannot
  * disagree about which shares a collection holds.
+ *
+ * A collection stores a *record id* and matches by the *stored value*: `shares.folder_id` holds a
+ * folder id, a tag array holds tag names. `resolveShareTarget()` is the conversion, and it used to be
+ * missing here — a tag collection matched its tag's id against the array of names, so every published
+ * tag page was empty while the owner's own count agreed with it. The visibility rule was a second
+ * copy too, spelled out in both statements below instead of being the `active` status; identical at
+ * the time, which is exactly the kind of copy that stops being identical later.
  */
 
-export type CollectionTargetType = 'folder' | 'tag'
-
-export interface CollectionTarget {
-  type: CollectionTargetType
-  value: string
+/**
+ * The tag name a record id resolves to, or null when the tag is gone. Reading it is the caller's job
+ * (the worker has the row, the demo its map), which is what keeps the rule pure.
+ */
+export function collectionTarget(
+  target: ShareTargetRecord,
+  tagName: string | null,
+): ShareTarget {
+  return resolveShareTarget(target, tagName)
 }
 
 /**
- * The membership condition of a collection, as SQL plus the binds it needs. A share belongs to a
- * folder collection by `folder_id` and to a tag collection by the tag id appearing in its JSON tag
- * array — the same two predicates the share list filters by, because a collection that selected
- * differently from the list it was created from would be a bug nobody could see.
+ * What a collection page selects: its target, and the visibility rule every visitor-facing list
+ * applies — the `active` status itself, not a condition written out here, so the page and the owner's
+ * list cannot come to call different shares visible.
  */
-export function collectionMemberPredicate(target: CollectionTarget, bindIndex: number): { sql: string; binds: string[] } {
-  if (target.type === 'folder') {
-    return { sql: `s.folder_id = ?${bindIndex}`, binds: [target.value] }
-  }
-  return { sql: `s.tags LIKE ?${bindIndex} ESCAPE '\\'`, binds: [`%"${escapeLike(target.value)}"%`] }
+export function collectionMemberConditions(params: {
+  target: ShareTarget
+  now: number
+  firstBind: number
+}): ShareSqlConditions {
+  return shareSelectionSql({ status: 'active', target: params.target }, params)
 }
 
 /**
@@ -35,16 +47,16 @@ export function collectionMemberPredicate(target: CollectionTarget, bindIndex: n
  */
 export function collectionMembersStatement(db: D1Database, params: {
   userId: string
-  target: CollectionTarget
+  target: ShareTarget
   now: number
   cursor: CollectionCursor | null
   limit: number
 }): D1PreparedStatement {
   const { userId, target, now, cursor, limit } = params
-  // The member value is the third bind, after the account and "now": the same two the count uses,
-  // so the listing and the counting cannot disagree about what they are selecting.
-  const member = collectionMemberPredicate(target, 3)
-  const binds: Array<string | number> = [userId, now, ...member.binds]
+  // The member conditions start after the account bind, so the listing and the count below number
+  // their placeholders from the same two binds and cannot disagree about what they select.
+  const member = collectionMemberConditions({ target, now, firstBind: 2 })
+  const binds: Array<string | number> = [userId, ...member.binds]
   let cursorClause = ''
   if (cursor) {
     binds.push(cursor.isPinned, cursor.updatedAt, cursor.slug)
@@ -56,27 +68,25 @@ export function collectionMembersStatement(db: D1Database, params: {
   return db.prepare(
     `SELECT n.title, n.excerpt, n.is_pinned, n.updated_at, s.slug, s.password_hash
        FROM shares s JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
-      WHERE s.user_id = ?1 AND s.is_enabled = 1 AND (s.expires_at IS NULL OR s.expires_at > ?2)
-        AND n.deleted_at IS NULL AND ${member.sql}${cursorClause}
+      WHERE s.user_id = ?1 AND n.deleted_at IS NULL AND ${member.conditions.join(' AND ')}${cursorClause}
       ORDER BY n.is_pinned DESC, n.updated_at DESC, s.slug DESC
       LIMIT ?${binds.length}`,
   ).bind(...binds)
 }
 
-/** How many members a collection has right now, by the same predicate the page lists with. */
+/** How many members a collection has right now, by the same conditions the page lists with. */
 export function collectionMemberCountStatement(db: D1Database, params: {
   userId: string
-  target: CollectionTarget
+  target: ShareTarget
   now: number
 }): D1PreparedStatement {
   const { userId, target, now } = params
-  const member = collectionMemberPredicate(target, 3)
+  const member = collectionMemberConditions({ target, now, firstBind: 2 })
   return db.prepare(
     `SELECT COUNT(*) AS members
        FROM shares s JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
-      WHERE s.user_id = ?1 AND s.is_enabled = 1 AND (s.expires_at IS NULL OR s.expires_at > ?2)
-        AND n.deleted_at IS NULL AND ${member.sql}`,
-  ).bind(userId, now, ...member.binds)
+      WHERE s.user_id = ?1 AND n.deleted_at IS NULL AND ${member.conditions.join(' AND ')}`,
+  ).bind(userId, ...member.binds)
 }
 
 export interface CollectionMemberRow {
@@ -126,20 +136,18 @@ export function decodeCollectionCursor(raw: string | undefined): CollectionCurso
 }
 
 /**
- * A collection's title is its folder's or tag's name, read at request time: renaming a folder renames
- * the page it published. The stored record keeps the target value only, so there is no second name to
- * fall out of date.
+ * The name of the folder or tag a collection points at, read at request time: renaming a folder
+ * renames the page it published. Null when the record is gone, which is the same fact the member rule
+ * needs — a tag collection whose tag was deleted has no name to show and no name to match, so both
+ * answers come from this one lookup. The stored record keeps the target's id only, so there is no
+ * second name to fall out of date.
  */
-export async function collectionTitle(db: D1Database, userId: string, target: CollectionTarget): Promise<string> {
+export async function collectionTargetName(db: D1Database, userId: string, target: ShareTargetRecord): Promise<string | null> {
   const table = target.type === 'folder' ? 'share_folders' : 'share_tags'
   const row = await db.prepare(
     `SELECT name FROM ${table} WHERE id = ?1 AND user_id = ?2`,
   ).bind(target.value, userId).first<{ name: string }>()
-  return row?.name ?? ''
-}
-
-export function isCollectionTargetType(value: unknown): value is CollectionTargetType {
-  return value === 'folder' || value === 'tag'
+  return row?.name ?? null
 }
 
 export function isValidTargetValue(value: unknown): value is string {

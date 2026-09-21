@@ -3,7 +3,6 @@ import {
   analyticsWindow,
   buildBucketedTimeline,
   buildShareTimeline,
-  buildVisitFilterSql,
   bucketsFromVisitRows,
   computeDelta,
   computeVisitorFingerprint,
@@ -20,6 +19,7 @@ import {
   perDayRate,
   shareRangeFromQuery,
 } from '../src/worker/lib/share-analytics'
+import { visitTrafficSql } from '../src/worker/lib/share-selection-sql'
 import { countryFlag } from '../src/client/features/share/share-helpers'
 
 describe('share-analytics user agent parser', () => {
@@ -241,17 +241,17 @@ describe('bot identification and traffic filter sql generator', () => {
 
   it('builds correct filter sql based on filter options', () => {
     // Default / All enabled:
-    expect(buildVisitFilterSql({ excludeBots: true, excludeSelfReferrers: true, excludeOwner: true })).toBe(
+    expect(visitTrafficSql({ excludeBots: true, excludeSelfReferrers: true, excludeOwner: true })).toBe(
       ' AND is_bot = 0 AND is_self_referrer = 0 AND is_owner = 0',
     )
     // Exclude bots only:
-    expect(buildVisitFilterSql({ excludeBots: true, excludeSelfReferrers: false, excludeOwner: false })).toBe(
+    expect(visitTrafficSql({ excludeBots: true, excludeSelfReferrers: false, excludeOwner: false })).toBe(
       ' AND is_bot = 0',
     )
     // All disabled:
-    expect(buildVisitFilterSql({ excludeBots: false, excludeSelfReferrers: false, excludeOwner: false })).toBe('')
+    expect(visitTrafficSql({ excludeBots: false, excludeSelfReferrers: false, excludeOwner: false })).toBe('')
     // With table alias:
-    expect(buildVisitFilterSql({ excludeBots: true, excludeSelfReferrers: true, excludeOwner: false }, 'sv')).toBe(
+    expect(visitTrafficSql({ excludeBots: true, excludeSelfReferrers: true, excludeOwner: false }, 'sv')).toBe(
       ' AND sv.is_bot = 0 AND sv.is_self_referrer = 0',
     )
   })

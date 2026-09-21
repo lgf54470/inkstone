@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import type { AppBindings } from '../../env'
 import { isValidSlug } from '../../lib/id'
-import { collectionTitle, isCollectionTargetType } from '../../lib/share-collections'
+import { collectionTargetName } from '../../lib/share-collections'
+import { isShareTargetType } from '@shared/share-selection'
 import { renderShareShell } from './public'
 
 /**
@@ -28,17 +29,17 @@ export function registerCollectionPageRoutes(collectionPageRoutes: Hono<AppBindi
       expires_at: number | null
       is_enabled: number
     }>()
-    if (!row || row.is_enabled === 0 || !isCollectionTargetType(row.target_type)) {
+    if (!row || row.is_enabled === 0 || !isShareTargetType(row.target_type)) {
       return renderShareShell(c, url, null)
     }
     // The collection's own title is a member-facing fact — it is the folder's or tag's name — so it
     // reaches the meta tags through the same path a password-protected share's title does, which is
     // to say it does not reach them at all when there is a password.
-    const title = await collectionTitle(c.env.DB, row.user_id, { type: row.target_type, value: row.target_value })
+    const title = await collectionTargetName(c.env.DB, row.user_id, { type: row.target_type, value: row.target_value })
     return renderShareShell(c, url, {
       password_hash: row.password_hash,
       expires_at: row.expires_at,
-      title,
+      title: title ?? '',
       excerpt: '',
     })
   })

@@ -1,4 +1,5 @@
 import type { ShareCategory, ShareFolder, ShareInfo, ShareListResponse, ShareTag } from '@shared/types'
+import type { ShareStatusFilter } from '@shared/share-selection'
 import type { StoreApi } from 'zustand'
 
 export type SetShareStoreState = StoreApi<ShareStoreState>['setState']
@@ -22,7 +23,7 @@ export interface ShareStoreState {
   category: ShareCategory
   folderId: string | null
   tag: string | null
-  statusFilter: string
+  statusFilter: ShareStatusFilter
   search: string
   sort: string
   viewMode: 'table' | 'grid'
@@ -43,7 +44,7 @@ export interface ShareStoreState {
   setCategory: (category: ShareCategory) => void
   setFolderId: (folderId: string | null) => void
   setTag: (tag: string | null) => void
-  setStatusFilter: (status: string) => void
+  setStatusFilter: (status: ShareStatusFilter) => void
   setSearch: (search: string) => void
   setSort: (sort: string) => void
   setViewMode: (mode: 'table' | 'grid') => void

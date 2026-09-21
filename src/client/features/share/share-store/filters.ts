@@ -1,4 +1,5 @@
 import type { ShareCategory } from '@shared/types'
+import { shareCategoryStatus } from '@shared/share-selection'
 import type { ShareStoreState, SetShareStoreState } from './types'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -93,23 +94,10 @@ function setCategoryImpl(category: ShareCategory, set: SetShareStoreState, get: 
     folderId: null,
     tag: null,
     selectedNoteIds: new Set(),
-    statusFilter: statusForCategory(category),
+    statusFilter: shareCategoryStatus(category),
   })
   cancelPendingSearchReload()
   void get().loadShares()
-}
-
-export function statusForCategory(category: ShareCategory): ShareStoreState['statusFilter'] {
-  if (category === 'active') return 'active'
-  if (category === 'paused') return 'paused'
-  if (category === 'pinned') return 'pinned'
-  if (category === 'starred') return 'starred'
-  if (category === 'password') return 'password'
-  if (category === 'expiring_soon') return 'expiring_soon'
-  if (category === 'expiring') return 'expiring'
-  if (category === 'permanent') return 'permanent'
-  if (category === 'expired') return 'expired'
-  return 'all'
 }
 
 function setFolderIdImpl(folderId: string | null, set: SetShareStoreState, get: () => ShareStoreState): void {

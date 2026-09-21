@@ -2,6 +2,7 @@ import { FileText, LayoutGrid, List, RefreshCw, Search, Settings } from 'lucide-
 import { IconButton } from '../../components/primitives'
 import { Input, Segmented, Select } from '../../components/form'
 import { t } from '../../lib/i18n'
+import { SHARE_STATUS_FILTERS, type ShareStatusFilter } from '@shared/share-selection'
 import { useShareStore } from './share-store'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 
@@ -59,19 +60,34 @@ function SearchField({ value, onChange }: { value: string; onChange: (value: str
   )
 }
 
-function StatusSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+/**
+ * The options are the shared vocabulary, so the toolbar cannot offer a status the worker would refuse
+ * or omit one it knows; only the labels are the client's business.
+ */
+const STATUS_LABEL_KEYS: Record<ShareStatusFilter, Parameters<typeof t>[0]> = {
+  all: 'share.status_all',
+  active: 'share.status_active',
+  pinned: 'share.category_pinned',
+  starred: 'share.category_starred',
+  paused: 'share.status_paused',
+  password: 'share.category_password',
+  expiring_soon: 'share.category_expiring_soon',
+  expiring: 'share.category_expiring',
+  permanent: 'share.category_permanent',
+  expired: 'share.category_expired',
+}
+
+function StatusSelect({ value, onChange }: { value: ShareStatusFilter; onChange: (value: ShareStatusFilter) => void }) {
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label={t('share.status_filter_label')} className='h-7 text-[length:var(--text-12)] py-0 px-2'>
-      <option value='all'>{t('share.status_all')}</option>
-      <option value='active'>{t('share.status_active')}</option>
-      <option value='pinned'>{t('share.category_pinned')}</option>
-      <option value='starred'>{t('share.category_starred')}</option>
-      <option value='paused'>{t('share.status_paused')}</option>
-      <option value='password'>{t('share.category_password')}</option>
-      <option value='expiring_soon'>{t('share.category_expiring_soon')}</option>
-      <option value='expiring'>{t('share.category_expiring')}</option>
-      <option value='permanent'>{t('share.category_permanent')}</option>
-      <option value='expired'>{t('share.category_expired')}</option>
+    <Select
+      value={value}
+      onChange={(e) => onChange(e.target.value as ShareStatusFilter)}
+      aria-label={t('share.status_filter_label')}
+      className='h-7 text-[length:var(--text-12)] py-0 px-2'
+    >
+      {SHARE_STATUS_FILTERS.map((status) => (
+        <option key={status} value={status}>{t(STATUS_LABEL_KEYS[status])}</option>
+      ))}
     </Select>
   )
 }

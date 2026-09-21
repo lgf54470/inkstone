@@ -1,12 +1,14 @@
 import type { ShareTimelineRange } from '@shared/types'
 import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED } from '@shared/share-channel'
+import type { VisitLogFilter } from '@shared/share-selection'
 import { t } from '../../lib/i18n'
 
 /**
- * The traffic classes a visit list can be narrowed to. Defined next to the CSV shape because both
- * the browsing hook and the export walk have to agree on what "bot" means.
+ * The traffic classes a visit list can be narrowed to. It is the shared vocabulary rather than a local
+ * union, because the browsing hook, the CSV export walk and the worker's log query all have to agree
+ * on what "bot" means — that agreement is what the export of a filtered view rests on.
  */
-export type VisitFilter = 'all' | 'real' | 'bot' | 'owner' | 'self'
+export type VisitFilter = VisitLogFilter
 
 /**
  * The ranges every share analytics surface offers, in one place: the dashboard's segmented control

@@ -2,22 +2,20 @@ import { Hono } from 'hono'
 import { ShareInfo, ShareListResponse, ShareStatsResponse, ShareSummaryResponse } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
-import { EXPIRING_SOON_DAYS } from '@shared/constants'
 import { escapeLike } from '../../lib/like'
-import { buildVisitFilterSql, type ShareFilterOptions } from '../../lib/share-analytics'
+import { isShareStatusFilter, type ShareStatusFilter, type VisitTrafficFilters } from '@shared/share-selection'
+import { shareSelectionSql, visitTrafficSql } from '../../lib/share-selection-sql'
 import {
   buildShareGlobalStats,
   folderCountsStatement,
   filteredGlobalStatsStatement,
   globalSummaryStatement,
-  pinStarStatement,
   tagCountsStatement,
   toFolderCounts,
   toTagCounts,
   type FilteredStatsRow,
   type FolderCountRow,
   type GlobalSummaryRow,
-  type PinStarRow,
   type TagCountRow,
 } from './global-stats'
 import { firstOf, rowsOf, type D1ReadResult } from './read-results'
@@ -56,7 +54,7 @@ interface ShareListRow {
 interface ShareListParams {
   folderId: string | null
   tag: string | null
-  status: string
+  status: ShareStatusFilter
   search: string
   sort: string
   clause: string
@@ -127,10 +125,12 @@ function registerShareNoteShareRoute(shareManageRoutes: Hono<AppBindings>): void
 }
 
 /**
- * The counters behind the sidebar and the list's own totals are the same five
+ * The counters behind the sidebar and the list's own totals are the same four
  * aggregates, so they are described once and batched by whoever needs them: the
  * list puts them beside its row query (still one round trip), while `/stats` asks
  * for them alone — a hub that lands on the dashboard reads the counts, not the rows.
+ * The pin and star counts ride the summary statement itself, since they read the same
+ * join: a second statement would have been a second definition of "a pinned share".
  */
 function globalStatsStatements(db: D1Database, userId: string, now: number, clause: string): D1PreparedStatement[] {
   return [
@@ -138,18 +138,16 @@ function globalStatsStatements(db: D1Database, userId: string, now: number, clau
     tagCountsStatement(db, userId, now),
     globalSummaryStatement(db, userId, now),
     filteredGlobalStatsStatement(db, userId, clause),
-    pinStarStatement(db, userId),
   ]
 }
 
 function parseGlobalStats(results: D1ReadResult[]): ShareListResponse['globalStats'] {
-  const [folderResult, tagResult, summaryResult, filteredResult, pinStarResult] = results
+  const [folderResult, tagResult, summaryResult, filteredResult] = results
   return buildShareGlobalStats(
     toFolderCounts(rowsOf<FolderCountRow>(folderResult)),
     toTagCounts(rowsOf<TagCountRow>(tagResult)),
     firstOf<GlobalSummaryRow>(summaryResult),
     firstOf<FilteredStatsRow>(filteredResult),
-    firstOf<PinStarRow>(pinStarResult),
   )
 }
 
@@ -208,10 +206,10 @@ function shareListParams(c: { req: { query(key: string): string | undefined; url
   const folderId = rawFolderId && rawFolderId !== 'null' && rawFolderId !== 'undefined' ? rawFolderId : null
   const rawTag = c.req.query('tag')
   const tag = rawTag && rawTag !== 'null' && rawTag !== 'undefined' ? rawTag : null
-  const status = c.req.query('status') || 'all'
+  const status = shareStatusParam(c.req.query('status'))
   const search = (c.req.query('search') || '').trim()
   const sort = c.req.query('sort') || 'views_desc'
-  const filters: ShareFilterOptions = {
+  const filters: VisitTrafficFilters = {
     excludeBots: c.req.query('excludeBots') !== 'false',
     excludeSelfReferrers: c.req.query('excludeSelf') === 'true',
     excludeOwner: c.req.query('excludeOwner') === 'true',
@@ -222,65 +220,47 @@ function shareListParams(c: { req: { query(key: string): string | undefined; url
     status,
     search,
     sort,
-    clause: buildVisitFilterSql(filters),
+    clause: visitTrafficSql(filters),
     now: Date.now(),
     origin: new URL(c.req.url).origin,
   }
 }
 
+// The list batch is the four aggregate statements above, then its row query.
+const QUERY_COUNT_FOR_LIST_ROWS = 4
+
 /**
- * The status categories that read the clock. Each returns its SQL with bare `?` placeholders plus
- * the values they take, so the caller can hand out binding numbers in the order it builds the
- * clause — the categories that need no clock ride along in STATUS_CONDITIONS below.
+ * The status the query asked for. An unknown one is refused rather than folded into `all`: a filter
+ * the server silently ignores looks like a filter that found nothing, and the client's own category
+ * mapping is close enough to this vocabulary that only a bug can send anything else.
  */
-function statusTimeCondition(status: string, now: number): { sql: string; binds: Array<string | number> } | null {
-  if (status === 'active')
-    return { sql: `(s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?)`, binds: [now] }
-  if (status === 'expired')
-    return { sql: `s.expires_at IS NOT NULL AND s.expires_at <= ?`, binds: [now] }
-  if (status === 'expiring')
-    return { sql: `s.expires_at IS NOT NULL AND s.expires_at > ?`, binds: [now] }
-  if (status === 'expiring_soon')
-    return { sql: `s.expires_at IS NOT NULL AND s.expires_at > ? AND s.expires_at <= ?`, binds: [now, now + EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000] }
-  return null
+function shareStatusParam(raw: string | undefined): ShareStatusFilter {
+  if (!raw) return 'all'
+  if (!isShareStatusFilter(raw)) throw ApiError.badRequest(`Unknown status filter: ${raw}`)
+  return raw
 }
 
-// The list batch is the five aggregate statements above, then its row query.
-const QUERY_COUNT_FOR_LIST_ROWS = 5
-
-const STATUS_CONDITIONS: Record<string, string> = {
-  paused: `s.is_enabled = 0`,
-  starred: `n.is_starred = 1`,
-  pinned: `n.is_pinned = 1`,
-  password: `s.password_hash IS NOT NULL`,
-  permanent: `s.expires_at IS NULL`,
-}
-
+/**
+ * The list's selection: the two conditions that describe the rows at all, then the rules.
+ *
+ * `?tag=` carries the value a share stores — a tag *name*, the element of its tag array — while
+ * `?folderId=` carries a folder id, and both are what the sidebar had in hand when the owner picked
+ * them. An address by record id comes from a published collection, which resolves it first (see
+ * `lib/share-collections`); that conversion is deliberately not repeated here.
+ */
 function shareListConditions(binds: Array<string | number>, params: ShareListParams): string[] {
   const { folderId, tag, status, search, now } = params
   const conditions: string[] = [`s.user_id = ?1`, `n.deleted_at IS NULL`]
-  let bindIndex = 2
-  if (folderId) {
-    conditions.push(`s.folder_id = ?${bindIndex}`)
-    binds.push(folderId)
-    bindIndex++
-  }
-  if (tag) {
-    conditions.push(`s.tags LIKE ?${bindIndex} ESCAPE '\\'`)
-    binds.push(`%"${escapeLike(tag)}"%`)
-    bindIndex++
-  }
-  const timeCondition = statusTimeCondition(status, now)
-  if (timeCondition) {
-    conditions.push(timeCondition.sql.replace(/\?/g, () => `?${bindIndex++}`))
-    binds.push(...timeCondition.binds)
-  }
-  const staticCondition = STATUS_CONDITIONS[status]
-  if (staticCondition) conditions.push(staticCondition)
+  const target = folderId ? { type: 'folder' as const, value: folderId } : tag ? { type: 'tag' as const, value: tag } : null
+  const selection = shareSelectionSql({ status, target }, { now, firstBind: 2 })
+  conditions.push(...selection.conditions)
+  binds.push(...selection.binds)
   if (search) {
+    // A text search over the row, not the tag rule: the owner typing "res" means to match a share
+    // whose tags contain it, and narrowing this to whole elements would stop the search working.
+    const bindIndex = selection.nextBind
     conditions.push(`(n.title LIKE ?${bindIndex} ESCAPE '\\' OR n.excerpt LIKE ?${bindIndex} ESCAPE '\\' OR s.slug LIKE ?${bindIndex} ESCAPE '\\' OR s.tags LIKE ?${bindIndex} ESCAPE '\\')`)
     binds.push(`%${escapeLike(search)}%`)
-    bindIndex++
   }
   return conditions
 }
@@ -431,10 +411,17 @@ function shareListInfo(row: ShareListRow, stats: { pvs: number; uvs: number } | 
   }
 }
 
+/**
+ * Valid JSON that is not an array of tags is not a tag list either: a stored scalar or object would
+ * otherwise reach the payload as `tags`, and every caller's `.includes` would be reading it as one.
+ * The tag rule in `@shared/share-selection` asks "is this an element of the array", so what the
+ * payload calls an array has to be one.
+ */
 function parseShareTagsJson(raw: string | null): string[] {
   if (!raw) return []
   try {
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
   } catch (error) {
     console.warn('[share] failed to parse share tags, falling back to empty list', error)
     return []
@@ -443,10 +430,5 @@ function parseShareTagsJson(raw: string | null): string[] {
 
 function shareRowTags(row: ShareRow, extras?: { tags?: string[] }): string[] {
   if (extras?.tags) return extras.tags
-  if (!row.tags) return []
-  try {
-    return JSON.parse(row.tags)
-  } catch {
-    return []
-  }
+  return parseShareTagsJson(row.tags ?? null)
 }

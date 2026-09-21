@@ -3,8 +3,16 @@ import type { DemoState } from '../../state'
 import type { ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSession, ShareSessionsResponse, ShareStaleLinks, ShareTimelinePoint, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { SESSION_GAP_MS } from '@shared/visitor-session'
 import { apiError, jsonBody } from '../helpers/info'
-import { EXPIRING_SOON_DAYS } from '@shared/constants'
 import { STALE_LINK_DEFAULT_DAYS } from '@shared/user-settings'
+import {
+  isShareStatusFilter,
+  isVisitLogFilter,
+  shareMatchesSelection,
+  shareMatchesStatus,
+  visitMatchesLogFilter,
+  type ShareStatusFilter,
+  type VisitLogFilter,
+} from '@shared/share-selection'
 import { SHARE_BROWSERS, SHARE_CHANNELS, SHARE_DEVICES, SHARE_OS_LIST, SHARE_TOP_COUNTRIES, SHARE_TOP_REFERRERS, SHARE_VISIT_SAMPLES } from './share-fixtures'
 
 function shareTimeline(now: number, counts: [number, number][]): ShareTimelinePoint[] {
@@ -210,16 +218,15 @@ function filterShares(
   status: string | undefined,
   search: string | undefined,
 ): ShareInfo[] {
-  let filtered = allShares
-  if (folderId && folderId !== 'null') {
-    filtered = filtered.filter((s) => s.shareFolderId === folderId)
-  }
-  if (tag && tag !== 'null') {
-    filtered = filtered.filter((s) => s.shareTags?.includes(tag))
-  }
-  if (status && SHARE_STATUS_FILTERS[status]) {
-    filtered = filtered.filter(SHARE_STATUS_FILTERS[status])
-  }
+  // The same selection the worker's query builds, evaluated in JS: a demo that answered a filter
+  // differently from the real build would be a bug report about the demo, which is worse than none.
+  // `?tag=` carries the value a share stores (a tag name) — see `@shared/share-selection`.
+  const target = folderId && folderId !== 'null'
+    ? { type: 'folder' as const, value: folderId }
+    : tag && tag !== 'null' ? { type: 'tag' as const, value: tag } : null
+  const requested = status && isShareStatusFilter(status) ? status : 'all'
+  const now = Date.now()
+  let filtered = allShares.filter((share) => shareMatchesSelection(share, { status: requested, target }, now))
   if (search) {
     filtered = filtered.filter(
       (s) =>
@@ -230,43 +237,27 @@ function filterShares(
   return filtered
 }
 
-function isExpiringSoon(share: ShareInfo): boolean {
-  if (!share.expiresAt)
-    return false
-  const left = share.expiresAt - Date.now()
-  return left > 0 && left <= EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000
-}
-
-const SHARE_STATUS_FILTERS: Record<string, (s: ShareInfo) => boolean | undefined> = {
-  active: (s) => s.isEnabled,
-  paused: (s) => !s.isEnabled,
-  password: (s) => s.hasPassword,
-  pinned: (s) => s.isPinned,
-  starred: (s) => s.isStarred,
-  // The remaining categories read the same rules as the worker's list query, so the
-  // demo build does not quietly return everything for a filter it never learned.
-  permanent: (s) => !s.expiresAt,
-  expiring: (s) => Boolean(s.expiresAt && s.expiresAt > Date.now()),
-  expiring_soon: (s) => isExpiringSoon(s),
-  expired: (s) => Boolean(s.expiresAt && s.expiresAt <= Date.now()),
-}
-
 function buildShareListStats(
   allShares: ShareInfo[],
   folderCounts: Record<string, { total: number; shared: number }>,
   tagCounts: Record<string, { total: number; shared: number }>,
 ): ShareListResponse['globalStats'] {
+  // Every count is the status rule itself, so the badge beside a category cannot disagree with the
+  // list that category shows — in the demo no less than in the worker.
+  const now = Date.now()
+  const countOf = (status: Exclude<ShareStatusFilter, 'all'>) =>
+    allShares.filter((share) => shareMatchesStatus(share, status, now)).length
   return {
     totalShares: allShares.length,
-    activeShares: allShares.filter((s) => s.isEnabled).length,
-    pinnedShares: allShares.filter((s) => s.isPinned).length,
-    starredShares: allShares.filter((s) => s.isStarred).length,
-    pausedShares: allShares.filter((s) => !s.isEnabled).length,
-    passwordShares: allShares.filter((s) => s.hasPassword).length,
-    expiringShares: allShares.filter((s) => Boolean(s.expiresAt && s.expiresAt > Date.now())).length,
-    expiringSoonShares: allShares.filter((s) => isExpiringSoon(s)).length,
-    permanentShares: allShares.filter((s) => !s.expiresAt).length,
-    expiredShares: allShares.filter((s) => Boolean(s.expiresAt && s.expiresAt <= Date.now())).length,
+    activeShares: countOf('active'),
+    pinnedShares: countOf('pinned'),
+    starredShares: countOf('starred'),
+    pausedShares: countOf('paused'),
+    passwordShares: countOf('password'),
+    expiringShares: countOf('expiring'),
+    expiringSoonShares: countOf('expiring_soon'),
+    permanentShares: countOf('permanent'),
+    expiredShares: countOf('expired'),
     totalViews: allShares.reduce((acc, s) => acc + s.views, 0),
     totalVisitors: allShares.reduce((acc, s) => acc + (s.uniqueVisitors ?? 0), 0),
     folderCounts,
@@ -285,13 +276,10 @@ function listShareVisits(c: Context): Response {
     visitedAt: now - offsetMs,
   }))
 
-  const filtered = mockVisits.filter((v) => {
-    if (filter === 'real') return !v.isBot && !v.isOwner && !v.isSelfReferrer
-    if (filter === 'bot') return v.isBot
-    if (filter === 'owner') return v.isOwner
-    if (filter === 'self') return v.isSelfReferrer
-    return true
-  })
+  // The same single-choice filter the worker applies, asked of the shared predicate. `real` is the
+  // three traffic toggles at once, which is also what a reading's default excludes.
+  const logFilter: VisitLogFilter = isVisitLogFilter(filter) ? filter : 'all'
+  const filtered = mockVisits.filter((visit) => visitMatchesLogFilter(visit, logFilter))
 
   const visitsRes: ShareVisitsResponse = {
     visits: filtered,

@@ -7,7 +7,8 @@ import { isValidId, newId, newSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { hashPassword } from '../../lib/password'
 import { LIMITS } from '@shared/constants'
-import { collectionMemberCountStatement, collectionTitle, isCollectionTargetType, isValidTargetValue, type CollectionTargetType } from '../../lib/share-collections'
+import { collectionMemberCountStatement, collectionTargetName, isValidTargetValue } from '../../lib/share-collections'
+import { isShareTargetType, resolveShareTarget, type ShareTargetType } from '@shared/share-selection'
 import { rowsOf } from './read-results'
 
 /**
@@ -59,17 +60,19 @@ async function toShareCollection(
   userId: string,
   now: number,
 ): Promise<ShareCollection> {
-  const target = { type: row.target_type as CollectionTargetType, value: row.target_value }
-  const [count, title] = await Promise.all([
-    collectionMemberCountStatement(c.env.DB, { userId, target, now }).first<{ members: number }>(),
-    collectionTitle(c.env.DB, userId, target),
-  ])
+  const record = { type: row.target_type as ShareTargetType, value: row.target_value }
+  const name = await collectionTargetName(c.env.DB, userId, record)
+  const count = await collectionMemberCountStatement(c.env.DB, {
+    userId,
+    target: resolveShareTarget(record, name),
+    now,
+  }).first<{ members: number }>()
   return {
     id: row.id,
     slug: row.slug,
-    title,
-    targetType: target.type,
-    targetValue: target.value,
+    title: name ?? '',
+    targetType: record.type,
+    targetValue: record.value,
     count: count?.members ?? 0,
     hasPassword: Boolean(row.password_hash),
     expiresAt: row.expires_at,
@@ -99,11 +102,11 @@ function registerCollectionPublishRoute(shareManageRoutes: Hono<AppBindings>): v
   shareManageRoutes.post('/collections', async (c) => {
     const userId = c.get('userId')
     const body = await readJsonValidated(c, publishSchema, JSON_BODY_LIMITS.small)
-    if (!isCollectionTargetType(body.targetType) || !isValidTargetValue(body.targetValue)) {
+    if (!isShareTargetType(body.targetType) || !isValidTargetValue(body.targetValue)) {
       throw ApiError.badRequest('The collection target is not valid')
     }
     const target = { type: body.targetType, value: body.targetValue }
-    if (!(await collectionTitle(c.env.DB, userId, target))) {
+    if ((await collectionTargetName(c.env.DB, userId, target)) === null) {
       throw ApiError.notFound('The folder or tag does not exist')
     }
     const now = Date.now()

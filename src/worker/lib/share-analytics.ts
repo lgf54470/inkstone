@@ -1,5 +1,7 @@
 import type { ShareBreakdownItem, ShareTimelinePoint, ShareTimelineRange } from '@shared/types'
 import { LIMITS } from '@shared/constants'
+import type { VisitTrafficFilters } from '@shared/share-selection'
+import { visitTrafficSql } from './share-selection-sql'
 
 export function parseDeviceType(ua: string): string {
   if (!ua) return 'desktop'
@@ -105,12 +107,6 @@ export function parseBotName(ua: string): string | null {
   return null
 }
 
-export interface ShareFilterOptions {
-  excludeBots?: boolean
-  excludeSelfReferrers?: boolean
-  excludeOwner?: boolean
-}
-
 /**
  * The log table labels a visitor by the head of its fingerprint and nothing more; the stored digest
  * is a pseudonymous identifier, so only this much of it is ever allowed to leave the worker. Both
@@ -121,15 +117,6 @@ export const VISITOR_FP_DISPLAY_CHARS = 8
 
 export function publicVisitorFingerprint(digest: string | null): string {
   return digest ? digest.slice(0, VISITOR_FP_DISPLAY_CHARS) : ''
-}
-
-export function buildVisitFilterSql(filters: ShareFilterOptions, alias = ''): string {
-  const prefix = alias ? `${alias}.` : ''
-  const parts: string[] = []
-  if (filters.excludeBots !== false) parts.push(`${prefix}is_bot = 0`)
-  if (filters.excludeSelfReferrers === true) parts.push(`${prefix}is_self_referrer = 0`)
-  if (filters.excludeOwner === true) parts.push(`${prefix}is_owner = 0`)
-  return parts.length ? ` AND ${parts.join(' AND ')}` : ''
 }
 
 export function parseBrowser(ua: string): string {
@@ -356,19 +343,19 @@ export function shareRangeFromQuery(raw: string | undefined): ShareTimelineRange
 
 export interface AnalyticsRequest {
   range: ShareTimelineRange
-  filters: ShareFilterOptions
+  filters: VisitTrafficFilters
   clause: string
   now: number
 }
 
 export function parseAnalyticsRequest(c: { req: { query(key: string): string | undefined } }): AnalyticsRequest {
   const range = shareRangeFromQuery(c.req.query('range'))
-  const filters: ShareFilterOptions = {
+  const filters: VisitTrafficFilters = {
     excludeBots: c.req.query('excludeBots') !== 'false',
     excludeSelfReferrers: c.req.query('excludeSelf') === 'true',
     excludeOwner: c.req.query('excludeOwner') === 'true',
   }
-  return { range, filters, clause: buildVisitFilterSql(filters), now: Date.now() }
+  return { range, filters, clause: visitTrafficSql(filters), now: Date.now() }
 }
 
 export interface AnalyticsWindow {

@@ -5,10 +5,10 @@ import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { userSettingsNumberSql } from '../../lib/maintenance'
 import { consumeShareReadBudget } from './read-budget'
+import { visitTrafficSql } from '../../lib/share-selection-sql'
 import {
   analyticsWindow,
   buildBucketedTimeline,
-  buildVisitFilterSql,
   computeDelta,
   perDayRate,
   parseAnalyticsRequest,
@@ -108,7 +108,7 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
       shareSummaryStatement(db, userId, ctx.now),
       prevVisitStatsStatement(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause),
       visitFilterStatsStatement(db, userId, ctx.startTs),
-      recentVisitsStatement(db, { userId, startTs: ctx.startTs, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
+      recentVisitsStatement(db, { userId, startTs: ctx.startTs, clause: visitTrafficSql(ctx.filters, 'sv') }),
       staleThresholdStatement(db, userId),
       staleLinksStatement(db, { userId, now: ctx.now }),
       channelBreakdownStatement(db, { userId }, ctx),
@@ -252,7 +252,7 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
     const ctx = await analyticsContext(db, c, { userId, noteId })
     if (ctx.range === 'all') await consumeShareReadBudget(db, userId)
     const [recentResult, channelResult, ...visitResults] = await db.batch([
-      recentVisitsStatement(db, { userId, noteId, startTs: ctx.startTs, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
+      recentVisitsStatement(db, { userId, noteId, startTs: ctx.startTs, clause: visitTrafficSql(ctx.filters, 'sv') }),
       channelBreakdownStatement(db, { userId, targetId: noteId }, ctx),
       ...visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId, targetId: noteId }, ctx),
     ])

@@ -7,7 +7,8 @@ import { isValidSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, clampInt, readOptionalJsonValidated, requestClientIp } from '../../lib/request'
 import { verifyPassword } from '../../lib/password'
 import { assertNotLocked, clearLoginFailures, consumeAttemptBudget, recordLoginFailure, ThrottleError } from '../../lib/throttle'
-import { collectionMemberCountStatement, collectionMembersStatement, collectionTitle, decodeCollectionCursor, nextCollectionCursor, type CollectionMemberRow, type CollectionTargetType } from '../../lib/share-collections'
+import { collectionMemberCountStatement, collectionMembersStatement, collectionTargetName, decodeCollectionCursor, nextCollectionCursor, type CollectionMemberRow } from '../../lib/share-collections'
+import { resolveShareTarget, type ShareTargetType } from '@shared/share-selection'
 import { rowsOf } from './read-results'
 
 /** One page of a directory, and a ceiling on how much of an account one request can walk. */
@@ -44,20 +45,23 @@ export function registerShareCollectionPublicRoutes(shareRoutes: Hono<AppBinding
     const collection = await loadCollectionOrThrow(c.env.DB, slug)
     const denied = await authenticateCollectionAccess(c, collection, slug, password)
     if (denied) return denied
-    const target = { type: collection.target_type as CollectionTargetType, value: collection.target_value }
+    const record = { type: collection.target_type as ShareTargetType, value: collection.target_value }
     const now = Date.now()
     const limit = clampInt(c.req.query('limit'), 1, COLLECTION_LIMIT_MAX, COLLECTION_LIMIT_DEFAULT)
     const cursor = collectionCursor(c.req.query('cursor'))
-    const [page, count, title] = await Promise.all([
+    // One lookup answers both questions: the name in the title, and the value the members have to
+    // carry. A tag whose row is gone resolves to a target that matches nothing.
+    const name = await collectionTargetName(c.env.DB, collection.user_id, record)
+    const target = resolveShareTarget(record, name)
+    const [page, count] = await Promise.all([
       collectionMembersStatement(c.env.DB, { userId: collection.user_id, target, now, cursor, limit })
         .all<CollectionMemberRow>(),
       collectionMemberCountStatement(c.env.DB, { userId: collection.user_id, target, now })
         .first<{ members: number }>(),
-      collectionTitle(c.env.DB, collection.user_id, target),
     ])
     const rows = rowsOf<CollectionMemberRow>(page)
     const response: PublicCollection = {
-      title,
+      title: name ?? '',
       count: count?.members ?? 0,
       // The marker that says "arrived from a directory" is not stored on the member: the client puts
       // `?ref=collection` on the links it renders, so the visit row keeps its own share link as the

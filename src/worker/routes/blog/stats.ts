@@ -9,15 +9,15 @@ import { blogVisitWipeSchema } from './schemas'
 import {
   analyticsWindow,
   buildBucketedTimeline,
-  buildVisitFilterSql,
   computeDelta,
   parseAnalyticsRequest,
   parseBotName,
   toBreakdown,
   type AnalyticsRequest,
   type AnalyticsWindow,
-  type ShareFilterOptions,
 } from '../../lib/share-analytics'
+import type { VisitTrafficFilters } from '@shared/share-selection'
+import { visitTrafficSql } from '../../lib/share-selection-sql'
 import {
   BLOG_VISIT_SOURCE,
   visitAggregateFromResults,
@@ -379,7 +379,7 @@ interface BlogRecentVisitRow {
   post_title: string
 }
 
-async function loadBlogRecentVisits(db: D1Database, userId: string, filters: ShareFilterOptions): Promise<BlogVisitLog[]> {
+async function loadBlogRecentVisits(db: D1Database, userId: string, filters: VisitTrafficFilters): Promise<BlogVisitLog[]> {
   const rows = await db.prepare(
     `SELECT bv.id, bv.post_id, bv.slug, bv.visited_at, bv.country, bv.region, bv.city,
             bv.referrer, bv.referrer_host, bv.device_type, bv.os, bv.browser, bv.user_agent,
@@ -387,7 +387,7 @@ async function loadBlogRecentVisits(db: D1Database, userId: string, filters: Sha
             COALESCE(p.title, bv.slug) as post_title
        FROM blog_visits bv
        LEFT JOIN blog_posts p ON p.id = bv.post_id
-      WHERE bv.user_id = ?1 ${buildVisitFilterSql(filters, 'bv')}
+      WHERE bv.user_id = ?1 ${visitTrafficSql(filters, 'bv')}
       ORDER BY bv.visited_at DESC
       LIMIT 20`,
   )

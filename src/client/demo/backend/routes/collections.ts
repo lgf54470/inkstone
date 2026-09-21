@@ -1,5 +1,6 @@
 import type { Context, Hono } from 'hono'
 import type { PublicCollection, ShareCollection } from '@shared/types'
+import { resolveShareTarget, shareMatchesSelection, type ShareTargetRecord } from '@shared/share-selection'
 import type { DemoShareCollection, DemoState } from '../../state'
 import { newDemoId } from '../../state'
 import { apiError, jsonBody } from '../helpers/info'
@@ -43,16 +44,19 @@ function targetName(state: DemoState, collection: DemoShareCollection): string {
     : state.shareTags.get(collection.targetValue)?.name ?? ''
 }
 
-/** The demo's membership rule, written to match the worker's two predicates. */
+/**
+ * The demo's membership rule: the shared selection, with the collection's record id resolved the way
+ * the worker resolves it — a folder id is what a share stores, a tag is stored by name. Written out
+ * by hand before, it resolved a tag's name here and the worker resolved its id there, which is how a
+ * published tag page could be empty on one side and populated on the other.
+ */
 function membersOf(state: DemoState, collection: DemoShareCollection) {
-  const now = Date.now()
-  return [...state.shares.values()].filter((share) => {
-    const info = share.info
-    if (!info.isEnabled) return false
-    if (info.expiresAt && info.expiresAt < now) return false
-    if (collection.targetType === 'folder') return info.shareFolderId === collection.targetValue
-    return (info.shareTags ?? []).includes(targetName(state, collection))
-  })
+  const record = { type: collection.targetType, value: collection.targetValue } as ShareTargetRecord
+  const tagName = record.type === 'tag' ? targetName(state, collection) : null
+  const target = resolveShareTarget(record, tagName || null)
+  return [...state.shares.values()].filter((share) =>
+    shareMatchesSelection(share.info, { status: 'active', target }, Date.now()),
+  )
 }
 
 async function publishCollection(c: Context, state: DemoState): Promise<Response> {
