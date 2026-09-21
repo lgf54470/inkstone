@@ -180,6 +180,14 @@ export interface ShareListResponse {
   }
 }
 
+/**
+ * The sidebar's counters without the share rows: a hub that opens on the dashboard
+ * reads these, so it does not pay for a list it is not showing.
+ */
+export interface ShareStatsResponse {
+  globalStats: ShareListResponse['globalStats']
+}
+
 export interface ShareVisitsResponse {
   visits: ShareVisitLog[]
   total: number

@@ -247,6 +247,41 @@ function instrumentRoundTrips(): { direct: number; batch: number } {
   return calls
 }
 
+describe('share stats route (SH-72)', () => {
+  it('answers the sidebar counters without list rows or per-note visit stats', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, { id: 'st-a', title: 'Plain' })
+    const n2 = await seedNote(db, { id: 'st-b', title: 'Expiring' })
+    await seedShare(db, { note_id: n1, slug: 'st-a', views: 4 })
+    await seedShare(db, { note_id: n2, slug: 'st-b', expires_at: Date.now() + 86_400_000 })
+    await seedVisit(db, { note_id: n1, slug: 'st-a', visitor_fp: 'fp-st-1' })
+    const statements = captureSql(db)
+
+    const res = await request(makeApp(), '/api/share/stats')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.globalStats.totalShares).toBe(2)
+    expect(body.globalStats.activeShares).toBe(2)
+    expect(body.globalStats.expiringShares).toBe(1)
+    expect(body.globalStats.expiringSoonShares).toBe(1)
+    expect(body.shares).toBeUndefined()
+    // Neither the row query nor the per-note visit stats belong to a counters-only answer.
+    expect(statements.some((sql) => sql.includes('as share_tags_json'))).toBe(false)
+    expect(statements.some((sql) => sql.includes('COUNT(DISTINCT visitor_fp) as uvs'))).toBe(false)
+  })
+
+  it('answers in a single batch and no serial query', async () => {
+    await makeDb()
+    const calls = instrumentRoundTrips()
+
+    const body = await (await request(makeApp(), '/api/share/stats')).json()
+    expect(body.globalStats.totalShares).toBe(0)
+    expect(calls.batch).toBe(1)
+    expect(calls.direct).toBe(0)
+  })
+})
+
 describe('share list and analytics db.batch round-trips (SH-17a)', () => {
   it('answers the share list in exactly two batches and no serial query', async () => {
     const db = await makeDb()

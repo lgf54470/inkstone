@@ -4,6 +4,7 @@ import { useUi } from '../../../store/ui'
 import type { ShareStoreState, SetShareStoreState } from './types'
 
 export let loadEpoch = 0
+export let statsEpoch = 0
 
 let inflightShareLoad: { key: string; controller: AbortController; promise: Promise<void> } | null = null
 let inflightSummaryLoad: Promise<void> | null = null
@@ -18,10 +19,11 @@ type CollectionGuard = { inflight: Promise<void> | null; lastLoadedAt: number }
 const foldersGuard: CollectionGuard = { inflight: null, lastLoadedAt: 0 }
 const tagsGuard: CollectionGuard = { inflight: null, lastLoadedAt: 0 }
 
-export const shareLoadersActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'loadFolders' | 'loadTags' | 'loadShares' | 'loadSummary'> => ({
+export const shareLoadersActions = (set: SetShareStoreState, get: () => ShareStoreState): Pick<ShareStoreState, 'loadFolders' | 'loadTags' | 'loadShares' | 'loadStats' | 'loadSummary'> => ({
   loadFolders: () => guardCollection(foldersGuard, () => refreshFolders(set, foldersGuard)),
   loadTags: () => guardCollection(tagsGuard, () => refreshTags(set, tagsGuard)),
   loadShares: () => loadSharesImpl(set, get),
+  loadStats: () => loadStatsImpl(set, get),
   loadSummary: () => loadSummaryImpl(set, get),
 })
 
@@ -118,6 +120,47 @@ async function runShareLoad({ set, params, controller, epoch }: ShareLoadRun): P
     // Compare the controller, not just the key: an aborted earlier run of the
     // same query must not free the slot owned by the run that superseded it.
     if (inflightShareLoad?.controller === controller) inflightShareLoad = null
+  }
+}
+
+/**
+ * The sidebar counters on their own, for a hub that opens on the dashboard: the
+ * list would answer them too, but only after paying for rows and per-note visit
+ * stats nothing on that screen reads.
+ */
+async function loadStatsImpl(set: SetShareStoreState, get: () => ShareStoreState): Promise<void> {
+  const state = get()
+  const controller = new AbortController()
+  const epoch = ++statsEpoch
+  const promise = runStatsLoad({ set, state, controller, epoch })
+  return promise
+}
+
+async function runStatsLoad({
+  set,
+  state,
+  controller,
+  epoch,
+}: {
+  set: SetShareStoreState
+  state: ShareStoreState
+  controller: AbortController
+  epoch: number
+}): Promise<void> {
+  try {
+    const res = await api.share.stats(
+      {
+        excludeBots: state.excludeBots,
+        excludeSelf: state.excludeSelfReferrers,
+        excludeOwner: state.excludeOwner,
+      },
+      controller.signal,
+    )
+    if (epoch === statsEpoch) set({ globalStats: res.globalStats })
+  } catch (error) {
+    // The counters are chrome around the list: a failure here leaves the previous
+    // numbers in place rather than replacing the screen with an error state.
+    console.warn('[share-store] failed to load share stats', error)
   }
 }
 

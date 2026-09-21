@@ -3087,6 +3087,10 @@ const allowed = new Map([
     '/**\n * The ranges every share analytics surface offers, in one place: the dashboard\'s segmented control\n * and the single-note modal both draw this list, so "30d" can never mean two different windows.\n */',
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
   ]],
+  ['src/client/features/share/share-hub-open-loads.test.ts', [
+    '/** Drain the mocked request\'s microtasks inside act, so the store write is not a stray update. */',
+    '/**\n * SH-72: the hub lands on the dashboard, which paints the sidebar counters but none\n * of the share rows — yet every open used to fetch the whole list, and with it the\n * per-note visit stats. The counters now have their own cheap answer, and the list is\n * asked for only when something on the screen will actually read it.\n */',
+  ]],
   ['src/client/features/share/share-hub-sidebar.tsx', [
     '// The shell\'s own badge rule (`countBadgeTone`): the selected row sits on the accent',
     '// tint, where the dimmest tier falls under AA, so a selected row takes the next tier',
@@ -3153,6 +3157,9 @@ const allowed = new Map([
     '// it would only resurrect revoked shares in the note-row markers.',
     '// Compare the controller, not just the key: an aborted earlier run of the',
     '// same query must not free the slot owned by the run that superseded it.',
+    '/**\n * The sidebar counters on their own, for a hub that opens on the dashboard: the\n * list would answer them too, but only after paying for rows and per-note visit\n * stats nothing on that screen reads.\n */',
+    '// The counters are chrome around the list: a failure here leaves the previous',
+    '// numbers in place rather than replacing the screen with an error state.',
     '// The sidebar prefetch and the hub open race each other only at startup;',
     '// a second in-flight summary would fetch the same two numbers.',
   ]],
@@ -3215,6 +3222,7 @@ const allowed = new Map([
     '/**\n * SH-83: UV is a salted fingerprint count — once per person per UTC day, and one bucket per address\n * however many people sit behind it. Neither the KPI nor the log table could be read that way from\n * the screen alone, so the log view now states it; this pins that the sentence is really there.\n */',
   ]],
   ['src/client/features/share/use-share-hub-modal.ts', [
+    '/**\n * What opening and closing the hub means: closing drops the selection and every overlay,\n * opening fetches what this session will read first. The hub lands on the dashboard, which\n * paints the sidebar counters but none of the rows — and both come from the same list\n * response, so the counters are asked for alone unless the list is really needed (a note\n * handed in to edit, or a list category as the landing view). Picking a category loads the\n * list through the store either way.\n */',
     '// One auto-open per hub session: `shares` refreshes after saving or a',
     '// manual reload, and re-firing would reopen the modal the user closed.',
   ]],
@@ -5360,6 +5368,7 @@ const allowed = new Map([
     '// labels it (SH-34), the worker must not bake in an English fallback.',
     '// A short display label, never the stored digest: the worker truncates the',
     '// visitor fingerprint before it leaves the API (SH-82).',
+    '/**\n * The sidebar\'s counters without the share rows: a hub that opens on the dashboard\n * reads these, so it does not pay for a list it is not showing.\n */',
   ]],
   ['src/shared/user-settings.ts', [
     '/** The retention the cron applies when a user never chose one. */',
@@ -6129,7 +6138,9 @@ const allowed = new Map([
     '// the way prepare().all()/.first() used to for serial reads.',
   ]],
   ['src/worker/routes/share/shares.ts', [
+    '/**\n * The counters behind the sidebar and the list\'s own totals are the same five\n * aggregates, so they are described once and batched by whoever needs them: the\n * list puts them beside its row query (still one round trip), while `/stats` asks\n * for them alone — a hub that lands on the dashboard reads the counts, not the rows.\n */',
     '/**\n * The status categories that read the clock. Each returns its SQL with bare `?` placeholders plus\n * the values they take, so the caller can hand out binding numbers in the order it builds the\n * clause — the categories that need no clock ride along in STATUS_CONDITIONS below.\n */',
+    '// The list batch is the five aggregate statements above, then its row query.',
   ]],
   ['src/worker/routes/share/visits.ts', [
     '// Unparseable page/limit values must fall back to a default rather than reach the',
@@ -6431,6 +6442,7 @@ const allowed = new Map([
     '// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =',
     '// one round-trip however many statements ride along. Statements built through',
     '// the wrapper still execute inside batch without being double-counted.',
+    '// Neither the row query nor the per-note visit stats belong to a counters-only answer.',
     '// "Has expiry" stays the superset of every future date — including the soon ones, so no row',
     '// disappears from the wider category — while "soon" narrows it, and expired stays disjoint.',
     '// Any write path that ever loses its ownership check would leave a visit row',

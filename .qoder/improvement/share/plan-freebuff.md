@@ -50,8 +50,8 @@
 | 20 | C | SH-52 | 侧栏计数缺 password/expiring/permanent 三类 | 小 | ✅ | 92e20e4f |
 | 21 | C | SH-54 | 看板不受侧栏范围影响且不标注作用域 | 中 | ✅ | 0f0058f4 |
 | 22 | C | SH-61 | 设置「保存」一半 localStorage 一半服务端，语义未标注 | 小 | ✅ | 001f70f4 |
-| 23 | C | SH-83 | UV 去重口径（IP+日盐 / 同 NAT 合并 / 跨日重复）不可见 | 极小 | ✅ | ⏳ 下项回填 |
-| 24 | D | SH-72 | 打开分享中心固定 4 请求 / ≈15 条 D1 语句 | 小–中 | ⬜ | |
+| 23 | C | SH-83 | UV 去重口径（IP+日盐 / 同 NAT 合并 / 跨日重复）不可见 | 极小 | ✅ | 530cc26c |
+| 24 | D | SH-72 | 打开分享中心固定 4 请求 / ≈15 条 D1 语句 | 小–中 | ✅ | ⏳ 下项回填 |
 | 25 | D | SH-73 | 列表访客统计缺覆盖索引 + tags `LIKE '%"x"%'` | 中 | ⬜ | |
 | 26 | D | SH-74 | `range=all` 无节流无缓存 | 中 | ⬜ | |
 | 27 | D | SH-81 | 读侧无限流（分析/日志对已认证会话全开放） | 小–中 | ⬜ | |
@@ -343,3 +343,12 @@
 - **接管说明**：本项与第 22 项由上一条并行 run 在工作区完成但未提交；用户确认该 run 已停后由本轮接管。接管时先复核改动面、重跑用例（2/2）再提交，未改动其实现；两处共用的文件（locale、`check-comments.mjs`）按 hunk 切分，保证每项的快照只带自己那份白名单与文案键。
 - 验证读数：定向 2/2；`npx tsc -b --force` exit 0；`i18n:check` 键数一致；pre-commit 钩子（静态门禁 + 增量 tsc + `vitest related`）通过。
 - 局限：① 说明只挂在日志弹窗，看板上的 UV 卡片本身没有同样提示（同一句话在两处出现会挤占 KPI 视觉面积，未做）；② 文案是静态的，没有按当前区间动态说明「本区间内盐轮换了几次」；③ 未提供「查看原始指纹」入口，指纹前缀仍不可解释。
+
+### 24 — SH-72 打开分享中心不再为看板预付整张列表（2026-09-21）
+
+- 现状与根因：`useShareHubModal` 在 `open` 时无条件 `loadShares()`，而看板落地时屏幕上一个列表行都不读——这次调用要跑 6 条 batch 语句（5 条聚合 + 1 条行查询），再加每 50 篇一条的访客统计；只想看数字时白付一次列表成本，反之亦然。
+- 改动面（7 文件）：① `worker/routes/share/shares.ts` 抽出 `globalStatsStatements()` / `parseGlobalStats()` 作为那 5 条聚合的唯一描述（列表拼进原有的一次 batch，仍是单次往返），新增 `GET /api/share/stats` 只回答这 5 条，行查询下标提为 `QUERY_COUNT_FOR_LIST_ROWS`；② `shared/types/share.ts` + `shared/types/index.ts` 新增 `ShareStatsResponse`（`globalStats` 复用 `ShareListResponse['globalStats']`）；③ `client/lib/api/share.ts` 新增 `share.stats(params?, signal?)`（带三个流量过滤开关）；④ `share-store/{types,loaders}.ts` 新增 `loadStats()`（`statsEpoch` + `AbortController`），失败只 `console.warn` 并保留上一次读数——侧栏计数是列表周围的装饰，不该把一个错误态铺满整屏；⑤ `use-share-hub-modal.ts` 把开合生命周期提成 `useHubOpenLifecycle()`（顺带把 6 个浮层的重置收进一个 `closeOverlays`），落地看板且无 `initialNoteId` 时只 `loadStats()`；切分类仍由 `setCategory` 走 `loadShares()`。
+- 先红后绿：新增 `share-hub-open-loads.test.ts`（3 例：看板只问计数、列表分类问列表、带 `initialNoteId` 问列表）+ `tests/share-routes.test.ts` 的 SH-72 两例（计数正确，且语句里既没有 `as share_tags_json` 也没有 `COUNT(DISTINCT visitor_fp) as uvs`；`/stats` 恰好一次 batch、零次串行查询）。
+- 变异 2 发全杀（`/tmp` 备份 + 逐字节校验还原）：M1 把 `useHubOpenLifecycle` 的条件改回无条件 `loadShares()` → 第 1 例红；M2 去掉 `registerShareStatsRoute` → 服务端两例红（404）。
+- 验证读数：`tsc -b --force` exit 0（**首跑拦下 `ShareStatsResponse` 未从 `@shared/types` 导出**，补 barrel 后绿——barrel 是手写名单而不是 `export *`，新类型会静默漏掉）；定向 share 相关 **37 文件 / 246 用例** + share 客户端 **3 文件 / 15 用例**全绿；12 项静态门禁全绿（**`size:check` 首跑报 `use-share-hub-modal.ts` 新增 1 个超长函数**，按职责把开合生命周期抽成 `useHubOpenLifecycle` 修掉，未改 size 基线）；`comments:check` 714 文件 / 5075 条。
+- 局限：① 未实测 D1 语句数与时延的真实下降（断言的是「语句形状」而不是计时），要读数得在 workerd 上量；② 看板的三个流量过滤开关改动后 `globalStats` 不会自动重取（看板路径没有重取入口），与 SH-74 的缓存、看板作用域一并处理；③ 侧栏文件夹/标签徽标仍依赖一次列表或统计请求，没有增量更新。

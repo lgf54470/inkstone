@@ -1,6 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
-import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -17,6 +17,10 @@ export const share = {
       },
       signal?: AbortSignal,
     ) => request<ShareListResponse>(`/api/share${toQuery((params ?? {}) as Record<string, string | number | boolean | undefined>)}`, { signal }),
+    stats: (
+      params?: { excludeBots?: boolean; excludeSelf?: boolean; excludeOwner?: boolean },
+      signal?: AbortSignal,
+    ) => request<ShareStatsResponse>(`/api/share/stats${toQuery((params ?? {}) as Record<string, string | number | boolean | undefined>)}`, { signal }),
     summary: (signal?: AbortSignal) => request<ShareSummaryResponse>('/api/share/summary', { signal }),
     globalAnalytics: (
       range?: ShareTimelineRange,

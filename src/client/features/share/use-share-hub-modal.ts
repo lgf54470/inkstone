@@ -26,20 +26,16 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
   const [logsNoteId, setLogsNoteId] = useState<string | null>(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
-  useEffect(() => {
-    if (open) {
-      void loadShares()
-    } else {
-      clearSelection()
-      setQrShare(null)
-      setEditShare(null)
-      setAnalyticsNoteId(null)
-      setLogsNoteId(null)
-      setIsLogsOpen(false)
-      setIsSettingsOpen(false)
-    }
-  }, [open, loadShares, clearSelection])
+  const closeOverlays = useCallback(() => {
+    setQrShare(null)
+    setEditShare(null)
+    setAnalyticsNoteId(null)
+    setLogsNoteId(null)
+    setIsLogsOpen(false)
+    setIsSettingsOpen(false)
+  }, [])
 
+  useHubOpenLifecycle({ open, initialNoteId, clearSelection, closeOverlays })
   useInitialNoteEdit({ open, initialNoteId, shares, setEditShare })
 
   const openQr = useCallback((share: ShareInfo) => setQrShare({ url: share.url, title: share.noteTitle || '', slug: share.slug }), [])
@@ -56,6 +52,33 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
     openQr, openAnalytics, openEdit, openLogs,
     analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, logsNoteId, setLogsNoteId, isSettingsOpen, setIsSettingsOpen,
   }
+}
+
+/**
+ * What opening and closing the hub means: closing drops the selection and every overlay,
+ * opening fetches what this session will read first. The hub lands on the dashboard, which
+ * paints the sidebar counters but none of the rows — and both come from the same list
+ * response, so the counters are asked for alone unless the list is really needed (a note
+ * handed in to edit, or a list category as the landing view). Picking a category loads the
+ * list through the store either way.
+ */
+function useHubOpenLifecycle({ open, initialNoteId, clearSelection, closeOverlays }: {
+  open: boolean
+  initialNoteId: string | undefined
+  clearSelection: () => void
+  closeOverlays: () => void
+}) {
+  const loadShares = useShareStore((s) => s.loadShares)
+  const loadStats = useShareStore((s) => s.loadStats)
+  useEffect(() => {
+    if (!open) {
+      clearSelection()
+      closeOverlays()
+      return
+    }
+    if (initialNoteId || useShareStore.getState().category !== 'dashboard') void loadShares()
+    else void loadStats()
+  }, [open, initialNoteId, loadShares, loadStats, clearSelection, closeOverlays])
 }
 
 function useInitialNoteEdit({ open, initialNoteId, shares, setEditShare }: {

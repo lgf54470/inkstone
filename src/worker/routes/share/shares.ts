@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { ShareInfo, ShareListResponse, ShareSummaryResponse } from '@shared/types'
+import { ShareInfo, ShareListResponse, ShareStatsResponse, ShareSummaryResponse } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { EXPIRING_SOON_DAYS } from '@shared/constants'
@@ -20,7 +20,7 @@ import {
   type PinStarRow,
   type TagCountRow,
 } from './global-stats'
-import { firstOf, rowsOf } from './read-results'
+import { firstOf, rowsOf, type D1ReadResult } from './read-results'
 
 export interface ShareRow {
   slug: string
@@ -104,6 +104,7 @@ export function toShareInfo(
 export function registerShareSharingRoutes(shareManageRoutes: Hono<AppBindings>): void {
   registerShareNoteShareRoute(shareManageRoutes)
   registerShareListRoute(shareManageRoutes)
+  registerShareStatsRoute(shareManageRoutes)
   registerShareSummaryRoute(shareManageRoutes)
 }
 
@@ -125,6 +126,33 @@ function registerShareNoteShareRoute(shareManageRoutes: Hono<AppBindings>): void
   })
 }
 
+/**
+ * The counters behind the sidebar and the list's own totals are the same five
+ * aggregates, so they are described once and batched by whoever needs them: the
+ * list puts them beside its row query (still one round trip), while `/stats` asks
+ * for them alone — a hub that lands on the dashboard reads the counts, not the rows.
+ */
+function globalStatsStatements(db: D1Database, userId: string, now: number, clause: string): D1PreparedStatement[] {
+  return [
+    folderCountsStatement(db, userId, now),
+    tagCountsStatement(db, userId, now),
+    globalSummaryStatement(db, userId, now),
+    filteredGlobalStatsStatement(db, userId, clause),
+    pinStarStatement(db, userId),
+  ]
+}
+
+function parseGlobalStats(results: D1ReadResult[]): ShareListResponse['globalStats'] {
+  const [folderResult, tagResult, summaryResult, filteredResult, pinStarResult] = results
+  return buildShareGlobalStats(
+    toFolderCounts(rowsOf<FolderCountRow>(folderResult)),
+    toTagCounts(rowsOf<TagCountRow>(tagResult)),
+    firstOf<GlobalSummaryRow>(summaryResult),
+    firstOf<FilteredStatsRow>(filteredResult),
+    firstOf<PinStarRow>(pinStarResult),
+  )
+}
+
 function registerShareListRoute(shareManageRoutes: Hono<AppBindings>): void {
   shareManageRoutes.get('/', async (c) => {
     const db = c.env.DB
@@ -132,22 +160,12 @@ function registerShareListRoute(shareManageRoutes: Hono<AppBindings>): void {
     const params = shareListParams(c)
     const binds: Array<string | number> = [userId]
     const conditions = shareListConditions(binds, params)
-    const [folderResult, tagResult, summaryResult, filteredResult, pinStarResult, listResult] = await db.batch([
-      folderCountsStatement(db, userId, params.now),
-      tagCountsStatement(db, userId, params.now),
-      globalSummaryStatement(db, userId, params.now),
-      filteredGlobalStatsStatement(db, userId, params.clause),
-      pinStarStatement(db, userId),
+    const results = await db.batch([
+      ...globalStatsStatements(db, userId, params.now, params.clause),
       shareListRowsStatement(db, binds, conditions, shareListOrderClause(params.sort)),
     ])
-    const globalStats = buildShareGlobalStats(
-      toFolderCounts(rowsOf<FolderCountRow>(folderResult)),
-      toTagCounts(rowsOf<TagCountRow>(tagResult)),
-      firstOf<GlobalSummaryRow>(summaryResult),
-      firstOf<FilteredStatsRow>(filteredResult),
-      firstOf<PinStarRow>(pinStarResult),
-    )
-    const rows = rowsOf<ShareListRow>(listResult)
+    const globalStats = parseGlobalStats(results)
+    const rows = rowsOf<ShareListRow>(results[QUERY_COUNT_FOR_LIST_ROWS])
     const truncated = rows.length > SHARE_LIST_ROW_LIMIT
     const visibleRows = truncated ? rows.slice(0, SHARE_LIST_ROW_LIMIT) : rows
     const noteStatsMap = await loadNoteVisitStats(db, visibleRows, params.clause)
@@ -158,6 +176,17 @@ function registerShareListRoute(shareManageRoutes: Hono<AppBindings>): void {
       truncated,
       globalStats,
     }
+    return c.json(response)
+  })
+}
+
+function registerShareStatsRoute(shareManageRoutes: Hono<AppBindings>): void {
+  shareManageRoutes.get('/stats', async (c) => {
+    const db = c.env.DB
+    const userId = c.get('userId')
+    const params = shareListParams(c)
+    const results = await db.batch(globalStatsStatements(db, userId, params.now, params.clause))
+    const response: ShareStatsResponse = { globalStats: parseGlobalStats(results) }
     return c.json(response)
   })
 }
@@ -215,6 +244,9 @@ function statusTimeCondition(status: string, now: number): { sql: string; binds:
     return { sql: `s.expires_at IS NOT NULL AND s.expires_at > ? AND s.expires_at <= ?`, binds: [now, now + EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000] }
   return null
 }
+
+// The list batch is the five aggregate statements above, then its row query.
+const QUERY_COUNT_FOR_LIST_ROWS = 5
 
 const STATUS_CONDITIONS: Record<string, string> = {
   paused: `s.is_enabled = 0`,
