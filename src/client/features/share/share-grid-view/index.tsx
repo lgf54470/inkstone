@@ -1,7 +1,7 @@
-import { Share2 } from 'lucide-react'
+import { useMemo } from 'react'
 import type { ShareInfo } from '@shared/types'
-import { t } from '../../../lib/i18n'
 import { useShareList } from '../use-share-list'
+import { ShareListEmptyState } from '../share-list-empty'
 import { ShareGridCard } from './card'
 
 export function ShareGridView({
@@ -16,16 +16,10 @@ export function ShareGridView({
   onOpenEdit: (share: ShareInfo) => void
 }) {
   const list = useShareList()
+  const folderById = useMemo(() => new Map(list.folders.map((f) => [f.id, f])), [list.folders])
 
   if (shares.length === 0) {
-    return (
-      <div className='flex h-64 flex-col items-center justify-center gap-2 text-center'>
-        <Share2 size={32} className='text-[var(--text-quaternary)]' />
-        <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]'>
-          {t('share.no_shares_found')}
-        </p>
-      </div>
-    )
+    return <ShareListEmptyState />
   }
 
   return (
@@ -36,17 +30,18 @@ export function ShareGridView({
           share={share}
           isSelected={list.selectedNoteIds.has(share.noteId)}
           folders={list.folders}
+          folderById={folderById}
           copiedSlug={list.copiedSlug}
-          onToggleSelect={() => list.toggleSelect(share.noteId)}
-          onTogglePin={() => void list.togglePin(share.noteId)}
-          onToggleStar={() => void list.toggleStar(share.noteId)}
-          onToggleShare={(checked) => void list.toggleShare(share.noteId, checked)}
+          onToggleSelect={list.toggleSelect}
+          onTogglePin={list.togglePin}
+          onToggleStar={list.toggleStar}
+          onToggleShare={list.toggleShare}
           onCopy={list.handleCopy}
-          onOpenQr={() => onOpenQr(share)}
-          onOpenAnalytics={() => onOpenAnalytics(share)}
-          onOpenEdit={() => onOpenEdit(share)}
-          onMoveToFolder={(folderId) => void list.handleMoveToFolder(share.noteId, folderId)}
-          onRevoke={() => void list.handleRevoke(share)}
+          onOpenQr={onOpenQr}
+          onOpenAnalytics={onOpenAnalytics}
+          onOpenEdit={onOpenEdit}
+          onMoveToFolder={list.handleMoveToFolder}
+          onRevoke={list.handleRevoke}
         />
       ))}
     </div>

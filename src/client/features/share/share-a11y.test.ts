@@ -84,6 +84,7 @@ function gridCardProps() {
     share: props.share,
     isSelected: false,
     folders: [],
+    folderById: new Map(),
     copiedSlug: null,
     onToggleSelect: props.onToggleSelect,
     onTogglePin: props.onTogglePin,

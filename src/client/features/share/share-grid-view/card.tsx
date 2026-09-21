@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { BarChart2, ExternalLink, Eye, FolderClosed, FolderInput, Lock, MoreHorizontal, QrCode, Settings2, Timer, Users } from 'lucide-react'
 import type { ShareFolder, ShareInfo } from '@shared/types'
 import { Checkbox, Switch } from '../../../components/form'
@@ -14,38 +14,45 @@ interface ShareGridCardProps {
   share: ShareInfo
   isSelected: boolean
   folders: ShareFolder[]
+  folderById: Map<string, ShareFolder>
   copiedSlug: string | null
-  onToggleSelect: () => void
-  onTogglePin: () => void
-  onToggleStar: () => void
-  onToggleShare: (checked: boolean) => void
+  onToggleSelect: (noteId: string) => void
+  onTogglePin: (noteId: string) => void
+  onToggleStar: (noteId: string) => void
+  onToggleShare: (noteId: string, checked: boolean) => void
   onCopy: (url: string, slug: string) => void
-  onOpenQr: () => void
-  onOpenAnalytics: () => void
-  onOpenEdit: () => void
-  onMoveToFolder: (folderId: string | null) => void
-  onRevoke: () => void
+  onOpenQr: (share: ShareInfo) => void
+  onOpenAnalytics: (share: ShareInfo) => void
+  onOpenEdit: (share: ShareInfo) => void
+  onMoveToFolder: (noteId: string, folderId: string | null) => void
+  onRevoke: (share: ShareInfo) => void
 }
 
-export function ShareGridCard({ share, isSelected, folders, copiedSlug, onToggleSelect, onTogglePin, onToggleStar, onToggleShare, onCopy, onOpenQr, onOpenAnalytics, onOpenEdit, onMoveToFolder, onRevoke }: ShareGridCardProps) {
+/**
+ * One card in the grid. Memoised like the table row, and for the same reason: a selection change
+ * redraws one card, not the whole grid — which is why every handler it takes is note-scoped and
+ * stable and the folder lookup is a map instead of a scan per card.
+ */
+export const ShareGridCard = memo(function ShareGridCard({ share, isSelected, folders, folderById, copiedSlug, onToggleSelect, onTogglePin, onToggleStar, onToggleShare, onCopy, onOpenQr, onOpenAnalytics, onOpenEdit, onMoveToFolder, onRevoke }: ShareGridCardProps) {
   const contextMenu = useContextMenu()
   const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
   const folderButtonRef = useRef<HTMLButtonElement>(null)
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
   const isExpired = share.expiresAt ? share.expiresAt < Date.now() : false
-  const folder = share.shareFolderId ? (folders.find((f) => f.id === share.shareFolderId) ?? null) : null
-  const cbs: ShareItemCallbacks = { onCopyLink: onCopy, onOpenQr, onOpenAnalytics, onOpenEdit, onMoveToFolder, onToggleShare, onToggleStar, onTogglePin, onRevoke }
+  const folder = share.shareFolderId ? (folderById.get(share.shareFolderId) ?? null) : null
+  const noteId = share.noteId
+  const cbs: ShareItemCallbacks = { onCopyLink: onCopy, onOpenQr: () => onOpenQr(share), onOpenAnalytics: () => onOpenAnalytics(share), onOpenEdit: () => onOpenEdit(share), onMoveToFolder: (folderId) => onMoveToFolder(noteId, folderId), onToggleShare: (checked) => onToggleShare(noteId, checked), onToggleStar: () => onToggleStar(noteId), onTogglePin: () => onTogglePin(noteId), onRevoke: () => onRevoke(share) }
   return (
     <div
       draggable
       onDragStart={(e) => { e.dataTransfer.setData('application/inkstone-share-note-ids', JSON.stringify([share.noteId])); e.dataTransfer.effectAllowed = 'copyMove' }}
       onContextMenu={(e) => { setIsFolderMenuOpen(false); setIsMoreMenuOpen(false); contextMenu.onContextMenu(e) }}
-      onDoubleClick={onOpenEdit}
+      onDoubleClick={() => onOpenEdit(share)}
       className={cn('group relative flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 shadow-[var(--shadow-soft)] transition-all hover:border-[var(--border-default)] hover:shadow-[var(--shadow-hover)] cursor-grab active:cursor-grabbing select-none', isSelected ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]' : '')}
     >
       <div>
-        <CardHeader share={share} isSelected={isSelected} onToggleSelect={onToggleSelect} onTogglePin={onTogglePin} onToggleStar={onToggleStar} onToggleShare={onToggleShare} onOpenEdit={onOpenEdit} />
+        <CardHeader share={share} isSelected={isSelected} onToggleSelect={() => onToggleSelect(noteId)} onTogglePin={() => onTogglePin(noteId)} onToggleStar={() => onToggleStar(noteId)} onToggleShare={(checked) => onToggleShare(noteId, checked)} onOpenEdit={() => onOpenEdit(share)} />
         {share.noteExcerpt && (
           <p className='line-clamp-2 text-[length:var(--text-11)] text-[var(--text-tertiary)] pb-2'>
             {share.noteExcerpt}
@@ -62,14 +69,14 @@ export function ShareGridCard({ share, isSelected, folders, copiedSlug, onToggle
       </div>
       <div className='mt-3 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2'>
         <CardMetrics share={share} />
-        <CardActions share={share} onOpenQr={onOpenQr} onOpenAnalytics={onOpenAnalytics} onOpenEdit={onOpenEdit} folderButtonRef={folderButtonRef} isFolderMenuOpen={isFolderMenuOpen} onToggleFolderMenu={() => setIsFolderMenuOpen((prev) => !prev)} moreButtonRef={moreButtonRef} isMoreMenuOpen={isMoreMenuOpen} onToggleMoreMenu={() => { setIsFolderMenuOpen(false); setIsMoreMenuOpen((prev) => !prev) }} />
+        <CardActions share={share} onOpenQr={() => onOpenQr(share)} onOpenAnalytics={() => onOpenAnalytics(share)} onOpenEdit={() => onOpenEdit(share)} folderButtonRef={folderButtonRef} isFolderMenuOpen={isFolderMenuOpen} onToggleFolderMenu={() => setIsFolderMenuOpen((prev) => !prev)} moreButtonRef={moreButtonRef} isMoreMenuOpen={isMoreMenuOpen} onToggleMoreMenu={() => { setIsFolderMenuOpen(false); setIsMoreMenuOpen((prev) => !prev) }} />
       </div>
-      {isFolderMenuOpen && <Menu open anchor={folderButtonRef} items={buildFolderMenuItems(share, folders, onMoveToFolder)} onClose={() => setIsFolderMenuOpen(false)} />}
+      {isFolderMenuOpen && <Menu open anchor={folderButtonRef} items={buildFolderMenuItems(share, folders, (folderId) => onMoveToFolder(noteId, folderId))} onClose={() => setIsFolderMenuOpen(false)} />}
       {isMoreMenuOpen && <Menu open anchor={moreButtonRef} items={buildShareMenuItems(share, folders, cbs)} onClose={() => setIsMoreMenuOpen(false)} />}
       {contextMenu.point && <Menu open anchor={contextMenu.point} items={buildShareMenuItems(share, folders, cbs)} onClose={contextMenu.close} />}
     </div>
   )
-}
+})
 
 function CardHeader({ share, isSelected, onToggleSelect, onTogglePin, onToggleStar, onToggleShare, onOpenEdit }: { share: ShareInfo; isSelected: boolean; onToggleSelect: () => void; onTogglePin: () => void; onToggleStar: () => void; onToggleShare: (checked: boolean) => void; onOpenEdit: () => void }) {
   return (

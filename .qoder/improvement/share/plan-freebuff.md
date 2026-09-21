@@ -42,8 +42,8 @@
 | 12 | C | SH-50 | 流量过滤浮层：焦点管理 / role / 窄屏裁切 | 小–中 | ✅ | bf09dbce |
 | 13 | C | SH-51 | hover-only「新建文件夹/标签」键盘不可见、触屏不可发现 | 小 | ✅ | 3096be8a |
 | 14 | C | SH-53 | `expiring` 语义与标签不符，缺 ≤7d「即将到期」桶 | 小 | ✅ | 4c84878f |
-| 15 | C | SH-60 | 看板 468/500 行 + range 选项重复 → 拆分 | 小–中 | ✅ | ⏳ 下项回填 |
-| 16 | C | SH-59 | 网格卡未 memo + 内联闭包 + 每卡 `folders.find` | 小 | ⬜ | |
+| 15 | C | SH-60 | 看板 468/500 行 + range 选项重复 → 拆分 | 小–中 | ✅ | 71d711be |
+| 16 | C | SH-59 | 网格卡未 memo + 内联闭包 + 每卡 `folders.find` | 小 | ✅ | ⏳ 下项回填 |
 | 17 | C | SH-57 | `toLocaleString()` 跟随 OS / delta 无语义 / 图表无文本替代 | 小–中 | ⬜ | |
 | 18 | C | SH-56 | 「日均访问量」口径错误 + sparkline 与 PV 卡重复 | 小 | ⬜ | |
 | 19 | C | SH-58 | hub 分类徽标未走 `countBadgeTone`（且不在对比度门禁内） | 小 | ⬜ | |
@@ -250,3 +250,15 @@
   - `share-devices-empty.test.ts` 的 import 改指新的 breakdown 文件。
 - 验收：`npx tsc -b --force` exit 0；`size:check` 通过（1428 文件扫描，拆分后最大一个 177 行）；`deep-imports:check`、`style`、`hardcoded`、`comments`（5032 条 / 702 文件）均绿；定向测试 17/17（devices-empty、dashboard-loading、analytics-error、note-analytics-logs、share-form）。
 - 局限（如实登记）：① 只搬家 ＋ 一个共享函数，**没有**动看板的任何口径或样式，因此没有新增测试（SH-56/57/54 会继续在这些新文件上改）；② `DashboardHeader`/`FilterSummaryBanner` 仍整体收 `bundle`，没有顺手收窄成具体 props（无关重构，按「不顺手改无关问题」留待后续）；③ 与 blog 侧目录形态仍不完全一致（blog 是子目录 + index），本项按 deep-imports 约束取兄弟文件。
+
+### 16 — SH-59 网格视图重渲成本与空态文案（2026-09-21）
+
+- 根因：SH-22 轮次只修了表格路径（`ShareTableRow` 已 `memo` ＋ 稳定 handler ＋ `folderById` Map），网格路径全是遗留：`ShareGridCard` **未 memo**、每张卡现场收 12 个内联箭头闭包、每张卡还自己做 `folders.find`（O(行×目录)），于是勾选/复制任意一张卡都重渲整个网格；两个视图的空态文案也不一致（网格缺 hint）。
+- 做法（向表格路径对齐，不新造抽象）：
+  - `share-grid-view/card.tsx`：`ShareGridCard` 改 `memo(...)`；props 从「无参回调」改成 note 作用域回调（`onToggleSelect(noteId)` …），卡内再用 `cbs` 组装 `ShareItemCallbacks`；`folders.find` 改成 `folderById.get(...)`；`onDoubleClick` 也改成 `() => onOpenEdit(share)` 而不是直接传回调（它收参数，直接传会把事件对象当 share 传进去）。
+  - `share-grid-view/index.tsx`：`folderById` 用 `useMemo` 建一次，并直接下发 store 的稳定 handler（不再逐个包成箭头）。
+  - 新增 `share-list-empty.tsx`（空态块），网格与表格共用——表格原来有 hint、网格没有，现在两处一致（两处原本各写一份 DOM）。
+  - `share-a11y.test.ts`：网格卡的夹具补 `folderById`。
+- 先红后绿 ＋ 变异：新增 `share-grid-render-count.test.ts`（1 例，按行为不是按「有没有写 memo」）：把 `PinStarButtons` 桩成渲染计数器（每张卡每次渲染正好调一次），三张卡渲染后计数各为 1，把选择切到中间那张后断言 **a/c 仍为 1、b 为 2**；变异测试：把 `memo` 去掉后守卫立刻红（`expected 2 to be 1`，证明它真的在守 memo 与稳定 handler），还原复绿。
+- 验证读数：`npx tsc -b --force` exit 0；**`features/share` 全目录 + `tests/share-table-semantics.test.ts` 共 30 文件 / 134 用例全绿**（含新守卫与 a11y）；11 项静态门禁全绿（`comments` 5035 条 / 705 文件，`size` 通过）。
+- 局限：① 网格与表格的**卡片/行**已对齐，但两者仍各有一套 DOM（没有合并成一个组件）——形态差异（列表行 vs 卡片）真实存在，不强行合并；② 空态文案统一为表格那句 hint，网格侧此前从未有过自己的 hint，属新增可见文案（复用既有 i18n 键，无需新翻译）；③ 未做虚拟化（SH-77，无规模证据）。

@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
-import { Share2 } from 'lucide-react'
 import type { ShareInfo } from '@shared/types'
 import { Checkbox } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 import { useShareList } from '../use-share-list'
+import { ShareListEmptyState } from '../share-list-empty'
 import { ShareTableRow } from './row'
 
 export function ShareTableView({
@@ -22,17 +22,7 @@ export function ShareTableView({
   const folderById = useMemo(() => new Map(list.folders.map((f) => [f.id, f])), [list.folders])
 
   if (shares.length === 0) {
-    return (
-      <div className='flex h-64 flex-col items-center justify-center gap-2 text-center'>
-        <Share2 size={32} className='text-[var(--text-quaternary)]' />
-        <p className='text-[length:var(--text-13)] font-medium text-[var(--text-secondary)]'>
-          {t('share.no_shares_found')}
-        </p>
-        <p className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
-          {t('share.no_shares_hint')}
-        </p>
-      </div>
-    )
+    return <ShareListEmptyState />
   }
 
   return (

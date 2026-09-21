@@ -3050,6 +3050,12 @@ const allowed = new Map([
     '// A new or replaced passcode must meet LIMITS.sharePasscodeMinLength (the',
     '// server enforces the same minimum); short codes are trivially brute-forced.',
   ]],
+  ['src/client/features/share/share-grid-render-count.test.ts', [
+    '/**\n * The rendering a person pays for when they tick one card. `PinStarButtons` stands in as the\n * counter because every card draws it exactly once per render: counting calls per note title is\n * counting that card\'s renders. Memoisation, note-scoped handlers and the folder map all show up\n * here at once — drop any of them and the untouched cards start redrawing.\n */',
+  ]],
+  ['src/client/features/share/share-grid-view/card.tsx', [
+    '/**\n * One card in the grid. Memoised like the table row, and for the same reason: a selection change\n * redraws one card, not the whole grid — which is why every handler it takes is note-scoped and\n * stable and the folder lookup is a map instead of a scan per card.\n */',
+  ]],
   ['src/client/features/share/share-helpers.ts', [
     '/**\n * The ranges every share analytics surface offers, in one place: the dashboard\'s segmented control\n * and the single-note modal both draw this list, so "30d" can never mean two different windows.\n */',
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
@@ -3059,6 +3065,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-item-common.tsx', [
     '/**\n * Pin and star, as the two named toggles every share row and card carries. Both stay quiet until\n * they are pointed at, because a list holds many of them; the pinned and starred ones keep the\n * accent fill the component draws for a pressed toggle.\n */',
+  ]],
+  ['src/client/features/share/share-list-empty.tsx', [
+    '/** What both list views draw when the current filter matches no shares. */',
   ]],
   ['src/client/features/share/share-narrow-screen.test.ts', [
     '// A failed assertion must not leave a mounted portal behind: later tests query document.body.',
