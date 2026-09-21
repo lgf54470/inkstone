@@ -999,11 +999,16 @@ const allowed = new Map([
     '// live in the shell\'s own sidebar, and that is what tells them from the workspace header\'s Share',
     '// action, which carries the same name but asks for one note\'s share settings instead.',
     '/**\n * Opens the share center down the path a person takes. The list\'s own toolbar is the entry, and it\n * only draws in the shared view, so the Share nav entry comes first — through the shell\'s bottom bar\n * at phone width, where the sidebar lives in the navigation pane. The toolbar is waited for rather\n * than slept on: switching the view is a route change, and pressing before the control exists would\n * report an unopened surface as a broken one.\n */',
+    '/**\n * Presses one control inside the share center by its accessible name, returning whether it was\n * found — the same rule the opener sweep follows, narrowed to the dialog that is already open.\n */',
     '/**\n * Picks one category in the share center\'s own sidebar, the way a person does: by its visible name.\n * The rows are buttons that carry their label as text (a count badge may ride behind it), so the\n * press lands on the one whose text starts with the name rather than on whatever matches first.\n */',
     '// The dashboard is the category the hub opens on; the list is where the rows live — the share',
     '// rows, their pin/star/copy controls and the toolbar. Switching to it in the sidebar is how a',
     '// person gets there, and it is read for the same two things: the toolbar drew itself, and every',
     '// control in it has a name axe accepts.',
+    '// The traffic filter is the panel this gate was added for at this width: it used to be pinned to',
+    '// the right edge of its control, so its 320px box lost the field it starts with on a 360px phone.',
+    '// "Inside the viewport" is read as numbers off the drawn box, and the keyboard is checked the way',
+    '// the panel promises: Escape closes it and the control that opened it holds the focus again.',
     '// The shell holds its own inactive panes inert at this width, so "released" is asked of the opener',
     '// rather than of the page: the control the surface was opened from is back under the keyboard and',
     '// no longer inside an inert subtree, which is what a person finds when they press Escape.',
@@ -1401,14 +1406,34 @@ const allowed = new Map([
     '// already imports the runtime hooks from this module; defining the position',
     '// shapes here keeps the pair free of an import cycle.',
   ]],
+  ['src/client/components/popover-placement.test.ts', [
+    '/** The phone the review shrank to: a 320px panel had its left edge at -8 and lost its first field. */',
+    '// Right-aligned would be 1276 - 320 = 956; the caller\'s wider margin caps it at 1280 - 320 - 24.',
+  ]],
+  ['src/client/components/popover-placement.ts', [
+    '/**\n * Where an anchored panel goes: under the control it hangs from, right- or left-aligned to it,\n * flipped above that control when the bottom of the viewport is closer than the panel is tall, and\n * kept inside the viewport\'s edges either way.\n *\n * The math is a plain function because that is the part worth pinning down: a panel wider than the\n * room left beside its control used to be drawn with its left edge off screen — on a 360px-wide\n * phone a 320px panel anchored to a control near the right edge lost its first field. Clamping is\n * what makes the panel reachable at every width, and it is asserted against numbers rather than\n * against a rendering engine.\n */',
+    '/** The gap a panel leaves between itself and the control it hangs from. */',
+    '/** What a panel keeps clear of the viewport\'s edges. */',
+    '/** The corner the panel grows from, so the pop-in animation reads as coming from its control. */',
+    '// A panel with less room than it needs on either side keeps its left edge at the margin: the',
+    '// anchor decides where it prefers to sit, the viewport decides how far that can go.',
+    '/**\n * Measures when the panel opens — and whenever its own size changes, which is what a panel that\n * grows with its content reports — and hands the placement to the caller. `apply` has to be stable\n * (`useState`\'s setter always is): an inline closure would re-measure on every render.\n */',
+  ]],
+  ['src/client/components/tag-filter-popover.test.ts', [
+    '/**\n * The picker is one of the two popovers that used to size and place itself: both now share\n * `popover-placement`, and this is the first test the file has had. What it pins is the part the\n * placement decides — the panel is portaled (so `fixed` stays on the viewport), it is a named\n * dialog, and its box is clamped inside the page instead of starting at a negative coordinate when\n * its control sits against the left edge. jsdom reports every box as 0×0, which is exactly that\n * case.\n */',
+    '/** The popover hangs from a real control, which is what its placement measures. */',
+  ]],
   ['src/client/components/tag-filter-popover.tsx', [
+    '/** The picker grows a row per tag; the estimate is what keeps the flip decision honest. */',
     '/** Shared multi-tag picker: searchable tag checklist with note counts and an any/all match-mode switch. */',
   ]],
   ['src/client/components/tag-name-highlight.tsx', [
     '/** Renders a tag name with the matched query substring emphasized, used by tag pickers. */',
   ]],
   ['src/client/components/use-date-range-popover.ts', [
+    '/** The panel\'s own size, which the shared placement needs to decide whether it fits below. */',
     '// Locate feedback mirrors the sidebar-calendar jumpFlash: when the popover opens aimed at the range end month, or the endpoint toggles, the mini grid pulses with the accent ring.',
+    '/**\n * The panel\'s box. Its height changes when the preset editor opens, so the shared placement is\n * re-run with the size that is on screen rather than with the collapsed one.\n */',
     '// Drag payload is best-effort; the drop handler re-reads the index from state, not dataTransfer.',
   ]],
   ['src/client/components/use-hub-folder-item.tsx', [
@@ -2975,6 +3000,8 @@ const allowed = new Map([
     '// shell\'s static closure.',
   ]],
   ['src/client/features/share/share-a11y.test.ts', [
+    '// The panel is portaled out of this subtree — that is what keeps `fixed` placement clear of',
+    '// the animated modal it can be opened inside — so its switches live on the document.',
     '// Modal mounts its panel through a portal, so look in the document instead of the container.',
   ]],
   ['src/client/features/share/share-dashboard-loading.tsx', [
@@ -3067,6 +3094,21 @@ const allowed = new Map([
   ['src/client/features/share/share-store/shares.ts', [
     '// Zero views on a paused row is the only client-side signal that this note has never been public.',
     '/* The row is outside the current filter (e.g. just enabled under the\n       paused filter); only a reload knows whether and where it now belongs. */',
+  ]],
+  ['src/client/features/share/share-traffic-filter-popover.test.ts', [
+    '/**\n * SH-50: the traffic filters were a hand-rolled panel — no role, no accessible name, focus left\n * where it was when it opened and never handed back when it closed. What the dialog has to keep is\n * the non-modal contract: it is named, the focus enters it, Escape (or a press outside) closes it,\n * and the control that opened it gets the keyboard back rather than the body.\n */',
+    '/** The focus is moved on the frame after the open, so the frame is what the assertion waits for. */',
+  ]],
+  ['src/client/features/share/share-traffic-filter-popover.tsx', [
+    '/** What the panel is before it is measured; the first frame is hidden, so this only seeds the math. */',
+    '/**\n * The traffic filters, as a dialog anchored to the control that opens it. It is placed by the\n * shared panel math (`popover-placement`) rather than by `absolute right-0 top-full`: the panel is\n * 320px wide and its control can sit anywhere in a wrapping header, so on a 360px-wide phone the\n * old rule drew its first field off screen. It is portaled for the same reason the other panels are\n * — `fixed` resolves against a transformed ancestor, and the modal it can live in animates.\n *\n * The keyboard contract is a non-modal dialog\'s: the panel takes the focus when it opens, Escape\n * (or a press outside) closes it, and the focus goes back to the button that opened it.\n */',
+    '/** The control the filters hang from: it wears the state it stands for, and names the panel. */',
+    '// The visible part of this control is the state it reports (a badge, and on a phone that is',
+    '// all there is room for), so the name it is announced by is the panel it opens.',
+    '/** The panel itself, portaled to the document so `fixed` placement is measured against the page. */',
+    '/**\n * The panel\'s box: the shared placement math, fed with the height the panel really turned out to\n * be. The estimate seeds the first frame (which is drawn hidden), then the measurement decides\n * whether the panel fits under its control.\n */',
+    '/** The keyboard half of a non-modal dialog: the panel takes the focus once it is on screen. */',
+    '/** The colour and wording the closed control wears, read off the three switches it stands for. */',
   ]],
   ['src/client/features/share/share-visit-logs-csv.test.ts', [
     '/** Minimal RFC 4180 reader: enough to prove no cell leaked into a second column. */',

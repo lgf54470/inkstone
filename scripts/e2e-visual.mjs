@@ -119,6 +119,7 @@ const LABELS = {
   shareKpi: ['总访问量 (PV)', 'Total Views (PV)'],
   shareCategoryAll: ['全部分享', 'All Shares'],
   shareSearch: ['搜索笔记标题、链接或标签…', 'Search note title, link, or tag…'],
+  shareTrafficFilter: ['流量过滤设置', 'Traffic Filters'],
 }
 
 async function activeProse(page) {
@@ -2451,6 +2452,27 @@ async function openShareHub(page, { mobile = false } = {}) {
 }
 
 /**
+ * Presses one control inside the share center by its accessible name, returning whether it was
+ * found — the same rule the opener sweep follows, narrowed to the dialog that is already open.
+ */
+async function pressHubControl(page, labels) {
+  const point = await page.evaluate(({ dialog, labels }) => {
+    const hub = document.querySelector(dialog)
+    const control = [...(hub?.querySelectorAll('button') ?? [])]
+      .find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    if (!control) return null
+    control.scrollIntoView({ block: 'center' })
+    const box = control.getBoundingClientRect()
+    control.dataset.gateOpener = '1'
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, { dialog: SHARE_DIALOG, labels })
+  if (!point) return false
+  await page.mouse.click(point.x, point.y)
+  await sleep(700)
+  return true
+}
+
+/**
  * Picks one category in the share center's own sidebar, the way a person does: by its visible name.
  * The rows are buttons that carry their label as text (a count badge may ride behind it), so the
  * press lands on the one whose text starts with the name rather than on whatever matches first.
@@ -2543,6 +2565,38 @@ async function assertShareCenter(page) {
   const narrow = await runAxe(page, SHARE_DIALOG)
   check('share: the full screen variant has no accessibility violations',
     narrow.violations.length === 0, JSON.stringify(narrow.violations.slice(0, 3)))
+
+  // The traffic filter is the panel this gate was added for at this width: it used to be pinned to
+  // the right edge of its control, so its 320px box lost the field it starts with on a 360px phone.
+  // "Inside the viewport" is read as numbers off the drawn box, and the keyboard is checked the way
+  // the panel promises: Escape closes it and the control that opened it holds the focus again.
+  const filtered = await pressHubControl(page, LABELS.shareTrafficFilter)
+  const box = await page.evaluate((labels) => {
+    const panel = [...document.querySelectorAll('[role="dialog"]')]
+      .find((dialog) => labels.includes(dialog.getAttribute('aria-label') ?? ''))
+    if (!panel) return null
+    const rect = panel.getBoundingClientRect()
+    return {
+      left: Math.round(rect.left), right: Math.round(rect.right), top: Math.round(rect.top),
+      viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+    }
+  }, LABELS.shareTrafficFilter)
+  check('share: the traffic filter stays inside a phone viewport',
+    Boolean(box) && box.left >= 0 && box.right <= box.viewportWidth && box.top >= 0 && box.top < box.viewportHeight,
+    JSON.stringify(box))
+
+  const filterAxe = await runAxe(page, cssByLabels('[role="dialog"]', LABELS.shareTrafficFilter))
+  check('share: the traffic filter panel has no accessibility violations',
+    filterAxe.violations.length === 0, JSON.stringify(filterAxe.violations.slice(0, 3)))
+
+  await page.keyboard.press('Escape')
+  await sleep(500)
+  const filterClosed = await page.evaluate((labels) => ({
+    panel: [...document.querySelectorAll('[role="dialog"]')].some((dialog) => labels.includes(dialog.getAttribute('aria-label') ?? '')),
+    focus: document.activeElement?.getAttribute('aria-label') ?? 'nothing',
+  }), LABELS.shareTrafficFilter)
+  check('share: escape closes the traffic filter and hands the focus back to its control',
+    !filterClosed.panel && LABELS.shareTrafficFilter.includes(filterClosed.focus), JSON.stringify(filterClosed))
 
   await page.keyboard.press('Escape')
   await sleep(700)

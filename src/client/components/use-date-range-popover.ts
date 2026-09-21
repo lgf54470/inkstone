@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { DateRangeFilter, RelativeFilter } from '@shared/types'
-import { getVisibleViewport } from '../lib/viewport'
 import { useLocale } from '../lib/i18n'
 import { dateKey, parseDateKey } from '../lib/time'
 import { useClickOutside, useEscape } from './overlay'
 import { RANGE_PRESET_MAX, loadRangePresets, saveRangePresets, type RangePresetConfig } from '../features/list'
 import { movePresetInList, presetRange, type RangePreset } from './date-range-popover-core'
+import { usePanelPlacement, type PanelPlacement } from './popover-placement'
 
 export interface DateRangePopoverProps {
   anchor: React.RefObject<HTMLButtonElement | null>
@@ -17,27 +17,10 @@ export interface DateRangePopoverProps {
   onApplyRelative: (value: RelativeFilter) => void
 }
 
-export function usePopoverPosition(open: boolean, isEditorOpen: boolean, anchor: React.RefObject<HTMLButtonElement | null>, setPosition: React.Dispatch<React.SetStateAction<{ top: number; left: number; origin: string }>>): void {
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-    const margin = 8
-    const width = 248
-    const height = isEditorOpen ? 368 : 328
-    const rect = anchor.current?.getBoundingClientRect()
-    if (!rect)
-      return
-    let top = rect.bottom + 5
-    let left = rect.right - width
-    const viewport = getVisibleViewport()
-    const flipUp = top + height > viewport.bottom - margin
-    if (flipUp)
-      top = Math.max(viewport.top + margin, rect.top - height - 5)
-    left = Math.min(Math.max(viewport.left + margin, left), viewport.right - width - margin)
-    setPosition({ top, left, origin: `${flipUp ? 'bottom' : 'top'} right` })
-  }, [open, isEditorOpen, anchor, setPosition])
-}
+/** The panel's own size, which the shared placement needs to decide whether it fits below. */
+export const DATE_RANGE_PANEL_WIDTH = 248
+export const DATE_RANGE_PANEL_HEIGHT = 328
+export const DATE_RANGE_EDITOR_PANEL_HEIGHT = 368
 
 
 function useGridFocus(open: boolean, editing: 'start' | 'end', cursor: { year: number; month: number }, gridRef: React.RefObject<HTMLDivElement | null>): void {
@@ -80,6 +63,25 @@ function useRangeGridFlash(open: boolean, editing: 'start' | 'end', range: DateR
 }
 
 
+/**
+ * The panel's box. Its height changes when the preset editor opens, so the shared placement is
+ * re-run with the size that is on screen rather than with the collapsed one.
+ */
+function useRangePanelPosition(
+  open: boolean,
+  anchor: React.RefObject<HTMLButtonElement | null>,
+  isEditorOpen: boolean,
+): PanelPlacement {
+  const [position, setPosition] = useState<PanelPlacement>({ top: 0, left: 0, flipped: false, origin: 'top right' })
+  usePanelPlacement(open, {
+    anchor,
+    size: { width: DATE_RANGE_PANEL_WIDTH, height: isEditorOpen ? DATE_RANGE_EDITOR_PANEL_HEIGHT : DATE_RANGE_PANEL_HEIGHT },
+    apply: setPosition,
+  })
+  return position
+}
+
+
 interface DateRangeCore {
   weekStart: 0 | 1
   editing: 'start' | 'end'
@@ -108,13 +110,12 @@ function useDateRangeCore(props: DateRangePopoverProps): DateRangeCore {
   const [editing, setEditing] = useState<'start' | 'end'>('start')
   const base = props.range ? new Date(props.range.end) : new Date()
   const [cursor, setCursor] = useState({ year: base.getFullYear(), month: base.getMonth() })
-  const [position, setPosition] = useState({ top: 0, left: 0, origin: 'top right' })
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
+  const position = useRangePanelPosition(props.open, props.anchor, isEditorOpen)
   useEscape(props.open, props.onClose)
   useClickOutside(props.anchor ? [popoverRef, props.anchor] : [popoverRef], props.open, props.onClose)
-  usePopoverPosition(props.open, isEditorOpen, props.anchor, setPosition)
   useGridFocus(props.open, editing, cursor, gridRef)
   const todayKey = useMemo(() => dateKey(new Date()), [])
   const weekdayLabels = useMemo(() => {

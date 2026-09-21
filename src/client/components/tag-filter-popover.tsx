@@ -7,9 +7,15 @@ import { useNotes } from '../store/notes'
 import { useUi } from '../store/ui'
 import { useClickOutside, useEscape } from './overlay'
 import { TagList, TagMatchToggle, TagPickerFooter, TagSearchInput } from './tag-filter-popover-views'
-import { useHighlightScroll, usePopoverFocus, usePopoverPosition } from './use-tag-filter-popover'
+import { useHighlightScroll, usePopoverFocus } from './use-tag-filter-popover'
+import { usePanelPlacement, type PanelPlacement } from './popover-placement'
 
 const POPOVER_WIDTH = 236
+
+/** The picker grows a row per tag; the estimate is what keeps the flip decision honest. */
+function tagPickerHeight(visibleCount: number): number {
+  return Math.min(392, Math.max(120, visibleCount * 30 + 96))
+}
 
 /** Shared multi-tag picker: searchable tag checklist with note counts and an any/all match-mode switch. */
 export function TagFilterPopover({ anchor, open, onClose, align = 'end' }: {
@@ -29,14 +35,14 @@ export function TagFilterPopover({ anchor, open, onClose, align = 'end' }: {
   const atCap = selectedTags.length >= LIMITS.tagSelectionMax
   const popoverRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [position, setPosition] = useState({ top: 0, left: 0, origin: 'top right' })
+  const [position, setPosition] = useState<PanelPlacement>({ top: 0, left: 0, flipped: false, origin: 'top right' })
   const highlightedRef = useRef<HTMLButtonElement>(null)
 
   useEscape(open, onClose)
   useClickOutside(anchor ? [popoverRef, anchor] : [popoverRef], open, onClose)
 
   const visibleTags = useMemo(() => sortTagsForPicker(tags, query), [tags, query])
-  usePopoverPosition(open, align, anchor, visibleTags.length, setPosition)
+  usePanelPlacement(open, { anchor, size: { width: POPOVER_WIDTH, height: tagPickerHeight(visibleTags.length) }, align, apply: setPosition })
   usePopoverFocus(open, inputRef, setQuery)
   useHighlightScroll(query, highlightedRef)
 

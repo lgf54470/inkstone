@@ -222,7 +222,9 @@ describe('share traffic filter and settings switches (SH-31)', () => {
 
     await click(trigger)
     expect(trigger!.getAttribute('aria-expanded')).toBe('true')
-    expect(switchesIn(rendered.container).map((sw) => sw.getAttribute('aria-label'))).toEqual([
+    // The panel is portaled out of this subtree — that is what keeps `fixed` placement clear of
+    // the animated modal it can be opened inside — so its switches live on the document.
+    expect(switchesIn(document.body).map((sw) => sw.getAttribute('aria-label'))).toEqual([
       'share.filter_bots_title',
       'share.filter_self_title',
       'share.filter_owner_title',

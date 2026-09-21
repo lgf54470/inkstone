@@ -35,12 +35,12 @@
 | 05 | A | SH-80 | `loadTopNotes` 查笔记标题不带 `user_id` | 极小 | ✅ | 4d5cf737 |
 | 06 | A | SH-82 | 日志接口下发完整指纹 + SELECT 从不返回的 `user_agent` | 极小 | ✅ | f95e92ef |
 | 07 | A | SH-71 | 两个 analytics hook 无 abort/epoch → 慢请求覆盖新请求 | 小 | ✅ | 3cd48d9b |
-| 08 | A | SH-55 | 首屏 `isLoading` 时 KPI 全渲染 0（缺"加载中"态） | 小 | ✅ | ⏳ 下项回填 |
-| 09 | A | — | 批次 A 收尾：全量串行回归 | — | ✅ | ⏳ 下项回填 |
+| 08 | A | SH-55 | 首屏 `isLoading` 时 KPI 全渲染 0（缺"加载中"态） | 小 | ✅ | 8a0cdfc7 |
+| 09 | A | — | 批次 A 收尾：全量串行回归 | — | ✅ | c2749fda + afa9b286 |
 | 10 | B | SH-85 | 分享中心浏览器级门禁（e2e-visual 场景 + surface coverage） | 中 | ✅ | c62c1635 |
-| 11 | C | SH-49 | 裸 `<button>` 绕过组件体系 + 新守卫 | 中 | ✅ | ⏳ 下项回填 |
-| 12 | C | SH-50 | 流量过滤浮层：焦点管理 / role / 窄屏裁切 | 小–中 | ⬜ | |
-| 13 | C | SH-51 | hover-only「新建文件夹/标签」键盘不可见、触屏不可发现 | 小 | ⬜ | |
+| 11 | C | SH-49 | 裸 `<button>` 绕过组件体系 + 新守卫 | 中 | ✅ | aa0ca70b + 5ae18926 |
+| 12 | C | SH-50 | 流量过滤浮层：焦点管理 / role / 窄屏裁切 | 小–中 | ✅ | ⏳ 下项回填 |
+| 13 | C | SH-51 | hover-only「新建文件夹/标签」键盘不可见、触屏不可发现 | 小 | ✅ | ⏳ 下项回填 |
 | 14 | C | SH-53 | `expiring` 语义与标签不符，缺 ≤7d「即将到期」桶 | 小 | ⬜ | |
 | 15 | C | SH-60 | 看板 468/500 行 + range 选项重复 → 拆分 | 小–中 | ⬜ | |
 | 16 | C | SH-59 | 网格卡未 memo + 内联闭包 + 每卡 `folders.find` | 小 | ⬜ | |
@@ -116,6 +116,9 @@
 | SH-91 | `src/client/features/workspace/workspace/workspace-views.tsx`（`workspace.share`）与 `src/client/features/sidebar/*`（`navigation.share`） | 两个入口在 zh-CN 下同名「分享」却通到不同表面：工作区头部按的是「单条笔记的分享设置」，侧栏按的是分享中心；当没有激活笔记时 `app-shell` 又把 `panel='share'` 回退成分享中心，于是同一个按钮在两种状态下打开两个不同表面 | 区分文案与图标（如「分享这条笔记」/「分享中心」），并把无激活笔记时的回退显式化（或在无笔记时禁用该按钮） |
 | SH-94 | `src/client/lib/i18n.ts` 的 `initI18n()`（`void ensureLocaleLoaded(other)`） | 预加载另一语言是个**没有 catch 的游离 Promise**（AGENTS 铁律 2）：机器被占满时那个动态 import 会 reject，变成 vitest 的 `Errors 1` 并把退出码变成非 0——第 11 项第一次提交就是这样被 pre-commit 钩子拒掉（同一命令重跑即绿，实测 1176/1176 + 无 error） | 按铁律 2 给这个 best-effort 预加载加 catch ＋ 注释（必要时 `console.warn` 最低级别日志），使其失败不影响调用方；CI 里也可考虑 `dangerouslyIgnoreUnhandledErrors` 以外的显式处理 |
 | SH-93 | `src/client/components/hub-folder-row.tsx`（内含 `role='button'` + `tabIndex` 的 div、`FolderMoreButton`）、`components/hub-tag-item.tsx`（`TagMoreButton`、`TagExpandAffordance`）、`components/overlay/submenu.tsx`（`RowButton` 之外的裸按钮） | SH-49 只清了 `features/share`，而它用的共用组件里还有同类写法——包括 AGENTS 铁律 10 明禁的「`div` ＋ `onClick` ＋ `role='button'` 假冒控件」（`FolderRow`/`HubTagRow` 的行本体是 `div role='button'`） | 把 SH-49 的守卫正则从 `features/share` 扩到 `src/client/components` 与其它 feature（分文件开口子、每个口子写理由），再逐处收；`div role='button'` 的行本体应换成真 `button` 或用项目组件，并补键盘路径回归 |
+| SH-95 | `src/client/features/blog/blog-traffic-filter-popover.tsx` | SH-50 的同源孪生：博客看板的流量过滤面板同样是 `absolute right-0 top-full w-80`（320px）＋ 无 role、无名字的 `<div>`、打开/关闭都不动焦点，窄屏上会被推出视口。它现在可以直接复用已经抽出来的 `components/popover-placement.ts` | 按 SH-50 的做法整体迁移（portal ＋ `role='dialog'` ＋ 焦点入/还 ＋ 共用定位），跑 blog 侧回归；它属 blog 自己的范围，不在本轮 share 红线内 |
+| SH-96 | `src/client/lib/markdown/kanban/ui/*`（`kanban-date-picker`/`kanban-column-menu`/`kanban-sort-popover`/`kanban-tag-picker`/`kanban-view-options`/`kanban-filter-popover`/`kanban-item-detail` 共 6+1 处）、`src/client/lib/markdown/slides/ui/slides-topbar.tsx`（2 处） | `absolute right-0/left-0 top-full` 这种自定位浮层在仓内仍是主流写法（分享中心本轮清完后还剩这些），且没有任何门禁要求它们走 `usePanelPlacement`——同样的窄屏裁切缺陷可以再长出来 | 先定一个门禁边界（允许清单 ＋ 理由）：新写的自定位浮层必须走 `components/popover-placement.ts`，已有清单分批迁移；或给一个统一的 `Popover` 原语把这些都收进去 |
+| SH-97 | `scripts/e2e-visual.mjs` 的思维导图场景（`the node is selected before it is deleted`、`deleting the selected node leaves the note`、`undo kept the same instance`、`alt+arrow reorders the node in the note`、`reordering kept the same instance`） | 与 SH-90 同性质：同一份产品代码在一小时内的两次门禁里一次 5/5 全绿、一次 5/5 全红（失败读数都是「实例没被复用」`same:false`），而机器当时被另一条线程的浏览器门禁占满；这些断言现在直接拿实例身份/选中态当判据，没有等待窗口 | 把「等库自己把状态写下去」这层写进断言（如等 `selected` 类/等实例身份稳定），或在判失败前带上一次显式重试；不要靠重跑掩盖 |
 | SH-92 | `src/client/features/share/share-note-submenu.tsx`（296 行手搓面板）、`use-share-note-submenu.ts` | SH-49 唯一被白名单放行的文件：同样是菜单，却与 `buildShareMenuItems` ＋ `Menu` 那套并列存在（两套行样式、两套分隔线、两套键盘行为）。整体退役不是改名：① 它的行是 44px 触控目标（SH-35 守着的 `h-11 md:h-7.5`），而共用 `SubmenuList` 的行只有 40px（`h-10`），换过去要么降级触控目标、要么改共用行高影响音乐/看板/右键菜单；② 它的文件夹搜索与标签输入是 `role='menu'` 面板里的文本框，直接换成 `SubmenuList` 会撞 `aria-required-children`（首次试过会在新门禁里变红） | 先决定「菜单里能不能放输入框」（要么改成命令式选择、要么给面板一个非 menu 角色与自己的标签），同时把共用行高调到 44px 并跑音乐/看板/右键菜单回归；然后删掉该文件、`use-share-note-submenu` 与两处白名单条目 |
 
 ### 05 — SH-80 `loadTopNotes` 按 note id 查标题、不带 `user_id`（2026-09-21）
@@ -192,3 +195,31 @@
   - `npx tsc -b --force` exit 0；`i18n:check` **3141 键**（+2）通过；`comments/style/size/hardcoded/escape/tokens/deep-imports/empty-catch/module-state/surfaces` 10 项静态门禁全绿。
   - 浏览器门禁（本地实例 + `node scripts/e2e.mjs` 建号后的同一实例）：`scripts/e2e.mjs` → **177 通过 / 0 失败**；`scripts/e2e-visual.mjs` → **218 通过 / 1 失败**，12 条 share 断言**全绿**（含列表视图与手机断点两次 axe）；唯一失败仍是 SH-90 那条与本项无关的不稳定断言（同一份代码上一轮绿、这一轮红）。
 - 局限（如实登记）：① `share-note-submenu.tsx` 是**唯一**白名单放行的文件，理由与退役的前置条件写成 SH-92（共用 `SubmenuList` 行高 40px vs SH-35 的 44px 触控目标；菜单面板里放输入框会撞 `aria-required-children`），本项只把守卫与理由钉住；② 尺寸变化未经像素级核对：`IconButton size='sm'` 是 32px(手机)/24px(桌面)，比原先 20–28px 的命中区大，短链 chip 与标签 chip 会随之变高（浏览器门禁只读 a11y 与布局稳定性，不比对像素高度）；③ `Segmented` 把日志筛选从「自绘 tab」变成 `role='radiogroup'`，语义更准确但屏幕阅读器读法从 tab 列表变成单选组，属有意变更；④ 仅修了分享中心内的裸按钮，共用组件自身（`hub-folder-row.tsx`、`hub-tag-item.tsx`、`overlay/submenu.tsx` 里的 `FolderMoreButton`/`TagMoreButton`/`RowButton`）仍有同类写法，属仓级问题，另立条目跟踪（见 SH-93）。
+
+### 12 — SH-50 流量过滤浮层：无 role/焦点契约、窄屏被裁到视口外（2026-09-21）
+
+- 根因（三件事分开查证，不是一句「样式不对」）：
+  - **裁切**：面板是 `absolute right-0 top-full w-80`（320px）挂在触发器上，而触发器在会换行的头部里可以贴在右边缘；360px 手机上面板左边缘落到视口外，第一个开关被裁掉。
+  - **语义与焦点**：面板是个没有 `role`、没有可访问名的 `<div>`；打开时焦点留在触发器上，Escape 或点外部关掉后也没人把焦点交回去（键盘「站在原地」）。
+  - **参考系**：面板可能开在带 transform 动画的 `Modal` 里（访问日志/看板就住在模态里），此时 `absolute` 以动画中的祖先为参照，位置会跟着动画抖。
+- 复用而非新造：先读仓内另外两个自定位面板（`tag-filter-popover`、`use-date-range-popover`）——它们**各自**算一遍 `getBoundingClientRect()`，于是把这套数学提成共用模块 `src/client/components/popover-placement.ts`：纯函数 `computePanelPlacement()`（锚点下方、左右对齐、下方放不下就翻到上方、无论哪种都夹在视口内，留 8px 边距）＋ `usePanelPlacement()`（`apply` 要求稳定引用，尺寸变化时重算）。三处共用，删掉了各自的 position 状态与 `resize`/`scroll` 监听（`use-tag-filter-popover.ts` 因此少 22 行）。
+- 改动面：
+  - 新增 `components/popover-placement.ts`；`components/tag-filter-popover.tsx`、`components/use-tag-filter-popover.ts`、`components/use-date-range-popover.ts` 改走共用定位（日期面板的尺寸随预设编辑器开关变化，调用点显式传入）。
+  - `features/share/share-traffic-filter-popover.tsx`：面板 `createPortal` 到 `document.body`，加 `role='dialog'` ＋ `aria-label` ＋ `tabIndex={-1}`，打开后焦点进面板，Escape/点外部关闭并把焦点交回触发器；触发器（SH-49 已换成 `Button`）保留 `aria-haspopup='dialog'`/`aria-expanded`。
+  - `share-a11y.test.ts` 的断言从容器改到 document（面板已 portal，仍在子树里找就永远找不到）。
+- 先红后绿（三个新测试文件都是本项首次为这些路径建的读者）：`components/popover-placement.test.ts`（7 例，按数字断言：320px 面板贴右边缘时左边缘 ≥ 边距、下方不足翻上、两边都不足保左边缘）、`components/tag-filter-popover.test.ts`（3 例：portaled、有名字、box 不落在负坐标）、`features/share/share-traffic-filter-popover.test.ts`（4 例：命名 dialog、焦点进入、Escape 关闭并归还焦点、点外部关闭）。
+- 浏览器级（本项真正的读者）：`scripts/e2e-visual.mjs` 的分享场景在**手机断点**加三条具名断言——① 打开后量出的 box 完全落在 390×844 视口内（读 `getBoundingClientRect()`，不是读 class）；② 该面板 axe violations 为 0；③ Escape 关闭后焦点回到打开它的控件。`scripts/check-comments.mjs` 同步登记（5005 条 / 691 文件）。
+- 验证读数：
+  - `npx tsc -b --force` exit 0；`size:check` **通过**（1421 文件扫描、20 个 grandfathered）。中间一次红灯值得记下：拆分前 `useDateRangeCore` 53 行、`ShareTrafficFilterPopover` 87 行（都超 50），按职责拆出 `useRangePanelPosition` / `usePanelBox` / `useFocusOnOpen` / `filterBadge` / `FilterTrigger` / `FilterPanelSurface` 后归零——**没有**用 `--update-baseline` 把违规快照进去。
+  - 定向测试：`popover-placement` 7 ＋ `tag-filter-popover` 3 ＋ `share-traffic-filter-popover` 4 ＋ `date-range-popover` 7 ＋ `share-a11y` 7 = **28/28**；连同分享守卫集合计 **8 文件 / 42 用例**绿。
+  - 静态门禁 11 项全绿（`comments` 5005 条/691 文件、`hardcoded` 218 处/62 文件、`i18n` 3141 键、`size` 1421 文件）。
+  - 浏览器门禁：重构前 `scripts/e2e-visual.mjs http://localhost:7722` → **222 通过 / 0 失败**（分享场景 15 条断言全绿）；拆分后同一门禁再跑一次 → **216 通过 / 6 失败**，分享场景 15/15 **仍全绿**，6 条失败全在与本项无关的场景（思维导图 5 条 + SH-90 的 slides pan 1 条），而这些场景在 40 分钟前的同门禁里全绿——同一台机器上另一条线程正跑自己的浏览器门禁（7799），如实登记为环境负载所致，未用重跑掩盖，也未顺手改；思维导图那组另立 SH-97。
+- 局限（如实登记）：① 同源的 `features/blog/blog-traffic-filter-popover.tsx` 仍是旧写法（同样的 `absolute right-0 top-full` ＋ 无 role 面板），属 blog 自己的范围，登记为 SH-95；② `absolute … top-full` 的自定位浮层在 `lib/markdown/kanban/*`（7 处）与 `lib/markdown/slides/*`（2 处）还在，没有任何门禁要求改用 `usePanelPlacement`，登记为 SH-96；③ 面板高度仍是「先估后量」（首帧 `invisible`），理论上有一帧不可见；④ 视口夹取用 `left`＋8px 边距，未做 RTL 逻辑属性（与仓内其它面板一致）。
+
+### 13 — SH-51「新建文件夹/标签」是 hover-only，键盘看不见、触屏摸不到（2026-09-21）
+
+- 根因：分享中心侧栏分组标题上的「新建」按钮是 `opacity-0 group-hover/head:opacity-100`——① 键盘 Tab 到它时仍不可见（违反 WCAG 2.4.7 焦点可见）；② 触屏根本没有 hover，而它是**创建文件夹/标签的唯一入口**，于是这两个功能在手机与触屏设备上事实上不可达。
+- 修法沿用仓内既有写法（不是新发明）：`opacity-100 md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100`，即 `features/list/note-list/header.tsx` 那套「`md` 以下常显；`md` 以上指针与键盘都能揭示」。
+- 先红后绿：新增守卫 `tests/share-hidden-controls.test.ts`（4 例）——扫 `features/share` 里所有会隐藏的类，要求 ① 隐藏控件带 `focus-visible` 揭示、② 只在 `md:` 及以上隐藏（更窄的宽度没有 hover 可依赖）；两个方向都失败（新长出一处 hover-only 会红，白名单里留下已不再隐藏的条目也会红；白名单当前为空）。
+- 验证读数：`tests/share-hidden-controls.test.ts` 4/4（修复前 1 红）；`npx tsc -b --force` exit 0；11 项静态门禁绿；浏览器门禁里分享场景会在两个宽度打开侧栏并跑 axe，因此这条修法在真实渲染中有读者（同第 12 项的两次读数，分享场景 15/15 全绿）。
+- 局限：① 守卫只覆盖 `features/share`，共用组件里的同类写法属 SH-93；② 按钮常显后由既有 i18n 文案提供可访问名（`share.new_folder`/`share.new_tag`），未额外加图标名；③ 常显对标题行右侧宽度的像素影响未专门核对（门禁只读 a11y 与布局稳定性）。
