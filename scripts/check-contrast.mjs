@@ -35,6 +35,7 @@ import {
   loginThroughUi,
   pressCombo,
   runAxe,
+  seedShareHubData,
   setAppTheme,
   sleep,
   waitForPanelSettled,
@@ -221,6 +222,15 @@ const SHARE_HUB_DIALOG = '[role="dialog"][aria-label="分享中心"],[role="dial
  * scoped to the shell's sidebar.
  */
 async function openShareCenter(page) {
+  // Two of the pairs this surface is here for are only painted by an account that has something to
+  // draw: the KPI delta badge needs traffic and the sidebar's tag row needs a tag, and CI's fixture
+  // account has neither until this puts them there. Without it the pass measures a quieter center
+  // and says nothing about either pair (SH-103) — so the fixture is a prerequisite here rather than
+  // a silent possibility, the same way the music surfaces above require their seeded tracks.
+  const fixture = await seedShareHubData({ page, base: BASE })
+  if (fixture.views === 0) {
+    throw new Error(`share center: the account still reads no traffic after the fixture (${JSON.stringify(fixture)})`)
+  }
   const point = await page.evaluate(({ labels, pattern }) => {
     const buttons = [...(document.querySelector('aside')?.querySelectorAll('button') ?? [])]
       .filter((item) => item.getBoundingClientRect().width > 0)

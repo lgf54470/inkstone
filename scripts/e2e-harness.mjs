@@ -214,3 +214,93 @@ export function isReviewedIncomplete(item) {
   if (item.id === 'aria-hidden-focus' || item.id === 'duplicate-id-aria') return true
   return item.id === 'color-contrast' && /too short to determine|partially overlaps|partially obscured|only non-text characters/.test(item.note)
 }
+
+/**
+ * The share center's reads only mean something on an account that has something to draw, and CI's
+ * fixture account is exactly the account that has neither: with no traffic its KPI cards paint no
+ * delta badge, and with no tags the hub's sidebar draws no tag row (SH-103 measured both — the same
+ * instance read 230/0 on one run and 222/7 on the next, the difference being the tag and the visit
+ * the run before had left behind). So both gates put the two there themselves and assert they are
+ * there before reading the surface, which turns two silent skips into two real reads.
+ *
+ * It converges rather than accumulating: the note, the share and the tag are found or created once
+ * and reused by every later run against the same instance, and the visit is recorded only when the
+ * account has no traffic at all. The point is that the cards have something to compare against, not
+ * that the visit log grows by a row per gate run.
+ */
+export const SHARE_HUB_PROBE = {
+  noteTitle: 'Share center probe',
+  tagName: 'share-center-probe',
+}
+
+/**
+ * The user agent the fixture's visit is recorded for. The product's bot list classifies
+ * `HeadlessChrome` as a crawler — correctly — and a crawler visit is never written, so the row this
+ * fixture exists to put in place would simply not be there.
+ */
+export const REAL_VISITOR_UA =
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
+
+/**
+ * One call through the signed-in page's own session, with the header the app's transport sends. The
+ * fixture and its read-back are not what either gate is watching; the surfaces are.
+ */
+export async function apiCall(page, method, path, body) {
+  return page.evaluate(async ({ method, path, body }) => {
+    const response = await fetch(path, {
+      method,
+      headers: {
+        'X-Inkstone-Client': '1',
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+    return { status: response.status, data: await response.json().catch(() => null) }
+  }, { method, path, body })
+}
+
+/** What the dashboard's own KPI strip reads, so "the fixture is in place" is asked of the endpoint
+ * the surface under test uses rather than of the table behind it. */
+export async function shareHubViews(page) {
+  const response = await apiCall(page, 'GET', '/api/share/analytics/global?range=7d')
+  return Number(response.data?.totalViews ?? 0)
+}
+
+/** Puts one shared, tagged note with one recorded visit behind the account, and reports what it
+ * found. The caller asserts the result: a fixture that silently failed to be there is the blind spot
+ * this exists to close, wearing the same green. */
+export async function seedShareHubData({ page, base }) {
+  const listed = await apiCall(page, 'GET', '/api/notes?limit=200')
+  const found = (listed.data?.notes ?? []).find((item) => item.title === SHARE_HUB_PROBE.noteTitle)
+  const note = found ?? (await apiCall(page, 'POST', '/api/notes', {
+    title: SHARE_HUB_PROBE.noteTitle,
+    content: `# ${SHARE_HUB_PROBE.noteTitle}\n\nThe share center's own reads need one visit and one tag to read.`,
+  })).data
+  // A create answers 201 for a new row and 200 for one that was already there (the tag is created
+  // with the keep-existing policy), so the fixture stays idempotent across runs.
+  const tag = await apiCall(page, 'POST', '/api/share/tags', { name: SHARE_HUB_PROBE.tagName })
+  const share = await apiCall(page, 'POST', `/api/share/${note?.id ?? ''}`, { tags: [SHARE_HUB_PROBE.tagName] })
+  const slug = share.data?.share?.slug ?? ''
+  let views = await shareHubViews(page)
+  if (views === 0 && slug) {
+    // Two things about this call. It is the visit-recording one: the share page's shell records
+    // nothing, the row is written when the page's own client asks for the note — a plain GET of
+    // `/s/:slug` leaves the log empty. And it goes out from here rather than from the owner's page,
+    // because a visit is recorded for the user agent that asks and a page cannot present another
+    // one: from the browser the request would look like the owner revisiting their own link.
+    await fetch(`${base}/api/public/${slug}`, {
+      method: 'POST',
+      headers: { 'User-Agent': REAL_VISITOR_UA, 'X-Inkstone-Client': '1', 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+      .then((response) => response.text())
+      .catch(() => '')
+    // The row is written after the response is sent (the worker hands `recordShareVisit` to
+    // `waitUntil`), so it is polled rather than assumed to be there on the first read.
+    for (let attempt = 0; attempt < 20 && views === 0; attempt++) {
+      await sleep(500)
+      views = await shareHubViews(page)
+    }
+  }
+  return { note: listed.status, share: share.status, tag: tag.status, slug, views }
+}

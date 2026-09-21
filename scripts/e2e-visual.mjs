@@ -18,7 +18,9 @@ import path from 'node:path'
 import puppeteer from 'puppeteer-core'
 import {
   PALETTE_PANEL,
+  REAL_VISITOR_UA,
   SETTINGS_PANEL,
+  apiCall,
   chromeExecutablePath,
   clickButton,
   ensureAxe,
@@ -27,6 +29,7 @@ import {
   loginThroughUi,
   pressCombo,
   runAxe,
+  seedShareHubData,
   setAppTheme,
   sleep,
   waitForPanelSettled,
@@ -2497,6 +2500,14 @@ async function gotoSidebarCategory(page, labels) {
 async function assertShareCenter(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(500)
+  // What the reads below mean depends on the account having something to draw — a KPI delta badge
+  // needs traffic, a sidebar tag row needs a tag — and CI's fixture account has neither until this
+  // puts them there (SH-103). The result is asserted rather than trusted: a fixture that quietly
+  // failed to be there reads exactly like a clean account.
+  const fixture = await seedShareHubData({ page, base: BASE })
+  check('share: the account carries a tag and a visit so the reads below are about a real one',
+    fixture.views > 0 && fixture.share === 200 && (fixture.tag === 200 || fixture.tag === 201),
+    JSON.stringify(fixture))
   const opened = await openShareHub(page)
   check('share: the shared view opens the share center', opened)
   if (!opened) return
@@ -2508,6 +2519,17 @@ async function assertShareCenter(page) {
     return Boolean(hub) && labels.some((label) => hub.textContent.includes(label))
   }, { timeout: 20_000 }, { dialog: SHARE_DIALOG, labels: LABELS.shareKpi }).then(() => true, () => false)
   check('share: the center draws its KPIs from the analytics request', kpi)
+
+  // The two axe reads below are the reason the fixture exists, so the surface SH-102 lived in is
+  // asserted to be painted rather than assumed: a KPI card draws its delta badge only when the
+  // account has something to compare, and a run where the fixture's visit never landed would read a
+  // quieter center and still pass. Reading the badge is what makes "no violations" mean something.
+  const delta = await page.evaluate((dialog) => {
+    const hub = document.querySelector(dialog)
+    return [...(hub?.querySelectorAll('span') ?? [])]
+      .some((span) => /^[+-]?\d+%$/.test((span.textContent ?? '').trim()))
+  }, SHARE_DIALOG)
+  check('share: the center paints a KPI delta badge, so its semantics are read below', delta)
 
   const desktop = await runAxe(page, SHARE_DIALOG)
   check('share: the center has no accessibility violations at desktop width',
@@ -2633,33 +2655,6 @@ const COLLECTION_PROBE = {
   noteTitle: 'Collection directory probe',
   tagName: `Directory probe ${Date.now().toString(36).slice(-5)}`,
   password: 'directory-pass-900',
-}
-
-/**
- * The visitor presents the user agent of the person it stands in for. The product's bot list
- * classifies `HeadlessChrome` as a crawler — correctly — and a crawler visit is never written, so
- * the row this scenario exists to read would simply not be there.
- */
-const REAL_VISITOR_UA =
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
-
-/**
- * One call from inside the owner's page, with the header the app's own transport sends. The
- * scenario drives the visitor's half through the browser; the owner's half is the fixture and the
- * read-back, and neither of those is what the gate is there to watch.
- */
-async function apiCall(page, method, path, body) {
-  return page.evaluate(async ({ method, path, body }) => {
-    const response = await fetch(path, {
-      method,
-      headers: {
-        'X-Inkstone-Client': '1',
-        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-    return { status: response.status, data: await response.json().catch(() => null) }
-  }, { method, path, body })
 }
 
 /**
