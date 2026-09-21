@@ -17,7 +17,7 @@ import type { ShareVisitsResponse } from '@shared/types'
 import { Menu, Modal, type MenuItem } from '../../components/overlay'
 import { Input, Segmented } from '../../components/form'
 import { Button, IconButton } from '../../components/primitives'
-import { relativeTime } from '../../lib/time'
+import { formatNumber, relativeTime } from '../../lib/time'
 import { t, useLocale } from '../../lib/i18n'
 import { countryFlag, countryNameLocalized, localizeEnvName } from './share-helpers'
 import type { useShareVisitLogs } from './use-share-visit-logs-modal'
@@ -57,6 +57,7 @@ export function ShareVisitLogsModal({
     >
       <div className='flex flex-col gap-3'>
         <VisitLogsToolbar bundle={bundle} />
+        <ExportProgressRow progress={bundle.exportProgress} />
         <LogsTable bundle={bundle} />
         {/* The table lists fingerprints, not people: the same visitor counts once per UTC day, and
             everyone behind one address shares one. Saying so is what keeps a UV number readable. */}
@@ -66,6 +67,20 @@ export function ShareVisitLogsModal({
         {bundle.data && bundle.data.totalPages > 1 && <PaginationFooter bundle={bundle} />}
       </div>
     </Modal>
+  )
+}
+
+/**
+ * A long export is a walk of many pages, so it reports where it is and renders nothing at
+ * all once it is done: the line appears below the toolbar rather than inside it, so opening
+ * and closing it can never move the buttons the person is aiming at.
+ */
+function ExportProgressRow({ progress }: { progress: LogsBundle['exportProgress'] }) {
+  if (!progress) return null
+  return (
+    <p role='status' className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+      {t('share.export_progress', { loaded: formatNumber(progress.loaded), total: formatNumber(progress.total) })}
+    </p>
   )
 }
 

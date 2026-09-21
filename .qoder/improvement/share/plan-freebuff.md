@@ -55,8 +55,8 @@
 | 25 | D | SH-73 | 列表访客统计缺覆盖索引 + tags `LIKE '%"x"%'` | 中 | ✅ | 155e8c45 |
 | 26 | D | SH-74 | `range=all` 无节流无缓存 | 中 | ✅ | 439597f1 |
 | 27 | D | SH-81 | 读侧无限流（分析/日志对已认证会话全开放） | 小–中 | ✅ | b6ce939a |
-| 28 | D | SH-75 | 全量导出串行分页无进度/无取消/无上限提示 | 小–中 | ⬜ | |
-| 29 | D | SH-76 | `useShareStore.subscribe` 每次写入重建共享 id 快照 | 极小 | ✅ | ⏳ 下项回填 |
+| 28 | D | SH-75 | 全量导出串行分页无进度/无取消/无上限提示 | 小–中 | ✅ | ⏳ 下项回填 |
+| 29 | D | SH-76 | `useShareStore.subscribe` 每次写入重建共享 id 快照 | 极小 | ✅ | 3a58c21d |
 | 30 | D | SH-77 | 500 行全量渲染无虚拟化（无规模证据则关闭） | 中 | ⬜ | |
 | 31 | E | SH-62 | 到期治理：即将到期列表 + 批量续期 | 中 | ⬜ | |
 | 32 | E | SH-63 | 单条分享的访客数据删除 / 导出 | 小–中 | ⬜ | |
@@ -415,3 +415,18 @@
 - 变异 1 发即杀：去掉那行引用比较 → 第 ① 例红（无关写入开始推），第 ② 例仍绿——即用例区分的是「该推/不该推」，不是「推了没有」。
 - 验证读数：`tsc -b --force` exit 0；定向 `src/client/store` + `src/client/features/share` + `src/client/features/notes` **39 文件 / 172 用例**全绿（这层改动会影响 notes 的可见性投影，所以连 notes 一起跑）；11 项静态门禁全绿。
 - 局限：① 优化的是**分配与比较**，n ≤ 500 时可忽略，价值在于它每次按键都在跑（属「纯浪费」而非「卡顿」），没有基准数据；② 模块级 `let` 缓存在客户端是允许的（`module-state:check` 只禁 worker），但它确实是模块级状态，多标签页各自独立、不会互相污染；③ 未测 500 行 + 快速输入的帧时间变化。
+
+### 28 — SH-75 全量导出：进度 / 取消 / 上限（2026-09-21）
+
+- 根因：导出走「按 100 行串行翻页」的循环（上一轮为修「只导出当前 25 行」而加），但循环没有出口条件之外的东西：接口在跑、界面只有一个变灰的按钮，人不知道还剩多少；关掉弹窗后循环继续（已下载的页会继续累加），随时写出半个文件；历史很长时它会把账号**全部**记录拉进标签页内存，且不吭声。三件事同一根源——一个长任务没有任何「进行中」的表示。
+- 改动面（6 文件，恰 1 新增）：
+  - 新增 `use-visit-export.ts`：把导出这件事从「读日志」的 hook 里整个搬出来（`useVisitExport`），它自己拥有进度状态、单飞（同一时刻一次导出，重复点击先中止前一次）与 `AbortController`；`collectAllVisits` 逐页检查 `signal.aborted`（不靠 reject 传达取消——在途请求仍会 resolve），`runExport` 在写文件前再看一次 flag。
+  - `use-share-visit-logs-modal.ts`：只剩列表的职责（取数 / 过滤 / 清理），导出经 `useVisitExport` 委托；返回值形状不变，弹窗侧无需改动。`VisitFilter` 上移到 `share-helpers.ts`（浏览与导出必须对「bot 是什么意思」有同一个答案，两边各写一份类型就会漂）。
+  - 上限：`EXPORT_MAX_ROWS = 5000`（单页 100 → 50 次请求封顶），到顶以 `truncated` 上报，文案说「已导出 5000 行、历史更长」而不是假装导全了。
+  - `share-visit-logs-modal.tsx`：工具栏下方新增进度行（`role='status'`，`loaded/total` 用 `formatNumber`），**刻意放在工具栏下面而不是里面**——按 AGENTS 的工具栏展开规则，内联面板会把头撑高、把刚点下的按钮推离指针。
+  - 两个 locale 各 +3 键（`export_progress` / `export_truncated` / 已有的 `no_logs_to_export` 复用）。
+- 先红后绿：`share-visit-logs-export.test.ts` 新增两段 describe（上限与进度 / 取消）共 3 例——① 1.2 万行历史只发 50 次请求、写出的文件恰好 5000 行、toast 是 `export_truncated`；② 第 2 页被 gate 挂起时 `role='status'` 已含 `export_progress` 且**还没写文件**；③ 关闭弹窗后 `exportVisitsToCsv` 一次都没被调用、进度回到 idle。
+- 变异 1 发即杀（抽取之后再验一次，证明剥离没把取消接丢）：把 `useVisitExport` 里 close effect 的 `abort()` 去掉 → 第 ③ 例红，其余 5 例仍绿。
+- **一次被 `size:check` 纠正的形状**：原先把进度/取消/上限都塞进 `useShareVisitLogs`，该函数从 ≤50 行涨到 75 行。没有 resnapshot 基线（那正是门禁说的「不要手改」），而是把导出拆成独立 hook——它本来就是另一个职责（长任务 vs 列表浏览），拆完两个函数都在限额内，`size:check` 归零。同理，新加的 describe 体超 50 行，按「上限+进度」与「取消」拆成两段。
+- 验证读数：`tsc -b --force` exit 0；`features/share` 全目录 + `tests/share-english-literals.test.ts` + `tests/share-visit-retention.test.ts` **37 文件 / 156 用例全绿**；11 项静态门禁全绿（`size:check` 通过、1438 文件扫描、`comments` 5107 条 / 717 文件）。
+- 局限：① 上限 5000 是常量，没有设置项，也没有「继续导出剩余部分」的分段导出；② 进度是「已取行 / 接口给的 total」，当过滤条件在两次翻页之间变化时 total 可能微调（导出用的是一次快照的查询条件，不会中途换条件）；③ 取消只在页面切换/弹窗关闭时触发，没有单独的「停止」按钮（导出通常几秒内结束，加按钮会把工具栏再塞满）；④ 未在真实 D1 上验证 50 次串行请求的耗时。

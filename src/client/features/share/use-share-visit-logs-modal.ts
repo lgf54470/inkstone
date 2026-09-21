@@ -5,26 +5,22 @@ import { api, ApiError } from '../../lib/api'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import type { UiState } from '../../store/ui'
-import { exportVisitsToCsv } from './share-helpers'
+import type { VisitFilter } from './share-helpers'
+import { useVisitExport } from './use-visit-export'
 import { promptWipePassword } from '../../lib/wipe-password-prompt'
 
-
-type VisitFilter = 'all' | 'real' | 'bot' | 'owner' | 'self'
-
-// The visits endpoint caps limit at 100; exporting at that page size keeps a
-// large history to a linear walk instead of hundreds of 25-row pages.
-const EXPORT_PAGE_SIZE = 100
 
 export function useShareVisitLogs(open: boolean, initialNoteId?: string) {
   const toast = useUi((s) => s.toast)
   const [isLoading, setIsLoading] = useState(false)
-  const [isExporting, setIsExporting] = useState(false)
   const [data, setData] = useState<ShareVisitsResponse | null>(null)
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState<VisitFilter>('all')
   const [search, setSearch] = useState('')
   const [noteId, setNoteId] = useState<string | undefined>(initialNoteId)
   const [isCleaning, setIsCleaning] = useState(false)
+  const { isExporting, progress: exportProgress, exportVisits: handleExport } =
+    useVisitExport({ open, filter, search, noteId, toast })
 
   const ctx = { setIsLoading, setData, setIsCleaning, toast }
 
@@ -53,11 +49,9 @@ export function useShareVisitLogs(open: boolean, initialNoteId?: string) {
   const handleClean = (type: 'bots' | 'older_than' | 'all', days = 30) =>
     cleanVisitsFlow(type, days, ctx, () => fetchVisits(1, filter, search, noteId))
 
-  const handleExport = () => exportVisitsFlow({ filter, search, noteId, toast, setIsExporting })
-
   return {
     isLoading, isExporting, data, page, setPage,
-    filter, setFilter, search, setSearch, isCleaning,
+    filter, setFilter, search, setSearch, isCleaning, exportProgress,
     fetchVisits, handleFilterChange, handleSearchSubmit, handleClean, handleExport,
   }
 }
@@ -137,50 +131,4 @@ async function cleanVisitsFlow(
   } finally {
     ctx.setIsCleaning(false)
   }
-}
-
-async function exportVisitsFlow(params: {
-  filter: VisitFilter
-  search: string
-  noteId: string | undefined
-  toast: UiState['toast']
-  setIsExporting: (value: boolean) => void
-}): Promise<void> {
-  const { filter, search, noteId, toast, setIsExporting } = params
-  setIsExporting(true)
-  try {
-    const visits = await collectAllVisits(filter, search, noteId)
-    if (visits.length === 0) {
-      toast({ title: t('share.no_logs_to_export'), tone: 'warning' })
-      return
-    }
-    exportVisitsToCsv(visits, `inkstone-visits-${new Date().toISOString().slice(0, 10)}.csv`)
-    toast({ title: t('share.export_success', { count: visits.length }), tone: 'default' })
-  } catch {
-    toast({ title: t('common.action_failed'), tone: 'danger' })
-  } finally {
-    setIsExporting(false)
-  }
-}
-
-async function collectAllVisits(
-  filter: VisitFilter,
-  search: string,
-  noteId: string | undefined,
-): Promise<ShareVisitsResponse['visits']> {
-  const all: ShareVisitsResponse['visits'] = []
-  let page = 1
-  for (;;) {
-    const res = await api.share.visits({
-      page,
-      limit: EXPORT_PAGE_SIZE,
-      filter,
-      search: search || undefined,
-      noteId: noteId || undefined,
-    })
-    all.push(...res.visits)
-    if (res.visits.length === 0 || page >= res.totalPages) break
-    page += 1
-  }
-  return all
 }

@@ -3084,6 +3084,7 @@ const allowed = new Map([
     '/**\n * One card in the grid. Memoised like the table row, and for the same reason: a selection change\n * redraws one card, not the whole grid — which is why every handler it takes is note-scoped and\n * stable and the folder lookup is a map instead of a scan per card.\n */',
   ]],
   ['src/client/features/share/share-helpers.ts', [
+    '/**\n * The traffic classes a visit list can be narrowed to. Defined next to the CSV shape because both\n * the browsing hook and the export walk have to agree on what "bot" means.\n */',
     '/**\n * The ranges every share analytics surface offers, in one place: the dashboard\'s segmented control\n * and the single-note modal both draw this list, so "30d" can never mean two different windows.\n */',
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
   ]],
@@ -3222,11 +3223,19 @@ const allowed = new Map([
     '// The anchor has to really land in the body: the module removes it again, and a',
     '// mock that swallows the append turns that removal into a not-a-child throw.',
   ]],
+  ['src/client/features/share/share-visit-logs-export.test.ts', [
+    '/** Same page shape over a history of any length, for the cap case. */',
+    '/** Mounts the hook directly so a test can open and close the modal around an in-flight export. */',
+    '// Serves every page at once except pages after the first, which wait for the test to release',
+    '// them — that window is where progress and cancellation can be observed.',
+    '// Page one is in, page two is held open: the live region has something to report.',
+  ]],
   ['src/client/features/share/share-visit-logs-menu.test.ts', [
     '// Opens the clean menu with a real click and picks the wipe-everything entry.',
   ]],
   ['src/client/features/share/share-visit-logs-modal.tsx', [
     '/* The table lists fingerprints, not people: the same visitor counts once per UTC day, and\n            everyone behind one address shares one. Saying so is what keeps a UV number readable. */',
+    '/**\n * A long export is a walk of many pages, so it reports where it is and renders nothing at\n * all once it is done: the line appears below the toolbar rather than inside it, so opening\n * and closing it can never move the buttons the person is aiming at.\n */',
   ]],
   ['src/client/features/share/share-visitor-count-note.test.ts', [
     '/**\n * SH-83: UV is a salted fingerprint count — once per person per UTC day, and one bucket per address\n * however many people sit behind it. Neither the KPI nor the log table could be read that way from\n * the screen alone, so the log view now states it; this pins that the sentence is really there.\n */',
@@ -3251,9 +3260,21 @@ const allowed = new Map([
     '// The sweep runs on the server, so the value it reads has to be the account\'s.',
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
   ]],
-  ['src/client/features/share/use-share-visit-logs-modal.ts', [
+  ['src/client/features/share/use-visit-export.ts', [
+    '/** How much of the walk has landed, against the total the endpoint reports for the same query. */',
     '// The visits endpoint caps limit at 100; exporting at that page size keeps a',
     '// large history to a linear walk instead of hundreds of 25-row pages.',
+    '// Past this many rows the file stops being something a person reads in a spreadsheet,',
+    '// and the walk would hold the account\'s whole history in the tab\'s memory. The export',
+    '// stops here and says so, rather than growing silently until the tab struggles.',
+    '/**\n * The export concern of the visit-log modal, kept apart from browsing it: this hook owns the\n * one-at-a-time abort, the progress readout and the file write, and the modal only decides when\n * to start it and when the person gave up on it.\n */',
+    '// Dismissing the modal is the person giving up on the export, not just on the view.',
+    '// One export at a time: a second click while the first is walking would put two',
+    '// writers on the same file name, so the previous walk is cancelled first.',
+    '// A cancelled walk must not write a partial file: the person asked for nothing to happen.',
+    '// Cancelling makes the page request reject; that is the intended outcome, not a failure.',
+    '// The abort flag is checked rather than relied on: a page already in flight still',
+    '// resolves, and the loop must not start the next one after the person cancelled.',
   ]],
   ['src/client/features/shell/app-shell.tsx', [
     '/* A show outlives the layout that started it: the desktop and mobile shells\n          mount different workspace subtrees, so hosting the overlay here keeps a\n          presentation alive across a breakpoint switch instead of dropping the\n          presenter back to the note mid-talk. */',

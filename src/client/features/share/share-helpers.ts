@@ -2,6 +2,12 @@ import type { ShareTimelineRange } from '@shared/types'
 import { t } from '../../lib/i18n'
 
 /**
+ * The traffic classes a visit list can be narrowed to. Defined next to the CSV shape because both
+ * the browsing hook and the export walk have to agree on what "bot" means.
+ */
+export type VisitFilter = 'all' | 'real' | 'bot' | 'owner' | 'self'
+
+/**
  * The ranges every share analytics surface offers, in one place: the dashboard's segmented control
  * and the single-note modal both draw this list, so "30d" can never mean two different windows.
  */
