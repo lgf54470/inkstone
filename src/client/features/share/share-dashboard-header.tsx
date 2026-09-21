@@ -1,8 +1,9 @@
 import { RefreshCw } from 'lucide-react'
 import type { ShareTimelineRange } from '@shared/types'
-import { Segmented } from '../../components/form'
+import { Segmented, Switch } from '../../components/form'
 import { IconButton } from '../../components/primitives'
 import { t } from '../../lib/i18n'
+import { relativeTime } from '../../lib/time'
 import { rangeOptions } from './share-helpers'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import type { useShareDashboardView } from './use-share-dashboard-view'
@@ -11,7 +12,7 @@ type DashboardBundle = ReturnType<typeof useShareDashboardView>
 
 /** The dashboard's title, its range control, and the two ways to re-ask for the same window. */
 export function DashboardHeader({ bundle }: { bundle: DashboardBundle }) {
-  const { range, setRange, isLoading, loadData } = bundle
+  const { loadedAt } = bundle
   return (
     <div className='flex flex-wrap items-center justify-between gap-3 pb-4'>
       <div>
@@ -26,27 +27,47 @@ export function DashboardHeader({ bundle }: { bundle: DashboardBundle }) {
         <p className='pt-0.5 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
           {t('share.analytics_dashboard_scope')}
         </p>
+        {/* The age of what is on screen, stated rather than implied: without it a person cannot
+            tell a quiet week from a tab opened before lunch. */}
+        {loadedAt !== null && (
+          <p className='pt-0.5 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+            {t('share.analytics_updated_at', { time: relativeTime(loadedAt) })}
+          </p>
+        )}
       </div>
 
-      <div className='flex items-center gap-2'>
-        <Segmented
-          label={t('share.range_label')}
-          options={rangeOptions()}
-          value={range}
-          onChange={(val) => setRange(val as ShareTimelineRange)}
-        />
+      <DashboardControls bundle={bundle} />
+    </div>
+  )
+}
 
-        <ShareTrafficFilterPopover />
+/** The range, the traffic filters, and the two ways to keep the window fresh: by hand, or on a cadence. */
+function DashboardControls({ bundle }: { bundle: DashboardBundle }) {
+  const { range, setRange, isLoading, loadData, autoRefresh, setAutoRefresh } = bundle
+  return (
+    <div className='flex items-center gap-2'>
+      <Segmented
+        label={t('share.range_label')}
+        options={rangeOptions()}
+        value={range}
+        onChange={(val) => setRange(val as ShareTimelineRange)}
+      />
 
-        <IconButton
-          size='sm'
-          label={t('common.refresh')}
-          disabled={isLoading}
-          onClick={() => void loadData(range)}
-        >
-          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-        </IconButton>
-      </div>
+      <ShareTrafficFilterPopover />
+
+      <IconButton
+        size='sm'
+        label={t('common.refresh')}
+        disabled={isLoading}
+        onClick={() => void loadData(range)}
+      >
+        <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+      </IconButton>
+
+      <span className='whitespace-nowrap text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+        {t('share.auto_refresh')}
+      </span>
+      <Switch checked={autoRefresh} onChange={setAutoRefresh} label={t('share.auto_refresh')} />
     </div>
   )
 }

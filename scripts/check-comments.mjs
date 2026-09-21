@@ -3027,6 +3027,22 @@ const allowed = new Map([
     '// the animated modal it can be opened inside — so its switches live on the document.',
     '// Modal mounts its panel through a portal, so look in the document instead of the container.',
   ]],
+  ['src/client/features/share/share-auto-refresh.test.ts', [
+    '/**\n * SH-65: the dashboard is a snapshot, and a snapshot with no age attached reads as a quiet week.\n * The poll has to be cheap (a hidden tab must not ask) and optional (a cadence is a preference,\n * not a policy) — both are what these assertions are about.\n */',
+    '// Back on screen: one immediate read, because that is when the snapshot is stalest.',
+  ]],
+  ['src/client/features/share/share-auto-refresh.ts', [
+    '/**\n * How often a *visible* dashboard re-asks. Slow on purpose: visit numbers move in minutes, and a\n * faster poll would spend the account\'s read budget (SH-81) redrawing the same numbers.\n */',
+    '// A cadence belongs to the device, not the account: two sessions on two machines can reasonably',
+    '// want different windows. It lives in browser storage beside the other local UI choices rather',
+    '// than in the user settings document, where it would be an account-wide policy.',
+    '// Storage can be unavailable (private mode): an unreadable preference means off, and a',
+    '// preference nobody could read is not worth failing a screen over.',
+    '/**\n * Polls while the page is in front and stops the moment it is not: a hidden tab asking every 45\n * seconds is pure cost, and the return to the front is exactly when the numbers on screen are\n * most stale — so coming back triggers one read rather than waiting out another interval.\n */',
+    '// The caller\'s closure is rebuilt every render, and an effect keyed on it would tear the timer',
+    '// down and rebuild it on each render — which means it would never fire. The ref keeps the',
+    '// latest one readable at the moment the timer fires.',
+  ]],
   ['src/client/features/share/share-batch-bar-actions.tsx', [
     '/**\n * Renewal sits beside the absolute expiry entries, and the two are not the same action:\n * `expire` writes a moment, so picking "7 days" on a link that runs for a year would cut it\n * short. Adding days is what "keep these alive a bit longer" means, which is why the result\n * is reported — a permanent link has no clock to move and must not look like it changed.\n */',
     '// Nothing moved: say which of the two reasons it was instead of reporting success.',
@@ -3072,6 +3088,8 @@ const allowed = new Map([
   ['src/client/features/share/share-dashboard-header.tsx', [
     '/** The dashboard\'s title, its range control, and the two ways to re-ask for the same window. */',
     '/* The dashboard reads every share, whatever folder or tag the sidebar has selected: saying\n            so is the difference between a wrong number and a stated scope. */',
+    '/* The age of what is on screen, stated rather than implied: without it a person cannot\n            tell a quiet week from a tab opened before lunch. */',
+    '/** The range, the traffic filters, and the two ways to keep the window fresh: by hand, or on a cadence. */',
     '/** What the traffic filters took out of the numbers below, drawn only when they took something. */',
   ]],
   ['src/client/features/share/share-dashboard-kpis.test.ts', [
@@ -3279,6 +3297,11 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-visitor-count-note.test.ts', [
     '/**\n * SH-83: UV is a salted fingerprint count — once per person per UTC day, and one bucket per address\n * however many people sit behind it. Neither the KPI nor the log table could be read that way from\n * the screen alone, so the log view now states it; this pins that the sentence is really there.\n */',
+  ]],
+  ['src/client/features/share/use-share-dashboard-view.ts', [
+    '/**\n * The dashboard answers one question per window, so this is its data layer: the request, the\n * in-flight cancellation, the age of what came back, and the optional cadence that re-asks.\n * Everything the view needs about *how* it is drawn stays out of here.\n */',
+    '// Stamped together with the data: the age line describes the numbers on screen, so it must',
+    '// move only when they do.',
   ]],
   ['src/client/features/share/use-share-hub-modal.ts', [
     '/**\n * What opening and closing the hub means: closing drops the selection and every overlay,\n * opening fetches what this session will read first. The hub lands on the dashboard, which\n * paints the sidebar counters but none of the rows — and both come from the same list\n * response, so the counters are asked for alone unless the list is really needed (a note\n * handed in to edit, or a list category as the landing view). Picking a category loads the\n * list through the store either way.\n */',

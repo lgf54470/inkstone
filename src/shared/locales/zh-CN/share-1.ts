@@ -61,6 +61,8 @@ export const messages = {
 'share.analytics_dashboard_title': '分享访问看板',
 'share.analytics_dashboard_scope': '全部分享（含所有文件夹与标签），不随左侧筛选变化',
 'share.analytics_load_failed': '无法加载分析数据。',
+'share.analytics_updated_at': '更新于 {time}',
+'share.auto_refresh': '自动刷新',
 'share.batch_disable': '批量暂停',
 'share.batch_enable': '批量开启',
 'share.batch_copy_links': '复制全部链接',

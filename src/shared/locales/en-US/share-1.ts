@@ -61,6 +61,8 @@ export const messages = {
 'share.analytics_dashboard_title': 'Analytics Dashboard',
 'share.analytics_dashboard_scope': 'All shares, all folders and tags — the sidebar filters do not narrow these numbers',
 'share.analytics_load_failed': 'Could not load the analytics data.',
+'share.analytics_updated_at': 'Updated {time}',
+'share.auto_refresh': 'Auto refresh',
 'share.batch_disable': 'Batch Pause',
 'share.batch_enable': 'Batch Enable',
 'share.batch_copy_links': 'Copy all links',
