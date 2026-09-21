@@ -295,6 +295,7 @@ function CheckerRowActions({
       </button>
       <button
         type='button'
+        aria-label={t('blog.link_menu_open')}
         onClick={() => window.open(url, '_blank')}
         className='p-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
       >

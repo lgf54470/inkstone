@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { AlertTriangle, Check, Info, Undo2, X, XCircle } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useUi, type ToastItem } from '../store/ui'
-import { Button } from './primitives'
+import { Button, IconButton } from './primitives'
 import { Tooltip } from './overlay'
 import { t } from '../lib/i18n'
 import { isEditableTarget } from '../lib/hotkeys'
@@ -99,9 +99,9 @@ function Toast({ item }: {
       {item.action.label}
     </Button>)}
     <Tooltip label={t('feedback.dismiss')} side='left'>
-    <button type='button' onClick={() => dismiss(item.id)} aria-label={t('feedback.dismiss')} className='mt-[1px] shrink-0 rounded p-1 text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]'>
+    <IconButton label={t('feedback.dismiss')} size='sm' variant='ghost' onClick={() => dismiss(item.id)} className='-my-1 shrink-0 text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'>
       <X size={12}/>
-    </button>
+    </IconButton>
     </Tooltip>
   </div>)
 }

@@ -68,6 +68,11 @@ function BooleanValueEditor({ bundle, rowKey, value }: { bundle: NotePropertiesB
   return (
     <button
       type='button'
+      role='switch'
+      aria-checked={value}
+      // The row's own label is drawn in the property name cell beside it, so the switch is named by
+      // the property it belongs to rather than by a fixed string.
+      aria-label={rowKey}
       onClick={() => handleUpdate(rowKey, !value)}
       className={cn(
         'inline-flex h-5 w-9 items-center rounded-full transition-colors p-0.5',
@@ -86,7 +91,7 @@ function ArrayValueEditor({ bundle, rowKey, value }: { bundle: NotePropertiesBun
       {value.map((item, idx) => (
         <span key={idx} className='inline-flex items-center gap-1 rounded bg-[var(--surface-tertiary)] px-1.5 py-0.5 text-[length:var(--text-11)] text-[var(--text-primary)]'>
           {String(item)}
-          <button type='button' onClick={() => handleUpdate(rowKey, value.filter((_, i) => i !== idx))} className='text-[var(--text-tertiary)] hover:text-[var(--danger)]'>
+          <button type='button' aria-label={t('common.remove_value0', { value0: String(item) })} onClick={() => handleUpdate(rowKey, value.filter((_, i) => i !== idx))} className='text-[var(--text-tertiary)] hover:text-[var(--danger)]'>
             <X size={10} />
           </button>
         </span>

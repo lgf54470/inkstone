@@ -67,6 +67,7 @@ function SubtaskTrailingActions({
         <button
           ref={menuBtnRef}
           type='button'
+          aria-label={t('common.more_actions')}
           onClick={() => setMenuOpen((o) => !o)}
           className='opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100'
         >

@@ -1,6 +1,7 @@
 export const messages = {
 'common.about': 'About ',
 'common.access_control': 'Access control',
+'common.add': 'Add',
 'common.access_passcode': 'Access passcode',
 'common.action_failed': 'Action failed',
 'common.backlinks': 'Backlinks',
@@ -54,6 +55,7 @@ export const messages = {
 'common.product_name': 'Inkstone',
 'common.quote': 'Quote',
 'common.remove_from_favorites': 'Remove from favorites',
+'common.remove_value0': 'Remove {value0}',
 'common.restore': 'Restore',
 'common.restore_failed': 'Restore failed',
 'common.retry': 'Retry',

@@ -54,6 +54,7 @@ function FilterChip({ icon, label, onClear }: { icon: ReactNode; label: string; 
       <span>{label}</span>
       <button
         type='button'
+        aria-label={t('common.remove_value0', { value0: label })}
         onClick={onClear}
         className='ml-0.5 text-[var(--text-quaternary)] hover:text-[var(--text-primary)]'
       >

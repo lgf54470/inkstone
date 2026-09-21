@@ -48,6 +48,8 @@ function PropertiesHeader({ bundle }: { bundle: NotePropertiesBundle }) {
       </button>
       <button
         type='button'
+        aria-expanded={isExpanded}
+        aria-label={t(isExpanded ? 'sidebar.collapse' : 'sidebar.expand')}
         onClick={() => setIsExpanded(!isExpanded)}
         className='p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors'
       >
@@ -93,6 +95,7 @@ function AddPropertyForm({ bundle }: { bundle: NotePropertiesBundle }) {
         </button>
         <button
           type='button'
+          aria-label={t('common.cancel')}
           onClick={() => setIsAddingProperty(false)}
           className="inline-flex h-7 items-center rounded px-2 text-[length:var(--text-11\.5)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
         >

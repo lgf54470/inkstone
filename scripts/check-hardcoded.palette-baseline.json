@@ -16,7 +16,6 @@
   "blog-frontend/src/components/links/links-container.tsx": 1,
   "blog-frontend/src/components/links/links-toolbar.tsx": 10,
   "blog-frontend/src/components/music/MusicCenterModal.tsx": 1,
-  "src/client/components/error-boundary.tsx": 1,
   "src/client/components/form.tsx": 1,
   "src/client/components/primitives.tsx": 1,
   "src/client/components/tag-pill.tsx": 2,

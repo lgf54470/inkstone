@@ -105,6 +105,7 @@ export const InspectorLayers = memo(function InspectorLayers({
                 <div className='hidden group-hover:flex items-center gap-0.5'>
                   <button
                     type='button'
+                    aria-label={t('slides.bring_forward')}
                     onClick={(e) => {
                       e.stopPropagation()
                       onReorderElement(el.id, 'up')
@@ -116,6 +117,7 @@ export const InspectorLayers = memo(function InspectorLayers({
                   </button>
                   <button
                     type='button'
+                    aria-label={t('slides.send_backward')}
                     onClick={(e) => {
                       e.stopPropagation()
                       onReorderElement(el.id, 'down')

@@ -137,6 +137,8 @@ function TagToggle({ expanded, hasChildren, onToggleExpand }: { expanded: boolea
   return (
     <button
       type='button'
+      aria-expanded={expanded}
+      aria-label={t(expanded ? 'sidebar.collapse' : 'sidebar.expand')}
       onClick={(e) => {
         e.stopPropagation()
         onToggleExpand()
@@ -157,6 +159,7 @@ function FolderMoreButton({ moreButtonRef, onMoreClick }: { moreButtonRef: React
     <button
       ref={moreButtonRef}
       type='button'
+      aria-label={t('common.more_actions')}
       onClick={(e) => {
         e.stopPropagation()
         onMoreClick()

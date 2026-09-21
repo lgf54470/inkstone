@@ -166,6 +166,7 @@ function ShareTagChips({ tags, onRemove }: { tags: string[]; onRemove: (tag: str
           <span>{tag}</span>
           <button
             type='button'
+            aria-label={t('common.remove_value0', { value0: tag })}
             onClick={() => void onRemove(tag)}
             className='text-[var(--text-quaternary)] hover:text-[var(--danger)]'
           >
@@ -200,6 +201,7 @@ function ShareTagInput({ value, onChange, onAdd }: {
       />
       <button
         type='button'
+        aria-label={t('common.add')}
         onClick={() => void onAdd(value)}
         className='flex size-6 items-center justify-center rounded-[var(--r-sm)] bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-contrast)] transition-colors'
       >

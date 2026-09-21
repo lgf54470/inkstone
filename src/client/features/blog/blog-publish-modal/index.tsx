@@ -221,7 +221,7 @@ function SelectedTagList({ form }: { form: PublishForm }) {
         >
           <Hash size={10} />
           {tag}
-          <button type='button' onClick={() => handleRemoveTag(tag)} className='hover:text-[var(--text-primary)]'>
+          <button type='button' aria-label={t('common.remove_value0', { value0: tag })} onClick={() => handleRemoveTag(tag)} className='hover:text-[var(--text-primary)]'>
             <X size={10} />
           </button>
         </span>

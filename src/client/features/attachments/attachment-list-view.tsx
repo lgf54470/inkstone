@@ -147,6 +147,7 @@ function ListRow(props: ListRowProps) {
         <button
           ref={menu.buttonRef}
           type='button'
+          aria-label={t('common.more_actions')}
           onClick={(e) => {
             e.stopPropagation()
             menu.toggle()

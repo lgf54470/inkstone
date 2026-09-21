@@ -179,6 +179,7 @@ function SearchBox({ search, onSearchChange }: { search: string; onSearchChange:
       {search && (
         <button
           type='button'
+          aria-label={t('common.clear')}
           onClick={() => onSearchChange('')}
           className='absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-[var(--text-quaternary)] hover:text-[var(--text-primary)] cursor-pointer'
         >
@@ -225,6 +226,8 @@ function ViewModeToggle({ viewMode, onViewModeChange }: { viewMode: 'grid' | 'li
       <Tooltip label={t('attachments.view_grid')}>
         <button
           type='button'
+          aria-label={t('attachments.view_grid')}
+          aria-pressed={viewMode === 'grid'}
           onClick={() => onViewModeChange('grid')}
           className={cn('rounded p-1 text-[var(--text-tertiary)] transition-colors cursor-pointer', viewMode === 'grid' ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-[var(--shadow-xs)]' : 'hover:text-[var(--text-primary)]')}
         >
@@ -234,6 +237,8 @@ function ViewModeToggle({ viewMode, onViewModeChange }: { viewMode: 'grid' | 'li
       <Tooltip label={t('attachments.view_list')}>
         <button
           type='button'
+          aria-label={t('attachments.view_list')}
+          aria-pressed={viewMode === 'list'}
           onClick={() => onViewModeChange('list')}
           className={cn('rounded p-1 text-[var(--text-tertiary)] transition-colors cursor-pointer', viewMode === 'list' ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-[var(--shadow-xs)]' : 'hover:text-[var(--text-primary)]')}
         >

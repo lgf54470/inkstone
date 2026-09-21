@@ -1367,6 +1367,10 @@ const allowed = new Map([
   ['src/client/components/date-range-popover.tsx', [
     '/** Floating editor for an inclusive date-range filter: pick a start or end endpoint on a mini month calendar, leap to nearby months, apply fixed or rolling quick ranges, or clear the range. */',
   ]],
+  ['src/client/components/error-boundary.tsx', [
+    '// The crash screen is the one place a button has no surrounding scale to match, so it',
+    '// keeps the taller phone-sized box on both breakpoints.',
+  ]],
   ['src/client/components/feedback.tsx', [
     '// Landing focus on the undo action is the keyboard fast-path, but it must never',
     '// interrupt typing, steal from an open dialog, or fight another undo toast.',
@@ -3079,6 +3083,10 @@ const allowed = new Map([
     '// A board answers a right-click on its own surface with the library\'s canvas menu,',
     '// and the full screen overlay is that surface too — it is portaled into this',
     '// subtree, so without this the note\'s menu opens over the one already there.',
+  ]],
+  ['src/client/features/preview/property-row.tsx', [
+    '// The row\'s own label is drawn in the property name cell beside it, so the switch is named by',
+    '// the property it belongs to rather than by a fixed string.',
   ]],
   ['src/client/features/preview/use-bento-slides-blocks.ts', [
     '/** Every edit has reached the note; false while one is still waiting for its write. */',
@@ -6905,6 +6913,19 @@ const allowed = new Map([
   ['tests/board-library-routes.test.ts', [
     '/** A bucket that keeps what it is given, so a test can count the objects it holds. */',
   ]],
+  ['tests/client-raw-controls.test.ts', [
+    '/**\n * SH-49 asked for interactive controls to come from the component system, and for a `div`/`span`\n * with a click handler never to be passed off as one. That guard only read `features/share`, so the\n * shared components every feature uses kept the very shapes it forbade — the hub rows were\n * `div[role=button]` rows, and an account with any tag made the share center\'s own axe pass report\n * `button-name` and `nested-interactive` (SH-93). This reads the whole client tree instead.\n *\n * Three rules, in the order they matter:\n *\n *  1. No `div`/`span` that says `role=\'button\'`. A fake control is wrong wherever it is, so this\n *     applies everywhere, and the handful of exceptions below carry the reason they exist.\n *  2. Every raw `<button>` has to carry an accessible name — `aria-label`, `aria-labelledby`,\n *     `title`, or visible text. This is the `button-name` rule axe applies, read statically, and it\n *     is what the 37 unnamed icon buttons across the app were failing. Names are read from the\n *     element\'s own attributes and its subtree: a name a wrapper component injects, or one spread\n *     in with `{...rest}`, is not something this can see, so an entry is never needed for it — but a\n *     raw button that only *looks* named because of a wrapper is not caught here either. That limit\n *     is the price of not rendering the app; the browser gates read what a real screen reader sees.\n *  3. Inside `src/client/components` — the layer every feature shares — a raw `<button>` needs a\n *     written reason. These are the primitive implementations and the rows and cells whose geometry\n *     the primitives cannot express (a menu row stretches a flexible label between two fixed slots,\n *     a calendar cell is a grid track); the rule\'s job is to keep the next one from arriving\n *     unnoticed, not to relitigate the ones already argued.\n *\n * Features outside that layer are not required to funnel every button through the primitives: that\n * is a per-context judgement (146 files and 397 sites today), and an allowlist of 146 entries would\n * be a graveyard rather than a reason. Rules 1 and 2 are the part that holds for them.\n *\n * Both directions fail throughout: an unlisted file that grows a violation, and an entry for a file\n * whose violation is gone.\n */',
+    '/** Card surfaces that stay one click target while hosting controls of their own. */',
+    '/**\n * The shared layer\'s raw buttons, each with why it is not a `Button`/`IconButton`. `Button` fixes a\n * height and padding per size and wraps its children in one inline-flex span, which is the wrong\n * shape for a row that stretches a label between two fixed slots or for a control drawn as a grid\n * cell; the primitives themselves are the files the components are supposed to come from.\n */',
+    '/** A control a source file writes by hand, and whether it carries a name of its own. */',
+    '/** The attributes written on a JSX element, and whether it spreads any in. */',
+    '/** A literal attribute value, or `null` when it is an expression this cannot evaluate. */',
+    '/**\n * Whether a subtree carries text a person could read as the name. An element inside it is not text\n * (that is an icon), but an expression is: `{t(\'…\')}` and `{name}` are labels, and telling those\n * apart from an icon passed as a variable is not something a static read can do.\n */',
+    '/** Whether a raw `<button>` carries a name: an attribute, or text inside it. */',
+    '/** Every raw button and every fake control the client tree writes by hand. */',
+    '// Only a written-out role: one passed as an expression is read at runtime, and the browser',
+    '// gates are what read it.',
+  ]],
   ['tests/d1-harness.ts', [
     '// D1 rejects a statement that binds more than 100 variables ("too many SQL variables"); the',
     '// in-process sqlite here takes as many as it is given, so a statement that binds one id per note',
@@ -7124,9 +7145,6 @@ const allowed = new Map([
     '// Exclude bots only:',
     '// All disabled:',
     '// With table alias:',
-  ]],
-  ['tests/share-bare-buttons.test.ts', [
-    '/**\n * SH-49: AGENTS.md rule 10 wants every interactive control in the share feature to come from the\n * component system (`components/primitives`, `components/form`, `components/overlay`), and it also\n * forbids imitating a control with a `div`/`span` plus a click handler. SH-33\'s guard already covers\n * the form controls (`input`/`select`/`textarea`); this one covers `button`, where the same rule was\n * being broken unnoticed — a bare `<button>` carries no accessible name of its own, and misses the\n * shared focus ring, hit area, disabled and busy behaviour the components bring.\n *\n * One file is allowed and named: `share-note-submenu.tsx` is the hand-rolled panel a note row\'s\n * Share entry opens. Its rows are not menu rows — `SubmenuList`\'s shared row is 40px tall on phones,\n * under the 44px touch target SH-35 fixed for this panel — and two of its views hold text inputs\n * inside a menu panel, so retiring it is its own change rather than a swap; it is tracked as SH-92\n * in .qoder/improvement/share/plan-freebuff.md. Both directions fail: an unlisted file that grows a\n * bare button, and a listing for a file that no longer needs one.\n */',
   ]],
   ['tests/share-bare-controls.test.ts', [
     '/**\n * SH-33: interactive controls inside the share feature must come from the\n * component system (`components/form`, `components/primitives`), not bare\n * `<input>` markup with hand-written styles. `share-note-submenu.tsx` keeps\n * two embedded search inputs out of this rule for now — they belong to the\n * hand-rolled submenu panel whose dedup is already a registered leftover.\n */',

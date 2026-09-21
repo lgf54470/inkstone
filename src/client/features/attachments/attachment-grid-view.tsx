@@ -218,6 +218,8 @@ function ThumbActions({ file, menu, onToggleStar }: {
       )}
       <button
         type='button'
+        aria-label={t(file.isStarred ? 'attachments.unstar' : 'attachments.star')}
+        aria-pressed={file.isStarred}
         onClick={(e) => {
           e.stopPropagation()
           onToggleStar()
@@ -232,6 +234,7 @@ function ThumbActions({ file, menu, onToggleStar }: {
       <button
         ref={menu.buttonRef}
         type='button'
+        aria-label={t('common.more_actions')}
         onClick={(e) => {
           e.stopPropagation()
           menu.toggle()

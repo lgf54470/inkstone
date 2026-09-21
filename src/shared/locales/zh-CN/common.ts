@@ -1,6 +1,7 @@
 export const messages = {
 'common.about': '约',
 'common.access_control': '访问控制',
+'common.add': '添加',
 'common.access_passcode': '访问口令',
 'common.action_failed': '操作失败',
 'common.backlinks': '反向链接',
@@ -54,6 +55,7 @@ export const messages = {
 'common.product_name': 'Inkstone',
 'common.quote': '引用',
 'common.remove_from_favorites': '取消收藏',
+'common.remove_value0': '移除 {value0}',
 'common.restore': '恢复',
 'common.restore_failed': '恢复失败',
 'common.retry': '重试',

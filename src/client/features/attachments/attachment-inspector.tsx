@@ -297,7 +297,7 @@ function TagsBlock({ file, tags }: { file: AttachmentWithUsage; tags: ReturnType
         {file.tags?.map((tName) => (
           <span key={tName} className='inline-flex items-center gap-1 rounded-full bg-[var(--bg-base)] px-2 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)]'>
             <span>#{tName}</span>
-            <button type='button' onClick={() => void tags.handleRemoveTag(tName)} className='rounded-full text-[var(--text-quaternary)] hover:text-[var(--text-primary)]'>
+            <button type='button' aria-label={t('common.remove_value0', { value0: `#${tName}` })} onClick={() => void tags.handleRemoveTag(tName)} className='rounded-full text-[var(--text-quaternary)] hover:text-[var(--text-primary)]'>
               <X size={10} />
             </button>
           </span>

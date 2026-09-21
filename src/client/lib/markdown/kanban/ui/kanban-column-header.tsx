@@ -104,12 +104,11 @@ export function CollapsedColumn({
   const localizedLabel = formatKanbanGroupLabel(group.groupKey, group.label)
 
   return (
-    <div
+    <button
+      type='button'
       onDragOver={onDragOver}
       onDrop={onDrop}
       onClick={onExpand}
-      role='button'
-      tabIndex={0}
       aria-label={`${t('preview.kanban_expand_column')}: ${localizedLabel}`}
       className={`flex w-10 shrink-0 cursor-pointer flex-col items-center rounded-[var(--r-lg)] border py-3 transition-colors ${
         isDragOver
@@ -126,6 +125,6 @@ export function CollapsedColumn({
       <div className='mt-4 flex flex-1 items-center justify-center [writing-mode:vertical-rl] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>
         {localizedLabel}
       </div>
-    </div>
+    </button>
   )
 }

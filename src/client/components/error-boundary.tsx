@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { CircleAlert } from 'lucide-react'
 import { t } from '../lib/i18n'
+import { Button } from './primitives'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -48,13 +49,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <p className="max-w-80 text-[length:var(--text-12\.5)] leading-relaxed text-[var(--text-tertiary)]">
           {t('app.error_boundary_description')}
         </p>
-        <button
-          type='button'
+        <Button
+          variant='primary'
+          size='sm'
           onClick={this.handleReload}
-          className="mt-2 inline-flex h-9 items-center justify-center rounded-[var(--r-md)] bg-[var(--accent)] px-4 text-[length:var(--text-12\.5)] font-semibold text-white transition-colors hover:bg-[var(--accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
+          // The crash screen is the one place a button has no surrounding scale to match, so it
+          // keeps the taller phone-sized box on both breakpoints.
+          className="mt-2 h-9 px-4 text-[length:var(--text-12\.5)] font-semibold md:h-9 md:px-4 focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
         >
           {t('app.reload')}
-        </button>
+        </Button>
       </div>
     )
   }

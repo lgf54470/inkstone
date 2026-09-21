@@ -95,6 +95,7 @@ function SubitemItemRow({
         </span>
         <button
           type='button'
+          aria-label={t('preview.kanban_delete_subitem')}
           onClick={onDelete}
           className='text-[var(--text-tertiary)] hover:text-[var(--danger)]'
         >
@@ -219,6 +220,7 @@ function ItemTitleCell({
       )}
       <button
         type='button'
+        aria-label={t('preview.kanban_card_details')}
         onClick={onOpenDetail}
         className='ml-auto text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
       >
