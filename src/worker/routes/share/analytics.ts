@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { ShareBreakdownItem, ShareGlobalAnalytics, ShareNoteAnalytics, ShareVisitLog } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
+import { consumeShareReadBudget } from './read-budget'
 import {
   analyticsWindow,
   buildBucketedTimeline,
@@ -79,6 +80,9 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
     const db = c.env.DB
     const userId = c.get('userId')
     const ctx = await analyticsContext(db, c, { userId })
+    // Only the unbounded range is charged: a bounded one fetches a single window of rows,
+    // while `all` summarizes the account's entire history (see consumeShareReadBudget).
+    if (ctx.range === 'all') await consumeShareReadBudget(db, userId)
     const [summaryResult, prevStatsResult, filterStatsResult, recentResult, ...visitResults] = await db.batch([
       shareSummaryStatement(db, userId, ctx.now),
       prevVisitStatsStatement(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause),
@@ -153,6 +157,7 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
     const row = await loadNoteShare(db, userId, noteId)
     if (!row) throw ApiError.notFound('Share or note not found')
     const ctx = await analyticsContext(db, c, { userId, noteId })
+    if (ctx.range === 'all') await consumeShareReadBudget(db, userId)
     const [recentResult, ...visitResults] = await db.batch([
       recentVisitsStatement(db, { userId, noteId, startTs: ctx.startTs, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
       ...visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId, targetId: noteId }, ctx),

@@ -6,6 +6,7 @@ import { escapeLike } from '../../lib/like'
 import { JSON_BODY_LIMITS, clampInt, readOptionalJsonValidated } from '../../lib/request'
 import { requireCurrentPassword } from '../../lib/reauth'
 import { parseBotName } from '../../lib/share-analytics'
+import { consumeShareReadBudget } from './read-budget'
 import { shareVisitWipeSchema } from './schemas'
 
 interface VisitLogRow {
@@ -54,6 +55,7 @@ export function registerShareVisitsRoutes(shareManageRoutes: Hono<AppBindings>):
 function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): void {
   shareManageRoutes.get('/visits', async (c) => {
     const userId = c.get('userId')
+    await consumeShareReadBudget(c.env.DB, userId)
     const page = clampInt(c.req.query('page'), VISITS_PAGE_DEFAULT, VISITS_PAGE_MAX, VISITS_PAGE_DEFAULT)
     const limit = clampInt(c.req.query('limit'), VISITS_LIMIT_MIN, VISITS_LIMIT_MAX, VISITS_LIMIT_DEFAULT)
     const offset = (page - 1) * limit

@@ -282,6 +282,52 @@ describe('share stats route (SH-72)', () => {
   })
 })
 
+describe('share read budget (SH-81)', () => {
+  /** Puts the account's read key over the line, the way a runaway loop would. */
+  async function overspendReadBudget(db: D1Shim): Promise<void> {
+    await runSql(
+      db,
+      `INSERT INTO login_attempts (key, fails, last_fail_at, locked_until) VALUES (?1, ?2, ?3, ?4)`,
+      `share-read:${USER}`, 200, Date.now(), Date.now() + 60_000,
+    )
+  }
+
+  it('answers the unbounded analytics and log reads with 429 once the account is over budget', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { id: 'rb-1', title: 'Budgeted' })
+    await seedShare(db, { note_id: n1, slug: 'rb-1' })
+    await overspendReadBudget(db)
+    const app = makeApp()
+
+    for (const path of [
+      '/api/share/analytics/global?range=all',
+      '/api/share/analytics/note/rb-1?range=all',
+      '/api/share/visits',
+    ]) {
+      const res = await request(app, path)
+      expect(res.status).toBe(429)
+      const body = await res.json()
+      expect(body.error.code).toBe('too_many_attempts')
+      expect(body.error.details.retryAfter).toBeGreaterThan(0)
+    }
+  })
+
+  it('leaves an on-budget read untouched', async () => {
+    await makeDb()
+
+    const res = await request(makeApp(), '/api/share/analytics/global?range=all')
+    expect(res.status).toBe(200)
+  })
+
+  it('never charges a bounded range, which only fetches one window of rows', async () => {
+    const db = await makeDb()
+    await overspendReadBudget(db)
+
+    const res = await request(makeApp(), '/api/share/analytics/global?range=30d')
+    expect(res.status).toBe(200)
+  })
+})
+
 describe('share note visit stats query (SH-73)', () => {
   it('scopes the per-note stats to the owner and searches an index instead of the table', async () => {
     const db = await makeDb()

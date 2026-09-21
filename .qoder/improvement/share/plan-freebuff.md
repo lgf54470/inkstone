@@ -53,8 +53,8 @@
 | 23 | C | SH-83 | UV 去重口径（IP+日盐 / 同 NAT 合并 / 跨日重复）不可见 | 极小 | ✅ | 530cc26c |
 | 24 | D | SH-72 | 打开分享中心固定 4 请求 / ≈15 条 D1 语句 | 小–中 | ✅ | 704fb03b |
 | 25 | D | SH-73 | 列表访客统计缺覆盖索引 + tags `LIKE '%"x"%'` | 中 | ✅ | 155e8c45 |
-| 26 | D | SH-74 | `range=all` 无节流无缓存 | 中 | ✅ | ⏳ 下项回填 |
-| 27 | D | SH-81 | 读侧无限流（分析/日志对已认证会话全开放） | 小–中 | ⬜ | |
+| 26 | D | SH-74 | `range=all` 无节流无缓存 | 中 | ✅ | 439597f1 |
+| 27 | D | SH-81 | 读侧无限流（分析/日志对已认证会话全开放） | 小–中 | ✅ | ⏳ 下项回填 |
 | 28 | D | SH-75 | 全量导出串行分页无进度/无取消/无上限提示 | 小–中 | ⬜ | |
 | 29 | D | SH-76 | `useShareStore.subscribe` 每次写入重建共享 id 快照 | 极小 | ⬜ | |
 | 30 | D | SH-77 | 500 行全量渲染无虚拟化（无规模证据则关闭） | 中 | ⬜ | |
@@ -393,3 +393,16 @@
 - 验证读数：`tests/visit-aggregates.test.ts` **7/7** 绿。
 - 建议（留给下轮，带阈值）：若单账号 `share_visits` 超过约 5 万行且 `range=all` 成为常用视图，再上缓存；届时优先 `caches.default` + `Cache-Control: max-age=60`（key 含 userId / range / 三个过滤开关），并把「最多陈旧 60 s」写进文档；**同时**先落下第 27 项的读侧预算——真正防「单账号自伤」的是它。
 - 局限：① 缓存未落地，本轮把成本「钉住」而不是降低；② 计时来自本地 `node:sqlite`，D1 的引擎与网络不在内，绝对值不可直接当线上读数；③ 未做 `ANALYZE`，规划器行为可能随数据分布变化（与本项断言无关，它只数语句条数）。
+
+### 27 — SH-81 读侧加 per-user 预算（2026-09-21）
+
+- 动机：第 26 项实测到 `range=all` 一次约 **1.25 s CPU**（200k 行），而写入侧有 budget、读侧完全开放——一个卡在重试循环里的会话（或被盗会话）可以只读就把账号配额烧掉。本项补上读侧，复用仓库已有的 `consumeAttemptBudget`（D1 滑窗 + 锁定 + 429 映射），不新造限流器。
+- 改动面（3 文件，恰 1 新增）：
+  - 新增 `routes/share/read-budget.ts`：`consumeShareReadBudget(db, userId)`，键 `share-read:<userId>`，额度 **120 次 / 5 分钟**，越线锁 60 s；`ThrottleError` 统一转 `ApiError(429, 'too_many_attempts', …, { retryAfter })`（与 `lib/reauth.ts` 同一形态）。额度故意宽：打开看板、切区间、翻日志页、切过滤开关各算一次，人手动达不到 120 次/5 分钟，失控循环几秒就到。
+  - `routes/share/analytics.ts`：两个分析端点只在 ** `ctx.range === 'all'` ** 时计费，且都放在「请求已知有效」之后（note 端点在 `loadNoteShare` 通过之后）——不收被拒请求的钱。
+  - `routes/share/visits.ts`：日志分页每次计费（单请求有 LIMIT，无界的是翻页）。
+- **一次被既有门禁纠正的设计错误**（本项最有价值的一段）：最初我把预算加在三条读路径的**入口**，`tests/share-routes.test.ts` 三条 SH-17a 往返数用例立刻红了——`expected 3 to be 1` / `expected 1 to be +0`。原因是 `consumeAttemptBudget` 自身要跑 3 条语句（两次 `assertNotLocked` 串行查询 + 一次 batch），等于给**常用路径**（`range=30d` 的看板打开）凭空加 2–3 次 D1 往返，而它防的是罕见失控——拿常用路径的延迟换罕见滥用是坏交换。改成「只对无界区间计费 + 有效请求才计费」后，那三条既有用例全绿。**它们抓的是真缺陷，不是过时的断言。**
+- 先红后绿：`tests/share-routes.test.ts` 新增 SH-81 三例——① 越线后 `/analytics/global?range=all`、`/analytics/note/:id?range=all`、`/visits` 三者都 429 且带 `details.retryAfter > 0`；② 额度内单次 `range=all` 仍 200；③ **有界区间（`range=30d`）即使已越线也 200**（把「只对无界计费」这条设计决策钉住）。
+- 变异 2 发全杀：M4 去掉 `/visits` 的计费 → 第 ① 例红；M5 把 `if (ctx.range === 'all')` 改成无条件计费 → 第 ③ 例红。
+- 验证读数：`tsc -b --force` exit 0；`tests/share-routes.test.ts` **83/83**；定向 share 相关 **38 文件 / 260 用例**全绿；11 项静态门禁全绿。
+- 局限：① 计费自身要 3 条语句 / 2–3 次往返，在**无界**路径上可忽略（对比 1.25 s），在 `/visits` 上相对成本偏高（该端点单次只取 100 行），若将来发现翻页被误伤，可改成「每 N 页计一次」；② 额度是常量，没有 per-account 覆盖；③ 锁定语义借自登录节流表（`login_attempts`），越线会把该账号的**读**锁 60 s——正常使用到不了，但确实是用户可见的硬拒绝，且没有单独的「读额度」文案；④ 未在真实 D1 上验证 429 的延迟与锁竞争。

@@ -6097,6 +6097,8 @@ const allowed = new Map([
     '// replaces the four and two separate scans the per-metric subqueries made.',
   ]],
   ['src/worker/routes/share/analytics.ts', [
+    '// Only the unbounded range is charged: a bounded one fetches a single window of rows,',
+    '// while `all` summarizes the account\'s entire history (see consumeShareReadBudget).',
     '// The per-day rate gets its own comparison: the same rate over the previous window of the same',
     '// length, so "average per day" answers whether the rate moved, not whether the window grew.',
     '// Equal view counts have no order out of a GROUP BY, so ties break by note id',
@@ -6132,6 +6134,9 @@ const allowed = new Map([
     '// Without the instance secret record no fingerprint rather than fall back to the public date salt,',
     '// and salt per owner so one browser is not linkable across accounts (SH-04).',
     '/* An unparseable referer header simply means "no external referrer". */',
+  ]],
+  ['src/worker/routes/share/read-budget.ts', [
+    '/**\n * The read side of the share center is not free: an unbounded analytics range is\n * summarized in eight passes over the account\'s whole visit history, measured at ~1.25 s\n * of CPU over 200k rows (see the SH-74 note in the ledger). A session stuck in a retry\n * loop — or a stolen session — can therefore burn the account\'s own quota without ever\n * writing anything, which the write-side budget on public visits never sees.\n *\n * The window is deliberately wide: opening the hub, switching ranges, paging the log and\n * toggling filters are all one request each, so a person cannot reach 120 in five minutes,\n * while a runaway loop reaches it in seconds. Expiry follows the primitive it borrows:\n * crossing the budget locks the key for a minute and answers 429 with a retry hint.\n */',
   ]],
   ['src/worker/routes/share/read-results.ts', [
     '// D1 batch() answers with one result object per statement; these unpack them',
@@ -6440,10 +6445,6 @@ const allowed = new Map([
     '/** Furniture that is not a control and is allowed to stay hidden — none of these today. */',
   ]],
   ['tests/share-routes.test.ts', [
-    '// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =',
-    '// one round-trip however many statements ride along. Statements built through',
-    '// the wrapper still execute inside batch without being double-counted.',
-    '// Neither the row query nor the per-note visit stats belong to a counters-only answer.',
     '// The measured plan (bound parameters, as the app sends them) is unchanged by the owner',
     '// predicate: it still searches idx_share_visits_note_time. What this guards is the other',
     '// half of that measurement — the statement stays index-served and never fans out into a',
