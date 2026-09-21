@@ -1,133 +1,11 @@
 import { Hono, type Context } from 'hono'
 import type { DemoState } from '../../state'
-import type { ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareStaleLinks, ShareTimelinePoint, ShareTimelineRange, ShareVisitLog, ShareVisitsResponse } from '@shared/types'
+import type { ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSession, ShareSessionsResponse, ShareStaleLinks, ShareTimelinePoint, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import { SESSION_GAP_MS } from '@shared/visitor-session'
 import { apiError, jsonBody } from '../helpers/info'
 import { EXPIRING_SOON_DAYS } from '@shared/constants'
 import { STALE_LINK_DEFAULT_DAYS } from '@shared/user-settings'
-import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED } from '@shared/share-channel'
-
-const SHARE_TOP_COUNTRIES = [
-  { name: 'US', count: 120, percentage: 30 },
-  { name: 'CN', count: 95, percentage: 24 },
-  { name: 'JP', count: 60, percentage: 15 },
-  { name: 'DE', count: 40, percentage: 10 },
-  { name: 'GB', count: 32, percentage: 8 },
-]
-
-const SHARE_TOP_REFERRERS = [
-  { name: 'Direct', count: 180, percentage: 45 },
-  { name: 'x.com', count: 95, percentage: 24 },
-  { name: 'github.com', count: 62, percentage: 16 },
-  { name: 'google.com', count: 40, percentage: 10 },
-]
-
-const SHARE_DEVICES = [
-  { name: 'Desktop', count: 240, percentage: 60 },
-  { name: 'Mobile', count: 140, percentage: 35 },
-  { name: 'Tablet', count: 17, percentage: 5 },
-]
-
-const SHARE_OS_LIST = [
-  { name: 'macOS', count: 160, percentage: 40 },
-  { name: 'Windows', count: 120, percentage: 30 },
-  { name: 'iOS', count: 80, percentage: 20 },
-  { name: 'Android', count: 37, percentage: 10 },
-]
-
-/**
- * The channel split of the demo dashboard: a real marker (the newsletter copies), the visits with
- * no marker, and the ones whose marker was refused — the last row exists because the real
- * dashboard has it, and a demo that hides it would misrepresent what switching the feature on does.
- */
-const SHARE_CHANNELS = [
-  { name: CHANNEL_UNMARKED, count: 240, percentage: 60 },
-  { name: 'newsletter', count: 120, percentage: 30 },
-  { name: CHANNEL_UNRECOGNIZED, count: 40, percentage: 10 },
-]
-
-const SHARE_BROWSERS = [
-  { name: 'Chrome', count: 210, percentage: 53 },
-  { name: 'Safari', count: 110, percentage: 28 },
-  { name: 'Firefox', count: 45, percentage: 11 },
-  { name: 'Edge', count: 32, percentage: 8 },
-]
-
-type ShareVisitSample = Omit<ShareVisitLog, 'visitedAt'> & { offsetMs: number }
-
-const SHARE_VISIT_SAMPLES: ShareVisitSample[] = [
-  {
-    id: 1,
-    noteId: 'demo-note-1',
-    noteTitle: 'Getting Started with Inkstone',
-    slug: 'welcome-guide',
-    offsetMs: 1000 * 60 * 5,
-    country: 'US',
-    region: 'California',
-    city: 'San Francisco',
-    referrer: 'https://x.com',
-    referrerHost: 'x.com',
-    deviceType: 'desktop',
-    os: 'macOS',
-    browser: 'Chrome',
-    isBot: false,
-    visitorFp: 'a1b2c3d4',
-    channel: 'newsletter',
-  },
-  {
-    id: 2,
-    noteId: 'demo-note-1',
-    noteTitle: 'Getting Started with Inkstone',
-    slug: 'welcome-guide',
-    offsetMs: 1000 * 60 * 25,
-    country: 'CN',
-    region: 'Beijing',
-    city: 'Beijing',
-    referrer: null,
-    referrerHost: null,
-    deviceType: 'mobile',
-    os: 'iOS',
-    browser: 'Safari',
-    isBot: false,
-    visitorFp: 'e5f6g7h8',
-  },
-  {
-    id: 3,
-    noteId: 'demo-note-2',
-    noteTitle: 'Architecture Overview',
-    slug: 'arch-overview',
-    offsetMs: 1000 * 60 * 60,
-    country: 'US',
-    region: null,
-    city: null,
-    referrer: 'https://google.com',
-    referrerHost: 'google.com',
-    deviceType: 'desktop',
-    os: 'Linux',
-    browser: 'Googlebot',
-    isBot: true,
-    botName: 'Googlebot',
-    visitorFp: 'bot-google-1',
-  },
-  {
-    id: 4,
-    noteId: 'demo-note-2',
-    noteTitle: 'Architecture Overview',
-    slug: 'arch-overview',
-    offsetMs: 1000 * 60 * 120,
-    country: 'CN',
-    region: 'Shanghai',
-    city: 'Shanghai',
-    referrer: 'https://inkstone.app/editor',
-    referrerHost: 'inkstone.app',
-    deviceType: 'desktop',
-    os: 'macOS',
-    browser: 'Chrome',
-    isBot: false,
-    isOwner: true,
-    isSelfReferrer: true,
-    visitorFp: 'owner-fp-1',
-  },
-]
+import { SHARE_BROWSERS, SHARE_CHANNELS, SHARE_DEVICES, SHARE_OS_LIST, SHARE_TOP_COUNTRIES, SHARE_TOP_REFERRERS, SHARE_VISIT_SAMPLES } from './share-fixtures'
 
 function shareTimeline(now: number, counts: [number, number][]): ShareTimelinePoint[] {
   return counts.map(([views, visitors], index) => ({
@@ -425,6 +303,35 @@ function listShareVisits(c: Context): Response {
   return c.json(visitsRes)
 }
 
+/**
+ * The demo's session view: the same sample rows the log lists, folded the way the worker folds
+ * them (same fingerprint, within the gap, same UTC day), so the panel's empty, single-session and
+ * multi-session states can all be seen without a spent history.
+ */
+function listShareSessions(c: Context): Response {
+  const now = Date.now()
+  const sessions: ShareSession[] = []
+  for (const sample of SHARE_VISIT_SAMPLES) {
+    const visitedAt = now - sample.offsetMs
+    const fingerprint = sample.visitorFp ?? ''
+    const last = sessions[sessions.length - 1]
+    const sameSitting = last
+      && last.fingerprint === fingerprint
+      && visitedAt - last.lastSeenAt <= SESSION_GAP_MS
+    if (!sameSitting) sessions.push({ fingerprint, startedAt: visitedAt, lastSeenAt: visitedAt, visits: 1, notes: [] })
+    const session = sessions[sessions.length - 1]
+    session.lastSeenAt = Math.max(session.lastSeenAt, visitedAt)
+    const note = session.notes.find((candidate) => candidate.noteId === sample.noteId)
+    if (note) {
+      note.visits += 1
+    } else {
+      session.notes.push({ noteId: sample.noteId, noteTitle: sample.noteTitle ?? null, slug: sample.slug, visits: 1 })
+    }
+  }
+  const res: ShareSessionsResponse = { sessions, nextCursor: null, limit: 25 }
+  return c.json(res)
+}
+
 async function clearShareVisits(c: Context, state: DemoState): Promise<Response> {
   if ((c.req.query('type') || 'all') === 'all') {
     const body = await jsonBody(c.req.raw)
@@ -465,6 +372,7 @@ export function registerShareRoutes(app: Hono, state: DemoState): void {
   }))
   app.get('/api/share', (c) => listShares(c, state))
   app.get('/api/share/visits', listShareVisits)
+  app.get('/api/share/sessions', (c) => listShareSessions(c))
   app.delete('/api/share/visits', (c) => clearShareVisits(c, state))
   app.post('/api/share/batch', (c) => batchShareAction(c, state))
 }

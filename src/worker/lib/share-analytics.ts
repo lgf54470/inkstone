@@ -111,6 +111,18 @@ export interface ShareFilterOptions {
   excludeOwner?: boolean
 }
 
+/**
+ * The log table labels a visitor by the head of its fingerprint and nothing more; the stored digest
+ * is a pseudonymous identifier, so only this much of it is ever allowed to leave the worker. Both
+ * surfaces that show a fingerprint — the log rows and the session view — read this one number, so
+ * the same visit cannot be labelled two different ways depending on which panel is open.
+ */
+export const VISITOR_FP_DISPLAY_CHARS = 8
+
+export function publicVisitorFingerprint(digest: string | null): string {
+  return digest ? digest.slice(0, VISITOR_FP_DISPLAY_CHARS) : ''
+}
+
 export function buildVisitFilterSql(filters: ShareFilterOptions, alias = ''): string {
   const prefix = alias ? `${alias}.` : ''
   const parts: string[] = []
@@ -332,7 +344,7 @@ export function getRangeStartTimestamp(range: ShareTimelineRange, now: number): 
   return 0
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000
+export const DAY_MS = 24 * 60 * 60 * 1000
 const SHARE_ANALYTICS_RANGES: readonly string[] = ['24h', '7d', '30d', 'all']
 
 // An unknown range is a client bug, not a request for the whole table: 30d is

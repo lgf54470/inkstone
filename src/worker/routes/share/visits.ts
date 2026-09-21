@@ -5,7 +5,7 @@ import { ApiError } from '../../lib/errors'
 import { escapeLike } from '../../lib/like'
 import { JSON_BODY_LIMITS, clampInt, readOptionalJsonValidated } from '../../lib/request'
 import { requireCurrentPassword } from '../../lib/reauth'
-import { parseBotName } from '../../lib/share-analytics'
+import { parseBotName, publicVisitorFingerprint } from '../../lib/share-analytics'
 import { consumeShareReadBudget } from './read-budget'
 import { shareVisitWipeSchema } from './schemas'
 
@@ -42,11 +42,6 @@ const VISITS_LIMIT_MAX = 100
 const VISITS_LIMIT_DEFAULT = 50
 const CLEANUP_DAYS_DEFAULT = 30
 const CLEANUP_DAYS_PATTERN = /^\d+$/
-
-// The log table labels a visitor by the head of its fingerprint and nothing more;
-// the stored digest is a pseudonymous identifier, so only this much of it is ever
-// allowed to leave the worker.
-const VISITOR_FP_DISPLAY_CHARS = 8
 
 export function registerShareVisitsRoutes(shareManageRoutes: Hono<AppBindings>): void {
   registerShareVisitsListRoute(shareManageRoutes)
@@ -217,7 +212,7 @@ function toVisitLogRow(r: VisitLogRow): ShareVisitLog {
     deviceType: r.device_type,
     os: r.os,
     browser: r.browser,
-    visitorFp: r.visitor_fp ? r.visitor_fp.slice(0, VISITOR_FP_DISPLAY_CHARS) : null,
+    visitorFp: r.visitor_fp ? publicVisitorFingerprint(r.visitor_fp) : null,
     isBot: r.is_bot === 1,
     isSelfReferrer: r.is_self_referrer === 1,
     isOwner: r.is_owner === 1,

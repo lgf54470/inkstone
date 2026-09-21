@@ -13,19 +13,22 @@ import {
     User,
 } from 'lucide-react'
 import { useRef, useState } from 'react'
-import type { ShareVisitsResponse } from '@shared/types'
+import type { ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { Menu, Modal, type MenuItem } from '../../components/overlay'
 import { Input, Segmented } from '../../components/form'
 import { Button, IconButton } from '../../components/primitives'
 import { formatNumber, relativeTime } from '../../lib/time'
 import { t, useLocale } from '../../lib/i18n'
-import { countryFlag, countryNameLocalized, localizeEnvName } from './share-helpers'
+import { countryFlag, countryNameLocalized, localizeEnvName, rangeOptions, type VisitFilter } from './share-helpers'
+import { ShareSessionsPanel } from './share-sessions-panel'
+import { useShareSessions } from './use-share-sessions'
 import type { useShareVisitLogs } from './use-share-visit-logs-modal'
 import { useShareVisitLogs as useVisitLogs } from './use-share-visit-logs-modal'
 
 const MODAL_WIDTH = 1050
 
 type LogsBundle = ReturnType<typeof useShareVisitLogs>
+type SessionsBundle = ReturnType<typeof useShareSessionsView>
 
 export function ShareVisitLogsModal({
   open,
@@ -37,6 +40,7 @@ export function ShareVisitLogsModal({
   initialNoteId?: string
 }) {
   const bundle = useVisitLogs(open, initialNoteId)
+  const sessions = useShareSessionsView(open)
   return (
     <Modal
       open={open}
@@ -56,18 +60,43 @@ export function ShareVisitLogsModal({
       width={MODAL_WIDTH}
     >
       <div className='flex flex-col gap-3'>
-        <VisitLogsToolbar bundle={bundle} />
-        <ExportProgressRow progress={bundle.exportProgress} />
-        <LogsTable bundle={bundle} />
-        {/* The table lists fingerprints, not people: the same visitor counts once per UTC day, and
-            everyone behind one address shares one. Saying so is what keeps a UV number readable. */}
-        <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-          {t('share.visitor_count_note')}
-        </p>
-        {bundle.data && bundle.data.totalPages > 1 && <PaginationFooter bundle={bundle} />}
+        <VisitLogsToolbar bundle={bundle} sessions={sessions} />
+        {sessions.mode === 'rows' ? (
+          <>
+            <ExportProgressRow progress={bundle.exportProgress} />
+            <LogsTable bundle={bundle} />
+            {/* The table lists fingerprints, not people: the same visitor counts once per UTC day, and
+                everyone behind one address shares one. Saying so is what keeps a UV number readable. */}
+            <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+              {t('share.visitor_count_note')}
+            </p>
+            {bundle.data && bundle.data.totalPages > 1 && <PaginationFooter bundle={bundle} />}
+          </>
+        ) : (
+          <ShareSessionsPanel bundle={sessions} />
+        )}
       </div>
     </Modal>
   )
+}
+
+/**
+ * The session view's own state: which mode the panel is in, the window it covers, and the traffic
+ * filter it asks for (ADR-0003). It is deliberately separate from the log's filter, which speaks a
+ * vocabulary sessions cannot express — "bots only" and "the author only" are not things a visitor's
+ * sittings can be narrowed to, and quietly substituting another filter would misreport the range.
+ */
+function useShareSessionsView(open: boolean) {
+  const [mode, setMode] = useState<'rows' | 'sessions'>('rows')
+  const [range, setRange] = useState<ShareTimelineRange>('30d')
+  const [excludeReal, setExcludeReal] = useState(true)
+  const filters = {
+    excludeBots: excludeReal,
+    excludeSelf: excludeReal,
+    excludeOwner: excludeReal,
+  }
+  const bundle = useShareSessions({ open: open && mode === 'sessions', range, filters })
+  return { ...bundle, mode, setMode, range, setRange, excludeReal, setExcludeReal }
 }
 
 /**
@@ -84,50 +113,106 @@ function ExportProgressRow({ progress }: { progress: LogsBundle['exportProgress'
   )
 }
 
-function VisitLogsToolbar({ bundle }: { bundle: LogsBundle }) {
-  const { filter, handleFilterChange, isLoading, isExporting, isCleaning, data, handleExport, handleClean, search, setSearch, handleSearchSubmit, fetchVisits, page } = bundle
+function VisitLogsToolbar({ bundle, sessions }: { bundle: LogsBundle; sessions: SessionsBundle }) {
+  const isRows = sessions.mode === 'rows'
   return (
     <div className='flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2.5'>
-      <div className='flex items-center gap-1'>
+      <div className='flex flex-wrap items-center gap-1.5'>
         <Segmented
           size='sm'
-          label={t('share.filter_traffic_title')}
-          value={filter}
-          onChange={handleFilterChange}
+          label={t('share.view_mode_label')}
+          value={sessions.mode}
+          onChange={(value) => sessions.setMode(value as 'rows' | 'sessions')}
           options={[
-            { value: 'all', label: t('share.filter_all_traffic') },
-            { value: 'real', label: t('share.filter_real_only') },
-            { value: 'bot', label: t('share.filter_bot_only') },
-            { value: 'owner', label: t('share.filter_owner_only') },
+            { value: 'rows', label: t('share.view_logs') },
+            { value: 'sessions', label: t('share.view_sessions') },
           ]}
         />
+        {isRows ? <RowFilterSwitch bundle={bundle} /> : <SessionFilterSwitch sessions={sessions} />}
       </div>
-
       <div className='flex items-center gap-2'>
-        <SearchBox value={search} onChange={setSearch} onSubmit={handleSearchSubmit} />
-
-        <Button
-          size='sm'
-          variant='secondary'
-          icon={<Download size={12} />}
-          onClick={() => void handleExport()}
-          disabled={!data || data.visits.length === 0 || isExporting}
-        >
-          {t('share.export_csv')}
-        </Button>
-
-        <CleanLogsMenu isCleaning={isCleaning} onClean={handleClean} />
-
-        <IconButton
-          size='sm'
-          label={t('common.refresh')}
-          onClick={() => void fetchVisits(page, filter, search)}
-          disabled={isLoading}
-        >
-          <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
-        </IconButton>
+        {isRows ? <RowActions bundle={bundle} /> : <SessionActions sessions={sessions} />}
       </div>
     </div>
+  )
+}
+
+/**
+ * The row vocabulary is four classes (all, real, bots, the author), and search and CSV export only
+ * mean anything for rows — which is exactly why the two modes each render their own controls
+ * instead of one set that would be dead half the time. Sessions cannot be searched or exported, and
+ * "bots only" is not something a visitor's sittings can be narrowed to.
+ */
+function RowFilterSwitch({ bundle }: { bundle: LogsBundle }) {
+  return (
+    <Segmented
+      size='sm'
+      label={t('share.filter_traffic_title')}
+      value={bundle.filter}
+      onChange={(value) => bundle.handleFilterChange(value as VisitFilter)}
+      options={[
+        { value: 'all', label: t('share.filter_all_traffic') },
+        { value: 'real', label: t('share.filter_real_only') },
+        { value: 'bot', label: t('share.filter_bot_only') },
+        { value: 'owner', label: t('share.filter_owner_only') },
+      ]}
+    />
+  )
+}
+
+function RowActions({ bundle }: { bundle: LogsBundle }) {
+  const { isLoading, isExporting, isCleaning, data, handleExport, handleClean, search, setSearch, handleSearchSubmit, fetchVisits, page, filter } = bundle
+  return (
+    <>
+      <SearchBox value={search} onChange={setSearch} onSubmit={handleSearchSubmit} />
+      <Button
+        size='sm'
+        variant='secondary'
+        icon={<Download size={12} />}
+        onClick={() => void handleExport()}
+        disabled={!data || data.visits.length === 0 || isExporting}
+      >
+        {t('share.export_csv')}
+      </Button>
+      <CleanLogsMenu isCleaning={isCleaning} onClean={handleClean} />
+      <RefreshButton isLoading={isLoading} onClick={() => void fetchVisits(page, filter, search)} />
+    </>
+  )
+}
+
+function SessionFilterSwitch({ sessions }: { sessions: SessionsBundle }) {
+  return (
+    <>
+      <Segmented
+        size='sm'
+        label={t('share.sessions_filter_label')}
+        value={sessions.excludeReal ? 'real' : 'all'}
+        onChange={(value) => sessions.setExcludeReal(value === 'real')}
+        options={[
+          { value: 'real', label: t('share.filter_real_only') },
+          { value: 'all', label: t('share.filter_all_traffic') },
+        ]}
+      />
+      <Segmented
+        size='sm'
+        label={t('share.sessions_range_label')}
+        value={sessions.range}
+        onChange={(value) => sessions.setRange(value as ShareTimelineRange)}
+        options={rangeOptions().map((option) => ({ value: option.value, label: option.label }))}
+      />
+    </>
+  )
+}
+
+function SessionActions({ sessions }: { sessions: SessionsBundle }) {
+  return <RefreshButton isLoading={sessions.isLoading} onClick={sessions.reload} />
+}
+
+function RefreshButton({ isLoading, onClick }: { isLoading: boolean; onClick: () => void }) {
+  return (
+    <IconButton size='sm' label={t('common.refresh')} onClick={onClick} disabled={isLoading}>
+      <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+    </IconButton>
   )
 }
 

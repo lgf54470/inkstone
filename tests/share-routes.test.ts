@@ -924,6 +924,160 @@ describe('share visits route (real D1)', () => {
   })
 })
 
+/**
+ * ADR-0003: the session view folds one visitor's visits into sittings. Its boundaries are the part
+ * that has to be exact — a gap, a UTC day, and a page edge are each a place where a wrong operator
+ * would silently produce a different story about what a visitor read.
+ */
+describe('share visitor sessions (ADR-0003)', () => {
+  const DAY = 24 * 60 * 60 * 1000
+  const GAP = 30 * 60 * 1000
+
+  /** A moment inside the current UTC day, so a +2×gap window cannot cross midnight by accident. */
+  function insideToday(offsetMs: number): number {
+    return Math.floor(Date.now() / DAY) * DAY + offsetMs
+  }
+
+  async function seedVisits(db: D1Shim, rows: Array<Record<string, unknown>>): Promise<string> {
+    const noteId = await seedNote(db, { title: 'Read' })
+    await seedShare(db, { note_id: noteId, slug: 's-1' })
+    for (const row of rows) await seedVisit(db, { note_id: noteId, slug: 's-1', ...row })
+    return noteId
+  }
+
+  it('starts a new session one millisecond past the gap, and only there', async () => {
+    const db = await makeDb()
+    const base = insideToday(60_000)
+    await seedVisits(db, [
+      { visitor_fp: 'fp-a', visited_at: base },
+      { visitor_fp: 'fp-a', visited_at: base + GAP },
+      { visitor_fp: 'fp-a', visited_at: base + 2 * GAP + 1 },
+    ])
+
+    const body = await (await request(makeApp(), '/api/share/sessions?range=all')).json()
+
+    // Newest first: the lone trailing visit is its own session, the two on the boundary are one.
+    expect(body.sessions.map((session: { visits: number }) => session.visits)).toEqual([1, 2])
+  })
+
+  it('never merges two visits that fall on either side of UTC midnight', async () => {
+    const db = await makeDb()
+    const midnight = Math.floor(Date.now() / DAY) * DAY
+    await seedVisits(db, [
+      { visitor_fp: 'fp-a', visited_at: midnight - 60_000 },
+      { visitor_fp: 'fp-a', visited_at: midnight + 60_000 },
+    ])
+
+    const body = await (await request(makeApp(), '/api/share/sessions?range=all')).json()
+
+    // Two minutes apart, one fingerprint — and still two sessions: the salt rotates at midnight, so
+    // the two rows were never the same visitor as far as the data is concerned.
+    expect(body.sessions).toHaveLength(2)
+    expect(body.sessions.every((session: { visits: number }) => session.visits === 1)).toBe(true)
+    expect(body.sessions[0].fingerprint).toBe(body.sessions[1].fingerprint)
+  })
+
+  it('keeps two fingerprints apart and lists each session\u2019s notes in reading order', async () => {
+    const db = await makeDb()
+    const first = await seedNote(db, { title: 'First' })
+    const second = await seedNote(db, { title: 'Second' })
+    await seedShare(db, { note_id: first, slug: 's-1' })
+    const base = insideToday(60_000)
+    await seedVisit(db, { note_id: first, slug: 's-1', visitor_fp: 'fp-a', visited_at: base })
+    await seedVisit(db, { note_id: first, slug: 's-1', visitor_fp: 'fp-a', visited_at: base + 1000 })
+    await seedVisit(db, { note_id: second, slug: 's-1', visitor_fp: 'fp-a', visited_at: base + 2000 })
+    await seedVisit(db, { note_id: second, slug: 's-1', visitor_fp: 'fp-b', visited_at: base + 3000 })
+
+    const body = await (await request(makeApp(), '/api/share/sessions?range=all')).json()
+
+    expect(body.sessions).toHaveLength(2)
+    const [newer, older] = body.sessions
+    expect(newer.notes).toHaveLength(1)
+    expect(older.visits).toBe(3)
+    expect(older.notes.map((note: { noteId: string; visits: number }) => [note.noteId, note.visits])).toEqual([
+      [first, 2],
+      [second, 1],
+    ])
+    expect(older.notes[0].noteTitle).toBe('First')
+  })
+
+  it('applies the same traffic filters the log panel applies', async () => {
+    const db = await makeDb()
+    const noteId = await seedNote(db, {})
+    await seedShare(db, { note_id: noteId, slug: 's-1' })
+    await seedVisit(db, { note_id: noteId, slug: 's-1', visitor_fp: 'fp-bot', visited_at: insideToday(60_000), is_bot: true })
+    const app = makeApp()
+
+    const quiet = await (await request(app, '/api/share/sessions?range=all')).json()
+    const loud = await (await request(app, '/api/share/sessions?range=all&excludeBots=false')).json()
+
+    expect(quiet.sessions).toEqual([])
+    expect(loud.sessions).toHaveLength(1)
+  })
+
+  it('sends the fingerprint head and never the stored digest', async () => {
+    const db = await makeDb()
+    const digest = 'abcdef0123456789abcdef0123456789'
+    await seedVisits(db, [{ visitor_fp: digest, visited_at: insideToday(60_000) }])
+
+    const body = await (await request(makeApp(), '/api/share/sessions?range=all')).json()
+
+    expect(body.sessions[0].fingerprint).toBe(digest.slice(0, 8))
+    expect(JSON.stringify(body)).not.toContain(digest)
+  })
+
+  it('pages whole sessions without repeating or dropping one', async () => {
+    const db = await makeDb()
+    const base = insideToday(60_000)
+    await seedVisits(db, [
+      { visitor_fp: 'fp-a', visited_at: base },
+      { visitor_fp: 'fp-b', visited_at: base + 1000 },
+      { visitor_fp: 'fp-c', visited_at: base + 2000 },
+    ])
+    const app = makeApp()
+
+    const pageOne = await (await request(app, '/api/share/sessions?range=all&limit=2')).json()
+    expect(pageOne.sessions).toHaveLength(2)
+    expect(pageOne.nextCursor).toBeTruthy()
+    const pageTwo = await (await request(app, `/api/share/sessions?range=all&limit=2&cursor=${encodeURIComponent(pageOne.nextCursor)}`)).json()
+
+    const seen = [...pageOne.sessions, ...pageTwo.sessions].map((session: { startedAt: number }) => session.startedAt)
+    expect(pageTwo.nextCursor).toBeNull()
+    expect(new Set(seen).size).toBe(3)
+    expect(seen).toEqual([...seen].sort((a, b) => b - a))
+  })
+
+  it('rejects a cursor it did not mint instead of quietly answering the first page', async () => {
+    const db = await makeDb()
+    await seedVisits(db, [{ visitor_fp: 'fp-a', visited_at: insideToday(60_000) }])
+
+    const res = await request(makeApp(), '/api/share/sessions?range=all&cursor=not-a-cursor')
+
+    expect(res.status).toBe(400)
+  })
+
+  it('groups only visits that carry a fingerprint, and says so by leaving the rest out', async () => {
+    const db = await makeDb()
+    const noteId = await seedNote(db, {})
+    await seedShare(db, { note_id: noteId, slug: 's-1' })
+    // No instance secret means no fingerprint is minted: the row is still logged, and it belongs to
+    // no session — the two views are allowed to differ, and this is the case where they do.
+    await runSql(
+      db,
+      `INSERT INTO share_visits (user_id, note_id, slug, visited_at, visitor_fp, device_type, os, browser, is_bot, is_self_referrer, is_owner)
+       VALUES (?1, ?2, 's-1', ?3, NULL, 'desktop', 'os', 'browser', 0, 0, 0)`,
+      USER, noteId, insideToday(60_000),
+    )
+    const app = makeApp()
+
+    const sessions = await (await request(app, '/api/share/sessions?range=all')).json()
+    const logs = await (await request(app, '/api/share/visits')).json()
+
+    expect(sessions.sessions).toEqual([])
+    expect(logs.visits).toHaveLength(1)
+  })
+})
+
 describe('visit rows of deleted notes report a missing title (SH-34)', () => {
   it('returns null noteTitle in the visits list, recent visits and top notes', async () => {
     const db = await makeDb()

@@ -1484,11 +1484,15 @@ const allowed = new Map([
     '// demo keeps no storage keys, so `format` only names the download extension.',
     '// Same lens the single-track PATCH uses, so unknown tag ids are dropped in one place.',
   ]],
-  ['src/client/demo/backend/routes/share.ts', [
+  ['src/client/demo/backend/routes/share-fixtures.ts', [
+    '/**\n * The demo backend\'s share fixtures. Kept apart from the route handlers because this is data the\n * routes read, not logic they run: the constants below describe one plausible month of traffic and\n * nothing here branches.\n */',
     '/**\n * The channel split of the demo dashboard: a real marker (the newsletter copies), the visits with\n * no marker, and the ones whose marker was refused — the last row exists because the real\n * dashboard has it, and a demo that hides it would misrepresent what switching the feature on does.\n */',
+  ]],
+  ['src/client/demo/backend/routes/share.ts', [
     '/**\n * The hygiene card on the demo dashboard, from the demo\'s own share rows: the links whose last\n * visit is older than the shipped threshold, plus every link nobody has opened yet.\n */',
     '// The remaining categories read the same rules as the worker\'s list query, so the',
     '// demo build does not quietly return everything for a filter it never learned.',
+    '/**\n * The demo\'s session view: the same sample rows the log lists, folded the way the worker folds\n * them (same fingerprint, within the gap, same UTC day), so the panel\'s empty, single-session and\n * multi-session states can all be seen without a spent history.\n */',
   ]],
   ['src/client/demo/blog-smoke.test.ts', [
     '// Every /api/blog/* route the client calls via src/client/lib/api/share.ts, with',
@@ -3265,6 +3269,18 @@ const allowed = new Map([
     '// The plate stays white in both themes: the QR itself renders on fixed',
     '// white (QR_BG_COLOR), and a dark frame would cut into its quiet zone.',
   ]],
+  ['src/client/features/share/share-sessions-panel.tsx', [
+    '/**\n * One visitor\'s sittings, newest first (ADR-0003). A real table rather than rows of divs, because\n * the point of this view is the comparison across columns — when it started, how long it ran, how\n * many visits, and what was read in between. The note list carries the reading order, which is the\n * question this panel exists to answer.\n */',
+    '/* What a session is, and what it is not: one fingerprint is not one person, and the salt\n          rotates at UTC midnight, so a sitting can never span two days. */',
+    '/* The path is the stable half: a title is renamed, and a deleted note keeps only\n                  its slug, which is what the log row shows too. */',
+  ]],
+  ['src/client/features/share/share-sessions-view.test.ts', [
+    '/**\n * ADR-0003: the session view answers "did this visitor read it through", so what has to hold is\n * that the reading order survives, that a session is presented as a table rather than a pile of\n * divs, and that the two miss states carry their own copy.\n */',
+    '/**\n * The other half of the same contract: what the panel does when the load is slow, empty or failed.\n * Kept as its own block so each `it` stays about one behaviour.\n */',
+    '// The rows are still there, so the failure is reported beside them rather than replacing them.',
+    '// Search, the CSV export and the cleanup act on rows, and sessions cannot be searched or',
+    '// exported: offering them here would be offering controls that do nothing.',
+  ]],
   ['src/client/features/share/share-settings-modal.tsx', [
     '/* Where a setting is kept is part of what it means: the filters live in this browser, the\n          retention below lives on the account. Saying it once per group is what makes Save honest. */',
     '/**\n * The one knob the hygiene card reads. It sits here rather than in the card because "nobody reads\n * this any more" depends on how busy the site is, and the server reads it to decide what to report.\n */',
@@ -3394,8 +3410,10 @@ const allowed = new Map([
     '// Opens the clean menu with a real click and picks the wipe-everything entry.',
   ]],
   ['src/client/features/share/share-visit-logs-modal.tsx', [
-    '/* The table lists fingerprints, not people: the same visitor counts once per UTC day, and\n            everyone behind one address shares one. Saying so is what keeps a UV number readable. */',
+    '/* The table lists fingerprints, not people: the same visitor counts once per UTC day, and\n                everyone behind one address shares one. Saying so is what keeps a UV number readable. */',
+    '/**\n * The session view\'s own state: which mode the panel is in, the window it covers, and the traffic\n * filter it asks for (ADR-0003). It is deliberately separate from the log\'s filter, which speaks a\n * vocabulary sessions cannot express — "bots only" and "the author only" are not things a visitor\'s\n * sittings can be narrowed to, and quietly substituting another filter would misreport the range.\n */',
     '/**\n * A long export is a walk of many pages, so it reports where it is and renders nothing at\n * all once it is done: the line appears below the toolbar rather than inside it, so opening\n * and closing it can never move the buttons the person is aiming at.\n */',
+    '/**\n * The row vocabulary is four classes (all, real, bots, the author), and search and CSV export only\n * mean anything for rows — which is exactly why the two modes each render their own controls\n * instead of one set that would be dead half the time. Sessions cannot be searched or exported, and\n * "bots only" is not something a visitor\'s sittings can be narrowed to.\n */',
   ]],
   ['src/client/features/share/share-visitor-count-note.test.ts', [
     '/**\n * SH-83: UV is a salted fingerprint count — once per person per UTC day, and one bucket per address\n * however many people sit behind it. Neither the KPI nor the log table could be read that way from\n * the screen alone, so the log view now states it; this pins that the sentence is really there.\n */',
@@ -3424,6 +3442,9 @@ const allowed = new Map([
     '/**\n * Deleting one link\'s visitor history is the same kind of act as revoking it — nothing brings it\n * back — so it asks twice (a danger confirm, then the account password the endpoint demands) and\n * reloads the list afterwards, because the row counts on screen come from the rows just deleted.\n */',
     '// Since SH-19 a row can be shared without being in the store yet (the',
     '// startup summary only carries ids): ask the server before publishing.',
+  ]],
+  ['src/client/features/share/use-share-sessions.ts', [
+    '/**\n * The sessions a range holds, and the ones that come after it (ADR-0003). Paging is by opaque\n * cursor rather than by page number: sessions are derived, so a new visit in the middle of the\n * range would shift every later page and a numbered walk would show one sitting twice.\n */',
   ]],
   ['src/client/features/share/use-share-settings-modal.ts', [
     '// The sweep runs on the server, so the value it reads has to be the account\'s.',
@@ -3526,6 +3547,7 @@ const allowed = new Map([
     '// `tag` carries the tag ids the whole selection is rewritten onto; the other actions carry none.',
   ]],
   ['src/client/lib/api/share.ts', [
+    '/**\n     * The visitor session view (ADR-0003): the same window and traffic filters the dashboard\n     * resolves, folded into sittings by the worker. Read-only, and derived on every request.\n     */',
     '/** `document.referrer`, when the visitor\'s browser sent one. */',
     '/** The `?ref=` marker from the visitor\'s own URL, forwarded so the worker can record it. */',
     '// A long document.referrer must not turn into a 400 for a legitimate viewer; the server caps at the same length.',
@@ -5487,6 +5509,7 @@ const allowed = new Map([
   ['src/shared/locales/en-US/share-2.ts', [
     '// The distribution marker (?ref=) of ADR-0004: what it is, what the two miss rows mean, and the',
     '// switch that decides whether the write path records it at all.',
+    '// The session view of the log panel (ADR-0003): what a session is, and the four columns.',
   ]],
   ['src/shared/markdown-utils/front-matter.ts', [
     '/**\n * Update an existing front matter property in-place, keeping the body and all\n * other properties untouched. Returns the rewritten content, or `null` when\n * the content has no parseable front matter, the property does not exist, or\n * nothing changes. Passing `null` as `value` deletes the property.\n */',
@@ -5606,6 +5629,9 @@ const allowed = new Map([
     '/**\n * The hygiene report: how many public links have gone quiet, of which how many were never opened\n * at all, and the oldest page of them. `thresholdDays` is the account\'s own number (read from its\n * settings), and 0 means the owner turned the report off — in which case there is nothing to list.\n */',
     '/**\n   * Which copy of the link the visit came from (ADR-0004). Marks the owner wrote are listed by\n   * name; visits with no marker and visits whose marker was refused appear under the reserved\n   * names `CHANNEL_UNMARKED` / `CHANNEL_UNRECOGNIZED`, never merged into one row.\n   */',
     '/**\n * The sidebar\'s counters without the share rows: a hub that opens on the dashboard\n * reads these, so it does not pay for a list it is not showing.\n */',
+    '/**\n * One note inside a session: the path the visitor took through it is the order of the array, not a\n * timestamp per row, because a session is about "what they read" rather than when exactly.\n */',
+    '/**\n * One sitting by one visitor (ADR-0003): consecutive visits of the same fingerprint within the\n * session gap, never crossing a UTC day. `fingerprint` is the same 8-char head the log rows show;\n * a session is not a person, and nothing in this shape is named after one.\n */',
+    '/** Opaque; null when the page was the last one. */',
   ]],
   ['src/shared/user-settings.test.ts', [
     '// Both live in the share section, which used to be one knob: the second must not be wiped by a',
@@ -5629,6 +5655,9 @@ const allowed = new Map([
     '// Collecting markers is on for accounts that predate the field: the stored settings of such an',
     '// account have no value to fall back on, and the shipped default is the intended behaviour.',
     '/**\n * Both visit-log surfaces keep the same single knob, so the same cleaner backs\n * `share` and `blog`: 0 means "keep forever" and must survive as 0.\n */',
+  ]],
+  ['src/shared/visitor-session.ts', [
+    '/**\n * How long a visitor\'s visits may be apart and still count as one sitting (ADR-0003).\n *\n * It lives in the shared layer because it is a product rule rather than an implementation choice:\n * the worker derives sessions with it, the demo mode folds its sample rows with it, and the copy\n * that explains a session quotes the same 30 minutes. It is deliberately not the view-dedupe window\n * (`VIEW_DEDUPE_WINDOW_MS` in the worker\'s analytics module), even though the two numbers are equal\n * today: one answers "don\'t count this view twice", the other "was this the same sitting", and\n * binding them would make a change to either silently change the other\'s meaning.\n */',
   ]],
   ['src/worker/app.ts', [
     '// Integrity of the caller\'s own index: rows beyond the first for a note, and rows whose note',
@@ -5887,6 +5916,7 @@ const allowed = new Map([
     '/**\n * Extend a session back to the full TTL. Only call this from an authenticated\n * request whose session is inside the renewal window (see SESSION_RENEW_BEFORE_MS);\n * never call it from unauthenticated paths — renewal must not resurrect or\n * prolong a session the user has not just proven possession of.\n */',
   ]],
   ['src/worker/lib/share-analytics.ts', [
+    '/**\n * The log table labels a visitor by the head of its fingerprint and nothing more; the stored digest\n * is a pseudonymous identifier, so only this much of it is ever allowed to leave the worker. Both\n * surfaces that show a fingerprint — the log rows and the session view — read this one number, so\n * the same visit cannot be labelled two different ways depending on which panel is open.\n */',
     '// Only browser-resolvable schemes earn a row; the raw candidate may carry query',
     '// tokens or fragments, so http(s) stores origin+path only.',
     '/* An unparseable candidate degrades analytics to a null referrer. */',
@@ -5898,6 +5928,16 @@ const allowed = new Map([
     '// find; without one the window stays recent instead of starting at epoch.',
     '// Buckets are addressed by index so both the row path and a SQL GROUP BY can',
     '// fill the same array; missing indexes stay zero-filled.',
+  ]],
+  ['src/worker/lib/share-sessions.ts', [
+    '/**\n * The visitor session view (ADR-0003): one visitor\'s visits, folded into "sittings" so the owner can\n * answer "did this person read it through" instead of reading rows one by one.\n *\n * Three consequences of how fingerprints work are baked into the query rather than documented and\n * hoped for:\n *\n * 1. **A session cannot cross a UTC day.** The fingerprint\'s salt rotates at UTC midnight, so two\n *    rows on either side of it belong to two different fingerprints by construction. The derivation\n *    partitions by `(fingerprint, UTC day)` anyway: the guarantee then lives where it is relied on\n *    and a change to the salt cannot silently start merging two days into one session.\n * 2. **A session is not a person.** Everyone behind one NAT can share a fingerprint and one person\n *    on two devices gets two — which is why nothing here is named after a person.\n * 3. **Sessions are derived, never stored.** They are computed from the visit rows, so the retention\n *    sweep and the link-scoped delete remove them by removing their rows.\n */',
+    '/**\n * The rows of one page, folded into sessions. The statement answers flat rows (one per session and\n * note) so the page limit counts sessions rather than notes; this is where they become sessions\n * again. Rows arrive grouped and ordered by the statement, so a single pass suffices — and the fold\n * takes the note list in the order the visitor read them, which is the part worth reading.\n */',
+    '// The same note can be opened twice inside one session; the statement already merged them.',
+    '/**\n * The page after this one, or null when the page was short. Opaque on purpose: it names a session\'s\n * start and its derived key, which is an implementation detail the client must not compose itself.\n */',
+    '/** Null for an absent cursor; a malformed one is an error the caller must answer, not a first page. */',
+    '/**\n * One page of sessions for the whole account, derived in a single statement: the visit rows are\n * keyed by (fingerprint, UTC day, cumulative session number), the page picks whole sessions, and the\n * join re-attaches each one\'s notes. `LIMIT` therefore counts sessions, not rows.\n */',
+    '/** The filter clause the analytics request already resolved, alias-free like the aggregate\'s. */',
+    '/**\n * The statement\'s text, split from its parameters: both decisions that vary — where the page\n * boundary goes and how many sessions come back — are resolved by the caller, so this stays the\n * shape of the query rather than a function that is half SQL and half binding arithmetic.\n */',
   ]],
   ['src/worker/lib/streams.ts', [
     '// Stream cancellation is a best-effort resource release: the read side is',
@@ -6361,6 +6401,7 @@ const allowed = new Map([
     '/** The threshold expression both stale statements use, so they cannot disagree about it. */',
     '// The per-day rate gets its own comparison: the same rate over the previous window of the same',
     '// length, so "average per day" answers whether the rate moved, not whether the window grew.',
+    '/**\n * The window and the filter clause every share read resolves, exported so the session view reads\n * the same range and the same traffic classes as the dashboard beside it — a second copy of this\n * resolution is how two panels end up disagreeing about what "7d, excluding bots" means.\n */',
     '// Equal view counts have no order out of a GROUP BY, so ties break by note id',
     '// and both aggregation paths list the same top ten.',
   ]],
@@ -6422,6 +6463,13 @@ const allowed = new Map([
     '// visitor must not pay for the owner\'s typo. This cap, like the referrer\'s, is for input no',
     '// honest link could produce.',
   ]],
+  ['src/worker/routes/share/sessions.ts', [
+    '/** One page of sessions; the ceiling keeps a single request from walking a whole account. */',
+    '/**\n * The visitor session view (ADR-0003). Read-only, owner-only, and derived on every request: the\n * response carries the same window and the same traffic filters as the dashboard\'s log panel.\n */',
+    '// Only the unbounded range is charged, the same rule the analytics routes use: a bounded range',
+    '// reads one window of rows, while `all` derives sessions over the account\'s whole history.',
+    '/**\n * A cursor this worker did not mint is a client bug: answering the first page instead would silently\n * restart the walk, so it is a 400 — the same reading the rest of the module gives a malformed\n * parameter it cannot honour.\n */',
+  ]],
   ['src/worker/routes/share/shares.ts', [
     '/**\n * The counters behind the sidebar and the list\'s own totals are the same five\n * aggregates, so they are described once and batched by whoever needs them: the\n * list puts them beside its row query (still one round trip), while `/stats` asks\n * for them alone — a hub that lands on the dashboard reads the counts, not the rows.\n */',
     '/**\n * The status categories that read the clock. Each returns its SQL with bare `?` placeholders plus\n * the values they take, so the caller can hand out binding numbers in the order it builds the\n * clause — the categories that need no clock ride along in STATUS_CONDITIONS below.\n */',
@@ -6433,9 +6481,6 @@ const allowed = new Map([
     '// binding: `parseInt(\'abc\')` is NaN and `Math.max(1, NaN)` stays NaN, which SQLite',
     '// rejects as a datatype mismatch (a 500 for a malformed query). The ceiling on',
     '// `page` is what keeps a caller from asking for an unbounded OFFSET.',
-    '// The log table labels a visitor by the head of its fingerprint and nothing more;',
-    '// the stored digest is a pseudonymous identifier, so only this much of it is ever',
-    '// allowed to leave the worker.',
     '// Wiping the whole audit trail — or one link\'s whole history, which is just as',
     '// unrecoverable — means a stolen session must re-prove it holds the account password.',
     '/**\n * The note a delete is scoped to, when one was asked for. An empty value is the dangerous\n * case: it is present but names nothing, and letting it through would fall back to the\n * account-wide delete — the widest possible reading of a request that asked for the\n * narrowest. Only `type=all` can be scoped this way; pairing a note with a filtered type\n * would delete something other than what the caller described, so it is rejected too.\n */',
@@ -6747,6 +6792,13 @@ const allowed = new Map([
     '// disappears from the wider category — while "soon" narrows it, and expired stays disjoint.',
     '// The permanent link is reported rather than counted: nothing about it changed.',
     '// A lapsed link extends from now: counting from its own past expiry would leave it lapsed.',
+    '/**\n * ADR-0003: the session view folds one visitor\'s visits into sittings. Its boundaries are the part\n * that has to be exact — a gap, a UTC day, and a page edge are each a place where a wrong operator\n * would silently produce a different story about what a visitor read.\n */',
+    '/** A moment inside the current UTC day, so a +2×gap window cannot cross midnight by accident. */',
+    '// Newest first: the lone trailing visit is its own session, the two on the boundary are one.',
+    '// Two minutes apart, one fingerprint — and still two sessions: the salt rotates at midnight, so',
+    '// the two rows were never the same visitor as far as the data is concerned.',
+    '// No instance secret means no fingerprint is minted: the row is still logged, and it belongs to',
+    '// no session — the two views are allowed to differ, and this is the case where they do.',
     '// Any write path that ever loses its ownership check would leave a visit row',
     '// pointing at another account\'s note; the title lookup must not follow it.',
     '// visit recording runs via waitUntil; the test context must let us await it',

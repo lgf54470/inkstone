@@ -68,7 +68,7 @@ interface StaleLinkRow {
   never_viewed: number
 }
 
-type AnalyticsContext = AnalyticsRequest & AnalyticsWindow
+export type AnalyticsContext = AnalyticsRequest & AnalyticsWindow
 
 interface RecentVisitRow {
   id: number
@@ -286,7 +286,12 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
   })
 }
 
-async function analyticsContext(
+/**
+ * The window and the filter clause every share read resolves, exported so the session view reads
+ * the same range and the same traffic classes as the dashboard beside it — a second copy of this
+ * resolution is how two panels end up disagreeing about what "7d, excluding bots" means.
+ */
+export async function analyticsContext(
   db: D1Database,
   c: { req: { query(key: string): string | undefined } },
   scope: { userId: string; noteId?: string },

@@ -7,6 +7,7 @@ import { registerShareNoteRoutes } from './note'
 import { registerShareOrganizerRoutes } from './organizer'
 import { registerSharePageRoutes } from './page'
 import { registerSharePublicRoutes } from './public'
+import { registerShareSessionRoutes } from './sessions'
 import { registerShareSharingRoutes } from './shares'
 import { registerShareVisitsRoutes } from './visits'
 
@@ -22,6 +23,7 @@ registerShareOrganizerRoutes(shareManageRoutes)
 registerShareSharingRoutes(shareManageRoutes)
 registerShareBatchRoutes(shareManageRoutes)
 registerShareVisitsRoutes(shareManageRoutes)
+registerShareSessionRoutes(shareManageRoutes)
 registerShareNoteRoutes(shareManageRoutes)
 registerSharePublicRoutes(shareRoutes)
 registerSharePageRoutes(sharePageRoutes)

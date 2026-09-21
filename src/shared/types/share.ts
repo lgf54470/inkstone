@@ -225,6 +225,37 @@ export interface ShareStatsResponse {
   globalStats: ShareListResponse['globalStats']
 }
 
+/**
+ * One note inside a session: the path the visitor took through it is the order of the array, not a
+ * timestamp per row, because a session is about "what they read" rather than when exactly.
+ */
+export interface ShareSessionNote {
+  noteId: string
+  noteTitle: string | null
+  slug: string
+  visits: number
+}
+
+/**
+ * One sitting by one visitor (ADR-0003): consecutive visits of the same fingerprint within the
+ * session gap, never crossing a UTC day. `fingerprint` is the same 8-char head the log rows show;
+ * a session is not a person, and nothing in this shape is named after one.
+ */
+export interface ShareSession {
+  fingerprint: string
+  startedAt: number
+  lastSeenAt: number
+  visits: number
+  notes: ShareSessionNote[]
+}
+
+export interface ShareSessionsResponse {
+  sessions: ShareSession[]
+  /** Opaque; null when the page was the last one. */
+  nextCursor: string | null
+  limit: number
+}
+
 export interface ShareVisitsResponse {
   visits: ShareVisitLog[]
   total: number

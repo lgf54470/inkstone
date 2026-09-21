@@ -1,6 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
-import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicNote, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -22,6 +22,30 @@ export const share = {
       signal?: AbortSignal,
     ) => request<ShareStatsResponse>(`/api/share/stats${toQuery((params ?? {}) as Record<string, string | number | boolean | undefined>)}`, { signal }),
     summary: (signal?: AbortSignal) => request<ShareSummaryResponse>('/api/share/summary', { signal }),
+    /**
+     * The visitor session view (ADR-0003): the same window and traffic filters the dashboard
+     * resolves, folded into sittings by the worker. Read-only, and derived on every request.
+     */
+    sessions: (
+      params: {
+        range?: ShareTimelineRange
+        filters?: { excludeBots?: boolean; excludeSelf?: boolean; excludeOwner?: boolean }
+        limit?: number
+        cursor?: string
+        signal?: AbortSignal
+      } = {},
+    ) =>
+      request<ShareSessionsResponse>(
+        `/api/share/sessions${toQuery({
+          range: params.range,
+          excludeBots: params.filters?.excludeBots,
+          excludeSelf: params.filters?.excludeSelf,
+          excludeOwner: params.filters?.excludeOwner,
+          limit: params.limit,
+          cursor: params.cursor,
+        })}`,
+        { signal: params.signal },
+      ),
     globalAnalytics: (
       range?: ShareTimelineRange,
       filters?: { excludeBots?: boolean; excludeSelf?: boolean; excludeOwner?: boolean },
