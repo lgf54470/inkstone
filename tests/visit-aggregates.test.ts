@@ -9,7 +9,7 @@ import {
   type VisitFactRow,
   type VisitScope,
 } from '../src/worker/lib/visit-aggregates'
-import { createD1Database, runSql, type D1Shim } from './d1-harness'
+import { captureSql, createD1Database, runSql, type D1Shim } from './d1-harness'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const NOW = Date.now()
@@ -158,5 +158,38 @@ describe('visit aggregates: SQL path matches the row path', () => {
     expect(aggregate.buckets.every((b) => b.views === 0 && b.visitors === 0)).toBe(true)
     expect(aggregate.countries.size).toBe(0)
     expect(aggregate.targets.size).toBe(0)
+  })
+})
+
+/**
+ * SH-74: an unbounded range is summarized in SQL rather than by fetching rows, and that
+ * budget is what makes the request expensive rather than free. Measured on node:sqlite over
+ * 200,000 visit rows for one account, the eight statements cost ~1.25 s of CPU and the cost
+ * grows linearly with the account's history (the heaviest single pass is the per-target
+ * GROUP BY at ~246 ms). A cache needs state the worker is not allowed to keep in-process
+ * (check-module-state forbids module-scope mutable bindings), so the cost is currently held
+ * still rather than amortized: this pins the budget so a ninth pass has to be a deliberate act.
+ */
+describe('all-range aggregate statement budget (SH-74)', () => {
+  it('summarizes an unbounded range in eight statements and never fetches visit rows', () => {
+    const db = createD1Database()
+    const seen = captureSql(db)
+
+    const statements = visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId: 'u1' }, QUERY)
+
+    expect(statements).toHaveLength(8)
+    expect(seen).toHaveLength(8)
+    expect(seen.filter((sql) => sql.startsWith('SELECT visited_at, visitor_fp'))).toEqual([])
+    expect(seen.filter((sql) => sql.includes('GROUP BY'))).toHaveLength(7)
+  })
+
+  it('answers a bounded range by fetching rows, in exactly one statement', () => {
+    const db = createD1Database()
+    const seen = captureSql(db)
+
+    const statements = visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId: 'u1' }, { ...QUERY, range: '7d' })
+
+    expect(statements).toHaveLength(1)
+    expect(seen[0]).toMatch(/^SELECT visited_at, visitor_fp/)
   })
 })

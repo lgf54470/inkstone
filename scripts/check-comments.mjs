@@ -6502,6 +6502,7 @@ const allowed = new Map([
     '// for a bounded range yields exactly the rows the SQL path has to summarize.',
     '// 12 monthly-ish buckets over the whole window; the out-of-window visit is',
     '// counted in the totals only, so the buckets sum to one less than `views`.',
+    '/**\n * SH-74: an unbounded range is summarized in SQL rather than by fetching rows, and that\n * budget is what makes the request expensive rather than free. Measured on node:sqlite over\n * 200,000 visit rows for one account, the eight statements cost ~1.25 s of CPU and the cost\n * grows linearly with the account\'s history (the heaviest single pass is the per-target\n * GROUP BY at ~246 ms). A cache needs state the worker is not allowed to keep in-process\n * (check-module-state forbids module-scope mutable bindings), so the cost is currently held\n * still rather than amortized: this pins the budget so a ninth pass has to be a deliberate act.\n */',
   ]],
   ['vite.config.ts', [
     '// Keep optional preview renderers and their language modules behind dynamic-import boundaries.',
