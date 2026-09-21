@@ -99,6 +99,30 @@ export interface ShareVisitLog {
   visitorFp?: string | null
 }
 
+/**
+ * A public link nobody has opened inside the owner's threshold (SH-70). `views` is the all-time
+ * counter, so a link that was read once years ago is not reported as never read.
+ */
+export interface ShareStaleLink {
+  noteId: string
+  noteTitle: string | null
+  slug: string
+  lastViewedAt: number | null
+  views: number
+}
+
+/**
+ * The hygiene report: how many public links have gone quiet, of which how many were never opened
+ * at all, and the oldest page of them. `thresholdDays` is the account's own number (read from its
+ * settings), and 0 means the owner turned the report off — in which case there is nothing to list.
+ */
+export interface ShareStaleLinks {
+  thresholdDays: number
+  total: number
+  neverViewed: number
+  items: ShareStaleLink[]
+}
+
 export interface ShareGlobalAnalytics {
   range: ShareTimelineRange
   totalShares: number
@@ -125,6 +149,7 @@ export interface ShareGlobalAnalytics {
   osList: ShareBreakdownItem[]
   browsers: ShareBreakdownItem[]
   recentVisits: ShareVisitLog[]
+  staleLinks: ShareStaleLinks
   filterStats?: {
     bots: number
     selfReferrals: number

@@ -28,11 +28,21 @@ const shareStore = vi.hoisted(() => ({
 
 vi.mock('./share-store', () => ({ useShareStore: shareStore.useShareStore }))
 
+/**
+ * The retention control, found by the label it is named with rather than by its options: the modal
+ * grew a second segmented control (SH-70's hygiene threshold), and a lookup keyed on one of the
+ * retention's own option texts would be one copy away from picking that control up instead.
+ */
 function retentionGroup(): HTMLElement {
-  const groups = Array.from(document.querySelectorAll('[role="radiogroup"]'))
-  const group = groups.find((element) => element.textContent?.includes('90d'))
+  const group = groupNamedBy(t('share.retention_days_label'))
   if (!group) throw new Error('the retention radiogroup did not render')
-  return group as HTMLElement
+  return group
+}
+
+function groupNamedBy(label: string): HTMLElement | null {
+  return Array.from(document.querySelectorAll('[role="radiogroup"]')).find(
+    (element) => document.getElementById(element.getAttribute('aria-labelledby') ?? '')?.textContent === label,
+  ) as HTMLElement | null
 }
 
 function optionLabel(group: HTMLElement): string | null {
@@ -64,7 +74,7 @@ beforeEach(() => {
 
 describe('share settings modal keeps visit-log retention on the account (SH-05c)', () => {
   it('offers the retention the account stored instead of this browser cache', () => {
-    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 90 } }
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 90 } }
     localStorage.setItem('inkstone_share_retention', JSON.stringify({ logRetentionDays: 7, maxLogRecords: 5000 }))
 
     const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
@@ -73,30 +83,30 @@ describe('share settings modal keeps visit-log retention on the account (SH-05c)
   })
 
   it('saves the chosen retention through the settings API, so other devices get it too', async () => {
-    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 90 } }
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 90 } }
 
     const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
     clickByText(retentionGroup(), '7d')
     await save()
 
-    expect(session.state.updateSettings).toHaveBeenCalledWith({ share: { visitLogRetentionDays: 7 } })
+    expect(session.state.updateSettings).toHaveBeenCalledWith({ share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 7 } })
     rendered.unmount()
   })
 
   it('stops writing the retention into browser storage', async () => {
-    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 30 } }
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 30 } }
 
     const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
     clickByText(retentionGroup(), '30d')
     await save()
 
-    expect(session.state.updateSettings).toHaveBeenCalledWith({ share: { visitLogRetentionDays: 30 } })
+    expect(session.state.updateSettings).toHaveBeenCalledWith({ share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 30 } })
     expect(localStorage.getItem('inkstone_share_retention')).toBeNull()
     rendered.unmount()
   })
 
   it('still shows the account retention when the browser never cached one', () => {
-    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 180 } }
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 180 } }
 
     const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
     expect(optionLabel(retentionGroup())).toBe('180d')
@@ -105,18 +115,22 @@ describe('share settings modal keeps visit-log retention on the account (SH-05c)
 })
 
 describe('share settings modal draws no record cap control (SH-39)', () => {
-  it('leaves the retention period as the only segmented control', () => {
-    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 30 } }
+  it('draws the two thresholds the server acts on and no record cap', () => {
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 30 } }
 
     const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
-    const groups = document.querySelectorAll('[role="radiogroup"]')
-    expect(groups).toHaveLength(1)
+    // SH-70 added the second one: how long a link may stay unread before it is reported. Both are
+    // named controls with the label the eye reads, which is what keeps this from being a count of
+    // controls for its own sake.
+    const labels = Array.from(document.querySelectorAll('[role="radiogroup"]'))
+      .map((group) => document.getElementById(group.getAttribute('aria-labelledby') ?? '')?.textContent)
+    expect(labels).toEqual([t('share.retention_days_label'), t('share.stale_days_label')])
     expect(document.body.textContent).not.toContain('10K')
     rendered.unmount()
   })
 
   it('saves what is left: the traffic filters and the account retention', async () => {
-    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 30 } }
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 30 } }
     shareStore.state.excludeBots = false
 
     const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
@@ -129,14 +143,14 @@ describe('share settings modal draws no record cap control (SH-39)', () => {
       excludeOwner: false,
     })
     expect(session.state.updateSettings).toHaveBeenCalledTimes(1)
-    expect(session.state.updateSettings).toHaveBeenCalledWith({ share: { visitLogRetentionDays: 30 } })
+    expect(session.state.updateSettings).toHaveBeenCalledWith({ share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 30 } })
     rendered.unmount()
   })
 })
 
 describe('the retention control has a name and a keyboard path (SH-40)', () => {
   it('names the retention control with the label the eye reads', () => {
-    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 30 } }
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 30 } }
 
     const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
     const group = retentionGroup()
@@ -149,7 +163,7 @@ describe('the retention control has a name and a keyboard path (SH-40)', () => {
   })
 
   it('moves the retention choice with the arrow keys and keeps focus on the new option', () => {
-    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 30 } }
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 30 } }
 
     const rendered = renderElement(createElement(ShareSettingsModal, { open: true, onClose: () => {} }))
     const checked = retentionGroup().querySelector('[aria-checked="true"]') as HTMLElement

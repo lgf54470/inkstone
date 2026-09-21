@@ -93,6 +93,13 @@ export interface ShareSettings {
    * sweep runs whether or not the owner ever opens the app again.
    */
   visitLogRetentionDays: number
+  /**
+   * Days without a visit after which a link counts as stale (SH-70); 0 turns
+   * the report off. What "nobody reads this any more" means depends on how
+   * busy the site is, so it is the owner's number — and the dashboard query
+   * reads it from here rather than from the request.
+   */
+  staleLinkDays: number
 }
 
 /** Blog-center preferences the server acts on, not just the UI. */

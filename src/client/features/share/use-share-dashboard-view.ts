@@ -5,8 +5,9 @@ import { useLocale } from '../../lib/i18n'
 import { cancelLatestAnalyticsRequest, runLatestAnalyticsRequest } from './analytics-request'
 import { readAutoRefresh, useShareAutoRefresh, writeAutoRefresh } from './share-auto-refresh'
 import { useShareStore } from './share-store'
-import { useUi } from '../../store/ui'
+import { useUi, type UiState } from '../../store/ui'
 import { exportDashboardCsv } from './share-dashboard-export'
+import { pauseStaleLinksFlow } from './share-stale-links-actions'
 
 type TrafficFilters = { excludeBots: boolean; excludeSelf: boolean; excludeOwner: boolean }
 
@@ -56,6 +57,34 @@ function useDashboardAnalytics(range: ShareTimelineRange, filters: TrafficFilter
   return { analytics, isLoading, error, loadData, loadedAt, autoRefresh, setAutoRefresh }
 }
 
+/**
+ * SH-70's one command, kept out of the dashboard hook: the pause flow needs a busy flag (the store
+ * refuses a second batch while one is in flight) and a reload that re-reads the report, and both
+ * belong to the action rather than to the range the dashboard is showing.
+ */
+function useStaleLinksPause(params: {
+  staleLinks: ShareGlobalAnalytics['staleLinks'] | undefined
+  toast: UiState['toast']
+  reload: () => void | Promise<void>
+}) {
+  const { staleLinks, toast, reload } = params
+  const [isStaleBusy, setIsStaleBusy] = useState(false)
+  const pauseStaleLinks = async () => {
+    setIsStaleBusy(true)
+    try {
+      await pauseStaleLinksFlow({
+        items: staleLinks?.items ?? [],
+        batchToggle: useShareStore.getState().batchToggle,
+        toast,
+        reload,
+      })
+    } finally {
+      setIsStaleBusy(false)
+    }
+  }
+  return { staleLinks, isStaleBusy, pauseStaleLinks }
+}
+
 export function useShareDashboardView() {
   const locale = useLocale()
   const [range, setRange] = useState<ShareTimelineRange>('7d')
@@ -77,6 +106,12 @@ export function useShareDashboardView() {
   // The file describes the window currently on screen, so it is only offered once there is one.
   const exportCsv = () => exportDashboardCsv({ analytics, range, filters, locale, toast })
 
+  const { staleLinks, isStaleBusy, pauseStaleLinks } = useStaleLinksPause({
+    staleLinks: analytics?.staleLinks,
+    toast,
+    reload: () => data.loadData(range),
+  })
+
   const timelinePoints = analytics?.timeline || []
   const chartValues = timelinePoints.map((p) => (metricMode === 'views' ? p.views : p.visitors))
   const filteredBots = excludeBots ? (analytics?.filterStats?.bots ?? 0) : 0
@@ -85,6 +120,7 @@ export function useShareDashboardView() {
 
   return {
     locale, range, setRange, metricMode, setMetricMode, filters, exportCsv,
+    staleLinks, isStaleBusy, pauseStaleLinks,
     ...data,
     timelinePoints, chartValues,
     filteredBots, filteredSelf, filteredOwner,

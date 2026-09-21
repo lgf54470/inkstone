@@ -10,7 +10,7 @@ export type { ExportAttachment, ExportBundle, ExportBundleMusic, ExportedMusicPl
 export type { GraphEdge, GraphNode, GraphQuery, GraphResponse } from './graph'
 export type { McpAiSearchStatus, McpApiKey, McpGrant, McpPreferences, McpSettingsInfo } from './mcp'
 export type { PasswordLoginResult, PublicUser, SessionInfo, TotpLoginChallenge, TotpLoginResult, TotpRecoveryCodesResult, TotpSetupInfo, TotpStatus, UserRole } from './auth'
-export type { PublicNote, ShareAnalyticsFilters, ShareBreakdownItem, ShareCategory, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelinePoint, ShareTimelineRange, ShareVisitLog, ShareVisitsResponse } from './share'
+export type { PublicNote, ShareAnalyticsFilters, ShareBreakdownItem, ShareCategory, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareStaleLink, ShareStaleLinks, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelinePoint, ShareTimelineRange, ShareVisitLog, ShareVisitsResponse } from './share'
 export type { RealtimeMessage, SyncDeletion, SyncResponse } from './sync'
 export type { SearchHit, SearchMode, SearchResponse } from './search'
 export type { MusicFormat, MusicLibrary, MusicPlayback, MusicPlaybackInput, MusicPlaylist, MusicPlaylistDetail, MusicPlaylistItem, MusicPlayMode, MusicSearchResponse, MusicSource, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry } from './music'

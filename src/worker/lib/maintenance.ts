@@ -4,17 +4,21 @@ const LOGIN_ATTEMPT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /**
- * Per-account visit log retention in days, read from the stored settings
- * document: 0 keeps every row, while a missing or unparsable value falls back
- * to the shipped default so an account that never opened the settings modal
- * still has a bounded log. `json_valid` guards a corrupt document, which would
- * otherwise make `json_extract` throw and take the whole sweep down.
+ * A per-account number read straight out of the stored settings document: a
+ * missing or unparsable value falls back to the shipped default, so an account
+ * that never opened the settings modal still has a bounded log. `json_valid`
+ * guards a corrupt document, which would otherwise make `json_extract` throw
+ * and take the whole sweep down. The reading query must alias `users` as `u`.
  */
-function visitLogRetentionDaysSql(section: 'share' | 'blog'): string {
+export function userSettingsNumberSql(path: string, fallback: number): string {
   return `COALESCE(
     CASE WHEN json_valid(u.settings)
-      THEN CAST(json_extract(u.settings, '$.${section}.visitLogRetentionDays') AS INTEGER)
-    END, ${VISIT_LOG_RETENTION_DEFAULT_DAYS})`
+      THEN CAST(json_extract(u.settings, '${path}') AS INTEGER)
+    END, ${fallback})`
+}
+
+function visitLogRetentionDaysSql(section: 'share' | 'blog'): string {
+  return userSettingsNumberSql(`$.${section}.visitLogRetentionDays`, VISIT_LOG_RETENTION_DEFAULT_DAYS)
 }
 
 /** The aged rows of one visit table, judged by the owner's own retention. */

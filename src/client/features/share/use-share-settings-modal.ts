@@ -16,12 +16,15 @@ export function useShareSettingsModal(onClose: () => void) {
   const setFilters = useShareStore((s) => s.setFilters)
   // The sweep runs on the server, so the value it reads has to be the account's.
   const visitLogRetentionDays = useSession((s) => s.settings.share.visitLogRetentionDays)
+  // The dashboard's hygiene card reports on the account's threshold, not this browser's.
+  const staleLinkDays = useSession((s) => s.settings.share.staleLinkDays)
   const updateSettings = useSession((s) => s.updateSettings)
 
   const [bots, setBots] = useState(excludeBots)
   const [selfRef, setSelfRef] = useState(excludeSelfReferrers)
   const [owner, setOwner] = useState(excludeOwner)
   const [retentionDays, setRetentionDays] = useState(String(visitLogRetentionDays))
+  const [staleDays, setStaleLinkDays] = useState(String(staleLinkDays))
   const [isBusy, setIsBusy] = useState(false)
 
   const handleSave = () => saveSettingsFlow({
@@ -29,8 +32,11 @@ export function useShareSettingsModal(onClose: () => void) {
     selfRef,
     owner,
     retentionDays,
+    staleDays,
     setFilters,
-    setVisitLogRetentionDays: (days) => updateSettings({ share: { visitLogRetentionDays: days } }),
+    // One patch for the whole account section: both values belong to the same document, and two
+    // calls would be two writes of one thing.
+    setShareSettings: (patch) => updateSettings({ share: patch }),
     toast,
     onClose,
   })
@@ -39,6 +45,7 @@ export function useShareSettingsModal(onClose: () => void) {
   return {
     bots, setBots, selfRef, setSelfRef, owner, setOwner,
     retentionDays, setRetentionDays,
+    staleLinkDays: staleDays, setStaleLinkDays,
     isBusy, handleSave, handleClean,
   }
 }
@@ -48,15 +55,19 @@ type SaveSettingsFlow = {
   selfRef: boolean
   owner: boolean
   retentionDays: string
+  staleDays: string
   setFilters: (filters: { excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }) => void
-  setVisitLogRetentionDays: (days: number) => void
+  setShareSettings: (patch: { visitLogRetentionDays: number; staleLinkDays: number }) => void
   toast: UiState['toast']
   onClose: () => void
 }
 
-function saveSettingsFlow({ bots, selfRef, owner, retentionDays, setFilters, setVisitLogRetentionDays, toast, onClose }: SaveSettingsFlow): void {
+function saveSettingsFlow({ bots, selfRef, owner, retentionDays, staleDays, setFilters, setShareSettings, toast, onClose }: SaveSettingsFlow): void {
   setFilters({ excludeBots: bots, excludeSelfReferrers: selfRef, excludeOwner: owner })
-  setVisitLogRetentionDays(parseInt(retentionDays, 10))
+  setShareSettings({
+    visitLogRetentionDays: parseInt(retentionDays, 10),
+    staleLinkDays: parseInt(staleDays, 10),
+  })
   toast({ title: t('share.settings_saved'), tone: 'default' })
   onClose()
 }

@@ -62,8 +62,8 @@
 | 32 | E | SH-63 | 单条分享的访客数据删除 / 导出 | 小–中 | ✅ | 0f220f28 |
 | 33 | E | SH-69 | 批量二维码打印表 / 复制全部链接 | 小–中 | 🟡 | 5ef9bb9d（链接清单已做，二维码表登记待办） |
 | 34 | E | SH-65 | 无自动刷新 / 无新鲜度标识 | 中 | ✅ | e2795d45 |
-| 35 | E | SH-64 | 看板无法导出（区间 CSV / PNG / PDF） | 中 | 🟡 | ⏳ 本项回填（CSV 已做，PNG/PDF 评估后不做并登记） |
-| 36 | E | SH-70 | 链接卫生巡检（长期 0 访问） | 小 | ⬜ | |
+| 35 | E | SH-64 | 看板无法导出（区间 CSV / PNG / PDF） | 中 | 🟡 | 68063f54（CSV 已做；PNG/PDF 评估后不做并留重开条件） |
+| 36 | E | SH-70 | 链接卫生巡检（长期 0 访问） | 小 | ✅ | ⏳ 本项回填 |
 | 37 | F | SH-66 | 访客会话视角（先出 ADR） | 中–大 | ⬜ | |
 | 38 | F | SH-67 | 渠道标记 `?ref=`（先出 ADR） | 中 | ⬜ | |
 | 39 | F | SH-68 | 文件夹/标签 → 公开集合落地页（先出 ADR） | 大 | ⬜ | |
@@ -514,3 +514,23 @@
 - 先红后绿 + 变异：`share-dashboard-export.test.ts` 17 例（四段 describe，避开 50 行上限），5 发变异各自只杀目标（删上下文块 → 7 红；过滤状态写死为「全部流量」→ 1 红；系统列表按卡片截 5 行 → 1 红；设备名不走本地化 → 1 红；去掉空数据显示守卫 → 1 红）。接线另有一支 `share-dashboard-export-button.test.ts` 2 例（真实渲染看板、点真实按钮、断言产出一个文件；第二例用「永不 resolve 的请求」把视图钉在首载态，断言按钮确实是禁用的），2 发变异：去掉 `disabled` → 1 红；`onClick` 换成空函数 → 2 红。
 - 验证读数：`tsc -b --force` exit 0；`features/share` 全目录 + `tests/share-routes.test.ts` + `lib/markdown` **117 文件 / 865 用例全绿**（首轮出现过一次 `lib/markdown` 内的 jsdom 失败，重跑不复现，判为既有 flake，与本项无关）；静态门禁全绿（`i18n` ±9 键；`comments` +34 行全属本项文件；`size` 通过——新测试的 describe 被报 `longFns`，**没有 resnapshot**，拆成三段后归零，`check-size.baseline.json` 回到原状）。
 - 局限：① **PNG/PDF 快照不做**，台账的「评估」结论是：`deck-image.ts` 那条管线服务的是「同一分页结果的静态产物」，而看板是活的交互界面（区间控件、分段切换、工具提示），栅格化它得到的是一张口径无法自证与人所看同一的图；重开条件：若确有「发给别人看」的需求，正确做法是复用导出面板的「离屏真实 DOM + canvas 栅格化」，而不是截屏。② CSV 是「当前区间一次请求」的快照，没有分页（看板的聚合本身不分页）。③ 「最近访问」按看板自己的尾部条数导出，与日志弹窗的导出（SH-75，带过滤、进度与上限）不是同一件事，两者并存不重复。④ 新增 9 个文案键，其中 3 个是进文件的表头列名——表头是用户可见文案，仍按规范走 i18n。
+
+### 36 — SH-70 链接卫生巡检：阈值进设置，看板报「长期未访问」并可一键暂停（2026-09-21）
+
+- 根因：公开链接一旦长期没人看就永远躺在列表里，没有任何一处会把它们挑出来；撤销级联删 visits 已经实现，所以「发现」是唯一缺的环节。台账要求「阈值放进 settings 而不是写死」，并明确「analytics 路由（一次聚合）+ 看板卡片」。
+- **阈值放在账号设置，而不是请求参数**——这是本项唯一一个真正的设计选择。若走查询参数，(a) `api.share.globalAnalytics(range, filters, signal)` 就变成四个位置参数，按 AGENTS 得改成对象传参，而 SH-71 的乱序回归正好断言了这三个位置参数（`firstCall[0] === '7d'`、`firstCall[2]?.aborted`），改动会连坐那个守卫；(b) 更重要的是，读的是「这个账号认为多久算没人看」，它本身就该是账号文档里的一个数。于是：`ShareSettings.staleLinkDays`（0 = 关闭），worker 用与保留期同源的 `userSettingsNumberSql('$.share.staleLinkDays', 90)` 在 SQL 里读——请求里没有它，那条守卫一行未动。
+- 做法（worker + 客户端 + 共享设置，共 3 个新文件）：
+  - `analytics.ts`：新增两条语句进**同一个 batch**——`staleThresholdStatement` 读账号阈值（0 也要读得到，否则「关闭」与「一条都没安静」会被混成同一个 0），`staleLinksStatement` 一条查询给出「已启用且未过期、`last_viewed_at` 为空或早于 `now - 阈值`」的链接：`COUNT(*) OVER ()` 给出总数（`LIMIT` 只决定列几行）、`SUM(...) OVER ()` 给出从未被打开过的条数，按 `COALESCE(last_viewed_at,0)` 升序取前 5。阈值表达式由 `staleThresholdSql()` 一处提供，两条语句不可能各说各话。
+  - `lib/maintenance.ts`：把保留期那句 `COALESCE(json_valid…json_extract…)` 提成导出的 `userSettingsNumberSql(path, fallback)`，保留期改为调用它——否则同一段「怎么从 settings 文档里安全取一个数」的 SQL 会有第二份拷贝，而 `json_valid` 那个守卫正是维护清扫不被损坏文档带崩的原因。
+  - 新 `share-stale-links-actions.ts`：`daysSinceVisit()`（卡片与测试共用同一个取整）+ `pauseStaleLinksFlow()`——先确认（措辞说明「只暂停列出的这些」），再走已有的 `batchToggle('disable', …)`（它在失败时会自行提示），成功才报数，**最后重拉报告**（卡片的行就是刚被暂停的那些）。
+  - 新 `share-dashboard-stale-card.tsx` + `share-dashboard-view.tsx` 挂载：徽标写「已 {days}+ 天未读」（阈值可见），正文写「{count} 个长期无人访问，其中 {never} 个从未被打开过」，每行给 slug 与「从未被打开 / 最近访问于 N 天前」；`thresholdDays === 0` 时整卡不画（关闭 ≠ 一颗清白的 0）。
+  - 设置弹窗新增第三段「链接卫生」（一个 `Segmented`：关闭/30/90/180/365）——**它撞上了 SH-39 的守卫**「保留期是弹窗里唯一的 segmented control」，该断言按实情改成「两个都被可见标签命名，且仍然没有记录上限控件」；`retentionGroup()` 也从「按选项文本找」改成「按 `aria-labelledby` 的名字找」，否则第二个控件进来时它会挑错组。
+  - **一处我自己写出来的坏味道被现有断言抓住**：先把 retention 与阈值写成两次 `updateSettings` 调用，SH-61 的「一次保存 = 一次账号补丁」立刻红（`toHaveBeenCalledTimes(1)`）。改成一次 `{share: {visitLogRetentionDays, staleLinkDays}}` 之后，那条断言与它的期望值（`{...DEFAULT_SETTINGS.share, …}`）都不需要改——因为它们描述的本来就是「同一份文档一次写完」。
+  - 看板 CSV 也跟着加了一行（`stale_links_title` + 阈值 + 总数），关闭时不写：SH-64 的契约是「分区就是看板的卡片」，新卡片不能悄悄漏掉；而「关闭」写成「0 个安静链接」等于拿没测过的清白当结论。
+  - 演示后端按同一口径算（`demoStaleLinks`），否则纯前端体验版永远看不到这张卡。
+- 共享契约变更：`ShareSettings` 增一个必填字段 → 3 个测试夹具（`share-settings-retention`、`blog-settings-retention`、用户设置）从 `share: {visitLogRetentionDays}` 改为 `share: {...DEFAULT_SETTINGS.share, …}`（又是「文档里只有这一段」的写法，下次再加字段也不会连坐）；`ShareGlobalAnalytics` 增必填 `staleLinks` → 3 个分析夹具各补一行（分析夹具用 `thresholdDays: 0`，即该文件不涉及卫生）。
+- 先红后绿 + 变异：
+  - worker 8 例先红（`staleLinks` 为 undefined）：阈值来自账号、从未打开计入、总数 ≠ 列出的行数、关闭时整个为零、暂停与过期的链接不算、损坏的 settings 文档仍回退到默认阈值、以及「多少个链接变安静都只问数据库一次」（`last_viewed_at` 语句恰好一条 + `batch` 恰好一次）。5 发变异各自只杀目标：去掉 `> 0` 关闭守卫 → 1 红；把判定改成 `created_at` → 7 红；行查询写死 90 → 8 红；去掉「已启用且未过期」→ 1 红；`COUNT(*) OVER ()` 改 `COUNT(*)` → 3 红。
+  - 客户端 9 例（三段 describe）：阈值写进徽标、逐行说明最后访问时间、关闭时整卡不画、无安静链接时说清白的实情、确认后只暂停列出的两条（`['a','b']`）、拒绝确认则一次不调、失败不得报成功、成功后悔重拉报告，外加 `daysSinceVisit` 的取整/未知/时钟倒流。5 发变异各自只杀目标（徽标写死 90、忽略关闭开关、跳过确认、把失败当成功、不重拉）。**其中「把失败当成功」第一发没有杀死**——因为 `useUi` 的 `toast` 是渲染时按值取走的一个函数引用，渲染之后再 `spyOn` 拿到的是另一个东西；把 spy 挪到挂载之前，那一发才真的杀掉（此类「变异没匹配上/没作用到真实对象」的假绿上一轮已经记过一次，这是第二次，同样留在台账里）。
+- 验证读数：`tsc -b --force` exit 0；`features/share` + `features/blog` + `demo` + `tests/share-routes.test.ts` + `share-visit-retention` + `blog-visit-retention` + `settings-stats` + `src/shared` **61 文件 / 443 用例全绿**；12 项静态门禁全绿（`i18n` 3195 键，±16；`comments` 736 文件 / 5248 条，diff 全属本项；`size` 通过——被报过三次 `longFns`（看板 hook、两个新测试的 describe），都按「不 resnapshot」拆开，`check-size.baseline.json` 回到原状）。
+- 局限：① 只报「已启用且未过期」的链接——暂停/过期的本来就没有访客，列出来只会稀释这张卡；② 卡片是「当前区间一次请求」的附带结论，不随区间变化（卫生是相对现在的，与看哪个区间无关），行数固定 5，**暂停按钮只覆盖列出的这些**并在 UI 上写明；③ 「长期」由账号阈值定义，阈值改动要等下一次看板请求才生效（没有推送）；④ 未做「批量撤销」入口——台账只要求暂停，撤销会连带删除访客记录，属不可逆动作，不放在一键里；⑤ 未在真实 D1 上量 `last_viewed_at` 那条排序的成本（`shares` 每账号行数小，且语句与列表接口同表同条件，索引 `idx_shares_user_enabled` 可覆盖筛选）。

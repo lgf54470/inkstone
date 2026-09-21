@@ -1,5 +1,6 @@
-import { Database, Save, Settings, Shield } from 'lucide-react'
+import { Database, MoonStar, Save, Settings, Shield } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
+import { STALE_LINK_DAY_OPTIONS } from '@shared/user-settings'
 import { Modal } from '../../components/overlay'
 import { Button } from '../../components/primitives'
 import { Segmented, Switch } from '../../components/form'
@@ -44,6 +45,7 @@ export function ShareSettingsModal({
       <div className='flex flex-col gap-4'>
         <TrafficFilterSection bundle={bundle} />
         <RetentionSection bundle={bundle} />
+        <HygieneSection bundle={bundle} />
       </div>
     </Modal>
   )
@@ -124,6 +126,35 @@ function RetentionSection({ bundle }: { bundle: SettingsBundle }) {
           options={retentionOptions}
         />
         <CleanupActions isBusy={isBusy} onClean={handleClean} />
+      </div>
+      <p className='pt-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+        {t('share.settings_stored_account')}
+      </p>
+    </div>
+  )
+}
+
+/**
+ * The one knob the hygiene card reads. It sits here rather than in the card because "nobody reads
+ * this any more" depends on how busy the site is, and the server reads it to decide what to report.
+ */
+function HygieneSection({ bundle }: { bundle: SettingsBundle }) {
+  const { staleLinkDays, setStaleLinkDays } = bundle
+  const options = STALE_LINK_DAY_OPTIONS.map((days) => ({
+    value: String(days),
+    label: days === 0 ? t('share.stale_days_off') : t('share.stale_days_val', { days }),
+  }))
+  return (
+    <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5'>
+      <SectionHeader icon={<MoonStar size={15} className='text-[var(--warning)]' />} title={t('share.settings_hygiene_title')} />
+      <div className='flex flex-col gap-3 pt-3'>
+        <RetentionField
+          label={t('share.stale_days_label')}
+          valueText={t('share.stale_days_val', { days: Number(staleLinkDays) })}
+          value={staleLinkDays}
+          onChange={setStaleLinkDays}
+          options={options}
+        />
       </div>
       <p className='pt-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {t('share.settings_stored_account')}

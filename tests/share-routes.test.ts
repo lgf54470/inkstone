@@ -64,8 +64,8 @@ async function seedNote(db: D1Shim, fields: Record<string, unknown>): Promise<st
 async function seedShare(db: D1Shim, fields: Record<string, unknown>): Promise<void> {
   await runSql(
     db,
-    `INSERT INTO shares (slug, note_id, user_id, folder_id, tags, password_hash, expires_at, views, is_enabled, created_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
+    `INSERT INTO shares (slug, note_id, user_id, folder_id, tags, password_hash, expires_at, views, is_enabled, created_at, last_viewed_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
     fields.slug ?? 'share-' + ++H.counter,
     fields.note_id,
     fields.user_id ?? USER,
@@ -76,6 +76,21 @@ async function seedShare(db: D1Shim, fields: Record<string, unknown>): Promise<v
     fields.views ?? 0,
     fields.is_enabled ?? 1,
     fields.created_at ?? H.now,
+    fields.last_viewed_at ?? null,
+  )
+}
+
+/** The account's stored settings document, written verbatim so a corrupt one can be seeded too. */
+async function setShareSettings(db: D1Shim, settings: unknown): Promise<void> {
+  const raw = typeof settings === 'string' ? settings : JSON.stringify(settings)
+  // Upsert rather than update: an UPDATE against a missing owner would silently do nothing, and a
+  // test that quietly wrote no settings would go green on the default instead of the value stated.
+  await runSql(
+    db,
+    `INSERT INTO users (id, username, password_hash, login, name, avatar_url, settings, created_at, last_seen_at)
+     VALUES (?1, ?1, 'x', 'login', 'Author', '', ?2, ?3, ?3)
+     ON CONFLICT(id) DO UPDATE SET settings = excluded.settings`,
+    USER, raw, H.now,
   )
 }
 
@@ -354,6 +369,153 @@ describe('share note visit stats query (SH-73)', () => {
     const detail = plan.map((row) => String(row.detail)).join(' | ')
     expect(detail).toContain('SEARCH share_visits USING')
     expect(detail).not.toContain('SCAN share_visits')
+  })
+})
+
+describe('share stale link hygiene (SH-70)', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000
+  const now = () => Date.now()
+
+  /**
+   * The stale query joins `users` for the account's own threshold, so the owner row has to exist —
+   * without it every link would read as quiet-free and the tests would prove nothing.
+   */
+  async function ensureOwner(db: D1Shim): Promise<void> {
+    await runSql(
+      db,
+      `INSERT OR IGNORE INTO users (id, username, password_hash, login, name, avatar_url, created_at, last_seen_at)
+       VALUES (?1, ?1, 'x', 'login', 'Author', '', ?2, ?2)`,
+      USER, H.now,
+    )
+  }
+
+  /** One public link, last read `daysAgo` days ago; `null` means nobody ever opened it. */
+  async function seedLink(
+    db: D1Shim,
+    slug: string,
+    daysAgo: number | null,
+    extra: Record<string, unknown> = {},
+  ): Promise<string> {
+    await ensureOwner(db)
+    const noteId = await seedNote(db, { id: `stale-${slug}`, title: `Title ${slug}` })
+    await seedShare(db, {
+      note_id: noteId,
+      slug,
+      views: daysAgo === null ? 0 : 3,
+      last_viewed_at: daysAgo === null ? null : now() - daysAgo * DAY_MS,
+      ...extra,
+    })
+    return noteId
+  }
+
+  async function staleBlock(db: D1Shim) {
+    const body = await (await request(makeApp(), '/api/share/analytics/global?range=30d')).json()
+    return body.staleLinks as {
+      thresholdDays: number
+      total: number
+      neverViewed: number
+      items: Array<{ noteId: string; noteTitle: string | null; slug: string; lastViewedAt: number | null; views: number }>
+    }
+  }
+
+  it('reports the links nobody opened inside the threshold, and not the ones still being read', async () => {
+    const db = await makeDb()
+    await seedLink(db, 'quiet', 200)
+    await seedLink(db, 'fresh', 3)
+
+    const stale = await staleBlock(db)
+
+    expect(stale.thresholdDays).toBe(90)
+    expect(stale.total).toBe(1)
+    expect(stale.items.map((item) => item.slug)).toEqual(['quiet'])
+    // The row carries what the card has to say about it: which note, when it was last read.
+    expect(stale.items[0].noteTitle).toBe('Title quiet')
+    // The real last-visit time, not the share's creation or a zero: the seeded row is 200 days old,
+    // while `created_at` is a decade in the future in this harness.
+    const lastViewed = stale.items[0].lastViewedAt ?? 0
+    expect(Math.abs(lastViewed - (now() - 200 * DAY_MS))).toBeLessThan(60_000)
+  })
+
+  it('treats a link that was never opened as quiet, and says how many those are', async () => {
+    const db = await makeDb()
+    await seedLink(db, 'never', null)
+    await seedLink(db, 'old', 400)
+
+    const stale = await staleBlock(db)
+
+    expect(stale.total).toBe(2)
+    expect(stale.neverViewed).toBe(1)
+    // Never-read links come first: they are the ones that never worked at all.
+    expect(stale.items.map((item) => item.slug)).toEqual(['never', 'old'])
+    expect(stale.items[0].lastViewedAt).toBeNull()
+  })
+
+  it('counts every quiet link while listing only the oldest page', async () => {
+    const db = await makeDb()
+    for (let index = 1; index <= 7; index += 1) await seedLink(db, `stale-${index}`, 100 + index)
+
+    const stale = await staleBlock(db)
+
+    expect(stale.total).toBe(7)
+    expect(stale.items).toHaveLength(5)
+    expect(stale.items.map((item) => item.slug)).toEqual(['stale-7', 'stale-6', 'stale-5', 'stale-4', 'stale-3'])
+  })
+
+  it('takes the threshold from the account, so a slow site can widen it', async () => {
+    const db = await makeDb()
+    await seedLink(db, 'sixty-days', 60)
+    await setShareSettings(db, { share: { staleLinkDays: 30 } })
+
+    const stale = await staleBlock(db)
+
+    expect(stale.thresholdDays).toBe(30)
+    expect(stale.items.map((item) => item.slug)).toEqual(['sixty-days'])
+  })
+
+  it('reports nothing at all when the owner turned the hygiene report off', async () => {
+    const db = await makeDb()
+    await seedLink(db, 'ancient', 900)
+    await setShareSettings(db, { share: { staleLinkDays: 0 } })
+
+    const stale = await staleBlock(db)
+
+    expect(stale).toEqual({ thresholdDays: 0, total: 0, neverViewed: 0, items: [] })
+  })
+
+  it('leaves out links that are not public, which have nobody to be quiet for', async () => {
+    const db = await makeDb()
+    await seedLink(db, 'paused', 300, { is_enabled: 0 })
+    await seedLink(db, 'expired', 300, { expires_at: now() - DAY_MS })
+    await seedLink(db, 'live', 300)
+
+    const stale = await staleBlock(db)
+
+    expect(stale.items.map((item) => item.slug)).toEqual(['live'])
+  })
+
+  it('keeps working when the stored settings document is unreadable', async () => {
+    const db = await makeDb()
+    await seedLink(db, 'quiet', 200)
+    await setShareSettings(db, '{not json')
+
+    const stale = await staleBlock(db)
+
+    // A corrupt document must fall back to the shipped threshold, not take the endpoint down.
+    expect(stale.thresholdDays).toBe(90)
+    expect(stale.total).toBe(1)
+  })
+
+  it('asks the database once, however many links have gone quiet', async () => {
+    const db = await makeDb()
+    for (let index = 1; index <= 6; index += 1) await seedLink(db, `many-${index}`, 100 + index)
+    const statements = captureSql(db)
+    const calls = instrumentRoundTrips()
+
+    const stale = await staleBlock(db)
+
+    expect(stale.total).toBe(6)
+    expect(statements.filter((sql) => sql.includes('last_viewed_at'))).toHaveLength(1)
+    expect(calls.batch).toBe(1)
   })
 })
 

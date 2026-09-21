@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { UserSettings } from './types'
 import {
   DEFAULT_SETTINGS,
+  STALE_LINK_DEFAULT_DAYS,
+  STALE_LINK_MAX_DAYS,
   VISIT_LOG_RETENTION_DEFAULT_DAYS,
   VISIT_LOG_RETENTION_MAX_DAYS,
   assertUnchangedSettingsSections,
@@ -163,6 +165,34 @@ describe('share visit log retention setting (SH-05c)', () => {
     const current = mergeSettingsPatch(mergeSettings({}), { share: { visitLogRetentionDays: 90 } })
     const next = mergeSettingsPatch(current, { share: { visitLogRetentionDays: '30' } })
     expect(next.share.visitLogRetentionDays).toBe(90)
+  })
+
+})
+
+describe('share link hygiene threshold setting (SH-70)', () => {
+  it('leaves the hygiene threshold alone when only the retention is patched', () => {
+    // Both live in the share section, which used to be one knob: the second must not be wiped by a
+    // patch that never mentioned it.
+    const current = mergeSettingsPatch(mergeSettings({}), { share: { staleLinkDays: 30 } })
+    const next = mergeSettingsPatch(current, { share: { visitLogRetentionDays: 7 } })
+    expect(next.share.staleLinkDays).toBe(30)
+    expect(next.share.visitLogRetentionDays).toBe(7)
+  })
+
+  it('ships the hygiene threshold default for an account whose document predates it (SH-70)', () => {
+    // The dashboard reads this number to decide what to report, so an account that never opened
+    // the modal must still get a bounded answer rather than an absent one.
+    expect(mergeSettings({}).share.staleLinkDays).toBe(STALE_LINK_DEFAULT_DAYS)
+    const legacy = mergeSettingsPatch(mergeSettings({ share: { visitLogRetentionDays: 30 } }), { share: { visitLogRetentionDays: 7 } })
+    expect(legacy.share.staleLinkDays).toBe(STALE_LINK_DEFAULT_DAYS)
+  })
+
+  it('clamps the hygiene threshold, keeping the off switch at zero', () => {
+    const current = mergeSettings({})
+    expect(mergeSettingsPatch(current, { share: { staleLinkDays: 0 } }).share.staleLinkDays).toBe(0)
+    expect(mergeSettingsPatch(current, { share: { staleLinkDays: 100_000 } }).share.staleLinkDays)
+      .toBe(STALE_LINK_MAX_DAYS)
+    expect(mergeSettingsPatch(current, { share: { staleLinkDays: -1 } }).share.staleLinkDays).toBe(0)
   })
 
   it('survives a settings round-trip through stored JSON', () => {

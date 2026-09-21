@@ -141,7 +141,7 @@ describe('blog settings modal keeps visit-log retention on the account (SH-43)',
   })
 
   it('leaves the share retention alone while saving the blog one', async () => {
-    session.state.settings = { ...DEFAULT_SETTINGS, share: { visitLogRetentionDays: 7 }, blog: { visitLogRetentionDays: 30 } }
+    session.state.settings = { ...DEFAULT_SETTINGS, share: { ...DEFAULT_SETTINGS.share, visitLogRetentionDays: 7 }, blog: { visitLogRetentionDays: 30 } }
 
     openModal()
     openTrafficTab()

@@ -6,6 +6,7 @@ import { DashboardHeader, FilterSummaryBanner } from './share-dashboard-header'
 import { KpiGrid } from './share-dashboard-kpis'
 import { CountryBreakdownCard, DevicesBreakdownCard, ReferrerBreakdownCard } from './share-dashboard-breakdown'
 import { TopNotesCard } from './share-dashboard-top-notes'
+import { StaleLinksCard } from './share-dashboard-stale-card'
 import { RecentActivityCard } from './share-dashboard-activity'
 import { useShareDashboardView } from './use-share-dashboard-view'
 
@@ -41,6 +42,7 @@ export function ShareDashboardView({
             <ReferrerBreakdownCard analytics={analytics} />
             <DevicesBreakdownCard analytics={analytics} />
           </div>
+          <StaleLinksCard bundle={bundle} />
           <RecentActivityCard analytics={analytics} onOpenLogs={onOpenLogs} locale={locale} />
         </>
       )}

@@ -1485,6 +1485,7 @@ const allowed = new Map([
     '// Same lens the single-track PATCH uses, so unknown tag ids are dropped in one place.',
   ]],
   ['src/client/demo/backend/routes/share.ts', [
+    '/**\n * The hygiene card on the demo dashboard, from the demo\'s own share rows: the links whose last\n * visit is older than the shipped threshold, plus every link nobody has opened yet.\n */',
     '// The remaining categories read the same rules as the worker\'s list query, so the',
     '// demo build does not quietly return everything for a filter it never learned.',
   ]],
@@ -3087,6 +3088,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-dashboard-export-button.test.ts', [
     '/**\n * SH-64\'s UI half: the button that hands the window over. The builder is tested on its own; what\n * is only true of the wiring is that the control carries an accessible name, that it stays inert\n * while there is nothing on screen to describe, and that clicking it actually produces one file.\n */',
+    '// Hygiene is off in this fixture: this file is about the export control, not the card.',
     '// A request that never answers is the honest way to hold the view in its first-load state:',
     '// there is no window yet, so there is no file to offer.',
   ]],
@@ -3100,6 +3102,8 @@ const allowed = new Map([
     '// A delta the endpoint did not send is left out rather than written as zero.',
     '// The card draws five of six to fit the grid; the file reports what it was given.',
     '// A count with no share sent for it is written as a bare name, not as "(undefined%)".',
+    '// Off is not the same as "nothing went quiet": a zero written under an off switch would read',
+    '// as a clean bill of health for links nobody ever measured.',
     '// The download is the module\'s only side effect; capture the blob and stub the click, as the',
     '// visit-log export test does.',
   ]],
@@ -3112,6 +3116,7 @@ const allowed = new Map([
     '/** A breakdown list: the name the card shows, with the share of the total the card prints beside it. */',
     '/** Devices and systems as the one card draws them, names localized the same way. */',
     '/**\n * The visit tail the activity card lists. The value is the timestamp alone so it sorts and compares\n * as one, and everything the row says about the visit rides in the item.\n */',
+    '/**\n * The hygiene card\'s own number, written only when the report is on. A threshold of 0 is the\n * owner\'s off switch, and a file that turned that into "0 quiet links" would report the absence of\n * a report as good news about the links.\n */',
     '// The BOM makes a spreadsheet read the UTF-8 place names as text rather than mojibake.',
     '// Nothing drawn yet means nothing to hand over; saying so beats writing an empty file.',
   ]],
@@ -3125,6 +3130,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-dashboard-kpis.test.ts', [
     '/**\n * SH-56: the per-day rate used to draw the same sparkline as the total-views card (the same line\n * twice on one row, so it carried no information) and had no comparison of its own. What it has to\n * keep: exactly two sparklines across the four cards, and a delta on the per-day card that says\n * what it is measured against.\n */',
+    '// Hygiene is off in this fixture: this file is about the KPI row.',
     '// The two totals keep their lines; the per-day rate does not repeat the views line.',
   ]],
   ['src/client/features/share/share-dashboard-kpis.tsx', [
@@ -3136,6 +3142,23 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-dashboard-scope.test.ts', [
     '/**\n * SH-54: the numbers on this dashboard read every share, while the sidebar right beside it can have a\n * folder or a tag selected — so the page has to say which of the two it is showing. The assertion is\n * on the words, not on the markup: a scope that only exists in a design file is the bug.\n */',
+  ]],
+  ['src/client/features/share/share-dashboard-stale-card.test.ts', [
+    '/**\n * SH-70: the dashboard\'s hygiene report. Two things make it worth trusting: it states the threshold\n * it was measured against (so "quiet" is the owner\'s number, not a shipped one), and its one action\n * pauses exactly the links it listed — a page of the total — rather than standing in for the rest.\n */',
+    '// Deliberately not the shipped 90: a card that printed a constant would still pass with the',
+    '// default, and the threshold is exactly the thing that must follow the account.',
+    '// 120 days before now, read off the same helper the card uses rather than a typed-in number.',
+    '// Nothing to pause, so the action is not offered at all.',
+    '// Spy before mounting: the hook takes the toast function once, when it renders, so a spy',
+    '// installed afterwards would never be the function that is actually called.',
+    '// The page is what gets paused: link c and d are quiet too, but they are not on screen.',
+    '// The card\'s own rows were the paused links, so they have to be re-read from the server.',
+    '// A clock that ran backwards must not print "last read -3 days ago".',
+  ]],
+  ['src/client/features/share/share-dashboard-stale-card.tsx', [
+    '/**\n * SH-70: the links nobody reads any more, and the one action that answers them. It reads the same\n * analytics response as the rest of the dashboard, so it costs no extra request, and the threshold\n * it reports is the account\'s own setting — stated in the badge, because "quiet" is only meaningful\n * next to the number of days it means.\n */',
+    '// 0 is the owner\'s off switch: the server sends nothing to report, so there is nothing to draw.',
+    '/* The list is what gets paused, and it is a page of the total: saying "these" keeps the\n              button from standing in for links that are not on screen. */',
   ]],
   ['src/client/features/share/share-dashboard-top-notes.tsx', [
     '/** The notes the range\'s traffic landed on, with a way into each note\'s own analytics. */',
@@ -3212,8 +3235,13 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-settings-modal.tsx', [
     '/* Where a setting is kept is part of what it means: the filters live in this browser, the\n          retention below lives on the account. Saying it once per group is what makes Save honest. */',
+    '/**\n * The one knob the hygiene card reads. It sits here rather than in the card because "nobody reads\n * this any more" depends on how busy the site is, and the server reads it to decide what to report.\n */',
   ]],
   ['src/client/features/share/share-settings-retention.test.ts', [
+    '/**\n * The retention control, found by the label it is named with rather than by its options: the modal\n * grew a second segmented control (SH-70\'s hygiene threshold), and a lookup keyed on one of the\n * retention\'s own option texts would be one copy away from picking that control up instead.\n */',
+    '// SH-70 added the second one: how long a link may stay unread before it is reported. Both are',
+    '// named controls with the label the eye reads, which is what keeps this from being a count of',
+    '// controls for its own sake.',
     '// The visible text is the name; a second hidden label would only drift.',
   ]],
   ['src/client/features/share/share-settings-storage.test.ts', [
@@ -3223,6 +3251,13 @@ const allowed = new Map([
   ['src/client/features/share/share-small-defects.test.ts', [
     '// Fresh array per call: a refresh that hands the store the same shares',
     '// reference would never re-fire the initial-note effect.',
+  ]],
+  ['src/client/features/share/share-stale-links-actions.ts', [
+    '/**\n * How long ago the listed link was last read, in whole days; null when nobody ever opened it.\n * The card and any test read the same number off the same function rather than each rounding the\n * difference its own way.\n */',
+    '/**\n * SH-70\'s one action: pause the quiet links. It pauses exactly the rows the card listed — not\n * "everything stale", which the card may only be showing five of — so the confirmation states that\n * count rather than offering a number nobody can check. Pausing is reversible, hence no danger tone.\n */',
+    '// A failure already reaches the person through the store\'s own notification; returning here',
+    '// keeps this from claiming a pause that did not happen.',
+    '// The card\'s own rows are the paused links, so it has to be re-read rather than assumed empty.',
   ]],
   ['src/client/features/share/share-store/filters.ts', [
     '// The input is controlled by store state, so it stays responsive; only the',
@@ -3335,6 +3370,7 @@ const allowed = new Map([
     '/**\n * The dashboard answers one question per window, so this is its data layer: the request, the\n * in-flight cancellation, the age of what came back, and the optional cadence that re-asks.\n * Everything the view needs about *how* it is drawn stays out of here.\n */',
     '// Stamped together with the data: the age line describes the numbers on screen, so it must',
     '// move only when they do.',
+    '/**\n * SH-70\'s one command, kept out of the dashboard hook: the pause flow needs a busy flag (the store\n * refuses a second batch while one is in flight) and a reload that re-reads the report, and both\n * belong to the action rather than to the range the dashboard is showing.\n */',
     '// The file describes the window currently on screen, so it is only offered once there is one.',
   ]],
   ['src/client/features/share/use-share-hub-modal.ts', [
@@ -3357,6 +3393,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/use-share-settings-modal.ts', [
     '// The sweep runs on the server, so the value it reads has to be the account\'s.',
+    '// The dashboard\'s hygiene card reports on the account\'s threshold, not this browser\'s.',
+    '// One patch for the whole account section: both values belong to the same document, and two',
+    '// calls would be two writes of one thing.',
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
   ]],
   ['src/client/features/share/use-visit-export.ts', [
@@ -5492,6 +5531,7 @@ const allowed = new Map([
     '/** Tag(s, comma-separated) that file notes into the sidebar to-do tree; null falls back to the locale default. */',
     '/** Share-center preferences the server acts on, not just the UI. */',
     '/**\n   * Days a visit log row survives before the maintenance cron deletes it;\n   * 0 keeps every row. It has to live here rather than in the browser so the\n   * sweep runs whether or not the owner ever opens the app again.\n   */',
+    '/**\n   * Days without a visit after which a link counts as stale (SH-70); 0 turns\n   * the report off. What "nobody reads this any more" means depends on how\n   * busy the site is, so it is the owner\'s number — and the dashboard query\n   * reads it from here rather than from the request.\n   */',
     '/** Blog-center preferences the server acts on, not just the UI. */',
     '/**\n   * Days a `blog_visits` row survives before the maintenance cron deletes it;\n   * 0 keeps every row. Same reasoning as the share twin.\n   */',
   ]],
@@ -5500,17 +5540,29 @@ const allowed = new Map([
     '// labels it (SH-34), the worker must not bake in an English fallback.',
     '// A short display label, never the stored digest: the worker truncates the',
     '// visitor fingerprint before it leaves the API (SH-82).',
+    '/**\n * A public link nobody has opened inside the owner\'s threshold (SH-70). `views` is the all-time\n * counter, so a link that was read once years ago is not reported as never read.\n */',
+    '/**\n * The hygiene report: how many public links have gone quiet, of which how many were never opened\n * at all, and the oldest page of them. `thresholdDays` is the account\'s own number (read from its\n * settings), and 0 means the owner turned the report off — in which case there is nothing to list.\n */',
     '/**\n * The sidebar\'s counters without the share rows: a hub that opens on the dashboard\n * reads these, so it does not pay for a list it is not showing.\n */',
+  ]],
+  ['src/shared/user-settings.test.ts', [
+    '// Both live in the share section, which used to be one knob: the second must not be wiped by a',
+    '// patch that never mentioned it.',
+    '// The dashboard reads this number to decide what to report, so an account that never opened',
+    '// the modal must still get a bounded answer rather than an absent one.',
   ]],
   ['src/shared/user-settings.ts', [
     '/** The retention the cron applies when a user never chose one. */',
     '/** A decade: beyond this a sweep is indistinguishable from "keep forever". */',
+    '/** A quarter: a link unread for that long is worth asking about, and 0 means "do not ask". */',
+    '/** The same ceiling as retention: past a decade the question stops meaning anything. */',
+    '/** The thresholds the hygiene control offers, in days; 0 is the off switch. */',
     '// External https images are blocked by default (renderer placeholder + CSP',
     '// `img-src` without `https:`); opt in per user. Share pages stay blocked',
     '// regardless of this value.',
     '/** Built-in floating-window sizes; `custom` reads width/height from the settings. */',
     '/**\n * Merge a partial patch into the current settings.\n *\n * Sections that the patch does not touch are passed through by reference,\n * so subscribers observing a specific section (e.g. `settings.editor`) are\n * not re-rendered when an unrelated section changes.\n */',
     '/**\n * Guards the referential-stability contract of mergeSettingsPatch: sections\n * the patch did not touch must keep their object identity, otherwise narrow\n * store subscriptions silently regress into full-app re-renders on every\n * settings change.\n */',
+    '/**\n * The share section adds the hygiene threshold to the visit-log knob. An account that stored its\n * settings before this field existed has no value to fall back on, so the shipped default — not\n * `undefined` — is what an absent one becomes.\n */',
     '/**\n * Both visit-log surfaces keep the same single knob, so the same cleaner backs\n * `share` and `blog`: 0 means "keep forever" and must survive as 0.\n */',
   ]],
   ['src/worker/app.ts', [
@@ -5733,7 +5785,7 @@ const allowed = new Map([
     '// Malformed or truncated image data is routine for probes; degrade to unknown dimensions.',
   ]],
   ['src/worker/lib/maintenance.ts', [
-    '/**\n * Per-account visit log retention in days, read from the stored settings\n * document: 0 keeps every row, while a missing or unparsable value falls back\n * to the shipped default so an account that never opened the settings modal\n * still has a bounded log. `json_valid` guards a corrupt document, which would\n * otherwise make `json_extract` throw and take the whole sweep down.\n */',
+    '/**\n * A per-account number read straight out of the stored settings document: a\n * missing or unparsable value falls back to the shipped default, so an account\n * that never opened the settings modal still has a bounded log. `json_valid`\n * guards a corrupt document, which would otherwise make `json_extract` throw\n * and take the whole sweep down. The reading query must alias `users` as `u`.\n */',
     '/** The aged rows of one visit table, judged by the owner\'s own retention. */',
     '// Order matters: the destructuring below lines up with these statements.',
     '/** Bounded deletes for rows that carry their own expiry, plus stale login attempts. */',
@@ -6229,8 +6281,14 @@ const allowed = new Map([
     '// replaces the four and two separate scans the per-metric subqueries made.',
   ]],
   ['src/worker/routes/share/analytics.ts', [
+    '/** How many quiet links the card lists; the count beside it covers all of them. */',
     '// Only the unbounded range is charged: a bounded one fetches a single window of rows,',
     '// while `all` summarizes the account\'s entire history (see consumeShareReadBudget).',
+    '/**\n * SH-70: which public links have gone quiet, so the owner can pause what nobody reads instead of\n * letting dead links sit in the list forever. The threshold is the account\'s own setting (0 = the\n * report is off), which is why the query reads it rather than taking it from the request.\n */',
+    '// The window function counts every match; LIMIT only decides how many are listed.',
+    '/**\n * The account\'s hygiene threshold in days, or 0 when it is switched off. Read on its own because\n * the row query returns nothing at all in both the "nothing is quiet" and the "switched off"\n * cases, and the card still has to say which of the two it is looking at.\n */',
+    '/**\n * The quietest public links, oldest activity first, in one statement: a links table read plus the\n * count of everything it matched, so an account with hundreds of dead links still answers once.\n */',
+    '/** The threshold expression both stale statements use, so they cannot disagree about it. */',
     '// The per-day rate gets its own comparison: the same rate over the previous window of the same',
     '// length, so "average per day" answers whether the rate moved, not whether the window grew.',
     '// Equal view counts have no order out of a GROUP BY, so ties break by note id',
@@ -6582,10 +6640,20 @@ const allowed = new Map([
     '/** Furniture that is not a control and is allowed to stay hidden — none of these today. */',
   ]],
   ['tests/share-routes.test.ts', [
+    '/** The account\'s stored settings document, written verbatim so a corrupt one can be seeded too. */',
+    '// Upsert rather than update: an UPDATE against a missing owner would silently do nothing, and a',
+    '// test that quietly wrote no settings would go green on the default instead of the value stated.',
     '// The measured plan (bound parameters, as the app sends them) is unchanged by the owner',
     '// predicate: it still searches idx_share_visits_note_time. What this guards is the other',
     '// half of that measurement — the statement stays index-served and never fans out into a',
     '// full table scan, which is what a rewrite dropping the note_id predicate would cause.',
+    '/**\n   * The stale query joins `users` for the account\'s own threshold, so the owner row has to exist —\n   * without it every link would read as quiet-free and the tests would prove nothing.\n   */',
+    '/** One public link, last read `daysAgo` days ago; `null` means nobody ever opened it. */',
+    '// The row carries what the card has to say about it: which note, when it was last read.',
+    '// The real last-visit time, not the share\'s creation or a zero: the seeded row is 200 days old,',
+    '// while `created_at` is a decade in the future in this harness.',
+    '// Never-read links come first: they are the ones that never worked at all.',
+    '// A corrupt document must fall back to the shipped threshold, not take the endpoint down.',
     '// "Has expiry" stays the superset of every future date — including the soon ones, so no row',
     '// disappears from the wider category — while "soon" narrows it, and expired stays disjoint.',
     '// The permanent link is reported rather than counted: nothing about it changed.',

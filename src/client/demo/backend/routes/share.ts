@@ -1,8 +1,9 @@
 import { Hono, type Context } from 'hono'
 import type { DemoState } from '../../state'
-import type { ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareTimelinePoint, ShareTimelineRange, ShareVisitLog, ShareVisitsResponse } from '@shared/types'
+import type { ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareStaleLinks, ShareTimelinePoint, ShareTimelineRange, ShareVisitLog, ShareVisitsResponse } from '@shared/types'
 import { apiError, jsonBody } from '../helpers/info'
 import { EXPIRING_SOON_DAYS } from '@shared/constants'
+import { STALE_LINK_DEFAULT_DAYS } from '@shared/user-settings'
 
 const SHARE_TOP_COUNTRIES = [
   { name: 'US', count: 120, percentage: 30 },
@@ -157,6 +158,7 @@ function shareGlobalAnalytics(c: Context, state: DemoState): Response {
     osList: SHARE_OS_LIST,
     browsers: SHARE_BROWSERS,
     recentVisits: [],
+    staleLinks: demoStaleLinks(state, now),
     filterStats: {
       bots: 38,
       selfReferrals: 12,
@@ -164,6 +166,30 @@ function shareGlobalAnalytics(c: Context, state: DemoState): Response {
     },
   }
   return c.json(res)
+}
+
+/**
+ * The hygiene card on the demo dashboard, from the demo's own share rows: the links whose last
+ * visit is older than the shipped threshold, plus every link nobody has opened yet.
+ */
+function demoStaleLinks(state: DemoState, now: number): ShareStaleLinks {
+  const cutoff = now - STALE_LINK_DEFAULT_DAYS * 86400000
+  const quiet = [...state.shares.values()]
+    .filter((share) => share.info.isEnabled)
+    .filter((share) => share.info.lastViewedAt === null || share.info.lastViewedAt < cutoff)
+    .sort((a, b) => (a.info.lastViewedAt ?? 0) - (b.info.lastViewedAt ?? 0))
+  return {
+    thresholdDays: STALE_LINK_DEFAULT_DAYS,
+    total: quiet.length,
+    neverViewed: quiet.filter((share) => share.info.lastViewedAt === null).length,
+    items: quiet.slice(0, 5).map((share) => ({
+      noteId: share.info.noteId,
+      noteTitle: state.notes.get(share.info.noteId)?.title ?? null,
+      slug: share.info.slug,
+      lastViewedAt: share.info.lastViewedAt,
+      views: share.info.views,
+    })),
+  }
 }
 
 function shareNoteAnalytics(c: Context, state: DemoState): Response {

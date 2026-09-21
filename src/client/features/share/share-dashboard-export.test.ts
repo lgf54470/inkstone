@@ -31,6 +31,12 @@ function analyticsFixture(overrides: Partial<ShareGlobalAnalytics> = {}): ShareG
     osList: Array.from({ length: 6 }, (_, i) => ({ name: `os-${i}`, count: 6 - i, percentage: 1 })),
     browsers: [{ name: 'Chrome', count: 25, percentage: 18 }],
     recentVisits: [recentVisitFixture()],
+    staleLinks: {
+      thresholdDays: 90,
+      total: 3,
+      neverViewed: 1,
+      items: [{ noteId: 'n2', noteTitle: 'Forgotten note', slug: 'forgotten', lastViewedAt: null, views: 0 }],
+    },
     filterStats: { bots: 12, selfReferrals: 3, owner: 5 },
     ...overrides,
   }
@@ -202,6 +208,20 @@ describe('dashboard CSV naming (SH-64)', () => {
 })
 
 describe('dashboard CSV edge cases (SH-64)', () => {
+  it('writes the hygiene count under the threshold it was measured against', () => {
+    const csv = build()
+    expect(rowOf(csv, t('share.stale_links_badge', { days: 90 }))?.value).toBe('3')
+  })
+
+  it('leaves the hygiene line out when the owner turned the report off', () => {
+    // Off is not the same as "nothing went quiet": a zero written under an off switch would read
+    // as a clean bill of health for links nobody ever measured.
+    const off = analyticsFixture({ staleLinks: { thresholdDays: 0, total: 0, neverViewed: 0, items: [] } })
+    const csv = build({ analytics: off })
+
+    expect(rows(csv).some((row) => row.section === t('share.stale_links_title'))).toBe(false)
+  })
+
   it('still describes its window when the range held no traffic', () => {
     const empty = analyticsFixture({
       timeline: [],

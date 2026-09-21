@@ -20,6 +20,13 @@ export const VISIT_LOG_RETENTION_DEFAULT_DAYS = 30
 /** A decade: beyond this a sweep is indistinguishable from "keep forever". */
 export const VISIT_LOG_RETENTION_MAX_DAYS = 3_650
 
+/** A quarter: a link unread for that long is worth asking about, and 0 means "do not ask". */
+export const STALE_LINK_DEFAULT_DAYS = 90
+/** The same ceiling as retention: past a decade the question stops meaning anything. */
+export const STALE_LINK_MAX_DAYS = 3_650
+/** The thresholds the hygiene control offers, in days; 0 is the off switch. */
+export const STALE_LINK_DAY_OPTIONS = [0, 30, 90, 180, 365] as const
+
 export const DEFAULT_SETTINGS: UserSettings = {
   appearance: {
     language: 'zh-CN',
@@ -80,6 +87,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   },
   share: {
     visitLogRetentionDays: VISIT_LOG_RETENTION_DEFAULT_DAYS,
+    staleLinkDays: STALE_LINK_DEFAULT_DAYS,
   },
   blog: {
     visitLogRetentionDays: VISIT_LOG_RETENTION_DEFAULT_DAYS,
@@ -325,6 +333,23 @@ function mergeNotes(current: Record<string, unknown>, patch: Record<string, unkn
 }
 
 /**
+ * The share section adds the hygiene threshold to the visit-log knob. An account that stored its
+ * settings before this field existed has no value to fall back on, so the shipped default — not
+ * `undefined` — is what an absent one becomes.
+ */
+function mergeShare(current: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...mergeVisitLogRetention(current, patch),
+    staleLinkDays: integerInRange(
+      patch.staleLinkDays,
+      0,
+      STALE_LINK_MAX_DAYS,
+      (current.staleLinkDays ?? STALE_LINK_DEFAULT_DAYS) as number,
+    ),
+  }
+}
+
+/**
  * Both visit-log surfaces keep the same single knob, so the same cleaner backs
  * `share` and `blog`: 0 means "keep forever" and must survive as 0.
  */
@@ -361,6 +386,7 @@ function mergeSettingsSection(
     case 'notes':
       return mergeNotes(current, patch)
     case 'share':
+      return mergeShare(current, patch)
     case 'blog':
       return mergeVisitLogRetention(current, patch)
   }

@@ -47,6 +47,7 @@ export function buildDashboardCsv(input: ExportInput): string {
       localizeReferrerName(item.name),
     ),
     ...environmentRows(input.analytics),
+    ...staleLinkRows(input.analytics),
     ...recentVisitRows(input.analytics, input.locale),
   ]
   const header: CsvRow = [t('share.export_col_section'), t('share.export_col_item'), t('share.export_col_value')]
@@ -184,6 +185,17 @@ function visitFlags(visit: ShareGlobalAnalytics['recentVisits'][number]): string
     visit.isOwner ? t('share.badge_owner') : '',
     visit.isSelfReferrer ? t('share.badge_self_referrer') : '',
   ]
+}
+
+/**
+ * The hygiene card's own number, written only when the report is on. A threshold of 0 is the
+ * owner's off switch, and a file that turned that into "0 quiet links" would report the absence of
+ * a report as good news about the links.
+ */
+function staleLinkRows(analytics: ShareGlobalAnalytics): CsvRow[] {
+  const { thresholdDays, total } = analytics.staleLinks
+  if (thresholdDays === 0) return []
+  return [[t('share.stale_links_title'), t('share.stale_links_badge', { days: thresholdDays }), total]]
 }
 
 function toCsv(rows: CsvRow[]): string {
