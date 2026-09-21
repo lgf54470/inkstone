@@ -21,6 +21,11 @@ export function DashboardHeader({ bundle }: { bundle: DashboardBundle }) {
         <p className='text-[length:var(--text-12)] text-[var(--text-tertiary)]'>
           {t('share.analytics_dashboard_subtitle')}
         </p>
+        {/* The dashboard reads every share, whatever folder or tag the sidebar has selected: saying
+            so is the difference between a wrong number and a stated scope. */}
+        <p className='pt-0.5 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+          {t('share.analytics_dashboard_scope')}
+        </p>
       </div>
 
       <div className='flex items-center gap-2'>

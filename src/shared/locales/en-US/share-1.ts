@@ -59,6 +59,7 @@ export const messages = {
 'share.no_tags': 'No tags',
 'share.analytics_dashboard_subtitle': 'Visitor trends, unique audiences, and geographic demographics across all shared notes',
 'share.analytics_dashboard_title': 'Analytics Dashboard',
+'share.analytics_dashboard_scope': 'All shares, all folders and tags — the sidebar filters do not narrow these numbers',
 'share.analytics_load_failed': 'Could not load the analytics data.',
 'share.batch_disable': 'Batch Pause',
 'share.batch_enable': 'Batch Enable',

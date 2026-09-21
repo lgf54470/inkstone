@@ -47,9 +47,9 @@
 | 17 | C | SH-57 | `toLocaleString()` 跟随 OS / delta 无语义 / 图表无文本替代 | 小–中 | ✅ | 09a5c284 |
 | 18 | C | SH-56 | 「日均访问量」口径错误 + sparkline 与 PV 卡重复 | 小 | ✅ | 7859ca3b |
 | 19 | C | SH-58 | hub 分类徐标未走 `countBadgeTone`（且不在对比度门禁内） | 小 | ✅ | 54a2feb1 |
-| 20 | C | SH-52 | 侧栏计数缺 password/expiring/permanent 三类 | 小 | ✅ | ⏳ 下项回填 |
+| 20 | C | SH-52 | 侧栏计数缺 password/expiring/permanent 三类 | 小 | ✅ | 92e20e4f |
+| 21 | C | SH-54 | 看板不受侧栏范围影响且不标注作用域 | 中 | ✅ | ⏳ 下项回填 |
 | 19 | C | SH-58 | hub 分类徽标未走 `countBadgeTone`（且不在对比度门禁内） | 小 | ⬜ | |
-| 21 | C | SH-54 | 看板不受侧栏范围影响且不标注作用域 | 中 | ⬜ | |
 | 22 | C | SH-61 | 设置「保存」一半 localStorage 一半服务端，语义未标注 | 小 | ⬜ | |
 | 23 | C | SH-83 | UV 去重口径（IP+日盐 / 同 NAT 合并 / 跨日重复）不可见 | 极小 | ⬜ | |
 | 24 | D | SH-72 | 打开分享中心固定 4 请求 / ≈15 条 D1 语句 | 小–中 | ⬜ | |
@@ -319,3 +319,11 @@
 - 先红后绿（含变异）：`tests/share-routes.test.ts` 新增一例断言 `[passwordShares, expiringShares, permanentShares] === [1, 1, 2]`（口令 1 条、30 天后到期 1 条、无到期 2 条）；变异测试：把 `password_shares` 的 `COUNT` 条件改成永远不成立，断言立刻红（`expected [0, 1, 2]`），还原复绿——证明它真的在守这三个数，而不是碰巧通过。
 - 验证读数：`tests/share-routes.test.ts` **77/77**；`npx tsc -b --force` exit 0；11 项静态门禁全绿（`comments` 5058 条 / 708 文件）。
 - 局限：① 现在三个分类都能显示 0（`count: 0` 也渲染）——这正是「与空着可区分」的意图，但侧栏因此更满，视觉密度未做核对；② 计数与列表查询是两条独立的 SQL 条件，改了一侧忘另一侧不会自动报警（本项的测试只钉住计数侧，桶的划分在第 14 项的测试里）——把两者抽成同一份谓词是后续可选的重构；③ 博客侧栏有自己的 `blog-*` 计数路径，不在本项范围。
+
+### 21 — SH-54 看板说清自己的作用域（2026-09-21）
+
+- 根因：选中文件夹或标签后切到「数据看板」，看到的仍是全站数字，而标题只写「分享访问看板」——同一个页面上，左边的筛选器说一套、右边的数字说另一套（上一轮 SH-30 的「近义标签同屏」是同一根因的另一面）；`use-share-dashboard-view.ts` 只订阅三个流量过滤开关，完全不读 `folderId`/`tag`，`/api/share/analytics/global` 也没有 scope 参数。
+- 本项取审查里「标注先行（低风险）」的那一半：在标题下方显式写出作用域（「全部分享（含所有文件夹与标签），不随左侧筛选变化 / All shares, all folders and tags — the sidebar filters do not narrow these numbers」），两处 locale 各一条键；真正的 scope 参数留给第 24 项（SH-72，那条路由同一批改，避免两次动同一个查询）。
+- 先红后绿：新增 `src/client/features/share/share-dashboard-scope.test.ts`（1 例）断言标题旁确实画出了这句作用域文案（断言的是「话」而不是「标记」，只在设计稿里存在的作用域就是原来的 bug）。
+- 验证读数：`npx tsc -b --force` exit 0；定向测试 4/4（scope ＋ 首屏加载态）；7 项静态门禁全绿（`i18n` 新增 2 键，`comments` 5060 条 / 709 文件）。
+- 局限：① 只标注、不缩小范围——看板数字仍是全站的，这是有意的中间态，真正的 `scope=all|folder|tag` 参数随 SH-72 落地；② 作用域文案是静态的，没有随左侧选择的文件夹名变化（它陈述的是「本页不受筛选影响」，因此不需要动态文案）；③ 未给看板加「应用到筛选」之类的交互入口（那是 SH-54 的后半部分，属功能补齐）。

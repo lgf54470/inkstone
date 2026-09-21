@@ -3045,6 +3045,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-dashboard-header.tsx', [
     '/** The dashboard\'s title, its range control, and the two ways to re-ask for the same window. */',
+    '/* The dashboard reads every share, whatever folder or tag the sidebar has selected: saying\n            so is the difference between a wrong number and a stated scope. */',
     '/** What the traffic filters took out of the numbers below, drawn only when they took something. */',
   ]],
   ['src/client/features/share/share-dashboard-kpis.test.ts', [
@@ -3057,6 +3058,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-dashboard-loading.tsx', [
     '/**\n * First load of the dashboard. Zero-filled cards would be a claim about the data\n * ("no visits in this window") rather than a state of the request, so the KPI grid,\n * the trend and the four breakdown cards all stand in as shimmer placeholders until\n * the first answer arrives. Later range switches keep the previous cards instead.\n */',
+  ]],
+  ['src/client/features/share/share-dashboard-scope.test.ts', [
+    '/**\n * SH-54: the numbers on this dashboard read every share, while the sidebar right beside it can have a\n * folder or a tag selected — so the page has to say which of the two it is showing. The assertion is\n * on the words, not on the markup: a scope that only exists in a design file is the bug.\n */',
   ]],
   ['src/client/features/share/share-dashboard-top-notes.tsx', [
     '/** The notes the range\'s traffic landed on, with a way into each note\'s own analytics. */',
