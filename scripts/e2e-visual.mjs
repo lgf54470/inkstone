@@ -113,6 +113,10 @@ const LABELS = {
   musicMobileNav: ['手机端导航', 'Mobile navigation'],
   musicImmersive: ['沉浸式播放', 'Full screen player'],
   musicLyrics: ['歌词', 'Lyrics'],
+  shareView: ['分享', 'Share'],
+  shareHub: ['分享中心', 'Share Hub'],
+  shareManage: ['管理所有分享', 'Manage All Shares'],
+  shareKpi: ['总访问量 (PV)', 'Total Views (PV)'],
 }
 
 async function activeProse(page) {
@@ -2388,6 +2392,140 @@ async function assertMusicSurface(page) {
   await sleep(400)
 }
 
+/**
+ * The share center is the one large surface the shell renders through the shared Modal: a dialog at
+ * desktop width and that modal's full screen variant at the phone breakpoint. It is opened the way a
+ * person opens it — the sidebar's Share entry switches the list to the shared view, whose header
+ * carries the manage-shares control — so Escape has an opener to hand focus back to.
+ *
+ * The data behind it is real: the KPI strip only paints once the analytics request through the
+ * worker and D1 resolved, so a dashboard stuck on its loading skeleton fails here instead of
+ * passing on an empty shell.
+ */
+const SHARE_DIALOG = cssByLabels('[role="dialog"]', LABELS.shareHub)
+const MOBILE_PANE = '.mobile-pane-layer[data-active]'
+// The Share entry is drawn either as the rail's icon (collapsed sidebar, an accessible name only) or
+// as one of the quick-nav buttons (expanded, where a count badge rides in front of the label). Both
+// live in the shell's own sidebar, and that is what tells them from the workspace header's Share
+// action, which carries the same name but asks for one note's share settings instead.
+const SHARE_ENTRY_TEXT = /^(\d+|99\+)?(分享|Share)$/
+
+/**
+ * Opens the share center down the path a person takes. The list's own toolbar is the entry, and it
+ * only draws in the shared view, so the Share nav entry comes first — through the shell's bottom bar
+ * at phone width, where the sidebar lives in the navigation pane. The toolbar is waited for rather
+ * than slept on: switching the view is a route change, and pressing before the control exists would
+ * report an unopened surface as a broken one.
+ */
+async function openShareHub(page, { mobile = false } = {}) {
+  if (mobile) {
+    await page.evaluate((labels) => {
+      const tab = [...document.querySelectorAll('nav button')].find((item) => labels.some((label) => item.textContent.includes(label)))
+      tab?.click()
+    }, LABELS.nav)
+    await sleep(600)
+  }
+  const scope = mobile ? MOBILE_PANE : 'aside'
+  const point = await page.evaluate(({ scope, labels, pattern }) => {
+    const buttons = [...(document.querySelector(scope)?.querySelectorAll('button') ?? [])]
+      .filter((item) => item.getBoundingClientRect().width > 0)
+    const control = buttons.find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+      ?? buttons.find((item) => new RegExp(pattern).test(item.textContent.replace(/\s+/g, '')))
+    if (!control) return null
+    control.scrollIntoView({ block: 'center' })
+    const box = control.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, { scope, labels: LABELS.shareView, pattern: SHARE_ENTRY_TEXT.source })
+  if (!point) return false
+  await page.mouse.click(point.x, point.y)
+  const entry = await page.waitForFunction(({ labels, scope }) => {
+    const root = scope ? document.querySelector(scope) : document
+    return [...(root?.querySelectorAll('button') ?? [])]
+      .some((item) => labels.includes(item.getAttribute('aria-label') ?? '') && item.getBoundingClientRect().width > 0)
+  }, { timeout: 15_000 }, { labels: LABELS.shareManage, scope: mobile ? MOBILE_PANE : '' }).then(() => true, () => false)
+  if (!entry) return false
+  await pressOpener(page, { labels: LABELS.shareManage, scope: mobile ? MOBILE_PANE : '' })
+  return page.waitForSelector(SHARE_DIALOG, { timeout: 15_000 }).then(() => true, () => false)
+}
+
+async function assertShareCenter(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(500)
+  const opened = await openShareHub(page)
+  check('share: the shared view opens the share center', opened)
+  if (!opened) return
+  await waitForPanelSettled(page, SHARE_DIALOG)
+  await ensureAxe(page)
+
+  const kpi = await page.waitForFunction(({ dialog, labels }) => {
+    const hub = document.querySelector(dialog)
+    return Boolean(hub) && labels.some((label) => hub.textContent.includes(label))
+  }, { timeout: 20_000 }, { dialog: SHARE_DIALOG, labels: LABELS.shareKpi }).then(() => true, () => false)
+  check('share: the center draws its KPIs from the analytics request', kpi)
+
+  const desktop = await runAxe(page, SHARE_DIALOG)
+  check('share: the center has no accessibility violations at desktop width',
+    desktop.violations.length === 0, JSON.stringify(desktop.violations.slice(0, 3)))
+  const unreviewed = desktop.incomplete.filter((item) => !isReviewedIncomplete(item))
+  check('share: no unreviewed axe items in the center',
+    unreviewed.length === 0, JSON.stringify(unreviewed.slice(0, 3)))
+
+  await page.keyboard.press('Escape')
+  await sleep(700)
+  const closed = await page.evaluate((selector) => ({
+    hub: Boolean(document.querySelector(selector)),
+    returned: document.activeElement === document.querySelector('[data-gate-opener]'),
+  }), SHARE_DIALOG)
+  check('share: the center closes with escape and hands focus back to its control',
+    !closed.hub && closed.returned, JSON.stringify(closed))
+
+  await page.setViewport(MOBILE_VIEWPORT)
+  await sleep(700)
+  const reopened = await openShareHub(page, { mobile: true })
+  check('share: the phone breakpoint opens the center from the bottom bar', reopened)
+  if (!reopened) return
+  await waitForPanelSettled(page, SHARE_DIALOG)
+
+  const covered = await page.evaluate((selector) => {
+    const hub = document.querySelector(selector)
+    if (!hub) return null
+    const box = hub.getBoundingClientRect()
+    return {
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    }
+  }, SHARE_DIALOG)
+  check('share: the center takes the phone breakpoint as a full screen surface',
+    Boolean(covered) && covered.width >= covered.viewportWidth - 1 && covered.height >= covered.viewportHeight - 1,
+    JSON.stringify(covered))
+
+  const narrow = await runAxe(page, SHARE_DIALOG)
+  check('share: the full screen variant has no accessibility violations',
+    narrow.violations.length === 0, JSON.stringify(narrow.violations.slice(0, 3)))
+
+  await page.keyboard.press('Escape')
+  await sleep(700)
+  // The shell holds its own inactive panes inert at this width, so "released" is asked of the opener
+  // rather than of the page: the control the surface was opened from is back under the keyboard and
+  // no longer inside an inert subtree, which is what a person finds when they press Escape.
+  const released = await page.evaluate((selector) => {
+    const opener = document.querySelector('[data-gate-opener]')
+    return {
+      hub: Boolean(document.querySelector(selector)),
+      focus: document.activeElement === opener,
+      inert: Boolean(opener?.closest('[inert]')),
+      active: document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName ?? 'nothing',
+    }
+  }, SHARE_DIALOG)
+  check('share: the full screen variant closes with escape and releases the app',
+    !released.hub && released.focus && !released.inert, JSON.stringify(released))
+
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(400)
+}
+
 async function main() {
   console.log(`visual e2e against ${BASE}`)
   const browser = await puppeteer.launch({
@@ -2429,6 +2567,7 @@ async function main() {
     await assertFullscreenToolbars(page)
     await assertContextMenuNesting(page)
     await assertMusicSurface(page)
+    await assertShareCenter(page)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.

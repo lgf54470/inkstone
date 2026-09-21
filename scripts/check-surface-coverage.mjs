@@ -20,7 +20,9 @@ const FULLSCREEN_CLASSES = ['app-viewport-fixed', 'fixed inset-0']
 
 // Every surface root and where the browser gate reads it. `sweep` is the name the
 // sweep lists for it; `checkedBy` is an assertion the gate prints for a surface the
-// sweep cannot drive on its own. Either way the gate has to be the reader.
+// sweep cannot drive on its own — a list, because a surface root several overlays
+// share (the modal shell) is read by one assertion per consumer. Either way the gate
+// has to be the reader.
 const SURFACES = [
   {
     file: 'src/client/features/graph/graph-panel/index.tsx',
@@ -61,12 +63,17 @@ const SURFACES = [
   {
     file: 'src/client/components/overlay/modal.tsx',
     component: 'Modal',
-    // The shell is a container, not a surface of its own, and two overlays take its full
+    // The shell is a container, not a surface of its own, and three overlays take its full
     // screen variant: the mind map, whose scenario asserts the same two things (Escape
     // closes it, the keyboard reference does not grow the head) on the element this file
-    // renders, and the slides editor, whose scenario asserts the same pair from the control
-    // it was opened from. The name below is the assertion both live behind.
-    checkedBy: 'mindmap: opening the keyboard reference leaves the toolbar its size',
+    // renders, the slides editor, whose scenario asserts the same pair from the control it
+    // was opened from, and the share center, which asserts that the variant covers the phone
+    // breakpoint before it reads that element. The names below are the assertions each
+    // consumer lives behind.
+    checkedBy: [
+      'mindmap: opening the keyboard reference leaves the toolbar its size',
+      'share: the center takes the phone breakpoint as a full screen surface',
+    ],
   },
 ]
 
@@ -135,8 +142,13 @@ for (const surface of found) {
   if (entry.sweep && !swept.has(entry.sweep)) {
     failures.push(`${surface.file} declares the sweep name "${entry.sweep}", which ${GATE} does not list any more`)
   }
-  if (entry.checkedBy && !gateText.includes(entry.checkedBy)) {
-    failures.push(`${surface.file} is covered by an assertion ${GATE} no longer prints: ${entry.checkedBy}`)
+  if (entry.checkedBy) {
+    const assertions = Array.isArray(entry.checkedBy) ? entry.checkedBy : [entry.checkedBy]
+    for (const assertion of assertions) {
+      if (!gateText.includes(assertion)) {
+        failures.push(`${surface.file} is covered by an assertion ${GATE} no longer prints: ${assertion}`)
+      }
+    }
   }
 }
 

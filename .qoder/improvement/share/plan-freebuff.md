@@ -37,7 +37,7 @@
 | 07 | A | SH-71 | 两个 analytics hook 无 abort/epoch → 慢请求覆盖新请求 | 小 | ✅ | 3cd48d9b |
 | 08 | A | SH-55 | 首屏 `isLoading` 时 KPI 全渲染 0（缺"加载中"态） | 小 | ✅ | ⏳ 下项回填 |
 | 09 | A | — | 批次 A 收尾：全量串行回归 | — | ✅ | ⏳ 下项回填 |
-| 10 | B | SH-85 | 分享中心浏览器级门禁（e2e-visual 场景 + surface coverage） | 中 | ⬜ | |
+| 10 | B | SH-85 | 分享中心浏览器级门禁（e2e-visual 场景 + surface coverage） | 中 | ✅ | ⏳ 下项回填 |
 | 11 | C | SH-49 | 裸 `<button>` 绕过组件体系 + 新守卫 | 中 | ⬜ | |
 | 12 | C | SH-50 | 流量过滤浮层：焦点管理 / role / 窄屏裁切 | 小–中 | ⬜ | |
 | 13 | C | SH-51 | hover-only「新建文件夹/标签」键盘不可见、触屏不可发现 | 小 | ⬜ | |
@@ -112,6 +112,8 @@
 | SH-87 | `src/client/features/share/share-helpers.ts` 的 `exportVisitsToCsv()` 尾部 | `URL.revokeObjectURL(url)` 紧跟 `a.click()` 同步执行，部分浏览器上会在下载开始前撤销 blob URL | 改到 `setTimeout(..., 0)` 或 `requestAnimationFrame` 后撤销，并加回归测试 |
 | SH-88 | `src/client/demo/backend/routes/share-admin.ts` | 演示模式完全跳过 slug 校验（直接取 `body.customSlug`），真人可在体验版里设出真实 API 会拒绝的短链/保留字 | 复用 `isValidCustomSlug()` 与 `LIMITS.shareSlugMinLength/MaxLength`，行为与真实后端对齐 |
 | SH-89 | `src/client/features/blog/blog-dashboard-view/*` + `components/dashboard-blocks.tsx` | 与 SH-55 同类：博客看板首次加载时 KPI 也把 `null` 画成 0（共用 KpiCard），同样没有加载态 | 与 SH-55 同法加 `isLoading` 分支；若要共用则给 KpiCard 加可选 loading 属性，并跑 blog 侧回归 |
+| SH-90 | `scripts/e2e-visual.mjs` 的「slides editor: space and a drag pan the view」 | 同一份代码、同一实例连跑三次得到两种结果（1 绿 2 红，失败时 `scrollLeft` 停在 0），失败都在机器被另一条线程的浏览器门禁占满时出现——断言本身对环境负载敏感 | 定位后加大等待/改用「等到滚动量变化」的等待，而不是固定 sleep；不要靠重跑掩盖 |
+| SH-91 | `src/client/features/workspace/workspace/workspace-views.tsx`（`workspace.share`）与 `src/client/features/sidebar/*`（`navigation.share`） | 两个入口在 zh-CN 下同名「分享」却通到不同表面：工作区头部按的是「单条笔记的分享设置」，侧栏按的是分享中心；当没有激活笔记时 `app-shell` 又把 `panel='share'` 回退成分享中心，于是同一个按钮在两种状态下打开两个不同表面 | 区分文案与图标（如「分享这条笔记」/「分享中心」），并把无激活笔记时的回退显式化（或在无笔记时禁用该按钮） |
 
 ### 05 — SH-80 `loadTopNotes` 按 note id 查标题、不带 `user_id`（2026-09-21）
 
@@ -154,3 +156,16 @@
 - 构建与预算：`npm run budget:check`（先 `tsc -b` + `vite build`）→ 构建成功，9 个受监控分块全部在预算内（最大 `@excalidraw/excalidraw` 1081.8 KiB / 预算 1464.8 KiB）。
 - 本批次累计改动：6 个提交（`76a1f76a`、`d7eadd4a`、`ccfc69f7`、`4d5cf737`、`f95e92ef`、`3cd48d9b`、`8a0cdfc7` + 文档 `afa9b286`），3 个新测试文件（`share-visit-logs-csv`、`share-form`、`share-dashboard-loading`）+ 既有文件里 9 条新用例，均按「先红后绿」。
 - **未跑**（如实登记）：`test:e2e` 与 `scripts/e2e-visual.mjs` / `check-contrast.mjs`。原因：浏览器级门禁目前**没有任何分享中心场景**（这正是批次 B 的 SH-85 要补的），现在跑只能验证外壳未回归，且需要本地实例 + Puppeteer/Chrome，耗时远大于收益；批次 B 落地分享场景后会连同外壳一起跑这两个脚本，届时读数回填在 10 项里。
+
+### 10 — SH-85 分享中心浏览器级门禁（2026-09-21）
+
+- 根因：分享中心是仓内唯一没有任何浏览器级读者的大型表面——`scripts/e2e-visual.mjs` 的场景名单里没有它，`scripts/check-surface-coverage.mjs` 只把它算作共用 `Modal` 的一部分，而 `AGENTS.md` 当时写着「模态外壳全屏变体的唯一使用者就是思维导图覆盖层」。经核对这**不成立**：`share-hub-modal.tsx` 在手机断点用 `variant={isMobile ? 'fullscreen' : 'dialog'}`，是同一外壳的第二个使用者。于是本项补两件事：一条真实路径上打开、并读取真实数据的场景，以及把「共用外壳的每个使用者各出一条具名断言」变成门禁可强制的规则。
+- 改动面（4 文件）：`scripts/e2e-visual.mjs` 新增 `assertShareCenter()`（9 条断言，接在音乐场景之后）：按人走的路径打开（侧栏「分享」入口→列表头部的「管理所有分享」→分享中心），断言「列表视图切到 shared 后，工具栏里的那个控件打开了中心」；等到 KPI 文案真的画出来（看板走 worker + D1 的真实请求，卡在加载骨架会失败，而不是在空壳上通过）；桌面宽度跑 axe（violations 为 0，且没有未复核的 incomplete）；Esc 关闭并把焦点交回打开它的那个控件；手机断点从底部导航进侧栏再开同一个中心，断言全屏变体**铺满手机视口**（实测 390×844 = 视口），再跑一遍 axe；最后断言 Esc 后中心消失、焦点回到打开它的控件、且该控件不在 `inert` 子树里。`scripts/check-surface-coverage.mjs` 的 `checkedBy` 从单条字符串改为**字符串数组**，`Modal` 条目登记两条具名断言（原思维导图那条 + 本项的全屏变体那条），并在脚本注释里写明「一个表面根被多个浮层共用时，每个使用者各出一条」；`AGENTS.md` 更正那句已经失效的「唯一使用者」说法，并把 `surfaces:check` 的说明改成「由属于它的那些具名断言代表（共用根每个使用者各出一条）」，两个方向失效的语义不变；`scripts/check-comments.mjs` 同步登记本项新增注释（4967 条）。
+- 探测过程中的两个发现（写场景时的实证，不是猜的）：① 侧栏「分享」入口在**展开**侧栏时是四宫格里的 `BottomNavButton`（文案为「1分享」，计数在标签前，且没有 `aria-label`），**收起**时才是 `aria-label='分享'` 的 rail 图标；② 工作区头部那个 `workspace.share` 按钮在 zh-CN 下也叫「分享」，且就在同一个窗口右上角——第一次跑门禁时它被匹配到，于是打开了单条笔记的分享设置，而门禁在等列表头部那个控件，首条断言红。因此场景把入口查找**限定在 shell 自己的 `aside` 内**（手机断点限定在 `.mobile-pane-layer[data-active]`），并同时接受「可访问名称」与「计数 + 标签」两种画法。
+- 验证读数（都在本机独立实例 `INKSTONE_EPHEMERAL_DEV=1 npx vite --mode kv --port 7722` 上）：
+  - `scripts/e2e.mjs http://localhost:7722` → **177 通过 / 0 失败**（顺带把批次 A 的所有服务端改动跑了一遍真实 HTTP 回归）。
+  - `scripts/e2e-visual.mjs http://localhost:7722` → **215 通过 / 1 失败**，9 条 share 断言**全绿**（含两侧 axe 与全屏铺设）；唯一失败是「slides editor: space and a drag pan the view」，与本项无关，且同一份代码的另一次运行是绿的——判为环境负载下的不稳定断言，登记为新发现 SH-90，未顺手改。
+  - 变异测试（守卫型改动的必做项）：把 `e2e-visual.mjs` 里那条被 `Modal` 条目引用的断言文案改成别的字符串 → `surfaces:check` 立刻报 `modal.tsx is covered by an assertion … no longer prints`；还原后复绿。
+  - 静态门禁：`node --check scripts/e2e-visual.mjs`、`surfaces:check`、`comments:check`（682 文件 / 4967 条）、`style:check`、`size:check`、`escape:check`、`hardcoded:check`、`tokens:check`、`i18n:check`、`deep-imports:check` 均绿。
+  - 单元/集成：`npm run test:unit`（并行）→ 2 文件失败、5 文件失败各出现一次，单独串行复跑这两个文件 **10/10 绿**；失败项是 `share-code-split`（纯静态扫描）与 `music-hub-modal`（文案计数），都在机器被另一条线程的浏览器门禁占满时出现（一次运行里 transform 168s / environment 877s）。本项未碰任何产品代码，故按台账约定不跑全量串行回归，如实登记该读数为环境竞争所致。
+- 局限（如实登记）：① axe 每次运行只读**一套主题**（浏览器门禁在该场景之前已经切过主题，具体是深色还是浅色取决于上一场景），分享中心的「层级 × 底色」还没进 `check-contrast.mjs` 那套两主题 × 全强调色的量测；② 场景读的是**看板分类**（默认分类），列表视图的工具栏与流量过滤浮层的 a11y 断言留到 SH-50（那时才有可读的断言，现在补会把两个批次耦合在一起）；③ 「释放」的判定改成「打开它的控件回到键盘下且不在 `inert` 子树里」，不数页面上的 `inert` 数量——手机断点下 shell 自己的非活动窗格本来就带 `inert`（实测 2 个），数总量会把设计当回归；④ SH-91 是写场景时撞见的真实入口语义问题，本项只登记不改。
