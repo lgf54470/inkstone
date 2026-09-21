@@ -602,3 +602,10 @@
 - 静态门禁共发现 5 类真问题并逐一修掉，没有一条靠放宽：`--text-28` 不是已声明令牌（改用 `--text-30`）、小数令牌引用未双反斜杠（`--text-12\.5`）、`width={420}` 魔法数（提成 `PUBLISH_DIALOG_WIDTH`）、中文注释落在 `zh-CN` 资源里被判 i18n 违规（说明留在 en-US，资源文件只放译文）、六个新文件触发 `longFns`（全部按职责拆分：面板→头部/表格体/行/行内动作，对话框→表单 hook/字段/按钮，访客页→口令门/不可用/空/目录，hook→列表/变更，测试的三个 describe 各拆一段）。`check-size.baseline.json` 只对 `migrations.ts` 的行数重新快照（新增一条迁移，属预期增长），**没有为任何新文件开豁免**。
 - 验证读数：`tsc -b` exit 0；`tests/share-collections.test.ts` + `features/share` + `lib/api` + `demo` + `tests/share-routes` + `src/shared` **59 文件 / 472 用例全绿**；13 项静态门禁全绿。
 - 局限：① 集合级资产会话未做（见上）；② 演示模式的口令是内存明文比对（不假装有 scrypt）；③ 未在真实 D1 上量目录查询与计数的成本，也未加新索引（分页上限 + 账号上限约束规模，成员谓词用得到既有的 `idx_shares_folder`）；④ 访客侧页面只有 jsdom 行为断言，没有浏览器端到端场景（`scripts/e2e-visual.mjs` 未加集合页场景）。
+
+### 44 — 批次 F 收尾：三份 ADR 落地后的全量串行回归（2026-09-21）
+
+- 口径与第 40 节相同：本批触碰共用的服务端面、SQL 与 migration（迁移 40/41/42、`share_visits.channel`、`share_collections`），必须在**全量串行**下全绿。
+- 读数（`npx vitest run --config vitest.config.ts --no-file-parallelism --testTimeout=30000`）：**341 文件 / 2755 用例通过 + 1 skipped，0 失败**；耗时 760.74s（transform 21.35s，import 127.50s，tests 128.30s，environment 415.11s）。相比第 40 节的 335 文件 / 2688 用例，增量正好是本批新增的 6 个测试文件与 24 个用例（会话 8 例、集合 14 例、客户端集合面板 10 例中的新增部分——其余为既有文件内的补充断言）。
+- 过程：与第 40 节同样的 `setsid nohup … &` 脱离进程组后一次跑完，未被调用窗口打断；共享机器上其它工作树（`inkstone-slides-improvement-…`）的 vitest 进程照旧未去动。
+- 台账闭合情况：SH-64（CSV 已交付；PNG/PDF 经评估后不做，重开条件写在台账）、SH-69（链接清单已交付；二维码选择表登记重开条件）、三份 ADR（0003/0004/0005）均已从 Proposed 翻为 Accepted 并写入实现记录与局限；`AGENTS.md` 项目信息新增指向三份 ADR 的一段。工作树干净，全部改动已提交。
