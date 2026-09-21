@@ -3037,6 +3037,10 @@ const allowed = new Map([
     '/** The dashboard\'s title, its range control, and the two ways to re-ask for the same window. */',
     '/** What the traffic filters took out of the numbers below, drawn only when they took something. */',
   ]],
+  ['src/client/features/share/share-dashboard-kpis.test.ts', [
+    '/**\n * SH-56: the per-day rate used to draw the same sparkline as the total-views card (the same line\n * twice on one row, so it carried no information) and had no comparison of its own. What it has to\n * keep: exactly two sparklines across the four cards, and a delta on the per-day card that says\n * what it is measured against.\n */',
+    '// The two totals keep their lines; the per-day rate does not repeat the views line.',
+  ]],
   ['src/client/features/share/share-dashboard-kpis.tsx', [
     '/** The four headline numbers, above every card. */',
     '/** How many shares are live right now, against how many exist — the one share-shaped KPI. */',
@@ -5597,6 +5601,7 @@ const allowed = new Map([
     '// Only browser-resolvable schemes earn a row; the raw candidate may carry query',
     '// tokens or fragments, so http(s) stores origin+path only.',
     '/* An unparseable candidate degrades analytics to a null referrer. */',
+    '/**\n * Views per day over a window of `daysSpan` days, to one decimal. The decimal is the point: on a\n * one-day window the rate equals the total, and an integer rounding made a 7-day window read\n * "42" next to a total that had just been divided by exactly 7 — the label said average, the\n * number said rounded. A window shorter than a day is still measured per day, never per zero.\n */',
     '// 0 vs 0 is indeterminate: reporting 0% would claim a trend measured against real traffic',
     '// An unknown range is a client bug, not a request for the whole table: 30d is',
     '// the widest window a sanitized query may ask for.',
@@ -6056,6 +6061,8 @@ const allowed = new Map([
     '// replaces the four and two separate scans the per-metric subqueries made.',
   ]],
   ['src/worker/routes/share/analytics.ts', [
+    '// The per-day rate gets its own comparison: the same rate over the previous window of the same',
+    '// length, so "average per day" answers whether the rate moved, not whether the window grew.',
     '// Equal view counts have no order out of a GROUP BY, so ties break by note id',
     '// and both aggregation paths list the same top ten.',
   ]],
@@ -6360,6 +6367,9 @@ const allowed = new Map([
     '// query symbols',
     '// A period that never saw traffic has no trend to report: 0/0 is',
     '// indeterminate, so the server says "no delta" rather than "flat 0%".',
+    '// 24h is one day, so the rate must equal the total — but not by rounding to an integer that',
+    '// would then read as "the same number as above" for a 7-day window too.',
+    '// A window shorter than a day is still measured per day, never per zero days.',
     '// Default / All enabled:',
     '// Exclude bots only:',
     '// All disabled:',

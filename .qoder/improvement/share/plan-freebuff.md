@@ -44,8 +44,8 @@
 | 14 | C | SH-53 | `expiring` 语义与标签不符，缺 ≤7d「即将到期」桶 | 小 | ✅ | 4c84878f |
 | 15 | C | SH-60 | 看板 468/500 行 + range 选项重复 → 拆分 | 小–中 | ✅ | 71d711be |
 | 16 | C | SH-59 | 网格卡未 memo + 内联闭包 + 每卡 `folders.find` | 小 | ✅ | 8cda369d |
-| 17 | C | SH-57 | `toLocaleString()` 跟随 OS / delta 无语义 / 图表无文本替代 | 小–中 | ✅ | ⏳ 下项回填 |
-| 18 | C | SH-56 | 「日均访问量」口径错误 + sparkline 与 PV 卡重复 | 小 | ⬜ | |
+| 17 | C | SH-57 | `toLocaleString()` 跟随 OS / delta 无语义 / 图表无文本替代 | 小–中 | ✅ | 09a5c284 |
+| 18 | C | SH-56 | 「日均访问量」口径错误 + sparkline 与 PV 卡重复 | 小 | ✅ | ⏳ 下项回填 |
 | 19 | C | SH-58 | hub 分类徽标未走 `countBadgeTone`（且不在对比度门禁内） | 小 | ⬜ | |
 | 20 | C | SH-52 | 侧栏计数缺 password/expiring/permanent 三类 | 小 | ⬜ | |
 | 21 | C | SH-54 | 看板不受侧栏范围影响且不标注作用域 | 中 | ⬜ | |
@@ -118,6 +118,7 @@
 | SH-93 | `src/client/components/hub-folder-row.tsx`（内含 `role='button'` + `tabIndex` 的 div、`FolderMoreButton`）、`components/hub-tag-item.tsx`（`TagMoreButton`、`TagExpandAffordance`）、`components/overlay/submenu.tsx`（`RowButton` 之外的裸按钮） | SH-49 只清了 `features/share`，而它用的共用组件里还有同类写法——包括 AGENTS 铁律 10 明禁的「`div` ＋ `onClick` ＋ `role='button'` 假冒控件」（`FolderRow`/`HubTagRow` 的行本体是 `div role='button'`） | 把 SH-49 的守卫正则从 `features/share` 扩到 `src/client/components` 与其它 feature（分文件开口子、每个口子写理由），再逐处收；`div role='button'` 的行本体应换成真 `button` 或用项目组件，并补键盘路径回归 |
 | SH-95 | `src/client/features/blog/blog-traffic-filter-popover.tsx` | SH-50 的同源孪生：博客看板的流量过滤面板同样是 `absolute right-0 top-full w-80`（320px）＋ 无 role、无名字的 `<div>`、打开/关闭都不动焦点，窄屏上会被推出视口。它现在可以直接复用已经抽出来的 `components/popover-placement.ts` | 按 SH-50 的做法整体迁移（portal ＋ `role='dialog'` ＋ 焦点入/还 ＋ 共用定位），跑 blog 侧回归；它属 blog 自己的范围，不在本轮 share 红线内 |
 | SH-96 | `src/client/lib/markdown/kanban/ui/*`（`kanban-date-picker`/`kanban-column-menu`/`kanban-sort-popover`/`kanban-tag-picker`/`kanban-view-options`/`kanban-filter-popover`/`kanban-item-detail` 共 6+1 处）、`src/client/lib/markdown/slides/ui/slides-topbar.tsx`（2 处） | `absolute right-0/left-0 top-full` 这种自定位浮层在仓内仍是主流写法（分享中心本轮清完后还剩这些），且没有任何门禁要求它们走 `usePanelPlacement`——同样的窄屏裁切缺陷可以再长出来 | 先定一个门禁边界（允许清单 ＋ 理由）：新写的自定位浮层必须走 `components/popover-placement.ts`，已有清单分批迁移；或给一个统一的 `Popover` 原语把这些都收进去 |
+| SH-98 | `src/worker/routes/blog/stats.ts`（`viewsPerDay: Math.round(views / daysSpan)`）、`src/client/features/blog/blog-dashboard-view/index.tsx` | SH-56 的博客倒影：同样是整数取整的日均值（24h 区间下等于总 PV）且同样把 `sparklineViews` 画在日均卡上（与总访问量卡同一条线）；博客侧还有 `sparklineViews = timeline.slice(-7)` 的隐式截断 | 把 `perDayRate()` 与 `viewsPerDayDelta` 同样接到 blog 的 compose 上（worker 侧共用 `computeDelta` 已有），日均卡去掉重复 sparkline；属 blog 自己的范围，不在本轮 share 红线内 |
 | SH-97 | `scripts/e2e-visual.mjs` 的思维导图场景（`the node is selected before it is deleted`、`deleting the selected node leaves the note`、`undo kept the same instance`、`alt+arrow reorders the node in the note`、`reordering kept the same instance`） | 与 SH-90 同性质：同一份产品代码在一小时内的两次门禁里一次 5/5 全绿、一次 5/5 全红（失败读数都是「实例没被复用」`same:false`），而机器当时被另一条线程的浏览器门禁占满；这些断言现在直接拿实例身份/选中态当判据，没有等待窗口 | 把「等库自己把状态写下去」这层写进断言（如等 `selected` 类/等实例身份稳定），或在判失败前带上一次显式重试；不要靠重跑掩盖 |
 | SH-92 | `src/client/features/share/share-note-submenu.tsx`（296 行手搓面板）、`use-share-note-submenu.ts` | SH-49 唯一被白名单放行的文件：同样是菜单，却与 `buildShareMenuItems` ＋ `Menu` 那套并列存在（两套行样式、两套分隔线、两套键盘行为）。整体退役不是改名：① 它的行是 44px 触控目标（SH-35 守着的 `h-11 md:h-7.5`），而共用 `SubmenuList` 的行只有 40px（`h-10`），换过去要么降级触控目标、要么改共用行高影响音乐/看板/右键菜单；② 它的文件夹搜索与标签输入是 `role='menu'` 面板里的文本框，直接换成 `SubmenuList` 会撞 `aria-required-children`（首次试过会在新门禁里变红） | 先决定「菜单里能不能放输入框」（要么改成命令式选择、要么给面板一个非 menu 角色与自己的标签），同时把共用行高调到 44px 并跑音乐/看板/右键菜单回归；然后删掉该文件、`use-share-note-submenu` 与两处白名单条目 |
 
@@ -277,3 +278,18 @@
 - 先红后绿：新增两个测试文件——`components/dashboard-blocks.test.ts`（4 例：按应用 locale 格式化（断言 `Intl.NumberFormat('en-US')` 的结果而不是 OS 默认）、delta 的可访问名等于「+12% + 该语言的口径」、sparkline 容器 `aria-hidden` 且里面有 svg、breakdown 计数也格式化；两段 describe 分开以免撞 `size:check` 的 50 行上限）与 `components/big-svg-chart.test.ts`（3 例：`chartSummary` 的总量/峰值/峰值标签（含空数组）、`svg[role='img']` 的可访问名就是调用方传的那句、空数据时画空态而不是无名图表）。
 - 验证读数：`npx tsc -b --force` exit 0；**共用面双侧回归 `features/share` ＋ `features/blog` ＋ `components`：47 文件 / 217 用例全绿**；11 项静态门禁全绿（`i18n` 3146 键，新增 4；`size` 通过，`comments` 5040 条 / 707 文件）。中间 `dashboard-blocks.test.ts` 被 `size:check` 报过一次 `longFns`（describe 体超 50 行），拆成两段后归零。
 - 局限（如实登记）：① `deltaHint` 是可选的（不传就没有可访问名），没有加类型强制——现六个调用点都传了，但新写的 KPI 卡可以忘记，这层需要 review 把关（也可后续改成必填）；② `BreakdownRow` 的百分比仍是整数取整展示（未加小数位），与 SH-56 的「日均取整规则」是两件事；③ 图表的“文本替代”是 `aria-label` 一句话，没有另做视觉隐藏的极值列表（审查曾提到可补，但 `aria-label` 已能完整读出区间与峰值，先不加冗余隐藏文本）；④ sparkline 标为装饰，因此它自身的形态信息（单点、阶梯）对屏幕阅读器不可得——有意取舍：上方数字已是同一信息的精确形式。
+
+### 18 — SH-56「日均访问量」口径与重复 sparkline（2026-09-21）
+
+- 根因（两个独立问题叠在同一张卡上）：
+  ① `viewsPerDay: Math.round(aggregate.views / daysSpan)`——取整规则未说明，且 24h 区间下 `daysSpan` 恰好为 1，这张卡于是等于「总访问量」，却仍叫日均。
+  ② 客户端把 `sparkline={analytics?.sparklineViews}` 直接给了日均卡——与「总访问量」卡画的是**同一条线**，一行四张卡里出现两条一模一样的曲线（零信息量），而且这张卡根本没有任何 delta。
+- 改动面：
+  - `src/worker/lib/share-analytics.ts`：新增 `perDayRate(views, daysSpan)`（保留一位小数，窗口短于一天也按一天计，附取整规则的理由）。
+  - `src/worker/routes/share/analytics.ts`：`viewsPerDay` 改走 `perDayRate`；新增 `viewsPerDayDelta`——用**同一长度**的上一窗口的日均值做比较（`computeDelta(viewsPerDay, prevViewsPerDay)`），因此这张卡回答了「速率有没有变」而不是「窗口是不是变长了」；无上一窗口时不下发 delta（不编造 0%）。
+  - `src/shared/types/share.ts`：`ShareGlobalAnalytics` 加 `viewsPerDayDelta?: number`。
+  - `src/client/features/share/share-dashboard-kpis.tsx`：日均卡去掉重复 sparkline，改传 `delta` ＋ `deltaHint`。
+  - 两个 locale：`share.views_per_day` 改为「区间日均访问量 / Average per Day (range)」，把口径写进标签本身。
+- 先红后绿：`tests/share-analytics.test.ts` 新增 `perDayRate` 一例（24h 区间等于总量、7 天区间得 42.9 保留一位小数、0 不要变成 NaN、`daysSpan` 为 0 也不除零），实现前红；另新增 `src/client/features/share/share-dashboard-kpis.test.ts`（3 例）：四张卡里**只有两条** sparkline（多画一条就红）、日均卡显示 42.9 且带「对比上一周期」的可访问名、没有上一窗口时不得凭空出 delta。
+- 验证读数：`npx tsc -b --force` exit 0；定向测试 36/36（share-analytics ＋ 三份看板测试）；**全量 `npm run test:unit`：321 文件通过 / 2597 用例通过 + 1 skipped，唯一的 1 例失败是 `tests/share-code-split.test.ts` 的 5s 超时**（它要遍历模块图，并行下跑了 6.8s；单独串行复跑 **4/4 绿**）——与本项无关，登记为环境负载所致（同第 10 项时的读数）；静态门禁全部通过（`i18n` 3146 键、`comments` 5048 条 / 708 文件、`size` 通过）。
+- 局限：① 日报日均值保留一位小数后，24h 区间下它就是总量（口径如此，已在测试里固定），没有额外的「区间天数」提示；② 博客看板有同名缺陷（整数取整 ＋ 重复 sparkline），属 blog 自己的范围，登记为 SH-98；③ 演示模式 `demo/backend/routes/share.ts` 的 `viewsPerDay: 56` 是写死的示例值，未动（演示数据本来就是常数）。

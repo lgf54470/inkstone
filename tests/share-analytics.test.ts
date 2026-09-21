@@ -17,6 +17,7 @@ import {
   parseDeviceType,
   parseOS,
   parseReferrerHost,
+  perDayRate,
   shareRangeFromQuery,
 } from '../src/worker/lib/share-analytics'
 import { countryFlag } from '../src/client/features/share/share-helpers'
@@ -140,6 +141,16 @@ describe('analytics math and country flag formatting', () => {
     // A period that never saw traffic has no trend to report: 0/0 is
     // indeterminate, so the server says "no delta" rather than "flat 0%".
     expect(computeDelta(0, 0)).toBeUndefined()
+  })
+
+  it('keeps the per-day rate honest on a one-day window (SH-56)', () => {
+    // 24h is one day, so the rate must equal the total — but not by rounding to an integer that
+    // would then read as "the same number as above" for a 7-day window too.
+    expect(perDayRate(300, 1)).toBe(300)
+    expect(perDayRate(300, 7)).toBe(42.9)
+    expect(perDayRate(0, 7)).toBe(0)
+    // A window shorter than a day is still measured per day, never per zero days.
+    expect(perDayRate(5, 0)).toBe(5)
   })
 
   it('formats country flags from 2-letter codes', () => {

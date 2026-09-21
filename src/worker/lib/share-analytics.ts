@@ -309,6 +309,16 @@ export function isValidCustomSlug(slug: string): boolean {
   return /^[a-zA-Z0-9_-]+$/.test(trimmed)
 }
 
+/**
+ * Views per day over a window of `daysSpan` days, to one decimal. The decimal is the point: on a
+ * one-day window the rate equals the total, and an integer rounding made a 7-day window read
+ * "42" next to a total that had just been divided by exactly 7 — the label said average, the
+ * number said rounded. A window shorter than a day is still measured per day, never per zero.
+ */
+export function perDayRate(views: number, daysSpan: number): number {
+  return Math.round((views / Math.max(1, daysSpan)) * 10) / 10
+}
+
 export function computeDelta(current: number, previous: number): number | undefined {
   // 0 vs 0 is indeterminate: reporting 0% would claim a trend measured against real traffic
   if (previous === 0) return current > 0 ? 100 : undefined

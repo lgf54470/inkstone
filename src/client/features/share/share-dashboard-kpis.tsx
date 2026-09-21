@@ -31,7 +31,8 @@ export function KpiGrid({ analytics }: { analytics: ShareGlobalAnalytics | null 
         icon={<Activity size={16} className='text-[var(--warning)]' />}
         label={t('share.views_per_day')}
         value={analytics?.viewsPerDay ?? 0}
-        sparkline={analytics?.sparklineViews}
+        delta={analytics?.viewsPerDayDelta}
+        deltaHint={t('share.delta_vs_previous')}
       />
     </div>
   )

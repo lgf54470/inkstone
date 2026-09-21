@@ -7,7 +7,7 @@ export const messages = {
 'share.view_mode': 'View mode',
 'share.view_note_analytics': 'View note analytics',
 'share.view_table': 'Table View',
-'share.views_per_day': 'Visits / Day',
+'share.views_per_day': 'Average per Day (range)',
 'share.visitor_geography': 'Countries & Regions',
 'share.filter_traffic_title': 'Traffic Filters',
 'share.filter_traffic_desc': 'Exclude automated scrapers and self-views to keep view counts accurate.',

@@ -108,6 +108,7 @@ export interface ShareGlobalAnalytics {
   viewsDelta?: number
   visitorsDelta?: number
   viewsPerDay: number
+  viewsPerDayDelta?: number
   sparklineViews: number[]
   sparklineVisitors: number[]
   timeline: ShareTimelinePoint[]

@@ -7,6 +7,7 @@ import {
   buildBucketedTimeline,
   buildVisitFilterSql,
   computeDelta,
+  perDayRate,
   parseAnalyticsRequest,
   parseBotName,
   toBreakdown,
@@ -112,6 +113,10 @@ function composeGlobalAnalytics(params: {
   const timeline = buildBucketedTimeline(aggregate.buckets, ctx.range, ctx.startTs, ctx.duration)
   const daysSpan = Math.max(1, Math.round(ctx.duration / DAY_MS))
   const breakdown = breakdownTotals(aggregate, aggregate.views)
+  // The per-day rate gets its own comparison: the same rate over the previous window of the same
+  // length, so "average per day" answers whether the rate moved, not whether the window grew.
+  const viewsPerDay = perDayRate(aggregate.views, daysSpan)
+  const prevViewsPerDay = perDayRate(prevStats?.prev_views ?? 0, daysSpan)
   return {
     range: ctx.range,
     totalShares: summary?.total_shares ?? 0,
@@ -120,7 +125,8 @@ function composeGlobalAnalytics(params: {
     totalVisitors: aggregate.visitors,
     viewsDelta: computeDelta(aggregate.views, prevStats?.prev_views ?? 0),
     visitorsDelta: computeDelta(aggregate.visitors, prevStats?.prev_uv ?? 0),
-    viewsPerDay: Math.round(aggregate.views / daysSpan),
+    viewsPerDay,
+    viewsPerDayDelta: prevStats ? computeDelta(viewsPerDay, prevViewsPerDay) : undefined,
     sparklineViews: timeline.map((t) => t.views),
     sparklineVisitors: timeline.map((t) => t.visitors),
     timeline,

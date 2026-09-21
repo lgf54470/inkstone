@@ -7,7 +7,7 @@ export const messages = {
 'share.view_mode': '视图模式',
 'share.view_note_analytics': '查看此笔记详情分析',
 'share.view_table': '表格视图',
-'share.views_per_day': '日均访问量',
+'share.views_per_day': '区间日均访问量',
 'share.visitor_geography': '国家与地区',
 'share.filter_traffic_title': '流量过滤设置',
 'share.filter_traffic_desc': '过滤网络抓取机器人与自身测试行为，让访问统计更接近真实用户。',
