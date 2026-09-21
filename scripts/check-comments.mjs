@@ -6141,6 +6141,7 @@ const allowed = new Map([
     '/**\n * The counters behind the sidebar and the list\'s own totals are the same five\n * aggregates, so they are described once and batched by whoever needs them: the\n * list puts them beside its row query (still one round trip), while `/stats` asks\n * for them alone — a hub that lands on the dashboard reads the counts, not the rows.\n */',
     '/**\n * The status categories that read the clock. Each returns its SQL with bare `?` placeholders plus\n * the values they take, so the caller can hand out binding numbers in the order it builds the\n * clause — the categories that need no clock ride along in STATUS_CONDITIONS below.\n */',
     '// The list batch is the five aggregate statements above, then its row query.',
+    '/**\n * Per-note pageview/visitor totals for the visible rows. The owner predicate is the\n * point of interest: `share_visits.user_id` is the share\'s owner, so scoping by it\n * changes no result, but it is what makes the planner search `idx_share_visits_filter_time`\n * instead of relying on the slug subquery alone. A covering index was measured for this\n * query and deliberately not added — see the SH-73 note in the repair ledger: it needed\n * `(note_id, is_bot, visitor_fp, slug)` to pay off, which is write amplification on the\n * table every public page view inserts into, for a read only the owner\'s hub performs.\n */',
   ]],
   ['src/worker/routes/share/visits.ts', [
     '// Unparseable page/limit values must fall back to a default rather than reach the',
@@ -6443,6 +6444,10 @@ const allowed = new Map([
     '// one round-trip however many statements ride along. Statements built through',
     '// the wrapper still execute inside batch without being double-counted.',
     '// Neither the row query nor the per-note visit stats belong to a counters-only answer.',
+    '// The measured plan (bound parameters, as the app sends them) is unchanged by the owner',
+    '// predicate: it still searches idx_share_visits_note_time. What this guards is the other',
+    '// half of that measurement — the statement stays index-served and never fans out into a',
+    '// full table scan, which is what a rewrite dropping the note_id predicate would cause.',
     '// "Has expiry" stays the superset of every future date — including the soon ones, so no row',
     '// disappears from the wider category — while "soon" narrows it, and expired stays disjoint.',
     '// Any write path that ever loses its ownership check would leave a visit row',

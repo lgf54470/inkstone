@@ -168,7 +168,7 @@ function registerShareListRoute(shareManageRoutes: Hono<AppBindings>): void {
     const rows = rowsOf<ShareListRow>(results[QUERY_COUNT_FOR_LIST_ROWS])
     const truncated = rows.length > SHARE_LIST_ROW_LIMIT
     const visibleRows = truncated ? rows.slice(0, SHARE_LIST_ROW_LIMIT) : rows
-    const noteStatsMap = await loadNoteVisitStats(db, visibleRows, params.clause)
+    const noteStatsMap = await loadNoteVisitStats(db, userId, visibleRows, params.clause)
     const shares = visibleRows.map((r) => shareListInfo(r, noteStatsMap.get(r.note_id), params.origin))
     const response: ShareListResponse = {
       shares,
@@ -331,8 +331,18 @@ function shareListRowsStatement(
 
 const VISIT_STATS_NOTE_CHUNK = 50
 
+/**
+ * Per-note pageview/visitor totals for the visible rows. The owner predicate is the
+ * point of interest: `share_visits.user_id` is the share's owner, so scoping by it
+ * changes no result, but it is what makes the planner search `idx_share_visits_filter_time`
+ * instead of relying on the slug subquery alone. A covering index was measured for this
+ * query and deliberately not added — see the SH-73 note in the repair ledger: it needed
+ * `(note_id, is_bot, visitor_fp, slug)` to pay off, which is write amplification on the
+ * table every public page view inserts into, for a read only the owner's hub performs.
+ */
 async function loadNoteVisitStats(
   db: D1Database,
+  userId: string,
   rows: ShareListRow[],
   clause: string,
 ): Promise<Map<string, { pvs: number; uvs: number }>> {
@@ -345,11 +355,12 @@ async function loadNoteVisitStats(
     statements.push(db.prepare(
       `SELECT note_id, COUNT(*) as pvs, COUNT(DISTINCT visitor_fp) as uvs
          FROM share_visits
-        WHERE note_id IN (${placeholders})
+        WHERE user_id = ?1
+          AND note_id IN (${placeholders})
           AND EXISTS (SELECT 1 FROM shares s WHERE s.slug = share_visits.slug) ${clause}
         GROUP BY note_id`,
     )
-      .bind(...chunk))
+      .bind(userId, ...chunk))
   }
   if (!statements.length) return noteStatsMap
   const statsResults = await db.batch(statements)

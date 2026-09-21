@@ -282,6 +282,35 @@ describe('share stats route (SH-72)', () => {
   })
 })
 
+describe('share note visit stats query (SH-73)', () => {
+  it('scopes the per-note stats to the owner and searches an index instead of the table', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { id: 'ns-1', title: 'Alpha' })
+    const n2 = await seedNote(db, { id: 'ns-2', title: 'Beta' })
+    await seedShare(db, { note_id: n1, slug: 'ns-1' })
+    await seedShare(db, { note_id: n2, slug: 'ns-2' })
+    await seedVisit(db, { note_id: n1, slug: 'ns-1', visitor_fp: 'fp-ns-1' })
+    await seedVisit(db, { note_id: n1, slug: 'ns-1', visitor_fp: 'fp-ns-2' })
+    const statements = captureSql(db)
+
+    const body = await (await request(makeApp(), '/api/share')).json()
+    expect(body.shares.find((share: { noteId: string }) => share.noteId === 'ns-1').uniqueVisitors).toBe(2)
+
+    const statsSql = statements.find((sql) => sql.includes('COUNT(DISTINCT visitor_fp) as uvs'))
+    expect(statsSql).toBeDefined()
+    expect(statsSql).toContain('user_id = ?1')
+
+    // The measured plan (bound parameters, as the app sends them) is unchanged by the owner
+    // predicate: it still searches idx_share_visits_note_time. What this guards is the other
+    // half of that measurement — the statement stays index-served and never fans out into a
+    // full table scan, which is what a rewrite dropping the note_id predicate would cause.
+    const plan = await allRows(db, `EXPLAIN QUERY PLAN ${statsSql}`, USER, ...body.shares.map((share: { noteId: string }) => share.noteId))
+    const detail = plan.map((row) => String(row.detail)).join(' | ')
+    expect(detail).toContain('SEARCH share_visits USING')
+    expect(detail).not.toContain('SCAN share_visits')
+  })
+})
+
 describe('share list and analytics db.batch round-trips (SH-17a)', () => {
   it('answers the share list in exactly two batches and no serial query', async () => {
     const db = await makeDb()

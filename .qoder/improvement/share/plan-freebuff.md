@@ -51,8 +51,8 @@
 | 21 | C | SH-54 | 看板不受侧栏范围影响且不标注作用域 | 中 | ✅ | 0f0058f4 |
 | 22 | C | SH-61 | 设置「保存」一半 localStorage 一半服务端，语义未标注 | 小 | ✅ | 001f70f4 |
 | 23 | C | SH-83 | UV 去重口径（IP+日盐 / 同 NAT 合并 / 跨日重复）不可见 | 极小 | ✅ | 530cc26c |
-| 24 | D | SH-72 | 打开分享中心固定 4 请求 / ≈15 条 D1 语句 | 小–中 | ✅ | ⏳ 下项回填 |
-| 25 | D | SH-73 | 列表访客统计缺覆盖索引 + tags `LIKE '%"x"%'` | 中 | ⬜ | |
+| 24 | D | SH-72 | 打开分享中心固定 4 请求 / ≈15 条 D1 语句 | 小–中 | ✅ | 704fb03b |
+| 25 | D | SH-73 | 列表访客统计缺覆盖索引 + tags `LIKE '%"x"%'` | 中 | ✅ | ⏳ 下项回填 |
 | 26 | D | SH-74 | `range=all` 无节流无缓存 | 中 | ⬜ | |
 | 27 | D | SH-81 | 读侧无限流（分析/日志对已认证会话全开放） | 小–中 | ⬜ | |
 | 28 | D | SH-75 | 全量导出串行分页无进度/无取消/无上限提示 | 小–中 | ⬜ | |
@@ -352,3 +352,23 @@
 - 变异 2 发全杀（`/tmp` 备份 + 逐字节校验还原）：M1 把 `useHubOpenLifecycle` 的条件改回无条件 `loadShares()` → 第 1 例红；M2 去掉 `registerShareStatsRoute` → 服务端两例红（404）。
 - 验证读数：`tsc -b --force` exit 0（**首跑拦下 `ShareStatsResponse` 未从 `@shared/types` 导出**，补 barrel 后绿——barrel 是手写名单而不是 `export *`，新类型会静默漏掉）；定向 share 相关 **37 文件 / 246 用例** + share 客户端 **3 文件 / 15 用例**全绿；12 项静态门禁全绿（**`size:check` 首跑报 `use-share-hub-modal.ts` 新增 1 个超长函数**，按职责把开合生命周期抽成 `useHubOpenLifecycle` 修掉，未改 size 基线）；`comments:check` 714 文件 / 5075 条。
 - 局限：① 未实测 D1 语句数与时延的真实下降（断言的是「语句形状」而不是计时），要读数得在 workerd 上量；② 看板的三个流量过滤开关改动后 `globalStats` 不会自动重取（看板路径没有重取入口），与 SH-74 的缓存、看板作用域一并处理；③ 侧栏文件夹/标签徽标仍依赖一次列表或统计请求，没有增量更新。
+
+### 25 — SH-73 访客统计收紧作用域；覆盖索引实测后**不加**（2026-09-21）
+
+- 现状：列表为可见行取每篇 PV/UV 要跑 `COUNT(*) / COUNT(DISTINCT visitor_fp) ... WHERE note_id IN (50 个) AND EXISTS(SELECT 1 FROM shares WHERE slug=...)`，四个既有索引都不含 `visitor_fp`。台账要求「落地后要用 `EXPLAIN QUERY PLAN` 或等价证据说明命中」，所以先实测再决定。
+- **实测结论（本项最重要的一段，免得下轮再提同一方案）**：用 `node:sqlite` 复现真实语句与默认过滤子句（`AND is_bot = 0`）逐个体检候选索引：
+
+  | 候选索引 | 规划器计划 |
+  | --- | --- |
+  | 现状（只有 `(note_id, visited_at DESC)`） | `SEARCH ... USING INDEX idx_share_visits_note_time` + 回表取 slug |
+  | `(note_id, visitor_fp)` | 同上，无效 |
+  | `(user_id, note_id, visitor_fp)`（**台账原方案**） | 同上，**完全用不上**（查询里根本没有 `user_id` 谓词） |
+  | `(note_id, is_bot, visitor_fp, slug)` | **COVERING INDEX**，`(note_id=? AND is_bot=?)` |
+
+  即：台账写的 `(user_id, note_id, visitor_fp)` 对这条查询毫无作用；唯一能去掉回表的形态是四列索引。那是给**每次公开页访问都要 INSERT 的热表**多维护一个四列索引，而这条查询只在账号本人打开分享中心时跑——写放大换不划算的读，因此**不加**，读数留在上表里。`tags LIKE '%"x"%'` 的关联表改造属大改，同样留待单开一期。
+- 本轮实际落地的小改动（1 处、零写成本）：`loadNoteVisitStats()` 加 `user_id = ?1`。`share_visits.user_id` 就是该分享的属主（`public.ts` 写入时 bind 的是 `share.user_id`），所以这是语义上的空操作，但补齐了本模块「每条分享查询都带 user 作用域」的不变量（与 SH-80 同族）；函数入参相应加上 `userId`。
+- 先红后绿：`tests/share-routes.test.ts` 新增 SH-73 一例——断言捕获到的统计 SQL 含 `user_id = ?1`、UV 计数正确，并对同一条捕获语句用**真实绑定参数**跑 `EXPLAIN QUERY PLAN`，断言它是 `SEARCH share_visits USING ...` 且不含 `SCAN share_visits`。
+- 变异 1 发即杀：去掉 `user_id = ?1`（同时改回 `.bind(...chunk)`）→ 该例红。
+- **一条被自己纠正的读数**：同一条语句用**字面值** `user_id = 'u'` 探针时规划器选 `idx_share_visits_filter_time`，而应用实际发的是**绑定参数** `?1`、规划器选 `idx_share_visits_note_time`。两者都是索引检索，但探针读数与线上读数**不是同一个计划**——我最初那条「必须命中 filter_time」的用例首跑就红了。教训：凡靠规划器选索引的断言，探针必须用与生产一致的绑定形态，且最好只锁「不因统计信息变化而翻转」的性质（如无全表扫描）。
+- 验证读数：`tsc -b --force` exit 0；定向 share 相关 **37 文件 / 247 用例**全绿；11 项静态门禁全绿。
+- 局限：① 没有新索引，「列表接口最贵的一步」仍然存在，只是不再被误认为可以用三列索引解决；② 未在真实 D1 上用种子数据量测耗时，结论限于 `node:sqlite` 的规划器读数；③ 计划受表统计信息影响（无 `ANALYZE` 时可能变化），所以断言只锁「无全表扫描」这类稳定性质。
