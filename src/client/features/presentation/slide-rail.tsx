@@ -174,7 +174,7 @@ function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, 
   // The thumbnail renders the prepared markup the projector shows, so it follows the cache
   // rather than reading it once: a theme flip or an edit replaces a slide's markup under it,
   // and a single read left the thumbnail on an un-rendered placeholder for the rest of the show.
-  const cached = useSyncExternalStore(subscribeSlideHtml, () => readSlideHtml(cacheKey) ?? '', () => '')
+  const cached = useSyncExternalStore(subscribeSlideHtml, () => readSlideHtml(cacheKey)?.html ?? '', () => '')
   const html = usePageHtml({ near, cacheKey, cached, source, plan, sub: entry.sub, view })
 
   return (

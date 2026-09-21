@@ -18,6 +18,7 @@ import {
   type SlidesWriter,
 } from '../../lib/markdown/slides'
 import { t, useLocale } from '../../lib/i18n'
+import { registerFenceBodies, type FenceBodies } from '../../lib/markdown/fence-bodies'
 import { useUi } from '../../store/ui'
 import { createSlidesWriter } from './slides-sync'
 
@@ -32,11 +33,16 @@ interface UseBentoSlidesBlocksOptions {
   noteId: string | null
   hostRef: RefObject<HTMLDivElement | null>
   committedHtml: string
+  /**
+   * The fence bodies this markup was rendered from (P-01), registered on the host before mount. Also a
+   * mount trigger: a body-only edit leaves the markup string identical.
+   */
+  fences: FenceBodies
   dark: boolean
 }
 
 export function useBentoSlidesBlocks(options: UseBentoSlidesBlocksOptions) {
-  const { scope, noteId, hostRef, committedHtml, dark } = options
+  const { scope, noteId, hostRef, committedHtml, fences, dark } = options
   const locale = useLocale()
   const writer = useMemo(() => createSlidesWriter(noteId), [noteId])
   const fullscreen = useSlidesFullscreen()
@@ -46,6 +52,7 @@ export function useBentoSlidesBlocks(options: UseBentoSlidesBlocksOptions) {
     noteId,
     hostRef,
     committedHtml,
+    fences,
     dark,
     locale,
     writer,
@@ -114,6 +121,7 @@ interface SlidesMountParams {
   noteId: string | null
   hostRef: RefObject<HTMLDivElement | null>
   committedHtml: string
+  fences: FenceBodies
   dark: boolean
   locale: ReturnType<typeof useLocale>
   writer: SlidesWriter
@@ -123,12 +131,13 @@ interface SlidesMountParams {
 }
 
 function useSlidesMount(params: SlidesMountParams): void {
-  const { scope, noteId, hostRef, committedHtml, dark, locale, writer } = params
+  const { scope, noteId, hostRef, committedHtml, fences, dark, locale, writer } = params
   const { onOpenFullscreen, onNotice, onPendingChange } = params
 
   useLayoutEffect(() => {
     const host = hostRef.current
     if (!host) return
+    registerFenceBodies(host, fences)
     void mountBentoSlides(host, {
       scope,
       noteId,
@@ -142,7 +151,7 @@ function useSlidesMount(params: SlidesMountParams): void {
     }).catch((err: unknown) => {
       console.warn('[inkstone] bento slides mount failed', err)
     })
-  }, [committedHtml, dark, locale, noteId, scope, writer, hostRef, onOpenFullscreen, onNotice, onPendingChange])
+  }, [committedHtml, fences, dark, locale, noteId, scope, writer, hostRef, onOpenFullscreen, onNotice, onPendingChange])
 }
 
 function useSlidesTeardown(

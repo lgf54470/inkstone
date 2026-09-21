@@ -1,5 +1,5 @@
 import { t } from '../../i18n'
-import { decodeDataValue } from '../data-attr'
+import { fenceBody } from '../fence-bodies'
 import type { KanbanFenceRef } from './types'
 
 export const KANBAN_BLOCK_SELECTOR = '[data-kanban]'
@@ -63,7 +63,7 @@ export function kanbanBlocks(root: ParentNode): HTMLElement[] {
 }
 
 export function kanbanBody(node: HTMLElement): string {
-  return decodeDataValue(node.dataset.kanban ?? '').replace(/\r\n/g, '\n').replace(/\n$/, '')
+  return fenceBody(node, 'kanban', kanbanIndex(node)).replace(/\r\n/g, '\n').replace(/\n$/, '')
 }
 
 export function kanbanIndex(node: HTMLElement): number {

@@ -2,6 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, createElement } from 'react'
 import { initI18n } from '../../i18n'
 import { installTestGlobals } from '../../test-render'
+import { registerFenceBodies } from '../fence-bodies'
 import { renderMarkdown } from '../renderer'
 import { destroyKanbans, mountKanbans } from './index'
 
@@ -33,9 +34,11 @@ afterEach(() => {
 async function mountBoard(): Promise<HTMLElement> {
   const host = document.createElement('div')
   host.className = 'ink-prose'
-  host.innerHTML = renderMarkdown(
+  const rendered = renderMarkdown(
     ['# Title', '', '```kanban', '## To Do', '- [ ] First Task', '```'].join('\n'),
-  ).html
+  )
+  host.innerHTML = rendered.html
+  registerFenceBodies(host, rendered.fences)
   document.body.append(host)
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
   try {

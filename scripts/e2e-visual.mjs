@@ -947,26 +947,26 @@ async function waitForMindmapNodes(page, scope, expected, timeout = 15_000) {
   { timeout }, [scope, expected]).then(() => true, () => false)
 }
 
-// A block's body as the document itself holds it, decoded from the block's own attribute. The editor
-// is not a stable place to read it from: CodeMirror renders only the lines in view, so its text
-// depends on where the caret and the scroll happen to be. The preview always carries the body the
-// note was last committed with, which is exactly what these assertions are about. Every block
-// encodes its body the same way (lib/markdown/data-attr.ts), so one reader serves them all.
-function readBlockBody({ scope, block, attribute }) {
-  const encoded = document.querySelector(`${scope} ${block}`)?.getAttribute(attribute) ?? ''
-  if (!encoded.startsWith('b64.')) return encoded
-  try {
-    const tail = encoded.slice(4).replace(/-/g, '+').replace(/_/g, '/')
-    const binary = atob(tail.padEnd(Math.ceil(tail.length / 4) * 4, '='))
-    return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)))
+// A block's body as the document itself holds it, read out of the fence bodies the host registered
+// beside the markup (lib/markdown/fence-bodies.ts). The editor is not a stable place to read it
+// from: CodeMirror renders only the lines in view, so its text depends on where the caret and the
+// scroll happen to be. The preview always carries the body the note was last committed with, which
+// is exactly what these assertions are about. Every family is numbered the same way, so one reader
+// serves them all.
+function readBlockBody({ scope, block, family, indexAttribute }) {
+  const node = document.querySelector(`${scope} ${block}`)
+  if (!node) return ''
+  const index = Number(node.getAttribute(indexAttribute))
+  if (!Number.isInteger(index)) return ''
+  for (let current = node; current !== null; current = current.parentElement) {
+    const bodies = current.inkstoneFenceBodies
+    if (bodies) return bodies[family]?.[index] ?? ''
   }
-  catch {
-    return ''
-  }
+  return ''
 }
 
 async function readNoteBody(page, scope) {
-  return page.evaluate(readBlockBody, { scope, block: '.mindmap-block[data-mindmap]', attribute: 'data-mindmap' })
+  return page.evaluate(readBlockBody, { scope, block: '.mindmap-block[data-mindmap]', family: 'mindmap', indexAttribute: 'data-mindmap-index' })
 }
 
 // The write is debounced and the preview re-renders after it, so an assertion on the frame right
@@ -1024,21 +1024,27 @@ async function assertMindmapSplitEditing(page) {
   check('mindmap: the node is selected before it is deleted', await selectMindmapNode(page, '.ink-prose', 'Split child'))
   await page.keyboard.press('Delete')
   check('mindmap: deleting the selected node leaves the note', await fenceHas(page, '.ink-prose', 'Split child', false), await readNoteBody(page, '.ink-prose'))
+  // Ctrl+Z reaches the map only through the keyboard focus it holds on its own drawing container, so
+  // read that before pressing it: an edit that landed in the editor instead would still put a node
+  // back, and the assertions below would pass about the wrong surface.
+  const keyboardOnMap = await page.evaluate(() => Boolean(document.activeElement?.closest?.('.ink-prose .mindmap-canvas')))
+  check('mindmap: the map keeps the keyboard across the delete and the write', keyboardOnMap)
   await page.keyboard.down('Control')
   await page.keyboard.press('z')
   await page.keyboard.up('Control')
-  // Ctrl+Z is the library's own undo, and the snapshot it lands on is the library's business: an
-  // undone edit can come back carrying the topic that snapshot held rather than the text that was
-  // typed (measured: the node returns as the default "new node"). What the app owes the user is that
-  // the map and the note still agree, so this asserts the node is back in the note and that every
-  // topic the map shows is in the fence — not which topic the library's history restored.
+  // Which snapshot the library steps back to is the library's business — what the app owes the user is
+  // that the note follows the map either way, since the step redraws without announcing an operation
+  // (see the history wrapper in src/client/lib/markdown/mindmap/vendor.ts). So this asserts the node
+  // is back in the fence and that every topic the map now shows is in it, not which topic came back.
   const back = await waitForMindmapNodes(page, '.ink-prose', added.nodes)
   const undone = await page.evaluate(() => ({
     nodes: document.querySelectorAll('.ink-prose .mindmap-canvas me-tpc').length,
     same: document.querySelector('.ink-prose .mindmap-canvas') === window.__mindmapCanvas,
     topics: [...document.querySelectorAll('.ink-prose .mindmap-canvas me-tpc')].map((node) => node.textContent.trim()),
   }))
-  const undoneBody = await readNoteBody(page, '.ink-prose')
+  // The read is polled exactly like the two edits before it: the undone map writes through the same
+  // debounce, and the body this reads is the one the note was last *committed* with.
+  const undoneBody = await waitForNoteBody(page, '.ink-prose', (body) => undone.topics.every((topic) => body.includes(topic)))
   const missing = undone.topics.filter((topic) => !undoneBody.includes(topic))
   check('mindmap: undo brings the node back and the note follows the map', back && missing.length === 0, `${JSON.stringify(undone)} missing=${JSON.stringify(missing)}`)
   check('mindmap: undo kept the same instance', undone.same && undone.nodes === added.nodes, JSON.stringify(undone))
@@ -1693,7 +1699,7 @@ async function readSlidesZoom(page) {
 
 /** The deck the note was last committed with, read off the block rather than out of the editor. */
 async function readSlidesSource(page) {
-  return page.evaluate(readBlockBody, { scope: '.ink-prose', block: '[data-bento-slides]', attribute: 'data-bento-slides' })
+  return page.evaluate(readBlockBody, { scope: '.ink-prose', block: '[data-bento-slides]', family: 'slides', indexAttribute: 'data-bento-slides-index' })
 }
 
 /** The write back into the fence is debounced and the preview re-renders after it, so this waits. */

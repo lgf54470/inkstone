@@ -1,5 +1,5 @@
 import { t } from '../../i18n'
-import { decodeDataValue } from '../data-attr'
+import { fenceBody } from '../fence-bodies'
 import type { SlidesFenceRef } from './types'
 
 export const SLIDES_BLOCK_SELECTOR = '[data-bento-slides]'
@@ -56,7 +56,7 @@ export function slidesBlocks(root: ParentNode): HTMLElement[] {
 }
 
 export function slidesBody(node: HTMLElement): string {
-  return decodeDataValue(node.dataset.bentoSlides ?? '').replace(/\r\n/g, '\n').replace(/\n$/, '')
+  return fenceBody(node, 'slides', slidesIndex(node)).replace(/\r\n/g, '\n').replace(/\n$/, '')
 }
 
 export function slidesIndex(node: HTMLElement): number {

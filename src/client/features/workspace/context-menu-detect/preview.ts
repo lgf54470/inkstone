@@ -1,4 +1,8 @@
 import { decodeDataValue } from '../../../lib/markdown/data-attr'
+import { excalidrawBody } from '../../../lib/markdown/excalidraw'
+import { kanbanBody } from '../../../lib/markdown/kanban'
+import { mindmapBody } from '../../../lib/markdown/mindmap'
+import { slidesBody } from '../../../lib/markdown/slides'
 import type { PreviewContextData } from './types'
 
 function getSourceLine(el: HTMLElement | null): number | undefined {
@@ -64,25 +68,25 @@ function detectChart(target: HTMLElement): PreviewContextData | null {
 function detectMindmap(target: HTMLElement): PreviewContextData | null {
   const mindmapEl = target.closest<HTMLElement>('[data-mindmap], .mindmap-block')
   if (!mindmapEl) return null
-  return { type: 'mindmap', target, mindmap: { code: decodeDataValue(mindmapEl.dataset.mindmap ?? ''), sourceLine: getSourceLine(mindmapEl) } }
+  return { type: 'mindmap', target, mindmap: { code: mindmapBody(mindmapEl), sourceLine: getSourceLine(mindmapEl) } }
 }
 
 function detectExcalidraw(target: HTMLElement): PreviewContextData | null {
   const boardEl = target.closest<HTMLElement>('[data-excalidraw], .excalidraw-block')
   if (!boardEl) return null
-  return { type: 'excalidraw', target, excalidraw: { code: decodeDataValue(boardEl.dataset.excalidraw ?? ''), sourceLine: getSourceLine(boardEl) } }
+  return { type: 'excalidraw', target, excalidraw: { code: excalidrawBody(boardEl), sourceLine: getSourceLine(boardEl) } }
 }
 
 function detectKanban(target: HTMLElement): PreviewContextData | null {
   const kanbanEl = target.closest<HTMLElement>('[data-kanban], .kanban-block')
   if (!kanbanEl) return null
-  return { type: 'kanban', target, kanban: { code: decodeDataValue(kanbanEl.dataset.kanban ?? ''), sourceLine: getSourceLine(kanbanEl) } }
+  return { type: 'kanban', target, kanban: { code: kanbanBody(kanbanEl), sourceLine: getSourceLine(kanbanEl) } }
 }
 
 function detectSlides(target: HTMLElement): PreviewContextData | null {
   const slidesEl = target.closest<HTMLElement>('[data-bento-slides], .bento-slides-block')
   if (!slidesEl) return null
-  return { type: 'slides', target, slides: { code: decodeDataValue(slidesEl.dataset.bentoSlides ?? ''), sourceLine: getSourceLine(slidesEl) } }
+  return { type: 'slides', target, slides: { code: slidesBody(slidesEl), sourceLine: getSourceLine(slidesEl) } }
 }
 
 function detectCodeBlock(target: HTMLElement): PreviewContextData | null {

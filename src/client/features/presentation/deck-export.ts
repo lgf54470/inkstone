@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { buildDeckPages } from './deck-print'
+import type { SlideMarkup } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
 
@@ -10,7 +11,7 @@ import type { StageMetrics } from './slide-stage'
 
 /** One export sheet's pages, and what tears it down when it is done with them. */
 export interface DeckSheetPayload {
-  pages: string[]
+  pages: SlideMarkup[]
   metrics: StageMetrics
   dark: boolean
   done: () => void
@@ -38,7 +39,7 @@ export function useDeckExport(options: DeckExportOptions): DeckExports {
   const { deck, cacheKeys, plans, metrics, externalImages, dark, title } = options
   // The kind of export is part of what is held: both sheets read the same pages, so holding the
   // pages alone would mount the printed deck and the image deck at the same time and export both.
-  const [request, setRequest] = useState<{ kind: 'print' | 'images'; pages: string[] } | null>(null)
+  const [request, setRequest] = useState<{ kind: 'print' | 'images'; pages: SlideMarkup[] } | null>(null)
   const build = useCallback(
     (kind: 'print' | 'images') => setRequest({ kind, pages: buildDeckPages(deck, cacheKeys, plans, metrics, externalImages) }),
     [deck, cacheKeys, plans, metrics, externalImages],

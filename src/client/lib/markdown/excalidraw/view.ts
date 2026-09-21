@@ -1,11 +1,11 @@
 /**
- * DOM helpers for whiteboard blocks: reading what the renderer emitted into a
+ * DOM helpers for whiteboard blocks: reading what the renderer registered for a
  * placeholder, and the two degraded states (source fallback, error banner). These are
  * the only paths that touch the block markup, so the mount pass and the preview
  * interaction handlers stay in sync on the contract.
  */
 import { t } from '../../i18n'
-import { decodeDataValue } from '../data-attr'
+import { fenceBody } from '../fence-bodies'
 import type { ExcalidrawFenceRef } from './types'
 
 export const EXCALIDRAW_BLOCK_SELECTOR = '[data-excalidraw]'
@@ -87,7 +87,7 @@ export function isExcalidrawSurface(target: HTMLElement | null): boolean {
  * bodies (write-back, source sync) goes through here so both sides agree.
  */
 export function excalidrawBody(node: HTMLElement): string {
-  return decodeDataValue(node.dataset.excalidraw).replace(/\r\n/g, '\n').replace(/\n$/, '')
+  return fenceBody(node, 'excalidraw', excalidrawIndex(node)).replace(/\r\n/g, '\n').replace(/\n$/, '')
 }
 
 export function excalidrawIndex(node: HTMLElement): number {

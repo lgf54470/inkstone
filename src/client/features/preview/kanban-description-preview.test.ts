@@ -26,27 +26,27 @@ afterEach(async () => {
   document.body.replaceChildren()
 })
 
-function Board({ html, hostRef }: { html: string; hostRef: RefObject<HTMLDivElement | null> }) {
-  useKanbanBlocks({ scope: SCOPE, noteId: 'note-1', hostRef, committedHtml: html })
+function Board({ rendered, hostRef }: { rendered: ReturnType<typeof renderMarkdown>; hostRef: RefObject<HTMLDivElement | null> }) {
+  useKanbanBlocks({ scope: SCOPE, noteId: 'note-1', hostRef, committedHtml: rendered.html, fences: rendered.fences })
   return createElement('div', {
     ref: hostRef,
     className: 'ink-prose',
-    dangerouslySetInnerHTML: { __html: html },
+    dangerouslySetInnerHTML: { __html: rendered.html },
   })
 }
 
-function boardHtml(): string {
+function renderedBoard(): ReturnType<typeof renderMarkdown> {
   const body = JSON.stringify({
     title: 'Sprint',
     items: [{ id: 'item-1', title: 'Ship the board', content: '**bold** claim', properties: { status: 'todo' } }],
   })
-  return renderMarkdown(['# Title', '', '```kanban', body, '```'].join('\n')).html
+  return renderMarkdown(['# Title', '', '```kanban', body, '```'].join('\n'))
 }
 
 describe('the preview pane wiring a board to the markdown renderer', () => {
   it('lets a mounted card preview its description through the note pipeline', async () => {
     const hostRef: RefObject<HTMLDivElement | null> = { current: null }
-    renderElement(createElement(Board, { html: boardHtml(), hostRef }))
+    renderElement(createElement(Board, { rendered: renderedBoard(), hostRef }))
     await act(async () => {})
 
     const card = document.querySelector<HTMLElement>('[data-item-id]')

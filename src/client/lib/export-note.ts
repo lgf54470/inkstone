@@ -1,6 +1,6 @@
 import { escapeHtml } from '@shared/escape'
 import { EXPORT_PALETTE } from './export-palette'
-import { renderMarkdown } from './markdown/renderer'
+import { renderMarkdown, type RenderResult } from './markdown/renderer'
 import { useSession } from '../store/session'
 import { resolveNoteEmbeds } from './markdown/embeds'
 import {
@@ -42,7 +42,7 @@ export async function renderNoteToExportHtml(
   document.body.appendChild(container)
 
   try {
-    await runExportEnhancements(container, rendered.hasEmbeds, note)
+    await runExportEnhancements(container, note, rendered)
     stripExportChrome(container)
     await embedLocalImages(container)
     return htmlDocument(note.title, container.innerHTML, language)
@@ -51,7 +51,7 @@ export async function renderNoteToExportHtml(
   }
 }
 
-function renderExportHtml(note: { title: string; content: string }): { html: string; hasEmbeds: boolean } {
+function renderExportHtml(note: { title: string; content: string }): RenderResult {
   // Respect the user's external-images choice: when blocked, exported HTML
   // shows the same placeholder as the preview instead of leaking image URLs.
   return renderMarkdown(note.content, {
@@ -72,12 +72,13 @@ function createExportContainer(html: string): HTMLDivElement {
   return container
 }
 
-async function runExportEnhancements(container: HTMLDivElement, hasEmbeds: boolean, note: { title: string; content: string }): Promise<void> {
-  if (hasEmbeds) {
+async function runExportEnhancements(container: HTMLDivElement, note: { title: string; content: string }, rendered: RenderResult): Promise<void> {
+  if (rendered.hasEmbeds) {
     try {
       await resolveNoteEmbeds(container, {
         currentContent: note.content,
         currentTitle: note.title,
+        fences: rendered.fences,
       })
     } catch (err) {
       console.warn('Failed to resolve note embeds during export:', err)
@@ -94,6 +95,8 @@ async function runExportEnhancements(container: HTMLDivElement, hasEmbeds: boole
       excalidraw: 'snapshot',
       // And for a kanban, whose cards travel as the list the fence describes.
       kanban: 'snapshot',
+      // What the blocks on this container were rendered from; they read it back from here.
+      fences: rendered.fences,
       dark: false,
       codeBlockCollapseLines: 0,
     })

@@ -4,11 +4,12 @@ import type { ProseFont } from '@shared/types'
 import { settleWithin } from '../../lib/async'
 import { safeFileName } from '../../lib/export-folder'
 import { t } from '../../lib/i18n'
+import { registerFenceBodies } from '../../lib/markdown/fence-bodies'
 import { destroyChartInstances, enhancePreview, renderPendingMermaid } from '../../lib/markdown/enhance'
 import { useUi } from '../../store/ui'
 import { collectDeckCss, deckImageGeometry, renderDeckPagePng, saveDeckImages, zipDeckImages } from './deck-image'
 import { railEntries } from './presentation-state'
-import { readSlideHtml, renderSlideSource, slicePageHtml } from './slide-html'
+import { readSlideHtml, renderSlideSource, slicePageHtml, slideMarkup, type SlideMarkup } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import { SlideProse } from './slide-prose'
 import { SLIDE_PAD_X, SLIDE_PAD_Y, type StageMetrics } from './slide-stage'
@@ -27,18 +28,18 @@ export function buildDeckPages(
   plans: Record<number, SlidePlan>,
   metrics: StageMetrics,
   externalImages: boolean,
-): string[] {
+): SlideMarkup[] {
   return railEntries(deck.length, plans).map((entry) => {
-    const html = readSlideHtml(cacheKeys[entry.slide] ?? '') ?? renderSlideSource(deck[entry.slide] ?? '', externalImages).html
+    const markup = readSlideHtml(cacheKeys[entry.slide] ?? '') ?? slideMarkup(renderSlideSource(deck[entry.slide] ?? '', externalImages))
     const plan = plans[entry.slide]
-    if (!plan) return html
-    return slicePageHtml(html, plan, entry.sub, metrics.contentWidth, metrics.contentHeight)
+    if (!plan) return markup
+    return { html: slicePageHtml(markup.html, plan, entry.sub, metrics.contentWidth, metrics.contentHeight), fences: markup.fences }
   })
 }
 
 interface DeckSheetProps {
   /** One entry per deck page, from buildDeckPages(). */
-  pages: string[]
+  pages: SlideMarkup[]
   metrics: StageMetrics
   font: ProseFont
   /** The theme the deck was measured in; a chart's axes follow it. */
@@ -55,13 +56,14 @@ function DeckSheet({ sheetRef, pages, metrics, font }: DeckSheetProps & { sheetR
   return createPortal(
     <div ref={sheetRef} data-deck-print aria-hidden='true' inert className='deck-print-sheet'>
       <style>{geometry}</style>
-      {pages.map((html, index) => (
+      {pages.map((page, index) => (
         // The slide context, not the reader's prose one: these pages were measured with the
         // slide's type scale and diagram sizes, and printing them in another scale would reflow
-        // every page against the slice it was handed.
-        <div key={index} className='deck-print-page'>
+        // every page against the slice it was handed. Each one also carries the fence bodies its
+        // own blocks were rendered from, which the snapshot draw below looks up by walking up.
+        <div key={index} className='deck-print-page' ref={(node) => { if (node) registerFenceBodies(node, page.fences) }}>
           <div className='deck-print-body ink-slide'>
-            <SlideProse html={html} contentWidth={metrics.contentWidth} font={font} />
+            <SlideProse html={page.html} contentWidth={metrics.contentWidth} font={font} />
           </div>
         </div>
       ))}
@@ -158,6 +160,9 @@ async function prepareDeckSheet(root: HTMLElement, dark: boolean, metrics: Stage
       excalidraw: 'snapshot',
       // A board cannot run on the sheet either; its cards print as a list.
       kanban: 'snapshot',
+      // No `fences` for the root: every page registers the bodies it was built from on its own box,
+      // and a block reads the nearest set above it (P-01). The sheet holds pages from different
+      // slides, which no single document's numbering could answer for.
       dark,
       codeBlockCollapseLines: 0,
       // The printed page is the design canvas, so a mind map on it is drawn for

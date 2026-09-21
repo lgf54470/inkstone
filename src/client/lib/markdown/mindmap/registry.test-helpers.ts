@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { registerFenceBodies } from '../fence-bodies'
 import { renderMarkdown } from '../renderer'
 import { mountMindmaps } from './registry'
 import { APP_THEME_CHOICE, type MindmapThemeChoice } from './theme'
@@ -140,7 +141,11 @@ export function noteSource(body: string, annotation?: string): string {
 }
 
 function paint(host: HTMLElement, source: string): void {
-  host.innerHTML = renderMarkdown(source).html
+  const rendered = renderMarkdown(source)
+  host.innerHTML = rendered.html
+  // A re-render replaces the markup, so the host carries the set this markup was rendered from: the
+  // body no longer rides inside the block's own attribute (P-01).
+  registerFenceBodies(host, rendered.fences)
 }
 
 /** A mounted preview surface backed by `stubVendor`; `mount` replays a re-render. */

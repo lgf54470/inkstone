@@ -10,6 +10,7 @@ import {
   type MindmapThemeMenuState,
 } from '../../lib/markdown/mindmap'
 import { useLocale } from '../../lib/i18n'
+import { registerFenceBodies, type FenceBodies } from '../../lib/markdown/fence-bodies'
 import { createMindmapFenceWriter, createMindmapWriter } from './mindmap-sync'
 
 export interface MindmapFullscreenState {
@@ -21,6 +22,11 @@ interface UseMindmapBlocksOptions {
   noteId: string | null
   hostRef: RefObject<HTMLDivElement | null>
   committedHtml: string
+  /**
+   * The fence bodies this markup was rendered from (P-01), registered on the host before mount. Also a
+   * mount trigger: a body-only edit leaves the markup string identical.
+   */
+  fences: FenceBodies
   dark: boolean
 }
 
@@ -30,7 +36,7 @@ interface UseMindmapBlocksOptions {
  * paint, so typing in the editor never restarts a map.
  */
 export function useMindmapBlocks(options: UseMindmapBlocksOptions) {
-  const { scope, noteId, hostRef, committedHtml, dark } = options
+  const { scope, noteId, hostRef, committedHtml, fences, dark } = options
   const locale = useLocale()
   const writer = useMemo(() => createMindmapWriter(noteId), [noteId])
   const fenceWriter = useMemo(() => createMindmapFenceWriter(noteId), [noteId])
@@ -40,12 +46,13 @@ export function useMindmapBlocks(options: UseMindmapBlocksOptions) {
   useLayoutEffect(() => {
     const host = hostRef.current
     if (!host) return
+    registerFenceBodies(host, fences)
     void mountMindmaps(host, { scope, noteId, dark, locale, editable: true, writeBack: writer, writeFence: fenceWriter }).catch((err: unknown) => {
       // Per-block failures render their own error banner; this only catches a
       // wholesale failure such as a detached host.
       console.warn('[inkstone] mind map mount failed', err)
     })
-  }, [committedHtml, dark, locale, noteId, scope, writer, fenceWriter, hostRef])
+  }, [committedHtml, fences, dark, locale, noteId, scope, writer, fenceWriter, hostRef])
 
   useMindmapTeardown(scope, setFullscreen, setThemeMenu)
   useMindmapPointerFocus(hostRef, committedHtml)

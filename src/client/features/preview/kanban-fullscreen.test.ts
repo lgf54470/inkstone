@@ -3,6 +3,7 @@ import { act, createElement, useState } from 'react'
 import { initI18n, t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
 import { renderMarkdown } from '../../lib/markdown/renderer'
+import { registerFenceBodies } from '../../lib/markdown/fence-bodies'
 import {
   destroyKanbans,
   mountKanbans,
@@ -25,7 +26,11 @@ afterEach(() => {
 function previewHost(body = '## To Do\n- [ ] First Task'): HTMLElement {
   const host = document.createElement('div')
   host.className = 'ink-prose'
-  host.innerHTML = renderMarkdown(['# Title', '', '```kanban', body, '```', '', 'tail'].join('\n')).html
+  const rendered = renderMarkdown(['# Title', '', '```kanban', body, '```', '', 'tail'].join('\n'))
+  host.innerHTML = rendered.html
+  // The board reads its fence body out of the set this element carries, not out of its own attribute
+  // (P-01).
+  registerFenceBodies(host, rendered.fences)
   document.body.append(host)
   return host
 }

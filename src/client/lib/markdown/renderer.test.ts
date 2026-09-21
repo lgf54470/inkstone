@@ -376,3 +376,65 @@ describe('renderMarkdown extension golden output — code blocks', () => {
     expect(block4?.getAttribute('data-line-numbers')).toBeNull()
   })
 })
+/**
+ * A rich block used to carry its whole fence body inside a `data-*` attribute, so a board was
+ * re-encoded into the markup on every preview pass and every pass over that markup walked text no
+ * layer but this one reads (the measured cost table is in the P-01 ledger entry). The bodies travel
+ * beside the string now (P-01), and what is left in the attributes has to stop being a function of
+ * what the board holds.
+ */
+function boardSource(cardCount: number): string {
+  const items = Array.from({ length: cardCount }, (_, index) => ({ id: `i${index}`, title: `Card ${index}`, properties: { status: 'todo' } }))
+  const board = JSON.stringify({
+    title: 'Release plan',
+    activeViewId: 'view-board',
+    columns: [
+      { id: 'title', name: 'Title', type: 'title' },
+      { id: 'status', name: 'Status', type: 'select', options: [{ id: 'todo', label: 'To Do', color: 'gray' }] },
+    ],
+    views: [{ id: 'view-board', name: 'Board', type: 'board', groupBy: 'status' }],
+    items,
+  })
+  return ['# Board', '', '```kanban', board, '```', ''].join('\n')
+}
+
+function attributeBytes(html: string): number {
+  const template = document.createElement('template')
+  template.innerHTML = html
+  let bytes = 0
+  for (const element of Array.from(template.content.querySelectorAll('*'))) {
+    for (const attribute of Array.from(element.attributes)) bytes += attribute.name.length + attribute.value.length
+  }
+  return bytes
+}
+
+describe('renderMarkdown fence bodies leave the markup', () => {
+  it('renders a board as the block it is, not as a copy of the board', () => {
+    const rendered = renderMarkdown(boardSource(200))
+    expect(rendered.html).toContain('data-kanban-index="0"')
+    expect(rendered.html).not.toContain('Card 7')
+    expect(rendered.fences.kanban[0]).toContain('Card 7')
+  })
+
+  it('writes the same markup for a small board and a hundred times that', () => {
+    // Byte equality, not a threshold: nothing in the markup may grow with the body, so the two renders
+    // have exactly one difference available to them — the number of digits the body never reaches.
+    expect(renderMarkdown(boardSource(200)).html).toBe(renderMarkdown(boardSource(2)).html)
+  })
+
+  it('keeps every attribute of a twenty-times-rendered board inside a fixed budget', () => {
+    const source = boardSource(200)
+    const first = renderMarkdown(source)
+    let bytes = attributeBytes(first.html)
+    for (let pass = 0; pass < 20; pass++) {
+      const again = renderMarkdown(source)
+      expect(again.html).toBe(first.html)
+      bytes = attributeBytes(again.html)
+    }
+    // Measured on this fixture: 382 bytes of attributes for a 12,884-byte board. The same board paid
+    // ~17 KB for one `data-kanban` attribute before, and paid it again on every render.
+    expect(first.fences.kanban[0]!.length).toBeGreaterThan(10_000)
+    expect(bytes).toBeLessThan(512)
+    expect(bytes * 20).toBeLessThan(first.fences.kanban[0]!.length)
+  })
+})

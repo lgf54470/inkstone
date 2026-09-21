@@ -55,7 +55,7 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   // every slide the measuring pass walks — the pass has just prepared that slide, so the cache
   // hits and the plain render is pure waste in the middle of a talk.
   const html = useMemo(
-    () => prepared ?? renderSlideSource(source, preview.externalImages).html,
+    () => prepared?.html ?? renderSlideSource(source, preview.externalImages).html,
     [prepared, source, preview.externalImages],
   )
   const [renderVersion, setRenderVersion] = useState(0)

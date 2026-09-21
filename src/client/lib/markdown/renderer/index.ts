@@ -13,6 +13,7 @@ import deflist from 'markdown-it-deflist'
 import abbr from 'markdown-it-abbr'
 import ruby from 'markdown-it-ruby'
 import { slugifyHeading } from '@shared/markdown-utils'
+import type { FenceBodies } from '../fence-bodies'
 import { sanitizeProseHtml } from '../sanitize'
 import type { RenderResult } from './types'
 import { emptyEnvironment, materializeTrustedTasks } from './env'
@@ -75,8 +76,14 @@ export function renderMarkdown(source: string, options?: {
   /** Allow external https images; defaults to false (blocked). */
   externalImages?: boolean
   hideFrontMatter?: boolean
+  /**
+   * Continue an outer document's fence-body numbering instead of starting a new one, for markup that
+   * will be inserted *into* that document (a note embed). One set with document-unique indexes is
+   * the only shape that survives the markup being serialized and re-parsed by whoever holds it.
+   */
+  fences?: FenceBodies
 }): RenderResult {
-  const env = emptyEnvironment()
+  const env = emptyEnvironment(options?.fences)
   env.externalImages = options?.externalImages === true
   env.hideFrontMatter = options?.hideFrontMatter === true
   const raw = md.render(stripObsidianComments(source), env)
@@ -85,6 +92,7 @@ export function renderMarkdown(source: string, options?: {
   return {
     html,
     headings: env.headings,
+    fences: env.fences,
     hasMath: env.hasMath,
     hasMermaid: env.hasMermaid,
     hasChart: env.hasChart,

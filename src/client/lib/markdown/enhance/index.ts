@@ -9,6 +9,7 @@ import { getMermaid } from './mermaid'
 import { showMermaidSource } from './mermaid'
 import { renderChartJs } from './chart'
 import { getLocale } from '../../i18n'
+import { registerFenceBodies, type FenceBodies } from '../fence-bodies'
 import { renderStaticMindmaps, showMindmapSourceAll, type MindmapBox } from '../mindmap'
 import { renderStaticExcalidraws, showExcalidrawSourceAll } from '../excalidraw'
 import { renderStaticKanbans, showKanbanSourceAll } from '../kanban'
@@ -18,6 +19,14 @@ interface EnhanceOptions {
   mermaid: boolean
   dark: boolean
   codeBlockCollapseLines?: number
+  /**
+   * The fence bodies this markup was rendered from, registered on the root before any block is
+   * drawn (P-01). A `snapshot` channel reads them — a board's cards, a map's topics — so a surface
+   * that draws one must pass the set from its own `renderMarkdown` call; an empty stand-in
+   * reads to the blocks as an empty fence, which is their error state. Left out only where the
+   * root's own subtrees each carry a set of their own, as every page of the printed deck does.
+   */
+  fences?: FenceBodies
   /**
    * How this surface treats ```mindmap blocks. `live` means the caller mounts
    * them itself (the preview pane); `snapshot` draws a still image here, for
@@ -53,6 +62,10 @@ interface EnhanceOptions {
   zoomableImages?: boolean
 }
 export async function enhancePreview(root: HTMLElement, options: EnhanceOptions): Promise<void> {
+  // Every block under this root resolves its fence body through the element chain, so the set has
+  // to be in place before the first snapshot is drawn (P-01).
+  if (options.fences)
+    registerFenceBodies(root, options.fences)
   if (options.zoomableImages)
     wrapZoomableImages(root)
   if (options.mermaid) {

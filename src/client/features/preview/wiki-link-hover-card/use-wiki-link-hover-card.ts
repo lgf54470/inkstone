@@ -4,6 +4,7 @@ import { decodeDataValue } from '../../../lib/markdown/data-attr'
 import { parseWikiTarget } from '../../../lib/markdown/renderer'
 import { destroyChartInstances, renderChartJs, renderPendingMermaid, showMermaidSource } from '../../../lib/markdown/enhance'
 import { renderStaticMindmaps } from '../../../lib/markdown/mindmap'
+import { registerFenceBodies, type FenceBodies } from '../../../lib/markdown/fence-bodies'
 import { findNoteByTitle } from '../../../store/notes'
 import { useNotes } from '../../../store/notes'
 import { useSession } from '../../../store/session'
@@ -253,15 +254,19 @@ function usePinnedRichBlocks(opts: {
   pinned: boolean
   status: 'loading' | 'ready' | 'missing' | 'error'
   html: string
+  fences: FenceBodies
   dark: boolean
   preview: PreviewSettings
   cardRef: RefObject<HTMLDivElement | null>
 }): void {
-  const { pinned, status, html, dark, preview, cardRef } = opts
+  const { pinned, status, html, fences, dark, preview, cardRef } = opts
   useEffect(() => {
     if (!pinned || status !== 'ready' || !html) return
     const body = cardRef.current?.querySelector<HTMLElement>('.wiki-hover-body')
     if (!body) return
+    // The card body holds markup a card render produced elsewhere, so the set it was rendered from
+    // has to be put on this element before anything draws out of a block (P-01).
+    registerFenceBodies(body, fences)
     let cancelled = false
     const isCurrent = () => !cancelled && body.isConnected
     void (async () => {
@@ -279,18 +284,18 @@ function usePinnedRichBlocks(opts: {
       cancelled = true
       destroyChartInstances(body)
     }
-  }, [pinned, status, html, dark, preview.mermaid, cardRef])
+  }, [pinned, status, html, fences, dark, preview.mermaid, cardRef])
 }
 
 export function useWikiLinkHoverCard(props: WikiLinkHoverCardProps) {
   const { card, path, depth, dark, pinned = false, pinnedInit, onClose, onPin, onGeometryChange } = props
   const preview = useSession((s) => s.settings.preview)
   const content = useNoteCardContent({ noteId: card.noteId, missing: card.missing, headline: card.headline }, dark, preview.math, pinned ? PINNED_PREVIEW_LENGTH : preview.linkPreviewLength)
-  const { status, html, isTruncated } = content
+  const { status, html, fences, isTruncated } = content
   const { cardRef, position } = useCardPositioning(card, pinned, onClose)
   const describedBy = useCardAccessibility(card, pinned)
   const { pinnedRect, beginDrag, beginResize } = useCardPinnedGeometry(pinnedInit, onGeometryChange, cardRef)
-  usePinnedRichBlocks({ pinned, status, html, dark, preview, cardRef })
+  usePinnedRichBlocks({ pinned, status, html, fences, dark, preview, cardRef })
   const resolve = useCallback((link: HTMLElement) => resolveNestedCandidate(link, card, depth, path), [card, depth, path])
   const machine = useLinkHover({
     resolve,

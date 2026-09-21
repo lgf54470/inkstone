@@ -8,6 +8,7 @@ import { act } from 'react'
 import { initI18n, t } from '../../lib/i18n'
 import { installTestGlobals } from '../../lib/test-render'
 import { renderMarkdown } from '../../lib/markdown/renderer'
+import { registerFenceBodies } from '../../lib/markdown/fence-bodies'
 import {
   destroyKanbans,
   flushKanbans,
@@ -38,7 +39,11 @@ interface Surface {
 async function mountSurface(): Promise<Surface> {
   const host = document.createElement('div')
   host.className = 'ink-prose'
-  host.innerHTML = renderMarkdown('# Title\n\n```kanban\n## To Do\n- [ ] First Task\n```\n\ntail').html
+  const rendered = renderMarkdown('# Title\n\n```kanban\n## To Do\n- [ ] First Task\n```\n\ntail')
+  host.innerHTML = rendered.html
+  // The board reads its fence body out of the set this element carries, not out of its own attribute
+  // (P-01).
+  registerFenceBodies(host, rendered.fences)
   document.body.append(host)
 
   const writes: string[] = []

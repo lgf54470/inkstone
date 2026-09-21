@@ -235,7 +235,10 @@ function publishPlan(slide: number, plan: SlidePlan, { hostRef, cacheKeys, onPla
 }): void {
   const key = cacheKeys[slide]
   const html = captureSlideHtml(hostRef.current)
-  if (html && key) rememberSlideHtml(key, html)
+  // The capture is markup the same blocks were drawn into, so it keeps the bodies those blocks
+  // read from — the ones the canvas was rendering — rather than a string whose fences are empty.
+  const markup = key === undefined ? undefined : readSlideHtml(key)
+  if (html && key && markup) rememberSlideHtml(key, { html, fences: markup.fences })
   onPlan(slide, plan)
 }
 

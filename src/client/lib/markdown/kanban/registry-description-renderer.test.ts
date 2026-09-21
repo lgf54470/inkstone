@@ -9,6 +9,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { act } from 'react'
 import { initI18n, t } from '../../i18n'
 import { installTestGlobals } from '../../test-render'
+import { registerFenceBodies } from '../fence-bodies'
 import { renderMarkdown } from '../renderer'
 import { destroyKanbans, mountKanbans } from './index'
 
@@ -35,7 +36,9 @@ async function mountBoard(renderDescription?: (source: string) => string): Promi
   })
   const host = document.createElement('div')
   host.className = 'ink-prose'
-  host.innerHTML = renderMarkdown(['# Title', '', '```kanban', body, '```'].join('\n')).html
+  const rendered = renderMarkdown(['# Title', '', '```kanban', body, '```'].join('\n'))
+  host.innerHTML = rendered.html
+  registerFenceBodies(host, rendered.fences)
   document.body.append(host)
   await act(async () => {
     await mountKanbans(host, { scope: SCOPE, noteId: 'note-1', editable: true, renderDescription })

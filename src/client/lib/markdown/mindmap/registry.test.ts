@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n } from '../../i18n'
+import { registerFenceBodies } from '../fence-bodies'
 import { renderMarkdown } from '../renderer'
 import { applyBodyAtFence } from './body'
 import { captureMindmapFocus, destroyMindmaps, flushMindmaps, mountMindmaps } from './registry'
@@ -230,7 +231,11 @@ describe('mindmap registry — read-only blocks', () => {
     const records: StubMap[] = []
     const host = document.createElement('div')
     document.body.append(host)
-    host.innerHTML = renderMarkdown(noteSource('- Root')).html
+    const rendered = renderMarkdown(noteSource('- Root'))
+    host.innerHTML = rendered.html
+    // The embed's body arrives as markup this document rendered, so this is the element that carries
+    // the bodies the blocks inside it read (P-01).
+    registerFenceBodies(host, rendered.fences)
     const block = host.querySelector<HTMLElement>('[data-mindmap]')!
     // An embedded note's body: same markup, another note's line numbers.
     const embed = document.createElement('div')

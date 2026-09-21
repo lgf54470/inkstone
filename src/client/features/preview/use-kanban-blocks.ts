@@ -6,6 +6,7 @@ import {
   openKanbanSession,
   type KanbanSession,
 } from '../../lib/markdown/kanban'
+import { registerFenceBodies, type FenceBodies } from '../../lib/markdown/fence-bodies'
 import { createKanbanWriter } from './kanban-sync'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import { useSession } from '../../store/session'
@@ -19,12 +20,20 @@ interface UseKanbanBlocksOptions {
   noteId: string | null
   hostRef: RefObject<HTMLDivElement | null>
   committedHtml: string
+  /**
+   * The fence bodies this markup was rendered from (P-01), registered on the host before mount. Also a
+   * mount trigger: a body-only edit leaves the markup string identical.
+   */
+  fences: FenceBodies
 }
 
 /**
  * Runs a card description through the very renderer the note body uses, so the preview is the note's
  * own surface rather than a second markdown implementation. Module-level and therefore stable: the
  * board root is memoized, and a fresh closure per render would repaint every mounted board.
+ *
+ * That render gets none of the document's fence bodies: the preview lives in a modal, portaled out of
+ * the host, so a block nested in a description has no registered element above it to read either way.
  */
 function renderKanbanDescription(source: string): string {
   const externalImages = useSession.getState().settings.preview.externalImages
@@ -32,7 +41,7 @@ function renderKanbanDescription(source: string): string {
 }
 
 export function useKanbanBlocks(options: UseKanbanBlocksOptions) {
-  const { scope, noteId, hostRef, committedHtml } = options
+  const { scope, noteId, hostRef, committedHtml, fences } = options
   const writer = useMemo(() => createKanbanWriter(noteId), [noteId])
   const [fullscreen, setFullscreen] = useState<KanbanFullscreenState | null>(null)
 
@@ -50,6 +59,8 @@ export function useKanbanBlocks(options: UseKanbanBlocksOptions) {
   useLayoutEffect(() => {
     const host = hostRef.current
     if (!host) return
+    // The host carries the markup it was just given, so the bodies go on the same element.
+    registerFenceBodies(host, fences)
     void mountKanbans(host, {
       scope,
       noteId,
@@ -61,7 +72,7 @@ export function useKanbanBlocks(options: UseKanbanBlocksOptions) {
     }).catch((err: unknown) => {
       console.warn('[inkstone] kanban mount failed', err)
     })
-  }, [committedHtml, noteId, scope, writer, hostRef, openFullscreen, closeFullscreen])
+  }, [committedHtml, fences, noteId, scope, writer, hostRef, openFullscreen, closeFullscreen])
 
   useKanbanTeardown(scope, setFullscreen)
 

@@ -62,6 +62,7 @@ export type {
 export {
   EXCALIDRAW_BLOCK_SELECTOR,
   EXCALIDRAW_FULLSCREEN_CLASS,
+  excalidrawBody,
   isExcalidrawSurface,
   isExcalidrawWritableHere,
   showExcalidrawSource,

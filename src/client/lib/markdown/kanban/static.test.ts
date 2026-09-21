@@ -9,6 +9,7 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { initI18n, t } from '../../i18n'
 import { installTestGlobals } from '../../test-render'
+import { registerFenceBodies } from '../fence-bodies'
 import { renderMarkdown } from '../renderer'
 import { renderStaticKanbans } from './static'
 import { showKanbanSourceAll } from './view'
@@ -29,7 +30,11 @@ function boardBody(data: unknown): string {
 function kanbanHost(body: string): HTMLElement {
   const host = document.createElement('div')
   host.className = 'ink-prose'
-  host.innerHTML = renderMarkdown(['```kanban', body, '```'].join('\n')).html
+  const rendered = renderMarkdown(['```kanban', body, '```'].join('\n'))
+  host.innerHTML = rendered.html
+  // Whoever inserts the markup registers what it was rendered from — the board the block draws is
+  // read back out of here, not out of an attribute (P-01).
+  registerFenceBodies(host, rendered.fences)
   document.body.append(host)
   return host
 }
