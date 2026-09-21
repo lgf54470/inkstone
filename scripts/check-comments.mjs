@@ -3117,8 +3117,15 @@ const allowed = new Map([
     '// The plate stays white in both themes: the QR itself renders on fixed',
     '// white (QR_BG_COLOR), and a dark frame would cut into its quiet zone.',
   ]],
+  ['src/client/features/share/share-settings-modal.tsx', [
+    '/* Where a setting is kept is part of what it means: the filters live in this browser, the\n          retention below lives on the account. Saying it once per group is what makes Save honest. */',
+  ]],
   ['src/client/features/share/share-settings-retention.test.ts', [
     '// The visible text is the name; a second hidden label would only drift.',
+  ]],
+  ['src/client/features/share/share-settings-storage.test.ts', [
+    '/**\n * SH-61: one Save button writes two different places — the three traffic filters go to this browser\'s\n * store, the retention goes to the account (the server sweep reads it). A person cannot tell that\n * from the switches alone, and the difference decides whether another device sees the setting. The\n * two notes beside their groups are the whole fix, so they are what this asserts.\n */',
+    '// The modal mounts its panel through a portal, so its text lives on the document.',
   ]],
   ['src/client/features/share/share-small-defects.test.ts', [
     '// Fresh array per call: a refresh that hands the store the same shares',

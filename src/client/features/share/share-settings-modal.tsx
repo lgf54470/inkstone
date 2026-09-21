@@ -73,6 +73,11 @@ function TrafficFilterSection({ bundle }: { bundle: SettingsBundle }) {
         <SettingsSwitchRow title={t('share.filter_exclude_self')} hint={t('share.filter_exclude_self_hint')} checked={selfRef} onChange={setSelfRef} />
         <SettingsSwitchRow title={t('share.filter_exclude_owner')} hint={t('share.filter_exclude_owner_hint')} checked={owner} onChange={setOwner} />
       </div>
+      {/* Where a setting is kept is part of what it means: the filters live in this browser, the
+          retention below lives on the account. Saying it once per group is what makes Save honest. */}
+      <p className='pt-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+        {t('share.settings_stored_local')}
+      </p>
     </div>
   )
 }
@@ -120,6 +125,9 @@ function RetentionSection({ bundle }: { bundle: SettingsBundle }) {
         />
         <CleanupActions isBusy={isBusy} onClean={handleClean} />
       </div>
+      <p className='pt-3 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+        {t('share.settings_stored_account')}
+      </p>
     </div>
   )
 }

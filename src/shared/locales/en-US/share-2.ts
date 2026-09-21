@@ -86,6 +86,8 @@ export const messages = {
 'share.settings_retention_title': 'Log Storage & Retention',
 'share.settings_saved': 'Settings saved successfully',
 'share.settings_traffic_filter_title': 'Traffic Filtering Rules',
+'share.settings_stored_local': 'Kept in this browser, for this account on this device',
+'share.settings_stored_account': 'Kept on your account, so the server sweep uses it everywhere',
 'share.share_switch_aria': 'Toggle sharing for "{title}"',
 'share.sort_expires_asc': 'Expiring soonest',
 'share.sort_pinned_first': 'Pinned first',

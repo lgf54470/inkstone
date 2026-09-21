@@ -86,6 +86,8 @@ export const messages = {
 'share.settings_retention_title': '访问日志存储与保留',
 'share.settings_saved': '设置已成功保存',
 'share.settings_traffic_filter_title': '真实访客流量过滤',
+'share.settings_stored_local': '保存在本浏览器（此设备上的该账号）',
+'share.settings_stored_account': '保存在账号上，服务端清理任务在各处都会用它',
 'share.share_switch_aria': '切换「{title}」的分享开关',
 'share.sort_expires_asc': '最快到期',
 'share.sort_pinned_first': '置顶优先',
