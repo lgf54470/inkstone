@@ -19,6 +19,8 @@ import { createD1Database as createDb, runSql, queryRows, queryFirst, type D1Shi
 
 const LEGACY_COOKIE = 'inkstone_session'
 
+const BINDINGS = { DB: null as unknown as D1Database, VISIT_FP_SECRET: undefined as string | undefined }
+
 let db: D1Shim
 let authedUserId: string | null = null
 let presentedSessionId: string | null = null
@@ -49,10 +51,12 @@ async function makeDb(): Promise<void> {
   db = createDb()
   for (const statement of TABLE_STATEMENTS) await runSql(db, statement)
   for (const statement of INDEX_STATEMENTS) await runSql(db, statement)
+  BINDINGS.DB = db as unknown as D1Database
+  BINDINGS.VISIT_FP_SECRET = undefined
 }
 
 function request(app: Hono<AppBindings>, path: string, init?: RequestInit): Promise<Response> {
-  return app.request(path, init, { DB: db as unknown as D1Database } as unknown as AppBindings['Bindings'], {
+  return app.request(path, init, BINDINGS as unknown as AppBindings['Bindings'], {
     waitUntil: vi.fn(),
   } as unknown as ExecutionContext)
 }
@@ -243,5 +247,18 @@ describe('auth session lifecycle (real D1)', () => {
     expect(body.user).toBeNull()
     expect(body.site.initialized).toBe(false)
     expect(body.settings).toBeNull()
+    // Without the secret this instance keeps no fingerprint, and the dashboards report no unique
+    // visitors at all rather than a zero they cannot stand behind.
+    expect(body.site.visitorFingerprints).toBe(false)
+  })
+
+  it('tells the client when this instance keeps visitor fingerprints (SH-101)', async () => {
+    await makeDb()
+    BINDINGS.VISIT_FP_SECRET = 'fingerprint-secret'
+    const app = makeApp()
+    const res = await request(app, '/api/auth/session')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.site.visitorFingerprints).toBe(true)
   })
 })

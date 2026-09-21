@@ -16,6 +16,7 @@ export async function buildSiteInfo(env: Env): Promise<SiteInfo> {
     kvEnabled: Boolean(env.FILES_KV),
     attachmentStorage: selectAttachmentStorage(env),
     realtimeEnabled: Boolean(env.SYNC_HUB),
+    visitorFingerprints: Boolean(env.VISIT_FP_SECRET),
     version: APP_VERSION,
   }
 }

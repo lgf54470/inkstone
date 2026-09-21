@@ -3,6 +3,8 @@ import type { ShareSession } from '@shared/types'
 import { Button } from '../../components/primitives'
 import { t, useLocale } from '../../lib/i18n'
 import { formatNumber, relativeTime } from '../../lib/time'
+import { useSession } from '../../store/session'
+import { visitorCountNote } from './share-helpers'
 import { LoadErrorState } from './share-load-error'
 
 type SessionsBundle = {
@@ -23,6 +25,9 @@ type SessionsBundle = {
  */
 export function ShareSessionsPanel({ bundle }: { bundle: SessionsBundle }) {
   const { sessions, isLoading, isAppending, hasError, hasMore, loadMore, reload } = bundle
+  // A session is a run of one fingerprint: an instance that keeps none has no sessions to show, and
+  // the note below has to say that rather than describe a caliber nothing was counted with.
+  const fingerprints = useSession((s) => s.site?.visitorFingerprints ?? true)
   if (hasError && sessions.length === 0) {
     return <LoadErrorState label={t('share.sessions_load_failed')} onRetry={reload} />
   }
@@ -59,7 +64,7 @@ export function ShareSessionsPanel({ bundle }: { bundle: SessionsBundle }) {
         {t('share.sessions_hint')}
       </p>
       <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-        {t('share.visitor_count_note')}
+        {visitorCountNote(fingerprints)}
       </p>
     </div>
   )

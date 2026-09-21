@@ -54,6 +54,9 @@ export function siteInfo(state: DemoState) {
     kvEnabled: false,
     attachmentStorage: null,
     realtimeEnabled: false,
+    // The demo's visit fixtures carry fingerprints and a demo backend has no secret that could be
+    // missing, so it reports the product's normal state rather than a zero nobody can explain.
+    visitorFingerprints: true,
     version: APP_VERSION,
   } as const
 }

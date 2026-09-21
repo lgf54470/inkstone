@@ -215,24 +215,32 @@ async function recordShareVisit(
   const { share, slug, body, now } = params
   try {
     const row = await deriveVisitRow(c, { share, slug, body, now })
-    const statements = [row.updateShareStmt]
-    if (row.countsForViews) statements.push(row.insertStatement)
-    await c.env.DB.batch(statements)
+    const written = row.insertStatement ? await row.insertStatement.run() : null
+    const counted = Number(written?.meta.changes ?? 0) > 0
+    // The counter follows the insert's own outcome instead of deciding for itself. The two are no
+    // longer one batch, which is the price of that: a crash between them loses one view from the
+    // analytics, where the alternative lost the guarantee that one visit is one view.
+    await (counted ? row.bumpViewStmt : row.touchViewStmt).run()
   } catch (error) {
     console.warn('[share] failed to record visit', error)
   }
 }
 
 interface DerivedVisitRow {
-  countsForViews: boolean
-  updateShareStmt: D1PreparedStatement
-  insertStatement: D1PreparedStatement
+  /** Null when this visit must not be written at all (a crawler); otherwise the windowed insert. */
+  insertStatement: D1PreparedStatement | null
+  bumpViewStmt: D1PreparedStatement
+  touchViewStmt: D1PreparedStatement
 }
 
 /**
  * Everything one visit says, read off the request and the owner's policy. Split from the write so
  * the two decisions that keep the log honest — whether this visit counts at all, and whether it may
  * carry a marker — are stated where the values are derived rather than inside a bind list.
+ *
+ * Whether it counts is settled *by the insert* (the window is part of its WHERE), not by a read in
+ * front of it: two requests from one visitor cannot both be told "not seen" and both write, because
+ * there is no separate answer left to go stale.
  */
 async function deriveVisitRow(
   c: Context<AppBindings>,
@@ -250,42 +258,37 @@ async function deriveVisitRow(
   const bot = isBot(ua) ? 1 : 0
   const loggedInUserId = c.get('userId')
   const isOwner = loggedInUserId && loggedInUserId === share.user_id ? 1 : 0
-  const countsForViews = bot === 0 && !(await isRecentlySeenVisit(c.env.DB, slug, visitorFp, now))
   // Switched off means nothing is stored, not "stored and hidden": the owner's choice is about
   // collection. The dedupe window means a marker on a follow-up visit within it is not written,
   // because that visit does not produce a row at all.
   const channel = share.collect_channel === 0 ? null : storedChannelValue(body.ref)
   return {
-    countsForViews,
-    updateShareStmt: countsForViews
-      ? c.env.DB.prepare(`UPDATE shares SET views = views + 1, last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)
-      : c.env.DB.prepare(`UPDATE shares SET last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug),
-    insertStatement: c.env.DB.prepare(
-      `INSERT INTO share_visits (
-         user_id, note_id, slug, visited_at, visitor_fp, country, region, city,
-         referrer, referrer_host, device_type, os, browser, language, user_agent,
-         is_bot, is_self_referrer, is_owner, channel
-       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)`,
-    ).bind(share.user_id, share.note_id, slug, now, visitorFp,
-      c.req.header('cf-ipcountry') || null, c.req.header('cf-region') || null, c.req.header('cf-ipcity') || null,
-      referrerInfo.referrer, referrerInfo.referrerHost,
-      parseDeviceType(ua), parseOS(ua), parseBrowser(ua), c.req.header('accept-language')?.slice(0, 32) || null,
-      ua.slice(0, 256), bot, referrerInfo.selfReferrer ? 1 : 0, isOwner, channel),
+    // A crawler is not written at all. For anyone else the window rides the insert: `visitor_fp = ?5`
+    // is false when the fingerprint is null, which is exactly what an instance without the secret
+    // should do — nothing to match on, so every visit is its own row, and the surfaces that show
+    // unique visitors say why they cannot count any (see `visitorFp` in the site info).
+    insertStatement: bot === 0
+      ? c.env.DB.prepare(
+        `INSERT INTO share_visits (
+           user_id, note_id, slug, visited_at, visitor_fp, country, region, city,
+           referrer, referrer_host, device_type, os, browser, language, user_agent,
+           is_bot, is_self_referrer, is_owner, channel
+         )
+         SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19
+          WHERE NOT EXISTS (
+            SELECT 1 FROM share_visits
+             WHERE slug = ?3 AND visited_at > ?20 AND visitor_fp = ?5
+          )`,
+      ).bind(share.user_id, share.note_id, slug, now, visitorFp,
+        c.req.header('cf-ipcountry') || null, c.req.header('cf-region') || null, c.req.header('cf-ipcity') || null,
+        referrerInfo.referrer, referrerInfo.referrerHost,
+        parseDeviceType(ua), parseOS(ua), parseBrowser(ua), c.req.header('accept-language')?.slice(0, 32) || null,
+        ua.slice(0, 256), bot, referrerInfo.selfReferrer ? 1 : 0, isOwner, channel,
+        now - VIEW_DEDUPE_WINDOW_MS)
+      : null,
+    bumpViewStmt: c.env.DB.prepare(`UPDATE shares SET views = views + 1, last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug),
+    touchViewStmt: c.env.DB.prepare(`UPDATE shares SET last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug),
   }
-}
-
-async function isRecentlySeenVisit(
-  db: D1Database,
-  slug: string,
-  visitorFp: string | null,
-  now: number,
-): Promise<boolean> {
-  if (!visitorFp) return false
-  const seen = await db
-    .prepare('SELECT 1 AS seen FROM share_visits WHERE slug = ?1 AND visitor_fp = ?2 AND visited_at > ?3')
-    .bind(slug, visitorFp, now - VIEW_DEDUPE_WINDOW_MS)
-    .first()
-  return Boolean(seen)
 }
 
 function deriveShareReferrer(

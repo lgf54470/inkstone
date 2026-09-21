@@ -69,6 +69,7 @@ export function isSiteInfo(value: unknown): value is SiteInfo {
     typeof value.kvEnabled === 'boolean' &&
     (value.attachmentStorage === 'r2' || value.attachmentStorage === 'kv' || value.attachmentStorage === null) &&
     typeof value.realtimeEnabled === 'boolean' &&
+    typeof value.visitorFingerprints === 'boolean' &&
     typeof value.version === 'string'
 }
 export function isFiniteNumber(value: unknown): value is number {

@@ -210,4 +210,6 @@ export const messages = {
 'share.visit_logs_desc': '记录全量访问流水、来源与终端画像，支持多维过滤、导出与生命周期清理',
 'share.visit_logs_title': '访问日志',
 'share.visitor_count_note': '独立访客由地址与浏览器的加盐散列统计（盐每 UTC 日更换）：同一个人当天只计一次，同一地址后的多位访客合并为一个。',
+'share.visitor_count_note_no_fingerprints': '本实例不保存访客指纹：每次访问各计一次，因此不统计独立访客。',
+'share.visitors_not_collected': '未采集',
 }

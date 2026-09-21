@@ -39,6 +39,15 @@ export function localizeChannelName(name: string, label?: string): string {
   return name
 }
 
+/**
+ * What to say about unique visitors, in one place: the log table and the sessions panel describe the
+ * same caliber, and an instance that keeps no visitor fingerprint has no caliber to describe — every
+ * visit is its own row there, and there is no fingerprint to count anyone from.
+ */
+export function visitorCountNote(fingerprints: boolean): string {
+  return t(fingerprints ? 'share.visitor_count_note' : 'share.visitor_count_note_no_fingerprints')
+}
+
 export function countryFlag(countryCode: string | null | undefined): string {
   if (!countryCode || countryCode === 'UNKNOWN' || countryCode.length !== 2) {
     return '🌐'

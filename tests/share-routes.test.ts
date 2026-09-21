@@ -167,6 +167,32 @@ function deleteJson(app: Hono<AppBindings>, path: string, body?: unknown): Promi
   })
 }
 
+/**
+ * One public access with the visit write it deferred awaited, the way `waitUntil` hands it back: a
+ * test cannot see what the recording wrote until that task has run.
+ */
+async function accessAwaitingVisits(app: Hono<AppBindings>, slug: string, userAgent = 'Mozilla/5.0 ShareTest/1.0'): Promise<Response> {
+  const pending: Promise<unknown>[] = []
+  const ctx = { waitUntil: (task: Promise<unknown>) => { pending.push(task) } } as unknown as ExecutionContext
+  const response = await app.request(`/api/public/${slug}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'user-agent': userAgent },
+    body: JSON.stringify({}),
+  }, DB_ENV.env as AppBindings['Bindings'], ctx)
+  await Promise.all(pending)
+  return response
+}
+
+/** The visitor rows one public link holds, in write order. */
+function visitRows(db: D1Shim, slug: string): Promise<Array<Record<string, unknown>>> {
+  return allRows(db, 'SELECT id, visitor_fp FROM share_visits WHERE slug = ?1 ORDER BY id', slug)
+}
+
+/** The view counter the same link reports. */
+async function viewCount(db: D1Shim, slug: string): Promise<unknown> {
+  return (await firstRow(db, 'SELECT views FROM shares WHERE slug = ?1', slug))?.views
+}
+
 describe('share list route (real D1)', () => {
   it('returns shares with global stats and honors status/search filters', async () => {
     const db = await makeDb()
@@ -1392,6 +1418,65 @@ describe('share public note route (real D1)', () => {
     row = await firstRow(db, 'SELECT views FROM shares WHERE slug = ?1', 'view-counted')
     expect(row?.views).toBe(1)
     expect((await allRows(db, 'SELECT id FROM share_visits WHERE slug = ?1', 'view-counted')).length).toBe(1)
+  })
+
+  it('counts no second view from a window read answered at a stale moment (SH-101)', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'stale-window', is_enabled: 1 })
+    const app = makeApp()
+    DB_ENV.env.VISIT_FP_SECRET = 'stale-window-secret'
+
+    // The visitor's first visit writes their row and counts their view.
+    expect((await accessAwaitingVisits(app, 'stale-window')).status).toBe(200)
+    expect((await visitRows(db, 'stale-window')).length).toBe(1)
+    expect(await viewCount(db, 'stale-window')).toBe(1)
+
+    // The second visit is served a window read that answers "not seen" — what it gets when another
+    // request's row lands just after that read. That moment is the whole race, and it is injected
+    // rather than raced for, because a single-threaded test cannot schedule it: a path that decides
+    // from the read double-counts here, while a path that decides inside the write has no answer to
+    // be stale. The wrapper is keyed on the old read's own SQL, so it can only ever fire for a path
+    // that still reads the window separately.
+    const realPrepare = db.prepare.bind(db)
+    DB_ENV.env.DB = {
+      prepare: (sql: string) => {
+        const statement = realPrepare(sql)
+        if (!sql.includes('SELECT 1 AS seen FROM share_visits')) return statement
+        const staleAnswer = async () => null
+        // The binding happens between the read's prepare and its first(), so the stale answer has to
+        // ride the bound statement rather than the prepared one.
+        return {
+          ...statement,
+          bind: (...values: unknown[]) => ({ ...statement.bind(...values), first: staleAnswer }),
+          first: staleAnswer,
+        } as unknown as D1PreparedStatement
+      },
+      batch: db.batch.bind(db),
+    } as unknown as D1Database
+
+    expect((await accessAwaitingVisits(app, 'stale-window')).status).toBe(200)
+    expect((await visitRows(db, 'stale-window')).length).toBe(1)
+    expect(await viewCount(db, 'stale-window')).toBe(1)
+  })
+
+  it('records every visit when the instance holds no fingerprint secret (SH-101)', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const n1 = await seedNote(db, {})
+    await seedShare(db, { note_id: n1, slug: 'no-secret', is_enabled: 1 })
+    const app = makeApp()
+
+    // Without the secret the rows carry no fingerprint at all — that is the privacy default, and it
+    // is also why the window has nothing to match on: on such an instance every visit is its own row
+    // and its own view, and there are no unique visitors to count. The dashboard says exactly that
+    // instead of reporting a zero it cannot justify.
+    await accessAwaitingVisits(app, 'no-secret')
+    await accessAwaitingVisits(app, 'no-secret')
+
+    expect((await visitRows(db, 'no-secret')).map((row) => row.visitor_fp)).toEqual([null, null])
+    expect(await viewCount(db, 'no-secret')).toBe(2)
   })
 
   it('never writes a visit row for bot user-agents', async () => {

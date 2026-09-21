@@ -1,6 +1,8 @@
 import { createElement } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
+import type { SiteInfo } from '@shared/types'
 import { initI18n, t } from '../../lib/i18n'
+import { useSession } from '../../store/session'
 import { renderElement } from '../../lib/test-render'
 import { ShareVisitLogsModal } from './share-visit-logs-modal'
 
@@ -28,5 +30,14 @@ describe('share visit logs visitor-count note (SH-83)', () => {
     const rendered = renderElement(createElement(ShareVisitLogsModal, { open: true, onClose: () => {} }))
     expect(document.body.textContent).toContain(t('share.visitor_count_note'))
     rendered.unmount()
+  })
+
+  it('says there is nothing to count when the instance keeps no fingerprint (SH-101)', () => {
+    useSession.setState({ site: { visitorFingerprints: false } as SiteInfo })
+    const rendered = renderElement(createElement(ShareVisitLogsModal, { open: true, onClose: () => {} }))
+    expect(document.body.textContent).toContain(t('share.visitor_count_note_no_fingerprints'))
+    expect(document.body.textContent).not.toContain(t('share.visitor_count_note'))
+    rendered.unmount()
+    useSession.setState({ site: null })
   })
 })

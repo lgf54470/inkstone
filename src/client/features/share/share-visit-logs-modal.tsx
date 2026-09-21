@@ -19,7 +19,8 @@ import { Input, Segmented } from '../../components/form'
 import { Button, IconButton } from '../../components/primitives'
 import { formatNumber, relativeTime } from '../../lib/time'
 import { t, useLocale } from '../../lib/i18n'
-import { countryFlag, countryNameLocalized, localizeEnvName, rangeOptions, type VisitFilter } from './share-helpers'
+import { useSession } from '../../store/session'
+import { countryFlag, countryNameLocalized, localizeEnvName, rangeOptions, visitorCountNote, type VisitFilter } from './share-helpers'
 import { ShareSessionsPanel } from './share-sessions-panel'
 import { useShareSessions } from './use-share-sessions'
 import type { useShareVisitLogs } from './use-share-visit-logs-modal'
@@ -41,6 +42,7 @@ export function ShareVisitLogsModal({
 }) {
   const bundle = useVisitLogs(open, initialNoteId)
   const sessions = useShareSessionsView(open)
+  const fingerprints = useSession((s) => s.site?.visitorFingerprints ?? true)
   return (
     <Modal
       open={open}
@@ -66,9 +68,10 @@ export function ShareVisitLogsModal({
             <ExportProgressRow progress={bundle.exportProgress} />
             <LogsTable bundle={bundle} />
             {/* The table lists fingerprints, not people: the same visitor counts once per UTC day, and
-                everyone behind one address shares one. Saying so is what keeps a UV number readable. */}
+                everyone behind one address shares one. Saying so is what keeps a UV number readable —
+                and an instance that keeps no fingerprint says that instead of this caliber. */}
             <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-              {t('share.visitor_count_note')}
+              {visitorCountNote(fingerprints)}
             </p>
             {bundle.data && bundle.data.totalPages > 1 && <PaginationFooter bundle={bundle} />}
           </>

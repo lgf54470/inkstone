@@ -8,6 +8,7 @@ export function KpiCard({
   delta,
   deltaHint,
   sparkline,
+  unavailable,
 }: {
   icon: React.ReactNode
   label: string
@@ -16,6 +17,11 @@ export function KpiCard({
   /** What the percentage is measured against, read to screen readers only ("vs previous period"). */
   deltaHint?: string
   sparkline?: number[]
+  /**
+   * Shown instead of the number when this instance cannot collect it at all. A zero would answer a
+   * question nobody asked — "nobody visited" — where the truth is "not counted here".
+   */
+  unavailable?: string
 }) {
   return (
     <div className='flex flex-col justify-between rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3.5 shadow-[var(--shadow-soft)]'>
@@ -26,7 +32,7 @@ export function KpiCard({
 
       <div className='flex items-baseline justify-between pt-2'>
         <span className='font-mono text-[length:var(--text-24)] font-bold tracking-tight text-[var(--text-primary)]'>
-          {formatNumber(value)}
+          {unavailable ?? formatNumber(value)}
         </span>
 
         {delta !== undefined && (

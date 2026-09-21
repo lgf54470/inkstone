@@ -2,9 +2,14 @@ import { Activity, Globe2, MousePointerClick, Users } from 'lucide-react'
 import type { ShareGlobalAnalytics } from '@shared/types'
 import { KpiCard } from '../../components/dashboard-blocks'
 import { t } from '../../lib/i18n'
+import { useSession } from '../../store/session'
 
 /** The four headline numbers, above every card. */
 export function KpiGrid({ analytics }: { analytics: ShareGlobalAnalytics | null }) {
+  // Unique visitors are counted from a visitor fingerprint, which an instance may not be keeping at
+  // all: without the secret every visit is its own row, the worker reports no unique visitors, and
+  // the card says so rather than printing the zero that count produces.
+  const fingerprints = useSession((s) => s.site?.visitorFingerprints ?? true)
   return (
     <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
       <KpiCard
@@ -20,6 +25,7 @@ export function KpiGrid({ analytics }: { analytics: ShareGlobalAnalytics | null 
         icon={<Users size={16} className='text-[var(--success)]' />}
         label={t('share.total_visitors_uv')}
         value={analytics?.totalVisitors ?? 0}
+        unavailable={fingerprints ? undefined : t('share.visitors_not_collected')}
         delta={analytics?.visitorsDelta}
         deltaHint={t('share.delta_vs_previous')}
         sparkline={analytics?.sparklineVisitors}

@@ -218,4 +218,6 @@ export const messages = {
 'share.visit_logs_desc': 'Inspect full visitor streams, referrers, and client devices with multi-dimensional filtering, CSV export, and retention cleanup',
 'share.visit_logs_title': 'Visit Logs',
 'share.visitor_count_note': 'Unique visitors are counted from a hashed address and browser with a salt that changes every UTC day — the same person counts once a day, and visitors behind one address count as one.',
+'share.visitor_count_note_no_fingerprints': 'This instance stores no visitor fingerprint, so every visit is counted on its own and unique visitors are not counted at all.',
+'share.visitors_not_collected': 'Not collected',
 }

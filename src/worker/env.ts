@@ -23,7 +23,11 @@ export interface Env {
 
   PUBLIC_URL?: string
 
-  /** Instance secret (`wrangler secret put VISIT_FP_SECRET`) keying visitor fingerprints; unset means visit rows carry no fingerprint at all. */
+  /**
+   * Instance secret (`wrangler secret put VISIT_FP_SECRET`) keying visitor fingerprints. Unset means
+   * visit rows carry no fingerprint at all: nothing to deduplicate a repeated view against, and no
+   * unique visitors to report — which the site info passes on so the surfaces can say so.
+   */
   VISIT_FP_SECRET?: string
 
   /** Workers AI binding for semantic search; optional so AI search degrades gracefully. */
