@@ -3,7 +3,7 @@
  * width, and it is its own unit because that width has one owner: the drag and the keyboard have to
  * agree on the same range, the same draft, and the one moment the document gets written.
  */
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { t } from '../../../i18n'
 import {
   KANBAN_COLUMN_MAX_WIDTH,
@@ -39,18 +39,37 @@ function drawLiveColumnWidth(table: ParentNode, propertyId: string, px: number |
   }
 }
 
+/**
+ * The width the layout gave a column, which is what a column nobody has sized is drawn at. The
+ * splitter has to name that number (a focusable separator with no value is a control a reader cannot
+ * hear), and an attribute cannot reach into the document while it is being rendered, so it is read
+ * once after the column is drawn and kept in state.
+ */
+function useLayoutColumnWidth(handleRef: RefObject<HTMLDivElement | null>, columnId: string, stored: number | undefined): number | undefined {
+  const [drawn, setDrawn] = useState<number | undefined>(undefined)
+  useEffect(() => {
+    const edge = handleRef.current?.parentElement?.getBoundingClientRect().width ?? 0
+    setDrawn(edge > 0 ? clampKanbanColumnWidth(edge) : undefined)
+    // `stored` is a dependency because giving a width back (what Delete and a double-click do) moves
+    // the answer out of the document and into the layout again, which has meanwhile changed.
+    // The ref object itself never changes, so it is not a dependency.
+  }, [columnId, stored])
+  return drawn
+}
+
 /** The splitter's own state: the width being aimed at, drawn live, until it is written or given up. */
 function useColumnWidthDraft(column: KanbanProperty, onResize: (width: number | undefined) => void) {
   const [draft, setDraft] = useState<number | undefined>(undefined)
   const handleRef = useRef<HTMLDivElement>(null)
   const stored = kanbanColumnWidthPx(column)
+  const drawn = useLayoutColumnWidth(handleRef, column.id, stored)
 
   // Reading the rendered edge is the only way to know an auto-sized column's width, and it happens on
   // an interaction rather than on every render. An element that cannot be measured reports no width
   // at all, so a drag that starts there begins at the narrowest width the table will draw.
   function currentWidth(): number {
-    const drawn = handleRef.current?.parentElement?.getBoundingClientRect().width ?? 0
-    return draft ?? stored ?? (drawn > 0 ? clampKanbanColumnWidth(drawn) : KANBAN_COLUMN_MIN_WIDTH)
+    const live = handleRef.current?.parentElement?.getBoundingClientRect().width ?? 0
+    return draft ?? stored ?? (live > 0 ? clampKanbanColumnWidth(live) : KANBAN_COLUMN_MIN_WIDTH)
   }
 
   function show(px: number | undefined) {
@@ -78,7 +97,7 @@ function useColumnWidthDraft(column: KanbanProperty, onResize: (width: number | 
     if (draft !== undefined) commit(draft)
   }
 
-  return { applyDraft, commit, handleRef, hasDraft: draft !== undefined, step, stopShowing, currentWidth, value: draft ?? stored }
+  return { applyDraft, commit, handleRef, hasDraft: draft !== undefined, step, stopShowing, currentWidth, value: draft ?? stored ?? drawn }
 }
 
 /** The mechanics of a drag: widths reported as the pointer moves, one final width when it is let go. */
@@ -151,7 +170,7 @@ export function ColumnResizeHandle({
       ref={sizing.handleRef}
       role='separator'
       tabIndex={0}
-      aria-orientation='horizontal'
+      aria-orientation='vertical'
       aria-label={t('preview.kanban_column_resize', { column: formatKanbanPropertyName(column) })}
       aria-valuemin={KANBAN_COLUMN_MIN_WIDTH}
       aria-valuemax={KANBAN_COLUMN_MAX_WIDTH}

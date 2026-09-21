@@ -46,19 +46,22 @@ type SortSpy = Mock<(propertyId: string) => void>
 
 function mountTable(
   columns: KanbanProperty[],
-  overrides: { onResizeColumn?: ResizeSpy; onSortColumn?: SortSpy; applyResize?: boolean } = {},
+  overrides: { onResizeColumn?: ResizeSpy; onSortColumn?: SortSpy; applyResize?: boolean; resizeColumn?: boolean } = {},
 ) {
   let current = tableData(columns)
   const onSortColumn = overrides.onSortColumn ?? vi.fn<(propertyId: string) => void>()
   // `applyResize` wires the callback to the same pure rewriter the board uses and repaints this root,
   // so a committed width is read back out of the document rather than from what the spy was told.
   let rendered: ReturnType<typeof renderElement>
-  const onResizeColumn = overrides.onResizeColumn ??
+  const resizeSpy = overrides.onResizeColumn ??
     vi.fn<(propertyId: string, width?: number) => void>((propertyId, width) => {
       if (!overrides.applyResize) return
       current = resizePropertyColumn(current, propertyId, width)
       rendered.rerender(tableNode())
     })
+  // A board the reader cannot size at all is one the table gets no writer for, not one handed a
+  // writer that never runs.
+  const onResizeColumn = overrides.resizeColumn === false ? undefined : resizeSpy
   function tableNode() {
     return createElement(KanbanTableView, {
       data: current,
@@ -80,7 +83,7 @@ function mountTable(
   }
   rendered = renderElement(tableNode())
   mounted.push(rendered)
-  return { container: rendered.container, onResizeColumn, onSortColumn }
+  return { container: rendered.container, onResizeColumn: resizeSpy, onSortColumn }
 }
 
 afterEach(() => {
@@ -108,6 +111,14 @@ function press(el: HTMLElement, key: string, init: KeyboardEventInit = {}) {
 
 function valueOf(el: HTMLElement): number {
   return Number(el.getAttribute('aria-valuenow'))
+}
+
+// jsdom lays nothing out, so a test that needs a column to have been drawn at some width has to say
+// so itself. `width` is read through a closure the test can move, which is how a redraw is faked.
+function domRect(width: number): DOMRect {
+  return {
+    x: 0, y: 0, top: 0, left: 0, width, height: 40, right: width, bottom: 40, toJSON: () => ({}),
+  } as DOMRect
 }
 
 function committed(spy: ResizeSpy): unknown[] {
@@ -152,12 +163,58 @@ describe('the width a column is drawn with', () => {
   })
 })
 
+describe('the width a splitter names', () => {
+  // A focusable splitter that names no value is a control a reader cannot hear: the accessible name
+  // and range are there but the one number that says where the column is now was left off for every
+  // column nobody had sized yet.
+  it('says how wide an unstored column is, from the edge it is drawn at', () => {
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(() => domRect(240))
+    try {
+      const { container } = mountTable([titleColumn, specColumn])
+      const el = handle(container, 'spec')
+      expect(valueOf(el)).toBe(240)
+      expect(el.getAttribute('aria-valuetext')).toBe(t('preview.kanban_column_width_value', { value0: 240 }))
+    } finally {
+      rect.mockRestore()
+    }
+  })
+
+  it('keeps a stored width as the value an unstored edge would report', () => {
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(() => domRect(240))
+    try {
+      const { container } = mountTable([titleColumn, { ...specColumn, width: 200 }])
+      expect(valueOf(handle(container, 'spec'))).toBe(200)
+    } finally {
+      rect.mockRestore()
+    }
+  })
+
+  // Handing a width back is the moment the answer moves out of the document and into the layout again,
+  // and the splitter has to name the edge the table redrew rather than the one it read last.
+  it('names the redrawn edge after the reader hands a width back', () => {
+    let drawn = 240
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(() => domRect(drawn))
+    try {
+      const { container } = mountTable([titleColumn, { ...specColumn, width: 200 }], { applyResize: true })
+      expect(valueOf(handle(container, 'spec'))).toBe(200)
+      drawn = 144
+      press(handle(container, 'spec'), 'Delete')
+      expect(valueOf(handle(container, 'spec'))).toBe(144)
+    } finally {
+      rect.mockRestore()
+    }
+  })
+
+})
+
 describe('the resize handle', () => {
   it('is a splitter that says which column it sizes and how wide that column is', () => {
     const { container } = mountTable([titleColumn, { ...specColumn, width: 200 }])
     const el = handle(container, 'spec')
     expect(el.getAttribute('role')).toBe('separator')
-    expect(el.getAttribute('aria-orientation')).toBe('horizontal')
+    // The bar itself runs down the edge of the column, which is what the attribute describes — the
+    // pointer travel along it is a separate matter, and the shell's splitter names it the same way.
+    expect(el.getAttribute('aria-orientation')).toBe('vertical')
     expect(el.getAttribute('tabindex')).toBe('0')
     expect(el.getAttribute('aria-label')).toBe(t('preview.kanban_column_resize', { column: 'Spec file' }))
     expect(el.getAttribute('aria-valuemin')).toBe(String(KANBAN_COLUMN_MIN_WIDTH))
@@ -180,25 +237,8 @@ describe('the resize handle', () => {
   })
 
   it('offers no handle at all when nothing can store the width', () => {
-    const data = tableData([titleColumn, specColumn])
-    const rendered = renderElement(createElement(KanbanTableView, {
-      data,
-      view: data.views[0]!,
-      selectedIds: new Set<string>(),
-      onToggleSelect: vi.fn(),
-      onToggleAll: vi.fn(),
-      onOpenDetail: vi.fn(),
-      onUpdateProperty: vi.fn(),
-      onUpdateMultiSelect: vi.fn(),
-      onUpdateSubtasks: vi.fn(),
-      onUpdateFiles: vi.fn(),
-      onAddItem: vi.fn(),
-      onAddColumn: vi.fn(),
-      people: {},
-      onSortColumn: vi.fn(),
-    }))
-    mounted.push(rendered)
-    expect(rendered.container.querySelector('[role="separator"]')).toBeNull()
+    const { container } = mountTable([titleColumn, specColumn], { resizeColumn: false })
+    expect(container.querySelector('[role="separator"]')).toBeNull()
   })
 })
 
