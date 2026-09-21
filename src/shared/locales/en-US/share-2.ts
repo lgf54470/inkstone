@@ -117,6 +117,18 @@ export const messages = {
   'share.stale_pause_confirm_desc': 'Visitors with the link will stop seeing the note until it is enabled again. The links and their visitor history are kept.',
   'share.stale_pause_success': 'Paused {count} links',
 'share.settings_saved': 'Settings saved successfully',
+  // The distribution marker (?ref=) of ADR-0004: what it is, what the two miss rows mean, and the
+  // switch that decides whether the write path records it at all.
+  'share.channel_section_title': 'Channel',
+  'share.channel_none': 'No marker',
+  'share.channel_unrecognized': 'Marker not recognized',
+  'share.channel_hint': 'Add ?ref=your-name to a link to tell these visits apart by where you posted it.',
+  'share.channel_input_label': 'Distribution marker',
+  'share.channel_input_hint': 'Optional. Added to the link as ?ref=…',
+  'share.channel_input_invalid': 'Use 1–32 characters from a–z, 0–9, - and _',
+  'share.channel_placeholder': 'newsletter',
+  'share.channel_collect_label': 'Record distribution markers',
+  'share.channel_collect_hint': 'Keeps the ?ref= marker a link carried, so you can see which copy of a link was opened. Nothing else about the URL is stored. When off, no marker is recorded at all.',
 'share.settings_traffic_filter_title': 'Traffic Filtering Rules',
 'share.settings_stored_local': 'Kept in this browser, for this account on this device',
 'share.settings_stored_account': 'Kept on your account, so the server sweep uses it everywhere',

@@ -240,7 +240,7 @@ describe('share analytics failure surfacing (note modal)', () => {
     expect(alert?.textContent).toContain('share.analytics_load_failed')
     expect(document.body.textContent).not.toContain('share.total_views_pv')
 
-    vi.mocked(api.share.noteAnalytics).mockResolvedValueOnce({ timeline: [], topCountries: [], topReferrers: [], recentVisits: [] } as never)
+    vi.mocked(api.share.noteAnalytics).mockResolvedValueOnce({ timeline: [], topCountries: [], topReferrers: [], channels: [], recentVisits: [] } as never)
     await clickRetry(document.body)
 
     expect(document.body.querySelector('[role="alert"]')).toBeNull()

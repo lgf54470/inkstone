@@ -28,6 +28,7 @@ interface VisitLogRow {
   is_self_referrer: number
   is_owner: number
   note_title: string | null
+  channel: string | null
 }
 
 // Unparseable page/limit values must fall back to a default rather than reach the
@@ -79,7 +80,7 @@ function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): voi
       `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
               sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser,
               CASE WHEN sv.is_bot = 1 THEN sv.user_agent END as user_agent,
-              sv.visitor_fp, sv.is_bot, sv.is_self_referrer, sv.is_owner,
+              sv.visitor_fp, sv.is_bot, sv.is_self_referrer, sv.is_owner, sv.channel,
               n.title as note_title
          FROM share_visits sv
          LEFT JOIN notes n ON n.id = sv.note_id
@@ -221,5 +222,8 @@ function toVisitLogRow(r: VisitLogRow): ShareVisitLog {
     isSelfReferrer: r.is_self_referrer === 1,
     isOwner: r.is_owner === 1,
     botName: r.is_bot === 1 ? parseBotName(r.user_agent || '') : null,
+    // Empty string is the stored "a marker was sent and refused": the log shows the marker, and
+    // the split between the two kinds of miss belongs to the channel card, not to a row.
+    channel: r.channel || null,
   }
 }

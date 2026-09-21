@@ -30,6 +30,7 @@ function analyticsFixture(overrides: Partial<ShareGlobalAnalytics> = {}): ShareG
     devices: [{ name: 'desktop', count: 30, percentage: 21 }],
     osList: Array.from({ length: 6 }, (_, i) => ({ name: `os-${i}`, count: 6 - i, percentage: 1 })),
     browsers: [{ name: 'Chrome', count: 25, percentage: 18 }],
+    channels: [{ name: 'newsletter', count: 12, percentage: 1 }],
     recentVisits: [recentVisitFixture()],
     staleLinks: {
       thresholdDays: 90,

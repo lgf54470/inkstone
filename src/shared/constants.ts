@@ -49,6 +49,9 @@ export const LIMITS = {
   shareSlugMaxLength: 64,
   titleMaxLength: 512,
   shareReferrerMaxLength: 512,
+  // A plausible marker is at most 32 chars; this cap only stops a body from carrying a novel,
+  // and like the referrer cap it answers 400 rather than truncating what the caller sent.
+  shareChannelMaxLength: 128,
   contentMaxBytes: 2 * 1024 * 1024,
   folderNameMaxLength: 120,
   tagNameMaxLength: 60,

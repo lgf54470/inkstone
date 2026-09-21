@@ -218,7 +218,10 @@ export const TABLE_STATEMENTS: readonly string[] = [
       user_agent TEXT,
       is_bot INTEGER NOT NULL DEFAULT 0,
       is_self_referrer INTEGER NOT NULL DEFAULT 0,
-      is_owner INTEGER NOT NULL DEFAULT 0
+      is_owner INTEGER NOT NULL DEFAULT 0,
+      -- The ref marker: a validated token, an empty string when one was sent but refused, NULL
+      -- when the URL carried none. Nothing derived from the refused raw value is ever stored.
+      channel TEXT
     )`,
   `CREATE TABLE IF NOT EXISTS share_asset_sessions (
       id TEXT PRIMARY KEY,

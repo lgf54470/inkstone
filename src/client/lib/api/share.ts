@@ -122,9 +122,25 @@ export const share = {
       },
     ) => request<{ share: ShareInfo }>(`/api/share/${noteId}`, { method: 'POST', body }),
     remove: (noteId: string) => request<{ ok: true }>(`/api/share/${noteId}`, { method: 'DELETE' }),
-    read: (slug: string, password?: string, signal?: AbortSignal, referrer?: string) =>
-      // A long document.referrer must not turn into a 400 for a legitimate viewer; the server caps at the same length.
-      request<PublicNote>(`/api/public/${slug}`, { method: 'POST', body: { password, referrer: referrer?.slice(0, LIMITS.shareReferrerMaxLength) }, signal }),
+    read: (params: {
+      slug: string
+      password?: string
+      /** `document.referrer`, when the visitor's browser sent one. */
+      referrer?: string
+      /** The `?ref=` marker from the visitor's own URL, forwarded so the worker can record it. */
+      ref?: string
+      signal?: AbortSignal
+    }) =>
+      request<PublicNote>(`/api/public/${params.slug}`, {
+        method: 'POST',
+        body: {
+          password: params.password,
+          // A long document.referrer must not turn into a 400 for a legitimate viewer; the server caps at the same length.
+          referrer: params.referrer?.slice(0, LIMITS.shareReferrerMaxLength),
+          ref: params.ref,
+        },
+        signal: params.signal,
+      }),
   },
   blog: {
     stats: (signal?: AbortSignal) =>

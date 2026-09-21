@@ -35,4 +35,9 @@ export const shareCreateSchema = z.object({
 export const shareAccessSchema = z.object({
   password: z.string().max(LIMITS.passwordMaxLength).optional(),
   referrer: z.string().max(LIMITS.shareReferrerMaxLength).optional(),
+  // Only a size guard, not the marker's validation (that is `storedChannelValue`): a plausible but
+  // wrong token is recorded as unrecognized rather than answered with an error, because the
+  // visitor must not pay for the owner's typo. This cap, like the referrer's, is for input no
+  // honest link could produce.
+  ref: z.string().max(LIMITS.shareChannelMaxLength).optional(),
 })

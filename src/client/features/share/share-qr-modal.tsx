@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react'
-import { Check, Copy, Download, ExternalLink, Image as ImageIcon, QrCode } from 'lucide-react'
+import { Check, Copy, Download, ExternalLink, Image as ImageIcon, QrCode, Tag } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { COPY_FEEDBACK_MS } from '@shared/constants'
+import { normalizeChannelToken, withChannelParam } from '@shared/share-channel'
 import { Modal } from '../../components/overlay'
+import { Field, Input } from '../../components/form'
 import { Button } from '../../components/primitives'
 import { t } from '../../lib/i18n'
 import { QR_BG_COLOR, QR_FG_COLOR } from '../../lib/qr-colors'
@@ -25,9 +27,13 @@ export function ShareQrModal({
 }) {
   const [isCopiedLink, setIsCopiedLink] = useState(false)
   const [isCopiedImage, setIsCopiedImage] = useState(false)
+  const [channel, setChannel] = useState('')
   const svgRef = useRef<HTMLDivElement>(null)
 
-  const fullUrl = typeof window !== 'undefined' ? new URL(url, window.location.origin).href : url
+  // The marker rides on every way out of this panel — the code, the copied link and the open-in-new
+  // -tab link — through one helper, so the code and the text can never disagree about the URL.
+  const baseUrl = typeof window !== 'undefined' ? new URL(url, window.location.origin).href : url
+  const fullUrl = withChannelParam(baseUrl, channel)
 
   const handleCopyLink = () => copyQrLinkFlow(fullUrl, setIsCopiedLink)
   const handleCopyImage = () => copyQrImageFlow(svgRef, setIsCopiedImage)
@@ -55,10 +61,39 @@ export function ShareQrModal({
         <p className='text-center text-[length:var(--text-12)] text-[var(--text-tertiary)] max-w-xs'>
           {t('share.qr_code_hint')}
         </p>
+        <ChannelMarkerField value={channel} onChange={setChannel} />
         <QrActionsGrid isCopiedLink={isCopiedLink} isCopiedImage={isCopiedImage} onCopyLink={() => void handleCopyLink()} onCopyImage={() => void handleCopyImage()} onDownloadPng={() => void handleDownloadPng()} onDownloadSvg={handleDownloadSvg} />
         <QrOpenLink fullUrl={fullUrl} />
       </div>
     </Modal>
+  )
+}
+
+/**
+ * The optional `?ref=` marker for the link about to be handed out (ADR-0004). An empty field means
+ * an unmarked link, which is what every account got before this existed. A value that is not a
+ * valid token is shown as invalid rather than trimmed into one: the visitor's page would drop the
+ * marker, and "your marker silently does nothing" is worse than a red border.
+ */
+function ChannelMarkerField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const isRejected = value !== '' && !normalizeChannelToken(value)
+  return (
+    <div className='w-full max-w-sm'>
+      <Field
+        label={t('share.channel_input_label')}
+        hint={isRejected ? t('share.channel_input_invalid') : t('share.channel_input_hint')}
+      >
+        <Input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          invalid={isRejected}
+          placeholder={t('share.channel_placeholder')}
+          leading={<Tag size={12} />}
+          autoComplete='off'
+          spellCheck={false}
+        />
+      </Field>
+    </div>
   )
 }
 

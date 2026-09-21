@@ -8,6 +8,8 @@ import { isValidSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readOptionalJsonValidated, requestClientIp } from '../../lib/request'
 import { verifyPassword } from '../../lib/password'
 import { VIEW_DEDUPE_WINDOW_MS, computeVisitorFingerprint, isBot, isSelfReferrer, parseBrowser, parseDeviceType, parseOS, sanitizeVisitReferrer } from '../../lib/share-analytics'
+import { userSettingsBooleanSql } from '../../lib/maintenance'
+import { storedChannelValue } from '@shared/share-channel'
 import { createShareAssetSession, shareAssetCookieName } from '../../lib/share-asset-session'
 import { assertNotLocked, clearLoginFailures, consumeAttemptBudget, recordLoginFailure, ThrottleError } from '../../lib/throttle'
 import { shareAccessSchema } from './schemas'
@@ -16,7 +18,16 @@ import { ShareRow } from './shares'
 interface ShareAccessBody {
   password?: string
   referrer?: string
+  /** The `?ref=` marker the visitor's own URL carried, passed through by the share page. */
+  ref?: string
 }
+
+/**
+ * A share row plus the one account setting the visit writer needs. The owner's answer to "may a
+ * marker be recorded" is read as part of the lookup the request already performs: asking in a
+ * second statement would put another round trip on the busiest path in the module.
+ */
+type ShareRowWithChannelPolicy = ShareRow & { collect_channel: number }
 
 export async function renderShareShell(
   c: Context<AppBindings>,
@@ -105,10 +116,14 @@ async function enforceShareViewBudget(c: Context<AppBindings>, slug: string): Pr
   }
 }
 
-async function loadShareOrThrow(db: D1Database, slug: string): Promise<ShareRow> {
-  const share = await db.prepare(`SELECT * FROM shares WHERE slug = ?1`)
+async function loadShareOrThrow(db: D1Database, slug: string): Promise<ShareRowWithChannelPolicy> {
+  const share = await db.prepare(
+    `SELECT s.*, ${userSettingsBooleanSql('$.share.collectChannel', true)} AS collect_channel
+       FROM shares s JOIN users u ON u.id = s.user_id
+      WHERE s.slug = ?1`,
+  )
     .bind(slug)
-    .first<ShareRow>()
+    .first<ShareRowWithChannelPolicy>()
   // One identical answer for disabled, expired and unknown: the status of a share is not public information.
   if (!share || share.is_enabled === 0 || (share.expires_at && share.expires_at < Date.now())) {
     throw ApiError.notFound('The link does not exist or has been revoked')
@@ -195,52 +210,67 @@ async function loadSharedNote(db: D1Database, share: ShareRow): Promise<{
 
 async function recordShareVisit(
   c: Context<AppBindings>,
-  params: { share: ShareRow; slug: string; body: ShareAccessBody; now: number },
+  params: { share: ShareRowWithChannelPolicy; slug: string; body: ShareAccessBody; now: number },
 ): Promise<void> {
   const { share, slug, body, now } = params
   try {
-    const clientIp = requestClientIp(c)
-    const ua = c.req.header('user-agent') || ''
-    // The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.
-    // Without the instance secret record no fingerprint rather than fall back to the public date salt,
-    // and salt per owner so one browser is not linkable across accounts (SH-04).
-    const fpSecret = c.env.VISIT_FP_SECRET ? `${c.env.VISIT_FP_SECRET}:${share.user_id}` : null
-    const visitorFp = fpSecret ? await computeVisitorFingerprint(clientIp, '', fpSecret) : null
-    const referrerInfo = deriveShareReferrer(c, body, slug)
-    const deviceType = parseDeviceType(ua)
-    const os = parseOS(ua)
-    const browser = parseBrowser(ua)
-    const language = c.req.header('accept-language')?.slice(0, 32) || null
-    const bot = isBot(ua) ? 1 : 0
-    const isSelf = referrerInfo.selfReferrer ? 1 : 0
-    const loggedInUserId = c.get('userId')
-    const isOwner = loggedInUserId && loggedInUserId === share.user_id ? 1 : 0
-    const recentlySeen = await isRecentlySeenVisit(c.env.DB, slug, visitorFp, now)
-    const countsForViews = bot === 0 && !recentlySeen
-    const updateShareStmt = countsForViews
-      ? c.env.DB.prepare(`UPDATE shares SET views = views + 1, last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)
-      : c.env.DB.prepare(`UPDATE shares SET last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)
-    const geo = {
-      country: c.req.header('cf-ipcountry') || null,
-      region: c.req.header('cf-region') || null,
-      city: c.req.header('cf-ipcity') || null,
-    }
-
-    const statements = [updateShareStmt]
-    if (countsForViews) {
-      statements.push(c.env.DB.prepare(
-        `INSERT INTO share_visits (
-           user_id, note_id, slug, visited_at, visitor_fp, country, region, city,
-           referrer, referrer_host, device_type, os, browser, language, user_agent,
-           is_bot, is_self_referrer, is_owner
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`,
-      ).bind(share.user_id, share.note_id, slug, now, visitorFp,
-        geo.country, geo.region, geo.city, referrerInfo.referrer, referrerInfo.referrerHost,
-        deviceType, os, browser, language, ua.slice(0, 256), bot, isSelf, isOwner))
-    }
+    const row = await deriveVisitRow(c, { share, slug, body, now })
+    const statements = [row.updateShareStmt]
+    if (row.countsForViews) statements.push(row.insertStatement)
     await c.env.DB.batch(statements)
   } catch (error) {
     console.warn('[share] failed to record visit', error)
+  }
+}
+
+interface DerivedVisitRow {
+  countsForViews: boolean
+  updateShareStmt: D1PreparedStatement
+  insertStatement: D1PreparedStatement
+}
+
+/**
+ * Everything one visit says, read off the request and the owner's policy. Split from the write so
+ * the two decisions that keep the log honest — whether this visit counts at all, and whether it may
+ * carry a marker — are stated where the values are derived rather than inside a bind list.
+ */
+async function deriveVisitRow(
+  c: Context<AppBindings>,
+  params: { share: ShareRowWithChannelPolicy; slug: string; body: ShareAccessBody; now: number },
+): Promise<DerivedVisitRow> {
+  const { share, slug, body, now } = params
+  const clientIp = requestClientIp(c)
+  const ua = c.req.header('user-agent') || ''
+  // The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.
+  // Without the instance secret record no fingerprint rather than fall back to the public date salt,
+  // and salt per owner so one browser is not linkable across accounts (SH-04).
+  const fpSecret = c.env.VISIT_FP_SECRET ? `${c.env.VISIT_FP_SECRET}:${share.user_id}` : null
+  const visitorFp = fpSecret ? await computeVisitorFingerprint(clientIp, '', fpSecret) : null
+  const referrerInfo = deriveShareReferrer(c, body, slug)
+  const bot = isBot(ua) ? 1 : 0
+  const loggedInUserId = c.get('userId')
+  const isOwner = loggedInUserId && loggedInUserId === share.user_id ? 1 : 0
+  const countsForViews = bot === 0 && !(await isRecentlySeenVisit(c.env.DB, slug, visitorFp, now))
+  // Switched off means nothing is stored, not "stored and hidden": the owner's choice is about
+  // collection. The dedupe window means a marker on a follow-up visit within it is not written,
+  // because that visit does not produce a row at all.
+  const channel = share.collect_channel === 0 ? null : storedChannelValue(body.ref)
+  return {
+    countsForViews,
+    updateShareStmt: countsForViews
+      ? c.env.DB.prepare(`UPDATE shares SET views = views + 1, last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug)
+      : c.env.DB.prepare(`UPDATE shares SET last_viewed_at = ?1 WHERE slug = ?2`).bind(now, slug),
+    insertStatement: c.env.DB.prepare(
+      `INSERT INTO share_visits (
+         user_id, note_id, slug, visited_at, visitor_fp, country, region, city,
+         referrer, referrer_host, device_type, os, browser, language, user_agent,
+         is_bot, is_self_referrer, is_owner, channel
+       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)`,
+    ).bind(share.user_id, share.note_id, slug, now, visitorFp,
+      c.req.header('cf-ipcountry') || null, c.req.header('cf-region') || null, c.req.header('cf-ipcity') || null,
+      referrerInfo.referrer, referrerInfo.referrerHost,
+      parseDeviceType(ua), parseOS(ua), parseBrowser(ua), c.req.header('accept-language')?.slice(0, 32) || null,
+      ua.slice(0, 256), bot, referrerInfo.selfReferrer ? 1 : 0, isOwner, channel),
   }
 }
 

@@ -106,7 +106,7 @@ function SettingsSwitchRow({ title, hint, checked, onChange }: {
 }
 
 function RetentionSection({ bundle }: { bundle: SettingsBundle }) {
-  const { retentionDays, setRetentionDays, isBusy, handleClean } = bundle
+  const { retentionDays, setRetentionDays, isBusy, handleClean, collectChannel, setCollectChannel } = bundle
   const retentionOptions = [
     { value: '7', label: '7d' },
     { value: '30', label: '30d' },
@@ -124,6 +124,12 @@ function RetentionSection({ bundle }: { bundle: SettingsBundle }) {
           value={retentionDays}
           onChange={setRetentionDays}
           options={retentionOptions}
+        />
+        <SettingsSwitchRow
+          title={t('share.channel_collect_label')}
+          hint={t('share.channel_collect_hint')}
+          checked={collectChannel}
+          onChange={setCollectChannel}
         />
         <CleanupActions isBusy={isBusy} onClean={handleClean} />
       </div>

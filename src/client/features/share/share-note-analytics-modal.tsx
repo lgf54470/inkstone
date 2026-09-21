@@ -1,4 +1,4 @@
-import { Activity, BarChart2, Compass, ExternalLink, Globe, Lock, QrCode, RefreshCw } from 'lucide-react'
+import { Activity, BarChart2, Compass, ExternalLink, Globe, Lock, QrCode, RefreshCw, Tag } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 import type { ShareNoteAnalytics, ShareTimelineRange } from '@shared/types'
 import { Modal } from '../../components/overlay'
@@ -7,7 +7,7 @@ import { Segmented } from '../../components/form'
 import { formatNumber, relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
 import { BigSvgChart, chartSummary } from '../../components/big-svg-chart'
-import { countryFlag, countryNameLocalized, rangeOptions } from './share-helpers'
+import { countryFlag, countryNameLocalized, localizeChannelName, rangeOptions } from './share-helpers'
 import { LoadErrorState } from './share-load-error'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import { useShareNoteAnalytics } from './use-share-note-analytics'
@@ -130,6 +130,13 @@ function NoteAnalyticsBreakdowns({ data, locale }: { data: ShareNoteAnalytics | 
       <BreakdownCard title={t('share.top_referrers_title')} icon={<Compass size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.topReferrers || data.topReferrers.length === 0}>
         {data?.topReferrers.slice(0, 5).map((item) => (
           <BreakdownMiniRow key={item.name} name={item.name} count={item.count} percentage={item.percentage ?? 0} />
+        ))}
+      </BreakdownCard>
+      {/* The same split the dashboard shows, from the same response shape: one link must not
+          report two different channel counts depending on which surface is open (ADR-0004). */}
+      <BreakdownCard title={t('share.channel_section_title')} icon={<Tag size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.channels || data.channels.length === 0}>
+        {data?.channels.slice(0, 5).map((item) => (
+          <BreakdownMiniRow key={item.name} name={localizeChannelName(item.name)} count={item.count} percentage={item.percentage ?? 0} />
         ))}
       </BreakdownCard>
     </div>

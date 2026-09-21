@@ -100,6 +100,13 @@ export interface ShareSettings {
    * reads it from here rather than from the request.
    */
   staleLinkDays: number
+  /**
+   * Whether a visit may record the `?ref=` marker its URL carried (ADR-0004). On by default
+   * because what it collects is text the owner itself put in the link, not anything about the
+   * visitor — and off means the write path stores no marker at all, not that the dashboard
+   * hides one it already has.
+   */
+  collectChannel: boolean
 }
 
 /** Blog-center preferences the server acts on, not just the UI. */

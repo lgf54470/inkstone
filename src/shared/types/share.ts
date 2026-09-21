@@ -94,6 +94,11 @@ export interface ShareVisitLog {
   isSelfReferrer?: boolean
   isOwner?: boolean
   botName?: string | null
+  /**
+   * The `?ref=` marker the visit carried: a valid token, or null for both "the URL had none"
+   * and "what it had was refused". The log table shows the token, never the URL (ADR-0004).
+   */
+  channel?: string | null
   // A short display label, never the stored digest: the worker truncates the
   // visitor fingerprint before it leaves the API (SH-82).
   visitorFp?: string | null
@@ -148,6 +153,12 @@ export interface ShareGlobalAnalytics {
   devices: ShareBreakdownItem[]
   osList: ShareBreakdownItem[]
   browsers: ShareBreakdownItem[]
+  /**
+   * Which copy of the link the visit came from (ADR-0004). Marks the owner wrote are listed by
+   * name; visits with no marker and visits whose marker was refused appear under the reserved
+   * names `CHANNEL_UNMARKED` / `CHANNEL_UNRECOGNIZED`, never merged into one row.
+   */
+  channels: ShareBreakdownItem[]
   recentVisits: ShareVisitLog[]
   staleLinks: ShareStaleLinks
   filterStats?: {
@@ -175,6 +186,7 @@ export interface ShareNoteAnalytics {
   devices: ShareBreakdownItem[]
   osList: ShareBreakdownItem[]
   browsers: ShareBreakdownItem[]
+  channels: ShareBreakdownItem[]
   recentVisits: ShareVisitLog[]
 }
 

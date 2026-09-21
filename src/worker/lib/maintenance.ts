@@ -17,6 +17,19 @@ export function userSettingsNumberSql(path: string, fallback: number): string {
     END, ${fallback})`
 }
 
+/**
+ * The boolean twin of `userSettingsNumberSql`: SQLite's JSON functions answer a stored `true`/
+ * `false` as 1/0, so only the absence of the field needs a fallback. Used by the public visit
+ * write path, which must not ship the whole settings document to answer one question — the same
+ * reason the sweeps read their threshold through SQL. The reading query must alias `users` as `u`.
+ */
+export function userSettingsBooleanSql(path: string, fallback: boolean): string {
+  return `COALESCE(
+    CASE WHEN json_valid(u.settings)
+      THEN json_extract(u.settings, '${path}')
+    END, ${fallback ? 1 : 0})`
+}
+
 function visitLogRetentionDaysSql(section: 'share' | 'blog'): string {
   return userSettingsNumberSql(`$.${section}.visitLogRetentionDays`, VISIT_LOG_RETENTION_DEFAULT_DAYS)
 }

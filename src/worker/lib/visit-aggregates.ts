@@ -123,13 +123,18 @@ function bump(map: Map<string, number>, key: string): void {
   map.set(key, (map.get(key) || 0) + 1)
 }
 
-interface VisitWhere {
+export interface VisitWhere {
   sql: string
   binds: Array<string | number>
   startTsParam: number
 }
 
-function visitWhere(source: VisitAggregateSource, scope: VisitScope, query: VisitAggregateQuery): VisitWhere {
+/**
+ * The scope and range every statement about one visit table shares. Exported so a statement a
+ * single dashboard needs on top of the common set (the share-only channel split) filters exactly
+ * the same rows the aggregate beside it does, instead of re-deriving the predicate.
+ */
+export function visitWhere(source: VisitAggregateSource, scope: VisitScope, query: VisitAggregateQuery): VisitWhere {
   const binds: Array<string | number> = []
   const conditions: string[] = []
   if (scope.targetId) {

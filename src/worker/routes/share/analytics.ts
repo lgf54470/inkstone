@@ -25,6 +25,7 @@ import {
   type VisitDistributionMaps,
   type VisitTargetStat,
 } from '../../lib/visit-aggregates'
+import { channelBreakdownStatement, composeChannels, type ChannelCountRow } from './channel-split'
 import { firstOf, rowsOf } from './read-results'
 import { ShareRow } from './shares'
 
@@ -87,6 +88,7 @@ interface RecentVisitRow {
   is_self_referrer: number
   is_owner: number
   note_title?: string
+  channel: string | null
 }
 
 export function registerShareAnalyticsRoutes(shareManageRoutes: Hono<AppBindings>): void {
@@ -102,13 +104,14 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
     // Only the unbounded range is charged: a bounded one fetches a single window of rows,
     // while `all` summarizes the account's entire history (see consumeShareReadBudget).
     if (ctx.range === 'all') await consumeShareReadBudget(db, userId)
-    const [summaryResult, prevStatsResult, filterStatsResult, recentResult, staleThresholdResult, staleRowsResult, ...visitResults] = await db.batch([
+    const [summaryResult, prevStatsResult, filterStatsResult, recentResult, staleThresholdResult, staleRowsResult, channelResult, ...visitResults] = await db.batch([
       shareSummaryStatement(db, userId, ctx.now),
       prevVisitStatsStatement(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause),
       visitFilterStatsStatement(db, userId, ctx.startTs),
       recentVisitsStatement(db, { userId, startTs: ctx.startTs, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
       staleThresholdStatement(db, userId),
       staleLinksStatement(db, { userId, now: ctx.now }),
+      channelBreakdownStatement(db, { userId }, ctx),
       ...visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId }, ctx),
     ])
     const aggregate = visitAggregateFromResults(visitResults, ctx, SHARE_VISIT_SOURCE)
@@ -125,6 +128,7 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
         firstOf<StaleThresholdRow>(staleThresholdResult),
         rowsOf<StaleLinkRow>(staleRowsResult),
       ),
+      channels: composeChannels(rowsOf<ChannelCountRow>(channelResult), aggregate.views),
     }))
   })
 }
@@ -198,8 +202,9 @@ function composeGlobalAnalytics(params: {
   topNotes: ShareGlobalAnalytics['topNotes']
   recentVisits: ShareVisitLog[]
   staleLinks: ShareStaleLinks
+  channels: ShareBreakdownItem[]
 }): ShareGlobalAnalytics {
-  const { ctx, aggregate, summary, prevStats, filterStats, topNotes, recentVisits, staleLinks } = params
+  const { ctx, aggregate, summary, prevStats, filterStats, topNotes, recentVisits, staleLinks, channels } = params
   const timeline = buildBucketedTimeline(aggregate.buckets, ctx.range, ctx.startTs, ctx.duration)
   const daysSpan = Math.max(1, Math.round(ctx.duration / DAY_MS))
   const breakdown = breakdownTotals(aggregate, aggregate.views)
@@ -226,6 +231,7 @@ function composeGlobalAnalytics(params: {
     devices: breakdown.devices,
     osList: breakdown.osList,
     browsers: breakdown.browsers,
+    channels,
     recentVisits,
     staleLinks,
     filterStats: {
@@ -245,8 +251,9 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
     if (!row) throw ApiError.notFound('Share or note not found')
     const ctx = await analyticsContext(db, c, { userId, noteId })
     if (ctx.range === 'all') await consumeShareReadBudget(db, userId)
-    const [recentResult, ...visitResults] = await db.batch([
+    const [recentResult, channelResult, ...visitResults] = await db.batch([
       recentVisitsStatement(db, { userId, noteId, startTs: ctx.startTs, clause: buildVisitFilterSql(ctx.filters, 'sv') }),
+      channelBreakdownStatement(db, { userId, targetId: noteId }, ctx),
       ...visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId, targetId: noteId }, ctx),
     ])
     const aggregate = visitAggregateFromResults(visitResults, ctx, SHARE_VISIT_SOURCE)
@@ -272,6 +279,7 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
       devices: breakdown.devices,
       osList: breakdown.osList,
       browsers: breakdown.browsers,
+      channels: composeChannels(rowsOf<ChannelCountRow>(channelResult), aggregate.views),
       recentVisits,
     }
     return c.json(response)
@@ -397,7 +405,7 @@ function recentVisitsStatement(db: D1Database, params: {
     ? db.prepare(
       `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
               sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser, sv.user_agent,
-              sv.is_bot, sv.is_self_referrer, sv.is_owner
+              sv.is_bot, sv.is_self_referrer, sv.is_owner, sv.channel
          FROM share_visits sv
         WHERE sv.note_id = ?1 AND sv.user_id = ?2 AND sv.visited_at >= ?3 ${clause}
         ORDER BY sv.visited_at DESC
@@ -407,7 +415,7 @@ function recentVisitsStatement(db: D1Database, params: {
     : db.prepare(
       `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
               sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser, sv.user_agent,
-              sv.is_bot, sv.is_self_referrer, sv.is_owner,
+              sv.is_bot, sv.is_self_referrer, sv.is_owner, sv.channel,
               n.title as note_title
          FROM share_visits sv
          LEFT JOIN notes n ON n.id = sv.note_id
@@ -441,6 +449,7 @@ function toVisitLog(r: RecentVisitRow, noteTitle?: string): ShareVisitLog {
     isSelfReferrer: r.is_self_referrer === 1,
     isOwner: r.is_owner === 1,
     botName: r.is_bot === 1 ? parseBotName(r.user_agent || '') : null,
+    channel: r.channel || null,
   }
 }
 

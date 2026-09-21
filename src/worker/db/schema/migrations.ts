@@ -608,4 +608,14 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
            END`,
     ],
   },
+  {
+    // The distribution marker a visit's URL carried (ADR-0004). Nullable and unindexed: existing
+    // rows mean "no marker", and the dashboard reads the column only inside an already-narrowed
+    // range, so a partial index over a mostly-null column would buy nothing.
+    version: 41,
+    skipIfColumnExists: { table: 'share_visits', column: 'channel' },
+    statements: [
+      `ALTER TABLE share_visits ADD COLUMN channel TEXT`,
+    ],
+  },
 ]

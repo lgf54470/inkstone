@@ -6,7 +6,7 @@ import { ShareNoteAnalyticsModal } from './share-note-analytics-modal'
 vi.mock('../../lib/api', () => ({
   api: {
     share: {
-      noteAnalytics: vi.fn(async () => ({ timeline: [], recentVisits: [], topCountries: [], topReferrers: [] })),
+      noteAnalytics: vi.fn(async () => ({ timeline: [], recentVisits: [], topCountries: [], topReferrers: [], channels: [] })),
     },
   },
 }))

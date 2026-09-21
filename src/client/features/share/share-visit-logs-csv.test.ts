@@ -5,14 +5,14 @@ type VisitRow = Parameters<typeof exportVisitsToCsv>[0][number]
 
 const HEADERS = [
   'ID', 'Time', 'Note Title', 'Slug', 'Country', 'City',
-  'Referrer', 'Referrer Host', 'Device', 'OS', 'Browser', 'Type',
+  'Referrer', 'Referrer Host', 'Device', 'OS', 'Browser', 'Type', 'Channel',
 ]
 
 const EXPECTED_HEADER = HEADERS.map((name) => `"${name}"`).join(',')
 
 const FIRST_ROW = [
   '7', '1970-01-01T00:00:00.000Z', 'Shared note', 'abc123', 'US', '',
-  '', 'ref.example', 'desktop', 'macOS', 'Chrome', 'Real',
+  '', 'ref.example', 'desktop', 'macOS', 'Chrome', 'Real', 'newsletter',
 ]
 
 function visitRow(overrides: Partial<VisitRow> = {}): VisitRow {
@@ -25,6 +25,9 @@ function visitRow(overrides: Partial<VisitRow> = {}): VisitRow {
     city: null,
     referrer: null,
     referrerHost: 'ref.example',
+    // The marker the visit carried (ADR-0004): the column is appended last, so the assertions above
+    // that index into the middle of a row are unchanged by it.
+    channel: 'newsletter',
     deviceType: 'desktop',
     os: 'macOS',
     browser: 'Chrome',

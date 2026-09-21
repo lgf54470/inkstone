@@ -34,6 +34,7 @@ function analyticsFixture(overrides: Partial<ShareGlobalAnalytics> = {}): ShareG
     recentVisits: [],
     // Hygiene is off in this fixture: this file is about the KPI row.
     staleLinks: { thresholdDays: 0, total: 0, neverViewed: 0, items: [] },
+    channels: [],
     ...overrides,
   }
 }

@@ -4,6 +4,7 @@ import type { ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnaly
 import { apiError, jsonBody } from '../helpers/info'
 import { EXPIRING_SOON_DAYS } from '@shared/constants'
 import { STALE_LINK_DEFAULT_DAYS } from '@shared/user-settings'
+import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED } from '@shared/share-channel'
 
 const SHARE_TOP_COUNTRIES = [
   { name: 'US', count: 120, percentage: 30 },
@@ -33,6 +34,17 @@ const SHARE_OS_LIST = [
   { name: 'Android', count: 37, percentage: 10 },
 ]
 
+/**
+ * The channel split of the demo dashboard: a real marker (the newsletter copies), the visits with
+ * no marker, and the ones whose marker was refused — the last row exists because the real
+ * dashboard has it, and a demo that hides it would misrepresent what switching the feature on does.
+ */
+const SHARE_CHANNELS = [
+  { name: CHANNEL_UNMARKED, count: 240, percentage: 60 },
+  { name: 'newsletter', count: 120, percentage: 30 },
+  { name: CHANNEL_UNRECOGNIZED, count: 40, percentage: 10 },
+]
+
 const SHARE_BROWSERS = [
   { name: 'Chrome', count: 210, percentage: 53 },
   { name: 'Safari', count: 110, percentage: 28 },
@@ -59,6 +71,7 @@ const SHARE_VISIT_SAMPLES: ShareVisitSample[] = [
     browser: 'Chrome',
     isBot: false,
     visitorFp: 'a1b2c3d4',
+    channel: 'newsletter',
   },
   {
     id: 2,
@@ -157,6 +170,7 @@ function shareGlobalAnalytics(c: Context, state: DemoState): Response {
     devices: SHARE_DEVICES,
     osList: SHARE_OS_LIST,
     browsers: SHARE_BROWSERS,
+    channels: SHARE_CHANNELS,
     recentVisits: [],
     staleLinks: demoStaleLinks(state, now),
     filterStats: {
@@ -233,6 +247,7 @@ function shareNoteAnalytics(c: Context, state: DemoState): Response {
       { name: 'Chrome', count: 50, percentage: 59 },
       { name: 'Safari', count: 35, percentage: 41 },
     ],
+    channels: SHARE_CHANNELS,
     recentVisits: [],
   }
   return c.json(res)

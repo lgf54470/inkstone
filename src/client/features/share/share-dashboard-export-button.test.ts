@@ -38,6 +38,7 @@ function analytics(): ShareGlobalAnalytics {
     recentVisits: [],
     // Hygiene is off in this fixture: this file is about the export control, not the card.
     staleLinks: { thresholdDays: 0, total: 0, neverViewed: 0, items: [] },
+    channels: [],
   }
 }
 

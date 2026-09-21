@@ -88,6 +88,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   share: {
     visitLogRetentionDays: VISIT_LOG_RETENTION_DEFAULT_DAYS,
     staleLinkDays: STALE_LINK_DEFAULT_DAYS,
+    collectChannel: true,
   },
   blog: {
     visitLogRetentionDays: VISIT_LOG_RETENTION_DEFAULT_DAYS,
@@ -345,6 +346,12 @@ function mergeShare(current: Record<string, unknown>, patch: Record<string, unkn
       0,
       STALE_LINK_MAX_DAYS,
       (current.staleLinkDays ?? STALE_LINK_DEFAULT_DAYS) as number,
+    ),
+    // Collecting markers is on for accounts that predate the field: the stored settings of such an
+    // account have no value to fall back on, and the shipped default is the intended behaviour.
+    collectChannel: booleanValue(
+      patch.collectChannel,
+      (current.collectChannel ?? true) as boolean,
     ),
   }
 }

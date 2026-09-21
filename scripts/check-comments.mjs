@@ -1485,6 +1485,7 @@ const allowed = new Map([
     '// Same lens the single-track PATCH uses, so unknown tag ids are dropped in one place.',
   ]],
   ['src/client/demo/backend/routes/share.ts', [
+    '/**\n * The channel split of the demo dashboard: a real marker (the newsletter copies), the visits with\n * no marker, and the ones whose marker was refused — the last row exists because the real\n * dashboard has it, and a demo that hides it would misrepresent what switching the feature on does.\n */',
     '/**\n * The hygiene card on the demo dashboard, from the demo\'s own share rows: the links whose last\n * visit is older than the shipped threshold, plus every link nobody has opened yet.\n */',
     '// The remaining categories read the same rules as the worker\'s list query, so the',
     '// demo build does not quietly return everything for a filter it never learned.',
@@ -3050,6 +3051,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-batch-bar.tsx', [
     '/**\n * The bar\'s props, read from the store and the menu lists built from them. It runs even when\n * nothing is selected (hooks cannot be conditional) so the early return stays where it is;\n * the menu items it assembles for an empty selection are simply never drawn.\n */',
+    '// One field for both link actions: a marker describes the place the links are going, so copying',
+    '// and exporting the same selection should not be able to disagree about it.',
+    '/**\n * The optional `?ref=` marker for the links about to be copied or exported (ADR-0004). Compact on\n * purpose: it lives inside the floating bar rather than in a dialog, so attaching a marker to a\n * batch of links costs no extra step for the owner. An unusable value is marked invalid instead of\n * being repaired — the links would otherwise quietly go out without the marker they asked for.\n */',
   ]],
   ['src/client/features/share/share-batch-extend.test.ts', [
     '/**\n * SH-62: renewal is the action a person reaches for before a link lapses, and the two ways it\n * can come back with nothing done — a permanent link has no clock to move, and a selection may\n * not be shared at all — have to read differently from "extended 0 links".\n */',
@@ -3057,11 +3061,14 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-batch-links.test.ts', [
     '/**\n * SH-69: a selection is a set of note ids while the rows are what the list holds, so the batch link\n * actions have to say what they left out — a list that quietly drops entries looks complete.\n */',
+    '// The page drops a refused marker, so a list that printed one would claim an attribution',
+    '// the dashboard could never show (ADR-0004).',
   ]],
   ['src/client/features/share/share-batch-links.ts', [
     '/**\n * The selected rows, as the batch link actions need them. Selection is a set of note ids while\n * the rows are what the store currently holds, so a selection made before a filter change can\n * name a note the list no longer carries: that gap is reported rather than quietly dropped —\n * a list that silently loses entries looks complete and is not.\n */',
-    '/** Markdown list of the selected links, one per line: what a person pastes into a note or a mail. */',
+    '/**\n * Markdown list of the selected links, one per line: what a person pastes into a note or a mail.\n * A marker, when the owner typed one, is attached through the same helper the QR panel uses —\n * two hand-rolled `?ref=` builders would be two chances to disagree about what a valid marker is.\n */',
     '/** A `]` or `[` in a note title would end the label early and turn the rest into prose. */',
+    '/** The marker the batch bar\'s field holds; empty means unmarked links. */',
     '/** False when there is nothing to act on: the selection names no row the list is holding. */',
     '/** Only mentioned when it happened: "0 links left out" is noise, not information. */',
   ]],
@@ -3079,12 +3086,17 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-dashboard-breakdown.tsx', [
     '/** Where the visitors came from, by country. */',
-    '/** How the traffic found the link. */',
+    '/**\n * How the traffic found the link, and — under it — which copy of the link it came from. The two sit\n * in one card because they answer one question ("where did this visit come from") at two levels:\n * the referrer says where the browser was, the channel says which link was followed, and the app\n * stores both because neither can stand in for the other (ADR-0004).\n */',
+    '/**\n * The channel split itself. The hint only appears while no marker has ever come back: that is the\n * moment the owner needs to learn the feature exists, and printing it afterwards would be noise on\n * every account that already uses it.\n */',
     '/** Devices and operating systems, as one card — both read the same visit fingerprint. */',
   ]],
   ['src/client/features/share/share-dashboard-card-shell.tsx', [
     '/** The title row every dashboard card wears: an icon, the card\'s name, and its scope badge. */',
     '/** What a card draws in place of its rows when the range holds nothing yet. */',
+  ]],
+  ['src/client/features/share/share-dashboard-channels.test.ts', [
+    '// The copy must not collapse a refused marker into "no marker": they are different answers.',
+    '// The stored value is charset-bounded, but the display path does not rely on that alone.',
   ]],
   ['src/client/features/share/share-dashboard-export-button.test.ts', [
     '/**\n * SH-64\'s UI half: the button that hands the window over. The builder is tested on its own; what\n * is only true of the wiring is that the control carries an accessible name, that it stays inert\n * while there is nothing on screen to describe, and that clicking it actually produces one file.\n */',
@@ -3184,9 +3196,12 @@ const allowed = new Map([
   ['src/client/features/share/share-helpers.ts', [
     '/**\n * The traffic classes a visit list can be narrowed to. Defined next to the CSV shape because both\n * the browsing hook and the export walk have to agree on what "bot" means.\n */',
     '/**\n * The ranges every share analytics surface offers, in one place: the dashboard\'s segmented control\n * and the single-note modal both draw this list, so "30d" can never mean two different windows.\n */',
+    '/**\n * The names in the channel split (ADR-0004). The two reserved names become copy; anything else is\n * a token the owner wrote, rendered as text by React and never through a markup API — the stored\n * value is charset-bounded, but the display path does not rely on that alone.\n */',
     '/**\n * How the three traffic switches read as one sentence. The badge and the exported CSV both state\n * this, and a file that describes the filters differently from the screen is worse than no file.\n */',
     '/**\n * The three device classes the breakdown card names in words. Shared with the dashboard export so a\n * file that leaves the app says "Desktop" where the card said "Desktop", not the raw `desktop`.\n */',
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
+    '// Appended last so an existing script that reads the columns before it by position keeps',
+    '// working (ADR-0004).',
   ]],
   ['src/client/features/share/share-hub-modal.tsx', [
     '// The row count, not a number copied into the sentence: the server\'s ceiling can be raised,',
@@ -3218,18 +3233,35 @@ const allowed = new Map([
   ['src/client/features/share/share-narrow-screen.test.ts', [
     '// A failed assertion must not leave a mounted portal behind: later tests query document.body.',
   ]],
+  ['src/client/features/share/share-note-analytics-modal.tsx', [
+    '/* The same split the dashboard shows, from the same response shape: one link must not\n          report two different channel counts depending on which surface is open (ADR-0004). */',
+  ]],
   ['src/client/features/share/share-page/index.ts', [
     '// Public interface of the share-page module. Kept separate from the parent',
     '// share module\'s index so the share page stays a self-contained lazy chunk',
     '// (app.tsx code-splits on this boundary and must not pull the editor in).',
   ]],
   ['src/client/features/share/share-page/use-share-page.ts', [
+    '// Read from the URL the visitor actually opened, not from anywhere the app builds links: a',
+    '// marker is only meaningful if it survives to the page the visitor lands on. `get` is null when',
+    '// the parameter is absent, which is what tells the worker "no marker" rather than "a bad one".',
     '// Share pages always block external images (no option): visitors never',
     '// opt in, so third parties cannot track them via note images. The',
     '// server enforces this too by omitting `https:` from CSP img-src on /s/*.',
+    '/** The `?ref=` marker the visitor\'s URL carried, read once and replayed on every attempt. */',
     '// Invalid URLs are skipped; the attribute keeps its original value.',
   ]],
+  ['src/client/features/share/share-qr-marker.test.ts', [
+    '/**\n * The QR code is the one artifact whose contents nothing else in the DOM reveals, so the vendor\n * component is stubbed with something that prints the string it was asked to encode. Everything\n * else — the displayed URL, the copied link, the open-in-new-tab href — is asserted against the\n * real rendering.\n */',
+    '/** The URL the panel displays next to the code. */',
+    '/**\n * ADR-0004: a marker is only worth typing if it reaches every way out of the panel. The code, the\n * copied link and the open link all read one URL, so they cannot disagree — and a marker the\n * visitor\'s page would refuse is shown as invalid instead of being silently dropped from them.\n */',
+    '// Absent rather than "false": the field only declares invalid once it is.',
+    '// The storing end would refuse it, so handing out a link that claims the marker would be a lie.',
+  ]],
   ['src/client/features/share/share-qr-modal.tsx', [
+    '// The marker rides on every way out of this panel — the code, the copied link and the open-in-new',
+    '// -tab link — through one helper, so the code and the text can never disagree about the URL.',
+    '/**\n * The optional `?ref=` marker for the link about to be handed out (ADR-0004). An empty field means\n * an unmarked link, which is what every account got before this existed. A value that is not a\n * valid token is shown as invalid rather than trimmed into one: the visitor\'s page would drop the\n * marker, and "your marker silently does nothing" is worse than a red border.\n */',
     '// The plate stays white in both themes: the QR itself renders on fixed',
     '// white (QR_BG_COLOR), and a dark frame would cut into its quiet zone.',
   ]],
@@ -3343,6 +3375,8 @@ const allowed = new Map([
     '/** The colour and wording the closed control wears, read off the three switches it stands for. */',
   ]],
   ['src/client/features/share/share-visit-logs-csv.test.ts', [
+    '// The marker the visit carried (ADR-0004): the column is appended last, so the assertions above',
+    '// that index into the middle of a row are unchanged by it.',
     '/** Minimal RFC 4180 reader: enough to prove no cell leaked into a second column. */',
     '// The download is the module\'s only side effect; capture the blob it hands the',
     '// browser and stub the anchor click so jsdom never tries to navigate.',
@@ -3394,6 +3428,8 @@ const allowed = new Map([
   ['src/client/features/share/use-share-settings-modal.ts', [
     '// The sweep runs on the server, so the value it reads has to be the account\'s.',
     '// The dashboard\'s hygiene card reports on the account\'s threshold, not this browser\'s.',
+    '// Whether a visit may record the `?ref=` marker is a write-path decision the server makes, so it',
+    '// belongs to the account too (ADR-0004).',
     '// One patch for the whole account section: both values belong to the same document, and two',
     '// calls would be two writes of one thing.',
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
@@ -3490,6 +3526,8 @@ const allowed = new Map([
     '// `tag` carries the tag ids the whole selection is rewritten onto; the other actions carry none.',
   ]],
   ['src/client/lib/api/share.ts', [
+    '/** `document.referrer`, when the visitor\'s browser sent one. */',
+    '/** The `?ref=` marker from the visitor\'s own URL, forwarded so the worker can record it. */',
     '// A long document.referrer must not turn into a 400 for a legitimate viewer; the server caps at the same length.',
   ]],
   ['src/client/lib/api/transport.ts', [
@@ -5428,6 +5466,8 @@ const allowed = new Map([
     '// every client consumer that renders links before the user configures a URL.',
     '/**\n * Session lifetime design (sliding window):\n * - `SESSION_TTL_MS` (90d): absolute cap. A session row/cookie never outlives 90 days,\n *   bounding the window in which a stolen session token stays usable.\n * - `SESSION_RENEW_BEFORE_MS` (45d = TTL/2): renewal threshold. On an authenticated\n *   request, if less than this much TTL remains, the session is extended back to the\n *   full 90 days (see middleware/auth.ts and lib/session-store.ts).\n *\n * Trade-offs: renewal only happens for requests that already presented a valid\n * session, so an abandoned session dies within at most 90 days (no idle-forever\n * sessions, maintenance sweeps the rows), while an active user never gets logged out\n * as long as they authenticate at least once per 45 days. The half-life threshold\n * also bounds write amplification: each session triggers at most one DB renewal\n * write per 45 days of activity. The 45-day window is generous enough to survive\n * the app\'s offline period (offline edits are queued locally and flushed on\n * reconnect, which needs a still-valid session) yet short enough that a freshly\n * stolen cookie\'s remaining lifetime stays bounded.\n */',
     '/**\n * How close a share\'s expiry has to be before the list calls it "expiring soon".\n * The category, the row\'s warning tone and the batch-extension flow all read this\n * one number, so "soon" means the same thing in each of them.\n */',
+    '// A plausible marker is at most 32 chars; this cap only stops a body from carrying a novel,',
+    '// and like the referrer cap it answers 400 rather than truncating what the caller sent.',
     '// Anonymous readers of a published library are metered by client IP, per surface:',
     '// the listing is one query per open, while a player issues a stream request per',
     '// range it needs, so playback gets the wider allowance.',
@@ -5443,6 +5483,10 @@ const allowed = new Map([
   ]],
   ['src/shared/http.ts', [
     '/**\n * Widens a binary body to `BodyInit` for the shared DOM/undici request types.\n *\n * Workers and undici accept `Uint8Array` and `ReadableStream` bodies at\n * runtime, but the DOM `BodyInit` union models them through `BufferSource`\n * parameterizations that reject the exact `Uint8Array`/stream shapes used\n * here, so every backup call site would otherwise repeat a double-cast. This\n * helper is the single point where that widening happens.\n */',
+  ]],
+  ['src/shared/locales/en-US/share-2.ts', [
+    '// The distribution marker (?ref=) of ADR-0004: what it is, what the two miss rows mean, and the',
+    '// switch that decides whether the write path records it at all.',
   ]],
   ['src/shared/markdown-utils/front-matter.ts', [
     '/**\n * Update an existing front matter property in-place, keeping the body and all\n * other properties untouched. Returns the rewritten content, or `null` when\n * the content has no parseable front matter, the property does not exist, or\n * nothing changes. Passing `null` as `value` deletes the property.\n */',
@@ -5481,6 +5525,22 @@ const allowed = new Map([
     '/**\n * Increment when the built-in catalog changes so already-seeded libraries pick\n * up new or updated entries. User edits to an entry that shares a built-in id\n * are never overwritten by a re-seed.\n */',
     '/**\n * Portable format for exporting/importing a user\'s template library. Only\n * user-created templates and categories are exported; built-ins are re-seeded\n * by the app itself and stay out of the file.\n */',
     '/**\n * Parses and validates an exported template library. Returns null when the\n * payload is not a well-formed export; malformed entries are dropped\n * individually so a partially broken file can still be imported.\n */',
+  ]],
+  ['src/shared/share-channel.test.ts', [
+    '/**\n * ADR-0004: the marker is a bounded, lowercase token and nothing else. These are the boundaries\n * the privacy argument rests on — everything the character set refuses is something that could\n * have carried a person\'s text into the visits table.\n */',
+    '/* a non-Latin marker: the charset is ASCII only */',
+    '// The breakdown tells "no marker" from "refused marker" by name; if a visitor could store',
+    '// either name as a token, the dashboard would report a real channel as one of the misses.',
+    '// Present but malformed: the visit is still recorded, and the miss stays countable.',
+  ]],
+  ['src/shared/share-channel.ts', [
+    '/**\n * The distribution marker a public link can carry (`?ref=<token>`). Its only job is to answer\n * "which copy of this link did this visit come from" for links the owner sends to several places,\n * which the `Referer` header cannot answer: chat apps, mail clients and QR scans send none, and\n * an in-app tap is a self-referrer (excluded by default).\n *\n * The character set is the privacy mechanism, not a formatting preference. Whatever does not\n * match is refused at the door, so free text — a name, an address, a campaign string with spaces\n * — can never be stored in the column. See ADR-0004.\n */',
+    '/** 1–32 chars of `[a-z0-9_-]`, starting with a letter or digit. */',
+    '/**\n * The two names the dashboard uses for visits that carry no usable marker, kept here so the\n * worker that produces them and the client that labels them cannot drift.\n *\n * A valid token always starts with a letter or digit, so a name beginning with `_` can never be\n * a marker someone stored: the namespace cannot be squatted by choosing `?ref=__unmarked__`.\n */',
+    '/** The token itself when it is well formed, otherwise null. */',
+    '/** Whether a name out of a breakdown is one of the two reserved labels rather than a real marker. */',
+    '/**\n * What the `channel` column stores for one visit:\n *\n * - `null` — the request carried no `ref` at all;\n * - `\'\'` — it carried one that is not a valid token. The visit is still logged (a visitor must not\n *   see an error because the owner mistyped a URL), and the dashboard reports the miss in its own\n *   row rather than folding it into "unmarked" — a marker that silently stops working is exactly\n *   the failure rule 2 exists to prevent;\n * - the token — the marker was well formed.\n *\n * Nothing derived from a rejected value is stored: the raw string never reaches the database. The\n * presence of the parameter is expressed by the field being a string at all, so no separate flag\n * travels with it.\n */',
+    '/**\n * Adds the marker to a share URL. Returns the URL untouched for an absent or malformed marker, so\n * a distribution surface never hands out a link carrying a token the visitor\'s page would reject.\n */',
   ]],
   ['src/shared/types/api.ts', [
     '/** A rolling date filter: N days ending either at the newest edit (`edit`) or at today (`today`). */',
@@ -5532,16 +5592,19 @@ const allowed = new Map([
     '/** Share-center preferences the server acts on, not just the UI. */',
     '/**\n   * Days a visit log row survives before the maintenance cron deletes it;\n   * 0 keeps every row. It has to live here rather than in the browser so the\n   * sweep runs whether or not the owner ever opens the app again.\n   */',
     '/**\n   * Days without a visit after which a link counts as stale (SH-70); 0 turns\n   * the report off. What "nobody reads this any more" means depends on how\n   * busy the site is, so it is the owner\'s number — and the dashboard query\n   * reads it from here rather than from the request.\n   */',
+    '/**\n   * Whether a visit may record the `?ref=` marker its URL carried (ADR-0004). On by default\n   * because what it collects is text the owner itself put in the link, not anything about the\n   * visitor — and off means the write path stores no marker at all, not that the dashboard\n   * hides one it already has.\n   */',
     '/** Blog-center preferences the server acts on, not just the UI. */',
     '/**\n   * Days a `blog_visits` row survives before the maintenance cron deletes it;\n   * 0 keeps every row. Same reasoning as the share twin.\n   */',
   ]],
   ['src/shared/types/share.ts', [
     '// Null when the note was deleted but its visit rows survive; the client',
     '// labels it (SH-34), the worker must not bake in an English fallback.',
+    '/**\n   * The `?ref=` marker the visit carried: a valid token, or null for both "the URL had none"\n   * and "what it had was refused". The log table shows the token, never the URL (ADR-0004).\n   */',
     '// A short display label, never the stored digest: the worker truncates the',
     '// visitor fingerprint before it leaves the API (SH-82).',
     '/**\n * A public link nobody has opened inside the owner\'s threshold (SH-70). `views` is the all-time\n * counter, so a link that was read once years ago is not reported as never read.\n */',
     '/**\n * The hygiene report: how many public links have gone quiet, of which how many were never opened\n * at all, and the oldest page of them. `thresholdDays` is the account\'s own number (read from its\n * settings), and 0 means the owner turned the report off — in which case there is nothing to list.\n */',
+    '/**\n   * Which copy of the link the visit came from (ADR-0004). Marks the owner wrote are listed by\n   * name; visits with no marker and visits whose marker was refused appear under the reserved\n   * names `CHANNEL_UNMARKED` / `CHANNEL_UNRECOGNIZED`, never merged into one row.\n   */',
     '/**\n * The sidebar\'s counters without the share rows: a hub that opens on the dashboard\n * reads these, so it does not pay for a list it is not showing.\n */',
   ]],
   ['src/shared/user-settings.test.ts', [
@@ -5563,6 +5626,8 @@ const allowed = new Map([
     '/**\n * Merge a partial patch into the current settings.\n *\n * Sections that the patch does not touch are passed through by reference,\n * so subscribers observing a specific section (e.g. `settings.editor`) are\n * not re-rendered when an unrelated section changes.\n */',
     '/**\n * Guards the referential-stability contract of mergeSettingsPatch: sections\n * the patch did not touch must keep their object identity, otherwise narrow\n * store subscriptions silently regress into full-app re-renders on every\n * settings change.\n */',
     '/**\n * The share section adds the hygiene threshold to the visit-log knob. An account that stored its\n * settings before this field existed has no value to fall back on, so the shipped default — not\n * `undefined` — is what an absent one becomes.\n */',
+    '// Collecting markers is on for accounts that predate the field: the stored settings of such an',
+    '// account have no value to fall back on, and the shipped default is the intended behaviour.',
     '/**\n * Both visit-log surfaces keep the same single knob, so the same cleaner backs\n * `share` and `blog`: 0 means "keep forever" and must survive as 0.\n */',
   ]],
   ['src/worker/app.ts', [
@@ -5694,6 +5759,9 @@ const allowed = new Map([
     '// body behind and grew a duplicate row per rebuild). Repopulating is the queue\'s job, not this',
     '// migration\'s: the stored body is segmented for CJK, and that transform only exists in code.',
     '// Until the drain catches up the search falls back to LIKE, which answers from the note rows.',
+    '// The distribution marker a visit\'s URL carried (ADR-0004). Nullable and unindexed: existing',
+    '// rows mean "no marker", and the dashboard reads the column only inside an already-narrowed',
+    '// range, so a partial index over a mostly-null column would buy nothing.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
@@ -5786,6 +5854,7 @@ const allowed = new Map([
   ]],
   ['src/worker/lib/maintenance.ts', [
     '/**\n * A per-account number read straight out of the stored settings document: a\n * missing or unparsable value falls back to the shipped default, so an account\n * that never opened the settings modal still has a bounded log. `json_valid`\n * guards a corrupt document, which would otherwise make `json_extract` throw\n * and take the whole sweep down. The reading query must alias `users` as `u`.\n */',
+    '/**\n * The boolean twin of `userSettingsNumberSql`: SQLite\'s JSON functions answer a stored `true`/\n * `false` as 1/0, so only the absence of the field needs a fallback. Used by the public visit\n * write path, which must not ship the whole settings document to answer one question — the same\n * reason the sweeps read their threshold through SQL. The reading query must alias `users` as `u`.\n */',
     '/** The aged rows of one visit table, judged by the owner\'s own retention. */',
     '// Order matters: the destructuring below lines up with these statements.',
     '/** Bounded deletes for rows that carry their own expiry, plus stale login attempts. */',
@@ -5846,6 +5915,7 @@ const allowed = new Map([
     '// is what the dashboards actually consume.',
     '// Visits keep their stored slug after the target is renamed, so a target can',
     '// have several; MAX() is what the SQL path answers with, so this matches it.',
+    '/**\n * The scope and range every statement about one visit table shares. Exported so a statement a\n * single dashboard needs on top of the common set (the share-only channel split) filters exactly\n * the same rows the aggregate beside it does, instead of re-deriving the predicate.\n */',
     '// One statement for a bounded range (the rows themselves), eight for `all`',
     '// (totals, buckets, five distributions, per-target). `visitAggregateFromResults`',
     '// unpacks them back in the same order.',
@@ -6305,6 +6375,10 @@ const allowed = new Map([
     '// Sessions go first: their lookup is a subquery over shares and must read the',
     '// still-present rows inside the same transaction.',
   ]],
+  ['src/worker/routes/share/channel-split.ts', [
+    '/**\n * Which copy of a link each visit came from (ADR-0004), for the same rows the visit aggregate\n * beside it summarizes.\n *\n * It lives here rather than in `visit-aggregates` because only the share table has a marker\n * column, and both dashboards read that module\'s statement list positionally.\n *\n * A visit with no marker and a visit whose marker was refused are counted in separate rows and\n * never merged: a marker that quietly stopped matching has to be visible, not averaged into\n * "direct". The two reserved names cannot collide with a stored token, which always starts with a\n * letter or digit (see `share-channel`).\n */',
+    '/** Percentages share the dashboard\'s denominator, so the split sums against the KPI row. */',
+  ]],
   ['src/worker/routes/share/global-stats.ts', [
     '// Statement builders + parsers for the share list\'s global stats (SH-17a):',
     '// the list route batches these five statements with its rows query, so each',
@@ -6320,13 +6394,19 @@ const allowed = new Map([
     '// Only the boolean ships: why a slug is unavailable (invalid vs taken) must not be a lookup oracle.',
   ]],
   ['src/worker/routes/share/public.ts', [
+    '/** The `?ref=` marker the visitor\'s own URL carried, passed through by the share page. */',
+    '/**\n * A share row plus the one account setting the visit writer needs. The owner\'s answer to "may a\n * marker be recorded" is read as part of the lookup the request already performs: asking in a\n * second statement would put another round trip on the busiest path in the module.\n */',
     '// The schema caps the guess at LIMITS.passwordMaxLength; oversized ones answer 400 rather than being truncated.',
     '// One identical answer for disabled, expired and unknown: the status of a share is not public information.',
     '// Ten wrong guesses per hour per slug (was 40): paired with the 8-char floor this bounds the offline-free window.',
     '// Same body as "password required": a wrong guess must be indistinguishable from no guess.',
+    '/**\n * Everything one visit says, read off the request and the owner\'s policy. Split from the write so\n * the two decisions that keep the log honest — whether this visit counts at all, and whether it may\n * carry a marker — are stated where the values are derived rather than inside a bind list.\n */',
     '// The dedupe key must not include the UA: rotating it would mint a fresh view and row per request.',
     '// Without the instance secret record no fingerprint rather than fall back to the public date salt,',
     '// and salt per owner so one browser is not linkable across accounts (SH-04).',
+    '// Switched off means nothing is stored, not "stored and hidden": the owner\'s choice is about',
+    '// collection. The dedupe window means a marker on a follow-up visit within it is not written,',
+    '// because that visit does not produce a row at all.',
     '/* An unparseable referer header simply means "no external referrer". */',
   ]],
   ['src/worker/routes/share/read-budget.ts', [
@@ -6335,6 +6415,12 @@ const allowed = new Map([
   ['src/worker/routes/share/read-results.ts', [
     '// D1 batch() answers with one result object per statement; these unpack them',
     '// the way prepare().all()/.first() used to for serial reads.',
+  ]],
+  ['src/worker/routes/share/schemas.ts', [
+    '// Only a size guard, not the marker\'s validation (that is `storedChannelValue`): a plausible but',
+    '// wrong token is recorded as unrecognized rather than answered with an error, because the',
+    '// visitor must not pay for the owner\'s typo. This cap, like the referrer\'s, is for input no',
+    '// honest link could produce.',
   ]],
   ['src/worker/routes/share/shares.ts', [
     '/**\n * The counters behind the sidebar and the list\'s own totals are the same five\n * aggregates, so they are described once and batched by whoever needs them: the\n * list puts them beside its row query (still one round trip), while `/stats` asks\n * for them alone — a hub that lands on the dashboard reads the counts, not the rows.\n */',
@@ -6354,6 +6440,8 @@ const allowed = new Map([
     '// unrecoverable — means a stolen session must re-prove it holds the account password.',
     '/**\n * The note a delete is scoped to, when one was asked for. An empty value is the dangerous\n * case: it is present but names nothing, and letting it through would fall back to the\n * account-wide delete — the widest possible reading of a request that asked for the\n * narrowest. Only `type=all` can be scoped this way; pairing a note with a filtered type\n * would delete something other than what the caller described, so it is rejected too.\n */',
     '/**\n * `older_than` must be given an explicit positive day count: silently falling back\n * to a default would delete a window the caller never asked for, so an unparseable\n * or non-positive value is a 400. The other cleanup types never read it.\n */',
+    '// Empty string is the stored "a marker was sent and refused": the log shows the marker, and',
+    '// the split between the two kinds of miss belongs to the channel card, not to a row.',
   ]],
   ['src/worker/routes/sync.ts', [
     '// A non-empty `after` key always means the caller is mid-way through a',
@@ -6643,6 +6731,7 @@ const allowed = new Map([
     '/** The account\'s stored settings document, written verbatim so a corrupt one can be seeded too. */',
     '// Upsert rather than update: an UPDATE against a missing owner would silently do nothing, and a',
     '// test that quietly wrote no settings would go green on the default instead of the value stated.',
+    '/** The stored marker of one visit row, or undefined when the row is not there at all. */',
     '// The measured plan (bound parameters, as the app sends them) is unchanged by the owner',
     '// predicate: it still searches idx_share_visits_note_time. What this guards is the other',
     '// half of that measurement — the statement stays index-served and never fans out into a',
@@ -6663,6 +6752,15 @@ const allowed = new Map([
     '// visit recording runs via waitUntil; the test context must let us await it',
     '// Eleven scrypt verifications need more than the 5s default budget on slow runners.',
     '// requestClientIp only trusts CF-Connecting-IP when the edge set `cf`, so the probe attaches it.',
+    '/**\n * ADR-0004. The marker is the one field a visitor\'s URL can put into the visits table, so what it\n * accepts, what it refuses and what it refuses to merge are all load-bearing.\n */',
+    '/** A public visit with an arbitrary access body, awaited through the visit queue. */',
+    '// A visitor must never see an error because the owner mistyped a URL.',
+    '// The row is there (the log keeps counting) and the refused value is not in it.',
+    '// Storing either name would let a real channel be reported as "no marker".',
+    '// Null, not \'\': the account chose not to collect, so there is no miss to report either.',
+    '// Percentages share the dashboard\'s denominator, the same view count the KPI row shows.',
+    '// The marker answers "which copy", the referrer answers "where from": letting one stand in',
+    '// for the other would put a token into a field the referrer cleaner owns.',
     '// `noteId=` must never read as "no scope": that would delete every log of the account.',
     '// A narrower delete is still a whole history: same password tier as the full wipe.',
     '// A filtered scope wearing a noteId would delete something other than what was asked for.',

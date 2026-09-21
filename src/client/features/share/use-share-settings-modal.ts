@@ -18,6 +18,9 @@ export function useShareSettingsModal(onClose: () => void) {
   const visitLogRetentionDays = useSession((s) => s.settings.share.visitLogRetentionDays)
   // The dashboard's hygiene card reports on the account's threshold, not this browser's.
   const staleLinkDays = useSession((s) => s.settings.share.staleLinkDays)
+  // Whether a visit may record the `?ref=` marker is a write-path decision the server makes, so it
+  // belongs to the account too (ADR-0004).
+  const collectChannel = useSession((s) => s.settings.share.collectChannel)
   const updateSettings = useSession((s) => s.updateSettings)
 
   const [bots, setBots] = useState(excludeBots)
@@ -25,6 +28,7 @@ export function useShareSettingsModal(onClose: () => void) {
   const [owner, setOwner] = useState(excludeOwner)
   const [retentionDays, setRetentionDays] = useState(String(visitLogRetentionDays))
   const [staleDays, setStaleLinkDays] = useState(String(staleLinkDays))
+  const [channelCollection, setChannelCollection] = useState(collectChannel)
   const [isBusy, setIsBusy] = useState(false)
 
   const handleSave = () => saveSettingsFlow({
@@ -33,6 +37,7 @@ export function useShareSettingsModal(onClose: () => void) {
     owner,
     retentionDays,
     staleDays,
+    collectChannel: channelCollection,
     setFilters,
     // One patch for the whole account section: both values belong to the same document, and two
     // calls would be two writes of one thing.
@@ -46,6 +51,7 @@ export function useShareSettingsModal(onClose: () => void) {
     bots, setBots, selfRef, setSelfRef, owner, setOwner,
     retentionDays, setRetentionDays,
     staleLinkDays: staleDays, setStaleLinkDays,
+    collectChannel: channelCollection, setCollectChannel: setChannelCollection,
     isBusy, handleSave, handleClean,
   }
 }
@@ -56,17 +62,19 @@ type SaveSettingsFlow = {
   owner: boolean
   retentionDays: string
   staleDays: string
+  collectChannel: boolean
   setFilters: (filters: { excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }) => void
-  setShareSettings: (patch: { visitLogRetentionDays: number; staleLinkDays: number }) => void
+  setShareSettings: (patch: { visitLogRetentionDays: number; staleLinkDays: number; collectChannel: boolean }) => void
   toast: UiState['toast']
   onClose: () => void
 }
 
-function saveSettingsFlow({ bots, selfRef, owner, retentionDays, staleDays, setFilters, setShareSettings, toast, onClose }: SaveSettingsFlow): void {
+function saveSettingsFlow({ bots, selfRef, owner, retentionDays, staleDays, collectChannel, setFilters, setShareSettings, toast, onClose }: SaveSettingsFlow): void {
   setFilters({ excludeBots: bots, excludeSelfReferrers: selfRef, excludeOwner: owner })
   setShareSettings({
     visitLogRetentionDays: parseInt(retentionDays, 10),
     staleLinkDays: parseInt(staleDays, 10),
+    collectChannel,
   })
   toast({ title: t('share.settings_saved'), tone: 'default' })
   onClose()

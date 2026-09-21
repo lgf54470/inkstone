@@ -1,8 +1,10 @@
 import { useRef, useState, type RefObject } from 'react'
 import type { ReactNode } from 'react'
 import type { ShareInfo } from '@shared/types'
-import { Calendar, Copy, Download, FolderInput, Play, Square, Trash2, X } from 'lucide-react'
+import { Calendar, Copy, Download, FolderInput, Play, Square, Tag, Trash2, X } from 'lucide-react'
+import { normalizeChannelToken } from '@shared/share-channel'
 import { Button, IconButton } from '../../components/primitives'
+import { Input } from '../../components/form'
 import { Menu, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
@@ -31,8 +33,9 @@ export function ShareBatchBar({
 
       <ShareBatchActionButton bundle={bundle} icon={<Play size={13} className='text-[var(--success)]' />} label={t('share.batch_enable')} onClick={() => void batchEnableAll(bundle.batchToggle, bundle.noteIds)} />
       <ShareBatchActionButton bundle={bundle} icon={<Square size={12} className='text-[var(--warning)]' />} label={t('share.batch_disable')} onClick={() => void batchDisableAll(bundle.batchToggle, bundle.noteIds)} />
-      <ShareBatchActionButton bundle={bundle} icon={<Copy size={13} />} label={t('share.batch_copy_links')} onClick={() => void copyShareLinksFlow({ rows: bundle.selectedRows, missing: bundle.missingRows, toast: bundle.toast })} />
-      <ShareBatchActionButton bundle={bundle} icon={<Download size={13} />} label={t('share.batch_export_links')} onClick={() => exportShareLinksFlow({ rows: bundle.selectedRows, missing: bundle.missingRows, toast: bundle.toast })} />
+      <BatchChannelField bundle={bundle} />
+      <ShareBatchActionButton bundle={bundle} icon={<Copy size={13} />} label={t('share.batch_copy_links')} onClick={() => void copyShareLinksFlow({ rows: bundle.selectedRows, missing: bundle.missingRows, toast: bundle.toast, channel: bundle.channel })} />
+      <ShareBatchActionButton bundle={bundle} icon={<Download size={13} />} label={t('share.batch_export_links')} onClick={() => exportShareLinksFlow({ rows: bundle.selectedRows, missing: bundle.missingRows, toast: bundle.toast, channel: bundle.channel })} />
       <ShareBatchActionButton bundle={bundle} icon={<FolderInput size={13} />} label={t('share.batch_move_to_folder')} buttonRef={bundle.folderButtonRef} hasPopup ariaExpanded={bundle.isFolderMenuOpen} onClick={() => bundle.setIsFolderMenuOpen(true)} />
       <ShareBatchActionButton bundle={bundle} icon={<Calendar size={13} />} label={t('share.batch_set_expiry')} buttonRef={bundle.expiryButtonRef} hasPopup ariaExpanded={bundle.isExpiryMenuOpen} onClick={() => bundle.setIsExpiryMenuOpen(true)} />
       <ShareBatchActionButton bundle={bundle} icon={<Trash2 size={13} />} label={t('share.batch_revoke')} danger onClick={() => void batchRevokeAll(bundle.batchToggle, bundle.noteIds, bundle.selectedCount)} />
@@ -64,6 +67,9 @@ function useShareBatchBarBundle(selectedCount: number): ShareBatchBarBundle {
   const selectedNoteIds = useShareStore((s) => s.selectedNoteIds)
   const batchBusy = useShareStore((s) => s.batchBusy)
 
+  // One field for both link actions: a marker describes the place the links are going, so copying
+  // and exporting the same selection should not be able to disagree about it.
+  const [channel, setChannel] = useState('')
   const [isExpiryMenuOpen, setIsExpiryMenuOpen] = useState(false)
   const expiryButtonRef = useRef<HTMLButtonElement>(null)
   const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
@@ -73,7 +79,7 @@ function useShareBatchBarBundle(selectedCount: number): ShareBatchBarBundle {
   const { rows, missing } = selectedShareRows(shares, selectedNoteIds)
   return {
     batchToggle, batchMoveToFolder, noteIds, selectedCount, batchBusy, toast,
-    selectedRows: rows, missingRows: missing,
+    selectedRows: rows, missingRows: missing, channel, setChannel,
     isExpiryMenuOpen, setIsExpiryMenuOpen, expiryButtonRef, isFolderMenuOpen,
     setIsFolderMenuOpen, folderButtonRef,
     expiryMenuItems: [
@@ -90,6 +96,8 @@ interface ShareBatchBarBundle {
   noteIds: string[]
   selectedRows: ShareInfo[]
   missingRows: number
+  channel: string
+  setChannel: (value: string) => void
   selectedCount: number
   batchBusy: boolean
   toast: UiState['toast']
@@ -101,6 +109,31 @@ interface ShareBatchBarBundle {
   folderButtonRef: RefObject<HTMLButtonElement | null>
   expiryMenuItems: MenuItem[]
   folderMenuItems: MenuItem[]
+}
+
+/**
+ * The optional `?ref=` marker for the links about to be copied or exported (ADR-0004). Compact on
+ * purpose: it lives inside the floating bar rather than in a dialog, so attaching a marker to a
+ * batch of links costs no extra step for the owner. An unusable value is marked invalid instead of
+ * being repaired — the links would otherwise quietly go out without the marker they asked for.
+ */
+function BatchChannelField({ bundle }: { bundle: ShareBatchBarBundle }) {
+  const isRejected = bundle.channel !== '' && !normalizeChannelToken(bundle.channel)
+  return (
+    <Input
+      value={bundle.channel}
+      onChange={(event) => bundle.setChannel(event.target.value)}
+      disabled={bundle.batchBusy}
+      invalid={isRejected}
+      aria-label={t('share.channel_input_label')}
+      title={isRejected ? t('share.channel_input_invalid') : t('share.channel_input_hint')}
+      placeholder={t('share.channel_placeholder')}
+      leading={<Tag size={12} />}
+      autoComplete='off'
+      spellCheck={false}
+      className='h-7 w-32 shrink-0 text-[length:var(--text-12)] md:h-7'
+    />
+  )
 }
 
 function ShareBatchActionButton({

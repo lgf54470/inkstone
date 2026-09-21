@@ -18,6 +18,7 @@ import { hashPassword } from '../src/worker/lib/password'
 import { computeVisitorFingerprint } from '../src/worker/lib/share-analytics'
 import { purgeExpiredOperationalData } from '../src/worker/lib/maintenance'
 import { LIMITS } from '../src/shared/constants'
+import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED } from '../src/shared/share-channel'
 import { shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
 import { createD1Database as createDb, captureSql, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
@@ -98,8 +99,8 @@ async function seedVisit(db: D1Shim, fields: Record<string, unknown>): Promise<v
   await runSql(
     db,
     `INSERT INTO share_visits (user_id, note_id, slug, visited_at, visitor_fp, country, referrer_host,
-       device_type, os, browser, user_agent, is_bot, is_self_referrer, is_owner)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'desktop', 'os', 'browser', ?8, ?9, 0, 0)`,
+       device_type, os, browser, user_agent, is_bot, is_self_referrer, is_owner, channel)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'desktop', 'os', 'browser', ?8, ?9, 0, 0, ?10)`,
     USER, fields.note_id, fields.slug ?? 'share-1',
     fields.visited_at ?? Date.now() - 60_000,
     fields.visitor_fp ?? `fp-${++H.counter}`,
@@ -107,7 +108,14 @@ async function seedVisit(db: D1Shim, fields: Record<string, unknown>): Promise<v
     fields.referrer_host ?? null,
     fields.user_agent ?? null,
     fields.is_bot ? 1 : 0,
+    fields.channel ?? null,
   )
+}
+
+/** The stored marker of one visit row, or undefined when the row is not there at all. */
+async function visitChannel(db: D1Shim, slug: string): Promise<string | null | undefined> {
+  const row = await firstRow(db, 'SELECT channel FROM share_visits WHERE slug = ?1', slug)
+  return row ? (row.channel as string | null) : undefined
 }
 
 const EXECUTION_CTX = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext
@@ -1410,6 +1418,161 @@ describe('share public referrer hygiene (SH-08)', () => {
     const row = await firstRow(db, 'SELECT referrer, referrer_host FROM share_visits WHERE slug = ?1', 'ref-self')
     expect(row?.referrer).toBeNull()
     expect(row?.referrer_host).toBeNull()
+  })
+})
+
+/**
+ * ADR-0004. The marker is the one field a visitor's URL can put into the visits table, so what it
+ * accepts, what it refuses and what it refuses to merge are all load-bearing.
+ */
+describe('share channel marker collection (ADR-0004)', () => {
+  /** A public visit with an arbitrary access body, awaited through the visit queue. */
+  async function visit(app: Hono<AppBindings>, slug: string, body: Record<string, unknown>): Promise<Response> {
+    const pending: Promise<unknown>[] = []
+    const ctx = { waitUntil: (task: Promise<unknown>) => pending.push(task) } as unknown as ExecutionContext
+    const res = await app.request(`/api/public/${slug}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'user-agent': 'Mozilla/5.0 ChannelProbe/1.0' },
+      body: JSON.stringify(body),
+    }, DB_ENV.env as AppBindings['Bindings'], ctx)
+    await Promise.all(pending)
+    return res
+  }
+
+  async function seedChannelShare(db: D1Shim, slug: string): Promise<string> {
+    const noteId = await seedNote(db, {})
+    await seedShare(db, { note_id: noteId, slug })
+    return noteId
+  }
+
+  it('stores a well-formed marker that the visit URL carried', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedChannelShare(db, 'chan-ok')
+
+    const res = await visit(makeApp(), 'chan-ok', { ref: 'newsletter' })
+
+    expect(res.status).toBe(200)
+    expect(await visitChannel(db, 'chan-ok')).toBe('newsletter')
+  })
+
+  it('logs the visit but stores nothing when the marker could have carried free text', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const rejected: Array<[string, string]> = [
+      ['uppercase', 'Newsletter'],
+      ['spaces', 'mail list'],
+      ['period', 'news.letter'],
+      ['encoded dot', 'news%2eletter'],
+      ['cjk', '\u6e20\u9053'],
+      ['too long', 'a'.repeat(33)],
+    ]
+    const app = makeApp()
+    for (const [name, ref] of rejected) {
+      const slug = `chan-${name.replace(/[^a-z]/g, '')}`
+      await seedChannelShare(db, slug)
+      const res = await visit(app, slug, { ref })
+      // A visitor must never see an error because the owner mistyped a URL.
+      expect(res.status, name).toBe(200)
+      // The row is there (the log keeps counting) and the refused value is not in it.
+      expect(await visitChannel(db, slug), name).toBe('')
+    }
+  })
+
+  it('refuses an over-long marker in the body with 400 rather than truncating it', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedChannelShare(db, 'chan-long')
+
+    const res = await visit(makeApp(), 'chan-long', { ref: 'a'.repeat(LIMITS.shareChannelMaxLength + 1) })
+
+    expect(res.status).toBe(400)
+  })
+
+  it('does not let a visitor squat the two reserved breakdown names', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    for (const [index, name] of [CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED].entries()) {
+      const slug = `chan-squat-${index}`
+      await seedChannelShare(db, slug)
+      await visit(app, slug, { ref: name })
+      // Storing either name would let a real channel be reported as "no marker".
+      expect(await visitChannel(db, slug), name).toBe('')
+    }
+  })
+
+  it('collects nothing at all once the account switches markers off', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedChannelShare(db, 'chan-off')
+    await setShareSettings(db, { share: { collectChannel: false } })
+
+    const res = await visit(makeApp(), 'chan-off', { ref: 'newsletter' })
+
+    expect(res.status).toBe(200)
+    // Null, not '': the account chose not to collect, so there is no miss to report either.
+    expect(await visitChannel(db, 'chan-off')).toBeNull()
+    const share = await firstRow(db, 'SELECT views FROM shares WHERE slug = ?1', 'chan-off')
+    expect(share?.views).toBe(1)
+  })
+
+  it('reports marked, unmarked and refused visits as three separate rows', async () => {
+    const db = await makeDb()
+    const noteId = await seedNote(db, {})
+    await seedShare(db, { note_id: noteId, slug: 'br-1' })
+    await seedVisit(db, { note_id: noteId, slug: 'br-1', channel: 'newsletter' })
+    await seedVisit(db, { note_id: noteId, slug: 'br-1', channel: 'newsletter' })
+    await seedVisit(db, { note_id: noteId, slug: 'br-1', channel: '' })
+    await seedVisit(db, { note_id: noteId, slug: 'br-1' })
+    await seedVisit(db, { note_id: noteId, slug: 'br-1' })
+    await seedVisit(db, { note_id: noteId, slug: 'br-1' })
+    const app = makeApp()
+
+    const body = await (await request(app, '/api/share/analytics/global?range=30d')).json()
+    expect(body.channels.map((row: { name: string; count: number }) => [row.name, row.count])).toEqual([
+      [CHANNEL_UNMARKED, 3],
+      ['newsletter', 2],
+      [CHANNEL_UNRECOGNIZED, 1],
+    ])
+    // Percentages share the dashboard's denominator, the same view count the KPI row shows.
+    expect(body.channels[0].percentage).toBe(50)
+
+    const note = await (await request(app, `/api/share/analytics/note/${noteId}`)).json()
+    expect(note.channels.map((row: { name: string; count: number }) => [row.name, row.count])).toEqual([
+      [CHANNEL_UNMARKED, 3],
+      ['newsletter', 2],
+      [CHANNEL_UNRECOGNIZED, 1],
+    ])
+  })
+
+  it('keeps the marker out of the referrer fields', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const noteId = await seedChannelShare(db, 'chan-ref')
+
+    await visit(makeApp(), 'chan-ref', { ref: 'newsletter' })
+
+    // The marker answers "which copy", the referrer answers "where from": letting one stand in
+    // for the other would put a token into a field the referrer cleaner owns.
+    const row = await firstRow(db, 'SELECT referrer, referrer_host FROM share_visits WHERE slug = ?1', 'chan-ref')
+    expect(row?.referrer).toBeNull()
+    expect(row?.referrer_host).toBeNull()
+    const body = await (await request(makeApp(), '/api/share/analytics/global?range=30d')).json()
+    expect(body.topReferrers.map((item: { name: string }) => item.name)).toEqual(['Direct'])
+    expect(noteId).toBeTruthy()
+  })
+
+  it('reports the stored marker on the visit rows the log lists', async () => {
+    const db = await makeDb()
+    const noteId = await seedNote(db, {})
+    await seedShare(db, { note_id: noteId, slug: 'log-1' })
+    await seedVisit(db, { note_id: noteId, slug: 'log-1', channel: 'newsletter', visited_at: H.now - 2000 })
+    await seedVisit(db, { note_id: noteId, slug: 'log-1', channel: '', visited_at: H.now - 1000 })
+
+    const body = await (await request(makeApp(), '/api/share/visits')).json()
+
+    expect(body.visits.map((row: { channel: string | null }) => row.channel)).toEqual([null, 'newsletter'])
   })
 })
 

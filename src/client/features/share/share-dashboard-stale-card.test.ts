@@ -60,6 +60,7 @@ function analytics(overrides: Partial<ShareGlobalAnalytics> = {}): ShareGlobalAn
     devices: [],
     osList: [],
     browsers: [],
+    channels: [],
     recentVisits: [],
     staleLinks: {
       // Deliberately not the shipped 90: a card that printed a constant would still pass with the

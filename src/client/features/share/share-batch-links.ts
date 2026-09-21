@@ -1,4 +1,5 @@
 import type { ShareInfo } from '@shared/types'
+import { withChannelParam } from '@shared/share-channel'
 import { downloadTextFile } from '../../lib/export-note'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
@@ -17,9 +18,15 @@ export function selectedShareRows(
   return { rows, missing: selectedNoteIds.size - rows.length }
 }
 
-/** Markdown list of the selected links, one per line: what a person pastes into a note or a mail. */
-export function buildShareLinkList(shares: ShareInfo[]): string {
-  return shares.map((share) => `- [${escapeLabel(share.noteTitle || share.slug)}](${share.url})`).join('\n')
+/**
+ * Markdown list of the selected links, one per line: what a person pastes into a note or a mail.
+ * A marker, when the owner typed one, is attached through the same helper the QR panel uses —
+ * two hand-rolled `?ref=` builders would be two chances to disagree about what a valid marker is.
+ */
+export function buildShareLinkList(shares: ShareInfo[], channel = ''): string {
+  return shares
+    .map((share) => `- [${escapeLabel(share.noteTitle || share.slug)}](${withChannelParam(share.url, channel)})`)
+    .join('\n')
 }
 
 /** A `]` or `[` in a note title would end the label early and turn the rest into prose. */
@@ -31,11 +38,13 @@ export async function copyShareLinksFlow(params: {
   rows: ShareInfo[]
   missing: number
   toast: UiState['toast']
+  /** The marker the batch bar's field holds; empty means unmarked links. */
+  channel?: string
 }): Promise<void> {
-  const { rows, missing, toast } = params
+  const { rows, missing, toast, channel = '' } = params
   if (!hasRows(rows.length, toast)) return
   try {
-    await navigator.clipboard.writeText(buildShareLinkList(rows))
+    await navigator.clipboard.writeText(buildShareLinkList(rows, channel))
     toast({
       title: t('share.batch_links_copied', { count: rows.length }),
       description: missingNote(missing),
@@ -51,11 +60,12 @@ export function exportShareLinksFlow(params: {
   rows: ShareInfo[]
   missing: number
   toast: UiState['toast']
+  channel?: string
 }): void {
-  const { rows, missing, toast } = params
+  const { rows, missing, toast, channel = '' } = params
   if (!hasRows(rows.length, toast)) return
   const stamp = new Date().toISOString().slice(0, 10)
-  downloadTextFile(`inkstone-share-links-${stamp}.md`, buildShareLinkList(rows), 'text/markdown;charset=utf-8')
+  downloadTextFile(`inkstone-share-links-${stamp}.md`, buildShareLinkList(rows, channel), 'text/markdown;charset=utf-8')
   toast({
     title: t('share.batch_links_exported', { count: rows.length }),
     description: missingNote(missing),

@@ -240,6 +240,7 @@ describe('share traffic filter and settings switches (SH-31)', () => {
       'share.filter_exclude_bots',
       'share.filter_exclude_self',
       'share.filter_exclude_owner',
+      'share.channel_collect_label',
     ])
     rendered.unmount()
   })

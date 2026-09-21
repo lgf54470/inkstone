@@ -66,6 +66,32 @@ describe('batch link list (SH-69)', () => {
 
 })
 
+describe('batch link markers (ADR-0004)', () => {
+  it('marks every link it copies when the owner typed a marker', async () => {
+    const rows = [shareRow('a'), shareRow('b')]
+
+    await copyShareLinksFlow({ rows, missing: 0, toast: useUi.getState().toast, channel: 'newsletter' })
+
+    expect(writeText).toHaveBeenCalledWith([
+      '- [Note a](https://example.test/s/a?ref=newsletter)',
+      '- [Note b](https://example.test/s/b?ref=newsletter)',
+    ].join('\n'))
+  })
+
+  it('exports the marked list, not the bare one', () => {
+    exportShareLinksFlow({ rows: [shareRow('a')], missing: 0, toast: useUi.getState().toast, channel: 'mail-1' })
+
+    const [, text] = H.downloadTextFile.mock.calls[0]
+    expect(text).toBe('- [Note a](https://example.test/s/a?ref=mail-1)')
+  })
+
+  it('hands out unmarked links for a marker the visits table would refuse', () => {
+    // The page drops a refused marker, so a list that printed one would claim an attribution
+    // the dashboard could never show (ADR-0004).
+    expect(buildShareLinkList([shareRow('a')], 'Not A Token')).toBe('- [Note a](https://example.test/s/a)')
+  })
+})
+
 describe('batch link feedback (SH-69)', () => {
   it('copies every selected link and reports the count', async () => {
     const rows = [shareRow('a'), shareRow('b')]

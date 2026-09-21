@@ -1,4 +1,5 @@
 import type { ShareTimelineRange } from '@shared/types'
+import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED } from '@shared/share-channel'
 import { t } from '../../lib/i18n'
 
 /**
@@ -18,6 +19,17 @@ export function rangeOptions(): Array<{ value: ShareTimelineRange; label: string
     { value: '30d', label: '30d' },
     { value: 'all', label: t('share.range_all') },
   ]
+}
+
+/**
+ * The names in the channel split (ADR-0004). The two reserved names become copy; anything else is
+ * a token the owner wrote, rendered as text by React and never through a markup API — the stored
+ * value is charset-bounded, but the display path does not rely on that alone.
+ */
+export function localizeChannelName(name: string): string {
+  if (name === CHANNEL_UNMARKED) return t('share.channel_none')
+  if (name === CHANNEL_UNRECOGNIZED) return t('share.channel_unrecognized')
+  return name
 }
 
 export function countryFlag(countryCode: string | null | undefined): string {
@@ -122,6 +134,7 @@ export function exportVisitsToCsv(visits: Array<{
   botName?: string | null
   isOwner?: boolean
   isSelfReferrer?: boolean
+  channel?: string | null
 }>, filename = 'share-visits.csv') {
   const headers = [
     'ID',
@@ -136,6 +149,9 @@ export function exportVisitsToCsv(visits: Array<{
     'OS',
     'Browser',
     'Type',
+    // Appended last so an existing script that reads the columns before it by position keeps
+    // working (ADR-0004).
+    'Channel',
   ]
   const rows = visits.map((v) => [
     v.id,
@@ -150,6 +166,7 @@ export function exportVisitsToCsv(visits: Array<{
     v.os || '',
     v.browser || '',
     v.isBot ? `Bot (${v.botName || 'Crawler'})` : v.isOwner ? 'Author' : v.isSelfReferrer ? 'Self' : 'Real',
+    v.channel || '',
   ])
   const csvContent =
     '\uFEFF' + [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n')

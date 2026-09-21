@@ -30,9 +30,15 @@ export function useShareLoad(slug: string) {
   const appliedTitleRef = useRef<string | null>(null)
   const originalTitleRef = useRef(document.title)
   const initialReferrerRef = useRef(typeof document !== 'undefined' ? document.referrer : '')
+  // Read from the URL the visitor actually opened, not from anywhere the app builds links: a
+  // marker is only meaningful if it survives to the page the visitor lands on. `get` is null when
+  // the parameter is absent, which is what tells the worker "no marker" rather than "a bad one".
+  const channelRef = useRef<string | null>(
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') : null,
+  )
   const ctx = {
     requestRef, setNote, setIsPasswordRequired, setPassword, setError, setIsLoading,
-    appliedTitleRef, originalTitleRef, initialReferrerRef,
+    appliedTitleRef, originalTitleRef, initialReferrerRef, channelRef,
   }
   const load = useCallback((pwd?: string) => loadShare(slug, pwd, ctx), [slug])
   useEffect(() => {
@@ -110,6 +116,8 @@ type LoadCtx = {
   appliedTitleRef: MutableRefObject<string | null>
   originalTitleRef: MutableRefObject<string>
   initialReferrerRef: MutableRefObject<string>
+  /** The `?ref=` marker the visitor's URL carried, read once and replayed on every attempt. */
+  channelRef: MutableRefObject<string | null>
 }
 
 async function loadShare(slug: string, pwd: string | undefined, ctx: LoadCtx): Promise<void> {
@@ -119,7 +127,13 @@ async function loadShare(slug: string, pwd: string | undefined, ctx: LoadCtx): P
   ctx.setIsLoading(true)
   ctx.setError(null)
   try {
-    const result = await api.share.read(slug, pwd, controller.signal, ctx.initialReferrerRef.current || undefined)
+    const result = await api.share.read({
+      slug,
+      password: pwd,
+      referrer: ctx.initialReferrerRef.current || undefined,
+      ref: ctx.channelRef.current || undefined,
+      signal: controller.signal,
+    })
     if (!controller.signal.aborted) {
       ctx.setNote(result)
       ctx.setIsPasswordRequired(false)
