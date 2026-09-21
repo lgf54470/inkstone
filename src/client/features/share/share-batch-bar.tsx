@@ -1,6 +1,7 @@
 import { useRef, useState, type RefObject } from 'react'
 import type { ReactNode } from 'react'
-import { Calendar, FolderInput, Play, Square, Trash2, X } from 'lucide-react'
+import type { ShareInfo } from '@shared/types'
+import { Calendar, Copy, Download, FolderInput, Play, Square, Trash2, X } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Menu, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
@@ -8,6 +9,7 @@ import type { UiState } from '../../store/ui'
 import { useUi } from '../../store/ui'
 import { useShareStore, type ShareStoreState } from './share-store'
 import { batchDisableAll, batchEnableAll, batchRevokeAll, buildExpiryMenuItems, buildRenewalMenuItems, buildShareFolderMenuItems } from './share-batch-bar-actions'
+import { copyShareLinksFlow, exportShareLinksFlow, selectedShareRows } from './share-batch-links'
 
 export function ShareBatchBar({
   selectedCount,
@@ -29,6 +31,8 @@ export function ShareBatchBar({
 
       <ShareBatchActionButton bundle={bundle} icon={<Play size={13} className='text-[var(--success)]' />} label={t('share.batch_enable')} onClick={() => void batchEnableAll(bundle.batchToggle, bundle.noteIds)} />
       <ShareBatchActionButton bundle={bundle} icon={<Square size={12} className='text-[var(--warning)]' />} label={t('share.batch_disable')} onClick={() => void batchDisableAll(bundle.batchToggle, bundle.noteIds)} />
+      <ShareBatchActionButton bundle={bundle} icon={<Copy size={13} />} label={t('share.batch_copy_links')} onClick={() => void copyShareLinksFlow({ rows: bundle.selectedRows, missing: bundle.missingRows, toast: bundle.toast })} />
+      <ShareBatchActionButton bundle={bundle} icon={<Download size={13} />} label={t('share.batch_export_links')} onClick={() => exportShareLinksFlow({ rows: bundle.selectedRows, missing: bundle.missingRows, toast: bundle.toast })} />
       <ShareBatchActionButton bundle={bundle} icon={<FolderInput size={13} />} label={t('share.batch_move_to_folder')} buttonRef={bundle.folderButtonRef} hasPopup ariaExpanded={bundle.isFolderMenuOpen} onClick={() => bundle.setIsFolderMenuOpen(true)} />
       <ShareBatchActionButton bundle={bundle} icon={<Calendar size={13} />} label={t('share.batch_set_expiry')} buttonRef={bundle.expiryButtonRef} hasPopup ariaExpanded={bundle.isExpiryMenuOpen} onClick={() => bundle.setIsExpiryMenuOpen(true)} />
       <ShareBatchActionButton bundle={bundle} icon={<Trash2 size={13} />} label={t('share.batch_revoke')} danger onClick={() => void batchRevokeAll(bundle.batchToggle, bundle.noteIds, bundle.selectedCount)} />
@@ -56,6 +60,7 @@ function useShareBatchBarBundle(selectedCount: number): ShareBatchBarBundle {
   const batchExtend = useShareStore((s) => s.batchExtend)
   const batchMoveToFolder = useShareStore((s) => s.batchMoveToFolder)
   const folders = useShareStore((s) => s.folders)
+  const shares = useShareStore((s) => s.shares)
   const selectedNoteIds = useShareStore((s) => s.selectedNoteIds)
   const batchBusy = useShareStore((s) => s.batchBusy)
 
@@ -65,8 +70,10 @@ function useShareBatchBarBundle(selectedCount: number): ShareBatchBarBundle {
   const folderButtonRef = useRef<HTMLButtonElement>(null)
 
   const noteIds = Array.from(selectedNoteIds)
+  const { rows, missing } = selectedShareRows(shares, selectedNoteIds)
   return {
     batchToggle, batchMoveToFolder, noteIds, selectedCount, batchBusy, toast,
+    selectedRows: rows, missingRows: missing,
     isExpiryMenuOpen, setIsExpiryMenuOpen, expiryButtonRef, isFolderMenuOpen,
     setIsFolderMenuOpen, folderButtonRef,
     expiryMenuItems: [
@@ -81,6 +88,8 @@ interface ShareBatchBarBundle {
   batchToggle: ShareStoreState['batchToggle']
   batchMoveToFolder: ShareStoreState['batchMoveToFolder']
   noteIds: string[]
+  selectedRows: ShareInfo[]
+  missingRows: number
   selectedCount: number
   batchBusy: boolean
   toast: UiState['toast']

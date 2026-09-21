@@ -3038,6 +3038,16 @@ const allowed = new Map([
     '/**\n * SH-62: renewal is the action a person reaches for before a link lapses, and the two ways it\n * can come back with nothing done — a permanent link has no clock to move, and a selection may\n * not be shared at all — have to read differently from "extended 0 links".\n */',
     '// Real messages, so the toast assertions read sentences rather than message ids.',
   ]],
+  ['src/client/features/share/share-batch-links.test.ts', [
+    '/**\n * SH-69: a selection is a set of note ids while the rows are what the list holds, so the batch link\n * actions have to say what they left out — a list that quietly drops entries looks complete.\n */',
+  ]],
+  ['src/client/features/share/share-batch-links.ts', [
+    '/**\n * The selected rows, as the batch link actions need them. Selection is a set of note ids while\n * the rows are what the store currently holds, so a selection made before a filter change can\n * name a note the list no longer carries: that gap is reported rather than quietly dropped —\n * a list that silently loses entries looks complete and is not.\n */',
+    '/** Markdown list of the selected links, one per line: what a person pastes into a note or a mail. */',
+    '/** A `]` or `[` in a note title would end the label early and turn the rest into prose. */',
+    '/** False when there is nothing to act on: the selection names no row the list is holding. */',
+    '/** Only mentioned when it happened: "0 links left out" is noise, not information. */',
+  ]],
   ['src/client/features/share/share-category-status.test.ts', [
     '/**\n * The record is the exhaustiveness check: `Record<ShareCategory, ...>` stops compiling the moment\n * a category joins the union without being mapped here, and the loop below then proves the mapping\n * the list query actually gets. A category that fell through to `all` would look like a filter that\n * silently does nothing — the failure this pins down.\n */',
   ]],
