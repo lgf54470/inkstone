@@ -7,21 +7,12 @@ import { Segmented } from '../../components/form'
 import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
 import { BigSvgChart } from '../../components/big-svg-chart'
-import { countryFlag, countryNameLocalized } from './share-helpers'
+import { countryFlag, countryNameLocalized, rangeOptions } from './share-helpers'
 import { LoadErrorState } from './share-load-error'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import { useShareNoteAnalytics } from './use-share-note-analytics'
 
 const MODAL_WIDTH = 780
-
-function rangeOptions(): { value: string; label: string }[] {
-  return [
-    { value: '24h', label: '24h' },
-    { value: '7d', label: '7d' },
-    { value: '30d', label: '30d' },
-    { value: 'all', label: t('share.range_all') },
-  ]
-}
 
 export function ShareNoteAnalyticsModal({
   open,

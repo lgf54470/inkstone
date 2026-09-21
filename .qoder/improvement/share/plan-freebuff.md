@@ -41,8 +41,8 @@
 | 11 | C | SH-49 | 裸 `<button>` 绕过组件体系 + 新守卫 | 中 | ✅ | aa0ca70b + 5ae18926 |
 | 12 | C | SH-50 | 流量过滤浮层：焦点管理 / role / 窄屏裁切 | 小–中 | ✅ | bf09dbce |
 | 13 | C | SH-51 | hover-only「新建文件夹/标签」键盘不可见、触屏不可发现 | 小 | ✅ | 3096be8a |
-| 14 | C | SH-53 | `expiring` 语义与标签不符，缺 ≤7d「即将到期」桶 | 小 | ✅ | ⏳ 下项回填 |
-| 15 | C | SH-60 | 看板 468/500 行 + range 选项重复 → 拆分 | 小–中 | ⬜ | |
+| 14 | C | SH-53 | `expiring` 语义与标签不符，缺 ≤7d「即将到期」桶 | 小 | ✅ | 4c84878f |
+| 15 | C | SH-60 | 看板 468/500 行 + range 选项重复 → 拆分 | 小–中 | ✅ | ⏳ 下项回填 |
 | 16 | C | SH-59 | 网格卡未 memo + 内联闭包 + 每卡 `folders.find` | 小 | ⬜ | |
 | 17 | C | SH-57 | `toLocaleString()` 跟随 OS / delta 无语义 / 图表无文本替代 | 小–中 | ⬜ | |
 | 18 | C | SH-56 | 「日均访问量」口径错误 + sparkline 与 PV 卡重复 | 小 | ⬜ | |
@@ -239,3 +239,14 @@
 - 先红后绿：`tests/share-routes.test.ts` 新增一例（3 天／30 天／已过期三行的划分、与 `expired` 互斥、`globalStats.expiringSoonShares === 1`），实现前红；新增守卫 `src/client/features/share/share-category-status.test.ts`（2 例）——用 `Record<ShareCategory, string>` 做**类型级穷举**（新增分类不登记就编译不过）＋ 逐项断言映射结果；变异测试：删掉映射里那一行，守卫立刻红（1 failed），还原复绿。
 - 验证读数：`tests/share-routes.test.ts` **76/76**；新守卫 **2/2**；`npx tsc -b --force` exit 0；**全量串行回归 319 文件 / 2591 通过 + 1 skipped / 0 失败**（`--no-file-parallelism --testTimeout=30000`，本项碰了 worker SQL 与共享类型，故跑全量）；静态门禁 11 项全绿（`i18n` 3142 键，新增 1；`hardcoded` 无新增字面量）。中间红过一次值得记下：加上第四个 `else if` 后 `size:check` 报 `shares.ts ... {"deepFns":1}`（嵌套超 3 层）——提成 `statusTimeCondition()` 后归零，同样**没有**用 `--update-baseline` 遮盖。
 - 局限：① `expiring_soon` 与 `expiring` 有意重叠（见上），UI 未额外标注这层包含关系；② 侧栏 `password`/`expiring`/`permanent` 三个分类仍无计数（属 SH-52，本项只补了新分类）；③ 到期提醒（通知/邮件）与批量续期（SH-62）仍未做，本项只把「看得见」补齐。
+
+### 15 — SH-60 看板视图拆到「最后一格」之下 + range 选项收口（2026-09-21）
+
+- 根因：`share-dashboard-view.tsx` 468 行 / 9 个子组件，而 `check-size` 的 `maxFileLines` 是 500——再加一张卡就撞墙（同构的 blog 看板早已拆成 7 个文件）；另一处重复：range 选项（24h/7d/30d/all）在看板与单篇分析里各写一份。
+- 做法（纯搬家，零行为变化）：
+  - 新增 6 个兄弟文件，沿用本 feature 已有的 `share-dashboard-loading.tsx` / `share-dashboard-timeline-card.tsx` 的命名与位置习惯——**没有**新建「子目录 + index.ts」，因为 `deep-imports:check` 禁止穿透带 `index.ts` 的目录，兄弟文件是同一目标下更贴合的形态：`share-dashboard-card-shell.tsx`（CardHeader/EmptyRow）、`share-dashboard-header.tsx`（DashboardHeader/FilterSummaryBanner）、`share-dashboard-kpis.tsx`（KpiGrid/ActiveSharesCard）、`share-dashboard-breakdown.tsx`（国家/来源/设备三张卡 ＋ `localizeDeviceName`）、`share-dashboard-top-notes.tsx`（TopNotesCard/TopNoteRow）、`share-dashboard-activity.tsx`（RecentActivityCard/RecentVisitRow/VisitBadges）。
+  - `share-dashboard-view.tsx` 只剩外壳 48 行：三态判定（失败 / 首载 / 数据）与卡片编排。
+  - `share-helpers.ts` 新增 `rangeOptions()`，看板头部与单篇分析弹窗共用（删掉弹窗里那份私有拷贝）。
+  - `share-devices-empty.test.ts` 的 import 改指新的 breakdown 文件。
+- 验收：`npx tsc -b --force` exit 0；`size:check` 通过（1428 文件扫描，拆分后最大一个 177 行）；`deep-imports:check`、`style`、`hardcoded`、`comments`（5032 条 / 702 文件）均绿；定向测试 17/17（devices-empty、dashboard-loading、analytics-error、note-analytics-logs、share-form）。
+- 局限（如实登记）：① 只搬家 ＋ 一个共享函数，**没有**动看板的任何口径或样式，因此没有新增测试（SH-56/57/54 会继续在这些新文件上改）；② `DashboardHeader`/`FilterSummaryBanner` 仍整体收 `bundle`，没有顺手收窄成具体 props（无关重构，按「不顺手改无关问题」留待后续）；③ 与 blog 侧目录形态仍不完全一致（blog 是子目录 + index），本项按 deep-imports 约束取兄弟文件。

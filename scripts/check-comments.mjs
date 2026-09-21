@@ -3011,8 +3011,35 @@ const allowed = new Map([
   ['src/client/features/share/share-category-status.test.ts', [
     '/**\n * The record is the exhaustiveness check: `Record<ShareCategory, ...>` stops compiling the moment\n * a category joins the union without being mapped here, and the loop below then proves the mapping\n * the list query actually gets. A category that fell through to `all` would look like a filter that\n * silently does nothing — the failure this pins down.\n */',
   ]],
+  ['src/client/features/share/share-dashboard-activity.tsx', [
+    '/** The newest visits, with a way into the full logs. */',
+    '/** The flags that say why a visit may not be a plain reader. */',
+  ]],
+  ['src/client/features/share/share-dashboard-breakdown.tsx', [
+    '/** Where the visitors came from, by country. */',
+    '/** How the traffic found the link. */',
+    '/** Devices and operating systems, as one card — both read the same visit fingerprint. */',
+  ]],
+  ['src/client/features/share/share-dashboard-card-shell.tsx', [
+    '/** The title row every dashboard card wears: an icon, the card\'s name, and its scope badge. */',
+    '/** What a card draws in place of its rows when the range holds nothing yet. */',
+  ]],
+  ['src/client/features/share/share-dashboard-header.tsx', [
+    '/** The dashboard\'s title, its range control, and the two ways to re-ask for the same window. */',
+    '/** What the traffic filters took out of the numbers below, drawn only when they took something. */',
+  ]],
+  ['src/client/features/share/share-dashboard-kpis.tsx', [
+    '/** The four headline numbers, above every card. */',
+    '/** How many shares are live right now, against how many exist — the one share-shaped KPI. */',
+  ]],
   ['src/client/features/share/share-dashboard-loading.tsx', [
     '/**\n * First load of the dashboard. Zero-filled cards would be a claim about the data\n * ("no visits in this window") rather than a state of the request, so the KPI grid,\n * the trend and the four breakdown cards all stand in as shimmer placeholders until\n * the first answer arrives. Later range switches keep the previous cards instead.\n */',
+  ]],
+  ['src/client/features/share/share-dashboard-top-notes.tsx', [
+    '/** The notes the range\'s traffic landed on, with a way into each note\'s own analytics. */',
+  ]],
+  ['src/client/features/share/share-dashboard-view.tsx', [
+    '/**\n * The share dashboard: one request\'s worth of analytics, drawn as the header\'s controls, the KPI\n * row, the timeline, the breakdown cards and the recent-activity list. The shell only decides which\n * of the three states (failed / first load / data) is on screen — each card owns its own rendering.\n */',
   ]],
   ['src/client/features/share/share-edit-modal/use-share-edit-modal.ts', [
     '// Best-effort: a failure leaves the editor on the create form, but the user',
@@ -3024,6 +3051,7 @@ const allowed = new Map([
     '// server enforces the same minimum); short codes are trivially brute-forced.',
   ]],
   ['src/client/features/share/share-helpers.ts', [
+    '/**\n * The ranges every share analytics surface offers, in one place: the dashboard\'s segmented control\n * and the single-note modal both draw this list, so "30d" can never mean two different windows.\n */',
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
   ]],
   ['src/client/features/share/share-hub-sidebar.tsx', [

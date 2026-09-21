@@ -1,4 +1,18 @@
+import type { ShareTimelineRange } from '@shared/types'
 import { t } from '../../lib/i18n'
+
+/**
+ * The ranges every share analytics surface offers, in one place: the dashboard's segmented control
+ * and the single-note modal both draw this list, so "30d" can never mean two different windows.
+ */
+export function rangeOptions(): Array<{ value: ShareTimelineRange; label: string }> {
+  return [
+    { value: '24h', label: '24h' },
+    { value: '7d', label: '7d' },
+    { value: '30d', label: '30d' },
+    { value: 'all', label: t('share.range_all') },
+  ]
+}
 
 export function countryFlag(countryCode: string | null | undefined): string {
   if (!countryCode || countryCode === 'UNKNOWN' || countryCode.length !== 2) {
