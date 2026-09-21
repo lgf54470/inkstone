@@ -3143,6 +3143,11 @@ const allowed = new Map([
     '// Feed the notes store\'s visibility projection (shared note ids) without',
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
+    '//',
+    '// The projection is derived from exactly two state slices, so the two references are',
+    '// remembered and any other write returns immediately: a keystroke, a row selection or a',
+    '// view toggle produces a new state object with the same arrays, and rebuilding the id set',
+    '// for it would allocate and then compare every row to reach the same answer.',
     '// Before the hub loads the full list, the startup summary set carries the',
     '// shared view\'s membership; list membership wins as soon as it exists.',
   ]],
@@ -3185,6 +3190,11 @@ const allowed = new Map([
   ['src/client/features/share/share-store/shares.ts', [
     '// Zero views on a paused row is the only client-side signal that this note has never been public.',
     '/* The row is outside the current filter (e.g. just enabled under the\n       paused filter); only a reload knows whether and where it now belongs. */',
+  ]],
+  ['src/client/features/share/share-store/visibility-subscribe.test.ts', [
+    '/**\n * SH-76: the projection the notes store reads is derived from `shares` and `summary` alone,\n * but the subscriber used to rebuild its id set on every store write — including every\n * keystroke and every row selection — and then compare it to the previous one to discover\n * nothing had changed. The test distinguishes the two behaviours at the boundary it can\n * observe: whether the push happens at all for a write that cannot have changed the answer.\n */',
+    '// Unrelated slices: same `shares` array, same `summary` — none of these can change the projection.',
+    '// A new array holding the same notes is still a new input, so the projection is rebuilt.',
   ]],
   ['src/client/features/share/share-table-view/row.tsx', [
     '// A date inside EXPIRING_SOON_DAYS is the row a person may want to extend, so it wears the',

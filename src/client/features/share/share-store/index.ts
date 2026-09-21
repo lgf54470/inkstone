@@ -47,7 +47,18 @@ export { isNoteShared, selectShareRow, shareRowIndex, useNoteIsShared, useShareR
 // Feed the notes store's visibility projection (shared note ids) without
 // creating a store → feature import edge: selectors read the neutral registry
 // in store/visibility-sources.ts, not this module.
+//
+// The projection is derived from exactly two state slices, so the two references are
+// remembered and any other write returns immediately: a keystroke, a row selection or a
+// view toggle produces a new state object with the same arrays, and rebuilding the id set
+// for it would allocate and then compare every row to reach the same answer.
+let projectedShares: ShareStoreState['shares'] | null = null
+let projectedSummary: ShareStoreState['summary'] | null = null
+
 useShareStore.subscribe((state) => {
+  if (state.shares === projectedShares && state.summary === projectedSummary) return
+  projectedShares = state.shares
+  projectedSummary = state.summary
   pushVisibilitySnapshot({
     ...getVisibilitySnapshot(),
     // Before the hub loads the full list, the startup summary set carries the
