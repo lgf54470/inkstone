@@ -3019,6 +3019,9 @@ const allowed = new Map([
   ['src/client/features/share/share-helpers.ts', [
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
   ]],
+  ['src/client/features/share/share-hub-sidebar.tsx', [
+    '/* The only way to create a folder or a tag, so it may not be hidden until a pointer can\n              hover: it is drawn on every screen without hover (below `md`), and on the wide layout it\n              appears for the pointer and for the keyboard alike. */',
+  ]],
   ['src/client/features/share/share-item-common.tsx', [
     '/**\n * Pin and star, as the two named toggles every share row and card carries. Both stay quiet until\n * they are pointed at, because a list holds many of them; the pinned and starred ones keep the\n * accent fill the component draws for a pressed toggle.\n */',
   ]],
@@ -6321,6 +6324,10 @@ const allowed = new Map([
     '// is banned here.',
     '// The public reader page renders without the app\'s i18n runtime; its title',
     '// fallback is tracked outside SH-34.',
+  ]],
+  ['tests/share-hidden-controls.test.ts', [
+    '/**\n * SH-51: the share center\'s only way to create a folder or a tag was a `+` control revealed by\n * hovering its section header. It stayed keyboard-focusable but invisible while focused (WCAG 2.4.7\n * focus visible), and a touch device has no hover at all, so the one entry to those features could\n * not be found. The app already has the answer everywhere else — `opacity-100 md:opacity-0` with a\n * reveal for the pointer *and* for the keyboard — and this guard keeps the share feature on it.\n *\n * Two rules, both read off the class list on the line that hides something: a hidden control must\n * come back when it has the keyboard (`focus-visible`), and it may only be hidden from the `md`\n * breakpoint up, because below that width there is no hover to reveal it with.\n */',
+    '/** Furniture that is not a control and is allowed to stay hidden — none of these today. */',
   ]],
   ['tests/share-routes.test.ts', [
     '// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =',

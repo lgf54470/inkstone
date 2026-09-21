@@ -101,11 +101,14 @@ function SidebarSection({ isOpen, onToggle, title, addLabel, onAdd, children }: 
           {title}
         </Button>
         <Tooltip label={addLabel} side='left'>
+          {/* The only way to create a folder or a tag, so it may not be hidden until a pointer can
+              hover: it is drawn on every screen without hover (below `md`), and on the wide layout it
+              appears for the pointer and for the keyboard alike. */}
           <IconButton
             label={addLabel}
             size='sm'
             onClick={onAdd}
-            className='opacity-0 group-hover/head:opacity-100 transition-opacity'
+            className='opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100'
           >
             <Plus size={13} />
           </IconButton>
