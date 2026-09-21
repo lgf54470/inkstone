@@ -101,4 +101,5 @@ export const messages = {
 'share.view_all_logs': 'View All Logs',
 'share.visit_logs_desc': 'Inspect full visitor streams, referrers, and client devices with multi-dimensional filtering, CSV export, and retention cleanup',
 'share.visit_logs_title': 'Visit Logs',
+'share.visitor_count_note': 'Unique visitors are counted from a hashed address and browser with a salt that changes every UTC day — the same person counts once a day, and visitors behind one address count as one.',
 }

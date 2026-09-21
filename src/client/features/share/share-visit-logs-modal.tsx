@@ -58,6 +58,11 @@ export function ShareVisitLogsModal({
       <div className='flex flex-col gap-3'>
         <VisitLogsToolbar bundle={bundle} />
         <LogsTable bundle={bundle} />
+        {/* The table lists fingerprints, not people: the same visitor counts once per UTC day, and
+            everyone behind one address shares one. Saying so is what keeps a UV number readable. */}
+        <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+          {t('share.visitor_count_note')}
+        </p>
         {bundle.data && bundle.data.totalPages > 1 && <PaginationFooter bundle={bundle} />}
       </div>
     </Modal>

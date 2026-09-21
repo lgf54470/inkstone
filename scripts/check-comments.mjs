@@ -3208,6 +3208,12 @@ const allowed = new Map([
   ['src/client/features/share/share-visit-logs-menu.test.ts', [
     '// Opens the clean menu with a real click and picks the wipe-everything entry.',
   ]],
+  ['src/client/features/share/share-visit-logs-modal.tsx', [
+    '/* The table lists fingerprints, not people: the same visitor counts once per UTC day, and\n            everyone behind one address shares one. Saying so is what keeps a UV number readable. */',
+  ]],
+  ['src/client/features/share/share-visitor-count-note.test.ts', [
+    '/**\n * SH-83: UV is a salted fingerprint count — once per person per UTC day, and one bucket per address\n * however many people sit behind it. Neither the KPI nor the log table could be read that way from\n * the screen alone, so the log view now states it; this pins that the sentence is really there.\n */',
+  ]],
   ['src/client/features/share/use-share-hub-modal.ts', [
     '// One auto-open per hub session: `shares` refreshes after saving or a',
     '// manual reload, and re-firing would reopen the modal the user closed.',
