@@ -3,20 +3,11 @@ import { PanelLeft, Share2, X } from 'lucide-react'
 import { Drawer, Modal } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { t } from '../../lib/i18n'
-import { formatNumber } from '../../lib/time'
 import { useBreakpoint } from '../../lib/hooks'
 import { Z_INDEX } from '../../lib/z-index'
 import type { ShareHubModalBundle } from './use-share-hub-modal'
 import { useShareHubModal } from './use-share-hub-modal'
 import { ShareHubSidebar } from './share-hub-sidebar'
-import { ShareHubToolbar } from './share-hub-toolbar'
-import { ShareTableView } from './share-table-view'
-import { ShareGridView } from './share-grid-view'
-import { ShareDashboardView } from './share-dashboard-view'
-import { ShareCollectionsPanel } from './share-collections-panel'
-import { ShareBatchBar } from './share-batch-bar'
-import { LoadErrorState } from './share-load-error'
-import { useShareStore } from './share-store'
 import { ShareQrModal } from './share-qr-modal'
 import { ShareEditModal } from './share-edit-modal'
 import { ShareNoteAnalyticsModal } from './share-note-analytics-modal'
@@ -101,93 +92,23 @@ function HubHeader({ onClose, onOpenSidebar }: {
   )
 }
 
-function ListTruncatedNotice() {
-  const truncated = useShareStore((s) => s.truncated)
-  // The row count, not a number copied into the sentence: the server's ceiling can be raised,
-  // and a sentence that spelled "500" out would go on saying it whatever the list now holds.
-  const shown = useShareStore((s) => s.shares.length)
-  if (!truncated) return null
-  return (
-    <div
-      role='status'
-      className='shrink-0 border-b border-[var(--border-subtle)] bg-[var(--warning-soft)] px-4 py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'
-    >
-      {t('share.list_truncated', { count: formatNumber(shown) })}
-    </div>
-  )
-}
-
+/**
+ * The open category's view, whichever it is. The shell hands over the callbacks it can serve and
+ * nothing else: what the view paints, and what it needed loaded to paint it, is the view's own
+ * declaration (`./share-hub-views`).
+ */
 function HubContent({ hub }: { hub: ShareHubModalBundle }) {
-  const { category, selectedNoteIds, clearSelection } = hub
-  // Two categories paint themselves: the dashboard reads the analytics endpoints and the collections
-  // panel reads the collections endpoint, so neither may be handed the share list's toolbar and
-  // selection bar — those act on rows that are not on screen.
-  if (category === 'collections') {
-    return (
-      <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden'>
-        <ShareCollectionsPanel />
-      </div>
-    )
-  }
-  if (category === 'dashboard') {
-    return (
-      <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden'>
-        <ShareDashboardView
-          onSelectNoteAnalytics={(noteId) => hub.setAnalyticsNoteId(noteId)}
-          onOpenLogs={() => hub.openLogs()}
-        />
-      </div>
-    )
-  }
+  const View = hub.view.Component
   return (
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)] overflow-hidden'>
-      <ShareHubToolbar
-        onOpenLogs={() => hub.openLogs()}
-        onOpenSettings={() => hub.setIsSettingsOpen(true)}
-      />
-      <ListTruncatedNotice />
-      <HubListBody hub={hub} />
-      <ShareBatchBar
-        selectedCount={selectedNoteIds.size}
-        onClearSelection={clearSelection}
-      />
-    </div>
-  )
-}
-
-function HubListBody({ hub }: { hub: ShareHubModalBundle }) {
-  const { viewMode, shares, loading, error, loadShares, openQr, openAnalytics, openEdit } = hub
-  return (
-    <div className='flex-1 overflow-y-auto'>
-      {loading && shares.length === 0 ? (
-        <div className='flex h-64 items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
-          {t('common.loading')}
-        </div>
-      ) : error && shares.length === 0 ? (
-        <div className='p-5'>
-          <LoadErrorState label={t('share.list_load_failed')} onRetry={() => void loadShares()} />
-        </div>
-      ) : viewMode === 'table' ? (
-        <ShareTableView
-          shares={shares}
-          onOpenQr={openQr}
-          onOpenAnalytics={openAnalytics}
-          onOpenEdit={openEdit}
-        />
-      ) : (
-        <ShareGridView
-          shares={shares}
-          onOpenQr={openQr}
-          onOpenAnalytics={openAnalytics}
-          onOpenEdit={openEdit}
-        />
-      )}
+      <View {...hub.viewProps} />
     </div>
   )
 }
 
 function HubOverlays({ hub }: { hub: ShareHubModalBundle }) {
   const { qrShare, setQrShare, editShare, setEditShare, loadShares } = hub
+
   return (
     <>
       {qrShare && (
@@ -216,7 +137,7 @@ function HubOverlays({ hub }: { hub: ShareHubModalBundle }) {
 }
 
 function HubInsightOverlays({ hub }: { hub: ShareHubModalBundle }) {
-  const { analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, logsNoteId, setLogsNoteId, isSettingsOpen, setIsSettingsOpen, openLogs, setQrShare } = hub
+  const { analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, logsNoteId, setLogsNoteId, isSettingsOpen, setIsSettingsOpen, viewProps, setQrShare } = hub
   return (
     <>
       {analyticsNoteId && (
@@ -225,7 +146,7 @@ function HubInsightOverlays({ hub }: { hub: ShareHubModalBundle }) {
           onClose={() => setAnalyticsNoteId(null)}
           noteId={analyticsNoteId}
           onOpenQr={(url, title, slug) => setQrShare({ url, title, slug })}
-          onOpenLogs={() => openLogs(analyticsNoteId)}
+          onOpenLogs={() => viewProps.onOpenLogs(analyticsNoteId)}
         />
       )}
 

@@ -23,7 +23,12 @@ interface RowCalls {
 }
 
 type ShareListSnapshot = { handleCopy: unknown; handleMoveToFolder: unknown; handleRevoke: unknown }
-type HubOverlayCallbacks = { openQr: (share: ShareInfo) => void; openAnalytics: (share: ShareInfo) => void; openEdit: (share: ShareInfo) => void }
+/** The three callbacks the hub hands a row: two addressed by share, one by note id. */
+type HubOverlayCallbacks = {
+  onOpenQr: (share: ShareInfo) => void
+  onOpenNoteAnalytics: (noteId: string) => void
+  onOpenEdit: (share: ShareInfo) => void
+}
 
 function makeShare(noteId: string, overrides: Partial<ShareInfo> = {}): ShareInfo {
   return {
@@ -150,18 +155,24 @@ describe('list and hub handler stability (SH-22)', () => {
     expect(seen[1].handleRevoke).toBe(seen[0].handleRevoke)
   })
 
-  it('hub modal exposes stable openQr/openAnalytics/openEdit callbacks', () => {
+  it('hub modal exposes stable row callbacks, and the view they belong to', () => {
+    // The object handed to the open view is memoized as a whole: the rows it reaches are memoized
+    // too, so a fresh callback per render would redraw every one of them (and with it the menu the
+    // user just opened).
     function HubProbe({ onResult }: { onResult: (hub: HubOverlayCallbacks) => void }) {
-      const { openQr, openAnalytics, openEdit } = useShareHubModal(false)
-      onResult({ openQr, openAnalytics, openEdit })
+      const { viewProps } = useShareHubModal(false)
+      onResult(viewProps)
       return null
     }
     const seen = renderTwice<HubOverlayCallbacks>(HubProbe)
     expect(seen.length).toBeGreaterThanOrEqual(2)
     const [first, last] = [seen[0], seen[seen.length - 1]]
-    expect(first.openQr).toBeTypeOf('function')
-    expect(last.openQr).toBe(first.openQr)
-    expect(last.openAnalytics).toBe(first.openAnalytics)
-    expect(last.openEdit).toBe(first.openEdit)
+    expect(first.onOpenQr).toBeTypeOf('function')
+    // The object itself, not just its members: the view is handed it as a prop, and a fresh object per
+    // render is a fresh prop for every memoized row below it.
+    expect(last).toBe(first)
+    expect(last.onOpenQr).toBe(first.onOpenQr)
+    expect(last.onOpenNoteAnalytics).toBe(first.onOpenNoteAnalytics)
+    expect(last.onOpenEdit).toBe(first.onOpenEdit)
   })
 })

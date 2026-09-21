@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ShareInfo } from '@shared/types'
 import { useShareStore } from './share-store'
+import { SHARE_HUB_VIEWS, type ShareHubViewProps } from './share-hub-views'
 
 export type ShareHubModalBundle = ReturnType<typeof useShareHubModal>
 
@@ -9,16 +10,12 @@ type ShareHubQrData = { url: string; title: string; slug: string }
 
 type ShareHubEditData = { share: ShareInfo | null; noteId: string; title: string }
 
-export function useShareHubModal(open: boolean, initialNoteId?: string) {
-  const category = useShareStore((s) => s.category)
-  const viewMode = useShareStore((s) => s.viewMode)
-  const shares = useShareStore((s) => s.shares)
-  const loading = useShareStore((s) => s.loading)
-  const error = useShareStore((s) => s.error)
-  const selectedNoteIds = useShareStore((s) => s.selectedNoteIds)
-  const clearSelection = useShareStore((s) => s.clearSelection)
-  const loadShares = useShareStore((s) => s.loadShares)
-
+/**
+ * The overlays the hub can open, and the callbacks a view opens them through. It is its own hook
+ * because a view never touches this state: it asks the shell to open something, and the shell holds
+ * the one of each that is open.
+ */
+function useHubOverlays() {
   const [qrShare, setQrShare] = useState<ShareHubQrData | null>(null)
   const [editShare, setEditShare] = useState<ShareHubEditData | null>(null)
   const [analyticsNoteId, setAnalyticsNoteId] = useState<string | null>(null)
@@ -35,22 +32,48 @@ export function useShareHubModal(open: boolean, initialNoteId?: string) {
     setIsSettingsOpen(false)
   }, [])
 
-  useHubOpenLifecycle({ open, initialNoteId, clearSelection, closeOverlays })
-  useInitialNoteEdit({ open, initialNoteId, shares, setEditShare })
-
   const openQr = useCallback((share: ShareInfo) => setQrShare({ url: share.url, title: share.noteTitle || '', slug: share.slug }), [])
-  const openAnalytics = useCallback((share: ShareInfo) => setAnalyticsNoteId(share.noteId), [])
   const openEdit = useCallback((share: ShareInfo) => setEditShare({ share: share.slug ? share : null, noteId: share.noteId, title: share.noteTitle || '' }), [])
   const openLogs = useCallback((noteId?: string) => {
     setLogsNoteId(noteId ?? null)
     setIsLogsOpen(true)
   }, [])
 
+  // One object, built once: the rows it reaches are memoized, so a fresh callback per render would
+  // redraw every one of them.
+  const viewProps: ShareHubViewProps = useMemo(() => ({
+    onOpenQr: openQr,
+    onOpenEdit: openEdit,
+    onOpenNoteAnalytics: setAnalyticsNoteId,
+    onOpenLogs: openLogs,
+    onOpenSettings: () => setIsSettingsOpen(true),
+  }), [openQr, openEdit, openLogs])
+
   return {
-    category, viewMode, shares, loading, error, selectedNoteIds, clearSelection, loadShares,
+    viewProps, closeOverlays, openQr, openEdit, openLogs,
     qrShare, setQrShare, editShare, setEditShare,
-    openQr, openAnalytics, openEdit, openLogs,
     analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, logsNoteId, setLogsNoteId, isSettingsOpen, setIsSettingsOpen,
+  }
+}
+
+export function useShareHubModal(open: boolean, initialNoteId?: string) {
+  const category = useShareStore((s) => s.category)
+  const shares = useShareStore((s) => s.shares)
+  const clearSelection = useShareStore((s) => s.clearSelection)
+  const loadShares = useShareStore((s) => s.loadShares)
+  const overlays = useHubOverlays()
+  const { closeOverlays, setEditShare } = overlays
+
+  useHubOpenLifecycle({ open, initialNoteId, clearSelection, closeOverlays })
+  useInitialNoteEdit({ open, initialNoteId, shares, setEditShare })
+
+  // The view comes from the registry, so the hub never decides what a category looks like — only that
+  // this is the one that is open.
+  return {
+    ...overlays,
+    category,
+    view: SHARE_HUB_VIEWS[category],
+    shares, clearSelection, loadShares,
   }
 }
 
@@ -76,11 +99,10 @@ function useHubOpenLifecycle({ open, initialNoteId, clearSelection, closeOverlay
       closeOverlays()
       return
     }
-    // The two self-loading categories ask only for the counters; a note handed in to edit needs the
-    // list itself, since that is where the row to edit lives.
-    const category = useShareStore.getState().category
-    const isSelfLoading = category === 'dashboard' || category === 'collections'
-    if (initialNoteId || !isSelfLoading) void loadShares()
+    // What to fetch first is the open view's own declaration, not a list of category names kept here:
+    // a note handed in to edit needs the list itself, since that is where the row to edit lives.
+    const { preload } = SHARE_HUB_VIEWS[useShareStore.getState().category]
+    if (initialNoteId || preload === 'list') void loadShares()
     else void loadStats()
   }, [open, initialNoteId, loadShares, loadStats, clearSelection, closeOverlays])
 }

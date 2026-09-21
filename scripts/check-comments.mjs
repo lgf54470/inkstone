@@ -3264,15 +3264,14 @@ const allowed = new Map([
     '// working (ADR-0004).',
   ]],
   ['src/client/features/share/share-hub-modal.tsx', [
-    '// The row count, not a number copied into the sentence: the server\'s ceiling can be raised,',
-    '// and a sentence that spelled "500" out would go on saying it whatever the list now holds.',
-    '// Two categories paint themselves: the dashboard reads the analytics endpoints and the collections',
-    '// panel reads the collections endpoint, so neither may be handed the share list\'s toolbar and',
-    '// selection bar — those act on rows that are not on screen.',
+    '/**\n * The open category\'s view, whichever it is. The shell hands over the callbacks it can serve and\n * nothing else: what the view paints, and what it needed loaded to paint it, is the view\'s own\n * declaration (`./share-hub-views`).\n */',
   ]],
   ['src/client/features/share/share-hub-open-loads.test.ts', [
     '/** Drain the mocked request\'s microtasks inside act, so the store write is not a stray update. */',
     '/**\n * SH-72: the hub lands on the dashboard, which paints the sidebar counters but none\n * of the share rows — yet every open used to fetch the whole list, and with it the\n * per-note visit stats. The counters now have their own cheap answer, and the list is\n * asked for only when something on the screen will actually read it.\n */',
+  ]],
+  ['src/client/features/share/share-hub-preload.test.ts', [
+    '/**\n * The shell fetches what the open view declares it needs. Today every category\'s declaration agrees\n * with a hardcoded list of the two self-loading ones, so no rendering of the real registry can tell\n * the two implementations apart — a mutation that puts the category list back therefore survives\n * every behavioral test, and the guarantee would quietly become "the shell knows which categories\n * read their own data again".\n *\n * So this suite swaps one declaration for an answer that disagrees with the old list: opening the\n * dashboard must fetch the rows, because that is what the registry now says. A shell that reads its\n * own memory of category names fails here and nowhere else.\n */',
   ]],
   ['src/client/features/share/share-hub-sidebar.tsx', [
     '// The shell\'s own badge rule (`countBadgeTone`): the selected row sits on the accent',
@@ -3282,6 +3281,22 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-hub-toolbar.tsx', [
     '/**\n * The options are the shared vocabulary, so the toolbar cannot offer a status the worker would refuse\n * or omit one it knows; only the labels are the client\'s business.\n */',
+  ]],
+  ['src/client/features/share/share-hub-views.test.ts', [
+    '/**\n * The hub used to special-case two categories inside the list shell: the dashboard and the\n * collections panel painted themselves, and the opening fetch had to know which of the twelve\n * categories reads an endpoint the others do not. Each category is now a view that declares what it\n * needs, so the shell picks one and hands it callbacks — and these are the two things that can still\n * go wrong: the shell routing a category to the wrong view, and a view silently reading data\n * belonging to another.\n */',
+    '/** What opening one category actually asked the API for, then leaves the screen as it found it. */',
+    '/** The three views are told apart by what only they fetch: rows, the global reading, or collections. */',
+    '// `stats` is the counters alone; `list` carries the rows. Asking for the wrong one is either a',
+    '// panel with no numbers or a screen that paid for rows it never draws (SH-72).',
+    '// The ten status categories differ only in the filter the store holds; ten components would be ten',
+    '// places for the toolbar to drift apart.',
+  ]],
+  ['src/client/features/share/share-hub-views.tsx', [
+    '/**\n * What each hub category is: one view, and what the hub has to have loaded before it can paint. The\n * shell above it decides only which category is open — it does not know that two of them read\n * endpoints the others never touch, which is what used to be written out in the shell twice (once for\n * what to render, once for what to preload) and had to be kept in step by hand.\n *\n * The callbacks are the *shell\'s* intents — open this overlay for this row — so a view never reaches\n * into the hub\'s state, and the same props serve a list row and a dashboard card.\n */',
+    '/** Row actions, addressed by the share the row holds. */',
+    '/** Insight panels are addressed by note id: a dashboard card knows the note, not the share row. */',
+    '/**\n * `stats` is the one read two views share: the counters behind the sidebar, which come from the list\n * endpoint asked for on its own. A view that needs rows says `list`; a view that fetches on mount\n * needs neither, and says so by naming the counters it watches.\n */',
+    '/**\n * The two records together are the completeness check: a category joining `ShareCategory` stops\n * compiling until it is given a view, and a category that filters by status stops compiling until it\n * is listed here as one of these.\n */',
   ]],
   ['src/client/features/share/share-item-common.tsx', [
     '/**\n * Pin and star, as the two named toggles every share row and card carries. Both stay quiet until\n * they are pointed at, because a list holds many of them; the pinned and starred ones keep the\n * accent fill the component draws for a pressed toggle.\n */',
@@ -3295,6 +3310,13 @@ const allowed = new Map([
     '// The old copy read "showing the first 500 only" with the number typed into the sentence.',
     '// A placeholder is what makes the count follow the list; without one, two counts would',
     '// both read out the same sentence, and raising the server cap would leave the notice lying.',
+  ]],
+  ['src/client/features/share/share-list-view.tsx', [
+    '/**\n * Every status category\'s screen: the toolbar, the rows, and the batch bar that acts on the selection\n * those rows carry. It is the same view for all ten categories because they differ only in the filter\n * the store already holds — the category list is what picks the filter, not what the view does.\n */',
+    '// The rows are memoized, so the callback they receive has to keep its identity: the shell\'s intent',
+    '// is addressed by note id and a row only has the share, so the adapter lives here and is stable.',
+    '// The row count, not a number copied into the sentence: the server\'s ceiling can be raised,',
+    '// and a sentence that spelled "500" out would go on saying it whatever the list now holds.',
   ]],
   ['src/client/features/share/share-narrow-screen.test.ts', [
     '// A failed assertion must not leave a mounted portal behind: later tests query document.body.',
@@ -3437,6 +3459,14 @@ const allowed = new Map([
     '// A date inside EXPIRING_SOON_DAYS is the row a person may want to extend, so it wears the',
     '// warning tone the category and the batch-extension flow use for the same deadline.',
   ]],
+  ['src/client/features/share/share-table-view/table-view.test.ts', [
+    '/** The three callbacks the hub hands a row: two addressed by share, one by note id. */',
+    '// The object handed to the open view is memoized as a whole: the rows it reaches are memoized',
+    '// too, so a fresh callback per render would redraw every one of them (and with it the menu the',
+    '// user just opened).',
+    '// The object itself, not just its members: the view is handed it as a prop, and a fresh object per',
+    '// render is a fresh prop for every memoized row below it.',
+  ]],
   ['src/client/features/share/share-traffic-filter-popover.test.ts', [
     '/**\n * SH-50: the traffic filters were a hand-rolled panel — no role, no accessible name, focus left\n * where it was when it opened and never handed back when it closed. What the dialog has to keep is\n * the non-modal contract: it is named, the focus enters it, Escape (or a press outside) closes it,\n * and the control that opened it gets the keyboard back rather than the body.\n */',
     '/** The focus is moved on the frame after the open, so the frame is what the assertion waits for. */',
@@ -3495,14 +3525,22 @@ const allowed = new Map([
     '// The file describes the window currently on screen, so it is only offered once there is one.',
   ]],
   ['src/client/features/share/use-share-hub-modal.ts', [
+    '/**\n * The overlays the hub can open, and the callbacks a view opens them through. It is its own hook\n * because a view never touches this state: it asks the shell to open something, and the shell holds\n * the one of each that is open.\n */',
+    '// One object, built once: the rows it reaches are memoized, so a fresh callback per render would',
+    '// redraw every one of them.',
+    '// The view comes from the registry, so the hub never decides what a category looks like — only that',
+    '// this is the one that is open.',
     '/**\n * What opening and closing the hub means: closing drops the selection and every overlay,\n * opening fetches what this session will read first. The hub lands on the dashboard, which\n * paints the sidebar counters but none of the rows — and both come from the same list\n * response, so the counters are asked for alone unless the list is really needed (a note\n * handed in to edit, or a list category as the landing view). Picking a category loads the\n * list through the store either way.\n */',
-    '// The two self-loading categories ask only for the counters; a note handed in to edit needs the',
-    '// list itself, since that is where the row to edit lives.',
+    '// What to fetch first is the open view\'s own declaration, not a list of category names kept here:',
+    '// a note handed in to edit needs the list itself, since that is where the row to edit lives.',
     '// One auto-open per hub session: `shares` refreshes after saving or a',
     '// manual reload, and re-firing would reopen the modal the user closed.',
   ]],
   ['src/client/features/share/use-share-hub-sidebar.tsx', [
     '// Inside the mobile drawer a pick is also the intent to return to the list, so navigation closes it.',
+  ]],
+  ['src/client/features/share/use-share-list-view.ts', [
+    '/**\n * The list view\'s data: the rows behind every status category, the four states a caller has to paint\n * for them, and the selection the batch bar acts on.\n *\n * It reads the store rather than fetching, because the rows are shared: a category pick, a mutation\n * and the hub\'s own opening all reload the same list through it. What this hook buys is that the hub\n * shell does not know any of that — it picks a view and hands it its callbacks.\n */',
   ]],
   ['src/client/features/share/use-share-list.ts', [
     '// Stable identities keep the memoized table rows from re-rendering when an',
