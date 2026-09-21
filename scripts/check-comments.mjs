@@ -3088,6 +3088,10 @@ const allowed = new Map([
     '/**\n * The ranges every share analytics surface offers, in one place: the dashboard\'s segmented control\n * and the single-note modal both draw this list, so "30d" can never mean two different windows.\n */',
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
   ]],
+  ['src/client/features/share/share-hub-modal.tsx', [
+    '// The row count, not a number copied into the sentence: the server\'s ceiling can be raised,',
+    '// and a sentence that spelled "500" out would go on saying it whatever the list now holds.',
+  ]],
   ['src/client/features/share/share-hub-open-loads.test.ts', [
     '/** Drain the mocked request\'s microtasks inside act, so the store write is not a stray update. */',
     '/**\n * SH-72: the hub lands on the dashboard, which paints the sidebar counters but none\n * of the share rows — yet every open used to fetch the whole list, and with it the\n * per-note visit stats. The counters now have their own cheap answer, and the list is\n * asked for only when something on the screen will actually read it.\n */',
@@ -3103,6 +3107,13 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-list-empty.tsx', [
     '/** What both list views draw when the current filter matches no shares. */',
+  ]],
+  ['src/client/features/share/share-list-truncated.test.ts', [
+    '/**\n * SH-77 closed virtualization as unjustified — the list is capped server side — and that\n * close is only honest while the cap *is* disclosed. The sentence used to spell the number\n * out ("the first 500 only"), so raising the ceiling would have left the notice stating a\n * bound the list no longer had. The count now comes from the rows on screen.\n */',
+    '// The real messages, so the count is read out of the sentence rather than from a key echo.',
+    '// The old copy read "showing the first 500 only" with the number typed into the sentence.',
+    '// A placeholder is what makes the count follow the list; without one, two counts would',
+    '// both read out the same sentence, and raising the server cap would leave the notice lying.',
   ]],
   ['src/client/features/share/share-narrow-screen.test.ts', [
     '// A failed assertion must not leave a mounted portal behind: later tests query document.body.',

@@ -20,7 +20,7 @@ export const messages = {
 'share.leave_blank_to_keep_the_current_passcode': '留空表示保持原来的口令不变',
 'share.link_revoked': '链接已撤销',
 'share.list_load_failed': '无法加载分享链接列表。',
-'share.list_truncated': '分享数量超过 500 条，当前仅显示前 500 条。',
+'share.list_truncated': '当前仅显示前 {count} 条分享，还有更多未显示。',
 'share.loading_share_status': '读取分享状态…',
 'share.could_not_load_sharing_status': '无法读取分享状态',
 'share.never_expires': '永久',

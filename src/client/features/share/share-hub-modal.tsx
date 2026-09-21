@@ -3,6 +3,7 @@ import { PanelLeft, Share2, X } from 'lucide-react'
 import { Drawer, Modal } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { t } from '../../lib/i18n'
+import { formatNumber } from '../../lib/time'
 import { useBreakpoint } from '../../lib/hooks'
 import { Z_INDEX } from '../../lib/z-index'
 import type { ShareHubModalBundle } from './use-share-hub-modal'
@@ -101,13 +102,16 @@ function HubHeader({ onClose, onOpenSidebar }: {
 
 function ListTruncatedNotice() {
   const truncated = useShareStore((s) => s.truncated)
+  // The row count, not a number copied into the sentence: the server's ceiling can be raised,
+  // and a sentence that spelled "500" out would go on saying it whatever the list now holds.
+  const shown = useShareStore((s) => s.shares.length)
   if (!truncated) return null
   return (
     <div
       role='status'
       className='shrink-0 border-b border-[var(--border-subtle)] bg-[var(--warning-soft)] px-4 py-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'
     >
-      {t('share.list_truncated')}
+      {t('share.list_truncated', { count: formatNumber(shown) })}
     </div>
   )
 }
