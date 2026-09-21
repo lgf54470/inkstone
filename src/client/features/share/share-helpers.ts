@@ -47,12 +47,37 @@ export function countryNameLocalized(countryCode: string | null | undefined, loc
   }
 }
 
+/**
+ * How the three traffic switches read as one sentence. The badge and the exported CSV both state
+ * this, and a file that describes the filters differently from the screen is worse than no file.
+ */
+export function trafficFilterLabel(
+  excludeBots: boolean,
+  excludeSelfReferrers: boolean,
+  excludeOwner: boolean,
+): string {
+  if (excludeBots) return t('share.filter_real_visitors_badge')
+  if (!excludeSelfReferrers && !excludeOwner) return t('share.filter_all_traffic_badge')
+  return t('share.filter_custom_traffic_badge')
+}
+
 export function localizeReferrerName(name: string): string {
   return name === 'Direct' ? t('share.direct_access') : name
 }
 
 export function localizeEnvName(name: string | null | undefined): string {
   if (!name || name.toLowerCase() === 'other') return t('share.env_unknown')
+  return name
+}
+
+/**
+ * The three device classes the breakdown card names in words. Shared with the dashboard export so a
+ * file that leaves the app says "Desktop" where the card said "Desktop", not the raw `desktop`.
+ */
+export function localizeDeviceName(name: string): string {
+  if (name === 'desktop') return t('share.device_desktop')
+  if (name === 'mobile') return t('share.device_mobile')
+  if (name === 'tablet') return t('share.device_tablet')
   return name
 }
 
@@ -75,7 +100,7 @@ const CSV_FORMULA_LEAD = /^[=+\-@]/
  * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text
  * instead of evaluating a remote formula (CSV injection).
  */
-function csvCell(value: string | number | null | undefined): string {
+export function csvCell(value: string | number | null | undefined): string {
   const text = String(value ?? '').replace(CSV_CONTROL_CHARS, ' ')
   const safe = CSV_FORMULA_LEAD.test(text) ? `'${text}` : text
   return `"${safe.replace(/"/g, '""')}"`

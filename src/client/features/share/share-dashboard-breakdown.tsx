@@ -2,7 +2,7 @@ import { Compass, Globe2, Laptop } from 'lucide-react'
 import type { ShareGlobalAnalytics } from '@shared/types'
 import { BreakdownRow } from '../../components/dashboard-blocks'
 import { t } from '../../lib/i18n'
-import { countryFlag, countryNameLocalized, localizeEnvName, localizeReferrerName } from './share-helpers'
+import { countryFlag, countryNameLocalized, localizeDeviceName, localizeEnvName, localizeReferrerName } from './share-helpers'
 import { CardHeader, EmptyRow } from './share-dashboard-card-shell'
 
 /** Where the visitors came from, by country. */
@@ -97,11 +97,4 @@ export function DevicesBreakdownCard({ analytics }: { analytics: ShareGlobalAnal
       </div>
     </div>
   )
-}
-
-function localizeDeviceName(name: string): string {
-  if (name === 'desktop') return t('share.device_desktop')
-  if (name === 'mobile') return t('share.device_mobile')
-  if (name === 'tablet') return t('share.device_tablet')
-  return name
 }

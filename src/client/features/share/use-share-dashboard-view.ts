@@ -5,6 +5,8 @@ import { useLocale } from '../../lib/i18n'
 import { cancelLatestAnalyticsRequest, runLatestAnalyticsRequest } from './analytics-request'
 import { readAutoRefresh, useShareAutoRefresh, writeAutoRefresh } from './share-auto-refresh'
 import { useShareStore } from './share-store'
+import { useUi } from '../../store/ui'
+import { exportDashboardCsv } from './share-dashboard-export'
 
 type TrafficFilters = { excludeBots: boolean; excludeSelf: boolean; excludeOwner: boolean }
 
@@ -70,6 +72,10 @@ export function useShareDashboardView() {
 
   const data = useDashboardAnalytics(range, filters)
   const { analytics } = data
+  const toast = useUi((s) => s.toast)
+
+  // The file describes the window currently on screen, so it is only offered once there is one.
+  const exportCsv = () => exportDashboardCsv({ analytics, range, filters, locale, toast })
 
   const timelinePoints = analytics?.timeline || []
   const chartValues = timelinePoints.map((p) => (metricMode === 'views' ? p.views : p.visitors))
@@ -78,7 +84,7 @@ export function useShareDashboardView() {
   const filteredOwner = excludeOwner ? (analytics?.filterStats?.owner ?? 0) : 0
 
   return {
-    locale, range, setRange, metricMode, setMetricMode,
+    locale, range, setRange, metricMode, setMetricMode, filters, exportCsv,
     ...data,
     timelinePoints, chartValues,
     filteredBots, filteredSelf, filteredOwner,

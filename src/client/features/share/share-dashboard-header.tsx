@@ -1,4 +1,4 @@
-import { RefreshCw } from 'lucide-react'
+import { Download, RefreshCw } from 'lucide-react'
 import type { ShareTimelineRange } from '@shared/types'
 import { Segmented, Switch } from '../../components/form'
 import { IconButton } from '../../components/primitives'
@@ -43,7 +43,7 @@ export function DashboardHeader({ bundle }: { bundle: DashboardBundle }) {
 
 /** The range, the traffic filters, and the two ways to keep the window fresh: by hand, or on a cadence. */
 function DashboardControls({ bundle }: { bundle: DashboardBundle }) {
-  const { range, setRange, isLoading, loadData, autoRefresh, setAutoRefresh } = bundle
+  const { range, setRange, isLoading, loadData, autoRefresh, setAutoRefresh, exportCsv, analytics } = bundle
   return (
     <div className='flex items-center gap-2'>
       <Segmented
@@ -62,6 +62,17 @@ function DashboardControls({ bundle }: { bundle: DashboardBundle }) {
         onClick={() => void loadData(range)}
       >
         <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+      </IconButton>
+
+      {/* The numbers can leave the app with the window they describe; the handler itself says
+          "nothing on screen yet" rather than handing over an empty file. */}
+      <IconButton
+        size='sm'
+        label={t('share.export_csv')}
+        disabled={!analytics}
+        onClick={exportCsv}
+      >
+        <Download size={14} />
       </IconButton>
 
       <span className='whitespace-nowrap text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
