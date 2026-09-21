@@ -61,7 +61,7 @@ function SearchField({ value, onChange }: { value: string; onChange: (value: str
 
 function StatusSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value)} className='h-7 text-[length:var(--text-12)] py-0 px-2'>
+    <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label={t('share.status_filter_label')} className='h-7 text-[length:var(--text-12)] py-0 px-2'>
       <option value='all'>{t('share.status_all')}</option>
       <option value='active'>{t('share.status_active')}</option>
       <option value='pinned'>{t('share.category_pinned')}</option>
@@ -77,7 +77,7 @@ function StatusSelect({ value, onChange }: { value: string; onChange: (value: st
 
 function SortSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value)} className='h-7 text-[length:var(--text-12)] py-0 px-2'>
+    <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label={t('share.sort_label')} className='h-7 text-[length:var(--text-12)] py-0 px-2'>
       <option value='views_desc'>{t('share.sort_views_desc')}</option>
       <option value='views_asc'>{t('share.sort_views_asc')}</option>
       <option value='recent_visit'>{t('share.sort_recent_visit')}</option>

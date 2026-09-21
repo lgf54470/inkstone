@@ -16,7 +16,7 @@ import type {
     ShareTimelineRange,
 } from '@shared/types'
 import { BreakdownRow, KpiCard } from '../../components/dashboard-blocks'
-import { IconButton } from '../../components/primitives'
+import { Button, IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { relativeTime } from '../../lib/time'
 import { t } from '../../lib/i18n'
@@ -240,14 +240,9 @@ function TopNoteRow({ note, index, maxVal, onSelect }: {
       </div>
 
       {onSelect && (
-        <button
-          type='button'
-          onClick={() => onSelect(note.noteId)}
-          className='rounded p-1 text-[var(--text-quaternary)] hover:text-[var(--text-primary)]'
-          title={t('share.view_note_analytics')}
-        >
+        <IconButton size='sm' label={t('share.view_note_analytics')} onClick={() => onSelect(note.noteId)}>
           <ChevronRight size={14} />
-        </button>
+        </IconButton>
       )}
     </div>
   )
@@ -370,14 +365,15 @@ function RecentActivityCard({ analytics, onOpenLogs, locale }: {
           </span>
         </div>
         {onOpenLogs && (
-          <button
-            type='button'
+          <Button
+            variant='ghost'
+            size='sm'
             onClick={onOpenLogs}
-            className='flex items-center gap-1 text-[length:var(--text-11)] font-medium text-[var(--accent)] hover:underline'
+            trailing={<ExternalLink size={12} />}
+            className='h-auto px-0 text-[length:var(--text-11)] font-medium text-[var(--accent)] hover:bg-transparent hover:underline'
           >
-            <span>{t('share.view_all_logs')}</span>
-            <ExternalLink size={12} />
-          </button>
+            {t('share.view_all_logs')}
+          </Button>
         )}
       </div>
 

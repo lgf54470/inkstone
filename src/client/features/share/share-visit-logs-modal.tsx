@@ -15,7 +15,7 @@ import {
 import { useRef, useState } from 'react'
 import type { ShareVisitsResponse } from '@shared/types'
 import { Menu, Modal, type MenuItem } from '../../components/overlay'
-import { Input } from '../../components/form'
+import { Input, Segmented } from '../../components/form'
 import { Button, IconButton } from '../../components/primitives'
 import { relativeTime } from '../../lib/time'
 import { t, useLocale } from '../../lib/i18n'
@@ -69,10 +69,18 @@ function VisitLogsToolbar({ bundle }: { bundle: LogsBundle }) {
   return (
     <div className='flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2.5'>
       <div className='flex items-center gap-1'>
-        <FilterTab active={filter === 'all'} label={t('share.filter_all_traffic')} onClick={() => handleFilterChange('all')} />
-        <FilterTab active={filter === 'real'} label={t('share.filter_real_only')} onClick={() => handleFilterChange('real')} />
-        <FilterTab active={filter === 'bot'} label={t('share.filter_bot_only')} onClick={() => handleFilterChange('bot')} />
-        <FilterTab active={filter === 'owner'} label={t('share.filter_owner_only')} onClick={() => handleFilterChange('owner')} />
+        <Segmented
+          size='sm'
+          label={t('share.filter_traffic_title')}
+          value={filter}
+          onChange={handleFilterChange}
+          options={[
+            { value: 'all', label: t('share.filter_all_traffic') },
+            { value: 'real', label: t('share.filter_real_only') },
+            { value: 'bot', label: t('share.filter_bot_only') },
+            { value: 'owner', label: t('share.filter_owner_only') },
+          ]}
+        />
       </div>
 
       <div className='flex items-center gap-2'>
@@ -100,26 +108,6 @@ function VisitLogsToolbar({ bundle }: { bundle: LogsBundle }) {
         </IconButton>
       </div>
     </div>
-  )
-}
-
-function FilterTab({ active, label, onClick }: {
-  active: boolean
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type='button'
-      onClick={onClick}
-      className={`rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-11)] font-medium transition-colors ${
-        active
-          ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-      }`}
-    >
-      {label}
-    </button>
   )
 }
 

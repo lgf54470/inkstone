@@ -2,7 +2,7 @@ import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { IconButton } from '../../components/primitives'
+import { Button, IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
 import type { ShareHubSidebarBundle } from './use-share-hub-sidebar'
 import { useShareHubSidebar } from './use-share-hub-sidebar'
@@ -54,25 +54,26 @@ function CategoryList({ bundle }: { bundle: ShareHubSidebarBundle }) {
       {categories.map((cat) => {
         const isSelected = category === cat.id && !selectedFolderId && !selectedTag
         return (
-          <button
+          <Button
             key={cat.id}
-            type='button'
+            variant='ghost'
+            block
+            icon={cat.icon}
             onClick={() => selectCategory(cat.id)}
+            trailing={cat.count !== undefined && cat.count > 0
+              ? (
+                <span className='tabular ml-auto rounded bg-[var(--bg-card)] px-1.5 py-0.5 text-[length:var(--text-10)] font-medium text-[var(--text-tertiary)] shadow-[var(--shadow-sm)]'>
+                  {cat.count}
+                </span>
+              )
+              : undefined}
             className={cn(
-              'flex h-8 w-full items-center gap-2 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] font-medium transition-colors',
-              isSelected
-                ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+              'h-8 justify-start gap-2 px-2.5 text-[length:var(--text-12)] font-medium',
+              isSelected && 'bg-[var(--accent-soft)] font-semibold text-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]',
             )}
           >
-            {cat.icon}
-            <span className='flex-1 text-left'>{cat.label}</span>
-            {cat.count !== undefined && cat.count > 0 && (
-              <span className='tabular rounded bg-[var(--bg-card)] px-1.5 py-0.5 text-[length:var(--text-10)] font-medium text-[var(--text-tertiary)] shadow-[var(--shadow-sm)]'>
-                {cat.count}
-              </span>
-            )}
-          </button>
+            {cat.label}
+          </Button>
         )
       })}
     </div>
@@ -90,14 +91,15 @@ function SidebarSection({ isOpen, onToggle, title, addLabel, onAdd, children }: 
   return (
     <>
       <div className='group/head mb-1 flex items-center justify-between px-2'>
-        <button
-          type='button'
+        <Button
+          variant='ghost'
+          size='sm'
+          icon={isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
           onClick={onToggle}
-          className='flex items-center gap-1 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'
+          className='h-auto gap-1 px-0 text-[length:var(--text-11)] font-semibold text-[var(--text-quaternary)] hover:bg-transparent hover:text-[var(--text-secondary)]'
         >
-          {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          <span>{title}</span>
-        </button>
+          {title}
+        </Button>
         <Tooltip label={addLabel} side='left'>
           <IconButton
             label={addLabel}

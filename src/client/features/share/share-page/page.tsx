@@ -4,7 +4,7 @@ import { LIMITS } from '@shared/constants'
 import type { PublicNote } from '@shared/types'
 import { fullTime } from '../../../lib/time'
 import { readingMinutes, countText } from '@shared/markdown-utils'
-import { Avatar, Button, Logo } from '../../../components/primitives'
+import { Avatar, Button, IconButton, Logo } from '../../../components/primitives'
 import { Input } from '../../../components/form'
 import { LoadingBlock } from '../../../components/feedback'
 import { Tooltip } from '../../../components/overlay'
@@ -51,9 +51,9 @@ function SharePageHeader({ siteName, dark, onToggleTheme }: {
         </span>
         <span className='flex-1'/>
         <Tooltip label={t('share.switch_theme')} side='left'>
-          <button type='button' onClick={onToggleTheme} aria-label={t('share.switch_theme')} className='inline-flex size-9 items-center justify-center rounded-[var(--r-md)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] md:size-7'>
+          <IconButton label={t('share.switch_theme')} onClick={onToggleTheme} className='text-[var(--text-tertiary)]'>
             {dark ? <Sun size={14}/> : <Moon size={14}/>}
-          </button>
+          </IconButton>
         </Tooltip>
       </div>
     </header>

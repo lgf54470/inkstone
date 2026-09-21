@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { BarChart2, ExternalLink, Eye, FolderClosed, FolderInput, Lock, MoreHorizontal, QrCode, Settings2, Timer, Users } from 'lucide-react'
 import type { ShareFolder, ShareInfo } from '@shared/types'
 import { Checkbox, Switch } from '../../../components/form'
-import { IconButton } from '../../../components/primitives'
+import { Button, IconButton } from '../../../components/primitives'
 import { Menu, useContextMenu } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
 import { relativeTime } from '../../../lib/time'
@@ -76,10 +76,10 @@ function CardHeader({ share, isSelected, onToggleSelect, onTogglePin, onToggleSt
     <div className='flex items-start justify-between gap-2 pb-2'>
       <div className='flex items-center gap-1.5 min-w-0'>
         <Checkbox checked={isSelected} onChange={onToggleSelect} aria-label={share.noteTitle || t('common.untitled_note')} className='shrink-0 min-h-0' />
-        <PinStarButtons share={share} onTogglePin={onTogglePin} onToggleStar={onToggleStar} compact />
-        <button type='button' onClick={onOpenEdit} className='min-w-0 truncate text-left text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer'>
+        <PinStarButtons share={share} onTogglePin={onTogglePin} onToggleStar={onToggleStar} />
+        <Button variant='ghost' onClick={onOpenEdit} className='h-auto min-w-0 justify-start p-0 text-left text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] hover:bg-transparent hover:text-[var(--accent)] hover:underline'>
           {share.noteTitle || t('common.untitled_note')}
-        </button>
+        </Button>
       </div>
       <Switch checked={share.isEnabled} onChange={onToggleShare} label={t('share.share_switch_aria', { title: share.noteTitle || t('common.untitled_note') })} />
     </div>

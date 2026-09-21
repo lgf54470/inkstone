@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Bot, Globe, Info, ShieldAlert, ShieldCheck, UserCheck } from 'lucide-react'
 import { Switch } from '../../components/form'
+import { Button } from '../../components/primitives'
 import { useClickOutside, useEscape } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -34,18 +35,19 @@ export function ShareTrafficFilterPopover() {
 
   return (
     <div className='relative'>
-      <button
+      <Button
         ref={buttonRef}
-        type='button'
+        variant='ghost'
+        size='sm'
+        icon={isFilteringBots ? <ShieldCheck size={13} /> : <ShieldAlert size={13} />}
         onClick={() => setIsOpen((prev) => !prev)}
-        className={cn('flex h-7 items-center gap-1.5 rounded-[var(--r-md)] border px-2 text-[length:var(--text-12)] font-medium transition-colors', tone)}
         title={t('share.filter_traffic_title')}
         aria-haspopup='true'
         aria-expanded={isOpen}
+        className={cn('h-7 gap-1.5 rounded-[var(--r-md)] border px-2 text-[length:var(--text-12)] font-medium', tone)}
       >
-        {isFilteringBots ? <ShieldCheck size={13} /> : <ShieldAlert size={13} />}
         <span className='hidden sm:inline'>{label}</span>
-      </button>
+      </Button>
 
       {isOpen && <TrafficFilterPanel panelRef={panelRef} />}
     </div>

@@ -999,6 +999,11 @@ const allowed = new Map([
     '// live in the shell\'s own sidebar, and that is what tells them from the workspace header\'s Share',
     '// action, which carries the same name but asks for one note\'s share settings instead.',
     '/**\n * Opens the share center down the path a person takes. The list\'s own toolbar is the entry, and it\n * only draws in the shared view, so the Share nav entry comes first — through the shell\'s bottom bar\n * at phone width, where the sidebar lives in the navigation pane. The toolbar is waited for rather\n * than slept on: switching the view is a route change, and pressing before the control exists would\n * report an unopened surface as a broken one.\n */',
+    '/**\n * Picks one category in the share center\'s own sidebar, the way a person does: by its visible name.\n * The rows are buttons that carry their label as text (a count badge may ride behind it), so the\n * press lands on the one whose text starts with the name rather than on whatever matches first.\n */',
+    '// The dashboard is the category the hub opens on; the list is where the rows live — the share',
+    '// rows, their pin/star/copy controls and the toolbar. Switching to it in the sidebar is how a',
+    '// person gets there, and it is read for the same two things: the toolbar drew itself, and every',
+    '// control in it has a name axe accepts.',
     '// The shell holds its own inactive panes inert at this width, so "released" is asked of the opener',
     '// rather than of the page: the control the surface was opened from is back under the keyboard and',
     '// no longer inside an inert subtree, which is what a person finds when they press Escape.',
@@ -2986,6 +2991,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-helpers.ts', [
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
+  ]],
+  ['src/client/features/share/share-item-common.tsx', [
+    '/**\n * Pin and star, as the two named toggles every share row and card carries. Both stay quiet until\n * they are pointed at, because a list holds many of them; the pinned and starred ones keep the\n * accent fill the component draws for a pressed toggle.\n */',
   ]],
   ['src/client/features/share/share-narrow-screen.test.ts', [
     '// A failed assertion must not leave a mounted portal behind: later tests query document.body.',
@@ -6250,6 +6258,9 @@ const allowed = new Map([
     '// Exclude bots only:',
     '// All disabled:',
     '// With table alias:',
+  ]],
+  ['tests/share-bare-buttons.test.ts', [
+    '/**\n * SH-49: AGENTS.md rule 10 wants every interactive control in the share feature to come from the\n * component system (`components/primitives`, `components/form`, `components/overlay`), and it also\n * forbids imitating a control with a `div`/`span` plus a click handler. SH-33\'s guard already covers\n * the form controls (`input`/`select`/`textarea`); this one covers `button`, where the same rule was\n * being broken unnoticed — a bare `<button>` carries no accessible name of its own, and misses the\n * shared focus ring, hit area, disabled and busy behaviour the components bring.\n *\n * One file is allowed and named: `share-note-submenu.tsx` is the hand-rolled panel a note row\'s\n * Share entry opens. Its rows are not menu rows — `SubmenuList`\'s shared row is 40px tall on phones,\n * under the 44px touch target SH-35 fixed for this panel — and two of its views hold text inputs\n * inside a menu panel, so retiring it is its own change rather than a swap; it is tracked as SH-92\n * in .qoder/improvement/share/plan-freebuff.md. Both directions fail: an unlisted file that grows a\n * bare button, and a listing for a file that no longer needs one.\n */',
   ]],
   ['tests/share-bare-controls.test.ts', [
     '/**\n * SH-33: interactive controls inside the share feature must come from the\n * component system (`components/form`, `components/primitives`), not bare\n * `<input>` markup with hand-written styles. `share-note-submenu.tsx` keeps\n * two embedded search inputs out of this rule for now — they belong to the\n * hand-rolled submenu panel whose dedup is already a registered leftover.\n */',

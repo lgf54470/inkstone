@@ -1,7 +1,7 @@
 import { BarChart3, Check, Copy, Dices, ExternalLink, FolderClosed, Hash, LayoutGrid, Plus, QrCode, ShieldAlert, Trash2, X } from 'lucide-react'
 import { useId } from 'react'
 import { LIMITS } from '@shared/constants'
-import { Button } from '../../../components/primitives'
+import { Button, IconButton } from '../../../components/primitives'
 import { Input, Segmented, Select, Switch } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 import { KEEP_CURRENT_EXPIRY } from '../share-form'
@@ -86,6 +86,7 @@ export function ShareFolderCard({ b }: { b: ShareEditModalBundle }) {
       <Select
         value={shareFolderId ?? ''}
         onChange={(e) => setShareFolderId(e.target.value ? e.target.value : null)}
+        aria-label={t('share.folders_isolation')}
         className='w-full'
       >
         <option value=''>{t('navigation.unfiled')}</option>
@@ -115,9 +116,14 @@ export function ShareTagsCard({ b }: { b: ShareEditModalBundle }) {
             <span key={tagName} className='inline-flex items-center gap-1 rounded-[var(--r-sm)] bg-[var(--bg-hover)] border border-[var(--border-subtle)] px-2 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]'>
               <Hash size={10} className='text-[var(--accent)]' />
               <span>{tagName}</span>
-              <button type='button' onClick={() => handleRemoveTag(tagName)} aria-label={t('share.remove_tag')} className='text-[var(--text-quaternary)] hover:text-[var(--danger)]'>
+              <IconButton
+                size='sm'
+                label={t('share.remove_tag')}
+                onClick={() => handleRemoveTag(tagName)}
+                className='text-[var(--text-quaternary)] hover:bg-transparent hover:text-[var(--danger)]'
+              >
                 <X size={11} />
-              </button>
+              </IconButton>
             </span>
           ))
         )}

@@ -37,8 +37,8 @@
 | 07 | A | SH-71 | 两个 analytics hook 无 abort/epoch → 慢请求覆盖新请求 | 小 | ✅ | 3cd48d9b |
 | 08 | A | SH-55 | 首屏 `isLoading` 时 KPI 全渲染 0（缺"加载中"态） | 小 | ✅ | ⏳ 下项回填 |
 | 09 | A | — | 批次 A 收尾：全量串行回归 | — | ✅ | ⏳ 下项回填 |
-| 10 | B | SH-85 | 分享中心浏览器级门禁（e2e-visual 场景 + surface coverage） | 中 | ✅ | ⏳ 下项回填 |
-| 11 | C | SH-49 | 裸 `<button>` 绕过组件体系 + 新守卫 | 中 | ⬜ | |
+| 10 | B | SH-85 | 分享中心浏览器级门禁（e2e-visual 场景 + surface coverage） | 中 | ✅ | c62c1635 |
+| 11 | C | SH-49 | 裸 `<button>` 绕过组件体系 + 新守卫 | 中 | ✅ | ⏳ 下项回填 |
 | 12 | C | SH-50 | 流量过滤浮层：焦点管理 / role / 窄屏裁切 | 小–中 | ⬜ | |
 | 13 | C | SH-51 | hover-only「新建文件夹/标签」键盘不可见、触屏不可发现 | 小 | ⬜ | |
 | 14 | C | SH-53 | `expiring` 语义与标签不符，缺 ≤7d「即将到期」桶 | 小 | ⬜ | |
@@ -114,6 +114,8 @@
 | SH-89 | `src/client/features/blog/blog-dashboard-view/*` + `components/dashboard-blocks.tsx` | 与 SH-55 同类：博客看板首次加载时 KPI 也把 `null` 画成 0（共用 KpiCard），同样没有加载态 | 与 SH-55 同法加 `isLoading` 分支；若要共用则给 KpiCard 加可选 loading 属性，并跑 blog 侧回归 |
 | SH-90 | `scripts/e2e-visual.mjs` 的「slides editor: space and a drag pan the view」 | 同一份代码、同一实例连跑三次得到两种结果（1 绿 2 红，失败时 `scrollLeft` 停在 0），失败都在机器被另一条线程的浏览器门禁占满时出现——断言本身对环境负载敏感 | 定位后加大等待/改用「等到滚动量变化」的等待，而不是固定 sleep；不要靠重跑掩盖 |
 | SH-91 | `src/client/features/workspace/workspace/workspace-views.tsx`（`workspace.share`）与 `src/client/features/sidebar/*`（`navigation.share`） | 两个入口在 zh-CN 下同名「分享」却通到不同表面：工作区头部按的是「单条笔记的分享设置」，侧栏按的是分享中心；当没有激活笔记时 `app-shell` 又把 `panel='share'` 回退成分享中心，于是同一个按钮在两种状态下打开两个不同表面 | 区分文案与图标（如「分享这条笔记」/「分享中心」），并把无激活笔记时的回退显式化（或在无笔记时禁用该按钮） |
+| SH-93 | `src/client/components/hub-folder-row.tsx`（内含 `role='button'` + `tabIndex` 的 div、`FolderMoreButton`）、`components/hub-tag-item.tsx`（`TagMoreButton`、`TagExpandAffordance`）、`components/overlay/submenu.tsx`（`RowButton` 之外的裸按钮） | SH-49 只清了 `features/share`，而它用的共用组件里还有同类写法——包括 AGENTS 铁律 10 明禁的「`div` ＋ `onClick` ＋ `role='button'` 假冒控件」（`FolderRow`/`HubTagRow` 的行本体是 `div role='button'`） | 把 SH-49 的守卫正则从 `features/share` 扩到 `src/client/components` 与其它 feature（分文件开口子、每个口子写理由），再逐处收；`div role='button'` 的行本体应换成真 `button` 或用项目组件，并补键盘路径回归 |
+| SH-92 | `src/client/features/share/share-note-submenu.tsx`（296 行手搓面板）、`use-share-note-submenu.ts` | SH-49 唯一被白名单放行的文件：同样是菜单，却与 `buildShareMenuItems` ＋ `Menu` 那套并列存在（两套行样式、两套分隔线、两套键盘行为）。整体退役不是改名：① 它的行是 44px 触控目标（SH-35 守着的 `h-11 md:h-7.5`），而共用 `SubmenuList` 的行只有 40px（`h-10`），换过去要么降级触控目标、要么改共用行高影响音乐/看板/右键菜单；② 它的文件夹搜索与标签输入是 `role='menu'` 面板里的文本框，直接换成 `SubmenuList` 会撞 `aria-required-children`（首次试过会在新门禁里变红） | 先决定「菜单里能不能放输入框」（要么改成命令式选择、要么给面板一个非 menu 角色与自己的标签），同时把共用行高调到 44px 并跑音乐/看板/右键菜单回归；然后删掉该文件、`use-share-note-submenu` 与两处白名单条目 |
 
 ### 05 — SH-80 `loadTopNotes` 按 note id 查标题、不带 `user_id`（2026-09-21）
 
@@ -168,4 +170,24 @@
   - 变异测试（守卫型改动的必做项）：把 `e2e-visual.mjs` 里那条被 `Modal` 条目引用的断言文案改成别的字符串 → `surfaces:check` 立刻报 `modal.tsx is covered by an assertion … no longer prints`；还原后复绿。
   - 静态门禁：`node --check scripts/e2e-visual.mjs`、`surfaces:check`、`comments:check`（682 文件 / 4967 条）、`style:check`、`size:check`、`escape:check`、`hardcoded:check`、`tokens:check`、`i18n:check`、`deep-imports:check` 均绿。
   - 单元/集成：`npm run test:unit`（并行）→ 2 文件失败、5 文件失败各出现一次，单独串行复跑这两个文件 **10/10 绿**；失败项是 `share-code-split`（纯静态扫描）与 `music-hub-modal`（文案计数），都在机器被另一条线程的浏览器门禁占满时出现（一次运行里 transform 168s / environment 877s）。本项未碰任何产品代码，故按台账约定不跑全量串行回归，如实登记该读数为环境竞争所致。
-- 局限（如实登记）：① axe 每次运行只读**一套主题**（浏览器门禁在该场景之前已经切过主题，具体是深色还是浅色取决于上一场景），分享中心的「层级 × 底色」还没进 `check-contrast.mjs` 那套两主题 × 全强调色的量测；② 场景读的是**看板分类**（默认分类），列表视图的工具栏与流量过滤浮层的 a11y 断言留到 SH-50（那时才有可读的断言，现在补会把两个批次耦合在一起）；③ 「释放」的判定改成「打开它的控件回到键盘下且不在 `inert` 子树里」，不数页面上的 `inert` 数量——手机断点下 shell 自己的非活动窗格本来就带 `inert`（实测 2 个），数总量会把设计当回归；④ SH-91 是写场景时撞见的真实入口语义问题，本项只登记不改。
+- 局限（如实登记）：① axe 每次运行只读**一套主题**（浏览器门禁在该场景之前已经切过主题，具体是深色还是浅色取决于上一场景），分享中心的「层级 × 底色」还没进 `check-contrast.mjs` 那套两主题 × 全强调色的量测；② 场景读的是**看板分类**（默认分类）；列表视图那一半已在第 11 项里补上（同一场景多走一步：侧栏切到「全部分享」、断言工具栏画出来并读 axe），流量过滤浮层展开后的断言仍留给 SH-50；③ 「释放」的判定改成「打开它的控件回到键盘下且不在 `inert` 子树里」，不数页面上的 `inert` 数量——手机断点下 shell 自己的非活动窗格本来就带 `inert`（实测 2 个），数总量会把设计当回归；④ SH-91 是写场景时撞见的真实入口语义问题，本项只登记不改。
+
+### 11 — SH-49 裸 `<button>` 绕过组件体系，而门禁只覆盖表单控件（2026-09-21）
+
+- 根因：`features/share` 里有 15 处交互控件是手写 Tailwind 的裸 `<button>`——多数只有 `title` 当可访问名（屏幕阅读器读不到、触屏也看不到），没有共用焦点环与命中区（12px 图标 + 20–28px 命中区），pin/star 这种「按下态」控件也没有 `aria-pressed`；而 SH-33 留下的守卫正则只有 `<(input|select|textarea)`，**不覆盖 `button`**，所以门禁全绿并不代表合规。旁证是同一份「行菜单」有两套实现：`buildShareMenuItems` ＋ `Menu` 那套，与 `share-item-common`/`share-note-submenu` 里手搓的另一套（行高、分隔线、键盘行为都在分叉）。
+- 复现（先红）：新增 `tests/share-bare-buttons.test.ts`（4 用例）——扫 `features/share` 全部 `ts/.tsx`，禁止裸 `<button>`、禁止 `div/span` ＋ `role='button'` 假冒控件，并要求白名单里的文件仍然真的需要它（两个方向都失败）。修复前实测列出 15 行：`share-dashboard-view.tsx:243/373`、`share-edit-modal/sections.tsx:118`、`share-grid-view/card.tsx:80`、`share-hub-sidebar.tsx:57/93`、`share-item-common.tsx:73/86/108/127/152`、`share-page/page.tsx:54`、`share-table-view/row.tsx:99`、`share-traffic-filter-popover.tsx:37`、`share-visit-logs-modal.tsx:112`；转换后 4/4 绿。
+- 改动面（15 文件，均为既有组件，未新增共用抽象）：
+  - `share-item-common.tsx`：pin/star 改 `IconButton`（`active` → `aria-pressed`，未按下时保留「悬停才亮」的 `opacity-45`），复制短链改 `IconButton`，并**删掉手搓的 `MoveFolderSubmenu`**，改走同文件早就有的 `buildFolderMenuItems` ＋ `submenuFor`（一次选择同时关菜单，与列表/网格的「移动到文件夹」入口行为对齐）；`PinStarButtons` 的 `compact` 参数随之成为死参数，同步从 `share-grid-view/card.tsx` 的调用点移除。
+  - `share-hub-sidebar.tsx`：分类行走 `Button`（`ghost` ＋ `block` ＋ `icon` ＋ `trailing` 计数），分组折叠改 `Button`（`icon` 为方向箭头）。
+  - `share-visit-logs-modal.tsx`：四个手搓 `FilterTab` 换成一个 `Segmented`（共用组件自带 `role='radiogroup'` 与方向键），`FilterTab` 组件删除。
+  - `share-dashboard-view.tsx`：「最受关注笔记」的 chevron 改 `IconButton`（名字从 `title` 变成 `aria-label`），「查看全部访问日志」改 `Button`（`trailing` 放外链图标）。
+  - `share-traffic-filter-popover.tsx`：触发器改 `Button`（保留 `aria-haspopup`/`aria-expanded` 与三种色调软底；面板本身与焦点行为属 SH-50，本项不动）。
+  - `share-edit-modal/sections.tsx`、`share-grid-view/card.tsx`、`share-table-view/row.tsx`、`share-page/page.tsx`：标签删除、标题即按钮、访客页的主题开关，分别改 `IconButton`/`Button`（标题那两处用 `Button variant='ghost'` ＋ 覆盖成纯文本外观，保持既有的“像链接”视觉）。
+  - `scripts/e2e-visual.mjs`：SH-85 的那条场景多走一步——侧栏切到「全部分享」，断言列表视图的工具栏真的画出来，并在这一视图上再读一遍 axe；这样本项改的表格行、pin/star、复制短链等控件才**有读者**（原先只有看板被读）。
+  - `scripts/check-comments.mjs` 登记新增注释（684 文件 / 4974 条）。
+- 门禁首跑即抓到一条真实缺陷（本项一并修）：列表视图 axe 报 `select-name` ×2——`share-hub-toolbar.tsx` 的状态筛选与排序两个 `<select>` 没有可访问名（`Select` 会透传 `aria-label`，只是没人给）。补 `share.status_filter_label` / `share.sort_label` 两条 i18n 键（en + zh）后复绿；同一类缺陷在 `share-edit-modal/sections.tsx` 的文件夹 `<select>` 上也存在（它有可见小标题但无程序化关联，而门禁不打开那个弹窗所以读不到），一并补 `aria-label={t('share.folders_isolation')}`。
+- 验证读数：
+  - 新守卫 `tests/share-bare-buttons.test.ts` 4/4（修复前 1 红）；`src/client/features/share` ＋ 三个 share 守卫共 **27 文件 / 128 用例**绿（含 `share-a11y`、`share-narrow-screen`、`share-small-defects`、`share-touch-targets`、`share-table-semantics`）。
+  - `npx tsc -b --force` exit 0；`i18n:check` **3141 键**（+2）通过；`comments/style/size/hardcoded/escape/tokens/deep-imports/empty-catch/module-state/surfaces` 10 项静态门禁全绿。
+  - 浏览器门禁（本地实例 + `node scripts/e2e.mjs` 建号后的同一实例）：`scripts/e2e.mjs` → **177 通过 / 0 失败**；`scripts/e2e-visual.mjs` → **218 通过 / 1 失败**，12 条 share 断言**全绿**（含列表视图与手机断点两次 axe）；唯一失败仍是 SH-90 那条与本项无关的不稳定断言（同一份代码上一轮绿、这一轮红）。
+- 局限（如实登记）：① `share-note-submenu.tsx` 是**唯一**白名单放行的文件，理由与退役的前置条件写成 SH-92（共用 `SubmenuList` 行高 40px vs SH-35 的 44px 触控目标；菜单面板里放输入框会撞 `aria-required-children`），本项只把守卫与理由钉住；② 尺寸变化未经像素级核对：`IconButton size='sm'` 是 32px(手机)/24px(桌面)，比原先 20–28px 的命中区大，短链 chip 与标签 chip 会随之变高（浏览器门禁只读 a11y 与布局稳定性，不比对像素高度）；③ `Segmented` 把日志筛选从「自绘 tab」变成 `role='radiogroup'`，语义更准确但屏幕阅读器读法从 tab 列表变成单选组，属有意变更；④ 仅修了分享中心内的裸按钮，共用组件自身（`hub-folder-row.tsx`、`hub-tag-item.tsx`、`overlay/submenu.tsx` 里的 `FolderMoreButton`/`TagMoreButton`/`RowButton`）仍有同类写法，属仓级问题，另立条目跟踪（见 SH-93）。

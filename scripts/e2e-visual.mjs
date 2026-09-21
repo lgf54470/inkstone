@@ -117,6 +117,8 @@ const LABELS = {
   shareHub: ['分享中心', 'Share Hub'],
   shareManage: ['管理所有分享', 'Manage All Shares'],
   shareKpi: ['总访问量 (PV)', 'Total Views (PV)'],
+  shareCategoryAll: ['全部分享', 'All Shares'],
+  shareSearch: ['搜索笔记标题、链接或标签…', 'Search note title, link, or tag…'],
 }
 
 async function activeProse(page) {
@@ -2448,6 +2450,26 @@ async function openShareHub(page, { mobile = false } = {}) {
   return page.waitForSelector(SHARE_DIALOG, { timeout: 15_000 }).then(() => true, () => false)
 }
 
+/**
+ * Picks one category in the share center's own sidebar, the way a person does: by its visible name.
+ * The rows are buttons that carry their label as text (a count badge may ride behind it), so the
+ * press lands on the one whose text starts with the name rather than on whatever matches first.
+ */
+async function gotoSidebarCategory(page, labels) {
+  const point = await page.evaluate(({ dialog, labels }) => {
+    const hub = document.querySelector(dialog)
+    const row = [...(hub?.querySelectorAll('aside button') ?? [])]
+      .find((item) => labels.some((label) => item.textContent.trim().startsWith(label)))
+    if (!row) return null
+    const box = row.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, { dialog: SHARE_DIALOG, labels })
+  if (!point) return false
+  await page.mouse.click(point.x, point.y)
+  await sleep(900)
+  return true
+}
+
 async function assertShareCenter(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(500)
@@ -2469,6 +2491,23 @@ async function assertShareCenter(page) {
   const unreviewed = desktop.incomplete.filter((item) => !isReviewedIncomplete(item))
   check('share: no unreviewed axe items in the center',
     unreviewed.length === 0, JSON.stringify(unreviewed.slice(0, 3)))
+
+  // The dashboard is the category the hub opens on; the list is where the rows live — the share
+  // rows, their pin/star/copy controls and the toolbar. Switching to it in the sidebar is how a
+  // person gets there, and it is read for the same two things: the toolbar drew itself, and every
+  // control in it has a name axe accepts.
+  const listed = await gotoSidebarCategory(page, LABELS.shareCategoryAll)
+  const toolbar = await page.waitForFunction(({ dialog, labels }) => {
+    const hub = document.querySelector(dialog)
+    return Boolean(hub) && [...hub.querySelectorAll('input')].some((input) => labels.includes(input.getAttribute('aria-label') ?? ''))
+  }, { timeout: 15_000 }, { dialog: SHARE_DIALOG, labels: LABELS.shareSearch }).then(() => true, () => false)
+  check('share: the sidebar switches the center to the list and its toolbar', listed && toolbar)
+  const listAxe = await runAxe(page, SHARE_DIALOG)
+  check('share: the list view of the center has no accessibility violations',
+    listAxe.violations.length === 0, JSON.stringify(listAxe.violations.slice(0, 3)))
+  const listUnreviewed = listAxe.incomplete.filter((item) => !isReviewedIncomplete(item))
+  check('share: no unreviewed axe items in the list view',
+    listUnreviewed.length === 0, JSON.stringify(listUnreviewed.slice(0, 3)))
 
   await page.keyboard.press('Escape')
   await sleep(700)

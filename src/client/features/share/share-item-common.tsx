@@ -2,7 +2,8 @@ import { Check, Copy, ExternalLink, FolderClosed, FolderInput, Pin, Star, BarCha
 import type { ShareFolder, ShareInfo } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import type { MenuItem } from '../../components/overlay'
+import { submenuFor, type MenuItem } from '../../components/overlay'
+import { IconButton } from '../../components/primitives'
 
 export interface ShareItemCallbacks {
   onCopyLink: (url: string, slug: string) => void
@@ -55,9 +56,7 @@ export function buildShareMenuItems(share: ShareInfo, folders: ShareFolder[], cb
       label: t('share.batch_move_to_folder'),
       icon: <FolderInput size={13} />,
       separatorBefore: true,
-      submenu: ({ closeMenu }) => (
-        <MoveFolderSubmenu share={share} folders={folders} onSelect={(folderId) => { closeMenu(); cbs.onMoveToFolder(folderId) }} />
-      ),
+      submenu: submenuFor(buildFolderMenuItems(share, folders, cbs.onMoveToFolder)),
     },
     { id: 'toggle', label: share.isEnabled ? t('share.batch_disable') : t('share.batch_enable'), icon: share.isEnabled ? <PauseCircle size={13} className='text-[var(--warning)]' /> : <PlayCircle size={13} className='text-[var(--success)]' />, onSelect: () => cbs.onToggleShare(!share.isEnabled) },
     { id: 'star', label: share.isStarred ? t('share.unstar_note') : t('share.star_note'), icon: <Star size={13} className={share.isStarred ? 'text-[var(--warning)] fill-current' : ''} />, onSelect: cbs.onToggleStar },
@@ -67,100 +66,54 @@ export function buildShareMenuItems(share: ShareInfo, folders: ShareFolder[], cb
 }
 
 
-function MoveFolderSubmenu({ share, folders, onSelect }: { share: ShareInfo; folders: ShareFolder[]; onSelect: (folderId: string | null) => void }) {
-  return (
-    <div className='py-1 min-w-40'>
-      <button
-        type='button'
-        onClick={() => onSelect(null)}
-        className={cn(
-          'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
-          !share.shareFolderId && 'text-[var(--accent)] font-semibold',
-        )}
-      >
-        <FolderClosed size={13} className='text-[var(--text-quaternary)]' />
-        <span className='flex-1 truncate'>{t('share.no_folder')}</span>
-        {!share.shareFolderId && <Check size={12} className='text-[var(--accent)]' />}
-      </button>
-      {folders.map((f) => (
-        <button
-          key={f.id}
-          type='button'
-          onClick={() => onSelect(f.id)}
-          className={cn(
-            'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)]',
-            share.shareFolderId === f.id && 'text-[var(--accent)] font-semibold',
-          )}
-        >
-          <FolderClosed size={13} style={{ color: f.color ?? undefined }} className='shrink-0' />
-          <span className='flex-1 truncate'>{f.name}</span>
-          {share.shareFolderId === f.id && <Check size={12} className='text-[var(--accent)]' />}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-export function PinStarButtons({ share, onTogglePin, onToggleStar, compact }: { share: ShareInfo; onTogglePin: () => void; onToggleStar: () => void; compact?: boolean }) {
-  const size = compact ? 'p-0.5 shrink-0' : 'p-1'
+/**
+ * Pin and star, as the two named toggles every share row and card carries. Both stay quiet until
+ * they are pointed at, because a list holds many of them; the pinned and starred ones keep the
+ * accent fill the component draws for a pressed toggle.
+ */
+export function PinStarButtons({ share, onTogglePin, onToggleStar }: { share: ShareInfo; onTogglePin: () => void; onToggleStar: () => void }) {
+  const stop = (run: () => void) => (event: React.MouseEvent) => {
+    event.stopPropagation()
+    run()
+  }
   return (
     <>
-      <button
-        type='button'
-        onClick={(e) => {
-          e.stopPropagation()
-          onTogglePin()
-        }}
-        className={cn(
-          size,
-          'rounded transition-colors',
-          share.isPinned
-            ? compact
-              ? 'text-[var(--accent)]'
-              : 'text-[var(--accent)] bg-[var(--accent-soft)]'
-            : 'text-[var(--text-quaternary)] opacity-40 hover:opacity-100 hover:text-[var(--accent)]',
-        )}
-        title={share.isPinned ? t('share.unpin_note') : t('share.pin_note')}
+      <IconButton
+        size='sm'
+        label={share.isPinned ? t('share.unpin_note') : t('share.pin_note')}
+        active={share.isPinned}
+        onClick={stop(onTogglePin)}
+        className={cn('shrink-0', !share.isPinned && 'opacity-45 hover:opacity-100')}
       >
         <Pin size={12} className={share.isPinned ? 'fill-current' : ''} />
-      </button>
-      <button
-        type='button'
-        onClick={(e) => {
-          e.stopPropagation()
-          onToggleStar()
-        }}
-        className={cn(
-          size,
-          'rounded transition-colors',
-          share.isStarred
-            ? compact
-              ? 'text-[var(--warning)]'
-              : 'text-[var(--warning)] bg-[var(--warning)]/10'
-            : 'text-[var(--text-quaternary)] opacity-40 hover:opacity-100 hover:text-[var(--warning)]',
-        )}
-        title={share.isStarred ? t('share.unstar_note') : t('share.star_note')}
+      </IconButton>
+      <IconButton
+        size='sm'
+        label={share.isStarred ? t('share.unstar_note') : t('share.star_note')}
+        active={share.isStarred}
+        onClick={stop(onToggleStar)}
+        className={cn('shrink-0', !share.isStarred && 'opacity-45 hover:opacity-100')}
       >
         <Star size={12} className={share.isStarred ? 'fill-current' : ''} />
-      </button>
+      </IconButton>
     </>
   )
 }
 
 function CopySlugButton({ share, copiedSlug, onCopy, className }: { share: ShareInfo; copiedSlug: string | null; onCopy: (url: string, slug: string) => void; className?: string }) {
   return (
-    <button
-      type='button'
+    <IconButton
+      size='sm'
+      label={t('common.copy')}
       onClick={() => onCopy(share.url, share.slug!)}
-      className={cn('text-[var(--text-quaternary)] hover:text-[var(--text-primary)]', className)}
-      title={t('common.copy')}
+      className={cn('text-[var(--text-quaternary)]', className)}
     >
       {copiedSlug === share.slug ? (
         <Check size={12} className='text-[var(--success)]' />
       ) : (
         <Copy size={12} />
       )}
-    </button>
+    </IconButton>
   )
 }
 

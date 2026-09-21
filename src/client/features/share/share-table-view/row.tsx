@@ -2,7 +2,7 @@ import { memo, useRef, useState } from 'react'
 import { BarChart2, ExternalLink, FolderClosed, FolderInput, Lock, MoreHorizontal, QrCode, Settings2 } from 'lucide-react'
 import type { ShareFolder, ShareInfo } from '@shared/types'
 import { Checkbox, Switch } from '../../../components/form'
-import { IconButton } from '../../../components/primitives'
+import { Button, IconButton } from '../../../components/primitives'
 import { Menu, useContextMenu } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
 import { relativeTime } from '../../../lib/time'
@@ -96,9 +96,9 @@ function RowTitleCell({ share, folderById, onTogglePin, onToggleStar, onOpenEdit
     <div className='flex flex-col'>
       <div className='flex items-center gap-1.5'>
         <PinStarButtons share={share} onTogglePin={onTogglePin} onToggleStar={onToggleStar} />
-        <button type='button' onClick={onOpenEdit} className='min-w-0 truncate text-left font-medium text-[length:var(--text-13)] text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline cursor-pointer'>
+        <Button variant='ghost' onClick={onOpenEdit} className='h-auto min-w-0 justify-start p-0 text-left font-medium text-[length:var(--text-13)] text-[var(--text-primary)] hover:bg-transparent hover:text-[var(--accent)] hover:underline'>
           {share.noteTitle || t('common.untitled_note')}
-        </button>
+        </Button>
       </div>
       <div className='flex flex-wrap items-center gap-1.5 pt-1 pl-12'>
         {folder && (
