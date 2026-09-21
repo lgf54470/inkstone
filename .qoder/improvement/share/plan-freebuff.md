@@ -45,7 +45,8 @@
 | 15 | C | SH-60 | 看板 468/500 行 + range 选项重复 → 拆分 | 小–中 | ✅ | 71d711be |
 | 16 | C | SH-59 | 网格卡未 memo + 内联闭包 + 每卡 `folders.find` | 小 | ✅ | 8cda369d |
 | 17 | C | SH-57 | `toLocaleString()` 跟随 OS / delta 无语义 / 图表无文本替代 | 小–中 | ✅ | 09a5c284 |
-| 18 | C | SH-56 | 「日均访问量」口径错误 + sparkline 与 PV 卡重复 | 小 | ✅ | ⏳ 下项回填 |
+| 18 | C | SH-56 | 「日均访问量」口径错误 + sparkline 与 PV 卡重复 | 小 | ✅ | 7859ca3b |
+| 19 | C | SH-58 | hub 分类徐标未走 `countBadgeTone`（且不在对比度门禁内） | 小 | ✅ | ⏳ 下项回填 |
 | 19 | C | SH-58 | hub 分类徽标未走 `countBadgeTone`（且不在对比度门禁内） | 小 | ⬜ | |
 | 20 | C | SH-52 | 侧栏计数缺 password/expiring/permanent 三类 | 小 | ⬜ | |
 | 21 | C | SH-54 | 看板不受侧栏范围影响且不标注作用域 | 中 | ⬜ | |
@@ -118,6 +119,8 @@
 | SH-93 | `src/client/components/hub-folder-row.tsx`（内含 `role='button'` + `tabIndex` 的 div、`FolderMoreButton`）、`components/hub-tag-item.tsx`（`TagMoreButton`、`TagExpandAffordance`）、`components/overlay/submenu.tsx`（`RowButton` 之外的裸按钮） | SH-49 只清了 `features/share`，而它用的共用组件里还有同类写法——包括 AGENTS 铁律 10 明禁的「`div` ＋ `onClick` ＋ `role='button'` 假冒控件」（`FolderRow`/`HubTagRow` 的行本体是 `div role='button'`） | 把 SH-49 的守卫正则从 `features/share` 扩到 `src/client/components` 与其它 feature（分文件开口子、每个口子写理由），再逐处收；`div role='button'` 的行本体应换成真 `button` 或用项目组件，并补键盘路径回归 |
 | SH-95 | `src/client/features/blog/blog-traffic-filter-popover.tsx` | SH-50 的同源孪生：博客看板的流量过滤面板同样是 `absolute right-0 top-full w-80`（320px）＋ 无 role、无名字的 `<div>`、打开/关闭都不动焦点，窄屏上会被推出视口。它现在可以直接复用已经抽出来的 `components/popover-placement.ts` | 按 SH-50 的做法整体迁移（portal ＋ `role='dialog'` ＋ 焦点入/还 ＋ 共用定位），跑 blog 侧回归；它属 blog 自己的范围，不在本轮 share 红线内 |
 | SH-96 | `src/client/lib/markdown/kanban/ui/*`（`kanban-date-picker`/`kanban-column-menu`/`kanban-sort-popover`/`kanban-tag-picker`/`kanban-view-options`/`kanban-filter-popover`/`kanban-item-detail` 共 6+1 处）、`src/client/lib/markdown/slides/ui/slides-topbar.tsx`（2 处） | `absolute right-0/left-0 top-full` 这种自定位浮层在仓内仍是主流写法（分享中心本轮清完后还剩这些），且没有任何门禁要求它们走 `usePanelPlacement`——同样的窄屏裁切缺陷可以再长出来 | 先定一个门禁边界（允许清单 ＋ 理由）：新写的自定位浮层必须走 `components/popover-placement.ts`，已有清单分批迁移；或给一个统一的 `Popover` 原语把这些都收进去 |
+| SH-99 | `scripts/e2e-visual.mjs` 的 `LABELS.share*` 与 `scripts/check-contrast.mjs` 的 `SHARE_LABELS` | 两个门禁各自保存了同一套「分享中心」文案对（打开同一个表面、按同一个控件），一旦一侧改了文案另一侧会以「找不到控件」失败而告终 | 把那两个打开器（含文案对与定位规则）提到 `scripts/e2e-harness.mjs`，两个门禁共用一份；顺便把 `openShareHub` 的手机路径也一并收进去 |
+| SH-100 | `scripts/check-contrast.mjs` 的 `openMusicHubList` | 在 `scripts/e2e.mjs` 刚跑过（177/0）的全新临时实例上，该门禁停在「找不到 `列表视图/List view`」而崩掉；本轮把分享中心表面排在它前面、后面都试过，两次同样崩在这里，而分享中心表面在跳过这三个音乐表面后在两套主题下都能跑完并全绿。未确认是本机音乐种子缺失还是门禁与种子之间的隐式契约 | 先弄清该门禁对音乐库前置数据的真实依赖（种子里是否真有可播放曲目），再决定是让门禁自行备好前置数据、还是把它标为需要预置实例 |
 | SH-98 | `src/worker/routes/blog/stats.ts`（`viewsPerDay: Math.round(views / daysSpan)`）、`src/client/features/blog/blog-dashboard-view/index.tsx` | SH-56 的博客倒影：同样是整数取整的日均值（24h 区间下等于总 PV）且同样把 `sparklineViews` 画在日均卡上（与总访问量卡同一条线）；博客侧还有 `sparklineViews = timeline.slice(-7)` 的隐式截断 | 把 `perDayRate()` 与 `viewsPerDayDelta` 同样接到 blog 的 compose 上（worker 侧共用 `computeDelta` 已有），日均卡去掉重复 sparkline；属 blog 自己的范围，不在本轮 share 红线内 |
 | SH-97 | `scripts/e2e-visual.mjs` 的思维导图场景（`the node is selected before it is deleted`、`deleting the selected node leaves the note`、`undo kept the same instance`、`alt+arrow reorders the node in the note`、`reordering kept the same instance`） | 与 SH-90 同性质：同一份产品代码在一小时内的两次门禁里一次 5/5 全绿、一次 5/5 全红（失败读数都是「实例没被复用」`same:false`），而机器当时被另一条线程的浏览器门禁占满；这些断言现在直接拿实例身份/选中态当判据，没有等待窗口 | 把「等库自己把状态写下去」这层写进断言（如等 `selected` 类/等实例身份稳定），或在判失败前带上一次显式重试；不要靠重跑掩盖 |
 | SH-92 | `src/client/features/share/share-note-submenu.tsx`（296 行手搓面板）、`use-share-note-submenu.ts` | SH-49 唯一被白名单放行的文件：同样是菜单，却与 `buildShareMenuItems` ＋ `Menu` 那套并列存在（两套行样式、两套分隔线、两套键盘行为）。整体退役不是改名：① 它的行是 44px 触控目标（SH-35 守着的 `h-11 md:h-7.5`），而共用 `SubmenuList` 的行只有 40px（`h-10`），换过去要么降级触控目标、要么改共用行高影响音乐/看板/右键菜单；② 它的文件夹搜索与标签输入是 `role='menu'` 面板里的文本框，直接换成 `SubmenuList` 会撞 `aria-required-children`（首次试过会在新门禁里变红） | 先决定「菜单里能不能放输入框」（要么改成命令式选择、要么给面板一个非 menu 角色与自己的标签），同时把共用行高调到 44px 并跑音乐/看板/右键菜单回归；然后删掉该文件、`use-share-note-submenu` 与两处白名单条目 |
@@ -293,3 +296,18 @@
 - 先红后绿：`tests/share-analytics.test.ts` 新增 `perDayRate` 一例（24h 区间等于总量、7 天区间得 42.9 保留一位小数、0 不要变成 NaN、`daysSpan` 为 0 也不除零），实现前红；另新增 `src/client/features/share/share-dashboard-kpis.test.ts`（3 例）：四张卡里**只有两条** sparkline（多画一条就红）、日均卡显示 42.9 且带「对比上一周期」的可访问名、没有上一窗口时不得凭空出 delta。
 - 验证读数：`npx tsc -b --force` exit 0；定向测试 36/36（share-analytics ＋ 三份看板测试）；**全量 `npm run test:unit`：321 文件通过 / 2597 用例通过 + 1 skipped，唯一的 1 例失败是 `tests/share-code-split.test.ts` 的 5s 超时**（它要遍历模块图，并行下跑了 6.8s；单独串行复跑 **4/4 绿**）——与本项无关，登记为环境负载所致（同第 10 项时的读数）；静态门禁全部通过（`i18n` 3146 键、`comments` 5048 条 / 708 文件、`size` 通过）。
 - 局限：① 日报日均值保留一位小数后，24h 区间下它就是总量（口径如此，已在测试里固定），没有额外的「区间天数」提示；② 博客看板有同名缺陷（整数取整 ＋ 重复 sparkline），属 blog 自己的范围，登记为 SH-98；③ 演示模式 `demo/backend/routes/share.ts` 的 `viewsPerDay: 56` 是写死的示例值，未动（演示数据本来就是常数）。
+
+### 19 — SH-58 hub 分类徽标复用外壳规则并被对比度门禁看见（2026-09-21）
+
+- 根因：外壳侧早有一条明写的规则——`count-badge.ts` 的注释记着「选中行坐在 accent 软底上，最暗那一层文字在那上面只有 3.86:1，所以选中行取上一层」；而分享中心侧徐标是**另一套实现**（自带不透明 `bg-[var(--bg-card)]` 盘面 ＋ `text-[var(--text-tertiary)]`），它用「画一层不透明底」绕开了那条规则，而不是遵守它；同时分享中心根本不在 `scripts/check-contrast.mjs` 的表面名单里，所以这条漂移没有任何读数在守。
+- 改动面：
+  - `src/client/components/count-badge.ts`（由 `features/sidebar/sidebar/count-badge.ts` 移动而来）：它是跨 feature 的**共用视觉规则**（外壳侧栏、日历树、文件夹/标签行、分享中心分类栏都用），放在 `components/` 比放在侧栏特性内部更诚实；5 处引用同步改路径（含分享中心），注释补上「谁在用它」。
+  - `src/client/features/share/share-hub-sidebar.tsx`：分类行的徐标改走 `countBadgeTone(isSelected)`，去掉那层不透明盘面——选中行的徐标因此取上一层文字层级，与外壳同一规则。
+  - `scripts/check-contrast.mjs`：新增 `share center` 表面，打开器走人真走的路径（侧栏「分享」→ 列表工具栏的「管理所有分享」→「全部分享」），最后一步是**故意**的：只有选中一个带计数的分类行，徽标才会坐在 accent 软底上，也就是这条规则真正谈的那对像素。该表面排在名单最后，因为它会把 shell 自己的窗格切到分享列表。
+- 验证读数（全新临时实例 `INKSTONE_EPHEMERAL_DEV=1 npx vite --mode kv --port 7723`，先 `node scripts/e2e.mjs` 177/0 建号）：
+  - `light · share center`：**3 个层级落在软底上，0 个低于 AA**（另 20 个普通对交给调色板门禁）；`3 个强调底色对 × 7 个强调色 = 21 次量测，0 个低于 AA`；`axe: 29 checks passed, 0 violations, 1 reviewed item`。
+  - `dark · share center`：同样 **0 低于 AA**（25 个普通对交给调色板门禁）；`21 次强调量测 0 低于 AA`；`axe: 29 checks passed, 0 violations, 1 reviewed item`。
+  - 整个门禁：`contrast gate passed: every text tier, accent and status color painted on a tint clears AA in both themes`（rc=0）。
+  - **如实说明**：上面这次通过是在「跳过三个音乐表面」的临时副本上跑的——原脚本在本机这个实例上会停在音乐的 `列表视图/List view` 找不到而崩（改前先跑过一次、把分享中心排在前后各试过一次，都崩在同一点）。该崩溃与本项无关（本项没碰音乐代码），登记为 SH-100；临时副本与临时实例都已删除。
+  - 单元与静态：`npx tsc -b --force` exit 0；`features/share` ＋ `features/sidebar` 共 **31 文件 / 139 用例全绿**；8 项静态门禁全绿（`comments` 5058 条 / 708 文件，`deep-imports` 在移动后复验通过）。
+- 局限：① hub 里**文件夹行与标签行**的计数由共用组件（`hub-folder-row.tsx`/`hub-tag-item.tsx`）自己画，属 SH-93 的范围，本项只收了分类栏；② 量测统计的是「落在软底上的层级数」，不是「徐标」这个组件本身，因此它守的是规则而不是那一个 `span`；③ 两个门禁各自保存了同一套分享中心文案对（登记为 SH-99，后续提到 `e2e-harness.mjs` 共用）；④ 本机对比度门禁尚不能完整跑完（SH-100）。

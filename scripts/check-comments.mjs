@@ -95,6 +95,10 @@ const allowed = new Map([
     '// surfaces differ from the shell\'s, so they are their own measurements — and each',
     '// names the root the axe pass below inspects, because axe\'s color-contrast rule',
     '// and the numbers measured here are the same question asked twice.',
+    '/**\n * The share center\'s own labels. `scripts/e2e-visual.mjs` keeps the same four pairs in its LABELS\n * map — the two gates open the same surfaces through the same controls, and lifting the opener into\n * `e2e-harness.mjs` is the right home for it (registered as SH-99) rather than a third copy here.\n */',
+    '/**\n * Opens the share center the way a person does: the shell sidebar\'s Share entry, then the list\n * toolbar\'s manage-shares control, then the All Shares row — which is the row whose count badge sits\n * on the accent tint, i.e. the exact pair the badge rule is about. The workspace header\'s own Share\n * button carries the same zh-CN name and asks for one note\'s settings instead, so every lookup is\n * scoped to the shell\'s sidebar.\n */',
+    '// The nav entry only switches the panel to the share list; the center itself is opened from that',
+    '// list\'s toolbar, which is what the second press waits for.',
     '// The card is this surface\'s own transient layer: the measurements and the first axe pass run',
     '// with it up, because the card is the surface that was skipped, and the same instance is then',
     '// read a second time with the card away. Only a surface that declares the second read has the',
@@ -106,6 +110,9 @@ const allowed = new Map([
     '// text is not left unread: the measurement pass above walks each topic text through its',
     '// ancestor background chain — the transparent overlays do not sit in that chain — and judges',
     '// or reports it by the same token rule as everywhere else.',
+    '// Last on purpose: opening the center switches the shell\'s own panel to the share list, and the',
+    '// music surfaces above read seeded state through their own view. Nothing runs after this one,',
+    '// so it may leave the panel where it found it only by pressing Escape (which closes the center).',
     '/**\n * The same surface, asked the other way. axe reads the colour the browser\n * composited and flags whatever falls under AA; the pass above names the token\n * behind it. One theme, one freshly-opened panel, so the two answers are about\n * the same pixels.\n */',
     '// Under a transient layer the surface draws itself, text the layer covers comes back from axe as',
     '// something it could not judge rather than as something it measured. Those items are set aside for',
@@ -1293,6 +1300,9 @@ const allowed = new Map([
   ]],
   ['src/client/components/big-svg-chart.tsx', [
     '/**\n * What the chart says in words: the zone\'s total, and the peak with the label it happened under.\n * Callers put those three into their own localized sentence for the chart\'s accessible name — the\n * drawing itself is not readable by a screen reader, and the per-point `<title>` only answers a\n * pointer.\n */',
+  ]],
+  ['src/client/components/count-badge.ts', [
+    '/**\n * Count badges — the shell\'s sidebar, its calendar tree and the share hub\'s category rail all draw\n * them — sit on rows that take the accent tint when they are selected,\n * and the dimmest text tier does not clear AA on that tint (the axe gate\n * measured 3.86:1 on a selected row), so the selected row uses the next tier up.\n */',
   ]],
   ['src/client/components/dashboard-blocks.tsx', [
     '/** What the percentage is measured against, read to screen readers only ("vs previous period"). */',
@@ -3074,6 +3084,9 @@ const allowed = new Map([
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
   ]],
   ['src/client/features/share/share-hub-sidebar.tsx', [
+    '// The shell\'s own badge rule (`countBadgeTone`): the selected row sits on the accent',
+    '// tint, where the dimmest tier falls under AA, so a selected row takes the next tier',
+    '// up. Painting an opaque plate here instead used to dodge the rule rather than meet it.',
     '/* The only way to create a folder or a tag, so it may not be hidden until a pointer can\n              hover: it is drawn on every screen without hover (below `md`), and on the wide layout it\n              appears for the pointer and for the keyboard alike. */',
   ]],
   ['src/client/features/share/share-item-common.tsx', [
@@ -3215,9 +3228,6 @@ const allowed = new Map([
   ]],
   ['src/client/features/sidebar/sidebar-calendar.tsx', [
     '// Single cached projection replaces three whole-vault Object.values scans; untouched output identities stay stable between typing commits.',
-  ]],
-  ['src/client/features/sidebar/sidebar/count-badge.ts', [
-    '/**\n * Count badges sit on rows that take the accent tint when they are selected,\n * and the dimmest text tier does not clear AA on that tint (the axe gate\n * measured 3.86:1 on a selected row), so the selected row uses the next tier up.\n */',
   ]],
   ['src/client/features/sidebar/sidebar/search-button.tsx', [
     '// The one search entry for every shell (sidebar row, collapsed rail icon): it',

@@ -18,7 +18,7 @@ import { t } from '../../../../lib/i18n'
 import { FOLDER_DRAG_TYPE, NOTE_DRAG_TYPE, NOTES_DRAG_TYPE, leftDropTarget, readDraggedNoteIds } from '../sidebar-drop'
 import { FolderMotionIcon } from './motion-icon'
 import { TreeExpandButton } from '../../tree-expand-button'
-import { countBadgeTone } from '../count-badge'
+import { countBadgeTone } from '../../../../components/count-badge'
 import { useTreeChildrenMount } from '../../use-tree-children'
 
 type DropState = 'none' | 'before' | 'inside' | 'after'

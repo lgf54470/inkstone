@@ -3,7 +3,7 @@ import type { ViewKind } from '@shared/types'
 import { cn } from '../../../lib/cn'
 import { useNotes } from '../../../store/notes'
 import { isNoteDragEvent, leftDropTarget, readDraggedNoteIds } from './sidebar-drop'
-import { countBadgeTone } from './count-badge'
+import { countBadgeTone } from '../../../components/count-badge'
 
 
 function WeChatBadge({ count }: { count?: number }) {

@@ -4,6 +4,7 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { Button, IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
+import { countBadgeTone } from '../../components/count-badge'
 import type { ShareHubSidebarBundle } from './use-share-hub-sidebar'
 import { useShareHubSidebar } from './use-share-hub-sidebar'
 
@@ -62,7 +63,10 @@ function CategoryList({ bundle }: { bundle: ShareHubSidebarBundle }) {
             onClick={() => selectCategory(cat.id)}
             trailing={cat.count !== undefined && cat.count > 0
               ? (
-                <span className='tabular ml-auto rounded bg-[var(--bg-card)] px-1.5 py-0.5 text-[length:var(--text-10)] font-medium text-[var(--text-tertiary)] shadow-[var(--shadow-sm)]'>
+                // The shell's own badge rule (`countBadgeTone`): the selected row sits on the accent
+                // tint, where the dimmest tier falls under AA, so a selected row takes the next tier
+                // up. Painting an opaque plate here instead used to dodge the rule rather than meet it.
+                <span className={cn('ml-auto rounded px-1.5 py-0.5 text-[length:var(--text-10)] font-medium', countBadgeTone(isSelected))}>
                   {cat.count}
                 </span>
               )

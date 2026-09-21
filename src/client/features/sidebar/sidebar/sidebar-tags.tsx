@@ -14,7 +14,7 @@ import {
 import { LIMITS } from '@shared/constants'
 import type { Tag } from '@shared/types'
 import { cn } from '../../../lib/cn'
-import { countBadgeTone } from './count-badge'
+import { countBadgeTone } from '../../../components/count-badge'
 import { sortTagsForPicker } from '../../../lib/tag-sort'
 import { clearTagSelection } from '../../../lib/tag-selection'
 import { IconButton, SectionLabel } from '../../../components/primitives'

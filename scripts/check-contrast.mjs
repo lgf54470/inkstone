@@ -200,6 +200,48 @@ async function openImmersivePlayer(page) {
 // surfaces differ from the shell's, so they are their own measurements — and each
 // names the root the axe pass below inspects, because axe's color-contrast rule
 // and the numbers measured here are the same question asked twice.
+/**
+ * The share center's own labels. `scripts/e2e-visual.mjs` keeps the same four pairs in its LABELS
+ * map — the two gates open the same surfaces through the same controls, and lifting the opener into
+ * `e2e-harness.mjs` is the right home for it (registered as SH-99) rather than a third copy here.
+ */
+const SHARE_LABELS = {
+  nav: ['分享', 'Share'],
+  hub: ['分享中心', 'Share Hub'],
+  manage: ['管理所有分享', 'Manage All Shares'],
+  categoryAll: ['全部分享', 'All Shares'],
+}
+const SHARE_HUB_DIALOG = '[role="dialog"][aria-label="分享中心"],[role="dialog"][aria-label="Share Hub"]'
+
+/**
+ * Opens the share center the way a person does: the shell sidebar's Share entry, then the list
+ * toolbar's manage-shares control, then the All Shares row — which is the row whose count badge sits
+ * on the accent tint, i.e. the exact pair the badge rule is about. The workspace header's own Share
+ * button carries the same zh-CN name and asks for one note's settings instead, so every lookup is
+ * scoped to the shell's sidebar.
+ */
+async function openShareCenter(page) {
+  const point = await page.evaluate(({ labels, pattern }) => {
+    const buttons = [...(document.querySelector('aside')?.querySelectorAll('button') ?? [])]
+      .filter((item) => item.getBoundingClientRect().width > 0)
+    const control = buttons.find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+      ?? buttons.find((item) => new RegExp(pattern).test(item.textContent.replace(/\s+/g, '')))
+    if (!control) return null
+    control.scrollIntoView({ block: 'center' })
+    const box = control.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, { labels: SHARE_LABELS.nav, pattern: '^▦?\\d*分享$|^▦?\\d*Share$' })
+  if (!point) throw new Error('the shell sidebar offers no share entry to open')
+  // The nav entry only switches the panel to the share list; the center itself is opened from that
+  // list's toolbar, which is what the second press waits for.
+  await page.mouse.click(point.x, point.y)
+  await clickButton(page, SHARE_LABELS.manage, SETTLE_TIMEOUT)
+  await page.waitForSelector(SHARE_HUB_DIALOG, { timeout: SETTLE_TIMEOUT })
+  await waitForPanelSettled(page, SHARE_HUB_DIALOG)
+  await clickButton(page, SHARE_LABELS.categoryAll)
+  await sleep(SETTLE_MS)
+}
+
 const SURFACES = [
   { name: 'shell', axeRoot: 'aside', open: async () => {}, close: async () => {} },
   {
@@ -267,6 +309,18 @@ const SURFACES = [
     axeRoot: MUSIC_IMMERSIVE_DIALOG,
     open: openImmersivePlayer,
     close: (page) => closeDialog(page, MUSIC_IMMERSIVE_DIALOG),
+  },
+  {
+    // Last on purpose: opening the center switches the shell's own panel to the share list, and the
+    // music surfaces above read seeded state through their own view. Nothing runs after this one,
+    // so it may leave the panel where it found it only by pressing Escape (which closes the center).
+    name: 'share center',
+    axeRoot: SHARE_HUB_DIALOG,
+    open: openShareCenter,
+    close: async (page) => {
+      await page.keyboard.press('Escape')
+      await sleep(SETTLE_MS)
+    },
   },
 ]
 

@@ -1,7 +1,8 @@
-import { cn } from '../../../lib/cn'
+import { cn } from '../lib/cn'
 
 /**
- * Count badges sit on rows that take the accent tint when they are selected,
+ * Count badges — the shell's sidebar, its calendar tree and the share hub's category rail all draw
+ * them — sit on rows that take the accent tint when they are selected,
  * and the dimmest text tier does not clear AA on that tint (the axe gate
  * measured 3.86:1 on a selected row), so the selected row uses the next tier up.
  */

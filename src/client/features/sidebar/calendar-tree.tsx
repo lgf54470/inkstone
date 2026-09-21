@@ -11,7 +11,7 @@ import { Tooltip } from '../../components/overlay'
 import { useCalendarTreeShowEmpty, useCalendarTreeVisible } from '../../lib/calendar-prefs'
 import { useTreeChildrenMount } from './use-tree-children'
 import { TreeExpandButton } from './tree-expand-button'
-import { countBadgeTone } from './sidebar/count-badge'
+import { countBadgeTone } from '../../components/count-badge'
 
 const NOTE_DRAG_TYPE = 'application/x-inkstone-note'
 const FOLDER_DRAG_TYPE = 'application/x-inkstone-folder'
