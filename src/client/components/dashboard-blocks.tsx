@@ -37,15 +37,20 @@ export function KpiCard({
 
         {delta !== undefined && (
           <span
-            // The arrow says nothing to a screen reader, so the change is announced as words: the
-            // percentage it reads on screen plus what it was measured against.
-            aria-label={deltaHint ? `${delta > 0 ? '+' : ''}${delta}% ${deltaHint}` : undefined}
             className={`inline-flex items-center gap-0.5 text-[length:var(--text-11)] font-medium ${
               delta === 0 ? 'text-[var(--text-tertiary)]' : delta > 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
             }`}
           >
             {delta === 0 ? <Minus size={12} aria-hidden /> : delta > 0 ? <TrendingUp size={12} aria-hidden /> : <TrendingDown size={12} aria-hidden />}
             {delta > 0 ? `+${delta}%` : `${delta}%`}
+            {/* The arrow says nothing to a screen reader, and the percentage needs what it was
+                measured against. That hint used to ride on an `aria-label` here, which a span with no
+                role may not carry: axe reports it as `aria-prohibited-attr` and the attribute is
+                dropped, so the badge read as a bare percentage. The fixture account never painted a
+                badge at all (no traffic, no delta — SH-103), which is why it went unnoticed
+                (SH-102). Visually hidden text needs no role: it is read where it sits, so the badge
+                still says "+12% against the previous period". */}
+            {deltaHint && <span className='sr-only'> {deltaHint}</span>}
           </span>
         )}
       </div>

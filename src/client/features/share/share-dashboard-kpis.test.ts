@@ -40,6 +40,15 @@ function analyticsFixture(overrides: Partial<ShareGlobalAnalytics> = {}): ShareG
   }
 }
 
+/**
+ * One card's own text, found by its label. The three cards carrying a delta share one hint string, so
+ * "which card lost its comparison" cannot be asked of the row as a whole.
+ */
+function kpiCardText(container: HTMLElement, label: string): string {
+  const heading = [...container.querySelectorAll('span')].find((element) => element.textContent === label)
+  return heading?.parentElement?.parentElement?.textContent ?? ''
+}
+
 describe('share dashboard KPI row (SH-56)', () => {
   beforeAll(async () => {
     await initI18n()
@@ -55,8 +64,10 @@ describe('share dashboard KPI row (SH-56)', () => {
   it('compares the per-day rate with the previous window and shows the decimal', () => {
     const rendered = renderElement(createElement(KpiGrid, { analytics: analyticsFixture() }))
     expect(rendered.container.textContent).toContain('42.9')
-    const labels = [...rendered.container.querySelectorAll('[aria-label]')].map((el) => el.getAttribute('aria-label'))
-    expect(labels).toContain(`+25% ${t('share.delta_vs_previous')}`)
+    // The percentage is plain text with its hint beside it as visually hidden text (SH-102: a
+    // role-less span may not carry the `aria-label` this used to be).
+    expect(kpiCardText(rendered.container, t('share.views_per_day')))
+      .toContain(`+25% ${t('share.delta_vs_previous')}`)
     rendered.unmount()
   })
 
@@ -73,8 +84,9 @@ describe('share dashboard KPI row (SH-56)', () => {
 
   it('renders no delta for the rate when there is no previous window to compare with', () => {
     const rendered = renderElement(createElement(KpiGrid, { analytics: analyticsFixture({ viewsPerDayDelta: undefined }) }))
-    const labels = [...rendered.container.querySelectorAll('[aria-label]')].map((el) => el.getAttribute('aria-label'))
-    expect(labels).not.toContain(`+25% ${t('share.delta_vs_previous')}`)
+    expect(kpiCardText(rendered.container, t('share.views_per_day'))).not.toContain(t('share.delta_vs_previous'))
+    // The totals keep theirs: only the rate lost the window it compares against.
+    expect(kpiCardText(rendered.container, t('share.total_views_pv'))).toContain(t('share.delta_vs_previous'))
     rendered.unmount()
   })
 })

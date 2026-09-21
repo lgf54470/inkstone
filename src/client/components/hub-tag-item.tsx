@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent, MouseEvent, RefObject } from 'react'
+import type { MouseEvent, RefObject } from 'react'
 import {
   ChevronDown,
   ChevronRight,
@@ -15,11 +15,17 @@ import { cn } from '../lib/cn'
 import { t } from '../lib/i18n'
 import { Switch } from './form'
 import { Menu, Tooltip, useContextMenu, type MenuItem } from './overlay'
+import { IconButton } from './primitives'
 import { useUi } from '../store/ui'
 import { manageTagsFrom, TagColorSubmenu } from '../features/tags'
 
 const TREE_INDENT_BASE = 8
 const TREE_INDENT_STEP = 12
+// The row's own icon controls only draw on hover at desktop width, but they stay in the tab order:
+// the `focus-visible` arm is what keeps a keyboard user from tabbing into something invisible. The
+// phone breakpoint keeps them out, where there is no hover to reveal them (features/tags/tag-row.tsx
+// and the sidebar's own rows spell the same string).
+const ROW_ACTION_CLASS = 'opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100'
 
 interface HubTagLike {
   id: string
@@ -150,6 +156,7 @@ function TagExpandAffordance({
   return (
     <button
       type='button'
+      aria-label={isExpanded ? t('sidebar.collapse') : t('sidebar.expand')}
       onClick={(e) => {
         e.stopPropagation()
         onToggle?.(e)
@@ -195,11 +202,23 @@ function TagNameEditor({
   )
 }
 
-function TagNameText({ name, fullName }: { name: string; fullName: string }) {
+/**
+ * The row's one control: selecting the tag is what the row is for, so it is a real button carrying
+ * the tag's name, and everything beside it (the colour swatch, the count, the batch switch, the menu
+ * button) is a sibling rather than a child. A `div[role=button]` with focusable children is the one
+ * shape axe rejects twice over (`nested-interactive`, and `button-name` on the icons it swallows),
+ * and it is exactly what the notes sidebar's own tag row stopped being (SH-93).
+ */
+function TagNameButton({ name, fullName, onSelect }: { name: string; fullName: string; onSelect: () => void }) {
   return (
-    <span className='flex-1 truncate' title={fullName}>
+    <button
+      type='button'
+      onClick={onSelect}
+      title={fullName}
+      className='min-w-0 flex-1 truncate text-left'
+    >
       {name}
-    </span>
+    </button>
   )
 }
 
@@ -272,18 +291,19 @@ function TagMoreButton({
   onToggle: () => void
 }) {
   return (
-    <button
+    <IconButton
       ref={buttonRef}
-      type='button'
+      label={t('common.more_actions')}
+      size='sm'
       aria-expanded={open}
       onClick={(e) => {
         e.stopPropagation()
         onToggle()
       }}
-      className='opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-sunken)] transition-opacity shrink-0'
+      className={ROW_ACTION_CLASS}
     >
       <MoreHorizontal size={12} />
-    </button>
+    </IconButton>
   )
 }
 
@@ -322,19 +342,10 @@ function HubTagRow({
   const displayNameText = displayName || initialName
   return (
     <div
-      role='button'
-      tabIndex={0}
-      onClick={onSelect}
       onContextMenu={onContextMenu}
-      onKeyDown={(e: KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onSelect()
-        }
-      }}
       style={{ paddingLeft: `${depth * TREE_INDENT_STEP + TREE_INDENT_BASE}px` }}
       className={cn(
-        'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[length:var(--text-12)] font-medium transition-colors cursor-pointer',
+        'group relative flex h-8 items-center gap-1.5 rounded-[var(--r-md)] pr-2 text-[length:var(--text-12)] font-medium transition-colors',
         isSelected
           ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
@@ -350,7 +361,7 @@ function HubTagRow({
       {isRenaming ? (
         <TagNameEditor initialName={displayNameText} onCommit={onFinishRename} />
       ) : (
-        <TagNameText name={displayNameText} fullName={tag.name} />
+        <TagNameButton name={displayNameText} fullName={tag.name} onSelect={onSelect} />
       )}
       <TagCountBadge total={safeTotal} enabled={safeEnabled} />
       <TagToggleControl

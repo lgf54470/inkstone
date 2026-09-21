@@ -36,8 +36,10 @@ describe('dashboard KPI semantics (SH-57)', () => {
   it('announces the delta with what it was measured against', () => {
     const hint = t('share.delta_vs_previous')
     const rendered = renderKpi({ value: 10, delta: 12, deltaHint: hint })
-    expect(rendered.container.querySelector('[aria-label]')?.getAttribute('aria-label')).toBe(`+12% ${hint}`)
-    expect(rendered.container.textContent).toContain('+12%')
+    // Read where it sits, not through an `aria-label`: a span with no role may not carry one (axe's
+    // `aria-prohibited-attr`, SH-102), so the hint is visually hidden text beside the percentage.
+    expect(rendered.container.textContent).toContain(`+12% ${hint}`)
+    expect(rendered.container.querySelector('[aria-label]')).toBeNull()
     rendered.unmount()
   })
 
