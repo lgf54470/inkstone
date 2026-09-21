@@ -168,7 +168,10 @@ export interface ShareListResponse {
     pinnedShares?: number
     starredShares?: number
     pausedShares?: number
+    passwordShares?: number
+    expiringShares?: number
     expiringSoonShares?: number
+    permanentShares?: number
     expiredShares?: number
     totalViews: number
     totalVisitors: number

@@ -10,7 +10,10 @@ export interface ShareGlobalStats {
   pinnedShares: number
   starredShares: number
   pausedShares: number
+  passwordShares: number
+  expiringShares: number
   expiringSoonShares: number
+  permanentShares: number
   expiredShares: number
   totalViews: number
   totalVisitors: number
@@ -34,7 +37,10 @@ export interface GlobalSummaryRow {
   total_shares: number
   active_shares: number
   paused_shares: number
+  password_shares: number
+  expiring_shares: number
   expiring_soon_shares: number
+  permanent_shares: number
   expired_shares: number
   total_views: number
 }
@@ -97,7 +103,10 @@ export function globalSummaryStatement(db: D1Database, userId: string, now: numb
     `SELECT COUNT(*) as total_shares,
             COUNT(CASE WHEN (s.is_enabled = 1 OR s.is_enabled IS NULL) AND (s.expires_at IS NULL OR s.expires_at > ?2) THEN 1 END) as active_shares,
             COUNT(CASE WHEN s.is_enabled = 0 THEN 1 END) as paused_shares,
+            COUNT(CASE WHEN s.password_hash IS NOT NULL THEN 1 END) as password_shares,
+            COUNT(CASE WHEN s.expires_at IS NOT NULL AND s.expires_at > ?2 THEN 1 END) as expiring_shares,
             COUNT(CASE WHEN s.expires_at IS NOT NULL AND s.expires_at > ?2 AND s.expires_at <= ?3 THEN 1 END) as expiring_soon_shares,
+            COUNT(CASE WHEN s.expires_at IS NULL THEN 1 END) as permanent_shares,
             COUNT(CASE WHEN s.expires_at IS NOT NULL AND s.expires_at <= ?2 THEN 1 END) as expired_shares,
             COALESCE(SUM(s.views), 0) as total_views
        FROM shares s
@@ -141,7 +150,10 @@ export function buildShareGlobalStats(
     pinnedShares: pinStarRow?.pinned_shares ?? 0,
     starredShares: pinStarRow?.starred_shares ?? 0,
     pausedShares: globalSummary?.paused_shares ?? 0,
+    passwordShares: globalSummary?.password_shares ?? 0,
+    expiringShares: globalSummary?.expiring_shares ?? 0,
     expiringSoonShares: globalSummary?.expiring_soon_shares ?? 0,
+    permanentShares: globalSummary?.permanent_shares ?? 0,
     expiredShares: globalSummary?.expired_shares ?? 0,
     totalViews: filteredGlobalStats?.total_views ?? (globalSummary?.total_views ?? 0),
     totalVisitors: filteredGlobalStats?.total_uv ?? 0,

@@ -371,6 +371,20 @@ describe('share sidebar count parity (SH-30)', () => {
     expect(stats.expiringSoonShares).toBe(1)
   })
 
+  it('counts the categories the sidebar used to leave blank (SH-52)', async () => {
+    const db = await makeDb()
+    const now = Date.now()
+    const locked = await seedNote(db, {})
+    const dated = await seedNote(db, {})
+    const forever = await seedNote(db, {})
+    await seedShare(db, { note_id: locked, slug: 'locked', password_hash: 'hash' })
+    await seedShare(db, { note_id: dated, slug: 'dated', expires_at: now + 30 * 86_400_000 })
+    await seedShare(db, { note_id: forever, slug: 'forever' })
+
+    const stats = (await (await request(makeApp(), '/api/share')).json()).globalStats
+    expect([stats.passwordShares, stats.expiringShares, stats.permanentShares]).toEqual([1, 1, 2])
+  })
+
   it('marks the list truncated when it exceeds the server row limit', async () => {
     const db = await makeDb()
     for (let i = 0; i < 501; i++) {

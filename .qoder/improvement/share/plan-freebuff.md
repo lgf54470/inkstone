@@ -46,9 +46,9 @@
 | 16 | C | SH-59 | 网格卡未 memo + 内联闭包 + 每卡 `folders.find` | 小 | ✅ | 8cda369d |
 | 17 | C | SH-57 | `toLocaleString()` 跟随 OS / delta 无语义 / 图表无文本替代 | 小–中 | ✅ | 09a5c284 |
 | 18 | C | SH-56 | 「日均访问量」口径错误 + sparkline 与 PV 卡重复 | 小 | ✅ | 7859ca3b |
-| 19 | C | SH-58 | hub 分类徐标未走 `countBadgeTone`（且不在对比度门禁内） | 小 | ✅ | ⏳ 下项回填 |
+| 19 | C | SH-58 | hub 分类徐标未走 `countBadgeTone`（且不在对比度门禁内） | 小 | ✅ | 54a2feb1 |
+| 20 | C | SH-52 | 侧栏计数缺 password/expiring/permanent 三类 | 小 | ✅ | ⏳ 下项回填 |
 | 19 | C | SH-58 | hub 分类徽标未走 `countBadgeTone`（且不在对比度门禁内） | 小 | ⬜ | |
-| 20 | C | SH-52 | 侧栏计数缺 password/expiring/permanent 三类 | 小 | ⬜ | |
 | 21 | C | SH-54 | 看板不受侧栏范围影响且不标注作用域 | 中 | ⬜ | |
 | 22 | C | SH-61 | 设置「保存」一半 localStorage 一半服务端，语义未标注 | 小 | ⬜ | |
 | 23 | C | SH-83 | UV 去重口径（IP+日盐 / 同 NAT 合并 / 跨日重复）不可见 | 极小 | ⬜ | |
@@ -311,3 +311,11 @@
   - **如实说明**：上面这次通过是在「跳过三个音乐表面」的临时副本上跑的——原脚本在本机这个实例上会停在音乐的 `列表视图/List view` 找不到而崩（改前先跑过一次、把分享中心排在前后各试过一次，都崩在同一点）。该崩溃与本项无关（本项没碰音乐代码），登记为 SH-100；临时副本与临时实例都已删除。
   - 单元与静态：`npx tsc -b --force` exit 0；`features/share` ＋ `features/sidebar` 共 **31 文件 / 139 用例全绿**；8 项静态门禁全绿（`comments` 5058 条 / 708 文件，`deep-imports` 在移动后复验通过）。
 - 局限：① hub 里**文件夹行与标签行**的计数由共用组件（`hub-folder-row.tsx`/`hub-tag-item.tsx`）自己画，属 SH-93 的范围，本项只收了分类栏；② 量测统计的是「落在软底上的层级数」，不是「徐标」这个组件本身，因此它守的是规则而不是那一个 `span`；③ 两个门禁各自保存了同一套分享中心文案对（登记为 SH-99，后续提到 `e2e-harness.mjs` 共用）；④ 本机对比度门禁尚不能完整跑完（SH-100）。
+
+### 20 — SH-52 侧栏三个分类连计数都没有（2026-09-21）
+
+- 根因：`globalSummaryStatement` 只算 `total/active/paused/expired`，`ShareGlobalStats` 里也没有 `password/expiring/permanent` 三个字段，于是「口令加密 / 有到期时间 / 永久有效」三行永远空着——与「0 个」在视觉上无法区分（截图里那三行就是这么来的）。
+- 改动面（同一条 D1 语句、零新增往返）：`src/worker/routes/share/global-stats.ts` 的 summary 再多三个 `COUNT(CASE …)`（`password_hash IS NOT NULL`、`expires_at > now`、`expires_at IS NULL`）并进 `buildShareGlobalStats`；`src/shared/types/share.ts` 的 `globalStats` 补三个可选字段；`use-share-hub-sidebar.tsx` 的三行接上计数；`src/client/demo/backend/routes/share.ts` 同步补三项（体验版同一张表也要对得上）。
+- 先红后绿（含变异）：`tests/share-routes.test.ts` 新增一例断言 `[passwordShares, expiringShares, permanentShares] === [1, 1, 2]`（口令 1 条、30 天后到期 1 条、无到期 2 条）；变异测试：把 `password_shares` 的 `COUNT` 条件改成永远不成立，断言立刻红（`expected [0, 1, 2]`），还原复绿——证明它真的在守这三个数，而不是碰巧通过。
+- 验证读数：`tests/share-routes.test.ts` **77/77**；`npx tsc -b --force` exit 0；11 项静态门禁全绿（`comments` 5058 条 / 708 文件）。
+- 局限：① 现在三个分类都能显示 0（`count: 0` 也渲染）——这正是「与空着可区分」的意图，但侧栏因此更满，视觉密度未做核对；② 计数与列表查询是两条独立的 SQL 条件，改了一侧忘另一侧不会自动报警（本项的测试只钉住计数侧，桶的划分在第 14 项的测试里）——把两者抽成同一份谓词是后续可选的重构；③ 博客侧栏有自己的 `blog-*` 计数路径，不在本项范围。
