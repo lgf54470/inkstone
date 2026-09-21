@@ -26,6 +26,7 @@ import {
   type VisitTargetStat,
 } from '../../lib/visit-aggregates'
 import { channelBreakdownStatement, composeChannels, type ChannelCountRow } from './channel-split'
+import { collectionChannelLabels, collectionChannelLabelsStatement, type CollectionChannelLabelRow } from '../../lib/share-collections'
 import { firstOf, rowsOf } from './read-results'
 import { ShareRow } from './shares'
 
@@ -104,7 +105,9 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
     // Only the unbounded range is charged: a bounded one fetches a single window of rows,
     // while `all` summarizes the account's entire history (see consumeShareReadBudget).
     if (ctx.range === 'all') await consumeShareReadBudget(db, userId)
-    const [summaryResult, prevStatsResult, filterStatsResult, recentResult, staleThresholdResult, staleRowsResult, channelResult, ...visitResults] = await db.batch([
+    // The two channel statements sit together and ahead of the aggregate list, which
+    // `visitAggregateFromResults` unpacks by position: the labels belong to the rows beside them.
+    const [summaryResult, prevStatsResult, filterStatsResult, recentResult, staleThresholdResult, staleRowsResult, channelResult, channelLabelResult, ...visitResults] = await db.batch([
       shareSummaryStatement(db, userId, ctx.now),
       prevVisitStatsStatement(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause),
       visitFilterStatsStatement(db, userId, ctx.startTs),
@@ -112,6 +115,7 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
       staleThresholdStatement(db, userId),
       staleLinksStatement(db, { userId, now: ctx.now }),
       channelBreakdownStatement(db, { userId }, ctx),
+      collectionChannelLabelsStatement(db, userId),
       ...visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId }, ctx),
     ])
     const aggregate = visitAggregateFromResults(visitResults, ctx, SHARE_VISIT_SOURCE)
@@ -128,7 +132,11 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
         firstOf<StaleThresholdRow>(staleThresholdResult),
         rowsOf<StaleLinkRow>(staleRowsResult),
       ),
-      channels: composeChannels(rowsOf<ChannelCountRow>(channelResult), aggregate.views),
+      channels: composeChannels(
+        rowsOf<ChannelCountRow>(channelResult),
+        aggregate.views,
+        collectionChannelLabels(rowsOf<CollectionChannelLabelRow>(channelLabelResult)),
+      ),
     }))
   })
 }
@@ -251,9 +259,10 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
     if (!row) throw ApiError.notFound('Share or note not found')
     const ctx = await analyticsContext(db, c, { userId, noteId })
     if (ctx.range === 'all') await consumeShareReadBudget(db, userId)
-    const [recentResult, channelResult, ...visitResults] = await db.batch([
+    const [recentResult, channelResult, channelLabelResult, ...visitResults] = await db.batch([
       recentVisitsStatement(db, { userId, noteId, startTs: ctx.startTs, clause: visitTrafficSql(ctx.filters, 'sv') }),
       channelBreakdownStatement(db, { userId, targetId: noteId }, ctx),
+      collectionChannelLabelsStatement(db, userId),
       ...visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId, targetId: noteId }, ctx),
     ])
     const aggregate = visitAggregateFromResults(visitResults, ctx, SHARE_VISIT_SOURCE)
@@ -279,7 +288,11 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
       devices: breakdown.devices,
       osList: breakdown.osList,
       browsers: breakdown.browsers,
-      channels: composeChannels(rowsOf<ChannelCountRow>(channelResult), aggregate.views),
+      channels: composeChannels(
+        rowsOf<ChannelCountRow>(channelResult),
+        aggregate.views,
+        collectionChannelLabels(rowsOf<CollectionChannelLabelRow>(channelLabelResult)),
+      ),
       recentVisits,
     }
     return c.json(response)

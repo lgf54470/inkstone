@@ -1,4 +1,5 @@
 import type { ShareCollection } from '@shared/types'
+import { collectionChannelToken, withChannelParam } from '@shared/share-channel'
 
 /**
  * A collection's public address, built in one place: the panel copies it, the QR sheet would show it,
@@ -7,6 +8,16 @@ import type { ShareCollection } from '@shared/types'
  */
 export function collectionPath(slug: string): string {
   return `/c/${slug}`
+}
+
+/**
+ * Where a directory entry goes: the note's own share page, marked as having come from *this*
+ * collection's directory. `withChannelParam` is the same marker contract every other distribution
+ * surface uses (ADR-0004), so a visit from a directory is attributed to the collection that sent
+ * it — which is what the dashboard reads back per collection.
+ */
+export function collectionNoteLink(noteSlug: string, collectionSlug: string): string {
+  return withChannelParam(`/s/${noteSlug}`, collectionChannelToken(collectionSlug))
 }
 
 export function collectionShareUrl(slug: string): string {

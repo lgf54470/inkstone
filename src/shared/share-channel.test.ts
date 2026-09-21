@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CHANNEL_UNMARKED,
   CHANNEL_UNRECOGNIZED,
+  collectionChannelToken,
   isReservedChannelName,
   normalizeChannelToken,
   storedChannelValue,
@@ -39,6 +40,21 @@ describe('channel marker tokens', () => {
     expect(isReservedChannelName(CHANNEL_UNMARKED)).toBe(true)
     expect(isReservedChannelName(CHANNEL_UNRECOGNIZED)).toBe(true)
     expect(isReservedChannelName('newsletter')).toBe(false)
+  })
+})
+
+describe('collection directory channels (ADR-0005)', () => {
+  it('stamps one collection per token, inside the marker charset', () => {
+    // A slug `newSlug()` can mint: 20 chars of the id alphabet. The directory hands the token out
+    // as a `?ref=`, so it has to be something the visit writer accepts — the prefix puts it at 31 of
+    // the 32 allowed characters, which is why the length is asserted here and not left to chance.
+    const slug = '0123456789abcdefghjk'
+    const token = collectionChannelToken(slug)
+
+    expect(token).toBe(`collection-${slug}`)
+    expect(token.length).toBeLessThanOrEqual(32)
+    expect(normalizeChannelToken(token)).toBe(token)
+    expect(storedChannelValue(token)).toBe(token)
   })
 })
 

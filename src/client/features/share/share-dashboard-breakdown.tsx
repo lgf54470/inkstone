@@ -81,7 +81,7 @@ function ChannelSplit({ rows }: { rows: ShareBreakdownItem[] }) {
       {rows.map((row) => (
         <BreakdownRow
           key={row.name}
-          name={localizeChannelName(row.name)}
+          name={localizeChannelName(row.name, row.label)}
           count={row.count}
           percentage={row.percentage ?? 0}
         />

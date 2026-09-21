@@ -13,7 +13,19 @@ import {
   type ShareStatusFilter,
   type VisitLogFilter,
 } from '@shared/share-selection'
-import { SHARE_BROWSERS, SHARE_CHANNELS, SHARE_DEVICES, SHARE_OS_LIST, SHARE_TOP_COUNTRIES, SHARE_TOP_REFERRERS, SHARE_VISIT_SAMPLES } from './share-fixtures'
+import { SHARE_BROWSERS, SHARE_CHANNELS, SHARE_DEMO_COLLECTION_CHANNEL, SHARE_DEMO_COLLECTION_SLUG, SHARE_DEVICES, SHARE_OS_LIST, SHARE_TOP_COUNTRIES, SHARE_TOP_REFERRERS, SHARE_VISIT_SAMPLES } from './share-fixtures'
+
+/**
+ * The channel split with the demo's published directory named after its own title — the same
+ * `label` the worker attaches, so the demo never shows a raw `collection-…` token as a channel name.
+ */
+function demoChannels(state: DemoState): ShareGlobalAnalytics['channels'] {
+  const collection = [...state.shareCollections.values()].find((item) => item.slug === SHARE_DEMO_COLLECTION_SLUG)
+  const title = collection && (collection.targetType === 'folder'
+    ? state.shareFolders.get(collection.targetValue)?.name
+    : state.shareTags.get(collection.targetValue)?.name)
+  return SHARE_CHANNELS.map((row) => (row.name === SHARE_DEMO_COLLECTION_CHANNEL && title ? { ...row, label: title } : row))
+}
 
 function shareTimeline(now: number, counts: [number, number][]): ShareTimelinePoint[] {
   return counts.map(([views, visitors], index) => ({
@@ -56,7 +68,7 @@ function shareGlobalAnalytics(c: Context, state: DemoState): Response {
     devices: SHARE_DEVICES,
     osList: SHARE_OS_LIST,
     browsers: SHARE_BROWSERS,
-    channels: SHARE_CHANNELS,
+    channels: demoChannels(state),
     recentVisits: [],
     staleLinks: demoStaleLinks(state, now),
     filterStats: {
@@ -133,7 +145,7 @@ function shareNoteAnalytics(c: Context, state: DemoState): Response {
       { name: 'Chrome', count: 50, percentage: 59 },
       { name: 'Safari', count: 35, percentage: 41 },
     ],
-    channels: SHARE_CHANNELS,
+    channels: demoChannels(state),
     recentVisits: [],
   }
   return c.json(res)

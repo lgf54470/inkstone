@@ -22,6 +22,22 @@ const CHANNEL_TOKEN_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/
 export const CHANNEL_UNMARKED = '__unmarked__'
 export const CHANNEL_UNRECOGNIZED = '__unrecognized__'
 
+/**
+ * The prefix a published collection's directory stamps on the links it hands out (ADR-0005). One
+ * token per collection, so "visits from a directory" can be read per collection instead of folded
+ * into a single row; the slug is the collection's own, and `collectionChannelToken` is the only
+ * place that composes it, which is what keeps the reading and the link from naming different things.
+ */
+export const COLLECTION_CHANNEL_PREFIX = 'collection-'
+
+/**
+ * The marker for one collection's directory. A collection slug is minted by `newSlug()` (20 chars),
+ * so the token lands at 31 of the 32 allowed characters — inside the charset, not merely near it.
+ */
+export function collectionChannelToken(slug: string): string {
+  return `${COLLECTION_CHANNEL_PREFIX}${slug}`
+}
+
 /** The token itself when it is well formed, otherwise null. */
 export function normalizeChannelToken(raw: unknown): string | null {
   if (typeof raw !== 'string') return null

@@ -1,5 +1,5 @@
-import type { ShareVisitLog } from '@shared/types'
-import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED } from '@shared/share-channel'
+import type { ShareBreakdownItem, ShareVisitLog } from '@shared/types'
+import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED, collectionChannelToken } from '@shared/share-channel'
 
 /**
  * The demo backend's share fixtures. Kept apart from the route handlers because this is data the
@@ -36,13 +36,22 @@ export const SHARE_OS_LIST = [
 ]
 
 /**
- * The channel split of the demo dashboard: a real marker (the newsletter copies), the visits with
- * no marker, and the ones whose marker was refused — the last row exists because the real
- * dashboard has it, and a demo that hides it would misrepresent what switching the feature on does.
+ * The demo's seeded collection (`state.ts`) publishes this slug, so the marker its directory hands
+ * out is this — built through the shared builder as it is in the product, never typed by hand.
  */
-export const SHARE_CHANNELS = [
-  { name: CHANNEL_UNMARKED, count: 240, percentage: 60 },
+export const SHARE_DEMO_COLLECTION_SLUG = 'demo-collection'
+export const SHARE_DEMO_COLLECTION_CHANNEL = collectionChannelToken(SHARE_DEMO_COLLECTION_SLUG)
+
+/**
+ * The channel split of the demo dashboard: a real marker (the newsletter copies), the visits with
+ * no marker, the ones whose marker was refused — the last row exists because the real dashboard has
+ * it, and a demo that hides it would misrepresent what switching the feature on does — and one
+ * directory's row, which the route labels with the collection's title the way the worker does.
+ */
+export const SHARE_CHANNELS: ShareBreakdownItem[] = [
+  { name: CHANNEL_UNMARKED, count: 200, percentage: 50 },
   { name: 'newsletter', count: 120, percentage: 30 },
+  { name: SHARE_DEMO_COLLECTION_CHANNEL, count: 40, percentage: 10 },
   { name: CHANNEL_UNRECOGNIZED, count: 40, percentage: 10 },
 ]
 

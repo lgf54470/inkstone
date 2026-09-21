@@ -1492,9 +1492,11 @@ const allowed = new Map([
   ]],
   ['src/client/demo/backend/routes/share-fixtures.ts', [
     '/**\n * The demo backend\'s share fixtures. Kept apart from the route handlers because this is data the\n * routes read, not logic they run: the constants below describe one plausible month of traffic and\n * nothing here branches.\n */',
-    '/**\n * The channel split of the demo dashboard: a real marker (the newsletter copies), the visits with\n * no marker, and the ones whose marker was refused — the last row exists because the real\n * dashboard has it, and a demo that hides it would misrepresent what switching the feature on does.\n */',
+    '/**\n * The demo\'s seeded collection (`state.ts`) publishes this slug, so the marker its directory hands\n * out is this — built through the shared builder as it is in the product, never typed by hand.\n */',
+    '/**\n * The channel split of the demo dashboard: a real marker (the newsletter copies), the visits with\n * no marker, the ones whose marker was refused — the last row exists because the real dashboard has\n * it, and a demo that hides it would misrepresent what switching the feature on does — and one\n * directory\'s row, which the route labels with the collection\'s title the way the worker does.\n */',
   ]],
   ['src/client/demo/backend/routes/share.ts', [
+    '/**\n * The channel split with the demo\'s published directory named after its own title — the same\n * `label` the worker attaches, so the demo never shows a raw `collection-…` token as a channel name.\n */',
     '/**\n * The hygiene card on the demo dashboard, from the demo\'s own share rows: the links whose last\n * visit is older than the shipped threshold, plus every link nobody has opened yet.\n */',
     '// The same selection the worker\'s query builds, evaluated in JS: a demo that answered a filter',
     '// differently from the real build would be a bug report about the demo, which is worse than none.',
@@ -3037,9 +3039,8 @@ const allowed = new Map([
     '// visitor opens a `/c/…` address, so the editor and the share hub never travel with it.',
   ]],
   ['src/client/features/share/collection-page/page.tsx', [
-    '/**\n * The collection a visitor lands on (ADR-0005). It is a directory and nothing more: every entry is a\n * link to that note\'s own page, carrying `?ref=collection` so the owner can see which visits came\n * from here. A member that has its own password says so, because clicking through and meeting a\n * password prompt without warning reads as a broken link.\n */',
+    '/**\n * The collection a visitor lands on (ADR-0005). It is a directory and nothing more: every entry is a\n * link to that note\'s own page, carrying this collection\'s own `?ref=collection-<slug>` marker so\n * the owner reads one row per directory instead of one row for all of them. A member that has its\n * own password says so, because clicking through and meeting a password prompt without warning\n * reads as a broken link.\n */',
     '/** One entry: the link, an excerpt to recognise it by, and whether it will ask for its own password. */',
-    '/**\n * Where a directory entry goes: the note\'s own share page, marked as having come from here. The\n * marker is the same `?ref=` contract the rest of the module uses (ADR-0004), so a visit from a\n * collection is counted as a visit to that note — with the collection as its channel.\n */',
   ]],
   ['src/client/features/share/collection-page/use-collection-page.ts', [
     '/**\n * The visitor\'s side of a collection (ADR-0005). Same three states as the note page — loading,\n * password required, unavailable — because the two pages present the same kind of thing: an address\n * that is either open, locked, or gone, and which one it is has to be the same shape in both so a\n * probe cannot tell a locked collection from a missing one.\n */',
@@ -3115,6 +3116,11 @@ const allowed = new Map([
     '// The prompt has to name this scope: "every visit log" is the wrong sentence here.',
     '// The rows\' visit counts are what was just deleted, so the list is fetched again.',
   ]],
+  ['src/client/features/share/share-collection-link.test.ts', [
+    '/**\n * ADR-0005 phase 3, per collection (SH-67\'s channel): a visit from a directory is attributed to the\n * collection it came from, which is only possible if the marker names that one collection. The same\n * assertion runs on the visit writer\'s charset in `share-channel.test.ts`; here it is the link the\n * visitor actually clicks, because that is the only place the marker is minted for a real reader.\n */',
+    '// A marker the visit writer refuses would still produce a row, logged as a refusal — which the',
+    '// dashboard reports as \\"the owner mistyped a URL\\". The link must not be able to do that.',
+  ]],
   ['src/client/features/share/share-collection-publish-dialog.tsx', [
     '/** Wide enough for the four labels at their longest, narrow enough to stay a form. */',
     '/**\n * Publishing a collection (ADR-0005): pick a folder or a tag, optionally put a password and an end\n * date on it. It is also the *edit* path — re-publishing the same target re-states the policy, so\n * changing a password or an end date goes through the same call that created the page. The hint says\n * what publishing does not do (enable paused links) and what an empty password means (the page goes\n * back to public), because both are easy to assume the other way round.\n */',
@@ -3137,6 +3143,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/share/share-collections.ts', [
     '/**\n * A collection\'s public address, built in one place: the panel copies it, the QR sheet would show it,\n * and the visitor-facing directory links back to it. A second builder would be a second answer to\n * "where does this page live".\n */',
+    '/**\n * Where a directory entry goes: the note\'s own share page, marked as having come from *this*\n * collection\'s directory. `withChannelParam` is the same marker contract every other distribution\n * surface uses (ADR-0004), so a visit from a directory is attributed to the collection that sent\n * it — which is what the dashboard reads back per collection.\n */',
     '/**\n * How a collection describes what it holds. The target\'s own name is the title; this is the label for\n * the *kind*, which is what tells the owner whether a link came from a folder they reorganised or a\n * tag they added later.\n */',
   ]],
   ['src/client/features/share/share-dashboard-activity.tsx', [
@@ -3156,6 +3163,7 @@ const allowed = new Map([
   ['src/client/features/share/share-dashboard-channels.test.ts', [
     '// The copy must not collapse a refused marker into "no marker": they are different answers.',
     '// The stored value is charset-bounded, but the display path does not rely on that alone.',
+    '// The marker is an address fragment; the row is supposed to read as a place a person knows.',
   ]],
   ['src/client/features/share/share-dashboard-export-button.test.ts', [
     '/**\n * SH-64\'s UI half: the button that hands the window over. The builder is tested on its own; what\n * is only true of the wiring is that the control carries an accessible name, that it stays inert\n * while there is nothing on screen to describe, and that clicking it actually produces one file.\n */',
@@ -3256,7 +3264,7 @@ const allowed = new Map([
   ['src/client/features/share/share-helpers.ts', [
     '/**\n * The traffic classes a visit list can be narrowed to. It is the shared vocabulary rather than a local\n * union, because the browsing hook, the CSV export walk and the worker\'s log query all have to agree\n * on what "bot" means — that agreement is what the export of a filtered view rests on.\n */',
     '/**\n * The ranges every share analytics surface offers, in one place: the dashboard\'s segmented control\n * and the single-note modal both draw this list, so "30d" can never mean two different windows.\n */',
-    '/**\n * The names in the channel split (ADR-0004). The two reserved names become copy; anything else is\n * a token the owner wrote, rendered as text by React and never through a markup API — the stored\n * value is charset-bounded, but the display path does not rely on that alone.\n */',
+    '/**\n * The names in the channel split (ADR-0004). The two reserved names become copy; anything else is\n * a token the owner wrote, rendered as text by React and never through a markup API — the stored\n * value is charset-bounded, but the display path does not rely on that alone.\n *\n * `label` is the one name the client cannot derive: a directory\'s marker is `collection-<slug>`, and\n * the collection\'s title lives in the account\'s records, so the worker resolves it (SH-82\'s rule:\n * the marker ships as a token, the name ships only when the worker can prove it).\n */',
     '/**\n * How the three traffic switches read as one sentence. The badge and the exported CSV both state\n * this, and a file that describes the filters differently from the screen is worse than no file.\n */',
     '/**\n * The three device classes the breakdown card names in words. Shared with the dashboard export so a\n * file that leaves the app says "Desktop" where the card said "Desktop", not the raw `desktop`.\n */',
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
@@ -5618,6 +5626,8 @@ const allowed = new Map([
   ['src/shared/locales/en-US/share-2.ts', [
     '// The distribution marker (?ref=) of ADR-0004: what it is, what the two miss rows mean, and the',
     '// switch that decides whether the write path records it at all.',
+    '// A directory stamps its own marker (ADR-0005), and the title comes from the account\'s records,',
+    '// so the row reads as "the directory of the folder/tag you published" rather than as a token.',
     '// The session view of the log panel (ADR-0003): what a session is, and the four columns.',
     '// Collections (ADR-0005): a published folder or tag as one page. The copy separates the three',
     '// things that are easy to conflate — what publishing does, what pausing does, and what revoking',
@@ -5666,12 +5676,17 @@ const allowed = new Map([
     '/* a non-Latin marker: the charset is ASCII only */',
     '// The breakdown tells "no marker" from "refused marker" by name; if a visitor could store',
     '// either name as a token, the dashboard would report a real channel as one of the misses.',
+    '// A slug `newSlug()` can mint: 20 chars of the id alphabet. The directory hands the token out',
+    '// as a `?ref=`, so it has to be something the visit writer accepts — the prefix puts it at 31 of',
+    '// the 32 allowed characters, which is why the length is asserted here and not left to chance.',
     '// Present but malformed: the visit is still recorded, and the miss stays countable.',
   ]],
   ['src/shared/share-channel.ts', [
     '/**\n * The distribution marker a public link can carry (`?ref=<token>`). Its only job is to answer\n * "which copy of this link did this visit come from" for links the owner sends to several places,\n * which the `Referer` header cannot answer: chat apps, mail clients and QR scans send none, and\n * an in-app tap is a self-referrer (excluded by default).\n *\n * The character set is the privacy mechanism, not a formatting preference. Whatever does not\n * match is refused at the door, so free text — a name, an address, a campaign string with spaces\n * — can never be stored in the column. See ADR-0004.\n */',
     '/** 1–32 chars of `[a-z0-9_-]`, starting with a letter or digit. */',
     '/**\n * The two names the dashboard uses for visits that carry no usable marker, kept here so the\n * worker that produces them and the client that labels them cannot drift.\n *\n * A valid token always starts with a letter or digit, so a name beginning with `_` can never be\n * a marker someone stored: the namespace cannot be squatted by choosing `?ref=__unmarked__`.\n */',
+    '/**\n * The prefix a published collection\'s directory stamps on the links it hands out (ADR-0005). One\n * token per collection, so "visits from a directory" can be read per collection instead of folded\n * into a single row; the slug is the collection\'s own, and `collectionChannelToken` is the only\n * place that composes it, which is what keeps the reading and the link from naming different things.\n */',
+    '/**\n * The marker for one collection\'s directory. A collection slug is minted by `newSlug()` (20 chars),\n * so the token lands at 31 of the 32 allowed characters — inside the charset, not merely near it.\n */',
     '/** The token itself when it is well formed, otherwise null. */',
     '/** Whether a name out of a breakdown is one of the two reserved labels rather than a real marker. */',
     '/**\n * What the `channel` column stores for one visit:\n *\n * - `null` — the request carried no `ref` at all;\n * - `\'\'` — it carried one that is not a valid token. The visit is still logged (a visitor must not\n *   see an error because the owner mistyped a URL), and the dashboard reports the miss in its own\n *   row rather than folding it into "unmarked" — a marker that silently stops working is exactly\n *   the failure rule 2 exists to prevent;\n * - the token — the marker was well formed.\n *\n * Nothing derived from a rejected value is stored: the raw string never reaches the database. The\n * presence of the parameter is expressed by the field being a string at all, so no separate flag\n * travels with it.\n */',
@@ -5762,6 +5777,7 @@ const allowed = new Map([
     '/**\n   * Days a `blog_visits` row survives before the maintenance cron deletes it;\n   * 0 keeps every row. Same reasoning as the share twin.\n   */',
   ]],
   ['src/shared/types/share.ts', [
+    '/**\n   * A name the worker resolved for a channel it can name: today the collection behind a\n   * `collection-<slug>` marker (ADR-0005), whose title lives in the account\'s folder/tag rows and\n   * cannot be recovered from the token. User data, not localized copy — the client prints it as it\n   * is. Absent for a marker the owner typed themselves, and for a collection whose record is gone.\n   */',
     '// Null when the note was deleted but its visit rows survive; the client',
     '// labels it (SH-34), the worker must not bake in an English fallback.',
     '/**\n   * The `?ref=` marker the visit carried: a valid token, or null for both "the URL had none"\n   * and "what it had was refused". The log table shows the token, never the URL (ADR-0004).\n   */',
@@ -6094,6 +6110,8 @@ const allowed = new Map([
     '/**\n * The cursor names where the last page stopped, in the order the page was sorted by. Opaque because\n * it exposes the owner\'s arrangement; a client that composed one itself would be reimplementing the\n * ordering rule, and would go on working after that rule changed.\n */',
     '/** Null for an absent cursor; a malformed one is an error the caller must answer, not a first page. */',
     '/**\n * The name of the folder or tag a collection points at, read at request time: renaming a folder\n * renames the page it published. Null when the record is gone, which is the same fact the member rule\n * needs — a tag collection whose tag was deleted has no name to show and no name to match, so both\n * answers come from this one lookup. The stored record keeps the target\'s id only, so there is no\n * second name to fall out of date.\n */',
+    '/**\n * The title behind every channel a directory stamps, keyed by the marker itself (ADR-0005). The\n * label is read here rather than stored on the visit: the visit row keeps the marker, the marker\n * keeps the collection\'s slug, and this lookup turns that slug into the folder/tag name the owner\n * published — so renaming a folder renames what the channel split calls it, with nothing to keep in\n * sync. A paused collection is still listed: pausing a directory does not un-attribute the visits\n * it already brought in.\n */',
+    '/**\n * Marker → title, built through `collectionChannelToken` so this lookup cannot name a token the\n * directory does not hand out. A collection whose folder/tag is gone contributes nothing: its\n * historic visits stay in the breakdown under their raw marker rather than under a name that no\n * longer exists to check.\n */',
   ]],
   ['src/worker/lib/share-selection-sql.ts', [
     '/**\n * The SQL half of the rules in `@shared/share-selection`. Every statement that selects shares goes\n * through here — the owner\'s list, its count columns, the tag counts, a collection\'s members, the\n * batch toggles — because the two halves of this app are written separately and the only way a tag\n * collection and a tag filter cannot drift apart is if they were never written apart.\n *\n * Fragments carry the first bind number they were given and hand back the next free one, so a caller\n * can compose several of them without renumbering placeholders afterwards.\n */',
@@ -6570,6 +6588,8 @@ const allowed = new Map([
     '/** How many quiet links the card lists; the count beside it covers all of them. */',
     '// Only the unbounded range is charged: a bounded one fetches a single window of rows,',
     '// while `all` summarizes the account\'s entire history (see consumeShareReadBudget).',
+    '// The two channel statements sit together and ahead of the aggregate list, which',
+    '// `visitAggregateFromResults` unpacks by position: the labels belong to the rows beside them.',
     '/**\n * SH-70: which public links have gone quiet, so the owner can pause what nobody reads instead of\n * letting dead links sit in the list forever. The threshold is the account\'s own setting (0 = the\n * report is off), which is why the query reads it rather than taking it from the request.\n */',
     '// The window function counts every match; LIMIT only decides how many are listed.',
     '/**\n * The account\'s hygiene threshold in days, or 0 when it is switched off. Read on its own because\n * the row query returns nothing at all in both the "nothing is quiet" and the "switched off"\n * cases, and the card still has to say which of the two it is looking at.\n */',
@@ -6594,7 +6614,7 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/share/channel-split.ts', [
     '/**\n * Which copy of a link each visit came from (ADR-0004), for the same rows the visit aggregate\n * beside it summarizes.\n *\n * It lives here rather than in `visit-aggregates` because only the share table has a marker\n * column, and both dashboards read that module\'s statement list positionally.\n *\n * A visit with no marker and a visit whose marker was refused are counted in separate rows and\n * never merged: a marker that quietly stopped matching has to be visible, not averaged into\n * "direct". The two reserved names cannot collide with a stored token, which always starts with a\n * letter or digit (see `share-channel`).\n */',
-    '/** Percentages share the dashboard\'s denominator, so the split sums against the KPI row. */',
+    '/**\n * Percentages share the dashboard\'s denominator, so the split sums against the KPI row. `labels`\n * (from `collectionChannelLabels`) turns a directory\'s marker into the collection that sent the\n * visit; a marker with no entry stays exactly as the owner wrote it.\n */',
   ]],
   ['src/worker/routes/share/collection-page.ts', [
     '/**\n * `/c/:slug` (ADR-0005) exists for one reason: a collection is opened by pasting its address, so it\n * needs an HTML shell that can then load the directory. The shell is the share page\'s, unchanged —\n * same `noindex, nofollow`, same `Cache-Control: no-store` — because a set of pages that blocked\n * indexing while the page listing them allowed it would be an SEO hole in exactly one direction.\n */',
@@ -6608,8 +6628,9 @@ const allowed = new Map([
     '// One lookup answers both questions: the name in the title, and the value the members have to',
     '// carry. A tag whose row is gone resolves to a target that matches nothing.',
     '// The marker that says "arrived from a directory" is not stored on the member: the client puts',
-    '// `?ref=collection` on the links it renders, so the visit row keeps its own share link as the',
-    '// smallest unit of the analytics (ADR-0004, ADR-0005 phase 3).',
+    '// this collection\'s own `?ref=collection-<slug>` on the links it renders (both sides share',
+    '// `collectionChannelToken`), so the visit row keeps its own share link as the smallest unit of',
+    '// the analytics while the channel still says which directory sent it (ADR-0004, ADR-0005).',
     '// One identical answer for paused, expired and unknown: the status of a collection is not public.',
     '/**\n * The collection\'s own password gate. It is deliberately the same shape as the per-share one — the\n * same throttle keys under a different prefix, the same body for "required" and "wrong" — because two\n * gates that answered differently would let a probe tell them apart.\n */',
     '/** A cursor this worker did not mint is a client bug, so it is a 400 rather than a silent first page. */',
@@ -7064,11 +7085,18 @@ const allowed = new Map([
     '// requestClientIp only trusts CF-Connecting-IP when the edge set `cf`, so the probe attaches it.',
     '/**\n * ADR-0004. The marker is the one field a visitor\'s URL can put into the visits table, so what it\n * accepts, what it refuses and what it refuses to merge are all load-bearing.\n */',
     '/** A public visit with an arbitrary access body, awaited through the visit queue. */',
+    '/** One published collection of this account, addressed by the slug its directory links carry. */',
     '// A visitor must never see an error because the owner mistyped a URL.',
     '// The row is there (the log keeps counting) and the refused value is not in it.',
     '// Storing either name would let a real channel be reported as "no marker".',
     '// Null, not \'\': the account chose not to collect, so there is no miss to report either.',
     '// Percentages share the dashboard\'s denominator, the same view count the KPI row shows.',
+    '// The reading is per collection: the marker says which directory, the label says whose — the',
+    '// same row on the dashboard and in the note\'s own modal, from the one label builder.',
+    '// A token the owner typed themselves that starts the same way: its slug names no collection of',
+    '// this account, so it stays their own text instead of borrowing a directory\'s name.',
+    '// Pausing a directory does not erase the visits it already brought in; its record is still how',
+    '// those visits are named, and a lookalike is never named after a collection it is not.',
     '// The marker answers "which copy", the referrer answers "where from": letting one stand in',
     '// for the other would put a token into a field the referrer cleaner owns.',
     '// `noteId=` must never read as "no scope": that would delete every log of the account.',

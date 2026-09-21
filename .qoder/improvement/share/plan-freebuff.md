@@ -122,6 +122,7 @@
 | SH-100 | `scripts/check-contrast.mjs` 的 `openMusicHubList` | 在 `scripts/e2e.mjs` 刚跑过（177/0）的全新临时实例上，该门禁停在「找不到 `列表视图/List view`」而崩掉；本轮把分享中心表面排在它前面、后面都试过，两次同样崩在这里，而分享中心表面在跳过这三个音乐表面后在两套主题下都能跑完并全绿。未确认是本机音乐种子缺失还是门禁与种子之间的隐式契约 | 先弄清该门禁对音乐库前置数据的真实依赖（种子里是否真有可播放曲目），再决定是让门禁自行备好前置数据、还是把它标为需要预置实例 |
 | SH-98 | `src/worker/routes/blog/stats.ts`（`viewsPerDay: Math.round(views / daysSpan)`）、`src/client/features/blog/blog-dashboard-view/index.tsx` | SH-56 的博客倒影：同样是整数取整的日均值（24h 区间下等于总 PV）且同样把 `sparklineViews` 画在日均卡上（与总访问量卡同一条线）；博客侧还有 `sparklineViews = timeline.slice(-7)` 的隐式截断 | 把 `perDayRate()` 与 `viewsPerDayDelta` 同样接到 blog 的 compose 上（worker 侧共用 `computeDelta` 已有），日均卡去掉重复 sparkline；属 blog 自己的范围，不在本轮 share 红线内 |
 | SH-97 | `scripts/e2e-visual.mjs` 的思维导图场景（`the node is selected before it is deleted`、`deleting the selected node leaves the note`、`undo kept the same instance`、`alt+arrow reorders the node in the note`、`reordering kept the same instance`） | 与 SH-90 同性质：同一份产品代码在一小时内的两次门禁里一次 5/5 全绿、一次 5/5 全红（失败读数都是「实例没被复用」`same:false`），而机器当时被另一条线程的浏览器门禁占满；这些断言现在直接拿实例身份/选中态当判据，没有等待窗口 | 把「等库自己把状态写下去」这层写进断言（如等 `selected` 类/等实例身份稳定），或在判失败前带上一次显式重试；不要靠重跑掩盖 |
+| SH-101 | `src/worker/routes/share/public.ts` 的 `deriveVisitRow()` / `isRecentlySeenVisit()` | 「同一访客在一个时间窗内只记一次」是**先查后写**：`isRecentlySeenVisit` 一次读，插入在随后的 `batch` 里，因此同一访客的两个并发请求都在途时可以各自读到「没来过」而各写一行。另：`visitorFp` 为空时该函数直接返回 `false`（未配置 `VISIT_FP_SECRET` 的实例就是这种），于是去重窗口**完全不生效**——实测 4 个并发请求写出 4 行，行里 `visitorFp: null`。（这条是第 47 项做集合页读数时量到的，不在该项范围内，未改代码。） | 去重要么落进库里（`INSERT OR IGNORE` ＋ 唯一键之类）而不靠读，要么把「没有指纹 ⇒ 每次访问都算一次」显式化（现在只是 `public.ts` 里的一句注释，界面上没有任何状态说明），并把 `VISIT_FP_SECRET` 写进部署清单与 `.dev.vars` 示例 |
 | SH-92 | `src/client/features/share/share-note-submenu.tsx`（296 行手搓面板）、`use-share-note-submenu.ts` | SH-49 唯一被白名单放行的文件：同样是菜单，却与 `buildShareMenuItems` ＋ `Menu` 那套并列存在（两套行样式、两套分隔线、两套键盘行为）。整体退役不是改名：① 它的行是 44px 触控目标（SH-35 守着的 `h-11 md:h-7.5`），而共用 `SubmenuList` 的行只有 40px（`h-10`），换过去要么降级触控目标、要么改共用行高影响音乐/看板/右键菜单；② 它的文件夹搜索与标签输入是 `role='menu'` 面板里的文本框，直接换成 `SubmenuList` 会撞 `aria-required-children`（首次试过会在新门禁里变红） | 先决定「菜单里能不能放输入框」（要么改成命令式选择、要么给面板一个非 menu 角色与自己的标签），同时把共用行高调到 44px 并跑音乐/看板/右键菜单回归；然后删掉该文件、`use-share-note-submenu` 与两处白名单条目 |
 
 ### 05 — SH-80 `loadTopNotes` 按 note id 查标题、不带 `user_id`（2026-09-21）
@@ -628,3 +629,23 @@
 - 变异：6 发中 5 发直接命中（collections 路由到列表视图、dashboard 路由到列表视图、collections 声明成 `preload: 'list'`、viewProps 不再 memo、注册表声明被换成写死的分类判断）；其中最后一条（也是同一发重跑的第 4 条）第一轮**存活**——因为「注册表声明」与「外壳里写死的两个分类名」在现有 12 个分类上**行为完全等价**，任何渲染都分不出来。这正是「结构保证也要有断言」的又一例：单独加一个 `share-hub-preload.test.ts`，把注册表 mock 成一条**故意与旧写法冲突**的声明（dashboard 声明 `list`），断言外壳照声明取数——旧写法在此必红。记在这里，因为「等价变异存活」与「覆盖不足」看起来一样，处置方式却相反。
 - 验证：`tsc -b` exit 0；`src/client/features/share` **49 文件 / 234 用例全绿**（新增 `share-hub-views.test.ts` 3 例：逐分类断言「只调用了自己那一族的数据」与「打开的取数与声明一致」；新增 `share-hub-preload.test.ts` 1 例）；13 项静态门禁全绿。`size:check` 两次真超限都按拆分解决而非 resnapshot：主 hook 拆出 `useHubOverlays`，新测试里的长用例体提成 `callsWhenOpened` / `viewFamilyOf`。
 - 局限：① `share-hub-open-loads.test.ts` 里原有两条分类用例与新循环重叠（保留：那条是 SH-72 的原始现场记录，重构不该顺手删掉别人的回归）；② `ShareHubSidebar` 仍自己维护分类清单（导航，不是视图），因此「侧栏列出的分类」与注册表之间只有类型层的保证（`ShareCategory` 联合 + 两层 record），没有运行时比对。
+
+### 47 — 每个目录一个读数：目录项带各自集合的标记（2026-09-21）
+
+- 根因：三期把目录项统一写成 `?ref=collection`（所有集合共用同一个字符串），于是看板只能得到一行「来自某个目录」——**读不出哪个目录**。通道本身早就存在（ADR-0004），缺的是把标记做成逐集合的，并在看板上把它读回人认识的名字。
+- 改动面（10 生产文件 + 2 测试文件，其中 1 新增）：
+  - `src/shared/share-channel.ts`：`COLLECTION_CHANNEL_PREFIX` + `collectionChannelToken(slug)`——全仓唯一构造点；集合 slug 是 `newSlug()` 的 20 位，标记因此 31 字符，正好在 32 上限内（shared 单测把这组数字钉住）。
+  - `src/client/features/share/share-collections.ts`：`collectionNoteLink(noteSlug, collectionSlug)` 走既有 `withChannelParam`；`collection-page/page.tsx` 的目录项改用它（集合 slug 一路传进 `CollectionBody`/`CollectionDirectory`/`DirectoryNote`），删掉原来的 `/s/<slug>?ref=collection` 字符串。
+  - `src/worker/lib/share-collections.ts`：`collectionChannelLabelsStatement()`（一条按账号收窄的语句，把集合 join 回文件夹/标签名）+ `collectionChannelLabels()`（经同一个构造点做成「标记 → 标题」）。
+  - `src/worker/routes/share/analytics.ts`：global 与 note 两条批处理各加一条 labels 语句（放在 channel 语句旁、聚合语句之前——后者按位置解包），`composeChannels(rows, total, labels)` 给行附 `label`。
+  - `src/shared/types/share.ts`：`ShareBreakdownItem.label?`（worker 解析出的显示名；是用户数据，不是本地化文案）。
+  - 客户端：`localizeChannelName(name, label?)`，看板渠道分解与单篇分析弹窗都传 `label`；locales 各 +1 键（`share.channel_collection_row`）。
+  - 演示后端：`SHARE_CHANNELS` 增加一行由 `SHARE_DEMO_COLLECTION_CHANNEL` 构造的集合标记（并重新配平百分比），`demoChannels(state)` 从种子集合读出标题补 `label`，与 worker 同形。
+  - ADR-0005：三处 `?ref=collection` 的描述改为逐集合标记；「实现记录」新增逐集合读数一节；「局限」补一条（撤销后历史标记回到原始文本）。
+- 一处**刻意的设计选择**（不是遗漏）：没有在集合面板里再加一列「目录访问」。看板的渠道分解本来就有区间与流量过滤两重作用域，再把同一问题搬进面板就是第二个口径不同的数字；**同一个问题只留一个答案**——面板继续只回答「这条目录现在收录了什么」。
+- 先红后绿：4 例新断言先红（shared 的构造与字符集、目录链接、看板渲染 `Collection · <标题>`、worker 两条路由的 label）。修复后：`src/shared` 10 例、`tests/share-routes.test.ts` 111 例（+2）、`features/share` + `src/shared` + demo 等 **61 文件 / 474 用例全绿**。
+- 变异 3 发**全部命中**：labels 的键改成裸 slug（worker 那两例红）、`localizeChannelName` 忽略 label（看板断言红）、目录链接退回 `?ref=collection`（链接断言红）。
+- 浏览器读数：见第 48 项——同一次门禁运行同时覆盖了这两件事（目录项带的标记、看板把它读成集合名）。
+- 验证读数：`tsc -b --force` exit 0；13 项静态门禁全绿（`comments` 用 `sync-comments-allowlist.mjs` 重建；`size` 首跑报 `share-dashboard-channels.test.ts` 的 describe 体超 50 行，按「不 resnapshot」把新用例提成独立 describe 后归零；`i18n` 3271 键，+1）。
+- 局限：① 撤销集合会删除记录，历史访问仍在分解里，但回到原始标记、没有名字可查（ADR 已写明）；② 解析是每条 analytics 请求多一条语句（按账号收窄、上限 20 条），未在真实 D1 上量；③ 集合页本身的访问不写访客行（沿用 ADR-0005），读数只覆盖「从目录进入单篇」那一段；④ 演示模式的集合行是静态夹具（标题从种子集合读出），不随体验版里的点击变化。
+- 新发现（登记、不在本项改，见 SH-101）：同一访客对同一链接的并发请求会写出两行（去重是「先查后写」）；本机实例未配置 `VISIT_FP_SECRET`，那种情况下这个去重窗口**根本不生效**（实测 4 个并发请求写出 4 行，`visitorFp: null`）。

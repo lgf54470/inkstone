@@ -136,7 +136,7 @@ function NoteAnalyticsBreakdowns({ data, locale }: { data: ShareNoteAnalytics | 
           report two different channel counts depending on which surface is open (ADR-0004). */}
       <BreakdownCard title={t('share.channel_section_title')} icon={<Tag size={13} className='text-[var(--accent)]' />} emptyLabel={t('share.no_data_yet')} isEmpty={!data?.channels || data.channels.length === 0}>
         {data?.channels.slice(0, 5).map((item) => (
-          <BreakdownMiniRow key={item.name} name={localizeChannelName(item.name)} count={item.count} percentage={item.percentage ?? 0} />
+          <BreakdownMiniRow key={item.name} name={localizeChannelName(item.name, item.label)} count={item.count} percentage={item.percentage ?? 0} />
         ))}
       </BreakdownCard>
     </div>

@@ -60,6 +60,13 @@ export interface ShareBreakdownItem {
   name: string
   count: number
   percentage?: number
+  /**
+   * A name the worker resolved for a channel it can name: today the collection behind a
+   * `collection-<slug>` marker (ADR-0005), whose title lives in the account's folder/tag rows and
+   * cannot be recovered from the token. User data, not localized copy — the client prints it as it
+   * is. Absent for a marker the owner typed themselves, and for a collection whose record is gone.
+   */
+  label?: string
 }
 
 export interface ShareTimelinePoint {

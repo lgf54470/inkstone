@@ -1,4 +1,5 @@
 import { resolveShareTarget, type ShareTarget, type ShareTargetRecord } from '@shared/share-selection'
+import { collectionChannelToken } from '@shared/share-channel'
 import { isValidId, isValidSlug } from './id'
 import { shareSelectionSql, type ShareSqlConditions } from './share-selection-sql'
 
@@ -152,4 +153,42 @@ export async function collectionTargetName(db: D1Database, userId: string, targe
 
 export function isValidTargetValue(value: unknown): value is string {
   return typeof value === 'string' && isValidId(value)
+}
+
+/**
+ * The title behind every channel a directory stamps, keyed by the marker itself (ADR-0005). The
+ * label is read here rather than stored on the visit: the visit row keeps the marker, the marker
+ * keeps the collection's slug, and this lookup turns that slug into the folder/tag name the owner
+ * published — so renaming a folder renames what the channel split calls it, with nothing to keep in
+ * sync. A paused collection is still listed: pausing a directory does not un-attribute the visits
+ * it already brought in.
+ */
+export function collectionChannelLabelsStatement(db: D1Database, userId: string): D1PreparedStatement {
+  return db.prepare(
+    `SELECT c.slug AS slug,
+            CASE c.target_type WHEN 'folder' THEN f.name ELSE t.name END AS name
+       FROM share_collections c
+       LEFT JOIN share_folders f ON c.target_type = 'folder' AND f.id = c.target_value AND f.user_id = c.user_id
+       LEFT JOIN share_tags t ON c.target_type = 'tag' AND t.id = c.target_value AND t.user_id = c.user_id
+      WHERE c.user_id = ?1`,
+  ).bind(userId)
+}
+
+export interface CollectionChannelLabelRow {
+  slug: string
+  name: string | null
+}
+
+/**
+ * Marker → title, built through `collectionChannelToken` so this lookup cannot name a token the
+ * directory does not hand out. A collection whose folder/tag is gone contributes nothing: its
+ * historic visits stay in the breakdown under their raw marker rather than under a name that no
+ * longer exists to check.
+ */
+export function collectionChannelLabels(rows: CollectionChannelLabelRow[]): Map<string, string> {
+  const labels = new Map<string, string>()
+  for (const row of rows) {
+    if (row.name) labels.set(collectionChannelToken(row.slug), row.name)
+  }
+  return labels
 }

@@ -64,8 +64,9 @@ export function registerShareCollectionPublicRoutes(shareRoutes: Hono<AppBinding
       title: name ?? '',
       count: count?.members ?? 0,
       // The marker that says "arrived from a directory" is not stored on the member: the client puts
-      // `?ref=collection` on the links it renders, so the visit row keeps its own share link as the
-      // smallest unit of the analytics (ADR-0004, ADR-0005 phase 3).
+      // this collection's own `?ref=collection-<slug>` on the links it renders (both sides share
+      // `collectionChannelToken`), so the visit row keeps its own share link as the smallest unit of
+      // the analytics while the channel still says which directory sent it (ADR-0004, ADR-0005).
       notes: rows.map((row): PublicCollectionNote => ({
         slug: row.slug,
         title: row.title,

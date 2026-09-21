@@ -39,9 +39,20 @@ export function channelBreakdownStatement(
   ).bind(...where.binds)
 }
 
-/** Percentages share the dashboard's denominator, so the split sums against the KPI row. */
-export function composeChannels(rows: ChannelCountRow[], total: number): ShareBreakdownItem[] {
+/**
+ * Percentages share the dashboard's denominator, so the split sums against the KPI row. `labels`
+ * (from `collectionChannelLabels`) turns a directory's marker into the collection that sent the
+ * visit; a marker with no entry stays exactly as the owner wrote it.
+ */
+export function composeChannels(
+  rows: ChannelCountRow[],
+  total: number,
+  labels: Map<string, string> = new Map(),
+): ShareBreakdownItem[] {
   const counts = new Map<string, number>()
   for (const row of rows) counts.set(row.name, row.count)
-  return toBreakdown(counts, total)
+  return toBreakdown(counts, total).map((item) => {
+    const label = labels.get(item.name)
+    return label ? { ...item, label } : item
+  })
 }

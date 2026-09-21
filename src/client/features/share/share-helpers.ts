@@ -27,8 +27,13 @@ export function rangeOptions(): Array<{ value: ShareTimelineRange; label: string
  * The names in the channel split (ADR-0004). The two reserved names become copy; anything else is
  * a token the owner wrote, rendered as text by React and never through a markup API — the stored
  * value is charset-bounded, but the display path does not rely on that alone.
+ *
+ * `label` is the one name the client cannot derive: a directory's marker is `collection-<slug>`, and
+ * the collection's title lives in the account's records, so the worker resolves it (SH-82's rule:
+ * the marker ships as a token, the name ships only when the worker can prove it).
  */
-export function localizeChannelName(name: string): string {
+export function localizeChannelName(name: string, label?: string): string {
+  if (label) return t('share.channel_collection_row', { title: label })
   if (name === CHANNEL_UNMARKED) return t('share.channel_none')
   if (name === CHANNEL_UNRECOGNIZED) return t('share.channel_unrecognized')
   return name

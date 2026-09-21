@@ -122,6 +122,9 @@ export const messages = {
   'share.channel_section_title': 'Channel',
   'share.channel_none': 'No marker',
   'share.channel_unrecognized': 'Marker not recognized',
+  // A directory stamps its own marker (ADR-0005), and the title comes from the account's records,
+  // so the row reads as "the directory of the folder/tag you published" rather than as a token.
+  'share.channel_collection_row': 'Collection · {title}',
   'share.channel_hint': 'Add ?ref=your-name to a link to tell these visits apart by where you posted it.',
   'share.channel_input_label': 'Distribution marker',
   'share.channel_input_hint': 'Optional. Added to the link as ?ref=…',

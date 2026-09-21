@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { beforeAll, describe, expect, it } from 'vitest'
 import type { ShareGlobalAnalytics } from '@shared/types'
-import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED } from '@shared/share-channel'
+import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED, collectionChannelToken } from '@shared/share-channel'
 import { initI18n, t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
 import { ReferrerBreakdownCard } from './share-dashboard-breakdown'
@@ -91,6 +91,21 @@ describe('dashboard channel copy (ADR-0004)', () => {
     const rendered = renderElement(createElement(ReferrerBreakdownCard, { analytics: analytics([]) }))
 
     expect(rendered.container.textContent).not.toContain(t('share.channel_section_title'))
+    rendered.unmount()
+  })
+})
+
+describe('dashboard channel collection rows (ADR-0005)', () => {
+  it('prints a directory visit as the collection it came from, never as its marker', () => {
+    const token = collectionChannelToken('0123456789abcdefghjk')
+    const rendered = renderElement(createElement(ReferrerBreakdownCard, {
+      analytics: analytics([{ name: token, count: 4, percentage: 40, label: 'Field notes' }]),
+    }))
+    const text = rendered.container.textContent ?? ''
+
+    expect(text).toContain(t('share.channel_collection_row', { title: 'Field notes' }))
+    // The marker is an address fragment; the row is supposed to read as a place a person knows.
+    expect(text).not.toContain(token)
     rendered.unmount()
   })
 })

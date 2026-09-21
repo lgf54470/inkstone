@@ -120,6 +120,7 @@ export const messages = {
   'share.channel_section_title': '渠道',
   'share.channel_none': '未带标记',
   'share.channel_unrecognized': '标记无法识别',
+  'share.channel_collection_row': '集合 · {title}',
   'share.channel_hint': '在链接后加 ?ref=名称，就能按「发在哪」区分这些访问。',
   'share.channel_input_label': '分发标记',
   'share.channel_input_hint': '可选。会以 ?ref=… 写入链接',

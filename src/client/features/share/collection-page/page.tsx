@@ -7,13 +7,15 @@ import { Input } from '../../../components/form'
 import { LoadingBlock } from '../../../components/feedback'
 import { Tooltip } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
+import { collectionNoteLink } from '../share-collections'
 import { useCollectionPage } from './use-collection-page'
 
 /**
  * The collection a visitor lands on (ADR-0005). It is a directory and nothing more: every entry is a
- * link to that note's own page, carrying `?ref=collection` so the owner can see which visits came
- * from here. A member that has its own password says so, because clicking through and meeting a
- * password prompt without warning reads as a broken link.
+ * link to that note's own page, carrying this collection's own `?ref=collection-<slug>` marker so
+ * the owner reads one row per directory instead of one row for all of them. A member that has its
+ * own password says so, because clicking through and meeting a password prompt without warning
+ * reads as a broken link.
  */
 export function CollectionPage({ slug }: { slug: string }) {
   const bundle = useCollectionPage(slug)
@@ -42,13 +44,16 @@ export function CollectionPage({ slug }: { slug: string }) {
         </div>
       </header>
       <main className='mx-auto max-w-215 px-4 pb-[calc(64px+env(safe-area-inset-bottom))] md:px-5 md:pb-24'>
-        <CollectionBody bundle={bundle} />
+        <CollectionBody bundle={bundle} collectionSlug={slug} />
       </main>
     </div>
   )
 }
 
-function CollectionBody({ bundle }: { bundle: ReturnType<typeof useCollectionPage> }) {
+function CollectionBody({ bundle, collectionSlug }: {
+  bundle: ReturnType<typeof useCollectionPage>
+  collectionSlug: string
+}) {
   const { isPasswordRequired, isLoading, error, notes, nextCursor, isLoadingMore, loadMore, count, title } = bundle
   if (isLoading && notes.length === 0) {
     return <div className='pt-24'><LoadingBlock label={t('share.collection_page_opening')} /></div>
@@ -56,11 +61,11 @@ function CollectionBody({ bundle }: { bundle: ReturnType<typeof useCollectionPag
   if (isPasswordRequired) return <CollectionPasswordGate bundle={bundle} />
   if (error && notes.length === 0) return <CollectionUnavailable message={error} />
   if (notes.length === 0) return <CollectionEmpty />
-  return (
-    <CollectionDirectory
+  return (        <CollectionDirectory
       title={title}
       count={count}
       notes={notes}
+      collectionSlug={collectionSlug}
       hasMore={Boolean(nextCursor)}
       isLoadingMore={isLoadingMore}
       onLoadMore={() => void loadMore()}
@@ -128,12 +133,12 @@ function CollectionEmpty() {
 }
 
 /** One entry: the link, an excerpt to recognise it by, and whether it will ask for its own password. */
-function DirectoryNote({ note }: { note: PublicCollectionNote }) {
+function DirectoryNote({ note, collectionSlug }: { note: PublicCollectionNote; collectionSlug: string }) {
   return (
     <li className='flex items-start gap-3 py-3'>
       <div className='min-w-0 flex-1'>
         <a
-          href={noteLink(note.slug)}
+          href={collectionNoteLink(note.slug, collectionSlug)}
           className='text-[length:var(--text-14)] font-medium text-[var(--text-primary)] underline-offset-2 hover:text-[var(--accent)] hover:underline'
         >
           {note.title || t('common.untitled_note')}
@@ -154,10 +159,11 @@ function DirectoryNote({ note }: { note: PublicCollectionNote }) {
   )
 }
 
-function CollectionDirectory({ title, count, notes, hasMore, isLoadingMore, onLoadMore }: {
+function CollectionDirectory({ title, count, notes, collectionSlug, hasMore, isLoadingMore, onLoadMore }: {
   title: string
   count: number
   notes: PublicCollectionNote[]
+  collectionSlug: string
   hasMore: boolean
   isLoadingMore: boolean
   onLoadMore: () => void
@@ -173,7 +179,7 @@ function CollectionDirectory({ title, count, notes, hasMore, isLoadingMore, onLo
         </p>
       </header>
       <ul className='divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]'>
-        {notes.map((note) => <DirectoryNote key={note.slug} note={note} />)}
+        {notes.map((note) => <DirectoryNote key={note.slug} note={note} collectionSlug={collectionSlug} />)}
       </ul>
       {hasMore && (
         <div className='mt-5 text-center'>
@@ -192,11 +198,3 @@ function CollectionDirectory({ title, count, notes, hasMore, isLoadingMore, onLo
   )
 }
 
-/**
- * Where a directory entry goes: the note's own share page, marked as having come from here. The
- * marker is the same `?ref=` contract the rest of the module uses (ADR-0004), so a visit from a
- * collection is counted as a visit to that note — with the collection as its channel.
- */
-function noteLink(slug: string): string {
-  return `/s/${slug}?ref=collection`
-}

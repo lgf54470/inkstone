@@ -18,7 +18,7 @@ import { hashPassword } from '../src/worker/lib/password'
 import { computeVisitorFingerprint } from '../src/worker/lib/share-analytics'
 import { purgeExpiredOperationalData } from '../src/worker/lib/maintenance'
 import { LIMITS } from '../src/shared/constants'
-import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED } from '../src/shared/share-channel'
+import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED, collectionChannelToken } from '../src/shared/share-channel'
 import { shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
 import { createD1Database as createDb, captureSql, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
@@ -1599,6 +1599,31 @@ describe('share channel marker collection (ADR-0004)', () => {
     return noteId
   }
 
+  /** One published collection of this account, addressed by the slug its directory links carry. */
+  async function seedCollection(db: D1Shim, fields: {
+    type: 'folder' | 'tag'
+    name: string
+    slug: string
+    isEnabled?: number
+  }): Promise<string> {
+    const targetId = `${fields.type === 'folder' ? 'f' : 't'}${'0'.repeat(25)}`
+    if (fields.type === 'folder') {
+      await runSql(db,
+        `INSERT INTO share_folders (id, user_id, parent_id, name, icon, color, position, created_at, updated_at)
+         VALUES (?1, ?2, NULL, ?3, NULL, NULL, 0, ?4, ?4)`,
+        targetId, USER, fields.name, H.now)
+    } else {
+      await runSql(db,
+        `INSERT INTO share_tags (id, user_id, name, color, is_pinned, created_at) VALUES (?1, ?2, ?3, NULL, 0, ?4)`,
+        targetId, USER, fields.name, H.now)
+    }
+    await runSql(db,
+      `INSERT INTO share_collections (id, slug, user_id, target_type, target_value, password_hash, expires_at, is_enabled, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, NULL, NULL, ?6, ?7, ?7)`,
+      `c-${fields.slug}`, fields.slug, USER, fields.type, targetId, fields.isEnabled ?? 1, H.now)
+    return targetId
+  }
+
   it('stores a well-formed marker that the visit URL carried', async () => {
     const db = await makeDb()
     await seedUser(db)
@@ -1698,6 +1723,48 @@ describe('share channel marker collection (ADR-0004)', () => {
       ['newsletter', 2],
       [CHANNEL_UNRECOGNIZED, 1],
     ])
+  })
+
+  it('names a directory visit after the collection whose directory sent it', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const noteId = await seedNote(db, {})
+    await seedShare(db, { note_id: noteId, slug: 'col-visit' })
+    await seedCollection(db, { type: 'folder', name: 'Field notes', slug: '0123456789abcdefghjk' })
+    const channel = collectionChannelToken('0123456789abcdefghjk')
+    await seedVisit(db, { note_id: noteId, slug: 'col-visit', channel })
+    const app = makeApp()
+
+    const rows = (await (await request(app, '/api/share/analytics/global?range=30d')).json()).channels
+    // The reading is per collection: the marker says which directory, the label says whose — the
+    // same row on the dashboard and in the note's own modal, from the one label builder.
+    expect(rows.find((item: { name: string }) => item.name === channel))
+      .toMatchObject({ count: 1, label: 'Field notes' })
+
+    const noteRows = (await (await request(app, `/api/share/analytics/note/${noteId}`)).json()).channels
+    expect(noteRows.find((item: { name: string }) => item.name === channel)?.label).toBe('Field notes')
+  })
+
+  it('keeps the title on a paused collection and leaves a lookalike marker unnamed', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const noteId = await seedNote(db, {})
+    await seedShare(db, { note_id: noteId, slug: 'col-paused' })
+    await seedCollection(db, { type: 'tag', name: 'Research', slug: '0123456789abcdefghjk', isEnabled: 0 })
+    const paused = collectionChannelToken('0123456789abcdefghjk')
+    // A token the owner typed themselves that starts the same way: its slug names no collection of
+    // this account, so it stays their own text instead of borrowing a directory's name.
+    const stranger = collectionChannelToken('0123456789abcdefghjm')
+    await seedVisit(db, { note_id: noteId, slug: 'col-paused', channel: paused })
+    await seedVisit(db, { note_id: noteId, slug: 'col-paused', channel: stranger })
+    const app = makeApp()
+
+    const rows = (await (await request(app, '/api/share/analytics/global?range=30d')).json()).channels
+
+    // Pausing a directory does not erase the visits it already brought in; its record is still how
+    // those visits are named, and a lookalike is never named after a collection it is not.
+    expect(rows.find((item: { name: string }) => item.name === paused)).toMatchObject({ label: 'Research' })
+    expect(rows.find((item: { name: string }) => item.name === stranger)?.label).toBeUndefined()
   })
 
   it('keeps the marker out of the referrer fields', async () => {
