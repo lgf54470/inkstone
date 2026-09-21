@@ -118,6 +118,8 @@ const LABELS = {
   shareManage: ['管理所有分享', 'Manage All Shares'],
   shareKpi: ['总访问量 (PV)', 'Total Views (PV)'],
   shareCategoryAll: ['全部分享', 'All Shares'],
+  shareCategoryDashboard: ['数据看板', 'Dashboard'],
+  shareChannelCollection: ['Collection ·', '集合 ·'],
   shareSearch: ['搜索笔记标题、链接或标签…', 'Search note title, link, or tag…'],
   shareTrafficFilter: ['流量过滤设置', 'Traffic Filters'],
 }
@@ -2619,6 +2621,210 @@ async function assertShareCenter(page) {
   await sleep(400)
 }
 
+/**
+ * The directory this scenario publishes for itself. The tag name carries a per-run stamp on purpose:
+ * the deliberate wrong guess below spends one of the address's free failures, and that counter is
+ * keyed by the address rather than by whoever is guessing — a locked collection refuses the correct
+ * password too, in 60-second steps that outlive the run. A fixed name would therefore hand the next
+ * run against the same instance an address it cannot unlock, and a green run would silently depend
+ * on how long ago the last one was.
+ */
+const COLLECTION_PROBE = {
+  noteTitle: 'Collection directory probe',
+  tagName: `Directory probe ${Date.now().toString(36).slice(-5)}`,
+  password: 'directory-pass-900',
+}
+
+/**
+ * The visitor presents the user agent of the person it stands in for. The product's bot list
+ * classifies `HeadlessChrome` as a crawler — correctly — and a crawler visit is never written, so
+ * the row this scenario exists to read would simply not be there.
+ */
+const REAL_VISITOR_UA =
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
+
+/**
+ * One call from inside the owner's page, with the header the app's own transport sends. The
+ * scenario drives the visitor's half through the browser; the owner's half is the fixture and the
+ * read-back, and neither of those is what the gate is there to watch.
+ */
+async function apiCall(page, method, path, body) {
+  return page.evaluate(async ({ method, path, body }) => {
+    const response = await fetch(path, {
+      method,
+      headers: {
+        'X-Inkstone-Client': '1',
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+    return { status: response.status, data: await response.json().catch(() => null) }
+  }, { method, path, body })
+}
+
+/**
+ * The visit row is written after the response is sent (the worker hands `recordShareVisit` to
+ * `waitUntil`), so it is polled rather than assumed to be there on the first read.
+ */
+async function waitForVisitChannel(page, slug, channel, attempts = 24) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const visits = await apiCall(page, 'GET', '/api/share/visits?limit=20')
+    const row = (visits.data?.visits ?? []).find((visit) => visit.slug === slug && visit.channel === channel)
+    if (row) return true
+    await sleep(500)
+  }
+  return false
+}
+
+/**
+ * The probe takes its own traces back out, because two of them change what this gate's a11y pass
+ * over the share center reads — earlier in the same run, and again on a later run against the same
+ * instance. A tag puts a row carrying an unnamed icon button and a `div[role=button]` into the hub's
+ * sidebar, and a recorded visit makes the KPI cards draw their deltas; leaving either behind would
+ * make the next run's red about the fixture rather than about the product, which is the same class
+ * of defect as an assertion that holds only on a first run.
+ *
+ * The visit wipe is the product's own audit-trail delete, scoped to the note this probe created, so
+ * it removes only what the probe wrote. It is checked rather than assumed: a silent failure here
+ * would resurface as exactly the confusing red it exists to prevent.
+ */
+async function removeCollectionProbe(page, { noteId, collectionId, tagId }) {
+  const visits = await apiCall(page, 'DELETE', `/api/share/visits?type=all&noteId=${noteId}`, { password: PASSWORD })
+  const collection = await apiCall(page, 'DELETE', `/api/share/collections/${collectionId}`)
+  const tag = await apiCall(page, 'DELETE', `/api/share/tags/${tagId}`)
+  const statuses = { visits: visits.status, collection: collection.status, tag: tag.status }
+  check('collection: the probe clears the visits, directory and tag it made',
+    Object.values(statuses).every((status) => status === 200), JSON.stringify(statuses))
+}
+
+/**
+ * The published directory end to end (ADR-0005 on ADR-0004's channel): a password-protected
+ * collection over a tag, unlocked by a visitor who has never signed in — a fresh browser context,
+ * so the visit is a real one rather than the owner's — a note opened from the directory, and the
+ * visit read back by the owner with that collection's own marker.
+ *
+ * The marker is spelled here the way `collectionChannelToken` spells it. That is deliberate: a gate
+ * that only read the marker out of the link could keep passing after the contract changed, so the
+ * one place that must fail loudly when the prefix moves is this assertion.
+ */
+async function assertPublicCollectionPage(browser, page, consoleErrors) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  const note = await apiCall(page, 'POST', '/api/notes', {
+    title: COLLECTION_PROBE.noteTitle,
+    content: `# ${COLLECTION_PROBE.noteTitle}\n\nThis note is only reachable through the published directory.`,
+  })
+  const tag = await apiCall(page, 'POST', '/api/share/tags', { name: COLLECTION_PROBE.tagName })
+  const share = await apiCall(page, 'POST', `/api/share/${note.data?.id ?? ''}`, { tags: [COLLECTION_PROBE.tagName] })
+  const collection = await apiCall(page, 'POST', '/api/share/collections', {
+    targetType: 'tag',
+    targetValue: tag.data?.id ?? '',
+    password: COLLECTION_PROBE.password,
+  })
+  // A create answers 201 for a new row and 200 for one that was already there; the tag name and the
+  // note id are both minted per run, so this stays tolerant of either without depending on it.
+  const created = (status) => status === 200 || status === 201
+  const published = created(note.status) && created(tag.status) && share.status === 200 && collection.status === 200
+  check('collection: the account publishes a password-protected directory', published,
+    JSON.stringify({ note: note.status, tag: tag.status, share: share.status, collection: collection.status }))
+  if (!published) return
+  const noteSlug = share.data.share.slug
+  const marker = `collection-${collection.data.slug}`
+
+  const context = await browser.createBrowserContext()
+  const visitor = await context.newPage()
+  visitor.on('pageerror', (error) => consoleErrors.push(`[collection] ${String(error)}`))
+  // What the gate was told, in order. A refusal and a lock both leave the visitor looking at the same
+  // password prompt, so without this the only readable failure is "it never unlocked".
+  const answers = []
+  visitor.on('response', (response) => {
+    if (response.url().includes('/api/public/collection/')) answers.push(response.status())
+  })
+  try {
+    await visitor.setViewport(DESKTOP_VIEWPORT)
+    await visitor.setUserAgent(REAL_VISITOR_UA)
+    await visitor.goto(`${BASE}/c/${collection.data.slug}`, { waitUntil: 'networkidle2' })
+
+    const gate = await visitor.waitForSelector('input[type="password"]', { timeout: 20_000 }).then(() => true, () => false)
+    const leakedBefore = await visitor.evaluate((title) => document.body.innerText.includes(title), COLLECTION_PROBE.noteTitle)
+    check('collection: the directory asks for its password and shows nothing before it',
+      gate && !leakedBefore, JSON.stringify({ gate, leakedBefore }))
+
+    await visitor.type('input[type="password"]', 'not-the-password')
+    await visitor.click('button[type="submit"]')
+    await sleep(800)
+    const refused = await visitor.evaluate((title) => ({
+      gate: Boolean(document.querySelector('input[type="password"]')),
+      leaked: document.body.innerText.includes(title),
+    }), COLLECTION_PROBE.noteTitle)
+    check('collection: a wrong password is refused and still reveals nothing',
+      refused.gate && !refused.leaked, JSON.stringify(refused))
+
+    // The field is React-controlled, so the second attempt replaces the whole value rather than
+    // appending to the guess that was refused — the same select-all a person would do.
+    await visitor.click('input[type="password"]')
+    await visitor.keyboard.down('Control')
+    await visitor.keyboard.press('KeyA')
+    await visitor.keyboard.up('Control')
+    await visitor.type('input[type="password"]', COLLECTION_PROBE.password)
+    await visitor.click('button[type="submit"]')
+    const unlocked = await visitor.waitForFunction((title) => document.body.innerText.includes(title), { timeout: 15_000 }, COLLECTION_PROBE.noteTitle)
+      .then(() => true, () => false)
+    check('collection: the password unlocks the directory', unlocked, JSON.stringify({ answers }))
+
+    const entry = await visitor.evaluate(() => {
+      const anchor = [...document.querySelectorAll('a')].find((item) => (item.getAttribute('href') ?? '').includes('/s/'))
+      return anchor?.getAttribute('href') ?? null
+    })
+    const linked = entry === `/s/${noteSlug}?ref=${marker}`
+    check('collection: the entry links through this collection\'s own channel', linked, String(entry))
+
+    // A locked directory has no entry to click: the two checks above already said so, and reporting
+    // the missing element as a crash would hide that the earlier assertion is where to look.
+    if (linked) {
+      await Promise.all([
+        visitor.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20_000 }).catch(() => null),
+        visitor.click(`a[href="/s/${noteSlug}?ref=${marker}"]`),
+      ])
+      const opened = await visitor.waitForFunction((title) => document.body.innerText.includes(title), { timeout: 20_000 }, COLLECTION_PROBE.noteTitle)
+        .then(() => true, () => false)
+      const landed = await visitor.evaluate(() => ({ path: location.pathname, search: location.search }))
+      check('collection: the note opens from the directory with its channel in the URL',
+        opened && landed.path === `/s/${noteSlug}` && landed.search === `?ref=${marker}`, JSON.stringify(landed))
+    }
+  } finally {
+    await context.close()
+  }
+
+  const recorded = await waitForVisitChannel(page, noteSlug, marker)
+  check('collection: the visit is recorded with the collection channel', recorded)
+
+  const hubOpened = await openShareHub(page)
+  // The center opens on whatever category it was last left in, and the split lives on the
+  // dashboard's referrer card — so the category is chosen rather than assumed.
+  const onDashboard = hubOpened && await gotoSidebarCategory(page, LABELS.shareCategoryDashboard)
+  // The row has to read as the collection, by name — the localized copy with the tag name in it, and
+  // never the raw marker. The copy pair is spelled here the way LABELS spells the others.
+  const named = onDashboard && await page.waitForFunction(({ dialog, prefixes, tag }) => {
+    const hub = document.querySelector(dialog)
+    if (!hub) return false
+    const wanted = prefixes.map((prefix) => `${prefix} ${tag}`)
+    return [...hub.querySelectorAll('*')].some((element) => wanted.includes((element.textContent ?? '').trim()))
+  }, { timeout: 20_000 }, { dialog: SHARE_DIALOG, prefixes: LABELS.shareChannelCollection, tag: COLLECTION_PROBE.tagName })
+    .then(() => true, () => false)
+  const rawShown = await page.evaluate(({ dialog, marker }) =>
+    document.querySelector(dialog)?.textContent.includes(marker) ?? false, { dialog: SHARE_DIALOG, marker })
+  check('collection: the dashboard names the collection that sent the visit and never the marker',
+    named && !rawShown, JSON.stringify({ hubOpened, onDashboard, named, rawShown }))
+
+  await page.keyboard.press('Escape')
+  await sleep(700)
+  await removeCollectionProbe(page, {
+    noteId: note.data?.id ?? '',
+    collectionId: collection.data?.id ?? '',
+    tagId: tag.data?.id ?? '',
+  })
+}
+
 async function main() {
   console.log(`visual e2e against ${BASE}`)
   const browser = await puppeteer.launch({
@@ -2661,6 +2867,7 @@ async function main() {
     await assertContextMenuNesting(page)
     await assertMusicSurface(page)
     await assertShareCenter(page)
+    await assertPublicCollectionPage(browser, page, consoleErrors)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.
