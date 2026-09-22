@@ -1,5 +1,6 @@
 import { createContext, useContext, useRef, useState } from 'react'
 import { File as FileIcon, FileText, Image as ImageIcon, Loader2, Plus, Trash2 } from 'lucide-react'
+import { confirm } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { deleteKanbanFile, uploadKanbanFile } from '../../../api'
 import { useUi } from '../../../../store/ui'
@@ -123,12 +124,22 @@ export function KanbanFilesCell({
   const [previewFile, setPreviewFile] = useState<KanbanFile | null>(null)
   const kanbanName = useContext(KanbanFilesScope)
 
+  // A stored file leaves the bucket for good, so it asks first — the reference in the note is
+  // undoable, the bytes are not. A file hosted elsewhere has nothing here to delete.
   const handleDelete = async (file: KanbanFile) => {
-    onChangeFiles?.(files.filter((f) => f.id !== file.id))
     const location = kanbanFileLocation(file)
+    if (location && !(await confirm({
+      title: t('preview.kanban_delete_file_value0', { value0: file.name }),
+      description: t('preview.kanban_delete_file_confirm_description'),
+      confirmLabel: t('common.delete'),
+      tone: 'danger',
+    }))) return
+
+    onChangeFiles?.(files.filter((f) => f.id !== file.id))
     if (!location) return
     try {
       await deleteKanbanFile(location.kanbanName, location.filename)
+      useUi.getState().toast({ title: t('preview.kanban_file_deleted'), tone: 'success' })
     } catch (err: unknown) {
       console.error('[kanban] file delete failed', err)
       onChangeFiles?.(files)

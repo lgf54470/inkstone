@@ -30,9 +30,13 @@
 - 进度：新增 `useKanbanGroupDeletion`（`ui/kanban-column-hooks.ts`），分组删除从此报出「多少张卡片已归入未分组」并交出与 Ctrl+Z 同一条 undo；`useKanbanColumnOperations` 改对象传参（新增 data/undo 两个依赖，避免四参数）；文档里不存在的分组不再提交空步。顺带发现：表格 schema 的「删属性列」（`schemaOps.deleteColumn`）**本来就有** undo toast（既有 `preview.kanban_column_deleted`），故新键按本模块分组语汇取名 `preview.kanban_group_deleted(_cards)`，与 en 的 'Delete Group'/'Group options' 一致，不与属性列那条混用。
 - 验证：`kanban-view-state.test.ts` +3 例（有卡的分组报数量且 undo 真能还原；无卡分组不带数量；不存在的分组不提交不吭声），修复前三例均红。
 
-### K-03 附件删除与撤销冲突，撤销留下悬空文件 → 待修
+### K-03 附件删除与撤销冲突，撤销留下悬空文件 → 已修（`（本提交）`）
 - 证据：`ui/kanban-files-cell.tsx` 摘引用（可撤销的 `commitData`）后立即 `deleteKanbanFile` 真删 R2 对象。
 - 影响：Ctrl+Z 恢复引用，对象已不在 → 预览/下载 404 的幽灵附件。
+- 选型（用户裁定 2026-09-22）：**立即永久删除 + 确认框**，与笔记附件（`features/attachments/attachment-drive-modal/hooks.ts` 的 `deleteFileFlow`）口径一致。曾评估但未采纳：①「只摘引用 + 交给 `worker/attachments/kanban-reclaim.ts` 孤儿回收」——撤销永远安全，但会把 `DELETE /api/kanban/file/...` 变成无人调用的端点（按规范需连带删除它与 4 条安全测试，还会让旧客户端/PWA 走到 404）；②「前端延迟窗口后真删」——保留端点但只收窄而非根治窗口。
+- 进度：`ui/kanban-files-cell.tsx` 的 `handleDelete` 改为「先确认再动」，用仓内 `components/overlay` 的 `confirm()`（Modal 外壳、焦点陷阱、ESC、danger 确认钮），标题带文件名、说明写明「永久删除、无法恢复」；确认后才摘引用并真删对象，成功后补 `tone:'success'` 反馈（此前只有失败有 toast，成功静默）。**外站 URL 的附件既不弹确认也不请求服务端**：那里没有本应用的对象可删，弹「永久删除」是假话。
+- 验证：`ui/kanban-files-cell.test.ts` 8 例（新增 3 例先红后绿：确认参数逐字匹配且确认后才删对象；取消时引用/对象/toast 三者都不动；成功后报 success），既有 3 例保持绿（「外站 URL」一例补断言 `confirm` 未被调用）。typecheck ✅；kanban+preview+tests/kanban 88 文件 992 passed ✅。
+- 残留（如实登记，不夹带）：撤销/重做仍可能恢复出指向已删对象的引用——`history` 快照里本就存着那份数据，删除不重写历史。其降级显示（「文件已不可用」）并入 **K-08**，同一处 `ui/kanban-file-preview-modal.tsx` 的失败态一并做。
 
 ### K-04 全屏期间栅栏被删 → 覆盖层停在空舞台 → 待修
 - 证据：`registry.ts` `disposeEntry` + `ui/kanban-fullscreen.tsx`（`moveBack` 只在卸载时跑）；`features/preview/use-kanban-blocks.ts` 的 `fullscreen` 状态无人清理。

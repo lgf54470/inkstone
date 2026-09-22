@@ -3355,9 +3355,14 @@ const allowed = new Map([
     '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',
     '// document is guaranteed blank; offer the file as an explicit new-tab action.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-files-cell.test.ts', [
+    '// Nothing is stored here, so there is no permanent delete to warn about.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-files-cell.tsx', [
     '// Which bucket new uploads land in. Deletions ignore it and address each file\'s',
     '// own stored location, so files uploaded before a namespace change still clear.',
+    '// A stored file leaves the bucket for good, so it asks first — the reference in the note is',
+    '// undoable, the bytes are not. A file hosted elsewhere has nothing here to delete.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-filter-popover.test.ts', [
     '/**\n * A filter row asked text questions of every column, so the six operators a rule could carry were\n * the same whether the column held a count, a deadline or a choice. That is a row which reads as\n * working and never matches: "greater than" was not offerable at all, and "contains" on a date\n * column compared a whole timestamp to whatever was typed. The row therefore has to answer to its\n * column three ways — the operators it lists, the control it asks for a threshold with, and what\n * survives of a rule already saved in the note when the column behind it is swapped.\n */',

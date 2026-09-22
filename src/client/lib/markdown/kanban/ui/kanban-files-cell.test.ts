@@ -7,7 +7,12 @@ import { installTestGlobals } from '../../../test-render'
 import { KanbanFilesCell, KanbanFilesScope } from './kanban-files-cell'
 import type { KanbanFile } from '../types'
 
-const mocks = vi.hoisted(() => ({ toast: vi.fn() }))
+const mocks = vi.hoisted(() => ({ toast: vi.fn(), confirm: vi.fn(async () => true) }))
+
+vi.mock('../../../../components/overlay', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../components/overlay')>()
+  return { ...actual, confirm: mocks.confirm }
+})
 
 vi.mock('../../../api', () => ({
   uploadKanbanFile: vi.fn(async (): Promise<KanbanFile> => ({
@@ -28,6 +33,8 @@ beforeEach(() => {
   vi.mocked(uploadKanbanFile).mockClear()
   vi.mocked(deleteKanbanFile).mockClear()
   mocks.toast.mockClear()
+  mocks.confirm.mockReset()
+  mocks.confirm.mockResolvedValue(true)
 })
 
 const savedFile: KanbanFile = {
@@ -75,6 +82,8 @@ describe('kanban file delete wiring', () => {
     await act(async () => { deleteButton(container).click() })
     expect(onChangeFiles).toHaveBeenCalledTimes(1)
     expect(deleteKanbanFile).not.toHaveBeenCalled()
+    // Nothing is stored here, so there is no permanent delete to warn about.
+    expect(mocks.confirm).not.toHaveBeenCalled()
     act(() => root.unmount())
     container.remove()
   })
@@ -85,6 +94,41 @@ describe('kanban file delete wiring', () => {
     await act(async () => { deleteButton(container).click() })
     expect(onChangeFiles).toHaveBeenNthCalledWith(2, [savedFile])
     expect(mocks.toast).toHaveBeenCalledTimes(1)
+    act(() => root.unmount())
+    container.remove()
+  })
+})
+
+describe('kanban file delete confirmation', () => {
+  it('spells out the permanent delete before the object is touched', async () => {
+    const { container, root } = renderCell([savedFile])
+    await act(async () => { deleteButton(container).click() })
+    expect(mocks.confirm).toHaveBeenCalledWith({
+      title: t('preview.kanban_delete_file_value0', { value0: 'report.pdf' }),
+      description: t('preview.kanban_delete_file_confirm_description'),
+      confirmLabel: t('common.delete'),
+      tone: 'danger',
+    })
+    expect(deleteKanbanFile).toHaveBeenCalledWith('default', '7-report.pdf')
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  it('keeps both the reference and the stored object when the user cancels', async () => {
+    mocks.confirm.mockResolvedValueOnce(false)
+    const { container, root, onChangeFiles } = renderCell([savedFile])
+    await act(async () => { deleteButton(container).click() })
+    expect(onChangeFiles).not.toHaveBeenCalled()
+    expect(deleteKanbanFile).not.toHaveBeenCalled()
+    expect(mocks.toast).not.toHaveBeenCalled()
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  it('reports the delete once the object is gone', async () => {
+    const { container, root } = renderCell([savedFile])
+    await act(async () => { deleteButton(container).click() })
+    expect(mocks.toast).toHaveBeenCalledWith({ title: t('preview.kanban_file_deleted'), tone: 'success' })
     act(() => root.unmount())
     container.remove()
   })

@@ -13,10 +13,10 @@
 - [ ] K-05 CSV 导出补 BOM
 - [ ] K-06 CSV 导出公式注入前缀
 - [ ] K-07 封面/附件图片走外部图片策略 + `referrerpolicy`
-- [ ] K-08 文本附件预览补失败态
+- [ ] K-08 文本附件预览补失败态（并入 K-03 残留：已删对象/缺文件的降级显示）
 - [ ] K-09 跨源附件链接改新标签打开
 - [ ] K-10 上传客户端预检（与服务端同一份限额常量）
-- [ ] K-03 附件删除改延迟真删（撤销可救）
+- [x] K-03 附件删除改「确认 + 永久删除」语义（用户裁定，对齐笔记附件）
 - [ ] K-04 全屏期间实例失效自恢复
 
 ## 批次 2 · 交互与移动
@@ -47,6 +47,7 @@
 | 2026-09-22 | 建立本轮台账与执行计划 | 0e2d673a | 文档提交，无代码改动 |
 | 2026-09-22 | K-01 单卡删除撤销提示 | 66156734 | typecheck ✅；kanban+preview+tests/kanban 94 文件 1002 passed（3 例 `kanban-render-window` 5s 超时属 L-03 并发抖动，单跑 14/14 ✅）；`comments:check` 重算白名单 655 文件 / 4460 条 |
 | 2026-09-22 | K-02 删列撤销提示（分组口径） | （本提交） | typecheck ✅；kanban+preview+tests/kanban 94 文件 1008 passed（首跑 1 例 render-window 超时属 L-03，重跑全绿）；`size:check`/`i18n:check` ✅；白名单 656 文件 / 4464 条 |
+| 2026-09-22 | K-03 附件删除确认 + 永久删除语义 | （本提交） | typecheck ✅；kanban+preview+tests/kanban 88 文件 992 passed；`size:check`/`i18n:check`/`style:check`/`hardcoded:check` ✅；白名单 657 文件 / 4467 条；pre-commit 全量 test:unit 1440 passed |
 
 ## 固定验证
 
