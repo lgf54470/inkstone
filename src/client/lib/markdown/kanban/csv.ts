@@ -26,6 +26,18 @@ const FALSY_CELLS = new Set(['false', 'no', '0', 'off'])
 const FILENAME_UNSAFE = /[\\/:*?"<>|\u0000-\u001F]/g
 /** Without it a spreadsheet reads the bytes as its local codepage, so any non-ASCII board arrives as mojibake. */
 const UTF8_BOM = '\uFEFF'
+/**
+ * A cell a spreadsheet would run instead of showing: the ASCII formula leads, the full-width twins a
+ * CJK locale reads the same way, and any `-` that opens something longer than a number (a negative
+ * value is a value — `-5` must stay print-able as `-5`).
+ */
+const FORMULA_LEAD = /^(?:[=+@\t\r\n\uFF1D\uFF0B\uFF0D\uFF20]|-(?!\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$))/
+/**
+ * Wrapping the cell in quotes does not stop that run, and an apostrophe is dropped again when Excel
+ * saves the file: the mark a spreadsheet cannot undo is a tab inside the quoted field. This board's
+ * own importer trims it back off, so a board that re-reads its export gets the text it wrote.
+ */
+const FORMULA_MARK = '\t'
 
 const trimmed = (value: string | undefined) => (value ?? '').trim()
 const headerKey = (value: string | undefined) => trimmed(value).toLowerCase()
@@ -65,7 +77,8 @@ function csvCellText(column: KanbanProperty, item: KanbanItem): string {
 }
 
 function escapeCsvCell(value: string): string {
-  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+  const text = FORMULA_LEAD.test(value) ? `${FORMULA_MARK}${value}` : value
+  return /[",\r\n\t]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 
 export function kanbanToCsv(columns: KanbanProperty[], items: KanbanItem[]): string {

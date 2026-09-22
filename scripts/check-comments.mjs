@@ -2858,6 +2858,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/csv.test.ts', [
     '/** The rows of an export, read back through the parser so a test never counts commas. */',
+    '// The mark has to sit inside the quoted field, or Excel reads the quote as the cell\'s own text.',
     '// The mark belongs to the file, not to the row: the board reads its own file back without it.',
   ]],
   ['src/client/lib/markdown/kanban/csv.ts', [
@@ -2865,6 +2866,8 @@ const allowed = new Map([
     '/** More rows than this is the wrong file; importing it would bury the board the reader is on. */',
     '/** What a filesystem refuses in a name, plus the control characters a path may not hold. */',
     '/** Without it a spreadsheet reads the bytes as its local codepage, so any non-ASCII board arrives as mojibake. */',
+    '/**\n * A cell a spreadsheet would run instead of showing: the ASCII formula leads, the full-width twins a\n * CJK locale reads the same way, and any `-` that opens something longer than a number (a negative\n * value is a value — `-5` must stay print-able as `-5`).\n */',
+    '/**\n * Wrapping the cell in quotes does not stop that run, and an apostrophe is dropped again when Excel\n * saves the file: the mark a spreadsheet cannot undo is a tab inside the quoted field. This board\'s\n * own importer trims it back off, so a board that re-reads its export gets the text it wrote.\n */',
     '/** The card\'s own text, read the way the surfaces that print it already read it. */',
     '/** Read from just past a cell\'s opening quote to the quote that closes it, or to the end. */',
     '// Only a quote at the start of a cell opens one; anywhere else it is the cell\'s own text.',

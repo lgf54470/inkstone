@@ -48,9 +48,13 @@
 - 进度：`kanban/csv.ts` 新增 `UTF8_BOM` 常量，`kanbanToCsv` 输出首部前置（与 share 模块同一手法）。BOM 属于「文件」而非「行」，且读回侧 `parseKanbanCsv` 本就会剥掉它，所以「导出 → 再导入」往返不变形；`kanbanToCsv` 的唯一生产调用方是导出面板（已 grep 确认，worker/MCP/blog 均无第二处），改动面收敛。
 - 验证：`csv.test.ts` +1 例（首字符 0xFEFF，且往返读回时标题不带该字符）、`ui/kanban-csv.test.ts` +1 例（下载文本首字符 0xFEFF），两例先红后绿；两处 raw 字符串断言改为显式带上 BOM；两个文件 50 passed，kanban+preview+tests/kanban 88 文件 994 passed。
 
-### K-06 CSV 导出无公式注入防护 → 待修
+### K-06 CSV 导出无公式注入防护 → 已修（`（本提交）`）
 - 证据：`kanban/csv.ts` `escapeCsvCell` 只处理 `"`/CR/LF；`=`/`+`/`-`/`@` 开头原样落盘（`lib/export-note.ts:26` 直接下载）。
 - 影响：共享 → 导出 → 第三方打开的链上触发公式/外链。
+- 方案依据（今日实抓 OWASP [CSV Injection](https://owasp.org/www-community/attacks/CSV_Injection)，非凭记忆）：需拦截的首字符为 `=`/`+`/`-`/`@`/TAB/CR/LF（并额外指出全角 `＝＋－＠` 在部分 CJK 环境同样被当公式）；**单引号前缀被该页明确标注为「不可靠」**（Excel 重新保存后会去掉引号让公式复活），其推荐的 Excel 抗性做法是「在引号内的字段前缀 TAB（0x09）」；同时提醒必须处理分隔符与引号（否则危险字符可被挤到下一格行首）。
+- 进度：`kanban/csv.ts` 新增 `FORMULA_LEAD`（含全角变体；`-` 仅当整格不是纯数字时才拦——`-5` 是数值不是表达式，且 `-2+3+cmd|…` 这类载荷仍被拦）与 `FORMULA_MARK`（`\t`）；`escapeCsvCell` 先打标记再把 `\t` 纳入需加引号的字符集，保证「标记在引号内」。分隔符/引号挤出下一格的向量由既有的「含 `,`/`"`/CR/LF 即整体加引号」挡掉（本次为 `\t` 补上同一入口）。
+- 取舍（明写）：TAB 与前缀单引号相比，Excel 里不可见且不可被重存撤销；代价是「数据里真的多一个 TAB」——本模块自己的导入侧 `trimmed()` 会把它洗掉，故「导出→再导入」往返仍得到原文（已有测试钉住）；第三方程序化解析会看到该 TAB（OWASP 亦标注此取舍）。
+- 验证：`csv.test.ts` 新增 `the cells a spreadsheet must not run` 3 例——标记例先红后绿（5 种首字符逐字断言 + `"\t=1+2"` 断言标记落在引号内），另两例为护栏：纯负数 `-5` 不得被打标记、往返读回标题与正文与原文一致（若改用单引号前缀，后者会立即转红）。53 passed。
 
 ## 2. P1 — 安全与隐私
 
@@ -69,6 +73,11 @@
 ### K-10 上传无客户端预检 → 待修
 - 证据：`ui/kanban-files-cell.tsx` 直接上传；服务端已达标（`worker/routes/kanban.ts` 白名单/配额/节流）。
 - 影响：超大/不支持文件要传完才被 413/429 拒。
+
+### K-27（本轮新增，跨模块）分享访问日志导出的 CSV 同样无公式防护 → 待修（不在看板范围）
+- 证据：`features/share/share-helpers.ts:150-167` `exportVisitsToCsv` 手写 CSV：只对 `noteTitle`/`referrer` 做引号加倍，**无公式前缀防护**，且 `slug`/`country`/`city`/`deviceType`/`os`/`browser` 等字段根本没加引号（含分隔符即错列）。
+- 影响：访客可控的 `referrer`（浏览器可伪造）会原样落进导出文件，站主导出访问日志用 Excel 打开即触发同类公式/外链风险。
+- 建议：与 K-06 共用同一份转义器（提出到 `src/shared/` 的 CSV 工具，参数化表头与收尾），不在看板改动里夹带；已登记，未施工。
 
 ## 3. P1 — 功能完整度（全屏＝独立 app）
 

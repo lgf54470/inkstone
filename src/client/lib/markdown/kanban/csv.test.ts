@@ -114,6 +114,39 @@ describe('exporting a board', () => {
   })
 })
 
+describe('the cells a spreadsheet must not run', () => {
+  it('marks a cell a spreadsheet would run as a formula, inside the quotes', () => {
+    const csv = kanbanToCsv(COLUMNS, [
+      item({ id: 'a', title: '=1+2' }),
+      item({ id: 'b', title: '+cmd|calc' }),
+      item({ id: 'c', title: '@SUM(A1)' }),
+      item({ id: 'd', title: '-2+3+cmd|calc' }),
+      item({ id: 'e', title: '\uFF1D1+2' }),
+    ])
+    expect(rowsOf(csv).slice(1).map((row) => row[0])).toEqual([
+      '\t=1+2',
+      '\t+cmd|calc',
+      '\t@SUM(A1)',
+      '\t-2+3+cmd|calc',
+      '\t\uFF1D1+2',
+    ])
+    // The mark has to sit inside the quoted field, or Excel reads the quote as the cell's own text.
+    expect(csv).toContain('"\t=1+2"')
+  })
+
+  it('leaves a negative number as a value rather than marking it as an expression', () => {
+    const csv = kanbanToCsv(COLUMNS, [item({ id: 'a', title: 'T', properties: { points: -5 } })])
+    expect(rowsOf(csv)[1][5]).toBe('-5')
+  })
+
+  it('reads its own marked cells back as the text the board wrote', () => {
+    const csv = kanbanToCsv(COLUMNS, [item({ id: 'a', title: '=1+2', content: '=SUM(A1)' })])
+    const imported = mustImport(csv)
+    expect(imported.items[0]?.title).toBe('=1+2')
+    expect(imported.items[0]?.content).toBe('=SUM(A1)')
+  })
+})
+
 describe('the file a board hands over', () => {
   it('exports nothing but the header when the board has no cards', () => {
     expect(kanbanToCsv(COLUMNS, [])).toBe(`${BOM}${HEADER.join(',')}`)
