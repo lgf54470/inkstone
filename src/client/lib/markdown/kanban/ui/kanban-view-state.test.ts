@@ -32,7 +32,7 @@ function makeKanbanData(): KanbanData {
 
 type RootState = ReturnType<typeof useKanbanRootState>
 
-function renderRootStateProbe() {
+function renderRootStateProbe(initialData: KanbanData = makeKanbanData()) {
   installTestGlobals()
   const holder: { state: RootState } = { state: null as unknown as RootState }
   const commits: KanbanData[] = []
@@ -40,7 +40,7 @@ function renderRootStateProbe() {
 
   function Probe() {
     const containerRef = useRef<HTMLElement | null>(null)
-    holder.state = useKanbanRootState(makeKanbanData(), onUpdateData, containerRef)
+    holder.state = useKanbanRootState(initialData, onUpdateData, containerRef)
     return createElement('div', { ref: containerRef })
   }
 
@@ -56,6 +56,34 @@ function renderRootStateProbe() {
 }
 
 const boardFilters: KanbanFilter[] = [{ propertyId: 'status', operator: 'equals', value: 'todo' }]
+
+function boardWithOneCard(): KanbanData {
+  return { ...makeKanbanData(), items: [{ id: 'a', title: 'A', properties: { status: 'todo' } }] }
+}
+
+describe('kanban single card delete feedback', () => {
+  it('deletes the card and offers the board history as the way back', () => {
+    const { holder, commits, unmount } = renderRootStateProbe(boardWithOneCard())
+    act(() => { holder.state.items.handleDeleteItem('a') })
+    expect(commits.at(-1)!.items).toHaveLength(0)
+    const toast = useUi.getState().toasts.at(-1)
+    expect(toast, 'deleting one card posted no toast').toBeDefined()
+    expect(toast!.title).toBe(t('preview.kanban_card_deleted'))
+    expect(toast!.kind).toBe('undo')
+    expect(toast!.duration).toBeGreaterThan(3800)
+    act(() => { toast!.action!.run() })
+    expect(commits.at(-1)!.items.map((item) => item.id)).toEqual(['a'])
+    unmount()
+  })
+
+  it('says nothing and changes nothing for a card the board does not hold', () => {
+    const { holder, commits, unmount } = renderRootStateProbe(boardWithOneCard())
+    act(() => { holder.state.items.handleDeleteItem('missing') })
+    expect(commits).toHaveLength(0)
+    expect(useUi.getState().toasts).toHaveLength(0)
+    unmount()
+  })
+})
 
 describe('kanban view state persistence', () => {
   it('writes the selected view back into the committed data', () => {

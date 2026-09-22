@@ -100,6 +100,7 @@ export const messages = {
 'preview.kanban_batch_delete': '批量删除',
 'preview.kanban_batch_delete_count': '批量删除（{count}）',
 'preview.kanban_batch_deleted_count': '已删除 {count} 项',
+'preview.kanban_card_deleted': '已删除卡片',
 'preview.kanban_batch_archive_count': '批量归档（{count}）',
 'preview.kanban_archived_count': '已归档（{count}）',
 'preview.kanban_archive_panel': '已归档的卡片',

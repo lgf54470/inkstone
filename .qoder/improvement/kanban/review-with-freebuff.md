@@ -18,9 +18,11 @@
 
 ## 1. P1 — 正确性与数据完整性
 
-### K-01 单卡删除既无确认也无撤销提示 → 待修
+### K-01 单卡删除既无确认也无撤销提示 → 已修（`（本提交）`）
 - 证据：`ui/kanban-item-detail-fields.tsx:119-129`（Trash 紧邻「完成」）→ `ui/kanban-root-hooks.ts` `handleDeleteItem` 只 `commitData`；对比批量删除（`BATCH_DELETE_UNDO_TOAST_MS`）与删视图（`VIEW_DELETE_UNDO_TOAST_MS`）都有撤销 toast。
 - 影响：最容易误触的破坏性动作反而是唯一静默的。
+- 进度：新增 `useKanbanItemDeletion`（`ui/kanban-root-hooks.ts`）统一单卡删除：经 items ref 判存后提交 + `toastWithUndo('preview.kanban_card_deleted', history.undo, 8s)`，详情底栏与上下文菜单共用；归档面板的「彻底删除」同走这一条；三处重复的 8000 常量收成 `DESTRUCTIVE_UNDO_TOAST_MS`。顺带修掉「删除不存在的卡片也提交一次」的空步（旧实现会凭空压一条 undo 历史）。双语 +1 键。
+- 验证：`kanban-view-state.test.ts` +2 例（先红：无 toast；不存在 id 仍提交）后绿，其中一例通过运行 toast 的 action 断言卡片真的回来（不是只看 toast 出现）。
 
 ### K-02 删列无撤销提示，整列卡片落「No Status」 → 待修
 - 证据：`ui/kanban-column-menu.tsx`（删除项直接 `onDelete()`）；`ui/kanban-column-hooks.ts:21-32` `deleteColumnFromData` 把该列卡片的分组值置 `undefined`。

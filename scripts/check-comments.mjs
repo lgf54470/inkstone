@@ -3416,6 +3416,10 @@ const allowed = new Map([
     '// No aria-label: the character is the option, and a reader tool speaks it from its own localised',
     '// emoji data — a label we ship would replace that answer with one written in two languages.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-item-deletion.ts', [
+    '/** Deleting cards is destructive, however many at a time, so its undo window outlives an informational toast. */',
+    '/**\n * Deleting one card by hand is as destructive as deleting a batch, so it gets the same way back:\n * a toast whose action runs the board\'s own undo. A card the board does not hold is not a deletion —\n * committing it would spend a step of undo and offer to restore what was never there — so the guard\n * reads the newest items through a ref rather than making this callback change identity every commit.\n */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-item-detail-description.tsx', [
     '/**\n * Descriptions are free prose stored inside the note body, so the box bounds how far one can grow\n * instead of letting a single card balloon the fence. Content a board already stores above the bound\n * stays editable: clamping it on the first keystroke would delete what the note already holds.\n */',
     '/** The counter appears for the last stretch, so the bound is seen coming rather than only hit. */',
@@ -3562,7 +3566,6 @@ const allowed = new Map([
     '// unassigned one, which asks for nothing rather than writing a sentinel into the new card.',
     '// The add-group button targets the column the active view groups by;',
     '// option-less properties (text, date, ...) have no groups to add.',
-    '/** Batch deletes are destructive, so their undo window stays open longer than an informational toast. */',
     '// Batch assignment follows the active view\'s grouping property; a',
     '// multi-select column keeps its array shape.',
     '/** The two writers of the document itself rather than of a view: which view is open, and the board\'s title. */',

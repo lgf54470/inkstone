@@ -29,6 +29,7 @@ import { useKanbanHistory, type CommitKanbanData } from './kanban-history'
 import { useKanbanViewOperations, useKanbanViewState } from './kanban-view-state'
 import { appendOptionToColumn, useKanbanColumnOperations, useKanbanSchemaOperations } from './kanban-column-hooks'
 import { useMoveItemClearingSorts } from './kanban-manual-move'
+import { DESTRUCTIVE_UNDO_TOAST_MS, useKanbanItemDeletion } from './kanban-item-deletion'
 
 function filterAndSortItems(
   items: KanbanItem[],
@@ -305,9 +306,6 @@ export function computeSelectionAfterToggleAll(prev: Set<string>, ids: string[])
   return next
 }
 
-/** Batch deletes are destructive, so their undo window stays open longer than an informational toast. */
-const BATCH_DELETE_UNDO_TOAST_MS = 8000
-
 export function useKanbanSelection(
   commitData: CommitKanbanData,
   groupColumn: KanbanProperty | undefined,
@@ -349,7 +347,7 @@ export function useKanbanSelection(
     if (count === 0) return
     commitData((prev) => ({ ...prev, items: prev.items.filter((item) => !selectedIds.has(item.id)) }))
     setSelectedIds(new Set())
-    toastWithUndo(t('preview.kanban_batch_deleted_count', { count }), undo, { duration: BATCH_DELETE_UNDO_TOAST_MS })
+    toastWithUndo(t('preview.kanban_batch_deleted_count', { count }), undo, { duration: DESTRUCTIVE_UNDO_TOAST_MS })
   }, [selectedIds, commitData, undo])
 
   return {
@@ -399,17 +397,11 @@ export function useKanbanRootState(
   const viewOps = useKanbanViewOperations(data.views, commitData, history.undo)
 
   const handleMoveItem = useMoveItemClearingSorts(items.handleMoveItem, filterSort)
+  const handleDeleteItem = useKanbanItemDeletion(data.items, itemLifecycle.handleDeleteItem, history.undo)
   // The roster a member picker offers: read off every card, so filtering the board down never
   // removes a teammate from the list of people who can be assigned.
   const people = useMemo(() => kanbanPeopleDirectory(data.columns, data.items), [data])
-  const archive = useKanbanArchive(
-    data,
-    commitData,
-    detailItem,
-    setDetailItem,
-    selection.setSelectedIds,
-    itemLifecycle.handleDeleteItem,
-  )
+  const archive = useKanbanArchive(data, commitData, detailItem, setDetailItem, selection.setSelectedIds, handleDeleteItem)
 
   return {
     data,
@@ -422,7 +414,7 @@ export function useKanbanRootState(
     filterSort,
     groupColumn,
     selection,
-    items: { ...items, ...itemLifecycle, handleMoveItem },
+    items: { ...items, ...itemLifecycle, handleMoveItem, handleDeleteItem },
     adds,
     columnOps,
     schemaOps,
