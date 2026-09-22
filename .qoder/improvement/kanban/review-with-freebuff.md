@@ -145,7 +145,7 @@
 - **K-22** 116 个裸 `<button>`（模块内仅 1 处用 `Button`）；多数浮层自绘 `role='dialog'` 未走 `Menu`/`Popover`。→ 随功能改动逐文件迁移，不单开重构批。**待收敛**。
 - **K-23** `kanban-card.tsx` 的 `div` + `onClick`（打开详情）+ `onKeyDown`，无 `role`/`tabIndex`，有键盘等价按钮。→ 加注释说明豁免。**待修**。
 - **K-24** `kanban-card-header.tsx` 两处 `!important`（`group-hover/tag:!opacity-100`、`focus-visible:!opacity-100`）未按规则 12 注释原因。**已修**。
-- **K-25** `session.title()` 对无标题板返回硬编码 `'Kanban'` 作覆盖层可访问名；CSV 表头固定英文 `Title`。**待修**（覆盖层名称走 i18n；CSV 表头由产品决定，另行登记）。
+- **K-25** 已修（`（本提交）`）：无标题板的覆盖层名称不再来自硬编码。追下去发现根因比报告里写的深一层——读出来的是 `outline.ts` 在「大纲体→JSON」解析时写的 `title: 'Kanban'`，即**双语/可本地化之前就已把英文名当数据**，而首次 JSON 编辑会把它写进笔记（以后每块被升级的大纲板都叫 Kanban）。故修两处：`outline.ts` 不再造标题（大纲体本来就没有标题），`session.title()` 无标题时返回 `''` 交给调用方（`ui/kanban-fullscreen.tsx` 已有的 `|| t('preview.kanban_fullscreen')` 回退即刻生效）。CSV 表头仍固定英文 `Title`（属导出格式：本地化表头会与导入侧对称性冲突，需产品决定，另登记）。验证：`kanban-fullscreen.test.ts` +2 例（无标题板 `title()` 为空且回退到本地化文案、有标题板仍用自身标题），无标题一例先红；`outline.test.ts` 中原本断言 `title === 'Kanban'` 的一例改为 `toBeUndefined()`（旧断言恰好钉住了这个行为）。
 
 ## 6. 局限与未验证项（如实声明）
 

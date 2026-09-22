@@ -116,7 +116,11 @@ export function parseKanbanOutline(markdown: string): KanbanData {
   }
 
   return {
-    title: 'Kanban',
+    // No title: an outline body carries none, and inventing one here would not merely name the board —
+    // the first edit upgrades the fence to JSON, which writes this value into the note, and every
+    // board parsed from an outline would go on claiming the same name in whatever language this file
+    // happened to be written in. A board with no title of its own is announced by the caller's own
+    // localized label (review K-25).
     activeViewId: 'view-board',
     views: defaultViews(),
     columns: createDefaultColumns(options),

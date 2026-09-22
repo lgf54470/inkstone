@@ -125,6 +125,24 @@ describe('kanban full screen mounting and views', () => {
   })
 })
 
+describe('kanban full screen naming', () => {
+  it('leaves an untitled board to the localized label instead of a hardcoded name', async () => {
+    const host = previewHost()
+    await mountKanbans(host, { scope: SCOPE, noteId: 'note-1', editable: true })
+    const session = openKanbanSession(host.querySelector<HTMLElement>('[data-kanban]')!)!
+    expect(session.title(), 'an untitled board named itself').toBe('')
+    expect(session.title() || t('preview.kanban_fullscreen')).toBe(t('preview.kanban_fullscreen'))
+  })
+
+  it('names a titled board after its own title', async () => {
+    const body = JSON.stringify({ title: 'Gate Board', columns: [], items: [], views: [] })
+    const host = previewHost(body)
+    await mountKanbans(host, { scope: SCOPE, noteId: 'note-1', editable: true })
+    const session = openKanbanSession(host.querySelector<HTMLElement>('[data-kanban]')!)!
+    expect(session.title()).toBe('Gate Board')
+  })
+})
+
 describe('kanban full screen context menu', () => {
   it('opens dedicated Kanban context menu on right click in fullscreen', async () => {
     const surface = await mountSurface()

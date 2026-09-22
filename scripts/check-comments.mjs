@@ -2972,8 +2972,17 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/item-status.ts', [
     '/**\n * Whether a card has reached its final state. A board imported from another tool may store either\n * the option id or the option label in `status`, so both spellings of the finished group count.\n * Lives apart from the date accessors because both the completion metrics and the overdue rule\n * need it, and the date module must stay importable by the filter module.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/outline.test.ts', [
+    '// An outline body names nothing, and a board that invented a name here would write that name into',
+    '// the note on its first JSON edit (K-25).',
+  ]],
   ['src/client/lib/markdown/kanban/outline.ts', [
     '// \\[ and \\] are literal brackets in a title, not the start of a property tag.',
+    '// No title: an outline body carries none, and inventing one here would not merely name the board —',
+    '// the first edit upgrades the fence to JSON, which writes this value into the note, and every',
+    '// board parsed from an outline would go on claiming the same name in whatever language this file',
+    '// happened to be written in. A board with no title of its own is announced by the caller\'s own',
+    '// localized label (review K-25).',
   ]],
   ['src/client/lib/markdown/kanban/person.ts', [
     '/**\n * A person is stored as the name the author typed. Anything that is not a name — a blank, an\n * object, a list of tags — means the card holds nobody, so no surface has to re-derive it.\n */',
@@ -3012,6 +3021,8 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/session.ts', [
     '/** False once the block left the document: the board behind this session no longer exists. */',
+    '// Empty when the board has no title of its own: the caller owns the wording of that case, so an',
+    '// untitled board is announced by the localized label rather than by a hardcoded name.',
   ]],
   ['src/client/lib/markdown/kanban/static.test.ts', [
     '/**\n * A board on a surface that cannot run one: an exported document, a shared note, a slide, the\n * editor\'s live preview. Those channels used to leave the block at "Loading kanban…" with\n * `aria-busy` up forever — the fence had been rendered, but nothing would ever mount it. The\n * contract asserted here is the one every rich block in this repo already keeps: a still\n * rendering when the surface declares one, the source when it declares nothing, and never a\n * promise that is never kept.\n */',

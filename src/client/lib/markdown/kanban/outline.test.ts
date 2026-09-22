@@ -11,7 +11,9 @@ describe('parseKanbanOutline headings and items', () => {
       '- [x] Research requirements',
     ].join('\n')
     const data = parseKanbanOutline(md)
-    expect(data.title).toBe('Kanban')
+    // An outline body names nothing, and a board that invented a name here would write that name into
+    // the note on its first JSON edit (K-25).
+    expect(data.title).toBeUndefined()
     expect(data.items).toHaveLength(3)
 
     const statusCol = data.columns.find((c) => c.id === 'status')

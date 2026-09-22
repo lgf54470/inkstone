@@ -43,7 +43,9 @@ function sessionFor(entry: KanbanBlockEntry): KanbanSession {
     getMode: () => entry.mode,
     moveInto: (target) => attachKanbanToOverlay(entry, target),
     moveBack: () => detachKanbanFromOverlay(entry),
-    title: () => entry.data?.title || 'Kanban',
+    // Empty when the board has no title of its own: the caller owns the wording of that case, so an
+    // untitled board is announced by the localized label rather than by a hardcoded name.
+    title: () => entry.data?.title || '',
     serialize: () => {
       if (!entry.data) return null
       return serializeKanban(entry.data, entry.mode)
