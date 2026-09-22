@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Archive,
   CalendarDays,
@@ -20,18 +20,23 @@ import {
   Pencil,
   Plus,
   Presentation,
+  Redo2,
   Settings,
   Share2,
+  SquareCheck,
   Star,
   Sun,
   Trash2,
   Type,
+  Undo2,
   Waypoints,
+  X,
 } from 'lucide-react'
 import { t, useLocale, type MessageKey } from '../../../lib/i18n'
 import { api } from '../../../lib/api'
 import { errorMessage } from '../../../lib/errors'
 import { calendarNodeName, calendarPeriodsForDate, type CalendarPeriod } from '../../../lib/calendar-tree'
+import { kanbanSurfaceCommands, type KanbanSurfaceCommands } from '../../../lib/markdown/kanban'
 import { cycleYearGridColumns, setYearGridColumns, useYearGridColumns, type YearGridColumnsPref } from '../../../lib/year-grid-prefs'
 import { useUi, type PanelName } from '../../../store/ui'
 import { useNotes } from '../../../store/notes'
@@ -135,6 +140,54 @@ function navigationCommands(deps: { openView: (view: ViewKind) => void; openCale
   ]
 }
 
+/**
+ * What the board on screen can do, offered where every other action is. A board is a surface inside
+ * the document rather than an app of its own, so this is how its cards and views become reachable by
+ * name instead of by hunting for the right button — and how a keyboard reader gets to them at all.
+ * The group carries the board's title, because a note may hold several boards and a command that ran
+ * against the wrong one would be worse than no command.
+ */
+export function boardCommandItems(surface: KanbanSurfaceCommands): CommandItem[] {
+  const group = surface.boardTitle
+  const items: CommandItem[] = [
+    { id: 'cmd-kanban-add', kind: 'command', label: t('preview.kanban_new_item'), icon: <Plus size={14} aria-hidden />, group, run: surface.addCard },
+    ...surface.views.map((view) => ({
+      id: `cmd-kanban-view-${view.id}`,
+      kind: 'command' as const,
+      label: t('preview.kanban_switch_view', { title: view.name }),
+      detail: view.id === surface.activeViewId ? t('preview.kanban_current_view') : undefined,
+      icon: view.icon,
+      group,
+      run: () => surface.selectView(view.id),
+    })),
+    { id: 'cmd-kanban-select-all', kind: 'command', label: t('preview.kanban_select_all_visible'), icon: <SquareCheck size={14} aria-hidden />, group, run: surface.selectAllVisible },
+  ]
+  if (surface.selectedCount > 0) {
+    items.push({ id: 'cmd-kanban-clear-selection', kind: 'command', label: t('preview.kanban_clear_selection'), icon: <X size={14} aria-hidden />, group, run: surface.clearSelection })
+  }
+  if (surface.canUndo) {
+    items.push({ id: 'cmd-kanban-undo', kind: 'command', label: t('common.undo'), icon: <Undo2 size={14} aria-hidden />, combo: 'mod+z', group, run: surface.undo })
+  }
+  if (surface.canRedo) {
+    items.push({ id: 'cmd-kanban-redo', kind: 'command', label: t('command.redo'), icon: <Redo2 size={14} aria-hidden />, combo: 'mod+shift+z', group, run: surface.redo })
+  }
+  return items
+}
+
+/**
+ * The board is read once, when the palette opens: every other item in the list is a snapshot of the
+ * moment too, and a board being edited behind the palette is not something to re-ask while the reader
+ * is typing a query. Reading it in an effect rather than during render keeps the focus question
+ * honest — the palette focuses its own field, so what was focused a tick earlier is the answer.
+ */
+function useKanbanSurfaceCommands(): KanbanSurfaceCommands | null {
+  const [surface, setSurface] = useState<KanbanSurfaceCommands | null>(null)
+  useEffect(() => {
+    setSurface(kanbanSurfaceCommands(document.activeElement))
+  }, [])
+  return surface
+}
+
 export function usePaletteCommands(ctx: { openCalendarPeriod: (period: CalendarPeriod) => void }) {
   const activeNoteId = useUi((s) => s.activeNoteId)
   const notes = useNotes((s) => s.notes)
@@ -148,6 +201,7 @@ export function usePaletteCommands(ctx: { openCalendarPeriod: (period: CalendarP
   const updateSettings = useSession((s) => s.updateSettings)
   const yearGridColumns = useYearGridColumns()
   const locale = useLocale()
+  const board = useKanbanSurfaceCommands()
   return useMemo<CommandItem[]>(() => {
     const activeNote = activeNoteId ? notes[activeNoteId] : null
     const isDark = document.documentElement.dataset.theme === 'dark'
@@ -157,7 +211,8 @@ export function usePaletteCommands(ctx: { openCalendarPeriod: (period: CalendarP
       ...(activeNote ? currentNoteCommands(activeNote, { setStarred, setArchived, openPanel, deleteNote }) : []),
       ...interfaceCommands({ isDark, yearGridColumns, openPanel, updateSettings }),
       ...hubCommands({ openPanel }),
+      ...(board ? boardCommandItems(board) : []),
       ...navigationCommands({ openView, openCalendarPeriod: ctx.openCalendarPeriod, periods }),
     ]
-  }, [activeNoteId, appearanceTheme, locale, createFolder, deleteNote, notes, ctx.openCalendarPeriod, openPanel, openView, setStarred, updateSettings, yearGridColumns])
+  }, [activeNoteId, appearanceTheme, board, locale, createFolder, deleteNote, notes, ctx.openCalendarPeriod, openPanel, openView, setStarred, updateSettings, yearGridColumns])
 }

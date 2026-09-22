@@ -152,8 +152,10 @@
 - 落地：`ui/kanban-search-box.tsx` 新增 `ActiveSearchChip`（折叠且 `searchQuery` 非空时替换裸图标：可点开继续编辑、可一键清除，名称走新键 `preview.kanban_clear_search`）；`KanbanView.selectedTags` 入库（`types.ts`）并由 `ui/kanban-view-state.ts` 读写（`EMPTY_TAGS` 保证未设置时引用稳定，与 filters/sorts 同一手法），`ui/kanban-root-hooks.ts` 删掉本地 `useState` 改用视图状态——`onToggleTag` 改从传入的 `selectedTags` 推导，避免闭包读到旧值。双语 +1 键。
 - 验证：`kanban-search-and-select.test.ts` 7→10 例（新增组：折叠但仍在过滤时显示查询串与清除钮、清除回报空串；无查询时仍只是一枚图标；卸载时不给已走的框提交过滤），前两例先红、后两例为护栏；`kanban-view-state.test.ts` 新增 `the tag filter as view state` 三例（存入当前视图而不影响其他视图、从视图读回、未设置时引用稳定），前两例先红。`size:check` 拦下变长的搜索框组件与测试 describe → 各拆（`ActiveSearchChip`、测试按「折叠时 / 防抖」分组），未 resnapshot。kanban+preview+tests/kanban 95 文件 **1050** passed，13 项静态门禁 exit=0。
 
-### K-16 命令面板无看板命令 / 无卡片键盘导航 → 待修
+### K-16 命令面板无看板命令 / 无卡片键盘导航 → 已修（命令面板；卡片 roving 经复核不立项）
 - 证据：`features/command/*` 0 命中 kanban；卡片容器非焦点停靠点。
+- 进度：新增 `lib/markdown/kanban/surface-commands.ts`（模块级注册表：一块看板在屏幕上就登记一个**惰性读取器**而非快照，面板打开那一刻才回答）+ `ui/kanban-surface.ts`（`useKanbanSurface`，经 ref 持有最新 state，不因每次提交重新登记）；面板侧新增 `boardCommandItems`（新增卡片 / 逐个视图切换并标出当前视图 / 选择当前视图全部 / 仅在有选择与有历史时才给出清除·撤销·重做），组名取看板标题以便一块笔记里多块板互相区分。视图图标由 `kanbanViewIcon` 统一导出，两处不会漂。归属判定：多块板同时在场时只有焦点所在的那块回答，只有一块时无需先点进去。
+- 卡片 `tabIndex` roving focus **不立项**（复核结论）：卡片的指针热区已有键盘等价物（卡上的详情钮 + 上下文菜单 + Shift+方向键搬卡），`axe` 也据此通过；再加一层 roving tabindex 会引入第二个焦点模型与第二套快捷键语义，收益是要少按几次 Tab，代价是卡片内部控件的焦点顺序要重新定义。已在本条目登记为有意取舍，留待「卡片级键盘导航」作为独立设计题。
 
 ### K-17 移动端头部布局与触控目标 → 已修
 - 证据：`ui/kanban-header.tsx` 仅一处响应式类；工具按钮固定 `size-7`（28px）对 `components/primitives.tsx` 的 `IconButton`（手机 36px）。

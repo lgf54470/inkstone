@@ -1173,8 +1173,15 @@ const allowed = new Map([
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
   ]],
+  ['src/client/features/command/command-palette/board-commands.test.ts', [
+    '/**\n * A board\'s own actions as palette items. The list is what a reader searches, so what is pinned here\n * is the wording (one entry per view, the view on screen marked as such) and the narrowing: a command\n * that cannot do anything — clearing an empty selection, redoing with nothing to redo — is left out\n * rather than offered and silently ignored.\n */',
+  ]],
   ['src/client/features/command/command-palette/index.tsx', [
     '// Counts each note once per ancestor folder (its own folder and every parent).',
+  ]],
+  ['src/client/features/command/command-palette/use-commands.tsx', [
+    '/**\n * What the board on screen can do, offered where every other action is. A board is a surface inside\n * the document rather than an app of its own, so this is how its cards and views become reachable by\n * name instead of by hunting for the right button — and how a keyboard reader gets to them at all.\n * The group carries the board\'s title, because a note may hold several boards and a command that ran\n * against the wrong one would be worse than no command.\n */',
+    '/**\n * The board is read once, when the palette opens: every other item in the list is a snapshot of the\n * moment too, and a board being edited behind the palette is not something to re-ask while the reader\n * is typing a query. Reading it in an effect rather than during render keeps the focus question\n * honest — the palette focuses its own field, so what was focused a tick earlier is the answer.\n */',
   ]],
   ['src/client/features/command/shortcuts-panel.test.ts', [
     '// Narrow the results to a single row; the cursor must clamp back inside.',
@@ -3036,6 +3043,14 @@ const allowed = new Map([
     '// Archived cards are invisible on the live board, so a still of that board must not resurrect them.',
     '/** Draws every kanban block in `root` as a still list instead of a board that never arrives. */',
   ]],
+  ['src/client/lib/markdown/kanban/surface-commands.ts', [
+    '/**\n * What a mounted board offers the command palette. The palette is global and the board is a React\n * root inside the document, so the two meet through this registry rather than through the store: a\n * board that is on screen registers what it can do, and the palette reads the one the reader is\n * working in when it opens. Nothing here re-renders anybody — the palette takes a snapshot of a\n * board at the moment it is opened, which is also how every other item in it behaves.\n */',
+    '/** The glyph the board\'s own view tabs use, so a view looks the same in both places. */',
+    '/** The board\'s title, used as the group heading so several boards are told apart. */',
+    '/**\n * Read lazily on purpose: a board\'s actions change on every commit, so the registry holds a reader\n * rather than a snapshot, and the palette\'s own open moment decides what it sees.\n */',
+    '/** Registers a board for as long as it is mounted; the returned function takes it back out. */',
+    '/**\n * The board the reader is in, or none. Containment decides when there is a choice: with several\n * boards on screen, only the one holding the focused element may answer — a command that acted on a\n * different board than the one being read would be worse than offering no command at all. A lone\n * board is unambiguous even before the reader has clicked into it, which is the common case and the\n * one where withholding the commands would just look broken.\n */',
+  ]],
   ['src/client/lib/markdown/kanban/swimlane.test.ts', [
     '/**\n * F-10. A swimlane is a second grouping: the columns stay what they are and the cards are also cut\n * into horizontal bands by another field. Both answers have to come out of the same derivation as\n * the plain board, otherwise a card counted in a band and a card counted in a column drift apart —\n * so these cases read the bands back from `groupKanbanItems` behaviour they share with it.\n *\n * The band a card sits in is a fact about the card (it is that field\'s value), so dropping a card\n * into another band is a write of that field as much as it is a write of the column: one gesture,\n * one step of undo.\n */',
   ]],
@@ -3752,6 +3767,7 @@ const allowed = new Map([
     '// the view render in two branches of this tree, so the pair is minted here.',
     '// A host tree React did not make never re-renders this root, so the board listens',
     '// for language changes itself rather than trusting a mount option to carry them.',
+    '// The board\'s own actions are offered to the command palette while it is on screen (K-16).',
     '// Clicking board whitespace focuses this container, so board-scoped',
     '// shortcuts (undo/redo) keep working when no card holds focus.',
   ]],
@@ -3793,6 +3809,17 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-subtask-menu.tsx', [
     '// `Menu` closes after an item runs, so a row here only says what it does.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-surface.test.ts', [
+    '/**\n * The command palette is global and the board is a React root inside the document, so the two meet\n * through a registry: a board on screen registers what it can do, and the palette reads the one the\n * reader is in. What is pinned here is the choice — containment when there are several boards, the\n * lone board when there is one — and that a real board registers actions that actually work, so the\n * palette can never offer a command that does nothing.\n */',
+    '// The first view hides the done card, so "select what is in view" has something to leave out.',
+    '// The palette runs these against the live board, so each one has to move the document the way the',
+    '// board\'s own control does — a command that only looked like it worked is worse than no command.',
+    '// One of the two cards is filtered out of this view: sweeping the document instead would count 2.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-surface.ts', [
+    '/**\n * What the palette may run against this board. "Select all" is scoped to the visible cards on\n * purpose — it is the same writer the context menu\'s own row calls, so a card the search has hidden\n * is never swept into a batch.\n */',
+    '/**\n * Publishes this board to the command palette for as long as it is on screen. The reader is held in a\n * ref rather than passed to the registry: the palette reads it when it opens, so re-registering on\n * every commit would only churn a map nobody is waiting on.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-table-group.tsx', [
     '/** Who the member picker may offer, per member column. */',
@@ -3886,6 +3913,7 @@ const allowed = new Map([
     '// and the number keeps two tabs of one kind apart.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-tabs.tsx', [
+    '/** Exported so a view looks the same wherever it is named, including the command palette. */',
     '// The whole list drives one panel, so a tab\'s own name has to be derivable from that panel\'s id —',
     '// the panel labels itself back with `aria-labelledby` and cannot know the view id by itself.',
     '// A tablist is one entry point: the arrows carry both focus and selection, wrapping at the ends.',

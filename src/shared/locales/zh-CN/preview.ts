@@ -144,6 +144,8 @@ export const messages = {
 'preview.kanban_comment_count': '{count} / {limit} 字符',
 'preview.kanban_comment_limit_reached': '单条评论不能超过 {limit} 个字符',
 'preview.kanban_clear_selection': '清除选择',
+'preview.kanban_switch_view': '切换到{title}',
+'preview.kanban_current_view': '当前显示的视图',
 'preview.kanban_select_all': '全选',
 'preview.kanban_select_all_visible': '选择当前视图全部卡片',
 'preview.kanban_select_group': '选择本组',

@@ -56,6 +56,13 @@ export {
 
 export { KanbanFullscreen, KanbanRoot } from './ui'
 
+export {
+  registerKanbanSurface,
+  kanbanSurfaceCommands,
+  type KanbanSurfaceCommands,
+  type KanbanSurfaceView,
+} from './surface-commands'
+
 export type {
   KanbanColorName,
   KanbanData,

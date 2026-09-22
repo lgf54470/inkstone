@@ -17,7 +17,8 @@ import { prompt, Menu, type MenuItem } from '../../../../components/overlay'
 import type { KanbanView, KanbanViewType } from '../types'
 import { t } from '../../../i18n'
 
-function viewIcon(type: KanbanViewType) {
+/** Exported so a view looks the same wherever it is named, including the command palette. */
+export function kanbanViewIcon(type: KanbanViewType) {
   switch (type) {
     case 'board':
       return <Kanban size={14} />
@@ -115,7 +116,7 @@ function KanbanNewViewMenu({ onCreate }: { onCreate: (type: KanbanViewType) => v
   const items: MenuItem[] = KANBAN_VIEW_TYPES.map((type) => ({
     id: type,
     label: formatKanbanViewTypeLabel(type),
-    icon: viewIcon(type),
+    icon: kanbanViewIcon(type),
     onSelect: () => onCreate(type),
   }))
 
@@ -232,7 +233,7 @@ function KanbanTabList({ views, activeViewId, panelId, onSelectView }: TabListPr
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
             }`}
           >
-            {viewIcon(v.type)}
+            {kanbanViewIcon(v.type)}
             <span>{formatKanbanViewName(v)}</span>
           </button>
         )
