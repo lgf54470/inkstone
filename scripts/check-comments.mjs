@@ -3375,10 +3375,12 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-files-cell.test.ts', [
     '// Nothing is stored here, so there is no permanent delete to warn about.',
+    '/** A file whose declared size is the point of the case, without allocating the bytes for it. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-files-cell.tsx', [
     '// Which bucket new uploads land in. Deletions ignore it and address each file\'s',
     '// own stored location, so files uploaded before a namespace change still clear.',
+    '/**\n * The split happens before a single byte is sent, against the limit the server enforces\n * (`LIMITS.attachmentMaxBytes`): the same number on both sides, so an over-limit file is refused here\n * instead of after a 25 MB round trip. The server still checks it — this is a courtesy, that is the\n * trust boundary. A file exactly at the limit fits (the server refuses only what is greater).\n */',
     '// A stored file leaves the bucket for good, so it asks first — the reference in the note is',
     '// undoable, the bytes are not. A file hosted elsewhere has nothing here to delete.',
   ]],

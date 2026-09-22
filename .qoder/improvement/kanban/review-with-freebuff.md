@@ -82,9 +82,12 @@
 - 影响面清点：模块内仅三处 `href`，全在该文件（PDF 预览的「新标签打开」与页脚两个）。`ui/kanban-files-cell.tsx` 等只显示文件名，无链接。
 - 验证：`kanban-file-preview-modal.test.ts` 12→14 例（同类源仍有 `download=文件名`、无 `target`；跨源无任何 `a[download]` 且指向该 URL 的链接全带 `target=_blank` + `noopener`），新增 1 例先红；`renderer.test.ts` 32 例与 `kanban-gallery-cover.test.ts` 7 例同跑绿，证正名未改行为。
 
-### K-10 上传无客户端预检 → 待修
+### K-10 上传无客户端预检 → 已修（仅体积；类型无白名单可预检）
 - 证据：`ui/kanban-files-cell.tsx` 直接上传；服务端已达标（`worker/routes/kanban.ts` 白名单/配额/节流）。
 - 影响：超大/不支持文件要传完才被 413/429 拒。
+- 核实后收窄的范围：服务端实际只硬拦一项——`file.size > LIMITS.attachmentMaxBytes`（25 MB）；类型不是白名单拒绝，而是 `safeAttachmentMime(bytes, file.type)` 嗅探改写存储 MIME（危险类型只在 GET 时降为 attachment 下载）。所以客户端做「类型预检」无源可依——自造一份白名单会在两边漂移，反而会拒掉服务端本会收的文件。配额同样无法预检：客户端既不知道账号已用量，也不知道后端是 R2 还是 KV（两个配额常量不同）。故本项只做体积，且用 `@shared/constants` 里**同一个** `LIMITS.attachmentMaxBytes`，不在看板里重写 25 MB。
+- 进度：`ui/kanban-files-cell.tsx` 新增 `splitByUploadLimit`（在发第一个字节前分流；恰好等于上限算通过，与服务端「只有大于才拒」一致）与 `reportTooLarge`（danger toast，标题里的 MB 数由常量算出，限额变更自动跟随；描述列出被跳过的文件名）；全部超限时不调用 `onChangeFiles`（不写空提交）。双语 +1 键 `preview.kanban_file_too_large`。
+- 验证：`kanban-files-cell.test.ts` 8→11 例（超限文件一个字节也不发且拒稿文案与限制值逐字匹配、部分超限时只传合规的那一个并只报一次、恰好等于上限不报）；**变异自检**：判定改成 `> 上限×2` 后恰好这两例转红（2 failed / 9 passed），还原后 11/11；`size:check` 拦下变长的 `handleUpload` → 拆出两个具名助手函数后 exit=0（未 resnapshot）。kanban+preview+tests/kanban 94 文件 **1035** passed，13 项静态门禁 exit=0。
 
 ### K-27（本轮新增，跨模块）分享访问日志导出的 CSV 同样无公式防护 → 待修（不在看板范围）
 - 证据：`features/share/share-helpers.ts:150-167` `exportVisitsToCsv` 手写 CSV：只对 `noteTitle`/`referrer` 做引号加倍，**无公式前缀防护**，且 `slug`/`country`/`city`/`deviceType`/`os`/`browser` 等字段根本没加引号（含分隔符即错列）。

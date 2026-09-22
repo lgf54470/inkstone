@@ -1,6 +1,7 @@
 import { createContext, useContext, useRef, useState } from 'react'
 import { File as FileIcon, FileText, Image as ImageIcon, Loader2, Plus, Trash2 } from 'lucide-react'
 import { confirm } from '../../../../components/overlay'
+import { LIMITS } from '@shared/constants'
 import { t } from '../../../i18n'
 import { deleteKanbanFile, uploadKanbanFile } from '../../../api'
 import { useUi } from '../../../../store/ui'
@@ -63,6 +64,29 @@ function FileItemRow({
   )
 }
 
+/**
+ * The split happens before a single byte is sent, against the limit the server enforces
+ * (`LIMITS.attachmentMaxBytes`): the same number on both sides, so an over-limit file is refused here
+ * instead of after a 25 MB round trip. The server still checks it — this is a courtesy, that is the
+ * trust boundary. A file exactly at the limit fits (the server refuses only what is greater).
+ */
+function splitByUploadLimit(chosen: File[]): { accepted: File[]; tooLarge: File[] } {
+  return {
+    accepted: chosen.filter((file) => file.size <= LIMITS.attachmentMaxBytes),
+    tooLarge: chosen.filter((file) => file.size > LIMITS.attachmentMaxBytes),
+  }
+}
+
+function reportTooLarge(tooLarge: File[]): void {
+  useUi.getState().toast({
+    title: t('preview.kanban_file_too_large', {
+      value1: String(LIMITS.attachmentMaxBytes / (1024 * 1024)),
+    }),
+    description: tooLarge.map((file) => file.name).join(', '),
+    tone: 'danger',
+  })
+}
+
 function FileUploadButton({
   kanbanName,
   files,
@@ -80,13 +104,14 @@ function FileUploadButton({
     if (!fileList || fileList.length === 0) return
     setUploading(true)
     try {
+      const { accepted, tooLarge } = splitByUploadLimit(Array.from(fileList))
       const uploaded: KanbanFile[] = []
-      for (let i = 0; i < fileList.length; i++) {
-        const f = fileList[i]!
-        const result = await uploadKanbanFile(f, kanbanName)
+      for (const file of accepted) {
+        const result = await uploadKanbanFile(file, kanbanName)
         uploaded.push(result)
       }
-      onChangeFiles?.([...files, ...uploaded])
+      if (uploaded.length > 0) onChangeFiles?.([...files, ...uploaded])
+      if (tooLarge.length > 0) reportTooLarge(tooLarge)
     } catch (err: unknown) {
       console.error('[kanban] file upload failed', err)
       useUi.getState().toast({

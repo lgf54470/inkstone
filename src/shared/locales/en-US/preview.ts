@@ -315,6 +315,7 @@ export const messages = {
 'preview.kanban_file_load_failed_hint': 'It may have been deleted, or the server refused the request.',
 'preview.kanban_file_empty': 'This file is empty',
 'preview.kanban_file_retry': 'Try again',
+'preview.kanban_file_too_large': 'Larger than the {value1} MB limit',
 'preview.kanban_file_delete_failed': 'Failed to delete file',
 'preview.kanban_sort_cleared_for_drag': 'Sorting cleared to apply your manual order',
 'preview.kanban_add_tag': 'Add Tag',

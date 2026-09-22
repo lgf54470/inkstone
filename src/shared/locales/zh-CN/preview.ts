@@ -325,6 +325,7 @@ export const messages = {
 'preview.kanban_file_load_failed_hint': '它可能已被删除，或服务端拒绝了请求。',
 'preview.kanban_file_empty': '该文件为空',
 'preview.kanban_file_retry': '重试',
+'preview.kanban_file_too_large': '超过 {value1} MB 上限',
 'preview.kanban_file_delete_failed': '文件删除失败',
 'preview.kanban_sort_cleared_for_drag': '已清除排序以应用手动拖拽顺序',
 'preview.kanban_add_tag': '添加标签',

@@ -1,6 +1,7 @@
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { LIMITS } from '@shared/constants'
 import { initI18n, t } from '../../../../lib/i18n'
 import { deleteKanbanFile, uploadKanbanFile } from '../../../api'
 import { installTestGlobals } from '../../../test-render'
@@ -129,6 +130,54 @@ describe('kanban file delete confirmation', () => {
     const { container, root } = renderCell([savedFile])
     await act(async () => { deleteButton(container).click() })
     expect(mocks.toast).toHaveBeenCalledWith({ title: t('preview.kanban_file_deleted'), tone: 'success' })
+    act(() => root.unmount())
+    container.remove()
+  })
+})
+
+/** A file whose declared size is the point of the case, without allocating the bytes for it. */
+function fileSized(name: string, size: number): File {
+  const file = new File(['hi'], name, { type: 'application/octet-stream' })
+  Object.defineProperty(file, 'size', { value: size })
+  return file
+}
+
+async function chooseFiles(container: HTMLElement, files: File[]): Promise<void> {
+  const input = container.querySelector<HTMLInputElement>('input[type="file"]')!
+  Object.defineProperty(input, 'files', { value: files, configurable: true })
+  await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) })
+}
+
+describe('kanban file upload size guard', () => {
+  it('does not send a file the server is going to refuse, and names the limit', async () => {
+    const { container, root } = renderCell([])
+    await chooseFiles(container, [fileSized('huge.bin', LIMITS.attachmentMaxBytes + 1)])
+    expect(uploadKanbanFile, 'an over-limit file was uploaded anyway').not.toHaveBeenCalled()
+    expect(mocks.toast).toHaveBeenCalledWith({
+      title: t('preview.kanban_file_too_large', { value1: String(LIMITS.attachmentMaxBytes / (1024 * 1024)) }),
+      description: 'huge.bin',
+      tone: 'danger',
+    })
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  it('uploads what fits and reports only the file that does not', async () => {
+    const { container, root, onChangeFiles } = renderCell([])
+    await chooseFiles(container, [fileSized('ok.txt', 1024), fileSized('huge.bin', LIMITS.attachmentMaxBytes + 1)])
+    expect(vi.mocked(uploadKanbanFile)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(uploadKanbanFile).mock.calls[0][0].name).toBe('ok.txt')
+    expect(onChangeFiles).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).toHaveBeenCalledTimes(1)
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  it('keeps quiet about a file that is exactly at the limit', async () => {
+    const { container, root } = renderCell([])
+    await chooseFiles(container, [fileSized('edge.bin', LIMITS.attachmentMaxBytes)])
+    expect(vi.mocked(uploadKanbanFile)).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).not.toHaveBeenCalled()
     act(() => root.unmount())
     container.remove()
   })
