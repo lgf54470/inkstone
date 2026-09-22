@@ -38,7 +38,7 @@
 - [ ] K-19 writer 收进 `useCallback`（先写 locale 回归）+ 头部 props 收敛
 - [ ] K-21 `e2e-visual.mjs` 逐个打开 8 个视图并断言内容已到
 - [ ] K-20 连续编辑期间自适应写回静默期（含确定性量测）
-- [ ] K-23/K-24 规范注释收敛
+- [x] K-23/K-24 规范注释收敛（卡片容器豁免登记 + 两处 `!important` 理由）
 
 ## 进度日志
 
@@ -49,7 +49,8 @@
 | 2026-09-22 | K-02 删列撤销提示（分组口径） | （本提交） | typecheck ✅；kanban+preview+tests/kanban 94 文件 1008 passed（首跑 1 例 render-window 超时属 L-03，重跑全绿）；`size:check`/`i18n:check` ✅；白名单 656 文件 / 4464 条 |
 | 2026-09-22 | K-03 附件删除确认 + 永久删除语义 | c3f72b4a | typecheck ✅；kanban+preview+tests/kanban 88 文件 992 passed；`size:check`/`i18n:check`/`style:check`/`hardcoded:check` ✅；白名单 657 文件 / 4467 条；pre-commit 全量 test:unit 1443 passed |
 | 2026-09-22 | K-05 CSV 导出补 BOM | 5e984d32 | typecheck ✅；kanban+preview+tests/kanban 88 文件 994 passed；`size:check`/`comments:check` ✅；白名单 657 文件 / 4470 条 |
-| 2026-09-22 | K-25 无标题看板不再自带英文名 | （本提交） | typecheck ✅；+2 例（1 先红）+ 1 例旧断言改写（旧断言恰在钉旧行为）；kanban+preview+tests/kanban 95 文件 **1041** passed；13 项静态门禁 exit=0；白名单 663 文件 / 4507 条 |
+| 2026-09-22 | K-23/K-24 规范注释收敛 | （本提交） | 注释型改动（无行为）；typecheck ✅；`comments:check` 重算白名单 664 文件 / 4517 条；无需新增测试（无行为变化） |
+| 2026-09-22 | K-25 无标题看板不再自带英文名 | fbff8163 | typecheck ✅；+2 例（1 先红）+ 1 例旧断言改写（旧断言恰在钉旧行为）；kanban+preview+tests/kanban 95 文件 **1041** passed；13 项静态门禁 exit=0；白名单 663 文件 / 4507 条 |
 | 2026-09-22 | K-04 全屏期间板子离开笔记的自恢复 | 9dd74c76 | typecheck ✅；新增 4 例（3 先红 + 1 护栏）+ 变异自检（去 disposed 守卫恰好杀 1 例）；`size:check` 拦下 67 行 describe → 拆三组而非 resnapshot；kanban+preview+tests/kanban 95 文件 **1039** passed；13 项静态门禁 exit=0；白名单 662 文件（第一次 4498 条，拆 describe 后重算 4496）；批次 1（止血与安全）全部结案 |
 | 2026-09-22 | K-10 上传体积预检 | 30f3f9c3 | typecheck ✅；新增 3 例 + 变异自检（改判据恰好杀这 2 例）；`size:check` 拦下变长函数→拆助手而非 resnapshot；kanban+preview+tests/kanban 94 文件 **1035** passed；13 项静态门禁 exit=0；白名单 660 文件 / 4486 条 |
 | 2026-09-22 | K-09 跨源附件不再抢走应用标签页 | 789a61ac | typecheck ✅；新增 1 例先红后绿；`renderer.test.ts`+画廊 39 例同跑绿证明正名无行为漂移；kanban+preview+tests/kanban 94 文件 **1032** passed；13 项静态门禁 exit=0；白名单 660 文件 / 4482 条 |

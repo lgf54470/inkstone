@@ -3148,12 +3148,18 @@ const allowed = new Map([
     '/**\n * The calendar view drew its own week twice over: seven message keys listed Sunday→Saturday, and the\n * cells under them were generated assuming Sunday as well — self-consistent, so nothing looked wrong,\n * but neither half could follow the reader. Both now come off one locale-derived number, and these\n * probes read the pair the reader actually sees: the label sitting over the column, and the date that\n * column\'s first cell creates an item for. Asserting one against the other is what catches a header\n * that moved while the grid stayed put, which neither half alone would notice.\n */',
     '// CLDR: the week opens Sunday in the US, Monday in China.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-card-header.tsx', [
+    '// `!important` twice, scoped to this one utility: the tag chip and the card behind it both',
+    '// reveal at once, and both variants carry the same specificity as `group-hover/card` —',
+    '// Tailwind emits them in its own order, so without the flag which one wins is whichever rule',
+    '// it happened to write last. Neither class reaches past this element.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-card.test.ts', [
     '/** The only `role=img` a card or a gallery tile draws is the one standing for a person. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-card.tsx', [
     '/** Alt+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */',
-    '// The container is only a pointer hit-area; keyboard users open the card through CardHeader\'s details button.',
+    '/**\n * A card\'s container is deliberately not a control: no `role`, no `tabIndex`. It is a pointer hit-area,\n * and the card\'s keyboard and assistive-technology path is CardHeader\'s details button — giving this div\n * `role=\'button\'` would add a second, unlabeled control for the same action and a second tab stop that\n * reads as a duplicate. Key events still reach the container\'s handler, because they bubble from the\n * focused children (the checkbox, the title button, the menus); a card with nothing focused is not\n * expected to answer a key press, and moving a card by keyboard is offered from those menus too. This is\n * the exemption registered under AGENTS.md rule 10 (review K-23), stated rather than left implicit.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-chart-view.test.ts', [
     '// The real reader asks the document how it resolves each token, which jsdom',

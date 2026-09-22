@@ -50,6 +50,10 @@ function CardTagItem({
             e.preventDefault()
             onRemove(tag)
           }}
+          // `!important` twice, scoped to this one utility: the tag chip and the card behind it both
+          // reveal at once, and both variants carry the same specificity as `group-hover/card` —
+          // Tailwind emits them in its own order, so without the flag which one wins is whichever rule
+          // it happened to write last. Neither class reaches past this element.
           className='ml-0.5 rounded-[var(--r-xs)] p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 group-hover/tag:!opacity-100 focus-visible:!opacity-100 hover:text-[var(--text-primary)]'
           aria-label={t('preview.kanban_remove_tag_named', { name })}
         >

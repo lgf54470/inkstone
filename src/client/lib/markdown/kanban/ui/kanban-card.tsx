@@ -255,6 +255,15 @@ function headerOverlayClass(cardSize: 'small' | 'medium' | 'large', tagCount: nu
   return `absolute ${pad}`
 }
 
+/**
+ * A card's container is deliberately not a control: no `role`, no `tabIndex`. It is a pointer hit-area,
+ * and the card's keyboard and assistive-technology path is CardHeader's details button — giving this div
+ * `role='button'` would add a second, unlabeled control for the same action and a second tab stop that
+ * reads as a duplicate. Key events still reach the container's handler, because they bubble from the
+ * focused children (the checkbox, the title button, the menus); a card with nothing focused is not
+ * expected to answer a key press, and moving a card by keyboard is offered from those menus too. This is
+ * the exemption registered under AGENTS.md rule 10 (review K-23), stated rather than left implicit.
+ */
 export const KanbanCard = memo(function KanbanCard({
   item,
   columns,
@@ -282,7 +291,6 @@ export const KanbanCard = memo(function KanbanCard({
   const padClass = cardSize === 'small' ? 'p-2.5 gap-1.5' : cardSize === 'large' ? 'p-4 gap-3' : 'p-3 gap-2'
   const headerOverlay = headerOverlayClass(cardSize, display.tagVals.length)
 
-  // The container is only a pointer hit-area; keyboard users open the card through CardHeader's details button.
   return (
     <div
       data-item-id={item.id}
