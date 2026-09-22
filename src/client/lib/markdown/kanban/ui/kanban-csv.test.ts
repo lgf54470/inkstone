@@ -80,10 +80,16 @@ function openPanel(): HTMLElement {
   return panel
 }
 
-function exportedText(): string {
+function exportedFile(): string {
   const calls = vi.mocked(downloadTextFile).mock.calls
   if (calls.length !== 1) throw new Error(`the export handed the browser ${calls.length} file(s)`)
   return calls[0][1]
+}
+
+/** The file without its byte order mark: the rows below it are what the cases here read. */
+function exportedText(): string {
+  const text = exportedFile()
+  return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text
 }
 
 function statusLines(panel: HTMLElement): string {
@@ -115,6 +121,11 @@ describe('the file the board writes', () => {
     exportBoard([card('a'), card('b')])
     expect(vi.mocked(downloadTextFile).mock.calls[0][0]).toBe('Q3 Roadmap.csv')
     expect(vi.mocked(downloadTextFile).mock.calls[0][2]).toBe('text/csv;charset=utf-8')
+  })
+
+  it('starts the file with the byte order mark a spreadsheet needs to read it', () => {
+    exportBoard([card('a')])
+    expect(exportedFile().charCodeAt(0)).toBe(0xFEFF)
   })
 
   it('leads with the columns of the board itself and gives every live card one row', () => {

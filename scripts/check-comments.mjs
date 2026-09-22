@@ -2858,11 +2858,13 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/csv.test.ts', [
     '/** The rows of an export, read back through the parser so a test never counts commas. */',
+    '// The mark belongs to the file, not to the row: the board reads its own file back without it.',
   ]],
   ['src/client/lib/markdown/kanban/csv.ts', [
     '/**\n * CSV is how a board travels to and from a spreadsheet, so this layer has to answer two questions\n * nothing else in the module answers: how a stored value prints into one cell, and how the text a\n * spreadsheet wrote back becomes a stored value again.\n *\n * Two fields are named rather than declared, because a card keeps them outside `properties`: the\n * title, which leads every row, and the description, which the column with the id `description`\n * carries (the same three-way read the gallery excerpt uses). Everything else is the document\'s own\n * schema, so a board with no `Status` column exports no `Status` header either.\n */',
     '/** More rows than this is the wrong file; importing it would bury the board the reader is on. */',
     '/** What a filesystem refuses in a name, plus the control characters a path may not hold. */',
+    '/** Without it a spreadsheet reads the bytes as its local codepage, so any non-ASCII board arrives as mojibake. */',
     '/** The card\'s own text, read the way the surfaces that print it already read it. */',
     '/** Read from just past a cell\'s opening quote to the quote that closes it, or to the end. */',
     '// Only a quote at the start of a cell opens one; anywhere else it is the cell\'s own text.',
@@ -3305,6 +3307,7 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-csv.test.ts', [
     '/**\n * F-08. A board that cannot leave for a spreadsheet has to be retyped by hand, and one that cannot\n * take a spreadsheet in cannot start from the rows someone else already wrote. These cases read the\n * header\'s CSV detour end to end: what lands in the browser\'s download, how a chosen file travels\n * into the document through the board\'s single commit path, and what the panel says when a file is\n * not what a board can swallow.\n */',
     '/** The document the host was last handed — what one step of the board history wrote. */',
+    '/** The file without its byte order mark: the rows below it are what the cases here read. */',
     '// A chooser keeps whatever it was last given, so a second pick of the same file is only a',
     '// change if the control is emptied behind the reader\'s back.',
   ]],

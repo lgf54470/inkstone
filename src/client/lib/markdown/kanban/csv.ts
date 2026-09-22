@@ -24,6 +24,8 @@ const TRUTHY_CELLS = new Set(['true', 'yes', '1', 'x', 'on'])
 const FALSY_CELLS = new Set(['false', 'no', '0', 'off'])
 /** What a filesystem refuses in a name, plus the control characters a path may not hold. */
 const FILENAME_UNSAFE = /[\\/:*?"<>|\u0000-\u001F]/g
+/** Without it a spreadsheet reads the bytes as its local codepage, so any non-ASCII board arrives as mojibake. */
+const UTF8_BOM = '\uFEFF'
 
 const trimmed = (value: string | undefined) => (value ?? '').trim()
 const headerKey = (value: string | undefined) => trimmed(value).toLowerCase()
@@ -72,7 +74,7 @@ export function kanbanToCsv(columns: KanbanProperty[], items: KanbanItem[]): str
   for (const item of items) {
     lines.push([item.title, ...exported.map((column) => csvCellText(column, item))].map(escapeCsvCell).join(','))
   }
-  return lines.join('\n')
+  return `${UTF8_BOM}${lines.join('\n')}`
 }
 
 export function kanbanCsvFilename(title: string): string {

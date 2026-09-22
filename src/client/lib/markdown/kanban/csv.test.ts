@@ -28,6 +28,7 @@ const COLUMNS: KanbanProperty[] = [
 ]
 
 const HEADER = ['Title', 'Description', 'Status', 'Tags', 'Deadline', 'Points', 'Blocked', 'Owner']
+const BOM = '\uFEFF'
 
 /** The rows of an export, read back through the parser so a test never counts commas. */
 const rowsOf = (csv: string) => parseKanbanCsv(csv)
@@ -99,7 +100,7 @@ describe('exporting a board', () => {
 
   it('quotes a cell that carries a comma, a quote or a newline, doubling its quotes', () => {
     const csv = kanbanToCsv(COLUMNS, [item({ id: 'a', title: 'Say "hi", now', content: 'line 1\nline 2' })])
-    expect(csv).toBe('Title,Description,Status,Tags,Deadline,Points,Blocked,Owner\n"Say ""hi"", now","line 1\nline 2",,,,,,')
+    expect(csv).toBe(`${BOM}Title,Description,Status,Tags,Deadline,Points,Blocked,Owner\n"Say ""hi"", now","line 1\nline 2",,,,,,`)
     expect(rowsOf(csv)[1].slice(0, 2)).toEqual(['Say "hi", now', 'line 1\nline 2'])
   })
 
@@ -115,7 +116,15 @@ describe('exporting a board', () => {
 
 describe('the file a board hands over', () => {
   it('exports nothing but the header when the board has no cards', () => {
-    expect(kanbanToCsv(COLUMNS, [])).toBe(HEADER.join(','))
+    expect(kanbanToCsv(COLUMNS, [])).toBe(`${BOM}${HEADER.join(',')}`)
+  })
+
+  it('leads with the byte order mark Excel needs to read anything but ASCII', () => {
+    const csv = kanbanToCsv(COLUMNS, [item({ id: 'a', title: 'Café' })])
+    expect(csv.charCodeAt(0)).toBe(0xFEFF)
+    // The mark belongs to the file, not to the row: the board reads its own file back without it.
+    expect(rowsOf(csv)[0]).toEqual(HEADER)
+    expect(rowsOf(csv)[1][0]).toBe('Café')
   })
 
   it('names the file after the board with the characters a filesystem refuses removed', () => {

@@ -42,9 +42,11 @@
 - 证据：`registry.ts` `disposeEntry` + `ui/kanban-fullscreen.tsx`（`moveBack` 只在卸载时跑）；`features/preview/use-kanban-blocks.ts` 的 `fullscreen` 状态无人清理。
 - 影响：边开全屏边在编辑器删掉整块栅栏 → 空全屏、无提示。
 
-### K-05 CSV 导出无 BOM（中文乱码） → 待修
+### K-05 CSV 导出无 BOM（中文乱码） → 已修（`（本提交）`）
 - 证据：`kanban/csv.ts` `kanbanToCsv` 直接 `join('\n')`；仓内既有约定 `features/share/share-helpers.ts:167` 明确加 `\uFEFF`。
 - 影响：Windows Excel 双击导出文件即乱码。
+- 进度：`kanban/csv.ts` 新增 `UTF8_BOM` 常量，`kanbanToCsv` 输出首部前置（与 share 模块同一手法）。BOM 属于「文件」而非「行」，且读回侧 `parseKanbanCsv` 本就会剥掉它，所以「导出 → 再导入」往返不变形；`kanbanToCsv` 的唯一生产调用方是导出面板（已 grep 确认，worker/MCP/blog 均无第二处），改动面收敛。
+- 验证：`csv.test.ts` +1 例（首字符 0xFEFF，且往返读回时标题不带该字符）、`ui/kanban-csv.test.ts` +1 例（下载文本首字符 0xFEFF），两例先红后绿；两处 raw 字符串断言改为显式带上 BOM；两个文件 50 passed，kanban+preview+tests/kanban 88 文件 994 passed。
 
 ### K-06 CSV 导出无公式注入防护 → 待修
 - 证据：`kanban/csv.ts` `escapeCsvCell` 只处理 `"`/CR/LF；`=`/`+`/`-`/`@` 开头原样落盘（`lib/export-note.ts:26` 直接下载）。
