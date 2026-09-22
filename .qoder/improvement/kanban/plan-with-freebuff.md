@@ -40,13 +40,14 @@
 
 - [x] K-19 writer 收进 `useCallback`（先写 locale 回归）+ 头部 props 收敛 + 列/卡链路上的临时闭包（复核时发现比台账写得更深）
 - [x] K-21 `e2e-visual.mjs` 逐个打开 8 个视图并断言内容已到（+ 每个视图不改变顶栏高度；看板场景改按栅栏序号定位自己写的那块板）
-- [ ] K-20 连续编辑期间自适应写回静默期（含确定性量测）
+- [x] K-20 写回成本确定性量测（结论：不是缺陷；自适应静默期实测后裁定不取，改为预算 + 契约测试，见 review 条目）
 - [x] K-23/K-24 规范注释收敛（卡片容器豁免登记 + 两处 `!important` 理由）
 
 ## 进度日志
 
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
+| 2026-09-22 | K-20 写回成本量测与裁定 | （本提交） | 先写三层自适应静默期方案并实测：连续 5 秒编辑从 1 次写回变 1～3 次、单手势滞写 0.5s→3s → 判定“用数据安全换写回次数”，**回退未入库**；改交付确定性量测（假时钟数写回次数：滑块 12 步 1 次、连攞 12 格 1 次、无变化 0 次、隔 700ms 的 6 个手势 6 次）+ 栅栏体积预算（200 卡 53,385 B，≈256 B/卡；断言 <64 KiB 与 <320 B/卡）；`write.test.ts` 6→11 例；kanban+preview+tests/kanban 100 文件 **1130** passed；`size:check` 拦下 83 行 describe → 拆三段（helper 提到模块级），未 resnapshot |
 | 2026-09-22 | K-21 浏览器门禁逐个打开 8 个视图 | （本提交） | `ui/kanban-root.tsx` 新增 `data-kanban-view-type`（面板上标出当前视图，多个视图都画卡片，「有卡片」不足以证明是哪个视图画的）；脚本新增 `KANBAN_VIEWS` 清单与 `assertKanbanViews`（每个视图：点页签 → 断言 **该视图面板内**有它自己的东西 → 再断言顶栏高度不变）；fixture 补 startDate/endDate/progress 并改用相对今天的日期，卡片 id 改 `gate-a/gate-b`；看板场景改为「先按卡片标记找到自己写的那块板 → 记下栅栏序号 → 之后按序号读」（覆盖层是**借**走内联画布而不是拷贝，一打开卡片就离开块，标记就再也匹配不上了——这一条是实跑撞出来的）；顺带修掉两处原先会误伤的全局计数（画布数与 reserve 改为按自己那块板计）。变异自检：把日历视图改成返回 null，恰好只杀「日历视图自己画了东西」一条。浏览器门禁：**234 passed / 0 failed**（看板 37 条，其中新增 17 条） |
 | 2026-09-22 | K-19 看板不再为一次局部变化重画全板 | （本提交） | 先写复现（`ui/kanban-repaint-scope.test.ts` 用 `memo` 包住真实卡片计数）：旧实现下「打开一张卡的详情」重画 3/3 张卡，修复后 0 张；三次变异逐一被杀（去掉 `useColumnCellHandlers` 的 `useMemo`、把 `handleMoveCell` 改回每渲染新建、把 `handleUpdateSubtasks` 改回每渲染新建——后者杀 3 例）；kanban+preview+command+tests/kanban 102 文件 **1132** passed；`size:check` 拦下三个超长文件 → 拆出 `ui/kanban-cell-handlers.ts`（列内处理器）/`ui/kanban-value-writes.ts`（单卡字段写入），均未 resnapshot；11 项静态门禁 exit=0；白名单 685 文件 / 4655 条；locale 回归按既有 `tests/kanban-locale-repaint-policy.test.ts` + `registry-locale`/`kanban-memo-locale` 未改仍绿 |
 | 2026-09-22 | K-16 命令面板接入看板动作 | （本提交） | typecheck ✅；新增 15 例（注册表 4 + 真实看板 6 + 面板条目 5）；两次变异逐一被杀（`selectAllVisible` 改扫整份文档、注册表去掉归属判定各杀 1 例，后者靠补一张被过滤掉的卡片先收紧了断言）；`size:check` 拦下 89 行 describe → 拆两个 describe + 共享 fixture，未 resnapshot；kanban+features/command+preview+tests/kanban 101 文件 **1126** passed；12 项静态门禁 exit=0；白名单 682 文件 / 4637 条 |

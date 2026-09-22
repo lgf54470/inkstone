@@ -2,6 +2,14 @@ import { serializeKanban } from './body'
 import type { KanbanBlockEntry } from './entry'
 import type { KanbanWriteResult } from './types'
 
+/**
+ * How long the board waits for the reader to stop before it writes the note.
+ *
+ * Every edit rewrites the whole note, and the timer is restarted by each one, so a gesture that keeps
+ * producing edits — a slider swept by hand, a card dragged across columns — writes once, when it
+ * stops, rather than once per step. `write.test.ts` counts that, because the shape of the delays is
+ * the whole difference between one write and fifteen.
+ */
 const WRITE_DEBOUNCE_MS = 500
 
 export function scheduleKanbanWrite(entry: KanbanBlockEntry, onSettled?: () => void): void {
