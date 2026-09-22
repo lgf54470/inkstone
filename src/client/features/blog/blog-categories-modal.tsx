@@ -207,6 +207,8 @@ function CategoryColorPicker({ selected, onSelect }: { selected: string; onSelec
         <button
           key={c}
           type='button'
+          aria-label={`${t('blog.category_color')}: ${c}`}
+          aria-pressed={selected === c}
           onClick={() => onSelect(c)}
           className={`size-6 rounded-full flex items-center justify-center transition-transform ${
             selected === c ? 'scale-110 ring-2 ring-[var(--accent)] ring-offset-2' : ''

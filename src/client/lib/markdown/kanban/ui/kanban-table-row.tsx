@@ -40,6 +40,7 @@ function StatusCell({
   return (
     <div className='flex items-center justify-center p-1.5'>
       <select
+        aria-label={statusCol?.name || t('preview.kanban_prop_status')}
         value={currentOpt?.id || currentVal}
         onChange={(e) => onUpdateProperty?.(item.id, 'status', e.target.value)}
         style={getKanbanTagStyle(currentOpt?.color)}
@@ -83,16 +84,20 @@ function SubitemItemRow({
   return (
     <div className='flex flex-col gap-0.5 rounded-[var(--r-xs)] bg-[var(--bg-surface)] px-2 py-1 text-[length:var(--text-12)] shadow-2xs'>
       <div className='flex items-center gap-2'>
-        <input
-          type='checkbox'
-          checked={subtask.completed}
-          onChange={onToggle}
-          className='size-3 rounded-[var(--r-xs)] accent-[var(--accent)]'
-        />
-        {subtask.icon && <KanbanIconBadge icon={subtask.icon} size={13} />}
-        <span className={`flex-1 ${subtask.completed ? 'text-[var(--text-tertiary)] line-through' : 'text-[var(--text-primary)]'}`}>
-          {subtask.title}
-        </span>
+        {/* The checkbox and the title it completes are one control: wrapped in their own label, the
+            name a screen reader reads is the subtask's, which no `aria-label` could state as well. */}
+        <label className='flex min-w-0 flex-1 items-center gap-2'>
+          <input
+            type='checkbox'
+            checked={subtask.completed}
+            onChange={onToggle}
+            className='size-3 rounded-[var(--r-xs)] accent-[var(--accent)]'
+          />
+          {subtask.icon && <KanbanIconBadge icon={subtask.icon} size={13} />}
+          <span className={`flex-1 ${subtask.completed ? 'text-[var(--text-tertiary)] line-through' : 'text-[var(--text-primary)]'}`}>
+            {subtask.title}
+          </span>
+        </label>
         <button
           type='button'
           aria-label={t('preview.kanban_delete_subitem')}
@@ -163,6 +168,28 @@ function SubitemsNestedTable({
   )
 }
 
+/** The two tags a table row shows, each on its own column's colour. */
+function ItemTagBadges({ tagVals, tagsCol }: { tagVals: string[]; tagsCol?: KanbanProperty }) {
+  return (
+    <>
+      {tagVals.slice(0, 2).map((tag) => {
+        const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
+        const color = resolveKanbanTagColor(tag, tagsCol?.options)
+        const label = opt?.label ?? tag
+        return (
+          <span
+            key={tag}
+            style={getKanbanTagStyle(color)}
+            className='hidden sm:inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold'
+          >
+            {formatKanbanOptionLabel(label, 'tags')}
+          </span>
+        )
+      })}
+    </>
+  )
+}
+
 function ItemTitleCell({
   item,
   subtasksCount,
@@ -185,6 +212,8 @@ function ItemTitleCell({
       {subtasksCount > 0 && (
         <button
           type='button'
+          aria-expanded={expanded}
+          aria-label={t(expanded ? 'preview.kanban_collapse_subtasks' : 'preview.kanban_expand_subtasks')}
           onClick={onToggleExpand}
           className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
         >
@@ -199,20 +228,7 @@ function ItemTitleCell({
       >
         {item.title}
       </button>
-      {tagVals.slice(0, 2).map((tag) => {
-        const opt = tagsCol?.options?.find((o) => o.id === tag || o.label === tag)
-        const color = resolveKanbanTagColor(tag, tagsCol?.options)
-        const label = opt?.label ?? tag
-        return (
-          <span
-            key={tag}
-            style={getKanbanTagStyle(color)}
-            className='hidden sm:inline-flex items-center rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold'
-          >
-            {formatKanbanOptionLabel(label, 'tags')}
-          </span>
-        )
-      })}
+      <ItemTagBadges tagVals={tagVals} tagsCol={tagsCol} />
       {subtasksCount > 0 && (
         <span className='rounded-[var(--r-full)] bg-[var(--bg-hover)] px-1.5 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
           {subtasksCount}
@@ -305,6 +321,7 @@ export function KanbanTableRow({
         <div className='w-10 shrink-0 p-2.5 text-center'>
           <input
             type='checkbox'
+            aria-label={t('preview.kanban_select_card')}
             checked={isSelected}
             onChange={onToggleSelect}
             className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)]'

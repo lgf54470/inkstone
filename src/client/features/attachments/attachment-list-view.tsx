@@ -82,6 +82,8 @@ function TableHead({ onToggleSelectAll, allSelected }: { onToggleSelectAll: () =
         <th className='w-10 px-3 py-2.5'>
           <button
             type='button'
+            aria-label={t('attachments.select_all')}
+            aria-pressed={allSelected}
             onClick={onToggleSelectAll}
             className={cn(
               'flex h-4 w-4 items-center justify-center rounded border transition-colors cursor-pointer',
@@ -140,7 +142,7 @@ function ListRow(props: ListRowProps) {
         selected ? 'bg-[var(--accent-soft)]' : active ? 'bg-[var(--bg-hover)]' : 'hover:bg-[var(--bg-hover)]',
       )}
     >
-      <SelectCell selected={selected} onToggleSelect={onToggleSelect} />
+      <SelectCell selected={selected} filename={file.filename} onToggleSelect={onToggleSelect} />
       <NameCell file={file} isImage={isImage} badgeLabel={badge.label} badgeText={badge.text} />
       <RowDataCells file={file} folderName={folder?.name} />
       <td className='px-3 py-2 text-right'>
@@ -162,11 +164,13 @@ function ListRow(props: ListRowProps) {
   )
 }
 
-function SelectCell({ selected, onToggleSelect }: { selected: boolean; onToggleSelect: (e: React.MouseEvent) => void }) {
+function SelectCell({ selected, filename, onToggleSelect }: { selected: boolean; filename: string; onToggleSelect: (e: React.MouseEvent) => void }) {
   return (
     <td className='w-10 px-3 py-2'>
       <button
         type='button'
+        aria-label={t('attachments.select_file', { value0: filename })}
+        aria-pressed={selected}
         onClick={(e) => {
           e.stopPropagation()
           onToggleSelect(e)
@@ -239,7 +243,7 @@ function RefsCell({ file }: { file: AttachmentWithUsage }) {
   return (
     <td className='px-3 py-2'>
       {file.references === 0 ? (
-        <span className='rounded bg-amber-500/15 px-1.5 py-0.5 text-[length:var(--text-10)] font-medium text-amber-600 dark:text-amber-400'>
+        <span className='rounded bg-amber-500/15 px-1.5 py-0.5 text-[length:var(--text-10)] font-medium text-[var(--warning)]'>
           {t('attachments.unreferenced')}
         </span>
       ) : (

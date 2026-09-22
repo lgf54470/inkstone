@@ -172,7 +172,7 @@ function CardThumb({ file, isImage, badge, selected, onToggleSelect, menu, onTog
       <ThumbActions file={file} menu={menu} onToggleStar={onToggleStar} />
 
       {file.references === 0 && (
-        <div className='absolute bottom-1.5 left-1.5 rounded px-1 py-0.5 text-[length:var(--text-9)] font-medium bg-amber-500/85 text-white backdrop-blur-xs'>
+        <div className='absolute bottom-1.5 left-1.5 rounded px-1 py-0.5 text-[length:var(--text-9)] font-medium bg-[var(--warning)] text-[var(--text-inverse)]'>
           {t('attachments.unreferenced')}
         </div>
       )}

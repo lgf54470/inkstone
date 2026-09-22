@@ -153,7 +153,7 @@ export function AttachmentDriveToolbar(props: AttachmentDriveToolbarProps) {
       <div className='flex items-center gap-2 shrink-0'>
         <ViewModeToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
         {viewMode === 'grid' && <ZoomControl zoom={zoom} onZoomChange={onZoomChange} />}
-        <Button size='sm' variant='secondary' onClick={onPruneClick} disabled={pruning} className='shrink-0 whitespace-nowrap text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer'>
+        <Button size='sm' variant='secondary' onClick={onPruneClick} disabled={pruning} className='shrink-0 whitespace-nowrap text-[var(--warning)] border-amber-500/30 hover:bg-amber-500/10 cursor-pointer'>
           <Sparkles size={12} className={cn(pruning && 'animate-spin')} />
           <span className='whitespace-nowrap'>{t('attachments.cleanup')}</span>
         </Button>

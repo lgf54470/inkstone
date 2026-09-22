@@ -97,6 +97,8 @@ function ListRowLeading({
       {hasSubtasks && (
         <button
           type='button'
+          aria-expanded={expanded}
+          aria-label={t(expanded ? 'preview.kanban_collapse_subtasks' : 'preview.kanban_expand_subtasks')}
           onClick={(e) => {
             e.stopPropagation()
             onToggleExpand?.()

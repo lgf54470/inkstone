@@ -15,6 +15,8 @@ export function FolderIconBadge({ folder, isOpen, onToggle }: {
     <Tooltip label={t('folders.icon')}>
       <button
         type='button'
+        aria-label={t('folders.icon')}
+        aria-expanded={isOpen}
         onClick={onToggle}
         className={cn(
           'flex size-7 shrink-0 items-center justify-center rounded-[var(--r-sm)] border bg-[var(--bg-surface)] transition-all hover:scale-105',

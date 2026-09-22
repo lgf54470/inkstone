@@ -71,7 +71,10 @@ function CardTitle({
   }
 
   return (
-    <h4
+    // A card is a third-level heading under the board's own title: the board's `<h2>` (kanban-header)
+    // and then the cards, with no level skipped in between. As an `h4` the card jumped a level, which
+    // is what a browser reading this surface reports as heading-order.
+    <h3
       onDoubleClick={(e) => {
         e.stopPropagation()
         onStartEditing()
@@ -84,7 +87,7 @@ function CardTitle({
         </span>
       )}
       <span className='line-clamp-2'>{title || t('preview.kanban_untitled')}</span>
-    </h4>
+    </h3>
   )
 }
 

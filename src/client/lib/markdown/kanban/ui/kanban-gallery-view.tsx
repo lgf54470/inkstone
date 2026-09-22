@@ -160,14 +160,14 @@ function GalleryCardTitleDesc({
 }) {
   return (
     <div className='min-w-0 flex-1'>
-      <h4 className='flex items-start gap-1.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] leading-snug'>
+      <h3 className='flex items-start gap-1.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] leading-snug'>
         {icon && (
           <span className='mt-0.5 shrink-0'>
             <KanbanIconBadge icon={icon} size={15} />
           </span>
         )}
         <span className='line-clamp-2'>{title || t('preview.kanban_untitled')}</span>
-      </h4>
+      </h3>
       {desc && (
         <p className='mt-1 line-clamp-2 text-[length:var(--text-12)] text-[var(--text-tertiary)] leading-normal'>
           {desc}

@@ -41,6 +41,8 @@ function GroupHeader({
       <div className='flex items-center gap-2'>
         <button
           type='button'
+          aria-expanded={!collapsed}
+          aria-label={t(collapsed ? 'sidebar.expand' : 'sidebar.collapse')}
           onClick={onToggleCollapse}
           className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
         >

@@ -323,7 +323,7 @@ function CommentPostLink({ comment, postUrl }: { comment: BlogComment; postUrl: 
 function StatusBadge({ status }: { status: BlogCommentStatus }) {
   switch (status) {
     case 'pending':
-      return <span className='rounded-full bg-amber-500/10 px-2 py-0.5 text-[length:var(--text-11)] font-medium text-amber-600 dark:text-amber-400'>{t('blog.status_pending')}</span>
+      return <span className='rounded-full bg-amber-500/10 px-2 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--warning)]'>{t('blog.status_pending')}</span>
     case 'approved':
       return <span className='rounded-full bg-emerald-500/10 px-2 py-0.5 text-[length:var(--text-11)] font-medium text-emerald-600 dark:text-emerald-400'>{t('blog.status_approved')}</span>
     case 'rejected':

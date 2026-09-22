@@ -67,6 +67,54 @@ function getElementIcon(el: SlideElement) {
   }
 }
 
+/**
+ * The two reorder controls a layer row holds. They are revealed the way the rest of the app reveals a
+ * row's own controls — `opacity-0` and not `display: none`: a hidden subtree is out of reach for the
+ * keyboard and for a screen reader, so the two buttons could not be focused or announced at all while
+ * this row was the one place in the client that hid them this way. The focus half is what makes them
+ * usable once they are: tabbing to one shows it.
+ */
+function LayerOrderButtons({
+  elementId,
+  canMoveUp,
+  canMoveDown,
+  onReorder,
+}: {
+  elementId: string
+  canMoveUp: boolean
+  canMoveDown: boolean
+  onReorder: (id: string, direction: 'up' | 'down') => void
+}) {
+  return (
+    <div className='flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100'>
+      <button
+        type='button'
+        aria-label={t('slides.bring_forward')}
+        onClick={(e) => {
+          e.stopPropagation()
+          onReorder(elementId, 'up')
+        }}
+        disabled={!canMoveUp}
+        className='size-4 flex items-center justify-center rounded hover:bg-[var(--bg-surface)] text-[var(--text-secondary)] disabled:opacity-20'
+      >
+        <ChevronUp size={10} />
+      </button>
+      <button
+        type='button'
+        aria-label={t('slides.send_backward')}
+        onClick={(e) => {
+          e.stopPropagation()
+          onReorder(elementId, 'down')
+        }}
+        disabled={!canMoveDown}
+        className='size-4 flex items-center justify-center rounded hover:bg-[var(--bg-surface)] text-[var(--text-secondary)] disabled:opacity-20'
+      >
+        <ChevronDown size={10} />
+      </button>
+    </div>
+  )
+}
+
 export const InspectorLayers = memo(function InspectorLayers({
   slide,
   selectedElementId,
@@ -102,32 +150,12 @@ export const InspectorLayers = memo(function InspectorLayers({
                   </span>
                 </div>
 
-                <div className='hidden group-hover:flex items-center gap-0.5'>
-                  <button
-                    type='button'
-                    aria-label={t('slides.bring_forward')}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onReorderElement(el.id, 'up')
-                    }}
-                    disabled={origIdx === slide.elements.length - 1}
-                    className='size-4 flex items-center justify-center rounded hover:bg-[var(--bg-surface)] text-[var(--text-secondary)] disabled:opacity-20'
-                  >
-                    <ChevronUp size={10} />
-                  </button>
-                  <button
-                    type='button'
-                    aria-label={t('slides.send_backward')}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onReorderElement(el.id, 'down')
-                    }}
-                    disabled={origIdx === 0}
-                    className='size-4 flex items-center justify-center rounded hover:bg-[var(--bg-surface)] text-[var(--text-secondary)] disabled:opacity-20'
-                  >
-                    <ChevronDown size={10} />
-                  </button>
-                </div>
+                <LayerOrderButtons
+                  elementId={el.id}
+                  canMoveUp={origIdx !== slide.elements.length - 1}
+                  canMoveDown={origIdx !== 0}
+                  onReorder={onReorderElement}
+                />
               </div>
             )
           })}

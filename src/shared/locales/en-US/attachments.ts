@@ -54,6 +54,8 @@ export const messages = {
 'attachments.remaining_space': 'Remaining space: {value0}',
 'attachments.rename': 'Rename',
 'attachments.search_placeholder': 'Search filename or tag…',
+'attachments.select_all': 'Select all attachments',
+'attachments.select_file': 'Select {value0}',
 'attachments.selected_count': '{value0} selected',
 'attachments.shown_value0': 'Showing {value0} attachments',
 'attachments.size_all': 'All Sizes',

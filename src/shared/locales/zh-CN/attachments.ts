@@ -54,6 +54,8 @@ export const messages = {
 'attachments.remaining_space': '剩余可用空间 {value0}',
 'attachments.rename': '重命名',
 'attachments.search_placeholder': '搜索附件名称或标签…',
+'attachments.select_all': '全选附件',
+'attachments.select_file': '选择 {value0}',
 'attachments.selected_count': '已选择 {value0} 项',
 'attachments.shown_value0': '已显示 {value0} 个附件',
 'attachments.size_all': '全部大小',

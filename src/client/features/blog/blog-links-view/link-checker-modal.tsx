@@ -341,7 +341,7 @@ function HealthBadge({ result }: { result?: HealthResult }) {
   }
   if (result.level === 'warning') {
     return (
-      <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400'>
+      <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-semibold bg-amber-500/15 text-[var(--warning)]'>
         <AlertCircle size={10} />
         <span>{result.status || 400}</span>
       </span>

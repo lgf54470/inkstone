@@ -364,6 +364,7 @@ function CategorySearchControls({
   return (
     <div className='flex items-center gap-2'>
       <Select
+        aria-label={t('blog.link_category')}
         value={categoryId || ''}
         onChange={(e) => onSelectCategory(e.target.value || null)}
         className='h-8 text-[length:var(--text-12)] w-36'

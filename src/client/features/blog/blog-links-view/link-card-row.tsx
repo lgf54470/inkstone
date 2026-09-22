@@ -115,7 +115,7 @@ function LinkRowHeader({
         </span>
       )}
       {isFavorite && (
-        <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400'>
+        <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-medium bg-amber-500/15 text-[var(--warning)]'>
           <Star size={10} className='fill-current' />
           {t('blog.link_favorite')}
         </span>

@@ -36,9 +36,6 @@
   "src/client/lib/markdown/slides/ui/inspector-element.tsx": {
     "longFns": 1
   },
-  "src/client/lib/markdown/slides/ui/inspector-layers.tsx": {
-    "longFns": 1
-  },
   "src/client/lib/markdown/slides/ui/inspector-slide.tsx": {
     "longFns": 1
   },

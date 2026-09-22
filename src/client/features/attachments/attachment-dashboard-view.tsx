@@ -171,7 +171,7 @@ function UnreferencedCard({ count, onPrune }: { count: number; onPrune: () => vo
         <div className='mt-0.5 text-xl font-bold text-[var(--text-primary)] flex items-baseline gap-2'>
           <span>{count}</span>
           {count > 0 && (
-            <button type='button' onClick={onPrune} className='text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline cursor-pointer'>
+            <button type='button' onClick={onPrune} className='text-xs font-medium text-[var(--warning)] hover:underline cursor-pointer'>
               {t('attachments.cleanup')}
             </button>
           )}

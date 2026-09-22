@@ -21,6 +21,15 @@ import { describe, expect, it } from 'vitest'
  *     in with `{...rest}`, is not something this can see, so an entry is never needed for it — but a
  *     raw button that only *looks* named because of a wrapper is not caught here either. That limit
  *     is the price of not rendering the app; the browser gates read what a real screen reader sees.
+ *
+ *     What counts as text was measured against a browser rather than guessed: an expression that
+ *     renders an element — `{expanded ? <ChevronDown/> : <ChevronRight/>}` — is an icon, not a
+ *     label, and axe reports those buttons as unnamed. Reading any expression as text (which is what
+ *     this rule did at first) called eight icon-only buttons named while the browser called them
+ *     nameless: the kanban board's row, group and list expand toggles, the attachment drive's two
+ *     selection cells, a folder icon picker and the blog category colour swatches. `{t('…')}` and
+ *     `{name}` are still text: they are what a label is usually written as, and no static read can
+ *     tell a bare identifier apart from a variable holding an icon.
  *  3. Inside `src/client/components` — the layer every feature shares — a raw `<button>` needs a
  *     written reason. These are the primitive implementations and the rows and cells whose geometry
  *     the primitives cannot express (a menu row stretches a flexible label between two fixed slots,
@@ -49,6 +58,17 @@ const FAKE_CONTROLS = new Map<string, string>([
   [
     'src/client/lib/markdown/kanban/ui/kanban-list-view.tsx',
     'Same card surface as a list row: the row opens the detail while the leading cell holds the selection control, so the row cannot be one button without swallowing it.',
+  ],
+])
+
+/**
+ * Buttons this rule reads as unnamed but a browser does not: the name is rendered by a component the
+ * static read cannot see into. Entries are per file and fail in both directions, like the others.
+ */
+const COMPONENT_NAMED_BUTTONS = new Map<string, string>([
+  [
+    'src/client/features/tags/tag-row.tsx',
+    'The tag row\'s name is the tag, rendered by `<TagNameHighlight>` (its only child): the browser reads that span\'s text, this read sees an element and nothing else. Adding an `aria-label` to satisfy the rule would state a second time what the row already shows — the one case where a name has to be trusted rather than written down.',
   ],
 ])
 
@@ -149,20 +169,32 @@ function literalValue(initializer: ts.JsxAttribute['initializer']): string | nul
 }
 
 /**
- * Whether a subtree carries text a person could read as the name. An element inside it is not text
- * (that is an icon), but an expression is: `{t('…')}` and `{name}` are labels, and telling those
- * apart from an icon passed as a variable is not something a static read can do.
+ * Whether a subtree carries text a person could read as the name. A nested element is not text (it
+ * is an icon), and neither is an expression that renders one — the browser is the judge of that, and
+ * what it found is in the rule 2 note above. An expression that holds no element is text: `{t('…')}`
+ * and `{name}` are how labels are written, and an identifier holding an icon cannot be told apart
+ * from one holding a label by reading the source.
  */
 function hasReadableText(node: ts.JsxChild): boolean {
   if (ts.isJsxText(node)) return node.text.trim().length > 0
   if (ts.isJsxExpression(node)) {
     const expression = node.expression
     if (!expression) return false
-    if (ts.isJsxElement(expression) || ts.isJsxSelfClosingElement(expression) || ts.isJsxFragment(expression)) return false
-    return true
+    return !rendersElement(expression)
   }
   if (ts.isJsxElement(node) || ts.isJsxFragment(node)) return node.children.some(hasReadableText)
   return false
+}
+
+/** Whether anything in this expression draws an element rather than text. */
+function rendersElement(node: ts.Node): boolean {
+  let found = false
+  const visit = (child: ts.Node): void => {
+    if (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child) || ts.isJsxFragment(child)) found = true
+    ts.forEachChild(child, visit)
+  }
+  visit(node)
+  return found
 }
 
 /** Whether a raw `<button>` carries a name: an attribute, or text inside it. */
@@ -218,8 +250,19 @@ describe('client controls are real and named (SH-93, widening SH-49)', () => {
   })
 
   it('names every raw button it can read', () => {
-    const offenders = SCAN.rawButtons.filter((site) => !site.named).map(describeSite)
+    const offenders = SCAN.rawButtons
+      .filter((site) => !site.named)
+      .filter((site) => !COMPONENT_NAMED_BUTTONS.has(site.file))
+      .map(describeSite)
     expect(offenders).toEqual([])
+  })
+
+  it('keeps the component-named exceptions honest', () => {
+    for (const [file, reason] of COMPONENT_NAMED_BUTTONS) {
+      expect(reason.length, `${file} has no reason written`).toBeGreaterThan(40)
+      const unnamed = SCAN.rawButtons.filter((site) => site.file === file && !site.named)
+      expect(unnamed.length, `${file} is listed as component-named but this rule now reads it`).toBeGreaterThan(0)
+    }
   })
 
   it('keeps shared components on the component system, or says why not', () => {

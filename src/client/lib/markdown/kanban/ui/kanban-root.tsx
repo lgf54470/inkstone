@@ -212,7 +212,10 @@ function KanbanTopBar({
 
 function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> }) {
   return (
-    <main className='relative flex-1 overflow-hidden'>
+    // A board is a widget wherever it is drawn — including the full screen overlay — and the app
+    // shell already carries the page's `main` landmark: a second one makes the document claim two
+    // mains (axe's landmark-no-duplicate-main), which is what a browser reading this surface says.
+    <div className='relative flex-1 overflow-hidden'>
       <KanbanViewRenderer
         activeView={state.filterSort.activeView}
         viewData={state.filterSort.viewData}
@@ -241,7 +244,7 @@ function KanbanMain({ state }: { state: ReturnType<typeof useKanbanRootState> })
         onBatchDelete={state.selection.handleBatchDelete}
         onClearSelection={state.selection.handleClearSelection}
       />
-    </main>
+    </div>
   )
 }
 
