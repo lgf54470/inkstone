@@ -19,6 +19,7 @@ import type { CommitKanbanData } from './kanban-history'
 const EMPTY_FILTERS: KanbanFilter[] = []
 const EMPTY_SORTS: KanbanSort[] = []
 const EMPTY_HIDDEN_COLUMNS: string[] = []
+const EMPTY_TAGS: string[] = []
 
 // Both toggles read the committed view rather than the render-time one, so two
 // clicks in one batch still cycle instead of both writing the same result.
@@ -54,6 +55,7 @@ export function useKanbanViewState(
   const sorts = activeView.sorts ?? EMPTY_SORTS
   const cardSize: CardSize = activeView.cardSize ?? 'medium'
   const hiddenColumns = activeView.hiddenColumns ?? EMPTY_HIDDEN_COLUMNS
+  const selectedTags = activeView.selectedTags ?? EMPTY_TAGS
   const { toggleSortColumn, toggleHiddenColumn } = useKanbanViewToggles(activeViewId, commitData)
 
   const updateActiveView = useCallback((patch: Partial<KanbanView>) => {
@@ -64,6 +66,10 @@ export function useKanbanViewState(
   }, [activeViewId, commitData])
 
   const setSearchQuery = useCallback((q: string) => updateActiveView({ searchQuery: q }), [updateActiveView])
+  const setSelectedTags = useCallback(
+    (next: string[]) => updateActiveView({ selectedTags: next }),
+    [updateActiveView],
+  )
   const setFilters = useCallback((next: KanbanFilter[]) => updateActiveView({ filters: next }), [updateActiveView])
   const setSorts = useCallback((next: KanbanSort[]) => updateActiveView({ sorts: next }), [updateActiveView])
   const setCardSize = useCallback((next: CardSize) => updateActiveView({ cardSize: next }), [updateActiveView])
@@ -71,6 +77,8 @@ export function useKanbanViewState(
   return {
     searchQuery,
     setSearchQuery,
+    selectedTags,
+    setSelectedTags,
     filters,
     setFilters,
     sorts,

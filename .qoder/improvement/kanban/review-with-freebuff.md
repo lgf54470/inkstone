@@ -117,8 +117,14 @@
 - 证据：`types.ts:95` 声明、`body.ts:33-34` 校验、`ui/kanban-gallery-view.tsx:38` 读取；全模块无写入点。
 - 影响：封面只能手写 JSON。
 
-### K-15 搜索/标签筛选的可见性与持久化不一致 → 待修
+### K-15 搜索/标签筛选的可见性与持久化不一致 → 已修（`（本提交）`）
+- 逐条核实（一处报告与实际不符，已写明）：
+  - ① 搜索收起后无「筛选中」线索 → **成立，且来源比报告更具体**：搜索框根本没有收起控件（`isOpen` 只能由 false 变 true），所以「收起且有查询」的真实场景是**重新打开板子**——`searchQuery` 按视图落盘、`isOpen` 是组件态且随重挂载回到 false，于是读者打开旧板子时界面上只有一个搜索图标，实际已经在过滤。
+  - ② 标签筛选与会话态不一致 → 成立，已统一到视图状态（见下）。
+  - ③ 「debounce 待提交计时器在收起时未清」→ **不成立**：既然没有收起动作，计时器只会在组件卸载时作废，而卸载清理早已存在。本项不改行为，改为补一条护栏用例把它钉住（免得日后真加了收起控件时把它弄坏）。
 - 证据：`ui/kanban-search-box.tsx` 收起后无指示；`searchQuery/filters/sorts/cardSize/hiddenColumns` 已按视图落盘而 `selectedTags` 仍是 `useState`（`ui/kanban-root-hooks.ts`）；`useDebouncedSearch` 收起时未清待提交计时器。
+- 落地：`ui/kanban-search-box.tsx` 新增 `ActiveSearchChip`（折叠且 `searchQuery` 非空时替换裸图标：可点开继续编辑、可一键清除，名称走新键 `preview.kanban_clear_search`）；`KanbanView.selectedTags` 入库（`types.ts`）并由 `ui/kanban-view-state.ts` 读写（`EMPTY_TAGS` 保证未设置时引用稳定，与 filters/sorts 同一手法），`ui/kanban-root-hooks.ts` 删掉本地 `useState` 改用视图状态——`onToggleTag` 改从传入的 `selectedTags` 推导，避免闭包读到旧值。双语 +1 键。
+- 验证：`kanban-search-and-select.test.ts` 7→10 例（新增组：折叠但仍在过滤时显示查询串与清除钮、清除回报空串；无查询时仍只是一枚图标；卸载时不给已走的框提交过滤），前两例先红、后两例为护栏；`kanban-view-state.test.ts` 新增 `the tag filter as view state` 三例（存入当前视图而不影响其他视图、从视图读回、未设置时引用稳定），前两例先红。`size:check` 拦下变长的搜索框组件与测试 describe → 各拆（`ActiveSearchChip`、测试按「折叠时 / 防抖」分组），未 resnapshot。kanban+preview+tests/kanban 95 文件 **1050** passed，13 项静态门禁 exit=0。
 
 ### K-16 命令面板无看板命令 / 无卡片键盘导航 → 待修
 - 证据：`features/command/*` 0 命中 kanban；卡片容器非焦点停靠点。

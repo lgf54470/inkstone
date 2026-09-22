@@ -68,15 +68,18 @@ export function useKanbanFilterSort(
   }, [data.views, activeViewId])
 
   const viewState = useKanbanViewState(activeView, activeViewId, commitData)
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  // The tag filter lives on the view with the search, the filters and the sorts beside it: they are one
+  // idea, and leaving one of the four in component state meant a reader lost it on a view switch while
+  // the other three came back.
+  const { selectedTags, setSelectedTags } = viewState
 
   const onToggleTag = useCallback((tag: string) => {
-    setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
-  }, [])
+    setSelectedTags(selectedTags.includes(tag) ? selectedTags.filter((t) => t !== tag) : [...selectedTags, tag])
+  }, [selectedTags, setSelectedTags])
 
   const onClearTags = useCallback(() => {
     setSelectedTags([])
-  }, [])
+  }, [setSelectedTags])
 
   const filteredItems = useMemo(
     // An archived card is not part of the board any view can show, count or chart; the archive

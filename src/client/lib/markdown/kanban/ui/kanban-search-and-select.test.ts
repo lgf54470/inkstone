@@ -82,7 +82,7 @@ function renderSearchBox(initialQuery: string, onSearchChange: (q: string) => vo
     act(() => { root.render(createElement(KanbanSearchBox, { searchQuery: query, onSearchChange })) })
   }
   render(initialQuery)
-  return { container, render }
+  return { container, root, render }
 }
 
 function typeInto(input: HTMLInputElement, value: string) {
@@ -121,6 +121,40 @@ describe('KanbanSearchBox debounce', () => {
     const input = container.querySelector('input')!
     expect(input.value).toBe('synced')
   })
+})
+
+describe('KanbanSearchBox while it is collapsed', () => {
+  it('shows a box that is still filtering, and clears it from there', () => {
+    const onSearchChange = vi.fn()
+    const { container } = renderSearchBox('urgent', onSearchChange)
+    expect(container.textContent, 'a board filtered by a query the reader cannot see').toContain('urgent')
+    const clear = container.querySelector<HTMLButtonElement>(`button[aria-label="${t('preview.kanban_clear_search')}"]`)
+    expect(clear, 'the chip offered no way out of the filter').not.toBeNull()
+    act(() => { clear!.click() })
+    expect(onSearchChange).toHaveBeenCalledWith('')
+  })
+
+  it('shows the plain icon once nothing is filtering', () => {
+    const { container } = renderSearchBox('', vi.fn())
+    expect(container.querySelector('input')).toBeNull()
+    expect(container.textContent).toBe('')
+    expect(container.querySelector(`button[aria-label="${t('preview.kanban_search')}"]`)).not.toBeNull()
+  })
+
+  it('drops a pending commit when it goes away', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const onSearchChange = vi.fn()
+    const { container, root } = mountRoot()
+    act(() => { root.render(createElement(KanbanSearchBox, { searchQuery: '', onSearchChange })) })
+    act(() => {
+      container.querySelector<HTMLButtonElement>(`button[aria-label="${t('preview.kanban_search')}"]`)!.click()
+    })
+    act(() => { typeInto(container.querySelector('input')!, 'ghost') })
+    act(() => { root.unmount() })
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(onSearchChange, 'a filter was committed into a box that had already gone').not.toHaveBeenCalled()
+  })
+
 })
 
 const tableItems: KanbanItem[] = [

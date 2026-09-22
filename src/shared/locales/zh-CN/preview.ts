@@ -95,6 +95,7 @@ export const messages = {
 'preview.kanban_sorted_descending': '按{column}降序排序',
 'preview.kanban_search_placeholder': '搜索…',
 'preview.kanban_search': '搜索',
+'preview.kanban_clear_search': '清除搜索',
 'preview.kanban_batch_selected_count': '已选择 {count} 项',
 'preview.kanban_batch_change_group': '变更分组…',
 'preview.kanban_batch_delete': '批量删除',

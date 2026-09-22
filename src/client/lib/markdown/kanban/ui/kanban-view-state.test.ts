@@ -150,6 +150,8 @@ describe('kanban view state persistence', () => {
   })
 
   it('keeps unset filter and sort lists referentially stable across view edits', () => {
+    // The tag filter is view state like the rest of them, and a test of its own lives below.
+
     const { holder, unmount } = renderRootStateProbe()
     const filters = holder.state.filterSort.filters
     const sorts = holder.state.filterSort.sorts
@@ -203,6 +205,35 @@ describe('kanban column visibility state', () => {
     const hidden = holder.state.filterSort.hiddenColumns
     act(() => { holder.state.filterSort.setCardSize('large') })
     expect(holder.state.filterSort.hiddenColumns).toBe(hidden)
+    unmount()
+  })
+})
+
+// The tag filter is stored on the view with the search, the filters and the sorts beside it: they are
+// one idea, and keeping one of the four in component state meant a reader lost it on a view switch
+// while the other three came back.
+describe('the tag filter as view state', () => {
+  it('stores the tags on the active view', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    act(() => { holder.state.filterSort.setSelectedTags(['urgent']) })
+    expect(commits.at(-1)!.views[0]!.selectedTags).toEqual(['urgent'])
+    expect(commits.at(-1)!.views[1]!.selectedTags).toBeUndefined()
+    unmount()
+  })
+
+  it('reads the tags back from the view it stored them on', () => {
+    const withTags = makeKanbanData()
+    withTags.views[0]!.selectedTags = ['urgent']
+    const { holder, unmount } = renderRootStateProbe(withTags)
+    expect(holder.state.filterSort.selectedTags).toEqual(['urgent'])
+    unmount()
+  })
+
+  it('keeps an unset tag list referentially stable across view edits', () => {
+    const { holder, unmount } = renderRootStateProbe()
+    const tags = holder.state.filterSort.selectedTags
+    act(() => { holder.state.filterSort.setCardSize('large') })
+    expect(holder.state.filterSort.selectedTags).toBe(tags)
     unmount()
   })
 })

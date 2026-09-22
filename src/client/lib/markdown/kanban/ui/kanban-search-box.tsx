@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { t } from '../../../i18n'
 
 // Each keystroke used to commit the whole dataset, so filtering re-ran and the
@@ -36,6 +36,36 @@ function useDebouncedSearch(value: string, commit: (next: string) => void) {
   return { draft, handleChange }
 }
 
+/**
+ * What a collapsed box shows while it is still filtering. The query is view state, so a board can open
+ * with a filter already in force while the box itself starts closed — a bare icon then gives the reader
+ * no hint that what they see is not the whole board, since only the counts move. Opening it again and
+ * clearing it are both one press from here.
+ */
+function ActiveSearchChip({ query, onOpen, onClear }: { query: string; onOpen: () => void; onClear: () => void }) {
+  return (
+    <div className='inline-flex items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-1.5 py-0.5'>
+      <Search size={12} className='shrink-0 text-[var(--text-tertiary)]' />
+      <button
+        type='button'
+        onClick={onOpen}
+        className='max-w-24 truncate text-left text-[length:var(--text-11)] text-[var(--text-primary)] hover:underline'
+        title={t('preview.kanban_search_placeholder')}
+      >
+        {query}
+      </button>
+      <button
+        type='button'
+        onClick={onClear}
+        className='shrink-0 rounded-[var(--r-xs)] p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+        aria-label={t('preview.kanban_clear_search')}
+      >
+        <X size={11} />
+      </button>
+    </div>
+  )
+}
+
 export function KanbanSearchBox({
   searchQuery,
   onSearchChange,
@@ -46,7 +76,13 @@ export function KanbanSearchBox({
   const [isOpen, setIsOpen] = useState(false)
   const { draft, handleChange } = useDebouncedSearch(searchQuery, onSearchChange)
 
+  // The query is view state, so a board can open with a filter already in force while the box itself
+  // starts closed. A bare icon then gives the reader no hint that what they see is not the whole board
+  // — the count is the only thing that moves — so the query is shown as a chip they can clear.
   if (!isOpen) {
+    if (searchQuery !== '') {
+      return <ActiveSearchChip query={searchQuery} onOpen={() => setIsOpen(true)} onClear={() => onSearchChange('')} />
+    }
     return (
       <button
         type='button'

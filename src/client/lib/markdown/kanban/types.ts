@@ -171,6 +171,8 @@ export interface KanbanView {
   filters?: KanbanFilter[]
   sorts?: KanbanSort[]
   searchQuery?: string
+  /** Tag names this view filters to; stored on the view with the search and the filters beside it. */
+  selectedTags?: string[]
   cardSize?: 'small' | 'medium' | 'large'
   hiddenColumns?: string[]
 }

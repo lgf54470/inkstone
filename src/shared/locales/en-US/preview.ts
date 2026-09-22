@@ -85,6 +85,7 @@ export const messages = {
 'preview.kanban_sorted_descending': 'Sorted by {column}, descending',
 'preview.kanban_search_placeholder': 'Search...',
 'preview.kanban_search': 'Search',
+'preview.kanban_clear_search': 'Clear the search',
 'preview.kanban_batch_selected_count': '{count} selected',
 'preview.kanban_batch_change_group': 'Change group...',
 'preview.kanban_batch_delete': 'Delete selected',

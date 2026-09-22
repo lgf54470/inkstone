@@ -3075,6 +3075,7 @@ const allowed = new Map([
     '/** What the board\'s readers have said about this card, oldest first. See `comments.ts`. */',
     '/** Set only while the card is archived; restoring deletes the key. See `archive.ts`. */',
     '/** Board only: a second field the cards are cut into horizontal bands by. */',
+    '/** Tag names this view filters to; stored on the view with the search and the filters beside it. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-archive.test.ts', [
     '/**\n * F-12. Filing a card away takes it out of every view, count and chart at once, and the archive\n * panel is the only way back — so these cases read a mounted board end to end: what the reader no\n * longer sees, what the panel offers, and how one click travels back into the document through the\n * board\'s single commit path.\n */',
@@ -3627,6 +3628,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-root-hooks.ts', [
     '// The schema travels with the rules: a comparison is only meaningful as a question about the kind',
     '// of column the rule points at.',
+    '// The tag filter lives on the view with the search, the filters and the sorts beside it: they are one',
+    '// idea, and leaving one of the four in component state meant a reader lost it on a view switch while',
+    '// the other three came back.',
     '// An archived card is not part of the board any view can show, count or chart; the archive',
     '// panel is what brings it back.',
     '// The view is read at drop time through this ref, so the mover keeps one identity for the whole',
@@ -3666,6 +3670,10 @@ const allowed = new Map([
     '// Each keystroke used to commit the whole dataset, so filtering re-ran and the',
     '// undo history grew per character; the draft holds the box, the parent the query.',
     '// A query set elsewhere (switching views, clearing filters) wins over the draft.',
+    '/**\n * What a collapsed box shows while it is still filtering. The query is view state, so a board can open\n * with a filter already in force while the box itself starts closed — a bare icon then gives the reader\n * no hint that what they see is not the whole board, since only the counts move. Opening it again and\n * clearing it are both one press from here.\n */',
+    '// The query is view state, so a board can open with a filter already in force while the box itself',
+    '// starts closed. A bare icon then gives the reader no hint that what they see is not the whole board',
+    '// — the count is the only thing that moves — so the query is shown as a chip they can clear.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-semantic-controls.test.ts', [
     '/**\n * AGENTS.md rule 10 forbids simulating a control with a div plus a click handler, and a card\n * container that also carries `role=\'button\'` is an axe `nested-interactive` violation the moment\n * anything focusable sits inside it — which is exactly the case for the board, gallery and list\n * cards, all of which hold a checkbox, a tag picker and a subtask expander (review #29). A fake\n * button there is worse than no button: it announces "button" for the whole card while a real\n * control inside may or may not answer Enter. These cases pin the shape the pass moved to — no\n * element in the board claims `role=\'button\'`, and opening an item goes through a real `<button>`\n * in every view that shows cards, so a keyboard reader has one unambiguous target per card.\n */',
@@ -3725,6 +3733,10 @@ const allowed = new Map([
     '// card size, the table gets column visibility, neither sees the other\'s controls.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-state.test.ts', [
+    '// The tag filter is view state like the rest of them, and a test of its own lives below.',
+    '// The tag filter is stored on the view with the search, the filters and the sorts beside it: they are',
+    '// one idea, and keeping one of the four in component state meant a reader lost it on a view switch',
+    '// while the other three came back.',
     '// The pure document edits are covered in ../view-ops.test.ts; what is only observable here is that',
     '// they go through the board\'s one commit path — which is what makes a deleted view recoverable by',
     '// the same undo that the toast hands the reader.',
