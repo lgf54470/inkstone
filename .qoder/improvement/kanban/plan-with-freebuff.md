@@ -13,7 +13,7 @@
 - [x] K-05 CSV 导出补 BOM（Windows Excel 非 ASCII 乱码）
 - [x] K-06 CSV 导出公式注入前缀（OWASP 制表符方案，含全角变体）
 - [x] K-07 封面/附件图片走外部图片策略 + `referrerpolicy`
-- [ ] K-08 文本附件预览补失败态（并入 K-03 残留：已删对象/缺文件的降级显示）
+- [x] K-08 文本附件预览补失败态（含 K-03 残留：已删对象的 404 与图像加载失败降级）
 - [ ] K-09 跨源附件链接改新标签打开
 - [ ] K-10 上传客户端预检（与服务端同一份限额常量）
 - [x] K-03 附件删除改「确认 + 永久删除」语义（用户裁定，对齐笔记附件）
@@ -49,7 +49,8 @@
 | 2026-09-22 | K-02 删列撤销提示（分组口径） | （本提交） | typecheck ✅；kanban+preview+tests/kanban 94 文件 1008 passed（首跑 1 例 render-window 超时属 L-03，重跑全绿）；`size:check`/`i18n:check` ✅；白名单 656 文件 / 4464 条 |
 | 2026-09-22 | K-03 附件删除确认 + 永久删除语义 | c3f72b4a | typecheck ✅；kanban+preview+tests/kanban 88 文件 992 passed；`size:check`/`i18n:check`/`style:check`/`hardcoded:check` ✅；白名单 657 文件 / 4467 条；pre-commit 全量 test:unit 1443 passed |
 | 2026-09-22 | K-05 CSV 导出补 BOM | 5e984d32 | typecheck ✅；kanban+preview+tests/kanban 88 文件 994 passed；`size:check`/`comments:check` ✅；白名单 657 文件 / 4470 条 |
-| 2026-09-22 | K-07 封面/附件图片服从外部图片策略 | （本提交） | typecheck ✅；新增用例先红 5 例后绿；kanban+preview+tests/kanban 94 文件 **1024** passed；`renderer.test.ts` 32 例未改仍绿；13 项静态门禁 exit=0（含 `deep-imports`：新叶模块无 index 遮蔽）；白名单 659 文件 / 4475 条；另登记 K-28（笔记附件预览图像同类问题，跨模块） |
+| 2026-09-22 | K-08 文本附件预览失败态 + 已删对象降级 | （本提交） | typecheck ✅；新增 6 例先红后绿；kanban+preview+tests/kanban 94 文件 **1030** passed；`size:check` 拦下 3 处超长函数（生产 1 / 测试 2）并拆解而非 resnapshot；13 项静态门禁 exit=0；白名单 660 文件 / 4479 条 |
+| 2026-09-22 | K-07 封面/附件图片服从外部图片策略 | 992bca0d | typecheck ✅；新增用例先红 5 例后绿；kanban+preview+tests/kanban 94 文件 **1024** passed；`renderer.test.ts` 32 例未改仍绿；13 项静态门禁 exit=0（含 `deep-imports`：新叶模块无 index 遮蔽）；白名单 659 文件 / 4475 条；另登记 K-28（笔记附件预览图像同类问题，跨模块） |
 | 2026-09-22 | K-06 CSV 导出公式注入防护 | 029f99a0 | typecheck ✅；`csv.test.ts`+`kanban-csv.test.ts` 53 passed（本线程独立复跑）；kanban+preview+tests/kanban 88 文件 997 passed；`size:check`/`comments:check`/`i18n:check`/`hardcoded:check` ✅；白名单 657 文件 / 4473 条；同时登记 K-27（分享访问日志 CSV 同类问题，跨模块） |
 
 > **并发写者交接（2026-09-22）**：本轮清单一度由第二个 Freebuff 线程（作者 `lgf5090`）在同一工作区并行施工，它已提交 K-02（`11dc3fca`）、K-03（`c3f72b4a`）、K-05（`5e984d32`），其中 `11dc3fca` 夹带了本线程**未完成的** K-02 在途改动（`useKanbanGroupDeletion`/`dataRef` 守卫/`kanban_view-state.test.ts` 三例/`kanban_group_deleted` 双语键）。用户裁定由本线程接管全部剩余条目后：

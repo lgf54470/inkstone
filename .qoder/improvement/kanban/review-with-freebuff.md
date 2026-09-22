@@ -68,9 +68,12 @@
 - 证据：`features/preview/file-preview-modal/file-preview-views.tsx:70` 的 `<img>` 既未问 `preview.externalImages` 也未设 `referrerpolicy`，与 K-07 是同一类缺陷、不同模块。
 - 建议：K-07 的 `KanbanBlockedImage`/判定可直接复用（判定已在叶模块；占位若被第二个模块采用应提到公共组件层），随该模块自己的改动一起做，不在看板批次里夹带。
 
-### K-08 文本附件预览失败静默 → 待修
+### K-08 文本附件预览失败静默 → 已修（`（本提交）`）
 - 证据：`ui/kanban-file-preview-modal.tsx` `TextFilePreview` 的 `catch(() => setLoading(false))` → 空 `<pre>`。
 - 影响：违反「加载中/失败/空」三态红线（CSP `connect-src 'self'` 与 FILES-KV 都会走这条）。
+- 施工中额外发现（同一条链、同一处）：旧实现在**拿到 404 时照读 body**——已删除对象返回的错误页会被当成文件内容打印进面板，而 K-03 改成「确认后永久删除」后这正是最常见的落地场景。已并入本项修复（`if (!res.ok) throw`）。
+- 落地方式：读动作抽为 `useKanbanTextRead`（`loading/ready/failed` + `attempt` 重试），组件只负责渲染；失败态统一用 `ReadFailed`（标题 + 提示 + 「重试」钮，走了 `components/primitives` 的 `Button`），空文件单独走 `preview.kanban_file_empty`（与失败区分，避免把「空」读成「坏」）；图像侧新增 `ImagePreview`，`onError` 时换成同一失败态且按 URL 作 key（换附件即清掉上一个文件的错误）。失败写 `console.warn('[inkstone] …')` 带 URL，不静默。双语 +4 键。
+- 验证：`kanban-file-preview-modal.test.ts` 6→12 例，新增 6 例先红（读失败仍画空文档、404 body 被当成内容、无重试钮、空文件与失败未区分、允许加载的图加载失败仍留破图、断网拒绝）；`size:check` 两次拦下超长函数（生产 `TextFilePreview` 58 行 → 拆出 `useKanbanTextRead`；测试两个 describe 58/70 行 → 按「读到了什么 / 读不到时」与「策略 / 画不出来」各拆两段），均未 resnapshot 基线。kanban+preview+tests/kanban 94 文件 **1030** passed，13 项静态门禁 exit=0，白名单 660 文件 / 4479 条。
 
 ### K-09 跨源附件链接会导航离开应用 → 待修
 - 证据：`ui/kanban-file-preview-modal.tsx` 的「下载」用 `<a href={file.url} download>` 且无 `target`；`kanban/url.ts` 允许 `http(s)`。

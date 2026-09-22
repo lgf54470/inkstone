@@ -3360,7 +3360,13 @@ const allowed = new Map([
     '// roadmap from a triage queue learns that by opening one, and both rename to whatever they need.',
     '/**\n * What the board shows in place of its views while the document holds no card at all — see\n * `templates.ts` for what each structure actually writes.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.test.ts', [
+    '/** The read is a promise chain, so the assertions run after the microtask queue has drained. */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.tsx', [
+    '/**\n * What the reader gets when a read did not produce the document: the reason, and the one action that\n * can still help. Both surfaces below need it, and neither may leave the space blank — a board\'s\n * attachment can point at an object somebody deleted, and a blank panel reads as "the file is empty"\n * when the truth is "the file is gone".\n */',
+    '/**\n * The read itself, kept out of the component so the failure path stays one place: a stored object\n * that is gone answers 404 with a body, and reading that body as the file would print the server\'s\n * error page into the panel and call it the document.\n */',
+    '/**\n * An image the reader is allowed to load, which the browser may still fail to fetch — the note can\n * name a file whose object was deleted, which is exactly the state a restored undo leaves behind.\n * Keyed by URL at the call site, so opening another attachment clears the failure instead of showing\n * one file\'s error over another file\'s name.\n */',
     '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',
     '// document is guaranteed blank; offer the file as an explicit new-tab action.',
   ]],

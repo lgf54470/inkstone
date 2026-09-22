@@ -13,6 +13,7 @@ beforeAll(async () => {
 
 afterEach(() => {
   setExternalImages(false)
+  vi.unstubAllGlobals()
 })
 
 function setExternalImages(allowed: boolean): void {
@@ -38,6 +39,25 @@ const remoteImage: KanbanFile = {
 }
 
 const localImage: KanbanFile = { ...remoteImage, id: 'file-3', url: '/api/kanban/file/default/3-shot.png' }
+
+const textFile: KanbanFile = {
+  id: 'file-4',
+  name: 'notes.txt',
+  size: 512,
+  mime: 'text/plain',
+  url: '/api/kanban/file/default/4-notes.txt',
+}
+
+function stubTextRead(respond: () => Promise<{ ok: boolean; status?: number; text: () => Promise<string> }>) {
+  const fetchMock = vi.fn(respond)
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
+/** The read is a promise chain, so the assertions run after the microtask queue has drained. */
+async function flushRead(): Promise<void> {
+  await act(async () => { await Promise.resolve() })
+}
 
 function renderPreview(file: KanbanFile | null) {
   installTestGlobals()
@@ -94,6 +114,97 @@ describe('KanbanFilePreviewModal for an image', () => {
     const rendered = renderPreview(pdfFile)
     try {
       expect(document.body.textContent).toContain('spec.pdf')
+    } finally {
+      rendered.dispose()
+    }
+  })
+})
+
+describe('KanbanFilePreviewModal when an image cannot be drawn', () => {
+  it('says so when an allowed image fails to load, rather than leaving a broken frame', () => {
+    setExternalImages(true)
+    const rendered = renderPreview(remoteImage)
+    try {
+      const image = document.querySelector('img')
+      expect(image).not.toBeNull()
+      act(() => {
+        image!.dispatchEvent(new Event('error'))
+      })
+      expect(document.querySelector('img'), 'the broken image stayed on screen').toBeNull()
+      expect(document.body.textContent).toContain(t('preview.kanban_file_load_failed'))
+    } finally {
+      rendered.dispose()
+    }
+  })
+})
+
+describe('KanbanFilePreviewModal for text', () => {
+  it('shows the text when the read succeeds', async () => {
+    stubTextRead(async () => ({ ok: true, text: async () => 'hello board' }))
+    const rendered = renderPreview(textFile)
+    try {
+      await flushRead()
+      expect(document.querySelector('pre')?.textContent).toBe('hello board')
+    } finally {
+      rendered.dispose()
+    }
+  })
+
+  it('treats a stored file that is gone as a failed read, not as its body', async () => {
+    stubTextRead(async () => ({ ok: false, status: 404, text: async () => 'File not found' }))
+    const rendered = renderPreview(textFile)
+    try {
+      await flushRead()
+      expect(document.body.textContent).toContain(t('preview.kanban_file_load_failed'))
+      expect(document.body.textContent, 'the 404 body was shown as the file\'s content').not.toContain('File not found')
+    } finally {
+      rendered.dispose()
+    }
+  })
+})
+
+describe('KanbanFilePreviewModal when a text read does not produce the document', () => {
+  it('says the read failed instead of showing an empty document', async () => {
+    stubTextRead(async () => { throw new Error('offline') })
+    const rendered = renderPreview(textFile)
+    try {
+      await flushRead()
+      expect(document.body.textContent).toContain(t('preview.kanban_file_load_failed'))
+      expect(document.querySelector('pre'), 'a failed read still drew a document body').toBeNull()
+    } finally {
+      rendered.dispose()
+    }
+  })
+
+  it('reads again when the reader asks it to', async () => {
+    let attempt = 0
+    const fetchMock = stubTextRead(async () => {
+      attempt += 1
+      if (attempt === 1) throw new Error('offline')
+      return { ok: true, text: async () => 'second try' }
+    })
+    const rendered = renderPreview(textFile)
+    try {
+      await flushRead()
+      const retry = [...document.querySelectorAll('button')].find(
+        (button) => button.textContent?.trim() === t('preview.kanban_file_retry'),
+      )
+      expect(retry, 'a failed read offered no way to read it again').toBeDefined()
+      await act(async () => { retry!.click(); await Promise.resolve() })
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(document.querySelector('pre')?.textContent).toBe('second try')
+    } finally {
+      rendered.dispose()
+    }
+  })
+
+  it('calls a file with nothing in it empty, not broken', async () => {
+    stubTextRead(async () => ({ ok: true, text: async () => '' }))
+    const rendered = renderPreview(textFile)
+    try {
+      await flushRead()
+      expect(document.body.textContent).toContain(t('preview.kanban_file_empty'))
+      expect(document.body.textContent).not.toContain(t('preview.kanban_file_load_failed'))
     } finally {
       rendered.dispose()
     }
