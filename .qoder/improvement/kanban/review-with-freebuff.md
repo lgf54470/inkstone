@@ -117,7 +117,7 @@
 - 证据：`timeline-helpers.ts:22` `buildTimelineDays(7, 21)`，两视图 `useMemo(…, [])` 挂载算一次；`calculateTimelineBarGeometry` 直接 `left = startIdx * 48 + 4`。
 - 影响：早于 −7 天的卡片得到负 left（不可见）；晚于 +21 天被裁；无日期卡片被画在「今天」；无缩放/跳转。
 
-### K-13 选择与批量能力偏弱 → 选择已修（K-13a，`（本提交）`）；批量字段待修（K-13b）
+### K-13 选择与批量能力偏弱 → 已修（K-13a 选择 90b10948 / K-13b 批量字段 11a67a56）
 - 证据：`onToggleAll` 只接表格（`ui/kanban-table-view.tsx:76-81`）；看板/列表/画廊只能逐张勾选；批量条仅分组/归档/删除三项。
 - 影响：换 20 张卡的负责人要点 20 次详情。
 - K-13a 落地（选择）：
@@ -180,7 +180,13 @@
 - **K-24** 已修（`（本提交）`）：`kanban-card-header.tsx` 标签删除钮的两处 `!important` 按规则 12 补注释：同一元素上 `group-hover/card` 与 `group-hover/tag` 特异度相同，Tailwind 的发射顺序决定谁赢，故用 `!` 钉住「悬停标签本身时删除钮必须全不透明」；两处都只作用在该元素上，不外溢。
 - **K-25** 已修（`（本提交）`）：无标题板的覆盖层名称不再来自硬编码。追下去发现根因比报告里写的深一层——读出来的是 `outline.ts` 在「大纲体→JSON」解析时写的 `title: 'Kanban'`，即**双语/可本地化之前就已把英文名当数据**，而首次 JSON 编辑会把它写进笔记（以后每块被升级的大纲板都叫 Kanban）。故修两处：`outline.ts` 不再造标题（大纲体本来就没有标题），`session.title()` 无标题时返回 `''` 交给调用方（`ui/kanban-fullscreen.tsx` 已有的 `|| t('preview.kanban_fullscreen')` 回退即刻生效）。CSV 表头仍固定英文 `Title`（属导出格式：本地化表头会与导入侧对称性冲突，需产品决定，另登记）。验证：`kanban-fullscreen.test.ts` +2 例（无标题板 `title()` 为空且回退到本地化文案、有标题板仍用自身标题），无标题一例先红；`outline.test.ts` 中原本断言 `title === 'Kanban'` 的一例改为 `toBeUndefined()`（旧断言恰好钉住了这个行为）。
 
+### L-04（本轮新增，跨模块）`e2e.mjs` 的「reindex 不能覆盖编辑器写入」在本机两个全新实例上均失败 → 登记不夹带
+- 证据：`scripts/e2e.mjs:329-350` 并发提交 `POST /api/search/reindex` 与 `PATCH /api/notes/:id`，随后断言索引里是编辑后的内容；本机两次全新实例（第一次未捕获行号，第二次为 `reindex=200 edit=200`）结果为 `175 passed / 1 failed`，且仅这一条失败。
+- 判定：该路径为 worker 搜索/FTS 重索引，与本轮改动面（`src/client/lib/markdown/kanban/**`、locale、`components/overlay/menu.tsx`）无交集；`npm run test:unit` 与 `tests/` 449 例均绿。可能是本机 workerd 下两个并发请求的到达顺序与 CI 不同。
+- 建议：由持有搜索/FTS 上下文的人单独复核（竞态断言本身是否对环境敏感），本批不夹带（AGENTS 规则 14）。
+
 ## 6. 局限与未验证项（如实声明）
 
-- 本台账为读码 + 门禁实跑证据；第一轮自由审查期间**未运行** `test:e2e`、`e2e-visual.mjs`、`contrast:check`（需本地实例），也未在真浏览器验证 Alt+方向键与触摸拖拽——这两项在施工中按条目分别处理，未验证处逐条登记。
+- 本台账为读码 + 门禁实跑证据；第一轮自由审查期间**未运行** `test:e2e`、`e2e-visual.mjs`、`contrast:check`（需本地实例），也未在真浏览器验证移动键与触摸拖拽——这两项在施工中按条目分别处理，未验证处逐条登记。
+- 已更新（2026-09-22 施工期）：本机已具备完整浏览器门禁（`node_modules` 软链 + `/usr/bin/google-chrome`），`e2e-visual.mjs` 已跑通 **216 passed / 0 failed**（K-17 结案时记录）；仅 `e2e.mjs` 的 reindex 竞态一条在本机失败，已登记为 L-04。`contrast:check` 仍未在本轮跑过，下次动共享令牌或改看板配色时必须补。
 - K-20 的写回成本是代码路径推断 + `plan.md` K3-05 已有实测外推；落地以「同一文档 N 次写回的字节数」这类确定性量测为准，不用计时断言。
