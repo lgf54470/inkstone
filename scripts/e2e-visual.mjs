@@ -31,7 +31,9 @@ import {
   loginThroughUi,
   openShareCenter,
   pressCombo,
+  MUSIC_PROBE,
   runAxe,
+  seedMusicProbeTracks,
   seedShareHubData,
   setAppTheme,
   sleep,
@@ -2150,7 +2152,7 @@ async function assertContextMenuNesting(page) {
 // seeded through the real upload endpoint because the scenario reads what the library draws;
 // nothing here ever starts audio, so the probe bytes are never decoded.
 
-const MUSIC_TRACK_TITLES = ['E2E Probe Audio One', 'E2E Probe Audio Two']
+const MUSIC_TRACK_TITLES = MUSIC_PROBE.titles
 
 const ariaAttr = (labels) => labels.map((label) => `@aria-label="${label}"`).join(' or ')
 const cssByLabels = (base, labels) => labels.map((label) => `${base}[aria-label="${label}"]`).join(', ')
@@ -2159,33 +2161,6 @@ const overlaps = (a, b) => a && b
   && a.y < b.y + b.height && b.y < a.y + a.height
 
 const HUB_DIALOG_XPATH = `xpath/.//div[@role="dialog" and ${ariaAttr(LABELS.musicHub)}]`
-
-async function seedMusicLibrary(page) {
-  return page.evaluate(async (titles) => {
-    const statuses = []
-    for (const title of titles) {
-      const body = new FormData()
-      body.set('file', new File(
-        [new TextEncoder().encode('e2e-visual probe, not real audio')],
-        `${title}.mp3`,
-        { type: 'audio/mpeg' },
-      ))
-      body.set('title', title)
-      body.set('artist', 'E2E Probe Artist')
-      body.set('album', 'E2E Probe Album')
-      body.set('durationMs', '61000')
-      // requireClientHeader answers 403 to any non-GET API call without the client marker the
-      // app transport always sends; seeding goes through the same gate as the app would.
-      const response = await fetch('/api/music/tracks', {
-        method: 'POST',
-        body,
-        headers: { 'X-Inkstone-Client': '1' },
-      })
-      statuses.push(response.status)
-    }
-    return statuses
-  }, MUSIC_TRACK_TITLES)
-}
 
 async function openMusicHub(page) {
   // A playback session restored from the server (music-session-sync) leaves a current track, and
@@ -2263,9 +2238,13 @@ async function assertMusicSurface(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(500)
 
-  const statuses = await seedMusicLibrary(page)
-  const seeded = statuses.every((status) => status === 201)
-  check('music: the probe library seeded two tracks', seeded, JSON.stringify(statuses))
+  // One fixture for every gate that measures these surfaces (`seedMusicProbeTracks` in
+  // e2e-harness.mjs). This gate's own copy was 35 bytes of text in an `.mp3` — enough for the rows
+  // and cards it reads, and the reason the contrast gate, which does start audio, found itself
+  // measuring a library the engine refuses to play (SH-100).
+  const fixture = await seedMusicProbeTracks({ page })
+  const seeded = fixture.found.length === MUSIC_TRACK_TITLES.length
+  check('music: the probe library holds two tracks the browser can open', seeded, JSON.stringify(fixture))
   if (!seeded) return
   if (!(await openMusicHub(page))) {
     check('music: the status bar opens the library hub', false)

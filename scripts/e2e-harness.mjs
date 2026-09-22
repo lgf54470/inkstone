@@ -41,6 +41,43 @@ export async function clickButton(page, labels, timeout = 15_000) {
 }
 
 /**
+ * Waits until a control with one of these names is the thing a pointer would actually hit, and
+ * reports what stood in the way when it never becomes that.
+ *
+ * A press is a real click at measured coordinates, so it goes to whatever is drawn there. This app
+ * puts transient notices over the surfaces that open it — a playback-failure notice sits on the
+ * transport row for seconds, and the music hub's own entry is behind the same row — and a press
+ * that lands on a notice reads as "the surface did not open", which is a gate mistaking its own
+ * timing for a product defect. Waiting turns that into either a wait or a failure that names the
+ * blocker.
+ */
+export async function waitForHittable(page, labels, timeout = 20_000) {
+  const deadline = Date.now() + timeout
+  let blocker = null
+  while (Date.now() < deadline) {
+    const state = await page.evaluate((labels) => {
+      const control = [...document.querySelectorAll('button')]
+        .find((item) => labels.includes(item.getAttribute('aria-label') ?? '') && item.getClientRects().length > 0)
+      if (!control) return { ok: false, blocker: 'no control with that name is drawn' }
+      control.scrollIntoView({ block: 'center' })
+      const box = control.getBoundingClientRect()
+      const hit = document.elementFromPoint(Math.round(box.left + box.width / 2), Math.round(box.top + box.height / 2))
+      if (!hit) return { ok: false, blocker: 'nothing is drawn at its centre' }
+      if (hit === control || control.contains(hit) || hit.contains(control)) return { ok: true }
+      return {
+        ok: false,
+        blocker: `${hit.tagName.toLowerCase()}${hit.getAttribute('aria-label') ? `[aria-label="${hit.getAttribute('aria-label')}"]` : ''} ${(hit.textContent ?? '').trim().slice(0, 60)}`,
+      }
+    }, labels)
+    if (state.ok) return true
+    blocker = state.blocker
+    await sleep(400)
+  }
+  console.warn(`[harness] no control named ${labels.join(' / ')} became hittable in ${timeout}ms: ${blocker}`)
+  return false
+}
+
+/**
  * A fork that lags the upstream release is offered the update on every owner
  * sign-in, and the prompt's scrim swallows whatever is clicked next — which a
  * gate reads as "the control I clicked did nothing". The prompt is real UI, so
@@ -345,35 +382,55 @@ export const MUSIC_PROBE = {
 }
 
 /**
- * A one-second silent WAV: 8-bit mono at 8kHz, the smallest file the upload path accepts (it is a
- * real container the browser decodes, which is what makes the track playable in the grid and the
- * immersive player — the surfaces these probes exist for are measured with a current track).
+ * A minute of silence as a real WAV: 8-bit mono at 8kHz, which is the smallest container the upload
+ * path accepts and — unlike the text file this fixture used to be — something the browser's demuxer
+ * opens. That matters because the contrast gate's music surfaces *do* start audio: they read a
+ * current track's tinted row and the transport row's controls, and a track the engine refuses to
+ * play answers with a playback-failure notice that covers the next control the gate wants to press.
+ * A minute is long enough that no surface pass outlives it and the engine never advances past the
+ * fixture into whatever else the library holds.
  *
- * Silence, not music: this is a fixture, and a tone would make every measurement depend on what the
- * waveform happens to be.
+ * Silence, not music: a tone would make every measurement depend on the waveform.
  */
 function probeWavBytes() {
-  const samples = 8_000
+  const samples = 8_000 * 60
   const header = [
     0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x41, 0x56, 0x45, // RIFF....WAVE
-    0x66, 0x6d, 0x74, 0x20, 36, 0, 0, 0, // fmt  (16-byte PCM block)
+    0x66, 0x6d, 0x74, 0x20, 16, 0, 0, 0, // fmt, 16 bytes of PCM format — something else here is a header the demuxer refuses
     1, 0, 1, 0, // PCM, mono
     0x40, 0x1f, 0, 0, // 8000 Hz
     0x40, 0x1f, 0, 0, // byte rate
-    1, 0, 8, 0, // block align, 8 bits
+    1, 0, 8, 0, // block align, 8 bits per sample
     0x64, 0x61, 0x74, 0x61, 0, 0, 0, 0, // data
   ]
-  const size = samples
-  header[4] = (36 + size) & 0xff
-  header[5] = ((36 + size) >> 8) & 0xff
-  header[6] = ((36 + size) >> 16) & 0xff
-  header[7] = ((36 + size) >> 24) & 0xff
-  header[40] = size & 0xff
-  header[41] = (size >> 8) & 0xff
-  header[42] = (size >> 16) & 0xff
-  header[43] = (size >> 24) & 0xff
+  header[4] = (36 + samples) & 0xff
+  header[5] = ((36 + samples) >> 8) & 0xff
+  header[6] = ((36 + samples) >> 16) & 0xff
+  header[7] = ((36 + samples) >> 24) & 0xff
+  header[40] = samples & 0xff
+  header[41] = (samples >> 8) & 0xff
+  header[42] = (samples >> 16) & 0xff
+  header[43] = (samples >> 24) & 0xff
   // 8-bit PCM is unsigned, so silence is 128 rather than 0.
-  return [...header, ...new Array(size).fill(128)]
+  return [...header, ...new Array(samples).fill(128)]
+}
+
+/**
+ * Whether the browser can actually open what the library serves for one track, measured through the
+ * product's own stream endpoint. This is the half of the fixture that used to be missing: a row that
+ * exists is not the same thing as a track that plays, and the music surfaces are measured with a
+ * current track lit.
+ */
+async function probeTrackPlays(page, id, timeoutMs = 8_000) {
+  return page.evaluate(async ({ id, timeoutMs }) => {
+    const audio = new Audio(`/api/music/tracks/${id}/stream`)
+    return new Promise((resolve) => {
+      const done = (value) => resolve(value)
+      audio.addEventListener('loadedmetadata', () => done({ plays: true, duration: audio.duration }), { once: true })
+      audio.addEventListener('error', () => done({ plays: false, code: audio.error?.code ?? 0, message: (audio.error?.message ?? '').slice(0, 80) }), { once: true })
+      setTimeout(() => done({ plays: false, code: 0, message: 'no metadata within the window' }), timeoutMs)
+    })
+  }, { id, timeoutMs })
 }
 
 /**
@@ -383,16 +440,38 @@ function probeWavBytes() {
  * a prerequisite the gate arranges for itself, the same way the share center seeds its visit.
  *
  * Uploading through the product's own endpoint is deliberate: a track written straight into D1
- * would have no object behind it, and the surfaces stream what they list. It stays idempotent — an
- * account that already has the titles uploads nothing, which also keeps the per-hour upload budget
- * out of the way of repeated runs.
+ * would have no object behind it, and the surfaces stream what they list. It is idempotent for a
+ * library that already holds these tracks, and it *replaces* a row under one of its titles that the
+ * browser cannot open rather than counting it as its own work: this fixture's predecessor wrote 35
+ * bytes of text into an `.mp3` under exactly these titles, and a row like that answers "the track
+ * exists" while leaving the surfaces unplayable.
  */
 export async function seedMusicProbeTracks({ page }) {
-  const listed = await apiCall(page, 'GET', '/api/music/library')
-  const present = new Set((listed.data?.tracks ?? []).map((track) => track.title))
-  const missing = MUSIC_PROBE.titles.filter((title) => !present.has(title))
+  const list = async () => (await apiCall(page, 'GET', '/api/music/library')).data?.tracks ?? []
+  const newestFor = (tracks, title) => tracks
+    .filter((track) => track.title === title)
+    .sort((left, right) => right.createdAt - left.createdAt)[0]
+  const listed = await list()
   const bytes = probeWavBytes()
-  for (const title of missing) {
+  let uploaded = 0
+  let replaced = 0
+  for (const title of MUSIC_PROBE.titles) {
+    // Every row under one of the fixture's titles that the browser cannot open is removed, not just
+    // the newest: the surfaces pick a card by title, so one unplayable duplicate left in the list is
+    // enough for the gate to start the wrong track and measure the notice that follows.
+    let playable = false
+    for (const row of listed.filter((track) => track.title === title).sort((left, right) => right.createdAt - left.createdAt)) {
+      if ((await probeTrackPlays(page, row.id)).plays) {
+        playable = true
+        continue
+      }
+      const removed = await apiCall(page, 'DELETE', `/api/music/tracks/${row.id}`)
+      if (removed.status !== 200) {
+        throw new Error(`music probe fixture: removing an unplayable '${title}' failed (delete answered ${removed.status})`)
+      }
+      replaced += 1
+    }
+    if (playable) continue
     const result = await page.evaluate(async ({ title, bytes }) => {
       const form = new FormData()
       form.append('file', new File([new Uint8Array(bytes)], `${title}.wav`, { type: 'audio/wav' }))
@@ -410,12 +489,22 @@ export async function seedMusicProbeTracks({ page }) {
     if (result.status !== 201) {
       throw new Error(`music probe fixture: uploading '${title}' answered ${result.status} (${result.body})`)
     }
+    uploaded += 1
   }
   // Read back through the endpoint the surfaces list from, so "the fixture is in place" is an
-  // answer about the library rather than about the upload calls having returned 201.
-  const after = await apiCall(page, 'GET', '/api/music/library')
-  const seeded = new Set((after.data?.tracks ?? []).map((track) => track.title))
-  return { uploaded: missing.length, found: MUSIC_PROBE.titles.filter((title) => seeded.has(title)) }
+  // answer about the library rather than about the upload calls having returned 201 — and then ask
+  // the browser to open what it serves, because a row that exists is not a track that plays.
+  const after = await list()
+  const found = []
+  const unplayable = []
+  for (const title of MUSIC_PROBE.titles) {
+    const track = newestFor(after, title)
+    if (!track) continue
+    const result = await probeTrackPlays(page, track.id)
+    if (result.plays) found.push(title)
+    else unplayable.push({ title, ...result })
+  }
+  return { uploaded, replaced, found, unplayable }
 }
 
 /**

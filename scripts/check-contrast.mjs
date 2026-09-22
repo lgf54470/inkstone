@@ -42,6 +42,7 @@ import {
   seedMusicProbeTracks,
   setAppTheme,
   sleep,
+  waitForHittable,
   waitForPanelSettled,
 } from './e2e-harness.mjs'
 
@@ -154,7 +155,9 @@ const MUSIC_PROBE_ROW = `xpath=.//div[@role="row"]//button[contains(., "${MUSIC_
 // Both footer states open the hub: the plain icon before anything plays, and — once a track is
 // current, which the grid click below itself causes on the second theme pass — the transport
 // row's expand button.
-const MUSIC_HUB_OPENER = 'xpath/.//footer//button[@aria-label="打开音乐库" or @aria-label="Open music library" or @aria-label="展开播放器" or @aria-label="Expand the player"]'
+const MUSIC_HUB_LABELS = ['打开音乐库', 'Open music library', '展开播放器', 'Expand the player']
+const IMMERSIVE_LABELS = ['沉浸式播放', 'Full screen player']
+const MUSIC_HUB_OPENER = `xpath/.//footer//button[${MUSIC_HUB_LABELS.map((label) => `@aria-label="${label}"`).join(' or ')}]`
 
 async function openMusicHub(page) {
   // The probe tracks are this surface's fixture, and it arranges for them itself: an empty library
@@ -163,8 +166,11 @@ async function openMusicHub(page) {
   // (SH-100). A fixture that does not take is reported here rather than measured as a quieter hub.
   const fixture = await seedMusicProbeTracks({ page })
   if (fixture.found.length < MUSIC_PROBE.titles.length) {
-    throw new Error(`music surface: the library lists ${fixture.found.length} of ${MUSIC_PROBE.titles.length} probe tracks after seeding (${JSON.stringify(fixture)})`)
+    throw new Error(`music surface: ${fixture.found.length} of ${MUSIC_PROBE.titles.length} probe tracks open in the browser after seeding (${JSON.stringify(fixture)})`)
   }
+  // The footer's own entry sits behind the transport row, so a notice from an earlier pass can be
+  // what a press lands on.
+  await waitForHittable(page, [...MUSIC_HUB_LABELS])
   const openers = await page.$$(MUSIC_HUB_OPENER)
   const opener = openers.at(-1) ?? await page.waitForSelector(MUSIC_HUB_OPENER, { timeout: SETTLE_TIMEOUT })
   await opener.click()
@@ -202,7 +208,11 @@ async function openMusicHubGrid(page) {
 }
 
 async function openImmersivePlayer(page) {
-  await clickButton(page, ['沉浸式播放', 'Full screen player'])
+  // The opener is in the transport row, which a playback-failure notice covers for seconds after a
+  // track is picked — waiting for it to be hittable keeps that notice from reading as a surface that
+  // did not open.
+  await waitForHittable(page, IMMERSIVE_LABELS)
+  await clickButton(page, IMMERSIVE_LABELS, SETTLE_TIMEOUT)
   await page.waitForSelector(MUSIC_IMMERSIVE_DIALOG, { timeout: SETTLE_TIMEOUT })
   await waitForPanelSettled(page, MUSIC_IMMERSIVE_DIALOG)
 }
