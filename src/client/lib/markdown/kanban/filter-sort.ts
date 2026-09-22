@@ -19,6 +19,13 @@ export interface KanbanFilterContext {
   now?: Date
 }
 
+/**
+ * The bucket a card with no value on the grouping axis lands in. The key is written here because this
+ * is where the bucket is made; the drop writer and the move-to menu read the same key to mean "clear
+ * this property", so introducing a second spelling would be introducing a second meaning.
+ */
+export const KANBAN_UNASSIGNED_KEY = '__none__'
+
 /** What a rule may ask of a column, decided by the kind of value that column holds. */
 const TEXT_OPERATORS: KanbanFilterOperator[] = [
   'contains', 'not_contains', 'equals', 'not_equals', 'is_empty', 'is_not_empty',
@@ -288,7 +295,7 @@ export function groupKanbanItems(
     })
   }
 
-  const noGroupKey = '__none__'
+  const noGroupKey = KANBAN_UNASSIGNED_KEY
   const noGroup: KanbanGroup = {
     groupKey: noGroupKey,
     label: 'No Status',

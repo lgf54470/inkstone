@@ -127,13 +127,13 @@ function liveRegion(container: HTMLElement): HTMLElement {
   return region!
 }
 
-function pressAltArrow(itemId: string, key: 'ArrowRight' | 'ArrowLeft'): void {
+function pressShiftArrow(itemId: string, key: 'ArrowRight' | 'ArrowLeft'): void {
   const card = document.querySelector<HTMLElement>(`[data-item-id="${itemId}"]`)
   expect(card, `card ${itemId} is not in the document`).not.toBeNull()
   const origin = card!.querySelector<HTMLElement>('button') ?? card!
   origin.focus()
   act(() => {
-    origin.dispatchEvent(new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true }))
+    origin.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey: true, bubbles: true, cancelable: true }))
   })
 }
 
@@ -275,7 +275,7 @@ describe('what the limit field writes back', () => {
 describe('a card that lands in a full column', () => {
   it('says the destination is over its limit as the move is announced', () => {
     const { container } = mountKanban(boardData(statusColumn({ todo: 2 }), 3))
-    pressAltArrow(`${DOING}-0`, 'ArrowLeft')
+    pressShiftArrow(`${DOING}-0`, 'ArrowLeft')
     expect(liveRegion(container).textContent).toBe(t('preview.kanban_moved_to_group_over', {
       title: 'Card doing 1',
       group: localized(TODO),
@@ -286,7 +286,7 @@ describe('a card that lands in a full column', () => {
 
   it('keeps the plain announcement when the destination has room', () => {
     const { container } = mountKanban(boardData(statusColumn({ todo: 10 }), 3))
-    pressAltArrow(`${TODO}-0`, 'ArrowRight')
+    pressShiftArrow(`${TODO}-0`, 'ArrowRight')
     expect(liveRegion(container).textContent).toBe(t('preview.kanban_moved_to_group', {
       title: 'Card todo 1',
       group: localized(DOING),

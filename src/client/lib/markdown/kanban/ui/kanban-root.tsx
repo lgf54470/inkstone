@@ -391,6 +391,10 @@ function KanbanRootOverlays({
         onDuplicateItem={menu.handleDuplicateItem}
         onArchiveItem={(item) => state.handleArchiveItems([item.id])}
         onDeleteItem={state.items.handleDeleteItem}
+        groupOptions={state.moveToAxes.groupOptions}
+        laneOptions={state.moveToAxes.laneOptions}
+        onMoveItemToGroup={state.moveToAxes.handleMoveItemToGroup}
+        onMoveItemToLane={state.moveToAxes.handleMoveItemToLane}
         onAddItem={() => state.adds.handleAddItem()}
         onAddColumn={state.adds.handleAddColumn}
         onSelectView={state.setActiveViewId}

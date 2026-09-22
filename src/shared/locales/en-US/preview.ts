@@ -274,6 +274,7 @@ export const messages = {
 'preview.kanban_type_person': 'Person',
 'preview.kanban_copy_card': 'Duplicate Card',
 'preview.kanban_move_to_column': 'Move to Group',
+'preview.kanban_move_to_band': 'Move to Swimlane',
 'preview.kanban_moved_to_group': 'Moved “{title}” to {group}',
 'preview.kanban_undo_shortcut': 'Undo ({shortcut})',
 'preview.kanban_redo_shortcut': 'Redo ({shortcut})',

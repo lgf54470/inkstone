@@ -149,7 +149,7 @@ describe('every card view opens an item through a real control', () => {
 })
 
 describe('the card keyboard move still reaches the card', () => {
-  it('moves the item to the next column on Alt+ArrowRight from a control inside the card', () => {
+  it('moves the item to the next column on Shift+ArrowRight from a control inside the card', () => {
     const onUpdateData = vi.fn()
     const { container } = mount(
       createElement(KanbanRoot, { initialData: data, onUpdateData }),
@@ -159,10 +159,10 @@ describe('the card keyboard move still reaches the card', () => {
     control.focus()
     act(() => {
       control.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, bubbles: true, cancelable: true }),
+        new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true, cancelable: true }),
       )
     })
-    expect(onUpdateData, 'Alt+ArrowRight never reached the card handler').toHaveBeenCalledTimes(1)
+    expect(onUpdateData, 'Shift+ArrowRight never reached the card handler').toHaveBeenCalledTimes(1)
     const committed = onUpdateData.mock.calls[0]![0] as KanbanData
     expect(committed.items.find((item) => item.id === 'a')?.properties.status).toBe('doing')
   })

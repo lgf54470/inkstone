@@ -1,6 +1,6 @@
 /**
  * Moving a card between columns is the one board action whose result is nowhere but on screen: the
- * drop and the Alt+arrow chord both just re-render the columns, so a screen reader user hears
+ * drop and the Shift+arrow chord both just re-render the columns, so a screen reader user hears
  * nothing at all and cannot tell which group the card landed in (review #29, K2-03e5). The board
  * therefore carries a polite live region, and both move paths — keyboard and pointer — report
  * through it. These cases pin the three behaviours that make it usable rather than noisy: the
@@ -70,11 +70,11 @@ function cardOf(itemId: string): HTMLElement {
 }
 
 /** The chord is pressed on a real control inside the card, which is where keyboard focus lives. */
-function pressAltArrowRight(itemId: string, direction: 'ArrowRight' | 'ArrowLeft' = 'ArrowRight'): void {
+function pressShiftArrowRight(itemId: string, direction: 'ArrowRight' | 'ArrowLeft' = 'ArrowRight'): void {
   const origin = cardOf(itemId).querySelector<HTMLElement>('button') ?? cardOf(itemId)
   origin.focus()
   act(() => {
-    origin.dispatchEvent(new KeyboardEvent('keydown', { key: direction, altKey: true, bubbles: true, cancelable: true }))
+    origin.dispatchEvent(new KeyboardEvent('keydown', { key: direction, shiftKey: true, bubbles: true, cancelable: true }))
   })
 }
 
@@ -104,7 +104,7 @@ describe('a card move is announced to screen readers', () => {
 
   it('names the item and its new column after the keyboard move', () => {
     const { container } = mountBoard()
-    pressAltArrowRight('a')
+    pressShiftArrowRight('a')
     expect(liveRegion(container).textContent).toBe(movedMessage('Design spec', 'In Progress'))
   })
 
@@ -122,7 +122,32 @@ describe('a card move is announced to screen readers', () => {
 
   it('stays silent when the keyboard move has nowhere to go', () => {
     const { container } = mountBoard()
-    pressAltArrowRight('a', 'ArrowLeft')
+    pressShiftArrowRight('a', 'ArrowLeft')
+    expect(liveRegion(container).textContent).toBe('')
+  })
+})
+
+describe('what the move chord itself covers', () => {
+  it('leaves a bare arrow to whatever the card holds, since Shift is what asks for a move', () => {
+    const { container } = mountBoard()
+    const origin = cardOf('a').querySelector<HTMLElement>('button') ?? cardOf('a')
+    origin.focus()
+    act(() => {
+      origin.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))
+    })
+    expect(liveRegion(container).textContent).toBe('')
+  })
+
+  it('leaves Shift+Arrow inside a field to the field, where it selects text', () => {
+    const { container } = mountBoard()
+    const field = document.createElement('input')
+    cardOf('a').append(field)
+    field.focus()
+    act(() => {
+      field.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true, cancelable: true }),
+      )
+    })
     expect(liveRegion(container).textContent).toBe('')
   })
 })

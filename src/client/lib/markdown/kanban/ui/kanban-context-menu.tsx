@@ -1,5 +1,7 @@
 import {
   Archive,
+  ArrowDownUp,
+  ArrowRightLeft,
   Copy,
   FileText,
   LayoutGrid,
@@ -15,9 +17,9 @@ import {
 } from 'lucide-react'
 import { Menu, submenuFor, type MenuItem } from '../../../../components/overlay'
 import { Z_INDEX } from '../../../../lib/z-index'
-import { t } from '../../../i18n'
+import { t, type MessageKey } from '../../../i18n'
 import { formatKanbanViewName } from '../i18n-helpers'
-import type { KanbanItem, KanbanView } from '../types'
+import type { KanbanItem, KanbanOption, KanbanView } from '../types'
 import type { CardSize } from './kanban-view-options'
 
 export interface KanbanContextMenuProps {
@@ -45,6 +47,76 @@ export interface KanbanContextMenuProps {
   onUndo?: () => void
   onRedo?: () => void
   onToggleFullscreen?: () => void
+  /** The destinations the active view draws, so a card can be sent to one without a drag. */
+  groupOptions?: KanbanOption[]
+  laneOptions?: KanbanOption[]
+  onMoveItemToGroup?: (itemId: string, groupKey: string) => void
+  onMoveItemToLane?: (itemId: string, laneKey: string) => void
+}
+
+/**
+ * The two coordinates a board cell has. Both are written by a drag, and a drag is the one gesture a
+ * touch reader cannot perform — long-pressing a card opens this very menu, so each axis gets a
+ * submenu of the destinations the board draws.
+ */
+type KanbanMoveAxis = 'group' | 'lane'
+
+const MOVE_AXIS_KEYS: Record<KanbanMoveAxis, { label: MessageKey; rowId: string }> = {
+  group: { label: 'preview.kanban_move_to_column', rowId: 'kanban-item-move-group' },
+  lane: { label: 'preview.kanban_move_to_band', rowId: 'kanban-item-move-lane' },
+}
+
+/** One axis' property id, options and writer, or nothing when the host wired no such axis up. */
+function moveAxisTarget(props: KanbanContextMenuProps, axis: KanbanMoveAxis) {
+  if (axis === 'group') {
+    return {
+      propertyId: props.activeView.groupBy || 'status',
+      options: props.groupOptions,
+      onMove: props.onMoveItemToGroup,
+    }
+  }
+  return {
+    propertyId: props.activeView.swimlaneBy,
+    options: props.laneOptions,
+    onMove: props.onMoveItemToLane,
+  }
+}
+
+export function buildMoveToSubmenuItems(
+  props: KanbanContextMenuProps,
+  item: KanbanItem,
+  axis: KanbanMoveAxis,
+): MenuItem[] {
+  const { propertyId, options, onMove } = moveAxisTarget(props, axis)
+  if (!propertyId || !onMove || !options?.length) return []
+  const current = item.properties[propertyId]
+  // A multi-select group holds arrays, so "which one is this card in" is a membership question.
+  const values = Array.isArray(current) ? current : [current]
+  return options.map((option) => ({
+    id: `move-${axis}-${option.id}`,
+    label: option.label,
+    checked: values.includes(option.id),
+    onSelect: () => onMove(item.id, option.id),
+  }))
+}
+
+/**
+ * The move-to rows, one per axis that has somewhere to go. Kept out of the card's own act list so a
+ * board with a single group (or without swimlanes) grows no row at all.
+ */
+function buildMoveItems(props: KanbanContextMenuProps, item: KanbanItem): MenuItem[] {
+  const rows: MenuItem[] = []
+  for (const axis of ['group', 'lane'] as const) {
+    const destinations = buildMoveToSubmenuItems(props, item, axis)
+    if (destinations.length === 0) continue
+    rows.push({
+      id: MOVE_AXIS_KEYS[axis].rowId,
+      label: t(MOVE_AXIS_KEYS[axis].label),
+      icon: axis === 'group' ? <ArrowRightLeft size={14} /> : <ArrowDownUp size={14} />,
+      submenu: submenuFor(destinations),
+    })
+  }
+  return rows
 }
 
 function buildItemSpecificItems(props: KanbanContextMenuProps, item: KanbanItem): MenuItem[] {
@@ -55,6 +127,7 @@ function buildItemSpecificItems(props: KanbanContextMenuProps, item: KanbanItem)
       icon: <FileText size={14} />,
       onSelect: () => props.onOpenDetail?.(item),
     },
+    ...buildMoveItems(props, item),
   ]
   if (props.onDuplicateItem) {
     items.push({

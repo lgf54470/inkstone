@@ -2924,6 +2924,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/filter-sort.ts', [
     '/**\n * What the caller knows besides the cards: the schema, so a rule can be read as a question about\n * that kind of column, and the clock, so a missed deadline is decidable without a test having to\n * move time. Both are optional — a board read without a schema asks text questions, as it did.\n */',
+    '/**\n * The bucket a card with no value on the grouping axis lands in. The key is written here because this\n * is where the bucket is made; the drop writer and the move-to menu read the same key to mean "clear\n * this property", so introducing a second spelling would be introducing a second meaning.\n */',
     '/** What a rule may ask of a column, decided by the kind of value that column holds. */',
     '// A date column\'s most useful question is the one its readers ask first: is anything still owed.',
     '// Two days are their `YYYY-MM-DD` keys, which already order the way they read.',
@@ -3118,6 +3119,9 @@ const allowed = new Map([
     '// The row says how many cards it holds, because no column pill adds that row up.',
     '// A status the board has no column for, owned by someone who does have a row: the strip gains a',
     '// No Status column, and the rows that hold nothing of it still have to answer for it.',
+    '/**\n * A long press, which is what a touch reader has instead of a drag: the browser reports it as a\n * contextmenu on the card. The menu is a portal, so its rows are read off the document.\n */',
+    '// Bob\'s row already holds a card of the target group, so a move that fell back to reordering by',
+    '// group alone would draw this card beside that one and lose the row it never left.',
     '// The off option, plus Owner: never the title, and never the field the columns already cut by.',
     '// The field lost the list of values it used to cut rows by, so it no longer offers candidates —',
     '// but the rows on screen are still drawn off it, and a reader must be able to see which one.',
@@ -3136,7 +3140,7 @@ const allowed = new Map([
     '/**\n * A move that leaves the card in the cell it already sits in is a reorder, not a change of place, so\n * it gets no announcement; an item the board does not list has no known source, and guessing would\n * mean reading out a column the card may not have left. The band is named only when the drop lands\n * in one, because a drop on the strip changes the column and keeps the band the card was in.\n */',
     '// This is read before the card has moved, so the column it would fill is still one card short.',
     '/** The key `offset` places from `keys`, or nothing when the walk runs off either end of the board. */',
-    '/** Alt+Arrow walks one step of the grid the card is in, keeping the coordinate it did not touch. */',
+    '/** Shift+Arrow walks one step of the grid the card is in, keeping the coordinate it did not touch. */',
     '/** Everything a cell of the board needs to draw, whichever of the three shapes it is. */',
     '/** `column` is the plain board, `head` and `body` are the two halves of a banded board. */',
     '// A banded column is the strip\'s title, and has no narrower form to fold into.',
@@ -3159,8 +3163,9 @@ const allowed = new Map([
     '/** The only `role=img` a card or a gallery tile draws is the one standing for a person. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-card.tsx', [
-    '/** Alt+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */',
-    '/**\n * A card\'s container is deliberately not a control: no `role`, no `tabIndex`. It is a pointer hit-area,\n * and the card\'s keyboard and assistive-technology path is CardHeader\'s details button — giving this div\n * `role=\'button\'` would add a second, unlabeled control for the same action and a second tab stop that\n * reads as a duplicate. Key events still reach the container\'s handler, because they bubble from the\n * focused children (the checkbox, the title button, the menus); a card with nothing focused is not\n * expected to answer a key press, and moving a card by keyboard is offered from those menus too. This is\n * the exemption registered under AGENTS.md rule 10 (review K-23), stated rather than left implicit.\n */',
+    '/** Shift+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */',
+    '/**\n * Shift+Arrow walks a card one step of the grid. It used to be Alt+Arrow, which had to go: Alt+Left\n * and Alt+Right are the browser\'s own Back and Forward on Windows and Linux, so the card gesture\n * shared a chord with leaving the page and only worked for as long as the page won the race for it.\n * Shift is owned by nothing on its own, but it is how text is selected inside a field, so a key press\n * that started in one is left to the field.\n */',
+    '/**\n * A card\'s container is deliberately not a control: no `role`, no `tabIndex`. It is a pointer hit-area,\n * and the card\'s keyboard and assistive-technology path is CardHeader\'s details button — giving this div\n * `role=\'button\'` would add a second, unlabeled control for the same action and a second tab stop that\n * reads as a duplicate. Key events still reach the container\'s handler, because they bubble from the\n * focused children (the checkbox, the title button, the menus); a card with nothing focused is not\n * expected to answer a key press, and moving a card is offered from those menus as well — both the\n * Shift+Arrow step and the move-to rows the context menu grows. This is the exemption registered under\n * AGENTS.md rule 10 (review K-23), stated rather than left implicit.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-chart-view.test.ts', [
     '// The real reader asks the document how it resolves each token, which jsdom',
@@ -3331,6 +3336,13 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-context-menu.test.ts', [
     '// A literal \'Ctrl+Y\' would be a dead promise on macOS, where `kanban-history.ts` binds',
     '// mod+Shift+Z; the canonical token is what lets the shared row render the real glyph.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-context-menu.tsx', [
+    '/** The destinations the active view draws, so a card can be sent to one without a drag. */',
+    '/**\n * The two coordinates a board cell has. Both are written by a drag, and a drag is the one gesture a\n * touch reader cannot perform — long-pressing a card opens this very menu, so each axis gets a\n * submenu of the destinations the board draws.\n */',
+    '/** One axis\' property id, options and writer, or nothing when the host wired no such axis up. */',
+    '// A multi-select group holds arrays, so "which one is this card in" is a membership question.',
+    '/**\n * The move-to rows, one per axis that has somewhere to go. Kept out of the card\'s own act list so a\n * board with a single group (or without swimlanes) grows no row at all.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-control-names.test.ts', [
     '/**\n * Every control the board renders has to say what it does: an icon-only button with no name reads\n * as "Button" in a screen reader, which is the same gap the popover pass closed for panels\n * (review #29). Rather than trusting a hand-tallied list of suspects, this mounts the real board,\n * walks every interactive element of each view and of the detail dialog, and fails with the\n * offending markup — so a new control that forgets its name is named by the suite, not by a review.\n */',
@@ -3555,10 +3567,18 @@ const allowed = new Map([
     '/**\n * Half a dozen kanban labels were assembled in JSX out of message fragments — `${action}: ${name}`,\n * `{label} {count} {noun}`, `{label} ({count})` — which freezes English word order into the\n * component: a Chinese reader of the same board hears an ASCII colon inside a Chinese phrase, and a\n * single selected card reads "Selected 1 items". Each case asserts the whole phrase comes from one\n * resource entry with only the value substituted, in both languages the app ships.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-move-announcement.test.ts', [
-    '/**\n * Moving a card between columns is the one board action whose result is nowhere but on screen: the\n * drop and the Alt+arrow chord both just re-render the columns, so a screen reader user hears\n * nothing at all and cannot tell which group the card landed in (review #29, K2-03e5). The board\n * therefore carries a polite live region, and both move paths — keyboard and pointer — report\n * through it. These cases pin the three behaviours that make it usable rather than noisy: the\n * region exists before the first move (a live region added at the moment of the change is often not\n * announced), a move that changes the group speaks the item and its new column, and a reorder\n * inside one column stays silent.\n */',
+    '/**\n * Moving a card between columns is the one board action whose result is nowhere but on screen: the\n * drop and the Shift+arrow chord both just re-render the columns, so a screen reader user hears\n * nothing at all and cannot tell which group the card landed in (review #29, K2-03e5). The board\n * therefore carries a polite live region, and both move paths — keyboard and pointer — report\n * through it. These cases pin the three behaviours that make it usable rather than noisy: the\n * region exists before the first move (a live region added at the moment of the change is often not\n * announced), a move that changes the group speaks the item and its new column, and a reorder\n * inside one column stays silent.\n */',
     '/** Scoped to the board region so the header\'s own save-status `role="status"` cannot stand in. */',
     '/** The chord is pressed on a real control inside the card, which is where keyboard focus lives. */',
     '/** What the browser hands the drop handler after a drag started on a card of this board. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-move-to-axes.ts', [
+    '/**\n * The value a card holds on one axis, as the board reads it: the value itself, or the bucket key the\n * board uses for a card that names none. Anything else — a label where the board expects an id — is\n * handed back unchanged, so a menu move never rewrites a value it did not understand.\n */',
+    '/**\n * The destinations the move-to menu offers and the writers that send a card to one. A move names one\n * coordinate and leaves the other alone, which is what a drop does: a column of a banded board never\n * writes the band, because the band a card is drawn in is the field that card already holds. A row\n * does name the column, and has to — the writer reorders within the column it is told, so a row move\n * that named none would drop the card out of its column and take its grouping with it.\n *\n * Both writers go through `moveItem`, the very path a drop takes, so a menu move clears the sorts a\n * manual order does not survive on and lands in the group\'s own order, exactly as a drag would.\n */',
+    '// The card is looked up at call time through the document the menu renders from, which keeps these',
+    '// writers one identity for as long as the mover is.',
+    '// A destination the card already names is the row the menu draws as checked. Writing it again would',
+    '// spend a step of undo on a gesture that changed nothing, so both writers stop there.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-option-names.test.ts', [
     '/**\n * The kanban pickers offer choices the reader cannot name: a lucide button was labelled with its\n * source identifier (`CheckCircle`, read out letter by letter), a colour dot with its token id\n * (`slate`), and the card header\'s remove button said only "Remove tag" next to several tags. Every\n * one of those identifiers is also the value written into the fence, so the *display* name is what\n * has to change while the stored string must not. Each case mounts the real surface once per shipped\n * language, asks for the option by the message the resources hold for it, and then checks what the\n * click persists.\n */',

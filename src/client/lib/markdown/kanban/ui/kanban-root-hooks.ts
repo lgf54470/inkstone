@@ -9,6 +9,7 @@ import { toastWithUndo } from '../../../../store/ui'
 import type { KanbanMovePivot } from '../dnd'
 import { kanbanPeopleDirectory } from '../person'
 import { kanbanActiveItems } from '../archive'
+import { useKanbanMoveToAxes } from './kanban-move-to-axes'
 import { kanbanBoardLayout, moveKanbanItemToCell } from '../swimlane'
 import type { KanbanBoardCell } from '../swimlane'
 import { useKanbanArchive } from './kanban-archive'
@@ -400,6 +401,7 @@ export function useKanbanRootState(
   const viewOps = useKanbanViewOperations(data.views, commitData, history.undo)
 
   const handleMoveItem = useMoveItemClearingSorts(items.handleMoveItem, filterSort)
+  const moveToAxes = useKanbanMoveToAxes(data, filterSort.activeView, handleMoveItem)
   const handleDeleteItem = useKanbanItemDeletion(data.items, itemLifecycle.handleDeleteItem, history.undo)
   // The roster a member picker offers: read off every card, so filtering the board down never
   // removes a teammate from the list of people who can be assigned.
@@ -416,6 +418,7 @@ export function useKanbanRootState(
     commitData,
     filterSort,
     groupColumn,
+    moveToAxes,
     selection,
     items: { ...items, ...itemLifecycle, handleMoveItem, handleDeleteItem },
     adds,

@@ -104,13 +104,13 @@ function stripCell(container: HTMLElement, groupKey: string): HTMLElement {
   return node!
 }
 
-function pressAltArrow(itemId: string, key: 'ArrowRight' | 'ArrowLeft' | 'ArrowUp' | 'ArrowDown'): void {
+function pressShiftArrow(itemId: string, key: 'ArrowRight' | 'ArrowLeft' | 'ArrowUp' | 'ArrowDown'): void {
   const card = document.querySelector<HTMLElement>(`[data-item-id="${itemId}"]`)
   expect(card, `card ${itemId} is not in the document`).not.toBeNull()
   const origin = card!.querySelector<HTMLElement>('button') ?? card!
   origin.focus()
   act(() => {
-    origin.dispatchEvent(new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true }))
+    origin.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey: true, bubbles: true, cancelable: true }))
   })
 }
 
@@ -230,13 +230,13 @@ describe('one cell of the grid, and a board with no cells to cut', () => {
 describe('a card that moves between rows', () => {
   it('writes the band it landed in and keeps the column it was in', () => {
     const { onUpdateData } = mountKanban(bandedData())
-    pressAltArrow('a1', 'ArrowDown')
+    pressShiftArrow('a1', 'ArrowDown')
     expect(writtenCard(onUpdateData, 'a1')?.properties).toEqual({ status: TODO, owner: 'bob' })
   })
 
   it('says which row the card is now in', () => {
     const { container, onUpdateData } = mountKanban(bandedData())
-    pressAltArrow('a1', 'ArrowDown')
+    pressShiftArrow('a1', 'ArrowDown')
     expect(lastCommit(onUpdateData)).toBeTruthy()
     expect(liveRegion(container).textContent).toBe(t('preview.kanban_moved_to_band', {
       title: 'Card a1',
@@ -247,7 +247,7 @@ describe('a card that moves between rows', () => {
 
   it('takes the card out of the field when it walks into the unassigned row', () => {
     const { onUpdateData } = mountKanban(bandedData())
-    pressAltArrow('a1', 'ArrowUp')
+    pressShiftArrow('a1', 'ArrowUp')
     const moved = writtenCard(onUpdateData, 'a1')
     expect('owner' in moved!.properties).toBe(false)
     expect(moved!.properties.status).toBe(TODO)
@@ -255,15 +255,100 @@ describe('a card that moves between rows', () => {
 
   it('keeps the row it stands in when it walks to another column', () => {
     const { onUpdateData } = mountKanban(bandedData())
-    pressAltArrow('a1', 'ArrowRight')
+    pressShiftArrow('a1', 'ArrowRight')
     expect(writtenCard(onUpdateData, 'a1')?.properties).toEqual({ status: DOING, owner: 'alice' })
   })
 
   it('has nowhere to go at the edge of the grid and writes nothing', () => {
     const { onUpdateData } = mountKanban(bandedData())
-    pressAltArrow('n1', 'ArrowUp')
-    pressAltArrow('d1', 'ArrowRight')
+    pressShiftArrow('n1', 'ArrowUp')
+    pressShiftArrow('d1', 'ArrowRight')
     expect(lastCommit(onUpdateData)).toBeUndefined()
+  })
+})
+
+/**
+ * A long press, which is what a touch reader has instead of a drag: the browser reports it as a
+ * contextmenu on the card. The menu is a portal, so its rows are read off the document.
+ */
+function longPressCard(itemId: string): void {
+  const card = document.querySelector<HTMLElement>(`[data-item-id="${itemId}"]`)
+  expect(card, `card ${itemId} is not in the document`).not.toBeNull()
+  act(() => {
+    card!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 40, clientY: 40 }))
+  })
+}
+
+function menuRow(label: string): HTMLElement {
+  const row = [...document.querySelectorAll<HTMLElement>('button[role="menuitem"], button[role="menuitemcheckbox"]')]
+    .find((button) => button.textContent === label)
+  expect(row, `no pressed-open menu row labelled ${label}`).not.toBeNull()
+  return row!
+}
+
+function click(element: HTMLElement): void {
+  act(() => {
+    element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+  })
+}
+
+describe('moving a card to another group from the menu a long press opens', () => {
+  it('sends it to the group and keeps the row it was drawn in', () => {
+    const { onUpdateData } = mountKanban(bandedData())
+    longPressCard('a1')
+    click(menuRow(t('preview.kanban_move_to_column')))
+    click(menuRow('In Progress'))
+    expect(writtenCard(onUpdateData, 'a1')?.properties).toEqual({ status: DOING, owner: 'alice' })
+  })
+
+  it('leaves the row it stood in when the group it moves to already holds a card of that row', () => {
+    // Bob's row already holds a card of the target group, so a move that fell back to reordering by
+    // group alone would draw this card beside that one and lose the row it never left.
+    const data = bandedData()
+    data.items.push(card('b2', { status: DOING, owner: 'bob' }))
+    const { container, onUpdateData } = mountKanban(data)
+    longPressCard('a1')
+    click(menuRow(t('preview.kanban_move_to_column')))
+    click(menuRow('In Progress'))
+    expect(writtenCard(onUpdateData, 'a1')?.properties).toEqual({ status: DOING, owner: 'alice' })
+    expect(cardIdsIn(cell(container, DOING, 'alice'))).toContain('a1')
+    expect(cardIdsIn(cell(container, DOING, 'bob'))).not.toContain('a1')
+  })
+
+  it('marks the group the card is in, so the menu says where it already stands', () => {
+    mountKanban(bandedData())
+    longPressCard('d1')
+    click(menuRow(t('preview.kanban_move_to_column')))
+    expect(menuRow('In Progress').getAttribute('aria-checked')).toBe('true')
+    expect(menuRow('To Do').getAttribute('aria-checked')).toBe('false')
+  })
+
+  it('spends no step of undo on the group the card already stands in', () => {
+    const { onUpdateData } = mountKanban(bandedData())
+    longPressCard('a1')
+    click(menuRow(t('preview.kanban_move_to_column')))
+    click(menuRow('To Do'))
+    expect(lastCommit(onUpdateData)).toBeUndefined()
+  })
+})
+
+describe('moving a card to another row from the menu a long press opens', () => {
+  it('sends it to the row and keeps the column it was in', () => {
+    const { onUpdateData } = mountKanban(bandedData())
+    longPressCard('a1')
+    click(menuRow(t('preview.kanban_move_to_band')))
+    click(menuRow('Bob'))
+    expect(writtenCard(onUpdateData, 'a1')?.properties).toEqual({ status: TODO, owner: 'bob' })
+  })
+
+  it('offers no row where the board draws no band', () => {
+    mountKanban(bandedData({ swimlaneBy: undefined }))
+    longPressCard('a1')
+    expect(menuRow(t('preview.kanban_move_to_column'))).toBeTruthy()
+    expect(
+      [...document.querySelectorAll<HTMLElement>('button[role="menuitem"], button[role="menuitemcheckbox"]')]
+        .map((button) => button.textContent),
+    ).not.toContain(t('preview.kanban_move_to_band'))
   })
 })
 
@@ -278,7 +363,7 @@ describe('a card that lands in a column already past its rule', () => {
       ],
     }
     const { container } = mountKanban(data)
-    pressAltArrow('a1', 'ArrowDown')
+    pressShiftArrow('a1', 'ArrowDown')
     expect(liveRegion(container).textContent).toBe(t('preview.kanban_moved_to_band_over', {
       title: 'Card a1',
       group: formatKanbanGroupLabel(TODO, 'To Do'),

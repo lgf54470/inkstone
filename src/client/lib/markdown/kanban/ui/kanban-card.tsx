@@ -1,6 +1,7 @@
 import { memo, useState, type KeyboardEvent } from 'react'
 import { Flag, Paperclip } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
+import { isEditableTarget } from '../../../hotkeys'
 import { getKanbanTagStyle } from '../colors'
 import { getKanbanCardDate } from '../date-fields'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
@@ -12,7 +13,7 @@ import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanPersonAvatar } from './kanban-person-picker'
 
-/** Alt+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */
+/** Shift+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */
 export type CardMoveDirection = 'prev' | 'next' | 'up' | 'down'
 
 interface KanbanCardProps {
@@ -150,18 +151,27 @@ function useKanbanCardTitle(initialTitle: string, onUpdate: (title: string) => v
   return { isEditing, text, setText, startEditing: () => setIsEditing(true), handleBlur, handleCancel }
 }
 
+const CARD_MOVE_KEYS: Record<string, CardMoveDirection> = {
+  ArrowRight: 'next',
+  ArrowLeft: 'prev',
+  ArrowDown: 'down',
+  ArrowUp: 'up',
+}
+
+/**
+ * Shift+Arrow walks a card one step of the grid. It used to be Alt+Arrow, which had to go: Alt+Left
+ * and Alt+Right are the browser's own Back and Forward on Windows and Linux, so the card gesture
+ * shared a chord with leaving the page and only worked for as long as the page won the race for it.
+ * Shift is owned by nothing on its own, but it is how text is selected inside a field, so a key press
+ * that started in one is left to the field.
+ */
 function handleCardKeyDown(
   e: KeyboardEvent<HTMLDivElement>,
   onMove?: (direction: CardMoveDirection) => void,
 ) {
-  if (!e.altKey) return
-  const direction: CardMoveDirection | undefined =
-    e.key === 'ArrowRight' ? 'next'
-      : e.key === 'ArrowLeft' ? 'prev'
-        : e.key === 'ArrowDown' ? 'down'
-          : e.key === 'ArrowUp' ? 'up'
-            : undefined
-  if (!direction) return
+  if (!e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return
+  const direction = CARD_MOVE_KEYS[e.key]
+  if (!direction || isEditableTarget(e.target)) return
   e.preventDefault()
   onMove?.(direction)
 }
@@ -261,8 +271,9 @@ function headerOverlayClass(cardSize: 'small' | 'medium' | 'large', tagCount: nu
  * `role='button'` would add a second, unlabeled control for the same action and a second tab stop that
  * reads as a duplicate. Key events still reach the container's handler, because they bubble from the
  * focused children (the checkbox, the title button, the menus); a card with nothing focused is not
- * expected to answer a key press, and moving a card by keyboard is offered from those menus too. This is
- * the exemption registered under AGENTS.md rule 10 (review K-23), stated rather than left implicit.
+ * expected to answer a key press, and moving a card is offered from those menus as well — both the
+ * Shift+Arrow step and the move-to rows the context menu grows. This is the exemption registered under
+ * AGENTS.md rule 10 (review K-23), stated rather than left implicit.
  */
 export const KanbanCard = memo(function KanbanCard({
   item,

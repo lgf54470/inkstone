@@ -233,7 +233,7 @@ function useKanbanBoardMoves(
     moveItem(itemId, cell, pivot)
   }
 
-  /** Alt+Arrow walks one step of the grid the card is in, keeping the coordinate it did not touch. */
+  /** Shift+Arrow walks one step of the grid the card is in, keeping the coordinate it did not touch. */
   const handleMoveCell = (itemId: string, cell: KanbanBoardCell, direction: CardMoveDirection) => {
     const step = direction === 'next' || direction === 'prev'
       ? neighbourKey(groups.map((group) => group.groupKey), cell.groupKey, direction === 'next' ? 1 : -1)

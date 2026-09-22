@@ -99,9 +99,15 @@
 
 ## 3. P1 — 功能完整度（全屏＝独立 app）
 
-### K-11 移动端无法搬卡，且无「移动到…」入口 → 待修
+### K-11 移动端无法搬卡，且无「移动到…」入口 → 已修（`（本提交）`）
 - 证据：拖拽只走 HTML5 DnD（`ui/kanban-board-dnd.ts`）；模块内 pointer/touch 仅列宽把手；上下文菜单无「移动到分组」；键盘路径只有 Alt+方向键，而 Alt+←/→ 是浏览器后退键（未验证能否 `preventDefault`）。
 - 影响：手机/平板唯一搬卡方式是外接键盘。
+- 落地：
+  - ① **两个坐标各得一个子菜单**。`ui/kanban-context-menu.tsx` 新增可选 `groupOptions` / `laneOptions` / `onMoveItemToGroup` / `onMoveItemToLane`，渲染两行 `submenuFor(...)`：分组行（`preview.kanban_move_to_column`，复用了此前没人用的死键并把 zh 的「移动到列」校成「分组」以对齐模块其余文案）与泳道行（新键 `preview.kanban_move_to_band`）；每行只在视图确有该轴且属性有选项时出现，卡当前所在的那一项用 `checked` 打勾（`role=menuitemcheckbox`）。**触屏可达性成立**：`Menu` 的 `handleClick` 对带 `submenu` 的行是「点一下展开」（不是 hover-only），子菜单行是真按钮，所以长按 → 移动到分组 → 点目标 是纯指针路径。
+  - ② **写入走拖拽同一条路**（`ui/kanban-move-to-axes.ts`，为守 500 行从 `kanban-root-hooks.ts` 抽出）：两个 writer 都调 `moveItem`（即 `useMoveItemClearingSorts` 包装过的同一个 mover），所以排序清理、落到分组内顺序、一次手势一步撤销都与拖拽一致。坐标语义按拖拽对齐——**换分组不写泳道**（卡片画在哪条泳道是它自己的字段，写入的只有分组；板上有泳道时也不会跳行），**换泳道要带上当前分组**（`moveKanbanItemToCell` 会在你给的分组里重排，不给就会把卡片从原分组里挪走）；已目标即当前值时两个 writer 都直接返回，不给「点自己所在的勾选项」留一步空撤销。
+  - ③ **快捷键改绑 Alt+方向键 → Shift+方向键**（`ui/kanban-card.tsx`）。Alt+←/→ 在 Windows/Linux 是浏览器后退/前进，靠 `preventDefault` 抢回来属于「赢在当下、输在某个版本」，不值得把卡片手势押上去；Shift 单键没有被任何浏览器加速键占用。同时补了当初缺的护栏：按键起点是输入框/文本域/`.cm-editor`（复用 `lib/hotkeys.ts` 的 `isEditableTarget`）时一律不管，否则改标题时 Shift+方向键选文字会顺带搬卡；无修饰键的裸方向键也不动手。
+- 验证：`kanban-context-menu.test.ts` +4 例（列出分组/打勾/回报目标、缺宿主或空选项时不出现行、泳道轴的选项与回报、两行各自只在对应轴成立时出现）；`kanban-board-swimlanes.test.ts` +6 例走**真长按（`contextmenu` 事件）→ 点菜单行 → 点目标行**的渲染级路径（换分组保住泳道、目标分组里已有别行卡片时仍不换行、勾选态、同目标零提交、换泳道保住分组、无泳道时不给该行）；`kanban-move-announcement.test.ts` +2 例（裸方向键不动、字段内 Shift+方向键不动）。四个旧助手从 `altKey` 改成 `shiftKey`（改名 `pressShiftArrow*`）。两次变异逐一被杀：分组写入改带 `laneKey: '__none__'` → 2 例红；换泳道回显 `'__none__'` 而非当前分组 → 1 例红；去掉 `shiftKey` 与 `isEditableTarget` 两个护栏 → 各 1 例红。
+- 遗留（登记不施工）：**真机（真实触屏设备）未验证**，本机没有可用的触屏设备，只有 jsdom 渲染级路径与共享 `Menu` 自身的用例；`item.cover` 与多选属性的分组写入仍是拖拽路径原有语义（多选分组字段上写入标量），菜单与拖拽共用同一 writer，没有引入新的不一致，但也未修正。
 
 ### K-12 时间线/甘特固定 28 天窗口 → 待修
 - 证据：`timeline-helpers.ts:22` `buildTimelineDays(7, 21)`，两视图 `useMemo(…, [])` 挂载算一次；`calculateTimelineBarGeometry` 直接 `left = startIdx * 48 + 4`。
