@@ -126,7 +126,13 @@
   - ③ 顺手修同一个变更里暴露的无障碍缺陷：`components/overlay/menu.tsx` 的选中标记原本是一段字面 `‘✓’` 文本，会进入行的可访问名（`aria-checked` 已经报过一次，于是被读两遍）。改为 `lucide` 的 `Check` 图标 + `aria-hidden`，与 `submenu.tsx` 子菜单行的写法一致。`tag-filter-popover-views.tsx:50` 有同一段写法，已在 review 末尾另行登记（不夹带）。
   - ④ 为守住 500 行，把两个覆盖层（详情面板与上下文菜单）从 `ui/kanban-root.tsx` 移到新文件 `ui/kanban-overlays.tsx`（纯搬迁，无行为变化）。
 - K-13a 验证：新增 `ui/kanban-select-all.test.ts`（7 例，渲染级）——列菜单勾选框选中本列、不动其他列、勾选态与取消、可见集合受搜索限制（同时断言批量条计数为 2，因为未渲染的卡片无法从 DOM 看出）、已全选时的勾选态、再点一次清空、列表视图同样可达；`kanban-context-menu.test.ts` +4 例（两个分支都给出该行、勾选态与回调、位于批量步骤之后且在「清除选择」之前、宿主不支持时不出行）。四次变异逐一被杀：本列 id 取成当前选择、可见集合换成 `state.data.items`（先被漏掉，后靠批量条计数断言补上）、列菜单不接 `selectAll`。
-- 待办：K-13b 批量标签/负责人/到期日仍未施工。
+- K-13b 落地（批量字段）：
+  - ① 批量条只多一个入口：`ui/kanban-batch-bar.tsx` 新增可选 `edits`（`assignees` / `tags` / `onAssign` / `onAddTag` / `onSetDueDate`）与 `BatchEditsMenu`（共用 `Menu` + `submenuFor`，子菜单为 Portal，键盘/触屏路径都在组件里）。选菜单而不是再加三个 `<select>`：条子是浮在看板上的，每多一个控件就多盖一块卡片。
+  - ② 写入器收进新模块 `ui/kanban-batch-edits.ts`：`handleBatchSetProperty`（负责人、到期日）、`handleBatchAddTag`（与卡上已有标签求并集，已有则不重复写）、`handleBatchGroupChange`（一并从 `kanban-root-hooks.ts` 搬过来，空的 selection 不再空提交）。字段写入**保留选择**（卡原地不动，读者可能还要接着设下一个字段），改分组仍然清空选择（卡搬走了，屏幕上剩下的不再是他刚才在弄的那批）——这一差别写在该模块的文件头注释里。
+  - ③ 到期日给的是按天递进的选项（今天/明天/下周/清除）而不是日历：模块自己的 `kanban-date-picker` 是独立浮层，嵌进菜单面板会让两个浮层争 Escape 与外部点击；写的是与详情面板同一个 `dueDate` 键，`undefined` 即清空。
+  - ④ 接线在 `ui/kanban-root.tsx` 的 `useKanbanBatchEditFields()`：人员列按 `type === 'person'` 找（不写死 `assignee`/`owner`，已用 `members` 列名钉住），名单取 `people[列 id]`；标签列仍按模块惯例取 `id === 'tags'`；字段缺失即不出该行，三个都缺则连入口都不出。
+- K-13b 验证：新增 `ui/kanban-batch-edits.test.ts` 15 例：单元 6（指派写入与原子性、选择保留、标签求并集、重复不起作用、清到期日写 `undefined`、空集零提交）、批量条 6（无配置无入口、给了空字段就不出行、三个子菜单的标签与顺序、无字段配置时无入口、按天选项的顺序与明天实算、清除选项）、渲染级 2（从看板勾选两张卡→指派同一人；加标签后选择仍在且批量条计数不变）。三次变异逐一被杀：标签写入改成覆盖、去掉重复守卫、指派写死列 id。
+- K-13 结案：选择能力与批量字段均已落地。
 
 ### K-14 `item.cover` 只读不写 → 已修（`（本提交）`）
 - 落地：`ui/kanban-files-cell.tsx` 新增可选 `cover` / `onChangeCover` 两 prop（宿主不传则没有任何行显示封面动作）；只对图像文件给按钮（`isImageFile`，与画廊选图同一判定思路），带 `aria-pressed` 与逐文件的 `aria-label`（用文件名的 i18n 键，不靠图标说话）；点已为封面的那一行则传 `undefined`（移除封面，回到「画廊用第一张图」的默认）。接线在详情面板（`ui/kanban-item-detail-fields.tsx` 传 `item.cover` 与 `onUpdate({ ...item, cover })`），与文件增删同一条可撤销提交路径。表格的文件格不接：那里是快速改值的列，把封面动作同时塞进去会让同名按钮在一行里出现两次（已在 review 登记这一取舍）。双语 +2 键。

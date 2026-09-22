@@ -9,6 +9,7 @@ import { toastWithUndo } from '../../../../store/ui'
 import type { KanbanMovePivot } from '../dnd'
 import { kanbanPeopleDirectory } from '../person'
 import { kanbanActiveItems } from '../archive'
+import { useKanbanBatchEdits } from './kanban-batch-edits'
 import { useKanbanMoveToAxes } from './kanban-move-to-axes'
 import { kanbanBoardLayout, moveKanbanItemToCell } from '../swimlane'
 import type { KanbanBoardCell } from '../swimlane'
@@ -316,6 +317,8 @@ export function useKanbanSelection(
   undo: () => void,
 ) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
+  const batchEdits = useKanbanBatchEdits({ selectedIds, groupColumn, commitData, clearSelection })
 
   const handleToggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -330,38 +333,22 @@ export function useKanbanSelection(
     setSelectedIds((prev) => computeSelectionAfterToggleAll(prev, ids))
   }, [])
 
-  const handleClearSelection = useCallback(() => setSelectedIds(new Set()), [])
-
-  // Batch assignment follows the active view's grouping property; a
-  // multi-select column keeps its array shape.
-  const handleBatchGroupChange = useCallback((groupId: string) => {
-    const propertyId = groupColumn?.id || 'status'
-    const value = groupColumn?.type === 'multi-select' ? [groupId] : groupId
-    commitData((prev) => ({
-      ...prev,
-      items: prev.items.map((item) =>
-        selectedIds.has(item.id) ? { ...item, properties: { ...item.properties, [propertyId]: value } } : item,
-      ),
-    }))
-    setSelectedIds(new Set())
-  }, [selectedIds, commitData, groupColumn?.id, groupColumn?.type])
-
   const handleBatchDelete = useCallback(() => {
     const count = selectedIds.size
     if (count === 0) return
     commitData((prev) => ({ ...prev, items: prev.items.filter((item) => !selectedIds.has(item.id)) }))
-    setSelectedIds(new Set())
+    clearSelection()
     toastWithUndo(t('preview.kanban_batch_deleted_count', { count }), undo, { duration: DESTRUCTIVE_UNDO_TOAST_MS })
-  }, [selectedIds, commitData, undo])
+  }, [selectedIds, commitData, clearSelection, undo])
 
   return {
     selectedIds,
     setSelectedIds,
     handleToggleSelect,
     handleToggleAll,
-    handleClearSelection,
-    handleBatchGroupChange,
+    handleClearSelection: clearSelection,
     handleBatchDelete,
+    ...batchEdits,
   }
 }
 

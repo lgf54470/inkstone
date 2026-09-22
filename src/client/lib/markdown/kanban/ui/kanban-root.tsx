@@ -1,4 +1,4 @@
-import { memo, useId, useRef } from 'react'
+import { memo, useId, useMemo, useRef } from 'react'
 import { useLocaleRepaint } from '../../../i18n'
 import type {
   KanbanColumnPatch,
@@ -11,6 +11,7 @@ import type {
 import type { KanbanMovePivot } from '../dnd'
 import type { KanbanBoardCell } from '../swimlane'
 import { KanbanBatchBar } from './kanban-batch-bar'
+import type { KanbanBatchEdits } from './kanban-batch-bar'
 import { KanbanBoardView } from './kanban-board-view'
 import { KanbanCalendarView } from './kanban-calendar-view'
 import { KanbanChartView } from './kanban-chart-view'
@@ -319,6 +320,27 @@ function KanbanViewArea({ state }: { state: ReturnType<typeof useKanbanRootState
   )
 }
 
+/**
+ * Which fields a batch can be rewritten with, read off this board: the member column decides who may
+ * be assigned, the tag column which tags may be added. A field the board does not have is left out
+ * rather than offered and then ignored.
+ */
+function useKanbanBatchEditFields(state: ReturnType<typeof useKanbanRootState>): KanbanBatchEdits {
+  const { data, people, selection } = state
+  return useMemo(() => {
+    const personColumn = data.columns.find((column) => column.type === 'person')
+    const assigns = personColumn ? people[personColumn.id] : undefined
+    const tagsColumn = data.columns.find((column) => column.id === 'tags')
+    return {
+      assignees: assigns ?? [],
+      tags: tagsColumn?.options ?? [],
+      onAssign: (name) => selection.handleBatchSetProperty(personColumn!.id, name),
+      onAddTag: (tagId) => selection.handleBatchAddTag('tags', tagId),
+      onSetDueDate: (date) => selection.handleBatchSetProperty('dueDate', date),
+    }
+  }, [data.columns, people, selection])
+}
+
 function KanbanMain({
   state,
   viewPanelId,
@@ -326,6 +348,7 @@ function KanbanMain({
   state: ReturnType<typeof useKanbanRootState>
   viewPanelId: string
 }) {
+  const batchEdits = useKanbanBatchEditFields(state)
   return (
     // The selected view is what its tab controls, so this box is the panel; hanging the role here
     // rather than on a wrapper keeps the geometry untouched and avoids a second landmark in the shell.
@@ -343,6 +366,7 @@ function KanbanMain({
         onBatchArchive={() => state.handleArchiveItems(state.selection.selectedIds)}
         onBatchDelete={state.selection.handleBatchDelete}
         onClearSelection={state.selection.handleClearSelection}
+        edits={batchEdits}
       />
     </div>
   )
