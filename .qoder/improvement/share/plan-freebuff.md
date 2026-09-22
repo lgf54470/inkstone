@@ -129,9 +129,11 @@
 | SH-103 | `scripts/e2e-visual.mjs` 的 `assertShareCenter`（四条 axe 断言）与 `scripts/check-contrast.mjs` 里同一个表面 | 这些断言读的是**账号当前状态**画出来的表面：账号零标签、零访问时，hub 侧栏没有文件夹/标签行（SH-93），KPI 卡没有 delta 徽标（SH-102），于是两类违规都读不到。「分享中心没有 a11y 违规」这句话目前只在**空账号**上被证明过；第 48 项量到同一实例上第一次 230/0、紧接着第二次 222/7，红的正是这三条 | 与 SH-102 一起处理：断言前先用 API 给夹具账号造出一条标签与一次访问（各一条即可），或把这类表面拆成「空账号 / 有数据账号」两组断言，让两种状态都被读到。**§51 已修**：两个门禁共用的 `seedShareHubData()`（`e2e-harness.mjs`）在断言前把标签与访问放到夹具账号上，并断言「夹具到位」与「KPI 徽标已画出」两件事 |
 | SH-104 | `src/worker/routes/blog/visits.ts` 的 `recordBlogVisit()` | SH-101 的博客倒影，且更宽一点：它同样是**先查后写**（`SELECT 1 AS seen FROM blog_visits …` 之后才 `insertBlogVisit`），所以同一访客的并发请求会写出两行；区别在于这里**每行都会写**（那个布尔只决定是否加计数），于是重复行直接进日志表。另：未配置 `VISIT_FP_SECRET` 时 `visitorFp` 为 null、那段读被跳过，对每次访问都返回 true——与分享侧同一个「无指纹 ⇒ 每次各算一次」的口径，但博客侧界面没有说明 | 与 SH-101 同法处理（窗口进 INSERT、计数跟着写入结果走），并复用 `SiteInfo.visitorFingerprints` 让博客看板与访客列表也说清楚；属 blog 自己的范围，不在本轮 share 红线内 |
 | SH-105 | `src/client/components/overlay/tooltip.tsx`（`Tooltip` 渲染的 `role='tooltip'` 面板）——**§58 已关闭** | 提示与触发器**没有任何程序化关联**：面板没有 id，触发器上也没有 `aria-describedby`/`aria-labelledby`，所以屏幕阅读器听不到提示里的文字；而图标按钮在补名字之前，`title` 常是它唯一的名字来源（第 53 项一次量到全仓 25 处无名裸按钮，其中十几处就在 `<Tooltip>` 里） | 让 `Tooltip` 用 `useId` 给面板一个 id 并把它作为 `aria-describedby` 交给触发器（触发器的**名字**仍应由 `aria-label` 提供，提示只作描述）；属共用组件改动，要跑音乐/看板/侧栏等所有浮层回归 |
-| SH-107 | `src/client/lib/markdown/kanban/ui/kanban-card.tsx`、`kanban-gallery-view.tsx`、`kanban-list-view.tsx`（卡片根） | 看板的一张卡片是**一个点击目标**（点任意处打开详情）同时又装着自己的控件（选择框、标签菜单、子任务开关、卡片菜单），即使把行本体换成真 `button` 也仍然是「控件套控件」——正是 axe 的 `nested-interactive`。§53 的守卫按名字给这三处开了口子，§55 的浏览器读者在真表面上也读到了同一条违规 | 要么把卡片拆成「一个可聚焦的标题按钮 ＋ 卡片作为容器」，要么把卡片根改成 `role="group"` 并把「点任意处」交给一个真正的按钮；两者都是卡片面重设计，不是改名——先做设计决策再动手（§55 的 `SURFACE_A11Y_ALLOWANCES` 里按 `kanban:nested-interactive` 登记，两侧失败） |
+| SH-107 | `src/client/lib/markdown/kanban/ui/kanban-card.tsx`、`kanban-gallery-view.tsx`、`kanban-list-view.tsx`（卡片根）——**§59 已关闭** | 看板的一张卡片是**一个点击目标**（点任意处打开详情）同时又装着自己的控件（选择框、标签菜单、子任务开关、卡片菜单），即使把行本体换成真 `button` 也仍然是「控件套控件」——正是 axe 的 `nested-interactive`。§53 的守卫按名字给这三处开了口子，§55 的浏览器读者在真表面上也读到了同一条违规 | 要么把卡片拆成「一个可聚焦的标题按钮 ＋ 卡片作为容器」，要么把卡片根改成 `role="group"` 并把「点任意处」交给一个真正的按钮；两者都是卡片面重设计，不是改名——先做设计决策再动手（§55 的 `SURFACE_A11Y_ALLOWANCES` 里按 `kanban:nested-interactive` 登记，两侧失败） |
 | SH-108 | `src/client/styles/kanban.css` 的 `--kanban-tag-*-fg` / `-bg` 与 `getKanbanTagStyle()` 的用法——**§58 已关闭** | 看板自带一套标签配色，前景画在自己的软底上：§55 的读者在两套主题里读到 `color-contrast`（蓝在自身软底上 3.64:1、白底 4.46:1，都不过 AA）——与第 40/53 项给应用强调色做的 AA 校准是同一件事，但这一套色板没经过那道工序 | 按 §40/§53 的方法重标这套色板（前景在自身 14% 软底上作为文字 ≥4.5:1，并在 `--bg-sunken`…`--bg-raised` 上都达标），再让对比度门禁覆盖它（目前它只量应用令牌与非令牌只用不判定）——“看板标签色不是令牌”不等于可以不达标（§55 的允许里按 `kanban:color-contrast` 登记，只量了浅色主题） |
 | SH-109 | `src/client/features/music/music-hotkeys.ts` 的 `SPACE_OWNING_SURFACES`、`slides-presenter.tsx`、`templates/template-gallery.tsx` | 两件同源的事：① §56 用一张**选择器清单**把 Space 还给三个自己用它的表面（幻灯片编辑器、演示模式、模板库），而没有任何门禁会因为「新增一个自己用 Space 的表面」而变红——清单与产品会各自漂移；② 清单里后两个表面的手势（Space 翻页 / Space 选中卡片）从来没有浏览器级读者，本次只在探针里读过编辑器那一条 | 给「自己用 Space」这件事一个可被门禁看见的形状（一个共享的 `data-space-owner` 标记 ＋ `surfaces:check` 那类的名单扫描），并把演示模式与模板库的 Space 手势写进浏览器门禁（打开、按键、断言页号/选中数变化） |
+| SH-110 | `src/client/lib/markdown/kanban/ui/kanban-timeline-view.tsx`（任务列行、时间条）、`kanban-gantt-view.tsx`（任务列行、甘特条）、`kanban-calendar-view.tsx` 的 `CalendarDayCellHeader`——**§60 已关闭** | 看板另外三个视图里「打开详情」与「当天新建」都是带 `onClick` 的裸 `div`：没有 `role`、没有 `tabIndex`、没有键盘处理，键盘用户根本够不到（WCAG 2.1.1）。日历格头更进一步——**它里面装着自己的 ＋ 按钮**，正是 SH-107 的同形缺陷，只不过容器没有 `role`，所以 axe 的 `nested-interactive`、§53 的守卫（只认 `role='button'` 的假控件）与四个表面的浏览器读者都看不见它；本轮审计卡片面（§59）时才量到 | 按 §59 的形状统一：条目本体改成真 `button`（或标题做按钮、条目作容器），日历格头把「当天新建」交给格头自己的按钮；补一条「键盘 Enter 能打开详情」的断言，并让守卫认得「裸 `onClick` 的 `div`」这类没有 `role` 的假控件 |
+| SH-111 | `scripts/e2e-visual.mjs` 的 `export: the printed deck draws its charts live`（`assertDeckExport` 里的 `painted()`） | 该断言在 `[data-deck-print][data-deck-print-ready="true"]` 之后**一次性**采样 `getImageData`（每 100 像素取一个 alpha），没有等待画布非空、也没有重试：§60 的一次运行读到 `live=1 painted=0`（`live` 成立说明图表实例与画布尺寸都在），紧接着重跑 318/0 全绿。同一台机器上那次运行同时跑着别的浏览器门禁 | 判失败前给「画布真的被画过」一个等待窗口或一次显式重试（等 alpha 采样 > 0 或等 `requestAnimationFrame` 后重读），并保留读数里的 `live/painted` 两项；不要在采样为 0 时静默放行 |
 | SH-92 | `src/client/features/share/share-note-submenu.tsx`（296 行手搓面板）、`use-share-note-submenu.ts` | SH-49 唯一被白名单放行的文件：同样是菜单，却与 `buildShareMenuItems` ＋ `Menu` 那套并列存在（两套行样式、两套分隔线、两套键盘行为）。整体退役不是改名：① 它的行是 44px 触控目标（SH-35 守着的 `h-11 md:h-7.5`），而共用 `SubmenuList` 的行只有 40px（`h-10`），换过去要么降级触控目标、要么改共用行高影响音乐/看板/右键菜单；② 它的文件夹搜索与标签输入是 `role='menu'` 面板里的文本框，直接换成 `SubmenuList` 会撞 `aria-required-children`（首次试过会在新门禁里变红） | 先决定「菜单里能不能放输入框」（要么改成命令式选择、要么给面板一个非 menu 角色与自己的标签），同时把共用行高调到 44px 并跑音乐/看板/右键菜单回归；然后删掉该文件、`use-share-note-submenu` 与两处白名单条目 |
 
 ### 05 — SH-80 `loadTopNotes` 按 note id 查标题、不带 `user_id`（2026-09-21）
@@ -882,3 +884,92 @@
   - ⑦ 分支 `share-improvement-freebuff` 上的两个提交都只在本地，未 push。
 
 - 队列现状：§57 的 19 条登记项里 **5 条（校准 / 契约）本节关闭**，余 **14 条**：3 条需要产品决策（SH-91/92/107）＋ 11 条「同类问题的另一半」（SH-86/87/88/89/95/96/97/98/101/104/109，其中 blog 侧一批按范围红线不在本仓修改）。
+
+### 59 — SH-107 卡片面重设计；深色看板标签色改由像素判定（2026-09-22）
+
+> 用户本轮按一批请求两件事：关闭 SH-107（看板卡片「一个点击目标又装着自己的控件」的卡片面重设计），以及让**深色**主题的看板标签色由画出来的像素判定（补 §58 局限①）。10 个文件的内容 ＋ 本台账，**未提交、未 push**。
+
+- 改动面：
+  - **卡片面（4 个文件）**：`kanban-card.tsx` — 卡片根去掉 `role="button"`、`tabIndex` 与整卡 `onClick`；标题成为真 `button`（详情由它打开），Alt+←/→ 仍从卡片上读（容器接的是子控件冒泡上来的事件，注释里写了为什么留在这里）。`kanban-gallery-view.tsx`、`kanban-list-view.tsx` — 瓦片与行同形。`kanban-tag-filter-bar.tsx` — 未选中的 chip 不再 `opacity-70`（实测灰底上 2.95:1），改由 ring ＋ 字重区分，计数也用 chip 自己的颜色。
+  - **守卫与测试（2 个）**：`tests/client-raw-controls.test.ts` 删掉三条 `div role='button'` 例外与「例外仍然有效」那条断言，规则回到无例外；新增 `kanban-card.test.ts`（6 例，挂在真组件上：卡片根无 `role`/`tabindex`、标题按钮开详情、卡片自己的选择框不会连带开详情、Alt+←/→ 仍换列、瓦片与行同形）。
+  - **门禁（4 个）**：`check-contrast.mjs`（新增 kanban board 表面 ＋ 色板像素读者）、`e2e-harness.mjs`（`pressSurfaceControl` 从 `e2e-visual.mjs` 提到共用，两个门禁都按真实指针打开块自己的全屏控件）、`e2e-visual.mjs`（`SURFACE_A11Y_ALLOWANCES` 整表删除——`kanban:nested-interactive` 是它的最后一条；空表等于把「违规必须修掉或该表面不读」写死）、`check-comments.mjs`（本条新增/改写的注释逐条进白名单）。
+
+- SH-107 的设计决策（不是改名）：卡片是**容器**，详情属于它的标题按钮——表格视图的行早就是这个形状；三个视图同形后 `nested-interactive` 随之消失，顺带的收益是整卡点击不再和拖拽抢同一个指针。
+- 深色标签色的像素读者（补 §58 局限①）：`check-contrast.mjs` 新增第九个表面 **kanban board**（`.kanban-fullscreen`，两套主题各打开一次），夹具由**样式表声明的颜色表**生成（12 色分 3 张卡）。这个列表不再单独读一遍：它与矩阵共用同一次 `TOKEN_MATRIX('kanban')` 读取（名字给夹具、值给矩阵与判定），所以「声明的色板」只有一份答案，板与矩阵不会从两张表出发。
+- 新增 `judgePaintedPalette()`：要求**矩阵判过的每一个颜色都在该主题的屏幕上作为文字出现过并被命名**（`12 of 12 palette colours painted as text and judged, 0 never painted`）。这一侧就是「矩阵与屏幕不会各说各话」的全部内容：名字按**值**匹配，所以屏幕上的一个颜色要么带着声明值（于是被判）、要么根本不是色板颜色——后者与「声明了却没画」是同一件事，会在同一条读数里红出来。
+  - 这半边是本轮在验证里改出来的：第一版写的是「两个方向都失败」，第二个方向（画了却没判定）用 `painted.has(pair.tier) && !pair.judged` 判定——而 `judged` 本身就是由「tier 是不是令牌名」定义的，两者互斥，所以那个分支**永远不可能触发**（变异 4 专门去点亮它，证明它一直沉默）。修法不是换个写法，而是承认这里只有一个方向（理由写进了函数注释里），并把「色板上限」与「命中」放在同一个读数里报出来。
+
+- 变异（四发，各自被指名读数杀死）：
+  1. 卡片根加回 `role='button'`：`kanban-card.test.ts` 的「draws no control of its own around the controls it holds」与 `client-raw-controls` 的「models no control as a div or span with a button role」**同时变红**，后者精确报出 `kanban-card.tsx:306`。
+  2. 暗色 `--kanban-tag-blue-fg` 由 `oklch(72.75% 0.11 259.6)` 改成 `oklch(50% …)`（旧值级别的暗）：**红 34 条**，像素那一发是 `✗ [dark · kanban board] 2.59:1 --kanban-tag-blue-fg on (#3c62a1 @14%) over --bg-surface`，矩阵同时报 `✗ dark: 12 kanban tag colour/tint pairs measured (144 ratios), 12 below AA`，暗色表面上的 axe 也一并变红——声明与像素两次提问给出同一个答案。
+  3. 夹具只造 11 色（`colors.slice(1)`）：两套主题各报 `✗ 11 of 12 palette colours painted as text and judged, 1 never painted`，证明覆盖这一侧不是装饰。
+  4. 把一张 chip 的文字从令牌换成调色板自己那个值的裸十六进制（`getKanbanTagStyle` 里 gray 返回 `#5f5f5c`）：**浅色仍 12/12**（那个 hex 在浅色下就是声明值，命名按值匹配，所以它照样被判）、**暗色 11/12** 报 `--kanban-tag-gray-fg … was not painted as text on this surface`。这一发既证明覆盖侧是真读者，也证明「第二方向」不存在：屏幕上的颜色不是色板值时，它本来就只能以「声明的那个色没被画」现身。
+
+- 验证读数（本机两台临时实例：`INKSTONE_EPHEMERAL_DEV=1 npm run dev:kv`，7712 供视觉/对比度门禁，7714 供 API 套件）：
+  - `npx tsc -b` 干净；13 项静态门禁全绿（`comments` 5,984 条 / 803 文件、`style`、`size` 1493 文件、`size:check:blog`、`escape`、`empty-catch`、`module-state`、`deep-imports`、`surfaces` 8 个全屏表面、`hardcoded`、`tokens`、`i18n` 3,283 键、`vendor`）。
+  - 单元：**351 文件 / 2827 通过 ＋ 1 skipped / 0 失败**（第一次全量跑时 `tests/share-code-split.test.ts` 里那条 3.2s 的用例在整机满载下越过 5s 被判超时，单独重跑 4/4 绿、第二次全量也绿——记在这里是因为那条断言对机器负载敏感，不是改动面）。
+  - 定向：`npx vitest run src/client/lib/markdown/kanban tests/client-raw-controls.test.ts` **12 文件 / 73 用例全绿**。
+  - 浏览器门禁：`scripts/e2e.mjs`（全新实例 7714）**177 通过 / 0 失败**；`scripts/e2e-visual.mjs` **298 通过 / 0 失败**（比 §58 的 299 少的那一条正是被删掉的「没有多余允许项」断言；`kanban: axe finds nothing on it` 现在**不靠任何允许项**通过）；`scripts/check-contrast.mjs` **0 失败**，看板那一遍两套主题各报 `12 of 12 palette colours painted as text and judged, 0 never painted`（暗色 5.68–5.71:1）。
+
+- 局限（如实登记）：
+  - ① 看板另外三个视图里仍有「裸 `onClick` 的 `div`」：甘特与时间线的任务列行/时间条，以及**日历格头**（那一个还是「点击目标里装着自己的 ＋ 按钮」的同形缺陷）。它们与 SH-107 的区别是容器没有 `role`，所以 axe 的 `nested-interactive`、§53 的守卫与四个表面的读者都看不见，键盘用户也够不到（2.1.1）——登记为 **SH-110**，不在本次卡片面改动里顺手改。
+  - ② `COLLECT` 读整个文档：探针块常驻预览窗格，所以 `--kanban-tag-*-fg` 的像素读数在许多表面的报告里都会出现（报告里的标签是「这一遍」，不是「这个容器」）。判定只在 kanban board 那一遍做（`palette: 'kanban'`），不会重复计数；好处是深色那半边在分享中心、音乐三表面、侧栏几处都有旁证。
+  - ③ 像素读者读的是**文本**（`COLLECT` 只收文本行）：chip 的软底、形状、边框不在它的话里，底色对比由矩阵按声明合成。两次提问都会红（变异 2 同时红了两边），但「声明 ＋ 自己合成」与「屏幕像素」仍是两次提问——§58 局限① 那句话依然成立，只是深色与全部 12 色现在两边都有读数。
+  - ④ 只在桌面视口（1280×900）读；手机断点下看板全屏未读（与 §58 局限⑥ 同）。
+  - ⑤ 没有按 CI 的顺序把三套门禁串在**同一个**实例上跑：改动全在客户端与门禁脚本、API 路径未动，所以 `e2e.mjs` 改为在另一个全新实例上单独跑（177/0）作证，而不是复用 7712（那里的 Owner-1 由本轮注册调用建立、注册已关闭，`e2e.mjs` 的注册块需要空实例）。
+  - ⑥ 刻意未做的两件事：没有按 AGENTS.md 的段落去改那份文件（前几轮同类改动也没改，交给 PR 评审）；没有顺手改 SH-110（铁律 14）。
+  - ⑦ 两个读者共用同一份样式表扫描（夹具列表与命名表都来自它），所以**看不到的样式表会把一个颜色同时藏起来**：若某个声明的色板落在页面读不到的 sheet 里，夹具不会画它、命名也不会认它，读数会是「11 of 11」而全绿。目前色板就在 `src/client/styles/kanban.css`（同源、可读），计数行「N of N」是唯一的旁证。
+
+- 队列现状：§57 的 19 条登记项里 §58 关 5 条、本节再关 1 条（SH-107），余 **13 条**：2 条需要产品决策（SH-91/92）＋ 11 条「同类问题的另一半」；另加本节新登记 1 条（SH-110），登记项合计 **14 条**。
+
+### 60 — SH-110 键盘可达；像素读者按表面声明色族；容器点击守卫；手机断点门禁（2026-09-22）
+
+> 用户本轮按一批请求四件事：① 修 SH-110（甘特与时间线的行、日历格头改成键盘可达的真控件，并断言 Enter 能打开详情）；② 把对比度门禁的像素读者推广到**每个表面各自声明的色族**，不再只有看板那一块；③ 新增静态守卫，拦住「非交互元素上挂点击处理、并且装着控件」这种没有 `role` 的变体；④ 浏览器门禁扩到手机断点，让只在手机出现的全屏表面也跑同样的 axe 与对比度读者。四件事全部落地，过程中量到并修掉 4 处真缺陷（2 处是本节新读者第一次跑就红，2 处是量测出来的布局/React 缺陷）。本节与 §59 的改动合成**一个**代码/门禁提交 ＋ 一个台账提交（理由见局限⑨），两个提交都只在本地，**未 push**。
+
+- 改动面（产品 8 个文件）：
+  - `kanban-gantt-view.tsx` / `kanban-timeline-view.tsx`：任务列行与甘特条/时间条都是真 `button`（键盘可达，名字就是它自己画的文字；甘特条保留双击 ＋25% 的手势）。行内层 `div` 一并改成 `span`（`button` 里不写块级元素）。
+  - `kanban-calendar-view.tsx`：格头原本是「`div` ＋ `onClick`」且**装着自己的 ＋ 按钮**——SH-107 的同形缺陷，只是容器没有 `role`，所以 axe 的 `nested-interactive`、守卫与四个表面的读者都看不见。现在日期数字本身是 `button`（`preview.kanban_new_item_on_value0`，读作「在 N 日新建项目」），`+` 是它的兄弟节点，两者都往当天加卡片。
+  - `attachment-list-view.tsx`：第 4 条守卫第一次跑就点名的同类形状——附件行是「整行选中/双击预览」的裸点击目标，而它里面装着选择框。改成容器：文件名是这一行的控件（单击选中、双击预览），整行不再是点击目标。
+  - `src/client/components/overlay/drawer.tsx`：面板由 `aside role='dialog'` 改成 `div role='dialog'`。手机断点的读者第一次打开抽屉就报 `aria-allowed-role` 与 `landmark-no-duplicate-banner`（带标题的 `aside` 是第二个 banner 地标）；`Modal` 一直是 `div role='dialog'`，这是同一个形状。
+  - `src/client/features/share/share-hub-toolbar.tsx`：手机断点下工具栏把 7 个控件挤成搜索框 44px、两个 select 18px 与 27px（名字读不出来，axe 连搜索框自己的底色都判不了），改成「自己撑高 ＋ 换行」（与音乐库工具栏同形），搜索在 `sm` 以下独占一行；两个 select 不再用 `px-2` 覆盖字段自己给 chevron 留的右内边距（那会把选中项文字画到自己图标底下）。
+  - `kanban-item-detail.tsx`：**修掉一处既有的 React 缺陷**——`useKanbanDetailState` 写在 `if (!item) return null` **之后**，钩子数量随渲染变化；React 的 dev 构建在第一次打开详情时报内部错误 `Expected static flag was missing`。改成把钩子移到提前 return 之前（它本来就接受 `null` item）。这处是本节新增的键盘断言第一次真的打开详情时才被门禁看见的（此前没有门禁打开过详情）。
+  - `src/shared/locales/{en-US,zh-CN}/preview.ts`：新增 `preview.kanban_new_item_on_value0`（日历格头按钮的名字）。
+
+- 改动面（门禁与测试 5 个文件）：
+  - `tests/client-raw-controls.test.ts`：新增第 4 条规则「models no container as a click target holding a control」。只读**内建标签**（组件只消费 `children`，容器写在别处，从调用点判不出来），并把 `onPointerDown`/`onMouseDown` 与 `onClick` 一起读（拖拽手柄是合法的一类容器）。例外表 `CLICK_CONTAINER_EXCEPTIONS` 只有看板子任务那 3 处，两个方向都断言（不再写这个形状要红、多长一处也要红）。
+  - `src/client/lib/markdown/kanban/ui/kanban-view-rows.test.ts`（新增，7 例）：甘特/时间线的任务列行与条都是 `button`、Enter 打开详情、日历格头按天命名且按下会加卡片。
+  - `scripts/e2e-visual.mjs`：甘特与时间线各加「行是按钮」「键盘能到」「Enter 打开详情」三条，日历加「格头按天命名」一条；新增 `focusSurfaceControl`（`pressSurfaceControl` 的键盘孪生：按名字找到、真聚焦、聚焦不到就说出来）。断言总数 298 → **318**。
+  - `scripts/check-contrast.mjs`：① `PHONE_SURFACES` 第二遍（390×857）——抽屉与分享中心在**手机形状**下跑与桌面完全相同的四个读者（底色对、强调色全扫、像素色族、axe），两套主题各一遍，排在桌面循环之后（分享中心的侧栏入口是一次性的，手机从底部栏进）；② 每个表面声明自己要画的色族（`painted: ['text','accent']` 之类），`judgePaintedPalette()` 要求声明的每一个颜色都真的以文字画出来并被命名——看板那一块（§59）之外的所有桌面表面与两个手机表面都接上了；③ `readSurface()` 抽出来给两遍共用。
+  - `scripts/check-comments.mjs`：本轮新增/改写的注释逐条进白名单（抽屉那条原本写成了 JSX 文本、被 `i18n:check` 抓到，已改成真注释）。
+
+- 关键决策：
+  - 「容器」与「控件」二选一，不是改名：一行只有一个「打开详情」动作时，行就是控件（真 `button`）；行里还装着自己的控件时，行是容器、动作归命名它的那个控件（SH-107 与日历格头是同一件事）。
+  - 第 4 条守卫只认内建标签，量的是「同一个文件里既写了容器又写了控件」这种能自证的情形（局限①）。
+  - 手机那两遍用同一批读者、同一批断言，不另写一套：表面不同（抽屉与铺满视口的分享中心），读法完全相同。
+  - 布局改的是量出来的数字，不是审美：44px / 18px / 27px 的挤压、以及「选中项文字落在自己 chevron 下面」都是探针量到之后才动的。
+
+- 变异（四发，各自被指名读数杀死）：
+  1. 桌面 `shell` 表面声明 `status` 色族（它并不画）：两套主题各一条 `✗ light/dark · shell: 5 of 8 expected colours painted as text and judged (text 4/4, accent 1/1, status 0/3), 3 never painted`，门禁整体红——证明「按表面声明」这一侧不是装饰。
+  2. 手机 `outline drawer (phone)` 同样声明 `status`：两套主题各一条 `✗ … outline drawer (phone): 4 of 7 … status 0/3, 3 never painted`——证明手机那一遍的像素读者真的在跑。
+  3. 日历格头把 `onClick` 加回外层容器：`client-raw-controls` 红，精确报出 `src/client/lib/markdown/kanban/ui/kanban-calendar-view.tsx:125 <div> holds <button> (no entry in this guard; make it the control, or add it with its reason)`。
+  4. 甘特任务列行退回 `div ＋ onClick`：`kanban-view-rows.test.ts` 红两条（`draws both as buttons a keyboard can reach`、`opens the detail from either of them`，读数 `expected 1 to be 2` / `expected to be called 2 times, but got 1`）。
+
+- 验证读数（本机临时实例 `INKSTONE_EPHEMERAL_DEV=1 npm run dev:kv`，7712 供浏览器门禁、7716 供 API 套件）：
+  - `npx tsc -b` 干净；静态门禁 13 项全绿（`comments` 6,098 条 / 810 文件、`style`、`size`、`size:check:blog`、`escape`、`empty-catch`、`module-state`、`deep-imports`、`deep-imports:check:blog`、`surfaces`、`hardcoded`、`tokens`、`i18n` 3,284 键），`budget:check`（含一次全新构建）与 `vendor:check` 也绿。
+  - 对比度门禁：**0 失败**；手机两表面两套主题的读数 `outline drawer (phone) 4 of 4`、`share center (phone) 5 of 5`、`kanban board 16 of 16`，全部 `0 never painted`。
+  - 行为门禁 `e2e-visual.mjs`：**318 通过 / 0 失败**（含 `console: no page errors`——即上面那处 React 内部错误在修掉条件钩子之后不再出现）。
+  - `scripts/e2e.mjs`（全新实例 7716）：**177 通过 / 0 失败**。
+  - 单元：定向 `npx vitest run src/client/lib/markdown/kanban tests/client-raw-controls.test.ts` **13 文件 / 82 用例全绿**；全量 **352 文件 / 2,835 通过 ＋ 1 skipped / 1 失败**，唯一失败是 `tests/share-code-split.test.ts` 那条对机器负载敏感的重图遍历（整机满载下 5.18s 越过 5s 超时；单独重跑 2.66s、4/4 绿），与 §59 记的是同一条，不是本轮改动面。
+
+- 局限（如实登记）：
+  - ① 第 4 条守卫只认内建标签：容器与控件分别写在两个组件里的情形读不出来。本轮它读到的 7 处已全部处理（4 处改成控件、3 处进例外表并写明理由），但同类形状仍可能以「包装组件」的形式绕过。
+  - ② 手机那一遍只跑 390×857：其他手机尺寸与平板宽度未读；`PHONE_SURFACES` 是门禁里手写的两条，不是从全屏表面清单派生——新增一个只在手机出现的表面，两边都不会红。
+  - ③ 手机那一遍排在桌面循环之后，用的是桌面循环留下的账号与外观状态，且与桌面共用同一个页面实例，所以它不是「另一个浏览器会话」的读数。
+  - ④ 条件钩子的修复只有 dev 构建能被证明：那条内部错误是 React dev 的检查（生产构建根本不发），证据是「第一次打开详情不再报错」＋ 钩子顺序本身正确，而不是一个生产环境读数。
+  - ⑤ 工具栏换行是**行为变化**：手机下头部从 44px 变成 93px（搜索一行、控件一行），这是量出来必须改的最小形状，没有走产品侧评审；配色与间距沿用现有令牌。
+  - ⑥ 附件行改成容器后，点击行的空白处不再选中该文件（控件是文件名）——对指针用户是行为变化，理由与 SH-107 同一条：整行点击目标与它装着的选择框互相抢事件。
+  - ⑦ 本节读到过一次与改动无关的门禁抖动：`export: the printed deck draws its charts live live=1 painted=0`（随后一次运行 318/0 全绿）。该断言在 `data-deck-print-ready` 之后一次性采样 `getImageData`，没有等待画布非空、也没有重试——登记为 **SH-111**，不在本节顺手改（铁律 14）。
+  - ⑧ 变异只做了四发（每件事一发），手机那一发用的是「声明一个它不画的色族」这种等价性很强的变异，而不是改产品代码。
+  - ⑨ §59 与 §60 合成一个提交（而不是两个）：两批共用 `scripts/check-contrast.mjs` / `e2e-visual.mjs` / `e2e-harness.mjs`，且同一份注释白名单是**按文件分块**的；更要紧的是 §60 把 §59 的色板读者重写成「按表面声明色族」，§59 那一版的门禁脚本已不存在于任何可还原的形态——按 hunk 硬切只能造出一个自己过不了门禁的中间快照（AGENTS.md「分批与门禁」描述的正是这种情形），所以按 §59 局限⑥ 的先例合批。
+
+- 队列现状：§57 的 19 条登记项里 §58 关 5 条、§59 关 1 条（SH-107）、本节再关 1 条（SH-110 及同形 4 处），余 **13 条**：2 条需要产品决策（SH-91/92）＋ 11 条「同类问题的另一半」；加本节新登记 1 条（SH-111），登记项合计 **14 条**。
