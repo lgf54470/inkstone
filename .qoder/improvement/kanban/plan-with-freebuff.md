@@ -1,0 +1,57 @@
+# 看板模块改进执行计划 · Freebuff 轮次
+
+> 依据：`review-with-freebuff.md`（2026-09-22 复审台账，K-01…K-25）。
+> 基线：`kanban-improvement-qoder-qwen38f`，HEAD `6c4a81ba`。
+> 施工原则：逐项修复 → 先写能失败的复现测试 → 跑回归与门禁 → 单项提交（Conventional Commits，正文逐文件）→ **同一次提交内更新本文件进度日志**。
+> 与旧计划的关系：`plan.md`（六批）已结案；本文件只承接 K-xx 增量，不重复旧条目。
+> 每项收尾的验证命令见文末「固定验证」。
+
+## 批次 1 · 止血（正确性 + 安全最小集）
+
+- [ ] K-01 单卡删除撤销提示（`toastWithUndo`，对齐批量删除与删视图）
+- [ ] K-02 删列撤销提示（受影响卡数进文案）
+- [ ] K-05 CSV 导出补 BOM
+- [ ] K-06 CSV 导出公式注入前缀
+- [ ] K-07 封面/附件图片走外部图片策略 + `referrerpolicy`
+- [ ] K-08 文本附件预览补失败态
+- [ ] K-09 跨源附件链接改新标签打开
+- [ ] K-10 上传客户端预检（与服务端同一份限额常量）
+- [ ] K-03 附件删除改延迟真删（撤销可救）
+- [ ] K-04 全屏期间实例失效自恢复
+
+## 批次 2 · 交互与移动
+
+- [ ] K-11 卡片「移动到…」菜单（子菜单列出分组/泳道）+ 移动快捷键改绑并真机验证
+- [ ] K-13 选择本列/选择可见全部 + 批量标签/负责人/日期
+- [ ] K-14 附件「设为封面 / 移除封面」
+- [ ] K-15 搜索筛选中 chip + 标签筛选持久化口径统一 + debounce 收起清理
+- [ ] K-17 窄屏头部收敛与触控目标（`IconButton`）
+- [ ] K-25 覆盖层可访问名走 i18n
+
+## 批次 3 · 视图完整度
+
+- [ ] K-12 时间线/甘特区间由数据推导 + 日/周/月缩放 + 「今天」 + 无日期单列
+- [ ] K-16 命令面板接入看板动作
+
+## 批次 4 · 性能与门禁
+
+- [ ] K-19 writer 收进 `useCallback`（先写 locale 回归）+ 头部 props 收敛
+- [ ] K-21 `e2e-visual.mjs` 逐个打开 8 个视图并断言内容已到
+- [ ] K-20 连续编辑期间自适应写回静默期（含确定性量测）
+- [ ] K-23/K-24 规范注释收敛
+
+## 进度日志
+
+| 日期 | 条目 | commit | 回归结果 |
+| --- | --- | --- | --- |
+| 2026-09-22 | 建立本轮台账与执行计划 | （本提交） | 文档提交，无代码改动 |
+
+## 固定验证
+
+```bash
+npm run typecheck && npm run test:unit
+npm run comments:check && npm run i18n:check && npm run hardcoded:check
+npm run tokens:check && npm run size:check && npm run surfaces:check
+npm run test:e2e && npm run contrast:check      # 需本地实例，按条目决定是否进本批
+node scripts/check-token-drift.mjs --update-baseline   # 仅当动共享令牌
+```
