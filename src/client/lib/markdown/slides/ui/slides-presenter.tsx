@@ -99,7 +99,10 @@ export const SlidesPresenter = memo(function SlidesPresenter({
   const progressPercent = total > 1 ? Math.round(((currentIndex + 1) / total) * 100) : 100
 
   return (
-    <div className='fixed top-0 left-0 size-full z-50 flex flex-col items-center justify-center bg-black select-none'>
+    // The show's root carries the module's own name for it, so a key the show claims can be left to it:
+    // Space advances a slide here, and the music player's global Space would otherwise take the key
+    // before this component's own listener saw it (see `SPACE_OWNING_SURFACES` in music-hotkeys.ts).
+    <div className='bento-slides-presenter fixed top-0 left-0 size-full z-50 flex flex-col items-center justify-center bg-black select-none'>
       <div className='flex flex-1 items-center justify-center w-full h-full overflow-hidden'>
         <div
           key={currentSlide.id}
