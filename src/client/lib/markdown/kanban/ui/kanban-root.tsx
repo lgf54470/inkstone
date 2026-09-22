@@ -341,6 +341,9 @@ function KanbanMain({
     <div
       id={viewPanelId}
       role='tabpanel'
+      // Which view is on screen, as an attribute rather than only through the tab that controls it:
+      // the visual gate opens each view in turn and has to know it is reading that view's own tree.
+      data-kanban-view-type={state.filterSort.activeView.type}
       aria-labelledby={kanbanViewTabId(viewPanelId, state.filterSort.activeView.id)}
       className='relative flex-1 overflow-hidden'
     >

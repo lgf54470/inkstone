@@ -178,8 +178,11 @@
 ### K-20 每次编辑写回整篇笔记，成本线性于板子大小 → 待修
 - 证据：`write.ts` `flushKanbanEntry` → `serializeKanban(整板)` → `features/preview/kanban-sync.ts` `state.editContent(noteId, 整篇)`，debounce 仅 500ms。
 
-### K-21 视图级像素门禁只覆盖表格视图 → 待修
+### K-21 视图级像素门禁只覆盖表格视图 → 已修（8 个视图全部打开；实跑又漏出一处会误伤的断言）
 - 证据：`scripts/e2e-visual.mjs` 的看板场景以 `[role="table"]` 为「内容已到」判据，其余 7 个视图从未打开。
+- 进度：`ui/kanban-root.tsx` 的 `role='tabpanel'` 上新增 `data-kanban-view-type`——列表/日历/时间轴/甘特图/画廊都画卡片，「有卡片」证明不了是哪个视图画的，「这个视图的面板里有它自己的东西」才能；脚本里 `KANBAN_VIEWS` 逐个点名（页签双语名 + 该视图独有的选择器：看板 `[data-kanban-board]`、表格 `[role=table]`、图表 `canvas`、其余 `[data-item-id]`），`assertKanbanViews` 每个视图断言两件事：**该视图面板内**画出了自己的内容，且顶栏高度与打开前一致（头部不得随视图切换长大或抖动）。fixture 补上 `startDate`/`endDate`/`progress`（相对今天的日期，否则日历/时间轴/甘特图会随时间漂出区间）——K-12 重建过的两个视图因此第一次被真正读到。
+- 附带修正（实跑撞出来的）：① 脚本原先按 `.ink-prose [data-kanban]` 取「那块板」，但覆盖层是**借**走内联画布而不是拷贝——一打开卡片就离开块，靠卡片标记定位的写法会立刻失效，故改为「打开前找到自己写的那块板 → 记下 `data-kanban-index` → 之后按序号定位」，并补一条 `the note still holds the block the overlay borrowed from`；② `canvases`/`reserve` 两处原本数全文档，笔记里若存有另一块板就会误伤，改为只数自己那块 + 覆盖层。
+- 验证：浏览器门禁 **234 passed / 0 failed**（看板 37 条，新增 17 条）；变异自检：把日历视图改成 `return null` 后恰好只杀「日历视图自己画了东西」一条，顶栏高度那条仍绿。
 
 ## 5. P2 — 规范收敛
 
