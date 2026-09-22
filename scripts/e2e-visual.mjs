@@ -124,6 +124,8 @@ const LABELS = {
   shareCategoryDashboard: ['数据看板', 'Dashboard'],
   shareChannelCollection: ['Collection ·', '集合 ·'],
   shareSearch: ['搜索笔记标题、链接或标签…', 'Search note title, link, or tag…'],
+  sharePrintQr: ['打印二维码表', 'Print QR sheet'],
+  shareChannelField: ['分发标记', 'Distribution marker'],
   shareTrafficFilter: ['流量过滤设置', 'Traffic Filters'],
 }
 
@@ -2693,6 +2695,133 @@ async function removeCollectionProbe(page, { noteId, collectionId, tagId }) {
 }
 
 /**
+ * The marker the sheet scenario types into the batch bar's field. A token is 1–32 characters of
+ * `[a-z0-9_-]` (ADR-0004), so a field the sheet stopped validating would refuse this one and the
+ * URLs below would come back unmarked.
+ */
+const SHEET_CHANNEL = 'gate-sheet'
+
+/**
+ * The batch QR sheet (SH-69) is the third way one selection leaves the app and the only one whose
+ * product is paper, so what is asserted is what a person would notice was missing: the control
+ * exists once there is a selection, the sheet carries one code per selected row with the marker the
+ * bar holds, the print pipeline lets the sheet through and hides the app around it, and the browser
+ * saying the dialog is done takes the sheet away again.
+ *
+ * The marker is read off the sheet's own URLs rather than from the bar's field, because those two
+ * disagreeing is exactly the failure this guards: a batch of codes that lost its `?ref=` would
+ * attribute every scan to nothing, and nothing about the sheet would look wrong.
+ */
+async function assertShareQrSheet(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(600)
+  const opened = await openShareHub(page)
+  check('qr sheet: the center opens for the sheet', opened)
+  if (!opened) return
+  await waitForPanelSettled(page, SHARE_DIALOG)
+  const listed = await gotoSidebarCategory(page, LABELS.shareCategoryAll)
+  check('qr sheet: the list view is where the rows and the batch bar live', listed)
+
+  // One selection, through the header's own control: the batch bar only draws once rows are picked.
+  const selectors = await page.evaluate((selector) => {
+    const hub = document.querySelector(selector)
+    const boxes = [...(hub?.querySelectorAll('[role="checkbox"]') ?? [])].filter((box) => box.getBoundingClientRect().width > 0)
+    boxes[0]?.click()
+    return boxes.length
+  }, SHARE_DIALOG)
+  await sleep(900)
+  const bar = await page.evaluate((labels) => {
+    const control = [...document.querySelectorAll('button')].find((item) => labels.includes((item.textContent ?? '').trim()))
+    if (!control) return null
+    const box = control.getBoundingClientRect()
+    const status = control.parentElement?.querySelector('[role="status"]')?.textContent ?? ''
+    return {
+      x: Math.round(box.left + box.width / 2),
+      y: Math.round(box.top + box.height / 2),
+      selected: Number(/(\d+)/.exec(status)?.[1] ?? 0),
+    }
+  }, LABELS.sharePrintQr)
+  check('qr sheet: a selection draws the batch bar with the sheet control on it',
+    Boolean(bar) && bar.selected > 0, `selectors=${selectors} bar=${JSON.stringify(bar)}`)
+  if (!bar) return
+
+  const marker = await page.evaluate((labels) => {
+    const input = [...document.querySelectorAll('input')].find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    if (!input) return null
+    const box = input.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, LABELS.shareChannelField)
+  if (marker) {
+    await page.mouse.click(marker.x, marker.y)
+    await page.keyboard.type(SHEET_CHANNEL)
+    await sleep(400)
+  }
+
+  await page.mouse.click(bar.x, bar.y)
+  await sleep(1_500)
+  const sheet = await page.evaluate((channel) => {
+    const node = document.querySelector('[data-share-qr-sheet]')
+    if (!node) return null
+    const urls = [...node.querySelectorAll('.share-qr-sheet-url')].map((url) => url.textContent ?? '')
+    const codes = [...node.querySelectorAll('svg')]
+    return {
+      cells: node.querySelectorAll('.share-qr-sheet-cell').length,
+      codes: codes.length,
+      sizes: [...new Set(codes.map((code) => `${code.getAttribute('width')}x${code.getAttribute('height')}`))],
+      offScreen: node.getBoundingClientRect().left < 0,
+      hidden: node.getAttribute('aria-hidden') === 'true',
+      inert: node.hasAttribute('inert'),
+      // The codes carry the marker when the field did, and the header says so; a sheet whose URLs
+      // dropped it is the failure this reads for.
+      marked: urls.filter((url) => url.includes(`ref=${channel}`)).length,
+      stated: (node.textContent ?? '').includes(`?ref=${channel}`),
+      urls: urls.slice(0, 2),
+    }
+  }, SHEET_CHANNEL)
+  check('qr sheet: the control hands the browser one code per selected row',
+    Boolean(sheet) && sheet.cells === bar.selected && sheet.codes === sheet.cells && sheet.cells > 0,
+    `sheet=${JSON.stringify(sheet)} selected=${bar.selected}`)
+  check('qr sheet: every code is drawn at the sheet size and the sheet stays off screen and out of the tab order',
+    Boolean(sheet) && sheet.sizes.length === 1 && sheet.sizes[0] === '160x160' && sheet.offScreen && sheet.hidden && sheet.inert,
+    JSON.stringify(sheet))
+  check('qr sheet: the marker the bar holds rides on every code and is stated on the sheet',
+    Boolean(sheet) && sheet.marked === sheet.cells && sheet.stated, JSON.stringify(sheet))
+
+  // Print media is the sheet's real surface: as long as the app is hidden and the sheet is laid out
+  // in the page's own flow, the browser's print pipeline produces the sheet and nothing else.
+  await page.emulateMediaType('print')
+  await sleep(500)
+  const printed = await page.evaluate(() => {
+    const node = document.querySelector('[data-share-qr-sheet]')
+    const root = document.querySelector('#root')
+    const cell = node?.querySelector('.share-qr-sheet-cell')
+    return {
+      rootHidden: root ? getComputedStyle(root).display === 'none' : false,
+      // The half that actually pins the allowance: that print stylesheet hides every other child of
+      // the body, so a sheet the list does not name is the one that disappears. Reading only the app
+      // being hidden would pass with the sheet hidden too — a blank page and a printed one would
+      // read the same.
+      sheetShown: node ? getComputedStyle(node).display !== 'none' && node.getBoundingClientRect().width > 0 : false,
+      position: node ? getComputedStyle(node).position : 'absent',
+      breakInside: cell ? getComputedStyle(cell).breakInside : 'absent',
+      columns: node ? getComputedStyle(node.querySelector('.share-qr-sheet-grid')).gridTemplateColumns.split(' ').length : 0,
+    }
+  })
+  await page.emulateMediaType(null)
+  check('qr sheet: the print pipeline lets the sheet through, laid out in the page flow, and hides the app around it',
+    printed.rootHidden && printed.sheetShown && printed.position === 'static' && printed.columns === 3, JSON.stringify(printed))
+  check('qr sheet: a code is never split from the name it opens',
+    printed.breakInside === 'avoid', JSON.stringify(printed))
+
+  await page.evaluate(() => window.dispatchEvent(new Event('afterprint')))
+  await sleep(600)
+  const gone = await page.evaluate(() => !document.querySelector('[data-share-qr-sheet]'))
+  check('qr sheet: the browser saying the dialog is done takes the sheet away', gone)
+  await page.keyboard.press('Escape')
+  await sleep(500)
+}
+
+/**
  * The published directory end to end (ADR-0005 on ADR-0004's channel): a password-protected
  * collection over a tag, unlocked by a visitor who has never signed in — a fresh browser context,
  * so the visit is a real one rather than the owner's — a note opened from the directory, and the
@@ -2862,6 +2991,7 @@ async function main() {
     await assertContextMenuNesting(page)
     await assertMusicSurface(page)
     await assertShareCenter(page)
+    await assertShareQrSheet(page)
     await assertPublicCollectionPage(browser, page, consoleErrors)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only

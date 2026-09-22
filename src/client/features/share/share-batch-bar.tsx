@@ -1,7 +1,7 @@
 import { useRef, useState, type RefObject } from 'react'
 import type { ReactNode } from 'react'
 import type { ShareInfo } from '@shared/types'
-import { Calendar, Copy, Download, FolderInput, Play, Square, Tag, Trash2, X } from 'lucide-react'
+import { Calendar, Copy, Download, FolderInput, Play, QrCode, Square, Tag, Trash2, X } from 'lucide-react'
 import { normalizeChannelToken } from '@shared/share-channel'
 import { Button, IconButton } from '../../components/primitives'
 import { Input } from '../../components/form'
@@ -11,7 +11,8 @@ import type { UiState } from '../../store/ui'
 import { useUi } from '../../store/ui'
 import { useShareStore, type ShareStoreState } from './share-store'
 import { batchDisableAll, batchEnableAll, batchRevokeAll, buildExpiryMenuItems, buildRenewalMenuItems, buildShareFolderMenuItems } from './share-batch-bar-actions'
-import { copyShareLinksFlow, exportShareLinksFlow, selectedShareRows } from './share-batch-links'
+import { copyShareLinksFlow, exportShareLinksFlow, printShareQrSheetFlow, selectedShareRows } from './share-batch-links'
+import { useShareQrSheet, type ShareQrSheetRequest } from './share-qr-sheet'
 
 export function ShareBatchBar({
   selectedCount,
@@ -36,6 +37,7 @@ export function ShareBatchBar({
       <BatchChannelField bundle={bundle} />
       <ShareBatchActionButton bundle={bundle} icon={<Copy size={13} />} label={t('share.batch_copy_links')} onClick={() => void copyShareLinksFlow({ rows: bundle.selectedRows, missing: bundle.missingRows, toast: bundle.toast, channel: bundle.channel })} />
       <ShareBatchActionButton bundle={bundle} icon={<Download size={13} />} label={t('share.batch_export_links')} onClick={() => exportShareLinksFlow({ rows: bundle.selectedRows, missing: bundle.missingRows, toast: bundle.toast, channel: bundle.channel })} />
+      <ShareBatchActionButton bundle={bundle} icon={<QrCode size={13} />} label={t('share.batch_print_qr')} onClick={() => printShareQrSheetFlow({ rows: bundle.selectedRows, missing: bundle.missingRows, channel: bundle.channel, requestPrint: bundle.requestQrSheet, toast: bundle.toast })} />
       <ShareBatchActionButton bundle={bundle} icon={<FolderInput size={13} />} label={t('share.batch_move_to_folder')} buttonRef={bundle.folderButtonRef} hasPopup ariaExpanded={bundle.isFolderMenuOpen} onClick={() => bundle.setIsFolderMenuOpen(true)} />
       <ShareBatchActionButton bundle={bundle} icon={<Calendar size={13} />} label={t('share.batch_set_expiry')} buttonRef={bundle.expiryButtonRef} hasPopup ariaExpanded={bundle.isExpiryMenuOpen} onClick={() => bundle.setIsExpiryMenuOpen(true)} />
       <ShareBatchActionButton bundle={bundle} icon={<Trash2 size={13} />} label={t('share.batch_revoke')} danger onClick={() => void batchRevokeAll(bundle.batchToggle, bundle.noteIds, bundle.selectedCount)} />
@@ -48,6 +50,8 @@ export function ShareBatchBar({
 
       {bundle.isExpiryMenuOpen && <Menu open={bundle.isExpiryMenuOpen} onClose={() => bundle.setIsExpiryMenuOpen(false)} items={bundle.expiryMenuItems} anchor={bundle.expiryButtonRef} />}
       {bundle.isFolderMenuOpen && <Menu open={bundle.isFolderMenuOpen} onClose={() => bundle.setIsFolderMenuOpen(false)} items={bundle.folderMenuItems} anchor={bundle.folderButtonRef} />}
+
+      {bundle.qrSheet}
     </div>
   )
 }
@@ -74,12 +78,16 @@ function useShareBatchBarBundle(selectedCount: number): ShareBatchBarBundle {
   const expiryButtonRef = useRef<HTMLButtonElement>(null)
   const [isFolderMenuOpen, setIsFolderMenuOpen] = useState(false)
   const folderButtonRef = useRef<HTMLButtonElement>(null)
+  // The sheet mounts into the document, not into this bar, so the only thing it takes from here is
+  // the request; it is unmounted again when its print dialog closes.
+  const qrSheet = useShareQrSheet()
 
   const noteIds = Array.from(selectedNoteIds)
   const { rows, missing } = selectedShareRows(shares, selectedNoteIds)
   return {
     batchToggle, batchMoveToFolder, noteIds, selectedCount, batchBusy, toast,
     selectedRows: rows, missingRows: missing, channel, setChannel,
+    qrSheet: qrSheet.sheet, requestQrSheet: qrSheet.requestPrint,
     isExpiryMenuOpen, setIsExpiryMenuOpen, expiryButtonRef, isFolderMenuOpen,
     setIsFolderMenuOpen, folderButtonRef,
     expiryMenuItems: [
@@ -109,6 +117,8 @@ interface ShareBatchBarBundle {
   folderButtonRef: RefObject<HTMLButtonElement | null>
   expiryMenuItems: MenuItem[]
   folderMenuItems: MenuItem[]
+  qrSheet: ReactNode
+  requestQrSheet: (request: ShareQrSheetRequest) => void
 }
 
 /**

@@ -7,7 +7,7 @@ vi.mock('../../lib/export-note', () => ({ downloadTextFile: H.downloadTextFile }
 
 import { initI18n, t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
-import { buildShareLinkList, copyShareLinksFlow, exportShareLinksFlow, selectedShareRows } from './share-batch-links'
+import { buildShareLinkList, copyShareLinksFlow, exportShareLinksFlow, printShareQrSheetFlow, selectedShareRows } from './share-batch-links'
 
 /**
  * SH-69: a selection is a set of note ids while the rows are what the list holds, so the batch link
@@ -134,6 +134,33 @@ describe('batch link feedback (SH-69)', () => {
     exportShareLinksFlow({ rows: [], missing: 2, toast: useUi.getState().toast })
 
     expect(H.downloadTextFile).not.toHaveBeenCalled()
+    expect(lastToast()?.title).toBe(t('share.batch_links_none'))
+    expect(lastToast()?.tone).toBe('warning')
+  })
+})
+
+/**
+ * The sheet is the third way one selection leaves the app, so its guard is the same guard — and it
+ * is the one action whose leftovers cannot be reported in a toast: the print dialog covers it, so
+ * the sheet carries the count instead.
+ */
+describe('batch QR sheet (SH-69)', () => {
+  it('hands the print sheet the same rows, marker and leftover count as the links', () => {
+    const requestPrint = vi.fn()
+    const rows = [shareRow('a')]
+
+    printShareQrSheetFlow({ rows, missing: 2, channel: 'launch', requestPrint, toast: useUi.getState().toast })
+
+    expect(requestPrint).toHaveBeenCalledWith({ rows, channel: 'launch', missing: 2 })
+    expect(useUi.getState().toasts).toEqual([])
+  })
+
+  it('refuses to open an empty sheet, in the words the other two link actions refuse with', () => {
+    const requestPrint = vi.fn()
+
+    printShareQrSheetFlow({ rows: [], missing: 2, channel: '', requestPrint, toast: useUi.getState().toast })
+
+    expect(requestPrint).not.toHaveBeenCalled()
     expect(lastToast()?.title).toBe(t('share.batch_links_none'))
     expect(lastToast()?.tone).toBe('warning')
   })

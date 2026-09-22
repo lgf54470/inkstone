@@ -3,6 +3,7 @@ import { withChannelParam } from '@shared/share-channel'
 import { downloadTextFile } from '../../lib/export-note'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
+import type { ShareQrSheetRequest } from './share-qr-sheet'
 
 /**
  * The selected rows, as the batch link actions need them. Selection is a set of note ids while
@@ -71,6 +72,24 @@ export function exportShareLinksFlow(params: {
     description: missingNote(missing),
     tone: 'success',
   })
+}
+
+/**
+ * The sheet is the third way the same selection leaves the app, so it refuses an empty one with the
+ * same words as the two above. It is also the only one that cannot report its leftovers in a toast:
+ * the print dialog covers the toast it would raise, so the count is printed on the sheet itself
+ * (see `ShareQrSheet`).
+ */
+export function printShareQrSheetFlow(params: {
+  rows: ShareInfo[]
+  missing: number
+  channel: string
+  requestPrint: (request: ShareQrSheetRequest) => void
+  toast: UiState['toast']
+}): void {
+  const { rows, missing, channel, requestPrint, toast } = params
+  if (!hasRows(rows.length, toast)) return
+  requestPrint({ rows, channel, missing })
 }
 
 /** False when there is nothing to act on: the selection names no row the list is holding. */

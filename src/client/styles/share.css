@@ -1,0 +1,76 @@
+.share-qr-sheet {
+  position: fixed;
+  top: 0;
+  left: -100000px;
+  width: 186mm;
+  background: #ffffff;
+  color: #14120f;
+  font-family: var(--font-ui);
+}
+
+.share-qr-sheet-title {
+  margin: 0;
+  font-size: var(--text-18);
+  font-weight: 600;
+}
+
+.share-qr-sheet-meta {
+  margin: 0;
+  color: #5c574d;
+  font-size: var(--text-11);
+}
+
+.share-qr-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8mm 4mm;
+  margin: 6mm 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.share-qr-sheet-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2mm;
+  break-inside: avoid;
+  text-align: center;
+}
+
+.share-qr-sheet-label {
+  margin: 0;
+  font-size: var(--text-13);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.share-qr-sheet-url {
+  margin: 0;
+  color: #5c574d;
+  font-family: var(--font-mono);
+  font-size: var(--text-9);
+  overflow-wrap: anywhere;
+}
+
+.share-qr-sheet-hint {
+  margin: 6mm 0 0;
+  color: #5c574d;
+  font-size: var(--text-11);
+}
+
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  .share-qr-sheet {
+    position: static;
+    left: auto;
+    width: auto;
+  }
+
+  .share-qr-sheet-cell {
+    print-color-adjust: exact;
+  }
+}
