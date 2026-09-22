@@ -148,6 +148,81 @@ async function chooseFiles(container: HTMLElement, files: File[]): Promise<void>
   await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) })
 }
 
+const imageFile: KanbanFile = {
+  id: 'f-2',
+  name: 'shot.png',
+  size: 4096,
+  mime: 'image/png',
+  url: '/api/kanban/file/default/8-shot.png',
+}
+
+function coverButton(container: HTMLElement, label: string): HTMLButtonElement | undefined {
+  return [...container.querySelectorAll<HTMLButtonElement>('button')].find(
+    (button) => button.getAttribute('aria-label') === label,
+  )
+}
+
+describe('kanban cover actions', () => {
+  it('offers the cover action only where a cover can come from, and reports the url chosen', async () => {
+    installTestGlobals()
+    const onChangeCover = vi.fn()
+    const container = document.createElement('div')
+    document.body.append(container)
+    const root = createRoot(container)
+    act(() => {
+      root.render(createElement(KanbanFilesCell, {
+        files: [savedFile, imageFile],
+        onChangeFiles: vi.fn(),
+        onChangeCover,
+      }))
+    })
+    try {
+      const setCover = coverButton(container, t('preview.kanban_set_cover', { value0: 'shot.png' }))
+      expect(setCover, 'an image offered no way to become the cover').toBeDefined()
+      expect(coverButton(container, t('preview.kanban_set_cover', { value0: 'report.pdf' }))).toBeUndefined()
+      await act(async () => { setCover!.click() })
+      expect(onChangeCover).toHaveBeenCalledWith(imageFile.url)
+    } finally {
+      act(() => root.unmount())
+      container.remove()
+    }
+  })
+
+})
+
+describe('kanban cover actions on the row that holds the cover', () => {
+  it('is marked as pressed and clears it from there', async () => {
+    installTestGlobals()
+    const onChangeCover = vi.fn()
+    const container = document.createElement('div')
+    document.body.append(container)
+    const root = createRoot(container)
+    act(() => {
+      root.render(createElement(KanbanFilesCell, {
+        files: [imageFile],
+        onChangeFiles: vi.fn(),
+        cover: imageFile.url,
+        onChangeCover,
+      }))
+    })
+    try {
+      const remove = coverButton(container, t('preview.kanban_remove_cover', { value0: 'shot.png' }))
+      expect(remove, 'the cover could not be removed from the row that holds it').toBeDefined()
+      expect(remove!.getAttribute('aria-pressed')).toBe('true')
+      await act(async () => { remove!.click() })
+      expect(onChangeCover).toHaveBeenCalledWith(undefined)
+    } finally {
+      act(() => root.unmount())
+      container.remove()
+    }
+  })
+
+  it('shows no cover action to a host that cannot store one', () => {
+    const { container } = renderCell([imageFile])
+    expect(coverButton(container, t('preview.kanban_set_cover', { value0: 'shot.png' }))).toBeUndefined()
+  })
+})
+
 describe('kanban file upload size guard', () => {
   it('does not send a file the server is going to refuse, and names the limit', async () => {
     const { container, root } = renderCell([])

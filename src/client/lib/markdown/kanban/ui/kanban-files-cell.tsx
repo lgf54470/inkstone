@@ -17,6 +17,15 @@ interface KanbanFilesCellProps {
   files?: KanbanFile[]
   readonly?: boolean
   onChangeFiles?: (nextFiles: KanbanFile[]) => void
+  /** The card's explicit cover, if it has one. Absent means the gallery picks the first image file. */
+  cover?: string
+  /** Absent means the host has nowhere to store a cover, and no row offers the action. */
+  onChangeCover?: (cover: string | undefined) => void
+}
+
+/** A cover must be something the gallery can paint, so only image files are offered. */
+function isImageFile(file: KanbanFile): boolean {
+  return file.mime?.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name)
 }
 
 function resolveFileIcon(mime: string) {
@@ -28,13 +37,17 @@ function resolveFileIcon(mime: string) {
 function FileItemRow({
   file,
   readonly,
+  isCover,
   onPreview,
   onDelete,
+  onToggleCover,
 }: {
   file: KanbanFile
   readonly?: boolean
+  isCover: boolean
   onPreview: () => void
   onDelete: () => void
+  onToggleCover?: () => void
 }) {
   return (
     <div className='group/file flex items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-[length:var(--text-11)]'>
@@ -50,6 +63,20 @@ function FileItemRow({
       <span className='text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
         {`${(file.size / 1024).toFixed(0)}K`}
       </span>
+      {!readonly && onToggleCover && (
+        <button
+          type='button'
+          onClick={onToggleCover}
+          aria-pressed={isCover}
+          aria-label={t(isCover ? 'preview.kanban_remove_cover' : 'preview.kanban_set_cover', { value0: file.name })}
+          title={t(isCover ? 'preview.kanban_remove_cover' : 'preview.kanban_set_cover', { value0: file.name })}
+          className={`rounded-[var(--r-xs)] p-0.5 transition-opacity hover:text-[var(--accent)] ${
+            isCover ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]'
+          }`}
+        >
+          <ImageIcon size={11} />
+        </button>
+      )}
       {!readonly && (
         <button
           type='button'
@@ -141,10 +168,51 @@ function FileUploadButton({
   )
 }
 
+/**
+ * The rows, and which of them offers the cover action. A cover has to be something the gallery can
+ * paint, so only image files carry the toggle; a host with nowhere to store one passes no
+ * `onChangeCover` and no row shows it at all.
+ */
+function FileRows({
+  files,
+  readonly,
+  cover,
+  onChangeCover,
+  onPreview,
+  onDelete,
+}: {
+  files: KanbanFile[]
+  readonly: boolean
+  cover?: string
+  onChangeCover?: (cover: string | undefined) => void
+  onPreview: (file: KanbanFile) => void
+  onDelete: (file: KanbanFile) => void
+}) {
+  return (
+    <>
+      {files.map((file) => (
+        <FileItemRow
+          key={file.id}
+          file={file}
+          readonly={readonly}
+          isCover={cover === file.url}
+          {...(onChangeCover && isImageFile(file)
+            ? { onToggleCover: () => onChangeCover(cover === file.url ? undefined : file.url) }
+            : {})}
+          onPreview={() => onPreview(file)}
+          onDelete={() => onDelete(file)}
+        />
+      ))}
+    </>
+  )
+}
+
 export function KanbanFilesCell({
   files = [],
   readonly = false,
   onChangeFiles,
+  cover,
+  onChangeCover,
 }: KanbanFilesCellProps) {
   const [previewFile, setPreviewFile] = useState<KanbanFile | null>(null)
   const kanbanName = useContext(KanbanFilesScope)
@@ -177,15 +245,14 @@ export function KanbanFilesCell({
 
   return (
     <div className='flex flex-wrap items-center gap-1.5'>
-      {files.map((file) => (
-        <FileItemRow
-          key={file.id}
-          file={file}
-          readonly={readonly}
-          onPreview={() => setPreviewFile(file)}
-          onDelete={() => { void handleDelete(file) }}
-        />
-      ))}
+      <FileRows
+        files={files}
+        readonly={readonly}
+        {...(cover !== undefined ? { cover } : {})}
+        {...(onChangeCover ? { onChangeCover } : {})}
+        onPreview={setPreviewFile}
+        onDelete={(file) => { void handleDelete(file) }}
+      />
 
       {!readonly && (
         <FileUploadButton kanbanName={kanbanName} files={files} onChangeFiles={onChangeFiles} />

@@ -23,7 +23,7 @@
 
 - [ ] K-11 卡片「移动到…」菜单（子菜单列出分组/泳道）+ 移动快捷键改绑并真机验证
 - [ ] K-13 选择本列/选择可见全部 + 批量标签/负责人/日期
-- [ ] K-14 附件「设为封面 / 移除封面」
+- [x] K-14 附件「设为封面 / 移除封面」（详情面板接线；表格文件格不接，已登记取舍）
 - [ ] K-15 搜索筛选中 chip + 标签筛选持久化口径统一 + debounce 收起清理
 - [ ] K-17 窄屏头部收敛与触控目标（`IconButton`）
 - [x] K-25 覆盖层可访问名走 i18n（根因在 outline→JSON 升级时造的 `title: 'Kanban'`）
@@ -49,7 +49,8 @@
 | 2026-09-22 | K-02 删列撤销提示（分组口径） | （本提交） | typecheck ✅；kanban+preview+tests/kanban 94 文件 1008 passed（首跑 1 例 render-window 超时属 L-03，重跑全绿）；`size:check`/`i18n:check` ✅；白名单 656 文件 / 4464 条 |
 | 2026-09-22 | K-03 附件删除确认 + 永久删除语义 | c3f72b4a | typecheck ✅；kanban+preview+tests/kanban 88 文件 992 passed；`size:check`/`i18n:check`/`style:check`/`hardcoded:check` ✅；白名单 657 文件 / 4467 条；pre-commit 全量 test:unit 1443 passed |
 | 2026-09-22 | K-05 CSV 导出补 BOM | 5e984d32 | typecheck ✅；kanban+preview+tests/kanban 88 文件 994 passed；`size:check`/`comments:check` ✅；白名单 657 文件 / 4470 条 |
-| 2026-09-22 | K-23/K-24 规范注释收敛 | （本提交） | 注释型改动（无行为）；typecheck ✅；`comments:check` 重算白名单 664 文件 / 4517 条；无需新增测试（无行为变化） |
+| 2026-09-22 | K-14 封面可设可移 | （本提交） | typecheck ✅；+3 例（2 先红 + 1 护栏）；kanban+preview+tests/kanban 95 文件 **1044** passed；`size:check` 拦下生产 54 行 + 测试 57 行 → 各拆而未 resnapshot；13 项静态门禁 exit=0；白名单 664 文件 / 4514 条 |
+| 2026-09-22 | K-23/K-24 规范注释收敛 | 0e94ba65 | 注释型改动（无行为）；typecheck ✅；`comments:check` 重算白名单 664 文件 / 4517 条；无需新增测试（无行为变化） |
 | 2026-09-22 | K-25 无标题看板不再自带英文名 | fbff8163 | typecheck ✅；+2 例（1 先红）+ 1 例旧断言改写（旧断言恰在钉旧行为）；kanban+preview+tests/kanban 95 文件 **1041** passed；13 项静态门禁 exit=0；白名单 663 文件 / 4507 条 |
 | 2026-09-22 | K-04 全屏期间板子离开笔记的自恢复 | 9dd74c76 | typecheck ✅；新增 4 例（3 先红 + 1 护栏）+ 变异自检（去 disposed 守卫恰好杀 1 例）；`size:check` 拦下 67 行 describe → 拆三组而非 resnapshot；kanban+preview+tests/kanban 95 文件 **1039** passed；13 项静态门禁 exit=0；白名单 662 文件（第一次 4498 条，拆 describe 后重算 4496）；批次 1（止血与安全）全部结案 |
 | 2026-09-22 | K-10 上传体积预检 | 30f3f9c3 | typecheck ✅；新增 3 例 + 变异自检（改判据恰好杀这 2 例）；`size:check` 拦下变长函数→拆助手而非 resnapshot；kanban+preview+tests/kanban 94 文件 **1035** passed；13 项静态门禁 exit=0；白名单 660 文件 / 4486 条 |

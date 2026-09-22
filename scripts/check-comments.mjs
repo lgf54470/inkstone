@@ -3415,7 +3415,11 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-files-cell.tsx', [
     '// Which bucket new uploads land in. Deletions ignore it and address each file\'s',
     '// own stored location, so files uploaded before a namespace change still clear.',
+    '/** The card\'s explicit cover, if it has one. Absent means the gallery picks the first image file. */',
+    '/** Absent means the host has nowhere to store a cover, and no row offers the action. */',
+    '/** A cover must be something the gallery can paint, so only image files are offered. */',
     '/**\n * The split happens before a single byte is sent, against the limit the server enforces\n * (`LIMITS.attachmentMaxBytes`): the same number on both sides, so an over-limit file is refused here\n * instead of after a 25 MB round trip. The server still checks it — this is a courtesy, that is the\n * trust boundary. A file exactly at the limit fits (the server refuses only what is greater).\n */',
+    '/**\n * The rows, and which of them offers the cover action. A cover has to be something the gallery can\n * paint, so only image files carry the toggle; a host with nowhere to store one passes no\n * `onChangeCover` and no row shows it at all.\n */',
     '// A stored file leaves the bucket for good, so it asks first — the reference in the note is',
     '// undoable, the bytes are not. A file hosted elsewhere has nothing here to delete.',
   ]],

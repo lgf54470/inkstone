@@ -260,6 +260,8 @@ export function DetailAttachmentsAndSubtasks({
         <KanbanFilesCell
           files={item.files}
           onChangeFiles={(files) => onUpdate({ ...item, files })}
+          cover={item.cover}
+          onChangeCover={(cover) => onUpdate({ ...item, cover })}
         />
       </div>
       <div className='flex flex-col gap-2'>

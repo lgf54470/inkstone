@@ -317,6 +317,8 @@ export const messages = {
 'preview.kanban_file_retry': 'Try again',
 'preview.kanban_file_too_large': 'Larger than the {value1} MB limit',
 'preview.kanban_board_removed': 'This board was removed from the note',
+'preview.kanban_set_cover': 'Use "{value0}" as the cover',
+'preview.kanban_remove_cover': 'Remove the cover "{value0}"',
 'preview.kanban_file_delete_failed': 'Failed to delete file',
 'preview.kanban_sort_cleared_for_drag': 'Sorting cleared to apply your manual order',
 'preview.kanban_add_tag': 'Add Tag',

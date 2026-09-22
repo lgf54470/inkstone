@@ -111,7 +111,9 @@
 - 证据：`onToggleAll` 只接表格（`ui/kanban-table-view.tsx:76-81`）；看板/列表/画廊只能逐张勾选；批量条仅分组/归档/删除三项。
 - 影响：换 20 张卡的负责人要点 20 次详情。
 
-### K-14 `item.cover` 只读不写 → 待修
+### K-14 `item.cover` 只读不写 → 已修（`（本提交）`）
+- 落地：`ui/kanban-files-cell.tsx` 新增可选 `cover` / `onChangeCover` 两 prop（宿主不传则没有任何行显示封面动作）；只对图像文件给按钮（`isImageFile`，与画廊选图同一判定思路），带 `aria-pressed` 与逐文件的 `aria-label`（用文件名的 i18n 键，不靠图标说话）；点已为封面的那一行则传 `undefined`（移除封面，回到「画廊用第一张图」的默认）。接线在详情面板（`ui/kanban-item-detail-fields.tsx` 传 `item.cover` 与 `onUpdate({ ...item, cover })`），与文件增删同一条可撤销提交路径。表格的文件格不接：那里是快速改值的列，把封面动作同时塞进去会让同名按钮在一行里出现两次（已在 review 登记这一取舍）。双语 +2 键。
+- 验证：`kanban-files-cell.test.ts` 11→14 例（图像行给出动作并回报所选 URL、非图像行不给、宿主不传时一行都没有），前两例先红；`size:check` 两次拦下超长函数（生产 `KanbanFilesCell` 54 行 → 抽出 `FileRows`；测试 57 行 describe → 拆两段），均未 resnapshot。
 - 证据：`types.ts:95` 声明、`body.ts:33-34` 校验、`ui/kanban-gallery-view.tsx:38` 读取；全模块无写入点。
 - 影响：封面只能手写 JSON。
 
