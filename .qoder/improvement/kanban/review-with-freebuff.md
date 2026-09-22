@@ -152,8 +152,10 @@
 ### K-16 命令面板无看板命令 / 无卡片键盘导航 → 待修
 - 证据：`features/command/*` 0 命中 kanban；卡片容器非焦点停靠点。
 
-### K-17 移动端头部布局与触控目标 → 待修
+### K-17 移动端头部布局与触控目标 → 已修
 - 证据：`ui/kanban-header.tsx` 仅一处响应式类；工具按钮固定 `size-7`（28px）对 `components/primitives.tsx` 的 `IconButton`（手机 36px）。
+- 进度：动作行加 `data-kanban-actions` 并改为 `flex-wrap`（而不是报告里建议的横向滚动——过滤/排序/选项面板都是 `absolute top-full` 挂在这一行上的，行一旦成为滚动容器就会把它们裁掉）；`filter`/`sort`/`group-by`/`csv`/`new item` 的花字在 `md` 以下收起并同时补上 `aria-label`（收起文字不得连名字一起收起）；`archive`/`csv` 触发器改走 `Button size='sm'`；搜索钮（含筛选 chip 与展开后的输入框）、写状态 chip 及其两个按钮改到同一高度档（`h-9`/`size-9` + `md:` 回落）；视图标签与两个管理钮同样上到项目刻度。`undo`/`redo` 仍为裸 `<button>`：`IconButton` 有意不收 `title`，而这两钮的 native 提示（`kanban_undo_shortcut` 三例既有断言）就是功能本身，故按同尺寸档写开并注明理由。头文件 517→398 行，把全屏标题的「标题↔输入框」两半抽成 `ui/kanban-fullscreen-title.tsx`。
+- 验证：4 例新测试——动作行内「每一个只靠图标的控件」都满足手机目标且有可访问名；点名 7 个控件同时满足手机/桌面两档；收起的文字仍在且带 `hidden md:inline`；行会换行、且从面板沿祖先链向上到 `[data-kanban-header]` 无任何 `overflow-*` 裁剪容器。变异自检：把搜索钮改回 `size-7` 恰好杀 2 例。
 
 ### K-18 仍缺的产品能力（登记 roadmap，不施工）
 活动流/提醒（评论已有）、卡片依赖（甘特无连线）、卡片复制粘贴、列级排序、跨笔记「我的任务」汇总。

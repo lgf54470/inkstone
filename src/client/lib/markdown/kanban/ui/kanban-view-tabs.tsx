@@ -70,8 +70,10 @@ export interface KanbanViewOperations {
   moveView: (viewId: string, offset: -1 | 1) => void
 }
 
+// The two management controls stand in the header beside the tabs, so they take the header's own
+// size step: a finger's target on a phone, the tighter one the row was designed around on a desktop.
 const TRIGGER_CLASS =
-  'inline-flex size-7 shrink-0 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+  'inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] md:size-7'
 
 /** One control per menu: it says whether its own list is open and names the panel it opened. */
 function useMenuTrigger() {
@@ -224,7 +226,7 @@ function KanbanTabList({ views, activeViewId, panelId, onSelectView }: TabListPr
             tabIndex={isActive ? 0 : -1}
             onClick={() => onSelectView(v.id)}
             onKeyDown={(event) => handleKeyDown(event, index)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 py-1 text-[length:var(--text-12)] font-medium transition-colors ${
+            className={`flex h-9 shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] font-medium transition-colors md:h-7 md:py-1 ${
               isActive
                 ? 'bg-[var(--bg-raised)] text-[var(--text-primary)] shadow-[var(--shadow-xs)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'

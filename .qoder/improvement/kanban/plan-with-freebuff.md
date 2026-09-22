@@ -27,7 +27,7 @@
   - [x] K-13b 批量标签/负责人/到期日（批量条新增一个菜单入口；字段写入保留选择）
 - [x] K-14 附件「设为封面 / 移除封面」（详情面板接线；表格文件格不接，已登记取舍）
 - [x] K-15 搜索筛选中 chip + 标签筛选归入视图状态（第三小项核实为不成立，改补护栏用例）
-- [ ] K-17 窄屏头部收敛与触控目标（`IconButton`）
+- [x] K-17 窄屏头部收敛与触控目标（`IconButton`；面板不被行裁剪已入测试）
 - [x] K-25 覆盖层可访问名走 i18n（根因在 outline→JSON 升级时造的 `title: 'Kanban'`）
 
 ## 批次 3 · 视图完整度
@@ -48,6 +48,7 @@
 | --- | --- | --- | --- |
 | 2026-09-22 | K-13b 批量指派/加标签/设到期日 | （本提交） | typecheck ✅；新增 15 例（单元 6 + 批量条 6 + 渲染级接线 2 + 空集护栏 1）；三次变异逐一被杀（标签改覆盖而非并集、去掉去重守卫、指派写死列 id）；`size:check` 拦下 `useKanbanBatchEdits` 与两个 describe 超长 → 拆三个组合 hook + 拆 describe（并将 `handleBatchGroupChange` 一并收进 `kanban-batch-edits.ts`，空集不再空提交），未 resnapshot；kanban+preview+components 95 文件 **1085** passed；12 项静态门禁 exit=0；白名单 671 文件 / 4575 条 |
 | 2026-09-22 | K-13a 选择本组 + 选择当前视图全部 | （本提交） | typecheck ✅；新增 11 例（渲染级 7 + 单元 4）；三次变异逐一被杀（本组 id 取错、可见集合换成整份文档（靠批量条计数断言补上）、列菜单不接 selectAll）；`size:check` 拦下 `kanban-root.tsx` 超 500 行 → 两个覆盖层拆到 `kanban-overlays.tsx`，未 resnapshot；kanban+preview+components 94 文件 **1070** passed（3 例 render-window 5s 超时属 L-03，单跑 14/14 ✅）；12 项静态门禁 exit=0；白名单 668 文件 / 4561 条；另修 `menu.tsx` 选中标记的可访问名污染，并登记 K-29（标签筛选浮层同一写法） |
+| 2026-09-22 | K-17 窄屏头部尺寸与面板不被裁剪 | （本提交） | typecheck ✅；`kanban-header.test.ts` 12 例（4 例新写）+ 变异自检（把搜索钮改回 `size-7` 恰好杀 2 例）；kanban+preview+tests/kanban 97 文件 **1092** passed；`size:check` 拦下 header 517 行 + 测试 77 行 describe → 抽 `kanban-fullscreen-title.tsx`（127 行）/拆 describe，未 resnapshot；12 项静态门禁 exit=0；白名单 673 文件 / 4589 条；浏览器级断言未跑（`assertFullscreenToolbars` 为差值断言，本次改动已避开其扫描面） |
 | 2026-09-22 | K-11 长按搬卡（移动到分组/泳道）+ 快捷键改绑 | （本提交） | typecheck ✅；新增 12 例（菜单 3 组 + 渲染级长按 6 例 + 护栏 2 例 + 选项轴 1 例）与 4 个旧助手改绑；三次变异逐一被杀（分组写入带泳道键、换泳道不回显分组、去掉 shift/田输入护栏）；`size:check` 拦下 3 个超长 describe + `kanban-root-hooks.ts` 548 行 → 拆 describe + 抽出 `kanban-move-to-axes.ts`，未 resnapshot；kanban+preview 85 文件 **1012** passed；12 项静态门禁 exit=0；白名单 666 文件 / 4543 条；遗留：真机触屏未验证（本机无触屏设备） |
 | 2026-09-22 | 建立本轮台账与执行计划 | 0e2d673a | 文档提交，无代码改动 |
 | 2026-09-22 | K-01 单卡删除撤销提示 | 66156734 | typecheck ✅；kanban+preview+tests/kanban 94 文件 1002 passed（3 例 `kanban-render-window` 5s 超时属 L-03 并发抖动，单跑 14/14 ✅）；`comments:check` 重算白名单 655 文件 / 4460 条 |

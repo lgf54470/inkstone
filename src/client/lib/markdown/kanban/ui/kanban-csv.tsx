@@ -6,6 +6,7 @@
  */
 import { useId, useMemo, useRef, useState } from 'react'
 import { Download, FileSpreadsheet, Upload } from 'lucide-react'
+import { Button } from '../../../../components/primitives'
 import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { downloadTextFile } from '../../../export-note'
 import { t, useLocaleRepaint } from '../../../i18n'
@@ -180,21 +181,21 @@ export function KanbanCsvAction(entry: KanbanCsvEntry) {
 
   return (
     <div className='relative'>
-      <button
+      <Button
         ref={btnRef}
-        type='button'
+        size='sm'
+        variant='ghost'
         data-kanban-csv
+        icon={<FileSpreadsheet size={13} aria-hidden />}
         onClick={() => setOpen((o) => !o)}
-        className={`inline-flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] ${
-          open ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]' : ''
-        }`}
+        className={open ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]' : undefined}
+        aria-label={t('preview.kanban_csv')}
         aria-haspopup='dialog'
         aria-expanded={open}
         {...(open ? { 'aria-controls': panelId } : {})}
       >
-        <FileSpreadsheet size={13} aria-hidden />
-        <span>{t('preview.kanban_csv')}</span>
-      </button>
+        <span className='hidden md:inline'>{t('preview.kanban_csv')}</span>
+      </Button>
       {open && (
         <KanbanCsvPanel
           panelId={panelId}

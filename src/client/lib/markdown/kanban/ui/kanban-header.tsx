@@ -1,15 +1,15 @@
-import { memo, useEffect, useId, useRef, useState } from 'react'
+import { memo, useId, useRef, useState, type ReactNode } from 'react'
 import {
   Columns3,
   Filter,
   Maximize2,
   Minimize2,
-  Pencil,
   Plus,
   Redo2,
   SlidersHorizontal,
   Undo2,
 } from 'lucide-react'
+import { Button, IconButton } from '../../../../components/primitives'
 import type { KanbanData, KanbanFilter, KanbanSort, KanbanView } from '../types'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { prettyCombo } from '../../../../lib/hotkeys'
@@ -18,6 +18,7 @@ import { KanbanArchiveAction, type KanbanArchiveEntry } from './kanban-archive'
 import { KanbanCsvAction, type KanbanCsvEntry } from './kanban-csv'
 import type { KanbanSchemaOperations } from './kanban-column-hooks'
 import { KanbanFilterPopover } from './kanban-filter-popover'
+import { KanbanFullscreenTitle } from './kanban-fullscreen-title'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSearchBox } from './kanban-search-box'
 import { KanbanSortPopover } from './kanban-sort-popover'
@@ -101,19 +102,19 @@ function KanbanViewOptionsAction({
 
   return (
     <>
-      <button
+      <Button
         ref={btnRef}
-        type='button'
+        size='sm'
+        variant='ghost'
+        icon={isColumnPanel ? <Columns3 size={13} aria-hidden /> : <SlidersHorizontal size={13} aria-hidden />}
         onClick={() => setIsOpen((o) => !o)}
-        className='inline-flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
         aria-label={label}
         aria-haspopup='dialog'
         aria-expanded={isOpen}
         {...(isOpen ? { 'aria-controls': panelId } : {})}
       >
-        {isColumnPanel ? <Columns3 size={13} /> : <SlidersHorizontal size={13} />}
-        <span>{label}</span>
-      </button>
+        {narrowLabel(label)}
+      </Button>
       <KanbanViewOptions
         open={isOpen}
         panelId={panelId}
@@ -148,21 +149,21 @@ function KanbanFilterAction({
   const panelId = useId()
   return (
     <>
-      <button
+      <Button
         ref={btnRef}
-        type='button'
+        size='sm'
+        variant='ghost'
+        icon={<Filter size={13} aria-hidden />}
+        trailing={filters.length > 0 ? <span className='size-1.5 rounded-full bg-[var(--accent)]' /> : undefined}
+        className={filters.length > 0 ? 'text-[var(--accent)] font-semibold' : undefined}
         onClick={() => setIsOpen((o) => !o)}
-        className={`inline-flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] ${
-          filters.length > 0 ? 'text-[var(--accent)] font-semibold' : ''
-        }`}
+        aria-label={t('preview.kanban_filter')}
         aria-haspopup='dialog'
         aria-expanded={isOpen}
         {...(isOpen ? { 'aria-controls': panelId } : {})}
       >
-        <Filter size={13} />
-        <span>{t('preview.kanban_filter')}</span>
-        {filters.length > 0 && <span className='size-1.5 rounded-full bg-[var(--accent)]' />}
-      </button>
+        {narrowLabel(t('preview.kanban_filter'))}
+      </Button>
       <KanbanFilterPopover
         open={isOpen}
         panelId={panelId}
@@ -190,21 +191,21 @@ function KanbanSortAction({
   const panelId = useId()
   return (
     <>
-      <button
+      <Button
         ref={btnRef}
-        type='button'
+        size='sm'
+        variant='ghost'
+        icon={<SlidersHorizontal size={13} aria-hidden />}
+        trailing={sorts.length > 0 ? <span className='size-1.5 rounded-full bg-[var(--accent)]' /> : undefined}
+        className={sorts.length > 0 ? 'text-[var(--accent)] font-semibold' : undefined}
         onClick={() => setIsOpen((o) => !o)}
-        className={`inline-flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] ${
-          sorts.length > 0 ? 'text-[var(--accent)] font-semibold' : ''
-        }`}
+        aria-label={t('preview.kanban_sort')}
         aria-haspopup='dialog'
         aria-expanded={isOpen}
         {...(isOpen ? { 'aria-controls': panelId } : {})}
       >
-        <SlidersHorizontal size={13} />
-        <span>{t('preview.kanban_sort')}</span>
-        {sorts.length > 0 && <span className='size-1.5 rounded-full bg-[var(--accent)]' />}
-      </button>
+        {narrowLabel(t('preview.kanban_sort'))}
+      </Button>
       <KanbanSortPopover
         open={isOpen}
         panelId={panelId}
@@ -218,7 +219,24 @@ function KanbanSortAction({
   )
 }
 
+/**
+ * The written label of a control that is icon-only on a narrow screen, where the words are what pushes
+ * the row past the viewport. The label stays in the tree and stays the button's name — hiding it below
+ * `md` is a layout change, never a loss of the accessible name the caller spells out next to it.
+ */
+function narrowLabel(label: string): ReactNode {
+  return <span className='hidden md:inline'>{label}</span>
+}
+
 const STATUS_PROGRESS_BAR_HEIGHT = 6
+
+/**
+ * Undo and redo keep the native hint that names their chord, and `IconButton` refuses a `title` on
+ * purpose (a native tooltip is not the project's tooltip). So the two are written out here — at the
+ * very size step `IconButton` uses, so a finger gets the same target either way.
+ */
+const TOOLBAR_ICON_CLASS =
+  'inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:pointer-events-none disabled:opacity-30 md:size-7'
 
 function KanbanHeaderToolbar({
   onAddItem,
@@ -237,6 +255,8 @@ function KanbanHeaderToolbar({
   isFullscreen?: boolean
   onToggleFullscreen?: () => void
 }) {
+  const undoHint = t('preview.kanban_undo_shortcut', { shortcut: prettyCombo('mod+z').join('+') })
+  const redoHint = t('preview.kanban_redo_shortcut', { shortcut: prettyCombo('mod+shift+z').join('+') })
   return (
     <div className='flex items-center gap-1'>
       {onUndo && (
@@ -244,11 +264,11 @@ function KanbanHeaderToolbar({
           type='button'
           disabled={!canUndo}
           onClick={onUndo}
-          className='inline-flex size-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-30 disabled:pointer-events-none'
-          title={t('preview.kanban_undo_shortcut', { shortcut: prettyCombo('mod+z').join('+') })}
+          className={TOOLBAR_ICON_CLASS}
+          title={undoHint}
           aria-label={t('common.undo')}
         >
-          <Undo2 size={14} />
+          <Undo2 size={14} aria-hidden />
         </button>
       )}
       {onRedo && (
@@ -256,151 +276,25 @@ function KanbanHeaderToolbar({
           type='button'
           disabled={!canRedo}
           onClick={onRedo}
-          className='inline-flex size-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-30 disabled:pointer-events-none'
-          title={t('preview.kanban_redo_shortcut', { shortcut: prettyCombo('mod+shift+z').join('+') })}
+          className={TOOLBAR_ICON_CLASS}
+          title={redoHint}
           aria-label={t('command.redo')}
         >
-          <Redo2 size={14} />
+          <Redo2 size={14} aria-hidden />
         </button>
       )}
-      <button
-        type='button'
-        onClick={onAddItem}
-        className='inline-flex items-center gap-1 rounded-[var(--r-md)] bg-[var(--accent)] px-2.5 py-1 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] shadow-[var(--shadow-btn)] hover:bg-[var(--accent-hover)]'
-      >
-        <Plus size={14} />
-        <span>{t('preview.kanban_new_item')}</span>
-      </button>
+      <Button variant='primary' size='sm' icon={<Plus size={14} aria-hidden />} onClick={onAddItem} aria-label={t('preview.kanban_new_item')}>
+        {narrowLabel(t('preview.kanban_new_item'))}
+      </Button>
       {onToggleFullscreen && (
-        <button
-          type='button'
+        <IconButton
+          label={isFullscreen ? t('preview.kanban_exit_fullscreen') : t('preview.kanban_fullscreen')}
           onClick={onToggleFullscreen}
-          className='inline-flex size-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-          aria-label={isFullscreen ? t('preview.kanban_exit_fullscreen') : t('preview.kanban_fullscreen')}
         >
-          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-        </button>
+          {isFullscreen ? <Minimize2 size={14} aria-hidden /> : <Maximize2 size={14} aria-hidden />}
+        </IconButton>
       )}
     </div>
-  )
-}
-
-function KanbanFullscreenTitleEditor({
-  value,
-  onChange,
-  onFinish,
-  onCancel,
-}: {
-  value: string
-  onChange: (v: string) => void
-  onFinish: () => void
-  onCancel: () => void
-}) {
-  return (
-    <input
-      type='text'
-      data-owns-escape='true'
-      value={value}
-      autoFocus
-      onClick={(e) => e.stopPropagation()}
-      onDoubleClick={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-      onFocus={(e) => e.target.select()}
-      onChange={(e) => onChange(e.target.value)}
-      onBlur={onFinish}
-      onKeyDown={(e) => {
-        e.stopPropagation()
-        if (e.key === 'Enter') onFinish()
-        else if (e.key === 'Escape') onCancel()
-      }}
-      className='min-w-28 max-w-56 rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-14)] font-bold text-[var(--text-primary)] outline-none'
-    />
-  )
-}
-
-function KanbanFullscreenTitleView({
-  title,
-  canEdit,
-  onStartEdit,
-}: {
-  title?: string
-  canEdit: boolean
-  onStartEdit: (e?: React.MouseEvent) => void
-}) {
-  return (
-    <div className='group flex items-center gap-1 min-w-0'>
-      <h2
-        onDoubleClick={onStartEdit}
-        className={`text-[length:var(--text-14)] font-bold tracking-[var(--tracking-title)] text-[var(--text-primary)] max-w-44 truncate select-none ${
-          canEdit ? 'cursor-pointer hover:opacity-80' : ''
-        }`}
-        title={title || t('preview.kanban_untitled')}
-      >
-        {title || t('preview.kanban_untitled')}
-      </h2>
-      {canEdit && (
-        <button
-          type='button'
-          onClick={onStartEdit}
-          className='opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-0.5 rounded-[var(--r-xs)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-          title={t('common.edit')}
-          aria-label={t('common.edit')}
-        >
-          <Pencil size={11} />
-        </button>
-      )}
-    </div>
-  )
-}
-
-function KanbanFullscreenTitle({
-  title,
-  onUpdateTitle,
-}: {
-  title?: string
-  onUpdateTitle?: (title: string) => void
-}) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [val, setVal] = useState(title || '')
-
-  useEffect(() => {
-    if (!isEditing) setVal(title || '')
-  }, [title, isEditing])
-
-  const handleFinish = () => {
-    setIsEditing(false)
-    const trimmed = val.trim()
-    if (trimmed && trimmed !== title) onUpdateTitle?.(trimmed)
-    else setVal(title || '')
-  }
-
-  const startEditing = (e?: React.MouseEvent) => {
-    e?.stopPropagation()
-    if (!onUpdateTitle) return
-    setVal(title || '')
-    setIsEditing(true)
-  }
-
-  if (isEditing && onUpdateTitle) {
-    return (
-      <KanbanFullscreenTitleEditor
-        value={val}
-        onChange={setVal}
-        onFinish={handleFinish}
-        onCancel={() => {
-          setVal(title || '')
-          setIsEditing(false)
-        }}
-      />
-    )
-  }
-
-  return (
-    <KanbanFullscreenTitleView
-      title={title}
-      canEdit={Boolean(onUpdateTitle)}
-      onStartEdit={startEditing}
-    />
   )
 }
 
@@ -409,7 +303,13 @@ function KanbanHeaderActions(props: HeaderActionsProps) {
   const statusCol = columns.find((c) => c.id === 'status')
 
   return (
-    <div className='relative flex items-center gap-1.5'>
+    // A phone gets a row that wraps instead of a row that runs off the viewport, and never a scroll
+    // box: the filter, sort and options panels hang off this element, and an `overflow` here would
+    // clip them to the row they are anchored to.
+    <div
+      data-kanban-actions
+      className='relative flex min-w-0 flex-wrap items-center gap-1.5'
+    >
       <div className='hidden md:flex items-center mr-1 w-28'>
         <KanbanProgressBar items={visibleItems} statusColumn={statusCol} height={STATUS_PROGRESS_BAR_HEIGHT} />
       </div>

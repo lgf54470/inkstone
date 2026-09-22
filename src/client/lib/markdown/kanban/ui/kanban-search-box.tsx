@@ -44,12 +44,14 @@ function useDebouncedSearch(value: string, commit: (next: string) => void) {
  */
 function ActiveSearchChip({ query, onOpen, onClear }: { query: string; onOpen: () => void; onClear: () => void }) {
   return (
-    <div className='inline-flex items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-1.5 py-0.5'>
-      <Search size={12} className='shrink-0 text-[var(--text-tertiary)]' />
+    // The chip stands in the row where the search control was, so it takes that control's height on
+    // both sides of the breakpoint — and the two things inside it are buttons a finger has to hit.
+    <div className='inline-flex h-9 items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-1.5 md:h-7'>
+      <Search size={12} aria-hidden className='shrink-0 text-[var(--text-tertiary)]' />
       <button
         type='button'
         onClick={onOpen}
-        className='max-w-24 truncate text-left text-[length:var(--text-11)] text-[var(--text-primary)] hover:underline'
+        className='h-full max-w-24 truncate px-0.5 text-left text-[length:var(--text-11)] text-[var(--text-primary)] hover:underline'
         title={t('preview.kanban_search_placeholder')}
       >
         {query}
@@ -57,10 +59,10 @@ function ActiveSearchChip({ query, onOpen, onClear }: { query: string; onOpen: (
       <button
         type='button'
         onClick={onClear}
-        className='shrink-0 rounded-[var(--r-xs)] p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+        className='inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] md:size-5'
         aria-label={t('preview.kanban_clear_search')}
       >
-        <X size={11} />
+        <X size={11} aria-hidden />
       </button>
     </div>
   )
@@ -87,24 +89,24 @@ export function KanbanSearchBox({
       <button
         type='button'
         onClick={() => setIsOpen(true)}
-        className='inline-flex size-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+        className='inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] md:size-7'
         aria-label={t('preview.kanban_search')}
       >
-        <Search size={14} />
+        <Search size={14} aria-hidden />
       </button>
     )
   }
 
   return (
-    <div className='flex items-center rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2 py-0.5'>
-      <Search size={13} className='text-[var(--text-tertiary)]' />
+    <div className='flex h-9 items-center rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2 md:h-7'>
+      <Search size={13} aria-hidden className='text-[var(--text-tertiary)]' />
       <input
         type='text'
         autoFocus
         value={draft}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={t('preview.kanban_search_placeholder')}
-        className='w-28 border-0 bg-transparent px-1.5 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
+        className='h-full w-28 border-0 bg-transparent px-1.5 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
       />
     </div>
   )

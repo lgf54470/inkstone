@@ -106,6 +106,137 @@ describe('KanbanHeader progress bar scope', () => {
   })
 })
 
+/**
+ * A finger needs a target the project's own scale defines — 36px below `md`, 28px above it — and the
+ * labels that make this row readable on a desktop are what makes it overflow on a phone. So each
+ * control is measured against that scale, and the labels are dropped on the narrow screen while the
+ * accessible name stays: an icon-only button still has to say what it does.
+ */
+const MOBILE_TARGET = /\bsize-9\b|\bh-9\b|\bmin-h-9\b/
+const DESKTOP_TARGET = /\bmd:size-7\b|\bmd:h-7\b/
+
+function headerControls(container: HTMLElement): HTMLButtonElement[] {
+  return [...container.querySelectorAll<HTMLButtonElement>('[data-kanban-header] button')]
+}
+
+function controlNamed(container: HTMLElement, label: string): HTMLButtonElement {
+  const control = headerControls(container).find((button) => button.getAttribute('aria-label') === label)
+  expect(control, `the header has no control named ${label}`).not.toBeNull()
+  return control!
+}
+
+/**
+ * Whether a control is down to its icon below `md`: either it writes nothing at all, or the only text
+ * it holds is the label it hides at that breakpoint. Both shapes have to carry the accessible name.
+ */
+function hasNoWrittenLabel(button: HTMLButtonElement): boolean {
+  const written = button.textContent?.trim() ?? ''
+  if (written === '') return true
+  return [...button.querySelectorAll('span')].some(
+    (span) => span.className.includes('hidden md:inline') && span.textContent?.trim() === written,
+  )
+}
+
+function actionsRow(container: HTMLElement): HTMLElement {
+  const row = container.querySelector<HTMLElement>('[data-kanban-actions]')
+  expect(row, 'the header has no action row to measure').not.toBeNull()
+  return row!
+}
+
+const rowProps: HeaderOverrides = {
+  onUndo: vi.fn(),
+  canUndo: true,
+  onRedo: vi.fn(),
+  canRedo: true,
+  onToggleFullscreen: vi.fn(),
+  onChangeGroupBy: vi.fn(),
+  onChangeCardSize: vi.fn(),
+  cardSize: 'medium',
+  archive: { items: [item('z', 'done')], onRestore: vi.fn(), onDelete: vi.fn() },
+  csv: { title: 'Gate Board', columns: data.columns, items: data.items, commitData: vi.fn() },
+}
+
+describe('the sizes a finger needs in the header', () => {
+  it('gives every icon-only control in the action row a phone-sized target', () => {
+    const rendered = renderHeader(allItems, { ...rowProps, searchQuery: 'gate', unsaved: true, onRetryWrite: vi.fn() })
+    try {
+      const iconOnly = headerControls(actionsRow(rendered.container)).filter(hasNoWrittenLabel)
+      expect(iconOnly.length, 'no icon-only control was found to measure').toBeGreaterThanOrEqual(5)
+      for (const control of iconOnly) {
+        const name = control.getAttribute('aria-label') ?? '(unnamed)'
+        expect(control.className, `${name} is below the touch target for a phone`).toMatch(MOBILE_TARGET)
+        expect(control.getAttribute('aria-label'), `${name} hides its words without a name`).toBeTruthy()
+      }
+    } finally {
+      rendered.unmount()
+    }
+  })
+
+  it('keeps the row on the project scale, 36px on a phone and 28px on a desktop', () => {
+    const rendered = renderHeader(allItems, rowProps)
+    try {
+      for (const label of [
+        t('preview.kanban_search'),
+        t('preview.kanban_filter'),
+        t('preview.kanban_sort'),
+        t('preview.kanban_group_by'),
+        t('common.undo'),
+        t('command.redo'),
+        t('preview.kanban_fullscreen'),
+      ]) {
+        const control = controlNamed(rendered.container, label)
+        expect(control.className, `${label} is below the touch target for a phone`).toMatch(MOBILE_TARGET)
+        expect(control.className, `${label} grew on a desktop`).toMatch(DESKTOP_TARGET)
+      }
+    } finally {
+      rendered.unmount()
+    }
+  })
+
+})
+
+describe('the words the header keeps on a narrow screen', () => {
+  it('drops the label on a narrow screen, keeping the name the control answers to', () => {
+    const rendered = renderHeader(allItems, rowProps)
+    try {
+      for (const label of [
+        t('preview.kanban_filter'),
+        t('preview.kanban_sort'),
+        t('preview.kanban_group_by'),
+        t('preview.kanban_new_item'),
+      ]) {
+        const control = controlNamed(rendered.container, label)
+        const written = [...control.querySelectorAll('span')].find(
+          (span) => span.textContent === label && span.querySelectorAll('span').length === 0,
+        )
+        expect(written, `${label} writes its name nowhere`).toBeDefined()
+        expect(written!.className, `${label} keeps its label on a phone`).toContain('hidden md:inline')
+      }
+    } finally {
+      rendered.unmount()
+    }
+  })
+
+  it('wraps the row instead of clipping the panels that hang off it', () => {
+    const rendered = renderHeader(allItems, rowProps)
+    try {
+      const row = actionsRow(rendered.container)
+      expect(row.className, 'the row does not wrap, so a phone overflows it').toContain('flex-wrap')
+      act(() => { controlNamed(rendered.container, t('preview.kanban_filter')).click() })
+      const panel = rendered.container.querySelector<HTMLElement>('[role="dialog"]')
+      expect(panel, 'the filter control opened no panel').not.toBeNull()
+      for (let node = panel!.parentElement; node; node = node.parentElement) {
+        expect(node.className, `an ancestor scrolls or clips the panel: ${node.className}`).not.toMatch(
+          /overflow-(x-)?(auto|hidden|scroll)/,
+        )
+        if (node.hasAttribute('data-kanban-header')) break
+      }
+    } finally {
+      rendered.unmount()
+    }
+  })
+})
+
 const tableColumns: KanbanProperty[] = [
   { id: 'title', name: 'Title', type: 'title' },
   statusColumn,

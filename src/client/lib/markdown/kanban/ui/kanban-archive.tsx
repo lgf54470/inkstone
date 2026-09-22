@@ -1,5 +1,6 @@
 import { useCallback, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { Archive, Trash2, Undo2 } from 'lucide-react'
+import { Button } from '../../../../components/primitives'
 import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { useUi } from '../../../../store/ui'
 import { t, useLocaleRepaint } from '../../../i18n'
@@ -164,22 +165,21 @@ export function KanbanArchiveAction(entry: KanbanArchiveEntry) {
 
   return (
     <div className='relative'>
-      <button
+      <Button
         ref={btnRef}
-        type='button'
+        size='sm'
+        variant='ghost'
         data-kanban-archive
+        icon={<Archive size={13} aria-hidden />}
         onClick={() => setOpen((o) => !o)}
-        className={`inline-flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] ${
-          open ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]' : ''
-        }`}
+        className={open ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]' : undefined}
         aria-label={t('preview.kanban_archived_count', { count: entry.items.length })}
         aria-haspopup='dialog'
         aria-expanded={open}
         {...(open ? { 'aria-controls': panelId } : {})}
       >
-        <Archive size={13} aria-hidden />
-        <span>{entry.items.length}</span>
-      </button>
+        {entry.items.length}
+      </Button>
       {open && <KanbanArchivePanel {...entry} panelId={panelId} panelRef={panelRef} />}
     </div>
   )
