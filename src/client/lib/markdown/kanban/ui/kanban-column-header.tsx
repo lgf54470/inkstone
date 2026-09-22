@@ -47,6 +47,8 @@ export function KanbanColumnHeader({
   onChangeWipLimit,
   onCollapse,
   onDelete,
+  onToggleSelectAll,
+  isAllSelected,
 }: {
   groupKey: string
   label: string
@@ -60,6 +62,9 @@ export function KanbanColumnHeader({
   /** Absent where a column has no narrower form to fold into — the strip of a banded board. */
   onCollapse?: () => void
   onDelete?: () => void
+  /** Both are absent together: a host that cannot pick cards grows no select-all row at all. */
+  onToggleSelectAll?: () => void
+  isAllSelected?: boolean
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
@@ -99,6 +104,9 @@ export function KanbanColumnHeader({
         onChangeWipLimit={onChangeWipLimit}
         onCollapse={onCollapse}
         onDelete={onDelete}
+        {...(onToggleSelectAll
+          ? { selectAll: { count, isAllSelected: Boolean(isAllSelected), onToggle: onToggleSelectAll } }
+          : {})}
       />
     </div>
   )

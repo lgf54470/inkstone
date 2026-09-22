@@ -985,6 +985,7 @@ const allowed = new Map([
     '/** Elements of a canvas widget (mind map) that give an event its own meaning. */',
   ]],
   ['src/client/components/overlay/menu.tsx', [
+    '/* An icon rather than a tick character: the row is already a `menuitemcheckbox`, so a literal\n          check would be read out a second time and would join the accessible name. */',
     '// Optional: only callers that pair the menu with a trigger need the id, and the',
     '// rest must not be made to invent one.',
     '// Escape closes one level at a time: useEscape runs the top of its stack and nothing',
@@ -3133,9 +3134,11 @@ const allowed = new Map([
     '/** The gutter every row reserves for its band label, so the columns of all rows line up. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-board-view.tsx', [
+    '/** Absent where the host cannot act on a batch, which is also what removes the column\'s own row. */',
     '/** Set when the column is one cell of a band, so the frame says which band it is. */',
     '/** The strip draws the column and none of its cards; a band cell draws the cards and no title. */',
     '/** Absent on the strip of a banded board: there is nothing to expand back into above it. */',
+    '/** Named rather than threaded: only the header consumes it, and only for a whole column. */',
     '// A band cell has no header, and the strip counts the whole column rather than its slice.',
     '/**\n * A move that leaves the card in the cell it already sits in is a reorder, not a change of place, so\n * it gets no announcement; an item the board does not list has no known source, and guessing would\n * mean reading out a column the card may not have left. The band is named only when the drop lands\n * in one, because a drop on the strip changes the column and keeps the band the card was in.\n */',
     '// This is read before the card has moved, so the column it would fill is still one card short.',
@@ -3143,6 +3146,7 @@ const allowed = new Map([
     '/** Shift+Arrow walks one step of the grid the card is in, keeping the coordinate it did not touch. */',
     '/** Everything a cell of the board needs to draw, whichever of the three shapes it is. */',
     '/** `column` is the plain board, `head` and `body` are the two halves of a banded board. */',
+    '/**\n * Whether the cards this column draws are all picked, and the gesture that settles them to that\n * state. The whole column is one batch commit, so its ids are gathered here rather than per card.\n */',
     '// A banded column is the strip\'s title, and has no narrower form to fold into.',
     '/** The board scrolls sideways when it is a row of columns, and both ways once it is a grid. */',
     '/**\n * A board nobody asked to band stays a single row of columns; asking for a second field turns that row\n * into a grid whose columns are titled once, above every band, and whose cells are that column within\n * one band. Both are the same columns and the same cards — only the arrangement differs.\n */',
@@ -3192,6 +3196,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-column-header.tsx', [
     '/** Absent where a column has no narrower form to fold into — the strip of a banded board. */',
+    '/** Both are absent together: a host that cannot pick cards grows no select-all row at all. */',
     '// The strip\'s own label replaces everything inside the button, so the state the pill shows has to',
     '// be said here too or a screen reader gets the count of no column at all.',
   ]],
@@ -3223,6 +3228,9 @@ const allowed = new Map([
     '// No undo toast of its own: a drag commits on release and the reader is still holding the mouse.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-column-menu.tsx', [
+    '/** Absent where nothing above this menu can answer for a whole column — a band\'s own header. */',
+    '/** How many cards the column draws, so the row is not offered over an empty one. */',
+    '/**\n * Picking a whole column is the gesture the batch bar was waiting for, and a checkbox is the control\n * that can say whether the column is already picked: ticking it settles every card of the column to\n * that state, and unticking it gives the column back to the board untouched.\n */',
     '/** Below this the field is not asking for a count of cards, so nothing is written. */',
     '/**\n * A limit is a count of cards, so a draft that is not one is refused where it is typed, and the\n * notice sits in the dialog rather than in a popup. Blank means no rule, which is what the hint\n * says. The same number is validated again by the writer and again by the reader, because it may\n * also have arrived in a fence someone wrote by hand.\n */',
     '// No Status is not a workflow state the board owns — it is wherever the cards that named none',
@@ -3339,10 +3347,13 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-context-menu.tsx', [
     '/** The destinations the active view draws, so a card can be sent to one without a drag. */',
+    '/** Picks every card the view currently draws, which is however many the filter leaves standing. */',
     '/**\n * The two coordinates a board cell has. Both are written by a drag, and a drag is the one gesture a\n * touch reader cannot perform — long-pressing a card opens this very menu, so each axis gets a\n * submenu of the destinations the board draws.\n */',
     '/** One axis\' property id, options and writer, or nothing when the host wired no such axis up. */',
     '// A multi-select group holds arrays, so "which one is this card in" is a membership question.',
     '/**\n * The move-to rows, one per axis that has somewhere to go. Kept out of the card\'s own act list so a\n * board with a single group (or without swimlanes) grows no row at all.\n */',
+    '// The row that makes a selection is offered whether or not one exists yet, so "clear" stays the',
+    '// last row of the group rather than the only way in.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-control-names.test.ts', [
     '/**\n * Every control the board renders has to say what it does: an icon-only button with no name reads\n * as "Button" in a screen reader, which is the same gap the popover pass closed for panels\n * (review #29). Rather than trusting a hand-tallied list of suspects, this mounts the real board,\n * walks every interactive element of each view and of the detail dialog, and fails with the\n * offending markup — so a new control that forgets its name is named by the suite, not by a review.\n */',
@@ -3587,6 +3598,9 @@ const allowed = new Map([
     '// The picker writes the identifier and the badge reads it back; if those two drift, the icon stops',
     '// drawing on the card and its raw stored text shows instead.',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-overlays.tsx', [
+    '/**\n * The menu a right click or a long press opens, wired to this board\'s document. Every card the active\n * view draws is gathered here — that is what "all" means to a reader looking at this view, once the\n * search and the filters have had their say — so the row that picks them needs no document of its own.\n */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-person-picker.tsx', [
     '/**\n * The one way a person is drawn. The cards, the list rows and the gallery footer all showed the\n * same two letters, so the letters and the name they stand for live here.\n */',
     '/** What the column is called, so the control says whose member it picks. */',
@@ -3694,6 +3708,14 @@ const allowed = new Map([
     '// The query is view state, so a board can open with a filter already in force while the box itself',
     '// starts closed. A bare icon then gives the reader no hint that what they see is not the whole board',
     '// — the count is the only thing that moves — so the query is shown as a chip they can clear.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-select-all.test.ts', [
+    '/**\n * Picking many cards at once is what the batch bar exists for, and neither the board nor the list\n * could do it — a reader who wanted to reassign twenty cards had to tick twenty checkboxes. Two ways\n * in are pinned here: the column menu\'s own select-all, and the menu a right click or a long press\n * opens, whose "every card the view draws" is however many the filter and the search leave standing.\n */',
+    '/** The header\'s own menu trigger: the only dialog opener inside a column of a plain board. */',
+    '/** The trigger is a toggle, so a menu left open by an earlier step is closed before opening again. */',
+    '/** A right click or a long press on the board itself, which is not a card: the view\'s own menu. */',
+    '// The count is what tells the two readings apart: a filtered-out card is not drawn, so only the',
+    '// bar can say whether the pick also took the cards the search hid.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-semantic-controls.test.ts', [
     '/**\n * AGENTS.md rule 10 forbids simulating a control with a div plus a click handler, and a card\n * container that also carries `role=\'button\'` is an axe `nested-interactive` violation the moment\n * anything focusable sits inside it — which is exactly the case for the board, gallery and list\n * cards, all of which hold a checkbox, a tag picker and a subtask expander (review #29). A fake\n * button there is worse than no button: it announces "button" for the whole card while a real\n * control inside may or may not answer Enter. These cases pin the shape the pass moved to — no\n * element in the board claims `role=\'button\'`, and opening an item goes through a real `<button>`\n * in every view that shows cards, so a keyboard reader has one unambiguous target per card.\n */',

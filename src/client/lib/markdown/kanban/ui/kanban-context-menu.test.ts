@@ -99,6 +99,50 @@ describe('the move-to rows a card menu grows', () => {
   })
 })
 
+describe('the row that picks everything the view draws', () => {
+  it('is offered whether the menu was opened on a card or on the board itself', () => {
+    const onCard = buildKanbanContextMenuItems(
+      createDummyProps({ targetItem: dummyItem, onSelectAllVisible: vi.fn() }),
+    )
+    const onCanvas = buildKanbanContextMenuItems(createDummyProps({ onSelectAllVisible: vi.fn() }))
+    for (const items of [onCard, onCanvas]) {
+      const row = items.find((item) => item.id === 'kanban-select-all-visible')
+      expect(row?.label).toBe(t('preview.kanban_select_all_visible'))
+      expect(row?.submenu).toBeUndefined()
+    }
+  })
+
+  it('reads as a checkbox over the view, and reports the gesture', () => {
+    const onSelectAllVisible = vi.fn()
+    const row = buildKanbanContextMenuItems(
+      createDummyProps({ onSelectAllVisible, allVisibleSelected: true }),
+    ).find((item) => item.id === 'kanban-select-all-visible')
+    expect(row?.checked).toBe(true)
+    row?.onSelect?.()
+    expect(onSelectAllVisible).toHaveBeenCalledOnce()
+  })
+
+  it('sits with the batch steps and before the way out of the selection', () => {
+    const items = buildKanbanContextMenuItems(
+      createDummyProps({
+        selectedCount: 3,
+        onBatchArchive: vi.fn(),
+        onBatchDelete: vi.fn(),
+        onClearSelection: vi.fn(),
+        onSelectAllVisible: vi.fn(),
+      }),
+    )
+    const ids = items.map((item) => item.id)
+    expect(ids.indexOf('kanban-select-all-visible')).toBeGreaterThan(ids.indexOf('kanban-batch-delete'))
+    expect(ids.indexOf('kanban-select-all-visible')).toBeLessThan(ids.indexOf('kanban-clear-selection'))
+  })
+
+  it('stays away where the host cannot pick cards at all', () => {
+    const items = buildKanbanContextMenuItems(createDummyProps())
+    expect(items.find((item) => item.id === 'kanban-select-all-visible')).toBeUndefined()
+  })
+})
+
 describe('card context menu items', () => {
   it('triggers item-specific actions', () => {
     const onOpenDetail = vi.fn()

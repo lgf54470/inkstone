@@ -1,6 +1,6 @@
 import { useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronRight } from 'lucide-react'
+import { Check, ChevronRight } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { Kbd } from '../primitives'
 import { t } from '../../lib/i18n'
@@ -33,7 +33,9 @@ function MenuItemRow({ item, index, cursor, onHover, onClick }: MenuItemRowProps
         {item.icon}
       </span>)}
       <span className='min-w-0 flex-1 truncate'>{item.label}</span>
-      {item.checked && <span className='text-[var(--accent)]'>✓</span>}
+      {/* An icon rather than a tick character: the row is already a `menuitemcheckbox`, so a literal
+          check would be read out a second time and would join the accessible name. */}
+      {item.checked && <Check size={13} aria-hidden className='shrink-0 text-[var(--accent)]' />}
       {item.submenu ? (
         <ChevronRight size={13} className='ml-auto shrink-0 opacity-70' />
       ) : (

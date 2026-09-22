@@ -141,6 +141,8 @@ export const messages = {
 'preview.kanban_comment_limit_reached': '单条评论不能超过 {limit} 个字符',
 'preview.kanban_clear_selection': '清除选择',
 'preview.kanban_select_all': '全选',
+'preview.kanban_select_all_visible': '选择当前视图全部卡片',
+'preview.kanban_select_group': '选择本组',
 'preview.kanban_show_more': '再显示 {count} 项',
 'preview.kanban_card_details': '卡片详情',
 'preview.kanban_card_title': '卡片标题',

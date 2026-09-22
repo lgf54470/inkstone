@@ -14,7 +14,7 @@ import { KanbanBatchBar } from './kanban-batch-bar'
 import { KanbanBoardView } from './kanban-board-view'
 import { KanbanCalendarView } from './kanban-calendar-view'
 import { KanbanChartView } from './kanban-chart-view'
-import { KanbanContextMenu } from './kanban-context-menu'
+import { KanbanRootOverlays } from './kanban-overlays'
 import { useKanbanCsvEntry } from './kanban-csv'
 import { KanbanEmptyBoard } from './kanban-empty-board'
 import { applyKanbanTemplate } from '../templates'
@@ -22,7 +22,6 @@ import { KanbanFilesScope } from './kanban-files-cell'
 import { KanbanGalleryView } from './kanban-gallery-view'
 import { KanbanGanttView } from './kanban-gantt-view'
 import { KanbanHeader } from './kanban-header'
-import { KanbanItemDetail } from './kanban-item-detail'
 import { KanbanListView } from './kanban-list-view'
 import { KanbanTableView } from './kanban-table-view'
 import { KanbanTimelineView } from './kanban-timeline-view'
@@ -125,6 +124,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
         selectedTags={props.selectedTags}
         onToggleTag={props.onToggleTag}
         onToggleSelect={props.handleToggleSelect}
+        onToggleAll={props.handleToggleAll}
         onOpenDetail={props.setDetailItem}
         onUpdateTitle={props.handleUpdateTitle}
         onUpdateSubtasks={handleUpdateSubtasks}
@@ -345,68 +345,6 @@ function KanbanMain({
         onClearSelection={state.selection.handleClearSelection}
       />
     </div>
-  )
-}
-
-function KanbanRootOverlays({
-  state,
-  menu,
-  isFullscreen,
-  onToggleFullscreen,
-  renderDescription,
-}: {
-  state: ReturnType<typeof useKanbanRootState>
-  menu: ReturnType<typeof useKanbanContextMenuState>
-  isFullscreen?: boolean
-  onToggleFullscreen?: () => void
-  renderDescription?: (source: string) => string
-}) {
-  return (
-    <>
-      <KanbanItemDetail
-        item={state.detailItem}
-        columns={state.data.columns}
-        people={state.people}
-        onClose={() => state.setDetailItem(null)}
-        onUpdate={state.items.handleUpdateItem}
-        onDelete={state.items.handleDeleteItem}
-        onConvertSubtask={(subtaskId) => {
-          if (state.detailItem) state.items.handleConvertSubtaskToItem(state.detailItem.id, subtaskId)
-        }}
-        onAddColumnOption={state.columnOps.handleAddColumnOption}
-        renderDescription={renderDescription}
-      />
-      <KanbanContextMenu
-        point={menu.point}
-        targetItem={menu.targetItem}
-        selectedCount={state.selection.selectedIds.size}
-        activeView={state.filterSort.activeView}
-        views={state.data.views}
-        cardSize={state.filterSort.cardSize}
-        canUndo={state.history.canUndo}
-        canRedo={state.history.canRedo}
-        isFullscreen={isFullscreen}
-        onClose={menu.handleClose}
-        onOpenDetail={state.setDetailItem}
-        onDuplicateItem={menu.handleDuplicateItem}
-        onArchiveItem={(item) => state.handleArchiveItems([item.id])}
-        onDeleteItem={state.items.handleDeleteItem}
-        groupOptions={state.moveToAxes.groupOptions}
-        laneOptions={state.moveToAxes.laneOptions}
-        onMoveItemToGroup={state.moveToAxes.handleMoveItemToGroup}
-        onMoveItemToLane={state.moveToAxes.handleMoveItemToLane}
-        onAddItem={() => state.adds.handleAddItem()}
-        onAddColumn={state.adds.handleAddColumn}
-        onSelectView={state.setActiveViewId}
-        onChangeCardSize={state.filterSort.setCardSize}
-        onBatchArchive={() => state.handleArchiveItems(state.selection.selectedIds)}
-        onBatchDelete={state.selection.handleBatchDelete}
-        onClearSelection={state.selection.handleClearSelection}
-        onUndo={state.history.undo}
-        onRedo={state.history.redo}
-        onToggleFullscreen={onToggleFullscreen}
-      />
-    </>
   )
 }
 

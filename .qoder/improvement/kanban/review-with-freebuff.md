@@ -67,6 +67,10 @@
 - 落地方式（选型）：**不**在看板里写第二套判定。判定提到新叶模块 `lib/markdown/external-images.ts`（原 `renderer/media.ts` 的私有函数搬过去，`media.ts` 改 import），原因是 `renderer/fence.ts` 已 import 看板模块，看板反向 import `renderer/index.ts` 会闭合成环；叶模块两侧皆可 import，`deep-imports:check` 也不报（`lib/markdown/` 无 `index.ts`）。看板侧新增 `ui/kanban-image-policy.tsx`：`useKanbanImageAllowed(url)` 经 `useSession` 读 `preview.externalImages`（设置面板一改即重绘已在屏的封面，不是刷新才变）+ `KanbanBlockedImage` 占位（复用正文同一条 i18n 键 `markdown.external_image_blocked`，带 `data-kanban-image-blocked`）。两处 `<img>` 无论是否放行都补 `referrerPolicy='no-referrer'`（对齐 `media.ts` 与 `link-dynamic-icon.tsx` 的既有手法）。
 - 验证：`kanban-gallery-cover.test.ts` 4→7 例、`kanban-file-preview-modal.test.ts` 2→6 例（新增组先红 5 例：外站封面仍发请求、外站预览仍发请求、两处未设 `referrerpolicy`、放行后仍被拦）；既有两例 lazy/decoding 夹具从外站 URL 改为同类源 URL，因为旧夹具恰好编码了「外站也直连」这一旧行为；`renderer.test.ts` 32 例未动仍绿，证明判定搬家未改正文行为。全套 kanban+preview+tests/kanban 94 文件 **1024** passed，13 项静态门禁 exit=0。
 
+### K-29（本轮新增，跨模块）标签筛选浮层的选中标记同样是字面 `‘✓’` → 待修（不在看板范围）
+- 证据：`components/tag-filter-popover-views.tsx:50` 以 `{selected && <span>✓</span>}` 作选中标记；K-13a 在 `components/overlay/menu.tsx` 把它换成 `aria-hidden` 图标（行已是 `menuitemcheckbox`，`aria-checked` 已经报过一次），同一句话在该文件尚未适用，故作跨模块项登记。
+- 建议：与 `menu.tsx` 同法（`lucide` 图标 + `aria-hidden`，或 `aria-hidden` 包住该 span），随筛选浮层自己的改动一起做。
+
 ### K-28（本轮新增，跨模块）笔记附件预览的图像同样无策略/无 referrer → 待修（不在看板范围）
 - 证据：`features/preview/file-preview-modal/file-preview-views.tsx:70` 的 `<img>` 既未问 `preview.externalImages` 也未设 `referrerpolicy`，与 K-07 是同一类缺陷、不同模块。
 - 建议：K-07 的 `KanbanBlockedImage`/判定可直接复用（判定已在叶模块；占位若被第二个模块采用应提到公共组件层），随该模块自己的改动一起做，不在看板批次里夹带。
@@ -113,9 +117,16 @@
 - 证据：`timeline-helpers.ts:22` `buildTimelineDays(7, 21)`，两视图 `useMemo(…, [])` 挂载算一次；`calculateTimelineBarGeometry` 直接 `left = startIdx * 48 + 4`。
 - 影响：早于 −7 天的卡片得到负 left（不可见）；晚于 +21 天被裁；无日期卡片被画在「今天」；无缩放/跳转。
 
-### K-13 选择与批量能力偏弱 → 待修
+### K-13 选择与批量能力偏弱 → 选择已修（K-13a，`（本提交）`）；批量字段待修（K-13b）
 - 证据：`onToggleAll` 只接表格（`ui/kanban-table-view.tsx:76-81`）；看板/列表/画廊只能逐张勾选；批量条仅分组/归档/删除三项。
 - 影响：换 20 张卡的负责人要点 20 次详情。
+- K-13a 落地（选择）：
+  - ① **选择本组**：列菜单新增一个勾选框行（`ui/kanban-column-menu.tsx` 的 `selectAll` 可选项，`KanbanColumnHeader` / `KanbanBoardColumn` 逐层透传，只有整列（非泳道条）接）。选原生 checkbox 而不是普通按钮，因为它能说出「本组是否已全选」；勾上即整组一批提交（`group.items` 一次映射），取消即整组退出选择；组内无卡时禁用。`isAllSelected` 与 `onToggle` 由 `useColumnSelectAll()` 在列级算，与表格表头勾选框同一套 `computeSelectionAfterToggleAll` 语义。
+  - ② **选择当前视图全部**：上下文菜单（卡片上右键/长按、或板上空白处）新增一行 `kanban-select-all-visible`，`checked` 表示「已全选」，点击切换；“可见”取的是 `filterSort.viewData.items`，所以搜索/筛选筛掉的卡片不会被顺手选中（这是与「全选整份文档」的关键差别，已有断言钉住）。
+  - ③ 顺手修同一个变更里暴露的无障碍缺陷：`components/overlay/menu.tsx` 的选中标记原本是一段字面 `‘✓’` 文本，会进入行的可访问名（`aria-checked` 已经报过一次，于是被读两遍）。改为 `lucide` 的 `Check` 图标 + `aria-hidden`，与 `submenu.tsx` 子菜单行的写法一致。`tag-filter-popover-views.tsx:50` 有同一段写法，已在 review 末尾另行登记（不夹带）。
+  - ④ 为守住 500 行，把两个覆盖层（详情面板与上下文菜单）从 `ui/kanban-root.tsx` 移到新文件 `ui/kanban-overlays.tsx`（纯搬迁，无行为变化）。
+- K-13a 验证：新增 `ui/kanban-select-all.test.ts`（7 例，渲染级）——列菜单勾选框选中本列、不动其他列、勾选态与取消、可见集合受搜索限制（同时断言批量条计数为 2，因为未渲染的卡片无法从 DOM 看出）、已全选时的勾选态、再点一次清空、列表视图同样可达；`kanban-context-menu.test.ts` +4 例（两个分支都给出该行、勾选态与回调、位于批量步骤之后且在「清除选择」之前、宿主不支持时不出行）。四次变异逐一被杀：本列 id 取成当前选择、可见集合换成 `state.data.items`（先被漏掉，后靠批量条计数断言补上）、列菜单不接 `selectAll`。
+- 待办：K-13b 批量标签/负责人/到期日仍未施工。
 
 ### K-14 `item.cover` 只读不写 → 已修（`（本提交）`）
 - 落地：`ui/kanban-files-cell.tsx` 新增可选 `cover` / `onChangeCover` 两 prop（宿主不传则没有任何行显示封面动作）；只对图像文件给按钮（`isImageFile`，与画廊选图同一判定思路），带 `aria-pressed` 与逐文件的 `aria-label`（用文件名的 i18n 键，不靠图标说话）；点已为封面的那一行则传 `undefined`（移除封面，回到「画廊用第一张图」的默认）。接线在详情面板（`ui/kanban-item-detail-fields.tsx` 传 `item.cover` 与 `onUpdate({ ...item, cover })`），与文件增删同一条可撤销提交路径。表格的文件格不接：那里是快速改值的列，把封面动作同时塞进去会让同名按钮在一行里出现两次（已在 review 登记这一取舍）。双语 +2 键。

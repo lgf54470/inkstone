@@ -2,6 +2,7 @@ import {
   Archive,
   ArrowDownUp,
   ArrowRightLeft,
+  CheckSquare,
   Copy,
   FileText,
   LayoutGrid,
@@ -52,6 +53,9 @@ export interface KanbanContextMenuProps {
   laneOptions?: KanbanOption[]
   onMoveItemToGroup?: (itemId: string, groupKey: string) => void
   onMoveItemToLane?: (itemId: string, laneKey: string) => void
+  /** Picks every card the view currently draws, which is however many the filter leaves standing. */
+  onSelectAllVisible?: () => void
+  allVisibleSelected?: boolean
 }
 
 /**
@@ -158,6 +162,31 @@ function buildItemSpecificItems(props: KanbanContextMenuProps, item: KanbanItem)
 }
 
 function buildSelectionItems(props: KanbanContextMenuProps): MenuItem[] {
+  const items = buildBatchItems(props)
+  // The row that makes a selection is offered whether or not one exists yet, so "clear" stays the
+  // last row of the group rather than the only way in.
+  if (props.onSelectAllVisible) {
+    items.push({
+      id: 'kanban-select-all-visible',
+      label: t('preview.kanban_select_all_visible'),
+      icon: <CheckSquare size={14} />,
+      checked: Boolean(props.allVisibleSelected),
+      ...(items.length === 0 ? { separatorBefore: true } : {}),
+      onSelect: props.onSelectAllVisible,
+    })
+  }
+  if (props.selectedCount > 0 && items.length > 0) {
+    items.push({
+      id: 'kanban-clear-selection',
+      label: t('preview.kanban_clear_selection'),
+      icon: <X size={14} />,
+      onSelect: props.onClearSelection,
+    })
+  }
+  return items
+}
+
+function buildBatchItems(props: KanbanContextMenuProps): MenuItem[] {
   if (props.selectedCount <= 0 || (!props.onBatchDelete && !props.onBatchArchive)) return []
   const items: MenuItem[] = []
   if (props.onBatchArchive) {
@@ -179,12 +208,6 @@ function buildSelectionItems(props: KanbanContextMenuProps): MenuItem[] {
       onSelect: props.onBatchDelete,
     })
   }
-  items.push({
-    id: 'kanban-clear-selection',
-    label: t('preview.kanban_clear_selection'),
-    icon: <X size={14} />,
-    onSelect: props.onClearSelection,
-  })
   return items
 }
 

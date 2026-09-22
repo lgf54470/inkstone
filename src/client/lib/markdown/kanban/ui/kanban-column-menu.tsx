@@ -21,6 +21,40 @@ interface KanbanColumnMenuProps {
   onChangeWipLimit: (limit: number | undefined) => void
   onCollapse?: () => void
   onDelete?: () => void
+  /** Absent where nothing above this menu can answer for a whole column — a band's own header. */
+  selectAll?: KanbanColumnSelectAll
+}
+
+export interface KanbanColumnSelectAll {
+  /** How many cards the column draws, so the row is not offered over an empty one. */
+  count: number
+  isAllSelected: boolean
+  onToggle: () => void
+}
+
+/**
+ * Picking a whole column is the gesture the batch bar was waiting for, and a checkbox is the control
+ * that can say whether the column is already picked: ticking it settles every card of the column to
+ * that state, and unticking it gives the column back to the board untouched.
+ */
+function ColumnSelectAllRow({ count, isAllSelected, onToggle }: KanbanColumnSelectAll) {
+  const fieldId = useId()
+  return (
+    <label
+      htmlFor={fieldId}
+      className='flex items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+    >
+      <input
+        id={fieldId}
+        type='checkbox'
+        checked={isAllSelected}
+        disabled={count === 0}
+        onChange={onToggle}
+        className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)]'
+      />
+      <span>{t('preview.kanban_select_group')}</span>
+    </label>
+  )
 }
 
 const AVAILABLE_COLORS: KanbanColorName[] = [
@@ -225,6 +259,7 @@ export const KanbanColumnMenu = memo(function KanbanColumnMenu({
   onChangeWipLimit,
   onCollapse,
   onDelete,
+  selectAll,
   panelId,
 }: KanbanColumnMenuProps) {
   useLocaleRepaint()
@@ -255,6 +290,7 @@ export const KanbanColumnMenu = memo(function KanbanColumnMenu({
       {!isNoneGroup && (
         <ColorPaletteRow activeColor={color} onChangeColor={onChangeColor} />
       )}
+      {selectAll && <ColumnSelectAllRow {...selectAll} />}
       <ColumnActionButtons
         onCollapse={onCollapse}
         onDelete={onDelete}

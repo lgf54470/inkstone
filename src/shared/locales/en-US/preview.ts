@@ -131,6 +131,8 @@ export const messages = {
 'preview.kanban_comment_limit_reached': 'A comment cannot exceed {limit} characters',
 'preview.kanban_clear_selection': 'Clear selection',
 'preview.kanban_select_all': 'Select all items',
+'preview.kanban_select_all_visible': 'Select all cards in view',
+'preview.kanban_select_group': 'Select Group',
 'preview.kanban_show_more': 'Show {count} more',
 'preview.kanban_card_details': 'Card details',
 'preview.kanban_card_title': 'Card title',

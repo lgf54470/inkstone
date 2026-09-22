@@ -12,6 +12,7 @@ import { useKanbanBoardDndState, type CardDropTarget } from './kanban-board-dnd'
 import { KanbanCard, type CardMoveDirection } from './kanban-card'
 import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
 import { CollapsedColumn, KanbanColumnHeader } from './kanban-column-header'
+import type { KanbanColumnSelectAll } from './kanban-column-menu'
 import { KanbanBoardSwimlanes } from './kanban-board-swimlanes'
 import type { CardSize } from './kanban-view-options'
 
@@ -22,6 +23,8 @@ interface KanbanBoardViewProps {
   cardSize?: CardSize
   selectedTags?: string[]
   onToggleSelect: (id: string) => void
+  /** Absent where the host cannot act on a batch, which is also what removes the column's own row. */
+  onToggleAll?: (ids: string[]) => void
   onOpenDetail: (item: KanbanItem) => void
   onToggleTag?: (tag: string) => void
   onUpdateTitle: (id: string, newTitle: string) => void
@@ -123,6 +126,8 @@ interface KanbanBoardColumnProps extends Omit<ColumnCardsListProps, 'items'> {
   /** Absent on the strip of a banded board: there is nothing to expand back into above it. */
   onCollapseColumn?: () => void
   onDeleteColumn?: () => void
+  /** Named rather than threaded: only the header consumes it, and only for a whole column. */
+  selectAll?: KanbanColumnSelectAll
 }
 
 const KanbanBoardColumn = memo(function KanbanBoardColumn(props: KanbanBoardColumnProps) {
@@ -152,6 +157,9 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn(props: KanbanBoardColu
           onChangeWipLimit={props.onChangeColumnWipLimit}
           onCollapse={props.onCollapseColumn}
           onDelete={props.onDeleteColumn}
+          {...(props.selectAll
+            ? { onToggleSelectAll: props.selectAll.onToggle, isAllSelected: props.selectAll.isAllSelected }
+            : {})}
         />
       )}
 
@@ -257,6 +265,7 @@ interface BoardCellBundle {
   dnd: ReturnType<typeof useKanbanBoardDndState>
   onToggleCollapse: (groupKey: string) => void
   onToggleSelect: (id: string) => void
+  onToggleSelectAll?: (ids: string[]) => void
   onOpenDetail: (item: KanbanItem) => void
   onToggleTag?: (tag: string) => void
   onUpdateTitle: (id: string, newTitle: string) => void
@@ -277,8 +286,23 @@ interface BoardColumnCellProps extends BoardCellBundle {
   isCollapsed: boolean
 }
 
+/**
+ * Whether the cards this column draws are all picked, and the gesture that settles them to that
+ * state. The whole column is one batch commit, so its ids are gathered here rather than per card.
+ */
+function useColumnSelectAll(props: BoardColumnCellProps) {
+  const { group, selectedIds, onToggleSelectAll } = props
+  if (!onToggleSelectAll) return undefined
+  return {
+    count: group.items.length,
+    isAllSelected: group.items.length > 0 && group.items.every((item) => selectedIds.has(item.id)),
+    onToggle: () => onToggleSelectAll(group.items.map((item) => item.id)),
+  }
+}
+
 function ExpandedBoardColumn(props: BoardColumnCellProps) {
   const { cell, group, dnd, variant } = props
+  const selectAll = useColumnSelectAll(props)
   return (
     <KanbanBoardColumn
       {...props}
@@ -303,6 +327,7 @@ function ExpandedBoardColumn(props: BoardColumnCellProps) {
       // A banded column is the strip's title, and has no narrower form to fold into.
       onCollapseColumn={variant === 'column' ? () => props.onToggleCollapse(group.groupKey) : undefined}
       onDeleteColumn={() => props.onDeleteColumn?.(group.groupKey)}
+      selectAll={variant === 'column' ? selectAll : undefined}
       onAddItem={() => props.onAddItem(cell)}
       onMoveColumn={(itemId, dir) => props.onMoveCell(itemId, cell, dir)}
     />
@@ -430,6 +455,7 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
     dnd,
     onToggleCollapse: toggleCollapse,
     onToggleSelect: props.onToggleSelect,
+    onToggleSelectAll: props.onToggleAll,
     onOpenDetail: props.onOpenDetail,
     onToggleTag: props.onToggleTag,
     onUpdateTitle: props.onUpdateTitle,
