@@ -1834,7 +1834,7 @@ async function assertSlidesEditor(page) {
   // editor's own chrome, still fails. How many of the boxes axe declines to judge is not pinned: it
   // depends on which text it can resolve a background for, and the drags above move the boxes over
   // each other, so the count is bounded by the deck rather than fixed at it.
-  const deckCanvas = report.incomplete.filter((item) => item.id === 'color-contrast' && /overlapped by another element/.test(item.note))
+  const deckCanvas = report.incomplete.filter(isDeckCanvasReviewItem)
   const unexpected = report.incomplete.filter((item) => !isReviewedIncomplete(item) && !deckCanvas.includes(item))
   const onBoxes = deckCanvas.every((item) => Boolean(item.box))
   check('a11y: no unexpected axe review items in the slides editor', unexpected.length === 0, JSON.stringify(unexpected))
@@ -1895,6 +1895,18 @@ async function assertSlidesEditor(page) {
     }
   })
   await page.keyboard.down(' ')
+  // Space arms the pan through a state update, and the press below is dispatched by the same
+  // protocol as the key it follows — nothing in between waits for a frame. So the stage is asked
+  // whether it has taken the key before the press is sent: the app announces an armed pan with the
+  // grab cursor it draws for as long as one is armed, and the press reads the very state that cursor
+  // is drawn from. This is the flake that was seen once under load and passed either side of it —
+  // the drag arrived first, the press was left to the page (`scrollLeft` 0 → 0, `overflow` fine),
+  // and the assertion was reading the readiness of a render it had outrun.
+  const armed = await page.waitForFunction(() => {
+    const element = document.querySelector('.bento-slides-fullscreen .bento-canvas-stage')
+    return Boolean(element) && getComputedStyle(element).cursor === 'grab'
+  }, { timeout: 5_000 }).then(() => true, () => false)
+  check('slides editor: space arms the pan before the press reaches the stage', armed)
   await page.mouse.move(stage.x, stage.y)
   await page.mouse.down()
   await page.mouse.move(stage.x - 80, stage.y, { steps: 8 })
@@ -2949,6 +2961,609 @@ async function assertPublicCollectionPage(browser, page, consoleErrors) {
   })
 }
 
+// -------------------------------------------------------------------------------------------------
+// The surfaces whose accessible names only the static guard read (SH-93, closed here)
+// -------------------------------------------------------------------------------------------------
+
+/**
+ * SH-93's ledger entry ended on a limit it could not fix from source: the 25 controls it had just
+ * named were, for the attachment drive, the blog hub, a kanban board and the slides editor's layer
+ * list, read by nothing but the static rule itself. A source read can say a name was written; only a
+ * browser can say what a screen reader is told, and the rule's own text note says the same thing in
+ * the other direction — it counts `{icon}` as a label, and it cannot see a name a wrapper drops.
+ *
+ * So each surface is opened the way a person opens it, driven to the state its controls appear in
+ * (a search typed, a file selected, a view switched, a column collapsed) and read twice: axe for the
+ * violations, and the browser's accessibility tree for the names. Both are needed and neither is
+ * enough — axe reports a missing name but never the names that are there, and the tree reports what
+ * the browser calls each control, which is the half these surfaces never had.
+ */
+
+/** What the four surfaces need on the account before they can be read: one file, one post, one link. */
+const CONTROLS_FIXTURE = {
+  filename: 'gate-controls.txt',
+  postSlug: 'gate-controls-post',
+  linkUrl: 'https://example.com/gate-controls',
+  tag: 'gate-tag',
+}
+
+/** A board with two views, subtasks on two cards and status groups for the table's own header. */
+const KANBAN_FENCE = [
+  '',
+  '```kanban',
+  JSON.stringify({
+    title: 'Gate board',
+    columns: [
+      { id: 'title', name: 'Title', type: 'title' },
+      {
+        id: 'status',
+        name: 'Status',
+        type: 'select',
+        options: [
+          { id: 'todo', label: 'To Do', color: 'gray' },
+          { id: 'doing', label: 'Doing', color: 'blue' },
+          { id: 'done', label: 'Done', color: 'green' },
+        ],
+      },
+    ],
+    views: [
+      { id: 'view-board', name: 'Board', type: 'board', groupBy: 'status' },
+      { id: 'view-table', name: 'Table', type: 'table' },
+      { id: 'view-list', name: 'List', type: 'list' },
+    ],
+    items: [
+      {
+        id: 'gate-controls-1',
+        title: 'First card',
+        properties: { status: 'todo' },
+        subtasks: [
+          { id: 'gate-controls-s1', title: 'One', completed: true },
+          { id: 'gate-controls-s2', title: 'Two', completed: false },
+        ],
+      },
+      { id: 'gate-controls-2', title: 'Second card', properties: { status: 'doing' }, subtasks: [{ id: 'gate-controls-s3', title: 'Three', completed: false }] },
+      { id: 'gate-controls-3', title: 'Third card', properties: { status: 'done' } },
+    ],
+  }),
+  '```',
+].join('\n')
+
+/**
+ * The names these surfaces' controls carry, in both languages. Kept together rather than added to
+ * `LABELS` because they are the assertion itself: the string in the locale file and the string the
+ * browser reports for that control have to be the same string, and the four surfaces are read for
+ * exactly that. An entry may be a `RegExp` where the name interpolates data (a filename, a column).
+ */
+const NAMED_CONTROLS = {
+  attachmentsManage: ['管理附件', 'Manage attachments'],
+  attachmentsGrid: ['网格相册', 'Grid Gallery'],
+  attachmentsList: ['列表表格', 'List Table'],
+  attachmentsSelectAll: ['全选附件', 'Select all attachments'],
+  attachmentsSelectFile: [/选择 gate-controls/, /Select gate-controls/],
+  attachmentsRemoveTag: [/移除 #gate-tag/, /Remove #gate-tag/],
+  clear: ['清空', 'Clear'],
+  moreActions: ['更多操作', 'More actions'],
+  star: ['收藏', 'Star'],
+  blogHub: ['博客管理中心', 'Blog Hub'],
+  blogLinks: ['友链管理', 'Friend Links'],
+  blogCategoryFilter: [/分类/, /Category/],
+  blogRemoveTag: [/移除 gate-tag/, /Remove gate-tag/],
+  kanbanStatusColumn: ['Status'],
+  kanbanSubtask: ['Two'],
+  kanbanSelectCard: ['选择卡片', 'Select card'],
+  kanbanSelectAll: ['全选', 'Select all items'],
+  kanbanCardDetails: ['卡片详情', 'Card details'],
+  kanbanExpandSubtasks: ['展开子任务', 'Expand subtasks'],
+  kanbanCollapseSubtasks: ['折叠子任务', 'Collapse subtasks'],
+  kanbanDeleteSubitem: ['删除', 'Delete'],
+  kanbanExpandColumn: [/展开此列/, /Expand Column/],
+  kanbanCollapseColumn: ['收起此列', 'Collapse Column'],
+  kanbanCollapse: ['折叠', 'Collapse'],
+  kanbanExpand: ['展开', 'Expand'],
+  slidesBringForward: ['上移一层', 'Bring forward'],
+  slidesSendBackward: ['下移一层', 'Send backward'],
+}
+
+/**
+ * What a browser finds on these surfaces that is not a name, with the reason and the item it is
+ * registered under. Both directions fail: a violation with no entry fails the gate, and an entry
+ * whose violation is gone fails too, so a surface that gets fixed has to give up its allowance.
+ */
+const SURFACE_A11Y_ALLOWANCES = new Map([
+  [
+    'kanban:nested-interactive',
+    'A kanban card is one click target (it opens the detail) that holds controls of its own (its select box, its tag menu, its subtask toggle, its card menu). That is the card surface the raw-control guard allowlists by name as well, and making it not nested means redesigning the card rather than renaming an element — registered as SH-107.',
+  ],
+  [
+    'kanban:color-contrast',
+    'The kanban tag palette paints its own foregrounds on its own soft tints (--kanban-tag-*-fg/-bg in kanban.css): the blue is 4.46:1 on white and 3.64:1 on its own tint, so the palette needs the same AA calibration the app accents got (§40/§53 work) — registered as SH-108, measured in the light theme only.',
+  ],
+])
+
+/** Presses a drawn control by any of its names, the way a person does. */
+async function pressSurfaceControl(page, labels, scope = '') {
+  const point = await page.evaluate(({ labels, scope }) => {
+    const root = scope ? document.querySelector(scope) : document
+    const control = [...(root?.querySelectorAll('button, [role="menuitem"], [role="option"]') ?? [])]
+      .find((item) => {
+        const name = item.getAttribute('aria-label') ?? item.getAttribute('title') ?? (item.textContent ?? '').trim()
+        return labels.some((label) => name === label || name.includes(label)) && item.getClientRects().length > 0
+      })
+    if (!control) return null
+    // A press is a real pointer click at a measured point, and the blocks of a long note sit below
+    // the fold: without this the click landed at coordinates nothing was drawn at, which is how a
+    // card at the end of the note read as a dead control. The point has to be on screen as well as on
+    // the control — a box that hangs past the edge has no pressable centre.
+    control.scrollIntoView({ block: 'center' })
+    const box = control.getBoundingClientRect()
+    const inside = box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth && box.bottom <= window.innerHeight
+    return box.width > 0 && box.height > 0 && inside
+      ? { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+      : null
+  }, { labels, scope })
+  if (!point) return false
+  await page.mouse.click(point.x, point.y)
+  await sleep(1_000)
+  return true
+}
+
+/**
+ * Opens a surface that is a dialog and hands back a selector for it — the dialog that was not on
+ * screen before the control was pressed. Scoping this way keeps the read on the surface instead of
+ * on whichever dialog happens to be first in the document, and needs no locale-dependent selector.
+ */
+async function openSurfaceDialog(page, open, name) {
+  await page.evaluate(() => {
+    for (const dialog of document.querySelectorAll('[role="dialog"]')) dialog.setAttribute('data-gate-seen', '')
+  })
+  const pressed = await open()
+  check(`${name}: the control a person presses opens it`, pressed)
+  if (!pressed) return null
+  await sleep(1_500)
+  const marked = await page.evaluate((surface) => {
+    const fresh = [...document.querySelectorAll('[role="dialog"]')].filter((dialog) => !dialog.hasAttribute('data-gate-seen'))
+    for (const dialog of document.querySelectorAll('[data-gate-seen]')) dialog.removeAttribute('data-gate-seen')
+    const outer = fresh.find((dialog) => !fresh.some((other) => other !== dialog && other.contains(dialog))) ?? fresh[0]
+    if (!outer) return false
+    outer.setAttribute('data-gate-surface', surface)
+    return true
+  }, name)
+  return marked ? `[data-gate-surface="${name}"]` : null
+}
+
+/**
+ * The names the browser reports inside a root, read from its own accessibility tree over CDP and
+ * scoped by real DOM containment. Nothing here comes from the markup: a name a wrapper drops, or one
+ * that only ever existed as a `title`, is exactly what a source read cannot see and this can.
+ */
+async function surfaceAccessibleNames(page, root) {
+  const client = await page.createCDPSession()
+  try {
+    await client.send('DOM.enable')
+    await client.send('Accessibility.enable')
+    const { root: document_ } = await client.send('DOM.getDocument', { depth: -1 })
+    const { nodeId } = await client.send('DOM.querySelector', { nodeId: document_.nodeId, selector: root })
+    if (!nodeId) return null
+    const { node: described } = await client.send('DOM.describeNode', { nodeId })
+    const { nodes } = await client.send('DOM.getFlattenedDocument', { depth: -1, pierce: true })
+    const anchor = nodes.find((entry) => entry.backendNodeId === described.backendNodeId)
+    if (!anchor) return null
+    const children = new Map()
+    for (const node of nodes) {
+      if (!node.parentId) continue
+      children.set(node.parentId, [...(children.get(node.parentId) ?? []), node.nodeId])
+    }
+    const byId = new Map(nodes.map((node) => [node.nodeId, node]))
+    const inside = new Set()
+    const walk = (id) => {
+      if (byId.get(id)?.backendNodeId) inside.add(byId.get(id).backendNodeId)
+      for (const child of children.get(id) ?? []) walk(child)
+    }
+    walk(anchor.nodeId)
+    const tree = await client.send('Accessibility.getFullAXTree')
+    return tree.nodes
+      .filter((node) => node.backendDOMNodeId && inside.has(node.backendDOMNodeId) && !node.ignored)
+      .map((node) => node.name?.value ?? '')
+      .filter((name) => name.trim().length > 0)
+  } finally {
+    await client.detach()
+  }
+}
+
+/**
+ * The name the browser reports for one control, read from that element's own accessibility node. The
+ * surface-wide read above answers "is this name somewhere in here", which is what most of these
+ * assertions need; a bare `<select>` needs the tighter question, because its options carry names of
+ * their own and a surface-wide search would find one of those and call the control named.
+ */
+async function surfaceControlName(page, selector) {
+  const client = await page.createCDPSession()
+  try {
+    await client.send('DOM.enable')
+    await client.send('Accessibility.enable')
+    const { root: document_ } = await client.send('DOM.getDocument', { depth: -1 })
+    const { nodeId } = await client.send('DOM.querySelector', { nodeId: document_.nodeId, selector })
+    if (!nodeId) return null
+    const { node: described } = await client.send('DOM.describeNode', { nodeId })
+    const { nodes } = await client.send('Accessibility.getPartialAXTree', {
+      backendNodeId: described.backendNodeId,
+      fetchRelatives: false,
+    })
+    return nodes.find((node) => !node.ignored)?.name?.value ?? ''
+  } finally {
+    await client.detach()
+  }
+}
+
+/** Asserts the browser reports a name for one control, and prints the one it did. */
+async function checkControlName(page, selector, surface, wanted) {
+  const name = await surfaceControlName(page, selector)
+  const alternatives = Array.isArray(wanted) ? wanted : [wanted]
+  const named = alternatives.some((label) => (label instanceof RegExp ? label.test(name ?? '') : name === label))
+  check(`${surface}: the control carries the name the browser reports`, named, `name=${JSON.stringify(name)}`)
+}
+
+/** Asserts the browser is told each of these names, and reports the ones it was not. */
+async function checkSurfaceNames(page, root, surface, wanted) {
+  const names = await surfaceAccessibleNames(page, root)
+  if (!names) {
+    check(`${surface}: the browser could read the surface's own accessibility tree`, false, `no element for ${root}`)
+    return
+  }
+  const matches = (label, name) => (label instanceof RegExp ? label.test(name) : name === label || name.includes(label))
+  const alternatives = (entry) => (Array.isArray(entry) ? entry : [entry])
+  const missing = wanted.filter((entry) => !names.some((name) => alternatives(entry).some((label) => matches(label, name))))
+  check(
+    `${surface}: every control it names is a name the browser reports`,
+    missing.length === 0,
+    `missing=${JSON.stringify(missing)} of ${names.length} names`,
+  )
+}
+
+/**
+ * axe declines to judge text over a background image, and the blog hub's hero is a two-stop gradient
+ * of token surfaces (`--bg-surface` → `--bg-sunken`) with the hub's title and subtitle drawn on it. A
+ * reader that cannot judge is answered by measuring rather than by waving: both stops and each line
+ * of the hero are painted into a canvas for their sRGB bytes, and every stop is put through the WCAG
+ * ratio against every line. Read on both themes this gate runs in, that came out title 17.8/15.4 and
+ * subtitle 6.0/5.2 in light, 14.3/15.3 and 6.6/7.0 in dark — all four AA, so the allowance it grants
+ * is for the reader's own limit and not for the text. The two stops bound the middle as well: a
+ * gradient of two surfaces passes between them, so measuring the ends measures what is drawn.
+ *
+ * It fails in both directions. No gradient above the heading, or a stop under AA, and the check that
+ * grants the allowance fails with it — a hero that stops being a gradient takes its own allowance
+ * away. Returns `null` when there is nothing to measure.
+ */
+async function heroGradientContrast(page, root) {
+  return page.evaluate((selector) => {
+    // The hub draws two headings — the modal's own title in the header, and the dashboard's welcome
+    // banner — and only the second one sits on the gradient. Picking "the first h2 in the dialog" is
+    // what made the first reading return null while axe was naming a heading on a gradient; the
+    // heading this measures is found the other way round, from the gradient up.
+    let heading = null
+    let hero = null
+    let image = ''
+    for (const candidate of document.querySelectorAll(`${selector} h2`)) {
+      let node = candidate
+      let drawn = ''
+      while (node && !drawn) {
+        const background = getComputedStyle(node).backgroundImage
+        drawn = background === 'none' ? '' : background
+        if (drawn) {
+          heading = candidate
+          hero = node
+          image = drawn
+          break
+        }
+        node = node.parentElement
+      }
+      if (image) break
+    }
+    if (!heading || !hero || !image) return null
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    const toRgb = (color) => {
+      context.clearRect(0, 0, 1, 1)
+      context.fillStyle = color
+      context.fillRect(0, 0, 1, 1)
+      return [...context.getImageData(0, 0, 1, 1).data].slice(0, 3)
+    }
+    const luminance = ([r, g, b]) => {
+      const channel = (value) => {
+        const v = value / 255
+        return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+      }
+      return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+    }
+    const ratio = (a, b) => {
+      const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+      return (light + 0.05) / (dark + 0.05)
+    }
+    const stops = (image.match(/oklch\([^)]*\)|rgba?\([^)]*\)|#[0-9a-f]{3,8}/gi) ?? []).map(toRgb)
+    const lines = [heading, heading.nextElementSibling].filter(Boolean)
+    const pairs = stops.flatMap((stop) => lines.map((line) => ratio(stop, toRgb(getComputedStyle(line).color))))
+    return {
+      image: image.slice(0, 90),
+      stops: stops.length,
+      worst: pairs.length ? Number(Math.min(...pairs).toFixed(2)) : 0,
+    }
+  }, root)
+}
+
+/**
+ * axe over one surface, with everything it finds checked against the registrations above. A surface
+ * may also bring a reader of its own for an item axe declined to judge — an `allowIncomplete` that is
+ * true only while that reader's own measurement holds.
+ */
+async function checkSurfaceAxe(page, root, surface, seen, allowIncomplete = () => false) {
+  await ensureAxe(page)
+  const report = await runAxe(page, root)
+  for (const item of report.violations) {
+    if (SURFACE_A11Y_ALLOWANCES.has(`${surface}:${item.id}`)) seen.add(`${surface}:${item.id}`)
+  }
+  const unexpected = report.violations.filter((item) => !SURFACE_A11Y_ALLOWANCES.has(`${surface}:${item.id}`))
+  check(
+    `${surface}: axe finds nothing on it that this gate has not registered`,
+    unexpected.length === 0,
+    JSON.stringify(unexpected.slice(0, 3)),
+  )
+  const unreviewed = report.incomplete.filter((item) => !isReviewedIncomplete(item) && !allowIncomplete(item))
+  check(`${surface}: no unexpected axe review items`, unreviewed.length === 0, JSON.stringify(unreviewed.slice(0, 3)))
+  check(`${surface}: axe inspected the surface`, report.passes >= 5, `passes=${report.passes}`)
+}
+
+/**
+ * The one axe review item the deck is allowed to raise, named once so both readers of this surface
+ * ask the same question: the text on a page the author coloured, which axe declines to judge because
+ * a box of the deck's own is over it. What was measured when this first came up (see `assertSlidesEditor`)
+ * is that the allowance is located rather than waved — the item has to name a box on the page, and
+ * there can be at most one per box — and that count is asserted where the deck's own element count is
+ * known. This predicate is what the second reader (the layer list's, below) shares instead of
+ * restating the reason.
+ */
+function isDeckCanvasReviewItem(item) {
+  return item.id === 'color-contrast' && /overlapped by another element/.test(item.note) && Boolean(item.box)
+}
+
+/** The control a surface is opened from, and what it says its controls are called. */
+async function assertDriveControlNames(page, seen) {
+  const root = await openSurfaceDialog(page, () => pressSurfaceControl(page, NAMED_CONTROLS.attachmentsManage), 'attachment drive')
+  if (!root) return
+  const files = await page.evaluate((selector) =>
+    [...document.querySelectorAll(`${selector} button`)].filter((item) => /收藏|Star|取消收藏|Unstar/.test(item.getAttribute('aria-label') ?? '')).length, root)
+  check('attachment drive: the account has a file for its rows to be drawn from', files >= 1, `files=${files}`)
+  await checkSurfaceNames(page, root, 'attachment drive (grid)', [
+    NAMED_CONTROLS.attachmentsGrid,
+    NAMED_CONTROLS.attachmentsList,
+    NAMED_CONTROLS.moreActions,
+    NAMED_CONTROLS.star,
+  ])
+  await checkSurfaceAxe(page, root, 'attachment drive', seen)
+
+  await page.type(`${root} input`, 'gate')
+  await sleep(800)
+  await checkSurfaceNames(page, root, 'attachment drive (a search typed in)', [NAMED_CONTROLS.clear])
+
+  const listed = await pressSurfaceControl(page, NAMED_CONTROLS.attachmentsList, root)
+  check('attachment drive: the list view is one press away', listed)
+  await checkSurfaceNames(page, root, 'attachment drive (list)', [NAMED_CONTROLS.attachmentsSelectAll, NAMED_CONTROLS.moreActions])
+  await checkSurfaceAxe(page, root, 'attachment drive', seen)
+
+  // The inspector is the panel a selected file gets, and the tag it carries is removable there.
+  const selected = await page.evaluate((selector) => {
+    const cell = [...document.querySelectorAll(`${selector} button`)].find((item) => /选择 gate-controls|Select gate-controls/.test(item.getAttribute('aria-label') ?? ''))
+    const row = cell?.closest('tr')
+    if (!row) return false
+    row.querySelector('td:nth-child(2)')?.click()
+    return true
+  }, root)
+  await sleep(1_200)
+  check('attachment drive: selecting a row draws the inspector', selected)
+  await checkSurfaceNames(page, root, 'attachment drive (a file selected)', [NAMED_CONTROLS.attachmentsRemoveTag])
+
+  await page.keyboard.press('Escape')
+  await sleep(800)
+  return root
+}
+
+/** The hub a person reaches from the note list's globe, the tag filter it draws, and its links view. */
+async function assertBlogHubControlNames(page, seen) {
+  const root = await openSurfaceDialog(page, () => pressSurfaceControl(page, NAMED_CONTROLS.blogHub), 'blog hub')
+  if (!root) return
+  const hero = await heroGradientContrast(page, root)
+  const gradientJudged = hero !== null && hero.stops >= 2 && hero.worst >= 4.5
+  check('blog hub: the text axe declined to judge is measured — every gradient stop against every line',
+    gradientJudged, JSON.stringify(hero))
+  const allowGradient = (item) => gradientJudged && /background gradient/.test(item.note)
+  await checkSurfaceAxe(page, root, 'blog hub', seen, allowGradient)
+  await checkSurfaceNames(page, root, 'blog hub', [NAMED_CONTROLS.moreActions, NAMED_CONTROLS.blogLinks])
+
+  const filtered = await pressSurfaceControl(page, [CONTROLS_FIXTURE.tag], `${root} aside`)
+  check('blog hub: the tag the fixture published its post with is a filter the sidebar offers', filtered)
+  await checkSurfaceNames(page, root, 'blog hub (a tag filter active)', [NAMED_CONTROLS.blogRemoveTag])
+
+  const links = await pressSurfaceControl(page, NAMED_CONTROLS.blogLinks, root)
+  check('blog hub: the links view is one press away', links)
+  // The link list's own filter is a bare `<select>`: without a label it is unnamed, which is what the
+  // browser reads and what axe's `select-name` rule asks about.
+  await checkControlName(page, `${root} select`, 'blog hub (the links list, its category filter)', NAMED_CONTROLS.blogCategoryFilter)
+  await checkSurfaceAxe(page, root, 'blog hub', seen, allowGradient)
+
+  await page.keyboard.press('Escape')
+  await sleep(800)
+  return root
+}
+
+/**
+ * A board is read in every view its controls live in: the board (cards, subtask toggles), a column
+ * collapsed (the strip that stopped being a `div` with a role), the table (rows, groups, select-all)
+ * and the list (rows whose toggle the guard used to call named while axe called it nameless).
+ */
+async function assertKanbanControlNames(page, seen) {
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('kanban: the preview pane never became visible')
+  const drawn = await page.waitForFunction(() => {
+    const block = document.querySelector('.ink-prose [data-kanban]')
+    return Boolean(block && block.querySelector('[data-kanban-canvas]'))
+  }, { timeout: 20_000 }).then(() => true, () => false)
+  check('kanban: the note draws a board for its controls to be read on', drawn)
+  if (!drawn) return
+  // The press is not the answer — the board that appears is. A press that found nothing to press and
+  // a press that opened nothing are the same failure to a reader, so the surface it draws is what is
+  // waited for, and the wait is the check rather than a step that throws when it times out.
+  const pressed = await pressSurfaceControl(page, ['全屏', 'Full screen'], '.ink-prose [data-kanban]')
+  const surfaced = pressed && await page
+    .waitForFunction(() => Boolean(document.querySelector('.kanban-fullscreen')), { timeout: 15_000 })
+    .then(() => true, () => false)
+  check('kanban: the block card opens the board full screen', surfaced, `pressed=${pressed}`)
+  if (!surfaced) return
+  await waitForPanelSettled(page, '.kanban-fullscreen')
+  const root = '.kanban-fullscreen'
+
+  await checkSurfaceNames(page, root, 'kanban (board)', [NAMED_CONTROLS.kanbanCardDetails, NAMED_CONTROLS.kanbanExpandSubtasks])
+  await checkSurfaceAxe(page, root, 'kanban', seen)
+
+  // A card's subtasks are read where they are drawn: the board draws them as their own rows (each a
+  // checkbox named by the subtask it completes), and the bin for one is in the *table* view's nested
+  // table, so it is asserted there. Reading a name on the surface that does not draw it is a failure
+  // that says nothing about the app.
+  const expanded = await pressSurfaceControl(page, NAMED_CONTROLS.kanbanExpandSubtasks, root)
+  check('kanban: a card opens its subtasks', expanded)
+  await checkSurfaceNames(page, root, 'kanban (subtasks open)', [NAMED_CONTROLS.kanbanCollapseSubtasks, NAMED_CONTROLS.kanbanSubtask])
+
+  // Collapsing a column is what draws the strip that used to be a `div` with a button role.
+  await pressSurfaceControl(page, ['To Do', '未开始', '待办'], root)
+  const collapsed = await pressSurfaceControl(page, NAMED_CONTROLS.kanbanCollapseColumn)
+  check('kanban: a column menu collapses its column', collapsed)
+  await checkSurfaceNames(page, root, 'kanban (a column collapsed)', [NAMED_CONTROLS.kanbanExpandColumn])
+
+  // Each view hides a different quarter of this surface's controls: the table's rows and groups
+  // carry both toggles and the select-all, the list's rows carry the toggle and their own select.
+  const views = [
+    { view: 'table', label: ['表格', 'Table'], names: [NAMED_CONTROLS.kanbanSelectCard, NAMED_CONTROLS.kanbanSelectAll, NAMED_CONTROLS.kanbanExpand, NAMED_CONTROLS.kanbanExpandSubtasks] },
+    { view: 'list', label: ['列表', 'List'], names: [NAMED_CONTROLS.kanbanSelectCard, NAMED_CONTROLS.kanbanExpandSubtasks] },
+  ]
+  for (const { view, label, names } of views) {
+    const switched = await pressSurfaceControl(page, label, root)
+    check(`kanban: the ${view} view is one press away`, switched)
+    if (!switched) continue
+    await checkSurfaceNames(page, root, `kanban (${view})`, names)
+    if (view === 'table') {
+      // The table's own subtask rows (checkbox, title, bin) live in a nested table under a row that is
+      // open. Which state a row arrives in is not this reader's business: it opens one if none is
+      // open, and then reads the names — a row that never opened leaves the assertion below red.
+      const alreadyOpen = await page.evaluate((selector) =>
+        [...document.querySelectorAll(`${selector} button`)].some((item) => /折叠子任务|Collapse subtasks/.test(item.getAttribute('aria-label') ?? '')), root)
+      if (!alreadyOpen) await pressSurfaceControl(page, NAMED_CONTROLS.kanbanExpandSubtasks, root)
+      await checkSurfaceNames(page, root, 'kanban (table, subtasks open)', [NAMED_CONTROLS.kanbanCollapseSubtasks, NAMED_CONTROLS.kanbanDeleteSubitem])
+      // The status cell's `<select>` is read on its own for the reason above: a surface-wide search
+      // for "Status" would be satisfied by the column header's own name.
+      await checkControlName(page, `${root} [data-item-id="gate-controls-1"] select`, 'kanban (the status cell)', NAMED_CONTROLS.kanbanStatusColumn)
+    }
+    await checkSurfaceAxe(page, root, 'kanban', seen)
+  }
+
+  await page.keyboard.press('Escape')
+  await sleep(800)
+}
+
+/**
+ * The layer list's two reorder controls. They were the one place in the client that kept a row's own
+ * controls behind `display: none` until a hover, which put them out of the accessibility tree
+ * altogether — unreachable by keyboard and by a screen reader, and invisible to axe, which skips a
+ * hidden subtree. The row now reveals them the way the rest of the app does (opacity, plus
+ * `focus-within`), so they are in the tree and this is their reader.
+ */
+async function assertSlidesLayerControlNames(page, seen) {
+  if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('slides layers: the preview pane never became visible')
+  const pressed = await pressSurfaceControl(page, ['全屏', 'Full screen'], '.ink-prose [data-bento-slides]')
+  const surfaced = pressed && await page
+    .waitForFunction(() => Boolean(document.querySelector('.bento-slides-fullscreen')), { timeout: 15_000 })
+    .then(() => true, () => false)
+  check('slides layers: the deck card opens the editor', surfaced, `pressed=${pressed}`)
+  if (!surfaced) return
+  await waitForPanelSettled(page, '.bento-slides-fullscreen')
+  const root = '.bento-slides-fullscreen'
+  // The deck's own page text is the one review item this surface raises, and the scenario above is
+  // what measured it; here it is the same predicate rather than a second opinion.
+  await checkSurfaceAxe(page, root, 'slides editor', seen, isDeckCanvasReviewItem)
+  await checkSurfaceNames(page, root, 'slides editor (layer list)', [NAMED_CONTROLS.slidesBringForward, NAMED_CONTROLS.slidesSendBackward])
+  await page.keyboard.press('Escape')
+  await sleep(800)
+}
+
+/** Puts the account's file, post and link in place once, and reports what it found or made. */
+async function seedControlSurfaceData(page) {
+  const listed = await apiCall(page, 'GET', '/api/files?pageSize=100')
+  const existing = (listed.data?.files ?? []).find((file) => file.filename === CONTROLS_FIXTURE.filename)
+  // A file found by name was put there by an earlier run: it has no `status` of its own, so the
+  // fixture reports the read that found it (200) rather than a 0 that reads as a failed upload.
+  const uploaded = existing ? { ...existing, status: 200 } : await page.evaluate(async (filename) => {
+    const form = new FormData()
+    form.set('file', new Blob(['gate control surface attachment'], { type: 'text/plain' }), filename)
+    const response = await fetch('/api/files', { method: 'POST', headers: { 'X-Inkstone-Client': '1' }, body: form })
+    const data = await response.json().catch(() => null)
+    return { id: data?.id ?? data?.file?.id ?? null, status: response.status }
+  }, CONTROLS_FIXTURE.filename)
+  const tagged = uploaded?.id
+    ? await apiCall(page, 'PATCH', `/api/files/${uploaded.id}`, { tags: [CONTROLS_FIXTURE.tag] })
+    : { status: 0 }
+
+  const posts = await apiCall(page, 'GET', '/api/blog/posts')
+  const found = (posts.data?.posts ?? []).find((post) => post.slug === CONTROLS_FIXTURE.postSlug)
+  const noteId = (await apiCall(page, 'GET', '/api/notes?limit=1')).data?.notes?.[0]?.id ?? ''
+  const post = found ?? (await apiCall(page, 'POST', '/api/blog/posts', {
+    noteId,
+    title: 'Gate control surfaces',
+    slug: CONTROLS_FIXTURE.postSlug,
+    isPublished: true,
+    tags: [CONTROLS_FIXTURE.tag],
+  }))
+
+  const links = await apiCall(page, 'GET', '/api/blog/links')
+  const hasLink = (links.data?.links ?? []).some((link) => link.url === CONTROLS_FIXTURE.linkUrl)
+  const link = hasLink ? { status: 200 } : await apiCall(page, 'POST', '/api/blog/links', {
+    name: 'Gate control surfaces',
+    url: CONTROLS_FIXTURE.linkUrl,
+  })
+  return { file: uploaded?.status ?? 0, tagged: tagged.status, post: post.status, link: link.status }
+}
+
+/**
+ * The scenario: one fixture, four surfaces, and a final pass that fails an allowance nobody needed.
+ * The boards and the deck are put into the note the way the other scenarios do it, so this runs on
+ * its own rather than depending on what an earlier scenario happened to leave behind.
+ */
+async function assertNamedControlSurfaces(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(600)
+  const fixture = await seedControlSurfaceData(page)
+  check('control surfaces: the account carries a file, a post and a link to read them on',
+    fixture.file === 200 || fixture.file === 201, JSON.stringify(fixture))
+
+  const hasBoard = await page.evaluate(() => Boolean(document.querySelector('.ink-prose [data-kanban]')))
+  const hasDeck = await slidesDeckOnScreen(page)
+  if (!hasBoard || !hasDeck) {
+    await ensurePaneVisible(page, '.cm-content')
+    await writeAtEndOfNote(page, `${hasBoard ? '' : KANBAN_FENCE}${hasDeck ? '' : SLIDES_FENCE}`, 'control surfaces')
+    await ensurePaneVisible(page, '.ink-prose')
+  }
+
+  const seen = new Set()
+  await assertDriveControlNames(page, seen)
+  await assertBlogHubControlNames(page, seen)
+  await assertKanbanControlNames(page, seen)
+  await assertSlidesLayerControlNames(page, seen)
+
+  const stale = [...SURFACE_A11Y_ALLOWANCES.keys()].filter((key) => !seen.has(key))
+  check('control surfaces: no allowance is left over from a surface that no longer needs it',
+    stale.length === 0, `stale=${JSON.stringify(stale)}`)
+  await page.evaluate(() => {
+    for (const surface of document.querySelectorAll('[data-gate-surface]')) surface.removeAttribute('data-gate-surface')
+  })
+}
+
 async function main() {
   console.log(`visual e2e against ${BASE}`)
   const browser = await puppeteer.launch({
@@ -2992,6 +3607,7 @@ async function main() {
     await assertMusicSurface(page)
     await assertShareCenter(page)
     await assertShareQrSheet(page)
+    await assertNamedControlSurfaces(page)
     await assertPublicCollectionPage(browser, page, consoleErrors)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
