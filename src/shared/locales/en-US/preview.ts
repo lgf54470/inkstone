@@ -91,6 +91,8 @@ export const messages = {
 'preview.kanban_batch_delete_count': 'Delete selected ({count})',
 'preview.kanban_batch_deleted_count': '{count} deleted',
 'preview.kanban_card_deleted': 'Card deleted',
+'preview.kanban_group_deleted': 'Group deleted',
+'preview.kanban_group_deleted_cards': 'Group deleted, {count} cards left ungrouped',
 'preview.kanban_batch_archive_count': 'Archive selected ({count})',
 'preview.kanban_archived_count': 'Archived ({count})',
 'preview.kanban_archive_panel': 'Archived cards',

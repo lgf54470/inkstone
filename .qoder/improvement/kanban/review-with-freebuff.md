@@ -24,9 +24,11 @@
 - 进度：新增 `useKanbanItemDeletion`（`ui/kanban-root-hooks.ts`）统一单卡删除：经 items ref 判存后提交 + `toastWithUndo('preview.kanban_card_deleted', history.undo, 8s)`，详情底栏与上下文菜单共用；归档面板的「彻底删除」同走这一条；三处重复的 8000 常量收成 `DESTRUCTIVE_UNDO_TOAST_MS`。顺带修掉「删除不存在的卡片也提交一次」的空步（旧实现会凭空压一条 undo 历史）。双语 +1 键。
 - 验证：`kanban-view-state.test.ts` +2 例（先红：无 toast；不存在 id 仍提交）后绿，其中一例通过运行 toast 的 action 断言卡片真的回来（不是只看 toast 出现）。
 
-### K-02 删列无撤销提示，整列卡片落「No Status」 → 待修
+### K-02 删列无撤销提示，整列卡片落「No Status」 → 已修（`（本提交）`）
 - 证据：`ui/kanban-column-menu.tsx`（删除项直接 `onDelete()`）；`ui/kanban-column-hooks.ts:21-32` `deleteColumnFromData` 把该列卡片的分组值置 `undefined`。
 - 影响：一次点击让数十张卡失去分组，仅靠 Ctrl+Z。
+- 进度：新增 `useKanbanGroupDeletion`（`ui/kanban-column-hooks.ts`），分组删除从此报出「多少张卡片已归入未分组」并交出与 Ctrl+Z 同一条 undo；`useKanbanColumnOperations` 改对象传参（新增 data/undo 两个依赖，避免四参数）；文档里不存在的分组不再提交空步。顺带发现：表格 schema 的「删属性列」（`schemaOps.deleteColumn`）**本来就有** undo toast（既有 `preview.kanban_column_deleted`），故新键按本模块分组语汇取名 `preview.kanban_group_deleted(_cards)`，与 en 的 'Delete Group'/'Group options' 一致，不与属性列那条混用。
+- 验证：`kanban-view-state.test.ts` +3 例（有卡的分组报数量且 undo 真能还原；无卡分组不带数量；不存在的分组不提交不吭声），修复前三例均红。
 
 ### K-03 附件删除与撤销冲突，撤销留下悬空文件 → 待修
 - 证据：`ui/kanban-files-cell.tsx` 摘引用（可撤销的 `commitData`）后立即 `deleteKanbanFile` 真删 R2 对象。

@@ -3149,6 +3149,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-column-hooks.ts', [
     '// Renaming and limiting share this one writer, so a patch that merely omits `wipLimit` must not',
     '// read as "clear it". The value is validated here too because a patch can come from anywhere.',
+    '/** The board\'s own undo, so a deleted group\'s way back is the same step as Ctrl+Z. */',
+    '/**\n * Deleting a group takes its cards\' grouping with it, however many cards that is, so the reader is\n * told the count and handed the way back. A group the document does not hold is not a deletion:\n * the same guard keeps the commit and the announcement from both firing over a menu that raced\n * ahead of the document.\n */',
+    '// The guard and the count read the newest document through a ref: the menu that asks for the',
+    '// deletion renders from the same document, but the callback must outlive that render.',
     '/** The types the reader can put on a column. `title` and `files` are the two the table draws itself. */',
     '/** The name of a column type for the type picker, which is a message rather than the token the fence stores. */',
     '// A column the table has to draw itself cannot be edited away from under the reader: the title column',

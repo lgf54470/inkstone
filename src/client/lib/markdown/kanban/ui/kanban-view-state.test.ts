@@ -85,6 +85,40 @@ describe('kanban single card delete feedback', () => {
   })
 })
 
+describe('kanban column delete feedback', () => {
+  it('reports the cards the deleted column left ungrouped and offers the undo', () => {
+    const { holder, commits, unmount } = renderRootStateProbe(boardWithOneCard())
+    act(() => { holder.state.columnOps.handleDeleteColumn('todo') })
+    const stripped = commits.at(-1)!
+    expect(stripped.columns.find((column) => column.id === 'status')!.options).toHaveLength(0)
+    expect(stripped.items[0]!.properties.status).toBeUndefined()
+    const toast = useUi.getState().toasts.at(-1)
+    expect(toast, 'deleting a column posted no toast').toBeDefined()
+    expect(toast!.title).toBe(t('preview.kanban_group_deleted_cards', { count: 1 }))
+    expect(toast!.kind).toBe('undo')
+    expect(toast!.duration).toBeGreaterThan(3800)
+    act(() => { toast!.action!.run() })
+    expect(commits.at(-1)!.items[0]!.properties.status).toBe('todo')
+    unmount()
+  })
+
+  it('names an empty column without a card count', () => {
+    const { holder, commits, unmount } = renderRootStateProbe(makeKanbanData())
+    act(() => { holder.state.columnOps.handleDeleteColumn('todo') })
+    expect(commits).toHaveLength(1)
+    expect(useUi.getState().toasts.at(-1)!.title).toBe(t('preview.kanban_group_deleted'))
+    unmount()
+  })
+
+  it('says nothing and changes nothing for a column this board does not hold', () => {
+    const { holder, commits, unmount } = renderRootStateProbe(boardWithOneCard())
+    act(() => { holder.state.columnOps.handleDeleteColumn('ghost') })
+    expect(commits).toHaveLength(0)
+    expect(useUi.getState().toasts).toHaveLength(0)
+    unmount()
+  })
+})
+
 describe('kanban view state persistence', () => {
   it('writes the selected view back into the committed data', () => {
     const { holder, commits, unmount } = renderRootStateProbe()

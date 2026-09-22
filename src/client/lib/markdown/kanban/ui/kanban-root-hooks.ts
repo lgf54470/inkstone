@@ -392,7 +392,7 @@ export function useKanbanRootState(
   const items = useKanbanItemMutations(commitData, filterSort.activeView, setDetailItem)
   const itemLifecycle = useKanbanItemLifecycle(data, commitData, detailItem, setDetailItem, selection.setSelectedIds)
   const adds = useKanbanAddOperations(data, commitData, setDetailItem, filterSort.activeView)
-  const columnOps = useKanbanColumnOperations(commitData, filterSort.activeView)
+  const columnOps = useKanbanColumnOperations({ data, commitData, activeView: filterSort.activeView, undo: history.undo })
   const schemaOps = useKanbanSchemaOperations(commitData, history.undo)
   const viewOps = useKanbanViewOperations(data.views, commitData, history.undo)
 

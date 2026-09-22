@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { t } from '../../../i18n'
 import { toastWithUndo } from '../../../../store/ui'
 import { getDeterministicTagColor } from '../colors'
@@ -6,6 +6,7 @@ import { clampKanbanColumnWidth, kanbanColumnWidthPx } from '../column-width'
 import { normalizeKanbanWipLimit } from '../filter-sort'
 import { createKanbanId } from '../id'
 import { reorderKanbanColumns } from '../dnd'
+import { DESTRUCTIVE_UNDO_TOAST_MS } from './kanban-item-deletion'
 import type { CommitKanbanData } from './kanban-history'
 import type {
   KanbanColumnPatch,
@@ -74,8 +75,47 @@ export function appendOptionToColumn(columns: KanbanProperty[], columnId: string
   })
 }
 
-export function useKanbanColumnOperations(commitData: CommitKanbanData, activeView: KanbanView) {
+interface KanbanColumnOperationsInput {
+  data: KanbanData
+  commitData: CommitKanbanData
+  activeView: KanbanView
+  /** The board's own undo, so a deleted group's way back is the same step as Ctrl+Z. */
+  undo: () => void
+}
+
+/**
+ * Deleting a group takes its cards' grouping with it, however many cards that is, so the reader is
+ * told the count and handed the way back. A group the document does not hold is not a deletion:
+ * the same guard keeps the commit and the announcement from both firing over a menu that raced
+ * ahead of the document.
+ */
+function useKanbanGroupDeletion(
+  groupByPropertyId: string,
+  dataRef: React.RefObject<KanbanData>,
+  commitData: CommitKanbanData,
+  undo: () => void,
+) {
+  return useCallback((groupKey: string) => {
+    const column = dataRef.current.columns.find((col) => col.id === groupByPropertyId)
+    if (!column?.options?.some((option) => option.id === groupKey)) return
+    const ungrouped = dataRef.current.items.filter((item) => item.properties[groupByPropertyId] === groupKey).length
+    commitData((prev) => deleteColumnFromData(prev, groupKey, groupByPropertyId))
+    toastWithUndo(
+      ungrouped === 0
+        ? t('preview.kanban_group_deleted')
+        : t('preview.kanban_group_deleted_cards', { count: ungrouped }),
+      undo,
+      { duration: DESTRUCTIVE_UNDO_TOAST_MS },
+    )
+  }, [groupByPropertyId, dataRef, commitData, undo])
+}
+
+export function useKanbanColumnOperations({ data, commitData, activeView, undo }: KanbanColumnOperationsInput) {
   const groupByPropertyId = activeView.groupBy || 'status'
+  // The guard and the count read the newest document through a ref: the menu that asks for the
+  // deletion renders from the same document, but the callback must outlive that render.
+  const dataRef = useRef(data)
+  dataRef.current = data
 
   const handleReorderColumns = useCallback(
     (sourceGroupKey: string, targetGroupKey: string) => commitData((prev) => ({
@@ -93,10 +133,7 @@ export function useKanbanColumnOperations(commitData: CommitKanbanData, activeVi
     [groupByPropertyId, commitData],
   )
 
-  const handleDeleteColumn = useCallback(
-    (groupKey: string) => commitData((prev) => deleteColumnFromData(prev, groupKey, groupByPropertyId)),
-    [groupByPropertyId, commitData],
-  )
+  const handleDeleteColumn = useKanbanGroupDeletion(groupByPropertyId, dataRef, commitData, undo)
 
   const handleChangeGroupBy = useCallback(
     (newGroupBy: string) => commitData((prev) => ({

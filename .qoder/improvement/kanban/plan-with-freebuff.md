@@ -9,7 +9,7 @@
 ## 批次 1 · 止血（正确性 + 安全最小集）
 
 - [x] K-01 单卡删除撤销提示（`toastWithUndo`，对齐批量删除与删视图）
-- [ ] K-02 删列撤销提示（受影响卡数进文案）
+- [x] K-02 删列撤销提示（受影响卡数进文案）
 - [ ] K-05 CSV 导出补 BOM
 - [ ] K-06 CSV 导出公式注入前缀
 - [ ] K-07 封面/附件图片走外部图片策略 + `referrerpolicy`
@@ -45,7 +45,8 @@
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
 | 2026-09-22 | 建立本轮台账与执行计划 | 0e2d673a | 文档提交，无代码改动 |
-| 2026-09-22 | K-01 单卡删除撤销提示 | （本提交） | typecheck ✅；kanban+preview+tests/kanban 94 文件 1002 passed（3 例 `kanban-render-window` 5s 超时属 L-03 并发抖动，单跑 14/14 ✅）；`comments:check` 重算白名单 655 文件 / 4460 条 |
+| 2026-09-22 | K-01 单卡删除撤销提示 | 66156734 | typecheck ✅；kanban+preview+tests/kanban 94 文件 1002 passed（3 例 `kanban-render-window` 5s 超时属 L-03 并发抖动，单跑 14/14 ✅）；`comments:check` 重算白名单 655 文件 / 4460 条 |
+| 2026-09-22 | K-02 删列撤销提示（分组口径） | （本提交） | typecheck ✅；kanban+preview+tests/kanban 94 文件 1008 passed（首跑 1 例 render-window 超时属 L-03，重跑全绿）；`size:check`/`i18n:check` ✅；白名单 656 文件 / 4464 条 |
 
 ## 固定验证
 
