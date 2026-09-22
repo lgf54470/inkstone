@@ -8,6 +8,7 @@ import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtas
 import { KanbanCardSubtasks } from './kanban-card-subtasks'
 import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanBlockedImage, useKanbanImageAllowed } from './kanban-image-policy'
 import { KanbanPersonAvatar } from './kanban-person-picker'
 import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
 
@@ -36,6 +37,11 @@ function GalleryCover({ item }: { item: KanbanItem }) {
     (f) => f.mime?.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(f.name),
   )
   const coverUrl = item.cover || imageFile?.url
+  const allowed = useKanbanImageAllowed(coverUrl ?? '')
+
+  if (coverUrl && !allowed) {
+    return <KanbanBlockedImage className='h-32 w-full' />
+  }
 
   if (coverUrl) {
     return (
@@ -45,6 +51,7 @@ function GalleryCover({ item }: { item: KanbanItem }) {
           alt={item.title}
           loading='lazy'
           decoding='async'
+          referrerPolicy='no-referrer'
           className='h-full w-full object-cover transition-transform duration-300 hover:scale-105'
         />
       </div>

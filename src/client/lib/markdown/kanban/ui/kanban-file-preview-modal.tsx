@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Download, ExternalLink, FileText, Loader2 } from 'lucide-react'
 import { Modal } from '../../../../components/overlay'
 import { t } from '../../../i18n'
+import { KanbanBlockedImage, useKanbanImageAllowed } from './kanban-image-policy'
 import type { KanbanFile } from '../types'
 
 const PREVIEW_MODAL_WIDTH = 768
@@ -85,10 +86,22 @@ function PdfPreview({ file }: { file: KanbanFile }) {
 }
 
 function PreviewContent({ file }: { file: KanbanFile }) {
-  if (file.mime.startsWith('image/')) {
+  const isImage = file.mime.startsWith('image/')
+  const imageAllowed = useKanbanImageAllowed(isImage ? file.url : '')
+
+  if (isImage && !imageAllowed) {
+    return <KanbanBlockedImage className='h-64 w-full rounded-[var(--r-md)]' />
+  }
+
+  if (isImage) {
     return (
       <div className='flex max-h-[70vh] items-center justify-center overflow-auto p-4'>
-        <img src={file.url} alt={file.name} className='max-h-[65vh] max-w-full rounded-[var(--r-md)] object-contain' />
+        <img
+          src={file.url}
+          alt={file.name}
+          referrerPolicy='no-referrer'
+          className='max-h-[65vh] max-w-full rounded-[var(--r-md)] object-contain'
+        />
       </div>
     )
   }

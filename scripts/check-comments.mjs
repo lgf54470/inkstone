@@ -2753,6 +2753,9 @@ const allowed = new Map([
     '/** Drawing emits a change per pointer move; the note gets one write per pause. */',
     '/** Writes the board\'s current scene into the note, if it is both dirty and still its own. */',
   ]],
+  ['src/client/lib/markdown/external-images.ts', [
+    '/**\n * The one answer to "may this image load?" that the prose renderer and the board both read.\n *\n * An external image is a privacy decision, not a rendering one: a note can be shared, so an image\n * served by whoever wrote it turns every reader into a tracking pixel, which is why the app blocks\n * them until the account asks for them. The renderer asks this of every markdown image; the board\n * asks it of a cover and of an attachment preview, because those are the same kind of URL arriving\n * from the same untrusted document. A second predicate on the board\'s side would be a second policy\n * able to drift, so this lives here — below both — as a leaf module: `renderer/fence.ts` imports the\n * kanban module, so the board importing the renderer\'s entry would close a dependency cycle.\n */',
+  ]],
   ['src/client/lib/markdown/fence-bodies.test.ts', [
     '/**\n * The channel behind P-01: a fence body no longer rides inside the markup as a `data-*` attribute, so\n * the only thing connecting a block to its body is the index the renderer wrote and the set the host\n * registered. Both halves are one function each, and a wrong answer here is a board that reads as\n * empty on every surface at once — which is why this module, not just its consumers, is under test.\n */',
     '// A rendered fence is its own top-level block, so a host compares the element that carries the',
@@ -3387,7 +3390,7 @@ const allowed = new Map([
     '/**\n * Full screen view of one block. The overlay hosts the live instance the\n * preview mounted — the element is moved, never copied — so edits, history and\n * write-back stay with the single root that the inline block keeps using.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-gallery-cover.test.ts', [
-    '/**\n * The gallery is a scrolling grid of cards whose covers are full-size files stored per card, so a\n * board with fifty image cards used to ask the browser for fifty downloads the moment it painted the\n * first row. These cases pin the two attributes that make the grid load what the reader can reach —\n * the same pair `lib/markdown/renderer/media.ts` sets for images in a note body — and keep the\n * no-image case rendering a placeholder rather than an `<img>`, so the assertions cannot pass on a\n * grid that simply never drew a cover.\n */',
+    '/**\n * The gallery is a scrolling grid of cards whose covers are full-size files stored per card, so a\n * board with fifty image cards used to ask the browser for fifty downloads the moment it painted the\n * first row. These cases pin the two attributes that make the grid load what the reader can reach —\n * the same pair `lib/markdown/renderer/media.ts` sets for images in a note body — and keep the\n * no-image case rendering a placeholder rather than an `<img>`, so the assertions cannot pass on a\n * grid that simply never drew a cover.\n *\n * A cover is a URL out of the same untrusted document the prose images come from, so it answers the\n * same question the prose renderer asks: a cover on another origin is painted as the blocked\n * placeholder while the account has external images off, and no image on the board — blocked or not —\n * hands the page it lives on to whoever serves it.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-header.test.ts', [
     '/** The switcher\'s own contract is covered in kanban-view-tabs.test.ts; here it only has to exist. */',
@@ -3430,6 +3433,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-icon-picker.tsx', [
     '// No aria-label: the character is the option, and a reader tool speaks it from its own localised',
     '// emoji data — a label we ship would replace that answer with one written in two languages.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-image-policy.tsx', [
+    '/**\n * Whether an image the board is about to paint may load. Reads the account\'s live setting through the\n * store rather than a snapshot, so switching `preview.externalImages` in the settings dialog repaints\n * the covers already on screen instead of waiting for a reload, and asks the renderer\'s own predicate\n * rather than a copy of it.\n */',
+    '/**\n * What takes an image\'s place when the policy above says no. It names the same message the prose\n * placeholder names, so a reader meets one explanation of the block wherever the URL came from, and\n * it says so out loud rather than drawing a broken image or an empty box — unlike prose, a board has\n * no text around a cover to explain the gap.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-item-deletion.ts', [
     '/** Deleting cards is destructive, however many at a time, so its undo window outlives an informational toast. */',
@@ -4142,7 +4149,6 @@ const allowed = new Map([
     '/**\n   * Continue an outer document\'s fence-body numbering instead of starting a new one, for markup that\n   * will be inserted *into* that document (a note embed). One set with document-unique indexes is\n   * the only shape that survives the markup being serialized and re-parsed by whoever holds it.\n   */',
   ]],
   ['src/client/lib/markdown/renderer/media.ts', [
-    '/** True for http(s) URLs that point to a different origin than the app itself. */',
     '// External https images are blocked by default (privacy default; the server',
     '// CSP drops `https:` from img-src while preview.externalImages is off, so',
     '// this is defense-in-depth for raw-HTML images too). Same-origin http(s)',

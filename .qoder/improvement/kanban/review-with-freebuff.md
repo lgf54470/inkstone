@@ -58,9 +58,15 @@
 
 ## 2. P1 — 安全与隐私
 
-### K-07 封面/附件图片绕过「外部图片」策略 → 待修
+### K-07 封面/附件图片绕过「外部图片」策略 → 已修（`（本提交）`）
 - 证据：正文双闸门（`lib/markdown/renderer/media.ts:26-45` 占位 + `referrerpolicy=no-referrer`；`worker/app.ts:67,86` 按设置裁剪 `img-src`）；看板侧 `ui/kanban-gallery-view.tsx:38-52`、`ui/kanban-file-preview-modal.tsx:91` 直接 `<img src>` 且无 `referrerpolicy`。
 - 影响：关闭外部图片时破图无说明；开启时封面可被第三方当像素追踪。
+- 落地方式（选型）：**不**在看板里写第二套判定。判定提到新叶模块 `lib/markdown/external-images.ts`（原 `renderer/media.ts` 的私有函数搬过去，`media.ts` 改 import），原因是 `renderer/fence.ts` 已 import 看板模块，看板反向 import `renderer/index.ts` 会闭合成环；叶模块两侧皆可 import，`deep-imports:check` 也不报（`lib/markdown/` 无 `index.ts`）。看板侧新增 `ui/kanban-image-policy.tsx`：`useKanbanImageAllowed(url)` 经 `useSession` 读 `preview.externalImages`（设置面板一改即重绘已在屏的封面，不是刷新才变）+ `KanbanBlockedImage` 占位（复用正文同一条 i18n 键 `markdown.external_image_blocked`，带 `data-kanban-image-blocked`）。两处 `<img>` 无论是否放行都补 `referrerPolicy='no-referrer'`（对齐 `media.ts` 与 `link-dynamic-icon.tsx` 的既有手法）。
+- 验证：`kanban-gallery-cover.test.ts` 4→7 例、`kanban-file-preview-modal.test.ts` 2→6 例（新增组先红 5 例：外站封面仍发请求、外站预览仍发请求、两处未设 `referrerpolicy`、放行后仍被拦）；既有两例 lazy/decoding 夹具从外站 URL 改为同类源 URL，因为旧夹具恰好编码了「外站也直连」这一旧行为；`renderer.test.ts` 32 例未动仍绿，证明判定搬家未改正文行为。全套 kanban+preview+tests/kanban 94 文件 **1024** passed，13 项静态门禁 exit=0。
+
+### K-28（本轮新增，跨模块）笔记附件预览的图像同样无策略/无 referrer → 待修（不在看板范围）
+- 证据：`features/preview/file-preview-modal/file-preview-views.tsx:70` 的 `<img>` 既未问 `preview.externalImages` 也未设 `referrerpolicy`，与 K-07 是同一类缺陷、不同模块。
+- 建议：K-07 的 `KanbanBlockedImage`/判定可直接复用（判定已在叶模块；占位若被第二个模块采用应提到公共组件层），随该模块自己的改动一起做，不在看板批次里夹带。
 
 ### K-08 文本附件预览失败静默 → 待修
 - 证据：`ui/kanban-file-preview-modal.tsx` `TextFilePreview` 的 `catch(() => setLoading(false))` → 空 `<pre>`。

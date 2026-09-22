@@ -1,21 +1,9 @@
 import MarkdownIt from 'markdown-it'
 import { escapeHtml } from '@shared/escape'
 import { t } from '../../i18n'
+import { isExternalImageUrl } from '../external-images'
 import { renderEnv } from './env'
 import { escapeAttr } from './util'
-/** True for http(s) URLs that point to a different origin than the app itself. */
-function isExternalImageUrl(src: string): boolean {
-  if (!/^https?:/i.test(src))
-    return false
-  try {
-    const base = typeof location === 'undefined' ? 'http://localhost/' : location.href
-    const origin = typeof location === 'undefined' ? 'http://localhost/' : location.origin
-    return new URL(src, base).origin !== origin
-  }
-  catch {
-    return false
-  }
-}
 
 export function registerMedia(md: MarkdownIt): void {
 
