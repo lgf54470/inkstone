@@ -383,7 +383,8 @@
 
 ### 遗留（本批实测证据，按规则 14 不夹带修复）
 
-- L-01 导图全屏第二遍 axe 遮挡：`scripts/check-contrast.mjs`（本批未改该脚本）在最终树实例 `:7720` 上稳定报 2 例（light + dark）「the mind map full screen without its keyboard reference card」——参考卡收起后同一节点 `me-tpc[data-nodeid] > .text` 仍被判「overlapped by another element」。HEAD 臂（`git archive` 快照跑在 `:7721`，同法先用 `scripts/e2e.mjs` 建 owner）报**完全相同**的 2 例 ⇒ 与本批无关。疑指 `dismissMindmapCard` 之后该层仍在命中测试（以 opacity 收起而未移出），需单独批次按可访问性红线查
+- L-01 导图全屏第二遍 axe 遮挡：`scripts/check-contrast.mjs`（本批未改该脚本）在最终树实例 `:7720` 上稳定报 2 例（light + dark）「the mind map full screen without its keyboard reference card」——参考卡收起后同一节点 `me-tpc[data-nodeid] > .text` 仍被判「overlapped by another element」。HEAD 臂（`git archive` 快照跑在 `:7721`，同法先用 `scripts/e2e.mjs` 建 owner）报**完全相同**的 2 例 ⇒ 与本批无关
+  - 复核（2026-09-23，本机全新实例重跑同 2 例；一次性探针已删）：先前「收起后该层仍在命中测试」的猜测**被证伪**——① 参考卡**从未打开**时同一条目照旧出现，遮挡物不是参考卡；② 该文本矩形上按元素求交的不透明遮挡物为 0 个；③ 被判节点的文本 `span.text` 自身 `pointer-events: none`（父 `me-tpc` 为 `all`；被判节点父为 `position: relative`，同一导图里未被判的主题节点父为 `static`），浏览器在被判文本中心的命中测试返回的是**父 `me-tpc`**；④ 把该 span 临时改成 `pointer-events: auto` 后 axe 仍报同一条目（axe 用自己的 grid 走 `_getBackgroundStack`，`stack[0] !== node` 即 `bgOverlap`，与浏览器命中测试无关，实测 `messageKey='bgOverlap'`）。结论：这是库「定位父元素压住不可命中的文本」触发的 axe `bgOverlap`，不是配色缺陷；因此「两遍读、第二遍必须干净」在这块表面上**结构上无法满足**，修法只能是门禁侧为该条目立具名规则（或改 `me-tpc` 定位），且 `AGENTS.md` 对该表面两遍读的描述需同步修订——属导图表面 + 门禁语义，另开批次（规则 9/14：未读懂到能改的程度前不动）
 - L-02 `scripts/e2e.mjs`「reindex cannot overwrite an editor write with a stale FTS row」（`reindex=200 edit=200`）：两臂各 1 例、同签名（两边都是 175 passed / 1 failed），属 search/FTS 侧，与本批无关
 - L-03 `.githooks/pre-commit` 的增量 `vitest related` 在本机并行下会把 F-14 的 `ui/kanban-render-window.test.ts` 顶到默认 5s 用例超时（三次运行同一文件，失败用例耗时 5.4–7.9 s；单跑 14/14 通过，串行 30s 全量 282 文件通过；停掉本机多余 dev 实例后重试即绿）。与「Vitest load flake：import cost」同族，本批不擅自改他人测试的超时
 

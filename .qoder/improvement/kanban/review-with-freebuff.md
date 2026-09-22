@@ -206,5 +206,6 @@
 ## 6. 局限与未验证项（如实声明）
 
 - 本台账为读码 + 门禁实跑证据；第一轮自由审查期间**未运行** `test:e2e`、`e2e-visual.mjs`、`contrast:check`（需本地实例），也未在真浏览器验证移动键与触摸拖拽——这两项在施工中按条目分别处理，未验证处逐条登记。
-- 已更新（2026-09-22 施工期）：本机已具备完整浏览器门禁（`node_modules` 软链 + `/usr/bin/google-chrome`），`e2e-visual.mjs` 已跑通 **216 passed / 0 failed**（K-17 结案时记录）；仅 `e2e.mjs` 的 reindex 竞态一条在本机失败，已登记为 L-04。`contrast:check` 仍未在本轮跑过，下次动共享令牌或改看板配色时必须补。
+- 已更新（2026-09-22 施工期）：本机已具备完整浏览器门禁（`node_modules` 软链 + `/usr/bin/google-chrome`），`e2e-visual.mjs` 已跑通 **216 passed / 0 failed**（K-17 结案时记录）；仅 `e2e.mjs` 的 reindex 竞态一条在本机失败，已登记为 L-04。
+- 已更新（2026-09-23 收尾，同一全新实例上按 CI 顺序全跑）：`typecheck` ✅；`test:unit` **289 文件 / 2700 测试全绿**；14 项静态门禁（含 `surfaces`/`vendor`/`size`/`i18n`/`tokens` 与 blog 两项）全绿；`e2e-visual.mjs` **234 passed / 0 failed**（含 K-21 的八视图扫描）；`e2e.mjs` **175 passed / 1 failed**（唯一失败即 L-04，与 HEAD 同签名）；`check-contrast.mjs` 失败仅剩 **L-01 的 2 例**（导图全屏第二遍 axe），其余全部通过：两套主题 7 强调色 × 各表面层级量测 0 低于 AA、外壳/命令面板/设置三表面的 axe 两主题均无违规无未审项。L-01 已于 `plan.md` 复核结案到「库 `bgOverlap` + 门禁规则」层面（猜测证伪、证据齐全），不夹带修。
 - K-20 的写回成本是代码路径推断 + `plan.md` K3-05 已有实测外推；落地以「同一文档 N 次写回的字节数」这类确定性量测为准，不用计时断言。
