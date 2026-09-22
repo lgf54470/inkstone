@@ -38,7 +38,7 @@
 ## 批次 4 · 性能与门禁
 
 
-- [ ] K-19 writer 收进 `useCallback`（先写 locale 回归）+ 头部 props 收敛
+- [x] K-19 writer 收进 `useCallback`（先写 locale 回归）+ 头部 props 收敛 + 列/卡链路上的临时闭包（复核时发现比台账写得更深）
 - [ ] K-21 `e2e-visual.mjs` 逐个打开 8 个视图并断言内容已到
 - [ ] K-20 连续编辑期间自适应写回静默期（含确定性量测）
 - [x] K-23/K-24 规范注释收敛（卡片容器豁免登记 + 两处 `!important` 理由）
@@ -47,6 +47,7 @@
 
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
+| 2026-09-22 | K-19 看板不再为一次局部变化重画全板 | （本提交） | 先写复现（`ui/kanban-repaint-scope.test.ts` 用 `memo` 包住真实卡片计数）：旧实现下「打开一张卡的详情」重画 3/3 张卡，修复后 0 张；三次变异逐一被杀（去掉 `useColumnCellHandlers` 的 `useMemo`、把 `handleMoveCell` 改回每渲染新建、把 `handleUpdateSubtasks` 改回每渲染新建——后者杀 3 例）；kanban+preview+command+tests/kanban 102 文件 **1132** passed；`size:check` 拦下三个超长文件 → 拆出 `ui/kanban-cell-handlers.ts`（列内处理器）/`ui/kanban-value-writes.ts`（单卡字段写入），均未 resnapshot；11 项静态门禁 exit=0；白名单 685 文件 / 4655 条；locale 回归按既有 `tests/kanban-locale-repaint-policy.test.ts` + `registry-locale`/`kanban-memo-locale` 未改仍绿 |
 | 2026-09-22 | K-16 命令面板接入看板动作 | （本提交） | typecheck ✅；新增 15 例（注册表 4 + 真实看板 6 + 面板条目 5）；两次变异逐一被杀（`selectAllVisible` 改扫整份文档、注册表去掉归属判定各杀 1 例，后者靠补一张被过滤掉的卡片先收紧了断言）；`size:check` 拦下 89 行 describe → 拆两个 describe + 共享 fixture，未 resnapshot；kanban+features/command+preview+tests/kanban 101 文件 **1126** passed；12 项静态门禁 exit=0；白名单 682 文件 / 4637 条 |
 | 2026-09-22 | K-13b 批量指派/加标签/设到期日 | （本提交） | typecheck ✅；新增 15 例（单元 6 + 批量条 6 + 渲染级接线 2 + 空集护栏 1）；三次变异逐一被杀（标签改覆盖而非并集、去掉去重守卫、指派写死列 id）；`size:check` 拦下 `useKanbanBatchEdits` 与两个 describe 超长 → 拆三个组合 hook + 拆 describe（并将 `handleBatchGroupChange` 一并收进 `kanban-batch-edits.ts`，空集不再空提交），未 resnapshot；kanban+preview+components 95 文件 **1085** passed；12 项静态门禁 exit=0；白名单 671 文件 / 4575 条 |
 | 2026-09-22 | K-13a 选择本组 + 选择当前视图全部 | （本提交） | typecheck ✅；新增 11 例（渲染级 7 + 单元 4）；三次变异逐一被杀（本组 id 取错、可见集合换成整份文档（靠批量条计数断言补上）、列菜单不接 selectAll）；`size:check` 拦下 `kanban-root.tsx` 超 500 行 → 两个覆盖层拆到 `kanban-overlays.tsx`，未 resnapshot；kanban+preview+components 94 文件 **1070** passed（3 例 render-window 5s 超时属 L-03，单跑 14/14 ✅）；12 项静态门禁 exit=0；白名单 668 文件 / 4561 条；另修 `menu.tsx` 选中标记的可访问名污染，并登记 K-29（标签筛选浮层同一写法） |

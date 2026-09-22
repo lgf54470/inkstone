@@ -53,7 +53,9 @@ interface KanbanViewRendererProps {
   cardSize?: CardSize
   selectedTags?: string[]
   onToggleTag?: (tag: string) => void
-  commitData: (d: KanbanData) => void
+  /** One item's own fields, handed down with an identity that outlives a render (see K-19). */
+  handleUpdateSubtasks: (itemId: string, subtasks: KanbanSubtask[]) => void
+  handleUpdateProperty: (itemId: string, propertyId: string, value: unknown) => void
   handleToggleSelect: (id: string) => void
   handleToggleAll: (ids: string[]) => void
   setDetailItem: (item: KanbanItem | null) => void
@@ -75,7 +77,15 @@ interface KanbanViewRendererProps {
   handleAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
 
-function KanbanTimelineViews({ activeView, viewData, data, commitData, setDetailItem, handleAddItem }: KanbanViewRendererProps) {
+function KanbanTimelineViews(props: KanbanViewRendererProps) {
+  const { activeView, viewData, setDetailItem, handleAddItem, handleUpdateProperty } = props
+  // The band's own slider writes one property; the writer is the board's, so a drag through the
+  // chart does not hand the view a new prop on every frame.
+  const progressKey = activeView.progressField || 'progress'
+  const onUpdateProgress = useMemo(
+    () => (id: string, progress: number) => handleUpdateProperty(id, progressKey, progress),
+    [handleUpdateProperty, progressKey],
+  )
   if (activeView.type === 'calendar') {
     return <KanbanCalendarView data={viewData} view={activeView} onOpenDetail={setDetailItem} onAddItem={handleAddItem} />
   }
@@ -88,34 +98,12 @@ function KanbanTimelineViews({ activeView, viewData, data, commitData, setDetail
       view={activeView}
       onOpenDetail={setDetailItem}
       onAddItem={handleAddItem}
-      onUpdateProgress={(id, progress) => {
-        const progressKey = activeView.progressField || 'progress'
-        const next = data.items.map((it) => (it.id === id ? { ...it, properties: { ...it.properties, [progressKey]: progress } } : it))
-        commitData({ ...data, items: next })
-      }}
+      onUpdateProgress={onUpdateProgress}
     />
   )
 }
 
-// Views edit one item's own fields; the writer keeps that shape in one place
-// while still committing the whole document like every other edit does.
-function kanbanItemWriter(data: KanbanData, commitData: (next: KanbanData) => void) {
-  return (id: string, patch: Partial<KanbanItem>) =>
-    commitData({ ...data, items: data.items.map((item) => (item.id === id ? { ...item, ...patch } : item)) })
-}
-
-function kanbanPropertyWriter(data: KanbanData, commitData: (next: KanbanData) => void) {
-  return (id: string, propertyId: string, value: unknown) => commitData({
-    ...data,
-    items: data.items.map((item) =>
-      item.id === id ? { ...item, properties: { ...item.properties, [propertyId]: value } } : item),
-  })
-}
-
 function BoardTableView(props: KanbanViewRendererProps) {
-  const writeItem = kanbanItemWriter(props.data, props.commitData)
-  const handleUpdateSubtasks = (id: string, subtasks: KanbanSubtask[]) => writeItem(id, { subtasks })
-
   if (props.activeView.type === 'board') {
     return (
       <KanbanBoardView
@@ -129,7 +117,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
         onToggleAll={props.handleToggleAll}
         onOpenDetail={props.setDetailItem}
         onUpdateTitle={props.handleUpdateTitle}
-        onUpdateSubtasks={handleUpdateSubtasks}
+        onUpdateSubtasks={props.handleUpdateSubtasks}
         onMoveItem={props.handleMoveItem}
         onAddItem={props.handleAddItemInGroup}
         onAddColumn={props.handleAddColumn}
@@ -149,8 +137,8 @@ function BoardTableView(props: KanbanViewRendererProps) {
       onToggleSelect={props.handleToggleSelect}
       onToggleAll={props.handleToggleAll}
       onOpenDetail={props.setDetailItem}
-      onUpdateProperty={kanbanPropertyWriter(props.data, props.commitData)}
-      onUpdateSubtasks={handleUpdateSubtasks}
+      onUpdateProperty={props.handleUpdateProperty}
+      onUpdateSubtasks={props.handleUpdateSubtasks}
       onUpdateFiles={props.handleUpdateFiles}
       onUpdateMultiSelect={props.handleUpdateMultiSelect}
       onAddItem={props.handleAddItem}
@@ -163,9 +151,6 @@ function BoardTableView(props: KanbanViewRendererProps) {
 }
 
 function ListGalleryView(props: KanbanViewRendererProps) {
-  const writeItem = kanbanItemWriter(props.data, props.commitData)
-  const handleUpdateSubtasks = (id: string, subtasks: KanbanSubtask[]) => writeItem(id, { subtasks })
-
   if (props.activeView.type === 'list') {
     return (
       <KanbanListView
@@ -185,8 +170,7 @@ function ListGalleryView(props: KanbanViewRendererProps) {
       selectedIds={props.selectedIds}
       onToggleSelect={props.handleToggleSelect}
       onOpenDetail={props.setDetailItem}
-      onAddItem={props.handleAddItem}
-      onUpdateSubtasks={handleUpdateSubtasks}
+      onAddItem={props.handleAddItem}        onUpdateSubtasks={props.handleUpdateSubtasks}
     />
   )
 }
@@ -297,7 +281,8 @@ function KanbanViewArea({ state }: { state: ReturnType<typeof useKanbanRootState
       cardSize={state.filterSort.cardSize}
       selectedTags={state.filterSort.selectedTags}
       onToggleTag={state.filterSort.onToggleTag}
-      commitData={state.commitData}
+      handleUpdateSubtasks={state.items.handleUpdateSubtasks}
+      handleUpdateProperty={state.items.handleUpdateProperty}
       handleToggleSelect={state.selection.handleToggleSelect}
       handleToggleAll={state.selection.handleToggleAll}
       setDetailItem={state.setDetailItem}

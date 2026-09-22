@@ -167,10 +167,13 @@
 
 ## 4. P1 — 性能（全屏）
 
-### K-19 整块看板 `memo` 被 per-render 工厂击穿 → 待修
-- 证据：`ui/kanban-root.tsx` 的 `BoardTableView`/`ListGalleryView` 每渲染新建 `writeItem`/`handleUpdateSubtasks`，表格路径每渲染新建 `kanbanPropertyWriter(props.data, …)`，逐层下发到 `memo` 的 `KanbanBoardView`/`KanbanBoardColumn`/`KanbanCard`；`KanbanHeader` 收到每渲染新建的 `state` 对象。
+### K-19 整块看板 `memo` 被 per-render 工厂击穿 → 已修（比台账写的更深一层）
+- 证据：`ui/kanban-root.tsx` 的 `BoardTableView`/`ListGalleryView` 每渲染新建 `writeItem`/`handleUpdateSubtasks`，表格路径每渲染新建 `kanbanPropertyWriter(props.data, …)`，逐层下发到 `memo` 的 `KanbanBoardView`/`KanbanBoardColumn`/`KanbanCard`。
 - 影响：每次提交重画窗口内全部卡片（≤30/列 × 列数）；`memo` 名存实亡。
-- 风险：`plan.md` K2-01c1 记录过「writer 变稳定后语言不再重绘」，需先写回归确认。
+- 复核发现（台账低估）：把 writer 稳住并**不能**让「勾一张卡只重画那张」成立——`ui/kanban-board-view.tsx` 里列级还有一层：`ColumnCardsList` 给每张卡传两个包装闭包（`onDragStart`/`onMoveColumn`，而卡片本就拿得到自己的 id）、`ExpandedBoardColumn` 每次渲染重建全部列内处理器，`useKanbanBoardMoves` 的 `handleMoveItem`/`handleMoveCell` 也是每渲染新建。任何一层没稳住，`memo` 就整列失效。
+- 进度：① 单卡字段写入收到 `useKanbanValueWrites`（新模块 `ui/kanban-value-writes.ts`）——一律用 `commitData((prev) => …)` 的更新器形式从**提交时**的文档构建，因此 identity 与渲染无关，顺带去掉 `data` 捕获（旧写法把当次渲染的副本写回，是潜在丢更新点）；② 列内处理器收到新模块 `ui/kanban-cell-handlers.ts` 的 `useColumnCellHandlers`（按 cell 的两个键 + 稳定回调 memo，cell 对象在 memo 内重建，因为板子每次渲染都发新的对象字面量）；③ `useKanbanBoardMoves` 的 mover 改 ref + `useCallback`（板子在渲染期间就把分组算完了，mover 只该在调用时读最新分组）；④ `ColumnCardsList` 去掉两个多余包装（卡片自己把 id 交给 handler）；⑤ 甘特进度条改为走同一个 `handleUpdateProperty`（不再在渲染里 map 整份 items）。
+- 验证：`ui/kanban-repaint-scope.test.ts`（新）用 `memo` 包住**真实**卡片计数（包一层非 memo 的计数器只能测到“父组件又渲染了元素”，测不到 memo 是否生效，这一版修正了该测量口径）：打开一张卡的详情 → 0 张重画；勾选一张卡 → 只重画那一张；另两例钉住 writer identity 与写入形状。三次变异逐一被杀。
+- 历史风险复核：`plan.md` K2-01c1 记录的「writer 变稳后语言不再重绘」在今天的结构下不再成立——`tests/kanban-locale-repaint-policy.test.ts` 已强制每个 `memo` 组件自行订阅 locale，三个 locale 回归文件（`registry-locale`、`kanban-memo-locale`、`tests/kanban-locale-repaint-policy`）均未改仍绿。
 
 ### K-20 每次编辑写回整篇笔记，成本线性于板子大小 → 待修
 - 证据：`write.ts` `flushKanbanEntry` → `serializeKanban(整板)` → `features/preview/kanban-sync.ts` `state.editContent(noteId, 整篇)`，debounce 仅 500ms。

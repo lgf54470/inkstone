@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { groupKanbanItems, kanbanWipOver } from '../filter-sort'
@@ -11,6 +11,7 @@ import type { KanbanColorName, KanbanColumnPatch, KanbanData, KanbanItem, Kanban
 import { useKanbanBoardDndState, type CardDropTarget } from './kanban-board-dnd'
 import { KanbanCard, type CardMoveDirection } from './kanban-card'
 import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
+import { useColumnCellHandlers } from './kanban-cell-handlers'
 import { CollapsedColumn, KanbanColumnHeader } from './kanban-column-header'
 import type { KanbanColumnSelectAll } from './kanban-column-menu'
 import { KanbanBoardSwimlanes } from './kanban-board-swimlanes'
@@ -84,11 +85,12 @@ function ColumnCardsList(props: ColumnCardsListProps) {
             onToggleTag={props.onToggleTag}
             onUpdateTitle={props.onUpdateTitle}
             onUpdateSubtasks={props.onUpdateSubtasks}
-            onDragStart={(e, id) => props.onDragStartCard(e, id)}
+            // The card passes its own id, so the column can hand the same handler to all of them.
+            onDragStart={props.onDragStartCard}
             onDragEnd={props.onDragEnd}
             onDragOverCard={props.onDragOverCard}
             onDropOnCard={props.onDropCard}
-            onMoveColumn={(_id, dir) => props.onMoveColumn(item.id, dir)}
+            onMoveColumn={props.onMoveColumn}
             onUpdateTags={props.onUpdateTags}
             onAddColumnOption={props.onAddColumnOption}
           />
@@ -225,6 +227,12 @@ function neighbourKey(keys: string[], current: string, offset: -1 | 1): string |
   return index === -1 ? undefined : keys[index + offset]
 }
 
+/**
+ * The grouping and the moves, with the moves holding one identity for the board's life: the columns
+ * and cards below compare what they are handed, and a mover minted per render would hand every card
+ * a new prop for a change that touched none of them (K-19). What the handlers read — the groups, the
+ * bands, the board's own mover — is read at call time through refs instead.
+ */
 function useKanbanBoardMoves(
   data: KanbanData,
   view: KanbanView,
@@ -234,24 +242,30 @@ function useKanbanBoardMoves(
   const groups = groupKanbanItems(data.items, layout.groupPropertyId, layout.groupProperty)
   const bands = kanbanSwimlanes(data.items, layout)
   const [moveAnnouncement, setMoveAnnouncement] = useState('')
+  const groupsRef = useRef(groups)
+  groupsRef.current = groups
+  const bandsRef = useRef(bands)
+  bandsRef.current = bands
+  const moveItemRef = useRef(moveItem)
+  moveItemRef.current = moveItem
 
-  const handleMoveItem: MoveItemFn = (itemId, cell, pivot) => {
-    const message = kanbanMoveAnnouncement(groups, bands, itemId, cell)
+  const handleMoveItem = useCallback<MoveItemFn>((itemId, cell, pivot) => {
+    const message = kanbanMoveAnnouncement(groupsRef.current, bandsRef.current, itemId, cell)
     if (message) setMoveAnnouncement(message)
-    moveItem(itemId, cell, pivot)
-  }
+    moveItemRef.current(itemId, cell, pivot)
+  }, [])
 
   /** Shift+Arrow walks one step of the grid the card is in, keeping the coordinate it did not touch. */
-  const handleMoveCell = (itemId: string, cell: KanbanBoardCell, direction: CardMoveDirection) => {
+  const handleMoveCell = useCallback((itemId: string, cell: KanbanBoardCell, direction: CardMoveDirection) => {
     const step = direction === 'next' || direction === 'prev'
-      ? neighbourKey(groups.map((group) => group.groupKey), cell.groupKey, direction === 'next' ? 1 : -1)
+      ? neighbourKey(groupsRef.current.map((group) => group.groupKey), cell.groupKey, direction === 'next' ? 1 : -1)
       : undefined
     const laneStep = direction === 'down' || direction === 'up'
-      ? neighbourKey(bands.map((band) => band.lane.groupKey), cell.laneKey ?? '', direction === 'down' ? 1 : -1)
+      ? neighbourKey(bandsRef.current.map((band) => band.lane.groupKey), cell.laneKey ?? '', direction === 'down' ? 1 : -1)
       : undefined
     if (step === undefined && laneStep === undefined) return
     handleMoveItem(itemId, { ...cell, groupKey: step ?? cell.groupKey, laneKey: laneStep ?? cell.laneKey })
-  }
+  }, [handleMoveItem])
 
   return { groups, bands, moveAnnouncement, handleMoveItem, handleMoveCell }
 }
@@ -303,6 +317,15 @@ function useColumnSelectAll(props: BoardColumnCellProps) {
 function ExpandedBoardColumn(props: BoardColumnCellProps) {
   const { cell, group, dnd, variant } = props
   const selectAll = useColumnSelectAll(props)
+  const handlers = useColumnCellHandlers({
+    cell,
+    groupKey: group.groupKey,
+    dnd,
+    onUpdateColumn: props.onUpdateColumn,
+    onDeleteColumn: props.onDeleteColumn,
+    onAddItem: props.onAddItem,
+    onMoveCell: props.onMoveCell,
+  })
   return (
     <KanbanBoardColumn
       {...props}
@@ -311,25 +334,12 @@ function ExpandedBoardColumn(props: BoardColumnCellProps) {
       bodyOnly={variant === 'body'}
       isDragOver={dnd.isDragOverCell(cell)}
       cardDropTarget={dnd.cardDropTarget}
-      onDragOver={(e) => {
-        e.preventDefault()
-        dnd.setDragOverCell(cell)
-      }}
-      onDrop={(e) => dnd.handleColumnDrop(e, cell)}
-      onDragStartCard={(e, id) => dnd.handleCardDragStart(e, id, group.groupKey)}
       onDragEnd={dnd.handleDragEnd}
       onDragOverCard={dnd.handleCardDragOver}
-      onDropCard={(e, id) => dnd.handleCardDrop(e, cell, id)}
-      onDragStartColumn={(e) => dnd.handleColumnDragStart(e, group.groupKey)}
-      onRenameColumn={(newLabel) => props.onUpdateColumn?.(group.groupKey, { label: newLabel })}
-      onChangeColumnColor={(newColor) => props.onUpdateColumn?.(group.groupKey, { color: newColor })}
-      onChangeColumnWipLimit={(wipLimit) => props.onUpdateColumn?.(group.groupKey, { wipLimit })}
+      {...handlers}
       // A banded column is the strip's title, and has no narrower form to fold into.
       onCollapseColumn={variant === 'column' ? () => props.onToggleCollapse(group.groupKey) : undefined}
-      onDeleteColumn={() => props.onDeleteColumn?.(group.groupKey)}
       selectAll={variant === 'column' ? selectAll : undefined}
-      onAddItem={() => props.onAddItem(cell)}
-      onMoveColumn={(itemId, dir) => props.onMoveCell(itemId, cell, dir)}
     />
   )
 }

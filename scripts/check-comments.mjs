@@ -3196,6 +3196,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-board-view.tsx', [
     '/** Absent where the host cannot act on a batch, which is also what removes the column\'s own row. */',
+    '// The card passes its own id, so the column can hand the same handler to all of them.',
     '/** Set when the column is one cell of a band, so the frame says which band it is. */',
     '/** The strip draws the column and none of its cards; a band cell draws the cards and no title. */',
     '/** Absent on the strip of a banded board: there is nothing to expand back into above it. */',
@@ -3204,6 +3205,7 @@ const allowed = new Map([
     '/**\n * A move that leaves the card in the cell it already sits in is a reorder, not a change of place, so\n * it gets no announcement; an item the board does not list has no known source, and guessing would\n * mean reading out a column the card may not have left. The band is named only when the drop lands\n * in one, because a drop on the strip changes the column and keeps the band the card was in.\n */',
     '// This is read before the card has moved, so the column it would fill is still one card short.',
     '/** The key `offset` places from `keys`, or nothing when the walk runs off either end of the board. */',
+    '/**\n * The grouping and the moves, with the moves holding one identity for the board\'s life: the columns\n * and cards below compare what they are handed, and a mover minted per render would hand every card\n * a new prop for a change that touched none of them (K-19). What the handlers read — the groups, the\n * bands, the board\'s own mover — is read at call time through refs instead.\n */',
     '/** Shift+Arrow walks one step of the grid the card is in, keeping the coordinate it did not touch. */',
     '/** Everything a cell of the board needs to draw, whichever of the three shapes it is. */',
     '/** `column` is the plain board, `head` and `body` are the two halves of a banded board. */',
@@ -3231,6 +3233,10 @@ const allowed = new Map([
     '/** Shift+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */',
     '/**\n * Shift+Arrow walks a card one step of the grid. It used to be Alt+Arrow, which had to go: Alt+Left\n * and Alt+Right are the browser\'s own Back and Forward on Windows and Linux, so the card gesture\n * shared a chord with leaving the page and only worked for as long as the page won the race for it.\n * Shift is owned by nothing on its own, but it is how text is selected inside a field, so a key press\n * that started in one is left to the field.\n */',
     '/**\n * A card\'s container is deliberately not a control: no `role`, no `tabIndex`. It is a pointer hit-area,\n * and the card\'s keyboard and assistive-technology path is CardHeader\'s details button — giving this div\n * `role=\'button\'` would add a second, unlabeled control for the same action and a second tab stop that\n * reads as a duplicate. Key events still reach the container\'s handler, because they bubble from the\n * focused children (the checkbox, the title button, the menus); a card with nothing focused is not\n * expected to answer a key press, and moving a card is offered from those menus as well — both the\n * Shift+Arrow step and the move-to rows the context menu grows. This is the exemption registered under\n * AGENTS.md rule 10 (review K-23), stated rather than left implicit.\n */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-cell-handlers.ts', [
+    '/** The key of the group this cell belongs to, which is what its own edits name. */',
+    '/**\n * The handlers a column hands its cards, rebuilt only when something they actually read changes.\n * They are what the cards below compare, so a closure minted per render would make every card\'s props\n * new and repaint the whole column for a change to one of them (K-19).\n *\n * The cell is rebuilt from its two keys rather than kept from the render, because the board hands\n * each cell a fresh object every time, and the card id is never captured: the card passes its own id\n * to the handler that takes one, which is what keeps a single handler usable by all of them.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-chart-view.test.ts', [
     '// The real reader asks the document how it resolves each token, which jsdom',
@@ -3725,6 +3731,17 @@ const allowed = new Map([
     '// Growing the window is what scrolling does, so it must not block the scroll it answers.',
     '/** Given on a table surface, where anything between rows has to be a row of the grid itself. */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-repaint-scope.test.ts', [
+    '/**\n * A card is a `memo` component, and what that buys is this: a change to the board that no card\'s own\n * props depend on must not repaint the cards. The writers a view hands its rows are part of that\n * contract — a closure rebuilt on every render makes every card\'s props new, so a click that only\n * opened one card\'s detail panel repainted the whole board, and a table cell\'s own edit repainted\n * every other row (K-19).\n *\n * What is pinned here is therefore two halves of one thing: the repaint a board-level click causes,\n * read off the real cards rather than off a stub, and the identity of the writers underneath it. A\n * later change that reads the document out of the render instead of out of the commit is the shape\n * this catches: it works, it just repaints everything to do it.\n */',
+    '// Every repaint of a card goes through this wrapper, because the board renders the module\'s own',
+    '// export; the real card is still what renders, so the board behaves exactly as it ships. The wrapper',
+    '// is itself memoized, so the count below is reached only when the props a card was handed actually',
+    '// changed — which is the whole question, since React offers no way to ask a component whether it ran.',
+    '// The two cards whose own props did not move keep their last paint.',
+    '/** The board\'s own state, watched across renders: a probe that keeps the latest one and can be told\n * to render again without the document changing. */',
+    '/**\n * The writers a view hands its rows: a board-level render — the kind a detail panel, a menu or a\n * toast causes — has to leave their identity alone, because that identity is what the memos below\n * them compare.\n */',
+    '// What those writers commit, so a stable identity never becomes a silent behaviour change.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root-boundary.tsx', [
     '// Each kanban block is its own React root outside the host tree, so without a',
     '// boundary one throwing board whites out just that card with no failure state.',
@@ -3753,8 +3770,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root.tsx', [
     '/** Passed down from the mount options: how the host renders description markdown. */',
-    '// Views edit one item\'s own fields; the writer keeps that shape in one place',
-    '// while still committing the whole document like every other edit does.',
+    '/** One item\'s own fields, handed down with an identity that outlives a render (see K-19). */',
+    '// The band\'s own slider writes one property; the writer is the board\'s, so a drag through the',
+    '// chart does not hand the view a new prop on every frame.',
     '// What fills the panel turns on one question: does this board hold a card anywhere? A board that holds',
     '// none has nothing for any view to lay out, so the guide stands in for the view; a board that merely',
     '// looks empty — filtered down, or with its cards archived — keeps showing what it has.',
@@ -3862,6 +3880,10 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-timeline-view.test.ts', [
     '// Not merely clamped into view: the window itself reached the card, so the bar is whole.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-value-writes.ts', [
+    '/** One item\'s own property, merged into the newest document; a brand new option rides the same commit. */',
+    '/**\n * One item\'s own fields, as a view writes them: its attachments, its subtasks, one cell of it. Every\n * writer here is built from the document the commit sees rather than from the render that asked for\n * it, so an unchanged writer keeps one identity for the board\'s whole life — which is what lets the\n * views below stay memoized. A closure minted per render made every card\'s props new, so a click\n * that only opened one card\'s detail panel repainted the entire board (K-19).\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-options.tsx', [
     '/**\n * A band is a named row of the board, so only a field with a list of named values can cut one, and\n * the field the columns already use would give a board where every band holds exactly one column.\n */',

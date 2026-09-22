@@ -28,8 +28,9 @@ import type {
   KanbanView,
 } from '../types'
 import { useKanbanHistory, type CommitKanbanData } from './kanban-history'
+import { useKanbanValueWrites } from './kanban-value-writes'
 import { useKanbanViewOperations, useKanbanViewState } from './kanban-view-state'
-import { appendOptionToColumn, useKanbanColumnOperations, useKanbanSchemaOperations } from './kanban-column-hooks'
+import { useKanbanColumnOperations, useKanbanSchemaOperations } from './kanban-column-hooks'
 import { useMoveItemClearingSorts } from './kanban-manual-move'
 import { DESTRUCTIVE_UNDO_TOAST_MS, useKanbanItemDeletion } from './kanban-item-deletion'
 
@@ -105,39 +106,6 @@ export function useKanbanFilterSort(
     onClearTags,
     viewData,
   }
-}
-
-function useKanbanValueWrites(commitData: CommitKanbanData) {
-  const handleUpdateFiles = useCallback((id: string, files: KanbanFile[]) => {
-    commitData((prev) => ({
-      ...prev,
-      items: prev.items.map((item) => (item.id === id ? { ...item, files } : item)),
-    }))
-  }, [commitData])
-
-  const handleUpdateMultiSelect = useCallback(
-    (id: string, columnId: string, values: string[], newOption?: KanbanOption) => {
-      commitData((prev: KanbanData) => {
-        const nextItems = prev.items.map((item) =>
-          item.id === id ? { ...item, properties: { ...item.properties, [columnId]: values } } : item,
-        )
-        const nextColumns = newOption
-          ? appendOptionToColumn(prev.columns, columnId, newOption)
-          : prev.columns
-        return { ...prev, items: nextItems, columns: nextColumns }
-      })
-    },
-    [commitData],
-  )
-
-  const handleUpdateTags = useCallback(
-    (id: string, tags: string[], newOption?: KanbanOption) => {
-      handleUpdateMultiSelect(id, 'tags', tags, newOption)
-    },
-    [handleUpdateMultiSelect],
-  )
-
-  return { handleUpdateFiles, handleUpdateMultiSelect, handleUpdateTags }
 }
 
 export function useKanbanItemMutations(
