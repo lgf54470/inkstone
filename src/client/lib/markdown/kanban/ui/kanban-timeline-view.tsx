@@ -2,13 +2,21 @@ import { memo, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import {
-  buildTimelineDays,
   calculateTimelineBarGeometry,
-  type TimelineDateFields,
-  type TimelineDay,
+  splitTimelineItems,
+  TIMELINE_MAX_DAYS,
+  type TimelineDayFields,
+  type TimelineRange,
 } from '../timeline-helpers'
 import type { KanbanData, KanbanItem, KanbanView } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import {
+  TimelineClippedNotice,
+  TimelineDayHeader,
+  TimelineRangeControls,
+  TimelineUndatedList,
+  useTimelineViewState,
+} from './kanban-timeline-grid'
 
 interface KanbanTimelineViewProps {
   data: KanbanData
@@ -49,7 +57,7 @@ function TimelineTaskSidebar({
           onClick={onAddItem}
           className='flex items-center gap-1.5 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         >
-          <Plus size={13} />
+          <Plus size={13} aria-hidden />
           <span>{t('preview.kanban_new_item')}</span>
         </button>
       </div>
@@ -59,47 +67,33 @@ function TimelineTaskSidebar({
 
 function TimelineChart({
   items,
-  days,
+  range,
   fields,
+  scrollRef,
   onOpenDetail,
 }: {
   items: KanbanItem[]
-  days: TimelineDay[]
-  fields?: TimelineDateFields
+  range: TimelineRange
+  fields?: TimelineDayFields
+  scrollRef: React.RefObject<HTMLDivElement | null>
   onOpenDetail: (item: KanbanItem) => void
 }) {
   return (
-    <div className='flex-1 overflow-x-auto'>
-      <div className='flex min-w-max border-b border-[var(--border-subtle)] bg-[var(--bg-raised)]'>
-        {days.map(({ day, isToday, dateStr }) => (
-          <div
-            key={dateStr}
-            className='flex h-12 w-12 shrink-0 flex-col items-center justify-center border-r border-[var(--border-subtle)] text-[length:var(--text-11)]'
-          >
-            <span
-              className={
-                isToday
-                  ? 'flex size-5 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] font-bold'
-                  : 'text-[var(--text-tertiary)]'
-              }
-            >
-              {day}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className='min-w-max divide-y divide-[var(--border-subtle)]'>
+    <div ref={scrollRef} data-kanban-timeline-grid className='flex-1 overflow-x-auto'>
+      <TimelineDayHeader days={range.days} dayWidth={range.dayWidth} />
+      <div className='w-max divide-y divide-[var(--border-subtle)]'>
         {items.map((item) => {
-          const { left, width } = calculateTimelineBarGeometry(item, days, fields)
-
+          const bar = calculateTimelineBarGeometry(item, range, fields)
+          if (!bar) return null
           return (
             <div key={item.id} className='relative h-10'>
               <div
                 data-item-id={item.id}
                 onClick={() => onOpenDetail(item)}
-                style={{ left: `${left}px`, width: `${width}px` }}
-                className='absolute top-2 h-6 cursor-pointer rounded-[var(--r-full)] bg-[var(--accent)] px-2.5 text-[length:var(--text-11)] font-medium text-[var(--accent-contrast)] shadow-[var(--shadow-xs)] hover:opacity-90 flex items-center justify-between'
+                style={{ left: `${bar.left}px`, width: `${bar.width}px` }}
+                className={`absolute top-2 flex h-6 cursor-pointer items-center justify-between rounded-[var(--r-full)] bg-[var(--accent)] px-2.5 text-[length:var(--text-11)] font-medium text-[var(--accent-contrast)] shadow-[var(--shadow-xs)] hover:opacity-90 ${
+                  bar.clippedBefore ? 'rounded-l-none' : ''
+                } ${bar.clippedAfter ? 'rounded-r-none' : ''}`}
               >
                 <span className='truncate'>{item.title}</span>
               </div>
@@ -118,14 +112,27 @@ export const KanbanTimelineView = memo(function KanbanTimelineView({
   onAddItem,
 }: KanbanTimelineViewProps) {
   useLocaleRepaint()
-  const days = useMemo(() => buildTimelineDays(), [])
+  const startField = view?.startField
+  const endField = view?.endField
+  const fields: TimelineDayFields = useMemo(() => ({ startField, endField }), [startField, endField])
+  const { dated, undated } = useMemo(() => splitTimelineItems(data.items, fields), [data.items, fields])
+  const { range, zoom, scrollRef, onZoomChange, onToday } = useTimelineViewState(dated, fields)
 
   return (
-    <div className='flex h-full w-full flex-col overflow-hidden p-4'>
+    <div data-kanban-timeline className='flex h-full w-full flex-col overflow-hidden p-4'>
+      {range.clipped && <TimelineClippedNotice days={TIMELINE_MAX_DAYS} />}
+      <TimelineRangeControls zoom={zoom} onZoomChange={onZoomChange} onToday={onToday} />
       <div className='flex flex-1 overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
-        <TimelineTaskSidebar items={data.items} onOpenDetail={onOpenDetail} onAddItem={onAddItem} />
-        <TimelineChart items={data.items} days={days} fields={{ startField: view?.startField, endField: view?.endField }} onOpenDetail={onOpenDetail} />
+        <TimelineTaskSidebar items={dated} onOpenDetail={onOpenDetail} onAddItem={onAddItem} />
+        <TimelineChart
+          items={dated}
+          range={range}
+          fields={fields}
+          scrollRef={scrollRef}
+          onOpenDetail={onOpenDetail}
+        />
       </div>
+      <TimelineUndatedList items={undated} onOpenDetail={onOpenDetail} />
     </div>
   )
 })

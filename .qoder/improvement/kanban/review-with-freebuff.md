@@ -113,9 +113,12 @@
 - 验证：`kanban-context-menu.test.ts` +4 例（列出分组/打勾/回报目标、缺宿主或空选项时不出现行、泳道轴的选项与回报、两行各自只在对应轴成立时出现）；`kanban-board-swimlanes.test.ts` +6 例走**真长按（`contextmenu` 事件）→ 点菜单行 → 点目标行**的渲染级路径（换分组保住泳道、目标分组里已有别行卡片时仍不换行、勾选态、同目标零提交、换泳道保住分组、无泳道时不给该行）；`kanban-move-announcement.test.ts` +2 例（裸方向键不动、字段内 Shift+方向键不动）。四个旧助手从 `altKey` 改成 `shiftKey`（改名 `pressShiftArrow*`）。两次变异逐一被杀：分组写入改带 `laneKey: '__none__'` → 2 例红；换泳道回显 `'__none__'` 而非当前分组 → 1 例红；去掉 `shiftKey` 与 `isEditableTarget` 两个护栏 → 各 1 例红。
 - 遗留（登记不施工）：**真机（真实触屏设备）未验证**，本机没有可用的触屏设备，只有 jsdom 渲染级路径与共享 `Menu` 自身的用例；`item.cover` 与多选属性的分组写入仍是拖拽路径原有语义（多选分组字段上写入标量），菜单与拖拽共用同一 writer，没有引入新的不一致，但也未修正。
 
-### K-12 时间线/甘特固定 28 天窗口 → 待修
+### K-12 时间线/甘特固定 28 天窗口 → 已修
 - 证据：`timeline-helpers.ts:22` `buildTimelineDays(7, 21)`，两视图 `useMemo(…, [])` 挂载算一次；`calculateTimelineBarGeometry` 直接 `left = startIdx * 48 + 4`。
 - 影响：早于 −7 天的卡片得到负 left（不可见）；晚于 +21 天被裁；无日期卡片被画在「今天」；无缩放/跳转。
+- 复现（先红，旧实现）：早于窗口的卡片 `left = -3260`；晚于窗口的卡片右边缘 `4556` 对 1392 的网格。
+- 进度：`buildTimelineDays` 换成 `buildTimelineRange({items, fields, zoom, baseDate, locale})`——窗口由卡片最早/最晚日推导（两侧各留 3 天），空板才用「今天前 7 / 后 21 天」的兜底；**今天始终落在窗口内**（过去板不会失去时间参照）；跨度超 400 天时截取今天前后的窗口并置 `clipped`，视图顶部按 `preview.kanban_timeline_clipped` 说明，而不是静默只画一部分。`calculateTimelineBarGeometry(item, range, fields)` 现在返回 `{left,width,clippedBefore,clippedAfter} | null`：无日期卡片**返回 null**（不再画在「今天」），越界的条截到边界并在视图上用直角表示被截；最窄条宽改为独立常量 `TIMELINE_MIN_BAR_WIDTH=8`（月刻度下 6px/天算不出负宽）。刻度 `day/week/month` 只改列宽与表头写入频率（日：每列写；周：仅周首写；月：仅月初写，一月带年份），周首由 `weekStartFor(locale)` 决定（与日历同源，不自己判语言）。无日期卡片改到网格下方的清单（`TimelineUndatedList`，带计数、可点开详情）。“回到今天”将网格滚到今天居中，刻度切换也会重新居中（换刻度就是换一套列，需重新定位），而卡片编辑引起的重算**不会**动读者的滚动位置。两视图共用 `ui/kanban-timeline-grid.tsx` 的 `useTimelineViewState`/表头/控件，缩放刻意不落盘（每次写都是整篇笔记的一次写回，见 K-20）。
+- 验证：`timeline-helpers.test.ts` 改为新 API 18 例（窗口推导/今天就位/空板兜底/上限/越界裁剪/无日期返回 null/双向日期/配置字段与遗留回退/最小条宽/三种刻度的表头写入与外语文周首）+ 新增 `ui/kanban-timeline-view.test.ts` 7 例（视图级：远处卡片落在网格内且未被截断、今天有列、无日期卡片列在网格外并可点开、三档列宽与表头密度、今天控件滚动到 `todayIndex*dayWidth - clientWidth/2`、被截窗口会声明、正常板不声明）。变异：把区间改回固定窗口杀 5 例。
 
 ### K-13 选择与批量能力偏弱 → 已修（K-13a 选择 90b10948 / K-13b 批量字段 11a67a56）
 - 证据：`onToggleAll` 只接表格（`ui/kanban-table-view.tsx:76-81`）；看板/列表/画廊只能逐张勾选；批量条仅分组/归档/删除三项。

@@ -3,13 +3,21 @@ import { Plus } from 'lucide-react'
 import { Slider } from '../../../../components/form'
 import { t, useLocaleRepaint } from '../../../i18n'
 import {
-  buildTimelineDays,
   calculateTimelineBarGeometry,
-  type TimelineDateFields,
-  type TimelineDay,
+  splitTimelineItems,
+  TIMELINE_MAX_DAYS,
+  type TimelineDayFields,
+  type TimelineRange,
 } from '../timeline-helpers'
 import type { KanbanData, KanbanItem, KanbanView } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import {
+  TimelineClippedNotice,
+  TimelineDayHeader,
+  TimelineRangeControls,
+  TimelineUndatedList,
+  useTimelineViewState,
+} from './kanban-timeline-grid'
 
 interface KanbanGanttViewProps {
   data: KanbanData
@@ -82,26 +90,27 @@ function GanttTaskSidebar({
 
 function GanttBar({
   item,
-  days,
+  range,
   fields,
   progressField,
   onOpenDetail,
 }: {
   item: KanbanItem
-  days: TimelineDay[]
-  fields?: TimelineDateFields
+  range: TimelineRange
+  fields?: TimelineDayFields
   progressField: string
   onOpenDetail: (item: KanbanItem) => void
 }) {
-  const { left, width } = calculateTimelineBarGeometry(item, days, fields)
+  const bar = calculateTimelineBarGeometry(item, range, fields)
   const progress = ganttProgress(item, progressField)
+  if (!bar) return null
 
   return (
     <div className='relative h-10'>
       <div
         data-item-id={item.id}
         onClick={() => onOpenDetail(item)}
-        style={{ left: `${left}px`, width: `${width}px` }}
+        style={{ left: `${bar.left}px`, width: `${bar.width}px` }}
         className='group/bar absolute top-2 h-6 cursor-pointer overflow-hidden rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-xs)]'
       >
         <div style={{ width: `${progress}%` }} className='h-full bg-[var(--accent)] transition-all' />
@@ -116,44 +125,29 @@ function GanttBar({
 
 function GanttTimelineChart({
   items,
-  days,
+  range,
   fields,
   progressField,
+  scrollRef,
   onOpenDetail,
 }: {
   items: KanbanItem[]
-  days: TimelineDay[]
-  fields?: TimelineDateFields
+  range: TimelineRange
+  fields?: TimelineDayFields
   progressField: string
+  scrollRef: React.RefObject<HTMLDivElement | null>
   onOpenDetail: (item: KanbanItem) => void
 }) {
   return (
-    <div className='flex-1 overflow-x-auto'>
-      <div className='flex min-w-max border-b border-[var(--border-subtle)] bg-[var(--bg-raised)]'>
-        {days.map(({ day, isToday, dateStr }) => (
-          <div
-            key={dateStr}
-            className='flex h-12 w-12 shrink-0 flex-col items-center justify-center border-r border-[var(--border-subtle)] text-[length:var(--text-11)]'
-          >
-            <span
-              className={
-                isToday
-                  ? 'flex size-5 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-contrast)] font-bold'
-                  : 'text-[var(--text-tertiary)]'
-              }
-            >
-              {day}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div ref={scrollRef} data-kanban-timeline-grid className='flex-1 overflow-x-auto'>
+      <TimelineDayHeader days={range.days} dayWidth={range.dayWidth} />
 
-      <div className='min-w-max divide-y divide-[var(--border-subtle)]'>
+      <div className='w-max divide-y divide-[var(--border-subtle)]'>
         {items.map((item) => (
           <GanttBar
             key={item.id}
             item={item}
-            days={days}
+            range={range}
             fields={fields}
             progressField={progressField}
             onOpenDetail={onOpenDetail}
@@ -172,28 +166,35 @@ export const KanbanGanttView = memo(function KanbanGanttView({
   onUpdateProgress,
 }: KanbanGanttViewProps) {
   useLocaleRepaint()
-  const days = useMemo(() => buildTimelineDays(), [])
-  const fields: TimelineDateFields = { startField: view?.startField, endField: view?.endField }
+  const startField = view?.startField
+  const endField = view?.endField
+  const fields: TimelineDayFields = useMemo(() => ({ startField, endField }), [startField, endField])
+  const { dated, undated } = useMemo(() => splitTimelineItems(data.items, fields), [data.items, fields])
   const progressField = view?.progressField || 'progress'
+  const { range, zoom, scrollRef, onZoomChange, onToday } = useTimelineViewState(dated, fields)
 
   return (
-    <div className='flex h-full w-full flex-col overflow-hidden p-4'>
+    <div data-kanban-gantt className='flex h-full w-full flex-col overflow-hidden p-4'>
+      {range.clipped && <TimelineClippedNotice days={TIMELINE_MAX_DAYS} />}
+      <TimelineRangeControls zoom={zoom} onZoomChange={onZoomChange} onToday={onToday} />
       <div className='flex flex-1 overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         <GanttTaskSidebar
-          items={data.items}
+          items={dated}
           progressField={progressField}
           onOpenDetail={onOpenDetail}
           onAddItem={onAddItem}
           onUpdateProgress={onUpdateProgress}
         />
         <GanttTimelineChart
-          items={data.items}
-          days={days}
+          items={dated}
+          range={range}
           fields={fields}
           progressField={progressField}
+          scrollRef={scrollRef}
           onOpenDetail={onOpenDetail}
         />
       </div>
+      <TimelineUndatedList items={undated} onOpenDetail={onOpenDetail} />
     </div>
   )
 })

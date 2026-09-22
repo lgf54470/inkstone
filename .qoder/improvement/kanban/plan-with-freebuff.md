@@ -32,7 +32,7 @@
 
 ## 批次 3 · 视图完整度
 
-- [ ] K-12 时间线/甘特区间由数据推导 + 日/周/月缩放 + 「今天」 + 无日期单列
+- [x] K-12 时间线/甘特区间由数据推导 + 日/周/月缩放 + 「今天」 + 无日期单列
 - [ ] K-16 命令面板接入看板动作
 
 ## 批次 4 · 性能与门禁
@@ -48,6 +48,7 @@
 | --- | --- | --- | --- |
 | 2026-09-22 | K-13b 批量指派/加标签/设到期日 | （本提交） | typecheck ✅；新增 15 例（单元 6 + 批量条 6 + 渲染级接线 2 + 空集护栏 1）；三次变异逐一被杀（标签改覆盖而非并集、去掉去重守卫、指派写死列 id）；`size:check` 拦下 `useKanbanBatchEdits` 与两个 describe 超长 → 拆三个组合 hook + 拆 describe（并将 `handleBatchGroupChange` 一并收进 `kanban-batch-edits.ts`，空集不再空提交），未 resnapshot；kanban+preview+components 95 文件 **1085** passed；12 项静态门禁 exit=0；白名单 671 文件 / 4575 条 |
 | 2026-09-22 | K-13a 选择本组 + 选择当前视图全部 | （本提交） | typecheck ✅；新增 11 例（渲染级 7 + 单元 4）；三次变异逐一被杀（本组 id 取错、可见集合换成整份文档（靠批量条计数断言补上）、列菜单不接 selectAll）；`size:check` 拦下 `kanban-root.tsx` 超 500 行 → 两个覆盖层拆到 `kanban-overlays.tsx`，未 resnapshot；kanban+preview+components 94 文件 **1070** passed（3 例 render-window 5s 超时属 L-03，单跑 14/14 ✅）；12 项静态门禁 exit=0；白名单 668 文件 / 4561 条；另修 `menu.tsx` 选中标记的可访问名污染，并登记 K-29（标签筛选浮层同一写法） |
+| 2026-09-22 | K-12 时间线/甘特区间由数据推导 + 缩放 | （本提交） | 先写复现（旧实现在固定 ±7/21 天窗口下：早于窗口的条 `left = -3260`；晚于窗口的条右边缘 `4556` 对齐 1392 的网格）→ 两例红；实现后 `timeline-helpers.test.ts` 18 例 + 新增 `ui/kanban-timeline-view.test.ts` 7 例全绿；变异自检：把区间改回固定窗口恰好杀 5 例（含视图级“条被截断”断言）；kanban 74 文件 **985** passed；kanban+preview+components+tests/kanban 106 文件 **1155** passed；`size:check` 拦下 1 个生产函数（51 行）+ 2 个测试 describe → 抽出 `useTimelineViewState`（两视图共用）/拆 describe，未 resnapshot；12 项静态门禁 exit=0；白名单 677 文件 / 4621 条；浏览器门禁 216 passed / 0 failed（本机实例） |
 | 2026-09-22 | K-17 窄屏头部尺寸与面板不被裁剪 | 401ee48a | typecheck ✅；`kanban-header.test.ts` 12 例（4 例新写）+ 变异自检（把搜索钮改回 `size-7` 恰好杀 2 例）；kanban+preview+tests/kanban 97 文件 **1092** passed；`size:check` 拦下 header 517 行 + 测试 77 行 describe → 抽 `kanban-fullscreen-title.tsx`（127 行）/拆 describe，未 resnapshot；12 项静态门禁 exit=0；白名单 673 文件 / 4589 条；浏览器门禁见下一条（本轮已能完整跑通） |
 | 2026-09-22 | 浏览器门禁基线（本机首次跑通） | 下一提交 | `INKSTONE_EPHEMERAL_DEV=1 npm run dev:kv` + `node scripts/e2e.mjs` 后 `node scripts/e2e-visual.mjs`：**216 passed / 0 failed**（含看板 24 条：覆盖层命名与单实例、表格语义与值编辑器命名、面板 a11y/axe 两遍、语言切换重绘、Escape 与焦点归还、**头部高度稳定 + 各切换控件不位移**，以及“无页面错误”）；`e2e.mjs` 175 passed / 1 failed，失败项为 `reindex cannot overwrite an editor write with a stale FTS row`（worker 侧 reindex 与编辑器写入的竞态，两个全新实例上两次同结果），与看板无关，登记为 L-04 不本批夹带。本机环境：`node_modules` 为软链 + `/usr/bin/google-chrome`，故后续条目按需直接跑浏览器门禁，不再以“无浏览器”为由跳过。
 | 2026-09-22 | K-11 长按搬卡（移动到分组/泳道）+ 快捷键改绑 | （本提交） | typecheck ✅；新增 12 例（菜单 3 组 + 渲染级长按 6 例 + 护栏 2 例 + 选项轴 1 例）与 4 个旧助手改绑；三次变异逐一被杀（分组写入带泳道键、换泳道不回显分组、去掉 shift/田输入护栏）；`size:check` 拦下 3 个超长 describe + `kanban-root-hooks.ts` 548 行 → 拆 describe + 抽出 `kanban-move-to-axes.ts`，未 resnapshot；kanban+preview 85 文件 **1012** passed；12 项静态门禁 exit=0；白名单 666 文件 / 4543 条；遗留：真机触屏未验证（本机无触屏设备） |
