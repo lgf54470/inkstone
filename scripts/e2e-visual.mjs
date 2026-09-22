@@ -20,6 +20,8 @@ import {
   PALETTE_PANEL,
   REAL_VISITOR_UA,
   SETTINGS_PANEL,
+  SHARE_HUB_DIALOG,
+  SHARE_LABELS,
   apiCall,
   chromeExecutablePath,
   clickButton,
@@ -27,6 +29,7 @@ import {
   ensurePaneVisible,
   isReviewedIncomplete,
   loginThroughUi,
+  openShareCenter,
   pressCombo,
   runAxe,
   seedShareHubData,
@@ -83,7 +86,6 @@ function check(name, cond, extra = '') {
 // locale-agnostic. Keep in sync with src/shared/locales/*/common.ts.
 const LABELS = {
   newNote: ['新建笔记', 'New note'],
-  nav: ['导航', 'Navigation'],
   list: ['笔记', 'Notes'],
   edit: ['编辑', 'Edit'],
   preview: ['预览', 'Preview'],
@@ -116,11 +118,10 @@ const LABELS = {
   musicMobileNav: ['手机端导航', 'Mobile navigation'],
   musicImmersive: ['沉浸式播放', 'Full screen player'],
   musicLyrics: ['歌词', 'Lyrics'],
-  shareView: ['分享', 'Share'],
-  shareHub: ['分享中心', 'Share Hub'],
-  shareManage: ['管理所有分享', 'Manage All Shares'],
+  // The share center's own four pairs (its entry, dialog, manage control and All Shares row) live
+  // in `SHARE_LABELS` in the harness, shared with the contrast gate (SH-99); what stays here is
+  // what only this gate reads.
   shareKpi: ['总访问量 (PV)', 'Total Views (PV)'],
-  shareCategoryAll: ['全部分享', 'All Shares'],
   shareCategoryDashboard: ['数据看板', 'Dashboard'],
   shareChannelCollection: ['Collection ·', '集合 ·'],
   shareSearch: ['搜索笔记标题、链接或标签…', 'Search note title, link, or tag…'],
@@ -2424,50 +2425,17 @@ async function assertMusicSurface(page) {
  * worker and D1 resolved, so a dashboard stuck on its loading skeleton fails here instead of
  * passing on an empty shell.
  */
-const SHARE_DIALOG = cssByLabels('[role="dialog"]', LABELS.shareHub)
+const SHARE_DIALOG = SHARE_HUB_DIALOG
 const MOBILE_PANE = '.mobile-pane-layer[data-active]'
-// The Share entry is drawn either as the rail's icon (collapsed sidebar, an accessible name only) or
-// as one of the quick-nav buttons (expanded, where a count badge rides in front of the label). Both
-// live in the shell's own sidebar, and that is what tells them from the workspace header's Share
-// action, which carries the same name but asks for one note's share settings instead.
-const SHARE_ENTRY_TEXT = /^(\d+|99\+)?(分享|Share)$/
 
 /**
- * Opens the share center down the path a person takes. The list's own toolbar is the entry, and it
- * only draws in the shared view, so the Share nav entry comes first — through the shell's bottom bar
- * at phone width, where the sidebar lives in the navigation pane. The toolbar is waited for rather
- * than slept on: switching the view is a route change, and pressing before the control exists would
- * report an unopened surface as a broken one.
+ * Opens the share center through `openShareCenter` in `e2e-harness.mjs`: the same labels, the same
+ * two presses and the same opener marking `scripts/check-contrast.mjs` opens it with. This gate
+ * used to carry its own copy of all three, which could only ever fail as "the control is gone" on
+ * whichever side was not updated when a label changed (SH-99).
  */
-async function openShareHub(page, { mobile = false } = {}) {
-  if (mobile) {
-    await page.evaluate((labels) => {
-      const tab = [...document.querySelectorAll('nav button')].find((item) => labels.some((label) => item.textContent.includes(label)))
-      tab?.click()
-    }, LABELS.nav)
-    await sleep(600)
-  }
-  const scope = mobile ? MOBILE_PANE : 'aside'
-  const point = await page.evaluate(({ scope, labels, pattern }) => {
-    const buttons = [...(document.querySelector(scope)?.querySelectorAll('button') ?? [])]
-      .filter((item) => item.getBoundingClientRect().width > 0)
-    const control = buttons.find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
-      ?? buttons.find((item) => new RegExp(pattern).test(item.textContent.replace(/\s+/g, '')))
-    if (!control) return null
-    control.scrollIntoView({ block: 'center' })
-    const box = control.getBoundingClientRect()
-    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
-  }, { scope, labels: LABELS.shareView, pattern: SHARE_ENTRY_TEXT.source })
-  if (!point) return false
-  await page.mouse.click(point.x, point.y)
-  const entry = await page.waitForFunction(({ labels, scope }) => {
-    const root = scope ? document.querySelector(scope) : document
-    return [...(root?.querySelectorAll('button') ?? [])]
-      .some((item) => labels.includes(item.getAttribute('aria-label') ?? '') && item.getBoundingClientRect().width > 0)
-  }, { timeout: 15_000 }, { labels: LABELS.shareManage, scope: mobile ? MOBILE_PANE : '' }).then(() => true, () => false)
-  if (!entry) return false
-  await pressOpener(page, { labels: LABELS.shareManage, scope: mobile ? MOBILE_PANE : '' })
-  return page.waitForSelector(SHARE_DIALOG, { timeout: 15_000 }).then(() => true, () => false)
+function openShareHub(page, { mobile = false } = {}) {
+  return openShareCenter(page, { mobile })
 }
 
 /**
@@ -2556,7 +2524,7 @@ async function assertShareCenter(page) {
   // rows, their pin/star/copy controls and the toolbar. Switching to it in the sidebar is how a
   // person gets there, and it is read for the same two things: the toolbar drew itself, and every
   // control in it has a name axe accepts.
-  const listed = await gotoSidebarCategory(page, LABELS.shareCategoryAll)
+  const listed = await gotoSidebarCategory(page, SHARE_LABELS.categoryAll)
   const toolbar = await page.waitForFunction(({ dialog, labels }) => {
     const hub = document.querySelector(dialog)
     return Boolean(hub) && [...hub.querySelectorAll('input')].some((input) => labels.includes(input.getAttribute('aria-label') ?? ''))
@@ -2731,7 +2699,7 @@ async function assertShareQrSheet(page) {
   check('qr sheet: the center opens for the sheet', opened)
   if (!opened) return
   await waitForPanelSettled(page, SHARE_DIALOG)
-  const listed = await gotoSidebarCategory(page, LABELS.shareCategoryAll)
+  const listed = await gotoSidebarCategory(page, SHARE_LABELS.categoryAll)
   check('qr sheet: the list view is where the rows and the batch bar live', listed)
 
   // One selection, through the header's own control: the batch bar only draws once rows are picked.
@@ -3074,10 +3042,12 @@ const SURFACE_A11Y_ALLOWANCES = new Map([
     'kanban:nested-interactive',
     'A kanban card is one click target (it opens the detail) that holds controls of its own (its select box, its tag menu, its subtask toggle, its card menu). That is the card surface the raw-control guard allowlists by name as well, and making it not nested means redesigning the card rather than renaming an element — registered as SH-107.',
   ],
-  [
-    'kanban:color-contrast',
-    'The kanban tag palette paints its own foregrounds on its own soft tints (--kanban-tag-*-fg/-bg in kanban.css): the blue is 4.46:1 on white and 3.64:1 on its own tint, so the palette needs the same AA calibration the app accents got (§40/§53 work) — registered as SH-108, measured in the light theme only.',
-  ],
+  // The board's tag palette had its own entry here (SH-108: "the blue is 4.46:1 on white and 3.64:1
+  // on its own tint"). The palette is calibrated now — a tag foreground clears AA on its own tint
+  // over every surface and on the surfaces themselves, in both themes, measured by
+  // `scripts/check-contrast.mjs` for every declared colour. The entry is gone rather than loosened:
+  // an allowance whose violation is gone fails the gate, which is what makes the reader below judge
+  // these chips again.
 ])
 
 /** Presses a drawn control by any of its names, the way a person does. */

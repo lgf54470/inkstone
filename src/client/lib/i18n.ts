@@ -64,9 +64,17 @@ export async function initI18n(): Promise<void> {
   initPromise = (async () => {
     await ensureLocaleLoaded('en-US')
     if (locale !== 'en-US') await ensureLocaleLoaded(locale)
-    // Preload the other locale in background for instant switching, but don't block init
+    // Preload the other locale in background for instant switching, but don't block init.
+    // Best-effort by design, and so it is caught rather than left floating: the loader is a
+    // dynamic import, which rejects when the machine is out of memory or the chunk is missing at
+    // the moment it is asked for — and an unhandled rejection from a preload nobody awaited turns
+    // into a failed run (vitest reports it as an unhandled error and exits non-zero) without
+    // telling anyone anything about the page. The locale this call already loaded stays usable, and
+    // setLocale() loads the other one on demand when someone actually switches, so the only cost of
+    // the failure is the head start.
     const other: AppLocale = locale === 'en-US' ? 'zh-CN' : 'en-US'
-    if (!loadedLocales.has(other)) void ensureLocaleLoaded(other)
+    if (!loadedLocales.has(other))
+      void ensureLocaleLoaded(other).catch((error: unknown) => console.warn(`[inkstone] preloading ${other} failed`, error))
     applyLocaleToDom()
   })()
   return initPromise

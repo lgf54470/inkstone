@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { Children, cloneElement, isValidElement, useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Kbd } from '../primitives'
 import { getVisibleViewport } from '../../lib/viewport'
@@ -36,6 +36,26 @@ function shouldFlip(anchor: DOMRect, tip: DOMRect, preferred: TooltipSide, vp: V
   }
 }
 
+type Describable = ReactElement<{ 'aria-describedby'?: string }>
+
+/**
+ * The trigger the pointer and the keyboard actually hit, with the panel added to whatever
+ * description it already had — the panel is rendered in a portal on body, nowhere near its trigger,
+ * so without a reference a screen reader reads the control's name and never the hint. The name
+ * stays the control's own (`aria-label`); this only supplies the description.
+ *
+ * A trigger of several elements (a group of controls, a fragment) has no single element to
+ * describe, so it is left alone rather than pointed at a panel by a guess: the alternative is
+ * claiming a description that belongs to a different control.
+ */
+function describedTrigger(children: ReactNode, id: string): ReactNode {
+  if (Children.count(children) !== 1 || !isValidElement(children)) return children
+  const element = children as Describable
+  return cloneElement(element, {
+    'aria-describedby': [element.props['aria-describedby'], id].filter(Boolean).join(' '),
+  })
+}
+
 export function Tooltip({ label, combo, children, side = 'bottom', delay = 420, }: {
   label: ReactNode
   combo?: string
@@ -47,6 +67,12 @@ export function Tooltip({ label, combo, children, side = 'bottom', delay = 420, 
   const [rect, setRect] = useState<DOMRect | null>(null)
   const [position, setPosition] = useState<TooltipPosition | null>(null)
   const { holderRef, show, hide, measureAnchor } = useTooltipAnchor(delay, setPosition, setRect)
+  // The reference lives as long as the panel does. A dangling `aria-describedby` is not harmless
+  // bookkeeping: it is what axe reports as `aria-valid-attr-value` on every control carrying one,
+  // and it describes nothing — the hint does not exist until it is shown. `show()` runs on focus
+  // too, so a keyboard user meets the same description a pointer user does.
+  const tooltipId = useId()
+  const trigger = rect ? describedTrigger(children, tooltipId) : children
   useLayoutEffect(() => {
     const tooltip = tooltipRef.current
     if (!rect || !tooltip)
@@ -65,10 +91,10 @@ export function Tooltip({ label, combo, children, side = 'bottom', delay = 420, 
       if ((event.target as HTMLElement).matches(':focus-visible'))
         show()
     }} onBlur={hide} className='contents'>
-      {children}
+      {trigger}
     </span>
     {rect &&
-      createPortal(<div ref={tooltipRef} role='tooltip' data-side={position?.side} className="anim-fade pointer-events-none fixed z-[var(--z-tooltip)] flex max-w-[calc(100vw-16px)] items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-overlay)] px-2 py-1 text-[length:var(--text-11\\.5)] whitespace-nowrap text-[var(--text-secondary)] shadow-[var(--shadow-pop)]" style={style}>
+      createPortal(<div ref={tooltipRef} id={tooltipId} role='tooltip' data-side={position?.side} className="anim-fade pointer-events-none fixed z-[var(--z-tooltip)] flex max-w-[calc(100vw-16px)] items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-overlay)] px-2 py-1 text-[length:var(--text-11\\.5)] whitespace-nowrap text-[var(--text-secondary)] shadow-[var(--shadow-pop)]" style={style}>
         {label}
         {combo && <Kbd combo={combo}/>}
       </div>, document.body)}

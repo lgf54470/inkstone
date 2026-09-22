@@ -16,6 +16,23 @@ export const KANBAN_COLOR_NAMES: readonly KanbanColorName[] = [
   'slate',
 ] as const
 
+/**
+ * The tag palette is painted the way `--accent` is: a foreground as text on its own soft tint. Its
+ * values live in `styles/kanban.css` (which carries no comments by policy), so the rule they were
+ * calibrated to is written here, next to the only code that reads them.
+ *
+ * Every `--kanban-tag-<name>-fg` clears AA (4.5:1) as text on its own 14% tint over each surface a
+ * theme and background variant declares, and on those surfaces themselves — the light column
+ * therefore sits near 48% lightness and the dark one near 73%, which are the values the ratio
+ * allows rather than the ones the palette started with (a mid-lightness blue has 3.64:1 on its own
+ * tint, which is what the browser reader reported for it). Each tint is a `color-mix` of its own
+ * foreground rather than a second stored hex: the old pairs were two hexes with two alphas and had
+ * drifted apart — a tag's dark tint was its light hex — and a mix cannot disagree with its colour.
+ *
+ * `scripts/check-contrast.mjs` measures both rules for every colour those blocks declare, in both
+ * themes and both background variants; the board's own axe read in `scripts/e2e-visual.mjs` keeps
+ * the painted chips judged on real pixels, with no allowance left for them.
+ */
 export function getKanbanTagStyle(color?: KanbanColorName | string | null): CSSProperties {
   if (!color || !KANBAN_COLOR_NAMES.includes(color as KanbanColorName)) {
     return {

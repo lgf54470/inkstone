@@ -25,17 +25,21 @@
 // account scripts/e2e-visual.mjs signs in as.
 import puppeteer from 'puppeteer-core'
 import {
+  MUSIC_PROBE,
   PALETTE_PANEL,
   SETTINGS_PANEL,
+  SHARE_HUB_DIALOG,
+  SHARE_LABELS,
   chromeExecutablePath,
   clickButton,
   ensureAxe,
   ensurePaneVisible,
   isReviewedIncomplete,
   loginThroughUi,
+  openShareCenter,
   pressCombo,
   runAxe,
-  seedShareHubData,
+  seedMusicProbeTracks,
   setAppTheme,
   sleep,
   waitForPanelSettled,
@@ -143,13 +147,24 @@ async function closeMindmapFullscreen(page) {
 // the app whose backing is card artwork rather than a token surface.
 const MUSIC_HUB_DIALOG = 'div[role="dialog"][aria-label="音乐库"],div[role="dialog"][aria-label="Music library"]'
 const MUSIC_IMMERSIVE_DIALOG = 'div[role="dialog"][aria-label="沉浸式播放"],div[role="dialog"][aria-label="Full screen player"]'
-const MUSIC_GRID_PLAY = 'div.grid-cols-2 button[aria-label*="E2E Probe Audio"]'
+// Both selectors go by the fixture's own title, so the tracks the surfaces are measured on and the
+// tracks the fixture seeds cannot drift apart.
+const MUSIC_GRID_PLAY = `div.grid-cols-2 button[aria-label*="${MUSIC_PROBE.titles[0]}"]`
+const MUSIC_PROBE_ROW = `xpath=.//div[@role="row"]//button[contains(., "${MUSIC_PROBE.titles[0]}")]`
 // Both footer states open the hub: the plain icon before anything plays, and — once a track is
 // current, which the grid click below itself causes on the second theme pass — the transport
 // row's expand button.
 const MUSIC_HUB_OPENER = 'xpath/.//footer//button[@aria-label="打开音乐库" or @aria-label="Open music library" or @aria-label="展开播放器" or @aria-label="Expand the player"]'
 
 async function openMusicHub(page) {
+  // The probe tracks are this surface's fixture, and it arranges for them itself: an empty library
+  // paints no view toggle and no rows to select, and the gate used to stop on the missing control
+  // instead of saying why — a prerequisite that lived on one machine as an undocumented leftover
+  // (SH-100). A fixture that does not take is reported here rather than measured as a quieter hub.
+  const fixture = await seedMusicProbeTracks({ page })
+  if (fixture.found.length < MUSIC_PROBE.titles.length) {
+    throw new Error(`music surface: the library lists ${fixture.found.length} of ${MUSIC_PROBE.titles.length} probe tracks after seeding (${JSON.stringify(fixture)})`)
+  }
   const openers = await page.$$(MUSIC_HUB_OPENER)
   const opener = openers.at(-1) ?? await page.waitForSelector(MUSIC_HUB_OPENER, { timeout: SETTLE_TIMEOUT })
   await opener.click()
@@ -169,7 +184,7 @@ async function closeDialog(page, selector) {
 async function openMusicHubList(page) {
   await openMusicHub(page)
   await clickButton(page, ['列表视图', 'List view'])
-  const titles = await page.$$('xpath=.//div[@role="row"]//button[contains(., "E2E Probe Audio")]')
+  const titles = await page.$$(MUSIC_PROBE_ROW)
   const title = titles.at(0)
   if (title) await title.click()
   await sleep(SETTLE_MS)
@@ -178,12 +193,7 @@ async function openMusicHubList(page) {
 async function openMusicHubGrid(page) {
   await openMusicHub(page)
   await clickButton(page, ['网格视图', 'Grid view'])
-  try {
-    await page.waitForSelector(MUSIC_GRID_PLAY, { timeout: SETTLE_TIMEOUT })
-  }
-  catch {
-    throw new Error('music surface: no seeded probe tracks to measure — run scripts/e2e.mjs against this instance first')
-  }
+  await page.waitForSelector(MUSIC_GRID_PLAY, { timeout: SETTLE_TIMEOUT })
   // The card is the play control, so the same click that proves the grid painted also gives the
   // immersive surface below a current track. On the second theme pass this click pauses what the
   // first started; a current track is what immersive needs, playing or not.
@@ -202,53 +212,19 @@ async function openImmersivePlayer(page) {
 // names the root the axe pass below inspects, because axe's color-contrast rule
 // and the numbers measured here are the same question asked twice.
 /**
- * The share center's own labels. `scripts/e2e-visual.mjs` keeps the same four pairs in its LABELS
- * map — the two gates open the same surfaces through the same controls, and lifting the opener into
- * `e2e-harness.mjs` is the right home for it (registered as SH-99) rather than a third copy here.
+ * The share center, opened through the shared opener in `e2e-harness.mjs` — the same function
+ * `scripts/e2e-visual.mjs` opens it with, from one label set (SH-99). The two things this caller
+ * asks for are its own: the fixture the pairs need, and the All Shares row, which is the row whose
+ * count badge sits on the accent tint, i.e. the exact pair the badge rule is about.
  */
-const SHARE_LABELS = {
-  nav: ['分享', 'Share'],
-  hub: ['分享中心', 'Share Hub'],
-  manage: ['管理所有分享', 'Manage All Shares'],
-  categoryAll: ['全部分享', 'All Shares'],
-}
-const SHARE_HUB_DIALOG = '[role="dialog"][aria-label="分享中心"],[role="dialog"][aria-label="Share Hub"]'
-
-/**
- * Opens the share center the way a person does: the shell sidebar's Share entry, then the list
- * toolbar's manage-shares control, then the All Shares row — which is the row whose count badge sits
- * on the accent tint, i.e. the exact pair the badge rule is about. The workspace header's own Share
- * button carries the same zh-CN name and asks for one note's settings instead, so every lookup is
- * scoped to the shell's sidebar.
- */
-async function openShareCenter(page) {
+async function openShareSurface(page) {
   // Two of the pairs this surface is here for are only painted by an account that has something to
   // draw: the KPI delta badge needs traffic and the sidebar's tag row needs a tag, and CI's fixture
   // account has neither until this puts them there. Without it the pass measures a quieter center
   // and says nothing about either pair (SH-103) — so the fixture is a prerequisite here rather than
   // a silent possibility, the same way the music surfaces above require their seeded tracks.
-  const fixture = await seedShareHubData({ page, base: BASE })
-  if (fixture.views === 0) {
-    throw new Error(`share center: the account still reads no traffic after the fixture (${JSON.stringify(fixture)})`)
-  }
-  const point = await page.evaluate(({ labels, pattern }) => {
-    const buttons = [...(document.querySelector('aside')?.querySelectorAll('button') ?? [])]
-      .filter((item) => item.getBoundingClientRect().width > 0)
-    const control = buttons.find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
-      ?? buttons.find((item) => new RegExp(pattern).test(item.textContent.replace(/\s+/g, '')))
-    if (!control) return null
-    control.scrollIntoView({ block: 'center' })
-    const box = control.getBoundingClientRect()
-    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
-  }, { labels: SHARE_LABELS.nav, pattern: '^▦?\\d*分享$|^▦?\\d*Share$' })
-  if (!point) throw new Error('the shell sidebar offers no share entry to open')
-  // The nav entry only switches the panel to the share list; the center itself is opened from that
-  // list's toolbar, which is what the second press waits for.
-  await page.mouse.click(point.x, point.y)
-  await clickButton(page, SHARE_LABELS.manage, SETTLE_TIMEOUT)
-  await page.waitForSelector(SHARE_HUB_DIALOG, { timeout: SETTLE_TIMEOUT })
-  await waitForPanelSettled(page, SHARE_HUB_DIALOG)
-  await clickButton(page, SHARE_LABELS.categoryAll)
+  const opened = await openShareCenter(page, { base: BASE, fixture: true, category: SHARE_LABELS.categoryAll })
+  if (!opened) throw new Error('the shell sidebar offers no share entry to open')
   await sleep(SETTLE_MS)
 }
 
@@ -326,7 +302,7 @@ const SURFACES = [
     // so it may leave the panel where it found it only by pressing Escape (which closes the center).
     name: 'share center',
     axeRoot: SHARE_HUB_DIALOG,
-    open: openShareCenter,
+    open: openShareSurface,
     close: async (page) => {
       await page.keyboard.press('Escape')
       await sleep(SETTLE_MS)
@@ -462,16 +438,19 @@ const COLLECT = () => {
   return { rows, tokens }
 }
 
-// The other half of the tint rule. Every accent the appearance setting offers
-// gets used as text on its own soft tint (badges, selected rows, counters), so
-// the pairing has to clear AA for all of them — the account this run signs in as
-// only paints one. The values come out of the stylesheet through the same
-// var()/color-mix chain the components paint with, so a new accent is covered
-// the day it is declared.
-const ACCENT_MATRIX = () => {
+// The other half of the tint rule, one reader for the three palettes that are painted as text on
+// their own tint. Every accent the appearance setting offers gets used that way (badges, selected
+// rows, counters), so the pairing has to clear AA for all of them — the account this run signs in as
+// only paints one. The status colors are the same rule with a fixed list, and the kanban block's own
+// tag colours are the same rule on a palette that is not an appearance token at all: "not a token"
+// is not a licence to fail AA. The values come out of the stylesheet through the same
+// var()/color-mix chain the components paint with, so a new accent — or a new tag colour — is
+// covered the day it is declared.
+const TOKEN_MATRIX = (kind) => {
   const root = document.documentElement
-  const initial = { theme: root.dataset.theme ?? '', accent: root.dataset.accent ?? '' }
+  const initial = { theme: root.dataset.theme ?? '', accent: root.dataset.accent ?? '', background: root.dataset.background ?? '' }
   const accents = new Set()
+  const tags = new Set()
   const surfaces = new Set()
   for (const sheet of document.styleSheets) {
     let rules = []
@@ -488,6 +467,8 @@ const ACCENT_MATRIX = () => {
       if (named) accents.add(named[1])
       for (const name of rule.style) {
         if (/^--bg-(sunken|base|editor|surface|inset|overlay|hover)$/.test(name)) surfaces.add(name)
+        const tag = name.match(/^--kanban-tag-([a-z]+)-fg$/)
+        if (tag) tags.add(tag[1])
       }
     }
   }
@@ -502,22 +483,36 @@ const ACCENT_MATRIX = () => {
     probe.style.backgroundColor = `var(${name})`
     return getComputedStyle(probe).backgroundColor
   }
+  const palette = {
+    // The accent-less fallback in the base :root block is left out on purpose: the store pins
+    // data-accent on the root (store/ui/theme.ts), so nothing paints without one.
+    accent: [...accents].sort().map((name) => ({ name, text: '--accent', tint: '--accent-soft' })),
+    status: ['danger', 'warning', 'success'].map((name) => ({ name, text: `--${name}`, tint: `--${name}-soft` })),
+    kanban: [...tags].sort().map((name) => ({ name, text: `--kanban-tag-${name}-fg`, tint: `--kanban-tag-${name}-bg` })),
+  }[kind]
+  if (!palette) throw new Error(`unknown palette to measure: ${kind}`)
   const matrix = []
-  // Both themes, in the page: this function is serialized to the browser, so it
-  // carries its own copy of the list. The accent-less fallback in the base :root
-  // block is left out on purpose: the store pins data-accent on the root
-  // (store/ui/theme.ts), so nothing paints without one.
+  // Both themes, in the page: this function is serialized to the browser, so it carries its own copy
+  // of the list. The tag palette is read under both background variants as well — the setting swaps
+  // exactly the surfaces a tint sits on, and the light one makes them lighter and the dark one
+  // lighter still, the direction a translucent wash runs out of contrast in first.
+  const backgrounds = kind === 'kanban' ? ['', 'white'] : ['']
   for (const theme of ['light', 'dark']) {
     root.dataset.theme = theme
-    for (const accent of [...accents].sort()) {
-      root.dataset.accent = accent
-      matrix.push({
-        theme,
-        accent,
-        text: resolve('--accent'),
-        tint: resolve('--accent-soft'),
-        surfaces: [...surfaces].sort().map((name) => ({ name, color: resolve(name) })),
-      })
+    for (const background of backgrounds) {
+      if (background) root.dataset.background = background
+      else root.removeAttribute('data-background')
+      for (const entry of palette) {
+        if (kind === 'accent') root.dataset.accent = entry.name
+        matrix.push({
+          theme,
+          variant: background ? `${theme}/${background}` : theme,
+          accent: entry.name,
+          text: resolve(entry.text),
+          tint: resolve(entry.tint),
+          surfaces: [...surfaces].sort().map((name) => ({ name, color: resolve(name) })),
+        })
+      }
     }
   }
   probe.remove()
@@ -525,72 +520,27 @@ const ACCENT_MATRIX = () => {
   else root.removeAttribute('data-theme')
   if (initial.accent) root.dataset.accent = initial.accent
   else root.removeAttribute('data-accent')
+  if (initial.background) root.dataset.background = initial.background
+  else root.removeAttribute('data-background')
   return matrix
 }
 
 /**
- * The same rule for the fixed status colors: --danger/--warning/--success are
- * not accent-swappable, but badges and alerts paint them as small text on their
- * own -soft tint (the SH-37 batch gave those tints real definitions), so each
- * one has to clear AA on every surface the tint can sit on.
+ * A colour painted as text sits on its own tint over some surface, so the tint is composited first:
+ * the ratio depends on which surface is underneath, which is why every one of them is measured
+ * instead of the editor's alone.
+ *
+ * `plainSurfaces` adds the palette's second rule: the same colour drawn as text on the surfaces
+ * themselves. The kanban tags ask for it because they are also painted as a dot, a border and a bar
+ * — places where the tint is not behind them — so the value has to read on the surface as well.
+ * The failures say which of the two rules a colour missed.
  */
-const SEMANTIC_TINTS = () => {
-  const root = document.documentElement
-  const initial = { theme: root.dataset.theme ?? '' }
-  const surfaces = new Set()
-  for (const sheet of document.styleSheets) {
-    let rules = []
-    try {
-      rules = [...sheet.cssRules]
-    }
-    catch {
-      continue
-    }
-    for (const rule of rules) {
-      if (!(rule instanceof CSSStyleRule)) continue
-      for (const name of rule.style) {
-        if (/^--bg-(sunken|base|editor|surface|inset|overlay|hover)$/.test(name)) surfaces.add(name)
-      }
-    }
-  }
-  const probe = document.createElement('div')
-  probe.style.position = 'absolute'
-  probe.style.pointerEvents = 'none'
-  probe.style.width = '1px'
-  probe.style.height = '1px'
-  document.body.append(probe)
-  const resolve = (name) => {
-    probe.style.backgroundColor = 'transparent'
-    probe.style.backgroundColor = `var(${name})`
-    return getComputedStyle(probe).backgroundColor
-  }
-  const matrix = []
-  for (const theme of ['light', 'dark']) {
-    root.dataset.theme = theme
-    for (const color of ['danger', 'warning', 'success']) {
-      matrix.push({
-        theme,
-        accent: color,
-        text: resolve(`--${color}`),
-        tint: resolve(`--${color}-soft`),
-        surfaces: [...surfaces].sort().map((name) => ({ name, color: resolve(name) })),
-      })
-    }
-  }
-  probe.remove()
-  if (initial.theme) root.dataset.theme = initial.theme
-  else root.removeAttribute('data-theme')
-  return matrix
-}
-
-/**
- * An accent painted as text sits on its own tint over some surface, so the tint
- * is composited first: the ratio depends on which surface is underneath, which
- * is why every one of them is measured instead of the editor's alone.
- */
-function judgeAccentMatrix(matrix, kindLabel = 'accent') {
+function judgeTokenMatrix(matrix, kindLabel = 'accent', { plainSurfaces = false } = {}) {
   const failures = []
-  let measured = 0
+  // Ratios, not pairs: a palette measured under two rules yields two of them per surface, and the
+  // count is per variant so the line says what that variant was read for.
+  const ratios = new Map()
+  const count = (variant) => ratios.set(variant, (ratios.get(variant) ?? 0) + 1)
   for (const entry of matrix) {
     const text = parseColor(entry.text)
     const tint = parseColor(entry.tint)
@@ -601,18 +551,27 @@ function judgeAccentMatrix(matrix, kindLabel = 'accent') {
       // what shows through it is whatever it is painted on, which is not a token
       // question. The painted pairs cover those, so they are skipped here.
       if (!base || base.alpha !== 1) continue
-      const ratio = contrastRatio(text.rgb, over(tint, base.rgb))
-      measured++
-      if (ratio < AA_NORMAL) failures.push({ theme: entry.theme, accent: entry.accent, surface: surface.name, ratio, background: over(tint, base.rgb), foreground: text.rgb })
+      const onTint = contrastRatio(text.rgb, over(tint, base.rgb))
+      count(entry.variant ?? entry.theme)
+      if (onTint < AA_NORMAL) {
+        failures.push({ theme: entry.variant ?? entry.theme, accent: entry.accent, rule: 'on its own tint over', surface: surface.name, ratio: onTint, background: over(tint, base.rgb), foreground: text.rgb })
+      }
+      if (!plainSurfaces) continue
+      const onSurface = contrastRatio(text.rgb, base.rgb)
+      count(entry.variant ?? entry.theme)
+      if (onSurface < AA_NORMAL) {
+        failures.push({ theme: entry.variant ?? entry.theme, accent: entry.accent, rule: 'on', surface: surface.name, ratio: onSurface, background: base.rgb, foreground: text.rgb })
+      }
     }
   }
-  const byTheme = new Map()
-  for (const entry of matrix) byTheme.set(entry.theme, (byTheme.get(entry.theme) ?? 0) + 1)
-  for (const [theme, count] of byTheme) {
-    console.log(`  ${failures.some((item) => item.theme === theme) ? '✗' : '✓'} ${theme}: ${count} ${kindLabel}/tint pairs measured, ${failures.filter((item) => item.theme === theme).length} below AA`)
+  const byVariant = new Map()
+  for (const entry of matrix) byVariant.set(entry.variant ?? entry.theme, (byVariant.get(entry.variant ?? entry.theme) ?? 0) + 1)
+  for (const [variant, entries] of byVariant) {
+    const failed = failures.filter((item) => item.theme === variant).length
+    console.log(`  ${failed === 0 ? '✓' : '✗'} ${variant}: ${entries} ${kindLabel}/tint pairs measured (${ratios.get(variant) ?? 0} ratios), ${failed} below AA`)
   }
   for (const item of failures.sort((a, b) => a.ratio - b.ratio)) {
-    console.log(`      ${item.ratio.toFixed(2)}:1 (needs ${AA_NORMAL}) [${item.theme}] ${kindLabel} '${item.accent}' as text on its tint over ${item.surface} — ${toHex(item.foreground)} on ${toHex(item.background)}`)
+    console.log(`      ${item.ratio.toFixed(2)}:1 (needs ${AA_NORMAL}) [${item.theme}] ${kindLabel} '${item.accent}' as text ${item.rule} ${item.surface} — ${toHex(item.foreground)} on ${toHex(item.background)}`)
   }
   return failures.length
 }
@@ -826,7 +785,7 @@ async function main() {
     const initialTheme = await page.evaluate(() => document.documentElement.dataset.theme)
     // The accent inventory is read once and used two ways: the stylesheet-level
     // matrix below, and the sweep that re-measures the painted accent tints.
-    const matrix = await page.evaluate(ACCENT_MATRIX)
+    const matrix = await page.evaluate(TOKEN_MATRIX, 'accent')
     if (matrix.length === 0) throw new Error('the stylesheet declares no accents to measure')
     for (const theme of THEMES) {
       await setAppTheme(page, theme)
@@ -862,10 +821,17 @@ async function main() {
         await surface.close(page)
       }
     }
-    failures += judgeAccentMatrix(matrix)
-    const semantic = await page.evaluate(SEMANTIC_TINTS)
+    failures += judgeTokenMatrix(matrix)
+    const semantic = await page.evaluate(TOKEN_MATRIX, 'status')
     if (semantic.length === 0) throw new Error('the stylesheet declares no status colors to measure')
-    failures += judgeAccentMatrix(semantic, 'status color')
+    failures += judgeTokenMatrix(semantic, 'status color')
+    // The kanban tags are the block's own palette, not an appearance token, and the reader that
+    // watches the board only sees the tags a note happens to carry in the theme it happened to be
+    // read in (§55 allowed `kanban:color-contrast` on exactly that basis). Here every declared
+    // colour is measured against every surface, in both themes and both background variants.
+    const tags = await page.evaluate(TOKEN_MATRIX, 'kanban')
+    if (tags.length === 0) throw new Error('the stylesheet declares no kanban tag colours to measure')
+    failures += judgeTokenMatrix(tags, 'kanban tag colour', { plainSurfaces: true })
     // Leave the instance in the theme it arrived in.
     await setAppTheme(page, initialTheme === 'dark' ? 'dark' : 'light')
   }
@@ -873,7 +839,7 @@ async function main() {
     await browser.close()
   }
   console.log(failures === 0
-    ? 'contrast gate passed: every text tier, accent and status color painted on a tint clears AA in both themes'
+    ? 'contrast gate passed: every text tier, accent, status color and kanban tag colour painted on a tint clears AA in both themes'
     : `contrast gate failed: ${failures} tier/surface pairs below AA`)
   process.exit(failures === 0 ? 0 : 1)
 }

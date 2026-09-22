@@ -234,6 +234,191 @@ export const SHARE_HUB_PROBE = {
 }
 
 /**
+ * The share center's own labels, in one place because two gates open the same surface through the
+ * same controls: separate copies fail as "the control is gone" on whichever side was not updated
+ * when the copy changes (SH-99). `nav` doubles as the shell's own Share entry — the workspace
+ * header carries the same name for one note's settings, which is why every lookup below is scoped
+ * to the shell's sidebar and never to the document.
+ */
+export const SHARE_LABELS = {
+  nav: ['分享', 'Share'],
+  hub: ['分享中心', 'Share Hub'],
+  manage: ['管理所有分享', 'Manage All Shares'],
+  categoryAll: ['全部分享', 'All Shares'],
+}
+
+/** The dialog, by the name the shell gives it in either locale. */
+export const SHARE_HUB_DIALOG = SHARE_LABELS.hub
+  .map((label) => `[role="dialog"][aria-label="${label}"]`)
+  .join(',')
+
+/** The shell's bottom-bar tab that opens the navigation pane at phone width, where the sidebar lives. */
+export const NAVIGATION_LABELS = ['导航', 'Navigation']
+
+// The Share entry is drawn either as the rail's icon (collapsed sidebar, an accessible name only) or
+// as one of the quick-nav buttons (expanded, where a count badge rides in front of the label).
+const SHARE_ENTRY_TEXT = /^(\d+|99\+)?(分享|Share)$/
+const MOBILE_PANE = '.mobile-pane-layer[data-active]'
+
+/**
+ * Opens the share center down the path a person takes, and returns whether it opened.
+ *
+ * The list's own toolbar is the entry, and it only draws in the shared view, so the Share nav entry
+ * comes first — through the shell's bottom bar at phone width, where the sidebar lives in the
+ * navigation pane. The toolbar is waited for rather than slept on: switching the view is a route
+ * change, and pressing before the control exists would report an unopened surface as a broken one.
+ *
+ * `fixture` puts the data the reads need behind the account before opening (the KPI badge needs
+ * traffic, the sidebar's tag row needs a tag) and treats a fixture that did not take as a failure
+ * rather than as a quieter surface. `category` presses one row of the category bar inside the
+ * dialog, for the caller that measures a specific one — the All Shares row is where a count badge
+ * sits on the accent tint.
+ *
+ * The control that opens the surface is marked as such for as long as it is the opener, which is
+ * what a focus-return assertion needs to know where focus belongs when the dialog closes.
+ */
+export async function openShareCenter(page, { base, mobile = false, fixture = false, category = null } = {}) {
+  if (fixture) {
+    const seeded = await seedShareHubData({ page, base })
+    if (seeded.views === 0) {
+      throw new Error(`share center: the account still reads no traffic after the fixture (${JSON.stringify(seeded)})`)
+    }
+  }
+  if (mobile) {
+    await page.evaluate((labels) => {
+      const tab = [...document.querySelectorAll('nav button')].find((item) => labels.some((label) => item.textContent.includes(label)))
+      tab?.click()
+    }, NAVIGATION_LABELS)
+    await sleep(600)
+  }
+  const scope = mobile ? MOBILE_PANE : 'aside'
+  const point = await page.evaluate(({ scope, labels, pattern }) => {
+    const buttons = [...(document.querySelector(scope)?.querySelectorAll('button') ?? [])]
+      .filter((item) => item.getBoundingClientRect().width > 0)
+    const control = buttons.find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+      ?? buttons.find((item) => new RegExp(pattern).test(item.textContent.replace(/\s+/g, '')))
+    if (!control) return null
+    control.scrollIntoView({ block: 'center' })
+    const box = control.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, { scope, labels: SHARE_LABELS.nav, pattern: SHARE_ENTRY_TEXT.source })
+  if (!point) return false
+  await page.mouse.click(point.x, point.y)
+  const manage = await page.waitForFunction(({ labels, scope }) => {
+    const root = scope ? document.querySelector(scope) : document
+    return [...(root?.querySelectorAll('button') ?? [])]
+      .some((item) => labels.includes(item.getAttribute('aria-label') ?? '') && item.getBoundingClientRect().width > 0)
+  }, { timeout: 15_000 }, { labels: SHARE_LABELS.manage, scope: mobile ? MOBILE_PANE : '' }).then(() => true, () => false)
+  if (!manage) return false
+  const managePoint = await page.evaluate(({ labels, scope }) => {
+    // The opener a focus-return assertion reads is the last one that was pressed, so the mark
+    // travels with it — an older mark left behind would answer for the wrong control.
+    for (const marked of document.querySelectorAll('[data-gate-opener]')) delete marked.dataset.gateOpener
+    const root = scope ? document.querySelector(scope) : document
+    const control = [...(root?.querySelectorAll('button') ?? [])]
+      .find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    if (!control) return null
+    control.scrollIntoView({ block: 'center' })
+    control.dataset.gateOpener = '1'
+    const box = control.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, { labels: SHARE_LABELS.manage, scope: mobile ? MOBILE_PANE : '' })
+  if (!managePoint) return false
+  await page.mouse.click(managePoint.x, managePoint.y)
+  const opened = await page
+    .waitForSelector(SHARE_HUB_DIALOG, { timeout: 15_000 })
+    .then(() => true, () => false)
+  if (!opened) return false
+  await waitForPanelSettled(page, SHARE_HUB_DIALOG)
+  if (category) {
+    await clickButton(page, category)
+  }
+  return true
+}
+
+/**
+ * The two probe tracks the music surfaces are measured on. They are titled rather than seeded by id
+ * because a title is what the surfaces paint and what the reader looks for.
+ */
+export const MUSIC_PROBE = {
+  titles: ['E2E Probe Audio One', 'E2E Probe Audio Two'],
+}
+
+/**
+ * A one-second silent WAV: 8-bit mono at 8kHz, the smallest file the upload path accepts (it is a
+ * real container the browser decodes, which is what makes the track playable in the grid and the
+ * immersive player — the surfaces these probes exist for are measured with a current track).
+ *
+ * Silence, not music: this is a fixture, and a tone would make every measurement depend on what the
+ * waveform happens to be.
+ */
+function probeWavBytes() {
+  const samples = 8_000
+  const header = [
+    0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x41, 0x56, 0x45, // RIFF....WAVE
+    0x66, 0x6d, 0x74, 0x20, 36, 0, 0, 0, // fmt  (16-byte PCM block)
+    1, 0, 1, 0, // PCM, mono
+    0x40, 0x1f, 0, 0, // 8000 Hz
+    0x40, 0x1f, 0, 0, // byte rate
+    1, 0, 8, 0, // block align, 8 bits
+    0x64, 0x61, 0x74, 0x61, 0, 0, 0, 0, // data
+  ]
+  const size = samples
+  header[4] = (36 + size) & 0xff
+  header[5] = ((36 + size) >> 8) & 0xff
+  header[6] = ((36 + size) >> 16) & 0xff
+  header[7] = ((36 + size) >> 24) & 0xff
+  header[40] = size & 0xff
+  header[41] = (size >> 8) & 0xff
+  header[42] = (size >> 16) & 0xff
+  header[43] = (size >> 24) & 0xff
+  // 8-bit PCM is unsigned, so silence is 128 rather than 0.
+  return [...header, ...new Array(size).fill(128)]
+}
+
+/**
+ * Makes sure the account has the two probe tracks the music surfaces are measured on, and reports
+ * what it did. Without them an empty library paints no view toggle at all, and the gate that went
+ * looking for it crashed on the missing control instead of saying why (SH-100) — so the fixture is
+ * a prerequisite the gate arranges for itself, the same way the share center seeds its visit.
+ *
+ * Uploading through the product's own endpoint is deliberate: a track written straight into D1
+ * would have no object behind it, and the surfaces stream what they list. It stays idempotent — an
+ * account that already has the titles uploads nothing, which also keeps the per-hour upload budget
+ * out of the way of repeated runs.
+ */
+export async function seedMusicProbeTracks({ page }) {
+  const listed = await apiCall(page, 'GET', '/api/music/library')
+  const present = new Set((listed.data?.tracks ?? []).map((track) => track.title))
+  const missing = MUSIC_PROBE.titles.filter((title) => !present.has(title))
+  const bytes = probeWavBytes()
+  for (const title of missing) {
+    const result = await page.evaluate(async ({ title, bytes }) => {
+      const form = new FormData()
+      form.append('file', new File([new Uint8Array(bytes)], `${title}.wav`, { type: 'audio/wav' }))
+      form.append('title', title)
+      form.append('artist', 'Inkstone E2E')
+      form.append('album', 'Contrast probe')
+      form.append('durationMs', '1000')
+      const response = await fetch('/api/music/tracks', {
+        method: 'POST',
+        headers: { 'X-Inkstone-Client': '1' },
+        body: form,
+      })
+      return { status: response.status, body: (await response.text()).slice(0, 200) }
+    }, { title, bytes })
+    if (result.status !== 201) {
+      throw new Error(`music probe fixture: uploading '${title}' answered ${result.status} (${result.body})`)
+    }
+  }
+  // Read back through the endpoint the surfaces list from, so "the fixture is in place" is an
+  // answer about the library rather than about the upload calls having returned 201.
+  const after = await apiCall(page, 'GET', '/api/music/library')
+  const seeded = new Set((after.data?.tracks ?? []).map((track) => track.title))
+  return { uploaded: missing.length, found: MUSIC_PROBE.titles.filter((title) => seeded.has(title)) }
+}
+
+/**
  * The user agent the fixture's visit is recorded for. The product's bot list classifies
  * `HeadlessChrome` as a crawler — correctly — and a crawler visit is never written, so the row this
  * fixture exists to put in place would simply not be there.
