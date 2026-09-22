@@ -14,6 +14,8 @@ export interface KanbanSession {
   noteId(): string | null
   isReady(): boolean
   isEditable(): boolean
+  /** False once the block left the document: the board behind this session no longer exists. */
+  isAlive(): boolean
   getData(): KanbanData | null
   updateData(updater: (prev: KanbanData) => KanbanData): void
   getMode(): KanbanMode
@@ -35,6 +37,7 @@ function sessionFor(entry: KanbanBlockEntry): KanbanSession {
     noteId: () => entry.noteId,
     isReady: () => Boolean(entry.data),
     isEditable: () => Boolean(entry.editable),
+    isAlive: () => !entry.disposed,
     getData: () => entry.data,
     updateData: (updater) => updateKanbanData(entry, updater),
     getMode: () => entry.mode,

@@ -17,7 +17,7 @@
 - [x] K-09 跨源附件不提供下载钮（改由新标签打开，判定正名为 `isCrossOriginUrl`）
 - [x] K-10 上传体积预检（与服务端同一份限额常量；类型/配额按核实结论不预检）
 - [x] K-03 附件删除改「确认 + 永久删除」语义（用户裁定，对齐笔记附件）
-- [ ] K-04 全屏期间实例失效自恢复
+- [x] K-04 全屏期间实例失效自恢复（board 离开笔记时关闭覆盖层并说明）
 
 ## 批次 2 · 交互与移动
 
@@ -49,7 +49,8 @@
 | 2026-09-22 | K-02 删列撤销提示（分组口径） | （本提交） | typecheck ✅；kanban+preview+tests/kanban 94 文件 1008 passed（首跑 1 例 render-window 超时属 L-03，重跑全绿）；`size:check`/`i18n:check` ✅；白名单 656 文件 / 4464 条 |
 | 2026-09-22 | K-03 附件删除确认 + 永久删除语义 | c3f72b4a | typecheck ✅；kanban+preview+tests/kanban 88 文件 992 passed；`size:check`/`i18n:check`/`style:check`/`hardcoded:check` ✅；白名单 657 文件 / 4467 条；pre-commit 全量 test:unit 1443 passed |
 | 2026-09-22 | K-05 CSV 导出补 BOM | 5e984d32 | typecheck ✅；kanban+preview+tests/kanban 88 文件 994 passed；`size:check`/`comments:check` ✅；白名单 657 文件 / 4470 条 |
-| 2026-09-22 | K-10 上传体积预检 | （本提交） | typecheck ✅；新增 3 例 + 变异自检（改判据恰好杀这 2 例）；`size:check` 拦下变长函数→拆助手而非 resnapshot；kanban+preview+tests/kanban 94 文件 **1035** passed；13 项静态门禁 exit=0；白名单 660 文件 / 4486 条 |
+| 2026-09-22 | K-04 全屏期间板子离开笔记的自恢复 | （本提交） | typecheck ✅；新增 4 例（3 先红 + 1 护栏）+ 变异自检（去 disposed 守卫恰好杀 1 例）；`size:check` 拦下 67 行 describe → 拆三组而非 resnapshot；kanban+preview+tests/kanban 95 文件 **1039** passed；13 项静态门禁 exit=0；白名单 662 文件（第一次 4498 条，拆 describe 后重算 4496）；批次 1（止血与安全）全部结案 |
+| 2026-09-22 | K-10 上传体积预检 | 30f3f9c3 | typecheck ✅；新增 3 例 + 变异自检（改判据恰好杀这 2 例）；`size:check` 拦下变长函数→拆助手而非 resnapshot；kanban+preview+tests/kanban 94 文件 **1035** passed；13 项静态门禁 exit=0；白名单 660 文件 / 4486 条 |
 | 2026-09-22 | K-09 跨源附件不再抢走应用标签页 | 789a61ac | typecheck ✅；新增 1 例先红后绿；`renderer.test.ts`+画廊 39 例同跑绿证明正名无行为漂移；kanban+preview+tests/kanban 94 文件 **1032** passed；13 项静态门禁 exit=0；白名单 660 文件 / 4482 条 |
 | 2026-09-22 | K-08 文本附件预览失败态 + 已删对象降级 | c06bcb0e | typecheck ✅；新增 6 例先红后绿；kanban+preview+tests/kanban 94 文件 **1030** passed；`size:check` 拦下 3 处超长函数（生产 1 / 测试 2）并拆解而非 resnapshot；13 项静态门禁 exit=0；白名单 660 文件 / 4479 条 |
 | 2026-09-22 | K-07 封面/附件图片服从外部图片策略 | 992bca0d | typecheck ✅；新增用例先红 5 例后绿；kanban+preview+tests/kanban 94 文件 **1024** passed；`renderer.test.ts` 32 例未改仍绿；13 项静态门禁 exit=0（含 `deep-imports`：新叶模块无 index 遮蔽）；白名单 659 文件 / 4475 条；另登记 K-28（笔记附件预览图像同类问题，跨模块） |

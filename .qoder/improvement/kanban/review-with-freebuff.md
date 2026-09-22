@@ -38,9 +38,12 @@
 - 验证：`ui/kanban-files-cell.test.ts` 8 例（新增 3 例先红后绿：确认参数逐字匹配且确认后才删对象；取消时引用/对象/toast 三者都不动；成功后报 success），既有 3 例保持绿（「外站 URL」一例补断言 `confirm` 未被调用）。typecheck ✅；kanban+preview+tests/kanban 88 文件 992 passed ✅。
 - 残留（如实登记，不夹带）：撤销/重做仍可能恢复出指向已删对象的引用——`history` 快照里本就存着那份数据，删除不重写历史。其降级显示（「文件已不可用」）并入 **K-08**，同一处 `ui/kanban-file-preview-modal.tsx` 的失败态一并做。
 
-### K-04 全屏期间栅栏被删 → 覆盖层停在空舞台 → 待修
+### K-04 全屏期间栅栏被删 → 覆盖层停在空舞台 → 已修（`（本提交）`）
 - 证据：`registry.ts` `disposeEntry` + `ui/kanban-fullscreen.tsx`（`moveBack` 只在卸载时跑）；`features/preview/use-kanban-blocks.ts` 的 `fullscreen` 状态无人清理。
-- 影响：边开全屏边在编辑器删掉整块栅栏 → 空全屏、无提示。
+- 影响：边开全屏边在编辑器删掉整块栅栏 → 空全屏、无提示，只能 Esc。
+- 实现结构（为什么订阅放在 preview 而不在覆盖层）：覆盖层若 import `registry` 的 `subscribeKanbans` 会成环 —— `registry.ts` 已 import `./ui` 桶，而该桶 re-export `KanbanFullscreen`（`registry → ui/index → kanban-fullscreen → registry`）。因此「板子没了」这个事实由 registry 广播（`entry.disposed` + 仅在**裁剪路径** `notify`），由已持有公开入口的 `features/preview/use-kanban-blocks.ts` 订阅并关闭 + 解释。
+- 细节：① `KanbanBlockEntry.disposed` 与 `KanbanSession.isAlive()`：状态而非纯拆卸动作；② 只在 `mountKanbans` 的裁剪循环里 notify —— `destroyKanbans`（整个预览卸载）也 dispose，但那是读者已知的自己离开，不该弹「看板被移除」；③ `attach/detachKanbanToOverlay` 对已 disposal 的 entry 直接 return，否则覆盖层自己的 effect cleanup 跑 `moveBack()` 时会把已拆的容器塞回占位符（那个位置可能已被新块占着）；④ 订阅放进 `useKanbanTeardown` 的同一个 effect，**先 unsubscribe 再 flush/destroy**，使顺序确定而非依赖 React 的清理次序。双语 +1 键 `preview.kanban_board_removed`。
+- 验证：新增 `features/preview/kanban-dispose.test.ts` 4 例（三个断言先红：`isAlive` 不存在、覆盖层仍开着、无提示；第四例为护栏：离开笔记时不弹提示）；该文件用真实 `useKanbanBlocks` 驱动（不是桩），因此覆盖的是接线而非假设。**变异自检**：拿掉 `detachKanbanFromOverlay` 的 `disposed` 守卫后，恰好「容器不得被塞回」这例转红（1 failed / 3 passed），还原后 4/4；`size:check` 拦下首个 describe 67 行 → 按「disposal 是状态 / 容器归属 / 看板侧的关闭与解释」拆三个 describe，未 resnapshot。kanban+preview+tests/kanban 95 文件 **1039** passed，13 项静态门禁 exit=0。
 
 ### K-05 CSV 导出无 BOM（中文乱码） → 已修（`（本提交）`）
 - 证据：`kanban/csv.ts` `kanbanToCsv` 直接 `join('\n')`；仓内既有约定 `features/share/share-helpers.ts:167` 明确加 `\uFEFF`。

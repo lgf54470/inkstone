@@ -126,6 +126,7 @@ function createEntry(node: HTMLElement, options: KanbanMountOptions): KanbanBloc
     write: options.writeBack ?? null,
     dirty: false,
     unsaved: false,
+    disposed: false,
     timer: null,
   }
   entries.set(created.key, created)
@@ -140,6 +141,11 @@ function createEntry(node: HTMLElement, options: KanbanMountOptions): KanbanBloc
  */
 function disposeEntry(entry: KanbanBlockEntry): void {
   if (entry.timer !== null) window.clearTimeout(entry.timer)
+  // Dying is a state, not just a teardown step: the session that hosts this board can still be open in
+  // full screen, and the reader has to be told before the stage under it goes blank (announced where
+  // the block left the document — see `mountKanbans`), and a late `moveBack` from that overlay's own
+  // cleanup must not push the dead container back into a placeholder a fresh board may already own.
+  entry.disposed = true
   const root = entry.root
   entry.root = null
   if (root) queueMicrotask(() => root.unmount())
@@ -235,6 +241,7 @@ export async function mountKanbans(root: HTMLElement, options: KanbanMountOption
     if (entry.scope === options.scope && !assignments.some((a) => a.entry === entry)) {
       disposeEntry(entry)
       entries.delete(key)
+      notify(entry.scope)
     }
   }
 }
@@ -266,7 +273,7 @@ function rerenderDeferred(entry: KanbanBlockEntry): void {
  * there is never a second copy of the same board to fall out of step.
  */
 export function attachKanbanToOverlay(entry: KanbanBlockEntry, target: HTMLElement): void {
-  if (!entry.container) return
+  if (!entry.container || entry.disposed) return
   entry.owner = 'overlay'
   entry.container.classList.add('is-fullscreen')
   target.append(entry.container)
@@ -278,7 +285,7 @@ export function attachKanbanToOverlay(entry: KanbanBlockEntry, target: HTMLEleme
 }
 
 export function detachKanbanFromOverlay(entry: KanbanBlockEntry): void {
-  if (!entry.container) return
+  if (!entry.container || entry.disposed) return
   entry.owner = 'inline'
   entry.container.classList.remove('is-fullscreen')
   const placeholder = kanbanPlaceholder(entry.host)

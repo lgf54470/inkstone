@@ -1903,6 +1903,15 @@ const allowed = new Map([
   ['src/client/features/preview/kanban-description-preview.test.ts', [
     '/**\n * The preview pane is the only production caller that hands a board a description renderer, and it does\n * so through a hook. Nothing in the modal\'s own tests can tell whether that hand-off happened: a board\n * mounted without it still behaves perfectly in every unit test, it simply never offers the control.\n * So this drives the real hook over a real rendered fence.\n */',
   ]],
+  ['src/client/features/preview/kanban-dispose.test.ts', [
+    '/**\n * A board open in full screen outlives its own fence.\n *\n * The overlay hosts the live instance the inline block mounted — the element is moved, never copied —\n * and the registry disposes that instance when the note stops holding the block: deleting the fence,\n * or re-rendering the preview from a document without it. Disposal tore the React root down but left\n * the overlay standing on an empty stage, with the reader looking at a blank dialog and no way to\n * learn why (review K-04). Both ends are asserted here: the entry reports that it is gone, and the\n * preview pane closes the overlay and says so — while a pane that is itself going away stays quiet.\n */',
+    '/** Drives the real hook the preview pane uses, so the assertions cover the wiring and not a stub. */',
+    '// The markup and its bodies live on the host before the layout effect mounts anything into it.',
+    '/** Opens the block\'s own full screen session the way the pane\'s button does. */',
+    '// What the overlay does on open: the live instance is moved onto its stage, never copied.',
+    '// The overlay\'s own effect cleanup runs moveBack after a close, and the board may already be gone',
+    '// by then: a container that has been torn down must not reappear in the note it left.',
+  ]],
   ['src/client/features/preview/kanban-fullscreen.test.ts', [
     '// The board reads its fence body out of the set this element carries, not out of its own attribute',
     '// (P-01).',
@@ -2073,6 +2082,7 @@ const allowed = new Map([
     '// The overlay\'s own cleanup moves the canvas back and flushes the session;',
     '// this only takes the modal out of the tree.',
     '// The host carries the markup it was just given, so the bodies go on the same element.',
+    '/**\n * The pane\'s two jobs around a board that went away.\n *\n * The registry disposes a block\'s React root when the document stops holding it — the fence deleted in\n * the editor, or the preview re-rendered without it — and announces that on the prune path. The overlay\n * used to survive it as an empty stage: a blank dialog the reader could only escape, with nothing saying\n * the board was gone (review K-04). So a notification closes the overlay and says why, reading the open\n * session off a ref so the listener needs no dependency on it and keeps one identity for the pane\'s life.\n *\n * A pane being torn down disposes its boards too, and that is not a removal the reader needs to hear\n * about — hence the order below: unsubscribe first, then flush and destroy.\n */',
   ]],
   ['src/client/features/preview/use-mindmap-blocks.ts', [
     '/**\n   * The fence bodies this markup was rendered from (P-01), registered on the host before mount. Also a\n   * mount trigger: a body-only edit leaves the markup string identical.\n   */',
@@ -2896,6 +2906,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/entry.ts', [
     '/** Edits the note refused to accept; kept in memory until retry or discard. */',
+    '/** The block left the document and this entry was torn down; nothing may move its container again. */',
   ]],
   ['src/client/lib/markdown/kanban/filter-sort.test.ts', [
     '// F-03. Until now the only questions a filter could ask of a column were text questions, so a',
@@ -2986,6 +2997,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/registry.ts', [
     '/**\n   * Renders a card description as the host would render it in the note body. Injected rather than\n   * imported: the markdown renderer already imports this module, so reaching back for it would close\n   * a cycle. Absent means the host cannot render markdown (exports, snapshots), and the UI hides it.\n   */',
     '/**\n * Tears one block\'s React root down. The unmount is deferred by a microtask because both callers run\n * inside the host tree\'s own commit — the preview re-renders, a block leaves the note, and React\n * refuses to take one root down from inside another root\'s render: it warns and leaves the teardown to\n * race the commit it interrupted.\n */',
+    '// Dying is a state, not just a teardown step: the session that hosts this board can still be open in',
+    '// full screen, and the reader has to be told before the stage under it goes blank (announced where',
+    '// the block left the document — see `mountKanbans`), and a late `moveBack` from that overlay\'s own',
+    '// cleanup must not push the dead container back into a placeholder a fresh board may already own.',
     '// Unwritten edits outrank the note body: a re-render must not re-point the',
     '// fence or re-parse over them, or retry and discard lose what they resolve.',
     '// The move and the cleanup-time flush both run inside another root\'s commit —',
@@ -2994,6 +3009,9 @@ const allowed = new Map([
     '/**\n * Hands the live board to the full screen overlay: the same root, so its edits,\n * history and write-back are the ones the inline block keeps using afterwards —\n * there is never a second copy of the same board to fall out of step.\n */',
     '// A forced flush is where a conflict first surfaces outside the debounce',
     '// timer, so the header badge has to be refreshed from here too.',
+  ]],
+  ['src/client/lib/markdown/kanban/session.ts', [
+    '/** False once the block left the document: the board behind this session no longer exists. */',
   ]],
   ['src/client/lib/markdown/kanban/static.test.ts', [
     '/**\n * A board on a surface that cannot run one: an exported document, a shared note, a slide, the\n * editor\'s live preview. Those channels used to leave the block at "Loading kanban…" with\n * `aria-busy` up forever — the fence had been rendered, but nothing would ever mount it. The\n * contract asserted here is the one every rich block in this repo already keeps: a still\n * rendering when the surface declares one, the source when it declares nothing, and never a\n * promise that is never kept.\n */',

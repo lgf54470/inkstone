@@ -19,5 +19,7 @@ export interface KanbanBlockEntry {
   dirty: boolean
   /** Edits the note refused to accept; kept in memory until retry or discard. */
   unsaved: boolean
+  /** The block left the document and this entry was torn down; nothing may move its container again. */
+  disposed: boolean
   timer: number | null
 }
