@@ -38,6 +38,7 @@ import {
   sleep,
   waitForPanelSettled,
 } from './e2e-harness.mjs'
+import { MINDMAP_NODE_TEXT_RULE, classifyIncomplete } from './lib/axe-review.mjs'
 import {
   contrastRatio,
   near,
@@ -61,10 +62,6 @@ const SETTLE_TIMEOUT = 20_000
 
 const MINDMAP_FULLSCREEN = '.mindmap-fullscreen'
 const MINDMAP_FENCE = ['', '```mindmap', '- Contrast Probe', '  - Keyboard reference', '```'].join('\n')
-// axe's wording for text it will not judge because something is painted over it: the pass run under
-// a transient layer has to recognize its own items by it, and the pass without the layer must not
-// see one at all.
-const OCCLUSION_NOTE = 'overlapped by another element'
 
 /**
  * The mind map's full screen view, opened with its keyboard reference card up.
@@ -117,22 +114,7 @@ async function openMindmapFullscreen(page) {
   await sleep(SETTLE_MS)
 }
 
-/**
- * The card is the transient layer: this puts it away without leaving full screen, so the map's own
- * topic text can be read on its own. The card is drawn over the middle of the drawing area, and the
- * topic labels it covers are exactly the ones axe refuses to judge while it is up — a review item
- * that is true about the pixels and useless as a failure, because the layer is the thing being
- * measured. Measuring the surface twice keeps both answers and neither is taken on trust: the card
- * is judged with it open, the map's text with it away on the same instance, and the first pass is
- * only allowed to report the occlusion because the second has to come back without it.
- */
-async function dismissMindmapCard(page) {
-  await page.keyboard.press('Escape')
-  await page.waitForFunction(() => !document.querySelector('.mindmap-shortcuts'), { timeout: SETTLE_TIMEOUT })
-  await sleep(SETTLE_MS)
-}
-
-/** The second Escape is the one that leaves full screen. */
+/** The first Escape puts the card away, the second leaves full screen. */
 async function closeMindmapFullscreen(page) {
   await page.keyboard.press('Escape')
   await sleep(SETTLE_MS)
@@ -182,11 +164,10 @@ const SURFACES = [
     axeRoot: MINDMAP_FULLSCREEN,
     open: openMindmapFullscreen,
     close: closeMindmapFullscreen,
-    // The card is this surface's own transient layer: the measurements and the first axe pass run
-    // with it up, because the card is the surface that was skipped, and the same instance is then
-    // read a second time with the card away. Only a surface that declares the second read has the
-    // items its layer occludes set aside, and only because that read has to pass without them.
-    occluder: { layer: 'keyboard reference card', dismiss: dismissMindmapCard },
+    // The one item here the gate cannot judge, and it is not the card this pass runs under: the
+    // rule, its evidence and why it cannot widen are in `lib/axe-review.mjs` next to the classifier
+    // that applies it (and `tests/axe-review.test.ts` pins all three parts of it).
+    unjudgeable: [MINDMAP_NODE_TEXT_RULE],
   },
 ]
 
@@ -196,28 +177,30 @@ const SURFACES = [
  * behind it. One theme, one freshly-opened panel, so the two answers are about
  * the same pixels.
  */
-async function judgeSurfaceAxe(surface, theme, page, occluder = null) {
+async function judgeSurfaceAxe(surface, theme, page) {
   const result = await runAxe(page, surface.axeRoot)
   if (result.passes === 0) throw new Error(`axe inspected nothing in the ${surface.name}`)
-  // Under a transient layer the surface draws itself, text the layer covers comes back from axe as
-  // something it could not judge rather than as something it measured. Those items are set aside for
-  // this pass alone: the caller runs the second read of the same instance, and that one must return
-  // without them, so a surface no longer gets quieter by painting over its own text.
-  const isOccluded = (item) => Boolean(occluder) && item.id === 'color-contrast' && item.note.includes(OCCLUSION_NOTE)
-  const occluded = result.incomplete.filter(isOccluded)
-  const review = result.incomplete.filter((item) => !isReviewedIncomplete(item) && !isOccluded(item))
+  // A surface may name the items axe cannot judge on it, and only those: the classifier matches
+  // axe's own key for why it gave up together with the target it applied to, so nothing is excused
+  // by silence and no other surface inherits this one's exception.
+  const { named: unjudgeable, review, allowed } = classifyIncomplete({
+    incomplete: result.incomplete,
+    declared: surface.unjudgeable ?? [],
+    isReviewedIncomplete,
+  })
   // The reviewed items are named in the count so "nothing to report" stays distinguishable from
   // "the pass measured nothing"; they are allowed by id and reason, never by silence.
-  const allowed = result.incomplete.length - review.length
-  const occlusion = occluded.length ? `, ${occluded.length} of them occluded by the ${occluder.layer} and read again below` : ''
-  console.log(`  ${result.violations.length + review.length === 0 ? '✓' : '✗'} axe: the ${surface.name} has no violations and no unreviewed items (${theme}), ${result.passes} checks passed, ${allowed} reviewed items allowed${occlusion}`)
+  const named = unjudgeable.length
+    ? `, ${unjudgeable.length} of them allowed by name (${unjudgeable[0].rule.reason})`
+    : ''
+  console.log(`  ${result.violations.length + review.length === 0 ? '✓' : '✗'} axe: the ${surface.name} has no violations and no unreviewed items (${theme}), ${result.passes} checks passed, ${allowed} reviewed items allowed${named}`)
   for (const item of result.violations) {
     console.log(`      ${item.id} ×${item.count} — ${item.note}`)
     console.log(`        ${item.target}`)
     console.log(`        ${item.html}`)
   }
-  for (const item of occluded) {
-    console.log(`      occluded: ${item.id} ×${item.count} — under the ${occluder.layer}`)
+  for (const { item, rule } of unjudgeable) {
+    console.log(`      allowed by name: ${item.id} ×${item.count} (${item.key}) — ${rule.reason}`)
     console.log(`        ${item.target}`)
   }
   for (const item of review) {
@@ -565,15 +548,11 @@ async function main() {
         const result = inspect(collected, theme)
         failures += report(`${theme} · ${surface.name}`, result)
         failures += judgeAccentSweep(`${theme} · ${surface.name}`, result, accents)
-        // A surface opened under a layer it draws itself has text that layer covers, and axe reports
-        // exactly that text as unjudgeable instead of reading it. Those items fail nothing here
-        // because the same instance is read again below with the layer away, where they have to be
-        // absent; the count line names how many were, so nothing is excused in silence.
-        failures += await judgeSurfaceAxe(surface, theme, page, surface.occluder)
-        if (surface.occluder) {
-          await surface.occluder.dismiss(page)
-          failures += await judgeSurfaceAxe({ ...surface, name: `${surface.name} without its ${surface.occluder.layer}` }, theme, page)
-        }
+        // A surface opens once per theme and is read once: the items axe cannot judge on it are the
+        // ones it declared by name, and every other item — including a text a layer of the surface's
+        // own covers — fails, because such a cover-up is exactly the way a surface would get quieter
+        // by painting over its own text.
+        failures += await judgeSurfaceAxe(surface, theme, page)
         await surface.close(page)
       }
     }
