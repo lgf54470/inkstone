@@ -254,9 +254,13 @@ export function DetailAttachmentsAndSubtasks({
   return (
     <>
       <div className='flex flex-col gap-2'>
-        <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
-          {t('preview.kanban_files')}
-        </h4>
+        {/* The type goes on this wrapper, not on the heading: prose owns a note's `h4` and wins any
+            utility written on it (see the hand-back block in `styles/kanban.css`). */}
+        <div className='text-[length:var(--text-13)] font-semibold'>
+          <h4 className='text-[var(--text-secondary)]'>
+            {t('preview.kanban_files')}
+          </h4>
+        </div>
         <KanbanFilesCell
           files={item.files}
           onChangeFiles={(files) => onUpdate({ ...item, files })}
@@ -265,9 +269,11 @@ export function DetailAttachmentsAndSubtasks({
         />
       </div>
       <div className='flex flex-col gap-2'>
-        <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
-          {t('preview.kanban_subtasks')}
-        </h4>
+        <div className='text-[length:var(--text-13)] font-semibold'>
+          <h4 className='text-[var(--text-secondary)]'>
+            {t('preview.kanban_subtasks')}
+          </h4>
+        </div>
         <KanbanSubtaskList
           subtasks={item.subtasks ?? []}
           onUpdateSubtasks={(subtasks) => onUpdate({ ...item, subtasks })}

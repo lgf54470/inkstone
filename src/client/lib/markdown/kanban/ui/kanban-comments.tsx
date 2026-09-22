@@ -322,9 +322,13 @@ export function DetailComments({
 
   return (
     <div data-kanban-comments className='flex flex-col gap-2'>
-      <h4 id={headingId} className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
-        {t('preview.kanban_comments')}
-      </h4>
+      {/* The type goes on this wrapper, not on the heading: prose owns a note's `h4` and wins any
+          utility written on it (see the hand-back block in `styles/kanban.css`). */}
+      <div className='text-[length:var(--text-13)] font-semibold'>
+        <h4 id={headingId} className='text-[var(--text-secondary)]'>
+          {t('preview.kanban_comments')}
+        </h4>
+      </div>
       {comments.length > 0 ? (
         <ol aria-labelledby={headingId} className='flex flex-col gap-1.5'>
           {comments.map((comment) => (

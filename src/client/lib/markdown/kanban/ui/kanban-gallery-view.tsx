@@ -61,7 +61,7 @@ function GalleryCover({ item }: { item: KanbanItem }) {
           loading='lazy'
           decoding='async'
           referrerPolicy='no-referrer'
-          className='h-full w-full object-cover transition-transform duration-300 hover:scale-105'
+          className='kanban-cover w-full object-cover transition-transform duration-300 hover:scale-105'
         />
       </div>
     )
@@ -176,9 +176,11 @@ function GalleryCardTitleDesc({
   desc?: string
   onOpen: () => void
 }) {
+  // The tile's type sits on this wrapper, not on the heading: prose owns a note's `h3` and wins any
+  // utility written on it (see the hand-back block in `styles/kanban.css`).
   return (
-    <div className='min-w-0 flex-1'>
-      <h3 className='flex items-start gap-1.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] leading-snug'>
+    <div className='flex min-w-0 flex-1 flex-col gap-1 text-[length:var(--text-14)] font-semibold leading-snug'>
+      <h3 className='flex items-start gap-1.5 text-[var(--text-primary)]'>
         {icon && (
           <span className='mt-0.5 shrink-0'>
             <KanbanIconBadge icon={icon} size={15} />
@@ -193,7 +195,7 @@ function GalleryCardTitleDesc({
         </button>
       </h3>
       {desc && (
-        <p className='mt-1 line-clamp-2 text-[length:var(--text-12)] text-[var(--text-tertiary)] leading-normal'>
+        <p className='line-clamp-2 text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)] leading-normal'>
           {desc}
         </p>
       )}

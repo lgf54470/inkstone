@@ -84,7 +84,7 @@ function CardTitle({
         e.stopPropagation()
         onStartEditing()
       }}
-      className='flex items-start gap-1.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] leading-snug'
+      className='flex items-start gap-1.5 text-[var(--text-primary)]'
     >
       {icon && (
         <span className='mt-0.5 shrink-0'>
@@ -228,7 +228,12 @@ function CardBody({
 
   return (
     <>
-      <div className='min-w-0 flex-1'>
+      {/*
+        * The card's type sits on this wrapper rather than on the heading: prose owns a note's `h3`
+        * and is loaded unlayered, so it beats any utility written on the heading itself, while a
+        * wrapper is a rule prose has none for (see the hand-back block in `styles/kanban.css`).
+        */}
+      <div className='flex min-w-0 flex-1 flex-col gap-1 text-[length:var(--text-14)] font-semibold leading-snug'>
         <CardTitle
           title={item.title}
           icon={item.icon}
@@ -240,7 +245,7 @@ function CardBody({
           onCancel={titleState.handleCancel}
         />
         {desc && (
-          <p className='mt-1 line-clamp-2 text-[length:var(--text-12)] text-[var(--text-tertiary)] leading-normal'>
+          <p className='line-clamp-2 text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)] leading-normal'>
             {desc}
           </p>
         )}

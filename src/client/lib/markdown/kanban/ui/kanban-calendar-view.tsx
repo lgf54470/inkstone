@@ -26,9 +26,13 @@ function CalendarHeader({ year, month, onPrevMonth, onNextMonth, onToday }: Cale
   const padMonth = month + 1 < 10 ? `0${month + 1}` : `${month + 1}`
   return (
     <div className='flex items-center justify-between pb-3'>
-      <h3 className='text-[length:var(--text-15)] font-semibold text-[var(--text-primary)]'>
-        {year} - {padMonth}
-      </h3>
+      {/* The type goes on this wrapper, not on the heading: prose owns a note's `h3` and wins any
+          utility written on it (see the hand-back block in `styles/kanban.css`). */}
+      <div className='text-[length:var(--text-15)] font-semibold'>
+        <h3 className='text-[var(--text-primary)]'>
+          {year} - {padMonth}
+        </h3>
+      </div>
       <div className='flex items-center gap-1.5'>
         <button
           type='button'

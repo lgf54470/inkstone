@@ -52,9 +52,13 @@ function DescriptionHeader({
 }) {
   return (
     <div className='flex items-center justify-between gap-2'>
-      <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
-        {t('preview.kanban_card_description')}
-      </h4>
+      {/* The type goes on this wrapper, not on the heading: prose owns a note's `h4` and wins any
+          utility written on it (see the hand-back block in `styles/kanban.css`). */}
+      <div className='text-[length:var(--text-13)] font-semibold'>
+        <h4 className='text-[var(--text-secondary)]'>
+          {t('preview.kanban_card_description')}
+        </h4>
+      </div>
       <div className='flex items-center gap-1'>
         {previewable ? (
           <button
