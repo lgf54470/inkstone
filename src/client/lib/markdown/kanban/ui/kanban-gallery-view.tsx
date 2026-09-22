@@ -32,11 +32,20 @@ interface GalleryCardProps {
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
 }
 
-function GalleryCover({ item }: { item: KanbanItem }) {
+/**
+ * The picture a tile draws across its top, if it has one. Shared with the tile's own header row, which
+ * floats over that picture and only over it: the empty tile draws a 10px strip instead, and a row
+ * floated on that lands on the title underneath.
+ */
+function galleryCoverUrl(item: KanbanItem): string | undefined {
   const imageFile = item.files?.find(
     (f) => f.mime?.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(f.name),
   )
-  const coverUrl = item.cover || imageFile?.url
+  return item.cover || imageFile?.url
+}
+
+function GalleryCover({ item }: { item: KanbanItem }) {
+  const coverUrl = galleryCoverUrl(item)
   const allowed = useKanbanImageAllowed(coverUrl ?? '')
 
   if (coverUrl && !allowed) {
@@ -67,17 +76,19 @@ function GalleryTagsHeader({
   isSelected,
   tagVals,
   tagsCol,
+  floatsOverCover,
   onToggleSelect,
 }: {
   isSelected: boolean
   tagVals: string[]
   tagsCol?: KanbanProperty
+  floatsOverCover: boolean
   onToggleSelect: () => void
 }) {
   return (
     <div
       className={`flex items-center justify-between gap-1.5 ${
-        tagVals.length === 0 ? 'absolute left-3 top-3' : ''
+        tagVals.length === 0 && floatsOverCover ? 'absolute left-3 top-3' : ''
       }`}
     >
       <div className='flex min-w-0 flex-wrap items-center gap-1.5'>
@@ -223,6 +234,7 @@ function GalleryCard({
           isSelected={isSelected}
           tagVals={tagVals}
           tagsCol={tagsCol}
+          floatsOverCover={Boolean(galleryCoverUrl(item))}
           onToggleSelect={() => onToggleSelect(item.id)}
         />
         <GalleryCardTitleDesc title={item.title} icon={item.icon} desc={desc} onOpen={() => onOpenDetail(item)} />

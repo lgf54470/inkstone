@@ -259,13 +259,14 @@ function CardBody({
   )
 }
 
-function headerOverlayClass(cardSize: 'small' | 'medium' | 'large', tagCount: number): string | undefined {
-  if (tagCount > 0) return undefined
-  const pad = cardSize === 'small' ? 'inset-x-2.5 top-2.5' : cardSize === 'large' ? 'inset-x-4 top-4' : 'inset-x-3 top-3'
-  return `absolute ${pad}`
-}
-
 /**
+ * The card's reveal row keeps its place in the card whether or not the card shows tags. Floating it over
+ * the card's own top edge when there are none saved a row's height and painted the tag control across
+ * the title: outside the note (the board overlay, where no prose margin pushes the title down) the row
+ * landed exactly on the first line, and axe could not even tell what the title was written on. A row
+ * that is always in flow costs its height and buys back three things — nothing is painted over the
+ * title, hovering never moves what is under the pointer, and a card with no tags is as tall as one with.
+ *
  * A card's container is deliberately not a control: no `role`, no `tabIndex`. It is a pointer hit-area,
  * and the card's keyboard and assistive-technology path is CardHeader's details button — giving this div
  * `role='button'` would add a second, unlabeled control for the same action and a second tab stop that
@@ -300,7 +301,6 @@ export const KanbanCard = memo(function KanbanCard({
   const display = getCardDisplayProps(item, columns)
   const dndHandlers = useCardDragHandlers(item.id, onDragOverCard, onDropOnCard)
   const padClass = cardSize === 'small' ? 'p-2.5 gap-1.5' : cardSize === 'large' ? 'p-4 gap-3' : 'p-3 gap-2'
-  const headerOverlay = headerOverlayClass(cardSize, display.tagVals.length)
 
   return (
     <div
@@ -321,7 +321,6 @@ export const KanbanCard = memo(function KanbanCard({
         isSelected={isSelected}
         itemId={item.id}
         tagVals={display.tagVals}
-        overlayClass={headerOverlay}
         tagsCol={display.tagsCol}
         selectedTags={selectedTags}
         onToggleSelect={() => onToggleSelect(item.id)}

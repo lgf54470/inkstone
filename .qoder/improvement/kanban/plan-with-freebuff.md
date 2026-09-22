@@ -43,11 +43,13 @@
 - [x] K-20 写回成本确定性量测（结论：不是缺陷；自适应静默期实测后裁定不取，改为预算 + 契约测试，见 review 条目）
 - [x] K-23/K-24 规范注释收敛（卡片容器豁免登记 + 两处 `!important` 理由）
 - [x] K-26 收尾后修 `check-contrast`：导图全屏判不了的项按名放行（L-01 结案；门禁语义 + `AGENTS.md` 同段改写，不改产品代码）
+- [x] K-30 无标签卡片的悬停行压住标题（用户报告）：行回到流内、画廊只浮在真封面上（含浏览器门禁的几何断言与 `gate-c` 无标签卡 fixture）
 
 ## 进度日志
 
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
+| 2026-09-23 | K-30 悬停行不再压住卡片标题（用户报告） | （本提交） | 先量后改：覆盖层里无标签卡的行（`absolute inset-x-3 top-3`）与标题同起点 `38,157`，「标签」按钮压住标题 `42×19`；有标签卡无重叠；笔记内联预览因 `.ink-prose h3` 的 26.4px 上边距看不出重叠（覆盖层把卡片画在笔记之外）。门禁先写复现（fixture 加无标签卡 `gate-c`、`KANBAN_FIXTURE` 改为要求三张卡、新增 `assertKanbanRevealRows` 按 `group-hover/card:opacity-100` 找控件并在笔记/看板/画廊各量一遍）→ 跑红 3 条（看板 `62×19`、画廊 `14×4`、新卡标题的 axe `bgOverlap`）；修 `kanban-card.tsx`（行回流入 + 删 `overlayClass`）与 `kanban-gallery-view.tsx`（抽 `galleryCoverUrl`，只浮在有封面时）后 **243 passed / 0 failed**；覆盖层无标签卡 `270×45` → `270×75`，行 `absolute` → `static`，三处重叠归零。单元：`kanban-card.test.ts` 两条旧用例（钉住旧设计）改为新结构，变异还原旧写法恰好杀对应两条；kanban+preview+tests/kanban 100 文件 **1131** passed；typecheck ✅ |
 | 2026-09-23 | K-26 `check-contrast` 转绿：L-01 结案（surface 自声明 unjudgeable） | （本提交） | 先按 L-01 复核证据定因（卡不是遮挡者；条目在卡打开/收起/文字改回可命中三种状态下同样出现；`messageKey='bgOverlap'`）；改法：`check-contrast.mjs` 删掉「参考卡=遮挡者」的假设与第二遍读，改由表面声明 `unjudgeable`（`id` + `messageKey` + 目标正则三重命中，理由/条数打印，不供其他表面继承），规则与分类器落在新增 `scripts/lib/axe-review.mjs`，`e2e-harness.mjs` 的 `runAxe` 摘要补 `key`，`AGENTS.md` 同段改写。验证：`check-contrast` **exit=0**（浅/深各 23 项 axe 检查 + 层级与 7 强调色量测 0 低于 AA；各 1 条 `color-contrast ×2 (bgOverlap)` 按名放行）；新增 `tests/axe-review.test.ts` 4 例（三重各自承重；全局三类不入规则；同文案不同 target 仍失败）；变异自检两侧共 4 次（门禁把 key 换掉即变红，2 例入 review；测试侧不看 key / 正则去 `$` / 一律放行分别杀 2、1、2 例），两处备份原样还原；`typecheck` ✅；14 项静态门禁 exit=0 ✅；`comments:check` 白名单重生成 687 文件 / 4695 条 ✅；全量 `test:unit` 290 文件 **2704** 测试 ✅ |
 | 2026-09-22 | K-20 写回成本量测与裁定 | （本提交） | 先写三层自适应静默期方案并实测：连续 5 秒编辑从 1 次写回变 1～3 次、单手势滞写 0.5s→3s → 判定“用数据安全换写回次数”，**回退未入库**；改交付确定性量测（假时钟数写回次数：滑块 12 步 1 次、连攞 12 格 1 次、无变化 0 次、隔 700ms 的 6 个手势 6 次）+ 栅栏体积预算（200 卡 53,385 B，≈256 B/卡；断言 <64 KiB 与 <320 B/卡）；`write.test.ts` 6→11 例；kanban+preview+tests/kanban 100 文件 **1130** passed；`size:check` 拦下 83 行 describe → 拆三段（helper 提到模块级），未 resnapshot |
 | 2026-09-22 | K-21 浏览器门禁逐个打开 8 个视图 | （本提交） | `ui/kanban-root.tsx` 新增 `data-kanban-view-type`（面板上标出当前视图，多个视图都画卡片，「有卡片」不足以证明是哪个视图画的）；脚本新增 `KANBAN_VIEWS` 清单与 `assertKanbanViews`（每个视图：点页签 → 断言 **该视图面板内**有它自己的东西 → 再断言顶栏高度不变）；fixture 补 startDate/endDate/progress 并改用相对今天的日期，卡片 id 改 `gate-a/gate-b`；看板场景改为「先按卡片标记找到自己写的那块板 → 记下栅栏序号 → 之后按序号读」（覆盖层是**借**走内联画布而不是拷贝，一打开卡片就离开块，标记就再也匹配不上了——这一条是实跑撞出来的）；顺带修掉两处原先会误伤的全局计数（画布数与 reserve 改为按自己那块板计）。变异自检：把日历视图改成返回 null，恰好只杀「日历视图自己画了东西」一条。浏览器门禁：**234 passed / 0 failed**（看板 37 条，其中新增 17 条） |

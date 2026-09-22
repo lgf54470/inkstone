@@ -1469,6 +1469,9 @@ const KANBAN_FENCE = [
           title: 'Gate second task',
           properties: { status: 'done', tags: ['improve'], startDate: gateDay(-5), endDate: gateDay(-1), progress: 100 },
         },
+        // A card with no chips is its own rendering path, and the one the reveal row used to be
+        // floated over: without it the assertion below has nothing to stand on.
+        { id: 'gate-c', title: 'Gate untagged task', properties: { status: 'todo' } },
       ],
     },
     null,
@@ -1481,9 +1484,11 @@ const KANBAN_FENCE = [
 /**
  * The board this gate owns inside the note. A vault may hold other boards — an earlier run's fixture,
  * or one the reader wrote — and every read is scoped to this one by the cards it declares, so a
- * leftover block in the note can neither stand in for the fixture nor be counted as part of it.
+ * leftover block in the note can neither stand in for the fixture nor be counted as part of it. All
+ * three cards are named, including the one with no tags: a board left by an earlier run of this gate
+ * lacks the third, and matching it would read a surface with no tag-less card on it.
  */
-const KANBAN_FIXTURE = '.ink-prose [data-kanban]:has([data-item-id="gate-a"])'
+const KANBAN_FIXTURE = '.ink-prose [data-kanban]:has([data-item-id="gate-a"]):has([data-item-id="gate-b"]):has([data-item-id="gate-c"])'
 
 /**
  * The same block once the overlay holds its board, found by the fence it came from instead. The
@@ -1519,7 +1524,12 @@ async function kanbanBoardOnScreen(page) {
  * The fence index of the block it opened comes back, which is how a caller keeps reading that one
  * block after the overlay has taken the cards out of it.
  */
-async function openKanbanBoard(page) {
+/**
+ * The fixture board, drawn in the note, written at the end of the note when the vault holds no such
+ * board yet. Split out of the opener so the board can also be read while it is still inline: the
+ * overlay *borrows* the block's canvas, so once it opens there is no second chance at this state.
+ */
+async function ensureKanbanFixtureInline(page) {
   if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('kanban board: the preview pane never became visible')
   if (!(await kanbanBoardOnScreen(page))) {
     await ensurePaneVisible(page, '.cm-content')
@@ -1531,11 +1541,72 @@ async function openKanbanBoard(page) {
     return Boolean(block && block.querySelectorAll('[data-item-id]').length >= 2)
   }, { timeout: 30_000 }, KANBAN_FIXTURE).then(() => true, () => false)
   if (!cards) throw new Error('kanban board: the note holds no board for the sweep to open')
+}
+
+async function openKanbanBoard(page) {
+  await ensureKanbanFixtureInline(page)
   // The fence index is read here, before the press: the overlay borrows the block's canvas, so from
   // the moment it opens the block no longer holds the cards this gate tells its board apart by.
   const index = await kanbanFixtureIndex(page)
   await pressOpener(page, { labels: ['全屏', 'Full screen'], scope: KANBAN_FIXTURE })
   return index
+}
+
+/**
+ * The row a card reveals on hover — its checkbox, its tag control and its details button — must not be
+ * painted across the card's own title. It used to be: for a card with no chips the row was taken out of
+ * flow and floated over the card's top edge, which in the board (drawn outside the note, where no prose
+ * margin pushes the title down) laid the add-tag control straight over the first line of the title.
+ *
+ * The controls' boxes are the same whether or not a pointer is over the card — the reveal is an
+ * opacity change, not a layout one — so this reads the geometry, which is also why it works in a
+ * headless browser that reports no hover-capable pointer at all (the reveal itself is behind
+ * Tailwind's `@media (hover: hover)`, which no headless run satisfies).
+ */
+async function assertKanbanRevealRows(page, where, scope) {
+  const drawn = await page.$(scope)
+  if (!drawn) {
+    check(`kanban ${where}: the surface is there to measure`, false, `no element matches ${scope}`)
+    return
+  }
+  const cards = await page.evaluate((selector) => {
+    const box = (element) => {
+      const rect = element.getBoundingClientRect()
+      return { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) }
+    }
+    const overlap = (a, b) => {
+      const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
+      const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
+      return w > 0 && h > 0 ? `${w}x${h}` : null
+    }
+    return [...document.querySelectorAll(`${selector} [data-item-id]`)].map((card) => {
+      const title = card.querySelector('h3')
+      // The controls this row reveals on hover, found by the rule that reveals them: that is the same
+      // marker in a board card and in a gallery tile, and it cannot drift from what the reveal switches.
+      const revealed = [...card.querySelectorAll('*')]
+        .filter((element) => (element.className ?? '').toString().includes('group-hover/card:opacity-100'))
+      const titleBox = title ? box(title) : null
+      const hits = titleBox
+        ? revealed
+          .map((element) => ({ name: element.getAttribute('aria-label') ?? element.tagName.toLowerCase(), box: box(element) }))
+          .map((control) => ({ ...control, overlap: overlap(titleBox, control.box) }))
+          .filter((control) => control.overlap !== null)
+        : []
+      return {
+        id: card.getAttribute('data-item-id') ?? '',
+        title: titleBox,
+        controls: revealed.length,
+        hits: hits.map((hit) => `${hit.name} ${hit.overlap}`),
+      }
+    })
+  }, scope)
+  const covered = cards.filter((card) => card.hits.length > 0)
+  // A gallery tile reveals one control (its checkbox) where a board card reveals three, so what is
+  // asserted is that each card draws its own reveal controls at all — the overlap above is what says
+  // where they land.
+  check(`kanban ${where}: every card draws its reveal controls`, cards.length >= 2 && cards.every((card) => card.title && card.controls >= 1), JSON.stringify(cards.map((card) => `${card.id}:${card.controls} controls`)))
+  check(`kanban ${where}: a card with no tags is among them`, cards.some((card) => card.id === 'gate-c'), JSON.stringify(cards.map((card) => card.id)))
+  check(`kanban ${where}: no card paints a reveal control across its own title`, covered.length === 0, JSON.stringify(covered))
 }
 
 /** The outline control of the pane on screen, pressed where it is drawn. */
@@ -2222,6 +2293,9 @@ function assertBoardAccessibility(where, report) {
 async function assertKanbanBoard(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(500)
+  // Read while the board is still in the note: opening the overlay borrows its canvas, cards and all.
+  await ensureKanbanFixtureInline(page)
+  await assertKanbanRevealRows(page, 'in the note', KANBAN_FIXTURE)
   const index = await openKanbanBoard(page)
   const surfaced = await page
     .waitForFunction(() => Boolean(document.querySelector('.kanban-fullscreen')), { timeout: 15_000 })
@@ -2255,7 +2329,7 @@ async function assertKanbanBoard(page) {
   check('kanban board: the overlay is a dialog named after the board', hosting.role === 'dialog' && hosting.name === 'Gate Board', JSON.stringify(hosting))
   check('kanban board: the overlay hosts the block\'s one instance', hosting.dialogs === 1 && hosting.canvases === 1 && hosting.inOverlay === 1, JSON.stringify(hosting))
   check('kanban board: the block keeps its place in the note while the overlay holds the board', hosting.reserve, JSON.stringify(hosting))
-  check('kanban board: the cards hang one level under the board title', hosting.headings.join(',') === 'H2,H3,H3' && hosting.cards.length === 2, JSON.stringify(hosting))
+  check('kanban board: the cards hang one level under the board title', hosting.headings.join(',') === 'H2,H3,H3,H3' && hosting.cards.length === 3, JSON.stringify(hosting))
   check('kanban board: nothing inside the board claims the banner landmark', hosting.banners === 0, JSON.stringify(hosting))
 
   await ensureAxe(page)
@@ -2286,6 +2360,13 @@ async function assertKanbanBoard(page) {
 
   // Every other view, so the six the gate had never opened are read the same way the table was.
   await assertKanbanViews(page)
+
+  // The reveal row in the surface the card actually gets used in, and the gallery's own tile: both
+  // draw the same row, and the gallery only floats it when the tile has a cover to float it over.
+  await assertKanbanRevealRows(page, 'in the board view', '.kanban-fullscreen')
+  await clickKanbanView(page, ['画廊', 'Gallery'])
+  await assertKanbanRevealRows(page, 'in the gallery view', '.kanban-fullscreen')
+  await clickKanbanView(page, ['看板', 'Board'])
 
   // The language switch happens with the board on screen. What has to move is everything the board
   // translates for itself — its view names and its controls — while the cards keep the words the

@@ -125,7 +125,6 @@ export interface CardHeaderProps {
   isSelected: boolean
   itemId: string
   tagVals: string[]
-  overlayClass?: string
   tagsCol?: KanbanProperty
   selectedTags?: string[]
   onToggleSelect: () => void
@@ -139,7 +138,6 @@ export function CardHeader({
   isSelected,
   itemId,
   tagVals,
-  overlayClass,
   tagsCol,
   selectedTags,
   onToggleSelect,
@@ -153,7 +151,7 @@ export function CardHeader({
     : undefined
 
   return (
-    <div className={`flex items-center justify-between gap-1.5 ${overlayClass ?? ''}`}>
+    <div className='flex items-center justify-between gap-1.5'>
       <div className='flex min-w-0 flex-wrap items-center gap-1.5'>
         <input
           type='checkbox'

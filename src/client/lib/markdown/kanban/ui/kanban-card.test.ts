@@ -89,16 +89,28 @@ function cardCheckbox(container: HTMLElement): HTMLInputElement {
   return el
 }
 
+/**
+ * The row the card reveals on hover — its checkbox, its tag control and its details button — lives in
+ * the card's own flow whether or not the card has tags. It used to be taken out of flow and floated
+ * over the card's top edge when there were none, which painted the tag control across the title the
+ * moment a reader hovered it (the board draws the same card outside the note, where no prose margin
+ * separates the two). A class cannot prove the two boxes do not meet — the browser gate measures that
+ * on the running board — so this pins the structure the geometry depends on. The gallery's own tile is
+ * the one exception, and it is asserted below: it may float the row, but only over a cover.
+ */
 describe('KanbanCard hover-only header row', () => {
-  it('floats the header controls over the card when no tags are shown, reserving no row', () => {
+  it('keeps the header in flow while the card shows no tags', () => {
     const { container, dispose } = renderCard(bareCard)
-    expect(cardCheckbox(container).closest('.absolute')).not.toBeNull()
+    const row = cardCheckbox(container).closest('div')!
+    expect(row.closest('.absolute')).toBeNull()
+    expect(row.contains(container.querySelector('h3'))).toBe(false)
     dispose()
   })
 
   it('keeps the header in flow while the card shows tags', () => {
     const { container, dispose } = renderCard(taggedCard)
-    expect(cardCheckbox(container).closest('.absolute')).toBeNull()
+    const row = cardCheckbox(container).closest('div')!
+    expect(row.closest('.absolute')).toBeNull()
     dispose()
   })
 })
@@ -127,9 +139,15 @@ describe('the member an assignee row shows', () => {
 })
 
 describe('KanbanGalleryView hover-only header row', () => {
-  it('floats the checkbox row over the cover when the card has no tags', () => {
-    const { container, dispose } = renderGallery([bareCard])
+  it('floats the checkbox row over the cover when the tile has one and no tags', () => {
+    const { container, dispose } = renderGallery([{ ...bareCard, cover: 'https://example.test/cover.png' }])
     expect(cardCheckbox(container).closest('.absolute')).not.toBeNull()
+    dispose()
+  })
+
+  it('keeps the checkbox row in flow when the tile has no cover to float it over', () => {
+    const { container, dispose } = renderGallery([bareCard])
+    expect(cardCheckbox(container).closest('.absolute')).toBeNull()
     dispose()
   })
 
