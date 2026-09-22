@@ -1,7 +1,7 @@
 import MarkdownIt from 'markdown-it'
 import { escapeHtml } from '@shared/escape'
 import { t } from '../../i18n'
-import { isExternalImageUrl } from '../external-images'
+import { isCrossOriginUrl } from '../external-images'
 import { renderEnv } from './env'
 import { escapeAttr } from './util'
 
@@ -16,7 +16,7 @@ export function registerMedia(md: MarkdownIt): void {
     // this is defense-in-depth for raw-HTML images too). Same-origin http(s)
     // URLs, relative paths, data:/blob: keep loading, and the whole check is
     // skipped when the caller passes `{ externalImages: true }`.
-    if (renderEnv(env).externalImages !== true && isExternalImageUrl(src)) {
+    if (renderEnv(env).externalImages !== true && isCrossOriginUrl(src)) {
       // Placeholder instead of a broken <img>: the browser never loads an
       // external image while blocked, so no request leaves the origin.
       const alt = token.content ? escapeHtml(token.content) : ''

@@ -1,5 +1,5 @@
 /**
- * The one answer to "may this image load?" that the prose renderer and the board both read.
+ * The one answer to "does this URL leave this origin?" that the prose renderer and the board both read.
  *
  * An external image is a privacy decision, not a rendering one: a note can be shared, so an image
  * served by whoever wrote it turns every reader into a tracking pixel, which is why the app blocks
@@ -8,8 +8,11 @@
  * from the same untrusted document. A second predicate on the board's side would be a second policy
  * able to drift, so this lives here — below both — as a leaf module: `renderer/fence.ts` imports the
  * kanban module, so the board importing the renderer's entry would close a dependency cycle.
+ *
+ * The same answer decides what an attachment link may do: `download` is ignored for a URL on another
+ * origin, so a link wearing it would navigate the app's own tab away instead of saving a file.
  */
-export function isExternalImageUrl(src: string): boolean {
+export function isCrossOriginUrl(src: string): boolean {
   if (!/^https?:/i.test(src))
     return false
   try {

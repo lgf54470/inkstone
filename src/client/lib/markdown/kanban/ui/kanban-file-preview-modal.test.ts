@@ -211,6 +211,35 @@ describe('KanbanFilePreviewModal when a text read does not produce the document'
   })
 })
 
+describe('KanbanFilePreviewModal file actions', () => {
+  it('downloads a stored attachment in place, where the attribute means something', () => {
+    const rendered = renderPreview(pdfFile)
+    try {
+      const download = document.querySelector<HTMLAnchorElement>('a[download]')
+      expect(download, 'a same-origin attachment lost its download link').not.toBeNull()
+      expect(download!.getAttribute('download')).toBe(pdfFile.name)
+      expect(download!.getAttribute('target')).toBeNull()
+    } finally {
+      rendered.dispose()
+    }
+  })
+
+  it('does not offer a download of another origin that would take the app\u2019s tab with it', () => {
+    const rendered = renderPreview(remoteImage)
+    try {
+      expect(
+        document.querySelector('a[download]'),
+        'a cross-origin download link cannot download: the browser ignores the attribute and navigates instead',
+      ).toBeNull()
+      const externalLinks = [...document.querySelectorAll('a')].filter((a) => a.getAttribute('href') === remoteImage.url)
+      expect(externalLinks.length).toBeGreaterThan(0)
+      expect(externalLinks.every((a) => a.target === '_blank' && a.rel.includes('noopener'))).toBe(true)
+    } finally {
+      rendered.dispose()
+    }
+  })
+})
+
 describe('KanbanFilePreviewModal for PDF', () => {
   it('never embeds the document via <object>/<embed> (CSP object-src/frame-src none)', () => {
     const rendered = renderPreview(pdfFile)

@@ -3,6 +3,7 @@ import { Download, ExternalLink, FileText, FileWarning, Loader2 } from 'lucide-r
 import { Button } from '../../../../components/primitives'
 import { Modal } from '../../../../components/overlay'
 import { t } from '../../../i18n'
+import { isCrossOriginUrl } from '../../external-images'
 import { KanbanBlockedImage, useKanbanImageAllowed } from './kanban-image-policy'
 import type { KanbanFile } from '../types'
 
@@ -203,6 +204,10 @@ interface KanbanFilePreviewModalProps {
 
 export function KanbanFilePreviewModal({ file, onClose }: KanbanFilePreviewModalProps) {
   if (!file) return null
+  // A note can name a file on another origin (an imported board, a pasted URL). `download` means
+  // nothing there — browsers ignore it and follow the link — so that link is not offered at all and
+  // the new-tab action stands alone; a stored file keeps its download button, where it works.
+  const storedHere = !isCrossOriginUrl(file.url)
 
   return (
     <Modal
@@ -221,14 +226,16 @@ export function KanbanFilePreviewModal({ file, onClose }: KanbanFilePreviewModal
             <ExternalLink size={14} />
             <span>{t('preview.open_in_new_tab')}</span>
           </a>
-          <a
-            href={file.url}
-            download={file.name}
-            className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] transition-opacity hover:opacity-90'
-          >
-            <Download size={14} />
-            <span>{t('preview.kanban_download_file')}</span>
-          </a>
+          {storedHere && (
+            <a
+              href={file.url}
+              download={file.name}
+              className='inline-flex items-center gap-1.5 rounded-[var(--r-md)] bg-[var(--accent)] px-3 py-1.5 text-[length:var(--text-12)] font-medium text-[var(--accent-contrast)] transition-opacity hover:opacity-90'
+            >
+              <Download size={14} />
+              <span>{t('preview.kanban_download_file')}</span>
+            </a>
+          )}
         </div>
       }
     >

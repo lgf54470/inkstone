@@ -75,9 +75,12 @@
 - 落地方式：读动作抽为 `useKanbanTextRead`（`loading/ready/failed` + `attempt` 重试），组件只负责渲染；失败态统一用 `ReadFailed`（标题 + 提示 + 「重试」钮，走了 `components/primitives` 的 `Button`），空文件单独走 `preview.kanban_file_empty`（与失败区分，避免把「空」读成「坏」）；图像侧新增 `ImagePreview`，`onError` 时换成同一失败态且按 URL 作 key（换附件即清掉上一个文件的错误）。失败写 `console.warn('[inkstone] …')` 带 URL，不静默。双语 +4 键。
 - 验证：`kanban-file-preview-modal.test.ts` 6→12 例，新增 6 例先红（读失败仍画空文档、404 body 被当成内容、无重试钮、空文件与失败未区分、允许加载的图加载失败仍留破图、断网拒绝）；`size:check` 两次拦下超长函数（生产 `TextFilePreview` 58 行 → 拆出 `useKanbanTextRead`；测试两个 describe 58/70 行 → 按「读到了什么 / 读不到时」与「策略 / 画不出来」各拆两段），均未 resnapshot 基线。kanban+preview+tests/kanban 94 文件 **1030** passed，13 项静态门禁 exit=0，白名单 660 文件 / 4479 条。
 
-### K-09 跨源附件链接会导航离开应用 → 待修
+### K-09 跨源附件链接会导航离开应用 → 已修（`（本提交）`）
 - 证据：`ui/kanban-file-preview-modal.tsx` 的「下载」用 `<a href={file.url} download>` 且无 `target`；`kanban/url.ts` 允许 `http(s)`。
-- 影响：跨源 `download` 被浏览器忽略 → 当前标签页被导航走。
+- 影响：跨源 `download` 被浏览器忽略 → 当前标签页被导航走（全屏看板随之一起消失，未保存的上下文全丢）。
+- 选型：跨源附件**根本不提供下载钮**（留着也只会去导航，标签写着 Download 而行为是跳转属误导），只保留已有的「在新标签打开」；同类源（真正能下载的）不变。连同把共用判定从 `isExternalImageUrl` 正名为 `isCrossOriginUrl`——它现在同时决定「图片能不能加载」与「链接能不能当下载」，名字要说得对。
+- 影响面清点：模块内仅三处 `href`，全在该文件（PDF 预览的「新标签打开」与页脚两个）。`ui/kanban-files-cell.tsx` 等只显示文件名，无链接。
+- 验证：`kanban-file-preview-modal.test.ts` 12→14 例（同类源仍有 `download=文件名`、无 `target`；跨源无任何 `a[download]` 且指向该 URL 的链接全带 `target=_blank` + `noopener`），新增 1 例先红；`renderer.test.ts` 32 例与 `kanban-gallery-cover.test.ts` 7 例同跑绿，证正名未改行为。
 
 ### K-10 上传无客户端预检 → 待修
 - 证据：`ui/kanban-files-cell.tsx` 直接上传；服务端已达标（`worker/routes/kanban.ts` 白名单/配额/节流）。

@@ -2754,7 +2754,7 @@ const allowed = new Map([
     '/** Writes the board\'s current scene into the note, if it is both dirty and still its own. */',
   ]],
   ['src/client/lib/markdown/external-images.ts', [
-    '/**\n * The one answer to "may this image load?" that the prose renderer and the board both read.\n *\n * An external image is a privacy decision, not a rendering one: a note can be shared, so an image\n * served by whoever wrote it turns every reader into a tracking pixel, which is why the app blocks\n * them until the account asks for them. The renderer asks this of every markdown image; the board\n * asks it of a cover and of an attachment preview, because those are the same kind of URL arriving\n * from the same untrusted document. A second predicate on the board\'s side would be a second policy\n * able to drift, so this lives here — below both — as a leaf module: `renderer/fence.ts` imports the\n * kanban module, so the board importing the renderer\'s entry would close a dependency cycle.\n */',
+    '/**\n * The one answer to "does this URL leave this origin?" that the prose renderer and the board both read.\n *\n * An external image is a privacy decision, not a rendering one: a note can be shared, so an image\n * served by whoever wrote it turns every reader into a tracking pixel, which is why the app blocks\n * them until the account asks for them. The renderer asks this of every markdown image; the board\n * asks it of a cover and of an attachment preview, because those are the same kind of URL arriving\n * from the same untrusted document. A second predicate on the board\'s side would be a second policy\n * able to drift, so this lives here — below both — as a leaf module: `renderer/fence.ts` imports the\n * kanban module, so the board importing the renderer\'s entry would close a dependency cycle.\n *\n * The same answer decides what an attachment link may do: `download` is ignored for a URL on another\n * origin, so a link wearing it would navigate the app\'s own tab away instead of saving a file.\n */',
   ]],
   ['src/client/lib/markdown/fence-bodies.test.ts', [
     '/**\n * The channel behind P-01: a fence body no longer rides inside the markup as a `data-*` attribute, so\n * the only thing connecting a block to its body is the index the renderer wrote and the set the host\n * registered. Both halves are one function each, and a wrong answer here is a board that reads as\n * empty on every surface at once — which is why this module, not just its consumers, is under test.\n */',
@@ -3369,6 +3369,9 @@ const allowed = new Map([
     '/**\n * An image the reader is allowed to load, which the browser may still fail to fetch — the note can\n * name a file whose object was deleted, which is exactly the state a restored undo leaves behind.\n * Keyed by URL at the call site, so opening another attachment clears the failure instead of showing\n * one file\'s error over another file\'s name.\n */',
     '// CSP sets `object-src \'none\'` and `frame-src \'none\'`, so any embedded PDF',
     '// document is guaranteed blank; offer the file as an explicit new-tab action.',
+    '// A note can name a file on another origin (an imported board, a pasted URL). `download` means',
+    '// nothing there — browsers ignore it and follow the link — so that link is not offered at all and',
+    '// the new-tab action stands alone; a stored file keeps its download button, where it works.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-files-cell.test.ts', [
     '// Nothing is stored here, so there is no permanent delete to warn about.',

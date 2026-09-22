@@ -1,6 +1,6 @@
 import { ImageOff } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
-import { isExternalImageUrl } from '../../external-images'
+import { isCrossOriginUrl } from '../../external-images'
 import { useSession } from '../../../../store/session'
 
 /**
@@ -11,7 +11,7 @@ import { useSession } from '../../../../store/session'
  */
 export function useKanbanImageAllowed(url: string): boolean {
   const externalImages = useSession((state) => state.settings.preview.externalImages)
-  return externalImages || !isExternalImageUrl(url)
+  return externalImages || !isCrossOriginUrl(url)
 }
 
 /**
