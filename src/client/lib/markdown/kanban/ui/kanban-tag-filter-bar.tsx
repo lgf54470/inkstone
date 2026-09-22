@@ -65,6 +65,11 @@ export function KanbanTagFilterBar({
         <Tag size={12} />
         <span>{t('preview.kanban_prop_tags')}:</span>
       </span>
+      {/* An unselected chip is not dimmed: at 70% opacity the label measured 2.95:1 on its own tint
+          over the board's header surface (axe, light theme), and a control a person can press has to
+          be readable — WCAG's exemption is for inactive components. Selected and unselected differ by
+          the ring and the weight instead, and the count is painted in the chip's own colour rather
+          than at 75% of it. */}
       {tagList.map((tagItem) => {
         const isSelected = selectedTags.includes(tagItem.id) || selectedTags.includes(tagItem.label)
         const style = getKanbanTagStyle(tagItem.color || 'blue')
@@ -75,11 +80,11 @@ export function KanbanTagFilterBar({
             onClick={() => onToggleTag(tagItem.id)}
             style={style}
             className={`inline-flex items-center gap-1 rounded-[var(--r-xs)] px-2 py-0.5 font-medium transition-all ${
-              isSelected ? 'ring-2 ring-[var(--accent)] shadow-2xs font-semibold' : 'opacity-70 hover:opacity-100'
+              isSelected ? 'ring-2 ring-[var(--accent)] shadow-2xs font-semibold' : 'hover:brightness-95'
             }`}
           >
             <span>{formatKanbanOptionLabel(tagItem.label, 'tags')}</span>
-            <span className='text-[length:var(--text-10)] opacity-75'>({tagItem.count})</span>
+            <span className='text-[length:var(--text-10)]'>({tagItem.count})</span>
           </button>
         )
       })}

@@ -60,6 +60,7 @@ export const messages = {
 'preview.kanban_status_in_progress': '进行中',
 'preview.kanban_status_done': '已完成',
 'preview.kanban_new_item': '新建项目',
+'preview.kanban_new_item_on_value0': '在 {value0} 日新建项目',
 'preview.kanban_new_group': '新建分组',
 'preview.kanban_new_task': '新建任务',
 'preview.kanban_new_card': '新建卡片',

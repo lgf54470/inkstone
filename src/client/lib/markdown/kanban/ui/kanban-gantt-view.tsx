@@ -33,19 +33,23 @@ function GanttTaskSidebar({
       </div>
       <div className='divide-y divide-[var(--border-subtle)]'>
         {items.map((item) => (
-          <div
+          // The row is one control with nothing inside it, so it is the control (SH-110): as a `div`
+          // with a click handler it was unreachable by keyboard, and the name it carries is its own
+          // text — the title and the progress it draws.
+          <button
             key={item.id}
+            type='button'
             onClick={() => onOpenDetail(item)}
-            className='flex h-10 cursor-pointer items-center justify-between px-3 text-[length:var(--text-13)] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            className='flex h-10 w-full cursor-pointer items-center justify-between gap-2 px-3 text-left text-[length:var(--text-13)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
           >
-            <div className='flex min-w-0 items-center gap-1.5'>
+            <span className='flex min-w-0 items-center gap-1.5'>
               <KanbanIconBadge icon={item.icon} size={14} />
               <span className='truncate'>{item.title}</span>
-            </div>
+            </span>
             <span className='shrink-0 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
               {Number(item.properties.progress || 0)}%
             </span>
-          </div>
+          </button>
         ))}
       </div>
       <div className='p-2'>
@@ -78,7 +82,10 @@ function GanttBar({
 
   return (
     <div className='relative h-10'>
-      <div
+      {/* The bar is a control (it opens the item, and a double click bumps its progress), so it is a
+          real button; the progress track and the label stay as its contents. */}
+      <button
+        type='button'
         data-item-id={item.id}
         onClick={() => onOpenDetail(item)}
         onDoubleClick={(e) => {
@@ -86,14 +93,14 @@ function GanttBar({
           onUpdateProgress(item.id, (progress + 25) % 125)
         }}
         style={{ left: `${left}px`, width: `${width}px` }}
-        className='group/bar absolute top-2 h-6 cursor-pointer overflow-hidden rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-xs)]'
+        className='group/bar absolute top-2 h-6 cursor-pointer overflow-hidden rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-softer)] text-left shadow-[var(--shadow-xs)]'
       >
-        <div style={{ width: `${progress}%` }} className='h-full bg-[var(--accent)] transition-all' />
-        <div className='absolute inset-0 flex items-center justify-between px-2 text-[length:var(--text-10)] font-semibold text-[var(--text-primary)]'>
+        <span style={{ width: `${progress}%` }} className='block h-full bg-[var(--accent)] transition-all' />
+        <span className='absolute inset-0 flex items-center justify-between gap-2 px-2 text-[length:var(--text-10)] font-semibold text-[var(--text-primary)]'>
           <span className='truncate'>{item.title}</span>
           <span>{progress}%</span>
-        </div>
-      </div>
+        </span>
+      </button>
     </div>
   )
 }

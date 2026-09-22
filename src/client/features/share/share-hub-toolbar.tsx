@@ -6,6 +6,15 @@ import { SHARE_STATUS_FILTERS, type ShareStatusFilter } from '@shared/share-sele
 import { useShareStore } from './share-store'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 
+/**
+ * The row sizes itself and wraps instead of holding a fixed height: at phone width the controls beside
+ * the search field are wider than the screen, and a nowrap row squeezed them rather than moving them —
+ * the search box came out 44px wide and the two selects 18px and 27px, names unreadable, and axe could
+ * not read the search field's background at all (the phone pass of `scripts/check-contrast.mjs` found
+ * it). Wrapping is the music hub's toolbar shape, the search on one line and the controls on the next,
+ * and the selects keep the right padding their field reserves for the chevron rather than cutting it
+ * to 8px, which painted their text under their own icon.
+ */
 export function ShareHubToolbar({ onOpenLogs, onOpenSettings }: { onOpenLogs?: () => void; onOpenSettings?: () => void }) {
   const search = useShareStore((s) => s.search)
   const setSearch = useShareStore((s) => s.setSearch)
@@ -19,9 +28,9 @@ export function ShareHubToolbar({ onOpenLogs, onOpenSettings }: { onOpenLogs?: (
   const loading = useShareStore((s) => s.loading)
 
   return (
-    <div className='flex h-11 shrink-0 items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-4'>
+    <div className='flex min-h-11 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-2'>
       <SearchField value={search} onChange={setSearch} />
-      <div className='flex items-center gap-2'>
+      <div className='flex flex-wrap items-center gap-2'>
         <StatusSelect value={statusFilter} onChange={setStatusFilter} />
         <SortSelect value={sort} onChange={setSort} />
         <ShareTrafficFilterPopover />
@@ -46,7 +55,7 @@ export function ShareHubToolbar({ onOpenLogs, onOpenSettings }: { onOpenLogs?: (
 
 function SearchField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <div className='flex flex-1 items-center max-w-sm'>
+    <div className='flex w-full items-center sm:w-auto sm:max-w-sm sm:flex-1'>
       <Input
         type='text'
         value={value}
@@ -83,7 +92,7 @@ function StatusSelect({ value, onChange }: { value: ShareStatusFilter; onChange:
       value={value}
       onChange={(e) => onChange(e.target.value as ShareStatusFilter)}
       aria-label={t('share.status_filter_label')}
-      className='h-7 text-[length:var(--text-12)] py-0 px-2'
+      className='h-7 py-0 pl-2 text-[length:var(--text-12)]'
     >
       {SHARE_STATUS_FILTERS.map((status) => (
         <option key={status} value={status}>{t(STATUS_LABEL_KEYS[status])}</option>
@@ -94,7 +103,7 @@ function StatusSelect({ value, onChange }: { value: ShareStatusFilter; onChange:
 
 function SortSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label={t('share.sort_label')} className='h-7 text-[length:var(--text-12)] py-0 px-2'>
+    <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label={t('share.sort_label')} className='h-7 py-0 pl-2 text-[length:var(--text-12)]'>
       <option value='views_desc'>{t('share.sort_views_desc')}</option>
       <option value='views_asc'>{t('share.sort_views_asc')}</option>
       <option value='recent_visit'>{t('share.sort_recent_visit')}</option>

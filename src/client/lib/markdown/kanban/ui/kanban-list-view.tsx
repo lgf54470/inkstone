@@ -78,6 +78,7 @@ function ListRowLeading({
   onToggleExpand,
   onToggleSelect,
   onToggleTag,
+  onOpenDetail,
 }: {
   item: KanbanItem
   isSelected: boolean
@@ -89,6 +90,7 @@ function ListRowLeading({
   onToggleExpand?: () => void
   onToggleSelect: () => void
   onToggleTag?: (tag: string) => void
+  onOpenDetail: () => void
 }) {
   const hasSubtasks = (item.subtasks?.length ?? 0) > 0
 
@@ -117,9 +119,13 @@ function ListRowLeading({
         aria-label={t('preview.kanban_select_card')}
       />
       <KanbanIconBadge icon={item.icon} size={15} />
-      <span className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
+      <button
+        type='button'
+        onClick={onOpenDetail}
+        className='truncate text-left text-[length:var(--text-13)] font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]'
+      >
         {item.title || t('preview.kanban_untitled')}
-      </span>
+      </button>
       <ListRowTagBadges
         tagVals={tagVals}
         tagsCol={tagsCol}
@@ -270,14 +276,10 @@ function KanbanListRow({
 
   return (
     <div data-item-id={item.id} className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] last:border-b-0'>
+      {/* The list's row is the board's card stretched sideways (SH-107): the row is a container and
+          the title it leads with is the button that opens the detail. */}
       <div
-        role='button'
-        tabIndex={0}
-        onClick={() => onOpenDetail(item)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') onOpenDetail(item)
-        }}
-        className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--bg-hover)] ${
+        className={`flex items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--bg-hover)] ${
           isSelected ? 'bg-[var(--accent-softer)]' : ''
         }`}
       >
@@ -292,6 +294,7 @@ function KanbanListRow({
           onToggleExpand={() => setExpanded((x) => !x)}
           onToggleSelect={() => onToggleSelect(item.id)}
           onToggleTag={onToggleTag}
+          onOpenDetail={() => onOpenDetail(item)}
         />
         <ListRowTrailing
           item={item}

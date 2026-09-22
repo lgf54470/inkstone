@@ -31,6 +31,7 @@ import {
   loginThroughUi,
   openShareCenter,
   pressCombo,
+  pressSurfaceControl,
   MUSIC_PROBE,
   runAxe,
   seedMusicProbeTracks,
@@ -1378,7 +1379,9 @@ const TOOLBAR_SURFACES = [
   { name: 'lightbox', open: openLightbox, root: '[data-surface="lightbox"]', toolbar: '[data-lightbox-toolbar]', minToggles: 0, loaded: { selector: 'img', min: 1, decoded: true } },
   // The outline only lives in the drawer shell at the phone breakpoint, which is where that side
   // panel is part of the shell rather than a column of the split view.
-  { name: 'outline drawer', open: openOutlineDrawer, root: '[data-surface="drawer"]', toolbar: '[data-surface="drawer"] header', minToggles: 0, viewport: MOBILE_VIEWPORT, loaded: { selector: '[data-heading-level]', min: 1 } },
+  // The drawer's title row is its first child row, not a `header`: the panel is a `div role=dialog`
+  // and a `header` inside it mapped to a second banner landmark (the phone reader found that pair).
+  { name: 'outline drawer', open: openOutlineDrawer, root: '[data-surface="drawer"]', toolbar: '[data-surface="drawer"] > div:first-child', minToggles: 0, viewport: MOBILE_VIEWPORT, loaded: { selector: '[data-heading-level]', min: 1 } },
   // The slides editor is reached from a block in the note rather than from a control in the shell,
   // and its toolbar is the editor's own top bar. Two of its controls disclose panels that hang
   // under that bar, which is exactly what the sweep holds to its size: a panel drawn as a row of
@@ -2934,7 +2937,22 @@ const CONTROLS_FIXTURE = {
   tag: 'gate-tag',
 }
 
-/** A board with two views, subtasks on two cards and status groups for the table's own header. */
+/**
+ * `YYYY-MM-DD` for a day offset from today, in the timezone this script runs in. The gantt and
+ * timeline windows are built around *now* (see `buildTimelineDays`), so a date the fixture pins to
+ * a fixed day drifts out of the window as the calendar moves and the bars it draws with it.
+ */
+function gateDayKey(offset) {
+  const date = new Date()
+  date.setDate(date.getDate() + offset)
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+/**
+ * A board whose views each have something to read: subtasks on two cards, status groups for the
+ * table's own header, and dates on the first card so the gantt, timeline and calendar draw it.
+ */
 const KANBAN_FENCE = [
   '',
   '```kanban',
@@ -2957,12 +2975,15 @@ const KANBAN_FENCE = [
       { id: 'view-board', name: 'Board', type: 'board', groupBy: 'status' },
       { id: 'view-table', name: 'Table', type: 'table' },
       { id: 'view-list', name: 'List', type: 'list' },
+      { id: 'view-gantt', name: 'Gantt', type: 'gantt', startField: 'startDate', endField: 'dueDate', progressField: 'progress' },
+      { id: 'view-timeline', name: 'Timeline', type: 'timeline', startField: 'startDate', endField: 'dueDate' },
+      { id: 'view-calendar', name: 'Calendar', type: 'calendar', dateField: 'startDate' },
     ],
     items: [
       {
         id: 'gate-controls-1',
         title: 'First card',
-        properties: { status: 'todo' },
+        properties: { status: 'todo', startDate: gateDayKey(0), dueDate: gateDayKey(2), progress: 25 },
         subtasks: [
           { id: 'gate-controls-s1', title: 'One', completed: true },
           { id: 'gate-controls-s2', title: 'Two', completed: false },
@@ -3009,51 +3030,6 @@ const NAMED_CONTROLS = {
   kanbanExpand: ['展开', 'Expand'],
   slidesBringForward: ['上移一层', 'Bring forward'],
   slidesSendBackward: ['下移一层', 'Send backward'],
-}
-
-/**
- * What a browser finds on these surfaces that is not a name, with the reason and the item it is
- * registered under. Both directions fail: a violation with no entry fails the gate, and an entry
- * whose violation is gone fails too, so a surface that gets fixed has to give up its allowance.
- */
-const SURFACE_A11Y_ALLOWANCES = new Map([
-  [
-    'kanban:nested-interactive',
-    'A kanban card is one click target (it opens the detail) that holds controls of its own (its select box, its tag menu, its subtask toggle, its card menu). That is the card surface the raw-control guard allowlists by name as well, and making it not nested means redesigning the card rather than renaming an element — registered as SH-107.',
-  ],
-  // The board's tag palette had its own entry here (SH-108: "the blue is 4.46:1 on white and 3.64:1
-  // on its own tint"). The palette is calibrated now — a tag foreground clears AA on its own tint
-  // over every surface and on the surfaces themselves, in both themes, measured by
-  // `scripts/check-contrast.mjs` for every declared colour. The entry is gone rather than loosened:
-  // an allowance whose violation is gone fails the gate, which is what makes the reader below judge
-  // these chips again.
-])
-
-/** Presses a drawn control by any of its names, the way a person does. */
-async function pressSurfaceControl(page, labels, scope = '') {
-  const point = await page.evaluate(({ labels, scope }) => {
-    const root = scope ? document.querySelector(scope) : document
-    const control = [...(root?.querySelectorAll('button, [role="menuitem"], [role="option"]') ?? [])]
-      .find((item) => {
-        const name = item.getAttribute('aria-label') ?? item.getAttribute('title') ?? (item.textContent ?? '').trim()
-        return labels.some((label) => name === label || name.includes(label)) && item.getClientRects().length > 0
-      })
-    if (!control) return null
-    // A press is a real pointer click at a measured point, and the blocks of a long note sit below
-    // the fold: without this the click landed at coordinates nothing was drawn at, which is how a
-    // card at the end of the note read as a dead control. The point has to be on screen as well as on
-    // the control — a box that hangs past the edge has no pressable centre.
-    control.scrollIntoView({ block: 'center' })
-    const box = control.getBoundingClientRect()
-    const inside = box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth && box.bottom <= window.innerHeight
-    return box.width > 0 && box.height > 0 && inside
-      ? { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
-      : null
-  }, { labels, scope })
-  if (!point) return false
-  await page.mouse.click(point.x, point.y)
-  await sleep(1_000)
-  return true
 }
 
 /**
@@ -3242,21 +3218,20 @@ async function heroGradientContrast(page, root) {
 }
 
 /**
- * axe over one surface, with everything it finds checked against the registrations above. A surface
- * may also bring a reader of its own for an item axe declined to judge — an `allowIncomplete` that is
- * true only while that reader's own measurement holds.
+ * axe over one surface, with nothing excused: a violation is a failure, and the only reader that can
+ * answer axe here is one the surface brings for an item axe declined to judge — an `allowIncomplete`
+ * that is true only while that reader's own measurement holds. This read used to carry a registry of
+ * violations with a written reason each; the three it held over three rounds (the share hub's rows,
+ * the board's tag palette, the kanban card's nested controls) are all fixed, and an empty registry is
+ * plumbing rather than an allowance. A violation now has to be fixed or the surface left unread.
  */
-async function checkSurfaceAxe(page, root, surface, seen, allowIncomplete = () => false) {
+async function checkSurfaceAxe(page, root, surface, allowIncomplete = () => false) {
   await ensureAxe(page)
   const report = await runAxe(page, root)
-  for (const item of report.violations) {
-    if (SURFACE_A11Y_ALLOWANCES.has(`${surface}:${item.id}`)) seen.add(`${surface}:${item.id}`)
-  }
-  const unexpected = report.violations.filter((item) => !SURFACE_A11Y_ALLOWANCES.has(`${surface}:${item.id}`))
   check(
-    `${surface}: axe finds nothing on it that this gate has not registered`,
-    unexpected.length === 0,
-    JSON.stringify(unexpected.slice(0, 3)),
+    `${surface}: axe finds nothing on it`,
+    report.violations.length === 0,
+    JSON.stringify(report.violations.slice(0, 3)),
   )
   const unreviewed = report.incomplete.filter((item) => !isReviewedIncomplete(item) && !allowIncomplete(item))
   check(`${surface}: no unexpected axe review items`, unreviewed.length === 0, JSON.stringify(unreviewed.slice(0, 3)))
@@ -3277,7 +3252,7 @@ function isDeckCanvasReviewItem(item) {
 }
 
 /** The control a surface is opened from, and what it says its controls are called. */
-async function assertDriveControlNames(page, seen) {
+async function assertDriveControlNames(page) {
   const root = await openSurfaceDialog(page, () => pressSurfaceControl(page, NAMED_CONTROLS.attachmentsManage), 'attachment drive')
   if (!root) return
   const files = await page.evaluate((selector) =>
@@ -3289,7 +3264,7 @@ async function assertDriveControlNames(page, seen) {
     NAMED_CONTROLS.moreActions,
     NAMED_CONTROLS.star,
   ])
-  await checkSurfaceAxe(page, root, 'attachment drive', seen)
+  await checkSurfaceAxe(page, root, 'attachment drive')
 
   await page.type(`${root} input`, 'gate')
   await sleep(800)
@@ -3298,15 +3273,16 @@ async function assertDriveControlNames(page, seen) {
   const listed = await pressSurfaceControl(page, NAMED_CONTROLS.attachmentsList, root)
   check('attachment drive: the list view is one press away', listed)
   await checkSurfaceNames(page, root, 'attachment drive (list)', [NAMED_CONTROLS.attachmentsSelectAll, NAMED_CONTROLS.moreActions])
-  await checkSurfaceAxe(page, root, 'attachment drive', seen)
+  await checkSurfaceAxe(page, root, 'attachment drive')
 
   // The inspector is the panel a selected file gets, and the tag it carries is removable there.
+  // The row's own name button is what selects it — pressing a cell of the row would no longer select
+  // anything, because the whole-row click target is gone (the row holds controls of its own).
   const selected = await page.evaluate((selector) => {
     const cell = [...document.querySelectorAll(`${selector} button`)].find((item) => /选择 gate-controls|Select gate-controls/.test(item.getAttribute('aria-label') ?? ''))
-    const row = cell?.closest('tr')
-    if (!row) return false
-    row.querySelector('td:nth-child(2)')?.click()
-    return true
+    const name = cell?.closest('tr')?.querySelector('td:nth-child(2) button')
+    name?.click()
+    return Boolean(name)
   }, root)
   await sleep(1_200)
   check('attachment drive: selecting a row draws the inspector', selected)
@@ -3318,7 +3294,7 @@ async function assertDriveControlNames(page, seen) {
 }
 
 /** The hub a person reaches from the note list's globe, the tag filter it draws, and its links view. */
-async function assertBlogHubControlNames(page, seen) {
+async function assertBlogHubControlNames(page) {
   const root = await openSurfaceDialog(page, () => pressSurfaceControl(page, NAMED_CONTROLS.blogHub), 'blog hub')
   if (!root) return
   const hero = await heroGradientContrast(page, root)
@@ -3326,7 +3302,7 @@ async function assertBlogHubControlNames(page, seen) {
   check('blog hub: the text axe declined to judge is measured — every gradient stop against every line',
     gradientJudged, JSON.stringify(hero))
   const allowGradient = (item) => gradientJudged && /background gradient/.test(item.note)
-  await checkSurfaceAxe(page, root, 'blog hub', seen, allowGradient)
+  await checkSurfaceAxe(page, root, 'blog hub', allowGradient)
   await checkSurfaceNames(page, root, 'blog hub', [NAMED_CONTROLS.moreActions, NAMED_CONTROLS.blogLinks])
 
   const filtered = await pressSurfaceControl(page, [CONTROLS_FIXTURE.tag], `${root} aside`)
@@ -3338,7 +3314,7 @@ async function assertBlogHubControlNames(page, seen) {
   // The link list's own filter is a bare `<select>`: without a label it is unnamed, which is what the
   // browser reads and what axe's `select-name` rule asks about.
   await checkControlName(page, `${root} select`, 'blog hub (the links list, its category filter)', NAMED_CONTROLS.blogCategoryFilter)
-  await checkSurfaceAxe(page, root, 'blog hub', seen, allowGradient)
+  await checkSurfaceAxe(page, root, 'blog hub', allowGradient)
 
   await page.keyboard.press('Escape')
   await sleep(800)
@@ -3346,11 +3322,34 @@ async function assertBlogHubControlNames(page, seen) {
 }
 
 /**
- * A board is read in every view its controls live in: the board (cards, subtask toggles), a column
- * collapsed (the strip that stopped being a `div` with a role), the table (rows, groups, select-all)
- * and the list (rows whose toggle the guard used to call named while axe called it nameless).
+ * The keyboard's way to the same control `pressSurfaceControl` clicks: find it by the name it
+ * carries, put the focus on it for real, and report whether the focus landed. Patterns rather than
+ * plain labels because the controls read this way are named with data in them (a day cell's number).
+ * What the gate does next — Enter, Escape — is the assertion; this only gets the keyboard there, and
+ * says so when it cannot.
  */
-async function assertKanbanControlNames(page, seen) {
+async function focusSurfaceControl(page, patterns, scope = '') {
+  return page.evaluate(({ patterns, scope }) => {
+    const root = scope ? document.querySelector(scope) : document
+    const matchers = patterns.map((pattern) => new RegExp(pattern))
+    const control = [...(root?.querySelectorAll('button, [role="menuitem"], [role="option"]') ?? [])]
+      .find((item) => {
+        const name = item.getAttribute('aria-label') ?? item.getAttribute('title') ?? (item.textContent ?? '').trim()
+        return matchers.some((matcher) => matcher.test(name)) && item.getClientRects().length > 0
+      })
+    if (!control) return false
+    control.focus()
+    return document.activeElement === control
+  }, { patterns, scope })
+}
+
+/**
+ * A board is read in every view its controls live in: the board (cards, subtask toggles), a column
+ * collapsed (the strip that stopped being a `div` with a role), the table (rows, groups, select-all),
+ * the list (rows whose toggle the guard used to call named while axe called it nameless), and the
+ * gantt, timeline and calendar (whose rows used to be click handlers on `div`s, SH-110).
+ */
+async function assertKanbanControlNames(page) {
   if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('kanban: the preview pane never became visible')
   const drawn = await page.waitForFunction(() => {
     const block = document.querySelector('.ink-prose [data-kanban]')
@@ -3371,7 +3370,7 @@ async function assertKanbanControlNames(page, seen) {
   const root = '.kanban-fullscreen'
 
   await checkSurfaceNames(page, root, 'kanban (board)', [NAMED_CONTROLS.kanbanCardDetails, NAMED_CONTROLS.kanbanExpandSubtasks])
-  await checkSurfaceAxe(page, root, 'kanban', seen)
+  await checkSurfaceAxe(page, root, 'kanban')
 
   // A card's subtasks are read where they are drawn: the board draws them as their own rows (each a
   // checkbox named by the subtask it completes), and the bin for one is in the *table* view's nested
@@ -3410,7 +3409,67 @@ async function assertKanbanControlNames(page, seen) {
       // for "Status" would be satisfied by the column header's own name.
       await checkControlName(page, `${root} [data-item-id="gate-controls-1"] select`, 'kanban (the status cell)', NAMED_CONTROLS.kanbanStatusColumn)
     }
-    await checkSurfaceAxe(page, root, 'kanban', seen)
+    await checkSurfaceAxe(page, root, 'kanban')
+  }
+
+  // The gantt and timeline are the same board drawn against time, and both drew each item twice: a
+  // row in the sidebar and a bar in the chart. Both were `div`s with a click handler, so a keyboard
+  // could not open an item from either view at all and a screen reader was never told the row did
+  // anything (SH-110). What the fix promises is a row that *is* the control, so it is read the way a
+  // keyboard reads one — focus it, press Enter, and wait for the detail the pointer would have opened.
+  for (const { view, label } of [
+    { view: 'gantt', label: ['甘特图', 'Gantt'] },
+    { view: 'timeline', label: ['时间轴', 'Timeline'] },
+  ]) {
+    const switched = await pressSurfaceControl(page, label, root)
+    check(`kanban: the ${view} view is one press away`, switched)
+    if (!switched) continue
+    // Both rows that stand for the first card have to be buttons: the sidebar's (the item's name) and
+    // the chart's (where the item sits in time). A `div` with the button role is not a button here.
+    const rows = await page.evaluate((selector) => {
+      const named = [...document.querySelectorAll(`${selector} button, ${selector} [role="button"]`)]
+        .filter((item) => /First card/.test(item.textContent ?? ''))
+      return { count: named.length, buttons: named.filter((item) => item.tagName === 'BUTTON').length }
+    }, root)
+    check(
+      `kanban: the ${view} rows that open this card are buttons`,
+      rows.count >= 2 && rows.buttons === rows.count,
+      JSON.stringify(rows),
+    )
+    const focused = await focusSurfaceControl(page, ['First card'], root)
+    check(`kanban: the keyboard reaches a ${view} row`, focused)
+    if (focused) {
+      await page.keyboard.press('Enter')
+      const opened = await page
+        .waitForFunction(() => {
+          const dialog = [...document.querySelectorAll('div[role="dialog"]')]
+            .find((item) => /First card/.test(item.textContent ?? ''))
+          return Boolean(dialog)
+        }, { timeout: 10_000 })
+        .then(() => true, () => false)
+      check(`kanban: Enter on a ${view} row opens the item's detail`, opened)
+      if (opened) {
+        await page.keyboard.press('Escape')
+        await sleep(800)
+      }
+    }
+    await checkSurfaceAxe(page, root, `kanban (${view})`)
+  }
+
+  // The calendar's day cell is the third of the three: its header number opened the day from a `div`'s
+  // click handler wrapped around its own `+` button. The number is now a button named by the day it
+  // opens, and the name is what this reads; pressing it would add a card, so the reach is the
+  // assertion — which is exactly what could not be done before.
+  const calendar = await pressSurfaceControl(page, ['日历', 'Calendar'], root)
+  check('kanban: the calendar view is one press away', calendar)
+  if (calendar) {
+    const days = await page.evaluate((selector) =>
+      [...document.querySelectorAll(`${selector} button`)]
+        .filter((item) => /New item on \d+|在 \d+ 日新建项目/.test(item.getAttribute('aria-label') ?? '')).length, root)
+    check('kanban: a calendar day cell names the day its number opens', days >= 28, `days=${days}`)
+    const reached = await focusSurfaceControl(page, ['New item on \\d+', '在 \\d+ 日新建项目'], root)
+    check('kanban: the keyboard reaches a calendar day cell', reached)
+    await checkSurfaceAxe(page, root, 'kanban (calendar)')
   }
 
   await page.keyboard.press('Escape')
@@ -3424,7 +3483,7 @@ async function assertKanbanControlNames(page, seen) {
  * hidden subtree. The row now reveals them the way the rest of the app does (opacity, plus
  * `focus-within`), so they are in the tree and this is their reader.
  */
-async function assertSlidesLayerControlNames(page, seen) {
+async function assertSlidesLayerControlNames(page) {
   if (!(await ensurePaneVisible(page, '.ink-prose'))) throw new Error('slides layers: the preview pane never became visible')
   const pressed = await pressSurfaceControl(page, ['全屏', 'Full screen'], '.ink-prose [data-bento-slides]')
   const surfaced = pressed && await page
@@ -3436,7 +3495,7 @@ async function assertSlidesLayerControlNames(page, seen) {
   const root = '.bento-slides-fullscreen'
   // The deck's own page text is the one review item this surface raises, and the scenario above is
   // what measured it; here it is the same predicate rather than a second opinion.
-  await checkSurfaceAxe(page, root, 'slides editor', seen, isDeckCanvasReviewItem)
+  await checkSurfaceAxe(page, root, 'slides editor', isDeckCanvasReviewItem)
   await checkSurfaceNames(page, root, 'slides editor (layer list)', [NAMED_CONTROLS.slidesBringForward, NAMED_CONTROLS.slidesSendBackward])
   await page.keyboard.press('Escape')
   await sleep(800)
@@ -3499,15 +3558,10 @@ async function assertNamedControlSurfaces(page) {
     await ensurePaneVisible(page, '.ink-prose')
   }
 
-  const seen = new Set()
-  await assertDriveControlNames(page, seen)
-  await assertBlogHubControlNames(page, seen)
-  await assertKanbanControlNames(page, seen)
-  await assertSlidesLayerControlNames(page, seen)
-
-  const stale = [...SURFACE_A11Y_ALLOWANCES.keys()].filter((key) => !seen.has(key))
-  check('control surfaces: no allowance is left over from a surface that no longer needs it',
-    stale.length === 0, `stale=${JSON.stringify(stale)}`)
+  await assertDriveControlNames(page)
+  await assertBlogHubControlNames(page)
+  await assertKanbanControlNames(page)
+  await assertSlidesLayerControlNames(page)
   await page.evaluate(() => {
     for (const surface of document.querySelectorAll('[data-gate-surface]')) surface.removeAttribute('data-gate-surface')
   })

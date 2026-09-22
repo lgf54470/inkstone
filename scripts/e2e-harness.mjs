@@ -133,7 +133,12 @@ export async function setAppTheme(page, theme) {
   // "system" has no resolved theme of its own — it is whatever the OS preference says — so it is
   // always driven, and verified through the control being checked rather than through a colour.
   const resolved = await page.evaluate(() => document.documentElement.dataset.theme)
-  if (theme !== 'system' && resolved === theme) return
+  // Even when the theme is already the one asked for, the swap that *put* it there may still be
+  // running: this is a page that booted with one palette and rendered the account's with the other.
+  if (theme !== 'system' && resolved === theme) {
+    await waitForTransitionsEnd(page)
+    return
+  }
   await page.keyboard.down('Control')
   await page.keyboard.press(',')
   await page.keyboard.up('Control')
@@ -155,6 +160,35 @@ export async function setAppTheme(page, theme) {
   await settled()
   await page.keyboard.press('Escape')
   await sleep(500)
+  await waitForTransitionsEnd(page)
+}
+
+/**
+ * The theme swap is animated: components transition `background-color` over `--dur-fast`, so a
+ * measurement taken while one of those transitions is still in flight reads a colour that belongs to
+ * neither palette — a mid-flight grey that names no token, which is how the light pass on a loaded
+ * machine read a note row's background as `#404246` and reported the tag pills painted on it as
+ * 2.03:1. `data-theme` flipping is the *start* of the swap, not its end, and CPU load stretches the
+ * transition far past its nominal duration. Only transitions are waited for: an infinite CSS
+ * animation (a spinner, a pulse) never ends and is not what a colour measurement trips over.
+ *
+ * A wait that times out says so with the properties still running rather than measuring in silence,
+ * so a surface read during a stuck transition is a line in the log instead of a mystery number.
+ */
+export async function waitForTransitionsEnd(page, timeout = 10_000) {
+  const running = () => page.evaluate(() => document.getAnimations()
+    .filter((animation) => animation instanceof CSSTransition && animation.playState === 'running')
+    .map((animation) => {
+      const target = animation.effect?.target
+      const className = target instanceof Element ? String(target.className).split(/\s+/)[0] : ''
+      return `${animation.transitionProperty}${className ? ` on ${className}` : ''}`
+    }))
+  const settled = await page.waitForFunction(
+    () => document.getAnimations().every((animation) => !(animation instanceof CSSTransition) || animation.playState !== 'running'),
+    { timeout },
+  ).then(() => true, () => false)
+  if (settled) return
+  console.warn(`[e2e] transitions were still running after ${timeout}ms: ${(await running()).join(', ')}`)
 }
 
 /** Presses a combo the way the app's own hotkey map reads it: modifiers held, the key last. */
@@ -210,6 +244,37 @@ export async function waitForPanelSettled(page, selector) {
     const panel = document.querySelector(sel)
     return Boolean(panel) && getComputedStyle(panel).opacity === '1'
   }, { timeout: 10_000 }, selector)
+}
+
+/**
+ * Presses a drawn control by any of its names, the way a person does: a real pointer click at a
+ * measured point, in both gates (the behaviour gate opens the four control surfaces with it and the
+ * contrast gate opens the board's). The press is a real one rather than `.click()` on a handle
+ * because a block's own chrome is what is being pressed and its box is what says whether the press
+ * can land: the blocks of a long note sit below the fold, so the control is scrolled into view first,
+ * and a box that hangs past the edge has no pressable centre. Returns false when no control matches,
+ * which is a fixture that did not take rather than a surface that failed to open.
+ */
+export async function pressSurfaceControl(page, labels, scope = '') {
+  const point = await page.evaluate(({ labels, scope }) => {
+    const root = scope ? document.querySelector(scope) : document
+    const control = [...(root?.querySelectorAll('button, [role="menuitem"], [role="option"]') ?? [])]
+      .find((item) => {
+        const name = item.getAttribute('aria-label') ?? item.getAttribute('title') ?? (item.textContent ?? '').trim()
+        return labels.some((label) => name === label || name.includes(label)) && item.getClientRects().length > 0
+      })
+    if (!control) return null
+    control.scrollIntoView({ block: 'center' })
+    const box = control.getBoundingClientRect()
+    const inside = box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth && box.bottom <= window.innerHeight
+    return box.width > 0 && box.height > 0 && inside
+      ? { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+      : null
+  }, { labels, scope })
+  if (!point) return false
+  await page.mouse.click(point.x, point.y)
+  await sleep(1_000)
+  return true
 }
 
 export async function runAxe(page, selector) {

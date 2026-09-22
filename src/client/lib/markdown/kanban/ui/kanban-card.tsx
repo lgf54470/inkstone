@@ -36,6 +36,7 @@ function CardTitle({
   titleText,
   onChangeText,
   onStartEditing,
+  onOpenDetail,
   onBlur,
   onCancel,
 }: {
@@ -45,6 +46,7 @@ function CardTitle({
   titleText: string
   onChangeText: (text: string) => void
   onStartEditing: () => void
+  onOpenDetail: () => void
   onBlur: () => void
   onCancel: () => void
 }) {
@@ -74,19 +76,24 @@ function CardTitle({
     // A card is a third-level heading under the board's own title: the board's `<h2>` (kanban-header)
     // and then the cards, with no level skipped in between. As an `h4` the card jumped a level, which
     // is what a browser reading this surface reports as heading-order.
-    <h3
-      onDoubleClick={(e) => {
-        e.stopPropagation()
-        onStartEditing()
-      }}
-      className='flex items-start gap-1.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] leading-snug'
-    >
+    // The heading is the card's heading and nothing else: both of the card's title gestures live on
+    // the button inside it — a click opens the detail, a double click starts editing — which is what
+    // having them on the heading itself cost (an affordance on a non-interactive element, and a
+    // keyboard that could reach neither of them).
+    <h3 className='flex items-start gap-1.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] leading-snug'>
       {icon && (
         <span className='mt-0.5 shrink-0'>
           <KanbanIconBadge icon={icon} size={15} />
         </span>
       )}
-      <span className='line-clamp-2'>{title || t('preview.kanban_untitled')}</span>
+      <button
+        type='button'
+        onClick={onOpenDetail}
+        onDoubleClick={onStartEditing}
+        className='line-clamp-2 cursor-pointer text-left hover:text-[var(--accent)]'
+      >
+        {title || t('preview.kanban_untitled')}
+      </button>
     </h3>
   )
 }
@@ -159,16 +166,15 @@ function useKanbanCardTitle(initialTitle: string, onUpdate: (title: string) => v
   return { isEditing, text, setText, startEditing: () => setIsEditing(true), handleBlur, handleCancel }
 }
 
-function handleCardKeyDown(
-  e: KeyboardEvent<HTMLDivElement>,
-  isEditing: boolean,
-  onOpen: () => void,
-  onMove?: (direction: 'prev' | 'next') => void,
-) {
-  if (e.key === 'Enter' && !isEditing) {
-    e.preventDefault()
-    onOpen()
-  } else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+/**
+ * Alt+Arrow still moves the card between columns, and it is read off the card rather than off one of
+ * its controls because that is where it was whenever the card itself held focus: a card that is a
+ * container of controls, with no control of its own wrapping the rest, receives the event from
+ * whichever of them has focus. Opening the detail is no longer one of these — it belongs to the
+ * title button, which is a real control and answers Enter on its own.
+ */
+function handleCardKeyDown(e: KeyboardEvent<HTMLDivElement>, onMove?: (direction: 'prev' | 'next') => void) {
+  if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
     e.preventDefault()
     onMove?.(e.key === 'ArrowRight' ? 'next' : 'prev')
   }
@@ -216,11 +222,13 @@ function CardBody({
   item,
   titleState,
   display,
+  onOpenDetail,
   onUpdateSubtasks,
 }: {
   item: KanbanItem
   titleState: ReturnType<typeof useKanbanCardTitle>
   display: ReturnType<typeof getCardDisplayProps>
+  onOpenDetail: () => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
 }) {
   const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
@@ -235,6 +243,7 @@ function CardBody({
           titleText={titleState.text}
           onChangeText={titleState.setText}
           onStartEditing={titleState.startEditing}
+          onOpenDetail={onOpenDetail}
           onBlur={titleState.handleBlur}
           onCancel={titleState.handleCancel}
         />
@@ -259,6 +268,14 @@ function CardBody({
   )
 }
 
+/**
+ * The board's card is a container of controls, not a control: it carries a selection box, a tag menu,
+ * a subtask toggle and a card menu, and the detail it opens belongs to its title button — the same
+ * shape the table view's row has. As `role="button"` with a `tabIndex` (SH-107) the card said it was
+ * one target while holding four others, which is what a browser reports as `nested-interactive`, and
+ * a card-wide click handler is also what a drag has to fight: the pointer that starts a drag is the
+ * pointer that would have opened the detail.
+ */
 export const KanbanCard = memo(function KanbanCard({
   item,
   columns,
@@ -286,17 +303,14 @@ export const KanbanCard = memo(function KanbanCard({
 
   return (
     <div
-      role='button'
-      tabIndex={0}
       data-item-id={item.id}
       draggable={!titleState.isEditing}
       onDragStart={(e) => onDragStart(e, item.id)}
       onDragEnd={onDragEnd}
       onDragOver={dndHandlers.handleDragOver}
       onDrop={dndHandlers.handleDrop}
-      onClick={() => onOpenDetail(item)}
-      onKeyDown={(e) => handleCardKeyDown(e, titleState.isEditing, () => onOpenDetail(item), onMoveColumn ? (d) => onMoveColumn(item.id, d) : undefined)}
-      className={`group/card relative flex flex-col rounded-[var(--r-lg)] border bg-[var(--bg-surface)] text-left shadow-[var(--shadow-xs)] transition-[box-shadow,border-color,background-color] hover:border-[var(--border-default)] hover:shadow-[var(--shadow-sm)] ${padClass} ${
+      onKeyDown={(e) => handleCardKeyDown(e, onMoveColumn ? (d) => onMoveColumn(item.id, d) : undefined)}
+      className={`group/card relative flex flex-col rounded-[var(--r-lg)] border bg-[var(--bg-surface)] shadow-[var(--shadow-xs)] transition-[box-shadow,border-color,background-color] hover:border-[var(--border-default)] hover:shadow-[var(--shadow-sm)] ${padClass} ${
         isSelected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border-subtle)]'
       }`}
     >
@@ -317,6 +331,7 @@ export const KanbanCard = memo(function KanbanCard({
         item={item}
         titleState={titleState}
         display={display}
+        onOpenDetail={() => onOpenDetail(item)}
         onUpdateSubtasks={onUpdateSubtasks}
       />
     </div>

@@ -153,10 +153,12 @@ function GalleryCardTitleDesc({
   title,
   icon,
   desc,
+  onOpenDetail,
 }: {
   title: string
   icon?: string
   desc?: string
+  onOpenDetail: () => void
 }) {
   return (
     <div className='min-w-0 flex-1'>
@@ -166,7 +168,13 @@ function GalleryCardTitleDesc({
             <KanbanIconBadge icon={icon} size={15} />
           </span>
         )}
-        <span className='line-clamp-2'>{title || t('preview.kanban_untitled')}</span>
+        <button
+          type='button'
+          onClick={onOpenDetail}
+          className='line-clamp-2 text-left hover:text-[var(--accent)]'
+        >
+          {title || t('preview.kanban_untitled')}
+        </button>
       </h3>
       {desc && (
         <p className='mt-1 line-clamp-2 text-[length:var(--text-12)] text-[var(--text-tertiary)] leading-normal'>
@@ -197,16 +205,12 @@ function GalleryCard({
   const assignee = String(item.properties.assignee || '')
   const filesCount = item.files?.length ?? 0
 
+  // The gallery's tile is the board's card drawn wider: a container of controls whose title is the
+  // button that opens the detail, rather than a click target holding the controls inside it.
   return (
     <div
-      role='button'
-      tabIndex={0}
       data-item-id={item.id}
-      onClick={() => onOpenDetail(item)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') onOpenDetail(item)
-      }}
-      className={`group/card flex cursor-pointer flex-col overflow-hidden rounded-[var(--r-lg)] border bg-[var(--bg-surface)] text-left shadow-[var(--shadow-xs)] transition-[box-shadow,border-color] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] ${
+      className={`group/card flex flex-col overflow-hidden rounded-[var(--r-lg)] border bg-[var(--bg-surface)] shadow-[var(--shadow-xs)] transition-[box-shadow,border-color] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] ${
         isSelected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border-subtle)]'
       }`}
     >
@@ -218,7 +222,7 @@ function GalleryCard({
           tagsCol={tagsCol}
           onToggleSelect={() => onToggleSelect(item.id)}
         />
-        <GalleryCardTitleDesc title={item.title} icon={item.icon} desc={desc} />
+        <GalleryCardTitleDesc title={item.title} icon={item.icon} desc={desc} onOpenDetail={() => onOpenDetail(item)} />
         <KanbanCardSubtasks
           itemId={item.id}
           subtasks={item.subtasks || []}

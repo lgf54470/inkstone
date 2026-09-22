@@ -31,14 +31,19 @@ function TimelineTaskSidebar({
       </div>
       <div className='divide-y divide-[var(--border-subtle)]'>
         {items.map((item) => (
-          <div
+          // The row is one control with nothing inside it, so it is the control: a real button is
+          // focusable, answers Enter and Space, and carries the row's own text as its name. As a
+          // `div` with a click handler it was the one affordance in this view a keyboard could not
+          // reach at all (SH-110).
+          <button
             key={item.id}
+            type='button'
             onClick={() => onOpenDetail(item)}
-            className='flex h-10 cursor-pointer items-center gap-1.5 px-3 text-[length:var(--text-13)] font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            className='flex h-10 w-full cursor-pointer items-center gap-1.5 px-3 text-left text-[length:var(--text-13)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]'
           >
             <KanbanIconBadge icon={item.icon} size={14} />
             <span className='truncate'>{item.title}</span>
-          </div>
+          </button>
         ))}
       </div>
       <div className='p-2'>
@@ -91,14 +96,15 @@ function TimelineChart({
 
           return (
             <div key={item.id} className='relative h-10'>
-              <div
+              <button
+                type='button'
                 data-item-id={item.id}
                 onClick={() => onOpenDetail(item)}
                 style={{ left: `${left}px`, width: `${width}px` }}
-                className='absolute top-2 h-6 cursor-pointer rounded-[var(--r-full)] bg-[var(--accent)] px-2.5 text-[length:var(--text-11)] font-medium text-[var(--accent-contrast)] shadow-[var(--shadow-xs)] hover:opacity-90 flex items-center justify-between'
+                className='absolute top-2 flex h-6 cursor-pointer items-center justify-between gap-1 overflow-hidden rounded-[var(--r-full)] bg-[var(--accent)] px-2.5 text-left text-[length:var(--text-11)] font-medium text-[var(--accent-contrast)] shadow-[var(--shadow-xs)] transition-opacity hover:opacity-90'
               >
                 <span className='truncate'>{item.title}</span>
-              </div>
+              </button>
             </div>
           )
         })}

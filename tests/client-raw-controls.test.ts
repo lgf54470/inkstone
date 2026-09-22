@@ -13,7 +13,10 @@ import { describe, expect, it } from 'vitest'
  * Three rules, in the order they matter:
  *
  *  1. No `div`/`span` that says `role='button'`. A fake control is wrong wherever it is, so this
- *     applies everywhere, and the handful of exceptions below carry the reason they exist.
+ *     applies everywhere, with no exceptions: the last three the rule tolerated were the kanban
+ *     board's card, its gallery tile and its list row, and each was a card that opened a detail and
+ *     held controls of its own (SH-107). Redesigning the card — the title is a real button, the card
+ *     is a container — took all three entries away rather than keeping an exemption nobody needs.
  *  2. Every raw `<button>` has to carry an accessible name — `aria-label`, `aria-labelledby`,
  *     `title`, or visible text. This is the `button-name` rule axe applies, read statically, and it
  *     is what the 37 unnamed icon buttons across the app were failing. Names are read from the
@@ -35,6 +38,15 @@ import { describe, expect, it } from 'vitest'
  *     the primitives cannot express (a menu row stretches a flexible label between two fixed slots,
  *     a calendar cell is a grid track); the rule's job is to keep the next one from arriving
  *     unnoticed, not to relitigate the ones already argued.
+ *  4. A container with a hit target of its own — a click or pointer-down handler on a `div`/`span`/
+ *     row element — must not hold a control. This is the half of SH-107 rule 1 could not see: taking
+ *     the `role` off a card that holds its own buttons leaves a click target that *looks* like a
+ *     container, and the browser still reads `nested-interactive` (and, without a keyboard path, a
+ *     keyboard cannot reach the card at all — the same shape SH-110 fixed in three more views). A
+ *     pointer-down on a drag handle is read too: it is the other way a container becomes a hit
+ *     target. What is left after both fixes is five sites, every one of them a container whose
+ *     handler *stops* a click from reaching an outer one rather than being the affordance — each is
+ *     listed with its reason and its count, so a new one, or a sixth in a listed file, fails here.
  *
  * Features outside that layer are not required to funnel every button through the primitives: that
  * is a per-context judgement (146 files and 397 sites today), and an allowlist of 146 entries would
@@ -44,22 +56,6 @@ import { describe, expect, it } from 'vitest'
  * whose violation is gone.
  */
 const CLIENT_DIR = path.join('src', 'client')
-
-/** Card surfaces that stay one click target while hosting controls of their own. */
-const FAKE_CONTROLS = new Map<string, string>([
-  [
-    'src/client/lib/markdown/kanban/ui/kanban-card.tsx',
-    'The card body is the drop target and the open-detail affordance at once, and it holds controls of its own (its subtask rows, its menus): as a real button it would be a control inside a control. Keyboard and ARIA are implemented by hand (tabIndex, Enter/Space, the arrow keys that move it between columns) and read by the browser gate.',
-  ],
-  [
-    'src/client/lib/markdown/kanban/ui/kanban-gallery-view.tsx',
-    'Same card surface as the board view, drawn as a gallery tile: one click target over a body that carries its own controls, with Enter wired by hand. Changing it means redesigning the card, not renaming an element.',
-  ],
-  [
-    'src/client/lib/markdown/kanban/ui/kanban-list-view.tsx',
-    'Same card surface as a list row: the row opens the detail while the leading cell holds the selection control, so the row cannot be one button without swallowing it.',
-  ],
-])
 
 /**
  * Buttons this rule reads as unnamed but a browser does not: the name is rendered by a component the
@@ -136,8 +132,26 @@ interface Site {
   named: boolean
 }
 
+/**
+ * A non-interactive element that is a hit target itself and holds a control. Only intrinsic tags are
+ * read: a component that renders a control passes it through its own file, where the container and
+ * the control are written in the same place, and one that only *consumes* children cannot be judged
+ * from here. `onPointerDown`/`onMouseDown` are read alongside `onClick` — a drag handle is a hit
+ * target too, and it is the one kind of container that legitimately holds buttons.
+ */
+interface ClickContainerSite {
+  file: string
+  line: number
+  tag: string
+  holds: string
+}
+
 function describeSite(site: Site): string {
   return `${site.file}:${site.line}`
+}
+
+function describeContainer(site: ClickContainerSite): string {
+  return `${site.file}:${site.line} <${site.tag}> holds <${site.holds}>`
 }
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
@@ -205,13 +219,15 @@ function hasAccessibleName(node: ts.JsxOpeningElement | ts.JsxSelfClosingElement
 }
 
 /** Every raw button and every fake control the client tree writes by hand. */
-function scan(): { rawButtons: Site[]; fakeControls: Site[] } {
+function scan(): { rawButtons: Site[]; fakeControls: Site[]; clickContainers: ClickContainerSite[] } {
   const rawButtons: Site[] = []
   const fakeControls: Site[] = []
+  const clickContainers: ClickContainerSite[] = []
   for (const file of sourceFiles(CLIENT_DIR)) {
     const text = fs.readFileSync(file, 'utf8')
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     const name = relative(file)
+    clickContainers.push(...scanClickContainers(name, source))
     const visit = (node: ts.Node): void => {
       if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
         const tag = node.tagName.getText()
@@ -227,8 +243,100 @@ function scan(): { rawButtons: Site[]; fakeControls: Site[] } {
     }
     visit(source)
   }
-  return { rawButtons, fakeControls }
+  return { rawButtons, fakeControls, clickContainers }
 }
+
+const CONTROL_TAGS = new Set(['button', 'a', 'input', 'select', 'textarea'])
+const CONTROL_ROLES = new Set(['button', 'link', 'tab', 'option', 'menuitem', 'checkbox', 'switch'])
+const NON_INTERACTIVE_TAGS = new Set(['div', 'span', 'li', 'td', 'tr', 'section', 'article', 'aside', 'p', 'label'])
+const HIT_TARGET_ATTRIBUTES = ['onClick', 'onPointerDown', 'onMouseDown']
+
+/** Whether this element is a control: the tag says so, or a literal role on it does. */
+function isControl(tag: string, attributes: Map<string, ts.JsxAttribute['initializer']>): boolean {
+  if (CONTROL_TAGS.has(tag)) return true
+  const role = literalValue(attributes.get('role') ?? null)
+  return role !== null && CONTROL_ROLES.has(role)
+}
+
+/**
+ * The containers that are hit targets and hold a control, read from the written JSX. A self-closing
+ * element has no subtree, so the only elements that can hold anything are the paired ones — reading
+ * a self-closing element's *parent* would report the container's siblings as its contents, which is
+ * the false positive that put a prose host and the footer link beside it on this list.
+ */
+function scanClickContainers(file: string, source: ts.SourceFile): ClickContainerSite[] {
+  const sites: ClickContainerSite[] = []
+  const visit = (node: ts.Node): void => {
+    if (ts.isJsxOpeningElement(node)) {
+      const tag = node.tagName.getText()
+      const attributes = attributesOf(node)
+      const isHitTarget = HIT_TARGET_ATTRIBUTES.some((attribute) => attributes.has(attribute))
+      if (!isControl(tag, attributes) && NON_INTERACTIVE_TAGS.has(tag) && isHitTarget) {
+        const holds = findControl(node.parent as ts.JsxElement)
+        if (holds) {
+          sites.push({
+            file,
+            line: source.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+            tag,
+            holds,
+          })
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return sites
+}
+
+/** The tag of the first control inside this element's own JSX, if it writes one. */
+function findControl(element: ts.JsxElement): string | null {
+  let found: string | null = null
+  const walk = (node: ts.Node): void => {
+    if (found) return
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText()
+      if (isControl(tag, attributesOf(node))) {
+        found = tag
+        return
+      }
+    }
+    ts.forEachChild(node, walk)
+  }
+  for (const child of element.children) walk(child)
+  return found
+}
+
+/**
+ * The containers that are hit targets holding a control and are not the affordance. Every one is a
+ * `stopPropagation` guard: the outer element owns the click and the container exists to keep it from
+ * reaching it (the card's pane activation, the submenu row's own click), or — the hover card's — the
+ * element is the drag handle of a pinned window and the controls are that window's own. Each entry
+ * carries the number of sites in the file, so a new one there fails rather than hiding behind it.
+ */
+const CLICK_CONTAINER_EXCEPTIONS = new Map<string, { sites: number; reason: string }>([
+  [
+    'src/client/features/preview/wiki-link-hover-card/index.tsx',
+    {
+      sites: 1,
+      reason: "The pinned window's header: a pointer-down drag handle whose children are the window's own pin and stack buttons. Clicking the header does nothing on its own — the drag is what the handler is for, and a drag handle has to be under the pointer the controls are drawn on.",
+    },
+  ],
+  [
+    'src/client/features/share/share-note-submenu.tsx',
+    {
+      sites: 1,
+      reason: 'The folder view panel stops a click from reaching the row that opened it, so typing in the search input does not reselect that row. The panel is not an affordance of its own: the input inside it is.',
+    },
+  ],
+  [
+    'src/client/lib/markdown/kanban/ui/kanban-card-subtasks.tsx',
+    {
+      sites: 3,
+      reason: 'The subtask list, one subtask row and the add-subtask field: all three stop a click from reaching the card (or the pane) that holds them, which is what keeps ticking a checkbox from also activating what is behind it. The card is a container now (SH-107) and these guards stay because the pane underneath is not the card.',
+    },
+  ],
+])
 
 const SCAN = scan()
 const SHARED_PREFIX = 'src/client/components/'
@@ -243,10 +351,7 @@ describe('client controls are real and named (SH-93, widening SH-49)', () => {
   })
 
   it('models no control as a div or span with a button role', () => {
-    const offenders = SCAN.fakeControls
-      .filter((site) => !FAKE_CONTROLS.has(site.file))
-      .map(describeSite)
-    expect(offenders).toEqual([])
+    expect(SCAN.fakeControls.map(describeSite)).toEqual([])
   })
 
   it('names every raw button it can read', () => {
@@ -273,18 +378,31 @@ describe('client controls are real and named (SH-93, widening SH-49)', () => {
     expect(offenders).toEqual([])
   })
 
-  it('keeps the fake-control exceptions honest', () => {
-    for (const [file, reason] of FAKE_CONTROLS) {
-      expect(reason.length, `${file} has no reason written`).toBeGreaterThan(40)
-      const hits = SCAN.fakeControls.filter((site) => site.file === file)
-      expect(hits.length, `${file} is listed as a fake control but no longer draws one`).toBeGreaterThan(0)
-    }
-  })
-
   it('keeps the shared-component exceptions honest', () => {
     for (const [file, reason] of SHARED_RAW_BUTTONS) {
       expect(reason.length, `${file} has no reason written`).toBeGreaterThan(40)
       expect(SHARED_BUTTON_FILES.has(file), `${file} is listed as a raw-button file but no longer writes one`).toBe(true)
+    }
+  })
+
+  it('models no container as a click target holding a control', () => {
+    const offenders = SCAN.clickContainers
+      .filter((site) => !CLICK_CONTAINER_EXCEPTIONS.has(site.file))
+      .map((site) => `${describeContainer(site)} (no entry in this guard; make it the control, or add it with its reason)`)
+    expect(offenders).toEqual([])
+  })
+
+  // Both directions: an entry whose file no longer writes the shape it excuses fails, and so does a
+  // file that grew a second one — the reason above describes the sites that were read, and a site
+  // nobody reasoned about is exactly what this list is for.
+  it('keeps the click-container exceptions honest', () => {
+    for (const [file, { sites, reason }] of CLICK_CONTAINER_EXCEPTIONS) {
+      expect(reason.length, `${file} has no reason written`).toBeGreaterThan(40)
+      const found = SCAN.clickContainers.filter((site) => site.file === file)
+      expect(
+        found.map(describeContainer),
+        `${file} is listed as a click container but does not hold exactly ${sites} control(s) under one`,
+      ).toHaveLength(sites)
     }
   })
 })

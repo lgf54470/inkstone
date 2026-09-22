@@ -118,28 +118,29 @@ function CalendarDayCellHeader({
   onAddItem: (dateStr: string) => void
 }) {
   return (
-    <div
-      onClick={() => onAddItem(day.dateStr)}
-      className='group/day flex cursor-pointer items-center justify-between p-1.5 transition-colors hover:bg-[var(--bg-hover)]/30'
-    >
-      <span
-        className={`text-[length:var(--text-12)] ${
+    // The cell is a container of two controls and both add an item to that day: the number is the one
+    // a keyboard can reach, and the `+` beside it is the mouse affordance that appears on hover. As a
+    // cell header that opened the day from its own click handler it was both unreachable without a
+    // pointer and a click target holding a button of its own (SH-110).
+    <div className='group/day flex items-center justify-between p-1.5 transition-colors hover:bg-[var(--bg-hover)]/30'>
+      <button
+        type='button'
+        onClick={() => onAddItem(day.dateStr)}
+        aria-label={t('preview.kanban_new_item_on_value0', { value0: day.dayNum })}
+        className={`cursor-pointer rounded-[var(--r-full)] text-[length:var(--text-12)] ${
           day.isToday
-            ? 'flex size-5 items-center justify-center rounded-full bg-[var(--accent)] font-bold text-white shadow-2xs'
+            ? 'flex size-5 items-center justify-center bg-[var(--accent)] font-bold text-white shadow-2xs'
             : day.isCurrentMonth
             ? 'font-medium text-[var(--text-secondary)]'
             : 'text-[var(--text-quaternary)]'
         }`}
       >
         {day.dayNum}
-      </span>
+      </button>
       <button
         type='button'
-        onClick={(e) => {
-          e.stopPropagation()
-          onAddItem(day.dateStr)
-        }}
-        className='p-0.5 opacity-0 transition-opacity group-hover/day:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+        onClick={() => onAddItem(day.dateStr)}
+        className='cursor-pointer p-0.5 text-[var(--text-tertiary)] opacity-0 transition-opacity hover:text-[var(--text-primary)] group-hover/day:opacity-100'
         aria-label={t('preview.kanban_new_item')}
       >
         <Plus size={12} />

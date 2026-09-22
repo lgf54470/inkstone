@@ -131,19 +131,21 @@ function ListRow(props: ListRowProps) {
   const menuItems: MenuItem[] = buildAttachmentMenuItems(actions)
 
   return (
+    // The row is a container: it holds the selection cell and the row menu, so the two it used to
+    // carry as a whole-row click target (select on a click, preview on a double click) belong to the
+    // control that names the file. That is what the row's own `role`-less click handler cost — the
+    // selection box was inside an affordance, and neither gesture was reachable by keyboard.
     <tr
       draggable
       onDragStart={(e) => cardDragStart(e, file.id)}
-      onClick={onSelectActive}
-      onDoubleClick={onPreview}
       onContextMenu={menu.handleContextMenu}
       className={cn(
-        'group transition-colors cursor-pointer select-none',
+        'group transition-colors select-none',
         selected ? 'bg-[var(--accent-soft)]' : active ? 'bg-[var(--bg-hover)]' : 'hover:bg-[var(--bg-hover)]',
       )}
     >
       <SelectCell selected={selected} filename={file.filename} onToggleSelect={onToggleSelect} />
-      <NameCell file={file} isImage={isImage} badgeLabel={badge.label} badgeText={badge.text} />
+      <NameCell file={file} isImage={isImage} badgeLabel={badge.label} badgeText={badge.text} onSelectActive={onSelectActive} onPreview={onPreview} />
       <RowDataCells file={file} folderName={folder?.name} />
       <td className='px-3 py-2 text-right'>
         <button
@@ -186,11 +188,13 @@ function SelectCell({ selected, filename, onToggleSelect }: { selected: boolean;
   )
 }
 
-function NameCell({ file, isImage, badgeLabel, badgeText }: {
+function NameCell({ file, isImage, badgeLabel, badgeText, onSelectActive, onPreview }: {
   file: AttachmentWithUsage
   isImage: boolean
   badgeLabel: string
   badgeText: string
+  onSelectActive: () => void
+  onPreview: () => void
 }) {
   return (
     <td className='px-3 py-2'>
@@ -202,9 +206,17 @@ function NameCell({ file, isImage, badgeLabel, badgeText }: {
             <span className={cn('text-[length:var(--text-9)] font-bold', badgeText)}>{badgeLabel}</span>
           )}
         </div>
-        <span className='truncate font-medium text-[var(--text-primary)] max-w-xs md:max-w-md' title={file.filename}>
+        {/* The name is the row's control: a click selects the file and a double click previews it,
+            which is what the whole row used to do for a pointer. The name it carries is the file's. */}
+        <button
+          type='button'
+          onClick={onSelectActive}
+          onDoubleClick={onPreview}
+          title={file.filename}
+          className='max-w-xs cursor-pointer truncate font-medium text-[var(--text-primary)] md:max-w-md'
+        >
           {file.filename}
-        </span>
+        </button>
         {file.isPinned && <Pin size={11} className='text-[var(--accent)] shrink-0' />}
         {file.isStarred && <Star size={11} className='text-amber-500 fill-current shrink-0' />}
       </div>

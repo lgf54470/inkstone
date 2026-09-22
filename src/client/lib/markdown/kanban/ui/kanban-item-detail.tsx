@@ -239,6 +239,13 @@ function useKanbanDetailState(
   return { statusCol, priorityCol, tagsCol, localTagOptions, handlePropertyChange, handleAddTagOption }
 }
 
+/**
+ * The detail's own state is read before the early return, not after it: the hook holds tag state and an
+ * effect, so calling it only once an item was set changed the hook count between renders — which
+ * React's dev build reports on the first open as an internal error ("Expected static flag was
+ * missing"), the error the visual gate's keyboard readers ran into. The hook already accepts a null
+ * item, so nothing else moves.
+ */
 export const KanbanItemDetail = memo(function KanbanItemDetail({
   item,
   columns,
@@ -247,10 +254,10 @@ export const KanbanItemDetail = memo(function KanbanItemDetail({
   onDelete,
   onAddColumnOption,
 }: KanbanItemDetailProps) {
-  if (!item) return null
-
   const { statusCol, priorityCol, localTagOptions, handlePropertyChange, handleAddTagOption } =
     useKanbanDetailState(item, columns, onUpdate, onAddColumnOption)
+
+  if (!item) return null
 
   const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
   const startDateVal = item.properties.startDate || ''

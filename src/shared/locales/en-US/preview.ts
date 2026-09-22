@@ -50,6 +50,7 @@ export const messages = {
 'preview.kanban_status_in_progress': 'In Progress',
 'preview.kanban_status_done': 'Done',
 'preview.kanban_new_item': 'New item',
+'preview.kanban_new_item_on_value0': 'New item on {value0}',
 'preview.kanban_new_group': 'New group',
 'preview.kanban_new_task': 'New task',
 'preview.kanban_new_card': 'New card',
