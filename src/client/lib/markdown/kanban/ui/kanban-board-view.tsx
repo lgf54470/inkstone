@@ -65,14 +65,14 @@ interface KanbanBoardColumnProps extends Omit<ColumnCardsListProps, 'items'> {
   onChangeColumnColor: (newColor: KanbanColorName) => void
   onChangeColumnWipLimit: (limit: number | undefined) => void
   /** Absent on the strip of a banded board: there is nothing to expand back into above it. */
-  onCollapseColumn?: () => void
+  onCollapse?: (groupKey: string) => void
   onDeleteColumn?: () => void
   /** Named rather than threaded: only the header consumes it, and only for a whole column. */
   selectAll?: KanbanColumnSelectAll
 }
 
 const KanbanBoardColumn = memo(function KanbanBoardColumn(props: KanbanBoardColumnProps) {
-  const { group, laneKey, headOnly, bodyOnly, isDragOver, onDragOver, onDrop, onDragStartColumn } = props
+  const { group, laneKey, headOnly, bodyOnly, isDragOver, onDragOver, onDrop, onDragStartColumn, onCollapse } = props
   useLocaleRepaint()
   return (
     <div
@@ -103,7 +103,7 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn(props: KanbanBoardColu
           onRename={props.onRenameColumn}
           onChangeColor={props.onChangeColumnColor}
           onChangeWipLimit={props.onChangeColumnWipLimit}
-          onCollapse={props.onCollapseColumn}
+          onCollapse={onCollapse ? () => onCollapse(group.groupKey) : undefined}
           onDelete={props.onDeleteColumn}
           {...(props.selectAll
             ? { onToggleSelectAll: props.selectAll.onToggle, isAllSelected: props.selectAll.isAllSelected }
@@ -184,9 +184,12 @@ function useKanbanBoardMoves(
   view: KanbanView,
   moveItem: MoveItemFn,
 ) {
-  const layout = kanbanBoardLayout(data, view)
-  const groups = groupKanbanItems(data.items, layout.groupPropertyId, layout.groupProperty)
-  const bands = kanbanSwimlanes(data.items, layout)
+  const layout = useMemo(() => kanbanBoardLayout(data, view), [data, view])
+  const groups = useMemo(
+    () => groupKanbanItems(data.items, layout.groupPropertyId, layout.groupProperty),
+    [data.items, layout],
+  )
+  const bands = useMemo(() => kanbanSwimlanes(data.items, layout), [data.items, layout])
   const [moveAnnouncement, setMoveAnnouncement] = useState('')
   const groupsRef = useRef(groups)
   groupsRef.current = groups
@@ -258,16 +261,22 @@ interface BoardColumnCellProps extends BoardCellBundle {
  */
 function useColumnSelectAll(props: BoardColumnCellProps) {
   const { group, selectedIds, onToggleSelectAll } = props
-  if (!onToggleSelectAll) return undefined
-  return {
-    count: group.items.length,
-    isAllSelected: group.items.length > 0 && group.items.every((item) => selectedIds.has(item.id)),
-    onToggle: () => onToggleSelectAll(group.items.map((item) => item.id)),
-  }
+  return useMemo(() => {
+    if (!onToggleSelectAll) return undefined
+    return {
+      count: group.items.length,
+      isAllSelected: group.items.length > 0 && group.items.every((item) => selectedIds.has(item.id)),
+      onToggle: () => onToggleSelectAll(group.items.map((item) => item.id)),
+    }
+  }, [group, selectedIds, onToggleSelectAll])
 }
 
 function ExpandedBoardColumn(props: BoardColumnCellProps) {
-  const { cell, group, dnd, variant } = props
+  // The cell and the drag bundle are read here and not handed on: both are rebuilt while a drag moves
+  // (the cell once per render, the bundle once per highlight), and the column below is a `memo` that
+  // compares what it is given — passing either through re-painted every column for a hover that lit
+  // one of them. The cell is rebuilt inside `useColumnCellHandlers` from its two keys anyway.
+  const { cell, group, dnd, ...columnProps } = props
   const selectAll = useColumnSelectAll(props)
   const handlers = useColumnCellHandlers({
     cell,
@@ -280,18 +289,19 @@ function ExpandedBoardColumn(props: BoardColumnCellProps) {
   })
   return (
     <KanbanBoardColumn
-      {...props}
+      {...columnProps}
+      group={group}
       laneKey={cell.laneKey}
-      headOnly={variant === 'head'}
-      bodyOnly={variant === 'body'}
+      headOnly={props.variant === 'head'}
+      bodyOnly={props.variant === 'body'}
       isDragOver={dnd.isDragOverCell(cell)}
       cardDropTarget={dnd.cardDropTarget}
       onDragEnd={dnd.handleDragEnd}
       onDragOverCard={dnd.handleCardDragOver}
       {...handlers}
       // A banded column is the strip's title, and has no narrower form to fold into.
-      onCollapseColumn={variant === 'column' ? () => props.onToggleCollapse(group.groupKey) : undefined}
-      selectAll={variant === 'column' ? selectAll : undefined}
+      onCollapse={props.variant === 'column' ? props.onToggleCollapse : undefined}
+      selectAll={props.variant === 'column' ? selectAll : undefined}
     />
   )
 }
@@ -396,14 +406,16 @@ function BandedBoardGrid({
 /** Which columns the reader has folded away. Only the plain board can fold one. */
 function useCollapsedColumns() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
-  const toggleCollapse = (groupKey: string) => {
+  // One identity: the fold is handed to every column, and a closure minted per render would repaint
+  // all of them from the fold of one.
+  const toggleCollapse = useCallback((groupKey: string) => {
     setCollapsedGroups((prev) => {
       const next = new Set(prev)
       if (next.has(groupKey)) next.delete(groupKey)
       else next.add(groupKey)
       return next
     })
-  }
+  }, [])
   return { collapsedGroups, toggleCollapse }
 }
 
