@@ -1,7 +1,36 @@
 import { useCallback, useEffect, useReducer, useRef, type RefObject } from 'react'
 import type { KanbanData } from '../types'
 
-export type CommitKanbanData = (next: KanbanData | ((prev: KanbanData) => KanbanData)) => void
+/**
+ * What a commit means for the way back — the rule the board's undo is built on, stated in two halves.
+ *
+ * `view` is a *lookup*: how an existing view shows the board, and which view is open. The search, the
+ * filters, the tags, the sort, the size of a card, which columns a table hides, which columns a card
+ * prints, what the board groups or swimlanes by, how a chart is drawn, and `activeViewId`. A lookup is
+ * written into the document exactly like an edit — that is what keeps it across a reload and lets a
+ * second reader open the same view — but it does not take a step: a reader who narrows a board ten times
+ * and then presses Ctrl+Z means the last *edit* they made, not a walk back through ten lookups. Before
+ * this, a handful of filters could push a session's real edits off the end of the thirty-step history.
+ *
+ * `edit` is everything else, and takes a step: a card, a subtask, a comment, a column or one of its
+ * options, the board's title, and which views exist (the tab strip's create, rename, duplicate, delete
+ * and move — the delete toast's undo is built on the delete being a step at all).
+ *
+ * The halves split by *who is changing*, not by which field is under the cursor, so a field added to a
+ * view later needs no decision made about it: dropping its write through `useKanbanViewState` (or
+ * beside it, as the grouping picker does) is the whole answer.
+ *
+ * The price is stated rather than hidden: undo restores a whole document state, so a lookup made after
+ * the last edit does not survive the undo either. Keeping it would mean storing the view half of every
+ * snapshot apart from the rest and re-applying it on the way back — a second history model to keep in
+ * step with the first, for a case a reader can already redo by touching the chip again.
+ */
+export type KanbanCommitKind = 'edit' | 'view'
+
+export type CommitKanbanData = (
+  next: KanbanData | ((prev: KanbanData) => KanbanData),
+  kind?: KanbanCommitKind,
+) => void
 
 const MAX_HISTORY_STEPS = 30
 
@@ -12,13 +41,16 @@ interface HistoryState {
 }
 
 type HistoryAction =
-  | { type: 'commit'; next: KanbanData }
+  | { type: 'commit'; next: KanbanData; kind: KanbanCommitKind }
   | { type: 'undo' }
   | { type: 'redo' }
 
 function historyReducer(state: HistoryState, action: HistoryAction): HistoryState {
   if (action.type === 'commit') {
     if (action.next === state.data) return state
+    // A view commit replaces the newest state in place: the step lists are the record of what the board
+    // *holds*, and which tab was open when a card was edited is not part of that record.
+    if (action.kind === 'view') return { ...state, data: action.next }
     return {
       data: action.next,
       past: [...state.past.slice(-(MAX_HISTORY_STEPS - 1)), state.data],
@@ -101,9 +133,9 @@ export function useKanbanHistory(
   onUpdateRef.current = onUpdateData
 
   const commitData = useCallback<CommitKanbanData>(
-    (nextOrUpdater) => {
+    (nextOrUpdater, kind = 'edit') => {
       const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(dataRef.current) : nextOrUpdater
-      dispatch({ type: 'commit', next })
+      dispatch({ type: 'commit', next, kind })
       onUpdateRef.current(next)
     },
     [],

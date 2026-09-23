@@ -25,13 +25,19 @@ const EMPTY_TAGS: string[] = []
 
 // Both toggles read the committed view rather than the render-time one, so two
 // clicks in one batch still cycle instead of both writing the same result.
+//
+// Every write in this file is a lookup — how an existing view shows the board — so every one of them
+// commits as `view`, and none of them takes a step of the reader's way back. The rule, and what it
+// costs, is stated in full at `KanbanCommitKind` in `kanban-history.ts`; `useKanbanViewOperations`
+// below is the other half of it (which views exist is an edit, and the delete toast's undo depends on
+// the delete being a step).
 function useKanbanViewToggles(activeViewId: string, commitData: CommitKanbanData) {
   const toggleByCommittedView = useCallback(
     (toggle: (view: KanbanView) => Partial<KanbanView>) => {
       commitData((prev) => ({
         ...prev,
         views: prev.views.map((view) => (view.id === activeViewId ? { ...view, ...toggle(view) } : view)),
-      }))
+      }), 'view')
     },
     [activeViewId, commitData],
   )
@@ -70,7 +76,7 @@ export function useKanbanViewState(
     commitData((prev) => ({
       ...prev,
       views: prev.views.map((v) => (v.id === activeViewId ? { ...v, ...patch } : v)),
-    }))
+    }), 'view')
   }, [activeViewId, commitData])
 
   const setSearchQuery = useCallback((q: string) => updateActiveView({ searchQuery: q }), [updateActiveView])

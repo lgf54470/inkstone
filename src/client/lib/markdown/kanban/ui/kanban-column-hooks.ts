@@ -135,11 +135,14 @@ export function useKanbanColumnOperations({ data, commitData, activeView, undo }
 
   const handleDeleteColumn = useKanbanGroupDeletion(groupByPropertyId, dataRef, commitData, undo)
 
+  // A lookup like the swimlane picker beside it, not an edit: what the board groups by is how the
+  // reader is looking at it, and it lives on the view. The two are the same choice made twice, so they
+  // are the same kind of commit — see the rule at the top of `kanban-view-state.ts`.
   const handleChangeGroupBy = useCallback(
     (newGroupBy: string) => commitData((prev) => ({
       ...prev,
       views: prev.views.map((v) => (v.id === activeView.id ? { ...v, groupBy: newGroupBy } : v)),
-    })),
+    }), 'view'),
     [activeView.id, commitData],
   )
 

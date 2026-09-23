@@ -3611,6 +3611,59 @@ async function pressKanbanChip(page, scope, id) {
   return target
 }
 
+/**
+ * The board's undo reaches the last *edit*, not the last lookup (KU-16), run with the real controls.
+ *
+ * The discriminating read is what is on the board once the undo has landed, and it is only readable
+ * because the chip is released first: file a card (an edit), narrow the board with a chip so the card is
+ * filtered out (a lookup), then press the board's own undo control. Undo restores a whole document, so it
+ * releases the chip either way — the question is whether the card comes back with it. Before KU-16 the
+ * chip press was a step of its own, so the undo landed on the chip and the card was still on the board;
+ * now the undo lands on the card and the board is back to what it held before the write.
+ *
+ * This runs in the board view where the undo control is on the bar. In the note the same control lives
+ * inside the overflow menu (KU-05 folded it there), which is a different opening path and is already
+ * exercised by the reference-card scenario.
+ */
+async function assertKanbanLookupUndo(page, scope, where) {
+  const before = await readKanbanQuickState(page, scope)
+  const filed = await fileCardInColumn(page, scope, 0, 'Gate undo lookup')
+  check(`kanban ${where}: the undo scenario can file a card to take back (${filed.reason ?? filed.key})`, filed.filed === true, JSON.stringify(filed))
+  if (filed.filed !== true) return
+  const written = await readKanbanQuickState(page, scope)
+  check(
+    `kanban ${where}: the card is on the board before anything narrows it`,
+    written.titles.includes('Gate undo lookup') && written.cards === before.cards + 1,
+    JSON.stringify({ cards: written.cards, titles: written.titles }),
+  )
+
+  // `overdue` keeps only open cards with a date already past: the card just filed has neither, so the
+  // chip takes it off the board — the lookup is in force and the reader can see it.
+  await pressKanbanChip(page, scope, 'overdue')
+  const narrowed = await readKanbanQuickState(page, scope)
+  check(
+    `kanban ${where}: a chip narrows the board, and the card it filed is one of the ones it hides`,
+    narrowed.pressed === 1 && narrowed.cards < written.cards && !narrowed.titles.includes('Gate undo lookup'),
+    JSON.stringify({ written: written.cards, narrowed: narrowed.cards, titles: narrowed.titles }),
+  )
+
+  const undone = await pressUndo(page, scope)
+  await sleep(400)
+  const after = await readKanbanQuickState(page, scope)
+  check(
+    `kanban ${where}: the undo did not walk the lookup back (${undone.reason ?? 'pressed'})`,
+    undone.pressed === true && after.pressed === 0,
+    JSON.stringify({ pressed: undone.pressed, lit: after.pressed }),
+  )
+  // The chip is released either way (undo restores a whole document), so the reading below is of the
+  // board itself: the write is gone, and the card the reader filed is not among the ones left.
+  check(
+    `kanban ${where}: it took back the card the reader filed, not the chip they pressed`,
+    !after.titles.includes('Gate undo lookup') && after.cards === before.cards,
+    JSON.stringify({ before: before.cards, after: after.cards, titles: after.titles }),
+  )
+}
+
 /** What the board holds while the chips are pressed: which cards, which chip is lit, and how many. */
 async function readKanbanQuickState(page, scope) {
   return page.evaluate((scope) => {
@@ -3620,6 +3673,9 @@ async function readKanbanQuickState(page, scope) {
     return {
       cards: cards.length,
       keys: cards.join(','),
+      // The titles as well as the ids: a scenario that files a card of its own knows its title, not the
+      // id the board minted for it.
+      titles: [...document.querySelectorAll(`${scope} [data-item-id] h3`)].map((heading) => (heading.textContent ?? '').trim()),
       active: lit.map((chip) => chip.getAttribute('data-kanban-quick-filter') ?? '').join(','),
       pressed: lit.length,
     }
@@ -3942,6 +3998,8 @@ async function assertKanbanBoard(page) {
   // reads below count the cards this gate's fixture brought with it. (The keyboard scenario above writes
   // one too, and takes it back the same way.)
   await assertKanbanQuickAdd(page, '.kanban-fullscreen', 'in the board view')
+  // Also last of the board's own writes, and for the same reason: it files a card and takes it back.
+  await assertKanbanLookupUndo(page, '.kanban-fullscreen', 'in the board view')
 
   const hosting = await page.evaluate((selector) => {
     const overlay = document.querySelector('.kanban-fullscreen')

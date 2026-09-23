@@ -324,10 +324,14 @@ export function useKanbanSelection(
   }
 }
 
-/** The two writers of the document itself rather than of a view: which view is open, and the board's title. */
+/** The two writers of the document itself rather than of a view's own fields: which view is open, and
+ * the board's title. */
 function useKanbanDocumentWriters(commitData: CommitKanbanData) {
+  // Opening a different view is a lookup, not an edit: it is written into the document (so the board
+  // comes back to it) but does not take a step of the reader's way back — Ctrl+Z after switching tabs
+  // means "take back what I just did", not "put the tab back".
   const setActiveViewId = useCallback((viewId: string) => {
-    commitData((prev) => ({ ...prev, activeViewId: viewId }))
+    commitData((prev) => ({ ...prev, activeViewId: viewId }), 'view')
   }, [commitData])
 
   const handleUpdateBoardTitle = useCallback(
