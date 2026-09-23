@@ -187,6 +187,7 @@ function ColumnQuickAdd({ onAddItem }: { onAddItem: (finish?: KanbanAddFinish) =
           type='text'
           value={field.title}
           data-owns-escape='true'
+          data-kanban-new-item=''
           aria-label={t('preview.kanban_new_item')}
           title={t('preview.kanban_quick_add_hint')}
           onChange={(e) => field.handleChange(e.target.value)}
@@ -198,6 +199,7 @@ function ColumnQuickAdd({ onAddItem }: { onAddItem: (finish?: KanbanAddFinish) =
         <button
           ref={field.buttonRef}
           type='button'
+          data-kanban-new-item=''
           onClick={field.open}
           className='flex items-center gap-1.5 self-start rounded-[var(--r-md)] px-2 py-1.5 text-[length:var(--text-12)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         >

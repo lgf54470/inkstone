@@ -50,6 +50,7 @@ function ActiveSearchChip({ query, onOpen, onClear }: { query: string; onOpen: (
       <Search size={12} aria-hidden className='shrink-0 text-[var(--text-tertiary)]' />
       <button
         type='button'
+        data-kanban-search
         onClick={onOpen}
         className='h-full max-w-24 truncate px-0.5 text-left text-[length:var(--text-11)] text-[var(--text-primary)] hover:underline'
         title={t('preview.kanban_search_placeholder')}
@@ -88,6 +89,7 @@ export function KanbanSearchBox({
     return (
       <button
         type='button'
+        data-kanban-search
         onClick={() => setIsOpen(true)}
         className='inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] md:size-7'
         aria-label={t('preview.kanban_search')}
@@ -103,6 +105,7 @@ export function KanbanSearchBox({
       <input
         type='text'
         autoFocus
+        data-kanban-search-input
         value={draft}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={t('preview.kanban_search_placeholder')}

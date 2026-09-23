@@ -136,6 +136,7 @@ const LABELS = {
   kanbanMoreActions: ['更多看板操作', 'More board actions'],
   kanbanFilterRow: ['筛选', 'Filter'],
   kanbanSortRow: ['排序', 'Sort'],
+  kanbanShortcuts: ['键盘快捷键', 'Keyboard shortcuts'],
 }
 
 /**
@@ -3046,7 +3047,11 @@ async function assertKanbanTitleGestures(page, scope, where) {
       hit: Boolean(under && title.contains(under)),
       text: title.textContent?.trim() ?? '',
       itemId: card?.getAttribute('data-item-id') ?? '',
-      dialogs: root?.querySelectorAll('[role="dialog"]').length ?? -1,
+      // Read the way `readCardTitleState` reads it, document-wide, because the two numbers are compared:
+      // the card window is portalled to the body, and the board's own overlay is a dialog too. A count
+      // scoped to the surface is a count of a *different set* — it saw 0 with the overlay open (the
+      // element carrying `role=dialog` is the surface root, which `querySelectorAll` does not return).
+      dialogs: document.querySelectorAll('[role="dialog"]').length,
     }
   }, scope)
   // The pointer has to land on the title itself: the note's board sits in a pane whose scrollport
@@ -3159,6 +3164,352 @@ async function assertKanbanQuickAdd(page, scope, where) {
   )
 }
 
+/**
+ * The board's own keyboard (KU-14), run with real key events.
+ *
+ * Two halves, because the board grew two things: chords it answers to itself (the arrows walk the focus,
+ * `N` files a card, `/` opens the search) and a reference card that says so. The chords used to exist
+ * only as scattered `onKeyDown` handlers on cards, which nothing could enumerate — the arrow keys are
+ * now one table in `kanban-board-keys.tsx`, and the card the reader opens is drawn from that same table,
+ * so this asserts the table's behaviour and the card's existence rather than a hand-written list.
+ *
+ * The focus is primed on a card's own title button — the control whose Enter opens the detail — and
+ * every press after that goes through the browser's key pipeline: a handler that listens for the wrong
+ * phase, swallows the press, or reads the wrong element is caught here and not by a synthetic
+ * `dispatchEvent` in a jsdom test.
+ *
+ * The card `N` files is taken back off the board with the board's own undo control before returning,
+ * since the scenarios after this one count the cards the fixture brought with it.
+ */
+async function assertKanbanKeyboard(page, scope, where, { viaMenu }) {
+  const primed = await page.evaluate((scope) => {
+    const root = document.querySelector(scope)
+    const title = root?.querySelector('[data-item-id] h3 button')
+    if (!title) return { reason: 'this surface draws no card title to stand on' }
+    title.scrollIntoView({ block: 'center' })
+    const box = title.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return { reason: 'the card title has no box' }
+    title.focus()
+    const card = title.closest('[data-item-id]')
+    return {
+      itemId: card?.getAttribute('data-item-id') ?? '',
+      group: card?.closest('[data-kanban-group]')?.getAttribute('data-kanban-group') ?? '',
+    }
+  }, scope)
+  check(`kanban ${where}: a card title takes the focus to walk from (${primed.reason ?? primed.itemId})`, primed.itemId !== '', JSON.stringify(primed))
+  if (primed.itemId === '') return
+
+  await page.keyboard.press('ArrowDown')
+  await sleep(160)
+  const down = await readKanbanFocus(page, scope)
+  check(
+    `kanban ${where}: the down arrow walks to the next card of that column`,
+    down.itemId !== '' && down.itemId !== primed.itemId && down.group === primed.group,
+    JSON.stringify({ from: primed.itemId, to: down.itemId, group: down.group }),
+  )
+  await page.keyboard.press('ArrowUp')
+  await sleep(160)
+  const up = await readKanbanFocus(page, scope)
+  check(`kanban ${where}: the up arrow walks back where it came from`, up.itemId === primed.itemId, JSON.stringify(up))
+
+  // Sideways: the column beside the first one is empty on this fixture, and an arrow that skips an
+  // empty column would move a reader somewhere they did not ask to be. So the card that makes the walk
+  // possible is filed here first, through the column's own footer — and taken back once the walk is
+  // read, because the scenarios after this one count the cards this board is holding.
+  const beside = await fileCardInColumn(page, scope, 1, 'Gate keyboard card')
+  check(`kanban ${where}: the column beside the first one takes a card (${beside.reason ?? beside.key})`, beside.filed === true, JSON.stringify(beside))
+  if (beside.filed === true) {
+    await page.keyboard.press('Escape')
+    await sleep(200)
+    await refocusCard(page, scope, primed.itemId)
+    await page.keyboard.press('ArrowRight')
+    await sleep(180)
+    const right = await readKanbanFocus(page, scope)
+    check(
+      `kanban ${where}: the right arrow crosses into the column beside it`,
+      right.text === 'Gate keyboard card' && right.group === beside.key,
+      JSON.stringify({ from: primed.group, to: right.group, text: right.text }),
+    )
+    await page.keyboard.press('ArrowLeft')
+    await sleep(180)
+    const left = await readKanbanFocus(page, scope)
+    check(`kanban ${where}: the left arrow walks back into the column it came from`, left.itemId === primed.itemId, JSON.stringify(left))
+    await pressUndo(page, scope)
+    await sleep(320)
+  }
+
+  await refocusCard(page, scope, primed.itemId)
+  await page.keyboard.press('ArrowRight')
+  await sleep(180)
+  const blocked = await readKanbanFocus(page, scope)
+  check(
+    `kanban ${where}: a column with no cards beside it is not skipped over`,
+    blocked.itemId === primed.itemId && blocked.group === primed.group,
+    JSON.stringify(blocked),
+  )
+
+  await page.keyboard.press('/')
+  await sleep(240)
+  const searched = await readKanbanKeyboardState(page, scope)
+  check(`kanban ${where}: slash opens the board's search field and puts the reader in it`, searched.searchFocused === true, JSON.stringify(searched))
+  // The field stays open by design (a query that is filtered by has to stay visible), so the focus is
+  // put back on a card before the next chord: a key pressed inside a field belongs to that field.
+  await refocusCard(page, scope, primed.itemId)
+  await sleep(120)
+
+  const before = await readKanbanKeyboardState(page, scope)
+  await refocusCard(page, scope, primed.itemId)
+  await page.keyboard.press('n')
+  await sleep(320)
+  const after = await readKanbanKeyboardState(page, scope)
+  check(
+    `kanban ${where}: N opens a column's own title field and puts the reader in it`,
+    after.fields === before.fields + 1 && after.fieldFocused === true,
+    JSON.stringify({ before: before.fields, after: after.fields, focused: after.fieldFocused }),
+  )
+  check(
+    `kanban ${where}: N files no card behind a window over the board`,
+    after.cards === before.cards && after.dialogs === before.dialogs,
+    JSON.stringify({ cards: [before.cards, after.cards], dialogs: [before.dialogs, after.dialogs] }),
+  )
+  // The field the chord opened is put away the way a reader would: Escape, which hands the focus back
+  // to the control that stands there when the field is closed. Nothing is left open for the reference
+  // card that follows.
+  await page.keyboard.press('Escape')
+  await sleep(240)
+  const closed = await readKanbanKeyboardState(page, scope)
+  check(
+    `kanban ${where}: escape puts the field away and leaves the board as it was`,
+    closed.fields === before.fields && closed.doors === before.doors && closed.cards === before.cards,
+    JSON.stringify({ fields: closed.fields, doors: closed.doors, cards: closed.cards }),
+  )
+
+  // The reference dismisses itself and asserts that it did, so nothing is pressed here afterwards: an
+  // extra Escape would land on whatever the surface put back — in the board view that is the overlay
+  // itself, and the scenarios after this one were reading a closed overlay.
+  await assertKanbanShortcuts(page, scope, where, { viaMenu })
+}
+
+/** Presses the board's own undo control, the way the quick-add scenario above already takes a write back. */
+async function pressUndo(page, scope) {
+  return page.evaluate(({ scope, labels }) => {
+    const button = [...(document.querySelector(scope)?.querySelectorAll('button') ?? [])].find((element) =>
+      labels.includes(element.getAttribute('aria-label') ?? ''),
+    )
+    if (!button) return { reason: 'the board offers no undo control' }
+    button.click()
+    return { pressed: true }
+  }, { scope, labels: ['Undo', '撤销'] })
+}
+
+/** Puts the focus back on one card's title, so a chord lands on the board rather than on a field. */
+async function refocusCard(page, scope, itemId) {
+  await page.evaluate(({ scope, itemId }) => {
+    document.querySelector(`${scope} [data-item-id="${itemId}"] h3 button`)?.focus()
+  }, { scope, itemId })
+}
+
+/**
+ * Files one card into a named column through that column's footer, which is the door KU-13 turned from
+ * a button into a title field. What it exists for here is the sideways walk: the arrows cross into the
+ * column beside them, and a candidate has to be in it for that to be readable.
+ */
+async function fileCardInColumn(page, scope, columnIndex, title) {
+  const target = await page.evaluate(({ scope, columnIndex, labels }) => {
+    const groups = [...(document.querySelector(scope)?.querySelectorAll('[data-kanban-group]') ?? [])]
+    const group = groups[columnIndex]
+    if (!group) return { reason: 'the board draws no column at that index' }
+    const button = [...group.querySelectorAll('button')].find((element) => labels.includes(element.textContent.trim()))
+    if (!button) return { reason: 'that column offers no new-card control' }
+    button.scrollIntoView({ block: 'center' })
+    const box = button.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return { reason: 'the column footer has no box' }
+    const x = Math.round(box.left + box.width / 2)
+    const y = Math.round(box.top + box.height / 2)
+    const under = document.elementFromPoint(x, y)
+    return { x, y, hit: Boolean(under && button.contains(under)), key: group.getAttribute('data-kanban-group') ?? '' }
+  }, { scope, columnIndex, labels: KANBAN_NEW_ITEM_LABELS })
+  if (target.hit !== true) return { ...target, filed: false }
+  await page.mouse.click(target.x, target.y)
+  await sleep(220)
+  await page.keyboard.type(title)
+  await page.keyboard.press('Enter')
+  await sleep(300)
+  return { ...target, filed: true }
+}
+
+/**
+ * The reference card itself, opened the way a reader in this layout would open it: from the toolbar
+ * control where the bar has room for one, and from the overflow menu's row where it does not.
+ */
+async function assertKanbanShortcuts(page, scope, where, { viaMenu }) {
+  const opened = await pressBoardTrigger(page, scope, viaMenu)
+  check(
+    `kanban ${where}: the board offers a keyboard reference (${opened.reason ?? opened.blocker ?? 'control'})`,
+    opened.hit === true,
+    JSON.stringify(opened),
+  )
+  if (opened.hit !== true) return
+
+  await page.mouse.click(opened.x, opened.y)
+  await sleep(320)
+  if (viaMenu) {
+    const row = await page.evaluate((labels) => {
+      const items = [...document.querySelectorAll('[role="menuitem"], [role="menuitemcheckbox"]')]
+      const found = items.find((item) => labels.some((label) => (item.textContent ?? '').includes(label)))
+      if (!found) return { found: false, offered: items.map((item) => (item.textContent ?? '').trim().slice(0, 16)) }
+      const box = found.getBoundingClientRect()
+      return { found: true, x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+    }, KANBAN_SHORTCUT_LABELS)
+    check(`kanban ${where}: the menu offers the keyboard reference the wide bar draws as a control`, row.found, JSON.stringify(row))
+    if (!row.found) return
+    await page.mouse.click(row.x, row.y)
+    await sleep(340)
+  }
+
+  const drawn = await page.evaluate(({ scope, labels }) => {
+    const root = document.querySelector(scope)
+    const bar = root?.querySelector('[data-kanban-actions]')
+    const panel = [...(root?.querySelectorAll('[data-kanban-panel]') ?? [])].find((node) =>
+      labels.includes(node.getAttribute('aria-label') ?? ''),
+    )
+    return {
+      opened: Boolean(panel),
+      rows: panel?.querySelectorAll('li').length ?? -1,
+      keys: [...(panel?.querySelectorAll('kbd') ?? [])].map((key) => key.textContent ?? ''),
+      text: panel?.textContent ?? '',
+      barHeight: Math.round(bar?.getBoundingClientRect().height ?? -1),
+      inTree: Boolean(panel?.closest(scope)),
+      focusText: document.activeElement?.textContent?.trim() ?? '',
+    }
+  }, { scope, labels: KANBAN_SHORTCUT_LABELS })
+  check(`kanban ${where}: the reference opens as the board's own panel (${drawn.rows} rows)`, drawn.opened && drawn.rows > 0, JSON.stringify({ opened: drawn.opened, rows: drawn.rows }))
+  check(
+    `kanban ${where}: it lists the keys the board answers to, arrows and doors spelled as keys`,
+    drawn.keys.includes('↑') && drawn.keys.includes('↓') && drawn.keys.includes('←') && drawn.keys.includes('→') && drawn.keys.includes('N') && drawn.keys.includes('/'),
+    JSON.stringify(drawn.keys),
+  )
+  check(`kanban ${where}: the reference draws inside the surface it belongs to`, drawn.inTree === true, JSON.stringify(drawn))
+  check(
+    `kanban ${where}: the reference does not push the top bar open`,
+    drawn.barHeight === opened.barHeight,
+    JSON.stringify({ before: opened.barHeight, after: drawn.barHeight }),
+  )
+  await page.keyboard.press('Escape')
+  await sleep(240)
+  const closed = await page.evaluate(({ scope, labels }) => {
+    const root = document.querySelector(scope)
+    return {
+      panel: [...(root?.querySelectorAll('[data-kanban-panel]') ?? [])].some((node) =>
+        labels.includes(node.getAttribute('aria-label') ?? ''),
+      ),
+      focusText: document.activeElement?.textContent?.trim() ?? '',
+      focusLabel: document.activeElement?.getAttribute('aria-label') ?? '',
+    }
+  }, { scope, labels: KANBAN_SHORTCUT_LABELS })
+  // The control it goes back to is the one the reader reached it from, and that is not the same control
+  // in the two layouts: the wide bar draws one of its own, while the note's bar has no room for it and
+  // the reference is a row of the overflow menu — whose trigger is what stands there when the reference
+  // is gone. Expecting the reference's own name in both would fail the note for being right.
+  const expected = viaMenu ? LABELS.kanbanMoreActions : KANBAN_SHORTCUT_LABELS
+  check(
+    `kanban ${where}: Escape puts the reference away and hands the focus back to the control it came from`,
+    closed.panel === false && expected.includes(closed.focusLabel),
+    JSON.stringify({ ...closed, expected: expected.join('/') }),
+  )
+}
+
+/** The names the board's keyboard reference answers to, in both languages the gate runs in. */
+const KANBAN_SHORTCUT_LABELS = ['键盘快捷键', 'Keyboard shortcuts']
+
+/**
+ * The control that opens the keyboard reference in this layout, waited for until a pointer can actually
+ * reach it.
+ *
+ * The wait is the point, and the failure it exists for is a real one rather than a flake: this board
+ * writes to the note it lives in, the header carries a write-status chip while a write is in flight, and
+ * a chip that pops over a control's centre turns a press into a press on the chip. Re-measuring until the
+ * control is what a pointer would hit is also what every other press in this gate does (the harness's
+ * `waitForHittable` waits the same way); what is added here is the chain of elements that was in the way
+ * when it never became reachable, so the failure names the blocker instead of the symptom.
+ */
+async function pressBoardTrigger(page, scope, viaMenu) {
+  const deadline = Date.now() + 5000
+  let last = { reason: 'the trigger was never measured' }
+  while (Date.now() < deadline) {
+    last = await page.evaluate(({ scope, viaMenu, labels }) => {
+      const root = document.querySelector(scope)
+      const bar = root?.querySelector('[data-kanban-actions]')
+      if (!bar) return { reason: 'this surface draws no action bar' }
+      const trigger = viaMenu
+        ? bar.querySelector('[data-kanban-overflow]')
+        : [...bar.querySelectorAll('button')].find(
+            (button) => labels.includes(button.getAttribute('aria-label') ?? '') && button.getBoundingClientRect().width > 0,
+          )
+      if (!trigger) return { reason: viaMenu ? 'no overflow trigger on screen' : 'the wide bar draws no keyboard reference' }
+      trigger.scrollIntoView({ block: 'center' })
+      const box = trigger.getBoundingClientRect()
+      if (box.width < 1 || box.height < 1) return { reason: 'the trigger has no box' }
+      const x = Math.round(box.left + box.width / 2)
+      const y = Math.round(box.top + box.height / 2)
+      const under = document.elementFromPoint(x, y)
+      const reached = Boolean(under) && (under === trigger || trigger.contains(under))
+      const describe = (node) => {
+        if (!node) return 'nothing'
+        const box = node.getBoundingClientRect()
+        const style = getComputedStyle(node)
+        return `${node.tagName.toLowerCase()}${node.getAttribute('aria-label') ? `[${node.getAttribute('aria-label')}]` : ''} .${String(node.className).split(' ').slice(0, 4).join('.')} ${Math.round(box.left)},${Math.round(box.top)} ${Math.round(box.width)}x${Math.round(box.height)} <${style.position}|${style.zIndex}|${style.pointerEvents}>`
+      }
+      return {
+        x,
+        y,
+        hit: reached,
+        blocker: reached ? '' : describe(under),
+        barHeight: Math.round(bar.getBoundingClientRect().height ?? -1),
+        dialogs: root.querySelectorAll('[role="dialog"]').length,
+      }
+    }, { scope, viaMenu, labels: KANBAN_SHORTCUT_LABELS })
+    if (last.hit === true) return last
+    await sleep(200)
+  }
+  return last
+}
+
+/** Which card holds the focus, what it says, and which column it is drawn in. */
+async function readKanbanFocus(page, scope) {
+  return page.evaluate((scope) => {
+    const card = document.activeElement?.closest('[data-item-id]')
+    return {
+      itemId: card?.getAttribute('data-item-id') ?? '',
+      text: card?.querySelector('h3')?.textContent?.trim() ?? '',
+      group: card?.closest('[data-kanban-group]')?.getAttribute('data-kanban-group') ?? '',
+      inSurface: Boolean(document.activeElement?.closest(scope)),
+    }
+  }, scope)
+}
+
+/**
+ * What the board's own chords leave on screen: its cards, the fields it can open, and any panel over it.
+ * `dialogs` and `searchFocused` read the document, for the same reason `readCardTitleState` does — a card
+ * window is portalled to the body, and a count taken inside the block cannot see one.
+ */
+async function readKanbanKeyboardState(page, scope) {
+  return page.evaluate((scope) => {
+    const root = document.querySelector(scope)
+    return {
+      cards: root?.querySelectorAll('[data-item-id]').length ?? -1,
+      // The door and the field it becomes are two elements with one marker between them, so a column
+      // counts once either way — which is what makes these two numbers readable on their own.
+      fields: root?.querySelectorAll('input[data-kanban-new-item]').length ?? -1,
+      doors: root?.querySelectorAll('button[data-kanban-new-item]').length ?? -1,
+      fieldFocused: Boolean(document.activeElement?.matches('[data-kanban-new-item]')),
+      searchOpen: Boolean(root?.querySelector('[data-kanban-search-input]')),
+      searchFocused: Boolean(document.activeElement?.matches('[data-kanban-search-input]')),
+      dialogs: document.querySelectorAll('[role="dialog"]').length,
+    }
+  }, scope)
+}
+
 /** The names a column's new-card control answers to, in both languages the gate runs in. */
 const KANBAN_NEW_ITEM_LABELS = ['New item', '新建项目']
 
@@ -3183,14 +3534,23 @@ async function readQuickAddState(page, scope) {
   }, { scope, labels: KANBAN_NEW_ITEM_LABELS })
 }
 
-/** Whether one card's title is a field right now, and how many dialogs its surface is showing. */
+/**
+ * Whether one card's title is a field right now, and how many dialogs the *document* is showing.
+ *
+ * The count is document-wide rather than scoped to the surface, and that is not a detail: the card
+ * window is a `Modal` (a right-hand `Drawer` in the overlay), both of which are portalled to the body,
+ * so a count taken inside the board's own block reads zero while a card window is open over it. That is
+ * exactly how a keyboard chord that filed a card through the header's door slipped past the double-click
+ * assertion that was supposed to prove the rename gesture does not open it (found while adding KU-14).
+ * The board's own overlay is a dialog too, so it is in the count on both sides of every comparison.
+ */
 async function readCardTitleState(page, scope, itemId) {
   return page.evaluate(({ scope, itemId }) => {
     const root = document.querySelector(scope)
     const card = root?.querySelector(`[data-item-id="${itemId}"]`)
     return {
       editing: Boolean(card?.querySelector('input[data-owns-escape]')),
-      dialogs: root?.querySelectorAll('[role="dialog"]').length ?? -1,
+      dialogs: document.querySelectorAll('[role="dialog"]').length,
     }
   }, { scope, itemId })
 }
@@ -3437,6 +3797,9 @@ async function assertKanbanBoard(page) {
   await assertKanbanColumnHeights(page, blockSelector, 'in the note')
   await assertKanbanBoardName(page, blockSelector, 'in the note', 'Gate Board')
   await assertKanbanTitleGestures(page, blockSelector, 'in the note')
+  // The block's own bar has no room for the reference's control, so this is the menu's row — which is
+  // the path a reader in the note takes, and the reason the row exists at all.
+  await assertKanbanKeyboard(page, blockSelector, 'in the note', { viaMenu: true })
   const inlineViews = await readKanbanViewsInline(page, blockSelector)
   await openKanbanBoard(page)
   const surfaced = await page
@@ -3454,8 +3817,10 @@ async function assertKanbanBoard(page) {
   await assertKanbanBoardName(page, '.kanban-fullscreen', 'in the board view', 'Gate Board')
   await assertKanbanCardPeek(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanTitleGestures(page, '.kanban-fullscreen', 'in the board view')
-  // Last of the board's own scenarios, and the one that writes: the column's quick-add door is run and
-  // taken back here, before the reads below count the cards this gate's fixture brought with it.
+  await assertKanbanKeyboard(page, '.kanban-fullscreen', 'in the board view', { viaMenu: false })
+  // Last of the board's own writes: the column's quick-add door is run and taken back here, before the
+  // reads below count the cards this gate's fixture brought with it. (The keyboard scenario above writes
+  // one too, and takes it back the same way.)
   await assertKanbanQuickAdd(page, '.kanban-fullscreen', 'in the board view')
 
   const hosting = await page.evaluate((selector) => {

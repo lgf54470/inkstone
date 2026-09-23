@@ -239,12 +239,15 @@ describe('the compact menu reaches what the bar cannot draw', () => {
     ])).toEqual([])
   })
 
-  it('offers the four controls the narrow bar drops, so nothing becomes unreachable', () => {
+  it('offers the controls the narrow bar drops, so nothing becomes unreachable', () => {
     expect(missingRows([
       t('preview.kanban_new_item'),
       t('common.undo'),
       t('command.redo'),
       t('preview.kanban_fullscreen'),
+      // The keyboard reference is wide-bar furniture too, and a reader on a narrow bar is exactly the
+      // reader who cannot afford to guess at the keys.
+      t('preview.kanban_shortcuts'),
     ])).toEqual([])
   })
 
@@ -276,6 +279,12 @@ describe('a row of the compact menu opens the board’s own panel', () => {
     expect(add, 'the panel a menu row opened cannot be used').not.toBeNull()
     act(() => { add!.click() })
     expect(onChangeFilters, 'the panel a menu row opened writes nothing').toHaveBeenCalled()
+  })
+
+  it('opens the keyboard reference the wide bar keeps beside the toolbar', () => {
+    const { panel } = panelFromRow(t('preview.kanban_shortcuts'), t('preview.kanban_shortcuts'))
+    expect(panel, 'the row opened no keyboard reference').not.toBeNull()
+    expect(panel!.textContent).toContain(t('preview.kanban_key_next_card'))
   })
 
   it('opens the view options panel the wide bar labels the same way', () => {

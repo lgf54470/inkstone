@@ -29,6 +29,7 @@ import { KanbanBoardTitle } from './kanban-title'
 import { KanbanOverflowMenu } from './kanban-overflow-menu'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSearchBox } from './kanban-search-box'
+import { KanbanShortcutsAction } from './kanban-shortcuts'
 import { KanbanSortPopover } from './kanban-sort-popover'
 import { KanbanTagFilterBar } from './kanban-tag-filter-bar'
 import { KanbanViewOptions, type CardSize } from './kanban-view-options'
@@ -285,6 +286,7 @@ function KanbanHeaderToolbar({
       <Button variant='primary' size='sm' icon={<Plus size={14} aria-hidden />} onClick={onAddItem} aria-label={t('preview.kanban_new_item')}>
         {narrowLabel(t('preview.kanban_new_item'))}
       </Button>
+      <KanbanShortcutsAction />
       {onToggleFullscreen && (
         <IconButton
           label={isFullscreen ? t('preview.kanban_exit_fullscreen') : t('preview.kanban_fullscreen')}

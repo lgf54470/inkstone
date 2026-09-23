@@ -1,4 +1,4 @@
-import { memo, useId, useMemo, useRef } from 'react'
+import { memo, useId, useMemo, useRef, type RefObject } from 'react'
 import { useLocaleRepaint } from '../../../i18n'
 import type {
   KanbanColumnPatch,
@@ -29,6 +29,7 @@ import { KanbanTimelineView } from './kanban-timeline-view'
 import { kanbanViewTabId } from './kanban-view-tabs'
 import { useKanbanRegionLabel } from './kanban-region'
 import { useKanbanContextMenuState, useKanbanRootState } from './kanban-root-hooks'
+import { useKanbanBoardKeys } from './kanban-board-keys'
 import { useKanbanSurface } from './kanban-surface'
 import type { CardSize } from './kanban-view-options'
 
@@ -363,6 +364,20 @@ function KanbanMain({
   )
 }
 
+/**
+ * What this board owes the DOM node it was mounted into: the palette's handle on it, the landmark name the
+ * host's canvas carries, and the keyboard the reader drives the board with. One call rather than three
+ * because they are one concern — and the root's own body is at its line budget (`size:check`).
+ */
+function useKanbanContainerWiring(
+  containerRef: RefObject<HTMLDivElement | null>,
+  state: ReturnType<typeof useKanbanRootState>,
+): void {
+  useKanbanSurface(containerRef, state)
+  useKanbanRegionLabel(containerRef)
+  useKanbanBoardKeys(containerRef)
+}
+
 export const KanbanRoot = memo(function KanbanRoot({
   initialData,
   isFullscreen,
@@ -384,10 +399,7 @@ export const KanbanRoot = memo(function KanbanRoot({
   useLocaleRepaint()
   const state = useKanbanRootState(initialData, onUpdateData, containerRef)
   const menu = useKanbanContextMenuState(state.data, state.commitData)
-  // The board's own actions are offered to the command palette while it is on screen (K-16).
-  useKanbanSurface(containerRef, state)
-  // The canvas the host made carries the board's name, so keeping it current is this tree's job.
-  useKanbanRegionLabel(containerRef)
+  useKanbanContainerWiring(containerRef, state)
 
   return (
     <div

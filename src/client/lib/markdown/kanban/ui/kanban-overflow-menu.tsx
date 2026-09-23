@@ -21,6 +21,7 @@ import {
   Filter,
   Maximize2,
   Minimize2,
+  Keyboard,
   MoreHorizontal,
   Plus,
   Redo2,
@@ -36,12 +37,13 @@ import { KanbanArchivePanel, type KanbanArchiveEntry } from './kanban-archive'
 import { KanbanCsvDoor, type KanbanCsvEntry } from './kanban-csv'
 import type { KanbanSchemaOperations } from './kanban-column-hooks'
 import { KanbanFilterPopover } from './kanban-filter-popover'
+import { KanbanShortcutsPanel } from './kanban-shortcuts'
 import { KanbanSortPopover } from './kanban-sort-popover'
 import { KanbanViewOptions, type CardSize } from './kanban-view-options'
 import { kanbanNewViewItems, kanbanViewActionItems, type KanbanViewOperations } from './kanban-view-tabs'
 
 /** Which of the menu's rows has a panel open under the trigger. One at a time, by construction. */
-type OverflowPanel = 'filter' | 'sort' | 'options' | 'csv' | 'archive'
+type OverflowPanel = 'filter' | 'sort' | 'options' | 'csv' | 'archive' | 'shortcuts'
 
 export interface KanbanOverflowMenuProps {
   columns: KanbanData['columns']
@@ -104,6 +106,9 @@ function panelRows(props: KanbanOverflowMenuProps, open: (panel: OverflowPanel) 
   const optionsLabel = t(isColumnPanel ? 'preview.kanban_columns' : 'preview.kanban_group_by')
   return [
     { id: 'filter', label: t('preview.kanban_filter'), icon: <Filter size={13} />, checked: filters.length > 0, separatorBefore: true, onSelect: () => open('filter') },
+    // The keyboard reference is a row here because the wide bar keeps its control beside the toolbar's
+    // own: a reader on a narrow bar must not be the one reader who cannot find out what the keys do.
+    { id: 'shortcuts', label: t('preview.kanban_shortcuts'), icon: <Keyboard size={13} />, onSelect: () => open('shortcuts') },
     { id: 'sort', label: t('preview.kanban_sort'), icon: <SlidersHorizontal size={13} />, checked: sorts.length > 0, onSelect: () => open('sort') },
     ...(props.onChangeGroupBy || isColumnPanel
       ? [{ id: 'options', label: optionsLabel, icon: <Columns3 size={13} />, onSelect: () => open('options') }]
@@ -203,6 +208,7 @@ function OverflowPanels({ props, panel, panelId, anchorRef, onClose }: {
       {props.archive && (
         <KanbanArchivePanel {...props.archive} open={panel === 'archive'} {...shared} />
       )}
+      <KanbanShortcutsPanel open={panel === 'shortcuts'} {...shared} />
     </>
   )
 }
