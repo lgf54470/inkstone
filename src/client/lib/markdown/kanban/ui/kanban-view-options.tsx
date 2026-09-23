@@ -8,7 +8,8 @@ import {
   KANBAN_EDITABLE_TYPES,
   type KanbanSchemaOperations,
 } from './kanban-column-hooks'
-import { KanbanPanel } from './kanban-panel'
+import { Segmented, Select } from '../../../../components/form'
+import { KanbanPanel, PANEL_FIELD } from './kanban-panel'
 import { kanbanPropertyColumns } from './kanban-property-cell'
 
 export type CardSize = 'small' | 'medium' | 'large'
@@ -52,17 +53,18 @@ function GroupBySection({
         <Sliders size={13} />
         <span>{t('preview.kanban_group_by')}</span>
       </div>
-      <select
+      <Select
         value={groupBy}
         onChange={(e) => onChangeGroupBy(e.target.value)}
-        className='h-8 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
+        aria-label={t('preview.kanban_group_by')}
+        className={`${PANEL_FIELD} h-8 md:h-8 bg-[var(--bg-raised)] text-[length:var(--text-12)]`}
       >
         {eligibleColumns.map((col) => (
           <option key={col.id} value={col.id}>
             {formatKanbanPropertyName(col)}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   )
 }
@@ -101,11 +103,11 @@ function SwimlaneBySection({
         <Rows3 size={13} aria-hidden />
         <label htmlFor={fieldId}>{t('preview.kanban_swimlane_by')}</label>
       </div>
-      <select
+      <Select
         id={fieldId}
         value={swimlaneBy ?? ''}
         onChange={(e) => onChangeSwimlaneBy(e.target.value || undefined)}
-        className='h-8 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
+        className={`${PANEL_FIELD} h-8 md:h-8 bg-[var(--bg-raised)] text-[length:var(--text-12)]`}
       >
         <option value=''>{t('preview.kanban_swimlane_off')}</option>
         {candidates.map((col) => (
@@ -113,7 +115,7 @@ function SwimlaneBySection({
             {formatKanbanPropertyName(col)}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   )
 }
@@ -131,22 +133,15 @@ function CardSizeSection({
         <Settings2 size={13} />
         <span>{t('preview.kanban_card_size')}</span>
       </div>
-      <div className='flex items-center rounded-[var(--r-md)] border border-[var(--border-default)] p-0.5 bg-[var(--bg-raised)]'>
-        {CARD_SIZES.map(({ id, labelKey }) => (
-          <button
-            key={id}
-            type='button'
-            onClick={() => onChangeCardSize(id)}
-            className={`flex-1 rounded-[var(--r-sm)] py-1 text-center text-[length:var(--text-11)] font-medium transition-colors ${
-              cardSize === id
-                ? 'bg-[var(--bg-surface)] text-[var(--accent)] font-semibold shadow-[var(--shadow-xs)]'
-                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            {t(labelKey)}
-          </button>
-        ))}
-      </div>
+      {/* The project's own segmented control: one radio group, so the chosen size is a state the
+          browser reads out rather than a colour the reader has to notice. */}
+      <Segmented
+        value={cardSize}
+        onChange={onChangeCardSize}
+        size='sm'
+        label={t('preview.kanban_card_size')}
+        options={CARD_SIZES.map(({ id, labelKey }) => ({ value: id, label: t(labelKey) }))}
+      />
     </div>
   )
 }
@@ -157,7 +152,7 @@ function isSchemaColumn(columns: KanbanProperty[], column: KanbanProperty): bool
 }
 
 const EDITOR_ICON_BUTTON = 'inline-flex size-6 shrink-0 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-tertiary)] outline-none hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:pointer-events-none disabled:opacity-40'
-const EDITOR_FIELD = 'h-7 w-full min-w-0 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1.5 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
+const EDITOR_FIELD = `${PANEL_FIELD} w-full min-w-0 pr-1.5 bg-[var(--bg-raised)] text-[length:var(--text-12)]`
 
 function ColumnTypeSelect({
   label,
@@ -169,7 +164,7 @@ function ColumnTypeSelect({
   onChange: (type: KanbanPropertyType) => void
 }) {
   return (
-    <select
+    <Select
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value as KanbanPropertyType)}
@@ -180,7 +175,7 @@ function ColumnTypeSelect({
           {formatKanbanColumnTypeLabel(type)}
         </option>
       ))}
-    </select>
+    </Select>
   )
 }
 

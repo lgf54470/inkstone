@@ -135,12 +135,17 @@ function SelectValue({
   const options = column.options ?? []
   const current = options.find((opt) => opt.id === value || opt.label === value)
   return (
+    // The one select the panels do not own: this is a chip, painted in the option's own colour, and the
+    // project's `Select` would put a bordered field and a tertiary chevron on top of that colour. It is
+    // made non-native instead — no OS arrow — which is also how every other cell of this table already
+    // reads (the date, member, tag and attachment cells are colour or icon affordances, none of them an
+    // arrow). The chip still answers to the keyboard and still carries the column's name.
     <select
       value={current?.id ?? String(value ?? '')}
       onChange={(e) => onChange(e.target.value)}
       aria-label={formatKanbanPropertyName(column)}
       style={getKanbanTagStyle(current?.color)}
-      className='h-7 w-full cursor-pointer rounded-[var(--r-sm)] border-none px-2 text-[length:var(--text-11)] font-bold outline-none'
+      className='h-7 w-full cursor-pointer appearance-none rounded-[var(--r-sm)] border-none px-2 text-[length:var(--text-11)] font-bold outline-none'
     >
       {options.map((opt) => (
         <option key={opt.id} value={opt.id} className='bg-[var(--bg-surface)] text-[var(--text-primary)]'>

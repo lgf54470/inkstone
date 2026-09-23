@@ -1,10 +1,12 @@
 import { memo, useRef, useState } from 'react'
 import { Archive, CalendarDays, SlidersHorizontal, Tag, Trash2, UserRound, X } from 'lucide-react'
+import { Select } from '../../../../components/form'
 import { Menu, submenuFor, type MenuItem } from '../../../../components/overlay'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { addDaysKey, dateKey } from '../../../time'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanOption, KanbanProperty } from '../types'
+import { PANEL_FIELD } from './kanban-panel'
 
 /**
  * The fields a batch can be rewritten with, each optional: a board that has no member column offers
@@ -140,15 +142,16 @@ interface BatchGroupSelectProps {
 function BatchGroupSelect({ groupColumn, onBatchGroupChange }: BatchGroupSelectProps) {
   if (!groupColumn.options) return null
   return (
-    <select
+    <Select
       defaultValue=''
+      aria-label={t('preview.kanban_batch_change_group')}
       onChange={(e) => {
         if (e.target.value) {
           onBatchGroupChange(e.target.value)
           e.target.value = ''
         }
       }}
-      className='h-7 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
+      className={`${PANEL_FIELD} h-8 md:h-8 text-[length:var(--text-12)]`}
     >
       <option value='' disabled>
         {t('preview.kanban_batch_change_group')}
@@ -158,7 +161,7 @@ function BatchGroupSelect({ groupColumn, onBatchGroupChange }: BatchGroupSelectP
           {formatKanbanOptionLabel(opt, groupColumn.id)}
         </option>
       ))}
-    </select>
+    </Select>
   )
 }
 

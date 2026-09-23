@@ -9,7 +9,8 @@ import type {
   KanbanProperty,
   KanbanPropertyType,
 } from '../types'
-import { KanbanPanel } from './kanban-panel'
+import { Select } from '../../../../components/form'
+import { KanbanPanel, PANEL_FIELD } from './kanban-panel'
 
 interface KanbanFilterPopoverProps {
   open: boolean
@@ -69,18 +70,18 @@ function FilterOperatorSelect({
   onChange: (operator: KanbanFilterOperator) => void
 }) {
   return (
-    <select
+    <Select
       value={operator}
       onChange={(e) => onChange(e.target.value as KanbanFilterOperator)}
       aria-label={t('preview.kanban_filter_operator')}
-      className='h-7 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
+      className={`${PANEL_FIELD} bg-[var(--bg-raised)]`}
     >
       {operatorsForColumn(type, operator).map((op) => (
         <option key={op} value={op}>
           {operatorLabel(op)}
         </option>
       ))}
-    </select>
+    </Select>
   )
 }
 
@@ -92,8 +93,7 @@ function valueFieldKind(column: KanbanProperty | undefined): ValueFieldKind {
   return column?.options?.length ? 'choice' : 'text'
 }
 
-const VALUE_FIELD_CLASS =
-  'h-7 min-w-0 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-1.5 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
+const VALUE_FIELD_CLASS = `${PANEL_FIELD} min-w-0 flex-1 bg-[var(--bg-inset)]`
 
 /** The threshold is asked for in the kind the column holds, or the row compares types. */
 function FilterValueField({
@@ -114,15 +114,17 @@ function FilterValueField({
     // becoming the first choice.
     const stale = value && !column?.options?.some((opt) => opt.id === value)
     return (
-      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} className={VALUE_FIELD_CLASS}>
-        {!value && <option value=''>{t('preview.kanban_value_placeholder')}</option>}
-        {column?.options?.map((opt) => (
-          <option key={opt.id} value={opt.id}>
-            {opt.label}
-          </option>
-        ))}
-        {stale && <option value={value}>{value}</option>}
-      </select>
+      <div className='min-w-0 flex-1'>
+        <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} className={VALUE_FIELD_CLASS}>
+          {!value && <option value=''>{t('preview.kanban_value_placeholder')}</option>}
+          {column?.options?.map((opt) => (
+            <option key={opt.id} value={opt.id}>
+              {opt.label}
+            </option>
+          ))}
+          {stale && <option value={value}>{value}</option>}
+        </Select>
+      </div>
     )
   }
 
@@ -152,18 +154,20 @@ function FilterRow({ filter, index, columns, onUpdate, onRemove }: FilterRowProp
 
   return (
     <div className='flex items-center gap-1.5'>
-      <select
-        value={filter.propertyId}
-        onChange={(e) => onUpdate(index, { propertyId: e.target.value })}
-        aria-label={t('preview.kanban_filter_property')}
-        className='h-7 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
-      >
-        {columns.map((c) => (
-          <option key={c.id} value={c.id}>
-            {formatKanbanPropertyName(c)}
-          </option>
-        ))}
-      </select>
+      <div className='min-w-0 flex-1'>
+        <Select
+          value={filter.propertyId}
+          onChange={(e) => onUpdate(index, { propertyId: e.target.value })}
+          aria-label={t('preview.kanban_filter_property')}
+          className={`${PANEL_FIELD} bg-[var(--bg-raised)]`}
+        >
+          {columns.map((c) => (
+            <option key={c.id} value={c.id}>
+              {formatKanbanPropertyName(c)}
+            </option>
+          ))}
+        </Select>
+      </div>
 
       <FilterOperatorSelect
         type={column?.type}

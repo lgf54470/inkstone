@@ -29,6 +29,16 @@ import { cn } from '../../../../lib/cn'
  * to find its own origin — and clamp to everything that would clip it, see `clipPanelViewport`.)
  */
 
+/**
+ * How a form control looks inside a board panel.
+ *
+ * The panels are a quarter the width of a settings page, so they keep the project's `Select` (its own
+ * chevron, its focus ring, its base type) and only re-state its density: the height a settings row can
+ * afford is not the height a rule row can. Everything else — the border, the surface, the focus — comes
+ * from the shared component, so a panel control and a settings control cannot drift apart.
+ */
+export const PANEL_FIELD = 'h-7 md:h-7 pl-1.5 text-[length:var(--text-11)]'
+
 /** The gap a panel leaves between itself and its control, and the clearance it keeps from an edge. */
 const PANEL_GAP = 6
 const PANEL_MARGIN = 8

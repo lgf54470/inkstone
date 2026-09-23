@@ -3,7 +3,8 @@ import { Plus, Trash2, X } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanProperty, KanbanSort } from '../types'
-import { KanbanPanel } from './kanban-panel'
+import { Select } from '../../../../components/form'
+import { KanbanPanel, PANEL_FIELD } from './kanban-panel'
 
 interface KanbanSortPopoverProps {
   open: boolean
@@ -48,28 +49,30 @@ function SortRow({
 }) {
   return (
     <div className='flex items-center gap-1.5'>
-      <select
-        value={sort.propertyId}
-        onChange={(e) => onUpdate(index, { propertyId: e.target.value })}
-        aria-label={t('preview.kanban_sort_property')}
-        className='h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
-      >
-        {columns.map((c) => (
-          <option key={c.id} value={c.id}>
-            {formatKanbanPropertyName(c)}
-          </option>
-        ))}
-      </select>
+      <div className='min-w-0 flex-1'>
+        <Select
+          value={sort.propertyId}
+          onChange={(e) => onUpdate(index, { propertyId: e.target.value })}
+          aria-label={t('preview.kanban_sort_property')}
+          className={`${PANEL_FIELD} bg-[var(--bg-raised)]`}
+        >
+          {columns.map((c) => (
+            <option key={c.id} value={c.id}>
+              {formatKanbanPropertyName(c)}
+            </option>
+          ))}
+        </Select>
+      </div>
 
-      <select
+      <Select
         value={sort.direction}
         onChange={(e) => onUpdate(index, { direction: e.target.value as 'asc' | 'desc' })}
         aria-label={t('preview.kanban_sort_direction')}
-        className='h-7 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
+        className={`${PANEL_FIELD} bg-[var(--bg-raised)]`}
       >
         <option value='asc'>{t('preview.kanban_sort_asc')}</option>
         <option value='desc'>{t('preview.kanban_sort_desc')}</option>
-      </select>
+      </Select>
 
       <button
         type='button'

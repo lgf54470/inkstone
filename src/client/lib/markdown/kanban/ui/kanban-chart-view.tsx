@@ -9,6 +9,7 @@ import {
   PieChart as PieChartIcon,
   TrendingUp,
 } from 'lucide-react'
+import { Select } from '../../../../components/form'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { aggregateKanbanChartData, buildChartJsConfig } from '../chart-helpers'
 import { readKanbanChartPalette } from '../chart-palette'
@@ -45,18 +46,18 @@ function ChartGroupByControl({
   return (
     <div className='flex items-center gap-2 text-[length:var(--text-12)]'>
       <span className='text-[var(--text-tertiary)]'>{t('preview.kanban_chart_group_by')}:</span>
-      <select
+      <Select
         value={currentGroupBy}
         onChange={(e) => onChangeGroupBy(e.target.value)}
         aria-label={t('preview.kanban_chart_group_by')}
-        className='rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 py-1 font-medium text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
+        className='h-7 md:h-7 font-medium'
       >
         {selectableCols.map((c) => (
           <option key={c.id} value={c.id}>
             {formatKanbanPropertyName(c)}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   )
 }
