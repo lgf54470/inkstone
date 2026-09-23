@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { Tag } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
@@ -45,44 +45,92 @@ function buildTagList(tagsColumn?: KanbanProperty, counts = new Map<string, numb
   return list
 }
 
-export function KanbanTagFilterBar({
-  tagsColumn,
-  items,
-  selectedTags = [],
+/**
+ * The bar's own chip for a bar that has no room to be a row: with eight tags on a board the strip is
+ * several lines, and every one of them came off the canvas (user report 2026-09-23). It is a
+ * disclosure rather than a menu — the strip is in this same component, so pressing it shows what is
+ * already here, and it keeps the count of what is in force while it is folded away.
+ */
+function TagBarChip({ selected, total, expanded, controls, onToggle }: {
+  selected: number
+  total: number
+  expanded: boolean
+  controls: string
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type='button'
+      data-kanban-tags-chip
+      onClick={onToggle}
+      aria-expanded={expanded}
+      aria-controls={controls}
+      className='@4xl:hidden inline-flex w-fit items-center gap-1 rounded-[var(--r-xs)] px-1.5 py-0.5 text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+    >
+      <Tag size={12} aria-hidden />
+      <span>{t('preview.kanban_tags_chip', { selected, total })}</span>
+    </button>
+  )
+}
+
+/** One tag of the strip, with the count of the live cards that wear it. */
+function TagChip({
+  tag,
+  isSelected,
+  onToggle,
+}: {
+  tag: { id: string; label: string; color?: KanbanColorName; count: number }
+  isSelected: boolean
+  onToggle: (tag: string) => void
+}) {
+  return (
+    <button
+      type='button'
+      onClick={() => onToggle(tag.id)}
+      style={getKanbanTagStyle(tag.color || 'blue')}
+      className={`inline-flex items-center gap-1 rounded-[var(--r-xs)] px-2 py-0.5 font-medium transition-all ${
+        isSelected ? 'ring-2 ring-[var(--accent)] shadow-2xs font-semibold' : 'hover:ring-1 hover:ring-[var(--border-strong)]'
+      }`}
+    >
+      <span>{formatKanbanOptionLabel(tag.label, 'tags')}</span>
+      <span className='text-[length:var(--text-10)]'>({tag.count})</span>
+    </button>
+  )
+}
+
+/** The strip itself: its label, one chip per tag, and the way to drop the whole selection. */
+function TagStrip({
+  id,
+  expanded,
+  tagList,
+  selectedTags,
   onToggleTag,
   onClearTags,
-}: KanbanTagFilterBarProps) {
-  const tagList = useMemo(() => {
-    const counts = countTags(items)
-    return buildTagList(tagsColumn, counts)
-  }, [tagsColumn, items])
-
-  if (tagList.length === 0 || !onToggleTag) return null
-
+}: {
+  id: string
+  expanded: boolean
+  tagList: { id: string; label: string; color?: KanbanColorName; count: number }[]
+  selectedTags: string[]
+  onToggleTag: (tag: string) => void
+  onClearTags?: () => void
+}) {
   return (
-    <div className='flex flex-wrap items-center gap-1.5 pt-1 text-[length:var(--text-11)]'>
+    <div
+      id={id}
+      className={`${expanded ? 'flex' : 'hidden'} @4xl:flex flex-wrap items-center gap-1.5 pt-1 text-[length:var(--text-11)]`}
+    >
       <span className='flex items-center gap-1 text-[var(--text-tertiary)]'>
-        <Tag size={12} />
+        <Tag size={12} aria-hidden />
         <span>{t('preview.kanban_prop_tags')}:</span>
       </span>
-      {tagList.map((tagItem) => {
-        const isSelected = selectedTags.includes(tagItem.id) || selectedTags.includes(tagItem.label)
-        const style = getKanbanTagStyle(tagItem.color || 'blue')
-        return (
-          <button
-            key={tagItem.id}
-            type='button'
-            onClick={() => onToggleTag(tagItem.id)}
-            style={style}
-            className={`inline-flex items-center gap-1 rounded-[var(--r-xs)] px-2 py-0.5 font-medium transition-all ${
-              isSelected ? 'ring-2 ring-[var(--accent)] shadow-2xs font-semibold' : 'hover:ring-1 hover:ring-[var(--border-strong)]'
-            }`}
-          >
-            <span>{formatKanbanOptionLabel(tagItem.label, 'tags')}</span>
-            <span className='text-[length:var(--text-10)]'>({tagItem.count})</span>
-          </button>
-        )
-      })}
+      {tagList.map((tag) => (
+        <TagChip
+          key={tag.id}
+          tag={tag}
+          isSelected={selectedTags.includes(tag.id) || selectedTags.includes(tag.label)}
+          onToggle={onToggleTag}
+        />
+      ))}
       {selectedTags.length > 0 && onClearTags && (
         <button
           type='button'
@@ -92,6 +140,43 @@ export function KanbanTagFilterBar({
           {t('common.clear')}
         </button>
       )}
+    </div>
+  )
+}
+
+export function KanbanTagFilterBar({
+  tagsColumn,
+  items,
+  selectedTags = [],
+  onToggleTag,
+  onClearTags,
+}: KanbanTagFilterBarProps) {
+  const [expanded, setExpanded] = useState(false)
+  const stripId = useId()
+  const tagList = useMemo(() => {
+    const counts = countTags(items)
+    return buildTagList(tagsColumn, counts)
+  }, [tagsColumn, items])
+
+  if (tagList.length === 0 || !onToggleTag) return null
+
+  return (
+    <div className='flex flex-col gap-1'>
+      <TagBarChip
+        selected={selectedTags.length}
+        total={tagList.length}
+        expanded={expanded}
+        controls={stripId}
+        onToggle={() => setExpanded((open) => !open)}
+      />
+      <TagStrip
+        id={stripId}
+        expanded={expanded}
+        tagList={tagList}
+        selectedTags={selectedTags}
+        onToggleTag={onToggleTag}
+        onClearTags={onClearTags}
+      />
     </div>
   )
 }

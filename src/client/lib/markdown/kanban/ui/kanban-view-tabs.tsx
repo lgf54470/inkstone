@@ -110,15 +110,23 @@ function MenuTrigger({ anchor, open, toggle, panelId, label, icon }: MenuTrigger
   )
 }
 
-function KanbanNewViewMenu({ onCreate }: { onCreate: (type: KanbanViewType) => void }) {
-  const { open, toggle, close, anchor, panelId } = useMenuTrigger()
-  const label = t('preview.kanban_new_view')
-  const items: MenuItem[] = KANBAN_VIEW_TYPES.map((type) => ({
+/**
+ * The rows that create a view. Shared with the compact header's own menu: the two must offer the same
+ * set, since the list of view types is the field's contract rather than either control's own idea.
+ */
+export function kanbanNewViewItems(onCreate: (type: KanbanViewType) => void): MenuItem[] {
+  return KANBAN_VIEW_TYPES.map((type) => ({
     id: type,
     label: formatKanbanViewTypeLabel(type),
     icon: kanbanViewIcon(type),
     onSelect: () => onCreate(type),
   }))
+}
+
+function KanbanNewViewMenu({ onCreate }: { onCreate: (type: KanbanViewType) => void }) {
+  const { open, toggle, close, anchor, panelId } = useMenuTrigger()
+  const label = t('preview.kanban_new_view')
+  const items = kanbanNewViewItems(onCreate)
 
   return (
     <>
@@ -128,32 +136,30 @@ function KanbanNewViewMenu({ onCreate }: { onCreate: (type: KanbanViewType) => v
   )
 }
 
-function KanbanActiveViewMenu({
-  views,
-  activeViewId,
-  viewOps,
-}: {
-  views: KanbanView[]
-  activeViewId: string
-  viewOps: KanbanViewOperations
-}) {
-  const { open, toggle, close, anchor, panelId } = useMenuTrigger()
-  const index = views.findIndex((v) => v.id === activeViewId)
+async function renameViewWithPrompt(view: KanbanView, viewOps: KanbanViewOperations) {
+  const name = await prompt({
+    title: t('preview.kanban_view_rename'),
+    defaultValue: formatKanbanViewName(view),
+  })
+  // A blank answer is not a rename: committing one would push an undo step that changes nothing.
+  if (name?.trim()) viewOps.renameView(view.id, name)
+}
+
+/**
+ * The rows that act on the view the strip is showing. Shared with the compact header's own menu for
+ * the same reason the creation rows are — one list of what can be done to a view, with the same
+ * disabled rules (a blank answer is not a rename, and a board keeps at least one view to draw).
+ */
+export function kanbanViewActionItems(
+  views: KanbanView[],
+  activeViewId: string,
+  viewOps: KanbanViewOperations,
+): MenuItem[] {
+  const index = views.findIndex((view) => view.id === activeViewId)
   const view = views[index]
-  if (!view) return null
-
-  const label = t('preview.kanban_view_actions')
-  async function handleRename() {
-    const name = await prompt({
-      title: t('preview.kanban_view_rename'),
-      defaultValue: formatKanbanViewName(view!),
-    })
-    // A blank answer is not a rename: committing one would push an undo step that changes nothing.
-    if (name?.trim()) viewOps.renameView(view!.id, name)
-  }
-
-  const items: MenuItem[] = [
-    { id: 'rename', label: t('preview.kanban_view_rename'), onSelect: () => { void handleRename() } },
+  if (!view) return []
+  return [
+    { id: 'rename', label: t('preview.kanban_view_rename'), onSelect: () => { void renameViewWithPrompt(view, viewOps) } },
     { id: 'duplicate', label: t('preview.kanban_view_duplicate'), onSelect: () => viewOps.duplicateView(view.id) },
     {
       id: 'move-earlier',
@@ -177,6 +183,21 @@ function KanbanActiveViewMenu({
       onSelect: () => viewOps.deleteView(view.id),
     },
   ]
+}
+
+function KanbanActiveViewMenu({
+  views,
+  activeViewId,
+  viewOps,
+}: {
+  views: KanbanView[]
+  activeViewId: string
+  viewOps: KanbanViewOperations
+}) {
+  const { open, toggle, close, anchor, panelId } = useMenuTrigger()
+  if (!views.some((view) => view.id === activeViewId)) return null
+  const label = t('preview.kanban_view_actions')
+  const items = kanbanViewActionItems(views, activeViewId, viewOps)
 
   return (
     <>
@@ -257,7 +278,9 @@ function KanbanTab({ view, panelId, isActive, index, register, onSelectView, onK
       }`}
     >
       {kanbanViewIcon(view.type)}
-      <span>{formatKanbanViewName(view)}</span>
+      {/* The strip is the first thing to give up its words when the bar is narrow: eight named tabs
+          cannot share a few hundred pixels with the controls, and the icon still names the type. */}
+      <span className='hidden @4xl:inline'>{formatKanbanViewName(view)}</span>
     </button>
   )
 }

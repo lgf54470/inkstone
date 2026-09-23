@@ -115,6 +115,14 @@ describe('KanbanHeader progress bar scope', () => {
 const MOBILE_TARGET = /\bsize-9\b|\bh-9\b|\bmin-h-9\b/
 const DESKTOP_TARGET = /\bmd:size-7\b|\bmd:h-7\b/
 
+/**
+ * How a control gives up its words when the bar is narrow. The breakpoint is the header's own
+ * container (`@4xl` is 56rem), not the window: a note pane beside the editor is a few hundred pixels
+ * wide whatever the monitor is, which is why reading the viewport here put three lines of chrome
+ * above the canvas (user report 2026-09-23).
+ */
+const NARROW_LABEL = 'hidden @4xl:inline'
+
 function headerControls(container: HTMLElement): HTMLButtonElement[] {
   return [...container.querySelectorAll<HTMLButtonElement>('[data-kanban-header] button')]
 }
@@ -126,14 +134,14 @@ function controlNamed(container: HTMLElement, label: string): HTMLButtonElement 
 }
 
 /**
- * Whether a control is down to its icon below `md`: either it writes nothing at all, or the only text
- * it holds is the label it hides at that breakpoint. Both shapes have to carry the accessible name.
+ * Whether a control is down to its icon on a narrow bar: either it writes nothing at all, or the only
+ * text it holds is the label it hides at that breakpoint. Both shapes have to carry the name.
  */
 function hasNoWrittenLabel(button: HTMLButtonElement): boolean {
   const written = button.textContent?.trim() ?? ''
   if (written === '') return true
   return [...button.querySelectorAll('span')].some(
-    (span) => span.className.includes('hidden md:inline') && span.textContent?.trim() === written,
+    (span) => span.className.includes(NARROW_LABEL) && span.textContent?.trim() === written,
   )
 }
 
@@ -195,8 +203,8 @@ describe('the sizes a finger needs in the header', () => {
 
 })
 
-describe('the words the header keeps on a narrow screen', () => {
-  it('drops the label on a narrow screen, keeping the name the control answers to', () => {
+describe('the words the header keeps on a narrow bar', () => {
+  it('drops the label when its own bar is narrow, keeping the name the control answers to', () => {
     const rendered = renderHeader(allItems, rowProps)
     try {
       for (const label of [
@@ -210,7 +218,7 @@ describe('the words the header keeps on a narrow screen', () => {
           (span) => span.textContent === label && span.querySelectorAll('span').length === 0,
         )
         expect(written, `${label} writes its name nowhere`).toBeDefined()
-        expect(written!.className, `${label} keeps its label on a phone`).toContain('hidden md:inline')
+        expect(written!.className, `${label} keeps its label on a narrow bar`).toContain(NARROW_LABEL)
       }
     } finally {
       rendered.unmount()

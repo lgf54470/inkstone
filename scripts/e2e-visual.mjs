@@ -131,7 +131,22 @@ const LABELS = {
   sharePrintQr: ['打印二维码表', 'Print QR sheet'],
   shareChannelField: ['分发标记', 'Distribution marker'],
   shareTrafficFilter: ['流量过滤设置', 'Traffic Filters'],
+  // The board's compact top bar: one trigger for the actions it has no room to draw, and the rows
+  // its menu offers in place of the labeled controls the wide bar shows.
+  kanbanMoreActions: ['更多看板操作', 'More board actions'],
+  kanbanFilterRow: ['筛选', 'Filter'],
+  kanbanSortRow: ['排序', 'Sort'],
 }
+
+/**
+ * The toggles a toolbar actually draws, as a selector to filter in the page.
+ *
+ * A bar that carries two layouts keeps both in the document and lets a container query pick one, so
+ * the hidden half reports a zero box — and a control pressed at `0,0` reads whatever is in the
+ * viewport's corner instead of the toolbar. Every toolbar count in this gate is a count of what is on
+ * screen, which is also what the stability sweep is about.
+ */
+const TOGGLE_SELECTOR = 'button[aria-pressed], button[aria-expanded]'
 
 async function activeProse(page) {
   return page.evaluate(() => {
@@ -1690,7 +1705,9 @@ async function pressOpener(page, { labels, combo = null, scope = '' }) {
 async function readToggle(page, toolbar, index) {
   return page.evaluate(({ toolbar, index }) => {
     const bar = document.querySelector(toolbar)
-    const toggle = bar?.querySelectorAll('button[aria-pressed], button[aria-expanded]')[index]
+    const drawn = [...(bar?.querySelectorAll('button[aria-pressed], button[aria-expanded]') ?? [])]
+      .filter((item) => item.getBoundingClientRect().width > 0)
+    const toggle = drawn[index]
     if (!bar || !toggle) return null
     const barBox = bar.getBoundingClientRect()
     const box = toggle.getBoundingClientRect()
@@ -1707,7 +1724,9 @@ async function readToggle(page, toolbar, index) {
 /** Presses one toolbar toggle the way a person does: a real pointer click on the control's centre. */
 async function clickToggle(page, toolbar, index) {
   const point = await page.evaluate(({ toolbar, index }) => {
-    const toggle = document.querySelector(toolbar)?.querySelectorAll('button[aria-pressed], button[aria-expanded]')[index]
+    const drawn = [...(document.querySelector(toolbar)?.querySelectorAll('button[aria-pressed], button[aria-expanded]') ?? [])]
+      .filter((item) => item.getBoundingClientRect().width > 0)
+    const toggle = drawn[index]
     if (!toggle) return null
     const box = toggle.getBoundingClientRect()
     return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
@@ -1746,7 +1765,8 @@ async function sweepToolbar(page, surface) {
     if (!element) return null
     return {
       height: Math.round(element.getBoundingClientRect().height),
-      toggles: element.querySelectorAll('button[aria-pressed], button[aria-expanded]').length,
+      toggles: [...element.querySelectorAll('button[aria-pressed], button[aria-expanded]')]
+        .filter((toggle) => toggle.getBoundingClientRect().width > 0).length,
     }
   }, surface.toolbar)
   if (!bar) throw new Error(`toolbar sweep: the ${surface.name} has no toolbar matching ${surface.toolbar}`)
@@ -2458,6 +2478,141 @@ async function assertKanbanCanvasBase(page, scope) {
 }
 
 /**
+ * Which top bar the board's **own** width chose, and whether that bar fits the box it was given.
+ *
+ * The bar used to make every layout decision from the window (`hidden md:inline` on each label), so a
+ * 1280px monitor showing a 400px note pane drew the desktop row and wrapped it into three lines above
+ * a 480px canvas (user report 2026-09-23). jsdom cannot evaluate a container query, so this is where
+ * the two layouts are told apart on a real page: the compact cluster is asserted in the note — where
+ * the bar is a few hundred pixels wide — and the wide one in the overlay, which is the same page at
+ * the window's width. Both directions matter: a bar stuck in one layout would pass one of the two and
+ * fail the other.
+ *
+ * "One line" is asserted with the compact bar rather than the wide one. The wide row is allowed to
+ * wrap on a bar too narrow for it (that is what a full screen window at 900px is), and the complaint
+ * was never about the overlay: it was that a note pane paid three lines of chrome for a canvas its own
+ * height is capped at 480px. The bar keeping its controls inside its own box is asserted in both.
+ */
+async function assertKanbanHeaderLayout(page, scope, where, expected) {
+  await page.evaluate((scope) => {
+    document.querySelector(`${scope} [data-kanban-actions]`)?.scrollIntoView({ block: 'center' })
+  }, scope)
+  await sleep(240)
+  const read = await page.evaluate((scope) => {
+    const row = document.querySelector(`${scope} [data-kanban-actions]`)
+    if (!row) return null
+    const box = row.getBoundingClientRect()
+    const drawn = [...row.querySelectorAll('button')].filter((button) => button.getBoundingClientRect().width > 0)
+    const trigger = row.querySelector('[data-kanban-overflow]')
+    return {
+      width: Math.round(box.width),
+      controls: drawn.length,
+      lines: new Set(drawn.map((button) => Math.round(button.getBoundingClientRect().top))).size,
+      // A control wide enough to be carrying words rather than an icon alone.
+      labelled: drawn.filter((button) => button.getBoundingClientRect().width > 60).length,
+      compact: Math.round(trigger?.getBoundingClientRect().width ?? 0),
+      overflow: row.scrollWidth - row.clientWidth,
+      spilled: [...row.children]
+        .filter((child) => child.getBoundingClientRect().width > 0)
+        .filter((child) => child.getBoundingClientRect().right > box.right + 1).length,
+    }
+  }, scope)
+  if (!read) {
+    check(`kanban ${where}: the top bar is drawn`, false, 'the bar has no action row')
+    return null
+  }
+  check(
+    `kanban ${where}: the bar's own width decided which layout to draw, not the window's`,
+    expected === 'compact' ? read.compact > 0 && read.labelled === 0 : read.compact === 0 && read.labelled > 0,
+    JSON.stringify(read),
+  )
+  check(
+    `kanban ${where}: the bar keeps its controls inside its own box`,
+    read.overflow <= 1 && read.spilled === 0,
+    JSON.stringify(read),
+  )
+  if (expected === 'compact') {
+    check(
+      `kanban ${where}: the narrow bar costs the canvas one line, not three`,
+      read.lines === 1 && read.controls >= 2,
+      JSON.stringify(read),
+    )
+  }
+  return read
+}
+
+/**
+ * The narrow bar's way to the panels it draws no control for.
+ *
+ * The compact layout is only honest if its menu reaches the same panels the wide bar's labeled
+ * controls reach, with a real pointer and from the trigger rather than from the row that was pressed:
+ * the row is gone by the time the panel draws, so a panel anchored to it would land nowhere. The two
+ * rows exercised here are the filter and the sort, which are the two the wide bar also draws as
+ * labeled controls — the same relation `assertKanbanPanelAnchoring` measures on that side.
+ */
+async function assertKanbanOverflowMenu(page, scope, where) {
+  const target = await page.evaluate((scope) => {
+    const trigger = document.querySelector(`${scope} [data-kanban-actions] [data-kanban-overflow]`)
+    if (!trigger) return null
+    trigger.scrollIntoView({ block: 'center' })
+    const box = trigger.getBoundingClientRect()
+    const x = Math.round(box.left + box.width / 2)
+    const y = Math.round(box.top + box.height / 2)
+    const hit = document.elementFromPoint(x, y)
+    return { x, y, width: Math.round(box.width), hittable: Boolean(hit) && (hit === trigger || trigger.contains(hit)) }
+  }, scope)
+  check(
+    `kanban ${where}: the bar offers one control for the panels it cannot draw, and the pointer reaches it`,
+    Boolean(target) && target.width > 0 && target.hittable,
+    JSON.stringify(target),
+  )
+  if (!target) return
+  for (const rowLabels of [LABELS.kanbanFilterRow, LABELS.kanbanSortRow]) {
+    await page.mouse.click(target.x, target.y)
+    await sleep(340)
+    const row = await page.evaluate((labels) => {
+      const items = [...document.querySelectorAll('[role="menuitem"], [role="menuitemcheckbox"]')]
+      const found = items.find((item) => labels.some((label) => (item.textContent ?? '').includes(label)))
+      if (!found) return { found: false, offered: items.map((item) => (item.textContent ?? '').trim().slice(0, 16)) }
+      const box = found.getBoundingClientRect()
+      return { found: true, x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+    }, rowLabels)
+    check(`kanban ${where}: the menu offers the ${rowLabels[1]} row the wide bar draws as a control`, row.found, JSON.stringify(row))
+    if (!row.found) continue
+    await page.mouse.click(row.x, row.y)
+    await sleep(340)
+    const panel = await page.evaluate((scope) => {
+      const trigger = document.querySelector(`${scope} [data-kanban-actions] [data-kanban-overflow]`)
+      const triggerBox = trigger?.getBoundingClientRect()
+      const open = [...document.querySelectorAll(`${scope} [data-kanban-panel]`)]
+        .find((node) => node.getBoundingClientRect().height > 0)
+      const box = open?.getBoundingClientRect()
+      const surface = document.querySelector(scope)?.getBoundingClientRect()
+      return {
+        opened: Boolean(open),
+        named: Boolean(open?.getAttribute('aria-label')),
+        under: Boolean(box && triggerBox) && box.top >= triggerBox.bottom - 1,
+        inTree: Boolean(open?.closest(scope)),
+        insideSurface: Boolean(box && surface) && box.left >= surface.left - 1 && box.right <= surface.right + 1 && box.bottom <= surface.bottom + 1,
+        menu: document.querySelectorAll('[role="menuitem"], [role="menuitemcheckbox"]').length,
+      }
+    }, scope)
+    check(
+      `kanban ${where}: the ${rowLabels[1]} row opens the board's own panel under the trigger`,
+      panel.opened && panel.named && panel.under && panel.inTree,
+      JSON.stringify(panel),
+    )
+    check(`kanban ${where}: the ${rowLabels[1]} row's panel stays inside the bar's own surface`, panel.insideSurface, JSON.stringify(panel))
+    check(`kanban ${where}: the menu closes behind the ${rowLabels[1]} panel it opened`, panel.menu === 0, JSON.stringify(panel))
+    await page.keyboard.press('Escape')
+    await sleep(260)
+  }
+  // The last press leaves the bar as it was found: menu shut, no panel open behind the next scenario.
+  await page.keyboard.press('Escape')
+  await sleep(240)
+}
+
+/**
  * Where the top bar's panels land, and the reason this exists at all.
  *
  * Every panel the board opens used to be `absolute right-0 top-full`, and `right-0` resolved against
@@ -2490,29 +2645,41 @@ async function assertKanbanPanelAnchoring(page, scope, where) {
     document.querySelector(`${scope} [data-kanban-actions]`)?.scrollIntoView({ block: 'center' })
   }, scope)
   await sleep(240)
-  const controls = await page.evaluate((scope) => {
+  // Only the controls the bar actually draws: a header that offers a compact layout as well as a wide
+  // one keeps both in the document and lets a container query choose, so the hidden half reports a zero
+  // box and a press at its "centre" would land in the viewport's corner. One drawn trigger is the floor
+  // rather than four, which is why the narrow bar's own trigger counts here: it draws no dialog-panel
+  // control at all, and the panels behind it are the ones `assertKanbanOverflowMenu` presses by hand.
+  // The two kinds are told apart rather than pooled — only a dialog trigger opens a panel this
+  // function knows how to read (`aria-controls` → the named panel), while both are pressed here at the
+  // place the pointer would have to reach.
+  const triggers = await page.evaluate((scope) => {
     const row = document.querySelector(`${scope} [data-kanban-actions]`)
     if (!row) return null
-    return [...row.querySelectorAll('button[aria-haspopup="dialog"]')].map((button) => {
-      const box = button.getBoundingClientRect()
-      const x = Math.round(box.left + box.width / 2)
-      const y = Math.round(box.top + box.height / 2)
-      const hit = document.elementFromPoint(x, y)
-      return {
-        name: button.getAttribute('aria-label') ?? button.textContent.trim(),
-        x,
-        y,
-        // The pointer has to land on the control itself, not on something drawn over it.
-        hittable: Boolean(hit) && (hit === button || button.contains(hit)),
-      }
-    })
+    return [...row.querySelectorAll('button[aria-haspopup="dialog"], button[aria-haspopup="menu"]')]
+      .filter((button) => button.getBoundingClientRect().width > 0)
+      .map((button) => {
+        const box = button.getBoundingClientRect()
+        const x = Math.round(box.left + box.width / 2)
+        const y = Math.round(box.top + box.height / 2)
+        const hit = document.elementFromPoint(x, y)
+        return {
+          name: button.getAttribute('aria-label') ?? button.textContent.trim(),
+          dialog: button.getAttribute('aria-haspopup') === 'dialog',
+          x,
+          y,
+          // The pointer has to land on the control itself, not on something drawn over it.
+          hittable: Boolean(hit) && (hit === button || button.contains(hit)),
+        }
+      })
   }, scope)
   check(
-    `kanban ${where}: the top bar offers its panels to press, and the pointer reaches them`,
-    (controls?.length ?? 0) >= 4 && controls.every((control) => control.hittable),
-    JSON.stringify(controls),
+    `kanban ${where}: the top bar offers its triggers to press, and the pointer reaches them`,
+    (triggers?.length ?? 0) >= 1 && triggers.every((trigger) => trigger.hittable),
+    JSON.stringify(triggers),
   )
-  if (!controls) return
+  if (!triggers) return
+  const controls = triggers.filter((trigger) => trigger.dialog)
   for (const control of controls) {
     await page.mouse.click(control.x, control.y)
     await sleep(340)
@@ -2907,6 +3074,8 @@ async function assertKanbanBoard(page) {
   if (index === null) return
   const blockSelector = kanbanBlockByIndex(index)
   await assertKanbanCanvasBase(page, blockSelector)
+  await assertKanbanHeaderLayout(page, blockSelector, 'in the note', 'compact')
+  await assertKanbanOverflowMenu(page, blockSelector, 'in the note')
   // Where the top bar's panels land, read in the note as well as in the overlay: the note draws the
   // board inside prose, inside two scroll boxes of its own, and that is the case the placement has to
   // clamp itself around.
@@ -2923,6 +3092,7 @@ async function assertKanbanBoard(page) {
   if (!surfaced) return
   await waitForPanelSettled(page, '.kanban-fullscreen')
   await sleep(400)
+  await assertKanbanHeaderLayout(page, '.kanban-fullscreen', 'in the board view', 'wide')
   await assertKanbanPanelAnchoring(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanActiveTab(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanSurfaces(page, '.kanban-fullscreen', 'in the board view')
@@ -2939,6 +3109,13 @@ async function assertKanbanBoard(page) {
       inOverlay: overlay?.querySelectorAll('[data-kanban-canvas]').length ?? 0,
       reserve: Boolean(block?.querySelector('[data-kanban-placeholder] .kanban-canvas.is-reserve')),
       headings: [...(overlay?.querySelectorAll('h1,h2,h3,h4,h5,h6') ?? [])].map((heading) => heading.tagName),
+      // A board title is capped in its own width, so it may only be clipped by its own cap and not by
+      // the bar around it. The strip beside it scrolls instead — the failure this reads for was the
+      // strip keeping its whole width and squeezing "Gate Board" into 56px of a 1280px bar.
+      titleFits: (() => {
+        const title = overlay?.querySelector('h2')
+        return title ? title.scrollWidth <= title.clientWidth + 1 : null
+      })(),
       banners: overlay?.querySelectorAll('header, [role="banner"]').length ?? 0,
       cards: [...(overlay?.querySelectorAll('[data-item-id] h3') ?? [])].map((heading) => heading.textContent.trim()),
     }
@@ -2949,6 +3126,7 @@ async function assertKanbanBoard(page) {
   check('kanban board: the overlay hosts the block\'s one instance', hosting.dialogs === 1 && hosting.canvases === 1 && hosting.inOverlay === 1, JSON.stringify(hosting))
   check('kanban board: the block keeps its place in the note while the overlay holds the board', hosting.reserve, JSON.stringify(hosting))
   check('kanban board: the cards hang one level under the board title', hosting.headings.join(',') === 'H2,H3,H3,H3' && hosting.cards.length === 3, JSON.stringify(hosting))
+  check('kanban board: the view strip gives way to the title rather than clipping it', hosting.titleFits === true, JSON.stringify(hosting))
   check('kanban board: nothing inside the board claims the banner landmark', hosting.banners === 0, JSON.stringify(hosting))
 
   await ensureAxe(page)

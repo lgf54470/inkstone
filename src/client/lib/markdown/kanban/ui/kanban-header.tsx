@@ -19,6 +19,7 @@ import { KanbanCsvAction, type KanbanCsvEntry } from './kanban-csv'
 import type { KanbanSchemaOperations } from './kanban-column-hooks'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanFullscreenTitle } from './kanban-fullscreen-title'
+import { KanbanOverflowMenu } from './kanban-overflow-menu'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSearchBox } from './kanban-search-box'
 import { KanbanSortPopover } from './kanban-sort-popover'
@@ -220,12 +221,17 @@ function KanbanSortAction({
 }
 
 /**
- * The written label of a control that is icon-only on a narrow screen, where the words are what pushes
- * the row past the viewport. The label stays in the tree and stays the button's name — hiding it below
- * `md` is a layout change, never a loss of the accessible name the caller spells out next to it.
+ * The written label of a control that is icon-only while the bar is narrow, where the words are what
+ * pushed the row into lines of its own. The label stays in the tree and stays the button's name —
+ * hiding it is a layout change, never a loss of the accessible name the caller spells out beside it.
+ *
+ * The breakpoint is the header's own width, not the window's: a note pane beside the editor is a few
+ * hundred pixels wide whatever the monitor is, and this row is what paid for reading the window
+ * instead (user report 2026-09-23). `@4xl` is 56rem and it is the one breakpoint the whole bar turns
+ * on — labels, the progress bar, the wide cluster and the compact one all switch there.
  */
 function narrowLabel(label: string): ReactNode {
-  return <span className='hidden md:inline'>{label}</span>
+  return <span className='hidden @4xl:inline'>{label}</span>
 }
 
 const STATUS_PROGRESS_BAR_HEIGHT = 6
@@ -237,6 +243,20 @@ const STATUS_PROGRESS_BAR_HEIGHT = 6
  */
 const TOOLBAR_ICON_CLASS =
   'inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:pointer-events-none disabled:opacity-30 md:size-7'
+
+/**
+ * Which cluster a control belongs to. The bar draws both and a container query picks one, so there is
+ * one control per action in the document — no action is written twice and hidden twice, and the
+ * breakpoint that decides is the header's own width. `wide` is the labeled row the full screen board
+ * shows; `compact` is what a note pane gets.
+ */
+function WideOnly({ children }: { children: ReactNode }) {
+  return <div className='hidden @4xl:flex items-center gap-1.5'>{children}</div>
+}
+
+function CompactOnly({ children }: { children: ReactNode }) {
+  return <div className='flex @4xl:hidden items-center gap-1.5'>{children}</div>
+}
 
 function KanbanHeaderToolbar({
   onAddItem,
@@ -257,8 +277,11 @@ function KanbanHeaderToolbar({
 }) {
   const undoHint = t('preview.kanban_undo_shortcut', { shortcut: prettyCombo('mod+z').join('+') })
   const redoHint = t('preview.kanban_redo_shortcut', { shortcut: prettyCombo('mod+shift+z').join('+') })
+  // Four more icon controls is what would leave the view strip no room at all in a note pane, and
+  // every one of the four is a row of the compact header's own menu — with the undo and redo chords
+  // named there as the menu's shortcuts.
   return (
-    <div className='flex items-center gap-1'>
+    <div className='hidden @4xl:flex items-center gap-1'>
       {onUndo && (
         <button
           type='button'
@@ -298,22 +321,15 @@ function KanbanHeaderToolbar({
   )
 }
 
-function KanbanHeaderActions(props: HeaderActionsProps) {
-  const { columns, visibleItems, filters, sorts, searchQuery, activeView, cardSize } = props
-  const statusCol = columns.find((c) => c.id === 'status')
-
+/**
+ * The labeled cluster: one control per action, words and all. It is what the full screen board draws,
+ * and everything in it is also a row of the compact menu — the two lists are asserted against each
+ * other so the narrow layout cannot offer less than the wide one.
+ */
+function KanbanWideActions(props: HeaderActionsProps) {
+  const { columns, activeView, cardSize, filters, sorts } = props
   return (
-    // A phone gets a row that wraps instead of a row that runs off the viewport, and never a scroll
-    // box: the filter, sort and options panels hang off this element, and an `overflow` here would
-    // clip them to the row they are anchored to.
-    <div
-      data-kanban-actions
-      className='relative flex min-w-0 flex-wrap items-center gap-1.5'
-    >
-      <div className='hidden md:flex items-center mr-1 w-28'>
-        <KanbanProgressBar items={visibleItems} statusColumn={statusCol} height={STATUS_PROGRESS_BAR_HEIGHT} />
-      </div>
-      <KanbanSearchBox searchQuery={searchQuery} onSearchChange={props.onSearchChange} />
+    <WideOnly>
       <KanbanFilterAction columns={columns} filters={filters} onChangeFilters={props.onChangeFilters} />
       <KanbanSortAction columns={columns} sorts={sorts} onChangeSorts={props.onChangeSorts} />
       {props.archive && <KanbanArchiveAction {...props.archive} />}
@@ -332,6 +348,62 @@ function KanbanHeaderActions(props: HeaderActionsProps) {
           schemaOps={activeView.type === 'table' ? props.schemaOps : undefined}
         />
       )}
+    </WideOnly>
+  )
+}
+
+/** The narrow cluster: the one trigger whose menu holds everything above, plus the toolbar's four. */
+function KanbanCompactActions(props: HeaderActionsProps) {
+  const { columns, activeView, cardSize, filters, sorts } = props
+  return (
+    <CompactOnly>
+      <KanbanOverflowMenu
+        columns={columns}
+        views={props.data.views}
+        activeView={activeView}
+        filters={filters}
+        sorts={sorts}
+        cardSize={cardSize}
+        schemaOps={props.schemaOps}
+        archive={props.archive}
+        csv={props.csv}
+        viewOps={props.viewOps}
+        canUndo={props.canUndo}
+        canRedo={props.canRedo}
+        isFullscreen={props.isFullscreen}
+        onChangeFilters={props.onChangeFilters}
+        onChangeSorts={props.onChangeSorts}
+        onChangeGroupBy={props.onChangeGroupBy}
+        onChangeSwimlaneBy={props.onChangeSwimlaneBy}
+        onChangeCardSize={props.onChangeCardSize}
+        onToggleHiddenColumn={props.onToggleHiddenColumn}
+        onUndo={props.onUndo}
+        onRedo={props.onRedo}
+        onAddItem={props.onAddItem}
+        onToggleFullscreen={props.onToggleFullscreen}
+      />
+    </CompactOnly>
+  )
+}
+
+function KanbanHeaderActions(props: HeaderActionsProps) {
+  const { columns, visibleItems, searchQuery } = props
+  const statusCol = columns.find((c) => c.id === 'status')
+
+  return (
+    // A phone gets a row that wraps instead of a row that runs off the viewport, and never a scroll
+    // box: the filter, sort and options panels hang off this element, and an `overflow` here would
+    // clip them to the row they are anchored to.
+    <div
+      data-kanban-actions
+      className='relative flex min-w-0 flex-wrap items-center gap-1.5'
+    >
+      <div className='hidden @4xl:flex items-center mr-1 w-28'>
+        <KanbanProgressBar items={visibleItems} statusColumn={statusCol} height={STATUS_PROGRESS_BAR_HEIGHT} />
+      </div>
+      <KanbanSearchBox searchQuery={searchQuery} onSearchChange={props.onSearchChange} />
+      <KanbanWideActions {...props} />
+      <KanbanCompactActions {...props} />
       <KanbanWriteStatus unsaved={props.unsaved} onRetry={props.onRetryWrite} onDiscard={props.onDiscardWrite} />
       <KanbanHeaderToolbar
         onAddItem={props.onAddItem}
@@ -341,6 +413,45 @@ function KanbanHeaderActions(props: HeaderActionsProps) {
         onRedo={props.onRedo}
         isFullscreen={props.isFullscreen}
         onToggleFullscreen={props.onToggleFullscreen}
+      />
+    </div>
+  )
+}
+
+/** The board's own name, in the overlay only, and the strip of views beside it. */
+function KanbanHeaderIdentity({
+  title,
+  isFullscreen,
+  onUpdateTitle,
+  views,
+  activeView,
+  panelId,
+  onSelectView,
+  viewOps,
+}: {
+  title?: string
+  isFullscreen?: boolean
+  onUpdateTitle?: (title: string) => void
+  views: KanbanData['views']
+  activeView: KanbanView
+  panelId: string
+  onSelectView: (viewId: string) => void
+  viewOps: KanbanViewOperations
+}) {
+  return (
+    <div className='flex min-w-0 flex-1 items-center gap-2.5'>
+      {isFullscreen && (
+        <>
+          <KanbanFullscreenTitle title={title} onUpdateTitle={onUpdateTitle} />
+          <div className='h-4 w-px bg-[var(--border-subtle)] shrink-0' />
+        </>
+      )}
+      <KanbanViewTabs
+        views={views}
+        activeViewId={activeView.id}
+        panelId={panelId}
+        onSelectView={onSelectView}
+        viewOps={viewOps}
       />
     </div>
   )
@@ -357,32 +468,22 @@ export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps)
   return (
     <div
       data-kanban-header
-      className='flex flex-col gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'
+      // `@container`: everything inside the bar is sized against the bar, not the window. It is what
+      // lets a note pane and a full screen board draw the same component at their own widths.
+      className='@container flex flex-col gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'
     >
       <div className='flex flex-wrap items-center justify-between gap-2.5'>
-        <div className='flex items-center gap-2.5 min-w-0'>
-          {isFullscreen && (
-            <>
-              <KanbanFullscreenTitle
-                title={data.title}
-                onUpdateTitle={onUpdateBoardTitle}
-              />
-              <div className='h-4 w-px bg-[var(--border-subtle)] shrink-0' />
-            </>
-          )}
-          <KanbanViewTabs
-            views={data.views}
-            activeViewId={activeView.id}
-            panelId={props.viewPanelId}
-            onSelectView={props.onSelectView}
-            viewOps={props.viewOps}
-          />
-        </div>
-        <KanbanHeaderActions
-          {...props}
-          columns={data.columns}
+        <KanbanHeaderIdentity
+          title={data.title}
+          isFullscreen={isFullscreen}
+          onUpdateTitle={onUpdateBoardTitle}
+          views={data.views}
           activeView={activeView}
+          panelId={props.viewPanelId}
+          onSelectView={props.onSelectView}
+          viewOps={props.viewOps}
         />
+        <KanbanHeaderActions {...props} columns={data.columns} activeView={activeView} />
       </div>
 
       <KanbanTagFilterBar

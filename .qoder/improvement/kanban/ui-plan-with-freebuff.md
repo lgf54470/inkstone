@@ -15,7 +15,7 @@
 - [x] KU-02 活动视图标签指示器 + 标签条溢出可见性（用户点②）
 - [x] KU-03 表面层级与列配色（用户点④）—— 阶梯 = 平面 `--bg-inset` → 列 `--bg-surface` → 卡片 `--bg-raised`；列头整条按分组色染色（不再只画 10px 圆点）；表格视图保留「整块面板」形态，理由在条目内
 - [x] KU-04 卡片标题双击竞速守卫 + hover 铅笔 / F2（用户点⑤，方案 A）—— 按用户裁定保留双击改名、单击延迟 250ms 才开详情；另补铅笔与 F2 两个不需知道手势的入口
-- [ ] KU-05 内联紧凑头部：容器查询 + 图标 / Tooltip + ⋯ 溢出菜单（用户点①）
+- [x] KU-05 内联紧凑头部：容器查询 + ⋯ 溢出菜单（用户点①）—— 「图标 + Tooltip」被否（理由在条目内）；顺带修掉宽条下标题被标签条挤到 56px 截断的真问题
 - [ ] KU-06 列不再拉满 + 画布高度自适应 + 滚动条可见性（用户点①的空白行）
 - [ ] KU-07 干掉原生 `<select>`，面板结构对齐设置面板（`SettingRow`/`Segmented`/`Select`）
 - [ ] KU-08 内联模式显示看板真标题、去掉重复「看板」、canvas 名称随语言刷新
@@ -115,12 +115,16 @@
 - **验证**：① 6 例单测用假定时器与带 `detail` 的鼠标事件（单击要等窗口过完才开、双击就地改名且**从不**开详情、铅笔改名、F2 改名、无第二击的激活即时开、开窗期间卸载不补开）——实测只有程序化 `.click()`（`detail` 为 0）能同步开详情，既有用例因此全部原样通过；② 变异自检：双击不再取消待开 → 1 例红；改回「单击即开」→ 3 例红；两次均由 `/tmp` 备份字节相同还原；③ 浏览器门禁 `assertKanbanTitleGestures`（内联 + 全屏各 4 条）用**真实指针**双击：标题能点到、双击画出字段、双击不改对话框计数、事后 Escape 不写入（`data-owns-escape` 保证不连带关板）。首跑实测两个真问题并已修正：Puppeteer 的 `mouse.click({ clickCount: 2 })` 只发一次带计数的按压（根本不发 `dblclick`），改两次完整按下/抬起；铅笔需移到 `h3` 之外（见决策③）。④ 实跑全新实例（`INKSTONE_EPHEMERAL_DEV=1`，:7720）：`e2e-visual.mjs` **436/0**（= KU-03 的 428 + 本项 8 条）、`contrast:check` ✅（kanban 两主题 axe 0 违规）、全量 `test:unit` 438 文件 3942 通过 | 1 跳过、12 项静态门禁 + typecheck 全绿。
 - **局限**：① 250ms 的等待对单击是真实延迟（相对旧行为），这是方案的代价；② 卡片标题行多一个悬停控件，悬停时右侧会多出 16px 按钮（已用 `gap` 与标题分开，且只有悬停/聚焦才出现）；③ 列表/画廊/表格视图的标题**没有**就地改名（从未有过），本项只修看板卡片标题；④ 无「触屏双击」专项断言（移动端无 `dblclick` 语义，铅笔是那里的入口，未另测）。
 
-#### KU-05 内联紧凑头部
+#### KU-05 内联紧凑头部：容器查询 + `⋯` 溢出菜单（已修）
 
-- **根因**：`kanban-header.tsx` 的 `narrowLabel()` 用 `hidden md:inline`（**视口**断点），但块宽由预览面板决定 —— 1280px 视口 + 700px 面板仍走桌面布局 → 工具条换两行、右侧被裁；头部共 3–4 行 chrome 压在 480px 画布上。
-- **修法**：头部按**自身宽度**切换（`container-type: inline-size`，项目已在 `prose/widgets.css`/`js-example.css` 用过容器查询）；内联模式收到单行（标题 + 视图选择 + 搜索图标 + 常用项 + `⋯`），其余进溢出菜单或图标位，**图标一律走项目 `Tooltip`**；标签条默认折成「标签 N」chip；进度条仅宽容器显示；全屏走宽布局保留现有一排控件。
-- **范围**：`kanban-header.tsx`（397 行 → 拆）、新 `ui/kanban-header-compact.tsx` 与/或 `ui/kanban-overflow-menu.tsx`、`styles/kanban.css`、`kanban-header.test.ts`(448 行)、`e2e-visual.mjs` 工具栏扫描。
+- **根因**：`kanban-header.tsx` 的每一个响应式判断读的都是**视口**（`narrowLabel()` 用 `hidden md:inline` 之类），而块宽由预览面板决定 —— 1280px 视口 + 400px 面板照样画桌面行，工具条折成 2 行、右侧被裁，3–4 行 chrome 压在 480px 高的画布上（用户点①）。
+- **修法（实做）**：① 头部成为 `@container`（`container-type: inline-size`，项目已在 `prose/widgets.css`/`js-example.css` 用过容器查询），`@4xl`（56rem）是整条**唯一**的断点 —— 标签、视图名、进度条、宽/紧凑两个簇、标签条全在这一个断点上切换；② 窄条只留「视图标签条 + 搜索 + 新建卡 + `⋯`」，其余动作收进新的 `ui/kanban-overflow-menu.tsx`；**菜单行打开的是同一批面板**（`KanbanFilterPopover`/`KanbanSortPopover`/`KanbanViewOptions`/`KanbanArchivePanel`/`KanbanCsvPanel`），锚定在 `⋯` 上（行本身在面板画出前已随菜单消失）；③ 一个动作在文档里只写一次（`WideOnly`/`CompactOnly` 各自成簇），不存在「写两遍、藏一遍」；④ 视图的「新建 / 重命名 / 复制 / 删除」行与视图类型清单从 `kanban-view-tabs.tsx` 导出给菜单复用，两处不可能漂移；⑤ 窄条里视图标签只画图标，标签条折成「标签 N」chip（disclosure 而不是 menu：条就在同一组件里），且折叠态仍报「有几个在筛」的计数；⑥ 进度条仅宽条显示。
+- **被否**：① **图标 + Tooltip**（用户给的可选方案）—— 窄条里原本要 Tooltip 的那些动作现在是**菜单里的带字行**，裸图标只剩搜索与 `⋯` 两个，两者沿用全应用 `IconButton` 的约定（可访问名，不用 native `title`）；为两个控件在局部破例引入另一种风格不划算。② **JS 量宽度下发 `data-*`** —— 要 ResizeObserver + 首帧状态，容器查询是同一件事的更少活动件。③ 把 `@container` 挪到 `.kanban-canvas` —— 实测与放在头部**同样**出现下面那条 axe 审查项（因为病根不在容器，见「顺带修的真问题」），还会把面板的包含块从头部挪到画布；两者语义等价，故留在头部。
+- **顺带修的真问题（门禁读出来，不是本项的假设）**：宽条下**看板标题被视图标签条挤到 56px 并用省略号截断**（1280px 的条里显示「Gate Boa…」）。原因：标题包裹层是 `min-w-0`（可被压到内容宽度以下），而标签条自己不缩，于是标题一个人吸收全部亏空。改法：包裹层 `shrink-0`，标题保有自己的宽度（上限仍是 `max-w-44`），让标签条去滚（`overflow-x-auto` 本就是它的职责）。这恰好也是 axe 报 `elmPartiallyObscuring` 的来源：文本真被截断时 `Range.getClientRects()` 给出**两个** rect（完整文本 + 可见片段），axe 逐 rect 比元素栈即判「部分遮挡」—— 所以「标题被压缩」是以 a11y 审查项的形式浮出水面的。标题不再被压后该审查项消失，**不需要**任何 allowlist 例外（若在这里加例外，就是拿放行去盖症状）。
+- **范围**：`kanban-header.tsx`（498 行，析出 Identity/Actions/Toolbar/Wide/Compact）、新 `ui/kanban-overflow-menu.tsx`、新 `ui/kanban-header-compact.test.ts`、`kanban-fullscreen-title.tsx`、`kanban-tag-filter-bar.tsx`、`kanban-view-tabs.tsx`、`kanban-csv.tsx`/`kanban-archive.tsx`（面板与行导出以复用）、`kanban-header.test.ts`、双语 5 键、`scripts/e2e-visual.mjs`、`scripts/check-comments.mjs` 白名单、本文件。
 - **代价**：M–L（本轮最大一项）。
+- **验证**：① 新 `kanban-header-compact.test.ts`：两个簇按**簇内控件**定位（不按类名 —— 进度条包裹层带着同一组断点类，第一版 helper 正是被这一点骗过）、每个动作只出现一次、菜单行开的正是宽条那几个面板、宽条有的动作窄条里都有去处；② 变异自检：去掉宽簇的断点类 → 该用例红；但断言的第一版**不红**（匹配到了进度条包裹层），改按簇内控件定位后才红 —— 这条测试的第一次编写是无效的，实测记录在此；③ 浏览器门禁新增 `assertKanbanHeaderLayout`（内联 `compact` + 全屏 `wide`，含「窄条只占一行」「控件不越出条自己的盒子」）、`assertKanbanOverflowMenu`（内联 Filter/Sort 两行各 4 条：行与宽条控件同名、面板落在触发器下方、留在条自己的表面内、菜单在面板后关闭）、`assertKanbanPanelAnchoring` 改为只读**画出来的**触发器（容器查询把另一半留在文档里、盒子为 0，在它的「中心」按一下会打到视口角落）并新增「触发器可被指针命中」；④ 新增「视图标签条给标题让位、而不是把标题截断」（读 `scrollWidth <= clientWidth`）——本轮唯一能抓住上面那个真问题的断言；⑤ 实跑全新实例（`INKSTONE_EPHEMERAL_DEV=1`，:7845）：`e2e.mjs` 177/0、`e2e-visual.mjs` **435/0**、`contrast:check` ✅（kanban 两主题 axe 0 违规、25 项检查、11/9 条「层级 × 底色」全在 AA 之上）、全量 `test:unit` 439 文件 3956 通过 | 1 跳过、13 项静态门禁 + typecheck 全绿。
+- **局限**：① 断点是**单一**的（56rem），没有为「中宽」另设一档；② 宽条在很窄的全屏窗口里仍允许换行（`flex-wrap`）—— 这是刻意的：抱怨从来不是关于全屏的；③ 窄条把 7 个动作收进菜单 = 多一次按压，换来画布上少 2 行 chrome；④ 标签条折叠态只报总数与计数，不列具体标签名（展开即见）；⑤ 没有对「比预览面板下限还窄」的宽度做断言（门禁读到的是 1280px 视口的笔记面板与全屏、以及手机断点的抽屉外壳）。
 
 #### KU-06 列不再拉满 + 画布高度自适应
 

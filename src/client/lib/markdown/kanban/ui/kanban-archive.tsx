@@ -111,7 +111,12 @@ interface KanbanArchivePanelProps extends KanbanArchiveEntry {
   onClose: () => void
 }
 
-function KanbanArchivePanel({
+/**
+ * The shelf itself. Exported for the compact header's own menu, which reaches the archive through a
+ * row rather than a button of its own: the one way back to a filed-away card has to survive the
+ * layout that has no room for the trigger.
+ */
+export function KanbanArchivePanel({
   items,
   open,
   panelId,

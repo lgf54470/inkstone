@@ -50,7 +50,12 @@ function KanbanFullscreenTitleView({
   onStartEdit: (e?: React.MouseEvent) => void
 }) {
   return (
-    <div className='group flex items-center gap-1 min-w-0'>
+    // `shrink-0`: the title is the one thing in the bar that may not be given away. It was `min-w-0`
+    // while the view strip beside it kept its whole width, so a wide bar ellipsized the board's own
+    // name (56px of "Gate Board" in a 1280px bar) — and a clipped text run is also what a11y tooling
+    // reads as "partially obscured", which is how the squeeze surfaced. The strip is the half that
+    // gives way instead: it scrolls sideways, and the title keeps its own width up to its own cap.
+    <div className='group flex shrink-0 items-center gap-1'>
       <h2
         onDoubleClick={onStartEdit}
         className={`text-[length:var(--text-14)] font-bold tracking-[var(--tracking-title)] text-[var(--text-primary)] max-w-44 truncate select-none ${

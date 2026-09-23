@@ -178,6 +178,36 @@ function useCsvDoors(entry: KanbanCsvEntry) {
   return { feedback, fileRef, handleExport, handleFile }
 }
 
+interface KanbanCsvDoorProps {
+  entry: KanbanCsvEntry
+  open: boolean
+  panelId: string
+  anchorRef: React.RefObject<HTMLElement | null>
+  onClose: () => void
+}
+
+/**
+ * Both directions plus the panel that holds them, without the button that usually owns it. The
+ * compact header draws one trigger for the controls it has no room for, so its CSV row has to open
+ * the same door — and the file chooser and the last answer have to travel with it, or the row would
+ * open a panel with nothing behind it.
+ */
+export function KanbanCsvDoor({ entry, open, panelId, anchorRef, onClose }: KanbanCsvDoorProps) {
+  const { feedback, fileRef, handleExport, handleFile } = useCsvDoors(entry)
+  return (
+    <KanbanCsvPanel
+      open={open}
+      panelId={panelId}
+      anchorRef={anchorRef}
+      onClose={onClose}
+      fileRef={fileRef}
+      feedback={feedback}
+      onExport={handleExport}
+      onFile={handleFile}
+    />
+  )
+}
+
 /**
  * The board's CSV door. The panel stays open after either direction runs, because its answer —
  * how many rows went out, which file the board refused — is the one thing the reader still needs
@@ -188,7 +218,6 @@ export function KanbanCsvAction(entry: KanbanCsvEntry) {
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
   const panelId = useId()
-  const { feedback, fileRef, handleExport, handleFile } = useCsvDoors(entry)
 
   return (
     <>
@@ -205,18 +234,9 @@ export function KanbanCsvAction(entry: KanbanCsvEntry) {
         aria-expanded={open}
         {...(open ? { 'aria-controls': panelId } : {})}
       >
-        <span className='hidden md:inline'>{t('preview.kanban_csv')}</span>
+        <span className='hidden @4xl:inline'>{t('preview.kanban_csv')}</span>
       </Button>
-      <KanbanCsvPanel
-        open={open}
-        panelId={panelId}
-        anchorRef={btnRef}
-        onClose={() => setOpen(false)}
-        fileRef={fileRef}
-        feedback={feedback}
-        onExport={handleExport}
-        onFile={handleFile}
-      />
+      <KanbanCsvDoor entry={entry} open={open} panelId={panelId} anchorRef={btnRef} onClose={() => setOpen(false)} />
     </>
   )
 }
