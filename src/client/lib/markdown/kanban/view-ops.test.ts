@@ -33,6 +33,7 @@ const tableView: KanbanView = {
   filters: [{ propertyId: 'status', operator: 'is_empty' }],
   sorts: [{ propertyId: 'title', direction: 'asc' }],
   hiddenColumns: ['progress'],
+  cardFields: ['status', 'progress'],
 }
 
 function board(views: KanbanView[] = [boardView, tableView], columns = COLUMNS): KanbanData {
@@ -123,6 +124,11 @@ describe('duplicateKanbanView', () => {
     expect(copy.filters).toEqual(tableView.filters)
     expect(copy.sorts).toEqual(tableView.sorts)
     expect(copy.hiddenColumns).toEqual(tableView.hiddenColumns)
+    // A copy is the same view twice, so the columns it prints on its cards come along — and it is a
+    // copy rather than a second reader of one list, since taking a field off the copy must not take
+    // it off its source.
+    expect(copy.cardFields).toEqual(tableView.cardFields)
+    expect(copy.cardFields).not.toBe(tableView.cardFields)
     expect(copy.name).toBe('table 2')
     expect(next.activeViewId).toBe(copy.id)
   })

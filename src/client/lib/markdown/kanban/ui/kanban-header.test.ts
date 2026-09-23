@@ -315,7 +315,7 @@ describe('KanbanHeader column visibility', () => {
     }
   })
 
-  it('keeps the board view options free of column toggles', () => {
+  it('keeps the board view options free of the column toggles the table gets', () => {
     const rendered = renderHeader(allItems, {
       cardSize: 'medium',
       onChangeCardSize: vi.fn(),
@@ -325,8 +325,10 @@ describe('KanbanHeader column visibility', () => {
     try {
       act(() => { buttonNamed(rendered.container, t('preview.kanban_group_by')).click() })
       const panel = rendered.container.querySelector<HTMLElement>('[role="dialog"]')!
+      // The board panel does hold checkboxes of its own — the fields its cards print — so what is
+      // asserted is the section being absent by name, not the control being absent by tag.
       expect(panel.querySelector('select')).toBeTruthy()
-      expect(panel.querySelector('input[type="checkbox"]')).toBeNull()
+      expect(panel.textContent).not.toContain(t('preview.kanban_columns'))
     } finally {
       rendered.unmount()
     }

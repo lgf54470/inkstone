@@ -261,6 +261,8 @@ export const messages = {
 'preview.kanban_person_clear': 'Unassign',
 'preview.kanban_person_none': 'No one on this board yet',
 'preview.kanban_columns': 'Columns',
+'preview.kanban_card_fields': 'Fields on cards',
+'preview.kanban_card_fields_hint': 'Values printed under each card’s title',
 'preview.kanban_card_size': 'Card Size',
 'preview.kanban_card_size_small': 'Small',
 'preview.kanban_card_size_medium': 'Medium',

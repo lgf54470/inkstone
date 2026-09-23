@@ -175,6 +175,11 @@ export interface KanbanView {
   selectedTags?: string[]
   cardSize?: 'small' | 'medium' | 'large'
   hiddenColumns?: string[]
+  /**
+   * Columns this view prints on its own cards, in the order they are read. Absent means none, which is
+   * the card every board drew before the setting existed (see `card-fields.ts` for what a value reads as).
+   */
+  cardFields?: string[]
 }
 
 export interface KanbanData {

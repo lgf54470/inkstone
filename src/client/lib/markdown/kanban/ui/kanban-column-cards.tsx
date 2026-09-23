@@ -17,6 +17,8 @@ export interface ColumnCardsListProps {
   columns: KanbanData['columns']
   selectedIds: Set<string>
   cardSize?: CardSize
+  /** Columns this view prints on each card (see `card-fields.ts`); the board is what reads the view. */
+  cardFields?: string[]
   selectedTags?: string[]
   cardDropTarget: CardDropTarget | null
   onToggleSelect: (id: string) => void
@@ -50,6 +52,7 @@ export function ColumnCardsList(props: ColumnCardsListProps) {
             columns={props.columns}
             isSelected={props.selectedIds.has(item.id)}
             cardSize={props.cardSize}
+            cardFields={props.cardFields}
             selectedTags={props.selectedTags}
             dropIndicator={props.cardDropTarget?.cardId === item.id ? props.cardDropTarget.position : null}
             onToggleSelect={props.onToggleSelect}

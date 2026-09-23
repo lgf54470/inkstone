@@ -2,6 +2,7 @@ import { memo, type KeyboardEvent } from 'react'
 import { Flag, Paperclip } from 'lucide-react'
 import { useLocaleRepaint } from '../../../i18n'
 import { isEditableTarget } from '../../../hotkeys'
+import { readKanbanCardFields } from '../card-fields'
 import { getKanbanTagStyle } from '../colors'
 import { getKanbanCardDate } from '../date-fields'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
@@ -22,6 +23,8 @@ interface KanbanCardProps {
   isSelected: boolean
   cardSize?: 'small' | 'medium' | 'large'
   dropIndicator?: 'top' | 'bottom' | null
+  /** Columns the view wants printed under the title, in its order (see `card-fields.ts`). */
+  cardFields?: string[]
   selectedTags?: string[]
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
@@ -114,6 +117,31 @@ function getCardDisplayProps(item: KanbanItem, columns: KanbanProperty[]) {
   return { priorityOpt, tagsCol, tagVals, filesCount }
 }
 
+/**
+ * The values the view asked for, under the card's title. They are a description list because that is
+ * what they are — a column's name and the value under it — and because a screen reader then reads
+ * the pair as one thing rather than as two loose strings. A field with no value prints its name alone,
+ * which is how a flag reads, and a field the card has nothing for is left out rather than drawn empty.
+ */
+function CardFieldValues({ item, fields, columns }: { item: KanbanItem; fields?: string[]; columns: KanbanProperty[] }) {
+  if (!fields || fields.length === 0) return null
+  const read = readKanbanCardFields(item, fields, columns)
+  if (read.length === 0) return null
+  return (
+    <dl
+      data-kanban-card-fields
+      className='flex flex-wrap gap-x-3 gap-y-0.5 text-[length:var(--text-11)] leading-normal'
+    >
+      {read.map((field) => (
+        <div key={field.id} className='flex min-w-0 items-baseline gap-1'>
+          <dt className='shrink-0 text-[var(--text-tertiary)]'>{field.label}</dt>
+          {field.value !== '' && <dd className='min-w-0 truncate text-[var(--text-secondary)]'>{field.value}</dd>}
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 function CardDropIndicator({ dropIndicator }: { dropIndicator?: 'top' | 'bottom' | null }) {
   if (!dropIndicator) return null
   const posClass = dropIndicator === 'top' ? '-top-1' : '-bottom-1'
@@ -144,12 +172,16 @@ function useCardDragHandlers(
 
 function CardBody({
   item,
+  columns,
+  cardFields,
   titleState,
   display,
   onOpenDetail,
   onUpdateSubtasks,
 }: {
   item: KanbanItem
+  columns: KanbanProperty[]
+  cardFields?: string[]
   titleState: ReturnType<typeof useKanbanCardTitle>
   display: ReturnType<typeof getCardDisplayProps>
   onOpenDetail: () => void
@@ -178,13 +210,13 @@ function CardBody({
           onTitleKeyDown={gestures.handleTitleKeyDown}
           onBlur={titleState.handleBlur}
           onCancel={titleState.handleCancel}
-        />
-        {desc && (
-          <p className='line-clamp-2 text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)] leading-normal'>
-            {desc}
-          </p>
-        )}
+        />      {desc && (
+        <p className='line-clamp-2 text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)] leading-normal'>
+          {desc}
+        </p>
+      )}
       </div>
+      <CardFieldValues item={item} fields={cardFields} columns={columns} />
       <KanbanCardSubtasks
         itemId={item.id}
         subtasks={item.subtasks || []}
@@ -220,6 +252,7 @@ export const KanbanCard = memo(function KanbanCard({
   isSelected,
   cardSize = 'medium',
   dropIndicator,
+  cardFields,
   selectedTags,
   onToggleSelect,
   onOpenDetail,
@@ -268,6 +301,8 @@ export const KanbanCard = memo(function KanbanCard({
       />
       <CardBody
         item={item}
+        columns={columns}
+        cardFields={cardFields}
         titleState={titleState}
         display={display}
         onOpenDetail={() => onOpenDetail(item)}

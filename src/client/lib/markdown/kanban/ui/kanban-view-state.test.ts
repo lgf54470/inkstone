@@ -209,6 +209,32 @@ describe('kanban column visibility state', () => {
   })
 })
 
+// What a card prints under its title is view state like the ones above it: the reader picks it once
+// for the view they are looking at, and the board they switched away from keeps its own list.
+describe('the fields a view prints on its cards', () => {
+  it('adds a column to the active view’s cards and takes it back off', () => {
+    const { holder, commits, unmount } = renderRootStateProbe()
+    expect(holder.state.filterSort.cardFields).toEqual([])
+    act(() => { holder.state.filterSort.toggleCardField('assignee') })
+    expect(commits.at(-1)!.views[0]!.cardFields).toEqual(['assignee'])
+    expect(holder.state.filterSort.cardFields).toEqual(['assignee'])
+    act(() => { holder.state.filterSort.toggleCardField('dueDate') })
+    expect(commits.at(-1)!.views[0]!.cardFields).toEqual(['assignee', 'dueDate'])
+    act(() => { holder.state.filterSort.toggleCardField('assignee') })
+    expect(commits.at(-1)!.views[0]!.cardFields).toEqual(['dueDate'])
+    expect(commits.at(-1)!.views[1]!.cardFields).toBeUndefined()
+    unmount()
+  })
+
+  it('keeps an unset field list referentially stable across view edits', () => {
+    const { holder, unmount } = renderRootStateProbe()
+    const fields = holder.state.filterSort.cardFields
+    act(() => { holder.state.filterSort.setCardSize('large') })
+    expect(holder.state.filterSort.cardFields).toBe(fields)
+    unmount()
+  })
+})
+
 // The tag filter is stored on the view with the search, the filters and the sorts beside it: they are
 // one idea, and keeping one of the four in component state meant a reader lost it on a view switch
 // while the other three came back.

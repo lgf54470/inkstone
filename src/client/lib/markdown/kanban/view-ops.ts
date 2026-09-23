@@ -105,6 +105,7 @@ export function duplicateKanbanView(data: KanbanData, viewId: string): KanbanDat
     filters: source.filters ? [...source.filters] : undefined,
     sorts: source.sorts ? [...source.sorts] : undefined,
     hiddenColumns: source.hiddenColumns ? [...source.hiddenColumns] : undefined,
+    cardFields: source.cardFields ? [...source.cardFields] : undefined,
   }
   const views = [...data.views]
   views.splice(index + 1, 0, copy)

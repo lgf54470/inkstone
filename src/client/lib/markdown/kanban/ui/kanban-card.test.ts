@@ -313,6 +313,43 @@ describe('a card title renames without a double click too', () => {
   })
 })
 
+/**
+ * A card used to draw a fixed set of its properties and nothing else, so a column a reader had added
+ * to the board (an estimate, an environment) was reachable only by opening the card. The view now names
+ * the columns its cards print (see `card-fields.ts`), and these pin the card end of that: the values
+ * under the title, in the view's order, named by the column rather than by the stored value.
+ */
+describe('the fields a view asks a card to print', () => {
+  it('prints them under the title, in the order the view listed them', () => {
+    const { card, dispose } = renderCard(shapeCard, { cardFields: ['tags', 'status'] })
+    const fields = card.querySelector('[data-kanban-card-fields]')!
+    expect([...fields.querySelectorAll('dt')].map((node) => node.textContent)).toEqual(['Tags', 'Status'])
+    expect([...fields.querySelectorAll('dd')].map((node) => node.textContent)).toEqual(['Probe', 'To Do'])
+    dispose()
+  })
+
+  it('prints them after the description rather than inside it', () => {
+    const { card, dispose } = renderCard({ ...shapeCard, description: 'A note' }, { cardFields: ['status'] })
+    const fields = card.querySelector('[data-kanban-card-fields]')!
+    expect(fields.closest('p')).toBeNull()
+    const description = card.querySelector('p')!
+    expect(description.compareDocumentPosition(fields) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    dispose()
+  })
+
+  it('adds nothing at all when the view asks for no fields', () => {
+    const { card, dispose } = renderCard(shapeCard)
+    expect(card.querySelector('[data-kanban-card-fields]')).toBeNull()
+    dispose()
+  })
+
+  it('leaves out the fields the card has nothing to say about', () => {
+    const { card, dispose } = renderCard(bareCard, { cardFields: ['tags', 'status'] })
+    expect(card.querySelector('[data-kanban-card-fields]')).toBeNull()
+    dispose()
+  })
+})
+
 describe('the two other views draw the same card', () => {
   it('draws the gallery tile as the same card', () => {
     const { container, onOpenDetail, dispose } = renderGallery([shapeCard])

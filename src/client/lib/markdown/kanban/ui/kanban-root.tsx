@@ -244,6 +244,7 @@ function KanbanTopBar({
       onChangeGroupBy={state.columnOps.handleChangeGroupBy}
       onChangeSwimlaneBy={(propId) => state.filterSort.updateActiveView({ swimlaneBy: propId })}
       onToggleHiddenColumn={state.filterSort.toggleHiddenColumn}
+      onToggleCardField={state.filterSort.toggleCardField}
       onAddItem={() => state.adds.handleAddItem()}
       onToggleFullscreen={onToggleFullscreen}
       archive={state.archive}

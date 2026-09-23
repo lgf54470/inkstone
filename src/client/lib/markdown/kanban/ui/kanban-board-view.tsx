@@ -1,6 +1,7 @@
-import { memo, useCallback, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
+import { kanbanCardFields } from '../card-fields'
 import { groupKanbanItems, kanbanWipOver } from '../filter-sort'
 import type { KanbanGroup } from '../filter-sort'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
@@ -210,6 +211,12 @@ function useKanbanBoardMoves(
 interface BoardCellBundle {
   columns: KanbanData['columns']
   cardSize?: CardSize
+  /**
+   * The columns this view prints on its cards (see `card-fields.ts`). Read from the view the board was
+   * handed rather than threaded down from the root: the board is the surface that draws cards, and it
+   * is already given both halves of the answer.
+   */
+  cardFields: string[]
   selectedIds: Set<string>
   selectedTags?: string[]
   dnd: ReturnType<typeof useKanbanBoardDndState>
@@ -400,10 +407,15 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
     props.onMoveItem,
   )
   const dnd = useKanbanBoardDndState(handleMoveItem, props.onReorderColumns)
+  const cardFields = useMemo(
+    () => kanbanCardFields(props.view, props.data.columns),
+    [props.view, props.data.columns],
+  )
 
   const cells: BoardCellBundle = {
     columns: props.data.columns,
     cardSize: props.cardSize,
+    cardFields,
     selectedIds: props.selectedIds,
     selectedTags: props.selectedTags,
     dnd,

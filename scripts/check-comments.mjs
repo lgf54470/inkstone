@@ -5047,6 +5047,22 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/calendar-helpers.ts', [
     '/**\n * How many cells precede the first of the month in a grid that opens on `weekStart`. Both calendar\n * surfaces index JS `getDay()` (Sunday = 0), so `weekStart` is 0-based here too.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/card-fields.test.ts', [
+    '/**\n * A card draws the columns its view asks it to, and a view outlives the columns it names — the schema\n * editor can delete a column, or turn it into another kind, under a board that still lists it. These\n * pin the three rules the card relies on: the list is the reader\'s order, an id the board no longer\n * has is dropped rather than guessed at, and a value is printed the way its kind reads (an option by\n * its label, a day in the reader\'s own format, a person by name) or not at all when the card has\n * nothing to say about that column.\n */',
+  ]],
+  ['src/client/lib/markdown/kanban/card-fields.ts', [
+    '/**\n * Which of a board\'s own columns a card prints beneath its title.\n *\n * A card used to draw a fixed set — tags, a description excerpt, subtasks, a deadline, a priority and\n * an attachment count — and nothing else, so a column a reader had added (an environment, an estimate)\n * was reachable only by opening the card or switching to the table. The gap is not that the board\n * cannot *show* such a value but that it was never asked to: the value is in the document, and the\n * card simply had no way to be told about it (the review of 2026-09-23 recorded the board\'s own\n * values as incomplete for exactly this reason).\n *\n * A view therefore carries `cardFields`: the columns it wants printed on its cards, in the order they\n * are read. Absent means none — every existing board keeps the card it had, and the ordered list is\n * what tells the card which values to put beside its title and in which order. Configuring the *fixed*\n * regions (turning the subtask list or the tags row off) is deliberately not part of this: those are\n * what the card has always drawn, and removing them changes every board that never asked.\n *\n * The value of a field is read here rather than at each surface, so a card, a future gallery card and\n * a list row cannot disagree about what an option, a day or a person reads as — the same rule the\n * date badge follows for the card\'s own deadline.\n */',
+    '/** Unset views share this list so a memoised card keeps one identity across unrelated renders. */',
+    '/**\n * Several values of one column, joined the way this module already joins them: the table cell that\n * prints the same list uses a comma, and a card that read differently from the cell beside it would be\n * the second convention here for one job.\n */',
+    '/**\n * Adds a column to a view\'s card fields or takes it away, keeping the order they were picked in — the\n * card reads the list left to right, so a new field appends rather than sorting itself in.\n */',
+    '/**\n * The fields this view\'s cards print: the list a reader picked, minus every column the board no\n * longer has. A view outlives the columns it names — a column can be deleted, or renamed onto another\n * kind — so a stale id is dropped here, once, rather than guessed at by each surface that draws a card.\n */',
+    '/** The columns the panel offers, in schema order: every one that carries a value of its own. */',
+    '/** The column it came from, which is what a list of them is keyed by — names are not unique. */',
+    '/**\n * One field as the card prints it — the column\'s own name and its value as text — or null when the\n * card has nothing to say about that column. A field with a label and no value prints as the label\n * alone, which is how a flag reads ("Done" rather than "Done: false").\n */',
+    '// Text, number and url print as written. An object or a boolean is not a value this row knows',
+    '// how to say, and printing `[object Object]` on a card is worse than printing nothing.',
+    '/** Every field of one item the view asks for, in the view\'s own order, with the empty ones dropped. */',
+  ]],
   ['src/client/lib/markdown/kanban/chart-palette.ts', [
     '// A probe that is in the document but not painted: `:root` custom properties',
     '// only reach an attached element, and `color` is where the browser hands back',
@@ -5336,6 +5352,7 @@ const allowed = new Map([
     '/** Set only while the card is archived; restoring deletes the key. See `archive.ts`. */',
     '/** Board only: a second field the cards are cut into horizontal bands by. */',
     '/** Tag names this view filters to; stored on the view with the search and the filters beside it. */',
+    '/**\n   * Columns this view prints on its own cards, in the order they are read. Absent means none, which is\n   * the card every board drew before the setting existed (see `card-fields.ts` for what a value reads as).\n   */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-archive.test.ts', [
     '/**\n * F-12. Filing a card away takes it out of every view, count and chart at once, and the archive\n * panel is the only way back — so these cases read a mounted board end to end: what the reader no\n * longer sees, what the panel offers, and how one click travels back into the document through the\n * board\'s single commit path.\n */',
@@ -5436,6 +5453,7 @@ const allowed = new Map([
     '/**\n * The grouping and the moves, with the moves holding one identity for the board\'s life: the columns\n * and cards below compare what they are handed, and a mover minted per render would hand every card\n * a new prop for a change that touched none of them (K-19). What the handlers read — the groups, the\n * bands, the board\'s own mover — is read at call time through refs instead.\n */',
     '/** Shift+Arrow walks one step of the grid the card is in, keeping the coordinate it did not touch. */',
     '/** Everything a cell of the board needs to draw, whichever of the three shapes it is. */',
+    '/**\n   * The columns this view prints on its cards (see `card-fields.ts`). Read from the view the board was\n   * handed rather than threaded down from the root: the board is the surface that draws cards, and it\n   * is already given both halves of the answer.\n   */',
     '/** `column` is the plain board, `head` and `body` are the two halves of a banded board. */',
     '/**\n * Whether the cards this column draws are all picked, and the gesture that settles them to that\n * state. The whole column is one batch commit, so its ids are gathered here rather than per card.\n */',
     '// A banded column is the strip\'s title, and has no narrower form to fold into.',
@@ -5454,6 +5472,9 @@ const allowed = new Map([
     '// a keyboard can reach, and the `+` beside it is the mouse affordance that appears on hover. As a',
     '// cell header that opened the day from its own click handler it was both unreachable without a',
     '// pointer and a click target holding a button of its own (SH-110).',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-card-fields-section.tsx', [
+    '/**\n * Which of the board\'s own columns a card prints under its title.\n *\n * It lives beside the view options rather than inside them because the panel was already at the file\n * limit, and it is its own section rather than a second list beside "Columns" because the two answer\n * different questions: that one decides what the surface draws at all, this one what a single card\n * says about itself. A field for a column the reader has since hidden still prints on the card, which\n * is the point of the two being separate — and it is offered to a board alone, since a table draws\n * every column already.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-card-header.tsx', [
     '// `!important` twice, scoped to this one utility: the tag chip and the card behind it both',
@@ -5481,12 +5502,15 @@ const allowed = new Map([
     '/**\n * SH-107\'s shape, asked of the mounted card rather than of its source: the card is a container of\n * controls and its title is the control that opens the detail. The three views draw the same card,\n * so they are asserted together — the board\'s card, the gallery\'s tile and the list\'s row — because\n * a card surface that drifts back to being one click target is what the raw-control guard, axe\'s\n * `nested-interactive` and this test are all watching for.\n */',
     '/**\n * A card\'s title carries two gestures — one click opens the detail, two rename it — and the first has\n * to wait for the second not to happen. It used to open the dialog at once, and the dialog\'s own\n * overlay then ate the second click and closed it again: the reader saw the detail window flash and\n * vanish, and the rename could never run (user report 2026-09-23). The wait is what `detail` is for:\n * a real pointer\'s first click says `1`, a keyboard activation says `0` and has no second click to\n * wait for, and a double click says `2` on its second click.\n */',
     '/**\n * The doors a rename has that are not the double click: the pencil the title row draws once the card\n * is hovered or its button is focused, `F2` on the title itself, and — the other half of the wait — a\n * key\'s activation of the title, which has no second click to wait for and therefore opens at once.\n */',
+    '/**\n * A card used to draw a fixed set of its properties and nothing else, so a column a reader had added\n * to the board (an estimate, an environment) was reachable only by opening the card. The view now names\n * the columns its cards print (see `card-fields.ts`), and these pin the card end of that: the values\n * under the title, in the view\'s order, named by the column rather than by the stored value.\n */',
     '// The row leads with a subtask toggle and a selection box, so the title is found by what it says.',
     '/**\n * The row the card reveals on hover — its checkbox, its tag control and its details button — lives in\n * the card\'s own flow whether or not the card has tags. It used to be taken out of flow and floated\n * over the card\'s top edge when there were none, which painted the tag control across the title the\n * moment a reader hovered it (the board draws the same card outside the note, where no prose margin\n * separates the two). A class cannot prove the two boxes do not meet — the browser gate measures that\n * on the running board — so this pins the structure the geometry depends on. The gallery\'s own tile is\n * the one exception, and it is asserted below: it may float the row, but only over a cover.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-card.tsx', [
     '/** Shift+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */',
+    '/** Columns the view wants printed under the title, in its order (see `card-fields.ts`). */',
     '/**\n * Shift+Arrow walks a card one step of the grid. It used to be Alt+Arrow, which had to go: Alt+Left\n * and Alt+Right are the browser\'s own Back and Forward on Windows and Linux, so the card gesture\n * shared a chord with leaving the page and only worked for as long as the page won the race for it.\n * Shift is owned by nothing on its own, but it is how text is selected inside a field, so a key press\n * that started in one is left to the field.\n *\n * It is read off the card rather than off one of its controls, because that is where a card that is a\n * container of controls receives it: the event bubbles from whichever of them has focus. Opening the\n * detail is not one of these — that belongs to the title button, which is a real control and answers\n * Enter on its own.\n */',
+    '/**\n * The values the view asked for, under the card\'s title. They are a description list because that is\n * what they are — a column\'s name and the value under it — and because a screen reader then reads\n * the pair as one thing rather than as two loose strings. A field with no value prints its name alone,\n * which is how a flag reads, and a field the card has nothing for is left out rather than drawn empty.\n */',
     '/*\n        * The card\'s type sits on this wrapper rather than on the heading: prose owns a note\'s `h3`\n        * and is loaded unlayered, so it beats any utility written on the heading itself, while a\n        * wrapper is a rule prose has none for (see the hand-back block in `styles/kanban.css`).\n        */',
     '/**\n * The board\'s card is a container of controls, not a control: it carries a selection box, a tag menu,\n * a subtask toggle and a card menu, and the detail it opens belongs to its title button — the same\n * shape the table view\'s row has. As `role="button"` with a `tabIndex` (SH-107) the card said it was\n * one target while holding four others, which is what a browser reports as `nested-interactive`, and\n * a card-wide click handler is also what a drag has to fight: the pointer that starts a drag is the\n * pointer that would have opened the detail.\n *\n * The reveal row keeps its place in the card whether or not the card shows tags. Floating it over the\n * card\'s own top edge when there are none saved a row\'s height and painted the tag control across the\n * title: outside the note (the board overlay, where no prose margin pushes the title down) the row\n * landed exactly on the first line, and axe could not even tell what the title was written on. A row\n * that is always in flow costs its height and buys back three things — nothing is painted over the\n * title, hovering never moves what is under the pointer, and a card with no tags is as tall as one with.\n */',
   ]],
@@ -5514,6 +5538,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-column-cards.tsx', [
     '/**\n * What a column draws once its header is behind it: the cards, whatever it is holding back, and the\n * door to add one. It lives apart from the board so the board can stay a description of where columns\n * go — and so the render window (the 30 cards a column mounts at a time) has one owner rather than\n * one per surface that lists cards.\n */',
+    '/** Columns this view prints on each card (see `card-fields.ts`); the board is what reads the view. */',
     '// The card passes its own id, so the column can hand the same handler to all of them.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-column-count.tsx', [
@@ -5817,6 +5842,12 @@ const allowed = new Map([
     '// target holding a control.',
     '/* The bar is a control (it opens the item), so it is a real button rather than a painted div\n          with a click handler (SH-110); the progress track and the label are its contents. */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-header-card-fields.test.ts', [
+    '/**\n * Which columns a board prints on its cards, asked of the header that offers them.\n *\n * The panel is one of the two doors onto `cardFields` (the view options), so what is asserted here is\n * the wiring rather than the rules: the list names the board\'s own columns, the title is not one of\n * them (it is the card\'s heading), a checked box reads the view\'s stored list, and a press reaches the\n * writer with the column id. The table is the negative case beside it — it draws every column already,\n * so it is offered no card fields at all.\n *\n * These live apart from `kanban-header.test.ts` because that file is at the size AGENTS.md allows and\n * this section would take it past it.\n */',
+    '/** The switcher\'s own contract is covered in kanban-view-tabs.test.ts; here it only has to exist. */',
+    '/**\n * A board header, which is the only surface offered card fields. The view options trigger needs the\n * writers a board wires (grouping and card size) before it draws at all.\n */',
+    '/** A column\'s checkbox in the card-fields list, found by the name the column carries. */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-header-compact.test.ts', [
     '/**\n * The top bar is laid out against its **own** width, and the note gives it as little as a few hundred\n * pixels: a panel beside the editor, or a phone. The bar used to decide everything from the window —\n * `hidden md:inline` on every label — so a 1280px monitor with a 400px pane drew the desktop row, which\n * wrapped to three lines above a canvas whose own height is capped at 480px (user report 2026-09-23:\n * the pane\'s bar was cramped and left blank rows, and icons with tooltips would be a better shape).\n *\n * The fix has two halves, and both are asserted here because either one alone regresses silently.\n * The bar became a `@container`, so every breakpoint inside it reads the bar; and below that\n * breakpoint the actions the bar cannot draw a control for move into one menu — the menu rows open the\n * board\'s *own* panels, so the compact layout cannot drift away from the wide one.\n *\n * jsdom does not evaluate container queries, so what is asserted is the contract that decides the\n * layout: which class each cluster carries, that each action is written once rather than twice with\n * one hidden, and what the menu does when a row is chosen.\n */',
     '/** Every prop the compact bar\'s menu can act on, so a row is never missing because a writer is. */',
@@ -5838,6 +5869,8 @@ const allowed = new Map([
     '/**\n * A finger needs a target the project\'s own scale defines — 36px below `md`, 28px above it — and the\n * labels that make this row readable on a desktop are what makes it overflow on a phone. So each\n * control is measured against that scale, and the labels are dropped on the narrow screen while the\n * accessible name stays: an icon-only button still has to say what it does.\n */',
     '/**\n * How a control gives up its words when the bar is narrow. The breakpoint is the header\'s own\n * container (`@4xl` is 56rem), not the window: a note pane beside the editor is a few hundred pixels\n * wide whatever the monitor is, which is why reading the viewport here put three lines of chrome\n * above the canvas (user report 2026-09-23).\n */',
     '/**\n * Whether a control is down to its icon on a narrow bar: either it writes nothing at all, or the only\n * text it holds is the label it hides at that breakpoint. Both shapes have to carry the name.\n */',
+    '// The board panel does hold checkboxes of its own — the fields its cards print — so what is',
+    '// asserted is the section being absent by name, not the control being absent by tag.',
     '// A hint assembled in JSX outlives a locale switch only in its parentheses; reading the expected',
     '// text from the zh-CN resource is what proves the whole message, wrapper included, is translated.',
     '// `IS_MAC` is frozen when the hotkeys module is first read, so the macOS branch needs a fresh',
@@ -5858,6 +5891,7 @@ const allowed = new Map([
     '// named there as the menu\'s shortcuts.',
     '/**\n * The labeled cluster: one control per action, words and all. It is what the full screen board draws,\n * and everything in it is also a row of the compact menu — the two lists are asserted against each\n * other so the narrow layout cannot offer less than the wide one.\n */',
     '/** The narrow cluster: the one trigger whose menu holds everything above, plus the toolbar\'s four. */',
+    '// The menu reads the active view\'s own card fields, the same way it reads its hidden columns.',
     '// A phone gets a row that wraps instead of a row that runs off the viewport, and never a scroll',
     '// box: the filter, sort and options panels hang off this element, and an `overflow` here would',
     '// clip them to the row they are anchored to.',
@@ -6351,6 +6385,8 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-state.test.ts', [
     '// The tag filter is view state like the rest of them, and a test of its own lives below.',
+    '// What a card prints under its title is view state like the ones above it: the reader picks it once',
+    '// for the view they are looking at, and the board they switched away from keeps its own list.',
     '// The tag filter is stored on the view with the search, the filters and the sorts beside it: they are',
     '// one idea, and keeping one of the four in component state meant a reader lost it on a view switch',
     '// while the other three came back.',
@@ -6429,6 +6465,9 @@ const allowed = new Map([
     '/**\n * The tab strip used to be read-only: a board could switch views but never gain, name, copy, order\n * or lose one, so whatever the fence listed was what the reader was stuck with. Those operations\n * live here as pure document edits, because the board history wraps every commit — an operation\n * that only returns the next document is undoable for free, and `activeViewId` naming a view that\n * still exists is the invariant each case below re-checks, since one dangling id makes the whole\n * board render its fallback view.\n */',
     '// No second date column and no number column: the view asks a question it cannot answer rather',
     '// than inventing a property id the items will never carry.',
+    '// A copy is the same view twice, so the columns it prints on its cards come along — and it is a',
+    '// copy rather than a second reader of one list, since taking a field off the copy must not take',
+    '// it off its source.',
   ]],
   ['src/client/lib/markdown/kanban/view-ops.ts', [
     '/**\n * The document edits behind the view switcher: what a board looks like after it gains, names,\n * copies, orders or loses a view. These stay free of React and of the store because the board\n * history wraps every commit — an operation that only returns the next document is undoable for\n * free, and the toast\'s way back is the same undo as Ctrl+Z.\n */',

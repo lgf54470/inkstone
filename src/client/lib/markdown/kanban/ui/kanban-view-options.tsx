@@ -9,6 +9,7 @@ import {
   type KanbanSchemaOperations,
 } from './kanban-column-hooks'
 import { Segmented, Select } from '../../../../components/form'
+import { CardFieldsSection } from './kanban-card-fields-section'
 import { KanbanPanel, PANEL_FIELD } from './kanban-panel'
 import { kanbanPropertyColumns } from './kanban-property-cell'
 
@@ -24,10 +25,12 @@ interface KanbanViewOptionsProps {
   swimlaneBy?: string
   cardSize?: CardSize
   hiddenColumns?: string[]
+  cardFields?: string[]
   onChangeGroupBy?: (propId: string) => void
   onChangeSwimlaneBy?: (propId: string | undefined) => void
   onChangeCardSize?: (size: CardSize) => void
   onToggleHiddenColumn?: (propertyId: string) => void
+  onToggleCardField?: (propertyId: string) => void
   schemaOps?: KanbanSchemaOperations
 }
 
@@ -415,10 +418,12 @@ export const KanbanViewOptions = memo(function KanbanViewOptions({
   swimlaneBy,
   cardSize,
   hiddenColumns,
+  cardFields,
   onChangeGroupBy,
   onChangeSwimlaneBy,
   onChangeCardSize,
   onToggleHiddenColumn,
+  onToggleCardField,
   schemaOps,
 }: KanbanViewOptionsProps) {
   useLocaleRepaint()
@@ -455,6 +460,9 @@ export const KanbanViewOptions = memo(function KanbanViewOptions({
           onToggleHiddenColumn={onToggleHiddenColumn}
           schemaOps={schemaOps}
         />
+      )}
+      {onToggleCardField && cardFields !== undefined && (
+        <CardFieldsSection columns={columns} cardFields={cardFields} onToggleCardField={onToggleCardField} />
       )}
     </KanbanPanel>
   )

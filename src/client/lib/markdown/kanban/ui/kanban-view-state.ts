@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { toggleKanbanColumnSort, toggleKanbanHiddenColumn } from '../filter-sort'
+import { toggleKanbanCardField } from '../card-fields'
 import {
   addKanbanView,
   duplicateKanbanView,
@@ -19,6 +20,7 @@ import type { CommitKanbanData } from './kanban-history'
 const EMPTY_FILTERS: KanbanFilter[] = []
 const EMPTY_SORTS: KanbanSort[] = []
 const EMPTY_HIDDEN_COLUMNS: string[] = []
+const EMPTY_CARD_FIELDS: string[] = []
 const EMPTY_TAGS: string[] = []
 
 // Both toggles read the committed view rather than the render-time one, so two
@@ -42,7 +44,12 @@ function useKanbanViewToggles(activeViewId: string, commitData: CommitKanbanData
       toggleByCommittedView((view) => ({ hiddenColumns: toggleKanbanHiddenColumn(view.hiddenColumns, propertyId) })),
     [toggleByCommittedView],
   )
-  return { toggleSortColumn, toggleHiddenColumn }
+  const toggleCardField = useCallback(
+    (propertyId: string) =>
+      toggleByCommittedView((view) => ({ cardFields: toggleKanbanCardField(view.cardFields, propertyId) })),
+    [toggleByCommittedView],
+  )
+  return { toggleSortColumn, toggleHiddenColumn, toggleCardField }
 }
 
 export function useKanbanViewState(
@@ -55,8 +62,9 @@ export function useKanbanViewState(
   const sorts = activeView.sorts ?? EMPTY_SORTS
   const cardSize: CardSize = activeView.cardSize ?? 'medium'
   const hiddenColumns = activeView.hiddenColumns ?? EMPTY_HIDDEN_COLUMNS
+  const cardFields = activeView.cardFields ?? EMPTY_CARD_FIELDS
   const selectedTags = activeView.selectedTags ?? EMPTY_TAGS
-  const { toggleSortColumn, toggleHiddenColumn } = useKanbanViewToggles(activeViewId, commitData)
+  const { toggleSortColumn, toggleHiddenColumn, toggleCardField } = useKanbanViewToggles(activeViewId, commitData)
 
   const updateActiveView = useCallback((patch: Partial<KanbanView>) => {
     commitData((prev) => ({
@@ -88,6 +96,8 @@ export function useKanbanViewState(
     setCardSize,
     hiddenColumns,
     toggleHiddenColumn,
+    cardFields,
+    toggleCardField,
     updateActiveView,
   }
 }

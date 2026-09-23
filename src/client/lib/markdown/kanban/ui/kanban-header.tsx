@@ -63,6 +63,7 @@ interface KanbanHeaderProps {
   onChangeGroupBy?: (propId: string) => void
   onChangeSwimlaneBy?: (propId: string | undefined) => void
   onToggleHiddenColumn?: (propertyId: string) => void
+  onToggleCardField?: (propertyId: string) => void
   onAddItem: () => void
   onToggleFullscreen?: () => void
   archive?: KanbanArchiveEntry
@@ -82,10 +83,12 @@ function KanbanViewOptionsAction({
   swimlaneBy,
   cardSize,
   hiddenColumns,
+  cardFields,
   onChangeGroupBy,
   onChangeSwimlaneBy,
   onChangeCardSize,
   onToggleHiddenColumn,
+  onToggleCardField,
   schemaOps,
 }: {
   columns: KanbanData['columns']
@@ -93,10 +96,12 @@ function KanbanViewOptionsAction({
   swimlaneBy?: string
   cardSize?: CardSize
   hiddenColumns?: string[]
+  cardFields?: string[]
   onChangeGroupBy?: (propId: string) => void
   onChangeSwimlaneBy?: (propId: string | undefined) => void
   onChangeCardSize?: (size: CardSize) => void
   onToggleHiddenColumn?: (propertyId: string) => void
+  onToggleCardField?: (propertyId: string) => void
   schemaOps?: KanbanSchemaOperations
 }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -133,10 +138,12 @@ function KanbanViewOptionsAction({
         swimlaneBy={swimlaneBy}
         cardSize={cardSize}
         hiddenColumns={hiddenColumns}
+        cardFields={cardFields}
         onChangeGroupBy={onChangeGroupBy}
         onChangeSwimlaneBy={onChangeSwimlaneBy}
         onChangeCardSize={onChangeCardSize}
         onToggleHiddenColumn={onToggleHiddenColumn}
+        onToggleCardField={onToggleCardField}
         schemaOps={schemaOps}
       />
     </>
@@ -310,10 +317,12 @@ function KanbanWideActions(props: HeaderActionsProps) {
           swimlaneBy={activeView.swimlaneBy}
           cardSize={activeView.type === 'board' ? cardSize : undefined}
           hiddenColumns={activeView.hiddenColumns}
+          cardFields={activeView.cardFields}
           onChangeGroupBy={activeView.type === 'board' ? props.onChangeGroupBy : undefined}
           onChangeSwimlaneBy={activeView.type === 'board' ? props.onChangeSwimlaneBy : undefined}
           onChangeCardSize={activeView.type === 'board' ? props.onChangeCardSize : undefined}
           onToggleHiddenColumn={activeView.type === 'table' ? props.onToggleHiddenColumn : undefined}
+          onToggleCardField={activeView.type === 'board' ? props.onToggleCardField : undefined}
           schemaOps={activeView.type === 'table' ? props.schemaOps : undefined}
         />
       )}
@@ -323,6 +332,7 @@ function KanbanWideActions(props: HeaderActionsProps) {
 
 /** The narrow cluster: the one trigger whose menu holds everything above, plus the toolbar's four. */
 function KanbanCompactActions(props: HeaderActionsProps) {
+  // The menu reads the active view's own card fields, the same way it reads its hidden columns.
   const { columns, activeView, cardSize, filters, sorts } = props
   return (
     <CompactOnly>
@@ -346,6 +356,7 @@ function KanbanCompactActions(props: HeaderActionsProps) {
         onChangeSwimlaneBy={props.onChangeSwimlaneBy}
         onChangeCardSize={props.onChangeCardSize}
         onToggleHiddenColumn={props.onToggleHiddenColumn}
+        onToggleCardField={props.onToggleCardField}
         onUndo={props.onUndo}
         onRedo={props.onRedo}
         onAddItem={props.onAddItem}

@@ -270,6 +270,8 @@ export const messages = {
 'preview.kanban_person_clear': '取消指派',
 'preview.kanban_person_none': '看板上还没有成员',
 'preview.kanban_columns': '显示列',
+'preview.kanban_card_fields': '卡片上显示的字段',
+'preview.kanban_card_fields_hint': '印在每张卡片标题下的值',
 'preview.kanban_card_size': '卡片尺寸',
 'preview.kanban_card_size_small': '紧凑',
 'preview.kanban_card_size_medium': '适中',
