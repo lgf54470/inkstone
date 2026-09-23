@@ -1,4 +1,4 @@
-import { memo, useId, useRef, useState } from 'react'
+import { memo, useId, useMemo, useRef, useState } from 'react'
 import {
   Columns3,
   Filter,
@@ -451,8 +451,11 @@ export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps)
   const { data, activeView, isFullscreen, onUpdateBoardTitle } = props
   const tagsCol = data.columns.find((c) => c.id === 'tags')
   // The tag bar offers values a reader could filter the live board down to; a tag that only
-  // survives on archived cards would promise an empty result.
-  const activeItems = kanbanActiveItems(data.items)
+  // survives on archived cards would promise an empty result. The scan is memoized on the item list
+  // because that array is the bar's own count memo key: rebuilt per render it walked the whole board
+  // again on every repaint -- a language switch, a drag highlight, any commit at all -- none of which
+  // move a tag.
+  const activeItems = useMemo(() => kanbanActiveItems(data.items), [data.items])
 
   return (
     <div
