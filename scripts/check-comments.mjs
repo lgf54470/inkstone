@@ -3541,7 +3541,16 @@ const allowed = new Map([
   ]],
   ['src/client/features/preview/kanban-description-preview.test.ts', [
     '/**\n * The preview pane is the only production caller that hands a board a description renderer, and it does\n * so through a hook. Nothing in the modal\'s own tests can tell whether that hand-off happened: a board\n * mounted without it still behaves perfectly in every unit test, it simply never offers the control.\n * So this drives the real hook over a real rendered fence.\n */',
+    '/** Opens the one card this board holds and flips its description to the preview face. */',
     '// The card is a container of controls (SH-107): its title button is what opens the detail.',
+    '// A description is prose inside an untrusted document: a board can arrive by import, by share, or',
+    '// pasted out of somebody else\'s note, so the card\'s `content` is not the reader\'s own writing. The',
+    '// preview pane hands it to `dangerouslySetInnerHTML`, and the whole reason that is acceptable is the',
+    '// one below — the string comes from the same pipeline the note body goes through, sanitizer and all.',
+    '// Nothing else in the suite asks what a *hostile* description does, so this is what would fail if the',
+    '// renderer were ever swapped for a bare `markdown-it` call or the sanitize step were dropped.',
+    '// The prose itself still renders: a sanitizer that dropped the whole description would pass every',
+    '// assertion above while making the control useless.',
   ]],
   ['src/client/features/preview/kanban-dispose.test.ts', [
     '/**\n * A board open in full screen outlives its own fence.\n *\n * The overlay hosts the live instance the inline block mounted — the element is moved, never copied —\n * and the registry disposes that instance when the note stops holding the block: deleting the fence,\n * or re-rendering the preview from a document without it. Disposal tore the React root down but left\n * the overlay standing on an empty stage, with the reader looking at a blank dialog and no way to\n * learn why (review K-04). Both ends are asserted here: the entry reports that it is gone, and the\n * preview pane closes the overlay and says so — while a pane that is itself going away stays quiet.\n */',
@@ -9477,6 +9486,14 @@ const allowed = new Map([
     '// (`--kanban-tag-<name>-fg`), so a reference is only checkable once its',
     '// placeholder is expanded over the colour names the picker offers. A name that is',
     '// not a placeholder is a real token and has to be declared as spelled.',
+  ]],
+  ['tests/kanban-url-fields.test.ts', [
+    '/**\n * A board\'s own data carries two fields that are URLs, and every one of them is a URL the browser may\n * be asked to follow: a cover becomes an `<img src>`, a file\'s `url` becomes an `<a href>` in the\n * detail panel, a download link, and a `fetch` when the reader opens a text attachment. The fence they\n * come from is not the author\'s private file — a board arrives by import, by share, or pasted out of\n * somebody else\'s note — so the only thing standing between a `javascript:` cover and a click that runs\n * it is the protocol check at the parse boundary (`assertFenceUrlsAreSafe` in `body.ts`), which fails\n * the whole fence into its error state rather than quietly dropping a field.\n *\n * The check itself is covered by `body.test.ts`. What is not, and what this file exists for, is that\n * the *list* of fields cannot fall behind the shape of the data: it reads the interfaces out of\n * `types.ts`, finds every field whose name says it holds a URL, and requires the guard to cover exactly\n * those. A card that grows a `thumbnail` (or a whole new interface with a URL on it) fails here on the\n * day it is declared — while somebody is thinking about protocol safety — rather than later, when the\n * field is already drawn by a surface that trusted it.\n */',
+    '/** What the names of such a field look like, whichever interface it turns up on. */',
+    '/** The body of one `export interface X { … }`, found by its brace rather than by its length. */',
+    '/** Interface name → the field names on it that hold a URL. */',
+    '/** One way to smuggle a URL into a card, named by the field it goes into. */',
+    '// The message names the field, so an author whose board will not open can find the line.',
   ]],
   ['tests/kanban-view-live-fields.test.ts', [
     '/**\n * KanbanView is persisted fence data: a declared field nobody reads is a dead\n * contract (review #19 left seven of them behind). Every field of the\n * KanbanView interface must be accessed (`view.<field>`) somewhere in the\n * client outside types.ts, so the next config knob ships wired or not at all.\n */',
