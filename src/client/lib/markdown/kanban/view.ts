@@ -1,5 +1,5 @@
 import { t } from '../../i18n'
-import { decodeDataValue } from '../data-attr'
+import { fenceBody } from '../fence-bodies'
 import type { KanbanFenceRef } from './types'
 
 export const KANBAN_BLOCK_SELECTOR = '[data-kanban]'
@@ -49,12 +49,21 @@ export function createKanbanCanvas(editable: boolean): HTMLElement {
   return container
 }
 
+// While the live canvas sits in the full screen overlay, the inline placeholder
+// shows this stand-in so the block keeps its height and does not collapse.
+export function createKanbanReserve(): HTMLElement {
+  const reserve = document.createElement('div')
+  reserve.className = `${KANBAN_CANVAS_CLASS} is-reserve`
+  reserve.setAttribute('aria-hidden', 'true')
+  return reserve
+}
+
 export function kanbanBlocks(root: ParentNode): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(KANBAN_BLOCK_SELECTOR)]
 }
 
 export function kanbanBody(node: HTMLElement): string {
-  return decodeDataValue(node.dataset.kanban ?? '').replace(/\r\n/g, '\n').replace(/\n$/, '')
+  return fenceBody(node, 'kanban', kanbanIndex(node)).replace(/\r\n/g, '\n').replace(/\n$/, '')
 }
 
 export function kanbanIndex(node: HTMLElement): number {
@@ -74,6 +83,15 @@ export function kanbanFenceRef(node: HTMLElement): KanbanFenceRef | null {
 
 export function isKanbanWritableHere(node: HTMLElement): boolean {
   return Boolean(kanbanFenceRef(node)) && !node.closest('.note-embed-body, .markdown-example-preview')
+}
+
+/**
+ * Take out the controls that answer only to a mounted board. The preview pane binds both of
+ * them (features/preview/preview-interactions.ts) and asks the live instance; everywhere else
+ * they are buttons that look pressable and do nothing.
+ */
+export function removeKanbanLiveControls(node: HTMLElement): void {
+  node.querySelectorAll<HTMLElement>('[data-kanban-fullscreen], [data-kanban-retry]').forEach((control) => control.remove())
 }
 
 export function markKanbanLoading(node: HTMLElement): void {
@@ -109,4 +127,27 @@ export function showKanbanError(node: HTMLElement, detail: string): void {
   pre.append(code)
   wrap.append(message, retry, pre)
   placeholder.replaceChildren(wrap)
+}
+
+/**
+ * The answer for a surface that will never mount the board: the fence body it was
+ * rendered from, with the controls that need a live instance taken out. Without it
+ * such a block sits at "Loading kanban…" forever, which is a promise the surface
+ * cannot keep.
+ */
+function showKanbanSource(node: HTMLElement): void {
+  removeKanbanLiveControls(node)
+  node.classList.remove('loading', 'has-error', 'is-ready')
+  node.classList.add('kanban-source')
+  node.setAttribute('aria-busy', 'false')
+  const placeholder = kanbanPlaceholder(node) ?? node
+  const pre = document.createElement('pre')
+  const code = document.createElement('code')
+  code.textContent = kanbanBody(node)
+  pre.append(code)
+  placeholder.replaceChildren(pre)
+}
+
+export function showKanbanSourceAll(root: ParentNode): void {
+  kanbanBlocks(root).forEach(showKanbanSource)
 }

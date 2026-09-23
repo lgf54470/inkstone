@@ -1,4 +1,6 @@
 
+import type { FenceBodies } from '../fence-bodies'
+
 export interface Heading {
   level: number
   text: string
@@ -9,6 +11,11 @@ export interface Heading {
 export interface RenderResult {
   html: string
   headings: Heading[]
+  /**
+   * The fence bodies this markup was built from, in document order. They do not ride in the markup
+   * (see `../fence-bodies`); whoever inserts the markup registers these so the blocks can read back.
+   */
+  fences: FenceBodies
   hasMath: boolean
   hasMermaid: boolean
   hasChart: boolean
@@ -34,13 +41,12 @@ interface RenderEnvironment {
   taskNonce: string
   tabSequence: number
   exampleSequence: number
-  /** Document-scoped block number; the mind map registry identifies blocks by it. */
-  mindmapSequence: number
-  /** Document-scoped block number; the whiteboard registry identifies blocks by it. */
-  excalidrawSequence: number
-  /** Document-scoped block number; the kanban registry identifies blocks by it. */
-  kanbanSequence: number
-  bentoSlidesSequence: number
+  /**
+   * Where each rich block leaves its fence body, and the block number it gets for it: the position
+   * in this set is exactly what `data-<family>-index` says, so nested renders share the outer set
+   * instead of restarting the count.
+   */
+  fences: FenceBodies
   docId: string
   /** `true` when the caller opted into loading external https images (preview.externalImages). */
   externalImages: boolean

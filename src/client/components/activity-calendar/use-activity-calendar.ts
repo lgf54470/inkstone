@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { DateRangeFilter } from '@shared/types'
 import { t } from '../../lib/i18n'
-import { dateKey } from '../../lib/time'
+import { dateKey, narrowWeekdayLabels, type WeekStartDay } from '../../lib/time'
 import { buildStripWeeks, type WeekCell } from './strip'
 import { latestEditOutsideWindow } from '../../features/list'
 import { YEAR_GRID_COLUMNS, buildMonthGridCells, yearGridColumns, type YearGridColumns } from '../calendar-grids'
@@ -70,10 +70,7 @@ function useCalendarBase(props: ActivityCalendarProps, state: CalendarState): Ca
   const todayKey = dateKey(now)
   const isCurrentMonth = props.cursor.year === now.getFullYear() && props.cursor.month === now.getMonth()
   const isCurrentYear = props.cursor.year === now.getFullYear()
-  const weekdayLabels = useMemo(() => {
-    const formatter = new Intl.DateTimeFormat(props.locale, { weekday: 'narrow' })
-    return Array.from({ length: 7 }, (_, index) => formatter.format(new Date(2024, 0, 7 + (((props.weekStart ?? 1) + index) % 7))))
-  }, [props.locale, props.weekStart])
+  const weekdayLabels = useMemo(() => narrowWeekdayLabels(props.locale, props.weekStart ?? 1), [props.locale, props.weekStart])
   const gridTitle = useMemo(() => new Intl.DateTimeFormat(props.locale, {
     year: 'numeric',
     month: 'long',
@@ -176,7 +173,7 @@ function useCalendarLatest(props: ActivityCalendarProps): LatestState {
 
 export interface MonthViewBundle {
   cursor: { year: number; month: number }
-  weekStart: 0 | 1
+  weekStart: WeekStartDay
   todayKey: string
   weekdayLabels: string[]
   gridTitle: string
@@ -215,7 +212,7 @@ function buildMonthView(props: ActivityCalendarProps, state: CalendarState, base
 
 export interface YearViewBundle {
   cursor: { year: number; month: number }
-  weekStart: 0 | 1
+  weekStart: WeekStartDay
   todayKey: string
   columns: YearGridColumns
   weekdayLabels: string[]

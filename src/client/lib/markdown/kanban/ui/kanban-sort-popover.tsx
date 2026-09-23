@@ -1,12 +1,13 @@
 import { memo, useRef } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
-import { useClickOutside } from '../../../../components/overlay'
-import { t } from '../../../i18n'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanProperty, KanbanSort } from '../types'
 
 interface KanbanSortPopoverProps {
   open: boolean
+  panelId: string
   onClose: () => void
   anchorRef: React.RefObject<HTMLElement | null>
   columns: KanbanProperty[]
@@ -50,6 +51,7 @@ function SortRow({
       <select
         value={sort.propertyId}
         onChange={(e) => onUpdate(index, { propertyId: e.target.value })}
+        aria-label={t('preview.kanban_sort_property')}
         className='h-7 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
       >
         {columns.map((c) => (
@@ -62,6 +64,7 @@ function SortRow({
       <select
         value={sort.direction}
         onChange={(e) => onUpdate(index, { direction: e.target.value as 'asc' | 'desc' })}
+        aria-label={t('preview.kanban_sort_direction')}
         className='h-7 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
       >
         <option value='asc'>{t('preview.kanban_sort_asc')}</option>
@@ -117,14 +120,17 @@ function SortList({
 
 export const KanbanSortPopover = memo(function KanbanSortPopover({
   open,
+  panelId,
   onClose,
   anchorRef,
   columns,
   sorts,
   onChangeSorts,
 }: KanbanSortPopoverProps) {
+  useLocaleRepaint()
   const panelRef = useRef<HTMLDivElement>(null)
   useClickOutside([panelRef, anchorRef], open, onClose)
+  useEscape(open, onClose)
 
   if (!open) return null
 
@@ -141,6 +147,7 @@ export const KanbanSortPopover = memo(function KanbanSortPopover({
 
   return (
     <div
+      id={panelId}
       ref={panelRef}
       role='dialog'
       aria-label={t('preview.kanban_sort_rules')}

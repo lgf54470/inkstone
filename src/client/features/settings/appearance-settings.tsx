@@ -3,6 +3,7 @@ import type { AccentName, AppLocale, BackgroundName, ProseFont, ProseWidth, Them
 import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import { YearGrid } from '../../components/calendar-grids'
 import { cn } from '../../lib/cn'
+import { weekStartFor } from '../../lib/time'
 import { Input, Segmented, SettingRow, Slider, Switch, type SegmentedOption } from '../../components/form'
 import { useUi } from '../../store/ui'
 import { setCalendarTreeShowEmpty, setCalendarTreeVisible, useCalendarTreeShowEmpty, useCalendarTreeVisible } from '../../lib/calendar-prefs'
@@ -277,7 +278,7 @@ function YearGridPreview({ columns, locale }: { columns: YearGridColumnsPref; lo
       </div>
       <YearGrid
         year={previewYear}
-        weekStart={locale === 'zh-CN' ? 1 : 0}
+        weekStart={weekStartFor(locale)}
         columns={columns === '4' ? 4 : 3}
         renderMonth={(month) => (
           <button

@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { MoreHorizontal, Plus, X } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanOption, KanbanProperty } from '../types'
-import { TagCreatePopover } from './kanban-tag-picker'
+import { computeTagAddition, TagCreatePopover } from './kanban-tag-picker'
 
 function CardTagItem({
   tag,
@@ -22,6 +22,7 @@ function CardTagItem({
   const color = resolveKanbanTagColor(tag, options)
   const opt = options?.find((o) => o.id === tag || o.label === tag)
   const label = opt?.label ?? tag
+  const name = formatKanbanOptionLabel(label, 'tags')
 
   return (
     <span
@@ -39,7 +40,7 @@ function CardTagItem({
         className='hover:underline'
         title={t('preview.kanban_filter')}
       >
-        {formatKanbanOptionLabel(label, 'tags')}
+        {name}
       </button>
       {onRemove && (
         <button
@@ -49,22 +50,18 @@ function CardTagItem({
             e.preventDefault()
             onRemove(tag)
           }}
-          className='ml-0.5 rounded-[var(--r-xs)] p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 group-hover/tag:!opacity-100 hover:text-[var(--text-primary)]'
-          aria-label={t('preview.kanban_remove_tag')}
+          // `!important` twice, scoped to this one utility: the tag chip and the card behind it both
+          // reveal at once, and both variants carry the same specificity as `group-hover/card` —
+          // Tailwind emits them in its own order, so without the flag which one wins is whichever rule
+          // it happened to write last. Neither class reaches past this element.
+          className='ml-0.5 rounded-[var(--r-xs)] p-0.5 opacity-0 transition-opacity group-hover/card:opacity-60 group-hover/tag:!opacity-100 focus-visible:!opacity-100 hover:text-[var(--text-primary)]'
+          aria-label={t('preview.kanban_remove_tag_named', { name })}
         >
           <X size={10} />
         </button>
       )}
     </span>
   )
-}
-
-function computeTagAddition(name: string, color: KanbanColorName, tagVals: string[], options?: KanbanOption[]) {
-  const existing = options?.find((o) => o.id === name || o.label === name)
-  const tagId = existing ? existing.id : name.toLowerCase().replace(/\s+/g, '_')
-  const nextTags = !tagVals.includes(tagId) && !tagVals.includes(name) ? [...tagVals, tagId] : tagVals
-  const newOption = !existing || existing.color !== color ? { id: tagId, label: name, color } : undefined
-  return { nextTags, newOption }
 }
 
 interface CardAddTagButtonProps {
@@ -78,6 +75,7 @@ interface CardAddTagButtonProps {
 function CardAddTagButton({ itemId, tagVals, tagsCol, onUpdateTags, onAddColumnOption }: CardAddTagButtonProps) {
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
 
   if (!onUpdateTags) return null
 
@@ -97,9 +95,12 @@ function CardAddTagButton({ itemId, tagVals, tagsCol, onUpdateTags, onAddColumnO
           e.preventDefault()
           setOpen((prev) => !prev)
         }}
-        className='inline-flex items-center gap-0.5 rounded-[var(--r-xs)] border border-dashed border-[var(--border-default)] px-1 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)] opacity-0 transition-opacity group-hover/card:opacity-100 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
+        className='inline-flex items-center gap-0.5 rounded-[var(--r-xs)] border border-dashed border-[var(--border-default)] px-1 py-0.5 text-[length:var(--text-10)] text-[var(--text-tertiary)] opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
         aria-label={t('preview.kanban_new_tag')}
         title={t('preview.kanban_new_tag')}
+        aria-haspopup='dialog'
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': panelId } : {})}
       >
         <Plus size={10} />
         <span>{t('preview.kanban_new_tag')}</span>
@@ -107,6 +108,7 @@ function CardAddTagButton({ itemId, tagVals, tagsCol, onUpdateTags, onAddColumnO
       {open && (
         <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           <TagCreatePopover
+            panelId={panelId}
             options={tagsCol?.options}
             existingTags={tagVals}
             anchorRef={btnRef}
@@ -156,7 +158,7 @@ export function CardHeader({
           checked={isSelected}
           onClick={(e) => e.stopPropagation()}
           onChange={onToggleSelect}
-          className='size-3.5 shrink-0 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 transition-opacity group-hover/card:opacity-100 checked:opacity-100'
+          className='size-3.5 shrink-0 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100 checked:opacity-100'
           aria-label={t('preview.kanban_select_card')}
         />
         {tagVals.slice(0, 5).map((tag) => (
@@ -183,7 +185,7 @@ export function CardHeader({
           e.stopPropagation()
           onOpenDetail()
         }}
-        className='opacity-0 transition-opacity group-hover/card:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+        className='opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
         aria-label={t('preview.kanban_card_details')}
       >
         <MoreHorizontal size={14} />

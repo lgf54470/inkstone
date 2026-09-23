@@ -26,6 +26,19 @@ describe('formatKanbanViewName', () => {
   it('preserves custom user-entered view names', () => {
     expect(formatKanbanViewName({ id: '8', name: 'My Sprint Sprint 24', type: 'board' })).toBe('My Sprint Sprint 24')
   })
+
+  // A created or duplicated view stores `<type> <n>` so two tabs of one kind read apart. The number
+  // is the only thing appended, because the resource already names the view — a `{count}` plural
+  // would have to be a phrase per language, and here it is a bare ordinal on both sides.
+  it('translates a generated name and keeps its number', () => {
+    expect(formatKanbanViewName({ id: '9', name: 'board 2', type: 'board' })).toBe(`${t('preview.kanban_view_board')} 2`)
+    expect(formatKanbanViewName({ id: '10', name: 'Gantt 12', type: 'gantt' })).toBe(`${t('preview.kanban_view_gantt')} 12`)
+    expect(formatKanbanViewName({ id: '11', name: 'list 2', type: 'table' })).toBe(`${t('preview.kanban_view_list')} 2`)
+  })
+
+  it('leaves a hand-typed name that only looks numbered alone', () => {
+    expect(formatKanbanViewName({ id: '12', name: 'Sprint 2', type: 'board' })).toBe('Sprint 2')
+  })
 })
 
 describe('formatKanbanPropertyName', () => {
@@ -40,6 +53,23 @@ describe('formatKanbanPropertyName', () => {
 
   it('preserves custom property names', () => {
     expect(formatKanbanPropertyName('Custom Field')).toBe('Custom Field')
+  })
+
+  // A column the reader renamed has to read as they wrote it in every language; only a column still
+  // carrying the name the fence generated for its id is taken apart for translating.
+  it('shows a renamed built-in column the way the reader named it', () => {
+    expect(formatKanbanPropertyName({ id: 'status', name: 'Board state', type: 'select' })).toBe('Board state')
+    expect(formatKanbanPropertyName({ id: 'priority', name: 'Severity', type: 'select' })).toBe('Severity')
+  })
+
+  it('still translates a built-in column whose name only differs in case or spacing', () => {
+    expect(formatKanbanPropertyName({ id: 'status', name: 'status', type: 'select' })).toBe(t('preview.kanban_prop_status'))
+    expect(formatKanbanPropertyName({ id: 'startDate', name: 'Start Date', type: 'date' })).toBe(t('preview.kanban_prop_start_date'))
+    expect(formatKanbanPropertyName({ id: 'end_date', name: 'end date', type: 'date' })).toBe(t('preview.kanban_prop_end_date'))
+  })
+
+  it('falls back to the built-in name when a column carries none', () => {
+    expect(formatKanbanPropertyName({ id: 'tags', name: '', type: 'multi-select' })).toBe(t('preview.kanban_prop_tags'))
   })
 })
 

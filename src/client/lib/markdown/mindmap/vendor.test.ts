@@ -72,11 +72,13 @@ function nestedBody(theme: MindmapThemeChoice): MindmapParsedBody {
 function mountAndRun(
   theme: MindmapThemeChoice,
   dark: boolean,
-  run: (map: { el: HTMLElement; handle: MindmapHandle }) => void,
+  run: (map: { el: HTMLElement; handle: MindmapHandle; operations: string[] }) => void,
   body: (theme: MindmapThemeChoice) => MindmapParsedBody = parsedBody,
 ): void {
   const el = document.createElement('div')
   document.body.append(el)
+  // Every notice the app is given about the map having moved, in the order it was given them.
+  const operations: string[] = []
   const options: MindmapCreateOptions = {
     el,
     body: body(theme),
@@ -85,12 +87,14 @@ function mountAndRun(
     locale: 'en-US',
     newTopicName: 'New node',
     modifierWheelZoom: true,
-    onOperation: () => {},
+    onOperation: () => {
+      operations.push('operation')
+    },
     onEditingChange: () => {},
   }
   const handle = createMindmapVendor().create(options)
   try {
-    run({ el, handle })
+    run({ el, handle, operations })
   }
   finally {
     handle.destroy()
@@ -197,6 +201,34 @@ describe('mind map vendor — the palette a body names', () => {
     mountAndRun(CUSTOM_THEME, true, (map) => {
       expectRoot(map.el, '#abcdef')
       expect(painted(map.el).branch.length).toBeGreaterThan(0)
+    })
+  })
+})
+
+// The map's own undo and redo repaint by hand: the library restores the data and re-draws without
+// firing an operation, so the app hears nothing and the note keeps holding the edit the map just
+// took back — the map on screen and the fence in the note then disagree. Both entries to that
+// repaint (the library's Ctrl+Z handler on its own keyboard surface, and the handle the full screen
+// toolbar uses) have to put the write path back in motion.
+describe('mind map vendor — the history the map steps through', () => {
+  it('is told about a step back and a step forward, however the map was asked to take it', () => {
+    mountAndRun(APP_THEME_CHOICE, false, ({ el, handle, operations }) => {
+      const surface = el.querySelector<HTMLElement>('.map-container')
+      expect(surface).not.toBeNull()
+      surface?.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }))
+      surface?.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, shiftKey: true, bubbles: true }))
+      handle.undo()
+      handle.redo()
+      expect(operations).toEqual(['operation', 'operation', 'operation', 'operation'])
+    })
+  })
+
+  it('is not told about a keystroke the map does not take as history', () => {
+    mountAndRun(APP_THEME_CHOICE, false, ({ el, operations }) => {
+      const surface = el.querySelector<HTMLElement>('.map-container')
+      surface?.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', bubbles: true }))
+      surface?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      expect(operations).toEqual([])
     })
   })
 })

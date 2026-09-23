@@ -1,10 +1,14 @@
 import { memo, useState } from 'react'
-import { Calendar, Check, CheckSquare, ChevronDown, ChevronRight, Flag, Paperclip, Plus } from 'lucide-react'
-import { t } from '../../../i18n'
+import { Check, CheckSquare, ChevronDown, ChevronRight, Flag, Paperclip, Plus } from 'lucide-react'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
+import { kanbanPersonName } from '../person'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
+import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanPersonAvatar } from './kanban-person-picker'
+import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
 
 interface KanbanListViewProps {
   data: KanbanData
@@ -99,12 +103,12 @@ function ListRowLeading({
       {hasSubtasks && (
         <button
           type='button'
-          aria-expanded={expanded}
-          aria-label={t(expanded ? 'preview.kanban_collapse_subtasks' : 'preview.kanban_expand_subtasks')}
           onClick={(e) => {
             e.stopPropagation()
             onToggleExpand?.()
           }}
+          aria-expanded={expanded}
+          aria-label={t(expanded ? 'preview.kanban_collapse_subtasks' : 'preview.kanban_expand_subtasks')}
           className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
         >
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -142,11 +146,11 @@ function ListRowLeading({
 }
 
 function ListRowSubtasksAndDate({
+  item,
   subtasks,
-  dueDate,
 }: {
+  item: KanbanItem
   subtasks: KanbanSubtask[]
-  dueDate?: string
 }) {
   const completedCount = subtasks.filter((s) => s.completed).length
 
@@ -158,12 +162,7 @@ function ListRowSubtasksAndDate({
           <span>{completedCount}/{subtasks.length}</span>
         </span>
       )}
-      {dueDate && (
-        <span className='hidden sm:inline-flex items-center gap-1 text-[var(--text-secondary)]'>
-          <Calendar size={11} className='text-[var(--text-tertiary)]' />
-          <span>{dueDate}</span>
-        </span>
-      )}
+      <KanbanDateBadge item={item} variant='plain' className='hidden sm:inline-flex' />
     </>
   )
 }
@@ -172,20 +171,18 @@ function ListRowTrailing({
   item,
   statusOpt,
   priorityOpt,
-  dueDate,
 }: {
   item: KanbanItem
   statusOpt?: KanbanOption
   priorityOpt?: KanbanOption
-  dueDate?: string
 }) {
   const subtasks = item.subtasks ?? []
   const filesCount = item.files?.length ?? 0
-  const assignee = String(item.properties.assignee || '')
+  const assignee = kanbanPersonName(item.properties.assignee)
 
   return (
     <div className='flex shrink-0 items-center gap-2 text-[length:var(--text-11)]'>
-      <ListRowSubtasksAndDate subtasks={subtasks} dueDate={dueDate} />
+      <ListRowSubtasksAndDate item={item} subtasks={subtasks} />
       {statusOpt && (
         <span
           style={getKanbanTagStyle(statusOpt.color)}
@@ -209,14 +206,7 @@ function ListRowTrailing({
           <span>{filesCount}</span>
         </span>
       )}
-      {assignee && (
-        <div
-          title={assignee}
-          className='flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[length:var(--text-10)] font-bold text-[var(--accent)]'
-        >
-          {assignee.slice(0, 2).toUpperCase()}
-        </div>
-      )}
+      {assignee && <KanbanPersonAvatar name={assignee} />}
     </div>
   )
 }
@@ -228,7 +218,7 @@ function ListSubtasksExpanded({ subtasks }: { subtasks: KanbanSubtask[] }) {
         <div key={st.id} className='flex items-center gap-2 text-[length:var(--text-12)]'>
           <span
             className={`flex size-3.5 shrink-0 items-center justify-center rounded-[var(--r-xs)] border ${
-              st.completed ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-[var(--border-default)]'
+              st.completed ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-contrast)]' : 'border-[var(--border-default)]'
             }`}
           >
             {st.completed && <Check size={10} />}
@@ -255,8 +245,7 @@ function getListItemDisplay(item: KanbanItem, statusCol?: KanbanProperty, priori
   const priorityOpt = priorityCol?.options?.find((o: KanbanOption) => o.id === priorityVal || o.label === priorityVal)
   const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
   const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
-  const dueDate = String(item.properties.dueDate || item.properties.startDate || '')
-  return { statusOpt, priorityOpt, tagVals, desc, dueDate }
+  return { statusOpt, priorityOpt, tagVals, desc }
 }
 
 function KanbanListRow({
@@ -271,13 +260,13 @@ function KanbanListRow({
   onToggleTag,
 }: KanbanListRowProps) {
   const [expanded, setExpanded] = useState(false)
-  const { statusOpt, priorityOpt, tagVals, desc, dueDate } = getListItemDisplay(item, statusCol, priorityCol)
+  const { statusOpt, priorityOpt, tagVals, desc } = getListItemDisplay(item, statusCol, priorityCol)
   const subtasks = item.subtasks ?? []
 
   return (
     <div data-item-id={item.id} className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] last:border-b-0'>
-      {/* The list's row is the board's card stretched sideways (SH-107): the row is a container and
-          the title it leads with is the button that opens the detail. */}
+      {/* The row is the board's card stretched sideways (SH-107): a container, and the title it leads
+          with is the button that opens the detail. */}
       <div
         className={`flex items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--bg-hover)] ${
           isSelected ? 'bg-[var(--accent-softer)]' : ''
@@ -300,7 +289,6 @@ function KanbanListRow({
           item={item}
           statusOpt={statusOpt}
           priorityOpt={priorityOpt}
-          dueDate={dueDate || undefined}
         />
       </div>
 
@@ -318,14 +306,16 @@ export const KanbanListView = memo(function KanbanListView({
   onToggleTag,
   onAddItem,
 }: KanbanListViewProps) {
+  useLocaleRepaint()
+  const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(data.items)
   const statusCol = data.columns.find((c) => c.id === 'status')
   const priorityCol = data.columns.find((c) => c.id === 'priority')
   const tagsCol = data.columns.find((c) => c.id === 'tags')
 
   return (
-    <div className='flex h-full w-full flex-col overflow-y-auto p-4' role='region' aria-label={t('preview.kanban_view_list')}>
+    <div className='flex h-full w-full flex-col overflow-y-auto p-4'>
       <div className='divide-y divide-[var(--border-subtle)] rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
-        {data.items.map((item) => (
+        {visible.map((item) => (
           <KanbanListRow
             key={item.id}
             item={item}
@@ -339,6 +329,8 @@ export const KanbanListView = memo(function KanbanListView({
             onToggleTag={onToggleTag}
           />
         ))}
+
+        <KanbanRenderTail hiddenCount={hiddenCount} setTailElement={setTailElement} onReveal={revealMore} />
 
         <div className='p-2'>
           <button

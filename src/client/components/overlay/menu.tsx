@@ -1,5 +1,6 @@
 import { useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { Check } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { Z_INDEX } from '../../lib/z-index'
@@ -29,8 +30,10 @@ function MenuItemRow({ item, index, cursor, onHover, onClick }: MenuItemRowProps
           onHover(index, item, e.currentTarget)
       }}
       onClick={(e) => onClick(item, e.currentTarget)}
-      // The mark the menu draws on its checked row, and the arrow it pushes to the far edge.
-      check={<span className='text-[var(--accent)]'>✓</span>}
+      // The mark the menu draws on its checked row, and the arrow it pushes to the far edge. The mark
+      // is an icon rather than a tick character: the row is already a `menuitemcheckbox`, so a literal
+      // check would be read out a second time and would join the accessible name.
+      check={<Check size={13} aria-hidden className='shrink-0 text-[var(--accent)]' />}
       arrowClassName='ml-auto'
       className={cn(index === cursor ? 'bg-[var(--bg-hover)]' : '', item.tone === 'danger'
         ? 'text-[var(--danger)]'
@@ -41,7 +44,7 @@ function MenuItemRow({ item, index, cursor, onHover, onClick }: MenuItemRowProps
   </div>)
 }
 
-export function Menu({ anchor, open, onClose, items, align = 'start', width = 208, label = t('overlay.menu'), zIndex, }: {
+export function Menu({ anchor, open, onClose, items, align = 'start', width = 208, label = t('overlay.menu'), zIndex, panelId, }: {
   anchor: RefObject<HTMLElement | null> | {
     x: number
     y: number
@@ -53,6 +56,9 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
   width?: number
   label?: string
   zIndex?: number
+  // Optional: only callers that pair the menu with a trigger need the id, and the
+  // rest must not be made to invent one.
+  panelId?: string
 }) {
   const menuRef = useRef<HTMLDivElement>(null)
   const submenuRef = useRef<HTMLDivElement>(null)
@@ -79,7 +85,7 @@ export function Menu({ anchor, open, onClose, items, align = 'start', width = 20
     return null
   const activeItem = items.find((i) => i.id === activeSubmenuId)
   return (<>
-    {createPortal(<div ref={menuRef} role='menu' aria-label={label} tabIndex={-1} className='anim-pop fixed z-[var(--z-pop)] max-h-105 overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none' style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
+    {createPortal(<div ref={menuRef} id={panelId} role='menu' aria-label={label} tabIndex={-1} className='anim-pop fixed z-[var(--z-pop)] max-h-105 overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)] outline-none' style={{ top: position.top, left: position.left, width: menuWidth, transformOrigin: position.origin, zIndex }}>
       {items.map((item, index) => (<MenuItemRow key={item.id} item={item} index={index} cursor={cursor} onHover={handleHover} onClick={handleClick}/>))}
     </div>, document.body)}
     {activeItem && activeItem.submenu && (<MenuSubmenu

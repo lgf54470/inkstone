@@ -6,11 +6,18 @@ import { findNoteByTitle } from '../../store/notes'
 import { useNotes } from '../../store/notes'
 import { useSession } from '../../store/session'
 import { decodeDataValue } from './data-attr'
+import type { FenceBodies } from './fence-bodies'
 import { parseWikiTarget, renderMarkdown } from './renderer'
 
 interface ResolveOptions {
   currentContent: string
   currentTitle: string
+  /**
+   * The host document's fence bodies (P-01). An embedded note renders with them rather than
+   * starting its own set, so a map or a board inside an embed keeps an index no other block in
+   * this document has: the markup is inserted into the host and read back from it as one document.
+   */
+  fences: FenceBodies
   isCurrent?: () => boolean
 }
 
@@ -72,9 +79,11 @@ function renderResolvedEmbed(
   head: HTMLElement | null,
   resolved: ResolvedEmbed,
   target: ReturnType<typeof parseWikiTarget>,
+  fences: FenceBodies,
 ): void {
   const rendered = renderMarkdown(resolved.markdown, {
     externalImages: useSession.getState().settings.preview.externalImages,
+    fences,
   })
   body.innerHTML = rendered.html
   body.querySelectorAll<HTMLInputElement>('input.task-list-item-checkbox').forEach((input) => {
@@ -133,7 +142,7 @@ async function resolveWithin(
       const body = embed.querySelector<HTMLElement>('.note-embed-body')
       if (!body) continue
       const head = embed.querySelector<HTMLElement>('.note-embed-head')
-      renderResolvedEmbed(embed, body, head, resolved, target)
+      renderResolvedEmbed(embed, body, head, resolved, target, context.fences)
 
       const nextAncestors = new Set(ancestors)
       nextAncestors.add(resolved.signature)

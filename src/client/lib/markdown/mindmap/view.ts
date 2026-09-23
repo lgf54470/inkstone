@@ -1,11 +1,11 @@
 /**
- * DOM helpers for mind map blocks: reading what the renderer emitted into a
+ * DOM helpers for mind map blocks: reading what the renderer registered for a
  * placeholder, and the two degraded states (source fallback, error banner).
  * These are the only paths that touch the block markup, so the mount/static
  * renderers and the preview interaction handlers stay in sync on the contract.
  */
 import { t } from '../../i18n'
-import { decodeDataValue } from '../data-attr'
+import { fenceBody } from '../fence-bodies'
 import { normalizeEol } from './body'
 import { MINDMAP_THEME_ATTR, type MindmapThemeChoice } from './theme'
 import type { MindmapFenceRef } from './types'
@@ -101,7 +101,7 @@ export function mindmapBlocks(root: ParentNode): HTMLElement[] {
  * sides agree.
  */
 export function mindmapBody(node: HTMLElement): string {
-  return normalizeEol(decodeDataValue(node.dataset.mindmap)).replace(/\n$/, '')
+  return normalizeEol(fenceBody(node, 'mindmap', mindmapIndex(node))).replace(/\n$/, '')
 }
 
 /**

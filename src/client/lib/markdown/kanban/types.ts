@@ -31,13 +31,24 @@ export interface KanbanOption {
   id: string
   label: string
   color: KanbanColorName
+  /** Cards this workflow state may hold at once; absent means the reader set no rule. See `filter-sort.ts`. */
+  wipLimit?: number
 }
+
+/**
+ * What a reader may change about one column of the board. `wipLimit` is optional in the patch and
+ * also clearable: a patch that names it at all answers the question, so `undefined` removes the
+ * rule, while leaving the key out keeps the rule the column has.
+ */
+export type KanbanColumnPatch = Partial<Pick<KanbanOption, 'label' | 'color' | 'wipLimit'>>
 
 export interface KanbanProperty {
   id: string
   name: string
   type: KanbanPropertyType
   options?: KanbanOption[]
+  /** Pixels the reader sized this column to; absent means the type decides. See `column-width.ts`. */
+  width?: number
 }
 
 export interface KanbanFile {
@@ -63,6 +74,20 @@ export interface KanbanSubtask {
   tags?: string[]
 }
 
+/**
+ * What someone said about a card. A board is a document, so the note it carries has no account to
+ * attribute a comment to: the name is whatever the writer typed, and a comment without one is simply
+ * unattributed rather than filed under somebody guessed at.
+ */
+export interface KanbanComment {
+  id: string
+  text: string
+  /** Who wrote it, as they chose to be called; absent means the writer stayed anonymous. */
+  author?: string
+  /** When it was written, in UTC. The reader's own locale is what prints it. */
+  at?: string
+}
+
 export interface KanbanItem {
   id: string
   title: string
@@ -72,6 +97,10 @@ export interface KanbanItem {
   description?: string
   files?: KanbanFile[]
   subtasks?: KanbanSubtask[]
+  /** What the board's readers have said about this card, oldest first. See `comments.ts`. */
+  comments?: KanbanComment[]
+  /** Set only while the card is archived; restoring deletes the key. See `archive.ts`. */
+  archived?: boolean
   properties: Record<string, unknown>
 }
 
@@ -96,7 +125,7 @@ export type KanbanChartType =
 export interface KanbanChartDataset {
   labels: string[]
   data: number[]
-  colors: string[]
+  colors: KanbanColorName[]
   total: number
 }
 
@@ -105,6 +134,13 @@ export type KanbanFilterOperator =
   | 'not_equals'
   | 'contains'
   | 'not_contains'
+  | 'greater_than'
+  | 'less_than'
+  | 'greater_or_equal'
+  | 'less_or_equal'
+  | 'before'
+  | 'after'
+  | 'is_overdue'
   | 'is_empty'
   | 'is_not_empty'
 
@@ -124,17 +160,21 @@ export interface KanbanView {
   name: string
   type: KanbanViewType
   groupBy?: string
+  /** Board only: a second field the cards are cut into horizontal bands by. */
+  swimlaneBy?: string
   dateField?: string
   startField?: string
   endField?: string
   progressField?: string
-  coverField?: string
   chartType?: KanbanChartType
   chartGroupBy?: string
-  chartMetric?: string
   filters?: KanbanFilter[]
   sorts?: KanbanSort[]
-  hiddenProperties?: string[]
+  searchQuery?: string
+  /** Tag names this view filters to; stored on the view with the search and the filters beside it. */
+  selectedTags?: string[]
+  cardSize?: 'small' | 'medium' | 'large'
+  hiddenColumns?: string[]
 }
 
 export interface KanbanData {

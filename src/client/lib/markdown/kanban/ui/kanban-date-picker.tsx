@@ -1,8 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocale } from '../../../i18n'
+import { narrowWeekdayLabels, weekStartFor, type WeekStartDay } from '../../../time'
 
 interface KanbanDatePickerProps {
+  /**
+   * The property this picker edits. The visible text is only the date, so a
+   * table row of dates would read as bare numbers; the name goes in beside it.
+   */
+  propertyName: string
   value?: string
   placeholder?: string
   onChange: (dateStr: string) => void
@@ -116,11 +123,8 @@ function DatePickerHeader({
   )
 }
 
-function DatePickerWeekRow({ weekStart, locale }: { weekStart: number; locale: string }) {
-  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
-  const weekList = Array.from({ length: 7 }, (_, index) =>
-    formatter.format(new Date(2024, 0, 7 + ((weekStart + index) % 7))),
-  )
+function DatePickerWeekRow({ weekStart, locale }: { weekStart: WeekStartDay; locale: string }) {
+  const weekList = narrowWeekdayLabels(locale, weekStart)
 
   return (
     <div className='grid grid-cols-7 pt-2 text-center text-[length:var(--text-10)] font-semibold text-[var(--text-tertiary)]'>
@@ -133,7 +137,7 @@ function DatePickerWeekRow({ weekStart, locale }: { weekStart: number; locale: s
 
 function getDayButtonClass(isSelected: boolean, isToday: boolean, isCurrentMonth: boolean): string {
   if (isSelected) {
-    return 'bg-[var(--accent)] font-bold text-white shadow-xs'
+    return 'bg-[var(--accent)] font-bold text-[var(--accent-contrast)] shadow-xs'
   }
   if (isToday) {
     return 'border border-[var(--accent)] font-bold text-[var(--accent)] hover:bg-[var(--bg-hover)]'
@@ -206,24 +210,6 @@ function DatePickerFooter({
   )
 }
 
-function usePopoverDismiss(
-  popoverRef: React.RefObject<HTMLDivElement | null>,
-  containerRef: React.RefObject<HTMLDivElement | null>,
-  onClose: () => void,
-) {
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (popoverRef.current?.contains(target) || containerRef.current?.contains(target)) {
-        return
-      }
-      onClose()
-    }
-    window.addEventListener('mousedown', handleClick)
-    return () => window.removeEventListener('mousedown', handleClick)
-  }, [popoverRef, containerRef, onClose])
-}
-
 function useCalendarCursor(value?: string) {
   const parsed = value ? new Date(value) : new Date()
   const initialYear = Number.isNaN(parsed.getTime()) ? new Date().getFullYear() : parsed.getFullYear()
@@ -251,23 +237,26 @@ function useCalendarCursor(value?: string) {
 }
 
 function DatePickerPopover({
+  panelId,
   value,
   containerRef,
   onClose,
   onChange,
 }: {
+  panelId: string
   value?: string
   containerRef: React.RefObject<HTMLDivElement | null>
   onClose: () => void
   onChange: (dateStr: string) => void
 }) {
   const locale = useLocale()
-  const weekStart = locale === 'zh-CN' ? 1 : 0
+  const weekStart = weekStartFor(locale)
   const popoverRef = useRef<HTMLDivElement>(null)
   const { cursor, prevMonth, nextMonth, resetToday } = useCalendarCursor(value)
   const todayStr = getTodayDateStr()
 
-  usePopoverDismiss(popoverRef, containerRef, onClose)
+  useClickOutside([popoverRef, containerRef], true, onClose)
+  useEscape(true, onClose)
   const days = buildMonthCalendarDays(cursor.year, cursor.month, weekStart)
 
   const handleSelect = (d: string) => {
@@ -277,10 +266,11 @@ function DatePickerPopover({
 
   return (
     <div
+      id={panelId}
       ref={popoverRef}
       role='dialog'
       aria-label={t('preview.kanban_select_date')}
-      className='absolute left-0 top-full z-50 mt-1 w-64 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-3 shadow-[var(--shadow-pop)]'
+      className='absolute left-0 top-full z-[var(--z-popover)] mt-1 w-64 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-3 shadow-[var(--shadow-pop)]'
     >
       <DatePickerHeader
         year={cursor.year}
@@ -307,12 +297,14 @@ function DatePickerPopover({
 }
 
 export function KanbanDatePicker({
+  propertyName,
   value,
   placeholder,
   onChange,
 }: KanbanDatePickerProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const panelId = useId()
 
   return (
     <div
@@ -323,7 +315,11 @@ export function KanbanDatePicker({
         type='button'
         onClick={() => setOpen((o) => !o)}
         className='flex flex-1 items-center gap-1.5 truncate text-left text-[length:var(--text-12)] text-[var(--text-primary)]'
+        aria-haspopup='dialog'
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': panelId } : {})}
       >
+        <span className='sr-only'>{propertyName}</span>
         <CalendarIcon size={13} className='shrink-0 text-[var(--text-tertiary)]' />
         <span className={value ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-quaternary)]'}>
           {value || placeholder || t('preview.kanban_select_date')}
@@ -343,6 +339,7 @@ export function KanbanDatePicker({
 
       {open && (
         <DatePickerPopover
+          panelId={panelId}
           value={value}
           containerRef={containerRef}
           onClose={() => setOpen(false)}

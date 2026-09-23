@@ -1,12 +1,12 @@
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { AppLocale } from '@shared/types'
 import { parseKanbanBody } from './body'
 import type { KanbanBlockEntry } from './entry'
 import type { KanbanData, KanbanWriter } from './types'
-import { KanbanRoot } from './ui'
+import { KanbanRoot, KanbanRootBoundary } from './ui'
 import {
   createKanbanCanvas,
+  createKanbanReserve,
   decorateKanbanControls,
   isKanbanWritableHere,
   kanbanBlocks,
@@ -17,16 +17,21 @@ import {
   markKanbanReady,
   showKanbanError,
 } from './view'
-import { flushKanbanEntry, scheduleKanbanWrite } from './write'
+import { flushKanbanEntry, discardKanbanWrite, retryKanbanWrite, scheduleKanbanWrite } from './write'
 
 export interface KanbanMountOptions {
   scope: string
   noteId: string | null
-  dark: boolean
-  locale: AppLocale
   editable: boolean
   writeBack?: KanbanWriter
   onOpenFullscreen?: (node: HTMLElement) => void
+  onCloseFullscreen?: (node: HTMLElement) => void
+  /**
+   * Renders a card description as the host would render it in the note body. Injected rather than
+   * imported: the markdown renderer already imports this module, so reaching back for it would close
+   * a cycle. Absent means the host cannot render markdown (exports, snapshots), and the UI hides it.
+   */
+  renderDescription?: (source: string) => string
 }
 
 interface Assignment {
@@ -115,13 +120,13 @@ function createEntry(node: HTMLElement, options: KanbanMountOptions): KanbanBloc
     mode: 'json',
     editable: options.editable,
     owner: 'inline',
-    dark: options.dark,
-    locale: options.locale,
     container: null,
     root: null,
     ref: null,
     write: options.writeBack ?? null,
     dirty: false,
+    unsaved: false,
+    disposed: false,
     timer: null,
   }
   entries.set(created.key, created)
@@ -136,18 +141,46 @@ function createEntry(node: HTMLElement, options: KanbanMountOptions): KanbanBloc
  */
 function disposeEntry(entry: KanbanBlockEntry): void {
   if (entry.timer !== null) window.clearTimeout(entry.timer)
+  // Dying is a state, not just a teardown step: the session that hosts this board can still be open in
+  // full screen, and the reader has to be told before the stage under it goes blank (announced where
+  // the block left the document — see `mountKanbans`), and a late `moveBack` from that overlay's own
+  // cleanup must not push the dead container back into a placeholder a fresh board may already own.
+  entry.disposed = true
   const root = entry.root
+  entry.root = null
   if (root) queueMicrotask(() => root.unmount())
 }
 
 function renderKanbanEntry(entry: KanbanBlockEntry, options: KanbanMountOptions): void {
   if (!entry.root || !entry.data) return
+  const inOverlay = entry.owner === 'overlay'
+  const sourceResult = entry.unsaved ? parseKanbanBody(entry.source) : null
+  const settle = () => renderKanbanEntry(entry, options)
   entry.root.render(
-    createElement(KanbanRoot, {
-      initialData: entry.data,
-      onUpdateData: (next) => updateKanbanData(entry, () => next),
-      onToggleFullscreen: () => options.onOpenFullscreen?.(entry.host),
-    }),
+    createElement(
+      KanbanRootBoundary,
+      { source: entry.source },
+      createElement(KanbanRoot, {
+        initialData: entry.data,
+        isFullscreen: inOverlay,
+        kanbanName: entry.noteId || 'default',
+        unsaved: entry.unsaved,
+        sourceData: sourceResult && sourceResult.ok ? sourceResult.data : undefined,
+        onRetryWrite: entry.write ? () => {
+          retryKanbanWrite(entry)
+          settle()
+        } : undefined,
+        onDiscardWrite: entry.write ? () => {
+          discardKanbanWrite(entry)
+          settle()
+        } : undefined,
+        onUpdateData: (next) => updateKanbanData(entry, () => next),
+        renderDescription: options.renderDescription,
+        onToggleFullscreen: () => (
+          inOverlay ? options.onCloseFullscreen?.(entry.host) : options.onOpenFullscreen?.(entry.host)
+        ),
+      }),
+    ),
   )
 }
 
@@ -156,11 +189,13 @@ function mountBlock(node: HTMLElement, entry: KanbanBlockEntry, options: KanbanM
   entry.host = node
   entry.noteId = options.noteId
   decorateKanbanControls(node)
-  entry.dark = options.dark
-  entry.locale = options.locale
-  entry.ref = isKanbanWritableHere(node) ? { line: Number(node.dataset.line), body } : null
+  // Unwritten edits outrank the note body: a re-render must not re-point the
+  // fence or re-parse over them, or retry and discard lose what they resolve.
+  if (!entry.unsaved) {
+    entry.ref = isKanbanWritableHere(node) ? { line: Number(node.dataset.line), body } : null
+    entry.editable = options.editable && entry.ref !== null
+  }
   entry.write = options.writeBack ?? null
-  entry.editable = options.editable && entry.ref !== null
 
   if (!entry.container) {
     entry.container = createKanbanCanvas(entry.editable)
@@ -168,11 +203,15 @@ function mountBlock(node: HTMLElement, entry: KanbanBlockEntry, options: KanbanM
   }
 
   const placeholder = kanbanPlaceholder(node)
-  if (placeholder && entry.owner === 'inline' && entry.container.parentNode !== placeholder) {
-    placeholder.replaceChildren(entry.container)
+  if (placeholder && entry.container) {
+    if (entry.owner === 'overlay') {
+      if (placeholder.childElementCount === 0) placeholder.append(createKanbanReserve())
+    } else if (entry.container.parentNode !== placeholder) {
+      placeholder.replaceChildren(entry.container)
+    }
   }
 
-  if (entry.source !== body || !entry.data) {
+  if (!entry.unsaved && (entry.source !== body || !entry.data)) {
     entry.source = body
     const parsed = parseKanbanBody(body)
     if (!parsed.ok) {
@@ -202,6 +241,7 @@ export async function mountKanbans(root: HTMLElement, options: KanbanMountOption
     if (entry.scope === options.scope && !assignments.some((a) => a.entry === entry)) {
       disposeEntry(entry)
       entries.delete(key)
+      notify(entry.scope)
     }
   }
 }
@@ -209,22 +249,48 @@ export async function mountKanbans(root: HTMLElement, options: KanbanMountOption
 export function updateKanbanData(entry: KanbanBlockEntry, updater: (prev: KanbanData) => KanbanData): void {
   if (!entry.data) return
   entry.data = updater(entry.data)
-  scheduleKanbanWrite(entry)
   const opts = scopeOptions.get(entry.scope)
-  if (opts) renderKanbanEntry(entry, opts)
+  const rerender = () => {
+    if (opts) renderKanbanEntry(entry, opts)
+  }
+  scheduleKanbanWrite(entry, rerender)
+  rerender()
 }
 
+function rerenderDeferred(entry: KanbanBlockEntry): void {
+  // The move and the cleanup-time flush both run inside another root's commit —
+  // rendering this root synchronously there races the commit, so the refresh is
+  // deferred the same way a teardown is.
+  queueMicrotask(() => {
+    const options = scopeOptions.get(entry.scope)
+    if (options) renderKanbanEntry(entry, options)
+  })
+}
+
+/**
+ * Hands the live board to the full screen overlay: the same root, so its edits,
+ * history and write-back are the ones the inline block keeps using afterwards —
+ * there is never a second copy of the same board to fall out of step.
+ */
 export function attachKanbanToOverlay(entry: KanbanBlockEntry, target: HTMLElement): void {
+  if (!entry.container || entry.disposed) return
   entry.owner = 'overlay'
-  if (entry.container) target.append(entry.container)
+  entry.container.classList.add('is-fullscreen')
+  target.append(entry.container)
+  const placeholder = kanbanPlaceholder(entry.host)
+  if (placeholder && placeholder.childElementCount === 0) {
+    placeholder.append(createKanbanReserve())
+  }
+  rerenderDeferred(entry)
 }
 
 export function detachKanbanFromOverlay(entry: KanbanBlockEntry): void {
+  if (!entry.container || entry.disposed) return
   entry.owner = 'inline'
+  entry.container.classList.remove('is-fullscreen')
   const placeholder = kanbanPlaceholder(entry.host)
-  if (placeholder && entry.container) {
-    placeholder.replaceChildren(entry.container)
-  }
+  if (placeholder) placeholder.replaceChildren(entry.container)
+  rerenderDeferred(entry)
 }
 
 export async function retryKanban(node: HTMLElement): Promise<void> {
@@ -237,7 +303,12 @@ export async function retryKanban(node: HTMLElement): Promise<void> {
 
 export function flushKanbans(scope: string): void {
   for (const entry of entries.values()) {
-    if (entry.scope === scope) flushKanbanEntry(entry)
+    if (entry.scope !== scope) continue
+    const unsavedBefore = entry.unsaved
+    const result = flushKanbanEntry(entry)
+    // A forced flush is where a conflict first surfaces outside the debounce
+    // timer, so the header badge has to be refreshed from here too.
+    if (result !== null && entry.unsaved !== unsavedBefore) rerenderDeferred(entry)
   }
 }
 

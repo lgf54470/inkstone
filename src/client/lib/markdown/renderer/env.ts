@@ -1,8 +1,9 @@
 import { secureRandomId } from '../../id'
 import { t } from '../../i18n'
+import { createFenceBodies, type FenceBodies } from '../fence-bodies'
 import type { RenderEnvironment } from './types'
 export 
-function emptyEnvironment(): RenderEnvironment {
+function emptyEnvironment(fences: FenceBodies = createFenceBodies()): RenderEnvironment {
   const nonce = createNonce()
   return {
     headings: [],
@@ -18,10 +19,7 @@ function emptyEnvironment(): RenderEnvironment {
     taskNonce: nonce,
     tabSequence: 0,
     exampleSequence: 0,
-    mindmapSequence: 0,
-    excalidrawSequence: 0,
-    kanbanSequence: 0,
-    bentoSlidesSequence: 0,
+    fences,
     docId: `ink-${nonce}`,
     externalImages: false,
   }

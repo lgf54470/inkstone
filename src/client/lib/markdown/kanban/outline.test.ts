@@ -11,7 +11,9 @@ describe('parseKanbanOutline headings and items', () => {
       '- [x] Research requirements',
     ].join('\n')
     const data = parseKanbanOutline(md)
-    expect(data.title).toBe('Kanban')
+    // An outline body names nothing, and a board that invented a name here would write that name into
+    // the note on its first JSON edit (K-25).
+    expect(data.title).toBeUndefined()
     expect(data.items).toHaveLength(3)
 
     const statusCol = data.columns.find((c) => c.id === 'status')
@@ -72,5 +74,12 @@ describe('serializeKanbanOutline', () => {
     expect(reserialized).toContain('[start: 2026-10-01]')
     expect(reserialized).toContain('[end: 2026-10-05]')
     expect(reserialized).toContain('[progress: 60]')
+  })
+
+  it('round-trips titles whose own brackets look like property tags', () => {
+    const data = parseKanbanOutline('## To Do\n- [ ] Deploy \\[v2: beta\\] board')
+    expect(data.items[0]?.title).toBe('Deploy [v2: beta] board')
+    expect(data.items[0]?.properties.v2).toBeUndefined()
+    expect(serializeKanbanOutline(data)).toContain('Deploy \\[v2: beta\\] board')
   })
 })

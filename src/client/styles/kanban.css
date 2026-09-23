@@ -1,59 +1,3 @@
-:root {
-  --kanban-tag-gray-fg: oklch(48.5% 0.005 106.6);
-  --kanban-tag-brown-fg: oklch(49% 0.076 45.6);
-  --kanban-tag-orange-fg: oklch(49.25% 0.121 55.7);
-  --kanban-tag-yellow-fg: oklch(48.75% 0.102 76);
-  --kanban-tag-green-fg: oklch(47.25% 0.085 158.4);
-  --kanban-tag-blue-fg: oklch(47.75% 0.099 237.4);
-  --kanban-tag-purple-fg: oklch(49.75% 0.12 309.5);
-  --kanban-tag-pink-fg: oklch(50% 0.164 350.4);
-  --kanban-tag-red-fg: oklch(49.75% 0.172 25.8);
-  --kanban-tag-coral-fg: oklch(49.75% 0.171 27.2);
-  --kanban-tag-teal-fg: oklch(47.25% 0.081 190.8);
-  --kanban-tag-slate-fg: oklch(48.5% 0.041 257.4);
-
-  --kanban-tag-gray-bg: color-mix(in oklab, var(--kanban-tag-gray-fg) 14%, transparent);
-  --kanban-tag-brown-bg: color-mix(in oklab, var(--kanban-tag-brown-fg) 14%, transparent);
-  --kanban-tag-orange-bg: color-mix(in oklab, var(--kanban-tag-orange-fg) 14%, transparent);
-  --kanban-tag-yellow-bg: color-mix(in oklab, var(--kanban-tag-yellow-fg) 14%, transparent);
-  --kanban-tag-green-bg: color-mix(in oklab, var(--kanban-tag-green-fg) 14%, transparent);
-  --kanban-tag-blue-bg: color-mix(in oklab, var(--kanban-tag-blue-fg) 14%, transparent);
-  --kanban-tag-purple-bg: color-mix(in oklab, var(--kanban-tag-purple-fg) 14%, transparent);
-  --kanban-tag-pink-bg: color-mix(in oklab, var(--kanban-tag-pink-fg) 14%, transparent);
-  --kanban-tag-red-bg: color-mix(in oklab, var(--kanban-tag-red-fg) 14%, transparent);
-  --kanban-tag-coral-bg: color-mix(in oklab, var(--kanban-tag-coral-fg) 14%, transparent);
-  --kanban-tag-teal-bg: color-mix(in oklab, var(--kanban-tag-teal-fg) 14%, transparent);
-  --kanban-tag-slate-bg: color-mix(in oklab, var(--kanban-tag-slate-fg) 14%, transparent);
-}
-
-:root[data-theme='dark'] {
-  --kanban-tag-gray-fg: oklch(72.75% 0.006 247.9);
-  --kanban-tag-brown-fg: oklch(73.25% 0.073 43.5);
-  --kanban-tag-orange-fg: oklch(73.5% 0.115 54.8);
-  --kanban-tag-yellow-fg: oklch(73% 0.113 76.5);
-  --kanban-tag-green-fg: oklch(71.5% 0.101 156.5);
-  --kanban-tag-blue-fg: oklch(72.75% 0.11 259.6);
-  --kanban-tag-purple-fg: oklch(74.25% 0.162 305);
-  --kanban-tag-pink-fg: oklch(74.5% 0.185 350.2);
-  --kanban-tag-red-fg: oklch(74% 0.157 25.1);
-  --kanban-tag-coral-fg: oklch(74% 0.157 26.7);
-  --kanban-tag-teal-fg: oklch(71% 0.113 191.2);
-  --kanban-tag-slate-fg: oklch(72.75% 0.035 256.8);
-
-  --kanban-tag-gray-bg: color-mix(in oklab, var(--kanban-tag-gray-fg) 14%, transparent);
-  --kanban-tag-brown-bg: color-mix(in oklab, var(--kanban-tag-brown-fg) 14%, transparent);
-  --kanban-tag-orange-bg: color-mix(in oklab, var(--kanban-tag-orange-fg) 14%, transparent);
-  --kanban-tag-yellow-bg: color-mix(in oklab, var(--kanban-tag-yellow-fg) 14%, transparent);
-  --kanban-tag-green-bg: color-mix(in oklab, var(--kanban-tag-green-fg) 14%, transparent);
-  --kanban-tag-blue-bg: color-mix(in oklab, var(--kanban-tag-blue-fg) 14%, transparent);
-  --kanban-tag-purple-bg: color-mix(in oklab, var(--kanban-tag-purple-fg) 14%, transparent);
-  --kanban-tag-pink-bg: color-mix(in oklab, var(--kanban-tag-pink-fg) 14%, transparent);
-  --kanban-tag-red-bg: color-mix(in oklab, var(--kanban-tag-red-fg) 14%, transparent);
-  --kanban-tag-coral-bg: color-mix(in oklab, var(--kanban-tag-coral-fg) 14%, transparent);
-  --kanban-tag-teal-bg: color-mix(in oklab, var(--kanban-tag-teal-fg) 14%, transparent);
-  --kanban-tag-slate-bg: color-mix(in oklab, var(--kanban-tag-slate-fg) 14%, transparent);
-}
-
 .ink-prose .kanban-block {
   margin: 1em 0;
   border: 1px solid var(--border-subtle);
@@ -135,11 +79,114 @@
   font-size: var(--text-12);
 }
 
+.ink-prose .kanban-block.kanban-source pre {
+  margin: 0;
+  padding: var(--sp-3);
+  overflow-x: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  white-space: pre;
+}
+
+.ink-prose .kanban-snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+}
+
+.ink-prose .kanban-snapshot-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-14);
+  font-weight: 600;
+}
+
+.ink-prose .kanban-snapshot-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+.ink-prose .kanban-snapshot-group {
+  color: var(--text-secondary);
+  font-size: var(--text-12);
+  font-weight: 600;
+}
+
+.ink-prose .kanban-snapshot-group-cards {
+  margin: 0;
+}
+
+.ink-prose .kanban-snapshot-cards {
+  margin: var(--sp-1) 0 0;
+  padding-inline-start: var(--sp-4);
+  color: var(--text-primary);
+  font-size: var(--text-14);
+  list-style: disc;
+}
+
+.ink-prose .kanban-snapshot-empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-12);
+}
+
+.kanban-canvas {
+  font-family: var(--font-ui);
+  font-size: var(--text-13);
+  line-height: var(--ui-line);
+  letter-spacing: normal;
+}
+
 .ink-prose .kanban-canvas {
   width: 100%;
   height: 480px;
   overflow: hidden;
   position: relative;
+}
+
+.ink-prose [data-kanban-canvas] :is(h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: normal;
+  position: static;
+}
+.ink-prose [data-kanban-canvas] :is(p, ul, ol, pre, blockquote, figure, dl) {
+  margin: 0;
+}
+.ink-prose [data-kanban-canvas] p {
+  text-wrap: wrap;
+}
+.ink-prose [data-kanban-canvas] :is(ul, ol) {
+  padding: 0;
+  list-style: none;
+}
+.ink-prose [data-kanban-canvas] li {
+  margin: 0;
+}
+.ink-prose [data-kanban-canvas] img {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: auto;
+}
+
+.ink-prose [data-kanban-canvas] .kanban-cover {
+  height: 100%;
+  max-width: 100%;
+}
+
+.kanban-canvas.is-fullscreen {
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
 }
 
 .ink-prose .kanban-error {

@@ -1,8 +1,9 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { act, createElement, useState } from 'react'
-import { initI18n } from '../../lib/i18n'
+import { initI18n, t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
 import { renderMarkdown } from '../../lib/markdown/renderer'
+import { registerFenceBodies } from '../../lib/markdown/fence-bodies'
 import {
   destroyKanbans,
   mountKanbans,
@@ -25,7 +26,11 @@ afterEach(() => {
 function previewHost(body = '## To Do\n- [ ] First Task'): HTMLElement {
   const host = document.createElement('div')
   host.className = 'ink-prose'
-  host.innerHTML = renderMarkdown(['# Title', '', '```kanban', body, '```', '', 'tail'].join('\n')).html
+  const rendered = renderMarkdown(['# Title', '', '```kanban', body, '```', '', 'tail'].join('\n'))
+  host.innerHTML = rendered.html
+  // The board reads its fence body out of the set this element carries, not out of its own attribute
+  // (P-01).
+  registerFenceBodies(host, rendered.fences)
   document.body.append(host)
   return host
 }
@@ -37,27 +42,30 @@ interface Surface {
   writes: string[]
 }
 
-async function mountSurface(): Promise<Surface> {
+async function mountSurface(onCloseFullscreen?: () => void): Promise<Surface> {
   const host = previewHost()
   const writes: string[] = []
   await mountKanbans(host, {
     scope: SCOPE,
     noteId: 'note-1',
-    dark: false,
-    locale: 'en-US',
     editable: true,
     writeBack: (_ref, next) => {
       writes.push(next)
       return 'written'
     },
+    onCloseFullscreen,
   })
   const block = host.querySelector<HTMLElement>('[data-kanban]')!
   const session = openKanbanSession(block)!
   return { host, block, session, writes }
 }
 
-function Harness({ session }: { session: KanbanSession }) {
+function Harness({ session, bindClose }: {
+  session: KanbanSession
+  bindClose?: (close: () => void) => void
+}) {
   const [open, setOpen] = useState(false)
+  bindClose?.(() => setOpen(false))
   return createElement(
     'div',
     null,
@@ -117,6 +125,24 @@ describe('kanban full screen mounting and views', () => {
   })
 })
 
+describe('kanban full screen naming', () => {
+  it('leaves an untitled board to the localized label instead of a hardcoded name', async () => {
+    const host = previewHost()
+    await mountKanbans(host, { scope: SCOPE, noteId: 'note-1', editable: true })
+    const session = openKanbanSession(host.querySelector<HTMLElement>('[data-kanban]')!)!
+    expect(session.title(), 'an untitled board named itself').toBe('')
+    expect(session.title() || t('preview.kanban_fullscreen')).toBe(t('preview.kanban_fullscreen'))
+  })
+
+  it('names a titled board after its own title', async () => {
+    const body = JSON.stringify({ title: 'Gate Board', columns: [], items: [], views: [] })
+    const host = previewHost(body)
+    await mountKanbans(host, { scope: SCOPE, noteId: 'note-1', editable: true })
+    const session = openKanbanSession(host.querySelector<HTMLElement>('[data-kanban]')!)!
+    expect(session.title()).toBe('Gate Board')
+  })
+})
+
 describe('kanban full screen context menu', () => {
   it('opens dedicated Kanban context menu on right click in fullscreen', async () => {
     const surface = await mountSurface()
@@ -136,7 +162,19 @@ describe('kanban full screen context menu', () => {
     const menu = document.querySelector<HTMLElement>('[role="menu"]')
     expect(menu).not.toBeNull()
 
-    rendered.unmount()
+    // A real user dismisses the menu before the overlay ends; leave no open
+    // portal behind for the teardown to trip over.
+    await act(async () => {
+      menu!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    expect(document.querySelector('[role="menu"]')).toBeNull()
+    expect(document.querySelector('.kanban-fullscreen')).not.toBeNull()
+
+    // Closing the overlay re-renders the moved board; flush that React work
+    // before the teardown in afterEach takes the root down.
+    await act(async () => {
+      rendered.unmount()
+    })
     surface.host.remove()
   })
 })
@@ -179,6 +217,78 @@ describe('kanban full screen close and session updates', () => {
     expect(surface.writes.length).toBeGreaterThan(0)
     expect(surface.writes.at(-1)).toContain('Newly Added Item')
 
+    surface.host.remove()
+  })
+})
+
+describe('kanban full screen single instance', () => {
+  it('moves the live canvas into the overlay and reserves the inline slot', async () => {
+    const surface = await mountSurface()
+    const canvas = surface.block.querySelector<HTMLElement>('[data-kanban-canvas]')!
+    const rendered = renderElement(createElement(Harness, { session: surface.session }))
+
+    await act(async () => {
+      rendered.container.querySelector<HTMLButtonElement>('[data-kanban-fullscreen-trigger]')!.click()
+    })
+
+    const overlay = document.querySelector<HTMLElement>('.kanban-fullscreen')!
+    expect(overlay.querySelector('[data-kanban-canvas]')).toBe(canvas)
+    expect(canvas.classList.contains('is-fullscreen')).toBe(true)
+    expect(surface.block.querySelector('[data-kanban-canvas]')).toBeNull()
+    expect(surface.block.querySelector('[data-kanban-placeholder] .kanban-canvas.is-reserve')).not.toBeNull()
+
+    rendered.unmount()
+    surface.host.remove()
+  })
+})
+
+describe('kanban full screen edit carry-over', () => {
+  it('carries full-screen edits and the undo stack back to the inline block', async () => {
+    const closeRef: { current: (() => void) | null } = { current: null }
+    const surface = await mountSurface(() => closeRef.current?.())
+    const canvas = surface.block.querySelector<HTMLElement>('[data-kanban-canvas]')!
+    const rendered = renderElement(createElement(Harness, {
+      session: surface.session,
+      bindClose: (close) => { closeRef.current = close },
+    }))
+    await act(async () => {
+      rendered.container.querySelector<HTMLButtonElement>('[data-kanban-fullscreen-trigger]')!.click()
+    })
+
+    const titleOf = () => canvas.querySelector<HTMLElement>('[data-item-id] h3')?.textContent
+    expect(titleOf()).toBe('First Task')
+    await act(async () => {
+      // Both of the title's gestures live on the button inside the heading (SH-107), so the double
+      // click that starts editing is dispatched on the control itself.
+      canvas.querySelector<HTMLElement>('[data-item-id] h3 button')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+    })
+    const input = canvas.querySelector<HTMLInputElement>('input[data-owns-escape="true"]')!
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+      setter?.call(input, 'Renamed Task')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+
+    // The exit control lives in the moved board, not the modal chrome.
+    await act(async () => {
+      canvas.querySelector<HTMLButtonElement>(`button[aria-label="${t('preview.kanban_exit_fullscreen')}"]`)!.click()
+    })
+
+    expect(document.querySelector('.kanban-fullscreen')).toBeNull()
+    expect(surface.block.querySelector('[data-kanban-canvas]')).toBe(canvas)
+    expect(titleOf()).toBe('Renamed Task')
+    expect(surface.writes.at(-1)).toContain('Renamed Task')
+
+    await act(async () => {
+      canvas.querySelector<HTMLElement>('[data-item-id] h3')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }),
+      )
+    })
+    expect(titleOf()).toBe('First Task')
+
+    rendered.unmount()
     surface.host.remove()
   })
 })

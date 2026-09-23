@@ -1,5 +1,5 @@
 import type { DateRangeFilter } from '@shared/types'
-import { dateKey } from '../../lib/time'
+import { dateKey, type WeekStartDay } from '../../lib/time'
 
 
 
@@ -12,7 +12,7 @@ export function monthRangeToKeys(year: number, startMonth: number, endMonth: num
 
 
 
-export function alignWeekStart(date: Date, weekStart: 0 | 1): Date {
+export function alignWeekStart(date: Date, weekStart: WeekStartDay): Date {
   const out = new Date(date)
   out.setHours(0, 0, 0, 0)
   out.setDate(out.getDate() - ((out.getDay() - weekStart + 7) % 7))

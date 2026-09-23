@@ -1,11 +1,11 @@
 import type { DateRangeFilter } from '@shared/types'
 import type { MessageKey } from '../lib/i18n'
-import { dateKey } from '../lib/time'
+import { dateKey, type WeekStartDay } from '../lib/time'
 
 export type RangePreset = 'today' | 'this-week' | 'this-month'
 
 /** Compute the day keys for a fixed quick preset range anchored at `today`. */
-export function presetRange(preset: RangePreset, today: Date, weekStart: 0 | 1): DateRangeFilter {
+export function presetRange(preset: RangePreset, today: Date, weekStart: WeekStartDay): DateRangeFilter {
   const key = (date: Date) => dateKey(date)
   switch (preset) {
     case 'today':

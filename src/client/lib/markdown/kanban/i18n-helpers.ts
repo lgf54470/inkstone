@@ -1,5 +1,5 @@
 import { t, type MessageKey } from '../../i18n'
-import type { KanbanOption, KanbanProperty, KanbanView } from './types'
+import type { KanbanColorName, KanbanOption, KanbanProperty, KanbanView, KanbanViewType } from './types'
 
 const VIEW_NAME_MAP: Record<string, MessageKey> = {
   board: 'preview.kanban_view_board',
@@ -12,17 +12,28 @@ const VIEW_NAME_MAP: Record<string, MessageKey> = {
   chart: 'preview.kanban_view_chart',
 }
 
+// Only `<type> <n>`, the shape the view switcher generates, is taken apart for translating; a name
+// a reader typed that merely looks numbered stays exactly as they wrote it.
+const GENERATED_VIEW_NAME = /^(.*?)\s(\d+)$/
+
 export function formatKanbanViewName(view: KanbanView): string {
   const byTypeKey = VIEW_NAME_MAP[view.type]
   const isDefaultName = !view.name || view.name.toLowerCase() === view.type.toLowerCase()
   if (isDefaultName && byTypeKey) {
     return t(byTypeKey)
   }
-  const byNameKey = VIEW_NAME_MAP[view.name.toLowerCase()]
+  const numbered = GENERATED_VIEW_NAME.exec(view.name)
+  const byNameKey = VIEW_NAME_MAP[numbered ? numbered[1]!.toLowerCase() : view.name.toLowerCase()]
   if (byNameKey) {
-    return t(byNameKey)
+    return numbered ? `${t(byNameKey)} ${numbered[2]}` : t(byNameKey)
   }
   return view.name
+}
+
+/** The name of a view kind on its own, for lists of kinds rather than of the board's views. */
+export function formatKanbanViewTypeLabel(type: KanbanViewType): string {
+  const key = VIEW_NAME_MAP[type]
+  return key ? t(key) : type
 }
 
 const PROPERTY_NAME_MAP: Record<string, MessageKey> = {
@@ -40,14 +51,22 @@ const PROPERTY_NAME_MAP: Record<string, MessageKey> = {
   subtasks: 'preview.kanban_subtasks',
 }
 
+// The id is what the fence stores values under, so it is also what names a built-in column — but only
+// while the column still carries that name. A reader who renamed it wrote the phrase they want shown,
+// and no locale may replace it.
+function normalizedName(text: string): string {
+  return text.toLowerCase().replace(/[\s_-]+/g, '')
+}
+
 export function formatKanbanPropertyName(prop: KanbanProperty | string): string {
-  const idOrName = typeof prop === 'string' ? prop : prop.id || prop.name
-  const normalized = idOrName.toLowerCase().replace(/[\s_-]+/g, '')
+  const fallback = typeof prop === 'string' ? prop : prop.name
+  const normalized = normalizedName(typeof prop === 'string' ? prop : prop.id || prop.name)
   const key = PROPERTY_NAME_MAP[normalized]
-  if (key) {
-    return t(key)
-  }
-  return typeof prop === 'string' ? prop : prop.name
+  if (!key) return fallback
+  if (typeof prop === 'string') return t(key)
+  const typed = prop.name.trim()
+  if (typed && normalizedName(typed) !== normalized) return prop.name
+  return t(key)
 }
 
 const OPTION_LABEL_MAP: Record<string, MessageKey> = {
@@ -64,6 +83,26 @@ const OPTION_LABEL_MAP: Record<string, MessageKey> = {
   improve: 'preview.kanban_tag_improve',
   improvement: 'preview.kanban_tag_improve',
   bug: 'preview.kanban_tag_bug',
+}
+
+const COLOR_NAME_MAP: Record<KanbanColorName, MessageKey> = {
+  gray: 'preview.kanban_color_gray',
+  brown: 'preview.kanban_color_brown',
+  orange: 'preview.kanban_color_orange',
+  yellow: 'preview.kanban_color_yellow',
+  green: 'preview.kanban_color_green',
+  blue: 'preview.kanban_color_blue',
+  purple: 'preview.kanban_color_purple',
+  pink: 'preview.kanban_color_pink',
+  red: 'preview.kanban_color_red',
+  coral: 'preview.kanban_color_coral',
+  teal: 'preview.kanban_color_teal',
+  slate: 'preview.kanban_color_slate',
+}
+
+/** The colour's name for a reader, since the token (`slate`) is what the fence stores. */
+export function formatKanbanColorName(color: KanbanColorName): string {
+  return t(COLOR_NAME_MAP[color])
 }
 
 export function formatKanbanOptionLabel(optionOrLabel: KanbanOption | string, propId?: string): string {

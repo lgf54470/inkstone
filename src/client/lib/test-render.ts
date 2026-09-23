@@ -17,6 +17,7 @@ export function installTestGlobals(): void {
 
 export interface RenderedElement {
   container: HTMLElement
+  rerender: (node: ReactNode) => void
   unmount: () => void
 }
 
@@ -29,6 +30,7 @@ export function renderElement(node: ReactNode): RenderedElement {
   act(() => { root.render(node); })
   return {
     container,
+    rerender: (next: ReactNode) => { act(() => { root.render(next); }); },
     unmount: () => {
       act(() => { root.unmount(); })
       container.remove()

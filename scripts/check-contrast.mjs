@@ -47,6 +47,14 @@ import {
   waitForPanelSettled,
   waitForTransitionsEnd,
 } from './e2e-harness.mjs'
+import { MINDMAP_NODE_TEXT_RULE, classifyIncomplete } from './lib/axe-review.mjs'
+import {
+  contrastRatio,
+  near,
+  over,
+  parseColor,
+  toHex,
+} from './lib/contrast.mjs'
 
 const args = process.argv.slice(2)
 const REPORT = args.includes('--report')
@@ -71,10 +79,6 @@ const MINDMAP_FENCE = ['', '```mindmap', '- Contrast Probe', '  - Keyboard refer
 const KANBAN_FULLSCREEN = '.kanban-fullscreen'
 /** The block's own full screen control, in both languages — the same one the behaviour gate presses. */
 const KANBAN_FULLSCREEN_LABELS = ['全屏', 'Full screen']
-// axe's wording for text it will not judge because something is painted over it: the pass run under
-// a transient layer has to recognize its own items by it, and the pass without the layer must not
-// see one at all.
-const OCCLUSION_NOTE = 'overlapped by another element'
 
 /**
  * The mind map's full screen view, opened with its keyboard reference card up.
@@ -189,24 +193,7 @@ async function openMindmapFullscreen(page, colors) {
   await sleep(SETTLE_MS)
 }
 
-/**
- * The card is the transient layer: this puts it away without leaving full screen, so the map's own
- * topic text can be read on its own. The card is drawn over the middle of the drawing area, and the
- * topic labels it covers are exactly the ones axe refuses to judge while it is up — a review item
- * that is true about the pixels and useless as a failure, because the layer is the thing being
- * measured. Measuring the surface twice keeps both answers and neither is taken on trust: the card
- * is judged with it open, the map's text with it away on the same instance, and the first pass is
- * only allowed to report the occlusion because the second has to come back without it — except for
- * the targets named by `alwaysOverlaid` below, which no re-read can ever clear.
- * The removal here is asserted, not assumed: the wait fails the gate if the card is still mounted.
- */
-async function dismissMindmapCard(page) {
-  await page.keyboard.press('Escape')
-  await page.waitForFunction(() => !document.querySelector('.mindmap-shortcuts'), { timeout: SETTLE_TIMEOUT })
-  await sleep(SETTLE_MS)
-}
-
-/** The second Escape is the one that leaves full screen. */
+/** The first Escape puts the card away, the second leaves full screen. */
 async function closeMindmapFullscreen(page) {
   await page.keyboard.press('Escape')
   await sleep(SETTLE_MS)
@@ -350,18 +337,10 @@ const SURFACES = [
     open: openMindmapFullscreen,
     close: closeMindmapFullscreen,
     painted: ['text'],
-    // The card is this surface's own transient layer: the measurements and the first axe pass run
-    // with it up, because the card is the surface that was skipped, and the same instance is then
-    // read a second time with the card away. Only a surface that declares the second read has the
-    // items its layer occludes set aside, and only because that read has to pass without them.
-    // `alwaysOverlaid` names the one kind of occlusion the re-read can never clear: the library
-    // paints its connector layers (.lines/.subLines, full-canvas and pointer-events:none) after
-    // the topic nodes, so axe sees a non-ancestor element over every topic text in any map, card
-    // or not. Those targets are still named in the log rather than filtered in silence, and the
-    // text is not left unread: the measurement pass above walks each topic text through its
-    // ancestor background chain — the transparent overlays do not sit in that chain — and judges
-    // or reports it by the same token rule as everywhere else.
-    occluder: { layer: 'keyboard reference card', dismiss: dismissMindmapCard, alwaysOverlaid: 'me-tpc[' },
+    // The one item here the gate cannot judge, and it is not the card this pass runs under: the
+    // rule, its evidence and why it cannot widen are in `lib/axe-review.mjs` next to the classifier
+    // that applies it (and `tests/axe-review.test.ts` pins all three parts of it).
+    unjudgeable: [MINDMAP_NODE_TEXT_RULE],
   },
   {
     // The board is one of the two surfaces whose colours are not an appearance token. It is here for
@@ -499,22 +478,11 @@ async function readSurface(page, theme, surface, accents, palette, declaredTags)
   // Every surface declares the families it paints, so the screen is cross-checked against the matrix
   // wherever the gate looks, not only on the board (§55 read the board's tags last).
   if (surface.painted) failures += judgePaintedPalette(`${theme} · ${surface.name}`, result, palette, surface.painted)
-  // A surface opened under a layer it draws itself has text that layer covers, and axe reports
-  // exactly that text as unjudgeable instead of reading it. Those items fail nothing here because
-  // the same instance is read again below with the layer away, where they have to be absent — save
-  // the targets the surface is always overlaid on, which that read still names one by one; the count
-  // line names how many were, so nothing is excused in silence.
-  failures += await judgeSurfaceAxe(surface, theme, page, surface.occluder)
-  if (surface.occluder) {
-    await surface.occluder.dismiss(page)
-    failures += await judgeSurfaceAxe(
-      { ...surface, name: `${surface.name} without its ${surface.occluder.layer}` },
-      theme,
-      page,
-      null,
-      surface.occluder.alwaysOverlaid,
-    )
-  }
+  // A surface opens once per theme and is read once: the items axe cannot judge on it are the ones
+  // it declared by name, and every other item — including a text a layer of the surface's own covers
+  // — fails, because such a cover-up is exactly the way a surface would get quieter by painting over
+  // its own text.
+  failures += await judgeSurfaceAxe(surface, theme, page)
   await surface.close(page)
   return failures
 }
@@ -525,37 +493,30 @@ async function readSurface(page, theme, surface, accents, palette, declaredTags)
  * behind it. One theme, one freshly-opened panel, so the two answers are about
  * the same pixels.
  */
-async function judgeSurfaceAxe(surface, theme, page, occluder = null, alwaysOverlaid = null) {
+async function judgeSurfaceAxe(surface, theme, page) {
   const result = await runAxe(page, surface.axeRoot)
   if (result.passes === 0) throw new Error(`axe inspected nothing in the ${surface.name}`)
-  // Under a transient layer the surface draws itself, text the layer covers comes back from axe as
-  // something it could not judge rather than as something it measured. Those items are set aside for
-  // this pass alone: the caller runs the second read of the same instance, and that one must return
-  // without them, so a surface no longer gets quieter by painting over its own text.
-  const hasOcclusionNote = (item) => item.id === 'color-contrast' && item.note.includes(OCCLUSION_NOTE)
-  const isOccluded = (item) => Boolean(occluder) && hasOcclusionNote(item)
-  // The re-read's one exception: targets the surface permanently paints under, named by the
-  // surface's own `alwaysOverlaid` prefix. They are printed by target rather than dropped.
-  const isAlwaysOverlaid = (item) => Boolean(alwaysOverlaid) && hasOcclusionNote(item) && item.target.startsWith(alwaysOverlaid)
-  const occluded = result.incomplete.filter((item) => isOccluded(item) && !isAlwaysOverlaid(item))
-  const overlaid = result.incomplete.filter(isAlwaysOverlaid)
-  const review = result.incomplete.filter((item) => !isReviewedIncomplete(item) && !isOccluded(item) && !isAlwaysOverlaid(item))
+  // A surface may name the items axe cannot judge on it, and only those: the classifier matches
+  // axe's own key for why it gave up together with the target it applied to, so nothing is excused
+  // by silence and no other surface inherits this one's exception.
+  const { named: unjudgeable, review, allowed } = classifyIncomplete({
+    incomplete: result.incomplete,
+    declared: surface.unjudgeable ?? [],
+    isReviewedIncomplete,
+  })
   // The reviewed items are named in the count so "nothing to report" stays distinguishable from
   // "the pass measured nothing"; they are allowed by id and reason, never by silence.
-  const allowed = result.incomplete.length - review.length
-  const occlusion = occluded.length ? `, ${occluded.length} of them occluded by the ${occluder.layer} and read again below` : ''
-  console.log(`  ${result.violations.length + review.length === 0 ? '✓' : '✗'} axe: the ${surface.name} has no violations and no unreviewed items (${theme}), ${result.passes} checks passed, ${allowed} reviewed items allowed${occlusion}`)
+  const named = unjudgeable.length
+    ? `, ${unjudgeable.length} of them allowed by name (${unjudgeable[0].rule.reason})`
+    : ''
+  console.log(`  ${result.violations.length + review.length === 0 ? '✓' : '✗'} axe: the ${surface.name} has no violations and no unreviewed items (${theme}), ${result.passes} checks passed, ${allowed} reviewed items allowed${named}`)
   for (const item of result.violations) {
     console.log(`      ${item.id} ×${item.count} — ${item.note}`)
     console.log(`        ${item.target}`)
     console.log(`        ${item.html}`)
   }
-  for (const item of occluded) {
-    console.log(`      occluded: ${item.id} ×${item.count} — under the ${occluder.layer}`)
-    console.log(`        ${item.target}`)
-  }
-  for (const item of overlaid) {
-    console.log(`      always overlaid: ${item.id} ×${item.count} — the surface's own line layer sits over this text in any state`)
+  for (const { item, rule } of unjudgeable) {
+    console.log(`      allowed by name: ${item.id} ×${item.count} (${item.key}) — ${rule.reason}`)
     console.log(`        ${item.target}`)
   }
   for (const item of review) {
@@ -906,75 +867,6 @@ function judgeAccentSweep(label, result, accents) {
   return failures.length
 }
 
-// --- colour math -----------------------------------------------------------
-
-const parseColor = (value) => {
-  const text = (value ?? '').trim().toLowerCase()
-  const hex = text.match(/^#([0-9a-f]{3,8})$/)
-  if (hex) {
-    const raw = hex[1].length <= 4 ? hex[1].split('').map((c) => c + c).join('') : hex[1]
-    const channel = (index) => Number.parseInt(raw.slice(index * 2, index * 2 + 2), 16)
-    return { rgb: [channel(0), channel(1), channel(2)], alpha: raw.length === 8 ? channel(3) / 255 : 1 }
-  }
-  const functional = text.match(/^(rgba?|oklch|oklab|color)\((.*)\)$/)
-  if (!functional) return null
-  const body = functional[2]
-  const [head, alphaPart] = body.split('/')
-  const numbers = head.trim().split(/\s+/)
-  const alpha = alphaPart === undefined ? 1 : alphaPart.trim().endsWith('%') ? Number.parseFloat(alphaPart) / 100 : Number.parseFloat(alphaPart)
-  if (functional[1] === 'rgb' || functional[1] === 'rgba') {
-    // Legacy rgba() carries its alpha as a fourth channel, not after a slash.
-    const legacy = numbers.length > 3 ? Number.parseFloat(numbers[3]) : null
-    return { rgb: numbers.slice(0, 3).map((part) => Number.parseFloat(part)), alpha: legacy === null ? alpha : legacy }
-  }
-  if (functional[1] === 'oklch') {
-    const lightness = Number.parseFloat(numbers[0]) > 1 ? Number.parseFloat(numbers[0]) / 100 : Number.parseFloat(numbers[0])
-    return { rgb: oklabToRgb(lightness, Number.parseFloat(numbers[1]) * Math.cos(radians(numbers[2] ?? '0')), Number.parseFloat(numbers[1]) * Math.sin(radians(numbers[2] ?? '0'))), alpha }
-  }
-  if (functional[1] === 'oklab') {
-    return { rgb: oklabToRgb(Number.parseFloat(numbers[0]), Number.parseFloat(numbers[1]), Number.parseFloat(numbers[2])), alpha }
-  }
-  // color(srgb r g b) — what Chrome computes a color-mix() into.
-  const channels = numbers.filter((part) => part !== 'srgb').slice(0, 3).map((part) => Number.parseFloat(part) * 255)
-  return { rgb: channels, alpha }
-}
-
-const radians = (degrees) => (Number.parseFloat(degrees) * Math.PI) / 180
-
-function oklabToRgb(l, a, b) {
-  const lms = [
-    (l + 0.3963377774 * a + 0.2158037573 * b) ** 3,
-    (l - 0.1055613458 * a - 0.0638541728 * b) ** 3,
-    (l - 0.0894841775 * a - 1.291485548 * b) ** 3,
-  ]
-  const linear = [
-    4.0767416621 * lms[0] - 3.3077115913 * lms[1] + 0.2309699292 * lms[2],
-    -1.2684380046 * lms[0] + 2.6097574011 * lms[1] - 0.3413193965 * lms[2],
-    -0.0041960863 * lms[0] - 0.7034186147 * lms[1] + 1.707614701 * lms[2],
-  ]
-  return linear.map((channel) => Math.min(255, Math.max(0, linearToSrgb(channel) * 255)))
-}
-
-const linearToSrgb = (value) => (value <= 0.0031308 ? 12.92 * value : 1.055 * value ** (1 / 2.4) - 0.055)
-
-const relativeLuminance = (rgb) => {
-  const [r, g, b] = rgb.map((channel) => {
-    const value = channel / 255
-    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
-  })
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b
-}
-
-const contrastRatio = (foreground, background) => {
-  const [high, low] = [relativeLuminance(foreground), relativeLuminance(background)].sort((a, b) => b - a)
-  return (high + 0.05) / (low + 0.05)
-}
-
-const over = (top, bottom) => top.rgb.map((channel, index) => channel * top.alpha + bottom[index] * (1 - top.alpha))
-
-const near = (rgb, other) => rgb.every((channel, index) => Math.abs(channel - other[index]) <= 3)
-
-const toHex = (rgb) => `#${rgb.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`
 
 /**
  * Turns the painted text into (tier, surface) pairs. A tint is translucent, so

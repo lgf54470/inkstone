@@ -67,9 +67,10 @@ const SURFACES = [
     // screen variant: the mind map, whose scenario asserts the same two things (Escape
     // closes it, the keyboard reference does not grow the head) on the element this file
     // renders, the slides editor, whose scenario asserts the same pair from the control it
-    // was opened from, and the share center, which asserts that the variant covers the phone
-    // breakpoint before it reads that element. The names below are the assertions each
-    // consumer lives behind.
+    // was opened from, the share center, which asserts that the variant covers the phone
+    // breakpoint before it reads that element, and the full screen kanban board, whose top bar
+    // the sweep drives instead. The names below are the assertions each consumer lives behind —
+    // the board is covered by its own sweep entry, which is why it needs none.
     checkedBy: [
       'mindmap: opening the keyboard reference leaves the toolbar its size',
       'share: the center takes the phone breakpoint as a full screen surface',

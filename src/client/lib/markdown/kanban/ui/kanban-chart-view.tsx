@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import {
   BarChart2,
   CheckCircle2,
@@ -9,9 +9,11 @@ import {
   PieChart as PieChartIcon,
   TrendingUp,
 } from 'lucide-react'
-import { t } from '../../../i18n'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { aggregateKanbanChartData, buildChartJsConfig } from '../chart-helpers'
+import { readKanbanChartPalette } from '../chart-palette'
 import { formatKanbanPropertyName } from '../i18n-helpers'
+import { isKanbanItemDone } from '../item-status'
 import type { KanbanChartType, KanbanData, KanbanView } from '../types'
 
 interface KanbanChartViewProps {
@@ -29,6 +31,36 @@ const CHART_TYPES: Array<{ type: KanbanChartType; labelKey: string; icon: React.
   { type: 'radar', labelKey: 'preview.kanban_chart_radar', icon: Layers },
 ]
 
+function ChartGroupByControl({
+  currentGroupBy,
+  columns,
+  onChangeGroupBy,
+}: {
+  currentGroupBy: string
+  columns: KanbanData['columns']
+  onChangeGroupBy: (propId: string) => void
+}) {
+  const selectableCols = columns.filter((c) => c.type === 'select' || c.type === 'multi-select' || c.id === 'status' || c.id === 'priority')
+
+  return (
+    <div className='flex items-center gap-2 text-[length:var(--text-12)]'>
+      <span className='text-[var(--text-tertiary)]'>{t('preview.kanban_chart_group_by')}:</span>
+      <select
+        value={currentGroupBy}
+        onChange={(e) => onChangeGroupBy(e.target.value)}
+        aria-label={t('preview.kanban_chart_group_by')}
+        className='rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 py-1 font-medium text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
+      >
+        {selectableCols.map((c) => (
+          <option key={c.id} value={c.id}>
+            {formatKanbanPropertyName(c)}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 function ChartToolbar({
   currentType,
   currentGroupBy,
@@ -42,8 +74,6 @@ function ChartToolbar({
   onChangeType: (type: KanbanChartType) => void
   onChangeGroupBy: (propId: string) => void
 }) {
-  const selectableCols = columns.filter((c) => c.type === 'select' || c.type === 'multi-select' || c.id === 'status' || c.id === 'priority')
-
   return (
     <div className='flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3'>
       <div className='flex items-center gap-1 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] p-0.5'>
@@ -65,20 +95,11 @@ function ChartToolbar({
         ))}
       </div>
 
-      <div className='flex items-center gap-2 text-[length:var(--text-12)]'>
-        <span className='text-[var(--text-tertiary)]'>{t('preview.kanban_chart_group_by')}:</span>
-        <select
-          value={currentGroupBy}
-          onChange={(e) => onChangeGroupBy(e.target.value)}
-          className='rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2.5 py-1 font-medium text-[var(--text-primary)] outline-none focus:border-[var(--accent)]'
-        >
-          {selectableCols.map((c) => (
-            <option key={c.id} value={c.id}>
-              {formatKanbanPropertyName(c)}
-            </option>
-          ))}
-        </select>
-      </div>
+      <ChartGroupByControl
+        currentGroupBy={currentGroupBy}
+        columns={columns}
+        onChangeGroupBy={onChangeGroupBy}
+      />
     </div>
   )
 }
@@ -86,7 +107,7 @@ function ChartToolbar({
 function MetricCards({ total, completedCount }: { total: number; completedCount: number }) {
   const rate = total > 0 ? Math.round((completedCount / total) * 100) : 0
   return (
-    <div className='grid grid-cols-2 gap-4 p-4 md:grid-cols-4'>
+    <div className='grid grid-cols-2 gap-4 p-4'>
       <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 shadow-xs'>
         <div className='flex items-center justify-between text-[var(--text-tertiary)]'>
           <span className='text-[length:var(--text-11)] font-medium'>{t('preview.kanban_chart_total_items')}</span>
@@ -106,11 +127,31 @@ function MetricCards({ total, completedCount }: { total: number; completedCount:
   )
 }
 
+// Chart.js bakes colours into the config at creation time, so the palette has
+// to be re-read whenever the theme, the accent (the line chart follows
+// `--accent`) or the white-background variant rewrites the tokens (ADR-0002).
+function useThemeRevision(): number {
+  const [revision, setRevision] = useState(0)
+  useEffect(() => {
+    const observer = new MutationObserver(() => setRevision((r) => r + 1))
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'data-accent', 'data-background'],
+    })
+    return () => observer.disconnect()
+  }, [])
+  return revision
+}
+
 function useChartRenderer(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
   chartType: KanbanChartType,
   dataset: ReturnType<typeof aggregateKanbanChartData>,
 ) {
+  const themeRevision = useThemeRevision()
+  // Each token costs a style recalculation, so read the palette per theme revision, not per data change.
+  const palette = useMemo(() => readKanbanChartPalette(), [themeRevision])
+
   useEffect(() => {
     let chartInstance: { destroy: () => void } | null = null
     let active = true
@@ -119,8 +160,7 @@ function useChartRenderer(
       const { Chart } = await import('chart.js/auto')
       if (!active || !canvasRef.current) return
 
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
-      const config = buildChartJsConfig(chartType, dataset, isDark)
+      const config = buildChartJsConfig(chartType, dataset, palette)
 
       chartInstance = new Chart(canvasRef.current, config as never)
     }
@@ -131,21 +171,35 @@ function useChartRenderer(
       active = false
       if (chartInstance) chartInstance.destroy()
     }
-  }, [canvasRef, chartType, dataset])
+  }, [canvasRef, chartType, dataset, palette])
 }
 
-export function KanbanChartView({ data, view, onUpdateView }: KanbanChartViewProps) {
+function chartCanvasAriaLabel(
+  groupProp: KanbanData['columns'][number] | undefined,
+  dataset: ReturnType<typeof aggregateKanbanChartData>,
+): string {
+  const groupLabel = groupProp ? formatKanbanPropertyName(groupProp) : t('preview.kanban_chart_no_group')
+  const counts = dataset.labels.map((label, i) => `${label}: ${dataset.data[i]}`).join(', ')
+  return t('preview.kanban_chart_canvas_aria', { value0: dataset.total, value1: groupLabel, value2: counts })
+}
+
+function countCompleted(items: KanbanData['items']): number {
+  return items.filter(isKanbanItemDone).length
+}
+
+export const KanbanChartView = memo(function KanbanChartView({ data, view, onUpdateView }: KanbanChartViewProps) {
+  useLocaleRepaint()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [chartType, setChartType] = useState<KanbanChartType>(view.chartType || 'bar')
   const [groupBy, setGroupBy] = useState<string>(view.chartGroupBy || view.groupBy || 'status')
 
   const groupProp = data.columns.find((c) => c.id === groupBy)
-  const dataset = aggregateKanbanChartData(data.items, groupBy, groupProp)
-
-  const completedCount = data.items.filter((it) => {
-    const s = String(it.properties.status || '').toLowerCase()
-    return s === 'done' || s === 'completed'
-  }).length
+  // Identity must survive unrelated commits: a fresh dataset object every
+  // render tears the Chart.js instance down and rebuilds it.
+  const dataset = useMemo(
+    () => aggregateKanbanChartData(data.items, groupBy, groupProp),
+    [data.items, groupBy, groupProp],
+  )
 
   useChartRenderer(canvasRef, chartType, dataset)
 
@@ -169,13 +223,13 @@ export function KanbanChartView({ data, view, onUpdateView }: KanbanChartViewPro
         onChangeGroupBy={handleGroupByChange}
       />
 
-      <MetricCards total={dataset.total} completedCount={completedCount} />
+      <MetricCards total={dataset.total} completedCount={countCompleted(data.items)} />
 
       <div className='mx-4 mb-6 flex-1 min-h-96 rounded-[var(--r-xl)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-sm'>
         <div className='relative h-full w-full'>
-          <canvas ref={canvasRef} />
+          <canvas ref={canvasRef} role='img' aria-label={chartCanvasAriaLabel(groupProp, dataset)} />
         </div>
       </div>
     </div>
   )
-}
+})

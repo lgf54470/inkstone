@@ -1,29 +1,14 @@
-import { useEffect } from 'react'
 import { Flag, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanDotColor, getKanbanTagStyle } from '../colors'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
+import type { ReactNode } from 'react'
 import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
 import { KanbanDatePicker } from './kanban-date-picker'
 import { KanbanFilesCell } from './kanban-files-cell'
+import { KanbanPersonPicker } from './kanban-person-picker'
 import { KanbanSubtaskList } from './kanban-subtask-list'
-
-export function useDropdownDismiss(
-  open: boolean,
-  containerRef: React.RefObject<HTMLElement | null>,
-  onClose: () => void,
-) {
-  useEffect(() => {
-    if (!open) return
-    const handleDown = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) {
-        onClose()
-      }
-    }
-    window.addEventListener('mousedown', handleDown)
-    return () => window.removeEventListener('mousedown', handleDown)
-  }, [open, containerRef, onClose])
-}
+import { KanbanTagPicker } from './kanban-tag-picker'
 
 export function StatusOptionItem({
   option,
@@ -50,6 +35,39 @@ export function StatusOptionItem({
       />
       <span>{formatKanbanOptionLabel(option, 'status')}</span>
     </button>
+  )
+}
+
+/** The listbox the status trigger opens; `id` is the target of its `aria-controls`. */
+export function StatusOptionList({
+  id,
+  label,
+  options,
+  current,
+  onSelect,
+}: {
+  id: string
+  label: string
+  options: KanbanOption[]
+  current?: unknown
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div
+      id={id}
+      role='listbox'
+      aria-label={label}
+      className='absolute left-0 top-full z-[var(--z-popover)] mt-1 min-w-36 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'
+    >
+      {options.map((o) => (
+        <StatusOptionItem
+          key={o.id}
+          option={o}
+          isSelected={o.id === current || o.label === current}
+          onSelect={onSelect}
+        />
+      ))}
+    </div>
   )
 }
 
@@ -120,31 +138,60 @@ export function DetailFooter({ onDelete, onClose }: { onDelete: () => void; onCl
   )
 }
 
+/** A property whose control brings its own focus semantics: the label is not its `<label>`. */
+function LabelledField({ column, children }: { column: KanbanProperty; children: ReactNode }) {
+  return (
+    <div className='flex flex-col gap-1'>
+      <span className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
+        {formatKanbanPropertyName(column)}
+      </span>
+      {children}
+    </div>
+  )
+}
+
 export function DetailPropertyField({
   column,
   value,
+  people,
   onChange,
 }: {
   column: KanbanProperty
   value: unknown
+  /** Who this member picker may offer; only the cards that already name someone fill it in. */
+  people?: string[]
   onChange: (value: unknown) => void
 }) {
   if (column.type === 'date') {
     return (
-      <div className='flex flex-col gap-1'>
-        <label className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
-          {formatKanbanPropertyName(column)}
-        </label>
-        <KanbanDatePicker value={String(value ?? '')} onChange={onChange} />
-      </div>
+      <LabelledField column={column}>
+        <KanbanDatePicker
+          propertyName={formatKanbanPropertyName(column)}
+          value={String(value ?? '')}
+          onChange={onChange}
+        />
+      </LabelledField>
+    )
+  }
+
+  if (column.type === 'person') {
+    return (
+      <LabelledField column={column}>
+        <KanbanPersonPicker
+          propertyName={formatKanbanPropertyName(column)}
+          value={value}
+          candidates={people}
+          onChange={onChange}
+        />
+      </LabelledField>
     )
   }
 
   return (
-    <div className='flex flex-col gap-1'>
-      <label className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
+    <label className='flex flex-col gap-1'>
+      <span className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
         {formatKanbanPropertyName(column)}
-      </label>
+      </span>
       {column.type === 'number' ? (
         <input
           type='number'
@@ -160,40 +207,20 @@ export function DetailPropertyField({
           className='h-8 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
         />
       )}
-    </div>
-  )
-}
-
-export function DetailDescription({
-  content,
-  onChange,
-}: {
-  content?: string
-  onChange: (text: string) => void
-}) {
-  return (
-    <div className='flex flex-col gap-2'>
-      <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
-        {t('preview.kanban_card_description')}
-      </h4>
-      <textarea
-        value={content ?? ''}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={t('preview.kanban_card_description_placeholder')}
-        rows={4}
-        className='w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-2.5 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none resize-y focus:border-[var(--accent)]'
-      />
-    </div>
+    </label>
   )
 }
 
 export function DetailPropertiesGrid({
   columns,
   properties,
+  people,
   onChangeProperty,
 }: {
   columns: KanbanProperty[]
   properties: Record<string, unknown>
+  /** Who each member column may offer, keyed by column id. */
+  people?: Record<string, string[]>
   onChangeProperty: (id: string, val: unknown) => void
 }) {
   const handledIds = new Set(['title', 'status', 'priority', 'tags', 'dueDate', 'startDate', 'endDate', 'files'])
@@ -207,6 +234,7 @@ export function DetailPropertiesGrid({
           key={col.id}
           column={col}
           value={properties[col.id]}
+          people={people?.[col.id]}
           onChange={(val) => onChangeProperty(col.id, val)}
         />
       ))}
@@ -217,28 +245,39 @@ export function DetailPropertiesGrid({
 export function DetailAttachmentsAndSubtasks({
   item,
   onUpdate,
+  onConvertSubtask,
 }: {
   item: KanbanItem
   onUpdate: (updated: KanbanItem) => void
+  onConvertSubtask: (subtaskId: string) => void
 }) {
   return (
     <>
       <div className='flex flex-col gap-2'>
-        <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
-          {t('preview.kanban_files')}
-        </h4>
+        {/* The type goes on this wrapper, not on the heading: prose owns a note's `h4` and wins any
+            utility written on it (see the hand-back block in `styles/kanban.css`). */}
+        <div className='text-[length:var(--text-13)] font-semibold'>
+          <h4 className='text-[var(--text-secondary)]'>
+            {t('preview.kanban_files')}
+          </h4>
+        </div>
         <KanbanFilesCell
           files={item.files}
           onChangeFiles={(files) => onUpdate({ ...item, files })}
+          cover={item.cover}
+          onChangeCover={(cover) => onUpdate({ ...item, cover })}
         />
       </div>
       <div className='flex flex-col gap-2'>
-        <h4 className='text-[length:var(--text-13)] font-semibold text-[var(--text-secondary)]'>
-          {t('preview.kanban_subtasks')}
-        </h4>
+        <div className='text-[length:var(--text-13)] font-semibold'>
+          <h4 className='text-[var(--text-secondary)]'>
+            {t('preview.kanban_subtasks')}
+          </h4>
+        </div>
         <KanbanSubtaskList
           subtasks={item.subtasks ?? []}
           onUpdateSubtasks={(subtasks) => onUpdate({ ...item, subtasks })}
+          onConvertToItem={(subtask) => onConvertSubtask(subtask.id)}
         />
       </div>
     </>
@@ -261,6 +300,7 @@ export function DetailDatesGrid({
           {t('preview.kanban_prop_start_date')}
         </label>
         <KanbanDatePicker
+          propertyName={t('preview.kanban_prop_start_date')}
           value={String(startDateVal ?? '')}
           onChange={(val) => onPropertyChange('startDate', val)}
         />
@@ -270,10 +310,30 @@ export function DetailDatesGrid({
           {t('preview.kanban_prop_end_date')}
         </label>
         <KanbanDatePicker
+          propertyName={t('preview.kanban_prop_end_date')}
           value={String(dueDateVal ?? '')}
           onChange={(val) => onPropertyChange('dueDate', val)}
         />
       </div>
+    </div>
+  )
+}
+
+export function DetailTagsField({
+  tagVals,
+  options,
+  onChangeTags,
+}: {
+  tagVals: string[]
+  options: KanbanOption[]
+  onChangeTags: (tags: string[], newOption?: KanbanOption) => void
+}) {
+  return (
+    <div className='flex flex-col gap-1.5'>
+      <label className='text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
+        {t('preview.kanban_prop_tags')}
+      </label>
+      <KanbanTagPicker tags={tagVals} options={options} onChangeTags={onChangeTags} />
     </div>
   )
 }

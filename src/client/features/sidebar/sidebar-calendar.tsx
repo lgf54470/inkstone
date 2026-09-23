@@ -3,6 +3,7 @@ import { CalendarDays, ChevronDown } from 'lucide-react'
 import type { DateRangeFilter } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t, useLocale } from '../../lib/i18n'
+import { weekStartFor } from '../../lib/time'
 import { useNotes } from '../../store/notes'
 import { useUi } from '../../store/ui'
 import { ActivityCalendarMemo } from '../../components/activity-calendar'
@@ -82,7 +83,7 @@ export function SidebarCalendar() {
     const now = useMemo(() => new Date(), [])
     const isCurrentMonth = cursor.year === now.getFullYear() && cursor.month === now.getMonth()
     const showTodayChip = view === 'year' ? cursor.year === now.getFullYear() : isCurrentMonth
-    const weekStart = locale === 'zh-CN' ? 1 : 0
+    const weekStart = weekStartFor(locale)
     const diaryTitle = useCallback((key: string) => t('sidebar.diary_title_value0', { value0: key }), [])
     // Single cached projection replaces three whole-vault Object.values scans; untouched output identities stay stable between typing commits.
     const { counts, noteIdByTitle, notesByDay } = useMemo(() => buildActivityProjectionCached(notes), [notes])

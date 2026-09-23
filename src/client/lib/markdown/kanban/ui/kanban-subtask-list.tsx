@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { AlignLeft, CheckSquare, MoreHorizontal, Plus, Smile, Square } from 'lucide-react'
 import { t } from '../../../i18n'
+import { createKanbanId } from '../id'
 import type { KanbanSubtask } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanIconPicker } from './kanban-icon-picker'
@@ -44,11 +45,12 @@ function SubtaskTrailingActions({
   subtask: KanbanSubtask
   onToggleDesc: () => void
   onDuplicate: () => void
-  onConvertToItem: () => void
+  onConvertToItem?: () => void
   onDelete: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
 
   return (
     <div className='flex items-center gap-0.5'>
@@ -56,7 +58,7 @@ function SubtaskTrailingActions({
         type='button'
         onClick={onToggleDesc}
         title={t('preview.kanban_card_description')}
-        className={`opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 ${
+        className={`opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 focus-visible:opacity-100 ${
           hasDescription ? '!opacity-100 text-[var(--accent)]' : ''
         }`}
       >
@@ -67,14 +69,18 @@ function SubtaskTrailingActions({
         <button
           ref={menuBtnRef}
           type='button'
-          aria-label={t('common.more_actions')}
           onClick={() => setMenuOpen((o) => !o)}
-          className='opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100'
+          className='opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] group-hover/sub:opacity-100 focus-visible:opacity-100'
+          aria-label={t('common.more_actions')}
+          aria-haspopup='menu'
+          aria-expanded={menuOpen}
+          {...(menuOpen ? { 'aria-controls': panelId } : {})}
         >
           <MoreHorizontal size={13} />
         </button>
         <KanbanSubtaskMenu
           open={menuOpen}
+          panelId={panelId}
           subtask={subtask}
           anchorRef={menuBtnRef}
           onClose={() => setMenuOpen(false)}
@@ -96,6 +102,7 @@ function SubtaskIconSelect({
 }) {
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
 
   return (
     <>
@@ -105,6 +112,9 @@ function SubtaskIconSelect({
         onClick={() => setOpen((o) => !o)}
         className='flex size-5 shrink-0 items-center justify-center rounded-[var(--r-xs)] hover:bg-[var(--bg-raised)]'
         title={t('preview.kanban_icon_picker')}
+        aria-haspopup='dialog'
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': panelId } : {})}
       >
         {icon ? (
           <KanbanIconBadge icon={icon} size={14} />
@@ -114,6 +124,7 @@ function SubtaskIconSelect({
       </button>
       <KanbanIconPicker
         open={open}
+        panelId={panelId}
         anchorRef={btnRef}
         onClose={() => setOpen(false)}
         onSelectIcon={(newIcon) => onSelectIcon(newIcon || undefined)}
@@ -139,7 +150,7 @@ function SubtaskMainRow({
   onUpdateSubtask: (updated: KanbanSubtask) => void
   onToggleDesc: () => void
   onDuplicate: () => void
-  onConvertToItem: () => void
+  onConvertToItem?: () => void
   onDelete: () => void
 }) {
   return (
@@ -148,7 +159,10 @@ function SubtaskMainRow({
         type='button'
         onClick={onToggle}
         className='shrink-0 text-[var(--text-tertiary)] hover:text-[var(--accent)]'
-        aria-label={subtask.completed ? 'Mark incomplete' : 'Mark complete'}
+        aria-label={t(
+          subtask.completed ? 'preview.kanban_mark_incomplete_named' : 'preview.kanban_mark_complete_named',
+          { name: subtask.title },
+        )}
       >
         {subtask.completed ? <CheckSquare size={13} className='text-[var(--accent)]' /> : <Square size={13} />}
       </button>
@@ -161,6 +175,7 @@ function SubtaskMainRow({
       <input
         type='text'
         defaultValue={subtask.title}
+        aria-label={t('preview.kanban_subtask_title')}
         onBlur={(e) => {
           if (e.target.value !== subtask.title) {
             onUpdateTitle(e.target.value)
@@ -197,7 +212,7 @@ function SubtaskRow({
   onUpdateTitle: (title: string) => void
   onUpdateSubtask: (updated: KanbanSubtask) => void
   onDuplicate: () => void
-  onConvertToItem: () => void
+  onConvertToItem?: () => void
   onDelete: () => void
 }) {
   const [showDesc, setShowDesc] = useState(Boolean(subtask.description))
@@ -268,7 +283,7 @@ export function KanbanSubtaskList({
   }
 
   const handleDuplicate = (st: KanbanSubtask) => {
-    onUpdateSubtasks([...subtasks, { ...st, id: `sub_${Date.now()}` }])
+    onUpdateSubtasks([...subtasks, { ...st, id: `sub_${createKanbanId()}` }])
   }
 
   const handleDelete = (id: string) => {
@@ -285,14 +300,14 @@ export function KanbanSubtaskList({
           onUpdateTitle={(title) => handleUpdateTitle(st.id, title)}
           onUpdateSubtask={handleUpdateSubtask}
           onDuplicate={() => handleDuplicate(st)}
-          onConvertToItem={() => onConvertToItem?.(st)}
+          onConvertToItem={onConvertToItem ? () => onConvertToItem(st) : undefined}
           onDelete={() => handleDelete(st.id)}
         />
       ))}
 
       <AddSubtaskForm
         onAdd={(title) =>
-          onUpdateSubtasks([...subtasks, { id: `sub_${Date.now()}`, title, completed: false }])
+          onUpdateSubtasks([...subtasks, { id: `sub_${createKanbanId()}`, title, completed: false }])
         }
       />
     </div>

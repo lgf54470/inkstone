@@ -18,8 +18,9 @@ export const KANBAN_COLOR_NAMES: readonly KanbanColorName[] = [
 
 /**
  * The tag palette is painted the way `--accent` is: a foreground as text on its own soft tint. Its
- * values live in `styles/kanban.css` (which carries no comments by policy), so the rule they were
- * calibrated to is written here, next to the only code that reads them.
+ * values live in `styles/tokens.css` (which carries no comments by policy), so the rule they were
+ * calibrated to is written here, next to the only code that reads them — and judged there by
+ * `tests/kanban-tag-contrast.test.ts`, which reads the declarations rather than a painted board.
  *
  * Every `--kanban-tag-<name>-fg` clears AA (4.5:1) as text on its own 14% tint over each surface a
  * theme and background variant declares, and on those surfaces themselves — the light column
@@ -45,7 +46,6 @@ export function getKanbanTagStyle(color?: KanbanColorName | string | null): CSSP
   return {
     backgroundColor: `var(--kanban-tag-${name}-bg)`,
     color: `var(--kanban-tag-${name}-fg)`,
-    borderColor: `var(--kanban-tag-${name}-border, transparent)`,
   }
 }
 

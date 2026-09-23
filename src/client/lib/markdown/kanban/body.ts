@@ -8,9 +8,11 @@ import {
   type FenceRange,
 } from '../fence-edit'
 import { parseKanbanOutline, serializeKanbanOutline } from './outline'
+import { safeKanbanUrl } from './url'
 import type {
   KanbanData,
   KanbanFenceRef,
+  KanbanItem,
   KanbanMode,
   KanbanParseResult,
   KanbanProperty,
@@ -24,8 +26,23 @@ export function detectKanbanMode(body: string): KanbanMode {
   return trimmed.startsWith('{') || trimmed.startsWith('[') ? 'json' : 'outline'
 }
 
-function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
-  const defaultColumns: KanbanProperty[] = [
+function assertFenceUrlsAreSafe(items: KanbanItem[]): void {
+  // A rejected protocol fails the whole fence into its error state rather than
+  // silently dropping the field, so the author sees why the board will not open.
+  for (const item of items) {
+    if (typeof item.cover === 'string' && item.cover.trim() !== '' && safeKanbanUrl(item.cover) === null) {
+      throw new Error(`Kanban item "${item.id ?? ''}" has an unsupported cover URL protocol`)
+    }
+    for (const file of item.files ?? []) {
+      if (typeof file.url === 'string' && file.url.trim() !== '' && safeKanbanUrl(file.url) === null) {
+        throw new Error(`Kanban item "${item.id ?? ''}" has an unsupported files URL protocol`)
+      }
+    }
+  }
+}
+
+function defaultKanbanColumns(): KanbanProperty[] {
+  return [
     { id: 'title', name: 'Title', type: 'title' },
     { id: 'status', name: 'Status', type: 'select', options: [
       { id: 'todo', label: 'To Do', color: 'gray' },
@@ -37,7 +54,7 @@ function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
       { id: 'medium', label: 'Medium', color: 'yellow' },
       { id: 'high', label: 'High', color: 'red' },
     ]},
-    { id: 'assignee', name: 'Assignee', type: 'text' },
+    { id: 'assignee', name: 'Assignee', type: 'person' },
     { id: 'startDate', name: 'Start Date', type: 'date' },
     { id: 'endDate', name: 'End Date', type: 'date' },
     { id: 'progress', name: 'Progress', type: 'number' },
@@ -47,8 +64,10 @@ function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
       { id: 'bug', label: 'Bug', color: 'red' },
     ]},
   ]
+}
 
-  const defaultViews: KanbanView[] = [
+function defaultKanbanViews(): KanbanView[] {
+  return [
     { id: 'view-board', name: 'Board', type: 'board', groupBy: 'status' },
     { id: 'view-table', name: 'Table', type: 'table' },
     { id: 'view-chart', name: 'Chart', type: 'chart', chartType: 'bar', chartGroupBy: 'status' },
@@ -58,13 +77,13 @@ function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
     { id: 'view-list', name: 'List', type: 'list' },
     { id: 'view-gallery', name: 'Gallery', type: 'gallery' },
   ]
+}
 
-  const columns = Array.isArray(raw.columns) && raw.columns.length > 0 ? raw.columns : defaultColumns
-  const baseViews = Array.isArray(raw.views) && raw.views.length > 0 ? raw.views : defaultViews
-  const views = baseViews.some((v) => v.type === 'chart')
-    ? baseViews
-    : [...baseViews, { id: 'view-chart', name: 'Chart', type: 'chart' as const, chartType: 'bar' as const, chartGroupBy: 'status' }]
+function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
+  const columns = Array.isArray(raw.columns) && raw.columns.length > 0 ? raw.columns : defaultKanbanColumns()
+  const views = Array.isArray(raw.views) && raw.views.length > 0 ? raw.views : defaultKanbanViews()
   const items = Array.isArray(raw.items) ? raw.items : []
+  assertFenceUrlsAreSafe(items)
 
   return {
     title: typeof raw.title === 'string' ? raw.title : 'Project',

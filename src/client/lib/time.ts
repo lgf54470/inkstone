@@ -34,15 +34,46 @@ export function daysBetweenKeys(a: string, b: string): number {
   return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000)
 }
 
+/**
+ * The weekday that opens a week grid, as a JS `getDay()` number. Not `0 | 1`: CLDR gives whole
+ * calendars that open on Saturday, and every grid here takes this same 0-based index.
+ */
+export type WeekStartDay = 0 | 1 | 2 | 3 | 4 | 5 | 6
+
+/**
+ * Which weekday opens a reader's calendar is locale data, so it is read off `Intl` rather than off
+ * the languages this app ships. `firstDay` is ISO-numbered (Monday = 1 … Sunday = 7) while the
+ * grids index JS `getDay()`, where Sunday is 0 — hence the modulo. Runtimes without `getWeekInfo`
+ * get the answer these calendars shipped with before the API existed.
+ */
+export function weekStartFor(locale: string): WeekStartDay {
+  const withWeekInfo = new Intl.Locale(locale) as Intl.Locale & {
+    getWeekInfo?: () => { firstDay?: number }
+  }
+  const firstDay = withWeekInfo.getWeekInfo?.()?.firstDay
+  if (typeof firstDay === 'number')
+    return (firstDay % 7) as WeekStartDay
+  return locale === 'zh-CN' ? 1 : 0
+}
+
+/** The seven column labels of a grid, in the same order as that grid's columns. */
+export function narrowWeekdayLabels(locale: string, weekStart: WeekStartDay): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
+  // 2024-01-07 is a Sunday, so the offset alone selects the weekday.
+  return Array.from({ length: 7 }, (_, index) =>
+    formatter.format(new Date(2024, 0, 7 + ((weekStart + index) % 7))),
+  )
+}
+
 /** Key of the week's first day (per `weekStart`) containing `key`. */
-export function weekStartKeyOf(key: string, weekStart: 0 | 1): string {
+export function weekStartKeyOf(key: string, weekStart: WeekStartDay): string {
   const date = parseDateKey(key)
   date.setDate(date.getDate() - ((date.getDay() - weekStart + 7) % 7))
   return dateKey(date)
 }
 
 /** Whether an inclusive day-key range spans exactly one aligned week. */
-export function isWeekRangeKey(start: string, end: string, weekStart: 0 | 1): boolean {
+export function isWeekRangeKey(start: string, end: string, weekStart: WeekStartDay): boolean {
   return start === weekStartKeyOf(start, weekStart) && end === addDaysKey(start, 6)
 }
 
@@ -64,6 +95,19 @@ function dateTimeFormat(options: Intl.DateTimeFormatOptions): Intl.DateTimeForma
   return new Intl.DateTimeFormat(localeTag(), options)
 }
 
+/**
+ * A stored day key as reader-facing text. Rich-media blocks persist `YYYY-MM-DD` because that is
+ * what round-trips into a note body, so every surface that prints one goes through here instead of
+ * showing the key; the year only appears when the day is not in the current year.
+ */
+export function formatDateKey(key: string, now = new Date()): string {
+  if (!key) return ''
+  const date = parseDateKey(key)
+  if (Number.isNaN(date.getTime())) return key
+  const parts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+  if (date.getFullYear() !== now.getFullYear()) parts.year = 'numeric'
+  return dateTimeFormat(parts).format(date)
+}
 
 export function shortTime(ts: number, now = Date.now()): string {
   if (!Number.isFinite(ts) || !ts) return ''

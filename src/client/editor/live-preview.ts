@@ -1,6 +1,7 @@
 import { RangeSetBuilder, StateEffect, StateField, type EditorState, type Extension, type Range, type Text } from '@codemirror/state'
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { destroyChartInstances, enhancePreview, renderPendingMermaid } from '../lib/markdown/enhance'
+import { blockFenceBodies, registerFenceBodies, type FenceBodies } from '../lib/markdown/fence-bodies'
 import { loadMindmapVendor, MINDMAP_IMAGE_CLASS } from '../lib/markdown/mindmap'
 import { renderMarkdown } from '../lib/markdown/renderer'
 import { useSession } from '../store/session'
@@ -8,6 +9,13 @@ import { useSession } from '../store/session'
 export interface RenderedBlock {
   line: number
   html: string
+  /**
+   * The fence bodies this whole render read (P-01), shared by every block it contributed: a widget
+   * registers them on its own host so the blocks inside can find the body behind their number.
+   */
+  fences: FenceBodies
+  /** The bodies the fences in this block were rendered from, for the widget to notice an edit. */
+  bodies: string[]
 }
 
 const RENDER_DEBOUNCE_MS = 90
@@ -15,12 +23,16 @@ const RENDER_DEBOUNCE_MS = 90
 /** Carries one render of the note into the state, where the live decorations are built from it. */
 export const publishLiveBlocks = StateEffect.define<readonly RenderedBlock[]>()
 
+function sameBlockBodies(current: readonly string[], next: readonly string[]): boolean {
+  return current === next || (current.length === next.length && current.every((body, index) => body === next[index]))
+}
+
 /**
  * Splits rendered Markdown into top-level blocks by the source line each one
  * started on. The renderer stamps `data-line` on every level-0 token, so blocks
  * map back onto document positions without a second parse of the source.
  */
-export function collectRenderedBlocks(html: string): RenderedBlock[] {
+export function collectRenderedBlocks(html: string, fences: FenceBodies): RenderedBlock[] {
   const parsed = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html')
   const root = parsed.body.firstElementChild
   if (!root) return []
@@ -33,7 +45,7 @@ export function collectRenderedBlocks(html: string): RenderedBlock[] {
     const line = Number(raw)
     if (!Number.isInteger(line) || line < 0) continue
     const markup = child.outerHTML.trim()
-    if (markup) blocks.push({ line, html: markup })
+    if (markup) blocks.push({ line, html: markup, fences, bodies: blockFenceBodies(child, fences) })
   }
   return blocks
 }
@@ -55,7 +67,7 @@ export function liveBlockRanges(opts: {
     if (to <= from) continue
     // The block holding the caret stays source: that is the one being edited.
     if (cursor >= from && cursor <= to) continue
-    ranges.push(Decoration.replace({ widget: new RenderedBlockWidget(block.html, from), block: true }).range(from, to))
+    ranges.push(Decoration.replace({ widget: new RenderedBlockWidget(block.html, block.fences, block.bodies, from), block: true }).range(from, to))
   }
   return ranges
 }
@@ -94,6 +106,7 @@ async function paintLiveBlock(host: HTMLElement): Promise<void> {
   if (!isLaidOut(host)) return
   const preview = useSession.getState().settings.preview
   const dark = isDarkTheme()
+  // No `fences` here: the host was built from a render that registered its own set on this element.
   await enhancePreview(host, {
     math: preview.math,
     mermaid: preview.mermaid,
@@ -103,6 +116,8 @@ async function paintLiveBlock(host: HTMLElement): Promise<void> {
     mindmap: 'snapshot',
     // The same reason holds for a whiteboard: the block in the pane is a picture.
     excalidraw: 'snapshot',
+    // A board is no different: the pane shows its cards as a list while the fence stays the source of truth.
+    kanban: 'snapshot',
     dark,
     // Collapsing is a control, and a click anywhere in the block drops the caret
     // into the source instead, so the block keeps its code unfolded.
@@ -125,18 +140,21 @@ function repaintLiveBlock(host: HTMLElement): void {
 }
 
 class RenderedBlockWidget extends WidgetType {
-  constructor(readonly html: string, readonly from: number) {
+  constructor(readonly html: string, readonly fences: FenceBodies, readonly bodies: readonly string[], readonly from: number) {
     super()
   }
 
   eq(other: RenderedBlockWidget): boolean {
-    return other.html === this.html && other.from === this.from
+    return other.html === this.html && other.from === this.from && sameBlockBodies(this.bodies, other.bodies)
   }
 
   toDOM(view: EditorView): HTMLElement {
     const host = document.createElement('div')
     host.className = 'ink-prose cm-live-block'
     host.innerHTML = this.html
+    // The bodies go on the node that holds the markup they were rendered from, which is what the
+    // snapshot renderers inside this block walk up to find.
+    registerFenceBodies(host, this.fences)
     // Clicking a rendered block drops the caret into its source, which then
     // shows through because the caret block is never replaced.
     host.addEventListener('mousedown', (event) => {
@@ -260,7 +278,8 @@ export const livePreviewPlugin = ViewPlugin.fromClass(
       const source = this.view.state.doc.toString()
       if (source === this.source) return
       this.source = source
-      this.view.dispatch({ effects: publishLiveBlocks.of(collectRenderedBlocks(renderMarkdown(source).html)) })
+      const rendered = renderMarkdown(source)
+      this.view.dispatch({ effects: publishLiveBlocks.of(collectRenderedBlocks(rendered.html, rendered.fences)) })
     }
 
     /**

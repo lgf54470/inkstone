@@ -1,17 +1,31 @@
-import { memo, useMemo, useRef } from 'react'
+import { memo, useRef } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
-import { useClickOutside } from '../../../../components/overlay'
-import { t } from '../../../i18n'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { formatKanbanPropertyName } from '../i18n-helpers'
-import type { KanbanFilter, KanbanFilterOperator, KanbanProperty } from '../types'
+import { kanbanFilterOperatorsForType } from '../filter-sort'
+import type {
+  KanbanFilter,
+  KanbanFilterOperator,
+  KanbanProperty,
+  KanbanPropertyType,
+} from '../types'
 
 interface KanbanFilterPopoverProps {
   open: boolean
+  panelId: string
   onClose: () => void
   anchorRef: React.RefObject<HTMLElement | null>
   columns: KanbanProperty[]
   filters: KanbanFilter[]
   onChangeFilters: (filters: KanbanFilter[]) => void
+}
+
+/** These read the cell itself, so a threshold would be nothing to compare against. */
+const OPERATORS_WITHOUT_VALUE: KanbanFilterOperator[] = ['is_empty', 'is_not_empty', 'is_overdue']
+
+function operatorLabel(operator: KanbanFilterOperator): string {
+  return t(`preview.kanban_op_${operator}`)
 }
 
 function FilterHeader({ onClose }: { onClose: () => void }) {
@@ -32,23 +46,116 @@ function FilterHeader({ onClose }: { onClose: () => void }) {
   )
 }
 
+/**
+ * A rule can outlive the column it was written against — a saved board may name an operator this
+ * kind of column never offers. Keeping it in the list is what stops the row from displaying one
+ * operator while filtering by another.
+ */
+function operatorsForColumn(
+  type: KanbanPropertyType | undefined,
+  current: KanbanFilterOperator,
+): KanbanFilterOperator[] {
+  const list = kanbanFilterOperatorsForType(type ?? 'text')
+  return list.includes(current) ? list : [...list, current]
+}
+
+function FilterOperatorSelect({
+  type,
+  operator,
+  onChange,
+}: {
+  type: KanbanPropertyType | undefined
+  operator: KanbanFilterOperator
+  onChange: (operator: KanbanFilterOperator) => void
+}) {
+  return (
+    <select
+      value={operator}
+      onChange={(e) => onChange(e.target.value as KanbanFilterOperator)}
+      aria-label={t('preview.kanban_filter_operator')}
+      className='h-7 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
+    >
+      {operatorsForColumn(type, operator).map((op) => (
+        <option key={op} value={op}>
+          {operatorLabel(op)}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+type ValueFieldKind = 'number' | 'date' | 'choice' | 'text'
+
+function valueFieldKind(column: KanbanProperty | undefined): ValueFieldKind {
+  if (column?.type === 'number') return 'number'
+  if (column?.type === 'date') return 'date'
+  return column?.options?.length ? 'choice' : 'text'
+}
+
+const VALUE_FIELD_CLASS =
+  'h-7 min-w-0 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-1.5 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
+
+/** The threshold is asked for in the kind the column holds, or the row compares types. */
+function FilterValueField({
+  column,
+  value,
+  onChange,
+}: {
+  column: KanbanProperty | undefined
+  value: string
+  onChange: (value: string) => void
+}) {
+  const kind = valueFieldKind(column)
+  const label = t('preview.kanban_filter_value')
+
+  if (kind === 'choice') {
+    // Choices are picked, not typed: a hand-typed label no option carries filters everything out. A
+    // rule saved against an option that has since gone keeps its own value rather than silently
+    // becoming the first choice.
+    const stale = value && !column?.options?.some((opt) => opt.id === value)
+    return (
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} className={VALUE_FIELD_CLASS}>
+        {!value && <option value=''>{t('preview.kanban_value_placeholder')}</option>}
+        {column?.options?.map((opt) => (
+          <option key={opt.id} value={opt.id}>
+            {opt.label}
+          </option>
+        ))}
+        {stale && <option value={value}>{value}</option>}
+      </select>
+    )
+  }
+
+  return (
+    <input
+      type={kind}
+      value={kind === 'date' ? value.slice(0, 10) : value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={kind === 'text' ? t('preview.kanban_value_placeholder') : undefined}
+      aria-label={label}
+      className={VALUE_FIELD_CLASS}
+    />
+  )
+}
+
 interface FilterRowProps {
   filter: KanbanFilter
   index: number
   columns: KanbanProperty[]
-  operators: { id: KanbanFilterOperator; label: string }[]
   onUpdate: (index: number, patch: Partial<KanbanFilter>) => void
   onRemove: (index: number) => void
 }
 
-function FilterRow({ filter, index, columns, operators, onUpdate, onRemove }: FilterRowProps) {
-  const needsValueInput = !['is_empty', 'is_not_empty'].includes(filter.operator)
+function FilterRow({ filter, index, columns, onUpdate, onRemove }: FilterRowProps) {
+  const column = columns.find((c) => c.id === filter.propertyId)
+  const needsValue = !OPERATORS_WITHOUT_VALUE.includes(filter.operator)
 
   return (
     <div className='flex items-center gap-1.5'>
       <select
         value={filter.propertyId}
         onChange={(e) => onUpdate(index, { propertyId: e.target.value })}
+        aria-label={t('preview.kanban_filter_property')}
         className='h-7 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
       >
         {columns.map((c) => (
@@ -58,25 +165,17 @@ function FilterRow({ filter, index, columns, operators, onUpdate, onRemove }: Fi
         ))}
       </select>
 
-      <select
-        value={filter.operator}
-        onChange={(e) => onUpdate(index, { operator: e.target.value as KanbanFilterOperator })}
-        className='h-7 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-raised)] px-1 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
-      >
-        {operators.map((op) => (
-          <option key={op.id} value={op.id}>
-            {op.label}
-          </option>
-        ))}
-      </select>
+      <FilterOperatorSelect
+        type={column?.type}
+        operator={filter.operator}
+        onChange={(operator) => onUpdate(index, { operator })}
+      />
 
-      {needsValueInput && (
-        <input
-          type='text'
+      {needsValue && (
+        <FilterValueField
+          column={column}
           value={filter.value ?? ''}
-          onChange={(e) => onUpdate(index, { value: e.target.value })}
-          placeholder={t('preview.kanban_value_placeholder')}
-          className='h-7 min-w-0 flex-1 rounded-[var(--r-sm)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-1.5 text-[length:var(--text-11)] text-[var(--text-primary)] outline-none'
+          onChange={(value) => onUpdate(index, { value })}
         />
       )}
 
@@ -108,13 +207,11 @@ function FilterAddButton({ onAdd }: { onAdd: () => void }) {
 function FilterList({
   filters,
   columns,
-  operators,
   onUpdate,
   onRemove,
 }: {
   filters: KanbanFilter[]
   columns: KanbanProperty[]
-  operators: { id: KanbanFilterOperator; label: string }[]
   onUpdate: (index: number, patch: Partial<KanbanFilter>) => void
   onRemove: (index: number) => void
 }) {
@@ -134,7 +231,6 @@ function FilterList({
           filter={filter}
           index={index}
           columns={columns}
-          operators={operators}
           onUpdate={onUpdate}
           onRemove={onRemove}
         />
@@ -143,44 +239,61 @@ function FilterList({
   )
 }
 
+/**
+ * Pointing a rule at another column keeps it only while the new column answers the same question;
+ * otherwise the rule restarts at that column's first operator, since a threshold carried over from
+ * a different kind of column would filter for something the reader never asked.
+ */
+function withFilterRule(
+  filters: KanbanFilter[],
+  index: number,
+  patch: Partial<KanbanFilter>,
+  columns: KanbanProperty[],
+): KanbanFilter[] {
+  const next = [...filters]
+  const rule = { ...next[index]!, ...patch }
+  if (!patch.propertyId) {
+    next[index] = rule
+    return next
+  }
+  const answers = kanbanFilterOperatorsForType(
+    columns.find((c) => c.id === rule.propertyId)?.type ?? 'text',
+  )
+  next[index] = answers.includes(rule.operator)
+    ? rule
+    : { propertyId: rule.propertyId, operator: answers[0]!, value: '' }
+  return next
+}
+
 export const KanbanFilterPopover = memo(function KanbanFilterPopover({
   open,
+  panelId,
   onClose,
   anchorRef,
   columns,
   filters,
   onChangeFilters,
 }: KanbanFilterPopoverProps) {
+  useLocaleRepaint()
   const panelRef = useRef<HTMLDivElement>(null)
   useClickOutside([panelRef, anchorRef], open, onClose)
-
-  const operators = useMemo<{ id: KanbanFilterOperator; label: string }[]>(
-    () => [
-      { id: 'equals', label: t('preview.kanban_op_equals') },
-      { id: 'not_equals', label: t('preview.kanban_op_not_equals') },
-      { id: 'contains', label: t('preview.kanban_op_contains') },
-      { id: 'not_contains', label: t('preview.kanban_op_not_contains') },
-      { id: 'is_empty', label: t('preview.kanban_op_is_empty') },
-      { id: 'is_not_empty', label: t('preview.kanban_op_is_not_empty') },
-    ],
-    [],
-  )
+  useEscape(open, onClose)
 
   if (!open) return null
 
   const handleAddFilter = () => {
-    const defaultProp = columns[0]?.id ?? 'title'
-    onChangeFilters([...filters, { propertyId: defaultProp, operator: 'contains', value: '' }])
+    const column = columns[0]
+    const operator = kanbanFilterOperatorsForType(column?.type ?? 'text')[0]!
+    onChangeFilters([...filters, { propertyId: column?.id ?? 'title', operator, value: '' }])
   }
 
   const handleUpdate = (index: number, patch: Partial<KanbanFilter>) => {
-    const next = [...filters]
-    next[index] = { ...next[index]!, ...patch }
-    onChangeFilters(next)
+    onChangeFilters(withFilterRule(filters, index, patch, columns))
   }
 
   return (
     <div
+      id={panelId}
       ref={panelRef}
       role='dialog'
       aria-label={t('preview.kanban_filter_rules')}
@@ -190,7 +303,6 @@ export const KanbanFilterPopover = memo(function KanbanFilterPopover({
       <FilterList
         filters={filters}
         columns={columns}
-        operators={operators}
         onUpdate={handleUpdate}
         onRemove={(i) => onChangeFilters(filters.filter((_, idx) => idx !== i))}
       />

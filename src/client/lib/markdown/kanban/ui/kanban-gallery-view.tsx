@@ -1,11 +1,16 @@
 import { memo } from 'react'
-import { Calendar, Flag, Paperclip, Plus } from 'lucide-react'
-import { t } from '../../../i18n'
+import { Flag, Paperclip, Plus } from 'lucide-react'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
+import { kanbanPersonName } from '../person'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanCardSubtasks } from './kanban-card-subtasks'
+import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanBlockedImage, useKanbanImageAllowed } from './kanban-image-policy'
+import { KanbanPersonAvatar } from './kanban-person-picker'
+import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
 
 interface KanbanGalleryViewProps {
   data: KanbanData
@@ -27,11 +32,25 @@ interface GalleryCardProps {
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
 }
 
-function GalleryCover({ item }: { item: KanbanItem }) {
+/**
+ * The picture a tile draws across its top, if it has one. Shared with the tile's own header row, which
+ * floats over that picture and only over it: the empty tile draws a 10px strip instead, and a row
+ * floated on that lands on the title underneath.
+ */
+function galleryCoverUrl(item: KanbanItem): string | undefined {
   const imageFile = item.files?.find(
     (f) => f.mime?.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(f.name),
   )
-  const coverUrl = item.cover || imageFile?.url
+  return item.cover || imageFile?.url
+}
+
+function GalleryCover({ item }: { item: KanbanItem }) {
+  const coverUrl = galleryCoverUrl(item)
+  const allowed = useKanbanImageAllowed(coverUrl ?? '')
+
+  if (coverUrl && !allowed) {
+    return <KanbanBlockedImage className='h-32 w-full' />
+  }
 
   if (coverUrl) {
     return (
@@ -39,7 +58,10 @@ function GalleryCover({ item }: { item: KanbanItem }) {
         <img
           src={coverUrl}
           alt={item.title}
-          className='h-full w-full object-cover transition-transform duration-300 hover:scale-105'
+          loading='lazy'
+          decoding='async'
+          referrerPolicy='no-referrer'
+          className='kanban-cover w-full object-cover transition-transform duration-300 hover:scale-105'
         />
       </div>
     )
@@ -54,22 +76,28 @@ function GalleryTagsHeader({
   isSelected,
   tagVals,
   tagsCol,
+  floatsOverCover,
   onToggleSelect,
 }: {
   isSelected: boolean
   tagVals: string[]
   tagsCol?: KanbanProperty
+  floatsOverCover: boolean
   onToggleSelect: () => void
 }) {
   return (
-    <div className='flex items-center justify-between gap-1.5'>
+    <div
+      className={`flex items-center justify-between gap-1.5 ${
+        tagVals.length === 0 && floatsOverCover ? 'absolute left-3 top-3' : ''
+      }`}
+    >
       <div className='flex min-w-0 flex-wrap items-center gap-1.5'>
         <input
           type='checkbox'
           checked={isSelected}
           onClick={(e) => e.stopPropagation()}
           onChange={onToggleSelect}
-          className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 group-hover/card:opacity-100 checked:opacity-100'
+          className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100 checked:opacity-100'
           aria-label={t('preview.kanban_select_card')}
         />
         {tagVals.slice(0, 3).map((tag) => {
@@ -92,15 +120,15 @@ function GalleryTagsHeader({
 }
 
 function GalleryFooterMeta({
+  item,
   statusOpt,
   priorityOpt,
-  dueDate,
   filesCount,
   assignee,
 }: {
+  item: KanbanItem
   statusOpt?: KanbanOption
   priorityOpt?: KanbanOption
-  dueDate?: string
   filesCount: number
   assignee?: string
 }) {
@@ -124,12 +152,7 @@ function GalleryFooterMeta({
             <span>{formatKanbanOptionLabel(priorityOpt, 'priority')}</span>
           </span>
         )}
-        {dueDate && (
-          <span className='inline-flex items-center gap-1 rounded-[var(--r-xs)] bg-[var(--bg-inset)] px-1.5 py-0.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
-            <Calendar size={11} className='text-[var(--text-tertiary)]' />
-            <span>{dueDate}</span>
-          </span>
-        )}
+        <KanbanDateBadge item={item} />
         {filesCount > 0 && (
           <span className='inline-flex items-center gap-0.5 text-[var(--text-tertiary)]'>
             <Paperclip size={11} />
@@ -137,14 +160,7 @@ function GalleryFooterMeta({
           </span>
         )}
       </div>
-      {assignee && (
-        <div
-          title={assignee}
-          className='flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[length:var(--text-10)] font-bold text-[var(--accent)]'
-        >
-          {assignee.slice(0, 2).toUpperCase()}
-        </div>
-      )}
+      {assignee && <KanbanPersonAvatar name={assignee} />}
     </div>
   )
 }
@@ -160,9 +176,11 @@ function GalleryCardTitleDesc({
   desc?: string
   onOpenDetail: () => void
 }) {
+  // The tile's type sits on this wrapper, not on the heading: prose owns a note's `h3` and wins any
+  // utility written on it (see the hand-back block in `styles/kanban.css`).
   return (
-    <div className='min-w-0 flex-1'>
-      <h3 className='flex items-start gap-1.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] leading-snug'>
+    <div className='flex min-w-0 flex-1 flex-col gap-1 text-[length:var(--text-14)] font-semibold leading-snug'>
+      <h3 className='flex items-start gap-1.5 text-[var(--text-primary)]'>
         {icon && (
           <span className='mt-0.5 shrink-0'>
             <KanbanIconBadge icon={icon} size={15} />
@@ -171,13 +189,13 @@ function GalleryCardTitleDesc({
         <button
           type='button'
           onClick={onOpenDetail}
-          className='line-clamp-2 text-left hover:text-[var(--accent)]'
+          className='line-clamp-2 cursor-pointer text-left hover:text-[var(--accent)]'
         >
           {title || t('preview.kanban_untitled')}
         </button>
       </h3>
       {desc && (
-        <p className='mt-1 line-clamp-2 text-[length:var(--text-12)] text-[var(--text-tertiary)] leading-normal'>
+        <p className='line-clamp-2 text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)] leading-normal'>
           {desc}
         </p>
       )}
@@ -201,16 +219,13 @@ function GalleryCard({
   const priorityOpt = priorityCol?.options?.find((o) => o.id === priorityVal || o.label === priorityVal)
   const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
   const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
-  const dueDate = String(item.properties.dueDate || item.properties.startDate || '')
-  const assignee = String(item.properties.assignee || '')
+  const assignee = kanbanPersonName(item.properties.assignee)
   const filesCount = item.files?.length ?? 0
 
-  // The gallery's tile is the board's card drawn wider: a container of controls whose title is the
-  // button that opens the detail, rather than a click target holding the controls inside it.
   return (
     <div
       data-item-id={item.id}
-      className={`group/card flex flex-col overflow-hidden rounded-[var(--r-lg)] border bg-[var(--bg-surface)] shadow-[var(--shadow-xs)] transition-[box-shadow,border-color] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] ${
+      className={`group/card relative flex flex-col overflow-hidden rounded-[var(--r-lg)] border bg-[var(--bg-surface)] shadow-[var(--shadow-xs)] transition-[box-shadow,border-color] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] ${
         isSelected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border-subtle)]'
       }`}
     >
@@ -220,6 +235,7 @@ function GalleryCard({
           isSelected={isSelected}
           tagVals={tagVals}
           tagsCol={tagsCol}
+          floatsOverCover={Boolean(galleryCoverUrl(item))}
           onToggleSelect={() => onToggleSelect(item.id)}
         />
         <GalleryCardTitleDesc title={item.title} icon={item.icon} desc={desc} onOpenDetail={() => onOpenDetail(item)} />
@@ -229,9 +245,9 @@ function GalleryCard({
           onUpdateSubtasks={onUpdateSubtasks}
         />
         <GalleryFooterMeta
+          item={item}
           statusOpt={statusOpt}
           priorityOpt={priorityOpt}
-          dueDate={dueDate || undefined}
           filesCount={filesCount}
           assignee={assignee || undefined}
         />
@@ -248,14 +264,16 @@ export const KanbanGalleryView = memo(function KanbanGalleryView({
   onAddItem,
   onUpdateSubtasks,
 }: KanbanGalleryViewProps) {
+  useLocaleRepaint()
+  const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(data.items)
   const statusCol = data.columns.find((c) => c.id === 'status')
   const priorityCol = data.columns.find((c) => c.id === 'priority')
   const tagsCol = data.columns.find((c) => c.id === 'tags')
 
   return (
-    <div className='h-full w-full overflow-y-auto p-4' role='region' aria-label={t('preview.kanban_view_gallery')}>
+    <div className='h-full w-full overflow-y-auto p-4'>
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
-        {data.items.map((item) => (
+        {visible.map((item) => (
           <GalleryCard
             key={item.id}
             item={item}
@@ -278,6 +296,8 @@ export const KanbanGalleryView = memo(function KanbanGalleryView({
           <span className='text-[length:var(--text-13)] font-medium'>{t('preview.kanban_new_card')}</span>
         </button>
       </div>
+
+      <KanbanRenderTail hiddenCount={hiddenCount} setTailElement={setTailElement} onReveal={revealMore} />
     </div>
   )
 })

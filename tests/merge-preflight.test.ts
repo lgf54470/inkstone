@@ -811,18 +811,28 @@ describe('what a merge commit owes before it is written', () => {
 // commit itself. Reading only that file made the gate pass in silence for a clean merge — which
 // is what the first run of the end-to-end fixture did, and why the relay exists.
 describe('finding the head being merged', () => {
+  // The repository a test runs in may itself be mid-merge — that is the state the hook invokes this
+  // gate in — so the MERGE_HEAD read is stubbed and each case states the file's answer directly.
+  const noMergeHead = () => ''
+
   it('falls back to the head git relays when MERGE_HEAD is not there', () => {
     const sha = 'a'.repeat(40)
-    expect(mergedHead({ [`GITHEAD_${sha}`]: 'dev' }))
+    expect(mergedHead({ [`GITHEAD_${sha}`]: 'dev' }, noMergeHead))
       .toEqual({ revision: sha, from: `GITHEAD_${sha}=dev` })
   })
 
   it('ignores a relay that is not an object id', () => {
-    expect(mergedHead({ GITHEAD_short: 'dev' })).toBeNull()
+    expect(mergedHead({ GITHEAD_short: 'dev' }, noMergeHead)).toBeNull()
   })
 
   it('finds nothing in a tree where no merge is being recorded', () => {
-    expect(mergedHead({})).toBeNull()
+    expect(mergedHead({}, noMergeHead)).toBeNull()
+  })
+
+  it('reads MERGE_HEAD when the file is there, over any relay', () => {
+    const sha = 'b'.repeat(40)
+    expect(mergedHead({ [`GITHEAD_${'a'.repeat(40)}`]: 'dev' }, () => sha))
+      .toEqual({ revision: sha, from: 'MERGE_HEAD' })
   })
 })
 

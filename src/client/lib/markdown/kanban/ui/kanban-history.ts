@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useReducer, useRef, type RefObject } from 'react'
 import type { KanbanData } from '../types'
+
+export type CommitKanbanData = (next: KanbanData | ((prev: KanbanData) => KanbanData)) => void
 
 const MAX_HISTORY_STEPS = 30
 
@@ -44,8 +46,17 @@ function historyReducer(state: HistoryState, action: HistoryAction): HistoryStat
   return state
 }
 
-function useHistoryKeyboardShortcuts(undo: () => void, redo: () => void) {
+// Listening on the instance container (not window) keeps Ctrl+Z with the board
+// that actually owns the focused element: focus on the surrounding note or on a
+// second board must not undo this instance's history.
+function useHistoryKeyboardShortcuts(
+  undo: () => void,
+  redo: () => void,
+  containerRef: RefObject<HTMLElement | null>,
+) {
   useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return
@@ -64,14 +75,15 @@ function useHistoryKeyboardShortcuts(undo: () => void, redo: () => void) {
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [undo, redo])
+    container.addEventListener('keydown', handleKeyDown)
+    return () => container.removeEventListener('keydown', handleKeyDown)
+  }, [undo, redo, containerRef])
 }
 
 export function useKanbanHistory(
   initialData: KanbanData,
   onUpdateData: (next: KanbanData) => void,
+  containerRef: RefObject<HTMLElement | null>,
 ) {
   const [state, dispatch] = useReducer(historyReducer, {
     data: initialData,
@@ -79,30 +91,39 @@ export function useKanbanHistory(
     future: [],
   })
 
-  const commitData = useCallback(
-    (nextOrUpdater: KanbanData | ((prev: KanbanData) => KanbanData)) => {
-      const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(state.data) : nextOrUpdater
+  const dataRef = useRef(state.data)
+  dataRef.current = state.data
+  // Undo and redo resolve against the newest history, not the one this render saw: a callback that
+  // outlives its render — the way back a toast keeps — has to step over the edit it was handed for.
+  const historyRef = useRef(state)
+  historyRef.current = state
+  const onUpdateRef = useRef(onUpdateData)
+  onUpdateRef.current = onUpdateData
+
+  const commitData = useCallback<CommitKanbanData>(
+    (nextOrUpdater) => {
+      const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(dataRef.current) : nextOrUpdater
       dispatch({ type: 'commit', next })
-      onUpdateData(next)
+      onUpdateRef.current(next)
     },
-    [state.data, onUpdateData],
+    [],
   )
 
   const undo = useCallback(() => {
-    if (state.past.length === 0) return
-    const prev = state.past[state.past.length - 1]
+    const previous = historyRef.current.past.at(-1)
+    if (!previous) return
     dispatch({ type: 'undo' })
-    onUpdateData(prev)
-  }, [state.past, onUpdateData])
+    onUpdateRef.current(previous)
+  }, [])
 
   const redo = useCallback(() => {
-    if (state.future.length === 0) return
-    const next = state.future[0]
+    const next = historyRef.current.future[0]
+    if (!next) return
     dispatch({ type: 'redo' })
-    onUpdateData(next)
-  }, [state.future, onUpdateData])
+    onUpdateRef.current(next)
+  }, [])
 
-  useHistoryKeyboardShortcuts(undo, redo)
+  useHistoryKeyboardShortcuts(undo, redo, containerRef)
 
   return {
     data: state.data,

@@ -50,13 +50,17 @@ function assignOutlineProperty(properties: Record<string, unknown>, key: string,
 
 function parseOutlineProperties(rawText: string): { properties: Record<string, unknown>; cleanText: string } {
   const properties: Record<string, unknown> = {}
-  const tagMatches = [...rawText.matchAll(/\[([a-zA-Z0-9_\u4e00-\u9fa5]+):\s*([^\]]+)\]/g)]
+  // \[ and \] are literal brackets in a title, not the start of a property tag.
+  const tagMatches = [...rawText.matchAll(/(?<!\\)\[([a-zA-Z0-9_\u4e00-\u9fa5]+):\s*([^\]]+)\]/g)]
   for (const m of tagMatches) {
     const key = m[1]!.trim().toLowerCase()
     const val = m[2]!.trim()
     assignOutlineProperty(properties, key, val)
   }
-  const cleanText = rawText.replace(/\[[a-zA-Z0-9_\u4e00-\u9fa5]+:\s*([^\]]+)\]/g, '').trim()
+  const cleanText = rawText
+    .replace(/(?<!\\)\[[a-zA-Z0-9_\u4e00-\u9fa5]+:\s*([^\]]+)\]/g, '')
+    .replace(/\\([\[\]])/g, '$1')
+    .trim()
   return { properties, cleanText }
 }
 
@@ -69,7 +73,7 @@ function createDefaultColumns(options: KanbanOption[]): KanbanProperty[] {
       { id: 'medium', label: 'Medium', color: 'yellow' },
       { id: 'high', label: 'High', color: 'red' },
     ]},
-    { id: 'assignee', name: 'Assignee', type: 'text' },
+    { id: 'assignee', name: 'Assignee', type: 'person' },
     { id: 'startDate', name: 'Start Date', type: 'date' },
     { id: 'endDate', name: 'End Date', type: 'date' },
     { id: 'progress', name: 'Progress', type: 'number' },
@@ -112,7 +116,11 @@ export function parseKanbanOutline(markdown: string): KanbanData {
   }
 
   return {
-    title: 'Kanban',
+    // No title: an outline body carries none, and inventing one here would not merely name the board —
+    // the first edit upgrades the fence to JSON, which writes this value into the note, and every
+    // board parsed from an outline would go on claiming the same name in whatever language this file
+    // happened to be written in. A board with no title of its own is announced by the caller's own
+    // localized label (review K-25).
     activeViewId: 'view-board',
     views: defaultViews(),
     columns: createDefaultColumns(options),
@@ -139,7 +147,8 @@ export function serializeKanbanOutline(data: KanbanData): string {
       tags.push(`[tags: ${item.properties.tags.join(', ')}]`)
     }
     const tagSuffix = tags.length > 0 ? ` ${tags.join(' ')}` : ''
-    return `- ${check} ${item.title}${tagSuffix}`
+    const escapedTitle = item.title.replace(/\[/g, '\\[').replace(/\]/g, '\\]')
+    return `- ${check} ${escapedTitle}${tagSuffix}`
   }
 
   for (const opt of options) {

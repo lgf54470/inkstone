@@ -1,3 +1,4 @@
+import { getKanbanDueDate, getKanbanStartDate, kanbanDayKey } from './date-fields'
 import type { KanbanItem } from './types'
 
 export interface CalendarDay {
@@ -17,25 +18,24 @@ export interface WeekEventSegment {
   track: number
 }
 
-export function parseDateKey(val: unknown): string | null {
-  if (!val) return null
-  const s = String(val).trim()
-  const match = s.match(/^\d{4}-\d{2}-\d{2}/)
-  return match ? match[0] : null
+/**
+ * How many cells precede the first of the month in a grid that opens on `weekStart`. Both calendar
+ * surfaces index JS `getDay()` (Sunday = 0), so `weekStart` is 0-based here too.
+ */
+function cellsBefore(day: number, weekStart: number): number {
+  return (day - weekStart + 7) % 7
 }
 
-export function getMonthWeeks(year: number, month: number): CalendarDay[][] {
+export function getMonthWeeks(year: number, month: number, weekStart: number): CalendarDay[][] {
   const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
   const formatStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   const todayStr = formatStr(new Date())
 
   const firstDate = new Date(year, month, 1)
-  const firstDayOfWeek = firstDate.getDay()
-  const startDate = new Date(year, month, 1 - firstDayOfWeek)
+  const startDate = new Date(year, month, 1 - cellsBefore(firstDate.getDay(), weekStart))
 
   const lastDate = new Date(year, month + 1, 0)
-  const lastDayOfWeek = lastDate.getDay()
-  const endDate = new Date(year, month + 1, 6 - lastDayOfWeek)
+  const endDate = new Date(year, month + 1, 6 - cellsBefore(lastDate.getDay(), weekStart))
 
   const weeks: CalendarDay[][] = []
   const curr = new Date(startDate)
@@ -59,15 +59,16 @@ export function getMonthWeeks(year: number, month: number): CalendarDay[][] {
   return weeks
 }
 
-function resolveItemDateRange(item: KanbanItem): { start: string; end: string } | null {
-  const startKey = parseDateKey(item.properties.startDate || item.properties.dueDate || item.properties.date)
-  const endKey = parseDateKey(item.properties.dueDate || item.properties.endDate || item.properties.startDate || item.properties.date)
+function resolveItemDateRange(item: KanbanItem, dateField?: string): { start: string; end: string } | null {
+  const primary = dateField ? item.properties[dateField] : undefined
+  const startKey = kanbanDayKey(primary || getKanbanStartDate(item) || getKanbanDueDate(item))
+  const endKey = kanbanDayKey(getKanbanDueDate(item) || primary || getKanbanStartDate(item))
   if (!startKey && !endKey) return null
 
   if (startKey && endKey) {
     return startKey <= endKey ? { start: startKey, end: endKey } : { start: endKey, end: startKey }
   }
-  const single = (startKey || endKey)!
+  const single = startKey || endKey
   return { start: single, end: single }
 }
 
@@ -94,14 +95,14 @@ function assignTracks(rawSegments: Omit<WeekEventSegment, 'track'>[]): WeekEvent
   return segments
 }
 
-export function getWeekEventSegments(items: KanbanItem[], week: CalendarDay[]): WeekEventSegment[] {
+export function getWeekEventSegments(items: KanbanItem[], week: CalendarDay[], dateField?: string): WeekEventSegment[] {
   if (!week.length) return []
   const weekStart = week[0].dateStr
   const weekEnd = week[6].dateStr
   const rawSegments: Omit<WeekEventSegment, 'track'>[] = []
 
   for (const item of items) {
-    const range = resolveItemDateRange(item)
+    const range = resolveItemDateRange(item, dateField)
     if (!range || range.end < weekStart || range.start > weekEnd) continue
 
     const startCol = range.start < weekStart ? 0 : week.findIndex((d) => d.dateStr === range.start)

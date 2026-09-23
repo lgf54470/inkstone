@@ -14,6 +14,8 @@ export interface KanbanSession {
   noteId(): string | null
   isReady(): boolean
   isEditable(): boolean
+  /** False once the block left the document: the board behind this session no longer exists. */
+  isAlive(): boolean
   getData(): KanbanData | null
   updateData(updater: (prev: KanbanData) => KanbanData): void
   getMode(): KanbanMode
@@ -35,12 +37,15 @@ function sessionFor(entry: KanbanBlockEntry): KanbanSession {
     noteId: () => entry.noteId,
     isReady: () => Boolean(entry.data),
     isEditable: () => Boolean(entry.editable),
+    isAlive: () => !entry.disposed,
     getData: () => entry.data,
     updateData: (updater) => updateKanbanData(entry, updater),
     getMode: () => entry.mode,
     moveInto: (target) => attachKanbanToOverlay(entry, target),
     moveBack: () => detachKanbanFromOverlay(entry),
-    title: () => entry.data?.title || 'Kanban',
+    // Empty when the board has no title of its own: the caller owns the wording of that case, so an
+    // untitled board is announced by the localized label rather than by a hardcoded name.
+    title: () => entry.data?.title || '',
     serialize: () => {
       if (!entry.data) return null
       return serializeKanban(entry.data, entry.mode)

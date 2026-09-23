@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { initI18n } from '../../i18n'
+import { registerFenceBodies } from '../fence-bodies'
 import { renderMarkdown } from '../renderer'
 import { parseExcalidrawScene, serializeExcalidrawScene, type ExcalidrawCreateOptions, type ExcalidrawHandle, type ExcalidrawVendor } from './index'
 import { renderStaticExcalidraws } from './static'
@@ -37,7 +38,11 @@ function stillVendor(svg: string | null = STILL): ExcalidrawVendor {
 
 function host(body: string): HTMLElement {
   const root = document.createElement('div')
-  root.innerHTML = renderMarkdown(['```excalidraw', body, '```'].join('\n')).html
+  const rendered = renderMarkdown(['```excalidraw', body, '```'].join('\n'))
+  root.innerHTML = rendered.html
+  // Whoever inserts the markup registers what it was rendered from — the scene the block draws is
+  // read back out of here, not out of an attribute (P-01).
+  registerFenceBodies(root, rendered.fences)
   document.body.append(root)
   return root
 }

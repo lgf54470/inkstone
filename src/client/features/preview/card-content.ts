@@ -3,6 +3,7 @@ import type { MutableRefObject } from 'react'
 import type { Backlink } from '@shared/types'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import { enhancePreview } from '../../lib/markdown/enhance'
+import { createFenceBodies, type FenceBodies } from '../../lib/markdown/fence-bodies'
 import { getNoteBacklinks } from '../../lib/backlinks'
 import { useDebounced } from '../../lib/hooks'
 import { useNotes } from '../../store/notes'
@@ -12,11 +13,19 @@ import { useSession } from '../../store/session'
 interface NoteCardContent {
   status: 'loading' | 'ready' | 'missing' | 'error'
   html: string
+  fences: FenceBodies
   isTruncated: boolean
 }
 
+/** Markup a card shows, beside the fence bodies it was rendered from (P-01). */
+interface CardMarkup {
+  html: string
+  fences: FenceBodies
+}
+
 const HTML_CACHE_LIMIT = 40
-const htmlCache = new Map<string, string>()
+const htmlCache = new Map<string, CardMarkup>()
+const EMPTY_MARKUP: CardMarkup = { html: '', fences: createFenceBodies() }
 
 export function useNoteCardContent(
   target: { noteId: string | null; missing: boolean; headline?: string },
@@ -27,7 +36,7 @@ export function useNoteCardContent(
   const [status, setStatus] = useState<NoteCardContent['status']>(
     target.missing || !target.noteId ? 'missing' : 'loading',
   )
-  const [html, setHtml] = useState('')
+  const [markup, setMarkup] = useState<CardMarkup>(EMPTY_MARKUP)
   const [isTruncated, setIsTruncated] = useState(false)
   const revisionRef = useRef(0)
   const statusRef = useRef<NoteCardContent['status']>(status)
@@ -58,20 +67,20 @@ export function useNoteCardContent(
     let isCancelled = false
     if (statusRef.current !== 'ready') {
       setStatus('loading')
-      setHtml('')
+      setMarkup(EMPTY_MARKUP)
       setIsTruncated(false)
     }
     void loadCardContent({
       noteId, revision, rev, hydrated, maxLength, previewMath, dark, headline,
       statusRef, isCurrent: () => !isCancelled && revision === revisionRef.current,
-      setStatus, setHtml, setIsTruncated,
+      setStatus, setMarkup, setIsTruncated,
     })
     return () => {
       isCancelled = true
     }
   }, [target.missing, target.noteId, dark, maxLength, previewMath, headline, rev, hydrated, debouncedLiveContent])
 
-  return { status, html, isTruncated }
+  return { status, html: markup.html, fences: markup.fences, isTruncated }
 }
 
 interface NoteBacklinks {
@@ -90,7 +99,7 @@ type LoadCardArgs = {
   statusRef: MutableRefObject<NoteCardContent['status']>
   isCurrent: () => boolean
   setStatus: (status: NoteCardContent['status']) => void
-  setHtml: (html: string) => void
+  setMarkup: (markup: CardMarkup) => void
   setIsTruncated: (value: boolean) => void
 }
 
@@ -105,10 +114,12 @@ async function loadCardContent(args: LoadCardArgs): Promise<void> {
       }
       return
     }
-    const { html: nextHtml, isTruncated } = await renderCardHtml(content, args)
+    const { markup: nextMarkup, isTruncated } = await renderCardHtml(content, args)
     if (!args.isCurrent()) return
-    const highlighted = args.headline ? applyHighlightToHtml(nextHtml, buildHighlightTerms(args.headline)) : nextHtml
-    args.setHtml(highlighted)
+    const html = args.headline
+      ? applyHighlightToHtml(nextMarkup.html, buildHighlightTerms(args.headline))
+      : nextMarkup.html
+    args.setMarkup({ html, fences: nextMarkup.fences })
     args.setIsTruncated(isTruncated)
     args.statusRef.current = 'ready'
     args.setStatus('ready')
@@ -120,26 +131,35 @@ async function loadCardContent(args: LoadCardArgs): Promise<void> {
   }
 }
 
-async function renderCardHtml(content: string, args: LoadCardArgs): Promise<{ html: string; isTruncated: boolean }> {
+async function renderCardHtml(content: string, args: LoadCardArgs): Promise<{ markup: CardMarkup; isTruncated: boolean }> {
   const truncatedContent = limitPreviewLength(content, args.maxLength)
   const externalImages = useSession.getState().settings.preview.externalImages
   const cacheKey = [args.noteId, args.rev, hashString(truncatedContent), args.previewMath ? 1 : 0, args.dark ? 1 : 0, externalImages ? 1 : 0].join(':')
-  let nextHtml = htmlCache.get(cacheKey)
-  if (nextHtml === undefined) {
+  let cached = htmlCache.get(cacheKey)
+  if (cached === undefined) {
+    const rendered = renderMarkdown(truncatedContent, { externalImages })
     const staging = document.createElement('div')
-    staging.innerHTML = renderMarkdown(truncatedContent, { externalImages }).html
-    if (staging.querySelector('pre code') || staging.querySelector('[data-math]') || staging.querySelector('[data-mermaid]') || staging.querySelector('[data-mindmap]')) {
+    staging.innerHTML = rendered.html
+    // A board left out of this check would sit at "Loading kanban…" inside the card forever.
+    if (staging.querySelector('pre code') || staging.querySelector('[data-math]') || staging.querySelector('[data-mermaid]') || staging.querySelector('[data-mindmap]') || staging.querySelector('[data-kanban]')) {
       await enhancePreview(staging, {
         math: args.previewMath,
         mermaid: false,
+        // The card is a reader's surface, so a board travels as its list of cards.
+        kanban: 'snapshot',
+        // What the blocks on this staging element were rendered from. A fence body no longer rides in
+        // the markup, so drawing the card without it would read every board as empty (P-01).
+        fences: rendered.fences,
         dark: args.dark,
         codeBlockCollapseLines: 0,
       })
     }
-    nextHtml = staging.innerHTML
-    remember(htmlCache, cacheKey, nextHtml, HTML_CACHE_LIMIT)
+    // The serialized markup keeps each block's index, so the bodies travel beside it: a pinned card
+    // draws the maps in this markup later, from this element's own render (P-01).
+    cached = { html: staging.innerHTML, fences: rendered.fences }
+    remember(htmlCache, cacheKey, cached, HTML_CACHE_LIMIT)
   }
-  return { html: nextHtml, isTruncated: truncatedContent.length < content.length }
+  return { markup: cached, isTruncated: truncatedContent.length < content.length }
 }
 
 export function useNoteBacklinks(noteId: string | null): NoteBacklinks {

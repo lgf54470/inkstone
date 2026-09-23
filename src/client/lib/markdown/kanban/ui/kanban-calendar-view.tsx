@@ -1,15 +1,17 @@
 import { memo, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { t } from '../../../i18n'
+import { t, useLocale } from '../../../i18n'
+import { narrowWeekdayLabels, weekStartFor, type WeekStartDay } from '../../../time'
 import { getMonthWeeks, getWeekEventSegments, type CalendarDay, type WeekEventSegment } from '../calendar-helpers'
 import { getKanbanTagStyle } from '../colors'
-import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
+import type { KanbanData, KanbanItem, KanbanProperty, KanbanView } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanCalendarViewProps {
   data: KanbanData
+  view?: KanbanView
   onOpenDetail: (item: KanbanItem) => void
-  onAddItem: (dateStr?: string) => void
+  onAddItem: (defaults?: Record<string, unknown>) => void
 }
 
 interface CalendarHeaderProps {
@@ -24,9 +26,13 @@ function CalendarHeader({ year, month, onPrevMonth, onNextMonth, onToday }: Cale
   const padMonth = month + 1 < 10 ? `0${month + 1}` : `${month + 1}`
   return (
     <div className='flex items-center justify-between pb-3'>
-      <h3 className='text-[length:var(--text-15)] font-semibold text-[var(--text-primary)]'>
-        {year} - {padMonth}
-      </h3>
+      {/* The type goes on this wrapper, not on the heading: prose owns a note's `h3` and wins any
+          utility written on it (see the hand-back block in `styles/kanban.css`). */}
+      <div className='text-[length:var(--text-15)] font-semibold'>
+        <h3 className='text-[var(--text-primary)]'>
+          {year} - {padMonth}
+        </h3>
+      </div>
       <div className='flex items-center gap-1.5'>
         <button
           type='button'
@@ -56,16 +62,12 @@ function CalendarHeader({ year, month, onPrevMonth, onNextMonth, onToday }: Cale
   )
 }
 
-function CalendarWeekHeader() {
+function CalendarWeekHeader({ locale, weekStart }: { locale: string; weekStart: WeekStartDay }) {
   return (
     <div className='grid grid-cols-7 border-b border-[var(--border-subtle)] pb-1 text-center text-[length:var(--text-12)] font-medium text-[var(--text-tertiary)]'>
-      <span>{t('preview.kanban_sun')}</span>
-      <span>{t('preview.kanban_mon')}</span>
-      <span>{t('preview.kanban_tue')}</span>
-      <span>{t('preview.kanban_wed')}</span>
-      <span>{t('preview.kanban_thu')}</span>
-      <span>{t('preview.kanban_fri')}</span>
-      <span>{t('preview.kanban_sat')}</span>
+      {narrowWeekdayLabels(locale, weekStart).map((label, index) => (
+        <span key={(weekStart + index) % 7}>{label}</span>
+      ))}
     </div>
   )
 }
@@ -112,11 +114,14 @@ function CalendarEventBar({
 
 function CalendarDayCellHeader({
   day,
+  dateField,
   onAddItem,
 }: {
   day: CalendarDay
-  onAddItem: (dateStr: string) => void
+  dateField?: string
+  onAddItem: (defaults?: Record<string, unknown>) => void
 }) {
+  const addOnThisDay = () => onAddItem({ [dateField || 'startDate']: day.dateStr })
   return (
     // The cell is a container of two controls and both add an item to that day: the number is the one
     // a keyboard can reach, and the `+` beside it is the mouse affordance that appears on hover. As a
@@ -125,11 +130,11 @@ function CalendarDayCellHeader({
     <div className='group/day flex items-center justify-between p-1.5 transition-colors hover:bg-[var(--bg-hover)]/30'>
       <button
         type='button'
-        onClick={() => onAddItem(day.dateStr)}
+        onClick={addOnThisDay}
         aria-label={t('preview.kanban_new_item_on_value0', { value0: day.dayNum })}
         className={`cursor-pointer rounded-[var(--r-full)] text-[length:var(--text-12)] ${
           day.isToday
-            ? 'flex size-5 items-center justify-center bg-[var(--accent)] font-bold text-white shadow-2xs'
+            ? 'flex size-5 items-center justify-center bg-[var(--accent)] font-bold text-[var(--accent-contrast)] shadow-2xs'
             : day.isCurrentMonth
             ? 'font-medium text-[var(--text-secondary)]'
             : 'text-[var(--text-quaternary)]'
@@ -139,8 +144,8 @@ function CalendarDayCellHeader({
       </button>
       <button
         type='button'
-        onClick={() => onAddItem(day.dateStr)}
-        className='cursor-pointer p-0.5 text-[var(--text-tertiary)] opacity-0 transition-opacity hover:text-[var(--text-primary)] group-hover/day:opacity-100'
+        onClick={addOnThisDay}
+        className='cursor-pointer p-0.5 opacity-0 transition-opacity group-hover/day:opacity-100 focus-visible:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
         aria-label={t('preview.kanban_new_item')}
       >
         <Plus size={12} />
@@ -153,16 +158,18 @@ function CalendarWeekRow({
   week,
   items,
   statusCol,
+  dateField,
   onOpenDetail,
   onAddItem,
 }: {
   week: CalendarDay[]
   items: KanbanItem[]
   statusCol?: KanbanProperty
+  dateField?: string
   onOpenDetail: (item: KanbanItem) => void
-  onAddItem: (dateStr: string) => void
+  onAddItem: (defaults?: Record<string, unknown>) => void
 }) {
-  const segments = useMemo(() => getWeekEventSegments(items, week), [items, week])
+  const segments = useMemo(() => getWeekEventSegments(items, week, dateField), [items, week, dateField])
 
   return (
     <div className='relative flex min-h-24 flex-1 flex-col border-b border-[var(--border-subtle)] last:border-b-0'>
@@ -182,6 +189,7 @@ function CalendarWeekRow({
           <CalendarDayCellHeader
             key={day.dateStr}
             day={day}
+            dateField={dateField}
             onAddItem={onAddItem}
           />
         ))}
@@ -203,17 +211,21 @@ function CalendarWeekRow({
 
 export const KanbanCalendarView = memo(function KanbanCalendarView({
   data,
+  view,
   onOpenDetail,
   onAddItem,
 }: KanbanCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(() => new Date())
+  const locale = useLocale()
+  const weekStart = weekStartFor(locale)
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
-  const weeks = useMemo(() => getMonthWeeks(year, month), [year, month])
+  const weeks = useMemo(() => getMonthWeeks(year, month, weekStart), [year, month, weekStart])
   const statusCol = data.columns.find((c) => c.id === 'status')
+  const dateField = view?.dateField
 
   return (
-    <div className='flex h-full w-full flex-col overflow-hidden p-4' role='region' aria-label={t('preview.kanban_view_calendar')}>
+    <div className='flex h-full w-full flex-col overflow-hidden p-4'>
       <CalendarHeader
         year={year}
         month={month}
@@ -221,7 +233,7 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
         onNextMonth={() => setCurrentDate(new Date(year, month + 1, 1))}
         onToday={() => setCurrentDate(new Date())}
       />
-      <CalendarWeekHeader />
+      <CalendarWeekHeader locale={locale} weekStart={weekStart} />
       <div className='flex flex-1 flex-col overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--border-subtle)]'>
         {weeks.map((week, idx) => (
           <CalendarWeekRow
@@ -229,6 +241,7 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
             week={week}
             items={data.items}
             statusCol={statusCol}
+            dateField={dateField}
             onOpenDetail={onOpenDetail}
             onAddItem={onAddItem}
           />

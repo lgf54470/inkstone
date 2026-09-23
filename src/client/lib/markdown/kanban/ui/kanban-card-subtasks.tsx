@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import { Check, ChevronDown, ChevronRight, ListTodo, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
+import { createKanbanId } from '../id'
 import type { KanbanSubtask } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
@@ -36,7 +37,7 @@ function SubtaskItemRow({
           }}
           aria-label={subtask.title}
         >
-          {subtask.completed && <Check size={10} className='text-white' />}
+          {subtask.completed && <Check size={10} className='text-[var(--accent-contrast)]' />}
         </button>
         {subtask.icon && <KanbanIconBadge icon={subtask.icon} size={13} />}
         <span
@@ -161,19 +162,19 @@ function SubtaskSummaryBar({
       }}
       className='flex w-full cursor-pointer items-center justify-between gap-2 py-0.5 text-left text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)]'
     >
-      <div className='flex items-center gap-1.5 font-medium'>
+      <span className='flex items-center gap-1.5 font-medium'>
         <ListTodo size={12} className='text-[var(--accent)]' />
         <span>{`${completedCount}/${totalCount}`}</span>
-      </div>
-      <div className='flex items-center gap-2'>
-        <div className='h-1.5 w-16 overflow-hidden rounded-full bg-[var(--border-subtle)]'>
-          <div
-            className='h-full rounded-full bg-[var(--accent)] transition-[width] duration-200'
+      </span>
+      <span className='flex items-center gap-2'>
+        <span className='block h-1.5 w-16 overflow-hidden rounded-full bg-[var(--border-subtle)]'>
+          <span
+            className='block h-full rounded-full bg-[var(--accent)] transition-[width] duration-200'
             style={{ width: `${percent}%` }}
           />
-        </div>
+        </span>
         {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-      </div>
+      </span>
     </button>
   )
 }
@@ -200,7 +201,7 @@ export function KanbanCardSubtasks({
   const handleAddSubtask = (title: string) => {
     if (!onUpdateSubtasks) return
     const newSt: KanbanSubtask = {
-      id: `st-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      id: `st-${createKanbanId()}`,
       title,
       completed: false,
     }

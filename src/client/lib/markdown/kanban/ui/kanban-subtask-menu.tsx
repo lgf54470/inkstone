@@ -1,152 +1,71 @@
-import { useEffect, useRef } from 'react'
-import { ArrowUpRight, Copy, CornerDownRight, ExternalLink, Trash2 } from 'lucide-react'
+import { ArrowUpRight, Copy, CornerDownRight, Trash2 } from 'lucide-react'
+import { Menu, type MenuItem } from '../../../../components/overlay'
 import { t } from '../../../i18n'
+import { useUi } from '../../../../store/ui'
 import type { KanbanSubtask } from '../types'
+
+const SUBTASK_MENU_WIDTH = 176
 
 interface KanbanSubtaskMenuProps {
   open: boolean
+  panelId: string
   subtask: KanbanSubtask
   anchorRef: React.RefObject<HTMLElement | null>
   onClose: () => void
-  onOpen?: () => void
   onDuplicate: () => void
-  onConvertToItem: () => void
+  onConvertToItem?: () => void
   onDelete: () => void
 }
 
-function useMenuClickOutside(
-  open: boolean,
-  onClose: () => void,
-  menuRef: React.RefObject<HTMLDivElement | null>,
-  anchorRef: React.RefObject<HTMLElement | null>,
-) {
-  useEffect(() => {
-    if (!open) return
-    const handleClick = (e: MouseEvent) => {
-      if (
-        menuRef.current?.contains(e.target as Node) ||
-        anchorRef.current?.contains(e.target as Node)
-      ) {
-        return
-      }
-      onClose()
-    }
-    window.addEventListener('mousedown', handleClick)
-    return () => window.removeEventListener('mousedown', handleClick)
-  }, [open, onClose, anchorRef, menuRef])
+function copySubtaskName(subtask: KanbanSubtask): void {
+  const fail = () => useUi.getState().toast({ title: t('preview.could_not_copy'), tone: 'danger' })
+  if (!navigator.clipboard?.writeText) {
+    fail()
+  } else {
+    navigator.clipboard
+      .writeText(subtask.title)
+      .then(() => useUi.getState().toast({ title: t('common.copied'), tone: 'success' }))
+      .catch(fail)
+  }
 }
 
-function SubtaskMenuItem({
-  icon: Icon,
-  label,
-  danger,
-  onClick,
-}: {
-  icon: React.ComponentType<{ size?: number; className?: string }>
-  label: string
-  danger?: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type='button'
-      role='menuitem'
-      onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-[var(--r-xs)] px-2 py-1 text-[length:var(--text-12)] hover:bg-[var(--bg-hover)] ${
-        danger ? 'text-[var(--danger)]' : 'text-[var(--text-primary)]'
-      }`}
-    >
-      <Icon size={13} className={danger ? '' : 'text-[var(--text-tertiary)]'} />
-      <span>{label}</span>
-    </button>
-  )
-}
-
-function SubtaskMenuItems({
+// `Menu` closes after an item runs, so a row here only says what it does.
+function kanbanSubtaskMenuItems({
   subtask,
-  onOpen,
   onDuplicate,
   onConvertToItem,
   onDelete,
-  onClose,
-}: {
-  subtask: KanbanSubtask
-  onOpen?: () => void
-  onDuplicate: () => void
-  onConvertToItem: () => void
-  onDelete: () => void
-  onClose: () => void
-}) {
-  const copyName = () => {
-    void navigator.clipboard.writeText(subtask.title)
-    onClose()
-  }
-
-  return (
-    <>
-      {onOpen && (
-        <SubtaskMenuItem
-          icon={ExternalLink}
-          label={t('preview.kanban_open_subitem')}
-          onClick={() => { onOpen(); onClose() }}
-        />
-      )}
-      <SubtaskMenuItem
-        icon={Copy}
-        label={t('preview.kanban_duplicate_subitem')}
-        onClick={() => { onDuplicate(); onClose() }}
-      />
-      <SubtaskMenuItem
-        icon={CornerDownRight}
-        label={t('preview.kanban_copy_subitem_name')}
-        onClick={copyName}
-      />
-      <SubtaskMenuItem
-        icon={ArrowUpRight}
-        label={t('preview.kanban_convert_to_item')}
-        onClick={() => { onConvertToItem(); onClose() }}
-      />
-      <div className='my-1 h-px bg-[var(--border-subtle)]' />
-      <SubtaskMenuItem
-        icon={Trash2}
-        label={t('preview.kanban_delete_subitem')}
-        danger
-        onClick={() => { onDelete(); onClose() }}
-      />
-    </>
-  )
+}: Pick<KanbanSubtaskMenuProps, 'subtask' | 'onDuplicate' | 'onConvertToItem' | 'onDelete'>): MenuItem[] {
+  return [
+    { id: 'duplicate', label: t('preview.kanban_duplicate_subitem'), icon: <Copy size={14} />, onSelect: onDuplicate },
+    { id: 'copy-name', label: t('preview.kanban_copy_subitem_name'), icon: <CornerDownRight size={14} />, onSelect: () => copySubtaskName(subtask) },
+    ...(onConvertToItem
+      ? [{ id: 'convert', label: t('preview.kanban_convert_to_item'), icon: <ArrowUpRight size={14} />, onSelect: onConvertToItem }]
+      : []),
+    { id: 'delete', label: t('preview.kanban_delete_subitem'), icon: <Trash2 size={14} />, tone: 'danger', separatorBefore: true, onSelect: onDelete },
+  ]
 }
 
 export function KanbanSubtaskMenu({
   open,
+  panelId,
   subtask,
   anchorRef,
   onClose,
-  onOpen,
   onDuplicate,
   onConvertToItem,
   onDelete,
 }: KanbanSubtaskMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  useMenuClickOutside(open, onClose, menuRef, anchorRef)
-
-  if (!open) return null
-
   return (
-    <div
-      ref={menuRef}
-      role='menu'
-      className='absolute right-0 z-50 mt-1 w-44 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'
-    >
-      <SubtaskMenuItems
-        subtask={subtask}
-        onOpen={onOpen}
-        onDuplicate={onDuplicate}
-        onConvertToItem={onConvertToItem}
-        onDelete={onDelete}
-        onClose={onClose}
-      />
-    </div>
+    <Menu
+      open={open}
+      anchor={anchorRef}
+      onClose={onClose}
+      panelId={panelId}
+      align='end'
+      width={SUBTASK_MENU_WIDTH}
+      label={t('common.more_actions')}
+      items={kanbanSubtaskMenuItems({ subtask, onDuplicate, onConvertToItem, onDelete })}
+    />
   )
 }

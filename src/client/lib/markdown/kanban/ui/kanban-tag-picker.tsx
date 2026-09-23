@@ -1,15 +1,28 @@
-import { useEffect, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle, KANBAN_COLOR_NAMES, resolveKanbanTagColor } from '../colors'
-import { formatKanbanOptionLabel } from '../i18n-helpers'
+import { formatKanbanColorName, formatKanbanOptionLabel } from '../i18n-helpers'
 import type { KanbanColorName, KanbanOption } from '../types'
 
 interface KanbanTagPickerProps {
   tags: string[]
   options?: KanbanOption[]
-  onChangeTags: (tags: string[]) => void
-  onAddOption?: (newOption: KanbanOption) => void
+  onChangeTags: (tags: string[], newOption?: KanbanOption) => void
+}
+
+export function computeTagAddition(
+  name: string,
+  color: KanbanColorName,
+  tagVals: string[],
+  options?: KanbanOption[],
+) {
+  const existing = options?.find((o) => o.id === name || o.label === name)
+  const tagId = existing ? existing.id : name.toLowerCase().replace(/\s+/g, '_')
+  const nextTags = !tagVals.includes(tagId) && !tagVals.includes(name) ? [...tagVals, tagId] : tagVals
+  const newOption = !existing || existing.color !== color ? { id: tagId, label: name, color } : undefined
+  return { nextTags, newOption }
 }
 
 function TagChip({
@@ -23,14 +36,14 @@ function TagChip({
 }) {
   const opt = options?.find((o) => o.id === tag || o.label === tag)
   const color = resolveKanbanTagColor(tag, options)
-  const label = opt?.label ?? tag
+  const name = formatKanbanOptionLabel(opt?.label ?? tag, 'tags')
 
   return (
     <span
       style={getKanbanTagStyle(color)}
       className='inline-flex items-center gap-1 rounded-[var(--r-xs)] px-2 py-0.5 text-[length:var(--text-11)] font-semibold'
     >
-      <span>{formatKanbanOptionLabel(label, 'tags')}</span>
+      <span>{name}</span>
       <button
         type='button'
         onClick={(e) => {
@@ -38,7 +51,7 @@ function TagChip({
           onRemove(tag)
         }}
         className='opacity-60 transition-opacity hover:opacity-100'
-        aria-label={t('preview.mindmap_shortcut_remove')}
+        aria-label={t('preview.kanban_remove_tag_named', { name })}
       >
         <X size={10} />
       </button>
@@ -55,19 +68,22 @@ function ColorDotPicker({
 }) {
   return (
     <div className='flex flex-wrap gap-1'>
-      {KANBAN_COLOR_NAMES.slice(0, 8).map((c) => (
-        <button
-          key={c}
-          type='button'
-          onClick={() => onSelect(c)}
-          title={c}
-          aria-label={c}
-          className={`size-4 rounded-full transition-transform hover:scale-125 ${
-            selected === c ? 'ring-2 ring-[var(--accent)]' : ''
-          }`}
-          style={{ backgroundColor: `var(--kanban-tag-${c}-fg)` }}
-        />
-      ))}
+      {KANBAN_COLOR_NAMES.slice(0, 8).map((c) => {
+        const label = formatKanbanColorName(c)
+        return (
+          <button
+            key={c}
+            type='button'
+            onClick={() => onSelect(c)}
+            title={label}
+            aria-label={label}
+            className={`size-4 rounded-full transition-transform hover:scale-125 ${
+              selected === c ? 'ring-2 ring-[var(--accent)]' : ''
+            }`}
+            style={{ backgroundColor: `var(--kanban-tag-${c}-fg)` }}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -96,26 +112,6 @@ function ExistingOptionsList({
       ))}
     </div>
   )
-}
-
-function usePopoverDismiss(
-  popoverRef: React.RefObject<HTMLElement | null>,
-  anchorRef: React.RefObject<HTMLElement | null>,
-  onClose: () => void,
-) {
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (
-        popoverRef.current?.contains(e.target as Node) ||
-        anchorRef.current?.contains(e.target as Node)
-      ) {
-        return
-      }
-      onClose()
-    }
-    window.addEventListener('mousedown', handleClick)
-    return () => window.removeEventListener('mousedown', handleClick)
-  }, [anchorRef, onClose, popoverRef])
 }
 
 function TagInputField({
@@ -171,12 +167,14 @@ function TagInputField({
 }
 
 export function TagCreatePopover({
+  panelId,
   options,
   existingTags,
   anchorRef,
   onClose,
   onAddTag,
 }: {
+  panelId: string
   options?: KanbanOption[]
   existingTags: string[]
   anchorRef: React.RefObject<HTMLButtonElement | null>
@@ -187,7 +185,15 @@ export function TagCreatePopover({
   const [tagName, setTagName] = useState('')
   const [tagColor, setTagColor] = useState<KanbanColorName>('blue')
 
-  usePopoverDismiss(popoverRef, anchorRef, onClose)
+  // The autoFocused input takes focus when the panel opens, so closing has to hand it
+  // back — but only while it is still inside, since a click outside moved it already.
+  const dismiss = () => {
+    const hadFocus = popoverRef.current?.contains(document.activeElement) ?? false
+    onClose()
+    if (hadFocus) anchorRef.current?.focus()
+  }
+  useClickOutside([popoverRef, anchorRef], true, dismiss)
+  useEscape(true, dismiss)
 
   const unselectedOptions = (options ?? []).filter(
     (o) => !existingTags.includes(o.id) && !existingTags.includes(o.label),
@@ -195,20 +201,21 @@ export function TagCreatePopover({
 
   return (
     <div
+      id={panelId}
       ref={popoverRef}
       role='dialog'
       aria-label={t('preview.kanban_add_tag')}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
-      className='absolute left-0 top-full z-50 mt-1 w-56 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2.5 shadow-[var(--shadow-pop)]'
+      className='absolute left-0 top-full z-[var(--z-popover)] mt-1 w-56 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2.5 shadow-[var(--shadow-pop)]'
     >
       <div className='flex flex-col gap-2'>
         <ExistingOptionsList
           unselectedOptions={unselectedOptions}
           onSelectOption={(opt) => {
             onAddTag(opt.label || opt.id, opt.color)
-            onClose()
+            dismiss()
           }}
         />
         <TagInputField
@@ -216,7 +223,7 @@ export function TagCreatePopover({
           tagColor={tagColor}
           onChangeName={setTagName}
           onAddTag={onAddTag}
-          onClose={onClose}
+          onClose={dismiss}
         />
         <ColorDotPicker selected={tagColor} onSelect={setTagColor} />
       </div>
@@ -228,24 +235,18 @@ export function KanbanTagPicker({
   tags = [],
   options = [],
   onChangeTags,
-  onAddOption,
 }: KanbanTagPickerProps) {
   const [open, setOpen] = useState(false)
   const addBtnRef = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
 
   const handleRemove = (tagToRemove: string) => {
     onChangeTags(tags.filter((t) => t !== tagToRemove))
   }
 
   const handleAdd = (name: string, color: KanbanColorName) => {
-    const existing = options.find((o) => o.id === name || o.label === name)
-    const tagId = existing ? existing.id : name.toLowerCase().replace(/\s+/g, '_')
-    if (!tags.includes(tagId) && !tags.includes(name)) {
-      onChangeTags([...tags, tagId])
-    }
-    if (!existing && onAddOption) {
-      onAddOption({ id: tagId, label: name, color })
-    }
+    const { nextTags, newOption } = computeTagAddition(name, color, tags, options)
+    onChangeTags(nextTags, newOption)
   }
 
   return (
@@ -259,12 +260,16 @@ export function KanbanTagPicker({
         onClick={() => setOpen((o) => !o)}
         className='inline-flex items-center gap-1 rounded-[var(--r-xs)] border border-dashed border-[var(--border-default)] px-2 py-0.5 text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'
         aria-label={t('preview.kanban_new_tag')}
+        aria-haspopup='dialog'
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': panelId } : {})}
       >
         <Plus size={11} />
         <span>{t('preview.kanban_new_tag')}</span>
       </button>
       {open && (
         <TagCreatePopover
+          panelId={panelId}
           options={options}
           existingTags={tags}
           anchorRef={addBtnRef}

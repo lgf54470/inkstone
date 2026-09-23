@@ -1,11 +1,25 @@
 import { renderMarkdown, type RenderResult } from '../../lib/markdown/renderer'
+import type { FenceBodies } from '../../lib/markdown/fence-bodies'
 import { resolvePageIndex, type SlidePlan } from './slide-pagination'
+
+/**
+ * A slide's prepared markup with the fence bodies it was rendered from (P-01).
+ *
+ * The two travel together because a serialized slide is re-enhanced downstream: the printed deck
+ * runs the snapshot renderers over the pages it is handed, and a `kanban` block there reads its
+ * board back out of the set, not out of its own attributes. Markup cached without its bodies prints
+ * those blocks as empty fences.
+ */
+export interface SlideMarkup {
+  html: string
+  fences: FenceBodies
+}
 
 // Enhanced per-slide markup keyed by content fingerprint + theme + slide index,
 // so a remount (e.g. across fullscreen toggles) reuses the last good html instead
 // of resetting diagrams to their loading placeholders. The slide list renders the
 // same cache, which is why the key is derived here instead of inside the canvas.
-const slideHtmlCache = new Map<string, string>()
+const slideHtmlCache = new Map<string, SlideMarkup>()
 const SLIDE_HTML_CACHE_LIMIT = 60
 const slideHtmlListeners = new Set<() => void>()
 
@@ -26,13 +40,18 @@ export function slideCacheKey(options: { fingerprint: string; dark: boolean; ind
   return `${fingerprint}:${dark ? 'd' : 'l'}:${index}:${Math.round(contentWidth)}x${Math.round(contentHeight)}`
 }
 
-export function readSlideHtml(key: string): string | undefined {
+export function readSlideHtml(key: string): SlideMarkup | undefined {
   return slideHtmlCache.get(key)
 }
 
-export function rememberSlideHtml(key: string, html: string): void {
+/** The entry a plain render makes, for a slide whose prepared markup never landed in the cache. */
+export function slideMarkup(rendered: RenderResult): SlideMarkup {
+  return { html: rendered.html, fences: rendered.fences }
+}
+
+export function rememberSlideHtml(key: string, markup: SlideMarkup): void {
   slideHtmlCache.delete(key)
-  slideHtmlCache.set(key, html)
+  slideHtmlCache.set(key, markup)
   while (slideHtmlCache.size > SLIDE_HTML_CACHE_LIMIT) {
     const oldest = slideHtmlCache.keys().next().value
     if (oldest === undefined) break

@@ -30,19 +30,25 @@ export function useSlideHtml(options: {
     if (readSlideHtml(key)) return
     let cancelled = false
     const rendered = renderSlideSource(deck[index] ?? '', preview.externalImages)
-    rememberSlideHtml(key, rendered.html)
+    rememberSlideHtml(key, { html: rendered.html, fences: rendered.fences })
     setTick((tick) => tick + 1)
     const staging = document.createElement('div')
     staging.innerHTML = rendered.html
     const prepare = async () => {
       if (rendered.hasEmbeds) {
-        await resolveNoteEmbeds(staging, { currentContent: content, currentTitle: noteTitle, isCurrent: () => !cancelled })
+        await resolveNoteEmbeds(staging, { currentContent: content, currentTitle: noteTitle, fences: rendered.fences, isCurrent: () => !cancelled })
       }
       await enhancePreview(staging, {
         math: preview.math,
         mermaid: preview.mermaid,
         mindmap: 'snapshot',
         excalidraw: 'snapshot',
+        // The staged markup is cached and re-serialized into a page, so a board travels as its cards.
+        kanban: 'snapshot',
+        // The bodies these blocks were rendered from. A snapshot draws from the fence body, and the
+        // body no longer rides in the markup that carries it (P-01). The cache keeps this same set
+        // beside the string, because the printed deck runs this draw over a page once more.
+        fences: rendered.fences,
         dark,
         codeBlockCollapseLines: 0,
         // A mind map is drawn for a box, not for wherever the block happens to sit:
@@ -50,7 +56,7 @@ export function useSlideHtml(options: {
         mindmapBox: { width: contentWidth, height: contentHeight },
       })
       if (cancelled) return
-      rememberSlideHtml(key, staging.innerHTML)
+      rememberSlideHtml(key, { html: staging.innerHTML, fences: rendered.fences })
       setTick((tick) => tick + 1)
     }
     void prepare()

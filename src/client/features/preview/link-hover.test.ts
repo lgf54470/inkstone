@@ -269,6 +269,36 @@ describe('pinned card close and headline highlight', () => {
   })
 })
 
+describe('card body drawn from fence bodies', () => {
+  // The card hangs off `document.body`, so a test of one looks the way a reader does: the portal is the
+  // only pinned card mounted at a time.
+  function cardBody(): HTMLElement | null {
+    return document.querySelector<HTMLElement>('.wiki-hover-body')
+  }
+
+  // A board is no longer in the markup the card is handed, so the picture depends on the set that
+  // markup was rendered from travelling beside it (P-01).
+  it('draws a board in the card out of the fence body it was rendered from', async () => {
+    seedNotes([['a', 'Note A']], () => ['# Title', '', '```kanban', '## To Do', '- [ ] Ship the pinned board', '```', ''].join('\n'))
+    const anchor = document.createElement('span')
+    document.body.appendChild(anchor)
+
+    const { root } = await mountCard({ anchor, title: 'Note A', noteId: 'a', missing: false }, {
+      pinned: true,
+      pinnedInit: { id: 1, noteId: 'a', title: 'Note A', missing: false, x: 40, y: 80, width: 340, height: 0, z: 1 },
+    })
+    await act(async () => {
+      for (let attempt = 0; attempt < 100 && !cardBody()?.querySelector('.kanban-snapshot'); attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      }
+    })
+
+    const cards = [...cardBody()!.querySelectorAll('.kanban-snapshot-card')].map((card) => card.textContent)
+    expect(cards).toContain('Ship the pinned board')
+    act(() => root.unmount())
+  })
+})
+
 describe('hover target signal', () => {
   it('broadcasts and replays the current hover target', () => {
     const seen: Array<string | null> = []

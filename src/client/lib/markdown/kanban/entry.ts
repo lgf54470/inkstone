@@ -1,5 +1,4 @@
 import type { Root } from 'react-dom/client'
-import type { AppLocale } from '@shared/types'
 import type { KanbanData, KanbanFenceRef, KanbanMode, KanbanWriter } from './types'
 
 export interface KanbanBlockEntry {
@@ -13,12 +12,14 @@ export interface KanbanBlockEntry {
   mode: KanbanMode
   editable: boolean
   owner: 'inline' | 'overlay'
-  dark: boolean
-  locale: AppLocale
   container: HTMLElement | null
   root: Root | null
   ref: KanbanFenceRef | null
   write: KanbanWriter | null
   dirty: boolean
+  /** Edits the note refused to accept; kept in memory until retry or discard. */
+  unsaved: boolean
+  /** The block left the document and this entry was torn down; nothing may move its container again. */
+  disposed: boolean
   timer: number | null
 }

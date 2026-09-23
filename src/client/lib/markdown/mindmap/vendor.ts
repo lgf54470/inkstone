@@ -187,6 +187,27 @@ function createHandle(instance: MindElixirInstance, options: MindmapCreateOption
   }
 }
 
+/**
+ * Puts the write path back in motion when the map steps through its own history. `undo` and `redo` are
+ * the one way the map changes shape that the library keeps to itself: they restore a snapshot and
+ * re-draw by hand without firing `operation`, so the app is never told and the note goes on holding
+ * the edit the map just took back. Both callers look the method up on the instance when they fire —
+ * the library binds its Ctrl+Z handler to the container and `createHandle` calls `instance.undo()` —
+ * so replacing it here reaches both. A step that changed nothing costs nothing: the write path
+ * compares the body it would send with the one the map came from.
+ */
+function announceHistory(instance: MindElixirInstance, onOperation: () => void): void {
+  for (const command of ['undo', 'redo'] as const) {
+    const step = instance[command]
+    // The library installs its history during `init`, and only for a map it may edit.
+    if (typeof step !== 'function') continue
+    instance[command] = function (this: MindElixirInstance) {
+      step.call(this)
+      onOperation()
+    }
+  }
+}
+
 function createMindmap(options: MindmapCreateOptions): MindmapHandle {
   // The wheel handler needs the instance it zooms, but the options object is what
   // creates it: the reference is filled in before any wheel event can arrive.
@@ -223,6 +244,8 @@ function createMindmap(options: MindmapCreateOptions): MindmapHandle {
   instance.bus.addListener('expandNode', () => options.onOperation())
   const failure = instance.init(asData(options.body.data))
   if (failure) throw failure
+  // The library installs its history during `init`, which is why this runs after it.
+  announceHistory(instance, options.onOperation)
   return createHandle(instance, options)
 }
 

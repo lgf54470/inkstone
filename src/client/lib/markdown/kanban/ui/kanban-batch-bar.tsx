@@ -1,41 +1,161 @@
-import { memo } from 'react'
-import { Trash2, X } from 'lucide-react'
-import { t } from '../../../i18n'
+import { memo, useRef, useState } from 'react'
+import { Archive, CalendarDays, SlidersHorizontal, Tag, Trash2, UserRound, X } from 'lucide-react'
+import { Menu, submenuFor, type MenuItem } from '../../../../components/overlay'
+import { t, useLocaleRepaint } from '../../../i18n'
+import { addDaysKey, dateKey } from '../../../time'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
-import type { KanbanProperty } from '../types'
+import type { KanbanOption, KanbanProperty } from '../types'
+
+/**
+ * The fields a batch can be rewritten with, each optional: a board that has no member column offers
+ * no assignee, and one the host has not wired offers nothing at all. `onSetDueDate` writes the same
+ * `dueDate` the detail panel writes, and `undefined` is how a deadline is taken back off.
+ */
+export interface KanbanBatchEdits {
+  assignees?: string[]
+  tags?: KanbanOption[]
+  onAssign?: (name: string) => void
+  onAddTag?: (tagId: string) => void
+  onSetDueDate?: (date: string | undefined) => void
+}
 
 interface KanbanBatchBarProps {
   selectedCount: number
-  statusColumn?: KanbanProperty
-  onBatchStatusChange: (statusId: string) => void
+  groupColumn?: KanbanProperty
+  onBatchGroupChange: (groupId: string) => void
+  onBatchArchive: () => void
   onBatchDelete: () => void
   onClearSelection: () => void
+  edits?: KanbanBatchEdits
 }
 
-interface BatchStatusSelectProps {
-  statusColumn: KanbanProperty
-  onBatchStatusChange: (statusId: string) => void
+const DUE_PRESET_DAYS = [
+  { id: 'due-today', label: 'preview.kanban_today', offset: 0 },
+  { id: 'due-tomorrow', label: 'preview.kanban_tomorrow', offset: 1 },
+  { id: 'due-next-week', label: 'preview.kanban_next_week', offset: 7 },
+] as const
+
+/**
+ * The days a batch deadline can be set to. Days rather than a calendar: the shared date picker is a
+ * popover of its own, and nesting one inside a menu panel would give two overlays competing for the
+ * same Escape and the same click outside. A date nobody can name in one gesture is the detail panel's
+ * business, where the whole card is being read anyway.
+ */
+function buildDueDateItems(onSetDueDate: (date: string | undefined) => void): MenuItem[] {
+  const today = dateKey(new Date())
+  return [
+    ...DUE_PRESET_DAYS.map((preset) => ({
+      id: preset.id,
+      label: t(preset.label),
+      onSelect: () => onSetDueDate(addDaysKey(today, preset.offset)),
+    })),
+    {
+      id: 'due-clear',
+      label: t('preview.kanban_clear_date'),
+      separatorBefore: true,
+      onSelect: () => onSetDueDate(undefined),
+    },
+  ]
 }
 
-function BatchStatusSelect({ statusColumn, onBatchStatusChange }: BatchStatusSelectProps) {
-  if (!statusColumn.options) return null
+/** The rows of the batch editor, one per field this board can actually write. */
+function buildBatchEditsItems(edits: KanbanBatchEdits): MenuItem[] {
+  const items: MenuItem[] = []
+  if (edits.assignees?.length && edits.onAssign) {
+    const onAssign = edits.onAssign
+    items.push({
+      id: 'batch-assignee',
+      label: t('preview.kanban_batch_assignee'),
+      icon: <UserRound size={14} aria-hidden />,
+      submenu: submenuFor(
+        edits.assignees.map((name) => ({ id: `assignee-${name}`, label: name, onSelect: () => onAssign(name) })),
+      ),
+    })
+  }
+  if (edits.tags?.length && edits.onAddTag) {
+    const onAddTag = edits.onAddTag
+    items.push({
+      id: 'batch-tag',
+      label: t('preview.kanban_batch_tag'),
+      icon: <Tag size={14} aria-hidden />,
+      submenu: submenuFor(
+        edits.tags.map((option) => ({
+          id: `tag-${option.id}`,
+          label: formatKanbanOptionLabel(option, 'tags'),
+          onSelect: () => onAddTag(option.id),
+        })),
+      ),
+    })
+  }
+  if (edits.onSetDueDate) {
+    items.push({
+      id: 'batch-due-date',
+      label: t('preview.kanban_batch_due_date'),
+      icon: <CalendarDays size={14} aria-hidden />,
+      submenu: submenuFor(buildDueDateItems(edits.onSetDueDate)),
+    })
+  }
+  return items
+}
+
+/**
+ * One entry for every field the batch can be rewritten with, as submenus of a single button: the bar
+ * floats over the board, so a control per field would cover the cards it is about to edit.
+ */
+function BatchEditsMenu({ edits }: { edits: KanbanBatchEdits }) {
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const items = buildBatchEditsItems(edits)
+  if (items.length === 0) return null
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type='button'
+        data-kanban-batch-edits
+        aria-haspopup='menu'
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className='flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+      >
+        <SlidersHorizontal size={13} aria-hidden />
+        <span>{t('preview.kanban_batch_edits')}</span>
+      </button>
+      <Menu
+        anchor={triggerRef}
+        open={open}
+        onClose={() => setOpen(false)}
+        items={items}
+        label={t('preview.kanban_batch_edits')}
+      />
+    </>
+  )
+}
+
+interface BatchGroupSelectProps {
+  groupColumn: KanbanProperty
+  onBatchGroupChange: (groupId: string) => void
+}
+
+function BatchGroupSelect({ groupColumn, onBatchGroupChange }: BatchGroupSelectProps) {
+  if (!groupColumn.options) return null
   return (
     <select
       defaultValue=''
       onChange={(e) => {
         if (e.target.value) {
-          onBatchStatusChange(e.target.value)
+          onBatchGroupChange(e.target.value)
           e.target.value = ''
         }
       }}
       className='h-7 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
     >
       <option value='' disabled>
-        {t('preview.kanban_batch_change_status')}
+        {t('preview.kanban_batch_change_group')}
       </option>
-      {statusColumn.options.map((opt) => (
+      {groupColumn.options.map((opt) => (
         <option key={opt.id} value={opt.id}>
-          {formatKanbanOptionLabel(opt, 'status')}
+          {formatKanbanOptionLabel(opt, groupColumn.id)}
         </option>
       ))}
     </select>
@@ -44,25 +164,40 @@ function BatchStatusSelect({ statusColumn, onBatchStatusChange }: BatchStatusSel
 
 export const KanbanBatchBar = memo(function KanbanBatchBar({
   selectedCount,
-  statusColumn,
-  onBatchStatusChange,
+  groupColumn,
+  onBatchGroupChange,
+  onBatchArchive,
   onBatchDelete,
   onClearSelection,
+  edits,
 }: KanbanBatchBarProps) {
+  useLocaleRepaint()
   if (selectedCount === 0) return null
 
   return (
     <div className='absolute bottom-6 left-1/2 z-[var(--z-float)] flex -translate-x-1/2 items-center gap-3 rounded-[var(--r-xl)] border border-[var(--border-strong)] bg-[var(--bg-overlay)] px-4 py-2.5 shadow-[var(--shadow-modal)]'>
       <span className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
-        {t('preview.kanban_batch_selected')} {selectedCount} {t('preview.kanban_batch_items')}
+        {t('preview.kanban_batch_selected_count', { count: selectedCount })}
       </span>
 
-      {statusColumn && (
-        <BatchStatusSelect
-          statusColumn={statusColumn}
-          onBatchStatusChange={onBatchStatusChange}
+      {groupColumn && (
+        <BatchGroupSelect
+          groupColumn={groupColumn}
+          onBatchGroupChange={onBatchGroupChange}
         />
       )}
+
+      {edits && <BatchEditsMenu edits={edits} />}
+
+      <button
+        type='button'
+        data-kanban-batch-archive
+        onClick={onBatchArchive}
+        className='flex items-center gap-1 rounded-[var(--r-md)] px-2 py-1 text-[length:var(--text-12)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+      >
+        <Archive size={13} aria-hidden />
+        <span>{t('preview.kanban_archive_item')}</span>
+      </button>
 
       <button
         type='button'

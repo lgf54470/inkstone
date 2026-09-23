@@ -1,6 +1,6 @@
 import { escapeHtml } from '@shared/escape'
 import { EXPORT_PALETTE } from './export-palette'
-import { renderMarkdown } from './markdown/renderer'
+import { renderMarkdown, type RenderResult } from './markdown/renderer'
 import { useSession } from '../store/session'
 import { resolveNoteEmbeds } from './markdown/embeds'
 import {
@@ -42,7 +42,7 @@ export async function renderNoteToExportHtml(
   document.body.appendChild(container)
 
   try {
-    await runExportEnhancements(container, rendered.hasEmbeds, note)
+    await runExportEnhancements(container, note, rendered)
     stripExportChrome(container)
     await embedLocalImages(container)
     return htmlDocument(note.title, container.innerHTML, language)
@@ -51,7 +51,7 @@ export async function renderNoteToExportHtml(
   }
 }
 
-function renderExportHtml(note: { title: string; content: string }): { html: string; hasEmbeds: boolean } {
+function renderExportHtml(note: { title: string; content: string }): RenderResult {
   // Respect the user's external-images choice: when blocked, exported HTML
   // shows the same placeholder as the preview instead of leaking image URLs.
   return renderMarkdown(note.content, {
@@ -72,12 +72,13 @@ function createExportContainer(html: string): HTMLDivElement {
   return container
 }
 
-async function runExportEnhancements(container: HTMLDivElement, hasEmbeds: boolean, note: { title: string; content: string }): Promise<void> {
-  if (hasEmbeds) {
+async function runExportEnhancements(container: HTMLDivElement, note: { title: string; content: string }, rendered: RenderResult): Promise<void> {
+  if (rendered.hasEmbeds) {
     try {
       await resolveNoteEmbeds(container, {
         currentContent: note.content,
         currentTitle: note.title,
+        fences: rendered.fences,
       })
     } catch (err) {
       console.warn('Failed to resolve note embeds during export:', err)
@@ -92,6 +93,10 @@ async function runExportEnhancements(container: HTMLDivElement, hasEmbeds: boole
       mindmap: 'snapshot',
       // The same for a whiteboard: a board cannot draw itself inside a document.
       excalidraw: 'snapshot',
+      // And for a kanban, whose cards travel as the list the fence describes.
+      kanban: 'snapshot',
+      // What the blocks on this container were rendered from; they read it back from here.
+      fences: rendered.fences,
       dark: false,
       codeBlockCollapseLines: 0,
     })
@@ -428,6 +433,15 @@ details[open] summary { margin-bottom: 0.5em; }
 .excalidraw-block { margin: 1.4em 0; padding: 1em; border: 1px solid ${EXPORT_PALETTE.ink200}; border-radius: 8px; background: ${EXPORT_PALETTE.ink50}; display: flex; justify-content: center; overflow-x: auto; }
 .excalidraw-block-head { display: none; }
 .excalidraw-image { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.kanban-block { margin: 1.4em 0; border: 1px solid ${EXPORT_PALETTE.ink200}; border-radius: 8px; background: ${EXPORT_PALETTE.ink50}; overflow: hidden; }
+.kanban-block-head { display: none; }
+.kanban-snapshot { padding: 1em; }
+.kanban-snapshot-title { margin: 0 0 0.6em; font-weight: 600; }
+.kanban-snapshot-groups { margin: 0; }
+.kanban-snapshot-group { font-weight: 600; color: ${EXPORT_PALETTE.ink600}; }
+.kanban-snapshot-group-cards { margin: 0 0 0.6em; }
+.kanban-snapshot-cards { margin: 0.2em 0 0; padding-left: 1.4em; }
+.kanban-snapshot-empty { margin: 0; color: ${EXPORT_PALETTE.ink600}; }
 
 .note-embed { margin: 1em 0; border: 1px solid ${EXPORT_PALETTE.ink200}; border-radius: 8px; overflow: hidden; background: ${EXPORT_PALETTE.white}; }
 .note-embed-head { display: block; padding: 0.4em 0.8em; background: ${EXPORT_PALETTE.ink50}; border-bottom: 1px solid ${EXPORT_PALETTE.ink200}; font-size: 0.82em; font-weight: 600; color: ${EXPORT_PALETTE.ink600}; }

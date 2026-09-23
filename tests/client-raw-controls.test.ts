@@ -336,6 +336,27 @@ const CLICK_CONTAINER_EXCEPTIONS = new Map<string, { sites: number; reason: stri
       reason: 'The subtask list, one subtask row and the add-subtask field: all three stop a click from reaching the card (or the pane) that holds them, which is what keeps ticking a checkbox from also activating what is behind it. The card is a container now (SH-107) and these guards stay because the pane underneath is not the card.',
     },
   ],
+  [
+    'src/client/lib/markdown/kanban/ui/kanban-archive.tsx',
+    {
+      sites: 1,
+      reason: 'The archive panel stops a click from reaching the board behind it, so pressing its empty space does not open the card that holds it. The panel is not an affordance of its own: the restore and delete buttons inside it are.',
+    },
+  ],
+  [
+    'src/client/lib/markdown/kanban/ui/kanban-csv.tsx',
+    {
+      sites: 1,
+      reason: 'The import/export panel stops a click from reaching the toolbar that opened it, so pressing inside the panel does not close it or activate the control behind. The panel is not an affordance of its own: the export and import buttons inside it are.',
+    },
+  ],
+  [
+    'src/client/lib/markdown/kanban/ui/kanban-person-picker.tsx',
+    {
+      sites: 1,
+      reason: 'The person panel stops a click from reaching the field that opened it, so typing a name into its search box does not reselect that field. The panel is not an affordance of its own: the search box and the teammate rows inside it are.',
+    },
+  ],
 ])
 
 const SCAN = scan()

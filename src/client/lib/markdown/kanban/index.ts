@@ -34,7 +34,10 @@ export {
   markKanbanLoading,
   markKanbanReady,
   showKanbanError,
+  showKanbanSourceAll,
 } from './view'
+
+export { renderStaticKanbans } from './static'
 
 export {
   mountKanbans,
@@ -52,6 +55,13 @@ export {
 } from './session'
 
 export { KanbanFullscreen, KanbanRoot } from './ui'
+
+export {
+  registerKanbanSurface,
+  kanbanSurfaceCommands,
+  type KanbanSurfaceCommands,
+  type KanbanSurfaceView,
+} from './surface-commands'
 
 export type {
   KanbanColorName,

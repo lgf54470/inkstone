@@ -3,6 +3,7 @@ import { EditorSelection, EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { detectEditorContext, detectPreviewContext } from './context-menu-detect'
 import { encodeDataValue } from '../../lib/markdown/data-attr'
+import { createFenceBodies, registerFenceBodies, takeFenceIndex } from '../../lib/markdown/fence-bodies'
 
 function withView(doc: string, selection: { from: number; to: number } | undefined, run: (view: EditorView) => void) {
   const parent = document.createElement('div')
@@ -42,11 +43,18 @@ function mountChart(): HTMLDivElement {
   return chart
 }
 
+// A rendered block names its fence and carries the body's number, while the body itself lives in the set
+// registered on the element holding the markup — written with its trailing newline, since the accessor
+// is what strips it (P-01).
 function mountKanban(): HTMLDivElement {
   const kanban = document.createElement('div')
   kanban.className = 'kanban-block'
-  kanban.dataset.kanban = encodeDataValue('{"title":"Project"}')
+  kanban.dataset.kanban = ''
+  kanban.dataset.kanbanIndex = '0'
   kanban.dataset.sourceLine = '20'
+  const fences = createFenceBodies()
+  takeFenceIndex(fences, 'kanban', '{"title":"Project"}\n')
+  registerFenceBodies(kanban, fences)
   document.body.appendChild(kanban)
   return kanban
 }
@@ -54,8 +62,12 @@ function mountKanban(): HTMLDivElement {
 function mountSlides(): HTMLDivElement {
   const slides = document.createElement('div')
   slides.className = 'bento-slides-block'
-  slides.dataset.bentoSlides = encodeDataValue('{"title":"Demo Deck"}')
+  slides.dataset.bentoSlides = ''
+  slides.dataset.bentoSlidesIndex = '0'
   slides.dataset.sourceLine = '25'
+  const fences = createFenceBodies()
+  takeFenceIndex(fences, 'slides', '{"title":"Demo Deck"}\n')
+  registerFenceBodies(slides, fences)
   document.body.appendChild(slides)
   return slides
 }

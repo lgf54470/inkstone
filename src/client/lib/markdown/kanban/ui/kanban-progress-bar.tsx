@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { t, type MessageKey } from '../../../i18n'
 import type { KanbanItem, KanbanProperty } from '../types'
 
 interface KanbanProgressBarProps {
@@ -9,10 +10,16 @@ interface KanbanProgressBarProps {
 }
 
 interface Segment {
-  label: string
+  /** A real group shows the name the board author gave it; the catch-all bucket shows a translated label. */
+  label?: string
+  labelKey?: MessageKey
   color: string
   count: number
   percent: number
+}
+
+function segmentLabel(seg: Segment): string {
+  return seg.labelKey ? t(seg.labelKey) : seg.label ?? ''
 }
 
 function resolveSegmentColor(optionColor?: string): string {
@@ -51,7 +58,7 @@ function calculateSegments(items: KanbanItem[], statusColumn?: KanbanProperty): 
   for (const c of counts.values()) remaining += c
   if (remaining > 0) {
     res.push({
-      label: 'Other',
+      labelKey: 'preview.kanban_status_other',
       color: 'var(--text-quaternary)',
       count: remaining,
       percent: (remaining / total) * 100,
@@ -83,7 +90,7 @@ export function KanbanProgressBar({
             width: `${seg.percent}%`,
             backgroundColor: seg.color,
           }}
-          title={`${seg.label}: ${seg.count} (${seg.percent.toFixed(0)}%)`}
+          title={`${segmentLabel(seg)}: ${seg.count} (${seg.percent.toFixed(0)}%)`}
           className='transition-all duration-300 first:rounded-l-[var(--r-full)] last:rounded-r-[var(--r-full)]'
         />
       ))}

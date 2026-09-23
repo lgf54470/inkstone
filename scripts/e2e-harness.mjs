@@ -293,6 +293,10 @@ export async function runAxe(page, selector) {
       count: item.nodes.length,
       box,
       target: (item.nodes[0]?.target ?? []).join(' ').slice(0, 90),
+      // axe's own key for "I could not judge this" (bgOverlap, elmPartiallyObscuring, …): a surface
+      // that allows a named item matches on it rather than on axe's prose, which is wording that
+      // changes between releases.
+      key: (item.nodes[0]?.any ?? []).map((check) => check.data?.messageKey).find(Boolean) ?? '',
       note: (item.nodes[0]?.failureSummary ?? '').replace(/\s+/g, ' ').slice(0, 140),
       // The node itself, because a failing target is a Tailwind class soup nobody can read.
       html: (item.nodes[0]?.html ?? '').replace(/\s+/g, ' ').slice(0, 200),

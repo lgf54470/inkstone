@@ -1,4 +1,5 @@
 import { runAttachmentCleanup } from './attachments/cleanup'
+import { runKanbanFileReclaim } from './attachments/kanban-reclaim'
 import { runScheduledBackups } from './backup/scheduler'
 import type { Env } from './env'
 import { initializeDatabase } from './db/schema'
@@ -36,6 +37,7 @@ export default {
       await Promise.all([
         runScheduledBackups(env),
         runAttachmentCleanup(env),
+        runKanbanFileReclaim(env),
         purgeExpiredMcpOperations(env.DB),
         purgeExpiredOperationalData(env.DB),
         purgeRevokedMcpApiKeys(env.DB),

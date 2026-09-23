@@ -94,19 +94,35 @@ function edgesOf(file: string): ModuleEdges {
   return edges
 }
 
-// Files whose static closure touches each banned module (pre-image of the
-// ban), computed by one reverse-DFS over static edges.
+// The static edges inverted once: which files import each module. The pre-image
+// of the ban is then a walk over dependents, where re-scanning every file to a
+// fixed point for each banned target was the slowest part of this file (and the
+// tree only grows).
+let dependentsIndex: Map<string, string[]> | null = null
+
+function dependentsOf(): Map<string, string[]> {
+  if (dependentsIndex) return dependentsIndex
+  const index = new Map<string, string[]>()
+  for (const file of ALL_FILES) {
+    for (const dep of edgesOf(file).staticDeps) {
+      const importers = index.get(dep)
+      if (importers) importers.push(file)
+      else index.set(dep, [file])
+    }
+  }
+  dependentsIndex = index
+  return index
+}
+
+// Files whose static closure touches a banned module (pre-image of the ban).
 function staticPreimage(target: string): Set<string> {
+  const index = dependentsOf()
   const reachable = new Set<string>([target])
-  let grew = true
-  while (grew) {
-    grew = false
-    for (const file of ALL_FILES) {
-      if (reachable.has(file)) continue
-      if (edgesOf(file).staticDeps.some((dep) => reachable.has(dep))) {
-        reachable.add(file)
-        grew = true
-      }
+  for (const queue = [target]; queue.length > 0; ) {
+    for (const importer of index.get(queue.pop()!) ?? []) {
+      if (reachable.has(importer)) continue
+      reachable.add(importer)
+      queue.push(importer)
     }
   }
   return reachable
@@ -127,7 +143,9 @@ describe('share modals stay behind a dynamic boundary (SH-20)', () => {
     }
   })
 
-  it('no module outside the share feature statically reaches the modal graph', () => {
+  // The walk reads and parses every module of the client, which is a couple of seconds of work on a
+  // quiet machine and more than the default budget under a full parallel run, so it states its own.
+  it('no module outside the share feature statically reaches the modal graph', { timeout: 30_000 }, () => {
     const offenders = new Set<string>()
     for (const target of BANNED) {
       if (!fs.existsSync(target)) continue

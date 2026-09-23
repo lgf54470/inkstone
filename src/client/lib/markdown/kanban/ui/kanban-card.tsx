@@ -1,12 +1,20 @@
 import { memo, useState, type KeyboardEvent } from 'react'
-import { Calendar, Flag, Paperclip } from 'lucide-react'
-import { t } from '../../../i18n'
+import { Flag, Paperclip } from 'lucide-react'
+import { t, useLocaleRepaint } from '../../../i18n'
+import { isEditableTarget } from '../../../hotkeys'
 import { getKanbanTagStyle } from '../colors'
+import { getKanbanCardDate } from '../date-fields'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
+import { kanbanPersonName } from '../person'
 import type { KanbanColorName, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { CardHeader } from './kanban-card-header'
 import { KanbanCardSubtasks } from './kanban-card-subtasks'
+import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanPersonAvatar } from './kanban-person-picker'
+
+/** Shift+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */
+export type CardMoveDirection = 'prev' | 'next' | 'up' | 'down'
 
 interface KanbanCardProps {
   item: KanbanItem
@@ -24,7 +32,7 @@ interface KanbanCardProps {
   onDragEnd: (e: React.DragEvent) => void
   onDragOverCard?: (e: React.DragEvent, id: string) => void
   onDropOnCard?: (e: React.DragEvent, id: string) => void
-  onMoveColumn?: (id: string, direction: 'prev' | 'next') => void
+  onMoveColumn?: (id: string, direction: CardMoveDirection) => void
   onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
 }
@@ -79,8 +87,10 @@ function CardTitle({
     // The heading is the card's heading and nothing else: both of the card's title gestures live on
     // the button inside it — a click opens the detail, a double click starts editing — which is what
     // having them on the heading itself cost (an affordance on a non-interactive element, and a
-    // keyboard that could reach neither of them).
-    <h3 className='flex items-start gap-1.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] leading-snug'>
+    // keyboard that could reach neither of them). The heading carries no type of its own either: the
+    // size and weight sit on the wrapper in `CardBody`, because a note's stylesheet owns an `h3` and
+    // would win any utility written here (styles/kanban.css hands it back for the board's own markup).
+    <h3 className='flex items-start gap-1.5 text-[var(--text-primary)]'>
       {icon && (
         <span className='mt-0.5 shrink-0'>
           <KanbanIconBadge icon={icon} size={15} />
@@ -99,17 +109,16 @@ function CardTitle({
 }
 
 function CardFooter({
+  item,
   priorityOpt,
-  assignee,
-  dueDate,
   filesCount,
 }: {
+  item: KanbanItem
   priorityOpt?: { label: string; color?: KanbanColorName }
-  assignee?: unknown
-  dueDate?: unknown
   filesCount: number
 }) {
-  if (!priorityOpt && !assignee && !dueDate && filesCount === 0) return null
+  const assignee = kanbanPersonName(item.properties.assignee)
+  if (!priorityOpt && !assignee && !getKanbanCardDate(item) && filesCount === 0) return null
 
   return (
     <div className='flex flex-wrap items-center justify-between gap-1.5 pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
@@ -123,12 +132,7 @@ function CardFooter({
             <span>{formatKanbanOptionLabel(priorityOpt.label, 'priority')}</span>
           </span>
         )}
-        {Boolean(dueDate) && (
-          <span className='inline-flex items-center gap-1 rounded-[var(--r-xs)] bg-[var(--bg-inset)] px-1.5 py-0.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
-            <Calendar size={11} className='text-[var(--text-tertiary)]' />
-            <span>{String(dueDate)}</span>
-          </span>
-        )}
+        <KanbanDateBadge item={item} />
         {filesCount > 0 && (
           <span className='inline-flex items-center gap-0.5 text-[var(--text-tertiary)]'>
             <Paperclip size={11} />
@@ -136,14 +140,7 @@ function CardFooter({
           </span>
         )}
       </div>
-      {Boolean(assignee) && (
-        <div
-          title={String(assignee)}
-          className='flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[length:var(--text-10)] font-bold text-[var(--accent)]'
-        >
-          {String(assignee).slice(0, 2).toUpperCase()}
-        </div>
-      )}
+      {assignee && <KanbanPersonAvatar name={assignee} />}
     </div>
   )
 }
@@ -166,18 +163,34 @@ function useKanbanCardTitle(initialTitle: string, onUpdate: (title: string) => v
   return { isEditing, text, setText, startEditing: () => setIsEditing(true), handleBlur, handleCancel }
 }
 
+const CARD_MOVE_KEYS: Record<string, CardMoveDirection> = {
+  ArrowRight: 'next',
+  ArrowLeft: 'prev',
+  ArrowDown: 'down',
+  ArrowUp: 'up',
+}
+
 /**
- * Alt+Arrow still moves the card between columns, and it is read off the card rather than off one of
- * its controls because that is where it was whenever the card itself held focus: a card that is a
- * container of controls, with no control of its own wrapping the rest, receives the event from
- * whichever of them has focus. Opening the detail is no longer one of these — it belongs to the
- * title button, which is a real control and answers Enter on its own.
+ * Shift+Arrow walks a card one step of the grid. It used to be Alt+Arrow, which had to go: Alt+Left
+ * and Alt+Right are the browser's own Back and Forward on Windows and Linux, so the card gesture
+ * shared a chord with leaving the page and only worked for as long as the page won the race for it.
+ * Shift is owned by nothing on its own, but it is how text is selected inside a field, so a key press
+ * that started in one is left to the field.
+ *
+ * It is read off the card rather than off one of its controls, because that is where a card that is a
+ * container of controls receives it: the event bubbles from whichever of them has focus. Opening the
+ * detail is not one of these — that belongs to the title button, which is a real control and answers
+ * Enter on its own.
  */
-function handleCardKeyDown(e: KeyboardEvent<HTMLDivElement>, onMove?: (direction: 'prev' | 'next') => void) {
-  if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
-    e.preventDefault()
-    onMove?.(e.key === 'ArrowRight' ? 'next' : 'prev')
-  }
+function handleCardKeyDown(
+  e: KeyboardEvent<HTMLDivElement>,
+  onMove?: (direction: CardMoveDirection) => void,
+) {
+  if (!e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return
+  const direction = CARD_MOVE_KEYS[e.key]
+  if (!direction || isEditableTarget(e.target)) return
+  e.preventDefault()
+  onMove?.(direction)
 }
 
 function getCardDisplayProps(item: KanbanItem, columns: KanbanProperty[]) {
@@ -186,8 +199,7 @@ function getCardDisplayProps(item: KanbanItem, columns: KanbanProperty[]) {
   const tagsCol = columns.find((c) => c.id === 'tags')
   const tagVals = Array.isArray(item.properties.tags) ? item.properties.tags : []
   const filesCount = item.files?.length ?? 0
-  const dueDate = item.properties.dueDate || item.properties.startDate || item.properties.date
-  return { priorityOpt, tagsCol, tagVals, filesCount, dueDate }
+  return { priorityOpt, tagsCol, tagVals, filesCount }
 }
 
 function CardDropIndicator({ dropIndicator }: { dropIndicator?: 'top' | 'bottom' | null }) {
@@ -235,7 +247,12 @@ function CardBody({
 
   return (
     <>
-      <div className='min-w-0 flex-1'>
+      {/*
+        * The card's type sits on this wrapper rather than on the heading: prose owns a note's `h3`
+        * and is loaded unlayered, so it beats any utility written on the heading itself, while a
+        * wrapper is a rule prose has none for (see the hand-back block in `styles/kanban.css`).
+        */}
+      <div className='flex min-w-0 flex-1 flex-col gap-1 text-[length:var(--text-14)] font-semibold leading-snug'>
         <CardTitle
           title={item.title}
           icon={item.icon}
@@ -248,7 +265,7 @@ function CardBody({
           onCancel={titleState.handleCancel}
         />
         {desc && (
-          <p className='mt-1 line-clamp-2 text-[length:var(--text-12)] text-[var(--text-tertiary)] leading-normal'>
+          <p className='line-clamp-2 text-[length:var(--text-12)] font-normal text-[var(--text-tertiary)] leading-normal'>
             {desc}
           </p>
         )}
@@ -259,9 +276,8 @@ function CardBody({
         onUpdateSubtasks={onUpdateSubtasks}
       />
       <CardFooter
+        item={item}
         priorityOpt={display.priorityOpt}
-        assignee={item.properties.assignee}
-        dueDate={display.dueDate}
         filesCount={display.filesCount}
       />
     </>
@@ -275,6 +291,13 @@ function CardBody({
  * one target while holding four others, which is what a browser reports as `nested-interactive`, and
  * a card-wide click handler is also what a drag has to fight: the pointer that starts a drag is the
  * pointer that would have opened the detail.
+ *
+ * The reveal row keeps its place in the card whether or not the card shows tags. Floating it over the
+ * card's own top edge when there are none saved a row's height and painted the tag control across the
+ * title: outside the note (the board overlay, where no prose margin pushes the title down) the row
+ * landed exactly on the first line, and axe could not even tell what the title was written on. A row
+ * that is always in flow costs its height and buys back three things — nothing is painted over the
+ * title, hovering never moves what is under the pointer, and a card with no tags is as tall as one with.
  */
 export const KanbanCard = memo(function KanbanCard({
   item,
@@ -296,6 +319,7 @@ export const KanbanCard = memo(function KanbanCard({
   onUpdateTags,
   onAddColumnOption,
 }: KanbanCardProps) {
+  useLocaleRepaint()
   const titleState = useKanbanCardTitle(item.title, (t) => onUpdateTitle(item.id, t))
   const display = getCardDisplayProps(item, columns)
   const dndHandlers = useCardDragHandlers(item.id, onDragOverCard, onDropOnCard)
@@ -310,7 +334,7 @@ export const KanbanCard = memo(function KanbanCard({
       onDragOver={dndHandlers.handleDragOver}
       onDrop={dndHandlers.handleDrop}
       onKeyDown={(e) => handleCardKeyDown(e, onMoveColumn ? (d) => onMoveColumn(item.id, d) : undefined)}
-      className={`group/card relative flex flex-col rounded-[var(--r-lg)] border bg-[var(--bg-surface)] shadow-[var(--shadow-xs)] transition-[box-shadow,border-color,background-color] hover:border-[var(--border-default)] hover:shadow-[var(--shadow-sm)] ${padClass} ${
+      className={`group/card relative flex flex-col rounded-[var(--r-lg)] border bg-[var(--bg-surface)] text-left shadow-[var(--shadow-xs)] transition-[box-shadow,border-color,background-color] hover:border-[var(--border-default)] hover:shadow-[var(--shadow-sm)] ${padClass} ${
         isSelected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border-subtle)]'
       }`}
     >

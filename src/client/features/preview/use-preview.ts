@@ -4,22 +4,21 @@ import type { Tag } from '@shared/types/notes'
 import { useDebounced } from '../../lib/hooks'
 import { decodeDataValue } from '../../lib/markdown/data-attr'
 import { parseWikiTarget, renderMarkdown, type Heading } from '../../lib/markdown/renderer'
-import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
 import { useLocale } from '../../lib/i18n'
-import { destroyChartInstances, enhancePreview, renderChartJs, renderPendingMermaid } from '../../lib/markdown/enhance'
+import { destroyChartInstances, renderChartJs, renderPendingMermaid } from '../../lib/markdown/enhance'
 import { useUi } from '../../store/ui'
 import { findNoteByTitle } from '../../store/notes'
 import { useNotes } from '../../store/notes'
 import { useSession } from '../../store/session'
 import { createPreviewClickHandler } from './preview-interactions'
 import { moveMarkdownTabFocus } from './markdown-tabs'
-import { capturePreviewInteractionState, restorePreviewInteractionState } from './preview-state'
+import { nextCommittedDocument, prepareStagedHtml } from './preview-stage'
 import type { WikiLinkHoverCardState } from './wiki-link-hover-card'
 import { useLinkHover } from './link-hover'
 import { capturePreviewViewport, restorePreviewViewport, type PreviewViewport } from './viewport'
 import { usePinnedWindows } from '../../store/pinned-windows'
 import { withPinnedWindowSize } from '../../lib/pinned-window-size'
-import { enhanceTablesInRoot, startTableCellEditing } from './table-interactive'
+import { startTableCellEditing } from './table-interactive'
 import { useMindmapBlocks } from './use-mindmap-blocks'
 import { useExcalidrawBlocks } from './use-excalidraw-blocks'
 import { useKanbanBlocks } from './use-kanban-blocks'
@@ -37,42 +36,6 @@ export interface PreviewProps {
   onRendered?: () => void
   onContextMenu?: (event: React.MouseEvent, target: HTMLElement) => void
   className?: string
-}
-
-async function prepareStagedHtml(opts: {
-  staging: HTMLDivElement
-  rendered: ReturnType<typeof renderMarkdown>
-  debounced: string
-  embedContextTitle: string
-  preview: PreviewSettings
-  theme: string
-  host: HTMLDivElement | null
-  isCurrent: () => boolean
-}): Promise<string | null> {
-  const { staging, rendered, debounced, embedContextTitle, preview, theme, host, isCurrent } = opts
-  if (rendered.hasEmbeds) {
-    await resolveNoteEmbeds(staging, {
-      currentContent: debounced,
-      currentTitle: embedContextTitle,
-      isCurrent,
-    })
-  }
-  await enhancePreview(staging, {
-    math: preview.math,
-    mermaid: preview.mermaid,
-    // Mind maps are mounted live, from the committed markup, by useMindmapBlocks.
-    mindmap: 'live',
-    // Whiteboards are mounted live, from the committed markup, by useExcalidrawBlocks.
-    excalidraw: 'live',
-    // The preview is where the lightbox lives, so this is the surface whose images are controls.
-    zoomableImages: true,
-    dark: theme === 'dark',
-    codeBlockCollapseLines: preview.codeBlockCollapse ? preview.codeBlockCollapseLines : 0,
-  })
-  enhanceTablesInRoot(staging)
-  if (!isCurrent()) return null
-  restorePreviewInteractionState(staging, capturePreviewInteractionState(host))
-  return staging.innerHTML
 }
 
 function resolveHoverCandidate(link: HTMLElement, sourceNoteId: string | null): WikiLinkHoverCardState | null {
@@ -195,13 +158,15 @@ function usePreviewRendering(opts: {
   scrollerRef: RefObject<HTMLDivElement | null>
 }) {
   const { rendered, debounced, embedContextTitle, preview, theme, hostRef, scrollerRef } = opts
-  const [committedHtml, setCommittedHtml] = useState(rendered.html)
-  const committedHtmlRef = useRef(committedHtml)
+  // Markup and the bodies it was rendered from are one document: a body-only edit leaves the rendered
+  // string identical, so the string alone would never tell the mounted blocks their fence changed (P-01).
+  const [committed, setCommitted] = useState({ html: rendered.html, fences: rendered.fences })
+  const committedRef = useRef(committed)
   const committedSourceRef = useRef(debounced)
   const preparationRef = useRef(0)
   const pendingViewportRef = useRef<PreviewViewport | null>(null)
   const [mermaidEpoch, setMermaidEpoch] = useState(0)
-  const htmlObj = useMemo(() => ({ __html: committedHtml }), [committedHtml])
+  const htmlObj = useMemo(() => ({ __html: committed.html }), [committed.html])
 
   useEffect(() => {
     const revision = ++preparationRef.current
@@ -218,15 +183,16 @@ function usePreviewRendering(opts: {
       theme,
       host: hostRef.current,
       isCurrent: () => !isCancelled && revision === preparationRef.current,
-    }).then((nextHtml) => {
-      if (nextHtml === null || isCancelled || revision !== preparationRef.current) return
+    }).then((prepared) => {
+      if (prepared === null || isCancelled || revision !== preparationRef.current) return
       committedSourceRef.current = debounced
-      if (nextHtml !== committedHtmlRef.current) {
+      const next = nextCommittedDocument(committedRef.current, prepared)
+      if (next) {
         const scroller = scrollerRef.current
         const host = hostRef.current
         pendingViewportRef.current = scroller && host ? capturePreviewViewport(scroller, host) : null
-        committedHtmlRef.current = nextHtml
-        setCommittedHtml(nextHtml)
+        committedRef.current = next
+        setCommitted(next)
       }
       setMermaidEpoch((current) => current + 1)
     })
@@ -234,9 +200,9 @@ function usePreviewRendering(opts: {
     return () => {
       isCancelled = true
     }
-  }, [debounced, embedContextTitle, rendered.hasEmbeds, rendered.html, scrollerRef, preview.math, preview.mermaid, preview.codeBlockCollapse, preview.codeBlockCollapseLines, theme])
+  }, [debounced, embedContextTitle, rendered.hasEmbeds, rendered.html, rendered.fences, scrollerRef, preview.math, preview.mermaid, preview.codeBlockCollapse, preview.codeBlockCollapseLines, theme])
 
-  return { committedHtml, htmlObj, committedSourceRef, pendingViewportRef, mermaidEpoch }
+  return { committedHtml: committed.html, committedFences: committed.fences, htmlObj, committedSourceRef, pendingViewportRef, mermaidEpoch }
 }
 
 function usePreviewPostRender(opts: {
@@ -457,11 +423,11 @@ export function usePreview(props: PreviewProps) {
   // One scope per preview instance: two panes showing the same note must not
   // claim each other's map or board instances.
   const instanceScope = useId()
-  const mindmap = useMindmapBlocks({ scope: `preview${instanceScope}`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
+  const mindmap = useMindmapBlocks({ scope: `preview${instanceScope}`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, fences: html.committedFences, dark: theme === 'dark' })
   // Whiteboards are mounted live, from the committed markup, by useExcalidrawBlocks.
-  const excalidraw = useExcalidrawBlocks({ scope: `preview${instanceScope}-excalidraw`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
-  const kanban = useKanbanBlocks({ scope: `preview${instanceScope}-kanban`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
-  const slides = useBentoSlidesBlocks({ scope: `preview${instanceScope}-slides`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, dark: theme === 'dark' })
+  const excalidraw = useExcalidrawBlocks({ scope: `preview${instanceScope}-excalidraw`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, fences: html.committedFences, dark: theme === 'dark' })
+  const kanban = useKanbanBlocks({ scope: `preview${instanceScope}-kanban`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, fences: html.committedFences })
+  const slides = useBentoSlidesBlocks({ scope: `preview${instanceScope}-slides`, noteId: src.sourceNoteId, hostRef: src.hostRef, committedHtml: html.committedHtml, fences: html.committedFences, dark: theme === 'dark' })
   const [previewFile, setPreviewFile] = useState<{ url: string; filename: string } | null>(null)
   const onClick = usePreviewInteractions({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, scrollerRef: src.scrollerRef, committedSourceRef: html.committedSourceRef, startMermaidRender, hideHover: hover.linkHover.hideNow, setPreviewFile, openMindmapFullscreen: mindmap.openFullscreen, openMindmapThemeMenu: mindmap.openThemeMenu, openExcalidrawFullscreen: excalidraw.openFullscreen, openExcalidrawLibraryMenu: excalidraw.openLibraryMenu, openKanbanFullscreen: kanban.openFullscreen, openSlidesFullscreen: slides.openFullscreen, api: src.api })
   const keyboard = usePreviewKeyboard({ content: src.content, sourceNoteId: src.sourceNoteId, hostRef: src.hostRef, editContent: src.editContent, hideHover: hover.linkHover.hideNow })

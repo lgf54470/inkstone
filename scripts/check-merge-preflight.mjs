@@ -293,9 +293,11 @@ export function runMergeVerification({ plan, root, run = runCommand, log = conso
 // for exactly the merges it exists to judge. Git does relay the head being merged to the hook as
 // GITHEAD_<sha>=<ref> (not in the documentation; measured), which is what the fallback reads. The
 // conflicted and --no-commit paths keep MERGE_HEAD, which is the documented state and wins when
-// both are present.
-export function mergedHead(environment = process.env) {
-  const head = gitOrEmpty(['rev-parse', '--verify', 'MERGE_HEAD'], [128])
+// both are present. The read is a parameter so a test can state the world it is asking about: with
+// a real merge in progress — the state this gate is invoked in, from the hook a merge runs — reading
+// the repository directly would answer with that merge instead of with the fixture.
+export function mergedHead(environment = process.env, readMergeHead = () => gitOrEmpty(['rev-parse', '--verify', 'MERGE_HEAD'], [128])) {
+  const head = readMergeHead()
   if (head) return { revision: head, from: 'MERGE_HEAD' }
   const relayed = Object.keys(environment).find((key) => /^GITHEAD_[0-9a-f]{40,64}$/.test(key))
   if (!relayed) return null

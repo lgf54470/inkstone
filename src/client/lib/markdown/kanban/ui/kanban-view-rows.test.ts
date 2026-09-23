@@ -151,6 +151,8 @@ describe('the calendar day cell is a container whose number adds to that day (SH
     const label = t('preview.kanban_new_item_on_value0', { value0: todayNumber })
     const day = [...document.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.getAttribute('aria-label') === label)
     act(() => day?.click())
-    expect(onAddItem).toHaveBeenCalledWith(todayKey)
+    // The view hands the day over as the defaults for the new item, keyed by the view's own date
+    // field (the root writes them onto the item it creates), not as a bare date string.
+    expect(onAddItem).toHaveBeenCalledWith({ startDate: todayKey })
   })
 })

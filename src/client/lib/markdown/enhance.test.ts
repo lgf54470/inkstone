@@ -3,6 +3,7 @@ import { initI18n } from '../i18n'
 import { configureCodeBlockCollapsing, decorateCodeBlock, destroyChartInstances, enhancePreview, renderChartJs, toggleCodeBlockCollapse } from './enhance'
 import { highlightWithPrism } from './prism'
 import { encodeDataValue } from './data-attr'
+import { createFenceBodies, type FenceBodies, takeFenceIndex } from './fence-bodies'
 import { installTestGlobals } from '../test-render'
 import { stubCanvasContext } from './enhance.test-helpers'
 
@@ -234,5 +235,76 @@ describe('chart rendering — tolerant config parsing', () => {
       restoreCanvasContext()
       root.remove()
     }
+  })
+})
+
+const BOARD = {
+  title: 'Release plan',
+  activeViewId: 'view-board',
+  columns: [
+    { id: 'title', name: 'Title', type: 'title' },
+    { id: 'status', name: 'Status', type: 'select', options: [{ id: 'todo', label: 'To Do', color: 'gray' }] },
+  ],
+  views: [{ id: 'view-board', name: 'Board', type: 'board', groupBy: 'status' }],
+  items: [{ id: 'i1', title: 'Write the changelog', properties: { status: 'todo' } }],
+}
+
+// A host hands the enhancement the markup and the set it was rendered from, and the enhancement puts
+// that set where every block reads it back — which is the whole claim behind the preview pane, the
+// share page, an export and a card not registering anything themselves (P-01).
+function boardRoot(): { root: HTMLElement, fences: FenceBodies } {
+  const fences = createFenceBodies()
+  takeFenceIndex(fences, 'kanban', JSON.stringify(BOARD))
+  const root = document.createElement('div')
+  root.innerHTML = `<div class="kanban-block loading" data-kanban="" data-kanban-index="0" aria-busy="true"><div class="kanban-block-head"><button type="button" data-kanban-fullscreen></button></div><div class="kanban-block-placeholder" data-kanban-placeholder>Loading kanban...</div></div>`
+  return { root, fences }
+}
+
+function boardNode(root: HTMLElement): HTMLElement {
+  return root.querySelector<HTMLElement>('[data-kanban]')!
+}
+
+describe('kanban blocks — what each surface gets', () => {
+  it('shows the fence where the surface declares nothing about boards', async () => {
+    const { root, fences } = boardRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, fences })
+
+    const node = boardNode(root)
+    expect(node.getAttribute('aria-busy')).toBe('false')
+    expect(node.querySelector('code')?.textContent).toContain('Write the changelog')
+  })
+
+  it('leaves the block to its host when the surface mounts boards itself', async () => {
+    const { root, fences } = boardRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, kanban: 'live', fences })
+
+    const node = boardNode(root)
+    expect(node.classList.contains('loading')).toBe(true)
+    expect(node.getAttribute('aria-busy')).toBe('true')
+    expect(node.querySelector('[data-kanban-fullscreen]')).not.toBeNull()
+    expect(node.querySelector('code')).toBeNull()
+  })
+
+  it('draws the cards as a still list when the markup is serialized or printed', async () => {
+    const { root, fences } = boardRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, kanban: 'snapshot', fences })
+
+    const node = boardNode(root)
+    expect(node.querySelector('[data-kanban-snapshot]')?.textContent).toContain('Write the changelog')
+    expect(node.getAttribute('aria-busy')).toBe('false')
+    expect(node.querySelector('[data-kanban-fullscreen]')).toBeNull()
+  })
+})
+
+describe('kanban blocks — a set that never arrived', () => {
+  it('reads a board with no bodies of its own as an empty fence, not as another block body', async () => {
+    // The other half of the same claim: a host that forgets the option gets the loud error state the
+    // family already answers with, rather than a board drawn out of some other document's numbering.
+    const { root } = boardRoot()
+    await enhancePreview(root, { math: false, mermaid: false, dark: false, kanban: 'snapshot' })
+
+    const node = boardNode(root)
+    expect(node.querySelector('[data-kanban-snapshot]')?.textContent).not.toContain('Write the changelog')
+    expect(node.getAttribute('aria-busy')).toBe('false')
   })
 })

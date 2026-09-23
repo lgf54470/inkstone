@@ -9,6 +9,7 @@ import {
   type ExcalidrawSession,
 } from '../../lib/markdown/excalidraw'
 import { useLocale } from '../../lib/i18n'
+import { registerFenceBodies, type FenceBodies } from '../../lib/markdown/fence-bodies'
 import { createExcalidrawWriter } from './excalidraw-sync'
 
 export interface ExcalidrawFullscreenState {
@@ -25,6 +26,12 @@ interface UseExcalidrawBlocksOptions {
   noteId: string | null
   hostRef: RefObject<HTMLDivElement | null>
   committedHtml: string
+  /**
+   * The fence bodies this markup was rendered from (P-01). Registered on the host before the boards
+   * mount, and itself a mount trigger: a body-only edit changes what the blocks read while leaving
+   * the markup string untouched, so the markup alone no longer says «new document».
+   */
+  fences: FenceBodies
   dark: boolean
 }
 
@@ -34,7 +41,7 @@ interface UseExcalidrawBlocksOptions {
  * so typing in the editor never restarts a board.
  */
 export function useExcalidrawBlocks(options: UseExcalidrawBlocksOptions) {
-  const { scope, noteId, hostRef, committedHtml, dark } = options
+  const { scope, noteId, hostRef, committedHtml, fences, dark } = options
   const locale = useLocale()
   const writer = useMemo(() => createExcalidrawWriter(noteId), [noteId])
   const [fullscreen, setFullscreen] = useState<ExcalidrawFullscreenState | null>(null)
@@ -43,12 +50,13 @@ export function useExcalidrawBlocks(options: UseExcalidrawBlocksOptions) {
   useLayoutEffect(() => {
     const host = hostRef.current
     if (!host) return
+    registerFenceBodies(host, fences)
     void mountExcalidraws(host, { scope, noteId, dark, locale, editable: true, writeBack: writer }).catch((err: unknown) => {
       // Per-block failures render their own error banner; this only catches a
       // wholesale failure such as a detached host.
       console.warn('[inkstone] whiteboard mount failed', err)
     })
-  }, [committedHtml, dark, locale, noteId, scope, writer, hostRef])
+  }, [committedHtml, fences, dark, locale, noteId, scope, writer, hostRef])
 
   useExcalidrawTeardown(scope, setFullscreen, setLibraryMenu)
   useExcalidrawPointerFocus(hostRef, committedHtml)

@@ -2,6 +2,7 @@ import MarkdownIt from 'markdown-it'
 import type Token from 'markdown-it/lib/token.mjs'
 import { escapeHtml } from '@shared/escape'
 import { t } from '../../i18n'
+import { takeFenceIndex } from '../fence-bodies'
 import { encodeDataValue } from '../data-attr'
 import { EXCALIDRAW_LANGUAGES } from '../excalidraw'
 import { detectKanbanMode, KANBAN_LANGUAGES } from '../kanban'
@@ -15,11 +16,13 @@ import { escapeAttr } from './util'
 function renderMarkdownExample(md: MarkdownIt, token: Token, line: string, rendererEnv: unknown, info: FenceInfo): string {
   const parentEnv = renderEnv(rendererEnv)
   const exampleId = ++parentEnv.exampleSequence
-  const childEnv = emptyEnvironment()
+  // The example's own blocks number on from the document around them and leave their bodies in the
+  // same set: this markup is embedded in the parent's string, so a second numbering would hand two
+  // blocks the same index and one body would answer for both.
+  const childEnv = emptyEnvironment(parentEnv.fences)
   childEnv.taskNonce = parentEnv.taskNonce
   childEnv.tabSequence = parentEnv.tabSequence
   childEnv.exampleSequence = parentEnv.exampleSequence
-  childEnv.mindmapSequence = parentEnv.mindmapSequence
   childEnv.docId = `${parentEnv.docId}-example-${exampleId}`
   childEnv.externalImages = parentEnv.externalImages
   const preview = md.render(stripObsidianComments(token.content), childEnv).replace(/ data-line="\d+"/g, '')
@@ -30,7 +33,6 @@ function renderMarkdownExample(md: MarkdownIt, token: Token, line: string, rende
   parentEnv.hasEmbeds ||= childEnv.hasEmbeds
   parentEnv.tabSequence = childEnv.tabSequence
   parentEnv.exampleSequence = Math.max(parentEnv.exampleSequence, childEnv.exampleSequence)
-  parentEnv.mindmapSequence = Math.max(parentEnv.mindmapSequence, childEnv.mindmapSequence)
   const title = info.title || t('markdown.markdown_example')
   const titleId = `${parentEnv.docId}-markdown-example-${exampleId}`
   return [
@@ -144,8 +146,8 @@ function renderThemePicker(): string {
 function renderMindmapBlock(token: Token, line: string, rendererEnv: unknown): string {
   const env = renderEnv(rendererEnv)
   env.hasMindmap = true
-  const index = env.mindmapSequence++
   const body = token.content
+  const index = takeFenceIndex(env.fences, 'mindmap', body)
   const mode = detectMindmapMode(body)
   const modeLabel = mode === 'json' ? t('preview.mindmap_mode_json') : t('preview.mindmap_mode_outline')
   const fitLabel = escapeAttr(t('preview.mindmap_fit'))
@@ -154,7 +156,7 @@ function renderMindmapBlock(token: Token, line: string, rendererEnv: unknown): s
   // hands it to the same reader the JSON body's field goes through (see mindmap/theme).
   const annotation = readFenceAnnotation(token.info)
   return [
-    `<div class="mindmap-block loading"${line} data-mindmap="${escapeAttr(encodeDataValue(body))}" data-mindmap-mode="${mode}" data-mindmap-index="${index}"${annotation === null ? '' : ` ${MINDMAP_THEME_ATTR}="${escapeAttr(annotation)}"`} aria-busy="true">`,
+    `<div class="mindmap-block loading"${line} data-mindmap="" data-mindmap-mode="${mode}" data-mindmap-index="${index}"${annotation === null ? '' : ` ${MINDMAP_THEME_ATTR}="${escapeAttr(annotation)}"`} aria-busy="true">`,
     `<div class="mindmap-block-head">`,
     `<span class="mindmap-block-title">${escapeHtml(t('preview.mindmap'))}</span>`,
     `<span class="mindmap-block-mode">${escapeHtml(modeLabel)}</span>`,
@@ -176,12 +178,13 @@ function renderMindmapBlock(token: Token, line: string, rendererEnv: unknown): s
  */
 function renderExcalidrawBlock(token: Token, line: string, rendererEnv: unknown): string {
   const env = renderEnv(rendererEnv)
-  const index = env.excalidrawSequence++
+  const body = token.content
+  const index = takeFenceIndex(env.fences, 'excalidraw', body)
   const fitLabel = escapeAttr(t('preview.excalidraw_fit'))
   const fullscreenLabel = escapeAttr(t('preview.excalidraw_fullscreen'))
   const libraryLabel = escapeAttr(t('preview.excalidraw_library'))
   return [
-    `<div class="excalidraw-block loading"${line} data-excalidraw="${escapeAttr(encodeDataValue(token.content))}" data-excalidraw-index="${index}" aria-busy="true">`,
+    `<div class="excalidraw-block loading"${line} data-excalidraw="" data-excalidraw-index="${index}" aria-busy="true">`,
     `<div class="excalidraw-block-head">`,
     `<span class="excalidraw-block-title">${escapeHtml(t('preview.excalidraw'))}</span>`,
     `<span class="excalidraw-block-actions">`,
@@ -198,12 +201,12 @@ function renderExcalidrawBlock(token: Token, line: string, rendererEnv: unknown)
 function renderKanbanBlock(token: Token, line: string, rendererEnv: unknown): string {
   const env = renderEnv(rendererEnv)
   env.hasKanban = true
-  const index = env.kanbanSequence++
   const body = token.content
+  const index = takeFenceIndex(env.fences, 'kanban', body)
   const mode = detectKanbanMode(body)
   const fullscreenLabel = escapeAttr(t('preview.kanban_fullscreen'))
   return [
-    `<div class="kanban-block loading"${line} data-kanban="${escapeAttr(encodeDataValue(body))}" data-kanban-index="${index}" aria-busy="true">`,
+    `<div class="kanban-block loading"${line} data-kanban="" data-kanban-index="${index}" aria-busy="true">`,
     `<div class="kanban-block-head">`,
     `<span class="kanban-block-title">${escapeHtml(t('preview.kanban'))}</span>`,
     `<span class="kanban-block-mode">${escapeHtml(mode)}</span>`,
@@ -219,12 +222,12 @@ function renderKanbanBlock(token: Token, line: string, rendererEnv: unknown): st
 function renderBentoSlidesBlock(token: Token, line: string, rendererEnv: unknown): string {
   const env = renderEnv(rendererEnv)
   env.hasBentoSlides = true
-  const index = env.bentoSlidesSequence++
   const body = token.content
+  const index = takeFenceIndex(env.fences, 'slides', body)
   const mode = detectSlidesMode(body)
   const fullscreenLabel = escapeAttr(t('preview.slides_fullscreen'))
   return [
-    `<div class="bento-slides-block loading"${line} data-bento-slides="${escapeAttr(encodeDataValue(body))}" data-bento-slides-index="${index}" aria-busy="true">`,
+    `<div class="bento-slides-block loading"${line} data-bento-slides="" data-bento-slides-index="${index}" aria-busy="true">`,
     `<div class="bento-slides-block-head">`,
     `<span class="bento-slides-block-title">${escapeHtml(t('preview.slides'))}</span>`,
     `<span class="bento-slides-block-mode">${escapeHtml(mode)}</span>`,

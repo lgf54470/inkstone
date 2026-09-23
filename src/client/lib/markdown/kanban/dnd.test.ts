@@ -49,21 +49,47 @@ describe('reorderKanbanItems', () => {
     { id: '4', title: 'Task 4', properties: { status: 'done' } },
   ]
 
-  it('moves an item within the same column', () => {
-    const reordered = reorderKanbanItems(sampleItems, '3', 'status', 'todo', 0)
+  it('moves an item before a pivot within the same column', () => {
+    const reordered = reorderKanbanItems(sampleItems, '3', 'status', 'todo', { itemId: '1', position: 'before' })
     expect(reordered.map((i) => i.id)).toEqual(['3', '1', '2', '4'])
   })
 
-  it('moves an item to another column without target index (appends)', () => {
+  it('moves an item to another column without a pivot (appends)', () => {
     const reordered = reorderKanbanItems(sampleItems, '1', 'status', 'done')
     const doneItems = reordered.filter((i) => i.properties.status === 'done')
     expect(doneItems.map((i) => i.id)).toEqual(['4', '1'])
   })
 
-  it('moves an item to another column at specific index', () => {
-    const reordered = reorderKanbanItems(sampleItems, '1', 'status', 'done', 0)
+  it('moves an item to another column before a pivot', () => {
+    const reordered = reorderKanbanItems(sampleItems, '1', 'status', 'done', { itemId: '4', position: 'before' })
     const doneItems = reordered.filter((i) => i.properties.status === 'done')
     expect(doneItems.map((i) => i.id)).toEqual(['1', '4'])
+  })
+
+  it('anchors on the pivot id when hidden items shift filtered positions', () => {
+    // A filter hides item '1', so the visible column is [2, 3]. Dropping '4'
+    // above '3' must land between 2 and 3, not at the column start.
+    const reordered = reorderKanbanItems(sampleItems, '4', 'status', 'todo', { itemId: '3', position: 'before' })
+    expect(reordered.map((i) => i.id)).toEqual(['1', '2', '4', '3'])
+  })
+})
+
+describe('reorderKanbanItems pivot placement', () => {
+  const sampleItems: KanbanItem[] = [
+    { id: '1', title: 'Task 1', properties: { status: 'todo' } },
+    { id: '2', title: 'Task 2', properties: { status: 'todo' } },
+    { id: '3', title: 'Task 3', properties: { status: 'todo' } },
+    { id: '4', title: 'Task 4', properties: { status: 'done' } },
+  ]
+
+  it('drops after the pivot when the pointer is on its lower half', () => {
+    const reordered = reorderKanbanItems(sampleItems, '4', 'status', 'todo', { itemId: '2', position: 'after' })
+    expect(reordered.map((i) => i.id)).toEqual(['1', '2', '4', '3'])
+  })
+
+  it('is a no-op when the pivot is the dragged card itself', () => {
+    const reordered = reorderKanbanItems(sampleItems, '2', 'status', 'todo', { itemId: '2', position: 'before' })
+    expect(reordered).toEqual(sampleItems)
   })
 
   it('moves an item to __none__ column', () => {
