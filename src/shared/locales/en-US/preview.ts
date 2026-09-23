@@ -297,6 +297,7 @@ export const messages = {
 'preview.kanban_undo_shortcut': 'Undo ({shortcut})',
 'preview.kanban_redo_shortcut': 'Redo ({shortcut})',
 'preview.kanban_new_group_title': 'New group {value0}',
+'preview.kanban_rename_card': 'Rename card',
 'preview.kanban_untitled': 'Untitled Task',
 'preview.kanban_view_chart': 'Chart',
 'preview.kanban_chart_bar': 'Bar Chart',

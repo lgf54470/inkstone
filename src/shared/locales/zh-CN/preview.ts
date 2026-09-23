@@ -307,6 +307,7 @@ export const messages = {
 'preview.kanban_undo_shortcut': '撤销（{shortcut}）',
 'preview.kanban_redo_shortcut': '重做（{shortcut}）',
 'preview.kanban_new_group_title': '新分组 {value0}',
+'preview.kanban_rename_card': '重命名卡片',
 'preview.kanban_untitled': '未命名任务',
 'preview.kanban_view_chart': '图表',
 'preview.kanban_chart_bar': '柱状图',

@@ -1,6 +1,6 @@
-import { memo, useState, type KeyboardEvent } from 'react'
+import { memo, type KeyboardEvent } from 'react'
 import { Flag, Paperclip } from 'lucide-react'
-import { t, useLocaleRepaint } from '../../../i18n'
+import { useLocaleRepaint } from '../../../i18n'
 import { isEditableTarget } from '../../../hotkeys'
 import { getKanbanTagStyle } from '../colors'
 import { getKanbanCardDate } from '../date-fields'
@@ -9,8 +9,8 @@ import { kanbanPersonName } from '../person'
 import type { KanbanColorName, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { CardHeader } from './kanban-card-header'
 import { KanbanCardSubtasks } from './kanban-card-subtasks'
+import { CardTitle, useCardTitleGestures, useKanbanCardTitle } from './kanban-card-title'
 import { KanbanDateBadge } from './kanban-date-badge'
-import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanPersonAvatar } from './kanban-person-picker'
 
 /** Shift+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */
@@ -35,77 +35,6 @@ interface KanbanCardProps {
   onMoveColumn?: (id: string, direction: CardMoveDirection) => void
   onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
-}
-
-function CardTitle({
-  title,
-  icon,
-  isEditing,
-  titleText,
-  onChangeText,
-  onStartEditing,
-  onOpenDetail,
-  onBlur,
-  onCancel,
-}: {
-  title: string
-  icon?: string
-  isEditing: boolean
-  titleText: string
-  onChangeText: (text: string) => void
-  onStartEditing: () => void
-  onOpenDetail: () => void
-  onBlur: () => void
-  onCancel: () => void
-}) {
-  if (isEditing) {
-    return (
-      <div className='flex items-center gap-1.5'>
-        {icon && <KanbanIconBadge icon={icon} size={15} />}
-        <input
-          type='text'
-          data-owns-escape='true'
-          value={titleText}
-          autoFocus
-          onClick={(e) => e.stopPropagation()}
-          onChange={(e) => onChangeText(e.target.value)}
-          onBlur={onBlur}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') onBlur()
-            if (e.key === 'Escape') onCancel()
-          }}
-          className='w-full rounded-[var(--r-xs)] border border-[var(--accent)] bg-[var(--bg-inset)] px-1.5 py-0.5 text-[length:var(--text-14)] font-semibold text-[var(--text-primary)] outline-none'
-        />
-      </div>
-    )
-  }
-
-  return (
-    // A card is a third-level heading under the board's own title: the board's `<h2>` (kanban-header)
-    // and then the cards, with no level skipped in between. As an `h4` the card jumped a level, which
-    // is what a browser reading this surface reports as heading-order.
-    // The heading is the card's heading and nothing else: both of the card's title gestures live on
-    // the button inside it — a click opens the detail, a double click starts editing — which is what
-    // having them on the heading itself cost (an affordance on a non-interactive element, and a
-    // keyboard that could reach neither of them). The heading carries no type of its own either: the
-    // size and weight sit on the wrapper in `CardBody`, because a note's stylesheet owns an `h3` and
-    // would win any utility written here (styles/kanban.css hands it back for the board's own markup).
-    <h3 className='flex items-start gap-1.5 text-[var(--text-primary)]'>
-      {icon && (
-        <span className='mt-0.5 shrink-0'>
-          <KanbanIconBadge icon={icon} size={15} />
-        </span>
-      )}
-      <button
-        type='button'
-        onClick={onOpenDetail}
-        onDoubleClick={onStartEditing}
-        className='line-clamp-2 cursor-pointer text-left hover:text-[var(--accent)]'
-      >
-        {title || t('preview.kanban_untitled')}
-      </button>
-    </h3>
-  )
 }
 
 function CardFooter({
@@ -145,23 +74,6 @@ function CardFooter({
   )
 }
 
-function useKanbanCardTitle(initialTitle: string, onUpdate: (title: string) => void) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [text, setText] = useState(initialTitle)
-
-  const handleBlur = () => {
-    setIsEditing(false)
-    if (text.trim() && text !== initialTitle) onUpdate(text.trim())
-    else setText(initialTitle)
-  }
-
-  const handleCancel = () => {
-    setText(initialTitle)
-    setIsEditing(false)
-  }
-
-  return { isEditing, text, setText, startEditing: () => setIsEditing(true), handleBlur, handleCancel }
-}
 
 const CARD_MOVE_KEYS: Record<string, CardMoveDirection> = {
   ArrowRight: 'next',
@@ -244,6 +156,7 @@ function CardBody({
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
 }) {
   const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
+  const gestures = useCardTitleGestures(onOpenDetail, titleState.startEditing)
 
   return (
     <>
@@ -260,7 +173,9 @@ function CardBody({
           titleText={titleState.text}
           onChangeText={titleState.setText}
           onStartEditing={titleState.startEditing}
-          onOpenDetail={onOpenDetail}
+          onTitleClick={gestures.handleTitleClick}
+          onTitleDoubleClick={gestures.handleTitleDoubleClick}
+          onTitleKeyDown={gestures.handleTitleKeyDown}
           onBlur={titleState.handleBlur}
           onCancel={titleState.handleCancel}
         />

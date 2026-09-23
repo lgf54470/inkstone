@@ -14,7 +14,7 @@
 - [x] KU-01 弹出面板统一锚定（用户点③；含新发现：图标选择器无锚点、详情内面板被对话框滚动区裁剪）—— 实做见下，「Portal 化」被否，理由在条目内
 - [x] KU-02 活动视图标签指示器 + 标签条溢出可见性（用户点②）
 - [x] KU-03 表面层级与列配色（用户点④）—— 阶梯 = 平面 `--bg-inset` → 列 `--bg-surface` → 卡片 `--bg-raised`；列头整条按分组色染色（不再只画 10px 圆点）；表格视图保留「整块面板」形态，理由在条目内
-- [ ] KU-04 卡片标题双击竞速守卫 + hover 铅笔 / F2（用户点⑤，方案 A）
+- [x] KU-04 卡片标题双击竞速守卫 + hover 铅笔 / F2（用户点⑤，方案 A）—— 按用户裁定保留双击改名、单击延迟 250ms 才开详情；另补铅笔与 F2 两个不需知道手势的入口
 - [ ] KU-05 内联紧凑头部：容器查询 + 图标 / Tooltip + ⋯ 溢出菜单（用户点①）
 - [ ] KU-06 列不再拉满 + 画布高度自适应 + 滚动条可见性（用户点①的空白行）
 - [ ] KU-07 干掉原生 `<select>`，面板结构对齐设置面板（`SettingRow`/`Segmented`/`Select`）
@@ -105,11 +105,15 @@
 - **验证**：① 6 例单测（三层令牌各就各位、两条染底列互不相同、染底标签取该色前景、`undefined`/未知色一律不画、真实板子上每一列都有染底；先红后绿）；② 浏览器门禁 `assertKanbanSurfaces`（内联 + 全屏各 3 条）：平面 = `--bg-inset`、列 = `--bg-surface`、卡片 = `--bg-raised`；平面 ≠ 列；两条不同颜色的列画出来的色互不相同、也不等于列底色——读的是真实绘制的像素与令牌值，且在读之前**先按真实指针切回看板视图**（该断言前面有会切视图的步骤，读到一个没有列的视图就是空断言）；③ `contrast:check` 实测 kanban 表面两主题各 10/8 条「层级 × 底色」、6/3 组强调底配对按 7 个强调色重算、4 种背景变体各 12 条标签配对全过 AA，axe 两主题 0 违规；④ 实跑全新实例（`INKSTONE_EPHEMERAL_DEV=1`，:7720）：`e2e.mjs` 177/0、`e2e-visual.mjs` **428/0**（= KU-02 的 420 + 本项 6 条 + 2 条「读的是看板视图」守卫）、全量 `test:unit` 与 12 项静态门禁 + typecheck 全绿。
 - **局限**：① 浅色主题里 `--bg-surface` 与 `--bg-raised` 仍是同一个白，列与卡片的区分靠描边 + 阴影，令牌阶梯只在深色主题直接可见——这是既有令牌层的事实，本项不改令牌；② 染底只覆盖看板视图的列头，表格分组行仍把颜色用在分组名与圆点上；③ 无「列宽拖拽后染底跟着变宽」的断言（几何随列壳而定，门禁不量宽度）。
 
-#### KU-04 卡片标题双击竞速守卫
+#### KU-04 卡片标题双击竞速守卫 + hover 铅笔 / F2（已修，用户裁定方案 A）
 
-- **修法**：单击 → 250ms 后打开详情，`dblclick`（或 `event.detail >= 2`）取消定时器并进入就地编辑；补 hover 铅笔与 **F2** 显式入口；`data-owns-escape` 已有，Escape 取消、Enter 提交不变；键盘 Enter 仍开详情。
-- **范围**：`kanban-card.tsx`、`kanban-card-header.tsx`、`kanban-card.test.ts`、双语键（如已存在则复用）。
+- **根因**：`CardTitle` 的标题钮上同挂 `onClick => onOpenDetail` 与 `onDoubleClick => startEditing`。第一次 click 已经把详情弹窗打开（遮罩铺满视口 + 焦点陷阱），第二次 click 落在遮罩上被当成「点外部」把弹窗关掉，`dblclick` 的目标已不是标题钮 —— 于是读者看到的是「双击 → 详情闪一下 → 弹窗关掉」，改名永远不会发生。
+- **修法（实做）**：① 单击不再直接开详情，而是排一个 250ms 的定时器（`KANBAN_TITLE_OPEN_DELAY_MS`），双击时取消它并进入就地编辑；② `event.detail === 0`（键盘激活与程序化点击）没有第二击可等，直接开详情，所以 Enter/Space 仍即时；③ 新增 title 行右侧的 **铅笔**（悬停与 `focus-visible` 揭示，带可访问名）与标题钮上的 **F2** 两个不需知道手势的入口；④ 卡片在窗口内被卸载（筛选/切视图/搬卡）时清掉待开定时器，不为一张不在板上的卡开弹窗。
+- **决策（自决）**：① 用定时器而不是「先开后关」——后者就是今天的病（弹窗闪一下），也治不好；Windows 资源管理器与各文件管理器同此；② 「无第二击」的判据取 `detail === 0`（键盘激活的规范值）而不是另设一个「键盘来源」标记；③ 铅笔放在 `h3` **旁边**而不是里面：标题就是浏览器读作卡片名字的那个盒子，也是揭示行几何断言度量的盒子 —— 画在它**内部**的控件会被读成「一个盖住自己标题的控件」（门禁首跑就实报了 `重命名卡片 16x16` 命中）；④ 卡片标题这一套（状态 + 手势 + 字段 + 两个视图）从 `kanban-card.tsx` 析出为 `ui/kanban-card-title.tsx`（仿 `kanban-fullscreen-title.tsx` 的 Editor/View 分法），否则该文件 501 行过不了 500 行硬限。
+- **范围**：新增 `ui/kanban-card-title.tsx`、`ui/kanban-card.tsx`（改写导出的 `KANBAN_TITLE_OPEN_DELAY_MS` 等）、`ui/kanban-card.test.ts`（6 新例 + 抽出共用 helper）、双语新键 `preview.kanban_rename_card`、`scripts/e2e-visual.mjs`（新 `assertKanbanTitleGestures`）、`scripts/check-comments.mjs`（白名单按当前树重算）+ 本文件。
 - **代价**：S–M。
+- **验证**：① 6 例单测用假定时器与带 `detail` 的鼠标事件（单击要等窗口过完才开、双击就地改名且**从不**开详情、铅笔改名、F2 改名、无第二击的激活即时开、开窗期间卸载不补开）——实测只有程序化 `.click()`（`detail` 为 0）能同步开详情，既有用例因此全部原样通过；② 变异自检：双击不再取消待开 → 1 例红；改回「单击即开」→ 3 例红；两次均由 `/tmp` 备份字节相同还原；③ 浏览器门禁 `assertKanbanTitleGestures`（内联 + 全屏各 4 条）用**真实指针**双击：标题能点到、双击画出字段、双击不改对话框计数、事后 Escape 不写入（`data-owns-escape` 保证不连带关板）。首跑实测两个真问题并已修正：Puppeteer 的 `mouse.click({ clickCount: 2 })` 只发一次带计数的按压（根本不发 `dblclick`），改两次完整按下/抬起；铅笔需移到 `h3` 之外（见决策③）。④ 实跑全新实例（`INKSTONE_EPHEMERAL_DEV=1`，:7720）：`e2e-visual.mjs` **436/0**（= KU-03 的 428 + 本项 8 条）、`contrast:check` ✅（kanban 两主题 axe 0 违规）、全量 `test:unit` 438 文件 3942 通过 | 1 跳过、12 项静态门禁 + typecheck 全绿。
+- **局限**：① 250ms 的等待对单击是真实延迟（相对旧行为），这是方案的代价；② 卡片标题行多一个悬停控件，悬停时右侧会多出 16px 按钮（已用 `gap` 与标题分开，且只有悬停/聚焦才出现）；③ 列表/画廊/表格视图的标题**没有**就地改名（从未有过），本项只修看板卡片标题；④ 无「触屏双击」专项断言（移动端无 `dblclick` 语义，铅笔是那里的入口，未另测）。
 
 #### KU-05 内联紧凑头部
 
@@ -212,6 +216,8 @@ node scripts/check-token-drift.mjs --update-baseline   # 仅当动共享令牌
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
 | 2026-09-23 | 建立 UI 轮报告与执行计划（用户评审通过） | `ee174a69` | 文档提交，无产品代码改动；清单 KU-01…KU-43 入库，批次 1（用户点名的 5 条）排最前 |
-| 2026-09-23 | KU-03 表面层级与列配色（用户点④） | （本提交） | 阶梯重排为 平面 `--bg-inset` → 列 `--bg-surface` → 卡片 `--bg-raised`（板根/列壳/卡片/画廊卡/列表行，折叠列随列壳），列头整条按分组色染色（新增 `getKanbanTintStyle`，取该调色板校准过的唯一配对）不再只画 10px 圆点；表格视图保持「整块面板」形态（有意边界，见条目内）。`ColumnHeaderBand` 析出以守住 50 行函数上限。6 例单测先红后绿；门禁新增 `assertKanbanSurfaces`（内联 + 全屏各 3 条，按真实像素读三层令牌与两条染底列互不相同），并在读之前按真实指针切回看板视图。实跑全新实例：`e2e.mjs` 177/0、`e2e-visual.mjs` 428/0、`contrast:check` ✅（两主题层级×底色 + 7 强调色重算 + axe 0 违规）、全量 `test:unit` ✅、12 项静态门禁 + typecheck ✅ |
+| 2026-09-23 | 清理 KU-01/KU-02 留下的一行死导入 | `dca0505b` | `kanban-root-hooks.ts` 已不再引用 `KanbanFile`，类型导入会被擦除所以 typecheck 不报；琐碎提交不另记条目 |
+| 2026-09-23 | KU-04 卡片标题双击竞速守卫 + 铅笔/F2（用户点⑤） | （本提交） | 单击改排 250ms 定时器（双击取消它并就地改名），`detail === 0` 的键盘激活仍即时开详情；新增铅笔（悬停/聚焦揭示，放在 `h3` 之外）与 F2 两个入口；卡片卸载时清定时器。标题一套析出为 `ui/kanban-card-title.tsx`（`kanban-card.tsx` 501 行过不了 500 行硬限）。6 例单测（假定时器 + 带 `detail` 的事件）先红后绿，变异 1/3 例红两次字节还原；门禁新增 `assertKanbanTitleGestures`（内联 + 全屏各 4 条，真实指针双击），首跑报出 Puppeteer `clickCount:2` 不发 `dblclick` 与铅笔落在 `h3` 内两处真问题并已修正。实跑：`e2e-visual.mjs` 436/0、`contrast:check` ✅、全量 `test:unit` 438 文件 3942 通过、12 项静态门禁 + typecheck ✅ |
+| 2026-09-23 | KU-03 表面层级与列配色（用户点④） | `7a756460` | 阶梯重排为 平面 `--bg-inset` → 列 `--bg-surface` → 卡片 `--bg-raised`（板根/列壳/卡片/画廊卡/列表行，折叠列随列壳），列头整条按分组色染色（新增 `getKanbanTintStyle`，取该调色板校准过的唯一配对）不再只画 10px 圆点；表格视图保持「整块面板」形态（有意边界，见条目内）。`ColumnHeaderBand` 析出以守住 50 行函数上限。6 例单测先红后绿；门禁新增 `assertKanbanSurfaces`（内联 + 全屏各 3 条，按真实像素读三层令牌与两条染底列互不相同），并在读之前按真实指针切回看板视图。实跑全新实例：`e2e.mjs` 177/0、`e2e-visual.mjs` 428/0、`contrast:check` ✅（两主题层级×底色 + 7 强调色重算 + axe 0 违规）、全量 `test:unit` ✅、12 项静态门禁 + typecheck ✅ |
 | 2026-09-23 | KU-02 活动视图标签指示器 + 标签条跟随选中（用户点②） | `12133c3b` | 活动 tab 改走应用既有强调配对（旧 `--bg-raised` 在两套浅色主题下等于头部自己的 `--bg-surface`，指示器形同不存在），标签条每次 commit 把自己的 `scrollLeft` 跟上选中项；`KanbanTabList` 拆出 `KanbanTab`/`useSelectedTabInView`（50 行函数上限），新用例另开 `kanban-view-tabs-selection.test.ts`（行数预算）。7 新例先红后绿；变异（改回 `--bg-raised` / 中性滚动）分别杀 2 例、3 例并字节还原；`check-contrast` 的 kanban 表面增声明 `accent` 并实测两主题各 6/3 组强调底配对全过 AA；`e2e-visual` 新增 `assertKanbanActiveTab`（内联 + 全屏各 3 条），变异实跑如实报红。实跑：`e2e-visual.mjs` 420/0、`contrast:check` ✅、`test:unit` 437 文件 3930 例、12 项静态门禁 + typecheck 全绿 |
 | 2026-09-23 | KU-01 弹出面板统一锚定（用户点③） | `88dcf6c0` | 新增共用面板 `ui/kanban-panel.tsx`（自测包含块 + `placePanel` + 双侧夹紧），7 处面板改走它，图标选择器不再落静态位、详情内面板不再被对话框滚动区裁掉；Portal 化被否（焦点陷阱 + `anim-pop` 包含块），理由在条目内。`kanban-panel.test.ts` 21 例先红后绿；变异（锚点换成父元素）杀 12 例并字节还原；门禁新增 `assertKanbanPanelAnchoring`（内联 + 全屏各逐控件断言）。实跑：`e2e.mjs` 177/0、`e2e-visual.mjs` 414/0、`test:unit` 436 文件 3923 例、12 项静态门禁 + typecheck 全绿 |

@@ -2751,6 +2751,79 @@ async function assertKanbanSurfaces(page, scope, where) {
   )
 }
 
+/**
+ * A card's title carries two gestures, driven here with a real pointer because the difference between
+ * them is a count the DOM only fills in for a pointer: one click opens the detail after the
+ * double-click window, two rename the card in place.
+ *
+ * It is the report that put this here (user, 2026-09-23): double clicking a title flashed the detail
+ * window and closed it, so the rename could never happen — the first click had already opened the
+ * dialog and the dialog's own overlay ate the second one. What is asserted is therefore both halves:
+ * the double click must draw a field, and it must leave the count of dialogs alone. Escape is then
+ * pressed, and has to leave the rename without writing it (and without closing the board it was
+ * opened in, which `data-owns-escape` is what stops).
+ */
+async function assertKanbanTitleGestures(page, scope, where) {
+  const aimed = await page.evaluate((scope) => {
+    const root = document.querySelector(scope)
+    const title = root?.querySelector('[data-item-id] h3 button')
+    if (!title) return { reason: 'this surface draws no card title' }
+    title.scrollIntoView({ block: 'center' })
+    const box = title.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return { reason: 'the card title has no box' }
+    const x = Math.round(box.left + box.width / 2)
+    const y = Math.round(box.top + box.height / 2)
+    const under = document.elementFromPoint(x, y)
+    const card = title.closest('[data-item-id]')
+    return {
+      x,
+      y,
+      hit: Boolean(under && title.contains(under)),
+      text: title.textContent?.trim() ?? '',
+      itemId: card?.getAttribute('data-item-id') ?? '',
+      dialogs: root?.querySelectorAll('[role="dialog"]').length ?? -1,
+    }
+  }, scope)
+  // The pointer has to land on the title itself: the note's board sits in a pane whose scrollport
+  // reaches under the app's fixed footer, and a press that lands there is a press on something else.
+  check(`kanban ${where}: the card title can be double clicked (${aimed.reason ?? aimed.text})`, aimed.hit === true, JSON.stringify(aimed))
+  if (!aimed.hit) return
+
+  // Two full press/release pairs, the second carrying count 2: one `mouse.click({ clickCount: 2 })` is
+  // a single press with a count on it, and the browser answers that with one `click` and no
+  // `dblclick` at all — which is how this assertion first read a card that had not been renamed.
+  await page.mouse.move(aimed.x, aimed.y)
+  await page.mouse.down({ clickCount: 1 })
+  await page.mouse.up({ clickCount: 1 })
+  await page.mouse.down({ clickCount: 2 })
+  await page.mouse.up({ clickCount: 2 })
+  await sleep(200)
+  const renamed = await readCardTitleState(page, scope, aimed.itemId)
+  check(`kanban ${where}: a double click turns the card title into a field`, renamed.editing === true, JSON.stringify(renamed))
+  check(
+    `kanban ${where}: a double click renames the card instead of opening its detail`,
+    renamed.dialogs === aimed.dialogs,
+    JSON.stringify({ before: aimed.dialogs, after: renamed.dialogs }),
+  )
+
+  await page.keyboard.press('Escape')
+  await sleep(150)
+  const cancelled = await readCardTitleState(page, scope, aimed.itemId)
+  check(`kanban ${where}: escape leaves the rename without writing a new title`, cancelled.editing === false, JSON.stringify(cancelled))
+}
+
+/** Whether one card's title is a field right now, and how many dialogs its surface is showing. */
+async function readCardTitleState(page, scope, itemId) {
+  return page.evaluate(({ scope, itemId }) => {
+    const root = document.querySelector(scope)
+    const card = root?.querySelector(`[data-item-id="${itemId}"]`)
+    return {
+      editing: Boolean(card?.querySelector('input[data-owns-escape]')),
+      dialogs: root?.querySelectorAll('[role="dialog"]').length ?? -1,
+    }
+  }, { scope, itemId })
+}
+
 /** What the board has to repaint when the account's language changes: its view names and its controls. */
 async function readKanbanLocale(page) {
   return page.evaluate(() => {
@@ -2840,6 +2913,7 @@ async function assertKanbanBoard(page) {
   await assertKanbanPanelAnchoring(page, blockSelector, 'in the note')
   await assertKanbanActiveTab(page, blockSelector, 'in the note')
   await assertKanbanSurfaces(page, blockSelector, 'in the note')
+  await assertKanbanTitleGestures(page, blockSelector, 'in the note')
   const inlineViews = await readKanbanViewsInline(page, blockSelector)
   await openKanbanBoard(page)
   const surfaced = await page
@@ -2852,6 +2926,7 @@ async function assertKanbanBoard(page) {
   await assertKanbanPanelAnchoring(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanActiveTab(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanSurfaces(page, '.kanban-fullscreen', 'in the board view')
+  await assertKanbanTitleGestures(page, '.kanban-fullscreen', 'in the board view')
 
   const hosting = await page.evaluate((selector) => {
     const overlay = document.querySelector('.kanban-fullscreen')
