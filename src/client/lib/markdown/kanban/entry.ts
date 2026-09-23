@@ -21,5 +21,10 @@ export interface KanbanBlockEntry {
   unsaved: boolean
   /** The block left the document and this entry was torn down; nothing may move its container again. */
   disposed: boolean
+  /**
+   * How tall the block was when the overlay borrowed the canvas, so the stand-in left behind is the
+   * hole the board actually made rather than a fixed guess.
+   */
+  reserveHeight: number | null
   timer: number | null
 }

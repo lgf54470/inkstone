@@ -5,6 +5,7 @@ import { renderElement } from '../../lib/test-render'
 import { renderMarkdown } from '../../lib/markdown/renderer'
 import { registerFenceBodies } from '../../lib/markdown/fence-bodies'
 import {
+  createKanbanReserve,
   destroyKanbans,
   mountKanbans,
   openKanbanSession,
@@ -239,6 +240,35 @@ describe('kanban full screen single instance', () => {
 
     rendered.unmount()
     surface.host.remove()
+  })
+
+  it('keeps the hole the canvas made, not a fixed height for every board', async () => {
+    const surface = await mountSurface()
+    const canvas = surface.block.querySelector<HTMLElement>('[data-kanban-canvas]')!
+    // jsdom lays nothing out, so the height the block had is supplied. The board is as tall as its
+    // columns need (KU-06), and a stand-in of a fixed height would jump the note by the difference
+    // between the two the moment the overlay opened.
+    canvas.getBoundingClientRect = () => ({ height: 268 } as DOMRect)
+    const rendered = renderElement(createElement(Harness, { session: surface.session }))
+
+    await act(async () => {
+      rendered.container.querySelector<HTMLButtonElement>('[data-kanban-fullscreen-trigger]')!.click()
+    })
+
+    const reserve = surface.block.querySelector<HTMLElement>('.kanban-canvas.is-reserve')!
+    expect(reserve.style.height).toBe('268px')
+
+    rendered.unmount()
+    surface.host.remove()
+  })
+
+  it('falls back to the cap when the measurement is nothing to keep', async () => {
+    // The other half of the same rule: a stand-in nobody measured is left to the stylesheet rather
+    // than pinned to a zero-height hole, which is the collapse the reserve exists to prevent.
+    const reserve = createKanbanReserve()
+    expect(reserve.classList.contains('is-reserve')).toBe(true)
+    expect(reserve.style.height).toBe('')
+    expect(createKanbanReserve(0).style.height).toBe('')
   })
 })
 

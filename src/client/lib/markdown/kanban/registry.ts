@@ -127,6 +127,7 @@ function createEntry(node: HTMLElement, options: KanbanMountOptions): KanbanBloc
     dirty: false,
     unsaved: false,
     disposed: false,
+    reserveHeight: null,
     timer: null,
   }
   entries.set(created.key, created)
@@ -205,7 +206,7 @@ function mountBlock(node: HTMLElement, entry: KanbanBlockEntry, options: KanbanM
   const placeholder = kanbanPlaceholder(node)
   if (placeholder && entry.container) {
     if (entry.owner === 'overlay') {
-      if (placeholder.childElementCount === 0) placeholder.append(createKanbanReserve())
+      if (placeholder.childElementCount === 0) placeholder.append(createKanbanReserve(entry.reserveHeight))
     } else if (entry.container.parentNode !== placeholder) {
       placeholder.replaceChildren(entry.container)
     }
@@ -275,11 +276,15 @@ function rerenderDeferred(entry: KanbanBlockEntry): void {
 export function attachKanbanToOverlay(entry: KanbanBlockEntry, target: HTMLElement): void {
   if (!entry.container || entry.disposed) return
   entry.owner = 'overlay'
+  // Measured while the canvas is still in the note: the block is as tall as its columns need, so the
+  // stand-in has to be that height rather than a fixed one, or opening the overlay would jump the
+  // note by however much the board does not use.
+  entry.reserveHeight = Math.round(entry.container.getBoundingClientRect().height)
   entry.container.classList.add('is-fullscreen')
   target.append(entry.container)
   const placeholder = kanbanPlaceholder(entry.host)
   if (placeholder && placeholder.childElementCount === 0) {
-    placeholder.append(createKanbanReserve())
+    placeholder.append(createKanbanReserve(entry.reserveHeight))
   }
   rerenderDeferred(entry)
 }

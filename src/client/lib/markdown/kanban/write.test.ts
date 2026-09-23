@@ -32,6 +32,7 @@ function outlineEntry(): { entry: KanbanBlockEntry; write: ReturnType<typeof vi.
       owner: 'inline',
       container: null,
       root: null,
+      reserveHeight: null,
       ref: { line: 3, body: OUTLINE_BODY },
       write,
       dirty: true,

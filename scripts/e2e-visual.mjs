@@ -2919,6 +2919,104 @@ async function assertKanbanSurfaces(page, scope, where) {
 }
 
 /**
+ * The block is as tall as its columns need and no taller (KU-06). A board is a flex row, and a flex row
+ * stretches its children to the tallest of them: every column used to be drawn as tall as the block's
+ * fixed 480px canvas, so a reader looking at three short columns saw two or three rows of their own
+ * column's background under the last card, and the horizontal scrollbar sat at the bottom of that
+ * emptiness rather than under the columns (user report 2026-09-23).
+ *
+ * Three numbers, and each one is load-bearing. A column that is taller than what it draws means it was
+ * stretched; a canvas taller than the board's content outside it means the block is still holding a
+ * height nobody asked for; and a board taller than the canvas means the cap is not doing its job and
+ * something will be clipped that should have scrolled. Read in both the note and the overlay, because
+ * the two get their height from different rules.
+ */
+async function assertKanbanColumnHeights(page, scope, where) {
+  const read = await page.evaluate((scope) => {
+    const root = document.querySelector(scope)
+    const canvas = root?.querySelector('[data-kanban-canvas]')
+    const board = root?.querySelector('[data-kanban-board]')
+    if (!canvas || !board) return { reason: 'this surface draws no board' }
+    /**
+     * How much of a box has nothing drawn under its own content, in pixels. `box.bottom` less where the
+     * last thing inside it ends, less the box's own bottom padding: a box that hugs its content scores
+     * 0, one that was stretched to a height it was handed scores the slack it got for free, and one
+     * that is capped and scrolling scores negative (its content runs past it, which is the point).
+     *
+     * Measured from the painted boxes rather than from `scrollHeight`, which cannot answer this at all:
+     * `scrollHeight` is never smaller than `clientHeight`, so a box with 250px of nothing in it reports
+     * its content as filling it.
+     */
+    const slackIn = (box, content, paddingBottom) => {
+      if (!box || !content) return null
+      return Math.round(box.getBoundingClientRect().bottom - content.getBoundingClientRect().bottom - paddingBottom)
+    }
+    const padBottom = (node) => Number.parseFloat(getComputedStyle(node).paddingBottom) || 0
+    // The column's slack is read two levels down on purpose: the column hands its spare room to the
+    // list, and the list hands it to the space after the last thing it draws.
+    const columns = [...board.querySelectorAll('[data-kanban-group]')].flatMap((column) => {
+      const list = column.lastElementChild
+      const content = list?.lastElementChild
+      const slack = slackIn(list, content, list ? padBottom(list) : 0)
+      if (slack === null) return []
+      return [{
+        key: column.getAttribute('data-kanban-group') ?? '',
+        height: Math.round(column.getBoundingClientRect().height),
+        slack,
+        drawn: Math.round(list.getBoundingClientRect().height - slack - padBottom(list)),
+      }]
+    })
+    const round = (node) => Math.round(node.getBoundingClientRect().height)
+    return {
+      rows: columns.length,
+      canvas: round(canvas),
+      board: round(board),
+      // The header is drawn above the board and inside the canvas, so a canvas that stops at the board
+      // would cut the controls off; the space the block has to cover is the two of them together.
+      header: Math.round(root?.querySelector('[data-kanban-header]')?.getBoundingClientRect().height ?? 0),
+      // The overlay fills the stage it is given; only the note is supposed to give space back.
+      fullscreen: canvas.classList.contains('is-fullscreen'),
+      columns,
+    }
+  }, scope)
+  if (read.reason) {
+    check(`kanban ${where}: the board view is the one the column heights are read in (${read.reason})`, false, JSON.stringify(read))
+    return
+  }
+  // The two defects, and each read where it is actually visible.
+  //
+  // First the stretch. A flex row hands every column the height of the tallest of them, so a column
+  // with two cards in it held a couple of hundred pixels of its own background under them — the rows
+  // of empty column the report was about. Positive slack is exactly that. A column that is *capped* and
+  // scrolling (more cards than the cap holds) scores negative instead, and that is the arrangement the
+  // fix has to preserve rather than the defect it removes.
+  const stretched = read.columns.filter((column) => column.slack > 1)
+  check(
+    `kanban ${where}: no column is stretched past the cards it draws`,
+    read.rows > 0 && stretched.length === 0,
+    JSON.stringify({ stretched: stretched.slice(0, 3), rows: read.rows }),
+  )
+  // Then the block itself: with the columns no longer filling it, a canvas still sized to the old fixed
+  // height would show as plane under a short board. The canvas has to cover what it draws — the header
+  // and the board — and nothing beyond it. Neither check reads the board's own slack: its last child is
+  // the add-column button, which is short by design, not a column with room to spare.
+  //
+  // Only the note gives space back: in its own overlay the canvas fills the stage it was given, and a
+  // plane that stopped at the last card would leave the note's furniture under a full screen board.
+  const needed = read.board + read.header
+  check(
+    `kanban ${where}: the block is no taller than the header and board it draws`,
+    read.fullscreen || read.canvas <= needed + 1,
+    JSON.stringify({ canvas: read.canvas, needed, board: read.board, header: read.header }),
+  )
+  check(
+    `kanban ${where}: the block is tall enough for the header and board it draws`,
+    read.canvas >= needed - 1,
+    JSON.stringify({ canvas: read.canvas, needed }),
+  )
+}
+
+/**
  * A card's title carries two gestures, driven here with a real pointer because the difference between
  * them is a count the DOM only fills in for a pointer: one click opens the detail after the
  * double-click window, two rename the card in place.
@@ -3082,6 +3180,7 @@ async function assertKanbanBoard(page) {
   await assertKanbanPanelAnchoring(page, blockSelector, 'in the note')
   await assertKanbanActiveTab(page, blockSelector, 'in the note')
   await assertKanbanSurfaces(page, blockSelector, 'in the note')
+  await assertKanbanColumnHeights(page, blockSelector, 'in the note')
   await assertKanbanTitleGestures(page, blockSelector, 'in the note')
   const inlineViews = await readKanbanViewsInline(page, blockSelector)
   await openKanbanBoard(page)
@@ -3096,6 +3195,7 @@ async function assertKanbanBoard(page) {
   await assertKanbanPanelAnchoring(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanActiveTab(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanSurfaces(page, '.kanban-fullscreen', 'in the board view')
+  await assertKanbanColumnHeights(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanTitleGestures(page, '.kanban-fullscreen', 'in the board view')
 
   const hosting = await page.evaluate((selector) => {

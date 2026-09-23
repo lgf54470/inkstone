@@ -135,6 +135,7 @@
 }
 
 .kanban-canvas {
+  --kanban-canvas-cap: 480px;
   font-family: var(--font-ui);
   font-size: var(--text-13);
   line-height: var(--ui-line);
@@ -143,9 +144,21 @@
 
 .ink-prose .kanban-canvas {
   width: 100%;
-  height: 480px;
+  max-height: var(--kanban-canvas-cap);
   overflow: hidden;
   position: relative;
+}
+
+.kanban-canvas.is-reserve {
+  height: var(--kanban-canvas-cap);
+}
+
+.ink-prose .kanban-canvas [data-kanban-board] {
+  max-height: var(--kanban-canvas-cap);
+}
+
+.ink-prose .kanban-canvas [data-kanban-board] > [data-kanban-group] {
+  max-height: calc(var(--kanban-canvas-cap) - var(--sp-4) * 2);
 }
 
 .ink-prose [data-kanban-canvas] :is(h1, h2, h3, h4, h5, h6) {
@@ -187,6 +200,15 @@
   width: 100%;
   height: auto;
   min-height: 0;
+}
+
+.kanban-canvas.is-fullscreen [data-kanban-board] {
+  height: 100%;
+  max-height: none;
+}
+
+.kanban-canvas.is-fullscreen [data-kanban-board] > [data-kanban-group] {
+  max-height: 100%;
 }
 
 .ink-prose .kanban-error {

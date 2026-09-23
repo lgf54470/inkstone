@@ -8,10 +8,10 @@ import type { KanbanMovePivot } from '../dnd'
 import { kanbanBoardLayout, kanbanCellKey, kanbanSwimlanes } from '../swimlane'
 import type { KanbanBoardCell, KanbanSwimlane } from '../swimlane'
 import type { KanbanColorName, KanbanColumnPatch, KanbanData, KanbanItem, KanbanOption, KanbanSubtask, KanbanView } from '../types'
-import { useKanbanBoardDndState, type CardDropTarget } from './kanban-board-dnd'
-import { KanbanCard, type CardMoveDirection } from './kanban-card'
-import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
+import { useKanbanBoardDndState } from './kanban-board-dnd'
 import { useColumnCellHandlers } from './kanban-cell-handlers'
+import type { CardMoveDirection } from './kanban-card'
+import { ColumnCardsList, type ColumnCardsListProps } from './kanban-column-cards'
 import { CollapsedColumn, KanbanColumnHeader } from './kanban-column-header'
 import type { KanbanColumnSelectAll } from './kanban-column-menu'
 import { KanbanBoardSwimlanes } from './kanban-board-swimlanes'
@@ -38,77 +38,6 @@ interface KanbanBoardViewProps {
   onDeleteColumn?: (groupKey: string) => void
   onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
   onAddColumnOption?: (columnId: string, option: KanbanOption) => void
-}
-
-interface ColumnCardsListProps {
-  items: KanbanItem[]
-  columns: KanbanData['columns']
-  selectedIds: Set<string>
-  cardSize?: CardSize
-  selectedTags?: string[]
-  cardDropTarget: CardDropTarget | null
-  onToggleSelect: (id: string) => void
-  onOpenDetail: (item: KanbanItem) => void
-  onToggleTag?: (tag: string) => void
-  onUpdateTitle: (id: string, newTitle: string) => void
-  onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
-  onDragStartCard: (e: React.DragEvent, id: string) => void
-  onDragEnd: () => void
-  onDragOverCard: (e: React.DragEvent, id: string) => void
-  onDropCard: (e: React.DragEvent, id: string) => void
-  onMoveColumn: (itemId: string, dir: CardMoveDirection) => void
-  onAddItem: () => void
-  onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
-  onAddColumnOption?: (columnId: string, option: KanbanOption) => void
-}
-
-function ColumnCardsList(props: ColumnCardsListProps) {
-  const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(props.items)
-  return (
-    <div className='mt-2 flex flex-1 flex-col gap-2 overflow-y-auto'>
-      {props.items.length === 0 ? (
-        <div className='flex h-20 items-center justify-center rounded-[var(--r-lg)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)]/50 text-[length:var(--text-12)] font-medium text-[var(--text-tertiary)]'>
-          {t('preview.kanban_empty_column')}
-        </div>
-      ) : (
-        visible.map((item) => (
-          <KanbanCard
-            key={item.id}
-            item={item}
-            columns={props.columns}
-            isSelected={props.selectedIds.has(item.id)}
-            cardSize={props.cardSize}
-            selectedTags={props.selectedTags}
-            dropIndicator={props.cardDropTarget?.cardId === item.id ? props.cardDropTarget.position : null}
-            onToggleSelect={props.onToggleSelect}
-            onOpenDetail={props.onOpenDetail}
-            onToggleTag={props.onToggleTag}
-            onUpdateTitle={props.onUpdateTitle}
-            onUpdateSubtasks={props.onUpdateSubtasks}
-            // The card passes its own id, so the column can hand the same handler to all of them.
-            onDragStart={props.onDragStartCard}
-            onDragEnd={props.onDragEnd}
-            onDragOverCard={props.onDragOverCard}
-            onDropOnCard={props.onDropCard}
-            onMoveColumn={props.onMoveColumn}
-            onUpdateTags={props.onUpdateTags}
-            onAddColumnOption={props.onAddColumnOption}
-          />
-        ))
-      )}
-
-      <KanbanRenderTail hiddenCount={hiddenCount} setTailElement={setTailElement} onReveal={revealMore} />
-
-      <button
-        type='button'
-        onClick={props.onAddItem}
-        className='flex items-center gap-1.5 rounded-[var(--r-md)] px-2 py-1.5 text-[length:var(--text-12)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-      >
-        <Plus size={13} />
-        <span>{t('preview.kanban_new_item')}</span>
-      </button>
-    </div>
-  )
 }
 
 interface KanbanBoardColumnProps extends Omit<ColumnCardsListProps, 'items'> {
@@ -145,6 +74,9 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn(props: KanbanBoardColu
       // the plane is `--bg-inset`, a column is `--bg-surface`, and a card is `--bg-raised` on top of
       // it. The column used to be raised with the cards on the surface below it, which read as a
       // recessed card in the dark theme — and, in the light one, as three whites in a row.
+      // No height of its own: the column is as tall as its cards, and only a column longer than the
+      // canvas is capped — by `styles/kanban.css`, one padding step under the board's own cap, which is
+      // what keeps a long column scrolling inside itself and the short ones beside it short.
       className={`flex w-72 shrink-0 flex-col rounded-[var(--r-lg)] border bg-[var(--bg-surface)] p-2 transition-colors ${
         isDragOver ? 'border-[var(--accent)] bg-[var(--accent-softer)]' : 'border-[var(--border-subtle)]'
       }`}
@@ -369,8 +301,16 @@ function BoardColumnCell(props: BoardColumnCellProps) {
   return <ExpandedBoardColumn {...props} />
 }
 
-/** The board scrolls sideways when it is a row of columns, and both ways once it is a grid. */
-const PLAIN_BOARD_ROOT = 'flex h-full w-full gap-4 overflow-x-auto p-4'
+/**
+ * The board scrolls sideways when it is a row of columns, and both ways once it is a grid.
+ *
+ * `items-start` is the whole difference between a board and a wall of empty boxes: a flex row stretches
+ * its children to the tallest of them, so every column was drawn as tall as the canvas rather than as
+ * tall as its cards, and the reader saw two or three rows of their own column's background under the
+ * last card (user report 2026-09-23). The cap that keeps this from making a whole board scroll instead
+ * of its longest column lives in `styles/kanban.css`, next to the canvas cap it is derived from.
+ */
+const PLAIN_BOARD_ROOT = 'flex w-full items-start gap-4 overflow-auto p-4'
 const BANDED_BOARD_ROOT = 'flex h-full w-full flex-col gap-4 overflow-auto p-4'
 
 function PlainBoardColumns({

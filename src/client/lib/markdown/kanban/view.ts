@@ -50,11 +50,14 @@ export function createKanbanCanvas(editable: boolean): HTMLElement {
 }
 
 // While the live canvas sits in the full screen overlay, the inline placeholder
-// shows this stand-in so the block keeps its height and does not collapse.
-export function createKanbanReserve(): HTMLElement {
+// shows this stand-in so the block keeps its height and does not collapse. It is
+// told how tall the canvas was, because the block is as tall as its columns need
+// rather than a fixed height; without a measurement it falls back to the cap.
+export function createKanbanReserve(height?: number | null): HTMLElement {
   const reserve = document.createElement('div')
   reserve.className = `${KANBAN_CANVAS_CLASS} is-reserve`
   reserve.setAttribute('aria-hidden', 'true')
+  if (typeof height === 'number' && height > 0) reserve.style.height = `${height}px`
   return reserve
 }
 
