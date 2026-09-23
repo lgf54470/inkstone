@@ -13,7 +13,7 @@
 
 - [x] KU-01 弹出面板统一锚定（用户点③；含新发现：图标选择器无锚点、详情内面板被对话框滚动区裁剪）—— 实做见下，「Portal 化」被否，理由在条目内
 - [x] KU-02 活动视图标签指示器 + 标签条溢出可见性（用户点②）
-- [ ] KU-03 表面层级与列配色（用户点④）
+- [x] KU-03 表面层级与列配色（用户点④）—— 阶梯 = 平面 `--bg-inset` → 列 `--bg-surface` → 卡片 `--bg-raised`；列头整条按分组色染色（不再只画 10px 圆点）；表格视图保留「整块面板」形态，理由在条目内
 - [ ] KU-04 卡片标题双击竞速守卫 + hover 铅笔 / F2（用户点⑤，方案 A）
 - [ ] KU-05 内联紧凑头部：容器查询 + 图标 / Tooltip + ⋯ 溢出菜单（用户点①）
 - [ ] KU-06 列不再拉满 + 画布高度自适应 + 滚动条可见性（用户点①的空白行）
@@ -95,12 +95,15 @@
 - **验证**：① 单测 7 新例（3 条令牌选择 + 4 条几何滚动），异动自检：把活动样式改回 `--bg-raised` → 2 例红；给 `useSelectedTabInView` 加一行 `if (strip) return` → 3 例红；均由 `/tmp` 备份字节相同还原；② 浏览器门禁：内联与全屏各 3 条（恰好一个活动 tab、活动 tab 的背景**不同于**其下方已有颜色、活动 tab 在标签条可见框内）；变异回旧样式实跑 → 两条「painted」如实报红（其余全绿）；③ `contrast:check` 实测 kanban 表面现在真的画了 accent（`accent 1/1`，两主题各 6/3 组强调底配对重算全过 AA）。
 - **发现（登记）**：`element.focus()` 按规范会自带滚动到可见，所以**键盘**切换视图是「自揭示」的，不需要代码帮忙；真正需要 `useSelectedTabInView` 的是不移动焦点的程序化选中（从头部菜单新建/复制/删除/重排视图）——那类路径的断言放在单测（几何数值，已变异验证），因为浏览器门禁里没法在不动文档的前提下造出该状态。
 
-#### KU-03 表面层级与列配色
+#### KU-03 表面层级与列配色（已修）
 
-- **根因**：板面无底色（继承 `--bg-surface`）、列 `bg-[var(--bg-raised)]`、卡片 `bg-[var(--bg-surface)]`，浅色下三层全白；列颜色只用于圆点（`kanban-column-header.tsx` 的 `getKanbanDotColor`）。
-- **修法**：表面阶梯 —— 板 `--bg-inset`、列 `--bg-surface` + `--border-subtle`、卡片保留白 + `--shadow-xs`；列头按分组色做低强度染色条/底（复用已校准的 `--kanban-tag-*-bg` 系，或新增 `--kanban-col-*`）；空列与空板底色统一。一律走令牌，不新增魔法值。
-- **范围**：`kanban-board-view.tsx`（493 行，接近 500 上限 → 先拆）、`kanban-column-header.tsx`、`kanban-empty-board.tsx`、`styles/kanban.css`、（如需）`tokens.css` + `check-token-drift.baseline.json`、`check-contrast.mjs`。
+- **根因**：三层表面同色 —— 板面无底色（继承 `--bg-surface`）、列 `bg-[var(--bg-raised)]`、卡片 `bg-[var(--bg-surface)]`；浅色主题里 `--bg-raised` 与 `--bg-surface` 同值（`tokens.css:292-293` 暖纸 / `:354-355` 纯白），所以「列 + 卡片」在浅色下是同一块白，只靠 1px 描边分家；列的颜色只画成 10px 圆点（`kanban-column-header.tsx` 的 `getKanbanDotColor`），十二种颜色在读者眼里就是十二个同款小圆点。
+- **修法（实做）**：① 阶梯重排为 平面 → 列 → 卡片 = `--bg-inset` → `--bg-surface` → `--bg-raised`（板根、列壳、卡片；折叠列随列壳，画廊卡与列表行同卡片）；② 列头整条染色：`colors.ts` 新增 `getKanbanTintStyle`，给出该分组色自己的 `--kanban-tag-<c>-bg` 底 + `--kanban-tag-<c>-fg` 字——**这正是该调色板校准过的唯一配对**（见 `colors.ts` 顶部注释与 `tests/kanban-tag-contrast.test.ts`），标签与菜单钮因此不再各取层级（新配对没有人量过）；计数徽标保持不透明、染成 `--bg-inset`，于是染底上唯一的文字就是按该底校准出来的那一种；③ 头部不再画圆点（颜色已由整条承载）。
+- **决策（自决）**：① **不新造限色令牌**：没有声明颜色的列拿到 `undefined`（不画染底），而不是一个中性灰——「没有这个颜色」与「这个颜色是灰的」是两句话，后者会替读者说一句他没说过的话；② **表格视图保持「整块面板」形态**（容器 `--bg-surface`，行与表头靠分隔线与悬停区分），因为表格是一张表而不是一叠卡；列表/画廊本来就与看板视图同属「卡」，故同行——这是本项有意的边界，不是漏改；③ `ColumnHeaderBand` 从 `KanbanColumnHeader` 里析出：染底那一行是读者看到的东西，菜单接线是另一件事，且析出后该函数体从 54 行降回 43 行（`size:check` 的 50 行硬限；按仓库惯例拆分而不是 resnapshot 基线）。
+- **范围**：`colors.ts`、`kanban-board-view.tsx`、`kanban-card.tsx`、`kanban-gallery-view.tsx`、`kanban-list-view.tsx`、`kanban-column-header.tsx`、`kanban-root.tsx`、新增 `ui/kanban-surface-ladder.test.ts`、`scripts/e2e-visual.mjs`（新 `assertKanbanSurfaces`）、`scripts/check-comments.mjs` + 本文件。**未动任何令牌**（`tokens:check` 与漂移基线不变，`check-contrast.mjs` 未修改）。
 - **代价**：M。
+- **验证**：① 6 例单测（三层令牌各就各位、两条染底列互不相同、染底标签取该色前景、`undefined`/未知色一律不画、真实板子上每一列都有染底；先红后绿）；② 浏览器门禁 `assertKanbanSurfaces`（内联 + 全屏各 3 条）：平面 = `--bg-inset`、列 = `--bg-surface`、卡片 = `--bg-raised`；平面 ≠ 列；两条不同颜色的列画出来的色互不相同、也不等于列底色——读的是真实绘制的像素与令牌值，且在读之前**先按真实指针切回看板视图**（该断言前面有会切视图的步骤，读到一个没有列的视图就是空断言）；③ `contrast:check` 实测 kanban 表面两主题各 10/8 条「层级 × 底色」、6/3 组强调底配对按 7 个强调色重算、4 种背景变体各 12 条标签配对全过 AA，axe 两主题 0 违规；④ 实跑全新实例（`INKSTONE_EPHEMERAL_DEV=1`，:7720）：`e2e.mjs` 177/0、`e2e-visual.mjs` **428/0**（= KU-02 的 420 + 本项 6 条 + 2 条「读的是看板视图」守卫）、全量 `test:unit` 与 12 项静态门禁 + typecheck 全绿。
+- **局限**：① 浅色主题里 `--bg-surface` 与 `--bg-raised` 仍是同一个白，列与卡片的区分靠描边 + 阴影，令牌阶梯只在深色主题直接可见——这是既有令牌层的事实，本项不改令牌；② 染底只覆盖看板视图的列头，表格分组行仍把颜色用在分组名与圆点上；③ 无「列宽拖拽后染底跟着变宽」的断言（几何随列壳而定，门禁不量宽度）。
 
 #### KU-04 卡片标题双击竞速守卫
 
@@ -209,5 +212,6 @@ node scripts/check-token-drift.mjs --update-baseline   # 仅当动共享令牌
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
 | 2026-09-23 | 建立 UI 轮报告与执行计划（用户评审通过） | `ee174a69` | 文档提交，无产品代码改动；清单 KU-01…KU-43 入库，批次 1（用户点名的 5 条）排最前 |
-| 2026-09-23 | KU-02 活动视图标签指示器 + 标签条跟随选中（用户点②） | （本提交） | 活动 tab 改走应用既有强调配对（旧 `--bg-raised` 在两套浅色主题下等于头部自己的 `--bg-surface`，指示器形同不存在），标签条每次 commit 把自己的 `scrollLeft` 跟上选中项；`KanbanTabList` 拆出 `KanbanTab`/`useSelectedTabInView`（50 行函数上限），新用例另开 `kanban-view-tabs-selection.test.ts`（行数预算）。7 新例先红后绿；变异（改回 `--bg-raised` / 中性滚动）分别杀 2 例、3 例并字节还原；`check-contrast` 的 kanban 表面增声明 `accent` 并实测两主题各 6/3 组强调底配对全过 AA；`e2e-visual` 新增 `assertKanbanActiveTab`（内联 + 全屏各 3 条），变异实跑如实报红。实跑：`e2e-visual.mjs` 420/0、`contrast:check` ✅、`test:unit` 437 文件 3930 例、12 项静态门禁 + typecheck 全绿 |
+| 2026-09-23 | KU-03 表面层级与列配色（用户点④） | （本提交） | 阶梯重排为 平面 `--bg-inset` → 列 `--bg-surface` → 卡片 `--bg-raised`（板根/列壳/卡片/画廊卡/列表行，折叠列随列壳），列头整条按分组色染色（新增 `getKanbanTintStyle`，取该调色板校准过的唯一配对）不再只画 10px 圆点；表格视图保持「整块面板」形态（有意边界，见条目内）。`ColumnHeaderBand` 析出以守住 50 行函数上限。6 例单测先红后绿；门禁新增 `assertKanbanSurfaces`（内联 + 全屏各 3 条，按真实像素读三层令牌与两条染底列互不相同），并在读之前按真实指针切回看板视图。实跑全新实例：`e2e.mjs` 177/0、`e2e-visual.mjs` 428/0、`contrast:check` ✅（两主题层级×底色 + 7 强调色重算 + axe 0 违规）、全量 `test:unit` ✅、12 项静态门禁 + typecheck ✅ |
+| 2026-09-23 | KU-02 活动视图标签指示器 + 标签条跟随选中（用户点②） | `12133c3b` | 活动 tab 改走应用既有强调配对（旧 `--bg-raised` 在两套浅色主题下等于头部自己的 `--bg-surface`，指示器形同不存在），标签条每次 commit 把自己的 `scrollLeft` 跟上选中项；`KanbanTabList` 拆出 `KanbanTab`/`useSelectedTabInView`（50 行函数上限），新用例另开 `kanban-view-tabs-selection.test.ts`（行数预算）。7 新例先红后绿；变异（改回 `--bg-raised` / 中性滚动）分别杀 2 例、3 例并字节还原；`check-contrast` 的 kanban 表面增声明 `accent` 并实测两主题各 6/3 组强调底配对全过 AA；`e2e-visual` 新增 `assertKanbanActiveTab`（内联 + 全屏各 3 条），变异实跑如实报红。实跑：`e2e-visual.mjs` 420/0、`contrast:check` ✅、`test:unit` 437 文件 3930 例、12 项静态门禁 + typecheck 全绿 |
 | 2026-09-23 | KU-01 弹出面板统一锚定（用户点③） | `88dcf6c0` | 新增共用面板 `ui/kanban-panel.tsx`（自测包含块 + `placePanel` + 双侧夹紧），7 处面板改走它，图标选择器不再落静态位、详情内面板不再被对话框滚动区裁掉；Portal 化被否（焦点陷阱 + `anim-pop` 包含块），理由在条目内。`kanban-panel.test.ts` 21 例先红后绿；变异（锚点换成父元素）杀 12 例并字节还原；门禁新增 `assertKanbanPanelAnchoring`（内联 + 全屏各逐控件断言）。实跑：`e2e.mjs` 177/0、`e2e-visual.mjs` 414/0、`test:unit` 436 文件 3923 例、12 项静态门禁 + typecheck 全绿 |

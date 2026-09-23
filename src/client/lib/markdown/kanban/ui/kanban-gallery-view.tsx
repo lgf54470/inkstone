@@ -225,7 +225,7 @@ function GalleryCard({
   return (
     <div
       data-item-id={item.id}
-      className={`group/card relative flex flex-col overflow-hidden rounded-[var(--r-lg)] border bg-[var(--bg-surface)] shadow-[var(--shadow-xs)] transition-[box-shadow,border-color] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] ${
+      className={`group/card relative flex flex-col overflow-hidden rounded-[var(--r-lg)] border bg-[var(--bg-raised)] shadow-[var(--shadow-xs)] transition-[box-shadow,border-color] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] ${
         isSelected ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border-subtle)]'
       }`}
     >

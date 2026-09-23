@@ -2671,6 +2671,86 @@ async function assertKanbanActiveTab(page, scope, where) {
   )
 }
 
+/**
+ * The surfaces the board is drawn with, read as the app really painted them.
+ *
+ * Two claims, both of them about a light theme where four tokens answer to the same colour (user
+ * report 2026-09-23: the board's surfaces all looked alike): the plane is `--bg-inset` and each step
+ * up from it is the token that means "one step up" — a column on `--bg-surface`, a card on
+ * `--bg-raised` — and a column's own colour is painted on it rather than filed away in a dot, so two
+ * columns wearing different colours cannot come out the same colour.
+ *
+ * It is read from the tokens rather than from the two hex values this run happens to draw, because
+ * "the ladder" is a relation between tokens: in the light theme a column and a card are the same
+ * white, and only the token says which of the two is the step above. What makes them tellable apart
+ * on screen — the card's shadow and border — is the browser's business on the same page, and the
+ * pairs any text on the tint makes are judged by `check-contrast.mjs`.
+ */
+async function assertKanbanSurfaces(page, scope, where) {
+  // The ladder is a claim about the board view, and the board view is the one with columns in it. The
+  // tab is pressed rather than assumed: this assertion runs after other steps that press tabs, and a
+  // read of whichever view they left open would be a read of no columns at all.
+  const onBoard = await pressKanbanView(page, scope, KANBAN_VIEWS[0].labels)
+  check(`kanban ${where}: the board view is the one the surfaces are read in`, Boolean(onBoard.pressed), JSON.stringify(onBoard))
+  const read = await page.evaluate((scope) => {
+    const painted = (node) => (node ? getComputedStyle(node).backgroundColor : '')
+    const transparent = (colour) => !colour || colour === 'transparent' || colour === 'rgba(0, 0, 0, 0)'
+    const root = document.querySelector(scope)
+    const board = root?.querySelector('[data-kanban-board]')
+    // The plane is whatever paints behind the board: the note's block, or the overlay's stage. Read
+    // by walking up rather than by naming a class, so the same pass works in both places.
+    let plane = root
+    for (let node = board?.parentElement; node; node = node.parentElement) {
+      if (!transparent(painted(node))) {
+        plane = node
+        break
+      }
+    }
+    // What the walk saw, so a failure says which ancestor was picked rather than only its colour.
+    const chain = []
+    for (let node = board?.parentElement; node && chain.length < 8; node = node.parentElement) {
+      chain.push({ tag: node.tagName.toLowerCase(), className: (node.className || '').toString().slice(0, 60), background: painted(node) })
+    }
+    const probe = document.createElement('div')
+    document.body.append(probe)
+    const token = (name) => {
+      probe.style.backgroundColor = 'transparent'
+      probe.style.backgroundColor = `var(${name})`
+      return getComputedStyle(probe).backgroundColor
+    }
+    const tokens = { inset: token('--bg-inset'), surface: token('--bg-surface'), raised: token('--bg-raised') }
+    probe.remove()
+    return {
+      plane: painted(plane),
+      chain,
+      column: painted(board?.querySelector('[data-kanban-group]')),
+      card: painted(board?.querySelector('[data-item-id]')),
+      bands: [...(board?.querySelectorAll('[data-kanban-column-head]') ?? [])].map((band) => ({
+        colour: band.getAttribute('data-kanban-column-tint') ?? '',
+        background: painted(band),
+      })),
+      tokens,
+    }
+  }, scope)
+  const banded = read.bands.filter((band) => band.colour !== '')
+  check(
+    `kanban ${where}: a column is the step above the plane and a card is the step above the column`,
+    read.plane === read.tokens.inset && read.column === read.tokens.surface && read.card === read.tokens.raised,
+    JSON.stringify(read),
+  )
+  check(
+    `kanban ${where}: the plane under the columns is not the column's own surface`,
+    read.plane !== read.column,
+    JSON.stringify(read),
+  )
+  check(
+    `kanban ${where}: columns wearing different colours are painted in different colours (${banded.map((band) => band.colour).join(', ')})`,
+    banded.length >= 2 && new Set(banded.map((band) => band.background)).size === banded.length &&
+      banded.every((band) => band.background !== read.column),
+    JSON.stringify(read),
+  )
+}
+
 /** What the board has to repaint when the account's language changes: its view names and its controls. */
 async function readKanbanLocale(page) {
   return page.evaluate(() => {
@@ -2759,6 +2839,7 @@ async function assertKanbanBoard(page) {
   // clamp itself around.
   await assertKanbanPanelAnchoring(page, blockSelector, 'in the note')
   await assertKanbanActiveTab(page, blockSelector, 'in the note')
+  await assertKanbanSurfaces(page, blockSelector, 'in the note')
   const inlineViews = await readKanbanViewsInline(page, blockSelector)
   await openKanbanBoard(page)
   const surfaced = await page
@@ -2770,6 +2851,7 @@ async function assertKanbanBoard(page) {
   await sleep(400)
   await assertKanbanPanelAnchoring(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanActiveTab(page, '.kanban-fullscreen', 'in the board view')
+  await assertKanbanSurfaces(page, '.kanban-fullscreen', 'in the board view')
 
   const hosting = await page.evaluate((selector) => {
     const overlay = document.querySelector('.kanban-fullscreen')

@@ -49,6 +49,24 @@ export function getKanbanTagStyle(color?: KanbanColorName | string | null): CSSP
   }
 }
 
+/**
+ * The colour a whole header band is painted in: the group's own soft tint behind the group's own
+ * foreground, which is the one pairing the tag palette was calibrated to (see above). A column with
+ * no colour gets nothing back rather than a neutral tint, so the header keeps the surface it already
+ * had instead of growing a wash that says "some colour" — the board's own "No Status" column has no
+ * colour to say.
+ *
+ * It returns a style rather than a class because the colour is data: which of the twelve a column
+ * wears is written in the note, so nothing can be compiled ahead of the render.
+ */
+export function getKanbanTintStyle(color?: KanbanColorName | string | null): CSSProperties | undefined {
+  if (!color || !KANBAN_COLOR_NAMES.includes(color as KanbanColorName)) return undefined
+  return {
+    backgroundColor: `var(--kanban-tag-${color}-bg)`,
+    color: `var(--kanban-tag-${color}-fg)`,
+  }
+}
+
 export function getKanbanDotColor(color?: KanbanColorName | string | null): string {
   if (!color || !KANBAN_COLOR_NAMES.includes(color as KanbanColorName)) {
     return 'var(--text-tertiary)'

@@ -1,7 +1,7 @@
-import { useId, useRef, useState } from 'react'
+import { useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { t } from '../../../i18n'
-import { getKanbanDotColor } from '../colors'
+import { getKanbanDotColor, getKanbanTintStyle } from '../colors'
 import { kanbanWipOver, type KanbanGroup } from '../filter-sort'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
 import type { KanbanColorName } from '../types'
@@ -11,19 +11,19 @@ import { KanbanColumnMenu } from './kanban-column-menu'
 export function ColumnHeaderTitle({
   label,
   count,
-  color,
   wipLimit,
+  isTinted,
 }: {
   label: string
   count: number
-  color?: KanbanColorName
   wipLimit?: number
+  isTinted: boolean
 }) {
-  const dotColor = getKanbanDotColor(color)
   return (
     <div className='flex min-w-0 items-center gap-2'>
-      <span className='size-2.5 shrink-0 rounded-full' style={{ backgroundColor: dotColor }} />
-      <span className='truncate text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
+      <span
+        className={`truncate text-[length:var(--text-13)] font-semibold ${isTinted ? '' : 'text-[var(--text-primary)]'}`}
+      >
         {label}
       </span>
       <KanbanColumnCount
@@ -31,6 +31,100 @@ export function ColumnHeaderTitle({
         limit={wipLimit}
         className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-11)] font-medium'
       />
+    </div>
+  )
+}
+
+/**
+ * The column's own menu trigger. It is drawn in the band's colour when the band has one, because that
+ * colour is the calibrated foreground for the tint behind it — a tier of its own here would be a pair
+ * nothing has measured.
+ */
+function ColumnMenuButton({
+  buttonRef,
+  label,
+  panelId,
+  isTinted,
+  isOpen,
+  onToggle,
+}: {
+  buttonRef: React.RefObject<HTMLButtonElement | null>
+  label: string
+  panelId: string
+  isTinted: boolean
+  isOpen: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      ref={buttonRef}
+      type='button'
+      onClick={onToggle}
+      className={`rounded-[var(--r-xs)] p-0.5 hover:bg-[var(--bg-hover)] ${
+        isTinted ? 'hover:text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+      }`}
+      aria-label={label}
+      aria-haspopup='dialog'
+      aria-expanded={isOpen}
+      {...(isOpen ? { 'aria-controls': panelId } : {})}
+    >
+      <MoreHorizontal size={14} />
+    </button>
+  )
+}
+
+/**
+ * The header band as it is painted: one row, wearing the column's colour, with the column's title and
+ * its own menu trigger inside it, and the menu panel handed in as children so the band stays the
+ * element the panel hangs in. It is a component of its own because the band is what a reader sees
+ * while the header around it is the menu's wiring — one body for both was mostly a prop list.
+ */
+function ColumnHeaderBand({
+  groupKey,
+  label,
+  count,
+  wipLimit,
+  color,
+  tint,
+  menuBtnRef,
+  panelId,
+  isMenuOpen,
+  onToggleMenu,
+  onDragStart,
+  children,
+}: {
+  groupKey: string
+  label: string
+  count: number
+  wipLimit?: number
+  color?: KanbanColorName
+  tint: CSSProperties | undefined
+  menuBtnRef: React.RefObject<HTMLButtonElement | null>
+  panelId: string
+  isMenuOpen: boolean
+  onToggleMenu: () => void
+  onDragStart: (e: React.DragEvent) => void
+  children: ReactNode
+}) {
+  return (
+    <div
+      draggable={groupKey !== '__none__'}
+      onDragStart={onDragStart}
+      style={tint}
+      data-kanban-column-head=''
+      data-kanban-column-tint={tint ? color : undefined}
+      className='relative flex cursor-grab items-center justify-between rounded-[var(--r-sm)] px-2 py-1.5 active:cursor-grabbing'
+    >
+      <ColumnHeaderTitle label={label} count={count} wipLimit={wipLimit} isTinted={tint !== undefined} />
+      <ColumnMenuButton
+        buttonRef={menuBtnRef}
+        label={label}
+        panelId={panelId}
+        isTinted={Boolean(tint)}
+        isOpen={isMenuOpen}
+        onToggle={onToggleMenu}
+      />
+      {children}
     </div>
   )
 }
@@ -70,26 +164,26 @@ export function KanbanColumnHeader({
   const menuBtnRef = useRef<HTMLButtonElement>(null)
   const panelId = useId()
   const localizedLabel = formatKanbanGroupLabel(groupKey, label)
+  // The whole band wears the column's colour, which is the board's own answer to "which column is
+  // which": it used to be a 10px dot and nothing else, so every column looked alike. Everything else
+  // in the band stays on a surface of its own — the count pill is opaque and paints its own tier — so
+  // the only text on the tint is text painted in the colour the tint was mixed from.
+  const tint = getKanbanTintStyle(color)
 
   return (
-    <div
-      draggable={groupKey !== '__none__'}
+    <ColumnHeaderBand
+      groupKey={groupKey}
+      label={localizedLabel}
+      count={count}
+      wipLimit={wipLimit}
+      color={color}
+      tint={tint}
+      menuBtnRef={menuBtnRef}
+      panelId={panelId}
+      isMenuOpen={menuOpen}
+      onToggleMenu={() => setMenuOpen((o) => !o)}
       onDragStart={onDragStart}
-      className='relative flex cursor-grab items-center justify-between px-2 py-1.5 active:cursor-grabbing'
     >
-      <ColumnHeaderTitle label={localizedLabel} count={count} color={color} wipLimit={wipLimit} />
-      <button
-        ref={menuBtnRef}
-        type='button'
-        onClick={() => setMenuOpen((o) => !o)}
-        className='rounded-[var(--r-xs)] p-0.5 text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-        aria-label={localizedLabel}
-        aria-haspopup='dialog'
-        aria-expanded={menuOpen}
-        {...(menuOpen ? { 'aria-controls': panelId } : {})}
-      >
-        <MoreHorizontal size={14} />
-      </button>
       <KanbanColumnMenu
         open={menuOpen}
         panelId={panelId}
@@ -108,7 +202,7 @@ export function KanbanColumnHeader({
           ? { selectAll: { count, isAllSelected: Boolean(isAllSelected), onToggle: onToggleSelectAll } }
           : {})}
       />
-    </div>
+    </ColumnHeaderBand>
   )
 }
 
@@ -144,7 +238,7 @@ export function CollapsedColumn({
       className={`flex w-10 shrink-0 cursor-pointer flex-col items-center rounded-[var(--r-lg)] border py-3 transition-colors ${
         isDragOver
           ? 'border-[var(--accent)] bg-[var(--accent-softer)]'
-          : 'border-[var(--border-subtle)] bg-[var(--bg-raised)] hover:bg-[var(--bg-hover)]'
+          : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)]'
       }`}
     >
       <span className='flex flex-col items-center gap-2'>
@@ -152,7 +246,7 @@ export function CollapsedColumn({
         <KanbanColumnCount
           count={group.items.length}
           limit={group.wipLimit}
-          className='rounded-[var(--r-full)] bg-[var(--bg-surface)] px-1 py-0.5 text-[length:var(--text-10)]'
+          className='rounded-[var(--r-full)] bg-[var(--bg-inset)] px-1 py-0.5 text-[length:var(--text-10)]'
         />
       </span>
       <span className='mt-4 flex flex-1 items-center justify-center [writing-mode:vertical-rl] text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>

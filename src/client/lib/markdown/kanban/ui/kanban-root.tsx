@@ -392,7 +392,10 @@ export const KanbanRoot = memo(function KanbanRoot({
       // shortcuts (undo/redo) keep working when no card holds focus.
       tabIndex={-1}
       onContextMenu={menu.handleContextMenu}
-      className='flex h-full w-full flex-col overflow-hidden bg-[var(--bg-surface)] text-[var(--text-primary)]'
+      // The plane the columns stand on, and the board's own root is where it belongs: it is the same
+      // board inline and in the overlay, so the surface has to have one owner rather than one per
+      // host (the note's block and the overlay's stage are both `--bg-inset` for it to sit on).
+      className='flex h-full w-full flex-col overflow-hidden bg-[var(--bg-inset)] text-[var(--text-primary)]'
     >
       <KanbanFilesScope.Provider value={kanbanName || 'default'}>
         <KanbanTopBar

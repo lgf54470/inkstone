@@ -141,7 +141,11 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn(props: KanbanBoardColu
       {...(laneKey === undefined ? {} : { 'data-kanban-lane': laneKey })}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`flex w-72 shrink-0 flex-col rounded-[var(--r-lg)] border bg-[var(--bg-raised)] p-2 transition-colors ${
+      // The board is three surfaces deep and each step has to be the step above the one it sits on:
+      // the plane is `--bg-inset`, a column is `--bg-surface`, and a card is `--bg-raised` on top of
+      // it. The column used to be raised with the cards on the surface below it, which read as a
+      // recessed card in the dark theme — and, in the light one, as three whites in a row.
+      className={`flex w-72 shrink-0 flex-col rounded-[var(--r-lg)] border bg-[var(--bg-surface)] p-2 transition-colors ${
         isDragOver ? 'border-[var(--accent)] bg-[var(--accent-softer)]' : 'border-[var(--border-subtle)]'
       }`}
     >

@@ -264,7 +264,7 @@ function KanbanListRow({
   const subtasks = item.subtasks ?? []
 
   return (
-    <div data-item-id={item.id} className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] last:border-b-0'>
+    <div data-item-id={item.id} className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-raised)] last:border-b-0'>
       {/* The row is the board's card stretched sideways (SH-107): a container, and the title it leads
           with is the button that opens the detail. */}
       <div
