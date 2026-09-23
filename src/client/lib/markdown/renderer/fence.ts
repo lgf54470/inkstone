@@ -207,8 +207,11 @@ function renderKanbanBlock(token: Token, line: string, rendererEnv: unknown): st
   const fullscreenLabel = escapeAttr(t('preview.kanban_fullscreen'))
   return [
     `<div class="kanban-block loading"${line} data-kanban="" data-kanban-index="${index}" aria-busy="true">`,
+    // No block title: a kanban's name lives in the fence body (`"title"`), and the markup a fence
+    // renders cannot know it without parsing that body a second time. The board's own header draws it
+    // instead, which also stops the type name from appearing twice on screen — once here and once as
+    // the view tab — while the board was actually named something else (user report 2026-09-23).
     `<div class="kanban-block-head">`,
-    `<span class="kanban-block-title">${escapeHtml(t('preview.kanban'))}</span>`,
     `<span class="kanban-block-mode">${escapeHtml(mode)}</span>`,
     `<span class="kanban-block-actions">`,
     `<button type="button" class="kanban-block-btn" data-kanban-fullscreen aria-label="${fullscreenLabel}" title="${fullscreenLabel}"></button>`,

@@ -1,4 +1,4 @@
-import { memo, useId, useRef, useState, type ReactNode } from 'react'
+import { memo, useId, useRef, useState } from 'react'
 import {
   Columns3,
   Filter,
@@ -18,7 +18,14 @@ import { KanbanArchiveAction, type KanbanArchiveEntry } from './kanban-archive'
 import { KanbanCsvAction, type KanbanCsvEntry } from './kanban-csv'
 import type { KanbanSchemaOperations } from './kanban-column-hooks'
 import { KanbanFilterPopover } from './kanban-filter-popover'
-import { KanbanFullscreenTitle } from './kanban-fullscreen-title'
+import {
+  CompactOnly,
+  narrowLabel,
+  STATUS_PROGRESS_BAR_HEIGHT,
+  TOOLBAR_ICON_CLASS,
+  WideOnly,
+} from './kanban-header-layout'
+import { KanbanBoardTitle } from './kanban-title'
 import { KanbanOverflowMenu } from './kanban-overflow-menu'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { KanbanSearchBox } from './kanban-search-box'
@@ -220,44 +227,6 @@ function KanbanSortAction({
   )
 }
 
-/**
- * The written label of a control that is icon-only while the bar is narrow, where the words are what
- * pushed the row into lines of its own. The label stays in the tree and stays the button's name —
- * hiding it is a layout change, never a loss of the accessible name the caller spells out beside it.
- *
- * The breakpoint is the header's own width, not the window's: a note pane beside the editor is a few
- * hundred pixels wide whatever the monitor is, and this row is what paid for reading the window
- * instead (user report 2026-09-23). `@4xl` is 56rem and it is the one breakpoint the whole bar turns
- * on — labels, the progress bar, the wide cluster and the compact one all switch there.
- */
-function narrowLabel(label: string): ReactNode {
-  return <span className='hidden @4xl:inline'>{label}</span>
-}
-
-const STATUS_PROGRESS_BAR_HEIGHT = 6
-
-/**
- * Undo and redo keep the native hint that names their chord, and `IconButton` refuses a `title` on
- * purpose (a native tooltip is not the project's tooltip). So the two are written out here — at the
- * very size step `IconButton` uses, so a finger gets the same target either way.
- */
-const TOOLBAR_ICON_CLASS =
-  'inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:pointer-events-none disabled:opacity-30 md:size-7'
-
-/**
- * Which cluster a control belongs to. The bar draws both and a container query picks one, so there is
- * one control per action in the document — no action is written twice and hidden twice, and the
- * breakpoint that decides is the header's own width. `wide` is the labeled row the full screen board
- * shows; `compact` is what a note pane gets.
- */
-function WideOnly({ children }: { children: ReactNode }) {
-  return <div className='hidden @4xl:flex items-center gap-1.5'>{children}</div>
-}
-
-function CompactOnly({ children }: { children: ReactNode }) {
-  return <div className='flex @4xl:hidden items-center gap-1.5'>{children}</div>
-}
-
 function KanbanHeaderToolbar({
   onAddItem,
   canUndo,
@@ -418,7 +387,13 @@ function KanbanHeaderActions(props: HeaderActionsProps) {
   )
 }
 
-/** The board's own name, in the overlay only, and the strip of views beside it. */
+/**
+ * The board's own name, in the overlay, and the strip of views beside it. The note draws that same
+ * name in the block's own head instead (written there by the registry, which is the only layer holding
+ * the parsed body): this bar in a note pane is a few hundred pixels wide, and a name drawn here took
+ * the room the view strip has to scroll its own tab into (measured by the visual gate, 2026-09-23).
+ * The head has room for it; the bar does not, and the strip is the half that must not be squeezed.
+ */
 function KanbanHeaderIdentity({
   title,
   isFullscreen,
@@ -442,7 +417,7 @@ function KanbanHeaderIdentity({
     <div className='flex min-w-0 flex-1 items-center gap-2.5'>
       {isFullscreen && (
         <>
-          <KanbanFullscreenTitle title={title} onUpdateTitle={onUpdateTitle} />
+          <KanbanBoardTitle title={title} onUpdateTitle={onUpdateTitle} />
           <div className='h-4 w-px bg-[var(--border-subtle)] shrink-0' />
         </>
       )}

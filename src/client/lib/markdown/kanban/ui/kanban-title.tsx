@@ -3,11 +3,19 @@ import { Pencil } from 'lucide-react'
 import { t } from '../../../i18n'
 
 /**
- * The board's title, and the one place it is written from the full screen view. It lives beside the
- * header rather than inside it because the two halves of the edit — a heading that turns into an
- * input and back — are a control of their own: the header only decides where it stands.
+ * The board's own name, and the one place it is written from. Both hosts draw it — the note's block
+ * and the full screen overlay — because the board is the same board in either, and a reader who
+ * titled it in the overlay was until now unable to see that name beside the note.
+ *
+ * The name is not the block's own label: the markup a fence renders says which syntax the body holds
+ * and nothing about the board, so the title can only come from here. That is also why the fallback is
+ * the board's type name rather than the cards' "untitled" wording — an unnamed board is a kanban, not
+ * an unnamed task.
+ *
+ * It lives beside the header rather than inside it because the two halves of the edit — a heading that
+ * turns into an input and back — are a control of their own: the header only decides where it stands.
  */
-function KanbanFullscreenTitleEditor({
+function KanbanBoardTitleEditor({
   value,
   onChange,
   onFinish,
@@ -40,7 +48,7 @@ function KanbanFullscreenTitleEditor({
   )
 }
 
-function KanbanFullscreenTitleView({
+function KanbanBoardTitleView({
   title,
   canEdit,
   onStartEdit,
@@ -55,15 +63,20 @@ function KanbanFullscreenTitleView({
     // name (56px of "Gate Board" in a 1280px bar) — and a clipped text run is also what a11y tooling
     // reads as "partially obscured", which is how the squeeze surfaced. The strip is the half that
     // gives way instead: it scrolls sideways, and the title keeps its own width up to its own cap.
+    //
+    // That cap follows the bar's width, which is what the header's own `@container` is for: in the
+    // note's pane — a few hundred pixels — 176px of name left the strip 26px, narrower than the tab it
+    // had to scroll into view (read by the visual gate's tab assertion, 2026-09-23). The name still
+    // keeps its whole width up to the cap; only the cap is smaller where the room is.
     <div className='group flex shrink-0 items-center gap-1'>
       <h2
         onDoubleClick={onStartEdit}
-        className={`text-[length:var(--text-14)] font-bold tracking-[var(--tracking-title)] text-[var(--text-primary)] max-w-44 truncate select-none ${
+        className={`text-[length:var(--text-14)] font-bold tracking-[var(--tracking-title)] text-[var(--text-primary)] max-w-28 @4xl:max-w-44 truncate select-none ${
           canEdit ? 'cursor-pointer hover:opacity-80' : ''
         }`}
-        title={title || t('preview.kanban_untitled')}
+        title={title || t('preview.kanban')}
       >
-        {title || t('preview.kanban_untitled')}
+        {title || t('preview.kanban')}
       </h2>
       {canEdit && (
         <button
@@ -80,7 +93,7 @@ function KanbanFullscreenTitleView({
   )
 }
 
-export function KanbanFullscreenTitle({
+export function KanbanBoardTitle({
   title,
   onUpdateTitle,
 }: {
@@ -110,7 +123,7 @@ export function KanbanFullscreenTitle({
 
   if (isEditing && onUpdateTitle) {
     return (
-      <KanbanFullscreenTitleEditor
+      <KanbanBoardTitleEditor
         value={val}
         onChange={setVal}
         onFinish={handleFinish}
@@ -123,7 +136,7 @@ export function KanbanFullscreenTitle({
   }
 
   return (
-    <KanbanFullscreenTitleView
+    <KanbanBoardTitleView
       title={title}
       canEdit={Boolean(onUpdateTitle)}
       onStartEdit={startEditing}

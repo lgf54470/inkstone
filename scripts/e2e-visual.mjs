@@ -3100,8 +3100,65 @@ async function readKanbanLocale(page) {
       controls: [...(overlay?.querySelectorAll('[data-kanban-header] button') ?? [])]
         .map((button) => button.getAttribute('aria-label') ?? '')
         .filter(Boolean),
+      // The landmark name is the one string on the canvas the host wrote by hand, so it is the one the
+      // tree has to keep current — nothing re-renders the block when the account's language moves.
+      canvasName: document.querySelector('[data-kanban-canvas]')?.getAttribute('aria-label') ?? '',
     }
   })
+}
+
+/**
+ * The board's own name on screen, and the stand-in the block head used to draw instead of it.
+ *
+ * The head is the markup a fence renders, and it cannot read the body's `title` without parsing that
+ * body a second time, so it drew the board's *type* name — which the board view's own tab carries as
+ * well, putting the same word on screen twice while the name a reader had given the board was nowhere
+ * (user report 2026-09-23). Each host now draws the name where it has the room: the note in the block's
+ * own head, written there by the registry that holds the parsed body, and the overlay in its bar. The
+ * name was first put in the bar in the note too, and this gate read a 26px view strip for an 8-tab
+ * board: a few hundred pixels of pane cannot hold a name and a strip whose tab has to scroll into view.
+ *
+ * The canvas is also read here. Its landmark name is written by hand when the host makes the element,
+ * so the only way it stays in the reader's language is for the tree to re-write it (measured moving in
+ * `readKanbanLocale`, which flips the account's language with the board on screen).
+ */
+async function assertKanbanBoardName(page, scope, where, name) {
+  const read = await page.evaluate((scope) => {
+    const root = document.querySelector(scope)
+    const header = root?.querySelector('[data-kanban-header]')
+    const block = root?.classList.contains('kanban-block') ? root : root?.querySelector('.kanban-block')
+    const head = block?.querySelector('.kanban-block-head')
+    const canvas = root?.querySelector('[data-kanban-canvas]')
+    const mode = head?.querySelector('.kanban-block-mode')
+    // The name as it is on screen: the block's head in the note, the bar in the overlay.
+    const shown = (head?.querySelector('.kanban-block-title')?.textContent ?? header?.querySelector('h2')?.textContent ?? '').trim()
+    return {
+      shown,
+      // The head writes the name and the syntax, and nothing else: no type name of its own.
+      head: head ? { titles: head.querySelectorAll('.kanban-block-title').length, text: head.textContent?.trim() ?? '', mode: mode?.textContent?.trim() ?? '' } : null,
+      landmark: canvas?.getAttribute('aria-label') ?? '',
+      lang: document.documentElement.lang,
+    }
+  }, scope)
+  const typeName = read.lang.startsWith('zh') ? '看板' : 'Kanban'
+  check(`kanban ${where}: the board draws the name the reader gave it`, read.shown === name, JSON.stringify(read))
+  if (read.head) {
+    check(
+      `kanban ${where}: the head names the board rather than repeating its type`,
+      read.head.titles === 1 && read.head.text.includes(name) && !read.head.text.includes(typeName),
+      JSON.stringify(read.head),
+    )
+    check(
+      `kanban ${where}: the head still says which syntax the body holds`,
+      read.head.mode !== '' && read.head.text.includes(read.head.mode),
+      JSON.stringify(read.head),
+    )
+  }
+  check(
+    `kanban ${where}: the canvas names the region for a screen reader`,
+    read.landmark === typeName,
+    JSON.stringify({ landmark: read.landmark, typeName, lang: read.lang }),
+  )
 }
 
 /**
@@ -3181,6 +3238,7 @@ async function assertKanbanBoard(page) {
   await assertKanbanActiveTab(page, blockSelector, 'in the note')
   await assertKanbanSurfaces(page, blockSelector, 'in the note')
   await assertKanbanColumnHeights(page, blockSelector, 'in the note')
+  await assertKanbanBoardName(page, blockSelector, 'in the note', 'Gate Board')
   await assertKanbanTitleGestures(page, blockSelector, 'in the note')
   const inlineViews = await readKanbanViewsInline(page, blockSelector)
   await openKanbanBoard(page)
@@ -3196,6 +3254,7 @@ async function assertKanbanBoard(page) {
   await assertKanbanActiveTab(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanSurfaces(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanColumnHeights(page, '.kanban-fullscreen', 'in the board view')
+  await assertKanbanBoardName(page, '.kanban-fullscreen', 'in the board view', 'Gate Board')
   await assertKanbanTitleGestures(page, '.kanban-fullscreen', 'in the board view')
 
   const hosting = await page.evaluate((selector) => {
@@ -3280,6 +3339,18 @@ async function assertKanbanBoard(page) {
   check('kanban board: the settings dialog opens over it and the language can be changed', choice.drawn && choice.applied && flipped.open && flipped.lang === other.lang, JSON.stringify({ choice, found, flipped }))
   check('kanban board: the board repaints the labels it translates while it stays open', flipped.views.length === found.views.length && flipped.views.length >= 4 && flipped.views.every((view, index) => view !== found.views[index] && view !== '') && flipped.controls.join() !== found.controls.join(), JSON.stringify({ choice, before: found, after: flipped }))
   check('kanban board: the run leaves the account the language it found', back.applied && restored.lang === current.lang && JSON.stringify(restored.views) === JSON.stringify(found.views), JSON.stringify({ choice, back, restored }))
+  // The landmark name is written on the canvas by hand, once, when the host makes the element, so it is
+  // the one string on the board the tree itself has to keep in the reader's language.
+  check(
+    'kanban board: the region a reader hears is named in the language they switched to',
+    flipped.canvasName !== '' && flipped.canvasName !== found.canvasName,
+    JSON.stringify({ before: found.canvasName, after: flipped.canvasName }),
+  )
+  check(
+    'kanban board: the region goes back to the name it started with',
+    restored.canvasName === found.canvasName,
+    JSON.stringify({ before: found.canvasName, restored: restored.canvasName }),
+  )
 
   await page.keyboard.press('Escape')
   const closed = await page.waitForFunction(() => !document.querySelector('.kanban-fullscreen'), { timeout: 10_000 }).then(() => true, () => false)

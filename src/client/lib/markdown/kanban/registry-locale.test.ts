@@ -72,4 +72,20 @@ describe('a mounted board follows the language', () => {
     expect(boardText(host)).toContain(englishLabel)
     expect(boardText(host)).not.toContain(chineseLabel)
   })
+
+  // The canvas is the board's landmark, and its name is the one string on it React does not render:
+  // the host writes it once, when it makes the element, so it used to keep whatever language the
+  // block mounted in for as long as the block lived.
+  it('re-names the landmark the host created, which nothing re-renders but this tree', async () => {
+    const host = await mountBoard()
+    const canvas = host.querySelector<HTMLElement>('[data-kanban-canvas]')!
+    expect(canvas.getAttribute('aria-label')).toBe(t('preview.kanban'))
+    const englishName = canvas.getAttribute('aria-label')
+
+    await act(async () => {
+      await setLocale('zh-CN', false)
+    })
+    expect(canvas.getAttribute('aria-label')).toBe(t('preview.kanban'))
+    expect(canvas.getAttribute('aria-label')).not.toBe(englishName)
+  })
 })

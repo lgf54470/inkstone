@@ -27,6 +27,7 @@ import { KanbanListView } from './kanban-list-view'
 import { KanbanTableView } from './kanban-table-view'
 import { KanbanTimelineView } from './kanban-timeline-view'
 import { kanbanViewTabId } from './kanban-view-tabs'
+import { useKanbanRegionLabel } from './kanban-region'
 import { useKanbanContextMenuState, useKanbanRootState } from './kanban-root-hooks'
 import { useKanbanSurface } from './kanban-surface'
 import type { CardSize } from './kanban-view-options'
@@ -384,6 +385,8 @@ export const KanbanRoot = memo(function KanbanRoot({
   const menu = useKanbanContextMenuState(state.data, state.commitData)
   // The board's own actions are offered to the command palette while it is on screen (K-16).
   useKanbanSurface(containerRef, state)
+  // The canvas the host made carries the board's name, so keeping it current is this tree's job.
+  useKanbanRegionLabel(containerRef)
 
   return (
     <div

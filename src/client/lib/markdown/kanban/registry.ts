@@ -15,6 +15,7 @@ import {
   kanbanPlaceholder,
   markKanbanLoading,
   markKanbanReady,
+  setKanbanHeadTitle,
   showKanbanError,
 } from './view'
 import { flushKanbanEntry, discardKanbanWrite, retryKanbanWrite, scheduleKanbanWrite } from './write'
@@ -223,6 +224,10 @@ function mountBlock(node: HTMLElement, entry: KanbanBlockEntry, options: KanbanM
     entry.mode = parsed.mode
   }
 
+  // The head's own name, from the body the parser just read (see `setKanbanHeadTitle`). A block that
+  // kept its data — an unwritten edit outranks the body, so this pass did not re-parse — names itself
+  // from that data instead.
+  setKanbanHeadTitle(node, entry.data?.title)
   renderKanbanEntry(entry, options)
   markKanbanReady(node)
   notify(entry.scope)
@@ -250,6 +255,9 @@ export async function mountKanbans(root: HTMLElement, options: KanbanMountOption
 export function updateKanbanData(entry: KanbanBlockEntry, updater: (prev: KanbanData) => KanbanData): void {
   if (!entry.data) return
   entry.data = updater(entry.data)
+  // A rename is a write to the document like any other, and the block's head is where the note shows
+  // the name — so it follows the data rather than the render that happens to be nearby.
+  setKanbanHeadTitle(entry.host, entry.data.title)
   const opts = scopeOptions.get(entry.scope)
   const rerender = () => {
     if (opts) renderKanbanEntry(entry, opts)

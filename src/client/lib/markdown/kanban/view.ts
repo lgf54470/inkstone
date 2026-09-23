@@ -32,6 +32,37 @@ function iconSvg(paths: string[]): SVGSVGElement {
   return svg
 }
 
+/**
+ * The board's name, written into the block's own head.
+ *
+ * The head is the markup a fence renders, and that markup has no access to the body: a board's name
+ * lives in the body's `title`, which only the parser can read. So the head used to write its own type
+ * name there — the same word the board view's own tab carries, twice on one screen, with the name a
+ * reader had given the board nowhere at all (user report 2026-09-23). The registry has the parsed body
+ * and owns this chrome (it decorates the head's controls already), so it is the one that names it.
+ *
+ * No name means no element: an untitled board shows nothing rather than a placeholder, which also keeps
+ * a translated string out of markup that nothing re-renders when the language changes.
+ */
+export function setKanbanHeadTitle(node: HTMLElement, title: string | undefined): void {
+  const head = node.querySelector<HTMLElement>('.kanban-block-head')
+  if (!head) return
+  const trimmed = title?.trim()
+  const existing = head.querySelector<HTMLElement>('.kanban-block-title')
+  if (!trimmed) {
+    existing?.remove()
+    return
+  }
+  if (existing) {
+    existing.textContent = trimmed
+    return
+  }
+  const span = document.createElement('span')
+  span.className = 'kanban-block-title'
+  span.textContent = trimmed
+  head.prepend(span)
+}
+
 export function decorateKanbanControls(node: HTMLElement): void {
   for (const [attribute, paths] of Object.entries(CONTROL_ICONS)) {
     const button = node.querySelector<HTMLElement>(`[${attribute}]`)

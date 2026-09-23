@@ -18,7 +18,7 @@
 - [x] KU-05 内联紧凑头部：容器查询 + ⋯ 溢出菜单（用户点①）—— 「图标 + Tooltip」被否（理由在条目内）；顺带修掉宽条下标题被标签条挤到 56px 截断的真问题
 - [x] KU-06 列不再拉满 + 画布高度自适应 + 滚动条可见性（用户点①的空白行）—— 列改 `items-start`（不再被拧到画布高），画布 480px 从固定高改为封顶；封顶值一处声明、笔记与全屏两种语义；顺带把「占位写死 480px」改成实测高度
 - [x] KU-07 干掉原生 `<select>`，面板结构对齐设置面板（`SettingRow`/`Segmented`/`Select`）—— 10 处改走 `components/form` 的 `Select`，密度只在 `PANEL_FIELD` 里声明一次；卡尺寸/图表类型改 `Segmented`；表格标签芯片是唯一保留的原生元素（`appearance-none` 去箭头，理由写在旁边）
-- [ ] KU-08 内联模式显示看板真标题、去掉重复「看板」、canvas 名称随语言刷新
+- [x] KU-08 内联模式显示看板真标题、去掉重复「看板」、canvas 名称随语言刷新——名字落在**块头**（笔记里）与**覆盖层自己的条**（全屏里）；计划原写的「内联头部显示」被实跑否决（理由在条目内）
 
 ### 批次 2 · P1 功能（把全屏当独立 app 看）
 
@@ -149,8 +149,11 @@
 #### KU-08 内联显示看板真标题 / 去掉重复「看板」/ canvas 名随语言刷新
 
 - **根因**：`data.title` 只在 `isFullscreen` 时渲染（`kanban-header.tsx` 的 `KanbanFullscreenTitle`），内联只有 renderer 的「看板 / JSON」块头（`renderer/fence.ts:209-217`）→ 同屏两个「看板」字样、看不到 `"title"`；`registry.ts` 的 `createKanbanCanvas` 用**创建时语言**写 `aria-label`，切语言后区域名僵化。
-- **修法**：内联头部显示 `data.title`（空时回落 `t('preview.kanban')`），块头只保留模式徽标/全屏钮；canvas 的 `aria-label` 在挂载/重绘时按当前语言刷新。
-- **范围**：`kanban-header.tsx`、`registry.ts`/`view.ts`、`registry-locale.test.ts`、`kanban-header.test.ts`。
+- **修法（实施后修正）**：**名字按宿主分家**。笔记里由 registry 写进块头自己的 `.kanban-block-title`（块头是围栏渲染的标记，读不到体里的 `title`，注册表是唯一持有已解析体的层；`setKanbanHeadTitle` 因此还挂在 `updateKanbanData` 上，改名跟着数据走而不是跟着某次渲染）；全屏里没有块头，由覆盖层自己的条画（`KanbanBoardTitle`，回落到类型名而非卡片那套「未命名」措辞）。
+- **计划原案被实跑否决**：原写「内联头部显示 `data.title`」，实施时门禁实测报出**笔记面板只有几百像素**——名字占了条，视图标签条只剩 26px，比它要滚进视野的标签还窄（`assertKanbanActiveTab` 读出来的）。标签条是必须让路的一半，名字因此改到块头，`KanbanBoardTitle` 的宽度上限也跟着容器走（`max-w-28 @4xl:max-w-44`）。
+- **canvas 区域名**：`ui/kanban-region.ts` 的 `useKanbanRegionLabel` 订阅语言并在每次变更时重写宿主亲手创建的那个 canvas 的 `aria-label`（宿主外的树不会因语言变化重渲染这块标记）。
+- **范围**：`kanban-header.tsx`、`ui/kanban-title.tsx`（原 `kanban-fullscreen-title.tsx` 更名）、新 `ui/kanban-region.ts`、`registry.ts`/`view.ts`、`renderer/fence.ts`、`styles/kanban.css`、新 `tests/kanban-board-title.test.ts`(9 例) + `registry-locale.test.ts`(+1 例)、`scripts/e2e-visual.mjs`(+8 条)。
+- **顺带**：`kanban-header.tsx` 因本次注释扩写越过 500 行硬限，把容器查询的布局词汇（`narrowLabel`/`WideOnly`/`CompactOnly`/`TOOLBAR_ICON_CLASS`/`STATUS_PROGRESS_BAR_HEIGHT`）析出到 `ui/kanban-header-layout.tsx`（纯搬移，504→473 行），**未** resnapshot 尺寸基线。
 - **代价**：S。
 
 ### 批次 2 · P1 功能
@@ -225,6 +228,7 @@ node scripts/check-token-drift.mjs --update-baseline   # 仅当动共享令牌
 
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
+| 2026-09-23 | KU-08 看板真标题 / 去掉重复「看板」/ canvas 区域名随语言刷新 | （本提交） | 名字按宿主分家：笔记里 registry 写进围栏自己的块头（`.kanban-block-title`，`setKanbanHeadTitle` 同时挂在 `mountBlock` 与 `updateKanbanData` 上，改名不被下一次渲染冲掉），全屏里由覆盖层自己的条画；`renderer/fence.ts` 不再预写类型名（同屏两个「看板」的来源）；未命名不画占位（占位得翻译，而这块标记不随语言重渲染）。`KanbanFullscreenTitle` → `KanbanBoardTitle`（`ui/kanban-title.tsx`）并加 `max-w-28 @4xl:max-w-44`；新 `ui/kanban-region.ts` 的 `useKanbanRegionLabel` 订阅语言重写宿主 canvas 的 `aria-label`。**计划原案「内联头部显示名字」被门禁实测否决**：名字占条后笔记里视图标签条只剩 26px（`assertKanbanActiveTab` 实测），改到块头。新 `tests/kanban-board-title.test.ts` 9 例 + `registry-locale` 1 例先红后绿；`typecheck` 首跑报出实施中遗留的 `entry.data` 可空（门禁生效的实证）已修。实跑全新实例（:7791）：`e2e.mjs` 177/0、`e2e-visual.mjs` **449/0**（含本次新增 8 条，逐条在场）、`contrast:check` ✅、全量 `test:unit` 442 文件 3983 通过、12 项静态门禁 ✅。`kanban-header.tsx` 因注释扩写越 500 行，布局词汇析出到 `ui/kanban-header-layout.tsx`（纯搬移，未 resnapshot 基线） |
 | 2026-09-23 | KU-07 干掉原生 `<select>`（面板控件走项目组件） | （本提交） | 10 处 select 改走 `components/form` 的 `Select`（自绘箭头 + 焦点环 + 令牌），密度只在 `kanban-panel.tsx` 的 `PANEL_FIELD` 声明一次；需横向撑满的外面套 `min-w-0 flex-1`（`Select` 自带 `relative` 包裹层）；卡尺寸/图表类型改 `Segmented`（选中是状态而非颜色）；批量条用 8px 高度档、底色回到共享 `--bg-inset`；表格标签芯片是唯一保留的原生元素，补 `appearance-none` 去箭头（理由写代码旁 + 白名单）。新 `tests/kanban-panel-controls.test.ts` 双面守卫：渲染面断言每个面板里每个 `<select>` 都 `appearance-none` 且有自绘箭头，源码面对 `ui/` 下每个 `<select` 按「文件 + 条数 + 理由」登记（多一条/少一条都红）；变异回退排序面板的 select 两组如实报红。实跑：本模块 + 新文件 82 文件 1082 例、`typecheck`、11 项静态门禁、`e2e-visual.mjs` 441/0 全绿；浏览器实看筛选面板控件外观与行高。展开态仍是 OS 原生菜单（项目 `Select` 的既有性质，已记入局限） |
 | 2026-09-23 | KU-06 列不再拉满 + 画布高度封顶（用户点①的空白行） | （本提交） | 板根改 `items-start`（列不再被拉伸，各自内容高），画布 480px 由 `height` 改为 `max-height: var(--kanban-canvas-cap)`、板根同顶、列矮一个内边距步长（长列仍在自身内部滚动），全屏两条复原为 `100%`；`ColumnCardsList` 拆到 `ui/kanban-column-cards.tsx` 守 500 行硬限；占位改吃实测高度（`entry.reserveHeight`）。新增 `tests/kanban-canvas-height.test.ts` 8 例 + `kanban-fullscreen.test.ts` 2 例（先红后绿），变异 3 次各杀具名例并字节还原；门禁新增 `assertKanbanColumnHeights`（内联 + 全屏各 3 条）——**`scrollHeight` 恒不小于 `clientHeight`，第一版断言是无效的**，改成量「盒子底部 − 末子元素底部 − 下内边距」的空带像素后才生效，突变对照如实报红。实跑全新实例：`e2e.mjs` 177/0、`e2e-visual.mjs` 441/0、`contrast:check` ✅、全量 `test:unit` 440 文件 3966 通过、12 项静态门禁 + typecheck ✅ |
 | 2026-09-23 | KU-05 内联紧凑头部：容器查询 + ⋯ 溢出菜单（用户点①） | `2729dce4` | 头部成为 `@container`（56rem 是唯一断点），窄条只留视图标签条 + 搜索 + 新建 + `⋯`，其余动作收进 `ui/kanban-overflow-menu.tsx` 并复用同一批面板与视图清单；「图标 + Tooltip」被否（动作在菜单里是带字行）。门禁新增 `assertKanbanHeaderLayout`/`assertKanbanOverflowMenu`、`assertKanbanPanelAnchoring` 改读画出来的触发器。顺带修掉宽条下标题被标签条挤到 56px 截断的真问题（axe 的 `elmPartiallyObscuring` 正是它浮出水面的形式，未加任何放行） |
