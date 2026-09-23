@@ -52,9 +52,13 @@ function mountBoard() {
   return rendered
 }
 
-/** Scoped to the board region so the header's own save-status `role="status"` cannot stand in. */
+/**
+ * Read by the board's own marker rather than by `role="status"`: the board is not the only thing in
+ * here that speaks — a column's title field leaves its own message behind, and the header has a
+ * save-status region besides, so the one this reads has to say which it is.
+ */
 function liveRegion(container: HTMLElement): HTMLElement {
-  const region = container.querySelector<HTMLElement>('[data-kanban-board] [role="status"][aria-live="polite"]')
+  const region = container.querySelector<HTMLElement>('[data-kanban-board] [data-kanban-move-announcement]')
   expect(region, 'the board renders no polite live region for card moves').not.toBeNull()
   return region!
 }

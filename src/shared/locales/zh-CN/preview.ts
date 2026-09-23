@@ -76,6 +76,8 @@ export const messages = {
 'preview.kanban_new_item_on_value0': '在 {value0} 日新建项目',
 'preview.kanban_new_group': '新建分组',
 'preview.kanban_new_task': '新建任务',
+'preview.kanban_quick_add_hint': '回车继续添加，Shift+回车打开',
+'preview.kanban_quick_add_done': '已添加「{title}」',
 'preview.kanban_new_card': '新建卡片',
 'preview.kanban_add_condition': '添加条件',
 'preview.kanban_filter': '筛选',

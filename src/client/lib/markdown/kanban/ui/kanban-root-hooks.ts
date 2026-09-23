@@ -16,6 +16,7 @@ import type { KanbanBoardCell } from '../swimlane'
 import { useKanbanArchive } from './kanban-archive'
 import { createKanbanId } from '../id'
 import type {
+  KanbanAddFinish,
   KanbanColorName,
   KanbanData,
   KanbanFilter,
@@ -225,28 +226,32 @@ export function useKanbanAddOperations(
   setDetailItem: (item: KanbanItem | null) => void,
   activeView: KanbanView,
 ) {
-  const handleAddItem = useCallback((defaults?: Record<string, unknown>) => {
+  const handleAddItem = useCallback((defaults?: Record<string, unknown>, finish?: KanbanAddFinish) => {
     const newItemId = `item-${createKanbanId()}`
     const statusVal = data.columns.find((c) => c.id === 'status')?.options?.[0]?.id || 'todo'
     const propsObj: Record<string, unknown> = { status: statusVal, ...defaults }
+    // A card typed into a column is born named: the title field hands over what was typed, and the
+    // placeholder stands in only for the doors that open the window for the reader to name it there.
+    const typed = finish?.title?.trim() ?? ''
     const newItem: KanbanItem = {
       id: newItemId,
-      title: t('preview.kanban_new_task'),
+      title: typed === '' ? t('preview.kanban_new_task') : typed,
       properties: propsObj,
     }
     commitData({ ...data, items: [...data.items, newItem] })
-    setDetailItem(newItem)
+    // The window is the wait the title field is avoiding, so it is opened by default rather than always.
+    if (finish?.openDetail !== false) setDetailItem(newItem)
   }, [data, commitData, setDetailItem])
 
   // A board cell hands over both of its coordinates: the group belongs to the view's groupBy
   // property (not necessarily `status`), the band to its lane property. Either may be the
   // unassigned one, which asks for nothing rather than writing a sentinel into the new card.
-  const handleAddItemInGroup = useCallback((cell?: KanbanBoardCell) => {
+  const handleAddItemInGroup = useCallback((cell?: KanbanBoardCell, finish?: KanbanAddFinish) => {
     const defaults: Record<string, unknown> = {}
     if (cell?.groupKey && cell.groupKey !== '__none__') defaults[activeView.groupBy || 'status'] = cell.groupKey
     const lanePropertyId = activeView.swimlaneBy
     if (lanePropertyId && cell?.laneKey && cell.laneKey !== '__none__') defaults[lanePropertyId] = cell.laneKey
-    handleAddItem(defaults)
+    handleAddItem(defaults, finish)
   }, [activeView.groupBy, activeView.swimlaneBy, handleAddItem])
 
   // The add-group button targets the column the active view groups by;

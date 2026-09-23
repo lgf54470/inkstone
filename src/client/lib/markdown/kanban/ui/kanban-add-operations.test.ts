@@ -4,7 +4,7 @@ import { initI18n, t } from '../../../../lib/i18n'
 import { renderElement } from '../../../test-render'
 import { useKanbanAddOperations } from './kanban-root-hooks'
 import { KanbanCalendarView } from './kanban-calendar-view'
-import type { KanbanData, KanbanView } from '../types'
+import type { KanbanData, KanbanItem, KanbanView } from '../types'
 
 beforeAll(async () => {
   await initI18n()
@@ -47,10 +47,11 @@ function renderAddHook(
   data: KanbanData,
   activeView: KanbanView,
   commitData: (next: KanbanData) => void,
+  setDetailItem: (item: KanbanItem | null) => void = vi.fn(),
 ): AddApi {
   let api: AddApi | null = null
   function Probe() {
-    api = useKanbanAddOperations(data, commitData, vi.fn(), activeView)
+    api = useKanbanAddOperations(data, commitData, setDetailItem, activeView)
     return null
   }
   const rendered = renderElement(createElement(Probe))
@@ -61,11 +62,14 @@ function renderAddHook(
 
 function captureCommit(data: KanbanData, activeView: KanbanView) {
   const commits: KanbanData[] = []
+  const opened: KanbanItem[] = []
   const api = renderAddHook(data, activeView, (d) => {
     commits.push(d)
+  }, (item) => {
+    if (item) opened.push(item)
   })
   const addedItem = () => commits[0]!.items[0]!
-  return { api, addedItem, commits }
+  return { api, addedItem, commits, opened }
 }
 
 describe('useKanbanAddOperations', () => {
@@ -108,6 +112,41 @@ describe('useKanbanAddOperations', () => {
     api.handleAddItemInGroup({ groupKey: 'high', laneKey: '__none__' })
     expect(addedItem().properties.priority).toBe('high')
     expect(addedItem().properties.assignee).toBeUndefined()
+  })
+})
+
+/**
+ * A new card can arrive two ways: named by the reader, or named by the placeholder and handed to them in
+ * its own window. The column's title field is the first (KU-13), every other door is the second, and the
+ * difference between them is one optional argument rather than a second add path — two paths would be
+ * two places to keep the group, the lane and the first status option in step.
+ */
+describe('how a new card finishes', () => {
+  const view: KanbanView = { id: 'v', name: 'Board', type: 'board', groupBy: 'status' }
+
+  it('names the card with the title it was handed instead of the placeholder', () => {
+    const { api, addedItem, opened } = captureCommit(makeData(), view)
+    api.handleAddItem(undefined, { title: '  Write the spec  ', openDetail: false })
+    expect(addedItem().title).toBe('Write the spec')
+    expect(opened).toHaveLength(0)
+  })
+
+  it('falls back to the placeholder when the title is blank, which is the door the header uses', () => {
+    const { api, addedItem } = captureCommit(makeData(), view)
+    api.handleAddItem(undefined, { title: '   ' })
+    expect(addedItem().title).toBe(t('preview.kanban_new_task'))
+  })
+
+  it('opens the new card by default and holds it back when asked to', () => {
+    const first = captureCommit(makeData(), view)
+    first.api.handleAddItem()
+    expect(first.opened[0]?.id).toBe(first.addedItem().id)
+
+    const second = captureCommit(makeData(), view)
+    second.api.handleAddItemInGroup({ groupKey: 'doing' }, { title: 'Typed', openDetail: false })
+    expect(second.opened).toHaveLength(0)
+    expect(second.addedItem().properties.status).toBe('doing')
+    expect(second.addedItem().title).toBe('Typed')
   })
 })
 

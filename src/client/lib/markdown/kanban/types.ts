@@ -42,6 +42,18 @@ export interface KanbanOption {
  */
 export type KanbanColumnPatch = Partial<Pick<KanbanOption, 'label' | 'color' | 'wipLimit'>>
 
+/**
+ * How a new card arrives, for the doors that do not all want the same thing. Every door but one opens
+ * the card's own window so the reader can fill the rest of it in; the column's title field keeps the
+ * focus instead, so a column of cards can be typed in one title at a time (`ku-13`).
+ */
+export interface KanbanAddFinish {
+  /** The title to give the new card. Absent or blank means the localized placeholder title. */
+  title?: string
+  /** Open the card's window. Absent means yes, which is how every door but the title field behaves. */
+  openDetail?: boolean
+}
+
 export interface KanbanProperty {
   id: string
   name: string

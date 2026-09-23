@@ -8,7 +8,16 @@ import { formatKanbanGroupLabel } from '../i18n-helpers'
 import type { KanbanMovePivot } from '../dnd'
 import { kanbanBoardLayout, kanbanCellKey, kanbanSwimlanes } from '../swimlane'
 import type { KanbanBoardCell, KanbanSwimlane } from '../swimlane'
-import type { KanbanColorName, KanbanColumnPatch, KanbanData, KanbanItem, KanbanOption, KanbanSubtask, KanbanView } from '../types'
+import type {
+  KanbanAddFinish,
+  KanbanColorName,
+  KanbanColumnPatch,
+  KanbanData,
+  KanbanItem,
+  KanbanOption,
+  KanbanSubtask,
+  KanbanView,
+} from '../types'
 import { useKanbanBoardDndState } from './kanban-board-dnd'
 import { useColumnCellHandlers } from './kanban-cell-handlers'
 import type { CardMoveDirection } from './kanban-card'
@@ -32,7 +41,7 @@ interface KanbanBoardViewProps {
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onMoveItem: MoveItemFn
-  onAddItem: (cell: KanbanBoardCell) => void
+  onAddItem: (cell: KanbanBoardCell, finish?: KanbanAddFinish) => void
   onAddColumn: () => void
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void
   onUpdateColumn?: (groupKey: string, patch: KanbanColumnPatch) => void
@@ -228,7 +237,7 @@ interface BoardCellBundle {
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onMoveCell: (itemId: string, cell: KanbanBoardCell, dir: CardMoveDirection) => void
-  onAddItem: (cell: KanbanBoardCell) => void
+  onAddItem: (cell: KanbanBoardCell, finish?: KanbanAddFinish) => void
   onUpdateColumn?: (groupKey: string, patch: KanbanColumnPatch) => void
   onDeleteColumn?: (groupKey: string) => void
   onUpdateTags?: (itemId: string, nextTags: string[], newOption?: KanbanOption) => void
@@ -441,7 +450,8 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
       ) : (
         <PlainBoardColumns groups={groups} cells={cells} collapsedGroups={collapsedGroups} onAddColumn={props.onAddColumn} />
       )}
-      <span role='status' aria-live='polite' className='sr-only'>
+      {/* Marked: a column's own title field leaves a message inside this board too (KU-13). */}
+      <span data-kanban-move-announcement role='status' aria-live='polite' className='sr-only'>
         {moveAnnouncement}
       </span>
     </div>

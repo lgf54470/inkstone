@@ -122,7 +122,7 @@ function lastCommit(onUpdateData: ReturnType<typeof vi.fn>) {
 }
 
 function liveRegion(container: HTMLElement): HTMLElement {
-  const region = container.querySelector<HTMLElement>('[data-kanban-board] [role="status"][aria-live="polite"]')
+  const region = container.querySelector<HTMLElement>('[data-kanban-board] [data-kanban-move-announcement]')
   expect(region, 'the board renders no polite live region').not.toBeNull()
   return region!
 }

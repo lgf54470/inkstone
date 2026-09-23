@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { KanbanColorName, KanbanColumnPatch } from '../types'
+import type { KanbanAddFinish, KanbanColorName, KanbanColumnPatch } from '../types'
 import type { KanbanBoardCell } from '../swimlane'
 import type { CardMoveDirection } from './kanban-card'
 import type { useKanbanBoardDndState } from './kanban-board-dnd'
@@ -13,7 +13,7 @@ export interface ColumnCellHandlerDeps {
   dnd: CellDnd
   onUpdateColumn?: (groupKey: string, patch: KanbanColumnPatch) => void
   onDeleteColumn?: (groupKey: string) => void
-  onAddItem: (cell: KanbanBoardCell) => void
+  onAddItem: (cell: KanbanBoardCell, finish?: KanbanAddFinish) => void
   onMoveCell: (itemId: string, cell: KanbanBoardCell, dir: CardMoveDirection) => void
 }
 
@@ -49,7 +49,9 @@ export function useColumnCellHandlers(deps: ColumnCellHandlerDeps) {
       onChangeColumnColor: (newColor: KanbanColorName) => onUpdateColumn?.(groupKey, { color: newColor }),
       onChangeColumnWipLimit: (wipLimit: number | undefined) => onUpdateColumn?.(groupKey, { wipLimit }),
       onDeleteColumn: () => onDeleteColumn?.(groupKey),
-      onAddItem: () => onAddItem(target),
+      // The finish travels through: the column's title field is what names the card, and a cell that
+      // dropped it would leave every typed title behind for the placeholder they all start with.
+      onAddItem: (finish?: KanbanAddFinish) => onAddItem(target, finish),
       onMoveColumn: (itemId: string, dir: CardMoveDirection) => onMoveCell(itemId, target, dir),
     }
   }, [cellGroupKey, laneKey, groupKey, setDragOverCell, handleColumnDrop, handleCardDrop, handleCardDragStart, handleColumnDragStart, onUpdateColumn, onDeleteColumn, onAddItem, onMoveCell])

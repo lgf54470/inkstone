@@ -3077,6 +3077,112 @@ async function assertKanbanTitleGestures(page, scope, where) {
   check(`kanban ${where}: escape leaves the rename without writing a new title`, cancelled.editing === false, JSON.stringify(cancelled))
 }
 
+/**
+ * A column's footer is a title field rather than a button that opens the card's window (KU-13). What is
+ * measured is the errand a reader runs: press the footer open, type a title, press Enter, and the card is
+ * filed in that column with nothing opened over the board and the focus still in the field for the next
+ * title. Escape then puts the field away and hands the focus back to the button that opened it.
+ *
+ * The card this writes is undone before the function returns: the gate writes into the board it then
+ * reads, and the assertions that follow count the cards on it.
+ */
+async function assertKanbanQuickAdd(page, scope, where) {
+  const opened = await page.evaluate(({ scope, labels }) => {
+    const root = document.querySelector(scope)
+    const button = [...(root?.querySelectorAll('[data-kanban-group] button') ?? [])].find((element) =>
+      labels.includes(element.textContent.trim()),
+    )
+    if (!button) return { reason: 'no column footer button on screen' }
+    button.scrollIntoView({ block: 'center' })
+    const box = button.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return { reason: 'the column footer button has no box' }
+    const x = Math.round(box.left + box.width / 2)
+    const y = Math.round(box.top + box.height / 2)
+    const under = document.elementFromPoint(x, y)
+    return {
+      x,
+      y,
+      hit: Boolean(under && button.contains(under)),
+      group: button.closest('[data-kanban-group]')?.getAttribute('data-kanban-group') ?? '',
+      dialogs: root?.querySelectorAll('[role="dialog"]').length ?? -1,
+    }
+  }, { scope, labels: KANBAN_NEW_ITEM_LABELS })
+  check(`kanban ${where}: a column footer offers a new card (${opened.reason ?? opened.group})`, opened.hit === true, JSON.stringify(opened))
+  if (!opened.hit) return
+
+  await page.mouse.move(opened.x, opened.y)
+  await page.mouse.down({ clickCount: 1 })
+  await page.mouse.up({ clickCount: 1 })
+  await sleep(200)
+  const field = await readQuickAddState(page, scope)
+  check(`kanban ${where}: the footer button opens a title field in its place`, field.fields === 1, JSON.stringify(field))
+  check(`kanban ${where}: that field takes the focus`, field.focused === true, JSON.stringify(field))
+
+  // A real keystroke per character, so the input's own change tracking is what builds the title.
+  await page.keyboard.type('Gate quick add')
+  await page.keyboard.press('Enter')
+  await sleep(300)
+  const added = await readQuickAddState(page, scope)
+  check(`kanban ${where}: Enter files the typed card in that column`, added.filed.includes('Gate quick add'), JSON.stringify(added.filed))
+  check(
+    `kanban ${where}: typing a card opens nothing over the board`,
+    added.dialogs === opened.dialogs,
+    JSON.stringify({ before: opened.dialogs, after: added.dialogs }),
+  )
+  check(`kanban ${where}: the field keeps the focus for the next title`, added.focused === true, JSON.stringify(added))
+  check(`kanban ${where}: the field clears itself once the card is filed`, added.value === '', JSON.stringify(added))
+  check(`kanban ${where}: the region says which title landed`, added.announcement.includes('Gate quick add'), JSON.stringify(added.announcement))
+
+  await page.keyboard.press('Escape')
+  await sleep(200)
+  const closed = await readQuickAddState(page, scope)
+  check(
+    `kanban ${where}: Escape puts the field away and hands the focus back to its button`,
+    closed.fields === 0 && KANBAN_NEW_ITEM_LABELS.includes(closed.focusText),
+    JSON.stringify({ fields: closed.fields, focus: closed.focusText }),
+  )
+
+  const undone = await page.evaluate(({ scope, labels }) => {
+    const button = [...(document.querySelector(scope)?.querySelectorAll('button') ?? [])].find((element) =>
+      labels.includes(element.getAttribute('aria-label') ?? ''),
+    )
+    if (!button) return { reason: 'the board offers no undo control' }
+    button.click()
+    return { pressed: true }
+  }, { scope, labels: ['Undo', '撤销'] })
+  await sleep(300)
+  const reverted = await readQuickAddState(page, scope)
+  check(
+    `kanban ${where}: the card this wrote is taken back off the board (${undone.reason ?? 'undone'})`,
+    undone.pressed === true && !reverted.filed.includes('Gate quick add'),
+    JSON.stringify(reverted.filed),
+  )
+}
+
+/** The names a column's new-card control answers to, in both languages the gate runs in. */
+const KANBAN_NEW_ITEM_LABELS = ['New item', '新建项目']
+
+/** What a column's quick-add door is doing right now, and what the board holds around it. */
+async function readQuickAddState(page, scope) {
+  return page.evaluate(({ scope, labels }) => {
+    const root = document.querySelector(scope)
+    const groups = [...(root?.querySelectorAll('[data-kanban-group]') ?? [])]
+    const fields = groups.flatMap((group) =>
+      [...group.querySelectorAll('input')].filter((input) => labels.includes(input.getAttribute('aria-label') ?? '')),
+    )
+    const field = fields[0]
+    return {
+      fields: fields.length,
+      value: field?.value ?? '',
+      focused: Boolean(field && document.activeElement === field),
+      filed: [...(root?.querySelectorAll('[data-item-id] h3') ?? [])].map((heading) => heading.textContent.trim()),
+      dialogs: root?.querySelectorAll('[role="dialog"]').length ?? -1,
+      announcement: groups.map((group) => group.querySelector('[role="status"]')?.textContent ?? '').join(' | '),
+      focusText: document.activeElement?.textContent?.trim() ?? '',
+    }
+  }, { scope, labels: KANBAN_NEW_ITEM_LABELS })
+}
+
 /** Whether one card's title is a field right now, and how many dialogs its surface is showing. */
 async function readCardTitleState(page, scope, itemId) {
   return page.evaluate(({ scope, itemId }) => {
@@ -3348,6 +3454,9 @@ async function assertKanbanBoard(page) {
   await assertKanbanBoardName(page, '.kanban-fullscreen', 'in the board view', 'Gate Board')
   await assertKanbanCardPeek(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanTitleGestures(page, '.kanban-fullscreen', 'in the board view')
+  // Last of the board's own scenarios, and the one that writes: the column's quick-add door is run and
+  // taken back here, before the reads below count the cards this gate's fixture brought with it.
+  await assertKanbanQuickAdd(page, '.kanban-fullscreen', 'in the board view')
 
   const hosting = await page.evaluate((selector) => {
     const overlay = document.querySelector('.kanban-fullscreen')

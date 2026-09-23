@@ -66,6 +66,8 @@ export const messages = {
 'preview.kanban_new_item_on_value0': 'New item on {value0}',
 'preview.kanban_new_group': 'New group',
 'preview.kanban_new_task': 'New task',
+'preview.kanban_quick_add_hint': 'Enter adds another, Shift+Enter opens it',
+'preview.kanban_quick_add_done': 'Added “{title}”',
 'preview.kanban_new_card': 'New card',
 'preview.kanban_add_condition': 'Add rule',
 'preview.kanban_filter': 'Filter',

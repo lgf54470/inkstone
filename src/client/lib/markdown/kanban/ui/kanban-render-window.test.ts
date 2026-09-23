@@ -66,6 +66,16 @@ function boardData(count: number): KanbanData {
   }
 }
 
+/**
+ * React owns the input's value, so writing `.value` alone is overwritten on the next render: the native
+ * setter is called first, which is what React's own change tracking reads.
+ */
+function typeInto(field: HTMLInputElement, text: string): void {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+  setter?.call(field, text)
+  field.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
 function openView(view: KanbanViewType, count: number) {
   const rendered = renderElement(createElement(KanbanRoot, { initialData: boardData(count), onUpdateData: vi.fn() }))
   mounted.push(rendered)
@@ -152,6 +162,12 @@ describe('the window a long board renders', HEAVY_BOARD, () => {
     expect(itemsIn(first)).toBe(KANBAN_RENDER_WINDOW * 2)
     expect(hiddenIn(first)).toContain(String(PER_COLUMN - KANBAN_RENDER_WINDOW * 2))
   })
+
+  it('builds no observer while every column fits its window', () => {
+    const observer = stubIntersectionObserver()
+    openView('board', 8)
+    expect(observer.watching()).toBe(0)
+  })
 })
 
 describe('how the tail reaches the rest of a column', HEAVY_BOARD, () => {
@@ -183,23 +199,30 @@ describe('how the tail reaches the rest of a column', HEAVY_BOARD, () => {
     expect(tailsIn(whole)).toHaveLength(0)
   })
 
-  it('builds no observer while every column fits its window', () => {
-    const observer = stubIntersectionObserver()
-    openView('board', 8)
-    expect(observer.watching()).toBe(0)
-  })
+})
 
-  it('shows a card added to a truncated column in its detail dialog, and counts it in the tail', async () => {
+describe('a card filed into a column that is not fully mounted', HEAVY_BOARD, () => {
+  it('shows it in its detail dialog, and counts it behind the tail', async () => {
     const rendered = openView('board', CARDS)
     const first = columnsOf(rendered.container)[0]!
     const add = Array.from(first.querySelectorAll<HTMLButtonElement>('button')).find(
       (button) => button.textContent === t('preview.kanban_new_item'),
     )
     if (!add) throw new Error('that column offers no add button')
+    // The column's own door is a title field now (KU-13): it opens on the button, and the card's window
+    // is the Shift+Enter side of the same field — one chord, no second path into the document.
     await act(async () => {
       add.click()
     })
-    expect(document.querySelector('[role="dialog"]'), 'the new card opened no detail dialog').not.toBeNull()
+    const field = first.querySelector<HTMLInputElement>(`input[aria-label="${t('preview.kanban_new_item')}"]`)
+    if (!field) throw new Error('the add button opened no title field')
+    await act(async () => {
+      typeInto(field, 'Filed from the column')
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }))
+    })
+    expect(document.querySelector<HTMLInputElement>(`input[placeholder="${t('preview.kanban_card_title')}"]`)?.value).toBe(
+      'Filed from the column',
+    )
     expect(hiddenIn(first)).toContain(String(PER_COLUMN - KANBAN_RENDER_WINDOW + 1))
   })
 })
