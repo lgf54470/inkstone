@@ -4,10 +4,18 @@ import { Button } from '../../../../components/primitives'
 import { Modal } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { isCrossOriginUrl } from '../../external-images'
-import { KanbanBlockedImage, useKanbanImageAllowed } from './kanban-image-policy'
+import { KanbanBlockedFile, KanbanBlockedImage, useKanbanImageAllowed } from './kanban-image-policy'
 import type { KanbanFile } from '../types'
 
 const PREVIEW_MODAL_WIDTH = 768
+
+/**
+ * How long a text attachment is given before the panel admits the read is not coming. A board is a note
+ * that may name an object on somebody else's server: without a deadline the spinner is the answer to
+ * an unreachable host, and the reader has no way to tell a slow read from a stuck one (there would be
+ * no failure state and so no retry either).
+ */
+export const KANBAN_FILE_READ_TIMEOUT_MS = 10_000
 
 function isPdfFile(file: KanbanFile): boolean {
   return file.mime === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
@@ -54,6 +62,12 @@ function ReadFailed({ onRetry }: { onRetry?: () => void }) {
  * The read itself, kept out of the component so the failure path stays one place: a stored object
  * that is gone answers 404 with a body, and reading that body as the file would print the server's
  * error page into the panel and call it the document.
+ *
+ * The read is cancellable and bounded. Cancellable because the panel closes, the reader switches to
+ * another attachment and the retry button starts a second read over the first — a read nobody is
+ * waiting for any more must not keep holding a connection, nor write its answer over the file the
+ * reader moved on to. Bounded because a host that never answers otherwise leaves a spinner forever:
+ * the abort lands in the same `catch` the 404 does, so the reader gets the one action that helps.
  */
 function useKanbanTextRead(url: string): { state: ReadState; content: string; retry: () => void } {
   const [content, setContent] = useState<string>('')
@@ -62,8 +76,10 @@ function useKanbanTextRead(url: string): { state: ReadState; content: string; re
 
   useEffect(() => {
     let active = true
+    const controller = new AbortController()
+    const deadline = setTimeout(() => controller.abort(), KANBAN_FILE_READ_TIMEOUT_MS)
     setState('loading')
-    fetch(url)
+    fetch(url, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`kanban file read failed: HTTP ${res.status}`)
         return res.text()
@@ -78,15 +94,29 @@ function useKanbanTextRead(url: string): { state: ReadState; content: string; re
         setState('failed')
         console.warn('[inkstone] kanban file preview failed', url, error)
       })
+      .finally(() => clearTimeout(deadline))
     return () => {
       active = false
+      clearTimeout(deadline)
+      controller.abort()
     }
   }, [url, attempt])
 
   return { state, content, retry: () => setAttempt((current) => current + 1) }
 }
 
-function TextFilePreview({ url }: { url: string }) {
+/**
+ * Where the policy is enforced for a read: the component that owns the fetch is not mounted at all when
+ * the URL is not allowed, so there is no request to cancel and no state left to explain. (A `{ url }`
+ * prop on one component would work too, but only as long as every later reader of that prop remembered
+ * the flag — this way the blocked path cannot reach the fetch by construction.)
+ */
+function TextFilePreview({ url, allowed }: { url: string; allowed: boolean }) {
+  if (!allowed) return <KanbanBlockedFile className='h-48 w-full' />
+  return <TextFileRead url={url} />
+}
+
+function TextFileRead({ url }: { url: string }) {
   const { state, content, retry } = useKanbanTextRead(url)
 
   if (state === 'loading') {
@@ -169,9 +199,13 @@ function PdfPreview({ file }: { file: KanbanFile }) {
 
 function PreviewContent({ file }: { file: KanbanFile }) {
   const isImage = file.mime.startsWith('image/')
-  const imageAllowed = useKanbanImageAllowed(isImage ? file.url : '')
+  const isText = isTextFile(file)
+  // Asked about the two things the board would go and *use* — paints and reads. A PDF is left out on
+  // purpose: nothing is fetched for it, only a link is offered, and the click that follows is the
+  // reader's.
+  const allowed = useKanbanImageAllowed(isImage || isText ? file.url : '')
 
-  if (isImage && !imageAllowed) {
+  if (isImage && !allowed) {
     return <KanbanBlockedImage className='h-64 w-full rounded-[var(--r-md)]' />
   }
 
@@ -183,8 +217,8 @@ function PreviewContent({ file }: { file: KanbanFile }) {
     return <PdfPreview file={file} />
   }
 
-  if (isTextFile(file)) {
-    return <TextFilePreview url={file.url} />
+  if (isText) {
+    return <TextFilePreview url={file.url} allowed={allowed} />
   }
 
   return (

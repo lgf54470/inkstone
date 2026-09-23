@@ -357,6 +357,7 @@ export const messages = {
 'preview.kanban_file_load_failed': 'Could not load this file',
 'preview.kanban_file_load_failed_hint': 'It may have been deleted, or the server refused the request.',
 'preview.kanban_file_empty': 'This file is empty',
+'preview.kanban_external_file_blocked': 'External file not loaded — reading it would contact that server',
 'preview.kanban_file_retry': 'Try again',
 'preview.kanban_file_too_large': 'Larger than the {value1} MB limit',
 'preview.kanban_board_removed': 'This board was removed from the note',

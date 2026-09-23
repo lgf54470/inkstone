@@ -367,6 +367,7 @@ export const messages = {
 'preview.kanban_file_load_failed': '无法加载该文件',
 'preview.kanban_file_load_failed_hint': '它可能已被删除，或服务端拒绝了请求。',
 'preview.kanban_file_empty': '该文件为空',
+'preview.kanban_external_file_blocked': '未加载外部文件——读取它会联系对方服务器',
 'preview.kanban_file_retry': '重试',
 'preview.kanban_file_too_large': '超过 {value1} MB 上限',
 'preview.kanban_board_removed': '该看板已从笔记中移除',

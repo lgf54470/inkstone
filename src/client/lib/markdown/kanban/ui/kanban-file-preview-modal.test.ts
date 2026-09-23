@@ -4,7 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../../lib/i18n'
 import { installTestGlobals } from '../../../test-render'
 import { useSession } from '../../../../store/session'
-import { KanbanFilePreviewModal } from './kanban-file-preview-modal'
+import { KANBAN_FILE_READ_TIMEOUT_MS, KanbanFilePreviewModal } from './kanban-file-preview-modal'
 import type { KanbanFile } from '../types'
 
 beforeAll(async () => {
@@ -14,6 +14,7 @@ beforeAll(async () => {
 afterEach(() => {
   setExternalImages(false)
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
 function setExternalImages(allowed: boolean): void {
@@ -48,7 +49,11 @@ const textFile: KanbanFile = {
   url: '/api/kanban/file/default/4-notes.txt',
 }
 
-function stubTextRead(respond: () => Promise<{ ok: boolean; status?: number; text: () => Promise<string> }>) {
+const remoteTextFile: KanbanFile = { ...textFile, id: 'file-5', url: 'https://tracker.example.test/notes.txt' }
+
+function stubTextRead(
+  respond: (url: string, init?: RequestInit) => Promise<{ ok: boolean; status?: number; text: () => Promise<string> }>,
+) {
   const fetchMock = vi.fn(respond)
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
@@ -205,6 +210,114 @@ describe('KanbanFilePreviewModal when a text read does not produce the document'
       await flushRead()
       expect(document.body.textContent).toContain(t('preview.kanban_file_empty'))
       expect(document.body.textContent).not.toContain(t('preview.kanban_file_load_failed'))
+    } finally {
+      rendered.dispose()
+    }
+  })
+})
+
+// Reading a text attachment is a request to whoever wrote the fence, so it is the same trade as an
+// external image: the app contacts a stranger on the reader's behalf and hands over their IP and user
+// agent. It used to be the one path that skipped the switch (`fetch(file.url)` straight from the
+// panel), which is what these four cases are about.
+describe('KanbanFilePreviewModal reading a text attachment from another origin', () => {
+  it('does not contact that origin while external images are off, and says why', async () => {
+    const fetchMock = stubTextRead(async () => ({ ok: true, text: async () => 'should not arrive' }))
+    const rendered = renderPreview(remoteTextFile)
+    try {
+      await flushRead()
+      expect(fetchMock, 'the blocked read still went out to that origin').not.toHaveBeenCalled()
+      expect(document.body.textContent).toContain(t('preview.kanban_external_file_blocked'))
+      expect(document.querySelector('pre')).toBeNull()
+    } finally {
+      rendered.dispose()
+    }
+  })
+
+  it('reads it once the account has asked for external resources', async () => {
+    setExternalImages(true)
+    const fetchMock = stubTextRead(async () => ({ ok: true, text: async () => 'remote body' }))
+    const rendered = renderPreview(remoteTextFile)
+    try {
+      await flushRead()
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(fetchMock.mock.calls[0]![0]).toBe(remoteTextFile.url)
+      expect(document.querySelector('pre')?.textContent).toBe('remote body')
+    } finally {
+      rendered.dispose()
+    }
+  })
+
+  it('reads a stored attachment whatever the account allows, so the switch cannot break its own files', async () => {
+    const fetchMock = stubTextRead(async () => ({ ok: true, text: async () => 'local body' }))
+    const rendered = renderPreview(textFile)
+    try {
+      await flushRead()
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(document.querySelector('pre')?.textContent).toBe('local body')
+    } finally {
+      rendered.dispose()
+    }
+  })
+
+})
+
+describe('KanbanFilePreviewModal giving a text read a deadline', () => {
+  it('gives up on a host that never answers, and offers the reader the way back', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn((_url: string, init?: { signal?: AbortSignal }) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new Error('aborted')))
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const rendered = renderPreview(textFile)
+    try {
+      expect(document.querySelector('pre'), 'the read answered before it was even given time').toBeNull()
+      await act(async () => { await vi.advanceTimersByTimeAsync(KANBAN_FILE_READ_TIMEOUT_MS) })
+      expect(fetchMock, 'the deadline passed without a read going out').toHaveBeenCalledTimes(1)
+      expect(document.body.textContent).toContain(t('preview.kanban_file_load_failed'))
+      const retry = [...document.querySelectorAll('button')].find(
+        (button) => button.textContent?.trim() === t('preview.kanban_file_retry'),
+      )
+      expect(retry, 'a read that ran out of time offered no retry').toBeDefined()
+    } finally {
+      rendered.dispose()
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('KanbanFilePreviewModal when a read is no longer wanted', () => {
+  it('aborts the read it opened when the panel closes', () => {
+    const signals: (AbortSignal | undefined)[] = []
+    vi.stubGlobal('fetch', vi.fn((_url: string, init?: { signal?: AbortSignal }) => {
+      signals.push(init?.signal)
+      return new Promise(() => {})
+    }))
+    const rendered = renderPreview(textFile)
+    expect(signals).toHaveLength(1)
+    expect(signals[0]!.aborted).toBe(false)
+    rendered.dispose()
+    expect(signals[0]!.aborted, 'the read outlived the panel that asked for it').toBe(true)
+  })
+
+  it('aborts it when the reader retries, so only the newest read can write the panel', async () => {
+    const signals: (AbortSignal | undefined)[] = []
+    vi.stubGlobal('fetch', vi.fn((_url: string, init?: { signal?: AbortSignal }) => {
+      signals.push(init?.signal)
+      return Promise.reject(new Error('offline'))
+    }))
+    const rendered = renderPreview(textFile)
+    try {
+      await flushRead()
+      const retry = [...document.querySelectorAll('button')].find(
+        (button) => button.textContent?.trim() === t('preview.kanban_file_retry'),
+      )
+      await act(async () => { retry!.click(); await Promise.resolve() })
+      expect(signals).toHaveLength(2)
+      expect(signals[0]!.aborted, 'the superseded read was left running').toBe(true)
+      expect(signals[1]!.aborted).toBe(false)
     } finally {
       rendered.dispose()
     }
