@@ -24,6 +24,8 @@ export function KanbanRootOverlays({
         item={state.detailItem}
         columns={state.data.columns}
         people={state.people}
+        // The board and the card are read together in the overlay, which has the room for both.
+        variant={isFullscreen ? 'peek' : 'dialog'}
         onClose={() => state.setDetailItem(null)}
         onUpdate={state.items.handleUpdateItem}
         onDelete={state.items.handleDeleteItem}

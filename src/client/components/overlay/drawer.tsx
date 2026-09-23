@@ -12,13 +12,19 @@ const DRAWER_FIT_BREAKPOINT = 768
 const DRAWER_SIDE_GAP = 32
 
 
-export function Drawer({ open, onClose, side = 'right', width = 380, children, title, zIndex = Z_INDEX.drawer, }: {
+export function Drawer({ open, onClose, side = 'right', width = 380, children, title, ariaLabel, zIndex = Z_INDEX.drawer, }: {
   open: boolean
   onClose: () => void
   side?: 'left' | 'right'
   width?: number
   children: ReactNode
   title?: ReactNode
+  /**
+   * Accessible name for a panel whose name is not a heading of its own — the kanban card peek is
+   * named by the kind of thing it is showing while the card's own name is an editable field inside
+   * it. The same slot `Modal` carries, for the same reason.
+   */
+  ariaLabel?: string
   zIndex?: number
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
@@ -33,7 +39,7 @@ export function Drawer({ open, onClose, side = 'right', width = 380, children, t
   // where this shell is a drawer instead of a column (see the phone pass in scripts/check-contrast.mjs).
   return createPortal(<div className='app-viewport-fixed fixed' style={{ zIndex }}>
     <div className='anim-fade absolute inset-0 bg-[var(--scrim)]' onClick={onClose} aria-hidden='true'/>
-    <div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={title ? titleId : undefined} aria-label={title ? undefined : t('overlay.side_panel')} tabIndex={-1} data-surface='drawer' className={cn('absolute top-0 bottom-0 flex flex-col border-[var(--border-default)] bg-[var(--bg-surface)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-modal)] outline-none md:py-0', side === 'right' ? 'right-0 border-l' : 'left-0 border-r')} style={{
+    <div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={title ? titleId : undefined} aria-label={title ? undefined : ariaLabel ?? t('overlay.side_panel')} tabIndex={-1} data-surface='drawer' className={cn('absolute top-0 bottom-0 flex flex-col border-[var(--border-default)] bg-[var(--bg-surface)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-modal)] outline-none md:py-0', side === 'right' ? 'right-0 border-l' : 'left-0 border-r')} style={{
       width: Math.min(width, window.innerWidth < DRAWER_FIT_BREAKPOINT ? window.innerWidth : window.innerWidth - DRAWER_SIDE_GAP),
       animation: `ink-slide-in-${side} var(--dur-slow) var(--ease-out) both`,
     }}>

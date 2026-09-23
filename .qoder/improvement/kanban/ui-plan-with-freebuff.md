@@ -22,7 +22,7 @@
 
 ### 批次 2 · P1 功能（把全屏当独立 app 看）
 
-- [ ] KU-11 全屏卡片详情改右侧 peek/Drawer（用户裁定）
+- [x] KU-11 全屏卡片详情改右侧 peek/Drawer（用户裁定）—— 复用项目 `Drawer`（`Z_INDEX.menu` 这一层，与 music hub 抽屉同法），内联保持居中弹窗
 - [ ] KU-12 卡片字段可配置（视图级 `cardFields`，卡片显示哪些属性）
 - [ ] KU-13 列内快速添加（内联输入 + Enter 连加）
 - [ ] KU-14 键盘导航 + 快捷键参考卡（方向键 / Enter / F2 / N / `/` / `?`；重新论证 K-16 的「不立项」结论）
@@ -158,7 +158,8 @@
 
 ### 批次 2 · P1 功能
 
-- **KU-11** 全屏卡片详情改右侧 peek/Drawer（`Drawer` 已有）。范围：`kanban-item-detail.tsx`、`kanban-overlays.tsx`、`check-surface-coverage.mjs` + `e2e-visual.mjs` 具名断言。代价 M。
+- **KU-11** 全屏卡片详情改右侧 peek/Drawer（`Drawer` 已有）。范围：`kanban-item-detail.tsx`、`kanban-overlays.tsx`、`drawer.tsx`（可选 `ariaLabel`，与 `Modal` 同槽）、新 `kanban-item-detail-peek.test.ts`、`e2e-visual.mjs` 具名断言。代价 M。
+  - **实施记录**：`KanbanItemDetail` 增 `variant='dialog' | 'peek'`，两个外壳析成 `KanbanCardPeek`/`KanbanCardDialog`（`size:check` 的 50 行函数上限拦下了内联分支，改拆而非 resnapshot）；`kanban-overlays.tsx` 按 `isFullscreen` 选外壳。**层级是硬需求而非装饰**：全屏看板自己就是 `--z-modal`(250) 的模态，抽屉默认的 `--z-drawer`(190) 会画在它后面，因此跟 music hub 一样取 `Z_INDEX.menu`(260)（那段理由写在组件旁）。peek 自带头/脚，中间滚动（抽屉单一滚动区做不到这三段）。`check-surface-coverage` **无需改**：`Drawer` 根已在名单里（按 `文件#组件` 键，不是按使用者）。
 - **KU-12** 卡片字段可配置：视图增 `cardFields?: string[]`（缺键＝现状，JSON 向后兼容；outline 仍重建默认），视图选项面板加多选行，卡片/画廊/列表共用 reader。范围：`types.ts`、`kanban-view-options.tsx`、`kanban-card.tsx`、`kanban-gallery-view.tsx`、`kanban-list-view.tsx`、`view-ops.ts`、双语键。代价 M–L。
 - **KU-13** 列内快速添加：内联真 `input`（Enter 提交并保持焦点连加，Esc 退出，Shift+Enter 开详情）。范围：`kanban-board-view.tsx`、`kanban-add-operations.test.ts`、双语键。代价 M。
 - **KU-14** 键盘导航 + 快捷键卡：卡片 roving tabindex、方向键移动焦点、Enter 开详情、F2 改名、`N` 新建、`/` 搜索、`?` 帮助卡（固定画在内容区，不内联进工具栏）。范围：`kanban-card.tsx`/`kanban-board-view.tsx`、`lib/hotkeys` 注册、新 `ui/kanban-shortcuts.tsx`、`e2e-visual.mjs`。代价 L。**注**：旧台账 K-16 曾把「卡片 roving tabindex」判为不立项，本项需重新论证（用户明确要求对齐主流）。
@@ -228,6 +229,7 @@ node scripts/check-token-drift.mjs --update-baseline   # 仅当动共享令牌
 
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
+| 2026-09-23 | KU-11 全屏卡片详情改右侧 peek（用户裁定） | （本提交） | `KanbanItemDetail` 增 `variant='dialog' | 'peek'`：全屏走项目 `Drawer`（右侧、420px、`ariaLabel`=`preview.kanban_card_details`、`Z_INDEX.menu`），内联保持居中 `Modal`；两个外壳析成 `KanbanCardPeek`/`KanbanCardDialog`（`size:check` 拦下 `KanbanItemDetailBody` 超 50 行后拆，未 resnapshot）；peek 自带头/脚、中间滚动。`components/overlay/drawer.tsx` 增可选 `ariaLabel`（与 `Modal` 同一槽位、同一理由）。新 `kanban-item-detail-peek.test.ts` 9 例：两个外壳各自的 role/side/层级/名字/Escape/焦点归还，外加**从真实 `KanbanRoot` 两个宿主各开一次卡**的接线断言；变异删掉 `kanban-overlays.tsx` 的 variant 选择 → 只有全屏那例红，字节还原。实跑最终树（:7791）：`e2e-visual.mjs` **454/0**（新增 5 条在浏览器里量：抽屉外壳、面板贴右边缘且看板仍画着自己的列、面板层级高于看板自己的模态、Escape 只关面板不关板且焦点回到卡片）、`contrast:check` ✅、全量 `test:unit` 443 文件 3992 通过、12 项静态门禁 + typecheck ✅ |
 | 2026-09-23 | KU-08 看板真标题 / 去掉重复「看板」/ canvas 区域名随语言刷新 | （本提交） | 名字按宿主分家：笔记里 registry 写进围栏自己的块头（`.kanban-block-title`，`setKanbanHeadTitle` 同时挂在 `mountBlock` 与 `updateKanbanData` 上，改名不被下一次渲染冲掉），全屏里由覆盖层自己的条画；`renderer/fence.ts` 不再预写类型名（同屏两个「看板」的来源）；未命名不画占位（占位得翻译，而这块标记不随语言重渲染）。`KanbanFullscreenTitle` → `KanbanBoardTitle`（`ui/kanban-title.tsx`）并加 `max-w-28 @4xl:max-w-44`；新 `ui/kanban-region.ts` 的 `useKanbanRegionLabel` 订阅语言重写宿主 canvas 的 `aria-label`。**计划原案「内联头部显示名字」被门禁实测否决**：名字占条后笔记里视图标签条只剩 26px（`assertKanbanActiveTab` 实测），改到块头。新 `tests/kanban-board-title.test.ts` 9 例 + `registry-locale` 1 例先红后绿；`typecheck` 首跑报出实施中遗留的 `entry.data` 可空（门禁生效的实证）已修。实跑全新实例（:7791）：`e2e.mjs` 177/0、`e2e-visual.mjs` **449/0**（含本次新增 8 条，逐条在场）、`contrast:check` ✅、全量 `test:unit` 442 文件 3983 通过、12 项静态门禁 ✅。`kanban-header.tsx` 因注释扩写越 500 行，布局词汇析出到 `ui/kanban-header-layout.tsx`（纯搬移，未 resnapshot 基线） |
 | 2026-09-23 | KU-07 干掉原生 `<select>`（面板控件走项目组件） | （本提交） | 10 处 select 改走 `components/form` 的 `Select`（自绘箭头 + 焦点环 + 令牌），密度只在 `kanban-panel.tsx` 的 `PANEL_FIELD` 声明一次；需横向撑满的外面套 `min-w-0 flex-1`（`Select` 自带 `relative` 包裹层）；卡尺寸/图表类型改 `Segmented`（选中是状态而非颜色）；批量条用 8px 高度档、底色回到共享 `--bg-inset`；表格标签芯片是唯一保留的原生元素，补 `appearance-none` 去箭头（理由写代码旁 + 白名单）。新 `tests/kanban-panel-controls.test.ts` 双面守卫：渲染面断言每个面板里每个 `<select>` 都 `appearance-none` 且有自绘箭头，源码面对 `ui/` 下每个 `<select` 按「文件 + 条数 + 理由」登记（多一条/少一条都红）；变异回退排序面板的 select 两组如实报红。实跑：本模块 + 新文件 82 文件 1082 例、`typecheck`、11 项静态门禁、`e2e-visual.mjs` 441/0 全绿；浏览器实看筛选面板控件外观与行高。展开态仍是 OS 原生菜单（项目 `Select` 的既有性质，已记入局限） |
 | 2026-09-23 | KU-06 列不再拉满 + 画布高度封顶（用户点①的空白行） | （本提交） | 板根改 `items-start`（列不再被拉伸，各自内容高），画布 480px 由 `height` 改为 `max-height: var(--kanban-canvas-cap)`、板根同顶、列矮一个内边距步长（长列仍在自身内部滚动），全屏两条复原为 `100%`；`ColumnCardsList` 拆到 `ui/kanban-column-cards.tsx` 守 500 行硬限；占位改吃实测高度（`entry.reserveHeight`）。新增 `tests/kanban-canvas-height.test.ts` 8 例 + `kanban-fullscreen.test.ts` 2 例（先红后绿），变异 3 次各杀具名例并字节还原；门禁新增 `assertKanbanColumnHeights`（内联 + 全屏各 3 条）——**`scrollHeight` 恒不小于 `clientHeight`，第一版断言是无效的**，改成量「盒子底部 − 末子元素底部 − 下内边距」的空带像素后才生效，突变对照如实报红。实跑全新实例：`e2e.mjs` 177/0、`e2e-visual.mjs` 441/0、`contrast:check` ✅、全量 `test:unit` 440 文件 3966 通过、12 项静态门禁 + typecheck ✅ |

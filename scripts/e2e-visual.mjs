@@ -3108,6 +3108,97 @@ async function readKanbanLocale(page) {
 }
 
 /**
+ * A card in the full screen board opens as a right-hand peek, and the board stays where it was.
+ *
+ * The note keeps the centred dialog — there the board is a few hundred pixels tall inside a pane
+ * that also holds the editor, so a modal is the only honest way to give the card room. The overlay
+ * has both, and a reader working through a column reads the card against the columns it came from
+ * (user decision, 2026-09-23). Three things are measured rather than assumed: the panel is the
+ * drawer shell and hugs the right edge while the board keeps its own columns, the panel is painted
+ * above the board's own modal instead of behind it, and Escape closes the panel alone — falling
+ * through to the board would take the reader out of the board they were working in — and hands the
+ * focus back to the card.
+ */
+async function assertKanbanCardPeek(page, scope, where) {
+  const aimed = await page.evaluate((scope) => {
+    const root = document.querySelector(scope)
+    const title = root?.querySelector('[data-item-id] h3 button')
+    if (!title) return { reason: 'this surface draws no card title' }
+    title.scrollIntoView({ block: 'center' })
+    const card = title.closest('[data-item-id]')
+    const box = title.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return { reason: 'the card title has no box' }
+    const x = Math.round(box.left + box.width / 2)
+    const y = Math.round(box.top + box.height / 2)
+    const under = document.elementFromPoint(x, y)
+    return { x, y, hit: Boolean(under && title.contains(under)), cardId: card?.getAttribute('data-item-id') ?? '' }
+  }, scope)
+  check(`kanban ${where}: the card can be opened from its title (${aimed.reason ?? aimed.cardId})`, aimed.hit === true, JSON.stringify(aimed))
+  if (!aimed.hit) return
+
+  // A pointer press is a candidate double click, so the board deliberately opens the card a beat
+  // later — the wait is the feature, not the flake.
+  await page.mouse.click(aimed.x, aimed.y)
+  await sleep(450)
+
+  const opened = await page.evaluate((scope) => {
+    const root = document.querySelector(scope)
+    const panel = document.querySelector('[data-surface="drawer"]')
+    const panelRoot = panel?.parentElement ?? null
+    const boardModal = root?.parentElement ?? null
+    const zOf = (el) => (el ? Number(getComputedStyle(el).zIndex) : NaN)
+    const board = root?.querySelector('[data-kanban-board]') ?? root
+    return {
+      surface: panel?.getAttribute('data-surface') ?? '',
+      panel: panel ? panel.getBoundingClientRect().toJSON() : null,
+      panelZ: zOf(panelRoot),
+      boardZ: zOf(boardModal),
+      boardCards: root?.querySelectorAll('[data-item-id]').length ?? -1,
+      board: board ? board.getBoundingClientRect().toJSON() : null,
+      viewport: window.innerWidth,
+      modal: panel?.getAttribute('aria-modal') ?? '',
+      name: panel?.getAttribute('aria-label') ?? '',
+    }
+  }, scope)
+  check(
+    `kanban ${where}: a card opens as a side panel rather than over the board`,
+    opened.surface === 'drawer' && opened.modal === 'true' && opened.name !== '',
+    JSON.stringify(opened),
+  )
+  check(
+    `kanban ${where}: the panel takes the right edge and the board keeps its columns`,
+    Boolean(opened.panel && opened.board) &&
+      opened.panel.right >= opened.viewport - 2 &&
+      opened.panel.left > opened.board.left &&
+      opened.boardCards >= 2,
+    JSON.stringify({ panel: opened.panel, board: opened.board, cards: opened.boardCards }),
+  )
+  check(
+    `kanban ${where}: the panel is painted above the board's own modal`,
+    opened.panelZ > opened.boardZ,
+    JSON.stringify({ panelZ: opened.panelZ, boardZ: opened.boardZ }),
+  )
+
+  await page.keyboard.press('Escape')
+  await sleep(300)
+  const closed = await page.evaluate((scope) => {
+    const root = document.querySelector(scope)
+    const focused = document.activeElement
+    return {
+      panels: document.querySelectorAll('[data-surface="drawer"]').length,
+      boardOpen: Boolean(root),
+      focusInCard: Boolean(focused && focused.closest('[data-item-id]')),
+      focused: focused instanceof HTMLElement ? (focused.getAttribute('aria-label') ?? focused.textContent ?? '').trim().slice(0, 40) : '',
+    }
+  }, scope)
+  check(
+    `kanban ${where}: Escape closes the panel alone and hands the focus back to the card`,
+    closed.panels === 0 && closed.boardOpen && closed.focusInCard,
+    JSON.stringify(closed),
+  )
+}
+
+/**
  * The board's own name on screen, and the stand-in the block head used to draw instead of it.
  *
  * The head is the markup a fence renders, and it cannot read the body's `title` without parsing that
@@ -3255,6 +3346,7 @@ async function assertKanbanBoard(page) {
   await assertKanbanSurfaces(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanColumnHeights(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanBoardName(page, '.kanban-fullscreen', 'in the board view', 'Gate Board')
+  await assertKanbanCardPeek(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanTitleGestures(page, '.kanban-fullscreen', 'in the board view')
 
   const hosting = await page.evaluate((selector) => {

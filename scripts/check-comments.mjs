@@ -1219,6 +1219,9 @@ const allowed = new Map([
     '/** What the board has to repaint when the account\'s language changes: its view names and its controls. */',
     '// The landmark name is the one string on the canvas the host wrote by hand, so it is the one the',
     '// tree has to keep current — nothing re-renders the block when the account\'s language moves.',
+    '/**\n * A card in the full screen board opens as a right-hand peek, and the board stays where it was.\n *\n * The note keeps the centred dialog — there the board is a few hundred pixels tall inside a pane\n * that also holds the editor, so a modal is the only honest way to give the card room. The overlay\n * has both, and a reader working through a column reads the card against the columns it came from\n * (user decision, 2026-09-23). Three things are measured rather than assumed: the panel is the\n * drawer shell and hugs the right edge while the board keeps its own columns, the panel is painted\n * above the board\'s own modal instead of behind it, and Escape closes the panel alone — falling\n * through to the board would take the reader out of the board they were working in — and hands the\n * focus back to the card.\n */',
+    '// A pointer press is a candidate double click, so the board deliberately opens the card a beat',
+    '// later — the wait is the feature, not the flake.',
     '/**\n * The board\'s own name on screen, and the stand-in the block head used to draw instead of it.\n *\n * The head is the markup a fence renders, and it cannot read the body\'s `title` without parsing that\n * body a second time, so it drew the board\'s *type* name — which the board view\'s own tab carries as\n * well, putting the same word on screen twice while the name a reader had given the board was nowhere\n * (user report 2026-09-23). Each host now draws the name where it has the room: the note in the block\'s\n * own head, written there by the registry that holds the parsed body, and the overlay in its bar. The\n * name was first put in the bar in the note too, and this gate read a 26px view strip for an 8-tab\n * board: a few hundred pixels of pane cannot hold a name and a strip whose tab has to scroll into view.\n *\n * The canvas is also read here. Its landmark name is written by hand when the host makes the element,\n * so the only way it stays in the reader\'s language is for the tree to re-write it (measured moving in\n * `readKanbanLocale`, which flips the account\'s language with the board on screen).\n */',
     '// The name as it is on screen: the block\'s head in the note, the bar in the overlay.',
     '// The head writes the name and the syntax, and nothing else: no type name of its own.',
@@ -1814,6 +1817,7 @@ const allowed = new Map([
     '/**\n * The row\'s one control: selecting the tag is what the row is for, so it is a real button carrying\n * the tag\'s name, and everything beside it (the colour swatch, the count, the batch switch, the menu\n * button) is a sibling rather than a child. A `div[role=button]` with focusable children is the one\n * shape axe rejects twice over (`nested-interactive`, and `button-name` on the icons it swallows),\n * and it is exactly what the notes sidebar\'s own tag row stopped being (SH-93).\n */',
   ]],
   ['src/client/components/overlay/drawer.tsx', [
+    '/**\n   * Accessible name for a panel whose name is not a heading of its own — the kanban card peek is\n   * named by the kind of thing it is showing while the card\'s own name is an editable field inside\n   * it. The same slot `Modal` carries, for the same reason.\n   */',
     '// A `div` with `role=dialog` rather than an `aside`: `dialog` is not an allowed role on `aside`, and',
     '// a titled aside is a second banner landmark. Both were read by axe on the phone outline drawer,',
     '// where this shell is a drawer instead of a column (see the phone pass in scripts/check-contrast.mjs).',
@@ -5912,6 +5916,16 @@ const allowed = new Map([
     '/** Who each member column may offer, keyed by column id. */',
     '/* The type goes on this wrapper, not on the heading: prose owns a note\'s `h4` and wins any\n            utility written on it (see the hand-back block in `styles/kanban.css`). */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-item-detail-peek.test.ts', [
+    '/**\n * A full screen board opens a card as a right-hand peek, and a note opens it as the centred dialog\n * it always did (user decision, 2026-09-23).\n *\n * The two hosts want different things from the same card. A note\'s board is a few hundred pixels\n * tall inside a pane that also holds the editor, so a modal is the only honest way to give the card\n * the whole screen while it is open. The overlay has the board *and* the room, and a reader working\n * through a column reads a card against the columns it came from — so there the card slides in\n * beside the board and the board stays where it was.\n *\n * What the two shells owe the reader is the same, and it is asserted here rather than assumed: an\n * Escape that closes it, focus that comes back to where it was, a trap that keeps Tab inside while\n * it is open, and a name for the panel. The shell itself is `components/overlay`\'s, so this file\n * pins the wiring — which shell, which side, which tier above the board\'s own modal, and that the\n * card\'s fields are in whichever one is drawn.\n */',
+    '/** Closes the card the way the board does, which is what hands the focus back. */',
+    '// The board is a modal at `--z-modal`: a drawer at the default tier would paint behind it.',
+    '// Opening moves the focus into the panel — a reader who opened it is working in it.',
+    '// The focus comes back when the panel goes, which is how the board closes it.',
+    '/**\n * The choice between the two shells belongs to the host, so it is read from the host: these mount\n * the real board with and without `isFullscreen` and open the same card. The component\'s own cases\n * above would all stay green if the overlay stopped asking for the peek, which is the half a\n * reader actually sees.\n */',
+    '// A synthetic click carries `detail: 0`, which the board reads as the keyboard activation and',
+    '// opens at once — the deliberate double-click guard is a pointer gesture (see kanban-card.tsx).',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-item-detail.test.ts', [
     '/** The spies the cases assert on, plus whichever optional prop a case wants to hand the component. */',
     '/** Idrefs that point at nothing: axe reads these as a broken relationship, not as an absent control. */',
@@ -5921,7 +5935,11 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-item-detail.tsx', [
     '/** Who each member column may offer, keyed by column id. */',
     '/** How this host turns description markdown into HTML; absent means the description stays source-only. */',
+    '/**\n   * How the card is opened. A note shows one modal at a time and the board behind it is a few\n   * hundred pixels tall, so the centred dialog is right there; the full screen board has room for\n   * the board *and* the card, and a reader working through a column keeps the columns in view — so\n   * it opens the card as a right-hand peek instead (user decision, 2026-09-23).\n   */',
+    '/** Narrower than the dialog: the peek stands beside the board rather than in place of it. */',
     '/* A box that holds an uncommitted draft is keyed by the card it belongs to, so switching cards\n      gives a fresh one. The section name is part of the key because two such boxes sit side by side\n      here, and React reads a repeated key as two children being the same child. */',
+    '/**\n * The overlay\'s shell: the card stands beside the board, so the columns a reader is working through\n * stay in view while the card is open, and the next one can be picked without leaving them.\n *\n * It carries its own head and foot so the card\'s name stays editable at the top and the destructive\n * action stays reachable at the bottom while the middle scrolls, which a drawer\'s single scroll area\n * does not do on its own. `Z_INDEX.menu` is the tier an overlay takes above a full screen surface —\n * the same move the music hub\'s drawers make — and it is required rather than decorative here: the\n * board itself is a modal at `--z-modal`, so a drawer at the default `--z-drawer` would be painted\n * behind the very board it peeks from.\n */',
+    '/** A note\'s shell: the centred dialog, which is the room a block inside the editor does not have. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-label-language.test.ts', [
     '/**\n * Three kanban controls named themselves in a language the reader may not speak: a tag chip\'s remove\n * button borrowed the *mindmap* shortcut string, a subtask\'s completion toggle was the literal\n * `\'Mark complete\'`, and the progress bar\'s catch-all segment was the literal `\'Other\'`. Both label\n * probes that already existed pass on all three — the name is present, and nothing was concatenated —\n * so each case mounts the real surface once per shipped language and requires the phrase to be the\n * kanban resource\'s own entry for that action, with the thing it acts on named inside the message.\n */',
@@ -5991,6 +6009,7 @@ const allowed = new Map([
     '// each be closed by the other\'s Escape, and the panel is placed against the trigger either way.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-overlays.tsx', [
+    '// The board and the card are read together in the overlay, which has the room for both.',
     '/**\n * The menu a right click or a long press opens, wired to this board\'s document. Every card the active\n * view draws is gathered here — that is what "all" means to a reader looking at this view, once the\n * search and the filters have had their say — so the row that picks them needs no document of its own.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-panel.test.ts', [

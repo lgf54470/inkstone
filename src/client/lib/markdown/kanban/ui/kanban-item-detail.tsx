@@ -1,7 +1,8 @@
-import { memo, useEffect, useId, useRef, useState } from 'react'
+import { memo, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, Smile } from 'lucide-react'
-import { Modal, useClickOutside, useEscape } from '../../../../components/overlay'
+import { Drawer, Modal, useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocaleRepaint } from '../../../i18n'
+import { Z_INDEX } from '../../../../lib/z-index'
 import { getKanbanDotColor } from '../colors'
 import { getKanbanDueDate } from '../date-fields'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
@@ -32,9 +33,18 @@ interface KanbanItemDetailProps {
   people?: Record<string, string[]>
   /** How this host turns description markdown into HTML; absent means the description stays source-only. */
   renderDescription?: (source: string) => string
+  /**
+   * How the card is opened. A note shows one modal at a time and the board behind it is a few
+   * hundred pixels tall, so the centred dialog is right there; the full screen board has room for
+   * the board *and* the card, and a reader working through a column keeps the columns in view — so
+   * it opens the card as a right-hand peek instead (user decision, 2026-09-23).
+   */
+  variant?: 'dialog' | 'peek'
 }
 
 const DETAIL_MODAL_WIDTH = 640
+/** Narrower than the dialog: the peek stands beside the board rather than in place of it. */
+const DETAIL_PEEK_WIDTH = 420
 
 function DetailStatusDropdown({
   statusCol,
@@ -300,6 +310,52 @@ function useKanbanDetailState(
   return { statusCol, priorityCol, tagsCol, localTagOptions, handlePropertyChange, handleAddTagOption }
 }
 
+interface DetailShellProps {
+  onClose: () => void
+  header: ReactNode
+  content: ReactNode
+  footer: ReactNode
+}
+
+/**
+ * The overlay's shell: the card stands beside the board, so the columns a reader is working through
+ * stay in view while the card is open, and the next one can be picked without leaving them.
+ *
+ * It carries its own head and foot so the card's name stays editable at the top and the destructive
+ * action stays reachable at the bottom while the middle scrolls, which a drawer's single scroll area
+ * does not do on its own. `Z_INDEX.menu` is the tier an overlay takes above a full screen surface —
+ * the same move the music hub's drawers make — and it is required rather than decorative here: the
+ * board itself is a modal at `--z-modal`, so a drawer at the default `--z-drawer` would be painted
+ * behind the very board it peeks from.
+ */
+function KanbanCardPeek({ onClose, header, content, footer }: DetailShellProps) {
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      side='right'
+      width={DETAIL_PEEK_WIDTH}
+      zIndex={Z_INDEX.menu}
+      ariaLabel={t('preview.kanban_card_details')}
+    >
+      <div className='flex h-full flex-col'>
+        <div className='shrink-0 border-b border-[var(--border-subtle)] px-4 py-3'>{header}</div>
+        <div className='min-h-0 flex-1 overflow-y-auto px-4 py-3'>{content}</div>
+        <div className='shrink-0 border-t border-[var(--border-subtle)] px-4 py-3'>{footer}</div>
+      </div>
+    </Drawer>
+  )
+}
+
+/** A note's shell: the centred dialog, which is the room a block inside the editor does not have. */
+function KanbanCardDialog({ onClose, header, content, footer }: DetailShellProps) {
+  return (
+    <Modal open onClose={onClose} width={DETAIL_MODAL_WIDTH} title={header} footer={footer}>
+      {content}
+    </Modal>
+  )
+}
+
 function KanbanItemDetailBody({
   item,
   columns,
@@ -310,6 +366,7 @@ function KanbanItemDetailBody({
   onAddColumnOption,
   people,
   renderDescription,
+  variant = 'dialog',
 }: KanbanItemDetailProps & { item: KanbanItem }) {
   const { statusCol, priorityCol, localTagOptions, handlePropertyChange, handleAddTagOption } =
     useKanbanDetailState(item, columns, onUpdate, onAddColumnOption)
@@ -318,42 +375,39 @@ function KanbanItemDetailBody({
   const startDateVal = item.properties.startDate || ''
   const dueDateVal = getKanbanDueDate(item)
 
-  return (
-    <Modal
-      open={Boolean(item)}
-      onClose={onClose}
-      width={DETAIL_MODAL_WIDTH}
-      title={
-        <DetailHeader
-          itemId={item.id}
-          icon={item.icon}
-          title={item.title}
-          statusCol={statusCol}
-          statusVal={item.properties.status}
-          onChangeIcon={(icon) => onUpdate({ ...item, icon: icon ?? undefined })}
-          onChangeTitle={(title) => onUpdate({ ...item, title })}
-          onChangeStatus={(val) => handlePropertyChange('status', val)}
-        />
-      }
-      footer={<DetailFooter onDelete={() => { onDelete(item.id); onClose() }} onClose={onClose} />}
-    >
-      <DetailModalContent
-        item={item}
-        columns={columns}
-        tagVals={tagVals}
-        priorityCol={priorityCol}
-        startDateVal={startDateVal}
-        dueDateVal={dueDateVal}
-        localTagOptions={localTagOptions}
-        onPropertyChange={handlePropertyChange}
-        onAddTagOption={handleAddTagOption}
-        onUpdate={onUpdate}
-        onConvertSubtask={onConvertSubtask}
-        people={people}
-        renderDescription={renderDescription}
-      />
-    </Modal>
+  const header = (
+    <DetailHeader
+      itemId={item.id}
+      icon={item.icon}
+      title={item.title}
+      statusCol={statusCol}
+      statusVal={item.properties.status}
+      onChangeIcon={(icon) => onUpdate({ ...item, icon: icon ?? undefined })}
+      onChangeTitle={(title) => onUpdate({ ...item, title })}
+      onChangeStatus={(val) => handlePropertyChange('status', val)}
+    />
   )
+  const footer = <DetailFooter onDelete={() => { onDelete(item.id); onClose() }} onClose={onClose} />
+  const content = (
+    <DetailModalContent
+      item={item}
+      columns={columns}
+      tagVals={tagVals}
+      priorityCol={priorityCol}
+      startDateVal={startDateVal}
+      dueDateVal={dueDateVal}
+      localTagOptions={localTagOptions}
+      onPropertyChange={handlePropertyChange}
+      onAddTagOption={handleAddTagOption}
+      onUpdate={onUpdate}
+      onConvertSubtask={onConvertSubtask}
+      people={people}
+      renderDescription={renderDescription}
+    />
+  )
+
+  const shell = { onClose, header, content, footer }
+  return variant === 'peek' ? <KanbanCardPeek {...shell} /> : <KanbanCardDialog {...shell} />
 }
 
 export const KanbanItemDetail = memo(function KanbanItemDetail(props: KanbanItemDetailProps) {
