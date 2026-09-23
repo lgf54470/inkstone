@@ -28,6 +28,7 @@ import {
 import { KanbanBoardTitle } from './kanban-title'
 import { KanbanOverflowMenu } from './kanban-overflow-menu'
 import { KanbanProgressBar } from './kanban-progress-bar'
+import { KanbanQuickFilterBar } from './kanban-quick-filter-bar'
 import { KanbanSearchBox } from './kanban-search-box'
 import { KanbanShortcutsAction } from './kanban-shortcuts'
 import { KanbanSortPopover } from './kanban-sort-popover'
@@ -474,13 +475,20 @@ export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps)
         <KanbanHeaderActions {...props} columns={data.columns} activeView={activeView} />
       </div>
 
-      <KanbanTagFilterBar
-        tagsColumn={tagsCol}
-        items={activeItems}
-        selectedTags={props.selectedTags}
-        onToggleTag={props.onToggleTag}
-        onClearTags={props.onClearTags}
-      />
+      <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5'>
+        <KanbanQuickFilterBar
+          columns={data.columns}
+          filters={props.filters}
+          onChangeFilters={props.onChangeFilters}
+        />
+        <KanbanTagFilterBar
+          tagsColumn={tagsCol}
+          items={activeItems}
+          selectedTags={props.selectedTags}
+          onToggleTag={props.onToggleTag}
+          onClearTags={props.onClearTags}
+        />
+      </div>
     </div>
   )
 })

@@ -1516,16 +1516,19 @@ const KANBAN_VIEWS_FENCE = [
         {
           id: 'gate-a',
           title: 'Gate first task',
-          properties: { status: 'todo', tags: ['feat'], startDate: gateDay(-2), endDate: gateDay(3), progress: 40 },
+          properties: { status: 'todo', tags: ['feat'], startDate: gateDay(-2), endDate: gateDay(3), progress: 40, assignee: 'Owner-1' },
         },
+        // Finished work stops being late about a date it already met, so this one's missed deadline is
+        // what the "overdue" chip has to *not* match (KU-15).
         {
           id: 'gate-b',
           title: 'Gate second task',
           properties: { status: 'done', tags: ['improve'], startDate: gateDay(-5), endDate: gateDay(-1), progress: 100 },
         },
         // A card with no chips is its own rendering path, and the one the reveal row used to be
-        // floated over: without it the assertion below has nothing to stand on.
-        { id: 'gate-c', title: 'Gate untagged task', properties: { status: 'todo' } },
+        // floated over: without it the assertion below has nothing to stand on. Its deadline is the
+        // one that has passed while the card is still open, which is the only shape "overdue" matches.
+        { id: 'gate-c', title: 'Gate untagged task', properties: { status: 'todo', endDate: gateDay(-1) } },
       ],
     },
     null,
@@ -3510,6 +3513,119 @@ async function readKanbanKeyboardState(page, scope) {
   }, scope)
 }
 
+/**
+ * The board's quick filters (KU-15), pressed with a real pointer.
+ *
+ * Every chip is a rule the filter panel could have built by hand, several presses at a time, and what is
+ * asserted is the promise that makes those chips safe to have: a pressed chip narrows the board the way
+ * that rule would, it lights up as in force, and pressing it again gives the board back exactly as it
+ * was. What the fixture arranges for that is one card in nobody else's hands (so "unassigned" has a
+ * card to remove), one open card past its deadline (so "overdue" has exactly one), and one finished card
+ * also past its date - finished work is never late, so an "overdue" that counted it would be wrong here.
+ *
+ * The board is left with no chips pressed, because the view's filters are written into the note the
+ * scenarios after this one read.
+ */
+async function assertKanbanQuickFilters(page, scope, where) {
+  const drawn = await page.evaluate((scope) => {
+    const bar = document.querySelector(`${scope} [data-kanban-quick-filters]`)
+    if (!bar) return { reason: 'this surface draws no quick filters' }
+    return {
+      ids: [...bar.querySelectorAll('[data-kanban-quick-filter]')].map((chip) => chip.getAttribute('data-kanban-quick-filter') ?? ''),
+      labels: [...bar.querySelectorAll('[data-kanban-quick-filter]')].map((chip) => (chip.textContent ?? '').trim()),
+      cards: document.querySelectorAll(`${scope} [data-item-id]`).length,
+      pressed: [...bar.querySelectorAll('[data-kanban-quick-filter][aria-pressed="true"]')].length,
+    }
+  }, scope)
+  check(
+    `kanban ${where}: the board offers its habitual questions as chips (${drawn.reason ?? drawn.ids.join('/')})`,
+    Array.isArray(drawn.ids) && drawn.ids.join(',') === 'overdue,dueToday,unassigned,mine' && drawn.pressed === 0,
+    JSON.stringify(drawn),
+  )
+  if (!Array.isArray(drawn.ids)) return
+  check(
+    `kanban ${where}: every chip is named, and none of them is named by a raw key`,
+    drawn.labels.length === 4 && drawn.labels.every((label) => label.length > 0 && !label.includes('.')),
+    JSON.stringify(drawn.labels),
+  )
+
+  // Unassigned: of the three cards, exactly the one somebody holds leaves the board.
+  const cleared = await pressKanbanChip(page, scope, 'unassigned')
+  check(`kanban ${where}: the unassigned chip is where a pointer can reach it`, cleared.hit === true, JSON.stringify(cleared))
+  const afterUnassigned = await readKanbanQuickState(page, scope)
+  check(
+    `kanban ${where}: unassigned takes the assigned card off the board`,
+    afterUnassigned.cards === drawn.cards - 1 && afterUnassigned.pressed === 1,
+    JSON.stringify({ before: drawn.cards, after: afterUnassigned }),
+  )
+  check(
+    `kanban ${where}: the chip reads as in force while its rule is`,
+    afterUnassigned.active === 'unassigned',
+    JSON.stringify(afterUnassigned),
+  )
+
+  // Overdue: the open card whose date has passed, and not the finished one that also has one.
+  await pressKanbanChip(page, scope, 'unassigned')
+  const restored = await readKanbanQuickState(page, scope)
+  check(
+    `kanban ${where}: pressing the chip again gives the board back`,
+    restored.cards === drawn.cards && restored.pressed === 0 && restored.active === '',
+    JSON.stringify(restored),
+  )
+  await pressKanbanChip(page, scope, 'overdue')
+  const late = await readKanbanQuickState(page, scope)
+  check(
+    `kanban ${where}: overdue keeps only the card that is both open and past its date`,
+    late.cards === 1 && late.keys === 'gate-c' && late.active === 'overdue',
+    JSON.stringify(late),
+  )
+  await pressKanbanChip(page, scope, 'overdue')
+  const back = await readKanbanQuickState(page, scope)
+  check(
+    `kanban ${where}: nothing is left filtered once the chips are released`,
+    back.cards === drawn.cards && back.pressed === 0,
+    JSON.stringify(back),
+  )
+}
+
+/**
+ * Presses one chip at the place a pointer would have to reach, and reports what stood in the way when it
+ * could not. The header is a row of its own, so a chip can be under the bar it belongs to rather than
+ * under the pointer, which is the failure this names instead of the symptom.
+ */
+async function pressKanbanChip(page, scope, id) {
+  const target = await page.evaluate(({ scope, id }) => {
+    const chip = document.querySelector(`${scope} [data-kanban-quick-filter="${id}"]`)
+    if (!chip) return { reason: `no ${id} chip on screen` }
+    chip.scrollIntoView({ block: 'center' })
+    const box = chip.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return { reason: 'the chip has no box' }
+    const x = Math.round(box.left + box.width / 2)
+    const y = Math.round(box.top + box.height / 2)
+    const under = document.elementFromPoint(x, y)
+    return { x, y, hit: Boolean(under && chip.contains(under)) }
+  }, { scope, id })
+  if (target.hit !== true) return target
+  await page.mouse.click(target.x, target.y)
+  await sleep(420)
+  return target
+}
+
+/** What the board holds while the chips are pressed: which cards, which chip is lit, and how many. */
+async function readKanbanQuickState(page, scope) {
+  return page.evaluate((scope) => {
+    const bar = document.querySelector(`${scope} [data-kanban-quick-filters]`)
+    const cards = [...document.querySelectorAll(`${scope} [data-item-id]`)].map((card) => card.getAttribute('data-item-id') ?? '')
+    const lit = [...(bar?.querySelectorAll('[data-kanban-quick-filter][aria-pressed="true"]') ?? [])]
+    return {
+      cards: cards.length,
+      keys: cards.join(','),
+      active: lit.map((chip) => chip.getAttribute('data-kanban-quick-filter') ?? '').join(','),
+      pressed: lit.length,
+    }
+  }, scope)
+}
+
 /** The names a column's new-card control answers to, in both languages the gate runs in. */
 const KANBAN_NEW_ITEM_LABELS = ['New item', '新建项目']
 
@@ -3800,6 +3916,9 @@ async function assertKanbanBoard(page) {
   // The block's own bar has no room for the reference's control, so this is the menu's row — which is
   // the path a reader in the note takes, and the reason the row exists at all.
   await assertKanbanKeyboard(page, blockSelector, 'in the note', { viaMenu: true })
+  // Before the view sweep reads the board: a chip narrows what the sweep would be reading, and it
+  // releases every chip before it returns.
+  await assertKanbanQuickFilters(page, blockSelector, 'in the note')
   const inlineViews = await readKanbanViewsInline(page, blockSelector)
   await openKanbanBoard(page)
   const surfaced = await page
@@ -3818,6 +3937,7 @@ async function assertKanbanBoard(page) {
   await assertKanbanCardPeek(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanTitleGestures(page, '.kanban-fullscreen', 'in the board view')
   await assertKanbanKeyboard(page, '.kanban-fullscreen', 'in the board view', { viaMenu: false })
+  await assertKanbanQuickFilters(page, '.kanban-fullscreen', 'in the board view')
   // Last of the board's own writes: the column's quick-add door is run and taken back here, before the
   // reads below count the cards this gate's fixture brought with it. (The keyboard scenario above writes
   // one too, and takes it back the same way.)
