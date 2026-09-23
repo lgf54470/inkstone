@@ -18,7 +18,6 @@ import { createKanbanId } from '../id'
 import type {
   KanbanColorName,
   KanbanData,
-  KanbanFile,
   KanbanFilter,
   KanbanItem,
   KanbanOption,
