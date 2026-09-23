@@ -451,4 +451,3 @@ describe('a board whose views are managed', () => {
     expect(selected?.textContent).toBe('Ship log')
   })
 })
-

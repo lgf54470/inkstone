@@ -12,7 +12,7 @@
 ### 批次 1 · P0 UI 结构（用户点名的 5 条全在这里）
 
 - [x] KU-01 弹出面板统一锚定（用户点③；含新发现：图标选择器无锚点、详情内面板被对话框滚动区裁剪）—— 实做见下，「Portal 化」被否，理由在条目内
-- [ ] KU-02 活动视图标签指示器 + 标签条溢出可见性（用户点②）
+- [x] KU-02 活动视图标签指示器 + 标签条溢出可见性（用户点②）
 - [ ] KU-03 表面层级与列配色（用户点④）
 - [ ] KU-04 卡片标题双击竞速守卫 + hover 铅笔 / F2（用户点⑤，方案 A）
 - [ ] KU-05 内联紧凑头部：容器查询 + 图标 / Tooltip + ⋯ 溢出菜单（用户点①）
@@ -85,12 +85,15 @@
 - **验证**：① `kanban-panel.test.ts` 21 例（几何数值、翻转、双向夹紧、包含块测量、按压不冒泡；先红后绿）；② 变异自检——把 `resolvePanelBox` 的锚点矩形换成 `anchor.parentElement`（即「回到挂在动作行上」那版行为）→ **12 例红**，由 `/tmp` 备份字节相同还原；③ 门禁新增 `assertKanbanPanelAnchoring`：逐个按真实指针按下工具栏里 4 个 `aria-haspopup=dialog` 控件，按 `aria-controls` 找到面板，断言「在自身控件下方」「整体在所属表面与窗口内」「在打开它的那棵树里」「空间够时与控件右缘对齐」（空间不够则不许硬判），并先断言指针真的落在控件上；④ 实跑全新实例（`INKSTONE_EPHEMERAL_DEV=1`，:7713）：`e2e.mjs` 177/0、`e2e-visual.mjs` **414/0**、全量 `test:unit` 436 文件 3923 例全绿、12 项静态门禁全绿、typecheck 绿。
 - **局限**：① 非模态浮层按仓库约定不接管焦点、关闭后不归还触发钮（与既有 K2-03 登记一致，非本轮新增）；② 面板不跟随滚动容器滚动实时重定位（只在打开、自身尺寸变化与窗口 resize 时重算）——列宽拖拽等导致锚点移动的场景仍会偏移，未登记为缺陷前先留观察。
 
-#### KU-02 活动视图标签指示器 + 标签条溢出可见性
+#### KU-02 活动视图标签指示器 + 标签条溢出可见性（已修）
 
-- **根因**：`kanban-view-tabs.tsx` 活动样式 `bg-[var(--bg-raised)] shadow-[var(--shadow-xs)]`，而 `tokens.css:292-293`（暖纸浅色）与 `:354-355`（纯白）里 `--bg-raised` 与 `--bg-surface` **同值** → 在头部（`bg-[var(--bg-surface)]`）上活动 tab 等于隐形。标签条 `overflow-x-auto` 无溢出提示。
-- **修法**：显式指示器（`--accent` 下划线或 `--accent-soft` 底 + accent 文字 + 字重），两模式同一实现；溢出时两端渐隐；活动态加 `data-active` 供门禁断言。
-- **范围**：`kanban-view-tabs.tsx`、（如需）`tokens.css` + 漂移基线、`check-contrast.mjs` 的 kanban 表面；`kanban-view-tabs.test.ts`、`e2e-visual.mjs`。
+- **根因**：`kanban-view-tabs.tsx` 活动样式 `bg-[var(--bg-raised)] shadow-[var(--shadow-xs)]`，而 `tokens.css:292-293`（暖纸浅色）与 `:354-355`（纯白）里 `--bg-raised` 与 `--bg-surface` **同值** → 在头部（`bg-[var(--bg-surface)]`）上活动 tab 等于隐形；全屏与内联同病（用户只是在内联模式更容易看出）。实测确认：变异回旧样式后，浏览器门禁读到活动 tab 的背景与「其下方已有的颜色」完全相等（`oklch(1 0 0)` vs `oklch(1 0 0)`）。
+- **修法（实做）**：活动 tab 改走全应用既有的「当前项」配对 `bg-[var(--accent-soft)] font-semibold text-[var(--accent)]`（侧栏歌单、放映列表都是这样画的，也是令牌层按 7 个强调色校准过的那一对），两套主题、两种模式同一实现；`font-medium` 下移到非活动态，使选中态不只靠底色。标签条新增 `useSelectedTabInView`：每次 commit 只改**标签条自己的 `scrollLeft`** 把选中标签带回可见区（不用 `scrollIntoView` —— 它会连带拖动上方所有滚动容器，而这行就坐在笔记里）。
+- **被否**：① 加 `data-active` 属性 —— `aria-selected` 本就是可机读的选择标记，再造一个没人读的属性就是死代码；② 给标签条加两端渐隐 —— 溢出的真实痛点是「选中的那个跑出视野」，而渐隐不改这一点，且 KU-05 会把标签条收进容器查询布局，渐隐面会跟着重做。
+- **范围**：`kanban-view-tabs.tsx`（`KanbanTabList` 拆出 `KanbanTab` 与 `useSelectedTabInView`，避开 50 行函数上限）、新 `kanban-view-tabs-selection.test.ts`（新用例超出单文件行数预算，按仓库「拆分而非 resnapshot」惯例另开一文件）、`scripts/check-contrast.mjs`（kanban 表面 `painted` 增 `accent`）、`scripts/e2e-visual.mjs`（新 `assertKanbanActiveTab`）、`scripts/check-comments.mjs` + 本文件。**未动任何令牌**（`tokens:check` / 漂移基线不变）。
 - **代价**：S。
+- **验证**：① 单测 7 新例（3 条令牌选择 + 4 条几何滚动），异动自检：把活动样式改回 `--bg-raised` → 2 例红；给 `useSelectedTabInView` 加一行 `if (strip) return` → 3 例红；均由 `/tmp` 备份字节相同还原；② 浏览器门禁：内联与全屏各 3 条（恰好一个活动 tab、活动 tab 的背景**不同于**其下方已有颜色、活动 tab 在标签条可见框内）；变异回旧样式实跑 → 两条「painted」如实报红（其余全绿）；③ `contrast:check` 实测 kanban 表面现在真的画了 accent（`accent 1/1`，两主题各 6/3 组强调底配对重算全过 AA）。
+- **发现（登记）**：`element.focus()` 按规范会自带滚动到可见，所以**键盘**切换视图是「自揭示」的，不需要代码帮忙；真正需要 `useSelectedTabInView` 的是不移动焦点的程序化选中（从头部菜单新建/复制/删除/重排视图）——那类路径的断言放在单测（几何数值，已变异验证），因为浏览器门禁里没法在不动文档的前提下造出该状态。
 
 #### KU-03 表面层级与列配色
 
@@ -206,4 +209,5 @@ node scripts/check-token-drift.mjs --update-baseline   # 仅当动共享令牌
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
 | 2026-09-23 | 建立 UI 轮报告与执行计划（用户评审通过） | `ee174a69` | 文档提交，无产品代码改动；清单 KU-01…KU-43 入库，批次 1（用户点名的 5 条）排最前 |
-| 2026-09-23 | KU-01 弹出面板统一锚定（用户点③） | （本提交） | 新增共用面板 `ui/kanban-panel.tsx`（自测包含块 + `placePanel` + 双侧夹紧），7 处面板改走它，图标选择器不再落静态位、详情内面板不再被对话框滚动区裁掉；Portal 化被否（焦点陷阱 + `anim-pop` 包含块），理由在条目内。`kanban-panel.test.ts` 21 例先红后绿；变异（锚点换成父元素）杀 12 例并字节还原；门禁新增 `assertKanbanPanelAnchoring`（内联 + 全屏各逐控件断言）。实跑：`e2e.mjs` 177/0、`e2e-visual.mjs` 414/0、`test:unit` 436 文件 3923 例、12 项静态门禁 + typecheck 全绿 |
+| 2026-09-23 | KU-02 活动视图标签指示器 + 标签条跟随选中（用户点②） | （本提交） | 活动 tab 改走应用既有强调配对（旧 `--bg-raised` 在两套浅色主题下等于头部自己的 `--bg-surface`，指示器形同不存在），标签条每次 commit 把自己的 `scrollLeft` 跟上选中项；`KanbanTabList` 拆出 `KanbanTab`/`useSelectedTabInView`（50 行函数上限），新用例另开 `kanban-view-tabs-selection.test.ts`（行数预算）。7 新例先红后绿；变异（改回 `--bg-raised` / 中性滚动）分别杀 2 例、3 例并字节还原；`check-contrast` 的 kanban 表面增声明 `accent` 并实测两主题各 6/3 组强调底配对全过 AA；`e2e-visual` 新增 `assertKanbanActiveTab`（内联 + 全屏各 3 条），变异实跑如实报红。实跑：`e2e-visual.mjs` 420/0、`contrast:check` ✅、`test:unit` 437 文件 3930 例、12 项静态门禁 + typecheck 全绿 |
+| 2026-09-23 | KU-01 弹出面板统一锚定（用户点③） | `88dcf6c0` | 新增共用面板 `ui/kanban-panel.tsx`（自测包含块 + `placePanel` + 双侧夹紧），7 处面板改走它，图标选择器不再落静态位、详情内面板不再被对话框滚动区裁掉；Portal 化被否（焦点陷阱 + `anim-pop` 包含块），理由在条目内。`kanban-panel.test.ts` 21 例先红后绿；变异（锚点换成父元素）杀 12 例并字节还原；门禁新增 `assertKanbanPanelAnchoring`（内联 + 全屏各逐控件断言）。实跑：`e2e.mjs` 177/0、`e2e-visual.mjs` 414/0、`test:unit` 436 文件 3923 例、12 项静态门禁 + typecheck 全绿 |

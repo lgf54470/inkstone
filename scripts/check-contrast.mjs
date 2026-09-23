@@ -347,11 +347,17 @@ const SURFACES = [
     // the tags it paints: `--kanban-tag-*` foregrounds as text on their own tints, read on the real
     // chain (the card, the column, the overlay) instead of on a surface the matrix assumed, in both
     // themes — the dark half of the palette used to be judged by the declaration alone (SH-108).
+    //
+    // `accent` is declared since the selected view tab wears it: the tab is the accent on its own
+    // 14% tint, which is the pairing the matrix re-computes for every accent. It is declared rather
+    // than assumed for the same reason the tags are: a family named here has to be painted on this
+    // surface before the pass can go green, so the tab cannot quietly go back to an uncalibrated
+    // pair without this gate saying so.
     name: 'kanban board',
     axeRoot: KANBAN_FULLSCREEN,
     open: openKanbanBoard,
     close: (page) => closeDialog(page, KANBAN_FULLSCREEN),
-    painted: ['kanban', 'text'],
+    painted: ['kanban', 'text', 'accent'],
   },
   {
     name: 'music library list view',

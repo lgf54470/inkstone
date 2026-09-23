@@ -2591,6 +2591,86 @@ async function assertKanbanPanelAnchoring(page, scope, where) {
   }
 }
 
+/**
+ * The selected view tab, which has to read as selected on a light theme as well.
+ *
+ * The strip painted its selection in `--bg-raised` on a header of `--bg-surface`, and on both light
+ * themes those two tokens are the same colour — so the reader who reported "the inline board shows
+ * which tab is active and the full screen one does not" was looking at a selection that was not
+ * drawn at all (user report 2026-09-23). The toolbar sweep above asks whether a bar keeps its height
+ * and which controls it names; it never asked what a control was painted in, so nothing here could
+ * see it.
+ *
+ * What is measured is the tab's own background against the colour already behind it (the first
+ * ancestor that paints one, which is the header): a tab that repeats it is the old defect, whatever
+ * token it names. `check-contrast.mjs` covers the other half in the same session — the accent pair
+ * the selection now wears is calibrated for all seven accents there, in both themes.
+ *
+ * The scroll half is what the strip owes a board with more views than fit: the selected tab has to be
+ * inside the strip's own box, or the reader is looking at a row that does not contain the tab the
+ * board is showing. It is asserted as that invariant rather than by parking the strip and selecting
+ * from the keyboard, and the reason is worth writing down: `focus()` scrolls its element into view by
+ * itself, so every keyboard path here self-reveals and would pass with no help from the board. What
+ * the board has to do is the case no browser will do for it — a view created, duplicated, deleted or
+ * renamed from the header's menus changes the selection without moving focus — and that is carried by
+ * exact geometry in `kanban-view-tabs-selection.test.ts` instead, where the strip's measurements are
+ * given to it. What this pass adds is that the invariant holds on a real strip whose width it reports.
+ */
+async function assertKanbanActiveTab(page, scope, where) {
+  const read = () => page.evaluate((scope) => {
+    const root = document.querySelector(scope)
+    const strip = root?.querySelector('[role="tablist"]')
+    const selected = strip?.querySelector('[role="tab"][aria-selected="true"]')
+    const box = selected?.getBoundingClientRect()
+    const stripBox = strip?.getBoundingClientRect()
+    // The colour already behind the tab: the first ancestor that paints one. A transparent parent
+    // (the tablist itself) says nothing about what the reader sees behind the tab.
+    let behind = 'transparent'
+    for (let node = selected?.parentElement; node; node = node.parentElement) {
+      const painted = getComputedStyle(node).backgroundColor
+      if (painted && painted !== 'transparent' && painted !== 'rgba(0, 0, 0, 0)') {
+        behind = painted
+        break
+      }
+    }
+    return {
+      tabs: strip?.querySelectorAll('[role="tab"]').length ?? 0,
+      selectedCount: strip?.querySelectorAll('[role="tab"][aria-selected="true"]').length ?? 0,
+      selected: selected?.textContent?.trim() ?? '',
+      background: selected ? getComputedStyle(selected).backgroundColor : '',
+      behind,
+      width: Math.round(box?.width ?? 0),
+      inside: Boolean(box && stripBox) && box.left >= stripBox.left - 1 && box.right <= stripBox.right + 1,
+      scrollLeft: Math.round(strip?.scrollLeft ?? -1),
+      // Whether the strip has anywhere to scroll at all. At a full-screen width the gate's six views
+      // may fit, and "the selected tab came back into view" is not a claim that can be tested on a
+      // strip that never moved — the note half of this pass is where that happens, and the widths are
+      // reported so a run where neither half overflowed is visible rather than silently green.
+      overflows: Boolean(strip) && strip.scrollWidth > strip.clientWidth + 1,
+      stripWidth: Math.round(strip?.clientWidth ?? 0),
+    }
+  }, scope)
+  const before = await read()
+  check(
+    `kanban ${where}: the view strip offers tabs and exactly one of them is selected`,
+    before.tabs > 1 && before.selectedCount === 1 && before.selected.length > 0,
+    JSON.stringify(before),
+  )
+  check(
+    `kanban ${where}: the selected tab is painted, not the colour already behind it`,
+    before.background !== '' && before.background !== before.behind,
+    JSON.stringify(before),
+  )
+  check(
+    `kanban ${where}: the selected tab is inside the strip's own visible box`,
+    before.inside && before.width > 0,
+    JSON.stringify(before),
+  )
+  console.log(
+    `  · kanban ${where}: ${before.tabs} tabs in a ${before.stripWidth}px strip, ${before.overflows ? `scrolled ${before.scrollLeft}px in` : 'all of them fitting'}, selected "${before.selected}" at ${before.width}px`,
+  )
+}
+
 /** What the board has to repaint when the account's language changes: its view names and its controls. */
 async function readKanbanLocale(page) {
   return page.evaluate(() => {
@@ -2678,6 +2758,7 @@ async function assertKanbanBoard(page) {
   // board inside prose, inside two scroll boxes of its own, and that is the case the placement has to
   // clamp itself around.
   await assertKanbanPanelAnchoring(page, blockSelector, 'in the note')
+  await assertKanbanActiveTab(page, blockSelector, 'in the note')
   const inlineViews = await readKanbanViewsInline(page, blockSelector)
   await openKanbanBoard(page)
   const surfaced = await page
@@ -2688,6 +2769,7 @@ async function assertKanbanBoard(page) {
   await waitForPanelSettled(page, '.kanban-fullscreen')
   await sleep(400)
   await assertKanbanPanelAnchoring(page, '.kanban-fullscreen', 'in the board view')
+  await assertKanbanActiveTab(page, '.kanban-fullscreen', 'in the board view')
 
   const hosting = await page.evaluate((selector) => {
     const overlay = document.querySelector('.kanban-fullscreen')

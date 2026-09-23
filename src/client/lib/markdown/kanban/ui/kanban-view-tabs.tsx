@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
+import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import {
   BarChart2,
   Calendar,
@@ -193,8 +193,79 @@ interface TabListProps {
   onSelectView: (viewId: string) => void
 }
 
+/**
+ * A strip that scrolls hides its own ends, and the one tab that must never be the hidden one is the
+ * selected one: with eight views the reader could switch to one from the header's menu and be shown
+ * a row that does not contain it.
+ *
+ * Only the strip's own `scrollLeft` moves — `scrollIntoView` would drag every scroll container above
+ * it along, and this row sits inside the note. It is read on every commit rather than on the
+ * selection changing: the row is not laid out when the first effect runs, and its geometry moves for
+ * reasons the props do not carry (the pane being resized, a view renamed wider, the header's
+ * container query dropping to the compact layout).
+ */
+function useSelectedTabInView(
+  stripRef: RefObject<HTMLDivElement | null>,
+  tabsRef: RefObject<(HTMLButtonElement | null)[]>,
+  activeIndex: number,
+): void {
+  useLayoutEffect(() => {
+    const strip = stripRef.current
+    const tab = tabsRef.current?.[activeIndex]
+    if (!strip || !tab) return
+    const left = tab.offsetLeft
+    const right = left + tab.offsetWidth
+    if (left < strip.scrollLeft) strip.scrollLeft = left
+    else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth
+  })
+}
+
+interface TabProps {
+  view: KanbanView
+  panelId: string
+  isActive: boolean
+  index: number
+  register: (node: HTMLButtonElement | null) => void
+  onSelectView: (viewId: string) => void
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>, index: number) => void
+}
+
+/**
+ * One view tab. The selected one is the accent on its own tint — the app's own "this is the current
+ * one" pair (the music hub's playlists and deck rail paint it the same way), and the one pairing the
+ * token layer calibrates for all seven accents. `--bg-raised` is what it used to be, and on both
+ * light themes that token is the header's own `--bg-surface`: the selection was invisible in exactly
+ * the mode the reader reported it in.
+ */
+function KanbanTab({ view, panelId, isActive, index, register, onSelectView, onKeyDown }: TabProps) {
+  return (
+    <button
+      ref={register}
+      id={kanbanViewTabId(panelId, view.id)}
+      role='tab'
+      aria-selected={isActive}
+      aria-controls={panelId}
+      data-view-type={view.type}
+      type='button'
+      tabIndex={isActive ? 0 : -1}
+      onClick={() => onSelectView(view.id)}
+      onKeyDown={(event) => onKeyDown(event, index)}
+      className={`flex h-9 shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] transition-colors md:h-7 md:py-1 ${
+        isActive
+          ? 'bg-[var(--accent-soft)] font-semibold text-[var(--accent)]'
+          : 'font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+      }`}
+    >
+      {kanbanViewIcon(view.type)}
+      <span>{formatKanbanViewName(view)}</span>
+    </button>
+  )
+}
+
 function KanbanTabList({ views, activeViewId, panelId, onSelectView }: TabListProps) {
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([])
+  const stripRef = useRef<HTMLDivElement>(null)
+  useSelectedTabInView(stripRef, tabsRef, views.findIndex((v) => v.id === activeViewId))
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const next = rovingTabIndex(index, event.key, views.length)
@@ -206,38 +277,25 @@ function KanbanTabList({ views, activeViewId, panelId, onSelectView }: TabListPr
 
   return (
     <div
+      ref={stripRef}
       className='flex min-w-0 items-center gap-1 overflow-x-auto'
       role='tablist'
       aria-label={t('preview.kanban_views')}
     >
-      {views.map((v, index) => {
-        const isActive = v.id === activeViewId
-        return (
-          <button
-            key={v.id}
-            ref={(node) => {
-              tabsRef.current[index] = node
-            }}
-            id={kanbanViewTabId(panelId, v.id)}
-            role='tab'
-            aria-selected={isActive}
-            aria-controls={panelId}
-            data-view-type={v.type}
-            type='button'
-            tabIndex={isActive ? 0 : -1}
-            onClick={() => onSelectView(v.id)}
-            onKeyDown={(event) => handleKeyDown(event, index)}
-            className={`flex h-9 shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] font-medium transition-colors md:h-7 md:py-1 ${
-              isActive
-                ? 'bg-[var(--bg-raised)] text-[var(--text-primary)] shadow-[var(--shadow-xs)]'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            {kanbanViewIcon(v.type)}
-            <span>{formatKanbanViewName(v)}</span>
-          </button>
-        )
-      })}
+      {views.map((view, index) => (
+        <KanbanTab
+          key={view.id}
+          view={view}
+          panelId={panelId}
+          index={index}
+          isActive={view.id === activeViewId}
+          register={(node) => {
+            tabsRef.current[index] = node
+          }}
+          onSelectView={onSelectView}
+          onKeyDown={handleKeyDown}
+        />
+      ))}
     </div>
   )
 }
