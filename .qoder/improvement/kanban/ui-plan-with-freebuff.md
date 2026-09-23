@@ -11,7 +11,7 @@
 
 ### 批次 1 · P0 UI 结构（用户点名的 5 条全在这里）
 
-- [ ] KU-01 弹出面板统一锚定 / Portal 化（用户点③；含新发现：图标选择器无锚点、详情内面板被对话框滚动区裁剪）
+- [x] KU-01 弹出面板统一锚定（用户点③；含新发现：图标选择器无锚点、详情内面板被对话框滚动区裁剪）—— 实做见下，「Portal 化」被否，理由在条目内
 - [ ] KU-02 活动视图标签指示器 + 标签条溢出可见性（用户点②）
 - [ ] KU-03 表面层级与列配色（用户点④）
 - [ ] KU-04 卡片标题双击竞速守卫 + hover 铅笔 / F2（用户点⑤，方案 A）
@@ -73,14 +73,17 @@
 
 ### 批次 1 · P0 UI 结构
 
-#### KU-01 弹出面板统一锚定 / Portal 化
+#### KU-01 弹出面板统一锚定（已修）
 
 - **现象**：筛选、排序、分组依据、CSV、归档 5 个面板都出现在动作行右下角同一位置；内联模式下面板可能被块/画布裁掉；详情里点图标钮，面板压住标题输入框。
 - **根因**：`kanban-header.tsx` 的 `KanbanHeaderActions` 根 `relative`，5 个面板 `absolute right-0 top-full`（`kanban-filter-popover.tsx:300`、`kanban-sort-popover.tsx:154`、`kanban-view-options.tsx:444`、`kanban-archive.tsx:121`、`kanban-csv.tsx:102`）→ 最近定位祖先是**整行**而非触发按钮；`anchorRef` 只传给了 `useClickOutside`（`filter:279`/`sort:132`/`view-options:431`/`column-menu:267`）。`kanban-icon-picker.tsx:180` 的 `absolute z-[var(--z-popover)] mt-1 …` **既无 top 也无 left** → 落静态位。四处裁剪源：`.ink-prose .kanban-block{overflow:hidden}`、`.ink-prose .kanban-canvas{overflow:hidden}`（`styles/kanban.css:1-8,144`）、板根 `overflow-x-auto`（`overflow-y` 随之变 auto）、`overlay/modal.tsx` 内容区 `overflow-y-auto`。
-- **修法**：新增 `ui/kanban-panel.tsx`（`createPortal` + `usePanelPlacement`，`align='end'`、随触发按钮对齐、翻转避让、`role='dialog'`、沿用 `useEscape`/`useClickOutside`、关闭后焦点归还触发钮）；filter/sort/view-options/archive/csv/icon-picker 全部改走它；列菜单（已在列头 `relative` 内定位正确）同样改走 Portal 以摆脱滚动容器裁剪。顺带统一 `--z-menu`/`--z-popover` 的用法。
-- **范围**：新增 1 文件 + 6 个面板文件 + `kanban-header.tsx`；`kanban-popover-dismiss.test.ts`(18 例)/`kanban-popover-aria.test.ts`/`kanban-date-picker.test.ts`；`e2e-visual.mjs`。
+- **修法（实做）**：新增 `ui/kanban-panel.tsx` —— 一个共用面板，**按自身测量**定位：把面板钉到 `0,0` 读一次它实际落在哪个包含块（`offsetParent` 在 `container-type` 祖先下不一定是那个块，KU-05 正要给头部加容器查询），再用项目既有的 `placePanel` 算出「与触发控件对齐、在其下方、下方不够则翻上、夹在可视盒内」，并同时写 `max-width`/`max-height`（超出即自身滚动）。可视盒 = 视口被所有 `overflow` 非 `visible` 的祖先依次削过（`clipPanelViewport`），所以笔记里 292px 宽的块内不会再有 320px 面板溢出。filter/sort/view-options/archive/csv/icon-picker/column-menu 七处全部改走它。
+- **被否：Portal 化**。原计划是 `createPortal` 到 `document.body`，实做时否掉：① 全屏看板是 `Modal`，对话框焦点陷阱把 `Tab` 圈在**对话框自己的子树**里，面板搬到 body 就成了键盘不可达；② 搬进同一棵树改用 `position: fixed` 也不行——覆盖层外壳带 `anim-pop`，其定格 transform 会成为 fixed 子元素的包含块（导图嵌套模板面板正是记录在案的先例），头部的容器查询又往这条链上再加一层 `contain`。故保留 `absolute` + 自算坐标。jsdom 里 `role`/`id`/`aria-label`/触发钮的 `aria-controls` 位置一律不变，`kanban-popover-dismiss.test.ts`(18 例)/`kanban-popover-aria.test.ts` 原样通过。
+- **附带**：`tests/client-raw-controls.test.ts` 的 click-container 例外表删掉 archive/csv 两条 —— 那两个文件不再自己写 `stopPropagation` div，该守卫改由 `kanban-panel.test.ts` 的行为断言承担（面板内的按压不冒泡到板子）。
+- **范围**：新增 `ui/kanban-panel.tsx` + `ui/kanban-panel.test.ts` + 7 个面板文件 + `tests/client-raw-controls.test.ts` + `scripts/e2e-visual.mjs` + `scripts/check-comments.mjs`（白名单按当前树重算）+ 本文件。
 - **代价**：M。
-- **验证**：新增 `kanban-panel-placement.test.ts`（复用 `placePanel` 的数值断言范式）；浏览器门禁给工具栏扫描补一条 —— **面板左/右边缘与触发按钮对齐且顶边在按钮下方**（现有扫描只断言「不撑高头部」，故该 bug 一直未被拦住；`e2e-visual.mjs` 里「portaled dialog」的注释与实现不符，一并改正）。
+- **验证**：① `kanban-panel.test.ts` 21 例（几何数值、翻转、双向夹紧、包含块测量、按压不冒泡；先红后绿）；② 变异自检——把 `resolvePanelBox` 的锚点矩形换成 `anchor.parentElement`（即「回到挂在动作行上」那版行为）→ **12 例红**，由 `/tmp` 备份字节相同还原；③ 门禁新增 `assertKanbanPanelAnchoring`：逐个按真实指针按下工具栏里 4 个 `aria-haspopup=dialog` 控件，按 `aria-controls` 找到面板，断言「在自身控件下方」「整体在所属表面与窗口内」「在打开它的那棵树里」「空间够时与控件右缘对齐」（空间不够则不许硬判），并先断言指针真的落在控件上；④ 实跑全新实例（`INKSTONE_EPHEMERAL_DEV=1`，:7713）：`e2e.mjs` 177/0、`e2e-visual.mjs` **414/0**、全量 `test:unit` 436 文件 3923 例全绿、12 项静态门禁全绿、typecheck 绿。
+- **局限**：① 非模态浮层按仓库约定不接管焦点、关闭后不归还触发钮（与既有 K2-03 登记一致，非本轮新增）；② 面板不跟随滚动容器滚动实时重定位（只在打开、自身尺寸变化与窗口 resize 时重算）——列宽拖拽等导致锚点移动的场景仍会偏移，未登记为缺陷前先留观察。
 
 #### KU-02 活动视图标签指示器 + 标签条溢出可见性
 
@@ -202,4 +205,5 @@ node scripts/check-token-drift.mjs --update-baseline   # 仅当动共享令牌
 
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
-| 2026-09-23 | 建立 UI 轮报告与执行计划（用户评审通过） | （本提交） | 文档提交，无产品代码改动；清单 KU-01…KU-43 入库，批次 1（用户点名的 5 条）排最前 |
+| 2026-09-23 | 建立 UI 轮报告与执行计划（用户评审通过） | `ee174a69` | 文档提交，无产品代码改动；清单 KU-01…KU-43 入库，批次 1（用户点名的 5 条）排最前 |
+| 2026-09-23 | KU-01 弹出面板统一锚定（用户点③） | （本提交） | 新增共用面板 `ui/kanban-panel.tsx`（自测包含块 + `placePanel` + 双侧夹紧），7 处面板改走它，图标选择器不再落静态位、详情内面板不再被对话框滚动区裁掉；Portal 化被否（焦点陷阱 + `anim-pop` 包含块），理由在条目内。`kanban-panel.test.ts` 21 例先红后绿；变异（锚点换成父元素）杀 12 例并字节还原；门禁新增 `assertKanbanPanelAnchoring`（内联 + 全屏各逐控件断言）。实跑：`e2e.mjs` 177/0、`e2e-visual.mjs` 414/0、`test:unit` 436 文件 3923 例、12 项静态门禁 + typecheck 全绿 |

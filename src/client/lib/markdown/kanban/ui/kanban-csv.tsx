@@ -7,7 +7,6 @@
 import { useId, useMemo, useRef, useState } from 'react'
 import { Download, FileSpreadsheet, Upload } from 'lucide-react'
 import { Button } from '../../../../components/primitives'
-import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { downloadTextFile } from '../../../export-note'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { kanbanActiveItems } from '../archive'
@@ -15,6 +14,7 @@ import { importKanbanCsv, kanbanCsvFilename, kanbanToCsv, KANBAN_CSV_MAX_ROWS } 
 import type { KanbanCsvOutcome } from '../csv'
 import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
 import type { CommitKanbanData } from './kanban-history'
+import { KanbanPanel } from './kanban-panel'
 
 const CSV_MIME = 'text/csv;charset=utf-8'
 const CSV_FILE_ACCEPT = '.csv,text/csv'
@@ -82,24 +82,38 @@ function CsvPanelButton({
 }
 
 interface KanbanCsvPanelProps {
+  open: boolean
   panelId: string
-  panelRef: React.RefObject<HTMLDivElement | null>
+  anchorRef: React.RefObject<HTMLElement | null>
+  onClose: () => void
   fileRef: React.RefObject<HTMLInputElement | null>
   feedback: string[]
   onExport: () => void
   onFile: (file: File | undefined) => void
 }
 
-function KanbanCsvPanel({ panelId, panelRef, fileRef, feedback, onExport, onFile }: KanbanCsvPanelProps) {
+function KanbanCsvPanel({
+  open,
+  panelId,
+  anchorRef,
+  onClose,
+  fileRef,
+  feedback,
+  onExport,
+  onFile,
+}: KanbanCsvPanelProps) {
   return (
-    <div
-      id={panelId}
-      ref={panelRef}
-      role='dialog'
-      aria-label={t('preview.kanban_csv_panel')}
+    <KanbanPanel
+      open={open}
+      panelId={panelId}
+      label={t('preview.kanban_csv_panel')}
+      anchorRef={anchorRef}
+      onClose={onClose}
+      // The board reads a press anywhere as "stop what you were doing"; a press that meant one of
+      // these rows is the panel's, not the board's.
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className='absolute right-0 top-full z-[var(--z-popover)] mt-1 flex w-64 flex-col gap-1 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)]'
+      className='z-[var(--z-popover)] flex w-64 flex-col gap-1 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)]'
     >
       <CsvPanelButton
         action='export'
@@ -128,7 +142,7 @@ function KanbanCsvPanel({ panelId, panelRef, fileRef, feedback, onExport, onFile
           ))}
         </p>
       )}
-    </div>
+    </KanbanPanel>
   )
 }
 
@@ -173,14 +187,11 @@ export function KanbanCsvAction(entry: KanbanCsvEntry) {
   useLocaleRepaint()
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
   const panelId = useId()
-  useClickOutside([panelRef, btnRef], open, () => setOpen(false))
-  useEscape(open, () => setOpen(false))
   const { feedback, fileRef, handleExport, handleFile } = useCsvDoors(entry)
 
   return (
-    <div className='relative'>
+    <>
       <Button
         ref={btnRef}
         size='sm'
@@ -196,16 +207,16 @@ export function KanbanCsvAction(entry: KanbanCsvEntry) {
       >
         <span className='hidden md:inline'>{t('preview.kanban_csv')}</span>
       </Button>
-      {open && (
-        <KanbanCsvPanel
-          panelId={panelId}
-          panelRef={panelRef}
-          fileRef={fileRef}
-          feedback={feedback}
-          onExport={handleExport}
-          onFile={handleFile}
-        />
-      )}
-    </div>
+      <KanbanCsvPanel
+        open={open}
+        panelId={panelId}
+        anchorRef={btnRef}
+        onClose={() => setOpen(false)}
+        fileRef={fileRef}
+        feedback={feedback}
+        onExport={handleExport}
+        onFile={handleFile}
+      />
+    </>
   )
 }

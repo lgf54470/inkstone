@@ -1,11 +1,11 @@
-import { memo, useId, useRef, useState } from 'react'
+import { memo, useId, useState } from 'react'
 import { ChevronLeft, Palette, Trash2 } from 'lucide-react'
-import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanDotColor } from '../colors'
 import { normalizeKanbanWipLimit } from '../filter-sort'
 import { formatKanbanColorName } from '../i18n-helpers'
 import type { KanbanColorName } from '../types'
+import { KanbanPanel } from './kanban-panel'
 
 interface KanbanColumnMenuProps {
   open: boolean
@@ -263,23 +263,19 @@ export const KanbanColumnMenu = memo(function KanbanColumnMenu({
   panelId,
 }: KanbanColumnMenuProps) {
   useLocaleRepaint()
-  const panelRef = useRef<HTMLDivElement>(null)
-  useClickOutside([panelRef, anchorRef], open, onClose)
-  useEscape(open, onClose)
-
-  if (!open) return null
 
   // No Status is not a workflow state the board owns — it is wherever the cards that named none
   // landed — so there is no option to write a name, a colour or a limit onto.
   const isNoneGroup = groupKey === '__none__'
 
   return (
-    <div
-      id={panelId}
-      ref={panelRef}
-      role='dialog'
-      aria-label={t('preview.kanban_column_options')}
-      className='absolute right-0 top-full z-[var(--z-menu)] mt-1 flex w-56 flex-col gap-1 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-1.5 shadow-[var(--shadow-pop)]'
+    <KanbanPanel
+      open={open}
+      panelId={panelId}
+      label={t('preview.kanban_column_options')}
+      anchorRef={anchorRef}
+      onClose={onClose}
+      className='z-[var(--z-menu)] flex w-56 flex-col gap-1 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-1.5 shadow-[var(--shadow-pop)]'
     >
       {!isNoneGroup && (
         <ColumnRenameInput initialName={label} onRename={onRename} onClose={onClose} />
@@ -297,6 +293,6 @@ export const KanbanColumnMenu = memo(function KanbanColumnMenu({
         onClose={onClose}
         isNoneGroup={isNoneGroup}
       />
-    </div>
+    </KanbanPanel>
   )
 })

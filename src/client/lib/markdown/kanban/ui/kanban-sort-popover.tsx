@@ -1,9 +1,9 @@
-import { memo, useRef } from 'react'
+import { memo } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
-import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanProperty, KanbanSort } from '../types'
+import { KanbanPanel } from './kanban-panel'
 
 interface KanbanSortPopoverProps {
   open: boolean
@@ -128,11 +128,6 @@ export const KanbanSortPopover = memo(function KanbanSortPopover({
   onChangeSorts,
 }: KanbanSortPopoverProps) {
   useLocaleRepaint()
-  const panelRef = useRef<HTMLDivElement>(null)
-  useClickOutside([panelRef, anchorRef], open, onClose)
-  useEscape(open, onClose)
-
-  if (!open) return null
 
   const handleAddSort = () => {
     const defaultProp = columns[0]?.id ?? 'title'
@@ -146,12 +141,13 @@ export const KanbanSortPopover = memo(function KanbanSortPopover({
   }
 
   return (
-    <div
-      id={panelId}
-      ref={panelRef}
-      role='dialog'
-      aria-label={t('preview.kanban_sort_rules')}
-      className='absolute right-0 top-full z-[var(--z-menu)] mt-1.5 flex w-72 flex-col gap-2 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-pop)]'
+    <KanbanPanel
+      open={open}
+      panelId={panelId}
+      label={t('preview.kanban_sort_rules')}
+      anchorRef={anchorRef}
+      onClose={onClose}
+      className='z-[var(--z-menu)] flex w-72 flex-col gap-2 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-pop)]'
     >
       <SortHeader onClose={onClose} />
       <SortList
@@ -168,6 +164,6 @@ export const KanbanSortPopover = memo(function KanbanSortPopover({
         <Plus size={13} />
         <span>{t('preview.kanban_add_sort')}</span>
       </button>
-    </div>
+    </KanbanPanel>
   )
 })

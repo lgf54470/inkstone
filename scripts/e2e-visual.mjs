@@ -1393,9 +1393,11 @@ const TOOLBAR_SURFACES = [
   // under that bar, which is exactly what the sweep holds to its size: a panel drawn as a row of
   // the header would push the control that opened it out from under the pointer.
   { name: 'slides editor', open: openSlidesEditor, root: '.bento-slides-fullscreen', toolbar: '.bento-slides-fullscreen header', minToggles: 2, loaded: { selector: '.bento-canvas-stage [data-slide-element]', min: 3 } },
-  // The board's top bar is the third toolbar drawn inside the full screen modal shell. Its three
-  // controls each disclose a portaled dialog of their own, which is what the sweep dismisses between
-  // presses, and its content has arrived once the cards are drawn.
+  // The board's top bar is the third toolbar drawn inside the full screen modal shell. Several of its
+  // controls disclose a dialog of their own — panels that stay in the dialog's tree rather than being
+  // portaled out of it, which is what keeps them inside the focus trap and is asserted where they are
+  // opened (`assertKanbanPanelAnchoring`); the sweep dismisses them between presses. Its content has
+  // arrived once the cards are drawn.
   { name: 'kanban board', open: openKanbanBoard, root: '.kanban-fullscreen', toolbar: '.kanban-fullscreen [data-kanban-header]', minToggles: 3, loaded: { selector: '[data-item-id]', min: 2 } },
 ]
 
@@ -2455,6 +2457,140 @@ async function assertKanbanCanvasBase(page, scope) {
   check('kanban board: the board draws on the app\'s own base type, not the note\'s', base !== null && JSON.stringify(base.board) === JSON.stringify(base.app), JSON.stringify(base))
 }
 
+/**
+ * Where the top bar's panels land, and the reason this exists at all.
+ *
+ * Every panel the board opens used to be `absolute right-0 top-full`, and `right-0` resolved against
+ * `data-kanban-actions` — the whole action row rather than the control inside it — so the filter, the
+ * sort, the view options, the CSV door and the archive shelf all opened in the same corner of the row
+ * instead of under the control that asked for them. The toolbar sweep above only ever asked whether a
+ * bar kept its height, so nothing in this gate could see it (user report 2026-09-23).
+ *
+ * What is measured is the relation: the panel is under its own control, it is wholly inside the
+ * surface it belongs to (the block in the note — 292px wide at a 1280px window, which is why a 320px
+ * panel has to be squeezed rather than placed — and the whole window in the overlay), it lines up with
+ * its control's trailing edge whenever the room for that exists, and it stays in the tree it was
+ * opened from. That last one is not decoration: the full screen board is a `Modal` whose focus trap
+ * cycles `Tab` inside the dialog's own subtree, so a panel parked on the body would be unreachable by
+ * keyboard, which is why the fix places them by hand instead of portaling them.
+ *
+ * "Whenever the room exists" is spelled out rather than relaxed away: a control near the right edge of
+ * a narrow block cannot have a wide panel's trailing edge on its own, and asserting it anyway would
+ * only make the gate fail for a geometry no placement could satisfy. The room is computed from the
+ * measured boxes, so the alignment is still required everywhere it is achievable — including the whole
+ * overlay, where the original defect (every panel in the row's corner) is caught outright.
+ *
+ * Each control is pressed with a real pointer, and `aria-controls` is followed rather than guessed: a
+ * panel that is not the box its own button names is a panel wired to the wrong control. The pointer's
+ * mark is checked too, since the note's scroll area reaches under the app's fixed bottom bar and a
+ * press that lands there would be measuring whatever it hit instead.
+ */
+async function assertKanbanPanelAnchoring(page, scope, where) {
+  await page.evaluate((scope) => {
+    document.querySelector(`${scope} [data-kanban-actions]`)?.scrollIntoView({ block: 'center' })
+  }, scope)
+  await sleep(240)
+  const controls = await page.evaluate((scope) => {
+    const row = document.querySelector(`${scope} [data-kanban-actions]`)
+    if (!row) return null
+    return [...row.querySelectorAll('button[aria-haspopup="dialog"]')].map((button) => {
+      const box = button.getBoundingClientRect()
+      const x = Math.round(box.left + box.width / 2)
+      const y = Math.round(box.top + box.height / 2)
+      const hit = document.elementFromPoint(x, y)
+      return {
+        name: button.getAttribute('aria-label') ?? button.textContent.trim(),
+        x,
+        y,
+        // The pointer has to land on the control itself, not on something drawn over it.
+        hittable: Boolean(hit) && (hit === button || button.contains(hit)),
+      }
+    })
+  }, scope)
+  check(
+    `kanban ${where}: the top bar offers its panels to press, and the pointer reaches them`,
+    (controls?.length ?? 0) >= 4 && controls.every((control) => control.hittable),
+    JSON.stringify(controls),
+  )
+  if (!controls) return
+  for (const control of controls) {
+    await page.mouse.click(control.x, control.y)
+    await sleep(340)
+    const read = await page.evaluate(({ scope, name }) => {
+      // The clearance a panel keeps from an edge, which is also the room the alignment needs.
+      const MARGIN = 8
+      const found = [...document.querySelectorAll(`${scope} [data-kanban-actions] button[aria-haspopup="dialog"]`)]
+        .find((button) => (button.getAttribute('aria-label') ?? button.textContent.trim()) === name)
+      const panelId = found?.getAttribute('aria-controls') ?? ''
+      const panel = panelId ? document.getElementById(panelId) : null
+      const controlBox = found?.getBoundingClientRect()
+      const box = panel?.getBoundingClientRect()
+      const surface = document.querySelector(scope)?.getBoundingClientRect()
+      return {
+        name,
+        named: panelId !== '',
+        panel: Boolean(panel),
+        width: Math.round(box?.width ?? 0),
+        height: Math.round(box?.height ?? 0),
+        under: Boolean(box && controlBox) && box.top >= controlBox.bottom - 1,
+        aligned: Boolean(box && controlBox) && Math.abs(box.right - controlBox.right) <= 8,
+        // Whether the panel's own width even fits to the right of its control inside the surface: if
+        // it does not, no placement can put the two trailing edges together, and the panel is drawn
+        // as far right as the surface allows instead.
+        alignmentPossible: Boolean(box && controlBox && surface) &&
+          controlBox.right - surface.left >= box.width + MARGIN,
+        insideSurface:
+          Boolean(box && surface) &&
+          box.left >= surface.left - 1 &&
+          box.top >= surface.top - 1 &&
+          box.right <= surface.right + 1 &&
+          box.bottom <= surface.bottom + 1,
+        insideWindow:
+          Boolean(box) &&
+          box.left >= -1 &&
+          box.top >= -1 &&
+          box.right <= window.innerWidth + 1 &&
+          box.bottom <= window.innerHeight + 1,
+        inTree: Boolean(panel?.closest(scope)),
+      }
+    }, { scope, name: control.name })
+    check(
+      `kanban ${where}: ${read.name} opens the panel its own button names`,
+      read.named && read.panel && read.height > 0,
+      JSON.stringify(read),
+    )
+    check(
+      `kanban ${where}: ${read.name} draws that panel under itself, not under the action row`,
+      read.under,
+      JSON.stringify(read),
+    )
+    check(
+      `kanban ${where}: ${read.name} keeps its panel whole inside its surface and the window`,
+      read.insideSurface && read.insideWindow && read.inTree,
+      JSON.stringify(read),
+    )
+    check(
+      `kanban ${where}: ${read.name} lines the panel up with its own trailing edge when the room is there`,
+      !read.alignmentPossible || read.aligned,
+      JSON.stringify(read),
+    )
+    // Escape first, because a control that only ever opens is not the same control twice; the second
+    // press is the fallback for the ones that do toggle.
+    await page.keyboard.press('Escape')
+    await sleep(240)
+    const stillOpen = await page.evaluate(({ scope, name }) => {
+      const found = [...document.querySelectorAll(`${scope} [data-kanban-actions] button[aria-haspopup="dialog"]`)]
+        .find((button) => (button.getAttribute('aria-label') ?? button.textContent.trim()) === name)
+      const panelId = found?.getAttribute('aria-controls') ?? ''
+      return panelId !== '' && Boolean(document.getElementById(panelId))
+    }, { scope, name: control.name })
+    if (stillOpen) {
+      await page.mouse.click(control.x, control.y)
+      await sleep(240)
+    }
+  }
+}
+
 /** What the board has to repaint when the account's language changes: its view names and its controls. */
 async function readKanbanLocale(page) {
   return page.evaluate(() => {
@@ -2538,6 +2674,10 @@ async function assertKanbanBoard(page) {
   if (index === null) return
   const blockSelector = kanbanBlockByIndex(index)
   await assertKanbanCanvasBase(page, blockSelector)
+  // Where the top bar's panels land, read in the note as well as in the overlay: the note draws the
+  // board inside prose, inside two scroll boxes of its own, and that is the case the placement has to
+  // clamp itself around.
+  await assertKanbanPanelAnchoring(page, blockSelector, 'in the note')
   const inlineViews = await readKanbanViewsInline(page, blockSelector)
   await openKanbanBoard(page)
   const surfaced = await page
@@ -2547,6 +2687,7 @@ async function assertKanbanBoard(page) {
   if (!surfaced) return
   await waitForPanelSettled(page, '.kanban-fullscreen')
   await sleep(400)
+  await assertKanbanPanelAnchoring(page, '.kanban-fullscreen', 'in the board view')
 
   const hosting = await page.evaluate((selector) => {
     const overlay = document.querySelector('.kanban-fullscreen')

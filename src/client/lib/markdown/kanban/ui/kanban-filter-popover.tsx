@@ -1,6 +1,5 @@
-import { memo, useRef } from 'react'
+import { memo } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
-import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { formatKanbanPropertyName } from '../i18n-helpers'
 import { kanbanFilterOperatorsForType } from '../filter-sort'
@@ -10,6 +9,7 @@ import type {
   KanbanProperty,
   KanbanPropertyType,
 } from '../types'
+import { KanbanPanel } from './kanban-panel'
 
 interface KanbanFilterPopoverProps {
   open: boolean
@@ -275,11 +275,6 @@ export const KanbanFilterPopover = memo(function KanbanFilterPopover({
   onChangeFilters,
 }: KanbanFilterPopoverProps) {
   useLocaleRepaint()
-  const panelRef = useRef<HTMLDivElement>(null)
-  useClickOutside([panelRef, anchorRef], open, onClose)
-  useEscape(open, onClose)
-
-  if (!open) return null
 
   const handleAddFilter = () => {
     const column = columns[0]
@@ -292,12 +287,13 @@ export const KanbanFilterPopover = memo(function KanbanFilterPopover({
   }
 
   return (
-    <div
-      id={panelId}
-      ref={panelRef}
-      role='dialog'
-      aria-label={t('preview.kanban_filter_rules')}
-      className='absolute right-0 top-full z-[var(--z-menu)] mt-1.5 flex w-80 flex-col gap-2 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-pop)]'
+    <KanbanPanel
+      open={open}
+      panelId={panelId}
+      label={t('preview.kanban_filter_rules')}
+      anchorRef={anchorRef}
+      onClose={onClose}
+      className='z-[var(--z-menu)] flex w-80 flex-col gap-2 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-pop)]'
     >
       <FilterHeader onClose={onClose} />
       <FilterList
@@ -307,6 +303,6 @@ export const KanbanFilterPopover = memo(function KanbanFilterPopover({
         onRemove={(i) => onChangeFilters(filters.filter((_, idx) => idx !== i))}
       />
       <FilterAddButton onAdd={handleAddFilter} />
-    </div>
+    </KanbanPanel>
   )
 })

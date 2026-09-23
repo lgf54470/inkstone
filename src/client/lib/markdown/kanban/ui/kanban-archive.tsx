@@ -1,12 +1,12 @@
 import { useCallback, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { Archive, Trash2, Undo2 } from 'lucide-react'
 import { Button } from '../../../../components/primitives'
-import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { useUi } from '../../../../store/ui'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { kanbanArchivedItems, kanbanSetArchived } from '../archive'
 import type { KanbanData, KanbanItem } from '../types'
 import type { CommitKanbanData } from './kanban-history'
+import { KanbanPanel } from './kanban-panel'
 
 export interface KanbanArchiveEntry {
   items: KanbanItem[]
@@ -105,20 +105,33 @@ function ArchiveRow({
 }
 
 interface KanbanArchivePanelProps extends KanbanArchiveEntry {
+  open: boolean
   panelId: string
-  panelRef: React.RefObject<HTMLDivElement | null>
+  anchorRef: React.RefObject<HTMLElement | null>
+  onClose: () => void
 }
 
-function KanbanArchivePanel({ items, panelId, panelRef, onRestore, onDelete }: KanbanArchivePanelProps) {
+function KanbanArchivePanel({
+  items,
+  open,
+  panelId,
+  anchorRef,
+  onClose,
+  onRestore,
+  onDelete,
+}: KanbanArchivePanelProps) {
   return (
-    <div
-      id={panelId}
-      ref={panelRef}
-      role='dialog'
-      aria-label={t('preview.kanban_archive_panel')}
+    <KanbanPanel
+      open={open}
+      panelId={panelId}
+      label={t('preview.kanban_archive_panel')}
+      anchorRef={anchorRef}
+      onClose={onClose}
+      // The board reads a press anywhere as "stop what you were doing"; a press that meant one of
+      // these rows is the panel's, not the board's.
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className='absolute right-0 top-full z-[var(--z-popover)] mt-1 flex w-64 flex-col gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)]'
+      className='z-[var(--z-popover)] flex w-64 flex-col gap-1.5 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-2 shadow-[var(--shadow-pop)]'
     >
       <div className='flex items-center justify-between'>
         <span className='text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
@@ -143,7 +156,7 @@ function KanbanArchivePanel({ items, panelId, panelRef, onRestore, onDelete }: K
           />
         ))}
       </ul>
-    </div>
+    </KanbanPanel>
   )
 }
 
@@ -156,15 +169,12 @@ export function KanbanArchiveAction(entry: KanbanArchiveEntry) {
   useLocaleRepaint()
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
   const panelId = useId()
-  useClickOutside([panelRef, btnRef], open, () => setOpen(false))
-  useEscape(open, () => setOpen(false))
 
   if (entry.items.length === 0) return null
 
   return (
-    <div className='relative'>
+    <>
       <Button
         ref={btnRef}
         size='sm'
@@ -180,7 +190,13 @@ export function KanbanArchiveAction(entry: KanbanArchiveEntry) {
       >
         {entry.items.length}
       </Button>
-      {open && <KanbanArchivePanel {...entry} panelId={panelId} panelRef={panelRef} />}
-    </div>
+      <KanbanArchivePanel
+        {...entry}
+        open={open}
+        panelId={panelId}
+        anchorRef={btnRef}
+        onClose={() => setOpen(false)}
+      />
+    </>
   )
 }

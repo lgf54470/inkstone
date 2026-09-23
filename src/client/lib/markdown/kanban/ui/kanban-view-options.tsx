@@ -1,6 +1,5 @@
-import { memo, useId, useRef, useState } from 'react'
+import { memo, useId, useState } from 'react'
 import { ArrowDown, ArrowUp, Columns3, Pencil, Plus, Rows3, Settings2, Sliders, Trash2 } from 'lucide-react'
-import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanProperty, KanbanPropertyType } from '../types'
@@ -9,6 +8,7 @@ import {
   KANBAN_EDITABLE_TYPES,
   type KanbanSchemaOperations,
 } from './kanban-column-hooks'
+import { KanbanPanel } from './kanban-panel'
 import { kanbanPropertyColumns } from './kanban-property-cell'
 
 export type CardSize = 'small' | 'medium' | 'large'
@@ -427,21 +427,17 @@ export const KanbanViewOptions = memo(function KanbanViewOptions({
   schemaOps,
 }: KanbanViewOptionsProps) {
   useLocaleRepaint()
-  const panelRef = useRef<HTMLDivElement>(null)
-  useClickOutside([panelRef, anchorRef], open, onClose)
-  useEscape(open, onClose)
-
-  if (!open) return null
 
   // Each section renders when the caller wired it: the board gets grouping and
   // card size, the table gets column visibility, neither sees the other's controls.
   return (
-    <div
-      id={panelId}
-      ref={panelRef}
-      role='dialog'
-      aria-label={t(onToggleHiddenColumn ? 'preview.kanban_columns' : 'preview.kanban_group_by')}
-      className='absolute right-0 top-full z-[var(--z-menu)] mt-1 flex w-60 flex-col gap-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-pop)]'
+    <KanbanPanel
+      open={open}
+      panelId={panelId}
+      label={t(onToggleHiddenColumn ? 'preview.kanban_columns' : 'preview.kanban_group_by')}
+      anchorRef={anchorRef}
+      onClose={onClose}
+      className='z-[var(--z-menu)] flex w-60 flex-col gap-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-pop)]'
     >
       {onChangeGroupBy && groupBy !== undefined && (
         <GroupBySection groupBy={groupBy} columns={columns} onChangeGroupBy={onChangeGroupBy} />
@@ -465,6 +461,6 @@ export const KanbanViewOptions = memo(function KanbanViewOptions({
           schemaOps={schemaOps}
         />
       )}
-    </div>
+    </KanbanPanel>
   )
 })

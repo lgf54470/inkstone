@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Smile, Trash2 } from 'lucide-react'
-import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t } from '../../../i18n'
 import { KANBAN_ICONS } from './kanban-icon-badge'
+import { KanbanPanel } from './kanban-panel'
 
 const KANBAN_COMMON_EMOJIS = [
   '📝', '🎯', '🚀', '💡', '📌', '🏷️', '⭐', '☕', '🎨', '📦',
@@ -159,12 +159,6 @@ export function KanbanIconPicker({
   onSelectIcon,
 }: KanbanIconPickerProps) {
   const [tab, setTab] = useState<'emoji' | 'icon'>('emoji')
-  const panelRef = useRef<HTMLDivElement>(null)
-
-  useClickOutside([panelRef, anchorRef], open, onClose)
-  useEscape(open, onClose)
-
-  if (!open) return null
 
   const handleSelect = (val: string) => {
     onSelectIcon(val)
@@ -172,12 +166,13 @@ export function KanbanIconPicker({
   }
 
   return (
-    <div
-      id={panelId}
-      ref={panelRef}
-      role='dialog'
-      aria-label={t('preview.kanban_icon_picker')}
-      className='absolute z-[var(--z-popover)] mt-1 w-64 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] shadow-[var(--shadow-pop)]'
+    <KanbanPanel
+      open={open}
+      panelId={panelId}
+      label={t('preview.kanban_icon_picker')}
+      anchorRef={anchorRef}
+      onClose={onClose}
+      className='z-[var(--z-popover)] w-64 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] shadow-[var(--shadow-pop)]'
     >
       <PickerHeaderTabs
         tab={tab}
@@ -189,6 +184,6 @@ export function KanbanIconPicker({
       />
       {tab === 'emoji' ? <EmojiGrid onSelect={handleSelect} /> : <LucideIconGrid onSelect={handleSelect} />}
       <CustomEmojiInput onSelect={handleSelect} />
-    </div>
+    </KanbanPanel>
   )
 }
