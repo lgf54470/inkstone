@@ -9384,8 +9384,15 @@ const allowed = new Map([
     '// Patch format checks run in-route after the ownership lookup so cross-user writes surface 404 first.',
   ]],
   ['src/worker/routes/kanban.ts', [
+    '/**\n * The quota is answered from one D1 query: every kanban upload writes its own row into the same\n * `attachments` table the note attachments use, so the ledger stays in one place. This used to walk\n * the whole R2 bucket per upload to add up the objects — an O(bucket) list on every file — and the\n * kanban objects were invisible to D1. Objects uploaded before rows existed are not in the ledger\n * and are counted as nothing: the quota undercounts rather than blocking uploads that fit.\n */',
+    '/** The ledger row a kanban upload owes the quota: same table, no note, `r2` storage, its own key. */',
+    '/**\n * Stores the object, then its ledger row — in that order, so a row failure can take the object back\n * down and leave the quota\'s ledger truthful. An object without its row would be invisible to the\n * quota for good, which is why the row failure fails the whole upload.\n */',
+    '// The object deletion itself is best-effort — if even that fails the object waits for the',
+    '// orphan reclaim pass instead of masking the row error that is being rethrown.',
     '// Objects predating owner metadata are treated as unreadable rather than public.',
     '// Same rule as GET: an object without owner metadata is nobody\'s to delete.',
+    '// The ledger row goes with the object, or the quota would keep charging for a file that is gone.',
+    '// Objects predating the ledger have no row, and the delete is simply a no-op for them.',
   ]],
   ['src/worker/routes/mcp-authorize.ts', [
     '/* Unreadable user settings fall back to the Accept-Language header. */',
@@ -9947,6 +9954,12 @@ const allowed = new Map([
     '// The named exception holds only while the file really does register, so a host that drops its',
     '// registration cannot inherit one of these two labels by sitting in the list.',
     '/**\n   * P-01 took the fence bodies out of the markup, so a surface that draws a block has to be handed\n   * them from wherever the markup was rendered. A call that names neither is a surface where every\n   * board, map, whiteboard and deck reads as an empty fence — the loud error state, on every block.\n   */',
+  ]],
+  ['tests/kanban-routes.test.ts', [
+    '/**\n * Records every prepared statement with the arguments it was bound to, so a test can assert the\n * ledger row an upload wrote or the row a delete removed — not merely that "some" query ran.\n */',
+    '// A pre-ledger kanban object at the quota line used to block this upload (the old code listed the',
+    '// whole bucket per upload); under ledger accounting the object counts as nothing and the upload',
+    '// fits — the documented undercount — and no `list` call is spent on the quota at all.',
   ]],
   ['tests/kanban-tag-contrast.test.ts', [
     '/**\n * Kanban labels are the one palette the app does not derive from the accent: the\n * user picks a colour per option, so it has to work on every surface the board\n * paints them on and in both themes. That also means nothing else guards it —\n * `scripts/check-contrast.mjs` measures what the running app paints, and this\n * palette is only painted once a board exists.\n *\n * So the gate reads the declarations instead. A chip is a translucent tint of\n * the label colour over whatever surface it lands on, so the pair that has to\n * clear 4.5:1 is (label colour, tint composited on that surface) — judged over\n * every solid surface of the theme, because the same chip appears on the\n * sunken board, the raised card and the overlay dialog.\n */',

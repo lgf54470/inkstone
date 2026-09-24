@@ -1,7 +1,8 @@
 import { Hono, type Context } from 'hono'
 import { LIMITS } from '@shared/constants'
-import type { AppBindings, Env } from '../env'
+import type { AppBindings } from '../env'
 import { ApiError } from '../lib/errors'
+import { sha256Hex } from '../lib/encoding'
 import { safeAttachmentMime } from '../lib/image'
 import { newId } from '../lib/id'
 import { FORM_BODY_LIMITS, readFormDataWithinLimit } from '../lib/request'
@@ -36,27 +37,48 @@ async function enforceUploadThrottle(db: D1Database, userId: string): Promise<vo
   }
 }
 
-async function sumStoredKanbanBytes(files: R2Bucket, userId: string): Promise<number> {
-  let total = 0
-  let cursor: string | undefined
-  do {
-    const page = await files.list({ prefix: 'kanban/', cursor, include: ['customMetadata'], limit: 1000 })
-    for (const object of page.objects) {
-      if (object.customMetadata?.userId === userId) total += object.size ?? 0
-    }
-    cursor = page.truncated ? page.cursor ?? undefined : undefined
-  } while (cursor)
-  return total
-}
-
-async function assertWithinStorageQuota(env: Env, userId: string, incomingBytes: number): Promise<void> {
-  const usage = await env.DB.prepare(
+/**
+ * The quota is answered from one D1 query: every kanban upload writes its own row into the same
+ * `attachments` table the note attachments use, so the ledger stays in one place. This used to walk
+ * the whole R2 bucket per upload to add up the objects — an O(bucket) list on every file — and the
+ * kanban objects were invisible to D1. Objects uploaded before rows existed are not in the ledger
+ * and are counted as nothing: the quota undercounts rather than blocking uploads that fit.
+ */
+async function assertWithinStorageQuota(db: D1Database, userId: string, incomingBytes: number): Promise<void> {
+  const usage = await db.prepare(
     `SELECT COALESCE(SUM(size), 0) AS bytes FROM attachments WHERE user_id = ?1`,
   ).bind(userId).first<{ bytes: number }>()
-  const stored = env.FILES ? await sumStoredKanbanBytes(env.FILES, userId) : 0
-  if ((usage?.bytes ?? 0) + stored + incomingBytes > LIMITS.attachmentQuotaBytesR2) {
+  if ((usage?.bytes ?? 0) + incomingBytes > LIMITS.attachmentQuotaBytesR2) {
     throw ApiError.tooLarge('The account storage quota has been reached')
   }
+}
+
+/** The ledger row a kanban upload owes the quota: same table, no note, `r2` storage, its own key. */
+async function writeKanbanAttachmentRow(
+  db: D1Database,
+  row: {
+    id: string
+    userId: string
+    filename: string
+    mime: string
+    size: number
+    sha256: string
+    objectKey: string
+  },
+): Promise<void> {
+  await db.prepare(
+    `INSERT INTO attachments (id, user_id, note_id, folder_id, filename, mime, size, sha256, width, height, storage, object_key, created_at)
+     VALUES (?1, ?2, NULL, NULL, ?3, ?4, ?5, ?6, NULL, NULL, 'r2', ?7, ?8)`,
+  ).bind(
+    row.id,
+    row.userId,
+    row.filename,
+    row.mime,
+    row.size,
+    row.sha256,
+    row.objectKey,
+    Date.now(),
+  ).run()
 }
 
 async function readUploadInput(
@@ -85,27 +107,73 @@ async function readUploadInput(
   }
 }
 
+/**
+ * Stores the object, then its ledger row — in that order, so a row failure can take the object back
+ * down and leave the quota's ledger truthful. An object without its row would be invisible to the
+ * quota for good, which is why the row failure fails the whole upload.
+ */
+async function storeKanbanAttachment(
+  db: D1Database,
+  files: R2Bucket,
+  upload: {
+    id: string
+    userId: string
+    kanbanName: string
+    filename: string
+    mime: string
+    bytes: Uint8Array
+  },
+): Promise<string> {
+  const r2Key = `kanban/${upload.kanbanName}/${upload.id}-${upload.filename}`
+  await files.put(r2Key, upload.bytes, {
+    httpMetadata: { contentType: upload.mime, cacheControl: 'private, max-age=3600' },
+    customMetadata: {
+      userId: upload.userId,
+      objectId: upload.id,
+      kind: 'kanban-attachment',
+      kanbanName: upload.kanbanName,
+    },
+  })
+  try {
+    await writeKanbanAttachmentRow(db, {
+      id: upload.id,
+      userId: upload.userId,
+      filename: upload.filename,
+      mime: upload.mime,
+      size: upload.bytes.byteLength,
+      sha256: await sha256Hex(upload.bytes),
+      objectKey: r2Key,
+    })
+  } catch (error) {
+    // The object deletion itself is best-effort — if even that fails the object waits for the
+    // orphan reclaim pass instead of masking the row error that is being rethrown.
+    await files.delete(r2Key).catch((cleanupError) => {
+      console.warn('[inkstone] Kanban upload object left behind after its quota row failed:', cleanupError)
+    })
+    throw error
+  }
+  return r2Key
+}
+
 kanbanRoutes.post('/upload', requireAuth, async (c) => {
   const userId = c.get('userId')
   await enforceUploadThrottle(c.env.DB, userId)
 
   const { file, bytes, rawKanbanName, files } = await readUploadInput(c)
-  await assertWithinStorageQuota(c.env, userId, bytes.byteLength)
+  await assertWithinStorageQuota(c.env.DB, userId, bytes.byteLength)
 
   const cleanKanbanName = sanitizePathPart(typeof rawKanbanName === 'string' ? rawKanbanName : 'default', 'default')
   const cleanFilename = sanitizePathPart(file.name || 'file', 'file')
   const id = newId()
-  const r2Key = `kanban/${cleanKanbanName}/${id}-${cleanFilename}`
   const mime = safeAttachmentMime(bytes, file.type)
 
-  await files.put(r2Key, bytes, {
-    httpMetadata: { contentType: mime, cacheControl: 'private, max-age=3600' },
-    customMetadata: {
-      userId,
-      objectId: id,
-      kind: 'kanban-attachment',
-      kanbanName: cleanKanbanName,
-    },
+  const r2Key = await storeKanbanAttachment(c.env.DB, files, {
+    id,
+    userId,
+    kanbanName: cleanKanbanName,
+    filename: cleanFilename,
+    mime,
+    bytes,
   })
 
   return c.json({
@@ -189,6 +257,11 @@ kanbanRoutes.delete('/file/:kanbanName/:filename', requireAuth, async (c) => {
       throw ApiError.forbidden('You do not have permission to delete this file')
     }
     await c.env.FILES.delete(r2Key)
+    // The ledger row goes with the object, or the quota would keep charging for a file that is gone.
+    // Objects predating the ledger have no row, and the delete is simply a no-op for them.
+    await c.env.DB.prepare(
+      `DELETE FROM attachments WHERE user_id = ?1 AND object_key = ?2 AND note_id IS NULL`,
+    ).bind(currentUserId, r2Key).run()
   }
 
   return c.json({ ok: true })
