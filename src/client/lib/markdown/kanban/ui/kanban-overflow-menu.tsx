@@ -18,6 +18,7 @@ import {
   Archive,
   Columns3,
   FileSpreadsheet,
+  Image as ImageIcon,
   Filter,
   Maximize2,
   Minimize2,
@@ -35,6 +36,7 @@ import { t, useLocaleRepaint } from '../../../i18n'
 import type { KanbanData, KanbanFilter, KanbanSort, KanbanView } from '../types'
 import { KanbanArchivePanel, type KanbanArchiveEntry } from './kanban-archive'
 import { KanbanCsvDoor, type KanbanCsvEntry } from './kanban-csv'
+import { KanbanExportDoor, type KanbanExportEntry } from './kanban-export'
 import type { KanbanSchemaOperations } from './kanban-column-hooks'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import { KanbanShortcutsPanel } from './kanban-shortcuts'
@@ -43,7 +45,7 @@ import { KanbanViewOptions, type CardSize } from './kanban-view-options'
 import { kanbanNewViewItems, kanbanViewActionItems, type KanbanViewOperations } from './kanban-view-tabs'
 
 /** Which of the menu's rows has a panel open under the trigger. One at a time, by construction. */
-type OverflowPanel = 'filter' | 'sort' | 'options' | 'csv' | 'archive' | 'shortcuts'
+type OverflowPanel = 'filter' | 'sort' | 'options' | 'csv' | 'export' | 'archive' | 'shortcuts'
 
 export interface KanbanOverflowMenuProps {
   columns: KanbanData['columns']
@@ -55,6 +57,7 @@ export interface KanbanOverflowMenuProps {
   schemaOps?: KanbanSchemaOperations
   archive?: KanbanArchiveEntry
   csv?: KanbanCsvEntry
+  exportEntry?: KanbanExportEntry
   viewOps: KanbanViewOperations
   canUndo?: boolean
   canRedo?: boolean
@@ -115,6 +118,9 @@ function panelRows(props: KanbanOverflowMenuProps, open: (panel: OverflowPanel) 
       : []),
     ...(props.csv
       ? [{ id: 'csv', label: t('preview.kanban_csv'), icon: <FileSpreadsheet size={13} />, separatorBefore: true, onSelect: () => open('csv') }]
+      : []),
+    ...(props.exportEntry
+      ? [{ id: 'export', label: t('preview.kanban_export'), icon: <ImageIcon size={13} />, onSelect: () => open('export') }]
       : []),
     ...(props.archive && props.archive.items.length > 0
       ? [{
@@ -205,6 +211,7 @@ function OverflowPanels({ props, panel, panelId, anchorRef, onClose }: {
       {props.csv && (
         <KanbanCsvDoor entry={props.csv} open={panel === 'csv'} {...shared} />
       )}
+      {props.exportEntry && <KanbanExportDoor entry={props.exportEntry} open={panel === 'export'} {...shared} />}
       {props.archive && (
         <KanbanArchivePanel {...props.archive} open={panel === 'archive'} {...shared} />
       )}

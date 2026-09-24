@@ -78,7 +78,7 @@
     overflow: visible !important;
   }
 
-  body > *:not(.deck-print-sheet):not(.bento-print-sheet):not(.share-qr-sheet) {
+  body > *:not(.deck-print-sheet):not(.bento-print-sheet):not(.share-qr-sheet):not(.kanban-print-sheet) {
     display: none !important;
   }
 

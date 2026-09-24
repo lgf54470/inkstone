@@ -18,6 +18,7 @@ import { KanbanChartView } from './kanban-chart-view'
 import { KanbanRootOverlays } from './kanban-overlays'
 import { useKanbanCsvEntry } from './kanban-csv'
 import { KanbanEmptyBoard } from './kanban-empty-board'
+import { useKanbanExportEntry } from './kanban-export'
 import { applyKanbanTemplate } from '../templates'
 import { KanbanFilesScope } from './kanban-files-cell'
 import { KanbanGalleryView } from './kanban-gallery-view'
@@ -229,6 +230,7 @@ function KanbanTopBar({
   unsaved,
   sourceData,
   viewPanelId,
+  viewPanelRef,
   onRetryWrite,
   onDiscardWrite,
   onToggleFullscreen,
@@ -238,11 +240,13 @@ function KanbanTopBar({
   unsaved?: boolean
   sourceData?: KanbanData
   viewPanelId: string
+  viewPanelRef: RefObject<HTMLDivElement | null>
   onRetryWrite?: () => void
   onDiscardWrite?: () => void
   onToggleFullscreen?: () => void
 }) {
   const csv = useKanbanCsvEntry(state.data, state.commitData)
+  const exportEntry = useKanbanExportEntry(state.data, state.filterSort.activeView.type, viewPanelRef)
   return (
     <KanbanHeader
       data={state.data}
@@ -276,6 +280,7 @@ function KanbanTopBar({
       onToggleFullscreen={onToggleFullscreen}
       archive={state.archive}
       csv={csv}
+      exportEntry={exportEntry}
       viewPanelId={viewPanelId}
       unsaved={unsaved}
       onRetryWrite={onRetryWrite}
@@ -362,15 +367,18 @@ function useKanbanBatchEditFields(state: ReturnType<typeof useKanbanRootState>):
 function KanbanMain({
   state,
   viewPanelId,
+  viewPanelRef,
 }: {
   state: ReturnType<typeof useKanbanRootState>
   viewPanelId: string
+  viewPanelRef: RefObject<HTMLDivElement | null>
 }) {
   const batchEdits = useKanbanBatchEditFields(state)
   return (
     // The selected view is what its tab controls, so this box is the panel; hanging the role here
     // rather than on a wrapper keeps the geometry untouched and avoids a second landmark in the shell.
     <div
+      ref={viewPanelRef}
       id={viewPanelId}
       role='tabpanel'
       // Which view is on screen, as an attribute rather than only through the tab that controls it:
@@ -407,6 +415,30 @@ function useKanbanContainerWiring(
   useKanbanBoardKeys(containerRef)
 }
 
+/**
+ * The root's own state before anything renders: the container the host hands over, the panel id the
+ * header's tabs and the view's panel share, the panel element both export doors rasterize or print
+ * (KU-24 — the header holds the doors, the view is drawn by the other branch, so the element travels
+ * by ref), and the board state and context menu the two branches read.
+ */
+function useKanbanRootSetup(
+  initialData: KanbanData,
+  onUpdateData: (next: KanbanData) => void,
+) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const viewPanelId = useId()
+  const viewPanelRef = useRef<HTMLDivElement>(null)
+  // A host tree React did not make never re-renders this root, so the board listens
+  // for language changes itself rather than trusting a mount option to carry them.
+  useLocaleRepaint()
+  const state = useKanbanRootState(initialData, onUpdateData, containerRef)
+  const menu = useKanbanContextMenuState(state.data, state.commitData)
+  // How each view was last left, shared because the views take turns being on screen (see the module).
+  const viewMemory = useKanbanViewMemoryStore()
+  useKanbanContainerWiring(containerRef, state)
+  return { containerRef, viewPanelId, viewPanelRef, state, menu, viewMemory }
+}
+
 export const KanbanRoot = memo(function KanbanRoot({
   initialData,
   isFullscreen,
@@ -419,18 +451,7 @@ export const KanbanRoot = memo(function KanbanRoot({
   onToggleFullscreen,
   renderDescription,
 }: KanbanRootProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  // One id names the panel and, through `kanbanViewTabId`, the tab that controls it; the header and
-  // the view render in two branches of this tree, so the pair is minted here.
-  const viewPanelId = useId()
-  // A host tree React did not make never re-renders this root, so the board listens
-  // for language changes itself rather than trusting a mount option to carry them.
-  useLocaleRepaint()
-  const state = useKanbanRootState(initialData, onUpdateData, containerRef)
-  const menu = useKanbanContextMenuState(state.data, state.commitData)
-  // How each view was last left, shared because the views take turns being on screen (see the module).
-  const viewMemory = useKanbanViewMemoryStore()
-  useKanbanContainerWiring(containerRef, state)
+  const { containerRef, viewPanelId, viewPanelRef, state, menu, viewMemory } = useKanbanRootSetup(initialData, onUpdateData)
 
   return (
     <div
@@ -452,11 +473,12 @@ export const KanbanRoot = memo(function KanbanRoot({
           unsaved={unsaved}
           sourceData={sourceData}
           viewPanelId={viewPanelId}
+          viewPanelRef={viewPanelRef}
           onRetryWrite={onRetryWrite}
           onDiscardWrite={onDiscardWrite}
           onToggleFullscreen={onToggleFullscreen}
         />
-        <KanbanMain state={state} viewPanelId={viewPanelId} />
+        <KanbanMain state={state} viewPanelId={viewPanelId} viewPanelRef={viewPanelRef} />
         <KanbanRootOverlays
           state={state}
           menu={menu}

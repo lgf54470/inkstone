@@ -253,3 +253,25 @@
   border-color: var(--accent);
   color: var(--accent);
 }
+
+.kanban-print-sheet {
+  position: fixed;
+  top: 0;
+  left: -100000px;
+  background: var(--bg-surface);
+}
+
+.kanban-print-page {
+  overflow: hidden;
+}
+
+@media print {
+  .kanban-print-sheet {
+    position: static;
+    left: auto;
+  }
+
+  .kanban-print-page {
+    print-color-adjust: exact;
+  }
+}

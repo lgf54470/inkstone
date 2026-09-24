@@ -16,6 +16,7 @@ import { prettyCombo } from '../../../../lib/hotkeys'
 import { kanbanActiveItems } from '../archive'
 import { KanbanArchiveAction, type KanbanArchiveEntry } from './kanban-archive'
 import { KanbanCsvAction, type KanbanCsvEntry } from './kanban-csv'
+import { KanbanExportAction, type KanbanExportEntry } from './kanban-export'
 import type { KanbanSchemaOperations } from './kanban-column-hooks'
 import { KanbanFilterPopover } from './kanban-filter-popover'
 import {
@@ -70,13 +71,14 @@ interface KanbanHeaderProps {
   onToggleFullscreen?: () => void
   archive?: KanbanArchiveEntry
   csv?: KanbanCsvEntry
+  exportEntry?: KanbanExportEntry
   viewOps: KanbanViewOperations
   schemaOps?: KanbanSchemaOperations
   viewPanelId: string
 }
 
-// The action cluster is the header minus the view switcher, so it takes the same props; `columns`
-// is the one thing it reads that the header spells out as `data`.
+// The action cluster is the header minus the view switcher, so it takes the same props; `columns` is
+// the one thing it reads that the header spells out as `data`.
 type HeaderActionsProps = KanbanHeaderProps & { columns: KanbanData['columns'] }
 
 function KanbanViewOptionsAction({
@@ -305,29 +307,37 @@ function KanbanHeaderToolbar({
  * and everything in it is also a row of the compact menu — the two lists are asserted against each
  * other so the narrow layout cannot offer less than the wide one.
  */
+/** What the view options panel takes, as the active view and its writers spell it. */
+function viewOptionsProps(props: HeaderActionsProps) {
+  const { activeView } = props
+  const isBoard = activeView.type === 'board'
+  return {
+    columns: props.columns,
+    groupBy: activeView.groupBy || 'status',
+    swimlaneBy: activeView.swimlaneBy,
+    cardSize: isBoard ? props.cardSize : undefined,
+    hiddenColumns: activeView.hiddenColumns,
+    cardFields: activeView.cardFields,
+    onChangeGroupBy: isBoard ? props.onChangeGroupBy : undefined,
+    onChangeSwimlaneBy: isBoard ? props.onChangeSwimlaneBy : undefined,
+    onChangeCardSize: isBoard ? props.onChangeCardSize : undefined,
+    onToggleHiddenColumn: activeView.type === 'table' ? props.onToggleHiddenColumn : undefined,
+    onToggleCardField: isBoard ? props.onToggleCardField : undefined,
+    schemaOps: activeView.type === 'table' ? props.schemaOps : undefined,
+  }
+}
+
 function KanbanWideActions(props: HeaderActionsProps) {
-  const { columns, activeView, cardSize, filters, sorts } = props
+  const { columns, activeView, filters, sorts } = props
   return (
     <WideOnly>
       <KanbanFilterAction columns={columns} filters={filters} onChangeFilters={props.onChangeFilters} />
       <KanbanSortAction columns={columns} sorts={sorts} onChangeSorts={props.onChangeSorts} />
       {props.archive && <KanbanArchiveAction {...props.archive} />}
       {props.csv && <KanbanCsvAction {...props.csv} />}
+      {props.exportEntry && <KanbanExportAction entry={props.exportEntry} />}
       {(activeView.type === 'board' || activeView.type === 'table') && (
-        <KanbanViewOptionsAction
-          columns={columns}
-          groupBy={activeView.groupBy || 'status'}
-          swimlaneBy={activeView.swimlaneBy}
-          cardSize={activeView.type === 'board' ? cardSize : undefined}
-          hiddenColumns={activeView.hiddenColumns}
-          cardFields={activeView.cardFields}
-          onChangeGroupBy={activeView.type === 'board' ? props.onChangeGroupBy : undefined}
-          onChangeSwimlaneBy={activeView.type === 'board' ? props.onChangeSwimlaneBy : undefined}
-          onChangeCardSize={activeView.type === 'board' ? props.onChangeCardSize : undefined}
-          onToggleHiddenColumn={activeView.type === 'table' ? props.onToggleHiddenColumn : undefined}
-          onToggleCardField={activeView.type === 'board' ? props.onToggleCardField : undefined}
-          schemaOps={activeView.type === 'table' ? props.schemaOps : undefined}
-        />
+        <KanbanViewOptionsAction {...viewOptionsProps(props)} />
       )}
     </WideOnly>
   )
@@ -335,36 +345,11 @@ function KanbanWideActions(props: HeaderActionsProps) {
 
 /** The narrow cluster: the one trigger whose menu holds everything above, plus the toolbar's four. */
 function KanbanCompactActions(props: HeaderActionsProps) {
-  // The menu reads the active view's own card fields, the same way it reads its hidden columns.
-  const { columns, activeView, cardSize, filters, sorts } = props
+  // The menu reads the active view's own card fields, the same way it reads its hidden columns. The
+  // header's props cover the menu's whole surface, so they travel as the spread rather than row by row.
   return (
     <CompactOnly>
-      <KanbanOverflowMenu
-        columns={columns}
-        views={props.data.views}
-        activeView={activeView}
-        filters={filters}
-        sorts={sorts}
-        cardSize={cardSize}
-        schemaOps={props.schemaOps}
-        archive={props.archive}
-        csv={props.csv}
-        viewOps={props.viewOps}
-        canUndo={props.canUndo}
-        canRedo={props.canRedo}
-        isFullscreen={props.isFullscreen}
-        onChangeFilters={props.onChangeFilters}
-        onChangeSorts={props.onChangeSorts}
-        onChangeGroupBy={props.onChangeGroupBy}
-        onChangeSwimlaneBy={props.onChangeSwimlaneBy}
-        onChangeCardSize={props.onChangeCardSize}
-        onToggleHiddenColumn={props.onToggleHiddenColumn}
-        onToggleCardField={props.onToggleCardField}
-        onUndo={props.onUndo}
-        onRedo={props.onRedo}
-        onAddItem={props.onAddItem}
-        onToggleFullscreen={props.onToggleFullscreen}
-      />
+      <KanbanOverflowMenu {...props} views={props.data.views} />
     </CompactOnly>
   )
 }
