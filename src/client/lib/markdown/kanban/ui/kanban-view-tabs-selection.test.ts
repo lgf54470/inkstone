@@ -15,7 +15,7 @@
  * The strip is also where a board with more views than fit has to own up to where the selected one
  * went: it scrolls, and the tab the reader just selected has to be brought back into it.
  */
-import { createElement } from 'react'
+import { act, createElement } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n } from '../../../../lib/i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
@@ -158,5 +158,35 @@ describe('the strip brings the selected tab into view', () => {
     layout(strip, target, { left: 640, width: 70, view: 200, scroll: 0 })
     rerender(element('v-gantt'))
     expect(strip.scrollLeft).toBe(510)
+  })
+
+  it('re-reveals the selected tab when the strip changes size with no render in between', () => {
+    // The note and the overlay lay the same elements out at different widths, and the elements move
+    // between them without re-running a React effect. A scrollLeft clamped while the strip was still
+    // at its transient width (here: 64 − 49) survives the move and cuts the selected first tab on its
+    // left; the ResizeObserver is what runs the reveal again once the strip settles at its new width.
+    let fire: (() => void) | null = null
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          fire = callback
+        }
+        observe(): void {}
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    )
+    try {
+      const { strip, tab } = mountStrip('v-board')
+      layout(strip, tab, { left: 0, width: 64, view: 179, scroll: 15 })
+      expect(strip.scrollLeft).toBe(15)
+      act(() => {
+        fire?.()
+      })
+      expect(strip.scrollLeft, 'the strip let go of the scroll the transient layout left behind').toBe(0)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

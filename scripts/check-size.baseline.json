@@ -14,6 +14,9 @@
   "src/client/features/preview/kanban-fullscreen.test.ts": {
     "longFns": 1
   },
+  "src/client/lib/markdown/kanban/ui/kanban-view-tabs-selection.test.ts": {
+    "longFns": 1
+  },
   "src/client/lib/markdown/slides/body.test.ts": {
     "longFns": 1
   },

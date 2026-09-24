@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import {
   BarChart2,
   Calendar,
@@ -225,20 +225,40 @@ interface TabListProps {
  * reasons the props do not carry (the pane being resized, a view renamed wider, the header's
  * container query dropping to the compact layout).
  */
+
+/** Bring one tab fully inside the strip's visible box, if it is not already. The geometry is read at
+ *  call time — what this answers to is whatever the strip has now, not what it had when it mounted. */
+function revealSelectedTab(strip: HTMLDivElement | null, tab: HTMLElement | null): void {
+  if (!strip || !tab) return
+  const left = tab.offsetLeft
+  const right = left + tab.offsetWidth
+  if (left < strip.scrollLeft) strip.scrollLeft = left
+  else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth
+}
+
 function useSelectedTabInView(
   stripRef: RefObject<HTMLDivElement | null>,
   tabsRef: RefObject<(HTMLButtonElement | null)[]>,
   activeIndex: number,
 ): void {
   useLayoutEffect(() => {
-    const strip = stripRef.current
-    const tab = tabsRef.current?.[activeIndex]
-    if (!strip || !tab) return
-    const left = tab.offsetLeft
-    const right = left + tab.offsetWidth
-    if (left < strip.scrollLeft) strip.scrollLeft = left
-    else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth
+    revealSelectedTab(stripRef.current, tabsRef.current?.[activeIndex] ?? null)
   })
+  useEffect(() => {
+    const strip = stripRef.current
+    if (!strip) return
+    // The strip's box changes size without a render whenever the board changes homes: the same
+    // elements are *moved* between the note and the full screen overlay (no React effect re-runs on
+    // a move), and the overlay lays them out at a different width. A `scrollLeft` clamped while the
+    // strip was still at its transient pre-move width survives the move, and the selected first tab
+    // ends up cut on its left with the reveal never asked to run again — the observer is what runs it
+    // whenever the strip's box settles into its new size.
+    const observer = new ResizeObserver(() => {
+      revealSelectedTab(strip, tabsRef.current?.[activeIndex] ?? null)
+    })
+    observer.observe(strip)
+    return () => observer.disconnect()
+  }, [stripRef, tabsRef, activeIndex])
 }
 
 interface TabProps {
@@ -301,7 +321,11 @@ function KanbanTabList({ views, activeViewId, panelId, onSelectView }: TabListPr
   return (
     <div
       ref={stripRef}
-      className='flex min-w-0 items-center gap-1 overflow-x-auto'
+      // `relative` is load-bearing: the reveal reads the selected tab's `offsetLeft`, and without a
+      // positioned strip that value is measured against whichever ancestor the browser picks instead —
+      // in the full screen overlay a stage far to the tab's left, whose number made the reveal scroll
+      // the first tab out of its own view (measured by the visual gate's tab check, 2026-09-24).
+      className='relative flex min-w-0 items-center gap-1 overflow-x-auto'
       role='tablist'
       aria-label={t('preview.kanban_views')}
     >
