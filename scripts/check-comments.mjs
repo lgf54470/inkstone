@@ -2681,6 +2681,16 @@ const allowed = new Map([
     '// last ranking is remembered per index: they hand in different arrays and would otherwise evict',
     '// each other, scoring every keystroke twice.',
   ]],
+  ['src/client/features/music/music-seek-bar.test.ts', [
+    '// Four surfaces draw this bar — the hub footer, the floating card, the status bar and the',
+    '// immersive player — so one suppressed outline here is one invisible caret in all of them.',
+  ]],
+  ['src/client/features/music/music-seek-bar.tsx', [
+    '// Deliberately no `outline-none`: the base layer gives every :focus-visible element a',
+    '// ring, and a utility beats it, so suppressing it here left keyboard users scrubbing a',
+    '// playhead with no visible caret. The shared Slider in components/form draws the same',
+    '// control and has never suppressed it.',
+  ]],
   ['src/client/features/music/music-selection-bar.tsx', [
     '// Multi-select toolbar: file-manager style batches; select all and invert use the visible list.',
   ]],
