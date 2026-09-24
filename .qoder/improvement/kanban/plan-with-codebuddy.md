@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | 1 | 性能 P-1 | registry 每次挂载重建回调击穿 `KanbanRoot` memo；编辑器每次防抖提交全树重渲染 | ✅ 完成 | `f3d88a06` |
 | 2 | 性能 P-3 | 勾选一张卡导致所有展开列重绘（`selectAll` 对象每渲染新建） | ✅ 完成 | 见 git log |
-| 3 | 性能 P-4 | 批量拖放 `moveKanbanItemsToCell` O(k·n) 串行 | ⬜ 待做 | — |
+| 3 | 性能 P-4 | 批量拖放 `moveKanbanItemsToCell` O(k·n) 串行 | ✅ 完成 | 见 git log |
 | 4 | 安全 S-2 | 打印导出 `dangerouslySetInnerHTML` 重解析已渲染 DOM | ⬜ 待做 | — |
 | 5 | 样式 U-5 | `duration-300` 未随 `prefers-reduced-motion` 令牌归零 | ⬜ 待做 | — |
 | 6 | 样式 U-1 | `.kanban-print-sheet { left: -100000px }` 魔法数字 | ⬜ 待做 | — |
@@ -43,3 +43,10 @@
 - 方案：`useColumnSelectAll` 改为按 `count`/`isAllSelected` 两个原始值记忆（对象身份只在答案变化时更新）；新增 `useColumnSelection`，把该列自己的选中卡哈希成签名，签名不变时复用同一个 Set，向 memo 列传列级选中集而非全板集合。
 - 验证：`kanban-board-column-memo.test.ts` 新增两例；回退改动后「勾选只重绘所在列」失败（`['todo','doing','done']`），修复后为 `['todo']`。
 - 回归：typecheck 通过；kanban 目录 108 文件 / 1348 用例通过；全量 `test:unit` 仅剩已知偶发 `music-hub-modal`（单独跑通过）。
+
+### 3. 性能 P-4 — 批量拖放 O(k·n) 单遍化 ✅
+
+- 问题：`moveKanbanItemsToCell` 对每张选中卡各跑一次 `moveKanbanItemToCell`（findIndex + map + filter + splice 共约 5 次全数组扫描），200 张选中卡 × 1000 卡文档 ≈ 百万次级数组操作挤在一个提交帧里。
+- 方案：改为双链表 + id 索引模拟同样的逐卡走法（band 写入、仅换泳道不挪位、anchor 独占 pivot、目标列为空时 pivot 被忽略转文档末尾等语义逐条保留），数组只走两遍（建链表、读回）；列尾指针惰性解析（pivot 插入后标记未解析，下次读取时向前走一段，每批至多一次）。
+- 验证：`swimlane.test.ts` 新增 400 轮种子随机模糊测试，以「逐卡 reduce」为参照实现断言 `toStrictEqual` 全等（顺序 + 属性写入）。模糊测试先后抓出两处语义偏差并修复：目标列为空时 pivot 必须被忽略；列尾指针在 pivot 插入后须先解析再回退。另临时放大到 4000 轮 × 40 卡全部通过后还原参数。
+- 回归：typecheck 通过；批量/泳道相关 5 文件 74 用例通过；全量 `test:unit` 4 个失败均为负载性超时/偶发（starter-deck、music×2、calendar-tree 模糊 5s 超时），单独运行全部通过，与本次改动无关。
