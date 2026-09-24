@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   BarChart2,
   CheckCircle2,
@@ -13,9 +13,10 @@ import { Select } from '../../../../components/form'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { aggregateKanbanChartData, buildChartJsConfig } from '../chart-helpers'
 import { readKanbanChartPalette } from '../chart-palette'
+import { toggleKanbanQuickFilter } from '../quick-filters'
 import { formatKanbanPropertyName } from '../i18n-helpers'
 import { isKanbanItemDone } from '../item-status'
-import type { KanbanChartType, KanbanData, KanbanView } from '../types'
+import type { KanbanChartType, KanbanData, KanbanFilter, KanbanView } from '../types'
 
 interface KanbanChartViewProps {
   data: KanbanData
@@ -148,6 +149,7 @@ function useChartRenderer(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
   chartType: KanbanChartType,
   dataset: ReturnType<typeof aggregateKanbanChartData>,
+  onSliceClick?: (index: number) => void,
 ) {
   const themeRevision = useThemeRevision()
   // Each token costs a style recalculation, so read the palette per theme revision, not per data change.
@@ -161,7 +163,7 @@ function useChartRenderer(
       const { Chart } = await import('chart.js/auto')
       if (!active || !canvasRef.current) return
 
-      const config = buildChartJsConfig(chartType, dataset, palette)
+      const config = buildChartJsConfig(chartType, dataset, palette, onSliceClick)
 
       chartInstance = new Chart(canvasRef.current, config as never)
     }
@@ -172,7 +174,7 @@ function useChartRenderer(
       active = false
       if (chartInstance) chartInstance.destroy()
     }
-  }, [canvasRef, chartType, dataset, palette])
+  }, [canvasRef, chartType, dataset, palette, onSliceClick])
 }
 
 function chartCanvasAriaLabel(
@@ -188,12 +190,20 @@ function countCompleted(items: KanbanData['items']): number {
   return items.filter(isKanbanItemDone).length
 }
 
-export const KanbanChartView = memo(function KanbanChartView({ data, view, onUpdateView }: KanbanChartViewProps) {
-  useLocaleRepaint()
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [chartType, setChartType] = useState<KanbanChartType>(view.chartType || 'bar')
-  const [groupBy, setGroupBy] = useState<string>(view.chartGroupBy || view.groupBy || 'status')
-
+/**
+ * The chart's data and its one write-back gesture, kept apart from the drawing. The drill-down:
+ * clicking a slice writes (or takes back) the same equals rule a quick-filter chip writes, so the
+ * rule shows up in the filter panel as an ordinary row and one more click on the slice takes it off.
+ * A slice that stands for several stray values at once is no one rule, and a click on it is left
+ * alone. The callback is memoized because the renderer rebuilds the whole Chart.js instance when the
+ * wiring changes — an unstable handler would tear the chart down on every render.
+ */
+function useChartDrilldown(
+  data: KanbanData,
+  view: KanbanView,
+  groupBy: string,
+  onUpdateView?: (patch: Partial<KanbanView>) => void,
+) {
   const groupProp = data.columns.find((c) => c.id === groupBy)
   // Identity must survive unrelated commits: a fresh dataset object every
   // render tears the Chart.js instance down and rebuilds it.
@@ -201,8 +211,27 @@ export const KanbanChartView = memo(function KanbanChartView({ data, view, onUpd
     () => aggregateKanbanChartData(data.items, groupBy, groupProp),
     [data.items, groupBy, groupProp],
   )
+  const handleSliceClick = useCallback(
+    (index: number) => {
+      const value = dataset.values[index]
+      if (value === undefined) return
+      const filter: KanbanFilter = { propertyId: groupBy, operator: 'equals', value }
+      onUpdateView?.({ filters: toggleKanbanQuickFilter(filter, view.filters ?? []) })
+    },
+    [dataset, groupBy, view.filters, onUpdateView],
+  )
+  return { dataset, groupProp, handleSliceClick }
+}
 
-  useChartRenderer(canvasRef, chartType, dataset)
+export const KanbanChartView = memo(function KanbanChartView({ data, view, onUpdateView }: KanbanChartViewProps) {
+  useLocaleRepaint()
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [chartType, setChartType] = useState<KanbanChartType>(view.chartType || 'bar')
+  const [groupBy, setGroupBy] = useState<string>(view.chartGroupBy || view.groupBy || 'status')
+
+  const { dataset, groupProp, handleSliceClick } = useChartDrilldown(data, view, groupBy, onUpdateView)
+
+  useChartRenderer(canvasRef, chartType, dataset, handleSliceClick)
 
   const handleTypeChange = (type: KanbanChartType) => {
     setChartType(type)

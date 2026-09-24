@@ -25,6 +25,7 @@ export function aggregateKanbanChartData(
   const labels: string[] = []
   const data: number[] = []
   const colors: KanbanColorName[] = []
+  const values: (string | undefined)[] = []
   const total = items.length
 
   if (!groupByProperty || !groupByProperty.options || groupByProperty.options.length === 0) {
@@ -33,7 +34,8 @@ export function aggregateKanbanChartData(
     labels.push(allLabel)
     data.push(total)
     colors.push(resolveChartColorName())
-    return { labels, data, colors, total }
+    values.push(undefined)
+    return { labels, data, colors, total, values }
   }
 
   const propId = groupByProperty.id || groupBy
@@ -47,6 +49,7 @@ export function aggregateKanbanChartData(
     labels.push(opt.label)
     data.push(count)
     colors.push(resolveChartColorName(opt.color, idx))
+    values.push(opt.id)
     counts.delete(opt.id)
     counts.delete(opt.label)
   })
@@ -57,9 +60,10 @@ export function aggregateKanbanChartData(
     labels.push(t('preview.kanban_chart_no_value'))
     data.push(remaining)
     colors.push('gray')
+    values.push(undefined)
   }
 
-  return { labels, data, colors, total }
+  return { labels, data, colors, total, values }
 }
 
 function buildChartJsOptions(type: KanbanChartType, palette: KanbanChartPalette) {
@@ -94,7 +98,27 @@ function buildChartJsOptions(type: KanbanChartType, palette: KanbanChartPalette)
   }
 }
 
-export function buildChartJsConfig(type: KanbanChartType, dataset: KanbanChartDataset, palette: KanbanChartPalette) {
+export function buildChartJsConfig(
+  type: KanbanChartType,
+  dataset: KanbanChartDataset,
+  palette: KanbanChartPalette,
+  onSliceClick?: (index: number) => void,
+) {
+  const options = buildChartJsOptions(type, palette)
+  if (onSliceClick) {
+    // The drill-down gesture: a click on a slice hands its index back, and the view turns it into the
+    // very rule the quick-filter chips write. The pointer learns the slices are alive; the slices that
+    // stand for several values at once are filtered out inside the handler, not here.
+    const wiring = options as Record<string, unknown>
+    wiring.onClick = (_event: unknown, elements: { index?: number }[]) => {
+      const index = elements[0]?.index
+      if (typeof index === 'number') onSliceClick(index)
+    }
+    wiring.onHover = (event: { native?: { target?: { style?: { cursor?: string } } } }, elements: unknown[]) => {
+      const target = event.native?.target
+      if (target?.style) target.style.cursor = elements.length > 0 ? 'pointer' : 'default'
+    }
+  }
   return {
     type,
     data: {
@@ -111,6 +135,6 @@ export function buildChartJsConfig(type: KanbanChartType, dataset: KanbanChartDa
         },
       ],
     },
-    options: buildChartJsOptions(type, palette),
+    options,
   }
 }

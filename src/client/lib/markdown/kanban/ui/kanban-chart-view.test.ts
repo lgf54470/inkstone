@@ -9,7 +9,7 @@ import type { KanbanData, KanbanItem, KanbanView } from '../types'
 interface ChartConfig {
   type: string
   data: { labels: string[]; datasets: Array<{ label: string; backgroundColor: string[] }> }
-  options: { plugins: { tooltip: { backgroundColor: string } } }
+  options: { plugins: { tooltip: { backgroundColor: string } }; onClick?: (event: unknown, elements: { index?: number }[]) => void }
 }
 
 const { chartConfigs, paletteReads } = vi.hoisted(() => ({
@@ -86,7 +86,7 @@ function makeData(): KanbanData {
   }
 }
 
-function setup() {
+function setup(view: KanbanView = chartView) {
   installTestGlobals()
   chartConfigs.length = 0
   paletteReads.count = 0
@@ -97,7 +97,7 @@ function setup() {
   document.body.append(container)
   const root: Root = createRoot(container)
   const render = (data: KanbanData) => {
-    act(() => { root.render(createElement(KanbanChartView, { data, view: chartView, onUpdateView })) })
+    act(() => { root.render(createElement(KanbanChartView, { data, view, onUpdateView })) })
   }
   const unmount = () => {
     act(() => { root.unmount() })
@@ -105,7 +105,7 @@ function setup() {
     document.documentElement.removeAttribute('data-theme')
     document.documentElement.removeAttribute('data-accent')
   }
-  return { container, render, unmount }
+  return { container, render, unmount, onUpdateView }
 }
 
 async function flushCharts() {
@@ -276,6 +276,45 @@ describe('KanbanChartView accessibility', () => {
     await flushCharts()
     const select = container.querySelector('select')!
     expect(select.getAttribute('aria-label')).toBe(t('preview.kanban_chart_group_by'))
+    unmount()
+  })
+})
+
+describe('clicking a slice drills down through the quick-filter rules', () => {
+  it('writes the equals rule the clicked slice stands for', async () => {
+    const { render, unmount, onUpdateView } = setup()
+    render(makeData())
+    await flushCharts()
+    const onClick = chartConfigs.at(-1)!.options.onClick!
+    act(() => onClick({}, [{ index: 0 }]))
+    expect(onUpdateView).toHaveBeenCalledWith({
+      filters: [{ propertyId: 'status', operator: 'equals', value: 'todo' }],
+    })
+    unmount()
+  })
+
+  it('takes a rule the view already carries back off on a second click', async () => {
+    const filteredView: KanbanView = {
+      ...chartView,
+      filters: [{ propertyId: 'status', operator: 'equals', value: 'todo' }],
+    }
+    const { render, unmount, onUpdateView } = setup(filteredView)
+    render(makeData())
+    await flushCharts()
+    act(() => chartConfigs.at(-1)!.options.onClick!({}, [{ index: 0 }]))
+    expect(onUpdateView).toHaveBeenCalledWith({ filters: [] })
+    unmount()
+  })
+
+  it('leaves a slice that stands for several stray values at once alone', async () => {
+    const { render, unmount, onUpdateView } = setup()
+    const data = makeData()
+    data.items = [...data.items, { id: '4', title: 'd', properties: { status: 'weird' } }]
+    render(data)
+    await flushCharts()
+    // The stray card lands in the "no value" bucket, the last slice: a click there is no one rule.
+    act(() => chartConfigs.at(-1)!.options.onClick!({}, [{ index: 2 }]))
+    expect(onUpdateView).not.toHaveBeenCalled()
     unmount()
   })
 })

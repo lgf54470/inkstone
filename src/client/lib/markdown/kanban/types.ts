@@ -144,6 +144,12 @@ export interface KanbanChartDataset {
   data: number[]
   colors: KanbanColorName[]
   total: number
+  /**
+   * The property value each slice stands for, aligned with `labels` — the option id a click can
+   * write into a filter rule. Slices that stand for several stray values at once (the "no value"
+   * bucket, or the single slice a property-less group draws) have no one value and are `undefined`.
+   */
+  values: (string | undefined)[]
 }
 
 export type KanbanFilterOperator =
