@@ -82,7 +82,7 @@ function FileItemRow({
           type='button'
           onClick={onDelete}
           title={t('preview.kanban_delete_file')}
-          className='ml-auto opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--danger)] group-hover/file:opacity-100 focus-visible:opacity-100'
+          className='ml-auto opacity-0 transition-opacity p-0.5 text-[var(--text-tertiary)] hover:text-[var(--danger)] group-hover/file:opacity-100 focus-visible:opacity-100 pointer-coarse:!opacity-100'
         >
           <Trash2 size={11} />
         </button>

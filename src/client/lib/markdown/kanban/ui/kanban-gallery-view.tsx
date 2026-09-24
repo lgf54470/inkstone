@@ -97,7 +97,7 @@ function GalleryTagsHeader({
           checked={isSelected}
           onClick={(e) => e.stopPropagation()}
           onChange={onToggleSelect}
-          className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100 checked:opacity-100'
+          className='size-3.5 rounded-[var(--r-xs)] border-[var(--border-default)] accent-[var(--accent)] opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100 checked:opacity-100 pointer-coarse:!opacity-100'
           aria-label={t('preview.kanban_select_card')}
         />
         {tagVals.slice(0, 3).map((tag) => {

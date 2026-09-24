@@ -106,7 +106,7 @@ function CardRenameButton({ onStartEditing }: { onStartEditing: () => void }) {
       aria-label={t('preview.kanban_rename_card')}
       title={t('preview.kanban_rename_card')}
       data-kanban-rename-card=''
-      className='shrink-0 rounded-[var(--r-xs)] p-0.5 text-[var(--text-tertiary)] opacity-0 transition-opacity hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:opacity-100 group-hover/card:opacity-100'
+      className='shrink-0 rounded-[var(--r-xs)] p-0.5 text-[var(--text-tertiary)] opacity-0 transition-opacity hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:opacity-100 group-hover/card:opacity-100 pointer-coarse:!opacity-100'
     >
       <Pencil size={12} aria-hidden />
     </button>
