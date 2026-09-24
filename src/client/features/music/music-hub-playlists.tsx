@@ -69,7 +69,9 @@ function SectionHead({ open, onToggle, onCreate }: {
         <span>{t('music.section_playlists')}</span>
       </button>
       <Tooltip label={t('music.new_playlist')} side='left'>
-        <IconButton label={t('music.new_playlist')} size='sm' onClick={onCreate} className='opacity-0 group-hover/head:opacity-100 group-focus-within/head:opacity-100'>
+        {/* Visible by default, hover-revealed only from md up: a touch screen never hovers, and
+            a control painted at zero opacity still takes the tap that would have revealed it. */}
+        <IconButton label={t('music.new_playlist')} size='sm' onClick={onCreate} className='opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/head:opacity-100 md:group-hover/head:pointer-events-auto md:group-focus-within/head:opacity-100 md:group-focus-within/head:pointer-events-auto'>
           <Plus size={13} />
         </IconButton>
       </Tooltip>
@@ -160,7 +162,7 @@ function PlaylistRow({
           label={t('music.open_menu')}
           size='sm'
           onClick={() => setIsMenuOpen(true)}
-          className='opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100'
+          className='opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto'
         >
           <MoreHorizontal size={13} />
         </IconButton>

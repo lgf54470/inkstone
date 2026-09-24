@@ -18,8 +18,8 @@
 
 ### 批次 ① · 一致性与可访问性速修（S，先做）
 
-- [ ] M-A11Y-2 `music-seek-bar.tsx` 去掉 `outline-none`（对齐共享 `Slider`），键盘焦点圈回归
-- [ ] M-UI-1 `music-hub-playlists.tsx` 新建/行菜单按钮改为默认可见、`md:` 起 hover 降级（触屏可发现）
+- [x] M-A11Y-2 `music-seek-bar.tsx` 去掉 `outline-none`（对齐共享 `Slider`），键盘焦点圈回归（`7a275122`）
+- [x] M-UI-1 `music-hub-playlists.tsx` 新建/行菜单按钮改为默认可见、`md:` 起 hover 降级（触屏可发现）
 - [ ] M-UI-2 `music-player-controls.tsx` / `music-now-playing.tsx` 裸 `<img>` 改 `MusicArtwork`（封面 404 兜底）
 - [ ] M-A11Y-1 `music-hub-tags.tsx` / `music-hub-playlists.tsx` 自造 `<input>` 改共享 `Input`（恢复焦点圈）
 - [ ] M-UI-4 浮动播放器「移动播放器」按钮补键盘/点击动作 + `aria-describedby` 提示方向键
@@ -75,3 +75,5 @@
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
 | 2026-09-25 | BASE-0/1/2 worktree + 基线 + 钩子确认 | —（无提交） | typecheck ✅ exit 0（151.62s） | 依赖软链以 `info/exclude` 登记，不进提交 |
+| 2026-09-25 | M-A11Y-2 进度条恢复键盘焦点圈 | `7a275122` | 先红：`classList.contains('outline-none')` 为 true；修复后 2 ✅；music 60 文件 / 461 例 ✅；12 项静态门禁 ✅（注释白名单 1047 文件 / 8330 条）；提交钩子 `vitest related` 7 文件 / 30 例 ✅ | jsdom 无法断言 `:focus-visible` 实际绘制，守卫的是「不抑制」这一契约；真实焦点圈由 `check-contrast`/`e2e-visual` 覆盖 |
+| 2026-09-25 | M-UI-1 歌单控件触屏可见 | （本次） | 先红 2 例（`opacity-0` 为 true、`md:opacity-0` 缺失）；修复后该文件 10 ✅ | 媒体查询行为 jsdom 不可断言，断言守的是类名契约；375px 目视由 `e2e-visual` 既有 music 表面覆盖 |

@@ -2523,7 +2523,15 @@ const allowed = new Map([
     '// worth so cleaning up does not require doing the arithmetic by hand.',
     '// Stable callbacks: the memoised panels below must not re-render when a dialog opens.',
   ]],
+  ['src/client/features/music/music-hub-playlists.test.ts', [
+    '// Hover is not a thing on a touch screen, and a control painted at zero opacity still takes the',
+    '// tap that would have revealed it — so the row menu and the new-playlist button were, on a phone,',
+    '// the only way to rename, share or delete a playlist and also the thing hiding them. The track',
+    '// rows already solve this by revealing from `md` up instead of hiding until hover; these two are',
+    '// the hub\'s last holdouts.',
+  ]],
   ['src/client/features/music/music-hub-playlists.tsx', [
+    '/* Visible by default, hover-revealed only from md up: a touch screen never hovers, and\n            a control painted at zero opacity still takes the tap that would have revealed it. */',
     '// A link that quietly failed to copy is worse than one that says it did not work.',
     '/* The active row\'s accent tint puts the dim tiers under AA, so its count takes the row\'s\n          accent — the one pairing the token system calibrates (accent as text on its own tint). */',
   ]],
