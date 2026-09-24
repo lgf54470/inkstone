@@ -6292,6 +6292,8 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-export.test.ts', [
     '/**\n * KU-24\'s wiring. The rasterizer itself needs a real canvas (jsdom has none), so what is asserted\n * here is the part a reader drives: the header draws the export door next to the CSV door, the\n * panel offers the two exits under accessible names, and the print sheet mounts the live view\'s\n * markup off-screen — with the live canvas staying where it was, so the board the reader is looking\n * at never blanks while the dialog is up.\n */',
     '// The sheet is the view\'s markup, mounted beside the board — not the live node moved.',
+    '// What it carries is a copy of the view, and a copy at that: the sheet\'s page draws the view\'s',
+    '// own tree shape, while the live panel the reader is looking at stays the one on the board.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-export.tsx', [
     '/**\n * KU-24. The view on screen, as a file: a PNG of exactly what the reader is looking at — the same\n * live canvas the screen draws, rasterized by the shared element-to-PNG layer (`lib/element-image.ts`)\n * — and the browser\'s own print pipeline for PDF, over an off-screen sheet that carries the view\'s\n * markup at 1:1. The picture is of the *view*, filters and all, because that is the thing the reader\n * aimed at; the door itself follows the CSV door\'s shape: one trigger, one panel, answers that stay.\n */',
@@ -6302,7 +6304,10 @@ const allowed = new Map([
     '/** Waits for the sheet\'s own pictures and fonts, then a beat for the paint they triggered. */',
     '/** What a printed view needs around it: a page that fits the board and colors that survive paper. */',
     '/**\n * The paper: the live view\'s markup at 1:1, off-screen while the dialog runs and everything else\n * hidden by the shared print rules (the same cascade the deck and the bento sheets join). The\n * caller keeps it mounted until `afterprint` says the reader is done.\n */',
-    '/* The clone, not the live node: the live canvas is mounted where the screen needs it, and\n      moving it would blank the board the reader is looking at while the dialog is up. */',
+    '// The clone, not the live node: the live canvas is mounted where the screen needs it, and moving',
+    '// it would blank the board the reader is looking at while the dialog is up. Cloned as a node',
+    '// rather than re-parsed out of `outerHTML`: the markup then never passes a second HTML parser',
+    '// between the sanitized tree and the page, so there is no re-serialization to disagree with it.',
     '/** The live view panel, as the thing both doors rasterize or print. */',
     '/** The doors: what each writes, and the last thing either one answered. */',
     '// The board reads a press anywhere as "stop what you were doing"; a press that meant one of',

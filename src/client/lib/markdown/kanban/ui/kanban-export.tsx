@@ -66,8 +66,17 @@ function kanbanPrintCss(width: number, height: number): string {
  */
 function KanbanPrintSheet({ panel, onDone }: { panel: HTMLElement; onDone: () => void }) {
   const sheetRef = useRef<HTMLDivElement>(null)
+  const pageRef = useRef<HTMLDivElement>(null)
   const width = Math.max(1, Math.round(panel.scrollWidth || panel.clientWidth))
   const height = Math.max(1, Math.round(panel.scrollHeight || panel.clientHeight))
+
+  // The clone, not the live node: the live canvas is mounted where the screen needs it, and moving
+  // it would blank the board the reader is looking at while the dialog is up. Cloned as a node
+  // rather than re-parsed out of `outerHTML`: the markup then never passes a second HTML parser
+  // between the sanitized tree and the page, so there is no re-serialization to disagree with it.
+  useEffect(() => {
+    pageRef.current?.replaceChildren(panel.cloneNode(true))
+  }, [panel])
 
   useEffect(() => {
     const root = sheetRef.current
@@ -95,9 +104,7 @@ function KanbanPrintSheet({ panel, onDone }: { panel: HTMLElement; onDone: () =>
       className='kanban-print-sheet'
     >
       <style>{kanbanPrintCss(width, height)}</style>
-      {/* The clone, not the live node: the live canvas is mounted where the screen needs it, and
-      moving it would blank the board the reader is looking at while the dialog is up. */}
-      <div className='kanban-print-page' dangerouslySetInnerHTML={{ __html: panel.outerHTML }} />
+      <div ref={pageRef} className='kanban-print-page' />
     </div>,
     document.body,
   )

@@ -76,5 +76,10 @@ describe('the export door in the header', () => {
     expect(sheet).not.toBeNull()
     expect(container.querySelector('[role="tabpanel"]')).toBe(panelBefore)
     expect(print).not.toHaveBeenCalled()
+    // What it carries is a copy of the view, and a copy at that: the sheet's page draws the view's
+    // own tree shape, while the live panel the reader is looking at stays the one on the board.
+    const page = sheet!.querySelector('.kanban-print-page')
+    expect(page?.querySelector('[data-kanban-view-type]')).not.toBeNull()
+    expect(page?.querySelector('[role="tabpanel"]')).not.toBe(panelBefore)
   })
 })
