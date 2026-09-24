@@ -241,7 +241,7 @@ describe('KanbanArchiveAction dismissal', () => {
 
 describe('KanbanCsvAction dismissal', () => {
   function openDoor(): void {
-    mount(createElement(KanbanCsvAction, { title: 'Board', columns: COLUMNS, items: [], commitData: vi.fn() }))
+    mount(createElement(KanbanCsvAction, { title: 'Board', columns: COLUMNS, items: [], itemCount: 0, commitData: vi.fn() }))
     const trigger = document.querySelector<HTMLButtonElement>('[data-kanban-csv]')
     if (!trigger) throw new Error('the CSV trigger was not rendered')
     act(() => {

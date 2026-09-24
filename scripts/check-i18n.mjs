@@ -25,14 +25,16 @@ const localizedDemoFiles = new Set([
 const renderingFixtureFiles = new Set([
   path.resolve('tests/markdown-renderer-parity.test.ts'),
 ])
-// The visual e2e, the contrast gate and the helpers they share match
-// locale-dependent UI labels (both zh-CN and en-US) so the gates are
-// locale-agnostic; the strings are test selectors, never UI copy rendered by the
-// i18n layer.
+// The visual e2e, the contrast gate, the kanban measurement harness and the
+// helpers they share match locale-dependent UI labels (both zh-CN and en-US) so
+// the gates are locale-agnostic; the strings are test selectors, never UI copy
+// rendered by the i18n layer. The harness walks the board's own view tabs, and a
+// tab is named in whichever language the account was left in.
 const localizedFixtureFiles = new Set([
   path.resolve('scripts/e2e-visual.mjs'),
   path.resolve('scripts/check-contrast.mjs'),
   path.resolve('scripts/e2e-harness.mjs'),
+  path.resolve('scripts/measure-kanban.mjs'),
 ])
 const failures = []
 const usedKeys = new Set()

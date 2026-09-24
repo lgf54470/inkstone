@@ -21,6 +21,21 @@ import type {
 
 export const KANBAN_LANGUAGES = ['kanban', 'notion-kanban', 'board'] as const
 
+/**
+ * The most cards one fence may carry, and the same number the CSV door refuses past (`KANBAN_CSV_MAX_ROWS`
+ * in `./csv.ts`; `body.test.ts` pins the two equal). A guardrail rather than a product limit: a
+ * hand-written fence can list any number of cards and a note pays for the board it draws, so past this
+ * one the fence fails into its error state — source, message and retry, the way an unreadable fence does
+ * — instead of being quietly cut down to the first thousand, which would hide cards an author wrote.
+ */
+export const KANBAN_MAX_ITEMS = 1000
+
+function assertKanbanCardBudget(items: KanbanItem[]): void {
+  if (items.length > KANBAN_MAX_ITEMS) {
+    throw new Error(`Kanban board lists ${items.length} cards, more than the ${KANBAN_MAX_ITEMS} a board may carry`)
+  }
+}
+
 export function detectKanbanMode(body: string): KanbanMode {
   const trimmed = body.trimStart()
   return trimmed.startsWith('{') || trimmed.startsWith('[') ? 'json' : 'outline'
@@ -84,6 +99,7 @@ function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
   const views = Array.isArray(raw.views) && raw.views.length > 0 ? raw.views : defaultKanbanViews()
   const items = Array.isArray(raw.items) ? raw.items : []
   assertFenceUrlsAreSafe(items)
+  assertKanbanCardBudget(items)
 
   return {
     title: typeof raw.title === 'string' ? raw.title : 'Project',
@@ -99,6 +115,7 @@ export function parseKanbanBody(body: string): KanbanParseResult {
   if (mode === 'outline') {
     try {
       const data = parseKanbanOutline(body)
+      assertKanbanCardBudget(data.items)
       return { ok: true, data, mode }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err), raw: body }

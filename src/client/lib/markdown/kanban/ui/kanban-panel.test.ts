@@ -480,6 +480,7 @@ describe('the CSV panel hangs off the control that opened it', () => {
           title: 'Board',
           columns: COLUMNS,
           items: [],
+          itemCount: 0,
           commitData: vi.fn(),
         }),
       { selector: '[data-kanban-csv]', press: true },

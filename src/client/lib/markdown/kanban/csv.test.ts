@@ -37,8 +37,8 @@ function item(partial: Partial<KanbanItem> & { id: string }): KanbanItem {
   return { title: '', properties: {}, ...partial }
 }
 
-function mustImport(text: string, columns: KanbanProperty[] = COLUMNS) {
-  const result = importKanbanCsv(text, columns)
+function mustImport(text: string, columns: KanbanProperty[] = COLUMNS, existingItems = 0) {
+  const result = importKanbanCsv(text, columns, existingItems)
   if (!result.ok) throw new Error(`that file should import, got ${result.reason}`)
   return result
 }
@@ -312,6 +312,39 @@ describe('refusing a file the board cannot read', () => {
     const rows = ['Title']
     for (let index = 0; index < KANBAN_CSV_MAX_ROWS; index += 1) rows.push(`C${index}`)
     expect(mustImport(rows.join('\n')).items).toHaveLength(KANBAN_CSV_MAX_ROWS)
+  })
+})
+
+/**
+ * The room a board has left, which is the fence's own ceiling seen from the import door: a file that
+ * fits in a spreadsheet but not on this board would write a board the fence then refuses to read, so
+ * the import is refused instead — and refused on what it would really add, not on its row count.
+ */
+describe('importing into the room a board has left', () => {
+  const oneRow = 'Title\nFresh'
+
+  it('reads a file that exactly fills the last seats', () => {
+    expect(mustImport(oneRow, COLUMNS, KANBAN_CSV_MAX_ROWS - 1).items).toHaveLength(1)
+  })
+
+  it('refuses the file that would sit one card past the ceiling', () => {
+    expect(importKanbanCsv(oneRow, COLUMNS, KANBAN_CSV_MAX_ROWS)).toEqual({ ok: false, reason: 'no_room' })
+  })
+
+  it('refuses it for a board that is already full, whatever the file holds', () => {
+    expect(importKanbanCsv('Title\nA\nB', COLUMNS, KANBAN_CSV_MAX_ROWS)).toEqual({ ok: false, reason: 'no_room' })
+  })
+
+  it('judges by what the file would really add: a row with no title does not take a seat', () => {
+    const withSkipped = 'Title,Points\nFresh,3\n,4'
+    const filledToOneShort = mustImport(withSkipped, COLUMNS, KANBAN_CSV_MAX_ROWS - 1)
+    expect(filledToOneShort.items).toHaveLength(1)
+    expect(filledToOneShort.skippedRows).toBe(1)
+  })
+
+  it('leaves a board with no cards told about the file alone', () => {
+    // The third argument is the board's own count: absent, the door behaves as it always has.
+    expect(mustImport(oneRow).items).toHaveLength(1)
   })
 })
 

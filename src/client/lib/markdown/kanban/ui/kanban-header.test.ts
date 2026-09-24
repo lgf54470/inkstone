@@ -161,7 +161,7 @@ const rowProps: HeaderOverrides = {
   onChangeCardSize: vi.fn(),
   cardSize: 'medium',
   archive: { items: [item('z', 'done')], onRestore: vi.fn(), onDelete: vi.fn() },
-  csv: { title: 'Gate Board', columns: data.columns, items: data.items, commitData: vi.fn() },
+  csv: { title: 'Gate Board', columns: data.columns, items: data.items, itemCount: data.items.length, commitData: vi.fn() },
 }
 
 describe('the sizes a finger needs in the header', () => {

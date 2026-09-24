@@ -215,6 +215,7 @@ const PAIRS: Pair[] = [
       title: 'Board',
       columns: COLUMNS,
       items: [item],
+      itemCount: 1,
       commitData: vi.fn(),
     }),
     trigger: (root) => root.querySelector<HTMLElement>('[data-kanban-csv]'),

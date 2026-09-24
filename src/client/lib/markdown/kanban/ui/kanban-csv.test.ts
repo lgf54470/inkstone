@@ -10,6 +10,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { initI18n, t } from '../../../i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
 import { downloadTextFile } from '../../../export-note'
+import { KANBAN_MAX_ITEMS } from '../body'
 import { KANBAN_CSV_MAX_ROWS } from '../csv'
 import { KanbanRoot } from './kanban-root'
 import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
@@ -234,5 +235,13 @@ describe('a file the board refuses', () => {
     const panel = await pickCsv(csv)
     expect(onUpdateData).not.toHaveBeenCalled()
     expect(statusLines(panel)).toBe(t('preview.kanban_csv_import_too_many', { count: KANBAN_CSV_MAX_ROWS }))
+  })
+
+  it('refuses a small file for a board with no seat left for it', async () => {
+    const full = Array.from({ length: KANBAN_MAX_ITEMS }, (_, index) => card(`f${index}`))
+    const { onUpdateData } = mountBoard(board(full))
+    const panel = await pickCsv('Title,Status\nOne more,To Do\n')
+    expect(onUpdateData).not.toHaveBeenCalled()
+    expect(statusLines(panel)).toBe(t('preview.kanban_csv_import_no_room', { count: KANBAN_MAX_ITEMS }))
   })
 })

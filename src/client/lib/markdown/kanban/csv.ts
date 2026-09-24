@@ -8,13 +8,20 @@
  * carries (the same three-way read the gallery excerpt uses). Everything else is the document's own
  * schema, so a board with no `Status` column exports no `Status` header either.
  */
+import { KANBAN_MAX_ITEMS } from './body'
 import { kanbanDayKey } from './date-fields'
 import { createKanbanId } from './id'
 import { kanbanPersonName } from './person'
 import type { KanbanItem, KanbanOption, KanbanProperty } from './types'
 
-/** More rows than this is the wrong file; importing it would bury the board the reader is on. */
-export const KANBAN_CSV_MAX_ROWS = 1000
+/**
+ * More rows than this is the wrong file; importing it would bury the board the reader is on. It is the
+ * same number the fence itself refuses past (`KANBAN_MAX_ITEMS` — the two doors into a board agree on
+ * what "too big" means), and the import is refused against the room the board has left rather than
+ * against the file alone: a file that fits in a spreadsheet but not on this board would otherwise
+ * write a board the fence then refuses to read.
+ */
+export const KANBAN_CSV_MAX_ROWS = KANBAN_MAX_ITEMS
 
 const TITLE_HEADER = 'Title'
 const DESCRIPTION_COLUMN_ID = 'description'
@@ -170,7 +177,9 @@ export interface KanbanCsvImport {
   ignoredCells: number
 }
 
-export type KanbanCsvOutcome = ({ ok: true } & KanbanCsvImport) | { ok: false; reason: 'empty' | 'no_title' | 'too_many' }
+export type KanbanCsvOutcome =
+  | ({ ok: true } & KanbanCsvImport)
+  | { ok: false; reason: 'empty' | 'no_title' | 'too_many' | 'no_room' }
 
 function freeOptionId(label: string, pool: KanbanOption[]): string {
   const slug = label.toLowerCase().replace(/\s+/g, '_')
@@ -265,7 +274,11 @@ function importedItem(row: string[], titleIndex: number, mappings: { column: Kan
   return { item, ignoredCells }
 }
 
-export function importKanbanCsv(text: string, columns: KanbanProperty[]): KanbanCsvOutcome {
+/**
+ * `existingItems` is every card the fence already holds — archived ones included, because the ceiling
+ * counts what the fence carries rather than what this door is handed.
+ */
+export function importKanbanCsv(text: string, columns: KanbanProperty[], existingItems = 0): KanbanCsvOutcome {
   if (!text.trim()) return { ok: false, reason: 'empty' }
   const [header, ...body] = parseKanbanCsv(text)
   if (!body.length) return { ok: false, reason: 'empty' }
@@ -283,6 +296,10 @@ export function importKanbanCsv(text: string, columns: KanbanProperty[]): Kanban
     else skippedRows += 1
     ignoredCells += imported.ignoredCells
   }
+  // Counted after the rows were read, so a file whose unreadable rows are skipped is judged by what it
+  // would really add: a board with one seat left still takes a file of two rows when one of them is
+  // refused for its own reasons.
+  if (items.length + existingItems > KANBAN_MAX_ITEMS) return { ok: false, reason: 'no_room' }
   const newOptions = [...fresh.values()].reduce((total, added) => total + added.length, 0)
   return { ok: true, items, columns: withNewOptions(columns, fresh), newOptions, skippedRows, ignoredHeaders, ignoredCells }
 }

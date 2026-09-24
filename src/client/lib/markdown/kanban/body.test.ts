@@ -3,9 +3,11 @@ import {
   applyKanbanBodyAtFence,
   detectKanbanMode,
   kanbanFenceRange,
+  KANBAN_MAX_ITEMS,
   parseKanbanBody,
   serializeKanban,
 } from './body'
+import { KANBAN_CSV_MAX_ROWS } from './csv'
 import type { KanbanData, KanbanFenceRef } from './types'
 
 describe('detectKanbanMode', () => {
@@ -122,6 +124,57 @@ describe('parseKanbanBody URL whitelist', () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error).toContain('files')
+  })
+})
+
+/**
+ * A board drawn from a fence has no ceiling today: a hand-written file can carry ten thousand cards
+ * and the note pays for every one of them. The CSV door refuses past its own row limit, so the two
+ * ways into a board agree on what "too big" means — a board past the ceiling fails into the same
+ * error state an unreadable fence gets, source and all, rather than being quietly truncated (an
+ * author who wrote the cards is owed the reason they are not on screen).
+ */
+describe('the card budget of a fence', () => {
+  function jsonBoard(cards: number): string {
+    return JSON.stringify({
+      items: Array.from({ length: cards }, (_, index) => ({
+        id: `c${index}`,
+        title: `Card ${index}`,
+        properties: { status: 'todo' },
+      })),
+    })
+  }
+
+  function outlineBoard(cards: number): string {
+    return ['## To Do', ...Array.from({ length: cards }, (_, index) => `- [ ] Card ${index}`)].join('\n')
+  }
+
+  it('parses a board that sits exactly on the ceiling', () => {
+    const result = parseKanbanBody(jsonBoard(KANBAN_MAX_ITEMS))
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.data.items).toHaveLength(KANBAN_MAX_ITEMS)
+  })
+
+  it('refuses a JSON board one card past it, naming the count and the ceiling', () => {
+    const result = parseKanbanBody(jsonBoard(KANBAN_MAX_ITEMS + 1))
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain(String(KANBAN_MAX_ITEMS + 1))
+    expect(result.error).toContain(String(KANBAN_MAX_ITEMS))
+    // The source travels with the refusal: the block draws it under the message.
+    expect(result.raw).toBe(jsonBoard(KANBAN_MAX_ITEMS + 1))
+  })
+
+  it('refuses an outline board past it too, so the two body forms agree', () => {
+    const result = parseKanbanBody(outlineBoard(KANBAN_MAX_ITEMS + 1))
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain(String(KANBAN_MAX_ITEMS))
+  })
+
+  it('holds the ceiling at the number the CSV door refuses past', () => {
+    expect(KANBAN_CSV_MAX_ROWS).toBe(KANBAN_MAX_ITEMS)
   })
 })
 

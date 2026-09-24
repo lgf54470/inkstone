@@ -10,6 +10,7 @@ import { Button } from '../../../../components/primitives'
 import { downloadTextFile } from '../../../export-note'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { kanbanActiveItems } from '../archive'
+import { KANBAN_MAX_ITEMS } from '../body'
 import { importKanbanCsv, kanbanCsvFilename, kanbanToCsv, KANBAN_CSV_MAX_ROWS } from '../csv'
 import type { KanbanCsvOutcome } from '../csv'
 import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
@@ -24,6 +25,7 @@ const REFUSALS = {
   empty: () => t('preview.kanban_csv_import_empty'),
   no_title: () => t('preview.kanban_csv_import_no_title'),
   too_many: () => t('preview.kanban_csv_import_too_many', { count: KANBAN_CSV_MAX_ROWS }),
+  no_room: () => t('preview.kanban_csv_import_no_room', { count: KANBAN_MAX_ITEMS }),
 }
 
 export interface KanbanCsvEntry {
@@ -31,6 +33,8 @@ export interface KanbanCsvEntry {
   columns: KanbanProperty[]
   /** The live board: an archived card is not part of what a spreadsheet should be handed. */
   items: KanbanItem[]
+  /** Every card the fence holds, archived ones included: the ceiling counts what it carries. */
+  itemCount: number
   commitData: CommitKanbanData
 }
 
@@ -38,9 +42,10 @@ export interface KanbanCsvEntry {
 export function useKanbanCsvEntry(data: KanbanData, commitData: CommitKanbanData): KanbanCsvEntry {
   const items = useMemo(() => kanbanActiveItems(data.items), [data.items])
   const title = data.title ?? ''
+  const itemCount = data.items.length
   return useMemo(
-    () => ({ title, columns: data.columns, items, commitData }),
-    [title, data.columns, items, commitData],
+    () => ({ title, columns: data.columns, items, itemCount, commitData }),
+    [title, data.columns, items, itemCount, commitData],
   )
 }
 
@@ -151,7 +156,7 @@ function KanbanCsvPanel({
  * chooser belongs here too, since emptying it is part of the import step rather than the toggle.
  */
 function useCsvDoors(entry: KanbanCsvEntry) {
-  const { title, columns, items, commitData } = entry
+  const { title, columns, items, itemCount, commitData } = entry
   const [feedback, setFeedback] = useState<string[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -164,7 +169,7 @@ function useCsvDoors(entry: KanbanCsvEntry) {
     // Empty the chooser first: the same file picked twice is not a change otherwise.
     if (fileRef.current) fileRef.current.value = ''
     if (!file) return
-    const outcome = importKanbanCsv(await file.text(), columns)
+    const outcome = importKanbanCsv(await file.text(), columns, itemCount)
     setFeedback(outcomeLines(outcome))
     if (!outcome.ok) return
     commitData((prev) => ({
