@@ -8,7 +8,7 @@
  * carries (the same three-way read the gallery excerpt uses). Everything else is the document's own
  * schema, so a board with no `Status` column exports no `Status` header either.
  */
-import { KANBAN_MAX_ITEMS } from './body'
+import { KANBAN_DESCRIPTION_MAX_CHARS, KANBAN_MAX_ITEMS } from './body'
 import { kanbanDayKey } from './date-fields'
 import { createKanbanId } from './id'
 import { kanbanPersonName } from './person'
@@ -22,6 +22,14 @@ import type { KanbanItem, KanbanOption, KanbanProperty } from './types'
  * write a board the fence then refuses to read.
  */
 export const KANBAN_CSV_MAX_ROWS = KANBAN_MAX_ITEMS
+
+/**
+ * How big a CSV file may be before it is refused unread. Reading happens on the main thread, and a
+ * file many times this size freezes the tab for the parse alone — a pre-flight the chooser can run
+ * against `file.size` before a single byte is read. Expressed in characters for the text that has
+ * already been read (a char is at least a byte), so the door and the parser agree on one number.
+ */
+export const KANBAN_CSV_MAX_BYTES = 2 * 1024 * 1024
 
 const TITLE_HEADER = 'Title'
 const DESCRIPTION_COLUMN_ID = 'description'
@@ -179,7 +187,7 @@ export interface KanbanCsvImport {
 
 export type KanbanCsvOutcome =
   | ({ ok: true } & KanbanCsvImport)
-  | { ok: false; reason: 'empty' | 'no_title' | 'too_many' | 'no_room' }
+  | { ok: false; reason: 'empty' | 'no_title' | 'too_many' | 'no_room' | 'too_large' }
 
 function freeOptionId(label: string, pool: KanbanOption[]): string {
   const slug = label.toLowerCase().replace(/\s+/g, '_')
@@ -267,8 +275,10 @@ function importedItem(row: string[], titleIndex: number, mappings: { column: Kan
       continue
     }
     if (value === undefined) continue
-    // The description is the card's own body, not a stored value, so it travels outside `properties`.
-    if (column.id === DESCRIPTION_COLUMN_ID) item.content = String(value)
+    // The description is the card's own body, not a stored value, so it travels outside `properties`,
+    // clamped to the same ceiling the editor enforces: the import must not be the door a giant cell
+    // walks through to balloon the fence.
+    if (column.id === DESCRIPTION_COLUMN_ID) item.content = String(value).slice(0, KANBAN_DESCRIPTION_MAX_CHARS)
     else item.properties[column.id] = value
   }
   return { item, ignoredCells }
@@ -280,6 +290,7 @@ function importedItem(row: string[], titleIndex: number, mappings: { column: Kan
  */
 export function importKanbanCsv(text: string, columns: KanbanProperty[], existingItems = 0): KanbanCsvOutcome {
   if (!text.trim()) return { ok: false, reason: 'empty' }
+  if (text.length > KANBAN_CSV_MAX_BYTES) return { ok: false, reason: 'too_large' }
   const [header, ...body] = parseKanbanCsv(text)
   if (!body.length) return { ok: false, reason: 'empty' }
   if (body.length > KANBAN_CSV_MAX_ROWS) return { ok: false, reason: 'too_many' }

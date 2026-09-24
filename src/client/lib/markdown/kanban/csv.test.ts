@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { KanbanItem, KanbanProperty } from './types'
+import { KANBAN_DESCRIPTION_MAX_CHARS } from './body'
 import {
+  KANBAN_CSV_MAX_BYTES,
   KANBAN_CSV_MAX_ROWS,
   importKanbanCsv,
   kanbanCsvColumns,
@@ -238,6 +240,17 @@ describe('importing cards from a csv file', () => {
     const result = mustImport('Title,Status\nA,To do')
     expect(result.columns).toBe(COLUMNS)
     expect(result.newOptions).toBe(0)
+  })
+
+  it('refuses a file that is too large to parse without freezing the tab', () => {
+    const oversized = 'Title\nx\n' + 'a'.repeat(KANBAN_CSV_MAX_BYTES + 1)
+    expect(importKanbanCsv(oversized, COLUMNS)).toEqual({ ok: false, reason: 'too_large' })
+  })
+
+  it('clamps the description cell to the same bound the editor enforces', () => {
+    const giant = 'a'.repeat(KANBAN_DESCRIPTION_MAX_CHARS + 100)
+    const result = mustImport(`Title,Description\nA,${giant}`)
+    expect(result.items[0].content).toHaveLength(KANBAN_DESCRIPTION_MAX_CHARS)
   })
 })
 

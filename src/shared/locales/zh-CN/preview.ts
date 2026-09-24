@@ -149,6 +149,7 @@ export const messages = {
 'preview.kanban_csv_import_empty': '这个文件没有可读取的行',
 'preview.kanban_csv_import_no_title': 'CSV 文件需要 Title 列',
 'preview.kanban_csv_import_too_many': '超过 {count} 行不是一块看板该吞下的',
+'preview.kanban_csv_import_too_large': '该文件超过 {limit} MB，请拆分后再导入',
 'preview.kanban_csv_import_no_room': '一块看板最多装 {count} 张卡片，这次导入会越过上限',
 'preview.kanban_csv_rows_skipped': '{count} 行没有标题',
 'preview.kanban_csv_new_options': '已为看板新增 {count} 个分组',

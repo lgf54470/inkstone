@@ -1,13 +1,16 @@
 import { useId, useMemo, useRef, useState } from 'react'
 import { ChevronDown, Eye, Pencil } from 'lucide-react'
 import { t } from '../../../i18n'
+import { KANBAN_DESCRIPTION_MAX_CHARS } from '../body'
 
 /**
  * Descriptions are free prose stored inside the note body, so the box bounds how far one can grow
  * instead of letting a single card balloon the fence. Content a board already stores above the bound
  * stays editable: clamping it on the first keystroke would delete what the note already holds.
+ * The bound itself is the fence's own (`KANBAN_DESCRIPTION_MAX_CHARS` in `body.ts`) — every writer
+ * answers to the same number.
  */
-export const KANBAN_DESCRIPTION_MAX_CHARS = 5000
+export { KANBAN_DESCRIPTION_MAX_CHARS }
 /** The counter appears for the last stretch, so the bound is seen coming rather than only hit. */
 const KANBAN_DESCRIPTION_WARN_CHARS = KANBAN_DESCRIPTION_MAX_CHARS - 500
 const DESCRIPTION_ROWS = 4

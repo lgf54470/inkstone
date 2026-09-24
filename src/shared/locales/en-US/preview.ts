@@ -139,6 +139,7 @@ export const messages = {
 'preview.kanban_csv_import_empty': 'That file has no rows to read',
 'preview.kanban_csv_import_no_title': 'A CSV file needs a Title column',
 'preview.kanban_csv_import_too_many': 'More than {count} rows is more than one board should swallow',
+'preview.kanban_csv_import_too_large': 'That file is larger than {limit} MB — trim it before importing',
 'preview.kanban_csv_import_no_room': 'A board carries {count} cards at most, and this import would pass that',
 'preview.kanban_csv_rows_skipped': '{count} rows had no title',
 'preview.kanban_csv_new_options': 'Added {count} groups to the board',

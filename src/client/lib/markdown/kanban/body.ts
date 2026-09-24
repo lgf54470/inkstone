@@ -30,6 +30,13 @@ export const KANBAN_LANGUAGES = ['kanban', 'notion-kanban', 'board'] as const
  */
 export const KANBAN_MAX_ITEMS = 1000
 
+/**
+ * How much one card's description may hold, wherever it is written from: the detail editor counts
+ * down to it, and the CSV import clamps to it — a spreadsheet cell is user input like any other,
+ * and the clamp is what keeps one giant cell from ballooning the fence it lands in.
+ */
+export const KANBAN_DESCRIPTION_MAX_CHARS = 5000
+
 function assertKanbanCardBudget(items: KanbanItem[]): void {
   if (items.length > KANBAN_MAX_ITEMS) {
     throw new Error(`Kanban board lists ${items.length} cards, more than the ${KANBAN_MAX_ITEMS} a board may carry`)

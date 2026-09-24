@@ -11,7 +11,7 @@ import { downloadTextFile } from '../../../export-note'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { kanbanActiveItems } from '../archive'
 import { KANBAN_MAX_ITEMS } from '../body'
-import { importKanbanCsv, kanbanCsvFilename, kanbanToCsv, KANBAN_CSV_MAX_ROWS } from '../csv'
+import { importKanbanCsv, kanbanCsvFilename, kanbanToCsv, KANBAN_CSV_MAX_BYTES, KANBAN_CSV_MAX_ROWS } from '../csv'
 import type { KanbanCsvOutcome } from '../csv'
 import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
 import type { CommitKanbanData } from './kanban-history'
@@ -26,6 +26,7 @@ const REFUSALS = {
   no_title: () => t('preview.kanban_csv_import_no_title'),
   too_many: () => t('preview.kanban_csv_import_too_many', { count: KANBAN_CSV_MAX_ROWS }),
   no_room: () => t('preview.kanban_csv_import_no_room', { count: KANBAN_MAX_ITEMS }),
+  too_large: () => t('preview.kanban_csv_import_too_large', { limit: KANBAN_CSV_MAX_BYTES / (1024 * 1024) }),
 }
 
 export interface KanbanCsvEntry {
@@ -169,6 +170,12 @@ function useCsvDoors(entry: KanbanCsvEntry) {
     // Empty the chooser first: the same file picked twice is not a change otherwise.
     if (fileRef.current) fileRef.current.value = ''
     if (!file) return
+    // Refused before a byte is read: `file.text()` runs on the main thread, so the size check is
+    // what keeps an oversized file from freezing the tab on its way to the parser.
+    if (file.size > KANBAN_CSV_MAX_BYTES) {
+      setFeedback([REFUSALS.too_large()])
+      return
+    }
     const outcome = importKanbanCsv(await file.text(), columns, itemCount)
     setFeedback(outcomeLines(outcome))
     if (!outcome.ok) return

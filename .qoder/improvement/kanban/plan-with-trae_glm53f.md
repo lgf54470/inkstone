@@ -57,7 +57,7 @@
 
 ## 批次 3 · 数据安全（客户端 + 服务端）
 
-- [ ] G-05+T-05 CSV 导入体积预拒（读前按大小拒绝）+ 导入单元格/`content` 长度钳制
+- [x] G-05+T-05 CSV 导入体积预拒（`KANBAN_CSV_MAX_BYTES = 2MB`，chooser 读前按 file.size 拒绝、解析器对已读文本二次设防）+ 导入 `content` 钳制到 `KANBAN_DESCRIPTION_MAX_CHARS`（5000，常量移至 body.ts 统一来源）；双语拒绝文案
 - [ ] G-06 删除改软删：`deleted` 旗标（仅字面 `true` 生效，与 `archived` 同规），归档面板分「已归档 / 已删除」两区，已删除可恢复或永久清除；全部视图/计数/静态快照/CSV 导出排除已删除
 - [ ] G-07 键盘 Delete/Backspace 移除聚焦卡片（接 G-06 软删语义，进 Chord 表与快捷键卡）
 - [ ] G-08 附件配额改 D1 核算：kanban 上传写 `attachments` 行、删除删行，配额只查 D1；移除每次上传全量 list R2（存量无行对象按少计处理，注释说明）
@@ -93,7 +93,8 @@
 | 2026-09-24 | G-19：视图渲染器族纯移动拆出，root 494→302 行 | 见 git log | root/keys/fullscreen 26 测试通过；typecheck/size/style/deep-imports/comments 通过 |
 | 2026-09-24 | T-01：三件套列解析统一，12 处 UI 硬编码替换，幽灵 todo 消除 | 50b3b4d3 | view-ops/add-operations/preview 116 测试通过（含 3 个新解析器用例 + 2 个幽灵值回归）；typecheck/i18n/comments/size 通过 |
 | 2026-09-24 | T-02：gantt 滑杆草稿式拖动、释放一次提交 | 00dc0fca | gantt 5 测试通过；typecheck/comments/style 通过 |
-| 2026-09-24 | G-04：timeline/gantt 接渲染窗口（侧栏+图表同切点），预算钉住 | 见 git log | kanban+preview 120 文件 1395 用例全绿；预算 10/10（timeline/gantt 收紧至窗口）；typecheck/comments/style/size 通过 |
+| 2026-09-24 | G-04：timeline/gantt 接渲染窗口（侧栏+图表同切点），预算钉住 | 2bf8d6cd | kanban+preview 120 文件 1395 用例全绿；预算 10/10（timeline/gantt 收紧至窗口）；typecheck/comments/style/size 通过 |
+| 2026-09-24 | G-05+T-05：CSV 体积预拒 + content 钳制，描述上限常量归位 body.ts | 见 git log | csv/ui-csv 61 测试通过（新增 2）；typecheck/i18n 通过 |
 
 ## 固定验证
 
