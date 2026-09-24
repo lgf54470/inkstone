@@ -428,9 +428,6 @@ function useKanbanRootSetup(
   const containerRef = useRef<HTMLDivElement>(null)
   const viewPanelId = useId()
   const viewPanelRef = useRef<HTMLDivElement>(null)
-  // A host tree React did not make never re-renders this root, so the board listens
-  // for language changes itself rather than trusting a mount option to carry them.
-  useLocaleRepaint()
   const state = useKanbanRootState(initialData, onUpdateData, containerRef)
   const menu = useKanbanContextMenuState(state.data, state.commitData)
   // How each view was last left, shared because the views take turns being on screen (see the module).
@@ -451,6 +448,10 @@ export const KanbanRoot = memo(function KanbanRoot({
   onToggleFullscreen,
   renderDescription,
 }: KanbanRootProps) {
+  // A host tree React did not make never re-renders this root, so the board listens
+  // for language changes itself rather than trusting a mount option to carry them.
+  // (In the memo body directly: the locale-repaint policy test reads it here.)
+  useLocaleRepaint()
   const { containerRef, viewPanelId, viewPanelRef, state, menu, viewMemory } = useKanbanRootSetup(initialData, onUpdateData)
 
   return (
