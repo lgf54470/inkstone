@@ -152,22 +152,23 @@ export function exportVisitsToCsv(visits: Array<{
   isSelfReferrer?: boolean
   channel?: string | null
 }>, filename = 'share-visits.csv') {
+  // Localized headers, so a file that leaves the app speaks the reader's language the same way the
+  // dashboard export does. Channel stays appended last so an existing script that reads the columns
+  // before it by position keeps working (ADR-0004).
   const headers = [
-    'ID',
-    'Time',
-    'Note Title',
-    'Slug',
-    'Country',
-    'City',
-    'Referrer',
-    'Referrer Host',
-    'Device',
-    'OS',
-    'Browser',
-    'Type',
-    // Appended last so an existing script that reads the columns before it by position keeps
-    // working (ADR-0004).
-    'Channel',
+    t('share.export_col_id'),
+    t('share.export_col_time'),
+    t('share.export_col_note_title'),
+    t('share.export_col_slug'),
+    t('share.export_col_country'),
+    t('share.export_col_city'),
+    t('share.export_col_referrer'),
+    t('share.export_col_referrer_host'),
+    t('share.export_col_device'),
+    t('share.export_col_os'),
+    t('share.export_col_browser'),
+    t('share.export_col_type'),
+    t('share.export_col_channel'),
   ]
   const rows = visits.map((v) => [
     v.id,

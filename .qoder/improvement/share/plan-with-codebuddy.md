@@ -30,8 +30,8 @@
 | 序 | 批次 | 编号 | 标题 | 代价 | 状态 | commit |
 | --- | --- | --- | --- | --- | --- | --- |
 | 01 | — | — | 落盘本台账 + worktree 建支软链 | 极小 | ✅ | 未含代码改动 |
-| 02 | P0 | #4 | 访问日志表失败态缺失（违反禁止静默失败红线） | 小 | ✅ | ⏳ |
-| 03 | P0 | #1 | 访问日志 CSV 表头硬编码英文 | 小 | ⬜ | — |
+| 02 | P0 | #4 | 访问日志表失败态缺失（违反禁止静默失败红线） | 小 | ✅ | 5a8ac75f |
+| 03 | P0 | #1 | 访问日志 CSV 表头硬编码英文 | 小 | ✅ | ⏳ |
 | 04 | P0 | #3 | 随机 slug 用 Math.random（非 CSPRNG） | 极小 | ⬜ | — |
 | 05 | P0 | #2/#20 | 静态内联样式 + worker 原始 error 日志 | 极小 | ⬜ | — |
 | 06 | P0 | #17/#18 | 日志 count+rows 未 batch、页上限过宽、`/summary` 无界返回 | 小 | ⬜ | — |
@@ -53,6 +53,13 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 03 · P0 #1 访问日志 CSV 表头 i18n
+
+- 方案：`share-helpers.ts` 的 `exportVisitsToCsv` 表头 13 项全部改走 `t('share.export_col_*')`，键名对齐看板导出既有命名（`export_col_section/item/value` 同族）；`Channel` 仍保持最后一列（ADR-0004 位置兼容注释保留）。`{zh-CN,en-US}/share-2.ts` 各补 13 键。
+- 回归：`share-visit-logs-csv.test.ts` 既有 5 例改按键断言；新增双语守卫 describe（zh-CN 得「编号/时间/笔记标题…」、en-US 得「ID/Time/Note Title…」），防止英文表头回流。相关 4 个导出测试文件 34 例全绿；`npx tsc -b --force` 通过；`i18n:check`、`comments:check`（白名单同步）、`size:check` 等门禁全绿。
+- 已知限制（如实登记）：Type 列的数据值（`Bot (…)/Author/Self/Real`）与仪表盘导出的部分数据值仍为英文常量——那是「数据值」而非「表头」，两处口径改动会波及既有按位置读文件的脚本，本次不夹带（铁律 14），登记为后续候选。
+- 插曲：往 locale 文件插键时重复带上了 `export_col_section/value` 导致 TS1117，已删重复并复查两语言文件。
 
 ### 2026-09-25 · 序 02 · P0 #4 访问日志三态（失败/加载/空/数据）
 

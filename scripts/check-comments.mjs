@@ -4070,8 +4070,9 @@ const allowed = new Map([
     '/**\n * How the three traffic switches read as one sentence. The badge and the exported CSV both state\n * this, and a file that describes the filters differently from the screen is worse than no file.\n */',
     '/**\n * The three device classes the breakdown card names in words. Shared with the dashboard export so a\n * file that leaves the app says "Desktop" where the card said "Desktop", not the raw `desktop`.\n */',
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
-    '// Appended last so an existing script that reads the columns before it by position keeps',
-    '// working (ADR-0004).',
+    '// Localized headers, so a file that leaves the app speaks the reader\'s language the same way the',
+    '// dashboard export does. Channel stays appended last so an existing script that reads the columns',
+    '// before it by position keeps working (ADR-0004).',
   ]],
   ['src/client/features/share/share-hub-modal.tsx', [
     '/**\n * The open category\'s view, whichever it is. The shell hands over the callbacks it can serve and\n * nothing else: what the view paints, and what it needed loaded to paint it, is the view\'s own\n * declaration (`./share-hub-views`).\n */',
@@ -4321,6 +4322,8 @@ const allowed = new Map([
     '/** The colour and wording the closed control wears, read off the three switches it stands for. */',
   ]],
   ['src/client/features/share/share-visit-logs-csv.test.ts', [
+    '// Headers come out localized (the same keys the dashboard export uses); in tests the',
+    '// translation table is not loaded, so `t()` answers with the key itself.',
     '// The marker the visit carried (ADR-0004): the column is appended last, so the assertions above',
     '// that index into the middle of a row are unchanged by it.',
     '/** Minimal RFC 4180 reader: enough to prove no cell leaked into a second column. */',
