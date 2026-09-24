@@ -7075,6 +7075,12 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/url.ts', [
     '/**\n * Protocol whitelist for URLs that come from kanban fence content. Fence JSON is\n * user-authored (and arrives via shares/imports), so covers and file urls are\n * rendered from data we do not trust.\n */',
+    '// `blob:` stays because the demo backend answers kanban uploads with object',
+    '// urls (`demo/backend/routes/files.ts` → `browserFileUrl`): a blob url is',
+    '// runtime-created, origin-scoped and unforgeable by a fence author, and it is',
+    '// session-local, so it can never point at anything the writer did not just',
+    '// upload. `kanbanFileLocation` below still rejects it, so it buys no delete or',
+    '// read path — it is a render whitelist, not an authority grant.',
     '// A leading slash is same-site; \'//\' would be a protocol-relative external request.',
     '// Past notes keep whatever prefix their upload got, so a delete is addressed by',
     '// the file\'s own stored location rather than by the board\'s current namespace.',

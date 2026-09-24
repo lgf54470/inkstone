@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { kanbanFileLocation, safeKanbanUrl } from './url'
 
 describe('safeKanbanUrl protocol whitelist', () => {
-  it('keeps same-site relative, http(s) and blob urls', () => {
+  it('keeps same-site relative, http(s) and blob urls (blob: is the demo backend\'s upload answer)', () => {
     expect(safeKanbanUrl('/api/kanban/file/default/1-note.png')).toBe('/api/kanban/file/default/1-note.png')
     expect(safeKanbanUrl('https://cdn.example.com/a.png')).toBe('https://cdn.example.com/a.png')
     expect(safeKanbanUrl('http://example.com/a.png')).toBe('http://example.com/a.png')

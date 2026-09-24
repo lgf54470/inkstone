@@ -4,6 +4,12 @@
  * rendered from data we do not trust.
  */
 
+// `blob:` stays because the demo backend answers kanban uploads with object
+// urls (`demo/backend/routes/files.ts` → `browserFileUrl`): a blob url is
+// runtime-created, origin-scoped and unforgeable by a fence author, and it is
+// session-local, so it can never point at anything the writer did not just
+// upload. `kanbanFileLocation` below still rejects it, so it buys no delete or
+// read path — it is a render whitelist, not an authority grant.
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:', 'blob:'])
 
 export function safeKanbanUrl(raw: string | undefined): string | null {
