@@ -63,6 +63,20 @@ describe('the calendar view week', () => {
   })
 })
 
+describe('the calendar view heading', () => {
+  it.each(LOCALES)('says the month the way %s writes it', async (code) => {
+    const container = await mountIn(code, createElement(KanbanCalendarView, {
+      data: emptyData,
+      onOpenDetail: vi.fn(),
+      onAddItem: vi.fn(),
+    }))
+    const now = new Date()
+    const expected = new Intl.DateTimeFormat(code, { year: 'numeric', month: 'long', timeZone: 'UTC' })
+      .format(new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)))
+    expect(container.querySelector('h3')?.textContent).toBe(expected)
+  })
+})
+
 function shiftDays(dateStr: string, days: number): string {
   const [year, month, day] = dateStr.split('-').map(Number)
   const moved = new Date(year, month - 1, day + days)

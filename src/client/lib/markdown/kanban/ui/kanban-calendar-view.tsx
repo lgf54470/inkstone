@@ -26,15 +26,19 @@ interface CalendarHeaderProps {
 }
 
 function CalendarHeader({ year, month, onPrevMonth, onNextMonth, onToday }: CalendarHeaderProps) {
-  const padMonth = month + 1 < 10 ? `0${month + 1}` : `${month + 1}`
+  const locale = useLocale()
+  // The heading is the month as the reader's own calendar writes it — the locale's long month with
+  // its numeric year — not a numeric pair a locale never asked for.
+  const title = useMemo(
+    () => new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(year, month, 1))),
+    [locale, year, month],
+  )
   return (
     <div className='flex items-center justify-between pb-3'>
       {/* The type goes on this wrapper, not on the heading: prose owns a note's `h3` and wins any
           utility written on it (see the hand-back block in `styles/kanban.css`). */}
       <div className='text-[length:var(--text-15)] font-semibold'>
-        <h3 className='text-[var(--text-primary)]'>
-          {year} - {padMonth}
-        </h3>
+        <h3 className='text-[var(--text-primary)]'>{title}</h3>
       </div>
       <div className='flex items-center gap-1.5'>
         <button

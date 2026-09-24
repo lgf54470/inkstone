@@ -5804,6 +5804,8 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-calendar-view.tsx', [
     '/** The board\'s writer for a bar the reader moved to another day: one patch, one commit. */',
+    '// The heading is the month as the reader\'s own calendar writes it — the locale\'s long month with',
+    '// its numeric year — not a numeric pair a locale never asked for.',
     '/* The type goes on this wrapper, not on the heading: prose owns a note\'s `h3` and wins any\n          utility written on it (see the hand-back block in `styles/kanban.css`). */',
     '// The cell is a container of two controls and both add an item to that day: the number is the one',
     '// a keyboard can reach, and the `+` beside it is the mouse affordance that appears on hover. As a',
