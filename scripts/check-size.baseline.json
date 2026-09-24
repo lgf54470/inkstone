@@ -17,6 +17,9 @@
   "src/client/lib/markdown/kanban/ui/kanban-add-operations.test.ts": {
     "longFns": 1
   },
+  "src/client/lib/markdown/kanban/ui/kanban-archive.tsx": {
+    "longFns": 2
+  },
   "src/client/lib/markdown/kanban/ui/kanban-gantt-view.test.ts": {
     "longFns": 1
   },
@@ -69,6 +72,12 @@
   },
   "src/client/lib/markdown/slides/ui/slides-topbar.tsx": {
     "longFns": 1
+  },
+  "src/shared/locales/en-US/preview.ts": {
+    "lines": 501
+  },
+  "src/shared/locales/zh-CN/preview.ts": {
+    "lines": 501
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 646

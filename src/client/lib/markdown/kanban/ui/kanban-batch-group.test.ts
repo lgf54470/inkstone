@@ -129,7 +129,12 @@ describe('useKanbanSelection batch delete feedback', () => {
 
   it('reports how many cards the batch removed', () => {
     const { current, commits, unmount } = deleteTwoSelected()
-    expect(commits[0]!.items.map((i) => i.id)).toEqual(['c'])
+    // Removed from every view, still in the document: the flag is what the deleted list restores.
+    expect(commits[0]!.items.map((i) => [i.id, i.deleted])).toEqual([
+      ['a', true],
+      ['b', true],
+      ['c', undefined],
+    ])
     expect(current().selectedIds.size).toBe(0)
     expect(lastToast()).toMatchObject({
       title: t('preview.kanban_batch_deleted_count', { count: 2 }),

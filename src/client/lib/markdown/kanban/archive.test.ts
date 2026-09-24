@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { kanbanActiveItems, kanbanArchivedItems, kanbanIsArchived, kanbanSetArchived } from './archive'
+import {
+  kanbanActiveItems,
+  kanbanArchivedItems,
+  kanbanDeletedItems,
+  kanbanIsArchived,
+  kanbanIsDeleted,
+  kanbanPurgeDeleted,
+  kanbanSetArchived,
+  kanbanSetDeleted,
+} from './archive'
 import type { KanbanItem } from './types'
 
 function card(id: string, extra: Partial<KanbanItem> = {}): KanbanItem {
@@ -7,6 +16,7 @@ function card(id: string, extra: Partial<KanbanItem> = {}): KanbanItem {
 }
 
 const mixed = [card('a'), card('b', { archived: true }), card('c', { archived: false })]
+const deletedBoard = [card('a'), card('b', { deleted: true }), card('c', { archived: true, deleted: true })]
 
 describe('what counts as an archived card', () => {
   it('archives a card only on a literal true', () => {
@@ -18,6 +28,36 @@ describe('what counts as an archived card', () => {
   it('splits a board into the cards it works on and the cards it filed away', () => {
     expect(kanbanActiveItems(mixed).map((item) => item.id)).toEqual(['a', 'c'])
     expect(kanbanArchivedItems(mixed).map((item) => item.id)).toEqual(['b'])
+  })
+})
+
+describe('what counts as a deleted card', () => {
+  it('deletes a card only on a literal true', () => {
+    expect(kanbanIsDeleted(card('x', { deleted: true }))).toBe(true)
+    expect(kanbanIsDeleted(card('x', { deleted: false }))).toBe(false)
+    expect(kanbanIsDeleted(card('x'))).toBe(false)
+  })
+
+  it('a deleted card is out of every view and out of the archive shelf, whichever flag it also wears', () => {
+    expect(kanbanActiveItems(deletedBoard).map((item) => item.id)).toEqual(['a'])
+    expect(kanbanArchivedItems(deletedBoard).map((item) => item.id)).toEqual([])
+    expect(kanbanDeletedItems(deletedBoard).map((item) => item.id)).toEqual(['b', 'c'])
+  })
+
+  it('flags cards out of the views in one idempotent batch, and leaves no key behind on restore', () => {
+    const next = kanbanSetDeleted(mixed, ['a', 'ghost'], true)
+    expect(kanbanDeletedItems(next).map((item) => item.id)).toEqual(['a'])
+    expect(next[1]).toBe(mixed[1])
+    const restored = kanbanSetDeleted(next, ['a'], false).find((item) => item.id === 'a')!
+    expect('deleted' in restored).toBe(false)
+    expect(kanbanSetDeleted(mixed, ['a'], false)).toBe(mixed)
+  })
+
+  it('purge removes deleted cards for good, never the live ones, and no-ops on nothing to purge', () => {
+    expect(kanbanPurgeDeleted(deletedBoard, ['ghost']).map((item) => item.id)).toEqual(['a', 'b', 'c'])
+    expect(kanbanPurgeDeleted(deletedBoard, ['b']).map((item) => item.id)).toEqual(['a', 'c'])
+    expect(kanbanPurgeDeleted(deletedBoard).map((item) => item.id)).toEqual(['a'])
+    expect(kanbanPurgeDeleted(mixed)).toBe(mixed)
   })
 })
 

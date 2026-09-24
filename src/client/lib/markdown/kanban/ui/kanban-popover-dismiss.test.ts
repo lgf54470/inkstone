@@ -214,7 +214,7 @@ describe('KanbanTagPicker dismissal', () => {
 describe('KanbanArchiveAction dismissal', () => {
   function openShelf(): void {
     const archived: KanbanItem = { id: 'z', title: 'Filed away', properties: { status: 'todo' }, archived: true }
-    mount(createElement(KanbanArchiveAction, { items: [archived], onRestore: vi.fn(), onDelete: vi.fn() }))
+    mount(createElement(KanbanArchiveAction, { items: [archived], deletedItems: [], onRestore: vi.fn(), onDelete: vi.fn(), onRestoreDeleted: vi.fn(), onPurge: vi.fn() }))
     const trigger = document.querySelector<HTMLButtonElement>('[data-kanban-archive]')
     if (!trigger) throw new Error('the archive trigger was not rendered')
     act(() => {

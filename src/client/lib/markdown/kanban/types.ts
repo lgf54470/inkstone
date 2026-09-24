@@ -113,6 +113,9 @@ export interface KanbanItem {
   comments?: KanbanComment[]
   /** Set only while the card is archived; restoring deletes the key. See `archive.ts`. */
   archived?: boolean
+  /** Set only while the card sits in the deleted list: still in the document, out of every view.
+   *  Restoring deletes the key; the purge removes the card itself. See `archive.ts`. */
+  deleted?: boolean
   /** The ids of the cards that must be done before this one — its blockers. See `dependencies.ts` (KU-23). */
   dependsOn?: string[]
   properties: Record<string, unknown>

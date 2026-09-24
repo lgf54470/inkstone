@@ -100,7 +100,7 @@ const fullBar: HeaderOverrides = {
   onUndo: vi.fn(),
   onRedo: vi.fn(),
   onToggleFullscreen: vi.fn(),
-  archive: { items: [items[1]!], onRestore: vi.fn(), onDelete: vi.fn() },
+  archive: { items: [items[1]!], deletedItems: [], onRestore: vi.fn(), onDelete: vi.fn(), onRestoreDeleted: vi.fn(), onPurge: vi.fn() },
   csv: { title: 'Board', columns: data.columns, items, itemCount: items.length, commitData: vi.fn() },
 }
 

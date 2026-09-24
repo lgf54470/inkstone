@@ -160,7 +160,7 @@ const rowProps: HeaderOverrides = {
   onChangeGroupBy: vi.fn(),
   onChangeCardSize: vi.fn(),
   cardSize: 'medium',
-  archive: { items: [item('z', 'done')], onRestore: vi.fn(), onDelete: vi.fn() },
+  archive: { items: [item('z', 'done')], deletedItems: [], onRestore: vi.fn(), onDelete: vi.fn(), onRestoreDeleted: vi.fn(), onPurge: vi.fn() },
   csv: { title: 'Gate Board', columns: data.columns, items: data.items, itemCount: data.items.length, commitData: vi.fn() },
 }
 

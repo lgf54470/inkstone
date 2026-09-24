@@ -62,17 +62,21 @@ function boardWithOneCard(): KanbanData {
 }
 
 describe('kanban single card delete feedback', () => {
-  it('deletes the card and offers the board history as the way back', () => {
+  it('flags the card out of the views and offers the board history as the way back', () => {
     const { holder, commits, unmount } = renderRootStateProbe(boardWithOneCard())
     act(() => { holder.state.items.handleDeleteItem('a') })
-    expect(commits.at(-1)!.items).toHaveLength(0)
+    const deleted = commits.at(-1)!.items[0]!
+    expect(deleted.id).toBe('a')
+    expect(deleted.deleted).toBe(true)
     const toast = useUi.getState().toasts.at(-1)
     expect(toast, 'deleting one card posted no toast').toBeDefined()
     expect(toast!.title).toBe(t('preview.kanban_card_deleted'))
     expect(toast!.kind).toBe('undo')
     expect(toast!.duration).toBeGreaterThan(3800)
     act(() => { toast!.action!.run() })
-    expect(commits.at(-1)!.items.map((item) => item.id)).toEqual(['a'])
+    const undone = commits.at(-1)!.items[0]!
+    expect(undone.id).toBe('a')
+    expect('deleted' in undone).toBe(false)
     unmount()
   })
 

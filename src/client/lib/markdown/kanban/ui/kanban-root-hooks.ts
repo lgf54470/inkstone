@@ -8,7 +8,7 @@ import { t } from '../../../i18n'
 import { toastWithUndo } from '../../../../store/ui'
 import type { KanbanMovePivot } from '../dnd'
 import { kanbanPeopleDirectory } from '../person'
-import { kanbanActiveItems } from '../archive'
+import { kanbanActiveItems, kanbanSetDeleted } from '../archive'
 import { kanbanStatusColumn } from '../view-ops'
 import { withKanbanDependenciesGuarded } from '../dependencies'
 import { useKanbanBatchEdits } from './kanban-batch-edits'
@@ -175,7 +175,12 @@ export function useKanbanItemLifecycle(
   setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>,
 ) {
   const handleDeleteItem = useCallback((id: string) => {
-    commitData((prev) => ({ ...prev, items: prev.items.filter((item) => item.id !== id) }))
+    // Deleting is a flag, not a removal: the card leaves every view but stays in the document's
+    // deleted list, where the archive panel can put it back — the purge is the irreversible half.
+    commitData((prev) => {
+      const items = kanbanSetDeleted(prev.items, [id], true)
+      return items === prev.items ? prev : { ...prev, items }
+    })
     if (detailItem?.id === id) setDetailItem(null)
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -335,7 +340,11 @@ export function useKanbanSelection(
   const handleBatchDelete = useCallback(() => {
     const count = selectedIds.size
     if (count === 0) return
-    commitData((prev) => ({ ...prev, items: prev.items.filter((item) => !selectedIds.has(item.id)) }))
+    // The batch twin of the soft delete above: flagged out of every view, recoverable from the panel.
+    commitData((prev) => {
+      const items = kanbanSetDeleted(prev.items, selectedIds, true)
+      return items === prev.items ? prev : { ...prev, items }
+    })
     clearSelection()
     toastWithUndo(t('preview.kanban_batch_deleted_count', { count }), undo, { duration: DESTRUCTIVE_UNDO_TOAST_MS })
   }, [selectedIds, commitData, clearSelection, undo])

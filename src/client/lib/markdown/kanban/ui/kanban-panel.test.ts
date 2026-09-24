@@ -463,8 +463,11 @@ describe('the archive shelf hangs off the control that opened it', () => {
       () =>
         createElement(KanbanArchiveAction, {
           items: [{ id: 'a', title: 'Filed away', properties: {}, archived: true }],
+          deletedItems: [],
           onRestore: vi.fn(),
           onDelete: vi.fn(),
+          onRestoreDeleted: vi.fn(),
+          onPurge: vi.fn(),
         }),
       { selector: '[data-kanban-archive]', press: true },
     )

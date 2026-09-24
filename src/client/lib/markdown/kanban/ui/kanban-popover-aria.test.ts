@@ -225,8 +225,11 @@ const PAIRS: Pair[] = [
     label: 'archive shelf',
     node: () => createElement(KanbanArchiveAction, {
       items: [{ ...item, archived: true }],
+      deletedItems: [],
       onRestore: vi.fn(),
       onDelete: vi.fn(),
+      onRestoreDeleted: vi.fn(),
+      onPurge: vi.fn(),
     }),
     trigger: (root) => root.querySelector<HTMLElement>('[data-kanban-archive]'),
     panelRole: 'dialog',

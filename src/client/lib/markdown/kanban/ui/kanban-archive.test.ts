@@ -170,11 +170,19 @@ describe('bringing a card back', () => {
     expect(onUpdateData).toHaveBeenCalledTimes(1)
   })
 
-  it('deletes a filed-away card for good from the same row', () => {
+  it('moves a filed-away card to the deleted list from the same row, where it can still be restored', () => {
     const { onUpdateData } = mountBoard(board([card('a'), card('z', true)]))
     const panel = openArchivePanel(1)
     act(() => { panel.querySelector<HTMLButtonElement>('[data-kanban-archive-delete]')!.click() })
-    expect(committed(onUpdateData).items.map((item) => item.id)).toEqual(['a'])
+    const deleted = committed(onUpdateData).items.find((item) => item.id === 'z')!
+    expect(deleted.deleted).toBe(true)
+    // The deleted section is the shelf the card can come back from: the panel lists it with a purge
+    // of its own, and the restore row puts the card on the board again.
+    expect(document.querySelector('[data-kanban-deleted-list]')?.textContent).toContain('Card z')
+    act(() => { document.querySelector<HTMLButtonElement>('[data-kanban-deleted-list] [data-kanban-archive-restore]')!.click() })
+    const restored = committed(onUpdateData).items.find((item) => item.id === 'z')!
+    expect('deleted' in restored).toBe(false)
+    expect('archived' in restored).toBe(false)
   })
 })
 
