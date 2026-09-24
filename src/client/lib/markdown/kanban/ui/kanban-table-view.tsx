@@ -2,9 +2,11 @@ import { memo } from 'react'
 import { Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { groupKanbanItems, type KanbanGroup } from '../filter-sort'
+import type { KanbanRowMove } from '../dnd'
 import type { KanbanData, KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSort, KanbanSubtask, KanbanView } from '../types'
 import { KanbanTableHeaderCell, kanbanPropertyColumns, kanbanTableColumnCount, kanbanTitleColumn } from './kanban-property-cell'
 import { KanbanTableGroup } from './kanban-table-group'
+import { useKanbanTableReorder, type TableReorderProps } from './kanban-table-dnd'
 import { useKanbanViewMemory } from './kanban-view-memory'
 
 interface KanbanTableViewProps {
@@ -26,6 +28,8 @@ interface KanbanTableViewProps {
   /** Who the member picker may offer, per member column. Derived from every card on the board, so
    *  a filter cannot make a teammate unassignable. */
   people: Record<string, string[]>
+  /** KU-21c: the row move a drag or an arrow key makes, resolved by the board's writer. */
+  onReorderRows?: (move: KanbanRowMove) => void
 }
 
 interface TableHeaderRowProps {
@@ -101,6 +105,8 @@ interface TableGroupListProps {
   onAddColumn: () => void
   /** Who the member picker may offer, per member column. */
   people: Record<string, string[]>
+  /** KU-21c: the rows' shared gesture, measured against the whole board's item order. */
+  reorder?: TableReorderProps
 }
 
 function TableGroupList({
@@ -120,6 +126,7 @@ function TableGroupList({
   onAddItem,
   onAddColumn,
   people,
+  reorder,
 }: TableGroupListProps) {
   const columnCount = kanbanTableColumnCount(columns, hiddenColumns)
   return (
@@ -148,6 +155,7 @@ function TableGroupList({
             const defaults = group.groupKey !== '__none__' ? { [groupByProp]: group.groupKey } : {}
             onAddItem(defaults)
           }}
+          reorder={reorder}
         />
       ))}
 
@@ -183,6 +191,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   onSortColumn,
   onResizeColumn,
   people,
+  onReorderRows,
 }: KanbanTableViewProps) {
   useLocaleRepaint()
   const memory = useKanbanViewMemory(view?.id)
@@ -190,6 +199,9 @@ export const KanbanTableView = memo(function KanbanTableView({
   const groupCol = data.columns.find((c) => c.id === groupByProp)
   const groups = groupKanbanItems(data.items, groupByProp, groupCol)
   const { isAllSelected, handleToggleAll } = useTableToggleAll(data.items, selectedIds, onToggleAll)
+  // KU-21c: the rows' own drag and keyboard walk. The gesture reports moves; the writer resolves
+  // them against the whole board's item order, which is what the rows are drawn in.
+  const reorder = useKanbanTableReorder({ groupPropertyId: groupByProp, onMove: onReorderRows ?? (() => {}) })
 
   return (
     <div className='h-full w-full overflow-auto p-4'>
@@ -208,6 +220,7 @@ export const KanbanTableView = memo(function KanbanTableView({
           collapsedGroups={memory.folds}
           onToggleGroup={memory.toggleFold}
           groupByProp={groupByProp}
+          reorder={onReorderRows ? reorder : undefined}
           columns={data.columns}
           hiddenColumns={view?.hiddenColumns}
           selectedIds={selectedIds}

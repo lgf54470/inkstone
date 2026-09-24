@@ -6,6 +6,7 @@ import { KanbanColumnCount } from './kanban-column-count'
 import { KanbanProgressBar } from './kanban-progress-bar'
 import { kanbanTableColumnCount } from './kanban-property-cell'
 import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
+import type { TableReorderProps } from './kanban-table-dnd'
 import { KanbanTableRow } from './kanban-table-row'
 
 interface KanbanTableGroupProps {
@@ -29,6 +30,8 @@ interface KanbanTableGroupProps {
   /** Who the member picker may offer, per member column. */
   people?: Record<string, string[]>
   onAddItemInGroup: () => void
+  /** KU-21c: the rows' shared drag and keyboard walk, owned by the table that draws them. */
+  reorder?: TableReorderProps
 }
 
 function GroupHeader({
@@ -138,6 +141,7 @@ export function KanbanTableGroup({
   onUpdateFiles,
   people,
   onAddItemInGroup,
+  reorder,
 }: KanbanTableGroupProps) {
   const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(items)
   const localizedLabel = formatKanbanGroupLabel(groupKey, label)
@@ -173,6 +177,7 @@ export function KanbanTableGroup({
                 onUpdateSubtasks={onUpdateSubtasks}
                 onUpdateFiles={onUpdateFiles}
                 people={people}
+                reorder={reorder}
               />
             ))}
             <KanbanRenderTail hiddenCount={hiddenCount} setTailElement={setTailElement} onReveal={revealMore} columnCount={columnCount} />

@@ -112,6 +112,20 @@ function useHistoryKeyboardShortcuts(
   }, [undo, redo, containerRef])
 }
 
+/**
+ * The history's own refs: the newest state, the newest callback — the things a commit resolved at
+ * write time needs to read rather than the render it happened to be called from.
+ */
+function useKanbanHistoryRefs(state: HistoryState, onUpdateData: (next: KanbanData) => void) {
+  const dataRef = useRef(state.data)
+  dataRef.current = state.data
+  const historyRef = useRef(state)
+  historyRef.current = state
+  const onUpdateRef = useRef(onUpdateData)
+  onUpdateRef.current = onUpdateData
+  return { dataRef, historyRef, onUpdateRef }
+}
+
 export function useKanbanHistory(
   initialData: KanbanData,
   onUpdateData: (next: KanbanData) => void,
@@ -123,20 +137,16 @@ export function useKanbanHistory(
     future: [],
   })
 
-  const dataRef = useRef(state.data)
-  dataRef.current = state.data
-  // Undo and redo resolve against the newest history, not the one this render saw: a callback that
-  // outlives its render — the way back a toast keeps — has to step over the edit it was handed for.
-  const historyRef = useRef(state)
-  historyRef.current = state
-  const onUpdateRef = useRef(onUpdateData)
-  onUpdateRef.current = onUpdateData
+  const { dataRef, historyRef, onUpdateRef } = useKanbanHistoryRefs(state, onUpdateData)
 
   const commitData = useCallback<CommitKanbanData>(
     (nextOrUpdater, kind = 'edit') => {
       const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(dataRef.current) : nextOrUpdater
+      // The same reference the state already holds is the reducer's no-op (KU-21c's edge steps and
+      // refusals ride on it), and a no-op must not reach the note either — the write pipeline would
+      // refuse it at serialization, but the callback would still fire and dirty the block.
+      if (next !== dataRef.current) onUpdateRef.current(next)
       dispatch({ type: 'commit', next, kind })
-      onUpdateRef.current(next)
     },
     [],
   )

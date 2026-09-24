@@ -3,8 +3,43 @@ import {
   parseKanbanDragData,
   reorderKanbanColumns,
   reorderKanbanItems,
+  stepKanbanRowInGroup,
 } from './dnd'
 import type { KanbanItem, KanbanProperty } from './types'
+
+/**
+ * KU-21c. The table's rows stand in document order, so a reorder is a step of that order inside the
+ * row's own group. The cases pin the shape the view's writer is handed: the walk crosses rows of
+ * other groups to find the row's own neighbour, stops short at the group's edge, and leaves the list
+ * untouched when there is nothing to move.
+ */
+describe('stepping a table row inside its group (KU-21c, pure layer)', () => {
+  const item = (id: string, status: string): KanbanItem => ({ id, title: id, properties: { status } })
+  const rows = [item('a', 'todo'), item('x', 'doing'), item('b', 'todo'), item('y', 'doing'), item('c', 'todo')]
+  const ids = (items: KanbanItem[]): string[] => items.map((i) => i.id)
+
+  it('moves down to the next row of its own group, stepping over other groups', () => {
+    expect(ids(stepKanbanRowInGroup(rows, 'a', 'status', 1))).toEqual(['x', 'b', 'a', 'y', 'c'])
+  })
+
+  it('moves up to the previous row of its own group', () => {
+    expect(ids(stepKanbanRowInGroup(rows, 'b', 'status', -1))).toEqual(['b', 'a', 'x', 'y', 'c'])
+  })
+
+  it('does not cross the group edge at either end', () => {
+    expect(stepKanbanRowInGroup(rows, 'c', 'status', 1)).toBe(rows)
+    expect(stepKanbanRowInGroup(rows, 'a', 'status', -1)).toBe(rows)
+  })
+
+  it('leaves an unknown row, and the list, alone', () => {
+    expect(stepKanbanRowInGroup(rows, 'nope', 'status', 1)).toBe(rows)
+  })
+
+  it('treats ungrouped rows as one group of their own', () => {
+    const loose = [item('a', 'todo'), item('b', 'todo'), item('x', 'doing')]
+    expect(ids(stepKanbanRowInGroup(loose, 'a', 'status', 1))).toEqual(['b', 'a', 'x'])
+  })
+})
 
 describe('parseKanbanDragData', () => {
   it('parses valid json card payload', () => {

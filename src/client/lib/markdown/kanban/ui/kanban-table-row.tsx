@@ -4,6 +4,7 @@ import { t } from '../../../i18n'
 import { createKanbanId } from '../id'
 import type { KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import type { TableReorderProps } from './kanban-table-dnd'
 import {
   KanbanPropertyCell,
   kanbanColumnSize,
@@ -25,6 +26,8 @@ interface KanbanTableRowProps {
   onUpdateFiles: (itemId: string, files: KanbanFile[]) => void
   /** Who the member picker may offer, per member column. */
   people?: Record<string, string[]>
+  /** KU-21c: the row's own drag and its keyboard walk. Absent where the table cannot write. */
+  reorder?: TableReorderProps
 }
 
 function SubitemItemRow({
@@ -198,6 +201,57 @@ function RowSelectionCell({ isSelected, onToggleSelect }: { isSelected: boolean;
   )
 }
 
+/**
+ * The columns a row draws, without their wrapper — split out of `KanbanTableRow` so the row itself
+ * stays a gesture wrapper over one strip of cells and one optional expansion.
+ */
+function RowCells({
+  item,
+  columns,
+  hiddenColumns,
+  isSelected,
+  onToggleSelect,
+  onOpenDetail,
+  onUpdateProperty,
+  onUpdateMultiSelect,
+  onUpdateFiles,
+  people,
+  subtasksCount,
+  expanded,
+  onToggleExpand,
+}: Omit<KanbanTableRowProps, 'onUpdateSubtasks' | 'reorder'> & {
+  subtasksCount: number
+  expanded: boolean
+  onToggleExpand: () => void
+}) {
+  const titleColumn = kanbanTitleColumn(columns)
+  const propertyColumns = kanbanPropertyColumns(columns, hiddenColumns)
+  return (
+    <div role='row' className='flex min-h-10 items-center text-[length:var(--text-12)]'>
+      <RowSelectionCell isSelected={isSelected} onToggleSelect={onToggleSelect} />
+      <ItemTitleCell
+        item={item}
+        column={titleColumn}
+        subtasksCount={subtasksCount}
+        expanded={expanded}
+        onToggleExpand={onToggleExpand}
+        onOpenDetail={onOpenDetail}
+      />
+      {propertyColumns.map((column) => (
+        <KanbanPropertyCell
+          key={column.id}
+          column={column}
+          item={item}
+          onUpdateProperty={onUpdateProperty}
+          onUpdateMultiSelect={onUpdateMultiSelect}
+          onUpdateFiles={onUpdateFiles}
+          people={people}
+        />
+      ))}
+    </div>
+  )
+}
+
 export function KanbanTableRow({
   item,
   columns,
@@ -210,37 +264,37 @@ export function KanbanTableRow({
   onUpdateSubtasks,
   onUpdateFiles,
   people,
+  reorder,
 }: KanbanTableRowProps) {
   const [expanded, setExpanded] = useState(false)
-  const titleColumn = kanbanTitleColumn(columns)
-  const propertyColumns = kanbanPropertyColumns(columns, hiddenColumns)
   const subtasks = item.subtasks || []
+  const rowGesture = reorder?.rowProps(item) ?? {}
 
   return (
-    <div role='presentation' data-item-id={item.id} className='flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-colors hover:bg-[var(--bg-hover)]'>
-      <div role='row' className='flex min-h-10 items-center text-[length:var(--text-12)]'>
-        <RowSelectionCell isSelected={isSelected} onToggleSelect={onToggleSelect} />
-        <ItemTitleCell
-          item={item}
-          column={titleColumn}
-          subtasksCount={subtasks.length}
-          expanded={expanded}
-          onToggleExpand={() => setExpanded((e) => !e)}
-          onOpenDetail={onOpenDetail}
-        />
-
-        {propertyColumns.map((column) => (
-          <KanbanPropertyCell
-            key={column.id}
-            column={column}
-            item={item}
-            onUpdateProperty={onUpdateProperty}
-            onUpdateMultiSelect={onUpdateMultiSelect}
-            onUpdateFiles={onUpdateFiles}
-            people={people}
-          />
-        ))}
-      </div>
+    <div
+      role='presentation'
+      data-item-id={item.id}
+      {...rowGesture}
+      onKeyDown={reorder ? (e) => reorder.rowKeyDown(item, e) : undefined}
+      className={`flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-colors hover:bg-[var(--bg-hover)] ${
+        reorder?.isDragging ? 'cursor-grabbing' : reorder ? 'cursor-grab' : ''
+      }`}
+    >
+      <RowCells
+        item={item}
+        columns={columns}
+        hiddenColumns={hiddenColumns}
+        isSelected={isSelected}
+        onToggleSelect={onToggleSelect}
+        onOpenDetail={onOpenDetail}
+        onUpdateProperty={onUpdateProperty}
+        onUpdateMultiSelect={onUpdateMultiSelect}
+        onUpdateFiles={onUpdateFiles}
+        people={people}
+        subtasksCount={subtasks.length}
+        expanded={expanded}
+        onToggleExpand={() => setExpanded((e) => !e)}
+      />
 
       {expanded && onUpdateSubtasks && (
         <SubitemsNestedTable

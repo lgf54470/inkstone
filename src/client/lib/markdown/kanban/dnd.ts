@@ -99,6 +99,70 @@ export function reorderKanbanItems(
   return insertIntoTargetGroup(withoutItem, updatedItem, targetGroupItems, pivot)
 }
 
+/**
+ * The order a table's rows would stand in if one row moved one step up or down — KU-21c's drag hands
+ * over the same answer with a bigger step. The step is taken inside the row's own group (a drag
+ * across groups is the board's move, which writes the group column; a reorder here is only ever a
+ * change of place among the rows the reader is looking at), and the walk runs in document order, so
+ * the result is what a reader dragging the row onto its neighbour expects. The list comes back
+ * unchanged when the row is unknown, the neighbour is outside the same group, or the step is no
+ * step at all — a no-op must not look like a change worth a step of undo.
+ */
+export function stepKanbanRowInGroup(
+  items: KanbanItem[],
+  itemId: string,
+  groupPropertyId: string,
+  offset: -1 | 1,
+): KanbanItem[] {
+  const index = items.findIndex((item) => item.id === itemId)
+  if (index === -1) return items
+  const groupValue = items[index]!.properties[groupPropertyId]
+  let neighbour = index + offset
+  // A neighbour that does not belong to the row's own group is not the row the reader aimed at: the
+  // walk steps over it to the next row of the same group, and stops short at the group's edge.
+  while (neighbour >= 0 && neighbour < items.length && items[neighbour]!.properties[groupPropertyId] !== groupValue) {
+    neighbour += offset
+  }
+  if (neighbour < 0 || neighbour >= items.length) return items
+  const next = [...items]
+  const [moved] = next.splice(index, 1)
+  next.splice(neighbour, 0, moved!)
+  return next
+}
+
+/**
+ * One row reorder a table view asks the board to write: the row that moves, the property its group is
+ * read from, and either the row it was dropped on or the direction an arrow key pressed. Resolving
+ * the step against the document the commit sees (not the slice a filtered view draws) is the writer's
+ * business — see `stepKanbanRowToItem` / `stepKanbanRowInGroup`.
+ */
+export interface KanbanRowMove {
+  itemId: string
+  groupPropertyId: string
+  /** The row the drag was dropped on; absent for a keyboard step. */
+  targetId?: string
+  /** The direction an arrow-key step takes, when no target row is named. */
+  offset?: -1 | 1
+}
+
+/**
+ * The order the rows stand in when `itemId` is dropped onto `targetId`: a whole-step move toward the
+ * target, inside the mover's own group. A drop on a row of another group is not a reorder — crossing
+ * groups is the board's move, which writes the group column — so it resolves to no change.
+ */
+export function stepKanbanRowToItem(
+  items: KanbanItem[],
+  itemId: string,
+  targetId: string,
+  groupPropertyId: string,
+): KanbanItem[] {
+  const from = items.findIndex((item) => item.id === itemId)
+  const to = items.findIndex((item) => item.id === targetId)
+  if (from === -1 || to === -1 || from === to) return items
+  if (items[from]!.properties[groupPropertyId] !== items[to]!.properties[groupPropertyId]) return items
+  return stepKanbanRowInGroup(items, itemId, groupPropertyId, to > from ? 1 : -1)
+}
+
 export function reorderKanbanColumns(
   columns: KanbanProperty[],
   groupByPropertyId: string,

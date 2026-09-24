@@ -8,7 +8,7 @@ import type {
   KanbanOption,
   KanbanSubtask,
 } from '../types'
-import type { KanbanMovePivot } from '../dnd'
+import type { KanbanMovePivot, KanbanRowMove } from '../dnd'
 import type { KanbanBoardCell } from '../swimlane'
 import { KanbanBatchBar } from './kanban-batch-bar'
 import type { KanbanBatchEdits } from './kanban-batch-bar'
@@ -61,6 +61,8 @@ interface KanbanViewRendererProps {
   handleUpdateProperty: (itemId: string, propertyId: string, value: unknown) => void
   /** A bar dragged on a time view: the days it spans, as one patch and one commit. */
   handleRescheduleItem: (itemId: string, patch: Record<string, string>) => void
+  /** KU-21c: the table's row move, resolved against the document's item order, in one commit. */
+  handleReorderRows: (move: KanbanRowMove) => void
   handleToggleSelect: (id: string) => void
   handleToggleAll: (ids: string[]) => void
   setDetailItem: (item: KanbanItem | null) => void
@@ -171,6 +173,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
       onSortColumn={props.handleToggleSortColumn}
       onResizeColumn={props.handleResizeColumn}
       people={props.people}
+      onReorderRows={props.handleReorderRows}
     />
   )
 }
@@ -310,6 +313,7 @@ function KanbanViewArea({ state }: { state: ReturnType<typeof useKanbanRootState
       handleUpdateSubtasks={state.items.handleUpdateSubtasks}
       handleUpdateProperty={state.items.handleUpdateProperty}
       handleRescheduleItem={state.items.handleRescheduleItem}
+      handleReorderRows={state.items.handleReorderRows}
       handleToggleSelect={state.selection.handleToggleSelect}
       handleToggleAll={state.selection.handleToggleAll}
       setDetailItem={state.setDetailItem}

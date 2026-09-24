@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { stepKanbanRowInGroup, stepKanbanRowToItem, type KanbanRowMove } from '../dnd'
 import { appendOptionToColumn } from './kanban-column-hooks'
 import type { CommitKanbanData } from './kanban-history'
 import type { KanbanData, KanbanFile, KanbanItem, KanbanOption, KanbanSubtask } from '../types'
@@ -41,13 +42,27 @@ function withItemProperty(
 }
 
 /**
- * One item's own fields, as a view writes them: its attachments, its subtasks, one cell of it. Every
- * writer here is built from the document the commit sees rather than from the render that asked for
- * it, so an unchanged writer keeps one identity for the board's whole life — which is what lets the
- * views below stay memoized. A closure minted per render made every card's props new, so a click
- * that only opened one card's detail panel repainted the entire board (K-19).
+ * KU-21c: the table's row order, as the document's item order. The gesture names the move; this
+ * writer resolves it against the newest *whole* document — not the slice a filtered view draws —
+ * so a step reads the order the reader sees and a no-op (a cross-group drop, a step off a group's
+ * edge) commits nothing rather than taking a step of undo.
  */
-export function useKanbanValueWrites(commitData: CommitKanbanData) {
+function useKanbanRowReorderWrite(commitData: CommitKanbanData) {
+  return useCallback(
+    (move: KanbanRowMove) => {
+      commitData((prev: KanbanData) => {
+        const next = move.targetId !== undefined
+          ? stepKanbanRowToItem(prev.items, move.itemId, move.targetId, move.groupPropertyId)
+          : stepKanbanRowInGroup(prev.items, move.itemId, move.groupPropertyId, move.offset ?? 1)
+        return next === prev.items ? prev : { ...prev, items: next }
+      })
+    },
+    [commitData],
+  )
+}
+
+/** One card's cell writes: the file list, the subtask list, one property cell, one multi-select cell. */
+function useKanbanCellWrites(commitData: CommitKanbanData) {
   const patchItem = useCallback((id: string, patch: Partial<KanbanItem>) => {
     commitData((prev) => ({
       ...prev,
@@ -72,14 +87,30 @@ export function useKanbanValueWrites(commitData: CommitKanbanData) {
     [commitData],
   )
 
-  const handleRescheduleItem = useKanbanRescheduleWrite(commitData)
-
   const handleUpdateMultiSelect = useCallback(
     (id: string, columnId: string, values: string[], newOption?: KanbanOption) => {
       commitData((prev: KanbanData) => withItemProperty(prev, id, columnId, values, newOption))
     },
     [commitData],
   )
+
+  return { handleUpdateFiles, handleUpdateSubtasks, handleUpdateProperty, handleUpdateMultiSelect }
+}
+
+/**
+ * One item's own fields, as a view writes them: its attachments, its subtasks, one cell of it. Every
+ * writer here is built from the document the commit sees rather than from the render that asked for
+ * it, so an unchanged writer keeps one identity for the board's whole life — which is what lets the
+ * views below stay memoized. A closure minted per render made every card's props new, so a click
+ * that only opened one card's detail panel repainted the entire board (K-19).
+ */
+export function useKanbanValueWrites(commitData: CommitKanbanData) {
+  const { handleUpdateFiles, handleUpdateSubtasks, handleUpdateProperty, handleUpdateMultiSelect } =
+    useKanbanCellWrites(commitData)
+
+  const handleRescheduleItem = useKanbanRescheduleWrite(commitData)
+
+  const handleReorderRows = useKanbanRowReorderWrite(commitData)
 
   const handleUpdateTags = useCallback(
     (id: string, tags: string[], newOption?: KanbanOption) => {
@@ -93,6 +124,7 @@ export function useKanbanValueWrites(commitData: CommitKanbanData) {
     handleUpdateSubtasks,
     handleUpdateProperty,
     handleRescheduleItem,
+    handleReorderRows,
     handleUpdateMultiSelect,
     handleUpdateTags,
   }
