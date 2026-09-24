@@ -5,6 +5,7 @@ import { groupKanbanItems, type KanbanGroup } from '../filter-sort'
 import type { KanbanData, KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSort, KanbanSubtask, KanbanView } from '../types'
 import { KanbanTableHeaderCell, kanbanPropertyColumns, kanbanTableColumnCount, kanbanTitleColumn } from './kanban-property-cell'
 import { KanbanTableGroup } from './kanban-table-group'
+import { useKanbanViewMemory } from './kanban-view-memory'
 
 interface KanbanTableViewProps {
   data: KanbanData
@@ -83,6 +84,9 @@ function useTableToggleAll(
 
 interface TableGroupListProps {
   groups: KanbanGroup[]
+  /** Which groups the reader folded away, and the one writer that folds them (see `kanban-view-memory.ts`). */
+  collapsedGroups: ReadonlySet<string>
+  onToggleGroup: (groupKey: string) => void
   groupByProp: string
   columns: KanbanProperty[]
   hiddenColumns?: string[]
@@ -101,6 +105,8 @@ interface TableGroupListProps {
 
 function TableGroupList({
   groups,
+  collapsedGroups,
+  onToggleGroup,
   groupByProp,
   columns,
   hiddenColumns,
@@ -122,6 +128,8 @@ function TableGroupList({
         <KanbanTableGroup
           key={group.groupKey}
           groupKey={group.groupKey}
+          collapsed={collapsedGroups.has(group.groupKey)}
+          onToggleCollapse={() => onToggleGroup(group.groupKey)}
           label={group.label}
           color={group.color}
           wipLimit={group.wipLimit}
@@ -177,6 +185,7 @@ export const KanbanTableView = memo(function KanbanTableView({
   people,
 }: KanbanTableViewProps) {
   useLocaleRepaint()
+  const memory = useKanbanViewMemory(view?.id)
   const groupByProp = view?.groupBy || 'status'
   const groupCol = data.columns.find((c) => c.id === groupByProp)
   const groups = groupKanbanItems(data.items, groupByProp, groupCol)
@@ -196,6 +205,8 @@ export const KanbanTableView = memo(function KanbanTableView({
         />
         <TableGroupList
           groups={groups}
+          collapsedGroups={memory.folds}
+          onToggleGroup={memory.toggleFold}
           groupByProp={groupByProp}
           columns={data.columns}
           hiddenColumns={view?.hiddenColumns}

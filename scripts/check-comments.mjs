@@ -5664,9 +5664,7 @@ const allowed = new Map([
     '/**\n * The board scrolls sideways when it is a row of columns, and both ways once it is a grid.\n *\n * `items-start` is the whole difference between a board and a wall of empty boxes: a flex row stretches\n * its children to the tallest of them, so every column was drawn as tall as the canvas rather than as\n * tall as its cards, and the reader saw two or three rows of their own column\'s background under the\n * last card (user report 2026-09-23). The cap that keeps this from making a whole board scroll instead\n * of its longest column lives in `styles/kanban.css`, next to the canvas cap it is derived from.\n */',
     '/**\n * A board nobody asked to band stays a single row of columns; asking for a second field turns that row\n * into a grid whose columns are titled once, above every band, and whose cells are that column within\n * one band. Both are the same columns and the same cards — only the arrangement differs.\n */',
     '// Collapsing a column is the plain board\'s arrangement: a band row has no narrower form.',
-    '/** Which columns the reader has folded away. Only the plain board can fold one. */',
-    '// One identity: the fold is handed to every column, and a closure minted per render would repaint',
-    '// all of them from the fold of one.',
+    '/**\n * The reader\'s own place in this board: the columns they folded away, and how far it is scrolled\n * sideways. Both live in the board\'s memory rather than in this view — it keeps them across a view\n * switch, and `kanban-view-memory.ts` says why neither is written into the fence — and both arrive\n * here as the two things the columns and the scroller need.\n */',
     '/* Marked: a column\'s own title field leaves a message inside this board too (KU-13). */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-calendar-view.test.ts', [
@@ -6270,6 +6268,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-message-composition.test.ts', [
     '/**\n * Half a dozen kanban labels were assembled in JSX out of message fragments — `${action}: ${name}`,\n * `{label} {count} {noun}`, `{label} ({count})` — which freezes English word order into the\n * component: a Chinese reader of the same board hears an ASCII colon inside a Chinese phrase, and a\n * single selected card reads "Selected 1 items". Each case asserts the whole phrase comes from one\n * resource entry with only the value substituted, in both languages the app ships.\n */',
+    '/**\n * The group\'s collapse state belongs to whoever draws the group (the board\'s view memory, in the app),\n * so the harness holds it the way that owner does: one state pair, forwarded down.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-move-announcement.test.ts', [
     '/**\n * Moving a card between columns is the one board action whose result is nowhere but on screen: the\n * drop and the Shift+arrow chord both just re-render the columns, so a screen reader user hears\n * nothing at all and cannot tell which group the card landed in (review #29, K2-03e5). The board\n * therefore carries a polite live region, and both move paths — keyboard and pointer — report\n * through it. These cases pin the three behaviours that make it usable rather than noisy: the\n * region exists before the first move (a live region added at the moment of the change is often not\n * announced), a move that changes the group speaks the item and its new column, and a reorder\n * inside one column stays silent.\n */',
@@ -6518,6 +6517,7 @@ const allowed = new Map([
     '// the view render in two branches of this tree, so the pair is minted here.',
     '// A host tree React did not make never re-renders this root, so the board listens',
     '// for language changes itself rather than trusting a mount option to carry them.',
+    '// How each view was last left, shared because the views take turns being on screen (see the module).',
     '// Clicking board whitespace focuses this container, so board-scoped',
     '// shortcuts (undo/redo) keep working when no card holds focus.',
     '// The plane the columns stand on, and the board\'s own root is where it belongs: it is the same',
@@ -6597,6 +6597,7 @@ const allowed = new Map([
     '/**\n * Publishes this board to the command palette for as long as it is on screen. The reader is held in a\n * ref rather than passed to the registry: the palette reads it when it opens, so re-registering on\n * every commit would only churn a map nobody is waiting on.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-table-group.tsx', [
+    '/** Whether the reader folded this group away. The board\'s memory holds it, not this group. */',
     '/** Who the member picker may offer, per member column. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-table-row.tsx', [
@@ -6617,6 +6618,7 @@ const allowed = new Map([
     '/** Absent when nothing can store a width, which is also what removes the resize handles. */',
     '/** Who the member picker may offer, per member column. Derived from every card on the board, so\n   *  a filter cannot make a teammate unassignable. */',
     '// One batch commit: per-row toggles would queue one state update per item.',
+    '/** Which groups the reader folded away, and the one writer that folds them (see `kanban-view-memory.ts`). */',
     '/** Who the member picker may offer, per member column. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-tag-filter-bar.tsx', [
@@ -6629,8 +6631,8 @@ const allowed = new Map([
     '// back — but only while it is still inside, since a click outside moved it already.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-timeline-grid.tsx', [
-    '/**\n * The scale the two time views share. It is deliberately not view state: the fences are what the\n * board\'s readers share, while how far out somebody likes to look is theirs alone — and every write\n * to a view is a write to the whole note (`write.ts`), which a control people toggle while reading\n * should not be paying for.\n */',
-    '/**\n * What both time views need to draw a grid: the window the cards ask for at the scale the reader\n * chose, the element the grid scrolls in, and the two controls that change either. The clock is read\n * again whenever the reader asks for today, so a board left open overnight is told the new date by\n * the same control that scrolls to it, and a scale change recentres on today because a new grid is a\n * new set of columns to find the reader\'s place in.\n */',
+    '/**\n * The scale the two time views share. It is deliberately not view state: the fences are what the\n * board\'s readers share, while how far out somebody likes to look is theirs alone — and every write\n * to a view is a write to the whole note (`write.ts`), which a control people toggle while reading\n * should not be paying for. What the board does keep is the scale itself, in `kanban-view-memory.ts`,\n * so looking at another view and coming back does not silently reset the reader to a day.\n */',
+    '/**\n * What both time views need to draw a grid: the window the cards ask for at the scale the reader\n * chose, the element the grid scrolls in, and the two controls that change either. The clock is read\n * again whenever the reader asks for today, so a board left open overnight is told the new date by\n * the same control that scrolls to it, and a scale change recentres on today because a new grid is a\n * new set of columns to find the reader\'s place in.\n *\n * The scale is handed in rather than owned here: it outlives this grid (the reader switching to the\n * board and back) and so belongs to the board\'s memory of how it was last left.\n */',
     '/** The scale picker and the way back to today, over the grid they act on. */',
     '/**\n * Scrolls the grid so today\'s column is on screen, once when the view opens and whenever the control\n * asks. A window derived from the cards can be years wide, and today is the one column a reader\n * navigates by, so the view opens on it rather than at whichever edge the earliest card happened to\n * be. The reader\'s own scrolling is never taken back: this only runs when they ask or on mount.\n */',
     '// The offset is read through a ref so the effect can be keyed on the trigger alone: a card edit',
@@ -6666,6 +6668,37 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-value-writes.ts', [
     '/** One item\'s own property, merged into the newest document; a brand new option rides the same commit. */',
     '/**\n * One item\'s own fields, as a view writes them: its attachments, its subtasks, one cell of it. Every\n * writer here is built from the document the commit sees rather than from the render that asked for\n * it, so an unchanged writer keeps one identity for the board\'s whole life — which is what lets the\n * views below stay memoized. A closure minted per render made every card\'s props new, so a click\n * that only opened one card\'s detail panel repainted the entire board (K-19).\n */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-view-memory.test.ts', [
+    '/**\n * KU-25. What a view remembers about how the reader last left it — folded columns, folded table\n * groups, the time scale, and how far the board was scrolled sideways.\n *\n * All four used to live in the view\'s own `useState`, and a view\'s node dies when the reader looks at\n * a different view: a folded column came back unfolded, and because React reuses the component\n * instance when two views of the same type follow one another, one board\'s folds were even carried\n * over onto the next board. The scale and the scroll had the same problem with no state at all.\n *\n * What is asserted here is therefore threefold: that each of the four survives a detour through\n * another view, that a fold belongs to the view it was made on rather than to the board, and — the\n * decision this item actually had to make — that none of it is written into the fence, because every\n * view write rewrites the whole note and none of these four is the board\'s shape. Reopening the board\n * starts clean, which is the price of that decision and is pinned below too.\n */',
+    '// jsdom lays nothing out, so an element has nowhere to keep a scroll offset and every pick-up of',
+    '// what the board remembered would read back as zero. One store behind the property for the file is',
+    '// what makes "came back where it was scrolled to" observable at all.',
+    '/** Switches views the way the reader does: the tab strip the header draws, by its own name. */',
+    '/** The strip a folded column narrows into: the only button that carries the group\'s own key. */',
+    '/** The column\'s menu is where folding lives; the menu itself renders into a portal on `document`. */',
+    '/** The table\'s own fold control: the arrow in the group\'s header row. */',
+    '/** The scale control\'s selected option, read from the button the reader sees pressed. */',
+    '/** The first grid cell\'s width is what the chosen scale looks like on screen. */',
+    '// Where the board stands can move without the memory hearing about it — the browser clamps the',
+    '// offset when content gets narrower, and a programmatic scroll of its own does the same — so the',
+    '// restore belongs to the mount alone. Keyed on the memory, it would run again on every fold and',
+    '// pull the reader back to the last offset the memory was told about.',
+    '// Each gesture is made on a board that was mounted on the view it belongs to, and no tab is pressed',
+    '// in between: which view is on screen *is* written to the fence (KU-16), so a switch would be a',
+    '// write of its own and this would stop being a test about the gestures.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-view-memory.ts', [
+    '/**\n * What the reader last left each view looking like: the columns or groups they folded away, the scale\n * they read a time view at, and how far the board was scrolled sideways.\n *\n * None of it is the board\'s own shape, so none of it goes into the fence. A write to a view rewrites\n * the whole note (`write.ts`), and folding a column is a reading gesture rather than an edit to the\n * document — which is the reason the time views have never asked the fence for their scale either. What\n * was actually wrong was narrower: the folds and the scale lived in the views\' own `useState`, so\n * looking at another view and coming back threw them away, and because React reuses the component\n * instance when two views of the same type follow each other, one board\'s folds were carried over onto\n * the next board. They live here instead, for as long as this board is mounted: switching views and\n * going full screen keep them (the overlay borrows the same canvas), reopening the note starts clean,\n * and no reader\'s folds are imposed on anybody else reading the same fence.\n */',
+    '/** Where the board was scrolled to. Read on mount only, so it is a plain number rather than state. */',
+    '/**\n * One view\'s half of the store: what a view is handed instead of the whole board\'s memory, so it takes\n * the three answers it needs rather than six it does not.\n */',
+    '/** The scale a view opens at until the reader picks another one. */',
+    '// One shared empty set: a view with no folds hands the same identity to every column it draws, so a',
+    '// fold made in another view cannot repaint this one.',
+    '// The store\'s identity changes when a fold or a scale does, which is what repaints the view that',
+    '// made it; scrolling writes to a ref and repaints nothing.',
+    '/**\n * A view\'s own memory, out of the store the board provided. A view rendered outside a board — a test\n * mounting one view on its own — keeps its own store instead of crashing, which is the behaviour those\n * callers had before the board remembered anything.\n */',
+    '/**\n * Puts the reader back where they were scrolled to, once, when a view mounts — and hands back the\n * handler that records where they are. The offset is read through a ref so the restore runs on mount\n * alone: keyed on the memory it would run again for every fold, jerking the board back sideways while\n * the reader is working in it. Horizontal only, because the board\'s own height is its shortest column\'s.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-options.tsx', [
     '/**\n * A band is a named row of the board, so only a field with a list of named values can cut one, and\n * the field the columns already use would give a board where every band holds exactly one column.\n */',

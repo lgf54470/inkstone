@@ -18,6 +18,7 @@ import {
   TimelineUndatedList,
   useTimelineViewState,
 } from './kanban-timeline-grid'
+import { useKanbanViewMemory } from './kanban-view-memory'
 
 interface KanbanGanttViewProps {
   data: KanbanData
@@ -200,7 +201,8 @@ export const KanbanGanttView = memo(function KanbanGanttView({
   const fields: TimelineDayFields = useMemo(() => ({ startField, endField }), [startField, endField])
   const { dated, undated } = useMemo(() => splitTimelineItems(data.items, fields), [data.items, fields])
   const progressField = view?.progressField || 'progress'
-  const { range, zoom, scrollRef, onZoomChange, onToday } = useTimelineViewState(dated, fields)
+  const memory = useKanbanViewMemory(view?.id)
+  const { range, zoom, scrollRef, onZoomChange, onToday } = useTimelineViewState(dated, fields, memory.zoom, memory.setZoom)
 
   return (
     <div data-kanban-gantt className='flex h-full w-full flex-col overflow-hidden p-4'>

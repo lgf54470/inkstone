@@ -5,7 +5,7 @@
  * single selected card reads "Selected 1 items". Each case asserts the whole phrase comes from one
  * resource entry with only the value substituted, in both languages the app ships.
  */
-import { act, createElement } from 'react'
+import { act, createElement, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { KanbanItem, KanbanProperty, KanbanView } from '../types'
 import { KanbanBatchBar } from './kanban-batch-bar'
@@ -75,8 +75,17 @@ describe('a collapsed column names its group', () => {
   })
 })
 
+/**
+ * The group's collapse state belongs to whoever draws the group (the board's view memory, in the app),
+ * so the harness holds it the way that owner does: one state pair, forwarded down.
+ */
+function HarnessTableGroup(props: Omit<Parameters<typeof KanbanTableGroup>[0], 'collapsed' | 'onToggleCollapse'>) {
+  const [collapsed, setCollapsed] = useState(false)
+  return createElement(KanbanTableGroup, { ...props, collapsed, onToggleCollapse: () => setCollapsed((c) => !c) })
+}
+
 async function mountTableGroup(code: LocaleCode): Promise<HTMLElement> {
-  return mountIn(code, createElement(KanbanTableGroup, {
+  return mountIn(code, createElement(HarnessTableGroup, {
     groupKey: 'backlog',
     label: 'Backlog',
     items: [itemWithSubtask],

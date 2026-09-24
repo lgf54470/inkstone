@@ -28,6 +28,7 @@ import { KanbanTableView } from './kanban-table-view'
 import { KanbanTimelineView } from './kanban-timeline-view'
 import { kanbanViewTabId } from './kanban-view-tabs'
 import { useKanbanRegionLabel } from './kanban-region'
+import { KanbanViewMemoryScope, useKanbanViewMemoryStore } from './kanban-view-memory'
 import { useKanbanContextMenuState, useKanbanRootState } from './kanban-root-hooks'
 import { useKanbanBoardKeys } from './kanban-board-keys'
 import { useKanbanSurface } from './kanban-surface'
@@ -399,6 +400,8 @@ export const KanbanRoot = memo(function KanbanRoot({
   useLocaleRepaint()
   const state = useKanbanRootState(initialData, onUpdateData, containerRef)
   const menu = useKanbanContextMenuState(state.data, state.commitData)
+  // How each view was last left, shared because the views take turns being on screen (see the module).
+  const viewMemory = useKanbanViewMemoryStore()
   useKanbanContainerWiring(containerRef, state)
 
   return (
@@ -413,6 +416,7 @@ export const KanbanRoot = memo(function KanbanRoot({
       // host (the note's block and the overlay's stage are both `--bg-inset` for it to sit on).
       className='flex h-full w-full flex-col overflow-hidden bg-[var(--bg-inset)] text-[var(--text-primary)]'
     >
+      <KanbanViewMemoryScope.Provider value={viewMemory}>
       <KanbanFilesScope.Provider value={kanbanName || 'default'}>
         <KanbanTopBar
           state={state}
@@ -431,9 +435,9 @@ export const KanbanRoot = memo(function KanbanRoot({
           isFullscreen={isFullscreen}
           renderDescription={renderDescription}
           onToggleFullscreen={onToggleFullscreen}
-        />
-      </KanbanFilesScope.Provider>
-    </div>
+        />        </KanbanFilesScope.Provider>
+      </KanbanViewMemoryScope.Provider>
+      </div>
   )
 })
 

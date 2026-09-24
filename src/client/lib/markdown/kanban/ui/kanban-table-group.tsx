@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
@@ -11,6 +10,9 @@ import { KanbanTableRow } from './kanban-table-row'
 
 interface KanbanTableGroupProps {
   groupKey: string
+  /** Whether the reader folded this group away. The board's memory holds it, not this group. */
+  collapsed: boolean
+  onToggleCollapse: () => void
   label: string
   color?: KanbanColorName
   wipLimit?: number
@@ -119,6 +121,8 @@ function GroupFooter({
 
 export function KanbanTableGroup({
   groupKey,
+  collapsed,
+  onToggleCollapse,
   label,
   color,
   wipLimit,
@@ -135,7 +139,6 @@ export function KanbanTableGroup({
   people,
   onAddItemInGroup,
 }: KanbanTableGroupProps) {
-  const [collapsed, setCollapsed] = useState(false)
   const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(items)
   const localizedLabel = formatKanbanGroupLabel(groupKey, label)
   const columnCount = kanbanTableColumnCount(columns, hiddenColumns)
@@ -149,7 +152,7 @@ export function KanbanTableGroup({
         count={items.length}
         wipLimit={wipLimit}
         columnCount={columnCount}
-        onToggleCollapse={() => setCollapsed((c) => !c)}
+        onToggleCollapse={onToggleCollapse}
         onAddItem={onAddItemInGroup}
       />
 

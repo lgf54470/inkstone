@@ -17,7 +17,8 @@ import { KanbanIconBadge } from './kanban-icon-badge'
  * The scale the two time views share. It is deliberately not view state: the fences are what the
  * board's readers share, while how far out somebody likes to look is theirs alone — and every write
  * to a view is a write to the whole note (`write.ts`), which a control people toggle while reading
- * should not be paying for.
+ * should not be paying for. What the board does keep is the scale itself, in `kanban-view-memory.ts`,
+ * so looking at another view and coming back does not silently reset the reader to a day.
  */
 export const TIMELINE_ZOOMS: TimelineZoom[] = ['day', 'week', 'month']
 
@@ -41,10 +42,17 @@ export interface TimelineViewState {
  * again whenever the reader asks for today, so a board left open overnight is told the new date by
  * the same control that scrolls to it, and a scale change recentres on today because a new grid is a
  * new set of columns to find the reader's place in.
+ *
+ * The scale is handed in rather than owned here: it outlives this grid (the reader switching to the
+ * board and back) and so belongs to the board's memory of how it was last left.
  */
-export function useTimelineViewState(items: KanbanItem[], fields?: TimelineDayFields): TimelineViewState {
+export function useTimelineViewState(
+  items: KanbanItem[],
+  fields: TimelineDayFields | undefined,
+  zoom: TimelineZoom,
+  setZoom: (zoom: TimelineZoom) => void,
+): TimelineViewState {
   const locale = localeTag()
-  const [zoom, setZoom] = useState<TimelineZoom>('day')
   const [baseDate, setBaseDate] = useState(() => new Date())
   const range = useMemo(
     () => buildTimelineRange({ items, fields, zoom, baseDate, locale }),

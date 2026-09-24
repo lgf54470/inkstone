@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { kanbanCardFields } from '../card-fields'
 import { groupKanbanItems, kanbanWipOver } from '../filter-sort'
+import { useKanbanScrollMemory, useKanbanViewMemory } from './kanban-view-memory'
 import type { KanbanGroup } from '../filter-sort'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
 import type { KanbanMovePivot } from '../dnd'
@@ -347,7 +348,7 @@ function PlainBoardColumns({
 }: {
   groups: KanbanGroup[]
   cells: BoardCellBundle
-  collapsedGroups: Set<string>
+  collapsedGroups: ReadonlySet<string>
   onAddColumn: () => void
 }) {
   return (
@@ -403,25 +404,22 @@ function BandedBoardGrid({
   )
 }
 
-/** Which columns the reader has folded away. Only the plain board can fold one. */
-function useCollapsedColumns() {
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
-  // One identity: the fold is handed to every column, and a closure minted per render would repaint
-  // all of them from the fold of one.
-  const toggleCollapse = useCallback((groupKey: string) => {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev)
-      if (next.has(groupKey)) next.delete(groupKey)
-      else next.add(groupKey)
-      return next
-    })
-  }, [])
-  return { collapsedGroups, toggleCollapse }
+/**
+ * The reader's own place in this board: the columns they folded away, and how far it is scrolled
+ * sideways. Both live in the board's memory rather than in this view — it keeps them across a view
+ * switch, and `kanban-view-memory.ts` says why neither is written into the fence — and both arrive
+ * here as the two things the columns and the scroller need.
+ */
+function useBoardPlace(view: KanbanView | undefined) {
+  const memory = useKanbanViewMemory(view?.id)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const handleScroll = useKanbanScrollMemory(scrollRef, memory)
+  return { collapsedGroups: memory.folds, toggleCollapse: memory.toggleFold, scrollRef, handleScroll }
 }
 
 export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardViewProps) {
   useLocaleRepaint()
-  const { collapsedGroups, toggleCollapse } = useCollapsedColumns()
+  const { collapsedGroups, toggleCollapse, scrollRef, handleScroll } = useBoardPlace(props.view)
   const { groups, bands, moveAnnouncement, handleMoveItem, handleMoveCell } = useKanbanBoardMoves(
     props.data,
     props.view,
@@ -456,7 +454,7 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
   }
 
   return (
-    <div data-kanban-board className={bands.length > 0 ? BANDED_BOARD_ROOT : PLAIN_BOARD_ROOT}>
+    <div ref={scrollRef} data-kanban-board onScroll={handleScroll} className={bands.length > 0 ? BANDED_BOARD_ROOT : PLAIN_BOARD_ROOT}>
       {bands.length > 0 ? (
         <BandedBoardGrid bands={bands} groups={groups} cells={cells} onAddColumn={props.onAddColumn} />
       ) : (
