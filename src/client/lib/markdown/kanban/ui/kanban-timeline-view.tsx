@@ -9,6 +9,7 @@ import {
   type TimelineRange,
 } from '../timeline-helpers'
 import type { KanbanData, KanbanItem, KanbanView } from '../types'
+import { useBarReschedule, type BarRescheduleApi } from './kanban-bar-reschedule'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import {
   TimelineClippedNotice,
@@ -24,6 +25,8 @@ interface KanbanTimelineViewProps {
   view?: KanbanView
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: () => void
+  /** The board's writer for a bar the reader moved: one patch, one commit, one step of undo. */
+  onReschedule: (itemId: string, patch: Record<string, string>) => void
 }
 
 function TimelineTaskSidebar({
@@ -76,12 +79,14 @@ function TimelineChart({
   range,
   fields,
   scrollRef,
+  reschedule,
   onOpenDetail,
 }: {
   items: KanbanItem[]
   range: TimelineRange
   fields?: TimelineDayFields
   scrollRef: React.RefObject<HTMLDivElement | null>
+  reschedule: BarRescheduleApi
   onOpenDetail: (item: KanbanItem) => void
 }) {
   return (
@@ -98,9 +103,9 @@ function TimelineChart({
               <button
                 type='button'
                 data-item-id={item.id}
-                onClick={() => onOpenDetail(item)}
+                {...reschedule.barProps(item, () => onOpenDetail(item))}
                 style={{ left: `${bar.left}px`, width: `${bar.width}px` }}
-                className={`absolute top-2 flex h-6 cursor-pointer items-center justify-between gap-1 overflow-hidden rounded-[var(--r-full)] bg-[var(--accent)] px-2.5 text-left text-[length:var(--text-11)] font-medium text-[var(--accent-contrast)] shadow-[var(--shadow-xs)] transition-opacity hover:opacity-90 ${
+                className={`absolute top-2 flex h-6 cursor-pointer touch-none items-center justify-between gap-1 overflow-hidden rounded-[var(--r-full)] bg-[var(--accent)] px-2.5 text-left text-[length:var(--text-11)] font-medium text-[var(--accent-contrast)] shadow-[var(--shadow-xs)] transition-opacity hover:opacity-90 ${
                   bar.clippedBefore ? 'rounded-l-none' : ''
                 } ${bar.clippedAfter ? 'rounded-r-none' : ''}`}
               >
@@ -119,6 +124,7 @@ export const KanbanTimelineView = memo(function KanbanTimelineView({
   view,
   onOpenDetail,
   onAddItem,
+  onReschedule,
 }: KanbanTimelineViewProps) {
   useLocaleRepaint()
   const startField = view?.startField
@@ -127,6 +133,7 @@ export const KanbanTimelineView = memo(function KanbanTimelineView({
   const { dated, undated } = useMemo(() => splitTimelineItems(data.items, fields), [data.items, fields])
   const memory = useKanbanViewMemory(view?.id)
   const { range, zoom, scrollRef, onZoomChange, onToday } = useTimelineViewState(dated, fields, memory.zoom, memory.setZoom)
+  const reschedule = useBarReschedule({ dayWidth: range.dayWidth, fields, onShift: onReschedule })
 
   return (
     <div data-kanban-timeline className='flex h-full w-full flex-col overflow-hidden p-4'>
@@ -139,10 +146,12 @@ export const KanbanTimelineView = memo(function KanbanTimelineView({
           range={range}
           fields={fields}
           scrollRef={scrollRef}
+          reschedule={reschedule}
           onOpenDetail={onOpenDetail}
         />
       </div>
       <TimelineUndatedList items={undated} onOpenDetail={onOpenDetail} />
+      {reschedule.status}
     </div>
   )
 })

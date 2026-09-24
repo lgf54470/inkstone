@@ -77,7 +77,7 @@ function itemControls(): HTMLButtonElement[] {
 
 describe('the gantt view draws its rows and bars as real controls (SH-110)', () => {
   it('draws both as buttons a keyboard can reach', () => {
-    mount(createElement(KanbanGanttView, { data: data(), onOpenDetail: vi.fn(), onAddItem: vi.fn(), onUpdateProgress: vi.fn() }))
+    mount(createElement(KanbanGanttView, { data: data(), onOpenDetail: vi.fn(), onAddItem: vi.fn(), onUpdateProgress: vi.fn(), onReschedule: vi.fn() }))
     const controls = itemControls()
     expect(controls.length).toBe(2)
     for (const control of controls) {
@@ -91,7 +91,7 @@ describe('the gantt view draws its rows and bars as real controls (SH-110)', () 
 
   it('opens the detail from either of them', () => {
     const onOpenDetail = vi.fn()
-    mount(createElement(KanbanGanttView, { data: data(), onOpenDetail, onAddItem: vi.fn(), onUpdateProgress: vi.fn() }))
+    mount(createElement(KanbanGanttView, { data: data(), onOpenDetail, onAddItem: vi.fn(), onUpdateProgress: vi.fn(), onReschedule: vi.fn() }))
     for (const control of itemControls()) {
       act(() => control.click())
       expect(onOpenDetail).toHaveBeenCalledWith(item)
@@ -104,7 +104,7 @@ describe('the gantt view draws its rows and bars as real controls (SH-110)', () 
   // be could not) and `scripts/e2e-visual.mjs` presses Enter on a real one and reads the detail that
   // opens.
   it('takes focus, and it is the browser that activates it', () => {
-    mount(createElement(KanbanGanttView, { data: data(), onOpenDetail: vi.fn(), onAddItem: vi.fn(), onUpdateProgress: vi.fn() }))
+    mount(createElement(KanbanGanttView, { data: data(), onOpenDetail: vi.fn(), onAddItem: vi.fn(), onUpdateProgress: vi.fn(), onReschedule: vi.fn() }))
     const row = itemControls().find((control) => control.textContent?.includes('%'))
     expect(row, 'the gantt draws a row for the item').toBeTruthy()
     row?.focus()
@@ -115,7 +115,7 @@ describe('the gantt view draws its rows and bars as real controls (SH-110)', () 
 
 describe('the timeline view draws its rows and bars as real controls (SH-110)', () => {
   it('draws both as buttons a keyboard can reach', () => {
-    mount(createElement(KanbanTimelineView, { data: data(), onOpenDetail: vi.fn(), onAddItem: vi.fn() }))
+    mount(createElement(KanbanTimelineView, { data: data(), onOpenDetail: vi.fn(), onAddItem: vi.fn(), onReschedule: vi.fn() }))
     const controls = itemControls()
     expect(controls.length).toBe(2)
     for (const control of controls) expect(control.tagName).toBe('BUTTON')
@@ -125,7 +125,7 @@ describe('the timeline view draws its rows and bars as real controls (SH-110)', 
 
   it('opens the detail from either of them', () => {
     const onOpenDetail = vi.fn()
-    mount(createElement(KanbanTimelineView, { data: data(), onOpenDetail, onAddItem: vi.fn() }))
+    mount(createElement(KanbanTimelineView, { data: data(), onOpenDetail, onAddItem: vi.fn(), onReschedule: vi.fn() }))
     for (const control of itemControls()) {
       act(() => control.click())
       expect(onOpenDetail).toHaveBeenCalledWith(item)

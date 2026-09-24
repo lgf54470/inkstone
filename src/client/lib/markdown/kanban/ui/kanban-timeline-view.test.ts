@@ -33,6 +33,7 @@ function renderTimeline(items: KanbanItem[]) {
       view: undefined,
       onOpenDetail,
       onAddItem: vi.fn(),
+      onReschedule: vi.fn(),
     }))
   })
   return { container, root, onOpenDetail }

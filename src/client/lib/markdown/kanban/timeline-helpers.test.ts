@@ -4,7 +4,10 @@ import {
   calculateTimelineBarGeometry,
   hasTimelineDates,
   parseDaysDiff,
+  shiftTimelineProperties,
   splitTimelineItems,
+  timelineAnnouncedDay,
+  timelineDragDays,
   TIMELINE_BAR_GAP,
   TIMELINE_BAR_OFFSET,
   TIMELINE_DAY_WIDTH,
@@ -23,6 +26,81 @@ function card(id: string, properties: Record<string, unknown>): KanbanItem {
 function rangeOf(items: KanbanItem[], zoom: Parameters<typeof buildTimelineRange>[0]['zoom'] = 'day') {
   return buildTimelineRange({ items, fields: undefined, zoom, baseDate: BASE, locale: 'en-US' })
 }
+
+describe('a bar dragged sideways becomes a number of days', () => {
+  it('reads whole days off the scale the grid is drawn at, rounding to the nearest', () => {
+    expect(timelineDragDays(0, 48)).toBe(0)
+    expect(timelineDragDays(48, 48)).toBe(1)
+    expect(timelineDragDays(-96, 48)).toBe(-2)
+    expect(timelineDragDays(30, 48)).toBe(1)
+    expect(timelineDragDays(14, 48)).toBe(0)
+    expect(timelineDragDays(4, 6)).toBe(1)
+  })
+
+  it('stands for no days at all when there is no scale to read, or no distance', () => {
+    expect(timelineDragDays(120, 0)).toBe(0)
+    expect(timelineDragDays(120, -48)).toBe(0)
+    expect(timelineDragDays(Number.NaN, 48)).toBe(0)
+  })
+})
+
+describe('the properties a dragged bar would write', () => {
+  it('moves both of the default days the grid reads', () => {
+    const moved = shiftTimelineProperties(card('c', { startDate: '2026-06-10', dueDate: '2026-06-14' }), undefined, 3)
+    expect(moved).toEqual({ startDate: '2026-06-13', dueDate: '2026-06-17' })
+  })
+
+  it('moves a card that carries only one day, and never invents the other', () => {
+    expect(shiftTimelineProperties(card('c', { dueDate: '2026-06-14' }), undefined, -2)).toEqual({
+      dueDate: '2026-06-12',
+    })
+    expect(shiftTimelineProperties(card('c', { startDate: '2026-06-10' }), undefined, 1)).toEqual({
+      startDate: '2026-06-11',
+    })
+  })
+
+})
+
+describe('the column each moved day is written back to', () => {
+  it('writes the key a card actually stores its deadline under, not the other one', () => {
+    // `getKanbanDueDate` reads `dueDate` and falls back to `endDate`, so a card written on `endDate`
+    // that was moved through `dueDate` would keep its old day and grow a second field beside it.
+    expect(shiftTimelineProperties(card('c', { endDate: '2026-06-14' }), undefined, 2)).toEqual({
+      endDate: '2026-06-16',
+    })
+  })
+
+  it('moves the columns a view named', () => {
+    const moved = shiftTimelineProperties(
+      card('c', { kickoff: '2026-06-10', ship: '2026-06-14', startDate: '2020-01-01' }),
+      { startField: 'kickoff', endField: 'ship' },
+      5,
+    )
+    expect(moved).toEqual({ kickoff: '2026-06-15', ship: '2026-06-19' })
+  })
+
+  it('moves the fallback day when the named column is empty, which is the day that was drawn', () => {
+    expect(shiftTimelineProperties(card('c', { startDate: '2026-06-10' }), { startField: 'kickoff' }, 1)).toEqual({
+      startDate: '2026-06-11',
+    })
+  })
+
+})
+
+describe('the day a move reports, and the move that reports nothing', () => {
+  it('names the day the reader was watching: the deadline when the card has one, else its start', () => {
+    const both = card('c', { startDate: '2026-06-10', dueDate: '2026-06-14' })
+    expect(timelineAnnouncedDay(both, undefined, shiftTimelineProperties(both, undefined, 2))).toBe('2026-06-16')
+    const onlyStart = card('c', { startDate: '2026-06-10' })
+    expect(timelineAnnouncedDay(onlyStart, undefined, shiftTimelineProperties(onlyStart, undefined, 2))).toBe('2026-06-12')
+    expect(timelineAnnouncedDay(both, undefined, {})).toBe('')
+  })
+
+  it('writes nothing for a card with no day, or a drag that stands for no days', () => {
+    expect(shiftTimelineProperties(card('c', { status: 'todo' }), undefined, 4)).toEqual({})
+    expect(shiftTimelineProperties(card('c', { startDate: '2026-06-10' }), undefined, 0)).toEqual({})
+  })
+})
 
 describe('timeline-helpers parseDaysDiff', () => {
   it('returns the signed day difference and 0 for anything unreadable', () => {

@@ -327,6 +327,7 @@ export const messages = {
 'preview.kanban_move_to_column': '移动到分组',
 'preview.kanban_move_to_band': '移动到泳道',
 'preview.kanban_moved_to_group': '已将“{title}”移动到{group}',
+'preview.kanban_moved_to_date': '已将“{title}”移到{date}',
 'preview.kanban_moved_to_group_over': '已将“{title}”移动到{group}，该列超出进行中上限 {limit} 张共 {over} 张',
 'preview.kanban_undo_shortcut': '撤销（{shortcut}）',
 'preview.kanban_redo_shortcut': '重做（{shortcut}）',

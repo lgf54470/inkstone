@@ -36,6 +36,7 @@ function renderGantt(item: KanbanItem = task, view?: KanbanView) {
       onOpenDetail,
       onAddItem,
       onUpdateProgress,
+      onReschedule: vi.fn(),
     }))
   })
   return { container, root, onOpenDetail, onUpdateProgress }

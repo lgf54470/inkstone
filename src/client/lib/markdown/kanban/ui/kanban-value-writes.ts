@@ -3,6 +3,31 @@ import { appendOptionToColumn } from './kanban-column-hooks'
 import type { CommitKanbanData } from './kanban-history'
 import type { KanbanData, KanbanFile, KanbanItem, KanbanOption, KanbanSubtask } from '../types'
 
+/**
+ * A card's days, moved by a drag on the timeline or the gantt. One commit for both of the days a bar
+ * spans, because they are one gesture: two writes would put two steps in the undo stack and the reader
+ * would have to press undo twice to take back a single drag.
+ */
+function useKanbanRescheduleWrite(commitData: CommitKanbanData) {
+  return useCallback(
+    (id: string, patch: Record<string, string>) => {
+      if (Object.keys(patch).length === 0) return
+      commitData((prev: KanbanData) => withItemProperties(prev, id, patch))
+    },
+    [commitData],
+  )
+}
+
+/** Several of one item's own properties in one commit — the shape a drag that moves two dates needs. */
+function withItemProperties(prev: KanbanData, id: string, patch: Record<string, unknown>): KanbanData {
+  return {
+    ...prev,
+    items: prev.items.map((item) =>
+      item.id === id ? { ...item, properties: { ...item.properties, ...patch } } : item,
+    ),
+  }
+}
+
 /** One item's own property, merged into the newest document; a brand new option rides the same commit. */
 function withItemProperty(
   prev: KanbanData,
@@ -11,13 +36,8 @@ function withItemProperty(
   value: unknown,
   newOption?: KanbanOption,
 ): KanbanData {
-  const items = prev.items.map((item) =>
-    item.id === id ? { ...item, properties: { ...item.properties, [columnId]: value } } : item,
-  )
-  const columns = newOption
-    ? appendOptionToColumn(prev.columns, columnId, newOption)
-    : prev.columns
-  return { ...prev, items, columns }
+  const next = withItemProperties(prev, id, { [columnId]: value })
+  return newOption ? { ...next, columns: appendOptionToColumn(prev.columns, columnId, newOption) } : next
 }
 
 /**
@@ -52,6 +72,8 @@ export function useKanbanValueWrites(commitData: CommitKanbanData) {
     [commitData],
   )
 
+  const handleRescheduleItem = useKanbanRescheduleWrite(commitData)
+
   const handleUpdateMultiSelect = useCallback(
     (id: string, columnId: string, values: string[], newOption?: KanbanOption) => {
       commitData((prev: KanbanData) => withItemProperty(prev, id, columnId, values, newOption))
@@ -70,6 +92,7 @@ export function useKanbanValueWrites(commitData: CommitKanbanData) {
     handleUpdateFiles,
     handleUpdateSubtasks,
     handleUpdateProperty,
+    handleRescheduleItem,
     handleUpdateMultiSelect,
     handleUpdateTags,
   }

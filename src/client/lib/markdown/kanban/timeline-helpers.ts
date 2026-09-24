@@ -1,5 +1,5 @@
 import { getKanbanDueDate, getKanbanStartDate, kanbanDayKey } from './date-fields'
-import { weekStartFor } from '../../time'
+import { addDaysKey, weekStartFor } from '../../time'
 import type { KanbanItem } from './types'
 
 export type TimelineZoom = 'day' | 'week' | 'month'
@@ -67,14 +67,98 @@ export function parseDaysDiff(d1Str: string, d2Str: string): number {
   return Math.round((d1.getTime() - d2.getTime()) / MS_PER_DAY)
 }
 
+/**
+ * One of a card's two days, with the column it was read from. The key is what a drag has to write
+ * back to: a card whose deadline is stored under `endDate` must not be handed a `dueDate` beside it,
+ * and a view that named its own columns must not have them write into the defaults.
+ */
+interface TimelineDayEntry {
+  key: string
+  day: string
+}
+
+/** Which default deadline column a card actually keeps its day in, read the way `date-fields` reads it. */
+function defaultDueKey(item: KanbanItem): string {
+  const due = item.properties.dueDate
+  return typeof due === 'string' && due ? 'dueDate' : 'endDate'
+}
+
+/**
+ * The two days a card puts on the grid, each with the column it came from. A column the view named
+ * wins, and an empty one falls back to the days every surface reads (`startDate`, then `dueDate` or
+ * `endDate`) — the same precedence the grid draws with, so dragging a bar moves the day that was
+ * drawn rather than the one the view merely mentioned.
+ */
+function itemDayEntries(
+  item: KanbanItem,
+  fields?: TimelineDayFields,
+): { start: TimelineDayEntry; end: TimelineDayEntry } {
+  const startField = fields?.startField
+  const endField = fields?.endField
+  const configuredStart = startField ? kanbanDayKey(item.properties[startField]) : ''
+  const configuredEnd = endField ? kanbanDayKey(item.properties[endField]) : ''
+  return {
+    start:
+      startField && configuredStart
+        ? { key: startField, day: configuredStart }
+        : { key: 'startDate', day: getKanbanStartDate(item) },
+    end:
+      endField && configuredEnd
+        ? { key: endField, day: configuredEnd }
+        : { key: defaultDueKey(item), day: getKanbanDueDate(item) },
+  }
+}
+
 /** The two days a card can put on the grid, in either order. Empty strings mean "no such day". */
 function itemDayKeys(item: KanbanItem, fields?: TimelineDayFields): { start: string; end: string } {
-  const configuredStart = fields?.startField ? kanbanDayKey(item.properties[fields.startField]) : ''
-  const configuredEnd = fields?.endField ? kanbanDayKey(item.properties[fields.endField]) : ''
-  return {
-    start: configuredStart || getKanbanStartDate(item),
-    end: configuredEnd || getKanbanDueDate(item),
+  const { start, end } = itemDayEntries(item, fields)
+  return { start: start.day, end: end.day }
+}
+
+/**
+ * The day a reader who just moved a bar is looking at: the deadline the card now carries, or its start
+ * when it has no deadline. One day rather than both, because the announcement is one sentence and the
+ * bar the reader dragged is one span.
+ */
+export function timelineAnnouncedDay(
+  item: KanbanItem,
+  fields: TimelineDayFields | undefined,
+  patch: Record<string, string>,
+): string {
+  const { start, end } = itemDayEntries(item, fields)
+  return patch[end.key] ?? patch[start.key] ?? ''
+}
+
+/**
+ * How many days a horizontal drag stands for, at the scale the grid is drawn at. A scale of nothing
+ * (the reader zoomed out of the arithmetic, or a stub that reports no width) stands for no days, so a
+ * drag with no scale under it commits nothing rather than whatever the pointer happened to cross.
+ */
+export function timelineDragDays(dx: number, dayWidth: number): number {
+  if (dayWidth <= 0 || !Number.isFinite(dx)) return 0
+  return Math.round(dx / dayWidth)
+}
+
+/**
+ * The properties a card would carry if its days moved `dragDays` days later (earlier when negative).
+ * Each day is written back to the column that held it and normalised to the day itself: a stored value
+ * may carry a time, and day arithmetic cannot parse one. The patch is empty when the card has no day
+ * to move or the drag stands for no days — which is what tells the view there is nothing to commit, so
+ * a press that never moved writes nothing rather than re-writing the day it already had.
+ */
+export function shiftTimelineProperties(
+  item: KanbanItem,
+  fields: TimelineDayFields | undefined,
+  dragDays: number,
+): Record<string, string> {
+  if (dragDays === 0) return {}
+  const { start, end } = itemDayEntries(item, fields)
+  const patch: Record<string, string> = {}
+  for (const entry of [start, end]) {
+    const day = kanbanDayKey(entry.day)
+    if (day) patch[entry.key] = addDaysKey(day, dragDays)
   }
+  return patch
 }
 
 /** Whether a card belongs on the grid at all. A card with no day is listed beside it instead. */

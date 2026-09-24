@@ -10,6 +10,7 @@ import {
   type TimelineRange,
 } from '../timeline-helpers'
 import type { KanbanData, KanbanItem, KanbanView } from '../types'
+import { useBarReschedule, type BarRescheduleApi } from './kanban-bar-reschedule'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import {
   TimelineClippedNotice,
@@ -26,6 +27,8 @@ interface KanbanGanttViewProps {
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: () => void
   onUpdateProgress: (itemId: string, progress: number) => void
+  /** The board's writer for a bar the reader moved: one patch, one commit, one step of undo. */
+  onReschedule: (itemId: string, patch: Record<string, string>) => void
 }
 
 const ganttProgress = (item: KanbanItem, progressField: string) =>
@@ -120,12 +123,14 @@ function GanttBar({
   range,
   fields,
   progressField,
+  reschedule,
   onOpenDetail,
 }: {
   item: KanbanItem
   range: TimelineRange
   fields?: TimelineDayFields
   progressField: string
+  reschedule: BarRescheduleApi
   onOpenDetail: (item: KanbanItem) => void
 }) {
   const bar = calculateTimelineBarGeometry(item, range, fields)
@@ -139,9 +144,9 @@ function GanttBar({
       <button
         type='button'
         data-item-id={item.id}
-        onClick={() => onOpenDetail(item)}
+        {...reschedule.barProps(item, () => onOpenDetail(item))}
         style={{ left: `${bar.left}px`, width: `${bar.width}px` }}
-        className='group/bar absolute top-2 h-6 cursor-pointer overflow-hidden rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-softer)] text-left shadow-[var(--shadow-xs)]'
+        className='group/bar absolute top-2 h-6 cursor-pointer touch-none overflow-hidden rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-softer)] text-left shadow-[var(--shadow-xs)]'
       >
         <span style={{ width: `${progress}%` }} className='block h-full bg-[var(--accent)] transition-all' />
         <span className='absolute inset-0 flex items-center justify-between gap-2 px-2 text-[length:var(--text-10)] font-semibold text-[var(--text-primary)]'>
@@ -159,6 +164,7 @@ function GanttTimelineChart({
   fields,
   progressField,
   scrollRef,
+  reschedule,
   onOpenDetail,
 }: {
   items: KanbanItem[]
@@ -166,6 +172,7 @@ function GanttTimelineChart({
   fields?: TimelineDayFields
   progressField: string
   scrollRef: React.RefObject<HTMLDivElement | null>
+  reschedule: BarRescheduleApi
   onOpenDetail: (item: KanbanItem) => void
 }) {
   return (
@@ -180,6 +187,7 @@ function GanttTimelineChart({
             range={range}
             fields={fields}
             progressField={progressField}
+            reschedule={reschedule}
             onOpenDetail={onOpenDetail}
           />
         ))}
@@ -194,6 +202,7 @@ export const KanbanGanttView = memo(function KanbanGanttView({
   onOpenDetail,
   onAddItem,
   onUpdateProgress,
+  onReschedule,
 }: KanbanGanttViewProps) {
   useLocaleRepaint()
   const startField = view?.startField
@@ -203,6 +212,7 @@ export const KanbanGanttView = memo(function KanbanGanttView({
   const progressField = view?.progressField || 'progress'
   const memory = useKanbanViewMemory(view?.id)
   const { range, zoom, scrollRef, onZoomChange, onToday } = useTimelineViewState(dated, fields, memory.zoom, memory.setZoom)
+  const reschedule = useBarReschedule({ dayWidth: range.dayWidth, fields, onShift: onReschedule })
 
   return (
     <div data-kanban-gantt className='flex h-full w-full flex-col overflow-hidden p-4'>
@@ -222,10 +232,12 @@ export const KanbanGanttView = memo(function KanbanGanttView({
           fields={fields}
           progressField={progressField}
           scrollRef={scrollRef}
+          reschedule={reschedule}
           onOpenDetail={onOpenDetail}
         />
       </div>
       <TimelineUndatedList items={undated} onOpenDetail={onOpenDetail} />
+      {reschedule.status}
     </div>
   )
 })

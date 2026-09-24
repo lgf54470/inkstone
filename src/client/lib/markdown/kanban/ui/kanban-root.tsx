@@ -59,6 +59,8 @@ interface KanbanViewRendererProps {
   /** One item's own fields, handed down with an identity that outlives a render (see K-19). */
   handleUpdateSubtasks: (itemId: string, subtasks: KanbanSubtask[]) => void
   handleUpdateProperty: (itemId: string, propertyId: string, value: unknown) => void
+  /** A bar dragged on a time view: the days it spans, as one patch and one commit. */
+  handleRescheduleItem: (itemId: string, patch: Record<string, string>) => void
   handleToggleSelect: (id: string) => void
   handleToggleAll: (ids: string[]) => void
   setDetailItem: (item: KanbanItem | null) => void
@@ -83,7 +85,7 @@ interface KanbanViewRendererProps {
 }
 
 function KanbanTimelineViews(props: KanbanViewRendererProps) {
-  const { activeView, viewData, setDetailItem, handleAddItem, handleUpdateProperty } = props
+  const { activeView, viewData, setDetailItem, handleAddItem, handleUpdateProperty, handleRescheduleItem } = props
   // The band's own slider writes one property; the writer is the board's, so a drag through the
   // chart does not hand the view a new prop on every frame.
   const progressKey = activeView.progressField || 'progress'
@@ -95,7 +97,15 @@ function KanbanTimelineViews(props: KanbanViewRendererProps) {
     return <KanbanCalendarView data={viewData} view={activeView} onOpenDetail={setDetailItem} onAddItem={handleAddItem} />
   }
   if (activeView.type === 'timeline') {
-    return <KanbanTimelineView data={viewData} view={activeView} onOpenDetail={setDetailItem} onAddItem={handleAddItem} />
+    return (
+      <KanbanTimelineView
+        data={viewData}
+        view={activeView}
+        onOpenDetail={setDetailItem}
+        onAddItem={handleAddItem}
+        onReschedule={handleRescheduleItem}
+      />
+    )
   }
   return (
     <KanbanGanttView
@@ -104,6 +114,7 @@ function KanbanTimelineViews(props: KanbanViewRendererProps) {
       onOpenDetail={setDetailItem}
       onAddItem={handleAddItem}
       onUpdateProgress={onUpdateProgress}
+      onReschedule={handleRescheduleItem}
     />
   )
 }
@@ -290,6 +301,7 @@ function KanbanViewArea({ state }: { state: ReturnType<typeof useKanbanRootState
       onToggleTag={state.filterSort.onToggleTag}
       handleUpdateSubtasks={state.items.handleUpdateSubtasks}
       handleUpdateProperty={state.items.handleUpdateProperty}
+      handleRescheduleItem={state.items.handleRescheduleItem}
       handleToggleSelect={state.selection.handleToggleSelect}
       handleToggleAll={state.selection.handleToggleAll}
       setDetailItem={state.setDetailItem}

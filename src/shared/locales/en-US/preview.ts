@@ -318,6 +318,7 @@ export const messages = {
 'preview.kanban_move_to_column': 'Move to Group',
 'preview.kanban_move_to_band': 'Move to Swimlane',
 'preview.kanban_moved_to_group': 'Moved “{title}” to {group}',
+'preview.kanban_moved_to_date': 'Moved “{title}” to {date}',
 'preview.kanban_undo_shortcut': 'Undo ({shortcut})',
 'preview.kanban_redo_shortcut': 'Redo ({shortcut})',
 'preview.kanban_new_group_title': 'New group {value0}',
