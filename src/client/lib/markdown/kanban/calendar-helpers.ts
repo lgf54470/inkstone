@@ -1,3 +1,4 @@
+import { addDaysKey, daysBetweenKeys } from '../../time'
 import { getKanbanDueDate, getKanbanStartDate, kanbanDayKey } from './date-fields'
 import type { KanbanItem } from './types'
 
@@ -93,6 +94,68 @@ function assignTracks(rawSegments: Omit<WeekEventSegment, 'track'>[]): WeekEvent
   }
 
   return segments
+}
+
+/** Which default deadline column a card actually keeps its day in, read the way `date-fields` reads it. */
+function dueKeyOf(item: KanbanItem): string {
+  return typeof item.properties.dueDate === 'string' && item.properties.dueDate ? 'dueDate' : 'endDate'
+}
+
+/**
+ * The columns of a card that a calendar drag has to keep hold of — the day the bar is drawn from and
+ * the day it ends on, each with the column it was read from. The pair is read the way
+ * `resolveItemDateRange` draws it (the view's own field when it named one and the card carries it,
+ * the fallback chain otherwise), because the patch a drop writes has to land in the columns that
+ * hold the days that were drawn — a card moved in the calendar must read the same in the timeline.
+ */
+export interface CalendarMoveDays {
+  start?: { key: string; day: string }
+  end?: { key: string; day: string }
+}
+
+/** The two days a calendar draws, each with the column it came from, in draw order (start then end). */
+export function calendarMoveDays(item: KanbanItem, dateField?: string): CalendarMoveDays {
+  const configured = dateField ? kanbanDayKey(item.properties[dateField]) : ''
+  if (dateField && configured) {
+    // The view named its own column and the card carries a day there: that column holds the drawn
+    // day, and the deadline — read the way every surface reads it — is the far end when it has one.
+    const due = getKanbanDueDate(item)
+    return due
+      ? { start: { key: dateField, day: configured }, end: { key: dueKeyOf(item), day: due } }
+      : { start: { key: dateField, day: configured } }
+  }
+  const start = getKanbanStartDate(item)
+  const due = getKanbanDueDate(item)
+  const move: CalendarMoveDays = {}
+  if (start) move.start = { key: 'startDate', day: start }
+  if (due) move.end = { key: dueKeyOf(item), day: due }
+  return move
+}
+
+/**
+ * The properties a card would carry if its bar moved onto `targetDay` — dragged there, or walked one
+ * day with an arrow key. A bar moves whole: the start is written to the day the gesture named, and
+ * the end keeps the span the bar had, so a three-day card stays three days long in its new week. The
+ * patch lands in the columns that held the days (`calendarMoveDays` reads them), stored values are
+ * normalised to the day itself the way day arithmetic demands, and the patch is empty when the card
+ * has no day to move or the gesture named no day — which is what tells the view there is nothing to
+ * commit, so a drag that never landed writes nothing rather than a day it never had.
+ */
+export function moveCalendarItemToDay(
+  item: KanbanItem,
+  targetDay: string,
+  dateField?: string,
+): Record<string, string> {
+  if (!targetDay) return {}
+  const move = calendarMoveDays(item, dateField)
+  if (!move.start && !move.end) return {}
+  const start = move.start ? kanbanDayKey(move.start.day) : ''
+  const end = move.end ? kanbanDayKey(move.end.day) : ''
+  const span = start && end ? -daysBetweenKeys(end, start) : 0
+  const patch: Record<string, string> = {}
+  if (move.start) patch[move.start.key] = targetDay
+  if (move.end) patch[move.end.key] = addDaysKey(targetDay, span)
+  return patch
 }
 
 export function getWeekEventSegments(items: KanbanItem[], week: CalendarDay[], dateField?: string): WeekEventSegment[] {

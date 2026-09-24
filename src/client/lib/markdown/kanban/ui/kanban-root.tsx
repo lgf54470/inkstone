@@ -94,7 +94,15 @@ function KanbanTimelineViews(props: KanbanViewRendererProps) {
     [handleUpdateProperty, progressKey],
   )
   if (activeView.type === 'calendar') {
-    return <KanbanCalendarView data={viewData} view={activeView} onOpenDetail={setDetailItem} onAddItem={handleAddItem} />
+    return (
+      <KanbanCalendarView
+        data={viewData}
+        view={activeView}
+        onOpenDetail={setDetailItem}
+        onAddItem={handleAddItem}
+        onMoveItem={handleRescheduleItem}
+      />
+    )
   }
   if (activeView.type === 'timeline') {
     return (

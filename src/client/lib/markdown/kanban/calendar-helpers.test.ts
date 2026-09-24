@@ -1,6 +1,59 @@
 import { describe, expect, it } from 'vitest'
-import { getMonthWeeks, getWeekEventSegments } from './calendar-helpers'
+import { calendarMoveDays, getMonthWeeks, getWeekEventSegments, moveCalendarItemToDay } from './calendar-helpers'
 import type { KanbanItem } from './types'
+
+/**
+ * KU-21b. Moving a card to another day from the calendar has to land in the columns that hold the
+ * days the bar was drawn from, and keep the bar's span. The cases below pin the patch the pure layer
+ * hands the view's writer: which keys it writes for the four shapes a card can have on the calendar
+ * (a default start, a default deadline, both, or a view-configured field), that the span survives the
+ * move, that stored timestamps are normalised to the day they name, and that a card with no day — or
+ * a drop that never named one — writes nothing at all.
+ */
+describe('moving a card to a day (KU-21b, pure layer)', () => {
+  const item = (properties: Record<string, unknown>): KanbanItem => ({ id: 'i1', title: 'Card', properties })
+
+  it('writes the start column when the card only has a start', () => {
+    const patch = moveCalendarItemToDay(item({ startDate: '2026-09-10' }), '2026-09-17')
+    expect(patch).toEqual({ startDate: '2026-09-17' })
+  })
+
+  it('writes the deadline column it actually keeps the day in (endDate, not dueDate)', () => {
+    const patch = moveCalendarItemToDay(item({ endDate: '2026-09-10' }), '2026-09-17')
+    expect(patch).toEqual({ endDate: '2026-09-17' })
+    expect(moveCalendarItemToDay(item({ dueDate: '2026-09-10' }), '2026-09-17')).toEqual({ dueDate: '2026-09-17' })
+  })
+
+  it('moves both ends of a bar and keeps its span', () => {
+    const patch = moveCalendarItemToDay(item({ startDate: '2026-09-10', dueDate: '2026-09-14' }), '2026-09-17')
+    expect(patch).toEqual({ startDate: '2026-09-17', dueDate: '2026-09-21' })
+  })
+
+  it('normalises a stored timestamp to the day it names when measuring the span', () => {
+    const patch = moveCalendarItemToDay(item({ startDate: '2026-09-10T08:30:00', dueDate: '2026-09-14' }), '2026-09-17')
+    expect(patch).toEqual({ startDate: '2026-09-17', dueDate: '2026-09-21' })
+  })
+
+  it('writes a bar that spans backwards without flipping it', () => {
+    const patch = moveCalendarItemToDay(item({ startDate: '2026-09-14', endDate: '2026-09-10' }), '2026-09-20')
+    expect(patch).toEqual({ startDate: '2026-09-20', endDate: '2026-09-16' })
+  })
+
+  it('moves the day the view configured, beside the card’s own deadline', () => {
+    const card = item({ milestone: '2026-09-10', dueDate: '2026-09-12' })
+    expect(calendarMoveDays(card, 'milestone')).toEqual({
+      start: { key: 'milestone', day: '2026-09-10' },
+      end: { key: 'dueDate', day: '2026-09-12' },
+    })
+    const patch = moveCalendarItemToDay(card, '2026-09-17', 'milestone')
+    expect(patch).toEqual({ milestone: '2026-09-17', dueDate: '2026-09-19' })
+  })
+
+  it('writes nothing for a card with no day, and for a drop that named no day', () => {
+    expect(moveCalendarItemToDay(item({ status: 'todo' }), '2026-09-17')).toEqual({})
+    expect(moveCalendarItemToDay(item({ startDate: '2026-09-10' }), '')).toEqual({})
+  })
+})
 
 describe('calendar-helpers parsing & month generation', () => {
   it('getMonthWeeks generates 7-day weeks spanning the month', () => {

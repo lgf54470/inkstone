@@ -5,6 +5,7 @@ import { narrowWeekdayLabels, weekStartFor, type WeekStartDay } from '../../../t
 import { getMonthWeeks, getWeekEventSegments, type CalendarDay, type WeekEventSegment } from '../calendar-helpers'
 import { getKanbanTagStyle } from '../colors'
 import type { KanbanData, KanbanItem, KanbanProperty, KanbanView } from '../types'
+import { useKanbanDayMove } from './kanban-day-move'
 import { KanbanIconBadge } from './kanban-icon-badge'
 
 interface KanbanCalendarViewProps {
@@ -12,6 +13,8 @@ interface KanbanCalendarViewProps {
   view?: KanbanView
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: (defaults?: Record<string, unknown>) => void
+  /** The board's writer for a bar the reader moved to another day: one patch, one commit. */
+  onMoveItem?: (itemId: string, patch: Record<string, string>) => void
 }
 
 interface CalendarHeaderProps {
@@ -75,10 +78,12 @@ function CalendarWeekHeader({ locale, weekStart }: { locale: string; weekStart: 
 function CalendarEventBar({
   segment,
   statusCol,
+  move,
   onOpenDetail,
 }: {
   segment: WeekEventSegment
   statusCol?: KanbanProperty
+  move: ReturnType<typeof useKanbanDayMove>
   onOpenDetail: (item: KanbanItem) => void
 }) {
   const { item, startCol, endCol, isSegmentStart, isSegmentEnd, track } = segment
@@ -95,6 +100,8 @@ function CalendarEventBar({
     <button
       type='button'
       data-item-id={item.id}
+      {...move.barProps(item)}
+      onKeyDown={(e) => move.barKeyDown(item, e)}
       onClick={(e) => {
         e.stopPropagation()
         onOpenDetail(item)
@@ -104,7 +111,7 @@ function CalendarEventBar({
         gridColumn: `${startCol + 1} / span ${colSpan}`,
         gridRow: track + 1,
       }}
-      className={`z-10 flex h-6 items-center gap-1 overflow-hidden px-1.5 text-left text-[length:var(--text-11)] font-medium shadow-2xs transition-opacity hover:opacity-85 ${roundedLeft} ${roundedRight}`}
+      className={`z-10 flex h-6 cursor-grab touch-none items-center gap-1 overflow-hidden px-1.5 text-left text-[length:var(--text-11)] font-medium shadow-2xs transition-opacity hover:opacity-85 active:cursor-grabbing ${roundedLeft} ${roundedRight}`}
     >
       <KanbanIconBadge icon={item.icon} size={12} />
       <span className='truncate'>{item.title || t('preview.kanban_untitled')}</span>
@@ -159,6 +166,7 @@ function CalendarWeekRow({
   items,
   statusCol,
   dateField,
+  move,
   onOpenDetail,
   onAddItem,
 }: {
@@ -166,6 +174,7 @@ function CalendarWeekRow({
   items: KanbanItem[]
   statusCol?: KanbanProperty
   dateField?: string
+  move: ReturnType<typeof useKanbanDayMove>
   onOpenDetail: (item: KanbanItem) => void
   onAddItem: (defaults?: Record<string, unknown>) => void
 }) {
@@ -182,6 +191,15 @@ function CalendarWeekRow({
             }`}
           />
         ))}
+      </div>
+
+      {/* The drop targets are the cells the reader sees, laid over the paint and under the bars: a
+          drop lands on the day it was aimed at whether the week holds one bar or twenty. */}
+      <div className='absolute inset-0 grid grid-cols-7 divide-x divide-[var(--border-subtle)]'>
+        {week.map((day) => (
+          <div key={day.dateStr} data-kanban-day-cell={day.dateStr} {...move.dayProps(day.dateStr)} />
+        ))
+        }
       </div>
 
       <div className='relative z-10 grid grid-cols-7'>
@@ -201,6 +219,7 @@ function CalendarWeekRow({
             key={`${seg.item.id}-${seg.startCol}`}
             segment={seg}
             statusCol={statusCol}
+            move={move}
             onOpenDetail={onOpenDetail}
           />
         ))}
@@ -214,6 +233,7 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
   view,
   onOpenDetail,
   onAddItem,
+  onMoveItem,
 }: KanbanCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const locale = useLocale()
@@ -223,6 +243,10 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
   const weeks = useMemo(() => getMonthWeeks(year, month, weekStart), [year, month, weekStart])
   const statusCol = data.columns.find((c) => c.id === 'status')
   const dateField = view?.dateField
+  // The day-move gesture is only wired when the board can write; without a writer the drop targets
+  // still exist but every patch is dropped on the floor, which is quieter than threading an optional
+  // writer through three components.
+  const move = useKanbanDayMove({ dateField, onMove: onMoveItem ?? (() => {}) })
 
   return (
     <div className='flex h-full w-full flex-col overflow-hidden p-4'>
@@ -242,11 +266,13 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
             items={data.items}
             statusCol={statusCol}
             dateField={dateField}
+            move={move}
             onOpenDetail={onOpenDetail}
             onAddItem={onAddItem}
           />
         ))}
       </div>
+      {move.status}
     </div>
   )
 })
