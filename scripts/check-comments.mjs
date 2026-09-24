@@ -6386,6 +6386,11 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-icon-badge.tsx', [
     '/** The identifier the fence stores, as `lucide:<name>`. */',
     '/**\n * The icons a board may use — one list for the picker that offers them and the badge that draws\n * them, so a name for a reader and the stored identifier cannot drift apart between the two.\n */',
+    '/** A freeform icon value is usually one grapheme — an emoji the author picked — so anything\n *  longer than a few clusters is noise a hand-written fence let in, and unbounded it stretches\n *  the card that hosts the badge. */',
+    '/** Where `Intl.Segmenter` is missing, code points are the closest safe cut, generous enough to\n *  keep the common single-emoji values whole. */',
+    '// An unknown name stays as its raw value — that is how the author sees the',
+    '// misspelling — clipped in place rather than cut, so the full name survives',
+    '// in the tooltip, to a screen reader and to the tests that read the text.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-icon-picker.tsx', [
     '// No aria-label: the character is the option, and a reader tool speaks it from its own localised',

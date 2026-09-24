@@ -43,6 +43,28 @@ export const KANBAN_ICONS: readonly KanbanIconOption[] = [
   { name: 'Sparkles', icon: Sparkles, labelKey: 'preview.kanban_icon_sparkles' },
 ]
 
+/** A freeform icon value is usually one grapheme — an emoji the author picked — so anything
+ *  longer than a few clusters is noise a hand-written fence let in, and unbounded it stretches
+ *  the card that hosts the badge. */
+const KANBAN_ICON_MAX_GRAPHEMES = 3
+/** Where `Intl.Segmenter` is missing, code points are the closest safe cut, generous enough to
+ *  keep the common single-emoji values whole. */
+const KANBAN_ICON_FALLBACK_MAX_CODEPOINTS = 8
+
+export function clampIconText(value: string): string {
+  const Segmenter = globalThis.Intl?.Segmenter
+  if (Segmenter) {
+    const segments = [...new Segmenter().segment(value)]
+    return segments.length <= KANBAN_ICON_MAX_GRAPHEMES
+      ? value
+      : segments.slice(0, KANBAN_ICON_MAX_GRAPHEMES).map((part) => part.segment).join('')
+  }
+  const points = Array.from(value)
+  return points.length <= KANBAN_ICON_FALLBACK_MAX_CODEPOINTS
+    ? value
+    : points.slice(0, KANBAN_ICON_FALLBACK_MAX_CODEPOINTS).join('')
+}
+
 export function KanbanIconBadge({ icon, size = 14 }: { icon?: string | null; size?: number }) {
   if (!icon) return null
   if (icon.startsWith('lucide:')) {
@@ -51,6 +73,14 @@ export function KanbanIconBadge({ icon, size = 14 }: { icon?: string | null; siz
       const Component = option.icon
       return <Component size={size} className='shrink-0 text-[var(--accent)]' />
     }
+    // An unknown name stays as its raw value — that is how the author sees the
+    // misspelling — clipped in place rather than cut, so the full name survives
+    // in the tooltip, to a screen reader and to the tests that read the text.
+    return (
+      <span title={icon} className='inline-block max-w-16 truncate align-middle leading-none'>
+        {icon}
+      </span>
+    )
   }
-  return <span className='shrink-0 leading-none'>{icon}</span>
+  return <span className='shrink-0 leading-none'>{clampIconText(icon)}</span>
 }
