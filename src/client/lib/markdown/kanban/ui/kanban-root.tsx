@@ -83,6 +83,7 @@ function KanbanTopBar({
       onChangeCardSize={state.filterSort.setCardSize}
       onChangeGroupBy={state.columnOps.handleChangeGroupBy}
       onChangeSwimlaneBy={(propId) => state.filterSort.updateActiveView({ swimlaneBy: propId })}
+      onChangeSumBy={(propId) => state.filterSort.updateActiveView({ sumBy: propId })}
       onToggleHiddenColumn={state.filterSort.toggleHiddenColumn}
       onToggleCardField={state.filterSort.toggleCardField}
       onAddItem={() => state.adds.handleAddItem()}

@@ -3,7 +3,7 @@ import { MoreHorizontal } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanDotColor, getKanbanTintStyle } from '../colors'
 import { kanbanWipOver, type KanbanGroup } from '../filter-sort'
-import { formatKanbanGroupLabel } from '../i18n-helpers'
+import { formatKanbanGroupLabel, formatKanbanSum } from '../i18n-helpers'
 import type { KanbanColorName } from '../types'
 import { KanbanColumnCount } from './kanban-column-count'
 import { KanbanColumnMenu } from './kanban-column-menu'
@@ -12,13 +12,21 @@ export function ColumnHeaderTitle({
   label,
   count,
   wipLimit,
+  sum,
+  sumName,
   isTinted,
 }: {
   label: string
   count: number
   wipLimit?: number
+  /** The total of the view's number column over this column's cards; absent when the view sums none. */
+  sum?: number
+  sumName?: string
   isTinted: boolean
 }) {
+  const sumWords = sum !== undefined && sumName !== undefined
+    ? t('preview.kanban_column_sum', { name: sumName, count: sum })
+    : undefined
   return (
     <div className='flex min-w-0 items-center gap-2'>
       <span
@@ -31,6 +39,19 @@ export function ColumnHeaderTitle({
         limit={wipLimit}
         className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-11)] font-medium'
       />
+      {sum !== undefined && sumWords && (
+        // Same surface recipe as the count pill, so the two read as one family. The glyph and figure
+        // are for the eye; the sentence is what a screen reader is given, since "Σ 12" alone says
+        // nothing about what was added up.
+        <span
+          data-kanban-sum=''
+          title={sumWords}
+          className='shrink-0 rounded-[var(--r-full)] bg-[var(--bg-inset)] px-2 py-0.5 text-[length:var(--text-11)] font-medium tabular-nums text-[var(--text-tertiary)]'
+        >
+          <span aria-hidden='true'>{t('preview.kanban_column_sum_figure', { count: formatKanbanSum(sum) })}</span>
+          <span className='sr-only'>{sumWords}</span>
+        </span>
+      )}
     </div>
   )
 }
@@ -84,6 +105,8 @@ function ColumnHeaderBand({
   label,
   count,
   wipLimit,
+  sum,
+  sumName,
   color,
   tint,
   menuBtnRef,
@@ -97,6 +120,8 @@ function ColumnHeaderBand({
   label: string
   count: number
   wipLimit?: number
+  sum?: number
+  sumName?: string
   color?: KanbanColorName
   tint: CSSProperties | undefined
   menuBtnRef: React.RefObject<HTMLButtonElement | null>
@@ -115,7 +140,7 @@ function ColumnHeaderBand({
       data-kanban-column-tint={tint ? color : undefined}
       className='relative flex cursor-grab items-center justify-between rounded-[var(--r-sm)] px-2 py-1.5 active:cursor-grabbing'
     >
-      <ColumnHeaderTitle label={label} count={count} wipLimit={wipLimit} isTinted={tint !== undefined} />
+      <ColumnHeaderTitle label={label} count={count} wipLimit={wipLimit} sum={sum} sumName={sumName} isTinted={tint !== undefined} />
       <ColumnMenuButton
         buttonRef={menuBtnRef}
         label={label}
@@ -135,6 +160,8 @@ export function KanbanColumnHeader({
   count,
   color,
   wipLimit,
+  sum,
+  sumName,
   onDragStart,
   onRename,
   onChangeColor,
@@ -149,6 +176,9 @@ export function KanbanColumnHeader({
   count: number
   color?: KanbanColorName
   wipLimit?: number
+  /** The view's number total over this column's cards, with the column's name to say what it sums. */
+  sum?: number
+  sumName?: string
   onDragStart: (e: React.DragEvent) => void
   onRename: (newLabel: string) => void
   onChangeColor: (newColor: KanbanColorName) => void
@@ -176,6 +206,8 @@ export function KanbanColumnHeader({
       label={localizedLabel}
       count={count}
       wipLimit={wipLimit}
+      sum={sum}
+      sumName={sumName}
       color={color}
       tint={tint}
       menuBtnRef={menuBtnRef}

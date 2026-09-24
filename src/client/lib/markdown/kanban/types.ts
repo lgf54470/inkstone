@@ -190,6 +190,11 @@ export interface KanbanView {
   searchQuery?: string
   /** Tag names this view filters to; stored on the view with the search and the filters beside it. */
   selectedTags?: string[]
+  /**
+   * The number column this view totals into its column headers; absent means the reader asked for no
+   * summary. A column that stopped being a number keeps the id (see the view options' candidates).
+   */
+  sumBy?: string
   cardSize?: 'small' | 'medium' | 'large'
   hiddenColumns?: string[]
   /**

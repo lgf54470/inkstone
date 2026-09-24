@@ -66,6 +66,7 @@ interface KanbanHeaderProps {
   onChangeCardSize?: (size: CardSize) => void
   onChangeGroupBy?: (propId: string) => void
   onChangeSwimlaneBy?: (propId: string | undefined) => void
+  onChangeSumBy?: (propId: string | undefined) => void
   onToggleHiddenColumn?: (propertyId: string) => void
   onToggleCardField?: (propertyId: string) => void
   onAddItem: () => void
@@ -89,9 +90,11 @@ function KanbanViewOptionsAction({
   cardSize,
   hiddenColumns,
   cardFields,
+  sumBy,
   onChangeGroupBy,
   onChangeSwimlaneBy,
   onChangeCardSize,
+  onChangeSumBy,
   onToggleHiddenColumn,
   onToggleCardField,
   schemaOps,
@@ -102,9 +105,11 @@ function KanbanViewOptionsAction({
   cardSize?: CardSize
   hiddenColumns?: string[]
   cardFields?: string[]
+  sumBy?: string
   onChangeGroupBy?: (propId: string) => void
   onChangeSwimlaneBy?: (propId: string | undefined) => void
   onChangeCardSize?: (size: CardSize) => void
+  onChangeSumBy?: (propId: string | undefined) => void
   onToggleHiddenColumn?: (propertyId: string) => void
   onToggleCardField?: (propertyId: string) => void
   schemaOps?: KanbanSchemaOperations
@@ -144,9 +149,11 @@ function KanbanViewOptionsAction({
         cardSize={cardSize}
         hiddenColumns={hiddenColumns}
         cardFields={cardFields}
+        sumBy={sumBy}
         onChangeGroupBy={onChangeGroupBy}
         onChangeSwimlaneBy={onChangeSwimlaneBy}
         onChangeCardSize={onChangeCardSize}
+        onChangeSumBy={onChangeSumBy}
         onToggleHiddenColumn={onToggleHiddenColumn}
         onToggleCardField={onToggleCardField}
         schemaOps={schemaOps}
@@ -319,9 +326,11 @@ function viewOptionsProps(props: HeaderActionsProps) {
     cardSize: isBoard ? props.cardSize : undefined,
     hiddenColumns: activeView.hiddenColumns,
     cardFields: activeView.cardFields,
+    sumBy: isBoard ? activeView.sumBy : undefined,
     onChangeGroupBy: isBoard ? props.onChangeGroupBy : undefined,
     onChangeSwimlaneBy: isBoard ? props.onChangeSwimlaneBy : undefined,
     onChangeCardSize: isBoard ? props.onChangeCardSize : undefined,
+    onChangeSumBy: isBoard ? props.onChangeSumBy : undefined,
     onToggleHiddenColumn: activeView.type === 'table' ? props.onToggleHiddenColumn : undefined,
     onToggleCardField: isBoard ? props.onToggleCardField : undefined,
     schemaOps: activeView.type === 'table' ? props.schemaOps : undefined,

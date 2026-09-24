@@ -76,6 +76,21 @@ function asNumber(val: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+/**
+ * The total of one number column over the cards given — the figure a column header shows when the
+ * view sums by that column. Values arrive as numbers from the editors but a hand-written fence may
+ * store numeric strings, and both count; blanks and anything else that is not a number count as
+ * nothing rather than as zero cards' worth of noise.
+ */
+export function sumKanbanNumberProperty(items: KanbanItem[], propertyId: string): number {
+  let total = 0
+  for (const item of items) {
+    const value = asNumber(item.properties[propertyId])
+    if (value !== null) total += value
+  }
+  return total
+}
+
 function compareNumbers(itemVal: unknown, value: string, operator: KanbanFilterOperator): boolean {
   const threshold = asNumber(value)
   const subject = asNumber(itemVal)

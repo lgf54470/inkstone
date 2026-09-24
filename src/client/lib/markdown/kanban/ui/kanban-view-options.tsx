@@ -11,6 +11,7 @@ import {
 import { Segmented, Select } from '../../../../components/form'
 import { CardFieldsSection } from './kanban-card-fields-section'
 import { KanbanPanel, PANEL_FIELD } from './kanban-panel'
+import { SumBySection } from './kanban-sum-section'
 import { kanbanPropertyColumns } from './kanban-property-cell'
 
 export type CardSize = 'small' | 'medium' | 'large'
@@ -26,9 +27,11 @@ interface KanbanViewOptionsProps {
   cardSize?: CardSize
   hiddenColumns?: string[]
   cardFields?: string[]
+  sumBy?: string
   onChangeGroupBy?: (propId: string) => void
   onChangeSwimlaneBy?: (propId: string | undefined) => void
   onChangeCardSize?: (size: CardSize) => void
+  onChangeSumBy?: (propId: string | undefined) => void
   onToggleHiddenColumn?: (propertyId: string) => void
   onToggleCardField?: (propertyId: string) => void
   schemaOps?: KanbanSchemaOperations
@@ -419,9 +422,11 @@ export const KanbanViewOptions = memo(function KanbanViewOptions({
   cardSize,
   hiddenColumns,
   cardFields,
+  sumBy,
   onChangeGroupBy,
   onChangeSwimlaneBy,
   onChangeCardSize,
+  onChangeSumBy,
   onToggleHiddenColumn,
   onToggleCardField,
   schemaOps,
@@ -453,6 +458,7 @@ export const KanbanViewOptions = memo(function KanbanViewOptions({
       {onChangeCardSize && cardSize !== undefined && (
         <CardSizeSection cardSize={cardSize} onChangeCardSize={onChangeCardSize} />
       )}
+      {onChangeSumBy && <SumBySection sumBy={sumBy} columns={columns} onChangeSumBy={onChangeSumBy} />}
       {onToggleHiddenColumn && (
         <ColumnsSection
           columns={columns}

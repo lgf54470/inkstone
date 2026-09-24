@@ -5333,6 +5333,7 @@ const allowed = new Map([
     '/**\n * The bucket a card with no value on the grouping axis lands in. The key is written here because this\n * is where the bucket is made; the drop writer and the move-to menu read the same key to mean "clear\n * this property", so introducing a second spelling would be introducing a second meaning.\n */',
     '/** What a rule may ask of a column, decided by the kind of value that column holds. */',
     '// A date column\'s most useful question is the one its readers ask first: is anything still owed.',
+    '/**\n * The total of one number column over the cards given — the figure a column header shows when the\n * view sums by that column. Values arrive as numbers from the editors but a hand-written fence may\n * store numeric strings, and both count; blanks and anything else that is not a number count as\n * nothing rather than as zero cards\' worth of noise.\n */',
     '// Two days are their `YYYY-MM-DD` keys, which already order the way they read.',
     '// A choice may be stored as the option\'s id or, in a board imported from elsewhere, as its label.',
     '// A number or date column is blank when it holds nothing of that kind, so "no points set" and',
@@ -5369,6 +5370,7 @@ const allowed = new Map([
     '// while the column still carries that name. A reader who renamed it wrote the phrase they want shown,',
     '// and no locale may replace it.',
     '/** The colour\'s name for a reader, since the token (`slate`) is what the fence stores. */',
+    '/** A number read back the way the reader\'s locale writes numbers, for the column header\'s sum pill. */',
   ]],
   ['src/client/lib/markdown/kanban/id.ts', [
     '// Kanban ids were built from Date.now() alone or with a short random suffix,',
@@ -5569,6 +5571,7 @@ const allowed = new Map([
     '/** The ids of the cards that must be done before this one — its blockers. See `dependencies.ts` (KU-23). */',
     '/** Board only: a second field the cards are cut into horizontal bands by. */',
     '/** Tag names this view filters to; stored on the view with the search and the filters beside it. */',
+    '/**\n   * The number column this view totals into its column headers; absent means the reader asked for no\n   * summary. A column that stopped being a number keeps the id (see the view options\' candidates).\n   */',
     '/**\n   * Columns this view prints on its own cards, in the order they are read. Absent means none, which is\n   * the card every board drew before the setting existed (see `card-fields.ts` for what a value reads as).\n   */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-add-operations.test.ts', [
@@ -5779,6 +5782,7 @@ const allowed = new Map([
     '/** The same drop made with a batch standing on the board; absent leaves every drop a single move. */',
     '/** Set when the column is one cell of a band, so the frame says which band it is. */',
     '/** The strip draws the column and none of its cards; a band cell draws the cards and no title. */',
+    '/** The view\'s number column to total into the header, resolved off the board\'s own columns. */',
     '/** Absent on the strip of a banded board: there is nothing to expand back into above it. */',
     '/** Named rather than threaded: only the header consumes it, and only for a whole column. */',
     '// The board is three surfaces deep and each step has to be the step above the one it sits on:',
@@ -5791,6 +5795,7 @@ const allowed = new Map([
     '// A band cell has no header, and the strip counts the whole column rather than its slice.',
     '/** Everything a cell of the board needs to draw, whichever of the three shapes it is. */',
     '/**\n   * The columns this view prints on its cards (see `card-fields.ts`). Read from the view the board was\n   * handed rather than threaded down from the root: the board is the surface that draws cards, and it\n   * is already given both halves of the answer.\n   */',
+    '/** The column whose figure each header totals; resolved from `view.sumBy` in the same breath. */',
     '/** `column` is the plain board, `head` and `body` are the two halves of a banded board. */',
     '/**\n * Whether the cards this column draws are all picked, and the gesture that settles them to that\n * state. The whole column is one batch commit, so its ids are gathered here rather than per card.\n */',
     '// The cell and the drag bundle are read here and not handed on: both are rebuilt while a drag moves',
@@ -5801,6 +5806,7 @@ const allowed = new Map([
     '/**\n * The board scrolls sideways when it is a row of columns, and both ways once it is a grid.\n *\n * `items-start` is the whole difference between a board and a wall of empty boxes: a flex row stretches\n * its children to the tallest of them, so every column was drawn as tall as the canvas rather than as\n * tall as its cards, and the reader saw two or three rows of their own column\'s background under the\n * last card (user report 2026-09-23). The cap that keeps this from making a whole board scroll instead\n * of its longest column lives in `styles/kanban.css`, next to the canvas cap it is derived from.\n */',
     '/**\n * A board nobody asked to band stays a single row of columns; asking for a second field turns that row\n * into a grid whose columns are titled once, above every band, and whose cells are that column within\n * one band. Both are the same columns and the same cards — only the arrangement differs.\n */',
     '// Collapsing a column is the plain board\'s arrangement: a band row has no narrower form.',
+    '/**\n * The two lookups the board reads off the view before drawing anything: the fields its cards print,\n * and the number column the headers total. The sum column is resolved by id whatever the column\'s\n * type now is, matching the picker\'s pinned candidate: a column that stopped being a number keeps\n * summing what remains numeric in it rather than silently dropping the header\'s figure.\n */',
     '/* Marked: a column\'s own title field leaves a message inside this board too (KU-13). */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-board-wiring.test.ts', [
@@ -5916,8 +5922,13 @@ const allowed = new Map([
     '/** Shape classes of the surface drawing it (radius, padding, size), never a text colour. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-column-header.tsx', [
+    '/** The total of the view\'s number column over this column\'s cards; absent when the view sums none. */',
+    '// Same surface recipe as the count pill, so the two read as one family. The glyph and figure',
+    '// are for the eye; the sentence is what a screen reader is given, since "Σ 12" alone says',
+    '// nothing about what was added up.',
     '/**\n * The column\'s own menu trigger. It is drawn in the band\'s colour when the band has one, because that\n * colour is the calibrated foreground for the tint behind it — a tier of its own here would be a pair\n * nothing has measured.\n */',
     '/**\n * The header band as it is painted: one row, wearing the column\'s colour, with the column\'s title and\n * its own menu trigger inside it, and the menu panel handed in as children so the band stays the\n * element the panel hangs in. It is a component of its own because the band is what a reader sees\n * while the header around it is the menu\'s wiring — one body for both was mostly a prop list.\n */',
+    '/** The view\'s number total over this column\'s cards, with the column\'s name to say what it sums. */',
     '/** Absent where a column has no narrower form to fold into — the strip of a banded board. */',
     '/** Both are absent together: a host that cannot pick cards grows no select-all row at all. */',
     '// The whole band wears the column\'s colour, which is the board\'s own answer to "which column is',
@@ -6050,6 +6061,10 @@ const allowed = new Map([
     '// is dropped rather than trusted, so it reads as the type default instead of a broken layout.',
     '// Sizing is about the column the reader sees, not the kind of value in it: retyping must not quietly',
     '// throw the width away, and a width aimed at no column at all must not reach any of them.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-column-sum.test.ts', [
+    '/**\n * G-12. A view may total one number column into its column headers — the figure a team reads per\n * stage (points left, hours queued) rather than counting cards. The contract here has three halves:\n * the total itself (a numeric string from a hand-written fence counts, a blank does not), the pill\n * the header draws from that total (visible glyph for the eye, a sentence that names the column for\n * the reader\'s ears), and the picker that turns the whole thing on and off on the view it belongs to.\n */',
+    '// The panel holds several selects; the sum picker is the one whose first choice is the off one.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-column-wip.test.ts', [
     '/**\n * F-09. A work-in-progress limit is a rule about a column, and a rule is only worth having because\n * every surface that asks "how full is this column" answers the same way: the board header, the\n * collapsed strip, the grouped table, and the sentence read out after a card lands. So this file\n * reads the same number off all four, and reads it off the same mount path a reader uses — the\n * column menu that already holds the name and the colour.\n *\n * The limit may also have been written by hand in the fence or imported from another tool, so what\n * the board cannot read as a count of cards is treated as no limit at all rather than as a rule\n * that rejects every card; a column filled exactly to its limit is not yet over it.\n */',
@@ -6863,6 +6878,10 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-subtask-menu.tsx', [
     '// `Menu` closes after an item runs, so a row here only says what it does.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-sum-section.tsx', [
+    '/**\n * G-12\'s picker: the view options row where a board view chooses which number column its headers\n * total. It lives apart from `kanban-view-options.tsx` because that file is at the size line, and\n * because this section is self-contained — one select fed by its own candidate rule.\n */',
+    '/**\n * The number columns a header could total. A field set before it stopped being a number stays listed\n * (same rule as the swimlane picker): the header keeps drawing whatever it last summed, and the\n * picker is where the reader turns it off rather than a field that vanished.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-surface-ladder.test.ts', [
     '/**\n * Two things a board has to say with surfaces, and neither of them is a token name for its own sake\n * (user report 2026-09-23: "is every column\'s background colour the same?") — first that the three\n * depths of a board are three depths rather than three whites, and second that a column\'s own colour\n * is legible on the board rather than a 10px dot in the corner of its header.\n *\n * The ladder is plane -> column -> card: `--bg-inset` -> `--bg-surface` -> `--bg-raised`. It used to\n * be raised columns with cards on the surface *below* them, which in the dark theme read as a card\n * sunk under its own column, and in the light one as three whites in a row (that pair of tokens is\n * the same colour there). The full screen plane is the same `--bg-inset` as the note\'s block, so the\n * board is the same object in both places — the rule for it lives in `styles/kanban.css`.\n *\n * A jsdom case can hold the tokens a component paints with and the colour a column declares, which\n * is what is asserted here. What only a browser can show — that the three painted colours really\n * differ, and that two columns\' bands really differ from each other and from the column below them —\n * is measured on the real screen by `e2e-visual.mjs`, and the pairs the band\'s text makes are judged\n * by `check-contrast.mjs` in both themes.\n */',

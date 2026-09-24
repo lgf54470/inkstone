@@ -1,4 +1,4 @@
-import { t, type MessageKey } from '../../i18n'
+import { t, getLocale, type MessageKey } from '../../i18n'
 import type { KanbanColorName, KanbanOption, KanbanProperty, KanbanView, KanbanViewType } from './types'
 
 const VIEW_NAME_MAP: Record<string, MessageKey> = {
@@ -124,4 +124,9 @@ export function formatKanbanGroupLabel(groupKey: string, fallbackLabel: string):
     return t('preview.kanban_no_status')
   }
   return formatKanbanOptionLabel(fallbackLabel)
+}
+
+/** A number read back the way the reader's locale writes numbers, for the column header's sum pill. */
+export function formatKanbanSum(value: number): string {
+  return new Intl.NumberFormat(getLocale()).format(value)
 }

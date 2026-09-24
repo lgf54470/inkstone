@@ -1,8 +1,9 @@
 import { memo, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
+import { formatKanbanPropertyName } from '../i18n-helpers'
 import { kanbanCardFields } from '../card-fields'
-import type { KanbanGroup } from '../filter-sort'
+import { sumKanbanNumberProperty, type KanbanGroup } from '../filter-sort'
 import { kanbanCellKey } from '../swimlane'
 import type { KanbanBoardCell, KanbanSwimlane } from '../swimlane'
 import type {
@@ -12,6 +13,7 @@ import type {
   KanbanData,
   KanbanItem,
   KanbanOption,
+  KanbanProperty,
   KanbanSubtask,
   KanbanView,
 } from '../types'
@@ -56,6 +58,8 @@ interface KanbanBoardColumnProps extends Omit<ColumnCardsListProps, 'items'> {
   /** The strip draws the column and none of its cards; a band cell draws the cards and no title. */
   headOnly?: boolean
   bodyOnly?: boolean
+  /** The view's number column to total into the header, resolved off the board's own columns. */
+  sumColumn?: KanbanProperty
   isDragOver: boolean
   onDragOver: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent) => void
@@ -71,8 +75,9 @@ interface KanbanBoardColumnProps extends Omit<ColumnCardsListProps, 'items'> {
 }
 
 const KanbanBoardColumn = memo(function KanbanBoardColumn(props: KanbanBoardColumnProps) {
-  const { group, laneKey, headOnly, bodyOnly, isDragOver, onDragOver, onDrop, onDragStartColumn, onCollapse } = props
+  const { group, laneKey, headOnly, bodyOnly, isDragOver, onDragOver, onDrop, onDragStartColumn, onCollapse, sumColumn } = props
   useLocaleRepaint()
+  const sum = sumColumn ? sumKanbanNumberProperty(group.items, sumColumn.id) : undefined
   return (
     <div
       data-kanban-group={group.groupKey}
@@ -98,6 +103,9 @@ const KanbanBoardColumn = memo(function KanbanBoardColumn(props: KanbanBoardColu
           count={group.items.length}
           color={group.color}
           wipLimit={group.wipLimit}
+          {...(sum !== undefined
+            ? { sum, sumName: formatKanbanPropertyName(sumColumn!) }
+            : {})}
           onDragStart={onDragStartColumn}
           onRename={props.onRenameColumn}
           onChangeColor={props.onChangeColumnColor}
@@ -140,6 +148,8 @@ interface BoardCellBundle {
    * is already given both halves of the answer.
    */
   cardFields: string[]
+  /** The column whose figure each header totals; resolved from `view.sumBy` in the same breath. */
+  sumColumn?: KanbanProperty
   selectedIds: Set<string>
   selectedTags?: string[]
   dnd: ReturnType<typeof useBoardDrag>['dnd']
@@ -314,6 +324,21 @@ function BandedBoardGrid({
   )
 }
 
+/**
+ * The two lookups the board reads off the view before drawing anything: the fields its cards print,
+ * and the number column the headers total. The sum column is resolved by id whatever the column's
+ * type now is, matching the picker's pinned candidate: a column that stopped being a number keeps
+ * summing what remains numeric in it rather than silently dropping the header's figure.
+ */
+function useBoardViewLookups(view: KanbanView, columns: KanbanData['columns']) {
+  const cardFields = useMemo(() => kanbanCardFields(view, columns), [view, columns])
+  const sumColumn = useMemo(
+    () => (view.sumBy ? columns.find((col) => col.id === view.sumBy) : undefined),
+    [view.sumBy, columns],
+  )
+  return { cardFields, sumColumn }
+}
+
 export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardViewProps) {
   useLocaleRepaint()
   const { collapsedGroups, toggleCollapse, scrollRef, handleScroll, groups, bands, moveAnnouncement, handleMoveCell, dnd } =
@@ -321,15 +346,13 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
       selectedIds: props.selectedIds,
       moveSelection: props.onMoveSelection,
     }, props.onReorderColumns)
-  const cardFields = useMemo(
-    () => kanbanCardFields(props.view, props.data.columns),
-    [props.view, props.data.columns],
-  )
+  const { cardFields, sumColumn } = useBoardViewLookups(props.view, props.data.columns)
 
   const cells: BoardCellBundle = {
     columns: props.data.columns,
     cardSize: props.cardSize,
     cardFields,
+    sumColumn,
     selectedIds: props.selectedIds,
     selectedTags: props.selectedTags,
     dnd,

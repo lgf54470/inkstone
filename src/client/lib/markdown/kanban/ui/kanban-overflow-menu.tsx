@@ -67,6 +67,7 @@ export interface KanbanOverflowMenuProps {
   onChangeGroupBy?: (propId: string) => void
   onChangeSwimlaneBy?: (propId: string | undefined) => void
   onChangeCardSize?: (size: CardSize) => void
+  onChangeSumBy?: (propId: string | undefined) => void
   onToggleHiddenColumn?: (propertyId: string) => void
   onToggleCardField?: (propertyId: string) => void
   onUndo?: () => void
@@ -200,9 +201,11 @@ function OverflowPanels({ props, panel, panelId, anchorRef, onClose }: {
         cardSize={activeView.type === 'board' ? props.cardSize : undefined}
         hiddenColumns={activeView.hiddenColumns}
         cardFields={activeView.cardFields}
+        sumBy={activeView.type === 'board' ? activeView.sumBy : undefined}
         onChangeGroupBy={activeView.type === 'board' ? props.onChangeGroupBy : undefined}
         onChangeSwimlaneBy={activeView.type === 'board' ? props.onChangeSwimlaneBy : undefined}
         onChangeCardSize={activeView.type === 'board' ? props.onChangeCardSize : undefined}
+        onChangeSumBy={activeView.type === 'board' ? props.onChangeSumBy : undefined}
         onToggleHiddenColumn={activeView.type === 'table' ? props.onToggleHiddenColumn : undefined}
         onToggleCardField={activeView.type === 'board' ? props.onToggleCardField : undefined}
         schemaOps={activeView.type === 'table' ? props.schemaOps : undefined}
