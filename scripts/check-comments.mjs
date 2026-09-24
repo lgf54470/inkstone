@@ -6449,6 +6449,9 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-label-language.test.ts', [
     '/**\n * Three kanban controls named themselves in a language the reader may not speak: a tag chip\'s remove\n * button borrowed the *mindmap* shortcut string, a subtask\'s completion toggle was the literal\n * `\'Mark complete\'`, and the progress bar\'s catch-all segment was the literal `\'Other\'`. Both label\n * probes that already existed pass on all three — the name is present, and nothing was concatenated —\n * so each case mounts the real surface once per shipped language and requires the phrase to be the\n * kanban resource\'s own entry for that action, with the thing it acts on named inside the message.\n */',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-list-keys.ts', [
+    '/**\n * React keys for lists of value-shaped rules (sort rules, filter rules, progress\n * segments). The fence stores these rules without an identity, so their key is\n * derived from the values that make them up, with an occurrence counter so two\n * identical rules still get distinct keys. An index key would re-key every row\n * after a mid-list removal, remounting rows whose only change is position and\n * dragging any local state a row holds (a draft, an open picker) onto the\n * neighbour that now wears its index.\n */',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-list-view.tsx', [
     '/* The row is the board\'s card stretched sideways (SH-107): a container, and the title it leads\n          with is the button that opens the detail. */',
   ]],

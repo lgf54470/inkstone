@@ -11,6 +11,7 @@ import type {
 } from '../types'
 import { Select } from '../../../../components/form'
 import { KanbanPanel, PANEL_FIELD } from './kanban-panel'
+import { kanbanStableKeys } from './kanban-list-keys'
 
 interface KanbanFilterPopoverProps {
   open: boolean
@@ -227,11 +228,12 @@ function FilterList({
     )
   }
 
+  const keys = kanbanStableKeys(filters, (f) => [f.propertyId, f.operator, f.value])
   return (
     <div className='flex max-h-60 flex-col gap-2 overflow-y-auto'>
       {filters.map((filter, index) => (
         <FilterRow
-          key={index}
+          key={keys[index]}
           filter={filter}
           index={index}
           columns={columns}

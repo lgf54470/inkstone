@@ -5,6 +5,7 @@ import { formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanProperty, KanbanSort } from '../types'
 import { Select } from '../../../../components/form'
 import { KanbanPanel, PANEL_FIELD } from './kanban-panel'
+import { kanbanStableKeys } from './kanban-list-keys'
 
 interface KanbanSortPopoverProps {
   open: boolean
@@ -105,11 +106,12 @@ function SortList({
     )
   }
 
+  const keys = kanbanStableKeys(sorts, (s) => [s.propertyId, s.direction])
   return (
     <div className='flex max-h-60 flex-col gap-2 overflow-y-auto'>
       {sorts.map((sort, index) => (
         <SortRow
-          key={index}
+          key={keys[index]}
           sort={sort}
           index={index}
           columns={columns}

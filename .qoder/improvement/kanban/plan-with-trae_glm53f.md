@@ -39,7 +39,7 @@
 ## 批次 1 · 止血与规范（小改，互不依赖）
 
 - [x] T-06 `safeKanbanUrl` 的 `blob:` 核实修正：demo 后端上传依赖它（`demo/backend/routes/files.ts:122`），移除会令 demo 栅栏整体进错误态；改为注释固化保留理由 + 测试钉住（原「移除」立项作废）
-- [ ] T-04 sort/filter 弹层 index key 换稳定 id
+- [x] T-04 sort/filter 弹层 index key 换稳定 id（`kanban-list-keys.ts` 内容寻址 + 同内容出现序，sort/filter 两弹层接入；T-03 将复用）
 - [ ] T-03 进度条 `role='img'` + aria-label 汇总 + key 稳定化
 - [ ] G-15 非法图标值截断（超长字符串钳制，防撑破卡片）
 - [ ] G-16 搜索框聚焦展开加宽
@@ -80,7 +80,8 @@
 | 日期 | 条目 | commit | 回归结果 |
 | --- | --- | --- | --- |
 | 2026-09-24 | 核实 G-01…G-19（17 成立 / 2 结案 / G-19 预防性）并整合 Trae 复审 T-01…T-06，建立本轮台账 | （本提交） | 文档提交，无代码改动；工作区干净，分支 dev |
-| 2026-09-24 | T-06：blob: 核实为 demo 上传依赖，改为注释固化 + 测试钉住 | 见 git log | url.test 7 通过；typecheck/comments/hardcoded/size 通过；allowlist 重建（8201 条） |
+| 2026-09-24 | T-06：blob: 核实为 demo 上传依赖，改为注释固化 + 测试钉住 | 37150c0e | url.test 7 通过；typecheck/comments/hardcoded/size 通过；allowlist 重建（8201 条） |
+| 2026-09-24 | T-04：新增 kanbanStableKeys 内容寻址 key，sort/filter 弹层接入 | 见 git log | list-keys/filter-popover 13 测试通过；typecheck/comments/style/i18n/size 通过；allowlist 8202 条 |
 
 ## 固定验证
 
