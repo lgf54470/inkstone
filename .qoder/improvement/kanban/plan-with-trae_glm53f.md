@@ -1,0 +1,96 @@
+# 看板模块改进执行计划 · Trae glm53f 轮次
+
+> 依据：2026-09-24 对 `plan-with-freebuff_glm53f.md` 全部条目（G-01…G-19）逐条源码核实，并入同日 Trae 全模块复审增量发现（T-01…T-06）。
+> 基线：`dev`，HEAD `24bef793`。
+> 施工原则：逐项修复 → 先写能失败的复现测试 → 跑回归与门禁 → 单项提交（Conventional Commits，scope `kanban`/`api`，正文逐文件）→ **同一次提交内更新本文件进度日志**。源码注释有增删的提交，先跑 `node scripts/sync-comments-allowlist.mjs` 重建白名单再过 `comments:check`。
+> 与旧计划的关系：承接 `plan-with-freebuff_glm53f.md` 的 G-01…G-19（编号沿用），新增 T-01…T-06；两份旧计划（K-01…K-31、G 系列）已结案条目不再重复。
+> 每项收尾的验证命令见文末「固定验证」。
+
+## 核实结论摘要
+
+| 条目 | 结论 | 证据 |
+| --- | --- | --- |
+| G-01 | ✅ 成立 | `kanban-calendar-view.tsx:29,36` 月份标题硬编码 `{year} - {padMonth}`，未走 Intl |
+| G-02 | ✅ 成立 | `kanban-card-title.tsx:27` `KANBAN_TITLE_OPEN_DELAY_MS = 250`；重命名已有铅笔按钮（:105）与 F2（:67）两条替代路径；`e2e-visual.mjs:3026-3085` 与 `kanban-card.test.ts:172,257` 钉的是旧契约，需同提交重写 |
+| G-03 | ✅ 成立 | 悬停控件一律 `opacity-0 group-hover/card:opacity-100`（`kanban-card-header.tsx:57,98,161,188`、`kanban-card-title.tsx:109`），触屏无 hover 即不可达 |
+| G-04 | ✅ 成立 | timeline 侧栏与图表全量 map（`kanban-timeline-view.tsx:48,98`）、gantt 侧栏全量 map（`kanban-gantt-view.tsx:98`），`useKanbanRenderWindow` 未接入 |
+| G-05 | ✅ 成立 | `kanban-csv.tsx:172` `await file.text()` 无字节上限 |
+| G-06 | ✅ 成立 | 删除是硬删 + 8 秒内存撤销（`kanban-item-deletion.ts`）；`archive.ts` 只有 `archived` 旗标，无删除分区；toast 过期或关笔记后不可恢复 |
+| G-07 | ✅ 成立 | `kanban-board-keys.ts:26-33` Chord 表无 Delete/Backspace 命令 |
+| G-08 | ✅ 成立 | `worker/routes/kanban.ts:39-60` 每次上传全量分页 list R2 桶核算配额，且 kanban 上传不写 `attachments` 行 |
+| G-09 | ✅ 成立 | `worker/routes/kanban.ts:175-194` DELETE 无 `consumeAttemptBudget` |
+| G-10 | ❌ 不成立，结案 | 搜索 200ms 防抖（`kanban-search-box.tsx:7`）+ 写回 500ms 防抖（`write.ts`），搜索为 view 类 commit 不进步栈，无逐字符写放大 |
+| G-11 | ✅ 成立 | `kanban-view-tabs.tsx:261-286` 页签无自带筛选标记 |
+| G-12 | ✅ 成立 | `kanban-column-header.tsx` 无数值求和 |
+| G-13 | ✅ 成立 | `kanban-card.tsx:43-78` CardFooter 无依赖/被阻塞徽标 |
+| G-14 | ✅ 成立 | `kanban-chart-view.tsx:229-233` canvas 仅 `role='img'`，无点击下钻 |
+| G-15 | ✅ 成立 | `kanban-icon-badge.tsx:55` 非法图标值原样渲染，无截断 |
+| G-16 | ✅ 成立 | `kanban-search-box.tsx:112` 输入框固定 `w-28` |
+| G-17 | ❌ 不成立，结案 | `column-width.ts:20-29` `clampKanbanColumnWidth` 已钳制 [64,960] 且丢弃非数字 |
+| G-18 | ✅ 成立 | 日历仅月份导航；`getMonthWeeks`/周结构可复用 |
+| G-19 | ⚠️ 现状未超限，预防性立项 | `check-size.baseline.json` 无看板条目（全部 ≤500 行），但 `kanban-root.tsx` 494 行、`kanban-header.tsx` 482 行贴边；批次 2/3/4 的增量必然越限，先纯移动拆分腾空间 |
+| T-01 | ✅ 成立（Trae 复审） | `status`/`priority`/`tags` 按约定 id 硬编码散布 10+ 处（`kanban-card.tsx:112-115`、`kanban-list-view.tsx:311-313`、`kanban-gallery-view.tsx:269-271`、`kanban-item-detail.tsx:377-379`、`kanban-progress-bar.tsx:34`、`kanban-tag-filter-bar.tsx:19`、`kanban-table-group.tsx:104`、`kanban-root.tsx:356`）；最糟一处 `kanban-root-hooks.ts:249` 快捷加卡兜底写死 `'todo'` 幽灵值。`view-ops.ts:30-32` 已有通用推导但未导出复用 |
+| T-02 | ✅ 成立（Trae 复审） | `kanban-gantt-view.tsx:71` Slider `onChange` 每步直连 `commitData`（step=5，拖一次 = ~20 步 undo + 20 次全量派生重算 + 全视图重渲染） |
+| T-03 | ✅ 成立（Trae 复审） | `kanban-progress-bar.tsx:82-96` 纯 div 序列无 role/aria-label（a11y 红线），:88 以 index 为 key |
+| T-04 | ✅ 成立（Trae 复审） | `kanban-sort-popover.tsx:112`、`kanban-filter-popover.tsx:234` 以 index 为可变列表 key |
+| T-05 | ✅ 成立（Trae 复审，并入 G-05） | `csv.ts:271` 导入的 `item.content` 绕过 description 5000 字符钳制，单 cell 无长度上限 |
+| T-06 | ✅ 成立（Trae 复审） | `url.ts:7` `safeKanbanUrl` 白名单含 `blob:`（当前模块无 createObjectURL，暂不可利用，白名单应最小化） |
+
+## 批次 1 · 止血与规范（小改，互不依赖）
+
+- [ ] T-06 `safeKanbanUrl` 移除 `blob:`（协议白名单最小化）
+- [ ] T-04 sort/filter 弹层 index key 换稳定 id
+- [ ] T-03 进度条 `role='img'` + aria-label 汇总 + key 稳定化
+- [ ] G-15 非法图标值截断（超长字符串钳制，防撑破卡片）
+- [ ] G-16 搜索框聚焦展开加宽
+- [ ] G-01 日历月份标题 Intl 本地化（zh-CN「2026年9月」）
+- [ ] G-03 触屏悬停控件常显（`pointer-coarse:` 变体下不再 opacity-0）
+- [ ] G-02 卡片单击立即打开详情（移除 250ms 等待；重命名保留铅笔按钮 + F2；同提交重写 `kanban-card.test.ts` 与 `e2e-visual.mjs` 双击断言到新契约）
+
+## 批次 2 · 正确性与性能（核心缺陷）
+
+- [ ] G-19 预防性拆分：`kanban-root.tsx`、`kanban-item-detail.tsx` 纯移动（不改行为），为批次 3/4 腾行数预算
+- [ ] T-01 三件套列解析统一：`view-ops.ts` 导出 `kanbanStatusColumn/kanbanPriorityColumn/kanbanTagsColumn` 通用解析（约定 id → type 推导 → 无），替换 10+ 处硬编码；修复 `kanban-root-hooks.ts:249` 幽灵 `'todo'`（推导不到就不写属性）
+- [ ] T-02 gantt 进度滑杆 commit-on-release：拖动中本地视觉态，松手一次 commit（复用撤销栈语义）
+- [ ] G-04 timeline/gantt 侧栏接入 `useKanbanRenderWindow`（1000 卡上限下最后两块全量渲染面）
+
+## 批次 3 · 数据安全（客户端 + 服务端）
+
+- [ ] G-05+T-05 CSV 导入体积预拒（读前按大小拒绝）+ 导入单元格/`content` 长度钳制
+- [ ] G-06 删除改软删：`deleted` 旗标（仅字面 `true` 生效，与 `archived` 同规），归档面板分「已归档 / 已删除」两区，已删除可恢复或永久清除；全部视图/计数/静态快照/CSV 导出排除已删除
+- [ ] G-07 键盘 Delete/Backspace 移除聚焦卡片（接 G-06 软删语义，进 Chord 表与快捷键卡）
+- [ ] G-08 附件配额改 D1 核算：kanban 上传写 `attachments` 行、删除删行，配额只查 D1；移除每次上传全量 list R2（存量无行对象按少计处理，注释说明）
+- [ ] G-09 DELETE 接口节流（复用 `consumeAttemptBudget`）
+
+## 批次 4 · 功能增强
+
+- [ ] G-11 页签标注视图自带筛选（带 filters/sorts/search/tags 的页签加圆点提示 + aria）
+- [ ] G-13 卡片依赖徽标（board 卡 footer 显示被阻塞计数，点击开详情）
+- [ ] G-12 列头数值汇总（视图可选 number 列求和，列头显示 Σ）
+- [ ] G-14 图表点击下钻为过滤（点击柱/扇区写入该视图 filters，与快捷过滤 chip 同路径）
+- [ ] G-18 日历周视图（月/周切换，复用 `getMonthWeeks` 周结构与事件段几何）
+
+## 核实结案（不改代码）
+
+- G-10 搜索写放大：不成立（G-10 证据行），无代码改动
+- G-17 表格列最小宽：`clampKanbanColumnWidth` 已覆盖，无代码改动
+
+## 进度日志
+
+| 日期 | 条目 | commit | 回归结果 |
+| --- | --- | --- | --- |
+| 2026-09-24 | 核实 G-01…G-19（17 成立 / 2 结案 / G-19 预防性）并整合 Trae 复审 T-01…T-06，建立本轮台账 | （本提交） | 文档提交，无代码改动；工作区干净，分支 dev |
+
+## 固定验证
+
+```bash
+npm run typecheck
+npx vitest run --config vitest.config.ts <相关文件>
+npm run i18n:check && npm run comments:check && npm run hardcoded:check
+npm run size:check && npm run tokens:check && npm run style:check
+# 批次收尾 / 触碰视觉与交互断言时：
+npm run test:unit
+npm run test:e2e && node scripts/e2e-visual.mjs && npm run contrast:check
+# 注释有增删时先重建白名单：
+node scripts/sync-comments-allowlist.mjs
+```
