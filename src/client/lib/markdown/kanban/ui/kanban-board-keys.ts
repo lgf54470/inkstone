@@ -14,7 +14,7 @@ import type { MessageKey } from '../../../i18n'
  * note, since the registry cannot tell which board the reader means. Focus is the scope — a key press
  * only reaches this listener when it happened inside this board.
  */
-export type KanbanBoardCommand = 'prevCard' | 'nextCard' | 'prevColumn' | 'nextColumn' | 'newCard' | 'search'
+export type KanbanBoardCommand = 'prevCard' | 'nextCard' | 'prevColumn' | 'nextColumn' | 'newCard' | 'search' | 'deleteCard'
 
 export interface KanbanBoardChord {
   /** The `KeyboardEvent.key` the board answers to. */
@@ -30,6 +30,8 @@ export const KANBAN_BOARD_CHORDS: KanbanBoardChord[] = [
   { key: 'ArrowRight', command: 'nextColumn', messageKey: 'preview.kanban_key_next_column' },
   { key: 'n', command: 'newCard', messageKey: 'preview.kanban_key_add_card' },
   { key: '/', command: 'search', messageKey: 'preview.kanban_key_search' },
+  { key: 'Delete', command: 'deleteCard', messageKey: 'preview.kanban_key_delete_card' },
+  { key: 'Backspace', command: 'deleteCard', messageKey: 'preview.kanban_key_delete_card' },
 ]
 
 /**
@@ -135,10 +137,14 @@ function openNewCardField(container: HTMLElement): boolean {
 
 /**
  * Wires the table above onto the board's container. Nothing here reads the board's data or calls into
- * its render cycle: every command either moves the focus through what is already drawn or presses a
- * control that is already on screen.
+ * its render cycle: every command either moves the focus through what is already drawn, presses a
+ * control that is already on screen, or (for the delete) hands the focused card's id to the writer the
+ * root passed in — the card is flagged out of the views, and the history's undo is the way back.
  */
-export function useKanbanBoardKeys(containerRef: RefObject<HTMLElement | null>): void {
+export function useKanbanBoardKeys(
+  containerRef: RefObject<HTMLElement | null>,
+  onDeleteCard?: (id: string) => void,
+): void {
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -159,6 +165,14 @@ export function useKanbanBoardKeys(containerRef: RefObject<HTMLElement | null>):
         e.preventDefault()
         return
       }
+      if (command === 'deleteCard') {
+        const card = (e.target as Element | null)?.closest('[data-item-id]')
+        const id = card?.getAttribute('data-item-id')
+        if (!id || !onDeleteCard) return
+        e.preventDefault()
+        onDeleteCard(id)
+        return
+      }
       const target = kanbanCardFocusTarget(e.target as Element, command)
       if (!target) return
       e.preventDefault()
@@ -167,5 +181,5 @@ export function useKanbanBoardKeys(containerRef: RefObject<HTMLElement | null>):
 
     container.addEventListener('keydown', handleKeyDown)
     return () => container.removeEventListener('keydown', handleKeyDown)
-  }, [containerRef])
+  }, [containerRef, onDeleteCard])
 }

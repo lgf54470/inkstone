@@ -221,7 +221,7 @@ function useKanbanContainerWiring(
 ): void {
   useKanbanSurface(containerRef, state)
   useKanbanRegionLabel(containerRef)
-  useKanbanBoardKeys(containerRef)
+  useKanbanBoardKeys(containerRef, state.items.handleDeleteItem)
 }
 
 /**

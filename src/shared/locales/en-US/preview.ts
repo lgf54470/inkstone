@@ -81,6 +81,7 @@ export const messages = {
 'preview.kanban_key_next_column': 'Card in the column to the right',
 'preview.kanban_key_add_card': 'Add a card',
 'preview.kanban_key_search': 'Search this board',
+'preview.kanban_key_delete_card': 'Remove the focused card',
 'preview.kanban_key_move_card': 'Move the focused card',
 'preview.kanban_key_open_card': 'Open the focused card',
 'preview.kanban_key_rename_card': 'Rename the focused card',

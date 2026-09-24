@@ -91,6 +91,7 @@ export const messages = {
 'preview.kanban_key_next_column': '右边一列的卡片',
 'preview.kanban_key_add_card': '新建一张卡片',
 'preview.kanban_key_search': '搜索当前看板',
+'preview.kanban_key_delete_card': '删除聚焦的卡片',
 'preview.kanban_key_move_card': '移动聚焦的卡片',
 'preview.kanban_key_open_card': '打开聚焦的卡片',
 'preview.kanban_key_rename_card': '重命名聚焦的卡片',

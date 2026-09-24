@@ -263,6 +263,34 @@ describe('the chords stay out of everyone else\'s way', () => {
       field!.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', bubbles: true, cancelable: true }))
     })
     expect(onUpdateData, 'typing n in a card title filed a card').not.toHaveBeenCalled()
+    act(() => {
+      field!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }))
+    })
+    expect(onUpdateData, 'Delete in a field deleted the card standing behind it').not.toHaveBeenCalled()
+  })
+})
+
+describe('the delete keys flag the card the reader is standing on', () => {
+  it('soft-deletes the focused card and leaves its neighbours alone', () => {
+    const { container, onUpdateData } = mountBoard()
+    expect(press(container, 'b', 'Delete'), 'the press was left to the browser').toBe(true)
+    const committed = onUpdateData.mock.calls.at(-1)![0] as KanbanData
+    expect(committed.items.find((item) => item.id === 'b')!.deleted).toBe(true)
+    expect(committed.items.find((item) => item.id === 'a')!.deleted).toBeUndefined()
+  })
+
+  it('answers to Backspace the same way', () => {
+    const { container, onUpdateData } = mountBoard()
+    press(container, 'a', 'Backspace')
+    const committed = onUpdateData.mock.calls.at(-1)![0] as KanbanData
+    expect(committed.items.find((item) => item.id === 'a')!.deleted).toBe(true)
+  })
+
+  it('deletes nothing when the focus is not on a card', () => {
+    const { container, onUpdateData } = mountBoard()
+    pressOnBoardWhitespace(container, 'Delete')
+    expect(onUpdateData, 'a press with no card under it deleted something').not.toHaveBeenCalled()
+    expect(container.querySelector('[data-item-id="b"]'), 'the board lost cards it should not have').not.toBeNull()
   })
 })
 
