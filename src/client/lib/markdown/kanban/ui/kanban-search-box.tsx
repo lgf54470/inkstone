@@ -109,7 +109,7 @@ export function KanbanSearchBox({
         value={draft}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={t('preview.kanban_search_placeholder')}
-        className='h-full w-28 border-0 bg-transparent px-1.5 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
+        className='h-full w-28 border-0 bg-transparent px-1.5 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none transition-[width] duration-200 ease-out focus:w-48'
       />
     </div>
   )
