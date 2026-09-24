@@ -451,3 +451,39 @@ describe('a board whose views are managed', () => {
     expect(selected?.textContent).toBe('Ship log')
   })
 })
+
+describe('the tab marks a view that narrows the cards on its own', () => {
+  const DOT = 'span[aria-hidden="true"]'
+
+  function tabFor(rendered: ReturnType<typeof mountTabs>, viewId: string): HTMLElement {
+    const tab = rendered.tabs.find((candidate) => candidate.id === `${PANEL_ID}-tab-${viewId}`)
+    if (!tab) throw new Error(`no tab for view ${viewId}`)
+    return tab
+  }
+
+  it('draws the dot and the accessible sentence on a filtered view only', () => {
+    const views: KanbanView[] = [
+      { id: 'v-plain', name: 'Plain', type: 'board' },
+      { id: 'v-filtered', name: 'Filtered', type: 'board', filters: [{ propertyId: 'status', operator: 'equals', value: 'todo' }] },
+    ]
+    const rendered = mountTabs('v-plain', { views })
+    expect(tabFor(rendered, 'v-plain').querySelector(DOT), 'a plain view wore the mark').toBeNull()
+    const marked = tabFor(rendered, 'v-filtered')
+    expect(marked.querySelector(DOT)).not.toBeNull()
+    expect(marked.textContent).toContain(t('preview.kanban_view_carries_state'))
+  })
+
+  it('counts sorts, a search query and a tag selection as carried state, but not a blank one', () => {
+    const views: KanbanView[] = [
+      { id: 'v-sort', name: 'Sorted', type: 'table', sorts: [{ propertyId: 'title', direction: 'asc' }] },
+      { id: 'v-search', name: 'Searched', type: 'table', searchQuery: 'alpha' },
+      { id: 'v-tags', name: 'Tagged', type: 'gallery', selectedTags: ['feat'] },
+      { id: 'v-blank', name: 'Blank', type: 'table', searchQuery: '   ' },
+    ]
+    const rendered = mountTabs('v-sort', { views })
+    expect(tabFor(rendered, 'v-sort').querySelector(DOT)).not.toBeNull()
+    expect(tabFor(rendered, 'v-search').querySelector(DOT)).not.toBeNull()
+    expect(tabFor(rendered, 'v-tags').querySelector(DOT)).not.toBeNull()
+    expect(tabFor(rendered, 'v-blank').querySelector(DOT), 'a whitespace query is not a lens').toBeNull()
+  })
+})

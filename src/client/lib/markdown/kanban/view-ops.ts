@@ -110,6 +110,22 @@ export function createKanbanView(type: KanbanViewType, columns: KanbanProperty[]
   }
 }
 
+/**
+ * Whether the view narrows or reorders the cards on its own — filters, sorts, a search query, or a
+ * tag selection. The tab strip marks such views with a dot, because a view that shows fewer cards
+ * than the board beside it otherwise reads as data loss rather than as a lens the reader (or an
+ * earlier session) left on it. Shaping preferences (grouping, card size, hidden columns) are not
+ * what the dot names: they change how the same cards are drawn, not which cards are there.
+ */
+export function kanbanViewCarriesState(view: KanbanView): boolean {
+  return Boolean(
+    (view.filters && view.filters.length > 0) ||
+    (view.sorts && view.sorts.length > 0) ||
+    (view.searchQuery && view.searchQuery.trim().length > 0) ||
+    (view.selectedTags && view.selectedTags.length > 0),
+  )
+}
+
 function withViews(data: KanbanData, views: KanbanView[], activeViewId: KanbanData['activeViewId']): KanbanData {
   return { ...data, views, activeViewId }
 }

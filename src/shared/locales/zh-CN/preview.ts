@@ -265,6 +265,7 @@ export const messages = {
 'preview.kanban_view_move_earlier': '前移页签',
 'preview.kanban_view_move_later': '后移页签',
 'preview.kanban_view_deleted': '视图已删除',
+'preview.kanban_view_carries_state': '带有自己的筛选、排序、搜索或标签',
 'preview.kanban_done': '完成',
 'preview.kanban_views': '数据库视图',
 'preview.kanban_select_card': '选择卡片',

@@ -12,7 +12,7 @@ import {
   Timeline,
 } from 'lucide-react'
 import { formatKanbanViewName, formatKanbanViewTypeLabel } from '../i18n-helpers'
-import { KANBAN_VIEW_TYPES } from '../view-ops'
+import { KANBAN_VIEW_TYPES, kanbanViewCarriesState } from '../view-ops'
 import { prompt, Menu, type MenuItem } from '../../../../components/overlay'
 import type { KanbanView, KanbanViewType } from '../types'
 import { t } from '../../../i18n'
@@ -277,8 +277,13 @@ interface TabProps {
  * token layer calibrates for all seven accents. `--bg-raised` is what it used to be, and on both
  * light themes that token is the header's own `--bg-surface`: the selection was invisible in exactly
  * the mode the reader reported it in.
+ *
+ * A view that narrows or reorders the cards on its own carries a dot: the tab looks identical to the
+ * plain one beside it while showing fewer cards, and without the mark that reads as data loss rather
+ * than as a lens the reader left on. The dot is decoration; the sentence is the accessible form.
  */
 function KanbanTab({ view, panelId, isActive, index, register, onSelectView, onKeyDown }: TabProps) {
+  const carriesState = kanbanViewCarriesState(view)
   return (
     <button
       ref={register}
@@ -301,6 +306,12 @@ function KanbanTab({ view, panelId, isActive, index, register, onSelectView, onK
       {/* The strip is the first thing to give up its words when the bar is narrow: eight named tabs
           cannot share a few hundred pixels with the controls, and the icon still names the type. */}
       <span className='hidden @4xl:inline'>{formatKanbanViewName(view)}</span>
+      {carriesState && (
+        <>
+          <span aria-hidden={true} className='size-1.5 shrink-0 rounded-full bg-[var(--accent)]' />
+          <span className='sr-only'>{t('preview.kanban_view_carries_state')}</span>
+        </>
+      )}
     </button>
   )
 }

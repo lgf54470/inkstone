@@ -255,6 +255,7 @@ export const messages = {
 'preview.kanban_view_move_earlier': 'Move earlier',
 'preview.kanban_view_move_later': 'Move later',
 'preview.kanban_view_deleted': 'View deleted',
+'preview.kanban_view_carries_state': 'Has its own filters, sorts, search, or tags',
 'preview.kanban_done': 'Done',
 'preview.kanban_views': 'Database views',
 'preview.kanban_select_card': 'Select card',
