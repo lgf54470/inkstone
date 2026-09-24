@@ -83,3 +83,42 @@ function shiftDays(dateStr: string, days: number): string {
   const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
   return `${moved.getFullYear()}-${pad(moved.getMonth() + 1)}-${pad(moved.getDate())}`
 }
+
+describe('the calendar month/week switch', () => {
+  function weekRadioOf(container: HTMLElement, code: LocaleCode): HTMLButtonElement | undefined {
+    return [...container.querySelectorAll<HTMLButtonElement>('[role="radio"]')]
+      .find((el) => el.textContent === messageIn(code, 'preview.kanban_calendar_week'))
+  }
+
+  it.each(LOCALES)('draws one row of seven cells in week mode in %s', async (code) => {
+    const container = await mountIn(code, createElement(KanbanCalendarView, {
+      data: emptyData,
+      onOpenDetail: vi.fn(),
+      onAddItem: vi.fn(),
+    }))
+    expect(
+      container.querySelectorAll('[data-kanban-day-cell]').length,
+      'the calendar did not open in the month span',
+    ).toBeGreaterThan(20)
+    const weekRadio = weekRadioOf(container, code)
+    expect(weekRadio, 'the header drew no week switch').toBeDefined()
+    act(() => { weekRadio!.click() })
+    expect(container.querySelectorAll('[data-kanban-day-cell]')).toHaveLength(7)
+  })
+
+  it('steps one week with the arrow the week mode renamed', async () => {
+    const container = await mountIn('en-US', createElement(KanbanCalendarView, {
+      data: emptyData,
+      onOpenDetail: vi.fn(),
+      onAddItem: vi.fn(),
+    }))
+    act(() => { weekRadioOf(container, 'en-US')!.click() })
+    const before = container.querySelector('[data-kanban-day-cell]')!.getAttribute('data-kanban-day-cell')!
+    const prev = [...container.querySelectorAll<HTMLButtonElement>('button[aria-label]')]
+      .find((el) => el.getAttribute('aria-label') === messageIn('en-US', 'preview.kanban_prev_week'))
+    expect(prev, 'no arrow says it moves a week').toBeDefined()
+    act(() => { prev!.click() })
+    const after = container.querySelector('[data-kanban-day-cell]')!.getAttribute('data-kanban-day-cell')!
+    expect(after).toBe(shiftDays(before, -7))
+  })
+})

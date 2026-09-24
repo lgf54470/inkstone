@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calendarMoveDays, getMonthWeeks, getWeekEventSegments, moveCalendarItemToDay } from './calendar-helpers'
+import { calendarMoveDays, getMonthWeeks, getWeekDays, getWeekEventSegments, moveCalendarItemToDay } from './calendar-helpers'
 import type { KanbanItem } from './types'
 
 /**
@@ -65,6 +65,20 @@ describe('calendar-helpers parsing & month generation', () => {
     const allDays = weeks.flat()
     const septDays = allDays.filter((d) => d.isCurrentMonth)
     expect(septDays.length).toBe(30)
+  })
+
+  it('getWeekDays returns the one week an anchor falls in, aligned to the week start', () => {
+    const week = getWeekDays(new Date(2026, 8, 23), 1) // Wednesday 2026-09-23, Monday start
+    expect(week).toHaveLength(7)
+    expect(week[0].dateStr).toBe('2026-09-21')
+    expect(week[6].dateStr).toBe('2026-09-27')
+    expect(week.some((d) => d.dateStr === '2026-09-23')).toBe(true)
+  })
+
+  it('getWeekDays reads the same shape for every anchor of one week', () => {
+    const sunday = getWeekDays(new Date(2026, 8, 20), 0)[0].dateStr
+    const wednesday = getWeekDays(new Date(2026, 8, 23), 0)[0].dateStr
+    expect(wednesday).toBe(sunday)
   })
 })
 

@@ -1,13 +1,16 @@
 import { memo, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { t, useLocale } from '../../../i18n'
+import { Segmented } from '../../../../components/form'
 import { narrowWeekdayLabels, weekStartFor, type WeekStartDay } from '../../../time'
-import { getMonthWeeks, getWeekEventSegments, type CalendarDay, type WeekEventSegment } from '../calendar-helpers'
+import { getMonthWeeks, getWeekDays, getWeekEventSegments, type CalendarDay, type WeekEventSegment } from '../calendar-helpers'
 import { getKanbanTagStyle } from '../colors'
 import { kanbanStatusColumn } from '../view-ops'
 import type { KanbanData, KanbanItem, KanbanProperty, KanbanView } from '../types'
 import { useKanbanDayMove } from './kanban-day-move'
 import { KanbanIconBadge } from './kanban-icon-badge'
+
+type CalendarMode = 'month' | 'week'
 
 interface KanbanCalendarViewProps {
   data: KanbanData
@@ -19,21 +22,15 @@ interface KanbanCalendarViewProps {
 }
 
 interface CalendarHeaderProps {
-  year: number
-  month: number
-  onPrevMonth: () => void
-  onNextMonth: () => void
+  title: string
+  mode: CalendarMode
+  onModeChange: (mode: CalendarMode) => void
+  onPrev: () => void
+  onNext: () => void
   onToday: () => void
 }
 
-function CalendarHeader({ year, month, onPrevMonth, onNextMonth, onToday }: CalendarHeaderProps) {
-  const locale = useLocale()
-  // The heading is the month as the reader's own calendar writes it — the locale's long month with
-  // its numeric year — not a numeric pair a locale never asked for.
-  const title = useMemo(
-    () => new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(year, month, 1))),
-    [locale, year, month],
-  )
+function CalendarHeader({ title, mode, onModeChange, onPrev, onNext, onToday }: CalendarHeaderProps) {
   return (
     <div className='flex items-center justify-between pb-3'>
       {/* The type goes on this wrapper, not on the heading: prose owns a note's `h3` and wins any
@@ -42,6 +39,18 @@ function CalendarHeader({ year, month, onPrevMonth, onNextMonth, onToday }: Cale
         <h3 className='text-[var(--text-primary)]'>{title}</h3>
       </div>
       <div className='flex items-center gap-1.5'>
+        {/* One radio group for the two spans the calendar can be read in; the arrows follow the
+            span that is selected, so the control that moves a month never says "week". */}
+        <Segmented
+          value={mode}
+          onChange={onModeChange}
+          size='sm'
+          label={t('preview.kanban_calendar_range')}
+          options={[
+            { value: 'month', label: t('preview.kanban_calendar_month') },
+            { value: 'week', label: t('preview.kanban_calendar_week') },
+          ]}
+        />
         <button
           type='button'
           onClick={onToday}
@@ -51,17 +60,17 @@ function CalendarHeader({ year, month, onPrevMonth, onNextMonth, onToday }: Cale
         </button>
         <button
           type='button'
-          onClick={onPrevMonth}
+          onClick={onPrev}
           className='inline-flex size-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-          aria-label={t('preview.kanban_prev_month')}
+          aria-label={t(mode === 'week' ? 'preview.kanban_prev_week' : 'preview.kanban_prev_month')}
         >
           <ChevronLeft size={16} />
         </button>
         <button
           type='button'
-          onClick={onNextMonth}
+          onClick={onNext}
           className='inline-flex size-7 items-center justify-center rounded-[var(--r-md)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-          aria-label={t('preview.kanban_next_month')}
+          aria-label={t(mode === 'week' ? 'preview.kanban_next_week' : 'preview.kanban_next_month')}
         >
           <ChevronRight size={16} />
         </button>
@@ -233,6 +242,60 @@ function CalendarWeekRow({
   )
 }
 
+/**
+ * The week view's heading: the range its seven days actually cover, written the way the reader's
+ * locale writes short dates — read off the days themselves, so the title cannot disagree with the
+ * grid under it.
+ */
+function weekRangeTitle(locale: string, week: CalendarDay[]): string {
+  const asUtc = (d: Date) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const dayFmt = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  const yearFmt = new Intl.DateTimeFormat(locale, { year: 'numeric', timeZone: 'UTC' })
+  return t('preview.kanban_week_range', {
+    value0: dayFmt.format(asUtc(week[0]!.date)),
+    value1: dayFmt.format(asUtc(week[6]!.date)),
+    value2: yearFmt.format(asUtc(week[6]!.date)),
+  })
+}
+
+/** The date one step lands on: a whole week in week mode, one month in month mode. */
+function stepCalendarDate(from: Date, mode: CalendarMode, direction: -1 | 1): Date {
+  if (mode === 'week') {
+    const moved = new Date(from)
+    moved.setDate(moved.getDate() + direction * 7)
+    return moved
+  }
+  return new Date(from.getFullYear(), from.getMonth() + direction, 1)
+}
+
+/**
+ * The calendar's navigation state, kept apart from the drawing: which span the reader has it on,
+ * where that span stands, the weeks it shows, and the heading that names it. Both spans are built
+ * from the same week structure (`getMonthWeeks`'s rows, `getWeekDays` for the single one), so a
+ * switch between them cannot make the title and the grid disagree.
+ */
+function useCalendarRange(locale: string, weekStart: WeekStartDay) {
+  const [currentDate, setCurrentDate] = useState(() => new Date())
+  const [mode, setMode] = useState<CalendarMode>('month')
+  const year = currentDate.getFullYear()
+  const month = currentDate.getMonth()
+  const weeks = useMemo(() => getMonthWeeks(year, month, weekStart), [year, month, weekStart])
+  const weekDays = useMemo(
+    () => (mode === 'week' ? getWeekDays(currentDate, weekStart) : null),
+    [mode, currentDate, weekStart],
+  )
+  const visibleWeeks = weekDays ? [weekDays] : weeks
+  const title = useMemo(
+    () => (mode === 'week'
+      ? weekRangeTitle(locale, weekDays!)
+      : new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(year, month, 1)))),
+    [mode, locale, year, month, weekDays],
+  )
+  const step = (direction: -1 | 1) => setCurrentDate(stepCalendarDate(currentDate, mode, direction))
+  const goToday = () => setCurrentDate(new Date())
+  return { mode, setMode, title, visibleWeeks, step, goToday }
+}
+
 export const KanbanCalendarView = memo(function KanbanCalendarView({
   data,
   view,
@@ -240,12 +303,9 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
   onAddItem,
   onMoveItem,
 }: KanbanCalendarViewProps) {
-  const [currentDate, setCurrentDate] = useState(() => new Date())
   const locale = useLocale()
   const weekStart = weekStartFor(locale)
-  const year = currentDate.getFullYear()
-  const month = currentDate.getMonth()
-  const weeks = useMemo(() => getMonthWeeks(year, month, weekStart), [year, month, weekStart])
+  const { mode, setMode, title, visibleWeeks, step, goToday } = useCalendarRange(locale, weekStart)
   const statusCol = kanbanStatusColumn(data.columns)
   const dateField = view?.dateField
   // The day-move gesture is only wired when the board can write; without a writer the drop targets
@@ -256,15 +316,16 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
   return (
     <div className='flex h-full w-full flex-col overflow-hidden p-4'>
       <CalendarHeader
-        year={year}
-        month={month}
-        onPrevMonth={() => setCurrentDate(new Date(year, month - 1, 1))}
-        onNextMonth={() => setCurrentDate(new Date(year, month + 1, 1))}
-        onToday={() => setCurrentDate(new Date())}
+        title={title}
+        mode={mode}
+        onModeChange={setMode}
+        onPrev={() => step(-1)}
+        onNext={() => step(1)}
+        onToday={goToday}
       />
       <CalendarWeekHeader locale={locale} weekStart={weekStart} />
       <div className='flex flex-1 flex-col overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--border-subtle)]'>
-        {weeks.map((week, idx) => (
+        {visibleWeeks.map((week, idx) => (
           <CalendarWeekRow
             key={week[0].dateStr || idx}
             week={week}

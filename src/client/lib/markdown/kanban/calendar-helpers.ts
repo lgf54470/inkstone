@@ -27,9 +27,13 @@ function cellsBefore(day: number, weekStart: number): number {
   return (day - weekStart + 7) % 7
 }
 
-export function getMonthWeeks(year: number, month: number, weekStart: number): CalendarDay[][] {
+function dayKeyOf(d: Date): string {
   const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-  const formatStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+export function getMonthWeeks(year: number, month: number, weekStart: number): CalendarDay[][] {
+  const formatStr = dayKeyOf
   const todayStr = formatStr(new Date())
 
   const firstDate = new Date(year, month, 1)
@@ -58,6 +62,34 @@ export function getMonthWeeks(year: number, month: number, weekStart: number): C
   }
 
   return weeks
+}
+
+/**
+ * The single week containing `date`, built exactly the way `getMonthWeeks` builds its rows — same
+ * day shape, same week-start alignment, same today flag — so the week view is the month view with
+ * one row and nothing else to keep in step. Days outside the anchor's month keep the same dimming
+ * the month grid gives its own leading and trailing cells.
+ */
+export function getWeekDays(date: Date, weekStart: number): CalendarDay[] {
+  const anchor = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const startDate = new Date(anchor)
+  startDate.setDate(anchor.getDate() - cellsBefore(anchor.getDay(), weekStart))
+
+  const todayStr = dayKeyOf(new Date())
+  const week: CalendarDay[] = []
+  for (let i = 0; i < 7; i++) {
+    const curr = new Date(startDate)
+    curr.setDate(startDate.getDate() + i)
+    const dateStr = dayKeyOf(curr)
+    week.push({
+      date: curr,
+      dateStr,
+      dayNum: curr.getDate(),
+      isCurrentMonth: curr.getMonth() === anchor.getMonth(),
+      isToday: dateStr === todayStr,
+    })
+  }
+  return week
 }
 
 function resolveItemDateRange(item: KanbanItem, dateField?: string): { start: string; end: string } | null {
