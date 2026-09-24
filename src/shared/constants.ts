@@ -61,6 +61,9 @@ export const LIMITS = {
   attachmentQuotaBytesR2: 10 * 1024 * 1024 * 1024,
   attachmentQuotaBytesKv: 1024 * 1024 * 1024,
   attachmentUploadsPerHour: 100,
+  // Each delete is an R2 head + delete + a ledger write, and the client only fires them one at a
+  // time; the budget exists to bound a scripted hammer, not any hand-driven cleanup.
+  attachmentDeletesPerHour: 300,
   importFilesMax: 500,
   importUploadMaxBytes: 64 * 1024 * 1024,
   importBundleMaxBytes: 32 * 1024 * 1024,

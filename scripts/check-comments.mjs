@@ -8628,6 +8628,8 @@ const allowed = new Map([
     '/**\n * How close a share\'s expiry has to be before the list calls it "expiring soon".\n * The category, the row\'s warning tone and the batch-extension flow all read this\n * one number, so "soon" means the same thing in each of them.\n */',
     '// A plausible marker is at most 32 chars; this cap only stops a body from carrying a novel,',
     '// and like the referrer cap it answers 400 rather than truncating what the caller sent.',
+    '// Each delete is an R2 head + delete + a ledger write, and the client only fires them one at a',
+    '// time; the budget exists to bound a scripted hammer, not any hand-driven cleanup.',
     '// Anonymous readers of a published library are metered by client IP, per surface:',
     '// the listing is one query per open, while a player issues a stream request per',
     '// range it needs, so playback gets the wider allowance.',
@@ -9384,6 +9386,7 @@ const allowed = new Map([
     '// Patch format checks run in-route after the ownership lookup so cross-user writes surface 404 first.',
   ]],
   ['src/worker/routes/kanban.ts', [
+    '/**\n * The route\'s write surfaces share one attempt budget: the budget itself is the throttle\'s\n * (`consumeAttemptBudget`), and this wrapper only translates a spent budget into the 429 the\n * API contract speaks, with the same window and lock the upload budget has always run on.\n */',
     '/**\n * The quota is answered from one D1 query: every kanban upload writes its own row into the same\n * `attachments` table the note attachments use, so the ledger stays in one place. This used to walk\n * the whole R2 bucket per upload to add up the objects — an O(bucket) list on every file — and the\n * kanban objects were invisible to D1. Objects uploaded before rows existed are not in the ledger\n * and are counted as nothing: the quota undercounts rather than blocking uploads that fit.\n */',
     '/** The ledger row a kanban upload owes the quota: same table, no note, `r2` storage, its own key. */',
     '/**\n * Stores the object, then its ledger row — in that order, so a row failure can take the object back\n * down and leave the quota\'s ledger truthful. An object without its row would be invisible to the\n * quota for good, which is why the row failure fails the whole upload.\n */',

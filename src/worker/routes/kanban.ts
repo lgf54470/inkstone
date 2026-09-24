@@ -16,11 +16,19 @@ function sanitizePathPart(value: string, fallback: string): string {
   return cleaned || fallback
 }
 
-async function enforceUploadThrottle(db: D1Database, userId: string): Promise<void> {
+/**
+ * The route's write surfaces share one attempt budget: the budget itself is the throttle's
+ * (`consumeAttemptBudget`), and this wrapper only translates a spent budget into the 429 the
+ * API contract speaks, with the same window and lock the upload budget has always run on.
+ */
+async function enforceKanbanThrottle(
+  db: D1Database,
+  target: { key: string; maxAttempts: number; action: string },
+): Promise<void> {
   try {
     await consumeAttemptBudget(db, [{
-      key: `kanban-upload:${userId}`,
-      maxAttempts: LIMITS.attachmentUploadsPerHour,
+      key: target.key,
+      maxAttempts: target.maxAttempts,
       windowMs: 60 * 60 * 1000,
       lockMs: 60 * 60 * 1000,
     }])
@@ -29,7 +37,7 @@ async function enforceUploadThrottle(db: D1Database, userId: string): Promise<vo
       throw new ApiError(
         429,
         'too_many_attempts',
-        `Too many uploads. Try again in ${error.retryAfterSec} seconds`,
+        `Too many ${target.action}. Try again in ${error.retryAfterSec} seconds`,
         { retryAfter: error.retryAfterSec },
       )
     }
@@ -157,7 +165,11 @@ async function storeKanbanAttachment(
 
 kanbanRoutes.post('/upload', requireAuth, async (c) => {
   const userId = c.get('userId')
-  await enforceUploadThrottle(c.env.DB, userId)
+  await enforceKanbanThrottle(c.env.DB, {
+    key: `kanban-upload:${userId}`,
+    maxAttempts: LIMITS.attachmentUploadsPerHour,
+    action: 'uploads',
+  })
 
   const { file, bytes, rawKanbanName, files } = await readUploadInput(c)
   await assertWithinStorageQuota(c.env.DB, userId, bytes.byteLength)
@@ -241,6 +253,13 @@ kanbanRoutes.get('/file/:kanbanName/:filename', requireAuth, async (c) => {
 })
 
 kanbanRoutes.delete('/file/:kanbanName/:filename', requireAuth, async (c) => {
+  const userId = c.get('userId')
+  await enforceKanbanThrottle(c.env.DB, {
+    key: `kanban-delete:${userId}`,
+    maxAttempts: LIMITS.attachmentDeletesPerHour,
+    action: 'deletions',
+  })
+
   const kanbanName = sanitizePathPart(c.req.param('kanbanName'), 'default')
   const filename = sanitizePathPart(c.req.param('filename'), 'file')
   const r2Key = `kanban/${kanbanName}/${filename}`
@@ -251,9 +270,8 @@ kanbanRoutes.delete('/file/:kanbanName/:filename', requireAuth, async (c) => {
       throw ApiError.notFound('File not found')
     }
     const ownerId = ownerOf(head.customMetadata)
-    const currentUserId = c.get('userId')
     // Same rule as GET: an object without owner metadata is nobody's to delete.
-    if (!ownerId || ownerId !== currentUserId) {
+    if (!ownerId || ownerId !== userId) {
       throw ApiError.forbidden('You do not have permission to delete this file')
     }
     await c.env.FILES.delete(r2Key)
@@ -261,7 +279,7 @@ kanbanRoutes.delete('/file/:kanbanName/:filename', requireAuth, async (c) => {
     // Objects predating the ledger have no row, and the delete is simply a no-op for them.
     await c.env.DB.prepare(
       `DELETE FROM attachments WHERE user_id = ?1 AND object_key = ?2 AND note_id IS NULL`,
-    ).bind(currentUserId, r2Key).run()
+    ).bind(userId, r2Key).run()
   }
 
   return c.json({ ok: true })

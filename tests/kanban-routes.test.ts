@@ -141,6 +141,26 @@ describe('kanban backend routes', () => {
     expect(removed!.args).toEqual(['user-1', 'kanban/default/my-file.png'])
   })
 
+  it('refuses deletions with 429 when the hourly budget is spent', async () => {
+    const r2 = fakeR2({
+      'kanban/default/my-file.png': { body: 'data', mime: 'image/png', userId: 'user-1' },
+    })
+    const { app } = buildTestApp(r2, 'user-1')
+    const { db, queries } = fakeDb({ lockedUntil: Date.now() + 60_000 })
+
+    const res = await app.request(
+      '/api/kanban/file/default/my-file.png',
+      { method: 'DELETE' },
+      { FILES: r2 as never, DB: db as never },
+    )
+    expect(res.status).toBe(429)
+    const body = await res.json() as { error: { code: string; details: { retryAfter: number } } }
+    expect(body.error.code).toBe('too_many_attempts')
+    expect(body.error.details.retryAfter).toBeGreaterThan(0)
+    expect(r2.delete).not.toHaveBeenCalled()
+    expect(queries.some((q) => q.sql.includes(LEDGER_DELETE)), 'a throttled delete still touched the ledger').toBe(false)
+  })
+
   it('rejects an unauthenticated GET of a kanban file', async () => {
     const r2 = fakeR2({
       'kanban/default/my-file.png': { body: 'data', mime: 'image/png', userId: 'user-1' },

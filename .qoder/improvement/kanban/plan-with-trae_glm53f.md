@@ -61,7 +61,7 @@
 - [x] G-06 删除改软删：`deleted` 旗标（仅字面 `true` 生效，与 `archived` 同规），归档面板分「已归档 / 已删除」两区，已删除可恢复（清两旗标回看板）或永久清除（项目 confirm 弹窗，danger tone）；视图/计数/静态快照/CSV 导出经 `kanbanActiveItems` 自动排除；恢复语义 = 回到看板而非归档架
 - [x] G-07 键盘 Delete/Backspace 移除聚焦卡片（接 G-06 软删语义，进 Chord 表与快捷键卡）
 - [x] G-08 附件配额改 D1 核算：kanban 上传写 `attachments` 行、删除删行，配额只查 D1；移除每次上传全量 list R2（存量无行对象按少计处理，注释说明）
-- [ ] G-09 DELETE 接口节流（复用 `consumeAttemptBudget`）
+- [x] G-09 DELETE 接口节流（复用 `consumeAttemptBudget`）
 
 ## 批次 4 · 功能增强
 
@@ -97,7 +97,8 @@
 | 2026-09-24 | G-05+T-05：CSV 体积预拒 + content 钳制，描述上限常量归位 body.ts | 36fd2e03 | csv/ui-csv 61 测试通过（新增 2）；typecheck/i18n 通过 |
 | 2026-09-24 | G-06：软删除 + 归档面板分区（恢复/永久清除带 confirm） | 见 git log | kanban+preview 120 文件 1401 用例全绿（archive 新增 5 用例）；typecheck/i18n/comments/style/size 通过 |
 | 2026-09-24 | G-07：键盘 Delete/Backspace 软删聚焦卡（走 handleDeleteItem，undo 返回）；chord 表 + 快捷键卡自动派生 | 96043237 | board-keys/shortcuts/view-state 55 测试通过（新增 3 用例 + 字段守卫断言）；kanban 全模块 106 文件 1328 用例全绿；typecheck/i18n/comments/style/size/escape/empty-catch/module-state/deep-imports 通过；allowlist 8274 条；size 基线重照（locale 501→502 行） |
-| 2026-09-24 | G-08：kanban 附件配额改 D1 台账核算（上传写 attachments 行、删除删行、行失败回滚对象），移除每次上传全量 list R2；存量无行对象按少计 | （本提交） | routes/orphan-reclaim/url-fields/attachment-* 5 文件 65 测试通过（route 新增 4 用例：台账写入、配额不再 list 桶、行失败回滚、删除删行）；typecheck/comments/style/size/escape/empty-catch/module-state/deep-imports/i18n 通过；上传 handler 超 50 行按职责拆出 storeKanbanAttachment，无需 size 豁免 |
+| 2026-09-24 | G-08：kanban 附件配额改 D1 台账核算（上传写 attachments 行、删除删行、行失败回滚对象），移除每次上传全量 list R2；存量无行对象按少计 | d7e5ff5b | routes/orphan-reclaim/url-fields/attachment-* 5 文件 65 测试通过（route 新增 4 用例：台账写入、配额不再 list 桶、行失败回滚、删除删行）；typecheck/comments/style/size/escape/empty-catch/module-state/deep-imports/i18n 通过；上传 handler 超 50 行按职责拆出 storeKanbanAttachment，无需 size 豁免 |
+| 2026-09-24 | G-09：DELETE 接口节流（`LIMITS.attachmentDeletesPerHour = 300`，复用 consumeAttemptBudget）；enforceUploadThrottle 泛化为 enforceKanbanThrottle 供上传/删除共用 | （本提交） | kanban-routes 16 测试通过（新增 429 用例：预算耗尽拒删、不触 R2 与台账）；typecheck/comments/style/size/escape/empty-catch/module-state/deep-imports/i18n 通过 |
 
 ## 固定验证
 
