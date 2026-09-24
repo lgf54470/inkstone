@@ -14,6 +14,7 @@ export function useShareVisitLogs(open: boolean, initialNoteId?: string) {
   const toast = useUi((s) => s.toast)
   const [isLoading, setIsLoading] = useState(false)
   const [data, setData] = useState<ShareVisitsResponse | null>(null)
+  const [error, setError] = useState(false)
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState<VisitFilter>('all')
   const [search, setSearch] = useState('')
@@ -22,7 +23,7 @@ export function useShareVisitLogs(open: boolean, initialNoteId?: string) {
   const { isExporting, progress: exportProgress, exportVisits: handleExport } =
     useVisitExport({ open, filter, search, noteId, toast })
 
-  const ctx = { setIsLoading, setData, setIsCleaning, toast }
+  const ctx = { setIsLoading, setData, setError, setIsCleaning, toast }
 
   useEffect(() => {
     if (open) {
@@ -50,7 +51,7 @@ export function useShareVisitLogs(open: boolean, initialNoteId?: string) {
     cleanVisitsFlow(type, days, ctx, () => fetchVisits(1, filter, search, noteId))
 
   return {
-    isLoading, isExporting, data, page, setPage,
+    isLoading, isExporting, data, error, page, setPage,
     filter, setFilter, search, setSearch, isCleaning, exportProgress,
     fetchVisits, handleFilterChange, handleSearchSubmit, handleClean, handleExport,
   }
@@ -59,6 +60,7 @@ export function useShareVisitLogs(open: boolean, initialNoteId?: string) {
 type VisitsCtx = {
   setIsLoading: (value: boolean) => void
   setData: (data: ShareVisitsResponse | null) => void
+  setError: (value: boolean) => void
   setIsCleaning: (value: boolean) => void
   toast: UiState['toast']
 }
@@ -71,6 +73,7 @@ async function fetchVisitsFlow(
   ctx: VisitsCtx,
 ): Promise<void> {
   ctx.setIsLoading(true)
+  ctx.setError(false)
   try {
     const res = await api.share.visits({
       page: targetPage,
@@ -80,8 +83,14 @@ async function fetchVisitsFlow(
       noteId: targetNoteId || undefined,
     })
     ctx.setData(res)
-  } catch {
-    ctx.toast({ title: t('common.action_failed'), tone: 'danger' })
+  } catch (error: unknown) {
+    // A failure has to *read* as a failure. Clearing the rows keeps the previous page from standing
+    // in for an answer this request never got, and `error` drives the table's own retry surface
+    // instead of a toast that leaves the list looking merely empty — which is the silent downgrade
+    // AGENTS.md rule 2 is written against. Same shape as the dashboard's analytics loader.
+    ctx.setData(null)
+    ctx.setError(true)
+    console.warn('[share] failed to load visit logs', error)
   } finally {
     ctx.setIsLoading(false)
   }

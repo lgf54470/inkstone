@@ -1,26 +1,23 @@
 import {
     Activity,
-    Bot,
     ChevronLeft,
     ChevronRight,
     Download,
-    Monitor,
     RefreshCw,
     Search,
-    Smartphone,
-    Tablet,
     Trash2,
-    User,
 } from 'lucide-react'
 import { useRef, useState } from 'react'
-import type { ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { ShareTimelineRange } from '@shared/types'
 import { Menu, Modal, type MenuItem } from '../../components/overlay'
 import { Input, Segmented } from '../../components/form'
 import { Button, IconButton } from '../../components/primitives'
-import { formatNumber, relativeTime } from '../../lib/time'
-import { t, useLocale } from '../../lib/i18n'
+import { LoadErrorState } from './share-load-error'
+import { LogsTable } from './share-visit-logs-table'
+import { formatNumber } from '../../lib/time'
+import { t } from '../../lib/i18n'
 import { useSession } from '../../store/session'
-import { countryFlag, countryNameLocalized, localizeEnvName, rangeOptions, visitorCountNote, type VisitFilter } from './share-helpers'
+import { rangeOptions, visitorCountNote, type VisitFilter } from './share-helpers'
 import { ShareSessionsPanel } from './share-sessions-panel'
 import { useShareSessions } from './use-share-sessions'
 import type { useShareVisitLogs } from './use-share-visit-logs-modal'
@@ -47,39 +44,52 @@ export function ShareVisitLogsModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={
-        <div className='flex items-center gap-2'>
-          <Activity size={17} className='text-[var(--accent)]' />
-          <span>{t('share.visit_logs_title')}</span>
-          {bundle.data && (
-            <span className='rounded-full bg-[var(--bg-card)] px-2 py-0.5 text-[length:var(--text-11)] font-normal text-[var(--text-tertiary)] border border-[var(--border-subtle)]'>
-              {t('share.total_records', { count: bundle.data.total })}
-            </span>
-          )}
-        </div>
-      }
+      title={<VisitLogsTitle total={bundle.data?.total} />}
       description={t('share.visit_logs_desc')}
       width={MODAL_WIDTH}
     >
       <div className='flex flex-col gap-3'>
         <VisitLogsToolbar bundle={bundle} sessions={sessions} />
         {sessions.mode === 'rows' ? (
-          <>
-            <ExportProgressRow progress={bundle.exportProgress} />
-            <LogsTable bundle={bundle} />
-            {/* The table lists fingerprints, not people: the same visitor counts once per UTC day, and
-                everyone behind one address shares one. Saying so is what keeps a UV number readable —
-                and an instance that keeps no fingerprint says that instead of this caliber. */}
-            <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-              {visitorCountNote(fingerprints)}
-            </p>
-            {bundle.data && bundle.data.totalPages > 1 && <PaginationFooter bundle={bundle} />}
-          </>
+          bundle.error ? (
+            <LoadErrorState
+              label={t('share.logs_load_failed')}
+              onRetry={() => void bundle.fetchVisits(bundle.page, bundle.filter, bundle.search)}
+            />
+          ) : (
+            <>
+              <ExportProgressRow progress={bundle.exportProgress} />
+              <LogsTable bundle={bundle} />
+              {/* The table lists fingerprints, not people: the same visitor counts once per UTC day,
+                  and everyone behind one address shares one. Saying so is what keeps a UV number
+                  readable — and an instance that keeps no fingerprint says that instead of this
+                  caliber. */}
+              <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+                {visitorCountNote(fingerprints)}
+              </p>
+              {bundle.data && bundle.data.totalPages > 1 && <PaginationFooter bundle={bundle} />}
+            </>
+          )
         ) : (
           <ShareSessionsPanel bundle={sessions} />
         )}
       </div>
     </Modal>
+  )
+}
+
+/** The heading carries the record count of the page on screen, and nothing while there is no page. */
+function VisitLogsTitle({ total }: { total: number | undefined }) {
+  return (
+    <div className='flex items-center gap-2'>
+      <Activity size={17} className='text-[var(--accent)]' />
+      <span>{t('share.visit_logs_title')}</span>
+      {total !== undefined && (
+        <span className='rounded-full bg-[var(--bg-card)] px-2 py-0.5 text-[length:var(--text-11)] font-normal text-[var(--text-tertiary)] border border-[var(--border-subtle)]'>
+          {t('share.total_records', { count: total })}
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -268,186 +278,6 @@ function CleanLogsMenu({ isCleaning, onClean }: {
       {open && <Menu open={open} anchor={buttonRef} items={items} align='end' onClose={() => setOpen(false)} />}
     </>
   )
-}
-
-function LogsTable({ bundle }: { bundle: LogsBundle }) {
-  const { data, isLoading } = bundle
-  return (
-    <div className='max-h-115 overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-card)]'>
-      <table className='w-full border-collapse text-left text-[length:var(--text-12)]'>
-        <LogsTableHeader />
-        <tbody className='divide-y divide-[var(--border-subtle)]'>
-          {data && data.visits.length > 0 ? (
-            data.visits.map((log) => (
-              <LogRow key={log.id} log={log} />
-            ))
-          ) : (
-            <tr>
-              <td colSpan={7} className='py-12 text-center text-[var(--text-quaternary)]'>
-                {isLoading ? t('common.loading') : t('share.no_logs_found')}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function LogsTableHeader() {
-  return (
-    <thead className='sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-card)] text-[length:var(--text-11)] text-[var(--text-tertiary)] uppercase tracking-wider'>
-      <tr>
-        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_time')}</th>
-        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_note')}</th>
-        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_location')}</th>
-        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_referrer')}</th>
-        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_client')}</th>
-        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_type')}</th>
-        <th scope='col' className='px-3 py-2 font-medium'>{t('share.col_fp')}</th>
-      </tr>
-    </thead>
-  )
-}
-
-type VisitLog = ShareVisitsResponse['visits'][number]
-
-function LogRow({ log }: {
-  log: VisitLog
-}) {
-  const flag = countryFlag(log.country)
-  const countryName = countryNameLocalized(log.country, useLocale())
-  return (
-    <tr className='transition-colors hover:bg-[var(--bg-hover)]'>
-      <VisitTimeCell log={log} />
-      <VisitNoteCell log={log} />
-      <VisitLocationCell log={log} flag={flag} countryName={countryName} />
-      <VisitReferrerCell log={log} />
-      <VisitClientCell log={log} />
-      <td className='whitespace-nowrap px-3 py-2'>
-        <VisitTypeBadge log={log} />
-      </td>
-      <td className='whitespace-nowrap px-3 py-2 font-mono text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-        {log.visitorFp || '-'}
-      </td>
-    </tr>
-  )
-}
-
-function VisitTimeCell({ log }: { log: VisitLog }) {
-  const locale = useLocale()
-  return (
-    <td className='whitespace-nowrap px-3 py-2'>
-      <div className='flex flex-col'>
-        <span className='text-[length:var(--text-11)] font-medium text-[var(--text-primary)]'>
-          {relativeTime(log.visitedAt)}
-        </span>
-        <span className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-          {new Date(log.visitedAt).toLocaleTimeString(locale, {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-          })}
-        </span>
-      </div>
-    </td>
-  )
-}
-
-function VisitNoteCell({ log }: { log: VisitLog }) {
-  return (
-    <td className='px-3 py-2'>
-      <div className='flex flex-col max-w-40'>
-        <span className='truncate font-medium text-[length:var(--text-12)] text-[var(--text-primary)]'>
-          {log.noteTitle || t('common.untitled_note')}
-        </span>
-        <span className='truncate font-mono text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-          {`/s/${log.slug}`}
-        </span>
-      </div>
-    </td>
-  )
-}
-
-function VisitLocationCell({ log, flag, countryName }: {
-  log: VisitLog
-  flag: string
-  countryName: string
-}) {
-  return (
-    <td className='whitespace-nowrap px-3 py-2'>
-      <div className='flex items-center gap-1.5'>
-        <span className='text-[length:var(--text-14)]'>{flag}</span>
-        <span className='text-[length:var(--text-11)] text-[var(--text-secondary)]'>
-          {log.city ? `${countryName}, ${log.city}` : countryName}
-        </span>
-      </div>
-    </td>
-  )
-}
-
-function VisitReferrerCell({ log }: { log: VisitLog }) {
-  return (
-    <td className='px-3 py-2'>
-      <span className='max-w-35 truncate text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
-        {log.referrerHost || (
-          <span className='italic text-[var(--text-quaternary)]'>
-            {t('share.direct_access')}
-          </span>
-        )}
-      </span>
-    </td>
-  )
-}
-
-function VisitClientCell({ log }: { log: VisitLog }) {
-  return (
-    <td className='whitespace-nowrap px-3 py-2'>
-      <div className='flex items-center gap-1.5 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
-        {deviceIcon(log.deviceType)}
-        <span>
-          {localizeEnvName(log.browser)} / {localizeEnvName(log.os)}
-        </span>
-      </div>
-    </td>
-  )
-}
-
-function VisitTypeBadge({ log }: {
-  log: ShareVisitsResponse['visits'][number]
-}) {
-  if (log.isBot) {
-    return (
-      <span className='inline-flex items-center gap-1 rounded bg-[var(--warning)]/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--warning)] border border-[var(--warning)]/20'>
-        <Bot size={11} /> {log.botName || t('share.badge_bot')}
-      </span>
-    )
-  }
-  if (log.isOwner) {
-    return (
-      <span className='inline-flex items-center gap-1 rounded bg-[var(--accent)]/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--accent)] border border-[var(--accent)]/20'>
-        <User size={11} /> {t('share.badge_owner')}
-      </span>
-    )
-  }
-  if (log.isSelfReferrer) {
-    return (
-      <span className='inline-flex items-center gap-1 rounded bg-[var(--bg-hover)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--text-secondary)] border border-[var(--border-default)]'>
-        {t('share.badge_self_referrer')}
-      </span>
-    )
-  }
-  return (
-    <span className='inline-flex items-center gap-1 rounded bg-[var(--success)]/10 px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--success)] border border-[var(--success)]/20'>
-      {t('share.badge_human')}
-    </span>
-  )
-}
-
-function deviceIcon(type?: string | null) {
-  if (type === 'mobile') return <Smartphone size={12} className='text-[var(--text-tertiary)]' />
-  if (type === 'tablet') return <Tablet size={12} className='text-[var(--text-tertiary)]' />
-  return <Monitor size={12} className='text-[var(--text-tertiary)]' />
 }
 
 function PaginationFooter({ bundle }: { bundle: LogsBundle }) {

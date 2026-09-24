@@ -4329,6 +4329,10 @@ const allowed = new Map([
     '// The anchor has to really land in the body: the module removes it again, and a',
     '// mock that swallows the append turns that removal into a not-a-child throw.',
   ]],
+  ['src/client/features/share/share-visit-logs-error-state.test.ts', [
+    '// The defect this guards: an unanswered read used to render as "no logs found", which is a',
+    '// claim about the account\'s traffic rather than about the request.',
+  ]],
   ['src/client/features/share/share-visit-logs-export.test.ts', [
     '/** Same page shape over a history of any length, for the cap case. */',
     '/** Mounts the hook directly so a test can open and close the modal around an in-flight export. */',
@@ -4340,10 +4344,15 @@ const allowed = new Map([
     '// Opens the clean menu with a real click and picks the wipe-everything entry.',
   ]],
   ['src/client/features/share/share-visit-logs-modal.tsx', [
-    '/* The table lists fingerprints, not people: the same visitor counts once per UTC day, and\n                everyone behind one address shares one. Saying so is what keeps a UV number readable —\n                and an instance that keeps no fingerprint says that instead of this caliber. */',
+    '/* The table lists fingerprints, not people: the same visitor counts once per UTC day,\n                  and everyone behind one address shares one. Saying so is what keeps a UV number\n                  readable — and an instance that keeps no fingerprint says that instead of this\n                  caliber. */',
+    '/** The heading carries the record count of the page on screen, and nothing while there is no page. */',
     '/**\n * The session view\'s own state: which mode the panel is in, the window it covers, and the traffic\n * filter it asks for (ADR-0003). It is deliberately separate from the log\'s filter, which speaks a\n * vocabulary sessions cannot express — "bots only" and "the author only" are not things a visitor\'s\n * sittings can be narrowed to, and quietly substituting another filter would misreport the range.\n */',
     '/**\n * A long export is a walk of many pages, so it reports where it is and renders nothing at\n * all once it is done: the line appears below the toolbar rather than inside it, so opening\n * and closing it can never move the buttons the person is aiming at.\n */',
     '/**\n * The row vocabulary is four classes (all, real, bots, the author), and search and CSV export only\n * mean anything for rows — which is exactly why the two modes each render their own controls\n * instead of one set that would be dead half the time. Sessions cannot be searched or exported, and\n * "bots only" is not something a visitor\'s sittings can be narrowed to.\n */',
+  ]],
+  ['src/client/features/share/share-visit-logs-table.tsx', [
+    '/**\n * The rows the logs request answered with, or the state the request is in when it has not answered\n * yet: the loading rows are placeholders and the empty row is a fact ("nothing matched"), and each\n * of the three reads differently on purpose.\n */',
+    '/**\n * A page that has been asked for and not answered yet is loading, not empty. Five rows stand in as\n * shimmer so the first fetch (and a search that is still running) can never read as "no logs found\n * matching filters" — a claim about the data that the request had not made yet.\n */',
   ]],
   ['src/client/features/share/share-visitor-count-note.test.ts', [
     '/**\n * SH-83: UV is a salted fingerprint count — once per person per UTC day, and one bucket per address\n * however many people sit behind it. Neither the KPI nor the log table could be read that way from\n * the screen alone, so the log view now states it; this pins that the sentence is really there.\n */',
@@ -4401,6 +4410,12 @@ const allowed = new Map([
     '// One patch for the whole account section: both values belong to the same document, and two',
     '// calls would be two writes of one thing.',
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
+  ]],
+  ['src/client/features/share/use-share-visit-logs-modal.ts', [
+    '// A failure has to *read* as a failure. Clearing the rows keeps the previous page from standing',
+    '// in for an answer this request never got, and `error` drives the table\'s own retry surface',
+    '// instead of a toast that leaves the list looking merely empty — which is the silent downgrade',
+    '// AGENTS.md rule 2 is written against. Same shape as the dashboard\'s analytics loader.',
   ]],
   ['src/client/features/share/use-visit-export.ts', [
     '/** How much of the walk has landed, against the total the endpoint reports for the same query. */',
