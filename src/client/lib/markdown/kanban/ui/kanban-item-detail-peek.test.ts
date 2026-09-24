@@ -189,8 +189,8 @@ function openCardFromBoard(isFullscreen: boolean): void {
   const card = rendered.container.querySelector<HTMLElement>('[data-item-id="a"]')
   if (!card) throw new Error('the board drew no card to open')
   act(() => {
-    // A synthetic click carries `detail: 0`, which the board reads as the keyboard activation and
-    // opens at once — the deliberate double-click guard is a pointer gesture (see kanban-card.tsx).
+    // A click on the title opens the detail at once; there is no window the synthetic
+    // activation has to wait out (see kanban-card-title.tsx).
     card.querySelector<HTMLButtonElement>('h3 button')!.click()
   })
 }

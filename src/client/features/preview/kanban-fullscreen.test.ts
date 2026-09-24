@@ -288,9 +288,11 @@ describe('kanban full screen edit carry-over', () => {
     const titleOf = () => canvas.querySelector<HTMLElement>('[data-item-id] h3')?.textContent
     expect(titleOf()).toBe('First Task')
     await act(async () => {
-      // Both of the title's gestures live on the button inside the heading (SH-107), so the double
-      // click that starts editing is dispatched on the control itself.
-      canvas.querySelector<HTMLElement>('[data-item-id] h3 button')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+      // Rename goes through the pencil beside the title: the title button opens the detail, and the
+      // pencil starts the rename field on the card the moved board still shows.
+      canvas.querySelector<HTMLElement>('[data-item-id] [data-kanban-rename-card]')!.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      )
     })
     const input = canvas.querySelector<HTMLInputElement>('input[data-owns-escape="true"]')!
     await act(async () => {

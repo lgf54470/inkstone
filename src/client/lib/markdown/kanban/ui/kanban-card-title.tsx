@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import { Pencil } from 'lucide-react'
 import { t } from '../../../i18n'
 import { KanbanIconBadge } from './kanban-icon-badge'
@@ -6,62 +6,19 @@ import { KanbanIconBadge } from './kanban-icon-badge'
 /**
  * The card's title: the one part of a card that is a gesture rather than a value.
  *
- * It has three doors — a click opens the detail, a double click renames in place, and `F2` renames
- * from the keyboard — and the first two share a pointer, which is why the click has to wait. It lives
- * beside the card rather than inside it for the same reason the full screen board's title lives beside
- * its header: a heading that turns into a field and back is a control of its own, and the card around
- * it only decides where it stands.
+ * One click opens the detail, and rename lives on the pencil beside the title and on `F2`. A double
+ * click used to rename, and the first click waited a quarter second for the second not to happen —
+ * a hold every open paid so a gesture few readers knew could run. The wait is gone: opening is
+ * immediate, and the two rename doors the wait existed to protect are still there.
  */
 
 /**
- * How long a click on a card's title waits before it opens the detail.
- *
- * A title carries two gestures — one click opens, two rename — and a browser reports the second only
- * once it has happened, so the first has to be held back. Without the hold the click opened the
- * dialog and the dialog's own overlay swallowed the second click, which closed it again: the rename
- * never happened, from the pointer or from `dblclick`, which is what the user reported as "double
- * clicking a title does not rename it, it flashes the detail window". A quarter of a second is what
- * the platform's own rename gestures use; it is short enough to read as immediate and long enough to
- * catch a deliberate double click.
- */
-export const KANBAN_TITLE_OPEN_DELAY_MS = 250
-
-/**
- * The title's two pointer gestures, the wait between them, and the one key that renames without a
- * pointer at all: `F2`, which is what Windows and every file manager taught for renaming the thing
- * under the caret.
- *
- * A click a keyboard made opens at once — `detail === 0` is how a synthetic activation says it had no
- * second click to wait for, so `Enter` and `Space` on the title stay instant. The pending open is
- * dropped when the card goes away: a filter, a view switch or a move can unmount a card inside the
- * window, and a dialog for a card that is no longer on the board would be a dialog with nothing in it.
+ * The title's pointer and keyboard doors. A keyboard activation and a pointer press open alike;
+ * the pencil and `F2` are the doors a rename has that are not the title itself.
  */
 export function useCardTitleGestures(onOpenDetail: () => void, startEditing: () => void) {
-  const pendingOpenRef = useRef<number | null>(null)
-
-  const cancelPendingOpen = () => {
-    if (pendingOpenRef.current === null) return
-    window.clearTimeout(pendingOpenRef.current)
-    pendingOpenRef.current = null
-  }
-
-  useEffect(() => cancelPendingOpen, [])
-
-  const handleTitleClick = (e: MouseEvent<HTMLButtonElement>) => {
-    if (e.detail === 0) {
-      onOpenDetail()
-      return
-    }
-    cancelPendingOpen()
-    pendingOpenRef.current = window.setTimeout(() => {
-      pendingOpenRef.current = null
-      onOpenDetail()
-    }, KANBAN_TITLE_OPEN_DELAY_MS)
-  }
-
-  const handleTitleDoubleClick = () => {
-    cancelPendingOpen()
-    startEditing()
+  const handleTitleClick = () => {
+    onOpenDetail()
   }
 
   const handleTitleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -70,7 +27,7 @@ export function useCardTitleGestures(onOpenDetail: () => void, startEditing: () 
     startEditing()
   }
 
-  return { handleTitleClick, handleTitleDoubleClick, handleTitleKeyDown }
+  return { handleTitleClick, handleTitleKeyDown }
 }
 
 /** The card's own title, and the value behind it: what it says while it is a heading and while it is a field. */
@@ -153,10 +110,9 @@ function CardTitleEditor({
  * board's `<h2>` (kanban-header) and then the cards, with no level skipped in between. As an `h4` the
  * card jumped a level, which is what a browser reading this surface reports as heading-order.
  *
- * The heading is the card's heading and nothing else: both of the card's title gestures live on the
- * button inside it — a click opens the detail, a double click starts editing — which is what having
- * them on the heading itself cost (an affordance on a non-interactive element, and a keyboard that
- * could reach neither of them). The heading carries no type of its own either: the size and weight sit
+ * The heading is the card's heading and nothing else: the card's title gestures live on the
+ * button inside it — a click opens the detail — and the rename doors are the pencil beside it and
+ * `F2` on the button. The heading carries no type of its own either: the size and weight sit
  * on the wrapper in `CardBody`, because a note's stylesheet owns an `h3` and would win any utility
  * written here (styles/kanban.css hands it back for the board's own markup).
  *
@@ -170,14 +126,12 @@ function CardTitleView({
   icon,
   onStartEditing,
   onTitleClick,
-  onTitleDoubleClick,
   onTitleKeyDown,
 }: {
   title: string
   icon?: string
   onStartEditing: () => void
-  onTitleClick: (e: MouseEvent<HTMLButtonElement>) => void
-  onTitleDoubleClick: () => void
+  onTitleClick: () => void
   onTitleKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void
 }) {
   return (
@@ -191,7 +145,6 @@ function CardTitleView({
         <button
           type='button'
           onClick={onTitleClick}
-          onDoubleClick={onTitleDoubleClick}
           onKeyDown={onTitleKeyDown}
           className='line-clamp-2 min-w-0 cursor-pointer text-left hover:text-[var(--accent)]'
         >
@@ -211,7 +164,6 @@ export function CardTitle({
   onChangeText,
   onStartEditing,
   onTitleClick,
-  onTitleDoubleClick,
   onTitleKeyDown,
   onBlur,
   onCancel,
@@ -222,8 +174,7 @@ export function CardTitle({
   titleText: string
   onChangeText: (text: string) => void
   onStartEditing: () => void
-  onTitleClick: (e: MouseEvent<HTMLButtonElement>) => void
-  onTitleDoubleClick: () => void
+  onTitleClick: () => void
   onTitleKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void
   onBlur: () => void
   onCancel: () => void
@@ -238,7 +189,6 @@ export function CardTitle({
       icon={icon}
       onStartEditing={onStartEditing}
       onTitleClick={onTitleClick}
-      onTitleDoubleClick={onTitleDoubleClick}
       onTitleKeyDown={onTitleKeyDown}
     />
   )

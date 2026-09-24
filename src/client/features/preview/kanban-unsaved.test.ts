@@ -70,11 +70,11 @@ async function mountSurface(): Promise<Surface> {
 
 async function renameFirstCard(block: HTMLElement, title: string): Promise<void> {
   await act(async () => {})
-  // Both of the title's gestures live on the button inside the heading (SH-107): the double click
-  // that starts editing is on the control, not on the heading that holds it.
-  const titleButton = block.querySelector<HTMLElement>('[data-item-id] h3 button')!
+  // Rename goes through the pencil the title row carries: the title button itself opens the detail,
+  // so the field this helper types into is the one the pencil starts.
+  const pencil = block.querySelector<HTMLElement>('[data-item-id] [data-kanban-rename-card]')!
   await act(async () => {
-    titleButton.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+    pencil.dispatchEvent(new MouseEvent('click', { bubbles: true }))
   })
   const input = block.querySelector<HTMLInputElement>('input[data-owns-escape="true"]')!
   await act(async () => {

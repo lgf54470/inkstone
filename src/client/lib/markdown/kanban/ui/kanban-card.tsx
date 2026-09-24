@@ -206,7 +206,6 @@ function CardBody({
           onChangeText={titleState.setText}
           onStartEditing={titleState.startEditing}
           onTitleClick={gestures.handleTitleClick}
-          onTitleDoubleClick={gestures.handleTitleDoubleClick}
           onTitleKeyDown={gestures.handleTitleKeyDown}
           onBlur={titleState.handleBlur}
           onCancel={titleState.handleCancel}

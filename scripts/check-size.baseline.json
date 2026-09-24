@@ -11,6 +11,9 @@
   "src/client/features/music/music-track-menu.test.ts": {
     "longFns": 1
   },
+  "src/client/features/preview/kanban-fullscreen.test.ts": {
+    "longFns": 1
+  },
   "src/client/lib/markdown/slides/body.test.ts": {
     "longFns": 1
   },

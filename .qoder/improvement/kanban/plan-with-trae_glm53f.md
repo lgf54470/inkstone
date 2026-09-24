@@ -45,7 +45,8 @@
 - [x] G-16 搜索框聚焦展开加宽（w-28 → focus:w-48，width 200ms 过渡）
 - [x] G-01 日历月份标题 Intl 本地化（`Intl.DateTimeFormat(年+long月, UTC)`，zh「2026年9月」/en「September 2026」，双语测试钉住）
 - [x] G-03 触屏悬停控件常显（11 处 `opacity-0` 显形控件追加 `pointer-coarse:!opacity-100`，已验证产物 CSS 编译出 `@media (pointer: coarse)`）
-- [ ] G-02 卡片单击立即打开详情（移除 250ms 等待；重命名保留铅笔按钮 + F2；同提交重写 `kanban-card.test.ts` 与 `e2e-visual.mjs` 双击断言到新契约）
+- [x] G-02 卡片单击立即打开详情（移除 250ms 等待与 dblclick 重命名；重命名走铅笔按钮 + F2；`kanban-card.test.ts`/`kanban-board-keys.test.ts`/`e2e-visual.mjs` 断言重写到新契约）
+- [ ] 遗留（先在性，非本轮引入，另行立项）：`e2e-visual` 全屏场景「selected tab is inside the strip」几何断言在本机确定性失败（strip 179px / scrollLeft 15 / inside:false）。基线 worktree（6591fb73，旧脚本对旧应用）以完全相同签名失败（527 passed/1 failed），证明先在于任何本轮改动；疑似 `useSelectedTabInView` 单向滚动不回位。按「不顺手修无关问题」不在本提交夹带。
 
 ## 批次 2 · 正确性与性能（核心缺陷）
 
@@ -86,7 +87,8 @@
 | 2026-09-24 | G-15：图标徽标按字素簇截断，防长值撑破卡片 | 5efc044b | icon-badge/option-names 19 测试通过；typecheck/comments/size 通过；allowlist 8210 条 |
 | 2026-09-24 | G-16：搜索框聚焦加宽（本行台账在下一次提交内补记，原应同提交） | 14c32c45 | style/hardcoded/typecheck 通过；无新增测试（纯 CSS 过渡） |
 | 2026-09-24 | G-01：日历月份标题按 locale 格式化（含 UTC 时区防偏移） | 6591fb73 | calendar/view-rows 11 测试通过；typecheck/comments 通过；allowlist 8212 条 |
-| 2026-09-24 | G-03：触屏控件常显（11 处 pointer-coarse 变体，build 产物验证） | 见 git log | card/header 36 测试通过；typecheck 通过；build 产物 CSS 含 pointer: coarse 规则 |
+| 2026-09-24 | G-03：触屏控件常显（11 处 pointer-coarse 变体，build 产物验证） | 3fbb9272 | card/header 36 测试通过；typecheck 通过；build 产物 CSS 含 pointer: coarse 规则 |
+| 2026-09-24 | G-02：单击即开详情，重命名收敛到铅笔+F2；e2e 断言重写 | 见 git log | kanban 全模块 106 文件 1312 测试通过；e2e.mjs 177/0；e2e-visual 533/1（唯一失败为先在性 tab 几何问题，基线复现同签名，见遗留条目）；contrast:check 通过 |
 
 ## 固定验证
 

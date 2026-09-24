@@ -3021,16 +3021,15 @@ async function assertKanbanColumnHeights(page, scope, where) {
 }
 
 /**
- * A card's title carries two gestures, driven here with a real pointer because the difference between
- * them is a count the DOM only fills in for a pointer: one click opens the detail after the
- * double-click window, two rename the card in place.
+ * A card's title opens the detail on the click it receives — no window, no waiting — and rename lives
+ * on the pencil the title row carries and on `F2`, driven here with a real pointer.
  *
- * It is the report that put this here (user, 2026-09-23): double clicking a title flashed the detail
- * window and closed it, so the rename could never happen — the first click had already opened the
- * dialog and the dialog's own overlay ate the second one. What is asserted is therefore both halves:
- * the double click must draw a field, and it must leave the count of dialogs alone. Escape is then
- * pressed, and has to leave the rename without writing it (and without closing the board it was
- * opened in, which `data-owns-escape` is what stops).
+ * History worth keeping: the title used to carry two pointer gestures, and the open waited a quarter
+ * second for a second click that would rename — a wait the reader paid on every open, and the rename
+ * it protected could not run anyway, because the dialog's own overlay ate the second press (user
+ * report, 2026-09-23). What is asserted now is the contract that replaced it: one click opens a dialog
+ * within a beat, and the pencil opens a rename field over the same board — never a dialog — whose
+ * Escape cancels without closing anything else.
  */
 async function assertKanbanTitleGestures(page, scope, where) {
   const aimed = await page.evaluate((scope) => {
@@ -3059,22 +3058,40 @@ async function assertKanbanTitleGestures(page, scope, where) {
   }, scope)
   // The pointer has to land on the title itself: the note's board sits in a pane whose scrollport
   // reaches under the app's fixed footer, and a press that lands there is a press on something else.
-  check(`kanban ${where}: the card title can be double clicked (${aimed.reason ?? aimed.text})`, aimed.hit === true, JSON.stringify(aimed))
+  check(`kanban ${where}: the card title can be clicked (${aimed.reason ?? aimed.text})`, aimed.hit === true, JSON.stringify(aimed))
   if (!aimed.hit) return
 
-  // Two full press/release pairs, the second carrying count 2: one `mouse.click({ clickCount: 2 })` is
-  // a single press with a count on it, and the browser answers that with one `click` and no
-  // `dblclick` at all — which is how this assertion first read a card that had not been renamed.
+  // One full press/release pair: the detail is a dialog the moment the click lands.
   await page.mouse.move(aimed.x, aimed.y)
   await page.mouse.down({ clickCount: 1 })
   await page.mouse.up({ clickCount: 1 })
-  await page.mouse.down({ clickCount: 2 })
-  await page.mouse.up({ clickCount: 2 })
-  await sleep(200)
+  await sleep(150)
+  const opened = await readCardTitleState(page, scope, aimed.itemId)
+  check(`kanban ${where}: one click opens the card's detail at once`, opened.dialogs === aimed.dialogs + 1, JSON.stringify({ before: aimed.dialogs, after: opened.dialogs }))
+
+  await page.keyboard.press('Escape')
+  await sleep(150)
+  const closed = await readCardTitleState(page, scope, aimed.itemId)
+  check(`kanban ${where}: escape closes the detail and leaves no rename field`, closed.dialogs === aimed.dialogs && closed.editing === false, JSON.stringify(closed))
+
+  // The rename goes through the pencil beside the title: hovering the card reveals it, and its press
+  // must draw a field without opening any dialog over the board.
+  const pencil = await page.evaluate((itemId) => {
+    const card = document.querySelector(`[data-item-id="${itemId}"]`)
+    const button = card?.querySelector('[data-kanban-rename-card]')
+    if (!button) return null
+    const box = button.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+  }, aimed.itemId)
+  check(`kanban ${where}: the card draws a rename pencil`, pencil !== null, JSON.stringify(pencil))
+  if (!pencil) return
+  await page.mouse.move(pencil.x, pencil.y)
+  await page.mouse.click(pencil.x, pencil.y)
+  await sleep(150)
   const renamed = await readCardTitleState(page, scope, aimed.itemId)
-  check(`kanban ${where}: a double click turns the card title into a field`, renamed.editing === true, JSON.stringify(renamed))
+  check(`kanban ${where}: the pencil turns the card title into a field`, renamed.editing === true, JSON.stringify(renamed))
   check(
-    `kanban ${where}: a double click renames the card instead of opening its detail`,
+    `kanban ${where}: renaming opens no dialog over the board`,
     renamed.dialogs === aimed.dialogs,
     JSON.stringify({ before: aimed.dialogs, after: renamed.dialogs }),
   )
@@ -3712,7 +3729,7 @@ async function readQuickAddState(page, scope) {
  * The count is document-wide rather than scoped to the surface, and that is not a detail: the card
  * window is a `Modal` (a right-hand `Drawer` in the overlay), both of which are portalled to the body,
  * so a count taken inside the board's own block reads zero while a card window is open over it. That is
- * exactly how a keyboard chord that filed a card through the header's door slipped past the double-click
+ * exactly how a keyboard chord that filed a card through the header's door slipped past the dialog-count
  * assertion that was supposed to prove the rename gesture does not open it (found while adding KU-14).
  * The board's own overlay is a dialog too, so it is in the count on both sides of every comparison.
  */
@@ -3774,10 +3791,9 @@ async function assertKanbanCardPeek(page, scope, where) {
   check(`kanban ${where}: the card can be opened from its title (${aimed.reason ?? aimed.cardId})`, aimed.hit === true, JSON.stringify(aimed))
   if (!aimed.hit) return
 
-  // A pointer press is a candidate double click, so the board deliberately opens the card a beat
-  // later — the wait is the feature, not the flake.
+  // The click opens the detail at once now; the sleep only gives the dialog its mount.
   await page.mouse.click(aimed.x, aimed.y)
-  await sleep(450)
+  await sleep(250)
 
   const opened = await page.evaluate((scope) => {
     const root = document.querySelector(scope)

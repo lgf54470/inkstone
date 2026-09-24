@@ -252,11 +252,11 @@ describe('the chords stay out of everyone else\'s way', () => {
 
   it('leaves the keys that belong to a field alone', () => {
     const { container, onUpdateData } = mountBoard()
-    const title = titleButton(container, 'a')
-    act(() => { title.click() })
-    act(() => {
-      title.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }))
-    })
+    // The rename field stands in the card itself, opened from the pencil the title row carries: a
+    // field the board can see the keys of, exactly the one `n` must not act on.
+    const pencil = container.querySelector<HTMLButtonElement>('[data-item-id="a"] [data-kanban-rename-card]')
+    expect(pencil, 'card a draws no rename pencil').not.toBeNull()
+    act(() => { pencil!.click() })
     const field = container.querySelector<HTMLInputElement>('input[data-owns-escape]')
     expect(field, 'no card title field was opened to type in').not.toBeNull()
     act(() => {

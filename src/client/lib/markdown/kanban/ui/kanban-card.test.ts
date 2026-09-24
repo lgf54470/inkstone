@@ -1,11 +1,10 @@
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../i18n'
 import { installTestGlobals } from '../../../test-render'
 import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
 import { KanbanCard } from './kanban-card'
-import { KANBAN_TITLE_OPEN_DELAY_MS } from './kanban-card-title'
 import { KanbanGalleryView } from './kanban-gallery-view'
 import { KanbanListView } from './kanban-list-view'
 
@@ -166,13 +165,6 @@ function pointerClick(target: Element, detail = 1): void {
   })
 }
 
-/** Let the window a click waits for pass, so the click it was holding becomes the open it meant. */
-function passTheDoubleClickWindow(): void {
-  act(() => {
-    vi.advanceTimersByTime(KANBAN_TITLE_OPEN_DELAY_MS * 4)
-  })
-}
-
 /**
  * SH-107's shape, asked of the mounted card rather than of its source: the card is a container of
  * controls and its title is the control that opens the detail. The three views draw the same card,
@@ -224,68 +216,37 @@ describe('the kanban card is a container whose title opens the detail', () => {
 })
 
 /**
- * A card's title carries two gestures — one click opens the detail, two rename it — and the first has
- * to wait for the second not to happen. It used to open the dialog at once, and the dialog's own
- * overlay then ate the second click and closed it again: the reader saw the detail window flash and
- * vanish, and the rename could never run (user report 2026-09-23). The wait is what `detail` is for:
- * a real pointer's first click says `1`, a keyboard activation says `0` and has no second click to
- * wait for, and a double click says `2` on its second click.
+ * A card's title opens the detail on the click it receives, whatever count the pointer put on it. A
+ * double click used to rename instead, and the open waited a quarter second for the second click not
+ * to happen — a hold every open paid, and the rename it bought could not run anyway once the dialog's
+ * overlay ate the second press (user report 2026-09-23). The wait is gone: every click opens, and
+ * rename lives on the pencil beside the title and on `F2`.
  */
-describe('a card title opens on one click and renames on two', () => {
-  beforeAll(() => {
-    vi.useFakeTimers()
-  })
-
-  afterAll(() => {
-    vi.useRealTimers()
-  })
-
-  it('holds the click back for the double-click window, then opens the detail', () => {
+describe('a card title opens on one click', () => {
+  it('opens the detail on the first click, with no window to wait out', () => {
     const { card, onOpenDetail, dispose } = renderCard(shapeCard)
     pointerClick(titleOf(card))
-    expect(onOpenDetail, 'the detail opened on the first half of a possible double click').not.toHaveBeenCalled()
-    passTheDoubleClickWindow()
-    expect(onOpenDetail).toHaveBeenCalledWith(shapeCard)
+    expect(onOpenDetail, 'the click opened the detail immediately').toHaveBeenCalledWith(shapeCard)
     dispose()
   })
 
-  it('renames in place on a double click and never opens the detail', () => {
-    const { card, onOpenDetail, dispose } = renderCard(shapeCard)
-    pointerClick(titleOf(card))
+  it('does not rename on a double click — the pencil and F2 carry rename', () => {
+    const { card, dispose } = renderCard(shapeCard)
     pointerClick(titleOf(card), 2)
     act(() => {
       titleOf(card).dispatchEvent(new MouseEvent('dblclick', { bubbles: true, detail: 2 }))
     })
-    expect(titleInput(card), 'the double click did not turn the title into an input').not.toBeNull()
-    passTheDoubleClickWindow()
-    expect(onOpenDetail).not.toHaveBeenCalled()
+    expect(titleInput(card), 'the double click turned the title into an input').toBeNull()
     dispose()
-  })
-
-  it('opens nothing for a card that left the board inside the window', () => {
-    const { card, onOpenDetail, dispose } = renderCard(shapeCard)
-    pointerClick(titleOf(card))
-    dispose()
-    passTheDoubleClickWindow()
-    expect(onOpenDetail).not.toHaveBeenCalled()
   })
 })
 
 /**
- * The doors a rename has that are not the double click: the pencil the title row draws once the card
- * is hovered or its button is focused, `F2` on the title itself, and — the other half of the wait — a
- * key's activation of the title, which has no second click to wait for and therefore opens at once.
+ * The doors a rename has that are not the title button: the pencil the title row draws once the card
+ * is hovered or its button is focused, and `F2` on the title itself.
  */
-describe('a card title renames without a double click too', () => {
-  beforeAll(() => {
-    vi.useFakeTimers()
-  })
-
-  afterAll(() => {
-    vi.useRealTimers()
-  })
-
-  it('renames from the pencil, for a pointer that does not know the double click is there', () => {
+describe('a card title renames from its own doors', () => {
+  it('renames from the pencil, for a pointer that wants rename without opening the detail', () => {
     const { card, onOpenDetail, dispose } = renderCard(shapeCard)
     const pencil = card.querySelector<HTMLButtonElement>('[data-kanban-rename-card]')!
     expect(pencil.getAttribute('aria-label')).toBe(t('preview.kanban_rename_card'))
@@ -302,13 +263,6 @@ describe('a card title renames without a double click too', () => {
     press(titleOf(card), 'F2')
     expect(titleInput(card)).not.toBeNull()
     expect(onOpenDetail).not.toHaveBeenCalled()
-    dispose()
-  })
-
-  it('opens at once when the activation had no second click to wait for', () => {
-    const { card, onOpenDetail, dispose } = renderCard(shapeCard)
-    pointerClick(titleOf(card), 0)
-    expect(onOpenDetail).toHaveBeenCalledWith(shapeCard)
     dispose()
   })
 })
