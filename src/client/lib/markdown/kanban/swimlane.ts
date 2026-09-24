@@ -81,6 +81,30 @@ export function kanbanSwimlanes(items: KanbanItem[], layout: KanbanBoardLayout):
   }))
 }
 
+/** One drop made with a batch: the cell every picked card lands in, and the card the reader held. */
+export interface KanbanCellsMove {
+  itemIds: string[]
+  anchorId: string
+  cell: KanbanBoardCell
+  pivot?: KanbanMovePivot
+  layout: KanbanBoardLayout
+}
+
+/**
+ * The same drop, made with a batch: every picked card lands in the cell, and the card the reader was
+ * holding takes the place under the pointer. A pivot for each of them would be a guess — the pointer
+ * named one spot, not one per card — so the rest of the batch keeps the order it already had, which is
+ * the order the array gives the target column. One card at a time through the single-card mover, since
+ * each of them writes the same cell and only the held one reorders.
+ */
+export function moveKanbanItemsToCell(items: KanbanItem[], move: KanbanCellsMove): KanbanItem[] {
+  const { itemIds, anchorId, cell, pivot, layout } = move
+  return itemIds.reduce(
+    (next, itemId) => moveKanbanItemToCell(next, { itemId, cell, pivot: itemId === anchorId ? pivot : undefined, layout }),
+    items,
+  )
+}
+
 export function moveKanbanItemToCell(items: KanbanItem[], move: KanbanCellMove): KanbanItem[] {
   const { itemId, cell, pivot, layout } = move
   const laneKey = cell.laneKey

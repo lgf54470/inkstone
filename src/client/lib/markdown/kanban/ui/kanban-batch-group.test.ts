@@ -6,7 +6,9 @@ import { useUi } from '../../../../store/ui'
 import { useKanbanSelection } from './kanban-root-hooks'
 import { KanbanBatchBar } from './kanban-batch-bar'
 import type { CommitKanbanData } from './kanban-history'
-import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
+import type { KanbanData, KanbanItem, KanbanProperty, KanbanView } from '../types'
+
+const BOARD_VIEW: KanbanView = { id: 'v-probe', name: 'Board', type: 'board' }
 
 beforeAll(async () => {
   await initI18n()
@@ -63,7 +65,7 @@ function renderSelection(groupColumn?: KanbanProperty, undo = vi.fn()) {
   }
   let api: SelectionApi | null = null
   function Probe() {
-    api = useKanbanSelection(commitData, groupColumn, undo)
+    api = useKanbanSelection(commitData, groupColumn, BOARD_VIEW, undo)
     return null
   }
   const rendered = renderElement(createElement(Probe))

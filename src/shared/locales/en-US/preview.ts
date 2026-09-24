@@ -115,6 +115,7 @@ export const messages = {
 'preview.kanban_batch_delete': 'Delete selected',
 'preview.kanban_batch_delete_count': 'Delete selected ({count})',
 'preview.kanban_batch_deleted_count': '{count} deleted',
+'preview.kanban_batch_moved': '{count} cards moved to {group}',
 'preview.kanban_card_deleted': 'Card deleted',
 'preview.kanban_group_deleted': 'Group deleted',
 'preview.kanban_group_deleted_cards': 'Group deleted, {count} cards left ungrouped',

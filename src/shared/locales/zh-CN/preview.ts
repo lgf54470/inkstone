@@ -125,6 +125,7 @@ export const messages = {
 'preview.kanban_batch_delete': '批量删除',
 'preview.kanban_batch_delete_count': '批量删除（{count}）',
 'preview.kanban_batch_deleted_count': '已删除 {count} 项',
+'preview.kanban_batch_moved': '{count} 张卡片已移动到「{group}」',
 'preview.kanban_card_deleted': '已删除卡片',
 'preview.kanban_group_deleted': '已删除分组',
 'preview.kanban_group_deleted_cards': '已删除分组，{count} 张卡片已归入未分组',

@@ -9,7 +9,7 @@
  * one step of undo.
  */
 import { describe, expect, it } from 'vitest'
-import { kanbanSwimlanes, moveKanbanItemToCell } from './swimlane'
+import { kanbanSwimlanes, moveKanbanItemToCell, moveKanbanItemsToCell } from './swimlane'
 import type { KanbanItem, KanbanProperty } from './types'
 
 const ownerColumn: KanbanProperty = {
@@ -136,6 +136,44 @@ describe('moving a card into one cell of the grid', () => {
       layout: { ...layout, lanePropertyId: undefined },
     })
     expect('owner' in next[0]!.properties).toBe(false)
+  })
+})
+
+/**
+ * KU-22. The drag a batch makes: every picked card lands in the dropped cell, and the one the reader
+ * held takes the place under the pointer. Only the held card may take a pivot — the pointer named one
+ * spot — so the rest keep the order they already had.
+ */
+describe('moving a batch of cards into one cell of the grid', () => {
+  it('writes the cell on every picked card, and only the held one takes the place under the pointer', () => {
+    const next = moveKanbanItemsToCell(
+      [card('a1', { status: 'todo', owner: 'alice' }), card('a2', { status: 'todo', owner: 'alice' }), card('b1', { status: 'doing', owner: 'bob' })],
+      {
+        itemIds: ['a1', 'a2'],
+        anchorId: 'a2',
+        cell: { groupKey: 'doing', laneKey: 'bob' },
+        pivot: { itemId: 'b1', position: 'after' },
+        layout,
+      },
+    )
+    expect(next.map((item) => item.properties)).toEqual([
+      { status: 'doing', owner: 'bob' },
+      { status: 'doing', owner: 'bob' },
+      { status: 'doing', owner: 'bob' },
+    ])
+    // The rule is about the held card: it sits beside the card it was dropped on. The other picked
+    // card is appended to the same column rather than given a place of its own, which is what leaves
+    // it after the anchor here — the batch keeps its order, it does not reverse it.
+    expect(next.map((item) => item.id)).toEqual(['b1', 'a2', 'a1'])
+    expect(next.findIndex((item) => item.id === 'a2')).toBe(next.findIndex((item) => item.id === 'b1') + 1)
+  })
+
+  it('moves a batch of one exactly where the single drop would put it', () => {
+    const items = [card('a1', { status: 'todo' }), card('b1', { status: 'doing' })]
+    const move = { itemId: 'a1', cell: { groupKey: 'doing' }, pivot: { itemId: 'b1', position: 'after' as const }, layout }
+    const single = moveKanbanItemToCell(items, move)
+    const batch = moveKanbanItemsToCell(items, { ...move, itemIds: ['a1'], anchorId: 'a1' })
+    expect(batch.map((item) => item.id)).toEqual(single.map((item) => item.id))
   })
 })
 

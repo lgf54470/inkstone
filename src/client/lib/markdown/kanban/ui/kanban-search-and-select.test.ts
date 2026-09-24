@@ -7,7 +7,9 @@ import { computeSelectionAfterToggleAll, useKanbanSelection } from './kanban-roo
 import type { CommitKanbanData } from './kanban-history'
 import { KanbanSearchBox } from './kanban-search-box'
 import { KanbanTableView } from './kanban-table-view'
-import type { KanbanData, KanbanItem } from '../types'
+import type { KanbanData, KanbanItem, KanbanView } from '../types'
+
+const BOARD_VIEW: KanbanView = { id: 'v-probe', name: 'Board', type: 'board' }
 
 beforeAll(async () => {
   await initI18n()
@@ -49,7 +51,7 @@ function renderSelectionProbe() {
   const commitData: CommitKanbanData = vi.fn()
   let api: SelectionApi | null = null
   function Probe() {
-    api = useKanbanSelection(commitData, undefined, vi.fn())
+    api = useKanbanSelection(commitData, undefined, BOARD_VIEW, vi.fn())
     return null
   }
   const container = document.createElement('div')

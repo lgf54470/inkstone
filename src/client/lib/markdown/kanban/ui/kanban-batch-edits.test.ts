@@ -14,7 +14,9 @@ import { KanbanBatchBar, type KanbanBatchEdits } from './kanban-batch-bar'
 import { useKanbanSelection } from './kanban-root-hooks'
 import { KanbanRoot } from './kanban-root'
 import type { CommitKanbanData } from './kanban-history'
-import type { KanbanData, KanbanItem, KanbanProperty } from '../types'
+import type { KanbanData, KanbanItem, KanbanProperty, KanbanView } from '../types'
+
+const BOARD_VIEW: KanbanView = { id: 'v-probe', name: 'Board', type: 'board' }
 
 beforeAll(async () => {
   installTestGlobals()
@@ -126,7 +128,7 @@ function renderSelection(data = boardData()) {
   }
   let api: ReturnType<typeof useKanbanSelection> | null = null
   function Probe() {
-    api = useKanbanSelection(commitData, statusColumn, vi.fn())
+    api = useKanbanSelection(commitData, statusColumn, BOARD_VIEW, vi.fn())
     return null
   }
   const rendered = renderElement(createElement(Probe))

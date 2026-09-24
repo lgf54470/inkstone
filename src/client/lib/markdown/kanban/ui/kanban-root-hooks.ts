@@ -286,11 +286,12 @@ export function computeSelectionAfterToggleAll(prev: Set<string>, ids: string[])
 export function useKanbanSelection(
   commitData: CommitKanbanData,
   groupColumn: KanbanProperty | undefined,
+  activeView: KanbanView,
   undo: () => void,
 ) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
-  const batchEdits = useKanbanBatchEdits({ selectedIds, groupColumn, commitData, clearSelection })
+  const batchEdits = useKanbanBatchEdits({ selectedIds, groupColumn, activeView, commitData, clearSelection })
 
   const handleToggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -355,7 +356,7 @@ export function useKanbanRootState(
   const { setActiveViewId, handleUpdateBoardTitle } = useKanbanDocumentWriters(commitData)
   const filterSort = useKanbanFilterSort(data, activeViewId, commitData)
   const groupColumn = data.columns.find((c) => c.id === (filterSort.activeView.groupBy || 'status'))
-  const selection = useKanbanSelection(commitData, groupColumn, history.undo)
+  const selection = useKanbanSelection(commitData, groupColumn, filterSort.activeView, history.undo)
   const items = useKanbanItemMutations(commitData, filterSort.activeView, setDetailItem)
   const itemLifecycle = useKanbanItemLifecycle(data, commitData, detailItem, setDetailItem, selection.setSelectedIds)
   const adds = useKanbanAddOperations(data, commitData, setDetailItem, filterSort.activeView)

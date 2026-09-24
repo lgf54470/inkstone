@@ -1,13 +1,9 @@
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { kanbanCardFields } from '../card-fields'
-import { groupKanbanItems, kanbanWipOver } from '../filter-sort'
-import { useKanbanScrollMemory, useKanbanViewMemory } from './kanban-view-memory'
 import type { KanbanGroup } from '../filter-sort'
-import { formatKanbanGroupLabel } from '../i18n-helpers'
-import type { KanbanMovePivot } from '../dnd'
-import { kanbanBoardLayout, kanbanCellKey, kanbanSwimlanes } from '../swimlane'
+import { kanbanCellKey } from '../swimlane'
 import type { KanbanBoardCell, KanbanSwimlane } from '../swimlane'
 import type {
   KanbanAddFinish,
@@ -19,13 +15,13 @@ import type {
   KanbanSubtask,
   KanbanView,
 } from '../types'
-import { useKanbanBoardDndState } from './kanban-board-dnd'
 import { useColumnCellHandlers } from './kanban-cell-handlers'
 import type { CardMoveDirection } from './kanban-card'
 import { ColumnCardsList, type ColumnCardsListProps } from './kanban-column-cards'
 import { CollapsedColumn, KanbanColumnHeader } from './kanban-column-header'
 import type { KanbanColumnSelectAll } from './kanban-column-menu'
 import { KanbanBoardSwimlanes } from './kanban-board-swimlanes'
+import { useBoardDrag, type MoveItemFn } from './kanban-board-wiring'
 import type { CardSize } from './kanban-view-options'
 
 interface KanbanBoardViewProps {
@@ -42,6 +38,8 @@ interface KanbanBoardViewProps {
   onUpdateTitle: (id: string, newTitle: string) => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
   onMoveItem: MoveItemFn
+  /** The same drop made with a batch standing on the board; absent leaves every drop a single move. */
+  onMoveSelection?: MoveItemFn
   onAddItem: (cell: KanbanBoardCell, finish?: KanbanAddFinish) => void
   onAddColumn: () => void
   onReorderColumns?: (sourceGroupKey: string, targetGroupKey: string) => void
@@ -132,94 +130,6 @@ function AddColumnButton({ onAddColumn }: { onAddColumn: () => void }) {
   )
 }
 
-type MoveItemFn = (itemId: string, cell: KanbanBoardCell, pivot?: KanbanMovePivot) => void
-
-/**
- * A move that leaves the card in the cell it already sits in is a reorder, not a change of place, so
- * it gets no announcement; an item the board does not list has no known source, and guessing would
- * mean reading out a column the card may not have left. The band is named only when the drop lands
- * in one, because a drop on the strip changes the column and keeps the band the card was in.
- */
-function kanbanMoveAnnouncement(
-  groups: KanbanGroup[],
-  bands: KanbanSwimlane[],
-  itemId: string,
-  cell: KanbanBoardCell,
-): string | null {
-  const source = groups.find((group) => group.items.some((item) => item.id === itemId))
-  const target = groups.find((group) => group.groupKey === cell.groupKey)
-  const item = source?.items.find((i) => i.id === itemId)
-  if (!source || !target || !item) return null
-  const currentBand = bands.find((lane) => lane.lane.items.some((i) => i.id === itemId))
-  if (source.groupKey === target.groupKey && currentBand?.lane.groupKey === cell.laneKey) return null
-  const band = bands.find((lane) => lane.lane.groupKey === cell.laneKey)?.lane
-  const title = item.title || t('preview.kanban_untitled')
-  const group = formatKanbanGroupLabel(target.groupKey, target.label)
-  // This is read before the card has moved, so the column it would fill is still one card short.
-  const over = kanbanWipOver(target.items.length + 1, target.wipLimit)
-  if (band) {
-    const bandLabel = formatKanbanGroupLabel(band.groupKey, band.label)
-    return over > 0
-      ? t('preview.kanban_moved_to_band_over', { title, group, band: bandLabel, over, limit: target.wipLimit ?? 0 })
-      : t('preview.kanban_moved_to_band', { title, group, band: bandLabel })
-  }
-  if (over > 0)
-    return t('preview.kanban_moved_to_group_over', { title, group, over, limit: target.wipLimit ?? 0 })
-  return t('preview.kanban_moved_to_group', { title, group })
-}
-
-/** The key `offset` places from `keys`, or nothing when the walk runs off either end of the board. */
-function neighbourKey(keys: string[], current: string, offset: -1 | 1): string | undefined {
-  const index = keys.indexOf(current)
-  return index === -1 ? undefined : keys[index + offset]
-}
-
-/**
- * The grouping and the moves, with the moves holding one identity for the board's life: the columns
- * and cards below compare what they are handed, and a mover minted per render would hand every card
- * a new prop for a change that touched none of them (K-19). What the handlers read — the groups, the
- * bands, the board's own mover — is read at call time through refs instead.
- */
-function useKanbanBoardMoves(
-  data: KanbanData,
-  view: KanbanView,
-  moveItem: MoveItemFn,
-) {
-  const layout = useMemo(() => kanbanBoardLayout(data, view), [data, view])
-  const groups = useMemo(
-    () => groupKanbanItems(data.items, layout.groupPropertyId, layout.groupProperty),
-    [data.items, layout],
-  )
-  const bands = useMemo(() => kanbanSwimlanes(data.items, layout), [data.items, layout])
-  const [moveAnnouncement, setMoveAnnouncement] = useState('')
-  const groupsRef = useRef(groups)
-  groupsRef.current = groups
-  const bandsRef = useRef(bands)
-  bandsRef.current = bands
-  const moveItemRef = useRef(moveItem)
-  moveItemRef.current = moveItem
-
-  const handleMoveItem = useCallback<MoveItemFn>((itemId, cell, pivot) => {
-    const message = kanbanMoveAnnouncement(groupsRef.current, bandsRef.current, itemId, cell)
-    if (message) setMoveAnnouncement(message)
-    moveItemRef.current(itemId, cell, pivot)
-  }, [])
-
-  /** Shift+Arrow walks one step of the grid the card is in, keeping the coordinate it did not touch. */
-  const handleMoveCell = useCallback((itemId: string, cell: KanbanBoardCell, direction: CardMoveDirection) => {
-    const step = direction === 'next' || direction === 'prev'
-      ? neighbourKey(groupsRef.current.map((group) => group.groupKey), cell.groupKey, direction === 'next' ? 1 : -1)
-      : undefined
-    const laneStep = direction === 'down' || direction === 'up'
-      ? neighbourKey(bandsRef.current.map((band) => band.lane.groupKey), cell.laneKey ?? '', direction === 'down' ? 1 : -1)
-      : undefined
-    if (step === undefined && laneStep === undefined) return
-    handleMoveItem(itemId, { ...cell, groupKey: step ?? cell.groupKey, laneKey: laneStep ?? cell.laneKey })
-  }, [handleMoveItem])
-
-  return { groups, bands, moveAnnouncement, handleMoveItem, handleMoveCell }
-}
-
 /** Everything a cell of the board needs to draw, whichever of the three shapes it is. */
 interface BoardCellBundle {
   columns: KanbanData['columns']
@@ -232,7 +142,7 @@ interface BoardCellBundle {
   cardFields: string[]
   selectedIds: Set<string>
   selectedTags?: string[]
-  dnd: ReturnType<typeof useKanbanBoardDndState>
+  dnd: ReturnType<typeof useBoardDrag>['dnd']
   onToggleCollapse: (groupKey: string) => void
   onToggleSelect: (id: string) => void
   onToggleSelectAll?: (ids: string[]) => void
@@ -404,28 +314,13 @@ function BandedBoardGrid({
   )
 }
 
-/**
- * The reader's own place in this board: the columns they folded away, and how far it is scrolled
- * sideways. Both live in the board's memory rather than in this view — it keeps them across a view
- * switch, and `kanban-view-memory.ts` says why neither is written into the fence — and both arrive
- * here as the two things the columns and the scroller need.
- */
-function useBoardPlace(view: KanbanView | undefined) {
-  const memory = useKanbanViewMemory(view?.id)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const handleScroll = useKanbanScrollMemory(scrollRef, memory)
-  return { collapsedGroups: memory.folds, toggleCollapse: memory.toggleFold, scrollRef, handleScroll }
-}
-
 export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardViewProps) {
   useLocaleRepaint()
-  const { collapsedGroups, toggleCollapse, scrollRef, handleScroll } = useBoardPlace(props.view)
-  const { groups, bands, moveAnnouncement, handleMoveItem, handleMoveCell } = useKanbanBoardMoves(
-    props.data,
-    props.view,
-    props.onMoveItem,
-  )
-  const dnd = useKanbanBoardDndState(handleMoveItem, props.onReorderColumns)
+  const { collapsedGroups, toggleCollapse, scrollRef, handleScroll, groups, bands, moveAnnouncement, handleMoveCell, dnd } =
+    useBoardDrag(props.data, props.view, props.onMoveItem, {
+      selectedIds: props.selectedIds,
+      moveSelection: props.onMoveSelection,
+    }, props.onReorderColumns)
   const cardFields = useMemo(
     () => kanbanCardFields(props.view, props.data.columns),
     [props.view, props.data.columns],

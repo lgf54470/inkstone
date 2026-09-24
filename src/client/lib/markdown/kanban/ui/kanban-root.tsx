@@ -66,6 +66,8 @@ interface KanbanViewRendererProps {
   handleUpdateFiles: (id: string, files: KanbanFile[]) => void
   handleUpdateMultiSelect: (itemId: string, columnId: string, values: string[], newOption?: KanbanOption) => void
   handleMoveItem: (itemId: string, cell: KanbanBoardCell, pivot?: KanbanMovePivot) => void
+  /** The same drop with the picked cards behind it; absent where the board cannot batch. */
+  handleMoveSelection?: (itemId: string, cell: KanbanBoardCell, pivot?: KanbanMovePivot) => void
   handleAddItem: (defaults?: Record<string, unknown>) => void
   handleAddItemInGroup: (cell?: KanbanBoardCell) => void
   handleAddColumn: () => void
@@ -122,6 +124,7 @@ function BoardTableView(props: KanbanViewRendererProps) {
         onUpdateTitle={props.handleUpdateTitle}
         onUpdateSubtasks={props.handleUpdateSubtasks}
         onMoveItem={props.handleMoveItem}
+        onMoveSelection={props.handleMoveSelection}
         onAddItem={props.handleAddItemInGroup}
         onAddColumn={props.handleAddColumn}
         onReorderColumns={props.handleReorderColumns}
@@ -294,6 +297,7 @@ function KanbanViewArea({ state }: { state: ReturnType<typeof useKanbanRootState
       handleUpdateFiles={state.items.handleUpdateFiles}
       handleUpdateMultiSelect={state.items.handleUpdateMultiSelect}
       handleMoveItem={state.items.handleMoveItem}
+      handleMoveSelection={state.selection.handleBatchMove}
       handleAddItem={state.adds.handleAddItem}
       handleAddItemInGroup={state.adds.handleAddItemInGroup}
       handleAddColumn={state.adds.handleAddColumn}
