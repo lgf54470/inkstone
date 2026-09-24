@@ -9,7 +9,7 @@
  */
 import { act, createElement } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { initI18n } from '../../../i18n'
+import { initI18n, t } from '../../../i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
 import type { KanbanData, KanbanItem } from '../types'
 import { KanbanRoot } from './kanban-root'
@@ -157,5 +157,43 @@ describe('the gantt draws the arrows its dependencies name', () => {
   it('draws nothing for a board with no dependencies', () => {
     openBoard()
     expect(linkElbows().length).toBe(0)
+  })
+})
+
+describe('the board card footer names its waiters', () => {
+  function boardData(): KanbanData {
+    return {
+      title: 'Board',
+      activeViewId: 'v-board',
+      columns: [
+        { id: 'title', name: 'Title', type: 'title' },
+        {
+          id: 'status',
+          name: 'Status',
+          type: 'select',
+          options: [{ id: 'todo', label: 'To Do', color: 'gray' }],
+        },
+      ],
+      items: [
+        card('a', { status: 'todo' }),
+        card('b', { status: 'todo' }, ['a']),
+        card('c', { status: 'todo' }, ['a']),
+      ],
+      views: [{ id: 'v-board', name: 'Board', type: 'board', groupBy: 'status' }],
+    }
+  }
+
+  it('shows how many cards wait on a blocker and opens its detail when pressed', async () => {
+    const { container } = openBoard(boardData())
+    const blockerBadge = container.querySelector<HTMLElement>('[data-item-id="a"] [data-kanban-blocks-count]')
+    expect(blockerBadge, 'the card two waiters point at drew no badge').not.toBeNull()
+    expect(blockerBadge!.getAttribute('aria-label')).toBe(t('preview.kanban_card_blocks_count', { count: 2 }))
+    expect(container.querySelector('[data-item-id="b"] [data-kanban-blocks-count]'), 'a card that waits on nothing wore a badge').toBeNull()
+    await act(async () => {
+      blockerBadge!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    // The detail's dependency editor lives in the panel, so the press has to open it — the badge is
+    // a door, not a decoration.
+    expect([...document.body.querySelectorAll('[role="dialog"]')].length, 'pressing the badge opened nothing').toBeGreaterThan(0)
   })
 })

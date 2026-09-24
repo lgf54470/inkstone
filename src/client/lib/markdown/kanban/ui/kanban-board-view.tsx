@@ -18,6 +18,7 @@ import type {
   KanbanView,
 } from '../types'
 import { useColumnCellHandlers } from './kanban-cell-handlers'
+import { kanbanBlockedCounts } from '../dependencies'
 import type { CardMoveDirection } from './kanban-card'
 import { ColumnCardsList, type ColumnCardsListProps } from './kanban-column-cards'
 import { CollapsedColumn, KanbanColumnHeader } from './kanban-column-header'
@@ -150,6 +151,8 @@ interface BoardCellBundle {
   cardFields: string[]
   /** The column whose figure each header totals; resolved from `view.sumBy` in the same breath. */
   sumColumn?: KanbanProperty
+  /** Waiters per card id, over the whole document rather than the filtered view. */
+  blockedCounts?: Map<string, number>
   selectedIds: Set<string>
   selectedTags?: string[]
   dnd: ReturnType<typeof useBoardDrag>['dnd']
@@ -339,6 +342,11 @@ function useBoardViewLookups(view: KanbanView, columns: KanbanData['columns']) {
   return { cardFields, sumColumn }
 }
 
+/** Waiters per card id, counted once over the whole document: a card blocks work even where a filter hides it. */
+function useBlockedCounts(items: KanbanItem[]): Map<string, number> {
+  return useMemo(() => kanbanBlockedCounts(items), [items])
+}
+
 export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardViewProps) {
   useLocaleRepaint()
   const { collapsedGroups, toggleCollapse, scrollRef, handleScroll, groups, bands, moveAnnouncement, handleMoveCell, dnd } =
@@ -347,12 +355,14 @@ export const KanbanBoardView = memo(function KanbanBoardView(props: KanbanBoardV
       moveSelection: props.onMoveSelection,
     }, props.onReorderColumns)
   const { cardFields, sumColumn } = useBoardViewLookups(props.view, props.data.columns)
+  const blockedCounts = useBlockedCounts(props.data.items)
 
   const cells: BoardCellBundle = {
     columns: props.data.columns,
     cardSize: props.cardSize,
     cardFields,
     sumColumn,
+    blockedCounts,
     selectedIds: props.selectedIds,
     selectedTags: props.selectedTags,
     dnd,

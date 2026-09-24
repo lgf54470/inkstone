@@ -1,6 +1,6 @@
 import { memo, type KeyboardEvent } from 'react'
-import { Flag, Paperclip } from 'lucide-react'
-import { useLocaleRepaint } from '../../../i18n'
+import { Flag, Link2, Paperclip } from 'lucide-react'
+import { t, useLocaleRepaint } from '../../../i18n'
 import { isEditableTarget } from '../../../hotkeys'
 import { readKanbanCardFields } from '../card-fields'
 import { getKanbanTagStyle } from '../colors'
@@ -27,6 +27,8 @@ interface KanbanCardProps {
   /** Columns the view wants printed under the title, in its order (see `card-fields.ts`). */
   cardFields?: string[]
   selectedTags?: string[]
+  /** How many cards list this one as a blocker (the board hands the whole map down); absent = no map. */
+  blockedCount?: number
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
   onToggleTag?: (tag: string) => void
@@ -45,13 +47,20 @@ function CardFooter({
   item,
   priorityOpt,
   filesCount,
+  blockedCount,
+  onOpenDetail,
 }: {
   item: KanbanItem
   priorityOpt?: { label: string; color?: KanbanColorName }
   filesCount: number
+  /** How many cards wait on this one; absent where the board supplies no dependency map. */
+  blockedCount?: number
+  onOpenDetail: () => void
 }) {
   const assignee = kanbanPersonName(item.properties.assignee)
-  if (!priorityOpt && !assignee && !getKanbanCardDate(item) && filesCount === 0) return null
+  const blocks = blockedCount !== undefined && blockedCount > 0
+  if (!priorityOpt && !assignee && !getKanbanCardDate(item) && filesCount === 0 && !blocks) return null
+  const blockedWords = t('preview.kanban_card_blocks_count', { count: blockedCount ?? 0 })
 
   return (
     <div className='flex flex-wrap items-center justify-between gap-1.5 pt-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
@@ -71,6 +80,21 @@ function CardFooter({
             <Paperclip size={11} />
             <span>{filesCount}</span>
           </span>
+        )}
+        {blocks && (
+          // A control, not a badge: pressing it opens this card's detail, where the dependency editor
+          // lives — the one place a reader can see who is waiting and rename those edges.
+          <button
+            type='button'
+            data-kanban-blocks-count=''
+            onClick={onOpenDetail}
+            aria-label={blockedWords}
+            title={blockedWords}
+            className='inline-flex items-center gap-0.5 rounded-[var(--r-xs)] px-1.5 py-0.5 font-medium text-[var(--text-secondary)] outline-none hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
+          >
+            <Link2 size={11} aria-hidden='true' />
+            <span aria-hidden='true'>{blockedCount}</span>
+          </button>
         )}
       </div>
       {assignee && <KanbanPersonAvatar name={assignee} />}
@@ -177,6 +201,7 @@ function CardBody({
   cardFields,
   titleState,
   display,
+  blockedCount,
   onOpenDetail,
   onUpdateSubtasks,
 }: {
@@ -185,6 +210,7 @@ function CardBody({
   cardFields?: string[]
   titleState: ReturnType<typeof useKanbanCardTitle>
   display: ReturnType<typeof getCardDisplayProps>
+  blockedCount?: number
   onOpenDetail: () => void
   onUpdateSubtasks?: (itemId: string, nextSubtasks: KanbanSubtask[]) => void
 }) {
@@ -226,6 +252,8 @@ function CardBody({
         item={item}
         priorityOpt={display.priorityOpt}
         filesCount={display.filesCount}
+        blockedCount={blockedCount}
+        onOpenDetail={onOpenDetail}
       />
     </>
   )
@@ -254,6 +282,7 @@ export const KanbanCard = memo(function KanbanCard({
   dropIndicator,
   cardFields,
   selectedTags,
+  blockedCount,
   onToggleSelect,
   onOpenDetail,
   onToggleTag,
@@ -305,6 +334,7 @@ export const KanbanCard = memo(function KanbanCard({
         cardFields={cardFields}
         titleState={titleState}
         display={display}
+        blockedCount={blockedCount}
         onOpenDetail={() => onOpenDetail(item)}
         onUpdateSubtasks={onUpdateSubtasks}
       />

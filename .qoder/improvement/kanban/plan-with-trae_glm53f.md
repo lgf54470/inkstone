@@ -66,7 +66,7 @@
 ## 批次 4 · 功能增强
 
 - [x] G-11 页签标注视图自带筛选（带 filters/sorts/search/tags 的页签加圆点提示 + aria）
-- [ ] G-13 卡片依赖徽标（board 卡 footer 显示被阻塞计数，点击开详情）
+- [x] G-13 卡片依赖徽标（board 卡 footer 显示被阻塞计数，点击开详情）
 - [x] G-12 列头数值汇总（视图可选 number 列求和，列头显示 Σ）
 - [ ] G-14 图表点击下钻为过滤（点击柱/扇区写入该视图 filters，与快捷过滤 chip 同路径）
 - [ ] G-18 日历周视图（月/周切换，复用 `getMonthWeeks` 周结构与事件段几何）
@@ -100,7 +100,8 @@
 | 2026-09-24 | G-08：kanban 附件配额改 D1 台账核算（上传写 attachments 行、删除删行、行失败回滚对象），移除每次上传全量 list R2；存量无行对象按少计 | d7e5ff5b | routes/orphan-reclaim/url-fields/attachment-* 5 文件 65 测试通过（route 新增 4 用例：台账写入、配额不再 list 桶、行失败回滚、删除删行）；typecheck/comments/style/size/escape/empty-catch/module-state/deep-imports/i18n 通过；上传 handler 超 50 行按职责拆出 storeKanbanAttachment，无需 size 豁免 |
 | 2026-09-24 | G-09：DELETE 接口节流（`LIMITS.attachmentDeletesPerHour = 300`，复用 consumeAttemptBudget）；enforceUploadThrottle 泛化为 enforceKanbanThrottle 供上传/删除共用 | e248bad4 | kanban-routes 16 测试通过（新增 429 用例：预算耗尽拒删、不触 R2 与台账）；typecheck/comments/style/size/escape/empty-catch/module-state/deep-imports/i18n 通过 |
 | 2026-09-24 | G-11：视图页签自带状态标注——`kanbanViewCarriesState` 判定 filters/sorts/searchQuery/selectedTags，页签画强调色圆点 + sr-only 双语文案 | 9baab1ea | view-tabs 42 测试通过（新增 2 用例：仅带状态视图有圆点、空白搜索不算）；typecheck/i18n/comments/style/hardcoded/size 通过；size 基线重照（zh-CN preview 502→503 行） |
-| 2026-09-24 | G-12：视图级 `sumBy` 数值汇总——列头 Σ 胶囊（可见 Σ 数字 + sr-only 句子命名来源列），视图选项 Sum 选择器（仅 number 列、失效钉住同 swimlane 规则）；SumBySection 拆独立文件避免 size 豁免 | （本提交） | kanban+preview 107 文件 1335 用例全绿（新增 kanban-column-sum 5 用例：求和含数字字符串/跳过空值、页签胶囊、选择器双向）；typecheck/i18n/comments/style/hardcoded/size/deep-imports 通过（27 豁免无新增） |
+| 2026-09-24 | G-12：视图级 `sumBy` 数值汇总——列头 Σ 胶囊（可见 Σ 数字 + sr-only 句子命名来源列），视图选项 Sum 选择器（仅 number 列、失效钉住同 swimlane 规则）；SumBySection 拆独立文件避免 size 豁免 | 见 git log | kanban+preview 107 文件 1335 用例全绿（新增 kanban-column-sum 5 用例：求和含数字字符串/跳过空值、页签胶囊、选择器双向）；typecheck/i18n/comments/style/hardcoded/size/deep-imports 通过（27 豁免无新增） |
+| 2026-09-24 | G-13：卡片依赖徽标——`kanbanBlockedCounts` 全文档计等待者数，board 卡 footer 渲染 Link2+计数按钮（aria-label 双语句子），点击开本卡详情（依赖编辑器所在处）；纯结构计数不做完成态推断（遵 ADR-0006） | （本提交） | dependency-ui/dependencies 26 测试通过（新增 board 徽标场景：2 等待者计数、无等待者无徽标、点击开详情）；kanban+preview 107 文件 1336 用例全绿；typecheck/i18n（3529 keys）/comments/style/hardcoded/size 通过 |
 
 ## 固定验证
 

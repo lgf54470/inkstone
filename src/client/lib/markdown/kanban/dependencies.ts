@@ -52,6 +52,20 @@ export function kanbanDependencyEdges(items: KanbanItem[]): KanbanDependencyEdge
 }
 
 /**
+ * How many cards wait on each card, read off the edges: the figure a card's footer shows so a reader
+ * can see, without opening anything, that moving this card leaves work waiting behind it. Deliberately
+ * structural — no done-state inference (ADR-0006), so a card keeps its count until the waiters name
+ * something else.
+ */
+export function kanbanBlockedCounts(items: KanbanItem[]): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const edge of kanbanDependencyEdges(items)) {
+    counts.set(edge.from, (counts.get(edge.from) ?? 0) + 1)
+  }
+  return counts
+}
+
+/**
  * The ids a card names that no card on the board carries — a blocker that was deleted, or a fence
  * edited by hand. They draw nothing and break nothing; the detail lists them as missing rather than
  * quietly dropping them, because dropping would rewrite a document the reader did not touch.

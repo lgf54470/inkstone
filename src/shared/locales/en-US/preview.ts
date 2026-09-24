@@ -260,6 +260,7 @@ export const messages = {
 'preview.kanban_sum_off': 'No summary',
 'preview.kanban_column_sum': 'Sum of {name}: {count}',
 'preview.kanban_column_sum_figure': 'Σ {count}',
+'preview.kanban_card_blocks_count': '{count} cards wait on this one',
 'preview.kanban_done': 'Done',
 'preview.kanban_views': 'Database views',
 'preview.kanban_select_card': 'Select card',

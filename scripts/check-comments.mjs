@@ -5281,6 +5281,7 @@ const allowed = new Map([
     '/** The cards `item` waits for, read the way every reader here reads it: real ids, once, not itself. */',
     '/** One dependency between two cards on the board: `from` blocks `to`. */',
     '/** Every dependency the board holds, as blocker → dependent, only between cards that both exist. */',
+    '/**\n * How many cards wait on each card, read off the edges: the figure a card\'s footer shows so a reader\n * can see, without opening anything, that moving this card leaves work waiting behind it. Deliberately\n * structural — no done-state inference (ADR-0006), so a card keeps its count until the waiters name\n * something else.\n */',
     '/**\n * The ids a card names that no card on the board carries — a blocker that was deleted, or a fence\n * edited by hand. They draw nothing and break nothing; the detail lists them as missing rather than\n * quietly dropping them, because dropping would rewrite a document the reader did not touch.\n */',
     '/**\n * Whether putting `depId` on `itemId`\'s list would close a loop: it would, exactly when `itemId`\n * already waits on `depId` by way of other cards. Self-reference is the shortest loop there is.\n * The editor uses this to keep a cycle off the page — a reader is offered nothing that would not\n * stick — and the writer repeats the check against the document it actually sees.\n */',
     '// Walk the "waits on" edges out of the proposed blocker: if the chain of dependencies reaches',
@@ -5796,6 +5797,7 @@ const allowed = new Map([
     '/** Everything a cell of the board needs to draw, whichever of the three shapes it is. */',
     '/**\n   * The columns this view prints on its cards (see `card-fields.ts`). Read from the view the board was\n   * handed rather than threaded down from the root: the board is the surface that draws cards, and it\n   * is already given both halves of the answer.\n   */',
     '/** The column whose figure each header totals; resolved from `view.sumBy` in the same breath. */',
+    '/** Waiters per card id, over the whole document rather than the filtered view. */',
     '/** `column` is the plain board, `head` and `body` are the two halves of a banded board. */',
     '/**\n * Whether the cards this column draws are all picked, and the gesture that settles them to that\n * state. The whole column is one batch commit, so its ids are gathered here rather than per card.\n */',
     '// The cell and the drag bundle are read here and not handed on: both are rebuilt while a drag moves',
@@ -5807,6 +5809,7 @@ const allowed = new Map([
     '/**\n * A board nobody asked to band stays a single row of columns; asking for a second field turns that row\n * into a grid whose columns are titled once, above every band, and whose cells are that column within\n * one band. Both are the same columns and the same cards — only the arrangement differs.\n */',
     '// Collapsing a column is the plain board\'s arrangement: a band row has no narrower form.',
     '/**\n * The two lookups the board reads off the view before drawing anything: the fields its cards print,\n * and the number column the headers total. The sum column is resolved by id whatever the column\'s\n * type now is, matching the picker\'s pinned candidate: a column that stopped being a number keeps\n * summing what remains numeric in it rather than silently dropping the header\'s figure.\n */',
+    '/** Waiters per card id, counted once over the whole document: a card blocks work even where a filter hides it. */',
     '/* Marked: a column\'s own title field leaves a message inside this board too (KU-13). */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-board-wiring.test.ts', [
@@ -5878,6 +5881,10 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-card.tsx', [
     '/** Shift+Arrow walks a card to a neighbour of the cell it sits in: left/right are columns, up/down bands. */',
     '/** Columns the view wants printed under the title, in its order (see `card-fields.ts`). */',
+    '/** How many cards list this one as a blocker (the board hands the whole map down); absent = no map. */',
+    '/** How many cards wait on this one; absent where the board supplies no dependency map. */',
+    '// A control, not a badge: pressing it opens this card\'s detail, where the dependency editor',
+    '// lives — the one place a reader can see who is waiting and rename those edges.',
     '/**\n * Shift+Arrow walks a card one step of the grid. It used to be Alt+Arrow, which had to go: Alt+Left\n * and Alt+Right are the browser\'s own Back and Forward on Windows and Linux, so the card gesture\n * shared a chord with leaving the page and only worked for as long as the page won the race for it.\n * Shift is owned by nothing on its own, but it is how text is selected inside a field, so a key press\n * that started in one is left to the field.\n *\n * It is read off the card rather than off one of its controls, because that is where a card that is a\n * container of controls receives it: the event bubbles from whichever of them has focus. Opening the\n * detail is not one of these — that belongs to the title button, which is a real control and answers\n * Enter on its own.\n */',
     '/**\n * The values the view asked for, under the card\'s title. They are a description list because that is\n * what they are — a column\'s name and the value under it — and because a screen reader then reads\n * the pair as one thing rather than as two loose strings. A field with no value prints its name alone,\n * which is how a flag reads, and a field the card has nothing for is left out rather than drawn empty.\n */',
     '/*\n        * The card\'s type sits on this wrapper rather than on the heading: prose owns a note\'s `h3`\n        * and is loaded unlayered, so it beats any utility written on the heading itself, while a\n        * wrapper is a rule prose has none for (see the hand-back block in `styles/kanban.css`).\n        */',
@@ -5910,6 +5917,7 @@ const allowed = new Map([
   ['src/client/lib/markdown/kanban/ui/kanban-column-cards.tsx', [
     '/**\n * What a column draws once its header is behind it: the cards, whatever it is holding back, and the\n * door to add one. It lives apart from the board so the board can stay a description of where columns\n * go — and so the render window (the 30 cards a column mounts at a time) has one owner rather than\n * one per surface that lists cards.\n */',
     '/** Columns this view prints on each card (see `card-fields.ts`); the board is what reads the view. */',
+    '/** How many cards wait on each card; the board computes it once over the whole document. */',
     '// The card passes its own id, so the column can hand the same handler to all of them.',
     '/**\n * The state behind a column\'s title field, kept apart from the markup that draws it.\n *\n * Adding used to be "New item → dialog → type the title into it", so a column of nine cards cost nine\n * dialogs and a name typed twice. Here the field keeps the focus, clears itself, and says what it added,\n * so the next title can be typed straight away.\n *\n * The two chords are the two things a reader can want after naming a card: `Enter` adds it and stays for\n * the next one, `Shift+Enter` adds it and opens its window for the rest of the fields. `Enter` on an\n * empty field adds nothing — an empty title is not a card, and the placeholder-title card (with its\n * window open) is what `Shift+Enter` is for. `Escape` puts the field away and hands the focus back to\n * the button that opened it, and a field left empty closes itself when the reader clicks on.\n */',
     '/**\n * Focus follows the field\'s two lives: into the field when it opens, and back to the button that opened\n * it when the reader put the field away with the keyboard — a control that vanishes under the focus has\n * to hand it back. A field put away by a press somewhere else leaves the focus where the press put it,\n * which is why the return is a flag rather than the default.\n */',
@@ -6211,6 +6219,8 @@ const allowed = new Map([
     '// directly under body — reading it there is reading what a reader sees.',
     '// b takes a as a blocker; opening a\'s panel then must find nothing named b to click.',
     '/** The link layer, by the aria-hidden SVG only it draws (icons live in buttons, not bare svg). */',
+    '// The detail\'s dependency editor lives in the panel, so the press has to open it — the badge is',
+    '// a door, not a decoration.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-detail-shell.tsx', [
     '/** Narrower than the dialog: the peek stands beside the board rather than in place of it. */',

@@ -22,6 +22,8 @@ export interface ColumnCardsListProps {
   /** Columns this view prints on each card (see `card-fields.ts`); the board is what reads the view. */
   cardFields?: string[]
   selectedTags?: string[]
+  /** How many cards wait on each card; the board computes it once over the whole document. */
+  blockedCounts?: Map<string, number>
   cardDropTarget: CardDropTarget | null
   onToggleSelect: (id: string) => void
   onOpenDetail: (item: KanbanItem) => void
@@ -56,6 +58,7 @@ export function ColumnCardsList(props: ColumnCardsListProps) {
             cardSize={props.cardSize}
             cardFields={props.cardFields}
             selectedTags={props.selectedTags}
+            blockedCount={props.blockedCounts?.get(item.id)}
             dropIndicator={props.cardDropTarget?.cardId === item.id ? props.cardDropTarget.position : null}
             onToggleSelect={props.onToggleSelect}
             onOpenDetail={props.onOpenDetail}

@@ -270,6 +270,7 @@ export const messages = {
 'preview.kanban_sum_off': '不汇总',
 'preview.kanban_column_sum': '{name} 合计：{count}',
 'preview.kanban_column_sum_figure': 'Σ {count}',
+'preview.kanban_card_blocks_count': '{count} 张卡在等这张卡',
 'preview.kanban_done': '完成',
 'preview.kanban_views': '数据库视图',
 'preview.kanban_select_card': '选择卡片',
