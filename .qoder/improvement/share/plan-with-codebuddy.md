@@ -32,9 +32,9 @@
 | 01 | — | — | 落盘本台账 + worktree 建支软链 | 极小 | ✅ | 未含代码改动 |
 | 02 | P0 | #4 | 访问日志表失败态缺失（违反禁止静默失败红线） | 小 | ✅ | 5a8ac75f |
 | 03 | P0 | #1 | 访问日志 CSV 表头硬编码英文 | 小 | ✅ | 7adb7e2c |
-| 04 | P0 | #3 | 随机 slug 用 Math.random（非 CSPRNG） | 极小 | ✅ | ⏳ |
-| 05 | P0 | #2/#20 | 静态内联样式 + worker 原始 error 日志 | 极小 | ⬜ | — |
-| 06 | P0 | #17/#18 | 日志 count+rows 未 batch、页上限过宽、`/summary` 无界返回 | 小 | ⬜ | — |
+| 04 | P0 | #3 | 随机 slug 用 Math.random（非 CSPRNG） | 极小 | ✅ | 4d8d091d |
+| 05 | P0 | #2 | 分享页静态内联样式 `maxWidth:'none'` 移入样式表 | 极小 | ✅ | ⏳ |
+| 06 | P0 | #17/#18/#20 | worker 侧：日志 count+rows batch 化、页上限收紧、`/summary` 聚合化、error 日志脱敏 | 小 | ⬜ | — |
 | 07 | P1 | #15 | 全站累计 UV 全史聚合每次列表重算 | 小 | ⬜ | — |
 | 08 | P1 | #16 | 集合列表 N+1（每集合 2 查询） | 小 | ⬜ | — |
 | 09 | P1 | #10 | 访问日志无时间范围筛选 | 小 | ⬜ | — |
@@ -53,6 +53,11 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 05 · P0 #2 分享页内联样式移入样式表
+
+- 方案：照 `.wiki-hover-body .ink-prose` 的既有范式，公开分享页根节点加 `share-public` 作用域类，`content.css` 增 `.share-public .ink-prose { max-width: none; }`，`page.tsx` 删掉静态内联 `style={{maxWidth:'none'}}`。计算样式不变（作用域规则 0,2,0 胜过 `.ink-prose` 的 0,1,0）。
+- 验证边界（如实说明）：CSS 级联无单测断言手段；本项为纯样式来源合规重构，`npx tsc -b --force` 与 10 道静态门禁全绿，视觉回归依赖既有 `scripts/e2e-visual.mjs` 场景（本轮未跑浏览器级，收尾时一并跑）。
 
 ### 2026-09-25 · 序 04 · P0 #3 随机 slug 改 CSPRNG
 
