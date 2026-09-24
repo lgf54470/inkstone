@@ -4,6 +4,7 @@ import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import { kanbanPersonName } from '../person'
+import { kanbanPriorityColumn, kanbanStatusColumn, kanbanTagsColumn } from '../view-ops'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanDateBadge } from './kanban-date-badge'
 import { KanbanIconBadge } from './kanban-icon-badge'
@@ -238,12 +239,12 @@ function ListSubtasksExpanded({ subtasks }: { subtasks: KanbanSubtask[] }) {
   )
 }
 
-function getListItemDisplay(item: KanbanItem, statusCol?: KanbanProperty, priorityCol?: KanbanProperty) {
-  const statusVal = item.properties.status
+function getListItemDisplay(item: KanbanItem, statusCol?: KanbanProperty, priorityCol?: KanbanProperty, tagsCol?: KanbanProperty) {
+  const statusVal = statusCol ? item.properties[statusCol.id] : undefined
   const statusOpt = statusCol?.options?.find((o: KanbanOption) => o.id === statusVal || o.label === statusVal)
-  const priorityVal = item.properties.priority
+  const priorityVal = priorityCol ? item.properties[priorityCol.id] : undefined
   const priorityOpt = priorityCol?.options?.find((o: KanbanOption) => o.id === priorityVal || o.label === priorityVal)
-  const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
+  const tagVals = tagsCol && Array.isArray(item.properties[tagsCol.id]) ? (item.properties[tagsCol.id] as string[]) : []
   const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
   return { statusOpt, priorityOpt, tagVals, desc }
 }
@@ -260,7 +261,7 @@ function KanbanListRow({
   onToggleTag,
 }: KanbanListRowProps) {
   const [expanded, setExpanded] = useState(false)
-  const { statusOpt, priorityOpt, tagVals, desc } = getListItemDisplay(item, statusCol, priorityCol)
+  const { statusOpt, priorityOpt, tagVals, desc } = getListItemDisplay(item, statusCol, priorityCol, tagsCol)
   const subtasks = item.subtasks ?? []
 
   return (
@@ -308,9 +309,9 @@ export const KanbanListView = memo(function KanbanListView({
 }: KanbanListViewProps) {
   useLocaleRepaint()
   const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(data.items)
-  const statusCol = data.columns.find((c) => c.id === 'status')
-  const priorityCol = data.columns.find((c) => c.id === 'priority')
-  const tagsCol = data.columns.find((c) => c.id === 'tags')
+  const statusCol = kanbanStatusColumn(data.columns)
+  const priorityCol = kanbanPriorityColumn(data.columns)
+  const tagsCol = kanbanTagsColumn(data.columns)
 
   return (
     <div className='flex h-full w-full flex-col overflow-y-auto p-4'>

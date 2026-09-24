@@ -11,6 +11,9 @@ import {
   addKanbanView,
   createKanbanView,
   duplicateKanbanView,
+  kanbanPriorityColumn,
+  kanbanStatusColumn,
+  kanbanTagsColumn,
   moveKanbanView,
   removeKanbanView,
   renameKanbanView,
@@ -26,6 +29,33 @@ const COLUMNS: KanbanProperty[] = [
 ]
 
 const boardView: KanbanView = { id: 'view-board', name: 'board', type: 'board', groupBy: 'status' }
+
+/** A hand-written fence may name its columns anything; the resolvers still have to find the trio. */
+const CUSTOM_COLUMNS: KanbanProperty[] = [
+  { id: 'title', name: 'Title', type: 'title' },
+  { id: 'state', name: 'State', type: 'select', options: [{ id: 'open', label: 'Open', color: 'blue' }] },
+  { id: 'rank', name: 'Rank', type: 'select', options: [{ id: 'high', label: 'High', color: 'red' }] },
+  { id: 'labels', name: 'Labels', type: 'multi-select', options: [{ id: 'ui', label: 'UI', color: 'teal' }] },
+]
+
+describe('the status/priority/tags column resolvers', () => {
+  it('answers the conventional ids before anything else', () => {
+    expect(kanbanStatusColumn(COLUMNS)?.id).toBe('status')
+    expect(kanbanStatusColumn(CUSTOM_COLUMNS)?.id).toBe('state')
+  })
+
+  it('falls back to the kind of column the field needs, skipping the column a sibling took', () => {
+    expect(kanbanPriorityColumn(CUSTOM_COLUMNS)?.id).toBe('rank')
+    expect(kanbanTagsColumn(CUSTOM_COLUMNS)?.id).toBe('labels')
+  })
+
+  it('never invents an id for a board that has no such column', () => {
+    const bare: KanbanProperty[] = [{ id: 'title', name: 'Title', type: 'title' }]
+    expect(kanbanStatusColumn(bare)).toBeUndefined()
+    expect(kanbanPriorityColumn(bare)).toBeUndefined()
+    expect(kanbanTagsColumn(bare)).toBeUndefined()
+  })
+})
 const tableView: KanbanView = {
   id: 'view-table',
   name: 'table',

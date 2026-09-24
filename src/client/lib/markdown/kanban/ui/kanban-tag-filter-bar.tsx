@@ -13,10 +13,13 @@ interface KanbanTagFilterBarProps {
   onClearTags?: () => void
 }
 
-function countTags(items: KanbanItem[]): Map<string, number> {
+function countTags(items: KanbanItem[], tagsColumn?: KanbanProperty): Map<string, number> {
+  // Count under the column the resolver picked; the conventional key is only the fallback for a
+  // board that has no tag column at all, where nothing can match anyway.
+  const key = tagsColumn?.id ?? 'tags'
   const counts = new Map<string, number>()
   for (const item of items) {
-    const tags = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
+    const tags = Array.isArray(item.properties[key]) ? (item.properties[key] as string[]) : []
     const subtaskTags = item.subtasks?.flatMap((st) => st.tags || []) || []
     const combined = new Set([...tags, ...subtaskTags])
     for (const tag of combined) {
@@ -154,7 +157,7 @@ export function KanbanTagFilterBar({
   const [expanded, setExpanded] = useState(false)
   const stripId = useId()
   const tagList = useMemo(() => {
-    const counts = countTags(items)
+    const counts = countTags(items, tagsColumn)
     return buildTagList(tagsColumn, counts)
   }, [tagsColumn, items])
 

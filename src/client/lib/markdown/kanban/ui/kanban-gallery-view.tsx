@@ -4,6 +4,7 @@ import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanTagStyle, resolveKanbanTagColor } from '../colors'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import { kanbanPersonName } from '../person'
+import { kanbanPriorityColumn, kanbanStatusColumn, kanbanTagsColumn } from '../view-ops'
 import type { KanbanData, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanCardSubtasks } from './kanban-card-subtasks'
 import { KanbanDateBadge } from './kanban-date-badge'
@@ -213,11 +214,11 @@ function GalleryCard({
   onOpenDetail,
   onUpdateSubtasks,
 }: GalleryCardProps) {
-  const statusVal = item.properties.status
+  const statusVal = statusCol ? item.properties[statusCol.id] : undefined
   const statusOpt = statusCol?.options?.find((o) => o.id === statusVal || o.label === statusVal)
-  const priorityVal = item.properties.priority
+  const priorityVal = priorityCol ? item.properties[priorityCol.id] : undefined
   const priorityOpt = priorityCol?.options?.find((o) => o.id === priorityVal || o.label === priorityVal)
-  const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
+  const tagVals = tagsCol && Array.isArray(item.properties[tagsCol.id]) ? (item.properties[tagsCol.id] as string[]) : []
   const desc = item.content || item.description || (typeof item.properties.description === 'string' ? item.properties.description : undefined)
   const assignee = kanbanPersonName(item.properties.assignee)
   const filesCount = item.files?.length ?? 0
@@ -266,9 +267,9 @@ export const KanbanGalleryView = memo(function KanbanGalleryView({
 }: KanbanGalleryViewProps) {
   useLocaleRepaint()
   const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(data.items)
-  const statusCol = data.columns.find((c) => c.id === 'status')
-  const priorityCol = data.columns.find((c) => c.id === 'priority')
-  const tagsCol = data.columns.find((c) => c.id === 'tags')
+  const statusCol = kanbanStatusColumn(data.columns)
+  const priorityCol = kanbanPriorityColumn(data.columns)
+  const tagsCol = kanbanTagsColumn(data.columns)
 
   return (
     <div className='h-full w-full overflow-y-auto p-4'>

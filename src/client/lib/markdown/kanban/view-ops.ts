@@ -27,7 +27,34 @@ function isOptionColumn(column: KanbanProperty): boolean {
   return column.type === 'select' || column.type === 'multi-select'
 }
 
+/**
+ * The columns the UI paints chips, pickers and the progress bar with. The fence is a public format,
+ * so a hand-written board may name its columns anything: the conventional id wins when it is there,
+ * and otherwise the first column of the kind the field needs answers — never an invented id, which
+ * is what used to write ghost values no option owned.
+ */
+export function kanbanStatusColumn(columns: KanbanProperty[]): KanbanProperty | undefined {
+  return columns.find((column) => column.id === 'status') ?? columns.find(isOptionColumn)
+}
+
+export function kanbanPriorityColumn(columns: KanbanProperty[]): KanbanProperty | undefined {
+  const conventional = columns.find((column) => column.id === 'priority')
+  if (conventional) return conventional
+  const status = kanbanStatusColumn(columns)
+  return columns.find((column) => isOptionColumn(column) && column !== status)
+}
+
+export function kanbanTagsColumn(columns: KanbanProperty[]): KanbanProperty | undefined {
+  const conventional = columns.find((column) => column.id === 'tags')
+  if (conventional) return conventional
+  const status = kanbanStatusColumn(columns)
+  return columns.find((column) => column.type === 'multi-select' && column !== status)
+}
+
 function groupSource(columns: KanbanProperty[]): string {
+  // A board view's grouping is stricter than the chip resolvers above: the conventional id only
+  // counts when it actually holds options, so a text column that happens to be called `status`
+  // never becomes the thing new boards group by.
   return (columns.find((c) => c.id === 'status' && isOptionColumn(c)) ?? columns.find(isOptionColumn))?.id ?? 'status'
 }
 

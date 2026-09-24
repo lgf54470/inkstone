@@ -14,6 +14,7 @@ import type { KanbanData, KanbanFilter, KanbanSort, KanbanView } from '../types'
 import { t, useLocaleRepaint } from '../../../i18n'
 import { prettyCombo } from '../../../../lib/hotkeys'
 import { kanbanActiveItems } from '../archive'
+import { kanbanStatusColumn, kanbanTagsColumn } from '../view-ops'
 import { KanbanArchiveAction, type KanbanArchiveEntry } from './kanban-archive'
 import { KanbanCsvAction, type KanbanCsvEntry } from './kanban-csv'
 import { KanbanExportAction, type KanbanExportEntry } from './kanban-export'
@@ -356,7 +357,7 @@ function KanbanCompactActions(props: HeaderActionsProps) {
 
 function KanbanHeaderActions(props: HeaderActionsProps) {
   const { columns, visibleItems, searchQuery } = props
-  const statusCol = columns.find((c) => c.id === 'status')
+  const statusCol = kanbanStatusColumn(columns)
 
   return (
     // A phone gets a row that wraps instead of a row that runs off the viewport, and never a scroll
@@ -434,7 +435,7 @@ function KanbanHeaderIdentity({
 export const KanbanHeader = memo(function KanbanHeader(props: KanbanHeaderProps) {
   useLocaleRepaint()
   const { data, activeView, isFullscreen, onUpdateBoardTitle } = props
-  const tagsCol = data.columns.find((c) => c.id === 'tags')
+  const tagsCol = kanbanTagsColumn(data.columns)
   // The tag bar offers values a reader could filter the live board down to; a tag that only
   // survives on archived cards would promise an empty result. The scan is memoized on the item list
   // because that array is the bar's own count memo key: rebuilt per render it walked the whole board

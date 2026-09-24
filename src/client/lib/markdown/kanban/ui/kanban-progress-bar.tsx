@@ -30,9 +30,13 @@ function resolveSegmentColor(optionColor?: string): string {
 
 function calculateSegments(items: KanbanItem[], statusColumn?: KanbanProperty): Segment[] {
   if (!items.length) return []
+  // The bar reads the column it is handed, not a conventional key: a hand-written board may name
+  // its status column anything, and the resolver that picked `statusColumn` already knows where
+  // the values live.
+  const key = statusColumn?.id ?? 'status'
   const counts = new Map<string, number>()
   for (const item of items) {
-    const val = String(item.properties.status || '__none__')
+    const val = String(item.properties[key] || '__none__')
     counts.set(val, (counts.get(val) || 0) + 1)
   }
 

@@ -4,6 +4,7 @@ import { t, useLocale } from '../../../i18n'
 import { narrowWeekdayLabels, weekStartFor, type WeekStartDay } from '../../../time'
 import { getMonthWeeks, getWeekEventSegments, type CalendarDay, type WeekEventSegment } from '../calendar-helpers'
 import { getKanbanTagStyle } from '../colors'
+import { kanbanStatusColumn } from '../view-ops'
 import type { KanbanData, KanbanItem, KanbanProperty, KanbanView } from '../types'
 import { useKanbanDayMove } from './kanban-day-move'
 import { KanbanIconBadge } from './kanban-icon-badge'
@@ -91,7 +92,7 @@ function CalendarEventBar({
   onOpenDetail: (item: KanbanItem) => void
 }) {
   const { item, startCol, endCol, isSegmentStart, isSegmentEnd, track } = segment
-  const statusVal = String(item.properties.status || '')
+  const statusVal = String((statusCol ? item.properties[statusCol.id] : item.properties.status) || '')
   const statusOpt = statusCol?.options?.find((o) => o.id === statusVal || o.label === statusVal)
   const tagStyle = getKanbanTagStyle(statusOpt?.color || 'blue')
 
@@ -245,7 +246,7 @@ export const KanbanCalendarView = memo(function KanbanCalendarView({
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
   const weeks = useMemo(() => getMonthWeeks(year, month, weekStart), [year, month, weekStart])
-  const statusCol = data.columns.find((c) => c.id === 'status')
+  const statusCol = kanbanStatusColumn(data.columns)
   const dateField = view?.dateField
   // The day-move gesture is only wired when the board can write; without a writer the drop targets
   // still exist but every patch is dropped on the floor, which is quieter than threading an optional

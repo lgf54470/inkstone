@@ -5,6 +5,7 @@ import { t, useLocaleRepaint } from '../../../i18n'
 import { getKanbanDotColor } from '../colors'
 import { getKanbanDueDate } from '../date-fields'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
+import { kanbanPriorityColumn, kanbanStatusColumn, kanbanTagsColumn } from '../view-ops'
 import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
 import { KanbanCardDialog, KanbanCardPeek } from './kanban-detail-shell'
 import { KanbanIconBadge } from './kanban-icon-badge'
@@ -205,6 +206,7 @@ interface DetailModalContentProps {
   columns: KanbanProperty[]
   tagVals: string[]
   priorityCol?: KanbanProperty
+  tagsCol?: KanbanProperty
   startDateVal: unknown
   dueDateVal: unknown
   localTagOptions: KanbanOption[]
@@ -258,6 +260,7 @@ function DetailPropertySections({
   tagVals,
   columns,
   priorityCol,
+  tagsCol,
   startDateVal,
   dueDateVal,
   localTagOptions,
@@ -269,6 +272,7 @@ function DetailPropertySections({
   tagVals: string[]
   columns: KanbanProperty[]
   priorityCol?: KanbanProperty
+  tagsCol?: KanbanProperty
   startDateVal: unknown
   dueDateVal: unknown
   localTagOptions: KanbanOption[]
@@ -282,15 +286,15 @@ function DetailPropertySections({
         tagVals={tagVals}
         options={localTagOptions}
         onChangeTags={(nextTags, newOption) => {
-          onPropertyChange('tags', nextTags)
+          onPropertyChange(tagsCol?.id ?? 'tags', nextTags)
           if (newOption) onAddTagOption(newOption)
         }}
       />
 
       <PriorityChips
         priorityCol={priorityCol}
-        currentPriority={item.properties.priority}
-        onChangePriority={(val) => onPropertyChange('priority', val)}
+        currentPriority={priorityCol ? item.properties[priorityCol.id] : item.properties.priority}
+        onChangePriority={(val) => priorityCol && onPropertyChange(priorityCol.id, val)}
       />
 
       <DetailDatesGrid
@@ -314,6 +318,7 @@ function DetailModalContent({
   columns,
   tagVals,
   priorityCol,
+  tagsCol,
   startDateVal,
   dueDateVal,
   localTagOptions,
@@ -333,6 +338,7 @@ function DetailModalContent({
         columns={columns}
         tagVals={tagVals}
         priorityCol={priorityCol}
+        tagsCol={tagsCol}
         startDateVal={startDateVal}
         dueDateVal={dueDateVal}
         localTagOptions={localTagOptions}
@@ -374,9 +380,9 @@ function useKanbanDetailState(
     onUpdate({ ...item, properties: { ...item.properties, [propertyId]: value } })
   }
 
-  const statusCol = columns.find((c) => c.id === 'status')
-  const priorityCol = columns.find((c) => c.id === 'priority')
-  const tagsCol = columns.find((c) => c.id === 'tags')
+  const statusCol = kanbanStatusColumn(columns)
+  const priorityCol = kanbanPriorityColumn(columns)
+  const tagsCol = kanbanTagsColumn(columns)
   const [localTagOptions, setLocalTagOptions] = useState<KanbanOption[]>(() => tagsCol?.options ?? [])
 
   useEffect(() => {
@@ -390,7 +396,7 @@ function useKanbanDetailState(
       if (prev.some((o) => o.id === newOpt.id || o.label === newOpt.label)) return prev
       return [...prev, newOpt]
     })
-    onAddColumnOption?.('tags', newOpt)
+    if (tagsCol) onAddColumnOption?.(tagsCol.id, newOpt)
   }
 
   return { statusCol, priorityCol, tagsCol, localTagOptions, handlePropertyChange, handleAddTagOption }
@@ -410,10 +416,10 @@ function KanbanItemDetailBody({
   onChangeDependencies,
   variant = 'dialog',
 }: KanbanItemDetailProps & { item: KanbanItem }) {
-  const { statusCol, priorityCol, localTagOptions, handlePropertyChange, handleAddTagOption } =
+  const { statusCol, priorityCol, tagsCol, localTagOptions, handlePropertyChange, handleAddTagOption } =
     useKanbanDetailState(item, columns, onUpdate, onAddColumnOption)
 
-  const tagVals = Array.isArray(item.properties.tags) ? (item.properties.tags as string[]) : []
+  const tagVals = tagsCol && Array.isArray(item.properties[tagsCol.id]) ? (item.properties[tagsCol.id] as string[]) : []
   const startDateVal = item.properties.startDate || ''
   const dueDateVal = getKanbanDueDate(item)
 
@@ -436,6 +442,7 @@ function KanbanItemDetailBody({
       columns={columns}
       tagVals={tagVals}
       priorityCol={priorityCol}
+      tagsCol={tagsCol}
       startDateVal={startDateVal}
       dueDateVal={dueDateVal}
       localTagOptions={localTagOptions}

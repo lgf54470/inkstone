@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { t } from '../../../i18n'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
+import { kanbanStatusColumn } from '../view-ops'
 import type { KanbanColorName, KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { KanbanColumnCount } from './kanban-column-count'
 import { KanbanProgressBar } from './kanban-progress-bar'
@@ -101,7 +102,7 @@ function GroupFooter({
   columnCount: number
   onAddItem: () => void
 }) {
-  const statusCol = columns.find((c) => c.id === 'status')
+  const statusCol = kanbanStatusColumn(columns)
   return (
     <div role='row' className='border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[length:var(--text-11)]'>
       <div role='cell' aria-colspan={columnCount} className='flex items-center justify-between'>

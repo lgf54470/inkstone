@@ -14,6 +14,7 @@ import { kanbanViewTabId } from './kanban-view-tabs'
 import { KanbanViewRenderer } from './kanban-view-renderer'
 import { useKanbanRegionLabel } from './kanban-region'
 import { KanbanViewMemoryScope, useKanbanViewMemoryStore } from './kanban-view-memory'
+import { kanbanTagsColumn } from '../view-ops'
 import { useKanbanContextMenuState, useKanbanRootState } from './kanban-root-hooks'
 import { useKanbanBoardKeys } from './kanban-board-keys'
 import { useKanbanSurface } from './kanban-surface'
@@ -161,12 +162,12 @@ function useKanbanBatchEditFields(state: ReturnType<typeof useKanbanRootState>):
   return useMemo(() => {
     const personColumn = data.columns.find((column) => column.type === 'person')
     const assigns = personColumn ? people[personColumn.id] : undefined
-    const tagsColumn = data.columns.find((column) => column.id === 'tags')
+    const tagsColumn = kanbanTagsColumn(data.columns)
     return {
       assignees: assigns ?? [],
       tags: tagsColumn?.options ?? [],
       onAssign: (name) => selection.handleBatchSetProperty(personColumn!.id, name),
-      onAddTag: (tagId) => selection.handleBatchAddTag('tags', tagId),
+      onAddTag: (tagId) => tagsColumn && selection.handleBatchAddTag(tagsColumn.id, tagId),
       onSetDueDate: (date) => selection.handleBatchSetProperty('dueDate', date),
     }
   }, [data.columns, people, selection])

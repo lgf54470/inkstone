@@ -9,6 +9,7 @@ import { toastWithUndo } from '../../../../store/ui'
 import type { KanbanMovePivot } from '../dnd'
 import { kanbanPeopleDirectory } from '../person'
 import { kanbanActiveItems } from '../archive'
+import { kanbanStatusColumn } from '../view-ops'
 import { withKanbanDependenciesGuarded } from '../dependencies'
 import { useKanbanBatchEdits } from './kanban-batch-edits'
 import { useKanbanMoveToAxes } from './kanban-move-to-axes'
@@ -246,8 +247,15 @@ export function useKanbanAddOperations(
 ) {
   const handleAddItem = useCallback((defaults?: Record<string, unknown>, finish?: KanbanAddFinish) => {
     const newItemId = `item-${createKanbanId()}`
-    const statusVal = data.columns.find((c) => c.id === 'status')?.options?.[0]?.id || 'todo'
-    const propsObj: Record<string, unknown> = { status: statusVal, ...defaults }
+    // The new card lands in the status column's first option — the column the resolvers pick, not a
+    // conventional key. A board with no option column asks for nothing: writing an invented value
+    // here used to file the card under an option that did not exist.
+    const statusColumn = kanbanStatusColumn(data.columns)
+    const statusVal = statusColumn?.options?.[0]?.id
+    const propsObj: Record<string, unknown> = {
+      ...(statusColumn && statusVal ? { [statusColumn.id]: statusVal } : {}),
+      ...defaults,
+    }
     // A card typed into a column is born named: the title field hands over what was typed, and the
     // placeholder stands in only for the doors that open the window for the reader to name it there.
     const typed = finish?.title?.trim() ?? ''

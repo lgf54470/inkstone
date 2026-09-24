@@ -7,6 +7,7 @@ import { getKanbanTagStyle } from '../colors'
 import { getKanbanCardDate } from '../date-fields'
 import { formatKanbanOptionLabel } from '../i18n-helpers'
 import { kanbanPersonName } from '../person'
+import { kanbanPriorityColumn, kanbanTagsColumn } from '../view-ops'
 import type { KanbanColorName, KanbanItem, KanbanOption, KanbanProperty, KanbanSubtask } from '../types'
 import { CardHeader } from './kanban-card-header'
 import { KanbanCardSubtasks } from './kanban-card-subtasks'
@@ -109,10 +110,10 @@ function handleCardKeyDown(
 }
 
 function getCardDisplayProps(item: KanbanItem, columns: KanbanProperty[]) {
-  const priorityCol = columns.find((c) => c.id === 'priority')
-  const priorityOpt = priorityCol?.options?.find((o) => o.id === item.properties.priority || o.label === item.properties.priority)
-  const tagsCol = columns.find((c) => c.id === 'tags')
-  const tagVals = Array.isArray(item.properties.tags) ? item.properties.tags : []
+  const priorityCol = kanbanPriorityColumn(columns)
+  const priorityOpt = priorityCol?.options?.find((o) => o.id === item.properties[priorityCol.id] || o.label === item.properties[priorityCol.id])
+  const tagsCol = kanbanTagsColumn(columns)
+  const tagVals = tagsCol && Array.isArray(item.properties[tagsCol.id]) ? (item.properties[tagsCol.id] as string[]) : []
   const filesCount = item.files?.length ?? 0
   return { priorityOpt, tagsCol, tagVals, filesCount }
 }

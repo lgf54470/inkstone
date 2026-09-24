@@ -86,6 +86,32 @@ describe('useKanbanAddOperations', () => {
     expect(addedItem().properties.status).toBe('todo')
   })
 
+  it('a board whose status column is named anything else still lands the card in its first option', () => {
+    const custom: KanbanData = {
+      columns: [
+        { id: 'title', name: 'Title', type: 'title' },
+        { id: 'state', name: 'State', type: 'select', options: [{ id: 'open', label: 'Open', color: 'blue' }] },
+      ],
+      items: [],
+      views: [{ id: 'v', name: 'Board', type: 'board', groupBy: 'state' }],
+    }
+    const { api, addedItem } = captureCommit(custom, custom.views[0]!)
+    api.handleAddItem()
+    expect(addedItem().properties.state).toBe('open')
+    expect(addedItem().properties).not.toHaveProperty('status')
+  })
+
+  it('a board with no option column at all writes no ghost status', () => {
+    const bare: KanbanData = {
+      columns: [{ id: 'title', name: 'Title', type: 'title' }],
+      items: [],
+      views: [{ id: 'v', name: 'Board', type: 'board' }],
+    }
+    const { api, addedItem } = captureCommit(bare, bare.views[0]!)
+    api.handleAddItem()
+    expect(addedItem().properties).not.toHaveProperty('status')
+  })
+
   it('handleAddItemInGroup targets the active view groupBy property, not status', () => {
     const { api, addedItem } = captureCommit(makeData(), { id: 'v', name: 'Board', type: 'board', groupBy: 'priority' })
     api.handleAddItemInGroup({ groupKey: 'high' })
