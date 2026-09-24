@@ -6612,6 +6612,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-progress-bar.tsx', [
     '/** A real group shows the name the board author gave it; the catch-all bucket shows a translated label. */',
+    '// An image role with the distribution in its name, because the bar itself is',
+    '// a row of painted divs whose only other channel is a `title` tooltip no',
+    '// screen reader tells: the counts are the content, the colours are the skin.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-property-cell.tsx', [
     '// Attachments live on the item, not in `properties`, so the table always has a',

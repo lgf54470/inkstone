@@ -62,6 +62,7 @@ export const messages = {
 'preview.kanban_status_waiting': 'Waiting on user',
 'preview.kanban_status_resolved': 'Resolved',
 'preview.kanban_status_other': 'Other',
+'preview.kanban_status_summary': 'Card status: {summary}',
 'preview.kanban_new_item': 'New item',
 'preview.kanban_new_item_on_value0': 'New item on {value0}',
 'preview.kanban_new_group': 'New group',

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { t, type MessageKey } from '../../../i18n'
 import type { KanbanItem, KanbanProperty } from '../types'
+import { kanbanStableKeys } from './kanban-list-keys'
 
 interface KanbanProgressBarProps {
   items: KanbanItem[]
@@ -75,17 +76,29 @@ export function KanbanProgressBar({
   className = '',
 }: KanbanProgressBarProps) {
   const segments = useMemo(() => calculateSegments(items, statusColumn), [items, statusColumn])
+  const keys = useMemo(
+    () => kanbanStableKeys(segments, (s) => [s.labelKey, s.label, s.color]),
+    [segments],
+  )
 
   if (!segments.length) return null
 
   return (
+    // An image role with the distribution in its name, because the bar itself is
+    // a row of painted divs whose only other channel is a `title` tooltip no
+    // screen reader tells: the counts are the content, the colours are the skin.
     <div
+      role='img'
+      aria-label={t('preview.kanban_status_summary', {
+        summary: segments.map((seg) => `${segmentLabel(seg)} ${seg.count}`).join(', '),
+      })}
       className={`flex overflow-hidden rounded-[var(--r-full)] bg-[var(--bg-hover)] ${className}`}
       style={{ height }}
     >
       {segments.map((seg, idx) => (
         <div
-          key={idx}
+          key={keys[idx]}
+          aria-hidden
           style={{
             width: `${seg.percent}%`,
             backgroundColor: seg.color,

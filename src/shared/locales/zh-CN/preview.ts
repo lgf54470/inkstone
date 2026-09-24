@@ -72,6 +72,7 @@ export const messages = {
 'preview.kanban_status_waiting': '等待用户回复',
 'preview.kanban_status_resolved': '已解决',
 'preview.kanban_status_other': '其他',
+'preview.kanban_status_summary': '卡片状态：{summary}',
 'preview.kanban_new_item': '新建项目',
 'preview.kanban_new_item_on_value0': '在 {value0} 日新建项目',
 'preview.kanban_new_group': '新建分组',
