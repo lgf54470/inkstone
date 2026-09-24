@@ -1,14 +1,15 @@
-import { memo, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { memo, useEffect, useId, useRef, useState } from 'react'
 import { ChevronDown, Smile } from 'lucide-react'
-import { Drawer, Modal, useClickOutside, useEscape } from '../../../../components/overlay'
+import { useClickOutside, useEscape } from '../../../../components/overlay'
 import { t, useLocaleRepaint } from '../../../i18n'
-import { Z_INDEX } from '../../../../lib/z-index'
 import { getKanbanDotColor } from '../colors'
 import { getKanbanDueDate } from '../date-fields'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
 import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
+import { KanbanCardDialog, KanbanCardPeek } from './kanban-detail-shell'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import { KanbanIconPicker } from './kanban-icon-picker'
+import { DetailDependencies } from './kanban-dependency-editor'
 import { DetailDescription } from './kanban-item-detail-description'
 import { DetailComments } from './kanban-comments'
 import {
@@ -33,6 +34,10 @@ interface KanbanItemDetailProps {
   people?: Record<string, string[]>
   /** How this host turns description markdown into HTML; absent means the description stays source-only. */
   renderDescription?: (source: string) => string
+  /** Every card the board holds, as the dependency picker's roster (KU-23). */
+  boardItems?: KanbanItem[]
+  /** The dependency list's writer: the board's guarded one, so a cycle never reaches the note. */
+  onChangeDependencies?: (itemId: string, deps: string[]) => void
   /**
    * How the card is opened. A note shows one modal at a time and the board behind it is a few
    * hundred pixels tall, so the centred dialog is right there; the full screen board has room for
@@ -41,10 +46,6 @@ interface KanbanItemDetailProps {
    */
   variant?: 'dialog' | 'peek'
 }
-
-const DETAIL_MODAL_WIDTH = 640
-/** Narrower than the dialog: the peek stands beside the board rather than in place of it. */
-const DETAIL_PEEK_WIDTH = 420
 
 function DetailStatusDropdown({
   statusCol,
@@ -213,25 +214,70 @@ interface DetailModalContentProps {
   onConvertSubtask: (subtaskId: string) => void
   people?: Record<string, string[]>
   renderDescription?: (source: string) => string
+  boardItems?: KanbanItem[]
+  onChangeDependencies?: (itemId: string, deps: string[]) => void
 }
 
-function DetailModalContent({
+/** The card's lower half: what it carries and what has been said about it. */
+function DetailCarrySections({
   item,
-  columns,
+  onUpdate,
+  onConvertSubtask,
+  people,
+  boardItems,
+  onChangeDependencies,
+}: {
+  item: KanbanItem
+  onUpdate: (updated: KanbanItem) => void
+  onConvertSubtask: (subtaskId: string) => void
+  people?: Record<string, string[]>
+  boardItems?: KanbanItem[]
+  onChangeDependencies?: (itemId: string, deps: string[]) => void
+}) {
+  return (
+    <>
+      {onChangeDependencies && boardItems && (
+        <DetailDependencies
+          key={`dependencies-${item.id}`}
+          item={item}
+          board={boardItems}
+          onChange={(deps) => onChangeDependencies(item.id, deps)}
+        />
+      )}
+
+      <DetailAttachmentsAndSubtasks item={item} onUpdate={onUpdate} onConvertSubtask={onConvertSubtask} />
+
+      <DetailComments key={`comments-${item.id}`} item={item} people={people} onUpdate={onUpdate} />
+    </>
+  )
+}
+
+/** The card's property half: tags, priority, dates, and the columns it carries. */
+function DetailPropertySections({
+  item,
   tagVals,
+  columns,
   priorityCol,
   startDateVal,
   dueDateVal,
   localTagOptions,
   onPropertyChange,
   onAddTagOption,
-  onUpdate,
-  onConvertSubtask,
   people,
-  renderDescription,
-}: DetailModalContentProps) {
+}: {
+  item: KanbanItem
+  tagVals: string[]
+  columns: KanbanProperty[]
+  priorityCol?: KanbanProperty
+  startDateVal: unknown
+  dueDateVal: unknown
+  localTagOptions: KanbanOption[]
+  onPropertyChange: (propertyId: string, value: unknown) => void
+  onAddTagOption: (option: KanbanOption) => void
+  people?: Record<string, string[]>
+}) {
   return (
-    <div className='flex flex-col gap-5 py-2'>
+    <>
       <DetailTagsField
         tagVals={tagVals}
         options={localTagOptions}
@@ -259,6 +305,41 @@ function DetailModalContent({
         people={people}
         onChangeProperty={onPropertyChange}
       />
+    </>
+  )
+}
+
+function DetailModalContent({
+  item,
+  columns,
+  tagVals,
+  priorityCol,
+  startDateVal,
+  dueDateVal,
+  localTagOptions,
+  onPropertyChange,
+  onAddTagOption,
+  onUpdate,
+  onConvertSubtask,
+  people,
+  renderDescription,
+  boardItems,
+  onChangeDependencies,
+}: DetailModalContentProps) {
+  return (
+    <div className='flex flex-col gap-5 py-2'>
+      <DetailPropertySections
+        item={item}
+        columns={columns}
+        tagVals={tagVals}
+        priorityCol={priorityCol}
+        startDateVal={startDateVal}
+        dueDateVal={dueDateVal}
+        localTagOptions={localTagOptions}
+        onPropertyChange={onPropertyChange}
+        onAddTagOption={onAddTagOption}
+        people={people}
+      />
 
       {/* A box that holds an uncommitted draft is keyed by the card it belongs to, so switching cards
       gives a fresh one. The section name is part of the key because two such boxes sit side by side
@@ -270,9 +351,14 @@ function DetailModalContent({
         onChange={(desc) => onUpdate({ ...item, content: desc, description: desc })}
       />
 
-      <DetailAttachmentsAndSubtasks item={item} onUpdate={onUpdate} onConvertSubtask={onConvertSubtask} />
-
-      <DetailComments key={`comments-${item.id}`} item={item} people={people} onUpdate={onUpdate} />
+      <DetailCarrySections
+        item={item}
+        onUpdate={onUpdate}
+        onConvertSubtask={onConvertSubtask}
+        people={people}
+        boardItems={boardItems}
+        onChangeDependencies={onChangeDependencies}
+      />
     </div>
   )
 }
@@ -310,52 +396,6 @@ function useKanbanDetailState(
   return { statusCol, priorityCol, tagsCol, localTagOptions, handlePropertyChange, handleAddTagOption }
 }
 
-interface DetailShellProps {
-  onClose: () => void
-  header: ReactNode
-  content: ReactNode
-  footer: ReactNode
-}
-
-/**
- * The overlay's shell: the card stands beside the board, so the columns a reader is working through
- * stay in view while the card is open, and the next one can be picked without leaving them.
- *
- * It carries its own head and foot so the card's name stays editable at the top and the destructive
- * action stays reachable at the bottom while the middle scrolls, which a drawer's single scroll area
- * does not do on its own. `Z_INDEX.menu` is the tier an overlay takes above a full screen surface —
- * the same move the music hub's drawers make — and it is required rather than decorative here: the
- * board itself is a modal at `--z-modal`, so a drawer at the default `--z-drawer` would be painted
- * behind the very board it peeks from.
- */
-function KanbanCardPeek({ onClose, header, content, footer }: DetailShellProps) {
-  return (
-    <Drawer
-      open
-      onClose={onClose}
-      side='right'
-      width={DETAIL_PEEK_WIDTH}
-      zIndex={Z_INDEX.menu}
-      ariaLabel={t('preview.kanban_card_details')}
-    >
-      <div className='flex h-full flex-col'>
-        <div className='shrink-0 border-b border-[var(--border-subtle)] px-4 py-3'>{header}</div>
-        <div className='min-h-0 flex-1 overflow-y-auto px-4 py-3'>{content}</div>
-        <div className='shrink-0 border-t border-[var(--border-subtle)] px-4 py-3'>{footer}</div>
-      </div>
-    </Drawer>
-  )
-}
-
-/** A note's shell: the centred dialog, which is the room a block inside the editor does not have. */
-function KanbanCardDialog({ onClose, header, content, footer }: DetailShellProps) {
-  return (
-    <Modal open onClose={onClose} width={DETAIL_MODAL_WIDTH} title={header} footer={footer}>
-      {content}
-    </Modal>
-  )
-}
-
 function KanbanItemDetailBody({
   item,
   columns,
@@ -366,6 +406,8 @@ function KanbanItemDetailBody({
   onAddColumnOption,
   people,
   renderDescription,
+  boardItems,
+  onChangeDependencies,
   variant = 'dialog',
 }: KanbanItemDetailProps & { item: KanbanItem }) {
   const { statusCol, priorityCol, localTagOptions, handlePropertyChange, handleAddTagOption } =
@@ -403,6 +445,8 @@ function KanbanItemDetailBody({
       onConvertSubtask={onConvertSubtask}
       people={people}
       renderDescription={renderDescription}
+      boardItems={boardItems}
+      onChangeDependencies={onChangeDependencies}
     />
   )
 

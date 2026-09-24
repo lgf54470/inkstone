@@ -9,6 +9,7 @@ import { toastWithUndo } from '../../../../store/ui'
 import type { KanbanMovePivot } from '../dnd'
 import { kanbanPeopleDirectory } from '../person'
 import { kanbanActiveItems } from '../archive'
+import { withKanbanDependenciesGuarded } from '../dependencies'
 import { useKanbanBatchEdits } from './kanban-batch-edits'
 import { useKanbanMoveToAxes } from './kanban-move-to-axes'
 import { kanbanBoardLayout, moveKanbanItemToCell } from '../swimlane'
@@ -146,6 +147,23 @@ export function useKanbanItemMutations(
   }, [commitData, setDetailItem])
 
   return { handleMoveItem, handleUpdateTitle, handleUpdateItem, ...valueWrites }
+}
+
+/**
+ * KU-23: the dependency list's one writer. The guarded pure layer does the filtering and the cycle
+ * check against the document the commit sees; a refusal comes back as the same items, which the
+ * commit pipeline already treats as a no-op, so a rejected edit takes no step of undo.
+ */
+export function useKanbanDependencyWrite(commitData: CommitKanbanData) {
+  return useCallback(
+    (itemId: string, deps: string[]) => {
+      commitData((prev: KanbanData) => {
+        const next = withKanbanDependenciesGuarded(prev.items, itemId, deps)
+        return next === prev.items ? prev : { ...prev, items: next }
+      })
+    },
+    [commitData],
+  )
 }
 
 export function useKanbanItemLifecycle(
@@ -358,6 +376,7 @@ export function useKanbanRootState(
   const groupColumn = data.columns.find((c) => c.id === (filterSort.activeView.groupBy || 'status'))
   const selection = useKanbanSelection(commitData, groupColumn, filterSort.activeView, history.undo)
   const items = useKanbanItemMutations(commitData, filterSort.activeView, setDetailItem)
+  const handleChangeDependencies = useKanbanDependencyWrite(commitData)
   const itemLifecycle = useKanbanItemLifecycle(data, commitData, detailItem, setDetailItem, selection.setSelectedIds)
   const adds = useKanbanAddOperations(data, commitData, setDetailItem, filterSort.activeView)
   const columnOps = useKanbanColumnOperations({ data, commitData, activeView: filterSort.activeView, undo: history.undo })
@@ -384,7 +403,7 @@ export function useKanbanRootState(
     groupColumn,
     moveToAxes,
     selection,
-    items: { ...items, ...itemLifecycle, handleMoveItem, handleDeleteItem },
+    items: { ...items, ...itemLifecycle, handleMoveItem, handleDeleteItem, handleChangeDependencies },
     adds,
     columnOps,
     schemaOps,

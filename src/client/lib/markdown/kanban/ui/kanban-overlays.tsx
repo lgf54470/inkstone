@@ -29,6 +29,8 @@ export function KanbanRootOverlays({
         onClose={() => state.setDetailItem(null)}
         onUpdate={state.items.handleUpdateItem}
         onDelete={state.items.handleDeleteItem}
+        boardItems={state.data.items}
+        onChangeDependencies={state.items.handleChangeDependencies}
         onConvertSubtask={(subtaskId) => {
           if (state.detailItem) state.items.handleConvertSubtaskToItem(state.detailItem.id, subtaskId)
         }}

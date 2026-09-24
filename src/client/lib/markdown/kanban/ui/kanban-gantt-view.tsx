@@ -11,6 +11,7 @@ import {
 } from '../timeline-helpers'
 import type { KanbanData, KanbanItem, KanbanView } from '../types'
 import { useBarReschedule, type BarRescheduleApi } from './kanban-bar-reschedule'
+import { KanbanDependencyLayer } from './kanban-dependency-layer'
 import { KanbanIconBadge } from './kanban-icon-badge'
 import {
   TimelineClippedNotice,
@@ -179,7 +180,8 @@ function GanttTimelineChart({
     <div ref={scrollRef} data-kanban-timeline-grid className='flex-1 overflow-x-auto'>
       <TimelineDayHeader days={range.days} dayWidth={range.dayWidth} />
 
-      <div className='w-max divide-y divide-[var(--border-subtle)]'>
+      <div className='relative w-max divide-y divide-[var(--border-subtle)]'>
+        <KanbanDependencyLayer items={items} range={range} fields={fields} />
         {items.map((item) => (
           <GanttBar
             key={item.id}
