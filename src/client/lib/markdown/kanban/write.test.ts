@@ -39,6 +39,8 @@ function outlineEntry(): { entry: KanbanBlockEntry; write: ReturnType<typeof vi.
       unsaved: false,
       disposed: false,
       timer: null,
+      handlers: null,
+      rendered: null,
     },
   }
 }

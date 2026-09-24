@@ -5318,6 +5318,9 @@ const allowed = new Map([
     '/**\n * The order the rows stand in when `itemId` is dropped onto `targetId`: a whole-step move toward the\n * target, inside the mover\'s own group. A drop on a row of another group is not a reorder — crossing\n * groups is the board\'s move, which writes the group column — so it resolves to no change.\n */',
   ]],
   ['src/client/lib/markdown/kanban/entry.ts', [
+    '/**\n * The four callbacks the root is rendered with, made once per block rather than once per render.\n *\n * `KanbanRoot` is a `memo`, and the preview remounts every block each time the editor settles — fence\n * unchanged and all — so a fresh closure per render turned every keystroke in the note into a\n * whole-board repaint. The handlers therefore live on the entry and are rebuilt only when what they\n * depend on changes (whether this block has a writer at all), never when a render happens.\n */',
+    '/** Whether the block had a writer when these were made: it decides if retry and discard exist. */',
+    '/** Everything the last render of the root was made of, so an unchanged remount can skip it. */',
     '/** Edits the note refused to accept; kept in memory until retry or discard. */',
     '/** The block left the document and this entry was torn down; nothing may move its container again. */',
     '/**\n   * How tall the block was when the overlay borrowed the canvas, so the stand-in left behind is the\n   * hole the board actually made rather than a fixed guess.\n   */',
@@ -5441,6 +5444,12 @@ const allowed = new Map([
     '// the host writes it once, when it makes the element, so it used to keep whatever language the',
     '// block mounted in for as long as the block lived.',
   ]],
+  ['src/client/lib/markdown/kanban/registry-remount.test.ts', [
+    '/**\n * The preview remounts every board each time the editor settles.\n *\n * One keystroke in the prose above the fence re-renders the whole note, and the layout effect walks\n * the blocks again — usually with the fence exactly as it was. That walk used to end in `root.render`\n * unconditionally, and `render` handed the memoized root four fresh closures, so the board could not\n * bail out: typing a paragraph repainted every mounted card. These cases hold both ends — a remount\n * that changed nothing must not repaint, and a remount whose fence did change still must.\n */',
+    '/** Every paint of a board root, in order: the root is a `memo`, so this is what a bail-out prevents. */',
+    '/**\n * One note, rendered the way the preview does it: markup on the host, bodies registered beside it,\n * then the registry walked over it. `trailing` stands for the prose the reader is actually editing.\n */',
+    '// What typing above the fence does: the same fence in a note whose prose moved.',
+  ]],
   ['src/client/lib/markdown/kanban/registry.test.ts', [
     '/**\n * Every kanban block in the preview is a React root of its own, living inside markup React did not\n * make, and those roots are torn down from the host tree\'s own effects: the pane goes away, or the\n * block leaves the note. A root may not be taken down from inside another root\'s commit — React\n * says so out loud ("Attempted to synchronously unmount a root while React was already rendering")\n * and then lets the teardown race the commit it interrupted. The unmount is deferred by a\n * microtask, and these cases are what hold it there: the board is still painted when the call\n * returns, and it is gone a microtask later, with no warning raised from inside a commit.\n */',
     '/** The preview\'s own shape: the teardown runs from the cleaning-up side of the host root\'s commit. */',
@@ -5453,6 +5462,10 @@ const allowed = new Map([
     '// full screen, and the reader has to be told before the stage under it goes blank (announced where',
     '// the block left the document — see `mountKanbans`), and a late `moveBack` from that overlay\'s own',
     '// cleanup must not push the dead container back into a placeholder a fresh board may already own.',
+    '/**\n * Everything the root reads, gathered so two renders can be compared before the second one happens.\n *\n * The preview remounts every block each time the editor settles: a keystroke elsewhere in the note\n * re-renders the markup and `mountKanbans` walks the blocks again, usually with the fence exactly as\n * it was. Rendering anyway is not wrong, but it reconciles a whole board — its header, its toolbar\n * and every mounted card — for a change that was never made, and on a board at the item ceiling that\n * is work the reader pays for while typing prose.\n */',
+    '/**\n * The handlers the root is given, kept on the entry and reused across renders.\n *\n * They read the mount options at call time rather than closing over one render\'s copy: the block\n * outlives any single `mountKanbans` pass, and the identity is what the memoized root compares.\n */',
+    '// Read at call time, not at render time: the same block is the inline one and the overlay\'s,',
+    '// and which door it opens depends on where it happens to be standing when it is clicked.',
     '// Unwritten edits outrank the note body: a re-render must not re-point the',
     '// fence or re-parse over them, or retry and discard lose what they resolve.',
     '// The head\'s own name, from the body the parser just read (see `setKanbanHeadTitle`). A block that',

@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { parseKanbanBody } from './body'
-import type { KanbanBlockEntry } from './entry'
+import type { KanbanBlockEntry, KanbanRenderStamp, KanbanRootHandlers } from './entry'
 import type { KanbanData, KanbanWriter } from './types'
 import { KanbanRoot, KanbanRootBoundary } from './ui'
 import {
@@ -130,6 +130,8 @@ function createEntry(node: HTMLElement, options: KanbanMountOptions): KanbanBloc
     disposed: false,
     reserveHeight: null,
     timer: null,
+    handlers: null,
+    rendered: null,
   }
   entries.set(created.key, created)
   return created
@@ -153,11 +155,81 @@ function disposeEntry(entry: KanbanBlockEntry): void {
   if (root) queueMicrotask(() => root.unmount())
 }
 
+/**
+ * Everything the root reads, gathered so two renders can be compared before the second one happens.
+ *
+ * The preview remounts every block each time the editor settles: a keystroke elsewhere in the note
+ * re-renders the markup and `mountKanbans` walks the blocks again, usually with the fence exactly as
+ * it was. Rendering anyway is not wrong, but it reconciles a whole board — its header, its toolbar
+ * and every mounted card — for a change that was never made, and on a board at the item ceiling that
+ * is work the reader pays for while typing prose.
+ */
+function renderStamp(entry: KanbanBlockEntry, options: KanbanMountOptions): KanbanRenderStamp {
+  return {
+    source: entry.source,
+    data: entry.data,
+    unsaved: entry.unsaved,
+    owner: entry.owner,
+    noteId: entry.noteId,
+    writable: entry.write !== null,
+    renderDescription: options.renderDescription,
+  }
+}
+
+function sameStamp(a: KanbanRenderStamp, b: KanbanRenderStamp): boolean {
+  return a.source === b.source
+    && a.data === b.data
+    && a.unsaved === b.unsaved
+    && a.owner === b.owner
+    && a.noteId === b.noteId
+    && a.writable === b.writable
+    && a.renderDescription === b.renderDescription
+}
+
+/**
+ * The handlers the root is given, kept on the entry and reused across renders.
+ *
+ * They read the mount options at call time rather than closing over one render's copy: the block
+ * outlives any single `mountKanbans` pass, and the identity is what the memoized root compares.
+ */
+function entryHandlers(entry: KanbanBlockEntry): KanbanRootHandlers {
+  const writable = entry.write !== null
+  if (entry.handlers && entry.handlers.writable === writable) return entry.handlers
+  const settle = () => {
+    const options = scopeOptions.get(entry.scope)
+    if (options) renderKanbanEntry(entry, options)
+  }
+  entry.handlers = {
+    writable,
+    onUpdateData: (next) => updateKanbanData(entry, () => next),
+    onRetryWrite: writable ? () => {
+      retryKanbanWrite(entry)
+      settle()
+    } : undefined,
+    onDiscardWrite: writable ? () => {
+      discardKanbanWrite(entry)
+      settle()
+    } : undefined,
+    onToggleFullscreen: () => {
+      const options = scopeOptions.get(entry.scope)
+      if (!options) return
+      // Read at call time, not at render time: the same block is the inline one and the overlay's,
+      // and which door it opens depends on where it happens to be standing when it is clicked.
+      if (entry.owner === 'overlay') options.onCloseFullscreen?.(entry.host)
+      else options.onOpenFullscreen?.(entry.host)
+    },
+  }
+  return entry.handlers
+}
+
 function renderKanbanEntry(entry: KanbanBlockEntry, options: KanbanMountOptions): void {
   if (!entry.root || !entry.data) return
+  const stamp = renderStamp(entry, options)
+  if (entry.rendered && sameStamp(entry.rendered, stamp)) return
+  entry.rendered = stamp
   const inOverlay = entry.owner === 'overlay'
   const sourceResult = entry.unsaved ? parseKanbanBody(entry.source) : null
-  const settle = () => renderKanbanEntry(entry, options)
+  const handlers = entryHandlers(entry)
   entry.root.render(
     createElement(
       KanbanRootBoundary,
@@ -168,19 +240,11 @@ function renderKanbanEntry(entry: KanbanBlockEntry, options: KanbanMountOptions)
         kanbanName: entry.noteId || 'default',
         unsaved: entry.unsaved,
         sourceData: sourceResult && sourceResult.ok ? sourceResult.data : undefined,
-        onRetryWrite: entry.write ? () => {
-          retryKanbanWrite(entry)
-          settle()
-        } : undefined,
-        onDiscardWrite: entry.write ? () => {
-          discardKanbanWrite(entry)
-          settle()
-        } : undefined,
-        onUpdateData: (next) => updateKanbanData(entry, () => next),
+        onRetryWrite: handlers.onRetryWrite,
+        onDiscardWrite: handlers.onDiscardWrite,
+        onUpdateData: handlers.onUpdateData,
         renderDescription: options.renderDescription,
-        onToggleFullscreen: () => (
-          inOverlay ? options.onCloseFullscreen?.(entry.host) : options.onOpenFullscreen?.(entry.host)
-        ),
+        onToggleFullscreen: handlers.onToggleFullscreen,
       }),
     ),
   )
