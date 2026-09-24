@@ -50,7 +50,7 @@
 
 ## 批次 2 · 正确性与性能（核心缺陷）
 
-- [ ] G-19 预防性拆分：`kanban-root.tsx`、`kanban-item-detail.tsx` 纯移动（不改行为），为批次 3/4 腾行数预算
+- [x] G-19 预防性拆分：视图渲染器族（KanbanViewRendererProps 接口 + Timeline/BoardTable/ListGallery/Renderer 四组件，174 行）纯移动到 `kanban-view-renderer.tsx`；`kanban-root.tsx` 494→302 行，行为零改动（kanban-item-detail.tsx 461 行未动——批次 3/4 不再向其加行，留着观察）
 - [ ] T-01 三件套列解析统一：`view-ops.ts` 导出 `kanbanStatusColumn/kanbanPriorityColumn/kanbanTagsColumn` 通用解析（约定 id → type 推导 → 无），替换 10+ 处硬编码；修复 `kanban-root-hooks.ts:249` 幽灵 `'todo'`（推导不到就不写属性）
 - [ ] T-02 gantt 进度滑杆 commit-on-release：拖动中本地视觉态，松手一次 commit（复用撤销栈语义）
 - [ ] G-04 timeline/gantt 侧栏接入 `useKanbanRenderWindow`（1000 卡上限下最后两块全量渲染面）
@@ -89,7 +89,8 @@
 | 2026-09-24 | G-01：日历月份标题按 locale 格式化（含 UTC 时区防偏移） | 6591fb73 | calendar/view-rows 11 测试通过；typecheck/comments 通过；allowlist 8212 条 |
 | 2026-09-24 | G-03：触屏控件常显（11 处 pointer-coarse 变体，build 产物验证） | 3fbb9272 | card/header 36 测试通过；typecheck 通过；build 产物 CSS 含 pointer: coarse 规则 |
 | 2026-09-24 | G-02：单击即开详情，重命名收敛到铅笔+F2；e2e 断言重写 | 4b49ee31 | kanban 全模块 106 文件 1312 测试通过；preview 集成 20 用例全绿；e2e.mjs 177/0；e2e-visual 533/1（唯一失败为先在性 tab 几何，基线同签名复现）；contrast:check 通过 |
-| 2026-09-24 | G-20：修复全屏页签条 offsetLeft 误判滚动（strip 补 relative + ResizeObserver 自愈） | 见 git log | view-tabs 40 测试通过；e2e-visual 534/0 全绿（干净实例） |
+| 2026-09-24 | G-20：修复全屏页签条 offsetLeft 误判滚动（strip 补 relative + ResizeObserver 自愈） | 45de5175 | view-tabs 40 测试通过；e2e-visual 534/0 全绿（干净实例） |
+| 2026-09-24 | G-19：视图渲染器族纯移动拆出，root 494→302 行 | 见 git log | root/keys/fullscreen 26 测试通过；typecheck/size/style/deep-imports/comments 通过 |
 
 ## 固定验证
 

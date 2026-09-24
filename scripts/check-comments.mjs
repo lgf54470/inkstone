@@ -6749,12 +6749,6 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-root.tsx', [
     '/** Passed down from the mount options: how the host renders description markdown. */',
-    '/** One item\'s own fields, handed down with an identity that outlives a render (see K-19). */',
-    '/** A bar dragged on a time view: the days it spans, as one patch and one commit. */',
-    '/** KU-21c: the table\'s row move, resolved against the document\'s item order, in one commit. */',
-    '/** The same drop with the picked cards behind it; absent where the board cannot batch. */',
-    '// The band\'s own slider writes one property; the writer is the board\'s, so a drag through the',
-    '// chart does not hand the view a new prop on every frame.',
     '// What fills the panel turns on one question: does this board hold a card anywhere? A board that holds',
     '// none has nothing for any view to lay out, so the guide stands in for the view; a board that merely',
     '// looks empty — filtered down, or with its cards archived — keeps showing what it has.',
@@ -6996,6 +6990,15 @@ const allowed = new Map([
     '// stack, and typing a name is one edit however long it takes.',
     '// Each section renders when the caller wired it: the board gets grouping and',
     '// card size, the table gets column visibility, neither sees the other\'s controls.',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-view-renderer.tsx', [
+    '/** One item\'s own fields, handed down with an identity that outlives a render (see K-19). */',
+    '/** A bar dragged on a time view: the days it spans, as one patch and one commit. */',
+    '/** KU-21c: the table\'s row move, resolved against the document\'s item order, in one commit. */',
+    '/** The same drop with the picked cards behind it; absent where the board cannot batch. */',
+    '// The band\'s own slider writes one property; the writer is the board\'s, so a drag through the',
+    '// chart does not hand the view a new prop on every frame.',
+    '/**\n * The view half of the root: which of the eight views is on screen and what each one is handed.\n * Moved here from the root file as a pure cut (G-19) — the root\'s composition, wiring and state\n * stay where they were, and this file holds only the per-view switch and the props they share.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-rows.test.ts', [
     '/**\n * SH-110\'s shape, asked of the mounted views rather than of their source: a row, a bar and a day cell\n * are controls a keyboard can reach, and the rows open the detail when they are activated. In the\n * gantt and timeline views the row and the bar are one control with nothing inside them, so they are\n * real buttons — the browser\'s own Enter and Space activation is then what opens the detail, and\n * `scripts/e2e-visual.mjs` presses Enter on one to read that. The calendar\'s day cell is a container\n * of two controls (the number and the hover `+`), which is the shape the board\'s card has: as a cell\n * header that opened the day from a click handler it was both unreachable without a pointer and a\n * click target holding a button of its own.\n */',
