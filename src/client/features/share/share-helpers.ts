@@ -109,13 +109,28 @@ export function localizeDeviceName(name: string): string {
   return name
 }
 
+const SLUG_CHARSET = '23456789abcdefghjkmnpqrstvwxyz'
+// The largest multiple of the charset size that still fits a byte: rejecting the tail keeps
+// `byte % 30` uniform, which plain `Math.random()` also managed but a CSPRNG demands explicitly.
+const SLUG_REJECT_FROM = 256 - (256 % SLUG_CHARSET.length)
+
+/**
+ * The dice button next to the custom-slug field. The slug becomes a public URL, so the suggestion
+ * comes from `crypto.getRandomValues` rather than `Math.random` — the server generates its own
+ * 20-character slug for auto-shares, but a suggestion a person can accept outright should not be
+ * the weakest link in the chain.
+ */
 export function generateRandomSlug(length = 6): string {
-  const chars = '23456789abcdefghjkmnpqrstvwxyz'
-  let res = ''
-  for (let i = 0; i < length; i++) {
-    res += chars[Math.floor(Math.random() * chars.length)]
+  let slug = ''
+  const bytes = new Uint8Array(length)
+  while (slug.length < length) {
+    crypto.getRandomValues(bytes)
+    for (const byte of bytes) {
+      if (slug.length === length) break
+      if (byte < SLUG_REJECT_FROM) slug += SLUG_CHARSET[byte % SLUG_CHARSET.length]
+    }
   }
-  return res
+  return slug
 }
 
 const CSV_CONTROL_CHARS = /[\u0000-\u001f\u007f]/g

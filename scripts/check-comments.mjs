@@ -4069,6 +4069,9 @@ const allowed = new Map([
     '/**\n * What to say about unique visitors, in one place: the log table and the sessions panel describe the\n * same caliber, and an instance that keeps no visitor fingerprint has no caliber to describe — every\n * visit is its own row there, and there is no fingerprint to count anyone from.\n */',
     '/**\n * How the three traffic switches read as one sentence. The badge and the exported CSV both state\n * this, and a file that describes the filters differently from the screen is worse than no file.\n */',
     '/**\n * The three device classes the breakdown card names in words. Shared with the dashboard export so a\n * file that leaves the app says "Desktop" where the card said "Desktop", not the raw `desktop`.\n */',
+    '// The largest multiple of the charset size that still fits a byte: rejecting the tail keeps',
+    '// `byte % 30` uniform, which plain `Math.random()` also managed but a CSPRNG demands explicitly.',
+    '/**\n * The dice button next to the custom-slug field. The slug becomes a public URL, so the suggestion\n * comes from `crypto.getRandomValues` rather than `Math.random` — the server generates its own\n * 20-character slug for auto-shares, but a suggestion a person can accept outright should not be\n * the weakest link in the chain.\n */',
     '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
     '// Localized headers, so a file that leaves the app speaks the reader\'s language the same way the',
     '// dashboard export does. Channel stays appended last so an existing script that reads the columns',
@@ -4189,6 +4192,10 @@ const allowed = new Map([
     '// in, bounded so a font that never settles costs the type, not the sheet.',
     '/** What the bar asks for: the same three things the copy and export actions are handed. */',
     '/**\n * The bar\'s side of the sheet: the request, and the sheet to render while it prints. Mounted only\n * while a print is in flight — the deck\'s print sheet is mounted the same way — so nothing about the\n * sheet exists in the document until the owner asks for one, and it goes away when the dialog closes.\n */',
+  ]],
+  ['src/client/features/share/share-random-slug.test.ts', [
+    '// 0 → \'2\', 29 → \'z\', 239 accepted (239 % 30 = 29 → \'z\'), 240 must be rejected;',
+    '// a second batch of 1s fills the rest → \'3\'.',
   ]],
   ['src/client/features/share/share-sessions-panel.tsx', [
     '/**\n * One visitor\'s sittings, newest first (ADR-0003). A real table rather than rows of divs, because\n * the point of this view is the comparison across columns — when it started, how long it ran, how\n * many visits, and what was read in between. The note list carries the reading order, which is the\n * question this panel exists to answer.\n */',

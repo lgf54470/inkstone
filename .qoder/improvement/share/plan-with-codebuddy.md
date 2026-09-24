@@ -31,8 +31,8 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | 01 | — | — | 落盘本台账 + worktree 建支软链 | 极小 | ✅ | 未含代码改动 |
 | 02 | P0 | #4 | 访问日志表失败态缺失（违反禁止静默失败红线） | 小 | ✅ | 5a8ac75f |
-| 03 | P0 | #1 | 访问日志 CSV 表头硬编码英文 | 小 | ✅ | ⏳ |
-| 04 | P0 | #3 | 随机 slug 用 Math.random（非 CSPRNG） | 极小 | ⬜ | — |
+| 03 | P0 | #1 | 访问日志 CSV 表头硬编码英文 | 小 | ✅ | 7adb7e2c |
+| 04 | P0 | #3 | 随机 slug 用 Math.random（非 CSPRNG） | 极小 | ✅ | ⏳ |
 | 05 | P0 | #2/#20 | 静态内联样式 + worker 原始 error 日志 | 极小 | ⬜ | — |
 | 06 | P0 | #17/#18 | 日志 count+rows 未 batch、页上限过宽、`/summary` 无界返回 | 小 | ⬜ | — |
 | 07 | P1 | #15 | 全站累计 UV 全史聚合每次列表重算 | 小 | ⬜ | — |
@@ -53,6 +53,11 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 04 · P0 #3 随机 slug 改 CSPRNG
+
+- 方案：`share-helpers.ts` 的 `generateRandomSlug` 改用 `crypto.getRandomValues`，字符集（30 字符）与位数（6）不变；按「最大 30 倍数以下字节才采值」的拒绝采样消掉取模偏置。服务端 `worker/lib/id.ts` 的 newSlug() 本就合规，未动。
+- 回归：新建 `share-random-slug.test.ts` 4 例——断言只走 crypto 不走 Math.random、200 次抽样字符集/长度合规、固定字节序列验证无偏映射与 ≥240 拒绝、整批被拒后继续补抽。变异验证：临时改回 `Math.random` 实现 → 4 例中 3 红，恢复后全绿。`npx tsc -b --force` 通过，全部门禁绿（含 comments 白名单同步）。
 
 ### 2026-09-25 · 序 03 · P0 #1 访问日志 CSV 表头 i18n
 
