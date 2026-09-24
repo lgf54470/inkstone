@@ -12,6 +12,7 @@ import {
 } from '../timeline-helpers'
 import type { KanbanItem } from '../types'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
 
 /**
  * The scale the two time views share. It is deliberately not view state: the fences are what the
@@ -163,6 +164,9 @@ export function TimelineUndatedList({
   onOpenDetail: (item: KanbanItem) => void
 }) {
   useLocaleRepaint()
+  // The heading counts the whole undated set; the rows are windowed like every other list, since a
+  // board that is all undated cards is a thousand-row list here just as anywhere else.
+  const { visible, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(items)
   if (items.length === 0) return null
   return (
     <div data-kanban-timeline-undated className='border-t border-[var(--border-subtle)] bg-[var(--bg-raised)]'>
@@ -170,7 +174,7 @@ export function TimelineUndatedList({
         {t('preview.kanban_timeline_undated', { count: items.length })}
       </div>
       <ul className='flex flex-col'>
-        {items.map((item) => (
+        {visible.map((item) => (
           <li key={item.id}>
             <Button
               variant='ghost'
@@ -185,6 +189,7 @@ export function TimelineUndatedList({
           </li>
         ))}
       </ul>
+      <KanbanRenderTail hiddenCount={hiddenCount} setTailElement={setTailElement} onReveal={revealMore} />
     </div>
   )
 }

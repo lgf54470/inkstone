@@ -13,6 +13,7 @@ import type { KanbanData, KanbanItem, KanbanView } from '../types'
 import { useBarReschedule, type BarRescheduleApi } from './kanban-bar-reschedule'
 import { KanbanDependencyLayer } from './kanban-dependency-layer'
 import { KanbanIconBadge } from './kanban-icon-badge'
+import { KanbanRenderTail, useKanbanRenderWindow } from './kanban-render-window'
 import {
   TimelineClippedNotice,
   TimelineDayHeader,
@@ -176,6 +177,9 @@ function GanttTimelineChart({
   scrollRef,
   reschedule,
   onOpenDetail,
+  hiddenCount,
+  setTailElement,
+  onReveal,
 }: {
   items: KanbanItem[]
   range: TimelineRange
@@ -184,6 +188,9 @@ function GanttTimelineChart({
   scrollRef: React.RefObject<HTMLDivElement | null>
   reschedule: BarRescheduleApi
   onOpenDetail: (item: KanbanItem) => void
+  hiddenCount: number
+  setTailElement: React.Dispatch<React.SetStateAction<HTMLButtonElement | null>>
+  onReveal: () => void
 }) {
   return (
     <div ref={scrollRef} data-kanban-timeline-grid className='flex-1 overflow-x-auto'>
@@ -202,6 +209,7 @@ function GanttTimelineChart({
             onOpenDetail={onOpenDetail}
           />
         ))}
+        <KanbanRenderTail hiddenCount={hiddenCount} setTailElement={setTailElement} onReveal={onReveal} />
       </div>
     </div>
   )
@@ -220,6 +228,9 @@ export const KanbanGanttView = memo(function KanbanGanttView({
   const endField = view?.endField
   const fields: TimelineDayFields = useMemo(() => ({ startField, endField }), [startField, endField])
   const { dated, undated } = useMemo(() => splitTimelineItems(data.items, fields), [data.items, fields])
+  // One window cuts both columns, exactly as the timeline does; the range still reads the full list
+  // so the day header spans every day the board holds.
+  const { visible: visibleDated, hiddenCount, setTailElement, revealMore } = useKanbanRenderWindow(dated)
   const progressField = view?.progressField || 'progress'
   const memory = useKanbanViewMemory(view?.id)
   const { range, zoom, scrollRef, onZoomChange, onToday } = useTimelineViewState(dated, fields, memory.zoom, memory.setZoom)
@@ -231,20 +242,23 @@ export const KanbanGanttView = memo(function KanbanGanttView({
       <TimelineRangeControls zoom={zoom} onZoomChange={onZoomChange} onToday={onToday} />
       <div className='flex flex-1 overflow-auto rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]'>
         <GanttTaskSidebar
-          items={dated}
+          items={visibleDated}
           progressField={progressField}
           onOpenDetail={onOpenDetail}
           onAddItem={onAddItem}
           onUpdateProgress={onUpdateProgress}
         />
         <GanttTimelineChart
-          items={dated}
+          items={visibleDated}
           range={range}
           fields={fields}
           progressField={progressField}
           scrollRef={scrollRef}
           reschedule={reschedule}
           onOpenDetail={onOpenDetail}
+          hiddenCount={hiddenCount}
+          setTailElement={setTailElement}
+          onReveal={revealMore}
         />
       </div>
       <TimelineUndatedList items={undated} onOpenDetail={onOpenDetail} />

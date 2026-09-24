@@ -1,15 +1,12 @@
 /**
  * KU-33. What a view costs is what it puts in the document: a note can carry `KANBAN_MAX_ITEMS` cards
  * (`body.ts`), and the reader pays for a view switch in the nodes that view mounts. KU-26 measured a
- * 1000 card board in a real browser and found the cost bunched in three surfaces — the calendar drew
- * 3449 card elements, the timeline and the gantt 1000 each — while the board, table, list and gallery
- * stayed at their window (~90/90/30/30, `kanban-render-window.tsx`).
+ * 1000 card board in a real browser and found the cost bunched in the dated surfaces — the calendar
+ * drew 3449 card elements, the timeline and the gantt 1000 each — while the board, table, list and
+ * gallery stayed at their window (~90/90/30/30, `kanban-render-window.tsx`).
  *
- * So this is a budget rather than a benchmark: the four windowed views are pinned to the window they
- * promise, and each of the three row-per-card surfaces is pinned to a ceiling of its own — the rows of
- * a timeline are the grid a reader scrolls, so `<=` is the honest shape of "no more than this", and an
- * improvement is free to come in under it. The ceilings are per 500 cards and derived from the counts
- * measured here; a change that mounts a second copy of anything fails the view it belongs to.
+ * So this is a budget rather than a benchmark: every view is pinned to the slice it promises, and a
+ * change that mounts a second copy of anything fails the view it belongs to.
  *
  * Switching views is what this measures, so every case mounts the real root and presses the real tab.
  */
@@ -105,11 +102,12 @@ const VIEWS: KanbanViewType[] = ['board', 'table', 'list', 'gallery', 'calendar'
 
 /**
  * What a view may put in the document, at 500 cards. Measured first (jsdom, this fixture) and then
- * rounded up: the four windowed views were at 120/120/30/30 cards and the three dated surfaces at
- * 500 each. A ceiling well under the board is the point of the windowed rows — 150 catches a view
- * that stops slicing — and the dated rows allow each card one bar plus room for a bar that spans
- * more than one cell, which still catches the shape this budget exists for: a second copy of a card
- * (a hidden list beside the grid, a details pane per bar) takes those rows over 600.
+ * rounded up: all eight views now render a window — G-04 brought the timeline and the gantt under
+ * `kanban-render-window.tsx` (one window cuts the sidebar rows and the chart rows at the same index;
+ * the day header still reads the full list) — so each is pinned to its slice. A ceiling well under
+ * the board is the point of the windowed rows — 150 catches a view that stops slicing. The calendar
+ * keeps its month-grid shape (each card is a cell on the day it sits on), the chart draws aggregates,
+ * so a card element in either is already over the line.
  */
 const WINDOWED = KANBAN_RENDER_WINDOW * GROUPS
 
@@ -119,9 +117,8 @@ const BUDGETS: Record<KanbanViewType, { cards: number; nodes: number }> = {
   list: { cards: KANBAN_RENDER_WINDOW, nodes: 700 },
   gallery: { cards: KANBAN_RENDER_WINDOW, nodes: 900 },
   calendar: { cards: CARDS * 1.2, nodes: 1800 },
-  timeline: { cards: CARDS * 1.2, nodes: 3400 },
-  gantt: { cards: CARDS * 1.2, nodes: 8000 },
-  // A chart draws aggregates, so a card element in it is already over the line.
+  timeline: { cards: KANBAN_RENDER_WINDOW, nodes: 700 },
+  gantt: { cards: KANBAN_RENDER_WINDOW, nodes: 1200 },
   chart: { cards: 0, nodes: 300 },
 }
 
