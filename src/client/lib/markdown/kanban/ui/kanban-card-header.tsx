@@ -106,6 +106,8 @@ function CardAddTagButton({ itemId, tagVals, tagsCol, onUpdateTags, onAddColumnO
         <span>{t('preview.kanban_new_tag')}</span>
       </button>
       {open && (
+        /* These events are the popover's while it is open: keys typed into its name field —
+        arrows and Escape included — must not reach the board's key handler at the container. */
         <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           <TagCreatePopover
             panelId={panelId}

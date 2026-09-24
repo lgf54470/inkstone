@@ -5904,6 +5904,7 @@ const allowed = new Map([
     '// reveal at once, and both variants carry the same specificity as `group-hover/card` —',
     '// Tailwind emits them in its own order, so without the flag which one wins is whichever rule',
     '// it happened to write last. Neither class reaches past this element.',
+    '/* These events are the popover\'s while it is open: keys typed into its name field —\n        arrows and Escape included — must not reach the board\'s key handler at the container. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-card-title.tsx', [
     '/**\n * The card\'s title: the one part of a card that is a gesture rather than a value.\n *\n * One click opens the detail, and rename lives on the pencil beside the title and on `F2`. A double\n * click used to rename, and the first click waited a quarter second for the second not to happen —\n * a hold every open paid so a gesture few readers knew could run. The wait is gone: opening is\n * immediate, and the two rename doors the wait existed to protect are still there.\n */',

@@ -12,11 +12,11 @@
 | 1 | 性能 P-1 | registry 每次挂载重建回调击穿 `KanbanRoot` memo；编辑器每次防抖提交全树重渲染 | ✅ 完成 | `f3d88a06` |
 | 2 | 性能 P-3 | 勾选一张卡导致所有展开列重绘（`selectAll` 对象每渲染新建） | ✅ 完成 | 见 git log |
 | 3 | 性能 P-4 | 批量拖放 `moveKanbanItemsToCell` O(k·n) 串行 | ✅ 完成 | 见 git log |
-| 4 | 安全 S-2 | 打印导出 `dangerouslySetInnerHTML` 重解析已渲染 DOM | ⬜ 待做 | — |
-| 5 | 样式 U-5 | `duration-300` 未随 `prefers-reduced-motion` 令牌归零 | ⬜ 待做 | — |
-| 6 | 样式 U-1 | `.kanban-print-sheet { left: -100000px }` 魔法数字 | ⬜ 待做 | — |
-| 7 | 样式 U-3 | 子任务复选框完成态内联样式 → `data-*` + CSS | ⬜ 待做 | — |
-| 8 | 样式 U-7 | 卡片头部 `stopPropagation` 吞掉 onKeyDown，需确认并注释 | ⬜ 待做 | — |
+| 4 | 安全 S-2 | 打印导出 `dangerouslySetInnerHTML` 重解析已渲染 DOM | ✅ 完成 | `cc778dd5` |
+| 5 | 样式 U-5 | `duration-300` 未随 `prefers-reduced-motion` 令牌归零 | ✅ 完成 | 见 git log |
+| 6 | 样式 U-1 | `.kanban-print-sheet { left: -100000px }` 魔法数字 | ✅ 完成 | 见 git log |
+| 7 | 样式 U-3 | 子任务复选框完成态内联样式 → `data-*` + CSS | ✅ 完成 | 见 git log |
+| 8 | 样式 U-7 | 卡片头部 `stopPropagation` 吞掉 onKeyDown，需确认并注释 | ✅ 完成 | 见 git log |
 | 9 | 安全 S-3 | 跨域文本预览 `res.text()` 无体积上限 | ⬜ 待做 | — |
 | 10 | 安全 S-4 | `data:image/*` 白名单放行 `file.url` | ⬜ 待做 | — |
 | 11 | 安全 S-6 | fence JSON 无字段长度约束 | ⬜ 待做 | — |
@@ -50,3 +50,13 @@
 - 方案：改为双链表 + id 索引模拟同样的逐卡走法（band 写入、仅换泳道不挪位、anchor 独占 pivot、目标列为空时 pivot 被忽略转文档末尾等语义逐条保留），数组只走两遍（建链表、读回）；列尾指针惰性解析（pivot 插入后标记未解析，下次读取时向前走一段，每批至多一次）。
 - 验证：`swimlane.test.ts` 新增 400 轮种子随机模糊测试，以「逐卡 reduce」为参照实现断言 `toStrictEqual` 全等（顺序 + 属性写入）。模糊测试先后抓出两处语义偏差并修复：目标列为空时 pivot 必须被忽略；列尾指针在 pivot 插入后须先解析再回退。另临时放大到 4000 轮 × 40 卡全部通过后还原参数。
 - 回归：typecheck 通过；批量/泳道相关 5 文件 74 用例通过；全量 `test:unit` 4 个失败均为负载性超时/偶发（starter-deck、music×2、calendar-tree 模糊 5s 超时），单独运行全部通过，与本次改动无关。
+
+### 4. 安全 S-2 — 打印纸去 innerHTML 重解析 ✅ `cc778dd5`
+- `KanbanPrintSheet` 改为 ref + `cloneNode(true)` 挂载视图副本；测试补断言「纸上是视图树形且非活面板」。
+
+### 5-8. 样式与令牌细节 U-5/U-1/U-3/U-7 ✅
+- U-5：进度条 `duration-300` → `duration-[var(--dur-base)]`，随 `prefers-reduced-motion` 归零。
+- U-1：`left: -100000px` → 具名变量 `--print-offscreen-x`（CSS 不允许注释，变量名即文档）。
+- U-3：子任务复选框条件内联样式 → `data-completed` 属性 + Tailwind `data-[completed]:` 变体。
+- U-7：确认卡片头部事件隔离层的抑制范围（标签弹层打开期间，键入其输入框的方向键/Escape 不得被容器上的看板键盘处理器读取），补注释说明。
+- 回归：typecheck + hardcoded/token/style/comments 门禁通过；全量 `test:unit` 仅剩已知偶发（radiogroup-names、calendar-tree，单独跑通过）。
