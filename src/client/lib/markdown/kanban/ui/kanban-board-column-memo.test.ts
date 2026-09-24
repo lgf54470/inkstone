@@ -71,29 +71,30 @@ function board(): KanbanData {
 /** The board's own callbacks, one identity for the tree's life: only the drag bundle is under test. */
 const noop = vi.fn()
 
-function mountBoard() {
-  const data = board()
-  const rendered = renderElement(
-    createElement(KanbanBoardView, {
-      data,
-      view: data.views[0]!,
-      selectedIds: new Set<string>(),
-      onToggleSelect: noop,
-      onToggleAll: noop,
-      onOpenDetail: noop,
-      onToggleTag: noop,
-      onUpdateTitle: noop,
-      onUpdateSubtasks: noop,
-      onMoveItem: noop,
-      onAddItem: noop,
-      onAddColumn: noop,
-      onReorderColumns: noop,
-      onUpdateColumn: noop,
-      onDeleteColumn: noop,
-      onUpdateTags: noop,
-      onAddColumnOption: noop,
-    }),
-  )
+function boardElement(data: KanbanData, selected: string[]) {
+  return createElement(KanbanBoardView, {
+    data,
+    view: data.views[0]!,
+    selectedIds: new Set(selected),
+    onToggleSelect: noop,
+    onToggleAll: noop,
+    onOpenDetail: noop,
+    onToggleTag: noop,
+    onUpdateTitle: noop,
+    onUpdateSubtasks: noop,
+    onMoveItem: noop,
+    onAddItem: noop,
+    onAddColumn: noop,
+    onReorderColumns: noop,
+    onUpdateColumn: noop,
+    onDeleteColumn: noop,
+    onUpdateTags: noop,
+    onAddColumnOption: noop,
+  })
+}
+
+function mountBoard(selected: string[] = []) {
+  const rendered = renderElement(boardElement(board(), selected))
   mounted.push(rendered)
   return rendered.container
 }
@@ -158,6 +159,34 @@ describe('a drag repaints the column it landed on and no other', () => {
     painted.length = 0
     startDraggingCard(container, 'a')
     expect(painted).toEqual([])
+  })
+})
+
+/**
+ * Picking a card is the other gesture that must not reach past the column it happened in.
+ *
+ * The selection is one set for the whole board and a new one every time anything is ticked, so the
+ * column was handed a fresh `selectedIds` — and a fresh `selectAll` bundle built on it — for a tick
+ * that touched one card of one column. A banded board multiplies that by every band.
+ */
+describe('a ticked card repaints the column that holds it and no other', () => {
+  it('paints only that column when one of its cards is picked', () => {
+    const data = board()
+    const rendered = renderElement(boardElement(data, []))
+    mounted.push(rendered)
+    painted.length = 0
+
+    // What the board does when the reader ticks 'a', a card of the To Do column.
+    rendered.rerender(boardElement(data, ['a']))
+    expect(painted, 'a tick in one column repainted the others').toEqual(['todo'])
+  })
+
+  it('still paints the picked card as picked, in the column it belongs to', () => {
+    const container = mountBoard(['a'])
+    const card = container.querySelector<HTMLElement>('[data-item-id="a"]')
+    if (!card) throw new Error('the board drew no card for a')
+    const box = card.querySelector<HTMLInputElement>('input[type="checkbox"]')
+    expect(box?.checked, 'the card the reader picked was not drawn as picked').toBe(true)
   })
 })
 

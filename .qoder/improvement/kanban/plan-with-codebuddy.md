@@ -9,8 +9,8 @@
 
 | # | 类别 | 条目 | 状态 | 提交 |
 |---|---|---|---|---|
-| 1 | 性能 P-1 | registry 每次挂载重建回调击穿 `KanbanRoot` memo；编辑器每次防抖提交全树重渲染 | ⬜ 待做 | — |
-| 2 | 性能 P-3 | 勾选一张卡导致所有展开列重绘（`selectAll` 对象每渲染新建） | ⬜ 待做 | — |
+| 1 | 性能 P-1 | registry 每次挂载重建回调击穿 `KanbanRoot` memo；编辑器每次防抖提交全树重渲染 | ✅ 完成 | `f3d88a06` |
+| 2 | 性能 P-3 | 勾选一张卡导致所有展开列重绘（`selectAll` 对象每渲染新建） | ✅ 完成 | 见 git log |
 | 3 | 性能 P-4 | 批量拖放 `moveKanbanItemsToCell` O(k·n) 串行 | ⬜ 待做 | — |
 | 4 | 安全 S-2 | 打印导出 `dangerouslySetInnerHTML` 重解析已渲染 DOM | ⬜ 待做 | — |
 | 5 | 样式 U-5 | `duration-300` 未随 `prefers-reduced-motion` 令牌归零 | ⬜ 待做 | — |
@@ -29,9 +29,17 @@
 
 ## 记录
 
-### 1. 性能 P-1 — registry 击穿 memo
+### 1. 性能 P-1 — registry 击穿 memo ✅ `f3d88a06`
 
 - 问题：`renderKanbanEntry` 每次调用新造 `onUpdateData/onRetryWrite/onDiscardWrite/onToggleFullscreen` 四个闭包，`KanbanRoot` 是 `memo`，浅比较必然失败；而 `mountBlock` 在每次预览提交（编辑器打字 90ms 防抖后）末尾无条件调用它，即使 fence body 一字未变。
-- 方案：回调改为 entry 上按「是否可写」缓存的稳定处理器；`mountBlock` 增加渲染指纹，指纹未变则跳过 `root.render`。
-- 风险点：`entry.data` / `unsaved` / `owner` / `editable` / `renderDescription` / `noteId` 任一项变化仍必须重渲染。
-- 状态：⬜ 待做
+- 方案：回调改为 entry 上按「是否可写」缓存的稳定处理器（读 `scopeOptions` 在调用时，而非闭合某一次 render 的副本）；`renderKanbanEntry` 增加渲染指纹（source/data/unsaved/owner/noteId/writable/renderDescription 身份），指纹未变即跳过 `root.render`。
+- 验证：`registry-remount.test.ts` 新增两例，回退改动后首例失败（painted 变 `['Sprint','Sprint']`），修复后为 `['Sprint']`；第二例保证围栏变化仍重绘。
+- 回归：门禁全绿；相关 96 文件 / 846 用例通过。
+- 备注：全量 `test:unit` 中 `starter-deck-render`、`music-hub-modal` 两个套件偶发失败，单独跑均通过，与本次改动无关（不 import kanban）。
+
+### 2. 性能 P-3 — 勾选一张卡全列重绘 ✅
+
+- 问题：`selectedIds` 是全板一个 Set，勾选任意卡即换新身份；memo 列直接拿到它，且 `selectAll` 捆绑按 `[group, selectedIds, …]` 记忆也每次新建 → 泳道板下每次勾选重绘 bands × groups 个 cell。
+- 方案：`useColumnSelectAll` 改为按 `count`/`isAllSelected` 两个原始值记忆（对象身份只在答案变化时更新）；新增 `useColumnSelection`，把该列自己的选中卡哈希成签名，签名不变时复用同一个 Set，向 memo 列传列级选中集而非全板集合。
+- 验证：`kanban-board-column-memo.test.ts` 新增两例；回退改动后「勾选只重绘所在列」失败（`['todo','doing','done']`），修复后为 `['todo']`。
+- 回归：typecheck 通过；kanban 目录 108 文件 / 1348 用例通过；全量 `test:unit` 仅剩已知偶发 `music-hub-modal`（单独跑通过）。
