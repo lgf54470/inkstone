@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Slider } from '../../../../components/form'
 import { t, useLocaleRepaint } from '../../../i18n'
@@ -46,6 +46,15 @@ function GanttTaskRow({
   onOpenDetail: (item: KanbanItem) => void
   onUpdateProgress: (itemId: string, progress: number) => void
 }) {
+  // The slider answers every drag step with a change, but the board's writer costs one undo step and
+  // one re-layout of the whole view, so the drag only holds a local draft; the release — pointer up,
+  // the last key of a keyboard run, or the field losing focus mid-drag — is what commits once.
+  const [draft, setDraft] = useState<number | null>(null)
+  const commitDraft = () => {
+    if (draft === null) return
+    onUpdateProgress(item.id, draft)
+    setDraft(null)
+  }
   // The row is a container of two controls, not a control (SH-110): the title is the button that
   // opens the detail, and the progress slider beside it edits the bar without opening anything.
   // As a `div` with a click handler the row was unreachable by keyboard and was itself a hit
@@ -60,15 +69,15 @@ function GanttTaskRow({
         <KanbanIconBadge icon={item.icon} size={14} />
         <span className='truncate'>{item.title}</span>
       </button>
-      <span className='w-36 shrink-0'>
+      <span className='w-36 shrink-0' onPointerUp={commitDraft} onKeyUp={commitDraft} onBlur={commitDraft}>
         <Slider
           label={t('preview.kanban_progress')}
-          value={ganttProgress(item, progressField)}
+          value={draft ?? ganttProgress(item, progressField)}
           min={0}
           max={100}
           step={5}
           suffix='%'
-          onChange={(progress) => onUpdateProgress(item.id, progress)}
+          onChange={setDraft}
         />
       </span>
     </div>

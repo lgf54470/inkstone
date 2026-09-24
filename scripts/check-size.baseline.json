@@ -17,6 +17,9 @@
   "src/client/lib/markdown/kanban/ui/kanban-add-operations.test.ts": {
     "longFns": 1
   },
+  "src/client/lib/markdown/kanban/ui/kanban-gantt-view.test.ts": {
+    "longFns": 1
+  },
   "src/client/lib/markdown/kanban/ui/kanban-root-hooks.ts": {
     "longFns": 1
   },

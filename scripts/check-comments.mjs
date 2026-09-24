@@ -6273,8 +6273,14 @@ const allowed = new Map([
     '// The tile\'s type sits on this wrapper, not on the heading: prose owns a note\'s `h3` and wins any',
     '// utility written on it (see the hand-back block in `styles/kanban.css`).',
   ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-gantt-view.test.ts', [
+    '// Two change events: a per-step commit would have written twice and spent two undo steps.',
+  ]],
   ['src/client/lib/markdown/kanban/ui/kanban-gantt-view.tsx', [
     '/** The board\'s writer for a bar the reader moved: one patch, one commit, one step of undo. */',
+    '// The slider answers every drag step with a change, but the board\'s writer costs one undo step and',
+    '// one re-layout of the whole view, so the drag only holds a local draft; the release — pointer up,',
+    '// the last key of a keyboard run, or the field losing focus mid-drag — is what commits once.',
     '// The row is a container of two controls, not a control (SH-110): the title is the button that',
     '// opens the detail, and the progress slider beside it edits the bar without opening anything.',
     '// As a `div` with a click handler the row was unreachable by keyboard and was itself a hit',

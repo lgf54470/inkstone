@@ -52,7 +52,7 @@
 
 - [x] G-19 预防性拆分：视图渲染器族（KanbanViewRendererProps 接口 + Timeline/BoardTable/ListGallery/Renderer 四组件，174 行）纯移动到 `kanban-view-renderer.tsx`；`kanban-root.tsx` 494→302 行，行为零改动（kanban-item-detail.tsx 461 行未动——批次 3/4 不再向其加行，留着观察）
 - [x] T-01 三件套列解析统一：`view-ops.ts` 导出 `kanbanStatusColumn/kanbanPriorityColumn/kanbanTagsColumn`（约定 id → 类型推导 → 无，priority/tags 跳过兄弟已占列），替换 12 处 UI 硬编码（card/list/gallery/item-detail/detail-fields 读写/tag-filter-bar 计数/table-group/header/root 批量编辑/root-hooks 快捷加卡/progress-bar 按列 id 读值/calendar）；幽灵 `'todo'` 改为「推导不到就不写属性」；语义层（outline 格式、isKanbanItemDone、tagMatch、chart 分组维度）保持约定键并记录理由
-- [ ] T-02 gantt 进度滑杆 commit-on-release：拖动中本地视觉态，松手一次 commit（复用撤销栈语义）
+- [x] T-02 gantt 进度滑杆 commit-on-release：拖动中本地草稿值，pointerup/keyup/blur 一次 commit（拖 0→100 从 ~20 步 undo 降为 1 步）；gantt 测试重写到新契约
 - [ ] G-04 timeline/gantt 侧栏接入 `useKanbanRenderWindow`（1000 卡上限下最后两块全量渲染面）
 
 ## 批次 3 · 数据安全（客户端 + 服务端）
@@ -91,7 +91,8 @@
 | 2026-09-24 | G-02：单击即开详情，重命名收敛到铅笔+F2；e2e 断言重写 | 4b49ee31 | kanban 全模块 106 文件 1312 测试通过；preview 集成 20 用例全绿；e2e.mjs 177/0；e2e-visual 533/1（唯一失败为先在性 tab 几何，基线同签名复现）；contrast:check 通过 |
 | 2026-09-24 | G-20：修复全屏页签条 offsetLeft 误判滚动（strip 补 relative + ResizeObserver 自愈） | 45de5175 | view-tabs 40 测试通过；e2e-visual 534/0 全绿（干净实例） |
 | 2026-09-24 | G-19：视图渲染器族纯移动拆出，root 494→302 行 | 见 git log | root/keys/fullscreen 26 测试通过；typecheck/size/style/deep-imports/comments 通过 |
-| 2026-09-24 | T-01：三件套列解析统一，12 处 UI 硬编码替换，幽灵 todo 消除 | 见 git log | view-ops/add-operations/preview 116 测试通过（含 3 个新解析器用例 + 2 个幽灵值回归）；typecheck/i18n/comments/size 通过 |
+| 2026-09-24 | T-01：三件套列解析统一，12 处 UI 硬编码替换，幽灵 todo 消除 | 50b3b4d3 | view-ops/add-operations/preview 116 测试通过（含 3 个新解析器用例 + 2 个幽灵值回归）；typecheck/i18n/comments/size 通过 |
+| 2026-09-24 | T-02：gantt 滑杆草稿式拖动、释放一次提交 | 见 git log | gantt 5 测试通过；typecheck/comments/style 通过 |
 
 ## 固定验证
 

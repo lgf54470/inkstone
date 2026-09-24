@@ -60,11 +60,36 @@ describe('kanban gantt progress control', () => {
     container.remove()
   })
 
-  it('commits slider changes as numbers on the clamped scale', () => {
+  it('holds a drag as a draft and commits once, on release, as a clamped number', () => {
     const { container, root, onUpdateProgress } = renderGantt()
     const slider = container.querySelector<HTMLInputElement>('input[type="range"]')!
-    act(() => { setSliderValue(slider, '75') })
+    // Two change events: a per-step commit would have written twice and spent two undo steps.
+    act(() => {
+      setSliderValue(slider, '55')
+      setSliderValue(slider, '75')
+    })
+    expect(onUpdateProgress, 'the drag itself must not write').not.toHaveBeenCalled()
+    act(() => {
+      slider.dispatchEvent(new Event('pointerup', { bubbles: true }))
+    })
+    expect(onUpdateProgress).toHaveBeenCalledTimes(1)
     expect(onUpdateProgress).toHaveBeenCalledWith('t-1', 75)
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  it('commits a keyboard run on key up, once for the whole run', () => {
+    const { container, root, onUpdateProgress } = renderGantt()
+    const slider = container.querySelector<HTMLInputElement>('input[type="range"]')!
+    act(() => {
+      setSliderValue(slider, '25')
+      setSliderValue(slider, '30')
+    })
+    act(() => {
+      slider.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }))
+    })
+    expect(onUpdateProgress).toHaveBeenCalledTimes(1)
+    expect(onUpdateProgress).toHaveBeenCalledWith('t-1', 30)
     act(() => root.unmount())
     container.remove()
   })
