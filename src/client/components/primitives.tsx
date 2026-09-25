@@ -106,6 +106,9 @@ interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
   size?: Size
   variant?: Variant
   active?: boolean
+  // A button that opens a panel owns `aria-expanded`, not `aria-pressed`; this paints the
+  // same emphasis for a state the panel holds without claiming the toggle role.
+  highlight?: boolean
   ref?: Ref<HTMLButtonElement>
 }
 
@@ -114,6 +117,7 @@ export function IconButton({
   size = 'md',
   variant = 'ghost',
   active,
+  highlight,
   className,
   children,
   type = 'button',
@@ -130,7 +134,7 @@ export function IconButton({
         'transition-[background-color,color,transform] duration-[var(--dur-fast)] ease-[var(--ease-out)]',
         'active:scale-[0.94] disabled:pointer-events-none disabled:opacity-40',
         size === 'sm' ? 'size-8 md:size-6' : size === 'lg' ? 'size-10 md:size-9' : 'size-9 md:size-7',
-        active
+        active || highlight
           ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
           : VARIANTS[variant],
         className,

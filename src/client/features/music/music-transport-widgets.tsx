@@ -64,7 +64,7 @@ export function MusicQueueButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
     <>
       <span className='flex shrink-0 items-center gap-0.5'>
         <Tooltip label={t('music.queue')} side='top'>
-          <IconButton ref={anchorRef} label={t('music.queue')} size={size} active={open} onClick={() => setOpen((value) => !value)}>
+          <IconButton ref={anchorRef} label={t('music.queue')} size={size} onClick={() => setOpen((value) => !value)}>
             <ListMusic size={14} />
           </IconButton>
         </Tooltip>
@@ -101,7 +101,7 @@ export function MusicVolumeButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   return (
     <>
       <Tooltip label={t('music.volume')} side='top'>
-        <IconButton ref={anchorRef} label={t('music.volume')} size={size} active={open} onClick={() => setOpen((value) => !value)}>
+        <IconButton ref={anchorRef} label={t('music.volume')} size={size} onClick={() => setOpen((value) => !value)}>
           {muted || volume === 0 ? <VolumeX size={14} /> : volume < 0.5 ? <Volume1 size={14} /> : <Volume2 size={14} />}
         </IconButton>
       </Tooltip>
@@ -153,7 +153,7 @@ export function MusicSleepButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   return (
     <>
       <Tooltip label={t('music.sleep_timer')} side='top'>
-        <IconButton ref={anchorRef} label={t('music.sleep_timer')} size={size} active={!idle} onClick={() => setOpen((value) => !value)}>
+        <IconButton ref={anchorRef} label={t('music.sleep_timer')} size={size} highlight={!idle} onClick={() => setOpen((value) => !value)}>
           <Moon size={14} />
         </IconButton>
       </Tooltip>
@@ -217,7 +217,7 @@ export function MusicRateButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   return (
     <>
       <Tooltip label={t('music.playback_rate')} side='top'>
-        <IconButton ref={anchorRef} label={t('music.playback_rate')} size={size} active={rate !== 1} onClick={() => setOpen((value) => !value)}>
+        <IconButton ref={anchorRef} label={t('music.playback_rate')} size={size} highlight={rate !== 1} onClick={() => setOpen((value) => !value)}>
           <Gauge size={14} />
         </IconButton>
       </Tooltip>
@@ -245,7 +245,7 @@ export function MusicEqButton({ size = 'sm', className }: { size?: 'sm' | 'md'; 
   return (
     <>
       <Tooltip label={t('music.eq')} side='top'>
-        <IconButton ref={anchorRef} label={t('music.eq')} size={size} active={eqEnabled} className={className} onClick={() => setOpen((value) => !value)}>
+        <IconButton ref={anchorRef} label={t('music.eq')} size={size} highlight={eqEnabled} className={className} onClick={() => setOpen((value) => !value)}>
           <SlidersHorizontal size={14} />
         </IconButton>
       </Tooltip>

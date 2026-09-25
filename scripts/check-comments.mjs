@@ -2066,6 +2066,10 @@ const allowed = new Map([
     '// anchor decides where it prefers to sit, the viewport decides how far that can go.',
     '/**\n * Measures when the panel opens — and whenever its own size changes, which is what a panel that\n * grows with its content reports — and hands the placement to the caller. `apply` has to be stable\n * (`useState`\'s setter always is): an inline closure would re-measure on every render.\n */',
   ]],
+  ['src/client/components/primitives.tsx', [
+    '// A button that opens a panel owns `aria-expanded`, not `aria-pressed`; this paints the',
+    '// same emphasis for a state the panel holds without claiming the toggle role.',
+  ]],
   ['src/client/components/tag-filter-popover.test.ts', [
     '/**\n * The picker is one of the two popovers that used to size and place itself: both now share\n * `popover-placement`, and this is the first test the file has had. What it pins is the part the\n * placement decides — the panel is portaled (so `fixed` stays on the viewport), it is a named\n * dialog, and its box is clamped inside the page instead of starting at a negative coordinate when\n * its control sits against the left edge. jsdom reports every box as 0×0, which is exactly that\n * case.\n */',
     '/** The popover hangs from a real control, which is what its placement measures. */',
@@ -3023,6 +3027,10 @@ const allowed = new Map([
     '// The directory picker relies on non-standard attributes React types do not carry.',
     '// dragenter and dragleave also fire when the pointer crosses a child, so the highlight',
     '// follows an enter/leave depth count and only clears once the pointer really leaves.',
+  ]],
+  ['src/client/features/music/music-transport-aria.test.ts', [
+    '// A button that opens a panel is described by aria-expanded; publishing aria-pressed on the',
+    '// same element tells a screen reader it is a toggle instead, and the two cannot both be true.',
   ]],
   ['src/client/features/music/music-transport-widgets.tsx', [
     '// A click opens the volume panel, which is where muting lives: the double-click shortcut that',
