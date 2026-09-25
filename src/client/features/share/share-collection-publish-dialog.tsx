@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { LIMITS } from '@shared/constants'
 import { Badge, Button } from '../../components/primitives'
-import { Input, Select } from '../../components/form'
+import { Checkbox, Input, Select } from '../../components/form'
 import { Modal } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { expiresInForSelection, shareExpiryOptions } from './share-form'
@@ -265,16 +265,15 @@ function ManualPickFields({ form }: { form: PublishForm }) {
         ) : (
           <div className='max-h-44 space-y-1 overflow-y-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] p-2'>
             {form.shares.map((share) => (
-              <label key={share.slug} className='flex items-center gap-2 text-[length:var(--text-12)] text-[var(--text-primary)]'>
-                <input
-                  type='checkbox'
+              <div key={share.slug} className='flex items-center gap-2 text-[length:var(--text-12)] text-[var(--text-primary)]'>
+                <Checkbox
                   checked={form.noteIds.includes(share.noteId)}
                   onChange={() => form.toggleNote(share.noteId)}
                   aria-label={share.noteTitle || share.slug}
                 />
                 <span className='truncate'>{share.noteTitle || t('common.untitled_note')}</span>
                 <span className='ml-auto font-mono text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{share.slug}</span>
-              </label>
+              </div>
             ))}
           </div>
         )}
