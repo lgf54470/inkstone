@@ -3,7 +3,7 @@ import { setCookie } from 'hono/cookie'
 import { escapeHtml } from '@shared/escape'
 import { PublicNote } from '@shared/types'
 import type { AppBindings } from '../../env'
-import { ApiError } from '../../lib/errors'
+import { ApiError, errorMessage } from '../../lib/errors'
 import { isValidSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readOptionalJsonValidated, requestClientIp } from '../../lib/request'
 import { verifyPassword } from '../../lib/password'
@@ -222,7 +222,9 @@ async function recordShareVisit(
     // analytics, where the alternative lost the guarantee that one visit is one view.
     await (counted ? row.bumpViewStmt : row.touchViewStmt).run()
   } catch (error) {
-    console.warn('[share] failed to record visit', error)
+    // The message only: the raw error object can carry driver internals (statement shape,
+    // binding values) that belong to the account, not to a log line a visitor's visit wrote.
+    console.warn('[share] failed to record visit:', errorMessage(error))
   }
 }
 

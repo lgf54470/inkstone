@@ -59,6 +59,14 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * The message alone for a `console.warn` line: a raw error object can carry driver internals
+ * (statement shape, binding values) that belong to the account, not to observability output.
+ */
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'unknown error'
+}
+
 export function errorResponse(c: Context, err: unknown): Response {
   if (err instanceof ApiError) {
     return c.json(

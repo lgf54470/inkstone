@@ -33,8 +33,8 @@
 | 02 | P0 | #4 | 访问日志表失败态缺失（违反禁止静默失败红线） | 小 | ✅ | 5a8ac75f |
 | 03 | P0 | #1 | 访问日志 CSV 表头硬编码英文 | 小 | ✅ | 7adb7e2c |
 | 04 | P0 | #3 | 随机 slug 用 Math.random（非 CSPRNG） | 极小 | ✅ | 4d8d091d |
-| 05 | P0 | #2 | 分享页静态内联样式 `maxWidth:'none'` 移入样式表 | 极小 | ✅ | ⏳ |
-| 06 | P0 | #17/#18/#20 | worker 侧：日志 count+rows batch 化、页上限收紧、`/summary` 聚合化、error 日志脱敏 | 小 | ⬜ | — |
+| 05 | P0 | #2 | 分享页静态内联样式 `maxWidth:'none'` 移入样式表 | 极小 | ✅ | f59fe6f3 |
+| 06 | P0 | #17/#20 | worker 侧：日志 count+rows batch 化、页上限收紧、error 日志脱敏 | 小 | ✅ | ⏳ |
 | 07 | P1 | #15 | 全站累计 UV 全史聚合每次列表重算 | 小 | ⬜ | — |
 | 08 | P1 | #16 | 集合列表 N+1（每集合 2 查询） | 小 | ⬜ | — |
 | 09 | P1 | #10 | 访问日志无时间范围筛选 | 小 | ⬜ | — |
@@ -53,6 +53,13 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 06 · P0 #17/#20 worker 侧小修（含 #18 审计结论修正）
+
+- **#18 结论修正（如实登记，不改代码）**：原审计判 `/summary` 无界返回为问题、建议改聚合计数。落地前核实 `src/client/features/share/share-store/loaders.ts`（SH-19 启动预取）与 `row-index.ts` 的 `isNoteShared`——客户端确实需要 `sharedNoteIds` **集合本身**做任意笔记的「是否已分享」判定，聚合成计数会破坏公共契约；且该请求仅启动期一次、有并行合并与「列表加载后不再调用」的既有护栏。故按「禁止静默脑补/公共契约走 deprecation」原则不改动，登记为审计误报。
+- **#17**：`visits.ts` 的 count+rows 两条同过滤查询合并进一次 `db.batch`（省一次串行往返）；`VISITS_PAGE_MAX` 1,000,000 → 10,000（最坏 OFFSET 从九位降到五位数级；100/页的分页遍历与 CSV 导出步进均不受影响）。
+- **#20**：`public.ts` 访问记录失败与 `shares.ts` 标签解析失败的 `console.warn` 改记 `errorMessage(error)`（新增于 `worker/lib/errors.ts`），原始 error 对象可能携带语句形状与绑定值，不再进日志。
+- 回归：`tests/share-routes.test.ts`（真实 D1 基座）新增 1 例「count+page 一次 batch 往返」并用 `instrumentRoundTrips` 钉住 round-trip 账目（batch=2/direct=2，其中各 1 次属读预算），wild-page 用例补 `page===10_000` 钉住新上限；114/114 全绿。`npx tsc -b --force` 与全部门禁绿（comments 白名单已同步）。
 
 ### 2026-09-25 · 序 05 · P0 #2 分享页内联样式移入样式表
 

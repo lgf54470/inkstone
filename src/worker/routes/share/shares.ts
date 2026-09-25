@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { ShareInfo, ShareListResponse, ShareStatsResponse, ShareSummaryResponse } from '@shared/types'
 import type { AppBindings } from '../../env'
-import { ApiError } from '../../lib/errors'
+import { ApiError, errorMessage } from '../../lib/errors'
 import { escapeLike } from '../../lib/like'
 import { isShareStatusFilter, type ShareStatusFilter, type VisitTrafficFilters } from '@shared/share-selection'
 import { shareSelectionSql, visitTrafficSql } from '../../lib/share-selection-sql'
@@ -423,7 +423,7 @@ function parseShareTagsJson(raw: string | null): string[] {
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed) ? parsed : []
   } catch (error) {
-    console.warn('[share] failed to parse share tags, falling back to empty list', error)
+    console.warn('[share] failed to parse share tags, falling back to empty list:', errorMessage(error))
     return []
   }
 }

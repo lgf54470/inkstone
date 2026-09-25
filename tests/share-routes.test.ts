@@ -860,6 +860,24 @@ describe('share visits route (real D1)', () => {
     expect(bots.visits[0].isBot).toBe(true)
   })
 
+  it('answers the count and the page in one batch (audit #17)', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Batched' })
+    await seedShare(db, { note_id: n1, slug: 'v-batch' })
+    await seedVisit(db, { note_id: n1, slug: 'v-batch', visitor_fp: 'fp-b1' })
+    await seedVisit(db, { note_id: n1, slug: 'v-batch', visitor_fp: 'fp-b2' })
+    const calls = instrumentRoundTrips()
+
+    const body = await (await request(makeApp(), '/api/share/visits?limit=10&page=1')).json()
+    expect(body.total).toBe(2)
+    expect(body.visits.length).toBe(2)
+    // The route's own count+page pair is one batch. The remaining flights belong to the read
+    // budget ahead of it: one batch for its upsert and two direct probes for its lock checks
+    // (before and after) — none of them a second pass over the log.
+    expect(calls.batch).toBe(2)
+    expect(calls.direct).toBe(2)
+  })
+
   it('ships only the display prefix of a fingerprint and nothing on non-bot rows', async () => {
     const db = await makeDb()
     const n1 = await seedNote(db, { title: 'Hashed' })
@@ -909,6 +927,9 @@ describe('share visits route (real D1)', () => {
     expect(clamped.limit).toBe(100)
     expect(Number.isInteger(clamped.page)).toBe(true)
     expect(clamped.page).toBeGreaterThanOrEqual(1)
+    // The cap bounds the worst OFFSET, not just the type: past it a caller is paging into
+    // nothing, so it is folded back to the ceiling rather than trusted with a nine-figure offset.
+    expect(clamped.page).toBe(10_000)
     expect(clamped.visits.length).toBe(0)
   })
 

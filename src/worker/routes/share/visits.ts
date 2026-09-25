@@ -44,9 +44,11 @@ interface VisitLogRow {
 // Unparseable page/limit values must fall back to a default rather than reach the
 // binding: `parseInt('abc')` is NaN and `Math.max(1, NaN)` stays NaN, which SQLite
 // rejects as a datatype mismatch (a 500 for a malformed query). The ceiling on
-// `page` is what keeps a caller from asking for an unbounded OFFSET.
+// `page` is what keeps a caller from asking for an unbounded OFFSET: at the largest
+// page size this still reaches every page a 100-per-page walk can ask for, while
+// capping the worst OFFSET at five figures instead of nine.
 const VISITS_PAGE_DEFAULT = 1
-const VISITS_PAGE_MAX = 1_000_000
+const VISITS_PAGE_MAX = 10_000
 const VISITS_LIMIT_MIN = 10
 const VISITS_LIMIT_MAX = 100
 const VISITS_LIMIT_DEFAULT = 50
@@ -73,27 +75,30 @@ function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): voi
     })
     conditions.push('EXISTS (SELECT 1 FROM shares s WHERE s.slug = sv.slug)')
 
-    const countRow = await c.env.DB.prepare(
-      `SELECT COUNT(*) as total
-         FROM share_visits sv
-         LEFT JOIN notes n ON n.id = sv.note_id
-        WHERE ${conditions.join(' AND ')}`,
-    ).bind(...binds).first<{ total: number }>()
-    const total = countRow?.total ?? 0
-
-    const rows = await c.env.DB.prepare(
-      `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
-              sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser,
-              CASE WHEN sv.is_bot = 1 THEN sv.user_agent END as user_agent,
-              sv.visitor_fp, sv.is_bot, sv.is_self_referrer, sv.is_owner, sv.channel,
-              n.title as note_title
-         FROM share_visits sv
-         LEFT JOIN notes n ON n.id = sv.note_id
-        WHERE ${conditions.join(' AND ')}
-        ORDER BY sv.visited_at DESC
-        LIMIT ?${bindIdx} OFFSET ?${bindIdx + 1}`,
-    ).bind(...binds, limit, offset).all<VisitLogRow>()
-    const visits: ShareVisitLog[] = (rows.results ?? []).map(toVisitLogRow)
+    // One round trip for the count and the page: the two statements share the same filter, and
+    // paying a second sequential flight for it doubled the tail latency of every page view.
+    const [countResult, rowsResult] = await c.env.DB.batch<VisitLogRow | { total: number }>([
+      c.env.DB.prepare(
+        `SELECT COUNT(*) as total
+           FROM share_visits sv
+           LEFT JOIN notes n ON n.id = sv.note_id
+          WHERE ${conditions.join(' AND ')}`,
+      ).bind(...binds),
+      c.env.DB.prepare(
+        `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
+                sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser,
+                CASE WHEN sv.is_bot = 1 THEN sv.user_agent END as user_agent,
+                sv.visitor_fp, sv.is_bot, sv.is_self_referrer, sv.is_owner, sv.channel,
+                n.title as note_title
+           FROM share_visits sv
+           LEFT JOIN notes n ON n.id = sv.note_id
+          WHERE ${conditions.join(' AND ')}
+          ORDER BY sv.visited_at DESC
+          LIMIT ?${bindIdx} OFFSET ?${bindIdx + 1}`,
+      ).bind(...binds, limit, offset),
+    ])
+    const total = (countResult.results[0] as { total: number } | undefined)?.total ?? 0
+    const visits: ShareVisitLog[] = ((rowsResult.results ?? []) as VisitLogRow[]).map(toVisitLogRow)
 
     return c.json({
       visits,
