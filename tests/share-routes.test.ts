@@ -588,8 +588,10 @@ describe('share list and analytics db.batch round-trips (SH-17a)', () => {
     expect(body.topNotes[0].noteTitle).toBe('Global rt')
     expect(body.recentVisits.length).toBe(1)
     expect(body.filterStats.bots).toBe(0)
-    expect(calls.direct).toBe(1)
-    expect(calls.batch + calls.direct).toBeLessThanOrEqual(2)
+    // The second serial flight is the expiry notice's dismissal stamp read (audit #7), which
+    // the expired-links filter needs ahead of the batch.
+    expect(calls.direct).toBe(2)
+    expect(calls.batch + calls.direct).toBeLessThanOrEqual(3)
   })
 
   it('answers note analytics with the share-gate query plus one batch', async () => {
@@ -1553,6 +1555,33 @@ describe('share link audit log (audit #6)', () => {
 
     const body = await (await request(app, `/api/share/${NOTE_ID}/audit`)).json()
     expect(body.entries.map((entry: { action: string }) => entry.action)).toEqual(['update', 'create'])
+  })
+})
+
+describe('share expiry notice (audit #7)', () => {
+  it('lists links that lapsed since the last dismissal and nothing older', async () => {
+    const db = await makeDb()
+    const now = Date.now()
+    const seedLapsed = async (slug: string, expiresAt: number): Promise<void> => {
+      const n1 = await seedNote(db, { title: `Lapsed ${slug}` })
+      await seedShare(db, { note_id: n1, slug, expires_at: expiresAt })
+    }
+    await seedLapsed('fresh-exp', now - 2 * 86_400_000)
+    await seedLapsed('old-exp', now - 30 * 86_400_000)
+    const app = makeApp()
+
+    const first = await (await request(app, '/api/share/analytics/global?range=7d')).json()
+    expect(first.expiredLinks.acknowledgedAt).toBeNull()
+    expect(first.expiredLinks.total).toBe(2)
+    expect(first.expiredLinks.items.map((item: { slug: string }) => item.slug)).toEqual(['fresh-exp', 'old-exp'])
+
+    // Dismissing stamps the account; only a lapse newer than the stamp comes back.
+    expect((await request(app, '/api/share/analytics/expired-ack', { method: 'POST' })).status).toBe(200)
+    const ackedAt = Number((await firstRow(db, `SELECT value FROM app_meta WHERE key LIKE 'share:expired-ack:%'`))!.value)
+    const second = await (await request(app, '/api/share/analytics/global?range=7d')).json()
+    expect(second.expiredLinks.acknowledgedAt).toBe(ackedAt)
+    expect(second.expiredLinks.total).toBe(0)
+    expect(second.expiredLinks.items).toHaveLength(0)
   })
 })
 

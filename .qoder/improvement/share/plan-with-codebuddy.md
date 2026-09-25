@@ -40,7 +40,7 @@
 | 09 | P1 | #10 | 访问日志无时间范围筛选 | 小 | ✅ | ⏳ |
 | 10 | P1 | #9 | 渠道卡片不能下钻到该渠道明细 | 小-中 | ✅ | ⏳ |
 | 11 | P2 | #6 | 链接变更无审计历史（新迁移 v43） | 中 | ✅ | ⏳ |
-| 12 | P2 | #7 | 失效提醒/通知（看板判定 + app_meta 已读） | 中 | ⬜ | — |
+| 12 | P2 | #7 | 失效提醒/通知（看板判定 + app_meta 已读） | 中 | ✅ | ⏳ |
 | 13 | P2 | #13 | 集合成员自定义排序 | 中 | ⬜ | — |
 | 14 | P2 | #14 | 手工精选集合 | 中-大 | ⬜ | — |
 | 15 | — | — | 全量回归 + 全部门禁收尾 | 小 | ⬜ | — |
@@ -53,6 +53,13 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 12 · P2 #7 过期链接提醒（看板判定 + 一次性忽略）
+
+- 方案：**看板加载时判定**而非 cron——`GET /analytics/global` 读 `app_meta` 的 `share:expired-ack:<userId>` 时间戳，`expiredLinksStatement` 只取「过期于该时间戳之后」的分享（`COUNT(*) OVER()` 同读总数，每页 5 条）；`POST /analytics/expired-ack` 写入新时间戳。 dismissed 一次即对全部旧失效免疫，之后再次过期的链接会重新出现——语义与「提醒的是新发生的事」一致。**无 cron、无新表、无新绑定**（app_meta 单键），写频仅限用户点击。
+- UI：`share-dashboard-expired-notice.tsx` 提醒卡（`role="status"`、warning 语义色、列出前 5 条 + 隐藏计数 + 剩余提示），两个动作：「不再提醒」→ ack 后刷新看板（失败保留提醒并 toast，重复 dismiss 无害）；「查看已失效分类」→ `setCategory('expired')` 交给 hub 既有分类视图。`expiredLinks` 在类型上可选，旧 fixtures 与 demo 不破坏。
+- 结构整改（体积门禁）：analytics.ts 加过期逻辑后 552 行且路由函数 56 行——把滞留/过期两份「卫生报告」（statements + compose + 类型，约 110 行）整体抽到 `worker/routes/share/hygiene.ts`，analytics.ts 回到 457 行，路由处理器瘦身并提取 `loadGlobalAnalytics`。
+- 回归：worker 新增 1 例（初次列出全部失效含排序、ack 后 acknowledgedAt 落库且列表清空）；SH-17a 往返账目更新（+1 次串行 = ack 戳读取）。128/128 全绿；`npx tsc -b --force` 与全部门禁绿（comments 白名单已同步）。
 
 ### 2026-09-25 · 序 11 · P2 #6 链接变更审计（迁移 v43 + 变更历史入口）
 

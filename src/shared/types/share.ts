@@ -136,6 +136,22 @@ export interface ShareStaleLinks {
   items: ShareStaleLink[]
 }
 
+/**
+ * The expiry notice (audit #7): links that lapsed since the owner last dismissed the notice. The
+ * dismissal is one timestamp, so "new since" is just `expires_at > acknowledgedAt` — a link that
+ * expired again after being acknowledged comes back, and one acknowledged once stays gone.
+ */
+export interface ShareExpiredLinks {
+  acknowledgedAt: number | null
+  total: number
+  items: Array<{
+    noteId: string
+    noteTitle: string | null
+    slug: string
+    expiresAt: number
+  }>
+}
+
 export interface ShareGlobalAnalytics {
   range: ShareTimelineRange
   totalShares: number
@@ -169,6 +185,7 @@ export interface ShareGlobalAnalytics {
   channels: ShareBreakdownItem[]
   recentVisits: ShareVisitLog[]
   staleLinks: ShareStaleLinks
+  expiredLinks?: ShareExpiredLinks
   filterStats?: {
     bots: number
     selfReferrals: number

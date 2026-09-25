@@ -96,6 +96,7 @@ export const share = {
       }),
     noteAudit: (noteId: string, signal?: AbortSignal) =>
       request<ShareAuditLogResponse>(`/api/share/${noteId}/audit`, { signal }),
+    ackExpiredLinks: () => request<{ ok: true }>('/api/share/analytics/expired-ack', { method: 'POST' }),
     cleanVisitsForNote: (noteId: string, password: string) =>
       request<{ ok: true; deleted: number }>(`/api/share/visits${toQuery({ type: 'all', noteId })}`, {
         method: 'DELETE',

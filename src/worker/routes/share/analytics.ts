@@ -1,9 +1,8 @@
 import { Hono } from 'hono'
-import { ShareBreakdownItem, ShareGlobalAnalytics, ShareNoteAnalytics, ShareStaleLinks, ShareVisitLog } from '@shared/types'
-import { STALE_LINK_DEFAULT_DAYS } from '@shared/user-settings'
+import { ShareBreakdownItem, ShareExpiredLinks, ShareGlobalAnalytics, ShareNoteAnalytics, ShareStaleLinks, ShareVisitLog } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
-import { userSettingsNumberSql } from '../../lib/maintenance'
+import { getMeta, setMeta } from '../../db/metadata'
 import { consumeShareReadBudget } from './read-budget'
 import { visitTrafficSql } from '../../lib/share-selection-sql'
 import {
@@ -29,11 +28,23 @@ import { channelBreakdownStatement, composeChannels, type ChannelCountRow } from
 import { collectionChannelLabels, collectionChannelLabelsStatement, type CollectionChannelLabelRow } from '../../lib/share-collections'
 import { firstOf, rowsOf } from './read-results'
 import { ShareRow } from './shares'
+import {
+  composeExpiredLinks,
+  composeStaleLinks,
+  expiredLinksStatement,
+  parseExpiredAck,
+  staleLinkRows,
+  staleLinksStatement,
+  staleThresholdStatement,
+  type StaleThresholdRow,
+} from './hygiene'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-/** How many quiet links the card lists; the count beside it covers all of them. */
-const STALE_LINK_PAGE_SIZE = 5
+/** The dismissal stamp lives per account: the notice returns only what lapsed after it. */
+export function expiredAckMetaKey(userId: string): string {
+  return `share:expired-ack:${userId}`
+}
 
 interface ShareSummaryRow {
   total_shares: number
@@ -53,20 +64,6 @@ interface FilterStatsRow {
 
 interface MinVisitedRow {
   min_ts: number | null
-}
-
-interface StaleThresholdRow {
-  days: number
-}
-
-interface StaleLinkRow {
-  note_id: string
-  note_title: string | null
-  slug: string
-  last_viewed_at: number | null
-  views: number
-  stale_total: number
-  never_viewed: number
 }
 
 export type AnalyticsContext = AnalyticsRequest & AnalyticsWindow
@@ -105,100 +102,75 @@ function registerGlobalAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): voi
     // Only the unbounded range is charged: a bounded one fetches a single window of rows,
     // while `all` summarizes the account's entire history (see consumeShareReadBudget).
     if (ctx.range === 'all') await consumeShareReadBudget(db, userId)
-    // The two channel statements sit together and ahead of the aggregate list, which
-    // `visitAggregateFromResults` unpacks by position: the labels belong to the rows beside them.
-    const [summaryResult, prevStatsResult, filterStatsResult, recentResult, staleThresholdResult, staleRowsResult, channelResult, channelLabelResult, ...visitResults] = await db.batch([
-      shareSummaryStatement(db, userId, ctx.now),
-      prevVisitStatsStatement(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause),
-      visitFilterStatsStatement(db, userId, ctx.startTs),
-      recentVisitsStatement(db, { userId, startTs: ctx.startTs, clause: visitTrafficSql(ctx.filters, 'sv') }),
-      staleThresholdStatement(db, userId),
-      staleLinksStatement(db, { userId, now: ctx.now }),
-      channelBreakdownStatement(db, { userId }, ctx),
-      collectionChannelLabelsStatement(db, userId),
-      ...visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId }, ctx),
-    ])
-    const aggregate = visitAggregateFromResults(visitResults, ctx, SHARE_VISIT_SOURCE)
-    const topNotes = await loadTopNotes(db, userId, aggregate.targets)
-    return c.json(composeGlobalAnalytics({
-      ctx,
-      aggregate,
-      summary: firstOf<ShareSummaryRow>(summaryResult),
-      prevStats: firstOf<PrevStatsRow>(prevStatsResult),
-      filterStats: firstOf<FilterStatsRow>(filterStatsResult),
-      topNotes,
-      recentVisits: toVisitLogs(rowsOf<RecentVisitRow>(recentResult)),
-      staleLinks: composeStaleLinks(
-        firstOf<StaleThresholdRow>(staleThresholdResult),
-        rowsOf<StaleLinkRow>(staleRowsResult),
-      ),
-      channels: composeChannels(
-        rowsOf<ChannelCountRow>(channelResult),
-        aggregate.views,
-        collectionChannelLabels(rowsOf<CollectionChannelLabelRow>(channelLabelResult)),
-      ),
-    }))
+    // The dismissal stamp is read ahead of the batch: the expired-links query filters on it.
+    const acknowledgedAt = parseExpiredAck(await getMeta(db, expiredAckMetaKey(userId)))
+    return c.json(await loadGlobalAnalytics(db, userId, ctx, acknowledgedAt))
+  })
+
+  shareManageRoutes.post('/analytics/expired-ack', async (c) => {
+    const userId = c.get('userId')
+    await setMeta(c.env.DB, expiredAckMetaKey(userId), String(Date.now()))
+    return c.json({ ok: true as const })
   })
 }
 
 /**
- * SH-70: which public links have gone quiet, so the owner can pause what nobody reads instead of
- * letting dead links sit in the list forever. The threshold is the account's own setting (0 = the
- * report is off), which is why the query reads it rather than taking it from the request.
+ * One read of everything the global analytics answers with: the visit aggregates and the two
+ * hygiene reports ride the same batch, and the pieces that need a second flight (the top-notes
+ * lookup) follow it. The dismissed-expiry stamp is decided by the caller, before this runs.
  */
-function composeStaleLinks(threshold: StaleThresholdRow | null, rows: StaleLinkRow[]): ShareStaleLinks {
-  return {
-    thresholdDays: threshold?.days ?? STALE_LINK_DEFAULT_DAYS,
-    // The window function counts every match; LIMIT only decides how many are listed.
-    total: rows[0]?.stale_total ?? 0,
-    neverViewed: rows[0]?.never_viewed ?? 0,
-    items: rows.map((row) => ({
-      noteId: row.note_id,
-      noteTitle: row.note_title,
-      slug: row.slug,
-      lastViewedAt: row.last_viewed_at,
-      views: row.views,
-    })),
-  }
+async function loadGlobalAnalytics(
+  db: D1Database,
+  userId: string,
+  ctx: AnalyticsContext,
+  acknowledgedAt: number | null,
+): Promise<ShareGlobalAnalytics> {
+  // The two channel statements sit together and ahead of the aggregate list, which
+  // `visitAggregateFromResults` unpacks by position: the labels belong to the rows beside them.
+  const [summaryResult, prevStatsResult, filterStatsResult, recentResult, staleThresholdResult, staleRowsResult, expiredRowsResult, channelResult, channelLabelResult, ...visitResults] = await db.batch([
+    shareSummaryStatement(db, userId, ctx.now),
+    prevVisitStatsStatement(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause),
+    visitFilterStatsStatement(db, userId, ctx.startTs),
+    recentVisitsStatement(db, { userId, startTs: ctx.startTs, clause: visitTrafficSql(ctx.filters, 'sv') }),
+    staleThresholdStatement(db, userId),
+    staleLinksStatement(db, { userId, now: ctx.now }),
+    expiredLinksStatement(db, { userId, now: ctx.now, acknowledgedAt }),
+    channelBreakdownStatement(db, { userId }, ctx),
+    collectionChannelLabelsStatement(db, userId),
+    ...visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId }, ctx),
+  ])
+  const aggregate = visitAggregateFromResults(visitResults, ctx, SHARE_VISIT_SOURCE)
+  const topNotes = await loadTopNotes(db, userId, aggregate.targets)
+  return composeGlobalAnalytics({
+    ctx,
+    aggregate,
+    summary: firstOf<ShareSummaryRow>(summaryResult),
+    prevStats: firstOf<PrevStatsRow>(prevStatsResult),
+    filterStats: firstOf<FilterStatsRow>(filterStatsResult),
+    topNotes,
+    recentVisits: toVisitLogs(rowsOf<RecentVisitRow>(recentResult)),
+    staleLinks: composeStaleLinks(
+      firstOf<StaleThresholdRow>(staleThresholdResult),
+      staleLinkRows(staleRowsResult),
+    ),
+    expiredLinks: composeExpiredLinks(
+      acknowledgedAt,
+      rowsOf<ExpiredLinkRow>(expiredRowsResult),
+    ),
+    channels: composeChannels(
+      rowsOf<ChannelCountRow>(channelResult),
+      aggregate.views,
+      collectionChannelLabels(rowsOf<CollectionChannelLabelRow>(channelLabelResult)),
+    ),
+  })
 }
 
-/**
- * The account's hygiene threshold in days, or 0 when it is switched off. Read on its own because
- * the row query returns nothing at all in both the "nothing is quiet" and the "switched off"
- * cases, and the card still has to say which of the two it is looking at.
- */
-function staleThresholdStatement(db: D1Database, userId: string): D1PreparedStatement {
-  return db.prepare(
-    `SELECT ${staleThresholdSql()} AS days FROM users u WHERE u.id = ?1`,
-  ).bind(userId)
-}
-
-/**
- * The quietest public links, oldest activity first, in one statement: a links table read plus the
- * count of everything it matched, so an account with hundreds of dead links still answers once.
- */
-function staleLinksStatement(db: D1Database, params: { userId: string; now: number }): D1PreparedStatement {
-  const threshold = staleThresholdSql()
-  return db.prepare(
-    `SELECT s.note_id, s.slug, s.last_viewed_at, s.views, n.title as note_title,
-            COUNT(*) OVER () as stale_total,
-            SUM(CASE WHEN s.last_viewed_at IS NULL THEN 1 ELSE 0 END) OVER () as never_viewed
-       FROM shares s
-       LEFT JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
-       JOIN users u ON u.id = s.user_id
-      WHERE s.user_id = ?1
-        AND (s.is_enabled = 1 OR s.is_enabled IS NULL)
-        AND (s.expires_at IS NULL OR s.expires_at > ?2)
-        AND ${threshold} > 0
-        AND (s.last_viewed_at IS NULL OR s.last_viewed_at <= ?2 - ${threshold} * ?3)
-      ORDER BY COALESCE(s.last_viewed_at, 0), s.created_at, s.note_id
-      LIMIT ?4`,
-  ).bind(params.userId, params.now, DAY_MS, STALE_LINK_PAGE_SIZE)
-}
-
-/** The threshold expression both stale statements use, so they cannot disagree about it. */
-function staleThresholdSql(): string {
-  return userSettingsNumberSql('$.share.staleLinkDays', STALE_LINK_DEFAULT_DAYS)
+interface ExpiredLinkRow {
+  note_id: string
+  slug: string
+  expires_at: number
+  note_title: string | null
+  expired_total: number
 }
 
 function composeGlobalAnalytics(params: {
@@ -210,9 +182,10 @@ function composeGlobalAnalytics(params: {
   topNotes: ShareGlobalAnalytics['topNotes']
   recentVisits: ShareVisitLog[]
   staleLinks: ShareStaleLinks
+  expiredLinks: ShareExpiredLinks
   channels: ShareBreakdownItem[]
 }): ShareGlobalAnalytics {
-  const { ctx, aggregate, summary, prevStats, filterStats, topNotes, recentVisits, staleLinks, channels } = params
+  const { ctx, aggregate, summary, prevStats, filterStats, topNotes, recentVisits, staleLinks, expiredLinks, channels } = params
   const timeline = buildBucketedTimeline(aggregate.buckets, ctx.range, ctx.startTs, ctx.duration)
   const daysSpan = Math.max(1, Math.round(ctx.duration / DAY_MS))
   const breakdown = breakdownTotals(aggregate, aggregate.views)
@@ -242,6 +215,7 @@ function composeGlobalAnalytics(params: {
     channels,
     recentVisits,
     staleLinks,
+    expiredLinks,
     filterStats: {
       bots: filterStats?.bots ?? 0,
       selfReferrals: filterStats?.self_referrals ?? 0,
