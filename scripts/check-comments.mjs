@@ -2983,6 +2983,14 @@ const allowed = new Map([
   ['src/client/features/music/music-tag-rows.ts', [
     '// Older music tags stored a palette name instead of hex; display keeps working either way.',
   ]],
+  ['src/client/features/music/music-track-card.test.ts', [
+    '// The grid card used to be a bare div that selected on click and played on double click: no role,',
+    '// no keyboard path, and a container that swallowed clicks meant for its own controls.',
+  ]],
+  ['src/client/features/music/music-track-card.tsx', [
+    '// Selecting and playing live on the checkbox and the artwork button: a container that',
+    '// answers clicks itself has no keyboard path and swallows the ones meant for its controls.',
+  ]],
   ['src/client/features/music/music-track-list.tsx', [
     '// The menu itself is a single hub-wide instance; rows only post these requests.',
     '// A search that matched nothing is not an empty library; offer the way back rather than the upload pitch.',

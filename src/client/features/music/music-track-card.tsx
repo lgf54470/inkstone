@@ -1,5 +1,5 @@
 import { Heart, MoreHorizontal, Pause, Pin, Play } from 'lucide-react'
-import { memo, useCallback } from 'react'
+import { memo } from 'react'
 import { IconButton, Spinner } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -8,7 +8,7 @@ import { MusicArtwork } from './music-artwork'
 import type { TrackMenuTarget } from './music-track-menu'
 import { MusicSourceBadge } from './music-source-badge'
 import { MusicTrackTags } from './music-track-tags'
-import { TrackCheckbox, isInteractiveTarget, type TrackRowProps } from './music-track-row'
+import { TrackCheckbox, type TrackRowProps } from './music-track-row'
 
 function CardArtwork({
   track,
@@ -115,15 +115,13 @@ function CardInfo({ track, isCurrent }: { track: TrackRowProps['track']; isCurre
 
 export const MusicTrackCard = memo(function MusicTrackCard({ track, isCurrent, isPlaying, isStreamLoading, isSelected, handlers }: TrackRowProps) {
   const menuTarget: TrackMenuTarget = { track }
-  const handleSelect = useCallback((event: React.MouseEvent) => {
-    if (isInteractiveTarget(event.target)) return
-    handlers.onSelect(track, { shift: event.shiftKey, additive: event.metaKey || event.ctrlKey })
-  }, [handlers, track])
   const label = isCurrent && isPlaying ? t('music.pause') : t('music.play')
   return (
     <div
-      onClick={handleSelect}
-      onDoubleClick={() => handlers.onPlay(track)}
+      // Selecting and playing live on the checkbox and the artwork button: a container that
+      // answers clicks itself has no keyboard path and swallows the ones meant for its controls.
+      role='group'
+      aria-label={track.title}
       onContextMenu={(event) => handlers.onContextMenu(event, menuTarget)}
       className={cn(
         'group/card relative flex flex-col gap-2 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2 transition-colors',
