@@ -12,10 +12,12 @@
 import { act, createElement } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../../lib/i18n'
+import { useUi } from '../../../../store/ui'
 import { installTestGlobals, renderElement } from '../../../test-render'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
 import { groupKanbanItems } from '../filter-sort'
 import type { KanbanData, KanbanProperty } from '../types'
+import { kanbanWipRefuses } from './kanban-board-wiring'
 import { CollapsedColumn } from './kanban-column-header'
 import { KanbanRoot } from './kanban-root'
 
@@ -273,15 +275,28 @@ describe('what the limit field writes back', () => {
 })
 
 describe('a card that lands in a full column', () => {
-  it('says the destination is over its limit as the move is announced', () => {
-    const { container } = mountKanban(boardData(statusColumn({ todo: 2 }), 3))
+  afterEach(() => {
+    useUi.setState({ toasts: [] })
+  })
+
+  it('is refused at a column filled exactly to its limit, with a word of why', () => {
+    const { container, onUpdateData } = mountKanban(boardData(statusColumn({ todo: 3 }), 3))
     pressShiftArrow(`${DOING}-0`, 'ArrowLeft')
-    expect(liveRegion(container).textContent).toBe(t('preview.kanban_moved_to_group_over', {
-      title: 'Card doing 1',
-      group: localized(TODO),
-      over: 2,
-      limit: 2,
-    }))
+    expect(onUpdateData, 'a card was moved into a full column anyway').not.toHaveBeenCalled()
+    expect(liveRegion(container).textContent, 'a refused move was announced as if it happened').toBe('')
+    expect(useUi.getState().toasts.at(-1)?.title).toBe(
+      t('preview.kanban_wip_blocked', { group: localized(TODO), limit: 3 }),
+    )
+  })
+
+  it('still lets the column’s own cards change place, even past the limit', () => {
+    // The todo column is already over its limit here (three cards, limit two): what the door refuses
+    // is cards coming in from elsewhere, not the column reordering itself.
+    expect(kanbanWipRefuses(
+      groupKanbanItems(cards(3, TODO), 'status', statusColumn({ todo: 2 })),
+      { groupKey: TODO },
+      new Set([`${TODO}-0`]),
+    )).toBe(false)
   })
 
   it('keeps the plain announcement when the destination has room', () => {

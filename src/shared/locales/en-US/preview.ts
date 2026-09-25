@@ -184,6 +184,7 @@ export const messages = {
 'preview.kanban_export_png_done': 'Picture saved',
 'preview.kanban_export_json_done': 'Board exported as JSON',
 'preview.kanban_export_failed': 'The view could not be exported',
+'preview.kanban_wip_blocked': '"{group}" is at its work-in-progress limit ({limit}) — the move was not made',
 'preview.kanban_dependencies': 'Depends on',
 'preview.kanban_dependencies_hint': 'Cards that must be done before this one',
 'preview.kanban_dependency_add': 'Add a dependency...',

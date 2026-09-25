@@ -194,6 +194,7 @@ export const messages = {
 'preview.kanban_export_png_done': '图片已保存',
 'preview.kanban_export_json_done': '看板已导出为 JSON',
 'preview.kanban_export_failed': '视图导出失败',
+'preview.kanban_wip_blocked': '「{group}」已达到在制品上限（{limit}），本次移动未执行',
 'preview.kanban_dependencies': '前置依赖',
 'preview.kanban_dependencies_hint': '这些卡片完成后，本卡片才能开始',
 'preview.kanban_dependency_add': '添加依赖…',

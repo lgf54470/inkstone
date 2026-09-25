@@ -32,7 +32,7 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 | 9 | 安全 S-3 | 跨域文本预览 `res.text()` 无体积上限 | ✅ 完成 | 见 git log |
 | 10 | 安全 S-4 | `data:image/*` 白名单放行 `file.url` | ✅ 完成 | 见 git log |
 | 11 | 安全 S-6 | fence JSON 无字段长度约束 | ✅ 完成 | 见 git log |
-| 12 | 功能 F-1 | WIP 超限只提示不阻止落卡 | ⬜ 待做 | — |
+| 12 | 功能 F-1 | WIP 超限只提示不阻止落卡 | ✅ 完成 | 见 git log |
 | 13 | 功能 F-2 | 截止日临期/逾期提示 | ⬜ 待做 | — |
 | 14 | 功能 F-8 | 新增 `url` 属性类型 | ⬜ 待做 | — |
 | 15 | 功能 F-10 | JSON 一键导出 | ✅ 完成 | 见 git log |
@@ -95,3 +95,10 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 - 先例一致：与 URL 白名单同一解析边界、与 normalize 默认值填充同一「读取归一化」语义；outline 无板标题时保持缺省不发明空串。
 - 测试：`body.test.ts` 新增 4 例（全字段超限钳制、outline 卡标题、UI 写出的板原样不动、属性值永不钳制）。
 - 回归：typecheck + size 门禁通过；body 27 用例通过；全量 `test:unit` 偶发 3 例（radiogroup/share-collections/starter-deck，负载性，单独跑通过）。
+
+### 13. 功能 F-1 — WIP 超限拒绝落卡 ✅
+- 布线层新增 `kanbanWipRefuses`：目标列有 wipLimit 且「将新进入的卡数 > 0」且 `现有数 + 新进入 > 上限` 时拒绝移动（toast `preview.kanban_wip_blocked`，双语）；拒绝发生在公告之前——活区域保持安静、writer 不被调用、不产生撤销步。
+- 语义：上限守门不守序——已在列内的卡（重排、换泳道）永不计入 incoming，超限列内仍可自由换位；无上限列、未知列放行。
+- 覆盖路径：单卡拖放、批量拖放（按整个选择集判定）、Shift+方向键键盘移动；批量条的成组改写为刻意绕过（成批改写是读者对自己选择的直接操作，见计划备注）。
+- 测试：`kanban-column-wip.test.ts` 改写旧「超限仍公告 over」用例为拒绝 + toast + 无 commit；新增「恰好满员拒绝」「列内换位不受限」；`kanbanWipRefuses` 导出供单测。
+- 回归：typecheck 通过；WIP/拖拽/键盘/公告 4 文件 45 用例通过；全量 `test:unit` 470 文件 / 4275 用例全绿。
