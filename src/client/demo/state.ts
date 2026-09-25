@@ -52,6 +52,7 @@ export interface DemoShareCollection {
   password: string | null
   expiresAt: number | null
   isEnabled: boolean
+  memberSort?: 'default' | 'newest' | 'oldest' | 'title' | null
   createdAt: number
 }
 

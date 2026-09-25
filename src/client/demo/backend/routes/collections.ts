@@ -34,6 +34,7 @@ function toShareCollection(state: DemoState, collection: DemoShareCollection): S
     hasPassword: Boolean(collection.password),
     expiresAt: collection.expiresAt,
     isEnabled: collection.isEnabled,
+    memberSort: collection.memberSort ?? null,
     createdAt: collection.createdAt,
   }
 }
@@ -65,6 +66,7 @@ async function publishCollection(c: Context, state: DemoState): Promise<Response
     targetValue?: string
     password?: string
     expiresAt?: number | null
+    memberSort?: 'default' | 'newest' | 'oldest' | 'title' | null
   }
   const targetType = body.targetType
   const targetValue = body.targetValue
@@ -80,6 +82,7 @@ async function publishCollection(c: Context, state: DemoState): Promise<Response
     // Re-publishing states the policy again, which is how the password and the end date are changed.
     existing.password = body.password || null
     existing.expiresAt = body.expiresAt ?? null
+    existing.memberSort = body.memberSort ?? null
     return c.json({ id: existing.id, slug: existing.slug })
   }
   const created: DemoShareCollection = {
@@ -90,6 +93,7 @@ async function publishCollection(c: Context, state: DemoState): Promise<Response
     password: body.password || null,
     expiresAt: body.expiresAt ?? null,
     isEnabled: true,
+    memberSort: body.memberSort ?? null,
     createdAt: Date.now(),
   }
   state.shareCollections.set(created.id, created)
@@ -119,6 +123,20 @@ function revokeCollection(c: Context, state: DemoState): Response {
   return c.json({ ok: true })
 }
 
+/** The demo mirror of the worker's member orders, so a preset reads the same on both sides. */
+function sortDemoMembers(state: DemoState, members: ReturnType<typeof membersOf>, sort: string | null | undefined) {
+  // The note's updated_at lives on the note, not on the share info — the same fact the worker's
+  // member statement reads through its join.
+  const noteUpdatedAt = (share: ReturnType<typeof membersOf>[number]): number =>
+    state.notes.get(share.info.noteId)?.updatedAt ?? 0
+  const sorted = [...members]
+  if (sort === 'newest') sorted.sort((a, b) => noteUpdatedAt(b) - noteUpdatedAt(a) || b.info.slug.localeCompare(a.info.slug))
+  else if (sort === 'oldest') sorted.sort((a, b) => noteUpdatedAt(a) - noteUpdatedAt(b) || a.info.slug.localeCompare(b.info.slug))
+  else if (sort === 'title') sorted.sort((a, b) => (a.info.noteTitle ?? '').localeCompare(b.info.noteTitle ?? '') || a.info.slug.localeCompare(b.info.slug))
+  else sorted.sort((a, b) => Number(b.info.isPinned ?? false) - Number(a.info.isPinned ?? false) || noteUpdatedAt(b) - noteUpdatedAt(a) || b.info.slug.localeCompare(a.info.slug))
+  return sorted
+}
+
 async function readCollection(c: Context, state: DemoState): Promise<Response> {
   const collection = [...state.shareCollections.values()].find((candidate) => candidate.slug === c.req.param('slug'))
   const unavailable = () => apiError(404, 'not_found', 'The collection does not exist or has been revoked')
@@ -131,7 +149,7 @@ async function readCollection(c: Context, state: DemoState): Promise<Response> {
       return c.json({ error: { code: 'password_required', message: 'An access password is required' } }, 401)
     }
   }
-  const members = membersOf(state, collection)
+  const members = sortDemoMembers(state, membersOf(state, collection), collection.memberSort)
   const response: PublicCollection = {
     title: targetName(state, collection),
     count: members.length,

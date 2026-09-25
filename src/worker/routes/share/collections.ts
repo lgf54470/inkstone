@@ -12,7 +12,9 @@ import {
   collectionTargetName,
   collectionTargetNameJoin,
   collectionTargetNameSelect,
+  isCollectionMemberSort,
   isValidTargetValue,
+  type CollectionMemberSort,
 } from '../../lib/share-collections'
 import { isShareTargetType, resolveShareTarget, type ShareTargetType } from '@shared/share-selection'
 import { firstOf, rowsOf } from './read-results'
@@ -40,6 +42,7 @@ interface CollectionRow {
   password_hash: string | null
   expires_at: number | null
   is_enabled: number
+  member_sort: string | null
   created_at: number
   target_name: string | null
 }
@@ -50,7 +53,7 @@ function registerCollectionListRoute(shareManageRoutes: Hono<AppBindings>): void
     const userId = c.get('userId')
     const now = Date.now()
     const rows = rowsOf<CollectionRow>(await db.prepare(
-      `SELECT c.id, c.slug, c.target_type, c.target_value, c.password_hash, c.expires_at, c.is_enabled, c.created_at,
+      `SELECT c.id, c.slug, c.target_type, c.target_value, c.password_hash, c.expires_at, c.is_enabled, c.member_sort, c.created_at,
               ${collectionTargetNameSelect()} AS target_name
          FROM share_collections c ${collectionTargetNameJoin()}
         WHERE c.user_id = ?1 ORDER BY c.created_at DESC, c.id DESC`,
@@ -83,6 +86,7 @@ function toShareCollection(row: CollectionRow, count: { members: number } | null
     hasPassword: Boolean(row.password_hash),
     expiresAt: row.expires_at,
     isEnabled: row.is_enabled === 1,
+    memberSort: isCollectionMemberSort(row.member_sort) ? row.member_sort : null,
     createdAt: row.created_at,
   }
 }
@@ -92,6 +96,7 @@ const publishSchema = z.object({
   targetValue: z.string().min(1).max(200),
   password: z.string().max(LIMITS.passwordMaxLength).optional(),
   expiresAt: z.number().int().positive().nullable().optional(),
+  memberSort: z.enum(['default', 'newest', 'oldest', 'title']).nullable().optional(),
 }).strict()
 
 /**
@@ -123,14 +128,16 @@ function registerCollectionPublishRoute(shareManageRoutes: Hono<AppBindings>): v
         WHERE user_id = ?1 AND target_type = ?2 AND target_value = ?3 AND is_enabled = 1`,
     ).bind(userId, target.type, target.value).first<{ id: string; slug: string }>()
     const passwordHash = body.password ? await hashPassword(body.password) : null
+    const memberSort: CollectionMemberSort | null =
+      body.memberSort && isCollectionMemberSort(body.memberSort) ? body.memberSort : null
     if (existing) {
       // Re-publishing an already published folder is a re-statement of its policy, not a second page:
       // two live addresses for one folder would mean two passwords to remember and two links to revoke.
       await c.env.DB.prepare(
         `UPDATE share_collections
-            SET password_hash = ?1, expires_at = ?2, updated_at = ?3
-          WHERE id = ?4 AND user_id = ?5`,
-      ).bind(passwordHash, body.expiresAt ?? null, now, existing.id, userId).run()
+            SET password_hash = ?1, expires_at = ?2, member_sort = ?3, updated_at = ?4
+          WHERE id = ?5 AND user_id = ?6`,
+      ).bind(passwordHash, body.expiresAt ?? null, memberSort, now, existing.id, userId).run()
       return c.json({ id: existing.id, slug: existing.slug })
     }
     const live = await c.env.DB.prepare(
@@ -143,9 +150,9 @@ function registerCollectionPublishRoute(shareManageRoutes: Hono<AppBindings>): v
     const slug = newSlug()
     await c.env.DB.prepare(
       `INSERT INTO share_collections
-         (id, slug, user_id, target_type, target_value, password_hash, expires_at, is_enabled, created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?8)`,
-    ).bind(id, slug, userId, target.type, target.value, passwordHash, body.expiresAt ?? null, now).run()
+         (id, slug, user_id, target_type, target_value, password_hash, expires_at, is_enabled, member_sort, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?9, ?9)`,
+    ).bind(id, slug, userId, target.type, target.value, passwordHash, body.expiresAt ?? null, memberSort, now).run()
     return c.json({ id, slug })
   })
 }

@@ -12,11 +12,20 @@ const PUBLISH_DIALOG_WIDTH = 420
 
 type PublishTarget = { type: 'folder' | 'tag'; value: string }
 
+/** The member orders a collection page can list with; null means the shipped one. */
+const MEMBER_SORTS = ['default', 'newest', 'oldest', 'title'] as const
+type MemberSort = (typeof MEMBER_SORTS)[number]
+
 export type PublishBody = {
   targetType: 'folder' | 'tag'
   targetValue: string
   password?: string
   expiresAt?: number | null
+  memberSort?: MemberSort | null
+}
+
+function memberSortOptions(): Array<{ value: MemberSort; label: string }> {
+  return MEMBER_SORTS.map((sort) => ({ value: sort, label: t(`share.collection_member_sort_${sort}`) }))
 }
 
 /**
@@ -77,6 +86,7 @@ function usePublishForm(
   const [targetValue, setTargetValue] = useState(initialTarget?.value ?? '')
   const [password, setPassword] = useState('')
   const [expiry, setExpiry] = useState('0')
+  const [memberSort, setMemberSort] = useState<MemberSort>('default')
   const [isSaving, setIsSaving] = useState(false)
   const targets = useMemo(
     () => (targetType === 'folder'
@@ -100,13 +110,14 @@ function usePublishForm(
       password: password || undefined,
       // The same selection-to-milliseconds rule the share editor uses, so a week is a week here too.
       expiresAt: expiresInForSelection(expiry) ?? null,
+      memberSort: memberSort === 'default' ? null : memberSort,
     })
     setIsSaving(false)
     if (ok) close()
   }
   return {
-    targets, targetType, targetValue, password, expiry, isSaving, selected, close, submit,
-    setPassword, setExpiry,
+    targets, targetType, targetValue, password, expiry, memberSort, isSaving, selected, close, submit,
+    setPassword, setExpiry, setMemberSort,
     setTargetType: (next: 'folder' | 'tag') => {
       setTargetType(next)
       setTargetValue('')
@@ -147,6 +158,14 @@ function PublishFields({ form }: { form: PublishForm }) {
       <Field label={t('share.collection_publish_expiry')}>
         <Select value={form.expiry} aria-label={t('share.collection_publish_expiry')} onChange={(event) => form.setExpiry(event.target.value)}>
           {shareExpiryOptions().map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </Select>
+      </Field>
+      <Field label={t('share.collection_member_sort_label')}>
+        {/* The order a visitor walks the page in; the labels carry the caliber, not a jargon key. */}
+        <Select value={form.memberSort} aria-label={t('share.collection_member_sort_label')} onChange={(event) => form.setMemberSort(event.target.value as MemberSort)}>
+          {memberSortOptions().map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </Select>

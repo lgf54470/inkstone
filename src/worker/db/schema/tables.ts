@@ -208,6 +208,7 @@ export const TABLE_STATEMENTS: readonly string[] = [
       password_hash TEXT,
       expires_at INTEGER,
       is_enabled INTEGER NOT NULL DEFAULT 1,
+      member_sort TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`,

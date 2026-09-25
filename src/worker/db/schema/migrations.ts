@@ -663,4 +663,16 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_share_audit_log_note ON share_audit_log(note_id, created_at DESC)`,
     ],
   },
+  {
+    // The member order a collection's page lists with (audit #13). A preset key rather than a
+    // per-member order: derived members are computed from the shares on every request, so a
+    // stored member ordering would go stale the moment a share moved — a named preset keeps the
+    // page, the count and the owner's list answering the same question. NULL is the shipped
+    // order (pinned first, then newest), which is what every collection before this column had.
+    version: 44,
+    skipIfColumnExists: { table: 'share_collections', column: 'member_sort' },
+    statements: [
+      `ALTER TABLE share_collections ADD COLUMN member_sort TEXT`,
+    ],
+  },
 ]

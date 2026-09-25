@@ -41,7 +41,7 @@
 | 10 | P1 | #9 | 渠道卡片不能下钻到该渠道明细 | 小-中 | ✅ | ⏳ |
 | 11 | P2 | #6 | 链接变更无审计历史（新迁移 v43） | 中 | ✅ | ⏳ |
 | 12 | P2 | #7 | 失效提醒/通知（看板判定 + app_meta 已读） | 中 | ✅ | ⏳ |
-| 13 | P2 | #13 | 集合成员自定义排序 | 中 | ⬜ | — |
+| 13 | P2 | #13 | 集合成员自定义排序 | 中 | ✅ | ⏳ |
 | 14 | P2 | #14 | 手工精选集合 | 中-大 | ⬜ | — |
 | 15 | — | — | 全量回归 + 全部门禁收尾 | 小 | ⬜ | — |
 
@@ -53,6 +53,14 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 13 · P2 #13 集合成员排序（预设方案 + 分页适配）
+
+- **方案变更（与计划差异，如实说明）**：计划提的「per-member sort_order + 拖拽」对派生集合（folder/tag）不可行——成员每次请求从 shares 派生，无成员行可挂 sort_order；存储的成员顺序会随成员变化静默失真；且 JSON 顺序列表与游标分页冲突。改为 **`share_collections.member_sort` 预设键**（迁移 44，`skipIfColumnExists` 照迁移 30 范式）：`default`（原顺序）/ `newest` / `oldest` / `title`，NULL = default，语义即「访客所见顺序的口径」，页/计数/所有者列表按构造一致。手工精选集（序 14）的成员表将带真实 `sort_order` 拖拽排序，两项合起来覆盖原审计诉求。
+- 实现：`MEMBER_SORT_SPECS` 每个预设带自己的 ORDER BY 与 **keyset 游标谓词**（分页跟随排序；title 排序的游标扩展第 4 段 title，encodeURIComponent 转义分隔符，解码兼容旧 3 段光标）；发布接口/对话框（Select 下拉，文案即口径说明）与 owner 列表透传；demo 后端同构镜像（从 state.notes 取 updatedAt 排序）。
+- 过程缺陷（被新测试当场抓住两次）：① 占位符索引起点算错（`binds.length - parts.length + 1` 应为 `+1`）；② 重复占位符（default 谓词 ?{p} 出现两次）被当多次绑定而 replaceAll 折叠到同一索引，以及映射用固定偏移而非 token 实际索引——两处都以临时插桩打印真实 SQL 定位后修复，`tests/share-collections.test.ts` 101 分页用例与 title 分页用例同时把守。
+- 回归：新增 1 例覆盖三种断言（默认序保持、title 预设生效且重发布可改、游标分页跟随排序不重不漏 + owner 列表回读 memberSort）；17/17 全绿（一次 5s 超时为并行负载抖动，复跑通过）。`npx tsc -b --force` 与全部门禁绿（comments 白名单已同步）。体积基线 migrations.ts 667→679（迁移 44 固有增长，重拍）。pre-commit 的 vitest related 抓到 `share-collections-panel.test.ts` 断言缺 `memberSort`（对话框现在总是声明该字段），补齐后通过。
+- 已知限制：title 排序下，owner 改排序后客户端手里的旧游标会退化为「接近页首」（可接受的边缘）。
 
 ### 2026-09-25 · 序 12 · P2 #7 过期链接提醒（看板判定 + 一次性忽略）
 

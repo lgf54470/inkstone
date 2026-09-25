@@ -207,6 +207,9 @@ describe('collection publish dialog (ADR-0005)', () => {
       targetValue: 'f1',
       password: 'correct-horse',
       expiresAt: null,
+      // The dialog always states the member order: the default choice sends null, which is
+      // the shipped order on the row.
+      memberSort: null,
     })
     rendered.unmount()
   })

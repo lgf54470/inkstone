@@ -297,6 +297,8 @@ export interface ShareCollection {
   hasPassword: boolean
   expiresAt: number | null
   isEnabled: boolean
+  /** The member order the page lists with; null is the shipped one (pinned first, then newest). */
+  memberSort?: 'default' | 'newest' | 'oldest' | 'title' | null
   createdAt: number
 }
 

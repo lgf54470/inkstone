@@ -27,6 +27,7 @@ interface CollectionRow {
   password_hash: string | null
   expires_at: number | null
   is_enabled: number
+  member_sort: string | null
 }
 
 /**
@@ -54,7 +55,7 @@ export function registerShareCollectionPublicRoutes(shareRoutes: Hono<AppBinding
     const name = await collectionTargetName(c.env.DB, collection.user_id, record)
     const target = resolveShareTarget(record, name)
     const [page, count] = await Promise.all([
-      collectionMembersStatement(c.env.DB, { userId: collection.user_id, target, now, cursor, limit })
+      collectionMembersStatement(c.env.DB, { userId: collection.user_id, target, now, cursor, limit, sort: collection.member_sort })
         .all<CollectionMemberRow>(),
       collectionMemberCountStatement(c.env.DB, { userId: collection.user_id, target, now })
         .first<{ members: number }>(),
@@ -73,7 +74,7 @@ export function registerShareCollectionPublicRoutes(shareRoutes: Hono<AppBinding
         excerpt: row.excerpt,
         hasPassword: Boolean(row.password_hash),
       })),
-      nextCursor: nextCollectionCursor(rows, limit),
+      nextCursor: nextCollectionCursor(rows, limit, collection.member_sort),
       limit,
     }
     return c.json(response)
@@ -102,7 +103,7 @@ async function enforceCollectionViewBudget(c: Context<AppBindings>, slug: string
 
 async function loadCollectionOrThrow(db: D1Database, slug: string): Promise<CollectionRow> {
   const collection = await db.prepare(
-    `SELECT id, user_id, target_type, target_value, password_hash, expires_at, is_enabled
+    `SELECT id, user_id, target_type, target_value, password_hash, expires_at, is_enabled, member_sort
        FROM share_collections WHERE slug = ?1`,
   ).bind(slug).first<CollectionRow>()
   // One identical answer for paused, expired and unknown: the status of a collection is not public.

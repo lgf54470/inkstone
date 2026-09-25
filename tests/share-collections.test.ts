@@ -393,6 +393,47 @@ describe('collection pagination (ADR-0005)', () => {
     const body = await (await readCollection(app, slug)).json() as CollectionBody
     expect(body.notes.map((note) => note.slug)).toEqual(['s-pinned', 's-newer', 's-older'])
   })
+
+  it('lists members by the preset the collection was published with, paging included (audit #13)', async () => {
+    const db = await makeDb()
+    await seedFolder(db, { id: folderId(1), name: 'Custom order' })
+    const pinned = await seedNote(db, { title: 'Beta', updated_at: NOW - 20_000, is_pinned: true })
+    const older = await seedNote(db, { title: 'Charlie', updated_at: NOW - 10_000 })
+    const newer = await seedNote(db, { title: 'Alpha', updated_at: NOW })
+    await seedShare(db, { slug: 's-beta', note_id: pinned, folder_id: folderId(1) })
+    await seedShare(db, { slug: 's-charlie', note_id: older, folder_id: folderId(1) })
+    await seedShare(db, { slug: 's-alpha', note_id: newer, folder_id: folderId(1) })
+    const app = makeApp()
+
+    const titles = async (slug: string): Promise<string[]> => {
+      const body = await (await readCollection(app, slug)).json() as CollectionBody
+      return body.notes.map((note) => note.title)
+    }
+
+    // Default stays the shipped order: pinned leads, then newest.
+    expect(await titles(await publishFolder(app, folderId(1)))).toEqual(['Beta', 'Alpha', 'Charlie'])
+
+    // The title preset ignores both the pin and the clock, and re-publishing re-states it.
+    const titleSlug = await (async () => {
+      const res = await postJson(app, '/api/share/collections', {
+        targetType: 'folder', targetValue: folderId(1), memberSort: 'title',
+      })
+      expect(res.status).toBe(200)
+      return ((await res.json()) as { slug: string }).slug
+    })()
+    expect(await titles(titleSlug)).toEqual(['Alpha', 'Beta', 'Charlie'])
+
+    // Paging follows the sort: a keyset cursor walks by the order it was minted in.
+    const first = await (await readCollection(app, titleSlug, {}, '?limit=2')).json() as CollectionBody
+    expect(first.notes.map((note) => note.title)).toEqual(['Alpha', 'Beta'])
+    const second = await (await readCollection(app, titleSlug, {}, `?limit=2&cursor=${encodeURIComponent(first.nextCursor!)}`)).json() as CollectionBody
+    expect(second.notes.map((note) => note.title)).toEqual(['Charlie'])
+    expect(second.nextCursor).toBeNull()
+
+    // The owner's list carries the preset, so the dialog can re-state it.
+    const listed = await (await request(app, '/api/share/collections')).json() as { collections: Array<{ slug: string; memberSort?: string | null }> }
+    expect(listed.collections.find((collection) => collection.slug === titleSlug)?.memberSort).toBe('title')
+  })
 })
 
 describe('collection owner routes (ADR-0005)', () => {
