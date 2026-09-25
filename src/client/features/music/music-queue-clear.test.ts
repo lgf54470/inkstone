@@ -127,3 +127,14 @@ describe('clearing the queue asks first', () => {
     })
   }
 })
+
+// A11Y-6: the word "clear" in the queue popover was a bare line of 10px text, so the tap
+// target was the height of its own glyphs.
+describe('the clear-queue word is still a fingertip-sized button', () => {
+  it('gives it the same minimum box the icon buttons have', async () => {
+    await mount(vi.fn(), createElement(MusicQueueButton))
+    await click(byLabel(t('music.queue')))
+    const clear = byText(document, t('music.clear_queue'))
+    expect(clear?.classList.contains('min-h-6')).toBe(true)
+  })
+})

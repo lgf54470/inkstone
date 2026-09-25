@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement } from 'react'
+import { t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
 import { SearchBox, SEARCH_DEBOUNCE_MS } from './music-search-box'
 import { useMusic } from './music-store'
@@ -117,6 +118,14 @@ describe('music search history combobox semantics', () => {
     expect(input.getAttribute('aria-expanded')).toBe('true')
     expect(input.getAttribute('aria-controls')).toBe(listbox!.id)
     expect(options[0]?.getAttribute('aria-selected')).toBe('false')
+  })
+
+  // A11Y-6: a text-only button sat at its line height, well under the 24px a fingertip needs.
+  it('gives the clear-history button a box a fingertip can hit', () => {
+    mountWithHistory()
+    const clear = [...document.querySelectorAll('button')]
+      .find((button) => button.textContent?.trim() === t('music.search_clear_history')) as HTMLButtonElement
+    expect(clear.classList.contains('min-h-6')).toBe(true)
   })
 
   it('walks the entries with the arrow keys and commits the highlighted one on Enter', () => {

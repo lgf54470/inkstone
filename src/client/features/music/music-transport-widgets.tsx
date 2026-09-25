@@ -79,7 +79,9 @@ export function MusicQueueButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
           <span className='text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]'>
             {t('music.queue_count', { value0: queueLength })}
           </span>
-          <button type='button' onClick={() => void confirmClearQueue(queueLength, clearQueue)} className='rounded px-1 text-[length:var(--text-10)] text-[var(--text-quaternary)] hover:text-[var(--text-primary)]'>
+          {/* Text buttons are as small as their type; without a minimum box they land below the
+              24px a fingertip needs. */}
+          <button type='button' onClick={() => void confirmClearQueue(queueLength, clearQueue)} className='min-h-6 rounded px-1.5 text-[length:var(--text-10)] text-[var(--text-quaternary)] hover:text-[var(--text-primary)]'>
             {t('music.clear_queue')}
           </button>
         </div>

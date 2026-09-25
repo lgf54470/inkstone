@@ -2660,6 +2660,8 @@ const allowed = new Map([
     '// The queue popover is a dialog too, so the prompt is named by the pair of',
     '// buttons only the archive-style confirm carries.',
     '// Both surfaces ask the same question, so both are driven the same way.',
+    '// A11Y-6: the word "clear" in the queue popover was a bare line of 10px text, so the tap',
+    '// target was the height of its own glyphs.',
   ]],
   ['src/client/features/music/music-queue-clear.ts', [
     '// Clearing the queue drops every queued track and stops playback, so both places',
@@ -2684,6 +2686,7 @@ const allowed = new Map([
   ['src/client/features/music/music-search-box.test.ts', [
     '// UI-22: the history dropdown is a popup list attached to the input; without',
     '// combobox semantics a screen-reader user cannot see it open or walk its rows.',
+    '// A11Y-6: a text-only button sat at its line height, well under the 24px a fingertip needs.',
   ]],
   ['src/client/features/music/music-search-box.tsx', [
     '// Every store query write re-filters the library; typing must not pay for that per keystroke.',
@@ -3038,6 +3041,7 @@ const allowed = new Map([
     '// same element tells a screen reader it is a toggle instead, and the two cannot both be true.',
   ]],
   ['src/client/features/music/music-transport-widgets.tsx', [
+    '/* Text buttons are as small as their type; without a minimum box they land below the\n              24px a fingertip needs. */',
     '// A click opens the volume panel, which is where muting lives: the double-click shortcut that',
     '// used to sit here had no label, no keyboard equivalent and no way to discover it, and muting',
     '// is already offered by a named button in the panel. The trigger is named for what it does — it',
