@@ -142,7 +142,9 @@ describe('visit logs CSV export covers every page of the current query', () => {
     expect(lastToast()?.title).toBe('share.export_success')
     rendered.unmount()
   })
+})
 
+describe('visit logs CSV export carries the query on screen', () => {
   it('keeps the active filter and note scope on the export requests', async () => {
     const rendered = await mountLogsModal({ initialNoteId: 'note-9' })
     await act(async () => {
@@ -159,6 +161,35 @@ describe('visit logs CSV export covers every page of the current query', () => {
     rendered.unmount()
   })
 
+  it('keeps the picked time window on the export requests (audit #10)', async () => {
+    const rendered = await mountLogsModal()
+    await act(async () => {
+      bodyButton('7d').click()
+    })
+    await settle()
+    await clickExport()
+
+    const exportCalls = visitsCallsWithLimit(100)
+    expect(exportCalls.length).toBeGreaterThan(0)
+    for (const params of exportCalls) {
+      expect(params).toMatchObject({ range: '7d' })
+    }
+
+    // The all window sends no range value — the shape the endpoint answered before the control.
+    vi.mocked(api.share.visits).mockClear()
+    await act(async () => {
+      bodyButton('share.range_all').click()
+    })
+    await settle()
+    await clickExport()
+    for (const params of visitsCallsWithLimit(100)) {
+      expect(params?.range).toBeUndefined()
+    }
+    rendered.unmount()
+  })
+})
+
+describe('visit logs CSV export failure surfacing', () => {
   it('surfaces a failure toast and re-enables the button when a page fetch fails', async () => {
     let calls = 0
     vi.mocked(api.share.visits).mockImplementation(async (params) => {

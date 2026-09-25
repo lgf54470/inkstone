@@ -4346,6 +4346,7 @@ const allowed = new Map([
   ['src/client/features/share/share-visit-logs-export.test.ts', [
     '/** Same page shape over a history of any length, for the cap case. */',
     '/** Mounts the hook directly so a test can open and close the modal around an in-flight export. */',
+    '// The all window sends no range value — the shape the endpoint answered before the control.',
     '// Serves every page at once except pages after the first, which wait for the test to release',
     '// them — that window is where progress and cancellation can be observed.',
     '// Page one is in, page two is held open: the live region has something to report.',
@@ -4359,6 +4360,7 @@ const allowed = new Map([
     '/**\n * The session view\'s own state: which mode the panel is in, the window it covers, and the traffic\n * filter it asks for (ADR-0003). It is deliberately separate from the log\'s filter, which speaks a\n * vocabulary sessions cannot express — "bots only" and "the author only" are not things a visitor\'s\n * sittings can be narrowed to, and quietly substituting another filter would misreport the range.\n */',
     '/**\n * A long export is a walk of many pages, so it reports where it is and renders nothing at\n * all once it is done: the line appears below the toolbar rather than inside it, so opening\n * and closing it can never move the buttons the person is aiming at.\n */',
     '/**\n * The row vocabulary is four classes (all, real, bots, the author), and search and CSV export only\n * mean anything for rows — which is exactly why the two modes each render their own controls\n * instead of one set that would be dead half the time. Sessions cannot be searched or exported, and\n * "bots only" is not something a visitor\'s sittings can be narrowed to.\n */',
+    '/* The window draws from the same vocabulary as the analytics panels, so "7d" is one window\n          everywhere the app says it. */',
   ]],
   ['src/client/features/share/share-visit-logs-table.tsx', [
     '/**\n * The rows the logs request answered with, or the state the request is in when it has not answered\n * yet: the loading rows are placeholders and the empty row is a fact ("nothing matched"), and each\n * of the three reads differently on purpose.\n */',
@@ -4422,6 +4424,8 @@ const allowed = new Map([
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
   ]],
   ['src/client/features/share/use-share-visit-logs-modal.ts', [
+    '/**\n * The query state one log browsing session holds: page, traffic filter, time window, search text\n * and the note scope. Opening the modal rewinds it to the first page of the asked scope.\n */',
+    '/** The "changed a dimension → back to page one of it" handlers, one per query dimension. */',
     '// A failure has to *read* as a failure. Clearing the rows keeps the previous page from standing',
     '// in for an answer this request never got, and `error` drives the table\'s own retry surface',
     '// instead of a toast that leaves the list looking merely empty — which is the silent downgrade',
@@ -9869,6 +9873,7 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/share/visits.ts', [
     '/** An unknown log filter is refused, for the same reason an unknown status is: silently answering\n * with every row looks like a filter that matched everything. */',
+    '/**\n * The window the log lists, in the same vocabulary the analytics panels speak. Unlike the analytics\n * route — which sanitizes an unknown range to 30d — the log refuses one: a dropped or mistyped range\n * that quietly became "the last 30 days" would read as "everything" on a surface whose empty state\n * says nothing matched. Absent means all, which is what every caller before the control existed sent.\n */',
     '// Unparseable page/limit values must fall back to a default rather than reach the',
     '// binding: `parseInt(\'abc\')` is NaN and `Math.max(1, NaN)` stays NaN, which SQLite',
     '// rejects as a datatype mismatch (a 500 for a malformed query). The ceiling on',
@@ -9881,6 +9886,7 @@ const allowed = new Map([
     '// unrecoverable — means a stolen session must re-prove it holds the account password.',
     '/**\n * The note a delete is scoped to, when one was asked for. An empty value is the dangerous\n * case: it is present but names nothing, and letting it through would fall back to the\n * account-wide delete — the widest possible reading of a request that asked for the\n * narrowest. Only `type=all` can be scoped this way; pairing a note with a filtered type\n * would delete something other than what the caller described, so it is rejected too.\n */',
     '/**\n * `older_than` must be given an explicit positive day count: silently falling back\n * to a default would delete a window the caller never asked for, so an unparseable\n * or non-positive value is a 400. The other cleanup types never read it.\n */',
+    '/** The window\'s lower bound; 0 (the `all` range) adds no condition and no bind. */',
     '// Empty string is the stored "a marker was sent and refused": the log shows the marker, and',
     '// the split between the two kinds of miss belongs to the channel card, not to a row.',
   ]],
@@ -10352,6 +10358,7 @@ const allowed = new Map([
     '// The route\'s own count+page pair is one batch. The remaining flights belong to the read',
     '// budget ahead of it: one batch for its upsert and two direct probes for its lock checks',
     '// (before and after) — none of them a second pass over the log.',
+    '// Absent means all — what every caller before the control existed sent.',
     '// The cap bounds the worst OFFSET, not just the type: past it a caller is paging into',
     '// nothing, so it is folded back to the ceiling rather than trusted with a nine-figure offset.',
     '/**\n * ADR-0003: the session view folds one visitor\'s visits into sittings. Its boundaries are the part\n * that has to be exact — a gap, a UTC day, and a page edge are each a place where a wrong operator\n * would silently produce a different story about what a visitor read.\n */',

@@ -84,6 +84,7 @@ export const share = {
         noteId?: string
         filter?: string
         search?: string
+        range?: string
       },
       signal?: AbortSignal,
     ) => request<ShareVisitsResponse>(`/api/share/visits${toQuery(params ?? {})}`, { signal }),

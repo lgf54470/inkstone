@@ -158,18 +158,29 @@ function VisitLogsToolbar({ bundle, sessions }: { bundle: LogsBundle; sessions: 
  */
 function RowFilterSwitch({ bundle }: { bundle: LogsBundle }) {
   return (
-    <Segmented
-      size='sm'
-      label={t('share.filter_traffic_title')}
-      value={bundle.filter}
-      onChange={(value) => bundle.handleFilterChange(value as VisitFilter)}
-      options={[
-        { value: 'all', label: t('share.filter_all_traffic') },
-        { value: 'real', label: t('share.filter_real_only') },
-        { value: 'bot', label: t('share.filter_bot_only') },
-        { value: 'owner', label: t('share.filter_owner_only') },
-      ]}
-    />
+    <>
+      <Segmented
+        size='sm'
+        label={t('share.filter_traffic_title')}
+        value={bundle.filter}
+        onChange={(value) => bundle.handleFilterChange(value as VisitFilter)}
+        options={[
+          { value: 'all', label: t('share.filter_all_traffic') },
+          { value: 'real', label: t('share.filter_real_only') },
+          { value: 'bot', label: t('share.filter_bot_only') },
+          { value: 'owner', label: t('share.filter_owner_only') },
+        ]}
+      />
+      {/* The window draws from the same vocabulary as the analytics panels, so "7d" is one window
+          everywhere the app says it. */}
+      <Segmented
+        size='sm'
+        label={t('share.logs_range_label')}
+        value={bundle.range}
+        onChange={(value) => bundle.handleRangeChange(value as ShareTimelineRange)}
+        options={rangeOptions().map((option) => ({ value: option.value, label: option.label }))}
+      />
+    </>
   )
 }
 

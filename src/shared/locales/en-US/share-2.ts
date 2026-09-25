@@ -100,6 +100,7 @@ export const messages = {
 'share.filter_real_only': 'Real Readers',
 'share.generate_random_slug': 'Generate random slug',
 'share.logs_load_failed': 'Could not load the visit logs.',
+'share.logs_range_label': 'Time Range',
 'share.next_page': 'Next',
 'share.no_logs_found': 'No visit logs found matching filters',
 'share.no_logs_to_export': 'No logs available to export',

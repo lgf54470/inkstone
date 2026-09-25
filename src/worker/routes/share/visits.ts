@@ -1,11 +1,12 @@
 import { Hono } from 'hono'
 import { ShareVisitLog } from '@shared/types'
+import type { ShareTimelineRange } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { escapeLike } from '../../lib/like'
 import { JSON_BODY_LIMITS, clampInt, readOptionalJsonValidated } from '../../lib/request'
 import { requireCurrentPassword } from '../../lib/reauth'
-import { parseBotName, publicVisitorFingerprint } from '../../lib/share-analytics'
+import { getRangeStartTimestamp, parseBotName, publicVisitorFingerprint } from '../../lib/share-analytics'
 import { isVisitLogFilter, type VisitLogFilter } from '@shared/share-selection'
 import { visitLogFilterSql } from '../../lib/share-selection-sql'
 import { consumeShareReadBudget } from './read-budget'
@@ -17,6 +18,20 @@ function visitLogFilterParam(raw: string | undefined): VisitLogFilter {
   if (!raw) return 'all'
   if (!isVisitLogFilter(raw)) throw ApiError.badRequest(`Unknown visit filter: ${raw}`)
   return raw
+}
+
+const VISIT_LOG_RANGES: readonly string[] = ['24h', '7d', '30d', 'all']
+
+/**
+ * The window the log lists, in the same vocabulary the analytics panels speak. Unlike the analytics
+ * route — which sanitizes an unknown range to 30d — the log refuses one: a dropped or mistyped range
+ * that quietly became "the last 30 days" would read as "everything" on a surface whose empty state
+ * says nothing matched. Absent means all, which is what every caller before the control existed sent.
+ */
+function visitLogRangeParam(raw: string | undefined): ShareTimelineRange {
+  if (!raw) return 'all'
+  if (!VISIT_LOG_RANGES.includes(raw)) throw ApiError.badRequest(`Unknown visit log range: ${raw}`)
+  return raw as ShareTimelineRange
 }
 
 interface VisitLogRow {
@@ -67,36 +82,22 @@ function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): voi
     const page = clampInt(c.req.query('page'), VISITS_PAGE_DEFAULT, VISITS_PAGE_MAX, VISITS_PAGE_DEFAULT)
     const limit = clampInt(c.req.query('limit'), VISITS_LIMIT_MIN, VISITS_LIMIT_MAX, VISITS_LIMIT_DEFAULT)
     const offset = (page - 1) * limit
+    const now = Date.now()
+    const range = visitLogRangeParam(c.req.query('range'))
     const { conditions, binds, bindIdx } = visitLogFilter({
       noteId: c.req.query('noteId'),
       filter: visitLogFilterParam(c.req.query('filter')),
       search: (c.req.query('search') || '').trim(),
       userId,
+      since: getRangeStartTimestamp(range, now),
     })
     conditions.push('EXISTS (SELECT 1 FROM shares s WHERE s.slug = sv.slug)')
 
     // One round trip for the count and the page: the two statements share the same filter, and
     // paying a second sequential flight for it doubled the tail latency of every page view.
-    const [countResult, rowsResult] = await c.env.DB.batch<VisitLogRow | { total: number }>([
-      c.env.DB.prepare(
-        `SELECT COUNT(*) as total
-           FROM share_visits sv
-           LEFT JOIN notes n ON n.id = sv.note_id
-          WHERE ${conditions.join(' AND ')}`,
-      ).bind(...binds),
-      c.env.DB.prepare(
-        `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
-                sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser,
-                CASE WHEN sv.is_bot = 1 THEN sv.user_agent END as user_agent,
-                sv.visitor_fp, sv.is_bot, sv.is_self_referrer, sv.is_owner, sv.channel,
-                n.title as note_title
-           FROM share_visits sv
-           LEFT JOIN notes n ON n.id = sv.note_id
-          WHERE ${conditions.join(' AND ')}
-          ORDER BY sv.visited_at DESC
-          LIMIT ?${bindIdx} OFFSET ?${bindIdx + 1}`,
-      ).bind(...binds, limit, offset),
-    ])
+    const [countResult, rowsResult] = await c.env.DB.batch<VisitLogRow | { total: number }>(
+      visitLogPageStatements(c.env.DB, { conditions, binds, bindIdx, limit, offset }),
+    )
     const total = (countResult.results[0] as { total: number } | undefined)?.total ?? 0
     const visits: ShareVisitLog[] = ((rowsResult.results ?? []) as VisitLogRow[]).map(toVisitLogRow)
 
@@ -108,6 +109,37 @@ function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): voi
       totalPages: Math.ceil(total / limit),
     })
   })
+}
+
+function visitLogPageStatements(db: D1Database, params: {
+  conditions: string[]
+  binds: Array<string | number>
+  bindIdx: number
+  limit: number
+  offset: number
+}): [D1PreparedStatement, D1PreparedStatement] {
+  const { conditions, binds, bindIdx, limit, offset } = params
+  const where = conditions.join(' AND ')
+  return [
+    db.prepare(
+      `SELECT COUNT(*) as total
+         FROM share_visits sv
+         LEFT JOIN notes n ON n.id = sv.note_id
+        WHERE ${where}`,
+    ).bind(...binds),
+    db.prepare(
+      `SELECT sv.id, sv.note_id, sv.slug, sv.visited_at, sv.country, sv.region, sv.city,
+              sv.referrer, sv.referrer_host, sv.device_type, sv.os, sv.browser,
+              CASE WHEN sv.is_bot = 1 THEN sv.user_agent END as user_agent,
+              sv.visitor_fp, sv.is_bot, sv.is_self_referrer, sv.is_owner, sv.channel,
+              n.title as note_title
+         FROM share_visits sv
+         LEFT JOIN notes n ON n.id = sv.note_id
+        WHERE ${where}
+        ORDER BY sv.visited_at DESC
+        LIMIT ?${bindIdx} OFFSET ?${bindIdx + 1}`,
+    ).bind(...binds, limit, offset),
+  ]
 }
 
 function registerShareVisitsClearRoute(shareManageRoutes: Hono<AppBindings>): void {
@@ -162,14 +194,21 @@ function visitLogFilter(params: {
   noteId: string | undefined
   filter: VisitLogFilter
   search: string
+  /** The window's lower bound; 0 (the `all` range) adds no condition and no bind. */
+  since: number
 }): { conditions: string[]; binds: Array<string | number>; bindIdx: number } {
-  const { userId, noteId, filter, search } = params
+  const { userId, noteId, filter, search, since } = params
   const conditions = [`sv.user_id = ?1`]
   const binds: Array<string | number> = [userId]
   let bindIdx = 2
   if (noteId) {
     conditions.push(`sv.note_id = ?${bindIdx}`)
     binds.push(noteId)
+    bindIdx++
+  }
+  if (since > 0) {
+    conditions.push(`sv.visited_at >= ?${bindIdx}`)
+    binds.push(since)
     bindIdx++
   }
   const filterCondition = visitLogFilterSql(filter, 'sv')

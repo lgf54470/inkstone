@@ -884,6 +884,27 @@ describe('share visits route (real D1)', () => {
     expect(calls.direct).toBe(2)
   })
 
+  it('filters the log by the same time ranges the analytics panels speak (audit #10)', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Windowed' })
+    await seedShare(db, { note_id: n1, slug: 'v-range' })
+    const now = Date.now()
+    await seedVisit(db, { note_id: n1, slug: 'v-range', visited_at: now - 2 * 3_600_000, visitor_fp: 'fp-new' })
+    await seedVisit(db, { note_id: n1, slug: 'v-range', visited_at: now - 8 * 86_400_000, visitor_fp: 'fp-old' })
+    const app = makeApp()
+
+    const recent = await (await request(app, '/api/share/visits?range=24h')).json()
+    expect(recent.total).toBe(1)
+    expect(recent.visits[0].visitorFp).toBe('fp-new')
+
+    // Absent means all — what every caller before the control existed sent.
+    const everything = await (await request(app, '/api/share/visits')).json()
+    expect(everything.total).toBe(2)
+
+    const unknown = await request(app, '/api/share/visits?range=90d')
+    expect(unknown.status).toBe(400)
+  })
+
   it('ships only the display prefix of a fingerprint and nothing on non-bot rows', async () => {
     const db = await makeDb()
     const n1 = await seedNote(db, { title: 'Hashed' })

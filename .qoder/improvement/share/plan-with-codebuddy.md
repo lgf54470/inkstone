@@ -35,9 +35,9 @@
 | 04 | P0 | #3 | 随机 slug 用 Math.random（非 CSPRNG） | 极小 | ✅ | 4d8d091d |
 | 05 | P0 | #2 | 分享页静态内联样式 `maxWidth:'none'` 移入样式表 | 极小 | ✅ | f59fe6f3 |
 | 06 | P0 | #17/#20 | worker 侧：日志 count+rows batch 化、页上限收紧、error 日志脱敏 | 小 | ✅ | 1137a1a4 |
-| 07 | P1 | #15 | 全站累计 UV 全史聚合每次列表重算 | 小 | ✅ | ⏳ |
-| 08 | P1 | #16 | 集合列表 N+1（每集合 2 查询） | 小 | ✅ | ⏳ |
-| 09 | P1 | #10 | 访问日志无时间范围筛选 | 小 | ⬜ | — |
+| 07 | P1 | #15 | 全站累计 UV 全史聚合每次列表重算 | 小 | ✅ | ccf59cc3 |
+| 08 | P1 | #16 | 集合列表 N+1（每集合 2 查询） | 小 | ✅ | 1420b12d |
+| 09 | P1 | #10 | 访问日志无时间范围筛选 | 小 | ✅ | ⏳ |
 | 10 | P1 | #9 | 渠道卡片不能下钻到该渠道明细 | 小-中 | ⬜ | — |
 | 11 | P2 | #6 | 链接变更无审计历史（新迁移 v43） | 中 | ⬜ | — |
 | 12 | P2 | #7 | 失效提醒/通知（看板判定 + app_meta 已读） | 中 | ⬜ | — |
@@ -53,6 +53,14 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 09 · P1 #10 访问日志时间范围筛选
+
+- 方案：`GET /visits` 新增 `range` 参数，复用分析面板的 `24h/7d/30d/all` 词表（`getRangeStartTimestamp`），两处口径统一；**未知 range 显式 400**（与日志 filter 的处理一致，不做 analytics 那种静默回退 30d）；缺省 = all，保持既有调用方行为不变。条件 `sv.visited_at >= ?` 走既有 `(user_id, visited_at DESC)` 索引，无需新索引。
+- 前端：日志工具条新增时间范围 `Segmented`（复用 `rangeOptions()`），hook 新增 `range` 状态与 `handleRangeChange`；CSV 导出同步携带 range（`all` 不发参，保持端点旧形态）。新增文案 `share.logs_range_label`。
+- 回归：worker 侧新增 1 例（24h 只见近访、缺省全量、未知 400）；client 侧新增 1 例（选 7d 后导出请求带 range、切回全部后不发）。相关 5 个测试文件 138/138 全绿。
+- 结构整改（体积门禁要求）：`useShareVisitLogs` 加 range 后超 50 行——拆出 `useVisitLogQueryState`（查询状态）与 `useVisitLogRefetchHandlers`（改维度→回第一页）两个子 hook；`registerShareVisitsListRoute` 语句对拆出 `visitLogPageStatements`；导出测试 describe 一拆为二。均无行为变更。
+- `npx tsc -b --force` 与全部门禁绿（comments 白名单已同步）。
 
 ### 2026-09-25 · 序 08 · P1 #16 集合列表去 N+1（2N 次往返 → 2 次）
 
