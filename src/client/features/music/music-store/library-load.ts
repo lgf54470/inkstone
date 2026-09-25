@@ -10,12 +10,15 @@ import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSortDirection, Mus
 // one in-flight request is shared and a just-loaded library is trusted briefly.
 const LIBRARY_FRESH_MS = 60_000
 let libraryRequest: Promise<void> | null = null
+// Validator of the library now in the store; sent back so an unchanged library
+// costs one round trip instead of a full transfer.
+let libraryEtag: string | null = null
 
 export async function loadLibrary(set: MusicSet, get: MusicGet, force = false): Promise<void> {
   if (!force && Date.now() - get().lastLoadedAt < LIBRARY_FRESH_MS) return
   if (libraryRequest) return libraryRequest
   set({ loading: true, loadError: null })
-  libraryRequest = fetchLibrary(set)
+  libraryRequest = fetchLibrary(set, force)
   try {
     await libraryRequest
   } finally {
@@ -23,9 +26,17 @@ export async function loadLibrary(set: MusicSet, get: MusicGet, force = false): 
   }
 }
 
-async function fetchLibrary(set: MusicSet): Promise<void> {
+async function fetchLibrary(set: MusicSet, force: boolean): Promise<void> {
   try {
-    const library = await api.music.library()
+    const library = await api.music.library(force ? null : libraryEtag, (etag) => {
+      libraryEtag = etag
+    })
+    // A 304 carries no body: keeping the existing arrays keeps every memo built
+    // over the library — sort, grouping, tag trees — from being thrown away.
+    if (!library) {
+      set({ loading: false, lastLoadedAt: Date.now() })
+      return
+    }
     set({
       tracks: library.tracks,
       tags: library.tags,

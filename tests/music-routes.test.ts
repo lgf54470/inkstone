@@ -937,6 +937,29 @@ describe('music playlist item round trips (real D1)', () => {
   })
 })
 
+describe('music library conditional reads (real D1)', () => {
+  it('answers an unchanged library with 304 and an empty body', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    await uploadTrack(app)
+
+    const first = await request(app, '/api/music/library')
+    expect(first.status).toBe(200)
+    const etag = first.headers.get('ETag')
+    expect(etag).toBeTruthy()
+
+    const second = await request(app, '/api/music/library', { headers: { 'If-None-Match': etag as string } })
+    expect(second.status).toBe(304)
+    expect(await second.text()).toBe('')
+
+    await uploadTrack(app, 'second.mp3')
+    const third = await request(app, '/api/music/library', { headers: { 'If-None-Match': etag as string } })
+    expect(third.status).toBe(200)
+    expect((await third.json()).tracks).toHaveLength(2)
+  })
+})
+
 describe('music playback queue round trips (real D1)', () => {
   it('loads a large saved queue in one batched read', async () => {
     const db = await makeDb()

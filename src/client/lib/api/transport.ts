@@ -44,6 +44,10 @@ interface RequestOptions {
   signal?: AbortSignal
   formData?: FormData
   timeoutMs?: number
+  /** Sends a conditional GET; a 304 resolves to `undefined` instead of throwing. */
+  ifNoneMatch?: string
+  /** Receives the response validator so the caller can send it back next time. */
+  onEtag?: (etag: string | null) => void
 }
 
 
@@ -67,6 +71,7 @@ function buildRequestPayload(options: RequestOptions): { headers: Record<string,
     headers['Content-Type'] = 'application/json'
     payload = JSON.stringify(options.body)
   }
+  if (options.ifNoneMatch) headers['If-None-Match'] = options.ifNoneMatch
   return { headers, payload }
 }
 
@@ -133,6 +138,12 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       if (notifyOtherTabs) publishBroadcast({ type: 'local-write', clientId: CLIENT_ID })
       return undefined as T
     }
+    // Nothing changed server side: the caller keeps what it already holds.
+    if (response.status === 304) {
+      options.onEtag?.(response.headers.get('ETag'))
+      return undefined as T
+    }
+    options.onEtag?.(response.headers.get('ETag'))
 
     const isJson = isJsonResponse(response)
     const { data, isInvalidJson } = await readResponseBody(response, isJson)

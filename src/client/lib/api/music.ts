@@ -86,7 +86,12 @@ export const music = {
   importWebdav: (input: MusicWebdavImportInput) =>
     request<MusicTrack>('/api/music/webdav/import', { method: 'POST', body: input, timeoutMs: 30_000 }),
 
-  library: () => request<MusicLibrary>('/api/music/library'),
+  // `etag` is the validator the last answer came with; an unchanged library comes
+  // back as 304 and resolves to null, sparing the client a full rebuild.
+  library: (
+    etag: string | null,
+    onEtag?: (etag: string | null) => void,
+  ) => request<MusicLibrary | null>('/api/music/library', { ifNoneMatch: etag ?? undefined, onEtag }),
 
   publicPlaylist: (slug: string) =>
     request<PublicPlaylist>(`/api/blog/public/music/playlists/${encodeURIComponent(slug)}`),

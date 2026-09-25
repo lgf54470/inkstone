@@ -8,6 +8,7 @@ import type { MusicLightTrackRow, MusicPlaylistItemRow, MusicPlaylistRow, MusicT
 export function registerMusicLibraryRoutes(routes: Hono<AppBindings>): void {
   routes.get('/library', requireAuth, async (c) => {
     const userId = c.get('userId')
+    const ifNoneMatch = c.req.header('If-None-Match')
     const [tracks, tags, playlists, items] = await Promise.all([
       loadTracks(c.env.DB, userId),
       loadTags(c.env.DB, userId),
@@ -26,8 +27,21 @@ export function registerMusicLibraryRoutes(routes: Hono<AppBindings>): void {
       playlists: playlists.map((row) => toPlaylist(row, (itemsByPlaylist.get(row.id) ?? []).map(toPlaylistItem))),
       stats: summarize(tracks, tags.length, playlists.length),
     }
-    return c.json(library)
+    // Re-opening the hub used to re-download the whole library. The validator is
+    // taken over the answer itself, so it cannot go stale the way a hand-listed
+    // set of fingerprints would when a field is added later.
+    const etag = await libraryEtag(library)
+    const headers = { ETag: etag, 'Cache-Control': 'no-store' }
+    if (ifNoneMatch && ifNoneMatch === etag) return c.body(null, 304, headers)
+    return c.json(library, 200, headers)
   })
+}
+
+async function libraryEtag(library: MusicLibrary): Promise<string> {
+  const serialized = JSON.stringify(library)
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(serialized))
+  const hex = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+  return `W/"${hex.slice(0, 32)}"`
 }
 
 async function loadTracks(db: D1Database, userId: string): Promise<ReturnType<typeof attachLightTagIds>> {

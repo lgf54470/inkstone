@@ -2873,12 +2873,18 @@ const allowed = new Map([
     '// of steps while overlapping the round trips.',
   ]],
   ['src/client/features/music/music-store/library-load.test.ts', [
+    '// The real api reads the validator off the response header; the stub hands one over.',
+    '// Same array, so every memo built over the library survives the reload.',
     '// h1 wastes more (two extras) so it leads despite uploading after h2;',
     '// within a group the oldest copy comes first even when a later one is pinned.',
   ]],
   ['src/client/features/music/music-store/library-load.ts', [
     '// Opening the hub, retrying, and several mutations all want the library at once;',
     '// one in-flight request is shared and a just-loaded library is trusted briefly.',
+    '// Validator of the library now in the store; sent back so an unchanged library',
+    '// costs one round trip instead of a full transfer.',
+    '// A 304 carries no body: keeping the existing arrays keeps every memo built',
+    '// over the library — sort, grouping, tag trees — from being thrown away.',
     '// Mirrors the worker\'s summarize; mutations that merge single records keep stats honest',
     '// without paying for a full reload.',
     '// Picking a new field starts at its natural direction; the header toggles from there.',
@@ -4647,6 +4653,8 @@ const allowed = new Map([
     '/**\n * Whiteboard libraries (lib/markdown/excalidraw/library.ts) are a set of named documents\n * per account, so the API hands each one back verbatim and stores whatever it is given:\n * keeping the format knowledge on the client is what lets an `.excalidrawlib` body\n * round-trip with excalidraw.com untouched.\n */',
   ]],
   ['src/client/lib/api/music.ts', [
+    '// `etag` is the validator the last answer came with; an unchanged library comes',
+    '// back as 304 and resolves to null, sparing the client a full rebuild.',
     '// Drifting through a track only moves the playhead, so this one leaves the',
     '// stored queue out of the body instead of resending it every few seconds.',
     '// The Worker relays the catalogue request because the page\'s CSP forbids third party connections.',
@@ -4660,6 +4668,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/api/transport.ts', [
     '/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker\'s ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */',
+    '/** Sends a conditional GET; a 304 resolves to `undefined` instead of throwing. */',
+    '/** Receives the response validator so the caller can send it back next time. */',
+    '// Nothing changed server side: the caller keeps what it already holds.',
   ]],
   ['src/client/lib/async.ts', [
     '/**\n * Resolves when the work does or when it has had long enough, so a slow artifact delays what\n * comes next instead of hanging it. The timeout is the contract: the caller cannot wait\n * forever, and it must not learn about a failure it can do nothing about.\n */',
@@ -9666,6 +9677,11 @@ const allowed = new Map([
     '// Responses served from our origin must never carry a third-party-declared or',
     '// legacy content type: only allowlisted audio and video mimes stream inline,',
     '// anything else is forced to a download by the caller.',
+  ]],
+  ['src/worker/routes/music/library.ts', [
+    '// Re-opening the hub used to re-download the whole library. The validator is',
+    '// taken over the answer itself, so it cannot go stale the way a hand-listed',
+    '// set of fingerprints would when a field is added later.',
   ]],
   ['src/worker/routes/music/lookup.ts', [
     '// The catalogue request runs here because the page\'s CSP forbids third party connections.',

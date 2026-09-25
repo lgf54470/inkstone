@@ -88,6 +88,32 @@ describe('search hit truncation (UI-16)', () => {
   })
 })
 
+describe('loadLibrary conditional read (PERF-4)', () => {
+  it('sends the stored validator and keeps the library objects on 304', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-19T10:00:00Z'))
+    const payload = { ...libraryPayload, tracks: [searchableTrack('t1')] }
+    // The real api reads the validator off the response header; the stub hands one over.
+    vi.mocked(api.music.library).mockImplementation(async (_etag, onEtag) => {
+      onEtag?.('W/"library-1"')
+      return payload
+    })
+    const store = makeStore()
+    await loadLibrary(store.set, store.get)
+    const loaded = store.get().tracks
+    expect(loaded).toHaveLength(1)
+
+    vi.setSystemTime(new Date('2026-09-19T10:01:01Z'))
+    vi.mocked(api.music.library).mockResolvedValue(null as never)
+    await loadLibrary(store.set, store.get)
+
+    expect(api.music.library).toHaveBeenLastCalledWith('W/"library-1"', expect.any(Function))
+    // Same array, so every memo built over the library survives the reload.
+    expect(store.get().tracks).toBe(loaded)
+    expect(store.get().lastLoadedAt).toBe(Date.now())
+  })
+})
+
 describe('loadLibrary in-flight dedup', () => {
   it('shares one request between concurrent loads', async () => {
     let release: (value: typeof libraryPayload) => void = () => {}
