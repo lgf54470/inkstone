@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Heart, Music, Pin, Tags } from 'lucide-react'
+import { Heart, Pin, Tags } from 'lucide-react'
 import { isVideoMime } from '@shared/music-media'
 import { IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
@@ -8,6 +8,7 @@ import { t, type MessageKey } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { formatBytes, formatTimecode, fullTime } from '../../lib/time'
 import { useCurrentTrack, useMusic, useProgress } from './music-store'
+import { MusicArtwork } from './music-artwork'
 import { useTrackLyric } from './music-lyrics'
 import { MusicVideoStage } from './music-video-stage'
 import { activeLyricIndex, parseLyric } from './music-utils'
@@ -75,11 +76,7 @@ function Artwork({ track }: { track: ReturnType<typeof useCurrentTrack> }) {
       {isVideoMime(track?.mime)
         ? <MusicVideoStage track={track} className={box} />
         : (
-          <div className={cn(box, 'bg-[var(--bg-inset)]')}>
-            {track?.coverUrl
-              ? <img src={track.coverUrl} alt='' className='size-full object-cover' />
-              : <span className='flex size-full items-center justify-center text-[var(--text-quaternary)]'><Music size={28} /></span>}
-          </div>
+          <MusicArtwork url={track?.coverUrl ?? null} alt='' className={cn(box, 'bg-[var(--bg-inset)]')} iconSize={28} />
         )}
     </div>
   )

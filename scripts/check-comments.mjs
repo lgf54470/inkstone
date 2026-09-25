@@ -2422,6 +2422,11 @@ const allowed = new Map([
     '// A stack, because now-playing surfaces nest: the hub column stays mounted under the immersive',
     '// overlay, and closing the overlay has to hand the picture back to what was underneath it.',
   ]],
+  ['src/client/features/music/music-cover-fallback.test.ts', [
+    '// Two surfaces hand-rolled an <img> instead of drawing the cover through MusicArtwork, so a',
+    '// cover URL that 404s — a dead remote link, a WebDAV file moved out from under the library —',
+    '// left a broken image where every other surface in the app shows the music icon.',
+  ]],
   ['src/client/features/music/music-cover-lookup.ts', [
     '// The Worker queries the catalogue and returns the image, keeping third party calls off the page.',
   ]],
