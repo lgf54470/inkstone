@@ -16,6 +16,16 @@ import {
 export function MusicStatusBar({ className, pane }: { className?: string; pane?: 'primary' | 'secondary' }) {
   const track = useCurrentTrack()
   const openHub = () => useUi.getState().openPanel('music-hub')
+  // The hub is open: its own footer is the transport, so the bar says what is playing and
+  // nothing else. Three play buttons for one track only argue with each other.
+  const hubOpen = useUi((state) => state.panel === 'music-hub')
+  if (hubOpen && track) {
+    return (
+      <div className={cn('flex min-w-0 items-center gap-1', className)} data-pane={pane}>
+        <StatusTrack quiet />
+      </div>
+    )
+  }
   if (!track) {
     return (
       <div className={cn('flex items-center gap-1', className)}>
@@ -35,12 +45,24 @@ export function MusicStatusBar({ className, pane }: { className?: string; pane?:
   )
 }
 
-function StatusTrack() {
+function StatusTrack({ quiet = false }: { quiet?: boolean }) {
   const track = useCurrentTrack()
   const toggleFavorite = useMusic((state) => state.toggleFavorite)
   const togglePin = useMusic((state) => state.togglePin)
   const openHub = (): void => useUi.getState().openPanel('music-hub')
   if (!track) return null
+  if (quiet) {
+    return (
+      <button
+        type='button'
+        onClick={openHub}
+        aria-label={t('music.open_hub_track', { value0: track.title })}
+        className='min-w-0 max-w-32 truncate text-left text-[length:var(--text-11)] text-[var(--text-secondary)] hover:text-[var(--accent)] lg:max-w-44'
+      >
+        {track.title}
+      </button>
+    )
+  }
   return (
     <>
       <MusicArtwork url={track.coverUrl} alt='' className='size-4 rounded-[var(--r-xs)]' iconSize={9} />

@@ -1354,6 +1354,10 @@ const allowed = new Map([
     '// e2e-harness.mjs). This gate\'s own copy was 35 bytes of text in an `.mp3` — enough for the rows',
     '// and cards it reads, and the reason the contrast gate, which does start audio, found itself',
     '// measuring a library the engine refuses to play (SH-100).',
+    '// Measured before the hub opens: the floating player steps aside while the hub is on screen',
+    '// (one track, one transport), so this is the only moment both rectangles exist.',
+    '// The hub\'s own footer is the transport while it is open; a floating card on top of it would',
+    '// put two play buttons for one track on screen.',
     '// The reduced-motion check reopens the hub from the status bar footer, so it has to run before',
     '// anything is queued: once a track is current, the footer swaps the hub opener for the transport',
     '// row, and the \'Added to the queue\' toast covers the floating player\'s own opener for seconds.',
@@ -2487,7 +2491,15 @@ const allowed = new Map([
   ['src/client/features/music/music-floating-lyrics.tsx', [
     '// Two lines are enough for a 288px widget; the immersive player shows the whole scroll.',
   ]],
+  ['src/client/features/music/music-floating-player.test.ts', [
+    '// V-4: the hub draws its own transport in the dialog footer; the floating card on top of it made',
+    '// two play buttons for one track, and neither said which one was in charge.',
+  ]],
   ['src/client/features/music/music-floating-player.tsx', [
+    '// The hub carries its own transport at the bottom of the dialog; leaving the floating card',
+    '// on top of it puts two play buttons for the same track on screen at once.',
+    '// A card restored from a narrower window, or from a position saved before the card grew, can',
+    '// hang off the edge it was last dropped at.',
     '// The corner the card falls back to before anyone has dragged it. Clamping an out-of-bounds',
     '// request is what keeps the card whole whatever it currently measures.',
     '/* A handle that answers only to arrow keys is a control with no click action at all:\n          activating it sends the card back to the corner it starts from. */',
@@ -2772,8 +2784,12 @@ const allowed = new Map([
   ['src/client/features/music/music-status-bar.test.ts', [
     '// The bar is three controls wide; the track name doubles as the way into the hub. Announcing',
     '// bare "Moonlight" describes a label, not what pressing it does.',
+    '// V-4: with the hub open, its own footer is the transport. The bar kept a second set of play',
+    '// buttons under it, so one track had three ways to be paused and no obvious one.',
   ]],
   ['src/client/features/music/music-status-bar.tsx', [
+    '// The hub is open: its own footer is the transport, so the bar says what is playing and',
+    '// nothing else. Three play buttons for one track only argue with each other.',
     '/* The slim bar only has room for the EQ from the wide breakpoint up. */',
   ]],
   ['src/client/features/music/music-store/crossfade.test.ts', [

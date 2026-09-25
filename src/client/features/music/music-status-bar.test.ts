@@ -66,3 +66,25 @@ describe('status bar track button', () => {
     expect(useUi.getState().openPanel).toHaveBeenCalledWith('music-hub')
   })
 })
+
+// V-4: with the hub open, its own footer is the transport. The bar kept a second set of play
+// buttons under it, so one track had three ways to be paused and no obvious one.
+describe('status bar defers to the open hub', () => {
+  function labelled(name: string): Element | undefined {
+    return [...document.querySelectorAll('button, input')].find((entry) => entry.getAttribute('aria-label') === name)
+  }
+
+  it('drops the transport while the hub is on screen', async () => {
+    useUi.setState({ panel: 'music-hub' })
+    await mount()
+    expect(labelled(t('music.seek'))).toBeUndefined()
+    expect(labelled(t('music.play'))).toBeUndefined()
+    expect(labelled(t('music.open_hub_track', { value0: 'Moonlight' }))).toBeDefined()
+  })
+
+  it('keeps the full transport once the hub is closed', async () => {
+    await mount()
+    expect(labelled(t('music.seek'))).toBeDefined()
+    expect(labelled(t('music.play'))).toBeDefined()
+  })
+})

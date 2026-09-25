@@ -28,6 +28,9 @@ export function MusicFloatingPlayer() {
   const visible = useMusic((state) => state.floatingVisible)
   const collapsed = useMusic((state) => state.floatingCollapsed)
   const position = useMusic((state) => state.floatingPosition)
+  // The hub carries its own transport at the bottom of the dialog; leaving the floating card
+  // on top of it puts two play buttons for the same track on screen at once.
+  const hubOpen = useUi((state) => state.panel === 'music-hub')
   const setFloatingPosition = useMusic((state) => state.setFloatingPosition)
   const [queueOpen, setQueueOpen] = useState(false)
   const { ref: cardRef, size } = useMeasuredSize({ width: CARD_WIDTH, height: CARD_HEIGHT_FALLBACK })
@@ -36,15 +39,9 @@ export function MusicFloatingPlayer() {
     cardRef(node)
     drag.setNode(node)
   }
-  const expandedFromBadge = !collapsed && position !== null
+  useKeepInsideViewport({ enabled: !collapsed && position !== null, position, size, setFloatingPosition })
 
-  useEffect(() => {
-    if (!expandedFromBadge) return
-    const next = clampToViewport(position.x, position.y, size.width, size.height)
-    if (next.x !== position.x || next.y !== position.y) setFloatingPosition(next)
-  }, [expandedFromBadge, position, size.width, size.height, setFloatingPosition])
-
-  if (!visible) return null
+  if (!visible || hubOpen) return null
   if (collapsed) return <CollapsedBadge drag={drag} cardRef={attachCard} />
 
   return (
@@ -72,6 +69,21 @@ export function MusicFloatingPlayer() {
       )}
     </aside>
   )
+}
+
+// A card restored from a narrower window, or from a position saved before the card grew, can
+// hang off the edge it was last dropped at.
+function useKeepInsideViewport({ enabled, position, size, setFloatingPosition }: {
+  enabled: boolean
+  position: { x: number; y: number } | null
+  size: { width: number; height: number }
+  setFloatingPosition: (position: { x: number; y: number }) => void
+}): void {
+  useEffect(() => {
+    if (!enabled || !position) return
+    const next = clampToViewport(position.x, position.y, size.width, size.height)
+    if (next.x !== position.x || next.y !== position.y) setFloatingPosition(next)
+  }, [enabled, position, size.width, size.height, setFloatingPosition])
 }
 
 function CollapsedBadge({ drag, cardRef }: {
