@@ -114,7 +114,9 @@ describe('track row render economy (PERF-1)', () => {
 
   it('leaves every row alone when only playback state changes', async () => {
     await mountList()
-    useMusic.setState({ queue: ['t1'], currentIndex: 0 })
+    await act(async () => {
+      useMusic.setState({ queue: ['t1'], currentIndex: 0 })
+    })
     const before = counter.renders
     await act(async () => {
       useMusic.setState({ isPlaying: true })
