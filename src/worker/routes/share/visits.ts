@@ -7,6 +7,7 @@ import { escapeLike } from '../../lib/like'
 import { JSON_BODY_LIMITS, clampInt, readOptionalJsonValidated } from '../../lib/request'
 import { requireCurrentPassword } from '../../lib/reauth'
 import { getRangeStartTimestamp, parseBotName, publicVisitorFingerprint } from '../../lib/share-analytics'
+import { parseChannelDrillDown } from '@shared/share-channel'
 import { isVisitLogFilter, type VisitLogFilter } from '@shared/share-selection'
 import { visitLogFilterSql } from '../../lib/share-selection-sql'
 import { consumeShareReadBudget } from './read-budget'
@@ -32,6 +33,20 @@ function visitLogRangeParam(raw: string | undefined): ShareTimelineRange {
   if (!raw) return 'all'
   if (!VISIT_LOG_RANGES.includes(raw)) throw ApiError.badRequest(`Unknown visit log range: ${raw}`)
   return raw as ShareTimelineRange
+}
+
+/**
+ * The channel a drill-down narrows the log to, from the split card's row (audit #9). A malformed
+ * name is refused rather than folded into "no filter": a dropped channel that quietly answered
+ * with every row would read as "this channel sent everything".
+ */
+function visitLogChannelParam(raw: string | undefined): string | null | undefined {
+  const drill = parseChannelDrillDown(raw)
+  if (drill.kind === 'none') return undefined
+  if (drill.kind === 'unmarked') return null
+  if (drill.kind === 'unrecognized') return ''
+  if (drill.kind === 'invalid') throw ApiError.badRequest(`Unknown visit channel: ${raw}`)
+  return drill.token
 }
 
 interface VisitLogRow {
@@ -90,6 +105,7 @@ function registerShareVisitsListRoute(shareManageRoutes: Hono<AppBindings>): voi
       search: (c.req.query('search') || '').trim(),
       userId,
       since: getRangeStartTimestamp(range, now),
+      channel: visitLogChannelParam(c.req.query('channel')),
     })
     conditions.push('EXISTS (SELECT 1 FROM shares s WHERE s.slug = sv.slug)')
 
@@ -196,8 +212,10 @@ function visitLogFilter(params: {
   search: string
   /** The window's lower bound; 0 (the `all` range) adds no condition and no bind. */
   since: number
+  /** The drilled channel: a token or '' to match, null for the unmarked column, undefined for no drill. */
+  channel: string | null | undefined
 }): { conditions: string[]; binds: Array<string | number>; bindIdx: number } {
-  const { userId, noteId, filter, search, since } = params
+  const { userId, noteId, filter, search, since, channel } = params
   const conditions = [`sv.user_id = ?1`]
   const binds: Array<string | number> = [userId]
   let bindIdx = 2
@@ -210,6 +228,16 @@ function visitLogFilter(params: {
     conditions.push(`sv.visited_at >= ?${bindIdx}`)
     binds.push(since)
     bindIdx++
+  }
+  if (channel !== undefined) {
+    if (channel === null) {
+      // The unmarked column holds no bind, so the placeholder numbering stays contiguous.
+      conditions.push('sv.channel IS NULL')
+    } else {
+      conditions.push(`sv.channel = ?${bindIdx}`)
+      binds.push(channel)
+      bindIdx++
+    }
   }
   const filterCondition = visitLogFilterSql(filter, 'sv')
   if (filterCondition) conditions.push(filterCondition)

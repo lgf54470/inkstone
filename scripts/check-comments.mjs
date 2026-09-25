@@ -3945,7 +3945,7 @@ const allowed = new Map([
   ['src/client/features/share/share-dashboard-breakdown.tsx', [
     '/** Where the visitors came from, by country. */',
     '/**\n * How the traffic found the link, and — under it — which copy of the link it came from. The two sit\n * in one card because they answer one question ("where did this visit come from") at two levels:\n * the referrer says where the browser was, the channel says which link was followed, and the app\n * stores both because neither can stand in for the other (ADR-0004).\n */',
-    '/**\n * The channel split itself. The hint only appears while no marker has ever come back: that is the\n * moment the owner needs to learn the feature exists, and printing it afterwards would be noise on\n * every account that already uses it.\n */',
+    '/**\n * The channel split itself. The hint only appears while no marker has ever come back: that is the\n * moment the owner needs to learn the feature exists, and printing it afterwards would be noise on\n * every account that already uses it. A row with a way down into the log is a native button, so\n * the drill-down stays on the keyboard.\n */',
     '/** Devices and operating systems, as one card — both read the same visit fingerprint. */',
   ]],
   ['src/client/features/share/share-dashboard-card-shell.tsx', [
@@ -4110,6 +4110,7 @@ const allowed = new Map([
     '/**\n * What each hub category is: one view, and what the hub has to have loaded before it can paint. The\n * shell above it decides only which category is open — it does not know that two of them read\n * endpoints the others never touch, which is what used to be written out in the shell twice (once for\n * what to render, once for what to preload) and had to be kept in step by hand.\n *\n * The callbacks are the *shell\'s* intents — open this overlay for this row — so a view never reaches\n * into the hub\'s state, and the same props serve a list row and a dashboard card.\n */',
     '/** Row actions, addressed by the share the row holds. */',
     '/** Insight panels are addressed by note id: a dashboard card knows the note, not the share row. */',
+    '/** A channel row is addressed by the raw marker it shows (ADR-0004), label resolved elsewhere. */',
     '/**\n * `stats` is the one read two views share: the counters behind the sidebar, which come from the list\n * endpoint asked for on its own. A view that needs rows says `list`; a view that fetches on mount\n * needs neither, and says so by naming the counters it watches.\n */',
     '/**\n * The two records together are the completeness check: a category joining `ShareCategory` stops\n * compiling until it is given a view, and a category that filters by status stops compiling until it\n * is listed here as one of these.\n */',
   ]],
@@ -4347,6 +4348,7 @@ const allowed = new Map([
     '/** Same page shape over a history of any length, for the cap case. */',
     '/** Mounts the hook directly so a test can open and close the modal around an in-flight export. */',
     '// The all window sends no range value — the shape the endpoint answered before the control.',
+    '// Only the requests after the click answer to the drilled channel: the open fetch predates it.',
     '// Serves every page at once except pages after the first, which wait for the test to release',
     '// them — that window is where progress and cancellation can be observed.',
     '// Page one is in, page two is held open: the live region has something to report.',
@@ -4361,6 +4363,7 @@ const allowed = new Map([
     '/**\n * A long export is a walk of many pages, so it reports where it is and renders nothing at\n * all once it is done: the line appears below the toolbar rather than inside it, so opening\n * and closing it can never move the buttons the person is aiming at.\n */',
     '/**\n * The row vocabulary is four classes (all, real, bots, the author), and search and CSV export only\n * mean anything for rows — which is exactly why the two modes each render their own controls\n * instead of one set that would be dead half the time. Sessions cannot be searched or exported, and\n * "bots only" is not something a visitor\'s sittings can be narrowed to.\n */',
     '/* The window draws from the same vocabulary as the analytics panels, so "7d" is one window\n          everywhere the app says it. */',
+    '/**\n * The chip a channel drill-down leaves in the toolbar: it names the drilled channel and offers the\n * way out, so a scoped log can never be mistaken for the whole one.\n */',
   ]],
   ['src/client/features/share/share-visit-logs-table.tsx', [
     '/**\n * The rows the logs request answered with, or the state the request is in when it has not answered\n * yet: the loading rows are placeholders and the empty row is a fact ("nothing matched"), and each\n * of the three reads differently on purpose.\n */',
@@ -4424,7 +4427,7 @@ const allowed = new Map([
     '/** Days usable for `older_than` cleanup; null covers Keep Forever (0) and unparseable input. */',
   ]],
   ['src/client/features/share/use-share-visit-logs-modal.ts', [
-    '/**\n * The query state one log browsing session holds: page, traffic filter, time window, search text\n * and the note scope. Opening the modal rewinds it to the first page of the asked scope.\n */',
+    '/**\n * The query state one log browsing session holds: page, traffic filter, time window, drilled\n * channel, search text and the note scope. Opening the modal rewinds it to the first page of\n * the asked scope.\n */',
     '/** The "changed a dimension → back to page one of it" handlers, one per query dimension. */',
     '// A failure has to *read* as a failure. Clearing the rows keeps the previous page from standing',
     '// in for an answer this request never got, and `error` drives the table\'s own retry surface',
@@ -8785,6 +8788,7 @@ const allowed = new Map([
     '/** Whether a name out of a breakdown is one of the two reserved labels rather than a real marker. */',
     '/**\n * What the `channel` column stores for one visit:\n *\n * - `null` — the request carried no `ref` at all;\n * - `\'\'` — it carried one that is not a valid token. The visit is still logged (a visitor must not\n *   see an error because the owner mistyped a URL), and the dashboard reports the miss in its own\n *   row rather than folding it into "unmarked" — a marker that silently stops working is exactly\n *   the failure rule 2 exists to prevent;\n * - the token — the marker was well formed.\n *\n * Nothing derived from a rejected value is stored: the raw string never reaches the database. The\n * presence of the parameter is expressed by the field being a string at all, so no separate flag\n * travels with it.\n */',
     '/**\n * Adds the marker to a share URL. Returns the URL untouched for an absent or malformed marker, so\n * a distribution surface never hands out a link carrying a token the visitor\'s page would reject.\n */',
+    '/**\n * What a log drill-down asks the channel column for (audit #9): the split card names a row, the\n * log answers with that row\'s visits. The reserved names map to their column meanings — unmarked\n * is the absent marker (NULL), unrecognized is the stored refusal (\'\') — and a well-formed token\n * maps to itself. `invalid` is the caller\'s decision: the worker refuses it, because a mistyped\n * channel that quietly returned every row would read as "this channel sent everything".\n */',
   ]],
   ['src/shared/share-selection.test.ts', [
     '// The categories that are views rather than filters, and a value that differs only in case, must',
@@ -9874,6 +9878,7 @@ const allowed = new Map([
   ['src/worker/routes/share/visits.ts', [
     '/** An unknown log filter is refused, for the same reason an unknown status is: silently answering\n * with every row looks like a filter that matched everything. */',
     '/**\n * The window the log lists, in the same vocabulary the analytics panels speak. Unlike the analytics\n * route — which sanitizes an unknown range to 30d — the log refuses one: a dropped or mistyped range\n * that quietly became "the last 30 days" would read as "everything" on a surface whose empty state\n * says nothing matched. Absent means all, which is what every caller before the control existed sent.\n */',
+    '/**\n * The channel a drill-down narrows the log to, from the split card\'s row (audit #9). A malformed\n * name is refused rather than folded into "no filter": a dropped channel that quietly answered\n * with every row would read as "this channel sent everything".\n */',
     '// Unparseable page/limit values must fall back to a default rather than reach the',
     '// binding: `parseInt(\'abc\')` is NaN and `Math.max(1, NaN)` stays NaN, which SQLite',
     '// rejects as a datatype mismatch (a 500 for a malformed query). The ceiling on',
@@ -9887,6 +9892,8 @@ const allowed = new Map([
     '/**\n * The note a delete is scoped to, when one was asked for. An empty value is the dangerous\n * case: it is present but names nothing, and letting it through would fall back to the\n * account-wide delete — the widest possible reading of a request that asked for the\n * narrowest. Only `type=all` can be scoped this way; pairing a note with a filtered type\n * would delete something other than what the caller described, so it is rejected too.\n */',
     '/**\n * `older_than` must be given an explicit positive day count: silently falling back\n * to a default would delete a window the caller never asked for, so an unparseable\n * or non-positive value is a 400. The other cleanup types never read it.\n */',
     '/** The window\'s lower bound; 0 (the `all` range) adds no condition and no bind. */',
+    '/** The drilled channel: a token or \'\' to match, null for the unmarked column, undefined for no drill. */',
+    '// The unmarked column holds no bind, so the placeholder numbering stays contiguous.',
     '// Empty string is the stored "a marker was sent and refused": the log shows the marker, and',
     '// the split between the two kinds of miss belongs to the channel card, not to a row.',
   ]],

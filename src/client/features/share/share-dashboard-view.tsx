@@ -18,9 +18,11 @@ import { useShareDashboardView } from './use-share-dashboard-view'
 export function ShareDashboardView({
   onSelectNoteAnalytics,
   onOpenLogs,
+  onOpenChannelLogs,
 }: {
   onSelectNoteAnalytics?: (noteId: string) => void
   onOpenLogs?: () => void
+  onOpenChannelLogs?: (channel: string) => void
 }) {
   const bundle = useShareDashboardView()
   const { analytics, error, isLoading, loadData, range, totalFilteredCount, locale } = bundle
@@ -39,7 +41,7 @@ export function ShareDashboardView({
           <div className='mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2'>
             <TopNotesCard analytics={analytics} onSelectNoteAnalytics={onSelectNoteAnalytics} />
             <CountryBreakdownCard analytics={analytics} locale={locale} />
-            <ReferrerBreakdownCard analytics={analytics} />
+            <ReferrerBreakdownCard analytics={analytics} onOpenChannelLogs={onOpenChannelLogs} />
             <DevicesBreakdownCard analytics={analytics} />
           </div>
           <StaleLinksCard bundle={bundle} />

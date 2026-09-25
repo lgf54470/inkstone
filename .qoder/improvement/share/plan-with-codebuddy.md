@@ -38,7 +38,7 @@
 | 07 | P1 | #15 | 全站累计 UV 全史聚合每次列表重算 | 小 | ✅ | ccf59cc3 |
 | 08 | P1 | #16 | 集合列表 N+1（每集合 2 查询） | 小 | ✅ | 1420b12d |
 | 09 | P1 | #10 | 访问日志无时间范围筛选 | 小 | ✅ | ⏳ |
-| 10 | P1 | #9 | 渠道卡片不能下钻到该渠道明细 | 小-中 | ⬜ | — |
+| 10 | P1 | #9 | 渠道卡片不能下钻到该渠道明细 | 小-中 | ✅ | ⏳ |
 | 11 | P2 | #6 | 链接变更无审计历史（新迁移 v43） | 中 | ⬜ | — |
 | 12 | P2 | #7 | 失效提醒/通知（看板判定 + app_meta 已读） | 中 | ⬜ | — |
 | 13 | P2 | #13 | 集合成员自定义排序 | 中 | ⬜ | — |
@@ -53,6 +53,14 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 10 · P1 #9 渠道卡片下钻到该渠道明细
+
+- 方案：**不扩 `VisitLogFilter` 词表**（那会波及 `visitMatchesLogFilter` 与 demo 镜像的谓词），新增独立 `channel` 查询参数与维度：`@shared/share-channel` 新增 `parseChannelDrillDown`，保留名映射到列语义（`__unmarked__`→`IS NULL`、`__unrecognized__`→`=''`）、合法 token 映射自身、畸形名 `invalid`。worker 对 invalid 显式 400（「畸形渠道静默返回全部行」= 看起来像该渠道发了全部流量）；demo 后端同构镜像。占位符编号在 IS NULL 分支不消耗 bind，保持 D1 位置绑定对齐。
+- 前端：看板渠道拆分卡每行变为原生 `<button>`（键盘可达 + `focus-visible` 描边 + aria-label），经 `ShareHubViewProps.onOpenChannelLogs` → hub 打开日志弹层并预置 `initialChannel`；日志工具条出现可移除的渠道 chip（`channel_filter_chip`，aria 文案齐全）。CSV 导出同步携带 channel。
+- 回归：worker 新增 1 例（token/unmarked/unrecognized 三种取值 + 畸形 400）；client 新增 1 例（下钻→浏览与导出请求带 channel→清除后不发），ExportProbe 扩两个动作按钮。相关 6 个测试文件 141/141 全绿。
+- 结构整改（体积门禁）：渠道两 handlers 并入 `useVisitLogRefetchHandlers`；导出测试 describe 再拆（时间窗口/渠道各一个）。`npx tsc -b --force` 与全部门禁绿（comments 白名单已同步）。
+- 已知限制：下钻 chip 的标签用 `localizeChannelName`，collection 渠道在 worker 侧才解析得出标题，chip 里只显示 token 本身（与拆分卡降级行为一致）。
 
 ### 2026-09-25 · 序 09 · P1 #10 访问日志时间范围筛选
 

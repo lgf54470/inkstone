@@ -26,11 +26,12 @@ export function useVisitExport(options: {
   open: boolean
   filter: VisitFilter
   range: ShareTimelineRange
+  channel: string | undefined
   search: string
   noteId: string | undefined
   toast: UiState['toast']
 }) {
-  const { open, filter, range, search, noteId, toast } = options
+  const { open, filter, range, channel, search, noteId, toast } = options
   const [isExporting, setIsExporting] = useState(false)
   const [progress, setProgress] = useState<VisitExportProgress | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -52,6 +53,7 @@ export function useVisitExport(options: {
     return runExport({
       filter,
       range,
+      channel,
       search,
       noteId,
       toast,
@@ -71,6 +73,7 @@ export function useVisitExport(options: {
 async function runExport(params: {
   filter: VisitFilter
   range: ShareTimelineRange
+  channel: string | undefined
   search: string
   noteId: string | undefined
   toast: UiState['toast']
@@ -79,10 +82,10 @@ async function runExport(params: {
   onProgress: (progress: VisitExportProgress) => void
   onSettled: () => void
 }): Promise<void> {
-  const { filter, range, search, noteId, toast, signal, setIsExporting, onProgress, onSettled } = params
+  const { filter, range, channel, search, noteId, toast, signal, setIsExporting, onProgress, onSettled } = params
   setIsExporting(true)
   try {
-    const { visits, truncated } = await collectAllVisits({ filter, range, search, noteId, signal, onProgress })
+    const { visits, truncated } = await collectAllVisits({ filter, range, channel, search, noteId, signal, onProgress })
     // A cancelled walk must not write a partial file: the person asked for nothing to happen.
     if (signal.aborted) return
     if (visits.length === 0) {
@@ -109,12 +112,13 @@ async function runExport(params: {
 async function collectAllVisits(params: {
   filter: VisitFilter
   range: ShareTimelineRange
+  channel: string | undefined
   search: string
   noteId: string | undefined
   signal: AbortSignal
   onProgress: (progress: VisitExportProgress) => void
 }): Promise<{ visits: ShareVisitsResponse['visits']; truncated: boolean }> {
-  const { filter, range, search, noteId, signal, onProgress } = params
+  const { filter, range, channel, search, noteId, signal, onProgress } = params
   const all: ShareVisitsResponse['visits'] = []
   let page = 1
   // The abort flag is checked rather than relied on: a page already in flight still
@@ -126,6 +130,7 @@ async function collectAllVisits(params: {
       limit: EXPORT_PAGE_SIZE,
       filter,
       range: range === 'all' ? undefined : range,
+      channel,
       search: search || undefined,
       noteId: noteId || undefined,
     }, signal)

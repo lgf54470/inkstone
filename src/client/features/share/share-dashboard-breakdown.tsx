@@ -40,7 +40,10 @@ export function CountryBreakdownCard({ analytics, locale }: {
  * the referrer says where the browser was, the channel says which link was followed, and the app
  * stores both because neither can stand in for the other (ADR-0004).
  */
-export function ReferrerBreakdownCard({ analytics }: { analytics: ShareGlobalAnalytics | null }) {
+export function ReferrerBreakdownCard({ analytics, onOpenChannelLogs }: {
+  analytics: ShareGlobalAnalytics | null
+  onOpenChannelLogs?: (channel: string) => void
+}) {
   const topReferrers = analytics?.topReferrers ?? []
   const channels = analytics?.channels ?? []
   return (
@@ -60,7 +63,7 @@ export function ReferrerBreakdownCard({ analytics }: { analytics: ShareGlobalAna
           ))
         )}
       </div>
-      {channels.length > 0 && <ChannelSplit rows={channels} />}
+      {channels.length > 0 && <ChannelSplit rows={channels} onOpenLogs={onOpenChannelLogs} />}
     </div>
   )
 }
@@ -68,9 +71,13 @@ export function ReferrerBreakdownCard({ analytics }: { analytics: ShareGlobalAna
 /**
  * The channel split itself. The hint only appears while no marker has ever come back: that is the
  * moment the owner needs to learn the feature exists, and printing it afterwards would be noise on
- * every account that already uses it.
+ * every account that already uses it. A row with a way down into the log is a native button, so
+ * the drill-down stays on the keyboard.
  */
-function ChannelSplit({ rows }: { rows: ShareBreakdownItem[] }) {
+function ChannelSplit({ rows, onOpenLogs }: {
+  rows: ShareBreakdownItem[]
+  onOpenLogs?: (channel: string) => void
+}) {
   const hasMarker = rows.some((row) => !isReservedChannelName(row.name))
   return (
     <div className='mt-3 space-y-2.5 border-t border-[var(--border-subtle)] pt-3'>
@@ -79,12 +86,28 @@ function ChannelSplit({ rows }: { rows: ShareBreakdownItem[] }) {
         {t('share.channel_section_title')}
       </p>
       {rows.map((row) => (
-        <BreakdownRow
-          key={row.name}
-          name={localizeChannelName(row.name, row.label)}
-          count={row.count}
-          percentage={row.percentage ?? 0}
-        />
+        onOpenLogs ? (
+          <button
+            key={row.name}
+            type='button'
+            onClick={() => onOpenLogs(row.name)}
+            aria-label={t('share.channel_drilldown_aria', { channel: localizeChannelName(row.name, row.label) })}
+            className='w-full rounded-[var(--r-md)] text-left transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]'
+          >
+            <BreakdownRow
+              name={localizeChannelName(row.name, row.label)}
+              count={row.count}
+              percentage={row.percentage ?? 0}
+            />
+          </button>
+        ) : (
+          <BreakdownRow
+            key={row.name}
+            name={localizeChannelName(row.name, row.label)}
+            count={row.count}
+            percentage={row.percentage ?? 0}
+          />
+        )
       ))}
       {!hasMarker && <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('share.channel_hint')}</p>}
     </div>

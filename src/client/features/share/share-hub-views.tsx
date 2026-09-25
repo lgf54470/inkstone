@@ -21,6 +21,8 @@ export interface ShareHubViewProps {
   /** Insight panels are addressed by note id: a dashboard card knows the note, not the share row. */
   onOpenNoteAnalytics: (noteId: string) => void
   onOpenLogs: (noteId?: string) => void
+  /** A channel row is addressed by the raw marker it shows (ADR-0004), label resolved elsewhere. */
+  onOpenChannelLogs: (channel: string) => void
   onOpenSettings: () => void
 }
 
@@ -60,8 +62,12 @@ export const SHARE_HUB_VIEWS: Record<ShareCategory, ShareHubView> = {
   ...STATUS_VIEWS,
   dashboard: {
     preload: 'stats',
-    Component: ({ onOpenNoteAnalytics, onOpenLogs }) => (
-      <ShareDashboardView onSelectNoteAnalytics={onOpenNoteAnalytics} onOpenLogs={() => onOpenLogs()} />
+    Component: ({ onOpenNoteAnalytics, onOpenLogs, onOpenChannelLogs }) => (
+      <ShareDashboardView
+        onSelectNoteAnalytics={onOpenNoteAnalytics}
+        onOpenLogs={() => onOpenLogs()}
+        onOpenChannelLogs={onOpenChannelLogs}
+      />
     ),
   },
   collections: { preload: 'stats', Component: () => <ShareCollectionsPanel /> },

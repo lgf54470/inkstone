@@ -78,3 +78,25 @@ export function withChannelParam(url: string, raw: unknown): string {
   const separator = url.includes('?') ? '&' : '?'
   return `${url}${separator}ref=${token}`
 }
+
+/**
+ * What a log drill-down asks the channel column for (audit #9): the split card names a row, the
+ * log answers with that row's visits. The reserved names map to their column meanings — unmarked
+ * is the absent marker (NULL), unrecognized is the stored refusal ('') — and a well-formed token
+ * maps to itself. `invalid` is the caller's decision: the worker refuses it, because a mistyped
+ * channel that quietly returned every row would read as "this channel sent everything".
+ */
+export type ChannelDrillDown =
+  | { kind: 'none' }
+  | { kind: 'unmarked' }
+  | { kind: 'unrecognized' }
+  | { kind: 'token'; token: string }
+  | { kind: 'invalid' }
+
+export function parseChannelDrillDown(raw: string | undefined): ChannelDrillDown {
+  if (raw === undefined) return { kind: 'none' }
+  if (raw === CHANNEL_UNMARKED) return { kind: 'unmarked' }
+  if (raw === CHANNEL_UNRECOGNIZED) return { kind: 'unrecognized' }
+  const token = normalizeChannelToken(raw)
+  return token ? { kind: 'token', token } : { kind: 'invalid' }
+}

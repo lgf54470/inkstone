@@ -905,6 +905,31 @@ describe('share visits route (real D1)', () => {
     expect(unknown.status).toBe(400)
   })
 
+  it('drills the log down to one channel and refuses a malformed one (audit #9)', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Channels' })
+    await seedShare(db, { note_id: n1, slug: 'v-ch' })
+    await seedVisit(db, { note_id: n1, slug: 'v-ch', visitor_fp: 'fp-ch1', channel: 'newsletter' })
+    await seedVisit(db, { note_id: n1, slug: 'v-ch', visitor_fp: 'fp-ch2', channel: null })
+    await seedVisit(db, { note_id: n1, slug: 'v-ch', visitor_fp: 'fp-ch3', channel: '' })
+    const app = makeApp()
+
+    const drilled = await (await request(app, '/api/share/visits?channel=newsletter')).json()
+    expect(drilled.total).toBe(1)
+    expect(drilled.visits[0].visitorFp).toBe('fp-ch1')
+
+    const unmarked = await (await request(app, '/api/share/visits?channel=__unmarked__')).json()
+    expect(unmarked.total).toBe(1)
+    expect(unmarked.visits[0].visitorFp).toBe('fp-ch2')
+
+    const unrecognized = await (await request(app, '/api/share/visits?channel=__unrecognized__')).json()
+    expect(unrecognized.total).toBe(1)
+    expect(unrecognized.visits[0].visitorFp).toBe('fp-ch3')
+
+    const malformed = await request(app, '/api/share/visits?channel=not a channel')
+    expect(malformed.status).toBe(400)
+  })
+
   it('ships only the display prefix of a fingerprint and nothing on non-bot rows', async () => {
     const db = await makeDb()
     const n1 = await seedNote(db, { title: 'Hashed' })

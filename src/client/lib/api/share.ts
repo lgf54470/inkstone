@@ -85,6 +85,7 @@ export const share = {
         filter?: string
         search?: string
         range?: string
+        channel?: string
       },
       signal?: AbortSignal,
     ) => request<ShareVisitsResponse>(`/api/share/visits${toQuery(params ?? {})}`, { signal }),

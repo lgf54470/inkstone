@@ -80,6 +80,8 @@ function ExportProbe() {
     'div',
     null,
     createElement('button', { onClick: () => void logs.handleExport() }, 'start-export'),
+    createElement('button', { onClick: () => logs.handleChannelDrilldown('newsletter') }, 'drill-channel'),
+    createElement('button', { onClick: () => logs.clearChannelDrilldown() }, 'clear-channel'),
     createElement('button', { onClick: () => setOpen(false) }, 'close-logs'),
     createElement('span', { 'data-testid': 'progress' }, logs.exportProgress ? 'progressing' : 'idle'),
   )
@@ -160,7 +162,9 @@ describe('visit logs CSV export carries the query on screen', () => {
     }
     rendered.unmount()
   })
+})
 
+describe('visit logs CSV export carries the time window on screen', () => {
   it('keeps the picked time window on the export requests (audit #10)', async () => {
     const rendered = await mountLogsModal()
     await act(async () => {
@@ -185,6 +189,42 @@ describe('visit logs CSV export carries the query on screen', () => {
     for (const params of visitsCallsWithLimit(100)) {
       expect(params?.range).toBeUndefined()
     }
+    rendered.unmount()
+  })
+})
+
+describe('visit logs CSV export drills into a channel (audit #9)', () => {
+  it('carries a channel drill-down on browsing and export until it is cleared (audit #9)', async () => {
+    const rendered = renderElement(createElement(ExportProbe))
+    await settle()
+
+    const callsBeforeDrill = vi.mocked(api.share.visits).mock.calls.length
+    await act(async () => {
+      bodyButton('drill-channel').click()
+    })
+    await settle()
+    // Only the requests after the click answer to the drilled channel: the open fetch predates it.
+    const browseCalls = vi.mocked(api.share.visits).mock.calls.slice(callsBeforeDrill).map(([params]) => params)
+    expect(browseCalls.length).toBeGreaterThan(0)
+    for (const params of browseCalls) {
+      expect(params).toMatchObject({ channel: 'newsletter' })
+    }
+
+    await act(async () => {
+      bodyButton('start-export').click()
+    })
+    await settle()
+    for (const params of visitsCallsWithLimit(100)) {
+      expect(params).toMatchObject({ channel: 'newsletter' })
+    }
+
+    await act(async () => {
+      bodyButton('clear-channel').click()
+    })
+    await settle()
+    const afterClear = vi.mocked(api.share.visits).mock.calls.map(([params]) => params)
+    expect(afterClear.length).toBeGreaterThan(0)
+    expect(afterClear[afterClear.length - 1]?.channel).toBeUndefined()
     rendered.unmount()
   })
 })

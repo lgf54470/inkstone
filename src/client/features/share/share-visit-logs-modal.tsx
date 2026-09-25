@@ -6,6 +6,7 @@ import {
     RefreshCw,
     Search,
     Trash2,
+    X,
 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { ShareTimelineRange } from '@shared/types'
@@ -17,7 +18,7 @@ import { LogsTable } from './share-visit-logs-table'
 import { formatNumber } from '../../lib/time'
 import { t } from '../../lib/i18n'
 import { useSession } from '../../store/session'
-import { rangeOptions, visitorCountNote, type VisitFilter } from './share-helpers'
+import { localizeChannelName, rangeOptions, visitorCountNote, type VisitFilter } from './share-helpers'
 import { ShareSessionsPanel } from './share-sessions-panel'
 import { useShareSessions } from './use-share-sessions'
 import type { useShareVisitLogs } from './use-share-visit-logs-modal'
@@ -32,12 +33,14 @@ export function ShareVisitLogsModal({
   open,
   onClose,
   initialNoteId,
+  initialChannel,
 }: {
   open: boolean
   onClose: () => void
   initialNoteId?: string
+  initialChannel?: string
 }) {
-  const bundle = useVisitLogs(open, initialNoteId)
+  const bundle = useVisitLogs(open, initialNoteId, initialChannel)
   const sessions = useShareSessionsView(open)
   const fingerprints = useSession((s) => s.site?.visitorFingerprints ?? true)
   return (
@@ -142,6 +145,7 @@ function VisitLogsToolbar({ bundle, sessions }: { bundle: LogsBundle; sessions: 
           ]}
         />
         {isRows ? <RowFilterSwitch bundle={bundle} /> : <SessionFilterSwitch sessions={sessions} />}
+        {isRows && bundle.channel !== undefined && <ChannelFilterChip bundle={bundle} />}
       </div>
       <div className='flex items-center gap-2'>
         {isRows ? <RowActions bundle={bundle} /> : <SessionActions sessions={sessions} />}
@@ -181,6 +185,25 @@ function RowFilterSwitch({ bundle }: { bundle: LogsBundle }) {
         options={rangeOptions().map((option) => ({ value: option.value, label: option.label }))}
       />
     </>
+  )
+}
+
+/**
+ * The chip a channel drill-down leaves in the toolbar: it names the drilled channel and offers the
+ * way out, so a scoped log can never be mistaken for the whole one.
+ */
+function ChannelFilterChip({ bundle }: { bundle: LogsBundle }) {
+  const channel = bundle.channel ?? ''
+  return (
+    <Button
+      size='sm'
+      variant='secondary'
+      icon={<X size={12} />}
+      onClick={bundle.clearChannelDrilldown}
+      aria-label={t('share.channel_filter_clear_aria', { channel: localizeChannelName(channel) })}
+    >
+      {t('share.channel_filter_chip', { channel: localizeChannelName(channel) })}
+    </Button>
   )
 }
 
