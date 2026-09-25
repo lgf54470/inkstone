@@ -12,6 +12,7 @@ vi.mock('../../lib/api', () => ({
     share: {
       globalAnalytics: vi.fn(),
       noteAnalytics: vi.fn(),
+      noteAudit: vi.fn(async () => ({ entries: [] })),
     },
   },
 }))

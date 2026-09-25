@@ -21,6 +21,7 @@ function useHubOverlays() {
   const [analyticsNoteId, setAnalyticsNoteId] = useState<string | null>(null)
   const [isLogsOpen, setIsLogsOpen] = useState(false)
   const [logsNoteId, setLogsNoteId] = useState<string | null>(null)
+  const [logsChannel, setLogsChannel] = useState<string | undefined>(undefined)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const closeOverlays = useCallback(() => {
@@ -28,14 +29,16 @@ function useHubOverlays() {
     setEditShare(null)
     setAnalyticsNoteId(null)
     setLogsNoteId(null)
+    setLogsChannel(undefined)
     setIsLogsOpen(false)
     setIsSettingsOpen(false)
   }, [])
 
   const openQr = useCallback((share: ShareInfo) => setQrShare({ url: share.url, title: share.noteTitle || '', slug: share.slug }), [])
   const openEdit = useCallback((share: ShareInfo) => setEditShare({ share: share.slug ? share : null, noteId: share.noteId, title: share.noteTitle || '' }), [])
-  const openLogs = useCallback((noteId?: string) => {
+  const openLogs = useCallback((noteId?: string, channel?: string) => {
     setLogsNoteId(noteId ?? null)
+    setLogsChannel(channel)
     setIsLogsOpen(true)
   }, [])
 
@@ -46,13 +49,14 @@ function useHubOverlays() {
     onOpenEdit: openEdit,
     onOpenNoteAnalytics: setAnalyticsNoteId,
     onOpenLogs: openLogs,
+    onOpenChannelLogs: (channel: string) => openLogs(undefined, channel),
     onOpenSettings: () => setIsSettingsOpen(true),
   }), [openQr, openEdit, openLogs])
 
   return {
     viewProps, closeOverlays, openQr, openEdit, openLogs,
     qrShare, setQrShare, editShare, setEditShare,
-    analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, logsNoteId, setLogsNoteId, isSettingsOpen, setIsSettingsOpen,
+    analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, logsNoteId, setLogsNoteId, logsChannel, setLogsChannel, isSettingsOpen, setIsSettingsOpen,
   }
 }
 

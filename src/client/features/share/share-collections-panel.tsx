@@ -36,7 +36,7 @@ export function ShareCollectionsPanel() {
         onPublish={() => openPublish(null)}
       />
       <div className='flex-1 overflow-y-auto px-4 py-3'>
-        <CollectionsBody bundle={bundle} onEdit={(collection) => openPublish({ type: collection.targetType, value: collection.targetValue })} />
+        <CollectionsBody bundle={bundle} onEdit={(collection) => openPublish(collection.targetType === 'manual' ? null : { type: collection.targetType, value: collection.targetValue })} />
       </div>
       {isPublishOpen && (
         <ShareCollectionPublishDialog

@@ -7,7 +7,7 @@ import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { collectionPageRoutes, shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
-import { createD1Database as createDb, queryFirst as firstRow, runSql, type D1Shim } from './d1-harness'
+import { createD1Database as createDb, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
 /**
  * Folder and tag ids are 26-character ids (`newId`), and the publish route validates them as such —
@@ -393,6 +393,47 @@ describe('collection pagination (ADR-0005)', () => {
     const body = await (await readCollection(app, slug)).json() as CollectionBody
     expect(body.notes.map((note) => note.slug)).toEqual(['s-pinned', 's-newer', 's-older'])
   })
+
+  it('lists members by the preset the collection was published with, paging included (audit #13)', async () => {
+    const db = await makeDb()
+    await seedFolder(db, { id: folderId(1), name: 'Custom order' })
+    const pinned = await seedNote(db, { title: 'Beta', updated_at: NOW - 20_000, is_pinned: true })
+    const older = await seedNote(db, { title: 'Charlie', updated_at: NOW - 10_000 })
+    const newer = await seedNote(db, { title: 'Alpha', updated_at: NOW })
+    await seedShare(db, { slug: 's-beta', note_id: pinned, folder_id: folderId(1) })
+    await seedShare(db, { slug: 's-charlie', note_id: older, folder_id: folderId(1) })
+    await seedShare(db, { slug: 's-alpha', note_id: newer, folder_id: folderId(1) })
+    const app = makeApp()
+
+    const titles = async (slug: string): Promise<string[]> => {
+      const body = await (await readCollection(app, slug)).json() as CollectionBody
+      return body.notes.map((note) => note.title)
+    }
+
+    // Default stays the shipped order: pinned leads, then newest.
+    expect(await titles(await publishFolder(app, folderId(1)))).toEqual(['Beta', 'Alpha', 'Charlie'])
+
+    // The title preset ignores both the pin and the clock, and re-publishing re-states it.
+    const titleSlug = await (async () => {
+      const res = await postJson(app, '/api/share/collections', {
+        targetType: 'folder', targetValue: folderId(1), memberSort: 'title',
+      })
+      expect(res.status).toBe(200)
+      return ((await res.json()) as { slug: string }).slug
+    })()
+    expect(await titles(titleSlug)).toEqual(['Alpha', 'Beta', 'Charlie'])
+
+    // Paging follows the sort: a keyset cursor walks by the order it was minted in.
+    const first = await (await readCollection(app, titleSlug, {}, '?limit=2')).json() as CollectionBody
+    expect(first.notes.map((note) => note.title)).toEqual(['Alpha', 'Beta'])
+    const second = await (await readCollection(app, titleSlug, {}, `?limit=2&cursor=${encodeURIComponent(first.nextCursor!)}`)).json() as CollectionBody
+    expect(second.notes.map((note) => note.title)).toEqual(['Charlie'])
+    expect(second.nextCursor).toBeNull()
+
+    // The owner's list carries the preset, so the dialog can re-state it.
+    const listed = await (await request(app, '/api/share/collections')).json() as { collections: Array<{ slug: string; memberSort?: string | null }> }
+    expect(listed.collections.find((collection) => collection.slug === titleSlug)?.memberSort).toBe('title')
+  })
 })
 
 describe('collection owner routes (ADR-0005)', () => {
@@ -469,6 +510,72 @@ describe('collection owner routes (ADR-0005)', () => {
     expect(conflict.status).toBe(400)
   })
 
+  it('publishes a hand-picked collection whose page lists the chosen notes in order (audit #14)', async () => {
+    const db = await makeDb()
+    const first = await seedNote(db, { title: 'Picked One' })
+    const second = await seedNote(db, { title: 'Picked Two' })
+    const outside = await seedNote(db, { title: 'Not Picked' })
+    await seedShare(db, { slug: 's-pick-2', note_id: second })
+    await seedShare(db, { slug: 's-pick-1', note_id: first })
+    await seedShare(db, { slug: 's-outside', note_id: outside })
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/share/collections', {
+      targetType: 'manual',
+      title: 'Editor’s picks',
+      // The owner's order, deliberately not the note order: the page walks it as arranged.
+      noteIds: [second, first],
+    })
+    expect(res.status).toBe(200)
+    const { slug } = await res.json() as { slug: string }
+
+    const body = await (await readCollection(app, slug)).json() as CollectionBody
+    expect(body.title).toBe('Editor’s picks')
+    expect(body.count).toBe(2)
+    expect(body.notes.map((note) => note.slug)).toEqual(['s-pick-2', 's-pick-1'])
+
+    // Membership is the stored choice, but visibility is derived: pausing one member's share
+    // removes it from the page without editing the collection.
+    await runSql(db, `UPDATE shares SET is_enabled = 0 WHERE slug = 's-pick-2'`)
+    const afterPause = await (await readCollection(app, slug)).json() as CollectionBody
+    expect(afterPause.notes.map((note) => note.slug)).toEqual(['s-pick-1'])
+    expect(afterPause.count).toBe(1)
+
+    // The owner's list names it by its stored title, not a folder or tag name.
+    const listed = await (await request(app, '/api/share/collections')).json() as { collections: Array<{ targetType: string; title: string; targetValue: string }> }
+    const manual = listed.collections.find((collection) => collection.targetType === 'manual')!
+    expect(manual.title).toBe('Editor’s picks')
+    // The address itself is the target value, so manual collections never collide with each other.
+    expect(manual.targetValue).toBe(slug)
+
+    // Revoking the collection takes its member rows with it.
+    const id = (await firstRow(db, 'SELECT id FROM share_collections WHERE slug = ?1', slug))!.id as string
+    await request(app, `/api/share/collections/${id}`, { method: 'DELETE' })
+    const members = await allRows(db, 'SELECT * FROM share_collection_members WHERE collection_id = ?1', id)
+    expect(members).toHaveLength(0)
+  })
+
+  it('refuses a hand-picked collection without a title or without notes', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Picked' })
+    await seedShare(db, { slug: 's-pick-x', note_id: n1 })
+    const app = makeApp()
+
+    const noTitle = await postJson(app, '/api/share/collections', { targetType: 'manual', noteIds: [n1] })
+    expect(noTitle.status).toBe(400)
+    const noNotes = await postJson(app, '/api/share/collections', { targetType: 'manual', title: 'Empty' })
+    expect(noNotes.status).toBe(400)
+    // A note the account does not own simply matches nothing; it is not an error the page reports.
+    const stray = await postJson(app, '/api/share/collections', {
+      targetType: 'manual', title: 'Stray', noteIds: ['n-does-not-exist'],
+    })
+    expect(stray.status).toBe(200)
+    const { slug } = await stray.json() as { slug: string }
+    const body = await (await readCollection(app, slug)).json() as CollectionBody
+    expect(body.count).toBe(0)
+    expect(body.notes).toHaveLength(0)
+  })
+
   it('caps how many collections one account can publish', async () => {
     const db = await makeDb()
     for (let index = 0; index < 21; index += 1) await seedFolder(db, { id: folderId(index), name: `Folder ${index}` })
@@ -477,5 +584,51 @@ describe('collection owner routes (ADR-0005)', () => {
 
     const over = await postJson(app, '/api/share/collections', { targetType: 'folder', targetValue: folderId(20) })
     expect(over.status).toBe(400)
+  })
+
+  it('answers the owner list with one read plus one batch of counts, whatever the collection count (audit #16)', async () => {
+    const db = await makeDb()
+    for (let index = 0; index < 2; index += 1) {
+      await seedFolder(db, { id: folderId(index), name: `Folder ${index}` })
+      const note = await seedNote(db, { title: `Folder note ${index}` })
+      await seedShare(db, { slug: `s-f${index}`, note_id: note, folder_id: folderId(index) })
+    }
+    await seedTag(db, { id: tagId(1), name: 'Field' })
+    const tagged = await seedNote(db, { title: 'Tagged note' })
+    await seedShare(db, { slug: 's-t1', note_id: tagged, tags: '["Field"]' })
+    const app = makeApp()
+    await publishFolder(app, folderId(0))
+    await publishFolder(app, folderId(1))
+    await postJson(app, '/api/share/collections', { targetType: 'tag', targetValue: tagId(1) })
+
+    const calls = { direct: 0, batch: 0 }
+    const real = DB_ENV.env.DB as unknown as {
+      prepare(sql: string): { bind(...values: unknown[]): unknown; all(): Promise<unknown>; first(): Promise<unknown>; run(): Promise<unknown> }
+      batch(statements: unknown[]): Promise<unknown>
+    }
+    const wrap = (stmt: { bind(...values: unknown[]): unknown; all(): Promise<unknown>; first(): Promise<unknown>; run(): Promise<unknown> }) => ({
+      bind: (...values: unknown[]) => wrap(stmt.bind(...values) as typeof stmt),
+      all: async () => { calls.direct += 1; return stmt.all() },
+      first: async () => { calls.direct += 1; return stmt.first() },
+      run: async () => stmt.run(),
+    })
+    DB_ENV.env.DB = {
+      prepare: (sql: string) => wrap(real.prepare(sql)),
+      batch: (statements: unknown[]) => { calls.batch += 1; return real.batch(statements) },
+    } as unknown as D1Database
+
+    try {
+      const listed = await (await request(app, '/api/share/collections')).json() as { collections: Array<{ title: string; count: number; targetType: string }> }
+      expect(listed.collections).toHaveLength(3)
+      expect(listed.collections.every((collection) => collection.count === 1)).toBe(true)
+      expect(listed.collections.filter((collection) => collection.targetType === 'folder').map((collection) => collection.title).sort())
+        .toEqual(['Folder 0', 'Folder 1'])
+      expect(listed.collections.find((collection) => collection.targetType === 'tag')!.title).toBe('Field')
+      // One row read (names ride the join) and one batch of counts — never two flights per collection.
+      expect(calls.direct).toBe(1)
+      expect(calls.batch).toBe(1)
+    } finally {
+      DB_ENV.env.DB = real as unknown as D1Database
+    }
   })
 })

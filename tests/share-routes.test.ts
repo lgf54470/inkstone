@@ -20,6 +20,7 @@ import { purgeExpiredOperationalData } from '../src/worker/lib/maintenance'
 import { LIMITS } from '../src/shared/constants'
 import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED, collectionChannelToken } from '../src/shared/share-channel'
 import { shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
+import { FILTERED_STATS_TTL_MS } from '../src/worker/routes/share/global-stats'
 import { createD1Database as createDb, captureSql, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
@@ -320,14 +321,17 @@ describe('share stats route (SH-72)', () => {
     expect(statements.some((sql) => sql.includes('COUNT(DISTINCT visitor_fp) as uvs'))).toBe(false)
   })
 
-  it('answers in a single batch and no serial query', async () => {
+  it('answers in a single batch plus the memo lookup (audit #15)', async () => {
     await makeDb()
     const calls = instrumentRoundTrips()
 
     const body = await (await request(makeApp(), '/api/share/stats')).json()
     expect(body.globalStats.totalShares).toBe(0)
     expect(calls.batch).toBe(1)
-    expect(calls.direct).toBe(0)
+    // The one serial flight is the one-row memo read: on a fresh memo it replaces the whole
+    // history walk the filtered aggregate used to be, and it writes the refill back at most
+    // once per window.
+    expect(calls.direct).toBe(1)
   })
 })
 
@@ -566,7 +570,9 @@ describe('share list and analytics db.batch round-trips (SH-17a)', () => {
     expect(body.shares[0].uniqueVisitors).toBe(1)
     expect(body.globalStats.totalShares).toBe(1)
     expect(calls.batch).toBe(2)
-    expect(calls.direct).toBe(0)
+    // The serial budget now includes the one-row memo read (audit #15): cheap on every request,
+    // and it lets the batch drop the whole-history UV aggregate whenever the memo is fresh.
+    expect(calls.direct).toBe(1)
   })
 
   it('answers global analytics in one batch plus the dependent top-notes lookup', async () => {
@@ -582,8 +588,10 @@ describe('share list and analytics db.batch round-trips (SH-17a)', () => {
     expect(body.topNotes[0].noteTitle).toBe('Global rt')
     expect(body.recentVisits.length).toBe(1)
     expect(body.filterStats.bots).toBe(0)
-    expect(calls.direct).toBe(1)
-    expect(calls.batch + calls.direct).toBeLessThanOrEqual(2)
+    // The second serial flight is the expiry notice's dismissal stamp read (audit #7), which
+    // the expired-links filter needs ahead of the batch.
+    expect(calls.direct).toBe(2)
+    expect(calls.batch + calls.direct).toBeLessThanOrEqual(3)
   })
 
   it('answers note analytics with the share-gate query plus one batch', async () => {
@@ -860,6 +868,70 @@ describe('share visits route (real D1)', () => {
     expect(bots.visits[0].isBot).toBe(true)
   })
 
+  it('answers the count and the page in one batch (audit #17)', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Batched' })
+    await seedShare(db, { note_id: n1, slug: 'v-batch' })
+    await seedVisit(db, { note_id: n1, slug: 'v-batch', visitor_fp: 'fp-b1' })
+    await seedVisit(db, { note_id: n1, slug: 'v-batch', visitor_fp: 'fp-b2' })
+    const calls = instrumentRoundTrips()
+
+    const body = await (await request(makeApp(), '/api/share/visits?limit=10&page=1')).json()
+    expect(body.total).toBe(2)
+    expect(body.visits.length).toBe(2)
+    // The route's own count+page pair is one batch. The remaining flights belong to the read
+    // budget ahead of it: one batch for its upsert and two direct probes for its lock checks
+    // (before and after) — none of them a second pass over the log.
+    expect(calls.batch).toBe(2)
+    expect(calls.direct).toBe(2)
+  })
+
+  it('filters the log by the same time ranges the analytics panels speak (audit #10)', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Windowed' })
+    await seedShare(db, { note_id: n1, slug: 'v-range' })
+    const now = Date.now()
+    await seedVisit(db, { note_id: n1, slug: 'v-range', visited_at: now - 2 * 3_600_000, visitor_fp: 'fp-new' })
+    await seedVisit(db, { note_id: n1, slug: 'v-range', visited_at: now - 8 * 86_400_000, visitor_fp: 'fp-old' })
+    const app = makeApp()
+
+    const recent = await (await request(app, '/api/share/visits?range=24h')).json()
+    expect(recent.total).toBe(1)
+    expect(recent.visits[0].visitorFp).toBe('fp-new')
+
+    // Absent means all — what every caller before the control existed sent.
+    const everything = await (await request(app, '/api/share/visits')).json()
+    expect(everything.total).toBe(2)
+
+    const unknown = await request(app, '/api/share/visits?range=90d')
+    expect(unknown.status).toBe(400)
+  })
+
+  it('drills the log down to one channel and refuses a malformed one (audit #9)', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Channels' })
+    await seedShare(db, { note_id: n1, slug: 'v-ch' })
+    await seedVisit(db, { note_id: n1, slug: 'v-ch', visitor_fp: 'fp-ch1', channel: 'newsletter' })
+    await seedVisit(db, { note_id: n1, slug: 'v-ch', visitor_fp: 'fp-ch2', channel: null })
+    await seedVisit(db, { note_id: n1, slug: 'v-ch', visitor_fp: 'fp-ch3', channel: '' })
+    const app = makeApp()
+
+    const drilled = await (await request(app, '/api/share/visits?channel=newsletter')).json()
+    expect(drilled.total).toBe(1)
+    expect(drilled.visits[0].visitorFp).toBe('fp-ch1')
+
+    const unmarked = await (await request(app, '/api/share/visits?channel=__unmarked__')).json()
+    expect(unmarked.total).toBe(1)
+    expect(unmarked.visits[0].visitorFp).toBe('fp-ch2')
+
+    const unrecognized = await (await request(app, '/api/share/visits?channel=__unrecognized__')).json()
+    expect(unrecognized.total).toBe(1)
+    expect(unrecognized.visits[0].visitorFp).toBe('fp-ch3')
+
+    const malformed = await request(app, '/api/share/visits?channel=not a channel')
+    expect(malformed.status).toBe(400)
+  })
+
   it('ships only the display prefix of a fingerprint and nothing on non-bot rows', async () => {
     const db = await makeDb()
     const n1 = await seedNote(db, { title: 'Hashed' })
@@ -909,6 +981,9 @@ describe('share visits route (real D1)', () => {
     expect(clamped.limit).toBe(100)
     expect(Number.isInteger(clamped.page)).toBe(true)
     expect(clamped.page).toBeGreaterThanOrEqual(1)
+    // The cap bounds the worst OFFSET, not just the type: past it a caller is paging into
+    // nothing, so it is folded back to the ceiling rather than trusted with a nine-figure offset.
+    expect(clamped.page).toBe(10_000)
     expect(clamped.visits.length).toBe(0)
   })
 
@@ -1353,6 +1428,160 @@ describe('share analytics routes (real D1)', () => {
     const body = await (await request(makeApp(), '/api/share/analytics/global?range=all')).json()
     expect(body.recentVisits.length).toBe(2)
     expect(body.recentVisits[1].visitedAt).toBeLessThan(Date.now() - 700 * 86_400_000)
+  })
+})
+
+describe('share list filtered-stats memo (audit #15)', () => {
+  it('serves the all-time footnote from the memo and refills it once the window passes', async () => {
+    vi.useFakeTimers()
+    try {
+      const START = Date.now()
+      const db = await makeDb()
+      await seedUser(db)
+      const n1 = await seedNote(db, { title: 'Memo' })
+      await seedShare(db, { note_id: n1, slug: 'memo-1' })
+      await seedVisit(db, { note_id: n1, slug: 'memo-1', visited_at: START - 60_000, visitor_fp: 'fp-m1' })
+      await seedVisit(db, { note_id: n1, slug: 'memo-1', visited_at: START - 50_000, visitor_fp: 'fp-m2' })
+      const app = makeApp()
+
+      const first = await (await request(app, '/api/share')).json()
+      expect(first.globalStats.totalVisitors).toBe(2)
+      expect(first.globalStats.totalViews).toBe(2)
+
+      // A visit that lands after the memo was written must not show up until the window passes.
+      await seedVisit(db, { note_id: n1, slug: 'memo-1', visited_at: START - 10_000, visitor_fp: 'fp-m3' })
+      vi.setSystemTime(START + 30_000)
+      const second = await (await request(app, '/api/share')).json()
+      expect(second.globalStats.totalVisitors).toBe(2)
+
+      vi.setSystemTime(START + FILTERED_STATS_TTL_MS + 1_000)
+      const third = await (await request(app, '/api/share')).json()
+      expect(third.globalStats.totalVisitors).toBe(3)
+      expect(third.globalStats.totalViews).toBe(3)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps a different traffic filter on its own memo entry', async () => {
+    vi.useFakeTimers()
+    try {
+      const START = Date.now()
+      const db = await makeDb()
+      await seedUser(db)
+      const n1 = await seedNote(db, { title: 'Memo bots' })
+      await seedShare(db, { note_id: n1, slug: 'memo-2' })
+      await seedVisit(db, { note_id: n1, slug: 'memo-2', visited_at: START - 60_000, visitor_fp: 'fp-m4' })
+      await seedVisit(db, { note_id: n1, slug: 'memo-2', visited_at: START - 50_000, visitor_fp: 'fp-m5', is_bot: true })
+      const app = makeApp()
+
+      const real = await (await request(app, '/api/share')).json()
+      expect(real.globalStats.totalVisitors).toBe(1)
+
+      const withBots = await (await request(app, '/api/share?excludeBots=false')).json()
+      expect(withBots.globalStats.totalVisitors).toBe(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('share link audit log (audit #6)', () => {
+  const NOTE_ID = `a${'0'.repeat(25)}`
+
+  function auditRows(db: D1Shim): Promise<Array<Record<string, unknown>>> {
+    return allRows(db, 'SELECT slug, action, changed_json FROM share_audit_log ORDER BY created_at, id')
+  }
+
+  async function seedShareableNoteDb(): Promise<D1Shim> {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedNote(db, { id: NOTE_ID, title: 'Audited' })
+    return db
+  }
+
+  it('records create and update with a field diff, and never the passcode value', async () => {
+    const db = await seedShareableNoteDb()
+    const app = makeApp()
+
+    await postJson(app, `/api/share/${NOTE_ID}`, { password: 'audit-pass-1' })
+    const created = await firstRow(db, 'SELECT slug FROM shares WHERE note_id = ?1', NOTE_ID)
+    await postJson(app, `/api/share/${NOTE_ID}`, { customSlug: 'renamed-audit', password: null })
+
+    const rows = await auditRows(db)
+    expect(rows.map((row) => row.action)).toEqual(['create', 'update'])
+    const [createDiff, updateDiff] = rows.map((row) => JSON.parse(row.changed_json as string))
+    expect(createDiff).toEqual([])
+    expect(updateDiff).toEqual([
+      { field: 'slug', from: created!.slug, to: 'renamed-audit' },
+      { field: 'password', from: true, to: false },
+    ])
+    expect(JSON.stringify(rows)).not.toContain('audit-pass-1')
+  })
+
+  it('records a batch disable with the before/after of the one touched field', async () => {
+    const db = await seedShareableNoteDb()
+    await seedShare(db, { note_id: NOTE_ID, slug: 'batch-audit' })
+    const app = makeApp()
+
+    await postJson(app, '/api/share/batch', { action: 'disable', noteIds: [NOTE_ID] })
+
+    const rows = await auditRows(db)
+    expect(rows.map((row) => row.action)).toEqual(['batch'])
+    expect(JSON.parse(rows[0]!.changed_json as string)).toEqual([
+      { field: 'is_enabled', from: 1, to: 0 },
+    ])
+  })
+
+  it('records a revoke with the slug it had, after the rows are gone', async () => {
+    const db = await seedShareableNoteDb()
+    await seedShare(db, { note_id: NOTE_ID, slug: 'revoked-audit' })
+    const app = makeApp()
+
+    await deleteJson(app, `/api/share/${NOTE_ID}`)
+
+    const rows = await auditRows(db)
+    expect(rows.map((row) => row.action)).toEqual(['revoke'])
+    expect(rows[0]!.slug).toBe('revoked-audit')
+    const shares = await allRows(db, 'SELECT slug FROM shares')
+    expect(shares).toHaveLength(0)
+  })
+
+  it('answers the audit read endpoint with the newest entries first', async () => {
+    const db = await seedShareableNoteDb()
+    const app = makeApp()
+    await postJson(app, `/api/share/${NOTE_ID}`, {})
+    await postJson(app, `/api/share/${NOTE_ID}`, { isEnabled: false })
+
+    const body = await (await request(app, `/api/share/${NOTE_ID}/audit`)).json()
+    expect(body.entries.map((entry: { action: string }) => entry.action)).toEqual(['update', 'create'])
+  })
+})
+
+describe('share expiry notice (audit #7)', () => {
+  it('lists links that lapsed since the last dismissal and nothing older', async () => {
+    const db = await makeDb()
+    const now = Date.now()
+    const seedLapsed = async (slug: string, expiresAt: number): Promise<void> => {
+      const n1 = await seedNote(db, { title: `Lapsed ${slug}` })
+      await seedShare(db, { note_id: n1, slug, expires_at: expiresAt })
+    }
+    await seedLapsed('fresh-exp', now - 2 * 86_400_000)
+    await seedLapsed('old-exp', now - 30 * 86_400_000)
+    const app = makeApp()
+
+    const first = await (await request(app, '/api/share/analytics/global?range=7d')).json()
+    expect(first.expiredLinks.acknowledgedAt).toBeNull()
+    expect(first.expiredLinks.total).toBe(2)
+    expect(first.expiredLinks.items.map((item: { slug: string }) => item.slug)).toEqual(['fresh-exp', 'old-exp'])
+
+    // Dismissing stamps the account; only a lapse newer than the stamp comes back.
+    expect((await request(app, '/api/share/analytics/expired-ack', { method: 'POST' })).status).toBe(200)
+    const ackedAt = Number((await firstRow(db, `SELECT value FROM app_meta WHERE key LIKE 'share:expired-ack:%'`))!.value)
+    const second = await (await request(app, '/api/share/analytics/global?range=7d')).json()
+    expect(second.expiredLinks.acknowledgedAt).toBe(ackedAt)
+    expect(second.expiredLinks.total).toBe(0)
+    expect(second.expiredLinks.items).toHaveLength(0)
   })
 })
 

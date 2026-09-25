@@ -642,4 +642,58 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_share_collections_user ON share_collections(user_id, created_at DESC)`,
     ],
   },
+  {
+    // The share link's own change history (audit #6): an append-only record of who changed what
+    // about a link — slug, passcode presence, expiry, visibility — so an overwriting edit stops
+    // being unrecoverable. Only the shape of a passcode change is recorded (set/cleared), never
+    // the value, and no IP or agent: the log answers "what happened to this link", not "who was
+    // near it".
+    version: 43,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS share_audit_log (
+         id TEXT PRIMARY KEY,
+         user_id TEXT NOT NULL,
+         note_id TEXT NOT NULL,
+         slug TEXT NOT NULL,
+         action TEXT NOT NULL CHECK (action IN ('create', 'update', 'revoke', 'batch')),
+         changed_json TEXT NOT NULL DEFAULT '{}',
+         created_at INTEGER NOT NULL
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_share_audit_log_user ON share_audit_log(user_id, created_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_share_audit_log_note ON share_audit_log(note_id, created_at DESC)`,
+    ],
+  },
+  {
+    // The member order a collection's page lists with (audit #13). A preset key rather than a
+    // per-member order: derived members are computed from the shares on every request, so a
+    // stored member ordering would go stale the moment a share moved — a named preset keeps the
+    // page, the count and the owner's list answering the same question. NULL is the shipped
+    // order (pinned first, then newest), which is what every collection before this column had.
+    version: 44,
+    skipIfColumnExists: { table: 'share_collections', column: 'member_sort' },
+    statements: [
+      `ALTER TABLE share_collections ADD COLUMN member_sort TEXT`,
+    ],
+  },
+  {
+    // Hand-picked collections (audit #14): a third target whose members are chosen by the owner
+    // instead of derived from a folder or tag. The members table holds the *choice* — note id and
+    // the position the owner arranged — while visibility is still derived from the shares at read
+    // time, so pausing or revoking one member's share removes it from the page without editing the
+    // collection. `title` names a manual collection (folder/tag ones take their name from the
+    // target), and `target_value` stores the collection's own slug, which keeps the one-live-page-
+    // per-target partial index from pinning manual collections to a shared value.
+    version: 45,
+    skipIfColumnExists: { table: 'share_collections', column: 'title' },
+    statements: [
+      `ALTER TABLE share_collections ADD COLUMN title TEXT`,
+      `CREATE TABLE IF NOT EXISTS share_collection_members (
+         collection_id TEXT NOT NULL,
+         note_id TEXT NOT NULL,
+         sort_order INTEGER NOT NULL,
+         PRIMARY KEY (collection_id, note_id)
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_share_collection_members_note ON share_collection_members(note_id)`,
+    ],
+  },
 ]

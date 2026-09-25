@@ -26,7 +26,7 @@ export function SharePage({ slug }: {
   }
   const renderBundle = useShareRendering(loadBundle.note, dark)
   return (
-    <div className='h-full overflow-y-auto overscroll-contain bg-[var(--bg-base)]'>
+    <div className='share-public h-full overflow-y-auto overscroll-contain bg-[var(--bg-base)]'>
       <SharePageHeader siteName={loadBundle.note?.site.name ?? 'Inkstone'} dark={dark} onToggleTheme={toggleTheme} />
       <main className='mx-auto max-w-215 px-4 pb-[calc(64px+env(safe-area-inset-bottom))] md:px-5 md:pb-24'>
         <SharePageBody loadBundle={loadBundle} renderBundle={renderBundle} />
@@ -143,7 +143,6 @@ function ShareNoteView({ note, renderBundle }: {
         onClick={renderBundle.onContentClick}
         onKeyDown={renderBundle.onContentKeyDown}
         className='ink-prose'
-        style={{ maxWidth: 'none' }}
         dangerouslySetInnerHTML={renderBundle.htmlObj}
       />
 

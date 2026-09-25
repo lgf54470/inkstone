@@ -5,14 +5,18 @@ import { ApiError } from '../../lib/errors'
 import { isValidId, newSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { hashPassword } from '../../lib/password'
+import { recordShareAudit, shareAuditDiff } from '../../lib/share-audit'
 import { isReservedSlug, isValidCustomSlug } from '../../lib/share-analytics'
 import { revokeSharesForNotes } from './batch'
 import { shareCreateSchema } from './schemas'
 import { ShareRow, toShareInfo } from './shares'
 
+const SHARE_AUDIT_READ_LIMIT = 50
+
 export function registerShareNoteRoutes(shareManageRoutes: Hono<AppBindings>): void {
   registerShareNoteGetRoute(shareManageRoutes)
   registerShareNoteUpsertRoute(shareManageRoutes)
+  registerShareNoteAuditRoute(shareManageRoutes)
   registerShareNoteDeleteRoute(shareManageRoutes)
 }
 
@@ -63,6 +67,7 @@ function registerShareNoteUpsertRoute(shareManageRoutes: Hono<AppBindings>): voi
       }
       throw error
     }
+    await appendUpsertAudit(c.env.DB, userId, noteId, existingShare, targetSlug, fields)
     const row = await c.env.DB.prepare(`SELECT * FROM shares WHERE note_id = ?1 AND user_id = ?2`)
       .bind(noteId, userId)
       .first<ShareRow>()
@@ -84,6 +89,85 @@ function registerShareNoteDeleteRoute(shareManageRoutes: Hono<AppBindings>): voi
     await revokeSharesForNotes(c.env.DB, c.get('userId'), [c.req.param('noteId')])
     return c.json({ ok: true })
   })
+}
+
+/**
+ * The link's change history, newest first. The changed fields ship as stored (the passcode only as
+ * set/cleared, decided at write time), so the reader never re-derives what an edit meant.
+ */
+function registerShareNoteAuditRoute(shareManageRoutes: Hono<AppBindings>): void {
+  shareManageRoutes.get('/:noteId/audit', async (c) => {
+    const userId = c.get('userId')
+    const noteId = c.req.param('noteId')
+    if (!isValidId(noteId)) return c.json({ entries: [] })
+    const rows = await c.env.DB.prepare(
+      `SELECT id, slug, action, changed_json, created_at
+         FROM share_audit_log
+        WHERE user_id = ?1 AND note_id = ?2
+        ORDER BY created_at DESC, rowid DESC
+        LIMIT ?3`,
+    ).bind(userId, noteId, SHARE_AUDIT_READ_LIMIT).all<ShareAuditLogRow>()
+    return c.json({
+      entries: rowsOf(rows).map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        action: row.action,
+        changed: JSON.parse(row.changed_json) as unknown[],
+        createdAt: row.created_at,
+      })),
+    })
+  })
+}
+
+interface ShareAuditLogRow {
+  id: string
+  slug: string
+  action: string
+  changed_json: string
+  created_at: number
+}
+
+function rowsOf<T>(result: { results?: T[] }): T[] {
+  return result.results ?? []
+}
+
+/** The audit entry an upsert leaves behind: the diff of what this request changed about the link. */
+async function appendUpsertAudit(
+  db: D1Database,
+  userId: string,
+  noteId: string,
+  existingShare: ShareRow | undefined | null,
+  targetSlug: string,
+  fields: { passwordHash: string | null; expiresAt: number | null; isEnabled: number; folderId: string | null; tagsJson: string },
+): Promise<void> {
+  await recordShareAudit(db, [{
+    userId,
+    noteId,
+    slug: targetSlug,
+    action: existingShare ? 'update' : 'create',
+    changedJson: JSON.stringify(shareAuditDiff(auditSnapshot(existingShare), {
+      slug: targetSlug,
+      isEnabled: fields.isEnabled,
+      expiresAt: fields.expiresAt,
+      folderId: fields.folderId ?? null,
+      tags: JSON.parse(fields.tagsJson) as string[],
+      hasPassword: fields.passwordHash !== null,
+    })),
+    createdAt: Date.now(),
+  }])
+}
+
+/** The audit view of a stored share row: presence-shaped, ordered for the diff builder. */
+function auditSnapshot(row: ShareRow | null | undefined) {
+  if (!row) return null
+  return {
+    slug: row.slug,
+    isEnabled: row.is_enabled,
+    expiresAt: row.expires_at,
+    folderId: row.folder_id ?? null,
+    tags: JSON.parse(row.tags ?? '[]') as string[],
+    hasPassword: row.password_hash !== null,
+  }
 }
 
 async function loadUniqueVisitors(db: D1Database, noteId: string): Promise<number> {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ShareVisitsResponse } from '@shared/types'
+import type { ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { confirm } from '../../components/overlay'
 import { api, ApiError } from '../../lib/api'
 import { t } from '../../lib/i18n'
@@ -10,78 +10,149 @@ import { useVisitExport } from './use-visit-export'
 import { promptWipePassword } from '../../lib/wipe-password-prompt'
 
 
-export function useShareVisitLogs(open: boolean, initialNoteId?: string) {
-  const toast = useUi((s) => s.toast)
-  const [isLoading, setIsLoading] = useState(false)
-  const [data, setData] = useState<ShareVisitsResponse | null>(null)
+/**
+ * The query state one log browsing session holds: page, traffic filter, time window, drilled
+ * channel, search text and the note scope. Opening the modal rewinds it to the first page of
+ * the asked scope.
+ */
+function useVisitLogQueryState(open: boolean, initialNoteId?: string, initialChannel?: string) {
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState<VisitFilter>('all')
+  const [range, setRange] = useState<ShareTimelineRange>('all')
+  const [channel, setChannel] = useState<string | undefined>(initialChannel)
   const [search, setSearch] = useState('')
   const [noteId, setNoteId] = useState<string | undefined>(initialNoteId)
-  const [isCleaning, setIsCleaning] = useState(false)
-  const { isExporting, progress: exportProgress, exportVisits: handleExport } =
-    useVisitExport({ open, filter, search, noteId, toast })
-
-  const ctx = { setIsLoading, setData, setIsCleaning, toast }
-
   useEffect(() => {
     if (open) {
       setPage(1)
       setNoteId(initialNoteId)
-      void fetchVisitsFlow(1, filter, search, initialNoteId, ctx)
+      setChannel(initialChannel)
     }
-  }, [open, initialNoteId])
-  const fetchVisits = (targetPage = page, targetFilter = filter, targetSearch = search, targetNoteId = noteId) =>
-    fetchVisitsFlow(targetPage, targetFilter, targetSearch, targetNoteId, ctx)
+  }, [open, initialNoteId, initialChannel])
+  return { page, setPage, filter, setFilter, range, setRange, channel, setChannel, search, setSearch, noteId, setNoteId }
+}
 
+/** The "changed a dimension → back to page one of it" handlers, one per query dimension. */
+function useVisitLogRefetchHandlers(
+  state: ReturnType<typeof useVisitLogQueryState>,
+  ctx: VisitsCtx,
+): {
+  handleFilterChange: (newFilter: VisitFilter) => void
+  handleRangeChange: (newRange: ShareTimelineRange) => void
+  handleChannelDrilldown: (drilled: string) => void
+  clearChannelDrilldown: () => void
+  handleSearchSubmit: (e: React.FormEvent) => void
+} {
   const handleFilterChange = (newFilter: VisitFilter) => {
-    setFilter(newFilter)
-    setPage(1)
-    void fetchVisitsFlow(1, newFilter, search, noteId, ctx)
+    state.setFilter(newFilter)
+    state.setPage(1)
+    void fetchVisitsFlow(1, newFilter, state.range, state.channel, state.search, state.noteId, ctx)
   }
-
+  const handleRangeChange = (newRange: ShareTimelineRange) => {
+    state.setRange(newRange)
+    state.setPage(1)
+    void fetchVisitsFlow(1, state.filter, newRange, state.channel, state.search, state.noteId, ctx)
+  }
+  const handleChannelDrilldown = (drilled: string) => {
+    state.setChannel(drilled)
+    state.setPage(1)
+    void fetchVisitsFlow(1, state.filter, state.range, drilled, state.search, state.noteId, ctx)
+  }
+  const clearChannelDrilldown = () => {
+    state.setChannel(undefined)
+    state.setPage(1)
+    void fetchVisitsFlow(1, state.filter, state.range, undefined, state.search, state.noteId, ctx)
+  }
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setPage(1)
-    void fetchVisitsFlow(1, filter, search, noteId, ctx)
+    state.setPage(1)
+    void fetchVisitsFlow(1, state.filter, state.range, state.channel, state.search, state.noteId, ctx)
   }
+  return { handleFilterChange, handleRangeChange, handleChannelDrilldown, clearChannelDrilldown, handleSearchSubmit }
+}
+
+export function useShareVisitLogs(open: boolean, initialNoteId?: string, initialChannel?: string) {
+  const toast = useUi((s) => s.toast)
+  const [isLoading, setIsLoading] = useState(false)
+  const [data, setData] = useState<ShareVisitsResponse | null>(null)
+  const [error, setError] = useState(false)
+  const [isCleaning, setIsCleaning] = useState(false)
+  const state = useVisitLogQueryState(open, initialNoteId, initialChannel)
+  const { page, filter, range, channel, search, noteId } = state
+  const { isExporting, progress: exportProgress, exportVisits: handleExport } =
+    useVisitExport({ open, filter, range, channel, search, noteId, toast })
+
+  const ctx = { setIsLoading, setData, setError, setIsCleaning, toast, range, channel }
+
+  useEffect(() => {
+    if (open) {
+      void fetchVisitsFlow(1, filter, range, channel, search, initialNoteId, ctx)
+    }
+  }, [open, initialNoteId])
+  const fetchVisits = (
+    targetPage = page,
+    targetFilter = filter,
+    targetSearch = search,
+    targetNoteId = noteId,
+    targetRange = range,
+    targetChannel = channel,
+  ) => fetchVisitsFlow(targetPage, targetFilter, targetRange, targetChannel, targetSearch, targetNoteId, ctx)
+
+  const { handleFilterChange, handleRangeChange, handleChannelDrilldown, clearChannelDrilldown, handleSearchSubmit } =
+    useVisitLogRefetchHandlers(state, ctx)
 
   const handleClean = (type: 'bots' | 'older_than' | 'all', days = 30) =>
     cleanVisitsFlow(type, days, ctx, () => fetchVisits(1, filter, search, noteId))
 
   return {
-    isLoading, isExporting, data, page, setPage,
-    filter, setFilter, search, setSearch, isCleaning, exportProgress,
-    fetchVisits, handleFilterChange, handleSearchSubmit, handleClean, handleExport,
+    isLoading, isExporting, data, error,
+    page, setPage: state.setPage,
+    filter, setFilter: state.setFilter, range, channel, search, setSearch: state.setSearch,
+    isCleaning, exportProgress,
+    fetchVisits, handleFilterChange, handleRangeChange, handleChannelDrilldown, clearChannelDrilldown, handleSearchSubmit, handleClean, handleExport,
   }
 }
 
 type VisitsCtx = {
   setIsLoading: (value: boolean) => void
   setData: (data: ShareVisitsResponse | null) => void
+  setError: (value: boolean) => void
   setIsCleaning: (value: boolean) => void
   toast: UiState['toast']
+  range: ShareTimelineRange
+  channel: string | undefined
 }
 
 async function fetchVisitsFlow(
   targetPage: number,
   targetFilter: VisitFilter,
+  targetRange: ShareTimelineRange,
+  targetChannel: string | undefined,
   targetSearch: string,
   targetNoteId: string | undefined,
   ctx: VisitsCtx,
 ): Promise<void> {
   ctx.setIsLoading(true)
+  ctx.setError(false)
   try {
     const res = await api.share.visits({
       page: targetPage,
       limit: 25,
       filter: targetFilter,
+      range: targetRange === 'all' ? undefined : targetRange,
+      channel: targetChannel,
       search: targetSearch || undefined,
       noteId: targetNoteId || undefined,
     })
     ctx.setData(res)
-  } catch {
-    ctx.toast({ title: t('common.action_failed'), tone: 'danger' })
+  } catch (error: unknown) {
+    // A failure has to *read* as a failure. Clearing the rows keeps the previous page from standing
+    // in for an answer this request never got, and `error` drives the table's own retry surface
+    // instead of a toast that leaves the list looking merely empty — which is the silent downgrade
+    // AGENTS.md rule 2 is written against. Same shape as the dashboard's analytics loader.
+    ctx.setData(null)
+    ctx.setError(true)
+    console.warn('[share] failed to load visit logs', error)
   } finally {
     ctx.setIsLoading(false)
   }

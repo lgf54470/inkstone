@@ -155,6 +155,47 @@ export function filteredGlobalStatsStatement(db: D1Database, userId: string, cla
     .bind(userId)
 }
 
+// The two unbounded aggregates above run over the account's whole visit history on every list
+// request, while the number they serve is the sidebar's all-time footnote — a caliber that is not
+// real-time by construction. So the answer is memoized in app_meta for a short window: a fresh
+// list request pays a one-row lookup instead of the scan, and at most one request per window per
+// account actually runs the aggregates. A per-isolate Map would leak user-scoped state across
+// requests, which the module-state gate exists to prevent; a keyed row does the same job and
+// works across isolates.
+export const FILTERED_STATS_TTL_MS = 60_000
+
+export function filteredStatsCacheKey(userId: string, clause: string): string {
+  return `share:filtered-stats:${userId}:${hashClause(clause)}`
+}
+
+/** FNV-1a over the traffic clause: the vocabulary is small, but the key must stay bounded whatever lands in it. */
+function hashClause(clause: string): string {
+  let hash = 0x811c9dc5
+  for (let index = 0; index < clause.length; index++) {
+    hash ^= clause.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(36)
+}
+
+export function serializeFilteredStatsCache(value: FilteredStatsRow, now: number): string {
+  return JSON.stringify({ v: value.total_views, u: value.total_uv, at: now })
+}
+
+/** Null for anything that is not a fresh, well-formed entry: a corrupt row reads as a miss. */
+export function parseFilteredStatsCache(raw: string | null, now: number): FilteredStatsRow | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as { v?: unknown; u?: unknown; at?: unknown }
+    if (typeof parsed.v !== 'number' || typeof parsed.u !== 'number' || typeof parsed.at !== 'number') return null
+    if (!Number.isSafeInteger(parsed.v) || !Number.isSafeInteger(parsed.u)) return null
+    if (now - parsed.at < 0 || now - parsed.at >= FILTERED_STATS_TTL_MS) return null
+    return { total_views: parsed.v, total_uv: parsed.u }
+  } catch {
+    return null
+  }
+}
+
 export function buildShareGlobalStats(
   folderCounts: Record<string, { total: number; shared: number }>,
   tagCounts: Record<string, { total: number; shared: number }>,

@@ -13,6 +13,7 @@ import {
   type ShareStatusFilter,
   type VisitLogFilter,
 } from '@shared/share-selection'
+import { parseChannelDrillDown } from '@shared/share-channel'
 import { SHARE_BROWSERS, SHARE_CHANNELS, SHARE_DEMO_COLLECTION_CHANNEL, SHARE_DEMO_COLLECTION_SLUG, SHARE_DEVICES, SHARE_OS_LIST, SHARE_TOP_COUNTRIES, SHARE_TOP_REFERRERS, SHARE_VISIT_SAMPLES } from './share-fixtures'
 
 /**
@@ -291,7 +292,17 @@ function listShareVisits(c: Context): Response {
   // The same single-choice filter the worker applies, asked of the shared predicate. `real` is the
   // three traffic toggles at once, which is also what a reading's default excludes.
   const logFilter: VisitLogFilter = isVisitLogFilter(filter) ? filter : 'all'
-  const filtered = mockVisits.filter((visit) => visitMatchesLogFilter(visit, logFilter))
+  const drilled = parseChannelDrillDown(c.req.query('channel'))
+  if (drilled.kind === 'invalid') {
+    return apiError(400, 'bad_request', `Unknown visit channel: ${c.req.query('channel')}`)
+  }
+  const channelFiltered = mockVisits.filter((visit) => {
+    if (drilled.kind === 'unmarked') return visit.channel === null
+    if (drilled.kind === 'unrecognized') return visit.channel === ''
+    if (drilled.kind === 'token') return visit.channel === drilled.token
+    return true
+  })
+  const filtered = channelFiltered.filter((visit) => visitMatchesLogFilter(visit, logFilter))
 
   const visitsRes: ShareVisitsResponse = {
     visits: filtered,

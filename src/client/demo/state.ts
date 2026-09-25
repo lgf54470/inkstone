@@ -47,11 +47,14 @@ interface DemoShare {
 export interface DemoShareCollection {
   id: string
   slug: string
-  targetType: 'folder' | 'tag'
+  targetType: 'folder' | 'tag' | 'manual'
   targetValue: string
+  title?: string | null
+  noteIds?: string[]
   password: string | null
   expiresAt: number | null
   isEnabled: boolean
+  memberSort?: 'default' | 'newest' | 'oldest' | 'title' | null
   createdAt: number
 }
 

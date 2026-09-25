@@ -136,6 +136,22 @@ export interface ShareStaleLinks {
   items: ShareStaleLink[]
 }
 
+/**
+ * The expiry notice (audit #7): links that lapsed since the owner last dismissed the notice. The
+ * dismissal is one timestamp, so "new since" is just `expires_at > acknowledgedAt` — a link that
+ * expired again after being acknowledged comes back, and one acknowledged once stays gone.
+ */
+export interface ShareExpiredLinks {
+  acknowledgedAt: number | null
+  total: number
+  items: Array<{
+    noteId: string
+    noteTitle: string | null
+    slug: string
+    expiresAt: number
+  }>
+}
+
 export interface ShareGlobalAnalytics {
   range: ShareTimelineRange
   totalShares: number
@@ -169,6 +185,7 @@ export interface ShareGlobalAnalytics {
   channels: ShareBreakdownItem[]
   recentVisits: ShareVisitLog[]
   staleLinks: ShareStaleLinks
+  expiredLinks?: ShareExpiredLinks
   filterStats?: {
     bots: number
     selfReferrals: number
@@ -274,12 +291,15 @@ export interface ShareCollection {
   id: string
   slug: string
   title: string
-  targetType: 'folder' | 'tag'
+  /** `manual` collections store their members; the other two derive them from the target. */
+  targetType: 'folder' | 'tag' | 'manual'
   targetValue: string
   count: number
   hasPassword: boolean
   expiresAt: number | null
   isEnabled: boolean
+  /** The member order the page lists with; null is the shipped one (pinned first, then newest). */
+  memberSort?: 'default' | 'newest' | 'oldest' | 'title' | null
   createdAt: number
 }
 
@@ -318,6 +338,25 @@ export interface ShareVisitsResponse {
   page: number
   limit: number
   totalPages: number
+}
+
+/** One changed field of a share link; the passcode only ever travels as set/cleared (booleans). */
+export interface ShareAuditFieldChange {
+  field: string
+  from?: string | number | boolean | null
+  to?: string | number | boolean | null
+}
+
+export interface ShareAuditLogEntry {
+  id: string
+  slug: string
+  action: 'create' | 'update' | 'revoke' | 'batch'
+  changed: ShareAuditFieldChange[]
+  createdAt: number
+}
+
+export interface ShareAuditLogResponse {
+  entries: ShareAuditLogEntry[]
 }
 
 export interface PublicNote {

@@ -109,13 +109,28 @@ export function localizeDeviceName(name: string): string {
   return name
 }
 
+const SLUG_CHARSET = '23456789abcdefghjkmnpqrstvwxyz'
+// The largest multiple of the charset size that still fits a byte: rejecting the tail keeps
+// `byte % 30` uniform, which plain `Math.random()` also managed but a CSPRNG demands explicitly.
+const SLUG_REJECT_FROM = 256 - (256 % SLUG_CHARSET.length)
+
+/**
+ * The dice button next to the custom-slug field. The slug becomes a public URL, so the suggestion
+ * comes from `crypto.getRandomValues` rather than `Math.random` — the server generates its own
+ * 20-character slug for auto-shares, but a suggestion a person can accept outright should not be
+ * the weakest link in the chain.
+ */
 export function generateRandomSlug(length = 6): string {
-  const chars = '23456789abcdefghjkmnpqrstvwxyz'
-  let res = ''
-  for (let i = 0; i < length; i++) {
-    res += chars[Math.floor(Math.random() * chars.length)]
+  let slug = ''
+  const bytes = new Uint8Array(length)
+  while (slug.length < length) {
+    crypto.getRandomValues(bytes)
+    for (const byte of bytes) {
+      if (slug.length === length) break
+      if (byte < SLUG_REJECT_FROM) slug += SLUG_CHARSET[byte % SLUG_CHARSET.length]
+    }
   }
-  return res
+  return slug
 }
 
 const CSV_CONTROL_CHARS = /[\u0000-\u001f\u007f]/g
@@ -152,22 +167,23 @@ export function exportVisitsToCsv(visits: Array<{
   isSelfReferrer?: boolean
   channel?: string | null
 }>, filename = 'share-visits.csv') {
+  // Localized headers, so a file that leaves the app speaks the reader's language the same way the
+  // dashboard export does. Channel stays appended last so an existing script that reads the columns
+  // before it by position keeps working (ADR-0004).
   const headers = [
-    'ID',
-    'Time',
-    'Note Title',
-    'Slug',
-    'Country',
-    'City',
-    'Referrer',
-    'Referrer Host',
-    'Device',
-    'OS',
-    'Browser',
-    'Type',
-    // Appended last so an existing script that reads the columns before it by position keeps
-    // working (ADR-0004).
-    'Channel',
+    t('share.export_col_id'),
+    t('share.export_col_time'),
+    t('share.export_col_note_title'),
+    t('share.export_col_slug'),
+    t('share.export_col_country'),
+    t('share.export_col_city'),
+    t('share.export_col_referrer'),
+    t('share.export_col_referrer_host'),
+    t('share.export_col_device'),
+    t('share.export_col_os'),
+    t('share.export_col_browser'),
+    t('share.export_col_type'),
+    t('share.export_col_channel'),
   ]
   const rows = visits.map((v) => [
     v.id,

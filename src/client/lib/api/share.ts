@@ -1,6 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
-import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -84,6 +84,8 @@ export const share = {
         noteId?: string
         filter?: string
         search?: string
+        range?: string
+        channel?: string
       },
       signal?: AbortSignal,
     ) => request<ShareVisitsResponse>(`/api/share/visits${toQuery(params ?? {})}`, { signal }),
@@ -92,6 +94,9 @@ export const share = {
         method: 'DELETE',
         ...(password === undefined ? {} : { body: { password } }),
       }),
+    noteAudit: (noteId: string, signal?: AbortSignal) =>
+      request<ShareAuditLogResponse>(`/api/share/${noteId}/audit`, { signal }),
+    ackExpiredLinks: () => request<{ ok: true }>('/api/share/analytics/expired-ack', { method: 'POST' }),
     cleanVisitsForNote: (noteId: string, password: string) =>
       request<{ ok: true; deleted: number }>(`/api/share/visits${toQuery({ type: 'all', noteId })}`, {
         method: 'DELETE',
@@ -149,7 +154,7 @@ export const share = {
     collections: {
       list: (signal?: AbortSignal) =>
         request<ShareCollectionListResponse>('/api/share/collections', { signal }),
-      publish: (body: { targetType: 'folder' | 'tag'; targetValue: string; password?: string; expiresAt?: number | null }) =>
+      publish: (body: { targetType: 'folder' | 'tag' | 'manual'; targetValue?: string; title?: string; noteIds?: string[]; password?: string; expiresAt?: number | null; memberSort?: 'default' | 'newest' | 'oldest' | 'title' | null }) =>
         request<{ id: string; slug: string }>('/api/share/collections', { method: 'POST', body }),
       patch: (id: string, body: { isEnabled?: boolean; password?: string | null; expiresAt?: number | null }) =>
         request<{ ok: true }>(`/api/share/collections/${id}`, { method: 'PATCH', body }),

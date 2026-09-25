@@ -1,11 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { initI18n, setLocale } from '../../lib/i18n'
+import { EN_US_MESSAGES } from '../../../shared/locales/en-US'
+import { ZH_CN_MESSAGES } from '../../../shared/locales/zh-CN'
 import { exportVisitsToCsv } from './share-helpers'
 
 type VisitRow = Parameters<typeof exportVisitsToCsv>[0][number]
 
+// Headers come out localized (the same keys the dashboard export uses); in tests the
+// translation table is not loaded, so `t()` answers with the key itself.
 const HEADERS = [
-  'ID', 'Time', 'Note Title', 'Slug', 'Country', 'City',
-  'Referrer', 'Referrer Host', 'Device', 'OS', 'Browser', 'Type', 'Channel',
+  'share.export_col_id', 'share.export_col_time', 'share.export_col_note_title', 'share.export_col_slug',
+  'share.export_col_country', 'share.export_col_city', 'share.export_col_referrer', 'share.export_col_referrer_host',
+  'share.export_col_device', 'share.export_col_os', 'share.export_col_browser', 'share.export_col_type',
+  'share.export_col_channel',
 ]
 
 const EXPECTED_HEADER = HEADERS.map((name) => `"${name}"`).join(',')
@@ -133,6 +140,25 @@ describe('visit log CSV escaping (SH-79)', () => {
     expect(csv).not.toContain(',"=HYPERLINK')
   })
 
+})
+
+describe('visit log CSV headers speak the reader\'s language', () => {
+  async function headerRow(locale: 'en-US' | 'zh-CN'): Promise<string[]> {
+    await initI18n()
+    await setLocale(locale)
+    exportVisitsToCsv([visitRow()], 'visits.csv')
+    expect(downloaded).toHaveLength(1)
+    const csv = await downloaded[0].text()
+    return parseRow(dataLines(csv)[0])
+  }
+
+  it('writes Chinese headers for a Chinese reader', async () => {
+    expect(await headerRow('zh-CN')).toEqual(HEADERS.map((key) => (ZH_CN_MESSAGES as Record<string, string>)[key]))
+  })
+
+  it('writes English headers for an English reader', async () => {
+    expect(await headerRow('en-US')).toEqual(HEADERS.map((key) => (EN_US_MESSAGES as Record<string, string>)[key]))
+  })
 })
 
 describe('visit log CSV covers every column (SH-79)', () => {

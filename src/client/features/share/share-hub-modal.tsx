@@ -137,7 +137,7 @@ function HubOverlays({ hub }: { hub: ShareHubModalBundle }) {
 }
 
 function HubInsightOverlays({ hub }: { hub: ShareHubModalBundle }) {
-  const { analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, logsNoteId, setLogsNoteId, isSettingsOpen, setIsSettingsOpen, viewProps, setQrShare } = hub
+  const { analyticsNoteId, setAnalyticsNoteId, isLogsOpen, setIsLogsOpen, logsNoteId, setLogsNoteId, logsChannel, setLogsChannel, isSettingsOpen, setIsSettingsOpen, viewProps, setQrShare } = hub
   return (
     <>
       {analyticsNoteId && (
@@ -156,8 +156,10 @@ function HubInsightOverlays({ hub }: { hub: ShareHubModalBundle }) {
           onClose={() => {
             setIsLogsOpen(false)
             setLogsNoteId(null)
+            setLogsChannel(undefined)
           }}
           initialNoteId={logsNoteId ?? undefined}
+          initialChannel={logsChannel}
         />
       )}
 

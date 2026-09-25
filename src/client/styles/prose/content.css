@@ -220,6 +220,9 @@
   margin-inline: 0;
   padding-block: 0;
 }
+.share-public .ink-prose {
+  max-width: none;
+}
 .wiki-hover-body .ink-prose h1,
 .wiki-hover-body .ink-prose h2,
 .wiki-hover-body .ink-prose h3 {

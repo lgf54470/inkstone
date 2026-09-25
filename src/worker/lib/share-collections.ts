@@ -34,7 +34,8 @@ export function collectionTarget(
  * list cannot come to call different shares visible.
  */
 export function collectionMemberConditions(params: {
-  target: ShareTarget
+  /** Null for a hand-picked collection: its membership is the target, the visibility rule is not. */
+  target: ShareTarget | null
   now: number
   firstBind: number
 }): ShareSqlConditions {
@@ -42,9 +43,55 @@ export function collectionMemberConditions(params: {
 }
 
 /**
- * One page of a collection's members, newest first. Pinned notes lead, exactly as they do in the
- * share list: a collection is the same list seen by a visitor, so the order they meet it in is the
- * order the owner arranged.
+ * The member orders a collection page can list with (audit #13). `default` is the shipped order —
+ * pinned notes lead, then newest — and NULL on the row means the same thing; the others are named
+ * presets because the members are derived from the shares on every request, so a stored per-member
+ * ordering would go stale the moment a share moved.
+ */
+export const COLLECTION_MEMBER_SORTS = ['default', 'newest', 'oldest', 'title'] as const
+
+export type CollectionMemberSort = (typeof COLLECTION_MEMBER_SORTS)[number]
+
+export function isCollectionMemberSort(value: unknown): value is CollectionMemberSort {
+  return typeof value === 'string' && (COLLECTION_MEMBER_SORTS as readonly string[]).includes(value)
+}
+
+interface MemberSortSpec {
+  order: string
+  /** The keyset predicate the cursor must satisfy, phrased against the binds the cursor carries. */
+  cursor: string
+}
+
+/** The four orders a page can list with, each with its own keyset predicate — paging has to follow sorting. */
+const MEMBER_SORT_SPECS: Record<CollectionMemberSort, MemberSortSpec> = {
+  default: {
+    order: 'n.is_pinned DESC, n.updated_at DESC, s.slug DESC',
+    cursor: `(n.is_pinned < ?{p} OR (n.is_pinned = ?{p} AND
+        (n.updated_at < ?{u} OR (n.updated_at = ?{u} AND s.slug < ?{s}))))`,
+  },
+  newest: {
+    order: 'n.updated_at DESC, s.slug DESC',
+    cursor: `(n.updated_at < ?{u} OR (n.updated_at = ?{u} AND s.slug < ?{s}))`,
+  },
+  oldest: {
+    order: 'n.updated_at ASC, s.slug ASC',
+    cursor: `(n.updated_at > ?{u} OR (n.updated_at = ?{u} AND s.slug > ?{s}))`,
+  },
+  title: {
+    order: 'n.title COLLATE NOCASE ASC, s.slug ASC',
+    cursor: `(n.title > ?{t} COLLATE NOCASE OR (n.title = ?{t} COLLATE NOCASE AND s.slug > ?{s}))`,
+  },
+}
+
+function memberSortSpec(sort: string | null | undefined): MemberSortSpec {
+  if (sort === 'newest' || sort === 'oldest' || sort === 'title') return MEMBER_SORT_SPECS[sort]
+  return MEMBER_SORT_SPECS.default
+}
+
+/**
+ * One page of a collection's members, newest first unless the collection says otherwise. Pinned
+ * notes lead, exactly as they do in the share list: a collection is the same list seen by a
+ * visitor, so the order they meet it in is the order the owner arranged.
  */
 export function collectionMembersStatement(db: D1Database, params: {
   userId: string
@@ -52,25 +99,36 @@ export function collectionMembersStatement(db: D1Database, params: {
   now: number
   cursor: CollectionCursor | null
   limit: number
+  sort?: string | null
 }): D1PreparedStatement {
-  const { userId, target, now, cursor, limit } = params
+  const { userId, target, now, cursor, limit, sort } = params
+  const spec = memberSortSpec(sort)
   // The member conditions start after the account bind, so the listing and the count below number
   // their placeholders from the same two binds and cannot disagree about what they select.
   const member = collectionMemberConditions({ target, now, firstBind: 2 })
   const binds: Array<string | number> = [userId, ...member.binds]
   let cursorClause = ''
   if (cursor) {
-    binds.push(cursor.isPinned, cursor.updatedAt, cursor.slug)
-    const base = binds.length - 2
-    cursorClause = ` AND (n.is_pinned < ?${base} OR (n.is_pinned = ?${base} AND
-        (n.updated_at < ?${base + 1} OR (n.updated_at = ?${base + 1} AND s.slug < ?${base + 2}))))`
+    // The binds follow first appearance in the predicate, not a fixed p/u/s/t sequence: the title
+    // order phrases its keyset as title-then-slug. A token the predicate repeats (?{p} twice in
+    // the default order) binds once and is reused, like any named placeholder.
+    const tokens = [...new Set([...spec.cursor.matchAll(/\?\{(\w)\}/g)].map((match) => match[1]))]
+    const parts = tokens.map((token) => token === 'p' ? cursor.isPinned : token === 'u' ? cursor.updatedAt : token === 's' ? cursor.slug : cursor.title ?? '')
+    // The cursor's binds are appended after the member binds, so their placeholders start here;
+    // each token gets the index its own bind took, wherever the predicate repeats or skips one.
+    const first = binds.length + 1
+    binds.push(...parts)
+    cursorClause = tokens.reduce(
+      (sql, token, position) => sql.replaceAll(`?{${token}}`, `?${first + position}`),
+      ` AND ${spec.cursor}`,
+    )
   }
   binds.push(limit)
   return db.prepare(
     `SELECT n.title, n.excerpt, n.is_pinned, n.updated_at, s.slug, s.password_hash
        FROM shares s JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
       WHERE s.user_id = ?1 AND n.deleted_at IS NULL AND ${member.conditions.join(' AND ')}${cursorClause}
-      ORDER BY n.is_pinned DESC, n.updated_at DESC, s.slug DESC
+      ORDER BY ${spec.order}
       LIMIT ?${binds.length}`,
   ).bind(...binds)
 }
@@ -90,6 +148,56 @@ export function collectionMemberCountStatement(db: D1Database, params: {
   ).bind(userId, ...member.binds)
 }
 
+/**
+ * A hand-picked collection's members (audit #14): the rows the owner arranged, in the order the
+ * owner gave them, intersected with the shares that are live right now. Visibility is derived —
+ * pausing or revoking one member's share removes it from the page without editing the collection —
+ * while membership itself is the stored choice. Paging follows the stored order.
+ */
+export function manualCollectionMembersStatement(db: D1Database, params: {
+  userId: string
+  collectionId: string
+  now: number
+  cursor: CollectionCursor | null
+  limit: number
+}): D1PreparedStatement {
+  const { userId, collectionId, now, cursor, limit } = params
+  const member = collectionMemberConditions({ target: null, now, firstBind: 3 })
+  const binds: Array<string | number> = [userId, collectionId, ...member.binds]
+  let cursorClause = ''
+  if (cursor && cursor.sortOrder !== undefined) {
+    binds.push(cursor.sortOrder, cursor.slug)
+    const base = binds.length - 2
+    cursorClause = ` AND (m.sort_order > ?${base} OR (m.sort_order = ?${base} AND s.slug > ?${base + 1}))`
+  }
+  binds.push(limit)
+  return db.prepare(
+    `SELECT n.title, n.excerpt, n.is_pinned, n.updated_at, s.slug, s.password_hash, m.sort_order
+       FROM share_collection_members m
+       JOIN shares s ON s.note_id = m.note_id AND s.user_id = ?1
+       JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
+      WHERE m.collection_id = ?2 AND n.deleted_at IS NULL AND ${member.conditions.join(' AND ')}${cursorClause}
+      ORDER BY m.sort_order ASC, s.slug ASC
+      LIMIT ?${binds.length}`,
+  ).bind(...binds)
+}
+
+export function manualCollectionCountStatement(db: D1Database, params: {
+  userId: string
+  collectionId: string
+  now: number
+}): D1PreparedStatement {
+  const { userId, collectionId, now } = params
+  const member = collectionMemberConditions({ target: null, now, firstBind: 3 })
+  return db.prepare(
+    `SELECT COUNT(*) AS members
+       FROM share_collection_members m
+       JOIN shares s ON s.note_id = m.note_id AND s.user_id = ?1
+       JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
+      WHERE m.collection_id = ?2 AND n.deleted_at IS NULL AND ${member.conditions.join(' AND ')}`,
+  ).bind(userId, collectionId, ...member.binds)
+}
+
 export interface CollectionMemberRow {
   title: string
   excerpt: string
@@ -97,12 +205,18 @@ export interface CollectionMemberRow {
   updated_at: number
   slug: string
   password_hash: string | null
+  /** Only a hand-picked collection's rows carry the position the owner arranged. */
+  sort_order?: number
 }
 
 export interface CollectionCursor {
   isPinned: number
   updatedAt: number
   slug: string
+  /** Only the title order pages by the note title; absent cursors are the three-field legacy shape. */
+  title?: string
+  /** Only a hand-picked collection pages by the stored position (the `#`-prefixed fourth field). */
+  sortOrder?: number
 }
 
 /**
@@ -110,15 +224,29 @@ export interface CollectionCursor {
  * it exposes the owner's arrangement; a client that composed one itself would be reimplementing the
  * ordering rule, and would go on working after that rule changed.
  */
-export function nextCollectionCursor(rows: CollectionMemberRow[], limit: number): string | null {
+export function nextCollectionCursor(rows: CollectionMemberRow[], limit: number, sort?: string | null): string | null {
   if (rows.length < limit) return null
   const last = rows[rows.length - 1]
   if (!last) return null
-  return encodeCollectionCursor({ isPinned: last.is_pinned, updatedAt: last.updated_at, slug: last.slug })
+  const cursor: CollectionCursor = { isPinned: last.is_pinned, updatedAt: last.updated_at, slug: last.slug }
+  if (sort === 'title') cursor.title = last.title
+  if (sort === 'manual') cursor.sortOrder = last.sort_order ?? 0
+  return encodeCollectionCursor(cursor)
 }
 
 function encodeCollectionCursor(cursor: CollectionCursor): string {
-  return btoa(`${cursor.isPinned}|${cursor.updatedAt}|${cursor.slug}`)
+  // The fourth field, when there is one, is tagged: `t` for a note title (which may itself carry
+  // the delimiter, so it travels encoded), `#` for a hand-picked position. A title can never
+  // produce a raw `#` — encodeURIComponent escapes it.
+  const fourth = cursor.title !== undefined
+    ? `t${encodeURIComponent(cursor.title)}`
+    : cursor.sortOrder !== undefined
+      ? `#${cursor.sortOrder}`
+      : undefined
+  const raw = fourth === undefined
+    ? `${cursor.isPinned}|${cursor.updatedAt}|${cursor.slug}`
+    : `${cursor.isPinned}|${cursor.updatedAt}|${cursor.slug}|${fourth}`
+  return btoa(raw)
     .replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
 }
 
@@ -127,13 +255,32 @@ export function decodeCollectionCursor(raw: string | undefined): CollectionCurso
   if (!raw) return null
   const padded = raw.replaceAll('-', '+').replaceAll('_', '/')
   const decoded = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4))
-  const [pinnedText, updatedText, slug] = decoded.split('|')
+  const [pinnedText, updatedText, slug, encodedFourth] = decoded.split('|')
   const isPinned = Number(pinnedText)
   const updatedAt = Number(updatedText)
   if ((isPinned !== 0 && isPinned !== 1) || !Number.isSafeInteger(updatedAt) || updatedAt < 0 || !slug || !isValidSlug(slug)) {
     throw new Error('invalid collection cursor')
   }
-  return { isPinned, updatedAt, slug }
+  const cursor: CollectionCursor = { isPinned, updatedAt, slug }
+  if (encodedFourth !== undefined) applyCursorFourthField(cursor, encodedFourth)
+  return cursor
+}
+
+/** The tagged fourth field, decoded onto the cursor: a hand-picked position or an encoded title. */
+function applyCursorFourthField(cursor: CollectionCursor, encodedFourth: string): void {
+  if (/^#\d+$/.test(encodedFourth)) {
+    cursor.sortOrder = Number(encodedFourth.slice(1))
+    return
+  }
+  if (encodedFourth.startsWith('t')) {
+    try {
+      cursor.title = decodeURIComponent(encodedFourth.slice(1))
+      return
+    } catch {
+      throw new Error('invalid collection cursor')
+    }
+  }
+  throw new Error('invalid collection cursor')
 }
 
 /**
@@ -166,12 +313,25 @@ export function isValidTargetValue(value: unknown): value is string {
 export function collectionChannelLabelsStatement(db: D1Database, userId: string): D1PreparedStatement {
   return db.prepare(
     `SELECT c.slug AS slug,
-            CASE c.target_type WHEN 'folder' THEN f.name ELSE t.name END AS name
-       FROM share_collections c
-       LEFT JOIN share_folders f ON c.target_type = 'folder' AND f.id = c.target_value AND f.user_id = c.user_id
-       LEFT JOIN share_tags t ON c.target_type = 'tag' AND t.id = c.target_value AND t.user_id = c.user_id
+            ${collectionTargetNameSelect()} AS name
+       FROM share_collections c ${collectionTargetNameJoin()}
       WHERE c.user_id = ?1`,
   ).bind(userId)
+}
+
+/**
+ * The joins that resolve a collection's stored target id to its live folder/tag name. One shape,
+ * two readers (the channel labels and the owner's list), so a change to how a target resolves
+ * cannot land in one query and miss the other.
+ */
+export function collectionTargetNameJoin(alias = 'c'): string {
+  return `LEFT JOIN share_folders f ON ${alias}.target_type = 'folder' AND f.id = ${alias}.target_value AND f.user_id = ${alias}.user_id
+          LEFT JOIN share_tags t ON ${alias}.target_type = 'tag' AND t.id = ${alias}.target_value AND t.user_id = ${alias}.user_id`
+}
+
+/** The live name the join resolves; null when the folder or tag is gone. */
+export function collectionTargetNameSelect(alias = 'c'): string {
+  return `CASE ${alias}.target_type WHEN 'folder' THEN f.name ELSE t.name END`
 }
 
 export interface CollectionChannelLabelRow {
