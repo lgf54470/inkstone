@@ -160,7 +160,26 @@ function CardFieldValues({ item, fields, columns }: { item: KanbanItem; fields?:
       {read.map((field) => (
         <div key={field.id} className='flex min-w-0 items-baseline gap-1'>
           <dt className='shrink-0 text-[var(--text-tertiary)]'>{field.label}</dt>
-          {field.value !== '' && <dd className='min-w-0 truncate text-[var(--text-secondary)]'>{field.value}</dd>}
+          {field.value !== '' && (
+            field.href ? (
+              <dd className='min-w-0 truncate'>
+                {/* A url field is a real link on the card: the whitelist that let the fence read it is
+                the same one this href went through, and a press follows it without leaving the board. */}
+                <a
+                  href={field.href}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  onClick={(e) => e.stopPropagation()}
+                  className='inline-flex min-w-0 items-center gap-0.5 truncate text-[var(--text-secondary)] underline decoration-[var(--border-strong)] underline-offset-2 hover:text-[var(--accent)]'
+                >
+                  <Link2 size={10} className='shrink-0' aria-hidden />
+                  <span className='truncate'>{field.value}</span>
+                </a>
+              </dd>
+            ) : (
+              <dd className='min-w-0 truncate text-[var(--text-secondary)]'>{field.value}</dd>
+            )
+          )}
         </div>
       ))}
     </dl>

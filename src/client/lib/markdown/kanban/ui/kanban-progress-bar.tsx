@@ -108,7 +108,7 @@ export function KanbanProgressBar({
             backgroundColor: seg.color,
           }}
           title={`${segmentLabel(seg)}: ${seg.count} (${seg.percent.toFixed(0)}%)`}
-          className='transition-all duration-300 first:rounded-l-[var(--r-full)] last:rounded-r-[var(--r-full)]'
+          className='transition-all duration-[var(--dur-base)] first:rounded-l-[var(--r-full)] last:rounded-r-[var(--r-full)]'
         />
       ))}
     </div>

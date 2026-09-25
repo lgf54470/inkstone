@@ -46,9 +46,14 @@ function urlFieldsByInterface(source: string): Record<string, string[]> {
   return found
 }
 
-/** One way to smuggle a URL into a card, named by the field it goes into. */
-const URL_FIELDS: { field: string; item: (url: string) => KanbanItem }[] = [
-  { field: 'cover', item: (url) => ({ id: '1', title: 'Task', cover: url, properties: {} }) },
+/** One way to smuggle a URL into a card, named by the field it goes into, with its own whitelist. */
+const URL_FIELDS: { field: string; item: (url: string) => KanbanItem; allowed: string[] }[] = [
+  {
+    field: 'cover',
+    item: (url) => ({ id: '1', title: 'Task', cover: url, properties: {} }),
+    // The cover is an `<img src>`, so an inline image carries the pixels and cannot run.
+    allowed: ['/api/kanban/file/default/1-cover.png', 'https://cdn.example.test/spec.pdf', 'data:image/png;base64,iVBORw0KGgo='],
+  },
   {
     field: 'files[].url',
     item: (url) => ({
@@ -57,11 +62,13 @@ const URL_FIELDS: { field: string; item: (url: string) => KanbanItem }[] = [
       files: [{ id: 'f1', name: 'x.png', size: 1, mime: 'image/png', url }],
       properties: {},
     }),
+    // A file url is a link the reader presses and a body the panel fetches, so it never takes a
+    // data url — there is nothing to preview that the reader did not already have in the note.
+    allowed: ['/api/kanban/file/default/1-cover.png', 'https://cdn.example.test/spec.pdf'],
   },
 ]
 
 const HOSTILE_URLS = ['javascript:alert(1)', 'data:text/html,<script>alert(1)</script>', '//evil.example.test/x.png']
-const ALLOWED_URLS = ['/api/kanban/file/default/1-cover.png', 'https://cdn.example.test/spec.pdf', 'data:image/png;base64,iVBORw0KGgo=']
 
 function parseWith(urlField: (url: string) => KanbanItem, url: string) {
   return parseKanbanBody(JSON.stringify({ items: [urlField(url)] }))
@@ -88,8 +95,8 @@ describe('every URL a card can carry is on the parse-time whitelist', () => {
     }
   })
 
-  it.each(URL_FIELDS)('keeps a $field on the whitelist, so the guard is not a blanket refusal', ({ item }) => {
-    for (const url of ALLOWED_URLS) {
+  it.each(URL_FIELDS)('keeps a $field on its whitelist, so the guard is not a blanket refusal', ({ item, allowed }) => {
+    for (const url of allowed) {
       const result = parseWith(item, url)
       expect(result.ok, `a legitimate ${url} was refused: ${result.ok ? '' : result.error}`).toBe(true)
     }

@@ -13,6 +13,7 @@ import {
   kanbanDependencyIds,
   kanbanDependencyLinks,
   kanbanDependencyWouldCycle,
+  kanbanTimelineBarMap,
   missingKanbanDependencyIds,
   withKanbanDependenciesGuarded,
 } from './dependencies'
@@ -128,15 +129,15 @@ describe('withKanbanDependenciesGuarded writes the list whole or not at all', ()
   })
 })
 
-describe('kanbanDependencyLinks draws blocker right edge to dependent left edge', () => {
-  const ROW = 40
-  const range: TimelineRange = {
-    days: Array.from({ length: 10 }, (_, i) => ({ dateStr: `2026-09-${10 + i}`, label: '', isToday: i === 4 })),
-    dayWidth: 48,
-    todayIndex: 4,
-    clipped: false,
-  }
+const ROW = 40
+const range: TimelineRange = {
+  days: Array.from({ length: 10 }, (_, i) => ({ dateStr: `2026-09-${10 + i}`, label: '', isToday: i === 4 })),
+  dayWidth: 48,
+  todayIndex: 4,
+  clipped: false,
+}
 
+describe('kanbanDependencyLinks draws blocker right edge to dependent left edge', () => {
   it('skips an edge whose card has no bar on this window', () => {
     const items = [{ ...item('a'), properties: { startDate: '2026-09-10' } }, item('b', ['a'])]
     expect(kanbanDependencyLinks(items, range)).toEqual([])
@@ -169,5 +170,17 @@ describe('kanbanDependencyLinks draws blocker right edge to dependent left edge'
     const midX = Math.max(...[...link!.path.matchAll(/H (\d+(?:\.\d+)?)/g)].map((m) => Number(m[1])))
     // a's right edge: day 0 start + 7 days × 48 − the 8px gap.
     expect(midX).toBeGreaterThan(7 * 48 - 8)
+  })
+})
+
+describe('the bars a view hands its dependency layer', () => {
+  it('draws the same arrows from bars handed in as it would from bars it measures itself', () => {
+    const items = [
+      { ...item('a'), properties: { startDate: '2026-09-10', endDate: '2026-09-12' } },
+      { ...item('b', ['a']), properties: { startDate: '2026-09-14', endDate: '2026-09-16' } },
+    ]
+    // What the view hands the layer: the map it already built to draw the rows with.
+    const measured = kanbanTimelineBarMap(items, range)
+    expect(kanbanDependencyLinks(items, range, undefined, measured)).toEqual(kanbanDependencyLinks(items, range))
   })
 })

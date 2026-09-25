@@ -3,13 +3,14 @@ import { Plus } from 'lucide-react'
 import { Slider } from '../../../../components/form'
 import { t, useLocaleRepaint } from '../../../i18n'
 import {
-  calculateTimelineBarGeometry,
   splitTimelineItems,
   TIMELINE_MAX_DAYS,
+  type TimelineBarGeometry,
   type TimelineDayFields,
   type TimelineRange,
 } from '../timeline-helpers'
 import type { KanbanData, KanbanItem, KanbanView } from '../types'
+import { kanbanTimelineBarMap } from '../dependencies'
 import { useBarReschedule, type BarRescheduleApi } from './kanban-bar-reschedule'
 import { KanbanDependencyLayer } from './kanban-dependency-layer'
 import { KanbanIconBadge } from './kanban-icon-badge'
@@ -130,21 +131,19 @@ function GanttTaskSidebar({
 }
 
 function GanttBar({
+  bar,
   item,
-  range,
-  fields,
   progressField,
   reschedule,
   onOpenDetail,
 }: {
+  /** The bar the view already measured, one entry of the map the dependency layer reads too. */
+  bar?: TimelineBarGeometry
   item: KanbanItem
-  range: TimelineRange
-  fields?: TimelineDayFields
   progressField: string
   reschedule: BarRescheduleApi
   onOpenDetail: (item: KanbanItem) => void
 }) {
-  const bar = calculateTimelineBarGeometry(item, range, fields)
   const progress = ganttProgress(item, progressField)
   if (!bar) return null
 
@@ -173,6 +172,7 @@ function GanttTimelineChart({
   items,
   range,
   fields,
+  bars,
   progressField,
   scrollRef,
   reschedule,
@@ -184,6 +184,8 @@ function GanttTimelineChart({
   items: KanbanItem[]
   range: TimelineRange
   fields?: TimelineDayFields
+  /** The bars the view already measured, shared with the dependency layer above the rows. */
+  bars: ReadonlyMap<string, TimelineBarGeometry>
   progressField: string
   scrollRef: React.RefObject<HTMLDivElement | null>
   reschedule: BarRescheduleApi
@@ -197,13 +199,12 @@ function GanttTimelineChart({
       <TimelineDayHeader days={range.days} dayWidth={range.dayWidth} />
 
       <div className='relative w-max divide-y divide-[var(--border-subtle)]'>
-        <KanbanDependencyLayer items={items} range={range} fields={fields} />
+        <KanbanDependencyLayer items={items} range={range} fields={fields} bars={bars} />
         {items.map((item) => (
           <GanttBar
             key={item.id}
             item={item}
-            range={range}
-            fields={fields}
+            bar={bars.get(item.id)}
             progressField={progressField}
             reschedule={reschedule}
             onOpenDetail={onOpenDetail}
@@ -235,6 +236,8 @@ export const KanbanGanttView = memo(function KanbanGanttView({
   const memory = useKanbanViewMemory(view?.id)
   const { range, zoom, scrollRef, onZoomChange, onToday } = useTimelineViewState(dated, fields, memory.zoom, memory.setZoom)
   const reschedule = useBarReschedule({ dayWidth: range.dayWidth, fields, onShift: onReschedule })
+  // One geometry pass feeds the rows and the dependency layer alike, exactly as the timeline does.
+  const bars = useMemo(() => kanbanTimelineBarMap(visibleDated, range, fields), [visibleDated, range, fields])
 
   return (
     <div data-kanban-gantt className='flex h-full w-full flex-col overflow-hidden p-4'>
@@ -252,6 +255,7 @@ export const KanbanGanttView = memo(function KanbanGanttView({
           items={visibleDated}
           range={range}
           fields={fields}
+          bars={bars}
           progressField={progressField}
           scrollRef={scrollRef}
           reschedule={reschedule}

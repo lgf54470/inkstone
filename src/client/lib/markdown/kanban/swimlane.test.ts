@@ -10,6 +10,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { kanbanSwimlanes, moveKanbanItemToCell, moveKanbanItemsToCell } from './swimlane'
+import type { KanbanCellsMove } from './swimlane'
 import type { KanbanItem, KanbanProperty } from './types'
 
 const ownerColumn: KanbanProperty = {
@@ -226,5 +227,80 @@ describe('a drop that touches only one coordinate of the cell', () => {
   it('answers with the same list when the card is nowhere to be found', () => {
     const items = [card('a1', { status: 'todo', owner: 'alice' })]
     expect(moveKanbanItemToCell(items, { itemId: 'ghost', cell: { groupKey: 'doing', laneKey: 'bob' }, layout })).toBe(items)
+  })
+})
+
+/** The reference: exactly what the batch mover did before it walked a list — one card at a time. */
+function batchCardByCard(items: KanbanItem[], move: KanbanCellsMove): KanbanItem[] {
+  return move.itemIds.reduce(
+    (next, itemId) => moveKanbanItemToCell(next, {
+      itemId,
+      cell: move.cell,
+      pivot: itemId === move.anchorId ? move.pivot : undefined,
+      layout: move.layout,
+    }),
+    items,
+  )
+}
+
+/** Deterministic replacement for `Math.random`, so a failure replays the exact board that failed. */
+function mulberry32(seed: number): () => number {
+  let state = seed
+  return () => {
+    state |= 0
+    state = (state + 0x6d2b79f5) | 0
+    let mixed = Math.imul(state ^ (state >>> 15), 1 | state)
+    mixed = (mixed + Math.imul(mixed ^ (mixed >>> 7), 61 | mixed)) ^ mixed
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const STATUSES = ['todo', 'doing', 'done', undefined]
+const OWNERS = ['alice', 'bob', undefined]
+const GROUPS = ['todo', 'doing', 'done', '__none__']
+const LANES = ['alice', 'bob', '__none__', undefined]
+
+function pick<T>(random: () => number, values: readonly T[]): T {
+  return values[Math.floor(random() * values.length)]!
+}
+
+/** One random round: a small board, a random subset picked in a random order, a random drop. */
+function randomBatchCase(random: () => number): { items: KanbanItem[]; move: KanbanCellsMove } {
+  const count = 1 + Math.floor(random() * 12)
+  const items = Array.from({ length: count }, (_, index) => {
+    const properties: Record<string, unknown> = { status: pick(random, STATUSES) }
+    if (random() < 0.85) properties.owner = pick(random, OWNERS)
+    return card(`item-${index}`, properties)
+  })
+  const ids = items.map((item) => item.id)
+  const picked = ids.filter(() => random() < 0.5)
+  const anchor = pick(random, picked.length > 0 ? picked : [ids[0]!])
+  const move: KanbanCellsMove = {
+    itemIds: picked.length > 0 ? picked : [ids[0]!],
+    anchorId: anchor,
+    cell: { groupKey: pick(random, GROUPS), ...(random() < 0.7 ? { laneKey: pick(random, LANES) } : {}) },
+    ...(random() < 0.7
+      ? { pivot: { itemId: pick(random, [...ids, 'ghost']), position: random() < 0.5 ? ('before' as const) : ('after' as const) } }
+      : {}),
+    ...(random() < 0.5 ? { layout } : { layout: { ...layout, lanePropertyId: undefined, laneProperty: undefined } }),
+  }
+  return { items, move }
+}
+
+/**
+ * The batch mover walks a linked list rather than re-running the whole document through the
+ * single-card mover per picked card. What must not change is the answer, so the reference here is
+ * the walk itself — one card at a time, exactly as the reduce used to — and hundreds of random
+ * boards, batches, cells and pivots have to come out identical to it, order and property writes alike.
+ */
+describe('the batch walk agrees with the card-by-card walk it stands in for', () => {
+  it('matches it on hundreds of random boards, batches and drops', () => {
+    const random = mulberry32(20260925)
+    for (let round = 0; round < 400; round++) {
+      const { items, move } = randomBatchCase(random)
+      const batch = moveKanbanItemsToCell(items, move)
+      const reference = batchCardByCard(items, move)
+      expect(batch, `round ${round}: ids ${JSON.stringify(move)}`).toStrictEqual(reference)
+    }
   })
 })

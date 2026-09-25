@@ -185,14 +185,39 @@ interface BoardColumnCellProps extends BoardCellBundle {
  */
 function useColumnSelectAll(props: BoardColumnCellProps) {
   const { group, selectedIds, onToggleSelectAll } = props
-  return useMemo(() => {
-    if (!onToggleSelectAll) return undefined
-    return {
-      count: group.items.length,
-      isAllSelected: group.items.length > 0 && group.items.every((item) => selectedIds.has(item.id)),
-      onToggle: () => onToggleSelectAll(group.items.map((item) => item.id)),
-    }
-  }, [group, selectedIds, onToggleSelectAll])
+  // Counted outside the memo and memoized on the count rather than on the set: the set is the board's
+  // and a new one arrives whenever any card anywhere is ticked, so a bundle keyed on it was a new
+  // object per tick — and a `memo` column compares props, so every column on the board repainted for
+  // a tick that touched one card. The two numbers are the whole answer a column draws.
+  const count = group.items.length
+  const isAllSelected = count > 0 && group.items.every((item) => selectedIds.has(item.id))
+  return useMemo(
+    () => (onToggleSelectAll
+      ? {
+          count,
+          isAllSelected,
+          onToggle: () => onToggleSelectAll(group.items.map((item) => item.id)),
+        }
+      : undefined),
+    [count, isAllSelected, group, onToggleSelectAll],
+  )
+}
+
+/**
+ * The picked cards this column holds, as a set of its own.
+ *
+ * Same reason as the bundle above, one step down: the board's selection reaches the column as one set
+ * for the whole board, and handing that identity into the `memo` repainted every column — and in a
+ * banded board every cell of every band — each time the reader ticked a card. A column only ever asks
+ * whether *its* cards are picked, so the answer is hashed into a signature and the set is rebuilt when
+ * the signature moves, which is to say when the ticking touched this column.
+ */
+function useColumnSelection(group: KanbanGroup, selectedIds: Set<string>): Set<string> {
+  const signature = useMemo(
+    () => group.items.filter((item) => selectedIds.has(item.id)).map((item) => item.id).join(' '),
+    [group, selectedIds],
+  )
+  return useMemo(() => new Set(signature === '' ? [] : signature.split(' ')), [signature])
 }
 
 function ExpandedBoardColumn(props: BoardColumnCellProps) {
@@ -202,6 +227,7 @@ function ExpandedBoardColumn(props: BoardColumnCellProps) {
   // one of them. The cell is rebuilt inside `useColumnCellHandlers` from its two keys anyway.
   const { cell, group, dnd, ...columnProps } = props
   const selectAll = useColumnSelectAll(props)
+  const selection = useColumnSelection(group, props.selectedIds)
   const handlers = useColumnCellHandlers({
     cell,
     groupKey: group.groupKey,
@@ -215,6 +241,8 @@ function ExpandedBoardColumn(props: BoardColumnCellProps) {
     <KanbanBoardColumn
       {...columnProps}
       group={group}
+      // This column's own picked cards, not the board's set: see `useColumnSelection`.
+      selectedIds={selection}
       laneKey={cell.laneKey}
       headOnly={props.variant === 'head'}
       bodyOnly={props.variant === 'body'}

@@ -161,17 +161,32 @@ const LINK_BOW = 12
 const LINK_TIP = 7
 const LINK_TIP_HALF = 4.5
 
-export function kanbanDependencyLinks(
+/**
+ * Every bar on the window, keyed by its card — computed once for the view that draws the bars and
+ * the dependency layer that needs their edges. Both used to run this geometry themselves, so a zoom
+ * step on a ceiling-size board did the whole scan twice in one commit.
+ */
+export function kanbanTimelineBarMap(
   items: KanbanItem[],
   range: TimelineRange,
   fields?: TimelineDayFields,
-): KanbanDependencyLink[] {
-  const rowOf = new Map(items.map((item, index) => [item.id, index]))
+): Map<string, TimelineBarGeometry> {
   const bars = new Map<string, TimelineBarGeometry>()
   for (const item of items) {
     const bar = calculateTimelineBarGeometry(item, range, fields)
     if (bar) bars.set(item.id, bar)
   }
+  return bars
+}
+
+export function kanbanDependencyLinks(
+  items: KanbanItem[],
+  range: TimelineRange,
+  fields?: TimelineDayFields,
+  barsByItem?: ReadonlyMap<string, TimelineBarGeometry>,
+): KanbanDependencyLink[] {
+  const rowOf = new Map(items.map((item, index) => [item.id, index]))
+  const bars = barsByItem ?? kanbanTimelineBarMap(items, range, fields)
 
   const links: KanbanDependencyLink[] = []
   for (const edge of kanbanDependencyEdges(items)) {

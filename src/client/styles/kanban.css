@@ -255,9 +255,10 @@
 }
 
 .kanban-print-sheet {
+  --print-offscreen-x: -100000px;
   position: fixed;
   top: 0;
-  left: -100000px;
+  left: var(--print-offscreen-x);
   background: var(--bg-surface);
 }
 

@@ -90,19 +90,176 @@ export interface KanbanCellsMove {
   layout: KanbanBoardLayout
 }
 
+/** One card of the document while a batch walks it, with its two neighbours. */
+interface MoveNode {
+  item: KanbanItem
+  prev: MoveNode | null
+  next: MoveNode | null
+}
+
+/** The document as a list, with the index a picked card is found by and the two ends a drop lands at. */
+interface MoveDocument {
+  head: MoveNode | null
+  tail: MoveNode | null
+  byId: Map<string, MoveNode>
+}
+
+function buildMoveDocument(items: KanbanItem[]): MoveDocument {
+  let head: MoveNode | null = null
+  let tail: MoveNode | null = null
+  const byId = new Map<string, MoveNode>()
+  for (const item of items) {
+    const node: MoveNode = { item, prev: tail, next: null }
+    if (tail) tail.next = node
+    else head = node
+    tail = node
+    byId.set(item.id, node)
+  }
+  return { head, tail, byId }
+}
+
+function unlinkMoveNode(document: MoveDocument, node: MoveNode): void {
+  if (node.prev) node.prev.next = node.next
+  else document.head = node.next
+  if (node.next) node.next.prev = node.prev
+  else document.tail = node.prev
+}
+
+function linkMoveNode(document: MoveDocument, node: MoveNode, insertAfter: MoveNode | null): void {
+  node.prev = insertAfter
+  node.next = insertAfter ? insertAfter.next : document.head
+  if (node.next) node.next.prev = node
+  else document.tail = node
+  if (node.prev) node.prev.next = node
+  else document.head = node
+}
+
+/** The walking state one batch drop keeps between its picked cards. */
+interface BatchWalk {
+  document: MoveDocument
+  /** Same membership rule the column filter uses, so a column of unvalued cards is found the same way. */
+  inTargetColumn: (item: KanbanItem) => boolean
+  /**
+   * The last card of the target column, in document order — the place a card with no pivot lands.
+   * Either the column's true last card, or one standing somewhere before it: a pivot can land a card
+   * mid-document, so a read may still have to walk forward to find where the column ends.
+   */
+  columnTail: MoveNode | null
+  columnTailResolved: boolean
+}
+
+function openBatchWalk(document: MoveDocument, move: KanbanCellsMove): BatchWalk {
+  const groupPropertyId = move.layout.groupPropertyId
+  const inTargetColumn = (item: KanbanItem): boolean => {
+    const value = item.properties[groupPropertyId]
+    return move.cell.groupKey === UNASSIGNED_BAND ? !value : value === move.cell.groupKey
+  }
+  let columnTail: MoveNode | null = null
+  for (let node = document.head; node; node = node.next) {
+    if (inTargetColumn(node.item)) columnTail = node
+  }
+  return { document, inTargetColumn, columnTail, columnTailResolved: true }
+}
+
+function resolveBatchColumnTail(walk: BatchWalk): void {
+  if (walk.columnTail && !walk.columnTailResolved) {
+    for (let cursor = walk.columnTail.next; cursor; cursor = cursor.next) {
+      if (walk.inTargetColumn(cursor.item)) walk.columnTail = cursor
+    }
+    walk.columnTailResolved = true
+  }
+}
+
+/** Where the card lands, read off the list without it, the way the array mover reads the array. */
+function batchInsertionAfter(
+  walk: BatchWalk,
+  heldPivot: KanbanMovePivot | undefined,
+): { insertAfter: MoveNode | null; atColumnEnd: boolean; atDocumentEnd: boolean } {
+  const { document, columnTail } = walk
+  if (heldPivot) {
+    const pivotNode = document.byId.get(heldPivot.itemId)
+    // A pivot only names a place inside a column that still has cards: the array mover never
+    // reached it when the target group came out empty, and the card went to the document's end.
+    if (pivotNode && columnTail) {
+      const insertAfter = heldPivot.position === 'before' ? pivotNode.prev : pivotNode
+      walk.columnTailResolved = false
+      return {
+        insertAfter,
+        atColumnEnd: insertAfter === columnTail,
+        atDocumentEnd: insertAfter === document.tail,
+      }
+    }
+  }
+  return {
+    insertAfter: columnTail ?? document.tail,
+    atColumnEnd: columnTail !== null,
+    atDocumentEnd: columnTail === null,
+  }
+}
+
+function moveBatchCard(walk: BatchWalk, move: KanbanCellsMove, itemId: string): void {
+  const { cell, pivot, layout } = move
+  const { groupPropertyId, lanePropertyId } = layout
+  const laneKey = cell.laneKey
+  const node = walk.document.byId.get(itemId)
+  if (!node) return
+  // The band is written even when the card never leaves its column (see `moveKanbanItemToCell`).
+  if (laneKey !== undefined && lanePropertyId) node.item = writeBand(node.item, lanePropertyId, laneKey)
+  const heldPivot = itemId === move.anchorId ? pivot : undefined
+  if (!heldPivot && laneKey !== undefined && staysInColumn(node.item, groupPropertyId, cell.groupKey)) return
+  if (heldPivot && heldPivot.itemId === itemId) return
+
+  // Out of the document first: the insertion point is read off the list without this card.
+  unlinkMoveNode(walk.document, node)
+  // The tail is resolved before the removal is reconciled with it: a pivot may have left it pointing
+  // before the column's true last card, and the rewind below has to start from that true last card.
+  resolveBatchColumnTail(walk)
+  if (node === walk.columnTail) {
+    let cursor = node.prev
+    while (cursor && !walk.inTargetColumn(cursor.item)) cursor = cursor.prev
+    walk.columnTail = cursor
+  }
+
+  const where = batchInsertionAfter(walk, heldPivot)
+  node.item = {
+    ...node.item,
+    properties: {
+      ...node.item.properties,
+      [groupPropertyId]: cell.groupKey === UNASSIGNED_BAND ? undefined : cell.groupKey,
+    },
+  }
+  linkMoveNode(walk.document, node, where.insertAfter)
+  // Landing after the column's last card — or at the document's end, when the column had none —
+  // makes this card the column's last; a pivot that stood mid-column leaves the tail behind it.
+  if (where.atColumnEnd || where.atDocumentEnd) {
+    walk.columnTail = node
+    walk.columnTailResolved = true
+  }
+}
+
+function readMoveDocument(document: MoveDocument): KanbanItem[] {
+  const next: KanbanItem[] = []
+  for (let node = document.head; node; node = node.next) next.push(node.item)
+  return next
+}
+
 /**
  * The same drop, made with a batch: every picked card lands in the cell, and the card the reader was
  * holding takes the place under the pointer. A pivot for each of them would be a guess — the pointer
  * named one spot, not one per card — so the rest of the batch keeps the order it already had, which is
- * the order the array gives the target column. One card at a time through the single-card mover, since
- * each of them writes the same cell and only the held one reorders.
+ * the order the array gives the target column.
+ *
+ * The walk is card by card the same walk `moveKanbanItemToCell` makes — band write, the card that
+ * only changed band staying put, the held card's pivot — but over a linked list instead of the
+ * document array. The reduce this used to be ran four whole-array scans per picked card (find, map,
+ * filter, splice), so a few hundred picked cards on a ceiling-size board spent a long frame copying
+ * arrays; here every step is a pointer move and the array is walked twice, once to build the list
+ * and once to read it back.
  */
 export function moveKanbanItemsToCell(items: KanbanItem[], move: KanbanCellsMove): KanbanItem[] {
-  const { itemIds, anchorId, cell, pivot, layout } = move
-  return itemIds.reduce(
-    (next, itemId) => moveKanbanItemToCell(next, { itemId, cell, pivot: itemId === anchorId ? pivot : undefined, layout }),
-    items,
-  )
+  const walk = openBatchWalk(buildMoveDocument(items), move)
+  for (const itemId of move.itemIds) moveBatchCard(walk, move, itemId)
+  return readMoveDocument(walk.document)
 }
 
 export function moveKanbanItemToCell(items: KanbanItem[], move: KanbanCellMove): KanbanItem[] {

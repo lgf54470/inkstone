@@ -11,6 +11,7 @@
  */
 import { useCallback, useMemo, useRef, useState, type RefObject } from 'react'
 import { t } from '../../../i18n'
+import { useUi } from '../../../../store/ui'
 import { groupKanbanItems, kanbanWipOver } from '../filter-sort'
 import type { KanbanGroup } from '../filter-sort'
 import { formatKanbanGroupLabel } from '../i18n-helpers'
@@ -87,6 +88,34 @@ function neighbourKey(keys: string[], current: string, offset: -1 | 1): string |
 }
 
 /**
+ * Whether the column a drop aims at will take the cards in.
+ *
+ * A work-in-progress limit gates the column's door, not the order inside it: cards that would come in
+ * from elsewhere are refused once the column is full, while a card that already stands there — a
+ * reorder, a change of band — never counts against it. A column nobody limited, or one the board
+ * cannot match the drop to, lets every move through.
+ */
+export function kanbanWipRefuses(groups: KanbanGroup[], cell: KanbanBoardCell, incomingIds: ReadonlySet<string>): boolean {
+  const target = groups.find((group) => group.groupKey === cell.groupKey)
+  if (!target || target.wipLimit === undefined) return false
+  const incoming = [...incomingIds].filter((id) => !target.items.some((item) => item.id === id)).length
+  return incoming > 0 && target.items.length + incoming > target.wipLimit
+}
+
+/** Says why the drop did not happen, once per refusal, in the words the column's own pill uses. */
+function refuseWipIncoming(groups: KanbanGroup[], cell: KanbanBoardCell): void {
+  const target = groups.find((group) => group.groupKey === cell.groupKey)
+  if (!target || target.wipLimit === undefined) return
+  useUi.getState().toast({
+    title: t('preview.kanban_wip_blocked', {
+      group: formatKanbanGroupLabel(target.groupKey, target.label),
+      limit: target.wipLimit,
+    }),
+    tone: 'danger',
+  })
+}
+
+/**
  * What a batch drop says out loud: the column under the pointer, and how many cards went into it. The
  * count is the selection as it stood at the drop, not the cards the writer then moved, and a drop that
  * turns out to be a single move stays quiet here because the mover announces that one itself.
@@ -101,6 +130,10 @@ function useBatchMoveAnnouncement(
   const moveSelectionRef = useRef(batch.moveSelection)
   moveSelectionRef.current = batch.moveSelection
   return useCallback<MoveItemFn>((itemId, cell, pivot) => {
+    if (kanbanWipRefuses(groupsRef.current, cell, selectionRef.current)) {
+      refuseWipIncoming(groupsRef.current, cell)
+      return
+    }
     const target = groupsRef.current.find((group) => group.groupKey === cell.groupKey)
     const count = selectionRef.current.size
     if (target && count > 1) {
@@ -139,6 +172,12 @@ function useKanbanBoardMoves(
   const handleMoveSelection = useBatchMoveAnnouncement(groupsRef, batch, setMoveAnnouncement)
 
   const handleMoveItem = useCallback<MoveItemFn>((itemId, cell, pivot) => {
+    // The door is checked before anything is read out: a refused drop is a move that never
+    // happened, so the live region stays quiet and the writer is never asked for it.
+    if (kanbanWipRefuses(groupsRef.current, cell, new Set([itemId]))) {
+      refuseWipIncoming(groupsRef.current, cell)
+      return
+    }
     const message = kanbanMoveAnnouncement(groupsRef.current, bandsRef.current, itemId, cell)
     if (message) setMoveAnnouncement(message)
     moveItemRef.current(itemId, cell, pivot)

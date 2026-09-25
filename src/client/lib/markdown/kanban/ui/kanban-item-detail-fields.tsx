@@ -1,7 +1,8 @@
-import { Flag, Trash2 } from 'lucide-react'
+import { Flag, Link2, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanDotColor, getKanbanTagStyle } from '../colors'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
+import { safeKanbanUrl } from '../url'
 import type { ReactNode } from 'react'
 import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
 import { KanbanDatePicker } from './kanban-date-picker'
@@ -150,6 +151,58 @@ function LabelledField({ column, children }: { column: KanbanProperty; children:
   )
 }
 
+/**
+ * Edited as text like its sibling fields; the link it names opens from the affordance beside it,
+ * through the same URL whitelist the fence was read under.
+ */
+function UrlDetailField({ value, onChange }: { value: string; onChange: (value: unknown) => void }) {
+  const link = safeKanbanUrl(value)
+  return (
+    <div className='flex items-center gap-1'>
+      <input
+        type='text'
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className='h-8 min-w-0 flex-1 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
+      />
+      {link && (
+        <a
+          href={link}
+          target='_blank'
+          rel='noopener noreferrer'
+          aria-label={t('preview.open_in_new_tab')}
+          className='shrink-0 p-1 text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]'
+        >
+          <Link2 size={13} />
+        </a>
+      )}
+    </div>
+  )
+}
+
+/** The one date a detail field holds, through the same picker the table uses. */
+function DateDetailField({ column, value, onChange }: { column: KanbanProperty; value: unknown; onChange: (value: unknown) => void }) {
+  return (
+    <KanbanDatePicker
+      propertyName={formatKanbanPropertyName(column)}
+      value={String(value ?? '')}
+      onChange={onChange}
+    />
+  )
+}
+
+/** The plain fallback: text and number, both edited as the detail panel always has. */
+function TextDetailField({ column, value, onChange }: { column: KanbanProperty; value: unknown; onChange: (value: unknown) => void }) {
+  return (
+    <input
+      type={column.type === 'number' ? 'number' : 'text'}
+      value={column.type === 'number' ? Number(value ?? 0) : String(value ?? '')}
+      onChange={(e) => onChange(column.type === 'number' ? Number(e.target.value) : e.target.value)}
+      className='h-8 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
+    />
+  )
+}
+
 export function DetailPropertyField({
   column,
   value,
@@ -165,11 +218,7 @@ export function DetailPropertyField({
   if (column.type === 'date') {
     return (
       <LabelledField column={column}>
-        <KanbanDatePicker
-          propertyName={formatKanbanPropertyName(column)}
-          value={String(value ?? '')}
-          onChange={onChange}
-        />
+        <DateDetailField column={column} value={value} onChange={onChange} />
       </LabelledField>
     )
   }
@@ -187,26 +236,20 @@ export function DetailPropertyField({
     )
   }
 
+  if (column.type === 'url') {
+    return (
+      <LabelledField column={column}>
+        <UrlDetailField value={String(value ?? '')} onChange={onChange} />
+      </LabelledField>
+    )
+  }
+
   return (
     <label className='flex flex-col gap-1'>
       <span className='text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
         {formatKanbanPropertyName(column)}
       </span>
-      {column.type === 'number' ? (
-        <input
-          type='number'
-          value={Number(value ?? 0)}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className='h-8 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
-        />
-      ) : (
-        <input
-          type='text'
-          value={String(value ?? '')}
-          onChange={(e) => onChange(e.target.value)}
-          className='h-8 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
-        />
-      )}
+      <TextDetailField column={column} value={value} onChange={onChange} />
     </label>
   )
 }

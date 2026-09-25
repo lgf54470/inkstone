@@ -30,11 +30,8 @@ function SubtaskItemRow({
             e.stopPropagation()
             onToggle()
           }}
-          className='flex size-3.5 shrink-0 items-center justify-center rounded-[var(--r-xs)] border transition-colors'
-          style={{
-            borderColor: subtask.completed ? 'var(--accent)' : 'var(--border-default)',
-            backgroundColor: subtask.completed ? 'var(--accent)' : 'transparent',
-          }}
+          data-completed={subtask.completed || undefined}
+          className='flex size-3.5 shrink-0 items-center justify-center rounded-[var(--r-xs)] border border-[var(--border-default)] bg-transparent transition-colors data-[completed]:border-[var(--accent)] data-[completed]:bg-[var(--accent)]'
           aria-label={subtask.title}
         >
           {subtask.completed && <Check size={10} className='text-[var(--accent-contrast)]' />}

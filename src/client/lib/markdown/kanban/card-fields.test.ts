@@ -142,6 +142,31 @@ describe('a value a card has nothing to say about is left off it', () => {
   })
 })
 
+describe('a url field prints as the link it names, through the fence’s own whitelist', () => {
+  const linkColumn: KanbanProperty = { id: 'spec', name: 'Spec', type: 'url' }
+
+  it('hands the card the href beside the text when the value is a safe link', () => {
+    const field = readKanbanCardField(item({ properties: { spec: 'https://spec.example.test/1' } }), linkColumn)
+    expect(field).toEqual({
+      id: 'spec',
+      label: 'Spec',
+      value: 'https://spec.example.test/1',
+      href: 'https://spec.example.test/1',
+    })
+  })
+
+  it('keeps a value the whitelist refuses as plain text, never as a link', () => {
+    const field = readKanbanCardField(item({ properties: { spec: 'javascript:alert(1)' } }), linkColumn)
+    expect(field).toEqual({ id: 'spec', label: 'Spec', value: 'javascript:alert(1)' })
+    expect(field?.href).toBeUndefined()
+  })
+
+  it('says nothing about an empty url cell', () => {
+    expect(readKanbanCardField(item({ properties: { spec: '   ' } }), linkColumn)).toBeNull()
+    expect(readKanbanCardField(item(), linkColumn)).toBeNull()
+  })
+})
+
 describe('one item’s fields, in the view’s order', () => {
   it('reads them in the order the view asks and skips what the card cannot say', () => {
     const fields = readKanbanCardFields(

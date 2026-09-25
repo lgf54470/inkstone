@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { ArrowDown, ArrowUp } from 'lucide-react'
+import { ArrowDown, ArrowUp, Link2 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanTagStyle } from '../colors'
 import { kanbanColumnWidthPx } from '../column-width'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
+import { safeKanbanUrl } from '../url'
 import type { CSSProperties } from 'react'
 import type { KanbanFile, KanbanItem, KanbanOption, KanbanProperty, KanbanPropertyType, KanbanSort } from '../types'
 import { ColumnResizeHandle } from './kanban-column-resize-handle'
@@ -46,6 +47,7 @@ const COLUMN_WIDTH: Record<KanbanPropertyType, string> = {
   checkbox: 'w-16 shrink-0',
   person: 'w-36 shrink-0',
   files: 'w-40 shrink-0',
+  url: 'w-36 shrink-0',
 }
 
 function kanbanColumnTypeWidth(column: KanbanProperty): string {
@@ -186,6 +188,65 @@ interface KanbanPropertyCellProps {
   people?: Record<string, string[]>
 }
 
+/**
+ * A url cell stays an editable field like its text sibling; the link it names opens from the
+ * affordance beside it, so the reader never has to leave edit mode to follow it.
+ */
+function UrlCellValue({
+  column,
+  value,
+  write,
+}: {
+  column: KanbanProperty
+  value: unknown
+  write: (next: unknown) => void
+}) {
+  const link = safeKanbanUrl(readPlainText(value))
+  return (
+    <div className='flex items-center gap-1'>
+      <EditableValue
+        label={formatKanbanPropertyName(column)}
+        text={readPlainText(value)}
+        onSubmit={(next) => write(next.trim())}
+      />
+      {link && (
+        <a
+          href={link}
+          target='_blank'
+          rel='noopener noreferrer'
+          aria-label={t('preview.open_in_new_tab')}
+          className='shrink-0 text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]'
+        >
+          <Link2 size={12} />
+        </a>
+      )}
+    </div>
+  )
+}
+
+/** The one date a cell holds, through the same picker the detail panel uses. */
+function DateCellValue({ column, value, write }: { column: KanbanProperty; value: unknown; write: (next: unknown) => void }) {
+  return (
+    <KanbanDatePicker
+      propertyName={formatKanbanPropertyName(column)}
+      value={readPlainText(value)}
+      onChange={write}
+    />
+  )
+}
+
+/** The plain fallback: text and number, both edited in place. */
+function TextCellValue({ column, value, write }: { column: KanbanProperty; value: unknown; write: (next: unknown) => void }) {
+  return (
+    <EditableValue
+      label={formatKanbanPropertyName(column)}
+      text={readPlainText(value)}
+      numberType={column.type === 'number'}
+      onSubmit={(next) => write(column.type === 'number' ? readNumber(next) : next)}
+    />
+  )
+}
+
 function CellContent({
   column,
   item,
@@ -226,22 +287,12 @@ function CellContent({
     return <KanbanFilesCell files={item.files} onChangeFiles={(files) => onUpdateFiles(item.id, files)} />
   }
   if (column.type === 'date') {
-    return (
-      <KanbanDatePicker
-        propertyName={formatKanbanPropertyName(column)}
-        value={readPlainText(value)}
-        onChange={write}
-      />
-    )
+    return <DateCellValue column={column} value={value} write={write} />
   }
-  return (
-    <EditableValue
-      label={formatKanbanPropertyName(column)}
-      text={readPlainText(value)}
-      numberType={column.type === 'number'}
-      onSubmit={(next) => write(column.type === 'number' ? readNumber(next) : next)}
-    />
-  )
+  if (column.type === 'url') {
+    return <UrlCellValue column={column} value={value} write={write} />
+  }
+  return <TextCellValue column={column} value={value} write={write} />
 }
 
 export function KanbanPropertyCell(props: KanbanPropertyCellProps) {

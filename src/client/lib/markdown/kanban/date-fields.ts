@@ -8,7 +8,7 @@
  */
 import { dateKey, daysBetweenKeys, formatDateKey } from '../../time'
 import { isKanbanItemDone } from './item-status'
-import type { KanbanItem } from './types'
+import type { KanbanItem, KanbanProperty } from './types'
 
 function readDayKey(item: KanbanItem, propertyId: string): string {
   const value = item.properties[propertyId]
@@ -74,4 +74,48 @@ export function readKanbanCardDate(item: KanbanItem, now = new Date()): KanbanCa
     dateText: formatDateKey(kanbanDayKey(key) || key, now),
     overdueDays: getKanbanOverdueDays(item, now),
   }
+}
+
+export interface KanbanDueNotice {
+  /** The date column the notice counted and its filter button writes, so the two always agree. */
+  propertyId: string
+  /** Cards whose deadline day is before today, still open. */
+  overdue: KanbanItem[]
+  /** Cards whose deadline day is today, still open. */
+  dueToday: KanbanItem[]
+}
+
+/**
+ * The board's opening answer to "what is owed": the still-open cards past their day, and the ones
+ * due today, read off one date column. The column is chosen once — the view's own date field, then
+ * `dueDate`, then `endDate`, then the first date column that holds anything — because the notice's
+ * numbers and the filter its button writes have to be the same question asked twice. Property
+ * values outside a date column are invisible here on purpose: a deadline the board never declared
+ * a column for has no filter to be written into, and a notice that could not be acted on would
+ * only nag.
+ */
+export function kanbanDueNotice(
+  items: KanbanItem[],
+  columns: KanbanProperty[],
+  dateFieldHint?: string,
+  now: Date = new Date(),
+): KanbanDueNotice | null {
+  const dateColumns = columns.filter((column) => column.type === 'date')
+  const hasValue = (propertyId: string) => items.some((item) => kanbanDayKey(readDayKey(item, propertyId)) !== '')
+  const named = [dateFieldHint, 'dueDate', 'endDate']
+    .filter((id): id is string => typeof id === 'string')
+    .find((id) => dateColumns.some((column) => column.id === id) && hasValue(id))
+    ?? dateColumns.find((column) => hasValue(column.id))?.id
+  if (!named) return null
+  const today = dateKey(now)
+  const overdue: KanbanItem[] = []
+  const dueToday: KanbanItem[] = []
+  for (const item of items) {
+    if (item.archived || item.deleted) continue
+    const deadline = kanbanDayKey(readDayKey(item, named))
+    if (!deadline || isKanbanItemDone(item)) continue
+    if (deadline < today) overdue.push(item)
+    else if (deadline === today) dueToday.push(item)
+  }
+  return { propertyId: named, overdue, dueToday }
 }

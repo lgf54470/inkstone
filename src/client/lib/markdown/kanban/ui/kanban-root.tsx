@@ -5,6 +5,7 @@ import { KanbanBatchBar } from './kanban-batch-bar'
 import type { KanbanBatchEdits } from './kanban-batch-bar'
 import { KanbanRootOverlays } from './kanban-overlays'
 import { useKanbanCsvEntry } from './kanban-csv'
+import { KanbanDueNotice } from './kanban-due-notice'
 import { KanbanEmptyBoard } from './kanban-empty-board'
 import { useKanbanExportEntry } from './kanban-export'
 import { applyKanbanTemplate } from '../templates'
@@ -288,6 +289,12 @@ export const KanbanRoot = memo(function KanbanRoot({
           onRetryWrite={onRetryWrite}
           onDiscardWrite={onDiscardWrite}
           onToggleFullscreen={onToggleFullscreen}
+        />
+        <KanbanDueNotice
+          items={state.data.items}
+          columns={state.data.columns}
+          dateField={state.filterSort.activeView.dateField}
+          onApplyFilters={(filters) => state.filterSort.updateActiveView({ filters })}
         />
         <KanbanMain state={state} viewPanelId={viewPanelId} viewPanelRef={viewPanelRef} />
         <KanbanRootOverlays
