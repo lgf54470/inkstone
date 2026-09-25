@@ -25,8 +25,26 @@ export function safeKanbanUrl(raw: string | undefined): string | null {
     return null
   }
   if (ALLOWED_PROTOCOLS.has(parsed.protocol)) return value
-  if (parsed.protocol === 'data:' && parsed.href.startsWith('data:image/')) return value
   return null
+}
+
+/**
+ * A cover is the one URL field the browser never follows — it is drawn as an `<img src>`, where a
+ * data url carries the pixels and any script inside it cannot run. A file's url, by contrast, is a
+ * link the reader can press and a body the panel can fetch, so it keeps the stricter list; a cover
+ * may additionally be an inline image.
+ */
+export function safeKanbanCoverUrl(raw: string | undefined): string | null {
+  const shared = safeKanbanUrl(raw)
+  if (shared !== null) return shared
+  if (typeof raw !== 'string') return null
+  const value = raw.trim()
+  if (!value.toLowerCase().startsWith('data:image/')) return null
+  try {
+    return new URL(value).protocol === 'data:' ? value : null
+  } catch {
+    return null
+  }
 }
 
 const API_FILE_URL = /^\/api\/kanban\/file\/([^/]+)\/([^/]+)$/

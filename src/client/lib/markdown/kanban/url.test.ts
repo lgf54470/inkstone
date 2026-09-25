@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { kanbanFileLocation, safeKanbanUrl } from './url'
+import { kanbanFileLocation, safeKanbanCoverUrl, safeKanbanUrl } from './url'
 
 describe('safeKanbanUrl protocol whitelist', () => {
   it('keeps same-site relative, http(s) and blob urls (blob: is the demo backend\'s upload answer)', () => {
@@ -9,8 +9,8 @@ describe('safeKanbanUrl protocol whitelist', () => {
     expect(safeKanbanUrl('blob:https://localhost/8f14e45f')).toBe('blob:https://localhost/8f14e45f')
   })
 
-  it('keeps image data urls only', () => {
-    expect(safeKanbanUrl('data:image/png;base64,iVBOR')).toBe('data:image/png;base64,iVBOR')
+  it('keeps no data urls: a file is a link the reader presses and a body the panel fetches', () => {
+    expect(safeKanbanUrl('data:image/png;base64,iVBOR')).toBeNull()
     expect(safeKanbanUrl('data:text/html,<script>alert(1)</script>')).toBeNull()
   })
 
@@ -27,6 +27,20 @@ describe('safeKanbanUrl protocol whitelist', () => {
     expect(safeKanbanUrl(undefined)).toBeNull()
     expect(safeKanbanUrl('mailto:someone@example.com')).toBeNull()
     expect(safeKanbanUrl('not a relative path')).toBeNull()
+  })
+})
+
+describe('safeKanbanCoverUrl, the cover\'s own whitelist', () => {
+  it('accepts everything a file url accepts', () => {
+    expect(safeKanbanCoverUrl('/api/kanban/file/default/1-note.png')).toBe('/api/kanban/file/default/1-note.png')
+    expect(safeKanbanCoverUrl('https://cdn.example.com/a.png')).toBe('https://cdn.example.com/a.png')
+  })
+
+  it('is the one field that may be an inline image, and only an image', () => {
+    expect(safeKanbanCoverUrl('data:image/png;base64,iVBOR')).toBe('data:image/png;base64,iVBOR')
+    expect(safeKanbanCoverUrl('data:image/svg+xml;base64,PHN2Zz4=')).toBe('data:image/svg+xml;base64,PHN2Zz4=')
+    expect(safeKanbanCoverUrl('data:text/html,<script>alert(1)</script>')).toBeNull()
+    expect(safeKanbanCoverUrl('data:application/pdf;base64,JVBE')).toBeNull()
   })
 })
 

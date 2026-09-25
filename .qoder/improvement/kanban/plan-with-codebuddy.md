@@ -18,7 +18,7 @@
 | 7 | 样式 U-3 | 子任务复选框完成态内联样式 → `data-*` + CSS | ✅ 完成 | 见 git log |
 | 8 | 样式 U-7 | 卡片头部 `stopPropagation` 吞掉 onKeyDown，需确认并注释 | ✅ 完成 | 见 git log |
 | 9 | 安全 S-3 | 跨域文本预览 `res.text()` 无体积上限 | ✅ 完成 | 见 git log |
-| 10 | 安全 S-4 | `data:image/*` 白名单放行 `file.url` | ⬜ 待做 | — |
+| 10 | 安全 S-4 | `data:image/*` 白名单放行 `file.url` | ✅ 完成 | 见 git log |
 | 11 | 安全 S-6 | fence JSON 无字段长度约束 | ⬜ 待做 | — |
 | 12 | 功能 F-1 | WIP 超限只提示不阻止落卡 | ⬜ 待做 | — |
 | 13 | 功能 F-2 | 截止日临期/逾期提示 | ⬜ 待做 | — |
@@ -66,3 +66,8 @@
 - 新增 `tooLarge` 状态与 `data-kanban-file-too-large` 呈现（无重试按钮——重试无意义），文案复用既有 `preview.kanban_file_too_large`（带 MB 参数）。
 - 测试：声明式超限不读 body；无声明的流式 body 越限即停。
 - 回归：typecheck + size + i18n 门禁通过；全量 `test:unit` 470 文件 / 4267 用例全绿。
+
+### 10. 安全 S-4 — cover 与 file.url 白名单分级 ✅
+- `safeKanbanUrl` 收紧为 http/https/blob/同站相对（不再接受任何 data:）；新增 `safeKanbanCoverUrl` 仅 cover 可额外接受 `data:image/*`（cover 只作 `<img src>`，data url 中的脚本不可能执行；file.url 是链接与 fetch 目标）。
+- `body.ts` 的解析期 fail-closed 守卫按字段分别调用；`url.test.ts` 与 `tests/kanban-url-fields.test.ts` 按字段各自的白名单钉住（含 data:image/svg 与 data:application/pdf 的拒绝例）。
+- 回归：typecheck 通过；URL 相关 4 文件 53 用例通过；全量 `test:unit` 470 文件 / 4269 用例全绿。

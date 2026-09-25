@@ -5166,6 +5166,7 @@ const allowed = new Map([
     '/**\n * How much one card\'s description may hold, wherever it is written from: the detail editor counts\n * down to it, and the CSV import clamps to it — a spreadsheet cell is user input like any other,\n * and the clamp is what keeps one giant cell from ballooning the fence it lands in.\n */',
     '// A rejected protocol fails the whole fence into its error state rather than',
     '// silently dropping the field, so the author sees why the board will not open.',
+    '// The cover alone may be an inline image; file urls are links and fetches.',
   ]],
   ['src/client/lib/markdown/kanban/calendar-helpers.test.ts', [
     '/**\n * KU-21b. Moving a card to another day from the calendar has to land in the columns that hold the\n * days the bar was drawn from, and keep the bar\'s span. The cases below pin the patch the pure layer\n * hands the view\'s writer: which keys it writes for the four shapes a card can have on the calendar\n * (a default start, a default deadline, both, or a view-configured field), that the span survives the\n * move, that stored timestamps are normalised to the day they name, and that a card with no day — or\n * a drop that never named one — writes nothing at all.\n */',
@@ -7251,6 +7252,7 @@ const allowed = new Map([
     '// upload. `kanbanFileLocation` below still rejects it, so it buys no delete or',
     '// read path — it is a render whitelist, not an authority grant.',
     '// A leading slash is same-site; \'//\' would be a protocol-relative external request.',
+    '/**\n * A cover is the one URL field the browser never follows — it is drawn as an `<img src>`, where a\n * data url carries the pixels and any script inside it cannot run. A file\'s url, by contrast, is a\n * link the reader can press and a body the panel can fetch, so it keeps the stricter list; a cover\n * may additionally be an inline image.\n */',
     '// Past notes keep whatever prefix their upload got, so a delete is addressed by',
     '// the file\'s own stored location rather than by the board\'s current namespace.',
   ]],
@@ -10073,7 +10075,10 @@ const allowed = new Map([
     '/** What the names of such a field look like, whichever interface it turns up on. */',
     '/** The body of one `export interface X { … }`, found by its brace rather than by its length. */',
     '/** Interface name → the field names on it that hold a URL. */',
-    '/** One way to smuggle a URL into a card, named by the field it goes into. */',
+    '/** One way to smuggle a URL into a card, named by the field it goes into, with its own whitelist. */',
+    '// The cover is an `<img src>`, so an inline image carries the pixels and cannot run.',
+    '// A file url is a link the reader presses and a body the panel fetches, so it never takes a',
+    '// data url — there is nothing to preview that the reader did not already have in the note.',
     '// The message names the field, so an author whose board will not open can find the line.',
   ]],
   ['tests/kanban-view-live-fields.test.ts', [

@@ -8,7 +8,7 @@ import {
   type FenceRange,
 } from '../fence-edit'
 import { parseKanbanOutline, serializeKanbanOutline } from './outline'
-import { safeKanbanUrl } from './url'
+import { safeKanbanCoverUrl, safeKanbanUrl } from './url'
 import type {
   KanbanData,
   KanbanFenceRef,
@@ -51,8 +51,9 @@ export function detectKanbanMode(body: string): KanbanMode {
 function assertFenceUrlsAreSafe(items: KanbanItem[]): void {
   // A rejected protocol fails the whole fence into its error state rather than
   // silently dropping the field, so the author sees why the board will not open.
+  // The cover alone may be an inline image; file urls are links and fetches.
   for (const item of items) {
-    if (typeof item.cover === 'string' && item.cover.trim() !== '' && safeKanbanUrl(item.cover) === null) {
+    if (typeof item.cover === 'string' && item.cover.trim() !== '' && safeKanbanCoverUrl(item.cover) === null) {
       throw new Error(`Kanban item "${item.id ?? ''}" has an unsupported cover URL protocol`)
     }
     for (const file of item.files ?? []) {
