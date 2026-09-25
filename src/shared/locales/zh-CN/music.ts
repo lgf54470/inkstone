@@ -5,6 +5,7 @@ export const messages = {
 'music.hub_open_navigation': '打开音乐导航',
 'music.hub_open_now_playing': '打开正在播放面板',
 'music.open_hub': '打开音乐库',
+'music.open_hub_track': '打开音乐库：{value0}',
 'music.close_player': '关闭播放器',
 'music.section_library': '曲库',
 'music.section_playlists': '歌单',

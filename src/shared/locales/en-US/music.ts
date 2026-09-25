@@ -5,6 +5,7 @@ export const messages = {
 'music.hub_open_navigation': 'Open music navigation',
 'music.hub_open_now_playing': 'Open now playing panel',
 'music.open_hub': 'Open music library',
+'music.open_hub_track': 'Open music library: {value0}',
 'music.close_player': 'Close player',
 'music.section_library': 'Library',
 'music.section_playlists': 'Playlists',

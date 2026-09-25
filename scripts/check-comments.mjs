@@ -2746,6 +2746,10 @@ const allowed = new Map([
   ['src/client/features/music/music-source-badge.tsx', [
     '// The label wraps inside a narrow column and inflates the row, so it never breaks.',
   ]],
+  ['src/client/features/music/music-status-bar.test.ts', [
+    '// The bar is three controls wide; the track name doubles as the way into the hub. Announcing',
+    '// bare "Moonlight" describes a label, not what pressing it does.',
+  ]],
   ['src/client/features/music/music-status-bar.tsx', [
     '/* The slim bar only has room for the EQ from the wide breakpoint up. */',
   ]],

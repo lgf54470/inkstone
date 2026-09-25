@@ -47,7 +47,7 @@ function StatusTrack() {
       <button
         type='button'
         onClick={openHub}
-        title={track.title}
+        aria-label={t('music.open_hub_track', { value0: track.title })}
         className='min-w-0 max-w-32 truncate text-left text-[length:var(--text-11)] text-[var(--text-secondary)] hover:text-[var(--accent)] lg:max-w-44'
       >
         {track.title}
