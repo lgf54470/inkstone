@@ -2489,6 +2489,7 @@ const allowed = new Map([
   ['src/client/features/music/music-group-browse.tsx', [
     '// Albums and artists arrive as flat tag fields on each track (FEAT-10-era library),',
     '// so the whole grouping view is derived client-side and never needs a server round-trip.',
+    '// A first load has nothing to group yet: an empty grid says "your library is empty".',
     '// The drilled-down album/artist list is the ordinary track list; this header restores',
     '// the group context and the way back that a plain list would not offer.',
   ]],

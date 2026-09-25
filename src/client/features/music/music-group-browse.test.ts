@@ -86,6 +86,13 @@ describe('MusicGroupBrowse grid', () => {
     expect(document.body.textContent).toContain(t('music.no_results'))
   })
 
+  it('shows the loading state instead of an empty grid while the library is on its way', async () => {
+    useMusic.setState({ tracks: [], loading: true })
+    await mount(createElement(MusicGroupBrowse, { kind: 'albums' }))
+    expect(document.querySelector('[role="status"]')).not.toBeNull()
+    expect(document.body.textContent).not.toContain(t('music.no_tracks'))
+  })
+
   it('honours the source filter when building groups', async () => {
     useMusic.setState({
       tracks: [

@@ -2,7 +2,7 @@ import { memo, useMemo } from 'react'
 import { ChevronLeft, Play } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { Button, IconButton } from '../../components/primitives'
-import { Empty } from '../../components/feedback'
+import { Empty, LoadingBlock } from '../../components/feedback'
 import { t } from '../../lib/i18n'
 import { formatTotalDuration } from '../../lib/time'
 import { useMusic, useVisibleTracks } from './music-store'
@@ -26,6 +26,8 @@ export const MusicGroupBrowse = memo(function MusicGroupBrowse({ kind }: { kind:
       .filter((group) => groupMatchesQuery(group, query)),
     [tracks, kind, query, sourceFilter],
   )
+  // A first load has nothing to group yet: an empty grid says "your library is empty".
+  if (loading && !tracks.length) return <LoadingBlock label={t('music.loading')} />
   if (!loading && !tracks.length) return <Empty art='search' title={t('music.no_tracks')} compact />
   if (!loading && !groups.length) return <Empty art='search' title={t(query.trim() ? 'music.no_results' : 'music.no_tracks')} compact />
   return (
