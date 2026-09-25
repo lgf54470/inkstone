@@ -35,7 +35,7 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 | 12 | 功能 F-1 | WIP 超限只提示不阻止落卡 | ⬜ 待做 | — |
 | 13 | 功能 F-2 | 截止日临期/逾期提示 | ⬜ 待做 | — |
 | 14 | 功能 F-8 | 新增 `url` 属性类型 | ⬜ 待做 | — |
-| 15 | 功能 F-10 | JSON 一键导出 | ⬜ 待做 | — |
+| 15 | 功能 F-10 | JSON 一键导出 | ✅ 完成 | 见 git log |
 | 16 | 性能 P-2 | 渲染窗口只增不减（滚到底等效全量挂载） | ⬜ 待做 | — |
 | 17 | 性能 P-5 | 时间轴/甘特条几何重复计算两遍 | ⬜ 待做 | — |
 
@@ -83,3 +83,9 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 - `safeKanbanUrl` 收紧为 http/https/blob/同站相对（不再接受任何 data:）；新增 `safeKanbanCoverUrl` 仅 cover 可额外接受 `data:image/*`（cover 只作 `<img src>`，data url 中的脚本不可能执行；file.url 是链接与 fetch 目标）。
 - `body.ts` 的解析期 fail-closed 守卫按字段分别调用；`url.test.ts` 与 `tests/kanban-url-fields.test.ts` 按字段各自的白名单钉住（含 data:image/svg 与 data:application/pdf 的拒绝例）。
 - 回归：typecheck 通过；URL 相关 4 文件 53 用例通过；全量 `test:unit` 470 文件 / 4269 用例全绿。
+
+### 11. 功能 F-10 — JSON 一键导出 ✅
+- 导出面板新增「导出 JSON」行（PNG / JSON / 打印三出口）：`serializeKanban(data, 'json')` 惰性序列化整板（含视图、列、归档卡，可完整回灌），经 `downloadTextFile` 下载为 `<板名>-<视图>.json`。
+- i18n：`preview.kanban_export_json` / `preview.kanban_export_json_done` 双语；size 基线因 locale 各 +2 行重拍（仅行数变化）。
+- 测试：`kanban-export.test.ts` 重构（抽 `openExportPanel`/`pressRow` helper、按出口拆 describe 以守 50 行门禁），新增 JSON 出口断言（文件名、MIME、内容可 `JSON.parse` 且含全量列/视图/卡）。
+- 回归：typecheck + i18n + size + comments 门禁通过；全量 `test:unit` 470 文件 / 4270 用例全绿。

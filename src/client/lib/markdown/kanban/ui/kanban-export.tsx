@@ -7,11 +7,13 @@
  */
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Image as ImageIcon, Printer } from 'lucide-react'
+import { FileJson, Image as ImageIcon, Printer } from 'lucide-react'
 import { Button } from '../../../../components/primitives'
 import { collectDocumentCss, renderElementPng, saveImage } from '../../../element-image'
+import { downloadTextFile } from '../../../export-note'
 import { settleWithin } from '../../../async'
 import { t, useLocaleRepaint } from '../../../i18n'
+import { serializeKanban } from '../body'
 import type { KanbanData } from '../types'
 import { KanbanPanel } from './kanban-panel'
 
@@ -115,11 +117,17 @@ export interface KanbanExportEntry {
   viewType: string
   /** The live view panel, as the thing both doors rasterize or print. */
   panelRef: React.RefObject<HTMLElement | null>
+  /**
+   * The whole board as its own fence format, serialized on demand: the JSON door is a round trip
+   * (the file a board writes is a board), so it carries views, columns and archived cards — more
+   * than any one view could draw. Built lazily, so a board that is never exported never pays for it.
+   */
+  serializeJson: () => string
 }
 
 /** The doors: what each writes, and the last thing either one answered. */
 export function useExportDoors(entry: KanbanExportEntry) {
-  const { title, viewType, panelRef } = entry
+  const { title, viewType, panelRef, serializeJson } = entry
   const [feedback, setFeedback] = useState<string[]>([])
   const [printPanel, setPrintPanel] = useState<HTMLElement | null>(null)
 
@@ -140,6 +148,15 @@ export function useExportDoors(entry: KanbanExportEntry) {
     }
   }, [panelRef, title, viewType])
 
+  const handleJson = useCallback(() => {
+    downloadTextFile(
+      kanbanExportFilename(title, viewType, 'json'),
+      serializeJson(),
+      'application/json;charset=utf-8',
+    )
+    setFeedback([t('preview.kanban_export_json_done')])
+  }, [serializeJson, title, viewType])
+
   const handlePrint = useCallback(() => {
     const panel = panelRef.current
     if (!panel) return
@@ -148,7 +165,7 @@ export function useExportDoors(entry: KanbanExportEntry) {
 
   const finishPrint = useCallback(() => setPrintPanel(null), [])
 
-  return { feedback, printPanel, handlePng, handlePrint, finishPrint }
+  return { feedback, printPanel, handlePng, handleJson, handlePrint, finishPrint }
 }
 
 function ExportRow({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
@@ -170,11 +187,12 @@ interface KanbanExportPanelProps {
   anchorRef: React.RefObject<HTMLElement | null>
   onClose: () => void
   onPng: () => void
+  onJson: () => void
   onPrint: () => void
   feedback: string[]
 }
 
-export function KanbanExportPanel({ open, panelId, anchorRef, onClose, onPng, onPrint, feedback }: KanbanExportPanelProps) {
+export function KanbanExportPanel({ open, panelId, anchorRef, onClose, onPng, onJson, onPrint, feedback }: KanbanExportPanelProps) {
   return (
     <KanbanPanel
       open={open}
@@ -192,6 +210,11 @@ export function KanbanExportPanel({ open, panelId, anchorRef, onClose, onPng, on
         icon={<ImageIcon size={13} aria-hidden />}
         label={t('preview.kanban_export_png')}
         onClick={onPng}
+      />
+      <ExportRow
+        icon={<FileJson size={13} aria-hidden />}
+        label={t('preview.kanban_export_json')}
+        onClick={onJson}
       />
       <ExportRow
         icon={<Printer size={13} aria-hidden />}
@@ -223,7 +246,7 @@ export function KanbanExportDoor({
   anchorRef: React.RefObject<HTMLElement | null>
   onClose: () => void
 }) {
-  const { feedback, printPanel, handlePng, handlePrint, finishPrint } = useExportDoors(entry)
+  const { feedback, printPanel, handlePng, handleJson, handlePrint, finishPrint } = useExportDoors(entry)
   return (
     <>
       <KanbanExportPanel
@@ -232,6 +255,7 @@ export function KanbanExportDoor({
         anchorRef={anchorRef}
         onClose={onClose}
         onPng={() => void handlePng()}
+        onJson={handleJson}
         onPrint={() => {
           onClose()
           handlePrint()
@@ -278,14 +302,23 @@ export function KanbanExportAction({ entry }: { entry: KanbanExportEntry }) {
   )
 }
 
-/** The entry the header hands down: stable across renders, so the memoised header stays quiet. */
+/**
+ * The entry the header hands down. It moves when the board does — the JSON door writes the live
+ * board, so its serializer has to see the current one — at the same pace the CSV door's entry
+ * already does, which is one identity per commit rather than one per render.
+ */
 export function useKanbanExportEntry(
   data: KanbanData,
   viewType: string,
   panelRef: React.RefObject<HTMLElement | null>,
 ): KanbanExportEntry {
   return useMemo(
-    () => ({ title: data.title ?? '', viewType, panelRef }),
-    [data.title, viewType, panelRef],
+    () => ({
+      title: data.title ?? '',
+      viewType,
+      panelRef,
+      serializeJson: () => serializeKanban(data, 'json'),
+    }),
+    [data, viewType, panelRef],
   )
 }
