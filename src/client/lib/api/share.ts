@@ -1,6 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
-import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -94,6 +94,8 @@ export const share = {
         method: 'DELETE',
         ...(password === undefined ? {} : { body: { password } }),
       }),
+    noteAudit: (noteId: string, signal?: AbortSignal) =>
+      request<ShareAuditLogResponse>(`/api/share/${noteId}/audit`, { signal }),
     cleanVisitsForNote: (noteId: string, password: string) =>
       request<{ ok: true; deleted: number }>(`/api/share/visits${toQuery({ type: 'all', noteId })}`, {
         method: 'DELETE',

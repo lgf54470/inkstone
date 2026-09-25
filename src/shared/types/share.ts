@@ -320,6 +320,25 @@ export interface ShareVisitsResponse {
   totalPages: number
 }
 
+/** One changed field of a share link; the passcode only ever travels as set/cleared (booleans). */
+export interface ShareAuditFieldChange {
+  field: string
+  from?: string | number | boolean | null
+  to?: string | number | boolean | null
+}
+
+export interface ShareAuditLogEntry {
+  id: string
+  slug: string
+  action: 'create' | 'update' | 'revoke' | 'batch'
+  changed: ShareAuditFieldChange[]
+  createdAt: number
+}
+
+export interface ShareAuditLogResponse {
+  entries: ShareAuditLogEntry[]
+}
+
 export interface PublicNote {
   title: string
   content: string

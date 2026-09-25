@@ -211,6 +211,15 @@ export const TABLE_STATEMENTS: readonly string[] = [
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`,
+  `CREATE TABLE IF NOT EXISTS share_audit_log (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      note_id TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      action TEXT NOT NULL CHECK (action IN ('create', 'update', 'revoke', 'batch')),
+      changed_json TEXT NOT NULL DEFAULT '{}',
+      created_at INTEGER NOT NULL
+    )`,
   `CREATE TABLE IF NOT EXISTS share_visits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,

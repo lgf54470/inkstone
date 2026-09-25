@@ -642,4 +642,25 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_share_collections_user ON share_collections(user_id, created_at DESC)`,
     ],
   },
+  {
+    // The share link's own change history (audit #6): an append-only record of who changed what
+    // about a link — slug, passcode presence, expiry, visibility — so an overwriting edit stops
+    // being unrecoverable. Only the shape of a passcode change is recorded (set/cleared), never
+    // the value, and no IP or agent: the log answers "what happened to this link", not "who was
+    // near it".
+    version: 43,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS share_audit_log (
+         id TEXT PRIMARY KEY,
+         user_id TEXT NOT NULL,
+         note_id TEXT NOT NULL,
+         slug TEXT NOT NULL,
+         action TEXT NOT NULL CHECK (action IN ('create', 'update', 'revoke', 'batch')),
+         changed_json TEXT NOT NULL DEFAULT '{}',
+         created_at INTEGER NOT NULL
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_share_audit_log_user ON share_audit_log(user_id, created_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_share_audit_log_note ON share_audit_log(note_id, created_at DESC)`,
+    ],
+  },
 ]

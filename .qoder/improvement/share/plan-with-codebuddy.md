@@ -39,7 +39,7 @@
 | 08 | P1 | #16 | 集合列表 N+1（每集合 2 查询） | 小 | ✅ | 1420b12d |
 | 09 | P1 | #10 | 访问日志无时间范围筛选 | 小 | ✅ | ⏳ |
 | 10 | P1 | #9 | 渠道卡片不能下钻到该渠道明细 | 小-中 | ✅ | ⏳ |
-| 11 | P2 | #6 | 链接变更无审计历史（新迁移 v43） | 中 | ⬜ | — |
+| 11 | P2 | #6 | 链接变更无审计历史（新迁移 v43） | 中 | ✅ | ⏳ |
 | 12 | P2 | #7 | 失效提醒/通知（看板判定 + app_meta 已读） | 中 | ⬜ | — |
 | 13 | P2 | #13 | 集合成员自定义排序 | 中 | ⬜ | — |
 | 14 | P2 | #14 | 手工精选集合 | 中-大 | ⬜ | — |
@@ -53,6 +53,16 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 11 · P2 #6 链接变更审计（迁移 v43 + 变更历史入口）
+
+- **迁移 v43**：新表 `share_audit_log(id, user_id, note_id, slug, action CHECK(create/update/revoke/batch), changed_json, created_at)` + 两个索引；只追加不改 1–42。`tests/schema-migrations.test.ts`（幂等/版本单调）通过。tables.ts/indexes.ts/checks.ts（REQUIRED_TABLES/COLUMNS/INDEXES）同步登记。
+- **隐私边界（计划承诺兑现）**：只记「改了什么」，不记 IP/UA；口令只记 set/cleared 布尔（`shareAuditDiff` 对 password 做存在性比较），密码值任何形式不入日志（测试断言 `audit-pass-1` 不出现在任何 JSON 里）。
+- **写入层**：`worker/lib/share-audit.ts`——`shareAuditDiff`（纯函数，6 字段稳定顺序）+ `recordShareAudit`（批量插入，best-effort：append 失败不把已完成的 owner 写入变 500，catch + warn 并注释缘由，符合规则 2 例外）。
+- **写入点**：① note.ts upsert → create/update 全字段 diff；② 撤销（单笔记 DELETE 与批量 revoke）→ 先读 slug 快照再删，事后记 revoke；③ 批量 enable/disable/expire/extend/move → 每 chunk 前读/后读快照 diff，出现即记（create/batch），无变化不记。
+- **读取与 UI**：`GET /api/share/:noteId/audit`（最新 50 条，`ORDER BY created_at DESC, rowid DESC` 保证同毫秒确定性）；`share-audit-history.tsx` 区块嵌入单笔记分析弹层——四态（骨架/错误+重试/空/列表），字段与取值全 i18n，`audit_truncated` 说明截断。
+- 回归：worker 4 例（create/update diff 与口令脱敏、batch 单字段前后值、revoke 在行删除后仍记 slug、读取端点倒序）；client 3 例（空态、英文 locale 下 diff 行「Slug: old → new / Access passcode: Set → Cleared」、失败→重试恢复）。相关 5 文件 142/142 全绿。体积基线仅 migrations.ts 646→667（迁移文件固有增长，属有意变更后重拍）。`npx tsc -b --force` 与全部门禁绿。
+- 已知限制：审计写入与业务写入非同一事务（best-effort 取舍，失败有 warn 日志）；`folder_id` 变更显示原始 id 而非文件夹名（诚实优先，暂不引入名称解析）。
 
 ### 2026-09-25 · 序 10 · P1 #9 渠道卡片下钻到该渠道明细
 

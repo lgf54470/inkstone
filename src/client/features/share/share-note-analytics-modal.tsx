@@ -9,6 +9,7 @@ import { t } from '../../lib/i18n'
 import { BigSvgChart, chartSummary } from '../../components/big-svg-chart'
 import { countryFlag, countryNameLocalized, localizeChannelName, rangeOptions } from './share-helpers'
 import { LoadErrorState } from './share-load-error'
+import { ShareAuditHistory } from './share-audit-history'
 import { ShareTrafficFilterPopover } from './share-traffic-filter-popover'
 import { useShareNoteAnalytics } from './use-share-note-analytics'
 
@@ -54,6 +55,7 @@ export function ShareNoteAnalyticsModal({
             <TimelineCard metricMode={metricMode} setMetricMode={setMetricMode} chartValues={chartValues} timelinePoints={timelinePoints} />
             <NoteAnalyticsBreakdowns data={data} locale={locale} />
             <RecentActivityCard data={data} locale={locale} onOpenLogs={onOpenLogs} />
+            <ShareAuditHistory noteId={noteId} />
           </>
         )}
       </div>

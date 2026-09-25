@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { AppBindings } from '../../env'
 import { isValidId, newSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
+import { recordShareAudit, shareAuditDiff, type ShareAuditEntry, type ShareAuditFieldSnapshot } from '../../lib/share-audit'
 import { shareBatchSchema, shareFolderToggleSchema, shareTagToggleSchema } from './schemas'
 
 export function registerShareBatchRoutes(shareManageRoutes: Hono<AppBindings>): void {
@@ -84,13 +85,8 @@ async function extendSharesForNotes(
   let extended = 0
   let permanent = 0
   for (const chunk of chunkNoteIds(noteIds)) {
-    const stuck = await db.prepare(
-      `SELECT COUNT(*) AS n FROM shares
-        WHERE user_id = ?1 AND note_id IN (${placeholdersFor(chunk)}) AND expires_at IS NULL`,
-    )
-      .bind(userId, ...chunk)
-      .first<{ n: number }>()
-    permanent += stuck?.n ?? 0
+    const before = await loadShareSnapshots(db, userId, chunk)
+    permanent += [...before.values()].filter((row) => row.expiresAt === null).length
     const result = await db.prepare(
       `UPDATE shares SET expires_at = MAX(expires_at, ?2) + ?3
         WHERE user_id = ?1 AND note_id IN (${placeholdersFor(chunk)}) AND expires_at IS NOT NULL`,
@@ -98,6 +94,7 @@ async function extendSharesForNotes(
       .bind(userId, now, extendMs, ...chunk)
       .run()
     extended += result.meta.changes ?? 0
+    await recordShareAudit(db, await diffAuditEntries(db, userId, before, chunk, now))
   }
   return { extended, permanent }
 }
@@ -154,6 +151,7 @@ function registerShareTagToggleRoute(shareManageRoutes: Hono<AppBindings>): void
 async function enableNoteShares(db: D1Database, userId: string, noteIds: string[], now: number): Promise<number> {
   let affected = 0
   for (const chunk of chunkNoteIds(noteIds)) {
+    const before = await loadShareSnapshots(db, userId, chunk)
     // One upsert per note inside a chunked db.batch: the whole chunk commits together,
     // and both arms are owner-guarded so a foreign note_id can neither be inserted over
     // nor have its share flipped (the old read-then-insert crashed on exactly that).
@@ -164,6 +162,9 @@ async function enableNoteShares(db: D1Database, userId: string, noteIds: string[
     ).bind(newSlug(), userId, now, noteId))
     const results = await db.batch(statements)
     for (const result of results) affected += result.meta.changes ?? 0
+    // The created arm mints its slug inside the SQL, so the audit reads the rows back instead
+    // of guessing what the write produced.
+    await recordShareAudit(db, await diffAuditEntries(db, userId, before, chunk, now))
   }
   return affected
 }
@@ -175,6 +176,7 @@ async function disableSharesForNotes(db: D1Database, userId: string, noteIds: st
 export async function revokeSharesForNotes(db: D1Database, userId: string, noteIds: string[]): Promise<number> {
   let affected = 0
   for (const chunk of chunkNoteIds(noteIds)) {
+    const before = await loadShareSnapshots(db, userId, chunk)
     // Sessions go first: their lookup is a subquery over shares and must read the
     // still-present rows inside the same transaction.
     const [, sharesDeleted] = await db.batch([
@@ -189,6 +191,14 @@ export async function revokeSharesForNotes(db: D1Database, userId: string, noteI
       ).bind(userId, ...chunk),
     ])
     affected += sharesDeleted.meta.changes ?? 0
+    await recordShareAudit(db, [...before.values()].map((row) => ({
+      userId,
+      noteId: row.noteId,
+      slug: row.slug,
+      action: 'revoke' as const,
+      changedJson: '{}',
+      createdAt: now(),
+    })))
   }
   return affected
 }
@@ -202,14 +212,84 @@ async function setSharesField(
 ): Promise<number> {
   let affected = 0
   for (const chunk of chunkNoteIds(noteIds)) {
+    const before = await loadShareSnapshots(db, userId, chunk)
     const result = await db.prepare(
       `UPDATE shares SET ${column} = ? WHERE user_id = ? AND note_id IN (${placeholdersFor(chunk)})`,
     )
       .bind(value, userId, ...chunk)
       .run()
     affected += result.meta.changes ?? 0
+    await recordShareAudit(db, await diffAuditEntries(db, userId, before, chunk, now()))
   }
   return affected
+}
+
+interface ShareAuditRowSnapshot extends ShareAuditFieldSnapshot {
+  noteId: string
+}
+
+/** The audit view of the shares a chunk touches, keyed by note id — the "before" of a diff. */
+async function loadShareSnapshots(
+  db: D1Database,
+  userId: string,
+  noteIds: string[],
+): Promise<Map<string, ShareAuditRowSnapshot>> {
+  const map = new Map<string, ShareAuditRowSnapshot>()
+  if (noteIds.length === 0) return map
+  const rows = await db.prepare(
+    `SELECT note_id, slug, is_enabled, expires_at, folder_id, tags, password_hash
+       FROM shares WHERE user_id = ? AND note_id IN (${placeholdersFor(noteIds)})`,
+  ).bind(userId, ...noteIds).all<{
+    note_id: string
+    slug: string
+    is_enabled: number
+    expires_at: number | null
+    folder_id: string | null
+    tags: string | null
+    password_hash: string | null
+  }>()
+  for (const row of rows.results ?? []) {
+    map.set(row.note_id, {
+      noteId: row.note_id,
+      slug: row.slug,
+      isEnabled: row.is_enabled,
+      expiresAt: row.expires_at,
+      folderId: row.folder_id,
+      tags: JSON.parse(row.tags ?? '[]') as string[],
+      hasPassword: row.password_hash !== null,
+    })
+  }
+  return map
+}
+
+/**
+ * The "after" read of the same chunk, diffed against "before": a row that appeared is a create,
+ * a row whose fields moved is a batch entry, a row that did not change is nothing at all.
+ */
+async function diffAuditEntries(
+  db: D1Database,
+  userId: string,
+  before: Map<string, ShareAuditRowSnapshot>,
+  noteIds: string[],
+  createdAt: number,
+): Promise<ShareAuditEntry[]> {
+  const after = await loadShareSnapshots(db, userId, noteIds)
+  const entries: ShareAuditEntry[] = []
+  for (const row of after.values()) {
+    const previous = before.get(row.noteId)
+    if (!previous) {
+      entries.push({ userId, noteId: row.noteId, slug: row.slug, action: 'create', changedJson: '{}', createdAt })
+      continue
+    }
+    const diff = shareAuditDiff(previous, row)
+    if (diff.length === 0) continue
+    entries.push({ userId, noteId: row.noteId, slug: row.slug, action: 'batch', changedJson: JSON.stringify(diff), createdAt })
+  }
+  return entries
+}
+
+function now(): number {
+  return Date.now()
 }
 
 const SHARE_NOTE_ID_CHUNK = 50

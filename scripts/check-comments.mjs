@@ -3851,6 +3851,16 @@ const allowed = new Map([
     '// the animated modal it can be opened inside — so its switches live on the document.',
     '// Modal mounts its panel through a portal, so look in the document instead of the container.',
   ]],
+  ['src/client/features/share/share-audit-history.test.ts', [
+    '// The stored from/to for the passcode are booleans; the label must be the cleared/set word,',
+    '// never a value that could pretend to be the passcode.',
+    '// The locale is en-US at this point (the previous test set it), so the affordance is its word.',
+  ]],
+  ['src/client/features/share/share-audit-history.tsx', [
+    '/**\n * The link\'s change history (audit #6): the newest entries the audit log holds for this note, read\n * when the insight modal opens. The passcode is displayed as set/cleared — that is all the log\n * stores, by design.\n */',
+    '// A failed history read is surfaced, not swallowed: the section says so and offers the retry.',
+    '/** A field the reader has no label for shows its stored name rather than vanishing. */',
+  ]],
   ['src/client/features/share/share-auto-refresh.test.ts', [
     '/**\n * SH-65: the dashboard is a snapshot, and a snapshot with no age attached reads as a quiet week.\n * The poll has to be cheap (a hidden tab must not ask) and optional (a cadence is a preference,\n * not a policy) — both are what these assertions are about.\n */',
     '// Back on screen: one immediate read, because that is when the snapshot is stalest.',
@@ -8892,6 +8902,7 @@ const allowed = new Map([
     '/**\n * One member of a public collection\'s directory. `hasPassword` is the member\'s own lock, not the\n * collection\'s: opening it asks for that password, and the collection\'s password does not stand in\n * for it.\n */',
     '/**\n * What a collection page shows once its own password has been accepted — or immediately, for a\n * collection that has none. Nothing about the directory is answered before that, including its size.\n */',
     '/** Opaque; null when the page was the last one. */',
+    '/** One changed field of a share link; the passcode only ever travels as set/cleared (booleans). */',
   ]],
   ['src/shared/types/site.ts', [
     '/** Whether this instance keeps a visitor fingerprint — the only thing unique visitors can be counted from. */',
@@ -9069,6 +9080,11 @@ const allowed = new Map([
     '// Published collection pages (ADR-0005). The table holds only what must be stored — the address',
     '// and the access policy — because the members are derived from the shares on every request; a',
     '// member snapshot would need double writes and would silently go stale.',
+    '// The share link\'s own change history (audit #6): an append-only record of who changed what',
+    '// about a link — slug, passcode presence, expiry, visibility — so an overwriting edit stops',
+    '// being unrecoverable. Only the shape of a passcode change is recorded (set/cleared), never',
+    '// the value, and no IP or agent: the log answers "what happened to this link", not "who was',
+    '// near it".',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
@@ -9207,6 +9223,11 @@ const allowed = new Map([
     '// find; without one the window stays recent instead of starting at epoch.',
     '// Buckets are addressed by index so both the row path and a SQL GROUP BY can',
     '// fill the same array; missing indexes stay zero-filled.',
+  ]],
+  ['src/worker/lib/share-audit.ts', [
+    '/** One changed field: `from`/`to` as stored, except the passcode, which is only ever "was set". */',
+    '/**\n * The fields two share snapshots disagree on, in a stable order. The passcode is compared by\n * presence only — a hash is a secret-shaped value even in a log — and the tag list compares as a\n * serialized array, which is what the row stores. Nothing here reads the visitor\'s side: this is\n * the owner\'s edit history.\n */',
+    '/**\n * Writes the entries in one batch. Best-effort by design, and so it is caught rather than left\n * floating: the audit trail describes an edit that has already happened, so a failed append must\n * not turn a finished, owner-visible write into a 500 — but it also must not vanish quietly, which\n * is why the failure is logged at warn with the reason it can be tolerated.\n */',
   ]],
   ['src/worker/lib/share-collections.ts', [
     '/**\n * Published collections (ADR-0005): the address and the access policy are stored, the members are\n * derived. This module owns the two things that must not be stated twice — what counts as a member,\n * and how a page of members is walked — so the public directory and the owner\'s live count cannot\n * disagree about which shares a collection holds.\n *\n * A collection stores a *record id* and matches by the *stored value*: `shares.folder_id` holds a\n * folder id, a tag array holds tag names. `resolveShareTarget()` is the conversion, and it used to be\n * missing here — a tag collection matched its tag\'s id against the array of names, so every published\n * tag page was empty while the owner\'s own count agreed with it. The visibility rule was a second\n * copy too, spelled out in both statements below instead of being the `active` status; identical at\n * the time, which is exactly the kind of copy that stops being identical later.\n */',
@@ -9732,8 +9753,12 @@ const allowed = new Map([
     '// One upsert per note inside a chunked db.batch: the whole chunk commits together,',
     '// and both arms are owner-guarded so a foreign note_id can neither be inserted over',
     '// nor have its share flipped (the old read-then-insert crashed on exactly that).',
+    '// The created arm mints its slug inside the SQL, so the audit reads the rows back instead',
+    '// of guessing what the write produced.',
     '// Sessions go first: their lookup is a subquery over shares and must read the',
     '// still-present rows inside the same transaction.',
+    '/** The audit view of the shares a chunk touches, keyed by note id — the "before" of a diff. */',
+    '/**\n * The "after" read of the same chunk, diffed against "before": a row that appeared is a create,\n * a row whose fields moved is a batch entry, a row that did not change is nothing at all.\n */',
   ]],
   ['src/worker/routes/share/channel-split.ts', [
     '/**\n * Which copy of a link each visit came from (ADR-0004), for the same rows the visit aggregate\n * beside it summarizes.\n *\n * It lives here rather than in `visit-aggregates` because only the share table has a marker\n * column, and both dashboards read that module\'s statement list positionally.\n *\n * A visit with no marker and a visit whose marker was refused are counted in separate rows and\n * never merged: a marker that quietly stopped matching has to be visible, not averaged into\n * "direct". The two reserved names cannot collide with a stored token, which always starts with a\n * letter or digit (see `share-channel`).\n */',
@@ -9807,6 +9832,9 @@ const allowed = new Map([
   ['src/worker/routes/share/note.ts', [
     '// The collision pre-check is not atomic: a concurrent registration can take the',
     '// slug between check and write, and then the UNIQUE index rejects us with 500.',
+    '/**\n * The link\'s change history, newest first. The changed fields ship as stored (the passcode only as\n * set/cleared, decided at write time), so the reader never re-derives what an edit meant.\n */',
+    '/** The audit entry an upsert leaves behind: the diff of what this request changed about the link. */',
+    '/** The audit view of a stored share row: presence-shaped, ordered for the diff builder. */',
     '// Visit rows keep the slug they were recorded under; without this rename the',
     '// log\'s slug column and search would strand on the dead link.',
   ]],

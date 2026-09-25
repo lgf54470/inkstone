@@ -1484,6 +1484,78 @@ describe('share list filtered-stats memo (audit #15)', () => {
   })
 })
 
+describe('share link audit log (audit #6)', () => {
+  const NOTE_ID = `a${'0'.repeat(25)}`
+
+  function auditRows(db: D1Shim): Promise<Array<Record<string, unknown>>> {
+    return allRows(db, 'SELECT slug, action, changed_json FROM share_audit_log ORDER BY created_at, id')
+  }
+
+  async function seedShareableNoteDb(): Promise<D1Shim> {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedNote(db, { id: NOTE_ID, title: 'Audited' })
+    return db
+  }
+
+  it('records create and update with a field diff, and never the passcode value', async () => {
+    const db = await seedShareableNoteDb()
+    const app = makeApp()
+
+    await postJson(app, `/api/share/${NOTE_ID}`, { password: 'audit-pass-1' })
+    const created = await firstRow(db, 'SELECT slug FROM shares WHERE note_id = ?1', NOTE_ID)
+    await postJson(app, `/api/share/${NOTE_ID}`, { customSlug: 'renamed-audit', password: null })
+
+    const rows = await auditRows(db)
+    expect(rows.map((row) => row.action)).toEqual(['create', 'update'])
+    const [createDiff, updateDiff] = rows.map((row) => JSON.parse(row.changed_json as string))
+    expect(createDiff).toEqual([])
+    expect(updateDiff).toEqual([
+      { field: 'slug', from: created!.slug, to: 'renamed-audit' },
+      { field: 'password', from: true, to: false },
+    ])
+    expect(JSON.stringify(rows)).not.toContain('audit-pass-1')
+  })
+
+  it('records a batch disable with the before/after of the one touched field', async () => {
+    const db = await seedShareableNoteDb()
+    await seedShare(db, { note_id: NOTE_ID, slug: 'batch-audit' })
+    const app = makeApp()
+
+    await postJson(app, '/api/share/batch', { action: 'disable', noteIds: [NOTE_ID] })
+
+    const rows = await auditRows(db)
+    expect(rows.map((row) => row.action)).toEqual(['batch'])
+    expect(JSON.parse(rows[0]!.changed_json as string)).toEqual([
+      { field: 'is_enabled', from: 1, to: 0 },
+    ])
+  })
+
+  it('records a revoke with the slug it had, after the rows are gone', async () => {
+    const db = await seedShareableNoteDb()
+    await seedShare(db, { note_id: NOTE_ID, slug: 'revoked-audit' })
+    const app = makeApp()
+
+    await deleteJson(app, `/api/share/${NOTE_ID}`)
+
+    const rows = await auditRows(db)
+    expect(rows.map((row) => row.action)).toEqual(['revoke'])
+    expect(rows[0]!.slug).toBe('revoked-audit')
+    const shares = await allRows(db, 'SELECT slug FROM shares')
+    expect(shares).toHaveLength(0)
+  })
+
+  it('answers the audit read endpoint with the newest entries first', async () => {
+    const db = await seedShareableNoteDb()
+    const app = makeApp()
+    await postJson(app, `/api/share/${NOTE_ID}`, {})
+    await postJson(app, `/api/share/${NOTE_ID}`, { isEnabled: false })
+
+    const body = await (await request(app, `/api/share/${NOTE_ID}/audit`)).json()
+    expect(body.entries.map((entry: { action: string }) => entry.action)).toEqual(['update', 'create'])
+  })
+})
+
 describe('share public note route (real D1)', () => {
   it('serves an enabled share without a password as a PublicNote', async () => {
     const db = await makeDb()
