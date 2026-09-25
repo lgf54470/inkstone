@@ -5279,6 +5279,10 @@ const allowed = new Map([
     '/**\n * How late a card is according to one of its own date columns, which is the question a filter\n * asking "overdue" of a chosen column has to answer — a board may keep several dates per card.\n */',
     '/** The day the badge carries, already in the reader\'s own date format. */',
     '/** Whole days the deadline was missed by; 0 when the card is not late. */',
+    '/** The date column the notice counted and its filter button writes, so the two always agree. */',
+    '/** Cards whose deadline day is before today, still open. */',
+    '/** Cards whose deadline day is today, still open. */',
+    '/**\n * The board\'s opening answer to "what is owed": the still-open cards past their day, and the ones\n * due today, read off one date column. The column is chosen once — the view\'s own date field, then\n * `dueDate`, then `endDate`, then the first date column that holds anything — because the notice\'s\n * numbers and the filter its button writes have to be the same question asked twice. Property\n * values outside a date column are invisible here on purpose: a deadline the board never declared\n * a column for has no filter to be written into, and a notice that could not be acted on would\n * only nag.\n */',
   ]],
   ['src/client/lib/markdown/kanban/dependencies.test.ts', [
     '/**\n * KU-23. The dependency model is four rules the rest of the module reads from, and each is pinned\n * here against the document rather than against any view: reads normalize junk (a hand-written\n * fence may carry numbers, repeats, the card itself), edges run blocker → dependent and only\n * between cards that exist, the guarded write refuses a whole list that would close a loop (and\n * costs no step of undo when it does), and missing ids are reported rather than silently dropped.\n * The links are geometry, and their assertions are the elbow\'s endpoints: out of the blocker\'s\n * right edge, into the dependent\'s left edge, at the row heights the two time views draw with.\n */',
@@ -6291,6 +6295,13 @@ const allowed = new Map([
     '/** Narrower than the dialog: the peek stands beside the board rather than in place of it. */',
     '/**\n * The full screen board\'s shell: the card stands beside the board, so the columns a reader is\n * working through stay in view while the card is open, and the next one can be picked without\n * leaving them.\n *\n * It carries its own head and foot so the card\'s name stays editable at the top and the destructive\n * action stays reachable at the bottom while the middle scrolls, which a drawer\'s single scroll area\n * does not do on its own. `Z_INDEX.menu` is the tier an overlay takes above a full screen surface —\n * the same move the music hub\'s drawers make — and it is required rather than decorative here: the\n * board itself is a modal at `--z-modal`, so a drawer at the default `--z-drawer` would be painted\n * behind the very board it peeks from.\n */',
     '/** A note\'s shell: the centred dialog, which is the room a block inside the editor does not have. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-due-notice.test.ts', [
+    '/**\n * F-2. The due-date notice is one question a board answers before the reader has to ask it: what is\n * still owed. What is pinned here is the counting — one date column decides, per the preference the\n * view and the schema hint at; done and filed-away cards stay out of it; and the two counts the\n * buttons write filters for are exactly the two the notice shows, so the door and what is behind it\n * cannot drift apart.\n */',
+    '/** The reader\'s own day, shifted by whole days — the same clock the notice counts against. */',
+  ]],
+  ['src/client/lib/markdown/kanban/ui/kanban-due-notice.tsx', [
+    '/**\n * The board\'s own answer to "what is owed", under the toolbar: one quiet line that counts the\n * still-open cards past their day and the ones due today, on the view\'s own date column. Each count\n * is a button that writes the matching filter onto the view — the notice is a door into the board\'s\n * existing filter machinery, not a second filter implementation — and the line goes away for the\n * board\'s life once the reader dismisses it.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-empty-board.test.ts', [
     '/**\n * F-07. A board that arrives as one blank rectangle tells the reader nothing about what it can hold,\n * so an empty one now answers with the two things they can do next: write the first card, or take a\n * structure — stages, views, a couple of examples — and rename it. These mount the real root, since\n * the guide is a decision about the whole document rather than about one view: what is filtered out,\n * or archived, is still there, and the board should keep showing that.\n */',

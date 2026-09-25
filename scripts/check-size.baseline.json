@@ -74,10 +74,10 @@
     "longFns": 1
   },
   "src/shared/locales/en-US/preview.ts": {
-    "lines": 516
+    "lines": 519
   },
   "src/shared/locales/zh-CN/preview.ts": {
-    "lines": 516
+    "lines": 519
   },
   "src/worker/db/schema/migrations.ts": {
     "lines": 646

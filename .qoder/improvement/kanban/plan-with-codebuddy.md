@@ -33,7 +33,7 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 | 10 | 安全 S-4 | `data:image/*` 白名单放行 `file.url` | ✅ 完成 | 见 git log |
 | 11 | 安全 S-6 | fence JSON 无字段长度约束 | ✅ 完成 | 见 git log |
 | 12 | 功能 F-1 | WIP 超限只提示不阻止落卡 | ✅ 完成 | 见 git log |
-| 13 | 功能 F-2 | 截止日临期/逾期提示 | ⬜ 待做 | — |
+| 13 | 功能 F-2 | 截止日临期/逾期提示 | ✅ 完成 | 见 git log |
 | 14 | 功能 F-8 | 新增 `url` 属性类型 | ⬜ 待做 | — |
 | 15 | 功能 F-10 | JSON 一键导出 | ✅ 完成 | 见 git log |
 | 16 | 性能 P-2 | 渲染窗口只增不减（滚到底等效全量挂载） | ⬜ 待做 | — |
@@ -108,3 +108,10 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 - 时间轴与甘特视图各自 `useMemo` 一次几何（visibleDated × range × fields 为依赖），行渲染与依赖箭头共用同一 map——此前 zoom 每档、每次提交整表几何算两遍（ADR-0006 预留的复用口）。
 - 测试：`dependencies.test.ts` 新增「传入预计算 map 与自行计算的箭头逐字段一致」。
 - 回归：typecheck 通过；依赖/甘特/时间轴 4 文件 39 用例通过；全量 `test:unit` 470 文件 / 4276 用例全绿。
+
+### 15. 功能 F-2 — 到期临期/逾期提示 ✅
+- `date-fields.ts` 新增 `kanbanDueNotice(items, columns, dateFieldHint)`：选一个 date 列（视图 dateField → dueDate → endDate → 首个有值的 date 列），统计未归档未完成卡中逾期与今日到期；无 date 列返回 null。
+- 新组件 `ui/kanban-due-notice.tsx`（`role='status'`）：渲染于工具栏下方，两个计数即两个按钮——写入 `is_overdue` / `equals(今日)` 过滤到当前视图（复用既有过滤机制， notice 与 filter 同一列同一口径）；可关闭（本次挂载内）。
+- i18n：`kanban_due_overdue / kanban_due_today / kanban_due_dismiss` 双语。
+- 测试：`kanban-due-notice.test.ts` 6 例（分桶与豁免、列偏好、回退与无列、按钮写规则、关闭、无事不扰）。
+- 回归：typecheck + i18n + size 门禁通过；全量 `test:unit` 471 文件 / 4282 用例全绿。
