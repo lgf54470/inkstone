@@ -5,7 +5,7 @@ import { Button, IconButton } from '../../components/primitives'
 import { Empty, LoadingBlock } from '../../components/feedback'
 import { t } from '../../lib/i18n'
 import { formatTotalDuration } from '../../lib/time'
-import { useMusic, useVisibleTracks } from './music-store'
+import { useMusic } from './music-store'
 import type { MusicScope } from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { buildGroups, groupMatchesQuery, groupScopeOf } from './music-grouping'
@@ -62,10 +62,12 @@ function groupNameLabel(group: MusicGroup, kind: MusicGroupKind): string {
 
 // The drilled-down album/artist list is the ordinary track list; this header restores
 // the group context and the way back that a plain list would not offer.
-export const MusicGroupDetailHeader = memo(function MusicGroupDetailHeader({ scope }: { scope: Extract<MusicScope, { kind: 'album' | 'artist' }> }) {
+export const MusicGroupDetailHeader = memo(function MusicGroupDetailHeader({ scope, tracks }: {
+  scope: Extract<MusicScope, { kind: 'album' | 'artist' }>
+  tracks: MusicTrack[]
+}) {
   const setScope = useMusic((state) => state.setScope)
   const playCollection = useMusic((state) => state.playCollection)
-  const tracks = useVisibleTracks()
   const title = scope.kind === 'album'
     ? scope.album || t('music.unknown_album')
     : scope.artist || t('music.unknown_artist')

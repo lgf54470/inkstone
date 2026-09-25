@@ -194,8 +194,10 @@ const HubCentre = memo(function HubCentre({
   const detail = scope.kind === 'album' || scope.kind === 'artist' ? scope : null
   return (
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)]'>
-      <MusicHubToolbar onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} />
-      {detail && <MusicGroupDetailHeader scope={detail} />}
+      {/* Ranking the library happens once, here; the toolbar and the group header take
+          the result as a prop so they never run the same sort a second time. */}
+      <MusicHubToolbar tracks={tracks} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} />
+      {detail && <MusicGroupDetailHeader scope={detail} tracks={tracks} />}
       {scope.kind === 'duplicates' && tracks.length > 0 && <MusicDuplicatesSummary />}
       <div className='min-h-0 flex-1'>
         {loadError && !tracks.length && !loading

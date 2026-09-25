@@ -109,8 +109,9 @@ describe('MusicGroupBrowse grid', () => {
 
 describe('MusicGroupDetailHeader', () => {
   it('goes back to the browse grid and shows the group tracks', async () => {
+    const group = [groupTrack('a', 'Ann', 'Fog')]
     useMusic.setState({ scope: { kind: 'album', artist: 'Ann', album: 'Fog' } })
-    await mount(createElement(MusicGroupDetailHeader, { scope: { kind: 'album', artist: 'Ann', album: 'Fog' } }))
+    await mount(createElement(MusicGroupDetailHeader, { scope: { kind: 'album', artist: 'Ann', album: 'Fog' }, tracks: group }))
     expect(document.body.textContent).toContain('Fog')
     expect(document.body.textContent).toContain('Ann')
     const back = [...document.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === t('music.group_back'))
@@ -119,8 +120,9 @@ describe('MusicGroupDetailHeader', () => {
   })
 
   it('plays every track of the group through play-all', async () => {
+    const group = [groupTrack('a', 'Ann', 'Fog'), groupTrack('b', 'Ann', 'Spark')]
     useMusic.setState({ scope: { kind: 'artist', artist: 'Ann' } })
-    await mount(createElement(MusicGroupDetailHeader, { scope: { kind: 'artist', artist: 'Ann' } }))
+    await mount(createElement(MusicGroupDetailHeader, { scope: { kind: 'artist', artist: 'Ann' }, tracks: group }))
     const play = buttonsWithName(t('music.play_all'))[0]
     expect(play?.disabled).toBe(false)
     await act(async () => { play?.click() })
@@ -129,7 +131,7 @@ describe('MusicGroupDetailHeader', () => {
 
   it('disables play-all for an empty group', async () => {
     useMusic.setState({ tracks: [] })
-    await mount(createElement(MusicGroupDetailHeader, { scope: { kind: 'artist', artist: 'Ghost' } }))
+    await mount(createElement(MusicGroupDetailHeader, { scope: { kind: 'artist', artist: 'Ghost' }, tracks: [] }))
     expect(buttonsWithName(t('music.play_all'))[0]?.disabled).toBe(true)
   })
 })

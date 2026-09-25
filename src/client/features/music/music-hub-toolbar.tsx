@@ -5,7 +5,7 @@ import { Segmented } from '../../components/form'
 import { Tooltip, confirm } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { SearchBox } from './music-search-box'
-import { useMusic, useVisibleTracks } from './music-store'
+import { useMusic } from './music-store'
 import type { MusicSort } from './music-store'
 
 const SORT_OPTIONS: { value: MusicSort; label: 'music.sort_recent' | 'music.sort_title' | 'music.sort_artist' | 'music.sort_plays' }[] = [
@@ -15,14 +15,18 @@ const SORT_OPTIONS: { value: MusicSort; label: 'music.sort_recent' | 'music.sort
   { value: 'plays', label: 'music.sort_plays' },
 ]
 
-export function MusicHubToolbar({ onUpload, onBrowseWebdav }: { onUpload: () => void; onBrowseWebdav: () => void }) {
+export function MusicHubToolbar({ tracks, onUpload, onBrowseWebdav }: {
+  tracks: MusicTrack[]
+  onUpload: () => void
+  onBrowseWebdav: () => void
+}) {
   return (
     <div className='flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'>
       <div className='flex flex-wrap items-center gap-2'>
         <SearchBox />
         <SourceFilter />
       </div>
-      <ToolbarActions onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} />
+      <ToolbarActions tracks={tracks} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} />
     </div>
   )
 }
@@ -46,13 +50,16 @@ function SourceFilter() {
   )
 }
 
-function ToolbarActions({ onUpload, onBrowseWebdav }: { onUpload: () => void; onBrowseWebdav: () => void }) {
+function ToolbarActions({ tracks, onUpload, onBrowseWebdav }: {
+  tracks: MusicTrack[]
+  onUpload: () => void
+  onBrowseWebdav: () => void
+}) {
   const sort = useMusic((state) => state.sort)
   const loading = useMusic((state) => state.loading)
   const scope = useMusic((state) => state.scope)
   const setSort = useMusic((state) => state.setSort)
   const loadLibrary = useMusic((state) => state.loadLibrary)
-  const tracks = useVisibleTracks()
   // Playlist scope shows the manual item order, so the sort control would change nothing;
   // the grouped browse grids sort their cards by name and ignore track sort entirely.
   const showSort = scope.kind !== 'playlist' && scope.kind !== 'albums' && scope.kind !== 'artists'

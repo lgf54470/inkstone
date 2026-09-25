@@ -2537,6 +2537,10 @@ const allowed = new Map([
     '// show both listen on `window`, so an armed pan is the *page\'s* state and the key\'s target is the',
     '// focused element — the body, when nothing in the overlay holds focus.',
   ]],
+  ['src/client/features/music/music-hub-derive.test.ts', [
+    '// Ranking the whole library is the expensive step. Every consumer that calls the hook',
+    '// on its own pays for it again, so this counts how many times one hub render ranks.',
+  ]],
   ['src/client/features/music/music-hub-inputs.test.ts', [
     '// The shared Input paints its own focus ring (border + shadow); the two fields the hub hand-rolled',
     '// suppressed the outline outright, so tabbing into them moved the caret with nothing on screen to',
@@ -2553,6 +2557,7 @@ const allowed = new Map([
     '// Dialog state lives here, so the panels below are memoised: opening a dialog must',
     '// not re-render the whole library (hundreds of rows).',
     '// The drawers portal over the hub modal itself, so they take the next tier above --z-modal.',
+    '/* Ranking the library happens once, here; the toolbar and the group header take\n          the result as a prop so they never run the same sort a second time. */',
     '// The list only shows copies side by side; the strip states what the view is',
     '// worth so cleaning up does not require doing the arithmetic by hand.',
     '// Stable callbacks: the memoised panels below must not re-render when a dialog opens.',
