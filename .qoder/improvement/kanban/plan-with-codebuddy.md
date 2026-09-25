@@ -17,7 +17,7 @@
 | 6 | 样式 U-1 | `.kanban-print-sheet { left: -100000px }` 魔法数字 | ✅ 完成 | 见 git log |
 | 7 | 样式 U-3 | 子任务复选框完成态内联样式 → `data-*` + CSS | ✅ 完成 | 见 git log |
 | 8 | 样式 U-7 | 卡片头部 `stopPropagation` 吞掉 onKeyDown，需确认并注释 | ✅ 完成 | 见 git log |
-| 9 | 安全 S-3 | 跨域文本预览 `res.text()` 无体积上限 | ⬜ 待做 | — |
+| 9 | 安全 S-3 | 跨域文本预览 `res.text()` 无体积上限 | ✅ 完成 | 见 git log |
 | 10 | 安全 S-4 | `data:image/*` 白名单放行 `file.url` | ⬜ 待做 | — |
 | 11 | 安全 S-6 | fence JSON 无字段长度约束 | ⬜ 待做 | — |
 | 12 | 功能 F-1 | WIP 超限只提示不阻止落卡 | ⬜ 待做 | — |
@@ -60,3 +60,9 @@
 - U-3：子任务复选框条件内联样式 → `data-completed` 属性 + Tailwind `data-[completed]:` 变体。
 - U-7：确认卡片头部事件隔离层的抑制范围（标签弹层打开期间，键入其输入框的方向键/Escape 不得被容器上的看板键盘处理器读取），补注释说明。
 - 回归：typecheck + hardcoded/token/style/comments 门禁通过；全量 `test:unit` 仅剩已知偶发（radiogroup-names、calendar-tree，单独跑通过）。
+
+### 9. 安全 S-3 — 跨域文本预览体积上限 ✅
+- `readTextCapped`：声明 `Content-Length` 超限则在触碰响应体前拒绝；未声明的按流读取，越过 `KANBAN_FILE_TEXT_MAX_BYTES`（2 MB）即取消。
+- 新增 `tooLarge` 状态与 `data-kanban-file-too-large` 呈现（无重试按钮——重试无意义），文案复用既有 `preview.kanban_file_too_large`（带 MB 参数）。
+- 测试：声明式超限不读 body；无声明的流式 body 越限即停。
+- 回归：typecheck + size + i18n 门禁通过；全量 `test:unit` 470 文件 / 4267 用例全绿。

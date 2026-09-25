@@ -4,7 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n, t } from '../../../../lib/i18n'
 import { installTestGlobals } from '../../../test-render'
 import { useSession } from '../../../../store/session'
-import { KANBAN_FILE_READ_TIMEOUT_MS, KanbanFilePreviewModal } from './kanban-file-preview-modal'
+import { KANBAN_FILE_READ_TIMEOUT_MS, KANBAN_FILE_TEXT_MAX_BYTES, KanbanFilePreviewModal } from './kanban-file-preview-modal'
 import type { KanbanFile } from '../types'
 
 beforeAll(async () => {
@@ -51,9 +51,16 @@ const textFile: KanbanFile = {
 
 const remoteTextFile: KanbanFile = { ...textFile, id: 'file-5', url: 'https://tracker.example.test/notes.txt' }
 
-function stubTextRead(
-  respond: (url: string, init?: RequestInit) => Promise<{ ok: boolean; status?: number; text: () => Promise<string> }>,
-) {
+/** The shape the read actually touches: ok, the body, and — where a stub provides them — size metadata. */
+interface FakeReadResponse {
+  ok: boolean
+  status?: number
+  text: () => Promise<string>
+  headers?: { get: (name: string) => string | null }
+  body?: { getReader: () => { read: () => Promise<{ done: boolean; value?: Uint8Array }>; cancel: () => Promise<void> } }
+}
+
+function stubTextRead(respond: (url: string, init?: RequestInit) => Promise<FakeReadResponse>) {
   const fetchMock = vi.fn(respond)
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
@@ -162,6 +169,50 @@ describe('KanbanFilePreviewModal for text', () => {
       await flushRead()
       expect(document.body.textContent).toContain(t('preview.kanban_file_load_failed'))
       expect(document.body.textContent, 'the 404 body was shown as the file\'s content').not.toContain('File not found')
+    } finally {
+      rendered.dispose()
+    }
+  })
+})
+
+describe('KanbanFilePreviewModal when a text read is past the size ceiling', () => {
+  it('refuses a read that declares itself too large before its body is touched', async () => {
+    const text = vi.fn(async () => 'never read')
+    stubTextRead(async () => ({
+      ok: true,
+      headers: { get: (name: string) => (name.toLowerCase() === 'content-length' ? String(KANBAN_FILE_TEXT_MAX_BYTES + 1) : null) },
+      text,
+    }))
+    const rendered = renderPreview(textFile)
+    try {
+      await flushRead()
+      expect(document.querySelector('[data-kanban-file-too-large]'), 'an oversized file still drew a preview').not.toBeNull()
+      expect(document.body.textContent).toContain(
+        t('preview.kanban_file_too_large', { value1: String(KANBAN_FILE_TEXT_MAX_BYTES / (1024 * 1024)) }),
+      )
+      expect(text, 'the body was read although its size was already known').not.toHaveBeenCalled()
+    } finally {
+      rendered.dispose()
+    }
+  })
+
+  it('stops reading a body that grows past the ceiling without declaring its size', async () => {
+    // A body that never ends: each read hands back another chunk past the ceiling, and the read
+    // must quit at the chunk that crosses it rather than buffer the rest.
+    const encoder = new TextEncoder()
+    const chunk = () => Promise.resolve({ done: false as const, value: encoder.encode('a'.repeat(1_500_000)) })
+    stubTextRead(async () => ({
+      ok: true,
+      body: { getReader: () => ({ read: chunk, cancel: async () => {} }) },
+      text: async () => 'never reached',
+    }))
+    const rendered = renderPreview(textFile)
+    try {
+      await flushRead()
+      expect(document.querySelector('[data-kanban-file-too-large]'), 'an unbounded body was read to the end').not.toBeNull()
+      expect(document.body.textContent).toContain(
+        t('preview.kanban_file_too_large', { value1: String(KANBAN_FILE_TEXT_MAX_BYTES / (1024 * 1024)) }),
+      )
     } finally {
       rendered.dispose()
     }

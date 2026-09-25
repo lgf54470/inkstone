@@ -31,7 +31,50 @@ function isTextFile(file: KanbanFile): boolean {
   )
 }
 
-type ReadState = 'loading' | 'ready' | 'failed'
+type ReadState = 'loading' | 'ready' | 'failed' | 'tooLarge'
+
+/**
+ * A text preview is a glance, not a download: past this many bytes the panel says so instead of
+ * reading on. The cap is what keeps a fence from naming an enormous response and making the tab
+ * buffer it whole — the same-host case is already bounded by the upload limit, so this is the
+ * cross-origin read's own ceiling.
+ */
+export const KANBAN_FILE_TEXT_MAX_BYTES = 2_000_000
+
+/** The read hit the size ceiling; retrying cannot help, so the panel does not offer it. */
+class TextPreviewTooLargeError extends Error {}
+
+/**
+ * Reads the body as text, refusing to buffer more than `maxBytes` of it. A response that declares its
+ * size up front is refused before the body is touched; one that does not is read streamingly, so a
+ * body beyond the ceiling is dropped as soon as it shows itself.
+ */
+async function readTextCapped(res: Response, maxBytes: number): Promise<string> {
+  const declared = Number(res.headers?.get('content-length') ?? NaN)
+  if (Number.isFinite(declared) && declared > maxBytes) throw new TextPreviewTooLargeError()
+  const reader = res.body?.getReader()
+  if (!reader) return await res.text()
+  const chunks: Uint8Array[] = []
+  let received = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    received += value.byteLength
+    if (received > maxBytes) {
+      // A cancel that itself fails changes nothing: the reader is told the size, not the cancel.
+      await reader.cancel().catch(() => {})
+      throw new TextPreviewTooLargeError()
+    }
+    chunks.push(value)
+  }
+  const body = new Uint8Array(received)
+  let offset = 0
+  for (const chunk of chunks) {
+    body.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return new TextDecoder().decode(body)
+}
 
 /**
  * What the reader gets when a read did not produce the document: the reason, and the one action that
@@ -82,7 +125,7 @@ function useKanbanTextRead(url: string): { state: ReadState; content: string; re
     fetch(url, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`kanban file read failed: HTTP ${res.status}`)
-        return res.text()
+        return readTextCapped(res, KANBAN_FILE_TEXT_MAX_BYTES)
       })
       .then((text) => {
         if (!active) return
@@ -91,7 +134,7 @@ function useKanbanTextRead(url: string): { state: ReadState; content: string; re
       })
       .catch((error: unknown) => {
         if (!active) return
-        setState('failed')
+        setState(error instanceof TextPreviewTooLargeError ? 'tooLarge' : 'failed')
         console.warn('[inkstone] kanban file preview failed', url, error)
       })
       .finally(() => clearTimeout(deadline))
@@ -129,6 +172,17 @@ function TextFileRead({ url }: { url: string }) {
 
   if (state === 'failed') {
     return <ReadFailed onRetry={retry} />
+  }
+
+  if (state === 'tooLarge') {
+    return (
+      <div data-kanban-file-too-large className='flex h-48 flex-col items-center justify-center gap-2 p-6 text-center'>
+        <FileWarning size={24} className='text-[var(--text-tertiary)]' aria-hidden='true' />
+        <div className='text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
+          {t('preview.kanban_file_too_large', { value1: String(KANBAN_FILE_TEXT_MAX_BYTES / (1024 * 1024)) })}
+        </div>
+      </div>
+    )
   }
 
   if (content.trim() === '') {

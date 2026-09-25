@@ -6318,7 +6318,10 @@ const allowed = new Map([
     '/** The entry the header hands down: stable across renders, so the memoised header stays quiet. */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.test.ts', [
+    '/** The shape the read actually touches: ok, the body, and — where a stub provides them — size metadata. */',
     '/** The read is a promise chain, so the assertions run after the microtask queue has drained. */',
+    '// A body that never ends: each read hands back another chunk past the ceiling, and the read',
+    '// must quit at the chunk that crosses it rather than buffer the rest.',
     '// Reading a text attachment is a request to whoever wrote the fence, so it is the same trade as an',
     '// external image: the app contacts a stranger on the reader\'s behalf and hands over their IP and user',
     '// agent. It used to be the one path that skipped the switch (`fetch(file.url)` straight from the',
@@ -6326,6 +6329,10 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-file-preview-modal.tsx', [
     '/**\n * How long a text attachment is given before the panel admits the read is not coming. A board is a note\n * that may name an object on somebody else\'s server: without a deadline the spinner is the answer to\n * an unreachable host, and the reader has no way to tell a slow read from a stuck one (there would be\n * no failure state and so no retry either).\n */',
+    '/**\n * A text preview is a glance, not a download: past this many bytes the panel says so instead of\n * reading on. The cap is what keeps a fence from naming an enormous response and making the tab\n * buffer it whole — the same-host case is already bounded by the upload limit, so this is the\n * cross-origin read\'s own ceiling.\n */',
+    '/** The read hit the size ceiling; retrying cannot help, so the panel does not offer it. */',
+    '/**\n * Reads the body as text, refusing to buffer more than `maxBytes` of it. A response that declares its\n * size up front is refused before the body is touched; one that does not is read streamingly, so a\n * body beyond the ceiling is dropped as soon as it shows itself.\n */',
+    '// A cancel that itself fails changes nothing: the reader is told the size, not the cancel.',
     '/**\n * What the reader gets when a read did not produce the document: the reason, and the one action that\n * can still help. Both surfaces below need it, and neither may leave the space blank — a board\'s\n * attachment can point at an object somebody deleted, and a blank panel reads as "the file is empty"\n * when the truth is "the file is gone".\n */',
     '/**\n * The read itself, kept out of the component so the failure path stays one place: a stored object\n * that is gone answers 404 with a body, and reading that body as the file would print the server\'s\n * error page into the panel and call it the document.\n *\n * The read is cancellable and bounded. Cancellable because the panel closes, the reader switches to\n * another attachment and the retry button starts a second read over the first — a read nobody is\n * waiting for any more must not keep holding a connection, nor write its answer over the file the\n * reader moved on to. Bounded because a host that never answers otherwise leaves a spinner forever:\n * the abort lands in the same `catch` the 404 does, so the reader gets the one action that helps.\n */',
     '/**\n * Where the policy is enforced for a read: the component that owns the fetch is not mounted at all when\n * the URL is not allowed, so there is no request to cancel and no state left to explain. (A `{ url }`\n * prop on one component would work too, but only as long as every later reader of that prop remembered\n * the flag — this way the blocked path cannot reach the fetch by construction.)\n */',
