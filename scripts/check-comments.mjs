@@ -2481,6 +2481,11 @@ const allowed = new Map([
   ['src/client/features/music/music-floating-lyrics.tsx', [
     '// Two lines are enough for a 288px widget; the immersive player shows the whole scroll.',
   ]],
+  ['src/client/features/music/music-floating-player.tsx', [
+    '// The corner the card falls back to before anyone has dragged it. Clamping an out-of-bounds',
+    '// request is what keeps the card whole whatever it currently measures.',
+    '/* A handle that answers only to arrow keys is a control with no click action at all:\n          activating it sends the card back to the corner it starts from. */',
+  ]],
   ['src/client/features/music/music-group-browse.tsx', [
     '// Albums and artists arrive as flat tag fields on each track (FEAT-10-era library),',
     '// so the whole grouping view is derived client-side and never needs a server round-trip.',

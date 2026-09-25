@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { GripVertical, Heart, Library, ListMusic, Maximize2, Minimize2 } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
@@ -58,7 +58,7 @@ export function MusicFloatingPlayer() {
         !position && 'right-3 bottom-[calc(64px+env(safe-area-inset-bottom))] md:right-4 md:bottom-[calc(var(--statusbar-h)+1rem)]',
       )}
     >
-      <FloatHeader drag={drag} />
+      <FloatHeader drag={drag} size={size} />
       <FloatTrack />
       <MusicFloatingLyrics />
       <div className='shrink-0 px-2.5 pb-1'>
@@ -130,16 +130,33 @@ function BadgeRing({ progress }: { progress: number }) {
   )
 }
 
-function FloatHeader({ drag }: { drag: ReturnType<typeof useCardDrag> }) {
+// The corner the card falls back to before anyone has dragged it. Clamping an out-of-bounds
+// request is what keeps the card whole whatever it currently measures.
+function defaultDockPosition(size: { width: number; height: number }): { x: number; y: number } {
+  return clampToViewport(window.innerWidth, window.innerHeight, size.width, size.height)
+}
+
+function FloatHeader({ drag, size }: { drag: ReturnType<typeof useCardDrag>; size: { width: number; height: number } }) {
   const toggleCollapsed = useMusic((state) => state.toggleFloatingCollapsed)
+  const setFloatingPosition = useMusic((state) => state.setFloatingPosition)
+  const hintId = useId()
   return (
     <div
       onPointerDown={drag.startDrag}
       className={cn('flex h-9 shrink-0 items-center gap-1.5 border-b border-[var(--border-subtle)] px-2.5', drag.isDragging ? 'cursor-grabbing' : 'cursor-grab')}
     >
-      <IconButton label={t('music.move_player')} size='sm' onKeyDown={drag.onKeyDown}>
+      {/* A handle that answers only to arrow keys is a control with no click action at all:
+          activating it sends the card back to the corner it starts from. */}
+      <IconButton
+        label={t('music.move_player')}
+        size='sm'
+        aria-describedby={hintId}
+        onKeyDown={drag.onKeyDown}
+        onClick={() => { if (!drag.isClickAfterDrag()) setFloatingPosition(defaultDockPosition(size)) }}
+      >
         <GripVertical size={13} />
       </IconButton>
+      <span id={hintId} className='sr-only'>{t('music.move_player_hint')}</span>
       <span className='min-w-0 flex-1 truncate text-[length:var(--text-11)] font-medium text-[var(--text-tertiary)]'>
         {t('music.now_playing')}
       </span>

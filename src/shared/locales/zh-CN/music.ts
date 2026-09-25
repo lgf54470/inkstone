@@ -282,6 +282,7 @@ export const messages = {
 'music.source_filter': '按来源筛选',
 'music.webdav_target_missing': '所选 WebDAV 目标已不存在',
 'music.move_player': '移动播放器',
+'music.move_player_hint': '用方向键移动播放器；激活后回到默认角落',
 'music.rewind': '快退 10 秒',
 'music.forward': '快进 10 秒',
 'music.delete_remote_file': '删除 WebDAV 文件',

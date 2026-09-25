@@ -53,4 +53,23 @@ describe('floating player drag handle', () => {
     })
     expect(setPosition).toHaveBeenCalledWith({ x: 116, y: 100 })
   })
+
+  it('sends the card back to its default corner when activated', async () => {
+    const setPosition = vi.fn()
+    await mountPlayer(setPosition)
+    const handle = [...document.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === t('music.move_player'))
+    await act(async () => { handle?.click() })
+    expect(setPosition).toHaveBeenCalledTimes(1)
+    const [position] = setPosition.mock.calls[0] as [{ x: number; y: number }]
+    expect(position.x).toBeGreaterThan(window.innerWidth / 2)
+    expect(position.y).toBeGreaterThan(window.innerHeight / 2)
+  })
+
+  it('tells assistive tech that the arrow keys are what move it', async () => {
+    await mountPlayer(vi.fn())
+    const handle = [...document.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === t('music.move_player'))
+    const describedBy = handle?.getAttribute('aria-describedby')
+    expect(describedBy).toBeTruthy()
+    expect(document.getElementById(describedBy!)?.textContent).toBe(t('music.move_player_hint'))
+  })
 })
