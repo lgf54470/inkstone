@@ -2944,6 +2944,8 @@ const allowed = new Map([
     '// A tab closed inside the debounce window must not silently lose the last change.',
   ]],
   ['src/client/features/music/music-store/playback-sync.ts', [
+    '// The playhead moves every few seconds while the queue moves rarely, so a save is',
+    '// tagged with what actually changed: only a queue change pays for the queue body.',
     '// Position is quantized against the last saved anchor, not the previous tick:',
     '// adjacent progress updates land ~250ms apart and would never cross the step.',
   ]],
@@ -2969,6 +2971,7 @@ const allowed = new Map([
     '// forever would look like a frozen player. Surface it and stop pretending.',
   ]],
   ['src/client/features/music/music-store/progress.test.ts', [
+    '// A drift of the playhead alone is a position save: the queue is not resent.',
     '// Playback advances every 250ms; comparing against the previous tick alone',
     '// never crosses the step, so listening in real time must not stall saves.',
   ]],
@@ -4644,6 +4647,8 @@ const allowed = new Map([
     '/**\n * Whiteboard libraries (lib/markdown/excalidraw/library.ts) are a set of named documents\n * per account, so the API hands each one back verbatim and stores whatever it is given:\n * keeping the format knowledge on the client is what lets an `.excalidrawlib` body\n * round-trip with excalidraw.com untouched.\n */',
   ]],
   ['src/client/lib/api/music.ts', [
+    '// Drifting through a track only moves the playhead, so this one leaves the',
+    '// stored queue out of the body instead of resending it every few seconds.',
     '// The Worker relays the catalogue request because the page\'s CSP forbids third party connections.',
     '// `tag` carries the tag ids the whole selection is rewritten onto; the other actions carry none.',
   ]],
@@ -8974,6 +8979,8 @@ const allowed = new Map([
     '// worker. Null for rows stored before hashing began and for WebDAV metadata',
     '// imports, which never move the bytes - those tracks stay out of the duplicates view.',
     '// M-51: set when the owner shares this playlist publicly; null means not shared.',
+    '// Listening re-saves the position every few seconds while the queue itself rarely',
+    '// moves, so the two travel separately: this one never carries the queue array.',
   ]],
   ['src/shared/types/notes.ts', [
     '/** True for categories shipped with the app; they cannot be renamed or deleted. */',
@@ -9697,6 +9704,9 @@ const allowed = new Map([
     '// Shared with the public blog projection so both sides read a stored queue the same way.',
     '// A looping client could otherwise rewrite its row as fast as requests arrive; the save rides',
     '// its own key so a heavy listening session cannot starve playlist and tag writes.',
+    '// Listening re-saves the playhead every few seconds; the queue rides along only',
+    '// when it changed. The stored queue is carried into a fresh row rather than',
+    '// overwritten, so a position save can never land after a queue save and wipe it.',
     '// One batch keeps even a full 500-track queue at a single round trip; awaiting each',
     '// chunk serially used to cost the whole queue\'s latency.',
   ]],

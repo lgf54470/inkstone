@@ -21,6 +21,7 @@ vi.mock('../../../lib/api', () => ({
         throw new Error('offline')
       }),
       savePlayback: vi.fn(async () => {}),
+      savePlaybackPosition: vi.fn(async () => {}),
     },
   },
 }))
@@ -45,6 +46,7 @@ afterEach(() => {
   useMusic.setState({ queue: [], currentIndex: 0 })
   setProgressTime(0)
   vi.mocked(api.music.savePlayback).mockClear()
+  vi.mocked(api.music.savePlaybackPosition).mockClear()
 })
 
 let root: Root | null = null
@@ -116,9 +118,8 @@ describe('playback position persistence', () => {
     await act(async () => {
       vi.advanceTimersByTime(5_000)
     })
-    expect(api.music.savePlayback).toHaveBeenCalledWith(
-      expect.objectContaining({ queue: [], currentIndex: 0, positionMs: 10_000 }),
-    )
+    // A drift of the playhead alone is a position save: the queue is not resent.
+    expect(api.music.savePlaybackPosition).toHaveBeenCalledWith({ currentIndex: 0, positionMs: 10_000 })
   })
 
   it('saves a steadily drifting position once per accumulated step, not per tick', async () => {
@@ -137,7 +138,7 @@ describe('playback position persistence', () => {
     await act(async () => {
       vi.advanceTimersByTime(6_000)
     })
-    const saves = vi.mocked(api.music.savePlayback).mock.calls.length
+    const saves = vi.mocked(api.music.savePlaybackPosition).mock.calls.length
     expect(saves).toBeGreaterThan(0)
     expect(saves).toBeLessThan(10)
   })

@@ -958,6 +958,23 @@ describe('music playback queue round trips (real D1)', () => {
     expect(stats.batches).toBe(1)
     expect(stats.singles).toBe(1)
   })
+
+  it('moves the playhead without rewriting the stored queue', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const queue: string[] = []
+    for (let index = 0; index < 40; index += 1) queue.push(String((await uploadTrack(app, `p${index}.mp3`)).id))
+    await json(app, '/api/music/playback', { queue, currentIndex: 3, positionMs: 1_000 }, 'PUT')
+
+    const moved = await json(app, '/api/music/playback/position', { currentIndex: 17, positionMs: 61_000 }, 'PUT')
+    expect(moved.status).toBe(200)
+
+    const body = await (await request(app, '/api/music/playback')).json()
+    expect(body.playback.queue).toEqual(queue)
+    expect(body.playback.currentIndex).toBe(17)
+    expect(body.playback.positionMs).toBe(61_000)
+  })
 })
 describe('music cover storage', () => {
   const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')

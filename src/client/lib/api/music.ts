@@ -3,6 +3,7 @@ import type {
   MusicLibrary,
   MusicPlayback,
   MusicPlaybackInput,
+  MusicPlaybackPositionInput,
   MusicPlaylistDetail,
   MusicTag,
   MusicTrack,
@@ -99,6 +100,11 @@ export const music = {
 
   savePlayback: (input: MusicPlaybackInput) =>
     request<{ ok: boolean }>('/api/music/playback', { method: 'PUT', body: input }),
+
+  // Drifting through a track only moves the playhead, so this one leaves the
+  // stored queue out of the body instead of resending it every few seconds.
+  savePlaybackPosition: (input: MusicPlaybackPositionInput) =>
+    request<{ ok: boolean }>('/api/music/playback/position', { method: 'PUT', body: input }),
 
   patchTrack: (id: string, patch: MusicTrackPatch) =>
     request<MusicTrack>(`/api/music/tracks/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch, timeoutMs: 30_000 }),

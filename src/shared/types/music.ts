@@ -87,6 +87,13 @@ export interface MusicPlaybackInput {
   positionMs: number
 }
 
+// Listening re-saves the position every few seconds while the queue itself rarely
+// moves, so the two travel separately: this one never carries the queue array.
+export interface MusicPlaybackPositionInput {
+  currentIndex: number
+  positionMs: number
+}
+
 export interface MusicStats {
   trackCount: number
   favoriteCount: number
