@@ -37,6 +37,24 @@ export const KANBAN_MAX_ITEMS = 1000
  */
 export const KANBAN_DESCRIPTION_MAX_CHARS = 5000
 
+/**
+ * How much of each text field a fence is read as carrying. The note a fence lives in is already
+ * bounded as a whole (2MB), but a single hand-written field with no ceiling of its own could spend
+ * all of it — one column name or one comment ballooning every render of every reader. The clamps
+ * sit at the same parse boundary the URL whitelist does, and they match what the editors already
+ * cap by hand: a board written through the UI never hits them.
+ */
+export const KANBAN_BOARD_TITLE_MAX_CHARS = 200
+export const KANBAN_NAME_MAX_CHARS = 120
+export const KANBAN_ITEM_TITLE_MAX_CHARS = 500
+export const KANBAN_COMMENT_MAX_CHARS = 2000
+export const KANBAN_SUBTASK_TITLE_MAX_CHARS = 200
+export const KANBAN_ICON_MAX_CHARS = 100
+
+function clampText(value: string, max: number): string {
+  return value.length <= max ? value : value.slice(0, max)
+}
+
 function assertKanbanCardBudget(items: KanbanItem[]): void {
   if (items.length > KANBAN_MAX_ITEMS) {
     throw new Error(`Kanban board lists ${items.length} cards, more than the ${KANBAN_MAX_ITEMS} a board may carry`)
@@ -102,6 +120,45 @@ function defaultKanbanViews(): KanbanView[] {
   ]
 }
 
+/**
+ * Reads a board back with every free-text field inside its ceiling, whichever format it was written
+ * in. Property values are deliberately untouched: they are typed by their own column (an id, a
+ * number, a date), and a truncated id would silently re-home a card rather than merely read shorter.
+ */
+function clampKanbanTextBounds(data: KanbanData): KanbanData {
+  return {
+    ...data,
+    // An outline board may carry no title at all; absent stays absent rather than becoming empty.
+    ...(data.title ? { title: clampText(data.title, KANBAN_BOARD_TITLE_MAX_CHARS) } : {}),
+    views: data.views.map((view) => ({ ...view, name: clampText(view.name, KANBAN_NAME_MAX_CHARS) })),
+    columns: data.columns.map((column) => ({
+      ...column,
+      name: clampText(column.name, KANBAN_NAME_MAX_CHARS),
+      ...(column.options
+        ? { options: column.options.map((option) => ({ ...option, label: clampText(option.label, KANBAN_NAME_MAX_CHARS) })) }
+        : {}),
+    })),
+    items: data.items.map((item) => ({
+      ...item,
+      title: clampText(item.title, KANBAN_ITEM_TITLE_MAX_CHARS),
+      ...(item.icon ? { icon: clampText(item.icon, KANBAN_ICON_MAX_CHARS) } : {}),
+      ...(item.content ? { content: clampText(item.content, KANBAN_DESCRIPTION_MAX_CHARS) } : {}),
+      ...(item.comments
+        ? {
+            comments: item.comments.map((comment) => ({
+              ...comment,
+              ...(comment.author ? { author: clampText(comment.author, KANBAN_NAME_MAX_CHARS) } : {}),
+              text: clampText(comment.text, KANBAN_COMMENT_MAX_CHARS),
+            })),
+          }
+        : {}),
+      ...(item.subtasks
+        ? { subtasks: item.subtasks.map((subtask) => ({ ...subtask, title: clampText(subtask.title, KANBAN_SUBTASK_TITLE_MAX_CHARS) })) }
+        : {}),
+    })),
+  }
+}
+
 function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
   const columns = Array.isArray(raw.columns) && raw.columns.length > 0 ? raw.columns : defaultKanbanColumns()
   const views = Array.isArray(raw.views) && raw.views.length > 0 ? raw.views : defaultKanbanViews()
@@ -109,13 +166,13 @@ function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
   assertFenceUrlsAreSafe(items)
   assertKanbanCardBudget(items)
 
-  return {
+  return clampKanbanTextBounds({
     title: typeof raw.title === 'string' ? raw.title : 'Project',
     activeViewId: raw.activeViewId || views[0]?.id || 'view-board',
     views,
     columns,
     items,
-  }
+  })
 }
 
 export function parseKanbanBody(body: string): KanbanParseResult {
@@ -124,7 +181,7 @@ export function parseKanbanBody(body: string): KanbanParseResult {
     try {
       const data = parseKanbanOutline(body)
       assertKanbanCardBudget(data.items)
-      return { ok: true, data, mode }
+      return { ok: true, data: clampKanbanTextBounds(data), mode }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err), raw: body }
     }

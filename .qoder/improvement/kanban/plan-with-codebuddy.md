@@ -31,7 +31,7 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 | 8 | 样式 U-7 | 卡片头部 `stopPropagation` 吞掉 onKeyDown，需确认并注释 | ✅ 完成 | 见 git log |
 | 9 | 安全 S-3 | 跨域文本预览 `res.text()` 无体积上限 | ✅ 完成 | 见 git log |
 | 10 | 安全 S-4 | `data:image/*` 白名单放行 `file.url` | ✅ 完成 | 见 git log |
-| 11 | 安全 S-6 | fence JSON 无字段长度约束 | ⬜ 待做 | — |
+| 11 | 安全 S-6 | fence JSON 无字段长度约束 | ✅ 完成 | 见 git log |
 | 12 | 功能 F-1 | WIP 超限只提示不阻止落卡 | ⬜ 待做 | — |
 | 13 | 功能 F-2 | 截止日临期/逾期提示 | ⬜ 待做 | — |
 | 14 | 功能 F-8 | 新增 `url` 属性类型 | ⬜ 待做 | — |
@@ -89,3 +89,9 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 - i18n：`preview.kanban_export_json` / `preview.kanban_export_json_done` 双语；size 基线因 locale 各 +2 行重拍（仅行数变化）。
 - 测试：`kanban-export.test.ts` 重构（抽 `openExportPanel`/`pressRow` helper、按出口拆 describe 以守 50 行门禁），新增 JSON 出口断言（文件名、MIME、内容可 `JSON.parse` 且含全量列/视图/卡）。
 - 回归：typecheck + i18n + size + comments 门禁通过；全量 `test:unit` 470 文件 / 4270 用例全绿。
+
+### 12. 安全 S-6 — fence 文本字段长度约束 ✅
+- 解析边界新增 `clampKanbanTextBounds`（JSON 与 outline 两路共用）：板标题 200 / 列名·选项标签·评论作者 120 / 卡标题 500 / 评论 2000 / 子任务标题 200 / 图标 100 / 描述沿用既有 5000；属性值不动（类型由列决定，截断 id 会悄悄改家）。
+- 先例一致：与 URL 白名单同一解析边界、与 normalize 默认值填充同一「读取归一化」语义；outline 无板标题时保持缺省不发明空串。
+- 测试：`body.test.ts` 新增 4 例（全字段超限钳制、outline 卡标题、UI 写出的板原样不动、属性值永不钳制）。
+- 回归：typecheck + size 门禁通过；body 27 用例通过；全量 `test:unit` 偶发 3 例（radiogroup/share-collections/starter-deck，负载性，单独跑通过）。

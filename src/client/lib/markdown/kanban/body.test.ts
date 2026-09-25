@@ -3,7 +3,14 @@ import {
   applyKanbanBodyAtFence,
   detectKanbanMode,
   kanbanFenceRange,
+  KANBAN_BOARD_TITLE_MAX_CHARS,
+  KANBAN_COMMENT_MAX_CHARS,
+  KANBAN_DESCRIPTION_MAX_CHARS,
+  KANBAN_ICON_MAX_CHARS,
+  KANBAN_ITEM_TITLE_MAX_CHARS,
   KANBAN_MAX_ITEMS,
+  KANBAN_NAME_MAX_CHARS,
+  KANBAN_SUBTASK_TITLE_MAX_CHARS,
   parseKanbanBody,
   serializeKanban,
 } from './body'
@@ -175,6 +182,83 @@ describe('the card budget of a fence', () => {
 
   it('holds the ceiling at the number the CSV door refuses past', () => {
     expect(KANBAN_CSV_MAX_ROWS).toBe(KANBAN_MAX_ITEMS)
+  })
+})
+
+/** A board whose every free-text field is past its ceiling, written by hand the way a fence can be. */
+function oversized(): string {
+  return JSON.stringify({
+    title: 'B'.repeat(KANBAN_BOARD_TITLE_MAX_CHARS + 10),
+    columns: [
+      { id: 'title', name: 'N'.repeat(KANBAN_NAME_MAX_CHARS + 10), type: 'title' },
+      {
+        id: 'status',
+        name: 'S'.repeat(KANBAN_NAME_MAX_CHARS + 10),
+        type: 'select',
+        options: [{ id: 'todo', label: 'T'.repeat(KANBAN_NAME_MAX_CHARS + 10), color: 'gray' }],
+      },
+    ],
+    items: [
+      {
+        id: 'a',
+        title: 'w'.repeat(KANBAN_ITEM_TITLE_MAX_CHARS + 50),
+        icon: 'I'.repeat(KANBAN_ICON_MAX_CHARS + 10),
+        content: 'D'.repeat(KANBAN_DESCRIPTION_MAX_CHARS + 10),
+        comments: [{ id: 'cm1', author: 'A'.repeat(KANBAN_NAME_MAX_CHARS + 10), text: 'M'.repeat(KANBAN_COMMENT_MAX_CHARS + 10) }],
+        subtasks: [{ id: 'st1', title: 'U'.repeat(KANBAN_SUBTASK_TITLE_MAX_CHARS + 10), completed: false }],
+        properties: { status: 'todo' },
+      },
+    ],
+    views: [{ id: 'v1', name: 'V'.repeat(KANBAN_NAME_MAX_CHARS + 10), type: 'board' }],
+  })
+}
+
+describe('the text ceilings a fence is read under', () => {
+  it('clamps every free-text field to its ceiling on read, JSON and outline alike', () => {
+    const result = parseKanbanBody(oversized())
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.data.title).toHaveLength(KANBAN_BOARD_TITLE_MAX_CHARS)
+    expect(result.data.views[0]!.name).toHaveLength(KANBAN_NAME_MAX_CHARS)
+    expect(result.data.columns[0]!.name).toHaveLength(KANBAN_NAME_MAX_CHARS)
+    expect(result.data.columns[1]!.name).toHaveLength(KANBAN_NAME_MAX_CHARS)
+    expect(result.data.columns[1]!.options![0]!.label).toHaveLength(KANBAN_NAME_MAX_CHARS)
+    const item = result.data.items[0]!
+    expect(item.title).toHaveLength(KANBAN_ITEM_TITLE_MAX_CHARS)
+    expect(item.icon).toHaveLength(KANBAN_ICON_MAX_CHARS)
+    expect(item.content).toHaveLength(KANBAN_DESCRIPTION_MAX_CHARS)
+    expect(item.comments![0]!.author).toHaveLength(KANBAN_NAME_MAX_CHARS)
+    expect(item.comments![0]!.text).toHaveLength(KANBAN_COMMENT_MAX_CHARS)
+    expect(item.subtasks![0]!.title).toHaveLength(KANBAN_SUBTASK_TITLE_MAX_CHARS)
+  })
+
+  it('reads an outline card under the same title ceiling', () => {
+    const body = `## To Do\n- [ ] ${'T'.repeat(KANBAN_ITEM_TITLE_MAX_CHARS + 10)}`
+    const result = parseKanbanBody(body)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.data.items[0]!.title).toHaveLength(KANBAN_ITEM_TITLE_MAX_CHARS)
+  })
+
+  it('leaves a board written through the UI exactly as it was', () => {
+    const body = JSON.stringify({
+      title: 'Sprint',
+      items: [{ id: 'a', title: 'First Task', properties: { status: 'todo' } }],
+    })
+    const result = parseKanbanBody(body)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.data.title).toBe('Sprint')
+    expect(result.data.items[0]!.title).toBe('First Task')
+  })
+
+  it('never clamps a property value, whose type its own column owns', () => {
+    const longId = 'x'.repeat(KANBAN_ITEM_TITLE_MAX_CHARS + 10)
+    const body = JSON.stringify({ items: [{ id: 'a', title: 'T', properties: { status: longId } }] })
+    const result = parseKanbanBody(body)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.data.items[0]!.properties.status).toBe(longId)
   })
 })
 
