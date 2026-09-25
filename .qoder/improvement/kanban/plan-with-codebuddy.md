@@ -5,6 +5,18 @@
 - 基線：typecheck 通过；`vitest run` 468 套件 / 4259 用例全绿（blog-frontend 依赖软链后 parity 套件也绿）
 - 每完成一项：实现 → 相关测试 → 回归（pre-commit 门禁 + 全量 `test:unit`）→ 提交 → 更新本文件
 
+## 阶段小结（截至当前批次）
+
+已完成 7 个改进项、7 次原子提交，全部通过 pre-commit 门禁（size / comments / escape / empty-catch /
+hardcoded / token / i18n / module-state / deep-imports / code-style / surfaces / migration）+
+typecheck + 相关测试 + 全量 `test:unit`。全量跑中观察到的偶发失败（radiogroup-names、
+starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看板无关、单独运行通过，
+已逐项核实。
+
+剩余项为功能性增强（F-1/F-2/F-8/F-10）、防御纵深（S-6）与量测驱动的二阶性能项（P-2/P-5），
+建议按「F-1 → F-2 → F-8 → F-10 → S-6」顺序继续；P-2/P-5 先跑
+`scripts/measure-kanban.mjs` 确认实际超标再做。
+
 ## 进度总览
 
 | # | 类别 | 条目 | 状态 | 提交 |
