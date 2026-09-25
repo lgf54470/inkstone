@@ -60,7 +60,7 @@
 - 类型：`npx tsc -b --force` 通过。
 - 静态门禁 12 项全绿：style / comments / size / hardcoded / tokens / i18n / empty-catch / escape / module-state / deep-imports / surfaces / vendor。
 - 迁移守卫：`tests/schema-migrations.test.ts` 通过（本轮追加 v43 审计、v44 member_sort、v45 成员表/标题列，未触碰已应用迁移）。
-- 交付小结：14 个提交（5a8ac75f…d67848cd），覆盖审计建议修复的 10 项中的 10 项；#18（/summary 聚合化）经核实为审计误报、#8/#12/#19 按计划缓办，依据均登记于对应序节。序 14 的裸控件修复与 demo 类型扩展漏提交部分由收尾后的 `d67848cd` 补齐（提交前工作区已核干净）。
+- 交付小结：14 个提交（5a8ac75f…437ed4da），覆盖审计建议修复的 10 项中的 10 项；#18（/summary 聚合化）经核实为审计误报、#8/#12/#19 按计划缓办，依据均登记于对应序节。序 14 的裸控件修复与 demo 类型扩展漏提交部分由收尾后的 `437ed4da` 补齐（提交前工作区已核干净）。
 - 交接备注：worktree `inkstone-share-improvement-codebuddy-hy4preview`（分支同名），合并方式由维护者决定；台账随最后一个提交（本序）入库。
 
 ### 2026-09-25 · 序 14 · P2 #14 手工精选集合（成员表 + 发布/公开页/对话框/demo 全链路）
