@@ -54,16 +54,30 @@ export function registerSecurityHeaders(app: Hono<AppBindings>): void {
   })
 }
 
+// Every surface reachable without an opted-in viewer: the share page, the public
+// collection and playlist shells, and the OAuth authorize page. `/c/` and `/playlist/`
+// are the same promise as `/s/` — a visitor who opened a link never opted in, so a
+// shared page must not be able to load a third-party image and report who read it.
+const PUBLIC_PAGE_PREFIXES = ['/api/', '/s/', '/c/', '/playlist/'] as const
+const PUBLIC_PAGE_EXACT = ['/authorize'] as const
+
+function isPublicPagePath(path: string): boolean {
+  return (
+    PUBLIC_PAGE_PREFIXES.some((prefix) => path.startsWith(prefix)) ||
+    (PUBLIC_PAGE_EXACT as readonly string[]).includes(path)
+  )
+}
+
 /**
  * Whether this response may reference external https images. Resolves to `false`
- * for API/share/authorize pages, when no (valid) session cookie is present, or
- * when the signed-in user's `preview.externalImages` setting is off. Mirrors the
- * client-side renderer gate; for raw-HTML images this is the only enforcement.
+ * for API/share/collection/playlist/authorize pages, when no (valid) session cookie
+ * is present, or when the signed-in user's `preview.externalImages` setting is off.
+ * Mirrors the client-side renderer gate; for raw-HTML images this is the only
+ * enforcement.
  */
 async function viewerAllowsExternalImages(c: Context<AppBindings>): Promise<boolean> {
   const path = c.req.path
-  if (path.startsWith('/api/') || path.startsWith('/s/') || path === '/authorize')
-    return false
+  if (isPublicPagePath(path)) return false
   const token = getCookie(c, SESSION_COOKIE) ?? getCookie(c, LEGACY_SESSION_COOKIE)
   if (!token || !isSessionToken(token))
     return false

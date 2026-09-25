@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Hono } from 'hono'
+import { SESSION_COOKIE } from '../src/shared/constants'
+import type { D1Database } from '@cloudflare/workers-types'
 import type { AppBindings } from '../src/worker/env'
+import { TABLE_STATEMENTS } from '../src/worker/db/schema/tables'
+import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
+import { hashToken } from '../src/worker/lib/session-store'
 import { registerSecurityHeaders } from '../src/worker/middleware/security-headers'
+import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
 
 const HTML_BODY = '<html><body><script>boot()</script></body></html>'
 
@@ -74,5 +80,54 @@ describe('security headers middleware', () => {
   it('keeps JSON API responses on plain self script source', async () => {
     const { csp } = await scriptSourceOf(makeApp(), '/api/json')
     expect(csp).toContain("script-src 'self';")
+  })
+})
+
+describe('external image opt-in is refused on public pages', () => {
+  const TOKEN = 'a'.repeat(64)
+  const NOW = 2_000_000_000_000
+
+  async function appWithOptedInViewer(): Promise<{
+    app: Hono<AppBindings>
+    env: AppBindings['Bindings']
+    imgSrcOf: (path: string) => Promise<string>
+  }> {
+    const db = createDb()
+    for (const statement of TABLE_STATEMENTS) await runSql(db, statement)
+    for (const statement of INDEX_STATEMENTS) await runSql(db, statement)
+    await runSql(
+      db,
+      `INSERT INTO users (id, username, password_hash, login, name, avatar_url, created_at, last_seen_at, settings)
+       VALUES (?1, 'listener', 'x', 'listener', 'Listener', '', ?2, ?2, ?3)`,
+      'user-1', NOW, JSON.stringify({ preview: { externalImages: true } }),
+    )
+    await runSql(
+      db,
+      'INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?1, ?2, ?3, ?4)',
+      await hashToken(TOKEN), 'user-1', NOW + 3_600_000, NOW,
+    )
+    const env = { DB: db as unknown as D1Database } as AppBindings['Bindings']
+    const app = new Hono<AppBindings>()
+    registerSecurityHeaders(app)
+    for (const path of ['/probe', '/s/probe', '/c/probe', '/playlist/probe']) {
+      app.get(path, (c) => c.html(HTML_BODY))
+    }
+    const imgSrcOf = async (path: string): Promise<string> => {
+      const res = await app.request(path, { headers: { Cookie: `${SESSION_COOKIE}=${TOKEN}` } }, env)
+      return /img-src ([^;]+);/.exec(res.headers.get('Content-Security-Policy') ?? '')?.[1] ?? ''
+    }
+    return { app, env, imgSrcOf }
+  }
+
+  it('adds https: for a signed-in page whose viewer opted in', async () => {
+    const { imgSrcOf } = await appWithOptedInViewer()
+    expect(await imgSrcOf('/probe')).toContain('https:')
+  })
+
+  it('omits https: on the share, collection and playlist shells even when the viewer opted in', async () => {
+    const { imgSrcOf } = await appWithOptedInViewer()
+    for (const path of ['/s/probe', '/c/probe', '/playlist/probe']) {
+      expect(await imgSrcOf(path), path).not.toContain('https:')
+    }
   })
 })
