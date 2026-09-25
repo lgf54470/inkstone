@@ -5,7 +5,7 @@ import { Modal } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { useMediaQuery } from '../../lib/hooks'
-import { t } from '../../lib/i18n'
+import { t, type MessageKey } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { formatBytes, formatTimecode } from '../../lib/time'
 import { useCurrentTrack, useMusic, useProgress } from './music-store'
@@ -18,7 +18,7 @@ import {
   MusicEqButton, MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicVolumeButton,
 } from './music-transport-widgets'
 import { useTrackLyric } from './music-lyrics'
-import { activeLyricIndex, MUSIC_NARROW_BREAKPOINT, parseLyric } from './music-utils'
+import { activeLyricIndex, lyricsEmptyKey, lyricsPending, MUSIC_NARROW_BREAKPOINT, parseLyric } from './music-utils'
 
 const IMMERSIVE_WIDTH = 1000
 
@@ -39,6 +39,7 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
   useTrackLyric(track)
   const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
   const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs))
+  const lyricPending = lyricsPending(track)
   const scrollerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -66,7 +67,7 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
             aria-label={t('music.lyrics')}
             className='min-h-0 flex-1 overflow-y-auto px-6 py-4'
           >
-            <Lyrics lines={lyrics} activeIndex={activeIndex} />
+            <Lyrics lines={lyrics} activeIndex={activeIndex} emptyKey={lyricsEmptyKey(Boolean(track), lyricPending)} pending={lyricPending} />
           </div>
           <div role='group' tabIndex={0} aria-label={t('music.queue')} className='max-h-40 shrink-0 overflow-y-auto border-t border-[var(--border-subtle)] p-2'>
             <MusicQueueList />
@@ -169,9 +170,14 @@ function ImmersiveLeft({
   )
 }
 
-function Lyrics({ lines, activeIndex }: { lines: ReturnType<typeof parseLyric>; activeIndex: number }) {
+function Lyrics({ lines, activeIndex, emptyKey, pending }: {
+  lines: ReturnType<typeof parseLyric>
+  activeIndex: number
+  emptyKey: MessageKey
+  pending: boolean
+}) {
   if (!lines.length) {
-    return <p className='py-16 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('music.no_lyrics')}</p>
+    return <p role={pending ? 'status' : undefined} className='py-16 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t(emptyKey)}</p>
   }
   return (
     <div className='space-y-2 py-2'>

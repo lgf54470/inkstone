@@ -150,6 +150,44 @@ describe('MusicImmersivePlayer video picture', () => {
   })
 })
 
+describe('MusicImmersivePlayer lyrics empty states (UI-6)', () => {
+  function lyricPane(): HTMLElement | null {
+    return document.querySelector(`[aria-label="${t('music.lyrics')}"]`)
+  }
+
+  function seedTrack(track: Partial<MusicTrack>): void {
+    const full: MusicTrack = {
+      id: 'track-1', title: 'Moonlight', artist: 'Hu Yanbin', album: 'Answer',
+      durationMs: 200_000, source: 'r2', format: 'mp3', webdavPath: null, mime: 'audio/mpeg',
+      sizeBytes: 1024, coverUrl: null, lyric: null, hasLyric: false, tagIds: [],
+      isFavorite: false, isPinned: false, playCount: 0, lastPlayedAt: null, contentHash: null,
+      createdAt: 0, updatedAt: 0,
+      ...track,
+    }
+    useMusic.setState({ tracks: [full], queue: [full.id], currentIndex: 0, ensureTrackLyric: vi.fn(async () => {}) })
+  }
+
+  it('does not blame the file when nothing is playing', async () => {
+    await mountPlayer(vi.fn())
+    expect(lyricPane()?.textContent).toContain(t('music.nothing_playing'))
+    expect(lyricPane()?.textContent).not.toContain(t('music.no_lyrics'))
+  })
+
+  it('says the words are on their way while the lyric is still loading', async () => {
+    seedTrack({ hasLyric: true, lyric: null })
+    await mountPlayer(vi.fn())
+    expect(lyricPane()?.textContent).toContain(t('music.lyrics_loading'))
+    expect(lyricPane()?.querySelector('[role="status"]')).not.toBeNull()
+  })
+
+  it('reports a track that really carries no words', async () => {
+    seedTrack({ hasLyric: false, lyric: null })
+    await mountPlayer(vi.fn())
+    expect(lyricPane()?.textContent).toContain(t('music.no_lyrics'))
+    expect(lyricPane()?.querySelector('[role="status"]')).toBeNull()
+  })
+})
+
 describe('MusicImmersivePlayer scroll regions (UI-17)', () => {
   it('gives the lyrics and queue panes a keyboard focus stop each', async () => {
     const track: MusicTrack = {

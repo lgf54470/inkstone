@@ -2626,8 +2626,6 @@ const allowed = new Map([
     '/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */',
     '// The column holds the artwork alone otherwise, so the playing track is named here',
     '// too: the lyrics pane can be scrolled far from its headings.',
-    '// Three silences look alike but are not: nothing is playing, the words are still on',
-    '// their way, and the file really carries none.',
   ]],
   ['src/client/features/music/music-playlist-drag.test.ts', [
     '// t1 (i1) dropped on the t2 row: i2 sits at index 2 in the manual order.',
@@ -3038,6 +3036,8 @@ const allowed = new Map([
     '// plentiful, so they overlap through a small pool instead of waiting for each other in turn.',
     '// Below this viewport width the music surfaces\' fixed-width side columns squeeze the main area',
     '// toward zero, so they fold (UI-14): the hub into drawers, the immersive player into a stack.',
+    '// Three silences look alike but are not: nothing is playing, the words are still on their',
+    '// way, and the file really carries none. Every lyrics pane answers with the same one.',
     '// The transport nudge buttons and the seek hotkeys move by the same amount.',
     '// Mirrors the worker\'s resolver so folder picks (which carry cover art, cue sheets and',
     '// other noise) only queue files the server will accept, and nothing wastes a round trip',

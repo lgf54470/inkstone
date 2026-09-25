@@ -11,7 +11,7 @@ import { useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { useTrackLyric } from './music-lyrics'
 import { MusicVideoStage } from './music-video-stage'
-import { activeLyricIndex, parseLyric } from './music-utils'
+import { activeLyricIndex, lyricsEmptyKey, lyricsPending, parseLyric } from './music-utils'
 
 export type MusicDetailTab = 'lyrics' | 'details'
 
@@ -29,7 +29,7 @@ export function MusicNowPlaying({
   const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
   const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs))
   const scrollerRef = useRef<HTMLDivElement>(null)
-  const lyricPending = Boolean(track && track.hasLyric && track.lyric === null)
+  const lyricPending = lyricsPending(track)
 
   useEffect(() => {
     if (tab !== 'lyrics' || activeIndex < 0) return
@@ -97,13 +97,6 @@ function NowPlayingMeta({ track }: { track: ReturnType<typeof useCurrentTrack> }
         : <p className='truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.nothing_playing')}</p>}
     </header>
   )
-}
-
-// Three silences look alike but are not: nothing is playing, the words are still on
-// their way, and the file really carries none.
-function lyricsEmptyKey(playing: boolean, pending: boolean): MessageKey {
-  if (!playing) return 'music.nothing_playing'
-  return pending ? 'music.lyrics_loading' : 'music.no_lyrics'
 }
 
 function Lyrics({ lines, activeIndex, emptyKey, pending }: {
