@@ -14,12 +14,6 @@
   "src/client/features/preview/kanban-fullscreen.test.ts": {
     "longFns": 1
   },
-  "src/client/lib/markdown/kanban/body.test.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/markdown/kanban/card-fields.ts": {
-    "longFns": 1
-  },
   "src/client/lib/markdown/kanban/ui/kanban-add-operations.test.ts": {
     "longFns": 1
   },
@@ -27,12 +21,6 @@
     "longFns": 2
   },
   "src/client/lib/markdown/kanban/ui/kanban-gantt-view.test.ts": {
-    "longFns": 1
-  },
-  "src/client/lib/markdown/kanban/ui/kanban-item-detail-fields.tsx": {
-    "longFns": 1
-  },
-  "src/client/lib/markdown/kanban/ui/kanban-property-cell.tsx": {
     "longFns": 1
   },
   "src/client/lib/markdown/kanban/ui/kanban-root-hooks.ts": {

@@ -79,6 +79,18 @@ export interface KanbanCardField {
 }
 
 /**
+ * A url prints as the link it names, but only through the fence's own whitelist: a value that would
+ * not have survived the parse boundary prints as plain text instead of as a link.
+ */
+function readUrlField(column: KanbanProperty, raw: unknown): KanbanCardField | null {
+  const text = typeof raw === 'string' ? raw.trim() : ''
+  if (text === '') return null
+  const href = safeKanbanUrl(text) ?? undefined
+  const field: KanbanCardField = { id: column.id, label: formatKanbanPropertyName(column), value: text }
+  return href === undefined ? field : { ...field, href }
+}
+
+/**
  * One field as the card prints it — the column's own name and its value as text — or null when the
  * card has nothing to say about that column. A field with a label and no value prints as the label
  * alone, which is how a flag reads ("Done" rather than "Done: false").
@@ -114,14 +126,8 @@ export function readKanbanCardField(item: KanbanItem, column: KanbanProperty): K
       const name = kanbanPersonName(raw)
       return name === '' ? null : field(name)
     }
-    case 'url': {
-      const text = typeof raw === 'string' ? raw.trim() : ''
-      if (text === '') return null
-      // A url prints as the link it names, but only through the fence's own whitelist: a value that
-      // would not have survived the parse boundary prints as plain text instead of as a link.
-      const href = safeKanbanUrl(text)
-      return field(text, href ?? undefined)
-    }
+    case 'url':
+      return readUrlField(column, raw)
     default: {
       // Text and number print as written. An object or a boolean is not a value this row knows
       // how to say, and printing `[object Object]` on a card is worse than printing nothing.

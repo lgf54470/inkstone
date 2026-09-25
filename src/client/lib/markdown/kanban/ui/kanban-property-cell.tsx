@@ -188,6 +188,65 @@ interface KanbanPropertyCellProps {
   people?: Record<string, string[]>
 }
 
+/**
+ * A url cell stays an editable field like its text sibling; the link it names opens from the
+ * affordance beside it, so the reader never has to leave edit mode to follow it.
+ */
+function UrlCellValue({
+  column,
+  value,
+  write,
+}: {
+  column: KanbanProperty
+  value: unknown
+  write: (next: unknown) => void
+}) {
+  const link = safeKanbanUrl(readPlainText(value))
+  return (
+    <div className='flex items-center gap-1'>
+      <EditableValue
+        label={formatKanbanPropertyName(column)}
+        text={readPlainText(value)}
+        onSubmit={(next) => write(next.trim())}
+      />
+      {link && (
+        <a
+          href={link}
+          target='_blank'
+          rel='noopener noreferrer'
+          aria-label={t('preview.open_in_new_tab')}
+          className='shrink-0 text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]'
+        >
+          <Link2 size={12} />
+        </a>
+      )}
+    </div>
+  )
+}
+
+/** The one date a cell holds, through the same picker the detail panel uses. */
+function DateCellValue({ column, value, write }: { column: KanbanProperty; value: unknown; write: (next: unknown) => void }) {
+  return (
+    <KanbanDatePicker
+      propertyName={formatKanbanPropertyName(column)}
+      value={readPlainText(value)}
+      onChange={write}
+    />
+  )
+}
+
+/** The plain fallback: text and number, both edited in place. */
+function TextCellValue({ column, value, write }: { column: KanbanProperty; value: unknown; write: (next: unknown) => void }) {
+  return (
+    <EditableValue
+      label={formatKanbanPropertyName(column)}
+      text={readPlainText(value)}
+      numberType={column.type === 'number'}
+      onSubmit={(next) => write(column.type === 'number' ? readNumber(next) : next)}
+    />
+  )
+}
+
 function CellContent({
   column,
   item,
@@ -228,47 +287,12 @@ function CellContent({
     return <KanbanFilesCell files={item.files} onChangeFiles={(files) => onUpdateFiles(item.id, files)} />
   }
   if (column.type === 'date') {
-    return (
-      <KanbanDatePicker
-        propertyName={formatKanbanPropertyName(column)}
-        value={readPlainText(value)}
-        onChange={write}
-      />
-    )
+    return <DateCellValue column={column} value={value} write={write} />
   }
   if (column.type === 'url') {
-    // The cell stays an editable field like its text sibling; the link it names opens from the
-    // affordance beside it, so the reader never has to leave edit mode to follow it.
-    const link = safeKanbanUrl(readPlainText(value))
-    return (
-      <div className='flex items-center gap-1'>
-        <EditableValue
-          label={formatKanbanPropertyName(column)}
-          text={readPlainText(value)}
-          onSubmit={(next) => write(next.trim())}
-        />
-        {link && (
-          <a
-            href={link}
-            target='_blank'
-            rel='noopener noreferrer'
-            aria-label={t('preview.open_in_new_tab')}
-            className='shrink-0 text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]'
-          >
-            <Link2 size={12} />
-          </a>
-        )}
-      </div>
-    )
+    return <UrlCellValue column={column} value={value} write={write} />
   }
-  return (
-    <EditableValue
-      label={formatKanbanPropertyName(column)}
-      text={readPlainText(value)}
-      numberType={column.type === 'number'}
-      onSubmit={(next) => write(column.type === 'number' ? readNumber(next) : next)}
-    />
-  )
+  return <TextCellValue column={column} value={value} write={write} />
 }
 
 export function KanbanPropertyCell(props: KanbanPropertyCellProps) {

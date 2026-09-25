@@ -132,15 +132,20 @@ describe('parseKanbanBody URL whitelist', () => {
     if (result.ok) return
     expect(result.error).toContain('files')
   })
+})
 
-  it('holds url columns to the same whitelist the cover and files answer to', () => {
-    const board = (link: string): string => JSON.stringify({
+describe('the URL whitelist a url column answers to', () => {
+  function board(link: string): string {
+    return JSON.stringify({
       columns: [
         { id: 'title', name: 'Title', type: 'title' },
         { id: 'spec', name: 'Spec', type: 'url' },
       ],
       items: [{ id: '1', title: 'Task 1', properties: { spec: link } }],
     })
+  }
+
+  it('keeps a whitelisted link, and refuses the rest naming the column', () => {
     const accepted = parseKanbanBody(board('https://spec.example.test/1'))
     expect(accepted.ok).toBe(true)
     const refused = parseKanbanBody(board('javascript:alert(1)'))
