@@ -166,12 +166,25 @@ export function isValidTargetValue(value: unknown): value is string {
 export function collectionChannelLabelsStatement(db: D1Database, userId: string): D1PreparedStatement {
   return db.prepare(
     `SELECT c.slug AS slug,
-            CASE c.target_type WHEN 'folder' THEN f.name ELSE t.name END AS name
-       FROM share_collections c
-       LEFT JOIN share_folders f ON c.target_type = 'folder' AND f.id = c.target_value AND f.user_id = c.user_id
-       LEFT JOIN share_tags t ON c.target_type = 'tag' AND t.id = c.target_value AND t.user_id = c.user_id
+            ${collectionTargetNameSelect()} AS name
+       FROM share_collections c ${collectionTargetNameJoin()}
       WHERE c.user_id = ?1`,
   ).bind(userId)
+}
+
+/**
+ * The joins that resolve a collection's stored target id to its live folder/tag name. One shape,
+ * two readers (the channel labels and the owner's list), so a change to how a target resolves
+ * cannot land in one query and miss the other.
+ */
+export function collectionTargetNameJoin(alias = 'c'): string {
+  return `LEFT JOIN share_folders f ON ${alias}.target_type = 'folder' AND f.id = ${alias}.target_value AND f.user_id = ${alias}.user_id
+          LEFT JOIN share_tags t ON ${alias}.target_type = 'tag' AND t.id = ${alias}.target_value AND t.user_id = ${alias}.user_id`
+}
+
+/** The live name the join resolves; null when the folder or tag is gone. */
+export function collectionTargetNameSelect(alias = 'c'): string {
+  return `CASE ${alias}.target_type WHEN 'folder' THEN f.name ELSE t.name END`
 }
 
 export interface CollectionChannelLabelRow {

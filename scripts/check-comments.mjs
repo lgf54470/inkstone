@@ -9212,6 +9212,8 @@ const allowed = new Map([
     '/** Null for an absent cursor; a malformed one is an error the caller must answer, not a first page. */',
     '/**\n * The name of the folder or tag a collection points at, read at request time: renaming a folder\n * renames the page it published. Null when the record is gone, which is the same fact the member rule\n * needs — a tag collection whose tag was deleted has no name to show and no name to match, so both\n * answers come from this one lookup. The stored record keeps the target\'s id only, so there is no\n * second name to fall out of date.\n */',
     '/**\n * The title behind every channel a directory stamps, keyed by the marker itself (ADR-0005). The\n * label is read here rather than stored on the visit: the visit row keeps the marker, the marker\n * keeps the collection\'s slug, and this lookup turns that slug into the folder/tag name the owner\n * published — so renaming a folder renames what the channel split calls it, with nothing to keep in\n * sync. A paused collection is still listed: pausing a directory does not un-attribute the visits\n * it already brought in.\n */',
+    '/**\n * The joins that resolve a collection\'s stored target id to its live folder/tag name. One shape,\n * two readers (the channel labels and the owner\'s list), so a change to how a target resolves\n * cannot land in one query and miss the other.\n */',
+    '/** The live name the join resolves; null when the folder or tag is gone. */',
     '/**\n * Marker → title, built through `collectionChannelToken` so this lookup cannot name a token the\n * directory does not hand out. A collection whose folder/tag is gone contributes nothing: its\n * historic visits stay in the breakdown under their raw marker rather than under a name that no\n * longer exists to check.\n */',
   ]],
   ['src/worker/lib/share-selection-sql.ts', [
@@ -9751,7 +9753,10 @@ const allowed = new Map([
   ['src/worker/routes/share/collections.ts', [
     '/**\n * The owner\'s side of a published collection (ADR-0005). Publishing writes one record and derives\n * nothing; revoking deletes that record and leaves every member\'s own share exactly as it was, which\n * is why the confirm copy has to say so rather than the documentation.\n */',
     '/** The ceiling keeps the batched live counts — one statement per collection — from growing with abuse. */',
-    '/**\n * The count is read now, not stored: a folder collection whose folder gained a share a second ago\n * reports the new number, because the number and the page both come from the same predicate.\n */',
+    '// The count is read now, not stored: a folder collection whose folder gained a share a second',
+    '// ago reports the new number, because the number and the page both come from the same predicate.',
+    '// Each collection keeps its own count statement (the shared member rule), and the batch keeps',
+    '// them at one round trip instead of two flights per collection.',
     '/**\n * A paused collection can be resumed and a live one paused; nothing else is patched here. The\n * password and the end date are part of what "published" means, so they are re-stated through the\n * publish route — one write path for the policy rather than two that could disagree about whether a\n * password-less update means "leave it" or "remove it".\n */',
     '// The name is read before the record is written, so a collection can never address a folder the',
     '// account does not own — the same check that would otherwise be a lookup the page has to repeat.',
@@ -10298,6 +10303,7 @@ const allowed = new Map([
     '// The pause route answers to a pause and nothing else: a patch that tried to change the',
     '// password would be a second, quietly different way to write the access policy.',
     '// Revoking the collection is not revoking the shares it listed.',
+    '// One row read (names ride the join) and one batch of counts — never two flights per collection.',
   ]],
   ['tests/share-english-literals.test.ts', [
     '/**\n * SH-34: the share UI drew English-only literals (\'PV\', \'CUSTOM\', \'Untitled\n * note\', machine fallback tokens) straight into the page, and the worker\n * baked \'Untitled note\' into visit rows instead of reporting the missing\n * note to the client. Every user-visible string must go through i18n\n * message ids, so these banned substrings must not reappear.\n */',

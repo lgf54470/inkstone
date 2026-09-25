@@ -478,4 +478,50 @@ describe('collection owner routes (ADR-0005)', () => {
     const over = await postJson(app, '/api/share/collections', { targetType: 'folder', targetValue: folderId(20) })
     expect(over.status).toBe(400)
   })
+
+  it('answers the owner list with one read plus one batch of counts, whatever the collection count (audit #16)', async () => {
+    const db = await makeDb()
+    for (let index = 0; index < 2; index += 1) {
+      await seedFolder(db, { id: folderId(index), name: `Folder ${index}` })
+      const note = await seedNote(db, { title: `Folder note ${index}` })
+      await seedShare(db, { slug: `s-f${index}`, note_id: note, folder_id: folderId(index) })
+    }
+    await seedTag(db, { id: tagId(1), name: 'Field' })
+    const tagged = await seedNote(db, { title: 'Tagged note' })
+    await seedShare(db, { slug: 's-t1', note_id: tagged, tags: '["Field"]' })
+    const app = makeApp()
+    await publishFolder(app, folderId(0))
+    await publishFolder(app, folderId(1))
+    await postJson(app, '/api/share/collections', { targetType: 'tag', targetValue: tagId(1) })
+
+    const calls = { direct: 0, batch: 0 }
+    const real = DB_ENV.env.DB as unknown as {
+      prepare(sql: string): { bind(...values: unknown[]): unknown; all(): Promise<unknown>; first(): Promise<unknown>; run(): Promise<unknown> }
+      batch(statements: unknown[]): Promise<unknown>
+    }
+    const wrap = (stmt: { bind(...values: unknown[]): unknown; all(): Promise<unknown>; first(): Promise<unknown>; run(): Promise<unknown> }) => ({
+      bind: (...values: unknown[]) => wrap(stmt.bind(...values) as typeof stmt),
+      all: async () => { calls.direct += 1; return stmt.all() },
+      first: async () => { calls.direct += 1; return stmt.first() },
+      run: async () => stmt.run(),
+    })
+    DB_ENV.env.DB = {
+      prepare: (sql: string) => wrap(real.prepare(sql)),
+      batch: (statements: unknown[]) => { calls.batch += 1; return real.batch(statements) },
+    } as unknown as D1Database
+
+    try {
+      const listed = await (await request(app, '/api/share/collections')).json() as { collections: Array<{ title: string; count: number; targetType: string }> }
+      expect(listed.collections).toHaveLength(3)
+      expect(listed.collections.every((collection) => collection.count === 1)).toBe(true)
+      expect(listed.collections.filter((collection) => collection.targetType === 'folder').map((collection) => collection.title).sort())
+        .toEqual(['Folder 0', 'Folder 1'])
+      expect(listed.collections.find((collection) => collection.targetType === 'tag')!.title).toBe('Field')
+      // One row read (names ride the join) and one batch of counts — never two flights per collection.
+      expect(calls.direct).toBe(1)
+      expect(calls.batch).toBe(1)
+    } finally {
+      DB_ENV.env.DB = real as unknown as D1Database
+    }
+  })
 })

@@ -1,4 +1,4 @@
-import { Hono, type Context } from 'hono'
+import { Hono } from 'hono'
 import { z } from 'zod'
 import type { ShareCollection } from '@shared/types'
 import type { AppBindings } from '../../env'
@@ -7,9 +7,15 @@ import { isValidId, newId, newSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { hashPassword } from '../../lib/password'
 import { LIMITS } from '@shared/constants'
-import { collectionMemberCountStatement, collectionTargetName, isValidTargetValue } from '../../lib/share-collections'
+import {
+  collectionMemberCountStatement,
+  collectionTargetName,
+  collectionTargetNameJoin,
+  collectionTargetNameSelect,
+  isValidTargetValue,
+} from '../../lib/share-collections'
 import { isShareTargetType, resolveShareTarget, type ShareTargetType } from '@shared/share-selection'
-import { rowsOf } from './read-results'
+import { firstOf, rowsOf } from './read-results'
 
 /**
  * The owner's side of a published collection (ADR-0005). Publishing writes one record and derives
@@ -35,42 +41,42 @@ interface CollectionRow {
   expires_at: number | null
   is_enabled: number
   created_at: number
+  target_name: string | null
 }
 
 function registerCollectionListRoute(shareManageRoutes: Hono<AppBindings>): void {
   shareManageRoutes.get('/collections', async (c) => {
+    const db = c.env.DB
     const userId = c.get('userId')
     const now = Date.now()
-    const rows = await c.env.DB.prepare(
-      `SELECT id, slug, target_type, target_value, password_hash, expires_at, is_enabled, created_at
-         FROM share_collections WHERE user_id = ?1 ORDER BY created_at DESC, id DESC`,
-    ).bind(userId).all<CollectionRow>()
-    const collections = await Promise.all(rowsOf<CollectionRow>(rows).map((row) => toShareCollection(c, row, userId, now)))
+    const rows = rowsOf<CollectionRow>(await db.prepare(
+      `SELECT c.id, c.slug, c.target_type, c.target_value, c.password_hash, c.expires_at, c.is_enabled, c.created_at,
+              ${collectionTargetNameSelect()} AS target_name
+         FROM share_collections c ${collectionTargetNameJoin()}
+        WHERE c.user_id = ?1 ORDER BY c.created_at DESC, c.id DESC`,
+    ).bind(userId).all<CollectionRow>())
+    // The count is read now, not stored: a folder collection whose folder gained a share a second
+    // ago reports the new number, because the number and the page both come from the same predicate.
+    // Each collection keeps its own count statement (the shared member rule), and the batch keeps
+    // them at one round trip instead of two flights per collection.
+    const counts = rows.length
+      ? await db.batch(rows.map((row) => collectionMemberCountStatement(db, {
+          userId,
+          target: resolveShareTarget({ type: row.target_type as ShareTargetType, value: row.target_value }, row.target_name),
+          now,
+        })))
+      : []
+    const collections = rows.map((row, index) => toShareCollection(row, firstOf<{ members: number }>(counts[index])))
     return c.json({ collections })
   })
 }
 
-/**
- * The count is read now, not stored: a folder collection whose folder gained a share a second ago
- * reports the new number, because the number and the page both come from the same predicate.
- */
-async function toShareCollection(
-  c: Context<AppBindings>,
-  row: CollectionRow,
-  userId: string,
-  now: number,
-): Promise<ShareCollection> {
+function toShareCollection(row: CollectionRow, count: { members: number } | null): ShareCollection {
   const record = { type: row.target_type as ShareTargetType, value: row.target_value }
-  const name = await collectionTargetName(c.env.DB, userId, record)
-  const count = await collectionMemberCountStatement(c.env.DB, {
-    userId,
-    target: resolveShareTarget(record, name),
-    now,
-  }).first<{ members: number }>()
   return {
     id: row.id,
     slug: row.slug,
-    title: name ?? '',
+    title: row.target_name ?? '',
     targetType: record.type,
     targetValue: record.value,
     count: count?.members ?? 0,

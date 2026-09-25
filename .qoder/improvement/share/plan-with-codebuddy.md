@@ -36,7 +36,7 @@
 | 05 | P0 | #2 | 分享页静态内联样式 `maxWidth:'none'` 移入样式表 | 极小 | ✅ | f59fe6f3 |
 | 06 | P0 | #17/#20 | worker 侧：日志 count+rows batch 化、页上限收紧、error 日志脱敏 | 小 | ✅ | 1137a1a4 |
 | 07 | P1 | #15 | 全站累计 UV 全史聚合每次列表重算 | 小 | ✅ | ⏳ |
-| 08 | P1 | #16 | 集合列表 N+1（每集合 2 查询） | 小 | ⬜ | — |
+| 08 | P1 | #16 | 集合列表 N+1（每集合 2 查询） | 小 | ✅ | ⏳ |
 | 09 | P1 | #10 | 访问日志无时间范围筛选 | 小 | ⬜ | — |
 | 10 | P1 | #9 | 渠道卡片不能下钻到该渠道明细 | 小-中 | ⬜ | — |
 | 11 | P2 | #6 | 链接变更无审计历史（新迁移 v43） | 中 | ⬜ | — |
@@ -53,6 +53,12 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 08 · P1 #16 集合列表去 N+1（2N 次往返 → 2 次）
+
+- 方案：`share_collections` 列表查询直接 LEFT JOIN 文件夹/标签带出 `target_name`（提取 `collectionTargetNameJoin/Select` 片段，与渠道标签查询共用一份 JOIN 定义，防两处口径分叉）；成员数改为「每集合一条 count 语句 + 一次 `db.batch`」。往返从 2N（N≤20 → 40 次）降到 2 次；**count 语句本身一字未改**（仍走 `collectionMemberCountStatement` 的共享成员规则），计数语义按构造等价；「count 现读不存储」的行为不变。
+- 过程缺陷：新 round-trip 用例首跑暴露测试插桩的 wrapper 缺 `run`（harness 的 batch 逐语句调 run），补齐后通过——插桩结构对齐 share-routes 的 `instrumentRoundTrips`。
+- 回归：`tests/share-collections.test.ts` 新增 1 例（2 folder + 1 tag 集合，断言 title/count 正确且 direct=1、batch=1），16/16 全绿；`npx tsc -b --force` 与 12 道门禁绿（comments 白名单已同步）。
 
 ### 2026-09-25 · 序 07 · P1 #15 全站 UV/Views 聚合的 app_meta 短 TTL 记忆
 
