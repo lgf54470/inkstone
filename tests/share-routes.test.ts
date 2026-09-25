@@ -20,6 +20,7 @@ import { purgeExpiredOperationalData } from '../src/worker/lib/maintenance'
 import { LIMITS } from '../src/shared/constants'
 import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED, collectionChannelToken } from '../src/shared/share-channel'
 import { shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
+import { FILTERED_STATS_TTL_MS } from '../src/worker/routes/share/global-stats'
 import { createD1Database as createDb, captureSql, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
@@ -320,14 +321,17 @@ describe('share stats route (SH-72)', () => {
     expect(statements.some((sql) => sql.includes('COUNT(DISTINCT visitor_fp) as uvs'))).toBe(false)
   })
 
-  it('answers in a single batch and no serial query', async () => {
+  it('answers in a single batch plus the memo lookup (audit #15)', async () => {
     await makeDb()
     const calls = instrumentRoundTrips()
 
     const body = await (await request(makeApp(), '/api/share/stats')).json()
     expect(body.globalStats.totalShares).toBe(0)
     expect(calls.batch).toBe(1)
-    expect(calls.direct).toBe(0)
+    // The one serial flight is the one-row memo read: on a fresh memo it replaces the whole
+    // history walk the filtered aggregate used to be, and it writes the refill back at most
+    // once per window.
+    expect(calls.direct).toBe(1)
   })
 })
 
@@ -566,7 +570,9 @@ describe('share list and analytics db.batch round-trips (SH-17a)', () => {
     expect(body.shares[0].uniqueVisitors).toBe(1)
     expect(body.globalStats.totalShares).toBe(1)
     expect(calls.batch).toBe(2)
-    expect(calls.direct).toBe(0)
+    // The serial budget now includes the one-row memo read (audit #15): cheap on every request,
+    // and it lets the batch drop the whole-history UV aggregate whenever the memo is fresh.
+    expect(calls.direct).toBe(1)
   })
 
   it('answers global analytics in one batch plus the dependent top-notes lookup', async () => {
@@ -1374,6 +1380,61 @@ describe('share analytics routes (real D1)', () => {
     const body = await (await request(makeApp(), '/api/share/analytics/global?range=all')).json()
     expect(body.recentVisits.length).toBe(2)
     expect(body.recentVisits[1].visitedAt).toBeLessThan(Date.now() - 700 * 86_400_000)
+  })
+})
+
+describe('share list filtered-stats memo (audit #15)', () => {
+  it('serves the all-time footnote from the memo and refills it once the window passes', async () => {
+    vi.useFakeTimers()
+    try {
+      const START = Date.now()
+      const db = await makeDb()
+      await seedUser(db)
+      const n1 = await seedNote(db, { title: 'Memo' })
+      await seedShare(db, { note_id: n1, slug: 'memo-1' })
+      await seedVisit(db, { note_id: n1, slug: 'memo-1', visited_at: START - 60_000, visitor_fp: 'fp-m1' })
+      await seedVisit(db, { note_id: n1, slug: 'memo-1', visited_at: START - 50_000, visitor_fp: 'fp-m2' })
+      const app = makeApp()
+
+      const first = await (await request(app, '/api/share')).json()
+      expect(first.globalStats.totalVisitors).toBe(2)
+      expect(first.globalStats.totalViews).toBe(2)
+
+      // A visit that lands after the memo was written must not show up until the window passes.
+      await seedVisit(db, { note_id: n1, slug: 'memo-1', visited_at: START - 10_000, visitor_fp: 'fp-m3' })
+      vi.setSystemTime(START + 30_000)
+      const second = await (await request(app, '/api/share')).json()
+      expect(second.globalStats.totalVisitors).toBe(2)
+
+      vi.setSystemTime(START + FILTERED_STATS_TTL_MS + 1_000)
+      const third = await (await request(app, '/api/share')).json()
+      expect(third.globalStats.totalVisitors).toBe(3)
+      expect(third.globalStats.totalViews).toBe(3)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps a different traffic filter on its own memo entry', async () => {
+    vi.useFakeTimers()
+    try {
+      const START = Date.now()
+      const db = await makeDb()
+      await seedUser(db)
+      const n1 = await seedNote(db, { title: 'Memo bots' })
+      await seedShare(db, { note_id: n1, slug: 'memo-2' })
+      await seedVisit(db, { note_id: n1, slug: 'memo-2', visited_at: START - 60_000, visitor_fp: 'fp-m4' })
+      await seedVisit(db, { note_id: n1, slug: 'memo-2', visited_at: START - 50_000, visitor_fp: 'fp-m5', is_bot: true })
+      const app = makeApp()
+
+      const real = await (await request(app, '/api/share')).json()
+      expect(real.globalStats.totalVisitors).toBe(1)
+
+      const withBots = await (await request(app, '/api/share?excludeBots=false')).json()
+      expect(withBots.globalStats.totalVisitors).toBe(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

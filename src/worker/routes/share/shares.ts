@@ -7,9 +7,12 @@ import { isShareStatusFilter, type ShareStatusFilter, type VisitTrafficFilters }
 import { shareSelectionSql, visitTrafficSql } from '../../lib/share-selection-sql'
 import {
   buildShareGlobalStats,
+  filteredStatsCacheKey,
   folderCountsStatement,
   filteredGlobalStatsStatement,
   globalSummaryStatement,
+  parseFilteredStatsCache,
+  serializeFilteredStatsCache,
   tagCountsStatement,
   toFolderCounts,
   toTagCounts,
@@ -18,6 +21,7 @@ import {
   type GlobalSummaryRow,
   type TagCountRow,
 } from './global-stats'
+import { getMeta, setMeta } from '../../db/metadata'
 import { firstOf, rowsOf, type D1ReadResult } from './read-results'
 
 export interface ShareRow {
@@ -131,23 +135,41 @@ function registerShareNoteShareRoute(shareManageRoutes: Hono<AppBindings>): void
  * for them alone — a hub that lands on the dashboard reads the counts, not the rows.
  * The pin and star counts ride the summary statement itself, since they read the same
  * join: a second statement would have been a second definition of "a pinned share".
+ *
+ * The one expensive member is the filtered views/UV aggregate: it walks the account's
+ * whole visit history. Its answer is the all-time footnote, so a fresh memo in app_meta
+ * serves it and the batch shrinks to the three cheap statements; the memo is refilled
+ * by whichever request finds it stale.
  */
-function globalStatsStatements(db: D1Database, userId: string, now: number, clause: string): D1PreparedStatement[] {
-  return [
-    folderCountsStatement(db, userId, now),
-    tagCountsStatement(db, userId, now),
-    globalSummaryStatement(db, userId, now),
-    filteredGlobalStatsStatement(db, userId, clause),
-  ]
+interface GlobalStatsPlan {
+  statements: D1PreparedStatement[]
+  /** Non-null when the filtered aggregate is served from the memo and the batch omits it. */
+  cachedFiltered: FilteredStatsRow | null
 }
 
-function parseGlobalStats(results: D1ReadResult[]): ShareListResponse['globalStats'] {
-  const [folderResult, tagResult, summaryResult, filteredResult] = results
+async function globalStatsPlan(db: D1Database, userId: string, params: ShareListParams): Promise<GlobalStatsPlan> {
+  const raw = await getMeta(db, filteredStatsCacheKey(userId, params.clause))
+  const cachedFiltered = parseFilteredStatsCache(raw, params.now)
+  const statements: D1PreparedStatement[] = [
+    folderCountsStatement(db, userId, params.now),
+    tagCountsStatement(db, userId, params.now),
+    globalSummaryStatement(db, userId, params.now),
+  ]
+  if (!cachedFiltered) statements.push(filteredGlobalStatsStatement(db, userId, params.clause))
+  return { statements, cachedFiltered }
+}
+
+function parseGlobalStats(
+  folderResult: D1ReadResult,
+  tagResult: D1ReadResult,
+  summaryResult: D1ReadResult,
+  filtered: FilteredStatsRow | null,
+): ShareListResponse['globalStats'] {
   return buildShareGlobalStats(
     toFolderCounts(rowsOf<FolderCountRow>(folderResult)),
     toTagCounts(rowsOf<TagCountRow>(tagResult)),
     firstOf<GlobalSummaryRow>(summaryResult),
-    firstOf<FilteredStatsRow>(filteredResult),
+    filtered,
   )
 }
 
@@ -158,12 +180,14 @@ function registerShareListRoute(shareManageRoutes: Hono<AppBindings>): void {
     const params = shareListParams(c)
     const binds: Array<string | number> = [userId]
     const conditions = shareListConditions(binds, params)
+    const { statements, cachedFiltered } = await globalStatsPlan(db, userId, params)
     const results = await db.batch([
-      ...globalStatsStatements(db, userId, params.now, params.clause),
+      ...statements,
       shareListRowsStatement(db, binds, conditions, shareListOrderClause(params.sort)),
     ])
-    const globalStats = parseGlobalStats(results)
-    const rows = rowsOf<ShareListRow>(results[QUERY_COUNT_FOR_LIST_ROWS])
+    const filtered = filteredValue(cachedFiltered, results, statements.length)
+    const globalStats = parseGlobalStats(results[0], results[1], results[2], filtered)
+    const rows = rowsOf<ShareListRow>(results[results.length - 1])
     const truncated = rows.length > SHARE_LIST_ROW_LIMIT
     const visibleRows = truncated ? rows.slice(0, SHARE_LIST_ROW_LIMIT) : rows
     const noteStatsMap = await loadNoteVisitStats(db, userId, visibleRows, params.clause)
@@ -174,6 +198,7 @@ function registerShareListRoute(shareManageRoutes: Hono<AppBindings>): void {
       truncated,
       globalStats,
     }
+    await rememberFilteredStats(db, userId, params, cachedFiltered, filtered)
     return c.json(response)
   })
 }
@@ -183,10 +208,36 @@ function registerShareStatsRoute(shareManageRoutes: Hono<AppBindings>): void {
     const db = c.env.DB
     const userId = c.get('userId')
     const params = shareListParams(c)
-    const results = await db.batch(globalStatsStatements(db, userId, params.now, params.clause))
-    const response: ShareStatsResponse = { globalStats: parseGlobalStats(results) }
+    const { statements, cachedFiltered } = await globalStatsPlan(db, userId, params)
+    const results = await db.batch(statements)
+    const filtered = filteredValue(cachedFiltered, results, statements.length)
+    const globalStats = parseGlobalStats(results[0], results[1], results[2], filtered)
+    const response: ShareStatsResponse = { globalStats }
+    await rememberFilteredStats(db, userId, params, cachedFiltered, filtered)
     return c.json(response)
   })
+}
+
+/** The cached answer when there is one; otherwise the batch's own filtered aggregate. */
+function filteredValue(
+  cachedFiltered: FilteredStatsRow | null,
+  results: D1ReadResult[],
+  filteredIndex: number,
+): FilteredStatsRow | null {
+  if (cachedFiltered) return cachedFiltered
+  return firstOf<FilteredStatsRow>(results[filteredIndex - 1] ?? null)
+}
+
+/** Refills the memo only when this request actually computed the aggregate. */
+async function rememberFilteredStats(
+  db: D1Database,
+  userId: string,
+  params: ShareListParams,
+  cachedFiltered: FilteredStatsRow | null,
+  filtered: FilteredStatsRow | null,
+): Promise<void> {
+  if (cachedFiltered || !filtered) return
+  await setMeta(db, filteredStatsCacheKey(userId, params.clause), serializeFilteredStatsCache(filtered, params.now))
 }
 
 function registerShareSummaryRoute(shareManageRoutes: Hono<AppBindings>): void {
@@ -225,9 +276,6 @@ function shareListParams(c: { req: { query(key: string): string | undefined; url
     origin: new URL(c.req.url).origin,
   }
 }
-
-// The list batch is the four aggregate statements above, then its row query.
-const QUERY_COUNT_FOR_LIST_ROWS = 4
 
 /**
  * The status the query asked for. An unknown one is refused rather than folded into `all`: a filter

@@ -34,8 +34,8 @@
 | 03 | P0 | #1 | 访问日志 CSV 表头硬编码英文 | 小 | ✅ | 7adb7e2c |
 | 04 | P0 | #3 | 随机 slug 用 Math.random（非 CSPRNG） | 极小 | ✅ | 4d8d091d |
 | 05 | P0 | #2 | 分享页静态内联样式 `maxWidth:'none'` 移入样式表 | 极小 | ✅ | f59fe6f3 |
-| 06 | P0 | #17/#20 | worker 侧：日志 count+rows batch 化、页上限收紧、error 日志脱敏 | 小 | ✅ | ⏳ |
-| 07 | P1 | #15 | 全站累计 UV 全史聚合每次列表重算 | 小 | ⬜ | — |
+| 06 | P0 | #17/#20 | worker 侧：日志 count+rows batch 化、页上限收紧、error 日志脱敏 | 小 | ✅ | 1137a1a4 |
+| 07 | P1 | #15 | 全站累计 UV 全史聚合每次列表重算 | 小 | ✅ | ⏳ |
 | 08 | P1 | #16 | 集合列表 N+1（每集合 2 查询） | 小 | ⬜ | — |
 | 09 | P1 | #10 | 访问日志无时间范围筛选 | 小 | ⬜ | — |
 | 10 | P1 | #9 | 渠道卡片不能下钻到该渠道明细 | 小-中 | ⬜ | — |
@@ -53,6 +53,14 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 07 · P1 #15 全站 UV/Views 聚合的 app_meta 短 TTL 记忆
+
+- **方案变更（与计划的差异，如实说明）**：计划选 per-isolate `Map` 60s 缓存，但 `scripts/check-module-state.mjs` 明确禁止 worker 模块级可变集合（防跨请求数据泄漏），为缓存开豁免等于绕门禁。改为 **`app_meta` 键值短 TTL 记忆**：键 `share:filtered-stats:<userId>:<fnv1a(clause)>`，值 `{v,u,at}` JSON，TTL 60s。新鲜路径只多一次单行 PK 读、省掉整史聚合；过期路径照旧聚合并回填（`setMeta` 的 `WHERE value IS NOT excluded.value` 天然去重写）。跨 isolate 生效，写频 ≤1 次/分钟/账号，副作用可控；「脚注本就不是实时口径」的权衡不变。
+- 涉及：`global-stats.ts`（键构造/编解码/纯函数解析，可注入时钟）、`shares.ts`（list 与 /stats 两条路由改为条件化 batch：命中则 3 条语句，未命中 4 条并回填）；`QUERY_COUNT_FOR_LIST_ROWS` 常量随动态 batch 移除。
+- 过程缺陷（已被新测试抓住）：首版把缓存命中路径的 filtered 值传成 null，导致脚注显示 0——集成用例「命中后仍为 2」当场变红，修复为 `cachedFiltered ?? 批内聚合`。
+- 回归：新增 `tests/share-global-stats-cache.test.ts` 5 例（往返、窗口边缘、时钟回拨、坏数据当 miss、键按账号+流量子句隔离）；`share-routes.test.ts` 新增 2 例集成（命中→新访问不计入→过期后重算+1；不同 excludeBots 各自记忆），并更新 SH-72/SH-17a 两例 round-trip 账目（新增的 1 次串行读即 memo 读，注释说明）。121/121 全绿；`npx tsc -b --force` 与全部 12 道门禁绿（comments 白名单已同步）。
+- 已知限制：60s 窗口内新访问不进脚注（与看板 KPI 的口径差异属于设计）；不同 excludeBots 组合各占一条 app_meta 键（上限 8 条/账号）。
 
 ### 2026-09-25 · 序 06 · P0 #17/#20 worker 侧小修（含 #18 审计结论修正）
 
