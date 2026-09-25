@@ -2468,6 +2468,8 @@ const allowed = new Map([
     '// FLAC STREAMINFO packs sample rate and total samples into the first metadata block.',
   ]],
   ['src/client/features/music/music-edit-track-modal.tsx', [
+    '// A required field that silently kept the old value would make clearing the title impossible',
+    '// and the loss invisible; the dialog says so instead.',
     '// The lazy lyric fetch must backfill the draft without discarding edits in flight.',
     '// The lyric text may still be on its way; saving an empty draft would blank it server-side.',
   ]],

@@ -32,9 +32,12 @@ export function MusicEditTrackModal({
   const { saving, run } = useSaveAction(onClose)
 
   if (!track) return null
+  // A required field that silently kept the old value would make clearing the title impossible
+  // and the loss invisible; the dialog says so instead.
+  const titleMissing = !form.title.trim()
   const save = (): void => {
     void run(() => patchTrack(track.id, {
-      title: form.title.trim() || track.title,
+      title: form.title.trim(),
       artist: form.artist.trim(),
       album: form.album.trim(),
       lyric: form.lyric.trim() ? form.lyric : null,
@@ -51,11 +54,17 @@ export function MusicEditTrackModal({
       footer={
         <>
           <Button size='sm' onClick={onClose}>{t('common.cancel')}</Button>
-          <Button size='sm' variant='primary' disabled={lyricPending || saving} onClick={() => void save()}>{t('music.save')}</Button>
+          <Button size='sm' variant='primary' disabled={lyricPending || saving || titleMissing} onClick={() => void save()}>{t('music.save')}</Button>
         </>
       }
     >
-      <TrackForm form={form} onChange={setForm} tagIds={tagIds} onTagsChange={setTagIds} />
+      <TrackForm
+        form={form}
+        onChange={setForm}
+        tagIds={tagIds}
+        onTagsChange={setTagIds}
+        titleMissing={titleMissing}
+      />
     </Modal>
   )
 }
@@ -91,17 +100,19 @@ function TrackForm({
   onChange,
   tagIds,
   onTagsChange,
+  titleMissing,
 }: {
   form: TrackDraft
   onChange: (draft: TrackDraft) => void
   tagIds: string[]
   onTagsChange: (ids: string[]) => void
+  titleMissing: boolean
 }) {
   const tags = useMusic((state) => state.tags)
   return (
     <div className='space-y-3'>
-      <Field label={t('music.field_title')} required>
-        <Input value={form.title} onChange={(event) => onChange({ ...form, title: event.target.value })} />
+      <Field label={t('music.field_title')} required hint={titleMissing ? t('music.field_title_required') : undefined}>
+        <Input value={form.title} invalid={titleMissing} onChange={(event) => onChange({ ...form, title: event.target.value })} />
       </Field>
       <div className='grid grid-cols-2 gap-3'>
         <Field label={t('music.field_artist')}>

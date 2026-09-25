@@ -100,6 +100,7 @@ export const messages = {
 'music.delete_failed': 'Could not delete',
 'music.edit_track': 'Edit track',
 'music.field_title': 'Title',
+'music.field_title_required': 'The title cannot be empty',
 'music.field_artist': 'Artist',
 'music.field_album': 'Album',
 'music.field_lyric': 'Lyrics (LRC)',

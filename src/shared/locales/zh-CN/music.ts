@@ -100,6 +100,7 @@ export const messages = {
 'music.delete_failed': '删除失败',
 'music.edit_track': '编辑歌曲信息',
 'music.field_title': '标题',
+'music.field_title_required': '标题不能为空',
 'music.field_artist': '歌手',
 'music.field_album': '专辑',
 'music.field_lyric': '歌词（LRC）',
