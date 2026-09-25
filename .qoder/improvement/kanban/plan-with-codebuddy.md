@@ -37,7 +37,7 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 | 14 | 功能 F-8 | 新增 `url` 属性类型 | ⬜ 待做 | — |
 | 15 | 功能 F-10 | JSON 一键导出 | ✅ 完成 | 见 git log |
 | 16 | 性能 P-2 | 渲染窗口只增不减（滚到底等效全量挂载） | ⬜ 待做 | — |
-| 17 | 性能 P-5 | 时间轴/甘特条几何重复计算两遍 | ⬜ 待做 | — |
+| 17 | 性能 P-5 | 时间轴/甘特条几何重复计算两遍 | ✅ 完成 | 见 git log |
 
 ## 记录
 
@@ -102,3 +102,9 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 - 覆盖路径：单卡拖放、批量拖放（按整个选择集判定）、Shift+方向键键盘移动；批量条的成组改写为刻意绕过（成批改写是读者对自己选择的直接操作，见计划备注）。
 - 测试：`kanban-column-wip.test.ts` 改写旧「超限仍公告 over」用例为拒绝 + toast + 无 commit；新增「恰好满员拒绝」「列内换位不受限」；`kanbanWipRefuses` 导出供单测。
 - 回归：typecheck 通过；WIP/拖拽/键盘/公告 4 文件 45 用例通过；全量 `test:unit` 470 文件 / 4275 用例全绿。
+
+### 14. 性能 P-5 — 时间轴/甘特条几何一次计算两层共用 ✅
+- `dependencies.ts` 新增 `kanbanTimelineBarMap`；`kanbanDependencyLinks` 增加可选 `barsByItem` 参数；`KanbanDependencyLayer` 接收视图已算好的 bar map。
+- 时间轴与甘特视图各自 `useMemo` 一次几何（visibleDated × range × fields 为依赖），行渲染与依赖箭头共用同一 map——此前 zoom 每档、每次提交整表几何算两遍（ADR-0006 预留的复用口）。
+- 测试：`dependencies.test.ts` 新增「传入预计算 map 与自行计算的箭头逐字段一致」。
+- 回归：typecheck 通过；依赖/甘特/时间轴 4 文件 39 用例通过；全量 `test:unit` 470 文件 / 4276 用例全绿。

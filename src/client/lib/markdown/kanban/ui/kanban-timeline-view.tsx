@@ -2,13 +2,14 @@ import { memo, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { t, useLocaleRepaint } from '../../../i18n'
 import {
-  calculateTimelineBarGeometry,
   splitTimelineItems,
   TIMELINE_MAX_DAYS,
+  type TimelineBarGeometry,
   type TimelineDayFields,
   type TimelineRange,
 } from '../timeline-helpers'
 import type { KanbanData, KanbanItem, KanbanView } from '../types'
+import { kanbanTimelineBarMap } from '../dependencies'
 import { useBarReschedule, type BarRescheduleApi } from './kanban-bar-reschedule'
 import { KanbanDependencyLayer } from './kanban-dependency-layer'
 import { KanbanIconBadge } from './kanban-icon-badge'
@@ -80,6 +81,7 @@ function TimelineChart({
   items,
   range,
   fields,
+  bars,
   scrollRef,
   reschedule,
   onOpenDetail,
@@ -90,6 +92,8 @@ function TimelineChart({
   items: KanbanItem[]
   range: TimelineRange
   fields?: TimelineDayFields
+  /** The bars the view already measured, shared with the dependency layer above the rows. */
+  bars: ReadonlyMap<string, TimelineBarGeometry>
   scrollRef: React.RefObject<HTMLDivElement | null>
   reschedule: BarRescheduleApi
   onOpenDetail: (item: KanbanItem) => void
@@ -101,9 +105,9 @@ function TimelineChart({
     <div ref={scrollRef} data-kanban-timeline-grid className='flex-1 overflow-x-auto'>
       <TimelineDayHeader days={range.days} dayWidth={range.dayWidth} />
       <div className='relative w-max divide-y divide-[var(--border-subtle)]'>
-        <KanbanDependencyLayer items={items} range={range} fields={fields} />
+        <KanbanDependencyLayer items={items} range={range} fields={fields} bars={bars} />
         {items.map((item) => {
-          const bar = calculateTimelineBarGeometry(item, range, fields)
+          const bar = bars.get(item.id)
           if (!bar) return null
           return (
             <div key={item.id} className='relative h-10'>
@@ -148,6 +152,9 @@ export const KanbanTimelineView = memo(function KanbanTimelineView({
   const memory = useKanbanViewMemory(view?.id)
   const { range, zoom, scrollRef, onZoomChange, onToday } = useTimelineViewState(dated, fields, memory.zoom, memory.setZoom)
   const reschedule = useBarReschedule({ dayWidth: range.dayWidth, fields, onShift: onReschedule })
+  // One geometry pass feeds the rows and the dependency layer alike: the arrows need the same bar
+  // edges the rows draw, and a zoom step used to pay for the whole scan twice.
+  const bars = useMemo(() => kanbanTimelineBarMap(visibleDated, range, fields), [visibleDated, range, fields])
 
   return (
     <div data-kanban-timeline className='flex h-full w-full flex-col overflow-hidden p-4'>
@@ -159,6 +166,7 @@ export const KanbanTimelineView = memo(function KanbanTimelineView({
           items={visibleDated}
           range={range}
           fields={fields}
+          bars={bars}
           scrollRef={scrollRef}
           reschedule={reschedule}
           onOpenDetail={onOpenDetail}

@@ -5287,6 +5287,7 @@ const allowed = new Map([
     '// gap) = 140. b\'s bar starts at day 4 × 48 + the 4px offset = 196.',
     '// The arrowhead lands at b\'s own row middle: row 1 × 40 + 20.',
     '// a\'s right edge: day 0 start + 7 days × 48 − the 8px gap.',
+    '// What the view hands the layer: the map it already built to draw the rows with.',
   ]],
   ['src/client/lib/markdown/kanban/dependencies.ts', [
     '/**\n * What one card owes another (KU-23, ADR-0006). A card\'s `dependsOn` names the cards that must be\n * done before it — the blockers — and the direction is the only thing the rest of the module needs\n * to agree on: an edge runs from the blocker to the card that lists it, and every read below is\n * built from that one rule. The list lives on the item in the JSON body; the outline body has no\n * slot for it, so it survives only the way views and subtasks already do — the first write from a\n * UI promotes the fence to JSON before anything is lost.\n *\n * Reads are tolerant rather than tidy: a hand-written fence may carry a list of numbers, a name for\n * a card that is not there, or the card itself. Junk is read as nothing (never a crash), and what\n * the editor writes back is always the normalized shape.\n */',
@@ -5306,6 +5307,7 @@ const allowed = new Map([
     '/** The filled arrowhead at the dependent\'s edge, tip first. */',
     '/** Both time views draw their rows at this height (`h-10`); the arrow\'s y is the row\'s middle. */',
     '/** How far the elbow bows past both bar edges when the arrow has to reach backwards. */',
+    '/**\n * Every bar on the window, keyed by its card — computed once for the view that draws the bars and\n * the dependency layer that needs their edges. Both used to run this geometry themselves, so a zoom\n * step on a ceiling-size board did the whole scan twice in one commit.\n */',
   ]],
   ['src/client/lib/markdown/kanban/dnd.test.ts', [
     '/**\n * KU-21c. The table\'s rows stand in document order, so a reorder is a step of that order inside the\n * row\'s own group. The cases pin the shape the view\'s writer is handed: the walk crosses rows of\n * other groups to find the row\'s own neighbour, stops short at the group\'s edge, and leaves the list\n * untouched when there is nothing to move.\n */',
@@ -6274,7 +6276,7 @@ const allowed = new Map([
     '// close a loop through the ones already on the board. The writer re-checks regardless (ADR-0006).',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-dependency-layer.tsx', [
-    '/**\n * The dependency arrows a time view draws between its bars (KU-23, ADR-0006). One SVG spans the\n * rows area — every row is the same height, so a link\'s geometry is pure arithmetic over the row\n * index and the bar edges the view itself already computed. The layer is `pointer-events: none`\n * and sits above the rows: it is a reading, not a control, and a click between two bars must land\n * on the bar the reader aimed at, never on the arrow that happens to pass over it. Colours come\n * from tokens (ADR-0002), so the arrows follow the theme the same way the bars\' borders do.\n */',
+    '/**\n * The dependency arrows a time view draws between its bars (KU-23, ADR-0006). One SVG spans the\n * rows area — every row is the same height, so a link\'s geometry is pure arithmetic over the row\n * index and the bar edges the view itself already computed. The layer is `pointer-events: none`\n * and sits above the rows: it is a reading, not a control, and a click between two bars must land\n * on the bar the reader aimed at, never on the arrow that happens to pass over it. Colours come\n * from tokens (ADR-0002), so the arrows follow the theme the same way the bars\' borders do.\n *\n * The bars come in from the view rather than being recomputed here: the view drew those same bars,\n * and a second geometry pass per zoom step was arithmetic done twice on the same commit.\n */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-dependency-ui.test.ts', [
     '/**\n * KU-23\'s wiring, driven the way a reader drives it. The pure layer (`dependencies.test.ts`) pins\n * the rules; what is asserted here is that the panel and the views actually use them: adding a\n * blocker from the picker writes the pair the reader chose, a choice that would close a loop is\n * never offered (so the write is guarded before the pointer can reach it), removing a blocker is\n * one click, and the arrows appear on the gantt between the bars the dependencies join. The detail\n * modal renders through a portal into `document.body`, so the panel is read there — the container\n * only holds the board itself.\n */',
@@ -6413,9 +6415,12 @@ const allowed = new Map([
     '// opens the detail, and the progress slider beside it edits the bar without opening anything.',
     '// As a `div` with a click handler the row was unreachable by keyboard and was itself a hit',
     '// target holding a control.',
+    '/** The bar the view already measured, one entry of the map the dependency layer reads too. */',
     '/* The bar is a control (it opens the item), so it is a real button rather than a painted div\n          with a click handler (SH-110); the progress track and the label are its contents. */',
+    '/** The bars the view already measured, shared with the dependency layer above the rows. */',
     '// One window cuts both columns, exactly as the timeline does; the range still reads the full list',
     '// so the day header spans every day the board holds.',
+    '// One geometry pass feeds the rows and the dependency layer alike, exactly as the timeline does.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-header-card-fields.test.ts', [
     '/**\n * Which columns a board prints on its cards, asked of the header that offers them.\n *\n * The panel is one of the two doors onto `cardFields` (the view options), so what is asserted here is\n * the wiring rather than the rules: the list names the board\'s own columns, the title is not one of\n * them (it is the card\'s heading), a checked box reads the view\'s stored list, and a press reaches the\n * writer with the column id. The table is the negative case beside it — it draws every column already,\n * so it is offered no card fields at all.\n *\n * These live apart from `kanban-header.test.ts` because that file is at the size AGENTS.md allows and\n * this section would take it past it.\n */',
@@ -7078,10 +7083,13 @@ const allowed = new Map([
     '// is focusable, answers Enter and Space, and carries the row\'s own text as its name. As a',
     '// `div` with a click handler it was the one affordance in this view a keyboard could not',
     '// reach at all.',
+    '/** The bars the view already measured, shared with the dependency layer above the rows. */',
     '/* The bar is a control (it opens the item), so it is a real button rather than a painted\n                  div with a click handler (SH-110). */',
     '// One window cuts both columns: the sidebar rows and the chart rows are the same items in the same',
     '// order, so slicing at one index keeps them side by side, and the range above still reads the full',
     '// list — the day header has to span every day the board holds, not just the rows on screen.',
+    '// One geometry pass feeds the rows and the dependency layer alike: the arrows need the same bar',
+    '// edges the rows draw, and a zoom step used to pay for the whole scan twice.',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-title.tsx', [
     '/**\n * The board\'s own name, and the one place it is written from. Both hosts draw it — the note\'s block\n * and the full screen overlay — because the board is the same board in either, and a reader who\n * titled it in the overlay was until now unable to see that name beside the note.\n *\n * The name is not the block\'s own label: the markup a fence renders says which syntax the body holds\n * and nothing about the board, so the title can only come from here. That is also why the fallback is\n * the board\'s type name rather than the cards\' "untitled" wording — an unnamed board is a kanban, not\n * an unnamed task.\n *\n * It lives beside the header rather than inside it because the two halves of the edit — a heading that\n * turns into an input and back — are a control of their own: the header only decides where it stands.\n */',
