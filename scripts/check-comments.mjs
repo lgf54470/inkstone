@@ -2575,7 +2575,9 @@ const allowed = new Map([
     '/* The active row\'s accent tint puts the dim tiers under AA, so its count takes the row\'s\n          accent — the one pairing the token system calibrates (accent as text on its own tint). */',
   ]],
   ['src/client/features/music/music-hub-sidebar.tsx', [
-    '/* The active row\'s 14% accent tint puts the dim tiers under AA (tertiary measures\n                4.16–4.28 in light), so its count takes the row\'s accent — the one pairing the\n                token system calibrates (accent as text on its own tint). */',
+    '// Counts come off the pre-summarized stats where one exists; the rest are walks',
+    '// over the library, so they are memoized on it rather than recomputed per update.',
+    '/* The active row\'s 14% accent tint puts the dim tiers under AA (tertiary measures\n          4.16–4.28 in light), so its count takes the row\'s accent — the one pairing the\n          token system calibrates (accent as text on its own tint). */',
     '// A drilled-down album/artist keeps its browse entry highlighted as the owning view.',
   ]],
   ['src/client/features/music/music-hub-toolbar.tsx', [
@@ -2782,6 +2784,10 @@ const allowed = new Map([
     '// native controls stay the only transport a reader without a session needs.',
     '// A video container in an <audio> element plays its sound and hides its picture, so the',
     '// anonymous reader gets a black box for a clip; the element follows the stored mime.',
+  ]],
+  ['src/client/features/music/music-sidebar-count.test.ts', [
+    '// Counting played through a getter shows how often the library was walked for a',
+    '// number that only changes when the tracks themselves change.',
   ]],
   ['src/client/features/music/music-sleep-menu.test.ts', [
     '// The minute labels are formatted strings, so the assertions need the real resources.',
@@ -3141,6 +3147,8 @@ const allowed = new Map([
     '// the two cannot drift. `audio/*,video/*` looked friendlier but offered kinds the upload skipped.',
     '// Shift-click selects everything between the anchor row and the clicked row.',
     '// Uploads name a track after its file; the tag title wins when the file only adds the artist.',
+    '// The sidebar badge for "recently played": a walk over the library, so callers',
+    '// memoize it on `tracks` rather than running it per store notification.',
     '// A playlist\'s cover is derived, not stored: the first item (in the user\'s manual',
     '// order) whose track carries a cover. Empty playlist or coverless library → no cover.',
   ]],

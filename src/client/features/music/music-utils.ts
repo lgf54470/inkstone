@@ -156,6 +156,16 @@ export function isArtistSuffixedTitle(current: string, title: string, artist: st
   return tail.length > 0 && (!artist || tail === artist)
 }
 
+// The sidebar badge for "recently played": a walk over the library, so callers
+// memoize it on `tracks` rather than running it per store notification.
+export function recentlyPlayedCount(tracks: readonly Pick<MusicTrack, 'lastPlayedAt'>[]): number {
+  let count = 0
+  for (const track of tracks) {
+    if (track.lastPlayedAt !== null) count += 1
+  }
+  return count
+}
+
 export function collectTagIds(tagId: string, tags: MusicTag[]): Set<string> {
   const ids = new Set<string>([tagId])
   let grew = true
