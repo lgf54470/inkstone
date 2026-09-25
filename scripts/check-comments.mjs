@@ -2638,6 +2638,10 @@ const allowed = new Map([
   ['src/client/features/music/music-playlist-drag.test.ts', [
     '// t1 (i1) dropped on the t2 row: i2 sits at index 2 in the manual order.',
   ]],
+  ['src/client/features/music/music-popover-placement.test.ts', [
+    '// The panel\'s coordinates have to come from the placement every other anchored panel in the app',
+    '// uses; a private copy of that arithmetic is how the two drift apart.',
+  ]],
   ['src/client/features/music/music-popover.test.ts', [
     '// UI-21: the popover panels are dialogs. Opening one must move focus inside,',
     '// Tab must not walk out of it, and closing must hand focus back to the anchor.',
@@ -2647,6 +2651,10 @@ const allowed = new Map([
     '// fixed coordinates because the note status bar clips its overflow: an inline',
     '// panel would be invisible there, and the floating card has to escape its own',
     '// stacking context too.',
+    '//',
+    '// Placement itself is the shared one: this panel measures its own box (its height depends on',
+    '// what it holds) and feeds that into `placePanel`, rather than keeping a second copy of the',
+    '// flip-and-clamp arithmetic.',
     '// The four anchors are shared IconButtons, which expose no slot for these',
     '// attributes; the panel owns the open state, so it publishes them itself.',
   ]],
