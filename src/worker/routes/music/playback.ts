@@ -5,6 +5,7 @@ import type { MusicPlayback, MusicTrack } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
+import { enforceMusicBudget } from './budget'
 import { TRACK_COLUMNS, toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
 import { savePlaybackSchema } from './schemas'
@@ -40,6 +41,9 @@ export function registerMusicPlaybackRoutes(routes: Hono<AppBindings>): void {
 
   routes.put('/playback', requireAuth, async (c) => {
     const userId = c.get('userId')
+    // A looping client could otherwise rewrite its row as fast as requests arrive; the save rides
+    // its own key so a heavy listening session cannot starve playlist and tag writes.
+    await enforceMusicBudget(c.env.DB, 'playback', userId)
     const body = await readJsonValidated(c, savePlaybackSchema, JSON_BODY_LIMITS.small)
     const currentIndex = Math.min(body.currentIndex, Math.max(0, body.queue.length - 1))
     await c.env.DB.prepare(

@@ -186,28 +186,36 @@ function recordingDb(db: D1Shim): { proxy: D1Shim; statements: string[] } {
 
 // Counts round trips, not statements: every execution inside one batch shares a
 // single call, while an execution outside a batch costs its own round trip.
+// Throttle bookkeeping (the hourly budget tables) is cross-cutting and rides its
+// own statements, so it is not charged to the route under measurement.
 function countRoundTrips(db: D1Shim): { proxy: D1Shim; stats: { batches: number; singles: number } } {
   const stats = { batches: 0, singles: 0 }
   let insideBatch = false
-  const wrap = (statement: D1Prepared): D1Prepared => new Proxy(statement, {
-    get(target, property, receiver) {
-      if (property === 'bind') return (...values: unknown[]) => wrap(target.bind(...values))
-      if (property === 'run' || property === 'first' || property === 'all') {
-        const execute = target[property]
-        return () => {
-          if (!insideBatch) stats.singles += 1
-          return Promise.resolve(execute.call(target))
+  const sqlOf = new WeakMap<D1Prepared, string>()
+  const isMetering = (statement: D1Prepared): boolean => (sqlOf.get(statement) ?? '').includes('login_attempts')
+  const wrap = (statement: D1Prepared, sql: string): D1Prepared => {
+    const wrapped = new Proxy(statement, {
+      get(target, property, receiver) {
+        if (property === 'bind') return (...values: unknown[]) => wrap(target.bind(...values), sql)
+        if (property === 'run' || property === 'first' || property === 'all') {
+          const execute = target[property]
+          return () => {
+            if (!insideBatch && !isMetering(wrapped)) stats.singles += 1
+            return Promise.resolve(execute.call(target))
+          }
         }
-      }
-      return Reflect.get(target, property, receiver)
-    },
-  })
+        return Reflect.get(target, property, receiver)
+      },
+    })
+    sqlOf.set(wrapped, sql)
+    return wrapped
+  }
   const proxy = new Proxy(db, {
     get(target, property, receiver) {
-      if (property === 'prepare') return (sql: string) => wrap(target.prepare(sql))
+      if (property === 'prepare') return (sql: string) => wrap(target.prepare(sql), sql)
       if (property === 'batch') {
         return async (statements: D1Prepared[]) => {
-          stats.batches += 1
+          if (!statements.some(isMetering)) stats.batches += 1
           insideBatch = true
           try {
             return await target.batch(statements)
@@ -1171,6 +1179,23 @@ describe('music hourly budgets (real D1)', () => {
       expect.arrayContaining([
         { key: 'music-play:user-1', fails: 1 },
         { key: 'music-write:user-1', fails: 1 },
+      ]),
+    )
+  })
+
+  it('charges playlist, tag and playback writes against a budget too', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app)
+    await json(app, '/api/music/playlists', { name: 'List' }, 'POST')
+    await json(app, '/api/music/tags', { name: 'Focus' }, 'POST')
+    await json(app, '/api/music/playback', { queue: [track.id], currentIndex: 0, positionMs: 0 }, 'PUT')
+    const { results } = await db.prepare('SELECT key, fails FROM login_attempts ORDER BY key').all<{ key: string; fails: number }>()
+    expect(results).toEqual(
+      expect.arrayContaining([
+        { key: 'music-playback:user-1', fails: 1 },
+        { key: 'music-write:user-1', fails: 2 },
       ]),
     )
   })

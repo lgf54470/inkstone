@@ -7,6 +7,7 @@ import { ApiError } from '../../lib/errors'
 import { newId, newSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
+import { enforceMusicBudget } from './budget'
 import { toPlaylist, toPlaylistItem } from './rows'
 import type { MusicPlaylistItemRow, MusicPlaylistRow } from './rows'
 import { batchPlaylistItemsSchema, createPlaylistSchema, patchPlaylistSchema, playlistItemSchema, reorderPlaylistSchema } from './schemas'
@@ -57,6 +58,7 @@ async function listPlaylists(c: Context<AppBindings>): Promise<Response> {
 
 async function createPlaylist(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const body = await readJsonValidated(c, createPlaylistSchema, JSON_BODY_LIMITS.small)
   const id = newId()
   const now = Date.now()
@@ -70,6 +72,7 @@ async function createPlaylist(c: Context<AppBindings>): Promise<Response> {
 
 async function patchPlaylist(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const id = pathParam(c, 'id')
   if (!(await playlistExists(c.env.DB, userId, id))) throw ApiError.notFound('Playlist not found')
   const body = await readJsonValidated(c, patchPlaylistSchema, JSON_BODY_LIMITS.small)
@@ -79,6 +82,7 @@ async function patchPlaylist(c: Context<AppBindings>): Promise<Response> {
 
 async function deletePlaylist(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const id = pathParam(c, 'id')
   if (!(await playlistExists(c.env.DB, userId, id))) throw ApiError.notFound('Playlist not found')
   await c.env.DB.batch([
@@ -90,6 +94,7 @@ async function deletePlaylist(c: Context<AppBindings>): Promise<Response> {
 
 async function sharePlaylist(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const id = pathParam(c, 'id')
   const row = await c.env.DB.prepare('SELECT share_slug FROM music_playlists WHERE user_id = ?1 AND id = ?2')
     .bind(userId, id).first<{ share_slug: string | null }>()
@@ -104,6 +109,7 @@ async function sharePlaylist(c: Context<AppBindings>): Promise<Response> {
 
 async function unsharePlaylist(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const id = pathParam(c, 'id')
   if (!(await playlistExists(c.env.DB, userId, id))) throw ApiError.notFound('Playlist not found')
   await c.env.DB.prepare('UPDATE music_playlists SET share_slug = NULL, updated_at = ?1 WHERE user_id = ?2 AND id = ?3')
@@ -113,6 +119,7 @@ async function unsharePlaylist(c: Context<AppBindings>): Promise<Response> {
 
 async function addItem(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const playlistId = pathParam(c, 'id')
   const { trackId } = await readJsonValidated(c, playlistItemSchema, JSON_BODY_LIMITS.small)
   // Existence, ownership and the cap probe share one read round trip; the write shares another.
@@ -143,6 +150,7 @@ async function addItem(c: Context<AppBindings>): Promise<Response> {
 // response says so, instead of failing the batch.
 async function addItems(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const playlistId = pathParam(c, 'id')
   const { trackIds } = await readJsonValidated(c, batchPlaylistItemsSchema, JSON_BODY_LIMITS.profile)
   const wanted = [...new Set(trackIds)]
@@ -176,6 +184,7 @@ async function addItems(c: Context<AppBindings>): Promise<Response> {
 
 async function reorderItems(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const playlistId = pathParam(c, 'id')
   const { itemIds } = await readJsonValidated(c, reorderPlaylistSchema, JSON_BODY_LIMITS.profile)
   const reads = await c.env.DB.batch([
@@ -197,6 +206,7 @@ async function reorderItems(c: Context<AppBindings>): Promise<Response> {
 
 async function removeItem(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const playlistId = pathParam(c, 'id')
   const itemId = pathParam(c, 'itemId')
   const [deleted] = await c.env.DB.batch([

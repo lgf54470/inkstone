@@ -84,6 +84,9 @@ export const LIMITS = {
   musicWebdavRequestsPerHour: 300,
   musicPlayEventsPerHour: 600,
   musicLibraryWritesPerHour: 1000,
+  // Position saves ride a heartbeat while music plays, so they would starve the library-write
+  // budget if they shared its key; they still deserve their own ceiling.
+  musicPlaybackSavesPerHour: 2000,
   musicCoverLookupsPerHour: 60,
   musicLyricLookupsPerHour: 60,
   // Anonymous readers of a published library are metered by client IP, per surface:

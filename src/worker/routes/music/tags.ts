@@ -5,6 +5,7 @@ import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
+import { enforceMusicBudget } from './budget'
 import { toTag } from './rows'
 import type { MusicTagRow } from './rows'
 import { createTagSchema, patchTagSchema } from './schemas'
@@ -28,6 +29,7 @@ async function listTags(c: Context<AppBindings>): Promise<Response> {
 
 async function createTag(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const body = await readJsonValidated(c, createTagSchema, JSON_BODY_LIMITS.small)
   const parentId = await resolveParentId(c.env.DB, userId, body.parentId ?? null)
   const id = newId()
@@ -44,6 +46,7 @@ async function createTag(c: Context<AppBindings>): Promise<Response> {
 
 async function patchTag(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const id = pathParam(c, 'id')
   const existing = await loadTag(c.env.DB, userId, id)
   if (!existing) throw ApiError.notFound('Tag not found')
@@ -64,6 +67,7 @@ async function patchTag(c: Context<AppBindings>): Promise<Response> {
 
 async function deleteTag(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
   const id = pathParam(c, 'id')
   const existing = await loadTag(c.env.DB, userId, id)
   if (!existing) throw ApiError.notFound('Tag not found')
