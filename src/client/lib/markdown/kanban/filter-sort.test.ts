@@ -256,7 +256,7 @@ describe('groupKanbanItems', () => {
 const TODAY = new Date(2026, 2, 15)
 
 const ALL_TYPES: KanbanPropertyType[] = [
-  'title', 'select', 'multi-select', 'date', 'text', 'number', 'checkbox', 'person', 'files',
+  'title', 'select', 'multi-select', 'date', 'text', 'number', 'checkbox', 'person', 'files', 'url',
 ]
 
 const typedColumns: KanbanProperty[] = [

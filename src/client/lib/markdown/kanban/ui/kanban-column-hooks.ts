@@ -166,6 +166,7 @@ export const KANBAN_EDITABLE_TYPES: readonly KanbanPropertyType[] = [
   'date',
   'checkbox',
   'person',
+  'url',
 ]
 
 const TYPE_NAME_KEYS: Record<string, Parameters<typeof t>[0]> = {
@@ -176,6 +177,7 @@ const TYPE_NAME_KEYS: Record<string, Parameters<typeof t>[0]> = {
   date: 'preview.kanban_type_date',
   checkbox: 'preview.kanban_type_checkbox',
   person: 'preview.kanban_type_person',
+  url: 'preview.kanban_type_url',
   title: 'preview.kanban_prop_title',
   files: 'preview.kanban_files',
 }

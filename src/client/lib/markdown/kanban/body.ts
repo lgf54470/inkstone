@@ -66,10 +66,12 @@ export function detectKanbanMode(body: string): KanbanMode {
   return trimmed.startsWith('{') || trimmed.startsWith('[') ? 'json' : 'outline'
 }
 
-function assertFenceUrlsAreSafe(items: KanbanItem[]): void {
+function assertFenceUrlsAreSafe(items: KanbanItem[], columns: KanbanProperty[]): void {
   // A rejected protocol fails the whole fence into its error state rather than
   // silently dropping the field, so the author sees why the board will not open.
   // The cover alone may be an inline image; file urls are links and fetches.
+  // A `url` column prints its values as links too, so they answer to the same whitelist.
+  const urlColumnIds = new Set(columns.filter((column) => column.type === 'url').map((column) => column.id))
   for (const item of items) {
     if (typeof item.cover === 'string' && item.cover.trim() !== '' && safeKanbanCoverUrl(item.cover) === null) {
       throw new Error(`Kanban item "${item.id ?? ''}" has an unsupported cover URL protocol`)
@@ -77,6 +79,12 @@ function assertFenceUrlsAreSafe(items: KanbanItem[]): void {
     for (const file of item.files ?? []) {
       if (typeof file.url === 'string' && file.url.trim() !== '' && safeKanbanUrl(file.url) === null) {
         throw new Error(`Kanban item "${item.id ?? ''}" has an unsupported files URL protocol`)
+      }
+    }
+    for (const propertyId of urlColumnIds) {
+      const value = item.properties[propertyId]
+      if (typeof value === 'string' && value.trim() !== '' && safeKanbanUrl(value) === null) {
+        throw new Error(`Kanban item "${item.id ?? ''}" has an unsupported URL in the "${propertyId}" column`)
       }
     }
   }
@@ -163,7 +171,7 @@ function normalizeKanbanData(raw: Partial<KanbanData>): KanbanData {
   const columns = Array.isArray(raw.columns) && raw.columns.length > 0 ? raw.columns : defaultKanbanColumns()
   const views = Array.isArray(raw.views) && raw.views.length > 0 ? raw.views : defaultKanbanViews()
   const items = Array.isArray(raw.items) ? raw.items : []
-  assertFenceUrlsAreSafe(items)
+  assertFenceUrlsAreSafe(items, columns)
   assertKanbanCardBudget(items)
 
   return clampKanbanTextBounds({
@@ -180,6 +188,7 @@ export function parseKanbanBody(body: string): KanbanParseResult {
   if (mode === 'outline') {
     try {
       const data = parseKanbanOutline(body)
+      assertFenceUrlsAreSafe(data.items, data.columns)
       assertKanbanCardBudget(data.items)
       return { ok: true, data: clampKanbanTextBounds(data), mode }
     } catch (err) {

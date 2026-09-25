@@ -348,6 +348,7 @@ export const messages = {
 'preview.kanban_column_resize_hint': 'Drag, or use the arrow keys; Enter applies and Delete resets',
 'preview.kanban_column_width_value': '{value0}px',
 'preview.kanban_type_text': 'Text',
+'preview.kanban_type_url': 'Link',
 'preview.kanban_type_number': 'Number',
 'preview.kanban_type_select': 'Select',
 'preview.kanban_type_multi_select': 'Multi-select',

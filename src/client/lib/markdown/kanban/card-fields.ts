@@ -22,6 +22,7 @@ import { formatDateKey } from '../../time'
 import { kanbanDayKey } from './date-fields'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from './i18n-helpers'
 import { kanbanPersonName } from './person'
+import { safeKanbanUrl } from './url'
 import type { KanbanItem, KanbanProperty, KanbanView } from './types'
 
 /** Unset views share this list so a memoised card keeps one identity across unrelated renders. */
@@ -69,6 +70,12 @@ export interface KanbanCardField {
   id: string
   label: string
   value: string
+  /**
+   * Where the value goes when it is a link (`url` columns): present only when the stored text
+   * passes the same URL whitelist the fence was read under, so a card never prints a link the
+   * parse boundary would have refused.
+   */
+  href?: string
 }
 
 /**
@@ -79,7 +86,7 @@ export interface KanbanCardField {
 export function readKanbanCardField(item: KanbanItem, column: KanbanProperty): KanbanCardField | null {
   const label = formatKanbanPropertyName(column)
   const raw = item.properties[column.id]
-  const field = (value: string): KanbanCardField => ({ id: column.id, label, value })
+  const field = (value: string, href?: string): KanbanCardField => (href === undefined ? { id: column.id, label, value } : { id: column.id, label, value, href })
   switch (column.type) {
     case 'checkbox':
       return raw === true ? field('') : null
@@ -107,8 +114,16 @@ export function readKanbanCardField(item: KanbanItem, column: KanbanProperty): K
       const name = kanbanPersonName(raw)
       return name === '' ? null : field(name)
     }
+    case 'url': {
+      const text = typeof raw === 'string' ? raw.trim() : ''
+      if (text === '') return null
+      // A url prints as the link it names, but only through the fence's own whitelist: a value that
+      // would not have survived the parse boundary prints as plain text instead of as a link.
+      const href = safeKanbanUrl(text)
+      return field(text, href ?? undefined)
+    }
     default: {
-      // Text, number and url print as written. An object or a boolean is not a value this row knows
+      // Text and number print as written. An object or a boolean is not a value this row knows
       // how to say, and printing `[object Object]` on a card is worse than printing nothing.
       if (raw === null || raw === undefined || raw === '') return null
       if (Array.isArray(raw)) {

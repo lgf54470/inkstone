@@ -357,6 +357,7 @@ export const messages = {
 'preview.kanban_column_resize_hint': '拖拽或用方向键调整，Enter 应用，Delete 复位',
 'preview.kanban_column_width_value': '{value0} 像素',
 'preview.kanban_type_text': '文本',
+'preview.kanban_type_url': '链接',
 'preview.kanban_type_number': '数字',
 'preview.kanban_type_select': '单选',
 'preview.kanban_type_multi_select': '多选',

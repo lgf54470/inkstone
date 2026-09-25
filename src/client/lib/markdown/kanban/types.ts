@@ -12,6 +12,7 @@ export type KanbanPropertyType =
   | 'checkbox'
   | 'person'
   | 'files'
+  | 'url'
 
 export type KanbanColorName =
   | 'gray'

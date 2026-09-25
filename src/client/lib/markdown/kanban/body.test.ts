@@ -132,6 +132,21 @@ describe('parseKanbanBody URL whitelist', () => {
     if (result.ok) return
     expect(result.error).toContain('files')
   })
+
+  it('holds url columns to the same whitelist the cover and files answer to', () => {
+    const board = (link: string): string => JSON.stringify({
+      columns: [
+        { id: 'title', name: 'Title', type: 'title' },
+        { id: 'spec', name: 'Spec', type: 'url' },
+      ],
+      items: [{ id: '1', title: 'Task 1', properties: { spec: link } }],
+    })
+    const accepted = parseKanbanBody(board('https://spec.example.test/1'))
+    expect(accepted.ok).toBe(true)
+    const refused = parseKanbanBody(board('javascript:alert(1)'))
+    expect(refused.ok).toBe(false)
+    if (!refused.ok) expect(refused.error).toContain('spec')
+  })
 })
 
 /**

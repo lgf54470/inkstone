@@ -1,7 +1,8 @@
-import { Flag, Trash2 } from 'lucide-react'
+import { Flag, Link2, Trash2 } from 'lucide-react'
 import { t } from '../../../i18n'
 import { getKanbanDotColor, getKanbanTagStyle } from '../colors'
 import { formatKanbanOptionLabel, formatKanbanPropertyName } from '../i18n-helpers'
+import { safeKanbanUrl } from '../url'
 import type { ReactNode } from 'react'
 import type { KanbanItem, KanbanOption, KanbanProperty } from '../types'
 import { KanbanDatePicker } from './kanban-date-picker'
@@ -183,6 +184,34 @@ export function DetailPropertyField({
           candidates={people}
           onChange={onChange}
         />
+      </LabelledField>
+    )
+  }
+
+  if (column.type === 'url') {
+    // Edited as text like its sibling fields; the link it names opens from the affordance beside it.
+    const link = safeKanbanUrl(String(value ?? ''))
+    return (
+      <LabelledField column={column}>
+        <div className='flex items-center gap-1'>
+          <input
+            type='text'
+            value={String(value ?? '')}
+            onChange={(e) => onChange(e.target.value)}
+            className='h-8 min-w-0 flex-1 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-2 text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
+          />
+          {link && (
+            <a
+              href={link}
+              target='_blank'
+              rel='noopener noreferrer'
+              aria-label={t('preview.open_in_new_tab')}
+              className='shrink-0 p-1 text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]'
+            >
+              <Link2 size={13} />
+            </a>
+          )}
+        </div>
       </LabelledField>
     )
   }
