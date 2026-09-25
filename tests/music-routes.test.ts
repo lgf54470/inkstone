@@ -178,6 +178,31 @@ async function seedTracks(db: D1Shim, count: number): Promise<string[]> {
   return ids
 }
 
+// The quota is read as a snapshot, so an upload that lands between the pre-check and
+// the insert is invisible to both. This proxy hands the first read a stale total —
+// exactly what a concurrent writer looks like — and reports the truth afterwards.
+function staleQuotaDb(db: D1Shim, staleBytes: number): D1Shim {
+  let reads = 0
+  return new Proxy(db, {
+    get(target, property, receiver) {
+      if (property !== 'prepare') return Reflect.get(target, property, receiver)
+      return (sql: string) => {
+        const statement = target.prepare(sql)
+        if (!/SUM\(size_bytes\)/.test(sql)) return statement
+        return {
+          bind: (...values: unknown[]) => {
+            const bound = statement.bind(...values)
+            return {
+              first: async <T>(): Promise<T | null> =>
+                reads++ === 0 ? ({ bytes: staleBytes } as T) : bound.first<T>(),
+            }
+          },
+        } as unknown as ReturnType<D1Shim['prepare']>
+      }
+    },
+  })
+}
+
 // Records every statement the route prepares, so round-trip redundancy is assertable.
 function recordingDb(db: D1Shim): { proxy: D1Shim; statements: string[] } {
   const statements: string[] = []
@@ -361,6 +386,33 @@ describe('music routes (real D1 + fake R2)', () => {
     form.append('file', new File([AUDIO], 'next.mp3', { type: 'audio/mpeg' }))
     const res = await request(app, '/api/music/tracks', { method: 'POST', body: form })
     expect(res.status).toBe(201)
+  })
+
+  it('unwinds an upload the post-insert ledger shows as over quota', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES ('near-full', ?1, 'Near full', '', '', 0, 'r2', '/music/near-full.mp3', 'audio/mpeg', ?2, NULL, NULL, 0, 0, 0, ?3, ?3)`,
+      USER, LIMITS.musicQuotaBytes - 4, H.now,
+    )
+    // The pre-check reads 0 (a concurrent writer has not landed yet), the row then
+    // pushes the real total past the line.
+    DB_ENV.env.DB = staleQuotaDb(db, 0) as unknown as D1Database
+
+    const form = new FormData()
+    form.append('file', new File([AUDIO], 'racing.mp3', { type: 'audio/mpeg' }))
+    const res = await request(app, '/api/music/tracks', { method: 'POST', body: form })
+    expect(res.status).toBe(413)
+    expect((await res.json() as { error: { code: string } }).error.code).toBe('storage_quota_reached')
+
+    DB_ENV.env.DB = db as unknown as D1Database
+    const library = await (await request(app, '/api/music/library')).json()
+    expect(library.tracks).toHaveLength(1)
+    expect(storedObjects().size).toBe(0)
   })
 
   it('streams the whole object and honours a byte range', async () => {
