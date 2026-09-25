@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronsDownUp, ChevronsUpDown, Plus, Search, Settings2 } from 'lucide-react'
 import type { Tag } from '@shared/types'
 import { IconButton, SectionLabel } from '../../components/primitives'
+import { Input } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { TagDraftRow, TagTreeList, TagTreeListEmpty, useTagTree } from '../tags'
@@ -111,14 +112,14 @@ function MusicTagsList({ data, query, renamingId, onRenamingChange }: {
 
 function MusicTagsSearch({ query, onChange }: { query: string; onChange: (value: string) => void }) {
   return (
-    <div className='relative mt-1.5'>
-      <Search size={12} className='pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-[var(--text-quaternary)]' />
-      <input
+    <div className='mt-1.5'>
+      <Input
         aria-label={t('notes.tag_filter_search')}
         value={query}
         onChange={(event) => onChange(event.target.value)}
         placeholder={t('notes.tag_filter_search')}
-        className='h-7 w-full rounded-[var(--r-sm)] bg-[var(--bg-inset)] pr-2 pl-6 text-[length:var(--text-12)] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none'
+        leading={<Search size={12} />}
+        className='h-7 text-[length:var(--text-12)]'
       />
     </div>
   )

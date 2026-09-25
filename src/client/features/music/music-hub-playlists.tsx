@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Heart, Link2, Link2Off, ListMusic, MoreHorizontal, PencilLine, Pin, Play, Plus, Trash2 } from 'lucide-react'
 import type { MusicPlaylistDetail } from '@shared/types'
 import { IconButton } from '../../components/primitives'
+import { Input } from '../../components/form'
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -185,7 +186,7 @@ function PlaylistRenameInput({
   originalName: string
 }) {
   return (
-    <input
+    <Input
       autoFocus
       value={draft}
       aria-label={t('music.rename')}
@@ -199,7 +200,7 @@ function PlaylistRenameInput({
         if (event.key === 'Enter') event.currentTarget.blur()
         if (event.key === 'Escape') onChange(null)
       }}
-      className='h-6 min-w-0 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 text-[length:var(--text-11)] outline-none'
+      className='h-6 min-w-0 flex-1 border-[var(--accent)] bg-[var(--bg-surface)] px-1 text-[length:var(--text-11)]'
     />
   )
 }

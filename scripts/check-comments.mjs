@@ -2513,6 +2513,11 @@ const allowed = new Map([
     '// show both listen on `window`, so an armed pan is the *page\'s* state and the key\'s target is the',
     '// focused element — the body, when nothing in the overlay holds focus.',
   ]],
+  ['src/client/features/music/music-hub-inputs.test.ts', [
+    '// The shared Input paints its own focus ring (border + shadow); the two fields the hub hand-rolled',
+    '// suppressed the outline outright, so tabbing into them moved the caret with nothing on screen to',
+    '// say where it had landed.',
+  ]],
   ['src/client/features/music/music-hub-modal.test.ts', [
     '// This jsdom ships no matchMedia at all; the hub reads one media query now.',
   ]],
