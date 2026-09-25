@@ -7,7 +7,7 @@ import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { collectionPageRoutes, shareManageRoutes, shareRoutes } from '../src/worker/routes/share'
-import { createD1Database as createDb, queryFirst as firstRow, runSql, type D1Shim } from './d1-harness'
+import { createD1Database as createDb, queryFirst as firstRow, queryRows as allRows, runSql, type D1Shim } from './d1-harness'
 
 /**
  * Folder and tag ids are 26-character ids (`newId`), and the publish route validates them as such —
@@ -508,6 +508,72 @@ describe('collection owner routes (ADR-0005)', () => {
 
     const conflict = await patchJson(app, `/api/share/collections/${firstId}`, { isEnabled: true })
     expect(conflict.status).toBe(400)
+  })
+
+  it('publishes a hand-picked collection whose page lists the chosen notes in order (audit #14)', async () => {
+    const db = await makeDb()
+    const first = await seedNote(db, { title: 'Picked One' })
+    const second = await seedNote(db, { title: 'Picked Two' })
+    const outside = await seedNote(db, { title: 'Not Picked' })
+    await seedShare(db, { slug: 's-pick-2', note_id: second })
+    await seedShare(db, { slug: 's-pick-1', note_id: first })
+    await seedShare(db, { slug: 's-outside', note_id: outside })
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/share/collections', {
+      targetType: 'manual',
+      title: 'Editor’s picks',
+      // The owner's order, deliberately not the note order: the page walks it as arranged.
+      noteIds: [second, first],
+    })
+    expect(res.status).toBe(200)
+    const { slug } = await res.json() as { slug: string }
+
+    const body = await (await readCollection(app, slug)).json() as CollectionBody
+    expect(body.title).toBe('Editor’s picks')
+    expect(body.count).toBe(2)
+    expect(body.notes.map((note) => note.slug)).toEqual(['s-pick-2', 's-pick-1'])
+
+    // Membership is the stored choice, but visibility is derived: pausing one member's share
+    // removes it from the page without editing the collection.
+    await runSql(db, `UPDATE shares SET is_enabled = 0 WHERE slug = 's-pick-2'`)
+    const afterPause = await (await readCollection(app, slug)).json() as CollectionBody
+    expect(afterPause.notes.map((note) => note.slug)).toEqual(['s-pick-1'])
+    expect(afterPause.count).toBe(1)
+
+    // The owner's list names it by its stored title, not a folder or tag name.
+    const listed = await (await request(app, '/api/share/collections')).json() as { collections: Array<{ targetType: string; title: string; targetValue: string }> }
+    const manual = listed.collections.find((collection) => collection.targetType === 'manual')!
+    expect(manual.title).toBe('Editor’s picks')
+    // The address itself is the target value, so manual collections never collide with each other.
+    expect(manual.targetValue).toBe(slug)
+
+    // Revoking the collection takes its member rows with it.
+    const id = (await firstRow(db, 'SELECT id FROM share_collections WHERE slug = ?1', slug))!.id as string
+    await request(app, `/api/share/collections/${id}`, { method: 'DELETE' })
+    const members = await allRows(db, 'SELECT * FROM share_collection_members WHERE collection_id = ?1', id)
+    expect(members).toHaveLength(0)
+  })
+
+  it('refuses a hand-picked collection without a title or without notes', async () => {
+    const db = await makeDb()
+    const n1 = await seedNote(db, { title: 'Picked' })
+    await seedShare(db, { slug: 's-pick-x', note_id: n1 })
+    const app = makeApp()
+
+    const noTitle = await postJson(app, '/api/share/collections', { targetType: 'manual', noteIds: [n1] })
+    expect(noTitle.status).toBe(400)
+    const noNotes = await postJson(app, '/api/share/collections', { targetType: 'manual', title: 'Empty' })
+    expect(noNotes.status).toBe(400)
+    // A note the account does not own simply matches nothing; it is not an error the page reports.
+    const stray = await postJson(app, '/api/share/collections', {
+      targetType: 'manual', title: 'Stray', noteIds: ['n-does-not-exist'],
+    })
+    expect(stray.status).toBe(200)
+    const { slug } = await stray.json() as { slug: string }
+    const body = await (await readCollection(app, slug)).json() as CollectionBody
+    expect(body.count).toBe(0)
+    expect(body.notes).toHaveLength(0)
   })
 
   it('caps how many collections one account can publish', async () => {

@@ -50,6 +50,7 @@ export const INDEX_STATEMENTS: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_share_collections_user ON share_collections(user_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_share_audit_log_user ON share_audit_log(user_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_share_audit_log_note ON share_audit_log(note_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_share_collection_members_note ON share_collection_members(note_id)`,
   `CREATE INDEX IF NOT EXISTS idx_share_visits_user_time ON share_visits(user_id, visited_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_share_visits_slug_time ON share_visits(slug, visited_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_share_visits_note_time ON share_visits(note_id, visited_at DESC)`,

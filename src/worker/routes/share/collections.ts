@@ -43,6 +43,7 @@ interface CollectionRow {
   expires_at: number | null
   is_enabled: number
   member_sort: string | null
+  title: string | null
   created_at: number
   target_name: string | null
 }
@@ -53,7 +54,7 @@ function registerCollectionListRoute(shareManageRoutes: Hono<AppBindings>): void
     const userId = c.get('userId')
     const now = Date.now()
     const rows = rowsOf<CollectionRow>(await db.prepare(
-      `SELECT c.id, c.slug, c.target_type, c.target_value, c.password_hash, c.expires_at, c.is_enabled, c.member_sort, c.created_at,
+      `SELECT c.id, c.slug, c.target_type, c.target_value, c.password_hash, c.expires_at, c.is_enabled, c.member_sort, c.title, c.created_at,
               ${collectionTargetNameSelect()} AS target_name
          FROM share_collections c ${collectionTargetNameJoin()}
         WHERE c.user_id = ?1 ORDER BY c.created_at DESC, c.id DESC`,
@@ -79,7 +80,9 @@ function toShareCollection(row: CollectionRow, count: { members: number } | null
   return {
     id: row.id,
     slug: row.slug,
-    title: row.target_name ?? '',
+    // A folder/tag collection is named by its target at read time; a hand-picked one by its own
+    // stored title.
+    title: row.target_name ?? row.title ?? '',
     targetType: record.type,
     targetValue: record.value,
     count: count?.members ?? 0,
@@ -91,9 +94,13 @@ function toShareCollection(row: CollectionRow, count: { members: number } | null
   }
 }
 
+const MANUAL_MEMBER_LIMIT = 200
+
 const publishSchema = z.object({
-  targetType: z.enum(['folder', 'tag']),
-  targetValue: z.string().min(1).max(200),
+  targetType: z.enum(['folder', 'tag', 'manual']),
+  targetValue: z.string().min(1).max(200).optional(),
+  title: z.string().min(1).max(200).optional(),
+  noteIds: z.array(z.string()).min(1).max(MANUAL_MEMBER_LIMIT).optional(),
   password: z.string().max(LIMITS.passwordMaxLength).optional(),
   expiresAt: z.number().int().positive().nullable().optional(),
   memberSort: z.enum(['default', 'newest', 'oldest', 'title']).nullable().optional(),
@@ -113,10 +120,11 @@ function registerCollectionPublishRoute(shareManageRoutes: Hono<AppBindings>): v
   shareManageRoutes.post('/collections', async (c) => {
     const userId = c.get('userId')
     const body = await readJsonValidated(c, publishSchema, JSON_BODY_LIMITS.small)
+    if (body.targetType === 'manual') return publishManualCollection(c.env.DB, userId, body)
     if (!isShareTargetType(body.targetType) || !isValidTargetValue(body.targetValue)) {
       throw ApiError.badRequest('The collection target is not valid')
     }
-    const target = { type: body.targetType, value: body.targetValue }
+    const target = { type: body.targetType, value: body.targetValue! }
     if ((await collectionTargetName(c.env.DB, userId, target)) === null) {
       throw ApiError.notFound('The folder or tag does not exist')
     }
@@ -140,12 +148,7 @@ function registerCollectionPublishRoute(shareManageRoutes: Hono<AppBindings>): v
       ).bind(passwordHash, body.expiresAt ?? null, memberSort, now, existing.id, userId).run()
       return c.json({ id: existing.id, slug: existing.slug })
     }
-    const live = await c.env.DB.prepare(
-      `SELECT COUNT(*) AS live FROM share_collections WHERE user_id = ?1 AND is_enabled = 1`,
-    ).bind(userId).first<{ live: number }>()
-    if ((live?.live ?? 0) >= MAX_COLLECTIONS_PER_ACCOUNT) {
-      throw ApiError.badRequest(`An account can publish at most ${MAX_COLLECTIONS_PER_ACCOUNT} collections`)
-    }
+    await countLiveCollections(c.env.DB, userId)
     const id = newId()
     const slug = newSlug()
     await c.env.DB.prepare(
@@ -155,6 +158,62 @@ function registerCollectionPublishRoute(shareManageRoutes: Hono<AppBindings>): v
     ).bind(id, slug, userId, target.type, target.value, passwordHash, body.expiresAt ?? null, memberSort, now).run()
     return c.json({ id, slug })
   })
+}
+
+/**
+ * A hand-picked collection (audit #14): the owner names it and chooses the notes; membership is
+ * stored, visibility is still derived. Its address is minted here and stored as the target value —
+ * one address per collection, never one per folder — and re-publishing the same slug re-states the
+ * policy and the member list together.
+ */
+async function publishManualCollection(
+  db: D1Database,
+  userId: string,
+  body: z.infer<typeof publishSchema>,
+): Promise<Response> {
+  const title = (body.title ?? '').trim()
+  const noteIds = [...new Set(body.noteIds ?? [])]
+  if (!title || noteIds.length === 0) {
+    throw ApiError.badRequest('A hand-picked collection needs a title and at least one note')
+  }
+  if ((body.noteIds ?? []).length > MANUAL_MEMBER_LIMIT) {
+    throw ApiError.badRequest(`A hand-picked collection can hold at most ${MANUAL_MEMBER_LIMIT} notes`)
+  }
+  await countLiveCollections(db, userId)
+  const now = Date.now()
+  const passwordHash = body.password ? await hashPassword(body.password) : null
+  const id = newId()
+  const slug = newSlug()
+  await db.batch([
+    db.prepare(
+      `INSERT INTO share_collections
+         (id, slug, user_id, target_type, target_value, title, password_hash, expires_at, is_enabled, member_sort, created_at, updated_at)
+       VALUES (?1, ?2, ?3, 'manual', ?2, ?4, ?5, ?6, 1, NULL, ?7, ?7)`,
+    ).bind(id, slug, userId, title, passwordHash, body.expiresAt ?? null, now),
+    // One replace: re-publishing the same address re-states the member list, so the stored order
+    // always mirrors the request that last succeeded.
+    ...memberReplaceStatements(db, id, noteIds),
+  ])
+  return Response.json({ id, slug })
+}
+
+function memberReplaceStatements(db: D1Database, collectionId: string, noteIds: string[]): D1PreparedStatement[] {
+  return [
+    db.prepare(`DELETE FROM share_collection_members WHERE collection_id = ?1`).bind(collectionId),
+    ...noteIds.map((noteId, index) => db.prepare(
+      `INSERT INTO share_collection_members (collection_id, note_id, sort_order) VALUES (?1, ?2, ?3)`,
+    ).bind(collectionId, noteId, index)),
+  ]
+}
+
+async function countLiveCollections(db: D1Database, userId: string): Promise<number> {
+  const live = await db.prepare(
+    `SELECT COUNT(*) AS live FROM share_collections WHERE user_id = ?1 AND is_enabled = 1`,
+  ).bind(userId).first<{ live: number }>()
+  if ((live?.live ?? 0) >= MAX_COLLECTIONS_PER_ACCOUNT) {
+    throw ApiError.badRequest(`An account can publish at most ${MAX_COLLECTIONS_PER_ACCOUNT} collections`)
+  }
+  return live?.live ?? 0
 }
 
 function registerCollectionUpdateRoute(shareManageRoutes: Hono<AppBindings>): void {
@@ -192,8 +251,15 @@ function registerCollectionRevokeRoute(shareManageRoutes: Hono<AppBindings>): vo
     const id = c.req.param('id')
     if (!isValidId(id)) throw ApiError.notFound('The collection does not exist')
     // Revoking removes the record and nothing else: the shares it listed keep their own links, their
-    // own passwords and their own visit history.
-    await c.env.DB.prepare(`DELETE FROM share_collections WHERE id = ?1 AND user_id = ?2`).bind(id, userId).run()
+    // own passwords and their own visit history. A hand-picked collection's member rows are part of
+    // the record, so they go with it — both deletes guarded by the owner bind.
+    await c.env.DB.batch([
+      c.env.DB.prepare(
+        `DELETE FROM share_collection_members WHERE collection_id IN
+           (SELECT id FROM share_collections WHERE id = ?1 AND user_id = ?2)`,
+      ).bind(id, userId),
+      c.env.DB.prepare(`DELETE FROM share_collections WHERE id = ?1 AND user_id = ?2`).bind(id, userId),
+    ])
     return c.json({ ok: true })
   })
 }

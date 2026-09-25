@@ -40,9 +40,9 @@
 | 09 | P1 | #10 | 访问日志无时间范围筛选 | 小 | ✅ | ⏳ |
 | 10 | P1 | #9 | 渠道卡片不能下钻到该渠道明细 | 小-中 | ✅ | ⏳ |
 | 11 | P2 | #6 | 链接变更无审计历史（新迁移 v43） | 中 | ✅ | ⏳ |
-| 12 | P2 | #7 | 失效提醒/通知（看板判定 + app_meta 已读） | 中 | ✅ | ⏳ |
-| 13 | P2 | #13 | 集合成员自定义排序 | 中 | ✅ | ⏳ |
-| 14 | P2 | #14 | 手工精选集合 | 中-大 | ⬜ | — |
+| 12 | P2 | #7 | 失效提醒/通知（看板判定 + app_meta 已读） | 中 | ✅ | dd4c7334 |
+| 13 | P2 | #13 | 集合成员自定义排序 | 中 | ✅ | 4f01068d |
+| 14 | P2 | #14 | 手工精选集合 | 中-大 | ✅ | ⏳ |
 | 15 | — | — | 全量回归 + 全部门禁收尾 | 小 | ⬜ | — |
 
 ## 明确不动 / 已知限制（审计结论，登记备查）
@@ -53,6 +53,13 @@
 - 安全面（token 熵/节流/指纹/CSP/Zod/CSV 注入）经审计合规，不重复劳动
 
 ## 进度日志
+
+### 2026-09-25 · 序 14 · P2 #14 手工精选集合（成员表 + 发布/公开页/对话框/demo 全链路）
+
+- 方案：迁移 45 新增 `share_collection_members (collection_id, note_id, sort_order)`（note_id 索引）与 `share_collections.title`。`targetType: 'manual'`：target_value 存集合自己的 slug（不占用 folder/tag 的一址一页唯一索引），标题存 title 列。**成员是存储的选择、可见性仍是派生**——暂停/撤销某成员的分享即从页面消失，无需编辑集合；不拥有的 noteId 匹配不到任何分享（不计为错误）。发布为 `db.batch` 原子写（集合行 + 成员替换），上限 200 成员、须有标题与 ≥1 笔记；撤销级联删成员；所有者列表回读 title/targetType='manual'。公开页 manual 分支走专用成员语句（按存储顺序 + keyset 游标第 4 段 `#<sort_order>`，`t` 前缀表标题——encodeURIComponent 保证标题永不产生裸 `#`，无歧义）。发布对话框新增「手工精选」：标题输入 + 已分享笔记勾选列表（≤200，空态有文案）。
+- 结构整改（体积门禁逼出，非无关重构）：demo `publishCollection`（62 行）拆出 `publishManualCollection`；对话框 `usePublishForm`（60 行）拆出 `publishBody`/`submitPublish`，`PublishFields`（52 行）拆出 `DerivedPickField`/`PolicyFields`；`collection-public.ts` 处理器（65 行）拆出 `resolveCollectionPage`（manual/派生两分支返回同构页）；`decodeCollectionCursor` 拆出 `applyCursorFourthField`。全部回到 50 行/3 层预算内，行为零变更。
+- 回归：worker 新增 2 例（按存储顺序列出 + 暂停派生可见性 + 所有者列表回读 + 撤销级联；无标题/无笔记 400 + 不拥有者静默为空页）；迁移守卫通过；`tests/share-collections + share-routes + schema-migrations + src/client/features/share + src/client/demo` 共 **60 文件/440 用例全绿**；`npx tsc -b --force` 通过；全部门禁绿（体积基线 migrations.ts 679→700，迁移 45 固有增长）。
+- 已知限制（如实登记）：UI 里手工集合不支持从行内「编辑」回填（打开空对话框重新创建；暂停/撤销在面板可用）——回填需要把成员读回对话框，属后续增强；游标按存储 sort_order，已发布集合重新勾选后旧光标退化页首（与 title 排序限制同族）。
 
 ### 2026-09-25 · 序 13 · P2 #13 集合成员排序（预设方案 + 分页适配）
 

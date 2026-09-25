@@ -34,7 +34,8 @@ export function collectionTarget(
  * list cannot come to call different shares visible.
  */
 export function collectionMemberConditions(params: {
-  target: ShareTarget
+  /** Null for a hand-picked collection: its membership is the target, the visibility rule is not. */
+  target: ShareTarget | null
   now: number
   firstBind: number
 }): ShareSqlConditions {
@@ -147,6 +148,56 @@ export function collectionMemberCountStatement(db: D1Database, params: {
   ).bind(userId, ...member.binds)
 }
 
+/**
+ * A hand-picked collection's members (audit #14): the rows the owner arranged, in the order the
+ * owner gave them, intersected with the shares that are live right now. Visibility is derived —
+ * pausing or revoking one member's share removes it from the page without editing the collection —
+ * while membership itself is the stored choice. Paging follows the stored order.
+ */
+export function manualCollectionMembersStatement(db: D1Database, params: {
+  userId: string
+  collectionId: string
+  now: number
+  cursor: CollectionCursor | null
+  limit: number
+}): D1PreparedStatement {
+  const { userId, collectionId, now, cursor, limit } = params
+  const member = collectionMemberConditions({ target: null, now, firstBind: 3 })
+  const binds: Array<string | number> = [userId, collectionId, ...member.binds]
+  let cursorClause = ''
+  if (cursor && cursor.sortOrder !== undefined) {
+    binds.push(cursor.sortOrder, cursor.slug)
+    const base = binds.length - 2
+    cursorClause = ` AND (m.sort_order > ?${base} OR (m.sort_order = ?${base} AND s.slug > ?${base + 1}))`
+  }
+  binds.push(limit)
+  return db.prepare(
+    `SELECT n.title, n.excerpt, n.is_pinned, n.updated_at, s.slug, s.password_hash, m.sort_order
+       FROM share_collection_members m
+       JOIN shares s ON s.note_id = m.note_id AND s.user_id = ?1
+       JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
+      WHERE m.collection_id = ?2 AND n.deleted_at IS NULL AND ${member.conditions.join(' AND ')}${cursorClause}
+      ORDER BY m.sort_order ASC, s.slug ASC
+      LIMIT ?${binds.length}`,
+  ).bind(...binds)
+}
+
+export function manualCollectionCountStatement(db: D1Database, params: {
+  userId: string
+  collectionId: string
+  now: number
+}): D1PreparedStatement {
+  const { userId, collectionId, now } = params
+  const member = collectionMemberConditions({ target: null, now, firstBind: 3 })
+  return db.prepare(
+    `SELECT COUNT(*) AS members
+       FROM share_collection_members m
+       JOIN shares s ON s.note_id = m.note_id AND s.user_id = ?1
+       JOIN notes n ON n.id = s.note_id AND n.user_id = s.user_id
+      WHERE m.collection_id = ?2 AND n.deleted_at IS NULL AND ${member.conditions.join(' AND ')}`,
+  ).bind(userId, collectionId, ...member.binds)
+}
+
 export interface CollectionMemberRow {
   title: string
   excerpt: string
@@ -154,6 +205,8 @@ export interface CollectionMemberRow {
   updated_at: number
   slug: string
   password_hash: string | null
+  /** Only a hand-picked collection's rows carry the position the owner arranged. */
+  sort_order?: number
 }
 
 export interface CollectionCursor {
@@ -162,6 +215,8 @@ export interface CollectionCursor {
   slug: string
   /** Only the title order pages by the note title; absent cursors are the three-field legacy shape. */
   title?: string
+  /** Only a hand-picked collection pages by the stored position (the `#`-prefixed fourth field). */
+  sortOrder?: number
 }
 
 /**
@@ -175,14 +230,22 @@ export function nextCollectionCursor(rows: CollectionMemberRow[], limit: number,
   if (!last) return null
   const cursor: CollectionCursor = { isPinned: last.is_pinned, updatedAt: last.updated_at, slug: last.slug }
   if (sort === 'title') cursor.title = last.title
+  if (sort === 'manual') cursor.sortOrder = last.sort_order ?? 0
   return encodeCollectionCursor(cursor)
 }
 
 function encodeCollectionCursor(cursor: CollectionCursor): string {
-  // The title is a note title, which may carry the delimiter itself; it travels encoded.
-  const raw = cursor.title === undefined
+  // The fourth field, when there is one, is tagged: `t` for a note title (which may itself carry
+  // the delimiter, so it travels encoded), `#` for a hand-picked position. A title can never
+  // produce a raw `#` — encodeURIComponent escapes it.
+  const fourth = cursor.title !== undefined
+    ? `t${encodeURIComponent(cursor.title)}`
+    : cursor.sortOrder !== undefined
+      ? `#${cursor.sortOrder}`
+      : undefined
+  const raw = fourth === undefined
     ? `${cursor.isPinned}|${cursor.updatedAt}|${cursor.slug}`
-    : `${cursor.isPinned}|${cursor.updatedAt}|${cursor.slug}|${encodeURIComponent(cursor.title)}`
+    : `${cursor.isPinned}|${cursor.updatedAt}|${cursor.slug}|${fourth}`
   return btoa(raw)
     .replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
 }
@@ -192,21 +255,32 @@ export function decodeCollectionCursor(raw: string | undefined): CollectionCurso
   if (!raw) return null
   const padded = raw.replaceAll('-', '+').replaceAll('_', '/')
   const decoded = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4))
-  const [pinnedText, updatedText, slug, encodedTitle] = decoded.split('|')
+  const [pinnedText, updatedText, slug, encodedFourth] = decoded.split('|')
   const isPinned = Number(pinnedText)
   const updatedAt = Number(updatedText)
   if ((isPinned !== 0 && isPinned !== 1) || !Number.isSafeInteger(updatedAt) || updatedAt < 0 || !slug || !isValidSlug(slug)) {
     throw new Error('invalid collection cursor')
   }
   const cursor: CollectionCursor = { isPinned, updatedAt, slug }
-  if (encodedTitle !== undefined) {
+  if (encodedFourth !== undefined) applyCursorFourthField(cursor, encodedFourth)
+  return cursor
+}
+
+/** The tagged fourth field, decoded onto the cursor: a hand-picked position or an encoded title. */
+function applyCursorFourthField(cursor: CollectionCursor, encodedFourth: string): void {
+  if (/^#\d+$/.test(encodedFourth)) {
+    cursor.sortOrder = Number(encodedFourth.slice(1))
+    return
+  }
+  if (encodedFourth.startsWith('t')) {
     try {
-      cursor.title = decodeURIComponent(encodedTitle)
+      cursor.title = decodeURIComponent(encodedFourth.slice(1))
+      return
     } catch {
       throw new Error('invalid collection cursor')
     }
   }
-  return cursor
+  throw new Error('invalid collection cursor')
 }
 
 /**

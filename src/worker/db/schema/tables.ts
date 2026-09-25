@@ -209,8 +209,15 @@ export const TABLE_STATEMENTS: readonly string[] = [
       expires_at INTEGER,
       is_enabled INTEGER NOT NULL DEFAULT 1,
       member_sort TEXT,
+      title TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
+    )`,
+  `CREATE TABLE IF NOT EXISTS share_collection_members (
+      collection_id TEXT NOT NULL,
+      note_id TEXT NOT NULL,
+      sort_order INTEGER NOT NULL,
+      PRIMARY KEY (collection_id, note_id)
     )`,
   `CREATE TABLE IF NOT EXISTS share_audit_log (
       id TEXT PRIMARY KEY,

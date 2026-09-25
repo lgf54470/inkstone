@@ -154,7 +154,7 @@ export const share = {
     collections: {
       list: (signal?: AbortSignal) =>
         request<ShareCollectionListResponse>('/api/share/collections', { signal }),
-      publish: (body: { targetType: 'folder' | 'tag'; targetValue: string; password?: string; expiresAt?: number | null; memberSort?: 'default' | 'newest' | 'oldest' | 'title' | null }) =>
+      publish: (body: { targetType: 'folder' | 'tag' | 'manual'; targetValue?: string; title?: string; noteIds?: string[]; password?: string; expiresAt?: number | null; memberSort?: 'default' | 'newest' | 'oldest' | 'title' | null }) =>
         request<{ id: string; slug: string }>('/api/share/collections', { method: 'POST', body }),
       patch: (id: string, body: { isEnabled?: boolean; password?: string | null; expiresAt?: number | null }) =>
         request<{ ok: true }>(`/api/share/collections/${id}`, { method: 'PATCH', body }),

@@ -291,7 +291,8 @@ export interface ShareCollection {
   id: string
   slug: string
   title: string
-  targetType: 'folder' | 'tag'
+  /** `manual` collections store their members; the other two derive them from the target. */
+  targetType: 'folder' | 'tag' | 'manual'
   targetValue: string
   count: number
   hasPassword: boolean

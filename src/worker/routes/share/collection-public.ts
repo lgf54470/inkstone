@@ -7,7 +7,7 @@ import { isValidSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, clampInt, readOptionalJsonValidated, requestClientIp } from '../../lib/request'
 import { verifyPassword } from '../../lib/password'
 import { assertNotLocked, clearLoginFailures, consumeAttemptBudget, recordLoginFailure, ThrottleError } from '../../lib/throttle'
-import { collectionMemberCountStatement, collectionMembersStatement, collectionTargetName, decodeCollectionCursor, nextCollectionCursor, type CollectionMemberRow } from '../../lib/share-collections'
+import { collectionMemberCountStatement, collectionMembersStatement, collectionTargetName, decodeCollectionCursor, manualCollectionCountStatement, manualCollectionMembersStatement, nextCollectionCursor, type CollectionCursor, type CollectionMemberRow } from '../../lib/share-collections'
 import { resolveShareTarget, type ShareTargetType } from '@shared/share-selection'
 import { rowsOf } from './read-results'
 
@@ -28,6 +28,7 @@ interface CollectionRow {
   expires_at: number | null
   is_enabled: number
   member_sort: string | null
+  title: string | null
 }
 
 /**
@@ -46,39 +47,71 @@ export function registerShareCollectionPublicRoutes(shareRoutes: Hono<AppBinding
     const collection = await loadCollectionOrThrow(c.env.DB, slug)
     const denied = await authenticateCollectionAccess(c, collection, slug, password)
     if (denied) return denied
-    const record = { type: collection.target_type as ShareTargetType, value: collection.target_value }
     const now = Date.now()
     const limit = clampInt(c.req.query('limit'), 1, COLLECTION_LIMIT_MAX, COLLECTION_LIMIT_DEFAULT)
     const cursor = collectionCursor(c.req.query('cursor'))
-    // One lookup answers both questions: the name in the title, and the value the members have to
-    // carry. A tag whose row is gone resolves to a target that matches nothing.
-    const name = await collectionTargetName(c.env.DB, collection.user_id, record)
-    const target = resolveShareTarget(record, name)
-    const [page, count] = await Promise.all([
-      collectionMembersStatement(c.env.DB, { userId: collection.user_id, target, now, cursor, limit, sort: collection.member_sort })
-        .all<CollectionMemberRow>(),
-      collectionMemberCountStatement(c.env.DB, { userId: collection.user_id, target, now })
-        .first<{ members: number }>(),
-    ])
-    const rows = rowsOf<CollectionMemberRow>(page)
+    const page = await resolveCollectionPage(c.env.DB, collection, { now, cursor, limit })
     const response: PublicCollection = {
-      title: name ?? '',
-      count: count?.members ?? 0,
+      title: page.title,
+      count: page.count,
       // The marker that says "arrived from a directory" is not stored on the member: the client puts
       // this collection's own `?ref=collection-<slug>` on the links it renders (both sides share
       // `collectionChannelToken`), so the visit row keeps its own share link as the smallest unit of
       // the analytics while the channel still says which directory sent it (ADR-0004, ADR-0005).
-      notes: rows.map((row): PublicCollectionNote => ({
+      notes: page.rows.map((row): PublicCollectionNote => ({
         slug: row.slug,
         title: row.title,
         excerpt: row.excerpt,
         hasPassword: Boolean(row.password_hash),
       })),
-      nextCursor: nextCollectionCursor(rows, limit, collection.member_sort),
+      nextCursor: nextCollectionCursor(page.rows, limit, page.cursorSort),
       limit,
     }
     return c.json(response)
   })
+}
+
+/** One page of a collection's members, whichever kind of collection it is. */
+async function resolveCollectionPage(db: D1Database, collection: CollectionRow, params: {
+  now: number
+  cursor: CollectionCursor | null
+  limit: number
+}): Promise<{ rows: CollectionMemberRow[]; count: number; title: string; cursorSort: string | null }> {
+  const { now, cursor, limit } = params
+  if (collection.target_type === 'manual') {
+    // A hand-picked collection owns its members and its name; there is no folder or tag to
+    // resolve, so the derived-target machinery does not run at all.
+    const [pageResult, countResult] = await Promise.all([
+      manualCollectionMembersStatement(db, {
+        userId: collection.user_id, collectionId: collection.id, now, cursor, limit,
+      }).all<CollectionMemberRow>(),
+      manualCollectionCountStatement(db, { userId: collection.user_id, collectionId: collection.id, now })
+        .first<{ members: number }>(),
+    ])
+    return {
+      rows: rowsOf<CollectionMemberRow>(pageResult),
+      count: countResult?.members ?? 0,
+      title: collection.title ?? '',
+      cursorSort: 'manual',
+    }
+  }
+  // One lookup answers both questions: the name in the title, and the value the members have to
+  // carry. A tag whose row is gone resolves to a target that matches nothing.
+  const record = { type: collection.target_type as ShareTargetType, value: collection.target_value }
+  const name = await collectionTargetName(db, collection.user_id, record)
+  const target = resolveShareTarget(record, name)
+  const [pageResult, countResult] = await Promise.all([
+    collectionMembersStatement(db, { userId: collection.user_id, target, now, cursor, limit, sort: collection.member_sort })
+      .all<CollectionMemberRow>(),
+    collectionMemberCountStatement(db, { userId: collection.user_id, target, now })
+      .first<{ members: number }>(),
+  ])
+  return {
+    rows: rowsOf<CollectionMemberRow>(pageResult),
+    count: countResult?.members ?? 0,
+    title: name ?? '',
+    cursorSort: collection.member_sort,
+  }
 }
 
 const VIEW_SLUG_IP_BUDGET = { maxAttempts: 20, windowMs: 10 * 60 * 1000 }
@@ -103,7 +136,7 @@ async function enforceCollectionViewBudget(c: Context<AppBindings>, slug: string
 
 async function loadCollectionOrThrow(db: D1Database, slug: string): Promise<CollectionRow> {
   const collection = await db.prepare(
-    `SELECT id, user_id, target_type, target_value, password_hash, expires_at, is_enabled, member_sort
+    `SELECT id, user_id, target_type, target_value, password_hash, expires_at, is_enabled, member_sort, title
        FROM share_collections WHERE slug = ?1`,
   ).bind(slug).first<CollectionRow>()
   // One identical answer for paused, expired and unknown: the status of a collection is not public.

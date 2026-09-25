@@ -675,4 +675,25 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `ALTER TABLE share_collections ADD COLUMN member_sort TEXT`,
     ],
   },
+  {
+    // Hand-picked collections (audit #14): a third target whose members are chosen by the owner
+    // instead of derived from a folder or tag. The members table holds the *choice* — note id and
+    // the position the owner arranged — while visibility is still derived from the shares at read
+    // time, so pausing or revoking one member's share removes it from the page without editing the
+    // collection. `title` names a manual collection (folder/tag ones take their name from the
+    // target), and `target_value` stores the collection's own slug, which keeps the one-live-page-
+    // per-target partial index from pinning manual collections to a shared value.
+    version: 45,
+    skipIfColumnExists: { table: 'share_collections', column: 'title' },
+    statements: [
+      `ALTER TABLE share_collections ADD COLUMN title TEXT`,
+      `CREATE TABLE IF NOT EXISTS share_collection_members (
+         collection_id TEXT NOT NULL,
+         note_id TEXT NOT NULL,
+         sort_order INTEGER NOT NULL,
+         PRIMARY KEY (collection_id, note_id)
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_share_collection_members_note ON share_collection_members(note_id)`,
+    ],
+  },
 ]
