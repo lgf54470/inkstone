@@ -3014,7 +3014,13 @@ const allowed = new Map([
     '// Appends give instant feedback mid-pass; one reload at the end restores server truth.',
     '// The saved duration only labels the list; a failed patch must not undo an import.',
   ]],
+  ['src/client/features/music/music-tag-map.test.ts', [
+    '// Every tag row costs one colour resolve, so counting them tells how many times',
+    '// the tag tree was walked: once for the list, or once per row.',
+  ]],
   ['src/client/features/music/music-tag-rows.ts', [
+    '// Built once for a whole list and shared: resolving the tree per row is O(rows × tags)',
+    '// for a value that only changes when the tags themselves change.',
     '// Older music tags stored a palette name instead of hex; display keeps working either way.',
   ]],
   ['src/client/features/music/music-track-card.test.ts', [
@@ -3028,6 +3034,8 @@ const allowed = new Map([
   ['src/client/features/music/music-track-list.tsx', [
     '// `selection` itself changes identity on every selection change; only its stable',
     '// `toggle` may reach the rows, otherwise all of them re-render for one checkbox.',
+    '// Rows hold these callbacks, and a list of a thousand rows re-renders as a whole',
+    '// when any one of them changes identity; they are built once per list instead.',
     '// The menu itself is a single hub-wide instance; rows only post these requests.',
     '// A search that matched nothing is not an empty library; offer the way back rather than the upload pitch.',
     '// Inside a playlist the rows can be dragged onto each other; the manual order',
@@ -3078,6 +3086,12 @@ const allowed = new Map([
     '// role and hide themselves: the grid stays legal and the accessibility tree stays clean.',
     '// Header sorting mirrors the toolbar: in playlist scope the manual item order',
     '// wins (visibleTracks skips sorting), so offering a sort there would be a dead control.',
+  ]],
+  ['src/client/features/music/music-track-tags.tsx', [
+    '// Rows and cards are three levels below the list, so the map travels by context',
+    '// instead of by prop: one tree resolution per library render, not one per row.',
+    '// Outside a provider the pills would silently vanish, so a lone row still',
+    '// resolves its own map instead of rendering nothing.',
   ]],
   ['src/client/features/music/music-transfer-dialog.tsx', [
     '// The directory picker relies on non-standard attributes React types do not carry.',

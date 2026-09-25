@@ -12,6 +12,7 @@ import type { MusicViewMode } from './music-store'
 import { MusicSelectionBar } from './music-selection-bar'
 import { MusicTrackCard } from './music-track-card'
 import { MusicTrackMenuHost } from './music-track-menu'
+import { MusicTagRowsProvider } from './music-track-tags'
 import { MusicTrackTable } from './music-track-table'
 import type { TrackRowDragHandlers, TrackRowHandlers } from './music-track-row'
 import { useTrackListActions, useTrackSelection, shuffledIds, type TrackSelection } from './use-track-list'
@@ -35,7 +36,6 @@ export const MusicTrackList = memo(function MusicTrackList({
   const scope = useMusic((state) => state.scope)
   const query = useMusic((state) => state.query)
   const setQuery = useMusic((state) => state.setQuery)
-  const openTrackMenu = useMusic((state) => state.openTrackMenu)
   const actions = useTrackListActions(tracks, onEdit)
   const playlistDrag = usePlaylistDrag()
   const visibleIds = useMemo(() => tracks.map((track) => track.id), [tracks])
@@ -44,8 +44,37 @@ export const MusicTrackList = memo(function MusicTrackList({
   // `selection` itself changes identity on every selection change; only its stable
   // `toggle` may reach the rows, otherwise all of them re-render for one checkbox.
   const { toggle } = selection
-  const handlers: TrackRowHandlers = useMemo(
-    () => ({
+  const handlers = useRowHandlers({ actions, toggle, onEdit, drag: playlistDrag })
+  const playback = useMemo(() => ({ isPlaying, isStreamLoading }), [isPlaying, isStreamLoading])
+
+  if (loading && !tracks.length) return <LoadingBlock label={t('music.loading')} />
+  if (!tracks.length) return <NoTracks emptyTitle={emptyTitle} query={query} onClearQuery={() => setQuery('')} />
+
+  return (
+    <MusicTagRowsProvider>
+      <div className='flex h-full min-h-0 flex-col'>
+        <ListHeader tracks={tracks} scopeKind={scope.kind} />
+        <MusicSelectionBar visibleIds={visibleIds} />
+        {viewMode === 'grid'
+          ? <TrackGrid tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} />
+          : <MusicTrackTable tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} />}
+        <MusicTrackMenuHost onEdit={onEdit} />
+      </div>
+    </MusicTagRowsProvider>
+  )
+})
+
+// Rows hold these callbacks, and a list of a thousand rows re-renders as a whole
+// when any one of them changes identity; they are built once per list instead.
+function useRowHandlers({ actions, toggle, onEdit, drag }: {
+  actions: ReturnType<typeof useTrackListActions>
+  toggle: TrackSelection['toggle']
+  onEdit: TrackRowHandlers['onEdit']
+  drag: TrackRowDragHandlers | undefined
+}): TrackRowHandlers {
+  const openTrackMenu = useMusic((state) => state.openTrackMenu)
+  return useMemo(
+    (): TrackRowHandlers => ({
       ...actions,
       onSelect: (track, modifiers) => toggle(track.id, modifiers),
       // The menu itself is a single hub-wide instance; rows only post these requests.
@@ -56,26 +85,11 @@ export const MusicTrackList = memo(function MusicTrackList({
       },
       onMenuButton: (event, target) => openTrackMenu({ target, anchor: event.currentTarget }),
       onEdit,
-      drag: playlistDrag,
+      drag,
     }),
-    [actions, toggle, onEdit, openTrackMenu, playlistDrag],
+    [actions, toggle, onEdit, openTrackMenu, drag],
   )
-  const playback = useMemo(() => ({ isPlaying, isStreamLoading }), [isPlaying, isStreamLoading])
-
-  if (loading && !tracks.length) return <LoadingBlock label={t('music.loading')} />
-  if (!tracks.length) return <NoTracks emptyTitle={emptyTitle} query={query} onClearQuery={() => setQuery('')} />
-
-  return (
-    <div className='flex h-full min-h-0 flex-col'>
-      <ListHeader tracks={tracks} scopeKind={scope.kind} />
-      <MusicSelectionBar visibleIds={visibleIds} />
-      {viewMode === 'grid'
-        ? <TrackGrid tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} />
-        : <MusicTrackTable tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} />}
-      <MusicTrackMenuHost onEdit={onEdit} />
-    </div>
-  )
-})
+}
 
 // A search that matched nothing is not an empty library; offer the way back rather than the upload pitch.
 function NoTracks({ emptyTitle, query, onClearQuery }: { emptyTitle: string; query: string; onClearQuery: () => void }) {
