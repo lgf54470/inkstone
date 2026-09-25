@@ -3014,12 +3014,16 @@ const allowed = new Map([
   ['src/client/features/music/music-track-table.test.ts', [
     '// The longest label ("Cloud (R2)") has to fit the cell the header also uses;',
     '// 4rem clipped it, so both sides take the wider budget together.',
-    '// Artwork, favourite and menu columns carry nothing a screen reader could read, so they',
-    '// align through an empty spacer rather than an empty columnheader (axe empty-table-header).',
+    '// A row\'s children must all be cells; a roleless span leaves the row malformed. The three',
+    '// columns with nothing readable keep the role and hide themselves from the a11y tree, so',
+    '// the grid is legal without announcing empty headers (axe empty-table-header).',
     '// aria-multiselectable is not allowed on role=\'table\'; selection is carried per row checkbox.',
   ]],
   ['src/client/features/music/music-track-table.tsx', [
     '// The header box shows a dash while only part of the visible list is selected.',
+    '// A row\'s children have to be cells, but these three columns (artwork, favourite, menu) carry',
+    '// nothing a screen reader could read — naming them would announce an empty header. They take the',
+    '// role and hide themselves: the grid stays legal and the accessibility tree stays clean.',
     '// Header sorting mirrors the toolbar: in playlist scope the manual item order',
     '// wins (visibleTracks skips sorting), so offering a sort there would be a dead control.',
   ]],

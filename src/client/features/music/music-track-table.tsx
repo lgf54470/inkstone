@@ -77,16 +77,23 @@ function TableHeader({
         />
       </span>
       <span role='columnheader' className='w-5 shrink-0 text-center'>{t('music.table_index')}</span>
-      <span className='size-9 shrink-0' />
+      <ColumnSpacer className='size-9 shrink-0' />
       <SortableColumn field='title' label={t('music.table_title')} className='min-w-0 flex-1' />
       <SortableColumn field='artist' label={t('music.table_artist')} className='hidden w-32 shrink-0 truncate xl:block' />
       <SortableColumn field='album' label={t('music.table_album')} className='hidden w-40 shrink-0 truncate xl:block' />
       <span role='columnheader' className={SOURCE_COLUMN_CELL}>{t('music.source')}</span>
       <SortableColumn field='duration' label={t('music.table_duration')} className='w-11 shrink-0 text-right' />
-      <span className='w-6 shrink-0' />
-      <span className='w-6 shrink-0' />
+      <ColumnSpacer className='w-6 shrink-0' />
+      <ColumnSpacer className='w-6 shrink-0' />
     </div>
   )
+}
+
+// A row's children have to be cells, but these three columns (artwork, favourite, menu) carry
+// nothing a screen reader could read — naming them would announce an empty header. They take the
+// role and hide themselves: the grid stays legal and the accessibility tree stays clean.
+function ColumnSpacer({ className }: { className: string }) {
+  return <span role='columnheader' aria-hidden='true' className={className} />
 }
 
 // Header sorting mirrors the toolbar: in playlist scope the manual item order
