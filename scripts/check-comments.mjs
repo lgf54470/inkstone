@@ -10193,6 +10193,10 @@ const allowed = new Map([
   ['tests/music-bundle-transfer.test.ts', [
     '// Rows the account already has must not count against the quota twice.',
   ]],
+  ['tests/music-locale-keys.test.ts', [
+    '// Every key a locale carries is a promise that some surface speaks it. A key nothing reads is',
+    '// dead weight that also hides the controls which were designed and never wired up.',
+  ]],
   ['tests/music-playlist-share.test.ts', [
     '// The slug is the capability and the page that renders it is served from this origin, so no',
     '// other site needs to read this JSON: it does not get the open origin the published library',
