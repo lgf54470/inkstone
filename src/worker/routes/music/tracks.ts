@@ -7,7 +7,7 @@ import { ApiError } from '../../lib/errors'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
-import { coverResponse, storeCoverObject } from './cover'
+import { coverResponse, isDerivedCoverKey, storeCoverObject } from './cover'
 import { isDerivedMusicObjectKey } from './keys'
 import { TRACK_COLUMNS, toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
@@ -54,6 +54,10 @@ function registerPatchRoute(routes: Hono<AppBindings>): void {
 
     await updateTrackRow(c.env.DB, userId, id, body)
     if (body.tagIds) await replaceTrackTags(c.env.DB, userId, id, body.tagIds)
+    // Reclaimed only once the row no longer points at it, so a failed update never
+    // leaves a track whose cover object is already gone.
+    const orphanCover = orphanedCoverKey(row.cover_url, body.coverUrl, id, row.created_at)
+    if (orphanCover) await reclaimMusicObjects(c.env, [orphanCover])
     const updated = await loadTrack(c.env.DB, userId, id)
     return c.json(updated)
   })
@@ -130,12 +134,7 @@ async function deleteTracks(env: AppBindings['Bindings'], userId: string, ids: s
     )
   }
   await env.DB.batch(statements)
-  if (keys.length) {
-    const { deleteMusicObjects } = await import('./storage')
-    await deleteMusicObjects(env, requireMusicStorage(env), keys).catch((error: unknown) => {
-      console.warn('[inkstone] music object cleanup failed:', error)
-    })
-  }
+  await reclaimMusicObjects(env, keys)
 }
 
 // One request replaces the tag set of every selected track, instead of one PATCH per track
@@ -182,6 +181,20 @@ interface OwnedObjectRow {
   source: string
   created_at: number
   object_key: string
+  cover_url: string | null
+}
+
+// A delete may only reclaim objects this row's own writes produced: the audio object by
+// derived key, the cover by derived key. A forged or inherited `cover_url` therefore
+// cannot turn a track delete into cross-account storage access, and a stored cover no
+// longer outlives the track it belongs to.
+function deletableKeysFor(row: OwnedObjectRow): string[] {
+  const keys: string[] = []
+  if (row.source === 'r2' && isDerivedMusicObjectKey(row.id, row.created_at, row.object_key)) {
+    keys.push(row.object_key)
+  }
+  if (isDerivedCoverKey(row.id, row.created_at, row.cover_url)) keys.push(row.cover_url as string)
+  return keys
 }
 
 async function loadOwnedObjectKeys(db: D1Database, userId: string, ids: string[]): Promise<string[]> {
@@ -189,13 +202,32 @@ async function loadOwnedObjectKeys(db: D1Database, userId: string, ids: string[]
   const results = await db.batch(chunkIds(ids, LIMITS.musicSqlIdChunkMax).map((part) => {
     const placeholders = part.map((_, index) => `?${index + 2}`).join(', ')
     return db.prepare(
-      `SELECT id, source, created_at, object_key FROM music_tracks WHERE user_id = ?1 AND id IN (${placeholders})`,
+      `SELECT id, source, created_at, object_key, cover_url FROM music_tracks WHERE user_id = ?1 AND id IN (${placeholders})`,
     ).bind(userId, ...part)
   }))
   return results
     .flatMap((result) => (result.results ?? []) as OwnedObjectRow[])
-    .filter((row) => row.source === 'r2' && isDerivedMusicObjectKey(row.id, row.created_at, row.object_key))
-    .map((row) => row.object_key)
+    .flatMap((row) => deletableKeysFor(row))
+}
+
+// Objects a row no longer references are unreachable garbage; reclaiming them is
+// best-effort, so a storage failure must not fail the request that orphaned them.
+async function reclaimMusicObjects(env: AppBindings['Bindings'], keys: string[]): Promise<void> {
+  if (!keys.length) return
+  const { deleteMusicObjects } = await import('./storage')
+  await deleteMusicObjects(env, requireMusicStorage(env), keys).catch((error: unknown) => {
+    console.warn('[inkstone] music cover cleanup failed:', error)
+  })
+}
+
+function orphanedCoverKey(
+  previous: string | null,
+  next: string | null | undefined,
+  trackId: string,
+  createdAt: number,
+): string | null {
+  if (next === undefined || !previous || previous === next) return null
+  return isDerivedCoverKey(trackId, createdAt, previous) ? previous : null
 }
 
 async function loadTrackRow(db: D1Database, userId: string, id: string): Promise<MusicTrackRow | null> {

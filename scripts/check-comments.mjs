@@ -9566,6 +9566,9 @@ const allowed = new Map([
   ['src/worker/routes/music/cover.ts', [
     '// Shared by the authenticated library and the public blog player.',
     '// Shared by uploads and metadata refreshes; a failed cover write must not fail the caller.',
+    '// The same derived-key rule the audio object follows: only the key this row\'s own cover',
+    '// write would have produced may be deleted, so a cover_url pointing at somebody else\'s',
+    '// object cannot turn a delete or a replacement into cross-account storage access.',
   ]],
   ['src/worker/routes/music/error-codes.test.ts', [
     '// A rejection only tells the reader what happened if it names its own reason, so these assert',
@@ -9694,10 +9697,18 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/music/tracks.ts', [
     '// Scanned artwork replaces the stored object; a decode failure keeps the previous cover.',
+    '// Reclaimed only once the row no longer points at it, so a failed update never',
+    '// leaves a track whose cover object is already gone.',
     '// One request replaces the tag set of every selected track, instead of one PATCH per track',
     '// burning through the hourly write budget and leaving half-applied batches behind. Ownership is',
     '// enforced inside the insert-select (a tag or track that is not the caller\'s links nothing), and',
     '// since the ids travel as JSON the bound-parameter count stays constant however long the list is.',
+    '// A delete may only reclaim objects this row\'s own writes produced: the audio object by',
+    '// derived key, the cover by derived key. A forged or inherited `cover_url` therefore',
+    '// cannot turn a track delete into cross-account storage access, and a stored cover no',
+    '// longer outlives the track it belongs to.',
+    '// Objects a row no longer references are unreachable garbage; reclaiming them is',
+    '// best-effort, so a storage failure must not fail the request that orphaned them.',
     '// Ownership is enforced by the insert-select, so a foreign tag id links nothing',
     '// and the whole rewrite stays inside one batched round trip.',
   ]],
@@ -10264,6 +10275,7 @@ const allowed = new Map([
     '// claims a write surface the music routes do not have.',
   ]],
   ['tests/music-routes.test.ts', [
+    '// The most recent fake bucket, so object cleanup can be asserted on what is left in it.',
     '// Rows straight into the table, no upload round trip: these tests are about the size of the',
     '// id list a batch carries, not about how the rows got there.',
     '// Records every statement the route prepares, so round-trip redundancy is assertable.',

@@ -48,7 +48,10 @@ function fakeR2() {
         arrayBuffer: async () => slice.buffer.slice(slice.byteOffset, slice.byteOffset + slice.byteLength),
       }
     }),
-    delete: vi.fn(async () => ({})),
+    delete: vi.fn(async (keys: string | string[]) => {
+      for (const key of Array.isArray(keys) ? keys : [keys]) objects.delete(key)
+      return {}
+    }),
   }
 }
 
@@ -92,14 +95,22 @@ function fakeKv() {
   }
 }
 
+// The most recent fake bucket, so object cleanup can be asserted on what is left in it.
+let r2: ReturnType<typeof fakeR2> | null = null
+
 async function makeDb(): Promise<D1Shim> {
   const db = createDb()
   for (const statement of TABLE_STATEMENTS) await runSql(db, statement)
   for (const statement of INDEX_STATEMENTS) await runSql(db, statement)
   for (const statement of MUSIC_PLAYBACK_MIGRATION_STATEMENTS) await runSql(db, statement)
   DB_ENV.env.DB = db as unknown as D1Database
-  DB_ENV.env.FILES = fakeR2() as unknown as AppBindings['Bindings']['FILES']
+  r2 = fakeR2()
+  DB_ENV.env.FILES = r2 as unknown as AppBindings['Bindings']['FILES']
   return db
+}
+
+function storedObjects(): Map<string, Uint8Array> {
+  return r2!.objects
 }
 
 async function seedUser(db: D1Shim, id = USER): Promise<void> {
@@ -877,6 +888,7 @@ describe('music playback queue round trips (real D1)', () => {
 })
 describe('music cover storage', () => {
   const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')
+  const JPEG = Buffer.from('ffd8ffe000104a464946000101000001', 'hex')
 
   it('stores an uploaded data-URL cover as an object and serves it', async () => {
     const db = await makeDb()
@@ -954,6 +966,67 @@ describe('music cover storage', () => {
     await json(app, `/api/music/tracks/${id}`, { coverUrl: 'http://covers.example.com/a.png' }, 'PATCH')
     const served = await (await request(app, '/api/music/library')).json()
     expect(served.tracks[0].coverUrl).toBe('https://covers.example.com/a.png')
+  })
+
+  async function uploadWithCover(app: Hono<AppBindings>, dataUrl: string): Promise<{ id: string; coverKey: string }> {
+    const db = DB_ENV.env.DB as unknown as D1Shim
+    const form = new FormData()
+    form.append('file', new File([AUDIO], 'art.mp3', { type: 'audio/mpeg' }))
+    form.append('coverUrl', dataUrl)
+    const created = await request(app, '/api/music/tracks', { method: 'POST', body: form })
+    expect(created.status).toBe(201)
+    const track = (await created.json()) as { id: string }
+    const row = await db.prepare('SELECT cover_url FROM music_tracks WHERE id = ?1')
+      .bind(track.id).first<{ cover_url: string }>()
+    return { id: track.id, coverKey: String(row?.cover_url) }
+  }
+
+  it('reclaims the stored cover object when the track is deleted', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const { id, coverKey } = await uploadWithCover(app, 'data:image/png;base64,' + PNG.toString('base64'))
+    expect(storedObjects().has(coverKey)).toBe(true)
+
+    const removed = await request(app, `/api/music/tracks/${id}`, { method: 'DELETE' })
+    expect(removed.status).toBe(200)
+    expect(storedObjects().has(coverKey)).toBe(false)
+  })
+
+  it('reclaims the previous cover object when a scan replaces it', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const { id, coverKey } = await uploadWithCover(app, 'data:image/png;base64,' + PNG.toString('base64'))
+
+    const patched = await json(app, `/api/music/tracks/${id}`, {
+      coverDataUrl: 'data:image/jpeg;base64,' + JPEG.toString('base64'),
+    }, 'PATCH')
+    expect(patched.status).toBe(200)
+    const replaced = String((await db.prepare('SELECT cover_url FROM music_tracks WHERE id = ?1')
+      .bind(id).first<{ cover_url: string }>())?.cover_url)
+    expect(replaced).not.toBe(coverKey)
+    expect(storedObjects().has(coverKey)).toBe(false)
+    expect(storedObjects().has(replaced)).toBe(true)
+  })
+
+  it('leaves a cover object that is not derived from the row alone', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const foreign = 'music/cover/2024-05-01/someone-else.jpg'
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES (?1, ?2, 'Foreign', '', '', 0, 'webdav', '/music/foreign.mp3', 'audio/mpeg', 16, ?3, NULL, 0, 0, 0, ?4, ?4)`,
+      'foreign-cover', USER, foreign, H.now,
+    )
+    storedObjects().set(foreign, new Uint8Array([1, 2, 3]))
+
+    const removed = await request(app, '/api/music/tracks/foreign-cover', { method: 'DELETE' })
+    expect(removed.status).toBe(200)
+    expect(storedObjects().has(foreign)).toBe(true)
   })
 })
 
