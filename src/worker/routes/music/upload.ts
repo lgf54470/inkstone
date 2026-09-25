@@ -11,6 +11,7 @@ import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import { requireAuth } from '../../middleware/auth'
 import { storeCoverObject } from './cover'
 import { MUSIC_MAX_BYTES, musicObjectKey, resolveMusicTrackType, sanitizeCoverUrl } from './keys'
+import { storedMusicBytes } from './quota'
 import { toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
 import { maxUploadBytes, putMusicObject, requireMusicStorage } from './storage'
@@ -155,9 +156,7 @@ export function assertUploadSize(size: number, storage: ReturnType<typeof requir
 }
 
 async function assertQuota(db: D1Database, userId: string, incoming: number): Promise<void> {
-  const row = await db.prepare('SELECT COALESCE(SUM(size_bytes), 0) AS bytes FROM music_tracks WHERE user_id = ?1')
-    .bind(userId).first<{ bytes: number }>()
-  if ((row?.bytes ?? 0) + incoming > LIMITS.musicQuotaBytes) {
+  if ((await storedMusicBytes(db, userId)) + incoming > LIMITS.musicQuotaBytes) {
     throw ApiError.storageQuotaReached('The music storage quota has been reached')
   }
 }

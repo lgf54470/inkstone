@@ -363,6 +363,55 @@ describe('music webdav routes', () => {
     expect(track.mime).toBe('audio/mpeg')
   })
 
+  it('drops an upstream Content-Length that is not a byte count', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = (init?.method ?? 'GET').toUpperCase()
+      if (method === 'PROPFIND') {
+        const url = typeof input === 'string' ? input : String((input as { url?: string }).url ?? input)
+        const single = '<D:multistatus xmlns:D="DAV:"><D:response><D:href>' + new URL(url).pathname + '</D:href><D:propstat><D:prop><D:resourcetype/><D:getcontentlength>16</D:getcontentlength><D:getcontenttype>audio/mpeg</D:getcontenttype></D:prop></D:propstat></D:response></D:multistatus>'
+        return new Response(single, { status: 207 })
+      }
+      return new Response(AUDIO, { status: 200, headers: { 'Content-Type': 'audio/mpeg', 'Content-Length': 'sixteen' } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const db = await makeDb()
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes, cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES ('lying-1', ?1, 'Lying', '', '', 0, 'webdav', 'song.mp3', 'audio/mpeg', 16, NULL, NULL, 0, 0, 0, 1, 1)`,
+      USER,
+    )
+    const app = makeApp({})
+    const res = await request(app, '/api/music/tracks/lying-1/stream')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Content-Length')).toBeNull()
+    expect(await res.text()).toBe('0123456789abcdef')
+  })
+
+  it('drops a Content-Range that describes no real byte range', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = (init?.method ?? 'GET').toUpperCase()
+      if (method === 'PROPFIND') {
+        const url = typeof input === 'string' ? input : String((input as { url?: string }).url ?? input)
+        const single = '<D:multistatus xmlns:D="DAV:"><D:response><D:href>' + new URL(url).pathname + '</D:href><D:propstat><D:prop><D:resourcetype/><D:getcontentlength>16</D:getcontentlength><D:getcontenttype>audio/mpeg</D:getcontenttype></D:prop></D:propstat></D:response></D:multistatus>'
+        return new Response(single, { status: 207 })
+      }
+      return new Response(AUDIO, { status: 200, headers: { 'Content-Type': 'audio/mpeg', 'Content-Range': 'bytes 0-99' } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const db = await makeDb()
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes, cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES ('range-1', ?1, 'Ranged', '', '', 0, 'webdav', 'song.mp3', 'audio/mpeg', 16, NULL, NULL, 0, 0, 0, 1, 1)`,
+      USER,
+    )
+    const app = makeApp({})
+    const res = await request(app, '/api/music/tracks/range-1/stream')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Content-Range')).toBeNull()
+  })
+
   it('does not invent a Content-Length from stored size when the upstream omits it', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const method = (init?.method ?? 'GET').toUpperCase()

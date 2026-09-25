@@ -1,7 +1,7 @@
 /** M-53b: restore of the music section of an export bundle (metadata only, merge by id). */
 import { z } from 'zod'
 import { LIMITS } from '@shared/constants'
-import { isDerivedMusicObjectKey, isWebdavRelativePath } from '../routes/music'
+import { isDerivedMusicObjectKey, isStoredMusicSource, isWebdavRelativePath, storedMusicBytes } from '../routes/music'
 import { isValidId, isValidSlug } from '../lib/id'
 import { addWarning } from './shared'
 import type { ImportContext } from './types'
@@ -204,18 +204,15 @@ async function applyQuota(
   ctx: ImportContext,
 ): Promise<TrackRow[]> {
   if (!tracks.length) return tracks
-  const row = await db.prepare(
-    'SELECT COALESCE(SUM(size_bytes), 0) AS bytes FROM music_tracks WHERE user_id = ?1',
-  ).bind(userId).first<{ bytes: number }>()
-  let used = row?.bytes ?? 0
+  let used = await storedMusicBytes(db, userId)
   const kept: TrackRow[] = []
   let overQuota = 0
   for (const track of tracks) {
-    if (used + track.sizeBytes > LIMITS.musicQuotaBytes) {
+    if (isStoredMusicSource(track.source) && used + track.sizeBytes > LIMITS.musicQuotaBytes) {
       overQuota += 1
       continue
     }
-    used += track.sizeBytes
+    if (isStoredMusicSource(track.source)) used += track.sizeBytes
     kept.push(track)
   }
   if (overQuota > 0) {

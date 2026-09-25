@@ -29,3 +29,6 @@ export { musicPageRoutes } from './page'
 // M-53b: the bundle restore validates stored object references with the exact
 // rules the upload and WebDAV import paths enforce.
 export { isDerivedMusicObjectKey, isWebdavRelativePath } from './keys'
+// M-53b and the upload path both measure the quota the same way: WebDAV references
+// cost this deployment nothing.
+export { isStoredMusicSource, storedMusicBytes } from './quota'

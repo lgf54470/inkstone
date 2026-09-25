@@ -9583,6 +9583,8 @@ const allowed = new Map([
   ['src/worker/routes/music/index.ts', [
     '// M-53b: the bundle restore validates stored object references with the exact',
     '// rules the upload and WebDAV import paths enforce.',
+    '// M-53b and the upload path both measure the quota the same way: WebDAV references',
+    '// cost this deployment nothing.',
   ]],
   ['src/worker/routes/music/keys.ts', [
     '// .mov and .m4v say video on their own; .mp4 and .webm carry either kind, so an',
@@ -9665,7 +9667,16 @@ const allowed = new Map([
     '// The kind travels because the container extension does not decide it: an .mp4 in this',
     '// library can be a song or a clip, and only the stored mime says which.',
   ]],
+  ['src/worker/routes/music/quota.ts', [
+    '// A WebDAV row is only a reference: its bytes live on somebody else\'s server and its',
+    '// size is whatever that server answered, so charging it to the local quota would let a',
+    '// remote host — or a stale stat — lock the account out of its own uploads. Only tracks',
+    '// this deployment actually stores count.',
+  ]],
   ['src/worker/routes/music/range.ts', [
+    '// A third party\'s range claim is only worth echoing when it describes a real byte',
+    '// range: start ≤ end, and the end inside the declared total when one is declared.',
+    '// Anything else would teach the player a size that is not there.',
     '// Workers KV cannot range-read server-side, so a ranged GET is served by streaming',
     '// the value and slicing it. Aligning to windows keeps the bytes pulled from KV (and',
     '// any future cache key) bounded by the window instead of the whole object.',
@@ -9706,7 +9717,11 @@ const allowed = new Map([
     '// describe that window rather than the narrower client request.',
     '// Only echo the length the upstream declared for this very response: the',
     '// stored size_bytes can drift from the remote file and a wrong',
-    '// Content-Length stalls or poisons downstream caches.',
+    '// Content-Length stalls or poisons downstream caches. The claims are still a',
+    '// third party\'s, so a value that is not a well-formed byte count is dropped',
+    '// rather than forwarded to the player.',
+    '// A 200 has no partial content to describe, so a stale or injected',
+    '// Content-Range on one is dropped instead of re-framing the response.',
   ]],
   ['src/worker/routes/music/tracks.ts', [
     '// Scanned artwork replaces the stored object; a decode failure keeps the previous cover.',
@@ -10252,6 +10267,8 @@ const allowed = new Map([
   ]],
   ['tests/music-bundle-transfer.test.ts', [
     '// Rows the account already has must not count against the quota twice.',
+    '// A WebDAV row points at bytes on somebody else\'s server; its size is only what',
+    '// that server answered, so it must not eat the quota the restore measures.',
   ]],
   ['tests/music-locale-keys.test.ts', [
     '// Every key a locale carries is a promise that some surface speaks it. A key nothing reads is',
@@ -10298,6 +10315,9 @@ const allowed = new Map([
     '// own statements, so it is not charged to the route under measurement.',
     '// The client turns this code into the sentence the reader sees, so a full library has to',
     '// arrive as "out of space" rather than as the generic "the content is too large".',
+    '// A WebDAV row is a reference to bytes on somebody else\'s server, and its size is',
+    '// whatever that server answered; charging it locally would let a remote host (or a',
+    '// stale stat) lock the account out of its own uploads.',
     '// A name that is taken is not a stale write: the client would tell the reader to refresh',
     '// and try again, which can never help. The code has to say what actually happened.',
     '// Only the playback row itself stays outside the batch that reads the tracks.',

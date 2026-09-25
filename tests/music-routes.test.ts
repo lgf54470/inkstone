@@ -342,6 +342,27 @@ describe('music routes (real D1 + fake R2)', () => {
     expect((await res.json() as { error: { code: string } }).error.code).toBe('storage_quota_reached')
   })
 
+  // A WebDAV row is a reference to bytes on somebody else's server, and its size is
+  // whatever that server answered; charging it locally would let a remote host (or a
+  // stale stat) lock the account out of its own uploads.
+  it('does not charge WebDAV-referenced bytes against the local quota', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES ('remote-1', ?1, 'Remote', '', '', 0, 'webdav', 'albums/remote.mp3', 'audio/mpeg', ?2, NULL, NULL, 0, 0, 0, ?3, ?3)`,
+      USER, LIMITS.musicQuotaBytes, H.now,
+    )
+
+    const form = new FormData()
+    form.append('file', new File([AUDIO], 'next.mp3', { type: 'audio/mpeg' }))
+    const res = await request(app, '/api/music/tracks', { method: 'POST', body: form })
+    expect(res.status).toBe(201)
+  })
+
   it('streams the whole object and honours a byte range', async () => {
     const db = await makeDb()
     await seedUser(db)
