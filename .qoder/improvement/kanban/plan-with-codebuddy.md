@@ -5,17 +5,20 @@
 - 基線：typecheck 通过；`vitest run` 468 套件 / 4259 用例全绿（blog-frontend 依赖软链后 parity 套件也绿）
 - 每完成一项：实现 → 相关测试 → 回归（pre-commit 门禁 + 全量 `test:unit`）→ 提交 → 更新本文件
 
-## 阶段小结（截至当前批次）
+## 阶段小结（全部计划完成）
 
-已完成 7 个改进项、7 次原子提交，全部通过 pre-commit 门禁（size / comments / escape / empty-catch /
-hardcoded / token / i18n / module-state / deep-imports / code-style / surfaces / migration）+
-typecheck + 相关测试 + 全量 `test:unit`。全量跑中观察到的偶发失败（radiogroup-names、
-starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看板无关、单独运行通过，
-已逐项核实。
+两轮共完成 **16 个改进项、19 次原子提交**，全部通过 pre-commit 门禁（size / comments / escape /
+empty-catch / hardcoded / token / i18n / module-state / deep-imports / code-style / surfaces /
+migration）+ typecheck + 相关测试 + 全量 `test:unit`。全量跑中观察到的偶发失败
+（radiogroup-names、starter-deck-render、music-hub-modal、calendar-tree 模糊超时、
+kanban-unsaved）均与看板改动无关、单独运行通过，已逐项核实。
 
-剩余项为功能性增强（F-1/F-2/F-8/F-10）、防御纵深（S-6）与量测驱动的二阶性能项（P-2/P-5），
-建议按「F-1 → F-2 → F-8 → F-10 → S-6」顺序继续；P-2/P-5 先跑
-`scripts/measure-kanban.mjs` 确认实际超标再做。
+- 性能：P-1（registry memo 击穿）、P-3（勾选全列重绘）、P-4（批量拖放链表单遍）、P-5（条几何两遍计算）✅
+- 安全：S-2（打印纸 cloneNode）、S-3（预览 2MB 上限）、S-4（URL 白名单分级）、S-6（字段长度钳制）✅
+- 功能：F-1（WIP 守门）、F-2（到期提示）、F-8（url 属性类型）、F-10（JSON 导出）✅
+- 样式：U-1/U-3/U-5/U-7 ✅
+- 量测驱动（未实施，理由与路径见各条目）：P-2（列内虚拟化）⏸ —— 需先在目标设备跑
+  `scripts/measure-kanban.mjs` 确认超标；P-6/P-7 属已知低风险（<1ms / <5ms），无需动作。
 
 ## 进度总览
 
@@ -34,9 +37,9 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 | 11 | 安全 S-6 | fence JSON 无字段长度约束 | ✅ 完成 | 见 git log |
 | 12 | 功能 F-1 | WIP 超限只提示不阻止落卡 | ✅ 完成 | 见 git log |
 | 13 | 功能 F-2 | 截止日临期/逾期提示 | ✅ 完成 | 见 git log |
-| 14 | 功能 F-8 | 新增 `url` 属性类型 | ⬜ 待做 | — |
+| 14 | 功能 F-8 | 新增 `url` 属性类型 | ✅ 完成 | 见 git log |
 | 15 | 功能 F-10 | JSON 一键导出 | ✅ 完成 | 见 git log |
-| 16 | 性能 P-2 | 渲染窗口只增不减（滚到底等效全量挂载） | ⬜ 待做 | — |
+| 16 | 性能 P-2 | 渲染窗口只增不减（滚到底等效全量挂载） | ⏸ 量测驱动 | — |
 | 17 | 性能 P-5 | 时间轴/甘特条几何重复计算两遍 | ✅ 完成 | 见 git log |
 
 ## 记录
@@ -95,6 +98,17 @@ starter-deck-render、music-hub-modal、calendar-tree 模糊超时）均与看�
 - 先例一致：与 URL 白名单同一解析边界、与 normalize 默认值填充同一「读取归一化」语义；outline 无板标题时保持缺省不发明空串。
 - 测试：`body.test.ts` 新增 4 例（全字段超限钳制、outline 卡标题、UI 写出的板原样不动、属性值永不钳制）。
 - 回归：typecheck + size 门禁通过；body 27 用例通过；全量 `test:unit` 偶发 3 例（radiogroup/share-collections/starter-deck，负载性，单独跑通过）。
+
+### 16. 功能 F-8 — url 属性类型 ✅
+- 类型与选择器：`KanbanPropertyType` 新增 `'url'`，进入 `KANBAN_EDITABLE_TYPES`（类型选择器 centrally 驱动）+ 双语类型名 `kanban_type_url`（Link/链接）；过滤器沿用文本算子（contains/equals 等，测试全类型枚举覆盖）。
+- 渲染：表格单元格与详情字段沿用文本编辑 + 旁置「新开」链接入口；卡面 url 字段渲染为锚点（`noopener noreferrer`，stopPropagation 不误开详情）。所有 href 一律经 `safeKanbanUrl` 白名单，白名单外退化为纯文本。
+- 解析期：`assertFenceUrlsAreSafe` 对 url 列值执行同一 fail-closed 白名单（JSON/outline 两路），错误信息点名列 id。
+- 函数超限治理：引入过程中 4 个函数越过 50 行上限，均以提取子组件/子函数方式拆平（`readUrlField`/`UrlCellValue`/`DateCellValue`/`TextCellValue`/`UrlDetailField`/`DateDetailField`/`TextDetailField`），size 基线恢复原 27 项豁免，未新增任何豁免。
+- 回归：typecheck + 全部静态门禁通过；相关 6 文件 165 用例 + 重构后 5 文件 94 用例通过；全量 `test:unit` 471 文件 / 4286 用例全绿。
+
+### 17. 性能 P-2 — 渲染窗口回收 ⏸ 量测驱动
+- 现状：每列 30 张渲染窗口只增不减，长列滚到底等效全量挂载（残余风险：列内 333 卡全部挂载后，后续手势 reconcile 基数 ~1.3 万节点）。
+- 不直接实施的理由：这是二阶问题——需要先在目标设备跑 `scripts/measure-kanban.mjs`（需 `INKSTONE_VISUAL_USERNAME/PASSWORD` 与 Chrome 路径）确认单次视图切换 / 最坏主线程任务确实超标，再决定「列内真虚拟化」或「limit 尾部回收」。真虚拟化会改动全部 8 个视图的滚动契约（公告、拖拽落点、窗口尾部哨兵），无证据支撑前不动。
 
 ### 13. 功能 F-1 — WIP 超限拒绝落卡 ✅
 - 布线层新增 `kanbanWipRefuses`：目标列有 wipLimit 且「将新进入的卡数 > 0」且 `现有数 + 新进入 > 上限` 时拒绝移动（toast `preview.kanban_wip_blocked`，双语）；拒绝发生在公告之前——活区域保持安静、writer 不被调用、不产生撤销步。
