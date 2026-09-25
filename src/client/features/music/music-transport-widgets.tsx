@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, SlidersHorizontal, Square, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Check, Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, SlidersHorizontal, Square, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { Slider, Switch } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
@@ -142,46 +142,70 @@ export function MusicVolumeSlider({ className }: { className?: string }) {
 
 export function MusicSleepButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   const sleepEndsAt = useMusic((state) => state.sleepEndsAt)
+  const sleepMinutes = useMusic((state) => state.sleepMinutes)
   const sleepAfterCurrentTrack = useMusic((state) => state.sleepAfterCurrentTrack)
   const setSleepTimer = useMusic((state) => state.setSleepTimer)
   const setSleepAfterCurrentTrack = useMusic((state) => state.setSleepAfterCurrentTrack)
   const [open, setOpen] = useState(false)
   const anchorRef = useRef<HTMLButtonElement>(null)
   const options = [15, 30, 45, 60]
+  const idle = sleepEndsAt === null && !sleepAfterCurrentTrack
   return (
     <>
       <Tooltip label={t('music.sleep_timer')} side='top'>
-        <IconButton ref={anchorRef} label={t('music.sleep_timer')} size={size} active={sleepEndsAt !== null || sleepAfterCurrentTrack} onClick={() => setOpen((value) => !value)}>
+        <IconButton ref={anchorRef} label={t('music.sleep_timer')} size={size} active={!idle} onClick={() => setOpen((value) => !value)}>
           <Moon size={14} />
         </IconButton>
       </Tooltip>
       <MusicPopover open={open} onClose={() => setOpen(false)} label={t('music.sleep_timer')} anchorRef={anchorRef} className='w-32'>
-        <button
-          type='button'
-          onClick={() => { setSleepTimer(null); setOpen(false) }}
-          className={cn('flex w-full items-center rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] hover:bg-[var(--bg-hover)]', sleepEndsAt === null && !sleepAfterCurrentTrack ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]')}
-        >
-          <Clock3 size={11} className='mr-1.5' />{t('music.off')}
-        </button>
+        <SleepOption
+          selected={idle}
+          icon={<Clock3 size={11} />}
+          label={t('music.off')}
+          onSelect={() => { setSleepTimer(null); setOpen(false) }}
+        />
         {options.map((minutes) => (
-          <button
+          <SleepOption
             key={minutes}
-            type='button'
-            onClick={() => { setSleepTimer(minutes); setOpen(false) }}
-            className='flex w-full items-center rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-          >
-            {t('music.sleep_minutes', { value0: minutes })}
-          </button>
+            selected={sleepEndsAt !== null && sleepMinutes === minutes}
+            icon={null}
+            label={t('music.sleep_minutes', { value0: minutes })}
+            onSelect={() => { setSleepTimer(minutes); setOpen(false) }}
+          />
         ))}
-        <button
-          type='button'
-          onClick={() => { setSleepAfterCurrentTrack(true); setOpen(false) }}
-          className={cn('flex w-full items-center rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] hover:bg-[var(--bg-hover)]', sleepAfterCurrentTrack ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]')}
-        >
-          <Square size={11} className='mr-1.5' />{t('music.sleep_after_current')}
-        </button>
+        <SleepOption
+          selected={sleepAfterCurrentTrack}
+          icon={<Square size={11} />}
+          label={t('music.sleep_after_current')}
+          onSelect={() => { setSleepAfterCurrentTrack(true); setOpen(false) }}
+        />
       </MusicPopover>
     </>
+  )
+}
+
+// Which option is armed used to be colour and nothing else: the menu now states it to
+// assistive tech as well and marks it with a check, so the accent is not carrying it alone.
+function SleepOption({ selected, icon, label, onSelect }: {
+  selected: boolean
+  icon: ReactNode
+  label: string
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type='button'
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        'flex w-full items-center gap-1.5 rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] hover:bg-[var(--bg-hover)]',
+        selected ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]',
+      )}
+    >
+      <span className='flex w-3 shrink-0 justify-center' aria-hidden='true'>{icon}</span>
+      <span className='min-w-0 flex-1 truncate'>{label}</span>
+      {selected && <Check size={11} aria-hidden='true' />}
+    </button>
   )
 }
 

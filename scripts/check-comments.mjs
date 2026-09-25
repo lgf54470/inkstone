@@ -2745,6 +2745,11 @@ const allowed = new Map([
     '// A video container in an <audio> element plays its sound and hides its picture, so the',
     '// anonymous reader gets a black box for a clip; the element follows the stored mime.',
   ]],
+  ['src/client/features/music/music-sleep-menu.test.ts', [
+    '// The minute labels are formatted strings, so the assertions need the real resources.',
+    '// The armed option was marked with the accent colour alone, so neither a screen reader nor a',
+    '// reader who cannot separate that colour could tell which one the menu was on.',
+  ]],
   ['src/client/features/music/music-source-badge.tsx', [
     '// The label wraps inside a narrow column and inflates the row, so it never breaks.',
   ]],
@@ -2933,6 +2938,8 @@ const allowed = new Map([
     '// Counts tracks per tag directly; the sidebar tree rolls descendants into the parent\'s total.',
   ]],
   ['src/client/features/music/music-store/state.ts', [
+    '// Only the countdown is authoritative for stopping playback; the chosen length is kept',
+    '// alongside it so the menu can say which option is armed.',
     '// Quota or private-mode writes can throw; in-memory preferences stay authoritative.',
   ]],
   ['src/client/features/music/music-store/store.test-helpers.ts', [
@@ -3022,6 +3029,8 @@ const allowed = new Map([
     '// used to sit here had no label, no keyboard equivalent and no way to discover it, and muting',
     '// is already offered by a named button in the panel. The trigger is named for what it does — it',
     '// opens the volume panel, it no longer mutes — so the name cannot promise an action it lacks.',
+    '// Which option is armed used to be colour and nothing else: the menu now states it to',
+    '// assistive tech as well and marks it with a check, so the accent is not carrying it alone.',
     '// A single static line about what the sleeper will do; announcing it once',
     '// is the point, so a polite status fits while the countdown stays a timer.',
     '// A per-second countdown as a polite live region re-reads itself every tick;',

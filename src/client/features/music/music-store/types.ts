@@ -115,6 +115,7 @@ export interface MusicStoreState {
   mode: MusicPlayMode
   playbackRate: number
   sleepEndsAt: number | null
+  sleepMinutes: number | null
   sleepAfterCurrentTrack: boolean
   eqEnabled: boolean
   eqLowDb: number

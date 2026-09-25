@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { loadPreferences } from './state'
+import { loadPreferences, type MusicPreferences } from './state'
 import { librarySlice } from './library'
 import { playerSlice } from './player-slice'
 import { initialWebdavState } from './webdav'
@@ -13,6 +13,10 @@ export const useMusic = create<MusicStoreState>((set, get) => ({
 
 function initialMusicState(): Partial<MusicStoreState> {
   const prefs = loadPreferences()
+  return { ...initialLibraryState(prefs), ...initialPlaybackState(prefs) }
+}
+
+function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> {
   return {
     tracks: [],
     tags: [],
@@ -35,11 +39,24 @@ function initialMusicState(): Partial<MusicStoreState> {
     isPlaying: false,
     streamLoading: false,
     durationMs: 0,
+    uploads: [],
+    downloads: [],
+    offlineTrackIds: [],
+    libraryJobs: [],
+    uploadTarget: 'r2',
+    transfersOpen: false,
+    webdav: initialWebdavState(),
+  }
+}
+
+function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState> {
+  return {
     volume: prefs.volume,
     muted: prefs.muted,
     mode: prefs.mode,
     playbackRate: prefs.playbackRate,
     sleepEndsAt: prefs.sleepEndsAt,
+    sleepMinutes: prefs.sleepMinutes,
     sleepAfterCurrentTrack: prefs.sleepAfterCurrentTrack,
     eqEnabled: prefs.eqEnabled,
     eqLowDb: prefs.eqLowDb,
@@ -52,13 +69,6 @@ function initialMusicState(): Partial<MusicStoreState> {
     floatingPosition: prefs.floatingPosition,
     immersive: false,
     trackMenu: null,
-    uploads: [],
-    downloads: [],
-    offlineTrackIds: [],
-    libraryJobs: [],
-    uploadTarget: 'r2',
-    transfersOpen: false,
-    webdav: initialWebdavState(),
   }
 }
 

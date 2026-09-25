@@ -162,11 +162,11 @@ export function setPlaybackRate(set: MusicSet, get: MusicGet, rate: number): voi
 export function setSleepTimer(set: MusicSet, get: MusicGet, minutes: number | null): void {
   clearSleepTimer(get)
   if (minutes === null || minutes <= 0) {
-    set({ sleepEndsAt: null, sleepAfterCurrentTrack: false })
+    set({ sleepEndsAt: null, sleepMinutes: null, sleepAfterCurrentTrack: false })
     return
   }
   const endsAt = Date.now() + minutes * 60_000
-  set({ sleepEndsAt: endsAt, sleepAfterCurrentTrack: false })
+  set({ sleepEndsAt: endsAt, sleepMinutes: minutes, sleepAfterCurrentTrack: false })
   persist(get)
   armSleepTimer(set, get, endsAt)
 }
@@ -180,7 +180,7 @@ export function setSleepAfterCurrentTrack(set: MusicSet, get: MusicGet, enabled:
     return
   }
   clearSleepTimer(get)
-  set({ sleepAfterCurrentTrack: true, sleepEndsAt: null })
+  set({ sleepAfterCurrentTrack: true, sleepEndsAt: null, sleepMinutes: null })
   // A fade already running would deliver the next track anyway, voiding the promise.
   cancelCrossfade()
   persist(get)
@@ -190,7 +190,7 @@ export function resumeSleepTimer(set: MusicSet, get: MusicGet): void {
   const endsAt = get().sleepEndsAt
   if (endsAt === null) return
   if (endsAt <= Date.now()) {
-    set({ sleepEndsAt: null })
+    set({ sleepEndsAt: null, sleepMinutes: null })
     persist(get)
     return
   }
@@ -204,7 +204,7 @@ function armSleepTimer(set: MusicSet, get: MusicGet, endsAt: number): void {
     if (ends === null) return
     if (Date.now() < ends) return
     clearSleepTimer(get)
-    set({ sleepEndsAt: null })
+    set({ sleepEndsAt: null, sleepMinutes: null })
     persist(get)
     pausePlayback()
   }, 1000)

@@ -19,6 +19,7 @@ export interface MusicPreferences {
   playbackRate: number
   searchHistory: string[]
   sleepEndsAt: number | null
+  sleepMinutes: number | null
   sleepAfterCurrentTrack: boolean
   eqEnabled: boolean
   eqLowDb: number
@@ -55,6 +56,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   playbackRate: 1,
   searchHistory: [],
   sleepEndsAt: null,
+  sleepMinutes: null,
   sleepAfterCurrentTrack: false,
   eqEnabled: false,
   eqLowDb: 0,
@@ -96,6 +98,9 @@ export function loadPreferences(): MusicPreferences {
     playbackRate: readRate(parsed.playbackRate),
     searchHistory: readStrings(parsed.searchHistory, SEARCH_HISTORY_MAX),
     sleepEndsAt: readTimestamp(parsed.sleepEndsAt),
+    // Only the countdown is authoritative for stopping playback; the chosen length is kept
+    // alongside it so the menu can say which option is armed.
+    sleepMinutes: readSleepMinutes(parsed.sleepMinutes),
     sleepAfterCurrentTrack: parsed.sleepAfterCurrentTrack === true,
     eqEnabled: parsed.eqEnabled === true,
     eqLowDb: readEqDb(parsed.eqLowDb),
@@ -131,6 +136,10 @@ function readPosition(value: unknown): { x: number; y: number } | null {
 
 function readTimestamp(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
+}
+
+function readSleepMinutes(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : null
 }
 
 function readStrings(value: unknown, max: number): string[] {
