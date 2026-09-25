@@ -9605,6 +9605,8 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/music/lookup.ts', [
     '// The catalogue request runs here because the page\'s CSP forbids third party connections.',
+    '// Five catalogue entries answer in a few kilobytes; the cap only guards against an',
+    '// upstream that changes shape, so it is generous and still bounded.',
     '// Apple serves artwork from its own CDN and its subdomains share DNS trust,',
     '// so the upstream-provided URL must never send the Worker to another origin —',
     '// including via redirects.',
@@ -9612,6 +9614,8 @@ const allowed = new Map([
   ['src/worker/routes/music/lyrics.ts', [
     '// lrclib aggregates crowd-sourced lyrics and needs no key; the fetch goes',
     '// through the Worker because the page\'s CSP forbids third party connections.',
+    '// The answer carries one track\'s lyrics, so the cap is the stored ceiling plus room',
+    '// for the envelope around it; anything longer is not a lyrics answer we want.',
     '// Read-only by design: the lookup answers with the match and the caller saves',
     '// it through the normal metadata patch, so an unasked-for fetch can never',
     '// rewrite a track the listener has hand-edited.',
@@ -9622,6 +9626,11 @@ const allowed = new Map([
     '// The page\'s CSP forbids third party connections, so every catalogue request the',
     '// library makes runs through here. The allowlist is checked on each hop because a',
     '// redirect the Worker follows is still the Worker fetching.',
+    '// Third-party answers are read as a capped stream instead of being buffered whole:',
+    '// nothing upstream says is trusted about its own size, so a body is abandoned the',
+    '// moment it passes the cap. An over-long or malformed answer is a failed lookup,',
+    '// not a crash, hence null rather than an exception for the caller to translate.',
+    '// A body that is not JSON answers the same question as a body with no match in it.',
   ]],
   ['src/worker/routes/music/page.ts', [
     '// The anonymous playlist page (M-51): the shell only decides the <title> and',
@@ -10288,6 +10297,12 @@ const allowed = new Map([
     '// A name that is taken is not a stale write: the client would tell the reader to refresh',
     '// and try again, which can never help. The code has to say what actually happened.',
     '// Only the playback row itself stays outside the batch that reads the tracks.',
+    '// Routes read upstream answers as a capped stream, so a fetch stub has to hand over a',
+    '// real body instead of an already materialised buffer.',
+    '// Present so an implementation that ignores the declared length still reads',
+    '// something and answers 200 — the assertion below is what proves it did not.',
+    '// The body is read only until it passes the cap: an implementation that buffers',
+    '// the whole answer would either pull nothing or pull the entire 8 MiB.',
   ]],
   ['tests/music-webdav-routes.test.ts', [
     '// The import never moves the bytes, so there is nothing to checksum (M-53).',

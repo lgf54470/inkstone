@@ -4,7 +4,7 @@ import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
-import { fetchAllowedResource } from './outbound'
+import { fetchAllowedResource, readUpstreamJson } from './outbound'
 import { pathParam } from './params'
 
 // lrclib aggregates crowd-sourced lyrics and needs no key; the fetch goes
@@ -12,6 +12,9 @@ import { pathParam } from './params'
 const LYRICS_ENDPOINT = 'https://lrclib.net/api/get'
 const LYRICS_ALLOWED_HOSTS = ['lrclib.net']
 const MAX_LYRIC_BYTES = LIMITS.musicLyricMaxBytes
+// The answer carries one track's lyrics, so the cap is the stored ceiling plus room
+// for the envelope around it; anything longer is not a lyrics answer we want.
+const MAX_LYRIC_RESPONSE_BYTES = MAX_LYRIC_BYTES * 2
 
 interface LyricMatch {
   syncedLyrics?: string | null
@@ -45,8 +48,8 @@ async function findLyrics(title: string, artist: string, durationMs: number | nu
   // Upstream answers 404 for "no match"; anything else that is not an OK body
   // is the same no-match answer to the listener, and a 200 carries the text.
   if (!response || !response.ok) return null
-  const match = (await response.json()) as LyricMatch
-  const lyric = (match.syncedLyrics?.trim() || match.plainLyrics?.trim()) ?? ''
+  const match = await readUpstreamJson<LyricMatch>(response, MAX_LYRIC_RESPONSE_BYTES)
+  const lyric = (match?.syncedLyrics?.trim() || match?.plainLyrics?.trim()) ?? ''
   if (!lyric || new TextEncoder().encode(lyric).byteLength > MAX_LYRIC_BYTES) return null
   return lyric
 }

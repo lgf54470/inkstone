@@ -1030,6 +1030,36 @@ describe('music cover storage', () => {
   })
 })
 
+// Routes read upstream answers as a capped stream, so a fetch stub has to hand over a
+// real body instead of an already materialised buffer.
+function bodyOf(bytes: Uint8Array): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(bytes.slice())
+      controller.close()
+    },
+  })
+}
+
+function jsonBody(payload: unknown): ReadableStream<Uint8Array> {
+  return bodyOf(new TextEncoder().encode(JSON.stringify(payload)))
+}
+
+function stubbedResponse(options: {
+  status?: number
+  headers?: Record<string, string>
+  body?: ReadableStream<Uint8Array> | null
+}): unknown {
+  const status = options.status ?? 200
+  const headers = options.headers ?? {}
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: (name: string) => headers[name.toLowerCase()] ?? null },
+    body: options.body ?? null,
+  }
+}
+
 describe('music cover lookup (real D1)', () => {
   const ARTWORK = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4])
 
@@ -1038,14 +1068,16 @@ describe('music cover lookup (real D1)', () => {
     vi.stubGlobal('fetch', (url: string) => {
       calls.push(String(url))
       if (String(url).includes('itunes.apple.com')) {
-        return Promise.resolve({ ok: status === 200, status, json: () => Promise.resolve({ results }) })
+        return Promise.resolve(stubbedResponse({
+          status,
+          headers: { 'content-type': 'application/json' },
+          body: jsonBody({ results }),
+        }))
       }
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        headers: { get: () => artworkContentType },
-        arrayBuffer: () => Promise.resolve(ARTWORK.buffer.slice(0)),
-      })
+      return Promise.resolve(stubbedResponse({
+        headers: { 'content-type': artworkContentType },
+        body: bodyOf(ARTWORK),
+      }))
     })
     return calls
   }
@@ -1096,11 +1128,20 @@ describe('music cover lookup (real D1)', () => {
     vi.stubGlobal('fetch', (url: string | URL) => {
       calls.push(String(url))
       if (String(url).includes('itunes.apple.com')) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
-          results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }],
-        }) })
+        return Promise.resolve(stubbedResponse({
+          headers: { 'content-type': 'application/json' },
+          body: jsonBody({
+            results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }],
+          }),
+        }))
       }
-      return Promise.resolve({ ok: true, status: 302, headers: { get: (name: string) => (name.toLowerCase() === 'location' ? 'http://169.254.169.254/latest/meta-data/' : name.toLowerCase() === 'content-type' ? 'image/jpeg' : null) }, arrayBuffer: () => Promise.resolve(ARTWORK.buffer.slice(0)) })
+      return Promise.resolve(stubbedResponse({
+        status: 302,
+        headers: {
+          'content-type': 'image/jpeg',
+          location: 'http://169.254.169.254/latest/meta-data/',
+        },
+      }))
     })
     const res = await request(app, '/api/music/cover-lookup?title=Moonlight&artist=Hu%20Yanbin')
     expect(res.status).toBe(500)
@@ -1114,6 +1155,72 @@ describe('music cover lookup (real D1)', () => {
     expect((await request(app, '/api/music/cover-lookup')).status).toBe(400)
     expect((await request(app, '/api/music/cover-lookup?title=Unknown%20Song')).status).toBe(404)
   })
+
+  it('abandons an artwork answer that declares itself larger than the cap', async () => {
+    await makeDb()
+    await seedUser(DB_ENV.env.DB as unknown as D1Shim)
+    const app = makeApp()
+    const results = [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }]
+    vi.stubGlobal('fetch', (url: string | URL) => {
+      if (String(url).includes('itunes.apple.com')) {
+        return Promise.resolve({
+          ...(stubbedResponse({
+            headers: { 'content-type': 'application/json' },
+            body: jsonBody({ results }),
+          }) as Record<string, unknown>),
+          json: () => Promise.resolve({ results }),
+        })
+      }
+      return Promise.resolve({
+        ...(stubbedResponse({
+          headers: { 'content-type': 'image/jpeg', 'content-length': String(3 * 1024 * 1024) },
+          body: bodyOf(ARTWORK),
+        }) as Record<string, unknown>),
+        // Present so an implementation that ignores the declared length still reads
+        // something and answers 200 — the assertion below is what proves it did not.
+        arrayBuffer: () => Promise.resolve(ARTWORK.buffer.slice(0)),
+      })
+    })
+    const res = await request(app, '/api/music/cover-lookup?title=Moonlight')
+    expect(res.status).toBe(500)
+  })
+
+  it('abandons an artwork answer that streams past the cap without declaring a length', async () => {
+    await makeDb()
+    await seedUser(DB_ENV.env.DB as unknown as D1Shim)
+    const app = makeApp()
+    let artworkPulled = 0
+    vi.stubGlobal('fetch', (url: string | URL) => {
+      if (String(url).includes('itunes.apple.com')) {
+        return Promise.resolve(stubbedResponse({
+          headers: { 'content-type': 'application/json' },
+          body: jsonBody({ results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }] }),
+        }))
+      }
+      const chunk = new Uint8Array(64 * 1024)
+      let sent = 0
+      return Promise.resolve(stubbedResponse({
+        headers: { 'content-type': 'image/jpeg' },
+        body: new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (sent >= 8 * 1024 * 1024) {
+              controller.close()
+              return
+            }
+            sent += chunk.byteLength
+            artworkPulled += chunk.byteLength
+            controller.enqueue(chunk.slice())
+          },
+        }),
+      }))
+    })
+    const res = await request(app, '/api/music/cover-lookup?title=Moonlight')
+    expect(res.status).toBe(500)
+    // The body is read only until it passes the cap: an implementation that buffers
+    // the whole answer would either pull nothing or pull the entire 8 MiB.
+    expect(artworkPulled).toBeGreaterThan(0)
+    expect(artworkPulled).toBeLessThan(3 * 1024 * 1024)
+  })
 })
 
 describe('music lyric lookup (real D1)', () => {
@@ -1121,11 +1228,15 @@ describe('music lyric lookup (real D1)', () => {
     vi.unstubAllGlobals()
   })
 
-  function stubLyrics(payload: unknown, status = 200): string[] {
+  function stubLyrics(payload: unknown, status = 200, body?: ReadableStream<Uint8Array>): string[] {
     const calls: string[] = []
     vi.stubGlobal('fetch', (url: string) => {
       calls.push(String(url))
-      return Promise.resolve({ ok: status === 200, status, json: () => Promise.resolve(payload) })
+      return Promise.resolve(stubbedResponse({
+        status,
+        headers: { 'content-type': 'application/json' },
+        body: body ?? jsonBody(payload),
+      }))
     })
     return calls
   }
@@ -1175,17 +1286,31 @@ describe('music lyric lookup (real D1)', () => {
     expect(res.status).toBe(404)
   })
 
+  it('abandons a lyrics answer whose body passes the cap', async () => {
+    const { app, track } = await appWithTrack()
+    stubLyrics({}, 200, bodyOf(new TextEncoder().encode(JSON.stringify({
+      plainLyrics: 'x'.repeat(LIMITS.musicLyricMaxBytes * 2),
+    }))))
+    const res = await request(app, `/api/music/tracks/${track.id}/lyric-lookup`)
+    expect(res.status).toBe(404)
+  })
+
+  it('reports no match for a lyrics answer that is not JSON', async () => {
+    const { app, track } = await appWithTrack()
+    stubLyrics({}, 200, bodyOf(new TextEncoder().encode('<html>not json</html>')))
+    const res = await request(app, `/api/music/tracks/${track.id}/lyric-lookup`)
+    expect(res.status).toBe(404)
+  })
+
   it('refuses to follow a lyrics redirect off the allowed domain', async () => {
     const { app, track } = await appWithTrack()
     const calls: string[] = []
     vi.stubGlobal('fetch', (url: string) => {
       calls.push(String(url))
-      return Promise.resolve({
-        ok: false,
+      return Promise.resolve(stubbedResponse({
         status: 302,
-        headers: { get: (name: string) => (name.toLowerCase() === 'location' ? 'http://169.254.169.254/latest/meta-data/' : null) },
-        json: () => Promise.resolve({}),
-      })
+        headers: { location: 'http://169.254.169.254/latest/meta-data/' },
+      }))
     })
     const res = await request(app, `/api/music/tracks/${track.id}/lyric-lookup`)
     expect(res.status).toBe(404)
@@ -1212,13 +1337,18 @@ describe('music hourly budgets (real D1)', () => {
   })
 
   function stubArtwork(): void {
-    vi.stubGlobal('fetch', () => Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve({ results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }] }),
-      headers: { get: () => 'image/jpeg' },
-      arrayBuffer: () => Promise.resolve(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]).buffer),
-    }))
+    vi.stubGlobal('fetch', (url: string | URL) => {
+      if (String(url).includes('itunes.apple.com')) {
+        return Promise.resolve(stubbedResponse({
+          headers: { 'content-type': 'application/json' },
+          body: jsonBody({ results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }] }),
+        }))
+      }
+      return Promise.resolve(stubbedResponse({
+        headers: { 'content-type': 'image/jpeg' },
+        body: bodyOf(new Uint8Array([0xff, 0xd8, 0xff, 0xe0])),
+      }))
+    })
   }
 
   it('blocks cover lookups once the hourly budget is spent', async () => {
