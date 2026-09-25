@@ -43,7 +43,7 @@ export function MusicNowPlaying({
       <NowPlayingMeta track={track} />
       <div className='px-3 pb-2'>
         <Segmented
-          label={t('music.details')}
+          label={t('music.now_playing')}
           size='sm'
           value={tab}
           onChange={onTabChange}

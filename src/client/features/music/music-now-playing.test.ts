@@ -143,6 +143,21 @@ describe('MusicNowPlaying lyrics empty states (UI-20)', () => {
   })
 })
 
+describe('MusicNowPlaying tab group name (A11Y-5)', () => {
+  it('names the group for what it holds, not after one of the tabs', async () => {
+    seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn() })
+    const container = await mountPanel('lyrics')
+    const group = container.querySelector('[role="radiogroup"]')
+    const name = group?.getAttribute('aria-label') ?? ''
+    const tabs = [...(group?.querySelectorAll('button') ?? [])].map((button) => button.textContent?.trim() ?? '')
+    // Hearing "details, radio group, lyrics, details" says nothing about which one is which.
+    expect(name.length).toBeGreaterThan(0)
+    expect(tabs).toContain(t('music.lyrics'))
+    expect(tabs).toContain(t('music.details'))
+    expect(tabs).not.toContain(name)
+  })
+})
+
 describe('MusicNowPlaying details panel', () => {
   it('routes a favorite click to the store toggle for the playing track', async () => {
     const track = seedStore({ toggleFavorite: vi.fn(), togglePin: vi.fn() })

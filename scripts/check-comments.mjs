@@ -2620,6 +2620,7 @@ const allowed = new Map([
     '// Metadata atoms wrap their value in a data box: version and flags, value type, locale, payload.',
   ]],
   ['src/client/features/music/music-now-playing.test.ts', [
+    '// Hearing "details, radio group, lyrics, details" says nothing about which one is which.',
     '// Every row here is a label beside its own value cell, so the message has to be a plain',
     '// label: a placeholder would reach the screen verbatim instead of the number.',
     '// The date belongs to the reader\'s language like everything else on the panel; the',
