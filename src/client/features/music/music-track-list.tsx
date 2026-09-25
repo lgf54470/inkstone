@@ -36,15 +36,18 @@ export const MusicTrackList = memo(function MusicTrackList({
   const query = useMusic((state) => state.query)
   const setQuery = useMusic((state) => state.setQuery)
   const openTrackMenu = useMusic((state) => state.openTrackMenu)
-  const actions = useTrackListActions(tracks, currentId, onEdit)
+  const actions = useTrackListActions(tracks, onEdit)
   const playlistDrag = usePlaylistDrag()
   const visibleIds = useMemo(() => tracks.map((track) => track.id), [tracks])
   const selection = useTrackSelection(visibleIds)
   useSelectAllShortcut(selection.selectAll)
+  // `selection` itself changes identity on every selection change; only its stable
+  // `toggle` may reach the rows, otherwise all of them re-render for one checkbox.
+  const { toggle } = selection
   const handlers: TrackRowHandlers = useMemo(
     () => ({
       ...actions,
-      onSelect: (track, modifiers) => selection.toggle(track.id, modifiers),
+      onSelect: (track, modifiers) => toggle(track.id, modifiers),
       // The menu itself is a single hub-wide instance; rows only post these requests.
       onContextMenu: (event, target) => {
         event.preventDefault()
@@ -55,7 +58,7 @@ export const MusicTrackList = memo(function MusicTrackList({
       onEdit,
       drag: playlistDrag,
     }),
-    [actions, selection, onEdit, openTrackMenu, playlistDrag],
+    [actions, toggle, onEdit, openTrackMenu, playlistDrag],
   )
   const playback = useMemo(() => ({ isPlaying, isStreamLoading }), [isPlaying, isStreamLoading])
 
@@ -217,18 +220,23 @@ function TrackGrid({
   return (
     <div className='min-h-0 flex-1 overflow-y-auto p-3'>
       <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5'>
-        {tracks.map((track) => (
-          <MusicTrackCard
-            key={track.id}
-            track={track}
-            index={0}
-            isCurrent={track.id === currentId}
-            isPlaying={playback.isPlaying}
-            isStreamLoading={playback.isStreamLoading}
-            isSelected={selected.has(track.id)}
-            handlers={handlers}
-          />
-        ))}
+        {tracks.map((track) => {
+          const isCurrent = track.id === currentId
+          return (
+            <MusicTrackCard
+              key={track.id}
+              track={track}
+              index={0}
+              isCurrent={isCurrent}
+              // The same narrowing as the table rows: transport state only ever paints
+              // on the current card, so the rest keep a constant value.
+              isPlaying={isCurrent && playback.isPlaying}
+              isStreamLoading={isCurrent && playback.isStreamLoading}
+              isSelected={selected.has(track.id)}
+              handlers={handlers}
+            />
+          )
+        })}
       </div>
     </div>
   )

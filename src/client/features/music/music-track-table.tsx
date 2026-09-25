@@ -33,18 +33,23 @@ export const MusicTrackTable = memo(function MusicTrackTable({
         onToggleAll={() => (allSelected ? selection.clear() : selection.selectAll())}
       />
       <div role='rowgroup' className='min-h-0 flex-1 overflow-y-auto p-2'>
-        {tracks.map((track, index) => (
-          <MusicTrackRow
-            key={track.id}
-            track={track}
-            index={index}
-            isCurrent={track.id === currentId}
-            isPlaying={playback.isPlaying}
-            isStreamLoading={playback.isStreamLoading}
-            isSelected={selected.has(track.id)}
-            handlers={handlers}
-          />
-        ))}
+        {tracks.map((track, index) => {
+          const isCurrent = track.id === currentId
+          return (
+            <MusicTrackRow
+              key={track.id}
+              track={track}
+              index={index}
+              isCurrent={isCurrent}
+              // A row only ever shows transport state for the current track, so the
+              // other rows keep a constant false and skip the render a pause triggers.
+              isPlaying={isCurrent && playback.isPlaying}
+              isStreamLoading={isCurrent && playback.isStreamLoading}
+              isSelected={selected.has(track.id)}
+              handlers={handlers}
+            />
+          )
+        })}
       </div>
     </div>
   )

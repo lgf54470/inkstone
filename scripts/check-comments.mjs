@@ -2703,6 +2703,11 @@ const allowed = new Map([
     '/* Decorative: the note is the visual twin of aria-current, so it stays out of the name. */',
     '/* The current row carries a 14% accent tint; the dim tiers fall under AA on it — even\n          tertiary, measured over the immersive player\'s --bg-overlay — so that row\'s duration\n          takes two tiers up, same rule as the sidebar\'s count badge. */',
   ]],
+  ['src/client/features/music/music-row-render.test.ts', [
+    '// The wrapper sits on the same memo boundary the real row has, so counting it answers',
+    '// the question that matters: which rows React actually re-rendered. A row that',
+    '// re-renders although none of its props changed is exactly the waste guarded here.',
+  ]],
   ['src/client/features/music/music-search-box.test.ts', [
     '// UI-22: the history dropdown is a popup list attached to the input; without',
     '// combobox semantics a screen-reader user cannot see it open or walk its rows.',
@@ -3016,6 +3021,8 @@ const allowed = new Map([
     '// answers clicks itself has no keyboard path and swallows the ones meant for its controls.',
   ]],
   ['src/client/features/music/music-track-list.tsx', [
+    '// `selection` itself changes identity on every selection change; only its stable',
+    '// `toggle` may reach the rows, otherwise all of them re-render for one checkbox.',
     '// The menu itself is a single hub-wide instance; rows only post these requests.',
     '// A search that matched nothing is not an empty library; offer the way back rather than the upload pitch.',
     '// Inside a playlist the rows can be dragged onto each other; the manual order',
@@ -3023,6 +3030,8 @@ const allowed = new Map([
     '// Ctrl/Cmd+A selects the visible list, matching the file-manager habit; text fields keep their own.',
     '// A broad query fills the whole page and stops; the rows it left out are named here',
     '// so the count on the right is not read as the whole answer.',
+    '// The same narrowing as the table rows: transport state only ever paints',
+    '// on the current card, so the rest keep a constant value.',
   ]],
   ['src/client/features/music/music-track-menu.test.ts', [
     '// row t1: second in the manual order, so move-down is at the boundary',
@@ -3056,6 +3065,8 @@ const allowed = new Map([
     '// aria-multiselectable is not allowed on role=\'table\'; selection is carried per row checkbox.',
   ]],
   ['src/client/features/music/music-track-table.tsx', [
+    '// A row only ever shows transport state for the current track, so the',
+    '// other rows keep a constant false and skip the render a pause triggers.',
     '// The header box shows a dash while only part of the visible list is selected.',
     '// A row\'s children have to be cells, but these three columns (artwork, favourite, menu) carry',
     '// nothing a screen reader could read — naming them would announce an empty header. They take the',
@@ -3155,7 +3166,12 @@ const allowed = new Map([
     '// a duplicate write before React has re-rendered the disabled button.',
   ]],
   ['src/client/features/music/use-track-list.ts', [
+    '// Which track is current is read at click time, not subscribed to: every row holds',
+    '// this callback, so taking it as a dependency would re-render the whole list on',
+    '// every track change instead of the two rows that swapped.',
     '// File-manager semantics: click selects one row, Ctrl toggles a row, Shift extends from the anchor.',
+    '// The current selection is read at click time so this callback keeps one identity',
+    '// across selection changes; it is part of the handler object every row receives.',
   ]],
   ['src/client/features/presentation/deck-export.ts', [
     '// Exporting a deck is the same pages read out two ways: printed, and rasterized to images. Both',

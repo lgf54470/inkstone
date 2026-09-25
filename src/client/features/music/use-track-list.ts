@@ -18,20 +18,23 @@ export interface TrackSelection {
 
 export function useTrackListActions(
   tracks: MusicTrack[],
-  currentId: string | null,
   onEdit: (track: MusicTrack) => void,
 ) {
   const playCollection = useMusic((state) => state.playCollection)
   const togglePlay = useMusic((state) => state.togglePlay)
   const toggleFavorite = useMusic((state) => state.toggleFavorite)
+  // Which track is current is read at click time, not subscribed to: every row holds
+  // this callback, so taking it as a dependency would re-render the whole list on
+  // every track change instead of the two rows that swapped.
   const onPlay = useCallback((track: MusicTrack) => {
-    if (track.id === currentId) {
+    const state = useMusic.getState()
+    if (track.id === (state.queue[state.currentIndex] ?? null)) {
       void togglePlay()
       return
     }
     const index = tracks.findIndex((entry) => entry.id === track.id)
     void playCollection(tracks.map((entry) => entry.id), index < 0 ? 0 : index)
-  }, [currentId, tracks, playCollection, togglePlay])
+  }, [tracks, playCollection, togglePlay])
   return useMemo(
     () => ({ onPlay, onToggleFavorite: toggleFavorite, onEdit }),
     [onPlay, toggleFavorite, onEdit],
@@ -47,15 +50,17 @@ export function useTrackSelection(orderedIds: string[]): TrackSelection {
   const clearSelection = useMusic((state) => state.clearSelection)
   const anchorRef = useRef<string | null>(null)
 
+  // The current selection is read at click time so this callback keeps one identity
+  // across selection changes; it is part of the handler object every row receives.
   const toggle = useCallback((id: string, modifiers: SelectModifiers) => {
     if (modifiers.shift && anchorRef.current) {
-      const merged = new Set([...selectedIds, ...rangeIds(orderedIds, anchorRef.current, id)])
+      const merged = new Set([...useMusic.getState().selectedIds, ...rangeIds(orderedIds, anchorRef.current, id)])
       selectAllIds(orderedIds.filter((entry) => merged.has(entry)))
       return
     }
     anchorRef.current = id
     toggleSelect(id, modifiers.additive)
-  }, [orderedIds, selectedIds, selectAllIds, toggleSelect])
+  }, [orderedIds, selectAllIds, toggleSelect])
 
   return useMemo(() => ({
     selectedIds,
