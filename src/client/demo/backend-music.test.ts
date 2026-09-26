@@ -257,3 +257,15 @@ describe('demo music URL import (FEA-B3)', () => {
     expect(library.stats.trackCount).toBe(1)
   })
 })
+
+describe('demo playlist cover (FEA-D2 / IMP-10)', () => {
+  it('stores a data-url cover through the patch contract', async () => {
+    const backend = await authedBackend()
+    const playlist = (await (await call(backend, '/api/music/playlists', jsonInit({ name: 'Demo cover' }))).json()) as { id: string }
+    const patched = (await (await call(backend, `/api/music/playlists/${playlist.id}`, jsonInit(
+      { coverDataUrl: 'data:image/png;base64,iVBORw0KGgo=' },
+      'PATCH',
+    ))).json()) as { coverUrl: string | null }
+    expect(patched.coverUrl).toBe('data:image/png;base64,iVBORw0KGgo=')
+  })
+})

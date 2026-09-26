@@ -59,7 +59,7 @@ function track(): MusicTrack {
 function playlist(): MusicPlaylistDetail {
   return {
     id: 'pl1', name: 'Old name', description: 'old note', isPinned: false, isFavorite: false,
-    shareSlug: null, trackCount: 0, sortOrder: 0, createdAt: 0, updatedAt: 0, items: [],
+    shareSlug: null, coverUrl: null, trackCount: 0, sortOrder: 0, createdAt: 0, updatedAt: 0, items: [],
   }
 }
 

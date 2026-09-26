@@ -91,7 +91,7 @@ describe('the library-wide lyric search (IMP-1)', () => {
   it('leaves scoped views to their own members even when the library answers', () => {
     const state = makeStore({
       tracks: [track('member', 'Long River List'), track('outsider', 'Long River Outsider')],
-      playlists: [{ id: 'p1', name: 'List', description: '', isPinned: false, isFavorite: false, shareSlug: null, sortOrder: 0, createdAt: 1, updatedAt: 1, trackCount: 1, items: [{ id: 'i1', playlistId: 'p1', trackId: 'member', sortOrder: 0 }] }],
+      playlists: [{ id: 'p1', name: 'List', description: '', isPinned: false, isFavorite: false, shareSlug: null, coverUrl: null, sortOrder: 0, createdAt: 1, updatedAt: 1, trackCount: 1, items: [{ id: 'i1', playlistId: 'p1', trackId: 'member', sortOrder: 0 }] }],
       scope: { kind: 'playlist', playlistId: 'p1' } as MusicStoreState['scope'],
       query: 'long river',
       remoteLyricMatches: { query: 'long river', ids: ['outsider', 'member'], total: 2 },

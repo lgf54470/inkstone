@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, Heart, Link2, Link2Off, ListMusic, MoreHorizontal, PencilLine, Pin, Play, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Heart, ImageOff, ImagePlus, Link2, Link2Off, ListMusic, MoreHorizontal, PencilLine, Pin, Play, Plus, Trash2 } from 'lucide-react'
 import type { MusicPlaylistDetail } from '@shared/types'
 import { IconButton } from '../../components/primitives'
 import { Input } from '../../components/form'
@@ -7,6 +7,7 @@ import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../com
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { MusicArtwork } from './music-artwork'
+import { coverDataUrlFromFile } from './music-cover'
 import { toastMusic, toastMusicNotice } from './music-feedback'
 import { useMusic } from './music-store'
 import { playlistCoverUrl } from './music-utils'
@@ -134,9 +135,23 @@ function PlaylistRow({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [draft, setDraft] = useState<string | null>(null)
 
+  const coverInputRef = useRef<HTMLInputElement>(null)
+  const pickCover = async (file: File | undefined): Promise<void> => {
+    if (!file) return
+    const dataUrl = await coverDataUrlFromFile(file)
+    if (!dataUrl) {
+      toastMusicNotice('music.playlist_cover_invalid')
+      return
+    }
+    await useMusic.getState().setPlaylistCover(playlist.id, dataUrl)
+  }
   const items: MenuItem[] = [
     { id: 'play', label: t('music.play_all'), icon: <Play size={14} />, onSelect: onPlay },
     { id: 'rename', label: t('music.rename'), icon: <PencilLine size={14} />, separatorBefore: true, onSelect: () => setDraft(playlist.name) },
+    { id: 'cover', label: t('music.playlist_cover'), icon: <ImagePlus size={14} />, onSelect: () => coverInputRef.current?.click() },
+    ...(playlist.coverUrl
+      ? [{ id: 'cover-clear', label: t('music.playlist_cover_clear'), icon: <ImageOff size={14} />, onSelect: () => { void useMusic.getState().setPlaylistCover(playlist.id, null) } }]
+      : []),
     playlist.shareSlug
       ? { id: 'unshare', label: t('music.unshare_playlist'), icon: <Link2Off size={14} />, separatorBefore: true, onSelect: onUnshare }
       : { id: 'share', label: t('music.share_playlist'), icon: <Link2 size={14} />, separatorBefore: true, onSelect: onShare },
@@ -168,6 +183,16 @@ function PlaylistRow({
           <MoreHorizontal size={13} />
         </IconButton>
       </div>
+      <input
+        ref={coverInputRef}
+        type='file'
+        accept='image/png,image/jpeg,image/webp'
+        className='hidden'
+        onChange={(event) => {
+          void pickCover(event.target.files?.[0])
+          event.target.value = ''
+        }}
+      />
       <Menu open={isMenuOpen} anchor={anchorRef} items={items} onClose={() => setIsMenuOpen(false)} label={t('music.playlist_menu')} width={PLAYLIST_MENU_WIDTH} />
       {menu.point && <Menu open anchor={menu.point} items={items} onClose={menu.close} label={t('music.playlist_menu')} width={PLAYLIST_MENU_WIDTH} />}
     </>

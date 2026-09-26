@@ -8,12 +8,14 @@ import { newId, newSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
+import { coverResponse, isDerivedCoverKey, storeCoverObject } from './cover'
 import { toPlaylist, toPlaylistItem } from './rows'
 import type { MusicPlaylistItemRow, MusicPlaylistRow } from './rows'
 import { batchPlaylistItemsSchema, createPlaylistSchema, patchPlaylistSchema, playlistItemSchema, reorderPlaylistSchema } from './schemas'
 import { pathParam } from './params'
+import { deleteMusicObjects, requireMusicStorage } from './storage'
 
-const PLAYLIST_SELECT = 'id, name, description, is_pinned, is_favorite, share_slug, sort_order, created_at, updated_at'
+const PLAYLIST_SELECT = 'id, name, description, is_pinned, is_favorite, share_slug, cover_url, sort_order, created_at, updated_at'
 
 // Both write paths (one item, or a batch) answer to the same cap, so the rule lives in one
 // place: a request that would cross it is a full playlist, not an oversized payload.
@@ -25,6 +27,7 @@ export function registerMusicPlaylistRoutes(routes: Hono<AppBindings>): void {
   routes.get('/playlists', requireAuth, (c) => listPlaylists(c))
   routes.post('/playlists', requireAuth, (c) => createPlaylist(c))
   routes.patch('/playlists/:id', requireAuth, (c) => patchPlaylist(c))
+  routes.get('/playlists/:id/cover', requireAuth, (c) => playlistCover(c))
   routes.delete('/playlists/:id', requireAuth, (c) => deletePlaylist(c))
   routes.post('/playlists/:id/share', requireAuth, (c) => sharePlaylist(c))
   routes.delete('/playlists/:id/share', requireAuth, (c) => unsharePlaylist(c))
@@ -74,21 +77,47 @@ async function patchPlaylist(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
   await enforceMusicBudget(c.env.DB, 'write', userId)
   const id = pathParam(c, 'id')
-  if (!(await playlistExists(c.env.DB, userId, id))) throw ApiError.notFound('Playlist not found')
+  const row = await loadPlaylistRow(c.env.DB, userId, id)
+  if (!row) throw ApiError.notFound('Playlist not found')
   const body = await readJsonValidated(c, patchPlaylistSchema, JSON_BODY_LIMITS.small)
-  await updatePlaylistRow(c.env.DB, userId, id, body)
+  // A failed cover write keeps the previous cover; null clears it outright.
+  let coverUrl: string | null | undefined
+  if (body.coverDataUrl !== undefined) {
+    coverUrl = body.coverDataUrl === null
+      ? null
+      : await storeCoverObject(c.env, id, row.created_at, body.coverDataUrl) ?? row.cover_url
+  }
+  await updatePlaylistRow(c.env.DB, userId, id, body, coverUrl)
   return c.json(await loadPlaylist(c, userId, id))
+}
+
+function loadPlaylistRow(db: D1Database, userId: string, id: string): Promise<MusicPlaylistRow | null> {
+  return db.prepare(`SELECT ${PLAYLIST_SELECT} FROM music_playlists WHERE user_id = ?1 AND id = ?2`)
+    .bind(userId, id).first<MusicPlaylistRow>()
+}
+
+// FEA-D2 / IMP-10: the playlist's own cover, stored like a track cover.
+async function playlistCover(c: Context<AppBindings>): Promise<Response> {
+  const row = await loadPlaylistRow(c.env.DB, c.get('userId'), pathParam(c, 'id'))
+  if (!row) throw ApiError.notFound('Playlist not found')
+  return coverResponse(c.env, row)
 }
 
 async function deletePlaylist(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
   await enforceMusicBudget(c.env.DB, 'write', userId)
   const id = pathParam(c, 'id')
-  if (!(await playlistExists(c.env.DB, userId, id))) throw ApiError.notFound('Playlist not found')
+  const row = await loadPlaylistRow(c.env.DB, userId, id)
+  if (!row) throw ApiError.notFound('Playlist not found')
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2').bind(userId, id),
     c.env.DB.prepare('DELETE FROM music_playlists WHERE user_id = ?1 AND id = ?2').bind(userId, id),
   ])
+  // Same derived-key rule as the audio delete: only a cover this row's own write
+  // could have produced may be removed from storage.
+  if (isDerivedCoverKey(id, row.created_at, row.cover_url)) {
+    await deleteMusicObjects(c.env, requireMusicStorage(c.env), [row.cover_url as string])
+  }
   return c.json({ ok: true })
 }
 
@@ -262,6 +291,7 @@ async function updatePlaylistRow(
   userId: string,
   id: string,
   body: { name?: string; description?: string; isPinned?: boolean; isFavorite?: boolean; sortOrder?: number },
+  coverUrl: string | null | undefined,
 ): Promise<void> {
   const assignments: string[] = []
   const values: unknown[] = []
@@ -274,6 +304,7 @@ async function updatePlaylistRow(
   if (body.isPinned !== undefined) push('is_pinned', Number(body.isPinned))
   if (body.isFavorite !== undefined) push('is_favorite', Number(body.isFavorite))
   if (body.sortOrder !== undefined) push('sort_order', body.sortOrder)
+  if (coverUrl !== undefined) push('cover_url', coverUrl)
   if (!assignments.length) return
   push('updated_at', Date.now())
   values.push(userId, id)

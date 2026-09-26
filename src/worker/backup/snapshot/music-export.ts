@@ -128,6 +128,9 @@ function toExportedPlaylist(row: PlaylistDbRow): MusicPlaylist {
     isPinned: row.is_pinned === 1,
     isFavorite: row.is_favorite === 1,
     shareSlug: row.share_slug,
+    // Cover bytes are storage objects, not backup payloads, so a restored library
+    // never claims a cover it cannot serve.
+    coverUrl: null,
     trackCount: row.track_count,
     sortOrder: row.sort_order,
     createdAt: row.created_at,

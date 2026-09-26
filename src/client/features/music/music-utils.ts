@@ -183,9 +183,10 @@ export function collectTagIds(tagId: string, tags: MusicTag[]): Set<string> {
   return ids
 }
 
-// A playlist's cover is derived, not stored: the first item (in the user's manual
-// order) whose track carries a cover. Empty playlist or coverless library → no cover.
+// The playlist's own cover (FEA-D2) wins; otherwise the derived first item (in the
+// user's manual order) whose track carries a cover. Coverless library → no cover.
 export function playlistCoverUrl(playlist: MusicPlaylistDetail, tracks: MusicTrack[]): string | null {
+  if (playlist.coverUrl) return playlist.coverUrl
   const byId = new Map(tracks.map((track) => [track.id, track]))
   for (const item of playlist.items) {
     const cover = byId.get(item.trackId)?.coverUrl

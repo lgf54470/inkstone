@@ -91,6 +91,10 @@ async function patchPlaylistHandler(c: Context, state: DemoState): Promise<Respo
     description: typeof body.description === 'string' ? body.description : existing.description,
     isPinned: typeof body.isPinned === 'boolean' ? body.isPinned : existing.isPinned,
     isFavorite: typeof body.isFavorite === 'boolean' ? body.isFavorite : existing.isFavorite,
+    // The demo keeps no object storage, so the data url itself is the stored cover.
+    coverUrl: 'coverDataUrl' in body
+      ? (typeof body.coverDataUrl === 'string' ? body.coverDataUrl : null)
+      : existing.coverUrl,
   }
   return c.json(savePlaylist(state, next))
 }

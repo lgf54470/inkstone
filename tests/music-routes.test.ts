@@ -1782,3 +1782,16 @@ describe('external URL import (FEA-B3)', () => {
     expect(res.status).toBe(404)
   })
 })
+
+describe('playlist custom cover (FEA-D2 / IMP-10)', () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+
+  it('does not let a cover data url slip into a plain rename', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const playlist = await (await json(app, '/api/music/playlists', { name: 'Plain' })).json()
+    const res = await json(app, `/api/music/playlists/${playlist.id}`, { coverDataUrl: 'data:text/html;base64,PGI+' }, 'PATCH')
+    expect(res.status).toBe(400)
+  })
+})

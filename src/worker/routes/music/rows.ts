@@ -46,6 +46,7 @@ export interface MusicPlaylistRow {
   is_pinned: number
   is_favorite: number
   share_slug: string | null
+  cover_url: string | null
   sort_order: number
   created_at: number
   updated_at: number
@@ -123,12 +124,20 @@ export function toPlaylist(row: MusicPlaylistRow, items: MusicPlaylistItem[]): M
     isPinned: row.is_pinned === 1,
     isFavorite: row.is_favorite === 1,
     shareSlug: row.share_slug ?? null,
+    coverUrl: coverUrlForPlaylist(row.id, row.cover_url ?? null),
     trackCount: items.length,
     sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
   return { ...base, items }
+}
+
+// Mirrors the track mapping: only playlist covers stored as our own object keys
+// come back as URLs, and they always point at the playlist's own cover route.
+function coverUrlForPlaylist(playlistId: string, stored: string | null): string | null {
+  if (!stored) return null
+  return isCoverObjectKey(stored) ? `/api/music/playlists/${encodeURIComponent(playlistId)}/cover` : null
 }
 
 export function emptyStats(): MusicStats {

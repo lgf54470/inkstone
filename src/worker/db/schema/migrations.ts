@@ -696,4 +696,13 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_share_collection_members_note ON share_collection_members(note_id)`,
     ],
   },
+  // FEA-D2 / IMP-10: a playlist may carry its own cover; the value is a storage
+  // object key written by the playlist patch, like the track cover_url column.
+  {
+    version: 46,
+    skipIfColumnExists: { table: 'music_playlists', column: 'cover_url' },
+    statements: [
+      `ALTER TABLE music_playlists ADD COLUMN cover_url TEXT`,
+    ],
+  },
 ]

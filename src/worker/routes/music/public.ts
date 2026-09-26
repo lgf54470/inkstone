@@ -81,8 +81,8 @@ function registerSharedPlaylistRoutes(routes: Hono<AppBindings>): void {
     c.header('Cache-Control', MUSIC_PUBLIC_CACHE.listing)
     const slug = pathParam(c, 'slug')
     const playlist = await c.env.DB
-      .prepare('SELECT id, name, description FROM music_playlists WHERE share_slug = ?1')
-      .bind(slug).first<{ id: string; name: string; description: string }>()
+      .prepare('SELECT id, name, description, cover_url FROM music_playlists WHERE share_slug = ?1')
+      .bind(slug).first<{ id: string; name: string; description: string; cover_url: string | null }>()
     if (!playlist) throw ApiError.notFound('Playlist not found')
     const tracks = await c.env.DB
       .prepare(`SELECT ${TRACK_COLUMNS} FROM music_playlist_items pi JOIN music_tracks t ON t.id = pi.track_id AND t.user_id = pi.user_id
@@ -92,8 +92,18 @@ function registerSharedPlaylistRoutes(routes: Hono<AppBindings>): void {
     return c.json({
       name: playlist.name,
       description: playlist.description,
+      coverUrl: playlist.cover_url ? `${origin}${PUBLIC_MUSIC_PATH}/playlists/${encodeURIComponent(slug)}/cover` : null,
       tracks: tracks.results.map((row) => toPublicTrack(row, origin, [], `${PUBLIC_MUSIC_PATH}/playlists/${encodeURIComponent(slug)}/tracks/${row.id}`)),
     })
+  })
+
+  routes.get('/playlists/:slug/cover', async (c) => {
+    await enforceMusicPublicBudget(c.env.DB, 'cover', requestClientIp(c))
+    const row = await c.env.DB
+      .prepare('SELECT cover_url FROM music_playlists WHERE share_slug = ?1')
+      .bind(pathParam(c, 'slug')).first<{ cover_url: string | null }>()
+    if (!row) throw ApiError.notFound('Playlist not found')
+    return coverResponse(c.env, row, MUSIC_PUBLIC_CACHE.cover)
   })
 
   routes.get('/playlists/:slug/tracks/:id/stream', async (c) => {

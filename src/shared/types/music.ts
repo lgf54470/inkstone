@@ -59,6 +59,9 @@ export interface MusicPlaylist {
   isFavorite: boolean
   // M-51: set when the owner shares this playlist publicly; null means not shared.
   shareSlug: string | null
+  // FEA-D2: the playlist's own cover, served by its cover route; null falls back
+  // to the derived first-covered-track cover on the client.
+  coverUrl: string | null
   trackCount: number
   sortOrder: number
   createdAt: number

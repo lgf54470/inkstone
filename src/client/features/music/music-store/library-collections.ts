@@ -139,6 +139,19 @@ export async function renamePlaylist(set: MusicSet, id: string, name: string, de
   }
 }
 
+// FEA-D2: a data url stores as an object server-side; null clears the custom cover.
+export async function setPlaylistCover(set: MusicSet, id: string, coverDataUrl: string | null): Promise<boolean> {
+  try {
+    const updated = await api.music.patchPlaylist(id, { coverDataUrl })
+    set((state) => ({ playlists: state.playlists.map((entry) => (entry.id === id ? updated : entry)) }))
+    toastMusic(coverDataUrl === null ? 'music.playlist_cover_clear' : 'music.playlist_cover_saved')
+    return true
+  } catch (error) {
+    toastMusicError(error, 'music.save_failed')
+    return false
+  }
+}
+
 // The share endpoint is idempotent, so the slug a visitor already holds keeps working.
 export async function sharePlaylist(set: MusicSet, id: string): Promise<string | null> {
   try {

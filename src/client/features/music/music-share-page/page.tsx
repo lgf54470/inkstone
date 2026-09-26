@@ -49,7 +49,7 @@ export function MusicPlaylistSharePage({ slug }: { slug: string }) {
   const currentIndex = tracks.findIndex((track) => track.id === currentId)
   const current = currentIndex >= 0 ? tracks[currentIndex] : null
   const totalDurationMs = useMemo(() => tracks.reduce((sum, track) => sum + track.durationMs, 0), [tracks])
-  const coverUrl = tracks.find((track) => track.coverUrl)?.coverUrl ?? null
+  const coverUrl = playlist?.coverUrl ?? tracks.find((track) => track.coverUrl)?.coverUrl ?? null
 
   return (
     <div className='h-full overflow-y-auto overscroll-contain bg-[var(--bg-base)]'>

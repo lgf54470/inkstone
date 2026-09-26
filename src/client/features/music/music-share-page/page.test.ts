@@ -46,7 +46,7 @@ function track(id: string, over: Partial<{ artist: string; coverUrl: string | nu
 }
 
 function playlist(tracks: ReturnType<typeof track>[]): PublicPlaylist {
-  return { name: 'Night Drive', description: 'late-night drives', tracks } as PublicPlaylist
+  return { name: 'Night Drive', description: 'late-night drives', coverUrl: null, tracks } as PublicPlaylist
 }
 
 let root: Root | null = null

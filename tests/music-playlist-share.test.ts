@@ -296,3 +296,51 @@ describe('deployment routing for the anonymous page', () => {
     }
   })
 })
+
+describe('playlist custom cover (FEA-D2 / IMP-10)', () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+
+  it('stores, serves and clears a custom cover', async () => {
+    await makeDb()
+    const app = makeApp()
+    const id = await createPlaylist(app, 'Covered')
+    const patched = await (await request(app, `/api/music/playlists/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coverDataUrl: PNG }),
+    })).json() as { coverUrl: string | null }
+    expect(patched.coverUrl).toBe(`/api/music/playlists/${id}/cover`)
+
+    const cover = await request(app, `/api/music/playlists/${id}/cover`)
+    expect(cover.status).toBe(200)
+    expect(cover.headers.get('content-type')).toBe('image/png')
+
+    const cleared = await (await request(app, `/api/music/playlists/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coverDataUrl: null }),
+    })).json() as { coverUrl: string | null }
+    expect(cleared.coverUrl).toBeNull()
+    expect((await request(app, `/api/music/playlists/${id}/cover`)).status).toBe(404)
+  })
+
+  it('carries the custom cover onto the public playlist page', async () => {
+    await makeDb()
+    const app = makeApp()
+    const id = await createPlaylist(app, 'Public cover')
+    await request(app, `/api/music/playlists/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coverDataUrl: PNG }),
+    })
+    const shared = await share(app, id)
+    const slug = ((await shared.json()) as { shareSlug: string | null }).shareSlug
+    if (!slug) throw new Error('the playlist should have gained a share slug')
+
+    const payload = await (await request(app, `/api/blog/public/music/playlists/${slug}`)).json() as { coverUrl: string | null }
+    expect(payload.coverUrl).toBe(`http://localhost/api/blog/public/music/playlists/${slug}/cover`)
+    const cover = await request(app, `/api/blog/public/music/playlists/${slug}/cover`)
+    expect(cover.status).toBe(200)
+    expect(cover.headers.get('content-type')).toBe('image/png')
+  })
+})

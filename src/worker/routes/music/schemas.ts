@@ -92,6 +92,11 @@ export const createPlaylistSchema = z.object({
 
 export type CreatePlaylistBody = z.infer<typeof createPlaylistSchema>
 
+// A cover patch is either an image data url (stored as an object) or null to clear;
+// anything else is rejected rather than silently ignored.
+const playlistCoverDataUrl = z.string().max(800_000)
+  .regex(/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/, { message: 'Provide an image data url' })
+
 export const patchPlaylistSchema = z
   .object({
     name: trimmed(LIMITS.musicPlaylistNameMaxLength).min(1).optional(),
@@ -99,6 +104,7 @@ export const patchPlaylistSchema = z
     isPinned: z.boolean().optional(),
     isFavorite: z.boolean().optional(),
     sortOrder: z.number().int().min(0).max(100000).optional(),
+    coverDataUrl: playlistCoverDataUrl.nullable().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, { message: 'Provide at least one field to update' })
 

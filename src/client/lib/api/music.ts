@@ -33,6 +33,7 @@ export interface MusicPlaylistPatch {
   isPinned?: boolean
   isFavorite?: boolean
   sortOrder?: number
+  coverDataUrl?: string | null
 }
 
 export interface MusicUploadResult {
@@ -57,6 +58,7 @@ export interface PublicPlaylistTrack {
 export interface PublicPlaylist {
   name: string
   description: string
+  coverUrl: string | null
   tracks: PublicPlaylistTrack[]
 }
 

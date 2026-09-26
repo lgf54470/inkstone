@@ -44,6 +44,7 @@ export const MUSIC_TABLE_STATEMENTS: readonly string[] = [
       is_pinned INTEGER NOT NULL DEFAULT 0,
       is_favorite INTEGER NOT NULL DEFAULT 0,
       share_slug TEXT,
+      cover_url TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL

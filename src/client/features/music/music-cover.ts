@@ -235,3 +235,42 @@ async function downscale(frame: ApicFrame): Promise<string | null> {
   return canvas.toDataURL('image/jpeg', COVER_QUALITY)
 }
 
+
+// FEA-D2: a picked image file becomes a square cover data url. Covers render
+// square everywhere, so a center crop at 512px is the honest shape, and the
+// encode loop mirrors the avatar's: shrink until the payload fits the server's
+// 512 KB cover budget.
+export async function coverDataUrlFromFile(file: File): Promise<string | null> {
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) return null
+  const bitmap = await createImageBitmap(file)
+  try {
+    const size = 512
+    const source = Math.min(bitmap.width, bitmap.height)
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const context = canvas.getContext('2d')
+    if (!context) return null
+    context.imageSmoothingQuality = 'high'
+    context.drawImage(
+      bitmap,
+      (bitmap.width - source) / 2, (bitmap.height - source) / 2, source, source,
+      0, 0, size, size,
+    )
+    const attempts: Array<{ mime: 'image/webp' | 'image/jpeg'; quality: number }> = [
+      { mime: 'image/webp', quality: 0.86 },
+      { mime: 'image/jpeg', quality: 0.85 },
+      { mime: 'image/jpeg', quality: 0.72 },
+    ]
+    for (const attempt of attempts) {
+      const dataUrl = canvas.toDataURL(attempt.mime, attempt.quality)
+      // 4/3 converts base64 inflation back to bytes against the server's budget.
+      if (dataUrl.length <= COVER_DATA_URL_BUDGET) return dataUrl
+    }
+    return null
+  } finally {
+    bitmap.close()
+  }
+}
+
+const COVER_DATA_URL_BUDGET = 512 * 1024 * 4 / 3

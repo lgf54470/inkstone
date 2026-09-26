@@ -237,6 +237,7 @@ export interface MusicStoreState {
   deletePlaylist: (id: string) => Promise<void>
   sharePlaylist: (id: string) => Promise<string | null>
   unsharePlaylist: (id: string) => Promise<void>
+  setPlaylistCover: (id: string, coverDataUrl: string | null) => Promise<boolean>
   addToPlaylist: (playlistId: string, trackId: string) => Promise<void>
   removeFromPlaylist: (playlistId: string, itemId: string) => Promise<void>
   movePlaylistItem: (playlistId: string, itemId: string, delta: number) => Promise<void>

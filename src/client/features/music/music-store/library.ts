@@ -11,7 +11,7 @@ import { setTracksOffline, syncOfflineTracks, toggleTrackOffline } from './offli
 import {
   addSelectionToPlaylist, addToPlaylist, createPlaylist, createPlaylistWithTracks, createTag, deletePlaylist, deleteTag, dismissUpload,
   movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist,
-  sharePlaylist, unsharePlaylist, uploadFiles,
+  setPlaylistCover, sharePlaylist, unsharePlaylist, uploadFiles,
 } from './library-collections'
 import { browseWebdav, deleteWebdavObjects, importTrackFromUrl, importWebdavFolder, importWebdavTrack } from './webdav'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
@@ -24,7 +24,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'searchTrackLyric' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
   | 'createTag' | 'patchTag' | 'deleteTag'
-  | 'createPlaylist' | 'createPlaylistWithTracks' | 'renamePlaylist' | 'deletePlaylist' | 'sharePlaylist' | 'unsharePlaylist' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
+  | 'createPlaylist' | 'createPlaylistWithTracks' | 'renamePlaylist' | 'deletePlaylist' | 'sharePlaylist' | 'unsharePlaylist' | 'setPlaylistCover' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
   | 'uploadFiles' | 'dismissUpload'
   | 'downloadTracks' | 'dismissDownload' | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'
   | 'syncOfflineTracks' | 'toggleTrackOffline' | 'setTracksOffline'>
@@ -68,6 +68,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     deletePlaylist: (id) => deletePlaylist(set, id),
     sharePlaylist: (id) => sharePlaylist(set, id),
     unsharePlaylist: (id) => unsharePlaylist(set, id),
+    setPlaylistCover: (id, coverDataUrl) => setPlaylistCover(set, id, coverDataUrl),
     ...playlistActions(set, get),
 
     uploadFiles: (files, target) => uploadFiles(set, get, files, target),
