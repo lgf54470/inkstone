@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { ChevronDown, ChevronUp, Heart, Keyboard, ListMusic, Minus, Pin, Plus, RotateCcw, Wallpaper, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Heart, Keyboard, ListMusic, Maximize2, Minimize2, Minus, Pin, Plus, RotateCcw, X } from 'lucide-react'
 import { isVideoMime } from '@shared/music-media'
 import { Modal, Tooltip } from '../../components/overlay'
-import { Segmented } from '../../components/form'
 import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
-import { useMediaQuery } from '../../lib/hooks'
+import { useElementWidth, useMediaQuery } from '../../lib/hooks'
 import { t, type MessageKey } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { formatBytes, formatTimecode } from '../../lib/time'
 import { LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, useActiveLoopRange, useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
-import { coverGradientFromUrl } from './music-cover-colors'
+import { ImmersiveBackground, MusicBackgroundButton } from './music-immersive-background'
 import { LYRIC_ALIGN_CLASSES, LYRIC_IMMERSIVE_SIZE_CLASSES, MusicLyricStyleButton } from './music-lyric-style'
 import { MusicPlayButtons } from './music-play-buttons'
 import { MusicQueueList } from './music-queue-list'
@@ -26,14 +25,64 @@ import type { LyricLine } from './music-utils'
 import { activeLyricIndex, formatLyricOffset, lyricsEmptyKey, lyricsPending, MUSIC_NARROW_BREAKPOINT, parseLyric } from './music-utils'
 
 const IMMERSIVE_WIDTH = 1000
-// The blurred cover layer is aria-decorative wallpaper: heavy blur over a token
-// scrim keeps the content columns' token contrast intact.
-const COVER_BLUR_LAYER_CLASS = 'size-full scale-125 object-cover opacity-60 blur-[64px]'
+// REF-10: the artwork column used to keep 384px of a 1000px dialog whatever the window
+// was doing. Measured, it gives the lyrics back the width the window has to spare.
+const IMMERSIVE_WIDE_PANE_WIDTH = 1100
+const IMMERSIVE_MID_PANE_WIDTH = 920
 
 export function MusicImmersiveOverlay() {
   const immersive = useMusic((state) => state.immersive)
   const setImmersive = useMusic((state) => state.setImmersive)
   return <MusicImmersivePlayer open={immersive} onClose={() => setImmersive(false)} />
+}
+
+// The lyrics a track carries, where the playhead is among them, and how far the track's
+// own calibration shifts that reading. A positive calibration means "these lyrics run
+// early", so the line under the playhead is found that much further back.
+function useImmersiveLyrics(track: ReturnType<typeof useCurrentTrack>): {
+  lyrics: LyricLine[]
+  lyricOffsetMs: number
+  activeIndex: number
+  pending: boolean
+} {
+  const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
+  const lyricOffsetMs = useMusic((state) => (track ? state.lyricOffsets[track.id] ?? 0 : 0))
+  const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs - lyricOffsetMs))
+  return { lyrics, lyricOffsetMs, activeIndex, pending: lyricsPending(track) }
+}
+
+// The active line is brought into view when it changes, not on every tick of the clock.
+function useLyricScroll(open: boolean, activeIndex: number, scrollerRef: RefObject<HTMLElement | null>): void {
+  useEffect(() => {
+    if (!open || activeIndex < 0) return
+    scrollerRef.current?.querySelector<HTMLElement>('[data-active-line="true"]')?.scrollIntoView({ block: 'center', behavior: preferredScrollBehavior() })
+  }, [activeIndex, open, scrollerRef])
+}
+
+// A null width means nothing could be measured, which is the wide layout the column was
+// sized against before REF-10.
+function immersivePaneWidth(width: number | null): string {
+  if (width === null || width >= IMMERSIVE_WIDE_PANE_WIDTH) return 'w-96'
+  return width >= IMMERSIVE_MID_PANE_WIDTH ? 'w-80' : 'w-72'
+}
+
+// REF-10: the immersive surface is opened for one listening spell, so its size is a state
+// of the moment rather than a preference carried across sessions. The measured width also
+// decides how much of the window the artwork column is allowed to keep.
+function useImmersiveWindow(): {
+  containerRef: RefObject<HTMLDivElement | null>
+  maximized: boolean
+  toggleMaximized: () => void
+  paneWidth: string
+} {
+  const [maximized, setMaximized] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  return {
+    containerRef,
+    maximized,
+    toggleMaximized: () => setMaximized((value) => !value),
+    paneWidth: immersivePaneWidth(useElementWidth(containerRef)),
+  }
 }
 
 export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -45,33 +94,37 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
   const queueLength = useMusic((state) => state.queue.length)
   const stacked = !useMediaQuery(`(min-width: ${MUSIC_NARROW_BREAKPOINT}px)`)
   useTrackLyric(track)
-  const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
-  // A positive calibration means "these lyrics run early", so the line under the
-  // playhead is found that much further back.
-  const lyricOffsetMs = useMusic((state) => (track ? state.lyricOffsets[track.id] ?? 0 : 0))
-  const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs - lyricOffsetMs))
-  const lyricPending = lyricsPending(track)
+  const { lyrics, lyricOffsetMs, activeIndex, pending } = useImmersiveLyrics(track)
   const scrollerRef = useRef<HTMLDivElement>(null)
+  const { containerRef, maximized, toggleMaximized, paneWidth } = useImmersiveWindow()
 
-  useEffect(() => {
-    if (!open || activeIndex < 0) return
-    scrollerRef.current?.querySelector<HTMLElement>('[data-active-line="true"]')?.scrollIntoView({ block: 'center', behavior: preferredScrollBehavior() })
-  }, [activeIndex, open])
+  useLyricScroll(open, activeIndex, scrollerRef)
 
   return (
-    <Modal open={open} onClose={onClose} ariaLabel={t('music.immersive')} width={IMMERSIVE_WIDTH} className='h-[86vh] p-0 overflow-hidden' bodyClassName='p-0 flex-1 min-h-0 flex'>
-      <div className={cn('relative flex min-h-0 flex-1 overflow-hidden', stacked && 'flex-col')}>
-        <ImmersiveBackground track={track} />
-        <ImmersiveLeft track={track} durationMs={durationMs} seek={seek} stacked={stacked} />
-        <LyricsPanel
+    <Modal
+      open={open}
+      onClose={onClose}
+      ariaLabel={t('music.immersive')}
+      width={IMMERSIVE_WIDTH}
+      variant={maximized ? 'fullscreen' : 'dialog'}
+      className={cn('p-0 overflow-hidden', maximized ? 'h-full' : 'h-[86vh]')}
+      bodyClassName='p-0 flex-1 min-h-0 flex'
+    >
+      <div ref={containerRef} className={cn('relative flex min-h-0 flex-1 overflow-hidden', stacked && 'flex-col')}>
+        <ImmersiveColumns
           track={track}
+          durationMs={durationMs}
+          seek={seek}
           lyrics={lyrics}
           activeIndex={activeIndex}
-          lyricPending={lyricPending}
-          offsetMs={lyricOffsetMs}
+          lyricPending={pending}
+          lyricOffsetMs={lyricOffsetMs}
           queueLength={queueLength}
           scrollerRef={scrollerRef}
-          onSeekLine={(lineTimeMs) => seek(lineTimeMs + lyricOffsetMs)}
+          stacked={stacked}
+          paneWidth={paneWidth}
+          maximized={maximized}
+          onToggleMaximized={toggleMaximized}
           onClose={onClose}
         />
       </div>
@@ -79,84 +132,45 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
   )
 }
 
-// FEA-C2: the background modes. The theme mode paints nothing (the modal's token
-// surface shows); the cover modes sit under a token scrim so text tiers keep the
-// contrast the token system calibrates. Falls back to a token gradient when the
-// cover cannot be sampled (canvas unavailable, load failure, no cover).
-function ImmersiveBackground({ track }: { track: ReturnType<typeof useCurrentTrack> }) {
-  const mode = useMusic((state) => state.immersiveBackground)
-  const coverUrl = track?.coverUrl ?? null
-  const [gradient, setGradient] = useState<string | null>(null)
-  useEffect(() => {
-    if (mode !== 'gradient' || !coverUrl) {
-      setGradient(null)
-      return
-    }
-    let cancelled = false
-    void coverGradientFromUrl(coverUrl).then((value) => {
-      if (!cancelled) setGradient(value)
-    })
-    return () => { cancelled = true }
-  }, [mode, coverUrl])
-
-  if (mode === 'theme' || !coverUrl) return null
-  if (mode === 'gradient') {
-    return (
-      <div
-        aria-hidden='true'
-        data-immersive-background='gradient'
-        className='absolute inset-0'
-        style={{ backgroundImage: gradient ?? 'linear-gradient(135deg, var(--bg-raised), var(--bg-base))' }}
-      />
-    )
-  }
-  return (
-    <div aria-hidden='true' data-immersive-background='blur' className='absolute inset-0'>
-      <img src={coverUrl} alt='' className={COVER_BLUR_LAYER_CLASS} />
-      <div className='absolute inset-0 bg-[var(--bg-base)] opacity-70' />
-    </div>
-  )
-}
-
-// The mode control sits with the other transport toggles; three options, radio
-// semantics, names spelled out because the wallpaper is a visual-only affordance.
-function MusicBackgroundButton() {
-  const mode = useMusic((state) => state.immersiveBackground)
-  const setImmersiveBackground = useMusic((state) => state.setImmersiveBackground)
-  const [open, setOpen] = useState(false)
-  const anchorRef = useRef<HTMLButtonElement>(null)
-  const options = [
-    { value: 'theme', label: t('music.background_theme') },
-    { value: 'blur', label: t('music.background_blur') },
-    { value: 'gradient', label: t('music.background_gradient') },
-  ] as const
+function ImmersiveColumns({ track, durationMs, seek, lyrics, activeIndex, lyricPending, lyricOffsetMs, queueLength, scrollerRef, stacked, paneWidth, maximized, onToggleMaximized, onClose }: {
+  track: ReturnType<typeof useCurrentTrack>
+  durationMs: number
+  seek: (ms: number) => void
+  lyrics: LyricLine[]
+  activeIndex: number
+  lyricPending: boolean
+  lyricOffsetMs: number
+  queueLength: number
+  scrollerRef: RefObject<HTMLDivElement | null>
+  stacked: boolean
+  paneWidth: string
+  maximized: boolean
+  onToggleMaximized: () => void
+  onClose: () => void
+}) {
   return (
     <>
-      <Tooltip label={t('music.background_mode')} side='top'>
-        <IconButton
-          ref={anchorRef}
-          label={t('music.background_mode')}
-          highlight={mode !== 'theme'}
-          onClick={() => setOpen((value) => !value)}
-        >
-          <Wallpaper size={14} />
-        </IconButton>
-      </Tooltip>
-      <MusicPopover open={open} onClose={() => setOpen(false)} label={t('music.background_mode')} anchorRef={anchorRef} className='w-40 p-2'>
-        <Segmented
-          size='sm'
-          className='w-full'
-          label={t('music.background_mode')}
-          value={mode}
-          onChange={(value) => { setImmersiveBackground(value); setOpen(false) }}
-          options={options.map((option) => ({ value: option.value, label: option.label, title: option.label }))}
-        />
-      </MusicPopover>
+      <ImmersiveBackground track={track} />
+      <ImmersiveLeft track={track} durationMs={durationMs} seek={seek} stacked={stacked} paneWidth={paneWidth} />
+      <LyricsPanel
+        track={track}
+        lyrics={lyrics}
+        activeIndex={activeIndex}
+        lyricPending={lyricPending}
+        offsetMs={lyricOffsetMs}
+        queueLength={queueLength}
+        scrollerRef={scrollerRef}
+        maximized={maximized}
+        onToggleMaximized={onToggleMaximized}
+        onSeekLine={(lineTimeMs) => seek(lineTimeMs + lyricOffsetMs)}
+        onClose={onClose}
+      />
     </>
   )
 }
 
-function LyricsPanel({ track, lyrics, activeIndex, lyricPending, offsetMs, queueLength, scrollerRef, onSeekLine, onClose }: {
+
+function LyricsPanel({ track, lyrics, activeIndex, lyricPending, offsetMs, queueLength, scrollerRef, maximized, onToggleMaximized, onSeekLine, onClose }: {
   track: ReturnType<typeof useCurrentTrack>
   lyrics: LyricLine[]
   activeIndex: number
@@ -164,21 +178,22 @@ function LyricsPanel({ track, lyrics, activeIndex, lyricPending, offsetMs, queue
   offsetMs: number
   queueLength: number
   scrollerRef: RefObject<HTMLDivElement | null>
+  maximized: boolean
+  onToggleMaximized: () => void
   onSeekLine: (lineTimeMs: number) => void
   onClose: () => void
 }) {
   const [queueOpen, setQueueOpen] = useState(false)
   return (
     <section className='flex min-w-0 flex-1 flex-col'>
-      <div className='flex h-10 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4'>
-        <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>{t('music.lyrics')}</span>
-        <span className='flex items-center gap-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-          {track && <LyricOffsetControls trackId={track.id} offsetMs={offsetMs} />}
-          <MusicLyricStyleButton />
-          <ListMusic size={12} />{t('music.queue_count', { value0: queueLength })}
-          <IconButton label={t('music.exit_immersive')} size='sm' onClick={onClose}><X size={15} /></IconButton>
-        </span>
-      </div>
+      <LyricsHeader
+        track={track}
+        queueLength={queueLength}
+        offsetMs={offsetMs}
+        maximized={maximized}
+        onToggleMaximized={onToggleMaximized}
+        onClose={onClose}
+      />
       {/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */}
       <div
         ref={scrollerRef}
@@ -199,6 +214,39 @@ function LyricsPanel({ track, lyrics, activeIndex, lyricPending, offsetMs, queue
         ? <ImmersiveQueue onCollapse={() => setQueueOpen(false)} />
         : <ImmersiveQueueEntry count={queueLength} onOpen={() => setQueueOpen(true)} />}
     </section>
+  )
+}
+
+// The calibration, the queue count and the window controls share the lyrics' own header:
+// they all act on this one column.
+function LyricsHeader({ track, queueLength, offsetMs, maximized, onToggleMaximized, onClose }: {
+  track: ReturnType<typeof useCurrentTrack>
+  queueLength: number
+  offsetMs: number
+  maximized: boolean
+  onToggleMaximized: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className='flex h-10 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4'>
+      <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>{t('music.lyrics')}</span>
+      <span className='flex items-center gap-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+        {track && <LyricOffsetControls trackId={track.id} offsetMs={offsetMs} />}
+        <MusicLyricStyleButton />
+        <ListMusic size={12} />{t('music.queue_count', { value0: queueLength })}
+        {/* REF-10: the same affordance the hub header grew in REF-1a — the immersive
+            surface is the one place the lyrics deserve the whole window. */}
+        <IconButton
+          label={maximized ? t('music.restore_player') : t('music.maximize_player')}
+          size='sm'
+          active={maximized}
+          onClick={onToggleMaximized}
+        >
+          {maximized ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+        </IconButton>
+        <IconButton label={t('music.exit_immersive')} size='sm' onClick={onClose}><X size={15} /></IconButton>
+      </span>
+    </div>
   )
 }
 
@@ -316,11 +364,13 @@ function ImmersiveLeft({
   durationMs,
   seek,
   stacked,
+  paneWidth,
 }: {
   track: ReturnType<typeof useCurrentTrack>
   durationMs: number
   seek: (ms: number) => void
   stacked: boolean
+  paneWidth: string
 }) {
   const currentTimeMs = useProgress((state) => state.currentTimeMs)
   const loopRange = useActiveLoopRange()
@@ -328,7 +378,7 @@ function ImmersiveLeft({
   return (
     <section className={cn(
       'flex shrink-0 border-[var(--border-subtle)]',
-      stacked ? 'w-full flex-row items-center gap-3 p-4' : 'w-96 flex-col items-center gap-4 border-r p-6',
+      stacked ? 'w-full flex-row items-center gap-3 p-4' : cn(paneWidth, 'flex-col items-center gap-4 border-r p-6'),
     )}>
       {isVideoMime(track?.mime)
         ? <MusicVideoStage track={track} className={picture} />

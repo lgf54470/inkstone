@@ -251,6 +251,8 @@ export const messages = {
 'music.queue_toggle': '展开或收起队列',
 'music.maximize_hub': '最大化音乐库',
 'music.restore_hub': '还原音乐库窗口',
+'music.maximize_player': '最大化播放器',
+'music.restore_player': '还原播放器窗口',
 'music.select_all': '全选',
 'music.clear_selection': '取消选择',
 'music.selected_count': '已选择 {value0} 首',

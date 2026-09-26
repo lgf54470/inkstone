@@ -251,6 +251,8 @@ export const messages = {
 'music.queue_toggle': 'Show or hide the queue',
 'music.maximize_hub': 'Maximise the music library',
 'music.restore_hub': 'Restore the music library window',
+'music.maximize_player': 'Maximise the player',
+'music.restore_player': 'Restore the player window',
 'music.select_all': 'Select all',
 'music.clear_selection': 'Clear selection',
 'music.selected_count': '{value0} selected',

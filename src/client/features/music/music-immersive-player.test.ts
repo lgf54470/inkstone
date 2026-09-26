@@ -142,6 +142,66 @@ describe('MusicImmersivePlayer keyboard help (REF-6)', () => {
   })
 })
 
+// REF-10: the immersive surface was a fixed 1000×86vh box with a 384px artwork column,
+// so on a wide screen it wasted both margins and squeezed the lyrics.
+describe('MusicImmersivePlayer window size (REF-10)', () => {
+  function headerButton(label: string): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('button')].find(
+      (button) => button.getAttribute('aria-label') === label,
+    ) as HTMLButtonElement | undefined
+  }
+
+  it('offers a maximise toggle beside the close button', async () => {
+    await mountPlayer(vi.fn())
+    expect(headerButton(t('music.maximize_player'))).toBeDefined()
+  })
+
+  it('fills the viewport when maximised and goes back when restored', async () => {
+    await mountPlayer(vi.fn())
+    await act(async () => {
+      headerButton(t('music.maximize_player'))?.click()
+    })
+    const panel = document.querySelector('[role="dialog"]') as HTMLElement
+    expect(panel.classList.contains('rounded-none')).toBe(true)
+    await act(async () => {
+      headerButton(t('music.restore_player'))?.click()
+    })
+    expect(document.querySelector('[role="dialog"]')?.classList.contains('rounded-none')).toBe(false)
+  })
+})
+
+describe('MusicImmersivePlayer artwork column width (REF-10)', () => {
+  // jsdom has no layout, so the observer is the only way to hand the player a width.
+  function stubContainerWidth(width: number): void {
+    class Observer {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+      observe(): void {
+        this.callback([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver)
+      }
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('ResizeObserver', Observer)
+  }
+
+  function leftPane(): HTMLElement | null {
+    return document.querySelector('[role="dialog"] section')
+  }
+
+  it('gives the lyrics back the width a maximised window has to spare', async () => {
+    stubContainerWidth(1600)
+    await mountPlayer(vi.fn())
+    expect(leftPane()?.classList.contains('w-96')).toBe(true)
+  })
+
+  it('narrows the artwork column when the dialog is not that wide', async () => {
+    stubContainerWidth(1000)
+    await mountPlayer(vi.fn())
+    expect(leftPane()?.classList.contains('w-80')).toBe(true)
+    expect(leftPane()?.classList.contains('w-96')).toBe(false)
+  })
+})
+
 describe('MusicImmersivePlayer video picture', () => {
   function videoTrack(): MusicTrack {
     return {
