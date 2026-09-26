@@ -1,6 +1,6 @@
 import {
-  connectAudio, currentTrack, cycleMode, playCollection,
-  playNext, playPrevious, playQueueAt, playTrack, seek, setEqBand, setEqEnabled,
+  connectAudio, currentTrack, cycleMode, nudgeLyricOffset, playCollection,
+  playNext, playPrevious, playQueueAt, playTrack, resetLyricOffset, seek, setEqBand, setEqEnabled,
   setFloatingPosition, setImmersive, setNormalizeEnabled, setPlaybackRate, setSleepAfterCurrentTrack, setSleepTimer, setVolume,
   toggleFloating, toggleFloatingCollapsed, toggleMute, togglePlay,
 } from './player'
@@ -12,6 +12,7 @@ type PlayerSlice = Pick<MusicStoreState,
   | 'playTrack' | 'playCollection' | 'playQueueAt' | 'togglePlay' | 'playNext' | 'playPrevious'
   | 'seek' | 'setVolume' | 'toggleMute' | 'cycleMode' | 'setPlaybackRate' | 'setSleepTimer' | 'setSleepAfterCurrentTrack' | 'setImmersive'
   | 'setEqEnabled' | 'setEqBand' | 'setNormalizeEnabled' | 'setCrossfadeEnabled'
+  | 'nudgeLyricOffset' | 'resetLyricOffset'
   | 'addToQueue' | 'removeFromQueue' | 'moveQueueItem' | 'clearQueue'
   | 'toggleFloating' | 'toggleFloatingCollapsed' | 'setFloatingPosition'>
 
@@ -31,6 +32,8 @@ export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
     setPlaybackRate: (rate) => setPlaybackRate(set, get, rate),
     setSleepTimer: (minutes) => setSleepTimer(set, get, minutes),
     setSleepAfterCurrentTrack: (enabled) => setSleepAfterCurrentTrack(set, get, enabled),
+    nudgeLyricOffset: (trackId, deltaMs) => nudgeLyricOffset(set, get, trackId, deltaMs),
+    resetLyricOffset: (trackId) => resetLyricOffset(set, get, trackId),
     setEqEnabled: (enabled) => setEqEnabled(set, get, enabled),
     setEqBand: (band, db) => setEqBand(set, get, band, db),
     setNormalizeEnabled: (enabled) => setNormalizeEnabled(set, get, enabled),

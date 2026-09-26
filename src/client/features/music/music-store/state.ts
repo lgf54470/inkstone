@@ -27,6 +27,8 @@ export interface MusicPreferences {
   eqHighDb: number
   normalizeEnabled: boolean
   crossfadeEnabled: boolean
+  /** Per-track lyric calibration in ms; a positive value holds the lyrics back. */
+  lyricOffsets: Record<string, number>
 }
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
@@ -36,10 +38,33 @@ const VIEW_MODES: MusicViewMode[] = ['list', 'grid']
 const SOURCE_FILTERS: MusicSourceFilter[] = ['all', 'r2', 'webdav']
 export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
 export const EQ_GAIN_RANGE_DB = 12
+// Lyrics drift by fractions of a second as much as by whole ones, so the nudge
+// is a quarter second and the window stays narrow enough to stay useful.
+export const LYRIC_OFFSET_STEP_MS = 250
+export const LYRIC_OFFSET_LIMIT_MS = 5_000
+// One entry per calibrated track; the cap only bounds what localStorage can grow to.
+export const LYRIC_OFFSET_MAX_TRACKS = 500
 
 export function readEqDb(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0
   return Math.min(EQ_GAIN_RANGE_DB, Math.max(-EQ_GAIN_RANGE_DB, Math.round(value)))
+}
+
+export function clampLyricOffset(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  return Math.min(LYRIC_OFFSET_LIMIT_MS, Math.max(-LYRIC_OFFSET_LIMIT_MS, Math.round(value)))
+}
+
+function readLyricOffsets(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const offsets: Record<string, number> = {}
+  for (const [trackId, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (!trackId) continue
+    if (typeof raw !== 'number' || !Number.isFinite(raw) || raw === 0) continue
+    offsets[trackId] = clampLyricOffset(raw)
+    if (Object.keys(offsets).length >= LYRIC_OFFSET_MAX_TRACKS) break
+  }
+  return offsets
 }
 
 export const DEFAULT_PREFERENCES: MusicPreferences = {
@@ -64,6 +89,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   eqHighDb: 0,
   normalizeEnabled: false,
   crossfadeEnabled: false,
+  lyricOffsets: {},
 }
 
 function readStored(key: string): Record<string, unknown> | null {
@@ -108,6 +134,7 @@ export function loadPreferences(): MusicPreferences {
     eqHighDb: readEqDb(parsed.eqHighDb),
     normalizeEnabled: parsed.normalizeEnabled === true,
     crossfadeEnabled: parsed.crossfadeEnabled === true,
+    lyricOffsets: readLyricOffsets(parsed.lyricOffsets),
   }
 }
 

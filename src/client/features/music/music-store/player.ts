@@ -13,7 +13,7 @@ import { handleCrossfadeComplete, maybeStartCrossfade } from './crossfade'
 import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
 import { persist } from './persist'
-import { loadPreferences, readEqDb } from './state'
+import { clampLyricOffset, loadPreferences, readEqDb } from './state'
 import type { MusicEqBand, MusicGet, MusicSet, MusicStoreState } from './types'
 
 const STREAM_START_TIMEOUT_MS = 20_000
@@ -253,6 +253,27 @@ export function setEqEnabled(set: MusicSet, get: MusicGet, enabled: boolean): vo
   applyEqualizer(get())
   // Enabling during playback is a user gesture, the one moment a blocked audio graph may start.
   if (enabled) void ensureAudioGraph()
+  persist(get)
+}
+
+// Lyrics and audio drift apart by a fraction of a second on some rips; the
+// calibration is kept per track so fixing one does not move the rest.
+export function nudgeLyricOffset(set: MusicSet, get: MusicGet, trackId: string, deltaMs: number): void {
+  const offset = clampLyricOffset((get().lyricOffsets[trackId] ?? 0) + deltaMs)
+  writeLyricOffset(set, get, trackId, offset)
+}
+
+export function resetLyricOffset(set: MusicSet, get: MusicGet, trackId: string): void {
+  writeLyricOffset(set, get, trackId, 0)
+}
+
+function writeLyricOffset(set: MusicSet, get: MusicGet, trackId: string, offset: number): void {
+  if (!trackId) return
+  const offsets = { ...get().lyricOffsets }
+  // Back in sync is the default, so the map only holds tracks that were moved.
+  if (offset === 0) delete offsets[trackId]
+  else offsets[trackId] = offset
+  set({ lyricOffsets: offsets })
   persist(get)
 }
 

@@ -5,7 +5,7 @@ import type { Root } from 'react-dom/client'
 import type { MusicTrack } from '@shared/types'
 import { initI18n, t } from '../../lib/i18n'
 import { MusicImmersivePlayer } from './music-immersive-player'
-import { useMusic } from './music-store'
+import { progressTimeMs, setProgressTime, useMusic } from './music-store'
 import { MUSIC_NARROW_BREAKPOINT } from './music-utils'
 
 // The count is a formatted string, so the assertions need the real resources.
@@ -33,7 +33,8 @@ afterEach(() => {
   act(() => root?.unmount())
   root = null
   document.body.innerHTML = ''
-  useMusic.setState({ tracks: [], queue: [], currentIndex: 0 })
+  useMusic.setState({ tracks: [], queue: [], currentIndex: 0, lyricOffsets: {} })
+  setProgressTime(0)
   vi.unstubAllGlobals()
 })
 
@@ -220,5 +221,81 @@ describe('MusicImmersivePlayer scroll regions (UI-17)', () => {
     expect(lyrics?.getAttribute('tabindex')).toBe('0')
     expect(queue?.classList.contains('overflow-y-auto')).toBe(true)
     expect(queue?.getAttribute('tabindex')).toBe('0')
+  })
+})
+const CALIBRATED_LYRIC = '[00:01.000]first line\n[00:05.000]second line'
+
+function lyricTrack(lyric: string): MusicTrack {
+  return {
+    id: 't1', title: 'Calibrated', artist: 'Singer', album: 'Album', durationMs: 60_000,
+    source: 'r2', format: 'mp3', webdavPath: null, mime: 'audio/mpeg', sizeBytes: 1024,
+    coverUrl: null, lyric, hasLyric: true, tagIds: [], isFavorite: false, isPinned: false,
+    playCount: 0, lastPlayedAt: null, contentHash: null, createdAt: 0, updatedAt: 0,
+  }
+}
+
+async function mountWithLyrics(offsetMs: number): Promise<void> {
+  const track = lyricTrack(CALIBRATED_LYRIC)
+  useMusic.setState({
+    tracks: [track],
+    queue: [track.id],
+    currentIndex: 0,
+    durationMs: track.durationMs,
+    lyricOffsets: offsetMs ? { [track.id]: offsetMs } : {},
+  })
+  await mountPlayer(vi.fn())
+}
+
+function lyricLineButtons(): HTMLButtonElement[] {
+  return [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')]
+    .filter((button) => (button.textContent ?? '').includes('line'))
+}
+
+function activeLyricLineText(): (string | null)[] {
+  return [...document.querySelectorAll('[data-active-line="true"]')].map((line) => line.textContent)
+}
+
+describe('MusicImmersivePlayer lyric line seek — F-1', () => {
+  it('seeks to the lyric line that was clicked', async () => {
+    await mountWithLyrics(0)
+    await act(async () => {
+      lyricLineButtons()[1]?.click()
+    })
+    expect(progressTimeMs()).toBe(5_000)
+  })
+
+  it('adds the track calibration to the seek target', async () => {
+    await mountWithLyrics(1_000)
+    await act(async () => {
+      lyricLineButtons()[1]?.click()
+    })
+    expect(progressTimeMs()).toBe(6_000)
+  })
+})
+
+describe('MusicImmersivePlayer lyric calibration — F-1', () => {
+  it('holds the highlight back by the track calibration', async () => {
+    await mountWithLyrics(1_000)
+    await act(async () => {
+      setProgressTime(5_500)
+    })
+    expect(activeLyricLineText()).toEqual(['first line'])
+  })
+
+  it('nudges and resets the calibration from the header controls', async () => {
+    await mountWithLyrics(0)
+    const control = (label: string) => [...document.querySelectorAll('button')]
+      .find((button) => button.getAttribute('aria-label') === label)
+    expect(control(t('music.lyric_offset_later'))).toBeDefined()
+
+    await act(async () => {
+      control(t('music.lyric_offset_later'))?.click()
+    })
+    expect(useMusic.getState().lyricOffsets.t1).toBe(250)
+
+    await act(async () => {
+      control(t('music.lyric_offset_reset'))?.click()
+    })
+    expect(useMusic.getState().lyricOffsets.t1).toBeUndefined()
   })
 })

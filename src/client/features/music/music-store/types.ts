@@ -123,6 +123,7 @@ export interface MusicStoreState {
   eqHighDb: number
   normalizeEnabled: boolean
   crossfadeEnabled: boolean
+  lyricOffsets: Record<string, number>
 
   floatingVisible: boolean
   floatingCollapsed: boolean
@@ -168,6 +169,9 @@ export interface MusicStoreState {
   setPlaybackRate: (rate: number) => void
   setSleepTimer: (minutes: number | null) => void
   setSleepAfterCurrentTrack: (enabled: boolean) => void
+  // Lyric calibration is per track: a positive delta holds the lyrics back.
+  nudgeLyricOffset: (trackId: string, deltaMs: number) => void
+  resetLyricOffset: (trackId: string) => void
   setEqEnabled: (enabled: boolean) => void
   setEqBand: (band: MusicEqBand, db: number) => void
   setNormalizeEnabled: (enabled: boolean) => void

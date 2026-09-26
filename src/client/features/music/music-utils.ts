@@ -156,6 +156,13 @@ export function isArtistSuffixedTitle(current: string, title: string, artist: st
   return tail.length > 0 && (!artist || tail === artist)
 }
 
+// The lyric calibration reads as a signed shift: how far the lyrics sit from the audio.
+export function formatLyricOffset(offsetMs: number): string {
+  const seconds = offsetMs / 1000
+  const sign = seconds > 0 ? '+' : ''
+  return `${sign}${seconds}s`
+}
+
 // The sidebar badge for "recently played": a walk over the library, so callers
 // memoize it on `tracks` rather than running it per store notification.
 export function recentlyPlayedCount(tracks: readonly Pick<MusicTrack, 'lastPlayedAt'>[]): number {

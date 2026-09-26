@@ -64,6 +64,7 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
     eqHighDb: prefs.eqHighDb,
     normalizeEnabled: prefs.normalizeEnabled,
     crossfadeEnabled: prefs.crossfadeEnabled,
+    lyricOffsets: prefs.lyricOffsets,
     floatingVisible: prefs.floatingVisible,
     floatingCollapsed: prefs.floatingCollapsed,
     floatingPosition: prefs.floatingPosition,
@@ -77,7 +78,7 @@ export type {
   MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,
 } from './types'
 export { currentTrack } from './player'
-export { PLAYBACK_RATES, EQ_GAIN_RANGE_DB } from './state'
+export { PLAYBACK_RATES, EQ_GAIN_RANGE_DB, LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS } from './state'
 export { playbackChange, restorePlayback, savePlayback, savePosition, schedulePlaybackSave } from './playback-sync'
 export type { PlaybackChange } from './playback-sync'
 export { progressTimeMs, setProgressTime, useProgress } from './progress'
