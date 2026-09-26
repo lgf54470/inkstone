@@ -6,7 +6,7 @@
     "lines": 541
   },
   "src/client/features/music/music-alist-modal.tsx": {
-    "longFns": 1
+    "longFns": 3
   },
   "src/client/features/music/music-duplicates.test.ts": {
     "longFns": 1

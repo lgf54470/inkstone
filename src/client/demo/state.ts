@@ -42,6 +42,23 @@ export interface DemoMusicTrashEntry {
   playlist?: MusicPlaylistDetail
 }
 
+// FEA-A3 demo stub: a registered Alist server carries its own in-memory tree.
+export interface DemoAlistServer {
+  id: string
+  name: string
+  url: string
+  rootPath: string
+  token: string
+  tree: DemoAlistNode
+}
+
+export interface DemoAlistNode {
+  name: string
+  isDir: boolean
+  size: number
+  children?: DemoAlistNode[]
+}
+
 
 interface DemoShare {
   info: ShareInfo
@@ -93,6 +110,7 @@ export interface DemoState {
   musicTags: Map<string, MusicTag>
   musicPlaylists: Map<string, MusicPlaylistDetail>
   musicTrash: Map<string, DemoMusicTrashEntry>
+  musicAlistServers: Map<string, DemoAlistServer>
 }
 
 const seedId = (value: number) => `01j${String(value).padStart(23, '0')}`
@@ -319,6 +337,7 @@ export function createDemoState(): DemoState {
     musicTags: new Map(),
     musicPlaylists: new Map(),
     musicTrash: new Map(),
+    musicAlistServers: new Map(),
   }
 }
 
@@ -340,7 +359,8 @@ export function demoMusicLibrary(state: DemoState) {
       pinnedCount: tracks.filter((track) => track.isPinned).length,
       playlistCount: playlists.length,
       tagCount: tags.length,
-      totalBytes: tracks.reduce((total, track) => total + track.sizeBytes, 0),
+      // Reference rows (webdav/alist) carry no bytes of this deployment.
+      totalBytes: tracks.reduce((total, track) => total + (track.source === 'r2' ? track.sizeBytes : 0), 0),
       totalDurationMs: tracks.reduce((total, track) => total + track.durationMs, 0),
     },
   }

@@ -125,3 +125,103 @@ describe('alist server config (FEA-A3-1)', () => {
     }
   })
 })
+
+function stubAlistUpstream(): { calls: Array<{ url: string; body: unknown }> } {
+  const calls: Array<{ url: string; body: unknown }> = []
+  vi.stubGlobal('fetch', async (url: string | URL, init?: { body?: string }) => {
+    const body = init?.body ? JSON.parse(init.body) : null
+    calls.push({ url: String(url), body })
+    const payload = (data: unknown) => new Response(JSON.stringify({ code: 200, message: 'success', data }), { status: 200 })
+    if (String(url).endsWith('/api/fs/list')) {
+      return payload({
+        content: [
+          { name: 'dir', size: 0, is_dir: true },
+          { name: 'song.mp3', size: 16, is_dir: false },
+          { name: 'notes.txt', size: 4, is_dir: false },
+        ],
+      })
+    }
+    if (String(url).endsWith('/api/fs/get')) {
+      return payload({ name: 'song.mp3', size: 16, is_dir: false, raw_url: 'https://cdn.example.com/song.mp3?sign=abc' })
+    }
+    return payload({})
+  })
+  return { calls }
+}
+
+async function makeServer(app: Hono<AppBindings>): Promise<string> {
+  const created = await (await json(app, '/api/music/alist', {
+    name: 'NAS', url: 'https://alist.example.com', token: 'tok', rootPath: '/media',
+  })).json() as { id: string }
+  return created.id
+}
+
+describe('alist browse and import (FEA-A3-2)', () => {
+  it('lists a directory through the upstream api', async () => {
+    await makeDb()
+    const app = makeApp()
+    const id = await makeServer(app)
+    const upstream = stubAlistUpstream()
+    const res = await request(app, `/api/music/alist/${id}/list?path=/sub`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as { entries: Array<{ name: string; isDir: boolean; size: number; path: string }> }
+    // The browser lists everything; the import is where media types are judged.
+    expect(body.entries).toEqual([
+      { name: 'dir', isDir: true, size: 0, path: '/sub/dir' },
+      { name: 'notes.txt', isDir: false, size: 4, path: '/sub/notes.txt' },
+      { name: 'song.mp3', isDir: false, size: 16, path: '/sub/song.mp3' },
+    ])
+    expect(upstream.calls[0]?.url).toBe('https://alist.example.com/api/fs/list')
+    expect(upstream.calls[0]?.body).toMatchObject({ path: '/media/sub' })
+  })
+
+  it('imports a media file as an alist reference row outside the quota', async () => {
+    await makeDb()
+    const app = makeApp()
+    const id = await makeServer(app)
+    stubAlistUpstream()
+    const res = await json(app, `/api/music/alist/${id}/import`, { path: '/sub/song.mp3', title: 'Song', artist: 'A' })
+    expect(res.status).toBe(201)
+    const track = await res.json() as { source: string; sizeBytes: number; mime: string; webdavPath: string | null }
+    expect(track.source).toBe('alist')
+    expect(track.sizeBytes).toBe(16)
+    expect(track.mime).toBe('audio/mpeg')
+    expect(track.webdavPath).toBeNull()
+
+    const library = await (await request(app, '/api/music/library')).json() as { stats: { totalBytes: number } }
+    expect(library.stats.totalBytes).toBe(0)
+  })
+
+  it('rejects importing a non-media path', async () => {
+    await makeDb()
+    const app = makeApp()
+    const id = await makeServer(app)
+    stubAlistUpstream()
+    const res = await json(app, `/api/music/alist/${id}/import`, { path: '/sub/notes.txt' })
+    expect(res.status).toBe(400)
+  })
+
+  it('streams an imported track via the signed raw url with range passthrough', async () => {
+    await makeDb()
+    const app = makeApp()
+    const id = await makeServer(app)
+    stubAlistUpstream()
+    const track = await (await json(app, `/api/music/alist/${id}/import`, { path: '/sub/song.mp3' })).json() as { id: string }
+    const urls: string[] = []
+    const ranges: (string | null)[] = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: { headers?: Record<string, string> }) => {
+      const target = String(url)
+      urls.push(target)
+      ranges.push(init?.headers?.Range ?? null)
+      if (target.endsWith('/api/fs/get')) {
+        return new Response(JSON.stringify({ code: 200, message: 'success', data: { name: 'song.mp3', size: 16, is_dir: false, raw_url: 'https://cdn.example.com/song.mp3?sign=abc' } }), { status: 200 })
+      }
+      return new Response(new TextEncoder().encode('remote-bytes'), { status: 200, headers: { 'Content-Length': '12' } })
+    })
+    const res = await request(app, `/api/music/tracks/${track.id}/stream`, { headers: { Range: 'bytes=0-3' } })
+    expect(res.status).toBe(200)
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(new TextEncoder().encode('remote-bytes'))
+    expect(urls.filter((url) => url.includes('cdn.example.com'))).toEqual(['https://cdn.example.com/song.mp3?sign=abc'])
+    expect(ranges.filter(Boolean)).toEqual(['bytes=0-3'])
+  })
+})

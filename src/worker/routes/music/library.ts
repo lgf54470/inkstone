@@ -2,6 +2,7 @@ import type { Hono } from 'hono'
 import type { MusicLibrary, MusicStats } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { requireAuth } from '../../middleware/auth'
+import { isStoredMusicSource } from './quota'
 import { attachLightTagIds, toPlaylist, toPlaylistItem, toTag } from './rows'
 import type { MusicLightTrackRow, MusicPlaylistItemRow, MusicPlaylistRow, MusicTagRow } from './rows'
 
@@ -82,7 +83,7 @@ async function loadPlaylistItems(db: D1Database, userId: string): Promise<MusicP
   return rows.results
 }
 
-function summarize(tracks: { isFavorite: boolean; isPinned: boolean; sizeBytes: number; durationMs: number }[], tagCount: number, playlistCount: number): MusicStats {
+function summarize(tracks: { isFavorite: boolean; isPinned: boolean; sizeBytes: number; durationMs: number; source: string }[], tagCount: number, playlistCount: number): MusicStats {
   const stats: MusicStats = {
     trackCount: tracks.length,
     favoriteCount: 0,
@@ -95,7 +96,9 @@ function summarize(tracks: { isFavorite: boolean; isPinned: boolean; sizeBytes: 
   for (const track of tracks) {
     if (track.isFavorite) stats.favoriteCount += 1
     if (track.isPinned) stats.pinnedCount += 1
-    stats.totalBytes += track.sizeBytes
+    // Same lens as the quota ledger: reference rows (webdav/alist) carry no bytes
+    // of this deployment, so they stay out of the library's own size.
+    if (isStoredMusicSource(track.source)) stats.totalBytes += track.sizeBytes
     stats.totalDurationMs += track.durationMs
   }
   return stats

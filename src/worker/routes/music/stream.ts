@@ -6,6 +6,7 @@ import { isMusicObjectKey, safeStreamMime } from './keys'
 import { isDerivedCoverKey } from './cover'
 import { alignKvRangeWindow, contentRangeHeader, isWellFormedContentLength, isWellFormedContentRange, parseByteRange } from './range'
 import type { MusicTrackRow } from './rows'
+import { alistApi, joinAlistPath, parseAlistObjectKey, resolveAlistServer } from './alist'
 import { buildDownloadTag } from './id3'
 import { readMusicObjectStream, requireMusicStorage } from './storage'
 import { fetchMusicObject, resolveMusicWebdav } from './webdav'
@@ -30,6 +31,7 @@ export async function streamTrackResponse(
 ): Promise<Response> {
   if (row.source === 'webdav') return streamWebdavTrack(c, row, owner, options)
   if (row.source === 'external') return streamExternalTrack(c, row, options)
+  if (row.source === 'alist') return streamAlistTrack(c, row, options)
   if (!isMusicObjectKey(row.object_key)) throw ApiError.internal('The track storage key is invalid')
 
   const storage = requireMusicStorage(c.env)
@@ -164,6 +166,35 @@ async function mp3DownloadResponse(
       'Content-Disposition': attachmentDisposition(row.title),
     },
   })
+}
+
+// FEA-A3-2: an Alist reference row resolves its server from the key, asks the
+// upstream for a fresh signed link (fs/get) and proxies that — the signed URL may
+// expire, so it is fetched per stream, never stored.
+async function streamAlistTrack(
+  c: Context<AppBindings>,
+  row: MusicTrackRow,
+  options: StreamOptions,
+): Promise<Response> {
+  const key = parseAlistObjectKey(row.object_key)
+  if (!key) throw ApiError.internal('The Alist track key is invalid')
+  const server = await resolveAlistServer(c.env, c.get('userId'), key.serverId)
+  const data = await alistApi(server, '/api/fs/get', { path: joinAlistPath(server.rootPath, key.path) }) as { raw_url?: string }
+  const rawUrl = data.raw_url
+  if (!rawUrl) throw ApiError.notFound('The track is no longer reachable on the Alist server')
+  const range = c.req.header('Range')
+  let upstream: Response
+  try {
+    upstream = await fetch(rawUrl, range ? { headers: { Range: range } } : undefined)
+  } catch {
+    throw new ApiError(502, 'storage_unavailable', 'The Alist source is unreachable')
+  }
+  if (upstream.status === 404) throw ApiError.notFound('The track is no longer reachable on the Alist server')
+  if (upstream.status !== 200 && upstream.status !== 206) {
+    await cancelStreamBestEffort(upstream.body)
+    throw new ApiError(502, 'storage_unavailable', `Alist playback failed: HTTP ${upstream.status}`)
+  }
+  return streamUpstream(upstream, row, options)
 }
 
 // Streams the tag ahead of the stored bytes without buffering the audio: the

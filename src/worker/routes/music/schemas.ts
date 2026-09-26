@@ -154,6 +154,13 @@ export const createAlistServerSchema = z.object({
 
 export type CreateAlistServerBody = z.infer<typeof createAlistServerSchema>
 
+export const importAlistTrackSchema = z.object({
+  path: z.string().max(LIMITS.musicAlistRootPathMaxLength).min(1),
+  title: trimmed(LIMITS.musicTitleMaxLength).optional(),
+  artist: optionalTrimmed(LIMITS.musicArtistMaxLength),
+  album: optionalTrimmed(LIMITS.musicAlbumMaxLength),
+})
+
 export const patchAlistServerSchema = z
   .object({
     name: trimmed(LIMITS.musicAlistNameMaxLength).min(1).optional(),

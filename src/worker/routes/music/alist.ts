@@ -1,4 +1,5 @@
 import type { Context, Hono } from 'hono'
+import { LIMITS } from '@shared/constants'
 import type { AppBindings } from '../../env'
 import { decryptSecret, encryptSecret } from '../../lib/crypto'
 import { ApiError } from '../../lib/errors'
@@ -6,8 +7,12 @@ import { newId } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
+import { insertWebdavTrack } from './webdav-routes'
 import { pathParam } from './params'
-import { createAlistServerSchema, patchAlistServerSchema } from './schemas'
+import { resolveMusicTrackType } from './keys'
+import { createAlistServerSchema, importAlistTrackSchema, patchAlistServerSchema } from './schemas'
+import type { MusicTrackRow } from './rows'
+import type { MusicTrack } from '@shared/types'
 
 // FEA-A3: Alist servers are the user's own registrations. The token is encrypted
 // at rest and never travels back to the browser — the routes answer name, URL and
@@ -38,6 +43,8 @@ export function registerMusicAlistRoutes(routes: Hono<AppBindings>): void {
   routes.post('/alist', requireAuth, (c) => createServer(c))
   routes.patch('/alist/:id', requireAuth, (c) => patchServer(c))
   routes.delete('/alist/:id', requireAuth, (c) => deleteServer(c))
+  routes.get('/alist/:id/list', requireAuth, (c) => listDirectory(c))
+  routes.post('/alist/:id/import', requireAuth, (c) => importTrack(c))
 }
 
 async function listServers(c: Context<AppBindings>): Promise<Response> {
@@ -94,6 +101,133 @@ async function deleteServer(c: Context<AppBindings>): Promise<Response> {
   await enforceMusicBudget(c.env.DB, 'write', userId)
   await c.env.DB.prepare('DELETE FROM music_alist_servers WHERE user_id = ?1 AND id = ?2').bind(userId, id).run()
   return c.json({ ok: true })
+}
+
+// FEA-A3-2: browse one directory of the registered server. Paths travel relative
+// to the server's root; the upstream fs/list call joins them onto the root.
+async function listDirectory(c: Context<AppBindings>): Promise<Response> {
+  const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'webdav', userId)
+  const id = pathParam(c, 'id')
+  const server = await resolveAlistServer(c.env, userId, id)
+  const subPath = normalizeAlistPath(c.req.query('path') ?? '/')
+  const data = await alistApi(server, '/api/fs/list', {
+    path: joinAlistPath(server.rootPath, subPath),
+    page: 1, per_page: LIMITS.musicAlistListEntryMax, refresh: false,
+  }) as { content: Array<{ name: string; size: number; is_dir: boolean }> | null }
+  const entries = (data.content ?? []).map((entry) => ({
+    name: entry.name,
+    isDir: Boolean(entry.is_dir),
+    size: entry.size ?? 0,
+    path: joinAlistPath(subPath, entry.name),
+  }))
+  entries.sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1))
+  return c.json({ path: subPath, entries })
+}
+
+// The import registers a reference row exactly like the WebDAV import: metadata
+// only, no bytes stored, nothing charged to the quota.
+async function importTrack(c: Context<AppBindings>): Promise<Response> {
+  const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'webdav', userId)
+  const id = pathParam(c, 'id')
+  const server = await resolveAlistServer(c.env, userId, id)
+  const body = await readJsonValidated(c, importAlistTrackSchema, JSON_BODY_LIMITS.small)
+  const path = normalizeAlistPath(body.path)
+  const data = await alistApi(server, '/api/fs/get', { path: joinAlistPath(server.rootPath, path) }) as {
+    name?: string
+    size?: number
+    is_dir?: boolean
+  }
+  if (data.is_dir) throw ApiError.badRequest('Choose a file, not a directory')
+  const filename = alistFileNameOf(path)
+  const trackType = resolveMusicTrackType(filename, '')
+  if (!trackType) throw ApiError.badRequest('Unsupported media format')
+
+  const now = Date.now()
+  const row: MusicTrackRow = {
+    id: newId(),
+    title: body.title?.trim() || filename.replace(/\.[^.]+$/, ''),
+    artist: body.artist?.trim() ?? '',
+    album: body.album?.trim() ?? '',
+    duration_ms: 0,
+    source: 'alist',
+    object_key: alistObjectKey(id, path),
+    mime: trackType.mime,
+    size_bytes: data.size ?? 0,
+    cover_url: null,
+    lyric: null,
+    is_favorite: 0,
+    is_pinned: 0,
+    play_count: 0,
+    last_played_at: null,
+    content_hash: null,
+    created_at: now,
+    updated_at: now,
+  }
+  await insertWebdavTrack(c.env.DB, userId, row)
+  return c.json(toTrackFromRow(row), 201)
+}
+
+function toTrackFromRow(row: MusicTrackRow): MusicTrack {
+  return {
+    id: row.id,
+    title: row.title,
+    artist: row.artist,
+    album: row.album,
+    durationMs: row.duration_ms,
+    source: 'alist',
+    format: resolveMusicTrackType(row.object_key, row.mime)?.format ?? null,
+    webdavPath: null,
+    mime: row.mime,
+    sizeBytes: row.size_bytes,
+    coverUrl: null,
+    lyric: null,
+    hasLyric: false,
+    tagIds: [],
+    isFavorite: false,
+    isPinned: false,
+    playCount: 0,
+    lastPlayedAt: null,
+    contentHash: null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+// One upstream Alist API call: the token rides the Authorization header, and a
+// non-200 `code` (Alist's own convention) is a clean 502 to the client.
+export async function alistApi(
+  server: ResolvedAlistServer,
+  apiPath: '/api/fs/list' | '/api/fs/get' | '/api/fs/search',
+  body: Record<string, unknown>,
+): Promise<unknown> {
+  let response: Response
+  try {
+    response = await fetch(`${server.url}${apiPath}`, {
+      method: 'POST',
+      headers: { Authorization: server.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    throw new ApiError(502, 'storage_unavailable', 'The Alist server is unreachable')
+  }
+  if (!response.ok) throw new ApiError(502, 'storage_unavailable', `Alist request failed: HTTP ${response.status}`)
+  const payload = await response.json().catch(() => null) as { code?: number; message?: string; data?: unknown } | null
+  if (!payload || payload.code !== 200) {
+    throw new ApiError(502, 'storage_unavailable', payload?.message || 'Alist request failed')
+  }
+  return payload.data
+}
+
+function normalizeAlistPath(path: string): string {
+  const trimmed = `/${path.replace(/\/+/g, '/').replace(/^\/+/, '')}`
+  return trimmed.replace(/\/+$/, '') || '/'
+}
+
+export function joinAlistPath(base: string, sub: string): string {
+  if (sub === '/') return base || '/'
+  return `${base.replace(/\/+$/, '')}/${sub.replace(/^\/+/, '')}`
 }
 
 interface ServerRow {

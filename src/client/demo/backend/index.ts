@@ -15,6 +15,7 @@ import { registerShareRoutes } from './routes/share'
 import { registerShareAdminRoutes } from './routes/share-admin'
 import { registerBackupRoutes } from './routes/backup'
 import { registerBlogRoutes } from './routes/blog'
+import { registerDemoMusicAlistRoutes } from './routes/music-alist'
 import { registerMusicRoutes } from './routes/music'
 import { registerMusicOrganizerRoutes } from './routes/music-organizer'
 
@@ -55,6 +56,7 @@ export function createDemoBackend(): DemoBackend {
   registerBackupRoutes(app, state)
   registerBlogRoutes(app, state)
   registerMusicRoutes(app, state)
+  registerDemoMusicAlistRoutes(app, state)
   registerMusicOrganizerRoutes(app, state)
 
   app.all('/api/*', () => apiError(404, 'not_found', 'Demo endpoint not found'))

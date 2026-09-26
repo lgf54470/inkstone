@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { loadPreferences, type MusicPreferences } from './state'
+import { initialAlistBrowseState } from './alist'
 import { librarySlice } from './library'
 import { playerSlice } from './player-slice'
 import { initialWebdavState } from './webdav'
@@ -48,6 +49,7 @@ function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> 
     trashLoading: false,
     alistServers: [],
     alistServersLoading: false,
+    alistBrowse: initialAlistBrowseState(),
     uploadTarget: 'r2',
     transfersOpen: false,
     webdav: initialWebdavState(),

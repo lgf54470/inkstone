@@ -4,6 +4,7 @@ export {
   type MusicBatchAction, type MusicUploadResult, type MusicTrackPatch,
   type MusicWebdavImportInput, type MusicWebdavListing, type MusicPlaylistPatch,
   type MusicAlistServerView, type MusicAlistCreateInput, type MusicAlistPatchInput,
+  type MusicAlistEntry, type MusicAlistImportInput,
   type MusicTrashEntry, type PublicPlaylist, type PublicPlaylistTrack,
 } from './music'
 import { account } from './account'

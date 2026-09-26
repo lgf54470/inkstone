@@ -100,6 +100,19 @@ export interface MusicAlistPatchInput {
   token?: string
 }
 
+export interface MusicAlistEntry {
+  name: string
+  isDir: boolean
+  size: number
+  path: string
+}
+
+export interface MusicAlistImportInput {
+  path: string
+  title?: string
+  artist?: string
+}
+
 export interface MusicTrashEntry {
   id: string
   kind: 'track' | 'playlist'
@@ -134,6 +147,12 @@ export const music = {
 
   deleteAlistServer: (id: string) =>
     request<{ ok: boolean }>(`/api/music/alist/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  listAlistDirectory: (serverId: string, path: string) =>
+    request<{ path: string; entries: MusicAlistEntry[] }>(`/api/music/alist/${encodeURIComponent(serverId)}/list?path=${encodeURIComponent(path)}`, { timeoutMs: 30_000 }),
+
+  importAlistTrack: (serverId: string, input: MusicAlistImportInput) =>
+    request<MusicTrack>(`/api/music/alist/${encodeURIComponent(serverId)}/import`, { method: 'POST', body: input, timeoutMs: 30_000 }),
 
   listTrash: () => request<{ entries: MusicTrashEntry[] }>('/api/music/trash'),
 

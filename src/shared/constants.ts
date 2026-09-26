@@ -109,6 +109,7 @@ export const LIMITS = {
   musicAlistUrlMaxLength: 2048,
   musicAlistRootPathMaxLength: 1024,
   musicAlistTokenMaxLength: 512,
+  musicAlistListEntryMax: 500,
   musicPlaylistNameMaxLength: 120,
   musicPlaylistDescriptionMaxLength: 500,
   musicPlaylistItemsMax: 5000,

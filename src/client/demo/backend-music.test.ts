@@ -289,3 +289,22 @@ describe('demo music trash (FEA-B1)', () => {
     expect(trash.entries).toEqual([])
   })
 })
+
+describe('demo alist (FEA-A3)', () => {
+  it('manages servers, browses and imports outside the quota', async () => {
+    const backend = await authedBackend()
+    const created = (await (await call(backend, '/api/music/alist', jsonInit({
+      name: 'NAS', url: 'https://alist.example.com', token: 'tok', rootPath: '/media',
+    }))).json()) as Record<string, unknown>
+    expect(created.id).toBeTruthy()
+    expect(JSON.stringify(created)).not.toContain('tok')
+
+    const listing = (await (await call(backend, `/api/music/alist/${created.id}/list?path=%2F`)).json()) as { entries: Array<{ name: string; isDir: boolean }> }
+    expect(listing.entries.some((entry) => entry.name === 'ambient-one.mp3')).toBe(true)
+
+    const imported = (await (await call(backend, `/api/music/alist/${created.id}/import`, jsonInit({ path: '/ambient-one.mp3' }))).json()) as { source: string; id: string }
+    expect(imported.source).toBe('alist')
+    const library = (await (await call(backend, '/api/music/library')).json()) as { stats: { totalBytes: number } }
+    expect(library.stats.totalBytes).toBe(0)
+  })
+})

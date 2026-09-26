@@ -71,7 +71,7 @@ export function toTrack(row: MusicTrackRow, tagIds: string[]): MusicTrack {
     artist: row.artist,
     album: row.album,
     durationMs: row.duration_ms,
-    source: row.source === 'webdav' ? 'webdav' : row.source === 'external' ? 'external' : 'r2',
+    source: row.source === 'webdav' ? 'webdav' : row.source === 'external' ? 'external' : row.source === 'alist' ? 'alist' : 'r2',
     format: resolveMusicTrackType(row.object_key, row.mime)?.format ?? null,
     // WebDAV keys are the user's own remote paths, already listed in the browse UI;
     // internal R2 storage keys must never reach the browser or a downloaded M3U.

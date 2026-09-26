@@ -1,5 +1,5 @@
 import type { StoreApi } from 'zustand'
-import type { MusicAlistCreateInput, MusicAlistPatchInput, MusicAlistServerView, MusicTrashEntry } from '../../../lib/api'
+import type { MusicAlistCreateInput, MusicAlistEntry, MusicAlistPatchInput, MusicAlistServerView, MusicTrashEntry } from '../../../lib/api'
 import type {
   MusicPlayMode, MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry,
 } from '@shared/types'
@@ -167,6 +167,14 @@ export interface MusicStoreState {
   trashLoading: boolean
   alistServers: MusicAlistServerView[]
   alistServersLoading: boolean
+  alistBrowse: {
+    serverId: string | null
+    path: string
+    entries: MusicAlistEntry[]
+    loading: boolean
+    error: string | null
+    importingPaths: string[]
+  }
   uploadTarget: MusicTransferTarget
   transfersOpen: boolean
   webdav: MusicWebdavState
@@ -261,6 +269,9 @@ export interface MusicStoreState {
   syncOfflineTracks: () => Promise<void>
   openTrash: () => Promise<void>
   loadAlistServers: () => Promise<void>
+  browseAlist: (serverId: string, path: string) => Promise<void>
+  importAlistTrack: (serverId: string, entry: MusicAlistEntry) => Promise<void>
+  importAlistFolder: () => Promise<void>
   createAlistServer: (input: MusicAlistCreateInput) => Promise<boolean>
   patchAlistServer: (id: string, patch: MusicAlistPatchInput) => Promise<boolean>
   deleteAlistServer: (id: string) => Promise<void>
