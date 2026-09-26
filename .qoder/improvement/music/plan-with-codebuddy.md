@@ -56,19 +56,19 @@
 
 ### 批次 ③ · 网络与存储（M–L）
 
-- [ ] PERF-3 播放位置与队列分开持久化
-- [ ] PERF-4 `/library` keyset 分页 + ETag/增量
-- [ ] PERF-10 KV 无 Range 全量读改流式
-- [ ] PERF-11 浮窗/沉浸层 `lazy` 化
-- [ ] PERF-12 bundle 预算按 eager/lazy 分层
+- [x] PERF-3 播放位置与队列分开持久化（`2cfb407a`）
+- [~] PERF-4 `/library` 条件读取（ETag/304）已做（`97106fa8`）；keyset 分页按下方「已知限制」不做
+- [x] PERF-10 KV 无 Range 全量读改流式（`2b41369d`）
+- [x] PERF-11 浮窗/沉浸层 `lazy` 化（`13c910b6`）
+- [x] PERF-12 bundle 预算按 eager/lazy 分层（`fce5c41d`）
 
-### 批次 ⑤ · 能力兑现（需产品决策）
+### 批次 ⑤ · 能力兑现（需产品决策；本轮按最小可用形态落地，取舍见文末「已知限制」）
 
-- [ ] F-1 歌词逐行点击跳转 + 时间轴偏移校准
-- [ ] F-7 EQ 预设
-- [ ] F-5 M3U 导入
-- [ ] F-9 A-B 循环 / 睡眠淡出
-- [ ] F-10 搜索覆盖歌词与标签名
+- [x] F-1 歌词逐行点击跳转 + 时间轴偏移校准（`def838e7`）
+- [x] F-7 EQ 预设（`9452909c`）
+- [x] F-5 M3U 导入（`38d16679`）
+- [x] F-9 A-B 循环 / 睡眠淡出（`7d60503d`）
+- [x] F-10 搜索覆盖标签路径与已加载歌词（`612c5f34`）
 
 ## 进度日志
 
@@ -104,3 +104,20 @@
 | 2026-09-26 | PERF-7 id→Tag 映射整表共享 | `d9d8d3e6` | 先红 6 次着色（每行解析一次）→ 修复后 2 次；music 70 文件 ✅；typecheck ✅；12 项静态门禁 ✅（8488 条）；提交钩子 15 文件 / 74 例 ✅ | 计数改打在 `tagColorValue`（跨模块、可拦截），先试 `toTagRows` 因同模块内部调用拿不到数；无 provider 时行内兜底自解析，标签不静默消失；为过 size 门禁把 handlers 抽成 useRowHandlers |
 | 2026-09-26 | PERF-8 侧栏最近播放计数按库记忆化 | `65494b60` | 先红 15 次读（无关更新各重扫一次）→ 修复后 9 次；music 71 文件 ✅；typecheck ✅；12 项静态门禁 ✅（8494 条） | 用 `lastPlayedAt` getter 计数，不靠 mock 内部函数；导航项抽 useNavItems、行抽 NavRow 以守住函数行数 |
 | 2026-09-26 | PERF-9 队列行只随队列重画 | `bae4f7a0` | 先红 3 次行重画（重渲染列表但队列不变）→ 修复后 0 次；music 72 文件 ✅；typecheck ✅；12 项静态门禁 ✅（8500 条）；提交钩子 16 文件 / 79 例 ✅ | `rows` useMemo + `QueueRowItem` memo + 拖拽回调 useCallback；`onDropRow` 改收 (from,to) 由行内给出目标位 |
+| 2026-09-26 | PERF-3 播放位置与队列分开持久化 | `2cfb407a` | 先红 1 例（位置漂移时断言 position 端点，实测走的是整表 PUT）；修复后 music-playback-split 2 ✅ + progress 7 ✅ + music-routes 67 ✅；typecheck ✅；12 项静态门禁 ✅；全量 test:unit 484 文件 ✅ | 新增 PUT /playback/position，单条 upsert 只写 index/position，新建行以子查询沿用已有 queue，位置保存不会盖掉队列；savePlayback 仅在队列变化或 pagehide 时发 |
+| 2026-09-26 | PERF-4 /library 条件读取 | `97106fa8` | 先红 1 例（无 ETag）；修复后 music-routes 68 ✅（304 空体 + 改动后 200）+ library-load 28 ✅；typecheck ✅；12 项静态门禁 ✅ | ETag 取整份答案的 SHA-256（弱校验），字段新增不会漏；304 时保留原数组引用，派生 memo 不重建；keyset 分页见「已知限制」（客户端要整库做本地排序/过滤/搜索，先做会是无人调用的死接口） |
+| 2026-09-26 | PERF-10 KV 整值读取改流式 | `2b41369d` | 先红 1 例（整值读实测 arrayBufferReads=1）；修复后 KV 组 6 ✅；typecheck ✅；12 项静态门禁 ✅；全量 test:unit 484 文件 ✅ | size 写进 KV metadata；旧值无 metadata 时用行内 size_bytes 声明 Content-Length（自有存储，同一上传写入，与 WebDAV 的第三方长度声明不同） |
+| 2026-09-26 | PERF-11 浮窗/沉浸层按需加载 | `13c910b6` | 先红 2 例（未展示时实测模块已被求值）；修复后 music-lazy-overlays 3 ✅；music 76 文件 ✅；12 项静态门禁 ✅ | 沉浸层首次打开后保持挂载，关闭动画不变；浮窗按 floatingVisible 闸门（默认 true，收益是分块不占首屏而非省流量） |
+| 2026-09-26 | PERF-12 bundle 预算分层 | `fce5c41d` | 修复前 budget:check 已红（music-hub-modal 78.2 KiB > 78.1 KiB 旧预算）；分层后通过：eager 925.1 KiB / 1 MiB、music 各块 ≤ 78.2 KiB / 93.8 KiB | 从 index.html 与 app- 启动块沿静态 import 求首屏图；MUST_BE_LAZY 断言 music 永不进首屏（用假 chunk 注入 index.html 验证过红灯）；lazy 预算只作用于非首屏块 |
+| 2026-09-26 | F-1 歌词点行跳转 + 按曲校准 | `def838e7` | 先红 4 例（行不是按钮、无校准控件）；修复后 lyric-offset 5 ✅ + immersive 14 ✅；music 75 文件 ✅；12 项静态门禁 ✅ | 校准存 lyricOffsets（每曲一条，clamp ±5s，归零即删）；正偏移=歌词延后；歌词区抽 LyricsPanel 守函数行数；aria-live 用 role=status 读数 |
+| 2026-09-26 | F-7 EQ 预设 | `9452909c` | 先红 4 例（无 applyEqPreset / 无预设行）；修复后 music-eq-presets 6 ✅；music 76 文件 ✅；12 项静态门禁 ✅ | 预设即三段数值快捷方式，当前档位由 matchEqPreset 反查（手调后自动取消标记，不另存「当前预设」状态） |
+| 2026-09-26 | F-5 M3U 导入 | `38d16679` | 先红 2 例（无 addManyToQueue）；修复后 music-m3u 8 ✅（含导出回灌往返）；music 77 文件 ✅；12 项静态门禁 ✅ | 匹配用三种拼写（下载文件名 / artist - title / 曲名），大小写与空白归一；未匹配条目以警告提示报出；整表入队只写一次状态、提示一次 |
+| 2026-09-26 | F-9 A-B 循环 + 睡眠淡出 | `7d60503d` | 先红 6 例；修复后 music-loop-sleep 8 ✅；music 78 文件 ✅；12 项静态门禁 ✅ | 循环区间带 trackId（跨曲视作无循环、换曲即清）；最短 500ms；睡眠最后 20s 按剩余比例压音量，到点/取消均恢复用户音量 |
+| 2026-09-26 | F-10 搜索覆盖标签路径与已加载歌词 | `612c5f34` | 先红 3 例（无标签/歌词检索）；修复后 music-search 14 ✅；music 78 文件 ✅；12 项静态门禁 ✅ | 标签用完整路径（与胶囊一致）；歌词走子串且排在名称命中之后，<3 字符不扫歌词；索引缓存键并入 tags，默认值共用常量以免击键重建；歌词检索范围见「已知限制」 |
+
+## 已知限制（本轮收尾）
+
+- **PERF-4 keyset 分页未做**：客户端把整库装进 store，再做本地排序/过滤/拼音搜索/分组/重复检测；只加分页参数会得到一个无人调用的接口（违反「禁止死代码」）。真要做，得先把「列表数据源」改成服务端查询模型（分页 + 服务端排序/搜索），属独立的 M–L 改动，不在本轮。
+- **歌词搜索只覆盖已加载歌词**：`/library` 有意不下发歌词正文（按需取，见既有 FEAT 设计），所以只有播放过或打开过详情的曲目带歌词在 store 里。要做到「全库歌词搜索」需要新端点（`lyric LIKE` 或 FTS），并给搜索加异步结果合并与竞态处理，本轮未做。
+- **A-B 循环只在沉浸式播放器有控件**：共享 `MusicSeekBar` 是裸 `input[type=range]`，没有可叠加的轨道元素，区间高亮需要重排该组件的几何结构，本轮以 `role=status` 文本读数替代。
+- **浏览器门禁（`check-contrast` / `e2e-visual`）未复跑**：需要本机 Chrome 与本地实例；本轮新增的浮层（歌词校准控件、A-B 控件、EQ 预设行、导入按钮）只跑了 jsdom 与静态门禁，视觉与对比度需在有实例的环境补跑。
