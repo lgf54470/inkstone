@@ -3,6 +3,7 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import type { MusicTrack } from '@shared/types'
+import { initI18n } from '../../lib/i18n'
 import { MusicHubSidebar } from './music-hub-sidebar'
 import { useMusic } from './music-store'
 
@@ -90,5 +91,20 @@ describe('sidebar counts are derived, not recomputed (PERF-8)', () => {
     const rows = [...document.querySelectorAll('button')].map((button) => button.textContent ?? '')
     const recent = rows.find((text) => text.includes('2'))
     expect(recent).toBeDefined()
+  })
+})
+
+describe('offline nav row (FEA-B4)', () => {
+  it('counts this device\'s cached tracks and switching to it filters the list', async () => {
+    await initI18n()
+    useMusic.setState({ offlineTrackIds: ['t1', 't3'] })
+    await mountSidebar()
+    const offline = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Offline'))
+    expect(offline?.textContent).toContain('2')
+
+    await act(async () => {
+      offline?.click()
+    })
+    expect(useMusic.getState().scope).toEqual({ kind: 'offline' })
   })
 })

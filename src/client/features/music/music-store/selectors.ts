@@ -16,12 +16,13 @@ export function useVisibleTracks(): MusicTrack[] {
   const romanized = useMusic((s) => s.romanized)
   const remoteLyricMatches = useMusic((s) => s.remoteLyricMatches)
   const viewMode = useMusic((s) => s.viewMode)
+  const offlineTrackIds = useMusic((s) => s.offlineTrackIds)
   // Ranking the whole library is the expensive part; React may paint the previous
   // result once more rather than block typing while a fresh query settles.
   const deferredQuery = useDeferredValue(query)
   return useMemo(
-    () => visibleTracks({ tracks, playlists, tags, scope, query: deferredQuery, sort, sortDirection, sourceFilter, romanized, remoteLyricMatches, viewMode }),
-    [tracks, playlists, tags, scope, deferredQuery, sort, sortDirection, sourceFilter, romanized, remoteLyricMatches, viewMode],
+    () => visibleTracks({ tracks, playlists, tags, scope, query: deferredQuery, sort, sortDirection, sourceFilter, romanized, remoteLyricMatches, viewMode, offlineTrackIds }),
+    [tracks, playlists, tags, scope, deferredQuery, sort, sortDirection, sourceFilter, romanized, remoteLyricMatches, viewMode, offlineTrackIds],
   )
 }
 
@@ -37,10 +38,11 @@ export function useHiddenMatchCount(): number {
   const romanized = useMusic((s) => s.romanized)
   const remoteLyricMatches = useMusic((s) => s.remoteLyricMatches)
   const viewMode = useMusic((s) => s.viewMode)
+  const offlineTrackIds = useMusic((s) => s.offlineTrackIds)
   const deferredQuery = useDeferredValue(query)
   return useMemo(
-    () => hiddenMatchCount({ tracks, playlists, tags, scope, query: deferredQuery, sourceFilter, romanized, remoteLyricMatches, viewMode }),
-    [tracks, playlists, tags, scope, deferredQuery, sourceFilter, romanized, remoteLyricMatches, viewMode],
+    () => hiddenMatchCount({ tracks, playlists, tags, scope, query: deferredQuery, sourceFilter, romanized, remoteLyricMatches, viewMode, offlineTrackIds }),
+    [tracks, playlists, tags, scope, deferredQuery, sourceFilter, romanized, remoteLyricMatches, viewMode, offlineTrackIds],
   )
 }
 

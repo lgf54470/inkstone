@@ -29,6 +29,9 @@ export type MusicScope =
   | { kind: 'artists' }
   // M-53: a flat list of the tracks whose upload checksum matches another copy.
   | { kind: 'duplicates' }
+  // FEA-B4: what this device has cached for offline playback (service worker cache,
+  // see lib/offline-audio); per device, so it never comes from the server.
+  | { kind: 'offline' }
   // A drilled-down album has to carry the artist too: different artists can share an album title.
   | { kind: 'album'; artist: string; album: string }
   | { kind: 'artist'; artist: string }

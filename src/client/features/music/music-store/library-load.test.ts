@@ -251,6 +251,40 @@ describe('visibleTracks in duplicates scope', () => {
   })
 })
 
+describe('visibleTracks in offline scope (FEA-B4)', () => {
+  it('keeps only the tracks cached on this device, sorted like any other list', () => {
+    const state = offlineScopeState()
+    expect(visibleTracks(state).map((track) => track.id)).toEqual(['cached-1', 'cached-2'])
+  })
+
+  it('drops tracks that left the device cache from the view without touching the library', () => {
+    const state = offlineScopeState()
+    state.offlineTrackIds = ['cached-1']
+    expect(visibleTracks(state).map((track) => track.id)).toEqual(['cached-1'])
+    expect(state.tracks).toHaveLength(3)
+  })
+
+  it('still applies the query filter inside the offline view', () => {
+    const state = offlineScopeState()
+    const searched = visibleTracks({ ...state, query: 'cached-2' })
+    expect(searched.map((track) => track.id)).toEqual(['cached-2'])
+  })
+})
+
+function offlineScopeState(): MusicStoreState {
+  const track = (id: string): MusicTrack => ({ ...searchableTrack(id), title: id, createdAt: 0 })
+  return {
+    scope: { kind: 'offline' },
+    sourceFilter: 'all',
+    query: '',
+    sort: 'title',
+    tags: [],
+    romanized: {},
+    tracks: [track('cached-2'), track('cached-1'), track('streaming')],
+    offlineTrackIds: ['cached-1', 'cached-2'],
+  } as unknown as MusicStoreState
+}
+
 function romanizeStore() {
   let state = {
     tracks: [{ id: 't1', title: '月光', artist: '', album: '' } as MusicTrack],

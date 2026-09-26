@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react'
-import { Clock3, Copy, Disc, FolderHeart, Heart, Library, Pin, Users } from 'lucide-react'
+import { Clock3, Copy, Disc, FolderHeart, HardDriveDownload, Heart, Library, Pin, Users } from 'lucide-react'
 import { Tooltip } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -61,6 +61,7 @@ function CollectionNav() {
 function useNavItems(): NavItem[] {
   const stats = useMusic((state) => state.stats)
   const tracks = useMusic((state) => state.tracks)
+  const offlineCount = useMusic((state) => state.offlineTrackIds.length)
   const recentCount = useMemo(() => recentlyPlayedCount(tracks), [tracks])
   const albumCount = useMemo(() => buildGroups(tracks, 'albums').length, [tracks])
   const artistCount = useMemo(() => buildGroups(tracks, 'artists').length, [tracks])
@@ -74,8 +75,9 @@ function useNavItems(): NavItem[] {
       { scope: { kind: 'albums' }, icon: <Disc size={13} />, label: t('music.albums'), count: albumCount },
       { scope: { kind: 'artists' }, icon: <Users size={13} />, label: t('music.artists'), count: artistCount },
       { scope: { kind: 'duplicates' }, icon: <Copy size={13} />, label: t('music.duplicates'), count: duplicateCount },
+      { scope: { kind: 'offline' }, icon: <HardDriveDownload size={13} />, label: t('music.offline_view'), count: offlineCount },
     ],
-    [stats, recentCount, albumCount, artistCount, duplicateCount],
+    [stats, recentCount, albumCount, artistCount, duplicateCount, offlineCount],
   )
 }
 

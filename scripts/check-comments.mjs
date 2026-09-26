@@ -3211,6 +3211,8 @@ const allowed = new Map([
     '// A practice loop the listener marks on the track they are hearing; `endMs` stays',
     '// null until the second point is placed.',
     '// M-53: a flat list of the tracks whose upload checksum matches another copy.',
+    '// FEA-B4: what this device has cached for offline playback (service worker cache,',
+    '// see lib/offline-audio); per device, so it never comes from the server.',
     '// A drilled-down album has to carry the artist too: different artists can share an album title.',
     '// The anchor is the trigger element for a button-opened menu and the pointer for a',
     '// right-click; it only lives in the store while the single menu instance is open.',

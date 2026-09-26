@@ -221,6 +221,7 @@ function emptyTitle(scope: MusicScope): string {
   if (scope.kind === 'pinned') return t('music.no_pinned')
   if (scope.kind === 'playlist') return t('music.playlist_empty')
   if (scope.kind === 'duplicates') return t('music.no_duplicates')
+  if (scope.kind === 'offline') return t('music.no_offline')
   return t('music.no_tracks')
 }
 

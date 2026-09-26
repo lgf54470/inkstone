@@ -195,7 +195,7 @@ export function clearSelection(set: MusicSet): void {
 // Ranking reads these fields and nothing else, so the hook that feeds it subscribes to exactly
 // this set: declaring the slice keeps the subscription list and the memo dependencies honest
 // instead of letting a cast hide a field the view reads but never watches.
-type MusicScopeView = Pick<MusicStoreState, 'tracks' | 'playlists' | 'tags' | 'scope'>
+type MusicScopeView = Pick<MusicStoreState, 'tracks' | 'playlists' | 'tags' | 'scope' | 'offlineTrackIds'>
 export type MusicLibraryView = MusicScopeView & Pick<MusicStoreState, 'remoteLyricMatches' | 'sourceFilter' | 'query' | 'sort' | 'sortDirection' | 'romanized' | 'tags' | 'viewMode'>
 
 // The "matches left out" notice ranks the same way, minus the order it never applies.
@@ -224,6 +224,7 @@ function applyScope(state: MusicScopeView): MusicTrack[] {
   // The browse kinds draw a grouped grid, not a track list; the list stays empty on purpose.
   if (scope.kind === 'albums' || scope.kind === 'artists') return []
   if (scope.kind === 'duplicates') return duplicateTracks(state.tracks)
+  if (scope.kind === 'offline') return state.tracks.filter((track) => state.offlineTrackIds.includes(track.id))
   if (scope.kind === 'album') return state.tracks.filter((track) => track.artist === scope.artist && track.album === scope.album)
   if (scope.kind === 'artist') return state.tracks.filter((track) => track.artist === scope.artist)
   if (scope.kind === 'tag') return filterByTag(state, scope.tagId)
