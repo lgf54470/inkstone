@@ -7,6 +7,7 @@ import { registerMusicLyricLookupRoutes } from './lyrics'
 import { registerMusicPlaybackRoutes } from './playback'
 import { registerMusicPlaylistRoutes } from './playlists'
 import { registerMusicPodcastRoutes } from './podcasts'
+import { registerMusicProviderRoutes } from './provider'
 import { registerMusicSettingsRoutes } from './settings'
 import { registerMusicTrashRoutes } from './trash'
 import { registerMusicTagRoutes } from './tags'
@@ -29,6 +30,7 @@ registerMusicSettingsRoutes(musicRoutes)
 registerMusicTrashRoutes(musicRoutes)
 registerMusicAlistRoutes(musicRoutes)
 registerMusicPodcastRoutes(musicRoutes)
+registerMusicProviderRoutes(musicRoutes)
 
 export { registerMusicPublicRoutes } from './public'
 export { purgeExpiredMusicTrash } from './trash'

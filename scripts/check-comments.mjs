@@ -10434,6 +10434,18 @@ const allowed = new Map([
     '// A subscription without a title still needs a stable display name before the',
     '// first feed refresh fills in the channel title.',
   ]],
+  ['src/worker/routes/music/provider.ts', [
+    '// FEA-A1-2: the online-source proxy. The browser never talks to third-party',
+    '// catalogues — the page CSP forbids it, and the allowlist below is the only',
+    '// host the worker will fetch. A1-1 ships the switches; these routes carry the',
+    '// traffic once a provider is enabled. The aggregate upstream (GD) fronts the',
+    '// several catalogues the client lists, so the allowlist is one host.',
+    '// One search page, normalized: the upstream\'s field types drift (artist as a',
+    '// string or an array, duration in ms or absent), so every field is coerced here',
+    '// and the client sees one shape. An upstream failure is a 502, not a crash.',
+    '// The playable URL is minted per play (upstream links expire), which is why',
+    '// this is an endpoint and not a stored value on the track row.',
+  ]],
   ['src/worker/routes/music/public.ts', [
     '// Read-only projection of the owner\'s library for the blog player: no keys, sizes or flags.',
     '// Per-playlist sharing is its own opt-in (M-51): these routes answer from the',
