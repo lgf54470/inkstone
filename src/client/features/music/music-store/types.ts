@@ -2,6 +2,7 @@ import type { StoreApi } from 'zustand'
 import type {
   MusicPlayMode, MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry,
 } from '@shared/types'
+import type { MusicEqPresetId } from '../music-eq-presets'
 
 export type MusicSort = 'recent' | 'title' | 'artist' | 'album' | 'duration' | 'plays'
 export type MusicSortDirection = 'asc' | 'desc'
@@ -174,6 +175,7 @@ export interface MusicStoreState {
   resetLyricOffset: (trackId: string) => void
   setEqEnabled: (enabled: boolean) => void
   setEqBand: (band: MusicEqBand, db: number) => void
+  applyEqPreset: (presetId: MusicEqPresetId) => void
   setNormalizeEnabled: (enabled: boolean) => void
   setCrossfadeEnabled: (enabled: boolean) => void
   addToQueue: (id: string, next?: boolean) => void

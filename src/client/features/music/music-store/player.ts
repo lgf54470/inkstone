@@ -1,6 +1,7 @@
 import type { MusicTrack } from '@shared/types'
 import { api } from '../../../lib/api'
 import { toastMusicError, toastMusicNotice } from '../music-feedback'
+import { EQ_PRESETS, type MusicEqPresetId } from '../music-eq-presets'
 import { computeNextIndex, computePrevIndex, nextPlayMode } from '../music-utils'
 import {
   applyVolume, mediaElement, cancelCrossfade, configureAudio, configureEqualizer, configureLoudnessNormalization,
@@ -274,6 +275,16 @@ function writeLyricOffset(set: MusicSet, get: MusicGet, trackId: string, offset:
   if (offset === 0) delete offsets[trackId]
   else offsets[trackId] = offset
   set({ lyricOffsets: offsets })
+  persist(get)
+}
+
+// One preset moves all three bands, so the graph is re-configured once instead of
+// three times and a single persist carries the whole voicing.
+export function applyEqPreset(set: MusicSet, get: MusicGet, presetId: MusicEqPresetId): void {
+  const preset = EQ_PRESETS.find((entry) => entry.id === presetId)
+  if (!preset) return
+  set({ eqLowDb: preset.bands.low, eqMidDb: preset.bands.mid, eqHighDb: preset.bands.high })
+  applyEqualizer(get())
   persist(get)
 }
 

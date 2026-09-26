@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Check, Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, SlidersHorizontal, Square, Volume1, Volume2, VolumeX } from 'lucide-react'
-import { IconButton } from '../../components/primitives'
+import { Button, IconButton } from '../../components/primitives'
 import { Slider, Switch } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
@@ -8,6 +8,7 @@ import { formatTimecode } from '../../lib/time'
 import { EQ_GAIN_RANGE_DB, PLAYBACK_RATES, progressTimeMs } from './music-store'
 import { useMusic } from './music-store'
 import type { MusicEqBand } from './music-store'
+import { EQ_PRESETS, matchEqPreset } from './music-eq-presets'
 import { MusicPopover } from './music-popover'
 import { confirmClearQueue } from './music-queue-clear'
 import { MusicQueueBrowser } from './music-queue-browser'
@@ -258,6 +259,32 @@ export function MusicEqButton({ size = 'sm', className }: { size?: 'sm' | 'md'; 
   )
 }
 
+// The presets are shortcuts onto the same three bands, so the group marks which one
+// the sliders currently agree with and lets a manual move clear that mark.
+function EqPresetRow() {
+  const low = useMusic((state) => state.eqLowDb)
+  const mid = useMusic((state) => state.eqMidDb)
+  const high = useMusic((state) => state.eqHighDb)
+  const applyEqPreset = useMusic((state) => state.applyEqPreset)
+  const active = matchEqPreset({ low, mid, high })
+  return (
+    <div role='group' aria-label={t('music.eq_presets')} className='grid grid-cols-3 gap-1 pb-1'>
+      {EQ_PRESETS.map((preset) => (
+        <Button
+          key={preset.id}
+          size='sm'
+          variant={active === preset.id ? 'primary' : 'secondary'}
+          aria-pressed={active === preset.id}
+          className='px-1'
+          onClick={() => applyEqPreset(preset.id)}
+        >
+          {t(preset.labelKey)}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
 export function MusicEqPanel({ className }: { className?: string }) {
   const eqEnabled = useMusic((state) => state.eqEnabled)
   const setEqEnabled = useMusic((state) => state.setEqEnabled)
@@ -271,6 +298,7 @@ export function MusicEqPanel({ className }: { className?: string }) {
         <span className='text-[length:var(--text-11)] text-[var(--text-secondary)]'>{t('music.eq_enable')}</span>
         <Switch checked={eqEnabled} onChange={setEqEnabled} label={t('music.eq_enable')} />
       </div>
+      <EqPresetRow />
       <EqBandSlider band='low' label={t('music.eq_bass')} />
       <EqBandSlider band='mid' label={t('music.eq_mids')} />
       <EqBandSlider band='high' label={t('music.eq_treble')} />

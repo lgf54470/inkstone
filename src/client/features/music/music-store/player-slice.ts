@@ -1,5 +1,5 @@
 import {
-  connectAudio, currentTrack, cycleMode, nudgeLyricOffset, playCollection,
+  applyEqPreset, connectAudio, currentTrack, cycleMode, nudgeLyricOffset, playCollection,
   playNext, playPrevious, playQueueAt, playTrack, resetLyricOffset, seek, setEqBand, setEqEnabled,
   setFloatingPosition, setImmersive, setNormalizeEnabled, setPlaybackRate, setSleepAfterCurrentTrack, setSleepTimer, setVolume,
   toggleFloating, toggleFloatingCollapsed, toggleMute, togglePlay,
@@ -11,7 +11,7 @@ import type { MusicGet, MusicSet, MusicStoreState } from './types'
 type PlayerSlice = Pick<MusicStoreState,
   | 'playTrack' | 'playCollection' | 'playQueueAt' | 'togglePlay' | 'playNext' | 'playPrevious'
   | 'seek' | 'setVolume' | 'toggleMute' | 'cycleMode' | 'setPlaybackRate' | 'setSleepTimer' | 'setSleepAfterCurrentTrack' | 'setImmersive'
-  | 'setEqEnabled' | 'setEqBand' | 'setNormalizeEnabled' | 'setCrossfadeEnabled'
+  | 'setEqEnabled' | 'setEqBand' | 'applyEqPreset' | 'setNormalizeEnabled' | 'setCrossfadeEnabled'
   | 'nudgeLyricOffset' | 'resetLyricOffset'
   | 'addToQueue' | 'removeFromQueue' | 'moveQueueItem' | 'clearQueue'
   | 'toggleFloating' | 'toggleFloatingCollapsed' | 'setFloatingPosition'>
@@ -36,6 +36,7 @@ export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
     resetLyricOffset: (trackId) => resetLyricOffset(set, get, trackId),
     setEqEnabled: (enabled) => setEqEnabled(set, get, enabled),
     setEqBand: (band, db) => setEqBand(set, get, band, db),
+    applyEqPreset: (presetId) => applyEqPreset(set, get, presetId),
     setNormalizeEnabled: (enabled) => setNormalizeEnabled(set, get, enabled),
     setCrossfadeEnabled: (enabled) => setCrossfadeEnabled(set, get, enabled),
     setImmersive: (open) => setImmersive(set, open),
