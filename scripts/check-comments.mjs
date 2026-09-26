@@ -3175,6 +3175,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-store/state.ts', [
     '/** Per-track lyric calibration in ms; a positive value holds the lyrics back. */',
+    '// Fine nudges move between the preset clicks in twentieths, inside the same',
+    '// window the presets span.',
     '// Lyrics drift by fractions of a second as much as by whole ones, so the nudge',
     '// is a quarter second and the window stays narrow enough to stay useful.',
     '// Thirty seconds covers dubs, live cuts and commentary tracks that sit far off',
@@ -3185,6 +3187,7 @@ const allowed = new Map([
     '// Only the countdown is authoritative for stopping playback; the chosen length is kept',
     '// alongside it so the menu can say which option is armed.',
     '// Quota or private-mode writes can throw; in-memory preferences stay authoritative.',
+    '// Fine-stepped rates (1.05×) are stored too, so the check is a range, not a list.',
   ]],
   ['src/client/features/music/music-store/store.test-helpers.ts', [
     '// Store actions take the pair Zustand hands them (set, get), so the fixture hands back those same',
@@ -3319,6 +3322,8 @@ const allowed = new Map([
   ['src/client/features/music/music-transport-aria.test.ts', [
     '// A button that opens a panel is described by aria-expanded; publishing aria-pressed on the',
     '// same element tells a screen reader it is a toggle instead, and the two cannot both be true.',
+    '// IMP-8: the preset list jumps in quarters; fine nudge buttons cover the 0.05',
+    '// steps between them, clamped to the same 0.5–2.0 window the presets span.',
   ]],
   ['src/client/features/music/music-transport-widgets.tsx', [
     '/* Text buttons are as small as their type; without a minimum box they land below the\n              24px a fingertip needs. */',
@@ -3330,6 +3335,8 @@ const allowed = new Map([
     '// clamps hard at one to eight hours so a typo cannot arm a day-long timer.',
     '// Which option is armed used to be colour and nothing else: the menu now states it to',
     '// assistive tech as well and marks it with a check, so the accent is not carrying it alone.',
+    '// Quarter-steps read as presets; the nudges cover everything between them, so a',
+    '// 1.05× works without the menu growing a page of options.',
     '/**\n * A-B practice loop: the first press pins the playhead as the start, the second\n * closes the range, and the readout states the span so the markers are never a\n * hidden state. B stays disabled until A exists and until the span is long enough.\n */',
     '// The presets are shortcuts onto the same three bands, so the group marks which one',
     '// the sliders currently agree with and lets a manual move clear that mark.',

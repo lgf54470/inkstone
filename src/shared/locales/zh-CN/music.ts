@@ -273,6 +273,8 @@ export const messages = {
 'music.sleep_remaining': '{value0} 后停止',
 'music.sleep_after_current': '播完当前曲后停止',
 'music.playback_rate': '播放速度',
+'music.rate_slower': '减速百分之五',
+'music.rate_faster': '加速百分之五',
 'music.eq': '均衡器',
 'music.eq_enable': '开启均衡器',
 'music.eq_presets': '预设',

@@ -81,7 +81,7 @@ export type {
   MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,
 } from './types'
 export { currentTrack } from './player'
-export { PLAYBACK_RATES, EQ_GAIN_RANGE_DB, LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, MIN_LOOP_MS, SLEEP_FADE_MS } from './state'
+export { PLAYBACK_RATES, RATE_FINE_STEP, RATE_MAX, RATE_MIN, EQ_GAIN_RANGE_DB, LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, MIN_LOOP_MS, SLEEP_FADE_MS } from './state'
 export { playbackChange, restorePlayback, savePlayback, savePosition, schedulePlaybackSave } from './playback-sync'
 export type { PlaybackChange } from './playback-sync'
 export { progressTimeMs, setProgressTime, useProgress } from './progress'

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { MUSIC_PREFS_KEY } from './state'
+import { MUSIC_PREFS_KEY, loadPreferences } from './state'
 import { useMusic } from './index'
 
 function storedPrefs(): Record<string, unknown> | null {
@@ -17,6 +17,11 @@ afterEach(() => {
 })
 
 describe('preference persistence', () => {
+  it('keeps a fine-stepped playback rate across a reload (IMP-8)', () => {
+    window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({ playbackRate: 1.05 }))
+    expect(loadPreferences().playbackRate).toBe(1.05)
+  })
+
   it('coalesces a burst of preference changes into one debounced write', () => {
     vi.useFakeTimers()
     const setItem = vi.spyOn(Storage.prototype, 'setItem')

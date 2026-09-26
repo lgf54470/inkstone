@@ -37,6 +37,11 @@ const SORT_DIRECTIONS: MusicSortDirection[] = ['asc', 'desc']
 const VIEW_MODES: MusicViewMode[] = ['list', 'grid']
 const SOURCE_FILTERS: MusicSourceFilter[] = ['all', 'r2', 'webdav']
 export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
+// Fine nudges move between the preset clicks in twentieths, inside the same
+// window the presets span.
+export const RATE_FINE_STEP = 0.05
+export const RATE_MIN = PLAYBACK_RATES[0] as number
+export const RATE_MAX = PLAYBACK_RATES[PLAYBACK_RATES.length - 1] as number
 export const EQ_GAIN_RANGE_DB = 12
 // Lyrics drift by fractions of a second as much as by whole ones, so the nudge
 // is a quarter second and the window stays narrow enough to stay useful.
@@ -158,7 +163,8 @@ function readVolume(value: unknown): number {
 }
 
 function readRate(value: unknown): number {
-  return (PLAYBACK_RATES as readonly number[]).includes(value as number) ? (value as number) : 1
+  // Fine-stepped rates (1.05×) are stored too, so the check is a range, not a list.
+  return typeof value === 'number' && Number.isFinite(value) && value >= RATE_MIN && value <= RATE_MAX ? value : 1
 }
 
 function readPosition(value: unknown): { x: number; y: number } | null {

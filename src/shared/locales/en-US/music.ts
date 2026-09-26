@@ -273,6 +273,8 @@ export const messages = {
 'music.sleep_remaining': 'Stops in {value0}',
 'music.sleep_after_current': 'Stops after the current track',
 'music.playback_rate': 'Playback speed',
+'music.rate_slower': 'Slow down five percent',
+'music.rate_faster': 'Speed up five percent',
 'music.eq': 'Equalizer',
 'music.eq_enable': 'Enable equalizer',
 'music.eq_presets': 'Presets',

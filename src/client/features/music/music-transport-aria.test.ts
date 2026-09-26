@@ -99,3 +99,34 @@ describe('the emphasis a panel owns is still painted', () => {
     expect(trigger(t('music.playback_rate')).className).toContain('bg-[var(--accent-soft)]')
   })
 })
+
+// IMP-8: the preset list jumps in quarters; fine nudge buttons cover the 0.05
+// steps between them, clamped to the same 0.5–2.0 window the presets span.
+describe('playback rate fine stepping (IMP-8)', () => {
+  function stepButton(direction: 'slower' | 'faster'): HTMLButtonElement {
+    const label = t(direction === 'slower' ? 'music.rate_slower' : 'music.rate_faster')
+    return [...document.querySelectorAll('[role="dialog"] button')].find((button) => button.getAttribute('aria-label') === label) as HTMLButtonElement
+  }
+
+  async function openRateMenu(): Promise<void> {
+    await act(async () => { trigger(t('music.playback_rate')).click() })
+  }
+
+  it('nudges the rate by a twentieth between the preset bounds', async () => {
+    useMusic.setState({ playbackRate: 1, setPlaybackRate: vi.fn() })
+    await mount(createElement(MusicRateButton, {}))
+    await openRateMenu()
+    await act(async () => { stepButton('faster').click() })
+    expect(useMusic.getState().setPlaybackRate).toHaveBeenCalledWith(1.05)
+    await act(async () => { stepButton('slower').click() })
+    expect(useMusic.getState().setPlaybackRate).toHaveBeenCalledWith(0.95)
+  })
+
+  it('disables the nudges at the preset bounds', async () => {
+    useMusic.setState({ playbackRate: 2, setPlaybackRate: vi.fn() })
+    await mount(createElement(MusicRateButton, {}))
+    await openRateMenu()
+    expect(stepButton('faster').disabled).toBe(true)
+    expect(stepButton('slower').disabled).toBe(false)
+  })
+})

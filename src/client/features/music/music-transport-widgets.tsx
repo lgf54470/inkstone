@@ -5,7 +5,7 @@ import { Input, Slider, Switch } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { formatTimecode } from '../../lib/time'
-import { EQ_GAIN_RANGE_DB, PLAYBACK_RATES, progressTimeMs } from './music-store'
+import { EQ_GAIN_RANGE_DB, PLAYBACK_RATES, RATE_FINE_STEP, RATE_MAX, RATE_MIN, progressTimeMs } from './music-store'
 import { useMusic } from './music-store'
 import type { MusicEqBand } from './music-store'
 import { EQ_PRESETS, matchEqPreset } from './music-eq-presets'
@@ -252,6 +252,7 @@ export function MusicRateButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
         </IconButton>
       </Tooltip>
       <MusicPopover open={open} onClose={() => setOpen(false)} label={t('music.playback_rate')} anchorRef={anchorRef} className='w-28'>
+        <RateFineRow rate={rate} />
         {PLAYBACK_RATES.map((option) => (
           <button
             key={option}
@@ -265,6 +266,24 @@ export function MusicRateButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
         ))}
       </MusicPopover>
     </>
+  )
+}
+
+// Quarter-steps read as presets; the nudges cover everything between them, so a
+// 1.05× works without the menu growing a page of options.
+function RateFineRow({ rate }: { rate: number }) {
+  const setPlaybackRate = useMusic((state) => state.setPlaybackRate)
+  const format = (value: number): string => `${Number(value.toFixed(2))}\u00d7`
+  return (
+    <div className='flex items-center justify-between gap-1 px-2 pb-1'>
+      <IconButton label={t('music.rate_slower')} size='sm' disabled={rate <= RATE_MIN} onClick={() => setPlaybackRate(Math.max(RATE_MIN, Number((rate - RATE_FINE_STEP).toFixed(2))))}>
+        <Rewind size={12} />
+      </IconButton>
+      <span className='tabular text-[length:var(--text-11)] text-[var(--text-secondary)]'>{format(rate)}</span>
+      <IconButton label={t('music.rate_faster')} size='sm' disabled={rate >= RATE_MAX} onClick={() => setPlaybackRate(Math.min(RATE_MAX, Number((rate + RATE_FINE_STEP).toFixed(2))))}>
+        <FastForward size={12} />
+      </IconButton>
+    </div>
   )
 }
 

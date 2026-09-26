@@ -18,7 +18,7 @@
 
 - [x] IMP-6 睡眠定时自定义分钟（1–480 输入，持久化与恢复不变）
 - [x] IMP-7 歌词偏移放宽 ±30s；500 首达上限时提示清理而非静默丢弃
-- [ ] IMP-8 倍速细步进（档位间 ±0.05/0.1，preservesPitch 不变）
+- [x] IMP-8 倍速细步进（档位间 ±0.05，preservesPitch 不变）
 - [ ] IMP-9 M3U 远程 URL 条目直接入队为临时播放项
 - [ ] IMP-11 歌词搜索阈值随 IMP-1 评估放宽（2 字符/分词）
 
@@ -47,6 +47,7 @@
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
 | 2026-09-26 | IMP-5 随机洗牌队列 | `fae38130` | 先红 6 例（新模块与 store 用例）；修复后 music 80 文件 / 570 例 ✅（首跑 1 例 progress.test 偶发，复跑两次全绿）；typecheck ✅；comments/style/module-state/deep-imports/i18n/size 门禁 ✅ | 「再次打乱」= 关/开随机重建序列，未加队列面板按钮（YAGNI）；洗牌序列仅会话内存不持久化（刷新后按当前曲重建）；shuffleOrder 非空 ⟺ mode 为 shuffle，由 queue-ops/crossfade/library-tracks 各写入方维持 |
+| 2026-09-26 | IMP-8 倍速细步进 | 见提交（哈希回填于后续 docs 提交） | 先红 2 例；修复后 music 83 文件 / 599 例 ✅；typecheck ✅；comments/i18n/size 门禁 ✅ | 微调行置于倍速菜单顶部（−/当前值/+，0.05 步进 clamp 0.5–2，边界禁用）；readRate 从档位白名单改为区间校验，细步进值跨刷新保留 |
 | 2026-09-26 | IMP-7 歌词偏移放宽与容量提示 | `3fdbd6a6` | 先红 3 例；修复后 music 83 文件 / 596 例 ✅；typecheck ✅；comments/i18n 门禁 ✅ | ±30s 由 LYRIC_OFFSET_LIMIT_MS 常量驱动（clamp/按钮禁用/持久化读取共用）；容量守卫在写入时判新键，500 首后新增拒绝并 toast music.lyric_offset_full，已有曲目仍可调整，归零仍删除条目 |
 | 2026-09-26 | IMP-6 睡眠定时自定义分钟 | `f072f4a8` | 先红 2 例；修复后 music 83 文件 / 593 例 ✅（首跑 1 例网络偶发，复跑全绿）；typecheck ✅；comments/size/i18n 门禁 ✅；check-contrast ✅；e2e-visual 534/535（仅剩已登记看板遗留） | 输入 clamp 1–480（分钟），超界禁用设定按钮；自定义分钟不回填预设选中态，由输入框自身回显 |
 | 2026-09-26 | IMP-3 列表窗口化 | `59786e3c` | 先红 2 例（aria-rowcount、窗口滚动）；修复后 music + routes 84 文件 / 664 例 ✅；typecheck ✅；静态门禁 ✅；check-contrast ✅；e2e-visual 534/535（仅剩已登记看板遗留） | 窗口化仅作用于 >60 首的表格视图（小库与 jsdom 夹具整表渲染）；行高与 h-12 行、p-2 行组共用常量 48px；网格视图卡片变高维持 200 条截断与「还有 N 条」提示，hiddenMatchCount 视图感知（列表恒 0）；窗口视口高度经 ResizeObserver，jsdom 下以 overscan 最小窗口兜底 |
