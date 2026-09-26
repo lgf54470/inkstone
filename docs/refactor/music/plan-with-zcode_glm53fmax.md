@@ -16,7 +16,7 @@
 
 ## 批次 R② · 窗口化与密度（M）
 
-- [ ] REF-8 底部传输条分级收合：宽态整行 / 中态收音量滑块为弹层 + TrackSummary 收窄 / 窄态仅封面+标题+播放+进度，其余进「更多」；触控目标 ≥44px
+- [x] REF-8 底部传输条分级收合：宽态整行 / 中态收音量滑块为弹层 + TrackSummary 收窄 / 窄态仅曲目+传输+队列，其余进「更多」菜单；触控目标 ≥44px —— **commit `98540b8c`**
 - [ ] REF-9 Hub 移动/矮视口改全屏 sheet：窄屏用 `100dvh` 贴底 sheet 替代 84vh 居中，给内容区最小高度预算，高度不足时先牺牲装饰控件
 - [ ] REF-1a Hub 最大化/还原：头部加最大化切换按钮，dialog↔fullscreen 状态驱动（复用 `modal.tsx` variant 能力，覆盖层内切换不重挂载；尺寸状态进偏好持久化；e2e-visual 补「最大化后工具栏高度稳定」断言）
 - [ ] REF-10 沉浸层复用最大化 + 左栏宽度随容器收放（`IMMERSIVE_WIDTH=1000`/`w-96` 不再写死单一值）
@@ -45,6 +45,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-27 | REF-8 底部传输条按容器宽度分级收合 | `98540b8c` | 新增 5 例（宽/中/窄三档控件构成 + 菜单项 + 菜单打开沉浸层）；首轮 4 绿 1 红——`floatingVisible` 默认 true 使菜单文案是「隐藏浮窗」，测试补 `beforeEach` 设已知 store 初态后 5 例 ✅；`size:check` 先报测试文件 `describe` 回调超 50 行，拆成两个 describe 后 ✅；typecheck / i18n / comments / style ✅ | 分档阈值 `TRANSPORT_FULL_WIDTH=860` / `TRANSPORT_COMPACT_WIDTH=560`（容器像素）：full 保留 144px 音量滑块，medium 起换成 `MusicVolumeButton` 弹层（既存组件，复用），compact 只留曲目 + 传输 + 队列，沉浸层/浮窗/静音进「更多」菜单——三者都能在沉浸层与浮窗访问，功能不丢失只是不重复；`TrackSummary` 三档 `w-52/w-44/max-w-32`，compact 收起收藏/置顶。触控目标 ≥44px 未在 jsdom 验证，交 REF-3 断点走查 |
 | 2026-09-27 | REF-5 沉浸层队列改可折叠 | `fdfb1e24` | 先红 3 例（默认不占版面 / 点入口展开 / 再收起）；既有「歌词与队列各有焦点停靠」断言按新契约改写为「队列展开后才有」；实现后 22 例 ✅；typecheck ✅；size / i18n / comments / style ✅；pre-commit 334 文件 / 2818 例 ✅ | 队列默认折叠为一行入口（含队列数，状态不隐藏），展开后仍是 `max-h-40` 且列表容器保留 `aria-label`/`tabindex` 焦点停靠；新增 `music.queue_toggle` 双语；浏览器门禁未跑（无本地实例），见「已知限制」 |
 | 2026-09-27 | REF-6 沉浸层快捷键提示收进帮助触发器 | `a96e438a` | 先红 2 例（默认不占版面 / 点帮助钮后弹出）；实现后 20 例 ✅；typecheck ✅；size / i18n / comments / style ✅；pre-commit 334 文件 / 2818 例（2816）✅ | 新增 `music.keyboard_help` 双语；帮助钮并入 transport 图标行，不新增行高；左栏只留文件信息一行 |
 | 2026-09-27 | REF-7 折叠判定改按容器宽度（REF-2 根因残留） | `f9641ae3` | 先红 2 例（容器窄/视口宽应折叠、容器宽/视口窄应展开）；实现后 5 例 ✅（含 REF-2 既有 3 例）；typecheck ✅；music 目录 101 文件 / 685 例 ✅（另一次目录级跑出现 5 例失败，单独复跑与二次目录级跑均全绿，判定为并发 flaky，与改动无关）；静态门禁 12 项 ✅；`size:check` 首次因 `ToolbarActions` 超 50 行报 baseline drift，改为拆出 `useActionsFolded` + `PrimaryActions` 而非改基线，复跑 ✅ | 折叠阈值 `MUSIC_TOOLBAR_INLINE_MIN_WIDTH = 1040`（容器像素，约等于整行不折所需宽度）；无 ResizeObserver 的环境（jsdom/SSR）保留 `MUSIC_TOOLBAR_VIEWPORT_FALLBACK = 1240` 视口回退，旧测试契约不变；Hub 默认 1240 宽时中列 ~760px → 低频动作进「更多」菜单，最大化后自动展开（此项为 REF-1a 铺路）。`budget:check` 的 music chunk 超限经 HEAD 基线对照确认为既有问题（108.9/98.0 KiB vs 93.8 KiB），非本次引入 |
