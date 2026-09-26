@@ -47,6 +47,6 @@
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
 | 2026-09-26 | IMP-5 随机洗牌队列 | `fae38130` | 先红 6 例（新模块与 store 用例）；修复后 music 80 文件 / 570 例 ✅（首跑 1 例 progress.test 偶发，复跑两次全绿）；typecheck ✅；comments/style/module-state/deep-imports/i18n/size 门禁 ✅ | 「再次打乱」= 关/开随机重建序列，未加队列面板按钮（YAGNI）；洗牌序列仅会话内存不持久化（刷新后按当前曲重建）；shuffleOrder 非空 ⟺ mode 为 shuffle，由 queue-ops/crossfade/library-tracks 各写入方维持 |
-| 2026-09-26 | IMP-1 全库歌词搜索 | 见提交（哈希回填于后续 docs 提交） | 先红 8 例（服务端 D1 4 + 客户端 store 4）；修复后 music + routes 84 文件 / 660 例 ✅；typecheck ✅；全部静态门禁 ✅ | 合并只在「全部歌曲 + 全部来源」视图生效（分作用域的全库计数需服务端按作用域聚合，属独立改动）；歌词命中排在全部名称命中之后；请求失败降级为仅本地歌词搜索并 warn；阈值沿用 3 字符；demo 后端有等价路由 |
+| 2026-09-26 | IMP-1 全库歌词搜索 | `98bdc629` | 先红 8 例（服务端 D1 4 + 客户端 store 4）；修复后 music + routes 84 文件 / 660 例 ✅；typecheck ✅；全部静态门禁 ✅ | 合并只在「全部歌曲 + 全部来源」视图生效（分作用域的全库计数需服务端按作用域聚合，属独立改动）；歌词命中排在全部名称命中之后；请求失败降级为仅本地歌词搜索并 warn；阈值沿用 3 字符；demo 后端有等价路由 |
 | 2026-09-26 | IMP-2 重复检测近似分组 | `868d426b` | 先红 4 例（近似成组/链式聚簇/摘要混排）；修复后 music 82 文件 / 583 例 ✅；typecheck ✅；全部静态门禁 ✅（i18n 新增 duplicates_summary_approximate 双语键）；e2e-visual 534/535——仍只剩已登记的看板高度遗留 | 近似判定容差 ±2s、按时长升序贪心聚簇（锚点为簇内最短），未知时长（0）与空标题不参与；摘要条只在存在近似组时切换到带标注文案 |
 | 2026-09-26 | IMP-4 A-B 循环控件补面 | `bcb66b1e` | 先红 4 例（seek-bar 3 + controls 2 中先红 4）；修复后 music 81 文件 / 575 例 ✅；typecheck ✅；全部静态门禁 ✅；check-contrast ✅（双主题全表面 AA）；e2e-visual 534/535——唯一失败为「kanban in the note 板块高度」（stash 对照证实与音乐改动无关、为 dev 历史遗留，见下） | e2e-visual 遗留失败：`kanban in the note: the block is no taller…`（canvas 480 vs needed 456，确定性复现，暂存音乐改动后同样失败，属看板模块问题，另立条目处理，不在本线夹带）；状态栏/浮窗不加循环标记按钮（空间限制），区间条可见、清除走 Hub/沉浸层 |
