@@ -197,6 +197,7 @@ export const messages = {
 'music.loop_clear': '清除 A-B 循环',
 'music.loop_range': '循环 {value0} 至 {value1}',
 'music.lyric_offset_earlier': '歌词提前四分之一秒',
+'music.lyric_offset_full': '歌词校准已达上限，请重置不常听的曲目后再校准',
 'music.lyric_offset_later': '歌词延后四分之一秒',
 'music.lyric_offset_reset': '重置歌词校准',
 'music.lyric_offset_state': '歌词偏移 {value0}',

@@ -197,6 +197,7 @@ export const messages = {
 'music.loop_clear': 'Clear the A-B loop',
 'music.loop_range': 'Looping {value0} to {value1}',
 'music.lyric_offset_earlier': 'Bring the lyrics forward a quarter second',
+'music.lyric_offset_full': 'Lyric calibrations are full — reset some rarely played tracks first',
 'music.lyric_offset_later': 'Hold the lyrics back a quarter second',
 'music.lyric_offset_reset': 'Reset the lyric calibration',
 'music.lyric_offset_state': 'Lyric offset {value0}',

@@ -41,7 +41,9 @@ export const EQ_GAIN_RANGE_DB = 12
 // Lyrics drift by fractions of a second as much as by whole ones, so the nudge
 // is a quarter second and the window stays narrow enough to stay useful.
 export const LYRIC_OFFSET_STEP_MS = 250
-export const LYRIC_OFFSET_LIMIT_MS = 5_000
+// Thirty seconds covers dubs, live cuts and commentary tracks that sit far off
+// the file's own timestamps; ±5s could not.
+export const LYRIC_OFFSET_LIMIT_MS = 30_000
 // A loop shorter than this is a stutter rather than a passage, and the sleep fade
 // needs a window long enough to be heard as a slide.
 export const MIN_LOOP_MS = 500

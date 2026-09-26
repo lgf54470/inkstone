@@ -1,10 +1,11 @@
 import {
-  applyEqPreset, clearLoopRange, connectAudio, currentTrack, cycleMode, markLoopEnd, markLoopStart, nudgeLyricOffset, playCollection,
-  playNext, playPrevious, playQueueAt, playTrack, resetLyricOffset, seek, setEqBand, setEqEnabled,
+  applyEqPreset, clearLoopRange, connectAudio, currentTrack, cycleMode, markLoopEnd, markLoopStart, playCollection,
+  playNext, playPrevious, playQueueAt, playTrack, seek, setEqBand, setEqEnabled,
   setFloatingPosition, setImmersive, setNormalizeEnabled, setPlaybackRate, setSleepAfterCurrentTrack, setSleepTimer, setVolume,
   toggleFloating, toggleFloatingCollapsed, toggleMute, togglePlay,
 } from './player'
 import { setCrossfadeEnabled } from './crossfade'
+import { nudgeLyricOffset, resetLyricOffset } from './lyric-offset'
 import { addManyToQueue, addToQueue, clearQueue, moveQueueItem, removeFromQueue } from './queue-ops'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
