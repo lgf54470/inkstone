@@ -2981,6 +2981,8 @@ const allowed = new Map([
     '// minute input closes that gap without growing the preset row.',
   ]],
   ['src/client/features/music/music-source-badge.tsx', [
+    '// Reference rows must not masquerade as the R2 cloud badge: webdav/alist/external',
+    '// each carry their own label, and the accent tint stays a webdav-only distinction.',
     '// The label wraps inside a narrow column and inflates the row, so it never breaks.',
   ]],
   ['src/client/features/music/music-status-bar.test.ts', [

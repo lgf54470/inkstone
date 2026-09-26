@@ -132,6 +132,7 @@ export const messages = {
 'music.import_url_add': 'Add',
 'music.import_url_address_required': 'Paste the direct link first',
 'music.source_external': 'External',
+'music.source_alist': 'Alist drive',
 'music.import_text': 'Paste list',
 'music.import_text_title': 'Import from text',
 'music.import_text_hint': 'One track per line: "artist - title" or a bare title; only tracks already in the library resolve',

@@ -132,6 +132,7 @@ export const messages = {
 'music.import_url_add': '添加',
 'music.import_url_address_required': '请先粘贴直链',
 'music.source_external': '外部',
+'music.source_alist': 'Alist 网盘',
 'music.import_text': '粘贴导入',
 'music.import_text_title': '从文本导入',
 'music.import_text_hint': '每行一条，支持「歌手 - 标题」或仅标题；只会匹配曲库中已有的曲目',

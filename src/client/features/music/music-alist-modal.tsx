@@ -133,6 +133,7 @@ function AddServerForm() {
       }}
     >
       <p className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>{t('music.alist_add')}</p>
+      <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.alist_hint')}</p>
       <div className='grid grid-cols-2 gap-2'>
         <label className='flex items-center gap-2 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
           <span className='shrink-0'>{t('music.alist_name')}</span>

@@ -3,10 +3,20 @@ import type { MusicSource } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 
+// Reference rows must not masquerade as the R2 cloud badge: webdav/alist/external
+// each carry their own label, and the accent tint stays a webdav-only distinction.
+const BADGE_LABELS: Record<MusicSource, 'music.source_r2' | 'music.source_webdav' | 'music.source_external' | 'music.source_alist'> = {
+  r2: 'music.source_r2',
+  webdav: 'music.source_webdav',
+  external: 'music.source_external',
+  alist: 'music.source_alist',
+}
+
 export function MusicSourceBadge({ source, className }: { source: MusicSource; className?: string }) {
+  const label = BADGE_LABELS[source]
   const isRemote = source === 'webdav'
-  const isExternal = source === 'external'
-  const Icon = isRemote ? Server : isExternal ? Link : Cloud
+  const isLinked = source === 'external' || source === 'alist'
+  const Icon = isRemote ? Server : isLinked ? Link : Cloud
   return (
     <span
       className={cn(
@@ -17,10 +27,10 @@ export function MusicSourceBadge({ source, className }: { source: MusicSource; c
           : 'bg-[var(--bg-inset)] text-[var(--text-secondary)]',
         className,
       )}
-      title={isRemote ? t('music.source_webdav') : t('music.source_r2')}
+      title={t(label)}
     >
       <Icon size={9} aria-hidden='true' />
-      {isRemote ? t('music.source_webdav') : t('music.source_r2')}
+      {t(label)}
     </span>
   )
 }
