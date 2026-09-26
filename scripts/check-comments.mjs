@@ -2597,6 +2597,12 @@ const allowed = new Map([
     '// Mode/rate/volume/sleep plus the per-track favours; the wide layout also carries the',
     '// file metadata and keyboard hint under these.',
   ]],
+  ['src/client/features/music/music-lazy-overlays.test.ts', [
+    '// Counting module evaluation is the point: an eager import in the shell\'s graph',
+    '// costs every session the chunk, while a lazy one costs only the sessions that',
+    '// actually open the surface.',
+    '// The lazy import settles in a follow-up microtask, outside the first render.',
+  ]],
   ['src/client/features/music/music-lyrics.ts', [
     '// The library ships tracks without lyric text; detail views mount this hook to',
     '// have the store fetch it by id once, then read the merged `track.lyric` themselves.',
@@ -2653,6 +2659,14 @@ const allowed = new Map([
     '/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */',
     '// The column holds the artwork alone otherwise, so the playing track is named here',
     '// too: the lyrics pane can be scrolled far from its headings.',
+  ]],
+  ['src/client/features/music/music-overlays-lazy.tsx', [
+    '// Both surfaces pull in artwork, lyrics, the visualizer and the whole transport',
+    '// row, which the shell would otherwise carry into its first load even for a',
+    '// session that never plays anything. Each is split off and only fetched once the',
+    '// state says it can appear.',
+    '// Kept mounted after the first open so closing it still animates out the way',
+    '// the modal did when it was part of the eager tree.',
   ]],
   ['src/client/features/music/music-playlist-drag.test.ts', [
     '// t1 (i1) dropped on the t2 row: i2 sits at index 2 in the manual order.',

@@ -1,6 +1,5 @@
 export { MusicStatusBar } from './music-status-bar'
-export { MusicFloatingPlayer } from './music-floating-player'
-export { MusicImmersiveOverlay } from './music-immersive-player'
+export { MusicFloatingPlayer, MusicImmersiveOverlay } from './music-overlays-lazy'
 export { MusicSessionSync } from './music-session-sync'
 export { MusicHubModal } from './music-hub-lazy'
 export { useMusic, useCurrentTrack, useVisibleTracks } from './music-store'
