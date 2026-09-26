@@ -19,7 +19,7 @@
 - [x] REF-8 底部传输条分级收合：宽态整行 / 中态收音量滑块为弹层 + TrackSummary 收窄 / 窄态仅曲目+传输+队列，其余进「更多」菜单；触控目标 ≥44px —— **commit `98540b8c`**
 - [x] REF-9 Hub 移动/矮视口改全屏 sheet：窄屏（或视口高 < 700）用 `h-full` 占满视口替代 84vh 居中，宽而高的桌面窗口保留原尺寸 —— **commit `fb5e1bf2`**
 - [x] REF-1a Hub 最大化/还原：头部加最大化切换钮，`hubMaximized` 驱动 `variant='fullscreen'`（覆盖层内切换不重挂载；尺寸进偏好持久化） —— **commit `01afcbad`**
-- [ ] REF-10 沉浸层复用最大化 + 左栏宽度随容器收放（`IMMERSIVE_WIDTH=1000`/`w-96` 不再写死单一值）
+- [x] REF-10 沉浸层复用最大化 + 左栏宽度随容器收放（`IMMERSIVE_WIDTH=1000`/`w-96` 不再写死单一值） —— **commit `320419ce`**
 - [ ] REF-4 字号与密度上调：曲表 `--text-11` 主体升一档、标题 ≥13、卡片同步；空态/汇总条利用剩余空间；axe 对比度复跑
 - [ ] REF-12 补 REF-4 范围：传输条 `--text-12/11`、沉浸层文件信息 `--text-10`、队列浮层标题同步收敛到 ≥12（同屏不出现三档基线）
 - [ ] REF-11 Hub 队列浮层高度可调（拖动手柄或三档）+ 曲表底部避让，键盘可达
@@ -45,6 +45,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-27 | REF-10 沉浸层最大化 + 左栏随容器收放 | `320419ce` | 补 4 例（最大化钮 / 最大化与还原 / 宽容器 w-96 / 窄容器 w-80），26 例 ✅；typecheck ✅；音乐目录 101 文件 / 702 例 ✅；pre-commit 334 文件 / 2831 例 ✅ | 首次提交被 pre-commit 拒（新文件与改动文件的注释未同步白名单），跑 `sync-comments-allowlist.mjs` 后通过。`size:check` 连报三次：先 `longFns`（拆 `useImmersiveWindow`）、再文件超 500 行（把背景模式拆成 `music-immersive-background.tsx`）、再 `longFns`（拆 `LyricsHeader` + `useImmersiveLyrics`/`useLyricScroll`）——全部按拆分解决，未改基线。左栏阈值 1100/920；最大化状态留在组件内（沉浸层是一次聆听的表面，不像 Hub 需要跨会话记忆） |
 | 2026-09-27 | REF-1a Hub 最大化/还原 + 尺寸持久化 | `01afcbad` | 补 3 例（按钮存在 / 最大化后类名与 store / 再还原），实现与测试同批完成（断言的按钮与 store 字段改动前不存在，等价先红）；13 例 ✅；typecheck 曾因 `MusicStoreState` 缺 `hubMaximized` 报错，补字段后 ✅；`size:check` 先因 `player.ts` 越过 511 行预算（塞入 setHubMaximized）报 drift，改为新建 `music-store/hub-window.ts` 承载该 action 并清掉残留空行后 ✅；音乐目录 101 文件 / 698 例 ✅；pre-commit 334 文件 / 2827 例 ✅ | 最大化走 `Modal` 现有 `variant='fullscreen'`（不调 `requestFullscreen`，守 `tests/fullscreen-policy.test.ts`）；偏好 `hubMaximized` 复用既有的 persist 通道（localStorage，无 worker schema）；占满视口的条件统一为 `hubMaximized || 窄屏 || 矮视口`，三者共用 `h-full` 避免与 Modal 自带 max-h 冲突 |
 | 2026-09-27 | REF-9 Hub 窄屏与矮视口改为占满视口 | `fb5e1bf2` | 先红 2 例（窄屏 / 矮视口应占满）；实现后 10 例 ✅；typecheck ✅；size / comments / style ✅；pre-commit 6 文件 / 24 例 ✅ | 用 `h-full`（跟随 Modal 的 `app-viewport-fixed` 父高）而非 `h-[100dvh]`：`max-h-none` 与 Modal 自带的 `max-h-[calc(...)]` 同属性冲突、胜者取决于样式表顺序，不可靠；`h-full` 在移动端被 Modal 的 max-h 裁掉顶部安全区，正是 sheet 想要的效果。矮视口阈值 `HUB_SHORT_VIEWPORT = 700` |
 | 2026-09-27 | REF-8 底部传输条按容器宽度分级收合 | `98540b8c` | 新增 5 例（宽/中/窄三档控件构成 + 菜单项 + 菜单打开沉浸层）；首轮 4 绿 1 红——`floatingVisible` 默认 true 使菜单文案是「隐藏浮窗」，测试补 `beforeEach` 设已知 store 初态后 5 例 ✅；`size:check` 先报测试文件 `describe` 回调超 50 行，拆成两个 describe 后 ✅；typecheck / i18n / comments / style ✅ | 分档阈值 `TRANSPORT_FULL_WIDTH=860` / `TRANSPORT_COMPACT_WIDTH=560`（容器像素）：full 保留 144px 音量滑块，medium 起换成 `MusicVolumeButton` 弹层（既存组件，复用），compact 只留曲目 + 传输 + 队列，沉浸层/浮窗/静音进「更多」菜单——三者都能在沉浸层与浮窗访问，功能不丢失只是不重复；`TrackSummary` 三档 `w-52/w-44/max-w-32`，compact 收起收藏/置顶。触控目标 ≥44px 未在 jsdom 验证，交 REF-3 断点走查 |
