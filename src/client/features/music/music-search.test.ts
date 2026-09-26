@@ -135,3 +135,45 @@ describe('ensureRomanized batching', () => {
     expect(yielded).toBe(true)
   })
 })
+
+describe('search beyond the name (F-10)', () => {
+  function taggedTrack(id: string, title: string, tagIds: string[], lyric: string | null = null): MusicTrack {
+    return { ...track(id, title), tagIds, lyric, hasLyric: Boolean(lyric) }
+  }
+
+  const TAGS = [
+    { id: 'tg1', name: 'rock', color: null, parentId: null, isPinned: false, sortOrder: 0, createdAt: 0 },
+    { id: 'tg2', name: 'live', color: null, parentId: 'tg1', isPinned: false, sortOrder: 1, createdAt: 0 },
+  ]
+
+  const TAGGED = [
+    taggedTrack('a', 'Alpha', ['tg1']),
+    taggedTrack('b', 'Beta', ['tg2']),
+    taggedTrack('c', 'Gamma', [], 'walking in the rain tonight'),
+  ]
+
+  it('finds a track by the tag shown on its pill, path included', () => {
+    expect(searchTracks(TAGGED, {}, 'rock', TAGS)).toEqual(['a', 'b'])
+    expect(searchTracks(TAGGED, {}, 'rock/live', TAGS)).toEqual(['b'])
+  })
+
+  it('finds a track by a phrase in its lyric', () => {
+    expect(searchTracks(TAGGED, {}, 'in the rain', TAGS)).toEqual(['c'])
+  })
+
+  it('keeps lyric hits behind every name hit', () => {
+    const rows = [
+      { ...taggedTrack('rain-song', 'Rain Song', [], 'nothing here') },
+      { ...taggedTrack('other', 'Other', [], 'singing in the rain') },
+    ]
+    expect(searchTracks(rows, {}, 'rain', [])).toEqual(['rain-song', 'other'])
+  })
+
+  it('does not walk whole lyrics for a query that short', () => {
+    expect(searchTracks(TAGGED, {}, 'ra', TAGS)).toEqual([])
+  })
+
+  it('never leaks a track whose tags are unknown', () => {
+    expect(searchTracks([taggedTrack('x', 'Solo', ['missing'])], {}, 'rock', TAGS)).toEqual([])
+  })
+})
