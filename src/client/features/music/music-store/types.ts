@@ -285,6 +285,7 @@ export interface MusicStoreState {
   loadPodcastEpisodes: (feedId: string) => Promise<void>
   closePodcastEpisodes: () => void
   importPodcastOpml: (opml: string) => Promise<void>
+  playPodcastEpisode: (feed: MusicPodcastFeedView, episode: MusicPodcastEpisode) => Promise<void>
   createPodcastFeed: (input: MusicPodcastCreateInput) => Promise<boolean>
   renamePodcastFeed: (id: string, patch: MusicPodcastPatchInput) => Promise<void>
   deletePodcastFeed: (id: string) => Promise<void>

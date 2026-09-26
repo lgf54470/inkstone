@@ -112,12 +112,14 @@ function saveTextFile(text: string, filename: string, mime: string): void {
 
 // FEA-A2-2: one feed's episodes, fetched through the worker's cached proxy. A
 // row carries the episode title, the playback length and the release date; the
-// audio itself stays at the source until A2-4 wires the player up.
+// play button (A2-4) registers the idempotent external row and hands the
+// ordinary player the track id, so queue and progress come for free.
 function EpisodeList({ feed }: { feed: MusicPodcastFeedView }) {
   const episodes = useMusic((state) => state.podcastEpisodes)
   const loading = useMusic((state) => state.podcastEpisodesLoading)
   const loadPodcastEpisodes = useMusic((state) => state.loadPodcastEpisodes)
   const closePodcastEpisodes = useMusic((state) => state.closePodcastEpisodes)
+  const playPodcastEpisode = useMusic((state) => state.playPodcastEpisode)
   useEffect(() => {
     void loadPodcastEpisodes(feed.id)
   }, [feed.id, loadPodcastEpisodes])
@@ -147,6 +149,7 @@ function EpisodeList({ feed }: { feed: MusicPodcastFeedView }) {
                       {episode.durationSeconds > 0 ? formatDuration(episode.durationSeconds) : ''}
                       {episode.sizeBytes > 0 ? ` · ${formatBytes(episode.sizeBytes)}` : ''}
                     </span>
+                    <Button size='sm' onClick={() => void playPodcastEpisode(feed, episode)}>{t('music.play')}</Button>
                   </li>
                 ))}
               </ul>

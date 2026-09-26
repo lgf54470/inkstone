@@ -262,3 +262,48 @@ describe('podcast OPML (FEA-A2-3)', () => {
     expect((await json(app, '/api/music/podcasts/opml', {})).status).toBe(400)
   })
 })
+
+describe('podcast episode playback (FEA-A2-4)', () => {
+  it('registers an episode as an external reference row carrying feed title and duration', async () => {
+    await makeDb()
+    const app = makeApp()
+    const feed = await (await json(app, '/api/music/podcasts', {
+      url: 'https://feeds.example.com/show.xml', title: 'A Show',
+    })).json() as { id: string }
+    const res = await json(app, `/api/music/podcasts/${feed.id}/episodes/import`, {
+      audioUrl: 'https://cdn.example.com/ep1.mp3', title: 'Episode 1', durationMs: 3723000,
+    })
+    expect(res.status).toBe(201)
+    const track = await res.json() as { id: string; source: string; durationMs: number; album: string; sizeBytes: number }
+    expect(track.source).toBe('external')
+    expect(track.durationMs).toBe(3723000)
+    expect(track.album).toBe('A Show')
+    expect(track.sizeBytes).toBe(0)
+  })
+
+  it('answers the existing row when the same episode audio is registered twice', async () => {
+    await makeDb()
+    const app = makeApp()
+    const feed = await (await json(app, '/api/music/podcasts', {
+      url: 'https://feeds.example.com/show.xml', title: 'A Show',
+    })).json() as { id: string }
+    const first = await json(app, `/api/music/podcasts/${feed.id}/episodes/import`, {
+      audioUrl: 'https://cdn.example.com/ep1.mp3', title: 'Episode 1',
+    })
+    const second = await json(app, `/api/music/podcasts/${feed.id}/episodes/import`, {
+      audioUrl: 'https://cdn.example.com/ep1.mp3', title: 'Episode 1 renamed',
+    })
+    expect(second.status).toBe(200)
+    const firstTrack = await first.json() as { id: string }
+    const secondTrack = await second.json() as { id: string }
+    expect(secondTrack.id).toBe(firstTrack.id)
+  })
+
+  it('rejects a non-http or unrecognizable audio url', async () => {
+    await makeDb()
+    const app = makeApp()
+    const feed = await (await json(app, '/api/music/podcasts', { url: 'https://feeds.example.com/show.xml' })).json() as { id: string }
+    expect((await json(app, `/api/music/podcasts/${feed.id}/episodes/import`, { audioUrl: 'ftp://cdn.example.com/ep1.mp3' })).status).toBe(400)
+    expect((await json(app, `/api/music/podcasts/${feed.id}/episodes/import`, { audioUrl: 'https://cdn.example.com/page.html' })).status).toBe(400)
+  })
+})

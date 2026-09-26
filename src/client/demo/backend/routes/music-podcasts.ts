@@ -1,4 +1,5 @@
 import { Hono, type Context } from 'hono'
+import type { MusicTrack } from '@shared/types'
 import type { DemoState } from '../../state'
 import { newDemoId } from '../../state'
 import { apiError, jsonBody } from '../helpers/info'
@@ -82,6 +83,46 @@ async function episodesHandler(c: Context, state: DemoState): Promise<Response> 
   return c.json({ feedId: feed.id, title: feed.title, cached: false, episodes: DEMO_EPISODES })
 }
 
+// FEA-A2-4 demo stub: the idempotent registration. The demo keeps the returned
+// track inside its library store — the same contract the worker pins.
+async function episodeImportHandler(c: Context, state: DemoState): Promise<Response> {
+  const feed = state.musicPodcastFeeds.get(c.req.param('id') ?? '')
+  if (!feed) return apiError(404, 'not_found', 'Podcast feed not found')
+  const body = await jsonBody(c.req.raw)
+  const audioUrl = typeof body.audioUrl === 'string' ? body.audioUrl : ''
+  if (!/^https?:\/\//.test(audioUrl) || !/\.(mp3|m4a|flac|wav|ogg|opus|aac)$/i.test(audioUrl.split('?')[0] ?? '')) {
+    return apiError(400, 'bad_request', 'Unsupported media format')
+  }
+  const existing = state.musicTracks.get(`podcast:${audioUrl}`)
+  if (existing) return c.json(existing.track)
+  const now = Date.now()
+  const track: MusicTrack = {
+    id: newDemoId(),
+    title: typeof body.title === 'string' && body.title.trim() ? body.title.trim() : audioUrl,
+    artist: '',
+    album: feed.title,
+    durationMs: typeof body.durationMs === 'number' ? body.durationMs : 0,
+    source: 'external',
+    format: 'mp3',
+    webdavPath: null,
+    mime: 'audio/mpeg',
+    sizeBytes: 0,
+    coverUrl: null,
+    lyric: null,
+    hasLyric: false,
+    tagIds: [],
+    isFavorite: false,
+    isPinned: false,
+    playCount: 0,
+    lastPlayedAt: null,
+    contentHash: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  state.musicTracks.set(`podcast:${audioUrl}`, { track, file: new File([new Uint8Array(0)], 'episode.mp3') })
+  return c.json(track, 201)
+}
+
 // FEA-A2-3 demo stub: the OPML round trip on the same in-memory records. The
 // demo pins the dedupe contract, not full OPML parsing — that lives in the
 // worker's parseOpmlFeeds, which the tests exercise directly.
@@ -131,4 +172,5 @@ export function registerDemoMusicPodcastRoutes(app: Hono, state: DemoState): voi
   app.patch('/api/music/podcasts/:id', (c) => patchHandler(c, state))
   app.delete('/api/music/podcasts/:id', (c) => deleteHandler(c, state))
   app.get('/api/music/podcasts/:id/episodes', (c) => episodesHandler(c, state))
+  app.post('/api/music/podcasts/:id/episodes/import', (c) => episodeImportHandler(c, state))
 }

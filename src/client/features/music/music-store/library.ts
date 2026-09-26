@@ -16,7 +16,7 @@ import {
 import { browseWebdav, deleteWebdavObjects, importTrackFromUrl, importWebdavFolder, importWebdavTrack } from './webdav'
 import { closeTrash, openTrash, purgeTrashEntry, restoreFromTrash } from './trash'
 import { browseAlist, createAlistServer, deleteAlistServer, importAlistFolder, importAlistTrack, loadAlistServers, patchAlistServer, searchAlist } from './alist'
-import { closePodcastEpisodes, createPodcastFeed, deletePodcastFeed, importPodcastOpml, loadPodcastEpisodes, loadPodcastFeeds, renamePodcastFeed } from './podcast'
+import { closePodcastEpisodes, createPodcastFeed, deletePodcastFeed, importPodcastOpml, loadPodcastEpisodes, loadPodcastFeeds, playPodcastEpisode, renamePodcastFeed } from './podcast'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type LibrarySlice = Pick<MusicStoreState,
@@ -27,7 +27,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'loadAlistServers' | 'createAlistServer' | 'patchAlistServer' | 'deleteAlistServer'
   | 'browseAlist' | 'searchAlist' | 'importAlistTrack' | 'importAlistFolder'
   | 'loadPodcastFeeds' | 'createPodcastFeed' | 'renamePodcastFeed' | 'deletePodcastFeed'
-  | 'loadPodcastEpisodes' | 'closePodcastEpisodes' | 'importPodcastOpml'
+  | 'loadPodcastEpisodes' | 'closePodcastEpisodes' | 'importPodcastOpml' | 'playPodcastEpisode'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'searchTrackLyric' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
@@ -103,6 +103,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     loadPodcastEpisodes: (feedId) => loadPodcastEpisodes(set, feedId),
     closePodcastEpisodes: () => closePodcastEpisodes(set),
     importPodcastOpml: (opml) => importPodcastOpml(set, opml),
+    playPodcastEpisode: (feed, episode) => playPodcastEpisode(set, get, feed, episode),
     createPodcastFeed: (input) => createPodcastFeed(set, input),
     renamePodcastFeed: (id, patch) => renamePodcastFeed(set, id, patch),
     deletePodcastFeed: (id) => deletePodcastFeed(set, id),

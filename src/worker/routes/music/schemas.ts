@@ -234,3 +234,14 @@ export const importPodcastOpmlSchema = z.object({
 })
 
 export type ImportPodcastOpmlBody = z.infer<typeof importPodcastOpmlSchema>
+
+// FEA-A2-4: playing an episode registers it as an external reference row first,
+// so the player, queue and progress persistence all see one ordinary track. The
+// extension must identify the container, exactly like the URL import.
+export const importPodcastEpisodeSchema = z.object({
+  audioUrl: externalUrl,
+  title: trimmed(LIMITS.musicTitleMaxLength).optional(),
+  durationMs: z.number().int().min(0).max(24 * 60 * 60 * 1000).optional(),
+})
+
+export type ImportPodcastEpisodeBody = z.infer<typeof importPodcastEpisodeSchema>

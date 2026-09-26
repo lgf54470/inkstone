@@ -9,7 +9,10 @@ import { readUpstreamBytes } from './outbound'
 import { enforceMusicBudget } from './budget'
 import { parsePodcastFeed, parseOpmlFeeds, escapeXml, type PodcastEpisode } from './rss'
 import { pathParam } from './params'
-import { createPodcastFeedSchema, importPodcastOpmlSchema, patchPodcastFeedSchema } from './schemas'
+import { resolveMusicTrackType } from './keys'
+import { insertWebdavTrack } from './webdav-routes'
+import { createPodcastFeedSchema, importPodcastEpisodeSchema, importPodcastOpmlSchema, patchPodcastFeedSchema } from './schemas'
+import type { MusicTrackRow } from './rows'
 
 // FEA-A2-1: podcast subscriptions are the user's own feed registrations. The
 // feed XML is fetched on demand (A2-2); this table only holds what the user
@@ -23,6 +26,7 @@ export function registerMusicPodcastRoutes(routes: Hono<AppBindings>): void {
   routes.patch('/podcasts/:id', requireAuth, (c) => patchFeed(c))
   routes.delete('/podcasts/:id', requireAuth, (c) => deleteFeed(c))
   routes.get('/podcasts/:id/episodes', requireAuth, (c) => listEpisodes(c))
+  routes.post('/podcasts/:id/episodes/import', requireAuth, (c) => importEpisode(c))
 }
 
 interface PodcastFeedRow {
@@ -161,6 +165,79 @@ async function importOpml(c: Context<AppBindings>): Promise<Response> {
     created += 1
   }
   return c.json({ created, skipped })
+}
+
+// FEA-A2-4: playing an episode runs through one idempotent registration — the
+// episode becomes an ordinary external reference row (the feed title rides as
+// the album), so the player, the queue and the progress persistence reuse
+// everything the URL import built. A repeat play answers the existing row.
+async function importEpisode(c: Context<AppBindings>): Promise<Response> {
+  const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
+  const id = pathParam(c, 'id')
+  const feed = await loadFeedRow(c.env.DB, userId, id)
+  if (!feed) throw ApiError.notFound('Podcast feed not found')
+  const body = await readJsonValidated(c, importPodcastEpisodeSchema, JSON_BODY_LIMITS.small)
+  const trackType = resolveMusicTrackType(body.audioUrl, '')
+  if (!trackType) throw ApiError.badRequest('Unsupported media format')
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id FROM music_tracks WHERE user_id = ?1 AND source = 'external' AND object_key = ?2`,
+  ).bind(userId, body.audioUrl).first<{ id: string }>()
+  if (existing) {
+    const row = await c.env.DB.prepare('SELECT * FROM music_tracks WHERE id = ?1').bind(existing.id).first<MusicTrackRow>()
+    if (row) return c.json(toTrackFromRow(row, feed.title))
+  }
+
+  const now = Date.now()
+  const row: MusicTrackRow = {
+    id: newId(),
+    title: body.title?.trim() || new URL(body.audioUrl).pathname.split('/').filter(Boolean).pop() || 'Episode',
+    artist: '',
+    album: feed.title,
+    duration_ms: body.durationMs ?? 0,
+    source: 'external',
+    object_key: body.audioUrl,
+    mime: trackType.mime,
+    size_bytes: 0,
+    cover_url: null,
+    lyric: null,
+    is_favorite: 0,
+    is_pinned: 0,
+    play_count: 0,
+    last_played_at: null,
+    content_hash: null,
+    created_at: now,
+    updated_at: now,
+  }
+  await insertWebdavTrack(c.env.DB, userId, row)
+  return c.json(toTrackFromRow(row, feed.title), 201)
+}
+
+function toTrackFromRow(row: MusicTrackRow, feedTitle: string): Record<string, unknown> {
+  return {
+    id: row.id,
+    title: row.title,
+    artist: row.artist,
+    album: row.album || feedTitle,
+    durationMs: row.duration_ms,
+    source: row.source,
+    format: resolveMusicTrackType(row.object_key, row.mime)?.format ?? null,
+    webdavPath: null,
+    mime: row.mime,
+    sizeBytes: row.size_bytes,
+    coverUrl: null,
+    lyric: null,
+    hasLyric: false,
+    tagIds: [],
+    isFavorite: Boolean(row.is_favorite),
+    isPinned: Boolean(row.is_pinned),
+    playCount: row.play_count,
+    lastPlayedAt: row.last_played_at,
+    contentHash: row.content_hash,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
 }
 
 function toFeedView(row: PodcastFeedRow): Record<string, unknown> {

@@ -141,6 +141,12 @@ export interface MusicPodcastEpisode {
   description: string
 }
 
+export interface MusicPodcastEpisodeImportInput {
+  audioUrl: string
+  title?: string
+  durationMs?: number
+}
+
 export interface MusicTrashEntry {
   id: string
   kind: 'track' | 'playlist'
@@ -198,6 +204,9 @@ export const music = {
 
   listPodcastEpisodes: (feedId: string) =>
     request<{ feedId: string; title: string; cached: boolean; episodes: MusicPodcastEpisode[] }>(`/api/music/podcasts/${encodeURIComponent(feedId)}/episodes`, { timeoutMs: 30_000 }),
+
+  importPodcastEpisode: (feedId: string, input: MusicPodcastEpisodeImportInput) =>
+    request<MusicTrack>(`/api/music/podcasts/${encodeURIComponent(feedId)}/episodes/import`, { method: 'POST', body: input, timeoutMs: 30_000 }),
 
   importPodcastOpml: (opml: string) =>
     request<{ created: number; skipped: number }>('/api/music/podcasts/opml', { method: 'POST', body: { opml }, timeoutMs: 30_000 }),

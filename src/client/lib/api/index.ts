@@ -6,7 +6,7 @@ export {
   type MusicAlistServerView, type MusicAlistCreateInput, type MusicAlistPatchInput,
   type MusicAlistEntry, type MusicAlistImportInput,
   type MusicPodcastFeedView, type MusicPodcastCreateInput, type MusicPodcastPatchInput,
-  type MusicPodcastEpisode,
+  type MusicPodcastEpisode, type MusicPodcastEpisodeImportInput,
   type MusicTrashEntry, type PublicPlaylist, type PublicPlaylistTrack,
 } from './music'
 import { account } from './account'

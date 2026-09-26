@@ -1,7 +1,7 @@
 import { api } from '../../../lib/api'
 import { toastMusic, toastMusicError } from '../music-feedback'
-import type { MusicPodcastCreateInput, MusicPodcastPatchInput } from '../../../lib/api'
-import type { MusicSet } from './types'
+import type { MusicPodcastCreateInput, MusicPodcastEpisode, MusicPodcastFeedView, MusicPodcastPatchInput } from '../../../lib/api'
+import type { MusicGet, MusicSet } from './types'
 
 // FEA-A2-1: the podcast slice mirrors the Alist slice's shape — a list of the
 // user's subscriptions plus the loading flag. FEA-A2-2 adds the episode view of
@@ -39,6 +39,28 @@ export async function importPodcastOpml(set: MusicSet, opml: string): Promise<vo
     const { created, skipped } = await api.music.importPodcastOpml(opml)
     await loadPodcastFeeds(set)
     toastMusic('music.podcast_import_done', { value0: created, value1: skipped })
+  } catch (error) {
+    toastMusicError(error, 'music.action_failed')
+  }
+}
+
+// FEA-A2-4: playing an episode registers the idempotent external reference row,
+// appends it locally (the library load has not necessarily seen it) and hands
+// the ordinary player the track id — queue, crossfade and progress follow.
+export async function playPodcastEpisode(
+  set: MusicSet,
+  get: MusicGet,
+  feed: MusicPodcastFeedView,
+  episode: MusicPodcastEpisode,
+): Promise<void> {
+  try {
+    const track = await api.music.importPodcastEpisode(feed.id, {
+      audioUrl: episode.audioUrl,
+      title: episode.title,
+      durationMs: episode.durationSeconds > 0 ? episode.durationSeconds * 1000 : undefined,
+    })
+    set((state) => (state.tracks.some((entry) => entry.id === track.id) ? {} : { tracks: [...state.tracks, track] }))
+    await get().playTrack(track.id)
   } catch (error) {
     toastMusicError(error, 'music.action_failed')
   }
