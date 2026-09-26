@@ -739,4 +739,21 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_music_alist_servers_user ON music_alist_servers(user_id, created_at ASC)`,
     ],
   },
+  // FEA-A2-1: podcast RSS subscriptions. Episodes are not stored here — the feed
+  // is fetched on demand; this table only holds what the user subscribed to.
+  {
+    version: 49,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS music_podcast_feeds (
+         id TEXT PRIMARY KEY,
+         user_id TEXT NOT NULL,
+         title TEXT NOT NULL,
+         url TEXT NOT NULL,
+         description TEXT NOT NULL DEFAULT '',
+         created_at INTEGER NOT NULL,
+         updated_at INTEGER NOT NULL
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_music_podcast_feeds_user ON music_podcast_feeds(user_id, created_at ASC)`,
+    ],
+  },
 ]

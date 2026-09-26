@@ -59,6 +59,16 @@ export interface DemoAlistNode {
   children?: DemoAlistNode[]
 }
 
+// FEA-A2 demo stub: a subscription is just the feed record the routes manage.
+export interface DemoPodcastFeed {
+  id: string
+  title: string
+  url: string
+  description: string
+  createdAt: number
+  updatedAt: number
+}
+
 
 interface DemoShare {
   info: ShareInfo
@@ -111,6 +121,7 @@ export interface DemoState {
   musicPlaylists: Map<string, MusicPlaylistDetail>
   musicTrash: Map<string, DemoMusicTrashEntry>
   musicAlistServers: Map<string, DemoAlistServer>
+  musicPodcastFeeds: Map<string, DemoPodcastFeed>
 }
 
 const seedId = (value: number) => `01j${String(value).padStart(23, '0')}`
@@ -338,6 +349,7 @@ export function createDemoState(): DemoState {
     musicPlaylists: new Map(),
     musicTrash: new Map(),
     musicAlistServers: new Map(),
+    musicPodcastFeeds: new Map(),
   }
 }
 

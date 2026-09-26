@@ -50,6 +50,8 @@ function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> 
     alistServers: [],
     alistServersLoading: false,
     alistBrowse: initialAlistBrowseState(),
+    podcastFeeds: [],
+    podcastFeedsLoading: false,
     uploadTarget: 'r2',
     transfersOpen: false,
     webdav: initialWebdavState(),

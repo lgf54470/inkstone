@@ -2146,6 +2146,10 @@ const allowed = new Map([
     '// The demo keeps no object storage, so the data url itself is the stored cover.',
     '// Mirrors the worker\'s batch contract: unowned and already-listed ids are skipped, not fatal.',
   ]],
+  ['src/client/demo/backend/routes/music-podcasts.ts', [
+    '// FEA-A2-1 demo stub: the demo cannot fetch feeds, so subscriptions are plain',
+    '// records managed in memory — the same CRUD contract the worker routes pin.',
+  ]],
   ['src/client/demo/backend/routes/music.ts', [
     '// Mirrors the worker: the list payload drops lyric text, details fetch it lazily by id.',
     '// Mirrors the worker\'s resolver: only containers a browser decodes are accepted, and a',
@@ -2185,6 +2189,7 @@ const allowed = new Map([
   ['src/client/demo/state.ts', [
     '// FEA-B1 demo stub: a deleted track or playlist rests here until restore or purge.',
     '// FEA-A3 demo stub: a registered Alist server carries its own in-memory tree.',
+    '// FEA-A2 demo stub: a subscription is just the feed record the routes manage.',
     '/**\n * A published collection in the demo backend: the target it lists and the access policy on the page.\n * The members are not stored here, for the same reason the worker does not store them — the demo\'s\n * directory is computed from `shares` so it moves when the folder does.\n */',
     '/** Named whiteboard libraries, exactly as the endpoint stores them: name -> items JSON. */',
     '// Welcome notes are deliberately dated a few weeks back: with no edits within the last ~10 days,',
@@ -2805,6 +2810,11 @@ const allowed = new Map([
   ['src/client/features/music/music-playlist-drag.test.ts', [
     '// t1 (i1) dropped on the t2 row: i2 sits at index 2 in the manual order.',
   ]],
+  ['src/client/features/music/music-podcast-modal.tsx', [
+    '// FEA-A2-1: the podcast panel. This entry ships the subscription manager',
+    '// (add/rename/unsubscribe keyed by the RSS URL); the episode list (A2-2) and',
+    '// playback (A2-4) build on the feeds managed here.',
+  ]],
   ['src/client/features/music/music-popover-placement.test.ts', [
     '// The panel\'s coordinates have to come from the placement every other anchored panel in the app',
     '// uses; a private copy of that arithmetic is how the two drift apart.',
@@ -3229,6 +3239,10 @@ const allowed = new Map([
     '// chain would burn the whole queue on a network outage, hence the breaker.',
     '// A slow WebDAV object streams below realtime, so waiting for the first frame',
     '// forever would look like a frozen player. Surface it and stop pretending.',
+  ]],
+  ['src/client/features/music/music-store/podcast.ts', [
+    '// FEA-A2-1: the podcast slice mirrors the Alist slice\'s shape — a list of the',
+    '// user\'s subscriptions plus the loading flag. Episodes arrive with A2-2.',
   ]],
   ['src/client/features/music/music-store/preload.test.ts', [
     '// The store configures its bridge at module import; the function identity survives',
@@ -9758,6 +9772,8 @@ const allowed = new Map([
     '// window before storage objects are reclaimed.',
     '// FEA-A3-1: Alist server registrations for reference-track imports. The token',
     '// lives in the encrypted secret column and never leaves the server.',
+    '// FEA-A2-1: podcast RSS subscriptions. Episodes are not stored here — the feed',
+    '// is fetched on demand; this table only holds what the user subscribed to.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
@@ -10357,6 +10373,13 @@ const allowed = new Map([
     '// user does not own or that are already inside the playlist are skipped, and the',
     '// response says so, instead of failing the batch.',
   ]],
+  ['src/worker/routes/music/podcasts.ts', [
+    '// FEA-A2-1: podcast subscriptions are the user\'s own feed registrations. The',
+    '// feed XML is fetched on demand (A2-2); this table only holds what the user',
+    '// subscribed to, so the routes are a plain CRUD scoped by user_id.',
+    '// A subscription without a title still needs a stable display name before the',
+    '// first feed refresh fills in the channel title.',
+  ]],
   ['src/worker/routes/music/public.ts', [
     '// Read-only projection of the owner\'s library for the blog player: no keys, sizes or flags.',
     '// Per-playlist sharing is its own opt-in (M-51): these routes answer from the',
@@ -10407,6 +10430,9 @@ const allowed = new Map([
     '// FEA-B3: a direct link imports as a reference row — only the URL is stored and',
     '// playback proxies it, so http(s) is the scheme bar and the container must still',
     '// be recognizable from the path\'s extension.',
+    '// FEA-A2-1: a podcast subscription is a feed URL plus a display title. The title',
+    '// is optional at creation (the host name stands in until the first feed refresh',
+    '// replaces it with the channel title).',
   ]],
   ['src/worker/routes/music/settings.ts', [
     '// Publishing is opt-in: the public blog routes read this before serving anything.',

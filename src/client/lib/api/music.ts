@@ -113,6 +113,25 @@ export interface MusicAlistImportInput {
   artist?: string
 }
 
+export interface MusicPodcastFeedView {
+  id: string
+  title: string
+  url: string
+  description: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface MusicPodcastCreateInput {
+  url: string
+  title?: string
+}
+
+export interface MusicPodcastPatchInput {
+  title?: string
+  url?: string
+}
+
 export interface MusicTrashEntry {
   id: string
   kind: 'track' | 'playlist'
@@ -156,6 +175,17 @@ export const music = {
 
   importAlistTrack: (serverId: string, input: MusicAlistImportInput) =>
     request<MusicTrack>(`/api/music/alist/${encodeURIComponent(serverId)}/import`, { method: 'POST', body: input, timeoutMs: 30_000 }),
+
+  listPodcastFeeds: () => request<{ feeds: MusicPodcastFeedView[] }>('/api/music/podcasts'),
+
+  createPodcastFeed: (input: MusicPodcastCreateInput) =>
+    request<MusicPodcastFeedView>('/api/music/podcasts', { method: 'POST', body: input, timeoutMs: 30_000 }),
+
+  patchPodcastFeed: (id: string, patch: MusicPodcastPatchInput) =>
+    request<MusicPodcastFeedView>(`/api/music/podcasts/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch, timeoutMs: 30_000 }),
+
+  deletePodcastFeed: (id: string) =>
+    request<{ ok: boolean }>(`/api/music/podcasts/${encodeURIComponent(id)}`, { method: 'DELETE', timeoutMs: 30_000 }),
 
   listTrash: () => request<{ entries: MusicTrashEntry[] }>('/api/music/trash'),
 

@@ -1,5 +1,5 @@
 import type { StoreApi } from 'zustand'
-import type { MusicAlistCreateInput, MusicAlistEntry, MusicAlistPatchInput, MusicAlistServerView, MusicTrashEntry } from '../../../lib/api'
+import type { MusicAlistCreateInput, MusicAlistEntry, MusicAlistPatchInput, MusicAlistServerView, MusicPodcastCreateInput, MusicPodcastFeedView, MusicPodcastPatchInput, MusicTrashEntry } from '../../../lib/api'
 import type {
   MusicPlayMode, MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry,
 } from '@shared/types'
@@ -167,6 +167,8 @@ export interface MusicStoreState {
   trashLoading: boolean
   alistServers: MusicAlistServerView[]
   alistServersLoading: boolean
+  podcastFeeds: MusicPodcastFeedView[]
+  podcastFeedsLoading: boolean
   alistBrowse: {
     serverId: string | null
     path: string
@@ -276,6 +278,10 @@ export interface MusicStoreState {
   createAlistServer: (input: MusicAlistCreateInput) => Promise<boolean>
   patchAlistServer: (id: string, patch: MusicAlistPatchInput) => Promise<boolean>
   deleteAlistServer: (id: string) => Promise<void>
+  loadPodcastFeeds: () => Promise<void>
+  createPodcastFeed: (input: MusicPodcastCreateInput) => Promise<boolean>
+  renamePodcastFeed: (id: string, patch: MusicPodcastPatchInput) => Promise<void>
+  deletePodcastFeed: (id: string) => Promise<void>
   closeTrash: () => void
   restoreFromTrash: (id: string) => Promise<void>
   purgeTrashEntry: (id: string) => Promise<void>

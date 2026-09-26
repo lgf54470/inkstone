@@ -11,10 +11,16 @@
   "src/client/features/music/music-duplicates.test.ts": {
     "longFns": 1
   },
+  "src/client/features/music/music-hub-modal.tsx": {
+    "longFns": 1
+  },
   "src/client/features/music/music-hub-playlists.test.ts": {
     "longFns": 1
   },
   "src/client/features/music/music-hub-playlists.tsx": {
+    "longFns": 1
+  },
+  "src/client/features/music/music-podcast-modal.tsx": {
     "longFns": 1
   },
   "src/client/features/music/music-share-page/page.test.ts": {
@@ -95,6 +101,6 @@
     "lines": 520
   },
   "src/worker/db/schema/migrations.ts": {
-    "lines": 743
+    "lines": 760
   }
 }

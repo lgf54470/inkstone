@@ -207,3 +207,22 @@ export const reorderPlaylistSchema = z.object({
 })
 
 export type ReorderPlaylistBody = z.infer<typeof reorderPlaylistSchema>
+
+// FEA-A2-1: a podcast subscription is a feed URL plus a display title. The title
+// is optional at creation (the host name stands in until the first feed refresh
+// replaces it with the channel title).
+export const createPodcastFeedSchema = z.object({
+  url: externalUrl,
+  title: trimmed(LIMITS.musicTitleMaxLength).optional(),
+})
+
+export type CreatePodcastFeedBody = z.infer<typeof createPodcastFeedSchema>
+
+export const patchPodcastFeedSchema = z
+  .object({
+    title: trimmed(LIMITS.musicTitleMaxLength).min(1).optional(),
+    url: externalUrl.optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: 'Provide at least one field to update' })
+
+export type PatchPodcastFeedBody = z.infer<typeof patchPodcastFeedSchema>

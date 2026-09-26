@@ -30,7 +30,7 @@
 
 ## 批次 F④ · 播客 RSS（L）
 
-- [ ] FEA-A2-1 播客订阅管理（RSS 源增删改、退订；服务端表迁移只增不改）
+- [x] FEA-A2-1 播客订阅管理（RSS 源增删改、退订；服务端表迁移只增不改）
 - [ ] FEA-A2-2 RSS 解析与分集列表（服务端代抓 + 限长 + 缓存，参考 otter rss-parser 职责）
 - [ ] FEA-A2-3 OPML 批量导入导出
 - [ ] FEA-A2-4 分集播放打通（复用音频引擎与队列；分集封面/时长/已听进度）
@@ -69,3 +69,4 @@
 | 2026-09-26 | FEA-A3-1 Alist 服务器配置管理 | 待回填 | 先红 4 例（加密不回传/列表脱敏/更新保留令牌/非法输入）；实现后 alist + music store 2 文件 11 例 ✅；typecheck ✅；静态门禁 ✅；e2e 177 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 新表 music_alist_servers（迁移 v48 + fresh 建表），token 走 CREDENTIAL_VAULT 加密列（复用 encryptSecret/decryptSecret，测试以可逆变换桩替），任何响应不回传令牌；PATCH 缺省 token 保留原值；工具栏新增 Alist 入口 + 服务器管理弹窗（A3-2/3 在此扩展） |
 | 2026-09-26 | FEA-A3-2 Alist 目录浏览与导入 | `c69c1bf1` | 先红 4 例（浏览/导入/拒绝非媒体/流播放）；实现后 alist + demo 等 25 例 ✅；全量 103 文件 / 819 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual 534/535；check-contrast ✅ | 新 source 值 'alist'：object_key = alist:{serverId}:{path}，流播放时经 fs/get 取签名直链再代理（签名会过期故每次现取）；引用行 size 取上游目录数据，配额与库统计双口径排除（worker summarize 与 demo 同步修正——webdav 此前统计口径一并纠正）；demo 桩以内存树等价实现配置/浏览/导入 |
 | 2026-09-27 | FEA-A3-3 Alist 站内搜索导入 | `ec659757` | 先红 2 例（路由 404）；实现后 worker + store 4 例 ✅；全量 511 文件 / 4558 例 ✅；typecheck ✅；静态门禁 ✅；e2e 177 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | worker GET /alist/:id/search 代理上游 fs/search（parent 锚定根路径），结果过滤只留媒体文件并剥回根相对路径（与浏览视图同口径）；搜索是视图态不进 store（结果存 modal 本地 state，导入复用 importAlistTrack 与 importingPaths 标记），搜索态隐藏「导入本目录全部」footer 避免语义错位；附带 fix 2d600539：来源角标按来源区分文案（external/alist 曾错显示 R2）、补渲染 A3-1 的令牌提示——全量键引用检查 tests/music-locale-keys.test.ts 暴露两个未引用键 |
+| 2026-09-27 | FEA-A2-1 播客订阅管理 | 待回填 | 先红 3 例（路由缺失）；实现后 worker 4 例 + store 3 例 ✅；全量 513 文件 / 4566 例 ✅；typecheck ✅；静态门禁 ✅；浏览器门禁与 A2-2/3/4 的 UI 一并验证（见 A2-4 行） | 迁移 v49 music_podcast_feeds（fresh 建表同步）；创建时标题可选——缺省取主机名，A2-2 刷新后以频道标题覆盖；播客面板挂工具栏（Podcast 图标），订阅行带重命名/退订（退订确认走 confirm）；demo 桩以内存 Map 等价 CRUD |

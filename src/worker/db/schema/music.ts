@@ -75,6 +75,15 @@ export const MUSIC_TABLE_STATEMENTS: readonly string[] = [
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`,
+  `CREATE TABLE IF NOT EXISTS music_podcast_feeds (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      url TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
 ]
 
 export const MUSIC_INDEX_STATEMENTS: readonly string[] = [
@@ -93,6 +102,7 @@ export const MUSIC_INDEX_STATEMENTS: readonly string[] = [
   'CREATE INDEX IF NOT EXISTS idx_music_playlist_items_list ON music_playlist_items(playlist_id, sort_order ASC)',
   'CREATE INDEX IF NOT EXISTS idx_music_trash_list ON music_trash(user_id, deleted_at DESC)',
   'CREATE INDEX IF NOT EXISTS idx_music_alist_servers_user ON music_alist_servers(user_id, created_at ASC)',
+  'CREATE INDEX IF NOT EXISTS idx_music_podcast_feeds_user ON music_podcast_feeds(user_id, created_at ASC)',
 ]
 
 // Databases created before the music tag tree shipped can hold a music_tags
