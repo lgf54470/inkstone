@@ -42,6 +42,13 @@ export const savePlaybackSchema = z.object({
 
 export type SavePlaybackBody = z.infer<typeof savePlaybackSchema>
 
+export const savePositionSchema = z.object({
+  currentIndex: z.number().int().min(0).max(LIMITS.musicPlaylistItemsMax),
+  positionMs: z.number().int().min(0).max(24 * 60 * 60 * 1000),
+})
+
+export type SavePositionBody = z.infer<typeof savePositionSchema>
+
 // The cap is shared with the client, which splits a bigger selection into several
 // requests rather than sending one this schema must reject.
 // `tag` replaces the tags of every listed track with `tagIds`, the same way a single

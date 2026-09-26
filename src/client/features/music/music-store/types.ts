@@ -2,6 +2,7 @@ import type { StoreApi } from 'zustand'
 import type {
   MusicPlayMode, MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry,
 } from '@shared/types'
+import type { MusicEqPresetId } from '../music-eq-presets'
 
 export type MusicSort = 'recent' | 'title' | 'artist' | 'album' | 'duration' | 'plays'
 export type MusicSortDirection = 'asc' | 'desc'
@@ -10,6 +11,14 @@ export type MusicSourceFilter = 'all' | 'r2' | 'webdav'
 export type MusicBatch = 'favorite' | 'unfavorite' | 'pin' | 'unpin' | 'delete'
 
 export type MusicTrackPatchInput = Partial<MusicTrack> & { tagIds?: string[]; coverDataUrl?: string | null }
+
+// A practice loop the listener marks on the track they are hearing; `endMs` stays
+// null until the second point is placed.
+export interface MusicLoopRange {
+  trackId: string
+  startMs: number
+  endMs: number | null
+}
 
 export type MusicScope =
   | { kind: 'all' }
@@ -115,6 +124,7 @@ export interface MusicStoreState {
   mode: MusicPlayMode
   playbackRate: number
   sleepEndsAt: number | null
+  sleepMinutes: number | null
   sleepAfterCurrentTrack: boolean
   eqEnabled: boolean
   eqLowDb: number
@@ -122,11 +132,13 @@ export interface MusicStoreState {
   eqHighDb: number
   normalizeEnabled: boolean
   crossfadeEnabled: boolean
+  lyricOffsets: Record<string, number>
 
   floatingVisible: boolean
   floatingCollapsed: boolean
   floatingPosition: { x: number; y: number } | null
   immersive: boolean
+  loopRange: MusicLoopRange | null
   trackMenu: TrackMenuRequest | null
   uploads: MusicUploadTask[]
   downloads: MusicDownloadTask[]
@@ -167,11 +179,20 @@ export interface MusicStoreState {
   setPlaybackRate: (rate: number) => void
   setSleepTimer: (minutes: number | null) => void
   setSleepAfterCurrentTrack: (enabled: boolean) => void
+  // Lyric calibration is per track: a positive delta holds the lyrics back.
+  nudgeLyricOffset: (trackId: string, deltaMs: number) => void
+  resetLyricOffset: (trackId: string) => void
+  markLoopStart: () => void
+  markLoopEnd: () => void
+  clearLoopRange: () => void
   setEqEnabled: (enabled: boolean) => void
   setEqBand: (band: MusicEqBand, db: number) => void
+  applyEqPreset: (presetId: MusicEqPresetId) => void
   setNormalizeEnabled: (enabled: boolean) => void
   setCrossfadeEnabled: (enabled: boolean) => void
   addToQueue: (id: string, next?: boolean) => void
+  // Returns how many ids were new, so an import can report the rest.
+  addManyToQueue: (ids: readonly string[]) => number
   removeFromQueue: (index: number) => void
   moveQueueItem: (from: number, to: number) => void
   clearQueue: () => void

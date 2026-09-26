@@ -1,11 +1,22 @@
 import { fuzzyMatch } from '../../lib/fuzzy'
-import type { MusicTrack } from '@shared/types'
+import type { MusicTag, MusicTrack } from '@shared/types'
+import { tagRowsById } from './music-tag-rows'
 
 interface SearchRow {
   id: string
   haystack: string
   romanized: string
+  /** Kept apart from the haystack: a whole song of prose would slow the fuzzy scorer to a crawl. */
+  lyric: string
 }
+
+// Below this a lyric scan is all cost and no signal; it also keeps single letters
+// from walking every stored song on each keystroke.
+export const LYRIC_QUERY_MIN_LENGTH = 3
+
+// A stable default, so a caller that never passes tags keeps the index it built
+// instead of invalidating it with a fresh empty array on every keystroke.
+const NO_TAGS: readonly MusicTag[] = []
 
 type Romanizer = (text: string) => string
 
@@ -38,12 +49,24 @@ export interface MusicSearchIndex {
   rows: SearchRow[]
 }
 
-export function buildSearchIndex(tracks: MusicTrack[], romanized: Record<string, string>): MusicSearchIndex {
+export function buildSearchIndex(
+  tracks: MusicTrack[],
+  romanized: Record<string, string>,
+  tags: readonly MusicTag[] = NO_TAGS,
+): MusicSearchIndex {
+  // The pills show a tag's full path, so the path is what a search has to answer to.
+  const tagRows = tagRowsById(tags)
   return {
     rows: tracks.map((track) => ({
       id: track.id,
-      haystack: track.title.concat(' ', track.artist, ' ', track.album).toLowerCase(),
+      haystack: [
+        track.title, track.artist, track.album,
+        // A track that arrives without a tag list simply has no tags to answer for;
+        // the search is a read-only view and must not fail the whole hub on one row.
+        (track.tagIds ?? []).map((id) => tagRows.get(id)?.name).filter(Boolean).join(' '),
+      ].join(' ').toLowerCase(),
       romanized: romanized[track.id] ?? '',
+      lyric: track.lyric?.toLowerCase() ?? '',
     })),
   }
 }
@@ -77,27 +100,39 @@ export const SEARCH_RESULT_LIMIT = 200
 export function rankTracks(index: MusicSearchIndex, query: string, limit = SEARCH_RESULT_LIMIT): string[] {
   const trimmed = query.trim()
   if (!trimmed) return index.rows.slice(0, limit).map((row) => row.id)
+  const lowered = trimmed.toLowerCase()
   const scored: { id: string; score: number }[] = []
+  const lyrical: string[] = []
   for (const row of index.rows) {
     const literal = fuzzyMatch(row.haystack, trimmed)
     const roman = row.romanized ? fuzzyMatch(row.romanized, trimmed) : null
     const score = Math.max(literal?.score ?? Number.NEGATIVE_INFINITY, roman?.score ?? Number.NEGATIVE_INFINITY)
-    if (Number.isFinite(score)) scored.push({ id: row.id, score })
+    if (Number.isFinite(score)) {
+      scored.push({ id: row.id, score })
+      continue
+    }
+    // A lyric is prose rather than a name, so a plain substring hit is the whole
+    // test, and its results follow every track the names answered for.
+    if (lowered.length >= LYRIC_QUERY_MIN_LENGTH && row.lyric.includes(lowered)) lyrical.push(row.id)
   }
   scored.sort((a, b) => b.score - a.score)
-  return scored.slice(0, limit).map((entry) => entry.id)
+  return [...scored.map((entry) => entry.id), ...lyrical].slice(0, limit)
 }
 
 // The haystacks are a function of the library, not of the query, so they are built once per
 // library array and reused while that array and its romanization live on: typing another letter
 // then re-ranks the rows it already has instead of lower-casing the whole library again.
-const indexCache = new WeakMap<MusicTrack[], { romanized: Record<string, string>; index: MusicSearchIndex }>()
+const indexCache = new WeakMap<MusicTrack[], { romanized: Record<string, string>; tags: readonly MusicTag[]; index: MusicSearchIndex }>()
 
-export function searchIndexFor(tracks: MusicTrack[], romanized: Record<string, string>): MusicSearchIndex {
+export function searchIndexFor(
+  tracks: MusicTrack[],
+  romanized: Record<string, string>,
+  tags: readonly MusicTag[] = NO_TAGS,
+): MusicSearchIndex {
   const cached = indexCache.get(tracks)
-  if (cached && cached.romanized === romanized) return cached.index
-  const index = buildSearchIndex(tracks, romanized)
-  indexCache.set(tracks, { romanized, index })
+  if (cached && cached.romanized === romanized && cached.tags === tags) return cached.index
+  const index = buildSearchIndex(tracks, romanized, tags)
+  indexCache.set(tracks, { romanized, tags, index })
   return index
 }
 
@@ -106,8 +141,13 @@ export function searchIndexFor(tracks: MusicTrack[], romanized: Record<string, s
 // each other, scoring every keystroke twice.
 const rankingCache = new WeakMap<MusicSearchIndex, { query: string; ids: string[] }>()
 
-export function searchTracks(tracks: MusicTrack[], romanized: Record<string, string>, query: string): string[] {
-  const index = searchIndexFor(tracks, romanized)
+export function searchTracks(
+  tracks: MusicTrack[],
+  romanized: Record<string, string>,
+  query: string,
+  tags: readonly MusicTag[] = NO_TAGS,
+): string[] {
+  const index = searchIndexFor(tracks, romanized, tags)
   const cached = rankingCache.get(index)
   if (cached && cached.query === query) return cached.ids
   const ids = rankTracks(index, query, Number.POSITIVE_INFINITY)

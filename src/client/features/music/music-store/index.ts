@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { loadPreferences } from './state'
+import { loadPreferences, type MusicPreferences } from './state'
 import { librarySlice } from './library'
 import { playerSlice } from './player-slice'
 import { initialWebdavState } from './webdav'
@@ -13,6 +13,10 @@ export const useMusic = create<MusicStoreState>((set, get) => ({
 
 function initialMusicState(): Partial<MusicStoreState> {
   const prefs = loadPreferences()
+  return { ...initialLibraryState(prefs), ...initialPlaybackState(prefs) }
+}
+
+function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> {
   return {
     tracks: [],
     tags: [],
@@ -35,23 +39,6 @@ function initialMusicState(): Partial<MusicStoreState> {
     isPlaying: false,
     streamLoading: false,
     durationMs: 0,
-    volume: prefs.volume,
-    muted: prefs.muted,
-    mode: prefs.mode,
-    playbackRate: prefs.playbackRate,
-    sleepEndsAt: prefs.sleepEndsAt,
-    sleepAfterCurrentTrack: prefs.sleepAfterCurrentTrack,
-    eqEnabled: prefs.eqEnabled,
-    eqLowDb: prefs.eqLowDb,
-    eqMidDb: prefs.eqMidDb,
-    eqHighDb: prefs.eqHighDb,
-    normalizeEnabled: prefs.normalizeEnabled,
-    crossfadeEnabled: prefs.crossfadeEnabled,
-    floatingVisible: prefs.floatingVisible,
-    floatingCollapsed: prefs.floatingCollapsed,
-    floatingPosition: prefs.floatingPosition,
-    immersive: false,
-    trackMenu: null,
     uploads: [],
     downloads: [],
     offlineTrackIds: [],
@@ -62,13 +49,39 @@ function initialMusicState(): Partial<MusicStoreState> {
   }
 }
 
+function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState> {
+  return {
+    volume: prefs.volume,
+    muted: prefs.muted,
+    mode: prefs.mode,
+    playbackRate: prefs.playbackRate,
+    sleepEndsAt: prefs.sleepEndsAt,
+    sleepMinutes: prefs.sleepMinutes,
+    sleepAfterCurrentTrack: prefs.sleepAfterCurrentTrack,
+    eqEnabled: prefs.eqEnabled,
+    eqLowDb: prefs.eqLowDb,
+    eqMidDb: prefs.eqMidDb,
+    eqHighDb: prefs.eqHighDb,
+    normalizeEnabled: prefs.normalizeEnabled,
+    crossfadeEnabled: prefs.crossfadeEnabled,
+    lyricOffsets: prefs.lyricOffsets,
+    floatingVisible: prefs.floatingVisible,
+    floatingCollapsed: prefs.floatingCollapsed,
+    floatingPosition: prefs.floatingPosition,
+    immersive: false,
+    loopRange: null,
+    trackMenu: null,
+  }
+}
+
 export type {
-  MusicBatch, MusicDownloadTask, MusicEqBand, MusicLibraryJob, MusicLibraryJobKind, MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
+  MusicBatch, MusicDownloadTask, MusicEqBand, MusicLibraryJob, MusicLibraryJobKind, MusicLoopRange, MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
   MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,
 } from './types'
 export { currentTrack } from './player'
-export { PLAYBACK_RATES, EQ_GAIN_RANGE_DB } from './state'
-export { hasPlaybackChanged, restorePlayback, savePlayback, schedulePlaybackSave } from './playback-sync'
+export { PLAYBACK_RATES, EQ_GAIN_RANGE_DB, LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, MIN_LOOP_MS, SLEEP_FADE_MS } from './state'
+export { playbackChange, restorePlayback, savePlayback, savePosition, schedulePlaybackSave } from './playback-sync'
+export type { PlaybackChange } from './playback-sync'
 export { progressTimeMs, setProgressTime, useProgress } from './progress'
 export { resumeSleepTimer } from './player'
 export { visibleTracks, sortTracks } from './library-load'

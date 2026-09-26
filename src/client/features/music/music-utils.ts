@@ -1,4 +1,5 @@
 import { ACCENTS, LIMITS } from '@shared/constants'
+import type { MessageKey } from '../../lib/i18n'
 import type { MusicPlaylistDetail, MusicPlayMode, MusicTag, MusicTrack } from '@shared/types'
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
@@ -14,6 +15,17 @@ export const COVER_LOOKUP_CONCURRENCY = 4
 // Below this viewport width the music surfaces' fixed-width side columns squeeze the main area
 // toward zero, so they fold (UI-14): the hub into drawers, the immersive player into a stack.
 export const MUSIC_NARROW_BREAKPOINT = 900
+
+// Three silences look alike but are not: nothing is playing, the words are still on their
+// way, and the file really carries none. Every lyrics pane answers with the same one.
+export function lyricsEmptyKey(playing: boolean, pending: boolean): MessageKey {
+  if (!playing) return 'music.nothing_playing'
+  return pending ? 'music.lyrics_loading' : 'music.no_lyrics'
+}
+
+export function lyricsPending(track: Pick<MusicTrack, 'hasLyric' | 'lyric'> | null | undefined): boolean {
+  return Boolean(track && track.hasLyric && track.lyric === null)
+}
 
 export function nextPlayMode(mode: MusicPlayMode): MusicPlayMode {
   const index = PLAY_MODES.indexOf(mode)
@@ -142,6 +154,23 @@ export function isArtistSuffixedTitle(current: string, title: string, artist: st
   if (!suffix.startsWith('-')) return false
   const tail = suffix.slice(1).trim()
   return tail.length > 0 && (!artist || tail === artist)
+}
+
+// The lyric calibration reads as a signed shift: how far the lyrics sit from the audio.
+export function formatLyricOffset(offsetMs: number): string {
+  const seconds = offsetMs / 1000
+  const sign = seconds > 0 ? '+' : ''
+  return `${sign}${seconds}s`
+}
+
+// The sidebar badge for "recently played": a walk over the library, so callers
+// memoize it on `tracks` rather than running it per store notification.
+export function recentlyPlayedCount(tracks: readonly Pick<MusicTrack, 'lastPlayedAt'>[]): number {
+  let count = 0
+  for (const track of tracks) {
+    if (track.lastPlayedAt !== null) count += 1
+  }
+  return count
 }
 
 export function collectTagIds(tagId: string, tags: MusicTag[]): Set<string> {

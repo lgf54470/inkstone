@@ -364,6 +364,25 @@ describe('music section of the JSON export bundle', () => {
     expect((await loadLibrary(app)).tracks).toHaveLength(fits)
   })
 
+  // A WebDAV row points at bytes on somebody else's server; its size is only what
+  // that server answered, so it must not eat the quota the restore measures.
+  it('does not charge WebDAV-referenced bytes against the restore quota', async () => {
+    const db = await makeDb()
+    const app = makeApp()
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES ('remote-1', ?1, 'Remote', '', '', 0, 'webdav', 'albums/remote.mp3', 'audio/mpeg', ?2, NULL, NULL, 0, 0, 0, ?3, ?3)`,
+      USER, LIMITS.musicQuotaBytes, H.now,
+    )
+    const result = await importBundleFile(app, freshExportBundle(section({
+      tracks: [craftedTrack(930), craftedTrack(931, { source: 'webdav', objectKey: 'albums/live.mp3' })],
+    })))
+    expect(result.warnings).toEqual([])
+    expect((await loadLibrary(app)).tracks).toHaveLength(3)
+  })
+
   it('leaves bundles without a music section alone and warns on a corrupt one', async () => {
     await makeDb()
     const app = makeApp()

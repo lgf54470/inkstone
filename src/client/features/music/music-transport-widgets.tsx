@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, SlidersHorizontal, Square, Volume1, Volume2, VolumeX } from 'lucide-react'
-import { IconButton } from '../../components/primitives'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Check, Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, SlidersHorizontal, Square, Volume1, Volume2, VolumeX, X } from 'lucide-react'
+import { Button, IconButton } from '../../components/primitives'
 import { Slider, Switch } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
@@ -8,6 +8,7 @@ import { formatTimecode } from '../../lib/time'
 import { EQ_GAIN_RANGE_DB, PLAYBACK_RATES, progressTimeMs } from './music-store'
 import { useMusic } from './music-store'
 import type { MusicEqBand } from './music-store'
+import { EQ_PRESETS, matchEqPreset } from './music-eq-presets'
 import { MusicPopover } from './music-popover'
 import { confirmClearQueue } from './music-queue-clear'
 import { MusicQueueBrowser } from './music-queue-browser'
@@ -64,7 +65,7 @@ export function MusicQueueButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
     <>
       <span className='flex shrink-0 items-center gap-0.5'>
         <Tooltip label={t('music.queue')} side='top'>
-          <IconButton ref={anchorRef} label={t('music.queue')} size={size} active={open} onClick={() => setOpen((value) => !value)}>
+          <IconButton ref={anchorRef} label={t('music.queue')} size={size} onClick={() => setOpen((value) => !value)}>
             <ListMusic size={14} />
           </IconButton>
         </Tooltip>
@@ -79,7 +80,9 @@ export function MusicQueueButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
           <span className='text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]'>
             {t('music.queue_count', { value0: queueLength })}
           </span>
-          <button type='button' onClick={() => void confirmClearQueue(queueLength, clearQueue)} className='rounded px-1 text-[length:var(--text-10)] text-[var(--text-quaternary)] hover:text-[var(--text-primary)]'>
+          {/* Text buttons are as small as their type; without a minimum box they land below the
+              24px a fingertip needs. */}
+          <button type='button' onClick={() => void confirmClearQueue(queueLength, clearQueue)} className='min-h-6 rounded px-1.5 text-[length:var(--text-10)] text-[var(--text-quaternary)] hover:text-[var(--text-primary)]'>
             {t('music.clear_queue')}
           </button>
         </div>
@@ -101,7 +104,7 @@ export function MusicVolumeButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   return (
     <>
       <Tooltip label={t('music.volume')} side='top'>
-        <IconButton ref={anchorRef} label={t('music.volume')} size={size} active={open} onClick={() => setOpen((value) => !value)}>
+        <IconButton ref={anchorRef} label={t('music.volume')} size={size} onClick={() => setOpen((value) => !value)}>
           {muted || volume === 0 ? <VolumeX size={14} /> : volume < 0.5 ? <Volume1 size={14} /> : <Volume2 size={14} />}
         </IconButton>
       </Tooltip>
@@ -142,46 +145,70 @@ export function MusicVolumeSlider({ className }: { className?: string }) {
 
 export function MusicSleepButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   const sleepEndsAt = useMusic((state) => state.sleepEndsAt)
+  const sleepMinutes = useMusic((state) => state.sleepMinutes)
   const sleepAfterCurrentTrack = useMusic((state) => state.sleepAfterCurrentTrack)
   const setSleepTimer = useMusic((state) => state.setSleepTimer)
   const setSleepAfterCurrentTrack = useMusic((state) => state.setSleepAfterCurrentTrack)
   const [open, setOpen] = useState(false)
   const anchorRef = useRef<HTMLButtonElement>(null)
   const options = [15, 30, 45, 60]
+  const idle = sleepEndsAt === null && !sleepAfterCurrentTrack
   return (
     <>
       <Tooltip label={t('music.sleep_timer')} side='top'>
-        <IconButton ref={anchorRef} label={t('music.sleep_timer')} size={size} active={sleepEndsAt !== null || sleepAfterCurrentTrack} onClick={() => setOpen((value) => !value)}>
+        <IconButton ref={anchorRef} label={t('music.sleep_timer')} size={size} highlight={!idle} onClick={() => setOpen((value) => !value)}>
           <Moon size={14} />
         </IconButton>
       </Tooltip>
       <MusicPopover open={open} onClose={() => setOpen(false)} label={t('music.sleep_timer')} anchorRef={anchorRef} className='w-32'>
-        <button
-          type='button'
-          onClick={() => { setSleepTimer(null); setOpen(false) }}
-          className={cn('flex w-full items-center rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] hover:bg-[var(--bg-hover)]', sleepEndsAt === null && !sleepAfterCurrentTrack ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]')}
-        >
-          <Clock3 size={11} className='mr-1.5' />{t('music.off')}
-        </button>
+        <SleepOption
+          selected={idle}
+          icon={<Clock3 size={11} />}
+          label={t('music.off')}
+          onSelect={() => { setSleepTimer(null); setOpen(false) }}
+        />
         {options.map((minutes) => (
-          <button
+          <SleepOption
             key={minutes}
-            type='button'
-            onClick={() => { setSleepTimer(minutes); setOpen(false) }}
-            className='flex w-full items-center rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-          >
-            {t('music.sleep_minutes', { value0: minutes })}
-          </button>
+            selected={sleepEndsAt !== null && sleepMinutes === minutes}
+            icon={null}
+            label={t('music.sleep_minutes', { value0: minutes })}
+            onSelect={() => { setSleepTimer(minutes); setOpen(false) }}
+          />
         ))}
-        <button
-          type='button'
-          onClick={() => { setSleepAfterCurrentTrack(true); setOpen(false) }}
-          className={cn('flex w-full items-center rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] hover:bg-[var(--bg-hover)]', sleepAfterCurrentTrack ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]')}
-        >
-          <Square size={11} className='mr-1.5' />{t('music.sleep_after_current')}
-        </button>
+        <SleepOption
+          selected={sleepAfterCurrentTrack}
+          icon={<Square size={11} />}
+          label={t('music.sleep_after_current')}
+          onSelect={() => { setSleepAfterCurrentTrack(true); setOpen(false) }}
+        />
       </MusicPopover>
     </>
+  )
+}
+
+// Which option is armed used to be colour and nothing else: the menu now states it to
+// assistive tech as well and marks it with a check, so the accent is not carrying it alone.
+function SleepOption({ selected, icon, label, onSelect }: {
+  selected: boolean
+  icon: ReactNode
+  label: string
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type='button'
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        'flex w-full items-center gap-1.5 rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] hover:bg-[var(--bg-hover)]',
+        selected ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]',
+      )}
+    >
+      <span className='flex w-3 shrink-0 justify-center' aria-hidden='true'>{icon}</span>
+      <span className='min-w-0 flex-1 truncate'>{label}</span>
+      {selected && <Check size={11} aria-hidden='true' />}
+    </button>
   )
 }
 
@@ -193,7 +220,7 @@ export function MusicRateButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   return (
     <>
       <Tooltip label={t('music.playback_rate')} side='top'>
-        <IconButton ref={anchorRef} label={t('music.playback_rate')} size={size} active={rate !== 1} onClick={() => setOpen((value) => !value)}>
+        <IconButton ref={anchorRef} label={t('music.playback_rate')} size={size} highlight={rate !== 1} onClick={() => setOpen((value) => !value)}>
           <Gauge size={14} />
         </IconButton>
       </Tooltip>
@@ -221,7 +248,7 @@ export function MusicEqButton({ size = 'sm', className }: { size?: 'sm' | 'md'; 
   return (
     <>
       <Tooltip label={t('music.eq')} side='top'>
-        <IconButton ref={anchorRef} label={t('music.eq')} size={size} active={eqEnabled} className={className} onClick={() => setOpen((value) => !value)}>
+        <IconButton ref={anchorRef} label={t('music.eq')} size={size} highlight={eqEnabled} className={className} onClick={() => setOpen((value) => !value)}>
           <SlidersHorizontal size={14} />
         </IconButton>
       </Tooltip>
@@ -229,6 +256,62 @@ export function MusicEqButton({ size = 'sm', className }: { size?: 'sm' | 'md'; 
         <MusicEqPanel />
       </MusicPopover>
     </>
+  )
+}
+
+/**
+ * A-B practice loop: the first press pins the playhead as the start, the second
+ * closes the range, and the readout states the span so the markers are never a
+ * hidden state. B stays disabled until A exists and until the span is long enough.
+ */
+export function MusicLoopButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
+  const loopRange = useMusic((state) => state.loopRange)
+  const currentId = useMusic((state) => (state.queue[state.currentIndex] ?? null))
+  const markLoopStart = useMusic((state) => state.markLoopStart)
+  const markLoopEnd = useMusic((state) => state.markLoopEnd)
+  const clearLoopRange = useMusic((state) => state.clearLoopRange)
+  const range = loopRange && loopRange.trackId === currentId ? loopRange : null
+  return (
+    <>
+      <IconButton label={t('music.loop_start')} size={size} active={Boolean(range)} onClick={markLoopStart}>{t('music.loop_marker_a')}</IconButton>
+      <IconButton label={t('music.loop_end')} size={size} active={range !== null && range.endMs !== null} disabled={!range} onClick={markLoopEnd}>{t('music.loop_marker_b')}</IconButton>
+      {range && (
+        <>
+          <IconButton label={t('music.loop_clear')} size={size} onClick={clearLoopRange}><X size={12} /></IconButton>
+          {range.endMs !== null && (
+            <span role='status' className='tabular px-1 text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
+              {t('music.loop_range', { value0: formatTimecode(range.startMs), value1: formatTimecode(range.endMs) })}
+            </span>
+          )}
+        </>
+      )}
+    </>
+  )
+}
+
+// The presets are shortcuts onto the same three bands, so the group marks which one
+// the sliders currently agree with and lets a manual move clear that mark.
+function EqPresetRow() {
+  const low = useMusic((state) => state.eqLowDb)
+  const mid = useMusic((state) => state.eqMidDb)
+  const high = useMusic((state) => state.eqHighDb)
+  const applyEqPreset = useMusic((state) => state.applyEqPreset)
+  const active = matchEqPreset({ low, mid, high })
+  return (
+    <div role='group' aria-label={t('music.eq_presets')} className='grid grid-cols-3 gap-1 pb-1'>
+      {EQ_PRESETS.map((preset) => (
+        <Button
+          key={preset.id}
+          size='sm'
+          variant={active === preset.id ? 'primary' : 'secondary'}
+          aria-pressed={active === preset.id}
+          className='px-1'
+          onClick={() => applyEqPreset(preset.id)}
+        >
+          {t(preset.labelKey)}
+        </Button>
+      ))}
+    </div>
   )
 }
 
@@ -245,6 +328,7 @@ export function MusicEqPanel({ className }: { className?: string }) {
         <span className='text-[length:var(--text-11)] text-[var(--text-secondary)]'>{t('music.eq_enable')}</span>
         <Switch checked={eqEnabled} onChange={setEqEnabled} label={t('music.eq_enable')} />
       </div>
+      <EqPresetRow />
       <EqBandSlider band='low' label={t('music.eq_bass')} />
       <EqBandSlider band='mid' label={t('music.eq_mids')} />
       <EqBandSlider band='high' label={t('music.eq_treble')} />

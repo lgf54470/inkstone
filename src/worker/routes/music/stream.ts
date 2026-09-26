@@ -3,7 +3,7 @@ import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { cancelStreamBestEffort } from '../../lib/streams'
 import { isMusicObjectKey, safeStreamMime } from './keys'
-import { alignKvRangeWindow, contentRangeHeader, parseByteRange } from './range'
+import { alignKvRangeWindow, contentRangeHeader, isWellFormedContentLength, isWellFormedContentRange, parseByteRange } from './range'
 import type { MusicTrackRow } from './rows'
 import { readMusicObjectStream, requireMusicStorage } from './storage'
 import { fetchMusicObject, resolveMusicWebdav } from './webdav'
@@ -45,9 +45,12 @@ export async function streamTrackResponse(
   if (!object) throw ApiError.notFound('Track data is missing')
 
   const safeMime = safeStreamMime(row.mime)
+  // A KV value written before sizes were kept states no length of its own; the row's
+  // byte count is the same number that upload stored, so it answers for it.
+  const length = object.length ?? (range ? range.length : row.size_bytes)
   const headers: Record<string, string> = {
     'Content-Type': safeMime ?? 'application/octet-stream',
-    'Content-Length': String(object.length),
+    'Content-Length': String(length),
     'Accept-Ranges': 'bytes',
     'Cache-Control': options.cacheControl,
     'X-Content-Type-Options': 'nosniff',
@@ -83,11 +86,15 @@ async function streamWebdavTrack(
   }
   // Only echo the length the upstream declared for this very response: the
   // stored size_bytes can drift from the remote file and a wrong
-  // Content-Length stalls or poisons downstream caches.
-  for (const header of ['Content-Length', 'Content-Range'] as const) {
-    const value = upstream.headers.get(header)
-    if (value) headers[header] = value
-  }
+  // Content-Length stalls or poisons downstream caches. The claims are still a
+  // third party's, so a value that is not a well-formed byte count is dropped
+  // rather than forwarded to the player.
+  const length = upstream.headers.get('Content-Length')
+  if (length && isWellFormedContentLength(length)) headers['Content-Length'] = length.trim()
+  // A 200 has no partial content to describe, so a stale or injected
+  // Content-Range on one is dropped instead of re-framing the response.
+  const range = upstream.status === 206 ? upstream.headers.get('Content-Range') : null
+  if (range && isWellFormedContentRange(range)) headers['Content-Range'] = range.trim()
   if (!safeMime || options.download) headers['Content-Disposition'] = attachmentDisposition(row.title)
   return new Response(upstream.body as BodyInit, { status: upstream.status === 206 ? 206 : 200, headers })
 }

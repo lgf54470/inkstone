@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { useClickOutside, useDialogFocus, useEscape } from '../../components/overlay'
+import { placePanel } from '../../components/popover-placement'
 import { getVisibleViewport } from '../../lib/viewport'
 import { cn } from '../../lib/cn'
 
-const VIEWPORT_MARGIN = 8
 const ANCHOR_GAP = 8
 
 interface Placement {
@@ -18,6 +18,10 @@ interface Placement {
 // fixed coordinates because the note status bar clips its overflow: an inline
 // panel would be invisible there, and the floating card has to escape its own
 // stacking context too.
+//
+// Placement itself is the shared one: this panel measures its own box (its height depends on
+// what it holds) and feeds that into `placePanel`, rather than keeping a second copy of the
+// flip-and-clamp arithmetic.
 function useAnchoredPlacement(
   open: boolean,
   anchorRef: RefObject<HTMLElement | null>,
@@ -28,22 +32,22 @@ function useAnchoredPlacement(
 
   useLayoutEffect(() => {
     if (!open) return
-    setPlacement((previous) => ({ ...previous, ready: false }))
     const anchor = anchorRef.current
     const panel = panelRef.current
     if (!anchor || !panel) return
-    const rect = anchor.getBoundingClientRect()
     const box = panel.getBoundingClientRect()
-    const viewport = getVisibleViewport()
-    const placeAbove = rect.top - box.height - ANCHOR_GAP >= viewport.top + VIEWPORT_MARGIN
-    const rawLeft = align === 'end' ? rect.right - box.width : rect.left
-    const maxLeft = viewport.right - box.width - VIEWPORT_MARGIN
-    setPlacement({
-      left: Math.max(viewport.left + VIEWPORT_MARGIN, Math.min(rawLeft, maxLeft)),
-      top: placeAbove ? rect.top - box.height - ANCHOR_GAP : rect.bottom + ANCHOR_GAP,
-      width: box.width,
-      ready: true,
+    const next = placePanel({
+      anchor: anchor.getBoundingClientRect(),
+      size: { width: box.width, height: box.height },
+      viewport: getVisibleViewport(),
+      align,
+      gap: ANCHOR_GAP,
     })
+    setPlacement((previous) => (
+      previous.ready && previous.left === next.left && previous.top === next.top && previous.width === box.width
+        ? previous
+        : { left: next.left, top: next.top, width: box.width, ready: true }
+    ))
   }, [open, anchorRef, align])
 
   return placement

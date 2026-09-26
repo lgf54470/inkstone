@@ -23,6 +23,26 @@ export function addToQueue(set: MusicSet, get: MusicGet, id: string, next = fals
   toastMusic('music.added_to_queue')
 }
 
+/**
+ * An import lands as one list: one state write and one notice instead of one of
+ * each per row. Returns how many ids were new, so the caller can report what the
+ * playlist contained that the library could not answer for.
+ */
+export function addManyToQueue(set: MusicSet, get: MusicGet, ids: readonly string[]): number {
+  const { queue } = get()
+  const known = new Set(queue)
+  const added: string[] = []
+  for (const id of ids) {
+    if (known.has(id)) continue
+    known.add(id)
+    added.push(id)
+  }
+  if (!added.length) return 0
+  set({ queue: [...queue, ...added] })
+  toastMusic('music.queue_added_count', { value0: added.length })
+  return added.length
+}
+
 export function removeFromQueue(set: MusicSet, get: MusicGet, index: number): void {
   const { queue, currentIndex } = get()
   if (index < 0 || index >= queue.length) return

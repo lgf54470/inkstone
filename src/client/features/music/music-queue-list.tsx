@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, X } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { IconButton } from '../../components/primitives'
@@ -33,12 +33,17 @@ export function MusicQueueList({
   const tracks = useMusic((state) => state.tracks)
   const moveQueueItem = useMusic((state) => state.moveQueueItem)
   const byId = useMemo(() => new Map(tracks.map((track) => [track.id, track])), [tracks])
-  const rows = buildQueueRows(queue, ids ?? queue, byId)
+  const shown = ids ?? queue
+  const rows = useMemo(() => buildQueueRows(queue, shown, byId), [queue, shown, byId])
   // Reordering only reads sensibly over the whole queue: with the browser's
   // search filtering rows, a displayed neighbour is not an adjacent queue
   // position. The browser hands back the very queue array when unfiltered.
   const reorderable = ids === undefined || ids === queue
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  // Rows are memoized, so these three must keep their identity across renders:
+  // a fresh closure per row would re-render the whole list for one drag.
+  const onDropRow = useCallback((from: number, to: number) => moveQueueItem(from, to), [moveQueueItem])
+  const onDragEndRow = useCallback(() => setDraggedIndex(null), [])
 
   if (!rows.length) {
     return <p className='py-6 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{emptyText ?? t('music.queue_empty')}</p>
@@ -53,8 +58,8 @@ export function MusicQueueList({
           reorderable={reorderable}
           isDragSource={draggedIndex === row.index}
           onDragStartRow={setDraggedIndex}
-          onDropRow={(from) => moveQueueItem(from, row.index)}
-          onDragEndRow={() => setDraggedIndex(null)}
+          onDropRow={onDropRow}
+          onDragEndRow={onDragEndRow}
         />
       ))}
     </div>
@@ -89,7 +94,7 @@ interface RowDragContext {
   reorderable: boolean
   index: number
   onDragStartRow: (index: number) => void
-  onDropRow: (from: number) => void
+  onDropRow: (from: number, to: number) => void
   onDragEndRow: () => void
 }
 
@@ -111,14 +116,16 @@ function queueDragProps({ reorderable, index, onDragStartRow, onDropRow, onDragE
     onDrop: (event: React.DragEvent) => {
       event.preventDefault()
       const from = Number(event.dataTransfer.getData('text/plain'))
-      if (Number.isInteger(from)) onDropRow(from)
+      if (Number.isInteger(from)) onDropRow(from, index)
       onDragEndRow()
     },
     onDragEnd: onDragEndRow,
   }
 }
 
-function QueueRowItem({
+// A queue of a few hundred rows re-renders as a whole when the list does, so the
+// row holds a memo boundary and only sees props that are stable across renders.
+const QueueRowItem = memo(function QueueRowItem({
   row,
   rowClassName,
   reorderable,
@@ -132,7 +139,7 @@ function QueueRowItem({
   reorderable: boolean
   isDragSource: boolean
   onDragStartRow: (index: number) => void
-  onDropRow: (from: number) => void
+  onDropRow: (from: number, to: number) => void
   onDragEndRow: () => void
 }) {
   const currentIndex = useMusic((state) => state.currentIndex)
@@ -162,7 +169,7 @@ function QueueRowItem({
       <QueueRowActions index={row.index} reorderable={reorderable} />
     </div>
   )
-}
+})
 
 function QueueRowActions({ index, reorderable }: { index: number; reorderable: boolean }) {
   const queueLength = useMusic((state) => state.queue.length)

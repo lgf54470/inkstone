@@ -204,7 +204,7 @@ function SearchHistory({
     <div className='absolute top-full left-0 z-[var(--z-popover)] mt-1 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'>
       <div className='flex items-center justify-between px-2 py-1 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
         <span>{t('music.search_history')}</span>
-        <button type='button' onClick={onClear} className='rounded px-1 hover:text-[var(--text-secondary)]'>
+        <button type='button' onClick={onClear} className='min-h-6 rounded px-1.5 hover:text-[var(--text-secondary)]'>
           {t('music.search_clear_history')}
         </button>
       </div>

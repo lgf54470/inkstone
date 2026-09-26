@@ -8,6 +8,7 @@ const SAVE_THROTTLE_MS = 5_000
 const POSITION_STEP_MS = 4_000
 
 let saveTimer: number | null = null
+let pendingFull = false
 
 export async function restorePlayback(set: MusicSet, get: MusicGet): Promise<void> {
   try {
@@ -40,11 +41,24 @@ export async function savePlayback(get: MusicGet): Promise<void> {
   })
 }
 
-export function schedulePlaybackSave(get: MusicGet): void {
+// The playhead moves every few seconds while the queue moves rarely, so a save is
+// tagged with what actually changed: only a queue change pays for the queue body.
+export async function savePosition(get: MusicGet): Promise<void> {
+  const state = get()
+  await api.music.savePlaybackPosition({
+    currentIndex: Math.max(0, state.currentIndex),
+    positionMs: Math.max(0, Math.round(progressTimeMs())),
+  })
+}
+
+export function schedulePlaybackSave(get: MusicGet, full: boolean): void {
+  pendingFull = pendingFull || full
   if (saveTimer !== null) return
   saveTimer = window.setTimeout(() => {
+    const save = pendingFull ? savePlayback : savePosition
+    pendingFull = false
     saveTimer = null
-    void savePlayback(get).catch((error: unknown) => {
+    void save(get).catch((error: unknown) => {
       console.warn('[inkstone] music playback save failed:', error)
     })
   }, SAVE_THROTTLE_MS)
@@ -56,11 +70,14 @@ interface PlaybackSnapshot {
   currentTimeMs: number
 }
 
-export function hasPlaybackChanged(state: PlaybackSnapshot, previous: PlaybackSnapshot, savedPositionMs: number): boolean {
-  if (state.queue !== previous.queue || state.currentIndex !== previous.currentIndex) return true
+export type PlaybackChange = 'none' | 'queue' | 'position'
+
+export function playbackChange(state: PlaybackSnapshot, previous: PlaybackSnapshot, savedPositionMs: number): PlaybackChange {
+  if (state.queue !== previous.queue || state.currentIndex !== previous.currentIndex) return 'queue'
   // Position is quantized against the last saved anchor, not the previous tick:
   // adjacent progress updates land ~250ms apart and would never cross the step.
-  return Math.abs(state.currentTimeMs - savedPositionMs) > POSITION_STEP_MS
+  if (Math.abs(state.currentTimeMs - savedPositionMs) > POSITION_STEP_MS) return 'position'
+  return 'none'
 }
 
 function mergeTracks(existing: MusicTrack[], restored: MusicTrack[]): MusicTrack[] {

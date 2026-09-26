@@ -1,10 +1,11 @@
-import { Heart, ListMusic, Maximize2, Music, PictureInPicture2, Pin } from 'lucide-react'
+import { Heart, ListMusic, Maximize2, PictureInPicture2, Pin } from 'lucide-react'
 import { MusicEqButton, MusicModeButton, MusicRateButton, MusicSleepButton, MusicVolumeSlider } from './music-transport-widgets'
 import type { MusicTrack } from '@shared/types'
 import { IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { useCurrentTrack, useMusic, useProgress } from './music-store'
+import { MusicArtwork } from './music-artwork'
 import { MusicPlayButtons } from './music-play-buttons'
 import { MusicSeekBar } from './music-seek-bar'
 
@@ -62,11 +63,7 @@ function TrackSummary({ track }: { track: MusicTrack | null }) {
   const togglePin = useMusic((state) => state.togglePin)
   return (
     <div className='flex w-52 min-w-0 shrink-0 items-center gap-2'>
-      <span className='size-10 shrink-0 overflow-hidden rounded-[var(--r-md)] bg-[var(--bg-inset)]'>
-        {track?.coverUrl
-          ? <img src={track.coverUrl} alt='' loading='lazy' className='size-full object-cover' />
-          : <span className='flex size-full items-center justify-center text-[var(--text-quaternary)]'><Music size={16} /></span>}
-      </span>
+      <MusicArtwork url={track?.coverUrl ?? null} alt='' className='size-10 shrink-0 rounded-[var(--r-md)]' iconSize={16} />
       <span className='min-w-0 flex-1'>
         <span className='block truncate text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
           {track?.title ?? t('music.nothing_playing')}

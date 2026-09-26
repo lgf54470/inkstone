@@ -10,12 +10,15 @@ import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSortDirection, Mus
 // one in-flight request is shared and a just-loaded library is trusted briefly.
 const LIBRARY_FRESH_MS = 60_000
 let libraryRequest: Promise<void> | null = null
+// Validator of the library now in the store; sent back so an unchanged library
+// costs one round trip instead of a full transfer.
+let libraryEtag: string | null = null
 
 export async function loadLibrary(set: MusicSet, get: MusicGet, force = false): Promise<void> {
   if (!force && Date.now() - get().lastLoadedAt < LIBRARY_FRESH_MS) return
   if (libraryRequest) return libraryRequest
   set({ loading: true, loadError: null })
-  libraryRequest = fetchLibrary(set)
+  libraryRequest = fetchLibrary(set, force)
   try {
     await libraryRequest
   } finally {
@@ -23,9 +26,17 @@ export async function loadLibrary(set: MusicSet, get: MusicGet, force = false): 
   }
 }
 
-async function fetchLibrary(set: MusicSet): Promise<void> {
+async function fetchLibrary(set: MusicSet, force: boolean): Promise<void> {
   try {
-    const library = await api.music.library()
+    const library = await api.music.library(force ? null : libraryEtag, (etag) => {
+      libraryEtag = etag
+    })
+    // A 304 carries no body: keeping the existing arrays keeps every memo built
+    // over the library — sort, grouping, tag trees — from being thrown away.
+    if (!library) {
+      set({ loading: false, lastLoadedAt: Date.now() })
+      return
+    }
     set({
       tracks: library.tracks,
       tags: library.tags,
@@ -167,10 +178,10 @@ export function clearSelection(set: MusicSet): void {
 // this set: declaring the slice keeps the subscription list and the memo dependencies honest
 // instead of letting a cast hide a field the view reads but never watches.
 type MusicScopeView = Pick<MusicStoreState, 'tracks' | 'playlists' | 'tags' | 'scope'>
-export type MusicLibraryView = MusicScopeView & Pick<MusicStoreState, 'sourceFilter' | 'query' | 'sort' | 'sortDirection' | 'romanized'>
+export type MusicLibraryView = MusicScopeView & Pick<MusicStoreState, 'sourceFilter' | 'query' | 'sort' | 'sortDirection' | 'romanized' | 'tags'>
 
 // The "matches left out" notice ranks the same way, minus the order it never applies.
-export type MusicMatchCountView = MusicScopeView & Pick<MusicStoreState, 'sourceFilter' | 'query' | 'romanized'>
+export type MusicMatchCountView = MusicScopeView & Pick<MusicStoreState, 'sourceFilter' | 'query' | 'romanized' | 'tags'>
 
 export function visibleTracks(state: MusicLibraryView): MusicTrack[] {
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
@@ -224,7 +235,7 @@ function playlistTracks(state: MusicScopeView, playlistId: string): MusicTrack[]
 }
 
 function filterByQuery(tracks: MusicTrack[], state: MusicLibraryView, query: string): MusicTrack[] {
-  const ranked = searchTracks(tracks, state.romanized, query).slice(0, SEARCH_RESULT_LIMIT)
+  const ranked = searchTracks(tracks, state.romanized, query, state.tags).slice(0, SEARCH_RESULT_LIMIT)
   const order = new Map(ranked.map((id, index) => [id, index]))
   return tracks.filter((track) => order.has(track.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!)
 }
@@ -237,7 +248,7 @@ export function hiddenMatchCount(state: MusicMatchCountView): number {
   if (!query) return 0
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
   if (scoped.length <= SEARCH_RESULT_LIMIT) return 0
-  return Math.max(0, searchTracks(scoped, state.romanized, query).length - SEARCH_RESULT_LIMIT)
+  return Math.max(0, searchTracks(scoped, state.romanized, query, state.tags).length - SEARCH_RESULT_LIMIT)
 }
 
 // The comparator describes the natural ascending order of the field; the

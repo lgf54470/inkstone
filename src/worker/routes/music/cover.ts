@@ -7,6 +7,7 @@ import type { AttachmentObjectStorage } from '../../attachments/keys'
 
 const COVER_DATA_URL_RE = /^data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)$/
 const COVER_MAX_BYTES = 512 * 1024
+const COVER_EXTENSIONS = ['png', 'jpg', 'webp'] as const
 
 // Shared by the authenticated library and the public blog player.
 export async function coverResponse(
@@ -86,6 +87,15 @@ function base64ToBytes(payload: string): Uint8Array | null {
 
 export function isCoverObjectKey(value: string | null | undefined): boolean {
   return Boolean(value && value.startsWith(`${MUSIC_OBJECT_PREFIX}cover/`))
+}
+
+// The same derived-key rule the audio object follows: only the key this row's own cover
+// write would have produced may be deleted, so a cover_url pointing at somebody else's
+// object cannot turn a delete or a replacement into cross-account storage access.
+export function isDerivedCoverKey(trackId: string, createdAt: number, value: string | null | undefined): boolean {
+  if (!isCoverObjectKey(value)) return false
+  const prefix = `${MUSIC_OBJECT_PREFIX}cover/${new Date(createdAt).toISOString().slice(0, 10)}/${trackId}.`
+  return COVER_EXTENSIONS.some((extension) => value === prefix + extension)
 }
 
 export function coverMimeFor(key: string): string {

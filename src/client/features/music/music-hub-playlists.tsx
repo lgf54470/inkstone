@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Heart, Link2, Link2Off, ListMusic, MoreHorizontal, PencilLine, Pin, Play, Plus, Trash2 } from 'lucide-react'
 import type { MusicPlaylistDetail } from '@shared/types'
 import { IconButton } from '../../components/primitives'
+import { Input } from '../../components/form'
 import { Menu, Tooltip, confirm, useContextMenu, type MenuItem } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -69,7 +70,9 @@ function SectionHead({ open, onToggle, onCreate }: {
         <span>{t('music.section_playlists')}</span>
       </button>
       <Tooltip label={t('music.new_playlist')} side='left'>
-        <IconButton label={t('music.new_playlist')} size='sm' onClick={onCreate} className='opacity-0 group-hover/head:opacity-100 group-focus-within/head:opacity-100'>
+        {/* Visible by default, hover-revealed only from md up: a touch screen never hovers, and
+            a control painted at zero opacity still takes the tap that would have revealed it. */}
+        <IconButton label={t('music.new_playlist')} size='sm' onClick={onCreate} className='opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/head:opacity-100 md:group-hover/head:pointer-events-auto md:group-focus-within/head:opacity-100 md:group-focus-within/head:pointer-events-auto'>
           <Plus size={13} />
         </IconButton>
       </Tooltip>
@@ -160,7 +163,7 @@ function PlaylistRow({
           label={t('music.open_menu')}
           size='sm'
           onClick={() => setIsMenuOpen(true)}
-          className='opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100'
+          className='opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto'
         >
           <MoreHorizontal size={13} />
         </IconButton>
@@ -183,7 +186,7 @@ function PlaylistRenameInput({
   originalName: string
 }) {
   return (
-    <input
+    <Input
       autoFocus
       value={draft}
       aria-label={t('music.rename')}
@@ -197,7 +200,7 @@ function PlaylistRenameInput({
         if (event.key === 'Enter') event.currentTarget.blur()
         if (event.key === 'Escape') onChange(null)
       }}
-      className='h-6 min-w-0 flex-1 rounded-[var(--r-sm)] border border-[var(--accent)] bg-[var(--bg-surface)] px-1 text-[length:var(--text-11)] outline-none'
+      className='h-6 min-w-0 flex-1 border-[var(--accent)] bg-[var(--bg-surface)] px-1 text-[length:var(--text-11)]'
     />
   )
 }

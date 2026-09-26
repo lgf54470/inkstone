@@ -1,3 +1,4 @@
+import { readResponseBytesWithinLimit, ResponseTooLargeError } from '../../backup/common'
 import { isAllowedOutboundUrl } from '../../lib/outbound-url'
 import { cancelStreamBestEffort } from '../../lib/streams'
 
@@ -31,6 +32,30 @@ export function parseUrl(raw: string, base?: URL): URL | null {
   try {
     return base ? new URL(raw, base) : new URL(raw)
   } catch {
+    return null
+  }
+}
+
+// Third-party answers are read as a capped stream instead of being buffered whole:
+// nothing upstream says is trusted about its own size, so a body is abandoned the
+// moment it passes the cap. An over-long or malformed answer is a failed lookup,
+// not a crash, hence null rather than an exception for the caller to translate.
+export async function readUpstreamBytes(response: Response, maxBytes: number): Promise<Uint8Array | null> {
+  try {
+    return await readResponseBytesWithinLimit(response, maxBytes)
+  } catch (error) {
+    if (error instanceof ResponseTooLargeError) return null
+    throw error
+  }
+}
+
+export async function readUpstreamJson<T>(response: Response, maxBytes: number): Promise<T | null> {
+  const bytes = await readUpstreamBytes(response, maxBytes)
+  if (!bytes?.byteLength) return null
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes)) as T
+  } catch {
+    // A body that is not JSON answers the same question as a body with no match in it.
     return null
   }
 }

@@ -3,6 +3,7 @@ import type {
   MusicLibrary,
   MusicPlayback,
   MusicPlaybackInput,
+  MusicPlaybackPositionInput,
   MusicPlaylistDetail,
   MusicTag,
   MusicTrack,
@@ -85,7 +86,12 @@ export const music = {
   importWebdav: (input: MusicWebdavImportInput) =>
     request<MusicTrack>('/api/music/webdav/import', { method: 'POST', body: input, timeoutMs: 30_000 }),
 
-  library: () => request<MusicLibrary>('/api/music/library'),
+  // `etag` is the validator the last answer came with; an unchanged library comes
+  // back as 304 and resolves to null, sparing the client a full rebuild.
+  library: (
+    etag: string | null,
+    onEtag?: (etag: string | null) => void,
+  ) => request<MusicLibrary | null>('/api/music/library', { ifNoneMatch: etag ?? undefined, onEtag }),
 
   publicPlaylist: (slug: string) =>
     request<PublicPlaylist>(`/api/blog/public/music/playlists/${encodeURIComponent(slug)}`),
@@ -99,6 +105,11 @@ export const music = {
 
   savePlayback: (input: MusicPlaybackInput) =>
     request<{ ok: boolean }>('/api/music/playback', { method: 'PUT', body: input }),
+
+  // Drifting through a track only moves the playhead, so this one leaves the
+  // stored queue out of the body instead of resending it every few seconds.
+  savePlaybackPosition: (input: MusicPlaybackPositionInput) =>
+    request<{ ok: boolean }>('/api/music/playback/position', { method: 'PUT', body: input }),
 
   patchTrack: (id: string, patch: MusicTrackPatch) =>
     request<MusicTrack>(`/api/music/tracks/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch, timeoutMs: 30_000 }),

@@ -28,6 +28,27 @@ export function parseByteRange(header: string | null | undefined, size: number):
   return { kind: 'partial', range: { offset: start, length: clampedEnd - start + 1 } }
 }
 
+const CONTENT_RANGE_RE = /^bytes (\d+)-(\d+)\/(\d+|\*)$/
+
+// A third party's range claim is only worth echoing when it describes a real byte
+// range: start ≤ end, and the end inside the declared total when one is declared.
+// Anything else would teach the player a size that is not there.
+export function isWellFormedContentRange(value: string): boolean {
+  const match = CONTENT_RANGE_RE.exec(value.trim())
+  if (!match) return false
+  const start = Number(match[1])
+  const end = Number(match[2])
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end) return false
+  if (match[3] === '*') return true
+  const total = Number(match[3])
+  return Number.isSafeInteger(total) && end < total
+}
+
+export function isWellFormedContentLength(value: string): boolean {
+  const trimmed = value.trim()
+  return /^\d+$/.test(trimmed) && Number.isSafeInteger(Number(trimmed))
+}
+
 export function contentRangeHeader(range: ByteRange, size: number): string {
   return `bytes ${range.offset}-${range.offset + range.length - 1}/${size}`
 }

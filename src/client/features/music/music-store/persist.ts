@@ -40,6 +40,7 @@ function writePreferences(get: MusicGet): void {
     floatingCollapsed: state.floatingCollapsed,
     floatingPosition: state.floatingPosition,
     sleepEndsAt: state.sleepEndsAt,
+    sleepMinutes: state.sleepMinutes,
     sleepAfterCurrentTrack: state.sleepAfterCurrentTrack,
     playbackRate: state.playbackRate,
     searchHistory: state.searchHistory,
@@ -49,5 +50,6 @@ function writePreferences(get: MusicGet): void {
     eqHighDb: state.eqHighDb,
     normalizeEnabled: state.normalizeEnabled,
     crossfadeEnabled: state.crossfadeEnabled,
+    lyricOffsets: state.lyricOffsets,
   })
 }

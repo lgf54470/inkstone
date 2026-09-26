@@ -5,9 +5,10 @@ import type { MusicPlayback, MusicTrack } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
+import { enforceMusicBudget } from './budget'
 import { TRACK_COLUMNS, toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
-import { savePlaybackSchema } from './schemas'
+import { savePlaybackSchema, savePositionSchema } from './schemas'
 
 // Shared with the public blog projection so both sides read a stored queue the same way.
 export function parseStoredMusicQueue(raw: string): string[] {
@@ -40,6 +41,9 @@ export function registerMusicPlaybackRoutes(routes: Hono<AppBindings>): void {
 
   routes.put('/playback', requireAuth, async (c) => {
     const userId = c.get('userId')
+    // A looping client could otherwise rewrite its row as fast as requests arrive; the save rides
+    // its own key so a heavy listening session cannot starve playlist and tag writes.
+    await enforceMusicBudget(c.env.DB, 'playback', userId)
     const body = await readJsonValidated(c, savePlaybackSchema, JSON_BODY_LIMITS.small)
     const currentIndex = Math.min(body.currentIndex, Math.max(0, body.queue.length - 1))
     await c.env.DB.prepare(
@@ -47,6 +51,21 @@ export function registerMusicPlaybackRoutes(routes: Hono<AppBindings>): void {
        VALUES (?1, ?2, ?3, ?4, ?5)
        ON CONFLICT(user_id) DO UPDATE SET queue = ?2, current_index = ?3, position_ms = ?4, updated_at = ?5`,
     ).bind(userId, JSON.stringify(body.queue), currentIndex, body.positionMs, Date.now()).run()
+    return c.json({ ok: true })
+  })
+
+  // Listening re-saves the playhead every few seconds; the queue rides along only
+  // when it changed. The stored queue is carried into a fresh row rather than
+  // overwritten, so a position save can never land after a queue save and wipe it.
+  routes.put('/playback/position', requireAuth, async (c) => {
+    const userId = c.get('userId')
+    await enforceMusicBudget(c.env.DB, 'playback', userId)
+    const body = await readJsonValidated(c, savePositionSchema, JSON_BODY_LIMITS.small)
+    await c.env.DB.prepare(
+      `INSERT INTO music_playback (user_id, queue, current_index, position_ms, updated_at)
+       VALUES (?1, COALESCE((SELECT queue FROM music_playback WHERE user_id = ?1), '[]'), ?2, ?3, ?4)
+       ON CONFLICT(user_id) DO UPDATE SET current_index = ?2, position_ms = ?3, updated_at = ?4`,
+    ).bind(userId, body.currentIndex, body.positionMs, Date.now()).run()
     return c.json({ ok: true })
   })
 }

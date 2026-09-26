@@ -48,7 +48,10 @@ function fakeR2() {
         arrayBuffer: async () => slice.buffer.slice(slice.byteOffset, slice.byteOffset + slice.byteLength),
       }
     }),
-    delete: vi.fn(async () => ({})),
+    delete: vi.fn(async (keys: string | string[]) => {
+      for (const key of Array.isArray(keys) ? keys : [keys]) objects.delete(key)
+      return {}
+    }),
   }
 }
 
@@ -56,41 +59,53 @@ const KV_CHUNK_BYTES = 64 * 1024
 
 function fakeKv() {
   const values = new Map<string, Uint8Array>()
+  const metadata = new Map<string, Record<string, unknown>>()
   const stats = { arrayBufferReads: 0, streamBytesPulled: 0, streamCancelled: false }
+  function streamOf(stored: Uint8Array): ReadableStream<Uint8Array> {
+    let position = 0
+    return new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (position >= stored.byteLength) {
+          controller.close()
+          return
+        }
+        const chunk = stored.subarray(position, position + KV_CHUNK_BYTES)
+        position += chunk.byteLength
+        stats.streamBytesPulled += chunk.byteLength
+        controller.enqueue(chunk.slice())
+      },
+      cancel() {
+        stats.streamCancelled = true
+      },
+    })
+  }
+  function read(key: string, type?: string): unknown {
+    const stored = values.get(key)
+    if (!stored) return null
+    if (type === 'stream') return streamOf(stored)
+    stats.arrayBufferReads += 1
+    return stored.buffer.slice(stored.byteOffset, stored.byteOffset + stored.byteLength)
+  }
   return {
     values,
+    metadata,
     stats,
-    put: vi.fn(async (key: string, value: Uint8Array) => {
+    put: vi.fn(async (key: string, value: Uint8Array, options?: { metadata?: Record<string, unknown> }) => {
       values.set(key, value.slice())
+      if (options?.metadata) metadata.set(key, { ...options.metadata })
       return {}
     }),
     delete: vi.fn(async (key: string) => values.delete(key)),
-    get: vi.fn(async (key: string, type?: string) => {
-      const stored = values.get(key)
-      if (!stored) return null
-      if (type === 'stream') {
-        let position = 0
-        return new ReadableStream<Uint8Array>({
-          pull(controller) {
-            if (position >= stored.byteLength) {
-              controller.close()
-              return
-            }
-            const chunk = stored.subarray(position, position + KV_CHUNK_BYTES)
-            position += chunk.byteLength
-            stats.streamBytesPulled += chunk.byteLength
-            controller.enqueue(chunk.slice())
-          },
-          cancel() {
-            stats.streamCancelled = true
-          },
-        })
-      }
-      stats.arrayBufferReads += 1
-      return stored.buffer.slice(stored.byteOffset, stored.byteOffset + stored.byteLength)
-    }),
+    get: vi.fn(async (key: string, type?: string) => read(key, type)),
+    getWithMetadata: vi.fn(async (key: string, options?: { type?: string }) => ({
+      value: read(key, options?.type) as never,
+      metadata: metadata.get(key) ?? null,
+    })),
   }
 }
+
+// The most recent fake bucket, so object cleanup can be asserted on what is left in it.
+let r2: ReturnType<typeof fakeR2> | null = null
 
 async function makeDb(): Promise<D1Shim> {
   const db = createDb()
@@ -98,8 +113,13 @@ async function makeDb(): Promise<D1Shim> {
   for (const statement of INDEX_STATEMENTS) await runSql(db, statement)
   for (const statement of MUSIC_PLAYBACK_MIGRATION_STATEMENTS) await runSql(db, statement)
   DB_ENV.env.DB = db as unknown as D1Database
-  DB_ENV.env.FILES = fakeR2() as unknown as AppBindings['Bindings']['FILES']
+  r2 = fakeR2()
+  DB_ENV.env.FILES = r2 as unknown as AppBindings['Bindings']['FILES']
   return db
+}
+
+function storedObjects(): Map<string, Uint8Array> {
+  return r2!.objects
 }
 
 async function seedUser(db: D1Shim, id = USER): Promise<void> {
@@ -167,6 +187,31 @@ async function seedTracks(db: D1Shim, count: number): Promise<string[]> {
   return ids
 }
 
+// The quota is read as a snapshot, so an upload that lands between the pre-check and
+// the insert is invisible to both. This proxy hands the first read a stale total —
+// exactly what a concurrent writer looks like — and reports the truth afterwards.
+function staleQuotaDb(db: D1Shim, staleBytes: number): D1Shim {
+  let reads = 0
+  return new Proxy(db, {
+    get(target, property, receiver) {
+      if (property !== 'prepare') return Reflect.get(target, property, receiver)
+      return (sql: string) => {
+        const statement = target.prepare(sql)
+        if (!/SUM\(size_bytes\)/.test(sql)) return statement
+        return {
+          bind: (...values: unknown[]) => {
+            const bound = statement.bind(...values)
+            return {
+              first: async <T>(): Promise<T | null> =>
+                reads++ === 0 ? ({ bytes: staleBytes } as T) : bound.first<T>(),
+            }
+          },
+        } as unknown as ReturnType<D1Shim['prepare']>
+      }
+    },
+  })
+}
+
 // Records every statement the route prepares, so round-trip redundancy is assertable.
 function recordingDb(db: D1Shim): { proxy: D1Shim; statements: string[] } {
   const statements: string[] = []
@@ -186,28 +231,36 @@ function recordingDb(db: D1Shim): { proxy: D1Shim; statements: string[] } {
 
 // Counts round trips, not statements: every execution inside one batch shares a
 // single call, while an execution outside a batch costs its own round trip.
+// Throttle bookkeeping (the hourly budget tables) is cross-cutting and rides its
+// own statements, so it is not charged to the route under measurement.
 function countRoundTrips(db: D1Shim): { proxy: D1Shim; stats: { batches: number; singles: number } } {
   const stats = { batches: 0, singles: 0 }
   let insideBatch = false
-  const wrap = (statement: D1Prepared): D1Prepared => new Proxy(statement, {
-    get(target, property, receiver) {
-      if (property === 'bind') return (...values: unknown[]) => wrap(target.bind(...values))
-      if (property === 'run' || property === 'first' || property === 'all') {
-        const execute = target[property]
-        return () => {
-          if (!insideBatch) stats.singles += 1
-          return Promise.resolve(execute.call(target))
+  const sqlOf = new WeakMap<D1Prepared, string>()
+  const isMetering = (statement: D1Prepared): boolean => (sqlOf.get(statement) ?? '').includes('login_attempts')
+  const wrap = (statement: D1Prepared, sql: string): D1Prepared => {
+    const wrapped = new Proxy(statement, {
+      get(target, property, receiver) {
+        if (property === 'bind') return (...values: unknown[]) => wrap(target.bind(...values), sql)
+        if (property === 'run' || property === 'first' || property === 'all') {
+          const execute = target[property]
+          return () => {
+            if (!insideBatch && !isMetering(wrapped)) stats.singles += 1
+            return Promise.resolve(execute.call(target))
+          }
         }
-      }
-      return Reflect.get(target, property, receiver)
-    },
-  })
+        return Reflect.get(target, property, receiver)
+      },
+    })
+    sqlOf.set(wrapped, sql)
+    return wrapped
+  }
   const proxy = new Proxy(db, {
     get(target, property, receiver) {
-      if (property === 'prepare') return (sql: string) => wrap(target.prepare(sql))
+      if (property === 'prepare') return (sql: string) => wrap(target.prepare(sql), sql)
       if (property === 'batch') {
         return async (statements: D1Prepared[]) => {
-          stats.batches += 1
+          if (!statements.some(isMetering)) stats.batches += 1
           insideBatch = true
           try {
             return await target.batch(statements)
@@ -321,6 +374,54 @@ describe('music routes (real D1 + fake R2)', () => {
     const res = await request(app, '/api/music/tracks', { method: 'POST', body: form })
     expect(res.status).toBe(413)
     expect((await res.json() as { error: { code: string } }).error.code).toBe('storage_quota_reached')
+  })
+
+  // A WebDAV row is a reference to bytes on somebody else's server, and its size is
+  // whatever that server answered; charging it locally would let a remote host (or a
+  // stale stat) lock the account out of its own uploads.
+  it('does not charge WebDAV-referenced bytes against the local quota', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES ('remote-1', ?1, 'Remote', '', '', 0, 'webdav', 'albums/remote.mp3', 'audio/mpeg', ?2, NULL, NULL, 0, 0, 0, ?3, ?3)`,
+      USER, LIMITS.musicQuotaBytes, H.now,
+    )
+
+    const form = new FormData()
+    form.append('file', new File([AUDIO], 'next.mp3', { type: 'audio/mpeg' }))
+    const res = await request(app, '/api/music/tracks', { method: 'POST', body: form })
+    expect(res.status).toBe(201)
+  })
+
+  it('unwinds an upload the post-insert ledger shows as over quota', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES ('near-full', ?1, 'Near full', '', '', 0, 'r2', '/music/near-full.mp3', 'audio/mpeg', ?2, NULL, NULL, 0, 0, 0, ?3, ?3)`,
+      USER, LIMITS.musicQuotaBytes - 4, H.now,
+    )
+    // The pre-check reads 0 (a concurrent writer has not landed yet), the row then
+    // pushes the real total past the line.
+    DB_ENV.env.DB = staleQuotaDb(db, 0) as unknown as D1Database
+
+    const form = new FormData()
+    form.append('file', new File([AUDIO], 'racing.mp3', { type: 'audio/mpeg' }))
+    const res = await request(app, '/api/music/tracks', { method: 'POST', body: form })
+    expect(res.status).toBe(413)
+    expect((await res.json() as { error: { code: string } }).error.code).toBe('storage_quota_reached')
+
+    DB_ENV.env.DB = db as unknown as D1Database
+    const library = await (await request(app, '/api/music/library')).json()
+    expect(library.tracks).toHaveLength(1)
+    expect(storedObjects().size).toBe(0)
   })
 
   it('streams the whole object and honours a byte range', async () => {
@@ -646,14 +747,27 @@ describe('music KV range streaming (real D1 + fake KV)', () => {
     expect(ranged.headers.get('Content-Length')).toBe(String(2 * 1024 * 1024))
   })
 
-  it('streams the full object through the arrayBuffer path', async () => {
+  it('streams a whole value without buffering it in the isolate', async () => {
+    const size = 3 * 1024 * 1024
+    const { app, id, kv } = await uploadToKv(new Uint8Array(size))
+
+    const full = await request(app, `/api/music/tracks/${id}/stream`)
+    expect(full.status).toBe(200)
+    expect(full.headers.get('Content-Length')).toBe(String(size))
+    expect((await full.arrayBuffer()).byteLength).toBe(size)
+    expect(kv.stats.arrayBufferReads).toBe(0)
+  })
+
+  it('declares the stored size for a value written before sizes were kept', async () => {
     const { app, id, kv } = await uploadToKv(AUDIO)
+    // A legacy value carries no size metadata; the row's own byte count still answers.
+    kv.metadata.delete(kv.values.keys().next().value as string)
 
     const full = await request(app, `/api/music/tracks/${id}/stream`)
     expect(full.status).toBe(200)
     expect(full.headers.get('Content-Length')).toBe('16')
     expect(await full.text()).toBe('0123456789abcdef')
-    expect(kv.stats.arrayBufferReads).toBe(1)
+    expect(kv.stats.arrayBufferReads).toBe(0)
   })
 })
 
@@ -845,6 +959,29 @@ describe('music playlist item round trips (real D1)', () => {
   })
 })
 
+describe('music library conditional reads (real D1)', () => {
+  it('answers an unchanged library with 304 and an empty body', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    await uploadTrack(app)
+
+    const first = await request(app, '/api/music/library')
+    expect(first.status).toBe(200)
+    const etag = first.headers.get('ETag')
+    expect(etag).toBeTruthy()
+
+    const second = await request(app, '/api/music/library', { headers: { 'If-None-Match': etag as string } })
+    expect(second.status).toBe(304)
+    expect(await second.text()).toBe('')
+
+    await uploadTrack(app, 'second.mp3')
+    const third = await request(app, '/api/music/library', { headers: { 'If-None-Match': etag as string } })
+    expect(third.status).toBe(200)
+    expect((await third.json()).tracks).toHaveLength(2)
+  })
+})
+
 describe('music playback queue round trips (real D1)', () => {
   it('loads a large saved queue in one batched read', async () => {
     const db = await makeDb()
@@ -866,9 +1003,27 @@ describe('music playback queue round trips (real D1)', () => {
     expect(stats.batches).toBe(1)
     expect(stats.singles).toBe(1)
   })
+
+  it('moves the playhead without rewriting the stored queue', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const queue: string[] = []
+    for (let index = 0; index < 40; index += 1) queue.push(String((await uploadTrack(app, `p${index}.mp3`)).id))
+    await json(app, '/api/music/playback', { queue, currentIndex: 3, positionMs: 1_000 }, 'PUT')
+
+    const moved = await json(app, '/api/music/playback/position', { currentIndex: 17, positionMs: 61_000 }, 'PUT')
+    expect(moved.status).toBe(200)
+
+    const body = await (await request(app, '/api/music/playback')).json()
+    expect(body.playback.queue).toEqual(queue)
+    expect(body.playback.currentIndex).toBe(17)
+    expect(body.playback.positionMs).toBe(61_000)
+  })
 })
 describe('music cover storage', () => {
   const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')
+  const JPEG = Buffer.from('ffd8ffe000104a464946000101000001', 'hex')
 
   it('stores an uploaded data-URL cover as an object and serves it', async () => {
     const db = await makeDb()
@@ -947,7 +1102,98 @@ describe('music cover storage', () => {
     const served = await (await request(app, '/api/music/library')).json()
     expect(served.tracks[0].coverUrl).toBe('https://covers.example.com/a.png')
   })
+
+  async function uploadWithCover(app: Hono<AppBindings>, dataUrl: string): Promise<{ id: string; coverKey: string }> {
+    const db = DB_ENV.env.DB as unknown as D1Shim
+    const form = new FormData()
+    form.append('file', new File([AUDIO], 'art.mp3', { type: 'audio/mpeg' }))
+    form.append('coverUrl', dataUrl)
+    const created = await request(app, '/api/music/tracks', { method: 'POST', body: form })
+    expect(created.status).toBe(201)
+    const track = (await created.json()) as { id: string }
+    const row = await db.prepare('SELECT cover_url FROM music_tracks WHERE id = ?1')
+      .bind(track.id).first<{ cover_url: string }>()
+    return { id: track.id, coverKey: String(row?.cover_url) }
+  }
+
+  it('reclaims the stored cover object when the track is deleted', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const { id, coverKey } = await uploadWithCover(app, 'data:image/png;base64,' + PNG.toString('base64'))
+    expect(storedObjects().has(coverKey)).toBe(true)
+
+    const removed = await request(app, `/api/music/tracks/${id}`, { method: 'DELETE' })
+    expect(removed.status).toBe(200)
+    expect(storedObjects().has(coverKey)).toBe(false)
+  })
+
+  it('reclaims the previous cover object when a scan replaces it', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const { id, coverKey } = await uploadWithCover(app, 'data:image/png;base64,' + PNG.toString('base64'))
+
+    const patched = await json(app, `/api/music/tracks/${id}`, {
+      coverDataUrl: 'data:image/jpeg;base64,' + JPEG.toString('base64'),
+    }, 'PATCH')
+    expect(patched.status).toBe(200)
+    const replaced = String((await db.prepare('SELECT cover_url FROM music_tracks WHERE id = ?1')
+      .bind(id).first<{ cover_url: string }>())?.cover_url)
+    expect(replaced).not.toBe(coverKey)
+    expect(storedObjects().has(coverKey)).toBe(false)
+    expect(storedObjects().has(replaced)).toBe(true)
+  })
+
+  it('leaves a cover object that is not derived from the row alone', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const foreign = 'music/cover/2024-05-01/someone-else.jpg'
+    await runSql(
+      db,
+      `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+         cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+       VALUES (?1, ?2, 'Foreign', '', '', 0, 'webdav', '/music/foreign.mp3', 'audio/mpeg', 16, ?3, NULL, 0, 0, 0, ?4, ?4)`,
+      'foreign-cover', USER, foreign, H.now,
+    )
+    storedObjects().set(foreign, new Uint8Array([1, 2, 3]))
+
+    const removed = await request(app, '/api/music/tracks/foreign-cover', { method: 'DELETE' })
+    expect(removed.status).toBe(200)
+    expect(storedObjects().has(foreign)).toBe(true)
+  })
 })
+
+// Routes read upstream answers as a capped stream, so a fetch stub has to hand over a
+// real body instead of an already materialised buffer.
+function bodyOf(bytes: Uint8Array): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(bytes.slice())
+      controller.close()
+    },
+  })
+}
+
+function jsonBody(payload: unknown): ReadableStream<Uint8Array> {
+  return bodyOf(new TextEncoder().encode(JSON.stringify(payload)))
+}
+
+function stubbedResponse(options: {
+  status?: number
+  headers?: Record<string, string>
+  body?: ReadableStream<Uint8Array> | null
+}): unknown {
+  const status = options.status ?? 200
+  const headers = options.headers ?? {}
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: (name: string) => headers[name.toLowerCase()] ?? null },
+    body: options.body ?? null,
+  }
+}
 
 describe('music cover lookup (real D1)', () => {
   const ARTWORK = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4])
@@ -957,14 +1203,16 @@ describe('music cover lookup (real D1)', () => {
     vi.stubGlobal('fetch', (url: string) => {
       calls.push(String(url))
       if (String(url).includes('itunes.apple.com')) {
-        return Promise.resolve({ ok: status === 200, status, json: () => Promise.resolve({ results }) })
+        return Promise.resolve(stubbedResponse({
+          status,
+          headers: { 'content-type': 'application/json' },
+          body: jsonBody({ results }),
+        }))
       }
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        headers: { get: () => artworkContentType },
-        arrayBuffer: () => Promise.resolve(ARTWORK.buffer.slice(0)),
-      })
+      return Promise.resolve(stubbedResponse({
+        headers: { 'content-type': artworkContentType },
+        body: bodyOf(ARTWORK),
+      }))
     })
     return calls
   }
@@ -1015,11 +1263,20 @@ describe('music cover lookup (real D1)', () => {
     vi.stubGlobal('fetch', (url: string | URL) => {
       calls.push(String(url))
       if (String(url).includes('itunes.apple.com')) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
-          results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }],
-        }) })
+        return Promise.resolve(stubbedResponse({
+          headers: { 'content-type': 'application/json' },
+          body: jsonBody({
+            results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }],
+          }),
+        }))
       }
-      return Promise.resolve({ ok: true, status: 302, headers: { get: (name: string) => (name.toLowerCase() === 'location' ? 'http://169.254.169.254/latest/meta-data/' : name.toLowerCase() === 'content-type' ? 'image/jpeg' : null) }, arrayBuffer: () => Promise.resolve(ARTWORK.buffer.slice(0)) })
+      return Promise.resolve(stubbedResponse({
+        status: 302,
+        headers: {
+          'content-type': 'image/jpeg',
+          location: 'http://169.254.169.254/latest/meta-data/',
+        },
+      }))
     })
     const res = await request(app, '/api/music/cover-lookup?title=Moonlight&artist=Hu%20Yanbin')
     expect(res.status).toBe(500)
@@ -1033,6 +1290,72 @@ describe('music cover lookup (real D1)', () => {
     expect((await request(app, '/api/music/cover-lookup')).status).toBe(400)
     expect((await request(app, '/api/music/cover-lookup?title=Unknown%20Song')).status).toBe(404)
   })
+
+  it('abandons an artwork answer that declares itself larger than the cap', async () => {
+    await makeDb()
+    await seedUser(DB_ENV.env.DB as unknown as D1Shim)
+    const app = makeApp()
+    const results = [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }]
+    vi.stubGlobal('fetch', (url: string | URL) => {
+      if (String(url).includes('itunes.apple.com')) {
+        return Promise.resolve({
+          ...(stubbedResponse({
+            headers: { 'content-type': 'application/json' },
+            body: jsonBody({ results }),
+          }) as Record<string, unknown>),
+          json: () => Promise.resolve({ results }),
+        })
+      }
+      return Promise.resolve({
+        ...(stubbedResponse({
+          headers: { 'content-type': 'image/jpeg', 'content-length': String(3 * 1024 * 1024) },
+          body: bodyOf(ARTWORK),
+        }) as Record<string, unknown>),
+        // Present so an implementation that ignores the declared length still reads
+        // something and answers 200 — the assertion below is what proves it did not.
+        arrayBuffer: () => Promise.resolve(ARTWORK.buffer.slice(0)),
+      })
+    })
+    const res = await request(app, '/api/music/cover-lookup?title=Moonlight')
+    expect(res.status).toBe(500)
+  })
+
+  it('abandons an artwork answer that streams past the cap without declaring a length', async () => {
+    await makeDb()
+    await seedUser(DB_ENV.env.DB as unknown as D1Shim)
+    const app = makeApp()
+    let artworkPulled = 0
+    vi.stubGlobal('fetch', (url: string | URL) => {
+      if (String(url).includes('itunes.apple.com')) {
+        return Promise.resolve(stubbedResponse({
+          headers: { 'content-type': 'application/json' },
+          body: jsonBody({ results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }] }),
+        }))
+      }
+      const chunk = new Uint8Array(64 * 1024)
+      let sent = 0
+      return Promise.resolve(stubbedResponse({
+        headers: { 'content-type': 'image/jpeg' },
+        body: new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (sent >= 8 * 1024 * 1024) {
+              controller.close()
+              return
+            }
+            sent += chunk.byteLength
+            artworkPulled += chunk.byteLength
+            controller.enqueue(chunk.slice())
+          },
+        }),
+      }))
+    })
+    const res = await request(app, '/api/music/cover-lookup?title=Moonlight')
+    expect(res.status).toBe(500)
+    // The body is read only until it passes the cap: an implementation that buffers
+    // the whole answer would either pull nothing or pull the entire 8 MiB.
+    expect(artworkPulled).toBeGreaterThan(0)
+    expect(artworkPulled).toBeLessThan(3 * 1024 * 1024)
+  })
 })
 
 describe('music lyric lookup (real D1)', () => {
@@ -1040,11 +1363,15 @@ describe('music lyric lookup (real D1)', () => {
     vi.unstubAllGlobals()
   })
 
-  function stubLyrics(payload: unknown, status = 200): string[] {
+  function stubLyrics(payload: unknown, status = 200, body?: ReadableStream<Uint8Array>): string[] {
     const calls: string[] = []
     vi.stubGlobal('fetch', (url: string) => {
       calls.push(String(url))
-      return Promise.resolve({ ok: status === 200, status, json: () => Promise.resolve(payload) })
+      return Promise.resolve(stubbedResponse({
+        status,
+        headers: { 'content-type': 'application/json' },
+        body: body ?? jsonBody(payload),
+      }))
     })
     return calls
   }
@@ -1094,17 +1421,31 @@ describe('music lyric lookup (real D1)', () => {
     expect(res.status).toBe(404)
   })
 
+  it('abandons a lyrics answer whose body passes the cap', async () => {
+    const { app, track } = await appWithTrack()
+    stubLyrics({}, 200, bodyOf(new TextEncoder().encode(JSON.stringify({
+      plainLyrics: 'x'.repeat(LIMITS.musicLyricMaxBytes * 2),
+    }))))
+    const res = await request(app, `/api/music/tracks/${track.id}/lyric-lookup`)
+    expect(res.status).toBe(404)
+  })
+
+  it('reports no match for a lyrics answer that is not JSON', async () => {
+    const { app, track } = await appWithTrack()
+    stubLyrics({}, 200, bodyOf(new TextEncoder().encode('<html>not json</html>')))
+    const res = await request(app, `/api/music/tracks/${track.id}/lyric-lookup`)
+    expect(res.status).toBe(404)
+  })
+
   it('refuses to follow a lyrics redirect off the allowed domain', async () => {
     const { app, track } = await appWithTrack()
     const calls: string[] = []
     vi.stubGlobal('fetch', (url: string) => {
       calls.push(String(url))
-      return Promise.resolve({
-        ok: false,
+      return Promise.resolve(stubbedResponse({
         status: 302,
-        headers: { get: (name: string) => (name.toLowerCase() === 'location' ? 'http://169.254.169.254/latest/meta-data/' : null) },
-        json: () => Promise.resolve({}),
-      })
+        headers: { location: 'http://169.254.169.254/latest/meta-data/' },
+      }))
     })
     const res = await request(app, `/api/music/tracks/${track.id}/lyric-lookup`)
     expect(res.status).toBe(404)
@@ -1131,13 +1472,18 @@ describe('music hourly budgets (real D1)', () => {
   })
 
   function stubArtwork(): void {
-    vi.stubGlobal('fetch', () => Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve({ results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }] }),
-      headers: { get: () => 'image/jpeg' },
-      arrayBuffer: () => Promise.resolve(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]).buffer),
-    }))
+    vi.stubGlobal('fetch', (url: string | URL) => {
+      if (String(url).includes('itunes.apple.com')) {
+        return Promise.resolve(stubbedResponse({
+          headers: { 'content-type': 'application/json' },
+          body: jsonBody({ results: [{ trackName: 'Moonlight', artistName: 'Hu Yanbin', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/100x100bb.jpg' }] }),
+        }))
+      }
+      return Promise.resolve(stubbedResponse({
+        headers: { 'content-type': 'image/jpeg' },
+        body: bodyOf(new Uint8Array([0xff, 0xd8, 0xff, 0xe0])),
+      }))
+    })
   }
 
   it('blocks cover lookups once the hourly budget is spent', async () => {
@@ -1171,6 +1517,23 @@ describe('music hourly budgets (real D1)', () => {
       expect.arrayContaining([
         { key: 'music-play:user-1', fails: 1 },
         { key: 'music-write:user-1', fails: 1 },
+      ]),
+    )
+  })
+
+  it('charges playlist, tag and playback writes against a budget too', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app)
+    await json(app, '/api/music/playlists', { name: 'List' }, 'POST')
+    await json(app, '/api/music/tags', { name: 'Focus' }, 'POST')
+    await json(app, '/api/music/playback', { queue: [track.id], currentIndex: 0, positionMs: 0 }, 'PUT')
+    const { results } = await db.prepare('SELECT key, fails FROM login_attempts ORDER BY key').all<{ key: string; fails: number }>()
+    expect(results).toEqual(
+      expect.arrayContaining([
+        { key: 'music-playback:user-1', fails: 1 },
+        { key: 'music-write:user-1', fails: 2 },
       ]),
     )
   })

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Heart, Music, Pin, Tags } from 'lucide-react'
+import { Heart, Pin, Tags } from 'lucide-react'
 import { isVideoMime } from '@shared/music-media'
 import { IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
@@ -8,9 +8,10 @@ import { t, type MessageKey } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { formatBytes, formatTimecode, fullTime } from '../../lib/time'
 import { useCurrentTrack, useMusic, useProgress } from './music-store'
+import { MusicArtwork } from './music-artwork'
 import { useTrackLyric } from './music-lyrics'
 import { MusicVideoStage } from './music-video-stage'
-import { activeLyricIndex, parseLyric } from './music-utils'
+import { activeLyricIndex, lyricsEmptyKey, lyricsPending, parseLyric } from './music-utils'
 
 export type MusicDetailTab = 'lyrics' | 'details'
 
@@ -28,7 +29,7 @@ export function MusicNowPlaying({
   const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
   const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs))
   const scrollerRef = useRef<HTMLDivElement>(null)
-  const lyricPending = Boolean(track && track.hasLyric && track.lyric === null)
+  const lyricPending = lyricsPending(track)
 
   useEffect(() => {
     if (tab !== 'lyrics' || activeIndex < 0) return
@@ -42,7 +43,7 @@ export function MusicNowPlaying({
       <NowPlayingMeta track={track} />
       <div className='px-3 pb-2'>
         <Segmented
-          label={t('music.details')}
+          label={t('music.now_playing')}
           size='sm'
           value={tab}
           onChange={onTabChange}
@@ -75,11 +76,7 @@ function Artwork({ track }: { track: ReturnType<typeof useCurrentTrack> }) {
       {isVideoMime(track?.mime)
         ? <MusicVideoStage track={track} className={box} />
         : (
-          <div className={cn(box, 'bg-[var(--bg-inset)]')}>
-            {track?.coverUrl
-              ? <img src={track.coverUrl} alt='' className='size-full object-cover' />
-              : <span className='flex size-full items-center justify-center text-[var(--text-quaternary)]'><Music size={28} /></span>}
-          </div>
+          <MusicArtwork url={track?.coverUrl ?? null} alt='' className={cn(box, 'bg-[var(--bg-inset)]')} iconSize={28} />
         )}
     </div>
   )
@@ -100,13 +97,6 @@ function NowPlayingMeta({ track }: { track: ReturnType<typeof useCurrentTrack> }
         : <p className='truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.nothing_playing')}</p>}
     </header>
   )
-}
-
-// Three silences look alike but are not: nothing is playing, the words are still on
-// their way, and the file really carries none.
-function lyricsEmptyKey(playing: boolean, pending: boolean): MessageKey {
-  if (!playing) return 'music.nothing_playing'
-  return pending ? 'music.lyrics_loading' : 'music.no_lyrics'
 }
 
 function Lyrics({ lines, activeIndex, emptyKey, pending }: {

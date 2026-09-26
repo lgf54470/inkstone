@@ -179,14 +179,16 @@ describe('table ARIA structure', () => {
     expect(headerCells).toHaveLength(firstRow.children.length)
   })
 
-  it('every columnheader is readable and icon-only columns stay unroled spacers', async () => {
+  it('every columnheader is readable, and the icon-only ones hide instead of going unroled', async () => {
     await mountList()
     const headerCells = [...headerRow().children]
-    // Artwork, favourite and menu columns carry nothing a screen reader could read, so they
-    // align through an empty spacer rather than an empty columnheader (axe empty-table-header).
-    const spacers = headerCells.filter((cell) => !cell.getAttribute('role'))
-    expect(spacers).toHaveLength(3)
-    for (const cell of headerCells.filter((child) => child.getAttribute('role') === 'columnheader')) {
+    // A row's children must all be cells; a roleless span leaves the row malformed. The three
+    // columns with nothing readable keep the role and hide themselves from the a11y tree, so
+    // the grid is legal without announcing empty headers (axe empty-table-header).
+    expect(headerCells.every((cell) => cell.getAttribute('role') === 'columnheader')).toBe(true)
+    const hidden = headerCells.filter((cell) => cell.getAttribute('aria-hidden') === 'true')
+    expect(hidden).toHaveLength(3)
+    for (const cell of headerCells.filter((child) => child.getAttribute('aria-hidden') !== 'true')) {
       expect(cell.textContent?.trim() || cell.querySelector('input[aria-label]')).toBeTruthy()
     }
     // aria-multiselectable is not allowed on role='table'; selection is carried per row checkbox.

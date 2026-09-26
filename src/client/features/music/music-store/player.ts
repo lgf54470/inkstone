@@ -1,6 +1,7 @@
 import type { MusicTrack } from '@shared/types'
 import { api } from '../../../lib/api'
 import { toastMusicError, toastMusicNotice } from '../music-feedback'
+import { EQ_PRESETS, type MusicEqPresetId } from '../music-eq-presets'
 import { computeNextIndex, computePrevIndex, nextPlayMode } from '../music-utils'
 import {
   applyVolume, mediaElement, cancelCrossfade, configureAudio, configureEqualizer, configureLoudnessNormalization,
@@ -13,7 +14,7 @@ import { handleCrossfadeComplete, maybeStartCrossfade } from './crossfade'
 import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
 import { persist } from './persist'
-import { loadPreferences, readEqDb } from './state'
+import { MIN_LOOP_MS, SLEEP_FADE_MS, clampLyricOffset, loadPreferences, readEqDb } from './state'
 import type { MusicEqBand, MusicGet, MusicSet, MusicStoreState } from './types'
 
 const STREAM_START_TIMEOUT_MS = 20_000
@@ -28,6 +29,13 @@ export function connectAudio(set: MusicSet, get: MusicGet): void {
   configureLoudnessNormalization(prefs.normalizeEnabled)
   configureAudio({
     onTime: (ms) => {
+      // The loop answers before the tick is published, so the playhead never
+      // reports a position past B and the end handler cannot fire there.
+      const loop = activeLoop(get)
+      if (loop && ms >= loop.endMs) {
+        seek(loop.startMs)
+        return
+      }
       setProgressTime(ms)
       updateMediaSessionPosition(ms, get().durationMs, mediaElement()?.playbackRate ?? 1)
       maybeStartCrossfade(get, ms)
@@ -153,6 +161,35 @@ export function seek(ms: number): void {
   setProgressTime(ms)
 }
 
+// A range only ever applies to the track it was marked on; a stale one from another
+// track reads as no loop at all.
+function activeLoop(get: MusicGet): { startMs: number; endMs: number } | null {
+  const loop = get().loopRange
+  if (!loop || loop.endMs === null) return null
+  if (loop.trackId !== currentTrack(get())?.id) return null
+  return { startMs: loop.startMs, endMs: loop.endMs }
+}
+
+export function markLoopStart(set: MusicSet, get: MusicGet): void {
+  const track = currentTrack(get())
+  if (!track) return
+  set({ loopRange: { trackId: track.id, startMs: Math.round(progressTimeMs()), endMs: null } })
+}
+
+export function markLoopEnd(set: MusicSet, get: MusicGet): void {
+  const range = get().loopRange
+  const track = currentTrack(get())
+  if (!range || !track || range.trackId !== track.id) return
+  const endMs = Math.round(progressTimeMs())
+  // A loop this short is a stutter, and the marker button stays disabled there.
+  if (endMs - range.startMs < MIN_LOOP_MS) return
+  set({ loopRange: { ...range, endMs } })
+}
+
+export function clearLoopRange(set: MusicSet): void {
+  set({ loopRange: null })
+}
+
 export function setPlaybackRate(set: MusicSet, get: MusicGet, rate: number): void {
   set({ playbackRate: rate })
   applyPlaybackRate(rate)
@@ -162,11 +199,11 @@ export function setPlaybackRate(set: MusicSet, get: MusicGet, rate: number): voi
 export function setSleepTimer(set: MusicSet, get: MusicGet, minutes: number | null): void {
   clearSleepTimer(get)
   if (minutes === null || minutes <= 0) {
-    set({ sleepEndsAt: null, sleepAfterCurrentTrack: false })
+    set({ sleepEndsAt: null, sleepMinutes: null, sleepAfterCurrentTrack: false })
     return
   }
   const endsAt = Date.now() + minutes * 60_000
-  set({ sleepEndsAt: endsAt, sleepAfterCurrentTrack: false })
+  set({ sleepEndsAt: endsAt, sleepMinutes: minutes, sleepAfterCurrentTrack: false })
   persist(get)
   armSleepTimer(set, get, endsAt)
 }
@@ -180,7 +217,7 @@ export function setSleepAfterCurrentTrack(set: MusicSet, get: MusicGet, enabled:
     return
   }
   clearSleepTimer(get)
-  set({ sleepAfterCurrentTrack: true, sleepEndsAt: null })
+  set({ sleepAfterCurrentTrack: true, sleepEndsAt: null, sleepMinutes: null })
   // A fade already running would deliver the next track anyway, voiding the promise.
   cancelCrossfade()
   persist(get)
@@ -190,7 +227,7 @@ export function resumeSleepTimer(set: MusicSet, get: MusicGet): void {
   const endsAt = get().sleepEndsAt
   if (endsAt === null) return
   if (endsAt <= Date.now()) {
-    set({ sleepEndsAt: null })
+    set({ sleepEndsAt: null, sleepMinutes: null })
     persist(get)
     return
   }
@@ -202,22 +239,40 @@ function armSleepTimer(set: MusicSet, get: MusicGet, endsAt: number): void {
   sleepTimer = window.setInterval(() => {
     const ends = get().sleepEndsAt
     if (ends === null) return
-    if (Date.now() < ends) return
+    const remaining = ends - Date.now()
+    if (remaining > 0) {
+      applySleepFade(get, remaining)
+      return
+    }
     clearSleepTimer(get)
-    set({ sleepEndsAt: null })
+    set({ sleepEndsAt: null, sleepMinutes: null })
+    // The fade left the element quieter than the listener set it; the next session
+    // must not start from the attenuated volume.
+    applyVolume(get().volume, get().muted)
     persist(get)
     pausePlayback()
   }, 1000)
 }
 
+// The last stretch of the countdown slides the volume away instead of cutting the
+// sound off mid-phrase. It only ever moves the element volume, so a track change
+// or a manual volume drag is picked up unchanged on the next tick.
+function applySleepFade(get: MusicGet, remainingMs: number): void {
+  if (remainingMs > SLEEP_FADE_MS) return
+  const state = get()
+  applyVolume(state.volume * (remainingMs / SLEEP_FADE_MS), state.muted)
+}
+
 let sleepTimer: number | null = null
 
 function clearSleepTimer(get: MusicGet): void {
-  void get
   if (sleepTimer !== null) {
     window.clearInterval(sleepTimer)
     sleepTimer = null
   }
+  // Cancelling during the fade must give the volume back, not strand it half down.
+  const state = get()
+  applyVolume(state.volume, state.muted)
 }
 
 export function setImmersive(set: MusicSet, immersive: boolean): void {
@@ -253,6 +308,37 @@ export function setEqEnabled(set: MusicSet, get: MusicGet, enabled: boolean): vo
   applyEqualizer(get())
   // Enabling during playback is a user gesture, the one moment a blocked audio graph may start.
   if (enabled) void ensureAudioGraph()
+  persist(get)
+}
+
+// Lyrics and audio drift apart by a fraction of a second on some rips; the
+// calibration is kept per track so fixing one does not move the rest.
+export function nudgeLyricOffset(set: MusicSet, get: MusicGet, trackId: string, deltaMs: number): void {
+  const offset = clampLyricOffset((get().lyricOffsets[trackId] ?? 0) + deltaMs)
+  writeLyricOffset(set, get, trackId, offset)
+}
+
+export function resetLyricOffset(set: MusicSet, get: MusicGet, trackId: string): void {
+  writeLyricOffset(set, get, trackId, 0)
+}
+
+function writeLyricOffset(set: MusicSet, get: MusicGet, trackId: string, offset: number): void {
+  if (!trackId) return
+  const offsets = { ...get().lyricOffsets }
+  // Back in sync is the default, so the map only holds tracks that were moved.
+  if (offset === 0) delete offsets[trackId]
+  else offsets[trackId] = offset
+  set({ lyricOffsets: offsets })
+  persist(get)
+}
+
+// One preset moves all three bands, so the graph is re-configured once instead of
+// three times and a single persist carries the whole voicing.
+export function applyEqPreset(set: MusicSet, get: MusicGet, presetId: MusicEqPresetId): void {
+  const preset = EQ_PRESETS.find((entry) => entry.id === presetId)
+  if (!preset) return
+  set({ eqLowDb: preset.bands.low, eqMidDb: preset.bands.mid, eqHighDb: preset.bands.high })
+  applyEqualizer(get())
   persist(get)
 }
 
@@ -295,7 +381,8 @@ async function loadAndPlay(set: MusicSet, get: MusicGet): Promise<void> {
   const track = currentTrack(get())
   if (!track) return
   const resumeMs = Math.round(progressTimeMs())
-  set({ streamLoading: true, durationMs: track.durationMs })
+  // The loop belonged to the track that just ended.
+  set({ streamLoading: true, durationMs: track.durationMs, loopRange: null })
   streamFailedReported = false
   applyVolume(get().volume, get().muted)
   applyPlaybackRate(get().playbackRate)

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { hasPlaybackChanged, progressTimeMs, restorePlayback, resumeSleepTimer, savePlayback, schedulePlaybackSave, useMusic, useProgress } from './music-store'
+import { playbackChange, progressTimeMs, restorePlayback, resumeSleepTimer, savePlayback, schedulePlaybackSave, useMusic, useProgress } from './music-store'
 
 export function MusicSessionSync(): null {
   useEffect(() => {
@@ -21,8 +21,9 @@ export function MusicSessionSync(): null {
     let savedPositionMs = previous.currentTimeMs
     const check = (): void => {
       const next = snapshot()
-      if (hasPlaybackChanged(next, previous, savedPositionMs)) {
-        schedulePlaybackSave(get)
+      const change = playbackChange(next, previous, savedPositionMs)
+      if (change !== 'none') {
+        schedulePlaybackSave(get, change === 'queue')
         savedPositionMs = next.currentTimeMs
       }
       previous = next

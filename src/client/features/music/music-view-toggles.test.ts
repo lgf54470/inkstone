@@ -136,7 +136,7 @@ describe('source filter (UI-16)', () => {
   }
 
   it('keeps exactly one tab stop and selects on click', async () => {
-    const container = await mount(createElement(MusicHubToolbar, { onUpload: () => {}, onBrowseWebdav: () => {} }))
+    const container = await mount(createElement(MusicHubToolbar, { tracks: [], onUpload: () => {}, onBrowseWebdav: () => {} }))
     expect(group(container)).toBeTruthy()
     expect(tabbableCount(group(container))).toBe(1)
     await act(async () => {
@@ -149,7 +149,7 @@ describe('source filter (UI-16)', () => {
 
 describe('sort control while browsing groups (M-50)', () => {
   function mountToolbar(): Promise<HTMLElement> {
-    return mount(createElement(MusicHubToolbar, { onUpload: () => {}, onBrowseWebdav: () => {} }))
+    return mount(createElement(MusicHubToolbar, { tracks: [], onUpload: () => {}, onBrowseWebdav: () => {} }))
   }
 
   it('hides the track sort control while a grouped grid is open', async () => {

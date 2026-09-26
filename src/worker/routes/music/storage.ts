@@ -9,7 +9,15 @@ export const KV_VALUE_MAX_BYTES = 25 * 1024 * 1024
 
 export interface MusicObjectStream {
   body: ReadableStream<Uint8Array>
-  length: number
+  /** `null` when the backend cannot state a size up front (a KV value stored before sizes were kept). */
+  length: number | null
+}
+
+// KV has no size API, so the byte count rides along in the value metadata.
+interface MusicKvMetadata {
+  kind?: string
+  mime?: string
+  size?: number
 }
 
 export function requireMusicStorage(env: Env): AttachmentObjectStorage {
@@ -40,7 +48,7 @@ export async function putMusicObject(
     return
   }
   if (!env.FILES_KV) throw new ApiError(503, 'storage_unavailable', 'KV storage is not bound')
-  await env.FILES_KV.put(key, bytes, { metadata: { kind: 'music', mime } })
+  await env.FILES_KV.put(key, bytes, { metadata: { kind: 'music', mime, size: bytes.byteLength } })
 }
 
 export async function readMusicObjectStream(
@@ -57,16 +65,14 @@ export async function readMusicObjectStream(
     return { body, length: range ? range.length : object.size }
   }
   if (!env.FILES_KV) throw new ApiError(503, 'storage_unavailable', 'KV storage is not bound')
-  if (range) {
-    // KV has no native byte range: stream the value and slice, so a Range request
-    // never materialises the whole (up to 25 MiB) value inside the isolate.
-    const source = await env.FILES_KV.get(key, 'stream')
-    if (!source) return null
-    return { body: sliceKvStream(source as ReadableStream<Uint8Array>, range), length: range.length }
-  }
-  const value = await env.FILES_KV.get(key, 'arrayBuffer')
+  // Neither a range nor a whole read buffers: KV has no byte range, and a value
+  // can be 25 MiB, so the isolate only ever holds the chunk in flight.
+  const { value, metadata } = await env.FILES_KV.getWithMetadata<MusicKvMetadata>(key, { type: 'stream' })
   if (!value) return null
-  return { body: new Response(value).body as ReadableStream<Uint8Array>, length: value.byteLength }
+  const source = value as ReadableStream<Uint8Array>
+  if (range) return { body: sliceKvStream(source, range), length: range.length }
+  const size = typeof metadata?.size === 'number' ? metadata.size : null
+  return { body: source, length: size }
 }
 
 function sliceKvStream(source: ReadableStream<Uint8Array>, range: ByteRange): ReadableStream<Uint8Array> {

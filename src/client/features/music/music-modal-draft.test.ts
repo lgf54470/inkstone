@@ -159,6 +159,29 @@ describe('track edit dialog save failure', () => {
   })
 })
 
+describe('track edit dialog title requirement', () => {
+  it('refuses to save an empty title instead of falling back to the old one', async () => {
+    const patchTrack = vi.fn(async () => true)
+    useMusic.setState({ patchTrack, ensureTrackLyric: vi.fn(async () => {}) })
+    await mount(createElement(TrackEditorHarness, { track: track(), onClose: vi.fn() }))
+
+    typeInto(input(), '   ')
+    expect(button(t('music.save'))?.hasAttribute('disabled')).toBe(true)
+    expect(input().getAttribute('aria-invalid')).toBe('true')
+    expect(dialog()?.textContent).toContain(t('music.field_title_required'))
+
+    await click(button(t('music.save')))
+    expect(patchTrack).not.toHaveBeenCalled()
+  })
+
+  it('clears the complaint as soon as the title is filled in', async () => {
+    useMusic.setState({ patchTrack: vi.fn(async () => true), ensureTrackLyric: vi.fn(async () => {}) })
+    await mount(createElement(TrackEditorHarness, { track: track(), onClose: vi.fn() }))
+    expect(button(t('music.save'))?.hasAttribute('disabled')).toBe(false)
+    expect(dialog()?.textContent).not.toContain(t('music.field_title_required'))
+  })
+})
+
 describe('playlist dialog save failure', () => {
   it('keeps the typed name and description when creating is rejected', async () => {
     const createPlaylist = vi.fn(async () => false)

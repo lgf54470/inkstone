@@ -37,6 +37,10 @@ function menuAnchor(index: number): HTMLButtonElement {
   return [...document.querySelectorAll('button')].filter((button) => button.getAttribute('aria-label') === t('music.open_menu'))[index]!
 }
 
+function namedButton(name: string): HTMLButtonElement {
+  return document.querySelector(`button[aria-label="${name}"]`) as HTMLButtonElement
+}
+
 function menuItem(label: string): HTMLButtonElement | undefined {
   return [...document.querySelectorAll('[role="menu"] [role="menuitem"]')]
     .find((item) => item.textContent?.includes(label)) as HTMLButtonElement | undefined
@@ -110,6 +114,26 @@ describe('playlist row covers (M-51)', () => {
     expect(rowButton('Road Trip')?.getAttribute('aria-label')).toBeNull()
     await act(async () => { rowButton('Road Trip').click() })
     expect(useMusic.getState().setScope).toHaveBeenCalledWith({ kind: 'playlist', playlistId: 'p1' })
+  })
+})
+
+// Hover is not a thing on a touch screen, and a control painted at zero opacity still takes the
+// tap that would have revealed it — so the row menu and the new-playlist button were, on a phone,
+// the only way to rename, share or delete a playlist and also the thing hiding them. The track
+// rows already solve this by revealing from `md` up instead of hiding until hover; these two are
+// the hub's last holdouts.
+describe('playlist controls are reachable without a pointer', () => {
+  it('shows each row menu before anyone hovers', async () => {
+    await mount()
+    expect(menuAnchor(0).classList.contains('opacity-0')).toBe(false)
+    expect(menuAnchor(0).classList.contains('md:opacity-0')).toBe(true)
+  })
+
+  it('shows the new-playlist button before anyone hovers', async () => {
+    await mount()
+    const create = namedButton(t('music.new_playlist'))
+    expect(create.classList.contains('opacity-0')).toBe(false)
+    expect(create.classList.contains('md:opacity-0')).toBe(true)
   })
 })
 

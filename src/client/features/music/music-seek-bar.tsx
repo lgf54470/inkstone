@@ -31,7 +31,11 @@ export function MusicSeekBar({
       {showTime && <span className='tabular shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{formatTimecode(value)}</span>}
       <input
         type='range'
-        className='ink-slider h-3.5 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent outline-none'
+        // Deliberately no `outline-none`: the base layer gives every :focus-visible element a
+        // ring, and a utility beats it, so suppressing it here left keyboard users scrubbing a
+        // playhead with no visible caret. The shared Slider in components/form draws the same
+        // control and has never suppressed it.
+        className='ink-slider h-3.5 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent'
         style={{ '--pct': `${(value / max) * 100}%` } as CSSProperties}
         min={0}
         max={max}

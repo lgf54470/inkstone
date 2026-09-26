@@ -2,10 +2,10 @@ import { memo, useMemo } from 'react'
 import { ChevronLeft, Play } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { Button, IconButton } from '../../components/primitives'
-import { Empty } from '../../components/feedback'
+import { Empty, LoadingBlock } from '../../components/feedback'
 import { t } from '../../lib/i18n'
 import { formatTotalDuration } from '../../lib/time'
-import { useMusic, useVisibleTracks } from './music-store'
+import { useMusic } from './music-store'
 import type { MusicScope } from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { buildGroups, groupMatchesQuery, groupScopeOf } from './music-grouping'
@@ -26,6 +26,8 @@ export const MusicGroupBrowse = memo(function MusicGroupBrowse({ kind }: { kind:
       .filter((group) => groupMatchesQuery(group, query)),
     [tracks, kind, query, sourceFilter],
   )
+  // A first load has nothing to group yet: an empty grid says "your library is empty".
+  if (loading && !tracks.length) return <LoadingBlock label={t('music.loading')} />
   if (!loading && !tracks.length) return <Empty art='search' title={t('music.no_tracks')} compact />
   if (!loading && !groups.length) return <Empty art='search' title={t(query.trim() ? 'music.no_results' : 'music.no_tracks')} compact />
   return (
@@ -60,10 +62,12 @@ function groupNameLabel(group: MusicGroup, kind: MusicGroupKind): string {
 
 // The drilled-down album/artist list is the ordinary track list; this header restores
 // the group context and the way back that a plain list would not offer.
-export const MusicGroupDetailHeader = memo(function MusicGroupDetailHeader({ scope }: { scope: Extract<MusicScope, { kind: 'album' | 'artist' }> }) {
+export const MusicGroupDetailHeader = memo(function MusicGroupDetailHeader({ scope, tracks }: {
+  scope: Extract<MusicScope, { kind: 'album' | 'artist' }>
+  tracks: MusicTrack[]
+}) {
   const setScope = useMusic((state) => state.setScope)
   const playCollection = useMusic((state) => state.playCollection)
-  const tracks = useVisibleTracks()
   const title = scope.kind === 'album'
     ? scope.album || t('music.unknown_album')
     : scope.artist || t('music.unknown_artist')

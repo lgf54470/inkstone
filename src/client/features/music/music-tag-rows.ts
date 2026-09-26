@@ -1,17 +1,13 @@
-import { useMemo } from 'react'
 import type { MusicTag, Tag } from '@shared/types'
-import { useMusic } from './music-store'
 import { tagColorValue } from './music-utils'
 
 const MAX_TAG_DEPTH = 16
 const EMPTY_COUNTS: ReadonlyMap<string, number> = new Map()
 
-export function useTrackTagPills(tagIds: readonly string[]): Tag[] {
-  const tags = useMusic((state) => state.tags)
-  return useMemo(() => {
-    const byId = new Map(toTagRows(tags, EMPTY_COUNTS).map((row) => [row.id, row]))
-    return tagIds.map((id) => byId.get(id)).filter((row): row is Tag => Boolean(row))
-  }, [tags, tagIds])
+// Built once for a whole list and shared: resolving the tree per row is O(rows × tags)
+// for a value that only changes when the tags themselves change.
+export function tagRowsById(tags: readonly MusicTag[]): Map<string, Tag> {
+  return new Map(toTagRows(tags, EMPTY_COUNTS).map((row) => [row.id, row]))
 }
 
 export function toTagRows(tags: readonly MusicTag[], counts: ReadonlyMap<string, number>): Tag[] {

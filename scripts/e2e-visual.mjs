@@ -4385,11 +4385,25 @@ async function assertMusicSurface(page) {
   const seeded = fixture.found.length === MUSIC_TRACK_TITLES.length
   check('music: the probe library holds two tracks the browser can open', seeded, JSON.stringify(fixture))
   if (!seeded) return
+
+  // Measured before the hub opens: the floating player steps aside while the hub is on screen
+  // (one track, one transport), so this is the only moment both rectangles exist.
+  const playerBox = await rectOf(page, cssByLabels('aside', LABELS.musicMiniPlayer))
+  const statusBarBox = await rectOf(page, cssByLabels('footer button', [...LABELS.musicOpenHub, ...LABELS.musicExpandPlayer]))
+  check('music: the floating player does not cover the music status bar',
+    Boolean(playerBox) && Boolean(statusBarBox) && !overlaps(playerBox, statusBarBox),
+    `player=${JSON.stringify(playerBox)} status=${JSON.stringify(statusBarBox)}`)
+
   if (!(await openMusicHub(page))) {
     check('music: the status bar opens the library hub', false)
     return
   }
   check('music: the status bar opens the library hub', true)
+
+  // The hub's own footer is the transport while it is open; a floating card on top of it would
+  // put two play buttons for one track on screen.
+  const playerUnderHub = await rectOf(page, cssByLabels('aside', LABELS.musicMiniPlayer))
+  check('music: the floating player steps aside while the hub is open', playerUnderHub === null, JSON.stringify(playerUnderHub))
 
   const rowsReady = await page
     .waitForFunction(() => [...document.querySelectorAll('[role="row"]')]
@@ -4401,12 +4415,6 @@ async function assertMusicSurface(page) {
   const motion = await hubMotionDurations(page)
   check('music: the hub opens with an entrance animation',
     Boolean(motion) && motion.scrim > 1 && motion.panel > 1, JSON.stringify(motion))
-
-  const playerBox = await rectOf(page, cssByLabels('aside', LABELS.musicMiniPlayer))
-  const statusBarBox = await rectOf(page, cssByLabels('footer button', [...LABELS.musicOpenHub, ...LABELS.musicExpandPlayer]))
-  check('music: the floating player does not cover the music status bar',
-    Boolean(playerBox) && Boolean(statusBarBox) && !overlaps(playerBox, statusBarBox),
-    `player=${JSON.stringify(playerBox)} status=${JSON.stringify(statusBarBox)}`)
 
   // The reduced-motion check reopens the hub from the status bar footer, so it has to run before
   // anything is queued: once a track is current, the footer swaps the hub opener for the transport
