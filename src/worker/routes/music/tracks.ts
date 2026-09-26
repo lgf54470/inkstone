@@ -35,7 +35,7 @@ function registerLyricSearchRoute(routes: Hono<AppBindings>): void {
   routes.get('/lyric-search', requireAuth, async (c) => {
     const userId = c.get('userId')
     const query = (c.req.query('q') ?? '').trim()
-    if (query.length < 3) return c.json({ ids: [], total: 0 }, 200, { 'Cache-Control': 'no-store' })
+    if (query.length < LIMITS.musicLyricQueryMinLength) return c.json({ ids: [], total: 0 }, 200, { 'Cache-Control': 'no-store' })
     const pattern = `%${query.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_')}%`
     const like = { sql: 'user_id = ?1 AND lyric LIKE ?2 ESCAPE \'\\\'', bind: [userId, pattern] } as const
     const [ids, counts] = await Promise.all([
