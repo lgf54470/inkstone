@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { Clock3, Search, X } from 'lucide-react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { Clock3, Disc3, ListMusic, Search, User, X } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { Input } from '../../components/form'
 import { useClickOutside } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useMusic } from './music-store'
+import type { MusicScope } from './music-store'
+import { buildSearchSuggestions } from './music-search-suggestions'
+import type { MusicSearchSuggestion } from './music-search-suggestions'
 
 // Every store query write re-filters the library; typing must not pay for that per keystroke.
 export const SEARCH_DEBOUNCE_MS = 200
@@ -48,12 +51,23 @@ function useDebouncedText(value: string, send: (value: string) => void) {
   return { text, setText, schedule, flush }
 }
 
-interface HistoryPopup {
-  open: boolean
+// FEA-A1-5: one row shape for both popup modes — search history entries and
+// library jump targets (artist / album / playlist) walk the same highlight.
+interface PopupOption {
+  key: string
+  label: string
+  meta: string
+  icon: ReactNode
+  ariaLabel: string
+  pick: () => void
+}
+
+interface PopupState {
   show: boolean
+  historyMode: boolean
   highlight: number
+  options: PopupOption[]
   close: () => void
-  pick: (value: string) => void
   clearAll: () => void
   inputProps: {
     role: 'combobox'
@@ -73,6 +87,8 @@ interface PopupArgs {
   history: string[]
   text: string
   listId: string
+  suggestions: MusicSearchSuggestion[]
+  setScope: (scope: MusicScope) => void
   setText: (value: string) => void
   schedule: (value: string) => void
   commit: (value: string) => void
@@ -80,8 +96,134 @@ interface PopupArgs {
   clearHistory: () => void
 }
 
-// The ARIA projection of the popup state onto the combobox input.
-function popupInputProps(show: boolean, highlight: number, listId: string): HistoryPopup['inputProps'] {
+// The ARIA projection of the popup state onto the combobox input. Empty text
+// offers the search history; typed text offers jump targets into the library.
+function useSearchPopup({ history, text, listId, suggestions, setScope, setText, schedule, commit, flush, clearHistory }: PopupArgs): PopupState {
+  const [open, setOpen] = useState(false)
+  const [highlight, setHighlight] = useState(-1)
+  const historyMode = !text.trim()
+  const close = useCallback((): void => {
+    setOpen(false)
+    setHighlight(-1)
+  }, [])
+  const options = useMemo<PopupOption[]>(() => historyMode
+    ? historyOptions(history, commit, flush, close)
+    : suggestionOptions(suggestions, setScope, flush, setText, close),
+  [historyMode, history, suggestions, commit, flush, setScope, setText, close])
+  const show = open && options.length > 0
+  return {
+    show,
+    historyMode,
+    highlight,
+    options,
+    close,
+    clearAll: () => {
+      clearHistory()
+      close()
+    },
+    inputProps: popupInputProps(show, highlight, listId),
+    inputHandlers: popupHandlers({ show, highlight, options, text, setOpen, setHighlight, setText, schedule, commit, flush, close }),
+  }
+}
+
+// The keyboard half of the combobox: focus opens, typing schedules the query,
+// Escape closes, Enter takes the highlighted option or else what was typed,
+// and the arrows walk a wrapping highlight.
+function popupHandlers(context: {
+  show: boolean
+  highlight: number
+  options: PopupOption[]
+  text: string
+  setOpen: (open: boolean) => void
+  setHighlight: (updater: (value: number) => number) => void
+  setText: (value: string) => void
+  schedule: (value: string) => void
+  commit: (value: string) => void
+  flush: (value: string) => void
+  close: () => void
+}): PopupState['inputHandlers'] {
+  const { show, highlight, options, text, setOpen, setHighlight, setText, schedule, commit, flush, close } = context
+  return {
+    onFocus: () => setOpen(true),
+    onChange: (event) => {
+      setText(event.target.value)
+      schedule(event.target.value)
+      setHighlight(() => -1)
+    },
+    onKeyDown: (event) => {
+      if (event.key === 'Escape') return close()
+      if (event.key === 'Enter') {
+        if (show && highlight >= 0) options[highlight].pick()
+        else if (text) commit(text)
+        else flush('')
+        return close()
+      }
+      if (!show) return
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setHighlight((value) => (value + 1) % options.length)
+        return
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setHighlight((value) => (value - 1 + options.length) % options.length)
+      }
+    },
+  }
+}
+
+const SUGGESTION_KIND_KEYS = {
+  artist: 'music.suggest_artist',
+  album: 'music.suggest_album',
+  playlist: 'music.suggest_playlist',
+} as const
+
+function historyOptions(history: string[], commit: (value: string) => void, flush: (value: string) => void, close: () => void): PopupOption[] {
+  return history.map((entry) => ({
+    key: entry,
+    label: entry,
+    meta: '',
+    icon: <Clock3 size={12} className='shrink-0 opacity-70' />,
+    ariaLabel: entry,
+    pick: () => {
+      if (entry) commit(entry)
+      else flush('')
+      close()
+    },
+  }))
+}
+
+function suggestionOptions(
+  suggestions: MusicSearchSuggestion[],
+  setScope: (scope: MusicScope) => void,
+  flush: (value: string) => void,
+  setText: (value: string) => void,
+  close: () => void,
+): PopupOption[] {
+  return suggestions.map((suggestion) => ({
+    key: suggestion.key,
+    label: suggestion.label,
+    meta: suggestion.meta,
+    icon: kindIcon(suggestion.kind),
+    ariaLabel: `${suggestion.label} ${t(SUGGESTION_KIND_KEYS[suggestion.kind])}`,
+    // A jump is not a text search: the box empties while the scope change
+    // repaints the library behind it.
+    pick: () => {
+      setScope(suggestion.scope)
+      flush('')
+      setText('')
+      close()
+    },
+  }))
+}
+
+function kindIcon(kind: MusicSearchSuggestion['kind']): ReactNode {
+  if (kind === 'artist') return <User size={12} className='shrink-0 opacity-70' />
+  if (kind === 'album') return <Disc3 size={12} className='shrink-0 opacity-70' />
+  return <ListMusic size={12} className='shrink-0 opacity-70' />
+}
+
+function popupInputProps(show: boolean, highlight: number, listId: string): PopupState['inputProps'] {
   return {
     role: 'combobox',
     'aria-expanded': show,
@@ -91,69 +233,24 @@ function popupInputProps(show: boolean, highlight: number, listId: string): Hist
   }
 }
 
-// The popup half of the combobox contract: open/highlight state plus the input's
-// ARIA wiring and handlers. Arrows walk a wrapping highlight, Enter takes the
-// highlighted entry or else what was typed.
-function useHistoryPopup({ history, text, listId, setText, schedule, commit, flush, clearHistory }: PopupArgs): HistoryPopup {
-  const [open, setOpen] = useState(false)
-  const [highlight, setHighlight] = useState(-1)
-  const show = open && !text && history.length > 0
-  const close = (): void => {
-    setOpen(false)
-    setHighlight(-1)
-  }
-  const pick = (value: string): void => {
-    if (value) commit(value)
-    else flush('')
-    close()
-  }
-  const wrap = (index: number): number => (index + history.length) % history.length
-  return {
-    open,
-    show,
-    highlight,
-    close,
-    pick,
-    clearAll: () => {
-      clearHistory()
-      close()
-    },
-    inputProps: popupInputProps(show, highlight, listId),
-    inputHandlers: {
-      onFocus: () => setOpen(true),
-      onChange: (event) => {
-        setText(event.target.value)
-        schedule(event.target.value)
-        setHighlight(-1)
-      },
-      onKeyDown: (event) => {
-        if (event.key === 'Escape') close()
-        if (event.key === 'Enter') pick(show && highlight >= 0 ? history[highlight]! : text)
-        if (!show || event.key === 'Escape' || event.key === 'Enter') return
-        if (event.key === 'ArrowDown') {
-          event.preventDefault()
-          setHighlight((value) => wrap(value + 1))
-        }
-        if (event.key === 'ArrowUp') {
-          event.preventDefault()
-          setHighlight((value) => wrap(value - 1))
-        }
-      },
-    },
-  }
-}
-
 export function SearchBox() {
   const query = useMusic((state) => state.query)
   const history = useMusic((state) => state.searchHistory)
+  const tracks = useMusic((state) => state.tracks)
+  const playlists = useMusic((state) => state.playlists)
   const setQuery = useMusic((state) => state.setQuery)
   const commitQuery = useMusic((state) => state.commitQuery)
   const clearSearchHistory = useMusic((state) => state.clearSearchHistory)
+  const setScope = useMusic((state) => state.setScope)
   const listId = useId()
   const { text, setText, schedule, flush } = useDebouncedText(query, setQuery)
-  const popup = useHistoryPopup({ history, text, listId, setText, schedule, commit: commitQuery, flush, clearHistory: clearSearchHistory })
+  const suggestions = useMemo(
+    () => buildSearchSuggestions(tracks, playlists, text),
+    [tracks, playlists, text],
+  )
+  const popup = useSearchPopup({ history, text, listId, suggestions, setScope, setText, schedule, commit: commitQuery, flush, clearHistory: clearSearchHistory })
   const boxRef = useRef<HTMLDivElement>(null)
-  useClickOutside([boxRef], popup.open, popup.close)
+  useClickOutside([boxRef], popup.show, popup.close)
   return (
     <div ref={boxRef} className='relative w-60 md:w-72'>
       <Input
@@ -165,14 +262,20 @@ export function SearchBox() {
         {...popup.inputProps}
         {...popup.inputHandlers}
       />
-      {text && <SearchClearButton onClear={() => popup.pick('')} />}
+      {text && <SearchClearButton onClear={() => popup.clearAll()} />}
       {popup.show && (
-        <SearchHistory
-          history={history}
+        <SearchPopup
+          options={popup.options}
           highlight={popup.highlight}
           listId={listId}
-          onPick={popup.pick}
-          onClear={popup.clearAll}
+          title={popup.historyMode ? t('music.search_history') : t('music.search_suggestions')}
+          action={popup.historyMode
+            ? (
+                <button type='button' onClick={popup.clearAll} className='min-h-6 rounded px-1.5 hover:text-[var(--text-secondary)]'>
+                  {t('music.search_clear_history')}
+                </button>
+              )
+            : null}
         />
       )}
     </div>
@@ -187,36 +290,35 @@ function SearchClearButton({ onClear }: { onClear: () => void }) {
   )
 }
 
-function SearchHistory({
-  history,
+function SearchPopup({
+  options,
   highlight,
   listId,
-  onPick,
-  onClear,
+  title,
+  action,
 }: {
-  history: string[]
+  options: PopupOption[]
   highlight: number
   listId: string
-  onPick: (value: string) => void
-  onClear: () => void
+  title: string
+  action: ReactNode
 }) {
   return (
     <div className='absolute top-full left-0 z-[var(--z-popover)] mt-1 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'>
       <div className='flex items-center justify-between px-2 py-1 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-        <span>{t('music.search_history')}</span>
-        <button type='button' onClick={onClear} className='min-h-6 rounded px-1.5 hover:text-[var(--text-secondary)]'>
-          {t('music.search_clear_history')}
-        </button>
+        <span>{title}</span>
+        {action}
       </div>
-      <div role='listbox' id={listId} aria-label={t('music.search_history')}>
-        {history.map((entry, index) => (
+      <div role='listbox' id={listId} aria-label={title}>
+        {options.map((option, index) => (
           <button
-            key={entry}
+            key={option.key}
             id={`${listId}-option-${index}`}
             type='button'
             role='option'
             aria-selected={index === highlight}
-            onClick={() => onPick(entry)}
+            aria-label={option.ariaLabel}
+            onClick={option.pick}
             className={cn(
               'flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12)]',
               index === highlight
@@ -224,8 +326,9 @@ function SearchHistory({
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
             )}
           >
-            <Clock3 size={12} className='shrink-0 opacity-70' />
-            <span className='truncate'>{entry}</span>
+            {option.icon}
+            <span className='min-w-0 flex-1 truncate'>{option.label}</span>
+            {option.meta && <span className='shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{option.meta}</span>}
           </button>
         ))}
       </div>

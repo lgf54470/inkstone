@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { act, createElement } from 'react'
 import { t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
@@ -12,7 +13,7 @@ afterEach(() => {
   historyRendered = null
   document.body.innerHTML = ''
   vi.useRealTimers()
-  useMusic.setState({ query: '', searchHistory: [] })
+  useMusic.setState({ query: '', searchHistory: [], scope: { kind: 'all' }, tracks: [], playlists: [] })
 })
 
 function inputOf(container: HTMLElement): HTMLInputElement {
@@ -97,6 +98,30 @@ function pressKey(input: HTMLInputElement, key: string): void {
   })
 }
 
+function samplePlaylist(id: string, name: string, trackCount: number): MusicPlaylistDetail {
+  return {
+    id, name, trackCount, items: [], description: '', isPinned: false, isFavorite: false,
+    shareSlug: null, coverUrl: null, sortOrder: 0, createdAt: 0, updatedAt: 0,
+  }
+}
+
+function mountWithLibrary(): HTMLInputElement {
+  act(() => {
+    useMusic.setState({
+      tracks: [
+        { id: '1', title: 'Song 1', artist: 'Sun Yi', album: 'Sunrise', durationMs: 1000, isPinned: false },
+        { id: '2', title: 'Song 2', artist: 'Moon', album: 'Sunset', durationMs: 1000, isPinned: false },
+        { id: '3', title: 'Song 3', artist: 'Sun Yi', album: 'Morning', durationMs: 1000, isPinned: false },
+      ] as MusicTrack[],
+      playlists: [samplePlaylist('p1', 'Sunday Chill', 4)],
+    })
+  })
+  historyRendered = renderElement(createElement(SearchBox))
+  const input = inputOf(historyRendered.container)
+  act(() => { input.focus() })
+  return input
+}
+
 // UI-22: the history dropdown is a popup list attached to the input; without
 // combobox semantics a screen-reader user cannot see it open or walk its rows.
 describe('music search history combobox semantics', () => {
@@ -140,5 +165,55 @@ describe('music search history combobox semantics', () => {
     pressKey(input, 'Enter')
     expect(useMusic.getState().query).toBe('jazz')
     expect(document.querySelector('[role="listbox"]')).toBeNull()
+  })
+})
+
+// FEA-A1-5: while typing, the same popup offers jump targets into the library —
+// artists, albums, and playlists matching the text, straight to their scope.
+describe('music search suggestion rows (FEA-A1-5)', () => {
+
+  it('offers matching artists, albums, and playlists while typing', () => {
+    const input = mountWithLibrary()
+    typeText(input, 'sun')
+    const options = [...document.querySelectorAll('[role="option"]')]
+    expect(options.map((option) => option.getAttribute('aria-label'))).toEqual([
+      `Sun Yi ${t('music.suggest_artist')}`,
+      `Sunrise ${t('music.suggest_album')}`,
+      `Sunset ${t('music.suggest_album')}`,
+      `Sunday Chill ${t('music.suggest_playlist')}`,
+    ])
+    expect(options[2]?.textContent).toContain('Moon')
+  })
+})
+
+describe('music search suggestion jumps (FEA-A1-5)', () => {
+
+  it('jumps to the highlighted artist on Enter and clears the query', () => {
+    const input = mountWithLibrary()
+    typeText(input, 'sun')
+    pressKey(input, 'ArrowDown')
+    pressKey(input, 'Enter')
+    expect(useMusic.getState().scope).toEqual({ kind: 'artist', artist: 'Sun Yi' })
+    expect(useMusic.getState().query).toBe('')
+    expect(inputOf(historyRendered!.container).value).toBe('')
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+  })
+
+  it('jumps to the album scope on click, carrying the artist', () => {
+    const input = mountWithLibrary()
+    typeText(input, 'sunset')
+    const option = [...document.querySelectorAll('[role="option"]')]
+      .find((entry) => entry.textContent?.includes('Sunset')) as HTMLButtonElement
+    act(() => { option.click() })
+    expect(useMusic.getState().scope).toEqual({ kind: 'album', artist: 'Moon', album: 'Sunset' })
+    expect(useMusic.getState().query).toBe('')
+  })
+
+  it('falls back to a plain search when nothing matches', () => {
+    const input = mountWithLibrary()
+    typeText(input, 'zzz')
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+    pressEnter(input)
+    expect(useMusic.getState().query).toBe('zzz')
   })
 })
