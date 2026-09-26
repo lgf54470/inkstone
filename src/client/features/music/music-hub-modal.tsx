@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Music, PanelLeft, SlidersHorizontal, X } from 'lucide-react'
+import { Maximize2, Minimize2, Music, PanelLeft, SlidersHorizontal, X } from 'lucide-react'
 import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { Button, IconButton } from '../../components/primitives'
 import { Drawer, Modal } from '../../components/overlay'
@@ -54,10 +54,12 @@ function useNarrowColumns() {
 
 export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const loadLibrary = useMusic((state) => state.loadLibrary)
+  const hubMaximized = useMusic((state) => state.hubMaximized)
+  const setHubMaximized = useMusic((state) => state.setHubMaximized)
   const dialogs = useHubDialogs()
   const { columnsWide, narrowPanel, openPanel, closePanels } = useNarrowColumns()
   const tallEnough = useMediaQuery(`(min-height: ${HUB_SHORT_VIEWPORT}px)`)
-  const fillViewport = !columnsWide || !tallEnough
+  const fillViewport = hubMaximized || !columnsWide || !tallEnough
 
   useEffect(() => {
     if (open) void loadLibrary()
@@ -70,6 +72,7 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
         onClose={onClose}
         ariaLabel={t('music.hub_title')}
         width={HUB_WIDTH}
+        variant={hubMaximized ? 'fullscreen' : 'dialog'}
         className={cn(
           'flex flex-col overflow-hidden p-0',
           fillViewport ? 'h-full' : 'h-[84vh] max-h-220 min-h-145',
@@ -79,6 +82,8 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
         <HubHeader
           onClose={onClose}
           narrow={!columnsWide}
+          maximized={hubMaximized}
+          onToggleMaximized={() => setHubMaximized(!hubMaximized)}
           onOpenNavigation={() => openPanel('navigation')}
           onOpenNowPlaying={() => openPanel('nowPlaying')}
         />
@@ -162,11 +167,15 @@ function FoldedColumns({
 function HubHeader({
   onClose,
   narrow,
+  maximized,
+  onToggleMaximized,
   onOpenNavigation,
   onOpenNowPlaying,
 }: {
   onClose: () => void
   narrow: boolean
+  maximized: boolean
+  onToggleMaximized: () => void
   onOpenNavigation: () => void
   onOpenNowPlaying: () => void
 }) {
@@ -183,6 +192,17 @@ function HubHeader({
             <IconButton label={t('music.hub_open_now_playing')} size='sm' onClick={onOpenNowPlaying}><SlidersHorizontal size={15} /></IconButton>
           </>
         )}
+        {/* REF-1a: the header owned only a close button, so the library could never grow
+            past the width it was built with. The toggle is a plain state flip on the same
+            dialog — no remount, so the scroll position and the queue survive it. */}
+        <IconButton
+          label={maximized ? t('music.restore_hub') : t('music.maximize_hub')}
+          size='sm'
+          active={maximized}
+          onClick={onToggleMaximized}
+        >
+          {maximized ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+        </IconButton>
         <IconButton label={t('common.close')} size='sm' onClick={onClose}><X size={15} /></IconButton>
       </div>
     </header>

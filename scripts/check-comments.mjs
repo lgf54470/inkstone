@@ -2655,6 +2655,8 @@ const allowed = new Map([
     '// short laptop window left the track list a couple of hundred pixels once the header,',
     '// toolbar and transport had taken their fixed share.',
     '// This jsdom ships no matchMedia; the stub answers width and height queries apart.',
+    '// REF-1a: the header owned a close button and nothing else, so the library could never',
+    '// grow past the width it was built with. Maximising is a state flip on the same dialog.',
   ]],
   ['src/client/features/music/music-hub-modal.tsx', [
     '// REF-9: 84vh of a phone screen, or of a short laptop window, leaves the track list a',
@@ -2668,6 +2670,7 @@ const allowed = new Map([
     '// Dialog state lives here, so the panels below are memoised: opening a dialog must',
     '// not re-render the whole library (hundreds of rows).',
     '// The drawers portal over the hub modal itself, so they take the next tier above --z-modal.',
+    '/* REF-1a: the header owned only a close button, so the library could never grow\n            past the width it was built with. The toggle is a plain state flip on the same\n            dialog — no remount, so the scroll position and the queue survive it. */',
     '/* Ranking the library happens once, here; the toolbar and the group header take\n          the result as a prop so they never run the same sort a second time. */',
     '// The list only shows copies side by side; the strip states what the view is',
     '// worth so cleaning up does not require doing the arithmetic by hand.',
@@ -3133,6 +3136,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-store/eq.test.ts', [
     '// The store module is shared across tests in this file; leave no sound-setting residue.',
+  ]],
+  ['src/client/features/music/music-store/hub-window.ts', [
+    '// REF-1a: the hub\'s window size is a preference like the floating card\'s position, so a',
+    '// library that is browsed maximised opens maximised next time instead of shrinking back.',
   ]],
   ['src/client/features/music/music-store/library-collections.test.ts', [
     '// A whole library of ids and the selection that points at all of them, which is what the',

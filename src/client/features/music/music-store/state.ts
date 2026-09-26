@@ -18,6 +18,7 @@ export interface MusicPreferences {
   floatingVisible: boolean
   floatingCollapsed: boolean
   floatingPosition: { x: number; y: number } | null
+  hubMaximized: boolean
   playbackRate: number
   searchHistory: string[]
   sleepEndsAt: number | null
@@ -109,6 +110,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   floatingVisible: true,
   floatingCollapsed: false,
   floatingPosition: null,
+  hubMaximized: false,
   playbackRate: 1,
   searchHistory: [],
   sleepEndsAt: null,
@@ -156,6 +158,7 @@ export function loadPreferences(): MusicPreferences {
     floatingVisible: parsed.floatingVisible !== false,
     floatingCollapsed: parsed.floatingCollapsed === true,
     floatingPosition: readPosition(parsed.floatingPosition),
+    hubMaximized: parsed.hubMaximized === true,
     playbackRate: readRate(parsed.playbackRate),
     searchHistory: readStrings(parsed.searchHistory, SEARCH_HISTORY_MAX),
     sleepEndsAt: readTimestamp(parsed.sleepEndsAt),

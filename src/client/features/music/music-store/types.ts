@@ -152,6 +152,7 @@ export interface MusicStoreState {
   floatingVisible: boolean
   floatingCollapsed: boolean
   floatingPosition: { x: number; y: number } | null
+  hubMaximized: boolean
   immersive: boolean
   immersiveBackground: MusicImmersiveBackground
   lyricAlign: MusicLyricAlign
@@ -315,4 +316,5 @@ export interface MusicStoreState {
   toggleFloating: () => void
   toggleFloatingCollapsed: () => void
   setFloatingPosition: (position: { x: number; y: number }) => void
+  setHubMaximized: (maximized: boolean) => void
 }

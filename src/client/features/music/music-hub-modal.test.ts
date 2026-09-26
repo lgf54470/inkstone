@@ -88,6 +88,48 @@ describe('MusicHubModal viewport fit (REF-9)', () => {
   })
 })
 
+// REF-1a: the header owned a close button and nothing else, so the library could never
+// grow past the width it was built with. Maximising is a state flip on the same dialog.
+describe('MusicHubModal maximised window (REF-1a)', () => {
+  beforeEach(() => {
+    useMusic.setState({ hubMaximized: false })
+  })
+
+  function headerButton(label: string): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('button')].find(
+      (button) => button.getAttribute('aria-label') === label,
+    ) as HTMLButtonElement | undefined
+  }
+
+  it('offers a maximise button beside the close button', async () => {
+    await mountHub()
+    expect(headerButton(t('music.maximize_hub'))).toBeDefined()
+    expect(headerButton(t('music.restore_hub'))).toBeUndefined()
+  })
+
+  it('grows the dialog to the viewport and remembers it', async () => {
+    await mountHub()
+    await act(async () => {
+      headerButton(t('music.maximize_hub'))?.click()
+    })
+    const panel = document.querySelector('[role="dialog"]') as HTMLElement
+    expect(panel.classList.contains('rounded-none')).toBe(true)
+    expect(panel.classList.contains('h-[84vh]')).toBe(false)
+    expect(useMusic.getState().hubMaximized).toBe(true)
+  })
+
+  it('restores the window from the same button', async () => {
+    useMusic.setState({ hubMaximized: true })
+    await mountHub()
+    await act(async () => {
+      headerButton(t('music.restore_hub'))?.click()
+    })
+    const panel = document.querySelector('[role="dialog"]') as HTMLElement
+    expect(panel.classList.contains('h-[84vh]')).toBe(true)
+    expect(useMusic.getState().hubMaximized).toBe(false)
+  })
+})
+
 describe('MusicHubModal load failure state', () => {
   it('shows a retry action and keeps the technical error string off the screen', async () => {
     const reload = vi.fn(async () => {})

@@ -39,6 +39,7 @@ function writePreferences(get: MusicGet): void {
     floatingVisible: state.floatingVisible,
     floatingCollapsed: state.floatingCollapsed,
     floatingPosition: state.floatingPosition,
+    hubMaximized: state.hubMaximized,
     sleepEndsAt: state.sleepEndsAt,
     sleepMinutes: state.sleepMinutes,
     sleepAfterCurrentTrack: state.sleepAfterCurrentTrack,
