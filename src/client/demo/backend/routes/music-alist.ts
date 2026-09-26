@@ -24,6 +24,8 @@ interface DemoAlistNode {
   children?: DemoAlistNode[]
 }
 
+const DEMO_MEDIA_RE = /\.(mp3|flac|m4a|wav|ogg|opus|aac)$/i
+
 function demoTree(): DemoAlistNode {
   return {
     name: 'media', isDir: true, size: 0, children: [
@@ -112,7 +114,7 @@ async function importHandler(c: Context, state: DemoState): Promise<Response> {
   const path = typeof body.path === 'string' ? body.path : ''
   const node = nodeAt(server.tree, path)
   if (!node || node.isDir) return apiError(404, 'not_found', 'File not found')
-  if (!/\.(mp3|flac|m4a|wav|ogg|opus|aac)$/i.test(node.name)) {
+  if (!DEMO_MEDIA_RE.test(node.name)) {
     return apiError(400, 'bad_request', 'Unsupported media format')
   }
   const now = Date.now()
@@ -143,11 +145,34 @@ async function importHandler(c: Context, state: DemoState): Promise<Response> {
   return c.json(track, 201)
 }
 
+// FEA-A3-3: the demo search walks the whole tree and keeps media files whose
+// name contains the keywords; paths stay relative to the root like the browse.
+async function searchHandler(c: Context, state: DemoState): Promise<Response> {
+  const server = state.musicAlistServers.get(c.req.param('id') ?? '')
+  if (!server) return apiError(404, 'not_found', 'Alist server not found')
+  const keywords = (c.req.query('keywords') ?? '').trim()
+  if (!keywords) return apiError(400, 'bad_request', 'Search keywords are required')
+  const needle = keywords.toLowerCase()
+  const entries: Array<{ name: string; isDir: boolean; size: number; path: string }> = []
+  const walk = (node: DemoAlistNode, path: string): void => {
+    for (const child of node.children ?? []) {
+      const childPath = `${path === '/' ? '' : path}/${child.name}`
+      if (child.isDir) walk(child, childPath)
+      else if (DEMO_MEDIA_RE.test(child.name) && child.name.toLowerCase().includes(needle)) {
+        entries.push({ name: child.name, isDir: false, size: child.size, path: childPath })
+      }
+    }
+  }
+  walk(server.tree, '/')
+  return c.json({ keywords, entries })
+}
+
 export function registerDemoMusicAlistRoutes(app: Hono, state: DemoState): void {
   app.get('/api/music/alist', (c) => listServersHandler(c, state))
   app.post('/api/music/alist', (c) => createHandler(c, state))
   app.patch('/api/music/alist/:id', (c) => patchHandler(c, state))
   app.delete('/api/music/alist/:id', (c) => deleteHandler(c, state))
   app.get('/api/music/alist/:id/list', (c) => listHandler(c, state))
+  app.get('/api/music/alist/:id/search', (c) => searchHandler(c, state))
   app.post('/api/music/alist/:id/import', (c) => importHandler(c, state))
 }

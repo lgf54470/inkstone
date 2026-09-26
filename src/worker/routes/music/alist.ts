@@ -44,6 +44,7 @@ export function registerMusicAlistRoutes(routes: Hono<AppBindings>): void {
   routes.patch('/alist/:id', requireAuth, (c) => patchServer(c))
   routes.delete('/alist/:id', requireAuth, (c) => deleteServer(c))
   routes.get('/alist/:id/list', requireAuth, (c) => listDirectory(c))
+  routes.get('/alist/:id/search', requireAuth, (c) => searchServer(c))
   routes.post('/alist/:id/import', requireAuth, (c) => importTrack(c))
 }
 
@@ -123,6 +124,36 @@ async function listDirectory(c: Context<AppBindings>): Promise<Response> {
   }))
   entries.sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1))
   return c.json({ path: subPath, entries })
+}
+
+// FEA-A3-3: in-app search across the whole server. Alist's fs/search answers
+// entries with an absolute `parent`, so each path is stripped back to the
+// root-relative shape the browse view uses, and only media files survive — the
+// search exists to feed the import.
+async function searchServer(c: Context<AppBindings>): Promise<Response> {
+  const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'webdav', userId)
+  const id = pathParam(c, 'id')
+  const server = await resolveAlistServer(c.env, userId, id)
+  const keywords = (c.req.query('keywords') ?? '').trim()
+  if (!keywords) throw ApiError.badRequest('Search keywords are required')
+  const data = await alistApi(server, '/api/fs/search', {
+    parent: server.rootPath,
+    keywords,
+    page: 1, per_page: LIMITS.musicAlistListEntryMax,
+  }) as { content: Array<{ parent: string; name: string; size: number; is_dir: boolean }> | null }
+  const rootPrefix = server.rootPath === '/' ? '' : server.rootPath
+  const entries = (data.content ?? [])
+    .filter((entry) => !entry.is_dir && ALIST_MEDIA_EXTENSIONS.test(entry.name))
+    .map((entry) => {
+      const parent = entry.parent === rootPrefix
+        ? '/'
+        : entry.parent.startsWith(`${rootPrefix}/`)
+          ? entry.parent.slice(rootPrefix.length)
+          : normalizeAlistPath(entry.parent)
+      return { name: entry.name, isDir: false, size: entry.size ?? 0, path: joinAlistPath(parent, entry.name) }
+    })
+  return c.json({ keywords, entries })
 }
 
 // The import registers a reference row exactly like the WebDAV import: metadata

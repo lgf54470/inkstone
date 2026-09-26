@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { CornerLeftUp, FileAudio, FolderClosed, HardDrive, Plus, Trash2, Upload } from 'lucide-react'
+import { CornerLeftUp, FileAudio, FolderClosed, HardDrive, Plus, Search, Trash2, Upload, X } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Input } from '../../components/form'
 import { Modal, confirm } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { formatBytes } from '../../lib/time'
 import { useMusic } from './music-store'
+import type { MusicAlistEntry } from '../../lib/api'
 
 const ALIST_WIDTH = 560
 
@@ -18,19 +19,26 @@ export function MusicAlistModal({ open, onClose }: { open: boolean; onClose: () 
   const loadAlistServers = useMusic((state) => state.loadAlistServers)
   const [view, setView] = useState<'servers' | 'browse'>('servers')
   const browse = useMusic((state) => state.alistBrowse)
+  // The search lives here, not in the store: it is a one-shot view over one
+  // server, and the import-all footer only makes sense for the directory view.
+  const [search, setSearch] = useState<{ keywords: string; entries: MusicAlistEntry[] } | null>(null)
 
   useEffect(() => {
     if (open) void loadAlistServers()
   }, [open, loadAlistServers])
 
   const selectedServer = servers.find((server) => server.id === browse.serverId) ?? null
+  const runSearch = async (keywords: string): Promise<void> => {
+    const entries = await useMusic.getState().searchAlist(browse.serverId ?? '', keywords)
+    setSearch({ keywords, entries })
+  }
   return (
     <Modal
       open={open}
       onClose={onClose}
       width={ALIST_WIDTH}
       title={t('music.alist_title')}
-      footer={view === 'browse' && selectedServer
+      footer={view === 'browse' && selectedServer && !search
         ? (
             <Button
               size='sm'
@@ -47,7 +55,15 @@ export function MusicAlistModal({ open, onClose }: { open: boolean; onClose: () 
     >
       <div className='space-y-3'>
         {view === 'browse' && selectedServer
-          ? <Browser server={selectedServer} onManage={() => setView('servers')} />
+          ? (
+              <Browser
+                server={selectedServer}
+                search={search}
+                onSearch={(keywords) => void runSearch(keywords)}
+                onClearSearch={() => setSearch(null)}
+                onManage={() => setView('servers')}
+              />
+            )
           : (
               <>
                 {loading && servers.length === 0
@@ -163,21 +179,44 @@ function AddServerForm() {
 
 
 // FEA-A3-2: the directory browser. Up = one segment; a directory row re-lists
-// under it; a file row imports on demand.
-function Browser({ server, onManage }: { server: { id: string; name: string }; onManage: () => void }) {
+// under it; a file row imports on demand. FEA-A3-3 adds the in-app search: while
+// a search is showing, the directory list is replaced by its results.
+function Browser({ server, search, onSearch, onClearSearch, onManage }: {
+  server: { id: string; name: string }
+  search: { keywords: string; entries: MusicAlistEntry[] } | null
+  onSearch: (keywords: string) => void
+  onClearSearch: () => void
+  onManage: () => void
+}) {
   const browse = useMusic((state) => state.alistBrowse)
   const browseAlist = useMusic((state) => state.browseAlist)
   const importAlistTrack = useMusic((state) => state.importAlistTrack)
   const serverId = server.id
   const parentPath = browse.path.includes('/') ? browse.path.slice(0, browse.path.lastIndexOf('/')) || '/' : '/'
+  const [draft, setDraft] = useState('')
+  const [searching, setSearching] = useState(false)
   useEffect(() => {
-    if (browse.serverId !== serverId) void browseAlist(serverId, '/')
-  }, [browse.serverId, serverId, browseAlist])
+    if (browse.serverId !== serverId) {
+      onClearSearch()
+      void browseAlist(serverId, '/')
+    }
+  }, [browse.serverId, serverId, browseAlist, onClearSearch])
+
+  const submitSearch = (): void => {
+    const keywords = draft.trim()
+    if (!keywords) {
+      onClearSearch()
+      return
+    }
+    setSearching(true)
+    onSearch(keywords)
+    setSearching(false)
+  }
 
   return (
     <div className='space-y-2'>
       <div className='flex items-center justify-between'>
-        <Button size='sm' icon={<CornerLeftUp size={12} />} disabled={browse.path === '/'} onClick={() => void browseAlist(serverId, parentPath)}>
+        <Button size='sm' icon={<CornerLeftUp size={12} />} disabled={browse.path === '/' || search !== null} onClick={() => void browseAlist(serverId, parentPath)}>
           {t('music.alist_up')}
         </Button>
         <div className='flex min-w-0 items-center gap-2'>
@@ -185,43 +224,97 @@ function Browser({ server, onManage }: { server: { id: string; name: string }; o
           <Button size='sm' onClick={onManage}>{t('music.alist_manage')}</Button>
         </div>
       </div>
-      {browse.error
-        ? <p role='status' className='py-4 text-center text-[length:var(--text-12)] text-[var(--text-tertiary)]'>{browse.error}</p>
-        : browse.loading && !browse.entries.length
-          ? <p role='status' className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('common.loading')}</p>
-          : browse.entries.length === 0
-            ? <p className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('music.alist_empty_dir')}</p>
-            : (
-                <ul className='max-h-72 space-y-0.5 overflow-y-auto'>
-                  {browse.entries.map((entry) => (
-                    <li key={entry.path} className='flex h-9 items-center gap-2 rounded-[var(--r-md)] px-2 hover:bg-[var(--bg-hover)]'>
-                      {entry.isDir
-                        ? <FolderClosed size={13} className='shrink-0 text-[var(--text-tertiary)]' aria-hidden='true' />
-                        : <FileAudio size={13} className='shrink-0 text-[var(--text-tertiary)]' aria-hidden='true' />}
-                      {entry.isDir
-                        ? (
+      <div className='flex items-center gap-1.5'>
+        <Input
+          value={draft}
+          aria-label={t('music.alist_search')}
+          placeholder={t('music.alist_search_placeholder')}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              submitSearch()
+            }
+          }}
+          className='h-8 min-w-0 flex-1'
+        />
+        <Button size='sm' icon={<Search size={12} />} loading={searching} onClick={submitSearch}>
+          {t('music.alist_search')}
+        </Button>
+      </div>
+      {search !== null
+        ? (
+            <div className='space-y-1'>
+              <div className='flex items-center justify-between'>
+                <p className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{search.keywords}</p>
+                <IconButton label={t('music.alist_search_clear')} size='sm' onClick={() => { setDraft(''); onClearSearch() }}>
+                  <X size={13} />
+                </IconButton>
+              </div>
+              {search.entries.length === 0
+                ? <p role='status' className='py-4 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('music.alist_search_empty')}</p>
+                : (
+                    <ul className='max-h-72 space-y-0.5 overflow-y-auto'>
+                      {search.entries.map((entry) => (
+                        <AlistFileRow
+                          key={entry.path}
+                          entry={entry}
+                          importingPaths={browse.importingPaths}
+                          onImport={() => void importAlistTrack(serverId, entry)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+            </div>
+          )
+        : browse.error
+          ? <p role='status' className='py-4 text-center text-[length:var(--text-12)] text-[var(--text-tertiary)]'>{browse.error}</p>
+          : browse.loading && !browse.entries.length
+            ? <p role='status' className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('common.loading')}</p>
+            : browse.entries.length === 0
+              ? <p className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('music.alist_empty_dir')}</p>
+              : (
+                  <ul className='max-h-72 space-y-0.5 overflow-y-auto'>
+                    {browse.entries.map((entry) => entry.isDir
+                      ? (
+                          <li key={entry.path} className='flex h-9 items-center gap-2 rounded-[var(--r-md)] px-2 hover:bg-[var(--bg-hover)]'>
+                            <FolderClosed size={13} className='shrink-0 text-[var(--text-tertiary)]' aria-hidden='true' />
                             <button type='button' className='min-w-0 flex-1 truncate text-left text-[length:var(--text-12)] text-[var(--text-primary)]' onClick={() => void browseAlist(serverId, entry.path)}>
                               {entry.name}
                             </button>
-                          )
-                        : <span className='min-w-0 flex-1 truncate text-[length:var(--text-12)] text-[var(--text-primary)]'>{entry.name}</span>}
-                      {!entry.isDir && (
-                        <>
-                          <span className='shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{formatBytes(entry.size)}</span>
-                          <Button
-                            size='sm'
-                            disabled={browse.importingPaths.includes(entry.path)}
-                            loading={browse.importingPaths.includes(entry.path)}
-                            onClick={() => void importAlistTrack(serverId, entry)}
-                          >
-                            {t('music.alist_import')}
-                          </Button>
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
+                          </li>
+                        )
+                      : (
+                          <AlistFileRow
+                            key={entry.path}
+                            entry={entry}
+                            importingPaths={browse.importingPaths}
+                            onImport={() => void importAlistTrack(serverId, entry)}
+                          />
+                        ))}
+                  </ul>
+                )}
     </div>
+  )
+}
+
+// Shared by the directory view and the search results: a media file with its
+// size and one-shot import. The full path rides the title so same-named files
+// from different directories stay tellable apart in the search results.
+function AlistFileRow({ entry, importingPaths, onImport }: {
+  entry: MusicAlistEntry
+  importingPaths: string[]
+  onImport: () => void
+}) {
+  const importing = importingPaths.includes(entry.path)
+  return (
+    <li className='flex h-9 items-center gap-2 rounded-[var(--r-md)] px-2 hover:bg-[var(--bg-hover)]'>
+      <FileAudio size={13} className='shrink-0 text-[var(--text-tertiary)]' aria-hidden='true' />
+      <span className='min-w-0 flex-1 truncate text-[length:var(--text-12)] text-[var(--text-primary)]' title={entry.path}>{entry.name}</span>
+      <span className='shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{formatBytes(entry.size)}</span>
+      <Button size='sm' disabled={importing} loading={importing} onClick={onImport}>
+        {t('music.alist_import')}
+      </Button>
+    </li>
   )
 }

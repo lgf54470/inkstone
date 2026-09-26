@@ -70,6 +70,18 @@ export async function browseAlist(set: MusicSet, serverId: string, path: string)
   }
 }
 
+// FEA-A3-3: the search is a one-shot query — results live in the modal's local
+// state, so the slice just forwards and reports, the same way a browse error does.
+export async function searchAlist(serverId: string, keywords: string): Promise<MusicAlistEntry[]> {
+  try {
+    const { entries } = await api.music.searchAlist(serverId, keywords)
+    return entries
+  } catch (error) {
+    toastMusicError(error, 'music.action_failed')
+    return []
+  }
+}
+
 export async function importAlistTrack(set: MusicSet, serverId: string, entry: MusicAlistEntry): Promise<void> {
   if (entry.isDir) {
     await browseAlist(set, serverId, entry.path)

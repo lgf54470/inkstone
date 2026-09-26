@@ -144,10 +144,48 @@ function stubAlistUpstream(): { calls: Array<{ url: string; body: unknown }> } {
     if (String(url).endsWith('/api/fs/get')) {
       return payload({ name: 'song.mp3', size: 16, is_dir: false, raw_url: 'https://cdn.example.com/song.mp3?sign=abc' })
     }
+    if (String(url).endsWith('/api/fs/search')) {
+      return payload({
+        content: [
+          { parent: '/media/sub', name: 'song.mp3', is_dir: false, size: 16 },
+          { parent: '/media', name: 'another-song.flac', is_dir: false, size: 32 },
+          { parent: '/media', name: 'notes.txt', is_dir: false, size: 4 },
+          { parent: '/media', name: 'song dir', is_dir: true, size: 0 },
+        ],
+      })
+    }
     return payload({})
   })
   return { calls }
 }
+
+describe('alist in-app search (FEA-A3-3)', () => {
+  it('searches the upstream api and keeps only media files with root-relative paths', async () => {
+    await makeDb()
+    const app = makeApp()
+    const id = await makeServer(app)
+    const upstream = stubAlistUpstream()
+    const res = await request(app, `/api/music/alist/${id}/search?keywords=song`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as { keywords: string; entries: Array<{ name: string; isDir: boolean; size: number; path: string }> }
+    expect(body.keywords).toBe('song')
+    expect(body.entries).toEqual([
+      { name: 'song.mp3', isDir: false, size: 16, path: '/sub/song.mp3' },
+      { name: 'another-song.flac', isDir: false, size: 32, path: '/another-song.flac' },
+    ])
+    expect(upstream.calls[0]?.url).toBe('https://alist.example.com/api/fs/search')
+    expect(upstream.calls[0]?.body).toMatchObject({ parent: '/media', keywords: 'song' })
+  })
+
+  it('rejects an empty keywords query', async () => {
+    await makeDb()
+    const app = makeApp()
+    const id = await makeServer(app)
+    stubAlistUpstream()
+    expect((await request(app, `/api/music/alist/${id}/search?keywords=%20%20`)).status).toBe(400)
+    expect((await request(app, `/api/music/alist/${id}/search`)).status).toBe(400)
+  })
+})
 
 async function makeServer(app: Hono<AppBindings>): Promise<string> {
   const created = await (await json(app, '/api/music/alist', {

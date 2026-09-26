@@ -151,6 +151,9 @@ export const music = {
   listAlistDirectory: (serverId: string, path: string) =>
     request<{ path: string; entries: MusicAlistEntry[] }>(`/api/music/alist/${encodeURIComponent(serverId)}/list?path=${encodeURIComponent(path)}`, { timeoutMs: 30_000 }),
 
+  searchAlist: (serverId: string, keywords: string) =>
+    request<{ keywords: string; entries: MusicAlistEntry[] }>(`/api/music/alist/${encodeURIComponent(serverId)}/search?keywords=${encodeURIComponent(keywords)}`, { timeoutMs: 30_000 }),
+
   importAlistTrack: (serverId: string, input: MusicAlistImportInput) =>
     request<MusicTrack>(`/api/music/alist/${encodeURIComponent(serverId)}/import`, { method: 'POST', body: input, timeoutMs: 30_000 }),
 

@@ -11,6 +11,8 @@ vi.mock('../../../lib/api', async (importOriginal) => {
         listAlistServers: vi.fn(async () => ({ servers: [{ id: 'as-1', name: 'NAS', url: 'https://a.example.com', rootPath: '/media' }] })),
         createAlistServer: vi.fn(async (input: { name: string }) => ({ id: 'as-2', ...input, rootPath: '/' })),
         deleteAlistServer: vi.fn(async () => ({ ok: true })),
+        searchAlist: vi.fn(async () => ({ keywords: 'song', entries: [{ name: 'song.mp3', isDir: false, size: 16, path: '/sub/song.mp3' }] })),
+        importAlistTrack: vi.fn(async () => ({ id: 'trk-1', title: 'song' })),
       },
     },
   }
@@ -23,7 +25,7 @@ vi.mock('../music-feedback', () => ({
 
 import { api } from '../../../lib/api'
 import { musicStoreStub } from './store.test-helpers'
-import { createAlistServer, deleteAlistServer, loadAlistServers } from './alist'
+import { createAlistServer, deleteAlistServer, loadAlistServers, searchAlist } from './alist'
 import type { MusicStoreState } from './types'
 
 function makeStore() {
@@ -53,5 +55,21 @@ describe('alist server store (FEA-A3-1)', () => {
     store.set({ alistServers: [{ id: 'as-1', name: 'NAS', url: 'https://a.example.com', rootPath: '/' }] })
     await deleteAlistServer(store.set, 'as-1')
     expect(store.get().alistServers).toEqual([])
+  })
+})
+
+describe('alist search store (FEA-A3-3)', () => {
+  it('forwards the keywords and returns the entries', async () => {
+    makeStore()
+    const entries = await searchAlist('as-1', 'song')
+    expect(api.music.searchAlist).toHaveBeenCalledWith('as-1', 'song')
+    expect(entries).toHaveLength(1)
+    expect(entries[0]?.path).toBe('/sub/song.mp3')
+  })
+
+  it('returns an empty list when the search fails', async () => {
+    makeStore()
+    vi.mocked(api.music.searchAlist).mockRejectedValueOnce(new Error('offline'))
+    expect(await searchAlist('as-1', 'song')).toEqual([])
   })
 })

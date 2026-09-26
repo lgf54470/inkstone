@@ -270,6 +270,7 @@ export interface MusicStoreState {
   openTrash: () => Promise<void>
   loadAlistServers: () => Promise<void>
   browseAlist: (serverId: string, path: string) => Promise<void>
+  searchAlist: (serverId: string, keywords: string) => Promise<MusicAlistEntry[]>
   importAlistTrack: (serverId: string, entry: MusicAlistEntry) => Promise<void>
   importAlistFolder: () => Promise<void>
   createAlistServer: (input: MusicAlistCreateInput) => Promise<boolean>
