@@ -1,4 +1,10 @@
 {
+  "src/client/features/music/audio-engine-preload.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/music/audio-engine.ts": {
+    "lines": 541
+  },
   "src/client/features/music/music-duplicates.test.ts": {
     "longFns": 1
   },

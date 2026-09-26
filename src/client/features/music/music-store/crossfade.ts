@@ -26,7 +26,7 @@ export function maybeStartCrossfade(get: MusicGet, ms: number): void {
 // Shuffle fades into the sequence's next track. A missing order means shuffle was
 // armed but nothing dealt it yet; playNext deals it at the press, so skipping the
 // fade for that one track keeps the two paths from choosing different songs.
-function nextTrackIndex(state: Pick<MusicStoreState, 'queue' | 'currentIndex' | 'mode' | 'shuffleOrder'>): number {
+export function nextTrackIndex(state: Pick<MusicStoreState, 'queue' | 'currentIndex' | 'mode' | 'shuffleOrder'>): number {
   if (state.mode === 'shuffle') {
     const order = state.shuffleOrder
     return order ? shuffleStep(state.queue, state.queue[state.currentIndex] ?? null, order, 1) : -1

@@ -128,10 +128,13 @@ function acquireMediaElement(kind: MediaKind): HTMLMediaElement {
 
 // Only one element may hold the stream at a time: the previous kind is released before the
 // next track loads, and its cached graph chain stays behind for when that kind comes back.
-function setActiveElement(kind: MediaKind): HTMLMediaElement {
+function setActiveElement(kind: MediaKind, src: string): HTMLMediaElement {
   // The element that is already playing decides: after a crossfade swapped to its standby,
   // the per-kind table would still name the element the fade handed over.
-  if (element && kindOfElement(element) === kind) return element
+  if (element && kindOfElement(element) === kind) {
+    promotePreloadedElement(kind, src)
+    return element
+  }
   const next = acquireMediaElement(kind)
   const previous = element
   if (previous && previous !== next) {
@@ -146,6 +149,26 @@ function setActiveElement(kind: MediaKind): HTMLMediaElement {
   element = next
   placeOnStage(next)
   return next
+}
+
+// A preload that already holds the requested stream takes over as the active element, so the
+// advance starts from buffered bytes instead of a cold fetch; the playing element goes to the
+// standby shelf — the same handover a completed crossfade leaves behind. Swapping the active
+// element before pausing the old one keeps its pause event gated, like completeCrossfade does.
+function promotePreloadedElement(kind: MediaKind, src: string): void {
+  const spare = spareElement
+  if (!element || !spare || spare === element || kindOfElement(spare) !== kind) return
+  if (!spare.src.endsWith(src)) return
+  const previous = element
+  element = spare
+  spareElement = previous
+  element.volume = previous.volume
+  element.muted = previous.muted
+  element.playbackRate = previous.playbackRate
+  previous.pause()
+  previous.removeAttribute('src')
+  previous.load()
+  placeOnStage(element)
 }
 
 // The picture lives wherever the topmost now-playing surface put its container; everything
@@ -234,8 +257,8 @@ function readMediaError(audio: HTMLMediaElement): string {
 export async function startPlayback(track: MusicTrack): Promise<'playing' | 'blocked' | 'unavailable'> {
   if (typeof document === 'undefined') return 'unavailable'
   cancelCrossfade()
-  const audio = setActiveElement(kindOfTrack(track))
   const src = musicStreamUrl(track.id)
+  const audio = setActiveElement(kindOfTrack(track), src)
   if (!audio.src.endsWith(src)) audio.src = src
   try {
     await audio.play()
@@ -427,6 +450,21 @@ export function crossfadeActive(): boolean {
   return fade !== null
 }
 
+// Parks the next track's stream on the standby element while the current one plays: with
+// preload='auto' the browser fetches the metadata and the opening bytes, so both advances —
+// a crossfade start and a plain track change — begin from a buffer. Audio only: video
+// advances cut hard by design and carry a visible stage, so they never take the shelf.
+// A running fade owns the standby, and a stream already parked is left untouched.
+export function preloadNext(track: MusicTrack | null): void {
+  if (!track || fade || typeof document === 'undefined') return
+  if (kindOfTrack(track) !== 'audio' || !element) return
+  const spare = spareElement && kindOfElement(spareElement) === 'audio' ? spareElement : createMediaElement('audio')
+  spareElement = spare
+  spare.preload = 'auto'
+  const src = musicStreamUrl(track.id)
+  if (!spare.src.endsWith(src)) spare.src = src
+}
+
 // Plays the next track on the standby element while the current one fades out on the
 // volume slider, absorbing any user volume change made mid-fade. Returns false when
 // there is nothing to fade (no active element yet, or a fade already running).
@@ -441,7 +479,10 @@ export function startCrossfade(track: MusicTrack): boolean {
   spareElement = incoming
   incoming.volume = 0
   incoming.muted = outgoing.muted
-  incoming.src = musicStreamUrl(track.id)
+  // A preload parked by preloadNext already holds this stream: keep it, so the fade
+  // starts from buffered bytes instead of reloading over the prefetch.
+  const src = musicStreamUrl(track.id)
+  if (!incoming.src.endsWith(src)) incoming.src = src
   fade = {
     outgoing, incoming, trackId: track.id, elapsed: 0,
     timer: window.setInterval(stepCrossfade, CROSSFADE_STEP_MS),

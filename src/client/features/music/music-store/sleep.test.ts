@@ -21,6 +21,7 @@ vi.mock('../audio-engine', () => ({
   resumePlayback: vi.fn(async () => 'playing' as const),
   seekTo: vi.fn(),
   startCrossfade: vi.fn(() => false),
+  preloadNext: vi.fn(),
   startPlayback: vi.fn(async () => 'playing' as const),
   stopPlayback: vi.fn(),
 }))

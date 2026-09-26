@@ -11,6 +11,7 @@ import {
 import type { EqualizerSettings } from '../audio-engine'
 import { bindMediaSessionActions, publishMediaSession, updateMediaSessionPosition } from '../media-session'
 import { handleCrossfadeComplete, maybeStartCrossfade } from './crossfade'
+import { maybePreloadNext } from './preload'
 import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
 import { persist } from './persist'
@@ -40,6 +41,7 @@ export function connectAudio(set: MusicSet, get: MusicGet): void {
       setProgressTime(ms)
       updateMediaSessionPosition(ms, get().durationMs, mediaElement()?.playbackRate ?? 1)
       maybeStartCrossfade(get, ms)
+      maybePreloadNext(get, ms)
     },
     onDuration: (ms) => {
       set({ durationMs: ms })
