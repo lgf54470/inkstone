@@ -20,7 +20,7 @@
 - [x] FEA-B1 回收站：`music_trash` 迁移（只增不改）→ 删除曲目/歌单先移表（R2 对象延迟回收）→ 回收站视图 + 恢复/彻底删除 → cron 7 天清理 + 预算
 - [x] FEA-D1 下载嵌 ID3：worker 或前端写入（mp3 ID3v2 优先：标题/歌手/专辑/封面 APIC/歌词 USLT），m4a/flac 后续评估；`tracks.ts` stream download 参数分流
 - [x] FEA-C2 全屏背景模式：封面模糊（CSS backdrop，零依赖）→ 封面取色渐变（canvas 采样，参考 otter useCoverColors 思路）→ 设置三态（跟随主题/模糊/取色）
-- [ ] FEA-C3 歌词翻译行：LRC 译文时间戳就近合并（`parseLyric` 扩展），沉浸层/现在播放列双语行渲染；lrclib 译文源经既有 `lyric-lookup` 中继评估
+- [x] FEA-C3 歌词翻译行：LRC 译文时间戳就近合并（`parseLyric` 扩展），沉浸层/现在播放列双语行渲染；lrclib 译文源经既有 `lyric-lookup` 中继评估
 
 ## 批次 F③ · Alist 网盘源（M）
 
@@ -65,3 +65,4 @@
 | 2026-09-26 | FEA-B1 回收站 | `8ab9aee7` | 先红 6 例（worker 5 + demo 1）+ store 4 例；实现后 music + routes + demo + schema-migrations 99 文件 / 793 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 单删/批删/歌单删除三条路径统一移表，R2 字节延迟到 purge 或 7 天 cron 清理（派生键守卫随行迁移，伪造 key 无法借 purge 回收他人对象）；曲目恢复不重建歌单归属，歌单恢复只带回仍存活的成员（防悬空行）——两条都记在已知限制；回收站不是 scope，是侧栏独立入口 + Modal 面板 |
 | 2026-09-26 | FEA-D1 下载嵌 ID3 | `c363453b` | 先红 1 例 + 守卫例 1；实现后 music + routes + demo + schema-migrations 99 文件 / 795 例 ✅；typecheck ✅；静态门禁 ✅（无 UI 改动，免浏览器门禁） | mp3 下载（无 Range 全量请求）在 worker 流前置 ID3v2.3 标签（TIT2/TPE1/TALB UTF-16 BOM、APIC 仅自有派生封面键、USLT 保留 LRC 原文），音频流不缓冲直通、Content-Length 覆盖标签；已有标签的文件直接排在其后（播放器取第一个标签）；m4a/flac 与 webdav/external 分流未覆盖，记为后续评估 |
 | 2026-09-26 | FEA-C2 全屏背景模式 | `241882c9` | 先红 6 例（偏好 2 + 取色 2 + 组件 2）；实现后 music + routes + demo + schema-migrations 101 文件 / 803 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 三态偏好 immersiveBackground（theme/blur/gradient）随偏好持久化；模糊=封面图 blur+令牌遮罩，取色=16×16 canvas 采样均值加暗部渐变（纯函数 coverGradientFromPixels 可测，canvas 不可用时回退令牌渐变），遮罩保证文字令牌对比度不被背景破坏；无封面/主题态不渲染背景层 |
+| 2026-09-26 | FEA-C3 歌词翻译行 | 待回填 | 先红 4 例（合并规则）；实现后 music 全量 92 文件 / 641 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual 534/535（仅剩已登记看板遗留，另一次 2 failed 复跑回落，判定抖动）；check-contrast ✅ | 合并窗口 500ms（TRANSLATION_MERGE_MS）：窗口内后行吸收为 translation，文本相同则静默吸收（呼应式重复行），每行至多吸收一行；沉浸层译文随主行以次级字号渲染（active 跟随强调色），现在播放列同构；lrclib 译文源拉取未做（仅本地 LRC 双语合并），远端译文并入记为后续评估 |

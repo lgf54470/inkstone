@@ -89,7 +89,15 @@ export function partitionUploadableFiles(files: File[]): UploadPartition {
 export interface LyricLine {
   timeMs: number
   text: string
+  // FEA-C3: the near-timestamp follower line a translation file adds; it scrolls,
+  // highlights and seeks together with its main line.
+  translation?: string
 }
+
+// A translation line lands within a beat of its source line — same timestamp in
+// the common case, small jitter in hand-made files. Anything further apart is
+// its own line, not a translation.
+const TRANSLATION_MERGE_MS = 500
 
 const LRC_TIME = /\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g
 
@@ -107,7 +115,23 @@ export function parseLyric(lrc: string | null | undefined): LyricLine[] {
     }
   }
   out.sort((a, b) => a.timeMs - b.timeMs)
-  return out
+  return mergeTranslations(out)
+}
+
+// Greedy single pass: each line absorbs at most one near follower as its
+// translation; identical repeats are absorbed silently (a held line, not a
+// translation of itself).
+function mergeTranslations(sorted: LyricLine[]): LyricLine[] {
+  const merged: LyricLine[] = []
+  for (const line of sorted) {
+    const previous = merged[merged.length - 1]
+    if (previous && line.timeMs - previous.timeMs <= TRANSLATION_MERGE_MS && previous.translation === undefined) {
+      if (line.text !== previous.text) previous.translation = line.text
+      continue
+    }
+    merged.push(line)
+  }
+  return merged
 }
 
 function lrcTimestamp(minutes: string, seconds: string, fraction: string | undefined): number {

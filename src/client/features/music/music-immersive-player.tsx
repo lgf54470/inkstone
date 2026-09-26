@@ -352,6 +352,14 @@ function Lyrics({ lines, activeIndex, emptyKey, pending, onSeekLine }: {
           )}
         >
           {line.text}
+          {line.translation && (
+            <span className={cn(
+              'block text-[length:var(--text-11)] leading-[var(--writing-line)] font-normal',
+              index === activeIndex ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]',
+            )}>
+              {line.translation}
+            </span>
+          )}
         </button>
       ))}
     </div>

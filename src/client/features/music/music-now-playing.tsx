@@ -125,6 +125,11 @@ function Lyrics({ lines, activeIndex, emptyKey, pending }: {
           )}
         >
           {line.text}
+          {line.translation && (
+            <span className='block text-[length:var(--text-10)] leading-[var(--writing-line)] font-normal text-[var(--text-quaternary)]'>
+              {line.translation}
+            </span>
+          )}
         </p>
       ))}
     </div>

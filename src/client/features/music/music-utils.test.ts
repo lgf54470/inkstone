@@ -139,3 +139,36 @@ describe('playlistCoverUrl (M-51)', () => {
     expect(playlistCoverUrl(playlistWith(['gone']), [])).toBeNull()
   })
 })
+
+describe('lyric translation merging (FEA-C3)', () => {
+  it('merges a same-timestamp follower as the translation', () => {
+    const lines = parseLyric('[00:10.000]Hello\n[00:10.000]Bonjour')
+    expect(lines).toHaveLength(1)
+    expect(lines[0]?.text).toBe('Hello')
+    expect(lines[0]?.translation).toBe('Bonjour')
+  })
+
+  it('merges near-timestamp pairs but keeps lines a beat apart separate', () => {
+    const near = parseLyric('[00:10.000]Hello\n[00:10.400]Bonjour')
+    expect(near).toHaveLength(1)
+    expect(near[0]?.translation).toBe('Bonjour')
+    const apart = parseLyric('[00:10.000]Hello\n[00:11.200]Bonjour')
+    expect(apart.map((line) => line.text)).toEqual(['Hello', 'Bonjour'])
+    expect(apart[0]?.translation).toBeUndefined()
+  })
+
+  it('absorbs an identical repeat without making it a translation', () => {
+    const lines = parseLyric('[00:10.000]La\n[00:10.200]La')
+    expect(lines).toHaveLength(1)
+    expect(lines[0]?.text).toBe('La')
+    expect(lines[0]?.translation).toBeUndefined()
+  })
+
+  it('only absorbs one follower per line', () => {
+    const lines = parseLyric('[00:10.000]A\n[00:10.100]A2\n[00:10.200]B')
+    expect(lines).toHaveLength(2)
+    expect(lines[0]).toMatchObject({ text: 'A', translation: 'A2' })
+    expect(lines[1]?.text).toBe('B')
+    expect(lines[1]?.translation).toBeUndefined()
+  })
+})
