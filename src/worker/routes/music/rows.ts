@@ -58,6 +58,7 @@ export interface MusicPlaylistItemRow {
   playlist_id: string
   track_id: string
   sort_order: number
+  created_at: number
 }
 
 export const TRACK_COLUMNS = `t.id, t.title, t.artist, t.album, t.duration_ms, t.source, t.object_key, t.mime,

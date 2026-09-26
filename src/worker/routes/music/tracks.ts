@@ -1,6 +1,7 @@
 import type { Hono } from 'hono'
 import { LIMITS } from '@shared/constants'
 import { chunkIds } from '@shared/chunk'
+import { resolveMusicTrackType } from './keys'
 import type { MusicTrack } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
@@ -9,12 +10,12 @@ import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
 import { coverResponse, isDerivedCoverKey, storeCoverObject } from './cover'
-import { isDerivedMusicObjectKey, resolveMusicTrackType } from './keys'
 import { TRACK_COLUMNS, toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
 import { batchTrackSchema, importUrlSchema, patchTrackSchema } from './schemas'
 import { requireMusicStorage } from './storage'
 import { streamTrackResponse } from './stream'
+import { trashTrackRows } from './trash'
 import { insertWebdavTrack } from './webdav-routes'
 import { pathParam } from './params'
 
@@ -147,9 +148,8 @@ function registerBatchRoute(routes: Hono<AppBindings>): void {
       await tagTracks(c.env.DB, userId, ids, tagIds ?? [])
       return c.json({ ok: true, updated: ids.length })
     }
-    const keys = await loadOwnedObjectKeys(c.env.DB, userId, ids)
     if (action === 'delete') {
-      await deleteTracks(c.env, userId, ids, keys)
+      await trashTrackRows(c.env, userId, await loadTrackRows(c.env.DB, userId, ids), Date.now())
       return c.json({ ok: true, updated: ids.length })
     }
     const column = action === 'favorite' || action === 'unfavorite' ? 'is_favorite' : 'is_pinned'
@@ -159,14 +159,16 @@ function registerBatchRoute(routes: Hono<AppBindings>): void {
   })
 }
 
+// FEA-B1: a delete moves the row to the trash — the storage bytes are reclaimed
+// only when the entry is purged or the retention window closes.
 function registerDeleteRoute(routes: Hono<AppBindings>): void {
   routes.delete('/tracks/:id', requireAuth, async (c) => {
     const userId = c.get('userId')
     const id = pathParam(c, 'id')
-    if (!(await loadTrackRow(c.env.DB, userId, id))) throw ApiError.notFound('Track not found')
+    const [row] = await loadTrackRows(c.env.DB, userId, [id])
+    if (!row) throw ApiError.notFound('Track not found')
     await enforceMusicBudget(c.env.DB, 'write', userId)
-    const keys = await loadOwnedObjectKeys(c.env.DB, userId, [id])
-    await deleteTracks(c.env, userId, [id], keys)
+    await trashTrackRows(c.env, userId, [row], Date.now())
     return c.json({ ok: true })
   })
 }
@@ -187,20 +189,6 @@ function registerLyricRoute(routes: Hono<AppBindings>): void {
   })
 }
 
-
-async function deleteTracks(env: AppBindings['Bindings'], userId: string, ids: string[], keys: string[]): Promise<void> {
-  const statements: D1PreparedStatement[] = []
-  for (const part of chunkIds(ids, LIMITS.musicSqlIdChunkMax)) {
-    const placeholders = part.map((_, index) => `?${index + 2}`).join(', ')
-    statements.push(
-      env.DB.prepare(`DELETE FROM music_track_tags WHERE user_id = ?1 AND track_id IN (${placeholders})`).bind(userId, ...part),
-      env.DB.prepare(`DELETE FROM music_playlist_items WHERE user_id = ?1 AND track_id IN (${placeholders})`).bind(userId, ...part),
-      env.DB.prepare(`DELETE FROM music_tracks WHERE user_id = ?1 AND id IN (${placeholders})`).bind(userId, ...part),
-    )
-  }
-  await env.DB.batch(statements)
-  await reclaimMusicObjects(env, keys)
-}
 
 // One request replaces the tag set of every selected track, instead of one PATCH per track
 // burning through the hourly write budget and leaving half-applied batches behind. Ownership is
@@ -241,40 +229,6 @@ function isFlagColumn(column: string): column is 'is_favorite' | 'is_pinned' {
   return column === 'is_favorite' || column === 'is_pinned'
 }
 
-interface OwnedObjectRow {
-  id: string
-  source: string
-  created_at: number
-  object_key: string
-  cover_url: string | null
-}
-
-// A delete may only reclaim objects this row's own writes produced: the audio object by
-// derived key, the cover by derived key. A forged or inherited `cover_url` therefore
-// cannot turn a track delete into cross-account storage access, and a stored cover no
-// longer outlives the track it belongs to.
-function deletableKeysFor(row: OwnedObjectRow): string[] {
-  const keys: string[] = []
-  if (row.source === 'r2' && isDerivedMusicObjectKey(row.id, row.created_at, row.object_key)) {
-    keys.push(row.object_key)
-  }
-  if (isDerivedCoverKey(row.id, row.created_at, row.cover_url)) keys.push(row.cover_url as string)
-  return keys
-}
-
-async function loadOwnedObjectKeys(db: D1Database, userId: string, ids: string[]): Promise<string[]> {
-  if (!ids.length) return []
-  const results = await db.batch(chunkIds(ids, LIMITS.musicSqlIdChunkMax).map((part) => {
-    const placeholders = part.map((_, index) => `?${index + 2}`).join(', ')
-    return db.prepare(
-      `SELECT id, source, created_at, object_key, cover_url FROM music_tracks WHERE user_id = ?1 AND id IN (${placeholders})`,
-    ).bind(userId, ...part)
-  }))
-  return results
-    .flatMap((result) => (result.results ?? []) as OwnedObjectRow[])
-    .flatMap((row) => deletableKeysFor(row))
-}
-
 // Objects a row no longer references are unreachable garbage; reclaiming them is
 // best-effort, so a storage failure must not fail the request that orphaned them.
 async function reclaimMusicObjects(env: AppBindings['Bindings'], keys: string[]): Promise<void> {
@@ -293,6 +247,17 @@ function orphanedCoverKey(
 ): string | null {
   if (next === undefined || !previous || previous === next) return null
   return isDerivedCoverKey(trackId, createdAt, previous) ? previous : null
+}
+
+async function loadTrackRows(db: D1Database, userId: string, ids: string[]): Promise<MusicTrackRow[]> {
+  if (!ids.length) return []
+  const results = await db.batch(chunkIds(ids, LIMITS.musicSqlIdChunkMax).map((part) => {
+    const placeholders = part.map((_, index) => `?${index + 2}`).join(', ')
+    return db.prepare(
+      `SELECT ${TRACK_COLUMNS} FROM music_tracks t WHERE t.user_id = ?1 AND t.id IN (${placeholders})`,
+    ).bind(userId, ...part)
+  }))
+  return results.flatMap((result) => (result.results ?? []) as MusicTrackRow[])
 }
 
 async function loadTrackRow(db: D1Database, userId: string, id: string): Promise<MusicTrackRow | null> {

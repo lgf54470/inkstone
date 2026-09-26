@@ -6,6 +6,7 @@ import { registerMusicLyricLookupRoutes } from './lyrics'
 import { registerMusicPlaybackRoutes } from './playback'
 import { registerMusicPlaylistRoutes } from './playlists'
 import { registerMusicSettingsRoutes } from './settings'
+import { registerMusicTrashRoutes } from './trash'
 import { registerMusicTagRoutes } from './tags'
 import { registerMusicTrackRoutes } from './tracks'
 import { registerMusicUploadRoutes } from './upload'
@@ -23,8 +24,10 @@ registerMusicLyricLookupRoutes(musicRoutes)
 registerMusicTagRoutes(musicRoutes)
 registerMusicPlaylistRoutes(musicRoutes)
 registerMusicSettingsRoutes(musicRoutes)
+registerMusicTrashRoutes(musicRoutes)
 
 export { registerMusicPublicRoutes } from './public'
+export { purgeExpiredMusicTrash } from './trash'
 export { musicPageRoutes } from './page'
 // M-53b: the bundle restore validates stored object references with the exact
 // rules the upload and WebDAV import paths enforce.

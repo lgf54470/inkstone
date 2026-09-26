@@ -57,6 +57,14 @@ export const MUSIC_TABLE_STATEMENTS: readonly string[] = [
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     )`,
+  `CREATE TABLE IF NOT EXISTS music_trash (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      name TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      deleted_at INTEGER NOT NULL
+    )`,
 ]
 
 export const MUSIC_INDEX_STATEMENTS: readonly string[] = [
@@ -73,6 +81,7 @@ export const MUSIC_INDEX_STATEMENTS: readonly string[] = [
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_music_playlists_share ON music_playlists(share_slug)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_music_playlist_items_unique ON music_playlist_items(playlist_id, track_id)',
   'CREATE INDEX IF NOT EXISTS idx_music_playlist_items_list ON music_playlist_items(playlist_id, sort_order ASC)',
+  'CREATE INDEX IF NOT EXISTS idx_music_trash_list ON music_trash(user_id, deleted_at DESC)',
 ]
 
 // Databases created before the music tag tree shipped can hold a music_tags

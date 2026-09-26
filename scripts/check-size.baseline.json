@@ -92,6 +92,6 @@
     "lines": 520
   },
   "src/worker/db/schema/migrations.ts": {
-    "lines": 709
+    "lines": 725
   }
 }

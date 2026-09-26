@@ -129,8 +129,40 @@ async function patchTrackHandler(c: Context, state: DemoState): Promise<Response
 
 function deleteTrackHandler(c: Context, state: DemoState): Response {
   const id = c.req.param('id') ?? ''
-  if (!state.musicTracks.has(id)) return apiError(404, 'not_found', 'Track not found')
+  const entry = state.musicTracks.get(id)
+  if (!entry) return apiError(404, 'not_found', 'Track not found')
+  state.musicTrash.set(id, {
+    kind: 'track', name: entry.track.title, deletedAt: Date.now(), track: entry,
+  })
   removeTrackEverywhere(state, id)
+  return c.json({ ok: true as const })
+}
+
+function trashHandler(c: Context, state: DemoState): Response {
+  const entries = [...state.musicTrash.entries()]
+    .sort((a, b) => b[1].deletedAt - a[1].deletedAt)
+    .map(([id, entry]) => ({ id, kind: entry.kind, name: entry.name, deletedAt: entry.deletedAt }))
+  return c.json({ entries })
+}
+
+function restoreTrashHandler(c: Context, state: DemoState): Response {
+  const id = c.req.param('id') ?? ''
+  const entry = state.musicTrash.get(id)
+  if (!entry) return apiError(404, 'not_found', 'Trash entry not found')
+  if (entry.kind === 'track' && entry.track) {
+    state.musicTracks.set(id, entry.track)
+  } else if (entry.kind === 'playlist' && entry.playlist) {
+    const playlist = entry.playlist
+    const items = playlist.items.filter((item) => state.musicTracks.has(item.trackId))
+    state.musicPlaylists.set(playlist.id, { ...playlist, items, trackCount: items.length })
+  }
+  state.musicTrash.delete(id)
+  return c.json({ ok: true as const })
+}
+
+function purgeTrashHandler(c: Context, state: DemoState): Response {
+  const id = c.req.param('id') ?? ''
+  if (!state.musicTrash.delete(id)) return apiError(404, 'not_found', 'Trash entry not found')
   return c.json({ ok: true as const })
 }
 
@@ -228,6 +260,9 @@ export function registerMusicRoutes(app: Hono, state: DemoState): void {
   app.get('/api/music/tracks/:id/stream', (c) => streamHandler(c, state))
   app.patch('/api/music/tracks/:id', (c) => patchTrackHandler(c, state))
   app.delete('/api/music/tracks/:id', (c) => deleteTrackHandler(c, state))
+  app.get('/api/music/trash', (c) => trashHandler(c, state))
+  app.post('/api/music/trash/:id/restore', (c) => restoreTrashHandler(c, state))
+  app.delete('/api/music/trash/:id', (c) => purgeTrashHandler(c, state))
   app.post('/api/music/tracks/:id/play', (c) => playTrackHandler(c, state))
   app.post('/api/music/tracks/batch', (c) => batchTracksHandler(c, state))
 }

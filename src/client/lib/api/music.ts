@@ -79,6 +79,13 @@ export interface MusicWebdavImportInput {
   durationMs?: number
 }
 
+export interface MusicTrashEntry {
+  id: string
+  kind: 'track' | 'playlist'
+  name: string
+  deletedAt: number
+}
+
 export interface MusicImportUrlInput {
   url: string
   title?: string
@@ -95,6 +102,14 @@ export const music = {
 
   importWebdav: (input: MusicWebdavImportInput) =>
     request<MusicTrack>('/api/music/webdav/import', { method: 'POST', body: input, timeoutMs: 30_000 }),
+
+  listTrash: () => request<{ entries: MusicTrashEntry[] }>('/api/music/trash'),
+
+  restoreTrash: (id: string) =>
+    request<{ ok: boolean }>(`/api/music/trash/${encodeURIComponent(id)}/restore`, { method: 'POST', timeoutMs: 30_000 }),
+
+  purgeTrash: (id: string) =>
+    request<{ ok: boolean }>(`/api/music/trash/${encodeURIComponent(id)}`, { method: 'DELETE', timeoutMs: 30_000 }),
 
   importTrackFromUrl: (input: MusicImportUrlInput) =>
     request<MusicTrack>('/api/music/tracks/import-url', { method: 'POST', body: input, timeoutMs: 30_000 }),

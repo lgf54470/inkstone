@@ -101,7 +101,10 @@ async function patchPlaylistHandler(c: Context, state: DemoState): Promise<Respo
 
 function deletePlaylistHandler(c: Context, state: DemoState): Response {
   const id = c.req.param('id') ?? ''
-  if (!state.musicPlaylists.delete(id)) return apiError(404, 'not_found', 'Playlist not found')
+  const playlist = state.musicPlaylists.get(id)
+  if (!playlist) return apiError(404, 'not_found', 'Playlist not found')
+  state.musicTrash.set(id, { kind: 'playlist', name: playlist.name, deletedAt: Date.now(), playlist })
+  state.musicPlaylists.delete(id)
   return c.json({ ok: true as const })
 }
 

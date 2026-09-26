@@ -269,3 +269,23 @@ describe('demo playlist cover (FEA-D2 / IMP-10)', () => {
     expect(patched.coverUrl).toBe('data:image/png;base64,iVBORw0KGgo=')
   })
 })
+
+describe('demo music trash (FEA-B1)', () => {
+  it('moves deleted tracks to trash, restores them and purges them', async () => {
+    const backend = await authedBackend()
+    const track = await uploadTrack(backend)
+
+    expect((await call(backend, `/api/music/tracks/${track.id}`, { method: 'DELETE' })).status).toBe(200)
+    let trash = (await (await call(backend, '/api/music/trash')).json()) as unknown as { entries: Array<{ id: string; kind: string }> }
+    expect(trash.entries).toEqual([expect.objectContaining({ id: track.id, kind: 'track' })])
+
+    expect((await call(backend, `/api/music/trash/${track.id}/restore`, { method: 'POST' })).status).toBe(200)
+    const library = (await (await call(backend, '/api/music/library')).json()) as { tracks: Array<{ id: string }> }
+    expect(library.tracks.map((entry) => entry.id)).toContain(track.id)
+
+    await call(backend, `/api/music/tracks/${track.id}`, { method: 'DELETE' })
+    expect((await call(backend, `/api/music/trash/${track.id}`, { method: 'DELETE' })).status).toBe(200)
+    trash = (await (await call(backend, '/api/music/trash')).json()) as unknown as { entries: Array<{ id: string; kind: string }> }
+    expect(trash.entries).toEqual([])
+  })
+})

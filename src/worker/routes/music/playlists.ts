@@ -8,12 +8,12 @@ import { newId, newSlug } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
-import { coverResponse, isDerivedCoverKey, storeCoverObject } from './cover'
+import { coverResponse, storeCoverObject } from './cover'
 import { toPlaylist, toPlaylistItem } from './rows'
 import type { MusicPlaylistItemRow, MusicPlaylistRow } from './rows'
 import { batchPlaylistItemsSchema, createPlaylistSchema, patchPlaylistSchema, playlistItemSchema, reorderPlaylistSchema } from './schemas'
 import { pathParam } from './params'
-import { deleteMusicObjects, requireMusicStorage } from './storage'
+import { trashPlaylistRow } from './trash'
 
 const PLAYLIST_SELECT = 'id, name, description, is_pinned, is_favorite, share_slug, cover_url, sort_order, created_at, updated_at'
 
@@ -109,15 +109,12 @@ async function deletePlaylist(c: Context<AppBindings>): Promise<Response> {
   const id = pathParam(c, 'id')
   const row = await loadPlaylistRow(c.env.DB, userId, id)
   if (!row) throw ApiError.notFound('Playlist not found')
-  await c.env.DB.batch([
-    c.env.DB.prepare('DELETE FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2').bind(userId, id),
-    c.env.DB.prepare('DELETE FROM music_playlists WHERE user_id = ?1 AND id = ?2').bind(userId, id),
-  ])
-  // Same derived-key rule as the audio delete: only a cover this row's own write
-  // could have produced may be removed from storage.
-  if (isDerivedCoverKey(id, row.created_at, row.cover_url)) {
-    await deleteMusicObjects(c.env, requireMusicStorage(c.env), [row.cover_url as string])
-  }
+  // FEA-B1: the playlist (with its membership snapshot) moves to the trash; the
+  // cover object is reclaimed only when the entry is purged or expires.
+  const items = await c.env.DB.prepare(
+    'SELECT id, playlist_id, track_id, sort_order, created_at FROM music_playlist_items WHERE user_id = ?1 AND playlist_id = ?2 ORDER BY sort_order ASC, created_at ASC',
+  ).bind(userId, id).all<MusicPlaylistItemRow>()
+  await trashPlaylistRow(c.env, userId, row, (items.results ?? []) as MusicPlaylistItemRow[], Date.now())
   return c.json({ ok: true })
 }
 

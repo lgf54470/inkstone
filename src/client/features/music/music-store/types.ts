@@ -1,4 +1,5 @@
 import type { StoreApi } from 'zustand'
+import type { MusicTrashEntry } from '../../../lib/api'
 import type {
   MusicPlayMode, MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry,
 } from '@shared/types'
@@ -157,6 +158,9 @@ export interface MusicStoreState {
   downloads: MusicDownloadTask[]
   offlineTrackIds: string[]
   libraryJobs: MusicLibraryJob[]
+  trashOpen: boolean
+  trashEntries: MusicTrashEntry[]
+  trashLoading: boolean
   uploadTarget: MusicTransferTarget
   transfersOpen: boolean
   webdav: MusicWebdavState
@@ -248,6 +252,10 @@ export interface MusicStoreState {
   downloadTracks: (ids: string[]) => Promise<void>
   dismissDownload: (id: string) => void
   syncOfflineTracks: () => Promise<void>
+  openTrash: () => Promise<void>
+  closeTrash: () => void
+  restoreFromTrash: (id: string) => Promise<void>
+  purgeTrashEntry: (id: string) => Promise<void>
   toggleTrackOffline: (id: string) => Promise<void>
   setTracksOffline: (ids: string[], enabled: boolean) => Promise<void>
   dismissLibraryJob: (kind: MusicLibraryJobKind) => void

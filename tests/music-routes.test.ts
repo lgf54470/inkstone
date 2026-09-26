@@ -17,6 +17,7 @@ import { MUSIC_PLAYBACK_MIGRATION_STATEMENTS } from '../src/worker/db/schema/mus
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { musicRoutes } from '../src/worker/routes/music'
+import { purgeExpiredMusicTrash } from '../src/worker/routes/music/trash'
 import { createD1Database as createDb, queryRows, runSql, type D1Prepared, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
@@ -523,6 +524,9 @@ describe('music routes (real D1 + fake R2)', () => {
 
     const removed = await json(app, '/api/music/tracks/batch', { ids: [second.id], action: 'delete' })
     expect(removed.status).toBe(200)
+    // FEA-B1: the delete parks the row in the trash; the object is reclaimed by the purge.
+    expect(DB_ENV.env.FILES.delete).not.toHaveBeenCalled()
+    expect((await request(app, `/api/music/trash/${second.id}`, { method: 'DELETE' })).status).toBe(200)
     expect(DB_ENV.env.FILES.delete).toHaveBeenCalled()
 
     const library = await (await request(app, '/api/music/library')).json()
@@ -626,6 +630,7 @@ describe('music routes (real D1 + fake R2)', () => {
 
     const mine = await uploadTrack(app, 'mine.mp3')
     await request(app, `/api/music/tracks/${mine.id}`, { method: 'DELETE' })
+    await request(app, `/api/music/trash/${mine.id}`, { method: 'DELETE' })
     expect(deleted.mock.calls.length).toBeGreaterThan(0)
     const ownKey = deleted.mock.calls.at(-1)![0] as string[]
     expect(ownKey).toHaveLength(1)
@@ -1125,6 +1130,9 @@ describe('music cover storage', () => {
 
     const removed = await request(app, `/api/music/tracks/${id}`, { method: 'DELETE' })
     expect(removed.status).toBe(200)
+    // The trash keeps the cover until the entry is purged (FEA-B1).
+    expect(storedObjects().has(coverKey)).toBe(true)
+    await request(app, `/api/music/trash/${id}`, { method: 'DELETE' })
     expect(storedObjects().has(coverKey)).toBe(false)
   })
 
@@ -1620,6 +1628,7 @@ describe('video containers in the music library (real D1 + fake R2)', () => {
 
     const removed = await request(app, `/api/music/tracks/${track.id}`, { method: 'DELETE' })
     expect(removed.status).toBe(200)
+    await request(app, `/api/music/trash/${track.id}`, { method: 'DELETE' })
     const deletedKeys = storageSpy().delete.mock.calls.flatMap((call) => call[0] as string[])
     expect(deletedKeys).toContain(key)
   })
@@ -1793,5 +1802,77 @@ describe('playlist custom cover (FEA-D2 / IMP-10)', () => {
     const playlist = await (await json(app, '/api/music/playlists', { name: 'Plain' })).json()
     const res = await json(app, `/api/music/playlists/${playlist.id}`, { coverDataUrl: 'data:text/html;base64,PGI+' }, 'PATCH')
     expect(res.status).toBe(400)
+  })
+})
+
+describe('music trash (FEA-B1)', () => {
+  async function trashFixture(): Promise<{ app: ReturnType<typeof makeApp>; db: D1Shim; t1: { id: string }; t2: { id: string } }> {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const upload = async (name: string): Promise<{ id: string }> => {
+      const form = new FormData()
+      form.append('file', new File([AUDIO], name, { type: 'audio/mpeg' }))
+      return (await (await request(app, '/api/music/tracks', { method: 'POST', body: form })).json()) as { id: string }
+    }
+    return { app, db, t1: await upload('one.mp3'), t2: await upload('two.mp3') }
+  }
+
+  it('moves a deleted track to trash and keeps its bytes', async () => {
+    const { app, t1 } = await trashFixture()
+    expect((await request(app, `/api/music/tracks/${t1.id}`, { method: 'DELETE' })).status).toBe(200)
+    const trash = await (await request(app, '/api/music/trash')).json() as { entries: Array<{ id: string; kind: string; name: string }> }
+    expect(trash.entries).toEqual([expect.objectContaining({ id: t1.id, kind: 'track', name: 'one' })])
+    expect(r2?.delete).not.toHaveBeenCalled()
+  })
+
+  it('restores a trashed track with its id and playable bytes', async () => {
+    const { app, t1 } = await trashFixture()
+    await request(app, `/api/music/tracks/${t1.id}`, { method: 'DELETE' })
+    expect((await request(app, `/api/music/trash/${t1.id}/restore`, { method: 'POST' })).status).toBe(200)
+    const library = await (await request(app, '/api/music/library')).json() as { tracks: Array<{ id: string }> }
+    expect(library.tracks.map((track) => track.id)).toContain(t1.id)
+    expect((await request(app, `/api/music/tracks/${t1.id}/stream`)).status).toBe(200)
+    const trash = await (await request(app, '/api/music/trash')).json() as { entries: unknown[] }
+    expect(trash.entries).toEqual([])
+  })
+
+  it('purges a trashed track and reclaims its storage object', async () => {
+    const { app, t1 } = await trashFixture()
+    await request(app, `/api/music/tracks/${t1.id}`, { method: 'DELETE' })
+    expect((await request(app, `/api/music/trash/${t1.id}`, { method: 'DELETE' })).status).toBe(200)
+    expect(r2?.delete).toHaveBeenCalled()
+    const trash = await (await request(app, '/api/music/trash')).json() as { entries: unknown[] }
+    expect(trash.entries).toEqual([])
+  })
+
+  it('restores a playlist with the members that still exist', async () => {
+    const { app, t1, t2 } = await trashFixture()
+    const playlist = await (await json(app, '/api/music/playlists', { name: 'Mix' })).json() as { id: string }
+    await json(app, `/api/music/playlists/${playlist.id}/items`, { trackId: t1.id })
+    await json(app, `/api/music/playlists/${playlist.id}/items`, { trackId: t2.id })
+    // t2 goes to trash and is purged for good, so only t1 survives the restore.
+    await request(app, `/api/music/tracks/${t2.id}`, { method: 'DELETE' })
+    await request(app, `/api/music/trash/${t2.id}`, { method: 'DELETE' })
+    await request(app, `/api/music/playlists/${playlist.id}`, { method: 'DELETE' })
+    let trash = await (await request(app, '/api/music/trash')).json() as { entries: Array<{ kind: string; name: string }> }
+    expect(trash.entries).toEqual([expect.objectContaining({ id: playlist.id, kind: 'playlist', name: 'Mix' })])
+    expect((await request(app, `/api/music/trash/${playlist.id}/restore`, { method: 'POST' })).status).toBe(200)
+    trash = await (await request(app, '/api/music/trash')).json() as { entries: Array<{ kind: string }> }
+    expect(trash.entries).toEqual([])
+    const detail = await (await request(app, '/api/music/playlists')).json() as { playlists: Array<{ id: string; items: Array<{ trackId: string }> }> }
+    const restored = detail.playlists.find((entry) => entry.id === playlist.id)
+    expect(restored?.items.map((item) => item.trackId)).toEqual([t1.id])
+  })
+
+  it('purges entries past the retention window and spares fresh ones', async () => {
+    const { app, db, t1, t2 } = await trashFixture()
+    await request(app, `/api/music/tracks/${t1.id}`, { method: 'DELETE' })
+    await request(app, `/api/music/tracks/${t2.id}`, { method: 'DELETE' })
+    await runSql(db, `UPDATE music_trash SET deleted_at = deleted_at - 8 * 86400000 WHERE id = '${t1.id}'`)
+    await purgeExpiredMusicTrash(DB_ENV.env as unknown as Parameters<typeof purgeExpiredMusicTrash>[0])
+    const trash = await (await request(app, '/api/music/trash')).json() as { entries: Array<{ id: string }> }
+    expect(trash.entries.map((entry) => entry.id)).toEqual([t2.id])
+    expect(r2?.delete).toHaveBeenCalledTimes(1)
   })
 })

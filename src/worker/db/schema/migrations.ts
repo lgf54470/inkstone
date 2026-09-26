@@ -705,4 +705,20 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `ALTER TABLE music_playlists ADD COLUMN cover_url TEXT`,
     ],
   },
+  // FEA-B1: the music trash holds deleted tracks and playlists for a retention
+  // window before storage objects are reclaimed.
+  {
+    version: 47,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS music_trash (
+         id TEXT PRIMARY KEY,
+         user_id TEXT NOT NULL,
+         kind TEXT NOT NULL,
+         name TEXT NOT NULL,
+         payload TEXT NOT NULL,
+         deleted_at INTEGER NOT NULL
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_music_trash_list ON music_trash(user_id, deleted_at DESC)`,
+    ],
+  },
 ]

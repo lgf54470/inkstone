@@ -33,6 +33,15 @@ export interface DemoMusicTrack {
   file: File
 }
 
+// FEA-B1 demo stub: a deleted track or playlist rests here until restore or purge.
+export interface DemoMusicTrashEntry {
+  kind: 'track' | 'playlist'
+  name: string
+  deletedAt: number
+  track?: DemoMusicTrack
+  playlist?: MusicPlaylistDetail
+}
+
 
 interface DemoShare {
   info: ShareInfo
@@ -83,6 +92,7 @@ export interface DemoState {
   musicTracks: Map<string, DemoMusicTrack>
   musicTags: Map<string, MusicTag>
   musicPlaylists: Map<string, MusicPlaylistDetail>
+  musicTrash: Map<string, DemoMusicTrashEntry>
 }
 
 const seedId = (value: number) => `01j${String(value).padStart(23, '0')}`
@@ -308,6 +318,7 @@ export function createDemoState(): DemoState {
     musicTracks: new Map(),
     musicTags: new Map(),
     musicPlaylists: new Map(),
+    musicTrash: new Map(),
   }
 }
 

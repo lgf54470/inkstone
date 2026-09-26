@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react'
-import { Clock3, Copy, Disc, FolderHeart, HardDriveDownload, Heart, Library, Pin, Users } from 'lucide-react'
+import { Clock3, Copy, Disc, FolderHeart, HardDriveDownload, Heart, Library, Pin, Trash2, Users } from 'lucide-react'
 import { Tooltip } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -7,6 +7,7 @@ import { formatBytes, formatTotalDuration } from '../../lib/time'
 import { MusicHubPlaylists } from './music-hub-playlists'
 import { redundantTrackCount } from './music-duplicates'
 import { buildGroups } from './music-grouping'
+import { MusicTrashPanel } from './music-trash-panel'
 import { MusicHubTags } from './music-hub-tags'
 import { recentlyPlayedCount } from './music-utils'
 import { useMusic } from './music-store'
@@ -25,8 +26,10 @@ export const MusicHubSidebar = memo(function MusicHubSidebar({
         <CollectionNav />
         <MusicHubTags onManage={onManageTags} />
         <MusicHubPlaylists onCreate={onCreatePlaylist} />
+        <TrashNavRow />
       </div>
       <SidebarStats />
+      <MusicTrashPanel />
     </aside>
   )
 })
@@ -103,6 +106,24 @@ function NavRow({ item, active, onSelect }: { item: NavItem; active: boolean; on
           token system calibrates (accent as text on its own tint). */}
       <span className={cn('tabular shrink-0 text-[length:var(--text-10)]', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>{item.count}</span>
     </button>
+  )
+}
+
+// The trash is not a scope — it is a separate data source — so it sits at the end
+// of the navigation as a plain button that opens its own panel.
+function TrashNavRow() {
+  const openTrash = useMusic((state) => state.openTrash)
+  return (
+    <div className='border-t border-[var(--border-subtle)] pt-2'>
+      <button
+        type='button'
+        onClick={() => void openTrash()}
+        className='flex h-8 w-full items-center gap-2 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+      >
+        <Trash2 size={13} aria-hidden='true' />
+        <span className='truncate'>{t('music.trash')}</span>
+      </button>
+    </div>
   )
 }
 
