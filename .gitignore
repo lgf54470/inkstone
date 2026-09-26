@@ -40,6 +40,9 @@ public/fonts/
 # Private project documentation
 /docs/*
 !/docs/bug/
+!/docs/improvement/
+!/docs/features/
+!/docs/refactor/
 RELEASE_NOTES.md
 
 # Test and temporary artifacts
