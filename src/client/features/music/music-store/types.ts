@@ -15,6 +15,9 @@ export type MusicBatch = 'favorite' | 'unfavorite' | 'pin' | 'unpin' | 'delete'
 export type MusicLyricAlign = 'left' | 'center' | 'right'
 export type MusicLyricTextSize = 'small' | 'default' | 'large'
 
+// FEA-C2: what paints behind the immersive player's columns.
+export type MusicImmersiveBackground = 'theme' | 'blur' | 'gradient'
+
 export type MusicTrackPatchInput = Partial<MusicTrack> & { tagIds?: string[]; coverDataUrl?: string | null }
 
 // A practice loop the listener marks on the track they are hearing; `endMs` stays
@@ -150,6 +153,7 @@ export interface MusicStoreState {
   floatingCollapsed: boolean
   floatingPosition: { x: number; y: number } | null
   immersive: boolean
+  immersiveBackground: MusicImmersiveBackground
   lyricAlign: MusicLyricAlign
   lyricTextSize: MusicLyricTextSize
   loopRange: MusicLoopRange | null
@@ -190,6 +194,7 @@ export interface MusicStoreState {
   playNext: () => Promise<void>
   playPrevious: () => Promise<void>
   seek: (ms: number) => void
+  setImmersiveBackground: (mode: MusicImmersiveBackground) => void
   setLyricAlign: (align: MusicLyricAlign) => void
   setLyricTextSize: (size: MusicLyricTextSize) => void
   setVolume: (volume: number) => void

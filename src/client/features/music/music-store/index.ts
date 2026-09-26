@@ -67,6 +67,7 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
     eqHighDb: prefs.eqHighDb,
     normalizeEnabled: prefs.normalizeEnabled,
     crossfadeEnabled: prefs.crossfadeEnabled,
+    immersiveBackground: prefs.immersiveBackground,
     lyricAlign: prefs.lyricAlign,
     lyricTextSize: prefs.lyricTextSize,
     lyricOffsets: prefs.lyricOffsets,
@@ -82,7 +83,8 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
 }
 
 export type {
-  MusicBatch, MusicDownloadTask, MusicEqBand, MusicLibraryJob, MusicLibraryJobKind, MusicLoopRange, MusicLyricAlign, MusicLyricTextSize,
+  MusicBatch, MusicDownloadTask, MusicEqBand, MusicImmersiveBackground, MusicLibraryJob, MusicLibraryJobKind, MusicLoopRange,
+  MusicLyricAlign, MusicLyricTextSize,
   MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
   MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,
 } from './types'

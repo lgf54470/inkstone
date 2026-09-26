@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, type RefObject } from 'react'
-import { Heart, ListMusic, Minus, Pin, Plus, RotateCcw, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { Heart, ListMusic, Minus, Pin, Plus, RotateCcw, Wallpaper, X } from 'lucide-react'
 import { isVideoMime } from '@shared/music-media'
-import { Modal } from '../../components/overlay'
+import { Modal, Tooltip } from '../../components/overlay'
+import { Segmented } from '../../components/form'
 import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { useMediaQuery } from '../../lib/hooks'
@@ -10,6 +11,7 @@ import { preferredScrollBehavior } from '../../lib/motion'
 import { formatBytes, formatTimecode } from '../../lib/time'
 import { LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, useActiveLoopRange, useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
+import { coverGradientFromUrl } from './music-cover-colors'
 import { LYRIC_ALIGN_CLASSES, LYRIC_IMMERSIVE_SIZE_CLASSES, MusicLyricStyleButton } from './music-lyric-style'
 import { MusicPlayButtons } from './music-play-buttons'
 import { MusicQueueList } from './music-queue-list'
@@ -18,11 +20,15 @@ import { MusicVideoStage } from './music-video-stage'
 import {
   MusicEqButton, MusicLoopButton, MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicVolumeButton,
 } from './music-transport-widgets'
+import { MusicPopover } from './music-popover'
 import { useTrackLyric } from './music-lyrics'
 import type { LyricLine } from './music-utils'
 import { activeLyricIndex, formatLyricOffset, lyricsEmptyKey, lyricsPending, MUSIC_NARROW_BREAKPOINT, parseLyric } from './music-utils'
 
 const IMMERSIVE_WIDTH = 1000
+// The blurred cover layer is aria-decorative wallpaper: heavy blur over a token
+// scrim keeps the content columns' token contrast intact.
+const COVER_BLUR_LAYER_CLASS = 'size-full scale-125 object-cover opacity-60 blur-[64px]'
 
 export function MusicImmersiveOverlay() {
   const immersive = useMusic((state) => state.immersive)
@@ -54,7 +60,8 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
 
   return (
     <Modal open={open} onClose={onClose} ariaLabel={t('music.immersive')} width={IMMERSIVE_WIDTH} className='h-[86vh] p-0 overflow-hidden' bodyClassName='p-0 flex-1 min-h-0 flex'>
-      <div className={cn('flex min-h-0 flex-1', stacked && 'flex-col')}>
+      <div className={cn('relative flex min-h-0 flex-1 overflow-hidden', stacked && 'flex-col')}>
+        <ImmersiveBackground track={track} />
         <ImmersiveLeft track={track} durationMs={durationMs} seek={seek} stacked={stacked} />
         <LyricsPanel
           track={track}
@@ -69,6 +76,83 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
         />
       </div>
     </Modal>
+  )
+}
+
+// FEA-C2: the background modes. The theme mode paints nothing (the modal's token
+// surface shows); the cover modes sit under a token scrim so text tiers keep the
+// contrast the token system calibrates. Falls back to a token gradient when the
+// cover cannot be sampled (canvas unavailable, load failure, no cover).
+function ImmersiveBackground({ track }: { track: ReturnType<typeof useCurrentTrack> }) {
+  const mode = useMusic((state) => state.immersiveBackground)
+  const coverUrl = track?.coverUrl ?? null
+  const [gradient, setGradient] = useState<string | null>(null)
+  useEffect(() => {
+    if (mode !== 'gradient' || !coverUrl) {
+      setGradient(null)
+      return
+    }
+    let cancelled = false
+    void coverGradientFromUrl(coverUrl).then((value) => {
+      if (!cancelled) setGradient(value)
+    })
+    return () => { cancelled = true }
+  }, [mode, coverUrl])
+
+  if (mode === 'theme' || !coverUrl) return null
+  if (mode === 'gradient') {
+    return (
+      <div
+        aria-hidden='true'
+        data-immersive-background='gradient'
+        className='absolute inset-0'
+        style={{ backgroundImage: gradient ?? 'linear-gradient(135deg, var(--bg-raised), var(--bg-base))' }}
+      />
+    )
+  }
+  return (
+    <div aria-hidden='true' data-immersive-background='blur' className='absolute inset-0'>
+      <img src={coverUrl} alt='' className={COVER_BLUR_LAYER_CLASS} />
+      <div className='absolute inset-0 bg-[var(--bg-base)] opacity-70' />
+    </div>
+  )
+}
+
+// The mode control sits with the other transport toggles; three options, radio
+// semantics, names spelled out because the wallpaper is a visual-only affordance.
+function MusicBackgroundButton() {
+  const mode = useMusic((state) => state.immersiveBackground)
+  const setImmersiveBackground = useMusic((state) => state.setImmersiveBackground)
+  const [open, setOpen] = useState(false)
+  const anchorRef = useRef<HTMLButtonElement>(null)
+  const options = [
+    { value: 'theme', label: t('music.background_theme') },
+    { value: 'blur', label: t('music.background_blur') },
+    { value: 'gradient', label: t('music.background_gradient') },
+  ] as const
+  return (
+    <>
+      <Tooltip label={t('music.background_mode')} side='top'>
+        <IconButton
+          ref={anchorRef}
+          label={t('music.background_mode')}
+          highlight={mode !== 'theme'}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <Wallpaper size={14} />
+        </IconButton>
+      </Tooltip>
+      <MusicPopover open={open} onClose={() => setOpen(false)} label={t('music.background_mode')} anchorRef={anchorRef} className='w-40 p-2'>
+        <Segmented
+          size='sm'
+          className='w-full'
+          label={t('music.background_mode')}
+          value={mode}
+          onChange={(value) => { setImmersiveBackground(value); setOpen(false) }}
+          options={options.map((option) => ({ value: option.value, label: option.label, title: option.label }))}
+        />
+      </MusicPopover>
+    </>
   )
 }
 
@@ -138,6 +222,7 @@ function ImmersiveButtons({ track, stacked }: { track: ReturnType<typeof useCurr
     <>
       <div className='flex items-center gap-0.5'>
         <MusicModeButton />
+        <MusicBackgroundButton />
         <MusicRateButton />
         <MusicEqButton />
         <MusicVolumeButton />

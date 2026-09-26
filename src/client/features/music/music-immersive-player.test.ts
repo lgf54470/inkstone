@@ -299,3 +299,51 @@ describe('MusicImmersivePlayer lyric calibration — F-1', () => {
     expect(useMusic.getState().lyricOffsets.t1).toBeUndefined()
   })
 })
+
+describe('immersive background modes (FEA-C2)', () => {
+  function track(): MusicTrack {
+    return {
+      id: 't1', title: 'Song', artist: 'Artist', album: 'Album', durationMs: 10_000, source: 'r2',
+      format: 'mp3', webdavPath: null, mime: 'audio/mpeg', sizeBytes: 0, coverUrl: '/cover.png',
+      lyric: null, hasLyric: false, tagIds: [], isFavorite: false, isPinned: false,
+      playCount: 0, lastPlayedAt: null, contentHash: null, createdAt: 0, updatedAt: 0,
+    } as MusicTrack
+  }
+
+  it('renders no background layer in the theme mode', async () => {
+    stubViewportWidth(1280)
+    useMusic.setState({ tracks: [track()], queue: ['t1'], currentIndex: 0, immersiveBackground: 'theme' })
+    await mountPlayer(() => {})
+    expect(document.querySelector('[data-immersive-background]')).toBeNull()
+  })
+
+  it('renders a blurred cover layer in the blur mode', async () => {
+    stubViewportWidth(1280)
+    useMusic.setState({ tracks: [track()], queue: ['t1'], currentIndex: 0, immersiveBackground: 'blur' })
+    await mountPlayer(() => {})
+    const layer = document.querySelector('[data-immersive-background]')
+    expect(layer).not.toBeNull()
+    expect(layer?.querySelector('img')).not.toBeNull()
+  })
+
+  it('renders a sampled gradient layer in the gradient mode', async () => {
+    stubViewportWidth(1280)
+    useMusic.setState({ tracks: [track()], queue: ['t1'], currentIndex: 0, immersiveBackground: 'gradient' })
+    await mountPlayer(() => {})
+    const layer = document.querySelector('[data-immersive-background]')
+    expect(layer?.getAttribute('style')).toContain('linear-gradient')
+  })
+
+  it('switches the mode from the background button', async () => {
+    stubViewportWidth(1280)
+    useMusic.setState({ tracks: [track()], queue: ['t1'], currentIndex: 0 })
+    await mountPlayer(() => {})
+    const trigger = [...document.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === t('music.background_mode'))
+    expect(trigger).toBeDefined()
+    await act(async () => { trigger?.click() })
+    const blur = [...document.querySelectorAll('[role="radio"]')].find((radio) => radio.getAttribute('aria-label') === t('music.background_blur')) as HTMLElement | undefined
+    await act(async () => { blur?.click() })
+    expect(useMusic.getState().immersiveBackground).toBe('blur')
+    expect(document.querySelector('[data-immersive-background]')).not.toBeNull()
+  })
+})

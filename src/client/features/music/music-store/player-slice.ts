@@ -1,8 +1,8 @@
 import {
   applyEqPreset, clearLoopRange, connectAudio, currentTrack, cycleMode, markLoopEnd, markLoopStart, playCollection,
   playNext, playPrevious, playQueueAt, playTrack, seek, setEqBand, setEqEnabled,
-  setFloatingPosition, setImmersive, setLyricAlign, setLyricTextSize, setNormalizeEnabled, setPlaybackRate,
-  setSleepAfterCurrentTrack, setSleepTimer, setVolume,
+  setFloatingPosition, setImmersive, setImmersiveBackground, setLyricAlign, setLyricTextSize, setNormalizeEnabled,
+  setPlaybackRate, setSleepAfterCurrentTrack, setSleepTimer, setVolume,
   toggleFloating, toggleFloatingCollapsed, toggleMute, togglePlay,
 } from './player'
 import { setCrossfadeEnabled } from './crossfade'
@@ -15,6 +15,7 @@ type PlayerSlice = Pick<MusicStoreState,
   | 'seek' | 'setVolume' | 'toggleMute' | 'cycleMode' | 'setPlaybackRate' | 'setSleepTimer' | 'setSleepAfterCurrentTrack' | 'setImmersive'
   | 'setLyricAlign' | 'setLyricTextSize'
   | 'setEqEnabled' | 'setEqBand' | 'applyEqPreset' | 'setNormalizeEnabled' | 'setCrossfadeEnabled'
+  | 'setImmersiveBackground'
   | 'nudgeLyricOffset' | 'resetLyricOffset' | 'markLoopStart' | 'markLoopEnd' | 'clearLoopRange'
   | 'addToQueue' | 'addManyToQueue' | 'removeFromQueue' | 'moveQueueItem' | 'clearQueue'
   | 'toggleFloating' | 'toggleFloatingCollapsed' | 'setFloatingPosition'>
@@ -33,6 +34,7 @@ export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
     toggleMute: () => toggleMute(set, get),
     cycleMode: () => cycleMode(set, get),
     setPlaybackRate: (rate) => setPlaybackRate(set, get, rate),
+    setImmersiveBackground: (mode) => setImmersiveBackground(set, get, mode),
     setLyricAlign: (align) => setLyricAlign(set, get, align),
     setLyricTextSize: (size) => setLyricTextSize(set, get, size),
     setSleepTimer: (minutes) => setSleepTimer(set, get, minutes),

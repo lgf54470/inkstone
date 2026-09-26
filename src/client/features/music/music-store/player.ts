@@ -17,7 +17,9 @@ import { progressTimeMs, setProgressTime } from './progress'
 import { persist } from './persist'
 import { MIN_LOOP_MS, SLEEP_FADE_MS, loadPreferences, readEqDb } from './state'
 import { createShuffleOrder, shuffleOrderFor, shuffleStep } from '../music-shuffle'
-import type { MusicEqBand, MusicGet, MusicLyricAlign, MusicLyricTextSize, MusicSet, MusicStoreState } from './types'
+import type {
+  MusicEqBand, MusicGet, MusicImmersiveBackground, MusicLyricAlign, MusicLyricTextSize, MusicSet, MusicStoreState,
+} from './types'
 
 const STREAM_START_TIMEOUT_MS = 20_000
 const RESUME_THRESHOLD_MS = 1_000
@@ -208,6 +210,12 @@ export function clearLoopRange(set: MusicSet): void {
 export function setPlaybackRate(set: MusicSet, get: MusicGet, rate: number): void {
   set({ playbackRate: rate })
   applyPlaybackRate(rate)
+  persist(get)
+}
+
+// FEA-C2: the immersive player repaints its background from this mode.
+export function setImmersiveBackground(set: MusicSet, get: MusicGet, mode: MusicImmersiveBackground): void {
+  set({ immersiveBackground: mode })
   persist(get)
 }
 

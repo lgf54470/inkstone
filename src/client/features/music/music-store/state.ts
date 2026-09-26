@@ -1,6 +1,6 @@
 import type { MusicPlayMode } from '@shared/types'
 import type {
-  MusicLyricAlign, MusicLyricTextSize, MusicSort, MusicSortDirection, MusicSourceFilter, MusicViewMode,
+  MusicImmersiveBackground, MusicLyricAlign, MusicLyricTextSize, MusicSort, MusicSortDirection, MusicSourceFilter, MusicViewMode,
 } from './types'
 
 export const MUSIC_PREFS_KEY = 'inkstone.music-prefs.v2'
@@ -29,6 +29,7 @@ export interface MusicPreferences {
   eqHighDb: number
   normalizeEnabled: boolean
   crossfadeEnabled: boolean
+  immersiveBackground: MusicImmersiveBackground
   lyricAlign: MusicLyricAlign
   lyricTextSize: MusicLyricTextSize
   /** Per-track lyric calibration in ms; a positive value holds the lyrics back. */
@@ -40,6 +41,7 @@ const SORTS: MusicSort[] = ['recent', 'title', 'artist', 'album', 'duration', 'p
 const SORT_DIRECTIONS: MusicSortDirection[] = ['asc', 'desc']
 const VIEW_MODES: MusicViewMode[] = ['list', 'grid']
 const SOURCE_FILTERS: MusicSourceFilter[] = ['all', 'r2', 'webdav']
+export const IMMERSIVE_BACKGROUNDS: MusicImmersiveBackground[] = ['theme', 'blur', 'gradient']
 export const LYRIC_ALIGNS: MusicLyricAlign[] = ['left', 'center', 'right']
 export const LYRIC_TEXT_SIZES: MusicLyricTextSize[] = ['small', 'default', 'large']
 export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
@@ -106,6 +108,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   eqHighDb: 0,
   normalizeEnabled: false,
   crossfadeEnabled: false,
+  immersiveBackground: 'theme',
   lyricAlign: 'left',
   lyricTextSize: 'default',
   lyricOffsets: {},
@@ -153,6 +156,7 @@ export function loadPreferences(): MusicPreferences {
     eqHighDb: readEqDb(parsed.eqHighDb),
     normalizeEnabled: parsed.normalizeEnabled === true,
     crossfadeEnabled: parsed.crossfadeEnabled === true,
+    immersiveBackground: readListed(parsed.immersiveBackground, IMMERSIVE_BACKGROUNDS, DEFAULT_PREFERENCES.immersiveBackground),
     lyricAlign: readListed(parsed.lyricAlign, LYRIC_ALIGNS, DEFAULT_PREFERENCES.lyricAlign),
     lyricTextSize: readListed(parsed.lyricTextSize, LYRIC_TEXT_SIZES, DEFAULT_PREFERENCES.lyricTextSize),
     lyricOffsets: readLyricOffsets(parsed.lyricOffsets),
