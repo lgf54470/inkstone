@@ -1,3 +1,4 @@
+import { LIMITS } from '@shared/constants'
 import { fuzzyMatch } from '../../lib/fuzzy'
 import type { MusicTag, MusicTrack } from '@shared/types'
 import { tagRowsById } from './music-tag-rows'
@@ -12,7 +13,7 @@ interface SearchRow {
 
 // Below this a lyric scan is all cost and no signal; it also keeps single letters
 // from walking every stored song on each keystroke.
-export const LYRIC_QUERY_MIN_LENGTH = 3
+export const LYRIC_QUERY_MIN_LENGTH = LIMITS.musicLyricQueryMinLength
 
 // A stable default, so a caller that never passes tags keeps the index it built
 // instead of invalidating it with a fresh empty array on every keystroke.

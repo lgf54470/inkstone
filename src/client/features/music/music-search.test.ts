@@ -169,8 +169,10 @@ describe('search beyond the name (F-10)', () => {
     expect(searchTracks(rows, {}, 'rain', [])).toEqual(['rain-song', 'other'])
   })
 
-  it('does not walk whole lyrics for a query that short', () => {
-    expect(searchTracks(TAGGED, {}, 'ra', TAGS)).toEqual([])
+  it('walks lyrics from two characters up, and never for one (IMP-11)', () => {
+    expect(searchTracks(TAGGED, {}, 'ra', TAGS)).toEqual(['c'])
+    // One character still answers name hits, but the lyric-only track stays out.
+    expect(searchTracks(TAGGED, {}, 'r', TAGS)).toEqual(['a', 'b'])
   })
 
   it('never leaks a track whose tags are unknown', () => {

@@ -1681,13 +1681,16 @@ describe('music lyric search (real D1)', () => {
     expect(body.total).toBe(55)
   })
 
-  it('answers nothing before the query is long enough to be a lyric probe', async () => {
+  it('probes lyrics from two characters up, and never for one (IMP-11)', async () => {
     const db = await makeDb()
     await seedUser(db)
     await seedLyricTracks(db, [{ id: 'hit', lyric: 'ab in the middle' }])
     const app = makeApp()
-    const body = await (await request(app, '/api/music/lyric-search?q=ab')).json()
-    expect(body.ids).toEqual([])
-    expect(body.total).toBe(0)
+    const short = await (await request(app, '/api/music/lyric-search?q=a')).json()
+    expect(short.ids).toEqual([])
+    expect(short.total).toBe(0)
+    const two = await (await request(app, '/api/music/lyric-search?q=ab')).json()
+    expect(two.ids).toEqual(['hit'])
+    expect(two.total).toBe(1)
   })
 })

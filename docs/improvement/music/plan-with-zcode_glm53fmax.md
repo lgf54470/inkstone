@@ -20,7 +20,7 @@
 - [x] IMP-7 歌词偏移放宽 ±30s；500 首达上限时提示清理而非静默丢弃
 - [x] IMP-8 倍速细步进（档位间 ±0.05，preservesPitch 不变）
 - [ ] IMP-9 M3U 远程 URL 条目直接入队为临时播放项
-- [ ] IMP-11 歌词搜索阈值随 IMP-1 评估放宽（2 字符/分词）
+- [x] IMP-11 歌词搜索阈值随 IMP-1 评估放宽（2 字符；LIKE 下分词无必要）
 
 ## 批次 ③ · P2 增强（M，需独立评审）
 
@@ -47,6 +47,7 @@
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
 | 2026-09-26 | IMP-5 随机洗牌队列 | `fae38130` | 先红 6 例（新模块与 store 用例）；修复后 music 80 文件 / 570 例 ✅（首跑 1 例 progress.test 偶发，复跑两次全绿）；typecheck ✅；comments/style/module-state/deep-imports/i18n/size 门禁 ✅ | 「再次打乱」= 关/开随机重建序列，未加队列面板按钮（YAGNI）；洗牌序列仅会话内存不持久化（刷新后按当前曲重建）；shuffleOrder 非空 ⟺ mode 为 shuffle，由 queue-ops/crossfade/library-tracks 各写入方维持 |
+| 2026-09-26 | IMP-11 歌词阈值放宽 | 见提交（哈希回填于后续 docs 提交） | 先红 3 例（客户端/服务端/store 触发）；修复后 music + routes 84 文件 / 672 例 ✅；typecheck ✅；静态门禁 ✅ | 阈值常量上收 `LIMITS.musicLyricQueryMinLength = 2`（客户端本地歌词扫描、服务端 LIKE、store 拉取触发三处同源）；1 字符仍不参与歌词扫描（名称命中不受影响）；LIKE 扫描成本与查询宽度无关，分词无必要 |
 | 2026-09-26 | IMP-8 倍速细步进 | `0aeb3ed9` | 先红 2 例；修复后 music 83 文件 / 599 例 ✅；typecheck ✅；comments/i18n/size 门禁 ✅ | 微调行置于倍速菜单顶部（−/当前值/+，0.05 步进 clamp 0.5–2，边界禁用）；readRate 从档位白名单改为区间校验，细步进值跨刷新保留 |
 | 2026-09-26 | IMP-7 歌词偏移放宽与容量提示 | `3fdbd6a6` | 先红 3 例；修复后 music 83 文件 / 596 例 ✅；typecheck ✅；comments/i18n 门禁 ✅ | ±30s 由 LYRIC_OFFSET_LIMIT_MS 常量驱动（clamp/按钮禁用/持久化读取共用）；容量守卫在写入时判新键，500 首后新增拒绝并 toast music.lyric_offset_full，已有曲目仍可调整，归零仍删除条目 |
 | 2026-09-26 | IMP-6 睡眠定时自定义分钟 | `f072f4a8` | 先红 2 例；修复后 music 83 文件 / 593 例 ✅（首跑 1 例网络偶发，复跑全绿）；typecheck ✅；comments/size/i18n 门禁 ✅；check-contrast ✅；e2e-visual 534/535（仅剩已登记看板遗留） | 输入 clamp 1–480（分钟），超界禁用设定按钮；自定义分钟不回填预设选中态，由输入框自身回显 |

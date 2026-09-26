@@ -2817,6 +2817,7 @@ const allowed = new Map([
   ['src/client/features/music/music-search.test.ts', [
     '// A track whose title read is counted, because reading the title is exactly the work the index',
     '// does: if a fresh query pays for it again, the haystack was rebuilt from the library.',
+    '// One character still answers name hits, but the lyric-only track stays out.',
   ]],
   ['src/client/features/music/music-search.ts', [
     '/** Kept apart from the haystack: a whole song of prose would slow the fuzzy scorer to a crawl. */',
@@ -9203,6 +9204,8 @@ const allowed = new Map([
     '// budget if they shared its key; they still deserve their own ceiling.',
     '// A lyric search scans the whole table with LIKE; the id list it ships back stays',
     '// bounded no matter how many songs repeat the same chorus.',
+    '// A one-character lyric probe is all noise; two characters already answer real',
+    '// queries, and the server LIKE scan costs the same at any width.',
     '// Anonymous readers of a published library are metered by client IP, per surface:',
     '// the listing is one query per open, while a player issues a stream request per',
     '// range it needs, so playback gets the wider allowance.',

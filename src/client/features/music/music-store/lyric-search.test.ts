@@ -81,9 +81,9 @@ describe('the library-wide lyric search (IMP-1)', () => {
     expect(store.state().remoteLyricMatches?.ids).toEqual(['fresh'])
   })
 
-  it('spends no request below the lyric length threshold and clears old matches', async () => {
+  it('spends no request on a single character and clears old matches (IMP-11)', async () => {
     const store = makeStore({ remoteLyricMatches: { query: 'old query', ids: ['x'], total: 1 } })
-    commitQuery(store.set, store.get, 'ab')
+    commitQuery(store.set, store.get, 'a')
     expect(searchLyrics).not.toHaveBeenCalled()
     expect(store.state().remoteLyricMatches).toBeNull()
   })

@@ -92,6 +92,9 @@ export const LIMITS = {
   // A lyric search scans the whole table with LIKE; the id list it ships back stays
   // bounded no matter how many songs repeat the same chorus.
   musicLyricSearchMaxIds: 50,
+  // A one-character lyric probe is all noise; two characters already answer real
+  // queries, and the server LIKE scan costs the same at any width.
+  musicLyricQueryMinLength: 2,
   // Anonymous readers of a published library are metered by client IP, per surface:
   // the listing is one query per open, while a player issues a stream request per
   // range it needs, so playback gets the wider allowance.
