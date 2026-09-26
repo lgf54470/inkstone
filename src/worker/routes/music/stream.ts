@@ -45,9 +45,12 @@ export async function streamTrackResponse(
   if (!object) throw ApiError.notFound('Track data is missing')
 
   const safeMime = safeStreamMime(row.mime)
+  // A KV value written before sizes were kept states no length of its own; the row's
+  // byte count is the same number that upload stored, so it answers for it.
+  const length = object.length ?? (range ? range.length : row.size_bytes)
   const headers: Record<string, string> = {
     'Content-Type': safeMime ?? 'application/octet-stream',
-    'Content-Length': String(object.length),
+    'Content-Length': String(length),
     'Accept-Ranges': 'bytes',
     'Cache-Control': options.cacheControl,
     'X-Content-Type-Options': 'nosniff',

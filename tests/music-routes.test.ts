@@ -59,39 +59,48 @@ const KV_CHUNK_BYTES = 64 * 1024
 
 function fakeKv() {
   const values = new Map<string, Uint8Array>()
+  const metadata = new Map<string, Record<string, unknown>>()
   const stats = { arrayBufferReads: 0, streamBytesPulled: 0, streamCancelled: false }
+  function streamOf(stored: Uint8Array): ReadableStream<Uint8Array> {
+    let position = 0
+    return new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (position >= stored.byteLength) {
+          controller.close()
+          return
+        }
+        const chunk = stored.subarray(position, position + KV_CHUNK_BYTES)
+        position += chunk.byteLength
+        stats.streamBytesPulled += chunk.byteLength
+        controller.enqueue(chunk.slice())
+      },
+      cancel() {
+        stats.streamCancelled = true
+      },
+    })
+  }
+  function read(key: string, type?: string): unknown {
+    const stored = values.get(key)
+    if (!stored) return null
+    if (type === 'stream') return streamOf(stored)
+    stats.arrayBufferReads += 1
+    return stored.buffer.slice(stored.byteOffset, stored.byteOffset + stored.byteLength)
+  }
   return {
     values,
+    metadata,
     stats,
-    put: vi.fn(async (key: string, value: Uint8Array) => {
+    put: vi.fn(async (key: string, value: Uint8Array, options?: { metadata?: Record<string, unknown> }) => {
       values.set(key, value.slice())
+      if (options?.metadata) metadata.set(key, { ...options.metadata })
       return {}
     }),
     delete: vi.fn(async (key: string) => values.delete(key)),
-    get: vi.fn(async (key: string, type?: string) => {
-      const stored = values.get(key)
-      if (!stored) return null
-      if (type === 'stream') {
-        let position = 0
-        return new ReadableStream<Uint8Array>({
-          pull(controller) {
-            if (position >= stored.byteLength) {
-              controller.close()
-              return
-            }
-            const chunk = stored.subarray(position, position + KV_CHUNK_BYTES)
-            position += chunk.byteLength
-            stats.streamBytesPulled += chunk.byteLength
-            controller.enqueue(chunk.slice())
-          },
-          cancel() {
-            stats.streamCancelled = true
-          },
-        })
-      }
-      stats.arrayBufferReads += 1
-      return stored.buffer.slice(stored.byteOffset, stored.byteOffset + stored.byteLength)
-    }),
+    get: vi.fn(async (key: string, type?: string) => read(key, type)),
+    getWithMetadata: vi.fn(async (key: string, options?: { type?: string }) => ({
+      value: read(key, options?.type) as never,
+      metadata: metadata.get(key) ?? null,
+    })),
   }
 }
 
@@ -738,14 +747,27 @@ describe('music KV range streaming (real D1 + fake KV)', () => {
     expect(ranged.headers.get('Content-Length')).toBe(String(2 * 1024 * 1024))
   })
 
-  it('streams the full object through the arrayBuffer path', async () => {
+  it('streams a whole value without buffering it in the isolate', async () => {
+    const size = 3 * 1024 * 1024
+    const { app, id, kv } = await uploadToKv(new Uint8Array(size))
+
+    const full = await request(app, `/api/music/tracks/${id}/stream`)
+    expect(full.status).toBe(200)
+    expect(full.headers.get('Content-Length')).toBe(String(size))
+    expect((await full.arrayBuffer()).byteLength).toBe(size)
+    expect(kv.stats.arrayBufferReads).toBe(0)
+  })
+
+  it('declares the stored size for a value written before sizes were kept', async () => {
     const { app, id, kv } = await uploadToKv(AUDIO)
+    // A legacy value carries no size metadata; the row's own byte count still answers.
+    kv.metadata.delete(kv.values.keys().next().value as string)
 
     const full = await request(app, `/api/music/tracks/${id}/stream`)
     expect(full.status).toBe(200)
     expect(full.headers.get('Content-Length')).toBe('16')
     expect(await full.text()).toBe('0123456789abcdef')
-    expect(kv.stats.arrayBufferReads).toBe(1)
+    expect(kv.stats.arrayBufferReads).toBe(0)
   })
 })
 
