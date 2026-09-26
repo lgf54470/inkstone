@@ -267,6 +267,8 @@ export const messages = {
 'music.sleep_timer': 'Sleep timer',
 'music.off': 'Off',
 'music.sleep_minutes': '{value0} min',
+'music.sleep_custom': 'Custom minutes (1–480)',
+'music.sleep_custom_apply': 'Set',
 'music.sleep_remaining': 'Stops in {value0}',
 'music.sleep_after_current': 'Stops after the current track',
 'music.playback_rate': 'Playback speed',

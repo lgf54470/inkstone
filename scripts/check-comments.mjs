@@ -2914,6 +2914,8 @@ const allowed = new Map([
     '// The minute labels are formatted strings, so the assertions need the real resources.',
     '// The armed option was marked with the accent colour alone, so neither a screen reader nor a',
     '// reader who cannot separate that colour could tell which one the menu was on.',
+    '// IMP-6: the presets never covered a 90-minute nap or a 3-hour session; a custom',
+    '// minute input closes that gap without growing the preset row.',
   ]],
   ['src/client/features/music/music-source-badge.tsx', [
     '// The label wraps inside a narrow column and inflates the row, so it never breaks.',
@@ -3314,6 +3316,8 @@ const allowed = new Map([
     '// used to sit here had no label, no keyboard equivalent and no way to discover it, and muting',
     '// is already offered by a named button in the panel. The trigger is named for what it does — it',
     '// opens the volume panel, it no longer mutes — so the name cannot promise an action it lacks.',
+    '// The presets cover the common naps; anything else goes through this field, which',
+    '// clamps hard at one to eight hours so a typo cannot arm a day-long timer.',
     '// Which option is armed used to be colour and nothing else: the menu now states it to',
     '// assistive tech as well and marks it with a check, so the accent is not carrying it alone.',
     '/**\n * A-B practice loop: the first press pins the playhead as the start, the second\n * closes the range, and the readout states the span so the markers are never a\n * hidden state. B stays disabled until A exists and until the span is long enough.\n */',

@@ -83,3 +83,42 @@ describe('sleep timer menu selection (UI-10)', () => {
     expect(option(t('music.off')).getAttribute('aria-pressed')).toBe('false')
   })
 })
+
+// IMP-6: the presets never covered a 90-minute nap or a 3-hour session; a custom
+// minute input closes that gap without growing the preset row.
+describe('sleep timer custom minutes (IMP-6)', () => {
+  function customInput(): HTMLInputElement {
+    const field = [...document.querySelectorAll('[role="dialog"] input')].find((input) => input.getAttribute('aria-label') === t('music.sleep_custom')) as HTMLInputElement | undefined
+    if (!field) throw new Error('no custom minutes field')
+    return field
+  }
+
+  function applyButton(): HTMLButtonElement {
+    return [...document.querySelectorAll('[role="dialog"] button')].find((button) => button.textContent?.includes(t('music.sleep_custom_apply'))) as HTMLButtonElement
+  }
+
+  function typeInto(field: HTMLInputElement, value: string): void {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+    act(() => {
+      setter?.call(field, value)
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+  }
+
+  it('applies a custom minute count through the store action', async () => {
+    await mount()
+    await openMenu()
+    typeInto(customInput(), '90')
+    await act(async () => { applyButton().click() })
+    expect(useMusic.getState().setSleepTimer).toHaveBeenCalledWith(90)
+  })
+
+  it('refuses to apply a count outside the one-to-eight-hour window', async () => {
+    await mount()
+    await openMenu()
+    typeInto(customInput(), '0')
+    expect(applyButton().disabled).toBe(true)
+    typeInto(customInput(), '600')
+    expect(useMusic.getState().setSleepTimer).not.toHaveBeenCalled()
+  })
+})

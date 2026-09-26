@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Check, Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, SlidersHorizontal, Square, Volume1, Volume2, VolumeX, X } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
-import { Slider, Switch } from '../../components/form'
+import { Input, Slider, Switch } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { formatTimecode } from '../../lib/time'
@@ -182,8 +182,35 @@ export function MusicSleepButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
           label={t('music.sleep_after_current')}
           onSelect={() => { setSleepAfterCurrentTrack(true); setOpen(false) }}
         />
+        <SleepCustomRow onApply={(minutes) => { setSleepTimer(minutes); setOpen(false) }} />
       </MusicPopover>
     </>
+  )
+}
+
+// The presets cover the common naps; anything else goes through this field, which
+// clamps hard at one to eight hours so a typo cannot arm a day-long timer.
+const SLEEP_CUSTOM_MIN = 1
+const SLEEP_CUSTOM_MAX = 480
+
+function SleepCustomRow({ onApply }: { onApply: (minutes: number) => void }) {
+  const [minutes, setMinutes] = useState('')
+  const value = Math.round(Number(minutes))
+  const valid = Number.isFinite(value) && value >= SLEEP_CUSTOM_MIN && value <= SLEEP_CUSTOM_MAX
+  return (
+    <div className='flex items-center gap-1 px-2 py-1'>
+      <Input
+        type='number'
+        min={SLEEP_CUSTOM_MIN}
+        max={SLEEP_CUSTOM_MAX}
+        aria-label={t('music.sleep_custom')}
+        value={minutes}
+        onChange={(event) => setMinutes(event.target.value)}
+        onKeyDown={(event) => { if (event.key === 'Enter' && valid) onApply(value) }}
+        className='h-6 w-24 px-2 text-[length:var(--text-11)]'
+      />
+      <Button size='sm' disabled={!valid} onClick={() => valid && onApply(value)}>{t('music.sleep_custom_apply')}</Button>
+    </div>
   )
 }
 

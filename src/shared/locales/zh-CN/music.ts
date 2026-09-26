@@ -267,6 +267,8 @@ export const messages = {
 'music.sleep_timer': '睡眠定时',
 'music.off': '关闭',
 'music.sleep_minutes': '{value0} 分钟',
+'music.sleep_custom': '自定义分钟（1–480）',
+'music.sleep_custom_apply': '设定',
 'music.sleep_remaining': '{value0} 后停止',
 'music.sleep_after_current': '播完当前曲后停止',
 'music.playback_rate': '播放速度',
