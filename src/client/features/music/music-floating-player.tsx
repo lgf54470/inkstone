@@ -6,7 +6,7 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { clampToViewport, useCardDrag, useMeasuredSize } from './music-drag'
-import { useCurrentTrack, useMusic, useProgress } from './music-store'
+import { useActiveLoopRange, useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { MusicFloatingLyrics } from './music-floating-lyrics'
 import { MusicPlayButtons } from './music-play-buttons'
@@ -209,11 +209,12 @@ function FloatTrack() {
 
 function FloatProgress() {
   const currentTimeMs = useProgress((state) => state.currentTimeMs)
+  const loopRange = useActiveLoopRange()
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
   return (
     <div className='shrink-0 px-2.5'>
-      <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} showTime />
+      <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} showTime loopRange={loopRange} />
     </div>
   )
 }

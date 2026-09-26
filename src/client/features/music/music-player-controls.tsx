@@ -1,10 +1,10 @@
 import { Heart, ListMusic, Maximize2, PictureInPicture2, Pin } from 'lucide-react'
-import { MusicEqButton, MusicModeButton, MusicRateButton, MusicSleepButton, MusicVolumeSlider } from './music-transport-widgets'
+import { MusicEqButton, MusicLoopButton, MusicModeButton, MusicRateButton, MusicSleepButton, MusicVolumeSlider } from './music-transport-widgets'
 import type { MusicTrack } from '@shared/types'
 import { IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
-import { useCurrentTrack, useMusic, useProgress } from './music-store'
+import { useActiveLoopRange, useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { MusicPlayButtons } from './music-play-buttons'
 import { MusicSeekBar } from './music-seek-bar'
@@ -23,17 +23,19 @@ export function MusicPlayerControls({
   const currentTimeMs = useProgress((state) => state.currentTimeMs)
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
+  const loopRange = useActiveLoopRange()
 
   return (
     <div className='flex h-16 shrink-0 items-center gap-3 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3'>
       <TrackSummary track={track} />
       <div className='flex min-w-0 flex-1 items-center gap-3'>
         <MusicPlayButtons showMode={false} />
-        <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} showTime />
+        <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} showTime loopRange={loopRange} />
       </div>
       <div className='flex shrink-0 items-center gap-0.5'>
         <MusicModeButton />
         <MusicSleepButton />
+        <MusicLoopButton />
         <MusicRateButton />
         <MusicEqButton />
         <MusicVolumeSlider className='w-36' />

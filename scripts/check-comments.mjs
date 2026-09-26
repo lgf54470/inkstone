@@ -2707,6 +2707,10 @@ const allowed = new Map([
     '// Kept mounted after the first open so closing it still animates out the way',
     '// the modal did when it was part of the eager tree.',
   ]],
+  ['src/client/features/music/music-player-controls.test.ts', [
+    '// The loop markers used to live only in the immersive player, so a range marked there',
+    '// was invisible and uncleanable everywhere else; the hub footer is the always-open surface.',
+  ]],
   ['src/client/features/music/music-playlist-drag.test.ts', [
     '// t1 (i1) dropped on the t2 row: i2 sits at index 2 in the manual order.',
   ]],
@@ -2821,10 +2825,15 @@ const allowed = new Map([
     '// immersive player — so one suppressed outline here is one invisible caret in all of them.',
   ]],
   ['src/client/features/music/music-seek-bar.tsx', [
+    '/** A closed A-B range already filtered to the playing track (see useActiveLoopRange). */',
     '// Deliberately no `outline-none`: the base layer gives every :focus-visible element a',
     '// ring, and a utility beats it, so suppressing it here left keyboard users scrubbing a',
     '// playhead with no visible caret. The shared Slider in components/form draws the same',
     '// control and has never suppressed it.',
+    '// The strip paints above the track but never catches the pointer, so the',
+    '// thumb and scrubbing keep their native behaviour underneath it.',
+    '// Percent of the track, clamped so a drifting or hand-edited range can never push',
+    '// the strip outside the bar. An open range (no B yet) draws nothing.',
   ]],
   ['src/client/features/music/music-selection-bar.tsx', [
     '// Multi-select toolbar: file-manager style batches; select all and invert use the visible list.',
@@ -3111,6 +3120,10 @@ const allowed = new Map([
     '// result once more rather than block typing while a fresh query settles.',
     '// Same inputs as the list — including the deferred query — so the "matches left out"',
     '// notice can never describe a result the list has not painted yet.',
+    '// A loop range only ever applies to the track it was marked on, so every surface',
+    '// answers the same question: does the marked range belong to what is playing now.',
+    '// Subscribes in primitives and derives in a memo — an object built in the selector',
+    '// itself would be new every snapshot and re-render forever.',
     '// Counts tracks per tag directly; the sidebar tree rolls descendants into the parent\'s total.',
   ]],
   ['src/client/features/music/music-store/state.ts', [

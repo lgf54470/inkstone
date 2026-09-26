@@ -8,7 +8,7 @@ import { useMediaQuery } from '../../lib/hooks'
 import { t, type MessageKey } from '../../lib/i18n'
 import { preferredScrollBehavior } from '../../lib/motion'
 import { formatBytes, formatTimecode } from '../../lib/time'
-import { LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, useCurrentTrack, useMusic, useProgress } from './music-store'
+import { LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, useActiveLoopRange, useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { MusicPlayButtons } from './music-play-buttons'
 import { MusicQueueList } from './music-queue-list'
@@ -178,6 +178,7 @@ function ImmersiveLeft({
   stacked: boolean
 }) {
   const currentTimeMs = useProgress((state) => state.currentTimeMs)
+  const loopRange = useActiveLoopRange()
   const picture = cn('aspect-square rounded-[var(--r-xl)] shadow-[var(--shadow-modal)]', stacked ? 'w-20 shrink-0' : 'w-64')
   return (
     <section className={cn(
@@ -196,7 +197,7 @@ function ImmersiveLeft({
         )}
       <div className={cn('min-w-0', stacked ? 'flex flex-1 flex-col items-center gap-1.5' : 'flex w-full flex-col items-center gap-4 text-center')}>
         <ImmersiveMeta track={track} stacked={stacked} />
-        <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} showTime className='w-full' />
+        <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} showTime className='w-full' loopRange={loopRange} />
         <div className='flex items-center gap-1'>
           <MusicNudgeButton direction='back' size='md' iconSize={16} />
           <MusicPlayButtons size={stacked ? 'md' : 'lg'} />

@@ -60,6 +60,19 @@ export function useScopeTracks(scope: { kind: 'favorites' } | { kind: 'pinned' }
   )
 }
 
+// A loop range only ever applies to the track it was marked on, so every surface
+// answers the same question: does the marked range belong to what is playing now.
+// Subscribes in primitives and derives in a memo — an object built in the selector
+// itself would be new every snapshot and re-render forever.
+export function useActiveLoopRange(): { startMs: number; endMs: number } | null {
+  const loop = useMusic((s) => s.loopRange)
+  const currentId = useMusic((s) => s.queue[s.currentIndex] ?? null)
+  return useMemo(
+    () => (loop && loop.endMs !== null && loop.trackId === currentId ? { startMs: loop.startMs, endMs: loop.endMs } : null),
+    [loop, currentId],
+  )
+}
+
 export function useTagCounts(): Map<string, number> {
   const tracks = useMusic((s) => s.tracks)
   return useMemo(() => buildTagCounts(tracks), [tracks])

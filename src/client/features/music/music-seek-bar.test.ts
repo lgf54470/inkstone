@@ -36,3 +36,44 @@ describe('the seek bar', () => {
     view.unmount()
   })
 })
+
+describe('the seek bar loop region', () => {
+  it('draws the loop region between A and B at its share of the track', () => {
+    const view = renderElement(createElement(MusicSeekBar, {
+      valueMs: 30_000,
+      durationMs: 120_000,
+      onSeek: () => {},
+      label: t('music.seek'),
+      loopRange: { startMs: 30_000, endMs: 60_000 },
+    }))
+    const region = document.querySelector('[data-loop-region]')
+    expect(region).not.toBeNull()
+    expect(region?.getAttribute('aria-hidden')).toBe('true')
+    expect((region as HTMLElement).style.left).toBe('25%')
+    expect((region as HTMLElement).style.width).toBe('25%')
+    view.unmount()
+  })
+
+  it('draws nothing while the range is still open (no B marked yet)', () => {
+    const view = renderElement(createElement(MusicSeekBar, {
+      valueMs: 30_000,
+      durationMs: 120_000,
+      onSeek: () => {},
+      label: t('music.seek'),
+      loopRange: { startMs: 30_000, endMs: null },
+    }))
+    expect(document.querySelector('[data-loop-region]')).toBeNull()
+    view.unmount()
+  })
+
+  it('draws nothing when no loop exists', () => {
+    const view = renderElement(createElement(MusicSeekBar, {
+      valueMs: 30_000,
+      durationMs: 120_000,
+      onSeek: () => {},
+      label: t('music.seek'),
+    }))
+    expect(document.querySelector('[data-loop-region]')).toBeNull()
+    view.unmount()
+  })
+})

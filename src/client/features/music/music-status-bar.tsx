@@ -4,7 +4,7 @@ import { Tooltip } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
-import { useCurrentTrack, useMusic, useProgress } from './music-store'
+import { useActiveLoopRange, useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { MusicPlayButtons } from './music-play-buttons'
 import { MusicSeekBar } from './music-seek-bar'
@@ -89,12 +89,13 @@ function Transport() {
   const currentTimeMs = useProgress((state) => state.currentTimeMs)
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
+  const loopRange = useActiveLoopRange()
   return (
     <>
       <MusicNudgeButton direction='back' iconSize={12} />
       <MusicPlayButtons size='sm' showMode={false} />
       <MusicNudgeButton direction='forward' iconSize={12} />
-      <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} className='hidden w-28 md:flex lg:w-40' />
+      <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} className='hidden w-28 md:flex lg:w-40' loopRange={loopRange} />
     </>
   )
 }
