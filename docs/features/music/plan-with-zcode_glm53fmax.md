@@ -56,4 +56,4 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-26 | FEA-B2 文本批量导入歌单 | 见提交（哈希回填于后续 docs 提交） | 先红 1 例（组件不存在）；修复后 music + routes 85 文件 / 674 例 ✅；typecheck ✅；comments/i18n/size/deep-imports 门禁 ✅；check-contrast ✅；e2e-visual 534/535（仅剩已登记看板遗留） | 文本导入复用 M3U 的 parseM3u/matchM3uTracks（裸文本行天然是 target），两种导入共用同一套匹配键不会漂移；建歌单走新动作 createPlaylistWithTracks（一次创建 + 追加 + 单条提示），M3U 文件导入仍只入队 |
+| 2026-09-26 | FEA-B2 文本批量导入歌单 | `c70965c5` | 先红 1 例（组件不存在）；修复后 music + routes 85 文件 / 674 例 ✅；typecheck ✅；comments/i18n/size/deep-imports 门禁 ✅；check-contrast ✅；e2e-visual 534/535（仅剩已登记看板遗留） | 文本导入复用 M3U 的 parseM3u/matchM3uTracks（裸文本行天然是 target），两种导入共用同一套匹配键不会漂移；建歌单走新动作 createPlaylistWithTracks（一次创建 + 追加 + 单条提示），M3U 文件导入仍只入队 |
