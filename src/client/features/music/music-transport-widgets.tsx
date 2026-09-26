@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Check, Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, SlidersHorizontal, Square, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { Check, Clock3, FastForward, Gauge, ListMusic, Moon, Rewind, SlidersHorizontal, Square, Volume1, Volume2, VolumeX, X } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Slider, Switch } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
@@ -255,6 +255,36 @@ export function MusicEqButton({ size = 'sm', className }: { size?: 'sm' | 'md'; 
       <MusicPopover open={open} onClose={() => setOpen(false)} label={t('music.eq')} anchorRef={anchorRef} className='w-56'>
         <MusicEqPanel />
       </MusicPopover>
+    </>
+  )
+}
+
+/**
+ * A-B practice loop: the first press pins the playhead as the start, the second
+ * closes the range, and the readout states the span so the markers are never a
+ * hidden state. B stays disabled until A exists and until the span is long enough.
+ */
+export function MusicLoopButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
+  const loopRange = useMusic((state) => state.loopRange)
+  const currentId = useMusic((state) => (state.queue[state.currentIndex] ?? null))
+  const markLoopStart = useMusic((state) => state.markLoopStart)
+  const markLoopEnd = useMusic((state) => state.markLoopEnd)
+  const clearLoopRange = useMusic((state) => state.clearLoopRange)
+  const range = loopRange && loopRange.trackId === currentId ? loopRange : null
+  return (
+    <>
+      <IconButton label={t('music.loop_start')} size={size} active={Boolean(range)} onClick={markLoopStart}>{t('music.loop_marker_a')}</IconButton>
+      <IconButton label={t('music.loop_end')} size={size} active={range !== null && range.endMs !== null} disabled={!range} onClick={markLoopEnd}>{t('music.loop_marker_b')}</IconButton>
+      {range && (
+        <>
+          <IconButton label={t('music.loop_clear')} size={size} onClick={clearLoopRange}><X size={12} /></IconButton>
+          {range.endMs !== null && (
+            <span role='status' className='tabular px-1 text-[length:var(--text-10)] text-[var(--text-tertiary)]'>
+              {t('music.loop_range', { value0: formatTimecode(range.startMs), value1: formatTimecode(range.endMs) })}
+            </span>
+          )}
+        </>
+      )}
     </>
   )
 }

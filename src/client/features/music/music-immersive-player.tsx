@@ -15,7 +15,7 @@ import { MusicQueueList } from './music-queue-list'
 import { MusicSeekBar } from './music-seek-bar'
 import { MusicVideoStage } from './music-video-stage'
 import {
-  MusicEqButton, MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicVolumeButton,
+  MusicEqButton, MusicLoopButton, MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicVolumeButton,
 } from './music-transport-widgets'
 import { useTrackLyric } from './music-lyrics'
 import type { LyricLine } from './music-utils'
@@ -140,6 +140,7 @@ function ImmersiveButtons({ track, stacked }: { track: ReturnType<typeof useCurr
         <MusicEqButton />
         <MusicVolumeButton />
         <MusicSleepButton />
+        <MusicLoopButton />
         {track && (
           <>
             <IconButton label={track.isFavorite ? t('music.unfavorite') : t('music.favorite')} active={track.isFavorite} onClick={() => void useMusic.getState().toggleFavorite(track.id)}>

@@ -12,6 +12,14 @@ export type MusicBatch = 'favorite' | 'unfavorite' | 'pin' | 'unpin' | 'delete'
 
 export type MusicTrackPatchInput = Partial<MusicTrack> & { tagIds?: string[]; coverDataUrl?: string | null }
 
+// A practice loop the listener marks on the track they are hearing; `endMs` stays
+// null until the second point is placed.
+export interface MusicLoopRange {
+  trackId: string
+  startMs: number
+  endMs: number | null
+}
+
 export type MusicScope =
   | { kind: 'all' }
   | { kind: 'favorites' }
@@ -130,6 +138,7 @@ export interface MusicStoreState {
   floatingCollapsed: boolean
   floatingPosition: { x: number; y: number } | null
   immersive: boolean
+  loopRange: MusicLoopRange | null
   trackMenu: TrackMenuRequest | null
   uploads: MusicUploadTask[]
   downloads: MusicDownloadTask[]
@@ -173,6 +182,9 @@ export interface MusicStoreState {
   // Lyric calibration is per track: a positive delta holds the lyrics back.
   nudgeLyricOffset: (trackId: string, deltaMs: number) => void
   resetLyricOffset: (trackId: string) => void
+  markLoopStart: () => void
+  markLoopEnd: () => void
+  clearLoopRange: () => void
   setEqEnabled: (enabled: boolean) => void
   setEqBand: (band: MusicEqBand, db: number) => void
   applyEqPreset: (presetId: MusicEqPresetId) => void

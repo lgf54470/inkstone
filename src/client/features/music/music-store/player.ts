@@ -14,7 +14,7 @@ import { handleCrossfadeComplete, maybeStartCrossfade } from './crossfade'
 import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
 import { persist } from './persist'
-import { clampLyricOffset, loadPreferences, readEqDb } from './state'
+import { MIN_LOOP_MS, SLEEP_FADE_MS, clampLyricOffset, loadPreferences, readEqDb } from './state'
 import type { MusicEqBand, MusicGet, MusicSet, MusicStoreState } from './types'
 
 const STREAM_START_TIMEOUT_MS = 20_000
@@ -29,6 +29,13 @@ export function connectAudio(set: MusicSet, get: MusicGet): void {
   configureLoudnessNormalization(prefs.normalizeEnabled)
   configureAudio({
     onTime: (ms) => {
+      // The loop answers before the tick is published, so the playhead never
+      // reports a position past B and the end handler cannot fire there.
+      const loop = activeLoop(get)
+      if (loop && ms >= loop.endMs) {
+        seek(loop.startMs)
+        return
+      }
       setProgressTime(ms)
       updateMediaSessionPosition(ms, get().durationMs, mediaElement()?.playbackRate ?? 1)
       maybeStartCrossfade(get, ms)
@@ -154,6 +161,35 @@ export function seek(ms: number): void {
   setProgressTime(ms)
 }
 
+// A range only ever applies to the track it was marked on; a stale one from another
+// track reads as no loop at all.
+function activeLoop(get: MusicGet): { startMs: number; endMs: number } | null {
+  const loop = get().loopRange
+  if (!loop || loop.endMs === null) return null
+  if (loop.trackId !== currentTrack(get())?.id) return null
+  return { startMs: loop.startMs, endMs: loop.endMs }
+}
+
+export function markLoopStart(set: MusicSet, get: MusicGet): void {
+  const track = currentTrack(get())
+  if (!track) return
+  set({ loopRange: { trackId: track.id, startMs: Math.round(progressTimeMs()), endMs: null } })
+}
+
+export function markLoopEnd(set: MusicSet, get: MusicGet): void {
+  const range = get().loopRange
+  const track = currentTrack(get())
+  if (!range || !track || range.trackId !== track.id) return
+  const endMs = Math.round(progressTimeMs())
+  // A loop this short is a stutter, and the marker button stays disabled there.
+  if (endMs - range.startMs < MIN_LOOP_MS) return
+  set({ loopRange: { ...range, endMs } })
+}
+
+export function clearLoopRange(set: MusicSet): void {
+  set({ loopRange: null })
+}
+
 export function setPlaybackRate(set: MusicSet, get: MusicGet, rate: number): void {
   set({ playbackRate: rate })
   applyPlaybackRate(rate)
@@ -203,22 +239,40 @@ function armSleepTimer(set: MusicSet, get: MusicGet, endsAt: number): void {
   sleepTimer = window.setInterval(() => {
     const ends = get().sleepEndsAt
     if (ends === null) return
-    if (Date.now() < ends) return
+    const remaining = ends - Date.now()
+    if (remaining > 0) {
+      applySleepFade(get, remaining)
+      return
+    }
     clearSleepTimer(get)
     set({ sleepEndsAt: null, sleepMinutes: null })
+    // The fade left the element quieter than the listener set it; the next session
+    // must not start from the attenuated volume.
+    applyVolume(get().volume, get().muted)
     persist(get)
     pausePlayback()
   }, 1000)
 }
 
+// The last stretch of the countdown slides the volume away instead of cutting the
+// sound off mid-phrase. It only ever moves the element volume, so a track change
+// or a manual volume drag is picked up unchanged on the next tick.
+function applySleepFade(get: MusicGet, remainingMs: number): void {
+  if (remainingMs > SLEEP_FADE_MS) return
+  const state = get()
+  applyVolume(state.volume * (remainingMs / SLEEP_FADE_MS), state.muted)
+}
+
 let sleepTimer: number | null = null
 
 function clearSleepTimer(get: MusicGet): void {
-  void get
   if (sleepTimer !== null) {
     window.clearInterval(sleepTimer)
     sleepTimer = null
   }
+  // Cancelling during the fade must give the volume back, not strand it half down.
+  const state = get()
+  applyVolume(state.volume, state.muted)
 }
 
 export function setImmersive(set: MusicSet, immersive: boolean): void {
@@ -327,7 +381,8 @@ async function loadAndPlay(set: MusicSet, get: MusicGet): Promise<void> {
   const track = currentTrack(get())
   if (!track) return
   const resumeMs = Math.round(progressTimeMs())
-  set({ streamLoading: true, durationMs: track.durationMs })
+  // The loop belonged to the track that just ended.
+  set({ streamLoading: true, durationMs: track.durationMs, loopRange: null })
   streamFailedReported = false
   applyVolume(get().volume, get().muted)
   applyPlaybackRate(get().playbackRate)

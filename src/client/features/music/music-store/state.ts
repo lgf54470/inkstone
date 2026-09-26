@@ -42,6 +42,10 @@ export const EQ_GAIN_RANGE_DB = 12
 // is a quarter second and the window stays narrow enough to stay useful.
 export const LYRIC_OFFSET_STEP_MS = 250
 export const LYRIC_OFFSET_LIMIT_MS = 5_000
+// A loop shorter than this is a stutter rather than a passage, and the sleep fade
+// needs a window long enough to be heard as a slide.
+export const MIN_LOOP_MS = 500
+export const SLEEP_FADE_MS = 20_000
 // One entry per calibrated track; the cap only bounds what localStorage can grow to.
 export const LYRIC_OFFSET_MAX_TRACKS = 500
 
