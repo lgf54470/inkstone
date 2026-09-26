@@ -61,6 +61,87 @@ describe('duplicate groups from upload checksums (M-53)', () => {
       hashedTrack('big-extra', 'b', 1000, 4),
     ]
     const groups = findDuplicateGroups(tracks)
-    expect(groups.map((group) => group.hash)).toEqual(['b', 'a'])
+    expect(groups.map((group) => group.key)).toEqual(['b', 'a'])
+  })
+})
+
+function looseTrack(id: string, options: { title?: string; artist?: string; durationMs?: number; sizeBytes?: number; createdAt?: number } = {}): MusicTrack {
+  return {
+    ...hashedTrack(id, null, options.sizeBytes ?? 10, options.createdAt ?? 1),
+    title: options.title ?? id,
+    artist: options.artist ?? '',
+    durationMs: options.durationMs ?? 0,
+  }
+}
+
+// Rows without a checksum get an approximation instead of never grouping: same
+// title and artist with a duration that agrees within the tolerance.
+describe('approximate groups for unhashed rows (M-53)', () => {
+  it('groups WebDAV-style rows that agree on title, artist and duration', () => {
+    const tracks = [
+      looseTrack('webdav-copy', { title: 'Moonlight', artist: 'Hu Yanbin', durationMs: 100_000, createdAt: 2 }),
+      looseTrack('webdav-original', { title: 'Moonlight', artist: 'Hu Yanbin', durationMs: 100_000, createdAt: 1 }),
+    ]
+    const groups = findDuplicateGroups(tracks)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.kind).toBe('approximate')
+    expect(groups[0]!.tracks.map((track) => track.id)).toEqual(['webdav-original', 'webdav-copy'])
+    expect(groups[0]!.wastedBytes).toBe(10)
+  })
+
+  it('clusters by duration chains and leaves far-apart rows alone', () => {
+    const tracks = [
+      looseTrack('near', { title: 'Same Song', artist: 'Same Artist', durationMs: 100_000, createdAt: 1 }),
+      looseTrack('close', { title: 'Same Song', artist: 'Same Artist', durationMs: 101_500, createdAt: 2 }),
+      looseTrack('far', { title: 'Same Song', artist: 'Same Artist', durationMs: 103_000 }),
+    ]
+    const groups = findDuplicateGroups(tracks)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.tracks.map((track) => track.id)).toEqual(['near', 'close'])
+  })
+
+  it('separates rows whose artist or title differs and never mixes checksummed rows in', () => {
+    const tracks = [
+      looseTrack('live-cut', { title: 'Moonlight', artist: 'Hu Yanbin', durationMs: 100_000 }),
+      looseTrack('cover-cut', { title: 'Moonlight', artist: 'A Cover Artist', durationMs: 100_000 }),
+      hashedTrack('rip', 'a', 10, 1),
+    ]
+    const hashed = { ...hashedTrack('rip', 'a'), title: 'Moonlight', artist: 'Hu Yanbin', durationMs: 100_000 }
+    const groups = findDuplicateGroups([tracks[0]!, tracks[1]!, hashed])
+    expect(groups).toEqual([])
+  })
+
+  it('does not guess from unknown durations or blank titles', () => {
+    const tracks = [
+      looseTrack('mystery-a', { durationMs: 0 }),
+      looseTrack('mystery-b', { durationMs: 0 }),
+      looseTrack('blank-a', { title: '  ', durationMs: 50_000 }),
+      looseTrack('blank-b', { title: '  ', durationMs: 50_000 }),
+    ]
+    expect(findDuplicateGroups(tracks)).toEqual([])
+  })
+
+})
+
+describe('approximate groups in the summary numbers (M-53)', () => {
+  it('folds approximate extras into the summary numbers', () => {
+    const tracks = [
+      looseTrack('a-original', { title: 'Song', artist: 'Artist', durationMs: 60_000, sizeBytes: 100, createdAt: 1 }),
+      looseTrack('a-extra', { title: 'Song', artist: 'Artist', durationMs: 60_000, sizeBytes: 100, createdAt: 2 }),
+    ]
+    expect(redundantTrackCount(tracks)).toBe(1)
+    expect(duplicateWastedBytes(tracks)).toBe(100)
+    expect(duplicateTracks(tracks).map((track) => track.id)).toEqual(['a-original', 'a-extra'])
+  })
+
+  it('ranks exact and approximate groups by the bytes they waste', () => {
+    const tracks = [
+      looseTrack('small-a', { title: 'Song', artist: 'Artist', durationMs: 60_000, sizeBytes: 10, createdAt: 1 }),
+      looseTrack('small-b', { title: 'Song', artist: 'Artist', durationMs: 60_000, sizeBytes: 10, createdAt: 2 }),
+      hashedTrack('big-a', 'h', 1000, 1),
+      hashedTrack('big-b', 'h', 1000, 2),
+    ]
+    const groups = findDuplicateGroups(tracks)
+    expect(groups.map((group) => group.kind)).toEqual(['exact', 'approximate'])
   })
 })

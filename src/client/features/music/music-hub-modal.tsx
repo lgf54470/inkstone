@@ -226,14 +226,18 @@ function emptyTitle(scope: MusicScope): string {
 
 // The list only shows copies side by side; the strip states what the view is
 // worth so cleaning up does not require doing the arithmetic by hand.
-function MusicDuplicatesSummary() {
+export function MusicDuplicatesSummary() {
   const tracks = useMusic((state) => state.tracks)
   const groups = useMemo(() => findDuplicateGroups(tracks), [tracks])
   const redundant = useMemo(() => redundantTrackCount(tracks), [tracks])
   const wastedBytes = useMemo(() => duplicateWastedBytes(tracks), [tracks])
+  // Approximate groups are guesses, so the strip names them as such instead of
+  // letting them read as proven copies.
+  const approximate = useMemo(() => groups.filter((group) => group.kind === 'approximate').length, [groups])
+  const values = { value0: groups.length, value1: redundant, value2: formatBytes(wastedBytes), value3: approximate }
   return (
     <div role='status' className='flex shrink-0 items-center gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
-      {t('music.duplicates_summary', { value0: groups.length, value1: redundant, value2: formatBytes(wastedBytes) })}
+      {t(approximate > 0 ? 'music.duplicates_summary_approximate' : 'music.duplicates_summary', values)}
     </div>
   )
 }
