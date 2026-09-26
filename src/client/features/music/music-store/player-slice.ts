@@ -5,7 +5,7 @@ import {
   toggleFloating, toggleFloatingCollapsed, toggleMute, togglePlay,
 } from './player'
 import { setCrossfadeEnabled } from './crossfade'
-import { addToQueue, clearQueue, moveQueueItem, removeFromQueue } from './queue-ops'
+import { addManyToQueue, addToQueue, clearQueue, moveQueueItem, removeFromQueue } from './queue-ops'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type PlayerSlice = Pick<MusicStoreState,
@@ -13,7 +13,7 @@ type PlayerSlice = Pick<MusicStoreState,
   | 'seek' | 'setVolume' | 'toggleMute' | 'cycleMode' | 'setPlaybackRate' | 'setSleepTimer' | 'setSleepAfterCurrentTrack' | 'setImmersive'
   | 'setEqEnabled' | 'setEqBand' | 'applyEqPreset' | 'setNormalizeEnabled' | 'setCrossfadeEnabled'
   | 'nudgeLyricOffset' | 'resetLyricOffset'
-  | 'addToQueue' | 'removeFromQueue' | 'moveQueueItem' | 'clearQueue'
+  | 'addToQueue' | 'addManyToQueue' | 'removeFromQueue' | 'moveQueueItem' | 'clearQueue'
   | 'toggleFloating' | 'toggleFloatingCollapsed' | 'setFloatingPosition'>
 
 export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
@@ -41,6 +41,7 @@ export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
     setCrossfadeEnabled: (enabled) => setCrossfadeEnabled(set, get, enabled),
     setImmersive: (open) => setImmersive(set, open),
     addToQueue: (id, next) => addToQueue(set, get, id, next),
+    addManyToQueue: (ids) => addManyToQueue(set, get, ids),
     removeFromQueue: (index) => removeFromQueue(set, get, index),
     moveQueueItem: (from, to) => moveQueueItem(set, get, from, to),
     clearQueue: () => clearQueue(set),

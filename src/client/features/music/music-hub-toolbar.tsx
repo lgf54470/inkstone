@@ -1,9 +1,12 @@
+import { useRef } from 'react'
 import type { MusicTrack } from '@shared/types'
-import { CloudDownload, ImageDown, RefreshCw, RotateCw, Server, Upload } from 'lucide-react'
+import { CloudDownload, ImageDown, ListPlus, RefreshCw, RotateCw, Server, Upload } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { Tooltip, confirm } from '../../components/overlay'
 import { t } from '../../lib/i18n'
+import { toastMusicNotice } from './music-feedback'
+import { matchM3uTracks, parseM3u } from './music-m3u'
 import { SearchBox } from './music-search-box'
 import { useMusic } from './music-store'
 import type { MusicSort } from './music-store'
@@ -79,6 +82,7 @@ function ToolbarActions({ tracks, onUpload, onBrowseWebdav }: {
       )}
       <Button size='sm' variant='primary' icon={<Upload size={12} />} onClick={onUpload}>{t('music.upload')}</Button>
       <Button size='sm' icon={<Server size={12} />} onClick={onBrowseWebdav}>{t('music.webdav_title')}</Button>
+      <M3uImportButton tracks={tracks} />
       <Tooltip label={t('common.refresh')} side='left'>
         <IconButton label={t('common.refresh')} size='sm' disabled={loading} onClick={() => void loadLibrary(true)}>
           <RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />
@@ -86,6 +90,43 @@ function ToolbarActions({ tracks, onUpload, onBrowseWebdav }: {
       </Tooltip>
       <MetadataButtons tracks={tracks} />
     </div>
+  )
+}
+
+// An exported playlist should be able to come back: the file names a target next to
+// each entry, and the library answers the ones it recognises. What it cannot answer
+// is reported rather than dropped.
+function M3uImportButton({ tracks }: { tracks: MusicTrack[] }) {
+  const addManyToQueue = useMusic((state) => state.addManyToQueue)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const pick = async (file: File | undefined): Promise<void> => {
+    if (!file) return
+    const entries = parseM3u(await file.text())
+    if (!entries.length) {
+      toastMusicNotice('music.m3u_imported_none')
+      return
+    }
+    const matched = matchM3uTracks(entries, tracks)
+    addManyToQueue(matched.map((track) => track.id))
+    const unmatched = entries.length - matched.length
+    if (unmatched > 0) {
+      toastMusicNotice('music.m3u_imported_partial', { value0: entries.length, value1: unmatched })
+    }
+  }
+  return (
+    <>
+      <input
+        ref={fileRef}
+        type='file'
+        accept='.m3u,.m3u8,audio/x-mpegurl'
+        className='hidden'
+        onChange={(event) => {
+          void pick(event.target.files?.[0])
+          event.target.value = ''
+        }}
+      />
+      <Button size='sm' icon={<ListPlus size={12} />} onClick={() => fileRef.current?.click()}>{t('music.import_m3u')}</Button>
+    </>
   )
 }
 

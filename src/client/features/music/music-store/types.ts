@@ -179,6 +179,8 @@ export interface MusicStoreState {
   setNormalizeEnabled: (enabled: boolean) => void
   setCrossfadeEnabled: (enabled: boolean) => void
   addToQueue: (id: string, next?: boolean) => void
+  // Returns how many ids were new, so an import can report the rest.
+  addManyToQueue: (ids: readonly string[]) => number
   removeFromQueue: (index: number) => void
   moveQueueItem: (from: number, to: number) => void
   clearQueue: () => void

@@ -2597,6 +2597,9 @@ const allowed = new Map([
   ['src/client/features/music/music-hub-toolbar.tsx', [
     '// Playlist scope shows the manual item order, so the sort control would change nothing;',
     '// the grouped browse grids sort their cards by name and ignore track sort entirely.',
+    '// An exported playlist should be able to come back: the file names a target next to',
+    '// each entry, and the library answers the ones it recognises. What it cannot answer',
+    '// is reported rather than dropped.',
     '// The running guard lives in the store, so remounting the toolbar cannot stack a second pass.',
     '// Force mode overwrites stored tags, so manual edits are lost — confirm before scanning everything visible.',
   ]],
@@ -2626,6 +2629,13 @@ const allowed = new Map([
   ['src/client/features/music/music-lyrics.ts', [
     '// The library ships tracks without lyric text; detail views mount this hook to',
     '// have the store fetch it by id once, then read the merged `track.lyric` themselves.',
+  ]],
+  ['src/client/features/music/music-m3u.ts', [
+    '/** The `#EXTINF` title, when the file carried one. */',
+    '/** The path or URL line that follows the extended info. */',
+    '// `#EXTM3U` and any other directive are skipped; an `#EXTINF` line belongs to the',
+    '// path line that follows it, which is the pairing the format defines.',
+    '/**\n * Export writes the download name plus an `artist - title` entry, and files from\n * elsewhere usually carry just a path, so a candidate is looked up under every\n * spelling the entry offers.\n */',
   ]],
   ['src/client/features/music/music-metadata.test.ts', [
     '// The scan path must decode a tag exactly once, not once per downloaded chunk,',
@@ -3025,6 +3035,7 @@ const allowed = new Map([
     '// re-renders only the small leaves that display progress rather than the whole hub.',
   ]],
   ['src/client/features/music/music-store/queue-ops.ts', [
+    '/**\n * An import lands as one list: one state write and one notice instead of one of\n * each per row. Returns how many ids were new, so the caller can report what the\n * playlist contained that the library could not answer for.\n */',
     '// Removing the playing track: keep the audio and the queue pointing at the same song.',
     '// The audio keeps playing while rows shuffle, so only the queue array and the',
     '// index pointing at the playing entry change — a new array reference is what',
@@ -3073,6 +3084,7 @@ const allowed = new Map([
     '// One pass of batch library work; kind is unique while running, so a second',
     '// click cannot stack a duplicate pass. Done passes leave the list.',
     '// Lyric calibration is per track: a positive delta holds the lyrics back.',
+    '// Returns how many ids were new, so an import can report the rest.',
     '// `false` means the write never landed; form owners stay open on it.',
     '// Detail views call this for tracks the lazy library listed with a lyric but no text.',
     '// Menu action: fetch lyrics through the Worker relay and save the match as this track\'s lyric.',
