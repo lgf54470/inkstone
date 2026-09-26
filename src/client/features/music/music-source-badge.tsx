@@ -5,17 +5,18 @@ import { t } from '../../lib/i18n'
 
 // Reference rows must not masquerade as the R2 cloud badge: webdav/alist/external
 // each carry their own label, and the accent tint stays a webdav-only distinction.
-const BADGE_LABELS: Record<MusicSource, 'music.source_r2' | 'music.source_webdav' | 'music.source_external' | 'music.source_alist'> = {
+const BADGE_LABELS: Record<MusicSource, 'music.source_r2' | 'music.source_webdav' | 'music.source_external' | 'music.source_alist' | 'music.source_online'> = {
   r2: 'music.source_r2',
   webdav: 'music.source_webdav',
   external: 'music.source_external',
   alist: 'music.source_alist',
+  provider: 'music.source_online',
 }
 
 export function MusicSourceBadge({ source, className }: { source: MusicSource; className?: string }) {
   const label = BADGE_LABELS[source]
   const isRemote = source === 'webdav'
-  const isLinked = source === 'external' || source === 'alist'
+  const isLinked = source === 'external' || source === 'alist' || source === 'provider'
   const Icon = isRemote ? Server : isLinked ? Link : Cloud
   return (
     <span

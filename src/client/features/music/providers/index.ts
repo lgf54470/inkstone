@@ -1,3 +1,4 @@
 export { listProviders } from './registry'
-export { GDS_PROVIDER_ID, GDS_SOURCES } from './gds'
+export { mergeProviderResults } from './dedupe'
+export { GDS_PROVIDER_ID, GDS_SOURCES, searchGds } from './gds'
 export type { MusicProvider, MusicProviderTrack } from './types'

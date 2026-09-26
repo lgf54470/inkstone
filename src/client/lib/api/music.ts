@@ -141,6 +141,25 @@ export interface MusicPodcastEpisode {
   description: string
 }
 
+export interface MusicProviderTrack {
+  provider: string
+  source: string
+  sourceId: string
+  title: string
+  artist: string
+  album: string
+  durationMs: number | null
+}
+
+export interface MusicProviderTrackImportInput {
+  source: string
+  sourceId: string
+  title: string
+  artist?: string
+  album?: string
+  durationMs?: number
+}
+
 export interface MusicPodcastEpisodeImportInput {
   audioUrl: string
   title?: string
@@ -213,6 +232,12 @@ export const music = {
 
   exportPodcastOpml: () =>
     request<string>('/api/music/podcasts/opml'),
+
+  providerSearch: (source: string, keywords: string) =>
+    request<{ results: MusicProviderTrack[] }>(`/api/music/provider/search?source=${encodeURIComponent(source)}&keywords=${encodeURIComponent(keywords)}`, { timeoutMs: 30_000 }),
+
+  importProviderTrack: (input: MusicProviderTrackImportInput) =>
+    request<MusicTrack>('/api/music/tracks/import-provider', { method: 'POST', body: input, timeoutMs: 30_000 }),
 
   listTrash: () => request<{ entries: MusicTrashEntry[] }>('/api/music/trash'),
 

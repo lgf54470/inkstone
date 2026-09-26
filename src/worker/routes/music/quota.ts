@@ -2,7 +2,7 @@
 // size is whatever that server answered, so charging it to the local quota would let a
 // remote host — or a stale stat — lock the account out of its own uploads. Only tracks
 // this deployment actually stores count.
-const REMOTE_SOURCES = ['webdav', 'alist']
+const REMOTE_SOURCES = ['webdav', 'alist', 'provider']
 
 export function isStoredMusicSource(source: string): boolean {
   return !REMOTE_SOURCES.includes(source)

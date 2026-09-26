@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import type { D1Database } from '@cloudflare/workers-types'
 import { TABLE_STATEMENTS } from '../src/worker/db/schema/tables'
 import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
+import { MUSIC_PLAYBACK_MIGRATION_STATEMENTS } from '../src/worker/db/schema/music'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { musicRoutes } from '../src/worker/routes/music'
@@ -11,12 +12,13 @@ import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
 const DB_ENV = { env: { DB: null as unknown as D1Database } }
-const EXECUTION_CTX = { waitUntil: () => {} } as unknown as ExecutionContext
+const EXECUTION_CTX = { waitUntil: vi.fn() } as unknown as ExecutionContext
 
 async function makeDb(): Promise<D1Shim> {
   const db = createDb()
   for (const statement of TABLE_STATEMENTS) await runSql(db, statement)
   for (const statement of INDEX_STATEMENTS) await runSql(db, statement)
+  for (const statement of MUSIC_PLAYBACK_MIGRATION_STATEMENTS) await runSql(db, statement)
   await runSql(
     db,
     `INSERT INTO users (id, username, password_hash, login, name, avatar_url, created_at, last_seen_at)
@@ -29,6 +31,11 @@ async function makeDb(): Promise<D1Shim> {
 
 function makeApp(): Hono<AppBindings> {
   const app = new Hono<AppBindings>()
+  app.use('/api/music', async (c, next) => {
+    c.set('userId', USER)
+    c.set('user', { id: USER, username: 'owner', login: 'login', name: 'Author', avatarUrl: '', role: 'owner', createdAt: 1, settingsRaw: '{}' })
+    await next()
+  })
   app.use('/api/music/*', async (c, next) => {
     c.set('userId', USER)
     c.set('user', { id: USER, username: 'owner', login: 'login', name: 'Author', avatarUrl: '', role: 'owner', createdAt: 1, settingsRaw: '{}' })
@@ -105,3 +112,4 @@ describe('provider proxy (FEA-A1-2)', () => {
     expect((await request(app, '/api/music/provider/url?source=netease&id=')).status).toBe(400)
   })
 })
+

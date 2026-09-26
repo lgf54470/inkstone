@@ -1,5 +1,5 @@
 import type { StoreApi } from 'zustand'
-import type { MusicAlistCreateInput, MusicAlistEntry, MusicAlistPatchInput, MusicAlistServerView, MusicPodcastCreateInput, MusicPodcastEpisode, MusicPodcastFeedView, MusicPodcastPatchInput, MusicTrashEntry } from '../../../lib/api'
+import type { MusicProviderTrack, MusicAlistCreateInput, MusicAlistEntry, MusicAlistPatchInput, MusicAlistServerView, MusicPodcastCreateInput, MusicPodcastEpisode, MusicPodcastFeedView, MusicPodcastPatchInput, MusicTrashEntry } from '../../../lib/api'
 import type {
   MusicPlayMode, MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry,
 } from '@shared/types'
@@ -170,6 +170,9 @@ export interface MusicStoreState {
   podcastFeeds: MusicPodcastFeedView[]
   podcastFeedsLoading: boolean
   providerEnabled: Record<string, boolean>
+  providerResults: MusicProviderTrack[] | null
+  providerSearching: boolean
+  providerKeywords: string
   podcastEpisodesFeedId: string | null
   podcastEpisodes: MusicPodcastEpisode[]
   podcastEpisodesLoading: boolean
@@ -283,6 +286,8 @@ export interface MusicStoreState {
   patchAlistServer: (id: string, patch: MusicAlistPatchInput) => Promise<boolean>
   deleteAlistServer: (id: string) => Promise<void>
   setProviderEnabled: (providerId: string, enabled: boolean) => void
+  searchProviders: (keywords: string) => Promise<void>
+  playProviderTrack: (hit: MusicProviderTrack) => Promise<void>
   loadPodcastFeeds: () => Promise<void>
   loadPodcastEpisodes: (feedId: string) => Promise<void>
   closePodcastEpisodes: () => void

@@ -245,3 +245,17 @@ export const importPodcastEpisodeSchema = z.object({
 })
 
 export type ImportPodcastEpisodeBody = z.infer<typeof importPodcastEpisodeSchema>
+
+// FEA-A1-3: an online hit becomes a provider reference row; the source must be
+// one the worker's allowlist recognizes (re-checked there) and the title must
+// survive trimming so the library never stores a blank row.
+export const importProviderTrackSchema = z.object({
+  source: z.string().min(1).max(32),
+  sourceId: z.string().min(1).max(128),
+  title: trimmed(LIMITS.musicTitleMaxLength).optional(),
+  artist: optionalTrimmed(LIMITS.musicArtistMaxLength),
+  album: optionalTrimmed(LIMITS.musicAlbumMaxLength),
+  durationMs: z.number().int().min(0).max(60 * 60 * 1000).optional(),
+})
+
+export type ImportProviderTrackBody = z.infer<typeof importProviderTrackSchema>

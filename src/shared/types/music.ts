@@ -10,7 +10,7 @@ export type MusicFormat = 'mp3' | 'm4a' | 'flac' | 'wav' | 'ogg' | 'opus' | 'aac
 // remote URL and proxies playback, exactly like a WebDAV reference row. `alist`
 // (FEA-A3) is a reference row too: the key scopes the registered server and the
 // path inside it, resolved to a signed link at stream time.
-export type MusicSource = 'r2' | 'webdav' | 'external' | 'alist'
+export type MusicSource = 'r2' | 'webdav' | 'external' | 'alist' | 'provider'
 
 export interface MusicTrack {
   id: string

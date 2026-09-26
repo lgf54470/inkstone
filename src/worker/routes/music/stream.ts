@@ -7,6 +7,7 @@ import { isDerivedCoverKey } from './cover'
 import { alignKvRangeWindow, contentRangeHeader, isWellFormedContentLength, isWellFormedContentRange, parseByteRange } from './range'
 import type { MusicTrackRow } from './rows'
 import { alistApi, joinAlistPath, parseAlistObjectKey, resolveAlistServer } from './alist'
+import { parseGdsObjectKey, resolveProviderPlayUrl } from './provider'
 import { buildDownloadTag } from './id3'
 import { readMusicObjectStream, requireMusicStorage } from './storage'
 import { fetchMusicObject, resolveMusicWebdav } from './webdav'
@@ -32,6 +33,7 @@ export async function streamTrackResponse(
   if (row.source === 'webdav') return streamWebdavTrack(c, row, owner, options)
   if (row.source === 'external') return streamExternalTrack(c, row, options)
   if (row.source === 'alist') return streamAlistTrack(c, row, options)
+  if (row.source === 'provider') return streamProviderTrack(c, row, options)
   if (!isMusicObjectKey(row.object_key)) throw ApiError.internal('The track storage key is invalid')
 
   const storage = requireMusicStorage(c.env)
@@ -193,6 +195,31 @@ async function streamAlistTrack(
   if (upstream.status !== 200 && upstream.status !== 206) {
     await cancelStreamBestEffort(upstream.body)
     throw new ApiError(502, 'storage_unavailable', `Alist playback failed: HTTP ${upstream.status}`)
+  }
+  return streamUpstream(upstream, row, options)
+}
+
+// FEA-A1-3: a provider reference row resolves its upstream link per stream —
+// the aggregate hands out expiring URLs, so nothing playable is ever stored.
+async function streamProviderTrack(
+  c: Context<AppBindings>,
+  row: MusicTrackRow,
+  options: StreamOptions,
+): Promise<Response> {
+  const key = parseGdsObjectKey(row.object_key)
+  if (!key) throw ApiError.internal('The provider track key is invalid')
+  const playUrl = await resolveProviderPlayUrl(key.source, key.songId)
+  const range = c.req.header('Range')
+  let upstream: Response
+  try {
+    upstream = await fetch(playUrl, range ? { headers: { Range: range } } : undefined)
+  } catch {
+    throw new ApiError(502, 'storage_unavailable', 'The online source is unreachable')
+  }
+  if (upstream.status === 404) throw ApiError.notFound('The track is no longer reachable on the online source')
+  if (upstream.status !== 200 && upstream.status !== 206) {
+    await cancelStreamBestEffort(upstream.body)
+    throw new ApiError(502, 'storage_unavailable', `Online playback failed: HTTP ${upstream.status}`)
   }
   return streamUpstream(upstream, row, options)
 }

@@ -16,6 +16,7 @@ import { MusicHubSidebar } from './music-hub-sidebar'
 import { MusicHubToolbar } from './music-hub-toolbar'
 import { MusicNowPlaying, type MusicDetailTab } from './music-now-playing'
 import { MusicPlaylistModal } from './music-playlist-modal'
+import { MusicProviderResults } from './music-provider-results'
 import { MusicPlayerControls } from './music-player-controls'
 import { MusicQueuePanel } from './music-queue-panel'
 import { MusicTagManagerModal } from './music-tag-manager'
@@ -208,6 +209,7 @@ const HubCentre = memo(function HubCentre({
           the result as a prop so they never run the same sort a second time. */}
       <MusicHubToolbar tracks={tracks} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
       {detail && <MusicGroupDetailHeader scope={detail} tracks={tracks} />}
+      <MusicProviderResults />
       {scope.kind === 'duplicates' && tracks.length > 0 && <MusicDuplicatesSummary />}
       <div className='min-h-0 flex-1'>
         {loadError && !tracks.length && !loading

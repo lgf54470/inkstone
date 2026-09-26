@@ -1930,3 +1930,63 @@ describe('mp3 download ID3 tagging (FEA-D1)', () => {
   })
 })
 
+
+const PROVIDER_TRACK_INPUT = {
+  source: 'netease', sourceId: 'a1', title: 'Song A', artist: 'Ann',
+  album: 'Album One', durationMs: 210000,
+}
+
+describe('provider playback (FEA-A1-3)', () => {
+  it('registers an online hit as a provider reference row outside the quota', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const res = await json(app, '/api/music/tracks/import-provider', PROVIDER_TRACK_INPUT)
+    expect(res.status).toBe(201)
+    const track = await res.json() as { id: string; source: string; mime: string; webdavPath: string | null }
+    expect(track.source).toBe('provider')
+    expect(track.mime).toBe('audio/mpeg')
+
+    const library = await (await request(app, '/api/music/library')).json() as { stats: { totalBytes: number } }
+    expect(library.stats.totalBytes).toBe(0)
+  })
+
+  it('answers the existing row when the same online hit is added twice', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const first = await json(app, '/api/music/tracks/import-provider', PROVIDER_TRACK_INPUT)
+    const second = await json(app, '/api/music/tracks/import-provider', { ...PROVIDER_TRACK_INPUT, title: 'Renamed' })
+    expect(second.status).toBe(200)
+    expect(((await second.json()) as { id: string }).id).toBe(((await first.json()) as { id: string }).id)
+  })
+
+  it('rejects an unknown upstream source or a title-less hit', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    expect((await json(app, '/api/music/tracks/import-provider', { ...PROVIDER_TRACK_INPUT, source: 'spotify' })).status).toBe(400)
+    expect((await json(app, '/api/music/tracks/import-provider', { ...PROVIDER_TRACK_INPUT, title: ' ' })).status).toBe(400)
+  })
+
+  it('streams a provider row through a per-play url resolution', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await (await json(app, '/api/music/tracks/import-provider', PROVIDER_TRACK_INPUT)).json() as { id: string }
+    const urls: string[] = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: { headers?: Record<string, string> }) => {
+      const target = String(url)
+      urls.push(target)
+      if (target.includes('types=url')) {
+        return new Response(JSON.stringify({ url: 'https://cdn.example.com/stream.mp3?sign=abc' }), { status: 200 })
+      }
+      return new Response(new TextEncoder().encode('remote-bytes'), { status: 200, headers: { 'Content-Length': '12' } })
+    })
+    const res = await request(app, `/api/music/tracks/${track.id}/stream`, { headers: { Range: 'bytes=0-3' } })
+    expect(res.status).toBe(200)
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(new TextEncoder().encode('remote-bytes'))
+    expect(urls.filter((url) => url.includes('cdn.example.com'))).toEqual(['https://cdn.example.com/stream.mp3?sign=abc'])
+    vi.unstubAllGlobals()
+  })
+})
