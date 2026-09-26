@@ -27,6 +27,7 @@ export async function streamTrackResponse(
   options: StreamOptions,
 ): Promise<Response> {
   if (row.source === 'webdav') return streamWebdavTrack(c, row, owner, options)
+  if (row.source === 'external') return streamExternalTrack(c, row, options)
   if (!isMusicObjectKey(row.object_key)) throw ApiError.internal('The track storage key is invalid')
 
   const storage = requireMusicStorage(c.env)
@@ -77,6 +78,39 @@ async function streamWebdavTrack(
     await cancelStreamBestEffort(upstream.body)
     throw new ApiError(502, 'storage_unavailable', `WebDAV playback failed: HTTP ${upstream.status}`)
   }
+  return streamUpstream(upstream, row, options)
+}
+
+// FEA-B3: a direct-link reference row streams through the same worker proxy as a
+// WebDAV row, minus the credentials — the URL is the whole secret. The app runs
+// with `global_fetch_strictly_public`, so the runtime itself refuses to route
+// this user-supplied fetch at private network ranges.
+async function streamExternalTrack(
+  c: Context<AppBindings>,
+  row: MusicTrackRow,
+  options: StreamOptions,
+): Promise<Response> {
+  const range = c.req.header('Range')
+  let upstream: Response
+  try {
+    upstream = await fetch(row.object_key, range ? { headers: { Range: range } } : undefined)
+  } catch {
+    throw new ApiError(502, 'storage_unavailable', 'The track source is unreachable')
+  }
+  if (upstream.status === 404) throw ApiError.notFound('The track is no longer reachable at its source URL')
+  if (upstream.status !== 200 && upstream.status !== 206) {
+    await cancelStreamBestEffort(upstream.body)
+    throw new ApiError(502, 'storage_unavailable', `External playback failed: HTTP ${upstream.status}`)
+  }
+  return streamUpstream(upstream, row, options)
+}
+
+// Shared passthrough for both remote sources: only echo the length the upstream
+// declared for this very response — the stored size_bytes can drift from the
+// remote file and a wrong Content-Length stalls or poisons downstream caches.
+// The claims are still a third party's, so a value that is not a well-formed
+// byte count is dropped rather than forwarded to the player.
+function streamUpstream(upstream: Response, row: MusicTrackRow, options: StreamOptions): Response {
   const safeMime = safeStreamMime(row.mime)
   const headers: Record<string, string> = {
     'Content-Type': safeMime ?? 'application/octet-stream',
@@ -84,11 +118,6 @@ async function streamWebdavTrack(
     'Cache-Control': options.cacheControl,
     'X-Content-Type-Options': 'nosniff',
   }
-  // Only echo the length the upstream declared for this very response: the
-  // stored size_bytes can drift from the remote file and a wrong
-  // Content-Length stalls or poisons downstream caches. The claims are still a
-  // third party's, so a value that is not a well-formed byte count is dropped
-  // rather than forwarded to the player.
   const length = upstream.headers.get('Content-Length')
   if (length && isWellFormedContentLength(length)) headers['Content-Length'] = length.trim()
   // A 200 has no partial content to describe, so a stale or injected

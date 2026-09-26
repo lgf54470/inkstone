@@ -1,11 +1,12 @@
-import { Cloud, Server } from 'lucide-react'
+import { Cloud, Link, Server } from 'lucide-react'
 import type { MusicSource } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 
 export function MusicSourceBadge({ source, className }: { source: MusicSource; className?: string }) {
   const isRemote = source === 'webdav'
-  const Icon = isRemote ? Server : Cloud
+  const isExternal = source === 'external'
+  const Icon = isRemote ? Server : isExternal ? Link : Cloud
   return (
     <span
       className={cn(

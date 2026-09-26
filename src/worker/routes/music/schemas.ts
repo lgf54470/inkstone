@@ -128,6 +128,28 @@ export const importMusicSchema = z.object({
 
 export type ImportMusicBody = z.infer<typeof importMusicSchema>
 
+// FEA-B3: a direct link imports as a reference row — only the URL is stored and
+// playback proxies it, so http(s) is the scheme bar and the container must still
+// be recognizable from the path's extension.
+const externalUrl = z.string().max(2048).refine((value) => {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+  } catch {
+    return false
+  }
+}, { message: 'Provide an http(s) URL' })
+
+export const importUrlSchema = z.object({
+  url: externalUrl,
+  title: trimmed(LIMITS.musicTitleMaxLength).optional(),
+  artist: optionalTrimmed(LIMITS.musicArtistMaxLength),
+  album: optionalTrimmed(LIMITS.musicAlbumMaxLength),
+  durationMs: z.number().int().min(0).max(24 * 60 * 60 * 1000).optional(),
+})
+
+export type ImportUrlBody = z.infer<typeof importUrlSchema>
+
 export const playlistItemSchema = z.object({ trackId: z.string().max(64) })
 
 export type PlaylistItemBody = z.infer<typeof playlistItemSchema>

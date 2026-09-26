@@ -14,6 +14,9 @@
   "src/client/features/music/music-share-page/page.test.ts": {
     "longFns": 1
   },
+  "src/client/features/music/music-store/library.ts": {
+    "longFns": 1
+  },
   "src/client/features/music/music-track-menu.test.ts": {
     "longFns": 1
   },

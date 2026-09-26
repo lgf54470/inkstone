@@ -143,7 +143,9 @@ async function uploadTrack(c: Context<AppBindings>): Promise<Response> {
   return c.json(toTrack(row, []), 201)
 }
 
-async function insertWebdavTrack(db: D1Database, userId: string, row: MusicTrackRow): Promise<void> {
+// Shared by the WebDAV import and the direct-link import (FEA-B3): both register
+// reference rows whose bytes live outside the app's own storage.
+export async function insertWebdavTrack(db: D1Database, userId: string, row: MusicTrackRow): Promise<void> {
   await db.prepare(
     `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
        cover_url, lyric, is_favorite, is_pinned, play_count, content_hash, created_at, updated_at)

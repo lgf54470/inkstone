@@ -93,6 +93,26 @@ export async function importWebdavFolder(set: MusicSet, get: MusicGet): Promise<
   await get().loadLibrary(true)
 }
 
+// FEA-B3: the direct-link sibling of the WebDAV import — the server only stores
+// the URL, and the same append/probe/reload pipeline gives instant feedback.
+export async function importTrackFromUrl(
+  set: MusicSet,
+  get: MusicGet,
+  input: { url: string; title?: string; artist?: string },
+): Promise<boolean> {
+  try {
+    const track = await api.music.importTrackFromUrl(input)
+    appendImportedTrack(set, track)
+    await patchImportedDuration(track)
+    await get().loadLibrary(true)
+    toastMusic('music.imported')
+    return true
+  } catch (error) {
+    toastMusicError(error, 'music.import_failed')
+    return false
+  }
+}
+
 async function importOneWebdav(entry: MusicWebdavEntry): Promise<MusicTrack> {
   const base = entry.name.replace(/\.[^.]+$/, '')
   const [title, artist] = splitName(base)

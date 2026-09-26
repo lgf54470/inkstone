@@ -13,12 +13,13 @@ import {
   movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist,
   sharePlaylist, unsharePlaylist, uploadFiles,
 } from './library-collections'
-import { browseWebdav, deleteWebdavObjects, importWebdavFolder, importWebdavTrack } from './webdav'
+import { browseWebdav, deleteWebdavObjects, importTrackFromUrl, importWebdavFolder, importWebdavTrack } from './webdav'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type LibrarySlice = Pick<MusicStoreState,
   | 'loadLibrary' | 'setScope' | 'setQuery' | 'commitQuery' | 'clearSearchHistory' | 'setSort' | 'setSortDirection' | 'prepareRomanization'
   | 'setViewMode' | 'openTrackMenu' | 'closeTrackMenu' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
+  | 'importTrackFromUrl'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'searchTrackLyric' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
@@ -76,6 +77,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     importWebdavTrack: (entry) => importWebdavTrack(set, get, entry),
     importWebdavFolder: () => importWebdavFolder(set, get),
     deleteWebdavFiles: (paths) => deleteWebdavObjects(paths),
+    importTrackFromUrl: (input) => importTrackFromUrl(set, get, input),
   }
 }
 type PlaylistItemActions = Pick<MusicStoreState, 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'>

@@ -6,7 +6,9 @@ export type MusicPlayMode = 'order' | 'repeat-all' | 'repeat-one' | 'shuffle'
 // whether the track is audio or video - that distinction lives in `mime`.
 export type MusicFormat = 'mp3' | 'm4a' | 'flac' | 'wav' | 'ogg' | 'opus' | 'aac' | 'webm' | 'mp4' | 'mov'
 
-export type MusicSource = 'r2' | 'webdav'
+// `external` is a direct-link reference row (FEA-B3): the worker only stores the
+// remote URL and proxies playback, exactly like a WebDAV reference row.
+export type MusicSource = 'r2' | 'webdav' | 'external'
 
 export interface MusicTrack {
   id: string

@@ -255,6 +255,7 @@ export interface MusicStoreState {
 
   browseWebdav: (path: string) => Promise<void>
   importWebdavTrack: (entry: MusicWebdavEntry) => Promise<void>
+  importTrackFromUrl: (input: { url: string; title?: string; artist?: string }) => Promise<boolean>
   importWebdavFolder: () => Promise<void>
   deleteWebdavFiles: (paths: string[]) => Promise<void>
 

@@ -12,7 +12,7 @@
 - [x] FEA-B4 「已离线」视图：曲库 scope 新增 offline 视图（读取 SW 离线缓存清单 `offline-audio.ts` LIST），侧栏入口 + 计数
 - [x] FEA-C1 下一首预加载：队列下一首提前 `preload`（audio-engine 双元素已就位，预载元数据/首块）
 - [x] FEA-C4 歌词样式设置：对齐（左/中/右）+ 字号档位，偏好持久化（`music-store/state.ts`），沉浸层与现在播放列同步生效
-- [ ] FEA-B3 URL 直链添加歌曲：粘贴直链 + 标题 → 以 webdav/external 引用源入曲库（不计配额，沿用 WebDAV 引用行口径）
+- [x] FEA-B3 URL 直链添加歌曲：粘贴直链 + 标题 → 以 webdav/external 引用源入曲库（不计配额，沿用 WebDAV 引用行口径）
 - [ ] FEA-D2 歌单自定义封面（与 improvement IMP-10 合并实施，此处只登记）
 
 ## 批次 F② · 中型项（M）
@@ -60,3 +60,4 @@
 | 2026-09-26 | FEA-B4 「已离线」视图 | `c625af35` | 先红 4 例（offline scope 3 + 侧栏行 1）；实现后 music + routes 89 文件 / 723 例 ✅；typecheck ✅；静态门禁 ✅；e2e 177 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 离线清单是本机状态（SW 缓存 `offlineTrackIds`），不同设备各自统计，不随账号同步——与 IMP-12 决策同口径；排序与搜索沿用通用管线，未加特例 |
 | 2026-09-26 | FEA-C1 下一首预加载 | `cbd785ac` | 先红 8 例（引擎 6 + store 决策 2）；实现后 music + routes 91 文件 / 735 例 ✅；typecheck ✅；静态门禁 ✅；e2e 177 ✅（无 UI 改动，未跑 e2e-visual/contrast） | 预载只覆盖音频（视频走硬切且带可见舞台，不进备胎）；mp3 之外的流由浏览器按 preload='auto' 自行取舍首块大小；audio-engine.ts 达 541 行（原 499），size 基线随本项更新——备胎/淡入淡出/预载共享模块私有状态，拆文件需把访问器穿进所有调用方 |
 | 2026-09-26 | FEA-C4 歌词样式设置 | `663210bb` | 先红 5 例（store 2 + 组件 3，1 例为默认基线）；实现后 music + routes 93 文件 / 741 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 字号档位映射到既有 --text 令牌（列：11/12/14，沉浸层：13/15/18），不引入新令牌；对齐在沉浸层落在行按钮、列视图落在容器（行继承 text-align）；空态与校准控件不受样式影响 |
+| 2026-09-26 | FEA-B3 URL 直链添加歌曲 | 待回填 | 先红 8 例（worker 5 + demo 1 + 组件 2）；实现后 music + routes + demo 97 文件 / 773 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 新增独立 source 值 `external`（沿用 webdav 引用行「不计配额」口径，但不吃 webdav 的删除/迁移/凭据路径）：流播放经 worker 代理（同源，绕开非 CORS 源 WebAudio 静音问题，IMP-9 合并项因此闭环）；运行时以 `global_fetch_strictly_public` 拦私网 SSRF，容器靠 URL 路径扩展名判定；demo 桩只钉契约形状，不出真实外链字节（演示环境无出网） |

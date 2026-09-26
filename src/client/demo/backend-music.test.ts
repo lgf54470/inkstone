@@ -239,3 +239,21 @@ describe('demo music batch endpoints', () => {
     expect(library.tracks.every((entry: { tagIds: string[] }) => entry.tagIds.join() === tagId)).toBe(true)
   })
 })
+
+describe('demo music URL import (FEA-B3)', () => {
+  it('registers an external reference row and rejects unsupported input', async () => {
+    const backend = await authedBackend()
+    const res = await call(backend, '/api/music/tracks/import-url', jsonInit({ url: 'https://cdn.example.com/audio/demo song.mp3' }))
+    expect(res.status).toBe(201)
+    const track = (await res.json()) as Record<string, unknown>
+    expect(track.source).toBe('external')
+    expect(track.title).toBe('demo song')
+    expect(track.webdavPath).toBeNull()
+
+    const bad = await call(backend, '/api/music/tracks/import-url', jsonInit({ url: 'ftp://cdn.example.com/a.mp3' }))
+    expect(bad.status).toBe(400)
+
+    const library = await (await call(backend, '/api/music/library')).json()
+    expect(library.stats.trackCount).toBe(1)
+  })
+})

@@ -77,6 +77,13 @@ export interface MusicWebdavImportInput {
   durationMs?: number
 }
 
+export interface MusicImportUrlInput {
+  url: string
+  title?: string
+  artist?: string
+  album?: string
+}
+
 export const music = {
   browseWebdav: (path: string) =>
     request<MusicWebdavListing>(`/api/music/webdav${path ? `?path=${encodeURIComponent(path)}` : ''}`),
@@ -86,6 +93,9 @@ export const music = {
 
   importWebdav: (input: MusicWebdavImportInput) =>
     request<MusicTrack>('/api/music/webdav/import', { method: 'POST', body: input, timeoutMs: 30_000 }),
+
+  importTrackFromUrl: (input: MusicImportUrlInput) =>
+    request<MusicTrack>('/api/music/tracks/import-url', { method: 'POST', body: input, timeoutMs: 30_000 }),
 
   searchLyrics: (query: string) =>
     request<MusicLyricSearch>(`/api/music/lyric-search?q=${encodeURIComponent(query)}`),

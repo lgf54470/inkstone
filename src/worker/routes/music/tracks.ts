@@ -4,20 +4,23 @@ import { chunkIds } from '@shared/chunk'
 import type { MusicTrack } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
+import { newId } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
 import { coverResponse, isDerivedCoverKey, storeCoverObject } from './cover'
-import { isDerivedMusicObjectKey } from './keys'
+import { isDerivedMusicObjectKey, resolveMusicTrackType } from './keys'
 import { TRACK_COLUMNS, toTrack } from './rows'
 import type { MusicTrackRow } from './rows'
-import { batchTrackSchema, patchTrackSchema } from './schemas'
+import { batchTrackSchema, importUrlSchema, patchTrackSchema } from './schemas'
 import { requireMusicStorage } from './storage'
 import { streamTrackResponse } from './stream'
+import { insertWebdavTrack } from './webdav-routes'
 import { pathParam } from './params'
 
 export function registerMusicTrackRoutes(routes: Hono<AppBindings>): void {
   registerCoverRoute(routes)
+  registerExternalImportRoute(routes)
   registerLyricRoute(routes)
   registerLyricSearchRoute(routes)
   registerStreamRoute(routes)
@@ -45,6 +48,46 @@ function registerLyricSearchRoute(routes: Hono<AppBindings>): void {
     const found = ids.results.map((row) => row.id)
     // One id past the cap rides along so the caller can tell there were more.
     return c.json({ ids: found.slice(0, LIMITS.musicLyricSearchMaxIds), total: counts?.total ?? 0 }, 200, { 'Cache-Control': 'no-store' })
+  })
+}
+
+// FEA-B3: a pasted direct link registers a reference row the same way a WebDAV
+// import does — no bytes are stored, so nothing counts against the quota and the
+// container must be recognizable from the URL path's own extension.
+function registerExternalImportRoute(routes: Hono<AppBindings>): void {
+  routes.post('/tracks/import-url', requireAuth, async (c) => {
+    const userId = c.get('userId')
+    await enforceMusicBudget(c.env.DB, 'webdav', userId)
+    const body = await readJsonValidated(c, importUrlSchema, JSON_BODY_LIMITS.small)
+    const parsed = new URL(body.url)
+    const filename = decodeURIComponent(parsed.pathname.split('/').filter(Boolean).pop() ?? '')
+    const trackType = resolveMusicTrackType(filename, '')
+    if (!trackType) throw ApiError.badRequest('Unsupported media format')
+
+    const id = newId()
+    const now = Date.now()
+    const row: MusicTrackRow = {
+      id,
+      title: body.title?.trim() || filename.replace(/\.[^.]+$/, ''),
+      artist: body.artist?.trim() ?? '',
+      album: body.album?.trim() ?? '',
+      duration_ms: body.durationMs ?? 0,
+      source: 'external',
+      object_key: body.url,
+      mime: trackType.mime,
+      size_bytes: 0,
+      cover_url: null,
+      lyric: null,
+      is_favorite: 0,
+      is_pinned: 0,
+      play_count: 0,
+      last_played_at: null,
+      content_hash: null,
+      created_at: now,
+      updated_at: now,
+    }
+    await insertWebdavTrack(c.env.DB, userId, row)
+    return c.json(toTrack(row, []), 201)
   })
 }
 

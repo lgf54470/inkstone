@@ -134,6 +134,56 @@ function deleteTrackHandler(c: Context, state: DemoState): Response {
   return c.json({ ok: true as const })
 }
 
+// FEA-B3 demo stub: the demo holds no outbound network, so a direct-link import
+// registers the reference row exactly like the worker does and its stream is a
+// stand-in silence — the shape of the contract is what the demo pins down.
+async function importUrlHandler(c: Context, state: DemoState): Promise<Response> {
+  const body = await jsonBody(c.req.raw)
+  const url = typeof body.url === 'string' ? body.url.trim() : ''
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return apiError(400, 'bad_request', 'Provide an http(s) URL')
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return apiError(400, 'bad_request', 'Provide an http(s) URL')
+  }
+  let filename = ''
+  try {
+    filename = decodeURIComponent(parsed.pathname.split('/').filter(Boolean).pop() ?? '')
+  } catch {
+    filename = ''
+  }
+  if (!DEMO_AUDIO_NAME.test(filename)) return apiError(400, 'bad_request', 'Unsupported media format')
+  const now = Date.now()
+  const track: MusicTrack = {
+    id: newDemoId(),
+    title: typeof body.title === 'string' && body.title.trim() ? body.title.trim() : filename.replace(/\.[^.]+$/, ''),
+    artist: typeof body.artist === 'string' ? body.artist.trim() : '',
+    album: typeof body.album === 'string' ? body.album.trim() : '',
+    durationMs: 0,
+    source: 'external',
+    format: 'mp3',
+    webdavPath: null,
+    mime: 'audio/mpeg',
+    sizeBytes: 0,
+    coverUrl: null,
+    lyric: null,
+    hasLyric: false,
+    tagIds: [],
+    isFavorite: false,
+    isPinned: false,
+    playCount: 0,
+    lastPlayedAt: null,
+    contentHash: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  state.musicTracks.set(track.id, { track, file: new File([], filename || 'external.mp3') })
+  return c.json(track, 201)
+}
+
 function playTrackHandler(c: Context, state: DemoState): Response {
   const track = findTrack(state, c.req.param('id') ?? '')
   if (!track) return apiError(404, 'not_found', 'Track not found')
@@ -172,6 +222,7 @@ async function batchTracksHandler(c: Context, state: DemoState): Promise<Respons
 export function registerMusicRoutes(app: Hono, state: DemoState): void {
   app.get('/api/music/library', (c) => libraryHandler(c, state))
   app.post('/api/music/tracks', (c) => createTrackHandler(c, state))
+  app.post('/api/music/tracks/import-url', (c) => importUrlHandler(c, state))
   app.get('/api/music/tracks/:id/lyric', (c) => lyricHandler(c, state))
   app.get('/api/music/lyric-search', (c) => lyricSearchHandler(c, state))
   app.get('/api/music/tracks/:id/stream', (c) => streamHandler(c, state))

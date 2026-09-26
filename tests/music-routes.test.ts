@@ -1694,3 +1694,91 @@ describe('music lyric search (real D1)', () => {
     expect(two.total).toBe(1)
   })
 })
+
+describe('external URL import (FEA-B3)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('registers a reference row for a direct https link, deriving the title from the path', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const res = await json(app, '/api/music/tracks/import-url', { url: 'https://cdn.example.com/audio/song%20one.mp3' })
+    expect(res.status).toBe(201)
+    const track = await res.json()
+    expect(track.source).toBe('external')
+    expect(track.title).toBe('song one')
+    expect(track.mime).toBe('audio/mpeg')
+    expect(track.webdavPath).toBeNull()
+    // Reference rows carry no bytes of their own, so they never consume quota.
+    expect(track.sizeBytes).toBe(0)
+  })
+
+  it('honours a supplied title, artist and album', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const res = await json(app, '/api/music/tracks/import-url', {
+      url: 'https://cdn.example.com/a.mp3', title: 'My Song', artist: 'A', album: 'B',
+    })
+    expect(res.status).toBe(201)
+    const track = await res.json()
+    expect(track.title).toBe('My Song')
+    expect(track.artist).toBe('A')
+    expect(track.album).toBe('B')
+  })
+
+  it('rejects non-http schemes, junk urls and unsupported extensions', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    for (const body of [
+      { url: 'ftp://cdn.example.com/a.mp3' },
+      { url: 'file:///etc/hosts' },
+      { url: 'not a url' },
+      { url: 'https://cdn.example.com/page.html' },
+    ]) {
+      const res = await json(app, '/api/music/tracks/import-url', body)
+      expect(res.status, body.url).toBe(400)
+    }
+  })
+
+  function stubExternalUpstream(): { urls: string[]; ranges: (string | null)[] } {
+    const calls = { urls: [] as string[], ranges: [] as (string | null)[] }
+    vi.stubGlobal('fetch', (url: string | URL, init?: { headers?: Record<string, string> }) => {
+      calls.urls.push(String(url))
+      calls.ranges.push(init?.headers?.Range ?? null)
+      return Promise.resolve(new Response(new TextEncoder().encode('remote-bytes'), {
+        status: 200,
+        headers: { 'Content-Length': '12', 'Content-Type': 'audio/mpeg' },
+      }))
+    })
+    return calls
+  }
+
+  it('streams an external track through the worker, passing the range along', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const created = await (await json(app, '/api/music/tracks/import-url', { url: 'https://cdn.example.com/a.mp3' })).json()
+    const upstream = stubExternalUpstream()
+    const res = await request(app, `/api/music/tracks/${created.id}/stream`, { headers: { Range: 'bytes=0-3' } })
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toBe('audio/mpeg')
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(new TextEncoder().encode('remote-bytes'))
+    expect(upstream.urls).toEqual(['https://cdn.example.com/a.mp3'])
+    expect(upstream.ranges).toEqual(['bytes=0-3'])
+  })
+
+  it('maps an unreachable external source to a clean 502', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const created = await (await json(app, '/api/music/tracks/import-url', { url: 'https://cdn.example.com/a.mp3' })).json()
+    vi.stubGlobal('fetch', () => Promise.resolve(new Response(null, { status: 404 })))
+    const res = await request(app, `/api/music/tracks/${created.id}/stream`)
+    expect(res.status).toBe(404)
+  })
+})
