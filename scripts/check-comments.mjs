@@ -2651,8 +2651,16 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-hub-modal.test.ts', [
     '// This jsdom ships no matchMedia at all; the hub reads one media query now.',
+    '// REF-9: the hub was a fixed 84vh centred sheet at every size, which on a phone or a',
+    '// short laptop window left the track list a couple of hundred pixels once the header,',
+    '// toolbar and transport had taken their fixed share.',
+    '// This jsdom ships no matchMedia; the stub answers width and height queries apart.',
   ]],
   ['src/client/features/music/music-hub-modal.tsx', [
+    '// REF-9: 84vh of a phone screen, or of a short laptop window, leaves the track list a',
+    '// couple of hundred pixels once the header, toolbar and transport have taken their fixed',
+    '// share. Below this height the hub fills the viewport instead of floating in the middle',
+    '// of it — the same answer it gives to a narrow width, where the columns already fold.',
     '// The side columns are fixed-width (224 + 256px); below the shared narrow breakpoint they',
     '// squeeze the track list toward zero, so they fold into drawers opened from the',
     '// header instead (UI-14).',

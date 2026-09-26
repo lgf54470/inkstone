@@ -30,6 +30,11 @@ import type { MusicScope } from './music-store'
 import { MUSIC_NARROW_BREAKPOINT } from './music-utils'
 
 const HUB_WIDTH = 1240
+// REF-9: 84vh of a phone screen, or of a short laptop window, leaves the track list a
+// couple of hundred pixels once the header, toolbar and transport have taken their fixed
+// share. Below this height the hub fills the viewport instead of floating in the middle
+// of it — the same answer it gives to a narrow width, where the columns already fold.
+const HUB_SHORT_VIEWPORT = 700
 // The side columns are fixed-width (224 + 256px); below the shared narrow breakpoint they
 // squeeze the track list toward zero, so they fold into drawers opened from the
 // header instead (UI-14).
@@ -51,6 +56,8 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
   const loadLibrary = useMusic((state) => state.loadLibrary)
   const dialogs = useHubDialogs()
   const { columnsWide, narrowPanel, openPanel, closePanels } = useNarrowColumns()
+  const tallEnough = useMediaQuery(`(min-height: ${HUB_SHORT_VIEWPORT}px)`)
+  const fillViewport = !columnsWide || !tallEnough
 
   useEffect(() => {
     if (open) void loadLibrary()
@@ -63,7 +70,10 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
         onClose={onClose}
         ariaLabel={t('music.hub_title')}
         width={HUB_WIDTH}
-        className={cn('flex h-[84vh] max-h-220 flex-col overflow-hidden p-0', columnsWide ? 'min-h-145' : 'min-h-0')}
+        className={cn(
+          'flex flex-col overflow-hidden p-0',
+          fillViewport ? 'h-full' : 'h-[84vh] max-h-220 min-h-145',
+        )}
         bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'
       >
         <HubHeader

@@ -48,6 +48,46 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+// REF-9: the hub was a fixed 84vh centred sheet at every size, which on a phone or a
+// short laptop window left the track list a couple of hundred pixels once the header,
+// toolbar and transport had taken their fixed share.
+describe('MusicHubModal viewport fit (REF-9)', () => {
+  // This jsdom ships no matchMedia; the stub answers width and height queries apart.
+  function stubViewport(widthMatches: boolean, heightMatches: boolean): void {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('min-width') ? widthMatches : heightMatches,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+  }
+
+  function panel(): HTMLElement | null {
+    return document.querySelector('[role="dialog"]')
+  }
+
+  it('fills the viewport when the screen is narrow', async () => {
+    stubViewport(false, true)
+    await mountHub()
+    expect(panel()?.classList.contains('h-full')).toBe(true)
+    expect(panel()?.classList.contains('min-h-145')).toBe(false)
+  })
+
+  it('fills the viewport when the window is too short for 84vh', async () => {
+    stubViewport(true, false)
+    await mountHub()
+    expect(panel()?.classList.contains('h-full')).toBe(true)
+  })
+
+  it('stays a centred sheet on a roomy desktop window', async () => {
+    stubViewport(true, true)
+    await mountHub()
+    expect(panel()?.classList.contains('h-[84vh]')).toBe(true)
+    expect(panel()?.classList.contains('min-h-145')).toBe(true)
+    expect(panel()?.classList.contains('h-full')).toBe(false)
+  })
+})
+
 describe('MusicHubModal load failure state', () => {
   it('shows a retry action and keeps the technical error string off the screen', async () => {
     const reload = vi.fn(async () => {})
