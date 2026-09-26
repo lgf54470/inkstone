@@ -1876,3 +1876,56 @@ describe('music trash (FEA-B1)', () => {
     expect(r2?.delete).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('mp3 download ID3 tagging (FEA-D1)', () => {
+  const PNG_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+  const PNG_BYTES = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')
+
+  it('prepends an ID3v2 tag with title, artist, cover and lyric on mp3 downloads', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const form = new FormData()
+    form.append('file', new File([AUDIO], 'song.mp3', { type: 'audio/mpeg' }))
+    // Non-ASCII (but non-CJK, the i18n gate scopes those to the locale resources)
+    // so the UTF-16 encoding path is genuinely exercised.
+    form.append('title', 'Björk Guðmundsdóttir')
+    form.append('artist', 'Björk')
+    form.append('album', 'Debut')
+    form.append('lyric', '[00:01.000]first line')
+    form.append('coverUrl', PNG_DATA_URL)
+    const created = await (await request(app, '/api/music/tracks', { method: 'POST', body: form })).json() as { id: string }
+
+    const res = await request(app, `/api/music/tracks/${created.id}/stream?download=1`)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-disposition')).toContain('attachment')
+    const bytes = Buffer.from(await res.arrayBuffer())
+    expect(bytes.subarray(0, 3).toString('latin1')).toBe('ID3')
+    expect(bytes[3]).toBe(3)
+    // Text frames: UTF-16LE payloads readable between the frame markers.
+    const latin = bytes.toString('latin1')
+    expect(latin).toContain('TIT2')
+    expect(latin).toContain('TPE1')
+    expect(latin).toContain('TALB')
+    expect(latin).toContain('APIC')
+    expect(latin).toContain('image/png')
+    expect(latin).toContain('USLT')
+    expect(bytes.subarray(bytes.length - AUDIO.byteLength).equals(Buffer.from(AUDIO))).toBe(true)
+    // The declared length covers the tag plus the audio itself.
+    expect(Number(res.headers.get('content-length'))).toBe(bytes.byteLength)
+  })
+
+  it('leaves plain streams and non-mp3 downloads untagged', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const track = await uploadTrack(app, 'song.mp3')
+    const plain = await request(app, `/api/music/tracks/${track.id}/stream`)
+    expect(Buffer.from(await plain.arrayBuffer()).subarray(0, 3).toString('latin1')).not.toBe('ID3')
+
+    const flac = await uploadTrack(app, 'clip.flac', 'audio/flac')
+    const download = await request(app, `/api/music/tracks/${flac.id}/stream?download=1`)
+    expect(download.headers.get('content-disposition')).toContain('attachment')
+    expect(Buffer.from(await download.arrayBuffer()).subarray(0, 3).toString('latin1')).not.toBe('ID3')
+  })
+})

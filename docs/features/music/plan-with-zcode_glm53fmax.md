@@ -18,7 +18,7 @@
 ## 批次 F② · 中型项（M）
 
 - [x] FEA-B1 回收站：`music_trash` 迁移（只增不改）→ 删除曲目/歌单先移表（R2 对象延迟回收）→ 回收站视图 + 恢复/彻底删除 → cron 7 天清理 + 预算
-- [ ] FEA-D1 下载嵌 ID3：worker 或前端写入（mp3 ID3v2 优先：标题/歌手/专辑/封面 APIC/歌词 USLT），m4a/flac 后续评估；`tracks.ts` stream download 参数分流
+- [x] FEA-D1 下载嵌 ID3：worker 或前端写入（mp3 ID3v2 优先：标题/歌手/专辑/封面 APIC/歌词 USLT），m4a/flac 后续评估；`tracks.ts` stream download 参数分流
 - [ ] FEA-C2 全屏背景模式：封面模糊（CSS backdrop，零依赖）→ 封面取色渐变（canvas 采样，参考 otter useCoverColors 思路）→ 设置三态（跟随主题/模糊/取色）
 - [ ] FEA-C3 歌词翻译行：LRC 译文时间戳就近合并（`parseLyric` 扩展），沉浸层/现在播放列双语行渲染；lrclib 译文源经既有 `lyric-lookup` 中继评估
 
@@ -63,3 +63,4 @@
 | 2026-09-26 | FEA-B3 URL 直链添加歌曲 | `be167c5d` | 先红 8 例（worker 5 + demo 1 + 组件 2）；实现后 music + routes + demo 97 文件 / 773 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 新增独立 source 值 `external`（沿用 webdav 引用行「不计配额」口径，但不吃 webdav 的删除/迁移/凭据路径）：流播放经 worker 代理（同源，绕开非 CORS 源 WebAudio 静音问题，IMP-9 合并项因此闭环）；运行时以 `global_fetch_strictly_public` 拦私网 SSRF，容器靠 URL 路径扩展名判定；demo 桩只钉契约形状，不出真实外链字节（演示环境无出网） |
 | 2026-09-26 | FEA-D2 歌单自定义封面（含 IMP-10） | `15906586` | 先红 3 例（worker/public 2 + demo 1）；实现后 music + routes + demo + schema-migrations 98 文件 / 783 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 迁移 v46 只增不改（fresh 建表同步加列）；封面存储与曲目封面共用 cover.ts 管线（对象键 + 派生键删除规则）；备份导出固定 coverUrl: null（封面字节不属备份契约）；公开歌单页带专属公开封面路由，自定义封面优先于首曲目派生 |
 | 2026-09-26 | FEA-B1 回收站 | `8ab9aee7` | 先红 6 例（worker 5 + demo 1）+ store 4 例；实现后 music + routes + demo + schema-migrations 99 文件 / 793 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 单删/批删/歌单删除三条路径统一移表，R2 字节延迟到 purge 或 7 天 cron 清理（派生键守卫随行迁移，伪造 key 无法借 purge 回收他人对象）；曲目恢复不重建歌单归属，歌单恢复只带回仍存活的成员（防悬空行）——两条都记在已知限制；回收站不是 scope，是侧栏独立入口 + Modal 面板 |
+| 2026-09-26 | FEA-D1 下载嵌 ID3 | 待回填 | 先红 1 例 + 守卫例 1；实现后 music + routes + demo + schema-migrations 99 文件 / 795 例 ✅；typecheck ✅；静态门禁 ✅（无 UI 改动，免浏览器门禁） | mp3 下载（无 Range 全量请求）在 worker 流前置 ID3v2.3 标签（TIT2/TPE1/TALB UTF-16 BOM、APIC 仅自有派生封面键、USLT 保留 LRC 原文），音频流不缓冲直通、Content-Length 覆盖标签；已有标签的文件直接排在其后（播放器取第一个标签）；m4a/flac 与 webdav/external 分流未覆盖，记为后续评估 |

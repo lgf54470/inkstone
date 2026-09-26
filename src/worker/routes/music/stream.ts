@@ -3,8 +3,10 @@ import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { cancelStreamBestEffort } from '../../lib/streams'
 import { isMusicObjectKey, safeStreamMime } from './keys'
+import { isDerivedCoverKey } from './cover'
 import { alignKvRangeWindow, contentRangeHeader, isWellFormedContentLength, isWellFormedContentRange, parseByteRange } from './range'
 import type { MusicTrackRow } from './rows'
+import { buildDownloadTag } from './id3'
 import { readMusicObjectStream, requireMusicStorage } from './storage'
 import { fetchMusicObject, resolveMusicWebdav } from './webdav'
 
@@ -44,6 +46,14 @@ export async function streamTrackResponse(
   if (range && storage === 'kv') range = alignKvRangeWindow(range, row.size_bytes)
   const object = await readMusicObjectStream(c.env, storage, row.object_key, range)
   if (!object) throw ApiError.notFound('Track data is missing')
+
+  // FEA-D1: a full-file mp3 download gets the library's metadata prepended as an
+  // ID3v2 tag. Ranged and non-mp3 responses stay byte-exact.
+  if (options.download && !range && row.mime === 'audio/mpeg') {
+    const tagged = await mp3DownloadResponse(c.env, row, object, options)
+    if (tagged) return tagged
+  }
+
 
   const safeMime = safeStreamMime(row.mime)
   // A KV value written before sizes were kept states no length of its own; the row's
@@ -126,6 +136,49 @@ function streamUpstream(upstream: Response, row: MusicTrackRow, options: StreamO
   if (range && isWellFormedContentRange(range)) headers['Content-Range'] = range.trim()
   if (!safeMime || options.download) headers['Content-Disposition'] = attachmentDisposition(row.title)
   return new Response(upstream.body as BodyInit, { status: upstream.status === 206 ? 206 : 200, headers })
+}
+
+async function mp3DownloadResponse(
+  env: AppBindings['Bindings'],
+  row: MusicTrackRow,
+  object: { body: unknown; length: number | null },
+  options: StreamOptions,
+): Promise<Response | null> {
+  const tag = await buildDownloadTag(env, {
+    title: row.title,
+    artist: row.artist,
+    album: row.album,
+    lyric: row.lyric,
+    coverKey: isDerivedCoverKey(row.id, row.created_at, row.cover_url) ? row.cover_url : null,
+  })
+  if (!tag) return null
+  const length = (object.length ?? row.size_bytes) + tag.length
+  return new Response(prependStream(tag, object.body as ReadableStream), {
+    status: 200,
+    headers: {
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': String(length),
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': options.cacheControl,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': attachmentDisposition(row.title),
+    },
+  })
+}
+
+// Streams the tag ahead of the stored bytes without buffering the audio: the
+// object body is piped through as-is after the fixed-size prefix.
+function prependStream(prefix: Uint8Array, body: ReadableStream): ReadableStream {
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(prefix)
+      void body.pipeTo(new WritableStream({
+        write(chunk) { controller.enqueue(chunk) },
+        close() { controller.close() },
+        abort(reason) { controller.error(reason) },
+      })).catch((error: unknown) => controller.error(error))
+    },
+  })
 }
 
 function attachmentDisposition(title: string): string {
