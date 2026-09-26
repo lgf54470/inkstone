@@ -17,6 +17,7 @@ import { browseWebdav, deleteWebdavObjects, importTrackFromUrl, importWebdavFold
 import { closeTrash, openTrash, purgeTrashEntry, restoreFromTrash } from './trash'
 import { browseAlist, createAlistServer, deleteAlistServer, importAlistFolder, importAlistTrack, loadAlistServers, patchAlistServer, searchAlist } from './alist'
 import { closePodcastEpisodes, createPodcastFeed, deletePodcastFeed, importPodcastOpml, loadPodcastEpisodes, loadPodcastFeeds, playPodcastEpisode, renamePodcastFeed } from './podcast'
+import { setProviderEnabled } from './providers'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type LibrarySlice = Pick<MusicStoreState,
@@ -28,6 +29,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'browseAlist' | 'searchAlist' | 'importAlistTrack' | 'importAlistFolder'
   | 'loadPodcastFeeds' | 'createPodcastFeed' | 'renamePodcastFeed' | 'deletePodcastFeed'
   | 'loadPodcastEpisodes' | 'closePodcastEpisodes' | 'importPodcastOpml' | 'playPodcastEpisode'
+  | 'setProviderEnabled'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'searchTrackLyric' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
@@ -104,6 +106,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     closePodcastEpisodes: () => closePodcastEpisodes(set),
     importPodcastOpml: (opml) => importPodcastOpml(set, opml),
     playPodcastEpisode: (feed, episode) => playPodcastEpisode(set, get, feed, episode),
+    setProviderEnabled: (providerId, enabled) => setProviderEnabled(set, get, providerId, enabled),
     createPodcastFeed: (input) => createPodcastFeed(set, input),
     renamePodcastFeed: (id, patch) => renamePodcastFeed(set, id, patch),
     deletePodcastFeed: (id) => deletePodcastFeed(set, id),

@@ -3287,6 +3287,10 @@ const allowed = new Map([
     '// The ~250ms audio heartbeat lives here instead of the library store, so a tick',
     '// re-renders only the small leaves that display progress rather than the whole hub.',
   ]],
+  ['src/client/features/music/music-store/providers.ts', [
+    '// FEA-A1-1: the online-source switches. Nothing else here — the searches and',
+    '// the play path arrive with A1-3, behind these opt-ins.',
+  ]],
   ['src/client/features/music/music-store/queue-ops.ts', [
     '// The order places the id after the playing track in play order, which only',
     '// matches the queue position while the queue is walked sequentially.',
@@ -3313,6 +3317,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-store/state.ts', [
     '/** Per-track lyric calibration in ms; a positive value holds the lyrics back. */',
+    '/** FEA-A1-1: per online provider opt-in; every provider ships absent (off). */',
     '// Fine nudges move between the preset clicks in twentieths, inside the same',
     '// window the presets span.',
     '// Lyrics drift by fractions of a second as much as by whole ones, so the nudge',
@@ -3322,6 +3327,7 @@ const allowed = new Map([
     '// A loop shorter than this is a stutter rather than a passage, and the sleep fade',
     '// needs a window long enough to be heard as a slide.',
     '// One entry per calibrated track; the cap only bounds what localStorage can grow to.',
+    '// A provider switch is a boolean keyed by the provider id; junk entries are off.',
     '// Only the countdown is authoritative for stopping playback; the chosen length is kept',
     '// alongside it so the menu can say which option is armed.',
     '// Quota or private-mode writes can throw; in-memory preferences stay authoritative.',
@@ -3595,6 +3601,19 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-webdav-modal.tsx', [
     '// A failed listing is not an empty folder; show the failure and let the user retry in place.',
+  ]],
+  ['src/client/features/music/providers/gds.ts', [
+    '// FEA-A1-3 wires the search through the worker proxy; this module holds the',
+    '// provider identity and the upstream sources it aggregates.',
+    '// The aggregate upstream serves several catalogues; rank order is the merge',
+    '// order and the de-dup preference when two sources return the same song.',
+  ]],
+  ['src/client/features/music/providers/types.ts', [
+    '// FEA-A1-1: an online provider is an identity plus a search capability. The',
+    '// switch lives in the user\'s preference map and every provider ships disabled —',
+    '// opting into third-party catalogues is an explicit, per-provider decision.',
+    '// One search hit before it becomes a library row: the upstream keeps its own',
+    '// song id, which the stream resolver needs to mint a playable URL per play.',
   ]],
   ['src/client/features/music/use-save-action.ts', [
     '// Both edit dialogs save the same way: run the write, keep the dialog (and the',

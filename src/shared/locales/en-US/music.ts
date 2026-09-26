@@ -291,6 +291,7 @@ export const messages = {
 'music.podcast_import': 'Import OPML',
 'music.podcast_export': 'Export OPML',
 'music.podcast_import_done': 'Imported {value0}, skipped {value1}',
+'music.provider_gds': 'Aggregate search (GD)',
 'music.background_mode': 'Background',
 'music.background_theme': 'Follow theme',
 'music.background_blur': 'Cover blur',

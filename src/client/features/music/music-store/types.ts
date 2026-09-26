@@ -169,6 +169,7 @@ export interface MusicStoreState {
   alistServersLoading: boolean
   podcastFeeds: MusicPodcastFeedView[]
   podcastFeedsLoading: boolean
+  providerEnabled: Record<string, boolean>
   podcastEpisodesFeedId: string | null
   podcastEpisodes: MusicPodcastEpisode[]
   podcastEpisodesLoading: boolean
@@ -281,6 +282,7 @@ export interface MusicStoreState {
   createAlistServer: (input: MusicAlistCreateInput) => Promise<boolean>
   patchAlistServer: (id: string, patch: MusicAlistPatchInput) => Promise<boolean>
   deleteAlistServer: (id: string) => Promise<void>
+  setProviderEnabled: (providerId: string, enabled: boolean) => void
   loadPodcastFeeds: () => Promise<void>
   loadPodcastEpisodes: (feedId: string) => Promise<void>
   closePodcastEpisodes: () => void

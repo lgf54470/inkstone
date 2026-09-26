@@ -34,6 +34,8 @@ export interface MusicPreferences {
   lyricTextSize: MusicLyricTextSize
   /** Per-track lyric calibration in ms; a positive value holds the lyrics back. */
   lyricOffsets: Record<string, number>
+  /** FEA-A1-1: per online provider opt-in; every provider ships absent (off). */
+  providerEnabled: Record<string, boolean>
 }
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
@@ -86,6 +88,16 @@ function readLyricOffsets(value: unknown): Record<string, number> {
   return offsets
 }
 
+// A provider switch is a boolean keyed by the provider id; junk entries are off.
+function readProviderEnabled(value: unknown): Record<string, boolean> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const enabled: Record<string, boolean> = {}
+  for (const [providerId, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (providerId && typeof raw === 'boolean') enabled[providerId] = raw
+  }
+  return enabled
+}
+
 export const DEFAULT_PREFERENCES: MusicPreferences = {
   volume: 0.8,
   muted: false,
@@ -112,6 +124,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   lyricAlign: 'left',
   lyricTextSize: 'default',
   lyricOffsets: {},
+  providerEnabled: {},
 }
 
 function readStored(key: string): Record<string, unknown> | null {
@@ -160,6 +173,7 @@ export function loadPreferences(): MusicPreferences {
     lyricAlign: readListed(parsed.lyricAlign, LYRIC_ALIGNS, DEFAULT_PREFERENCES.lyricAlign),
     lyricTextSize: readListed(parsed.lyricTextSize, LYRIC_TEXT_SIZES, DEFAULT_PREFERENCES.lyricTextSize),
     lyricOffsets: readLyricOffsets(parsed.lyricOffsets),
+    providerEnabled: readProviderEnabled(parsed.providerEnabled),
   }
 }
 

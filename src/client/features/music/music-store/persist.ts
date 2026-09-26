@@ -54,5 +54,6 @@ function writePreferences(get: MusicGet): void {
     lyricAlign: state.lyricAlign,
     lyricTextSize: state.lyricTextSize,
     lyricOffsets: state.lyricOffsets,
+    providerEnabled: state.providerEnabled,
   })
 }

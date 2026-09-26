@@ -291,6 +291,7 @@ export const messages = {
 'music.podcast_import': '导入 OPML',
 'music.podcast_export': '导出 OPML',
 'music.podcast_import_done': '导入 {value0} 条，跳过 {value1} 条',
+'music.provider_gds': '聚合搜索（GD）',
 'music.background_mode': '背景',
 'music.background_theme': '跟随主题',
 'music.background_blur': '封面模糊',

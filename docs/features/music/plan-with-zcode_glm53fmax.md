@@ -37,7 +37,7 @@
 
 ## 批次 F⑤ · 在线多音源聚合（L，最后做）
 
-- [ ] FEA-A1-1 Provider 抽象 + 设置开关（默认全关；`src/client/features/music/providers/` 新目录，经 `index.ts` 公开入口）
+- [x] FEA-A1-1 Provider 抽象 + 设置开关（默认全关；`src/client/features/music/providers/` 新目录，经 `index.ts` 公开入口）
 - [ ] FEA-A1-2 Worker 代理路由：域名白名单 + `budget.ts` 新限额族 + 响应限长（复用 `readResponseBytesWithinLimit`）
 - [ ] FEA-A1-3 首批音源接入 + 聚合搜索（按源 rank 合并去重；来源角标扩展）
 - [ ] FEA-A1-4 播放失败智能换源（归一化匹配打分，成功回写队列元数据）
@@ -72,4 +72,5 @@
 | 2026-09-27 | FEA-A2-1 播客订阅管理 | `a400abc1` | 先红 3 例（路由缺失）；实现后 worker 4 例 + store 3 例 ✅；全量 513 文件 / 4566 例 ✅；typecheck ✅；静态门禁 ✅；F④ 浏览器门禁（A2-1..A2-4 合并一轮）见 A2-4 行 | 迁移 v49 music_podcast_feeds（fresh 建表同步）；创建时标题可选——缺省取主机名，A2-2 刷新后以频道标题覆盖；播客面板挂工具栏（Podcast 图标），订阅行带重命名/退订（退订确认走 confirm）；demo 桩以内存 Map 等价 CRUD |
 | 2026-09-27 | FEA-A2-2 RSS 解析与分集列表 | `1805d4cb` | 先红 4 例（解析器 2 + 路由 2）；实现后 worker 8 例 ✅；全量 513 文件 / 4570 例 ✅；typecheck ✅；静态门禁 ✅；F④ 浏览器门禁（A2-1..A2-4 合并一轮）见 A2-4 行 | 解析器为务实版 RSS 2.0 + itunes 命名空间（无 Atom 支持，播客生态 RSS 2.0 占绝对主流，记为已知限制）；分集缓存即数据行——迁移 v50 给 feed 行加 episodes_json/fetched_at（skipIfColumnExists 兼容 fresh 建表），TTL 10 分钟内直接回缓存 JSON，刷新风暴最多每 feed 每窗口一次出网；首次抓取用频道标题覆盖主机名兜底，之后的刷新不再覆盖用户手动重命名；feed 代抓走限长流式读取（2MB 上限）+ 新预算族 podcast（60 次/时）+ 运行时 global_fetch_strictly_public 拦私网；客户端点订阅行进入分集视图（标题/时长/体积/描述），音频播放留给 A2-4 |
 | 2026-09-27 | FEA-A2-3 OPML 批量导入导出 | `01efc8f5` | 先红 3 例（导出 1 + 导入 2）；实现后 worker 11 例 ✅；全量 513 文件 / 4573 例 ✅；typecheck ✅；静态门禁 ✅；F④ 浏览器门禁（A2-1..A2-4 合并一轮）见 A2-4 行 | 导出 GET /podcasts/opml 出标准 OPML 2.0 文档（text/x-opml+xml + attachment 文件名）；导入 POST /podcasts/opml（body 携带 OPML 文本，256KB 上限）逐条登记并以 feed URL 去重——重复导入导出文件报 skipped 而非重复建行；解析支持嵌套 folder outline 与无 xmlUrl 的非 feed outline（跳过）；客户端为「导入 OPML（文件选择）/导出 OPML（Blob 下载）」一行，demo 桩以同构正则等价往返 |
+| 2026-09-27 | FEA-A1-1 Provider 抽象 + 设置开关 | 待回填 | 先红 2 例（registry 1 + 开关持久化 1）；实现后 4 例 ✅；全量 515 文件 / 4580 例 ✅；typecheck ✅；静态门禁 ✅（无 UI/网络改动，免浏览器门禁） | providers/ 新目录四文件（types/registry/gds/index），MusicProvider 接口本期只含身份与 isEnabled——搜索能力随 A1-3 落地，避免空实现；开关即偏好 providerEnabled（Record<providerId, boolean>，默认 {}，loadPreferences 剥离非法项），随既有偏好 debounce 持久化；首批聚合源 gds（netease/kuwo/migu/qq/bilibili 五源 rank 序）登记但默认全关——接入第三方目录是显式逐源决定 |
 | 2026-09-27 | FEA-A2-4 分集播放打通 | `8153f6f2` | 先红 3 例（登记端点）；实现后 worker 14 例 ✅；全量 513 文件 / 4576 例 ✅；typecheck ✅；静态门禁 ✅；F④ 浏览器门禁（A2-1..A2-4 合并一轮）：e2e 177 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 分集播放 = 幂等登记为 external 引用行（POST /podcasts/:id/episodes/import，feed 标题作 album、itunes 时长传 durationMs，重复登记返回既有行不撞 (user_id, object_key) 唯一索引）→ 客户端本地追加 + playTrack——队列/交叉淡入/进度持久化/收藏/下载全部复用 external 行既有管线，零新引擎代码；分集封面未做（feed 的 itunes:image 需要再迁移一列，记为后续评估）；已听进度由 external 行的 playback 管线自动持久化 |
