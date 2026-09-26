@@ -8,15 +8,22 @@
 
 ## 批次 R① · 速修（S，先做）
 
-- [x] REF-2 排序/来源 Segmented 文字不折行：共享 `Segmented`（`src/client/components/form.tsx`）选项按钮补 `whitespace-nowrap`；`music-hub-toolbar.tsx` ToolbarActions 补换行/收合策略（窄容器把低频动作收进「更多」菜单）
+- [x] REF-2 排序/来源 Segmented 文字不折行：共享 `Segmented`（`src/client/components/form.tsx`）选项按钮补 `whitespace-nowrap`；`music-hub-toolbar.tsx` ToolbarActions 补换行/收合策略（窄容器把低频动作收进「更多」菜单）——**commit `b830b8fd`**
+  - ⚠️ 残留（转 REF-7）：折叠判定读的是视口宽度（`useMediaQuery`），而容器是中列 ~760px，视口 1240–1600px 区间收合不触发。
+- [ ] REF-7 **折叠判定改测容器宽度**：`music-hub-toolbar.tsx` 的 fold 判定从 `useMediaQuery(1240px)` 改为容器宽度（ResizeObserver / Hub 传入中列宽），断点按中列可用像素重算；`MUSIC_NARROW_BREAKPOINT` 的侧栏折叠同理核对
 - [ ] REF-6 沉浸层快捷键提示收进帮助触发器（图标 + 弹层），移除常驻两行文案
 - [ ] REF-5 沉浸层队列改可折叠：默认收起为单行入口，展开浮出；保留当前曲定位断言
 
 ## 批次 R② · 窗口化与密度（M）
 
+- [ ] REF-8 底部传输条分级收合：宽态整行 / 中态收音量滑块为弹层 + TrackSummary 收窄 / 窄态仅封面+标题+播放+进度，其余进「更多」；触控目标 ≥44px
+- [ ] REF-9 Hub 移动/矮视口改全屏 sheet：窄屏用 `100dvh` 贴底 sheet 替代 84vh 居中，给内容区最小高度预算，高度不足时先牺牲装饰控件
 - [ ] REF-1a Hub 最大化/还原：头部加最大化切换按钮，dialog↔fullscreen 状态驱动（复用 `modal.tsx` variant 能力，覆盖层内切换不重挂载；尺寸状态进偏好持久化；e2e-visual 补「最大化后工具栏高度稳定」断言）
+- [ ] REF-10 沉浸层复用最大化 + 左栏宽度随容器收放（`IMMERSIVE_WIDTH=1000`/`w-96` 不再写死单一值）
 - [ ] REF-4 字号与密度上调：曲表 `--text-11` 主体升一档、标题 ≥13、卡片同步；空态/汇总条利用剩余空间；axe 对比度复跑
-- [ ] REF-3 移动端逐断点整改：走查 ≥1440 / 1240–1440 / 900–1240 / 640–900 / <640 五档三个表面，按清单收合控件、修触控目标与 Drawer 内布局
+- [ ] REF-12 补 REF-4 范围：传输条 `--text-12/11`、沉浸层文件信息 `--text-10`、队列浮层标题同步收敛到 ≥12（同屏不出现三档基线）
+- [ ] REF-11 Hub 队列浮层高度可调（拖动手柄或三档）+ 曲表底部避让，键盘可达
+- [ ] REF-3 移动端逐断点整改：走查 ≥1440 / 1240–1440 / 900–1240 / 640–900 / <640 五档三个表面，按清单收合控件、修触控目标与 Drawer 内布局（含 REF-8/REF-9 结果复核）
 
 ## 批次 R③ · 拖动与缩放（M–L，最后做）
 

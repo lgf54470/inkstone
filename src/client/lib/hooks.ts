@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type RefObject } from 'react'
 import { relativeTime } from './time'
 
 
@@ -21,6 +21,26 @@ export function useMediaQuery(query: string): boolean {
     return () => media.removeEventListener('change', onChange)
   }, [query])
   return matches
+}
+
+// A component that folds by available space has to measure the box it was actually given:
+// the viewport says nothing about a dialog's centre column. Null until the first
+// measurement, so callers keep a fallback where ResizeObserver does not exist (jsdom, SSR).
+export function useElementWidth(ref: RefObject<HTMLElement | null>): number | null {
+  const [width, setWidth] = useState<number | null>(null)
+  useEffect(() => {
+    const element = ref.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+      const next = Math.round(entry.contentRect.width)
+      setWidth((previous) => (previous === next ? previous : next))
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [ref])
+  return width
 }
 
 export type Breakpoint = 'mobile' | 'tablet' | 'desktop'

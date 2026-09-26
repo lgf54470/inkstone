@@ -28,6 +28,25 @@ function hasLabeledButton(label: string): boolean {
   return [...document.querySelectorAll('button')].some((button) => button.getAttribute('aria-label') === label)
 }
 
+// REF-7: the fold decision has to read the toolbar's own container. The hub's centre
+// column is ~760px wide even on a 1440px viewport (hub 1240 − sidebar 224 − now playing
+// 256), so a viewport read left the rigid row unfolded exactly where it overflows, and
+// folded it on maximised layouts that had room to spare.
+const CENTRE_COLUMN_WIDTH = 760
+const WIDE_CONTAINER_WIDTH = 1440
+
+function stubContainerWidth(width: number): void {
+  class Observer {
+    constructor(private readonly callback: ResizeObserverCallback) {}
+    observe(): void {
+      this.callback([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver)
+    }
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  vi.stubGlobal('ResizeObserver', Observer)
+}
+
 let rendered: ReturnType<typeof renderElement> | null = null
 
 afterEach(() => {
@@ -79,5 +98,23 @@ describe('hub toolbar fold strategy (REF-2)', () => {
     expect(menuLabels).toContain(t('music.refresh_metadata'))
     expect(menuLabels).toContain(t('music.metadata_force'))
     expect(menuLabels).toContain(t('music.match_covers'))
+  })
+})
+
+describe('hub toolbar folds on the container width, not the viewport (REF-7)', () => {
+  it('folds on a narrow container even when the viewport is wide', () => {
+    stubMatchMedia(true)
+    stubContainerWidth(CENTRE_COLUMN_WIDTH)
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, PROPS)) })
+    expect(hasLabeledButton(t('music.more_actions'))).toBe(true)
+    expect(buttonLabels()).not.toContain(t('music.import_m3u'))
+  })
+
+  it('keeps the actions inline on a wide container even when the viewport is narrow', () => {
+    stubMatchMedia(false)
+    stubContainerWidth(WIDE_CONTAINER_WIDTH)
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, PROPS)) })
+    expect(hasLabeledButton(t('music.more_actions'))).toBe(false)
+    expect(buttonLabels()).toContain(t('music.import_m3u'))
   })
 })

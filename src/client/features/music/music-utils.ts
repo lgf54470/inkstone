@@ -15,9 +15,14 @@ export const COVER_LOOKUP_CONCURRENCY = 4
 // Below this viewport width the music surfaces' fixed-width side columns squeeze the main area
 // toward zero, so they fold (UI-14): the hub into drawers, the immersive player into a stack.
 export const MUSIC_NARROW_BREAKPOINT = 900
-// The hub toolbar folds its low-frequency actions into a "more" menu below this width:
-// the hub dialog itself is at most MUSIC_HUB_WIDTH wide, so the row starts to squeeze here.
-export const MUSIC_TOOLBAR_FOLD_BREAKPOINT = 1240
+// REF-7: the toolbar row needs about this much width to stay on one line; below it the
+// low-frequency actions fold into the "more" menu. Measured on the row's own container,
+// not on the viewport: the hub's centre column is ~760px even on a 1440px screen
+// (hub 1240 − sidebar 224 − now playing 256), and a maximised hub gives it far more.
+export const MUSIC_TOOLBAR_INLINE_MIN_WIDTH = 1040
+// Only for environments without ResizeObserver (jsdom, SSR), where the viewport read is
+// the sole width available; real browsers take the measured branch above.
+export const MUSIC_TOOLBAR_VIEWPORT_FALLBACK = 1240
 
 // Three silences look alike but are not: nothing is playing, the words are still on their
 // way, and the file really carries none. Every lyrics pane answers with the same one.

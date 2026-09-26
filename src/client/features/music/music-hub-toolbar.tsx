@@ -5,13 +5,13 @@ import { Button, IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { Menu, Tooltip, confirm } from '../../components/overlay'
 import type { MenuItem } from '../../components/overlay'
-import { useMediaQuery } from '../../lib/hooks'
+import { useElementWidth, useMediaQuery } from '../../lib/hooks'
 import { t } from '../../lib/i18n'
 import { toastMusicNotice } from './music-feedback'
 import { matchM3uTracks, parseM3u } from './music-m3u'
 import { MusicTextImportButton, TextImportDialog } from './music-text-import'
 import { MusicUrlImportButton, UrlImportDialog } from './music-url-import'
-import { MUSIC_TOOLBAR_FOLD_BREAKPOINT } from './music-utils'
+import { MUSIC_TOOLBAR_INLINE_MIN_WIDTH, MUSIC_TOOLBAR_VIEWPORT_FALLBACK } from './music-utils'
 import { SearchBox } from './music-search-box'
 import { useMusic } from './music-store'
 import type { MusicSort } from './music-store'
@@ -30,13 +30,24 @@ export function MusicHubToolbar({ tracks, onUpload, onBrowseWebdav, onBrowseAlis
   onBrowseAlist: () => void
   onPodcasts: () => void
 }) {
+  // REF-7: the row folds on the width it is given, so the same toolbar unfolds again
+  // when the hub is maximised instead of staying folded for a viewport it cannot see.
+  const containerRef = useRef<HTMLDivElement>(null)
+  const containerWidth = useElementWidth(containerRef)
   return (
-    <div className='flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'>
+    <div ref={containerRef} className='flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'>
       <div className='flex flex-wrap items-center gap-2'>
         <SearchBox />
         <SourceFilter />
       </div>
-      <ToolbarActions tracks={tracks} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
+      <ToolbarActions
+        tracks={tracks}
+        containerWidth={containerWidth}
+        onUpload={onUpload}
+        onBrowseWebdav={onBrowseWebdav}
+        onBrowseAlist={onBrowseAlist}
+        onPodcasts={onPodcasts}
+      />
     </div>
   )
 }
@@ -60,8 +71,34 @@ function SourceFilter() {
   )
 }
 
-function ToolbarActions({ tracks, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
+// REF-7: the measured container decides; the viewport read is only the fallback for
+// environments that cannot measure at all.
+function useActionsFolded(containerWidth: number | null): boolean {
+  const viewportWide = useMediaQuery(`(min-width: ${MUSIC_TOOLBAR_VIEWPORT_FALLBACK}px)`)
+  return containerWidth === null ? !viewportWide : containerWidth < MUSIC_TOOLBAR_INLINE_MIN_WIDTH
+}
+
+// The four source flows carry the library's daily use, so they hold their place in the
+// row at every width; only the imports and metadata jobs fold away (REF-2).
+function PrimaryActions({ onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
+  onUpload: () => void
+  onBrowseWebdav: () => void
+  onBrowseAlist: () => void
+  onPodcasts: () => void
+}) {
+  return (
+    <>
+      <Button size='sm' variant='primary' icon={<Upload size={12} />} onClick={onUpload}>{t('music.upload')}</Button>
+      <Button size='sm' icon={<Server size={12} />} onClick={onBrowseWebdav}>{t('music.webdav_title')}</Button>
+      <Button size='sm' icon={<HardDrive size={12} />} onClick={onBrowseAlist}>{t('music.alist_title')}</Button>
+      <Button size='sm' icon={<Podcast size={12} />} onClick={onPodcasts}>{t('music.podcast_title')}</Button>
+    </>
+  )
+}
+
+function ToolbarActions({ tracks, containerWidth, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
   tracks: MusicTrack[]
+  containerWidth: number | null
   onUpload: () => void
   onBrowseWebdav: () => void
   onBrowseAlist: () => void
@@ -72,7 +109,7 @@ function ToolbarActions({ tracks, onUpload, onBrowseWebdav, onBrowseAlist, onPod
   const scope = useMusic((state) => state.scope)
   const setSort = useMusic((state) => state.setSort)
   const loadLibrary = useMusic((state) => state.loadLibrary)
-  const folded = !useMediaQuery(`(min-width: ${MUSIC_TOOLBAR_FOLD_BREAKPOINT}px)`)
+  const folded = useActionsFolded(containerWidth)
   const fileRef = useRef<HTMLInputElement>(null)
   // Playlist scope shows the manual item order, so the sort control would change nothing;
   // the grouped browse grids sort their cards by name and ignore track sort entirely.
@@ -91,10 +128,7 @@ function ToolbarActions({ tracks, onUpload, onBrowseWebdav, onBrowseAlist, onPod
           <span className='h-4 w-px bg-[var(--border-subtle)]' />
         </>
       )}
-      <Button size='sm' variant='primary' icon={<Upload size={12} />} onClick={onUpload}>{t('music.upload')}</Button>
-      <Button size='sm' icon={<Server size={12} />} onClick={onBrowseWebdav}>{t('music.webdav_title')}</Button>
-      <Button size='sm' icon={<HardDrive size={12} />} onClick={onBrowseAlist}>{t('music.alist_title')}</Button>
-      <Button size='sm' icon={<Podcast size={12} />} onClick={onPodcasts}>{t('music.podcast_title')}</Button>
+      <PrimaryActions onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
       <input
         ref={fileRef}
         type='file'
