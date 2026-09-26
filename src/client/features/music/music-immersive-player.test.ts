@@ -217,7 +217,7 @@ describe('MusicImmersivePlayer lyrics empty states (UI-6)', () => {
 })
 
 describe('MusicImmersivePlayer scroll regions (UI-17)', () => {
-  it('gives the lyrics and queue panes a keyboard focus stop each', async () => {
+  it('gives the lyrics pane a focus stop and the queue one once it is opened', async () => {
     const track: MusicTrack = {
       id: 'track-1',
       title: 'Moonlight',
@@ -243,11 +243,53 @@ describe('MusicImmersivePlayer scroll regions (UI-17)', () => {
     useMusic.setState({ tracks: [track], queue: [track.id], currentIndex: 0 })
     await mountPlayer(vi.fn())
     const lyrics = document.querySelector(`[aria-label="${t('music.lyrics')}"]`) as HTMLElement | null
-    const queue = document.querySelector(`[aria-label="${t('music.queue')}"]`) as HTMLElement | null
     expect(lyrics?.classList.contains('overflow-y-auto')).toBe(true)
     expect(lyrics?.getAttribute('tabindex')).toBe('0')
+    // REF-5: the queue answers a trigger instead of holding a permanent slice of the
+    // column, so it earns its focus stop only while it is open.
+    expect(document.querySelector(`[aria-label="${t('music.queue')}"]`)).toBeNull()
+    const toggle = [...document.querySelectorAll('button')].find(
+      (button) => button.getAttribute('aria-label') === t('music.queue_toggle'),
+    ) as HTMLButtonElement
+    await act(async () => {
+      toggle.click()
+    })
+    const queue = document.querySelector(`[aria-label="${t('music.queue')}"]`) as HTMLElement | null
     expect(queue?.classList.contains('overflow-y-auto')).toBe(true)
     expect(queue?.getAttribute('tabindex')).toBe('0')
+  })
+})
+
+// REF-5: the queue block used to keep ~160px of the lyrics column at all times, which
+// shortened the lyric scroller into two competing scroll areas. It now defaults to a
+// single-line entry and takes the space only when asked.
+describe('MusicImmersivePlayer queue folding (REF-5)', () => {
+  function queuePane(): HTMLElement | null {
+    return document.querySelector(`[aria-label="${t('music.queue')}"]`)
+  }
+
+  function queueToggle(): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('button')].find(
+      (button) => button.getAttribute('aria-label') === t('music.queue_toggle'),
+    ) as HTMLButtonElement | undefined
+  }
+
+  it('leaves the lyrics the whole column until the queue is asked for', async () => {
+    await mountPlayer(vi.fn())
+    expect(queuePane()).toBeNull()
+    expect(queueToggle()?.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('collapses the queue again from its header', async () => {
+    await mountPlayer(vi.fn())
+    await act(async () => {
+      queueToggle()?.click()
+    })
+    expect(queuePane()).not.toBeNull()
+    await act(async () => {
+      queueToggle()?.click()
+    })
+    expect(queuePane()).toBeNull()
   })
 })
 const CALIBRATED_LYRIC = '[00:01.000]first line\n[00:05.000]second line'

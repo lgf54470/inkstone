@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { Heart, Keyboard, ListMusic, Minus, Pin, Plus, RotateCcw, Wallpaper, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Heart, Keyboard, ListMusic, Minus, Pin, Plus, RotateCcw, Wallpaper, X } from 'lucide-react'
 import { isVideoMime } from '@shared/music-media'
 import { Modal, Tooltip } from '../../components/overlay'
 import { Segmented } from '../../components/form'
@@ -167,6 +167,7 @@ function LyricsPanel({ track, lyrics, activeIndex, lyricPending, offsetMs, queue
   onSeekLine: (lineTimeMs: number) => void
   onClose: () => void
 }) {
+  const [queueOpen, setQueueOpen] = useState(false)
   return (
     <section className='flex min-w-0 flex-1 flex-col'>
       <div className='flex h-10 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4'>
@@ -194,10 +195,44 @@ function LyricsPanel({ track, lyrics, activeIndex, lyricPending, offsetMs, queue
           onSeekLine={onSeekLine}
         />
       </div>
-      <div role='group' tabIndex={0} aria-label={t('music.queue')} className='max-h-40 shrink-0 overflow-y-auto border-t border-[var(--border-subtle)] p-2'>
+      {queueOpen
+        ? <ImmersiveQueue onCollapse={() => setQueueOpen(false)} />
+        : <ImmersiveQueueEntry count={queueLength} onOpen={() => setQueueOpen(true)} />}
+    </section>
+  )
+}
+
+// REF-5: the queue used to keep a permanent slice of the lyrics column, which left the
+// scroller short enough that long lyrics scrolled in two places at once. Folded, it
+// costs one line; the count stays readable so the queue is never a hidden state.
+function ImmersiveQueueEntry({ count, onOpen }: { count: number; onOpen: () => void }) {
+  return (
+    <button
+      type='button'
+      onClick={onOpen}
+      aria-expanded={false}
+      aria-label={t('music.queue_toggle')}
+      className='flex h-9 shrink-0 items-center justify-center gap-1.5 border-t border-[var(--border-subtle)] text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)]'
+    >
+      <ChevronUp size={13} />
+      {t('music.queue_count', { value0: count })}
+    </button>
+  )
+}
+
+function ImmersiveQueue({ onCollapse }: { onCollapse: () => void }) {
+  return (
+    <div className='flex max-h-40 shrink-0 flex-col border-t border-[var(--border-subtle)]'>
+      <div className='flex h-8 shrink-0 items-center justify-between px-2'>
+        <span className='text-[length:var(--text-11)] font-medium text-[var(--text-secondary)]'>{t('music.queue')}</span>
+        <IconButton label={t('music.queue_toggle')} size='sm' aria-expanded onClick={onCollapse}>
+          <ChevronDown size={13} />
+        </IconButton>
+      </div>
+      <div role='group' tabIndex={0} aria-label={t('music.queue')} className='min-h-0 flex-1 overflow-y-auto p-2'>
         <MusicQueueList />
       </div>
-    </section>
+    </div>
   )
 }
 

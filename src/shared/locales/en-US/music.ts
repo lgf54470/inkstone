@@ -248,6 +248,7 @@ export const messages = {
 'music.added_at': 'Added',
 'music.keyboard_help': 'Keyboard shortcuts',
 'music.keyboard_hint': 'Space plays or pauses, Alt+arrows seek ten seconds, Ctrl/Cmd+arrows switch tracks',
+'music.queue_toggle': 'Show or hide the queue',
 'music.select_all': 'Select all',
 'music.clear_selection': 'Clear selection',
 'music.selected_count': '{value0} selected',
