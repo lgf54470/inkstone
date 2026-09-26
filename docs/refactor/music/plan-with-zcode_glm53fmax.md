@@ -17,7 +17,7 @@
 ## 批次 R② · 窗口化与密度（M）
 
 - [x] REF-8 底部传输条分级收合：宽态整行 / 中态收音量滑块为弹层 + TrackSummary 收窄 / 窄态仅曲目+传输+队列，其余进「更多」菜单；触控目标 ≥44px —— **commit `98540b8c`**
-- [ ] REF-9 Hub 移动/矮视口改全屏 sheet：窄屏用 `100dvh` 贴底 sheet 替代 84vh 居中，给内容区最小高度预算，高度不足时先牺牲装饰控件
+- [x] REF-9 Hub 移动/矮视口改全屏 sheet：窄屏（或视口高 < 700）用 `h-full` 占满视口替代 84vh 居中，宽而高的桌面窗口保留原尺寸 —— **commit `fb5e1bf2`**
 - [ ] REF-1a Hub 最大化/还原：头部加最大化切换按钮，dialog↔fullscreen 状态驱动（复用 `modal.tsx` variant 能力，覆盖层内切换不重挂载；尺寸状态进偏好持久化；e2e-visual 补「最大化后工具栏高度稳定」断言）
 - [ ] REF-10 沉浸层复用最大化 + 左栏宽度随容器收放（`IMMERSIVE_WIDTH=1000`/`w-96` 不再写死单一值）
 - [ ] REF-4 字号与密度上调：曲表 `--text-11` 主体升一档、标题 ≥13、卡片同步；空态/汇总条利用剩余空间；axe 对比度复跑
@@ -45,6 +45,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-27 | REF-9 Hub 窄屏与矮视口改为占满视口 | `fb5e1bf2` | 先红 2 例（窄屏 / 矮视口应占满）；实现后 10 例 ✅；typecheck ✅；size / comments / style ✅；pre-commit 6 文件 / 24 例 ✅ | 用 `h-full`（跟随 Modal 的 `app-viewport-fixed` 父高）而非 `h-[100dvh]`：`max-h-none` 与 Modal 自带的 `max-h-[calc(...)]` 同属性冲突、胜者取决于样式表顺序，不可靠；`h-full` 在移动端被 Modal 的 max-h 裁掉顶部安全区，正是 sheet 想要的效果。矮视口阈值 `HUB_SHORT_VIEWPORT = 700` |
 | 2026-09-27 | REF-8 底部传输条按容器宽度分级收合 | `98540b8c` | 新增 5 例（宽/中/窄三档控件构成 + 菜单项 + 菜单打开沉浸层）；首轮 4 绿 1 红——`floatingVisible` 默认 true 使菜单文案是「隐藏浮窗」，测试补 `beforeEach` 设已知 store 初态后 5 例 ✅；`size:check` 先报测试文件 `describe` 回调超 50 行，拆成两个 describe 后 ✅；typecheck / i18n / comments / style ✅ | 分档阈值 `TRANSPORT_FULL_WIDTH=860` / `TRANSPORT_COMPACT_WIDTH=560`（容器像素）：full 保留 144px 音量滑块，medium 起换成 `MusicVolumeButton` 弹层（既存组件，复用），compact 只留曲目 + 传输 + 队列，沉浸层/浮窗/静音进「更多」菜单——三者都能在沉浸层与浮窗访问，功能不丢失只是不重复；`TrackSummary` 三档 `w-52/w-44/max-w-32`，compact 收起收藏/置顶。触控目标 ≥44px 未在 jsdom 验证，交 REF-3 断点走查 |
 | 2026-09-27 | REF-5 沉浸层队列改可折叠 | `fdfb1e24` | 先红 3 例（默认不占版面 / 点入口展开 / 再收起）；既有「歌词与队列各有焦点停靠」断言按新契约改写为「队列展开后才有」；实现后 22 例 ✅；typecheck ✅；size / i18n / comments / style ✅；pre-commit 334 文件 / 2818 例 ✅ | 队列默认折叠为一行入口（含队列数，状态不隐藏），展开后仍是 `max-h-40` 且列表容器保留 `aria-label`/`tabindex` 焦点停靠；新增 `music.queue_toggle` 双语；浏览器门禁未跑（无本地实例），见「已知限制」 |
 | 2026-09-27 | REF-6 沉浸层快捷键提示收进帮助触发器 | `a96e438a` | 先红 2 例（默认不占版面 / 点帮助钮后弹出）；实现后 20 例 ✅；typecheck ✅；size / i18n / comments / style ✅；pre-commit 334 文件 / 2818 例（2816）✅ | 新增 `music.keyboard_help` 双语；帮助钮并入 transport 图标行，不新增行高；左栏只留文件信息一行 |
