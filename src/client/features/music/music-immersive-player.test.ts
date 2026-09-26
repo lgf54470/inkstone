@@ -115,6 +115,33 @@ describe('MusicImmersivePlayer queue count (UI-18)', () => {
   })
 })
 
+// REF-6: the shortcut sentence is a reference, not a status. It used to sit under the
+// transport as two permanent lines, wrapping inside the left column and stealing height
+// from the artwork; it now answers a trigger instead of holding the layout.
+describe('MusicImmersivePlayer keyboard help (REF-6)', () => {
+  function helpTrigger(): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('button')].find(
+      (button) => button.getAttribute('aria-label') === t('music.keyboard_help'),
+    ) as HTMLButtonElement | undefined
+  }
+
+  it('keeps the shortcut sentence out of the standing layout', async () => {
+    await mountPlayer(vi.fn())
+    expect(document.body.textContent).not.toContain(t('music.keyboard_hint'))
+  })
+
+  it('shows the shortcut sentence behind a help trigger', async () => {
+    await mountPlayer(vi.fn())
+    const trigger = helpTrigger()
+    expect(trigger).toBeDefined()
+    await act(async () => {
+      trigger?.click()
+    })
+    expect(document.querySelector(`[aria-label="${t('music.keyboard_help')}"][role="dialog"]`)?.textContent)
+      .toContain(t('music.keyboard_hint'))
+  })
+})
+
 describe('MusicImmersivePlayer video picture', () => {
   function videoTrack(): MusicTrack {
     return {

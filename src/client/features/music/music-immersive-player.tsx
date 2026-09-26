@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { Heart, ListMusic, Minus, Pin, Plus, RotateCcw, Wallpaper, X } from 'lucide-react'
+import { Heart, Keyboard, ListMusic, Minus, Pin, Plus, RotateCcw, Wallpaper, X } from 'lucide-react'
 import { isVideoMime } from '@shared/music-media'
 import { Modal, Tooltip } from '../../components/overlay'
 import { Segmented } from '../../components/form'
@@ -217,6 +217,33 @@ function ImmersiveMeta({ track, stacked }: { track: ReturnType<typeof useCurrent
 
 // Mode/rate/volume/sleep plus the per-track favours; the wide layout also carries the
 // file metadata and keyboard hint under these.
+// REF-6: the shortcut sentence is a reference, not a status. It used to take two
+// permanent lines under the transport and wrapped inside the left column, so it now
+// answers this trigger and leaves the height to the artwork and the file line.
+function MusicKeyboardHelpButton() {
+  const [open, setOpen] = useState(false)
+  const anchorRef = useRef<HTMLButtonElement>(null)
+  return (
+    <>
+      <Tooltip label={t('music.keyboard_help')} side='top'>
+        <IconButton
+          ref={anchorRef}
+          label={t('music.keyboard_help')}
+          size='sm'
+          onClick={() => setOpen((value) => !value)}
+        >
+          <Keyboard size={14} />
+        </IconButton>
+      </Tooltip>
+      <MusicPopover open={open} onClose={() => setOpen(false)} label={t('music.keyboard_help')} anchorRef={anchorRef} className='w-56 p-2'>
+        <p className='text-[length:var(--text-11)] leading-[var(--writing-line)] text-[var(--text-tertiary)]'>
+          {t('music.keyboard_hint')}
+        </p>
+      </MusicPopover>
+    </>
+  )
+}
+
 function ImmersiveButtons({ track, stacked }: { track: ReturnType<typeof useCurrentTrack>; stacked: boolean }) {
   return (
     <>
@@ -228,6 +255,7 @@ function ImmersiveButtons({ track, stacked }: { track: ReturnType<typeof useCurr
         <MusicVolumeButton />
         <MusicSleepButton />
         <MusicLoopButton />
+        <MusicKeyboardHelpButton />
         {track && (
           <>
             <IconButton label={track.isFavorite ? t('music.unfavorite') : t('music.favorite')} active={track.isFavorite} onClick={() => void useMusic.getState().toggleFavorite(track.id)}>
@@ -240,14 +268,9 @@ function ImmersiveButtons({ track, stacked }: { track: ReturnType<typeof useCurr
         )}
       </div>
       {!stacked && (
-        <>
-          <p className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-            {track ? formatTimecode(track.durationMs) + ' · ' + formatBytes(track.sizeBytes) : ''}
-          </p>
-          <p className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
-            {t('music.keyboard_hint')}
-          </p>
-        </>
+        <p className='text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
+          {track ? formatTimecode(track.durationMs) + ' · ' + formatBytes(track.sizeBytes) : ''}
+        </p>
       )}
     </>
   )

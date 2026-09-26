@@ -246,6 +246,7 @@ export const messages = {
 'music.source': '来源',
 'music.file_size': '文件大小',
 'music.added_at': '添加时间',
+'music.keyboard_help': '键盘快捷键',
 'music.keyboard_hint': '空格播放或暂停，Alt+方向键快退快进十秒，Ctrl/⌘+方向键切换上一首/下一首',
 'music.select_all': '全选',
 'music.clear_selection': '取消选择',

@@ -246,6 +246,7 @@ export const messages = {
 'music.source': 'Source',
 'music.file_size': 'File size',
 'music.added_at': 'Added',
+'music.keyboard_help': 'Keyboard shortcuts',
 'music.keyboard_hint': 'Space plays or pauses, Alt+arrows seek ten seconds, Ctrl/Cmd+arrows switch tracks',
 'music.select_all': 'Select all',
 'music.clear_selection': 'Clear selection',

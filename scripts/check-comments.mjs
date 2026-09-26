@@ -2716,6 +2716,9 @@ const allowed = new Map([
   ['src/client/features/music/music-immersive-player.test.ts', [
     '// The count is a formatted string, so the assertions need the real resources.',
     '// This jsdom ships no matchMedia at all; the player reads one media query now.',
+    '// REF-6: the shortcut sentence is a reference, not a status. It used to sit under the',
+    '// transport as two permanent lines, wrapping inside the left column and stealing height',
+    '// from the artwork; it now answers a trigger instead of holding the layout.',
   ]],
   ['src/client/features/music/music-immersive-player.tsx', [
     '// The blurred cover layer is aria-decorative wallpaper: heavy blur over a token',
@@ -2733,6 +2736,9 @@ const allowed = new Map([
     '/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */',
     '// Mode/rate/volume/sleep plus the per-track favours; the wide layout also carries the',
     '// file metadata and keyboard hint under these.',
+    '// REF-6: the shortcut sentence is a reference, not a status. It used to take two',
+    '// permanent lines under the transport and wrapped inside the left column, so it now',
+    '// answers this trigger and leaves the height to the artwork and the file line.',
     '// The calibration lives next to the lyrics it moves, and says where it stands so the',
     '// shift is never a hidden state that only the ear can detect.',
     '// A line is the natural target for the moment it belongs to, so it is a',
