@@ -104,6 +104,13 @@ export interface MusicStats {
   totalDurationMs: number
 }
 
+export interface MusicLyricSearch {
+  // Matched track ids, capped; `total` is the whole-library answer so the list can
+  // say honestly how many matches it left out.
+  ids: string[]
+  total: number
+}
+
 export interface MusicLibrary {
   tracks: MusicTrack[]
   tags: MusicTag[]

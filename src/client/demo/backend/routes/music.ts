@@ -36,6 +36,15 @@ function demoTrackType(file: File): { format: MusicFormat; mime: string } | null
   return null
 }
 
+// The demo answers the same shape the worker does, so the hub's library-wide lyric
+// search behaves identically against the in-memory library.
+function lyricSearchHandler(c: Context, state: DemoState): Response {
+  const query = (c.req.query('q') ?? '').trim().toLowerCase()
+  if (query.length < 3) return c.json({ ids: [], total: 0 })
+  const matched = [...state.musicTracks.values()].filter((entry) => (entry.track.lyric ?? '').toLowerCase().includes(query))
+  return c.json({ ids: matched.slice(0, LIMITS.musicLyricSearchMaxIds).map((entry) => entry.track.id), total: matched.length })
+}
+
 function lyricHandler(c: Context, state: DemoState): Response {
   const track = findTrack(state, c.req.param('id') ?? '')
   if (!track) return apiError(404, 'not_found', 'Track not found')
@@ -164,6 +173,7 @@ export function registerMusicRoutes(app: Hono, state: DemoState): void {
   app.get('/api/music/library', (c) => libraryHandler(c, state))
   app.post('/api/music/tracks', (c) => createTrackHandler(c, state))
   app.get('/api/music/tracks/:id/lyric', (c) => lyricHandler(c, state))
+  app.get('/api/music/lyric-search', (c) => lyricSearchHandler(c, state))
   app.get('/api/music/tracks/:id/stream', (c) => streamHandler(c, state))
   app.patch('/api/music/tracks/:id', (c) => patchTrackHandler(c, state))
   app.delete('/api/music/tracks/:id', (c) => deleteTrackHandler(c, state))

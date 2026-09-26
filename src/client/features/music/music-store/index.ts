@@ -71,6 +71,7 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
     immersive: false,
     loopRange: null,
     shuffleOrder: null,
+    remoteLyricMatches: null,
     trackMenu: null,
   }
 }

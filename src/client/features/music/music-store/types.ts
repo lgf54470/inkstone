@@ -118,6 +118,8 @@ export interface MusicStoreState {
   currentIndex: number
   /** Play order while the mode is shuffle; null otherwise (see music-shuffle.ts). */
   shuffleOrder: string[] | null
+  /** Server answer for the committed query's library-wide lyric search; null until one lands. */
+  remoteLyricMatches: { query: string; ids: string[]; total: number } | null
   isPlaying: boolean
   streamLoading: boolean
   durationMs: number

@@ -17,6 +17,7 @@ export const messages = {
 'music.duplicates': 'Duplicates',
 'music.no_duplicates': 'No duplicate files found',
 'music.duplicates_summary': '{value0} duplicate groups · {value1} extra copies · about {value2} to free',
+'music.duplicates_summary_approximate': '{value0} duplicate groups ({value3} approximate by title, artist and duration) · {value1} extra copies · about {value2} to free',
 'music.group_back': 'Back to groups',
 'music.group_track_count': '{value0} tracks',
 'music.group_detail_meta': '{value0} tracks · {value1}',

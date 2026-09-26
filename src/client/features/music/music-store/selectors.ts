@@ -14,12 +14,13 @@ export function useVisibleTracks(): MusicTrack[] {
   const sortDirection = useMusic((s) => s.sortDirection)
   const sourceFilter = useMusic((s) => s.sourceFilter)
   const romanized = useMusic((s) => s.romanized)
+  const remoteLyricMatches = useMusic((s) => s.remoteLyricMatches)
   // Ranking the whole library is the expensive part; React may paint the previous
   // result once more rather than block typing while a fresh query settles.
   const deferredQuery = useDeferredValue(query)
   return useMemo(
-    () => visibleTracks({ tracks, playlists, tags, scope, query: deferredQuery, sort, sortDirection, sourceFilter, romanized }),
-    [tracks, playlists, tags, scope, deferredQuery, sort, sortDirection, sourceFilter, romanized],
+    () => visibleTracks({ tracks, playlists, tags, scope, query: deferredQuery, sort, sortDirection, sourceFilter, romanized, remoteLyricMatches }),
+    [tracks, playlists, tags, scope, deferredQuery, sort, sortDirection, sourceFilter, romanized, remoteLyricMatches],
   )
 }
 
@@ -33,10 +34,11 @@ export function useHiddenMatchCount(): number {
   const query = useMusic((s) => s.query)
   const sourceFilter = useMusic((s) => s.sourceFilter)
   const romanized = useMusic((s) => s.romanized)
+  const remoteLyricMatches = useMusic((s) => s.remoteLyricMatches)
   const deferredQuery = useDeferredValue(query)
   return useMemo(
-    () => hiddenMatchCount({ tracks, playlists, tags, scope, query: deferredQuery, sourceFilter, romanized }),
-    [tracks, playlists, tags, scope, deferredQuery, sourceFilter, romanized],
+    () => hiddenMatchCount({ tracks, playlists, tags, scope, query: deferredQuery, sourceFilter, romanized, remoteLyricMatches }),
+    [tracks, playlists, tags, scope, deferredQuery, sourceFilter, romanized, remoteLyricMatches],
   )
 }
 

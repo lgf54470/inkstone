@@ -1,6 +1,7 @@
 import { CLIENT_HEADER } from '@shared/constants'
 import type {
   MusicLibrary,
+  MusicLyricSearch,
   MusicPlayback,
   MusicPlaybackInput,
   MusicPlaybackPositionInput,
@@ -85,6 +86,9 @@ export const music = {
 
   importWebdav: (input: MusicWebdavImportInput) =>
     request<MusicTrack>('/api/music/webdav/import', { method: 'POST', body: input, timeoutMs: 30_000 }),
+
+  searchLyrics: (query: string) =>
+    request<MusicLyricSearch>(`/api/music/lyric-search?q=${encodeURIComponent(query)}`),
 
   // `etag` is the validator the last answer came with; an unchanged library comes
   // back as 304 and resolves to null, sparing the client a full rebuild.

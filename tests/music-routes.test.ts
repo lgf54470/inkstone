@@ -1624,3 +1624,70 @@ describe('video containers in the music library (real D1 + fake R2)', () => {
     expect(deletedKeys).toContain(key)
   })
 })
+
+describe('music lyric search (real D1)', () => {
+  async function seedLyricTracks(db: D1Shim, rows: { id: string; lyric: string | null }[]): Promise<void> {
+    for (const row of rows) {
+      await runSql(
+        db,
+        `INSERT INTO music_tracks (id, user_id, title, artist, album, duration_ms, source, object_key, mime, size_bytes,
+           cover_url, lyric, is_favorite, is_pinned, play_count, created_at, updated_at)
+         VALUES (?1, ?2, ?3, '', '', 0, 'r2', ?4, 'audio/mpeg', 16, NULL, ?5, 0, 0, 0, 1, 1)`,
+        row.id, USER, row.id, `/music/${row.id}.mp3`, row.lyric,
+      )
+    }
+  }
+
+  it('answers lyric substrings with ids and a total, case-insensitively', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedLyricTracks(db, [
+      { id: 'hit-1', lyric: '[00:01.000]The Long River flows' },
+      { id: 'hit-2', lyric: 'long RIVER again' },
+      { id: 'miss', lyric: 'nothing here' },
+      { id: 'nolyric', lyric: null },
+    ])
+    const app = makeApp()
+    const body = await (await request(app, '/api/music/lyric-search?q=long%20river')).json()
+    expect(body.ids).toEqual(['hit-1', 'hit-2'])
+    expect(body.total).toBe(2)
+  })
+
+  it('treats LIKE wildcards in the query as plain text', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedLyricTracks(db, [
+      { id: 'percent', lyric: '100% pure' },
+      { id: 'underscore', lyric: 'x_y z' },
+      { id: 'plain', lyric: 'nothing here' },
+    ])
+    const app = makeApp()
+    const percent = await (await request(app, '/api/music/lyric-search?q=100%25')).json()
+    expect(percent.ids).toEqual(['percent'])
+    const underscore = await (await request(app, '/api/music/lyric-search?q=x_y')).json()
+    expect(underscore.ids).toEqual(['underscore'])
+    const lone = await (await request(app, '/api/music/lyric-search?q=%25')).json()
+    expect(lone.ids).toEqual([])
+  })
+
+  it('caps the id list and reports the full total', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const rows = Array.from({ length: 55 }, (_, index) => ({ id: `cap-${String(index).padStart(3, '0')}`, lyric: 'same words' }))
+    await seedLyricTracks(db, rows)
+    const app = makeApp()
+    const body = await (await request(app, '/api/music/lyric-search?q=same%20words')).json()
+    expect(body.ids).toHaveLength(50)
+    expect(body.total).toBe(55)
+  })
+
+  it('answers nothing before the query is long enough to be a lyric probe', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedLyricTracks(db, [{ id: 'hit', lyric: 'ab in the middle' }])
+    const app = makeApp()
+    const body = await (await request(app, '/api/music/lyric-search?q=ab')).json()
+    expect(body.ids).toEqual([])
+    expect(body.total).toBe(0)
+  })
+})

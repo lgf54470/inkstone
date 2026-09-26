@@ -17,6 +17,7 @@ export const messages = {
 'music.duplicates': '重复文件',
 'music.no_duplicates': '没有发现重复文件',
 'music.duplicates_summary': '共 {value0} 组重复 · 多出 {value1} 份 · 约可释放 {value2}',
+'music.duplicates_summary_approximate': '共 {value0} 组重复（{value3} 组为近似判定：同名同歌手且时长接近）· 多出 {value1} 份 · 约可释放 {value2}',
 'music.group_back': '返回分组',
 'music.group_track_count': '共 {value0} 首',
 'music.group_detail_meta': '共 {value0} 首 · {value1}',

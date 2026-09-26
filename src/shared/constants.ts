@@ -89,6 +89,9 @@ export const LIMITS = {
   musicPlaybackSavesPerHour: 2000,
   musicCoverLookupsPerHour: 60,
   musicLyricLookupsPerHour: 60,
+  // A lyric search scans the whole table with LIKE; the id list it ships back stays
+  // bounded no matter how many songs repeat the same chorus.
+  musicLyricSearchMaxIds: 50,
   // Anonymous readers of a published library are metered by client IP, per surface:
   // the listing is one query per open, while a player issues a stream request per
   // range it needs, so playback gets the wider allowance.

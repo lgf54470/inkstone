@@ -19,11 +19,33 @@ import { pathParam } from './params'
 export function registerMusicTrackRoutes(routes: Hono<AppBindings>): void {
   registerCoverRoute(routes)
   registerLyricRoute(routes)
+  registerLyricSearchRoute(routes)
   registerStreamRoute(routes)
   registerPatchRoute(routes)
   registerPlayRoute(routes)
   registerBatchRoute(routes)
   registerDeleteRoute(routes)
+}
+
+// Only lyrics that reached the server are searchable (uploads, metadata scans, edits and
+// lookups all store the text), so this LIKE answers what the client-side index cannot:
+// tracks whose lyrics were never loaded into a browser. The pattern escapes LIKE's own
+// wildcards — a user searching "100%" means those characters, not every row.
+function registerLyricSearchRoute(routes: Hono<AppBindings>): void {
+  routes.get('/lyric-search', requireAuth, async (c) => {
+    const userId = c.get('userId')
+    const query = (c.req.query('q') ?? '').trim()
+    if (query.length < 3) return c.json({ ids: [], total: 0 }, 200, { 'Cache-Control': 'no-store' })
+    const pattern = `%${query.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_')}%`
+    const like = { sql: 'user_id = ?1 AND lyric LIKE ?2 ESCAPE \'\\\'', bind: [userId, pattern] } as const
+    const [ids, counts] = await Promise.all([
+      c.env.DB.prepare(`SELECT id FROM music_tracks WHERE ${like.sql} ORDER BY updated_at DESC LIMIT ${LIMITS.musicLyricSearchMaxIds + 1}`).bind(...like.bind).all<{ id: string }>(),
+      c.env.DB.prepare(`SELECT COUNT(*) AS total FROM music_tracks WHERE ${like.sql}`).bind(...like.bind).first<{ total: number }>(),
+    ])
+    const found = ids.results.map((row) => row.id)
+    // One id past the cap rides along so the caller can tell there were more.
+    return c.json({ ids: found.slice(0, LIMITS.musicLyricSearchMaxIds), total: counts?.total ?? 0 }, 200, { 'Cache-Control': 'no-store' })
+  })
 }
 
 function registerStreamRoute(routes: Hono<AppBindings>): void {

@@ -1,7 +1,7 @@
 import type { MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack } from '@shared/types'
 import { api } from '../../../lib/api'
 import { duplicateTracks } from '../music-duplicates'
-import { ensureRomanized, needsRomanization, SEARCH_RESULT_LIMIT, searchTracks } from '../music-search'
+import { ensureRomanized, LYRIC_QUERY_MIN_LENGTH, needsRomanization, SEARCH_RESULT_LIMIT, searchTracks } from '../music-search'
 import { collectTagIds } from '../music-utils'
 import { pushHistory } from './state'
 import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSortDirection, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest, TrackMenuTarget } from './types'
@@ -124,11 +124,29 @@ export function setQuery(set: MusicSet, get: MusicGet, query: string): void {
 }
 
 export function commitQuery(set: MusicSet, get: MusicGet, query: string): void {
-  set({ query })
+  set({ query, remoteLyricMatches: null })
   const trimmed = query.trim()
   if (!trimmed) return
   set({ searchHistory: pushHistory(get().searchHistory, trimmed) })
   void get().prepareRomanization()
+  void fetchLyricMatches(set, get, trimmed)
+}
+
+// The store only holds the lyrics of tracks this browser has fetched, so a lyric
+// probe asks the server what the local index cannot see. The answer lands only
+// while its query is still the committed one, and a failure degrades to the
+// local search rather than failing the view.
+async function fetchLyricMatches(set: MusicSet, get: MusicGet, trimmed: string): Promise<void> {
+  if (trimmed.length < LYRIC_QUERY_MIN_LENGTH) return
+  try {
+    const answer = await api.music.searchLyrics(trimmed)
+    if (get().query.trim() !== trimmed) return
+    set({ remoteLyricMatches: { query: trimmed, ids: answer.ids, total: answer.total } })
+  } catch (error) {
+    // Best-effort enrichment: the local lyric matches still answer, so a failed
+    // probe narrows the search instead of breaking it.
+    console.warn('[inkstone] music lyric search failed:', error)
+  }
 }
 
 export function clearSearchHistory(set: MusicSet): void {
@@ -178,10 +196,10 @@ export function clearSelection(set: MusicSet): void {
 // this set: declaring the slice keeps the subscription list and the memo dependencies honest
 // instead of letting a cast hide a field the view reads but never watches.
 type MusicScopeView = Pick<MusicStoreState, 'tracks' | 'playlists' | 'tags' | 'scope'>
-export type MusicLibraryView = MusicScopeView & Pick<MusicStoreState, 'sourceFilter' | 'query' | 'sort' | 'sortDirection' | 'romanized' | 'tags'>
+export type MusicLibraryView = MusicScopeView & Pick<MusicStoreState, 'remoteLyricMatches' | 'sourceFilter' | 'query' | 'sort' | 'sortDirection' | 'romanized' | 'tags'>
 
 // The "matches left out" notice ranks the same way, minus the order it never applies.
-export type MusicMatchCountView = MusicScopeView & Pick<MusicStoreState, 'sourceFilter' | 'query' | 'romanized' | 'tags'>
+export type MusicMatchCountView = MusicScopeView & Pick<MusicStoreState, 'remoteLyricMatches' | 'sourceFilter' | 'query' | 'romanized' | 'tags'>
 
 export function visibleTracks(state: MusicLibraryView): MusicTrack[] {
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
@@ -235,9 +253,23 @@ function playlistTracks(state: MusicScopeView, playlistId: string): MusicTrack[]
 }
 
 function filterByQuery(tracks: MusicTrack[], state: MusicLibraryView, query: string): MusicTrack[] {
-  const ranked = searchTracks(tracks, state.romanized, query, state.tags).slice(0, SEARCH_RESULT_LIMIT)
+  const ranked = rankedWithLyricMatches(state, tracks, query).slice(0, SEARCH_RESULT_LIMIT)
   const order = new Map(ranked.map((id, index) => [id, index]))
   return tracks.filter((track) => order.has(track.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!)
+}
+
+// Server lyric matches follow every local hit: prose is a weaker signal than a
+// name, and the async answer must not reshuffle what the user is already reading.
+// Merging outside the "all tracks, every source" view would need per-scope totals
+// to keep the "matches left out" notice honest, so scoped views stay local-only.
+function rankedWithLyricMatches(state: MusicLibraryView, tracks: MusicTrack[], query: string): string[] {
+  const local = searchTracks(tracks, state.romanized, query, state.tags)
+  const remote = state.remoteLyricMatches
+  if (!remote || remote.query !== query || state.scope.kind !== 'all' || state.sourceFilter !== 'all') return local
+  const scopedIds = new Set(tracks.map((track) => track.id))
+  const seen = new Set(local)
+  const extra = remote.ids.filter((id) => !seen.has(id) && scopedIds.has(id))
+  return [...local, ...extra]
 }
 
 // The list stops at SEARCH_RESULT_LIMIT matches; the ones that did not fit are counted
@@ -247,8 +279,17 @@ export function hiddenMatchCount(state: MusicMatchCountView): number {
   const query = state.query.trim()
   if (!query) return 0
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
-  if (scoped.length <= SEARCH_RESULT_LIMIT) return 0
-  return Math.max(0, searchTracks(scoped, state.romanized, query, state.tags).length - SEARCH_RESULT_LIMIT)
+  const local = searchTracks(scoped, state.romanized, query, state.tags)
+  const remote = state.remoteLyricMatches
+  if (!remote || remote.query !== query || state.scope.kind !== 'all' || state.sourceFilter !== 'all') {
+    return Math.max(0, local.length - SEARCH_RESULT_LIMIT)
+  }
+  // Every server match that the capped list does not show counts toward the
+  // notice: new ids past the limit and the whole-library matches beyond the
+  // server's own cap alike.
+  const seen = new Set(local)
+  const extra = remote.ids.filter((id) => !seen.has(id))
+  return Math.max(0, local.length + extra.length + (remote.total - remote.ids.length) - SEARCH_RESULT_LIMIT)
 }
 
 // The comparator describes the natural ascending order of the field; the
