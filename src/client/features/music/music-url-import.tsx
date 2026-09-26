@@ -21,7 +21,7 @@ export function MusicUrlImportButton() {
 
 const DIALOG_WIDTH = 520
 
-function UrlImportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function UrlImportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const url = useRef<HTMLInputElement>(null)
   const title = useRef<HTMLInputElement>(null)
   const artist = useRef<HTMLInputElement>(null)

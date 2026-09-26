@@ -143,6 +143,7 @@ export const messages = {
 'music.suggest_artist': '歌手',
 'music.suggest_album': '专辑',
 'music.suggest_playlist': '歌单',
+'music.more_actions': '更多操作',
 'music.import_text': '粘贴导入',
 'music.import_text_title': '从文本导入',
 'music.import_text_hint': '每行一条，支持「歌手 - 标题」或仅标题；只会匹配曲库中已有的曲目',

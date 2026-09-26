@@ -54,3 +54,12 @@ describe('Field names the Segmented it wraps (SH-46)', () => {
     unmount()
   })
 })
+
+describe('Segmented option labels (REF-2)', () => {
+  it('keeps option text on one line under a squeezing container', () => {
+    const { unmount } = renderElement(createElement(Segmented, { value: 's3', options: OPTIONS, onChange: vi.fn() }))
+    const button = document.querySelector('[role="radio"]') as HTMLButtonElement
+    expect(button.className).toContain('whitespace-nowrap')
+    unmount()
+  })
+})

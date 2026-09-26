@@ -8,7 +8,7 @@
 
 ## 批次 R① · 速修（S，先做）
 
-- [ ] REF-2 排序/来源 Segmented 文字不折行：共享 `Segmented`（`src/client/components/form.tsx`）选项按钮补 `whitespace-nowrap`；`music-hub-toolbar.tsx` ToolbarActions 补换行/收合策略（窄容器把低频动作收进「更多」菜单）
+- [x] REF-2 排序/来源 Segmented 文字不折行：共享 `Segmented`（`src/client/components/form.tsx`）选项按钮补 `whitespace-nowrap`；`music-hub-toolbar.tsx` ToolbarActions 补换行/收合策略（窄容器把低频动作收进「更多」菜单）
 - [ ] REF-6 沉浸层快捷键提示收进帮助触发器（图标 + 弹层），移除常驻两行文案
 - [ ] REF-5 沉浸层队列改可折叠：默认收起为单行入口，展开浮出；保留当前曲定位断言
 
@@ -33,3 +33,4 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-27 | REF-2 Segmented 不折行 + 工具栏收合策略 | 待回填 | 先红 4 例（nowrap 契约 1 + 折叠行为 3）；实现后 6 例 ✅；全量 521 文件 / 4619 例 ✅；typecheck ✅；静态门禁 ✅；浏览器门禁（触及工具栏）：e2e 177 ✅（全新实例单跑一次）、e2e-visual 534/535（唯一失败为已登记看板遗留，同参 canvas:480/needed:456）、check-contrast ✅ | Segmented 选项按钮 `whitespace-nowrap`（共享组件一次修对，全 app 的 Segmented 受益）；ToolbarActions 在 <1240px（MUSIC_TOOLBAR_FOLD_BREAKPOINT，与 Hub 弹窗最大宽度一致）把低频动作折进「更多」菜单——导入 M3U/文本/URL 与元数据三图标钮共 6 项，主流程（上传/WebDAV/Alist/播客/刷新）与排序控件保留原位；M3U 的隐藏 file input 上提 ToolbarActions 统一供宽/窄两态触发，宽态行内按钮改为纯触发器；元数据三动作抽 useMetadataActions hook 供图标钮与菜单项两态复用（禁用态/运行脉冲/force 确认弹窗全保留）；文本/URL 导入对话框导出复用，窄态由工具栏直接控制开关 |

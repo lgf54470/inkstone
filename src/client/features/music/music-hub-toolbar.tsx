@@ -1,14 +1,17 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { MusicTrack } from '@shared/types'
-import { CloudDownload, HardDrive, ImageDown, ListPlus, Podcast, RefreshCw, RotateCw, Server, Upload } from 'lucide-react'
+import { CloudDownload, HardDrive, ImageDown, ListPlus, Podcast, RefreshCw, RotateCw, Server, Upload, ClipboardList, Ellipsis, Link } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
-import { Tooltip, confirm } from '../../components/overlay'
+import { Menu, Tooltip, confirm } from '../../components/overlay'
+import type { MenuItem } from '../../components/overlay'
+import { useMediaQuery } from '../../lib/hooks'
 import { t } from '../../lib/i18n'
 import { toastMusicNotice } from './music-feedback'
 import { matchM3uTracks, parseM3u } from './music-m3u'
-import { MusicTextImportButton } from './music-text-import'
-import { MusicUrlImportButton } from './music-url-import'
+import { MusicTextImportButton, TextImportDialog } from './music-text-import'
+import { MusicUrlImportButton, UrlImportDialog } from './music-url-import'
+import { MUSIC_TOOLBAR_FOLD_BREAKPOINT } from './music-utils'
 import { SearchBox } from './music-search-box'
 import { useMusic } from './music-store'
 import type { MusicSort } from './music-store'
@@ -69,11 +72,13 @@ function ToolbarActions({ tracks, onUpload, onBrowseWebdav, onBrowseAlist, onPod
   const scope = useMusic((state) => state.scope)
   const setSort = useMusic((state) => state.setSort)
   const loadLibrary = useMusic((state) => state.loadLibrary)
+  const folded = !useMediaQuery(`(min-width: ${MUSIC_TOOLBAR_FOLD_BREAKPOINT}px)`)
+  const fileRef = useRef<HTMLInputElement>(null)
   // Playlist scope shows the manual item order, so the sort control would change nothing;
   // the grouped browse grids sort their cards by name and ignore track sort entirely.
   const showSort = scope.kind !== 'playlist' && scope.kind !== 'albums' && scope.kind !== 'artists'
   return (
-    <div className='flex items-center gap-2'>
+    <div className='flex min-w-0 items-center gap-2'>
       {showSort && (
         <>
           <Segmented
@@ -90,57 +95,96 @@ function ToolbarActions({ tracks, onUpload, onBrowseWebdav, onBrowseAlist, onPod
       <Button size='sm' icon={<Server size={12} />} onClick={onBrowseWebdav}>{t('music.webdav_title')}</Button>
       <Button size='sm' icon={<HardDrive size={12} />} onClick={onBrowseAlist}>{t('music.alist_title')}</Button>
       <Button size='sm' icon={<Podcast size={12} />} onClick={onPodcasts}>{t('music.podcast_title')}</Button>
-      <M3uImportButton tracks={tracks} />
-      <MusicTextImportButton tracks={tracks} />
-      <MusicUrlImportButton />
-      <Tooltip label={t('common.refresh')} side='left'>
-        <IconButton label={t('common.refresh')} size='sm' disabled={loading} onClick={() => void loadLibrary(true)}>
-          <RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />
-        </IconButton>
-      </Tooltip>
-      <MetadataButtons tracks={tracks} />
-    </div>
-  )
-}
-
-// An exported playlist should be able to come back: the file names a target next to
-// each entry, and the library answers the ones it recognises. What it cannot answer
-// is reported rather than dropped.
-function M3uImportButton({ tracks }: { tracks: MusicTrack[] }) {
-  const addManyToQueue = useMusic((state) => state.addManyToQueue)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const pick = async (file: File | undefined): Promise<void> => {
-    if (!file) return
-    const entries = parseM3u(await file.text())
-    if (!entries.length) {
-      toastMusicNotice('music.m3u_imported_none')
-      return
-    }
-    const matched = matchM3uTracks(entries, tracks)
-    addManyToQueue(matched.map((track) => track.id))
-    const unmatched = entries.length - matched.length
-    if (unmatched > 0) {
-      toastMusicNotice('music.m3u_imported_partial', { value0: entries.length, value1: unmatched })
-    }
-  }
-  return (
-    <>
       <input
         ref={fileRef}
         type='file'
         accept='.m3u,.m3u8,audio/x-mpegurl'
         className='hidden'
         onChange={(event) => {
-          void pick(event.target.files?.[0])
+          void importM3uFile(event.target.files?.[0], tracks)
           event.target.value = ''
         }}
       />
-      <Button size='sm' icon={<ListPlus size={12} />} onClick={() => fileRef.current?.click()}>{t('music.import_m3u')}</Button>
+      {folded ? <FoldedActions tracks={tracks} onPickM3u={() => fileRef.current?.click()} /> : <InlineActions tracks={tracks} onPickM3u={() => fileRef.current?.click()} />}
+      <Tooltip label={t('common.refresh')} side='left'>
+        <IconButton label={t('common.refresh')} size='sm' disabled={loading} onClick={() => void loadLibrary(true)}>
+          <RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />
+        </IconButton>
+      </Tooltip>
+    </div>
+  )
+}
+
+function InlineActions({ tracks, onPickM3u }: { tracks: MusicTrack[]; onPickM3u: () => void }) {
+  return (
+    <>
+      <M3uImportButton onTrigger={onPickM3u} />
+      <MusicTextImportButton tracks={tracks} />
+      <MusicUrlImportButton />
+      <MetadataButtons tracks={tracks} />
     </>
   )
 }
 
-function MetadataButtons({ tracks }: { tracks: MusicTrack[] }) {
+// REF-2: a narrow container folds the low-frequency actions into a "more" menu
+// instead of letting the row wrap mid-label; the primary flows stay inline.
+function FoldedActions({ tracks, onPickM3u }: { tracks: MusicTrack[]; onPickM3u: () => void }) {
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [textOpen, setTextOpen] = useState(false)
+  const [urlOpen, setUrlOpen] = useState(false)
+  const moreRef = useRef<HTMLButtonElement>(null)
+  const metadata = useMetadataActions(tracks)
+  const items: MenuItem[] = [
+    { id: 'import-m3u', label: t('music.import_m3u'), icon: <ListPlus size={13} />, onSelect: onPickM3u },
+    { id: 'import-text', label: t('music.import_text'), icon: <ClipboardList size={13} />, onSelect: () => setTextOpen(true) },
+    { id: 'import-url', label: t('music.import_url'), icon: <Link size={13} />, onSelect: () => setUrlOpen(true) },
+    { id: 'metadata-scan', label: t('music.refresh_metadata'), icon: <ImageDown size={13} />, disabled: metadata.scanDisabled, onSelect: metadata.scan },
+    { id: 'metadata-force', label: t('music.metadata_force'), icon: <RotateCw size={13} />, disabled: metadata.forceDisabled, onSelect: metadata.forceScan },
+    { id: 'metadata-covers', label: t('music.match_covers'), icon: <CloudDownload size={13} />, disabled: metadata.coversDisabled, onSelect: metadata.matchCovers },
+  ]
+  return (
+    <>
+      <Tooltip label={t('music.more_actions')} side='left'>
+        <IconButton
+          ref={moreRef}
+          label={t('music.more_actions')}
+          size='sm'
+          active={moreOpen}
+          onClick={() => setMoreOpen((open) => !open)}
+        >
+          <Ellipsis size={14} />
+        </IconButton>
+      </Tooltip>
+      <Menu anchor={moreRef} open={moreOpen} onClose={() => setMoreOpen(false)} align='end' label={t('music.more_actions')} items={items} />
+      <TextImportDialog open={textOpen} tracks={tracks} onClose={() => setTextOpen(false)} />
+      <UrlImportDialog open={urlOpen} onClose={() => setUrlOpen(false)} />
+    </>
+  )
+}
+
+// An exported playlist should be able to come back: the file names a target next to
+// each entry, and the library answers the ones it recognises. What it cannot answer
+// is reported rather than dropped.
+async function importM3uFile(file: File | undefined, tracks: MusicTrack[]): Promise<void> {
+  if (!file) return
+  const entries = parseM3u(await file.text())
+  if (!entries.length) {
+    toastMusicNotice('music.m3u_imported_none')
+    return
+  }
+  const matched = matchM3uTracks(entries, tracks)
+  useMusic.getState().addManyToQueue(matched.map((track) => track.id))
+  const unmatched = entries.length - matched.length
+  if (unmatched > 0) {
+    toastMusicNotice('music.m3u_imported_partial', { value0: entries.length, value1: unmatched })
+  }
+}
+
+function M3uImportButton({ onTrigger }: { onTrigger: () => void }) {
+  return <Button size='sm' icon={<ListPlus size={12} />} onClick={onTrigger}>{t('music.import_m3u')}</Button>
+}
+
+function useMetadataActions(tracks: MusicTrack[]) {
   const refreshTrackMetadata = useMusic((state) => state.refreshTrackMetadata)
   const matchMissingCovers = useMusic((state) => state.matchMissingCovers)
   // The running guard lives in the store, so remounting the toolbar cannot stack a second pass.
@@ -165,21 +209,35 @@ function MetadataButtons({ tracks }: { tracks: MusicTrack[] }) {
       if (ok) void refreshTrackMetadata(tracks.map((track) => track.id), true)
     })
   }
+  return {
+    scanning,
+    matching,
+    scanDisabled: !missingIds.length || scanning,
+    forceDisabled: !tracks.length || scanning,
+    coversDisabled: !coverlessCount || matching,
+    scan,
+    forceScan,
+    matchCovers,
+  }
+}
+
+function MetadataButtons({ tracks }: { tracks: MusicTrack[] }) {
+  const metadata = useMetadataActions(tracks)
   return (
     <>
       <Tooltip label={t('music.refresh_metadata')} side='left'>
-        <IconButton label={t('music.refresh_metadata')} size='sm' disabled={!missingIds.length || scanning} onClick={scan}>
-          <ImageDown size={14} className={scanning ? 'animate-pulse' : undefined} />
+        <IconButton label={t('music.refresh_metadata')} size='sm' disabled={metadata.scanDisabled} onClick={metadata.scan}>
+          <ImageDown size={14} className={metadata.scanning ? 'animate-pulse' : undefined} />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('music.metadata_force')} side='left'>
-        <IconButton label={t('music.metadata_force')} size='sm' disabled={!tracks.length || scanning} onClick={forceScan}>
-          <RotateCw size={14} className={scanning ? 'animate-pulse' : undefined} />
+        <IconButton label={t('music.metadata_force')} size='sm' disabled={metadata.forceDisabled} onClick={metadata.forceScan}>
+          <RotateCw size={14} className={metadata.scanning ? 'animate-pulse' : undefined} />
         </IconButton>
       </Tooltip>
       <Tooltip label={t('music.match_covers')} side='left'>
-        <IconButton label={t('music.match_covers')} size='sm' disabled={!coverlessCount || matching} onClick={matchCovers}>
-          <CloudDownload size={14} className={matching ? 'animate-pulse' : undefined} />
+        <IconButton label={t('music.match_covers')} size='sm' disabled={metadata.coversDisabled} onClick={metadata.matchCovers}>
+          <CloudDownload size={14} className={metadata.matching ? 'animate-pulse' : undefined} />
         </IconButton>
       </Tooltip>
     </>

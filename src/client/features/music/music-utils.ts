@@ -15,6 +15,9 @@ export const COVER_LOOKUP_CONCURRENCY = 4
 // Below this viewport width the music surfaces' fixed-width side columns squeeze the main area
 // toward zero, so they fold (UI-14): the hub into drawers, the immersive player into a stack.
 export const MUSIC_NARROW_BREAKPOINT = 900
+// The hub toolbar folds its low-frequency actions into a "more" menu below this width:
+// the hub dialog itself is at most MUSIC_HUB_WIDTH wide, so the row starts to squeeze here.
+export const MUSIC_TOOLBAR_FOLD_BREAKPOINT = 1240
 
 // Three silences look alike but are not: nothing is playing, the words are still on their
 // way, and the file really carries none. Every lyrics pane answers with the same one.

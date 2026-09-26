@@ -24,7 +24,7 @@ export function MusicTextImportButton({ tracks }: { tracks: MusicTrack[] }) {
 
 const DIALOG_WIDTH = 520
 
-function TextImportDialog({ open, tracks, onClose }: { open: boolean; tracks: MusicTrack[]; onClose: () => void }) {
+export function TextImportDialog({ open, tracks, onClose }: { open: boolean; tracks: MusicTrack[]; onClose: () => void }) {
   const text = useRef<HTMLTextAreaElement>(null)
   const name = useRef<HTMLInputElement>(null)
 

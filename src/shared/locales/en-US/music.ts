@@ -143,6 +143,7 @@ export const messages = {
 'music.suggest_artist': 'Artist',
 'music.suggest_album': 'Album',
 'music.suggest_playlist': 'Playlist',
+'music.more_actions': 'More actions',
 'music.import_text': 'Paste list',
 'music.import_text_title': 'Import from text',
 'music.import_text_hint': 'One track per line: "artist - title" or a bare title; only tracks already in the library resolve',
