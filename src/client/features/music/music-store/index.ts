@@ -46,6 +46,8 @@ function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> 
     trashOpen: false,
     trashEntries: [],
     trashLoading: false,
+    alistServers: [],
+    alistServersLoading: false,
     uploadTarget: 'r2',
     transfersOpen: false,
     webdav: initialWebdavState(),

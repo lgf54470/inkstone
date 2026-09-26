@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { AppBindings } from '../../env'
+import { registerMusicAlistRoutes } from './alist'
 import { registerMusicCoverLookupRoutes } from './lookup'
 import { registerMusicLibraryRoutes } from './library'
 import { registerMusicLyricLookupRoutes } from './lyrics'
@@ -25,6 +26,7 @@ registerMusicTagRoutes(musicRoutes)
 registerMusicPlaylistRoutes(musicRoutes)
 registerMusicSettingsRoutes(musicRoutes)
 registerMusicTrashRoutes(musicRoutes)
+registerMusicAlistRoutes(musicRoutes)
 
 export { registerMusicPublicRoutes } from './public'
 export { purgeExpiredMusicTrash } from './trash'

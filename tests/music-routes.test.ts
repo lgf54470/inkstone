@@ -1929,3 +1929,4 @@ describe('mp3 download ID3 tagging (FEA-D1)', () => {
     expect(Buffer.from(await download.arrayBuffer()).subarray(0, 3).toString('latin1')).not.toBe('ID3')
   })
 })
+

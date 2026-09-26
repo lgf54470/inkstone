@@ -721,4 +721,22 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_music_trash_list ON music_trash(user_id, deleted_at DESC)`,
     ],
   },
+  // FEA-A3-1: Alist server registrations for reference-track imports. The token
+  // lives in the encrypted secret column and never leaves the server.
+  {
+    version: 48,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS music_alist_servers (
+         id TEXT PRIMARY KEY,
+         user_id TEXT NOT NULL,
+         name TEXT NOT NULL,
+         url TEXT NOT NULL,
+         root_path TEXT NOT NULL DEFAULT '/',
+         secret TEXT,
+         created_at INTEGER NOT NULL,
+         updated_at INTEGER NOT NULL
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_music_alist_servers_user ON music_alist_servers(user_id, created_at ASC)`,
+    ],
+  },
 ]

@@ -24,7 +24,7 @@
 
 ## 批次 F③ · Alist 网盘源（M）
 
-- [ ] FEA-A3-1 Alist 服务器配置管理（名称/URL/token/根路径，存服务端设置，密钥只走服务端）
+- [x] FEA-A3-1 Alist 服务器配置管理（名称/URL/token/根路径，存服务端设置，密钥只走服务端）
 - [ ] FEA-A3-2 Alist 目录浏览与音频导入（复用 WebDAV 引用行管线：登记元数据、不计配额）
 - [ ] FEA-A3-3 Alist 站内搜索导入
 
@@ -66,3 +66,4 @@
 | 2026-09-26 | FEA-D1 下载嵌 ID3 | `c363453b` | 先红 1 例 + 守卫例 1；实现后 music + routes + demo + schema-migrations 99 文件 / 795 例 ✅；typecheck ✅；静态门禁 ✅（无 UI 改动，免浏览器门禁） | mp3 下载（无 Range 全量请求）在 worker 流前置 ID3v2.3 标签（TIT2/TPE1/TALB UTF-16 BOM、APIC 仅自有派生封面键、USLT 保留 LRC 原文），音频流不缓冲直通、Content-Length 覆盖标签；已有标签的文件直接排在其后（播放器取第一个标签）；m4a/flac 与 webdav/external 分流未覆盖，记为后续评估 |
 | 2026-09-26 | FEA-C2 全屏背景模式 | `241882c9` | 先红 6 例（偏好 2 + 取色 2 + 组件 2）；实现后 music + routes + demo + schema-migrations 101 文件 / 803 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 三态偏好 immersiveBackground（theme/blur/gradient）随偏好持久化；模糊=封面图 blur+令牌遮罩，取色=16×16 canvas 采样均值加暗部渐变（纯函数 coverGradientFromPixels 可测，canvas 不可用时回退令牌渐变），遮罩保证文字令牌对比度不被背景破坏；无封面/主题态不渲染背景层 |
 | 2026-09-26 | FEA-C3 歌词翻译行 | `11cbaac6` | 先红 4 例（合并规则）；实现后 music 全量 92 文件 / 641 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual 534/535（仅剩已登记看板遗留，另一次 2 failed 复跑回落，判定抖动）；check-contrast ✅ | 合并窗口 500ms（TRANSLATION_MERGE_MS）：窗口内后行吸收为 translation，文本相同则静默吸收（呼应式重复行），每行至多吸收一行；沉浸层译文随主行以次级字号渲染（active 跟随强调色），现在播放列同构；lrclib 译文源拉取未做（仅本地 LRC 双语合并），远端译文并入记为后续评估 |
+| 2026-09-26 | FEA-A3-1 Alist 服务器配置管理 | 待回填 | 先红 4 例（加密不回传/列表脱敏/更新保留令牌/非法输入）；实现后 alist + music store 2 文件 11 例 ✅；typecheck ✅；静态门禁 ✅；e2e 177 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 新表 music_alist_servers（迁移 v48 + fresh 建表），token 走 CREDENTIAL_VAULT 加密列（复用 encryptSecret/decryptSecret，测试以可逆变换桩替），任何响应不回传令牌；PATCH 缺省 token 保留原值；工具栏新增 Alist 入口 + 服务器管理弹窗（A3-2/3 在此扩展） |

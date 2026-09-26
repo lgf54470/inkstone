@@ -79,6 +79,27 @@ export interface MusicWebdavImportInput {
   durationMs?: number
 }
 
+export interface MusicAlistServerView {
+  id: string
+  name: string
+  url: string
+  rootPath: string
+}
+
+export interface MusicAlistCreateInput {
+  name: string
+  url: string
+  rootPath?: string
+  token: string
+}
+
+export interface MusicAlistPatchInput {
+  name?: string
+  url?: string
+  rootPath?: string
+  token?: string
+}
+
 export interface MusicTrashEntry {
   id: string
   kind: 'track' | 'playlist'
@@ -102,6 +123,17 @@ export const music = {
 
   importWebdav: (input: MusicWebdavImportInput) =>
     request<MusicTrack>('/api/music/webdav/import', { method: 'POST', body: input, timeoutMs: 30_000 }),
+
+  listAlistServers: () => request<{ servers: MusicAlistServerView[] }>('/api/music/alist'),
+
+  createAlistServer: (input: MusicAlistCreateInput) =>
+    request<MusicAlistServerView>('/api/music/alist', { method: 'POST', body: input, timeoutMs: 30_000 }),
+
+  patchAlistServer: (id: string, patch: MusicAlistPatchInput) =>
+    request<MusicAlistServerView>(`/api/music/alist/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch, timeoutMs: 30_000 }),
+
+  deleteAlistServer: (id: string) =>
+    request<{ ok: boolean }>(`/api/music/alist/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   listTrash: () => request<{ entries: MusicTrashEntry[] }>('/api/music/trash'),
 

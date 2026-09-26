@@ -3,6 +3,7 @@ export {
   musicStreamUrl, musicCoverLookupUrl, uploadMusicTrack, uploadMusicToWebdav,
   type MusicBatchAction, type MusicUploadResult, type MusicTrackPatch,
   type MusicWebdavImportInput, type MusicWebdavListing, type MusicPlaylistPatch,
+  type MusicAlistServerView, type MusicAlistCreateInput, type MusicAlistPatchInput,
   type MusicTrashEntry, type PublicPlaylist, type PublicPlaylistTrack,
 } from './music'
 import { account } from './account'

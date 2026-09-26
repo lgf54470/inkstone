@@ -134,6 +134,37 @@ export const importMusicSchema = z.object({
 
 export type ImportMusicBody = z.infer<typeof importMusicSchema>
 
+// FEA-A3-1: an Alist registration names the server and stores its token server-side
+// only; the URL is the API origin (no trailing path), rootPath scopes all browsing.
+const alistUrl = z.string().max(LIMITS.musicAlistUrlMaxLength).refine((value) => {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+  } catch {
+    return false
+  }
+}, { message: 'Provide an http(s) URL' })
+
+export const createAlistServerSchema = z.object({
+  name: trimmed(LIMITS.musicAlistNameMaxLength).min(1),
+  url: alistUrl,
+  rootPath: z.string().max(LIMITS.musicAlistRootPathMaxLength).regex(/^\/|^$/, { message: 'Root path must start with /' }).optional(),
+  token: z.string().max(LIMITS.musicAlistTokenMaxLength).min(1),
+})
+
+export type CreateAlistServerBody = z.infer<typeof createAlistServerSchema>
+
+export const patchAlistServerSchema = z
+  .object({
+    name: trimmed(LIMITS.musicAlistNameMaxLength).min(1).optional(),
+    url: alistUrl.optional(),
+    rootPath: z.string().max(LIMITS.musicAlistRootPathMaxLength).regex(/^\/|^$/, { message: 'Root path must start with /' }).optional(),
+    token: z.string().max(LIMITS.musicAlistTokenMaxLength).min(1).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: 'Provide at least one field to update' })
+
+export type PatchAlistServerBody = z.infer<typeof patchAlistServerSchema>
+
 // FEA-B3: a direct link imports as a reference row — only the URL is stored and
 // playback proxies it, so http(s) is the scheme bar and the container must still
 // be recognizable from the path's extension.

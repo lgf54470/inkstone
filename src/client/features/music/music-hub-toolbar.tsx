@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import type { MusicTrack } from '@shared/types'
-import { CloudDownload, ImageDown, ListPlus, RefreshCw, RotateCw, Server, Upload } from 'lucide-react'
+import { CloudDownload, HardDrive, ImageDown, ListPlus, RefreshCw, RotateCw, Server, Upload } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { Tooltip, confirm } from '../../components/overlay'
@@ -20,10 +20,11 @@ const SORT_OPTIONS: { value: MusicSort; label: 'music.sort_recent' | 'music.sort
   { value: 'plays', label: 'music.sort_plays' },
 ]
 
-export function MusicHubToolbar({ tracks, onUpload, onBrowseWebdav }: {
+export function MusicHubToolbar({ tracks, onUpload, onBrowseWebdav, onBrowseAlist }: {
   tracks: MusicTrack[]
   onUpload: () => void
   onBrowseWebdav: () => void
+  onBrowseAlist: () => void
 }) {
   return (
     <div className='flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'>
@@ -31,7 +32,7 @@ export function MusicHubToolbar({ tracks, onUpload, onBrowseWebdav }: {
         <SearchBox />
         <SourceFilter />
       </div>
-      <ToolbarActions tracks={tracks} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} />
+      <ToolbarActions tracks={tracks} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} />
     </div>
   )
 }
@@ -55,10 +56,11 @@ function SourceFilter() {
   )
 }
 
-function ToolbarActions({ tracks, onUpload, onBrowseWebdav }: {
+function ToolbarActions({ tracks, onUpload, onBrowseWebdav, onBrowseAlist }: {
   tracks: MusicTrack[]
   onUpload: () => void
   onBrowseWebdav: () => void
+  onBrowseAlist: () => void
 }) {
   const sort = useMusic((state) => state.sort)
   const loading = useMusic((state) => state.loading)
@@ -84,6 +86,7 @@ function ToolbarActions({ tracks, onUpload, onBrowseWebdav }: {
       )}
       <Button size='sm' variant='primary' icon={<Upload size={12} />} onClick={onUpload}>{t('music.upload')}</Button>
       <Button size='sm' icon={<Server size={12} />} onClick={onBrowseWebdav}>{t('music.webdav_title')}</Button>
+      <Button size='sm' icon={<HardDrive size={12} />} onClick={onBrowseAlist}>{t('music.alist_title')}</Button>
       <M3uImportButton tracks={tracks} />
       <MusicTextImportButton tracks={tracks} />
       <MusicUrlImportButton />

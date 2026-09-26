@@ -15,6 +15,7 @@ import {
 } from './library-collections'
 import { browseWebdav, deleteWebdavObjects, importTrackFromUrl, importWebdavFolder, importWebdavTrack } from './webdav'
 import { closeTrash, openTrash, purgeTrashEntry, restoreFromTrash } from './trash'
+import { createAlistServer, deleteAlistServer, loadAlistServers, patchAlistServer } from './alist'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type LibrarySlice = Pick<MusicStoreState,
@@ -22,6 +23,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'setViewMode' | 'openTrackMenu' | 'closeTrackMenu' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
   | 'importTrackFromUrl'
   | 'openTrash' | 'closeTrash' | 'restoreFromTrash' | 'purgeTrashEntry'
+  | 'loadAlistServers' | 'createAlistServer' | 'patchAlistServer' | 'deleteAlistServer'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'searchTrackLyric' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
@@ -85,6 +87,10 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     closeTrash: () => closeTrash(set),
     restoreFromTrash: (id) => restoreFromTrash(set, get, id),
     purgeTrashEntry: (id) => purgeTrashEntry(set, id),
+    loadAlistServers: () => loadAlistServers(set),
+    createAlistServer: (input) => createAlistServer(set, input),
+    patchAlistServer: (id, patch) => patchAlistServer(set, id, patch),
+    deleteAlistServer: (id) => deleteAlistServer(set, id),
   }
 }
 type PlaylistItemActions = Pick<MusicStoreState, 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'>

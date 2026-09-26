@@ -21,6 +21,7 @@ import { MusicQueuePanel } from './music-queue-panel'
 import { MusicTagManagerModal } from './music-tag-manager'
 import { MusicTrackList } from './music-track-list'
 import { MusicTransferDialog } from './music-transfer-dialog'
+import { MusicAlistModal } from './music-alist-modal'
 import { MusicWebdavModal } from './music-webdav-modal'
 import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicScope } from './music-store'
@@ -75,6 +76,7 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
             onEditTrack={dialogs.openEditTrack}
             onUpload={dialogs.openUpload}
             onBrowseWebdav={dialogs.openWebdav}
+            onBrowseAlist={dialogs.openAlist}
             queueOpen={dialogs.queueOpen}
             onCloseQueue={dialogs.closeQueue}
           />
@@ -105,6 +107,7 @@ function HubPeers({ dialogs }: { dialogs: ReturnType<typeof useHubDialogs> }) {
       <MusicTagManagerModal open={dialogs.tagManagerOpen} onClose={dialogs.closeTagManager} />
       <MusicTransferDialog open={transfersOpen} onClose={() => setTransfersOpen(false)} />
       <MusicWebdavModal open={dialogs.webdavOpen} onClose={dialogs.closeWebdav} />
+      <MusicAlistModal open={dialogs.alistOpen} onClose={dialogs.closeAlist} />
     </>
   )
 }
@@ -176,12 +179,14 @@ const HubCentre = memo(function HubCentre({
   onEditTrack,
   onUpload,
   onBrowseWebdav,
+  onBrowseAlist,
   queueOpen,
   onCloseQueue,
 }: {
   onEditTrack: (track: MusicTrack) => void
   onUpload: () => void
   onBrowseWebdav: () => void
+  onBrowseAlist: () => void
   queueOpen: boolean
   onCloseQueue: () => void
 }) {
@@ -196,7 +201,7 @@ const HubCentre = memo(function HubCentre({
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)]'>
       {/* Ranking the library happens once, here; the toolbar and the group header take
           the result as a prop so they never run the same sort a second time. */}
-      <MusicHubToolbar tracks={tracks} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} />
+      <MusicHubToolbar tracks={tracks} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} />
       {detail && <MusicGroupDetailHeader scope={detail} tracks={tracks} />}
       {scope.kind === 'duplicates' && tracks.length > 0 && <MusicDuplicatesSummary />}
       <div className='min-h-0 flex-1'>
@@ -251,6 +256,7 @@ interface HubSetters {
   setUploadOpen: (open: boolean) => void
   setQueueOpen: (open: boolean | ((value: boolean) => boolean)) => void
   setWebdavOpen: (open: boolean) => void
+  setAlistOpen: (open: boolean) => void
 }
 
 // Stable callbacks: the memoised panels below must not re-render when a dialog opens.
@@ -277,6 +283,8 @@ function useDialogActions(set: HubSetters, tracks: MusicTrack[], currentId: stri
     closeQueue: useCallback(() => set.setQueueOpen(false), [set]),
     openWebdav: useCallback(() => set.setWebdavOpen(true), [set]),
     closeWebdav: useCallback(() => set.setWebdavOpen(false), [set]),
+    openAlist: useCallback(() => set.setAlistOpen(true), [set]),
+    closeAlist: useCallback(() => set.setAlistOpen(false), [set]),
   }
 }
 
@@ -287,6 +295,7 @@ function useHubDialogs() {
   const [tagManagerOpen, setTagManagerOpen] = useState(false)
   const [queueOpen, setQueueOpen] = useState(false)
   const [webdavOpen, setWebdavOpen] = useState(false)
+  const [alistOpen, setAlistOpen] = useState(false)
   const [detailTab, setDetailTab] = useState<MusicDetailTab>('lyrics')
   const currentId = useMusic((state) => state.queue[state.currentIndex] ?? null)
   const tracks = useMusic((state) => state.tracks)
@@ -299,6 +308,7 @@ function useHubDialogs() {
     setUploadOpen: setTransfersOpen,
     setQueueOpen,
     setWebdavOpen,
+    setAlistOpen,
   }), [setTransfersOpen])
   const actions = useDialogActions(setters, tracks, currentId)
 
@@ -309,6 +319,7 @@ function useHubDialogs() {
     tagManagerOpen,
     queueOpen,
     webdavOpen,
+    alistOpen,
     detailTab,
     setDetailTab,
     openEditTrack: setEditingTrack,
