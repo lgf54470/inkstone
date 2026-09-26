@@ -116,6 +116,8 @@ export interface MusicStoreState {
 
   queue: string[]
   currentIndex: number
+  /** Play order while the mode is shuffle; null otherwise (see music-shuffle.ts). */
+  shuffleOrder: string[] | null
   isPlaying: boolean
   streamLoading: boolean
   durationMs: number

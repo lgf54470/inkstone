@@ -6,6 +6,7 @@ import { mapWithConcurrency } from '../../../lib/async'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import { probeTrackDuration, scanTrackMetadata, type ScannedMetadata } from '../music-metadata'
 import { isArtistSuffixedTitle, TRACK_IO_CONCURRENCY } from '../music-utils'
+import { orderAfterQueueSync } from '../music-shuffle'
 import { summarizeLibrary } from './library-load'
 import { forgetOfflineTracks } from './offline'
 import { runLibraryJob } from './transfers'
@@ -255,8 +256,12 @@ function resummarize(state: MusicStoreState, next: Partial<MusicStoreState>): Pa
 }
 
 export function dropFromQueue(set: MusicSet, get: MusicGet, removed: Set<string>): void {
-  const { queue, currentIndex } = get()
+  const { queue, currentIndex, mode, shuffleOrder } = get()
   if (!queue.some((id) => removed.has(id))) return
   const nextQueue = queue.filter((id) => !removed.has(id))
-  set({ queue: nextQueue, currentIndex: Math.max(0, Math.min(currentIndex, nextQueue.length - 1)) })
+  set({
+    queue: nextQueue,
+    currentIndex: Math.max(0, Math.min(currentIndex, nextQueue.length - 1)),
+    shuffleOrder: orderAfterQueueSync(mode, shuffleOrder, nextQueue),
+  })
 }

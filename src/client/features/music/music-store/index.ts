@@ -70,6 +70,7 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
     floatingPosition: prefs.floatingPosition,
     immersive: false,
     loopRange: null,
+    shuffleOrder: null,
     trackMenu: null,
   }
 }

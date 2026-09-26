@@ -15,6 +15,7 @@ import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
 import { persist } from './persist'
 import { MIN_LOOP_MS, SLEEP_FADE_MS, clampLyricOffset, loadPreferences, readEqDb } from './state'
+import { createShuffleOrder, shuffleOrderFor, shuffleStep } from '../music-shuffle'
 import type { MusicEqBand, MusicGet, MusicSet, MusicStoreState } from './types'
 
 const STREAM_START_TIMEOUT_MS = 20_000
@@ -81,7 +82,7 @@ export function currentTrack(state: Pick<MusicStoreState, 'queue' | 'currentInde
 
 export async function playTrack(set: MusicSet, get: MusicGet, id: string): Promise<void> {
   playFailures = 0
-  set({ queue: [id], currentIndex: 0, durationMs: 0 })
+  set({ queue: [id], currentIndex: 0, durationMs: 0, shuffleOrder: shuffleOrderFor(get().mode, [id], id) })
   setProgressTime(0)
   await loadAndPlay(set, get)
 }
@@ -90,7 +91,7 @@ export async function playCollection(set: MusicSet, get: MusicGet, ids: string[]
   if (!ids.length) return
   playFailures = 0
   const index = Math.max(0, Math.min(startIndex, ids.length - 1))
-  set({ queue: ids, currentIndex: index, durationMs: 0 })
+  set({ queue: ids, currentIndex: index, durationMs: 0, shuffleOrder: shuffleOrderFor(get().mode, ids, ids[index] ?? null) })
   setProgressTime(0)
   await loadAndPlay(set, get)
 }
@@ -139,21 +140,33 @@ async function playFirstTrack(set: MusicSet, get: MusicGet): Promise<void> {
   await playTrack(set, get, first.id)
 }
 
-export async function playNext(set: MusicSet, get: MusicGet): Promise<void> {
+export const playNext = (set: MusicSet, get: MusicGet): Promise<void> => stepPlayback(set, get, 1)
+
+export const playPrevious = (set: MusicSet, get: MusicGet): Promise<void> => stepPlayback(set, get, -1)
+
+// Shuffle walks its play order; the other modes step the queue directly. A stale
+// or missing order (queue edited, session restored, page reloaded) rebuilds once
+// with the playing track first instead of dropping the press.
+async function stepPlayback(set: MusicSet, get: MusicGet, direction: 1 | -1): Promise<void> {
   const { queue, currentIndex, mode } = get()
-  const next = computeNextIndex(currentIndex, queue.length, mode)
-  if (next < 0) {
-    pausePlayback()
+  let index = -1
+  if (mode === 'shuffle') {
+    const currentId = queue[currentIndex] ?? null
+    const order = get().shuffleOrder
+    index = order ? shuffleStep(queue, currentId, order, direction) : -1
+    if (index < 0) {
+      const dealt = createShuffleOrder(queue, currentId)
+      set({ shuffleOrder: dealt })
+      index = shuffleStep(queue, currentId, dealt, direction)
+    }
+  } else {
+    index = direction === 1 ? computeNextIndex(currentIndex, queue.length, mode) : computePrevIndex(currentIndex, queue.length, mode)
+  }
+  if (index < 0) {
+    if (direction === 1) pausePlayback()
     return
   }
-  await playQueueAt(set, get, next)
-}
-
-export async function playPrevious(set: MusicSet, get: MusicGet): Promise<void> {
-  const { queue, currentIndex, mode } = get()
-  const previous = computePrevIndex(currentIndex, queue.length, mode)
-  if (previous < 0) return
-  await playQueueAt(set, get, previous)
+  await playQueueAt(set, get, index)
 }
 
 export function seek(ms: number): void {
@@ -299,7 +312,10 @@ export function toggleMute(set: MusicSet, get: MusicGet): void {
 }
 
 export function cycleMode(set: MusicSet, get: MusicGet): void {
-  set({ mode: nextPlayMode(get().mode) })
+  const mode = nextPlayMode(get().mode)
+  // Entering shuffle deals a fresh order from the playing track; leaving it is
+  // the restore, since the queue itself was never reordered.
+  set({ mode, shuffleOrder: mode === 'shuffle' ? createShuffleOrder(get().queue, get().queue[get().currentIndex] ?? null) : null })
   persist(get)
 }
 

@@ -8,7 +8,7 @@
 
 ## 批次 ① · P1 缺陷（S–M，先做）
 
-- [ ] IMP-5 随机模式洗牌队列：打乱序列、当前曲置首、可还原原序、再次打乱（`music-utils.ts` computeNextIndex 改为洗牌序列驱动）
+- [x] IMP-5 随机模式洗牌队列：打乱序列、当前曲置首、可还原原序、再次打乱（`music-utils.ts` computeNextIndex 改为洗牌序列驱动）
 - [ ] IMP-4 A-B 循环控件补面：`MusicSeekBar` 可选区间轨道层（Hub/状态栏可见 + 可清除）
 - [ ] IMP-2 重复检测补近似分组：无 contentHash 曲目按归一化 title+artist+duration 容差分组，UI 标注「近似」
 - [ ] IMP-1 全库歌词搜索：服务端歌词检索端点（LIKE 或 FTS，带预算限流）+ 客户端异步合并与竞态守卫
@@ -46,3 +46,4 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-26 | IMP-5 随机洗牌队列 | 见本行提交哈希（提交后回填） | 先红 6 例（新模块与 store 用例）；修复后 music 80 文件 / 570 例 ✅（首跑 1 例 progress.test 偶发，复跑两次全绿）；typecheck ✅；comments/style/module-state/deep-imports/i18n/size 门禁 ✅ | 「再次打乱」= 关/开随机重建序列，未加队列面板按钮（YAGNI）；洗牌序列仅会话内存不持久化（刷新后按当前曲重建）；shuffleOrder 非空 ⟺ mode 为 shuffle，由 queue-ops/crossfade/library-tracks 各写入方维持 |

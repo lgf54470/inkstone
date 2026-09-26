@@ -32,10 +32,11 @@ export function nextPlayMode(mode: MusicPlayMode): MusicPlayMode {
   return PLAY_MODES[(index + 1) % PLAY_MODES.length]!
 }
 
+// Shuffle does not step the queue directly — it walks the play order held by the
+// store (music-shuffle.ts), so only the sequential modes answer here.
 export function computeNextIndex(currentIndex: number, length: number, mode: MusicPlayMode): number {
   if (length <= 0) return -1
   if (mode === 'repeat-one') return currentIndex
-  if (mode === 'shuffle') return length > 1 ? randomOtherIndex(currentIndex, length) : currentIndex
   const next = currentIndex + 1
   if (next < length) return next
   return mode === 'repeat-all' ? 0 : -1
@@ -43,15 +44,9 @@ export function computeNextIndex(currentIndex: number, length: number, mode: Mus
 
 export function computePrevIndex(currentIndex: number, length: number, mode: MusicPlayMode): number {
   if (length <= 0) return -1
-  if (mode === 'shuffle') return length > 1 ? randomOtherIndex(currentIndex, length) : currentIndex
   const prev = currentIndex - 1
   if (prev >= 0) return prev
   return mode === 'repeat-all' ? length - 1 : 0
-}
-
-function randomOtherIndex(currentIndex: number, length: number): number {
-  const draw = Math.floor(Math.random() * (length - 1))
-  return draw >= currentIndex ? draw + 1 : draw
 }
 
 // The transport nudge buttons and the seek hotkeys move by the same amount.

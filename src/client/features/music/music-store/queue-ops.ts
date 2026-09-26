@@ -1,25 +1,28 @@
 import { toastMusic } from '../music-feedback'
 import { pausePlayback, stopPlayback } from '../audio-engine'
 import { publishMediaSession } from '../media-session'
+import { orderAfterInsert, orderAfterQueueSync } from '../music-shuffle'
 import { setProgressTime } from './progress'
 import { currentTrack, playQueueAt } from './player'
 import type { MusicGet, MusicSet } from './types'
 
 export function addToQueue(set: MusicSet, get: MusicGet, id: string, next = false): void {
-  const { queue, currentIndex } = get()
+  const { queue, currentIndex, mode, shuffleOrder } = get()
   if (!queue.length) {
-    set({ queue: [id], currentIndex: 0 })
+    set({ queue: [id], currentIndex: 0, shuffleOrder: orderAfterQueueSync(mode, shuffleOrder, [id]) })
     toastMusic('music.added_to_queue')
     return
   }
   const deduped = queue.filter((entry) => entry !== id)
   if (next) {
     deduped.splice(Math.min(currentIndex + 1, deduped.length), 0, id)
-    set({ queue: deduped })
+    // The order places the id after the playing track in play order, which only
+    // matches the queue position while the queue is walked sequentially.
+    set({ queue: deduped, shuffleOrder: orderAfterInsert(mode, shuffleOrder, deduped, queue[currentIndex] ?? null, id) })
     toastMusic('music.added_to_queue')
     return
   }
-  set({ queue: [...deduped, id] })
+  set({ queue: [...deduped, id], shuffleOrder: orderAfterQueueSync(mode, shuffleOrder, [...deduped, id]) })
   toastMusic('music.added_to_queue')
 }
 
@@ -29,7 +32,7 @@ export function addToQueue(set: MusicSet, get: MusicGet, id: string, next = fals
  * playlist contained that the library could not answer for.
  */
 export function addManyToQueue(set: MusicSet, get: MusicGet, ids: readonly string[]): number {
-  const { queue } = get()
+  const { queue, mode, shuffleOrder } = get()
   const known = new Set(queue)
   const added: string[] = []
   for (const id of ids) {
@@ -38,23 +41,25 @@ export function addManyToQueue(set: MusicSet, get: MusicGet, ids: readonly strin
     added.push(id)
   }
   if (!added.length) return 0
-  set({ queue: [...queue, ...added] })
+  const merged = [...queue, ...added]
+  set({ queue: merged, shuffleOrder: orderAfterQueueSync(mode, shuffleOrder, merged) })
   toastMusic('music.queue_added_count', { value0: added.length })
   return added.length
 }
 
 export function removeFromQueue(set: MusicSet, get: MusicGet, index: number): void {
-  const { queue, currentIndex } = get()
+  const { queue, currentIndex, mode, shuffleOrder } = get()
   if (index < 0 || index >= queue.length) return
   const nextQueue = queue.filter((_entry, position) => position !== index)
+  const nextOrder = orderAfterQueueSync(mode, shuffleOrder, nextQueue)
   if (index !== currentIndex) {
     const nextIndex = index < currentIndex ? currentIndex - 1 : currentIndex
-    set({ queue: nextQueue, currentIndex: Math.max(0, Math.min(nextIndex, nextQueue.length - 1)) })
+    set({ queue: nextQueue, currentIndex: Math.max(0, Math.min(nextIndex, nextQueue.length - 1)), shuffleOrder: nextOrder })
     return
   }
   // Removing the playing track: keep the audio and the queue pointing at the same song.
   const nextIndex = Math.max(0, Math.min(index, nextQueue.length - 1))
-  set({ queue: nextQueue, currentIndex: nextIndex })
+  set({ queue: nextQueue, currentIndex: nextIndex, shuffleOrder: nextOrder })
   if (get().isPlaying && nextQueue.length) {
     void playQueueAt(set, get, nextIndex)
     return
@@ -67,7 +72,7 @@ export function removeFromQueue(set: MusicSet, get: MusicGet, index: number): vo
 
 export function clearQueue(set: MusicSet): void {
   pausePlayback()
-  set({ queue: [], currentIndex: 0, isPlaying: false, durationMs: 0 })
+  set({ queue: [], currentIndex: 0, isPlaying: false, durationMs: 0, shuffleOrder: null })
   setProgressTime(0)
   publishMediaSession(null, false)
 }

@@ -30,16 +30,6 @@ describe('music play mode cycling', () => {
     expect(computePrevIndex(0, 3, 'order')).toBe(0)
     expect(computePrevIndex(0, 3, 'repeat-all')).toBe(2)
   })
-
-  it('never returns the current slot when shuffling more than one track', () => {
-    for (let attempt = 0; attempt < 50; attempt += 1) {
-      const next = computeNextIndex(2, 5, 'shuffle')
-      expect(next).toBeGreaterThanOrEqual(0)
-      expect(next).toBeLessThan(5)
-      expect(next).not.toBe(2)
-    }
-    expect(computeNextIndex(0, 1, 'shuffle')).toBe(0)
-  })
 })
 
 describe('lrc parsing', () => {
