@@ -7,6 +7,7 @@ vi.mock('../music-feedback', () => ({
   toastMusicError: vi.fn(),
   toastMusicNotice: vi.fn(),
 }))
+vi.mock('./providers', () => ({ swapFailedProviderTrack: vi.fn(async () => false) }))
 vi.mock('../audio-engine', () => ({
   applyVolume: vi.fn(),
   mediaElement: vi.fn(() => null),
@@ -27,8 +28,9 @@ vi.mock('../audio-engine', () => ({
 }))
 
 import { startPlayback } from '../audio-engine'
-import { toastMusicError } from '../music-feedback'
-import { playCollection } from './player'
+import { toastMusicError, toastMusicNotice } from '../music-feedback'
+import { swapFailedProviderTrack } from './providers'
+import { playCollection, playTrack } from './player'
 import type { MusicStoreState } from './types'
 
 function track(id: string): MusicTrack {
@@ -109,5 +111,38 @@ describe('playback failure auto-advance', () => {
     await playCollection(store.set, store.get, ['a', 'b', 'c'])
     expect(attemptedTrackIds()).toEqual(['a'])
     expect(store.state().isPlaying).toBe(false)
+  })
+})
+
+describe('provider failure fallback (FEA-A1-4)', () => {
+  const providerTrack = (id: string): MusicTrack => ({ ...track(id), source: 'provider' } as MusicTrack)
+
+  beforeEach(() => {
+    vi.mocked(swapFailedProviderTrack).mockClear()
+    vi.mocked(swapFailedProviderTrack).mockResolvedValue(false)
+  })
+
+  it('a failed provider track tries another source before skipping', async () => {
+    const store = makeStore()
+    store.set({ tracks: [providerTrack('dead'), track('alive')], queue: ['dead'], currentIndex: 0 })
+    vi.mocked(startPlayback).mockResolvedValueOnce('unavailable').mockResolvedValue('playing')
+    vi.mocked(swapFailedProviderTrack).mockImplementationOnce(async (set) => {
+      set({ queue: ['alive'] })
+      return true
+    })
+    await playTrack(store.set, store.get, 'dead')
+    expect(swapFailedProviderTrack).toHaveBeenCalledWith(store.set, store.get, 'dead')
+    expect(attemptedTrackIds()).toEqual(['dead', 'alive'])
+    expect(store.state().isPlaying).toBe(true)
+    expect(toastMusicNotice).toHaveBeenCalledWith('music.provider_fallback_used')
+  })
+
+  it('a provider track with no alternate falls through to the normal skip', async () => {
+    const store = makeStore()
+    store.set({ tracks: [providerTrack('a'), track('b')] })
+    vi.mocked(startPlayback).mockResolvedValueOnce('unavailable').mockResolvedValue('playing')
+    await playCollection(store.set, store.get, ['a', 'b'])
+    expect(attemptedTrackIds()).toEqual(['a', 'b'])
+    expect(store.state().currentIndex).toBe(1)
   })
 })

@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { MusicTrack } from '@shared/types'
 import { MUSIC_PREFS_KEY } from './state'
 import { useMusic } from './index'
+import { swapFailedProviderTrack } from './providers'
 
 vi.mock('../../../lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../lib/api')>()
@@ -80,5 +82,45 @@ describe('provider search flow (FEA-A1-3)', () => {
     await useMusic.getState().playProviderTrack({ provider: 'gds', source: 'netease', sourceId: 'a1', title: 'Song A', artist: 'Ann', album: '', durationMs: null })
     expect(api.music.importProviderTrack).toHaveBeenCalled()
     expect(useMusic.getState().tracks.map((track) => track.id)).toContain('trk-1')
+  })
+})
+
+describe('provider failure fallback (FEA-A1-4)', () => {
+  const deadTrack = { id: 'trk-dead', title: 'Song A', artist: 'Ann', album: '', durationMs: 1000, source: 'provider' } as MusicTrack
+
+  afterEach(() => {
+    useMusic.setState({ providerResults: null, providerSearching: false, providerKeywords: '', queue: [], currentIndex: 0, tracks: [] })
+    vi.clearAllMocks()
+  })
+
+  it('swaps a failed provider track onto the best matching hit', async () => {
+    useMusic.setState({ tracks: [deadTrack], queue: ['trk-dead'], currentIndex: 0, providerEnabled: { gds: true } })
+    const swapped = await swapFailedProviderTrack(useMusic.setState, useMusic.getState, 'trk-dead')
+    expect(swapped).toBe(true)
+    expect(useMusic.getState().queue).toEqual(['trk-1'])
+    expect(useMusic.getState().tracks.map((track) => track.id)).toContain('trk-1')
+    expect(api.music.importProviderTrack).toHaveBeenCalledWith(expect.objectContaining({ source: 'netease', sourceId: 'a1' }))
+  })
+
+  it('skips a hit that resolves back to the failed row itself and reports no swap when nothing else fits', async () => {
+    useMusic.setState({ tracks: [deadTrack], queue: ['trk-dead'], currentIndex: 0, providerEnabled: { gds: true } })
+    vi.mocked(api.music.importProviderTrack).mockResolvedValue({ id: 'trk-dead', title: 'Song A', source: 'provider' } as MusicTrack)
+    const swapped = await swapFailedProviderTrack(useMusic.setState, useMusic.getState, 'trk-dead')
+    expect(swapped).toBe(false)
+    expect(useMusic.getState().queue).toEqual(['trk-dead'])
+  })
+
+  it('does not search at all when the provider switch is off', async () => {
+    useMusic.setState({ tracks: [deadTrack], queue: ['trk-dead'], currentIndex: 0, providerEnabled: {} })
+    const swapped = await swapFailedProviderTrack(useMusic.setState, useMusic.getState, 'trk-dead')
+    expect(swapped).toBe(false)
+    expect(api.music.providerSearch).not.toHaveBeenCalled()
+  })
+
+  it('leaves non-provider tracks alone', async () => {
+    useMusic.setState({ tracks: [{ ...deadTrack, source: 'r2' }], queue: ['trk-dead'], currentIndex: 0, providerEnabled: { gds: true } })
+    const swapped = await swapFailedProviderTrack(useMusic.setState, useMusic.getState, 'trk-dead')
+    expect(swapped).toBe(false)
+    expect(api.music.providerSearch).not.toHaveBeenCalled()
   })
 })

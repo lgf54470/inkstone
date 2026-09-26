@@ -12,6 +12,7 @@ import type { EqualizerSettings } from '../audio-engine'
 import { bindMediaSessionActions, publishMediaSession, updateMediaSessionPosition } from '../media-session'
 import { handleCrossfadeComplete, maybeStartCrossfade } from './crossfade'
 import { maybePreloadNext } from './preload'
+import { swapFailedProviderTrack } from './providers'
 import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
 import { persist } from './persist'
@@ -465,8 +466,20 @@ async function handlePlaybackFailure(set: MusicSet, get: MusicGet, kind: 'slow' 
     toastMusicError(null, 'music.playback_repeated_failures')
     return
   }
+  if (await tryProviderFallback(set, get)) return
   if (get().mode === 'repeat-one') return
   await playNext(set, get)
+}
+
+// FEA-A1-4: a provider link that died may still live in another catalogue;
+// repair the current slot before giving it up to the skip.
+async function tryProviderFallback(set: MusicSet, get: MusicGet): Promise<boolean> {
+  const track = currentTrack(get())
+  if (!track || track.source !== 'provider') return false
+  if (!await swapFailedProviderTrack(set, get, track.id)) return false
+  toastMusicNotice('music.provider_fallback_used')
+  await loadAndPlay(set, get)
+  return true
 }
 
 // A slow WebDAV object streams below realtime, so waiting for the first frame

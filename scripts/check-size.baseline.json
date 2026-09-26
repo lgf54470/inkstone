@@ -29,6 +29,9 @@
   "src/client/features/music/music-store/library.ts": {
     "longFns": 1
   },
+  "src/client/features/music/music-store/player.ts": {
+    "lines": 511
+  },
   "src/client/features/music/music-track-menu.test.ts": {
     "longFns": 1
   },

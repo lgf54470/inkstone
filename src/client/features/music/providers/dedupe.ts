@@ -9,7 +9,7 @@ export function mergeProviderResults(pages: MusicProviderTrack[][]): MusicProvid
   const merged: MusicProviderTrack[] = []
   for (const page of pages) {
     for (const hit of page) {
-      const key = `${normalize(hit.title)}|${normalize(hit.artist)}`
+      const key = `${normalizeTrackText(hit.title)}|${normalizeTrackText(hit.artist)}`
       if (seen.has(key)) continue
       seen.add(key)
       merged.push(hit)
@@ -18,6 +18,6 @@ export function mergeProviderResults(pages: MusicProviderTrack[][]): MusicProvid
   return merged
 }
 
-function normalize(value: string): string {
+export function normalizeTrackText(value: string): string {
   return value.toLowerCase().replace(/\s+/g, ' ').trim()
 }

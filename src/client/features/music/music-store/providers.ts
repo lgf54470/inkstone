@@ -1,7 +1,7 @@
 import { api } from '../../../lib/api'
 import type { MusicProviderTrack } from '../../../lib/api'
-import { listProviders } from '../providers'
-import { GDS_PROVIDER_ID, searchGds } from '../providers'
+import type { MusicTrack } from '@shared/types'
+import { GDS_PROVIDER_ID, listProviders, matchScore, searchGds, searchGdsPages } from '../providers'
 import { persist } from './persist'
 import { toastMusicError } from '../music-feedback'
 import type { MusicGet, MusicSet } from './types'
@@ -45,5 +45,52 @@ export async function playProviderTrack(set: MusicSet, get: MusicGet, hit: Music
     await get().playTrack(track.id)
   } catch (error) {
     toastMusicError(error, 'music.import_failed')
+  }
+}
+
+// FEA-A1-4: repair a failed provider play by re-serving the song from another
+// catalogue. Every source's own page is searched (the merged list would hide
+// the lower-ranked duplicate a dead link should fail over to), hits are scored
+// against the failed track, and registration is idempotent — so a hit that
+// resolves back to the failed row itself, the same dead song on its original
+// source, is skipped and the next candidate tried. The queue slot is rewritten
+// in place; false hands the failure back to the player's normal skip path.
+export async function swapFailedProviderTrack(set: MusicSet, get: MusicGet, trackId: string): Promise<boolean> {
+  const state = get()
+  const track = state.tracks.find((entry) => entry.id === trackId)
+  if (!track || track.source !== 'provider' || !track.title.trim()) return false
+  if (!listProviders().some((provider) => provider.isEnabled(state))) return false
+  const keywords = track.artist ? `${track.title} ${track.artist}` : track.title
+  const ranked = (await searchGdsPages(keywords))
+    .flat()
+    .map((hit) => ({ hit, score: matchScore(hit, track) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+  for (const { hit } of ranked) {
+    const replacement = await importCandidate(hit)
+    if (!replacement || replacement.id === trackId) continue
+    set((current) => ({
+      tracks: current.tracks.some((entry) => entry.id === replacement.id) ? current.tracks : [...current.tracks, replacement],
+      queue: current.queue.map((id) => (id === trackId ? replacement.id : id)),
+    }))
+    return true
+  }
+  return false
+}
+
+// Best effort: a candidate that cannot be registered just drops out of the
+// ranking; the player's normal failure path still runs underneath.
+async function importCandidate(hit: MusicProviderTrack): Promise<MusicTrack | null> {
+  try {
+    return await api.music.importProviderTrack({
+      source: hit.source,
+      sourceId: hit.sourceId,
+      title: hit.title,
+      artist: hit.artist || undefined,
+      album: hit.album || undefined,
+      durationMs: hit.durationMs ?? undefined,
+    })
+  } catch {
+    return null
   }
 }

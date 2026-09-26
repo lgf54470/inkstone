@@ -138,6 +138,7 @@ export const messages = {
 'music.provider_off': '开启「聚合搜索」后，可搜索并添加在线音源的歌曲',
 'music.provider_add': '添加',
 'music.provider_none': '没有在线匹配',
+'music.provider_fallback_used': '已切换到其他音源播放',
 'music.import_text': '粘贴导入',
 'music.import_text_title': '从文本导入',
 'music.import_text_hint': '每行一条，支持「歌手 - 标题」或仅标题；只会匹配曲库中已有的曲目',

@@ -8,12 +8,13 @@ export const GDS_PROVIDER_ID = 'gds'
 // order and the de-dup preference when two sources return the same song.
 export const GDS_SOURCES = ['netease', 'kuwo', 'migu', 'qq', 'bilibili'] as const
 
-// FEA-A1-3: one aggregate search = a page per upstream source, fetched in
-// parallel through the worker proxy and merged by rank. A source that fails or
-// answers nothing just contributes no page — one dead catalogue must not blank
-// the results of the others.
-export async function searchGds(keywords: string): Promise<MusicProviderTrack[]> {
-  const pages = await Promise.all(GDS_SOURCES.map(async (source) => {
+// One aggregate search = a page per upstream source, fetched in parallel
+// through the worker proxy. A source that fails or answers nothing just
+// contributes no page — one dead catalogue must not blank the results of the
+// others. FEA-A1-4 needs the unmerged pages: the rank-order merge hides the
+// lower-ranked duplicate that a dead link should fail over to.
+export async function searchGdsPages(keywords: string): Promise<MusicProviderTrack[][]> {
+  return Promise.all(GDS_SOURCES.map(async (source) => {
     try {
       const { results } = await api.music.providerSearch(source, keywords)
       return results as MusicProviderTrack[]
@@ -21,5 +22,8 @@ export async function searchGds(keywords: string): Promise<MusicProviderTrack[]>
       return []
     }
   }))
-  return mergeProviderResults(pages)
+}
+
+export async function searchGds(keywords: string): Promise<MusicProviderTrack[]> {
+  return mergeProviderResults(await searchGdsPages(keywords))
 }

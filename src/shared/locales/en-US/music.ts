@@ -138,6 +138,7 @@ export const messages = {
 'music.provider_off': 'Turn on "Aggregate search" to look up and add songs from online sources',
 'music.provider_add': 'Add',
 'music.provider_none': 'No online matches',
+'music.provider_fallback_used': 'Switched to another online source',
 'music.import_text': 'Paste list',
 'music.import_text_title': 'Import from text',
 'music.import_text_hint': 'One track per line: "artist - title" or a bare title; only tracks already in the library resolve',

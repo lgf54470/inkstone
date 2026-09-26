@@ -40,7 +40,7 @@
 - [x] FEA-A1-1 Provider 抽象 + 设置开关（默认全关；`src/client/features/music/providers/` 新目录，经 `index.ts` 公开入口）
 - [x] FEA-A1-2 Worker 代理路由：域名白名单 + `budget.ts` 新限额族 + 响应限长（复用 `readResponseBytesWithinLimit`）
 - [x] FEA-A1-3 首批音源接入 + 聚合搜索（按源 rank 合并去重；来源角标扩展）
-- [ ] FEA-A1-4 播放失败智能换源（归一化匹配打分，成功回写队列元数据）
+- [x] FEA-A1-4 播放失败智能换源（归一化匹配打分，成功回写队列元数据）
 - [ ] FEA-A1-5 搜索建议（歌手/专辑/歌单直达）
 - [ ] FEA-A1-6 平台歌单/榜单导入（可选，视 API 稳定性决策）
 
@@ -75,4 +75,5 @@
 | 2026-09-27 | FEA-A1-1 Provider 抽象 + 设置开关 | 待回填 | 先红 2 例（registry 1 + 开关持久化 1）；实现后 4 例 ✅；全量 515 文件 / 4580 例 ✅；typecheck ✅；静态门禁 ✅（无 UI/网络改动，免浏览器门禁） | providers/ 新目录四文件（types/registry/gds/index），MusicProvider 接口本期只含身份与 isEnabled——搜索能力随 A1-3 落地，避免空实现；开关即偏好 providerEnabled（Record<providerId, boolean>，默认 {}，loadPreferences 剥离非法项），随既有偏好 debounce 持久化；首批聚合源 gds（netease/kuwo/migu/qq/bilibili 五源 rank 序）登记但默认全关——接入第三方目录是显式逐源决定 |
 | 2026-09-27 | FEA-A1-2 Worker 代理路由 | 待回填 | 先红 4 例（路由缺失）；实现后 worker 4 例 ✅；全量 516 文件 / 4584 例 ✅；typecheck ✅；静态门禁 ✅（无 UI 改动，免浏览器门禁） | 两条具名代抓端点（GET /provider/search、/provider/url）而非通用开放代理——上游域名白名单收敛为 GD 聚合源单主机，浏览器永远不直连第三方（页面 CSP 亦禁止）；source 白名单枚举（与 A1-1 的 GDS_SOURCES 同列）+ keywords/id 非空 + 音质枚举校验；响应走限长流式读取（1MB 上限）+ 12s 超时 + 新预算族 provider（120 次/时）；播放地址按次解析不入库（上游直链会过期）——A1-3 的流分支消费该端点；上游字段类型漂移（artist 数组/字符串、duration 缺失）在 worker 侧统一归一化 |
 | 2026-09-27 | FEA-A1-3 首批音源接入 + 聚合搜索 | 待回填 | 先红 4 例（登记/幂等/校验/流播放，并入 music-routes 文件）+ 去重 2 例 + store 3 例；实现后 9 例 ✅；全量 517 文件 / 4593 例 ✅；typecheck ✅；静态门禁 ✅；e2e-visual / check-contrast 与 F⑤ 各项一并验证（见 A1-5 行） | 新 source 值 'provider'：object_key = gds:{source}:{songId}，配额/统计按引用行排除；登记 POST /tracks/import-provider 幂等（查重 source+object_key），流播放走 streamProviderTrack——每次播放现解析上游临时直链再代理（Range 透传），与 Alist 同构；聚合搜索 = 五源并行经代理各取一页，mergeProviderResults 按 (归一化标题, 歌手) 键 rank 序去重（跨语言译名归一留给 A1-4）；UI 为曲库搜索框下方的「在线结果」区（头部带 A1-1 的开关，关闭态只提示不请求）；单源失败静默贡献空页——一个死源不拖垮其余源 |
+| 2026-09-27 | FEA-A1-4 播放失败智能换源 | 待回填 | 先红 8 例（每源页 2 + store 换源 4 + 播放器回退 2）+ match.test.ts 整文件因模块缺失未加载（打分 7 例）；实现后 24 例 ✅；全量 519 文件 / 4608 例 ✅；typecheck ✅；静态门禁 ✅（无 UI 改动，免浏览器门禁） | 失败链在熔断之后、跳下一曲之前插一层换源尝试：当前曲 source='provider' 且聚合开关开启才触发，repeat-one 也先修再停；searchGdsPages 从 searchGds 拆出——换源必须拿未合并的每源原始页，rank 合并去重会藏起死链应回退到的低 rank 副本；matchScore 纯函数（providers/match.ts）：标题归一化精确=2 / 包含=1 为门槛且 ×10 主导排序，歌手一致 +1、冲突拒绝，时长差 3 倍以上按「同名异录」拒绝；候选按分排序逐个幂等登记——解析回失败行自身（原源同曲死链）的候选跳过换下一个，换中即队列所有出现处改写引用并回放（新行入库、旧行保留）；无匹配或登记失败回落既有失败路径，重复失败仍由 3 次熔断兜底；跨语言译名/简繁归一为已知局限（纯文本归一化），已记入 match.ts 注释 |
 | 2026-09-27 | FEA-A2-4 分集播放打通 | `8153f6f2` | 先红 3 例（登记端点）；实现后 worker 14 例 ✅；全量 513 文件 / 4576 例 ✅；typecheck ✅；静态门禁 ✅；F④ 浏览器门禁（A2-1..A2-4 合并一轮）：e2e 177 ✅；e2e-visual 534/535（仅剩已登记看板遗留）；check-contrast ✅ | 分集播放 = 幂等登记为 external 引用行（POST /podcasts/:id/episodes/import，feed 标题作 album、itunes 时长传 durationMs，重复登记返回既有行不撞 (user_id, object_key) 唯一索引）→ 客户端本地追加 + playTrack——队列/交叉淡入/进度持久化/收藏/下载全部复用 external 行既有管线，零新引擎代码；分集封面未做（feed 的 itunes:image 需要再迁移一列，记为后续评估）；已听进度由 external 行的 playback 管线自动持久化 |
