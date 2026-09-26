@@ -46,4 +46,4 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-26 | IMP-5 随机洗牌队列 | 见本行提交哈希（提交后回填） | 先红 6 例（新模块与 store 用例）；修复后 music 80 文件 / 570 例 ✅（首跑 1 例 progress.test 偶发，复跑两次全绿）；typecheck ✅；comments/style/module-state/deep-imports/i18n/size 门禁 ✅ | 「再次打乱」= 关/开随机重建序列，未加队列面板按钮（YAGNI）；洗牌序列仅会话内存不持久化（刷新后按当前曲重建）；shuffleOrder 非空 ⟺ mode 为 shuffle，由 queue-ops/crossfade/library-tracks 各写入方维持 |
+| 2026-09-26 | IMP-5 随机洗牌队列 | `fae38130` | 先红 6 例（新模块与 store 用例）；修复后 music 80 文件 / 570 例 ✅（首跑 1 例 progress.test 偶发，复跑两次全绿）；typecheck ✅；comments/style/module-state/deep-imports/i18n/size 门禁 ✅ | 「再次打乱」= 关/开随机重建序列，未加队列面板按钮（YAGNI）；洗牌序列仅会话内存不持久化（刷新后按当前曲重建）；shuffleOrder 非空 ⟺ mode 为 shuffle，由 queue-ops/crossfade/library-tracks 各写入方维持 |
