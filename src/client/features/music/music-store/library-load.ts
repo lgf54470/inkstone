@@ -196,10 +196,10 @@ export function clearSelection(set: MusicSet): void {
 // this set: declaring the slice keeps the subscription list and the memo dependencies honest
 // instead of letting a cast hide a field the view reads but never watches.
 type MusicScopeView = Pick<MusicStoreState, 'tracks' | 'playlists' | 'tags' | 'scope'>
-export type MusicLibraryView = MusicScopeView & Pick<MusicStoreState, 'remoteLyricMatches' | 'sourceFilter' | 'query' | 'sort' | 'sortDirection' | 'romanized' | 'tags'>
+export type MusicLibraryView = MusicScopeView & Pick<MusicStoreState, 'remoteLyricMatches' | 'sourceFilter' | 'query' | 'sort' | 'sortDirection' | 'romanized' | 'tags' | 'viewMode'>
 
 // The "matches left out" notice ranks the same way, minus the order it never applies.
-export type MusicMatchCountView = MusicScopeView & Pick<MusicStoreState, 'remoteLyricMatches' | 'sourceFilter' | 'query' | 'romanized' | 'tags'>
+export type MusicMatchCountView = MusicScopeView & Pick<MusicStoreState, 'remoteLyricMatches' | 'sourceFilter' | 'query' | 'romanized' | 'tags' | 'viewMode'>
 
 export function visibleTracks(state: MusicLibraryView): MusicTrack[] {
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
@@ -253,8 +253,11 @@ function playlistTracks(state: MusicScopeView, playlistId: string): MusicTrack[]
 }
 
 function filterByQuery(tracks: MusicTrack[], state: MusicLibraryView, query: string): MusicTrack[] {
-  const ranked = rankedWithLyricMatches(state, tracks, query).slice(0, SEARCH_RESULT_LIMIT)
-  const order = new Map(ranked.map((id, index) => [id, index]))
+  // The table windows its rows, so the list view can afford every match; the grid
+  // mounts real cards, where the DOM cap still applies.
+  const ranked = rankedWithLyricMatches(state, tracks, query)
+  const capped = state.viewMode === 'grid' ? ranked.slice(0, SEARCH_RESULT_LIMIT) : ranked
+  const order = new Map(capped.map((id, index) => [id, index]))
   return tracks.filter((track) => order.has(track.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!)
 }
 
@@ -278,6 +281,8 @@ function rankedWithLyricMatches(state: MusicLibraryView, tracks: MusicTrack[], q
 export function hiddenMatchCount(state: MusicMatchCountView): number {
   const query = state.query.trim()
   if (!query) return 0
+  // The list view shows every match, so nothing is ever hidden there.
+  if (state.viewMode !== 'grid') return 0
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
   const local = searchTracks(scoped, state.romanized, query, state.tags)
   const remote = state.remoteLyricMatches

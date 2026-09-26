@@ -64,15 +64,25 @@ function queryStore(count: number) {
   return store
 }
 
-describe('search hit truncation (UI-16)', () => {
-  it('counts the matches that the capped list leaves out', () => {
+describe('search hit truncation (UI-16, view-aware since IMP-3)', () => {
+  it('caps the grid at the render budget and counts what it leaves out', () => {
     const store = queryStore(250)
+    store.set({ viewMode: 'grid' })
     expect(visibleTracks(store.get())).toHaveLength(200)
     expect(hiddenMatchCount(store.get())).toBe(50)
   })
 
+  it('shows every match in the list view, whose table windows its rows', () => {
+    const store = queryStore(250)
+    store.set({ viewMode: 'list' })
+    expect(visibleTracks(store.get())).toHaveLength(250)
+    expect(hiddenMatchCount(store.get())).toBe(0)
+  })
+
   it('counts nothing hidden when every match fits', () => {
-    expect(hiddenMatchCount(queryStore(120).get())).toBe(0)
+    const store = queryStore(120)
+    store.set({ viewMode: 'grid' })
+    expect(hiddenMatchCount(store.get())).toBe(0)
   })
 
   it('counts nothing hidden without a query', () => {
@@ -83,7 +93,7 @@ describe('search hit truncation (UI-16)', () => {
 
   it('counts nothing hidden when the query matches fewer tracks than the cap', () => {
     const store = queryStore(250)
-    store.set({ query: 'moonlight 24' })
+    store.set({ viewMode: 'grid', query: 'moonlight 24' })
     expect(hiddenMatchCount(store.get())).toBe(0)
   })
 })

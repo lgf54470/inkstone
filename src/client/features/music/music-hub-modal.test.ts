@@ -88,12 +88,21 @@ describe('MusicHubModal search truncation — UI-16', () => {
     await mountHub()
   }
 
-  it('says how many matches the capped list leaves out', async () => {
+  it('says how many matches the capped grid leaves out', async () => {
+    useMusic.setState({ viewMode: 'grid' })
     await mountQueryResults(250)
     expect(document.body.textContent).toContain(t('music.search_truncated', { value0: 200, value1: 250 }))
   })
 
+  it('stays quiet in the list view, whose table windows every match', async () => {
+    useMusic.setState({ viewMode: 'list' })
+    await mountQueryResults(250)
+    expect(document.body.textContent).not.toContain(t('music.search_truncated', { value0: 200, value1: 250 }))
+    expect(document.querySelectorAll('[role="rowgroup"] > [role="row"]').length).toBeLessThan(250)
+  })
+
   it('stays quiet while every match is on screen', async () => {
+    useMusic.setState({ viewMode: 'grid' })
     await mountQueryResults(120)
     expect(document.body.textContent).not.toContain(t('music.search_truncated', { value0: 200, value1: 120 }))
   })

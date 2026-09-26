@@ -1,5 +1,5 @@
 import type { MusicTrack } from '@shared/types'
-import { memo, useEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type UIEvent } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -7,6 +7,14 @@ import { useMusic } from './music-store'
 import type { MusicSort } from './music-store'
 import { MusicTrackRow, SOURCE_COLUMN_CELL, type TrackRowHandlers } from './music-track-row'
 import type { TrackSelection } from './use-track-list'
+
+// Rows are h-12 and the row group pads with p-2, so the window math is exact
+// rather than measured: content height = rows * height + the two paddings.
+export const TRACK_ROW_HEIGHT = 48
+// Below this a window is bookkeeping without a payoff: a small library renders
+// whole, and so do the jsdom fixtures that assert row-by-row structure.
+const TRACK_WINDOW_THRESHOLD = 60
+const TRACK_WINDOW_OVERSCAN = 10
 
 export const MusicTrackTable = memo(function MusicTrackTable({
   tracks,
@@ -24,16 +32,28 @@ export const MusicTrackTable = memo(function MusicTrackTable({
   const selected = useMemo(() => new Set(selection.selectedIds), [selection.selectedIds])
   const allSelected = tracks.length > 0 && tracks.every((track) => selected.has(track.id))
   const someSelected = tracks.some((track) => selected.has(track.id))
+  const windowed = tracks.length > TRACK_WINDOW_THRESHOLD
+  const view = useRowWindow(tracks.length, windowed)
+  const shown = windowed ? tracks.slice(view.start, view.end) : tracks
 
   return (
-    <div role='table' aria-label={t('music.tracks')} className='flex min-h-0 flex-1 flex-col'>
+    <div role='table' aria-label={t('music.tracks')} aria-rowcount={tracks.length} className='flex min-h-0 flex-1 flex-col'>
       <TableHeader
         allSelected={allSelected}
         someSelected={someSelected}
         onToggleAll={() => (allSelected ? selection.clear() : selection.selectAll())}
       />
-      <div role='rowgroup' className='min-h-0 flex-1 overflow-y-auto p-2'>
-        {tracks.map((track, index) => {
+      <div
+        ref={view.ref}
+        role='rowgroup'
+        onScroll={windowed ? view.onScroll : undefined}
+        className='min-h-0 flex-1 overflow-y-auto p-2'
+      >
+        {/* The spacers stand in for the rows the window leaves out, so the scroll
+            bar describes the whole list even though only a slice is mounted. */}
+        {windowed && view.start > 0 && <div style={{ height: view.start * TRACK_ROW_HEIGHT }} />}
+        {shown.map((track, offset) => {
+          const index = windowed ? view.start + offset : offset
           const isCurrent = track.id === currentId
           return (
             <MusicTrackRow
@@ -50,10 +70,40 @@ export const MusicTrackTable = memo(function MusicTrackTable({
             />
           )
         })}
+        {windowed && view.end < tracks.length && <div style={{ height: (tracks.length - view.end) * TRACK_ROW_HEIGHT }} />}
       </div>
     </div>
   )
 })
+
+// The scroll window: rows near the playhead plus an overscan margin, so a wheel
+// step always lands on rows that already exist. The viewport height arrives via
+// ResizeObserver; until it does (or in jsdom) a minimal window still renders.
+function useRowWindow(total: number, windowed: boolean): {
+  ref: (node: HTMLDivElement | null) => void
+  start: number
+  end: number
+  onScroll: (event: UIEvent<HTMLDivElement>) => void
+} {
+  const [scrollTop, setScrollTop] = useState(0)
+  const [viewport, setViewport] = useState(0)
+  const groupRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const group = groupRef.current
+    if (!group || !windowed || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => setViewport(group.clientHeight))
+    observer.observe(group)
+    return () => observer.disconnect()
+  }, [windowed])
+  const start = Math.max(0, Math.floor(scrollTop / TRACK_ROW_HEIGHT) - TRACK_WINDOW_OVERSCAN)
+  const rows = viewport > 0 ? Math.ceil(viewport / TRACK_ROW_HEIGHT) + 2 * TRACK_WINDOW_OVERSCAN : TRACK_WINDOW_OVERSCAN
+  return {
+    ref: (node: HTMLDivElement | null) => { groupRef.current = node },
+    start,
+    end: Math.min(total, start + rows),
+    onScroll: (event) => setScrollTop(event.currentTarget.scrollTop),
+  }
+}
 
 function TableHeader({
   allSelected,

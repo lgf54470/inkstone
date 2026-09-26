@@ -195,3 +195,51 @@ describe('table ARIA structure', () => {
     expect(document.querySelector('[role="table"]')?.getAttribute('aria-multiselectable')).toBeNull()
   })
 })
+
+// IMP-3: a windowed list must keep painting the rows near the playhead while the
+// DOM stays bounded, and the numbers a reader announces must describe the whole list.
+describe('the track table window (IMP-3)', () => {
+  function manyTracks(count: number): MusicTrack[] {
+    return Array.from({ length: count }, (_, index) => track(`t-${String(index).padStart(3, '0')}`, `Track ${index}`, 'Artist'))
+  }
+
+  async function mountLargeList(count: number): Promise<void> {
+    const list = manyTracks(count)
+    useMusic.setState({ tracks: list })
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    await act(async () => {
+      root?.render(createElement(MusicTrackList, { tracks: list, loading: false, emptyTitle: 'x', onEdit: () => {} }))
+    })
+  }
+
+  function renderedRows(): string[] {
+    return [...document.querySelectorAll('[role="rowgroup"] > [role="row"]')].map((row) => row.textContent ?? '')
+  }
+
+  it('renders every row while the list is small', async () => {
+    await mountList()
+    expect(renderedRows()).toHaveLength(2)
+    expect(document.querySelector('[role="table"]')?.getAttribute('aria-rowcount')).toBe('2')
+  })
+
+  it('renders a bounded window for a large list and moves it on scroll', async () => {
+    await mountLargeList(500)
+    const table = document.querySelector('[role="table"]')
+    expect(table?.getAttribute('aria-rowcount')).toBe('500')
+    const before = renderedRows()
+    expect(before.length).toBeLessThan(500)
+    expect(before.some((text) => text.includes('Track 0'))).toBe(true)
+
+    const group = document.querySelector('[role="rowgroup"]')
+    act(() => {
+      group!.scrollTop = 300 * 48
+      group!.dispatchEvent(new Event('scroll', { bubbles: true }))
+    })
+    const after = renderedRows()
+    expect(after.length).toBeLessThan(500)
+    expect(after.some((text) => text.includes('Track 0'))).toBe(false)
+    expect(after.some((text) => text.includes('Track 290'))).toBe(true)
+  })
+})
