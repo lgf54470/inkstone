@@ -2963,6 +2963,8 @@ const allowed = new Map([
     '// A taken name is a no-op, not a failure: the tag the user asked for is already',
     '// there, and saying so is the only feedback the click would otherwise get.',
     '// The server re-parents children of the deleted tag to its parent; mirror that locally.',
+    '// A text import lands as one playlist: the list is created and every resolved',
+    '// track is appended in the same flow, with a single notice at the end.',
     '// The dialog keeps its draft open until the write lands; the success flag is how it knows.',
     '// An absent description stays untouched: the sidebar rename only edits the name.',
     '// The share endpoint is idempotent, so the slug a visitor already holds keeps working.',
@@ -3221,6 +3223,7 @@ const allowed = new Map([
     '// `false` means the write never landed; form owners stay open on it.',
     '// Detail views call this for tracks the lazy library listed with a lyric but no text.',
     '// Menu action: fetch lyrics through the Worker relay and save the match as this track\'s lyric.',
+    '// A text import creates the list and appends its resolved tracks in one flow.',
   ]],
   ['src/client/features/music/music-store/webdav.ts', [
     '// Appends give instant feedback mid-pass; one reload at the end restores server truth.',
@@ -3234,6 +3237,15 @@ const allowed = new Map([
     '// Built once for a whole list and shared: resolving the tree per row is O(rows × tags)',
     '// for a value that only changes when the tags themselves change.',
     '// Older music tags stored a palette name instead of hex; display keeps working either way.',
+  ]],
+  ['src/client/features/music/music-text-import.test.ts', [
+    '// FEA-B2: a list pasted as plain text answers the same matching the M3U file',
+    '// import offers — "artist - title" lines and bare titles both resolve.',
+  ]],
+  ['src/client/features/music/music-text-import.tsx', [
+    '// A pasted list is an M3U without the file: every non-empty line is one entry,',
+    '// and the same "artist - title" and bare-title keys the file importer uses do',
+    '// the resolving, so the two imports cannot drift apart.',
   ]],
   ['src/client/features/music/music-track-card.test.ts', [
     '// The grid card used to be a bare div that selected on click and played on double click: no role,',

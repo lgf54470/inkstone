@@ -220,6 +220,8 @@ export interface MusicStoreState {
   deleteTag: (id: string) => Promise<void>
 
   createPlaylist: (name: string, description?: string) => Promise<boolean>
+  // A text import creates the list and appends its resolved tracks in one flow.
+  createPlaylistWithTracks: (name: string, trackIds: readonly string[]) => Promise<boolean>
   renamePlaylist: (id: string, name: string, description?: string) => Promise<boolean>
   deletePlaylist: (id: string) => Promise<void>
   sharePlaylist: (id: string) => Promise<string | null>

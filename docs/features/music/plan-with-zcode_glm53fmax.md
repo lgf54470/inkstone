@@ -8,7 +8,7 @@
 
 ## 批次 F① · 速赢小项（S）
 
-- [ ] FEA-B2 文本批量导入歌单：扩展 `music-m3u.ts` 解析器接受「标题 - 歌手」多行文本；入队 + 可选建歌单；未匹配行警告
+- [x] FEA-B2 文本批量导入歌单：复用 M3U 解析与匹配（裸文本每行一条，「歌手 - 标题」或仅标题）；工具栏新增「粘贴导入」对话框，入队或建歌单，未匹配行警告
 - [ ] FEA-B4 「已离线」视图：曲库 scope 新增 offline 视图（读取 SW 离线缓存清单 `offline-audio.ts` LIST），侧栏入口 + 计数
 - [ ] FEA-C1 下一首预加载：队列下一首提前 `preload`（audio-engine 双元素已就位，预载元数据/首块）
 - [ ] FEA-C4 歌词样式设置：对齐（左/中/右）+ 字号档位，偏好持久化（`music-store/state.ts`），沉浸层与现在播放列同步生效
@@ -56,3 +56,4 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-26 | FEA-B2 文本批量导入歌单 | 见提交（哈希回填于后续 docs 提交） | 先红 1 例（组件不存在）；修复后 music + routes 85 文件 / 674 例 ✅；typecheck ✅；comments/i18n/size/deep-imports 门禁 ✅；check-contrast ✅；e2e-visual 534/535（仅剩已登记看板遗留） | 文本导入复用 M3U 的 parseM3u/matchM3uTracks（裸文本行天然是 target），两种导入共用同一套匹配键不会漂移；建歌单走新动作 createPlaylistWithTracks（一次创建 + 追加 + 单条提示），M3U 文件导入仍只入队 |

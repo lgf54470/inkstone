@@ -9,7 +9,7 @@ import { searchTrackLyric } from './library-lyrics'
 import { dismissDownload, dismissLibraryJob, downloadTracks, setTransfersOpen, setUploadTarget } from './transfers'
 import { setTracksOffline, syncOfflineTracks, toggleTrackOffline } from './offline'
 import {
-  addSelectionToPlaylist, addToPlaylist, createPlaylist, createTag, deletePlaylist, deleteTag, dismissUpload,
+  addSelectionToPlaylist, addToPlaylist, createPlaylist, createPlaylistWithTracks, createTag, deletePlaylist, deleteTag, dismissUpload,
   movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist,
   sharePlaylist, unsharePlaylist, uploadFiles,
 } from './library-collections'
@@ -23,7 +23,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'searchTrackLyric' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
   | 'createTag' | 'patchTag' | 'deleteTag'
-  | 'createPlaylist' | 'renamePlaylist' | 'deletePlaylist' | 'sharePlaylist' | 'unsharePlaylist' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
+  | 'createPlaylist' | 'createPlaylistWithTracks' | 'renamePlaylist' | 'deletePlaylist' | 'sharePlaylist' | 'unsharePlaylist' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
   | 'uploadFiles' | 'dismissUpload'
   | 'downloadTracks' | 'dismissDownload' | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'
   | 'syncOfflineTracks' | 'toggleTrackOffline' | 'setTracksOffline'>
@@ -62,6 +62,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     deleteTag: (id) => deleteTag(set, id),
 
     createPlaylist: (name, description) => createPlaylist(set, name, description),
+    createPlaylistWithTracks: (name, trackIds) => createPlaylistWithTracks(set, name, trackIds),
     renamePlaylist: (id, name, description) => renamePlaylist(set, id, name, description),
     deletePlaylist: (id) => deletePlaylist(set, id),
     sharePlaylist: (id) => sharePlaylist(set, id),

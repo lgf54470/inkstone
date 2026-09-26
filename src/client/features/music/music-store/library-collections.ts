@@ -102,6 +102,26 @@ export async function createPlaylist(set: MusicSet, name: string, description?: 
   }
 }
 
+// A text import lands as one playlist: the list is created and every resolved
+// track is appended in the same flow, with a single notice at the end.
+export async function createPlaylistWithTracks(set: MusicSet, name: string, trackIds: readonly string[]): Promise<boolean> {
+  try {
+    const created = await api.music.createPlaylist({ name: name.trim() })
+    const entries: { id: string; trackId: string }[] = []
+    for (const trackId of trackIds) {
+      const result = await api.music.addPlaylistItem(created.id, trackId)
+      if (result.added) entries.push({ id: result.id, trackId })
+    }
+    set((state) => resummarizePlaylists(state, [...state.playlists, created]))
+    mergePlaylistItems(set, created.id, entries)
+    toastMusicNotice('music.import_text_playlist_done', { value0: name.trim(), value1: entries.length })
+    return true
+  } catch (error) {
+    toastMusicError(error, 'music.action_failed')
+    return false
+  }
+}
+
 // The dialog keeps its draft open until the write lands; the success flag is how it knows.
 export async function renamePlaylist(set: MusicSet, id: string, name: string, description?: string): Promise<boolean> {
   try {

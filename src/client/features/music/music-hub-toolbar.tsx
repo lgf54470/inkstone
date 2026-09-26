@@ -7,6 +7,7 @@ import { Tooltip, confirm } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { toastMusicNotice } from './music-feedback'
 import { matchM3uTracks, parseM3u } from './music-m3u'
+import { MusicTextImportButton } from './music-text-import'
 import { SearchBox } from './music-search-box'
 import { useMusic } from './music-store'
 import type { MusicSort } from './music-store'
@@ -83,6 +84,7 @@ function ToolbarActions({ tracks, onUpload, onBrowseWebdav }: {
       <Button size='sm' variant='primary' icon={<Upload size={12} />} onClick={onUpload}>{t('music.upload')}</Button>
       <Button size='sm' icon={<Server size={12} />} onClick={onBrowseWebdav}>{t('music.webdav_title')}</Button>
       <M3uImportButton tracks={tracks} />
+      <MusicTextImportButton tracks={tracks} />
       <Tooltip label={t('common.refresh')} side='left'>
         <IconButton label={t('common.refresh')} size='sm' disabled={loading} onClick={() => void loadLibrary(true)}>
           <RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />
