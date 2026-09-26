@@ -9,6 +9,7 @@ import { preferredScrollBehavior } from '../../lib/motion'
 import { formatBytes, formatTimecode, fullTime } from '../../lib/time'
 import { useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
+import { LYRIC_ALIGN_CLASSES, LYRIC_COLUMN_SIZE_CLASSES, MusicLyricStyleButton } from './music-lyric-style'
 import { useTrackLyric } from './music-lyrics'
 import { MusicVideoStage } from './music-video-stage'
 import { activeLyricIndex, lyricsEmptyKey, lyricsPending, parseLyric } from './music-utils'
@@ -41,7 +42,7 @@ export function MusicNowPlaying({
     <aside className='flex w-64 shrink-0 flex-col border-l border-[var(--border-subtle)] bg-[var(--bg-sunken)]'>
       <Artwork track={track} />
       <NowPlayingMeta track={track} />
-      <div className='px-3 pb-2'>
+      <div className='flex items-center gap-1 px-3 pb-2'>
         <Segmented
           label={t('music.now_playing')}
           size='sm'
@@ -52,6 +53,7 @@ export function MusicNowPlaying({
             { value: 'details', label: t('music.details') },
           ]}
         />
+        <MusicLyricStyleButton />
       </div>
       {/* Overflow only scrolls from the keyboard when the scroll box itself takes focus. */}
       <div
@@ -105,17 +107,20 @@ function Lyrics({ lines, activeIndex, emptyKey, pending }: {
   emptyKey: MessageKey
   pending: boolean
 }) {
+  const align = useMusic((state) => state.lyricAlign)
+  const textSize = useMusic((state) => state.lyricTextSize)
   if (!lines.length) {
     return <p role={pending ? 'status' : undefined} className='py-8 text-center text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t(emptyKey)}</p>
   }
   return (
-    <div className='space-y-1.5 py-1'>
+    <div className={cn('space-y-1.5 py-1', LYRIC_ALIGN_CLASSES[align])}>
       {lines.map((line, index) => (
         <p
           key={`${line.timeMs}-${index}`}
           data-active-line={index === activeIndex}
           className={cn(
-            'text-[length:var(--text-12)] leading-[var(--writing-line)] transition-colors',
+            'leading-[var(--writing-line)] transition-colors',
+            LYRIC_COLUMN_SIZE_CLASSES[textSize],
             index === activeIndex ? 'font-semibold text-[var(--accent)]' : 'text-[var(--text-tertiary)]',
           )}
         >

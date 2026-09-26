@@ -10,6 +10,7 @@ import { preferredScrollBehavior } from '../../lib/motion'
 import { formatBytes, formatTimecode } from '../../lib/time'
 import { LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, useActiveLoopRange, useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
+import { LYRIC_ALIGN_CLASSES, LYRIC_IMMERSIVE_SIZE_CLASSES, MusicLyricStyleButton } from './music-lyric-style'
 import { MusicPlayButtons } from './music-play-buttons'
 import { MusicQueueList } from './music-queue-list'
 import { MusicSeekBar } from './music-seek-bar'
@@ -88,6 +89,7 @@ function LyricsPanel({ track, lyrics, activeIndex, lyricPending, offsetMs, queue
         <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>{t('music.lyrics')}</span>
         <span className='flex items-center gap-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
           {track && <LyricOffsetControls trackId={track.id} offsetMs={offsetMs} />}
+          <MusicLyricStyleButton />
           <ListMusic size={12} />{t('music.queue_count', { value0: queueLength })}
           <IconButton label={t('music.exit_immersive')} size='sm' onClick={onClose}><X size={15} /></IconButton>
         </span>
@@ -241,6 +243,8 @@ function Lyrics({ lines, activeIndex, emptyKey, pending, onSeekLine }: {
   pending: boolean
   onSeekLine: (lineTimeMs: number) => void
 }) {
+  const align = useMusic((state) => state.lyricAlign)
+  const textSize = useMusic((state) => state.lyricTextSize)
   if (!lines.length) {
     return <p role={pending ? 'status' : undefined} className='py-16 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t(emptyKey)}</p>
   }
@@ -256,7 +260,9 @@ function Lyrics({ lines, activeIndex, emptyKey, pending, onSeekLine }: {
           aria-current={index === activeIndex ? 'true' : undefined}
           onClick={() => onSeekLine(line.timeMs)}
           className={cn(
-            'block w-full text-left text-[length:var(--text-15)] leading-[var(--writing-line)] transition-colors hover:text-[var(--text-secondary)]',
+            'block w-full leading-[var(--writing-line)] transition-colors hover:text-[var(--text-secondary)]',
+            LYRIC_ALIGN_CLASSES[align],
+            LYRIC_IMMERSIVE_SIZE_CLASSES[textSize],
             index === activeIndex ? 'font-semibold text-[var(--accent)]' : 'text-[var(--text-tertiary)]',
           )}
         >

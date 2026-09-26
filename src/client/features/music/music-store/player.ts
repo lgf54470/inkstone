@@ -17,7 +17,7 @@ import { progressTimeMs, setProgressTime } from './progress'
 import { persist } from './persist'
 import { MIN_LOOP_MS, SLEEP_FADE_MS, loadPreferences, readEqDb } from './state'
 import { createShuffleOrder, shuffleOrderFor, shuffleStep } from '../music-shuffle'
-import type { MusicEqBand, MusicGet, MusicSet, MusicStoreState } from './types'
+import type { MusicEqBand, MusicGet, MusicLyricAlign, MusicLyricTextSize, MusicSet, MusicStoreState } from './types'
 
 const STREAM_START_TIMEOUT_MS = 20_000
 const RESUME_THRESHOLD_MS = 1_000
@@ -208,6 +208,18 @@ export function clearLoopRange(set: MusicSet): void {
 export function setPlaybackRate(set: MusicSet, get: MusicGet, rate: number): void {
   set({ playbackRate: rate })
   applyPlaybackRate(rate)
+  persist(get)
+}
+
+// Both lyric surfaces read these straight from the store, so one write restyles
+// the immersive panel and the now-playing column together.
+export function setLyricAlign(set: MusicSet, get: MusicGet, align: MusicLyricAlign): void {
+  set({ lyricAlign: align })
+  persist(get)
+}
+
+export function setLyricTextSize(set: MusicSet, get: MusicGet, size: MusicLyricTextSize): void {
+  set({ lyricTextSize: size })
   persist(get)
 }
 

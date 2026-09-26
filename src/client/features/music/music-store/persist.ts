@@ -50,6 +50,8 @@ function writePreferences(get: MusicGet): void {
     eqHighDb: state.eqHighDb,
     normalizeEnabled: state.normalizeEnabled,
     crossfadeEnabled: state.crossfadeEnabled,
+    lyricAlign: state.lyricAlign,
+    lyricTextSize: state.lyricTextSize,
     lyricOffsets: state.lyricOffsets,
   })
 }

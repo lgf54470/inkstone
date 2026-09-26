@@ -10,6 +10,10 @@ export type MusicViewMode = 'list' | 'grid'
 export type MusicSourceFilter = 'all' | 'r2' | 'webdav'
 export type MusicBatch = 'favorite' | 'unfavorite' | 'pin' | 'unpin' | 'delete'
 
+// FEA-C4: lyric presentation, shared by the immersive panel and the now-playing column.
+export type MusicLyricAlign = 'left' | 'center' | 'right'
+export type MusicLyricTextSize = 'small' | 'default' | 'large'
+
 export type MusicTrackPatchInput = Partial<MusicTrack> & { tagIds?: string[]; coverDataUrl?: string | null }
 
 // A practice loop the listener marks on the track they are hearing; `endMs` stays
@@ -145,6 +149,8 @@ export interface MusicStoreState {
   floatingCollapsed: boolean
   floatingPosition: { x: number; y: number } | null
   immersive: boolean
+  lyricAlign: MusicLyricAlign
+  lyricTextSize: MusicLyricTextSize
   loopRange: MusicLoopRange | null
   trackMenu: TrackMenuRequest | null
   uploads: MusicUploadTask[]
@@ -180,6 +186,8 @@ export interface MusicStoreState {
   playNext: () => Promise<void>
   playPrevious: () => Promise<void>
   seek: (ms: number) => void
+  setLyricAlign: (align: MusicLyricAlign) => void
+  setLyricTextSize: (size: MusicLyricTextSize) => void
   setVolume: (volume: number) => void
   toggleMute: () => void
   cycleMode: () => void

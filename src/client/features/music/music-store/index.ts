@@ -64,6 +64,8 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
     eqHighDb: prefs.eqHighDb,
     normalizeEnabled: prefs.normalizeEnabled,
     crossfadeEnabled: prefs.crossfadeEnabled,
+    lyricAlign: prefs.lyricAlign,
+    lyricTextSize: prefs.lyricTextSize,
     lyricOffsets: prefs.lyricOffsets,
     floatingVisible: prefs.floatingVisible,
     floatingCollapsed: prefs.floatingCollapsed,
@@ -77,7 +79,8 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
 }
 
 export type {
-  MusicBatch, MusicDownloadTask, MusicEqBand, MusicLibraryJob, MusicLibraryJobKind, MusicLoopRange, MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
+  MusicBatch, MusicDownloadTask, MusicEqBand, MusicLibraryJob, MusicLibraryJobKind, MusicLoopRange, MusicLyricAlign, MusicLyricTextSize,
+  MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
   MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,
 } from './types'
 export { currentTrack } from './player'

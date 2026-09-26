@@ -2667,6 +2667,13 @@ const allowed = new Map([
     '// The engine binds its bridge to the element it creates, so a dispatched timeupdate',
     '// is the same path real playback takes.',
   ]],
+  ['src/client/features/music/music-lyric-style.test.ts', [
+    '// The column lines are plain paragraphs: the alignment lives on their container.',
+  ]],
+  ['src/client/features/music/music-lyric-style.tsx', [
+    '// Both lyric surfaces render the same text, so the tiers are per surface: the',
+    '// immersive panel starts larger and keeps the gap across every setting.',
+  ]],
   ['src/client/features/music/music-lyrics.ts', [
     '// The library ships tracks without lyric text; detail views mount this hook to',
     '// have the store fetch it by id once, then read the merged `track.lyric` themselves.',
@@ -3128,6 +3135,8 @@ const allowed = new Map([
     '// A range only ever applies to the track it was marked on; a stale one from another',
     '// track reads as no loop at all.',
     '// A loop this short is a stutter, and the marker button stays disabled there.',
+    '// Both lyric surfaces read these straight from the store, so one write restyles',
+    '// the immersive panel and the now-playing column together.',
     '// The two sleep modes are exclusive: the minute timer counts wall time, this',
     '// one waits for the playing track to reach its end.',
     '// A fade already running would deliver the next track anyway, voiding the promise.',
@@ -3233,6 +3242,7 @@ const allowed = new Map([
     '// pass per kind can run at a time: a second call returns without stacking.',
   ]],
   ['src/client/features/music/music-store/types.ts', [
+    '// FEA-C4: lyric presentation, shared by the immersive panel and the now-playing column.',
     '// A practice loop the listener marks on the track they are hearing; `endMs` stays',
     '// null until the second point is placed.',
     '// M-53: a flat list of the tracks whose upload checksum matches another copy.',
