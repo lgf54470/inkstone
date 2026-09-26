@@ -32,6 +32,18 @@ export function closePodcastEpisodes(set: MusicSet): void {
   set({ podcastEpisodesFeedId: null, podcastEpisodes: [], podcastEpisodesLoading: false })
 }
 
+// FEA-A2-3: the OPML round trip. The server answers { created, skipped }, so a
+// re-import of an exported file reports skips instead of duplicating feeds.
+export async function importPodcastOpml(set: MusicSet, opml: string): Promise<void> {
+  try {
+    const { created, skipped } = await api.music.importPodcastOpml(opml)
+    await loadPodcastFeeds(set)
+    toastMusic('music.podcast_import_done', { value0: created, value1: skipped })
+  } catch (error) {
+    toastMusicError(error, 'music.action_failed')
+  }
+}
+
 export async function createPodcastFeed(set: MusicSet, input: MusicPodcastCreateInput): Promise<boolean> {
   try {
     const created = await api.music.createPodcastFeed(input)

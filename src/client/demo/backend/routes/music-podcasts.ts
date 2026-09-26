@@ -82,9 +82,52 @@ async function episodesHandler(c: Context, state: DemoState): Promise<Response> 
   return c.json({ feedId: feed.id, title: feed.title, cached: false, episodes: DEMO_EPISODES })
 }
 
+// FEA-A2-3 demo stub: the OPML round trip on the same in-memory records. The
+// demo pins the dedupe contract, not full OPML parsing — that lives in the
+// worker's parseOpmlFeeds, which the tests exercise directly.
+const OPML_XML_URL = /xmlUrl\s*=\s*["']([^"']+)["']/gi
+
+async function opmlExportHandler(c: Context, state: DemoState): Promise<Response> {
+  const outlines = [...state.musicPodcastFeeds.values()]
+    .map((feed) => `<outline type="rss" text="${feed.title.replace(/"/g, '&quot;')}" xmlUrl="${feed.url}"/>`)
+    .join('\n  ')
+  return c.body(`<?xml version="1.0" encoding="UTF-8"?>\n<opml version="2.0">\n  <body>\n  ${outlines}\n  </body>\n</opml>\n`, 200, {
+    'Content-Type': 'text/x-opml+xml; charset=utf-8',
+  })
+}
+
+async function opmlImportHandler(c: Context, state: DemoState): Promise<Response> {
+  const body = await jsonBody(c.req.raw)
+  const opml = typeof body.opml === 'string' ? body.opml : ''
+  const known = new Set([...state.musicPodcastFeeds.values()].map((feed) => feed.url))
+  let created = 0
+  let skipped = 0
+  for (const match of opml.matchAll(OPML_XML_URL)) {
+    const url = match[1]!.trim()
+    if (!/^https?:\/\//.test(url) || known.has(url)) {
+      skipped += 1
+      continue
+    }
+    known.add(url)
+    const now = Date.now()
+    state.musicPodcastFeeds.set(url, {
+      id: newDemoId(),
+      title: url.replace(/\/+$/, '').split('/').pop() ?? url,
+      url,
+      description: '',
+      createdAt: now,
+      updatedAt: now,
+    })
+    created += 1
+  }
+  return c.json({ created, skipped })
+}
+
 export function registerDemoMusicPodcastRoutes(app: Hono, state: DemoState): void {
   app.get('/api/music/podcasts', (c) => listHandler(c, state))
   app.post('/api/music/podcasts', (c) => createHandler(c, state))
+  app.get('/api/music/podcasts/opml', (c) => opmlExportHandler(c, state))
+  app.post('/api/music/podcasts/opml', (c) => opmlImportHandler(c, state))
   app.patch('/api/music/podcasts/:id', (c) => patchHandler(c, state))
   app.delete('/api/music/podcasts/:id', (c) => deleteHandler(c, state))
   app.get('/api/music/podcasts/:id/episodes', (c) => episodesHandler(c, state))

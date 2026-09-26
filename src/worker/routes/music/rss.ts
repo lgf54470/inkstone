@@ -87,3 +87,32 @@ const ENTITIES: Record<string, string> = {
 function decodeXmlEntities(value: string): string {
   return value.replace(/&(?:amp|lt|gt|quot|apos|#39|nbsp);/g, (entity) => ENTITIES[entity] ?? entity)
 }
+
+// FEA-A2-3: an OPML document is the standard podcast subscription exchange. The
+// outlines nest (folders), so the walk is recursive; anything without an
+// xmlUrl attribute is not a feed and is simply not collected.
+export interface OpmlFeedOutline {
+  title: string
+  url: string
+}
+
+export function parseOpmlFeeds(xml: string): OpmlFeedOutline[] {
+  const outlines: OpmlFeedOutline[] = []
+  for (const match of xml.matchAll(/<outline\b([^>]*)\/?>/gi)) {
+    const attrs = match[1] ?? {}
+    const url = /xmlUrl\s*=\s*["']([^"']+)["']/i.exec(attrs)?.[1]
+    if (!url) continue
+    const text = /text\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1]
+    const title = text ?? decodeXmlEntities(url.replace(/\/+$/, '').split('/').pop() ?? '')
+    outlines.push({ title: decodeXmlEntities(title), url: decodeXmlEntities(url) })
+  }
+  return outlines
+}
+
+export function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}

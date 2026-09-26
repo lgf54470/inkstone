@@ -207,3 +207,58 @@ describe('podcast episodes (FEA-A2-2)', () => {
 afterEach(() => {
   vi.unstubAllGlobals()
 })
+
+const SAMPLE_OPML = `<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <body>
+    <outline text="Imported One" type="rss" xmlUrl="https://feeds.example.com/one.xml" htmlUrl="https://example.com/one"/>
+    <outline text="Imported Two" type="rss" xmlUrl="https://feeds.example.com/two.xml"/>
+    <outline text="Just a folder" type="folder">
+      <outline text="Nested Show" type="rss" xmlUrl="https://feeds.example.com/nested.xml"/>
+    </outline>
+    <outline text="No feed url" type="rss"/>
+  </body>
+</opml>`
+
+describe('podcast OPML (FEA-A2-3)', () => {
+  it('exports every subscription as an OPML document', async () => {
+    await makeDb()
+    const app = makeApp()
+    await json(app, '/api/music/podcasts', { url: 'https://feeds.example.com/show.xml', title: 'A Show' })
+    const res = await request(app, '/api/music/podcasts/opml')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Content-Type')).toContain('xml')
+    const text = await res.text()
+    expect(text).toContain('<opml version="2.0">')
+    expect(text).toContain('xmlUrl="https://feeds.example.com/show.xml"')
+    expect(text).toContain('text="A Show"')
+  })
+
+  it('imports subscriptions from OPML, skipping duplicates and non-feed outlines', async () => {
+    await makeDb()
+    const app = makeApp()
+    const first = await json(app, '/api/music/podcasts/opml', { opml: SAMPLE_OPML })
+    expect(first.status).toBe(200)
+    expect(await first.json()).toMatchObject({ created: 3, skipped: 0 })
+
+    // A second import of the same file skips every existing feed URL.
+    const again = await json(app, '/api/music/podcasts/opml', { opml: SAMPLE_OPML })
+    expect((await again.json() as { skipped: number }).skipped).toBe(3)
+
+    const list = await (await request(app, '/api/music/podcasts')).json() as { feeds: Array<{ title: string; url: string }> }
+    expect(list.feeds.map((feed) => feed.url).sort()).toEqual([
+      'https://feeds.example.com/nested.xml',
+      'https://feeds.example.com/one.xml',
+      'https://feeds.example.com/two.xml',
+    ])
+    const one = list.feeds.find((feed) => feed.url === 'https://feeds.example.com/one.xml')
+    expect(one?.title).toBe('Imported One')
+  })
+
+  it('rejects an OPML body that holds no feeds', async () => {
+    await makeDb()
+    const app = makeApp()
+    expect((await json(app, '/api/music/podcasts/opml', { opml: '<html>nope</html>' })).status).toBe(400)
+    expect((await json(app, '/api/music/podcasts/opml', {})).status).toBe(400)
+  })
+})

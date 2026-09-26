@@ -7,9 +7,9 @@ import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { readUpstreamBytes } from './outbound'
 import { enforceMusicBudget } from './budget'
-import { parsePodcastFeed, type PodcastEpisode } from './rss'
+import { parsePodcastFeed, parseOpmlFeeds, escapeXml, type PodcastEpisode } from './rss'
 import { pathParam } from './params'
-import { createPodcastFeedSchema, patchPodcastFeedSchema } from './schemas'
+import { createPodcastFeedSchema, importPodcastOpmlSchema, patchPodcastFeedSchema } from './schemas'
 
 // FEA-A2-1: podcast subscriptions are the user's own feed registrations. The
 // feed XML is fetched on demand (A2-2); this table only holds what the user
@@ -17,6 +17,9 @@ import { createPodcastFeedSchema, patchPodcastFeedSchema } from './schemas'
 export function registerMusicPodcastRoutes(routes: Hono<AppBindings>): void {
   routes.get('/podcasts', requireAuth, (c) => listFeeds(c))
   routes.post('/podcasts', requireAuth, (c) => createFeed(c))
+  // The OPML routes must sit above the :id routes — "opml" is a word, not an id.
+  routes.get('/podcasts/opml', requireAuth, (c) => exportOpml(c))
+  routes.post('/podcasts/opml', requireAuth, (c) => importOpml(c))
   routes.patch('/podcasts/:id', requireAuth, (c) => patchFeed(c))
   routes.delete('/podcasts/:id', requireAuth, (c) => deleteFeed(c))
   routes.get('/podcasts/:id/episodes', requireAuth, (c) => listEpisodes(c))
@@ -111,6 +114,53 @@ async function listEpisodes(c: Context<AppBindings>): Promise<Response> {
     'UPDATE music_podcast_feeds SET episodes_json = ?1, fetched_at = ?2, title = ?3, updated_at = ?4 WHERE user_id = ?5 AND id = ?6',
   ).bind(JSON.stringify(parsed.episodes), Date.now(), title, Date.now(), userId, id).run()
   return c.json({ feedId: id, title, cached: false, episodes: parsed.episodes })
+}
+
+// FEA-A2-3: the whole subscription list as an OPML document — the standard
+// format every podcast app exchanges, so a subscription list is never trapped.
+async function exportOpml(c: Context<AppBindings>): Promise<Response> {
+  const rows = await c.env.DB.prepare(
+    'SELECT id, title, url, description, episodes_json, fetched_at, created_at, updated_at FROM music_podcast_feeds WHERE user_id = ?1 ORDER BY created_at ASC',
+  ).bind(c.get('userId')).all<PodcastFeedRow>()
+  const outlines = rows.results
+    .map((row) => `<outline type="rss" text="${escapeXml(row.title)}" xmlUrl="${escapeXml(row.url)}"/>`)
+    .join('\n  ')
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<opml version="2.0">\n  <head><title>Podcast subscriptions</title></head>\n  <body>\n  ${outlines}\n  </body>\n</opml>\n`
+  return new Response(body, {
+    headers: {
+      'Content-Type': 'text/x-opml+xml; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="podcast-subscriptions.opml"',
+    },
+  })
+}
+
+// Import: every feed outline becomes a subscription unless the URL is already
+// subscribed, so re-importing an exported file is a no-op rather than duplicates.
+async function importOpml(c: Context<AppBindings>): Promise<Response> {
+  const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'write', userId)
+  const body = await readJsonValidated(c, importPodcastOpmlSchema, JSON_BODY_LIMITS.profile)
+  const outlines = parseOpmlFeeds(body.opml)
+  if (!outlines.length) throw ApiError.badRequest('The OPML document holds no podcast feeds')
+  const existing = await c.env.DB.prepare('SELECT url FROM music_podcast_feeds WHERE user_id = ?1')
+    .bind(userId).all<{ url: string }>()
+  const known = new Set(existing.results.map((row) => row.url))
+  const now = Date.now()
+  let created = 0
+  let skipped = 0
+  for (const outline of outlines) {
+    if (known.has(outline.url)) {
+      skipped += 1
+      continue
+    }
+    known.add(outline.url)
+    await c.env.DB.prepare(
+      `INSERT INTO music_podcast_feeds (id, user_id, title, url, description, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, '', ?5, ?5)`,
+    ).bind(newId(), userId, outline.title || hostNameOf(outline.url), outline.url, now).run()
+    created += 1
+  }
+  return c.json({ created, skipped })
 }
 
 function toFeedView(row: PodcastFeedRow): Record<string, unknown> {

@@ -199,6 +199,12 @@ export const music = {
   listPodcastEpisodes: (feedId: string) =>
     request<{ feedId: string; title: string; cached: boolean; episodes: MusicPodcastEpisode[] }>(`/api/music/podcasts/${encodeURIComponent(feedId)}/episodes`, { timeoutMs: 30_000 }),
 
+  importPodcastOpml: (opml: string) =>
+    request<{ created: number; skipped: number }>('/api/music/podcasts/opml', { method: 'POST', body: { opml }, timeoutMs: 30_000 }),
+
+  exportPodcastOpml: () =>
+    request<string>('/api/music/podcasts/opml'),
+
   listTrash: () => request<{ entries: MusicTrashEntry[] }>('/api/music/trash'),
 
   restoreTrash: (id: string) =>

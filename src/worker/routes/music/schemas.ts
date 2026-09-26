@@ -226,3 +226,11 @@ export const patchPodcastFeedSchema = z
   .refine((value) => Object.keys(value).length > 0, { message: 'Provide at least one field to update' })
 
 export type PatchPodcastFeedBody = z.infer<typeof patchPodcastFeedSchema>
+
+// FEA-A2-3: the OPML document travels as text inside the JSON body; the cap is
+// generous because real subscription lists run to hundreds of outlines.
+export const importPodcastOpmlSchema = z.object({
+  opml: z.string().min(1).max(256 * 1024),
+})
+
+export type ImportPodcastOpmlBody = z.infer<typeof importPodcastOpmlSchema>

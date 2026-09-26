@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, PencilLine, Podcast, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, FileUp, PencilLine, Podcast, Plus, Trash2 } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Input } from '../../components/form'
 import { Modal, confirm } from '../../components/overlay'
 import { t } from '../../lib/i18n'
+import { api } from '../../lib/api'
+import { toastMusicError } from './music-feedback'
 import { formatBytes } from '../../lib/time'
 import { useMusic } from './music-store'
 import type { MusicPodcastFeedView } from '../../lib/api'
@@ -41,11 +43,71 @@ export function MusicPodcastModal({ open, onClose }: { open: boolean; onClose: (
                         </ul>
                       )}
                 <AddFeedForm />
+                <OpmlBar />
               </>
             )}
       </div>
     </Modal>
   )
+}
+
+// FEA-A2-3: the OPML round trip. Import reads a local file and hands the text
+// to the server (which dedupes by feed URL); export saves the server document.
+function OpmlBar() {
+  const importPodcastOpml = useMusic((state) => state.importPodcastOpml)
+  const fileInput = useRef<HTMLInputElement>(null)
+
+  const pickFile = (): void => {
+    fileInput.current?.click()
+  }
+  const readFile = async (): Promise<void> => {
+    const file = fileInput.current?.files?.[0]
+    if (!file) return
+    await importPodcastOpml(await file.text())
+    if (fileInput.current) fileInput.current.value = ''
+  }
+
+  const exportOpml = async (): Promise<void> => {
+    try {
+      const opml = await api.music.exportPodcastOpml()
+      saveTextFile(opml, 'podcast-subscriptions.opml', 'text/x-opml+xml')
+    } catch (error) {
+      toastMusicError(error, 'music.action_failed')
+    }
+  }
+
+  return (
+    <div className='flex items-center justify-end gap-2 border-t border-[var(--border-subtle)] pt-3'>
+      <input
+        ref={fileInput}
+        type='file'
+        accept='.opml,.xml,text/xml,application/xml'
+        className='hidden'
+        aria-hidden='true'
+        tabIndex={-1}
+        onChange={() => void readFile()}
+      />
+      <Button size='sm' icon={<FileUp size={12} />} onClick={pickFile}>{t('music.podcast_import')}</Button>
+      <Button size='sm' icon={<Download size={12} />} onClick={() => void exportOpml()}>{t('music.podcast_export')}</Button>
+    </div>
+  )
+}
+
+// The same save-the-blob dance the backup export does, scoped to one document.
+function saveTextFile(text: string, filename: string, mime: string): void {
+  const blob = new Blob([text], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.style.display = 'none'
+  document.body.append(anchor)
+  try {
+    anchor.click()
+  } finally {
+    anchor.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  }
 }
 
 // FEA-A2-2: one feed's episodes, fetched through the worker's cached proxy. A
