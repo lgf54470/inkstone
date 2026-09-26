@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Hono } from 'hono'
 
 import type { D1Database } from '@cloudflare/workers-types'
@@ -8,6 +8,7 @@ import { MUSIC_PLAYBACK_MIGRATION_STATEMENTS } from '../src/worker/db/schema/mus
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { musicRoutes } from '../src/worker/routes/music'
+import { parsePodcastFeed } from '../src/worker/routes/music/rss'
 import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
@@ -105,4 +106,104 @@ describe('podcast subscriptions (FEA-A2-1)', () => {
     expect((await json(app, '/api/music/podcasts/no-such-id', { title: 'X' }, 'PATCH')).status).toBe(404)
     expect((await request(app, '/api/music/podcasts/no-such-id', { method: 'DELETE' })).status).toBe(404)
   })
+})
+
+const SAMPLE_RSS = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title><![CDATA[A Show &amp; Its Friends]]></title>
+    <description>Talks about &lt;things&gt;</description>
+    <item>
+      <title>Episode 1: the beginning</title>
+      <enclosure url="https://cdn.example.com/ep1.mp3" length="1024" type="audio/mpeg"/>
+      <itunes:duration>1:02:03</itunes:duration>
+      <pubDate>Tue, 10 Jun 2025 09:00:00 +0000</pubDate>
+      <description><![CDATA[First <b>episode</b>]]></description>
+    </item>
+    <item>
+      <title>Episode 2</title>
+      <enclosure url="https://cdn.example.com/ep2.mp3" length="2048" type="audio/mpeg"/>
+      <itunes:duration>941</itunes:duration>
+      <pubDate>not a date</pubDate>
+      <description>Second</description>
+    </item>
+    <item>
+      <title>Not an episode: no enclosure</title>
+    </item>
+  </channel>
+</rss>`
+
+describe('parsePodcastFeed (FEA-A2-2)', () => {
+  it('parses the channel and the enclosure-bearing items', () => {
+    const parsed = parsePodcastFeed(SAMPLE_RSS)
+    expect(parsed).not.toBeNull()
+    expect(parsed?.title).toBe('A Show & Its Friends')
+    expect(parsed?.description).toBe('Talks about <things>')
+    expect(parsed?.episodes).toEqual([
+      {
+        title: 'Episode 1: the beginning',
+        audioUrl: 'https://cdn.example.com/ep1.mp3',
+        sizeBytes: 1024,
+        durationSeconds: 3723,
+        publishedAt: Date.parse('Tue, 10 Jun 2025 09:00:00 +0000'),
+        description: 'First <b>episode</b>',
+      },
+      {
+        title: 'Episode 2',
+        audioUrl: 'https://cdn.example.com/ep2.mp3',
+        sizeBytes: 2048,
+        durationSeconds: 941,
+        publishedAt: null,
+        description: 'Second',
+      },
+    ])
+  })
+
+  it('answers null for a non-RSS body', () => {
+    expect(parsePodcastFeed('<html><body>hello</body></html>')).toBeNull()
+  })
+})
+
+describe('podcast episodes (FEA-A2-2)', () => {
+  it('fetches the feed once, parses episodes and caches the answer', async () => {
+    await makeDb()
+    const app = makeApp()
+    const created = await (await json(app, '/api/music/podcasts', { url: 'https://feeds.example.com/show.xml' })).json() as { id: string; title: string }
+    const fetchCalls: string[] = []
+    vi.stubGlobal('fetch', async (url: string | URL) => {
+      fetchCalls.push(String(url))
+      return new Response(SAMPLE_RSS, { status: 200 })
+    })
+
+    const first = await request(app, `/api/music/podcasts/${created.id}/episodes`)
+    expect(first.status).toBe(200)
+    const body = await first.json() as { episodes: Array<{ title: string; audioUrl: string; durationSeconds: number }>; title: string }
+    expect(body.episodes).toHaveLength(2)
+    expect(body.episodes[0]?.audioUrl).toBe('https://cdn.example.com/ep1.mp3')
+    expect(body.episodes[0]?.durationSeconds).toBe(3723)
+    // The first fetch backfills the host-name stand-in with the channel title.
+    expect(body.title).toBe('A Show & Its Friends')
+
+    const second = await request(app, `/api/music/podcasts/${created.id}/episodes`)
+    expect(second.status).toBe(200)
+    expect((await second.json() as { episodes: unknown[] }).episodes).toHaveLength(2)
+    expect(fetchCalls).toEqual(['https://feeds.example.com/show.xml'])
+
+    vi.unstubAllGlobals()
+  })
+
+  it('answers 502 when the upstream feed is unreachable or not RSS', async () => {
+    await makeDb()
+    const app = makeApp()
+    const created = await (await json(app, '/api/music/podcasts', { url: 'https://feeds.example.com/show.xml' })).json() as { id: string }
+    vi.stubGlobal('fetch', async () => new Response('<html>nope</html>', { status: 200 }))
+    expect((await request(app, `/api/music/podcasts/${created.id}/episodes`)).status).toBe(502)
+    vi.stubGlobal('fetch', async () => new Response('boom', { status: 500 }))
+    expect((await request(app, `/api/music/podcasts/${created.id}/episodes`)).status).toBe(502)
+    vi.unstubAllGlobals()
+  })
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })

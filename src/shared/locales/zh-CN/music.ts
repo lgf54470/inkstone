@@ -286,6 +286,8 @@ export const messages = {
 'music.podcast_unsubscribe': '退订',
 'music.podcast_unsubscribe_confirm': '退订「{value0}」？分集将不再更新',
 'music.podcast_hint': '订阅以 RSS 地址为准，刷新后自动获取节目名与分集',
+'music.podcast_back': '订阅列表',
+'music.podcast_episodes_empty': '该源没有分集',
 'music.background_mode': '背景',
 'music.background_theme': '跟随主题',
 'music.background_blur': '封面模糊',

@@ -132,6 +132,15 @@ export interface MusicPodcastPatchInput {
   url?: string
 }
 
+export interface MusicPodcastEpisode {
+  title: string
+  audioUrl: string
+  sizeBytes: number
+  durationSeconds: number
+  publishedAt: number | null
+  description: string
+}
+
 export interface MusicTrashEntry {
   id: string
   kind: 'track' | 'playlist'
@@ -186,6 +195,9 @@ export const music = {
 
   deletePodcastFeed: (id: string) =>
     request<{ ok: boolean }>(`/api/music/podcasts/${encodeURIComponent(id)}`, { method: 'DELETE', timeoutMs: 30_000 }),
+
+  listPodcastEpisodes: (feedId: string) =>
+    request<{ feedId: string; title: string; cached: boolean; episodes: MusicPodcastEpisode[] }>(`/api/music/podcasts/${encodeURIComponent(feedId)}/episodes`, { timeoutMs: 30_000 }),
 
   listTrash: () => request<{ entries: MusicTrashEntry[] }>('/api/music/trash'),
 

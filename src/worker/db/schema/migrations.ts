@@ -756,4 +756,15 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `CREATE INDEX IF NOT EXISTS idx_music_podcast_feeds_user ON music_podcast_feeds(user_id, created_at ASC)`,
     ],
   },
+  // FEA-A2-2: the last fetched episode list rides on the feed row. The cache is
+  // the row itself — episodes stay JSON, keyed by fetched_at and a TTL, so a
+  // refresh storm still costs at most one outbound fetch per feed per window.
+  {
+    version: 50,
+    skipIfColumnExists: { table: 'music_podcast_feeds', column: 'episodes_json' },
+    statements: [
+      `ALTER TABLE music_podcast_feeds ADD COLUMN episodes_json TEXT`,
+      `ALTER TABLE music_podcast_feeds ADD COLUMN fetched_at INTEGER`,
+    ],
+  },
 ]

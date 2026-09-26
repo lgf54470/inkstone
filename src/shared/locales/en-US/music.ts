@@ -286,6 +286,8 @@ export const messages = {
 'music.podcast_unsubscribe': 'Unsubscribe',
 'music.podcast_unsubscribe_confirm': 'Unsubscribe from "{value0}"? Episodes stop updating.',
 'music.podcast_hint': 'Subscriptions are keyed by the RSS URL; the show name and episodes fill in on refresh',
+'music.podcast_back': 'Subscriptions',
+'music.podcast_episodes_empty': 'No episodes found in this feed',
 'music.background_mode': 'Background',
 'music.background_theme': 'Follow theme',
 'music.background_blur': 'Cover blur',

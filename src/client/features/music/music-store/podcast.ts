@@ -4,7 +4,8 @@ import type { MusicPodcastCreateInput, MusicPodcastPatchInput } from '../../../l
 import type { MusicSet } from './types'
 
 // FEA-A2-1: the podcast slice mirrors the Alist slice's shape — a list of the
-// user's subscriptions plus the loading flag. Episodes arrive with A2-2.
+// user's subscriptions plus the loading flag. FEA-A2-2 adds the episode view of
+// one feed at a time; the modal switches between the feed list and the episodes.
 export async function loadPodcastFeeds(set: MusicSet): Promise<void> {
   set({ podcastFeedsLoading: true })
   try {
@@ -14,6 +15,21 @@ export async function loadPodcastFeeds(set: MusicSet): Promise<void> {
     set({ podcastFeedsLoading: false })
     toastMusicError(error, 'music.action_failed')
   }
+}
+
+export async function loadPodcastEpisodes(set: MusicSet, feedId: string): Promise<void> {
+  set({ podcastEpisodesFeedId: feedId, podcastEpisodesLoading: true, podcastEpisodes: [] })
+  try {
+    const { episodes } = await api.music.listPodcastEpisodes(feedId)
+    set({ podcastEpisodes: episodes, podcastEpisodesLoading: false })
+  } catch (error) {
+    set((state) => ({ podcastEpisodesFeedId: state.podcastEpisodesFeedId === feedId ? null : state.podcastEpisodesFeedId, podcastEpisodesLoading: false }))
+    toastMusicError(error, 'music.action_failed')
+  }
+}
+
+export function closePodcastEpisodes(set: MusicSet): void {
+  set({ podcastEpisodesFeedId: null, podcastEpisodes: [], podcastEpisodesLoading: false })
 }
 
 export async function createPodcastFeed(set: MusicSet, input: MusicPodcastCreateInput): Promise<boolean> {

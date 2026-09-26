@@ -4,7 +4,7 @@ import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 
 const HOUR_MS = 60 * 60 * 1000
 
-export type MusicBudgetFamily = 'webdav' | 'play' | 'write' | 'playback' | 'lookup' | 'lyric'
+export type MusicBudgetFamily = 'webdav' | 'play' | 'write' | 'playback' | 'lookup' | 'lyric' | 'podcast'
 
 // Each family that can trigger outbound requests or storage work gets one
 // named hourly key, so no music route can be looped into unbounded load.
@@ -15,6 +15,7 @@ const BUDGETS: Record<MusicBudgetFamily, { maxAttempts: number; message: string 
   playback: { maxAttempts: LIMITS.musicPlaybackSavesPerHour, message: 'Too many playback saves' },
   lookup: { maxAttempts: LIMITS.musicCoverLookupsPerHour, message: 'Too many cover lookups' },
   lyric: { maxAttempts: LIMITS.musicLyricLookupsPerHour, message: 'Too many lyric lookups' },
+  podcast: { maxAttempts: LIMITS.musicPodcastFetchesPerHour, message: 'Too many podcast refreshes' },
 }
 
 interface MusicBudget {

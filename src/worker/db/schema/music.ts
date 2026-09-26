@@ -81,6 +81,8 @@ export const MUSIC_TABLE_STATEMENTS: readonly string[] = [
       title TEXT NOT NULL,
       url TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
+      episodes_json TEXT,
+      fetched_at INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`,

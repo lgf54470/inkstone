@@ -2149,6 +2149,8 @@ const allowed = new Map([
   ['src/client/demo/backend/routes/music-podcasts.ts', [
     '// FEA-A2-1 demo stub: the demo cannot fetch feeds, so subscriptions are plain',
     '// records managed in memory — the same CRUD contract the worker routes pin.',
+    '// FEA-A2-2 demo stub: the demo cannot fetch feeds, so the episode list is a',
+    '// fixed sample — the contract (feedId/title/episodes shape) is what it pins.',
   ]],
   ['src/client/demo/backend/routes/music.ts', [
     '// Mirrors the worker: the list payload drops lyric text, details fetch it lazily by id.',
@@ -2812,8 +2814,11 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-podcast-modal.tsx', [
     '// FEA-A2-1: the podcast panel. This entry ships the subscription manager',
-    '// (add/rename/unsubscribe keyed by the RSS URL); the episode list (A2-2) and',
-    '// playback (A2-4) build on the feeds managed here.',
+    '// (add/rename/unsubscribe keyed by the RSS URL); A2-2 turns a row into the',
+    '// episode list of that feed; playback lands with A2-4.',
+    '// FEA-A2-2: one feed\'s episodes, fetched through the worker\'s cached proxy. A',
+    '// row carries the episode title, the playback length and the release date; the',
+    '// audio itself stays at the source until A2-4 wires the player up.',
   ]],
   ['src/client/features/music/music-popover-placement.test.ts', [
     '// The panel\'s coordinates have to come from the placement every other anchored panel in the app',
@@ -3242,7 +3247,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-store/podcast.ts', [
     '// FEA-A2-1: the podcast slice mirrors the Alist slice\'s shape — a list of the',
-    '// user\'s subscriptions plus the loading flag. Episodes arrive with A2-2.',
+    '// user\'s subscriptions plus the loading flag. FEA-A2-2 adds the episode view of',
+    '// one feed at a time; the modal switches between the feed list and the episodes.',
   ]],
   ['src/client/features/music/music-store/preload.test.ts', [
     '// The store configures its bridge at module import; the function identity survives',
@@ -9774,6 +9780,9 @@ const allowed = new Map([
     '// lives in the encrypted secret column and never leaves the server.',
     '// FEA-A2-1: podcast RSS subscriptions. Episodes are not stored here — the feed',
     '// is fetched on demand; this table only holds what the user subscribed to.',
+    '// FEA-A2-2: the last fetched episode list rides on the feed row. The cache is',
+    '// the row itself — episodes stay JSON, keyed by fetched_at and a TTL, so a',
+    '// refresh storm still costs at most one outbound fetch per feed per window.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
@@ -10377,6 +10386,9 @@ const allowed = new Map([
     '// FEA-A2-1: podcast subscriptions are the user\'s own feed registrations. The',
     '// feed XML is fetched on demand (A2-2); this table only holds what the user',
     '// subscribed to, so the routes are a plain CRUD scoped by user_id.',
+    '// FEA-A2-2: the episode list of one feed, served from the row\'s cached JSON',
+    '// while it is fresh. The first successful fetch backfills the host-name',
+    '// stand-in title with the channel title; later fetches keep a user rename.',
     '// A subscription without a title still needs a stable display name before the',
     '// first feed refresh fills in the channel title.',
   ]],
@@ -10412,6 +10424,16 @@ const allowed = new Map([
     '// Mirrors the track mapping: only playlist covers stored as our own object keys',
     '// come back as URLs, and they always point at the playlist\'s own cover route.',
     '// /library ships every track without its lyric text; only the flag survives.',
+  ]],
+  ['src/worker/routes/music/rss.ts', [
+    '// FEA-A2-2: a deliberately small RSS 2.0 reader. Podcast feeds are RSS 2.0 plus',
+    '// the itunes namespace in practice, so the parser reads the channel title and',
+    '// the enclosure-bearing items only — no full XML model, no Atom (recorded as a',
+    '// known limitation of the episode list). Everything is text-matched on purpose:',
+    '// the input is a bounded, user-subscribed feed, and an unreadable item is',
+    '// skipped rather than failing the whole feed.',
+    '// itunes:duration arrives either as seconds ("941") or as "1:02:03"; anything',
+    '// unreadable is just a zero, so the row still renders without a duration.',
   ]],
   ['src/worker/routes/music/schemas.ts', [
     '// An absent field must stay undefined so PATCH keeps the stored cover; anything',
@@ -11123,6 +11145,9 @@ const allowed = new Map([
     '// The SPA asset fallback would otherwise swallow /playlist/:slug before the',
     '// worker ever renders its shell (title and noindex), so both deployments must',
     '// keep the path worker-first.',
+  ]],
+  ['tests/music-podcasts.test.ts', [
+    '// The first fetch backfills the host-name stand-in with the channel title.',
   ]],
   ['tests/music-public-routes.test.ts', [
     '// The Worker trusts CF-Connecting-IP only when the edge stamped the request, which it marks',
