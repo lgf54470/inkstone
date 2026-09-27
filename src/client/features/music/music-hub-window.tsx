@@ -28,11 +28,18 @@ function clampHubOffset(offset: number): number {
 // REF-1b: geometry is runtime values, so it travels as inline style (AGENTS.md allows
 // dynamic values there). A zero offset leaves the dialog centred, which is what an
 // untouched hub should look like.
+//
+// FB-F1: the offset is written as the standalone `translate` property and never as
+// `transform`. The dialog carries `.anim-pop`, whose `ink-pop` keyframes end on
+// `transform: none` with a `both` fill — an animation's declarations beat inline styles in
+// the cascade, so a `transform` written here was painted as `none` for the life of the
+// dialog: dragging and the arrow keys moved the store and nothing on screen. `translate` is
+// a separate property, so the entrance animation cannot reach it.
 export function hubStyle(geometry: MusicHubGeometry): CSSProperties {
   return {
     width: geometry.width,
     height: geometry.height,
-    transform: geometry.dx || geometry.dy ? `translate(${geometry.dx ?? 0}px, ${geometry.dy ?? 0}px)` : undefined,
+    translate: geometry.dx || geometry.dy ? `${geometry.dx ?? 0}px ${geometry.dy ?? 0}px` : undefined,
   }
 }
 
@@ -71,6 +78,7 @@ export function HubMoveButton({ geometry, onGeometryChange }: {
     </IconButton>
   )
 }
+
 
 // REF-1b: the grip resizes the window from a pointer drag or from the arrow keys. It is
 // a real button, not a bare div, so the keyboard road is the same as the pointer one.

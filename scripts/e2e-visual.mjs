@@ -118,6 +118,9 @@ const LABELS = {
   musicQueue: ['播放队列', 'Play queue'],
   musicRemoveFromQueue: ['从队列移除', 'Remove from the queue'],
   musicMiniPlayer: ['浮动播放器', 'Floating player'],
+  // The windowed hub's own chrome (REF-1b, repaired in FB-F1): the label is how the drag guard
+  // below knows the hub is a movable window rather than a viewport-filling sheet.
+  musicMoveHub: ['移动音乐库窗口', 'Move the music library window'],
   musicMobileNav: ['手机端导航', 'Mobile navigation'],
   musicImmersive: ['沉浸式播放', 'Full screen player'],
   musicLyrics: ['歌词', 'Lyrics'],
@@ -4300,6 +4303,51 @@ const overlaps = (a, b) => a && b
   && a.y < b.y + b.height && b.y < a.y + a.height
 
 const HUB_DIALOG_XPATH = `xpath/.//div[@role="dialog" and ${ariaAttr(LABELS.musicHub)}]`
+const HUB_DIALOG_CSS = cssByLabels('div[role="dialog"]', LABELS.musicHub)
+
+// FB-F1: the window used to write its drag offset into the store and into an inline `transform`,
+// and the dialog's own entrance animation (`ink-pop`, fill `both`, ending on `transform: none`)
+// painted over it — the offset was never visible, and a jsdom assertion on the store could not
+// tell the difference because the store was right the whole time. The guard is here, because
+// this is the only layer that can see the paint: a real press and drag on the header, and the box
+// on screen has to follow the pointer, then follow it back.
+async function assertMusicHubDrag(page) {
+  const grip = await page.$(cssByLabels('div[role="dialog"] button', LABELS.musicMoveHub))
+  check('music: the hub opens as a movable window with its own drag control', Boolean(grip))
+  if (!grip) return
+  const before = await rectOf(page, HUB_DIALOG_CSS)
+  if (!before) {
+    check('music: the hub window is on screen to be dragged', false, `panel=${JSON.stringify(before)}`)
+    return
+  }
+  await dragHubBy(page, { x: 120, y: 60 })
+  const moved = await rectOf(page, HUB_DIALOG_CSS)
+  check('music: the hub window follows the pointer when its header is dragged',
+    Boolean(moved) && Math.abs(moved.x - before.x - 120) <= 4 && Math.abs(moved.y - before.y - 60) <= 4,
+    `before=${JSON.stringify(before)} moved=${JSON.stringify(moved)}`)
+  await dragHubBy(page, { x: -120, y: -60 })
+  const restored = await rectOf(page, HUB_DIALOG_CSS)
+  check('music: dragging the hub back returns it to where it started',
+    Boolean(restored) && Math.abs(restored.x - before.x) <= 6 && Math.abs(restored.y - before.y) <= 6,
+    `before=${JSON.stringify(before)} restored=${JSON.stringify(restored)}`)
+}
+
+// A press in the middle of the header: that strip is the window's grip, and its centre carries no
+// control (the buttons sit at its two ends, and a press that begins on one belongs to it). The
+// header is found the way a person finds it — from the grip that lives in it — and its box is read
+// again on every call: after a drag the grip has moved, and a press aimed at where it used to be
+// lands on the backdrop outside the window, which closes the hub instead of moving it.
+async function dragHubBy(page, delta) {
+  const grip = await page.$(cssByLabels('div[role="dialog"] button', LABELS.musicMoveHub))
+  const header = (await grip.evaluateHandle((button) => button.closest('header'))).asElement()
+  const box = await header.boundingBox()
+  const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move(from.x + delta.x, from.y + delta.y, { steps: 8 })
+  await page.mouse.up()
+  await sleep(300)
+}
 
 async function openMusicHub(page) {
   // A playback session restored from the server (music-session-sync) leaves a current track, and
@@ -4399,6 +4447,7 @@ async function assertMusicSurface(page) {
     return
   }
   check('music: the status bar opens the library hub', true)
+  await assertMusicHubDrag(page)
 
   // The hub's own footer is the transport while it is open; a floating card on top of it would
   // put two play buttons for one track on screen.

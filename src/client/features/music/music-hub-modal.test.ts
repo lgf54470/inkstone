@@ -5,6 +5,7 @@ import type { Root } from 'react-dom/client'
 import type { MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { MusicHubModal } from './music-hub-modal'
+import { hubStyle } from './music-hub-window'
 import { useMusic } from './music-store'
 
 beforeAll(() => {
@@ -281,5 +282,22 @@ describe('MusicHubModal windowed chrome (REF-1b)', () => {
     await mountHub()
     expect(grip()).toBeUndefined()
     expect(moveButton()).toBeUndefined()
+  })
+})
+
+// FB-F1: the offset has to be a declaration the entrance animation cannot reach. The dialog
+// carries `.anim-pop`, whose finished `ink-pop` keyframes end on `transform: none` with a `both`
+// fill, and an animation beats an inline style in the cascade — so the `transform` this used to
+// write was painted as `none` for the whole life of the dialog. The store was right the entire
+// time, which is why writing to it was never enough: the browser gate drags the header and
+// measures the box, and these pin the declaration that paint depends on.
+describe('MusicHubModal drag offset (FB-F1)', () => {
+  it('carries the offset in a property the entrance animation cannot override', () => {
+    expect(hubStyle({ dx: 24, dy: 12, width: 800, height: 600 })).toEqual({ width: 800, height: 600, translate: '24px 12px' })
+    expect(hubStyle({ dx: 24 })).toEqual({ width: undefined, height: undefined, translate: '24px 0px' })
+  })
+
+  it('leaves an untouched window where the dialog already centres it', () => {
+    expect(hubStyle({})).toEqual({ width: undefined, height: undefined, translate: undefined })
   })
 })

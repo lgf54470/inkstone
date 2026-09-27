@@ -71,7 +71,7 @@
 
 | 编号 | 优先级 | 问题 | 修改方案 | 涉及范围 | 代价 | 修改建议 |
 | --- | --- | --- | --- | --- | --- | --- |
-| FB-F1 | **P0** | Hub 拖动无效：`anim-pop` 的 `transform: none` 永久覆盖内联 `translate` | 位移改用**独立 `translate` 属性**（CSS Transforms 2，不被 `transform` 动画覆盖；备选 `left/top`，均无需 `!important`）；补浏览器断言「真实拖 120px 后 boundingBox 位移 ≥100px」 | `music-hub-window.tsx`、`music-hub-modal.tsx`、`scripts/e2e-visual.mjs` | S 代码 + M 门禁 | 首选此方案：箱模型零影响、无层叠对抗 |
+| FB-F1 | **P0** | Hub 拖动无效：`anim-pop` 的 `transform: none` 永久覆盖内联 `translate` | 位移改用**独立 `translate` 属性**（CSS Transforms 2，不被 `transform` 动画覆盖；备选 `left/top`，均无需 `!important`）；补浏览器断言「真实按在标题栏拖 120px，窗口在屏幕上跟着走且能拖回」 | `music-hub-window.tsx`、`music-hub-modal.tsx`、`scripts/e2e-visual.mjs` | S 代码 + M 门禁 | **已修复（M4）**：实测同一断言——改前 dx/dy = 0/0（store 已写对、屏幕不动），改后 120/60，拖回后回到原点 |
 | FB-F2 | **P0** | 在线开关打开不触发搜索；关闭 / 加载 / 无匹配 / 全源失败四态混同 | 开关纳入 effect 依赖（或订阅偏好变化重发）；四态文案分开，全源失败带「重试」 | `music-provider-results.tsx`、`music-store/providers.ts`、locales | S | 先做，用户可见收益最大 |
 | FB-F3 | P1 | 来源筛选只有 `all/r2/webdav`，`alist/external/provider/podcast` 行无法筛选（角标已支持） | 扩展值域 + 工具栏按「库中实际存在的来源」动态生成 + `applySourceFilter` 兼容；未知旧值回落 `all`（已有逻辑） | `music-store/types.ts`、`state.ts`、`library-load.ts`、`music-hub-toolbar.tsx` | S–M | 顺手把来源名走 i18n（现为英文 slug） |
 | FB-F4 | P1 | 全仓无音乐设置面；音源开关埋在搜索结果里，EQ / 响度 / 交叉淡入 / 歌词样式 / 背景模式 / 悬浮窗散落各弹层 | 全局设置面板新增「音乐」分区（唯一真源）+ Hub 头部齿轮直达同一分区 | `features/settings/*`、`features/music/*`、locales | L | 分两步：先壳 + 音源组，后播放默认组 |
@@ -169,7 +169,7 @@
 
 ## G. 门禁缺口与规则化建议
 
-1. **几何必须有浏览器断言**（FB-C4）：`hubGeometry` / `floatingPosition` 这类值 jsdom 只能证明「写进了 store」。凡是用户能拖动、缩放、定位的能力，验收必须包含一条真实浏览器断言（读 `boundingBox` 或 `getBoundingClientRect`），否则视为未验收。
+1. **几何必须有浏览器断言**（FB-C4）：`hubGeometry` / `floatingPosition` 这类值 jsdom 只能证明「写进了 store」。凡是用户能拖动、缩放、定位的能力，验收必须包含一条真实浏览器断言（读 `boundingBox` 或 `getBoundingClientRect`），否则视为未验收。FB-F1 就是这条规则的来历：REF-1b 的 store 断言全绿、浏览器里却一动不动。断言本身也要按「人怎么找到把手」来写——从把手往上找它的 `header`，别从弹窗往下写子选择器（`aria-label` 在弹窗上，不在被命名的条上）；每次拖拽都要重读把手位置，按旧位置去按会落到弹窗外，一次点在遮罩上的按压会关掉整个窗口。
 2. **门禁名单需要跟着表面增长**（FB-C3）：`TOOLBAR_SURFACES`（工具栏稳定性）、`PHONE_SURFACES`（手机断点 axe / 对比度）、`check-surface-coverage.mjs`（全屏根与使用者）三处都缺音乐的部分表面；`Modal` 条目的使用者枚举文本已与事实不符（说三个、列四个、实际五个）。
 3. **静默降级的可见性**（FB-C1 / FB-F6）：允许「一个源失败不拖垮其余源」，但不允许「用户看不出失败」。best-effort 分支的 catch 体要有紧邻注释，UI 层要能区分「没有匹配」与「源不可用」。
 
