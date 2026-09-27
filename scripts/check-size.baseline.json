@@ -38,6 +38,9 @@
   "src/client/features/preview/kanban-fullscreen.test.ts": {
     "longFns": 1
   },
+  "src/client/lib/api/music.ts": {
+    "lines": 533
+  },
   "src/client/lib/markdown/kanban/ui/kanban-add-operations.test.ts": {
     "longFns": 1
   },
@@ -97,8 +100,14 @@
   "src/client/lib/markdown/slides/ui/slides-topbar.tsx": {
     "longFns": 1
   },
+  "src/shared/locales/en-US/music.ts": {
+    "lines": 504
+  },
   "src/shared/locales/en-US/preview.ts": {
     "lines": 520
+  },
+  "src/shared/locales/zh-CN/music.ts": {
+    "lines": 504
   },
   "src/shared/locales/zh-CN/preview.ts": {
     "lines": 520

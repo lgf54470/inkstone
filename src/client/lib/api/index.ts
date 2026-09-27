@@ -4,6 +4,8 @@ export {
   type MusicBatchAction, type MusicUploadResult, type MusicTrackPatch,
   type MusicWebdavImportInput, type MusicWebdavListing, type MusicPlaylistPatch,
   type MusicAlistServerView, type MusicAlistCreateInput, type MusicAlistPatchInput,
+  type MusicServerSourceView, type MusicServerSourceInput, type MusicServerHit,
+  type MusicServerSearchResult, type MusicServerTrackInput,
   type MusicAlistEntry, type MusicAlistImportInput,
   type MusicPodcastFeedView, type MusicPodcastCreateInput, type MusicPodcastPatchInput,
   type MusicPodcastEpisode, type MusicPodcastEpisodeImportInput,

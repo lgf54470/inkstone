@@ -1,5 +1,5 @@
 import type { StoreApi } from 'zustand'
-import type { MusicProviderTrack, MusicAlistCreateInput, MusicAlistEntry, MusicAlistPatchInput, MusicAlistServerView, MusicPodcastCreateInput, MusicPodcastEpisode, MusicPodcastFeedView, MusicPodcastPatchInput, MusicTrashEntry } from '../../../lib/api'
+import type { MusicProviderTrack, MusicAlistCreateInput, MusicAlistEntry, MusicAlistPatchInput, MusicAlistServerView, MusicPodcastCreateInput, MusicPodcastEpisode, MusicPodcastFeedView, MusicPodcastPatchInput, MusicServerHit, MusicServerSourceInput, MusicServerSourceView, MusicTrashEntry } from '../../../lib/api'
 import type {
   MusicPlayMode, MusicPlaylistDetail, MusicReferenceHealthResult, MusicSource, MusicStats, MusicTag, MusicTrack,
   MusicWebdavEntry,
@@ -238,6 +238,20 @@ export interface MusicStoreState {
     error: string | null
     importingPaths: string[]
   }
+  /** FB-M16: the reader's own music server — its registrations, its last test, its last search. */
+  serverSources: MusicServerSourceView[]
+  serverSourcesLoading: boolean
+  serverSourcesError: string | null
+  serverProbe: { id: string; state: 'ok' | 'error'; error: string | null } | null
+  serverProbingId: string | null
+  serverSearch: {
+    serverId: string | null
+    keywords: string
+    hits: MusicServerHit[]
+    searching: boolean
+    error: string | null
+    importingItemIds: string[]
+  }
   uploadTarget: MusicTransferTarget
   transfersOpen: boolean
   webdav: MusicWebdavState
@@ -349,6 +363,17 @@ export interface MusicStoreState {
   createAlistServer: (input: MusicAlistCreateInput) => Promise<boolean>
   patchAlistServer: (id: string, patch: MusicAlistPatchInput) => Promise<boolean>
   deleteAlistServer: (id: string) => Promise<void>
+  loadServerSources: () => Promise<void>
+  createServerSource: (input: MusicServerSourceInput) => Promise<boolean>
+  patchServerSource: (id: string, patch: Partial<MusicServerSourceInput>) => Promise<boolean>
+  deleteServerSource: (id: string) => Promise<void>
+  /** FB-M16: asks the server to answer once, and keeps the verdict beside its row. */
+  probeServerSource: (id: string) => Promise<boolean>
+  selectServerSourceForSearch: (serverId: string) => void
+  searchServerSource: (serverId: string, keywords: string) => Promise<void>
+  clearServerSearch: () => void
+  importServerHit: (serverId: string, hit: MusicServerHit) => Promise<boolean>
+  importServerHits: (serverId: string, hits: MusicServerHit[]) => Promise<{ added: number; failed: number }>
   setProviderEnabled: (providerId: string, enabled: boolean) => void
   searchProviders: (keywords: string) => Promise<void>
   playProviderTrack: (hit: MusicProviderTrack) => Promise<void>

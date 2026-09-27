@@ -31,6 +31,7 @@ const LazyTagManagerModal = lazy(() => import('./music-tag-manager').then((m) =>
 const LazyTransferDialog = lazy(() => import('./music-transfer-dialog').then((m) => ({ default: m.MusicTransferDialog })))
 const LazyWebdavModal = lazy(() => import('./music-webdav-modal').then((m) => ({ default: m.MusicWebdavModal })))
 const LazyAlistModal = lazy(() => import('./music-alist-modal').then((m) => ({ default: m.MusicAlistModal })))
+const LazyServerModal = lazy(() => import('./music-server-modal').then((m) => ({ default: m.MusicServerModal })))
 const LazyPodcastModal = lazy(() => import('./music-podcast-modal').then((m) => ({ default: m.MusicPodcastModal })))
 const LazySourceSwitchModal = lazy(() => import('./music-source-switch-modal').then((m) => ({ default: m.MusicSourceSwitchModal })))
 const LazyHealthModal = lazy(() => import('./music-health-modal').then((m) => ({ default: m.MusicHealthModal })))
@@ -139,6 +140,7 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
             onUpload={dialogs.openUpload}
             onBrowseWebdav={dialogs.openWebdav}
             onBrowseAlist={dialogs.openAlist}
+            onBrowseServers={dialogs.openServer}
             onPodcasts={dialogs.openPodcast}
             queueOpen={dialogs.queueOpen}
             onCloseQueue={dialogs.closeQueue}
@@ -189,6 +191,9 @@ function HubPeers({ dialogs }: { dialogs: ReturnType<typeof useHubDialogs> }) {
       </LazyPeer>
       <LazyPeer open={dialogs.alistOpen}>
         <LazyAlistModal open={dialogs.alistOpen} onClose={dialogs.closeAlist} />
+      </LazyPeer>
+      <LazyPeer open={dialogs.serverOpen}>
+        <LazyServerModal open={dialogs.serverOpen} onClose={dialogs.closeServer} />
       </LazyPeer>
       <LazyPeer open={dialogs.podcastOpen}>
         <LazyPodcastModal open={dialogs.podcastOpen} onClose={dialogs.closePodcast} />
@@ -256,6 +261,7 @@ const HubCentre = memo(function HubCentre({
   onUpload,
   onBrowseWebdav,
   onBrowseAlist,
+  onBrowseServers,
   onPodcasts,
   queueOpen,
   onCloseQueue,
@@ -268,6 +274,7 @@ const HubCentre = memo(function HubCentre({
   onUpload: () => void
   onBrowseWebdav: () => void
   onBrowseAlist: () => void
+  onBrowseServers: () => void
   onPodcasts: () => void
   queueOpen: boolean
   onCloseQueue: () => void
@@ -292,7 +299,7 @@ const HubCentre = memo(function HubCentre({
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)]'>
       {/* Ranking the library happens once, here; the toolbar and the group header take
           the result as a prop so they never run the same sort a second time. */}
-      <MusicHubToolbar tracks={tracks} libraryTracks={libraryTracks} shortViewport={shortViewport} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
+      <MusicHubToolbar tracks={tracks} libraryTracks={libraryTracks} shortViewport={shortViewport} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onBrowseServers={onBrowseServers} onPodcasts={onPodcasts} />
       {detail && <Suspense fallback={null}><LazyGroupDetailHeader scope={detail} tracks={tracks} /></Suspense>}
       {onlinePanel && <Suspense fallback={null}><LazyProviderResults /></Suspense>}
       {scope.kind === 'duplicates' && tracks.length > 0 && <MusicDuplicatesSummary />}
@@ -367,6 +374,7 @@ interface HubSetters {
   setQueueOpen: (open: boolean | ((value: boolean) => boolean)) => void
   setWebdavOpen: (open: boolean) => void
   setAlistOpen: (open: boolean) => void
+  setServerOpen: (open: boolean) => void
   setPodcastOpen: (open: boolean) => void
 }
 
@@ -396,6 +404,8 @@ function useDialogActions(set: HubSetters, tracks: MusicTrack[], currentId: stri
     closeWebdav: useCallback(() => set.setWebdavOpen(false), [set]),
     openAlist: useCallback(() => set.setAlistOpen(true), [set]),
     closeAlist: useCallback(() => set.setAlistOpen(false), [set]),
+    openServer: useCallback(() => set.setServerOpen(true), [set]),
+    closeServer: useCallback(() => set.setServerOpen(false), [set]),
     openPodcast: useCallback(() => set.setPodcastOpen(true), [set]),
     closePodcast: useCallback(() => set.setPodcastOpen(false), [set]),
   }
@@ -409,6 +419,7 @@ function useHubDialogs() {
   const [queueOpen, setQueueOpen] = useState(false)
   const [webdavOpen, setWebdavOpen] = useState(false)
   const [alistOpen, setAlistOpen] = useState(false)
+  const [serverOpen, setServerOpen] = useState(false)
   const [podcastOpen, setPodcastOpen] = useState(false)
   const [detailTab, setDetailTab] = useState<MusicDetailTab>('lyrics')
   const currentId = useMusic((state) => state.queue[state.currentIndex] ?? null)
@@ -423,6 +434,7 @@ function useHubDialogs() {
     setQueueOpen,
     setWebdavOpen,
     setAlistOpen,
+    setServerOpen,
     setPodcastOpen,
   }), [setTransfersOpen])
   const actions = useDialogActions(setters, tracks, currentId)
@@ -435,6 +447,7 @@ function useHubDialogs() {
     queueOpen,
     webdavOpen,
     alistOpen,
+    serverOpen,
     podcastOpen,
     detailTab,
     setDetailTab,

@@ -6,6 +6,7 @@ export { useMusic, useCurrentTrack, useVisibleTracks, IMMERSIVE_BACKGROUNDS, LYR
 export type { MusicLyricSource } from './music-store'
 export { listProviders } from './providers'
 export { MusicEqPanel } from './music-transport-widgets'
+export { MusicServerManager, useLoadServerSources } from './music-server-manager'
 export type { MusicProvider } from './providers'
 export type { MusicImmersiveBackground, MusicLyricAlign, MusicLyricTextSize } from './music-store'
 export { MUSIC_HOTKEYS } from './music-hotkeys'

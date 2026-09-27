@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { SEARCH_RESULT_LIMIT } from '../music-search'
 import { loadPreferences, type MusicPreferences } from './state'
 import { initialAlistBrowseState } from './alist'
+import { initialServerSourceState } from './servers'
 import { librarySlice } from './library'
 import { playerSlice } from './player-slice'
 import { initialWebdavState } from './webdav'
@@ -54,6 +55,7 @@ function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> 
     alistServersLoading: false,
     alistServersError: null,
     alistBrowse: initialAlistBrowseState(),
+    ...initialServerSourceState(),
     ...initialProviderState(prefs),
     podcastFeeds: [],
     podcastFeedsLoading: false,

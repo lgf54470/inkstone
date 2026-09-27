@@ -48,21 +48,21 @@
 
 ## M④ · 性能与安全
 
-- [x] M20 FB-PF1 music chunk 预算（109 KiB → ≤96 000 B，不许改基线）—— **commit 见下**
+- [x] M20 FB-PF1 music chunk 预算（109 KiB → ≤96 000 B，不许改基线）—— **commit `ef35563a`**
 - [x] M21 FB-PF4 音乐库性能测量脚本（`scripts/measure-music.mjs`）+ 按数据优化：网格对**未搜索**的库也走同一预算（此前只有查询路径有帽） —— **commit `84129e75`**
 - [x] M22 FB-S1 代理流「响应头超时 + 体软上限」（FB-PF3 的预算口径已在 M9 落定，无重复改动）
 - [x] M23 FB-S2 + FB-S3 代抓逐跳白名单（复用 `fetchAllowedResource` 的走法）+ 播放 / 直链地址过 `isAllowedOutboundUrl`
-- [x] M24 FB-S5 观测 / 隐私核对（搜索关键词是否入日志）—— Worker 侧不记（12 处日志只打固定标签 + 错误对象），残余暴露是 URL 里的请求元数据，写进 `SECURITY.md`，并用 `tests/music-log-privacy.test.ts` 把「不记」变成自动门禁 —— **commit 见下**
+- [x] M24 FB-S5 观测 / 隐私核对（搜索关键词是否入日志）—— Worker 侧不记（12 处日志只打固定标签 + 错误对象），残余暴露是 URL 里的请求元数据，写进 `SECURITY.md`，并用 `tests/music-log-privacy.test.ts` 把「不记」变成自动门禁 —— **commit `9e6a5a70`**
 
 ## M④b · 审计中发现的既存缺陷
 
-- [x] M24b FB-M17 凭证金库的记录形状：`decryptSecret` 的白名单不含 `token`，而 Alist 存的就是 `{token}` —— Alist 的浏览 / 搜索 / 导入 / 播放全部失效 —— **commit 见下**
+- [x] M24b FB-M17 凭证金库的记录形状：`decryptSecret` 的白名单不含 `token`，而 Alist 存的就是 `{token}` —— Alist 的浏览 / 搜索 / 导入 / 播放全部失效 —— **commit `a078ae3b`**
 
 ## M⑤ · 服务器型音源与收尾
 
 - [~] M25 FB-M16 服务器型音源（Subsonic / Navidrome / Jellyfin / Emby）—— 分两半：
-  - [x] **M25a 服务器端**：表 + 迁移 + CRUD（密钥入金库、不回前端）/ probe / search / import / 播放解析 / 健康扫描 / 两个适配器（Subsonic 家族 = Subsonic・Navidrome・Airsonic・Nextcloud；Jellyfin 家族 = Jellyfin・Emby）+ 三份契约测试 —— **commit 见下**
-  - [ ] M25b 客户端：设置页「服务器音源」分组（新增 / 测试 / 删除）+ 服务器搜索与添加的入口 + 文案 + 测试
+  - [x] **M25a 服务器端**：表 + 迁移 + CRUD（密钥入金库、不回前端）/ probe / search / import / 播放解析 / 健康扫描 / 两个适配器（Subsonic 家族 = Subsonic・Navidrome・Airsonic・Nextcloud；Jellyfin 家族 = Jellyfin・Emby）+ 三份契约测试 —— **commit `f7741709`**
+  - [x] M25b 客户端：设置页「服务器音源」分组（新增 / 测试 / 删除）+ 服务器搜索与添加的入口（工具栏第五个主流程）+ 文案 + 测试 —— **commit 见下**
 - [ ] M26 收尾：review 定稿 + plan 回填哈希、已知限制、不做清单
 
 ## 每项验收标准（通用）
@@ -120,10 +120,13 @@
 
 | 2026-09-28 | M25a FB-M16 服务器型音源（服务端） | 见下 | 新模块先写测试也无从先红（适配器与路由都不存在），按 M23/M15 的既有先例改用**变异证明**：把导入的幂等短路改成永假后「重复添加是空操作」变红，把 `secret` 加回 `toServerView` 后「注册响应不含凭证」变红（2 failed / 6 passed，恢复后全绿）。实现后：`server-api.test.ts` **9 例 ✅**、`tests/music-server-sources.test.ts` **8 例 ✅**（含键往返 3 例：匿名 kind 拒绝、带冒号的 item id 仍能往返、两个引用家族同一入口）；`npm run test:unit` **546 文件 / 4897 例 + 1 skipped ✅**；`npm run typecheck` ✅；13 项静态门禁 ✅（size 报新测试里一个 describe 体 50+ 行——拆成两个 describe 后未动基线，只把 migrations.ts 的重快照记在 `check-size.baseline.json`） | **两个家族而非四个品牌**：`subsonic` 适配子音・Navidrome・Airsonic・Nextcloud（同一套 REST API），`jellyfin` 适配 Jellyfin・Emby。**认证**：Subsonic 用它的 `p=enc:<hex>` 形式（WebCrypto 无 MD5，无法产生 `t=md5(...)`），因此整条链强制 HTTPS；Jellyfin 在注册时把密码换成会话 token（行里存 token + 上游 user id，**user id 不是密钥、放自己那一列**），搜索与播放用 `X-Emby-Token` 头——**token 不进 URL**（与 M24 的结论同向：地址会被任何记录请求元数据的日志层抄走）。**行身份**：`srv:<kind>:<serverId>:<itemId>`（item id 取第三段起的全部，所以带冒号的 id 也能往返），`rows.ts` 与 `check-health` 经同一个 `parseProviderReference` / `parseServerObjectKey` 读回，导入行与 GDS 行共用一套 reference row 语义（元数据入库、播放时解析、重复添加是空操作）。**凭证形状**：金库只回它认识的字段，所以子音存 `{password}`、Jellyfin 存 `{token}`（这正是 M24b 修掉的那个缺陷所在的约束）。**已做的安全约定**：地址规则逐跳生效（私网/回环直接拒且**不发请求**，单测钉死）；注册先验证再落库；删除注册**不删已导入的行**（读者删的是注册，不是歌）。**未做 / 已知限制**：没有真实服务器可验收（本地无 Subsonic/Jellyfin 实例，且平台 `global_fetch_strictly_public` 会拦下 LAN 地址），所以只有契约测试与桩 fetch，没有真机验收；封面不抓（服务器行的 `coverUrl` 为 null，界面画占位图）；`p=enc:` 的冒号被 query 构造器百分号编码（服务端解码后等价，已在断言里写明）；客户端尚不可用（M25b） |
 
+| 2026-09-28 | M25b FB-M16 服务器型音源（客户端：设置分组 + 工具栏搜索入口） | 见下 | 新模块先写测试也无从先红（组件与切片都不存在），按 M23/M25a 的先例改用**变异证明**三处：① 拿掉表单里那道「四个字段都要有」的早返回 → 「不完整注册不发送」变红；② 拿掉结果区的错误分支 → 「报出失败并提供重试」变红；③ 拿掉 `searchServerSource` 的迟到答案护栅 → 「查询已换就丢掉旧答案」变红（各 1 failed，恢复后全绿）。实现后：四个新测试文件 **30 例 ✅**（切片 14 / 管理器 8 / 模态 6 / 设置分区 2）；music + settings + `worker/routes/music` + shared **136 文件 / 1090 例 ✅**；`npm run test:unit` **550 文件 / 4927 例 + 1 skipped ✅**（M25a 为 546 / 4897）；`npm run typecheck` ✅；13 项静态门禁 ✅；`node scripts/e2e.mjs http://localhost:7714` **177 通过 / 0 失败**（真实浏览器行为门禁）；`scripts/e2e-visual.mjs` 对 :7714 **515 通过 / 5 失败**——**这 5 条与 HEAD 逐条相同**（在 `/tmp` 拉 HEAD 工作区、自己的 :7716 实例上跑同两条命令得 **510 通过 / 5 失败**，失败清单一字不差），因此本轮**没有新增任何浏览器失败**，反而多出 5 条通过的断言；`npm run contrast:check -- http://localhost:7714` **104 项全绿** | **两个宿主，一份表单**：`MusicServerManager` 是纯展示件（列注册、新增、测试、删除写在同一个组件里），设置页与模态各渲染它一次，不存在两份表单漂移。**列表的“谁去问”被测试撞对**：第一版让管理器自己在 `useEffect` 里拉列表，结果模态开时两个宿主同时发请求，`mockResolvedValueOnce` 的队列被先到的那一个吃掉，测试直接报“列表里怎么有 Home”——改为 `useLoadServerSources(enabled)` 由宿主提供唯一一次请求（设置页 `enable` 默认、模态传 `open`），既是实测行为也是更少的请求。**入口放在工具栏第五个主流程**（紧邻 Alist）：它和上传 / WebDAV / Alist / 播客同属“把外面的歌弄进来”，因此与它们同列而非藏在菜单；窄档仍是图标按钮，工具栏仍是两条行带（M10 的预算断言本轮全绿）。**模态里的首次路径优先**：一个服务器都没有时直接开注册表单（空选择器加一句说明是个做不了事的控件）；有服务器时默认选中第一台（查询属于某台服务器），并提供返回管理的入口。**搜索与添加**：关键词回车或按钮都能发；结果行带封面占位、标题、`歌手 · 专辑`、时长（服务器不给时长就不写 `00:00`，写“未知”）、单条“添加”与一次性“添加全部结果”（逐条走同一套幂等导入，报出落了几首）。**未做 / 已知限制**：浏览器门禁只能读到**首次路径**（注册表单）——CI 里没有 Subsonic / Jellyfin 实例，而 worker 会先拿真服务器验证再落库（这是安全边界，不能为了测试放宽），所以搜索 / 添加那一半由 jsdom 契约测试（模态 6 例）与 worker 契约测试（`tests/music-server-sources.test.ts` 8 例）钉住，本行如实声明。另：封面未抓（服务器行 `coverUrl` 为 null，界面画占位图）；`lib/api/music.ts`（533 行）与两份 `music.ts` 语料（504 行）越过 500 行线，按 `preview.ts` / `audio-engine.ts` 的既有先例记入 `check-size.baseline.json`（前者是类型 + 请求表，后两者是语料资源，都在 AGENTS 的“天然较长文件”豁免类里），两个新组件里的长函数已拆分到阈值内（未把新 longFn 写进基线） |
+
 ## 已知限制（滚动更新）
 
 - `budget:check` 的 music chunk 超限已由 M20 解决（拆分后最大 89.5 KiB vs 96 000 B），预算与基线未改。
-- 浏览器门禁 `scripts/e2e-visual.mjs` 当前为 574 ✓ / 1 ✗（另有末尾一个采集类场景在导航处崩溃，见 M12b 行）：唯一失败是已登记的看板遗留「笔记里的看板块不高于它绘制的头与板」（canvas:480 / needed:456，`board 353 + header 103`），与音乐无关，也不在本轮范围内（铁律 14）。
+- **浏览器门禁的失败集与环境强相关，已实测归因（M25b）**：在同一台机器上对**同一个临时实例**先跑 `scripts/e2e.mjs` 再跑 `scripts/e2e-visual.mjs` 时，当前树的失败集是固定的 5 条（`kanban in the note` 高度遗留、`toolbar stability: the music hub opened with its content`、`music: the hub lists the seeded tracks`、`share: the shared view opens the share center`、`qr sheet: the center opens for the sheet`），**在 HEAD 未改动的代码上逐条重现**（`/tmp` 拉一份 HEAD 工作区 + 自己的 :7716 实例，跑同样两条命令得 510 ✓ / 5 ✗，失败清单一字不差）。因此这些不是本轮引入的回归，也不在本轮范围内（铁律 14）。早前记的「574 ✓ / 1 ✗」是在**长命实例**（连续多轮运行、库里有前几轮留下的曲目）上测得的；在同一实例上本轮得 515 ✓ / 5 ✗（多出的 5 条正是 M25b 新加的断言），两者不可混用——**引用这套数字时必须同时写实例的新鲜度**。另有末尾一个采集类场景偶发在导航处崩（`frame got detached` / 60s 等待超时，见 M12b 与 M25b 行），重跑即过。
+- **服务器型音源的搜索与添加在浏览器门禁里没有覆盖**（M25b）：worker 在落库前会拿真服务器验证（安全边界，不因测试放宽），CI 里没有 Subsonic / Jellyfin 实例，所以门禁读的是首次路径（工具栏入口 → 注册表单 → Escape 交还焦点 → Hub 不被内层弹窗带走），搜索 / 添加那一半由 jsdom 契约与 worker 契约测试钉住。
 - **两个门禁都必须对同一个临时实例跑**：`npm run contrast:check` 不带参数时默认打 `http://localhost:7712`，而那是本地常年留数据的实例——它的音乐库里有带封面的真实曲目，网格卡上的时长徽标（`--text-inverse` on `--scrim`）叠在封面图上时 axe 判不出底色，于是「音乐库网格视图」两主题各报 6 条 `color-contrast` 待审项而失败。对 `:7714`（`INKSTONE_EPHEMERAL_DEV=1`，只跑探针曲目）同一份代码全绿。本轮按后者执行，并把「默认基址不保证与视觉门禁同实例」记在此处。
 - kuwo 源当前上游 400（实测），属上游状态；本仓库只保证「失败可见 + 可关闭」。
 - 服务器型音源受 `global_fetch_strictly_public` 约束，只能指向公网 HTTPS；LAN 自建服务需反向代理 / 隧道（Alist 今天同样受限），该限制写进文档而非绕过。

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type RefObject } from 'react'
 import type { MusicSource, MusicTrack } from '@shared/types'
-import { Activity, CloudDownload, HardDrive, ImageDown, ListPlus, Podcast, RefreshCw, RotateCw, Server, Upload, ClipboardList, Ellipsis, Link } from 'lucide-react'
+import { Activity, Cloud, CloudDownload, HardDrive, ImageDown, ListPlus, Podcast, RefreshCw, RotateCw, Server, Upload, ClipboardList, Ellipsis, Link } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Segmented, Select } from '../../components/form'
 import { Menu, Tooltip, confirm } from '../../components/overlay'
@@ -24,7 +24,7 @@ const SORT_OPTIONS: { value: MusicSort; label: 'music.sort_recent' | 'music.sort
   { value: 'plays', label: 'music.sort_plays' },
 ]
 
-export function MusicHubToolbar({ tracks, libraryTracks, shortViewport = false, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
+export function MusicHubToolbar({ tracks, libraryTracks, shortViewport = false, onUpload, onBrowseWebdav, onBrowseAlist, onBrowseServers, onPodcasts }: {
   tracks: MusicTrack[]
   /** The whole library, not the filtered view: the filter's own options come from it. */
   libraryTracks: readonly Pick<MusicTrack, 'source'>[]
@@ -33,6 +33,8 @@ export function MusicHubToolbar({ tracks, libraryTracks, shortViewport = false, 
   onUpload: () => void
   onBrowseWebdav: () => void
   onBrowseAlist: () => void
+  /** FB-M16: the reader's own music server — search it and add what it holds. */
+  onBrowseServers: () => void
   onPodcasts: () => void
 }) {
   // REF-7: the row folds on the width it is given, so the same toolbar unfolds again
@@ -74,6 +76,7 @@ export function MusicHubToolbar({ tracks, libraryTracks, shortViewport = false, 
         onUpload={onUpload}
         onBrowseWebdav={onBrowseWebdav}
         onBrowseAlist={onBrowseAlist}
+        onBrowseServers={onBrowseServers}
         onPodcasts={onPodcasts}
       />
     </div>
@@ -199,15 +202,16 @@ function RefreshButton() {
   )
 }
 
-// The four source flows carry the library's daily use, so they hold their place in the
+// The five source flows carry the library's daily use, so they hold their place in the
 // row at every width; only the imports and metadata jobs fold away (REF-2). FB-U2 drops
 // their labels at the compact widths — the name stays on the control, so the press and the
 // screen reader answer are the same ones.
-function PrimaryActions({ shape, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
+function PrimaryActions({ shape, onUpload, onBrowseWebdav, onBrowseAlist, onBrowseServers, onPodcasts }: {
   shape: MusicToolbarShape
   onUpload: () => void
   onBrowseWebdav: () => void
   onBrowseAlist: () => void
+  onBrowseServers: () => void
   onPodcasts: () => void
 }) {
   if (shape.compact) {
@@ -222,6 +226,9 @@ function PrimaryActions({ shape, onUpload, onBrowseWebdav, onBrowseAlist, onPodc
         <Tooltip label={t('music.alist_title')} side='top'>
           <IconButton label={t('music.alist_title')} size='sm' onClick={onBrowseAlist}><HardDrive size={14} /></IconButton>
         </Tooltip>
+        <Tooltip label={t('music.server_title')} side='top'>
+          <IconButton label={t('music.server_title')} size='sm' onClick={onBrowseServers}><Cloud size={14} /></IconButton>
+        </Tooltip>
         <Tooltip label={t('music.podcast_title')} side='top'>
           <IconButton label={t('music.podcast_title')} size='sm' onClick={onPodcasts}><Podcast size={14} /></IconButton>
         </Tooltip>
@@ -233,12 +240,13 @@ function PrimaryActions({ shape, onUpload, onBrowseWebdav, onBrowseAlist, onPodc
       <Button size='sm' variant='primary' icon={<Upload size={12} />} onClick={onUpload}>{t('music.upload')}</Button>
       <Button size='sm' icon={<Server size={12} />} onClick={onBrowseWebdav}>{t('music.webdav_title')}</Button>
       <Button size='sm' icon={<HardDrive size={12} />} onClick={onBrowseAlist}>{t('music.alist_title')}</Button>
+      <Button size='sm' icon={<Cloud size={12} />} onClick={onBrowseServers}>{t('music.server_title')}</Button>
       <Button size='sm' icon={<Podcast size={12} />} onClick={onPodcasts}>{t('music.podcast_title')}</Button>
     </>
   )
 }
 
-function ToolbarActions({ tracks, libraryTracks, shape, fileRef, onPickM3u, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
+function ToolbarActions({ tracks, libraryTracks, shape, fileRef, onPickM3u, onUpload, onBrowseWebdav, onBrowseAlist, onBrowseServers, onPodcasts }: {
   tracks: MusicTrack[]
   libraryTracks: readonly Pick<MusicTrack, 'source'>[]
   shape: MusicToolbarShape
@@ -247,6 +255,7 @@ function ToolbarActions({ tracks, libraryTracks, shape, fileRef, onPickM3u, onUp
   onUpload: () => void
   onBrowseWebdav: () => void
   onBrowseAlist: () => void
+  onBrowseServers: () => void
   onPodcasts: () => void
 }) {
   return (
@@ -254,7 +263,7 @@ function ToolbarActions({ tracks, libraryTracks, shape, fileRef, onPickM3u, onUp
       {shape.compact && <SourceFilterSelect libraryTracks={libraryTracks} />}
       {shape.compact && !shape.stacked && <SortControl variant='select' />}
       {!shape.compact && <SortControl variant='segmented' />}
-      <PrimaryActions shape={shape} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
+      <PrimaryActions shape={shape} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onBrowseServers={onBrowseServers} onPodcasts={onPodcasts} />
       <input
         ref={fileRef}
         type='file'

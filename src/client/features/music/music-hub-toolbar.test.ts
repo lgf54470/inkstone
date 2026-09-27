@@ -10,6 +10,7 @@ const PROPS = {
   onUpload: vi.fn(),
   onBrowseWebdav: vi.fn(),
   onBrowseAlist: vi.fn(),
+  onBrowseServers: vi.fn(),
   onPodcasts: vi.fn(),
 }
 
@@ -166,7 +167,7 @@ describe('hub toolbar on a phone-width container (FB-U2)', () => {
   it('keeps every primary flow one press away, named but without its label', () => {
     stubMatchMedia(false)
     act(() => { rendered = renderElement(createElement(MusicHubToolbar, PROPS)) })
-    for (const key of ['music.upload', 'music.webdav_title', 'music.alist_title', 'music.podcast_title'] as const) {
+    for (const key of ['music.upload', 'music.webdav_title', 'music.alist_title', 'music.server_title', 'music.podcast_title'] as const) {
       expect(hasLabeledButton(t(key))).toBe(true)
       expect(buttonLabels()).not.toContain(t(key))
     }

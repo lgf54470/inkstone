@@ -21,6 +21,10 @@ import {
 import { browseWebdav, deleteWebdavObjects, importTrackFromUrl, importWebdavFolder, importWebdavTrack } from './webdav'
 import { closeTrash, openTrash, purgeTrashEntry, restoreFromTrash } from './trash'
 import { browseAlist, createAlistServer, deleteAlistServer, importAlistFolder, importAlistTrack, loadAlistServers, patchAlistServer, searchAlist } from './alist'
+import {
+  clearServerSearch, createServerSource, deleteServerSource, importServerHit, importServerHits,
+  loadServerSources, patchServerSource, probeServerSource, searchServerSource, selectServerSourceForSearch,
+} from './servers'
 import { closePodcastEpisodes, createPodcastFeed, deletePodcastFeed, importPodcastOpml, loadPodcastEpisodes, loadPodcastFeeds, playPodcastEpisode, renamePodcastFeed } from './podcast'
 import {
   closeHealthScan, openHealthScan, repairDeadReference, scanReferences, trashDeadReferences,
@@ -39,6 +43,9 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'openTrash' | 'closeTrash' | 'restoreFromTrash' | 'purgeTrashEntry'
   | 'loadAlistServers' | 'createAlistServer' | 'patchAlistServer' | 'deleteAlistServer'
   | 'browseAlist' | 'searchAlist' | 'importAlistTrack' | 'importAlistFolder'
+  | 'loadServerSources' | 'createServerSource' | 'patchServerSource' | 'deleteServerSource'
+  | 'probeServerSource' | 'selectServerSourceForSearch' | 'searchServerSource' | 'clearServerSearch'
+  | 'importServerHit' | 'importServerHits'
   | 'loadPodcastFeeds' | 'createPodcastFeed' | 'renamePodcastFeed' | 'deletePodcastFeed'
   | 'loadPodcastEpisodes' | 'closePodcastEpisodes' | 'importPodcastOpml' | 'playPodcastEpisode'
   | 'setProviderEnabled' | 'searchProviders' | 'playProviderTrack' | 'addProviderTrack' | 'addProviderTracks'
@@ -123,6 +130,16 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     searchAlist: (serverId, keywords) => searchAlist(serverId, keywords),
     importAlistTrack: (serverId, entry) => importAlistTrack(set, serverId, entry),
     importAlistFolder: () => importAlistFolder(set, get),
+    loadServerSources: () => loadServerSources(set),
+    createServerSource: (input) => createServerSource(set, input),
+    patchServerSource: (id, patch) => patchServerSource(set, id, patch),
+    deleteServerSource: (id) => deleteServerSource(set, id),
+    probeServerSource: (id) => probeServerSource(set, id),
+    selectServerSourceForSearch: (serverId) => selectServerSourceForSearch(set, serverId),
+    searchServerSource: (serverId, keywords) => searchServerSource(set, serverId, keywords),
+    clearServerSearch: () => clearServerSearch(set),
+    importServerHit: (serverId, hit) => importServerHit(set, serverId, hit),
+    importServerHits: (serverId, hits) => importServerHits(set, serverId, hits),
     loadPodcastFeeds: () => loadPodcastFeeds(set),
     loadPodcastEpisodes: (feedId) => loadPodcastEpisodes(set, feedId),
     closePodcastEpisodes: () => closePodcastEpisodes(set),

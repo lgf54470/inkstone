@@ -6,6 +6,7 @@ import {
   IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_SOURCES, LYRIC_TEXT_SIZES, MusicEqPanel, listProviders, useMusic,
   type MusicImmersiveBackground, type MusicLyricAlign, type MusicLyricSource, type MusicLyricTextSize, type MusicProvider,
 } from '../music'
+import { MusicServers } from './music-servers'
 
 const QUALITY_LABELS: Record<MusicProviderQuality, MessageKey> = {
   128: 'music.quality_128',
@@ -46,12 +47,13 @@ export function MusicSettings() {
   return (
     <div className='space-y-6'>
       <OnlineSources />
+      <MusicServers />
       <PlaybackDefaults />
     </div>
   )
 }
 
-function SectionTitle({ title, hint }: { title: string; hint?: string }) {
+export function SectionTitle({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className='mb-1.5'>
       <h3 className='text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>

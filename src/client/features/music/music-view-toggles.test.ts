@@ -204,7 +204,7 @@ describe('source filter (UI-16)', () => {
     stubWideToolbar()
     const container = await mount(createElement(MusicHubToolbar, {
       tracks: [], libraryTracks: [{ source: 'r2' }, { source: 'alist' }],
-      onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onPodcasts: () => {},
+      onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onBrowseServers: () => {}, onPodcasts: () => {},
     }))
     expect(group(container)).toBeTruthy()
     expect(tabbableCount(group(container))).toBe(1)
@@ -221,7 +221,7 @@ describe('source filter (UI-16)', () => {
     stubWideToolbar()
     const container = await mount(createElement(MusicHubToolbar, {
       tracks: [], libraryTracks: [{ source: 'r2' }, { source: 'alist' }],
-      onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onPodcasts: () => {},
+      onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onBrowseServers: () => {}, onPodcasts: () => {},
     }))
     await act(async () => {
       radioIn(group(container), t('music.source_alist')).click()
@@ -234,7 +234,7 @@ describe('sort control while browsing groups (M-50)', () => {
   function mountToolbar(): Promise<HTMLElement> {
     return mount(createElement(MusicHubToolbar, {
       tracks: [], libraryTracks: [],
-      onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onPodcasts: () => {},
+      onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onBrowseServers: () => {}, onPodcasts: () => {},
     }))
   }
 

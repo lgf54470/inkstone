@@ -1,4 +1,4 @@
-import { CLIENT_HEADER, type MusicProviderQuality } from '@shared/constants'
+import { CLIENT_HEADER, type MusicProviderQuality, type MusicServerKind } from '@shared/constants'
 import type {
   MusicLibrary,
   MusicLyricSearch,
@@ -75,6 +75,49 @@ export interface MusicWebdavListing {
 export interface MusicWebdavImportInput {
   path: string
   title?: string
+  artist?: string
+  album?: string
+  durationMs?: number
+}
+
+// FB-M16: a server source the reader registered themselves. The credential is not part of the
+// shape — it is stored server-side and never travels back — so the view carries who and where.
+export interface MusicServerSourceView {
+  id: string
+  name: string
+  kind: MusicServerKind
+  url: string
+  username: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface MusicServerSourceInput {
+  name: string
+  kind: MusicServerKind
+  url: string
+  username: string
+  password: string
+}
+
+/** The server's own song shape, which is what an import adds to the library. */
+export interface MusicServerHit {
+  itemId: string
+  title: string
+  artist: string
+  album: string
+  durationMs: number | null
+}
+
+export interface MusicServerSearchResult {
+  serverId: string
+  kind: MusicServerKind
+  results: MusicServerHit[]
+}
+
+export interface MusicServerTrackInput {
+  itemId: string
+  title: string
   artist?: string
   album?: string
   durationMs?: number
@@ -217,6 +260,27 @@ export const music = {
 
   importAlistTrack: (serverId: string, input: MusicAlistImportInput) =>
     request<MusicTrack>(`/api/music/alist/${encodeURIComponent(serverId)}/import`, { method: 'POST', body: input, timeoutMs: 30_000 }),
+
+  // FB-M16: the reader's own music server — register, test, search it, add a hit.
+  listServerSources: () => request<{ servers: MusicServerSourceView[] }>('/api/music/servers'),
+
+  createServerSource: (input: MusicServerSourceInput) =>
+    request<MusicServerSourceView>('/api/music/servers', { method: 'POST', body: input, timeoutMs: 30_000 }),
+
+  patchServerSource: (id: string, patch: Partial<MusicServerSourceInput>) =>
+    request<MusicServerSourceView>(`/api/music/servers/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch, timeoutMs: 30_000 }),
+
+  deleteServerSource: (id: string) =>
+    request<{ ok: boolean }>(`/api/music/servers/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  probeServerSource: (id: string) =>
+    request<{ ok: boolean }>(`/api/music/servers/${encodeURIComponent(id)}/probe`, { method: 'POST', body: {}, timeoutMs: 30_000 }),
+
+  searchServerSource: (id: string, keywords: string) =>
+    request<MusicServerSearchResult>(`/api/music/servers/${encodeURIComponent(id)}/search?keywords=${encodeURIComponent(keywords)}`, { timeoutMs: 30_000 }),
+
+  importServerTrack: (id: string, input: MusicServerTrackInput) =>
+    request<MusicTrack>(`/api/music/servers/${encodeURIComponent(id)}/import`, { method: 'POST', body: input, timeoutMs: 30_000 }),
 
   listPodcastFeeds: () => request<{ feeds: MusicPodcastFeedView[] }>('/api/music/podcasts'),
 

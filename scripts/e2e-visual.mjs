@@ -128,6 +128,12 @@ const LABELS = {
   musicPin: ['置顶', 'Pin'],
   musicUnpin: ['取消置顶', 'Unpin'],
   musicQueue: ['播放队列', 'Play queue'],
+  // FB-M16: the toolbar entry of the reader's own music server, and the two sentences its first-run
+  // form shows. Nothing in this gate registers a server — a registration is verified against the
+  // real server before it is stored — so the search half of that modal is read by the unit tests.
+  musicServers: ['音乐服务器', 'Music servers'],
+  musicServersNone: ['还没有注册音乐服务器', 'No music server registered yet'],
+  musicServersAdd: ['添加服务器', 'Add server'],
   musicRemoveFromQueue: ['从队列移除', 'Remove from the queue'],
   musicMiniPlayer: ['浮动播放器', 'Floating player'],
   // The windowed hub's own chrome (REF-1b, repaired in FB-F1): the label is how the drag guard
@@ -4374,6 +4380,9 @@ async function assertContextMenuNesting(page) {
 const MUSIC_TRACK_TITLES = MUSIC_PROBE.titles
 
 const ariaAttr = (labels) => labels.map((label) => `@aria-label="${label}"`).join(' or ')
+// A toolbar action is an icon with an aria-label in the compact shapes and a labelled button in the
+// roomy one, and which shape is on screen depends on the window the reader was left with.
+const ariaOrTextAttr = (labels) => [ariaAttr(labels), ...labels.map((label) => `normalize-space(.)="${label}"`)].join(' or ')
 const cssByLabels = (base, labels) => labels.map((label) => `${base}[aria-label="${label}"]`).join(', ')
 const overlaps = (a, b) => a && b
   && a.x < b.x + b.width && b.x < a.x + a.width
@@ -4811,6 +4820,58 @@ async function assertMusicHubSettingsShortcut(page) {
   await sleep(400)
 }
 
+// FB-M16: the music-server modal is the newest consumer of the shared dialog shell, and the entry
+// that opens it sits in the toolbar beside the other source flows. What this reads is the first-run
+// path, which is the one every reader walks: the entry is there, pressing it shows the registration
+// form rather than an empty picker, escape closes it, and the keyboard comes back to the entry
+// rather than falling to the body or staying inside the surface that just closed.
+async function assertMusicServerSource(page) {
+  const trigger = (await page.$$(`xpath/.//*[@data-music-toolbar]//button[${ariaOrTextAttr(LABELS.musicServers)}]`)).at(0)
+  check('music: the toolbar carries the music server entry', Boolean(trigger))
+  if (!trigger) return
+  // The modal opens *over* the hub, which is a dialog of its own — so the count is what says a new
+  // surface appeared, and the sentence is what says it is this one. Reading the first dialog in the
+  // document would read the hub, whose toolbar does carry the words "Add server".
+  const before = await page.evaluate(() => document.querySelectorAll('div[role="dialog"]').length)
+  await trigger.click()
+  // Either spelling: the account's language is whatever the previous scenario left it as, which is
+  // not this assertion's business.
+  const opened = await page.waitForFunction((count, groups) => {
+    const dialogs = [...document.querySelectorAll('div[role="dialog"]')]
+    if (dialogs.length <= count) return false
+    const added = dialogs.slice(count)
+    return added.some((dialog) => groups.some((group) => group.some((label) => (dialog.textContent ?? '').includes(label))))
+  }, { timeout: 15_000 }, before, [LABELS.musicServersNone, LABELS.musicServersAdd])
+    .then(() => true, () => false)
+  const shape = await page.evaluate(() => ({
+    dialogs: document.querySelectorAll('div[role="dialog"]').length,
+    texts: [...document.querySelectorAll('div[role="dialog"]')].map((dialog) => (dialog.textContent ?? '').slice(0, 60)),
+  }))
+  check('music: the music server entry opens the registration form', opened, JSON.stringify(shape))
+  await page.keyboard.press('Escape')
+  const closed = await page.waitForFunction(
+    (count) => document.querySelectorAll('div[role="dialog"]').length === count,
+    { timeout: 10_000 },
+    before,
+  ).then(() => true, () => false)
+  check('music: escape closes the music server modal', closed)
+  // A dialog opened from the hub opens *over* it, so closing the inner one may not take the outer
+  // one with it: the library the reader came from is still there, rows and all.
+  const hub = await page.evaluate((labels) => {
+    const dialog = [...document.querySelectorAll('div[role="dialog"]')]
+      .find((item) => labels.some((label) => (item.getAttribute('aria-label') ?? '') === label))
+    return { open: Boolean(dialog), rows: document.querySelectorAll('[role="row"]').length }
+  }, LABELS.musicHub)
+  check('music: the hub survives the music server modal it opened', hub.open, JSON.stringify(hub))
+  const focus = await page.evaluate((labels) => ({
+    returned: document.activeElement instanceof HTMLElement && labels.includes(document.activeElement.getAttribute('aria-label') ?? ''),
+    active: document.activeElement instanceof HTMLElement
+      ? document.activeElement.getAttribute('aria-label') ?? document.activeElement.tagName.toLowerCase()
+      : 'nothing',
+  }), LABELS.musicServers)
+  check('music: the music server modal hands focus back to the entry', focus.returned, JSON.stringify(focus))
+}
+
 async function assertMusicSurface(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(500)
@@ -4849,6 +4910,7 @@ async function assertMusicSurface(page) {
   // put two play buttons for one track on screen.
   const playerUnderHub = await rectOf(page, cssByLabels('aside', LABELS.musicMiniPlayer))
   check('music: the floating player steps aside while the hub is open', playerUnderHub === null, JSON.stringify(playerUnderHub))
+  await assertMusicServerSource(page)
 
   const rowsReady = await page
     .waitForFunction(() => [...document.querySelectorAll('[role="row"]')]
