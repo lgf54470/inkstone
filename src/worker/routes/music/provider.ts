@@ -1,5 +1,5 @@
 import type { Context, Hono } from 'hono'
-import { LIMITS } from '@shared/constants'
+import { GDS_UPSTREAM_SOURCES, LIMITS } from '@shared/constants'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
@@ -19,10 +19,10 @@ import type { MusicTrackRow } from './rows'
 // several catalogues the client lists, so the allowlist is one host.
 const GDS_API_BASE = 'https://music-api.gdstudio.xyz'
 
-const GDS_UPSTREAM_SOURCES = new Set(['netease', 'kuwo', 'migu', 'qq', 'bilibili'])
-
+// FB-S4: the same list the client searches with, not a second copy of it — a path segment that
+// reaches the upstream is exactly the catalogue name the client offered.
 export function isProviderSource(source: string): boolean {
-  return GDS_UPSTREAM_SOURCES.has(source)
+  return (GDS_UPSTREAM_SOURCES as readonly string[]).includes(source)
 }
 
 // Provider reference rows keep their identity in music_tracks.object_key as

@@ -164,6 +164,17 @@ aliases:
 
 `
 
+/**
+ * FB-S4: the catalogues the aggregate music upstream (GD) fronts. One list, read by both sides of
+ * the wire: the client asks this upstream once per catalogue, and the worker's proxy accepts a
+ * catalogue name only if it is on this list. Drift between two hand-kept copies is quiet in both
+ * directions — a name the client offers and the worker refuses is one source that always errors,
+ * and a catalogue the worker knows but nobody asks for is one nobody ever sees — so the order here
+ * is also the merge order when two catalogues answer with the same song.
+ */
+export const GDS_UPSTREAM_SOURCES = ['netease', 'kuwo', 'migu', 'qq', 'bilibili'] as const
+export type GdsUpstreamSource = (typeof GDS_UPSTREAM_SOURCES)[number]
+
 export const BACKUP_INTERVALS: Record<string, number> = {
   off: 0,
   hourly: 60 * 60 * 1000,

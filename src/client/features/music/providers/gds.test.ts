@@ -10,8 +10,20 @@ vi.mock('../../../lib/api', () => ({
   },
 }))
 
+import { GDS_UPSTREAM_SOURCES } from '@shared/constants'
 import { api } from '../../../lib/api'
-import { searchGds, searchGdsPages } from './gds'
+import { GDS_SOURCES, searchGds, searchGdsPages } from './gds'
+
+// FB-S4: the catalogues the search box offers and the catalogues the proxy forwards were two
+// hand-kept lists. Drift is quiet in both directions: a name the client offers and the worker
+// refuses shows up as one catalogue that always answers 400, and a catalogue the worker knows but
+// the client never asks for is simply never reached. The client hands the shared list straight on,
+// so a copy — equal values or not — is what this pins.
+describe('the GDS catalogue list has one source (FB-S4)', () => {
+  it('is the shared list itself rather than a copy of it', () => {
+    expect(GDS_SOURCES).toBe(GDS_UPSTREAM_SOURCES)
+  })
+})
 
 describe('gds search pages (FEA-A1-4)', () => {
   it('keeps every source page so a dead link can fail over to a lower-ranked copy', async () => {

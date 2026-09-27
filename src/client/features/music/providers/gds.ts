@@ -1,12 +1,14 @@
+import { GDS_UPSTREAM_SOURCES } from '@shared/constants'
 import { api } from '../../../lib/api'
 import { mergeProviderResults } from './dedupe'
 import type { MusicProviderTrack } from './types'
 
 export const GDS_PROVIDER_ID = 'gds'
 
-// The aggregate upstream serves several catalogues; rank order is the merge
-// order and the de-dup preference when two sources return the same song.
-export const GDS_SOURCES = ['netease', 'kuwo', 'migu', 'qq', 'bilibili'] as const
+// FB-S4: the catalogue list lives with the constants and is read here as it is in the worker, so
+// the search box cannot offer a catalogue the proxy would refuse. Rank order is the merge order
+// and the de-dup preference when two sources return the same song.
+export const GDS_SOURCES = GDS_UPSTREAM_SOURCES
 
 // One source's answer, kept apart from the merged list. FB-F6: a source that failed
 // and a source that simply had no match are different facts about the world, and the

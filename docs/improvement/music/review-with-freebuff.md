@@ -122,7 +122,7 @@
 | FB-S1 | P2 | 代理流无超时、无大小上限：`streamExternalTrack` / `streamProviderTrack` / `streamAlistTrack` 的 `fetch` 既无 `AbortSignal.timeout` 也无字节上限 → 上游挂起拖住请求，异常源可产生无界 egress | 加 12s 连接 / 首字节超时（**流式透传、不整体缓冲**）+ 每响应软上限 + 预算族 | `worker/routes/music/stream.ts`、`outbound.ts` | M | 与 PF3 同批 |
 | FB-S2 | P2 | provider 代抓用默认 `redirect: 'follow'`，与 `outbound.ts` 明示的「每一跳都校验，因为 Worker 跟随的重定向仍是 Worker 在抓」不一致 | 改用已有 `fetchAllowedResource(url, ['music-api.gdstudio.xyz'], …)`（内含 `redirect: manual` + 逐跳校验 + 12s 超时） | `worker/routes/music/provider.ts` | S | 直接复用，别新写 |
 | FB-S3 | P2 | 用户 / 第三方给的播放 URL 未过 `isAllowedOutboundUrl`，仅靠 `global_fetch_strictly_public` 兜底（`wrangler.toml` / `kv.toml` 已声明；`wrangler.demo.toml` 是纯静态 assets 无 worker，不构成缺口） | 统一走 `isAllowedOutboundUrl(url, { allowHttp: true })` + 保留运行时标志（external 直链常为 http / 自建 HTTPS，需显式策略） | `worker/routes/music/stream.ts` | S | 纵深防御，记录策略依据 |
-| FB-S4 | P2 | 源枚举双份字面量：`GDS_SOURCES`（client）与 `GDS_UPSTREAM_SOURCES`（worker） | 单一来源（`@shared/constants` 或 provider catalog）+ 契约测试钉住两侧一致 | `shared/constants.ts`、`providers/gds.ts`、`worker/routes/music/provider.ts` | S | 是 F4 / F7 的前置 |
+| FB-S4 | P2 | 源枚举双份字面量：`GDS_SOURCES`（client）与 `GDS_UPSTREAM_SOURCES`（worker） | 单一来源（`@shared/constants` 或 provider catalog）+ 契约测试钉住两侧一致 | `shared/constants.ts`、`providers/gds.ts`、`worker/routes/music/provider.ts` | S | **已修复（M6）**：列表移到 `@shared/constants`，客户端与 worker 读同一数组；契约分两头（客户端钉身份、worker 钉收拒口径），并用变异（客户端改拷贝 / worker 收回本地字面量且缺 `bilibili`）实测两条断言都会报错 |
 | FB-S5 | P3 | 搜索关键词是否进入观测 / 日志需核对（搜索词是敏感行为数据） | 核对 `[observability]` 是否记录 query string；必要时脱敏或不记 | `wrangler*.toml`、`provider.ts` | S | 只核对，不改行为 |
 | FB-S6 | P3 | 在线音源属版权灰色地带，无风险告知 | 首次开启给一次性告知 + 写入文档（otter 亦为自担风险） | 设置分区、locales、`SECURITY.md` | S | 与 F4 同批 |
 
