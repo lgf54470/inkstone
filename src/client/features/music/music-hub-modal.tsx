@@ -202,6 +202,9 @@ const HubCentre = memo(function HubCentre({
   const loadError = useMusic((state) => state.loadError)
   const loadLibrary = useMusic((state) => state.loadLibrary)
   const scope = useMusic((state) => state.scope)
+  // FB-F3: the source filter's options come from the whole library, never from the view
+  // it is filtering — the filtered list would hide every other way back.
+  const libraryTracks = useMusic((state) => state.tracks)
   const tracks = useVisibleTracks()
   const browseKind = scope.kind === 'albums' || scope.kind === 'artists' ? scope.kind : null
   const detail = scope.kind === 'album' || scope.kind === 'artist' ? scope : null
@@ -212,7 +215,7 @@ const HubCentre = memo(function HubCentre({
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)]'>
       {/* Ranking the library happens once, here; the toolbar and the group header take
           the result as a prop so they never run the same sort a second time. */}
-      <MusicHubToolbar tracks={tracks} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
+      <MusicHubToolbar tracks={tracks} libraryTracks={libraryTracks} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
       {detail && <MusicGroupDetailHeader scope={detail} tracks={tracks} />}
       <MusicProviderResults />
       {scope.kind === 'duplicates' && tracks.length > 0 && <MusicDuplicatesSummary />}

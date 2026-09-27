@@ -1,12 +1,12 @@
-import { useRef, useState } from 'react'
-import type { MusicTrack } from '@shared/types'
+import { useMemo, useRef, useState } from 'react'
+import type { MusicSource, MusicTrack } from '@shared/types'
 import { CloudDownload, HardDrive, ImageDown, ListPlus, Podcast, RefreshCw, RotateCw, Server, Upload, ClipboardList, Ellipsis, Link } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { Menu, Tooltip, confirm } from '../../components/overlay'
 import type { MenuItem } from '../../components/overlay'
 import { useElementWidth, useMediaQuery } from '../../lib/hooks'
-import { t } from '../../lib/i18n'
+import { t, type MessageKey } from '../../lib/i18n'
 import { toastMusicNotice } from './music-feedback'
 import { matchM3uTracks, parseM3u } from './music-m3u'
 import { MusicTextImportButton, TextImportDialog } from './music-text-import'
@@ -14,7 +14,7 @@ import { MusicUrlImportButton, UrlImportDialog } from './music-url-import'
 import { MUSIC_TOOLBAR_INLINE_MIN_WIDTH, MUSIC_TOOLBAR_VIEWPORT_FALLBACK } from './music-utils'
 import { SearchBox } from './music-search-box'
 import { useMusic } from './music-store'
-import type { MusicSort } from './music-store'
+import type { MusicSort, MusicSourceFilter } from './music-store'
 
 const SORT_OPTIONS: { value: MusicSort; label: 'music.sort_recent' | 'music.sort_title' | 'music.sort_artist' | 'music.sort_plays' }[] = [
   { value: 'recent', label: 'music.sort_recent' },
@@ -23,8 +23,10 @@ const SORT_OPTIONS: { value: MusicSort; label: 'music.sort_recent' | 'music.sort
   { value: 'plays', label: 'music.sort_plays' },
 ]
 
-export function MusicHubToolbar({ tracks, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
+export function MusicHubToolbar({ tracks, libraryTracks, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
   tracks: MusicTrack[]
+  /** The whole library, not the filtered view: the filter's own options come from it. */
+  libraryTracks: readonly Pick<MusicTrack, 'source'>[]
   onUpload: () => void
   onBrowseWebdav: () => void
   onBrowseAlist: () => void
@@ -38,7 +40,7 @@ export function MusicHubToolbar({ tracks, onUpload, onBrowseWebdav, onBrowseAlis
     <div ref={containerRef} className='flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'>
       <div className='flex flex-wrap items-center gap-2'>
         <SearchBox />
-        <SourceFilter />
+        <SourceFilter libraryTracks={libraryTracks} />
       </div>
       <ToolbarActions
         tracks={tracks}
@@ -52,14 +54,42 @@ export function MusicHubToolbar({ tracks, onUpload, onBrowseWebdav, onBrowseAlis
   )
 }
 
-function SourceFilter() {
+// FB-F3: the filter follows the library rather than a fixed pair that predates the
+// reference sources — alist / external / provider rows used to be unfilterable while the
+// source badge already knew their names. The order is canonical, so the row does not
+// reshuffle as the library grows, and the options come from the whole library rather than
+// the filtered view: deriving them from what is on screen would remove every way back.
+const SOURCE_FILTER_ORDER: MusicSource[] = ['r2', 'webdav', 'alist', 'external', 'provider']
+
+const SOURCE_FILTER_KEYS: Record<MusicSourceFilter, MessageKey> = {
+  all: 'music.source_all',
+  r2: 'music.source_r2',
+  webdav: 'music.source_webdav',
+  alist: 'music.source_alist',
+  external: 'music.source_external',
+  provider: 'music.source_online',
+}
+
+export function buildSourceFilterOptions(
+  tracks: readonly Pick<MusicTrack, 'source'>[],
+  include: readonly MusicSourceFilter[] = [],
+): MusicSourceFilter[] {
+  // A filter restored from a preference whose rows are all gone still has to be visible:
+  // dropping it from the row would leave an active filter with no control to clear it.
+  const present = new Set<MusicSourceFilter>([
+    ...tracks.map((track) => track.source),
+    ...include.filter((value) => value !== 'all'),
+  ])
+  return ['all', ...SOURCE_FILTER_ORDER.filter((source) => present.has(source))]
+}
+
+function SourceFilter({ libraryTracks }: { libraryTracks: readonly Pick<MusicTrack, 'source'>[] }) {
   const sourceFilter = useMusic((state) => state.sourceFilter)
   const setSourceFilter = useMusic((state) => state.setSourceFilter)
-  const options = [
-    { value: 'all' as const, label: t('music.source_all') },
-    { value: 'r2' as const, label: t('music.source_r2') },
-    { value: 'webdav' as const, label: t('music.source_webdav') },
-  ]
+  const options = useMemo(
+    () => buildSourceFilterOptions(libraryTracks, [sourceFilter]).map((value) => ({ value, label: t(SOURCE_FILTER_KEYS[value]) })),
+    [libraryTracks, sourceFilter],
+  )
   return (
     <Segmented
       label={t('music.source_filter')}

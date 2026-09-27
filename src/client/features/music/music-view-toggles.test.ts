@@ -136,7 +136,11 @@ describe('source filter (UI-16)', () => {
   }
 
   it('keeps exactly one tab stop and selects on click', async () => {
-    const container = await mount(createElement(MusicHubToolbar, { tracks: [], onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onPodcasts: () => {} }))
+    useMusic.setState({ sourceFilter: 'all' })
+    const container = await mount(createElement(MusicHubToolbar, {
+      tracks: [], libraryTracks: [{ source: 'r2' }, { source: 'alist' }],
+      onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onPodcasts: () => {},
+    }))
     expect(group(container)).toBeTruthy()
     expect(tabbableCount(group(container))).toBe(1)
     await act(async () => {
@@ -145,11 +149,27 @@ describe('source filter (UI-16)', () => {
     expect(useMusic.getState().sourceFilter).toBe('r2')
     expect(tabbableCount(group(container))).toBe(1)
   })
+
+  // FB-F3: a reference source that is in the library has to be reachable from the filter.
+  it('reaches a reference source the library holds', async () => {
+    useMusic.setState({ sourceFilter: 'all' })
+    const container = await mount(createElement(MusicHubToolbar, {
+      tracks: [], libraryTracks: [{ source: 'r2' }, { source: 'alist' }],
+      onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onPodcasts: () => {},
+    }))
+    await act(async () => {
+      radioIn(group(container), t('music.source_alist')).click()
+    })
+    expect(useMusic.getState().sourceFilter).toBe('alist')
+  })
 })
 
 describe('sort control while browsing groups (M-50)', () => {
   function mountToolbar(): Promise<HTMLElement> {
-    return mount(createElement(MusicHubToolbar, { tracks: [], onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onPodcasts: () => {} }))
+    return mount(createElement(MusicHubToolbar, {
+      tracks: [], libraryTracks: [],
+      onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onPodcasts: () => {},
+    }))
   }
 
   it('hides the track sort control while a grouped grid is open', async () => {

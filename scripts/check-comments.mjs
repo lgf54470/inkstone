@@ -2675,6 +2675,8 @@ const allowed = new Map([
     '// Dialog state lives here, so the panels below are memoised: opening a dialog must',
     '// not re-render the whole library (hundreds of rows).',
     '// The drawers portal over the hub modal itself, so they take the next tier above --z-modal.',
+    '// FB-F3: the source filter\'s options come from the whole library, never from the view',
+    '// it is filtering — the filtered list would hide every other way back.',
     '// REF-11: the queue used to float over the last rows of the list; the list now keeps',
     '// the height the reader gave the panel free, so both stay readable at once.',
     '/* Ranking the library happens once, here; the toolbar and the group header take\n          the result as a prop so they never run the same sort a second time. */',
@@ -2712,10 +2714,20 @@ const allowed = new Map([
     '// REF-2: the actions row is a rigid single line; a squeezing container folded',
     '// the sort labels mid-character and deformed every button. Wide containers keep',
     '// the full row, narrow ones fold the low-frequency actions into a "more" menu.',
+    '// FB-F3: the row used to offer three fixed values while the library could hold five',
+    '// source kinds, so alist / external / provider rows had no way to be filtered to.',
   ]],
   ['src/client/features/music/music-hub-toolbar.tsx', [
+    '/** The whole library, not the filtered view: the filter\'s own options come from it. */',
     '// REF-7: the row folds on the width it is given, so the same toolbar unfolds again',
     '// when the hub is maximised instead of staying folded for a viewport it cannot see.',
+    '// FB-F3: the filter follows the library rather than a fixed pair that predates the',
+    '// reference sources — alist / external / provider rows used to be unfilterable while the',
+    '// source badge already knew their names. The order is canonical, so the row does not',
+    '// reshuffle as the library grows, and the options come from the whole library rather than',
+    '// the filtered view: deriving them from what is on screen would remove every way back.',
+    '// A filter restored from a preference whose rows are all gone still has to be visible:',
+    '// dropping it from the row would leave an active filter with no control to clear it.',
     '// REF-7: the measured container decides; the viewport read is only the fallback for',
     '// environments that cannot measure at all.',
     '// The four source flows carry the library\'s daily use, so they hold their place in the',
@@ -3505,6 +3517,10 @@ const allowed = new Map([
     '// itself would be new every snapshot and re-render forever.',
     '// Counts tracks per tag directly; the sidebar tree rolls descendants into the parent\'s total.',
   ]],
+  ['src/client/features/music/music-store/source-filter.test.ts', [
+    '// FB-F3: the filter used to know only r2 and webdav, so the reference sources the account',
+    '// holds today (alist / external / provider) could not be filtered to at all.',
+  ]],
   ['src/client/features/music/music-store/state.ts', [
     '/** Per-track lyric calibration in ms; a positive value holds the lyrics back. */',
     '/** FEA-A1-1: per online provider opt-in; every provider ships absent (off). */',
@@ -3548,6 +3564,8 @@ const allowed = new Map([
     '// derived view (duplicates, groups, playlists) rebuilds from server truth.',
   ]],
   ['src/client/features/music/music-store/types.ts', [
+    '// FB-F3: the filter follows the library rather than a list of two that predates the',
+    '// reference sources — every `MusicSource` the account can hold is filterable.',
     '// FEA-C4: lyric presentation, shared by the immersive panel and the now-playing column.',
     '// FEA-C2: what paints behind the immersive player\'s columns.',
     '// A practice loop the listener marks on the track they are hearing; `endMs` stays',
@@ -3780,6 +3798,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/music/music-view-toggles.test.ts', [
     '// The old hand-written group stole \'List view\' as its name; it must not exist twice.',
+    '// FB-F3: a reference source that is in the library has to be reachable from the filter.',
   ]],
   ['src/client/features/music/music-visualizer.test.ts', [
     '// jsdom has no canvas backend. Defining the property (rather than assigning a cast) installs a',

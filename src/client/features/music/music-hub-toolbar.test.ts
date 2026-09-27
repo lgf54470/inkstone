@@ -2,10 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement } from 'react'
 import { t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
-import { MusicHubToolbar } from './music-hub-toolbar'
+import { MusicHubToolbar, buildSourceFilterOptions } from './music-hub-toolbar'
 
 const PROPS = {
   tracks: [],
+  libraryTracks: [],
   onUpload: vi.fn(),
   onBrowseWebdav: vi.fn(),
   onBrowseAlist: vi.fn(),
@@ -98,6 +99,30 @@ describe('hub toolbar fold strategy (REF-2)', () => {
     expect(menuLabels).toContain(t('music.refresh_metadata'))
     expect(menuLabels).toContain(t('music.metadata_force'))
     expect(menuLabels).toContain(t('music.match_covers'))
+  })
+})
+
+// FB-F3: the row used to offer three fixed values while the library could hold five
+// source kinds, so alist / external / provider rows had no way to be filtered to.
+describe('hub toolbar source filter (FB-F3)', () => {
+  it('offers a value per source the library actually holds', () => {
+    expect(buildSourceFilterOptions([{ source: 'r2' }, { source: 'alist' }, { source: 'provider' }]))
+      .toEqual(['all', 'r2', 'alist', 'provider'])
+  })
+
+  it('lists the sources in one canonical order, whatever order the rows came in', () => {
+    expect(buildSourceFilterOptions([{ source: 'provider' }, { source: 'external' }, { source: 'r2' }]))
+      .toEqual(['all', 'r2', 'external', 'provider'])
+  })
+
+  it('keeps the active filter on the row even when no track carries that source', () => {
+    expect(buildSourceFilterOptions([{ source: 'r2' }], ['alist'])).toEqual(['all', 'r2', 'alist'])
+  })
+
+  it('paints the label of a source that reached the library', () => {
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, { ...PROPS, libraryTracks: [{ source: 'alist' }] })) })
+    expect(buttonLabels()).toContain(t('music.source_alist'))
+    expect(buttonLabels()).toContain(t('music.source_all'))
   })
 })
 

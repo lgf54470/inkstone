@@ -1,14 +1,16 @@
 import type { StoreApi } from 'zustand'
 import type { MusicProviderTrack, MusicAlistCreateInput, MusicAlistEntry, MusicAlistPatchInput, MusicAlistServerView, MusicPodcastCreateInput, MusicPodcastEpisode, MusicPodcastFeedView, MusicPodcastPatchInput, MusicTrashEntry } from '../../../lib/api'
 import type {
-  MusicPlayMode, MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry,
+  MusicPlayMode, MusicPlaylistDetail, MusicSource, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry,
 } from '@shared/types'
 import type { MusicEqPresetId } from '../music-eq-presets'
 
 export type MusicSort = 'recent' | 'title' | 'artist' | 'album' | 'duration' | 'plays'
 export type MusicSortDirection = 'asc' | 'desc'
 export type MusicViewMode = 'list' | 'grid'
-export type MusicSourceFilter = 'all' | 'r2' | 'webdav'
+// FB-F3: the filter follows the library rather than a list of two that predates the
+// reference sources — every `MusicSource` the account can hold is filterable.
+export type MusicSourceFilter = 'all' | MusicSource
 export type MusicBatch = 'favorite' | 'unfavorite' | 'pin' | 'unpin' | 'delete'
 
 // FEA-C4: lyric presentation, shared by the immersive panel and the now-playing column.
