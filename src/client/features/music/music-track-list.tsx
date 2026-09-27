@@ -1,10 +1,10 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { Download, Play, Shuffle } from 'lucide-react'
+import { Download, History, Play, Shuffle } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { Button } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { Empty, LoadingBlock } from '../../components/feedback'
-import { Tooltip } from '../../components/overlay'
+import { Tooltip, confirm } from '../../components/overlay'
 import { useElementWidth, useMediaQuery } from '../../lib/hooks'
 import { MUSIC_LIST_FULL_MIN_WIDTH, defaultViewMode, listDensity } from './music-utils'
 import { t } from '../../lib/i18n'
@@ -199,6 +199,7 @@ function ListHeader({ tracks, scopeKind }: { tracks: MusicTrack[]; scopeKind: st
   // so the count on the right is not read as the whole answer — and can be asked for.
   const hiddenMatches = useHiddenMatchCount()
   const showMoreMatches = useMusic((state) => state.showMoreMatches)
+  const forgetPlayHistory = useMusic((state) => state.forgetPlayHistory)
   const ids = tracks.map((track) => track.id)
   return (
     <div className='flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2'>
@@ -208,7 +209,15 @@ function ListHeader({ tracks, scopeKind }: { tracks: MusicTrack[]; scopeKind: st
       <Button size='sm' icon={<Shuffle size={13} />} onClick={() => void playCollection(shuffledIds(ids))}>
         {t('music.shuffle_all')}
       </Button>
-      {scopeKind !== 'recent' && (
+      {scopeKind === 'recent' ? (
+        <Button
+          size='sm'
+          icon={<History size={13} />}
+          onClick={() => void confirmClearHistory(tracks.length, () => void forgetPlayHistory(ids))}
+        >
+          {t('music.history_clear')}
+        </Button>
+      ) : (
         <Tooltip label={t('music.export_m3u')} side='top'>
           <Button size='sm' icon={<Download size={13} />} onClick={() => downloadM3u(tracks, 'inkstone-playlist')}>
             {t('music.export_m3u')}
@@ -229,6 +238,17 @@ function ListHeader({ tracks, scopeKind }: { tracks: MusicTrack[]; scopeKind: st
       <ViewModeToggle value={viewMode} onChange={setViewMode} />
     </div>
   )
+}
+
+// FB-F12: the recent list is the one list whose rows are all forgettable at once, so its header
+// slot asks before it goes — the play counts and favorites a reader may still sort by stay.
+async function confirmClearHistory(count: number, clear: () => void): Promise<void> {
+  const accepted = await confirm({
+    title: t('music.history_clear'),
+    description: t('music.history_clear_confirm', { value0: count }),
+    confirmLabel: t('music.history_clear'),
+  })
+  if (accepted) clear()
 }
 
 function ViewModeToggle({ value, onChange }: { value: MusicViewMode; onChange: (mode: MusicViewMode) => void }) {

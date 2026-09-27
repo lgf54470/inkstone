@@ -368,6 +368,7 @@ export interface MusicStoreState {
   trashDeadReferences: (ids: string[]) => Promise<void>
   /** FB-F9: the cleanup path the health panel shares with the batch bar and the trash action. */
   trashTracks: (ids: string[]) => Promise<string[]>
+  forgetPlayHistory: (ids: string[]) => Promise<void>
   loadPodcastFeeds: () => Promise<void>
   loadPodcastEpisodes: (feedId: string) => Promise<void>
   closePodcastEpisodes: () => void

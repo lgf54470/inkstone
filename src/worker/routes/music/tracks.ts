@@ -152,11 +152,28 @@ function registerBatchRoute(routes: Hono<AppBindings>): void {
       await trashTrackRows(c.env, userId, await loadTrackRows(c.env.DB, userId, ids), Date.now())
       return c.json({ ok: true, updated: ids.length })
     }
+    if (action === 'forget') {
+      await clearPlayedStamps(c.env.DB, userId, ids)
+      return c.json({ ok: true, updated: ids.length })
+    }
     const column = action === 'favorite' || action === 'unfavorite' ? 'is_favorite' : 'is_pinned'
     const value = action === 'favorite' || action === 'pin' ? 1 : 0
     await setFlagForTracks(c.env.DB, userId, ids, column, value)
     return c.json({ ok: true, updated: ids.length })
   })
+}
+
+// FB-F12: forgetting is not deleting — the row stays in the library and keeps its play
+// count, only the stamp that puts it in the recent list goes. Ids travel as JSON and are
+// walked in chunks so the bound-parameter count stays fixed however long the list is.
+async function clearPlayedStamps(db: D1Database, userId: string, ids: string[]): Promise<void> {
+  for (const part of chunkIds(ids, LIMITS.musicSqlIdChunkMax)) {
+    if (!part.length) continue
+    const placeholders = part.map((_, index) => `?${index + 2}`).join(', ')
+    await db.prepare(`UPDATE music_tracks SET last_played_at = NULL WHERE user_id = ?1 AND id IN (${placeholders})`)
+      .bind(userId, ...part)
+      .run()
+  }
 }
 
 // FEA-B1: a delete moves the row to the trash — the storage bytes are reclaimed

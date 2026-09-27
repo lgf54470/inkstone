@@ -26,7 +26,7 @@ export interface MusicTrackPatch {
   tagIds?: string[]
 }
 
-export type MusicBatchAction = 'favorite' | 'unfavorite' | 'pin' | 'unpin' | 'delete' | 'tag'
+export type MusicBatchAction = 'favorite' | 'unfavorite' | 'pin' | 'unpin' | 'delete' | 'tag' | 'forget'
 
 export interface MusicPlaylistPatch {
   name?: string

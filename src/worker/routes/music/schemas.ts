@@ -56,7 +56,9 @@ export type SavePositionBody = z.infer<typeof savePositionSchema>
 export const batchTrackSchema = z
   .object({
     ids: z.array(z.string().max(64)).min(1).max(LIMITS.musicBatchItemsMax),
-    action: z.enum(['favorite', 'unfavorite', 'pin', 'unpin', 'delete', 'tag']),
+    // FB-F12: `forget` clears the played stamp (the recent list) without touching the
+    // lifetime play count or anything else the row carries.
+    action: z.enum(['favorite', 'unfavorite', 'pin', 'unpin', 'delete', 'tag', 'forget']),
     tagIds: z.array(z.string().max(64)).max(50).optional(),
   })
   .refine((value) => value.action !== 'tag' || (value.tagIds?.length ?? 0) > 0, {

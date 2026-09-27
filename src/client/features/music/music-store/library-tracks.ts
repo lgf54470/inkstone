@@ -201,6 +201,21 @@ export async function trashTracks(set: MusicSet, get: MusicGet, ids: string[]): 
   return applied
 }
 
+// FB-F12: the recent list is drawn from `lastPlayedAt`, so forgetting a row is a local
+// clear of that stamp plus the server call that makes it stick. The play count is a
+// lifetime statistic the reader may still sort by, so it is deliberately left alone.
+export async function forgetPlayHistory(set: MusicSet, ids: string[]): Promise<void> {
+  if (!ids.length) return
+  const { applied, error } = await sendBatches(ids, 'forget')
+  if (error) toastMusicError(error, 'music.action_failed')
+  if (!applied.length) return
+  const affected = new Set(applied)
+  set((state) => resummarize(state, {
+    tracks: state.tracks.map((track) => (affected.has(track.id) ? { ...track, lastPlayedAt: null } : track)),
+  }))
+  toastMusic('music.history_cleared', { value0: applied.length })
+}
+
 // One request per chunk: the first rejected chunk ends the walk, and the ids that
 // already landed are handed back so the caller keeps the local state honest.
 export async function sendBatches(ids: string[], action: MusicBatchAction, tagIds?: string[]): Promise<{ applied: string[]; error: unknown }> {

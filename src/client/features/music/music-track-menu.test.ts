@@ -48,13 +48,17 @@ const tracks = [track('t1', 'Alpha'), track('t2', 'Beta')]
 
 let root: Root | null = null
 
-async function mountList(): Promise<void> {
+async function mountList(rows: MusicTrack[] = tracks): Promise<void> {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => {
-    root?.render(createElement(MusicTrackList, { tracks, loading: false, emptyTitle: 'x', onEdit: () => {} }))
+    root?.render(createElement(Fragment, null, createElement(ConfirmHost), createElement(MusicTrackList, { tracks: rows, loading: false, emptyTitle: 'x', onEdit: () => {} })))
   })
+}
+
+function byText(scope: ParentNode, label: string): HTMLElement | undefined {
+  return [...scope.querySelectorAll('button')].find((entry) => entry.textContent?.trim() === label)
 }
 
 function menuButtons(): HTMLButtonElement[] {
@@ -189,6 +193,57 @@ describe('track menu offline item', () => {
     })
     expect(menuItem(t('music.remove_offline'))).toBeDefined()
     expect(menuItem(t('music.make_offline'))).toBeUndefined()
+  })
+})
+
+// FB-F12: the recent list is where a played stamp shows, so that is where removing one lives.
+describe('play history management (FB-F12)', () => {
+  const played = (id: string, title: string): MusicTrack => ({ ...track(id, title), lastPlayedAt: 111, playCount: 4 })
+  const history = [played('t1', 'Alpha'), played('t2', 'Beta')]
+
+  it('offers removing a played row from the history and runs it for that row alone', async () => {
+    const forgetPlayHistory = vi.fn(async () => {})
+    useMusic.setState({ tracks: history, scope: { kind: 'recent' }, forgetPlayHistory })
+    await mountList(history)
+    await act(async () => {
+      menuButtons()[1]?.click()
+    })
+    await act(async () => {
+      menuItem(t('music.remove_from_history'))?.click()
+    })
+    expect(forgetPlayHistory).toHaveBeenCalledWith(['t2'])
+  })
+
+  it('stays out of the menu of a row that was never played', async () => {
+    useMusic.setState({ tracks, scope: { kind: 'recent' } })
+    await mountList()
+    await act(async () => {
+      menuButtons()[1]?.click()
+    })
+    expect(menuItem(t('music.remove_from_history'))).toBeUndefined()
+  })
+
+  it('clears the whole list only after the question is answered', async () => {
+    const forgetPlayHistory = vi.fn(async () => {})
+    useMusic.setState({ tracks: history, scope: { kind: 'recent' }, forgetPlayHistory })
+    await mountList(history)
+    await act(async () => {
+      byText(document, t('music.history_clear'))?.click()
+    })
+    expect(forgetPlayHistory).not.toHaveBeenCalled()
+    const dialog = document.querySelector('[role="dialog"]')
+    expect(dialog?.textContent).toContain(t('music.history_clear_confirm', { value0: 2 }))
+    await act(async () => {
+      byText(dialog ?? document, t('music.history_clear'))?.click()
+    })
+    expect(forgetPlayHistory).toHaveBeenCalledWith(['t1', 't2'])
+  })
+
+  it('keeps the export button everywhere else', async () => {
+    useMusic.setState({ tracks, scope: { kind: 'all' } })
+    await mountList()
+    expect(byText(document, t('music.history_clear'))).toBeUndefined()
+    expect(byText(document, t('music.export_m3u'))).toBeDefined()
   })
 })
 

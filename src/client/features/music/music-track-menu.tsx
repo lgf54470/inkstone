@@ -1,5 +1,5 @@
 import { useMemo, type RefObject } from 'react'
-import { ArrowDown, ArrowUp, CloudDownload, CloudOff, Download, Heart, ListEnd, ListPlus, ListStart, PencilLine, Pin, Server, Shuffle, Tag, TextSearch, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, CloudDownload, CloudOff, Download, Heart, History, ListEnd, ListPlus, ListStart, PencilLine, Pin, Server, Shuffle, Tag, TextSearch, Trash2, X } from 'lucide-react'
 import type { MusicTag, MusicTrack } from '@shared/types'
 import { Menu, confirm, submenuFor, type MenuItem } from '../../components/overlay'
 import { t } from '../../lib/i18n'
@@ -62,6 +62,7 @@ function useTrackMenuItems(
   const downloadTracks = useMusic((state) => state.downloadTracks)
   const offlineTrackIds = useMusic((state) => state.offlineTrackIds)
   const toggleTrackOffline = useMusic((state) => state.toggleTrackOffline)
+  const forgetPlayHistory = useMusic((state) => state.forgetPlayHistory)
 
   return useMemo(() => {
     const track = target?.track
@@ -70,6 +71,7 @@ function useTrackMenuItems(
     const actions = {
       wrap, playlists, tags, playCollection, addToQueue, addToPlaylist, patchTrack, searchTrackLyric,
       toggleFavorite, togglePin, onEdit, downloadTracks, offlineTrackIds, toggleTrackOffline, openSourceSwitch,
+      forgetPlayHistory,
     }
     const items = baseMenuItems(track, actions)
     items.push(...playlistMenuItems({ target, playlists, wrap, movePlaylistItem, removeFromPlaylist }))
@@ -83,7 +85,7 @@ function useTrackMenuItems(
       onSelect: wrap(() => confirmDeleteTrack(track, deleteTrack)),
     })
     return items
-  }, [target, playlists, tags, playCollection, addToQueue, addToPlaylist, toggleFavorite, togglePin, patchTrack, searchTrackLyric, removeFromPlaylist, movePlaylistItem, deleteTrack, deleteWebdavFiles, downloadTracks, offlineTrackIds, toggleTrackOffline, openSourceSwitch, onClose, onEdit])
+  }, [target, playlists, tags, playCollection, addToQueue, addToPlaylist, toggleFavorite, togglePin, patchTrack, searchTrackLyric, removeFromPlaylist, movePlaylistItem, deleteTrack, deleteWebdavFiles, downloadTracks, offlineTrackIds, toggleTrackOffline, openSourceSwitch, forgetPlayHistory, onClose, onEdit])
 }
 
 // Rows inside a playlist carry an item identity; these are the order-scoped actions.
@@ -123,6 +125,7 @@ interface TrackMenuActions {
   offlineTrackIds: string[]
   toggleTrackOffline: (id: string) => Promise<void>
   openSourceSwitch: (id: string) => Promise<void>
+  forgetPlayHistory: (ids: string[]) => Promise<void>
 }
 
 function baseMenuItems(track: MusicTrack, actions: TrackMenuActions): MenuItem[] {
@@ -139,6 +142,10 @@ function baseMenuItems(track: MusicTrack, actions: TrackMenuActions): MenuItem[]
     { id: 'edit', label: t('music.edit_track'), icon: <PencilLine size={14} />, separatorBefore: true, onSelect: wrap(() => actions.onEdit(track)) },
     { id: 'lyric-search', label: t('music.search_lyrics'), icon: <TextSearch size={14} />, onSelect: wrap(() => searchLyric(track, actions.searchTrackLyric)) },
     { id: 'download', label: t('music.download'), icon: <Download size={14} />, onSelect: wrap(() => void actions.downloadTracks([track.id])) },
+    // FB-F12: only a row the recent list actually draws has something to forget.
+    ...(track.lastPlayedAt !== null
+      ? [{ id: 'from-history', label: t('music.remove_from_history'), icon: <History size={14} />, onSelect: wrap(() => void actions.forgetPlayHistory([track.id])) }]
+      : []),
     // FB-F8: only a row that points at a catalogue can be re-pointed at another one.
     ...(track.source === 'provider'
       ? [{ id: 'switch-source', label: t('music.switch_source'), icon: <Shuffle size={14} />, onSelect: wrap(() => void actions.openSourceSwitch(track.id)) }]

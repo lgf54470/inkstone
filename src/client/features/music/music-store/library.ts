@@ -4,7 +4,7 @@ import {
   selectAll, setDefaultViewMode, setQuery, setScope, setShowSourceBadge, setSort, setSortDirection, setSourceFilter, setViewMode, showMoreMatches, toggleSelect,
 } from './library-load'
 import {
-  batchTracks, deleteTrack, ensureTrackLyric, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin, trashTracks,
+  batchTracks, deleteTrack, ensureTrackLyric, forgetPlayHistory, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin, trashTracks,
 } from './library-tracks'
 import { matchMissingCovers } from './library-covers'
 import { searchTrackLyric } from './library-lyrics'
@@ -44,7 +44,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'setProviderEnabled' | 'searchProviders' | 'playProviderTrack' | 'addProviderTrack' | 'addProviderTracks'
   | 'setProviderAutoSwap' | 'openSourceSwitch' | 'closeSourceSwitch' | 'switchTrackSource'
   | 'openHealthScan' | 'closeHealthScan' | 'scanReferences' | 'repairDeadReference' | 'trashDeadReferences'
-  | 'trashTracks'
+  | 'trashTracks' | 'forgetPlayHistory'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'searchTrackLyric' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
@@ -142,6 +142,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     repairDeadReference: (id) => repairDeadReference(set, get, id),
     trashDeadReferences: (ids) => trashDeadReferences(set, get, ids),
     trashTracks: (ids) => trashTracks(set, get, ids),
+    forgetPlayHistory: (ids) => forgetPlayHistory(set, ids),
     createPodcastFeed: (input) => createPodcastFeed(set, input),
     renamePodcastFeed: (id, patch) => renamePodcastFeed(set, id, patch),
     deletePodcastFeed: (id) => deletePodcastFeed(set, id),
