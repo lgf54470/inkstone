@@ -767,4 +767,26 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `ALTER TABLE music_podcast_feeds ADD COLUMN fetched_at INTEGER`,
     ],
   },
+  // FB-M16: server-type sources. The reader registers their own music server (Subsonic /
+  // Navidrome / Airsonic, or Jellyfin / Emby) with a URL and an account; the password or access
+  // token is encrypted at rest like every other music credential, and rows imported from it are
+  // metadata-only references whose play address is resolved per play.
+  {
+    version: 51,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS music_server_sources (
+         id TEXT PRIMARY KEY,
+         user_id TEXT NOT NULL,
+         name TEXT NOT NULL,
+         kind TEXT NOT NULL,
+         url TEXT NOT NULL,
+         username TEXT NOT NULL,
+         secret TEXT,
+         upstream_user_id TEXT,
+         created_at INTEGER NOT NULL,
+         updated_at INTEGER NOT NULL
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_music_server_sources_user ON music_server_sources(user_id, created_at ASC)`,
+    ],
+  },
 ]

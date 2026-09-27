@@ -60,7 +60,9 @@
 
 ## M⑤ · 服务器型音源与收尾
 
-- [ ] M25 FB-M16 服务器型音源（Subsonic / Navidrome / Jellyfin / Emby）
+- [~] M25 FB-M16 服务器型音源（Subsonic / Navidrome / Jellyfin / Emby）—— 分两半：
+  - [x] **M25a 服务器端**：表 + 迁移 + CRUD（密钥入金库、不回前端）/ probe / search / import / 播放解析 / 健康扫描 / 两个适配器（Subsonic 家族 = Subsonic・Navidrome・Airsonic・Nextcloud；Jellyfin 家族 = Jellyfin・Emby）+ 三份契约测试 —— **commit 见下**
+  - [ ] M25b 客户端：设置页「服务器音源」分组（新增 / 测试 / 删除）+ 服务器搜索与添加的入口 + 文案 + 测试
 - [ ] M26 收尾：review 定稿 + plan 回填哈希、已知限制、不做清单
 
 ## 每项验收标准（通用）
@@ -115,6 +117,8 @@
 | 2026-09-28 | M24 FB-S5 搜索关键词是否入日志（审计 + 自动门禁） | 见下 | 本项按计划是「只核对」，先红一条自己：新增 `tests/music-log-privacy.test.ts` 2 例（扫 `src/worker/routes/music/**` 的日志调用不得含 `keywords`/`c.req.query`/`c.req.url`/`c.req.path`/`req.url`/`searchParams`；另一例钉住「关键词走 query」这个前提，前提一变就该回来重看文档）。**变异证明**：临时在 `provider.ts` 插一行 `console.warn('[inkstone] music search', c.req.query('keywords'))` 后该例立即变红（1 failed / 1 passed），删掉即回绿——证明它真的在挡，而不是空扫通过（另有一条 `calls.length > 5` 的非空性断言）。实现后：该文件 2 例 ✅；`npm run test:unit` 全量见下；`npm run typecheck` ✅；13 项静态门禁 ✅；`scripts/e2e-visual.mjs` 与 `contrast:check` 本轮无 UI 改动，沿用 M21 同一实例的 574 通过 / 1 失败 | **审计结论（分两层，一层是我们的、一层不是）**：① **Worker 侧不记**——`src/worker/routes/music/**` 全部 12 处 `console.*` 都只打印固定 `[inkstone] …` 标签加错误对象，关键词 `c.req.query('keywords')` 取出后直接交上游；`src/worker` 内也没有请求日志中间件（已按 `c.req.url`/`c.req.path`/`logger` 三路搜过）。② **实测本地不落 URL**——三个 wrangler 配置都开了 `[observability] enabled = true`，所以单读代码不够；查 `:7714` 临时实例的 dev 日志（163 行）里请求行恰好 0 条。③ **残余暴露在代码之外**——关键词在 URL 里（`provider/search?keywords=`、`lyric-search?q=`、`alist?keywords=`），凡记录请求元数据的日志层（含生产 Workers Logs 把请求挂在每条日志上）都会带上它。**未做**：按计划不改行为（把关键词挪进请求体要同时改 3 个端点的 GET→POST 与契约，属另一个条目）；该残余写进 `SECURITY.md`（含「真要消除时该改哪里」）而不是留给读者自己发现 |
 
 | 2026-09-28 | M24b FB-M17 凭证金库记录形状（审计中发现的既存缺陷） | 见下 | **先红**：新增 `tests/credential-vault-records.test.ts` 5 例（金库往返四种形状 + 一条症状级：建行→`resolveAlistServer()`），修前得 **2 failed / 3 passed**（`expected null to deeply equal { token: 'alist-token' }` 与症状用例），修后 5 例 ✅。**变异证明**：把白名单改回去恰好这两例变红。回归：见本行 commit 的门禁输出 | **缺陷**：`isBackupCredentialRecord` 的字段白名单是为备份凭证写的（`password` / `accessKeyId` / `secretAccessKey`），Alist 的 `{token}` 不在其中，于是 `decryptSecret` 对 Alist 一律返回 `null` → `resolveAlistServer()` 抛 503「The Alist token is unreadable」→ **Alist 的浏览 / 搜索 / 导入 / Alist 参考行播放全链路不可用**（添加服务器能成，因为那一半只加密）。**修法只能是白名单**：库里已有的行就是用 `token` 这个字段名加密的，改写入侧要先解开旧行，而解开正是坏掉的那一步。**为什么算 P0**：一个已交付功能整条不可用，且报错读起来像「你自己填错了凭证」（铁律 2：不静默失败；这次是**失败得误导**）。**发现场合**：做 M25（服务器型音源）时它共用同一条金库路径，写适配器时撞上；按铁律 14 单独提交，不夹带进音乐新功能 |
+
+| 2026-09-28 | M25a FB-M16 服务器型音源（服务端） | 见下 | 新模块先写测试也无从先红（适配器与路由都不存在），按 M23/M15 的既有先例改用**变异证明**：把导入的幂等短路改成永假后「重复添加是空操作」变红，把 `secret` 加回 `toServerView` 后「注册响应不含凭证」变红（2 failed / 6 passed，恢复后全绿）。实现后：`server-api.test.ts` **9 例 ✅**、`tests/music-server-sources.test.ts` **8 例 ✅**（含键往返 3 例：匿名 kind 拒绝、带冒号的 item id 仍能往返、两个引用家族同一入口）；`npm run test:unit` **546 文件 / 4897 例 + 1 skipped ✅**；`npm run typecheck` ✅；13 项静态门禁 ✅（size 报新测试里一个 describe 体 50+ 行——拆成两个 describe 后未动基线，只把 migrations.ts 的重快照记在 `check-size.baseline.json`） | **两个家族而非四个品牌**：`subsonic` 适配子音・Navidrome・Airsonic・Nextcloud（同一套 REST API），`jellyfin` 适配 Jellyfin・Emby。**认证**：Subsonic 用它的 `p=enc:<hex>` 形式（WebCrypto 无 MD5，无法产生 `t=md5(...)`），因此整条链强制 HTTPS；Jellyfin 在注册时把密码换成会话 token（行里存 token + 上游 user id，**user id 不是密钥、放自己那一列**），搜索与播放用 `X-Emby-Token` 头——**token 不进 URL**（与 M24 的结论同向：地址会被任何记录请求元数据的日志层抄走）。**行身份**：`srv:<kind>:<serverId>:<itemId>`（item id 取第三段起的全部，所以带冒号的 id 也能往返），`rows.ts` 与 `check-health` 经同一个 `parseProviderReference` / `parseServerObjectKey` 读回，导入行与 GDS 行共用一套 reference row 语义（元数据入库、播放时解析、重复添加是空操作）。**凭证形状**：金库只回它认识的字段，所以子音存 `{password}`、Jellyfin 存 `{token}`（这正是 M24b 修掉的那个缺陷所在的约束）。**已做的安全约定**：地址规则逐跳生效（私网/回环直接拒且**不发请求**，单测钉死）；注册先验证再落库；删除注册**不删已导入的行**（读者删的是注册，不是歌）。**未做 / 已知限制**：没有真实服务器可验收（本地无 Subsonic/Jellyfin 实例，且平台 `global_fetch_strictly_public` 会拦下 LAN 地址），所以只有契约测试与桩 fetch，没有真机验收；封面不抓（服务器行的 `coverUrl` 为 null，界面画占位图）；`p=enc:` 的冒号被 query 构造器百分号编码（服务端解码后等价，已在断言里写明）；客户端尚不可用（M25b） |
 
 ## 已知限制（滚动更新）
 

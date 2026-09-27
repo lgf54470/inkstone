@@ -32,21 +32,35 @@ export async function fetchAllowedResource(
 // (a catalogue's image host) rather than a fixed list. The address rule is then the whole guard, so
 // it is applied per hop for exactly the reason above: the worker following a redirect is the worker
 // fetching.
+export interface PublicResourceOptions {
+  allowHttp?: boolean
+  /** FB-M16: a server source authenticates some of its calls with a POST (Jellyfin's sign-in). */
+  method?: string
+  body?: string
+  headers?: Record<string, string>
+}
+
 export async function fetchPublicResource(
   rawUrl: string,
   accept: string,
-  options: { allowHttp?: boolean } = {},
+  options: PublicResourceOptions = {},
 ): Promise<Response | null> {
+  const mutating = options.method !== undefined && options.method.toUpperCase() !== 'GET'
   let current = parseUrl(rawUrl)
   for (let hop = 0; hop <= MAX_REDIRECT_HOPS && current; hop++) {
     if (!isAllowedOutboundUrl(current, { allowHttp: options.allowHttp === true })) return null
     const response = await fetch(current, {
+      method: options.method,
+      body: options.body,
       redirect: 'manual',
       signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
-      headers: { Accept: accept },
+      headers: { Accept: accept, ...options.headers },
     })
     if (response.status < 300 || response.status >= 400) return response
     await cancelStreamBestEffort(response.body)
+    // Re-issuing a POST at a redirect target would send the body somewhere the first host chose;
+    // a redirect on a mutating call is reported as the failed call it is.
+    if (mutating) return null
     current = parseUrl(response.headers.get('location') ?? '', current)
   }
   return null

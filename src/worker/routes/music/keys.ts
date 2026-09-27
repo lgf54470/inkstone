@@ -1,4 +1,4 @@
-import { LIMITS } from '@shared/constants'
+import { LIMITS, MUSIC_SERVER_KINDS, type MusicServerKind } from '@shared/constants'
 import type { MusicFormat } from '@shared/types'
 
 const FORMAT_MIME: Record<MusicFormat, string> = {
@@ -159,6 +159,46 @@ export function parseGdsObjectKey(objectKey: string): { source: string; songId: 
   const split = rest.indexOf(':')
   if (split <= 0) return null
   return { source: rest.slice(0, split), songId: rest.slice(split + 1) }
+}
+
+// FB-M16: a row imported from the reader's own music server keeps its identity the same way a
+// catalogue row does, in `object_key` — but it needs three parts, because the play address is
+// resolved from the reader's registration (which server, which kind of protocol) rather than from a
+// fixed upstream. The kind is carried here so the row mapping can name the source without a join;
+// the item id is the remainder, so an id that contains colons still round-trips.
+export const SERVER_KEY_PREFIX = 'srv:'
+
+export function serverObjectKey(kind: MusicServerKind, serverId: string, itemId: string): string {
+  return `${SERVER_KEY_PREFIX}${kind}:${serverId}:${itemId}`
+}
+
+export interface MusicServerObjectKey {
+  kind: MusicServerKind
+  serverId: string
+  itemId: string
+}
+
+export function parseServerObjectKey(objectKey: string): MusicServerObjectKey | null {
+  if (!objectKey.startsWith(SERVER_KEY_PREFIX)) return null
+  const rest = objectKey.slice(SERVER_KEY_PREFIX.length)
+  const kindEnd = rest.indexOf(':')
+  if (kindEnd <= 0) return null
+  const kind = rest.slice(0, kindEnd)
+  const serverEnd = rest.indexOf(':', kindEnd + 1)
+  if (serverEnd <= kindEnd + 1) return null
+  const serverId = rest.slice(kindEnd + 1, serverEnd)
+  const itemId = rest.slice(serverEnd + 1)
+  if (!itemId || !(MUSIC_SERVER_KINDS as readonly string[]).includes(kind)) return null
+  return { kind: kind as MusicServerKind, serverId, itemId }
+}
+
+// Both reference families answer the same question — "which upstream song is this row" — so the row
+// mapping asks it once instead of branching on the prefix a second time.
+export function parseProviderReference(objectKey: string): { source: string; songId: string } | null {
+  const catalogue = parseGdsObjectKey(objectKey)
+  if (catalogue) return catalogue
+  const server = parseServerObjectKey(objectKey)
+  return server ? { source: server.kind, songId: server.itemId } : null
 }
 
 // Responses served from our origin must never carry a third-party-declared or

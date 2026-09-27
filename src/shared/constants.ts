@@ -132,6 +132,11 @@ export const LIMITS = {
   // press from becoming an unbounded burst of requests at third-party hosts.
   musicReferenceHealthMaxTracks: 50,
   musicProviderSearchCount: 20,
+  musicServerNameMaxLength: 100,
+  musicServerUrlMaxLength: 2048,
+  musicServerUsernameMaxLength: 100,
+  musicServerSecretMaxLength: 512,
+  musicServerSearchCount: 30,
   musicProviderQualities: MUSIC_PROVIDER_QUALITIES,
   musicPlaylistNameMaxLength: 120,
   musicPlaylistDescriptionMaxLength: 500,
@@ -189,6 +194,13 @@ aliases:
  */
 export const GDS_UPSTREAM_SOURCES = ['netease', 'kuwo', 'migu', 'qq', 'bilibili'] as const
 export type GdsUpstreamSource = (typeof GDS_UPSTREAM_SOURCES)[number]
+
+// FB-M16: server-type sources are the reader's own music servers, registered with a URL and an
+// account. A kind names a *protocol*, not a brand: `subsonic` is what Subsonic, Navidrome, Airsonic
+// and Nextcloud's music app all answer, and `jellyfin` is the API Emby answers too — so one adapter
+// per family covers the four names the review listed.
+export const MUSIC_SERVER_KINDS = ['subsonic', 'jellyfin'] as const
+export type MusicServerKind = (typeof MUSIC_SERVER_KINDS)[number]
 
 export const BACKUP_INTERVALS: Record<string, number> = {
   off: 0,

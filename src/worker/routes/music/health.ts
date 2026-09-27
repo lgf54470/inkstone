@@ -8,7 +8,8 @@ import { readJsonValidated } from '../../lib/request'
 import { cancelStreamBestEffort } from '../../lib/streams'
 import { requireAuth } from '../../middleware/auth'
 import { alistApi, joinAlistPath, parseAlistObjectKey, resolveAlistServer } from './alist'
-import { parseGdsObjectKey } from './keys'
+import { parseGdsObjectKey, parseServerObjectKey } from './keys'
+import { resolveServerPlayTarget } from './servers'
 import type { MusicTrackRow } from './rows'
 import { resolveProviderPlayUrl } from './provider'
 import { fetchMusicUpstream } from './upstream'
@@ -58,11 +59,22 @@ async function selectReferenceRows(env: AppBindings['Bindings'], userId: string,
 // a timeout, a 5xx, a server that is simply down — which a later scan may well find healthy.
 async function probeReference(c: Context<AppBindings>, row: MusicTrackRow): Promise<MusicReferenceHealthStatus> {
   if (row.source === 'external') return probeUrl(row.object_key)
-  if (row.source === 'provider') return probeProvider(row)
+  if (row.source === 'provider') return probeProvider(c, row)
   return probeAlist(c, row)
 }
 
-async function probeProvider(row: MusicTrackRow): Promise<MusicReferenceHealthStatus> {
+async function probeProvider(c: Context<AppBindings>, row: MusicTrackRow): Promise<MusicReferenceHealthStatus> {
+  // FB-M16: rows from the reader's own server are probed through the same registration path the
+  // stream uses, so a scan and a play can never disagree about whether the row is alive.
+  const server = parseServerObjectKey(row.object_key)
+  if (server) {
+    try {
+      const target = await resolveServerPlayTarget(c.env, c.get('userId'), server.serverId, server.itemId)
+      return await probeUrl(target.url, target.headers)
+    } catch (error) {
+      return transient(error) ? 'unreachable' : 'dead'
+    }
+  }
   const key = parseGdsObjectKey(row.object_key)
   if (!key) return 'dead'
   try {
@@ -86,10 +98,12 @@ async function probeAlist(c: Context<AppBindings>, row: MusicTrackRow): Promise<
   }
 }
 
-async function probeUrl(rawUrl: string): Promise<MusicReferenceHealthStatus> {
+async function probeUrl(rawUrl: string, extraHeaders: Record<string, string> = {}): Promise<MusicReferenceHealthStatus> {
   let response: Response
   try {
-    response = await fetchMusicUpstream(rawUrl, { headers: { Range: 'bytes=0-0' }, allowHttp: true })
+    // FB-M16: a server row's probe carries that server's own auth header (Jellyfin's token); the
+    // catalogue's answers need none, so the default is empty and the caller decides.
+    response = await fetchMusicUpstream(rawUrl, { headers: { Range: 'bytes=0-0', ...extraHeaders }, allowHttp: true })
   } catch (error) {
     // A refusal from the address rule means the row can never be fetched again; anything else is a
     // host we could not reach this time.

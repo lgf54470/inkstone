@@ -3,12 +3,13 @@ import { LIMITS } from '@shared/constants'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { cancelStreamBestEffort } from '../../lib/streams'
-import { isMusicObjectKey, parseGdsObjectKey, safeStreamMime } from './keys'
+import { isMusicObjectKey, parseGdsObjectKey, parseServerObjectKey, safeStreamMime, type MusicServerObjectKey } from './keys'
 import { isDerivedCoverKey } from './cover'
 import { alignKvRangeWindow, contentRangeHeader, isWellFormedContentLength, isWellFormedContentRange, parseByteRange } from './range'
 import type { MusicTrackRow } from './rows'
 import { alistApi, joinAlistPath, parseAlistObjectKey, resolveAlistServer } from './alist'
 import { readProviderQuality, resolveProviderPlayUrl } from './provider'
+import { resolveServerPlayTarget } from './servers'
 import { capStreamBytes, fetchMusicUpstream, withHeadTimeout } from './upstream'
 import { buildDownloadTag } from './id3'
 import { readMusicObjectStream, requireMusicStorage } from './storage'
@@ -35,7 +36,7 @@ export async function streamTrackResponse(
   if (row.source === 'webdav') return streamWebdavTrack(c, row, owner, options)
   if (row.source === 'external') return streamExternalTrack(c, row, options)
   if (row.source === 'alist') return streamAlistTrack(c, row, options)
-  if (row.source === 'provider') return streamProviderTrack(c, row, options)
+  if (row.source === 'provider') return streamProviderTrack(c, row, owner, options)
   if (!isMusicObjectKey(row.object_key)) throw ApiError.internal('The track storage key is invalid')
 
   const storage = requireMusicStorage(c.env)
@@ -205,8 +206,13 @@ async function streamAlistTrack(
 async function streamProviderTrack(
   c: Context<AppBindings>,
   row: MusicTrackRow,
+  owner: StreamOwner,
   options: StreamOptions,
 ): Promise<Response> {
+  // FB-M16: a row added from the reader's own server is a reference row like a catalogue's, and it
+  // resolves its address from that registration instead of from the aggregate.
+  const server = parseServerObjectKey(row.object_key)
+  if (server) return streamServerTrack(c, row, owner, server, options)
   const key = parseGdsObjectKey(row.object_key)
   if (!key) throw ApiError.internal('The provider track key is invalid')
   // FB-F7: the media element carries the chosen tier as a query parameter, so this is where
@@ -219,6 +225,34 @@ async function streamProviderTrack(
   if (upstream.status !== 200 && upstream.status !== 206) {
     await cancelStreamBestEffort(upstream.body)
     throw new ApiError(502, 'storage_unavailable', `Online playback failed: HTTP ${upstream.status}`)
+  }
+  return streamUpstream(upstream, row, options)
+}
+
+// FB-M16: the reader's own server, resolved per play. Jellyfin authenticates with a token header,
+// so the credential never enters the address (the one thing a log layer would record); Subsonic's
+// protocol wants its own credentials in the query, and that adapter says so where it builds them.
+async function streamServerTrack(
+  c: Context<AppBindings>,
+  row: MusicTrackRow,
+  owner: StreamOwner,
+  server: MusicServerObjectKey,
+  options: StreamOptions,
+): Promise<Response> {
+  const target = await resolveServerPlayTarget(c.env, owner.userId, server.serverId, server.itemId)
+  const range = c.req.header('Range')
+  const upstream = await fetchMusicUpstream(target.url, {
+    headers: { ...target.headers, ...(range ? { Range: range } : {}) },
+    allowHttp: target.allowHttp,
+  })
+  if (upstream.status === 401 || upstream.status === 403) {
+    await cancelStreamBestEffort(upstream.body)
+    throw new ApiError(401, 'unauthenticated', 'The music server refused this account')
+  }
+  if (upstream.status === 404) throw ApiError.notFound('The track is no longer on the music server')
+  if (upstream.status !== 200 && upstream.status !== 206) {
+    await cancelStreamBestEffort(upstream.body)
+    throw new ApiError(502, 'storage_unavailable', `Music server playback failed: HTTP ${upstream.status}`)
   }
   return streamUpstream(upstream, row, options)
 }

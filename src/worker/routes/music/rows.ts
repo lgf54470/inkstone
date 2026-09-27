@@ -1,6 +1,6 @@
 import type { MusicPlaylist, MusicPlaylistDetail, MusicPlaylistItem, MusicStats, MusicTag, MusicTrack } from '@shared/types'
 import { isCoverObjectKey } from './cover'
-import { parseGdsObjectKey, resolveMusicTrackType, sanitizeCoverUrl } from './keys'
+import { parseProviderReference, resolveMusicTrackType, sanitizeCoverUrl } from './keys'
 
 export interface MusicTrackRow {
   id: string
@@ -67,7 +67,7 @@ export const TRACK_COLUMNS = `t.id, t.title, t.artist, t.album, t.duration_ms, t
 export function toTrack(row: MusicTrackRow, tagIds: string[]): MusicTrack {
   // FB-F8: a provider row's object key carries the catalogue it came from. The client needs it to
   // offer "the same song somewhere else" without handing back the entry that just failed.
-  const providerKey = row.source === 'provider' ? parseGdsObjectKey(row.object_key) : null
+  const providerKey = row.source === 'provider' ? parseProviderReference(row.object_key) : null
   return {
     id: row.id,
     title: row.title,

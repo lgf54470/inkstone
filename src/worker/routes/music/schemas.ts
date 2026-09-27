@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { LIMITS } from '@shared/constants'
+import { LIMITS, MUSIC_SERVER_KINDS } from '@shared/constants'
 import { isWebdavRelativePath, sanitizeCoverUrl } from './keys'
 
 const trimmed = (max: number) => z.string().trim().max(max)
@@ -173,6 +173,53 @@ export const patchAlistServerSchema = z
   .refine((value) => Object.keys(value).length > 0, { message: 'Provide at least one field to update' })
 
 export type PatchAlistServerBody = z.infer<typeof patchAlistServerSchema>
+
+// FB-M16: a server-type registration. The URL is the API origin (no trailing path); the kind is
+// what the adapter will speak, and the password is the only credential the reader ever sends —
+// Jellyfin's session token is traded for it server-side and never travels back.
+const musicServerUrl = z.string().max(LIMITS.musicServerUrlMaxLength).refine((value) => {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+  } catch {
+    return false
+  }
+}, { message: 'Provide an http(s) URL' })
+
+export const musicServerSchema = z.object({
+  name: trimmed(LIMITS.musicServerNameMaxLength).min(1),
+  kind: z.enum(MUSIC_SERVER_KINDS),
+  url: musicServerUrl,
+  username: trimmed(LIMITS.musicServerUsernameMaxLength).min(1),
+  password: z.string().max(LIMITS.musicServerSecretMaxLength).min(1),
+})
+
+export type MusicServerBody = z.infer<typeof musicServerSchema>
+
+// The kind is deliberately absent: it is what the stored credential means, so changing it would
+// silently reinterpret a token as a password. Re-register to move a server to another protocol.
+export const patchMusicServerSchema = z
+  .object({
+    name: trimmed(LIMITS.musicServerNameMaxLength).min(1).optional(),
+    url: musicServerUrl.optional(),
+    username: trimmed(LIMITS.musicServerUsernameMaxLength).min(1).optional(),
+    password: z.string().max(LIMITS.musicServerSecretMaxLength).min(1).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: 'Provide at least one field to update' })
+
+export type PatchMusicServerBody = z.infer<typeof patchMusicServerSchema>
+
+// The metadata travels with the import because the search answer is the only place the server's own
+// album/artist/duration are available without asking again per song.
+export const importMusicServerTrackSchema = z.object({
+  itemId: z.string().max(256).min(1),
+  title: trimmed(LIMITS.musicTitleMaxLength).min(1),
+  artist: optionalTrimmed(LIMITS.musicArtistMaxLength),
+  album: optionalTrimmed(LIMITS.musicAlbumMaxLength),
+  durationMs: z.number().int().min(0).max(24 * 60 * 60 * 1000).optional(),
+})
+
+export type ImportMusicServerTrackBody = z.infer<typeof importMusicServerTrackSchema>
 
 // FEA-B3: a direct link imports as a reference row — only the URL is stored and
 // playback proxies it, so http(s) is the scheme bar and the container must still
