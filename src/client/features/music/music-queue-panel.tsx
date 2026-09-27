@@ -5,11 +5,11 @@ import { t } from '../../lib/i18n'
 import { useMusic } from './music-store'
 import { confirmClearQueue } from './music-queue-clear'
 import { MusicQueueBrowser } from './music-queue-browser'
+import { MUSIC_QUEUE_PANEL_HEIGHT } from './music-utils'
 
-// REF-11: the panel used to cover the last rows of the list at a fixed 288px, so the
-// list and the queue could never both be readable at once. The height belongs to the
-// reader now, and the list steps aside for whatever they choose.
-export const QUEUE_PANEL_DEFAULT_HEIGHT = 288
+// REF-11: the panel's height belongs to the reader; its starting value is shared with the hub,
+// which has to reserve that much room before this module has been fetched at all.
+export { MUSIC_QUEUE_PANEL_HEIGHT as QUEUE_PANEL_DEFAULT_HEIGHT }
 const QUEUE_PANEL_MIN_HEIGHT = 144
 const QUEUE_PANEL_MAX_HEIGHT = 640
 const QUEUE_RESIZE_STEP_PX = 32

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { Button } from '../../components/primitives'
 import { Drawer, Modal } from '../../components/overlay'
@@ -8,29 +8,36 @@ import { useElementWidth, useMediaQuery } from '../../lib/hooks'
 import { Z_INDEX } from '../../lib/z-index'
 import { t } from '../../lib/i18n'
 import { formatBytes } from '../../lib/time'
-import { MusicEditTrackModal } from './music-edit-track-modal'
-import { MusicSourceSwitchModal } from './music-source-switch-modal'
-import { MusicHealthModal } from './music-health-modal'
 import { findDuplicateGroups, duplicateWastedBytes, redundantTrackCount } from './music-duplicates'
-import { MusicGroupBrowse, MusicGroupDetailHeader } from './music-group-browse'
 import { MusicHubSidebar } from './music-hub-sidebar'
 import { MusicHubToolbar } from './music-hub-toolbar'
 import { MusicNowPlaying, type MusicDetailTab } from './music-now-playing'
 import { HUB_MAX_WIDTH, HubHeader, HubResizeZones, hubStyle, useHubViewportClamp } from './music-hub-window'
-import { MusicPlaylistModal } from './music-playlist-modal'
-import { MusicProviderResults } from './music-provider-results'
 import { MusicPlayerControls } from './music-player-controls'
-import { MusicQueuePanel, QUEUE_PANEL_DEFAULT_HEIGHT } from './music-queue-panel'
-import { MusicTagManagerModal } from './music-tag-manager'
 import { MusicTrackList } from './music-track-list'
-import { MusicTransferDialog } from './music-transfer-dialog'
-import { MusicAlistModal } from './music-alist-modal'
-import { MusicPodcastModal } from './music-podcast-modal'
-import { MusicWebdavModal } from './music-webdav-modal'
 import { useUi } from '../../store/ui'
 import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicScope } from './music-store'
-import { MUSIC_CONTENT_MIN_HEIGHT, MUSIC_HUB_COLUMNS_MIN_WIDTH, hubColumnsWide } from './music-utils'
+import { MUSIC_CONTENT_MIN_HEIGHT, MUSIC_HUB_COLUMNS_MIN_WIDTH, MUSIC_QUEUE_PANEL_HEIGHT, hubColumnsWide } from './music-utils'
+
+// FB-PF1: the hub is one lazy surface, but the dialogs it opens, the browse views it swaps in
+// and the queue drawer are surfaces of their own. Each of these is fetched the first time
+// something asks for it, so a reader who opens the library to press play never pays for the
+// alist browser, the tag manager or the podcast list. What the budget watches is the hub chunk
+// itself, and this is what keeps it inside it.
+const LazyEditTrackModal = lazy(() => import('./music-edit-track-modal').then((m) => ({ default: m.MusicEditTrackModal })))
+const LazyPlaylistModal = lazy(() => import('./music-playlist-modal').then((m) => ({ default: m.MusicPlaylistModal })))
+const LazyTagManagerModal = lazy(() => import('./music-tag-manager').then((m) => ({ default: m.MusicTagManagerModal })))
+const LazyTransferDialog = lazy(() => import('./music-transfer-dialog').then((m) => ({ default: m.MusicTransferDialog })))
+const LazyWebdavModal = lazy(() => import('./music-webdav-modal').then((m) => ({ default: m.MusicWebdavModal })))
+const LazyAlistModal = lazy(() => import('./music-alist-modal').then((m) => ({ default: m.MusicAlistModal })))
+const LazyPodcastModal = lazy(() => import('./music-podcast-modal').then((m) => ({ default: m.MusicPodcastModal })))
+const LazySourceSwitchModal = lazy(() => import('./music-source-switch-modal').then((m) => ({ default: m.MusicSourceSwitchModal })))
+const LazyHealthModal = lazy(() => import('./music-health-modal').then((m) => ({ default: m.MusicHealthModal })))
+const LazyGroupBrowse = lazy(() => import('./music-group-browse').then((m) => ({ default: m.MusicGroupBrowse })))
+const LazyGroupDetailHeader = lazy(() => import('./music-group-browse').then((m) => ({ default: m.MusicGroupDetailHeader })))
+const LazyProviderResults = lazy(() => import('./music-provider-results').then((m) => ({ default: m.MusicProviderResults })))
+const LazyQueuePanel = lazy(() => import('./music-queue-panel').then((m) => ({ default: m.MusicQueuePanel })))
 
 // REF-9: 84vh of a phone screen, or of a short laptop window, leaves the track list a
 // couple of hundred pixels once the header, toolbar and transport have taken their fixed
@@ -155,23 +162,57 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
   )
 }
 
-// The dialogs the hub opens sit beside the modal, not inside it.
+// The dialogs the hub opens sit beside the modal, not inside it. Each is wrapped in `LazyPeer`,
+// which is also what keeps a draft: the dialog stays mounted once it has been opened, so closing
+// and reopening one shows what the reader left in it.
 function HubPeers({ dialogs }: { dialogs: ReturnType<typeof useHubDialogs> }) {
   const transfersOpen = useMusic((state) => state.transfersOpen)
   const setTransfersOpen = useMusic((state) => state.setTransfersOpen)
+  const sourceSwitchOpen = useMusic((state) => state.sourceSwitchTrackId !== null)
+  const healthOpen = useMusic((state) => state.healthOpen)
   return (
     <>
-      <MusicEditTrackModal track={dialogs.editingTrack} open={dialogs.editingTrack !== null} onClose={dialogs.closeEditTrack} />
-      <MusicPlaylistModal playlist={dialogs.editingPlaylist} open={dialogs.playlistModalOpen} onClose={dialogs.closePlaylistModal} />
-      <MusicTagManagerModal open={dialogs.tagManagerOpen} onClose={dialogs.closeTagManager} />
-      <MusicTransferDialog open={transfersOpen} onClose={() => setTransfersOpen(false)} />
-      <MusicWebdavModal open={dialogs.webdavOpen} onClose={dialogs.closeWebdav} />
-      <MusicAlistModal open={dialogs.alistOpen} onClose={dialogs.closeAlist} />
-      <MusicPodcastModal open={dialogs.podcastOpen} onClose={dialogs.closePodcast} />
-      <MusicSourceSwitchModal />
-      <MusicHealthModal />
+      <LazyPeer open={dialogs.editingTrack !== null}>
+        <LazyEditTrackModal track={dialogs.editingTrack} open={dialogs.editingTrack !== null} onClose={dialogs.closeEditTrack} />
+      </LazyPeer>
+      <LazyPeer open={dialogs.playlistModalOpen}>
+        <LazyPlaylistModal playlist={dialogs.editingPlaylist} open={dialogs.playlistModalOpen} onClose={dialogs.closePlaylistModal} />
+      </LazyPeer>
+      <LazyPeer open={dialogs.tagManagerOpen}>
+        <LazyTagManagerModal open={dialogs.tagManagerOpen} onClose={dialogs.closeTagManager} />
+      </LazyPeer>
+      <LazyPeer open={transfersOpen}>
+        <LazyTransferDialog open={transfersOpen} onClose={() => setTransfersOpen(false)} />
+      </LazyPeer>
+      <LazyPeer open={dialogs.webdavOpen}>
+        <LazyWebdavModal open={dialogs.webdavOpen} onClose={dialogs.closeWebdav} />
+      </LazyPeer>
+      <LazyPeer open={dialogs.alistOpen}>
+        <LazyAlistModal open={dialogs.alistOpen} onClose={dialogs.closeAlist} />
+      </LazyPeer>
+      <LazyPeer open={dialogs.podcastOpen}>
+        <LazyPodcastModal open={dialogs.podcastOpen} onClose={dialogs.closePodcast} />
+      </LazyPeer>
+      <LazyPeer open={sourceSwitchOpen}>
+        <LazySourceSwitchModal />
+      </LazyPeer>
+      <LazyPeer open={healthOpen}>
+        <LazyHealthModal />
+      </LazyPeer>
     </>
   )
+}
+
+// A surface that is fetched when it is first asked for and kept after that: the latch is what
+// lets a closed dialog hold a draft, and `Suspense` keeps the wait inside this subtree instead of
+// suspending the whole hub the moment one of them is opened.
+function LazyPeer({ open, children }: { open: boolean; children: ReactNode }) {
+  const [opened, setOpened] = useState(open)
+  useEffect(() => {
+    if (open) setOpened(true)
+  }, [open])
+  if (!opened) return null
+  return <Suspense fallback={null}>{children}</Suspense>
 }
 
 // Dialog state lives here, so the panels below are memoised: opening a dialog must
@@ -240,17 +281,20 @@ const HubCentre = memo(function HubCentre({
   const libraryTracks = useMusic((state) => state.tracks)
   const tracks = useVisibleTracks()
   const browseKind = scope.kind === 'albums' || scope.kind === 'artists' ? scope.kind : null
+  // The online panel answers only when a catalogue is switched on; until then its code is not
+  // worth fetching (FB-PF1), and this is the same condition the panel tests for itself.
+  const onlinePanel = useMusic((state) => state.providerEnabled.gds === true)
   const detail = scope.kind === 'album' || scope.kind === 'artist' ? scope : null
   // REF-11: the queue used to float over the last rows of the list; the list now keeps
   // the height the reader gave the panel free, so both stay readable at once.
-  const [queueHeight, setQueueHeight] = useState(QUEUE_PANEL_DEFAULT_HEIGHT)
+  const [queueHeight, setQueueHeight] = useState(MUSIC_QUEUE_PANEL_HEIGHT)
   return (
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)]'>
       {/* Ranking the library happens once, here; the toolbar and the group header take
           the result as a prop so they never run the same sort a second time. */}
       <MusicHubToolbar tracks={tracks} libraryTracks={libraryTracks} shortViewport={shortViewport} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
-      {detail && <MusicGroupDetailHeader scope={detail} tracks={tracks} />}
-      <MusicProviderResults />
+      {detail && <Suspense fallback={null}><LazyGroupDetailHeader scope={detail} tracks={tracks} /></Suspense>}
+      {onlinePanel && <Suspense fallback={null}><LazyProviderResults /></Suspense>}
       {scope.kind === 'duplicates' && tracks.length > 0 && <MusicDuplicatesSummary />}
       {/* FB-R3: the floor the chrome is not allowed to eat into. The value is passed as the variable
           `MUSIC_CONTENT_MIN_HEIGHT` rather than as a class, so the budget has one source: the browser
@@ -268,10 +312,12 @@ const HubCentre = memo(function HubCentre({
               compact
             />
           : browseKind
-            ? <MusicGroupBrowse kind={browseKind} />
+            ? <Suspense fallback={null}><LazyGroupBrowse kind={browseKind} /></Suspense>
             : <MusicTrackList tracks={tracks} loading={loading} emptyTitle={emptyTitle(scope)} onEdit={onEditTrack} narrow={narrow} />}
       </div>
-      <MusicQueuePanel open={queueOpen} onClose={onCloseQueue} height={queueHeight} onResize={setQueueHeight} />
+      <LazyPeer open={queueOpen}>
+        <LazyQueuePanel open={queueOpen} onClose={onCloseQueue} height={queueHeight} onResize={setQueueHeight} />
+      </LazyPeer>
     </div>
   )
 })

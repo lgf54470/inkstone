@@ -33,6 +33,11 @@ export const MUSIC_TOOLBAR_NARROW_MAX_WIDTH = 560
 // back off the rendered element instead of repeating the number, so a floor that stops being drawn
 // fails there rather than passing quietly.
 export const MUSIC_CONTENT_MIN_HEIGHT = 160
+// REF-11: the queue panel used to cover the last rows of the list at a fixed 288px, so the list
+// and the queue could never both be readable at once. The height belongs to the reader now, and
+// the list steps aside for whatever they choose. The starting height lives here rather than in the
+// panel so the hub can size its content before the panel has been fetched (FB-PF1).
+export const MUSIC_QUEUE_PANEL_HEIGHT = 288
 
 // FB-U3: where the status bar's own controls join it, mirroring the classes on them in
 // `music-status-bar.tsx` (`hidden md:flex` for the seek bar, `hidden lg:inline-flex` for the
