@@ -2,7 +2,7 @@ import type { MusicPlaylistDetail, MusicStats, MusicTag, MusicTrack } from '@sha
 import { api } from '../../../lib/api'
 import { duplicateTracks } from '../music-duplicates'
 import { ensureRomanized, LYRIC_QUERY_MIN_LENGTH, needsRomanization, SEARCH_RESULT_LIMIT, searchTracks } from '../music-search'
-import { collectTagIds } from '../music-utils'
+import { collectTagIds, type MusicLyricSource } from '../music-utils'
 import { persist } from './persist'
 import { pushHistory } from './state'
 import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSortDirection, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest, TrackMenuTarget } from './types'
@@ -106,6 +106,13 @@ export function setDefaultViewMode(set: MusicSet, viewMode: MusicViewMode): void
 // than a prop threaded through every list in the hub.
 export function setShowSourceBadge(set: MusicSet, get: MusicGet, showSourceBadge: boolean): void {
   set({ showSourceBadge })
+  persist(get)
+}
+
+// FB-F13: which source a lyric lookup starts with. Persisted with the other preferences, so a
+// reader who trusts one source over the other only says so once.
+export function setLyricSource(set: MusicSet, get: MusicGet, lyricSource: MusicLyricSource): void {
+  set({ lyricSource })
   persist(get)
 }
 

@@ -2,8 +2,8 @@ import { useMemo, type RefObject } from 'react'
 import { ArrowDown, ArrowUp, CloudDownload, CloudOff, Download, Heart, History, ListEnd, ListPlus, ListStart, PencilLine, Pin, Server, Shuffle, Tag, TextSearch, Trash2, X } from 'lucide-react'
 import type { MusicTag, MusicTrack } from '@shared/types'
 import { Menu, confirm, submenuFor, type MenuItem } from '../../components/overlay'
-import { t } from '../../lib/i18n'
-import { useMusic, visibleTracks, type TrackMenuTarget } from './music-store'
+import { t, type MessageKey } from '../../lib/i18n'
+import { useMusic, visibleTracks, type MusicLyricSource, type TrackMenuTarget } from './music-store'
 import { flattenTags } from './music-utils'
 
 export type { TrackMenuTarget }
@@ -117,7 +117,7 @@ interface TrackMenuActions {
   addToQueue: (id: string, next?: boolean) => void
   addToPlaylist: (playlistId: string, trackId: string) => Promise<void>
   patchTrack: (id: string, patch: { tagIds: string[] }) => Promise<boolean>
-  searchTrackLyric: (id: string) => Promise<void>
+  searchTrackLyric: (id: string, source?: MusicLyricSource) => Promise<void>
   toggleFavorite: (id: string) => Promise<void>
   togglePin: (id: string) => Promise<void>
   onEdit: (track: MusicTrack) => void
@@ -140,7 +140,7 @@ function baseMenuItems(track: MusicTrack, actions: TrackMenuActions): MenuItem[]
     { id: 'favorite', label: track.isFavorite ? t('music.unfavorite') : t('music.favorite'), icon: <Heart size={14} />, onSelect: wrap(() => void actions.toggleFavorite(track.id)) },
     { id: 'pin', label: track.isPinned ? t('music.unpin') : t('music.pin'), icon: <Pin size={14} />, onSelect: wrap(() => void actions.togglePin(track.id)) },
     { id: 'edit', label: t('music.edit_track'), icon: <PencilLine size={14} />, separatorBefore: true, onSelect: wrap(() => actions.onEdit(track)) },
-    { id: 'lyric-search', label: t('music.search_lyrics'), icon: <TextSearch size={14} />, onSelect: wrap(() => searchLyric(track, actions.searchTrackLyric)) },
+    { id: 'lyric-search', label: t('music.search_lyrics'), icon: <TextSearch size={14} />, submenu: submenuFor(lyricSubmenu(track, wrap, actions.searchTrackLyric)) },
     { id: 'download', label: t('music.download'), icon: <Download size={14} />, onSelect: wrap(() => void actions.downloadTracks([track.id])) },
     // FB-F12: only a row the recent list actually draws has something to forget.
     ...(track.lastPlayedAt !== null
@@ -195,6 +195,31 @@ function closeThenRun(onClose: () => void): MenuRunner {
     onClose()
     run()
   }
+}
+
+// FB-F13: the preference says where a lookup starts; this menu names a source for one press,
+// because "this row is a cover only the catalogue knows" is a fact about that row.
+const LYRIC_MENU_SOURCES: { id: string; label: MessageKey; source?: MusicLyricSource }[] = [
+  { id: 'lyric-default', label: 'music.lyric_source_follow_settings' },
+  { id: 'lyric-lrclib', label: 'music.lyric_source_lrclib', source: 'lrclib' },
+  { id: 'lyric-catalogue', label: 'music.lyric_source_catalogue', source: 'catalogue' },
+]
+
+export function lyricSubmenu(
+  track: MusicTrack,
+  wrap: MenuRunner,
+  searchTrackLyric: (id: string, source?: MusicLyricSource) => Promise<void>,
+): MenuItem[] {
+  return LYRIC_MENU_SOURCES.map((entry) => {
+    const source = entry.source
+    // No source means "the one the reader set", so the call keeps the one-argument shape rather
+    // than passing an `undefined` that every assertion downstream would have to spell out.
+    return {
+      id: entry.id,
+      label: t(entry.label),
+      onSelect: wrap(() => searchLyric(track, source ? (id) => searchTrackLyric(id, source) : (id) => searchTrackLyric(id))),
+    }
+  })
 }
 
 /**

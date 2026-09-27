@@ -6,6 +6,7 @@ import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { ConfirmHost } from '../../components/overlay'
 import { MusicTrackList } from './music-track-list'
+import { lyricSubmenu } from './music-track-menu'
 import { useMusic } from './music-store'
 
 beforeAll(() => {
@@ -196,6 +197,24 @@ describe('track menu offline item', () => {
   })
 })
 
+// FB-F13: the row menu names a lyric source for one press, with the preference as the default.
+describe('lyric source submenu (FB-F13)', () => {
+  it('offers the setting plus the two sources, and passes the chosen one through', async () => {
+    const searchTrackLyric = vi.fn(async () => {})
+    const wrap = (run: () => void) => () => run()
+    const items = lyricSubmenu(track('t1', 'Alpha'), wrap, searchTrackLyric)
+    expect(items.map((item) => item.label)).toEqual([
+      t('music.lyric_source_follow_settings'),
+      t('music.lyric_source_lrclib'),
+      t('music.lyric_source_catalogue'),
+    ])
+    items[0]?.onSelect?.()
+    items[1]?.onSelect?.()
+    items[2]?.onSelect?.()
+    expect(searchTrackLyric.mock.calls).toEqual([['t1'], ['t1', 'lrclib'], ['t1', 'catalogue']])
+  })
+})
+
 // FB-F12: the recent list is where a played stamp shows, so that is where removing one lives.
 describe('play history management (FB-F12)', () => {
   const played = (id: string, title: string): MusicTrack => ({ ...track(id, title), lastPlayedAt: 111, playCount: 4 })
@@ -302,13 +321,22 @@ describe('track menu lyric search (M-52)', () => {
     })
   }
 
+  // FB-F13: the search row opens a source menu now, so choosing a source is two presses — the row
+  // itself is a disclosure (the Menu opens a submenu on its own click) and the source is the second.
+  async function chooseLyricSource(label: string): Promise<void> {
+    await act(async () => {
+      menuItem(t('music.search_lyrics'))?.click()
+    })
+    await act(async () => {
+      menuItem(label)?.click()
+    })
+  }
+
   it('runs straight through for a track without stored lyrics', async () => {
     const searchTrackLyric = vi.fn(async () => {})
     useMusic.setState({ searchTrackLyric })
     await mountAndOpen(track('t1', 'Alpha'))
-    await act(async () => {
-      menuItem(t('music.search_lyrics'))?.click()
-    })
+    await chooseLyricSource(t('music.lyric_source_follow_settings'))
     expect(searchTrackLyric).toHaveBeenCalledWith('t1')
     expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
@@ -317,9 +345,7 @@ describe('track menu lyric search (M-52)', () => {
     const searchTrackLyric = vi.fn(async () => {})
     useMusic.setState({ searchTrackLyric })
     await mountAndOpen({ ...track('t1', 'Alpha'), hasLyric: true, lyric: '[00:01.000]kept' })
-    await act(async () => {
-      menuItem(t('music.search_lyrics'))?.click()
-    })
+    await chooseLyricSource(t('music.lyric_source_catalogue'))
     expect(searchTrackLyric).not.toHaveBeenCalled()
     const dialog = document.querySelector('[role="dialog"]')
     expect(dialog?.textContent).toContain(t('music.search_lyrics_confirm', { value0: 'Alpha' }))
@@ -329,16 +355,14 @@ describe('track menu lyric search (M-52)', () => {
     await act(async () => {
       replace?.click()
     })
-    expect(searchTrackLyric).toHaveBeenCalledWith('t1')
+    expect(searchTrackLyric).toHaveBeenCalledWith('t1', 'catalogue')
   })
 
   it('keeps the stored lyrics when the replace prompt is declined', async () => {
     const searchTrackLyric = vi.fn(async () => {})
     useMusic.setState({ searchTrackLyric })
     await mountAndOpen({ ...track('t1', 'Alpha'), hasLyric: true, lyric: '[00:01.000]kept' })
-    await act(async () => {
-      menuItem(t('music.search_lyrics'))?.click()
-    })
+    await chooseLyricSource(t('music.lyric_source_follow_settings'))
     const cancel = [...(document.querySelector('[role="dialog"]')?.querySelectorAll('button') ?? [])]
       .find((button) => button.textContent?.includes(t('common.cancel')))
     await act(async () => {

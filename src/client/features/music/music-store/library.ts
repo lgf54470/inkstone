@@ -1,7 +1,7 @@
 import type { MusicBatchAction } from '../../../lib/api'
 import {
   clearSearchHistory, clearSelection, commitQuery, closeTrackMenu, invertSelection, loadLibrary, openTrackMenu, prepareRomanization,
-  selectAll, setDefaultViewMode, setQuery, setScope, setShowSourceBadge, setSort, setSortDirection, setSourceFilter, setViewMode, showMoreMatches, toggleSelect,
+  selectAll, setDefaultViewMode, setLyricSource, setQuery, setScope, setShowSourceBadge, setSort, setSortDirection, setSourceFilter, setViewMode, showMoreMatches, toggleSelect,
 } from './library-load'
 import {
   batchTracks, deleteTrack, ensureTrackLyric, forgetPlayHistory, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin, trashTracks,
@@ -34,7 +34,7 @@ import type { MusicGet, MusicSet, MusicStoreState } from './types'
 type LibrarySlice = Pick<MusicStoreState,
   | 'loadLibrary' | 'setScope' | 'setQuery' | 'commitQuery' | 'clearSearchHistory' | 'setSort' | 'setSortDirection' | 'prepareRomanization'
   | 'setViewMode' | 'setDefaultViewMode' | 'showMoreMatches' | 'openTrackMenu' | 'closeTrackMenu' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
-  | 'setProviderQuality' | 'acceptProviderNotice' | 'setShowSourceBadge'
+  | 'setProviderQuality' | 'acceptProviderNotice' | 'setShowSourceBadge' | 'setLyricSource'
   | 'importTrackFromUrl'
   | 'openTrash' | 'closeTrash' | 'restoreFromTrash' | 'purgeTrashEntry'
   | 'loadAlistServers' | 'createAlistServer' | 'patchAlistServer' | 'deleteAlistServer'
@@ -73,6 +73,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     setProviderQuality: (quality) => setProviderQuality(set, get, quality),
     acceptProviderNotice: () => acceptProviderNotice(set, get),
     setShowSourceBadge: (visible) => setShowSourceBadge(set, get, visible),
+    setLyricSource: (source) => setLyricSource(set, get, source),
     prepareRomanization: () => prepareRomanization(set, get),
     toggleSelect: (id, additive) => toggleSelect(set, id, additive),
     selectAll: (ids) => selectAll(set, ids),
@@ -84,7 +85,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     ensureTrackLyric: (id) => ensureTrackLyric(set, get, id),
     refreshTrackMetadata: (ids, force) => refreshTrackMetadata(set, get, ids, force),
     matchMissingCovers: () => matchMissingCovers(set, get),
-    searchTrackLyric: (id) => searchTrackLyric(set, get, id),
+    searchTrackLyric: (id, source) => searchTrackLyric(set, get, id, source),
     toggleFavorite: (id) => toggleFavorite(set, get, id),
     togglePin: (id) => togglePin(set, get, id),
     deleteTrack: (id) => deleteTrack(set, get, id),

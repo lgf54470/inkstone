@@ -3,8 +3,8 @@ import { Button } from '../../components/primitives'
 import { Segmented, Select, SettingRow, Switch } from '../../components/form'
 import { t, type MessageKey } from '../../lib/i18n'
 import {
-  IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_TEXT_SIZES, MusicEqPanel, listProviders, useMusic,
-  type MusicImmersiveBackground, type MusicLyricAlign, type MusicLyricTextSize, type MusicProvider,
+  IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_SOURCES, LYRIC_TEXT_SIZES, MusicEqPanel, listProviders, useMusic,
+  type MusicImmersiveBackground, type MusicLyricAlign, type MusicLyricSource, type MusicLyricTextSize, type MusicProvider,
 } from '../music'
 
 const QUALITY_LABELS: Record<MusicProviderQuality, MessageKey> = {
@@ -31,6 +31,12 @@ const SIZE_LABELS: Record<MusicLyricTextSize, MessageKey> = {
   small: 'music.lyric_size_small',
   default: 'music.lyric_size_default',
   large: 'music.lyric_size_large',
+}
+
+const LYRIC_SOURCE_LABELS: Record<MusicLyricSource, MessageKey> = {
+  auto: 'music.lyric_source_auto',
+  lrclib: 'music.lyric_source_lrclib',
+  catalogue: 'music.lyric_source_catalogue',
 }
 
 // FB-F4: the one page where the music preferences live. It is not a second settings system —
@@ -132,10 +138,6 @@ function ProviderSwitch({ provider, locked }: { provider: MusicProvider; locked:
 function PlaybackDefaults() {
   const background = useMusic((state) => state.immersiveBackground)
   const setBackground = useMusic((state) => state.setImmersiveBackground)
-  const align = useMusic((state) => state.lyricAlign)
-  const setAlign = useMusic((state) => state.setLyricAlign)
-  const size = useMusic((state) => state.lyricTextSize)
-  const setSize = useMusic((state) => state.setLyricTextSize)
   const floatingVisible = useMusic((state) => state.floatingVisible)
   const setFloatingVisible = useMusic((state) => state.setFloatingVisible)
   return (
@@ -151,6 +153,25 @@ function PlaybackDefaults() {
           onChange={setBackground}
         />
       </SettingRow>
+      <LyricDefaults />
+      <SettingRow title={t('music.mini_player')}>
+        <Switch checked={floatingVisible} onChange={setFloatingVisible} label={t('music.mini_player')} />
+      </SettingRow>
+    </section>
+  )
+}
+
+// FEA-C4 + FB-F13: how lyrics are drawn and where a lookup starts — one group, because both are
+// answers to "what do I want when I press play".
+function LyricDefaults() {
+  const align = useMusic((state) => state.lyricAlign)
+  const setAlign = useMusic((state) => state.setLyricAlign)
+  const size = useMusic((state) => state.lyricTextSize)
+  const setSize = useMusic((state) => state.setLyricTextSize)
+  const lyricSource = useMusic((state) => state.lyricSource)
+  const setLyricSource = useMusic((state) => state.setLyricSource)
+  return (
+    <>
       <SettingRow title={t('music.lyric_align')}>
         <Segmented
           label={t('music.lyric_align')}
@@ -169,9 +190,17 @@ function PlaybackDefaults() {
           onChange={setSize}
         />
       </SettingRow>
-      <SettingRow title={t('music.mini_player')}>
-        <Switch checked={floatingVisible} onChange={setFloatingVisible} label={t('music.mini_player')} />
+      <SettingRow title={t('music.settings_lyric_source')} description={t('music.settings_lyric_source_hint')}>
+        <Select
+          aria-label={t('music.settings_lyric_source')}
+          value={lyricSource}
+          onChange={(event) => setLyricSource(event.target.value as MusicLyricSource)}
+        >
+          {LYRIC_SOURCES.map((option) => (
+            <option key={option} value={option}>{t(LYRIC_SOURCE_LABELS[option])}</option>
+          ))}
+        </Select>
       </SettingRow>
-    </section>
+    </>
   )
 }

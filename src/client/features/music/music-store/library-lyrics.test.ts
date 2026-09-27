@@ -36,8 +36,10 @@ function track(id: string, overrides: Partial<MusicTrack> = {}): MusicTrack {
   } as MusicTrack
 }
 
+// FB-F13: the lookup walks `lyricSourceOrder`, so the fixture carries the preference every real
+// store has (default `auto`, online sources off until the reader switches them on).
 function makeStore(tracks: MusicTrack[]) {
-  let state = { tracks } as unknown as MusicStoreState
+  let state = { tracks, lyricSource: 'auto', providerEnabled: {} } as unknown as MusicStoreState
   return {
     get: () => state,
     set: (patch: unknown) => {
@@ -67,7 +69,7 @@ describe('online lyric search (M-52)', () => {
     expect(api.music.searchTrackLyric).toHaveBeenCalledWith('t1')
     expect(api.music.patchTrack).toHaveBeenCalledWith('t1', { lyric: '[00:12.00]written line' })
     expect(store.state().tracks[0]?.lyric).toBe('[00:12.00]written line')
-    expect(toastMusic).toHaveBeenCalledWith('music.lyrics_matched')
+    expect(toastMusic).toHaveBeenCalledWith('music.lyrics_matched_from', { value0: 'lrclib' })
   })
 
   it('reports a missing match as a notice without saving anything', async () => {

@@ -77,6 +77,7 @@ function initialProviderState(prefs: MusicPreferences): Partial<MusicStoreState>
     providerQuality: prefs.providerQuality,
     providerNoticeAccepted: prefs.providerNoticeAccepted,
     showSourceBadge: prefs.showSourceBadge,
+    lyricSource: prefs.lyricSource,
     providerAutoSwap: prefs.providerAutoSwap,
     providerResults: null,
     providerSearching: false,
@@ -133,6 +134,9 @@ export type {
 } from './types'
 export { currentTrack } from './player'
 export { deadReferenceIds, referenceTrackIds } from './health'
+// FB-F13: the lyric source list and its order live with the pure helpers, so the settings page and
+// the lookup read the same tuple.
+export { LYRIC_SOURCES, lyricSourceOrder, type MusicLyricSource } from '../music-utils'
 export {
   PLAYBACK_RATES, RATE_FINE_STEP, RATE_MAX, RATE_MIN, EQ_GAIN_RANGE_DB,
   IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_TEXT_SIZES,

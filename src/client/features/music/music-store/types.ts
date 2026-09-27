@@ -6,6 +6,7 @@ import type {
 } from '@shared/types'
 import type { MusicEqPresetId } from '../music-eq-presets'
 import type { MusicProviderQuality } from '@shared/constants'
+import type { MusicLyricSource } from '../music-utils'
 
 export type MusicSort = 'recent' | 'title' | 'artist' | 'album' | 'duration' | 'plays'
 export type MusicSortDirection = 'asc' | 'desc'
@@ -206,6 +207,8 @@ export interface MusicStoreState {
   providerNoticeAccepted: boolean
   /** Whether the source badge is painted on rows and cards. */
   showSourceBadge: boolean
+  /** FB-F13: which source a lyric lookup walks (see `lyricSourceOrder`). */
+  lyricSource: MusicLyricSource
   providerResults: MusicProviderTrack[] | null
   providerSearching: boolean
   providerKeywords: string
@@ -255,6 +258,7 @@ export interface MusicStoreState {
   setProviderQuality: (quality: MusicProviderQuality) => void
   acceptProviderNotice: () => void
   setShowSourceBadge: (visible: boolean) => void
+  setLyricSource: (source: MusicLyricSource) => void
   prepareRomanization: () => Promise<void>
   toggleSelect: (id: string, additive: boolean) => void
   selectAll: (ids: string[]) => void
@@ -305,7 +309,7 @@ export interface MusicStoreState {
   refreshTrackMetadata: (ids: string[], force?: boolean) => Promise<number>
   matchMissingCovers: () => Promise<number>
   // Menu action: fetch lyrics through the Worker relay and save the match as this track's lyric.
-  searchTrackLyric: (id: string) => Promise<void>
+  searchTrackLyric: (id: string, source?: MusicLyricSource) => Promise<void>
   toggleFavorite: (id: string) => Promise<void>
   togglePin: (id: string) => Promise<void>
   deleteTrack: (id: string) => Promise<void>

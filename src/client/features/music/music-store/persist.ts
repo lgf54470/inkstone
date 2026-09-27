@@ -62,5 +62,6 @@ function writePreferences(get: MusicGet): void {
     providerNoticeAccepted: state.providerNoticeAccepted,
     providerAutoSwap: state.providerAutoSwap,
     showSourceBadge: state.showSourceBadge,
+    lyricSource: state.lyricSource,
   })
 }

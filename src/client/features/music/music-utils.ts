@@ -412,6 +412,22 @@ export function durationCellText(durationMs: number): string {
 // FB-F7: the tier is a property of the resolver, not of the track — an uploaded file plays at
 // whatever it was encoded with. Only reference rows ask the proxy for one, so the stream URL
 // carries the parameter exactly for them.
+// FB-F13: where a lyric lookup may go. `auto` is the reader saying "whichever fits the row", and it
+// is the default; the other two name one source on purpose.
+export const LYRIC_SOURCES = ['auto', 'lrclib', 'catalogue'] as const
+export type MusicLyricSource = (typeof LYRIC_SOURCES)[number]
+
+// The whole policy is the order, so it is a pure function the settings page and the lookup can
+// both read: the crowd-sourced database answers from a name, and a catalogue row already knows
+// which song it is — that one is not a guess.
+export function lyricSourceOrder(
+  source: MusicLyricSource,
+  track: Pick<MusicTrack, 'providerSource' | 'providerSongId'>,
+): readonly ('lrclib' | 'catalogue')[] {
+  if (source !== 'auto') return [source]
+  return track.providerSource && track.providerSongId ? ['catalogue', 'lrclib'] : ['lrclib', 'catalogue']
+}
+
 export function providerStreamQuality(track: MusicTrack, providerQuality: MusicProviderQuality): MusicProviderQuality | undefined {
   return track.source === 'provider' ? providerQuality : undefined
 }

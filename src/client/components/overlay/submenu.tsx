@@ -14,6 +14,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { t } from '../../lib/i18n'
 import { getVisibleViewport } from '../../lib/viewport'
 import { useEscape } from './hooks'
 import { MenuRow } from './menu-row'
@@ -89,10 +90,13 @@ export function SubmenuList({
   items,
   closeMenu,
   width = 180,
+  label = t('overlay.submenu'),
 }: {
   items: MenuItem[]
   closeMenu: () => void
   width?: number
+  /** The panel's accessible name; a nested panel is named after the row that opened it. */
+  label?: string
 }) {
   const [openRow, setOpenRow] = useState<OpenRow | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -100,6 +104,10 @@ export function SubmenuList({
   return (
     <div
       ref={listRef}
+      // The rows below are menuitems, so the panel that holds them is the menu the doc comment
+      // promises — without it they sit in no menu at all.
+      role='menu'
+      aria-label={label}
       style={{ width }}
       // The panel is placed from its row's box when it opens, so scrolling the list under
       // it would leave it pointing at nothing.

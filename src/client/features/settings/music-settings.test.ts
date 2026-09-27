@@ -20,6 +20,7 @@ beforeEach(() => {
     immersiveBackground: 'theme',
     lyricAlign: 'left',
     lyricTextSize: 'default',
+    lyricSource: 'auto',
     floatingVisible: true,
   })
 })
@@ -50,6 +51,35 @@ function buttonByText(container: HTMLElement, text: string): HTMLButtonElement {
   if (!found) throw new Error(`no button reading ${text}`)
   return found as HTMLButtonElement
 }
+
+function selectByLabel(container: HTMLElement, label: string): HTMLSelectElement {
+  const found = container.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)
+  if (!found) throw new Error(`no select labelled ${label}`)
+  return found
+}
+
+// FB-F13: the lookup's source is a preference, so it is chosen here rather than per press.
+describe('music settings section · lyrics source', () => {
+  it('offers the three sources and starts on the automatic one', () => {
+    const { container, unmount } = render(createElement(MusicSettings))
+    const select = selectByLabel(container, t('music.settings_lyric_source'))
+    expect([...select.options].map((option) => option.value)).toEqual(['auto', 'lrclib', 'catalogue'])
+    expect(select.value).toBe('auto')
+    expect(container.textContent).toContain(t('music.settings_lyric_source_hint'))
+    unmount()
+  })
+
+  it('writes the choice into the store the lookup reads', () => {
+    const { container, unmount } = render(createElement(MusicSettings))
+    const select = selectByLabel(container, t('music.settings_lyric_source'))
+    act(() => {
+      select.value = 'catalogue'
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(useMusic.getState().lyricSource).toBe('catalogue')
+    unmount()
+  })
+})
 
 // FB-F4: one surface where the music preferences live, instead of switches scattered
 // through the player popovers.

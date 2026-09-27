@@ -1,5 +1,6 @@
 import { MUSIC_PROVIDER_DEFAULT_QUALITY, MUSIC_PROVIDER_QUALITIES, type MusicProviderQuality } from '@shared/constants'
 import type { MusicPlayMode } from '@shared/types'
+import { LYRIC_SOURCES, type MusicLyricSource } from '../music-utils'
 import type {
   MusicHubGeometry, MusicImmersiveBackground, MusicLyricAlign, MusicLyricTextSize, MusicSort, MusicSortDirection, MusicSourceFilter, MusicViewMode,
 } from './types'
@@ -50,6 +51,8 @@ export interface MusicPreferences {
   providerAutoSwap: boolean
   /** Whether rows and cards name the source a track came from. */
   showSourceBadge: boolean
+  /** FB-F13: which source a lyric lookup walks; `auto` is per-row and falls back. */
+  lyricSource: MusicLyricSource
 }
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
@@ -146,6 +149,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   // On by default: this is what the fallback has always done, and the switch exists to turn it off.
   providerAutoSwap: true,
   showSourceBadge: true,
+  lyricSource: 'auto',
   viewModeChosen: false,
 }
 
@@ -203,6 +207,7 @@ export function loadPreferences(): MusicPreferences {
     providerNoticeAccepted: parsed.providerNoticeAccepted === true,
     // The badge is on unless it was explicitly turned off, so an older payload keeps it.
     showSourceBadge: parsed.showSourceBadge !== false,
+    lyricSource: readListed(parsed.lyricSource, LYRIC_SOURCES, DEFAULT_PREFERENCES.lyricSource),
     providerAutoSwap: parsed.providerAutoSwap !== false,
   }
 }
