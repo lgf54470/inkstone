@@ -149,6 +149,9 @@ export interface MusicProviderTrack {
   artist: string
   album: string
   durationMs: number | null
+  /** FB-F5: the artwork and lyric ids from the same hit; the feature-side type mirrors this. */
+  coverId: string | null
+  lyricId: string | null
 }
 
 export interface MusicProviderTrackImportInput {
@@ -158,6 +161,10 @@ export interface MusicProviderTrackImportInput {
   artist?: string
   album?: string
   durationMs?: number
+  /** FB-F5: a data URL resolved from the catalogue's own picture id at add time. */
+  coverDataUrl?: string
+  /** FB-F5: the lyric text fetched through the proxy at add time. */
+  lyric?: string
 }
 
 export interface MusicPodcastEpisodeImportInput {
@@ -235,6 +242,11 @@ export const music = {
 
   providerSearch: (source: string, keywords: string) =>
     request<{ results: MusicProviderTrack[] }>(`/api/music/provider/search?source=${encodeURIComponent(source)}&keywords=${encodeURIComponent(keywords)}`, { timeoutMs: 30_000 }),
+
+  // FB-F5: one song's words, through the same proxy; an empty string means the catalogue has
+  // none for this id.
+  providerLyric: (source: string, id: string) =>
+    request<{ lyric: string }>(`/api/music/provider/lyric?source=${encodeURIComponent(source)}&id=${encodeURIComponent(id)}`, { timeoutMs: 30_000 }),
 
   importProviderTrack: (input: MusicProviderTrackImportInput) =>
     request<MusicTrack>('/api/music/tracks/import-provider', { method: 'POST', body: input, timeoutMs: 30_000 }),
@@ -356,6 +368,13 @@ export function musicStreamUrl(trackId: string, quality?: MusicProviderQuality):
 
 export function musicCoverLookupUrl(title: string, artist: string): string {
   return `/api/music/cover-lookup?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
+}
+
+// FB-F5: the catalogue's own artwork, proxied by the worker because the page may not talk to the
+// third-party image host. The bytes are fetched by the feature layer and re-encoded like every
+// other cover, so this is only the address.
+export function musicProviderCoverUrl(source: string, coverId: string): string {
+  return `/api/music/provider/cover?source=${encodeURIComponent(source)}&id=${encodeURIComponent(coverId)}`
 }
 
 export function uploadMusicTrack(

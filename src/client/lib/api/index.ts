@@ -1,6 +1,6 @@
 export { CLIENT_ID, ApiError } from './transport'
 export {
-  musicStreamUrl, musicCoverLookupUrl, uploadMusicTrack, uploadMusicToWebdav,
+  musicStreamUrl, musicCoverLookupUrl, musicProviderCoverUrl, uploadMusicTrack, uploadMusicToWebdav,
   type MusicBatchAction, type MusicUploadResult, type MusicTrackPatch,
   type MusicWebdavImportInput, type MusicWebdavListing, type MusicPlaylistPatch,
   type MusicAlistServerView, type MusicAlistCreateInput, type MusicAlistPatchInput,

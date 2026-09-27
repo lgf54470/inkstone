@@ -14,7 +14,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
       music: {
         ...actual.api.music,
         providerSearch: vi.fn(async (source: string, keywords: string) => ({
-          results: [{ provider: 'gds', source, sourceId: `${source}-1`, title: `${keywords} ${source}`, artist: 'Ann', album: 'Album', durationMs: null }],
+          results: [{ provider: 'gds', source, sourceId: `${source}-1`, title: `${keywords} ${source}`, artist: 'Ann', album: 'Album', durationMs: null, coverId: null, lyricId: null }],
         })),
       },
     },
@@ -29,7 +29,7 @@ const CLEAR = { query: '', providerEnabled: {}, providerResults: null, providerS
 let rendered: ReturnType<typeof renderElement> | null = null
 
 function hit(sourceId: string) {
-  return { provider: 'gds', source: 'netease', sourceId, title: 'Settled', artist: '', album: '', durationMs: null }
+  return { provider: 'gds', source: 'netease', sourceId, title: 'Settled', artist: '', album: '', durationMs: null, coverId: null, lyricId: null }
 }
 
 function providerSwitch(): HTMLButtonElement {
@@ -204,5 +204,40 @@ describe('online results panel failures (FB-F6)', () => {
 
     expect(bodyText()).toContain(t('music.provider_all_failed'))
     expect(bodyText()).not.toContain(t('music.provider_none'))
+  })
+})
+
+// FB-F5: several catalogues do not report a length at all, and 00:00 on screen is a claim the
+// upstream never made. A missing duration is named, and a real one is drawn.
+describe('online result rows (FB-F5)', () => {
+  it('names a duration the catalogue did not report', async () => {
+    vi.useFakeTimers()
+    // clearAllMocks keeps the implementation the previous case installed, so this one states the
+    // answer it is about rather than inheriting a rejection.
+    vi.mocked(api.music.providerSearch).mockResolvedValue({
+      results: [{
+        provider: 'gds', source: 'netease', sourceId: 'a1', title: 'No length', artist: 'Ann', album: '',
+        durationMs: null, coverId: null, lyricId: null,
+      }],
+    })
+    mountWithQuery()
+    await clickSwitch()
+    await settle()
+    expect(bodyText()).toContain(t('music.duration_unknown'))
+  })
+
+  it('draws the timecode when the catalogue reported one', async () => {
+    vi.useFakeTimers()
+    vi.mocked(api.music.providerSearch).mockResolvedValue({
+      results: [{
+        provider: 'gds', source: 'netease', sourceId: 'a1', title: 'Long song', artist: 'Ann', album: '',
+        durationMs: 245_000, coverId: null, lyricId: null,
+      }],
+    })
+    mountWithQuery()
+    await clickSwitch()
+    await settle()
+    expect(bodyText()).toContain('04:05')
+    expect(bodyText()).not.toContain(t('music.duration_unknown'))
   })
 })

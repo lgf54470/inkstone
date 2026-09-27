@@ -3,7 +3,7 @@ import { memo } from 'react'
 import { IconButton, Spinner } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { formatTimecode } from '../../lib/time'
+import { durationCellText } from './music-utils'
 import { MusicArtwork } from './music-artwork'
 import type { TrackMenuTarget } from './music-track-menu'
 import { MusicSourceBadge } from './music-source-badge'
@@ -37,7 +37,7 @@ function CardArtwork({
         {isStreamLoading && isCurrent ? <Spinner size={18} /> : isCurrent && isPlaying ? <Pause size={20} /> : <Play size={20} />}
       </span>
       <span className='tabular absolute right-1.5 bottom-1.5 rounded-[var(--r-sm)] bg-[var(--scrim)] px-1 text-[length:var(--text-12)] text-[var(--text-primary)]'>
-        {formatTimecode(track.durationMs)}
+        {durationCellText(track.durationMs)}
       </span>
     </button>
   )

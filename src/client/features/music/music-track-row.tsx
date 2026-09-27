@@ -4,7 +4,7 @@ import type { MusicTrack } from '@shared/types'
 import { IconButton, Spinner } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { formatTimecode } from '../../lib/time'
+import { durationCellText } from './music-utils'
 import { MusicArtwork } from './music-artwork'
 import type { TrackMenuTarget } from './music-track-menu'
 import { MusicSourceBadge } from './music-source-badge'
@@ -175,8 +175,12 @@ function RowMeta({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean }
       <span role='cell' className={SOURCE_COLUMN_CELL}>
         <MusicSourceBadge source={track.source} className='inline-flex' />
       </span>
-      <span role='cell' className={cn('tabular w-11 shrink-0 text-right text-[length:var(--text-12)]', dim)}>
-        {formatTimecode(track.durationMs)}
+      <span
+        role='cell'
+        aria-label={track.durationMs > 0 ? undefined : t('music.duration_unknown')}
+        className={cn('tabular w-11 shrink-0 text-right text-[length:var(--text-12)]', dim)}
+      >
+        {durationCellText(track.durationMs)}
       </span>
     </>
   )

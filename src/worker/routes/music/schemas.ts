@@ -256,6 +256,10 @@ export const importProviderTrackSchema = z.object({
   artist: optionalTrimmed(LIMITS.musicArtistMaxLength),
   album: optionalTrimmed(LIMITS.musicAlbumMaxLength),
   durationMs: z.number().int().min(0).max(60 * 60 * 1000).optional(),
+  // FB-F5: the artwork and the words resolved at add time, in the same shapes the patch path
+  // already accepts. The cover is decoded and stored as an object; the lyric is stored on the row.
+  coverDataUrl: z.string().max(800_000).optional(),
+  lyric: z.string().max(LIMITS.musicLyricMaxBytes).optional(),
 })
 
 export type ImportProviderTrackBody = z.infer<typeof importProviderTrackSchema>

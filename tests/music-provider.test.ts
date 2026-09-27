@@ -46,12 +46,14 @@ function makeApp(): Hono<AppBindings> {
   return app
 }
 
-function request(app: Hono<AppBindings>, path: string): Promise<Response> {
-  return app.request(path, undefined, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
+// The init has to reach `app.request`: this helper dropped it, which turned every json() call
+// below into a GET and a 404 that looked like a missing route.
+function request(app: Hono<AppBindings>, path: string, init?: RequestInit): Promise<Response> {
+  return app.request(path, init, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
 }
 
 function json(app: Hono<AppBindings>, path: string, body: unknown, method = 'POST'): Promise<Response> {
-  return request(app, path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } as RequestInit)
+  return request(app, path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 }
 
 afterEach(() => {
@@ -66,16 +68,18 @@ describe('provider proxy (FEA-A1-2)', () => {
     vi.stubGlobal('fetch', async (url: string | URL) => {
       calls.push(String(url))
       return new Response(JSON.stringify([
-        { id: 'a1', name: 'Song A', artist: ['Ann', 'Ben'], album: 'Album One', duration: 210000 },
+        { id: 'a1', name: 'Song A', artist: ['Ann', 'Ben'], album: 'Album One', duration: 210000, pic_id: 'p1', lyric_id: 'l1' },
         { id: 'b2', name: 'Song B', artist: 'Cat', album: '', duration: 0 },
       ]), { status: 200 })
     })
     const res = await request(app, '/api/music/provider/search?keywords=song&source=netease')
     expect(res.status).toBe(200)
-    const body = await res.json() as { results: Array<{ source: string; sourceId: string; title: string; artist: string; album: string; durationMs: number | null }> }
+    const body = await res.json() as { results: Array<{ source: string; sourceId: string; title: string; artist: string; album: string; durationMs: number | null; coverId: string | null; lyricId: string | null }> }
+    // FB-F5: the cover and lyric ids the upstream hands out are the only way to ask for that
+    // song's artwork and words later, so they survive the normalization instead of being dropped.
     expect(body.results).toEqual([
-      { source: 'netease', sourceId: 'a1', title: 'Song A', artist: 'Ann, Ben', album: 'Album One', durationMs: 210000 },
-      { source: 'netease', sourceId: 'b2', title: 'Song B', artist: 'Cat', album: '', durationMs: null },
+      { source: 'netease', sourceId: 'a1', title: 'Song A', artist: 'Ann, Ben', album: 'Album One', durationMs: 210000, coverId: 'p1', lyricId: 'l1' },
+      { source: 'netease', sourceId: 'b2', title: 'Song B', artist: 'Cat', album: '', durationMs: null, coverId: null, lyricId: null },
     ])
     expect(calls[0]).toContain('music-api.gdstudio.xyz')
     expect(calls[0]).toContain('types=search')
@@ -95,6 +99,61 @@ describe('provider proxy (FEA-A1-2)', () => {
     expect((await request(app, '/api/music/provider/search?keywords=x&source=kuwo')).status).toBe(502)
     vi.stubGlobal('fetch', async () => new Response('{"data":"', { status: 200 }))
     expect((await request(app, '/api/music/provider/search?keywords=x&source=kuwo')).status).toBe(502)
+  })
+
+  it('fetches a lyric through the proxy and hands back its text', async () => {
+    await makeDb()
+    const app = makeApp()
+    const calls: string[] = []
+    vi.stubGlobal('fetch', async (url: string | URL) => {
+      calls.push(String(url))
+      return new Response(JSON.stringify({ lyric: '[00:06.220]Hello, it\'s me' }), { status: 200 })
+    })
+    const res = await request(app, '/api/music/provider/lyric?source=netease&id=l1')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ lyric: "[00:06.220]Hello, it's me" })
+    expect(calls[0]).toContain('types=lyric')
+    expect((await request(app, '/api/music/provider/lyric?source=netease&id=')).status).toBe(400)
+    expect((await request(app, '/api/music/provider/lyric?source=spotify&id=l1')).status).toBe(400)
+  })
+
+  it('proxies the artwork bytes and refuses a private address', async () => {
+    await makeDb()
+    const app = makeApp()
+    vi.stubGlobal('fetch', async (url: string | URL) => {
+      const target = String(url)
+      if (target.includes('p2.music.126.net')) return new Response(new Uint8Array([0xff, 0xd8, 0xff]), { status: 200, headers: { 'Content-Type': 'image/jpeg' } })
+      return new Response(JSON.stringify({ url: 'https://p2.music.126.net/cover.jpg' }), { status: 200 })
+    })
+    const res = await request(app, '/api/music/provider/cover?source=netease&id=p1')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type') ?? '').toContain('image/jpeg')
+    expect((await res.arrayBuffer()).byteLength).toBe(3)
+
+    // An upstream that answers with an address on this network must not be followed: the
+    // picture is fetched from wherever the catalogue says, so that answer has to be a public one.
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ url: 'http://127.0.0.1:8080/cover.jpg' }), { status: 200 }))
+    expect((await request(app, '/api/music/provider/cover?source=netease&id=p1')).status).toBe(502)
+  })
+
+  // FB-F5: an online row is metadata only, but the words are worth keeping, so the import
+  // accepts a lyric and stores it where every lyric surface already looks.
+  it('imports a provider track with its lyric', async () => {
+    await makeDb()
+    const app = makeApp()
+    const res = await json(app, '/api/music/tracks/import-provider', {
+      source: 'netease',
+      sourceId: 'a1',
+      title: 'Song A',
+      artist: 'Ann',
+      lyric: '[00:01.000]la',
+    })
+    expect(res.status).toBe(201)
+    const body = await res.json() as { lyric: string | null; hasLyric: boolean; coverUrl: string | null }
+    expect(body.lyric).toBe('[00:01.000]la')
+    expect(body.hasLyric).toBe(true)
+    // No object storage in this harness, so a cover is dropped rather than failing the add.
+    expect(body.coverUrl).toBeNull()
   })
 
   it('resolves one playable url per play through the url endpoint', async () => {

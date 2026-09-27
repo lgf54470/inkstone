@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 import { Button } from '../../components/primitives'
 import { Switch } from '../../components/form'
 import { t, type MessageKey } from '../../lib/i18n'
+import { formatTimecode } from '../../lib/time'
 import { useMusic } from './music-store'
 import { GDS_SOURCES, providerSourceLabel } from './providers'
 import type { MusicProviderTrack } from '../../lib/api'
@@ -127,6 +128,11 @@ function ProviderResultRow({ hit, onPlay }: { hit: MusicProviderTrack; onPlay: (
         {hit.artist && <span className='text-[var(--text-quaternary)]'> · {hit.artist}</span>}
       </span>
       <span className='shrink-0 text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{providerSourceLabel(hit.source)}</span>
+      {/* FB-F5: several catalogues never report a length, and 00:00 would be a claim they did
+          not make — a missing duration is named as missing. */}
+      <span className='tabular shrink-0 text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
+        {hit.durationMs ? formatTimecode(hit.durationMs) : t('music.duration_unknown')}
+      </span>
       <Button size='sm' icon={<Plus size={12} />} onClick={onPlay}>
         {t('music.provider_add')}
       </Button>

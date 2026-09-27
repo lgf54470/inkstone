@@ -20,5 +20,10 @@ export interface MusicProviderTrack {
   title: string
   artist: string
   album: string
+  /** Null when the catalogue did not report a length — which is a fact, not a zero. */
   durationMs: number | null
+  /** FB-F5: the artwork id from the same hit; nothing else can ask for that cover later. */
+  coverId: string | null
+  /** FB-F5: the lyric id from the same hit. */
+  lyricId: string | null
 }

@@ -220,6 +220,7 @@ export const messages = {
 'music.stats_duration': '总时长',
 'music.stats_size': '占用空间',
 'music.play_count': '播放次数',
+'music.duration_unknown': '时长未知',
 'music.track_duration': '时长',
 'music.unknown_artist': '未知歌手',
 'music.unknown_album': '未知专辑',

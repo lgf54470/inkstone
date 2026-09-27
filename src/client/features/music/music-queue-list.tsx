@@ -4,7 +4,7 @@ import type { MusicTrack } from '@shared/types'
 import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { formatTimecode } from '../../lib/time'
+import { durationCellText } from './music-utils'
 import { useMusic } from './music-store'
 import { MusicArtwork } from './music-artwork'
 
@@ -165,7 +165,12 @@ const QueueRowItem = memo(function QueueRowItem({
       {/* The current row carries a 14% accent tint; the dim tiers fall under AA on it — even
           tertiary, measured over the immersive player's --bg-overlay — so that row's duration
           takes two tiers up, same rule as the sidebar's count badge. */}
-      <span className={cn('tabular shrink-0 text-[length:var(--text-10)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>{formatTimecode(row.track.durationMs)}</span>
+      <span
+        aria-label={row.track.durationMs > 0 ? undefined : t('music.duration_unknown')}
+        className={cn('tabular shrink-0 text-[length:var(--text-10)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}
+      >
+        {durationCellText(row.track.durationMs)}
+      </span>
       <QueueRowActions index={row.index} reorderable={reorderable} />
     </div>
   )

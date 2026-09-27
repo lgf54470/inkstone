@@ -145,7 +145,7 @@ function Details({ track, onEditTags }: { track: ReturnType<typeof useCurrentTra
   const rows = [
     { label: t('music.field_artist'), value: track.artist || t('music.unknown_artist') },
     { label: t('music.field_album'), value: track.album || t('music.unknown_album') },
-    { label: t('music.track_duration'), value: formatTimecode(track.durationMs) },
+    { label: t('music.track_duration'), value: track.durationMs > 0 ? formatTimecode(track.durationMs) : t('music.duration_unknown') },
     { label: t('music.file_size'), value: formatBytes(track.sizeBytes) },
     { label: t('music.play_count'), value: String(track.playCount) },
     { label: t('music.added_at'), value: fullTime(track.createdAt) },

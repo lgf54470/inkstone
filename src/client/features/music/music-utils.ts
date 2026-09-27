@@ -1,4 +1,5 @@
 import { ACCENTS, LIMITS, type MusicProviderQuality } from '@shared/constants'
+import { formatTimecode } from '../../lib/time'
 import type { MessageKey } from '../../lib/i18n'
 import type { MusicPlaylistDetail, MusicPlayMode, MusicTag, MusicTrack } from '@shared/types'
 
@@ -284,6 +285,13 @@ export function downloadFileName(track: MusicTrack): string {
 
 function extensionFor(track: MusicTrack): string {
   return '.' + (track.format ?? CONTENT_EXTENSIONS[track.mime] ?? 'mp3')
+}
+
+// FB-F5: several online catalogues never report a length, and a numeric cell that draws 00:00 is
+// stating something the catalogue did not. An unknown duration is a dash — the wide text surfaces
+// name it in words, and the narrow cells carry the words in their accessible name.
+export function durationCellText(durationMs: number): string {
+  return durationMs > 0 ? formatTimecode(durationMs) : '—'
 }
 
 // FB-F7: the tier is a property of the resolver, not of the track — an uploaded file plays at

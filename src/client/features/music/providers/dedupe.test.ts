@@ -3,7 +3,7 @@ import { mergeProviderResults } from './dedupe'
 import type { MusicProviderTrack } from './types'
 
 function hit(source: string, title: string, artist: string): MusicProviderTrack {
-  return { provider: 'gds', source, sourceId: `${source}-${title}`, title, artist, album: '', durationMs: null }
+  return { provider: 'gds', source, sourceId: `${source}-${title}`, title, artist, album: '', durationMs: null, coverId: null, lyricId: null }
 }
 
 describe('provider result merge (FEA-A1-3)', () => {

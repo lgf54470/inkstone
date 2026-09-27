@@ -1,7 +1,8 @@
 import { api } from '../../../lib/api'
-import type { MusicProviderTrack } from '../../../lib/api'
+import type { MusicProviderTrack, MusicProviderTrackImportInput } from '../../../lib/api'
 import type { MusicProviderQuality } from '@shared/constants'
 import type { MusicTrack } from '@shared/types'
+import { providerCoverDataUrl } from '../music-provider-artwork'
 import { GDS_PROVIDER_ID, listProviders, matchScore, searchGds, searchGdsPages } from '../providers'
 import { persist } from './persist'
 import { toastMusicError } from '../music-feedback'
@@ -52,18 +53,48 @@ export async function searchProviders(set: MusicSet, get: MusicGet, keywords: st
 // registering the idempotent provider row and handing the player the track id.
 export async function playProviderTrack(set: MusicSet, get: MusicGet, hit: MusicProviderTrack): Promise<void> {
   try {
-    const track = await api.music.importProviderTrack({
-      source: hit.source,
-      sourceId: hit.sourceId,
-      title: hit.title,
-      artist: hit.artist || undefined,
-      album: hit.album || undefined,
-      durationMs: hit.durationMs ?? undefined,
-    })
+    const track = await api.music.importProviderTrack(await resolveImportInput(hit))
     set((state) => (state.tracks.some((entry) => entry.id === track.id) ? {} : { tracks: [...state.tracks, track] }))
     await get().playTrack(track.id)
   } catch (error) {
     toastMusicError(error, 'music.import_failed')
+  }
+}
+
+// FB-F5: adding a hit is the only moment the ids the search handed out are still in hand — after
+// the row is written there is nothing left to ask the catalogue with. Both lookups are best
+// effort: a catalogue that will not answer about its own artwork or words still gets the song
+// added, without them.
+async function resolveImportInput(hit: MusicProviderTrack): Promise<MusicProviderTrackImportInput> {
+  const [lyric, coverDataUrl] = await Promise.all([
+    fetchProviderLyric(hit),
+    providerCoverDataUrl(hit.source, hit.coverId),
+  ])
+  return {
+    source: hit.source,
+    sourceId: hit.sourceId,
+    title: hit.title,
+    artist: hit.artist || undefined,
+    album: hit.album || undefined,
+    durationMs: hit.durationMs ?? undefined,
+    lyric: lyric ?? undefined,
+    coverDataUrl: coverDataUrl ?? undefined,
+  }
+}
+
+async function fetchProviderLyric(hit: MusicProviderTrack): Promise<string | null> {
+  // Most catalogues keep the words under the song id itself; when the hit names its own lyric id,
+  // that is the one it asked to be used.
+  const id = hit.lyricId ?? hit.sourceId
+  if (!id) return null
+  try {
+    const { lyric } = await api.music.providerLyric(hit.source, id)
+    return lyric.trim() || null
+  } catch (error) {
+    // Best effort by design — the add continues without words, and the reader is not told about a
+    // lookup they did not ask for. The reason is logged rather than swallowed.
+    console.warn('[inkstone] music provider lyric lookup failed:', error)
+    return null
   }
 }
 

@@ -352,7 +352,7 @@ function ImmersiveButtons({ track, stacked }: { track: ReturnType<typeof useCurr
       </div>
       {!stacked && (
         <p className='text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
-          {track ? formatTimecode(track.durationMs) + ' · ' + formatBytes(track.sizeBytes) : ''}
+          {track ? (track.durationMs > 0 ? formatTimecode(track.durationMs) : t('music.duration_unknown')) + ' · ' + formatBytes(track.sizeBytes) : ''}
         </p>
       )}
     </>

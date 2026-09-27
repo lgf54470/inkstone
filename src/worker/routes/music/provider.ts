@@ -3,14 +3,21 @@ import { GDS_UPSTREAM_SOURCES, LIMITS, MUSIC_PROVIDER_DEFAULT_QUALITY, MUSIC_PRO
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
+import { isAllowedOutboundUrl } from '../../lib/outbound-url'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
+import { cancelStreamBestEffort } from '../../lib/streams'
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
+import { coverHeaders, storeCoverObject } from './cover'
 import { resolveMusicTrackType } from './keys'
 import { readUpstreamBytes } from './outbound'
 import { importProviderTrackSchema } from './schemas'
 import { insertWebdavTrack } from './webdav-routes'
-import type { MusicTrackRow } from './rows'
+import { toTrack, type MusicTrackRow } from './rows'
+
+// A 300px square is what the list and card surfaces draw; anything larger is bytes the reader
+// never sees.
+const PROVIDER_COVER_SIZE = 300
 
 // FEA-A1-2: the online-source proxy. The browser never talks to third-party
 // catalogues — the page CSP forbids it, and the allowlist below is the only
@@ -58,6 +65,8 @@ export function parseGdsObjectKey(objectKey: string): { source: string; songId: 
 export function registerMusicProviderRoutes(routes: Hono<AppBindings>): void {
   routes.get('/provider/search', requireAuth, (c) => providerSearch(c))
   routes.get('/provider/url', requireAuth, (c) => providerUrl(c))
+  routes.get('/provider/lyric', requireAuth, (c) => providerLyric(c))
+  routes.get('/provider/cover', requireAuth, (c) => providerCover(c))
   routes.post('/tracks/import-provider', requireAuth, (c) => importProviderTrack(c))
 }
 
@@ -67,6 +76,16 @@ interface GdsSearchHit {
   artist?: unknown
   album?: unknown
   duration?: unknown
+  pic_id?: unknown
+  lyric_id?: unknown
+}
+
+// FB-F5: the ids the upstream hands out with a hit are the only way to ask for that song's
+// artwork and words later, so they are carried through the search response rather than dropped
+// with the rest of the upstream's shape.
+function providerHitId(value: unknown): string | null {
+  const id = value === undefined || value === null ? '' : String(value).trim()
+  return id || null
 }
 
 // One search page, normalized: the upstream's field types drift (artist as a
@@ -98,6 +117,8 @@ async function providerSearch(c: Context<AppBindings>): Promise<Response> {
       artist: Array.isArray(artist) ? artist.map(String).join(', ') : String(artist ?? ''),
       album: String(hit.album ?? ''),
       durationMs: Number.isFinite(duration) && duration > 0 ? duration : null,
+      coverId: providerHitId(hit.pic_id),
+      lyricId: providerHitId(hit.lyric_id),
     }
   }).filter((hit) => hit.sourceId && hit.title)
   return c.json({ results })
@@ -114,6 +135,69 @@ async function providerUrl(c: Context<AppBindings>): Promise<Response> {
   if (!isProviderSource(source)) throw ApiError.badRequest('Unknown online source')
   if (!id) throw ApiError.badRequest('The song id is required')
   return c.json({ url: await resolveProviderPlayUrl(source, id, quality) })
+}
+
+// FB-F5: one song's words, from the same proxy and the same allowlist. An upstream that has no
+// lyric for the id answers with an empty string, which the client reads as "nothing to store".
+async function providerLyric(c: Context<AppBindings>): Promise<Response> {
+  const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'provider', userId)
+  const source = c.req.query('source') ?? ''
+  const id = (c.req.query('id') ?? '').trim()
+  if (!isProviderSource(source)) throw ApiError.badRequest('Unknown online source')
+  if (!id) throw ApiError.badRequest('The lyric id is required')
+  const query = new URLSearchParams({ types: 'lyric', source, id })
+  const payload = await fetchUpstreamJson(`${GDS_API_BASE}/api.php?${query}`) as { lyric?: unknown } | null
+  return c.json({ lyric: typeof payload?.lyric === 'string' ? payload.lyric.trim() : '' })
+}
+
+// FB-F5: the artwork is one more per-song lookup: the catalogue names a picture URL and the
+// picture itself is fetched here, so the page never talks to a third-party image host (the CSP
+// forbids it). The URL comes from the upstream, which is exactly why it is checked before it is
+// followed — a catalogue that answers with an address on this network must not be reached.
+async function providerCover(c: Context<AppBindings>): Promise<Response> {
+  const userId = c.get('userId')
+  await enforceMusicBudget(c.env.DB, 'provider', userId)
+  const source = c.req.query('source') ?? ''
+  const id = (c.req.query('id') ?? '').trim()
+  if (!isProviderSource(source)) throw ApiError.badRequest('Unknown online source')
+  if (!id) throw ApiError.badRequest('The cover id is required')
+  const imageUrl = await resolveProviderCoverUrl(source, id)
+  let response: Response
+  try {
+    response = await fetch(imageUrl, { headers: { Accept: 'image/*' }, signal: AbortSignal.timeout(12_000) })
+  } catch {
+    throw new ApiError(502, 'storage_unavailable', 'The online cover is unreachable')
+  }
+  if (!response.ok) {
+    await cancelStreamBestEffort(response.body)
+    throw new ApiError(502, 'storage_unavailable', `The online cover failed: HTTP ${response.status}`)
+  }
+  const bytes = await readUpstreamBytes(response, LIMITS.musicProviderBodyMaxBytes)
+  if (!bytes) throw new ApiError(502, 'storage_unavailable', 'The online cover is too large')
+  const mime = (response.headers.get('content-type') ?? '').split(';')[0]?.trim() || 'image/jpeg'
+  return new Response(bytes, {
+    headers: { ...coverHeaders(mime.startsWith('image/') ? mime : 'image/jpeg'), 'Cache-Control': 'public, max-age=86400' },
+  })
+}
+
+// The cover lookup answers with a temporary URL on a third-party image host; the guard is the
+// same public-address rule every other user-controlled outbound fetch answers to.
+export async function resolveProviderCoverUrl(source: string, coverId: string): Promise<string> {
+  const query = new URLSearchParams({ types: 'pic', source, id: coverId, size: String(PROVIDER_COVER_SIZE) })
+  const payload = await fetchUpstreamJson(`${GDS_API_BASE}/api.php?${query}`) as { url?: unknown } | null
+  const raw = typeof payload?.url === 'string' ? payload.url.trim() : ''
+  if (!raw) throw new ApiError(502, 'storage_unavailable', 'The online source returned no cover URL')
+  let parsed: URL
+  try {
+    parsed = new URL(raw)
+  } catch {
+    throw new ApiError(502, 'storage_unavailable', 'The online source returned an unusable cover URL')
+  }
+  if (!isAllowedOutboundUrl(parsed, { allowHttp: false })) {
+    throw new ApiError(502, 'storage_unavailable', 'The online cover address is not reachable from this server')
+  }
+  return parsed.toString()
 }
 
 // Shared by the url endpoint and the stream branch: one per-play resolution of
@@ -150,8 +234,13 @@ async function importProviderTrack(c: Context<AppBindings>): Promise<Response> {
   const trackType = resolveMusicTrackType('song.mp3', '')
   if (!trackType) throw ApiError.internal('The provider track mime is unresolvable')
   const now = Date.now()
+  const id = newId()
+  // FB-F5: the cover goes through the same object-store path an uploaded cover takes, so the
+  // row's cover_url stays a derived key and the read side needs no special case. A write that
+  // cannot land leaves the row coverless rather than failing the add.
+  const coverKey = await storeCoverObject(c.env, id, now, body.coverDataUrl ?? null)
   const row: MusicTrackRow = {
-    id: newId(),
+    id,
     title,
     artist: body.artist?.trim() ?? '',
     album: body.album?.trim() ?? '',
@@ -160,8 +249,8 @@ async function importProviderTrack(c: Context<AppBindings>): Promise<Response> {
     object_key: objectKey,
     mime: trackType.mime,
     size_bytes: 0,
-    cover_url: null,
-    lyric: null,
+    cover_url: coverKey,
+    lyric: body.lyric?.trim() || null,
     is_favorite: 0,
     is_pinned: 0,
     play_count: 0,
@@ -174,30 +263,10 @@ async function importProviderTrack(c: Context<AppBindings>): Promise<Response> {
   return c.json(toProviderTrackFromRow(row), 201)
 }
 
-function toProviderTrackFromRow(row: MusicTrackRow): Record<string, unknown> {
-  return {
-    id: row.id,
-    title: row.title,
-    artist: row.artist,
-    album: row.album,
-    durationMs: row.duration_ms,
-    source: row.source,
-    format: resolveMusicTrackType(row.object_key, row.mime)?.format ?? null,
-    webdavPath: null,
-    mime: row.mime,
-    sizeBytes: row.size_bytes,
-    coverUrl: null,
-    lyric: null,
-    hasLyric: false,
-    tagIds: [],
-    isFavorite: Boolean(row.is_favorite),
-    isPinned: Boolean(row.is_pinned),
-    playCount: row.play_count,
-    lastPlayedAt: row.last_played_at,
-    contentHash: row.content_hash,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }
+// The row mapping is the library's own, so a provider row answers with its cover and lyric the
+// way every other row does instead of restating a shape with the artwork fields left empty.
+function toProviderTrackFromRow(row: MusicTrackRow): ReturnType<typeof toTrack> {
+  return toTrack(row, [])
 }
 
 async function fetchUpstreamJson(target: string): Promise<unknown> {

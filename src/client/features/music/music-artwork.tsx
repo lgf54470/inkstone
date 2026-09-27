@@ -23,6 +23,9 @@ export function MusicArtwork({
             src={url!}
             alt={alt}
             loading='lazy'
+            // FB-PF5: decoding off the main thread keeps a list of freshly added covers from
+            // stalling a scroll, and the browser picks the moment.
+            decoding='async'
             draggable={false}
             className='size-full object-cover'
             onError={() => setFailedUrl(url)}
