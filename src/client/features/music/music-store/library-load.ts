@@ -91,7 +91,14 @@ export function setSortDirection(set: MusicSet, sortDirection: MusicSortDirectio
   set({ sortDirection })
 }
 
+// FB-R1: picking a view by hand settles the question — the narrow default stops applying from here.
 export function setViewMode(set: MusicSet, viewMode: MusicViewMode): void {
+  set({ viewMode, viewModeChosen: true })
+}
+
+// The narrow default is a guess about an unasked question, so it may write the mode but not the
+// answer: `viewModeChosen` stays as it was, and the next resize may guess again.
+export function setDefaultViewMode(set: MusicSet, viewMode: MusicViewMode): void {
   set({ viewMode })
 }
 

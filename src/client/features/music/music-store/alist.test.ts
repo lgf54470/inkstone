@@ -36,6 +36,27 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+// FB-U6: a failed listing used to leave the panel saying "no servers yet" — the same words an empty
+// account gets. The failure is now held as state so the panel can say which of the two it is and
+// offer the retry; the toast stays as the transient signal.
+describe('alist failure is not an empty list (FB-U6)', () => {
+  it('holds the failure so the panel can tell it apart from an empty account', async () => {
+    vi.mocked(api.music.listAlistServers).mockRejectedValueOnce(new Error('offline'))
+    const store = makeStore()
+    await loadAlistServers(store.set)
+    expect(store.get().alistServersError).toBe('offline')
+  })
+
+  it('clears it on the next load, whatever that load answers', async () => {
+    vi.mocked(api.music.listAlistServers).mockRejectedValueOnce(new Error('offline'))
+    const store = makeStore()
+    await loadAlistServers(store.set)
+    await loadAlistServers(store.set)
+    expect(store.get().alistServersError).toBeNull()
+    expect(store.get().alistServers).toHaveLength(1)
+  })
+})
+
 describe('alist server store (FEA-A3-1)', () => {
   it('loads the server list', async () => {
     const store = makeStore()

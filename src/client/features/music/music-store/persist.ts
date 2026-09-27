@@ -35,6 +35,7 @@ function writePreferences(get: MusicGet): void {
     sort: state.sort,
     sortDirection: state.sortDirection,
     viewMode: state.viewMode,
+    viewModeChosen: state.viewModeChosen,
     sourceFilter: state.sourceFilter,
     floatingVisible: state.floatingVisible,
     floatingCollapsed: state.floatingCollapsed,

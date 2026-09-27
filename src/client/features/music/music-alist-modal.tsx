@@ -6,6 +6,7 @@ import { Modal, confirm } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { formatBytes } from '../../lib/time'
 import { useMusic } from './music-store'
+import { PanelFailure } from './music-panel-failure'
 import type { MusicAlistEntry } from '../../lib/api'
 
 const ALIST_WIDTH = 560
@@ -16,6 +17,7 @@ const ALIST_WIDTH = 560
 export function MusicAlistModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const servers = useMusic((state) => state.alistServers)
   const loading = useMusic((state) => state.alistServersLoading)
+  const serversError = useMusic((state) => state.alistServersError)
   const loadAlistServers = useMusic((state) => state.loadAlistServers)
   const [view, setView] = useState<'servers' | 'browse'>('servers')
   const browse = useMusic((state) => state.alistBrowse)
@@ -68,8 +70,10 @@ export function MusicAlistModal({ open, onClose }: { open: boolean; onClose: () 
               <>
                 {loading && servers.length === 0
                   ? <p role='status' className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('common.loading')}</p>
-                  : servers.length === 0
-                    ? <p className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('music.alist_no_servers')}</p>
+                  : serversError && servers.length === 0
+                    ? <PanelFailure message={serversError} onRetry={() => void loadAlistServers()} />
+                    : servers.length === 0
+                      ? <p className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('music.alist_no_servers')}</p>
                     : (
                         <ul className='space-y-1'>
                           {servers.map((server) => (

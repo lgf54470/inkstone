@@ -122,6 +122,10 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
           {columnsWide && <Sidebar onManageTags={dialogs.openTagManager} onCreatePlaylist={dialogs.openCreatePlaylist} />}
           <HubCentre
             shortViewport={!tallEnough}
+            // FB-R1: the narrow default asks the hub's own box (the same read the columns use), so a
+            // windowed hub on a 1440 screen keeps rows — its centre column is narrow, but the
+            // reader's screen is not, and the centre column is not a phone.
+            narrow={!columnsWide}
             onEditTrack={dialogs.openEditTrack}
             onUpload={dialogs.openUpload}
             onBrowseWebdav={dialogs.openWebdav}
@@ -202,6 +206,7 @@ function FoldedColumns({
 
 const HubCentre = memo(function HubCentre({
   shortViewport,
+  narrow,
   onEditTrack,
   onUpload,
   onBrowseWebdav,
@@ -212,6 +217,8 @@ const HubCentre = memo(function HubCentre({
 }: {
   /** FB-R3: the toolbar answers the height squeeze with its compact shape. */
   shortViewport: boolean
+  /** FB-R1: the hub is at its narrow shape, where an unchosen view opens as covers. */
+  narrow: boolean
   onEditTrack: (track: MusicTrack) => void
   onUpload: () => void
   onBrowseWebdav: () => void
@@ -258,7 +265,7 @@ const HubCentre = memo(function HubCentre({
             />
           : browseKind
             ? <MusicGroupBrowse kind={browseKind} />
-            : <MusicTrackList tracks={tracks} loading={loading} emptyTitle={emptyTitle(scope)} onEdit={onEditTrack} />}
+            : <MusicTrackList tracks={tracks} loading={loading} emptyTitle={emptyTitle(scope)} onEdit={onEditTrack} narrow={narrow} />}
       </div>
       <MusicQueuePanel open={queueOpen} onClose={onCloseQueue} height={queueHeight} onResize={setQueueHeight} />
     </div>

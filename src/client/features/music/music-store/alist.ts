@@ -8,12 +8,14 @@ import type { MusicGet, MusicSet, MusicStoreState } from './types'
 // and (from A3-2 on) a browse state. The token never reaches the client; the view
 // type carries name, URL and root path only.
 export async function loadAlistServers(set: MusicSet): Promise<void> {
-  set({ alistServersLoading: true })
+  set({ alistServersLoading: true, alistServersError: null })
   try {
     const { servers } = await api.music.listAlistServers()
     set({ alistServers: servers, alistServersLoading: false })
   } catch (error) {
-    set({ alistServersLoading: false })
+    // FB-U6: the message stays on the panel, not just in a toast that is gone in three seconds —
+    // otherwise a failed listing and an account with no servers say exactly the same words.
+    set({ alistServersLoading: false, alistServersError: error instanceof Error ? error.message : 'error' })
     toastMusicError(error, 'music.action_failed')
   }
 }

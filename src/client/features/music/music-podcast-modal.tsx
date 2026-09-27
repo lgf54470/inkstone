@@ -6,6 +6,7 @@ import { Modal, confirm } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { api } from '../../lib/api'
 import { toastMusicError } from './music-feedback'
+import { PanelFailure } from './music-panel-failure'
 import { formatBytes } from '../../lib/time'
 import { useMusic } from './music-store'
 import type { MusicPodcastFeedView } from '../../lib/api'
@@ -18,6 +19,7 @@ const PODCAST_WIDTH = 560
 export function MusicPodcastModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const feeds = useMusic((state) => state.podcastFeeds)
   const loading = useMusic((state) => state.podcastFeedsLoading)
+  const feedsError = useMusic((state) => state.podcastFeedsError)
   const episodesFeedId = useMusic((state) => state.podcastEpisodesFeedId)
   const loadPodcastFeeds = useMusic((state) => state.loadPodcastFeeds)
 
@@ -35,8 +37,10 @@ export function MusicPodcastModal({ open, onClose }: { open: boolean; onClose: (
               <>
                 {loading && feeds.length === 0
                   ? <p role='status' className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('common.loading')}</p>
-                  : feeds.length === 0
-                    ? <p className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('music.podcast_no_feeds')}</p>
+                  : feedsError && feeds.length === 0
+                    ? <PanelFailure message={feedsError} onRetry={() => void loadPodcastFeeds()} />
+                    : feeds.length === 0
+                      ? <p className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('music.podcast_no_feeds')}</p>
                     : (
                         <ul className='space-y-1'>
                           {feeds.map((feed) => <FeedRow key={feed.id} feed={feed} />)}
@@ -117,6 +121,7 @@ function saveTextFile(text: string, filename: string, mime: string): void {
 function EpisodeList({ feed }: { feed: MusicPodcastFeedView }) {
   const episodes = useMusic((state) => state.podcastEpisodes)
   const loading = useMusic((state) => state.podcastEpisodesLoading)
+  const episodesError = useMusic((state) => state.podcastEpisodesError)
   const loadPodcastEpisodes = useMusic((state) => state.loadPodcastEpisodes)
   const closePodcastEpisodes = useMusic((state) => state.closePodcastEpisodes)
   const playPodcastEpisode = useMusic((state) => state.playPodcastEpisode)
@@ -134,8 +139,10 @@ function EpisodeList({ feed }: { feed: MusicPodcastFeedView }) {
       </div>
       {loading
         ? <p role='status' className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('common.loading')}</p>
-        : episodes.length === 0
-          ? <p className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('music.podcast_episodes_empty')}</p>
+        : episodesError && episodes.length === 0
+          ? <PanelFailure message={episodesError} onRetry={() => void loadPodcastEpisodes(feed.id)} />
+          : episodes.length === 0
+            ? <p className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('music.podcast_episodes_empty')}</p>
           : (
               <ul className='max-h-80 space-y-0.5 overflow-y-auto'>
                 {episodes.map((episode) => (

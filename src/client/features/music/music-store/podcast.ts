@@ -7,29 +7,33 @@ import type { MusicGet, MusicSet } from './types'
 // user's subscriptions plus the loading flag. FEA-A2-2 adds the episode view of
 // one feed at a time; the modal switches between the feed list and the episodes.
 export async function loadPodcastFeeds(set: MusicSet): Promise<void> {
-  set({ podcastFeedsLoading: true })
+  set({ podcastFeedsLoading: true, podcastFeedsError: null })
   try {
     const { feeds } = await api.music.listPodcastFeeds()
     set({ podcastFeeds: feeds, podcastFeedsLoading: false })
   } catch (error) {
-    set({ podcastFeedsLoading: false })
+    // FB-U6: kept as state so the panel can name the failure (and offer the retry) instead of
+    // rendering the "no subscriptions yet" copy over a listing that never arrived.
+    set({ podcastFeedsLoading: false, podcastFeedsError: error instanceof Error ? error.message : 'error' })
     toastMusicError(error, 'music.action_failed')
   }
 }
 
 export async function loadPodcastEpisodes(set: MusicSet, feedId: string): Promise<void> {
-  set({ podcastEpisodesFeedId: feedId, podcastEpisodesLoading: true, podcastEpisodes: [] })
+  set({ podcastEpisodesFeedId: feedId, podcastEpisodesLoading: true, podcastEpisodes: [], podcastEpisodesError: null })
   try {
     const { episodes } = await api.music.listPodcastEpisodes(feedId)
     set({ podcastEpisodes: episodes, podcastEpisodesLoading: false })
   } catch (error) {
-    set((state) => ({ podcastEpisodesFeedId: state.podcastEpisodesFeedId === feedId ? null : state.podcastEpisodesFeedId, podcastEpisodesLoading: false }))
+    // FB-U6: the feed stays open so the failure has somewhere to be read and retried from; backing
+    // out to the feed list would hide it behind the same list the reader just left.
+    set({ podcastEpisodesLoading: false, podcastEpisodesError: error instanceof Error ? error.message : 'error' })
     toastMusicError(error, 'music.action_failed')
   }
 }
 
 export function closePodcastEpisodes(set: MusicSet): void {
-  set({ podcastEpisodesFeedId: null, podcastEpisodes: [], podcastEpisodesLoading: false })
+  set({ podcastEpisodesFeedId: null, podcastEpisodes: [], podcastEpisodesLoading: false, podcastEpisodesError: null })
 }
 
 // FEA-A2-3: the OPML round trip. The server answers { created, skipped }, so a

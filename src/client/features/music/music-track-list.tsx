@@ -6,7 +6,7 @@ import { Segmented } from '../../components/form'
 import { Empty, LoadingBlock } from '../../components/feedback'
 import { Tooltip } from '../../components/overlay'
 import { useElementWidth, useMediaQuery } from '../../lib/hooks'
-import { MUSIC_LIST_FULL_MIN_WIDTH, listDensity } from './music-utils'
+import { MUSIC_LIST_FULL_MIN_WIDTH, defaultViewMode, listDensity } from './music-utils'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { useHiddenMatchCount, useMusic } from './music-store'
@@ -25,11 +25,14 @@ export const MusicTrackList = memo(function MusicTrackList({
   loading,
   emptyTitle,
   onEdit,
+  narrow = false,
 }: {
   tracks: MusicTrack[]
   loading: boolean
   emptyTitle: string
   onEdit: (track: MusicTrack) => void
+  /** FB-R1: the surface this list is drawn in is at its narrow (phone) shape. */
+  narrow?: boolean
 }) {
   const currentId = useMusic((state) => state.queue[state.currentIndex] ?? null)
   const isPlaying = useMusic((state) => state.isPlaying)
@@ -46,6 +49,7 @@ export const MusicTrackList = memo(function MusicTrackList({
   const containerWidth = useElementWidth(rootRef)
   const viewportWide = useMediaQuery(`(min-width: ${MUSIC_LIST_FULL_MIN_WIDTH}px)`)
   const density = listDensity({ containerWidth, viewportWide })
+  useDefaultViewMode(narrow, viewMode)
   const visibleIds = useMemo(() => tracks.map((track) => track.id), [tracks])
   const selection = useTrackSelection(visibleIds)
   useSelectAllShortcut(selection.selectAll)
@@ -71,6 +75,19 @@ export const MusicTrackList = memo(function MusicTrackList({
     </MusicTagRowsProvider>
   )
 })
+
+// FB-R1: until the reader picks a view, a narrow surface opens as covers. The question is the hub's
+// own shape (its prop), not the centre column's width — a windowed hub on a big screen has a narrow
+// centre column and still wants rows. It writes only the mode, never the answer.
+function useDefaultViewMode(narrow: boolean, viewMode: MusicViewMode): void {
+  const chosen = useMusic((state) => state.viewModeChosen)
+  const setDefaultViewMode = useMusic((state) => state.setDefaultViewMode)
+  useEffect(() => {
+    if (chosen) return
+    const wanted = defaultViewMode(narrow ? 'compact' : 'full')
+    if (wanted !== viewMode) setDefaultViewMode(wanted)
+  }, [narrow, viewMode, chosen, setDefaultViewMode])
+}
 
 // Rows hold these callbacks, and a list of a thousand rows re-renders as a whole
 // when any one of them changes identity; they are built once per list instead.

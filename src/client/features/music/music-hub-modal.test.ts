@@ -166,8 +166,10 @@ describe('MusicHubModal search truncation — UI-16', () => {
     }))
   }
 
+  // The subject is the notice, not the view default: the premise says the reader picked the view
+  // (FB-R1's narrow default only applies while nobody has), so the mode each case sets stands.
   async function mountQueryResults(count: number): Promise<void> {
-    useMusic.setState({ loadLibrary: vi.fn(async () => {}), tracks: manyTracks(count), query: 'moonlight' })
+    useMusic.setState({ loadLibrary: vi.fn(async () => {}), tracks: manyTracks(count), query: 'moonlight', viewModeChosen: true })
     await mountHub()
   }
 

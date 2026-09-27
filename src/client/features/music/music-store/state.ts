@@ -15,6 +15,9 @@ export interface MusicPreferences {
   sort: MusicSort
   sortDirection: MusicSortDirection
   viewMode: MusicViewMode
+  /** FB-R1: whether the reader picked the view themselves. Until they do, a narrow list follows
+   *  its own width and opens as covers (see `defaultViewMode`). */
+  viewModeChosen: boolean
   sourceFilter: MusicSourceFilter
   floatingVisible: boolean
   floatingCollapsed: boolean
@@ -139,6 +142,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   providerQuality: MUSIC_PROVIDER_DEFAULT_QUALITY,
   providerNoticeAccepted: false,
   showSourceBadge: true,
+  viewModeChosen: false,
 }
 
 function readStored(key: string): Record<string, unknown> | null {
@@ -164,6 +168,7 @@ export function loadPreferences(): MusicPreferences {
       ? (parsed.sortDirection as MusicSortDirection)
       : DEFAULT_PREFERENCES.sortDirection,
     viewMode: VIEW_MODES.includes(parsed.viewMode as MusicViewMode) ? (parsed.viewMode as MusicViewMode) : DEFAULT_PREFERENCES.viewMode,
+    viewModeChosen: parsed.viewModeChosen === true,
     sourceFilter: SOURCE_FILTERS.includes(parsed.sourceFilter as MusicSourceFilter)
       ? (parsed.sourceFilter as MusicSourceFilter)
       : DEFAULT_PREFERENCES.sourceFilter,

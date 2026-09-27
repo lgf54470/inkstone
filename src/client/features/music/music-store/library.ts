@@ -1,7 +1,7 @@
 import type { MusicBatchAction } from '../../../lib/api'
 import {
   clearSearchHistory, clearSelection, commitQuery, closeTrackMenu, invertSelection, loadLibrary, openTrackMenu, prepareRomanization,
-  selectAll, setQuery, setScope, setShowSourceBadge, setSort, setSortDirection, setSourceFilter, setViewMode, showMoreMatches, toggleSelect,
+  selectAll, setDefaultViewMode, setQuery, setScope, setShowSourceBadge, setSort, setSortDirection, setSourceFilter, setViewMode, showMoreMatches, toggleSelect,
 } from './library-load'
 import { batchTracks, deleteTrack, ensureTrackLyric, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin } from './library-tracks'
 import { matchMissingCovers } from './library-covers'
@@ -22,7 +22,7 @@ import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type LibrarySlice = Pick<MusicStoreState,
   | 'loadLibrary' | 'setScope' | 'setQuery' | 'commitQuery' | 'clearSearchHistory' | 'setSort' | 'setSortDirection' | 'prepareRomanization'
-  | 'setViewMode' | 'showMoreMatches' | 'openTrackMenu' | 'closeTrackMenu' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
+  | 'setViewMode' | 'setDefaultViewMode' | 'showMoreMatches' | 'openTrackMenu' | 'closeTrackMenu' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
   | 'setProviderQuality' | 'acceptProviderNotice' | 'setShowSourceBadge'
   | 'importTrackFromUrl'
   | 'openTrash' | 'closeTrash' | 'restoreFromTrash' | 'purgeTrashEntry'
@@ -50,6 +50,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     setSort: (sort) => setSort(set, sort),
     setSortDirection: (direction) => setSortDirection(set, direction),
     setViewMode: (mode) => setViewMode(set, mode),
+    setDefaultViewMode: (mode) => setDefaultViewMode(set, mode),
     showMoreMatches: () => showMoreMatches(set),
     openTrackMenu: (menu) => openTrackMenu(set, get, menu),
     closeTrackMenu: () => closeTrackMenu(set),

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MusicPlaylistDetail, MusicTag, MusicTrack } from '@shared/types'
 import {
   activeLyricIndex, collectTagIds, computeNextIndex, computePrevIndex, flattenTags,
-  barMore, hubColumnsWide, isArtistSuffixedTitle, listDensity, nextPlayMode, parseLyric, playlistCoverUrl, rangeIds, tagColorValue, toolbarShape,
+  barMore, defaultViewMode, hubColumnsWide, isArtistSuffixedTitle, listDensity, nextPlayMode, parseLyric, playlistCoverUrl, rangeIds, tagColorValue, toolbarShape,
   MUSIC_HUB_COLUMNS_MIN_WIDTH, MUSIC_LIST_FULL_MIN_WIDTH,
 } from './music-utils'
 
@@ -109,6 +109,19 @@ describe('list density (FB-U4)', () => {
   it('falls back to the viewport where nothing can be measured', () => {
     expect(listDensity({ containerWidth: null, viewportWide: true })).toBe('full')
     expect(listDensity({ containerWidth: null, viewportWide: false })).toBe('compact')
+  })
+})
+
+// FB-R1: the narrow default is a policy about a list that has not been asked yet — covers where the
+// columns would fold, rows where they fit. It is the inverse of the density, and the hub stops
+// applying it the moment the reader picks a view for themselves.
+describe('narrow default view (FB-R1)', () => {
+  it('answers a narrow list with covers', () => {
+    expect(defaultViewMode('compact')).toBe('grid')
+  })
+
+  it('keeps rows where the columns fit', () => {
+    expect(defaultViewMode('full')).toBe('list')
   })
 })
 

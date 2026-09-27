@@ -106,6 +106,9 @@ beforeEach(() => {
     sort: 'recent',
     sortDirection: 'asc',
     viewMode: 'list',
+    // The subject here is the table, so the premise says the reader picked it: FB-R1's narrow
+    // default only applies to a view nobody has chosen, and reading the rows is that choice.
+    viewModeChosen: true,
     sourceFilter: 'all',
     selectedIds: [],
     romanized: {},
@@ -351,7 +354,7 @@ describe('match limit action (FB-PF2)', () => {
   }
 
   it('offers the remainder instead of only counting it', async () => {
-    useMusic.setState({ tracks: many, query: 'moonlight', viewMode: 'grid', romanized: {} })
+    useMusic.setState({ tracks: many, query: 'moonlight', viewMode: 'grid', viewModeChosen: true, romanized: {} })
     await mountList(many)
     const button = loadMoreButton()
     expect(button).toBeTruthy()

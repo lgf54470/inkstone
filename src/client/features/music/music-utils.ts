@@ -86,6 +86,13 @@ export const MUSIC_LIST_FULL_MIN_WIDTH = MUSIC_NARROW_BREAKPOINT
 
 export type MusicListDensity = 'full' | 'compact'
 
+// FB-R1: a narrow list is a phone's shape, and a phone browses covers rather than columns — but only
+// until the reader says otherwise. The hub applies this while `viewModeChosen` is false; an explicit
+// toggle (and a later resize) then leaves the choice alone.
+export function defaultViewMode(density: MusicListDensity): 'list' | 'grid' {
+  return density === 'compact' ? 'grid' : 'list'
+}
+
 /**
  * How much of a row the list can afford: the columns at `full`, or their own contents moved onto the
  * line under the title at `compact`. `null` is an unmeasurable environment (jsdom, and the paint

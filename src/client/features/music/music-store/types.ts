@@ -132,6 +132,9 @@ export interface MusicStoreState {
   sort: MusicSort
   sortDirection: MusicSortDirection
   viewMode: MusicViewMode
+  /** FB-R1: true once the reader has picked the view themselves; the narrow default only applies
+   *  while this is false, so a resize can never overrule a choice. */
+  viewModeChosen: boolean
   /** FB-PF2: how many matches the capped grid may draw. Session state — the default is the budget
    *  the grid has always used, and the reader raises it from the "matches left out" notice. */
   matchLimit: number
@@ -184,8 +187,11 @@ export interface MusicStoreState {
   trashLoading: boolean
   alistServers: MusicAlistServerView[]
   alistServersLoading: boolean
+  /** FB-U6: the last listing's failure, so the panel can tell it apart from an empty account. */
+  alistServersError: string | null
   podcastFeeds: MusicPodcastFeedView[]
   podcastFeedsLoading: boolean
+  podcastFeedsError: string | null
   providerEnabled: Record<string, boolean>
   /** FB-F7: what the stream URL asks the proxy for; only provider rows carry it. */
   providerQuality: MusicProviderQuality
@@ -201,6 +207,7 @@ export interface MusicStoreState {
   podcastEpisodesFeedId: string | null
   podcastEpisodes: MusicPodcastEpisode[]
   podcastEpisodesLoading: boolean
+  podcastEpisodesError: string | null
   alistBrowse: {
     serverId: string | null
     path: string
@@ -221,6 +228,7 @@ export interface MusicStoreState {
   setSort: (sort: MusicSort) => void
   setSortDirection: (direction: MusicSortDirection) => void
   setViewMode: (mode: MusicViewMode) => void
+  setDefaultViewMode: (mode: MusicViewMode) => void
   showMoreMatches: () => void
   openTrackMenu: (menu: TrackMenuRequest) => void
   closeTrackMenu: () => void

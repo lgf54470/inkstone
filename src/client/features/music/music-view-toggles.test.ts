@@ -143,6 +143,57 @@ describe('view mode toggle (UI-16)', () => {
   })
 })
 
+// FB-R1: a narrow list opens as covers until the reader says otherwise. The measurement is the
+// list's own box (the same read the columns use), and what it writes is a default — a view chosen
+// by hand is never overruled by a later mount, and a wide list keeps rows where they read better.
+describe('narrow default view (FB-R1)', () => {
+  // The shape is a prop the hub hands down (it is the one that knows its own box); the list does not
+  // read the viewport for it, so this file states the shape instead of stubbing a measurement.
+  function mountList(narrow: boolean): Promise<HTMLElement> {
+    return mount(createElement(MusicTrackList, { tracks, loading: false, emptyTitle: 'x', onEdit: () => {}, narrow }))
+  }
+
+  function cards(): Element | null {
+    return document.querySelector('div.grid-cols-2')
+  }
+
+  function toggleGroup(container: HTMLElement): Element {
+    return container.querySelector(`[role="radiogroup"][aria-label="${t('music.view_mode')}"]`) as Element
+  }
+
+  it('opens a narrow list as covers when nothing has been chosen', async () => {
+    useMusic.setState({ viewMode: 'list', viewModeChosen: false })
+    await mountList(true)
+    expect(useMusic.getState().viewMode).toBe('grid')
+    expect(cards()).toBeTruthy()
+  })
+
+  it('leaves a chosen view alone', async () => {
+    useMusic.setState({ viewMode: 'list', viewModeChosen: true })
+    await mountList(true)
+    expect(useMusic.getState().viewMode).toBe('list')
+    expect(cards()).toBeNull()
+  })
+
+  // The centre column of a windowed hub is narrower than the breakpoint and still wants rows: the
+  // question is the hub's own shape, which is why a wide hub asks for nothing.
+  it('keeps rows for a wide list, whose centre column may still be narrow', async () => {
+    useMusic.setState({ viewMode: 'grid', viewModeChosen: false })
+    await mountList(false)
+    expect(useMusic.getState().viewMode).toBe('list')
+  })
+
+  it('marks the view as chosen the moment a person picks one', async () => {
+    useMusic.setState({ viewMode: 'list', viewModeChosen: false })
+    const container = await mountList(true)
+    await act(async () => {
+      radioIn(toggleGroup(container), t('music.view_list')).click()
+    })
+    expect(useMusic.getState().viewModeChosen).toBe(true)
+    expect(useMusic.getState().viewMode).toBe('list')
+  })
+})
+
 describe('source filter (UI-16)', () => {
   function group(container: HTMLElement): Element {
     return container.querySelector(`[role="radiogroup"][aria-label="${t('music.source_filter')}"]`) as Element

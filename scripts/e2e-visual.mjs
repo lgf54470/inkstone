@@ -4917,6 +4917,16 @@ async function assertMusicSurface(page) {
     Boolean(narrowFavorite) && narrowFavorite.opacity === 1 && narrowFavorite.pointerEvents !== 'none',
     JSON.stringify(narrowFavorite))
 
+  // FB-R1: the narrow default (covers on a phone) is a default only. This reader picked rows at a
+  // wide width earlier in this very scenario, and the phone must still draw rows: a default that
+  // overrules a choice is the failure this asserts against. The defaulting half is pinned in jsdom
+  // (`music-view-toggles.test.ts`) — a fresh profile is the only place it is visible, and this run
+  // has already made the choice by now.
+  const narrowRows = await page.$$eval('div[role="row"]', (rows) => rows.length)
+  const narrowCards = await page.$$eval('div.grid-cols-2 > div', (cards) => cards.length)
+  check('music: a phone keeps the view the reader chose, not the narrow default',
+    narrowRows > 0 && narrowCards === 0, `rows=${narrowRows} cards=${narrowCards}`)
+
   const folded = await page.evaluate((navSelector) => {
     const row = document.querySelector('[role="rowgroup"] [role="row"]')
     return {
