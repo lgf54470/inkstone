@@ -63,6 +63,9 @@ function OnlineSources() {
   const setQuality = useMusic((state) => state.setProviderQuality)
   const showSourceBadge = useMusic((state) => state.showSourceBadge)
   const setShowSourceBadge = useMusic((state) => state.setShowSourceBadge)
+  // FB-F8: the automatic repair of a dead online link is a preference, not a law.
+  const autoSwap = useMusic((state) => state.providerAutoSwap)
+  const setAutoSwap = useMusic((state) => state.setProviderAutoSwap)
   return (
     <section>
       <SectionTitle title={t('music.settings_sources')} hint={t('music.settings_sources_hint')} />
@@ -80,6 +83,13 @@ function OnlineSources() {
             <option key={tier} value={tier}>{t(QUALITY_LABELS[tier])}</option>
           ))}
         </Select>
+      </SettingRow>
+      <SettingRow title={t('music.settings_auto_swap')} description={t('music.settings_auto_swap_desc')}>
+        <Switch
+          checked={autoSwap}
+          onChange={setAutoSwap}
+          label={t('music.settings_auto_swap')}
+        />
       </SettingRow>
       <SettingRow title={t('music.settings_show_source_badge')} description={t('music.settings_show_source_badge_desc')}>
         <Switch

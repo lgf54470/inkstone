@@ -124,7 +124,7 @@ describe('provider failure fallback (FEA-A1-4)', () => {
 
   it('a failed provider track tries another source before skipping', async () => {
     const store = makeStore()
-    store.set({ tracks: [providerTrack('dead'), track('alive')], queue: ['dead'], currentIndex: 0 })
+    store.set({ providerAutoSwap: true, tracks: [providerTrack('dead'), track('alive')], queue: ['dead'], currentIndex: 0 })
     vi.mocked(startPlayback).mockResolvedValueOnce('unavailable').mockResolvedValue('playing')
     vi.mocked(swapFailedProviderTrack).mockImplementationOnce(async (set) => {
       set({ queue: ['alive'] })

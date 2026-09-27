@@ -1,6 +1,6 @@
 import type { MusicPlaylist, MusicPlaylistDetail, MusicPlaylistItem, MusicStats, MusicTag, MusicTrack } from '@shared/types'
 import { isCoverObjectKey } from './cover'
-import { resolveMusicTrackType, sanitizeCoverUrl } from './keys'
+import { parseGdsObjectKey, resolveMusicTrackType, sanitizeCoverUrl } from './keys'
 
 export interface MusicTrackRow {
   id: string
@@ -65,6 +65,9 @@ export const TRACK_COLUMNS = `t.id, t.title, t.artist, t.album, t.duration_ms, t
   t.size_bytes, t.cover_url, t.lyric, t.is_favorite, t.is_pinned, t.play_count, t.last_played_at, t.content_hash, t.created_at, t.updated_at`
 
 export function toTrack(row: MusicTrackRow, tagIds: string[]): MusicTrack {
+  // FB-F8: a provider row's object key carries the catalogue it came from. The client needs it to
+  // offer "the same song somewhere else" without handing back the entry that just failed.
+  const providerKey = row.source === 'provider' ? parseGdsObjectKey(row.object_key) : null
   return {
     id: row.id,
     title: row.title,
@@ -76,6 +79,8 @@ export function toTrack(row: MusicTrackRow, tagIds: string[]): MusicTrack {
     // WebDAV keys are the user's own remote paths, already listed in the browse UI;
     // internal R2 storage keys must never reach the browser or a downloaded M3U.
     webdavPath: row.source === 'webdav' ? row.object_key : null,
+    providerSource: providerKey?.source ?? null,
+    providerSongId: providerKey?.songId ?? null,
     mime: row.mime,
     sizeBytes: row.size_bytes,
     coverUrl: coverUrlForTrack(row.id, row.cover_url),

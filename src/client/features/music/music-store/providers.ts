@@ -2,6 +2,7 @@ import { api } from '../../../lib/api'
 import type { MusicProviderTrack, MusicProviderTrackImportInput } from '../../../lib/api'
 import type { MusicProviderQuality } from '@shared/constants'
 import type { MusicTrack } from '@shared/types'
+import type { MusicStoreState } from './types'
 import { providerCoverDataUrl } from '../music-provider-artwork'
 import { GDS_PROVIDER_ID, listProviders, matchScore, searchGds, searchGdsPages } from '../providers'
 import { persist } from './persist'
@@ -47,6 +48,78 @@ export async function searchProviders(set: MusicSet, get: MusicGet, keywords: st
     set((state) => (state.providerKeywords === keywords ? { providerResults: [], providerFailedSources: [], providerSearching: false } : {}))
     toastMusicError(error, 'music.action_failed')
   }
+}
+
+// FB-F8: the automatic repair used to be unconditional. Whether a dead link may be quietly re-served
+// from somewhere else is the reader's call — the switch is persisted with the other preferences.
+export function setProviderAutoSwap(set: MusicSet, get: MusicGet, value: boolean): void {
+  set({ providerAutoSwap: value })
+  persist(get)
+}
+
+// FB-F8: the manual half of the same idea. Everything under this row's name is asked for, ranked
+// against the row itself, and offered — the reader picks.
+export async function openSourceSwitch(set: MusicSet, get: MusicGet, trackId: string): Promise<void> {
+  const track = get().tracks.find((entry) => entry.id === trackId)
+  if (!track || track.source !== 'provider') return
+  set({ sourceSwitchTrackId: trackId, sourceSwitchCandidates: null, sourceSwitchLoading: true, sourceSwitchFailed: false })
+  try {
+    const pages = await searchGdsPages(providerKeywords(track))
+    set((state) => (state.sourceSwitchTrackId === trackId
+      ? { sourceSwitchCandidates: rankAlternatives(track, pages.flatMap((page) => page.results)), sourceSwitchLoading: false }
+      : {}))
+  } catch (error) {
+    // FB-C1: `searchGdsPages` absorbs a dead catalogue per source, so arriving here means something
+    // outside that contract broke. The panel says so and offers a retry — it does not close.
+    set((state) => (state.sourceSwitchTrackId === trackId ? { sourceSwitchLoading: false, sourceSwitchFailed: true } : {}))
+    toastMusicError(error, 'music.source_switch_failed')
+  }
+}
+
+export function closeSourceSwitch(set: MusicSet): void {
+  set({ sourceSwitchTrackId: null, sourceSwitchCandidates: null, sourceSwitchLoading: false, sourceSwitchFailed: false })
+}
+
+// FB-F8: the row keeps its place — id, queue slot and play counts are the library's, only the
+// catalogue behind it changes. Import is idempotent, so a candidate already in the library is
+// reused rather than duplicated, and the switched row is the one that plays from now on.
+export async function switchTrackSource(set: MusicSet, get: MusicGet, hit: MusicProviderTrack): Promise<void> {
+  const from = get().sourceSwitchTrackId
+  if (!from) return
+  const replacement = await importHit(set, hit)
+  if (!replacement) return
+  set((state) => ({
+    tracks: state.tracks.some((entry) => entry.id === replacement.id) ? state.tracks : [...state.tracks, replacement],
+    queue: state.queue.map((id) => (id === from ? replacement.id : id)),
+    ...closeSourceSwitchState(),
+  }))
+  toastMusic('music.source_switched')
+  // Only a row that is playing needs the player to follow it; anything else keeps its place silently.
+  if (get().queue[get().currentIndex] === replacement.id) await get().playQueueAt(get().currentIndex)
+}
+
+// The row's own name is what a catalogue can be asked with; a title alone would rank noise first.
+function providerKeywords(track: MusicTrack): string {
+  return track.artist ? `${track.title} ${track.artist}` : track.title
+}
+
+// FB-F8: candidates are ranked the way the automatic fallback ranks them (same `matchScore`), and the
+// row's own catalogue entry is left out — that is the song whose link just failed, and offering it
+// back would be a no-op dressed as a choice. Other catalogues' copies of the same song are the point.
+export function rankAlternatives(track: MusicTrack, hits: MusicProviderTrack[]): MusicProviderTrack[] {
+  return hits
+    .map((hit) => ({ hit, score: matchScore(hit, track) }))
+    .filter((entry) => entry.score > 0 && !isSameProviderRow(track, entry.hit))
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.hit)
+}
+
+function isSameProviderRow(track: MusicTrack, hit: MusicProviderTrack): boolean {
+  return Boolean(track.providerSource) && track.providerSource === hit.source && track.providerSongId === hit.sourceId
+}
+
+function closeSourceSwitchState(): Partial<MusicStoreState> {
+  return { sourceSwitchTrackId: null, sourceSwitchCandidates: null, sourceSwitchLoading: false, sourceSwitchFailed: false }
 }
 
 // FEA-A1-4 will match a failed play against these hits; A1-3 plays a hit by
@@ -156,13 +229,11 @@ export async function swapFailedProviderTrack(set: MusicSet, get: MusicGet, trac
   const track = state.tracks.find((entry) => entry.id === trackId)
   if (!track || track.source !== 'provider' || !track.title.trim()) return false
   if (!listProviders().some((provider) => provider.isEnabled(state))) return false
-  const keywords = track.artist ? `${track.title} ${track.artist}` : track.title
-  const ranked = (await searchGdsPages(keywords))
-    .flatMap((page) => page.results)
-    .map((hit) => ({ hit, score: matchScore(hit, track) }))
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score)
-  for (const { hit } of ranked) {
+  // FB-F8: the repair is a preference. With it off nobody is asked: the failure stays where the
+  // reader can see it, and the manual switch in the track menu is how they re-serve the row.
+  if (state.providerAutoSwap === false) return false
+  const ranked = rankAlternatives(track, (await searchGdsPages(providerKeywords(track))).flatMap((page) => page.results))
+  for (const hit of ranked) {
     const replacement = await importCandidate(hit)
     if (!replacement || replacement.id === trackId) continue
     set((current) => ({

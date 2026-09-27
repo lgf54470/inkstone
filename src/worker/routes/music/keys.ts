@@ -143,6 +143,24 @@ export function sanitizeCoverUrl(value: string | null | undefined): string | nul
   return null
 }
 
+// FB-F8: provider reference rows keep their identity in `music_tracks.object_key` as
+// `gds:{source}:{songId}` — the upstream song id is what a per-play URL resolution needs, and the
+// source scopes the dedupe key. The format lives here rather than beside the routes because the row
+// mapping has to read it too, and the routes already import the mapping.
+export const GDS_KEY_PREFIX = 'gds:'
+
+export function gdsObjectKey(source: string, songId: string): string {
+  return `${GDS_KEY_PREFIX}${source}:${songId}`
+}
+
+export function parseGdsObjectKey(objectKey: string): { source: string; songId: string } | null {
+  if (!objectKey.startsWith(GDS_KEY_PREFIX)) return null
+  const rest = objectKey.slice(GDS_KEY_PREFIX.length)
+  const split = rest.indexOf(':')
+  if (split <= 0) return null
+  return { source: rest.slice(0, split), songId: rest.slice(split + 1) }
+}
+
 // Responses served from our origin must never carry a third-party-declared or
 // legacy content type: only allowlisted audio and video mimes stream inline,
 // anything else is forced to a download by the caller.

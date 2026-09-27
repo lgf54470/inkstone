@@ -204,6 +204,13 @@ export interface MusicStoreState {
   providerKeywords: string
   /** FB-F6: the catalogues that did not answer the last search, by upstream source id. */
   providerFailedSources: string[]
+  /** FB-F8: whether a failed provider play is re-served from another catalogue by itself. */
+  providerAutoSwap: boolean
+  /** FB-F8: the row whose source is being chosen, and what the catalogues offered for it. */
+  sourceSwitchTrackId: string | null
+  sourceSwitchCandidates: MusicProviderTrack[] | null
+  sourceSwitchLoading: boolean
+  sourceSwitchFailed: boolean
   podcastEpisodesFeedId: string | null
   podcastEpisodes: MusicPodcastEpisode[]
   podcastEpisodesLoading: boolean
@@ -330,6 +337,13 @@ export interface MusicStoreState {
   addProviderTrack: (hit: MusicProviderTrack) => Promise<boolean>
   /** FB-F10: adds a selection one hit at a time, reporting what landed and what did not. */
   addProviderTracks: (hits: MusicProviderTrack[]) => Promise<{ added: number; failed: number }>
+  /** FB-F8: the automatic repair of a dead online link, switchable from the settings page. */
+  setProviderAutoSwap: (value: boolean) => void
+  /** FB-F8: asks the catalogues what else they have under this row's name. */
+  openSourceSwitch: (trackId: string) => Promise<void>
+  closeSourceSwitch: () => void
+  /** FB-F8: re-serves the row from the chosen hit, in the place it already occupies. */
+  switchTrackSource: (hit: MusicProviderTrack) => Promise<void>
   loadPodcastFeeds: () => Promise<void>
   loadPodcastEpisodes: (feedId: string) => Promise<void>
   closePodcastEpisodes: () => void

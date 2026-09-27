@@ -9,6 +9,7 @@ import { Z_INDEX } from '../../lib/z-index'
 import { t } from '../../lib/i18n'
 import { formatBytes } from '../../lib/time'
 import { MusicEditTrackModal } from './music-edit-track-modal'
+import { MusicSourceSwitchModal } from './music-source-switch-modal'
 import { findDuplicateGroups, duplicateWastedBytes, redundantTrackCount } from './music-duplicates'
 import { MusicGroupBrowse, MusicGroupDetailHeader } from './music-group-browse'
 import { MusicHubSidebar } from './music-hub-sidebar'
@@ -166,6 +167,7 @@ function HubPeers({ dialogs }: { dialogs: ReturnType<typeof useHubDialogs> }) {
       <MusicWebdavModal open={dialogs.webdavOpen} onClose={dialogs.closeWebdav} />
       <MusicAlistModal open={dialogs.alistOpen} onClose={dialogs.closeAlist} />
       <MusicPodcastModal open={dialogs.podcastOpen} onClose={dialogs.closePodcast} />
+      <MusicSourceSwitchModal />
     </>
   )
 }

@@ -9,7 +9,7 @@ import { cancelStreamBestEffort } from '../../lib/streams'
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
 import { coverHeaders, storeCoverObject } from './cover'
-import { resolveMusicTrackType } from './keys'
+import { gdsObjectKey, resolveMusicTrackType } from './keys'
 import { fetchAllowedResource, fetchPublicResource, readUpstreamBytes } from './outbound'
 import { importProviderTrackSchema } from './schemas'
 import { insertWebdavTrack } from './webdav-routes'
@@ -45,23 +45,6 @@ export function readProviderQuality(value: string | undefined): MusicProviderQua
     throw ApiError.badRequest('Unsupported quality')
   }
   return parsed as MusicProviderQuality
-}
-
-// Provider reference rows keep their identity in music_tracks.object_key as
-// `gds:{source}:{songId}` — the upstream song id is what a per-play URL
-// resolution needs, and the source scopes the dedupe key.
-export const GDS_KEY_PREFIX = 'gds:'
-
-export function gdsObjectKey(source: string, songId: string): string {
-  return `${GDS_KEY_PREFIX}${source}:${songId}`
-}
-
-export function parseGdsObjectKey(objectKey: string): { source: string; songId: string } | null {
-  if (!objectKey.startsWith(GDS_KEY_PREFIX)) return null
-  const rest = objectKey.slice(GDS_KEY_PREFIX.length)
-  const split = rest.indexOf(':')
-  if (split <= 0) return null
-  return { source: rest.slice(0, split), songId: rest.slice(split + 1) }
 }
 
 export function registerMusicProviderRoutes(routes: Hono<AppBindings>): void {

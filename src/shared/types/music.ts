@@ -21,6 +21,13 @@ export interface MusicTrack {
   source: MusicSource
   format: MusicFormat | null
   webdavPath: string | null
+  /**
+   * FB-F8: the catalogue a provider row came from, and the song id it answers to there. Null for
+   * every other source. Optional so payloads and fixtures written before the fields existed keep
+   * type checking — a provider row from the worker always carries both.
+   */
+  providerSource?: string | null
+  providerSongId?: string | null
   mime: string
   sizeBytes: number
   coverUrl: string | null

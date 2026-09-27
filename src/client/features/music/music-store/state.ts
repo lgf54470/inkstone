@@ -46,6 +46,8 @@ export interface MusicPreferences {
   providerQuality: MusicProviderQuality
   /** FB-S6: the one-time notice shown before the first catalogue is switched on. */
   providerNoticeAccepted: boolean
+  /** FB-F8: whether a play that dies may be re-served from another catalogue on its own. */
+  providerAutoSwap: boolean
   /** Whether rows and cards name the source a track came from. */
   showSourceBadge: boolean
 }
@@ -141,6 +143,8 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   providerEnabled: {},
   providerQuality: MUSIC_PROVIDER_DEFAULT_QUALITY,
   providerNoticeAccepted: false,
+  // On by default: this is what the fallback has always done, and the switch exists to turn it off.
+  providerAutoSwap: true,
   showSourceBadge: true,
   viewModeChosen: false,
 }
@@ -199,6 +203,7 @@ export function loadPreferences(): MusicPreferences {
     providerNoticeAccepted: parsed.providerNoticeAccepted === true,
     // The badge is on unless it was explicitly turned off, so an older payload keeps it.
     showSourceBadge: parsed.showSourceBadge !== false,
+    providerAutoSwap: parsed.providerAutoSwap !== false,
   }
 }
 

@@ -156,6 +156,26 @@ describe('provider proxy (FEA-A1-2)', () => {
     expect(body.coverUrl).toBeNull()
   })
 
+  // FB-F8: the row carries the catalogue it came from, so the client can ask for "the same song
+  // elsewhere" without offering the entry that just failed. Another source's row has no catalogue.
+  it('names the catalogue identity a provider row was written with', async () => {
+    await makeDb()
+    const app = makeApp()
+    const imported = await json(app, '/api/music/tracks/import-provider', {
+      source: 'netease',
+      sourceId: 'a1',
+      title: 'Song A',
+    })
+    expect(imported.status).toBe(201)
+    expect(await imported.json()).toMatchObject({ providerSource: 'netease', providerSongId: 'a1' })
+
+    // The same identity has to survive the library listing, which is where a reader's rows come from.
+    const listed = await request(app, '/api/music/library')
+    const body = await listed.json() as { tracks: { providerSource?: string | null; providerSongId?: string | null }[] }
+    const row = body.tracks.find((entry) => entry.providerSource === 'netease')
+    expect(row?.providerSongId).toBe('a1')
+  })
+
   it('resolves one playable url per play through the url endpoint', async () => {
     await makeDb()
     const app = makeApp()

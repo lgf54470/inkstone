@@ -17,7 +17,10 @@ import { browseWebdav, deleteWebdavObjects, importTrackFromUrl, importWebdavFold
 import { closeTrash, openTrash, purgeTrashEntry, restoreFromTrash } from './trash'
 import { browseAlist, createAlistServer, deleteAlistServer, importAlistFolder, importAlistTrack, loadAlistServers, patchAlistServer, searchAlist } from './alist'
 import { closePodcastEpisodes, createPodcastFeed, deletePodcastFeed, importPodcastOpml, loadPodcastEpisodes, loadPodcastFeeds, playPodcastEpisode, renamePodcastFeed } from './podcast'
-import { acceptProviderNotice, addProviderTrack, addProviderTracks, playProviderTrack, searchProviders, setProviderEnabled, setProviderQuality } from './providers'
+import {
+  acceptProviderNotice, addProviderTrack, addProviderTracks, closeSourceSwitch, openSourceSwitch, playProviderTrack,
+  searchProviders, setProviderAutoSwap, setProviderEnabled, setProviderQuality, switchTrackSource,
+} from './providers'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type LibrarySlice = Pick<MusicStoreState,
@@ -31,6 +34,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'loadPodcastFeeds' | 'createPodcastFeed' | 'renamePodcastFeed' | 'deletePodcastFeed'
   | 'loadPodcastEpisodes' | 'closePodcastEpisodes' | 'importPodcastOpml' | 'playPodcastEpisode'
   | 'setProviderEnabled' | 'searchProviders' | 'playProviderTrack' | 'addProviderTrack' | 'addProviderTracks'
+  | 'setProviderAutoSwap' | 'openSourceSwitch' | 'closeSourceSwitch' | 'switchTrackSource'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'searchTrackLyric' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
@@ -117,6 +121,10 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     playProviderTrack: (hit) => playProviderTrack(set, get, hit),
     addProviderTrack: (hit) => addProviderTrack(set, hit),
     addProviderTracks: (hits) => addProviderTracks(set, hits),
+    setProviderAutoSwap: (value) => setProviderAutoSwap(set, get, value),
+    openSourceSwitch: (trackId) => openSourceSwitch(set, get, trackId),
+    closeSourceSwitch: () => closeSourceSwitch(set),
+    switchTrackSource: (hit) => switchTrackSource(set, get, hit),
     createPodcastFeed: (input) => createPodcastFeed(set, input),
     renamePodcastFeed: (id, patch) => renamePodcastFeed(set, id, patch),
     deletePodcastFeed: (id) => deletePodcastFeed(set, id),

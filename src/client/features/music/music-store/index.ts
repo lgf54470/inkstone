@@ -77,10 +77,15 @@ function initialProviderState(prefs: MusicPreferences): Partial<MusicStoreState>
     providerQuality: prefs.providerQuality,
     providerNoticeAccepted: prefs.providerNoticeAccepted,
     showSourceBadge: prefs.showSourceBadge,
+    providerAutoSwap: prefs.providerAutoSwap,
     providerResults: null,
     providerSearching: false,
     providerKeywords: '',
     providerFailedSources: [],
+    sourceSwitchTrackId: null,
+    sourceSwitchCandidates: null,
+    sourceSwitchLoading: false,
+    sourceSwitchFailed: false,
   }
 }
 

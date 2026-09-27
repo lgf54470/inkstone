@@ -60,6 +60,7 @@ function writePreferences(get: MusicGet): void {
     providerEnabled: state.providerEnabled,
     providerQuality: state.providerQuality,
     providerNoticeAccepted: state.providerNoticeAccepted,
+    providerAutoSwap: state.providerAutoSwap,
     showSourceBadge: state.showSourceBadge,
   })
 }
