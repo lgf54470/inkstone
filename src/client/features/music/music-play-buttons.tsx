@@ -1,10 +1,20 @@
 import { ListOrdered, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward } from 'lucide-react'
 import { IconButton, Spinner } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
+import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useCurrentTrack, useMusic } from './music-store'
 
-export function MusicPlayButtons({ size = 'md', showMode = true }: { size?: 'sm' | 'md' | 'lg'; showMode?: boolean }) {
+// REF-3: the shared icon button tops out at 40px on a phone, under the 44px a thumb
+// needs. `touchTarget` lifts this row to that floor on the narrow layouts only — the
+// desktop rows keep the compact size they were designed for.
+export const TOUCH_TARGET_CLASS = 'min-h-11 min-w-11'
+
+export function MusicPlayButtons({ size = 'md', showMode = true, touchTarget = false }: {
+  size?: 'sm' | 'md' | 'lg'
+  showMode?: boolean
+  touchTarget?: boolean
+}) {
   const track = useCurrentTrack()
   const isPlaying = useMusic((state) => state.isPlaying)
   const streamLoading = useMusic((state) => state.streamLoading)
@@ -19,13 +29,13 @@ export function MusicPlayButtons({ size = 'md', showMode = true }: { size?: 'sm'
     <div className='flex items-center gap-0.5'>
       {showMode && (
         <Tooltip label={playModeLabel(mode)} side='top'>
-          <IconButton label={playModeLabel(mode)} size={size} onClick={cycleMode}>
+          <IconButton label={playModeLabel(mode)} size={size} className={cn(touchTarget && TOUCH_TARGET_CLASS)} onClick={cycleMode}>
             <PlayModeIcon mode={mode} />
           </IconButton>
         </Tooltip>
       )}
       <Tooltip label={t('music.previous')} side='top'>
-        <IconButton label={t('music.previous')} size={size} disabled={disabled} onClick={() => void playPrevious()}>
+        <IconButton label={t('music.previous')} size={size} disabled={disabled} className={cn(touchTarget && TOUCH_TARGET_CLASS)} onClick={() => void playPrevious()}>
           <SkipBack size={14} />
         </IconButton>
       </Tooltip>
@@ -35,13 +45,14 @@ export function MusicPlayButtons({ size = 'md', showMode = true }: { size?: 'sm'
           size={size}
           variant='primary'
           disabled={streamLoading}
+          className={cn(touchTarget && TOUCH_TARGET_CLASS)}
           onClick={() => void togglePlay()}
         >
           {streamLoading ? <Spinner size={13} /> : isPlaying ? <Pause size={14} /> : <Play size={14} />}
         </IconButton>
       </Tooltip>
       <Tooltip label={t('music.next')} side='top'>
-        <IconButton label={t('music.next')} size={size} disabled={disabled} onClick={() => void playNext()}>
+        <IconButton label={t('music.next')} size={size} disabled={disabled} className={cn(touchTarget && TOUCH_TARGET_CLASS)} onClick={() => void playNext()}>
           <SkipForward size={14} />
         </IconButton>
       </Tooltip>

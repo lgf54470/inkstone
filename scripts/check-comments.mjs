@@ -2670,6 +2670,7 @@ const allowed = new Map([
     '// Dialog state lives here, so the panels below are memoised: opening a dialog must',
     '// not re-render the whole library (hundreds of rows).',
     '// The drawers portal over the hub modal itself, so they take the next tier above --z-modal.',
+    '/* REF-3: a thumb needs 44px, and these two are the whole navigation on a\n                phone, so they carry the touch floor while the desktop header stays tight. */',
     '/* REF-1a: the header owned only a close button, so the library could never grow\n            past the width it was built with. The toggle is a plain state flip on the same\n            dialog — no remount, so the scroll position and the queue survive it. */',
     '// REF-11: the queue used to float over the last rows of the list; the list now keeps',
     '// the height the reader gave the panel free, so both stay readable at once.',
@@ -2870,6 +2871,11 @@ const allowed = new Map([
     '// state says it can appear.',
     '// Kept mounted after the first open so closing it still animates out the way',
     '// the modal did when it was part of the eager tree.',
+  ]],
+  ['src/client/features/music/music-play-buttons.tsx', [
+    '// REF-3: the shared icon button tops out at 40px on a phone, under the 44px a thumb',
+    '// needs. `touchTarget` lifts this row to that floor on the narrow layouts only — the',
+    '// desktop rows keep the compact size they were designed for.',
   ]],
   ['src/client/features/music/music-player-controls.test.ts', [
     '// The tier thresholds are read from the rendered labels, so the real resources are needed.',

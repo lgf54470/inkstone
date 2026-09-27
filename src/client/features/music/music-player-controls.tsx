@@ -10,7 +10,7 @@ import { useElementWidth } from '../../lib/hooks'
 import { t } from '../../lib/i18n'
 import { useActiveLoopRange, useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
-import { MusicPlayButtons } from './music-play-buttons'
+import { MusicPlayButtons, TOUCH_TARGET_CLASS } from './music-play-buttons'
 import { MusicSeekBar } from './music-seek-bar'
 
 // REF-8: the bar was one rigid row — a 208px summary plus nine controls (144px of them a
@@ -49,7 +49,7 @@ export function MusicPlayerControls({
     <div ref={containerRef} className='flex h-16 shrink-0 items-center gap-3 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3'>
       <TrackSummary track={track} tier={tier} />
       <div className='flex min-w-0 flex-1 items-center gap-3'>
-        <MusicPlayButtons showMode={false} />
+        <MusicPlayButtons showMode={false} touchTarget={tier === 'compact'} />
         <MusicSeekBar valueMs={currentTimeMs} durationMs={durationMs} onSeek={seek} label={t('music.seek')} showTime={tier !== 'compact'} loopRange={loopRange} />
       </div>
       {tier === 'compact'
@@ -121,13 +121,14 @@ function CompactActions({ queueOpen, onToggleQueue }: {
   ]
   return (
     <>
-      <IconButton label={t('music.queue')} size='sm' active={queueOpen} onClick={onToggleQueue}>
+      <IconButton label={t('music.queue')} size='sm' className={TOUCH_TARGET_CLASS} active={queueOpen} onClick={onToggleQueue}>
         <ListMusic size={14} />
       </IconButton>
       <IconButton
         ref={moreRef}
         label={t('music.more_actions')}
         size='sm'
+        className={TOUCH_TARGET_CLASS}
         active={moreOpen}
         onClick={() => setMoreOpen((open) => !open)}
       >

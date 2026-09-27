@@ -112,3 +112,24 @@ describe('hub transport bar more menu (REF-8)', () => {
     expect(useMusic.getState().immersive).toBe(true)
   })
 })
+
+describe('hub transport bar touch targets (REF-3)', () => {
+  function playButton(): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('button')].find(
+      (button) => button.getAttribute('aria-label') === t('music.play') || button.getAttribute('aria-label') === t('music.pause'),
+    ) as HTMLButtonElement | undefined
+  }
+
+  it('gives the narrow row a 44px touch floor', () => {
+    stubContainerWidth(420)
+    mount()
+    expect(playButton()?.className).toContain('min-h-11')
+    expect(playButton()?.className).toContain('min-w-11')
+  })
+
+  it('leaves the wide row at its designed size', () => {
+    stubContainerWidth(1200)
+    mount()
+    expect(playButton()?.className).not.toContain('min-h-11')
+  })
+})

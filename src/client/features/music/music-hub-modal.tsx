@@ -15,6 +15,7 @@ import { MusicGroupBrowse, MusicGroupDetailHeader } from './music-group-browse'
 import { MusicHubSidebar } from './music-hub-sidebar'
 import { MusicHubToolbar } from './music-hub-toolbar'
 import { MusicNowPlaying, type MusicDetailTab } from './music-now-playing'
+import { TOUCH_TARGET_CLASS } from './music-play-buttons'
 import { MusicPlaylistModal } from './music-playlist-modal'
 import { MusicProviderResults } from './music-provider-results'
 import { MusicPlayerControls } from './music-player-controls'
@@ -188,8 +189,10 @@ function HubHeader({
       <div className='flex items-center gap-1'>
         {narrow && (
           <>
-            <IconButton label={t('music.hub_open_navigation')} size='sm' onClick={onOpenNavigation}><PanelLeft size={15} /></IconButton>
-            <IconButton label={t('music.hub_open_now_playing')} size='sm' onClick={onOpenNowPlaying}><SlidersHorizontal size={15} /></IconButton>
+            {/* REF-3: a thumb needs 44px, and these two are the whole navigation on a
+                phone, so they carry the touch floor while the desktop header stays tight. */}
+            <IconButton label={t('music.hub_open_navigation')} size='sm' className={TOUCH_TARGET_CLASS} onClick={onOpenNavigation}><PanelLeft size={15} /></IconButton>
+            <IconButton label={t('music.hub_open_now_playing')} size='sm' className={TOUCH_TARGET_CLASS} onClick={onOpenNowPlaying}><SlidersHorizontal size={15} /></IconButton>
           </>
         )}
         {/* REF-1a: the header owned only a close button, so the library could never grow
@@ -203,7 +206,7 @@ function HubHeader({
         >
           {maximized ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
         </IconButton>
-        <IconButton label={t('common.close')} size='sm' onClick={onClose}><X size={15} /></IconButton>
+        <IconButton label={t('common.close')} size='sm' className={narrow ? TOUCH_TARGET_CLASS : undefined} onClick={onClose}><X size={15} /></IconButton>
       </div>
     </header>
   )
