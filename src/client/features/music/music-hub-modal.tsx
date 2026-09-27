@@ -10,6 +10,7 @@ import { t } from '../../lib/i18n'
 import { formatBytes } from '../../lib/time'
 import { MusicEditTrackModal } from './music-edit-track-modal'
 import { MusicSourceSwitchModal } from './music-source-switch-modal'
+import { MusicHealthModal } from './music-health-modal'
 import { findDuplicateGroups, duplicateWastedBytes, redundantTrackCount } from './music-duplicates'
 import { MusicGroupBrowse, MusicGroupDetailHeader } from './music-group-browse'
 import { MusicHubSidebar } from './music-hub-sidebar'
@@ -168,6 +169,7 @@ function HubPeers({ dialogs }: { dialogs: ReturnType<typeof useHubDialogs> }) {
       <MusicAlistModal open={dialogs.alistOpen} onClose={dialogs.closeAlist} />
       <MusicPodcastModal open={dialogs.podcastOpen} onClose={dialogs.closePodcast} />
       <MusicSourceSwitchModal />
+      <MusicHealthModal />
     </>
   )
 }

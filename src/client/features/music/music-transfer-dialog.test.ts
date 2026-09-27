@@ -92,6 +92,62 @@ describe('UploadPicker folder support', () => {
   })
 })
 
+async function mountDialog(): Promise<void> {
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  root = createRoot(container)
+  await act(async () => {
+    root?.render(createElement(MusicTransferDialog, { open: true, onClose: () => {} }))
+  })
+}
+
+function buttonNamed(label: string): HTMLButtonElement | undefined {
+  return [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === label)
+}
+
+describe('download row actions (FB-F11)', () => {
+  it('offers a retry on a failed row, and a cancel on a running one', async () => {
+    useMusic.setState({
+      downloads: [
+        { id: 'd1', trackId: 't1', name: 'a.flac', percent: 0, status: 'failed', controller: new AbortController() },
+        { id: 'd2', trackId: 't2', name: 'b.flac', percent: 40, status: 'downloading', controller: new AbortController() },
+      ],
+    })
+    const retry = vi.fn(async () => {})
+    const dismiss = vi.fn()
+    useMusic.setState({ retryDownload: retry, dismissDownload: dismiss })
+    await mountDialog()
+    await act(async () => buttonNamed(t('music.download_retry'))?.click())
+    expect(retry).toHaveBeenCalledWith('d1')
+    const cancel = [...document.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === t('music.download_cancel'))
+    await act(async () => cancel?.click())
+    expect(dismiss).toHaveBeenCalledWith('d2')
+    useMusic.setState({ downloads: [] })
+  })
+})
+
+describe('download batch actions (FB-F11)', () => {
+  it('stops a whole queue and retries its failures from the section label', async () => {
+    const cancelAll = vi.fn()
+    const retryFailed = vi.fn(async () => {})
+    useMusic.setState({
+      cancelDownloads: cancelAll,
+      retryFailedDownloads: retryFailed,
+      downloads: [
+        { id: 'd1', trackId: 't1', name: 'a.flac', percent: 0, status: 'failed', controller: new AbortController() },
+        { id: 'd2', trackId: 't2', name: 'b.flac', percent: 10, status: 'downloading', controller: new AbortController() },
+        { id: 'd3', trackId: 't3', name: 'c.flac', percent: 20, status: 'downloading', controller: new AbortController() },
+      ],
+    })
+    await mountDialog()
+    await act(async () => buttonNamed(t('music.download_cancel_all'))?.click())
+    await act(async () => buttonNamed(t('music.download_retry_failed'))?.click())
+    expect(cancelAll).toHaveBeenCalledTimes(1)
+    expect(retryFailed).toHaveBeenCalledTimes(1)
+    useMusic.setState({ downloads: [] })
+  })
+})
+
 describe('transfer task list scroll (UI-17)', () => {
   it('lets the keyboard scroll the uploads list under its section name', async () => {
     useMusic.setState({

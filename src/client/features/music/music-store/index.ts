@@ -86,6 +86,10 @@ function initialProviderState(prefs: MusicPreferences): Partial<MusicStoreState>
     sourceSwitchCandidates: null,
     sourceSwitchLoading: false,
     sourceSwitchFailed: false,
+    healthOpen: false,
+    healthScanning: false,
+    healthFailed: false,
+    healthResults: null,
   }
 }
 
@@ -128,6 +132,7 @@ export type {
   MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,
 } from './types'
 export { currentTrack } from './player'
+export { deadReferenceIds, referenceTrackIds } from './health'
 export {
   PLAYBACK_RATES, RATE_FINE_STEP, RATE_MAX, RATE_MIN, EQ_GAIN_RANGE_DB,
   IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_TEXT_SIZES,

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type RefObject } from 'react'
 import type { MusicSource, MusicTrack } from '@shared/types'
-import { CloudDownload, HardDrive, ImageDown, ListPlus, Podcast, RefreshCw, RotateCw, Server, Upload, ClipboardList, Ellipsis, Link } from 'lucide-react'
+import { Activity, CloudDownload, HardDrive, ImageDown, ListPlus, Podcast, RefreshCw, RotateCw, Server, Upload, ClipboardList, Ellipsis, Link } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Segmented, Select } from '../../components/form'
 import { Menu, Tooltip, confirm } from '../../components/overlay'
@@ -273,12 +273,24 @@ function ToolbarActions({ tracks, libraryTracks, shape, fileRef, onPickM3u, onUp
 }
 
 function InlineActions({ tracks, onPickM3u }: { tracks: MusicTrack[]; onPickM3u: () => void }) {
+  const healthScanning = useMusic((state) => state.healthScanning)
   return (
     <>
       <M3uImportButton onTrigger={onPickM3u} />
       <MusicTextImportButton tracks={tracks} />
       <MusicUrlImportButton />
       <MetadataButtons tracks={tracks} />
+      {/* FB-F9: the library health scan — a library-wide action, so it lives with the other
+          library-wide actions rather than behind the delete menu of a single row. */}
+      <Tooltip label={t('music.health_scan')} side='left'>
+        <IconButton
+          label={t('music.health_scan')}
+          size='sm'
+          onClick={() => void useMusic.getState().openHealthScan()}
+        >
+          <Activity size={14} className={healthScanning ? 'animate-pulse' : undefined} />
+        </IconButton>
+      </Tooltip>
     </>
   )
 }
@@ -298,6 +310,7 @@ function FoldedActions({ tracks, onPickM3u }: { tracks: MusicTrack[]; onPickM3u:
     { id: 'metadata-scan', label: t('music.refresh_metadata'), icon: <ImageDown size={13} />, disabled: metadata.scanDisabled, onSelect: metadata.scan },
     { id: 'metadata-force', label: t('music.metadata_force'), icon: <RotateCw size={13} />, disabled: metadata.forceDisabled, onSelect: metadata.forceScan },
     { id: 'metadata-covers', label: t('music.match_covers'), icon: <CloudDownload size={13} />, disabled: metadata.coversDisabled, onSelect: metadata.matchCovers },
+    { id: 'health-scan', label: t('music.health_scan'), icon: <Activity size={13} />, separatorBefore: true, onSelect: () => void useMusic.getState().openHealthScan() },
   ]
   return (
     <>

@@ -36,7 +36,6 @@ function TransferBody() {
   const target = useMusic((state) => state.uploadTarget)
   const setUploadTarget = useMusic((state) => state.setUploadTarget)
   const dismissUpload = useMusic((state) => state.dismissUpload)
-  const dismissDownload = useMusic((state) => state.dismissDownload)
   const dismissLibraryJob = useMusic((state) => state.dismissLibraryJob)
 
   return (
@@ -54,11 +53,7 @@ function TransferBody() {
           {uploads.map((task) => <UploadTaskRow key={task.id} task={task} onDismiss={() => dismissUpload(task.id)} />)}
         </TaskSection>
       )}
-      {downloads.length > 0 && (
-        <TaskSection label={t('music.transfers_downloads')}>
-          {downloads.map((task) => <DownloadTaskRow key={task.id} task={task} onDismiss={() => dismissDownload(task.id)} />)}
-        </TaskSection>
-      )}
+      {downloads.length > 0 && <DownloadSection tasks={downloads} />}
       {libraryJobs.length > 0 && (
         <TaskSection label={t('music.transfers_library_jobs')}>
           {libraryJobs.map((job) => <LibraryJobRow key={job.kind} job={job} onDismiss={() => dismissLibraryJob(job.kind)} />)}
@@ -158,10 +153,13 @@ export function DropZone({ onFiles, onChoose, onChooseFolder }: {
   )
 }
 
-function TaskSection({ label, children }: { label: string; children: ReactNode }) {
+function TaskSection({ label, action, children }: { label: string; action?: ReactNode; children: ReactNode }) {
   return (
     <section className='space-y-1'>
-      <h3 className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{label}</h3>
+      <div className='flex items-center justify-between gap-2'>
+        <h3 className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{label}</h3>
+        {action}
+      </div>
       <ul tabIndex={0} aria-label={label} className='max-h-52 space-y-1 overflow-y-auto'>{children}</ul>
     </section>
   )
@@ -207,9 +205,13 @@ function UploadTaskRow({ task, onDismiss }: { task: MusicUploadTask; onDismiss: 
   )
 }
 
-function DownloadTaskRow({ task, onDismiss }: { task: MusicDownloadTask; onDismiss: () => void }) {
+function DownloadTaskRow({ task, onDismiss, onRetry }: { task: MusicDownloadTask; onDismiss: () => void; onRetry: () => void }) {
   return (
-    <TaskRow name={task.name} onDismiss={onDismiss}>
+    <TaskRow
+      name={task.name}
+      onDismiss={onDismiss}
+      label={task.status === 'downloading' ? 'music.download_cancel' : 'music.download_dismiss'}
+    >
       <span className='flex items-center gap-1.5 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
         {task.status === 'downloading' && <Spinner size={11} />}
         {task.status === 'done' && <CheckCircle2 size={11} className='text-[var(--success)]' />}
@@ -218,9 +220,43 @@ function DownloadTaskRow({ task, onDismiss }: { task: MusicDownloadTask; onDismi
       </span>
       {task.status === 'downloading' && <Progress value={task.percent} label={t('music.download_progress', { value0: task.percent })} />}
       {task.status === 'failed' && (
-        <span className='block truncate text-[length:var(--text-10)] text-[var(--danger)]'>{t('music.download_failed')}</span>
+        <span className='flex items-center gap-2'>
+          <span className='truncate text-[length:var(--text-10)] text-[var(--danger)]'>{t('music.download_failed')}</span>
+          <Button size='sm' onClick={onRetry}>{t('music.download_retry')}</Button>
+        </span>
       )}
     </TaskRow>
+  )
+}
+
+function DownloadSection({ tasks }: { tasks: MusicDownloadTask[] }) {
+  const dismissDownload = useMusic((state) => state.dismissDownload)
+  const retryDownload = useMusic((state) => state.retryDownload)
+  const retryFailedDownloads = useMusic((state) => state.retryFailedDownloads)
+  const cancelDownloads = useMusic((state) => state.cancelDownloads)
+  const running = tasks.filter((task) => task.status === 'downloading').length
+  const failed = tasks.filter((task) => task.status === 'failed').length
+  return (
+    <TaskSection
+      label={t('music.transfers_downloads')}
+      // The batch controls sit on the section label so a long queue can be stopped, or its
+      // failures retried, without walking every row.
+      action={(
+        <div className='flex items-center gap-1'>
+          {failed > 0 && <Button size='sm' onClick={() => void retryFailedDownloads()}>{t('music.download_retry_failed')}</Button>}
+          {running > 1 && <Button size='sm' onClick={cancelDownloads}>{t('music.download_cancel_all')}</Button>}
+        </div>
+      )}
+    >
+      {tasks.map((task) => (
+        <DownloadTaskRow
+          key={task.id}
+          task={task}
+          onDismiss={() => dismissDownload(task.id)}
+          onRetry={() => void retryDownload(task.id)}
+        />
+      ))}
+    </TaskSection>
   )
 }
 

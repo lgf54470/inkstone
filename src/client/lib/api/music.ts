@@ -6,6 +6,7 @@ import type {
   MusicPlaybackInput,
   MusicPlaybackPositionInput,
   MusicPlaylistDetail,
+  MusicReferenceHealthResult,
   MusicTag,
   MusicTrack,
   MusicWebdavEntry,
@@ -250,6 +251,14 @@ export const music = {
 
   importProviderTrack: (input: MusicProviderTrackImportInput) =>
     request<MusicTrack>('/api/music/tracks/import-provider', { method: 'POST', body: input, timeoutMs: 30_000 }),
+
+  // FB-F9: one probe per reference row — the worker fetches a single byte from each address and
+  // answers what came back. The batch cap is the worker's (`LIMITS.musicReferenceHealthMaxTracks`),
+  // so a caller with more rows splits them.
+  checkReferenceHealth: (ids: string[]) =>
+    request<{ results: MusicReferenceHealthResult[] }>('/api/music/tracks/reference-health', {
+      method: 'POST', body: { ids }, timeoutMs: 120_000,
+    }),
 
   listTrash: () => request<{ entries: MusicTrashEntry[] }>('/api/music/trash'),
 

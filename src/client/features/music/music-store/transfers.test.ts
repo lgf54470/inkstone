@@ -4,7 +4,7 @@ import type { MusicTrack } from '@shared/types'
 import { saveBlob } from '../music-export'
 import { toastMusicError } from '../music-feedback'
 import { downloadFileName } from '../music-utils'
-import { downloadTracks, streamToBlob } from './transfers'
+import { cancelDownloads, dismissDownload, downloadTracks, retryDownload, retryFailedDownloads, streamToBlob } from './transfers'
 import type { MusicSet } from './types'
 
 vi.mock('../music-export', () => ({ saveBlob: vi.fn() }))
@@ -54,8 +54,18 @@ function respond(body: unknown[], totalBytes?: number): unknown {
 }
 
 function makeStore(tracks: MusicTrack[]) {
-  const store = musicStoreStub({ tracks, downloads: [], transfersOpen: false })
+  const store = musicStoreStub({ tracks, downloads: [], transfersOpen: false, providerQuality: 128 })
   return { ...store, state: store.read }
+}
+
+// A transfer that answers only when its signal aborts: the test drives the cancel button
+// instead of waiting for a timeout nobody wants to reach.
+function hangingFetch(): (url: string, init?: { signal?: AbortSignal }) => Promise<never> {
+  return (_url, init) => new Promise((_resolve, reject) => {
+    const fail = (): void => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+    if (init?.signal?.aborted) fail()
+    else init?.signal?.addEventListener('abort', fail, { once: true })
+  })
 }
 
 afterEach(() => {
@@ -130,6 +140,89 @@ describe('downloadTracks', () => {
     expect(store.state().transfersOpen).toBe(false)
     await downloadTracks(store.set, store.get, ['track-1'])
     expect(store.state().transfersOpen).toBe(true)
+  })
+
+})
+
+describe('download quality (FB-F7)', () => {
+  it('asks the proxy for the chosen tier on online rows only', async () => {
+    const urls: string[] = []
+    const store = makeStore([track(), track({ id: 'track-2', source: 'provider' })])
+    vi.stubGlobal('fetch', (url: string) => {
+      urls.push(url)
+      return Promise.resolve(respond(chunks(300), 300))
+    })
+    await downloadTracks(store.set, store.get, ['track-1', 'track-2'])
+    expect(urls).toEqual(['/api/music/tracks/track-1/stream', '/api/music/tracks/track-2/stream?quality=128'])
+  })
+})
+
+describe('download cancel (FB-F11)', () => {
+  it('stops a running download when its row is dismissed, saving nothing and reporting nothing', async () => {
+    const store = makeStore([track()])
+    vi.stubGlobal('fetch', hangingFetch())
+    const run = downloadTracks(store.set, store.get, ['track-1'])
+    await Promise.resolve()
+    const task = store.state().downloads[0]!
+    expect(task.status).toBe('downloading')
+    dismissDownload(store.set, store.get, task.id)
+    await run
+    expect(store.state().downloads).toEqual([])
+    expect(saveBlob).not.toHaveBeenCalled()
+    expect(toastMusicError).not.toHaveBeenCalled()
+  })
+
+  it('stops every running download at once and keeps the rows that already answered', async () => {
+    const store = makeStore([track(), track({ id: 'track-2' }), track({ id: 'track-3' })])
+    vi.stubGlobal('fetch', hangingFetch())
+    const run = downloadTracks(store.set, store.get, ['track-1', 'track-2', 'track-3'])
+    await Promise.resolve()
+    store.set({ downloads: [...store.state().downloads, { id: 'gone', trackId: 'track-1', name: 'x.flac', percent: 0, status: 'failed', controller: new AbortController() }] })
+    cancelDownloads(store.set, store.get)
+    expect(store.state().downloads.map((task) => task.id)).toEqual(['gone'])
+    await run
+    expect(saveBlob).not.toHaveBeenCalled()
+    expect(toastMusicError).not.toHaveBeenCalled()
+  })
+})
+
+describe('download retry (FB-F11)', () => {
+  it('retries one failed task in place, and its earlier failure no longer reports twice', async () => {
+    const store = makeStore([track()])
+    vi.stubGlobal('fetch', () => Promise.resolve({ ok: false, status: 500 }))
+    await downloadTracks(store.set, store.get, ['track-1'])
+    const failed = store.state().downloads[0]!
+    vi.mocked(toastMusicError).mockClear()
+    vi.stubGlobal('fetch', () => Promise.resolve(respond(chunks(120, 180), 300)))
+    await retryDownload(store.set, store.get, failed.id)
+    expect(saveBlob).toHaveBeenCalledTimes(1)
+    expect(store.state().downloads).toEqual([])
+    expect(toastMusicError).not.toHaveBeenCalled()
+  })
+
+  it('retries every failed task and leaves the rows that never failed alone', async () => {
+    const store = makeStore([track(), track({ id: 'track-2' })])
+    vi.stubGlobal('fetch', () => Promise.resolve({ ok: false, status: 500 }))
+    await downloadTracks(store.set, store.get, ['track-1', 'track-2'])
+    expect(store.state().downloads).toHaveLength(2)
+    vi.stubGlobal('fetch', () => Promise.resolve(respond(chunks(300), 300)))
+    await retryFailedDownloads(store.set, store.get)
+    expect(saveBlob).toHaveBeenCalledTimes(2)
+    expect(store.state().downloads).toEqual([])
+  })
+
+  it('ignores a retry for a row that is not there or still running', async () => {
+    const store = makeStore([track()])
+    vi.stubGlobal('fetch', hangingFetch())
+    const run = downloadTracks(store.set, store.get, ['track-1'])
+    await Promise.resolve()
+    const running = store.state().downloads[0]!
+    await retryDownload(store.set, store.get, running.id)
+    await retryDownload(store.set, store.get, 'gone')
+    expect(store.state().downloads).toHaveLength(1)
+    expect(store.state().downloads[0]?.status).toBe('downloading')
+    cancelDownloads(store.set, store.get)
+    await run
   })
 })
 

@@ -3,10 +3,15 @@ import {
   clearSearchHistory, clearSelection, commitQuery, closeTrackMenu, invertSelection, loadLibrary, openTrackMenu, prepareRomanization,
   selectAll, setDefaultViewMode, setQuery, setScope, setShowSourceBadge, setSort, setSortDirection, setSourceFilter, setViewMode, showMoreMatches, toggleSelect,
 } from './library-load'
-import { batchTracks, deleteTrack, ensureTrackLyric, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin } from './library-tracks'
+import {
+  batchTracks, deleteTrack, ensureTrackLyric, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin, trashTracks,
+} from './library-tracks'
 import { matchMissingCovers } from './library-covers'
 import { searchTrackLyric } from './library-lyrics'
-import { dismissDownload, dismissLibraryJob, downloadTracks, setTransfersOpen, setUploadTarget } from './transfers'
+import {
+  cancelDownloads, dismissDownload, dismissLibraryJob, downloadTracks, retryDownload, retryFailedDownloads,
+  setTransfersOpen, setUploadTarget,
+} from './transfers'
 import { setTracksOffline, syncOfflineTracks, toggleTrackOffline } from './offline'
 import {
   addSelectionToPlaylist, addToPlaylist, createPlaylist, createPlaylistWithTracks, createTag, deletePlaylist, deleteTag, dismissUpload,
@@ -17,6 +22,9 @@ import { browseWebdav, deleteWebdavObjects, importTrackFromUrl, importWebdavFold
 import { closeTrash, openTrash, purgeTrashEntry, restoreFromTrash } from './trash'
 import { browseAlist, createAlistServer, deleteAlistServer, importAlistFolder, importAlistTrack, loadAlistServers, patchAlistServer, searchAlist } from './alist'
 import { closePodcastEpisodes, createPodcastFeed, deletePodcastFeed, importPodcastOpml, loadPodcastEpisodes, loadPodcastFeeds, playPodcastEpisode, renamePodcastFeed } from './podcast'
+import {
+  closeHealthScan, openHealthScan, repairDeadReference, scanReferences, trashDeadReferences,
+} from './health'
 import {
   acceptProviderNotice, addProviderTrack, addProviderTracks, closeSourceSwitch, openSourceSwitch, playProviderTrack,
   searchProviders, setProviderAutoSwap, setProviderEnabled, setProviderQuality, switchTrackSource,
@@ -35,13 +43,16 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'loadPodcastEpisodes' | 'closePodcastEpisodes' | 'importPodcastOpml' | 'playPodcastEpisode'
   | 'setProviderEnabled' | 'searchProviders' | 'playProviderTrack' | 'addProviderTrack' | 'addProviderTracks'
   | 'setProviderAutoSwap' | 'openSourceSwitch' | 'closeSourceSwitch' | 'switchTrackSource'
+  | 'openHealthScan' | 'closeHealthScan' | 'scanReferences' | 'repairDeadReference' | 'trashDeadReferences'
+  | 'trashTracks'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'searchTrackLyric' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
   | 'createTag' | 'patchTag' | 'deleteTag'
   | 'createPlaylist' | 'createPlaylistWithTracks' | 'renamePlaylist' | 'deletePlaylist' | 'sharePlaylist' | 'unsharePlaylist' | 'setPlaylistCover' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
   | 'uploadFiles' | 'dismissUpload'
-  | 'downloadTracks' | 'dismissDownload' | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'
+  | 'downloadTracks' | 'dismissDownload' | 'retryDownload' | 'retryFailedDownloads' | 'cancelDownloads'
+  | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'
   | 'syncOfflineTracks' | 'toggleTrackOffline' | 'setTracksOffline'>
 
 export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
@@ -125,6 +136,12 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     openSourceSwitch: (trackId) => openSourceSwitch(set, get, trackId),
     closeSourceSwitch: () => closeSourceSwitch(set),
     switchTrackSource: (hit) => switchTrackSource(set, get, hit),
+    openHealthScan: () => openHealthScan(set, get),
+    closeHealthScan: () => closeHealthScan(set),
+    scanReferences: () => scanReferences(set, get),
+    repairDeadReference: (id) => repairDeadReference(set, get, id),
+    trashDeadReferences: (ids) => trashDeadReferences(set, get, ids),
+    trashTracks: (ids) => trashTracks(set, get, ids),
     createPodcastFeed: (input) => createPodcastFeed(set, input),
     renamePodcastFeed: (id, patch) => renamePodcastFeed(set, id, patch),
     deletePodcastFeed: (id) => deletePodcastFeed(set, id),
@@ -142,13 +159,17 @@ function playlistActions(set: MusicSet, get: MusicGet): PlaylistItemActions {
 }
 
 type TransferActions = Pick<MusicStoreState,
-  | 'downloadTracks' | 'dismissDownload' | 'syncOfflineTracks' | 'toggleTrackOffline' | 'setTracksOffline'
+  | 'downloadTracks' | 'dismissDownload' | 'retryDownload' | 'retryFailedDownloads' | 'cancelDownloads'
+  | 'syncOfflineTracks' | 'toggleTrackOffline' | 'setTracksOffline'
   | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'>
 
 function transferActions(set: MusicSet, get: MusicGet): TransferActions {
   return {
     downloadTracks: (ids) => downloadTracks(set, get, ids),
-    dismissDownload: (id) => dismissDownload(set, id),
+    dismissDownload: (id) => dismissDownload(set, get, id),
+    retryDownload: (id) => retryDownload(set, get, id),
+    retryFailedDownloads: () => retryFailedDownloads(set, get),
+    cancelDownloads: () => cancelDownloads(set, get),
     syncOfflineTracks: () => syncOfflineTracks(set),
     toggleTrackOffline: (id) => toggleTrackOffline(set, get, id),
     setTracksOffline: (ids, enabled) => setTracksOffline(set, get, ids, enabled),

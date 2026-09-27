@@ -145,3 +145,16 @@ export interface MusicSearchResponse {
   trackIds: string[]
   query: string
 }
+
+/**
+ * FB-F9: what a scan of a reference row found. `dead` means the link will not come back on its own
+ * (the host says it is gone, or the address may not be fetched at all) — those rows are the ones
+ * worth re-pointing or clearing out. `unreachable` is everything a later scan may find healthy
+ * again, and `ok` is the row answering.
+ */
+export type MusicReferenceHealthStatus = 'ok' | 'dead' | 'unreachable'
+
+export interface MusicReferenceHealthResult {
+  id: string
+  status: MusicReferenceHealthStatus
+}

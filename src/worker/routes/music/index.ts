@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { AppBindings } from '../../env'
 import { registerMusicAlistRoutes } from './alist'
 import { registerMusicCoverLookupRoutes } from './lookup'
+import { registerMusicHealthRoutes } from './health'
 import { registerMusicLibraryRoutes } from './library'
 import { registerMusicLyricLookupRoutes } from './lyrics'
 import { registerMusicPlaybackRoutes } from './playback'
@@ -31,6 +32,7 @@ registerMusicTrashRoutes(musicRoutes)
 registerMusicAlistRoutes(musicRoutes)
 registerMusicPodcastRoutes(musicRoutes)
 registerMusicProviderRoutes(musicRoutes)
+registerMusicHealthRoutes(musicRoutes)
 
 export { registerMusicPublicRoutes } from './public'
 export { purgeExpiredMusicTrash } from './trash'

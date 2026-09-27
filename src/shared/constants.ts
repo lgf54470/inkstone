@@ -128,6 +128,9 @@ export const LIMITS = {
   // quota, so it sits far above any real track.
   musicStreamConnectTimeoutMs: 12_000,
   musicStreamMaxBytes: 512 * 1024 * 1024,
+  // FB-F9: one health scan walks at most this many reference rows — the cap is what keeps a single
+  // press from becoming an unbounded burst of requests at third-party hosts.
+  musicReferenceHealthMaxTracks: 50,
   musicProviderSearchCount: 20,
   musicProviderQualities: MUSIC_PROVIDER_QUALITIES,
   musicPlaylistNameMaxLength: 120,

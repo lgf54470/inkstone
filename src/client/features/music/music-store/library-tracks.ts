@@ -187,6 +187,20 @@ export async function batchTracks(set: MusicSet, get: MusicGet, action: MusicBat
   else toastMusicNotice('music.batch_partial', { value0: applied.length, value1: ids.length - applied.length })
 }
 
+// FB-F9: the health panel trashes rows it has just proved dead, so it names them by id rather than
+// through the selection — the same cleanup every delete does, in one place.
+export async function trashTracks(set: MusicSet, get: MusicGet, ids: string[]): Promise<string[]> {
+  if (!ids.length) return []
+  const { applied, error } = await sendBatches(ids, 'delete')
+  if (error) toastMusicError(error, 'music.action_failed')
+  if (!applied.length) return []
+  const affected = new Set(applied)
+  dropFromQueue(set, get, affected)
+  dropTracksLocally(set, affected)
+  forgetOfflineTracks(set, get, applied)
+  return applied
+}
+
 // One request per chunk: the first rejected chunk ends the walk, and the ids that
 // already landed are handed back so the caller keeps the local state honest.
 export async function sendBatches(ids: string[], action: MusicBatchAction, tagIds?: string[]): Promise<{ applied: string[]; error: unknown }> {

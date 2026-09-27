@@ -1,7 +1,8 @@
 import type { StoreApi } from 'zustand'
 import type { MusicProviderTrack, MusicAlistCreateInput, MusicAlistEntry, MusicAlistPatchInput, MusicAlistServerView, MusicPodcastCreateInput, MusicPodcastEpisode, MusicPodcastFeedView, MusicPodcastPatchInput, MusicTrashEntry } from '../../../lib/api'
 import type {
-  MusicPlayMode, MusicPlaylistDetail, MusicSource, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry,
+  MusicPlayMode, MusicPlaylistDetail, MusicReferenceHealthResult, MusicSource, MusicStats, MusicTag, MusicTrack,
+  MusicWebdavEntry,
 } from '@shared/types'
 import type { MusicEqPresetId } from '../music-eq-presets'
 import type { MusicProviderQuality } from '@shared/constants'
@@ -76,11 +77,17 @@ export interface MusicUploadTask {
   controller: AbortController
 }
 
+// FB-F11: the controller is what the row's X and the batch stop abort, so a task is
+// cancellable from the moment it is listed (queued rows included) rather than only once
+// its turn comes up. `trackId` is kept apart from the composed `id` so a retry never has
+// to take that string apart again.
 export interface MusicDownloadTask {
   id: string
+  trackId: string
   name: string
   percent: number
   status: 'downloading' | 'done' | 'failed'
+  controller: AbortController
 }
 
 export type MusicLibraryJobKind = 'metadata' | 'covers'
@@ -211,6 +218,11 @@ export interface MusicStoreState {
   sourceSwitchCandidates: MusicProviderTrack[] | null
   sourceSwitchLoading: boolean
   sourceSwitchFailed: boolean
+  /** FB-F9: the reference-row health scan — its panel, its verdicts and where it stopped. */
+  healthOpen: boolean
+  healthScanning: boolean
+  healthFailed: boolean
+  healthResults: MusicReferenceHealthResult[] | null
   podcastEpisodesFeedId: string | null
   podcastEpisodes: MusicPodcastEpisode[]
   podcastEpisodesLoading: boolean
@@ -320,6 +332,9 @@ export interface MusicStoreState {
   dismissUpload: (id: string) => void
   downloadTracks: (ids: string[]) => Promise<void>
   dismissDownload: (id: string) => void
+  retryDownload: (id: string) => Promise<void>
+  retryFailedDownloads: () => Promise<void>
+  cancelDownloads: () => void
   syncOfflineTracks: () => Promise<void>
   openTrash: () => Promise<void>
   loadAlistServers: () => Promise<void>
@@ -344,6 +359,15 @@ export interface MusicStoreState {
   closeSourceSwitch: () => void
   /** FB-F8: re-serves the row from the chosen hit, in the place it already occupies. */
   switchTrackSource: (hit: MusicProviderTrack) => Promise<void>
+  /** FB-F9: opens the panel and asks every reference row for one byte. */
+  openHealthScan: () => Promise<void>
+  closeHealthScan: () => void
+  scanReferences: () => Promise<void>
+  /** FB-F9: re-points a dead online row at another catalogue and clears the broken one out. */
+  repairDeadReference: (id: string) => Promise<void>
+  trashDeadReferences: (ids: string[]) => Promise<void>
+  /** FB-F9: the cleanup path the health panel shares with the batch bar and the trash action. */
+  trashTracks: (ids: string[]) => Promise<string[]>
   loadPodcastFeeds: () => Promise<void>
   loadPodcastEpisodes: (feedId: string) => Promise<void>
   closePodcastEpisodes: () => void
