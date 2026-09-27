@@ -28,7 +28,11 @@
 
 ## 批次 R③ · 拖动与缩放（M–L，最后做）
 
-- [ ] REF-1b Hub 可拖动移动 + 边缘调宽高：参考 `shell/resizer.tsx` 与 `music-drag.tsx` 既有指针拖拽实现（含 `isClickAfterDrag`），Modal 增加窗口化能力或音乐库专用窗口壳；位置/尺寸持久化；键盘可达（方向键微调）与焦点陷阱保持；`surfaces:check` 名单核对
+- [x] REF-1b Hub 可拖动移动 + 边缘调宽高：窗口 chrome 落在 `music-hub-window.tsx`（头部拖动 + 键盘移动钮 + 右下角 resize 手柄），`Modal` 新增可选 `style` 透传承载运行时几何，`hubGeometry` 进偏好持久化；键盘可达（方向键 ±24px），最大化/全屏视口档自动收起 chrome；`surfaces:check` 全绿 —— **commit `f9ca4c65`**
+
+## 本轮收尾状态（2026-09-27）
+
+REF-2、REF-7、REF-6、REF-5、REF-8、REF-9、REF-1a、REF-10、REF-4、REF-12、REF-11、REF-3（第一阶段）、REF-1b 均已提交，共 12 项；每项一个原子提交，jsdom 契约先红后绿、`npm run typecheck` 与 12 项静态门禁绿、pre-commit 全量单测绿。
 
 ## 已知限制（本轮执行环境）
 
@@ -46,6 +50,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-27 | REF-1b Hub 可拖动 + 边缘调宽高 | `f9ca4c65` | 新增 4 例（chrome 存在 / 键盘缩放写回 store / 键盘移动写回 store / 最大化后 chrome 消失）；首轮 9 例失败——`hubGeometry` 未注入初始 store（`initialPlaybackState` 只挑了部分偏好字段），**顺带发现 `hubMaximized` 同样未注入，即 REF-1a 的持久化其实一直没生效**，一并修好后 17 例 ✅；`size:check` 报文件 515 行 + 2 个 longFns，拆出 `music-hub-window.tsx`（含 `HubHeaderActions`、`HubMoveButton`、`useHubDrag` 内联）后 ✅；音乐目录 102 文件 / 713 例 ✅；pre-commit 335 文件 / 2842 例 ✅ | 几何走内联 style（`AGENTS.md` 允许动态值）：width/height/transform；位移夹取 ±240px、宽 ≥720、高 ≥420 且不超视口；按在按钮上的按压不触发拖动（`closest('button')`）；`Modal` 的 `style` 带 width 时不再套 `maxWidth`。**指针拖动的实际手感未在浏览器验证**（jsdom 只覆盖键盘路径与 store 写入） |
 | 2026-09-27 | REF-3 窄屏档 44px 触控目标 | `bde2d609` | 新增 2 例（窄档有 min-h-11/min-w-11、宽档无）；7 例 ✅；typecheck ✅；size ✅；音乐目录 102 文件 / 709 例 ✅ | 共享 `IconButton` 手机上最大 40px（`size-10`），全局改风险过大，故只在音乐窄屏档加 `TOUCH_TARGET_CLASS`（`min-h-11 min-w-11`）：传输条 compact 的四个传输钮 + 队列/更多钮、Hub 窄屏头部的导航/现在播放/关闭钮。桌面档保持原尺寸。900–1240 区间的挤压已由 REF-7/REF-8 的容器测量接管，矮视口由 REF-9 接管，Drawer 宽度本就按视口收放 |
 | 2026-09-27 | REF-11 队列面板高度可调 + 列表避让 | `ce8e2d74` | 新增 3 例（手柄 aria 语义 / 方向键增减 / 面板按给定高度渲染）；首版第二例断言写成「valuenow > 0」（恒真），收紧为校验 `onResize` 收到 ±32 后 ✅；音乐目录 102 文件 / 707 例 ✅；typecheck 曾因 `music-queue-clear.test.ts` 未传新 props 报错，补齐后 ✅；pre-commit 335 文件 / 2836 例 ✅ | 手柄 `role="separator"` + `aria-valuenow/min/max` + `tabIndex=0`，方向键 ±32px（144–640 夹取），指针拖动走 `setPointerCapture`；`HubCentre` 持有高度并在队列打开时给列表区 `paddingBottom`，浮层不再压住最后几行 |
 | 2026-09-27 | REF-4 + REF-12 字号升档与基线收敛 | `687954e9` | 先红 2 例（元信息列不再 11px / 行标题高一级）；实现后 12 例 ✅；typecheck ✅；size / tokens / hardcoded ✅；音乐目录 101 文件 / 704 例 ✅ | 令牌 10→13 齐全，逐档升：曲表元信息 11→12、标题 12.5→13；卡片标题 12→13、角标与副标题 10→12；传输条标题 12→13、副标题 11→12；沉浸层文件信息 10→12；队列标题 12→13。脚本先替换 10→12 会把后续 12→13 的计数带偏，故按「先大后小」顺序执行并断言替换条数。**字号变化后的对比度/行高密度需浏览器门禁复跑（未跑，见已知限制）** |
