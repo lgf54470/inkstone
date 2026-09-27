@@ -249,6 +249,7 @@ export const messages = {
 'music.keyboard_help': '键盘快捷键',
 'music.keyboard_hint': '空格播放或暂停，Alt+方向键快退快进十秒，Ctrl/⌘+方向键切换上一首/下一首',
 'music.queue_toggle': '展开或收起队列',
+'music.queue_resize': '调整队列面板高度',
 'music.maximize_hub': '最大化音乐库',
 'music.restore_hub': '还原音乐库窗口',
 'music.maximize_player': '最大化播放器',

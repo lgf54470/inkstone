@@ -2671,6 +2671,8 @@ const allowed = new Map([
     '// not re-render the whole library (hundreds of rows).',
     '// The drawers portal over the hub modal itself, so they take the next tier above --z-modal.',
     '/* REF-1a: the header owned only a close button, so the library could never grow\n            past the width it was built with. The toggle is a plain state flip on the same\n            dialog — no remount, so the scroll position and the queue survive it. */',
+    '// REF-11: the queue used to float over the last rows of the list; the list now keeps',
+    '// the height the reader gave the panel free, so both stay readable at once.',
     '/* Ranking the library happens once, here; the toolbar and the group header take\n          the result as a prop so they never run the same sort a second time. */',
     '// The list only shows copies side by side; the strip states what the view is',
     '// worth so cleaning up does not require doing the arithmetic by hand.',
@@ -2963,6 +2965,17 @@ const allowed = new Map([
     '// row holds a memo boundary and only sees props that are stable across renders.',
     '/* Decorative: the note is the visual twin of aria-current, so it stays out of the name. */',
     '/* The current row carries a 14% accent tint; the dim tiers fall under AA on it — even\n          tertiary, measured over the immersive player\'s --bg-overlay — so that row\'s duration\n          takes two tiers up, same rule as the sidebar\'s count badge. */',
+  ]],
+  ['src/client/features/music/music-queue-panel.test.ts', [
+    '// REF-11: the panel held a fixed 288px over the end of the track list, so opening the',
+    '// queue meant giving up the last rows. The height is the reader\'s now.',
+  ]],
+  ['src/client/features/music/music-queue-panel.tsx', [
+    '// REF-11: the panel used to cover the last rows of the list at a fixed 288px, so the',
+    '// list and the queue could never both be readable at once. The height belongs to the',
+    '// reader now, and the list steps aside for whatever they choose.',
+    '// A drag handle that is also a keyboard control: the separator role carries the value,',
+    '// and the arrow keys move it for anyone not holding a pointer.',
   ]],
   ['src/client/features/music/music-queue-rows.test.ts', [
     '// One artwork per rendered queue row, so counting them answers how many rows',

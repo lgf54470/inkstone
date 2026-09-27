@@ -91,7 +91,7 @@ describe('clearing the queue asks first', () => {
   for (const surface of surfaces) {
     const surfaceElement = (): ReactElement => (surface.name === 'the transport popover'
       ? createElement(MusicQueueButton)
-      : createElement(MusicQueuePanel, { open: true, onClose: () => {} }))
+      : createElement(MusicQueuePanel, { open: true, onClose: () => {}, height: 288, onResize: () => {} }))
 
     it(`${surface.name} waits for the confirmation`, async () => {
       const clearQueue = vi.fn()

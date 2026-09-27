@@ -18,7 +18,7 @@ import { MusicNowPlaying, type MusicDetailTab } from './music-now-playing'
 import { MusicPlaylistModal } from './music-playlist-modal'
 import { MusicProviderResults } from './music-provider-results'
 import { MusicPlayerControls } from './music-player-controls'
-import { MusicQueuePanel } from './music-queue-panel'
+import { MusicQueuePanel, QUEUE_PANEL_DEFAULT_HEIGHT } from './music-queue-panel'
 import { MusicTagManagerModal } from './music-tag-manager'
 import { MusicTrackList } from './music-track-list'
 import { MusicTransferDialog } from './music-transfer-dialog'
@@ -233,6 +233,9 @@ const HubCentre = memo(function HubCentre({
   const tracks = useVisibleTracks()
   const browseKind = scope.kind === 'albums' || scope.kind === 'artists' ? scope.kind : null
   const detail = scope.kind === 'album' || scope.kind === 'artist' ? scope : null
+  // REF-11: the queue used to float over the last rows of the list; the list now keeps
+  // the height the reader gave the panel free, so both stay readable at once.
+  const [queueHeight, setQueueHeight] = useState(QUEUE_PANEL_DEFAULT_HEIGHT)
   return (
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)]'>
       {/* Ranking the library happens once, here; the toolbar and the group header take
@@ -241,7 +244,7 @@ const HubCentre = memo(function HubCentre({
       {detail && <MusicGroupDetailHeader scope={detail} tracks={tracks} />}
       <MusicProviderResults />
       {scope.kind === 'duplicates' && tracks.length > 0 && <MusicDuplicatesSummary />}
-      <div className='min-h-0 flex-1'>
+      <div className='min-h-0 flex-1' style={queueOpen ? { paddingBottom: queueHeight } : undefined}>
         {loadError && !tracks.length && !loading
           ? <Empty
               art='search'
@@ -253,7 +256,7 @@ const HubCentre = memo(function HubCentre({
             ? <MusicGroupBrowse kind={browseKind} />
             : <MusicTrackList tracks={tracks} loading={loading} emptyTitle={emptyTitle(scope)} onEdit={onEditTrack} />}
       </div>
-      <MusicQueuePanel open={queueOpen} onClose={onCloseQueue} />
+      <MusicQueuePanel open={queueOpen} onClose={onCloseQueue} height={queueHeight} onResize={setQueueHeight} />
     </div>
   )
 })
