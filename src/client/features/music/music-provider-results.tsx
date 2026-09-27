@@ -1,12 +1,12 @@
-import { useEffect } from 'react'
-import { Plus } from 'lucide-react'
-import { Button } from '../../components/primitives'
-import { Switch } from '../../components/form'
+import { useEffect, useState } from 'react'
+import { Music, Play, Plus } from 'lucide-react'
+import { Button, IconButton } from '../../components/primitives'
+import { Checkbox, Switch } from '../../components/form'
 import { t, type MessageKey } from '../../lib/i18n'
 import { formatTimecode } from '../../lib/time'
 import { useMusic } from './music-store'
 import { GDS_SOURCES, providerSourceLabel } from './providers'
-import type { MusicProviderTrack } from '../../lib/api'
+import { musicProviderCoverUrl, type MusicProviderTrack } from '../../lib/api'
 
 // FB-F2: every state the panel can be in has words. The old render chain fell through
 // to nothing whenever the settled keywords did not match the query, and that is exactly
@@ -38,6 +38,12 @@ export function providerFailureKey(failedCount: number): MessageKey {
   return failedCount >= GDS_SOURCES.length ? 'music.provider_all_failed' : 'music.provider_partial_failed'
 }
 
+// FB-F10: a tick is stored as the hit's own identity (`source:sourceId`), so a selection survives
+// a re-render and can be dropped the moment the answer stops listing that hit.
+export function providerHitKey(hit: MusicProviderTrack): string {
+  return `${hit.source}:${hit.sourceId}`
+}
+
 // FEA-A1-3: the online half of a library search. It trails the local results
 // while a query is showing, behind the per-provider opt-in from A1-1 — the
 // section exists visually only once the query is non-empty.
@@ -50,7 +56,9 @@ export function MusicProviderResults() {
   const failedSources = useMusic((state) => state.providerFailedSources)
   const searchProviders = useMusic((state) => state.searchProviders)
   const playProviderTrack = useMusic((state) => state.playProviderTrack)
+  const addProviderTrack = useMusic((state) => state.addProviderTrack)
   const setProviderEnabled = useMusic((state) => state.setProviderEnabled)
+  const selection = useProviderSelection(results)
 
   // FB-F2: `enabled` is a dependency of its own. Turning the switch on is a reason to
   // ask, not just a change of who is allowed to ask — without it the reader had to
@@ -73,20 +81,80 @@ export function MusicProviderResults() {
         state={state}
         results={results}
         failedSources={failedSources}
+        selected={selection.selected}
+        adding={selection.adding}
         onRetry={() => void searchProviders(query)}
-        onPlay={(hit) => void playProviderTrack(hit)}
+        onPreview={(hit) => void playProviderTrack(hit)}
+        onAdd={(hit) => void addProviderTrack(hit)}
+        onToggle={selection.toggle}
+        onAddSelected={selection.addSelected}
+        onClearSelection={selection.clear}
       />
     </section>
   )
 }
 
-function ProviderPanelBody({ state, results, failedSources, onRetry, onPlay }: {
+interface ProviderPanelBodyProps {
   state: ProviderPanelState
   results: MusicProviderTrack[] | null
   failedSources: string[]
+  selected: readonly string[]
+  adding: boolean
   onRetry: () => void
-  onPlay: (hit: MusicProviderTrack) => void
-}) {
+  onPreview: (hit: MusicProviderTrack) => void
+  onAdd: (hit: MusicProviderTrack) => void
+  onToggle: (hit: MusicProviderTrack, next: boolean) => void
+  onAddSelected: () => void
+  onClearSelection: () => void
+}
+
+// FB-F10: what is ticked, and what a tick can do, are one concern — so the panel asks this hook
+// for its selection instead of holding three pieces of state and the rule that keeps them true.
+function useProviderSelection(results: MusicProviderTrack[] | null) {
+  const addProviderTracks = useMusic((state) => state.addProviderTracks)
+  const [selected, setSelected] = useState<readonly string[]>([])
+  const [adding, setAdding] = useState(false)
+
+  // A tick belongs to a row that is on screen. Every answer filters the selection down to the hits
+  // it still holds, so a new query (or a catalogue dropping out) can never leave a tick standing
+  // for a song that is no longer listed.
+  useEffect(() => {
+    const listed = new Set((results ?? []).map(providerHitKey))
+    setSelected((current) => {
+      const kept = current.filter((key) => listed.has(key))
+      return kept.length === current.length ? current : kept
+    })
+  }, [results])
+
+  const addSelected = (): void => {
+    const batch = (results ?? []).filter((hit) => selected.includes(providerHitKey(hit)))
+    if (!batch.length) return
+    setAdding(true)
+    void addProviderTracks(batch).finally(() => {
+      // Only the ticks that were part of this batch go away: a row ticked while the batch ran is
+      // still the reader's choice.
+      const done = new Set(batch.map(providerHitKey))
+      setSelected((current) => current.filter((key) => !done.has(key)))
+      setAdding(false)
+    })
+  }
+
+  return {
+    selected,
+    adding,
+    addSelected,
+    clear: () => setSelected([]),
+    toggle: (hit: MusicProviderTrack, next: boolean): void => {
+      const key = providerHitKey(hit)
+      setSelected((current) => (next ? [...current, key] : current.filter((entry) => entry !== key)))
+    },
+  }
+}
+
+function ProviderPanelBody({
+  state, results, failedSources, selected, adding,
+  onRetry, onPreview, onAdd, onToggle, onAddSelected, onClearSelection,
+}: ProviderPanelBodyProps) {
   if (state === 'off') return <Notice text={t('music.provider_off')} align='start' />
   if (state === 'loading') return <Notice text={t('common.loading')} />
   if (state === 'none') return <Notice text={t('music.provider_none')} />
@@ -94,12 +162,47 @@ function ProviderPanelBody({ state, results, failedSources, onRetry, onPlay }: {
   return (
     <>
       {failedSources.length > 0 && <ProviderFailureNotice failedSources={failedSources} onRetry={onRetry} />}
+      {selected.length > 0 && (
+        <ProviderSelectionBar
+          count={selected.length}
+          adding={adding}
+          onAddSelected={onAddSelected}
+          onClear={onClearSelection}
+        />
+      )}
       <ul className='max-h-56 space-y-0.5 overflow-y-auto'>
         {results?.map((hit) => (
-          <ProviderResultRow key={`${hit.source}:${hit.sourceId}`} hit={hit} onPlay={() => onPlay(hit)} />
+          <ProviderResultRow
+            key={providerHitKey(hit)}
+            hit={hit}
+            checked={selected.includes(providerHitKey(hit))}
+            onToggle={(next) => onToggle(hit, next)}
+            onPreview={() => onPreview(hit)}
+            onAdd={() => onAdd(hit)}
+          />
         ))}
       </ul>
     </>
+  )
+}
+
+// FB-F10: what a ticked selection can do, said once above the list rather than per row.
+function ProviderSelectionBar({ count, adding, onAddSelected, onClear }: {
+  count: number
+  adding: boolean
+  onAddSelected: () => void
+  onClear: () => void
+}) {
+  return (
+    <div className='flex items-center justify-between gap-2 pb-1'>
+      <span role='status' className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+        {t('music.provider_selected', { value0: count })}
+      </span>
+      <span className='flex shrink-0 items-center gap-1'>
+        <Button size='sm' loading={adding} onClick={onAddSelected}>{t('music.provider_add_selected')}</Button>
+        <Button size='sm' variant='ghost' onClick={onClear}>{t('music.provider_clear_selection')}</Button>
+      </span>
+    </div>
   )
 }
 
@@ -120,22 +223,71 @@ function Notice({ text, align = 'center' }: { text: string; align?: 'start' | 'c
   return <p role='status' className={`py-2 text-[length:var(--text-12)] text-[var(--text-quaternary)]${align === 'center' ? ' text-center' : ''}`}>{text}</p>
 }
 
-function ProviderResultRow({ hit, onPlay }: { hit: MusicProviderTrack; onPlay: () => void }) {
+interface ProviderResultRowProps {
+  hit: MusicProviderTrack
+  checked: boolean
+  onToggle: (next: boolean) => void
+  onPreview: () => void
+  onAdd: () => void
+}
+
+// FB-F10: a hit reads like a library row — artwork, title, artist and album on two lines — and it
+// carries the two intents a search result has. Auditioning is the icon (taking over the player is
+// the louder act, so it is the one that stays small); taking the song into the library is named.
+function ProviderResultRow({ hit, checked, onToggle, onPreview, onAdd }: ProviderResultRowProps) {
+  const subtitle = [hit.artist, hit.album].filter(Boolean).join(' · ')
   return (
-    <li className='flex h-9 items-center gap-2 rounded-[var(--r-md)] px-2 hover:bg-[var(--bg-hover)]'>
-      <span className='min-w-0 flex-1 truncate text-[length:var(--text-12)] text-[var(--text-primary)]'>
-        {hit.title}
-        {hit.artist && <span className='text-[var(--text-quaternary)]'> · {hit.artist}</span>}
+    <li className='flex min-h-11 items-center gap-2 rounded-[var(--r-md)] px-1 hover:bg-[var(--bg-hover)]'>
+      <Checkbox
+        checked={checked}
+        onChange={onToggle}
+        aria-label={t('music.provider_select', { value0: hit.title })}
+      />
+      <ProviderRowArtwork hit={hit} />
+      <span className='min-w-0 flex-1'>
+        <span className='block truncate text-[length:var(--text-12)] text-[var(--text-primary)]'>{hit.title}</span>
+        {subtitle && <span className='block truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{subtitle}</span>}
       </span>
-      <span className='shrink-0 text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{providerSourceLabel(hit.source)}</span>
+      <span className='hidden shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)] sm:inline'>{providerSourceLabel(hit.source)}</span>
       {/* FB-F5: several catalogues never report a length, and 00:00 would be a claim they did
           not make — a missing duration is named as missing. */}
-      <span className='tabular shrink-0 text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
+      <span className='tabular shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {hit.durationMs ? formatTimecode(hit.durationMs) : t('music.duration_unknown')}
       </span>
-      <Button size='sm' icon={<Plus size={12} />} onClick={onPlay}>
+      <IconButton
+        label={t('music.provider_preview')}
+        size='sm'
+        data-provider-preview=''
+        onClick={onPreview}
+      >
+        <Play size={12} />
+      </IconButton>
+      <Button size='sm' icon={<Plus size={12} />} onClick={onAdd}>
         {t('music.provider_add')}
       </Button>
     </li>
+  )
+}
+
+// The catalogue's own picture, fetched through the worker's proxy because the page may not talk to
+// that host. A hit without a picture id gets a mark rather than an empty frame, which would read as
+// a picture that failed to load.
+function ProviderRowArtwork({ hit }: { hit: MusicProviderTrack }) {
+  if (!hit.coverId) {
+    return (
+      <span aria-hidden='true' className='grid size-8 shrink-0 place-items-center rounded-[var(--r-sm)] bg-[var(--bg-inset)] text-[var(--text-quaternary)]'>
+        <Music size={14} />
+      </span>
+    )
+  }
+  return (
+    <img
+      data-provider-cover=''
+      src={musicProviderCoverUrl(hit.source, hit.coverId)}
+      alt=''
+      loading='lazy'
+      decoding='async'
+      className='size-8 shrink-0 rounded-[var(--r-sm)] object-cover'
+    />
   )
 }

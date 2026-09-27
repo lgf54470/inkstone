@@ -148,6 +148,46 @@ describe('provider add flow (FB-F5)', () => {
   })
 })
 
+// FB-F10: taking a hit into the library and auditioning it are two intents. The audition hands the
+// song to the player (the old behaviour, unchanged); the add stops at the library, and a batch walks
+// the hits one at a time so one dead catalogue cannot take the whole selection with it.
+describe('provider library add (FB-F10)', () => {
+  const hit = (sourceId: string, title = `Song ${sourceId}`) => ({
+    provider: 'gds', source: 'netease', sourceId, title, artist: 'Ann', album: '', durationMs: null, coverId: null, lyricId: null,
+  })
+
+  afterEach(() => {
+    useMusic.setState({ tracks: [], queue: [], currentIndex: 0 })
+    vi.clearAllMocks()
+  })
+
+  it('adds a hit to the library without touching the queue', async () => {
+    useMusic.setState({ tracks: [], queue: [] })
+    await useMusic.getState().addProviderTrack(hit('a1'))
+    expect(useMusic.getState().tracks.map((track) => track.id)).toContain('trk-1')
+    expect(useMusic.getState().queue).toEqual([])
+  })
+
+  it('adds a batch one by one and counts what landed', async () => {
+    vi.mocked(api.music.importProviderTrack).mockResolvedValueOnce({ id: 'trk-1' } as never).mockResolvedValueOnce({ id: 'trk-2' } as never)
+    useMusic.setState({ tracks: [] })
+    const result = await useMusic.getState().addProviderTracks([hit('a1'), hit('a2')])
+    expect(result).toEqual({ added: 2, failed: 0 })
+    expect(useMusic.getState().tracks.map((track) => track.id)).toEqual(['trk-1', 'trk-2'])
+  })
+
+  it('keeps going when one hit in the batch fails, and says how many landed', async () => {
+    vi.mocked(api.music.importProviderTrack)
+      .mockResolvedValueOnce({ id: 'trk-1' } as never)
+      .mockRejectedValueOnce(new Error('no such song'))
+      .mockResolvedValueOnce({ id: 'trk-3' } as never)
+    useMusic.setState({ tracks: [] })
+    const result = await useMusic.getState().addProviderTracks([hit('a1'), hit('a2'), hit('a3')])
+    expect(result).toEqual({ added: 2, failed: 1 })
+    expect(useMusic.getState().tracks.map((track) => track.id)).toEqual(['trk-1', 'trk-3'])
+  })
+})
+
 describe('provider failure fallback (FEA-A1-4)', () => {
   const deadTrack = { id: 'trk-dead', title: 'Song A', artist: 'Ann', album: '', durationMs: 1000, source: 'provider' } as MusicTrack
 

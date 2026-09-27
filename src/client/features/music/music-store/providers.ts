@@ -5,7 +5,7 @@ import type { MusicTrack } from '@shared/types'
 import { providerCoverDataUrl } from '../music-provider-artwork'
 import { GDS_PROVIDER_ID, listProviders, matchScore, searchGds, searchGdsPages } from '../providers'
 import { persist } from './persist'
-import { toastMusicError } from '../music-feedback'
+import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import type { MusicGet, MusicSet } from './types'
 
 // FEA-A1-1: the online-source switches. Nothing runs unless the user turned a
@@ -52,12 +52,58 @@ export async function searchProviders(set: MusicSet, get: MusicGet, keywords: st
 // FEA-A1-4 will match a failed play against these hits; A1-3 plays a hit by
 // registering the idempotent provider row and handing the player the track id.
 export async function playProviderTrack(set: MusicSet, get: MusicGet, hit: MusicProviderTrack): Promise<void> {
+  const track = await importHit(set, hit)
+  if (track) await get().playTrack(track.id)
+}
+
+// FB-F10: a search is how a reader browses a catalogue, and browsing must not cost them the song
+// they were listening to. Taking a hit into the library writes the row and stops there; the play
+// path above keeps the old "audition" meaning, where registering and playing are one gesture.
+export async function addProviderTrack(set: MusicSet, hit: MusicProviderTrack): Promise<boolean> {
+  const track = await importHit(set, hit)
+  if (!track) return false
+  toastMusic('music.provider_added', { value0: track.title })
+  return true
+}
+
+// FB-F10: a selection is added one hit at a time — sequential on purpose, because five parallel
+// imports would each fetch artwork and words from the same catalogue, and one dead hit must not
+// take the rest of the selection down with it. The tally is what the toast reports.
+export async function addProviderTracks(
+  set: MusicSet,
+  hits: MusicProviderTrack[],
+): Promise<{ added: number; failed: number }> {
+  let added = 0
+  let failed = 0
+  for (const hit of hits) {
+    const track = await importHit(set, hit, { silent: true })
+    if (track) added += 1
+    else failed += 1
+  }
+  if (added) toastMusic('music.provider_added_batch', { value0: added })
+  if (failed) toastMusicNotice('music.provider_add_failed_batch', { value0: failed })
+  return { added, failed }
+}
+
+// The one place a hit becomes a library row: resolve what only the search response knows (the
+// artwork and the words), register the row idempotently, and append it to the list. A failure is
+// reported by the caller — a single add names the song, a batch tallies — so the toast is optional
+// here rather than always on.
+async function importHit(
+  set: MusicSet,
+  hit: MusicProviderTrack,
+  options: { silent?: boolean } = {},
+): Promise<MusicTrack | null> {
   try {
     const track = await api.music.importProviderTrack(await resolveImportInput(hit))
     set((state) => (state.tracks.some((entry) => entry.id === track.id) ? {} : { tracks: [...state.tracks, track] }))
-    await get().playTrack(track.id)
+    return track
   } catch (error) {
-    toastMusicError(error, 'music.import_failed')
+    // A single add is the reader's own gesture, so it answers with its own toast. A batch reports
+    // a tally instead — one toast per failed hit would stack a wall of them.
+    if (options.silent) console.warn('[inkstone] music provider batch add skipped a hit:', error)
+    else toastMusicError(error, 'music.import_failed')
+    return null
   }
 }
 

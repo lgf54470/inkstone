@@ -326,6 +326,10 @@ export interface MusicStoreState {
   setProviderEnabled: (providerId: string, enabled: boolean) => void
   searchProviders: (keywords: string) => Promise<void>
   playProviderTrack: (hit: MusicProviderTrack) => Promise<void>
+  /** FB-F10: registers the hit in the library without handing it to the player. */
+  addProviderTrack: (hit: MusicProviderTrack) => Promise<boolean>
+  /** FB-F10: adds a selection one hit at a time, reporting what landed and what did not. */
+  addProviderTracks: (hits: MusicProviderTrack[]) => Promise<{ added: number; failed: number }>
   loadPodcastFeeds: () => Promise<void>
   loadPodcastEpisodes: (feedId: string) => Promise<void>
   closePodcastEpisodes: () => void

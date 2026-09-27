@@ -16,12 +16,18 @@ vi.mock('../../lib/api', async (importOriginal) => {
         providerSearch: vi.fn(async (source: string, keywords: string) => ({
           results: [{ provider: 'gds', source, sourceId: `${source}-1`, title: `${keywords} ${source}`, artist: 'Ann', album: 'Album', durationMs: null, coverId: null, lyricId: null }],
         })),
+        importProviderTrack: vi.fn(async (input: { title?: string }) => ({ id: 'trk-1', title: input.title ?? 'Song', source: 'provider' })),
       },
     },
   }
 })
+// The cover lookup fetches image bytes and re-encodes them; the store only passes on what it gets
+// back, and the encoder has its own test. Stubbed here so an add in this file stays offline.
+vi.mock('./music-provider-artwork', () => ({
+  providerCoverDataUrl: vi.fn(async () => null),
+}))
 
-import { api } from '../../lib/api'
+import { api, musicProviderCoverUrl, type MusicProviderTrack } from '../../lib/api'
 
 const QUERY = 'origin'
 const CLEAR = { query: '', providerEnabled: {}, providerResults: null, providerSearching: false, providerKeywords: '', providerFailedSources: [] }
@@ -40,6 +46,34 @@ function providerSwitch(): HTMLButtonElement {
 
 function bodyText(): string {
   return document.body.textContent ?? ''
+}
+
+// FB-F10: one hit with every fact a catalogue can hand out, plus the answer that carries it.
+const HIT: MusicProviderTrack = {
+  provider: 'gds', source: 'netease', sourceId: 'a1', title: 'With art', artist: 'Ann',
+  album: 'The Album', durationMs: 245_000, coverId: 'p9', lyricId: null,
+}
+
+async function mountHits(hits: MusicProviderTrack[]): Promise<void> {
+  vi.useFakeTimers()
+  vi.mocked(api.music.providerSearch).mockResolvedValue({ results: hits })
+  mountWithQuery()
+  await clickSwitch()
+  await settle()
+}
+
+function buttonsByText(text: string): HTMLButtonElement[] {
+  return [...document.querySelectorAll<HTMLButtonElement>('button')].filter((button) => button.textContent?.trim() === text)
+}
+
+// The row's tick is the shared Checkbox (a `role="checkbox"` button), so a test reads it the way a
+// screen reader does: by the role and the name, not by a markup detail.
+function rowTicks(): HTMLButtonElement[] {
+  return [...document.querySelectorAll<HTMLButtonElement>('li [role="checkbox"]')]
+}
+
+function auditionButtons(): HTMLButtonElement[] {
+  return [...document.querySelectorAll<HTMLButtonElement>('[data-provider-preview]')]
 }
 
 // The reader's road: the query is already typed (and may have settled), then the switch is
@@ -204,6 +238,87 @@ describe('online results panel failures (FB-F6)', () => {
 
     expect(bodyText()).toContain(t('music.provider_all_failed'))
     expect(bodyText()).not.toContain(t('music.provider_none'))
+  })
+})
+
+// FB-F10: an online row carries the facts a library row carries — the catalogue's picture and the
+// album the song belongs to.
+describe('online result rows carry the catalogue facts (FB-F10)', () => {
+  it('paints the catalogue artwork through the proxy address', async () => {
+    await mountHits([HIT])
+    const image = document.querySelector<HTMLImageElement>('img[data-provider-cover]')
+    expect(image?.getAttribute('src')).toBe(musicProviderCoverUrl('netease', 'p9'))
+    expect(image?.getAttribute('loading')).toBe('lazy')
+  })
+
+  // A hit without a picture id has no picture to paint; an empty frame would read as a broken one.
+  it('draws no artwork frame for a hit the catalogue gave no picture id', async () => {
+    await mountHits([{ ...HIT, coverId: null }])
+    expect(document.querySelector('img[data-provider-cover]')).toBeNull()
+  })
+
+  it('names the album beside the artist', async () => {
+    await mountHits([HIT])
+    expect(bodyText()).toContain('The Album')
+  })
+})
+
+// FB-F10: the two intents a search hit has — audition it (which takes over the player) or take it
+// into the library (which does not) — plus the batch a ticked selection adds.
+describe('online result rows take a hit into the library (FB-F10)', () => {
+  beforeEach(() => {
+    useMusic.setState({ tracks: [], queue: [], currentIndex: 0 })
+  })
+
+  it('takes a hit into the library without taking over the player', async () => {
+    await mountHits([HIT])
+    const add = buttonsByText(t('music.provider_add'))[0]
+    expect(add).toBeTruthy()
+    await act(async () => { add?.click() })
+    expect(api.music.importProviderTrack).toHaveBeenCalledTimes(1)
+    expect(useMusic.getState().tracks.map((entry) => entry.id)).toContain('trk-1')
+    expect(useMusic.getState().queue).toEqual([])
+  })
+
+  it('auditions a hit by handing it to the player', async () => {
+    await mountHits([HIT])
+    const preview = auditionButtons()[0]
+    expect(preview).toBeTruthy()
+    // An icon carries no text, so its accessible name is the contract — it is what a keyboard or
+    // screen-reader user hears this control called.
+    expect(preview?.getAttribute('aria-label')).toBe(t('music.provider_preview'))
+    await act(async () => { preview?.click() })
+    expect(useMusic.getState().queue).toEqual(['trk-1'])
+  })
+
+  it('adds every ticked hit at once from the selection bar', async () => {
+    await mountHits([HIT, { ...HIT, sourceId: 'a2', title: 'Second' }])
+    const ticks = rowTicks()
+    expect(ticks).toHaveLength(2)
+    expect(ticks[0].getAttribute('aria-label')).toBe(t('music.provider_select', { value0: HIT.title }))
+    await act(async () => { ticks[0].click(); ticks[1].click() })
+    expect(rowTicks().every((tick) => tick.getAttribute('aria-checked') === 'true')).toBe(true)
+    expect(bodyText()).toContain(t('music.provider_selected', { value0: 2 }))
+    const addSelected = buttonsByText(t('music.provider_add_selected'))[0]
+    expect(addSelected).toBeTruthy()
+    await act(async () => { addSelected?.click() })
+    expect(api.music.importProviderTrack).toHaveBeenCalledTimes(2)
+    expect(useMusic.getState().tracks.map((entry) => entry.id)).toContain('trk-1')
+  })
+})
+
+// FB-F10: a tick is about the answer on screen — a selection is not a shopping cart that survives
+// scrolling to another catalogue page.
+describe('online result selection follows the answer (FB-F10)', () => {
+  it('drops a tick the new answer no longer lists', async () => {
+    await mountHits([HIT])
+    const box = rowTicks()[0]
+    await act(async () => { box.click() })
+    expect(bodyText()).toContain(t('music.provider_selected', { value0: 1 }))
+
+    await act(async () => { useMusic.setState({ providerResults: [{ ...HIT, sourceId: 'b1' }], providerKeywords: QUERY }) })
+    expect(bodyText()).not.toContain(t('music.provider_selected', { value0: 1 }))
+    expect(rowTicks().every((tick) => tick.getAttribute('aria-checked') === 'false')).toBe(true)
   })
 })
 
