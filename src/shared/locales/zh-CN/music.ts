@@ -252,6 +252,8 @@ export const messages = {
 'music.queue_resize': '调整队列面板高度',
 'music.maximize_hub': '最大化音乐库',
 'music.restore_hub': '还原音乐库窗口',
+'music.move_hub': '移动音乐库窗口',
+'music.resize_hub': '调整音乐库窗口大小',
 'music.maximize_player': '最大化播放器',
 'music.restore_player': '还原播放器窗口',
 'music.select_all': '全选',

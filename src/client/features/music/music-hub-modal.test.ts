@@ -233,3 +233,53 @@ describe('MusicHubModal column folding — UI-14', () => {
     expect(document.querySelector('[data-surface="drawer"]')).toBeNull()
   })
 })
+
+// REF-1b: the hub was a fixed box that could not be moved or stretched, so the library
+// either overflowed its own window or wasted the screen around it.
+describe('MusicHubModal windowed chrome (REF-1b)', () => {
+  beforeEach(() => {
+    useMusic.setState({ hubMaximized: false, hubGeometry: {} })
+  })
+
+  function grip(): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('button')].find(
+      (button) => button.getAttribute('aria-label') === t('music.resize_hub'),
+    ) as HTMLButtonElement | undefined
+  }
+
+  function moveButton(): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('button')].find(
+      (button) => button.getAttribute('aria-label') === t('music.move_hub'),
+    ) as HTMLButtonElement | undefined
+  }
+
+  it('offers a resize grip and a keyboard move control while windowed', async () => {
+    await mountHub()
+    expect(grip()).toBeDefined()
+    expect(moveButton()).toBeDefined()
+  })
+
+  it('resizes the window from the keyboard and keeps the change in the store', async () => {
+    await mountHub()
+    await act(async () => {
+      grip()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    })
+    expect(useMusic.getState().hubGeometry.width).toBeGreaterThan(0)
+    expect(useMusic.getState().hubGeometry.height).toBeGreaterThan(0)
+  })
+
+  it('moves the window from the keyboard', async () => {
+    await mountHub()
+    await act(async () => {
+      moveButton()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    })
+    expect(useMusic.getState().hubGeometry.dy).toBe(24)
+  })
+
+  it('drops the window chrome once the hub fills the viewport', async () => {
+    useMusic.setState({ hubMaximized: true })
+    await mountHub()
+    expect(grip()).toBeUndefined()
+    expect(moveButton()).toBeUndefined()
+  })
+})

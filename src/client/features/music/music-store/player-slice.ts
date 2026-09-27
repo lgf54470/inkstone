@@ -5,7 +5,7 @@ import {
   setPlaybackRate, setSleepAfterCurrentTrack, setSleepTimer, setVolume,
   toggleFloating, toggleFloatingCollapsed, toggleMute, togglePlay,
 } from './player'
-import { setHubMaximized } from './hub-window'
+import { setHubGeometry, setHubMaximized } from './hub-window'
 import { setCrossfadeEnabled } from './crossfade'
 import { nudgeLyricOffset, resetLyricOffset } from './lyric-offset'
 import { addManyToQueue, addToQueue, clearQueue, moveQueueItem, removeFromQueue } from './queue-ops'
@@ -19,7 +19,7 @@ type PlayerSlice = Pick<MusicStoreState,
   | 'setImmersiveBackground'
   | 'nudgeLyricOffset' | 'resetLyricOffset' | 'markLoopStart' | 'markLoopEnd' | 'clearLoopRange'
   | 'addToQueue' | 'addManyToQueue' | 'removeFromQueue' | 'moveQueueItem' | 'clearQueue'
-  | 'toggleFloating' | 'toggleFloatingCollapsed' | 'setFloatingPosition' | 'setHubMaximized'>
+  | 'toggleFloating' | 'toggleFloatingCollapsed' | 'setFloatingPosition' | 'setHubMaximized' | 'setHubGeometry'>
 
 export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
   connectAudio(set, get)
@@ -60,6 +60,7 @@ export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
     toggleFloatingCollapsed: () => toggleFloatingCollapsed(set, get),
     setFloatingPosition: (position) => setFloatingPosition(set, get, position),
     setHubMaximized: (maximized) => setHubMaximized(set, get, maximized),
+    setHubGeometry: (geometry) => setHubGeometry(set, get, geometry),
   }
 }
 

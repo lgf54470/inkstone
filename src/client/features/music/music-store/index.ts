@@ -87,6 +87,8 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
     floatingVisible: prefs.floatingVisible,
     floatingCollapsed: prefs.floatingCollapsed,
     floatingPosition: prefs.floatingPosition,
+    hubMaximized: prefs.hubMaximized,
+    hubGeometry: prefs.hubGeometry,
     immersive: false,
     loopRange: null,
     shuffleOrder: null,
@@ -96,7 +98,7 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
 }
 
 export type {
-  MusicBatch, MusicDownloadTask, MusicEqBand, MusicImmersiveBackground, MusicLibraryJob, MusicLibraryJobKind, MusicLoopRange,
+  MusicBatch, MusicDownloadTask, MusicEqBand, MusicHubGeometry, MusicImmersiveBackground, MusicLibraryJob, MusicLibraryJobKind, MusicLoopRange,
   MusicLyricAlign, MusicLyricTextSize,
   MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
   MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,

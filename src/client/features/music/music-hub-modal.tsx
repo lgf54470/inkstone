@@ -1,7 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Maximize2, Minimize2, Music, PanelLeft, SlidersHorizontal, X } from 'lucide-react'
 import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
-import { Button, IconButton } from '../../components/primitives'
+import { Button } from '../../components/primitives'
 import { Drawer, Modal } from '../../components/overlay'
 import { Empty } from '../../components/feedback'
 import { cn } from '../../lib/cn'
@@ -15,7 +14,7 @@ import { MusicGroupBrowse, MusicGroupDetailHeader } from './music-group-browse'
 import { MusicHubSidebar } from './music-hub-sidebar'
 import { MusicHubToolbar } from './music-hub-toolbar'
 import { MusicNowPlaying, type MusicDetailTab } from './music-now-playing'
-import { TOUCH_TARGET_CLASS } from './music-play-buttons'
+import { HubHeader, HubResizeGrip, hubStyle } from './music-hub-window'
 import { MusicPlaylistModal } from './music-playlist-modal'
 import { MusicProviderResults } from './music-provider-results'
 import { MusicPlayerControls } from './music-player-controls'
@@ -57,10 +56,15 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
   const loadLibrary = useMusic((state) => state.loadLibrary)
   const hubMaximized = useMusic((state) => state.hubMaximized)
   const setHubMaximized = useMusic((state) => state.setHubMaximized)
+  const geometry = useMusic((state) => state.hubGeometry)
+  const setHubGeometry = useMusic((state) => state.setHubGeometry)
   const dialogs = useHubDialogs()
   const { columnsWide, narrowPanel, openPanel, closePanels } = useNarrowColumns()
   const tallEnough = useMediaQuery(`(min-height: ${HUB_SHORT_VIEWPORT}px)`)
   const fillViewport = hubMaximized || !columnsWide || !tallEnough
+  // REF-1b: a window that fills the viewport has nothing to drag or resize, so the
+  // chrome only exists while the hub is its own centred box.
+  const windowed = !fillViewport
 
   useEffect(() => {
     if (open) void loadLibrary()
@@ -78,12 +82,16 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
           'flex flex-col overflow-hidden p-0',
           fillViewport ? 'h-full' : 'h-[84vh] max-h-220 min-h-145',
         )}
+        style={windowed ? hubStyle(geometry) : undefined}
         bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'
       >
         <HubHeader
           onClose={onClose}
           narrow={!columnsWide}
           maximized={hubMaximized}
+          windowed={windowed}
+          geometry={geometry}
+          onGeometryChange={setHubGeometry}
           onToggleMaximized={() => setHubMaximized(!hubMaximized)}
           onOpenNavigation={() => openPanel('navigation')}
           onOpenNowPlaying={() => openPanel('nowPlaying')}
@@ -102,6 +110,13 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
           {columnsWide && <NowPlaying tab={dialogs.detailTab} onTabChange={dialogs.setDetailTab} onEditTags={dialogs.openEditTrackForCurrent} />}
         </div>
         <Controls queueOpen={dialogs.queueOpen} onToggleQueue={dialogs.toggleQueue} />
+        {windowed && (
+          <HubResizeGrip
+            geometry={geometry}
+            widthFallback={HUB_WIDTH}
+            onResize={(width: number, height: number) => setHubGeometry({ ...geometry, width, height })}
+          />
+        )}
         <FoldedColumns
           wide={columnsWide}
           panel={narrowPanel}
@@ -165,52 +180,6 @@ function FoldedColumns({
   )
 }
 
-function HubHeader({
-  onClose,
-  narrow,
-  maximized,
-  onToggleMaximized,
-  onOpenNavigation,
-  onOpenNowPlaying,
-}: {
-  onClose: () => void
-  narrow: boolean
-  maximized: boolean
-  onToggleMaximized: () => void
-  onOpenNavigation: () => void
-  onOpenNowPlaying: () => void
-}) {
-  return (
-    <header className='flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4'>
-      <div className='flex items-center gap-2'>
-        <Music size={16} className='text-[var(--accent)]' />
-        <h2 className='text-[length:var(--text-14)] font-semibold text-[var(--text-primary)]'>{t('music.hub_title')}</h2>
-      </div>
-      <div className='flex items-center gap-1'>
-        {narrow && (
-          <>
-            {/* REF-3: a thumb needs 44px, and these two are the whole navigation on a
-                phone, so they carry the touch floor while the desktop header stays tight. */}
-            <IconButton label={t('music.hub_open_navigation')} size='sm' className={TOUCH_TARGET_CLASS} onClick={onOpenNavigation}><PanelLeft size={15} /></IconButton>
-            <IconButton label={t('music.hub_open_now_playing')} size='sm' className={TOUCH_TARGET_CLASS} onClick={onOpenNowPlaying}><SlidersHorizontal size={15} /></IconButton>
-          </>
-        )}
-        {/* REF-1a: the header owned only a close button, so the library could never grow
-            past the width it was built with. The toggle is a plain state flip on the same
-            dialog — no remount, so the scroll position and the queue survive it. */}
-        <IconButton
-          label={maximized ? t('music.restore_hub') : t('music.maximize_hub')}
-          size='sm'
-          active={maximized}
-          onClick={onToggleMaximized}
-        >
-          {maximized ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-        </IconButton>
-        <IconButton label={t('common.close')} size='sm' className={narrow ? TOUCH_TARGET_CLASS : undefined} onClick={onClose}><X size={15} /></IconButton>
-      </div>
-    </header>
-  )
-}
 
 const HubCentre = memo(function HubCentre({
   onEditTrack,

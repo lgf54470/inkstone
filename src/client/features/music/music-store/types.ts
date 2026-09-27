@@ -106,6 +106,15 @@ export interface MusicWebdavState {
 export type MusicSet = StoreApi<MusicStoreState>['setState']
 export type MusicGet = StoreApi<MusicStoreState>['getState']
 
+// REF-1b: the windowed hub's own geometry. Every field is optional: `{}` means the
+// dialog keeps its designed size and sits centred.
+export interface MusicHubGeometry {
+  dx?: number
+  dy?: number
+  width?: number
+  height?: number
+}
+
 export interface MusicStoreState {
   tracks: MusicTrack[]
   tags: MusicTag[]
@@ -153,6 +162,7 @@ export interface MusicStoreState {
   floatingCollapsed: boolean
   floatingPosition: { x: number; y: number } | null
   hubMaximized: boolean
+  hubGeometry: MusicHubGeometry
   immersive: boolean
   immersiveBackground: MusicImmersiveBackground
   lyricAlign: MusicLyricAlign
@@ -317,4 +327,5 @@ export interface MusicStoreState {
   toggleFloatingCollapsed: () => void
   setFloatingPosition: (position: { x: number; y: number }) => void
   setHubMaximized: (maximized: boolean) => void
+  setHubGeometry: (geometry: MusicHubGeometry) => void
 }

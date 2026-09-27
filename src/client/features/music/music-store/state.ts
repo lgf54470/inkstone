@@ -1,6 +1,6 @@
 import type { MusicPlayMode } from '@shared/types'
 import type {
-  MusicImmersiveBackground, MusicLyricAlign, MusicLyricTextSize, MusicSort, MusicSortDirection, MusicSourceFilter, MusicViewMode,
+  MusicHubGeometry, MusicImmersiveBackground, MusicLyricAlign, MusicLyricTextSize, MusicSort, MusicSortDirection, MusicSourceFilter, MusicViewMode,
 } from './types'
 
 export const MUSIC_PREFS_KEY = 'inkstone.music-prefs.v2'
@@ -19,6 +19,7 @@ export interface MusicPreferences {
   floatingCollapsed: boolean
   floatingPosition: { x: number; y: number } | null
   hubMaximized: boolean
+  hubGeometry: MusicHubGeometry
   playbackRate: number
   searchHistory: string[]
   sleepEndsAt: number | null
@@ -111,6 +112,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   floatingCollapsed: false,
   floatingPosition: null,
   hubMaximized: false,
+  hubGeometry: {},
   playbackRate: 1,
   searchHistory: [],
   sleepEndsAt: null,
@@ -159,6 +161,7 @@ export function loadPreferences(): MusicPreferences {
     floatingCollapsed: parsed.floatingCollapsed === true,
     floatingPosition: readPosition(parsed.floatingPosition),
     hubMaximized: parsed.hubMaximized === true,
+    hubGeometry: readGeometry(parsed.hubGeometry),
     playbackRate: readRate(parsed.playbackRate),
     searchHistory: readStrings(parsed.searchHistory, SEARCH_HISTORY_MAX),
     sleepEndsAt: readTimestamp(parsed.sleepEndsAt),
@@ -206,6 +209,17 @@ function readPosition(value: unknown): { x: number; y: number } | null {
   if (!value || typeof value !== 'object') return null
   const point = value as { x?: unknown; y?: unknown }
   return typeof point.x === 'number' && typeof point.y === 'number' ? { x: point.x, y: point.y } : null
+}
+
+// REF-1b: every field is optional — a geometry of `{}` means "leave the dialog to its
+// own defaults", and a half-read object must not drag the window off screen.
+function readGeometry(value: unknown): MusicHubGeometry {
+  if (!value || typeof value !== 'object') return {}
+  const source = value as Record<string, unknown>
+  const read = (key: string): number | undefined => (
+    typeof source[key] === 'number' && Number.isFinite(source[key] as number) ? source[key] as number : undefined
+  )
+  return { dx: read('dx'), dy: read('dy'), width: read('width'), height: read('height') }
 }
 
 function readTimestamp(value: unknown): number | null {

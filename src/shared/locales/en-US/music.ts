@@ -252,6 +252,8 @@ export const messages = {
 'music.queue_resize': 'Resize the queue panel',
 'music.maximize_hub': 'Maximise the music library',
 'music.restore_hub': 'Restore the music library window',
+'music.move_hub': 'Move the music library window',
+'music.resize_hub': 'Resize the music library window',
 'music.maximize_player': 'Maximise the player',
 'music.restore_player': 'Restore the player window',
 'music.select_all': 'Select all',
