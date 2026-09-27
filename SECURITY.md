@@ -34,6 +34,17 @@ before it is first switched on.
 - Whether the deployment may use such a catalogue, and how links behave, is the deployment
   owner's decision and responsibility: links expire, catalogues change, and none of it is under
   Inkstone's control.
+- **Search text and request logs.** A search keyword is behaviour data, so the Worker never logs it:
+  every `console.*` call under `src/worker/routes/music` prints a fixed `[inkstone] …` label and an
+  error object, and a scan test (`tests/music-log-privacy.test.ts`) fails if a log line starts to
+  include the query, the request URL or the request path. What remains is outside the code: the
+  keyword travels in the URL (`/api/music/provider/search?keywords=…`, `/api/music/lyric-search?q=…`,
+  `/api/music/alist?keywords=…`), so any HTTP log layer that records request metadata — including a
+  deployment's Workers Logs under `[observability] enabled = true` — captures it as part of that
+  metadata. `wrangler dev` does not print request lines, so nothing is written locally. Deployments
+  that treat search terms as sensitive should account for that layer (retention, sampling or
+  log-destination choice); moving the keyword into a request body is the change to make if the
+  exposure ever needs to be removed here, and the test above names the endpoints it would move.
 
 ## Sandbox notes
 

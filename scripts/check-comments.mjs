@@ -12489,6 +12489,15 @@ const allowed = new Map([
     '// Every key a locale carries is a promise that some surface speaks it. A key nothing reads is',
     '// dead weight that also hides the controls which were designed and never wired up.',
   ]],
+  ['tests/music-log-privacy.test.ts', [
+    '/**\n * FB-S5: a search keyword is behaviour data — what a reader looked for, not just what they stored —\n * so it must not reach the logs. The audit behind this test found two layers and only one of them is\n * ours to hold:\n *\n * - In the Worker, no music route writes the query or the request URL anywhere. Every `console.*`\n *   call in `src/worker/routes/music` logs an error object and a fixed `[inkstone] ...` label; the\n *   keyword is read from `c.req.query` and handed straight to the upstream. This test keeps the next\n *   log line from quietly starting to include it — an error object is the whole of what may be\n *   printed.\n * - Outside the Worker, the keyword travels in the URL (`/api/music/provider/search?keywords=…`,\n *   `/api/music/lyric-search?q=…`, `/api/music/alist?keywords=…`), so any HTTP log layer records it\n *   as request metadata — `wrangler dev` does not print request lines here (checked: the ephemeral\n *   instance\'s log holds none), but a deployment with `[observability] enabled = true` attaches the\n *   request to each log line. That residual exposure is stated in `SECURITY.md` rather than left\n *   implicit; this test is about the layer that is ours.\n *\n * The scan is asserted to find the calls it is about, so a reorganisation that empties it fails as a\n * missing audit instead of passing as a clean one.\n */',
+    '// Anything that would put the reader\'s own text (or the URL that carries it) into a log line.',
+    '/** Each log call as it is written: the line it starts on, which is where the arguments are. */',
+    '// The audit is only meaningful over the calls that exist; a scan that found none would pass',
+    '// for the wrong reason.',
+    '// If this stops being true, the endpoint stopped carrying the keyword in the URL — revisit the',
+    '// SECURITY.md note about request metadata rather than deleting this case on the way past.',
+  ]],
   ['tests/music-play-history.test.ts', [
     '// One stored object per row: the table\'s unique key is (user_id, object_key), so a shared',
     '// placeholder key would make the second insert fail rather than describe anything real.',
