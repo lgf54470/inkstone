@@ -18,8 +18,8 @@
 - [x] M1 FB-F2 在线结果开关触发搜索 + 关闭 / 加载 / 无匹配 / 全源失败四态文案 —— **commit `23bd2805`**
 - [x] M2 FB-F6 + FB-C1 + FB-C2 + FB-U5 每源状态与失败可见 + 重试 + catch 注释 + 字号与来源名本地化 —— **commit `d6b90f93`**
 - [x] M3 FB-F3 来源筛选扩展（`MusicSourceFilter = 'all' | MusicSource`），选项按库中实际来源生成 —— **commit `327fa22d`**
-- [x] M4 FB-F1 + FB-C4 Hub 拖动真修复（`anim-pop` 覆盖内联 `translate`）+ 几何浏览器断言 + 规则写入文档 —— **commit `—`**（下一提交回填）
-- [ ] M5 FB-U1 窗口 chrome 强化：8 向缩放 / 可见把手 / 双击标题栏最大化 / `touch-action` / 视口变化重夹取
+- [x] M4 FB-F1 + FB-C4 Hub 拖动真修复（`anim-pop` 覆盖内联 `translate`）+ 几何浏览器断言 + 规则写入文档 —— **commit `543c3ee1`**
+- [x] M5 FB-U1 窗口 chrome 强化：8 向缩放 / 可见把手 / 双击标题栏最大化 / `touch-action` / 视口变化重夹取 —— **commit `—`**（下一提交回填）
 - [ ] M6 FB-S4 音源目录单一来源（client / worker 同源 + 契约测试）
 - [ ] M7 FB-F4 + FB-F7 + FB-S6 音乐设置分区（音源组 + 播放默认组 + 音质 + 风险告知）+ Hub 齿轮直达
 - [ ] M8 FB-F5 + FB-PF5 在线曲目封面 / 歌词 / 时长
@@ -71,14 +71,17 @@
 
 | 2026-09-27 | M2 FB-F6 逐源状态 + 重试、FB-C1 catch 注释、FB-U5 来源名本地化 | `d6b90f93` | 先红：`gds.test.ts` 按新 `ProviderPage` 形状重写、`providerPanelState` 新增 `failedSources` 入参、`music-provider-results.test.ts` 新增 5 例（空结果 + 有名失败 → failed、全挂与部分挂的文案分支、失败与命中并存 + 重试、本地化名）——旧实现下这些均无法通过；实现后 music + routes + locale-keys 107 文件 / 751 例 ✅；`npm run typecheck` ✅；13 项静态门禁 ✅（comments 白名单同步至 9522 条） | 每源状态用三态 `ok/empty/error`（「答了但没匹配」与「没答」是两件事）；`searchGds` 返回 `{results, failedSources}`，`searchGdsPages` 返回每源页（`swapFailedProviderTrack` 改为 `flatMap(page.results)`）；新增 `providerFailedSources` store 字段（不持久化，属会话态）；`providers/labels.ts` 新建本地化名映射并经 `providers/index.ts` 公开（未知 slug 回退显示 slug）；**大小写门禁**：`size:check` 先报组件与测试各 1 个 longFn，拆出 `ProviderPanelBody`/`ProviderFailureNotice`/`Notice` 与独立 describe 后 ✅（未改基线） |
 
-| 2026-09-27 | M4 FB-F1 拖动真修复 + FB-C4 规则化 | `—` | 先红（浏览器）：同一脚本对改前的 `music-hub-window.tsx` 实测 `dx/dy = 0/0`（`translate` 换成旧 `transform` 写法，store 已写对而屏幕不动）；改后 `120/60`，拖回后回到原点；三条断言（可拖窗口 / 跟着指针走 / 拖回原点）均 ✅。回归：music + routes 107 文件 / 759 例 ✅；`npm run typecheck` ✅；comments（白名单同步到 9565 条）/ style 门禁 ✅；`scripts/e2e-visual.mjs` 对 `INKSTONE_EPHEMERAL_DEV=1 npm run dev:kv`（:7714）实例 **537 通过 / 1 失败**，唯一失败为已登记的看板遗留「笔记里的看板块不高于它绘制的头与板」（与 F④ 轮同参 canvas:480/needed:456，音乐无关） | 位移改写为独立 `translate` 属性（不再与 `.anim-pop` 的 `transform: none` 争层叠）；`hubStyle` 提为导出纯函数，新增 2 例 jsdom 契约钉住「写在动画碰不到的那个属性上」；断言从把手的 `closest('header')` 找抓手、每次拖拽重读位置（按旧位置的按压会落到遮窗外，一次误点就关掉整个窗口——这是本轮门禁先报的 4 条失败里的 3 条）；本轮不改对比度令牌，未重跑 `check-contrast`（几何位移不参与颜色绘制） |
+| 2026-09-27 | M5 FB-U1 窗口 chrome | `—` | 先红：新增 `music-hub-window.test.ts` 13 例在旧实现下 12 失败（`resizeHubGeometry` 不存在、无八向手柄、无 `touch-action`、无双击、无视口重夹取）。实现后 music 全量 105 文件 / 752 例 ✅；music + routes 108 文件 / 772 例 ✅；`npm run typecheck` ✅；静态门禁 ✅（size 先报 2 处 longFn：`HubResizeZones` 与测试描述块，各拆出子组件 / 独立 describe 后过，comments 白名单同步到 9627 条）；`scripts/e2e-visual.mjs` 对 :7714 **542 通过 / 1 失败**（唯一失败仍为已登记看板遗留）；`npm run contrast:check -- http://localhost:7714` ✅（两主题、桌面与手机宽度全表面 AA + 外壳与 Hub 的 axe 全绿） | 八个命中区一份表驱动，东南角是唯一具名可聚焦控件（方向键两维缩放），其余七个 `aria-hidden` + `tabIndex={-1}` 只服务指针——先测护栏：`axe` 的 `aria-hidden-focus` 不报 `tabindex="-1"`（用 jsdom + axe-core 实测确认后才落笔）；居中窗口按住一条边时须同时平移“一半的变化量”，否则被按住的那条边不会跟着指针走（`resizeHubGeometry` 的纯函数契约 6 例钉住四个方向与两个夹取）；手势起点从**屏幕上的盒子**量取（`closest('[role=\"dialog\"]').getBoundingClientRect()`），不再用回退值（jsdom 量到 0 时才回落）；双击标题栏两态都走（最大化后同一个手势还原）；`resize` 监听重夹取宽度/高度/偏移。**类型事故记录**：键盘路径把 `{dx,dy}` 当 `{x,y}` 传进 `resizeHubGeometry`，`vitest` 只看到 NaN 与死循环（`Maximum update depth exceeded`：NaN !== NaN 使重夹取不断写回），`tsc -b` 能一眼报出参数形状不符——本轮起每项改动都先跑 typecheck 再跑测试 |
+
+| 2026-09-27 | M4 FB-F1 拖动真修复 + FB-C4 规则化 | `543c3ee1` | 先红（浏览器）：同一脚本对改前的 `music-hub-window.tsx` 实测 `dx/dy = 0/0`（`translate` 换成旧 `transform` 写法，store 已写对而屏幕不动）；改后 `120/60`，拖回后回到原点；三条断言（可拖窗口 / 跟着指针走 / 拖回原点）均 ✅。回归：music + routes 107 文件 / 759 例 ✅；`npm run typecheck` ✅；comments（白名单同步到 9565 条）/ style 门禁 ✅；`scripts/e2e-visual.mjs` 对 `INKSTONE_EPHEMERAL_DEV=1 npm run dev:kv`（:7714）实例 **537 通过 / 1 失败**，唯一失败为已登记的看板遗留「笔记里的看板块不高于它绘制的头与板」（与 F④ 轮同参 canvas:480/needed:456，音乐无关） | 位移改写为独立 `translate` 属性（不再与 `.anim-pop` 的 `transform: none` 争层叠）；`hubStyle` 提为导出纯函数，新增 2 例 jsdom 契约钉住「写在动画碰不到的那个属性上」；断言从把手的 `closest('header')` 找抓手、每次拖拽重读位置（按旧位置的按压会落到遮窗外，一次误点就关掉整个窗口——这是本轮门禁先报的 4 条失败里的 3 条）；本轮不改对比度令牌，未重跑 `check-contrast`（几何位移不参与颜色绘制） |
 
 | 2026-09-27 | M3 FB-F3 来源筛选扩展 | `327fa22d` | 先红：把四个实现文件回到 HEAD 后跑测试得 5 failed（`buildSourceFilterOptions` 不存在 3 例 + 工具栏不画 alist 选项 + 点不到 alist 单选）；实现后 music + routes 107 文件 / 757 例 ✅；`npm run typecheck` ✅；13 项静态门禁 ✅ | `MusicSourceFilter` 从写死的 `'all'|'r2'|'webdav'` 改为 `'all' | MusicSource`（新增 alist/external/provider）；`SOURCE_FILTERS` 白名单同步；选项由 `buildSourceFilterOptions(库全量, 当前值)` 按固定次序生成，**用库全量而非过滤后视图**（否则选中 alist 后其余选项会消失、无法切回），当前值若不在库中也保留在行内（否则会出现「有筛选却无控件可清」）；工具栏新增 `libraryTracks` 属性（只读 `Pick<MusicTrack,'source'>[]`），`HubCentre` 传 `state.tracks`；`library-load.test.ts` 因新增用例越过 500 行，改把来源筛选作用域测试放进新文件 `music-store/source-filter.test.ts`（`visibleTracks` 的按来源过滤在 HEAD 本就正确，这两例是值域扩展的回归网而非首红） |
 
 ## 已知限制（滚动更新）
 
 - `budget:check` 的 music chunk 超限（109 KiB vs 96 000 B）为既有问题，计划在 M20 处理，本轮不提高预算。
-- 浏览器门禁 `scripts/e2e-visual.mjs` 当前为 537/538：唯一失败是已登记的看板遗留「笔记里的看板块不高于它绘制的头与板」（canvas:480 / needed:456，`board 353 + header 103`），与音乐无关，也不在本轮范围内（铁律 14）。
+- 浏览器门禁 `scripts/e2e-visual.mjs` 当前为 542/543：唯一失败是已登记的看板遗留「笔记里的看板块不高于它绘制的头与板」（canvas:480 / needed:456，`board 353 + header 103`），与音乐无关，也不在本轮范围内（铁律 14）。
+- **两个门禁都必须对同一个临时实例跑**：`npm run contrast:check` 不带参数时默认打 `http://localhost:7712`，而那是本地常年留数据的实例——它的音乐库里有带封面的真实曲目，网格卡上的时长徽标（`--text-inverse` on `--scrim`）叠在封面图上时 axe 判不出底色，于是「音乐库网格视图」两主题各报 6 条 `color-contrast` 待审项而失败。对 `:7714`（`INKSTONE_EPHEMERAL_DEV=1`，只跑探针曲目）同一份代码全绿。本轮按后者执行，并把「默认基址不保证与视觉门禁同实例」记在此处。
 - kuwo 源当前上游 400（实测），属上游状态；本仓库只保证「失败可见 + 可关闭」。
 - 服务器型音源受 `global_fetch_strictly_public` 约束，只能指向公网 HTTPS；LAN 自建服务需反向代理 / 隧道（Alist 今天同样受限），该限制写进文档而非绕过。
 - `blog-frontend/src/components/music/` 与 app 版不共享代码（独立实现），本轮不动。

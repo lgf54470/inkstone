@@ -14,7 +14,7 @@ import { MusicGroupBrowse, MusicGroupDetailHeader } from './music-group-browse'
 import { MusicHubSidebar } from './music-hub-sidebar'
 import { MusicHubToolbar } from './music-hub-toolbar'
 import { MusicNowPlaying, type MusicDetailTab } from './music-now-playing'
-import { HubHeader, HubResizeGrip, hubStyle } from './music-hub-window'
+import { HUB_MAX_WIDTH, HubHeader, HubResizeZones, hubStyle, useHubViewportClamp } from './music-hub-window'
 import { MusicPlaylistModal } from './music-playlist-modal'
 import { MusicProviderResults } from './music-provider-results'
 import { MusicPlayerControls } from './music-player-controls'
@@ -29,7 +29,6 @@ import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicScope } from './music-store'
 import { MUSIC_NARROW_BREAKPOINT } from './music-utils'
 
-const HUB_WIDTH = 1240
 // REF-9: 84vh of a phone screen, or of a short laptop window, leaves the track list a
 // couple of hundred pixels once the header, toolbar and transport have taken their fixed
 // share. Below this height the hub fills the viewport instead of floating in the middle
@@ -65,6 +64,9 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
   // REF-1b: a window that fills the viewport has nothing to drag or resize, so the
   // chrome only exists while the hub is its own centred box.
   const windowed = !fillViewport
+  // FB-U1: a window that no longer fits this screen is brought back inside it by the same clamp
+  // the drag answers to, on the event that reports the change.
+  useHubViewportClamp(windowed, geometry, setHubGeometry)
 
   useEffect(() => {
     if (open) void loadLibrary()
@@ -76,7 +78,7 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
         open={open}
         onClose={onClose}
         ariaLabel={t('music.hub_title')}
-        width={HUB_WIDTH}
+        width={HUB_MAX_WIDTH}
         variant={hubMaximized ? 'fullscreen' : 'dialog'}
         className={cn(
           'flex flex-col overflow-hidden p-0',
@@ -111,11 +113,7 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
         </div>
         <Controls queueOpen={dialogs.queueOpen} onToggleQueue={dialogs.toggleQueue} />
         {windowed && (
-          <HubResizeGrip
-            geometry={geometry}
-            widthFallback={HUB_WIDTH}
-            onResize={(width: number, height: number) => setHubGeometry({ ...geometry, width, height })}
-          />
+          <HubResizeZones geometry={geometry} widthFallback={HUB_MAX_WIDTH} onResize={setHubGeometry} />
         )}
         <FoldedColumns
           wide={columnsWide}

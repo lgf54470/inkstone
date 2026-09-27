@@ -4332,21 +4332,109 @@ async function assertMusicHubDrag(page) {
     `before=${JSON.stringify(before)} restored=${JSON.stringify(restored)}`)
 }
 
+// The hub's window chrome, found by the name on the dialog rather than by a chain of child
+// selectors: the name sits on the dialog, and the header is the first one inside it.
+async function hubHeaderBox(page) {
+  return page.evaluate((selectors) => {
+    const dialog = selectors.map((selector) => document.querySelector(selector)).find(Boolean)
+    const header = dialog?.querySelector('header')
+    if (!header) return null
+    const box = header.getBoundingClientRect()
+    return { x: box.x, y: box.y, width: box.width, height: box.height }
+  }, HUB_DIALOG_CSS.split(', '))
+}
+
 // A press in the middle of the header: that strip is the window's grip, and its centre carries no
-// control (the buttons sit at its two ends, and a press that begins on one belongs to it). The
-// header is found the way a person finds it — from the grip that lives in it — and its box is read
-// again on every call: after a drag the grip has moved, and a press aimed at where it used to be
-// lands on the backdrop outside the window, which closes the hub instead of moving it.
+// control (the buttons sit at its two ends, and a press that begins on one belongs to it). The box
+// is read again on every call: after a drag the grip has moved, and a press aimed at where it used
+// to be lands on the backdrop outside the window, which closes the hub instead of moving it.
 async function dragHubBy(page, delta) {
-  const grip = await page.$(cssByLabels('div[role="dialog"] button', LABELS.musicMoveHub))
-  const header = (await grip.evaluateHandle((button) => button.closest('header'))).asElement()
-  const box = await header.boundingBox()
+  const box = await hubHeaderBox(page)
+  if (!box) {
+    check('music: the hub header is on screen to be dragged', false)
+    return
+  }
   const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
   await page.mouse.move(from.x, from.y)
   await page.mouse.down()
   await page.mouse.move(from.x + delta.x, from.y + delta.y, { steps: 8 })
   await page.mouse.up()
   await sleep(300)
+}
+
+// FB-U1: the zones are named by direction in the DOM, so the same press can be aimed at each edge
+// regardless of the language the app is in. They exist nowhere else in the app, which is why the
+// lookup does not repeat the dialog's name.
+async function dragZoneBy(page, zone, delta) {
+  const handle = await page.$(`[data-hub-resize="${zone}"]`)
+  const box = handle ? await handle.boundingBox() : null
+  if (!box) {
+    check(`music: the ${zone} edge of the window offers a resize zone`, false)
+    return
+  }
+  const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move(from.x + delta.x, from.y + delta.y, { steps: 8 })
+  await page.mouse.up()
+  await sleep(250)
+}
+
+// FB-U1: eight zones, one per edge and corner — so the window can be made wider *or* narrower
+// without also getting taller, which the single corner grip never could. The box is centred, so a
+// held edge only stays under the pointer if the window also travels half the change; these read
+// both the size and the position, because a zone that grew the width from the wrong side would
+// pass a size-only assertion. A double click of the title bar is every window's way to fill the
+// screen, and it toggles, so the second one has to give the window back.
+async function assertMusicHubResize(page) {
+  const before = await rectOf(page, HUB_DIALOG_CSS)
+  await dragZoneBy(page, 'e', { x: -300, y: 0 })
+  const narrowed = await rectOf(page, HUB_DIALOG_CSS)
+  check('music: the east edge narrows the window and leaves the far edge where it was',
+    Boolean(narrowed) && Math.abs(narrowed.width - (before.width - 300)) <= 8 && Math.abs(narrowed.x - before.x) <= 8,
+    `before=${JSON.stringify(before)} narrowed=${JSON.stringify(narrowed)}`)
+  await dragZoneBy(page, 'w', { x: -120, y: 0 })
+  const grown = await rectOf(page, HUB_DIALOG_CSS)
+  check('music: the west edge grows the window and travels with the pointer',
+    Boolean(grown) && Math.abs(grown.width - (narrowed.width + 120)) <= 8 && Math.abs(grown.x - (narrowed.x - 120)) <= 8,
+    `narrowed=${JSON.stringify(narrowed)} grown=${JSON.stringify(grown)}`)
+  await dragZoneBy(page, 's', { x: 0, y: -160 })
+  const shorter = await rectOf(page, HUB_DIALOG_CSS)
+  check('music: the bottom edge shortens the window from below',
+    Boolean(shorter) && Math.abs(shorter.height - (grown.height - 160)) <= 8 && Math.abs(shorter.y - grown.y) <= 8,
+    `grown=${JSON.stringify(grown)} shorter=${JSON.stringify(shorter)}`)
+
+  const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  if (!(await doubleClickHubHeader(page))) return
+  const filled = await rectOf(page, HUB_DIALOG_CSS)
+  check('music: a double click of the header fills the screen with the window',
+    Boolean(filled) && Math.abs(filled.width - viewport.width) <= 8 && Math.abs(filled.height - viewport.height) <= 8,
+    `viewport=${JSON.stringify(viewport)} filled=${JSON.stringify(filled)}`)
+  await doubleClickHubHeader(page)
+  const restored = await rectOf(page, HUB_DIALOG_CSS)
+  check('music: a second double click gives back the window it filled',
+    Boolean(restored) && Math.abs(restored.width - shorter.width) <= 8 && Math.abs(restored.height - shorter.height) <= 8,
+    `shorter=${JSON.stringify(shorter)} restored=${JSON.stringify(restored)}`)
+}
+
+async function doubleClickHubHeader(page) {
+  const box = await hubHeaderBox(page)
+  if (!box) {
+    check('music: the hub header is on screen to be double clicked', false)
+    return false
+  }
+  const point = { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) }
+  // A double click is two press and release pairs whose click count climbs. One pair that merely
+  // says `clickCount: 2` is still a single click as far as the browser is concerned, and it fires
+  // no `dblclick` at all — which is a way for a gate to look like it tested a shortcut it never
+  // sent.
+  await page.mouse.move(point.x, point.y)
+  for (const clickCount of [1, 2]) {
+    await page.mouse.down({ clickCount })
+    await page.mouse.up({ clickCount })
+  }
+  await sleep(400)
+  return true
 }
 
 async function openMusicHub(page) {
@@ -4448,6 +4536,7 @@ async function assertMusicSurface(page) {
   }
   check('music: the status bar opens the library hub', true)
   await assertMusicHubDrag(page)
+  await assertMusicHubResize(page)
 
   // The hub's own footer is the transport while it is open; a floating card on top of it would
   // put two play buttons for one track on screen.

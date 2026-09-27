@@ -1,5 +1,5 @@
-import { useRef, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { GripHorizontal, Maximize2, Minimize2, Music, PanelLeft, SlidersHorizontal, X } from 'lucide-react'
+import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { GripHorizontal, Maximize2, Minimize2, MoveDiagonal2, Music, PanelLeft, SlidersHorizontal, X } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -8,13 +8,16 @@ import type { MusicHubGeometry } from './music-store'
 
 // REF-1b: the window may be dragged and stretched, but never past the point where it
 // stops being usable — or off the screen, where no one could drag it back.
-const HUB_MIN_WIDTH = 720
-const HUB_MIN_HEIGHT = 420
-const HUB_MAX_OFFSET_PX = 240
+export const HUB_MIN_WIDTH = 720
+export const HUB_MIN_HEIGHT = 420
+export const HUB_MAX_OFFSET_PX = 240
 export const HUB_MOVE_STEP_PX = 24
+// FB-U1: the widest the window is allowed to get. The dialog carries this as its max-width, so a
+// wider value here would only disagree with what gets painted.
+export const HUB_MAX_WIDTH = 1240
 
 function clampHubWidth(width: number): number {
-  return Math.min(window.innerWidth - 32, Math.max(HUB_MIN_WIDTH, Math.round(width)))
+  return Math.min(HUB_MAX_WIDTH, window.innerWidth - 32, Math.max(HUB_MIN_WIDTH, Math.round(width)))
 }
 
 function clampHubHeight(height: number): number {
@@ -23,6 +26,39 @@ function clampHubHeight(height: number): number {
 
 function clampHubOffset(offset: number): number {
   return Math.min(HUB_MAX_OFFSET_PX, Math.max(-HUB_MAX_OFFSET_PX, Math.round(offset)))
+}
+
+// FB-U1: the window keeps the offset it was given when the screen it was sized on goes away.
+// Only a resize event knows that happened, and the box has to answer it rather than wait for the
+// next drag, which the pointer can no longer reach once the control has left the viewport.
+export function clampHubGeometry(geometry: MusicHubGeometry): MusicHubGeometry {
+  return {
+    width: geometry.width === undefined ? undefined : clampHubWidth(geometry.width),
+    height: geometry.height === undefined ? undefined : clampHubHeight(geometry.height),
+    dx: geometry.dx === undefined ? undefined : clampHubOffset(geometry.dx),
+    dy: geometry.dy === undefined ? undefined : clampHubOffset(geometry.dy),
+  }
+}
+
+export function useHubViewportClamp(
+  windowed: boolean,
+  geometry: MusicHubGeometry,
+  onChange: (geometry: MusicHubGeometry) => void,
+): void {
+  useEffect(() => {
+    if (!windowed) return
+    const reflow = (): void => {
+      const next = clampHubGeometry(geometry)
+      if (next.width !== geometry.width || next.height !== geometry.height || next.dx !== geometry.dx || next.dy !== geometry.dy) {
+        onChange(next)
+      }
+    }
+    // A geometry stored on a bigger screen has to be brought inside this one when the hub opens,
+    // not only when the window is next resized.
+    reflow()
+    window.addEventListener('resize', reflow)
+    return () => window.removeEventListener('resize', reflow)
+  }, [windowed, geometry, onChange])
 }
 
 // REF-1b: geometry is runtime values, so it travels as inline style (AGENTS.md allows
@@ -79,48 +115,130 @@ export function HubMoveButton({ geometry, onGeometryChange }: {
   )
 }
 
+export interface HubResizeEdge {
+  dx: -1 | 0 | 1
+  dy: -1 | 0 | 1
+}
 
-// REF-1b: the grip resizes the window from a pointer drag or from the arrow keys. It is
-// a real button, not a bare div, so the keyboard road is the same as the pointer one.
-export function HubResizeGrip({ geometry, widthFallback, onResize }: {
+export interface HubResizeStart {
+  width: number
+  height: number
+  dx: number
+  dy: number
+}
+
+// FB-U1: the box is centred, so growing it moves both edges and half of every change lands on
+// each side. Holding an edge means travelling the half that would otherwise move the edge the
+// pointer is holding — which is also why the offset answers to the same budget a drag does.
+export function resizeHubGeometry(start: HubResizeStart, edge: HubResizeEdge, delta: { x: number; y: number }): MusicHubGeometry {
+  const width = clampHubWidth(start.width + edge.dx * delta.x)
+  const height = clampHubHeight(start.height + edge.dy * delta.y)
+  return {
+    width,
+    height,
+    dx: clampHubOffset(start.dx + (edge.dx * (width - start.width)) / 2),
+    dy: clampHubOffset(start.dy + (edge.dy * (height - start.height)) / 2),
+  }
+}
+
+interface ResizeZone extends HubResizeEdge {
+  key: string
+  className: string
+  grip?: boolean
+}
+
+const RESIZE_EDGE_CLASS = 'inset-x-6 h-1.5 cursor-ns-resize'
+const RESIZE_SIDE_CLASS = 'inset-y-6 w-1.5 cursor-ew-resize'
+const RESIZE_CORNER_CLASS = 'size-3.5'
+// FB-U1: one zone per edge and corner. The south-east corner is the one a keyboard and a screen
+// reader are told about — it carries the name and the arrow keys resize both dimensions from it.
+// The other seven are pointer affordances of the window frame: keeping them out of the tab order
+// and out of the accessibility tree means the header does not read as eight controls that all
+// resize, and the seven still answer the pointer exactly where a window's edges are.
+const RESIZE_ZONES: readonly ResizeZone[] = [
+  { key: 'n', dx: 0, dy: -1, className: cn(RESIZE_EDGE_CLASS, 'top-0') },
+  { key: 's', dx: 0, dy: 1, className: cn(RESIZE_EDGE_CLASS, 'bottom-0') },
+  { key: 'w', dx: -1, dy: 0, className: cn(RESIZE_SIDE_CLASS, 'left-0') },
+  { key: 'e', dx: 1, dy: 0, className: cn(RESIZE_SIDE_CLASS, 'right-0') },
+  { key: 'nw', dx: -1, dy: -1, className: cn(RESIZE_CORNER_CLASS, 'left-0 top-0 cursor-nwse-resize') },
+  { key: 'ne', dx: 1, dy: -1, className: cn(RESIZE_CORNER_CLASS, 'right-0 top-0 cursor-nesw-resize') },
+  { key: 'sw', dx: -1, dy: 1, className: cn(RESIZE_CORNER_CLASS, 'left-0 bottom-0 cursor-nesw-resize') },
+  { key: 'se', dx: 1, dy: 1, className: 'right-0 bottom-0 size-4.5 cursor-nwse-resize', grip: true },
+]
+
+export function HubResizeZones({ geometry, widthFallback, onResize }: {
   geometry: MusicHubGeometry
   widthFallback: number
-  onResize: (width: number, height: number) => void
+  onResize: (geometry: MusicHubGeometry) => void
 }) {
-  const dragRef = useRef<{ pointerX: number; pointerY: number; width: number; height: number } | null>(null)
-  const size = (): { width: number; height: number } => ({
-    width: geometry.width ?? widthFallback,
-    height: geometry.height ?? Math.round(window.innerHeight * 0.84),
-  })
-  const commit = (width: number, height: number): void => {
-    onResize(clampHubWidth(width), clampHubHeight(height))
+  const dragRef = useRef<{ pointerX: number; pointerY: number; start: HubResizeStart } | null>(null)
+  // A gesture starts from the box on screen, not from a default: the fallbacks are only what the
+  // dialog would paint if the store had never been told a size, and the paint also answers to the
+  // frame it sits in — so a drag that began from the fallback could write a width the window never
+  // shows. jsdom reports a zero box, which is where the fallbacks still earn their keep.
+  const startSize = (target: HTMLElement): HubResizeStart => {
+    const box = target.closest('[role="dialog"]')?.getBoundingClientRect()
+    return {
+      width: box?.width || geometry.width || widthFallback,
+      height: box?.height || geometry.height || Math.round(window.innerHeight * 0.84),
+      dx: geometry.dx ?? 0,
+      dy: geometry.dy ?? 0,
+    }
   }
+  const begin = (event: ReactPointerEvent<HTMLButtonElement>): void => {
+    dragRef.current = { pointerX: event.clientX, pointerY: event.clientY, start: startSize(event.currentTarget) }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+  const drag = (event: ReactPointerEvent<HTMLButtonElement>, edge: ResizeZone): void => {
+    const started = dragRef.current
+    if (!started) return
+    onResize(resizeHubGeometry(started.start, edge, { x: event.clientX - started.pointerX, y: event.clientY - started.pointerY }))
+  }
+  const end = (): void => { dragRef.current = null }
+  const stepBy = (event: KeyboardEvent<HTMLButtonElement>, edge: ResizeZone): void => {
+    const step = arrowStep(event.key)
+    if (step.dx === 0 && step.dy === 0) return
+    event.preventDefault()
+    // The keyboard step and the pointer delta say the same thing in two coordinate conventions:
+    // a movement (dx/dy) rather than a pointer position (x/y).
+    onResize(resizeHubGeometry(startSize(event.currentTarget), edge, { x: step.dx, y: step.dy }))
+  }
+  return (
+    <>
+      {RESIZE_ZONES.map((zone) => (
+        <HubResizeZone key={zone.key} zone={zone} onBegin={begin} onDrag={drag} onEnd={end} onStep={stepBy} />
+      ))}
+    </>
+  )
+}
+
+function HubResizeZone({ zone, onBegin, onDrag, onEnd, onStep }: {
+  zone: ResizeZone
+  onBegin: (event: ReactPointerEvent<HTMLButtonElement>) => void
+  onDrag: (event: ReactPointerEvent<HTMLButtonElement>, zone: ResizeZone) => void
+  onEnd: () => void
+  onStep: (event: KeyboardEvent<HTMLButtonElement>, zone: ResizeZone) => void
+}) {
   return (
     <button
       type='button'
-      aria-label={t('music.resize_hub')}
-      className='absolute right-0 bottom-0 z-10 size-4 cursor-nwse-resize'
-      onPointerDown={(event) => {
-        const current = size()
-        dragRef.current = { pointerX: event.clientX, pointerY: event.clientY, width: current.width, height: current.height }
-        event.currentTarget.setPointerCapture(event.pointerId)
-      }}
-      onPointerMove={(event) => {
-        const drag = dragRef.current
-        if (!drag) return
-        commit(drag.width + (event.clientX - drag.pointerX), drag.height + (event.clientY - drag.pointerY))
-      }}
-      onPointerUp={() => { dragRef.current = null }}
-      onPointerCancel={() => { dragRef.current = null }}
-      onKeyDown={(event) => {
-        const step = arrowStep(event.key)
-        if (step.dx === 0 && step.dy === 0) return
-        event.preventDefault()
-        const current = size()
-        commit(current.width + step.dx, current.height + step.dy)
-      }}
+      data-hub-resize={zone.key}
+      aria-hidden={zone.grip ? undefined : 'true'}
+      tabIndex={zone.grip ? 0 : -1}
+      aria-label={zone.grip ? t('music.resize_hub') : undefined}
+      className={cn(
+        'absolute z-10 flex touch-none items-center justify-center rounded-none border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]',
+        zone.className,
+      )}
+      onPointerDown={onBegin}
+      onPointerMove={(event) => onDrag(event, zone)}
+      onPointerUp={onEnd}
+      onPointerCancel={onEnd}
+      onKeyDown={(event) => onStep(event, zone)}
     >
-      <span aria-hidden='true' className='block size-4' />
+      {/* The grip is drawn rather than left invisible: a 4px invisible corner is a gesture people
+          find by accident, and the mark is what says the window can be stretched. */}
+      {zone.grip && <MoveDiagonal2 size={12} aria-hidden='true' className='text-[var(--text-tertiary)]' />}
     </button>
   )
 }
@@ -138,7 +256,7 @@ export interface HubHeaderProps {
 }
 
 export function HubHeader(props: HubHeaderProps) {
-  const { windowed, geometry, onGeometryChange } = props
+  const { windowed, geometry, onGeometryChange, onToggleMaximized } = props
   const dragRef = useRef<{ pointerX: number; pointerY: number; dx: number; dy: number } | null>(null)
   const startDrag = (event: ReactPointerEvent<HTMLElement>): void => {
     // A press that began on a button belongs to that button, not to the window.
@@ -159,11 +277,18 @@ export function HubHeader(props: HubHeaderProps) {
 
   return (
     <header
-      className={cn('flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4', windowed && 'cursor-grab active:cursor-grabbing')}
+      // FB-U1: `touch-none` keeps a finger drag from scrolling the page out from under the
+      // gesture, and the double click is the shortcut every window's title bar has — it toggles,
+      // so the same gesture that fills the screen gives it back.
+      className={cn(
+        'flex h-11 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4',
+        windowed && 'cursor-grab touch-none select-none active:cursor-grabbing',
+      )}
       onPointerDown={startDrag}
       onPointerMove={moveDrag}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
+      onDoubleClick={(event) => { if (!(event.target as HTMLElement).closest('button')) onToggleMaximized() }}
     >
       <div className='flex items-center gap-2'>
         <Music size={16} className='text-[var(--accent)]' />
