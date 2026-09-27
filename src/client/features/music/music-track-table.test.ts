@@ -243,3 +243,29 @@ describe('the track table window (IMP-3)', () => {
     expect(after.some((text) => text.includes('Track 290'))).toBe(true)
   })
 })
+// REF-4: the track list carried its metadata at 11px and its titles at 12.5px, which
+// read as a shrunken table inside a window that had room to spare. The body columns now
+// sit on the same baseline the rest of the app uses.
+describe('MusicTrackList type scale (REF-4)', () => {
+  function rowCells(): HTMLElement[] {
+    return [...document.querySelectorAll('[role="rowgroup"] > [role="row"] [role="cell"]')] as HTMLElement[]
+  }
+
+  function cellClasses(): string {
+    return rowCells().map((cell) => cell.className).join(' ')
+  }
+
+  it('keeps the metadata columns at the body size instead of 11px', async () => {
+    await mountList()
+    expect(rowCells().length).toBeGreaterThan(0)
+    expect(cellClasses()).toContain('--text-12')
+    expect(cellClasses()).not.toContain('--text-11')
+  })
+
+  it('sets the row title one step above the body size', async () => {
+    await mountList()
+    const title = [...document.querySelectorAll('[role="rowgroup"] > [role="row"] span')]
+      .find((node) => node.className.includes('font-medium')) as HTMLElement
+    expect(title.className).toContain('--text-13')
+  })
+})

@@ -148,10 +148,10 @@ function TrackSummary({ track, tier }: { track: MusicTrack | null; tier: Transpo
     )}>
       <MusicArtwork url={track?.coverUrl ?? null} alt='' className='size-10 shrink-0 rounded-[var(--r-md)]' iconSize={16} />
       <span className='min-w-0 flex-1'>
-        <span className='block truncate text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>
+        <span className='block truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
           {track?.title ?? t('music.nothing_playing')}
         </span>
-        <span className='block truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+        <span className='block truncate text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
           {track?.artist || t('music.unknown_artist')}
         </span>
       </span>

@@ -169,13 +169,13 @@ function RowMeta({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean }
   const dim = isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]'
   return (
     <>
-      <span role='cell' className={cn('hidden w-40 shrink-0 truncate text-[length:var(--text-11)] xl:block', dim)}>
+      <span role='cell' className={cn('hidden w-40 shrink-0 truncate text-[length:var(--text-12)] xl:block', dim)}>
         {track.album || '—'}
       </span>
       <span role='cell' className={SOURCE_COLUMN_CELL}>
         <MusicSourceBadge source={track.source} className='inline-flex' />
       </span>
-      <span role='cell' className={cn('tabular w-11 shrink-0 text-right text-[length:var(--text-11)]', dim)}>
+      <span role='cell' className={cn('tabular w-11 shrink-0 text-right text-[length:var(--text-12)]', dim)}>
         {formatTimecode(track.durationMs)}
       </span>
     </>
@@ -184,7 +184,7 @@ function RowMeta({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean }
 
 function RowArtist({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean }) {
   return (
-    <span role='cell' className={cn('hidden w-32 shrink-0 truncate text-[length:var(--text-11)] xl:block', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
+    <span role='cell' className={cn('hidden w-32 shrink-0 truncate text-[length:var(--text-12)] xl:block', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
       {track.artist || t('music.unknown_artist')}
     </span>
   )
@@ -192,7 +192,7 @@ function RowArtist({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean
 
 function RowIndex({ index, isCurrent, isPlaying }: { index: number; isCurrent: boolean; isPlaying: boolean }) {
   return (
-    <span role='cell' className={cn('tabular w-5 shrink-0 text-center text-[length:var(--text-11)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
+    <span role='cell' className={cn('tabular w-5 shrink-0 text-center text-[length:var(--text-12)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
       {isPlaying ? <Pause size={11} className='mx-auto text-[var(--accent)]' /> : index + 1}
     </span>
   )
@@ -279,11 +279,11 @@ function TrackTitle({
   return (
     <div role='cell' className='flex min-w-0 flex-1 flex-col'>
       <button type='button' onClick={() => onPlay(track)} className='min-w-0 text-left'>
-        <span className={cn('block truncate text-[length:var(--text-12\\.5)] font-medium', isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]')}>
+        <span className={cn('block truncate text-[length:var(--text-13)] font-medium', isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]')}>
           {track.title}
         </span>
       </button>
-      <div className={cn('flex min-w-0 items-center gap-1 text-[length:var(--text-11)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
+      <div className={cn('flex min-w-0 items-center gap-1 text-[length:var(--text-12)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
         {track.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--warning)]' aria-hidden='true' />}
         <button type='button' onClick={() => onPlay(track)} className='min-w-0 shrink truncate text-left hover:text-[var(--text-secondary)] xl:hidden'>
           {track.artist || t('music.unknown_artist')}

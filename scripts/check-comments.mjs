@@ -3567,6 +3567,9 @@ const allowed = new Map([
     '// aria-multiselectable is not allowed on role=\'table\'; selection is carried per row checkbox.',
     '// IMP-3: a windowed list must keep painting the rows near the playhead while the',
     '// DOM stays bounded, and the numbers a reader announces must describe the whole list.',
+    '// REF-4: the track list carried its metadata at 11px and its titles at 12.5px, which',
+    '// read as a shrunken table inside a window that had room to spare. The body columns now',
+    '// sit on the same baseline the rest of the app uses.',
   ]],
   ['src/client/features/music/music-track-table.tsx', [
     '// Rows are h-12 and the row group pads with p-2, so the window math is exact',

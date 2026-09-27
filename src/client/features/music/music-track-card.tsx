@@ -36,7 +36,7 @@ function CardArtwork({
       <span className='absolute inset-0 flex items-center justify-center bg-[var(--scrim)] text-[var(--text-primary)] opacity-0 transition-opacity group-hover/art:opacity-100 group-focus-visible/art:opacity-100'>
         {isStreamLoading && isCurrent ? <Spinner size={18} /> : isCurrent && isPlaying ? <Pause size={20} /> : <Play size={20} />}
       </span>
-      <span className='tabular absolute right-1.5 bottom-1.5 rounded-[var(--r-sm)] bg-[var(--scrim)] px-1 text-[length:var(--text-10)] text-[var(--text-primary)]'>
+      <span className='tabular absolute right-1.5 bottom-1.5 rounded-[var(--r-sm)] bg-[var(--scrim)] px-1 text-[length:var(--text-12)] text-[var(--text-primary)]'>
         {formatTimecode(track.durationMs)}
       </span>
     </button>
@@ -100,11 +100,11 @@ function CardInfo({ track, isCurrent }: { track: TrackRowProps['track']; isCurre
     <div className='min-w-0 px-0.5'>
       <div className='flex items-center gap-1'>
         {track.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--warning)]' aria-hidden='true' />}
-        <span className={cn('truncate text-[length:var(--text-12)] font-medium', isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]')}>
+        <span className={cn('truncate text-[length:var(--text-13)] font-medium', isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]')}>
           {track.title}
         </span>
       </div>
-      <span className='block truncate text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
+      <span className='block truncate text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
         {track.artist || t('music.unknown_artist')}
       </span>
       <MusicSourceBadge source={track.source} className='mt-1' />
