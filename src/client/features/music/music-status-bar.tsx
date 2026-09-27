@@ -1,18 +1,23 @@
-import { useEffect, useRef } from 'react'
-import { Heart, Maximize2, Music, Pin } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Ellipsis, Heart, Maximize2, Music, Pin } from 'lucide-react'
+import type { MusicTrack } from '@shared/types'
 import { IconButton } from '../../components/primitives'
+import { Switch } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import { cn } from '../../lib/cn'
+import { useMediaQuery } from '../../lib/hooks'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { useActiveLoopRange, useCurrentTrack, useMusic, useProgress } from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { MusicPlayButtons } from './music-play-buttons'
+import { MusicPopover } from './music-popover'
 import { MusicSeekBar } from './music-seek-bar'
 import {
   MusicEqButton, MusicModeButton, MusicNudgeButton, MusicQueueButton, MusicRateButton, MusicSleepButton, MusicSleepStatus,
   MusicVolumeButton,
 } from './music-transport-widgets'
+import { MUSIC_BAR_EQ_MIN_WIDTH, MUSIC_BAR_PIN_MIN_WIDTH, barMore } from './music-utils'
 
 export function MusicStatusBar({ className, pane }: { className?: string; pane?: 'primary' | 'secondary' }) {
   const track = useCurrentTrack()
@@ -127,6 +132,62 @@ function Transport() {
   )
 }
 
+// FB-U3: everything the bar itself hides below md / lg / xl is hidden rather than degraded only if
+// there is another way in, and there was none: at 768–1024 the pin and the equalizer exist nowhere on
+// the page. The entry carries exactly what this width hides (both rows at the narrow end, the pin
+// alone between lg and xl) and is not drawn at all once the bar draws them itself. The seek bar needs
+// no row here — the bar only exists from md up, which is where its own seek bar appears.
+function BarMore() {
+  const eqInline = useMediaQuery(`(min-width: ${MUSIC_BAR_EQ_MIN_WIDTH}px)`)
+  const pinInline = useMediaQuery(`(min-width: ${MUSIC_BAR_PIN_MIN_WIDTH}px)`)
+  const more = barMore({ eqInline, pinInline })
+  const track = useCurrentTrack()
+  const [open, setOpen] = useState(false)
+  const anchorRef = useRef<HTMLButtonElement>(null)
+  if (!more) return null
+  return (
+    <>
+      <Tooltip label={t('music.more_actions')} side='top'>
+        <IconButton
+          ref={anchorRef}
+          label={t('music.more_actions')}
+          size='sm'
+          active={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <Ellipsis size={14} />
+        </IconButton>
+      </Tooltip>
+      <MusicPopover
+        open={open}
+        onClose={() => setOpen(false)}
+        label={t('music.more_actions')}
+        anchorRef={anchorRef}
+        className='w-52 space-y-2 p-2'
+      >
+        {more.pin && track && <BarMoreRow label={t('music.pin')}><BarPinSwitch track={track} /></BarMoreRow>}
+        {more.eq && <BarMoreRow label={t('music.eq')}><MusicEqButton /></BarMoreRow>}
+      </MusicPopover>
+    </>
+  )
+}
+
+// A labelled row: the bar drew these as bare icons because it had no room to say what they were, and
+// a panel does.
+function BarMoreRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className='flex items-center justify-between gap-3'>
+      <span className='text-[length:var(--text-12)] text-[var(--text-secondary)]'>{label}</span>
+      {children}
+    </div>
+  )
+}
+
+function BarPinSwitch({ track }: { track: MusicTrack }) {
+  const togglePin = useMusic((state) => state.togglePin)
+  return <Switch checked={track.isPinned} label={t('music.pin')} onChange={() => void togglePin(track.id)} />
+}
+
 function Extras() {
   const openHub = (): void => useUi.getState().openPanel('music-hub')
   return (
@@ -139,6 +200,7 @@ function Extras() {
       {/* The slim bar only has room for the EQ from the wide breakpoint up. */}
       <MusicEqButton className='hidden lg:inline-flex' />
       <MusicVolumeButton />
+      <BarMore />
       <Tooltip label={t('music.expand_player')} side='top'>
         <IconButton label={t('music.expand_player')} size='sm' data-music-opener='hub' onClick={openHub}><Maximize2 size={12} /></IconButton>
       </Tooltip>

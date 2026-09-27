@@ -119,6 +119,11 @@ const LABELS = {
   musicListView: ['列表视图', 'List view'],
   musicFavorite: ['收藏', 'Add to favorites'],
   musicMoreActions: ['更多操作', 'More actions'],
+  // FB-U3: the two controls the status bar hides below lg / xl, and the pin's own two spellings
+  // (the label flips with the track's state).
+  musicEq: ['均衡器', 'Equalizer'],
+  musicPin: ['置顶', 'Pin'],
+  musicUnpin: ['取消置顶', 'Unpin'],
   musicQueue: ['播放队列', 'Play queue'],
   musicRemoveFromQueue: ['从队列移除', 'Remove from the queue'],
   musicMiniPlayer: ['浮动播放器', 'Floating player'],
@@ -4490,6 +4495,56 @@ async function readMusicToolbarBudget(page) {
   })
 }
 
+/**
+ * FB-U3: everything the status bar hides below md / lg / xl is hidden rather than degraded only if
+ * there is another way in, and at 768–1024 the equalizer and the pin were nowhere on the page. The
+ * jsdom cases pin what the "more" entry carries; this is the other half, the one they cannot see —
+ * what CSS really draws. At 1000×800 the entry is the only one of the three on screen, and it
+ * carries both of the others.
+ */
+async function assertMusicStatusBarMore(page) {
+  await page.setViewport({ width: 1000, height: 800 })
+  await sleep(500)
+  const bar = await page.evaluate(({ more, eq, pin }) => {
+    const state = (labels) => {
+      const control = [...document.querySelectorAll('footer button')]
+        .find((button) => labels.includes(button.getAttribute('aria-label') ?? ''))
+      if (!control) return null
+      const box = control.getBoundingClientRect()
+      return { drawn: box.width > 0, display: getComputedStyle(control).display }
+    }
+    return { more: state(more), eq: state(eq), pin: state(pin) }
+  }, { more: LABELS.musicMoreActions, eq: LABELS.musicEq, pin: [...LABELS.musicPin, ...LABELS.musicUnpin] })
+  check('music: the status bar draws one entry where its own controls are hidden',
+    Boolean(bar.more) && bar.more.drawn && bar.eq?.drawn === false && bar.pin?.drawn === false,
+    JSON.stringify(bar))
+
+  await page.click(cssByLabels('footer button', LABELS.musicMoreActions))
+  const panelOpened = await page
+    .waitForSelector(cssByLabels('[role="dialog"]', LABELS.musicMoreActions), { timeout: 15_000 })
+    .then(() => true, () => false)
+  const carried = panelOpened ? await page.evaluate(({ dialog, eq }) => {
+    const root = dialog
+      .map((label) => document.querySelector(`[role="dialog"][aria-label="${label}"]`))
+      .find(Boolean)
+    if (!root) return null
+    return {
+      pin: root.querySelector('[role="switch"]')?.getAttribute('aria-label') ?? '',
+      eq: [...root.querySelectorAll('button')].some((button) => eq.includes(button.getAttribute('aria-label') ?? '')),
+    }
+  }, { dialog: LABELS.musicMoreActions, eq: LABELS.musicEq }) : null
+  check('music: the entry carries the controls this width hides',
+    Boolean(carried) && carried.eq && Boolean(carried.pin), JSON.stringify(carried))
+
+  await page.keyboard.press('Escape')
+  await sleep(400)
+  const panelClosed = await page.evaluate((labels) =>
+    labels.every((label) => !document.querySelector(`[role="dialog"][aria-label="${label}"]`)), LABELS.musicMoreActions)
+  check('music: the entry closes with escape', panelClosed)
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(400)
+}
+
 async function assertMusicHubResize(page) {
   const before = await rectOf(page, HUB_DIALOG_CSS)
   await dragZoneBy(page, 'e', { x: -300, y: 0 })
@@ -4861,6 +4916,7 @@ async function assertMusicSurface(page) {
   // earlier it would leave that panel open and the press below would close what it means to open.
   await assertMusicFloatingStrip(page)
   await assertMusicImmersiveFullscreen(page)
+  await assertMusicStatusBarMore(page)
 }
 
 /**

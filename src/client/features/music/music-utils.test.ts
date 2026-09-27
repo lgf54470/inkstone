@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MusicPlaylistDetail, MusicTag, MusicTrack } from '@shared/types'
 import {
   activeLyricIndex, collectTagIds, computeNextIndex, computePrevIndex, flattenTags,
-  isArtistSuffixedTitle, nextPlayMode, parseLyric, playlistCoverUrl, rangeIds, tagColorValue, toolbarShape,
+  barMore, isArtistSuffixedTitle, nextPlayMode, parseLyric, playlistCoverUrl, rangeIds, tagColorValue, toolbarShape,
 } from './music-utils'
 
 function tag(id: string, parentId: string | null, name = id, isPinned = false): MusicTag {
@@ -48,6 +48,24 @@ describe('hub toolbar shape (FB-U2 / FB-R3)', () => {
     // as the *narrow* answer rather than as a wide one — the fallback must not guess a row that fits.
     expect(toolbarShape({ containerWidth: null, viewportWide: true, shortViewport: false })).toEqual({ folded: false, compact: false, stacked: false })
     expect(toolbarShape({ containerWidth: null, viewportWide: false, shortViewport: false })).toEqual({ folded: true, compact: true, stacked: true })
+  })
+})
+
+// FB-U3: the bar hides the pin below xl and the equalizer below lg, and hidden by CSS is unreachable,
+// not degraded. The entry that answers for them carries exactly what is hidden at the width it is
+// drawn at — and nothing at all when nothing is, because an entry onto an empty panel is worse than
+// no entry.
+describe('status bar more entry (FB-U3)', () => {
+  it('carries both controls at a width that hides both', () => {
+    expect(barMore({ eqInline: false, pinInline: false })).toEqual({ pin: true, eq: true })
+  })
+
+  it('carries only the pin once the equalizer is inline again', () => {
+    expect(barMore({ eqInline: true, pinInline: false })).toEqual({ pin: true, eq: false })
+  })
+
+  it('is not drawn at all where nothing is hidden', () => {
+    expect(barMore({ eqInline: true, pinInline: true })).toBeNull()
   })
 })
 

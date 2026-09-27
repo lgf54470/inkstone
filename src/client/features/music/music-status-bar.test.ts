@@ -7,6 +7,7 @@ import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { MusicStatusBar } from './music-status-bar'
 import { useMusic } from './music-store'
+import { MUSIC_BAR_EQ_MIN_WIDTH } from './music-utils'
 
 beforeAll(() => {
   ;(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
@@ -86,6 +87,60 @@ describe('status bar defers to the open hub', () => {
     await mount()
     expect(labelled(t('music.seek'))).toBeDefined()
     expect(labelled(t('music.play'))).toBeDefined()
+  })
+})
+
+// FB-U3: the bar draws its pin from xl up and its equalizer from lg up, and a control hidden by CSS
+// is unreachable rather than degraded — at 768–1024 neither of them is anywhere on the page. One
+// entry carries what this width hides; the browser gate is what proves the CSS side of that promise,
+// and these cases pin what the entry is asked to carry.
+describe('status bar more entry (FB-U3)', () => {
+  function stubBarWidth({ eqInline, pinInline }: { eqInline: boolean; pinInline: boolean }): void {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: query.includes(String(MUSIC_BAR_EQ_MIN_WIDTH)) ? eqInline : pinInline,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })))
+  }
+
+  function moreTrigger(): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('button')]
+      .find((button) => button.getAttribute('aria-label') === t('music.more_actions')) as HTMLButtonElement | undefined
+  }
+
+  function openedPanel(): Element | null {
+    return document.querySelector(`[role="dialog"][aria-label="${t('music.more_actions')}"]`)
+  }
+
+  it('is not drawn where the bar already draws both of them', async () => {
+    stubBarWidth({ eqInline: true, pinInline: true })
+    await mount()
+    expect(moreTrigger()).toBeUndefined()
+  })
+
+  it('carries the pin where the bar hides it, without repeating the equalizer', async () => {
+    stubBarWidth({ eqInline: true, pinInline: false })
+    await mount()
+    const trigger = moreTrigger()
+    expect(trigger).toBeDefined()
+    await act(async () => { trigger?.click() })
+    const panel = openedPanel()
+    expect(panel).not.toBeNull()
+    expect(panel?.querySelector('[role="switch"]')?.getAttribute('aria-label')).toBe(t('music.pin'))
+    expect(panel?.querySelector(`button[aria-label="${t('music.eq')}"]`)).toBeNull()
+  })
+
+  it('carries both of them where both are hidden, as named rows', async () => {
+    stubBarWidth({ eqInline: false, pinInline: false })
+    await mount()
+    const trigger = moreTrigger()
+    await act(async () => { trigger?.click() })
+    const panel = openedPanel()
+    expect(panel?.querySelector('[role="switch"]')?.getAttribute('aria-label')).toBe(t('music.pin'))
+    // Scoped to the panel: the bar's own inline copy is still in the document, hidden by CSS.
+    expect(panel?.querySelector(`button[aria-label="${t('music.eq')}"]`)).not.toBeNull()
+    // The anchor publishes the state the panel is in, which is what a screen reader reads there.
+    expect(trigger?.getAttribute('aria-expanded')).toBe('true')
   })
 })
 

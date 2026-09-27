@@ -34,6 +34,28 @@ export const MUSIC_TOOLBAR_NARROW_MAX_WIDTH = 560
 // fails there rather than passing quietly.
 export const MUSIC_CONTENT_MIN_HEIGHT = 160
 
+// FB-U3: where the status bar's own controls join it, mirroring the classes on them in
+// `music-status-bar.tsx` (`hidden md:flex` for the seek bar, `hidden lg:inline-flex` for the
+// equalizer, `hidden xl:inline-flex` for the pin). The "more" entry answers for exactly the controls
+// CSS has hidden at the width it is drawn at, so these two numbers and those two classes are one
+// contract: the jsdom cases pin what the entry carries, the browser gate pins what CSS hides.
+export const MUSIC_BAR_EQ_MIN_WIDTH = 1024
+export const MUSIC_BAR_PIN_MIN_WIDTH = 1280
+
+export interface MusicBarMore {
+  pin: boolean
+  eq: boolean
+}
+
+/**
+ * What the status bar's "more" entry has to carry at a given width, or `null` when the bar already
+ * draws everything itself — an entry onto an empty panel is worse than no entry at all.
+ */
+export function barMore({ eqInline, pinInline }: { eqInline: boolean; pinInline: boolean }): MusicBarMore | null {
+  if (eqInline && pinInline) return null
+  return { pin: !pinInline, eq: !eqInline }
+}
+
 export interface MusicToolbarShape {
   /** Low-frequency actions live in the "more" menu rather than inline. */
   folded: boolean
