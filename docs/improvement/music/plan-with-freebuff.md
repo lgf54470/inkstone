@@ -7,13 +7,15 @@
 > 状态图例：`[ ]` 待办 · `[~]` 进行中 · `[x]` 已提交（附 commit short hash）
 > 门禁备注：新增 / 修改注释后必须 `node scripts/sync-comments-allowlist.mjs`（双向失败）；UI 与几何改动用 `scripts/e2e-visual.mjs` / `scripts/check-contrast.mjs`（`INKSTONE_EPHEMERAL_DEV=1 npm run dev:kv` + `INKSTONE_CHROME_PATH`）；`git add` 只列本次文件，不用 `-A`。
 
+> hash 回填约定：提交无法写入自己的短哈希，因此每条进度行的 hash 在**下一个提交**里回填（每次提交都更新本文件不变）。
+
 ## M0 · 文档基线
 
-- [ ] M0 写入 `review-with-freebuff.md`（完整报告）与 `plan-with-freebuff.md`（本跟踪表）
+- [x] M0 写入 `review-with-freebuff.md`（完整报告）与 `plan-with-freebuff.md`（本跟踪表）—— **commit `fac9b655`**
 
 ## M① · P0/P1 可用性
 
-- [ ] M1 FB-F2 在线结果开关触发搜索 + 关闭 / 加载 / 无匹配 / 全源失败四态文案
+- [x] M1 FB-F2 在线结果开关触发搜索 + 关闭 / 加载 / 无匹配 / 全源失败四态文案 —— **commit `—`**（下一提交回填）
 - [ ] M2 FB-F6 + FB-C1 + FB-C2 + FB-U5 每源状态与失败可见 + 重试 + catch 注释 + 字号与来源名本地化
 - [ ] M3 FB-F3 来源筛选扩展（alist / external / provider / podcast），未知旧值回落 `all`
 - [ ] M4 FB-F1 + FB-C4 Hub 拖动真修复（`anim-pop` 覆盖内联 `translate`）+ 几何浏览器断言 + 规则写入文档
@@ -64,7 +66,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-27 | M0 文档基线 | — | —（无代码改动，静态门禁与单测不适用） | 报告结论均落到文件 / 行或实测响应；浏览器门禁在 M4 起逐项补跑 |
+| 2026-09-27 | M0 文档基线 | `fac9b655` | —（无代码改动，静态门禁与单测不适用） | 报告结论均落到文件 / 行或实测响应；浏览器门禁在 M4 起逐项补跑 |
+| 2026-09-27 | M1 FB-F2 开关触发搜索与四态文案 | `—` | 先红：对着 HEAD 组件跑 `music-provider-results.test.ts` 得 6 failed / 2 passed（4 例 `providerPanelState` 不存在，1 例「开关打开后无请求」，1 例「开关与答案之间没有文案」）；实现后 8 例 ✅；music + routes 106 文件 / 741 例 ✅；`npm run typecheck` ✅；comments（同步白名单后 9491 条）/ size / style / i18n 门禁 ✅ | 面板状态提为纯函数 `providerPanelState`（total：off / loading / ready / none，任何情况都有文案）；开关纳入 effect 依赖；字号从 `--text-11/10` 提到 `--text-12`（FB-C2 的一半提前落地）；测试里的搜索词用 ASCII，避免触发 i18n 门禁的「中文只允许出现在 zh-CN 资源」 |
 
 ## 已知限制（滚动更新）
 
