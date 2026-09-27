@@ -47,7 +47,7 @@ import {
   waitForPanelSettled,
   waitForTransitionsEnd,
 } from './e2e-harness.mjs'
-import { MINDMAP_NODE_TEXT_RULE, classifyIncomplete } from './lib/axe-review.mjs'
+import { MINDMAP_NODE_TEXT_RULE, SHARE_TABLE_HEADER_RULE, classifyIncomplete } from './lib/axe-review.mjs'
 import {
   contrastRatio,
   near,
@@ -485,6 +485,14 @@ const PHONE_SURFACES = [
     // nothing (the first version of this pass crashed there, at the light share center).
     open: openPhoneShareSurface,
     painted: ['text', 'accent'],
+    // FB-C5: the center's table is wider than this viewport, and axe's own contrast rule throws on a
+    // header cell of it instead of judging one ("Element midpoint exceeds the grid bounds", filed
+    // under axe's `error-occurred` check — the rule, its evidence and why it cannot widen are in
+    // `lib/axe-review.mjs` next to the classifier, and `tests/axe-review-share-header.test.ts` pins
+    // all three parts of it). Declared here and not on the desktop entry beside it: at that width the
+    // table fits and the same cells are judged normally, which is where a real registration would
+    // fail. Everything else — a judged item on that very cell included — still fails this pass.
+    unjudgeable: [SHARE_TABLE_HEADER_RULE],
     close: async (page) => {
       await page.keyboard.press('Escape')
       await sleep(SETTLE_MS)

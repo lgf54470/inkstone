@@ -295,8 +295,13 @@ export async function runAxe(page, selector) {
       target: (item.nodes[0]?.target ?? []).join(' ').slice(0, 90),
       // axe's own key for "I could not judge this" (bgOverlap, elmPartiallyObscuring, …): a surface
       // that allows a named item matches on it rather than on axe's prose, which is wording that
-      // changes between releases.
-      key: (item.nodes[0]?.any ?? []).map((check) => check.data?.messageKey).find(Boolean) ?? '',
+      // changes between releases. When axe's own evaluation throws, it files that under a check of
+      // its own (`error-occurred`) instead of a key, and that check's id is what stands in for one
+      // here — a surface that names such an item means axe's rule error and not a judgement, so the
+      // two must not arrive as the same empty key.
+      key: (item.nodes[0]?.any ?? []).map((check) => check.data?.messageKey).find(Boolean)
+        ?? (item.nodes[0]?.none ?? []).map((check) => check.id).find((id) => id === 'error-occurred')
+        ?? '',
       note: (item.nodes[0]?.failureSummary ?? '').replace(/\s+/g, ' ').slice(0, 140),
       // The node itself, because a failing target is a Tailwind class soup nobody can read.
       html: (item.nodes[0]?.html ?? '').replace(/\s+/g, ' ').slice(0, 200),

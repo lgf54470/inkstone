@@ -31,6 +31,34 @@ export const MINDMAP_NODE_TEXT_RULE = {
 }
 
 /**
+ * The share center's table is the second item, and this one is not about a colour: at phone width the
+ * table is 940px wide inside a 390px viewport (measured on the running instance), and axe's own
+ * `color-contrast` throws on the header cell it lays down in it — "Element midpoint exceeds the grid
+ * bounds" — because the cell it is asking about sits outside the grid axe built for the scrollable
+ * area. axe files a thrown rule under its `error-occurred` check, so the surface is left unjudged
+ * rather than judged, and the gate used to read that as an unreviewed item. Measured on the way to
+ * this: the error is not about scroll position (the container and the window are both at 0/0 when it
+ * happens) and not about the sticky header (making the header static changes nothing); forcing the
+ * table to fit the width — `width: 100%` with a fixed layout — makes it disappear, which is what ties
+ * it to the horizontal overflow and to nothing this app paints. It is declared on the phone pass's
+ * share surface only, because desktop width fits and the same table is judged there normally.
+ *
+ * The triple keeps it narrow in both directions: the id, axe's `error-occurred` key (the harness
+ * reports that check's id where axe gave no `messageKey`), and a header cell's shape. A judged item on
+ * the same cell still fails the gate, an item filed under no key at all is not this rule, and a rule
+ * error anywhere else in that surface is still reviewed.
+ *
+ * A `target` regexp must not carry the `g` flag here either: the match has to be the same answer every
+ * time it is asked.
+ */
+export const SHARE_TABLE_HEADER_RULE = {
+  id: 'color-contrast',
+  key: 'error-occurred',
+  target: /^th(:nth-child\(\d+\))?$/,
+  reason: 'axe throws on the share table header at phone width instead of judging it (the table is wider than the viewport)',
+}
+
+/**
  * Splits one surface's `incomplete` list into what the surface named (`named`), what the gate's own
  * global categories cover, and what still fails (`review`). `allowed` counts the first two, so a
  * surface can be reported as measured-with-exceptions rather than as clean.
