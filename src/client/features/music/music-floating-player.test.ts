@@ -53,6 +53,17 @@ describe('floating player defers to the open hub', () => {
   })
 })
 
+// FB-C3: the card is the phone's whole music surface, and its way into the hub is the control the
+// shell focuses again when the hub closes — the card unmounts while the hub is open, so the marker
+// is what the hand-off reads to find it once it is back (`successorOf`).
+describe('hub opener successor marker (FB-C3)', () => {
+  it('marks the card\u2019s own way into the library', async () => {
+    await mountPlayer(vi.fn())
+    const marked = [...document.querySelectorAll('[data-music-opener="hub"]')]
+    expect(marked.map((button) => button.getAttribute('aria-label'))).toEqual([t('music.open_hub')])
+  })
+})
+
 describe('floating player drag handle', () => {
   it('is a real button with an accurate label, not a role-imitating span', async () => {
     await mountPlayer(vi.fn())

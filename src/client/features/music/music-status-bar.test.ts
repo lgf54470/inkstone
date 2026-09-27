@@ -88,3 +88,53 @@ describe('status bar defers to the open hub', () => {
     expect(labelled(t('music.play'))).toBeDefined()
   })
 })
+
+// FB-C3: the bar opens the hub from three different controls depending on what is playing, and the
+// hub replaces whichever one was pressed (the transport row becomes the quiet title row). The marker
+// is the contract the keyboard hand-off reads when Escape closes the hub — a control without it is a
+// dead end, which is exactly what the browser gate measured: focus landed on the body.
+describe('hub opener successor marker (FB-C3)', () => {
+  const marked = (): Element[] => [...document.querySelectorAll('[data-music-opener="hub"]')]
+
+  it('marks the icon the bar draws before anything plays', async () => {
+    useMusic.setState({ tracks: [], queue: [], currentIndex: 0 })
+    await mount()
+    expect(marked()).toHaveLength(1)
+    expect(marked()[0]?.getAttribute('aria-label')).toBe(t('music.open_hub'))
+  })
+
+  it('marks the transport row\u2019s own way into the library', async () => {
+    await mount()
+    const control = marked().find((entry) => entry.getAttribute('aria-label') === t('music.expand_player'))
+    expect(control).toBeDefined()
+  })
+
+  it('marks the title row that replaces the opener while the hub is open', async () => {
+    useUi.setState({ panel: 'music-hub' })
+    await mount()
+    const control = marked()[0]
+    expect(control?.getAttribute('aria-label')).toBe(t('music.open_hub_track', { value0: 'Moonlight' }))
+  })
+
+  // The marker alone does not put the keyboard back: the shared hand-off captured its opener one
+  // commit too late (the bar had already swapped the control away, so the browser had already moved
+  // focus to the body). The bar owns the replacement, so the transition that closes the hub is what
+  // takes the keyboard back — and only when nothing else holds it.
+  it('takes the keyboard back when the hub closes and nothing else holds it', async () => {
+    useUi.setState({ panel: 'music-hub' })
+    await mount()
+    expect(document.activeElement).toBe(document.body)
+    await act(async () => { useUi.setState({ panel: null }) })
+    expect(document.activeElement).toBe(marked()[0])
+  })
+
+  it('leaves the keyboard alone when something else already holds it', async () => {
+    useUi.setState({ panel: 'music-hub' })
+    await mount()
+    const elsewhere = document.createElement('button')
+    document.body.appendChild(elsewhere)
+    elsewhere.focus()
+    await act(async () => { useUi.setState({ panel: null }) })
+    expect(document.activeElement).toBe(elsewhere)
+  })
+})

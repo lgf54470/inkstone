@@ -91,6 +91,7 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
         <HubHeader
           onClose={onClose}
           narrow={!columnsWide}
+          activePanel={narrowPanel}
           maximized={hubMaximized}
           windowed={windowed}
           geometry={geometry}

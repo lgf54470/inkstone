@@ -215,6 +215,11 @@ const MUSIC_PROBE_ROW = `xpath=.//div[@role="row"]//button[contains(., "${MUSIC_
 // current, which the grid click below itself causes on the second theme pass — the transport
 // row's expand button.
 const MUSIC_HUB_LABELS = ['打开音乐库', 'Open music library', '展开播放器', 'Expand the player']
+// FB-C3: the phone pass opens the hub by its own name, because below the tablet breakpoint the
+// control is the floating card's rather than the workspace status bar's (see `openPhoneMusicHub`),
+// and the navigation drawer that pass also reads is opened from the hub header.
+const MUSIC_HUB_OPEN_LABELS = ['打开音乐库', 'Open music library']
+const MUSIC_HUB_NAV_LABELS = ['打开音乐导航', 'Open music navigation']
 const IMMERSIVE_LABELS = ['沉浸式播放', 'Full screen player']
 const MUSIC_HUB_OPENER = `xpath/.//footer//button[${MUSIC_HUB_LABELS.map((label) => `@aria-label="${label}"`).join(' or ')}]`
 
@@ -246,6 +251,42 @@ async function closeDialog(page, selector) {
 // The list view's tinted rows — the current track's accent soft background and the selected
 // row's softer one — only paint here, and clicking a probe track's title both selects it and
 // makes it current, so one click sets up the states the measurement below reads.
+/**
+ * FB-C3: the music hub as a phone reaches it. At this width the shell draws the mobile tab bar
+ * instead of the workspace's status bar, so the entry the desktop pass presses is not on screen —
+ * the floating card carries the same control under the same name, and that is what a phone presses.
+ * The fixture is the desktop pass's and is already in place; seeding again answers the same question
+ * about the library without adding a second copy of anything. The navigation drawer is opened too:
+ * its folded columns are the shape this width is for, and it lives inside the dialog this pass reads.
+ */
+async function openPhoneMusicHub(page) {
+  const fixture = await seedMusicProbeTracks({ page })
+  if (fixture.found.length < MUSIC_PROBE.titles.length) {
+    throw new Error(`music surface (phone): ${fixture.found.length} of ${MUSIC_PROBE.titles.length} probe tracks open in the browser after seeding (${JSON.stringify(fixture)})`)
+  }
+  const pressed = await page.evaluate((labels) => {
+    const control = [...document.querySelectorAll('button')]
+      .find((item) => labels.includes(item.getAttribute('aria-label') ?? '') && item.getClientRects().length > 0)
+    if (!control) return false
+    control.click()
+    return true
+  }, MUSIC_HUB_OPEN_LABELS)
+  if (!pressed) throw new Error('music surface (phone): the phone shell offers no control to open the hub from')
+  await page.waitForSelector(MUSIC_HUB_DIALOG, { timeout: SETTLE_TIMEOUT })
+  await waitForPanelSettled(page, MUSIC_HUB_DIALOG)
+  // The folded side columns are opened the way the hub's own header offers them, and the drawer that
+  // answer draws is inside the dialog, so the read below covers it.
+  const drawer = await page.evaluate((labels) => {
+    const control = [...document.querySelectorAll('button')]
+      .find((item) => labels.includes(item.getAttribute('aria-label') ?? '') && item.getClientRects().length > 0)
+    if (!control) return false
+    control.click()
+    return true
+  }, MUSIC_HUB_NAV_LABELS)
+  if (!drawer) throw new Error('music surface (phone): the hub header offers no navigation control at this width')
+  await sleep(SETTLE_MS)
+}
+
 async function openMusicHubList(page) {
   await openMusicHub(page)
   await clickButton(page, ['列表视图', 'List view'])
@@ -410,6 +451,21 @@ const SURFACES = [
  * read below with exactly the readers the desktop pass uses, in both themes.
  */
 const PHONE_SURFACES = [
+  {
+    // FB-C3: the music surface a phone meets. The hub fills the viewport at this width and folds its
+    // side columns into drawers opened from its header, which is a different set of pixels from the
+    // desktop pass — one read of the dialog, navigation drawer included, in both themes.
+    name: 'music library (phone)',
+    axeRoot: MUSIC_HUB_DIALOG,
+    open: openPhoneMusicHub,
+    painted: ['text', 'accent'],
+    close: async (page) => {
+      // The drawer is inside the hub and Escape closes one layer at a time.
+      await page.keyboard.press('Escape')
+      await sleep(SETTLE_MS)
+      await closeDialog(page, MUSIC_HUB_DIALOG)
+    },
+  },
   {
     name: 'outline drawer (phone)',
     axeRoot: '[data-surface="drawer"]',

@@ -7,6 +7,7 @@ import { useUi } from '../../store/ui'
 import { MusicHubModal } from './music-hub-modal'
 import { HUB_MAX_OFFSET_PX, HUB_MAX_WIDTH, HUB_MIN_HEIGHT, HUB_MIN_WIDTH, resizeHubGeometry } from './music-hub-window'
 import { useMusic } from './music-store'
+import { MUSIC_NARROW_BREAKPOINT } from './music-utils'
 
 beforeAll(() => {
   ;(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
@@ -70,6 +71,17 @@ function stubViewportSize(width: number, height: number): void {
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: height })
 }
 
+// Below the hub's own fold the two side columns are drawers, so the header's disclosures only exist
+// in that layout; the file's own stub reports a roomy window for every query.
+function stubNarrowLayout(): void {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: !query.includes(`${MUSIC_NARROW_BREAKPOINT}px`),
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
+}
+
 afterEach(() => {
   act(() => root?.unmount())
   root = null
@@ -78,6 +90,36 @@ afterEach(() => {
   stubViewportSize(1024, 768)
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+})
+
+// FB-C3: the header's two drawer controls were controls whose only state was the tint of their own
+// icon — the drawers they unfold are what the gate's toolbar sweep holds the row's height against,
+// and a disclosure that cannot say whether it is open is not one a screen reader can read.
+describe('hub header disclosures (FB-C3)', () => {
+  const control = (name: string): HTMLElement | null =>
+    document.querySelector<HTMLElement>(`button[aria-label="${name}"]`)
+
+  it('names the layer it opens and starts closed', async () => {
+    stubNarrowLayout()
+    await mountHub()
+    const navigation = control(t('music.hub_open_navigation'))
+    const nowPlaying = control(t('music.hub_open_now_playing'))
+    expect([navigation?.getAttribute('aria-haspopup'), nowPlaying?.getAttribute('aria-haspopup')])
+      .toEqual(['dialog', 'dialog'])
+    expect([navigation?.getAttribute('aria-expanded'), nowPlaying?.getAttribute('aria-expanded')])
+      .toEqual(['false', 'false'])
+  })
+
+  it('says which of the two is unfolded, and follows the other one being pressed', async () => {
+    stubNarrowLayout()
+    await mountHub()
+    await act(async () => { control(t('music.hub_open_navigation'))?.click() })
+    expect([control(t('music.hub_open_navigation'))?.getAttribute('aria-expanded'),
+      control(t('music.hub_open_now_playing'))?.getAttribute('aria-expanded')]).toEqual(['true', 'false'])
+    await act(async () => { control(t('music.hub_open_now_playing'))?.click() })
+    expect([control(t('music.hub_open_navigation'))?.getAttribute('aria-expanded'),
+      control(t('music.hub_open_now_playing'))?.getAttribute('aria-expanded')]).toEqual(['false', 'true'])
+  })
 })
 
 // FB-U1: the window had one 16px corner grip that grew both dimensions at once. Growth is what a

@@ -254,6 +254,8 @@ export interface HubHeaderProps {
   onOpenNavigation: () => void
   onOpenNowPlaying: () => void
   onOpenSettings: () => void
+  /** Which folded column is unfolded right now, so the two disclosures can say it. */
+  activePanel: 'navigation' | 'nowPlaying' | null
 }
 
 export function HubHeader(props: HubHeaderProps) {
@@ -278,6 +280,9 @@ export function HubHeader(props: HubHeaderProps) {
 
   return (
     <header
+      // FB-C3: the gate's toolbar sweep needs this row by name — the drawers its two toggles open
+      // live under it, and this is the element that has to stay its own height when they do.
+      data-hub-header
       // FB-U1: `touch-none` keeps a finger drag from scrolling the page out from under the
       // gesture, and the double click is the shortcut every window's title bar has — it toggles,
       // so the same gesture that fills the screen gives it back.
@@ -301,15 +306,17 @@ export function HubHeader(props: HubHeaderProps) {
   )
 }
 
-function HubHeaderActions({ onClose, narrow, maximized, onToggleMaximized, onOpenNavigation, onOpenNowPlaying, onOpenSettings }: HubHeaderProps) {
+function HubHeaderActions({ onClose, narrow, maximized, activePanel, onToggleMaximized, onOpenNavigation, onOpenNowPlaying, onOpenSettings }: HubHeaderProps) {
   return (
     <div className='flex items-center gap-1'>
       {narrow && (
         <>
           {/* REF-3: a thumb needs 44px, and these two are the whole navigation on a
-              phone, so they carry the touch floor while the desktop header stays tight. */}
-          <IconButton label={t('music.hub_open_navigation')} size='sm' className={TOUCH_TARGET_CLASS} onClick={onOpenNavigation}><PanelLeft size={15} /></IconButton>
-          <IconButton label={t('music.hub_open_now_playing')} size='sm' className={TOUCH_TARGET_CLASS} onClick={onOpenNowPlaying}><SlidersHorizontal size={15} /></IconButton>
+              phone, so they carry the touch floor while the desktop header stays tight.
+              FB-C3: both disclose a drawer, so both say so — `aria-expanded` was missing, which
+              left two controls whose only state was the tint of their own icon. */}
+          <IconButton label={t('music.hub_open_navigation')} size='sm' className={TOUCH_TARGET_CLASS} aria-haspopup='dialog' aria-expanded={activePanel === 'navigation'} onClick={onOpenNavigation}><PanelLeft size={15} /></IconButton>
+          <IconButton label={t('music.hub_open_now_playing')} size='sm' className={TOUCH_TARGET_CLASS} aria-haspopup='dialog' aria-expanded={activePanel === 'nowPlaying'} onClick={onOpenNowPlaying}><SlidersHorizontal size={15} /></IconButton>
         </>
       )}
       {/* FB-F4: the music preferences live in the settings panel, and this is the way there

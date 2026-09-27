@@ -35,6 +35,7 @@ import {
   MUSIC_PROBE,
   runAxe,
   seedMusicProbeTracks,
+  waitForHittable,
   seedShareHubData,
   setAppTheme,
   sleep,
@@ -126,6 +127,14 @@ const LABELS = {
   musicMoveHub: ['移动音乐库窗口', 'Move the music library window'],
   musicMobileNav: ['手机端导航', 'Mobile navigation'],
   musicImmersive: ['沉浸式播放', 'Full screen player'],
+  // The immersive header's own window control (REF-10): the label flips with the state, so both
+  // spellings are here — the desktop spelling is the app's own en-GB 'Maximise'.
+  musicMaximizePlayer: ['最大化播放器', 'Maximise the player'],
+  musicRestorePlayer: ['还原播放器窗口', 'Restore the player window'],
+  // The hub's own window control. It is the same store flip the header's double click makes, and
+  // the pair is read where the box can be measured rather than through the toolbar sweep.
+  musicMaximizeHub: ['最大化音乐库', 'Maximise the music library'],
+  musicRestoreHub: ['还原音乐库窗口', 'Restore the music library window'],
   musicLyrics: ['歌词', 'Lyrics'],
   // The share center's own four pairs (its entry, dialog, manage control and All Shares row) live
   // in `SHARE_LABELS` in the harness, shared with the contrast gate (SH-99); what stays here is
@@ -1386,6 +1395,16 @@ async function appendToNote(page, markdown) {
 // locales; `focus` marks the shortcut path.
 const LIGHTBOX_MARKDOWN = ['', '![Visual probe](/inkstone-logo.svg)', ''].join('\n')
 
+// The music surfaces are drawn by the modal shell's own element, and the label each one hands that
+// shell is how a reader finds it. Declared above the list because the list is built at module load.
+const dialogRoot = (labels) => labels.map((label) => `div[role="dialog"][aria-label="${label}"]`).join(', ')
+const MUSIC_HUB_ROOT = dialogRoot(LABELS.musicHub)
+const MUSIC_IMMERSIVE_ROOT = dialogRoot(LABELS.musicImmersive)
+// The hub's own fold breakpoint is 900px: below it the side columns are drawers opened from the
+// header, and above it there is nothing in that row to disclose. The shell is still the desktop one
+// here, which is what keeps the status bar (and its music control) on screen.
+const MUSIC_HUB_SWEEP_VIEWPORT = { width: 850, height: 900 }
+
 const TOOLBAR_SURFACES = [
   // The graph has no button of its own at this width: its entry point is the account menu, which
   // unmounts on the way to the panel, so a person reaches it by shortcut. The sidebar's account
@@ -1421,6 +1440,19 @@ const TOOLBAR_SURFACES = [
   // opened (`assertKanbanPanelAnchoring`); the sweep dismisses them between presses. Its content has
   // arrived once the cards are drawn.
   { name: 'kanban board', open: openKanbanBoard, root: '.kanban-fullscreen', toolbar: '.kanban-fullscreen [data-kanban-header]', minToggles: 3, loaded: { selector: '[data-item-id]', min: 2 } },
+  // FB-C3: the music library's window, audited at the width where its header actually discloses
+  // something — below its 900px breakpoint the two side columns fold into drawers opened from that
+  // row, which is exactly the expansion the rule is about. At this width the window also fills the
+  // viewport, so the third toggle (fill the screen) changes nothing and is pressed along with the
+  // rest. The person's path in is the status bar's music control, and Escape has to hand the
+  // keyboard back to the music controls (see the `data-music-opener` marker).
+  { name: 'music hub', viewport: MUSIC_HUB_SWEEP_VIEWPORT, open: openMusicHubForSweep, root: MUSIC_HUB_ROOT, toolbar: '[data-hub-header]', minToggles: 2, skipToggles: [...LABELS.musicMaximizeHub, ...LABELS.musicRestoreHub], successorAttributes: ['data-music-opener'], loaded: { selector: '[role="row"], div.grid-cols-2 button', min: 1 } },
+  // FB-C3: the immersive player, opened the way the floating card offers it. Its lyrics header is
+  // the toolbar: the queue it folds out is drawn below that row, and the row may not notice. The
+  // header's other control resizes the surface itself — the dialog grows to the viewport and the
+  // whole row travels with it — so that one is declared out of the sweep and read by
+  // `assertMusicImmersiveFullscreen`, which measures the dialog the shell draws.
+  { name: 'music immersive player', open: (page) => pressOpener(page, { labels: LABELS.musicImmersive }), root: MUSIC_IMMERSIVE_ROOT, toolbar: '[data-immersive-header]', minToggles: 1, skipToggles: [...LABELS.musicMaximizePlayer, ...LABELS.musicRestorePlayer], loaded: { selector: 'input[type="range"]', min: 1 } },
 ]
 
 /**
@@ -1686,9 +1718,23 @@ async function openOutlineDrawer(page) {
  * the combo is pressed the way the app's own hotkey map reads it. Marks from earlier surfaces are
  * cleared, so the element the assertion finds is always this surface's opener.
  */
+/**
+ * FB-C3: the hub's sweep opens it from whichever music control the shell is showing — the plain
+ * status-bar icon before anything plays, the transport row's expand control once a track is current,
+ * and the floating card when neither of those is drawn (at phone width, where the card is the whole
+ * music surface). All three open the hub and all three carry the same successor marker, so the
+ * sweep's focus check has an answer whichever one it pressed. Waiting for the control to be hittable
+ * is the contrast gate's own lesson: a playback notice sits over that row for seconds, and a press
+ * that lands on the notice reads as a surface that never opened.
+ */
+async function openMusicHubForSweep(page) {
+  const labels = [...LABELS.musicOpenHub, ...LABELS.musicExpandPlayer]
+  await waitForHittable(page, labels)
+  await pressOpener(page, { labels })
+}
+
 async function pressOpener(page, { labels, combo = null, scope = '' }) {
   const point = await page.evaluate(({ labels, scope }) => {
-    for (const marked of document.querySelectorAll('[data-gate-opener]')) delete marked.dataset.gateOpener
     const root = scope ? document.querySelector(scope) : document
     const control = [...(root?.querySelectorAll('button') ?? [])]
       .find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
@@ -1699,12 +1745,14 @@ async function pressOpener(page, { labels, combo = null, scope = '' }) {
     control.scrollIntoView({ block: 'center' })
     const box = control.getBoundingClientRect()
     if (box.width < 1 || box.height < 1) return null
-    control.dataset.gateOpener = '1'
+    // The sweep opens one surface at a time, so its marks replace the previous surface's: the focus
+    // check below is about the control this press touched, not about whatever opened something earlier.
+    window.__gateOpeners = [control]
     return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
   }, { labels, scope })
   if (!point) throw new Error(`the sweep found no control named ${labels.join(' / ')} to open a surface from`)
   if (combo) {
-    await page.evaluate(() => document.querySelector('[data-gate-opener]')?.focus())
+    await page.evaluate(() => (window.__gateOpeners ?? []).at(-1)?.focus())
     await pressCombo(page, combo)
     return
   }
@@ -1712,11 +1760,12 @@ async function pressOpener(page, { labels, combo = null, scope = '' }) {
 }
 
 /** One toggle's row, read from the toolbar it sits in: where it is, and whether it is still inside. */
-async function readToggle(page, toolbar, index) {
-  return page.evaluate(({ toolbar, index }) => {
+async function readToggle(page, toolbar, index, skipped = []) {
+  return page.evaluate(({ toolbar, index, skipped }) => {
     const bar = document.querySelector(toolbar)
     const drawn = [...(bar?.querySelectorAll('button[aria-pressed], button[aria-expanded]') ?? [])]
       .filter((item) => item.getBoundingClientRect().width > 0)
+      .filter((item) => !skipped.includes(item.getAttribute('aria-label') ?? ''))
     const toggle = drawn[index]
     if (!bar || !toggle) return null
     const barBox = bar.getBoundingClientRect()
@@ -1728,19 +1777,20 @@ async function readToggle(page, toolbar, index) {
       inside: box.top >= barBox.top - 1 && box.bottom <= barBox.bottom + 1,
       label: (toggle.getAttribute('aria-label') || toggle.textContent.trim()).slice(0, 24),
     }
-  }, { toolbar, index })
+  }, { toolbar, index, skipped })
 }
 
 /** Presses one toolbar toggle the way a person does: a real pointer click on the control's centre. */
-async function clickToggle(page, toolbar, index) {
-  const point = await page.evaluate(({ toolbar, index }) => {
+async function clickToggle(page, toolbar, index, skipped = []) {
+  const point = await page.evaluate(({ toolbar, index, skipped }) => {
     const drawn = [...(document.querySelector(toolbar)?.querySelectorAll('button[aria-pressed], button[aria-expanded]') ?? [])]
       .filter((item) => item.getBoundingClientRect().width > 0)
+      .filter((item) => !skipped.includes(item.getAttribute('aria-label') ?? ''))
     const toggle = drawn[index]
     if (!toggle) return null
     const box = toggle.getBoundingClientRect()
     return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
-  }, { toolbar, index })
+  }, { toolbar, index, skipped })
   if (!point) return
   await page.mouse.click(point.x, point.y)
 }
@@ -1770,15 +1820,21 @@ async function dismissTransientLayers(page, root) {
  * legitimate repaint moves them without the toolbar growing.
  */
 async function sweepToolbar(page, surface) {
-  const bar = await page.evaluate((selector) => {
+  // FB-C3: a control that resizes the surface itself is not a disclosure, and pressing it moves the
+  // whole window — which is the one thing this sweep must not read as a toolbar growth. A surface
+  // declares those controls by name; each one is read by an assertion of its own instead (the music
+  // pair below say what they skipped and who reads it).
+  const skipped = surface.skipToggles ?? []
+  const bar = await page.evaluate(({ selector, skipped }) => {
     const element = document.querySelector(selector)
     if (!element) return null
     return {
       height: Math.round(element.getBoundingClientRect().height),
       toggles: [...element.querySelectorAll('button[aria-pressed], button[aria-expanded]')]
-        .filter((toggle) => toggle.getBoundingClientRect().width > 0).length,
+        .filter((toggle) => toggle.getBoundingClientRect().width > 0)
+        .filter((toggle) => !skipped.includes(toggle.getAttribute('aria-label') ?? '')).length,
     }
-  }, surface.toolbar)
+  }, { selector: surface.toolbar, skipped })
   if (!bar) throw new Error(`toolbar sweep: the ${surface.name} has no toolbar matching ${surface.toolbar}`)
   let growth = 0
   let rowShift = 0
@@ -1786,10 +1842,10 @@ async function sweepToolbar(page, surface) {
   let outside = 0
   const labels = []
   for (let index = 0; index < bar.toggles; index += 1) {
-    const before = await readToggle(page, surface.toolbar, index)
-    await clickToggle(page, surface.toolbar, index)
+    const before = await readToggle(page, surface.toolbar, index, skipped)
+    await clickToggle(page, surface.toolbar, index, skipped)
     await sleep(320)
-    const after = await readToggle(page, surface.toolbar, index)
+    const after = await readToggle(page, surface.toolbar, index, skipped)
     if (!before || !after) {
       outside += 1
       labels.push(`${before?.label ?? index}:gone`)
@@ -1802,7 +1858,7 @@ async function sweepToolbar(page, surface) {
     labels.push(`${after.label}:${after.height - before.height}/${after.top - before.top}/${after.left - before.left}`)
     await dismissTransientLayers(page, surface.root)
   }
-  return { height: bar.height, toggles: bar.toggles, growth, rowShift, sideways, outside, labels: labels.join(', ') }
+  return { height: bar.height, toggles: bar.toggles, skipped: skipped.join(' / '), growth, rowShift, sideways, outside, labels: labels.join(', ') }
 }
 
 /**
@@ -1847,7 +1903,7 @@ const SLIDES_FENCE = [
  */
 async function slidesOpenProbe(page) {
   return page.evaluate(() => {
-    const opener = document.querySelector('[data-gate-opener]')
+    const opener = (window.__gateOpeners ?? []).at(-1)
     const rect = opener?.getBoundingClientRect()
     const block = opener?.closest('[data-bento-slides],[data-mindmap],[data-excalidraw],[data-kanban]')
     return {
@@ -4179,18 +4235,28 @@ async function assertFullscreenToolbars(page) {
     // opened this surface is left with no place on the page. The control is the one marked before it
     // was pressed, so a surface that hands focus to the body, or deep inside a panel that is gone,
     // fails here and says which element ended up holding it.
-    const focus = await page.evaluate(() => {
+    const focus = await page.evaluate((successors) => {
       const describe = (element) => (element
         ? `${element.tagName.toLowerCase()}${element.getAttribute('aria-label') ? `[${element.getAttribute('aria-label')}]` : ''}`
         : 'nothing')
-      const opener = document.querySelector('[data-gate-opener]')
-      const active = document.activeElement
+      const openers = window.__gateOpeners ?? []
+      const marked = openers.at(-1)
+      const connected = openers.find((element) => element.isConnected) ?? null
+      const active = document.activeElement instanceof Element ? document.activeElement : null
+      // FB-C3: a surface may replace its opener *while it is open* (the music status bar swaps its
+      // transport for a quiet title row, the floating card unmounts). Those surfaces are handed back
+      // to the control that took the opener's place, which is the app's own rule for a re-rendered
+      // opener (`successorOf` in components/overlay/hooks.ts) — it is not a looser check, because the
+      // replacement has to carry the same declared markers as the control that was pressed.
+      const inherited = successors.length > 0 && successors.every((name) => marked?.hasAttribute(name))
+        && successors.every((name) => active?.hasAttribute(name))
       return {
-        opener: describe(opener),
-        active: describe(active instanceof HTMLElement ? active : null),
-        returned: Boolean(opener) && active === opener,
+        opener: describe(connected ?? marked),
+        active: describe(active),
+        inherited: inherited ? successors.join('+') : '',
+        returned: (connected !== null && active === connected) || inherited,
       }
-    })
+    }, surface.successorAttributes ?? [])
     check(`surface keyboard: the ${surface.name} hands focus back to the control it was opened from`, focus.returned, JSON.stringify(focus))
   }
   // The drawer's entry is the one that changed the window: the run leaves the app as it found it.
@@ -4306,7 +4372,7 @@ const overlaps = (a, b) => a && b
   && a.y < b.y + b.height && b.y < a.y + a.height
 
 const HUB_DIALOG_XPATH = `xpath/.//div[@role="dialog" and ${ariaAttr(LABELS.musicHub)}]`
-const HUB_DIALOG_CSS = cssByLabels('div[role="dialog"]', LABELS.musicHub)
+const HUB_DIALOG_CSS = MUSIC_HUB_ROOT
 
 // FB-F1: the window used to write its drag offset into the store and into an inline `transform`,
 // and the dialog's own entrance animation (`ink-pop`, fill `both`, ending on `transform: none`)
@@ -4407,7 +4473,23 @@ async function assertMusicHubResize(page) {
     Boolean(shorter) && Math.abs(shorter.height - (grown.height - 160)) <= 8 && Math.abs(shorter.y - grown.y) <= 8,
     `grown=${JSON.stringify(grown)} shorter=${JSON.stringify(shorter)}`)
 
+  // FB-C3: the header's own window control, which the toolbar sweep declares out of its list — it
+  // resizes the surface rather than disclosing anything, and a press of it travels the whole row. The
+  // box and the label that flips with the state are read here instead, and the window is given back
+  // before the double click below, because a maximised hub remembers that state across opens.
   const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  await clickButton(page, LABELS.musicMaximizeHub)
+  await sleep(400)
+  const byControl = await rectOf(page, HUB_DIALOG_CSS)
+  check('music: the header control fills the screen with the window',
+    Boolean(byControl) && Math.abs(byControl.width - viewport.width) <= 8 && Math.abs(byControl.height - viewport.height) <= 8,
+    `viewport=${JSON.stringify(viewport)} filled=${JSON.stringify(byControl)}`)
+  await clickButton(page, LABELS.musicRestoreHub)
+  await sleep(400)
+  const givenBack = await rectOf(page, HUB_DIALOG_CSS)
+  check('music: the header control gives the window back',
+    Boolean(givenBack) && Math.abs(givenBack.width - shorter.width) <= 8 && Math.abs(givenBack.height - shorter.height) <= 8,
+    `shorter=${JSON.stringify(shorter)} restored=${JSON.stringify(givenBack)}`)
   if (!(await doubleClickHubHeader(page))) return
   const filled = await rectOf(page, HUB_DIALOG_CSS)
   check('music: a double click of the header fills the screen with the window',
@@ -4566,6 +4648,7 @@ async function assertMusicSurface(page) {
     Boolean(playerBox) && Boolean(statusBarBox) && !overlaps(playerBox, statusBarBox),
     `player=${JSON.stringify(playerBox)} status=${JSON.stringify(statusBarBox)}`)
 
+
   if (!(await openMusicHub(page))) {
     check('music: the status bar opens the library hub', false)
     return
@@ -4717,6 +4800,100 @@ async function assertMusicSurface(page) {
 
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(400)
+  // The card's own strip is swept last of the three surfaces, and after the queue press above on
+  // purpose: the sweep presses every disclosure in the card, the queue toggle among them — run
+  // earlier it would leave that panel open and the press below would close what it means to open.
+  await assertMusicFloatingStrip(page)
+  await assertMusicImmersiveFullscreen(page)
+}
+
+/**
+ * FB-C3: the floating card is the third music surface, and it is the one the toolbar sweep cannot
+ * take: it is not an overlay, so it has no Escape and no opener to hand the keyboard back to. The rule
+ * is asked of it here on the card's own terms — every disclosure in the strip is pressed and the rows
+ * that hold them may not change shape: not the control's own height, not the height of the row it sits
+ * in, and not its place within the card. The place is measured from the card's top rather than from the
+ * screen, because this card is anchored to the bottom edge and grows upwards: the queue it folds out is
+ * appended below the strip, which is one of the four places an expansion is allowed to live, and a
+ * panel drawn as a row of the strip would be caught by all three readings at once.
+ */
+async function assertMusicFloatingStrip(page) {
+  const card = cssByLabels('aside', LABELS.musicMiniPlayer)
+  const read = (index) => page.evaluate(({ selector, index }) => {
+    const aside = document.querySelector(selector)
+    const toggles = [...(aside?.querySelectorAll('button[aria-pressed], button[aria-expanded]') ?? [])]
+      .filter((item) => item.getBoundingClientRect().width > 0)
+    const toggle = toggles[index]
+    if (!aside || !toggle) return null
+    const box = toggle.getBoundingClientRect()
+    return {
+      count: toggles.length,
+      label: (toggle.getAttribute('aria-label') || toggle.textContent.trim()).slice(0, 24),
+      height: Math.round(box.height),
+      rowHeight: Math.round(toggle.parentElement?.getBoundingClientRect().height ?? 0),
+      fromTop: Math.round(box.top - aside.getBoundingClientRect().top),
+    }
+  }, { selector: card, index })
+  const press = (index) => page.evaluate(({ selector, index }) => {
+    const aside = document.querySelector(selector)
+    const toggles = [...(aside?.querySelectorAll('button[aria-pressed], button[aria-expanded]') ?? [])]
+      .filter((item) => item.getBoundingClientRect().width > 0)
+    const toggle = toggles[index]
+    if (!toggle) return false
+    toggle.click()
+    return true
+  }, { selector: card, index })
+
+  const first = await read(0)
+  if (!first) {
+    check("music: the floating player's strip holds its shape as its panels open", false, 'the card offers no disclosure to press')
+    return
+  }
+  const moved = []
+  for (let index = 0; index < first.count; index += 1) {
+    const before = await read(index)
+    await press(index)
+    await sleep(320)
+    const after = await read(index)
+    const held = before && after && after.height === before.height
+      && after.rowHeight === before.rowHeight && after.fromTop === before.fromTop
+    if (!held) {
+      moved.push(`${before?.label ?? index}: ${before?.height}/${before?.rowHeight}/${before?.fromTop} -> ${after?.height}/${after?.rowHeight}/${after?.fromTop}`)
+    }
+    // A panel opens through a portal or gains a row of its own; Escape is what closes the first kind.
+    await page.keyboard.press('Escape')
+    await sleep(200)
+  }
+  check("music: the floating player's strip holds its shape as its panels open", moved.length === 0, moved.join(', '))
+}
+
+/**
+ * FB-C3: the immersive player takes the modal shell's full screen variant too, and what this reads is
+ * the shell rather than the header the sweep below holds to its size — after the header's own
+ * toggle, the dialog the shell draws has to be the viewport. Opened from the floating card's
+ * immersive control, which is the path the card itself offers at this width, and Escape closes it.
+ */
+async function assertMusicImmersiveFullscreen(page) {
+  // The card's own control, scoped to the card: the label is shared with the surface itself, and an
+  // unscoped lookup finds the dialog's title where the button should be.
+  const opener = cssByLabels('aside button', LABELS.musicImmersive)
+  const pressed = await page.$$(opener).then(
+    async (handles) => { const handle = handles.at(-1); if (!handle) return false; await handle.click(); return true },
+    () => false,
+  )
+  const shown = Boolean(pressed) && await page.waitForSelector(MUSIC_IMMERSIVE_ROOT, { timeout: 15_000 }).then(() => true, () => false)
+  check('music: the floating player opens the immersive player', Boolean(shown))
+  if (!shown) return
+  await waitForPanelSettled(page, MUSIC_IMMERSIVE_ROOT)
+  await clickButton(page, LABELS.musicMaximizePlayer)
+  await sleep(400)
+  const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  const filled = await rectOf(page, MUSIC_IMMERSIVE_ROOT)
+  check('music: the maximized immersive player fills the viewport',
+    Boolean(filled) && Math.abs(filled.width - viewport.width) <= 8 && Math.abs(filled.height - viewport.height) <= 8,
+    `viewport=${JSON.stringify(viewport)} filled=${JSON.stringify(filled)}`)
+  await page.keyboard.press('Escape')
+  await sleep(400)
 }
 
 /**
@@ -4754,7 +4931,7 @@ async function pressHubControl(page, labels) {
     if (!control) return null
     control.scrollIntoView({ block: 'center' })
     const box = control.getBoundingClientRect()
-    control.dataset.gateOpener = '1'
+    ;(window.__gateOpeners ??= []).push(control)
     return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
   }, { dialog: SHARE_DIALOG, labels })
   if (!point) return false
@@ -4845,7 +5022,7 @@ async function assertShareCenter(page) {
   await sleep(700)
   const closed = await page.evaluate((selector) => ({
     hub: Boolean(document.querySelector(selector)),
-    returned: document.activeElement === document.querySelector('[data-gate-opener]'),
+    returned: document.activeElement === (window.__gateOpeners ?? []).find((element) => element.isConnected),
   }), SHARE_DIALOG)
   check('share: the center closes with escape and hands focus back to its control',
     !closed.hub && closed.returned, JSON.stringify(closed))
@@ -4914,7 +5091,7 @@ async function assertShareCenter(page) {
   // rather than of the page: the control the surface was opened from is back under the keyboard and
   // no longer inside an inert subtree, which is what a person finds when they press Escape.
   const released = await page.evaluate((selector) => {
-    const opener = document.querySelector('[data-gate-opener]')
+    const opener = (window.__gateOpeners ?? []).find((element) => element.isConnected)
     return {
       hub: Boolean(document.querySelector(selector)),
       focus: document.activeElement === opener,

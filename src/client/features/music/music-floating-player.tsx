@@ -253,7 +253,10 @@ function FloatExtras() {
         <IconButton label={t('music.immersive')} size='sm' onClick={() => setImmersive(true)}><Maximize2 size={14} /></IconButton>
       </Tooltip>
       <Tooltip label={t('music.open_hub')} side='top'>
-        <IconButton label={t('music.open_hub')} size='sm' onClick={openHub}><Library size={14} /></IconButton>
+        {/* FB-C3: the same successor marker the status bar's controls carry. This card is the phone's
+            way into the hub, and it unmounts while the hub is open — the marker is how the keyboard
+            finds it again when the hub closes (`successorOf`, components/overlay/hooks.ts). */}
+        <IconButton label={t('music.open_hub')} size='sm' data-music-opener='hub' onClick={openHub}><Library size={14} /></IconButton>
       </Tooltip>
     </div>
   )

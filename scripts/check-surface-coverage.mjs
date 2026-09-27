@@ -63,17 +63,29 @@ const SURFACES = [
   {
     file: 'src/client/components/overlay/modal.tsx',
     component: 'Modal',
-    // The shell is a container, not a surface of its own, and three overlays take its full
-    // screen variant: the mind map, whose scenario asserts the same two things (Escape
-    // closes it, the keyboard reference does not grow the head) on the element this file
-    // renders, the slides editor, whose scenario asserts the same pair from the control it
-    // was opened from, the share center, which asserts that the variant covers the phone
-    // breakpoint before it reads that element, and the full screen kanban board, whose top bar
-    // the sweep drives instead. The names below are the assertions each consumer lives behind —
-    // the board is covered by its own sweep entry, which is why it needs none.
+    // The shell is a container, not a surface of its own, and six overlays take its full screen
+    // variant (FB-C3 counted them rather than trusting the sentence that used to say three and list
+    // four):
+    //   - the mind map, whose scenario asserts the same two things the sweep does (Escape closes
+    //     it, the keyboard reference does not grow the head) on the element this file renders;
+    //   - the slides editor, whose scenario asserts the same pair from the control it was opened
+    //     from — it is reached from a block in the note rather than from a control in the shell;
+    //   - the share center, which asserts that the variant covers the phone breakpoint before it
+    //     reads that element;
+    //   - the full screen kanban board, whose top bar the sweep drives instead;
+    //   - the music hub, swept as `music hub`: its maximized state is this variant, and the sweep
+    //     presses that toggle in the header;
+    //   - the immersive player, swept as `music immersive player`, plus the assertion below, which
+    //     reads the element this file draws rather than the header the sweep holds to its size.
+    // The `checkedBy` names are the assertions each consumer lives behind; the sweeps above are
+    // enforced by their own entries in the gate's list, so only the ones with no sweep entry of
+    // their own are named here.
     checkedBy: [
       'mindmap: opening the keyboard reference leaves the toolbar its size',
       'share: the center takes the phone breakpoint as a full screen surface',
+      'music: the header control fills the screen with the window',
+      'music: a double click of the header fills the screen with the window',
+      'music: the maximized immersive player fills the viewport',
     ],
   },
 ]

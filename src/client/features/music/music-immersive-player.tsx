@@ -228,7 +228,12 @@ function LyricsHeader({ track, queueLength, offsetMs, maximized, onToggleMaximiz
   onClose: () => void
 }) {
   return (
-    <div className='flex h-10 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4'>
+    <div
+      // FB-C3: the gate's toolbar sweep reads this row by name. The queue its toggle folds out is
+      // drawn below it, which is where an expansion is allowed to live — the row itself is not.
+      data-immersive-header
+      className='flex h-10 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] px-4'
+    >
       <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>{t('music.lyrics')}</span>
       <span className='flex items-center gap-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         {track && <LyricOffsetControls trackId={track.id} offsetMs={offsetMs} />}

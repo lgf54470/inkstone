@@ -419,13 +419,14 @@ export async function openShareCenter(page, { base, mobile = false, fixture = fa
   const managePoint = await page.evaluate(({ labels, scope }) => {
     // The opener a focus-return assertion reads is the last one that was pressed, so the mark
     // travels with it — an older mark left behind would answer for the wrong control.
-    for (const marked of document.querySelectorAll('[data-gate-opener]')) delete marked.dataset.gateOpener
     const root = scope ? document.querySelector(scope) : document
     const control = [...(root?.querySelectorAll('button') ?? [])]
       .find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
     if (!control) return null
     control.scrollIntoView({ block: 'center' })
-    control.dataset.gateOpener = '1'
+    // This press starts the surface, so the marks of whatever was pressed before it stop standing:
+    // every read below is about the control this scenario opened the surface from.
+    window.__gateOpeners = [control]
     const box = control.getBoundingClientRect()
     return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
   }, { labels: SHARE_LABELS.manage, scope: mobile ? MOBILE_PANE : '' })
