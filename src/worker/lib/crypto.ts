@@ -92,9 +92,15 @@ function readStringField(value: unknown, key: string): string | null {
   return typeof field === 'string' ? field : null
 }
 
+// The field names a credential record may carry: one per consumer, and nothing else. `password` is
+// WebDAV's and the music library's stored password, the two S3 keys belong to backup targets, and
+// `token` is the music library's bearer credential (an Alist token, a self-hosted server's session
+// token). It has to be on the list: rows written before this check was narrowed are encrypted with
+// that name, and a decrypt that rejects its own stored shape reports a live credential as unreadable
+// (FB-M17). Keep the list closed — a record with a field nobody reads is a shape nobody can trust.
 function isBackupCredentialRecord(value: unknown): value is Record<string, string> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
-  const allowed = new Set(['password', 'accessKeyId', 'secretAccessKey'])
+  const allowed = new Set(['password', 'accessKeyId', 'secretAccessKey', 'token'])
   const entries = Object.entries(value)
   return entries.length > 0 &&
     entries.length <= allowed.size &&
