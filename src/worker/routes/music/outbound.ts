@@ -28,6 +28,30 @@ export async function fetchAllowedResource(
   return null
 }
 
+// FB-S2: the same hop-by-hop walk as above, for addresses whose *host* is the upstream's own choice
+// (a catalogue's image host) rather than a fixed list. The address rule is then the whole guard, so
+// it is applied per hop for exactly the reason above: the worker following a redirect is the worker
+// fetching.
+export async function fetchPublicResource(
+  rawUrl: string,
+  accept: string,
+  options: { allowHttp?: boolean } = {},
+): Promise<Response | null> {
+  let current = parseUrl(rawUrl)
+  for (let hop = 0; hop <= MAX_REDIRECT_HOPS && current; hop++) {
+    if (!isAllowedOutboundUrl(current, { allowHttp: options.allowHttp === true })) return null
+    const response = await fetch(current, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
+      headers: { Accept: accept },
+    })
+    if (response.status < 300 || response.status >= 400) return response
+    await cancelStreamBestEffort(response.body)
+    current = parseUrl(response.headers.get('location') ?? '', current)
+  }
+  return null
+}
+
 export function parseUrl(raw: string, base?: URL): URL | null {
   try {
     return base ? new URL(raw, base) : new URL(raw)

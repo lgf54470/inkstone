@@ -244,9 +244,17 @@ export async function deleteMusicObject(ctx: MusicWebdavContext, relativePath: s
   }
 }
 
-export async function fetchMusicObject(ctx: MusicWebdavContext, relativePath: string, rangeHeader: string | null): Promise<Response> {
+// FB-S1: the caller may bound the wait for the response head (`signal`); the body then streams on
+// its own, which is what a multi-minute song needs.
+export async function fetchMusicObject(
+  ctx: MusicWebdavContext,
+  relativePath: string,
+  rangeHeader: string | null,
+  signal?: AbortSignal,
+): Promise<Response> {
   return safeWebdavFetch(childUrl(ctx.base, joinRelative(ctx.dir, relativePath)), {
     method: 'GET',
+    ...(signal ? { signal } : {}),
     headers: {
       Authorization: ctx.auth,
       'User-Agent': 'InkstoneMusic/1',

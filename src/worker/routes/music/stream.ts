@@ -1,4 +1,5 @@
 import type { Context } from 'hono'
+import { LIMITS } from '@shared/constants'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { cancelStreamBestEffort } from '../../lib/streams'
@@ -8,6 +9,7 @@ import { alignKvRangeWindow, contentRangeHeader, isWellFormedContentLength, isWe
 import type { MusicTrackRow } from './rows'
 import { alistApi, joinAlistPath, parseAlistObjectKey, resolveAlistServer } from './alist'
 import { parseGdsObjectKey, readProviderQuality, resolveProviderPlayUrl } from './provider'
+import { capStreamBytes, fetchMusicUpstream, withHeadTimeout } from './upstream'
 import { buildDownloadTag } from './id3'
 import { readMusicObjectStream, requireMusicStorage } from './storage'
 import { fetchMusicObject, resolveMusicWebdav } from './webdav'
@@ -85,7 +87,8 @@ async function streamWebdavTrack(
   options: StreamOptions,
 ): Promise<Response> {
   const ctx = await resolveMusicWebdav(c.env, owner, owner.userId)
-  const upstream = await fetchMusicObject(ctx, row.object_key, c.req.header('Range') ?? null)
+  // FB-S1: the wait for the head is bounded; the transfer is not (see `withHeadTimeout`).
+  const upstream = await withHeadTimeout((signal) => fetchMusicObject(ctx, row.object_key, c.req.header('Range') ?? null, signal))
   if (upstream.status === 401) throw new ApiError(401, 'unauthenticated', 'The WebDAV credentials were rejected')
   if (upstream.status === 404) throw ApiError.notFound('The track no longer exists on the WebDAV server')
   if (upstream.status !== 200 && upstream.status !== 206) {
@@ -105,12 +108,9 @@ async function streamExternalTrack(
   options: StreamOptions,
 ): Promise<Response> {
   const range = c.req.header('Range')
-  let upstream: Response
-  try {
-    upstream = await fetch(row.object_key, range ? { headers: { Range: range } } : undefined)
-  } catch {
-    throw new ApiError(502, 'storage_unavailable', 'The track source is unreachable')
-  }
+  // FB-S3: a direct link is the reader's own address, and http is part of what such a link may be —
+  // the address rule still applies in full.
+  const upstream = await fetchMusicUpstream(row.object_key, { headers: range ? { Range: range } : {}, allowHttp: true })
   if (upstream.status === 404) throw ApiError.notFound('The track is no longer reachable at its source URL')
   if (upstream.status !== 200 && upstream.status !== 206) {
     await cancelStreamBestEffort(upstream.body)
@@ -139,7 +139,12 @@ function streamUpstream(upstream: Response, row: MusicTrackRow, options: StreamO
   const range = upstream.status === 206 ? upstream.headers.get('Content-Range') : null
   if (range && isWellFormedContentRange(range)) headers['Content-Range'] = range.trim()
   if (!safeMime || options.download) headers['Content-Disposition'] = attachmentDisposition(row.title)
-  return new Response(upstream.body as BodyInit, { status: upstream.status === 206 ? 206 : 200, headers })
+  // FB-S1: one body, one count — every remote source passes through here, so the runaway guard is
+  // applied once instead of once per source.
+  return new Response(capStreamBytes(upstream.body, LIMITS.musicStreamMaxBytes) as BodyInit, {
+    status: upstream.status === 206 ? 206 : 200,
+    headers,
+  })
 }
 
 async function mp3DownloadResponse(
@@ -185,12 +190,8 @@ async function streamAlistTrack(
   const rawUrl = data.raw_url
   if (!rawUrl) throw ApiError.notFound('The track is no longer reachable on the Alist server')
   const range = c.req.header('Range')
-  let upstream: Response
-  try {
-    upstream = await fetch(rawUrl, range ? { headers: { Range: range } } : undefined)
-  } catch {
-    throw new ApiError(502, 'storage_unavailable', 'The Alist source is unreachable')
-  }
+  // FB-S3: the signed link is the Alist server's own answer, checked like every other address.
+  const upstream = await fetchMusicUpstream(rawUrl, { headers: range ? { Range: range } : {}, allowHttp: true })
   if (upstream.status === 404) throw ApiError.notFound('The track is no longer reachable on the Alist server')
   if (upstream.status !== 200 && upstream.status !== 206) {
     await cancelStreamBestEffort(upstream.body)
@@ -212,12 +213,8 @@ async function streamProviderTrack(
   // the preference reaches the resolver. The whitelist check throws for anything else.
   const playUrl = await resolveProviderPlayUrl(key.source, key.songId, readProviderQuality(c.req.query('quality')))
   const range = c.req.header('Range')
-  let upstream: Response
-  try {
-    upstream = await fetch(playUrl, range ? { headers: { Range: range } } : undefined)
-  } catch {
-    throw new ApiError(502, 'storage_unavailable', 'The online source is unreachable')
-  }
+  // FB-S3: the aggregate hands out the playable address, so it is a third party's choice too.
+  const upstream = await fetchMusicUpstream(playUrl, { headers: range ? { Range: range } : {}, allowHttp: true })
   if (upstream.status === 404) throw ApiError.notFound('The track is no longer reachable on the online source')
   if (upstream.status !== 200 && upstream.status !== 206) {
     await cancelStreamBestEffort(upstream.body)

@@ -10,7 +10,7 @@ import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
 import { coverHeaders, storeCoverObject } from './cover'
 import { resolveMusicTrackType } from './keys'
-import { readUpstreamBytes } from './outbound'
+import { fetchAllowedResource, fetchPublicResource, readUpstreamBytes } from './outbound'
 import { importProviderTrackSchema } from './schemas'
 import { insertWebdavTrack } from './webdav-routes'
 import { toTrack, type MusicTrackRow } from './rows'
@@ -25,6 +25,8 @@ const PROVIDER_COVER_SIZE = 300
 // traffic once a provider is enabled. The aggregate upstream (GD) fronts the
 // several catalogues the client lists, so the allowlist is one host.
 const GDS_API_BASE = 'https://music-api.gdstudio.xyz'
+// FB-S2: the only host this proxy fetches, checked on every hop of every redirect it follows.
+const GDS_ALLOWED_HOSTS = ['music-api.gdstudio.xyz'] as const
 
 // FB-S4: the same list the client searches with, not a second copy of it — a path segment that
 // reaches the upstream is exactly the catalogue name the client offered.
@@ -105,7 +107,7 @@ async function providerSearch(c: Context<AppBindings>): Promise<Response> {
     count: String(LIMITS.musicProviderSearchCount),
     pages: '1',
   })
-  const payload = await fetchUpstreamJson(`${GDS_API_BASE}/api.php?${query}`)
+  const payload = await fetchProviderUpstream(`${GDS_API_BASE}/api.php?${query}`)
   const hits = Array.isArray(payload) ? payload as GdsSearchHit[] : []
   const results = hits.map((hit) => {
     const artist = hit.artist
@@ -147,7 +149,7 @@ async function providerLyric(c: Context<AppBindings>): Promise<Response> {
   if (!isProviderSource(source)) throw ApiError.badRequest('Unknown online source')
   if (!id) throw ApiError.badRequest('The lyric id is required')
   const query = new URLSearchParams({ types: 'lyric', source, id })
-  const payload = await fetchUpstreamJson(`${GDS_API_BASE}/api.php?${query}`) as { lyric?: unknown } | null
+  const payload = await fetchProviderUpstream(`${GDS_API_BASE}/api.php?${query}`) as { lyric?: unknown } | null
   return c.json({ lyric: typeof payload?.lyric === 'string' ? payload.lyric.trim() : '' })
 }
 
@@ -163,12 +165,10 @@ async function providerCover(c: Context<AppBindings>): Promise<Response> {
   if (!isProviderSource(source)) throw ApiError.badRequest('Unknown online source')
   if (!id) throw ApiError.badRequest('The cover id is required')
   const imageUrl = await resolveProviderCoverUrl(source, id)
-  let response: Response
-  try {
-    response = await fetch(imageUrl, { headers: { Accept: 'image/*' }, signal: AbortSignal.timeout(12_000) })
-  } catch {
-    throw new ApiError(502, 'storage_unavailable', 'The online cover is unreachable')
-  }
+  // FB-S2: the image host is the upstream's choice, so the address rule itself is the guard — and
+  // it is applied to every hop, not only to the first.
+  const response = await fetchPublicResource(imageUrl, 'image/*')
+  if (!response) throw new ApiError(502, 'storage_unavailable', 'The online cover is not reachable from this server')
   if (!response.ok) {
     await cancelStreamBestEffort(response.body)
     throw new ApiError(502, 'storage_unavailable', `The online cover failed: HTTP ${response.status}`)
@@ -185,7 +185,7 @@ async function providerCover(c: Context<AppBindings>): Promise<Response> {
 // same public-address rule every other user-controlled outbound fetch answers to.
 export async function resolveProviderCoverUrl(source: string, coverId: string): Promise<string> {
   const query = new URLSearchParams({ types: 'pic', source, id: coverId, size: String(PROVIDER_COVER_SIZE) })
-  const payload = await fetchUpstreamJson(`${GDS_API_BASE}/api.php?${query}`) as { url?: unknown } | null
+  const payload = await fetchProviderUpstream(`${GDS_API_BASE}/api.php?${query}`) as { url?: unknown } | null
   const raw = typeof payload?.url === 'string' ? payload.url.trim() : ''
   if (!raw) throw new ApiError(502, 'storage_unavailable', 'The online source returned no cover URL')
   let parsed: URL
@@ -208,7 +208,7 @@ export async function resolveProviderPlayUrl(
   quality: MusicProviderQuality = MUSIC_PROVIDER_DEFAULT_QUALITY,
 ): Promise<string> {
   const query = new URLSearchParams({ types: 'url', source, id: songId, br: String(quality) })
-  const payload = await fetchUpstreamJson(`${GDS_API_BASE}/api.php?${query}`) as { url?: unknown } | null
+  const payload = await fetchProviderUpstream(`${GDS_API_BASE}/api.php?${query}`) as { url?: unknown } | null
   const url = typeof payload?.url === 'string' && payload.url ? payload.url : null
   if (!url) throw new ApiError(502, 'storage_unavailable', 'The online source returned no playable URL')
   return url
@@ -269,17 +269,16 @@ function toProviderTrackFromRow(row: MusicTrackRow): ReturnType<typeof toTrack> 
   return toTrack(row, [])
 }
 
-async function fetchUpstreamJson(target: string): Promise<unknown> {
-  let response: Response
-  try {
-    response = await fetch(target, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(12_000),
-    })
-  } catch {
-    throw new ApiError(502, 'storage_unavailable', 'The online source is unreachable')
+// FB-S2: the catalogue's own reads walk the same hop-by-hop allowlist every other outbound walk in
+// this module answers to. A redirect the worker follows is still the worker fetching, so the guard
+// has to hold per hop rather than be trusted to the runtime flag.
+export async function fetchProviderUpstream(target: string): Promise<unknown> {
+  const response = await fetchAllowedResource(target, GDS_ALLOWED_HOSTS, 'application/json')
+  if (!response) throw new ApiError(502, 'storage_unavailable', 'The online source is not reachable from this server')
+  if (!response.ok) {
+    await cancelStreamBestEffort(response.body)
+    throw new ApiError(502, 'storage_unavailable', `The online source failed: HTTP ${response.status}`)
   }
-  if (!response.ok) throw new ApiError(502, 'storage_unavailable', `The online source failed: HTTP ${response.status}`)
   const bytes = await readUpstreamBytes(response, LIMITS.musicProviderBodyMaxBytes)
   if (!bytes) throw new ApiError(502, 'storage_unavailable', 'The online source response is too large')
   try {

@@ -123,6 +123,11 @@ export const LIMITS = {
   musicPodcastCacheTtlMs: 10 * 60 * 1000,
   musicProviderRequestsPerHour: 120,
   musicProviderBodyMaxBytes: 1024 * 1024,
+  // FB-S1: how long an upstream may take to *start* answering a stream. The transfer itself is not
+  // bounded — a song streams for minutes — and the byte cap below is a runaway guard rather than a
+  // quota, so it sits far above any real track.
+  musicStreamConnectTimeoutMs: 12_000,
+  musicStreamMaxBytes: 512 * 1024 * 1024,
   musicProviderSearchCount: 20,
   musicProviderQualities: MUSIC_PROVIDER_QUALITIES,
   musicPlaylistNameMaxLength: 120,
