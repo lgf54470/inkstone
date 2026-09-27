@@ -4455,6 +4455,41 @@ async function dragZoneBy(page, zone, delta) {
 // both the size and the position, because a zone that grew the width from the wrong side would
 // pass a size-only assertion. A double click of the title bar is every window's way to fill the
 // screen, and it toggles, so the second one has to give the window back.
+/**
+ * FB-U2 / FB-R3: what the music toolbar and the list under it really got, read from the running
+ * surface. The rows are counted as bands rather than as distinct pixel rows: a 32px select and a 24px
+ * icon share a line but not a top, so counting tops read the phone's two rows as four — measured on
+ * the way to this, which is why the metric below is what it is.
+ *
+ * The floor the list is owed is read off the element that declares it (`data-music-content`) instead
+ * of being repeated here, so a budget the app stops drawing fails this rather than passing quietly;
+ * the only number this side contributes is the policy floor below, the point under which a budget
+ * stops saying anything.
+ */
+const MUSIC_BUDGET_POLICY_FLOOR = 100
+
+async function readMusicToolbarBudget(page) {
+  return page.evaluate(() => {
+    const toolbar = document.querySelector('[data-music-toolbar]')
+    const content = document.querySelector('[data-music-content]')
+    if (!toolbar || !content) return null
+    const centres = [...toolbar.querySelectorAll('button, input, select, [role="radiogroup"]')]
+      .filter((element) => element.getClientRects().length > 0)
+      .map((element) => {
+        const box = element.getBoundingClientRect()
+        return Math.round(box.top + box.height / 2)
+      })
+      .sort((a, b) => a - b)
+    return {
+      shape: toolbar.getAttribute('data-shape'),
+      bands: centres.filter((centre, index) => index === 0 || centre - centres[index - 1] > 10).length,
+      floor: Math.round(Number.parseFloat(getComputedStyle(content).minHeight) || 0),
+      content: Math.round(content.getBoundingClientRect().height),
+      viewport: window.innerHeight,
+    }
+  })
+}
+
 async function assertMusicHubResize(page) {
   const before = await rectOf(page, HUB_DIALOG_CSS)
   await dragZoneBy(page, 'e', { x: -300, y: 0 })
@@ -4739,6 +4774,27 @@ async function assertMusicSurface(page) {
   }, cssByLabels('aside', LABELS.musicHubNavigation))
   check('music: the hub folds its side columns and keeps the list width at 375px',
     !folded.navInline && folded.rowWidth >= 300, JSON.stringify(folded))
+
+  // FB-U2: a phone width used to wrap the toolbar into six rows of controls, the 240px search box on
+  // the first of them — measured at 390×844 before this: 145px of the row, 189px with the header, and
+  // the list starting below that. Two bands are what the layout is worth, and the shape that draws
+  // them is named here too, so a width cannot quietly go back to wrapping without a word.
+  const phoneBudget = await readMusicToolbarBudget(page)
+  check('music: the toolbar answers a phone width with two rows and keeps the list its floor',
+    Boolean(phoneBudget) && phoneBudget.shape === 'stacked' && phoneBudget.bands <= 2
+    && phoneBudget.floor >= MUSIC_BUDGET_POLICY_FLOOR && phoneBudget.content >= phoneBudget.floor,
+    JSON.stringify(phoneBudget))
+
+  // FB-R3: the height squeeze gets the same answer from the other side. 900 is the width where the
+  // side columns are still inline, so the centre column is at its narrowest anywhere in this run.
+  await page.setViewport({ width: 900, height: 600 })
+  await sleep(500)
+  const shortBudget = await readMusicToolbarBudget(page)
+  check('music: a 600px-tall viewport keeps the toolbar at two rows and the list at its floor',
+    Boolean(shortBudget) && shortBudget.bands <= 2 && shortBudget.content >= shortBudget.floor,
+    JSON.stringify(shortBudget))
+  await page.setViewport({ width: 375, height: 667 })
+  await sleep(400)
 
   await page.click(cssByLabels('header button', LABELS.musicHubOpenNavigation))
   const drawerOpened = await page

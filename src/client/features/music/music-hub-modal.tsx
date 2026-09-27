@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { Button } from '../../components/primitives'
 import { Drawer, Modal } from '../../components/overlay'
@@ -28,7 +28,7 @@ import { MusicWebdavModal } from './music-webdav-modal'
 import { useUi } from '../../store/ui'
 import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicScope } from './music-store'
-import { MUSIC_NARROW_BREAKPOINT } from './music-utils'
+import { MUSIC_CONTENT_MIN_HEIGHT, MUSIC_NARROW_BREAKPOINT } from './music-utils'
 
 // REF-9: 84vh of a phone screen, or of a short laptop window, leaves the track list a
 // couple of hundred pixels once the header, toolbar and transport have taken their fixed
@@ -86,7 +86,11 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
           fillViewport ? 'h-full' : 'h-[84vh] max-h-220 min-h-145',
         )}
         style={windowed ? hubStyle(geometry) : undefined}
-        bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'
+        // FB-R3: the centre column now floors the list (MUSIC_CONTENT_MIN_HEIGHT), and this is the
+        // scroll that keeps that floor from becoming a clip: when the chrome plus the floor are taller
+        // than the viewport — a window a few hundred pixels high, or the queue panel's own height — the
+        // hub scrolls instead of crushing the list to nothing.
+        bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-y-auto'
       >
         <HubHeader
           onClose={onClose}
@@ -104,6 +108,7 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
         <div className='flex min-h-0 flex-1'>
           {columnsWide && <Sidebar onManageTags={dialogs.openTagManager} onCreatePlaylist={dialogs.openCreatePlaylist} />}
           <HubCentre
+            shortViewport={!tallEnough}
             onEditTrack={dialogs.openEditTrack}
             onUpload={dialogs.openUpload}
             onBrowseWebdav={dialogs.openWebdav}
@@ -183,6 +188,7 @@ function FoldedColumns({
 
 
 const HubCentre = memo(function HubCentre({
+  shortViewport,
   onEditTrack,
   onUpload,
   onBrowseWebdav,
@@ -191,6 +197,8 @@ const HubCentre = memo(function HubCentre({
   queueOpen,
   onCloseQueue,
 }: {
+  /** FB-R3: the toolbar answers the height squeeze with its compact shape. */
+  shortViewport: boolean
   onEditTrack: (track: MusicTrack) => void
   onUpload: () => void
   onBrowseWebdav: () => void
@@ -216,11 +224,18 @@ const HubCentre = memo(function HubCentre({
     <div className='relative flex min-w-0 flex-1 flex-col bg-[var(--bg-base)]'>
       {/* Ranking the library happens once, here; the toolbar and the group header take
           the result as a prop so they never run the same sort a second time. */}
-      <MusicHubToolbar tracks={tracks} libraryTracks={libraryTracks} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
+      <MusicHubToolbar tracks={tracks} libraryTracks={libraryTracks} shortViewport={shortViewport} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
       {detail && <MusicGroupDetailHeader scope={detail} tracks={tracks} />}
       <MusicProviderResults />
       {scope.kind === 'duplicates' && tracks.length > 0 && <MusicDuplicatesSummary />}
-      <div className='min-h-0 flex-1' style={queueOpen ? { paddingBottom: queueHeight } : undefined}>
+      {/* FB-R3: the floor the chrome is not allowed to eat into. The value is passed as the variable
+          `MUSIC_CONTENT_MIN_HEIGHT` rather than as a class, so the budget has one source: the browser
+          gate reads the rendered floor off this element and checks the list really got it. */}
+      <div
+        data-music-content=''
+        className='min-h-[var(--music-content-min-height)] flex-1'
+        style={contentStyle(queueOpen, queueHeight)}
+      >
         {loadError && !tracks.length && !loading
           ? <Empty
               art='search'
@@ -236,6 +251,15 @@ const HubCentre = memo(function HubCentre({
     </div>
   )
 })
+
+// The floor and the queue panel's padding are one style object: the panel takes its height back out of
+// the list by design, while the floor stays the floor the chrome may not eat into.
+function contentStyle(queueOpen: boolean, queueHeight: number): CSSProperties {
+  return {
+    '--music-content-min-height': `${MUSIC_CONTENT_MIN_HEIGHT}px`,
+    ...(queueOpen ? { paddingBottom: queueHeight } : null),
+  } as CSSProperties
+}
 
 function emptyTitle(scope: MusicScope): string {
   if (scope.kind === 'favorites') return t('music.no_favorites')

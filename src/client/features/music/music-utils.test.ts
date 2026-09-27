@@ -2,12 +2,54 @@ import { describe, expect, it } from 'vitest'
 import type { MusicPlaylistDetail, MusicTag, MusicTrack } from '@shared/types'
 import {
   activeLyricIndex, collectTagIds, computeNextIndex, computePrevIndex, flattenTags,
-  isArtistSuffixedTitle, nextPlayMode, parseLyric, playlistCoverUrl, rangeIds, tagColorValue,
+  isArtistSuffixedTitle, nextPlayMode, parseLyric, playlistCoverUrl, rangeIds, tagColorValue, toolbarShape,
 } from './music-utils'
 
 function tag(id: string, parentId: string | null, name = id, isPinned = false): MusicTag {
   return { id, name, color: null, parentId, isPinned, sortOrder: 0, createdAt: 0 }
 }
+
+// FB-U2 / FB-R3: one decision serves the width squeeze and the height squeeze, so the two cannot
+// disagree about how much of the row folds. The widths below are the ones a hub centre column
+// really gets: ~360 on a phone, ~760 on a 1440 screen with both side columns, ~1240 maximised.
+describe('hub toolbar shape (FB-U2 / FB-R3)', () => {
+  it('keeps everything inline on a wide, tall container', () => {
+    expect(toolbarShape({ containerWidth: 1440, viewportWide: true, shortViewport: false }))
+      .toEqual({ folded: false, compact: false, stacked: false })
+  })
+
+  it('folds only the low-frequency actions on the centre column of a desktop hub', () => {
+    expect(toolbarShape({ containerWidth: 760, viewportWide: true, shortViewport: false }))
+      .toEqual({ folded: true, compact: false, stacked: false })
+  })
+
+  it('stacks the search and compacts the controls on a phone-width container', () => {
+    expect(toolbarShape({ containerWidth: 360, viewportWide: false, shortViewport: false }))
+      .toEqual({ folded: true, compact: true, stacked: true })
+  })
+
+  it('compacts without stacking when a wide container is short on height', () => {
+    // The height squeeze is answered by dropping the controls' labels and the inline sort, not by
+    // spending another row: this container has the width to keep its row in one line.
+    expect(toolbarShape({ containerWidth: 1180, viewportWide: true, shortViewport: true }))
+      .toEqual({ folded: true, compact: true, stacked: false })
+  })
+
+  it('stacks a phone-width container whether or not the viewport is short', () => {
+    // Measured the other way round first: not stacking a narrow-and-short container left the search,
+    // two dropdowns, six named controls and the refresh to wrap into four lines — the height answer
+    // spending the very height it exists to save.
+    expect(toolbarShape({ containerWidth: 360, viewportWide: false, shortViewport: true }))
+      .toEqual({ folded: true, compact: true, stacked: true })
+  })
+
+  it('falls back to the viewport only when nothing can be measured', () => {
+    // No ResizeObserver (jsdom, SSR): the viewport read is the sole width there is, and it is read
+    // as the *narrow* answer rather than as a wide one — the fallback must not guess a row that fits.
+    expect(toolbarShape({ containerWidth: null, viewportWide: true, shortViewport: false })).toEqual({ folded: false, compact: false, stacked: false })
+    expect(toolbarShape({ containerWidth: null, viewportWide: false, shortViewport: false })).toEqual({ folded: true, compact: true, stacked: true })
+  })
+})
 
 describe('music play mode cycling', () => {
   it('cycles order -> repeat-all -> repeat-one -> shuffle', () => {

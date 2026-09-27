@@ -57,6 +57,18 @@ async function mount(element: Parameters<Root['render']>[0]): Promise<HTMLElemen
   return container
 }
 
+// UI-16's segmented controls are the shape a *wide* toolbar draws: FB-U2 answers a phone's width with
+// dropdowns instead (pinned in `music-hub-toolbar.test.ts`), so a test about the segments has to say
+// which toolbar it is reading. Without this the jsdom default — no measured container, a viewport that
+// reports nothing — is the narrow answer, and the source filter is a select.
+function stubWideToolbar(): void {
+  vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({
+    matches: true,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }))
+}
+
 function radioIn(group: Element, label: string): HTMLButtonElement {
   return [...group.querySelectorAll('[role="radio"]')].find((radio) => radio.textContent?.includes(label)) as HTMLButtonElement
 }
@@ -91,6 +103,7 @@ afterEach(() => {
   document.body.innerHTML = ''
   useMusic.setState({ tracks: [], queue: [], currentIndex: 0, trackMenu: null })
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe('view mode toggle (UI-16)', () => {
@@ -137,6 +150,7 @@ describe('source filter (UI-16)', () => {
 
   it('keeps exactly one tab stop and selects on click', async () => {
     useMusic.setState({ sourceFilter: 'all' })
+    stubWideToolbar()
     const container = await mount(createElement(MusicHubToolbar, {
       tracks: [], libraryTracks: [{ source: 'r2' }, { source: 'alist' }],
       onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onPodcasts: () => {},
@@ -153,6 +167,7 @@ describe('source filter (UI-16)', () => {
   // FB-F3: a reference source that is in the library has to be reachable from the filter.
   it('reaches a reference source the library holds', async () => {
     useMusic.setState({ sourceFilter: 'all' })
+    stubWideToolbar()
     const container = await mount(createElement(MusicHubToolbar, {
       tracks: [], libraryTracks: [{ source: 'r2' }, { source: 'alist' }],
       onUpload: () => {}, onBrowseWebdav: () => {}, onBrowseAlist: () => {}, onPodcasts: () => {},

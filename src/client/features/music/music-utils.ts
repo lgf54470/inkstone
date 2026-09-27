@@ -24,6 +24,49 @@ export const MUSIC_TOOLBAR_INLINE_MIN_WIDTH = 1040
 // Only for environments without ResizeObserver (jsdom, SSR), where the viewport read is
 // the sole width available; real browsers take the measured branch above.
 export const MUSIC_TOOLBAR_VIEWPORT_FALLBACK = 1240
+// FB-U2: below this measured width the row is a phone's centre column, where a fixed-width search
+// box, two segmented rows and four labelled buttons wrapped into six lines. Measured on the running
+// app (2026-09-27): 390px wide, header + toolbar 189px of an 844px screen, the toolbar alone 145px.
+export const MUSIC_TOOLBAR_NARROW_MAX_WIDTH = 560
+// FB-R3: what the list is worth at its smallest. The chrome folds before this is spent — the toolbar
+// answers with its compact shape rather than a second row — and the browser gate reads this value
+// back off the rendered element instead of repeating the number, so a floor that stops being drawn
+// fails there rather than passing quietly.
+export const MUSIC_CONTENT_MIN_HEIGHT = 160
+
+export interface MusicToolbarShape {
+  /** Low-frequency actions live in the "more" menu rather than inline. */
+  folded: boolean
+  /** The two filters become dropdowns and the primary flows drop their labels. */
+  compact: boolean
+  /** The search box takes a row of its own. */
+  stacked: boolean
+}
+
+// FB-U2 / FB-R3: one decision answers both squeezes, so the width answer and the height answer cannot
+// disagree about how much of the row folds. The two are read separately because they are about
+// different things: stacking is the answer to a narrow container (its controls cannot share a row —
+// measured, at 390px the controls wrapped into three more lines, and stacking them is what turns that
+// into two), while compacting is the answer to either squeeze, since a short viewport cannot afford
+// the labels and the segmented rows that a narrow one cannot fit. Not stacking a narrow-and-short
+// container is what the first draft did, and it wrapped into four lines — the height answer spending
+// the height it was there to save.
+export function toolbarShape({ containerWidth, viewportWide, shortViewport }: {
+  containerWidth: number | null
+  viewportWide: boolean
+  shortViewport: boolean
+}): MusicToolbarShape {
+  // REF-7: the measured container decides, and an unmeasurable environment (jsdom) is read as the
+  // narrow answer rather than a wide one — guessing a row that fits is how the fold went wrong before.
+  const width = containerWidth ?? (viewportWide ? MUSIC_TOOLBAR_INLINE_MIN_WIDTH : MUSIC_TOOLBAR_NARROW_MAX_WIDTH - 1)
+  const narrow = width < MUSIC_TOOLBAR_NARROW_MAX_WIDTH
+  const compact = shortViewport || narrow
+  return {
+    folded: compact || width < MUSIC_TOOLBAR_INLINE_MIN_WIDTH,
+    compact,
+    stacked: narrow,
+  }
+}
 
 // Three silences look alike but are not: nothing is playing, the words are still on their
 // way, and the file really carries none. Every lyrics pane answers with the same one.

@@ -81,11 +81,12 @@ describe('hub toolbar fold strategy (REF-2)', () => {
     expect(labels).not.toContain(t('music.import_url'))
     expect(hasLabeledButton(t('music.refresh_metadata'))).toBe(false)
     expect(hasLabeledButton(t('music.more_actions'))).toBe(true)
-    expect(labels).toContain(t('music.upload'))
-    expect(labels).toContain(t('music.webdav_title'))
+    // FB-U2: this width is a phone's, so the primary flows are here too — named, without labels.
+    expect(hasLabeledButton(t('music.upload'))).toBe(true)
+    expect(hasLabeledButton(t('music.webdav_title'))).toBe(true)
   })
 
-  it('offers the folded actions as menu items and keeps the primary flows inline', () => {
+  it('offers the folded actions as menu items', () => {
     stubMatchMedia(false)
     act(() => { rendered = renderElement(createElement(MusicHubToolbar, PROPS)) })
     const trigger = [...document.querySelectorAll('button')].find(
@@ -120,9 +121,81 @@ describe('hub toolbar source filter (FB-F3)', () => {
   })
 
   it('paints the label of a source that reached the library', () => {
+    stubMatchMedia(true)
     act(() => { rendered = renderElement(createElement(MusicHubToolbar, { ...PROPS, libraryTracks: [{ source: 'alist' }] })) })
     expect(buttonLabels()).toContain(t('music.source_alist'))
     expect(buttonLabels()).toContain(t('music.source_all'))
+  })
+
+  // FB-U2: the compact shape swaps the segmented row for a dropdown, and it draws the same list —
+  // the filtering that FB-F3 fixed must not depend on which control the width chose.
+  it('offers the same sources in the dropdown the compact shapes draw', () => {
+    stubMatchMedia(false)
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, { ...PROPS, libraryTracks: [{ source: 'alist' }, { source: 'r2' }] })) })
+    expect(optionsOf(t('music.source_filter')))
+      .toEqual([t('music.source_all'), t('music.source_r2'), t('music.source_alist')])
+  })
+})
+
+// FB-U2: at 360–390px the row used to wrap into six lines — a 240px search box, a segmented source
+// filter, the sort segments and four labelled buttons — and the header plus toolbar ate a third of a
+// phone screen. One shape answers it: the search takes a row of its own, the two filters become
+// dropdowns, the primary flows keep their name but drop their label, and everything low-frequency is
+// one press away in the menu.
+const selectLabels = (): string[] => [...document.querySelectorAll('select')]
+  .map((select) => select.getAttribute('aria-label') ?? '')
+
+const optionsOf = (label: string): string[] => [...document.querySelectorAll(`select[aria-label="${label}"] option`)]
+  .map((option) => option.textContent ?? '')
+
+const toolbarShapeAttr = (): string | null =>
+  document.querySelector<HTMLElement>('[data-music-toolbar]')?.getAttribute('data-shape') ?? null
+
+describe('hub toolbar on a phone-width container (FB-U2)', () => {
+  it('stacks the search and answers both filters with a dropdown', () => {
+    stubMatchMedia(false)
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, PROPS)) })
+    expect(toolbarShapeAttr()).toBe('stacked')
+    // The sort rides the search's row (it is 120px there) while the source filter leads the row
+    // below it with the four primary flows, which is what keeps this to two rows at 360px.
+    expect(selectLabels()).toEqual([t('music.sort'), t('music.source_filter')])
+    // The segmented rows are what pushed the row into six lines; neither survives here.
+    expect(document.querySelectorAll('[role="radiogroup"]')).toHaveLength(0)
+  })
+
+  it('keeps every primary flow one press away, named but without its label', () => {
+    stubMatchMedia(false)
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, PROPS)) })
+    for (const key of ['music.upload', 'music.webdav_title', 'music.alist_title', 'music.podcast_title'] as const) {
+      expect(hasLabeledButton(t(key))).toBe(true)
+      expect(buttonLabels()).not.toContain(t(key))
+    }
+  })
+})
+
+// FB-R3: a short viewport squeezes the same row from the other side. There the width is not the
+// problem — spending a second row on it would be — so the controls compact while the row stays one.
+describe('hub toolbar on a short viewport (FB-R3)', () => {
+  it('compacts the controls without stacking the search', () => {
+    stubMatchMedia(true)
+    stubContainerWidth(1180)
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, { ...PROPS, shortViewport: true })) })
+    expect(toolbarShapeAttr()).toBe('compact')
+    expect(selectLabels()).toEqual([t('music.source_filter'), t('music.sort')])
+    expect(buttonLabels()).not.toContain(t('music.upload'))
+    expect(hasLabeledButton(t('music.upload'))).toBe(true)
+    // Nothing low-frequency stays inline at this height, even though the width would give it room.
+    expect(hasLabeledButton(t('music.more_actions'))).toBe(true)
+    expect(buttonLabels()).not.toContain(t('music.import_m3u'))
+  })
+
+  it('leaves a tall container of the same width alone', () => {
+    stubMatchMedia(true)
+    stubContainerWidth(1180)
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, PROPS)) })
+    expect(toolbarShapeAttr()).toBe('inline')
+    expect(selectLabels()).toEqual([])
+    expect(buttonLabels()).toContain(t('music.upload'))
   })
 })
 

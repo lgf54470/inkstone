@@ -233,7 +233,7 @@ function popupInputProps(show: boolean, highlight: number, listId: string): Popu
   }
 }
 
-export function SearchBox() {
+export function SearchBox({ grow = false }: { grow?: boolean }) {
   const query = useMusic((state) => state.query)
   const history = useMusic((state) => state.searchHistory)
   const tracks = useMusic((state) => state.tracks)
@@ -252,7 +252,9 @@ export function SearchBox() {
   const boxRef = useRef<HTMLDivElement>(null)
   useClickOutside([boxRef], popup.show, popup.close)
   return (
-    <div ref={boxRef} className='relative w-60 md:w-72'>
+    // FB-U2: the stacked toolbar gives the search a row of its own, where a fixed 240px box would
+    // leave the refresh and the menu to wrap onto another one.
+    <div ref={boxRef} className={cn('relative', grow ? 'min-w-0 flex-1' : 'w-60 md:w-72')}>
       <Input
         leading={<Search size={13} className='text-[var(--text-quaternary)]' />}
         value={text}

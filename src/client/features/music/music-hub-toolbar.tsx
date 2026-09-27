@@ -1,17 +1,18 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type RefObject } from 'react'
 import type { MusicSource, MusicTrack } from '@shared/types'
 import { CloudDownload, HardDrive, ImageDown, ListPlus, Podcast, RefreshCw, RotateCw, Server, Upload, ClipboardList, Ellipsis, Link } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
-import { Segmented } from '../../components/form'
+import { Segmented, Select } from '../../components/form'
 import { Menu, Tooltip, confirm } from '../../components/overlay'
 import type { MenuItem } from '../../components/overlay'
+import { cn } from '../../lib/cn'
 import { useElementWidth, useMediaQuery } from '../../lib/hooks'
 import { t, type MessageKey } from '../../lib/i18n'
 import { toastMusicNotice } from './music-feedback'
 import { matchM3uTracks, parseM3u } from './music-m3u'
 import { MusicTextImportButton, TextImportDialog } from './music-text-import'
 import { MusicUrlImportButton, UrlImportDialog } from './music-url-import'
-import { MUSIC_TOOLBAR_INLINE_MIN_WIDTH, MUSIC_TOOLBAR_VIEWPORT_FALLBACK } from './music-utils'
+import { MUSIC_TOOLBAR_VIEWPORT_FALLBACK, toolbarShape, type MusicToolbarShape } from './music-utils'
 import { SearchBox } from './music-search-box'
 import { useMusic } from './music-store'
 import type { MusicSort, MusicSourceFilter } from './music-store'
@@ -23,10 +24,12 @@ const SORT_OPTIONS: { value: MusicSort; label: 'music.sort_recent' | 'music.sort
   { value: 'plays', label: 'music.sort_plays' },
 ]
 
-export function MusicHubToolbar({ tracks, libraryTracks, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
+export function MusicHubToolbar({ tracks, libraryTracks, shortViewport = false, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
   tracks: MusicTrack[]
   /** The whole library, not the filtered view: the filter's own options come from it. */
   libraryTracks: readonly Pick<MusicTrack, 'source'>[]
+  /** FB-R3: the shell has no height to spare for a second row — see `toolbarShape`. */
+  shortViewport?: boolean
   onUpload: () => void
   onBrowseWebdav: () => void
   onBrowseAlist: () => void
@@ -36,15 +39,38 @@ export function MusicHubToolbar({ tracks, libraryTracks, onUpload, onBrowseWebda
   // when the hub is maximised instead of staying folded for a viewport it cannot see.
   const containerRef = useRef<HTMLDivElement>(null)
   const containerWidth = useElementWidth(containerRef)
+  const viewportWide = useMediaQuery(`(min-width: ${MUSIC_TOOLBAR_VIEWPORT_FALLBACK}px)`)
+  const shape = toolbarShape({ containerWidth, viewportWide, shortViewport })
+  const fileRef = useRef<HTMLInputElement>(null)
+  const pickM3u = (): void => fileRef.current?.click()
   return (
-    <div ref={containerRef} className='flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'>
-      <div className='flex flex-wrap items-center gap-2'>
-        <SearchBox />
-        <SourceFilter libraryTracks={libraryTracks} />
+    <div
+      ref={containerRef}
+      data-music-toolbar=''
+      data-shape={shape.stacked ? 'stacked' : shape.compact ? 'compact' : 'inline'}
+      className='flex flex-wrap items-center justify-between gap-x-2 gap-y-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'
+    >
+      <div className={cn('flex min-w-0 items-center gap-2', shape.stacked && 'w-full')}>
+        <SearchBox grow={shape.stacked} />
+        {/* FB-U2: the stacked shape keeps the sort beside the search instead of in the menu the
+            review suggested — the shared menu draws a checked row as `menuitemcheckbox`, which is
+            multi-select semantics, while a native select keeps this a single choice and gets the
+            keyboard model for free. It costs one row's width the search row has room for. */}
+        {shape.stacked && <SortControl variant='select' />}
+        {!shape.compact && <SourceFilter libraryTracks={libraryTracks} />}
+        {shape.stacked && (
+          <>
+            <RefreshButton />
+            <FoldedActions tracks={tracks} onPickM3u={pickM3u} />
+          </>
+        )}
       </div>
       <ToolbarActions
         tracks={tracks}
-        containerWidth={containerWidth}
+        libraryTracks={libraryTracks}
+        shape={shape}
+        fileRef={fileRef}
+        onPickM3u={pickM3u}
         onUpload={onUpload}
         onBrowseWebdav={onBrowseWebdav}
         onBrowseAlist={onBrowseAlist}
@@ -101,21 +127,107 @@ function SourceFilter({ libraryTracks }: { libraryTracks: readonly Pick<MusicTra
   )
 }
 
-// REF-7: the measured container decides; the viewport read is only the fallback for
-// environments that cannot measure at all.
-function useActionsFolded(containerWidth: number | null): boolean {
-  const viewportWide = useMediaQuery(`(min-width: ${MUSIC_TOOLBAR_VIEWPORT_FALLBACK}px)`)
-  return containerWidth === null ? !viewportWide : containerWidth < MUSIC_TOOLBAR_INLINE_MIN_WIDTH
+// FB-U2: the same filter as a dropdown. A segmented row of sources is a control per source — the
+// thing that wrapped into lines at phone width — while a select keeps its name, its value and its
+// keyboard behaviour in one 120px control whatever the library holds.
+function SourceFilterSelect({ libraryTracks }: { libraryTracks: readonly Pick<MusicTrack, 'source'>[] }) {
+  const sourceFilter = useMusic((state) => state.sourceFilter)
+  const setSourceFilter = useMusic((state) => state.setSourceFilter)
+  const options = useMemo(
+    () => buildSourceFilterOptions(libraryTracks, [sourceFilter]),
+    [libraryTracks, sourceFilter],
+  )
+  return (
+    <Select
+      aria-label={t('music.source_filter')}
+      className='h-8 w-30'
+      value={sourceFilter}
+      onChange={(event) => setSourceFilter(event.target.value as MusicSourceFilter)}
+    >
+      {options.map((value) => <option key={value} value={value}>{t(SOURCE_FILTER_KEYS[value])}</option>)}
+    </Select>
+  )
+}
+
+// FB-U2: the sort row answered the squeeze with four more segments; as a dropdown it is one control,
+// and its options are the same list the segments were built from. Both shapes read the store here, so
+// neither of them has to know that a playlist's manual order has nothing to sort.
+function SortControl({ variant }: { variant: 'select' | 'segmented' }) {
+  const sort = useMusic((state) => state.sort)
+  const scope = useMusic((state) => state.scope)
+  const setSort = useMusic((state) => state.setSort)
+  // Playlist scope shows the manual item order, so the sort control would change nothing;
+  // the grouped browse grids sort their cards by name and ignore track sort entirely.
+  if (scope.kind === 'playlist' || scope.kind === 'albums' || scope.kind === 'artists') return null
+  if (variant === 'select') {
+    return (
+      <Select
+        aria-label={t('music.sort')}
+        className='h-8 w-30'
+        value={sort}
+        onChange={(event) => setSort(event.target.value as MusicSort)}
+      >
+        {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
+      </Select>
+    )
+  }
+  return (
+    <>
+      <Segmented
+        label={t('music.sort')}
+        size='sm'
+        value={sort}
+        onChange={setSort}
+        options={SORT_OPTIONS.map((option) => ({ value: option.value, label: t(option.label) }))}
+      />
+      <span className='h-4 w-px bg-[var(--border-subtle)]' />
+    </>
+  )
+}
+
+// FB-U2: its own component so the stacked shape can keep the refresh beside the search, where a
+// second row would otherwise be spent on it.
+function RefreshButton() {
+  const loading = useMusic((state) => state.loading)
+  const loadLibrary = useMusic((state) => state.loadLibrary)
+  return (
+    <Tooltip label={t('common.refresh')} side='left'>
+      <IconButton label={t('common.refresh')} size='sm' disabled={loading} onClick={() => void loadLibrary(true)}>
+        <RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />
+      </IconButton>
+    </Tooltip>
+  )
 }
 
 // The four source flows carry the library's daily use, so they hold their place in the
-// row at every width; only the imports and metadata jobs fold away (REF-2).
-function PrimaryActions({ onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
+// row at every width; only the imports and metadata jobs fold away (REF-2). FB-U2 drops
+// their labels at the compact widths — the name stays on the control, so the press and the
+// screen reader answer are the same ones.
+function PrimaryActions({ shape, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
+  shape: MusicToolbarShape
   onUpload: () => void
   onBrowseWebdav: () => void
   onBrowseAlist: () => void
   onPodcasts: () => void
 }) {
+  if (shape.compact) {
+    return (
+      <>
+        <Tooltip label={t('music.upload')} side='top'>
+          <IconButton label={t('music.upload')} size='sm' active onClick={onUpload}><Upload size={14} /></IconButton>
+        </Tooltip>
+        <Tooltip label={t('music.webdav_title')} side='top'>
+          <IconButton label={t('music.webdav_title')} size='sm' onClick={onBrowseWebdav}><Server size={14} /></IconButton>
+        </Tooltip>
+        <Tooltip label={t('music.alist_title')} side='top'>
+          <IconButton label={t('music.alist_title')} size='sm' onClick={onBrowseAlist}><HardDrive size={14} /></IconButton>
+        </Tooltip>
+        <Tooltip label={t('music.podcast_title')} side='top'>
+          <IconButton label={t('music.podcast_title')} size='sm' onClick={onPodcasts}><Podcast size={14} /></IconButton>
+        </Tooltip>
+      </>
+    )
+  }
   return (
     <>
       <Button size='sm' variant='primary' icon={<Upload size={12} />} onClick={onUpload}>{t('music.upload')}</Button>
@@ -126,39 +238,23 @@ function PrimaryActions({ onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }:
   )
 }
 
-function ToolbarActions({ tracks, containerWidth, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
+function ToolbarActions({ tracks, libraryTracks, shape, fileRef, onPickM3u, onUpload, onBrowseWebdav, onBrowseAlist, onPodcasts }: {
   tracks: MusicTrack[]
-  containerWidth: number | null
+  libraryTracks: readonly Pick<MusicTrack, 'source'>[]
+  shape: MusicToolbarShape
+  fileRef: RefObject<HTMLInputElement | null>
+  onPickM3u: () => void
   onUpload: () => void
   onBrowseWebdav: () => void
   onBrowseAlist: () => void
   onPodcasts: () => void
 }) {
-  const sort = useMusic((state) => state.sort)
-  const loading = useMusic((state) => state.loading)
-  const scope = useMusic((state) => state.scope)
-  const setSort = useMusic((state) => state.setSort)
-  const loadLibrary = useMusic((state) => state.loadLibrary)
-  const folded = useActionsFolded(containerWidth)
-  const fileRef = useRef<HTMLInputElement>(null)
-  // Playlist scope shows the manual item order, so the sort control would change nothing;
-  // the grouped browse grids sort their cards by name and ignore track sort entirely.
-  const showSort = scope.kind !== 'playlist' && scope.kind !== 'albums' && scope.kind !== 'artists'
   return (
-    <div className='flex min-w-0 items-center gap-2'>
-      {showSort && (
-        <>
-          <Segmented
-            label={t('music.sort')}
-            size='sm'
-            value={sort}
-            onChange={setSort}
-            options={SORT_OPTIONS.map((option) => ({ value: option.value, label: t(option.label) }))}
-          />
-          <span className='h-4 w-px bg-[var(--border-subtle)]' />
-        </>
-      )}
-      <PrimaryActions onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
+    <div className='flex min-w-0 flex-wrap items-center gap-2'>
+      {shape.compact && <SourceFilterSelect libraryTracks={libraryTracks} />}
+      {shape.compact && !shape.stacked && <SortControl variant='select' />}
+      {!shape.compact && <SortControl variant='segmented' />}
+      <PrimaryActions shape={shape} onUpload={onUpload} onBrowseWebdav={onBrowseWebdav} onBrowseAlist={onBrowseAlist} onPodcasts={onPodcasts} />
       <input
         ref={fileRef}
         type='file'
@@ -169,12 +265,9 @@ function ToolbarActions({ tracks, containerWidth, onUpload, onBrowseWebdav, onBr
           event.target.value = ''
         }}
       />
-      {folded ? <FoldedActions tracks={tracks} onPickM3u={() => fileRef.current?.click()} /> : <InlineActions tracks={tracks} onPickM3u={() => fileRef.current?.click()} />}
-      <Tooltip label={t('common.refresh')} side='left'>
-        <IconButton label={t('common.refresh')} size='sm' disabled={loading} onClick={() => void loadLibrary(true)}>
-          <RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />
-        </IconButton>
-      </Tooltip>
+      {/* FB-U2: the stacked shape draws the menu and the refresh beside the search, one row up. */}
+      {!shape.stacked && (shape.folded ? <FoldedActions tracks={tracks} onPickM3u={onPickM3u} /> : <InlineActions tracks={tracks} onPickM3u={onPickM3u} />)}
+      {!shape.stacked && <RefreshButton />}
     </div>
   )
 }
