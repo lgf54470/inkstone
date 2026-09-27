@@ -77,6 +77,28 @@ export function hubColumnsWide({ containerWidth, viewportWide }: {
   return width >= MUSIC_HUB_COLUMNS_MIN_WIDTH
 }
 
+// FB-U4: the table's artist / album / source columns need about this much room to be worth drawing.
+// They used to answer a viewport query (`hidden xl:block`), which has nothing to do with the centre
+// column they live in: at a 1440px screen that column is ~760px — the columns were drawn and the
+// title was squeezed to fit them. The shared narrow breakpoint is deliberate: the hub folds its side
+// columns at the same width, so a box that keeps the side columns still has a full row.
+export const MUSIC_LIST_FULL_MIN_WIDTH = MUSIC_NARROW_BREAKPOINT
+
+export type MusicListDensity = 'full' | 'compact'
+
+/**
+ * How much of a row the list can afford: the columns at `full`, or their own contents moved onto the
+ * line under the title at `compact`. `null` is an unmeasurable environment (jsdom, and the paint
+ * before the first ResizeObserver callback), where the viewport is the only width there is.
+ */
+export function listDensity({ containerWidth, viewportWide }: {
+  containerWidth: number | null
+  viewportWide: boolean
+}): MusicListDensity {
+  const width = containerWidth ?? (viewportWide ? MUSIC_LIST_FULL_MIN_WIDTH : 0)
+  return width >= MUSIC_LIST_FULL_MIN_WIDTH ? 'full' : 'compact'
+}
+
 export interface MusicToolbarShape {
   /** Low-frequency actions live in the "more" menu rather than inline. */
   folded: boolean

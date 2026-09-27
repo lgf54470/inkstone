@@ -14,8 +14,10 @@ import { MusicTrackTags } from './music-track-tags'
 const ROW_CONTAINMENT = { contentVisibility: 'auto', containIntrinsicSize: 'auto var(--sp-12)' } as const
 
 // The badge never wraps, so the column has to fit its longest label ("Cloud (R2)");
-// the header cell and every row cell take this one budget so they cannot drift apart.
-export const SOURCE_COLUMN_CELL = 'hidden w-24 shrink-0 sm:block'
+// the header cell and every row cell take this one budget so they cannot drift apart. The column is
+// only drawn at all when the list has the width for it (FB-U4), so no responsive class here: the
+// density decides, not a media query.
+export const SOURCE_COLUMN_CELL = 'w-24 shrink-0'
 
 export interface TrackRowDragHandlers {
   onDragStart: (event: React.DragEvent, track: MusicTrack) => void
@@ -72,6 +74,8 @@ export interface TrackRowProps {
   isStreamLoading: boolean
   isSelected: boolean
   handlers: TrackRowHandlers
+  /** FB-U4: the columns folded away, so the row says what they said — see `listDensity`. */
+  compact?: boolean
 }
 
 // Drag handlers all need the row's track; spreading keeps the row itself presentational.
@@ -94,6 +98,7 @@ export const MusicTrackRow = memo(function MusicTrackRow({
   isStreamLoading,
   isSelected,
   handlers,
+  compact = false,
 }: TrackRowProps) {
   const handleFavourite = useCallback(() => handlers.onToggleFavorite(track.id), [handlers, track.id])
   const handleSelect = useCallback((event: React.MouseEvent) => {
@@ -131,9 +136,9 @@ export const MusicTrackRow = memo(function MusicTrackRow({
         onPlay={() => handlers.onPlay(track)}
       />
 
-      <TrackTitle track={track} isCurrent={isCurrent} onPlay={handlers.onPlay} />
-      <RowArtist track={track} isCurrent={isCurrent} />
-      <RowMeta track={track} isCurrent={isCurrent} />
+      <TrackTitle track={track} isCurrent={isCurrent} onPlay={handlers.onPlay} compact={compact} />
+      {!compact && <RowArtist track={track} isCurrent={isCurrent} />}
+      <RowMeta track={track} isCurrent={isCurrent} compact={compact} />
       <RowActions
         isFavorite={track.isFavorite}
         onToggleFavorite={handleFavourite}
@@ -163,18 +168,22 @@ function RowSelectCell({
   )
 }
 
-function RowMeta({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean }) {
+function RowMeta({ track, isCurrent, compact }: { track: MusicTrack; isCurrent: boolean; compact: boolean }) {
   // The current row's 14% accent tint puts the dim tiers under AA (quaternary measures 4.08 in
   // light), so its cells take two tiers up while the row is current.
   const dim = isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]'
   return (
     <>
-      <span role='cell' className={cn('hidden w-40 shrink-0 truncate text-[length:var(--text-12)] xl:block', dim)}>
-        {track.album || '—'}
-      </span>
-      <span role='cell' className={SOURCE_COLUMN_CELL}>
-        <MusicSourceBadge source={track.source} className='inline-flex' />
-      </span>
+      {!compact && (
+        <>
+          <span role='cell' className={cn('w-40 shrink-0 truncate text-[length:var(--text-12)]', dim)}>
+            {track.album || '—'}
+          </span>
+          <span role='cell' className={SOURCE_COLUMN_CELL}>
+            <MusicSourceBadge source={track.source} className='inline-flex' />
+          </span>
+        </>
+      )}
       <span
         role='cell'
         aria-label={track.durationMs > 0 ? undefined : t('music.duration_unknown')}
@@ -188,8 +197,25 @@ function RowMeta({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean }
 
 function RowArtist({ track, isCurrent }: { track: MusicTrack; isCurrent: boolean }) {
   return (
-    <span role='cell' className={cn('hidden w-32 shrink-0 truncate text-[length:var(--text-12)] xl:block', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
+    <span role='cell' className={cn('w-32 shrink-0 truncate text-[length:var(--text-12)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
       {track.artist || t('music.unknown_artist')}
+    </span>
+  )
+}
+
+// FB-U4: what the artist, album and source columns said, on one line under the title. The album is
+// named on its own only when it exists; `—` belongs in a table cell, not in a sentence.
+function RowSubstitute({ track }: { track: MusicTrack }) {
+  return (
+    <span className='flex min-w-0 items-center gap-1'>
+      <span className='min-w-0 shrink truncate'>{track.artist || t('music.unknown_artist')}</span>
+      {track.album && (
+        <>
+          <span aria-hidden='true'>·</span>
+          <span className='min-w-0 shrink truncate'>{track.album}</span>
+        </>
+      )}
+      <MusicSourceBadge source={track.source} className='shrink-0' />
     </span>
   )
 }
@@ -275,10 +301,12 @@ function TrackTitle({
   track,
   isCurrent,
   onPlay,
+  compact,
 }: {
   track: MusicTrack
   isCurrent: boolean
   onPlay: (track: MusicTrack) => void
+  compact: boolean
 }) {
   return (
     <div role='cell' className='flex min-w-0 flex-1 flex-col'>
@@ -289,9 +317,7 @@ function TrackTitle({
       </button>
       <div className={cn('flex min-w-0 items-center gap-1 text-[length:var(--text-12)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
         {track.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--warning)]' aria-hidden='true' />}
-        <button type='button' onClick={() => onPlay(track)} className='min-w-0 shrink truncate text-left hover:text-[var(--text-secondary)] xl:hidden'>
-          {track.artist || t('music.unknown_artist')}
-        </button>
+        {compact && <RowSubstitute track={track} />}
         <MusicTrackTags track={track} max={2} />
       </div>
     </div>

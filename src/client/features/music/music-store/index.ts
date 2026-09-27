@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { SEARCH_RESULT_LIMIT } from '../music-search'
 import { loadPreferences, type MusicPreferences } from './state'
 import { initialAlistBrowseState } from './alist'
 import { librarySlice } from './library'
@@ -31,6 +32,7 @@ function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> 
     sort: prefs.sort,
     sortDirection: prefs.sortDirection,
     viewMode: prefs.viewMode,
+    matchLimit: SEARCH_RESULT_LIMIT,
     sourceFilter: prefs.sourceFilter,
     selectedIds: [],
     searchHistory: prefs.searchHistory,

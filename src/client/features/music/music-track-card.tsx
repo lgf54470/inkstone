@@ -107,6 +107,12 @@ function CardInfo({ track, isCurrent }: { track: TrackRowProps['track']; isCurre
       <span className='block truncate text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
         {track.artist || t('music.unknown_artist')}
       </span>
+      {/* FB-U4: the card is the narrow shape, and the album is the one thing the table's columns
+          carried that it did not. Drawn only when there is one: a card is not a table cell, and a
+          bare dash here would read as a value. */}
+      {track.album && (
+        <span className='block truncate text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{track.album}</span>
+      )}
       <MusicSourceBadge source={track.source} className='mt-1' />
       <MusicTrackTags track={track} max={4} className='mt-1 flex-wrap' />
     </div>

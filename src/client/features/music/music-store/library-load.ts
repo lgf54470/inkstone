@@ -77,8 +77,9 @@ export function summarizeLibrary(
   return stats
 }
 
+// FB-PF2: a new scope is a new list, so a budget raised for the last one must not carry over.
 export function setScope(set: MusicSet, scope: MusicScope): void {
-  set({ scope, selectedIds: [] })
+  set({ scope, selectedIds: [], matchLimit: SEARCH_RESULT_LIMIT })
 }
 
 // Picking a new field starts at its natural direction; the header toggles from there.
@@ -122,17 +123,17 @@ export function closeTrackMenu(set: MusicSet): void {
 }
 
 export function setSourceFilter(set: MusicSet, sourceFilter: MusicSourceFilter): void {
-  set({ sourceFilter })
+  set({ sourceFilter, matchLimit: SEARCH_RESULT_LIMIT })
 }
 
 // The pinyin dictionary is only needed for search, so loading the library stays cheap.
 export function setQuery(set: MusicSet, get: MusicGet, query: string): void {
-  set({ query })
+  set({ query, matchLimit: SEARCH_RESULT_LIMIT })
   if (needsRomanization(query)) void get().prepareRomanization()
 }
 
 export function commitQuery(set: MusicSet, get: MusicGet, query: string): void {
-  set({ query, remoteLyricMatches: null })
+  set({ query, remoteLyricMatches: null, matchLimit: SEARCH_RESULT_LIMIT })
   const trimmed = query.trim()
   if (!trimmed) return
   set({ searchHistory: pushHistory(get().searchHistory, trimmed) })
@@ -204,10 +205,27 @@ export function clearSelection(set: MusicSet): void {
 // this set: declaring the slice keeps the subscription list and the memo dependencies honest
 // instead of letting a cast hide a field the view reads but never watches.
 type MusicScopeView = Pick<MusicStoreState, 'tracks' | 'playlists' | 'tags' | 'scope' | 'offlineTrackIds'>
-export type MusicLibraryView = MusicScopeView & Pick<MusicStoreState, 'remoteLyricMatches' | 'sourceFilter' | 'query' | 'sort' | 'sortDirection' | 'romanized' | 'tags' | 'viewMode'>
+// FB-PF2: the cap only exists for the views that mount a card per match, and callers that ask for
+// order alone (the player, the row menu) predate it — so the field is optional and the default is
+// the budget those views have always used.
+export interface MusicMatchBudget {
+  matchLimit?: number
+}
+
+export type MusicLibraryView = MusicScopeView & Pick<MusicStoreState, 'remoteLyricMatches' | 'sourceFilter' | 'query' | 'sort' | 'sortDirection' | 'romanized' | 'tags' | 'viewMode'> & MusicMatchBudget
 
 // The "matches left out" notice ranks the same way, minus the order it never applies.
-export type MusicMatchCountView = MusicScopeView & Pick<MusicStoreState, 'remoteLyricMatches' | 'sourceFilter' | 'query' | 'romanized' | 'tags' | 'viewMode'>
+export type MusicMatchCountView = MusicScopeView & Pick<MusicStoreState, 'remoteLyricMatches' | 'sourceFilter' | 'query' | 'romanized' | 'tags' | 'viewMode'> & MusicMatchBudget
+
+function matchLimitOf(state: MusicMatchBudget): number {
+  return state.matchLimit ?? SEARCH_RESULT_LIMIT
+}
+
+// FB-PF2: one page per press. The notice in the header is the way to ask, so the raised budget is
+// session state that every new search starts over from (see setQuery / setScope / setSourceFilter).
+export function showMoreMatches(set: MusicSet): void {
+  set((state) => ({ matchLimit: matchLimitOf(state) + SEARCH_RESULT_LIMIT }))
+}
 
 export function visibleTracks(state: MusicLibraryView): MusicTrack[] {
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
@@ -265,7 +283,7 @@ function filterByQuery(tracks: MusicTrack[], state: MusicLibraryView, query: str
   // The table windows its rows, so the list view can afford every match; the grid
   // mounts real cards, where the DOM cap still applies.
   const ranked = rankedWithLyricMatches(state, tracks, query)
-  const capped = state.viewMode === 'grid' ? ranked.slice(0, SEARCH_RESULT_LIMIT) : ranked
+  const capped = state.viewMode === 'grid' ? ranked.slice(0, matchLimitOf(state)) : ranked
   const order = new Map(capped.map((id, index) => [id, index]))
   return tracks.filter((track) => order.has(track.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!)
 }
@@ -284,10 +302,11 @@ function rankedWithLyricMatches(state: MusicLibraryView, tracks: MusicTrack[], q
   return [...local, ...extra]
 }
 
-// The list stops at SEARCH_RESULT_LIMIT matches; the ones that did not fit are counted
-// here so the header can say the list is a prefix rather than the whole answer. A scope
-// that cannot hold more matches than the cap short-circuits before ranking anything.
+// The grid stops at its current budget; the ones that did not fit are counted here so the
+// header can say the list is a prefix rather than the whole answer — and offer one more page.
+// A scope that cannot hold more matches than the cap short-circuits before ranking anything.
 export function hiddenMatchCount(state: MusicMatchCountView): number {
+  const limit = matchLimitOf(state)
   const query = state.query.trim()
   if (!query) return 0
   // The list view shows every match, so nothing is ever hidden there.
@@ -296,14 +315,14 @@ export function hiddenMatchCount(state: MusicMatchCountView): number {
   const local = searchTracks(scoped, state.romanized, query, state.tags)
   const remote = state.remoteLyricMatches
   if (!remote || remote.query !== query || state.scope.kind !== 'all' || state.sourceFilter !== 'all') {
-    return Math.max(0, local.length - SEARCH_RESULT_LIMIT)
+    return Math.max(0, local.length - limit)
   }
   // Every server match that the capped list does not show counts toward the
   // notice: new ids past the limit and the whole-library matches beyond the
   // server's own cap alike.
   const seen = new Set(local)
   const extra = remote.ids.filter((id) => !seen.has(id))
-  return Math.max(0, local.length + extra.length + (remote.total - remote.ids.length) - SEARCH_RESULT_LIMIT)
+  return Math.max(0, local.length + extra.length + (remote.total - remote.ids.length) - limit)
 }
 
 // The comparator describes the natural ascending order of the field; the

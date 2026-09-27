@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { MusicPlaylistDetail, MusicTag, MusicTrack } from '@shared/types'
 import {
   activeLyricIndex, collectTagIds, computeNextIndex, computePrevIndex, flattenTags,
-  barMore, hubColumnsWide, isArtistSuffixedTitle, nextPlayMode, parseLyric, playlistCoverUrl, rangeIds, tagColorValue, toolbarShape,
-  MUSIC_HUB_COLUMNS_MIN_WIDTH,
+  barMore, hubColumnsWide, isArtistSuffixedTitle, listDensity, nextPlayMode, parseLyric, playlistCoverUrl, rangeIds, tagColorValue, toolbarShape,
+  MUSIC_HUB_COLUMNS_MIN_WIDTH, MUSIC_LIST_FULL_MIN_WIDTH,
 } from './music-utils'
 
 function tag(id: string, parentId: string | null, name = id, isPinned = false): MusicTag {
@@ -88,6 +88,27 @@ describe('hub side columns (FB-R2)', () => {
   it('reads the viewport only where nothing can be measured', () => {
     expect(hubColumnsWide({ containerWidth: null, viewportWide: true })).toBe(true)
     expect(hubColumnsWide({ containerWidth: null, viewportWide: false })).toBe(false)
+  })
+})
+
+// FB-U4: the table's artist / album / source columns were CSS media queries read against the
+// viewport, so a maximised hub and a windowed one on the same screen disagreed about a column whose
+// room is decided by the centre column they both live in. The density is that column's own answer,
+// and the viewport is only the pre-measurement guess (and all jsdom has).
+describe('list density (FB-U4)', () => {
+  it('answers the centre column, not the screen behind it', () => {
+    expect(listDensity({ containerWidth: 700, viewportWide: true })).toBe('compact')
+    expect(listDensity({ containerWidth: 1200, viewportWide: false })).toBe('full')
+  })
+
+  it('draws the full row exactly from the shared breakpoint up', () => {
+    expect(listDensity({ containerWidth: MUSIC_LIST_FULL_MIN_WIDTH - 1, viewportWide: true })).toBe('compact')
+    expect(listDensity({ containerWidth: MUSIC_LIST_FULL_MIN_WIDTH, viewportWide: false })).toBe('full')
+  })
+
+  it('falls back to the viewport where nothing can be measured', () => {
+    expect(listDensity({ containerWidth: null, viewportWide: true })).toBe('full')
+    expect(listDensity({ containerWidth: null, viewportWide: false })).toBe('compact')
   })
 })
 

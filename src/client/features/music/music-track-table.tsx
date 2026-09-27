@@ -6,6 +6,7 @@ import { t } from '../../lib/i18n'
 import { useMusic } from './music-store'
 import type { MusicSort } from './music-store'
 import { MusicTrackRow, SOURCE_COLUMN_CELL, type TrackRowHandlers } from './music-track-row'
+import type { MusicListDensity } from './music-utils'
 import type { TrackSelection } from './use-track-list'
 
 // Rows are h-12 and the row group pads with p-2, so the window math is exact
@@ -22,13 +23,17 @@ export const MusicTrackTable = memo(function MusicTrackTable({
   playback,
   selection,
   handlers,
+  density = 'full',
 }: {
   tracks: MusicTrack[]
   currentId: string | null
   playback: { isPlaying: boolean; isStreamLoading: boolean }
   selection: TrackSelection
   handlers: TrackRowHandlers
+  /** FB-U4: the list's own width decides; `full` is the shape the table has always drawn. */
+  density?: MusicListDensity
 }) {
+  const compact = density === 'compact'
   const selected = useMemo(() => new Set(selection.selectedIds), [selection.selectedIds])
   const allSelected = tracks.length > 0 && tracks.every((track) => selected.has(track.id))
   const someSelected = tracks.some((track) => selected.has(track.id))
@@ -41,6 +46,7 @@ export const MusicTrackTable = memo(function MusicTrackTable({
       <TableHeader
         allSelected={allSelected}
         someSelected={someSelected}
+        compact={compact}
         onToggleAll={() => (allSelected ? selection.clear() : selection.selectAll())}
       />
       <div
@@ -67,6 +73,7 @@ export const MusicTrackTable = memo(function MusicTrackTable({
               isStreamLoading={isCurrent && playback.isStreamLoading}
               isSelected={selected.has(track.id)}
               handlers={handlers}
+              compact={compact}
             />
           )
         })}
@@ -108,10 +115,12 @@ function useRowWindow(total: number, windowed: boolean): {
 function TableHeader({
   allSelected,
   someSelected,
+  compact,
   onToggleAll,
 }: {
   allSelected: boolean
   someSelected: boolean
+  compact: boolean
   onToggleAll: () => void
 }) {
   const ref = useRef<HTMLInputElement>(null)
@@ -134,9 +143,15 @@ function TableHeader({
       <span role='columnheader' className='w-5 shrink-0 text-center'>{t('music.table_index')}</span>
       <ColumnSpacer className='size-9 shrink-0' />
       <SortableColumn field='title' label={t('music.table_title')} className='min-w-0 flex-1' />
-      <SortableColumn field='artist' label={t('music.table_artist')} className='hidden w-32 shrink-0 truncate xl:block' />
-      <SortableColumn field='album' label={t('music.table_album')} className='hidden w-40 shrink-0 truncate xl:block' />
-      <span role='columnheader' className={SOURCE_COLUMN_CELL}>{t('music.source')}</span>
+      {/* FB-U4: the columns and the row's own cells go together — a header for a column the rows
+          stopped drawing would name something that is not there. */}
+      {!compact && (
+        <>
+          <SortableColumn field='artist' label={t('music.table_artist')} className='w-32 shrink-0 truncate' />
+          <SortableColumn field='album' label={t('music.table_album')} className='w-40 shrink-0 truncate' />
+          <span role='columnheader' className={SOURCE_COLUMN_CELL}>{t('music.source')}</span>
+        </>
+      )}
       <SortableColumn field='duration' label={t('music.table_duration')} className='w-11 shrink-0 text-right' />
       <ColumnSpacer className='w-6 shrink-0' />
       <ColumnSpacer className='w-6 shrink-0' />

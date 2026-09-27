@@ -5,6 +5,7 @@ import type { Root } from 'react-dom/client'
 import type { MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { MusicTrackList } from './music-track-list'
+import { SEARCH_RESULT_LIMIT } from './music-search'
 import { useMusic } from './music-store'
 
 beforeAll(() => {
@@ -47,12 +48,38 @@ const tracks = [track('t1', 'Alpha', 'Zoe'), track('t2', 'Beta', 'Ann')]
 
 let root: Root | null = null
 
-async function mountList(): Promise<void> {
+async function mountList(list: MusicTrack[] = tracks): Promise<void> {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => {
-    root?.render(createElement(MusicTrackList, { tracks, loading: false, emptyTitle: 'x', onEdit: () => {} }))
+    root?.render(createElement(MusicTrackList, { tracks: list, loading: false, emptyTitle: 'x', onEdit: () => {} }))
+  })
+}
+
+// jsdom has neither a measurement nor a media query, and this file's subject is the table a wide
+// centre column draws: the premise is set once here. FB-U4's own describe stubs the measured box,
+// which is the answer the component actually reads.
+function stubColumnsWide(): void {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: /min-width/.test(query),
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
+}
+
+function stubMeasuredWidth(width: number): void {
+  vi.stubGlobal('ResizeObserver', class {
+    private readonly callback: ResizeObserverCallback
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback
+    }
+    observe(): void {
+      this.callback([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver)
+    }
+    unobserve(): void {}
+    disconnect(): void {}
   })
 }
 
@@ -69,6 +96,7 @@ function columnheaderOf(label: string): Element | undefined {
 }
 
 beforeEach(() => {
+  stubColumnsWide()
   useMusic.setState({
     tracks,
     tags: [],
@@ -92,8 +120,50 @@ afterEach(() => {
   act(() => root?.unmount())
   root = null
   document.body.innerHTML = ''
-  useMusic.setState({ tracks: [], queue: [], currentIndex: 0, trackMenu: null })
+  useMusic.setState({ tracks: [], queue: [], currentIndex: 0, trackMenu: null, matchLimit: SEARCH_RESULT_LIMIT })
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
+// FB-U4: the artist / album / source columns were CSS media queries over the viewport, so a
+// maximised hub and a windowed one on the same screen both answered a question about the screen
+// rather than about the centre column these columns live in. The density is that column's own
+// answer, and when the columns go the row owes the reader what they carried — artist, album and
+// source move onto the line under the title instead of disappearing.
+describe('table column density (FB-U4)', () => {
+  const denseTracks = [{ ...track('t9', 'Alpha', 'Zoe'), album: 'Nightfall' }]
+
+  async function mountDense(): Promise<void> {
+    useMusic.setState({ tracks: denseTracks })
+    await mountList(denseTracks)
+  }
+
+  function firstRow(): Element {
+    return document.querySelectorAll('[role="rowgroup"] > [role="row"]')[0]!
+  }
+
+  function cellsReading(text: string): Element[] {
+    return [...firstRow().querySelectorAll('[role="cell"]')].filter((cell) => cell.textContent === text)
+  }
+
+  it('draws the columns when the box has room for them', async () => {
+    stubMeasuredWidth(1000)
+    await mountDense()
+    expect(columnheaderOf(t('music.table_artist'))).toBeDefined()
+    expect(columnheaderOf(t('music.table_album'))).toBeDefined()
+    expect(cellsReading('Nightfall')).toHaveLength(1)
+  })
+
+  it('moves them onto the row when it does not', async () => {
+    stubMeasuredWidth(700)
+    await mountDense()
+    expect(columnheaderOf(t('music.table_artist'))).toBeUndefined()
+    expect(columnheaderOf(t('music.table_album'))).toBeUndefined()
+    expect(cellsReading('Nightfall')).toHaveLength(0)
+    expect(firstRow().textContent).toContain('Nightfall')
+    expect(firstRow().textContent).toContain('Zoe')
+    expect(firstRow().textContent).toContain(t('music.source_r2'))
+  })
 })
 
 describe('table header sorting', () => {
@@ -267,5 +337,27 @@ describe('MusicTrackList type scale (REF-4)', () => {
     const title = [...document.querySelectorAll('[role="rowgroup"] > [role="row"] span')]
       .find((node) => node.className.includes('font-medium')) as HTMLElement
     expect(title.className).toContain('--text-13')
+  })
+})
+
+// FB-PF2: the header's "matches left out" notice now carries the way to see them — the cap is the
+// reader's own, and the button and the notice read the same budget out of the store.
+describe('match limit action (FB-PF2)', () => {
+  const many = Array.from({ length: SEARCH_RESULT_LIMIT + 10 }, (_, index) => track(`m${index}`, `moonlight ${index}`, 'Zoe'))
+
+  function loadMoreButton(): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('button')]
+      .find((node) => node.textContent === t('music.load_more_matches')) as HTMLButtonElement | undefined
+  }
+
+  it('offers the remainder instead of only counting it', async () => {
+    useMusic.setState({ tracks: many, query: 'moonlight', viewMode: 'grid', romanized: {} })
+    await mountList(many)
+    const button = loadMoreButton()
+    expect(button).toBeTruthy()
+    expect(useMusic.getState().matchLimit).toBe(SEARCH_RESULT_LIMIT)
+    await act(async () => { button?.click() })
+    expect(useMusic.getState().matchLimit).toBe(SEARCH_RESULT_LIMIT * 2)
+    expect(loadMoreButton()).toBeUndefined()
   })
 })

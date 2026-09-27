@@ -132,6 +132,9 @@ export interface MusicStoreState {
   sort: MusicSort
   sortDirection: MusicSortDirection
   viewMode: MusicViewMode
+  /** FB-PF2: how many matches the capped grid may draw. Session state — the default is the budget
+   *  the grid has always used, and the reader raises it from the "matches left out" notice. */
+  matchLimit: number
   sourceFilter: MusicSourceFilter
   selectedIds: string[]
   searchHistory: string[]
@@ -218,6 +221,7 @@ export interface MusicStoreState {
   setSort: (sort: MusicSort) => void
   setSortDirection: (direction: MusicSortDirection) => void
   setViewMode: (mode: MusicViewMode) => void
+  showMoreMatches: () => void
   openTrackMenu: (menu: TrackMenuRequest) => void
   closeTrackMenu: () => void
   setSourceFilter: (filter: MusicSourceFilter) => void

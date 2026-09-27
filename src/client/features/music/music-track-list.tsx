@@ -1,10 +1,12 @@
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, Play, Shuffle } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { Button } from '../../components/primitives'
 import { Segmented } from '../../components/form'
 import { Empty, LoadingBlock } from '../../components/feedback'
 import { Tooltip } from '../../components/overlay'
+import { useElementWidth, useMediaQuery } from '../../lib/hooks'
+import { MUSIC_LIST_FULL_MIN_WIDTH, listDensity } from './music-utils'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { useHiddenMatchCount, useMusic } from './music-store'
@@ -38,6 +40,12 @@ export const MusicTrackList = memo(function MusicTrackList({
   const setQuery = useMusic((state) => state.setQuery)
   const actions = useTrackListActions(tracks, onEdit)
   const playlistDrag = usePlaylistDrag()
+  // FB-U4: the columns are the width of this list's own box, not the screen's — measured on the
+  // element that holds the rows, with the viewport as the pre-measurement guess.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const containerWidth = useElementWidth(rootRef)
+  const viewportWide = useMediaQuery(`(min-width: ${MUSIC_LIST_FULL_MIN_WIDTH}px)`)
+  const density = listDensity({ containerWidth, viewportWide })
   const visibleIds = useMemo(() => tracks.map((track) => track.id), [tracks])
   const selection = useTrackSelection(visibleIds)
   useSelectAllShortcut(selection.selectAll)
@@ -52,12 +60,12 @@ export const MusicTrackList = memo(function MusicTrackList({
 
   return (
     <MusicTagRowsProvider>
-      <div className='flex h-full min-h-0 flex-col'>
+      <div ref={rootRef} className='flex h-full min-h-0 flex-col'>
         <ListHeader tracks={tracks} scopeKind={scope.kind} />
         <MusicSelectionBar visibleIds={visibleIds} />
         {viewMode === 'grid'
           ? <TrackGrid tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} />
-          : <MusicTrackTable tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} />}
+          : <MusicTrackTable tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} density={density} />}
         <MusicTrackMenuHost onEdit={onEdit} />
       </div>
     </MusicTagRowsProvider>
@@ -171,8 +179,9 @@ function ListHeader({ tracks, scopeKind }: { tracks: MusicTrack[]; scopeKind: st
   const viewMode = useMusic((state) => state.viewMode)
   const setViewMode = useMusic((state) => state.setViewMode)
   // A broad query fills the whole page and stops; the rows it left out are named here
-  // so the count on the right is not read as the whole answer.
+  // so the count on the right is not read as the whole answer — and can be asked for.
   const hiddenMatches = useHiddenMatchCount()
+  const showMoreMatches = useMusic((state) => state.showMoreMatches)
   const ids = tracks.map((track) => track.id)
   return (
     <div className='flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2'>
@@ -190,8 +199,11 @@ function ListHeader({ tracks, scopeKind }: { tracks: MusicTrack[]; scopeKind: st
         </Tooltip>
       )}
       {hiddenMatches > 0 && (
-        <span role='status' className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-          {t('music.search_truncated', { value0: tracks.length, value1: tracks.length + hiddenMatches })}
+        <span className='flex items-center gap-2'>
+          <span role='status' className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+            {t('music.search_truncated', { value0: tracks.length, value1: tracks.length + hiddenMatches })}
+          </span>
+          <Button size='sm' onClick={showMoreMatches}>{t('music.load_more_matches')}</Button>
         </span>
       )}
       <span className='ml-auto text-[length:var(--text-11)] text-[var(--text-quaternary)]'>

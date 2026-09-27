@@ -119,6 +119,9 @@ const LABELS = {
   musicListView: ['列表视图', 'List view'],
   musicFavorite: ['收藏', 'Add to favorites'],
   musicMoreActions: ['更多操作', 'More actions'],
+  // FB-U4: the two columns that fold into the row when the list's own box cannot afford them.
+  musicTableArtist: ['歌手', 'Artist'],
+  musicTableAlbum: ['专辑', 'Album'],
   // FB-U3: the two controls the status bar hides below lg / xl, and the pin's own two spellings
   // (the label flips with the track's state).
   musicEq: ['均衡器', 'Equalizer'],
@@ -4551,6 +4554,56 @@ async function assertMusicStatusBarMore(page) {
   await sleep(400)
 }
 
+/**
+ * FB-U4: the row's columns are the width of the list's own box — the centre column — not the width
+ * of the screen. Both reads below are taken on the same 1440px viewport, so a viewport-answered
+ * column layout (what the classes said before) could not tell them apart: what changes is the box
+ * the maximised hub hands the centre column — measured 960 against 514 on the way to this, the
+ * windowed hub having been left narrow by the resize assertions above.
+ */
+async function assertMusicListDensity(page) {
+  await page.setViewport({ width: 1440, height: 900 })
+  await sleep(500)
+  const narrow = await readMusicListDensity(page)
+  await clickButton(page, LABELS.musicMaximizeHub)
+  await sleep(500)
+  const wide = await readMusicListDensity(page)
+  const shows = (read, labels) => labels.some((label) => read.headers.includes(label))
+  check('music: a narrow centre column moves the table columns onto the row',
+    narrow.centre < 900 && narrow.viewport >= 1440 && !shows(narrow, LABELS.musicTableArtist)
+      && !shows(narrow, LABELS.musicTableAlbum) && narrow.cells === wide.cells - 3,
+    `narrow=${JSON.stringify(narrow)} wide=${JSON.stringify(wide)}`)
+  check('music: the same screen draws the columns once the centre has the room',
+    wide.centre >= 900 && wide.viewport >= 1440 && shows(wide, LABELS.musicTableArtist)
+      && shows(wide, LABELS.musicTableAlbum) && wide.cells > narrow.cells,
+    `narrow=${JSON.stringify(narrow)} wide=${JSON.stringify(wide)}`)
+  await clickButton(page, LABELS.musicRestoreHub)
+  await sleep(400)
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(400)
+}
+
+/**
+ * What the list is drawing about its own columns right now: the width of the centre column, the
+ * column headers it carries and how many cells one row has. The headers are matched against the
+ * whole label set rather than one spelling — the account's language is whatever the run left it as.
+ */
+async function readMusicListDensity(page) {
+  return page.evaluate(({ dialogLabels }) => {
+    const dialog = dialogLabels
+      .map((label) => document.querySelector(`[role="dialog"][aria-label="${label}"]`))
+      .find(Boolean)
+    const header = dialog?.querySelector('[role="row"]')
+    const row = dialog?.querySelector('[role="rowgroup"] > [role="row"]')
+    return {
+      viewport: window.innerWidth,
+      centre: Math.round(dialog?.querySelector('[data-music-content]')?.getBoundingClientRect().width ?? 0),
+      headers: [...(header?.querySelectorAll('[role="columnheader"]') ?? [])].map((cell) => cell.textContent ?? ''),
+      cells: row?.querySelectorAll('[role="cell"]').length ?? 0,
+    }
+  }, { dialogLabels: LABELS.musicHub })
+}
+
 async function assertMusicHubResize(page) {
   const before = await rectOf(page, HUB_DIALOG_CSS)
   await dragZoneBy(page, 'e', { x: -300, y: 0 })
@@ -4803,6 +4856,9 @@ async function assertMusicSurface(page) {
     .then(() => true, () => false)
   check('music: the hub lists the seeded tracks', rowsReady)
   if (!rowsReady) return
+  // FB-U4: the rows exist now, so the columns can be read in both of the shapes the same screen
+  // gives them (windowed vs maximised).
+  await assertMusicListDensity(page)
 
   const motion = await hubMotionDurations(page)
   check('music: the hub opens with an entrance animation',
