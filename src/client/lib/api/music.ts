@@ -1,4 +1,4 @@
-import { CLIENT_HEADER } from '@shared/constants'
+import { CLIENT_HEADER, type MusicProviderQuality } from '@shared/constants'
 import type {
   MusicLibrary,
   MusicLyricSearch,
@@ -347,8 +347,11 @@ export const music = {
     }),
 }
 
-export function musicStreamUrl(trackId: string): string {
-  return `/api/music/tracks/${encodeURIComponent(trackId)}/stream`
+// FB-F7: the quality tier only means something to the online proxy, so the parameter is
+// optional and only the provider play path passes it.
+export function musicStreamUrl(trackId: string, quality?: MusicProviderQuality): string {
+  const base = `/api/music/tracks/${encodeURIComponent(trackId)}/stream`
+  return quality === undefined ? base : `${base}?quality=${quality}`
 }
 
 export function musicCoverLookupUrl(title: string, artist: string): string {

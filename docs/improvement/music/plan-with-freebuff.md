@@ -20,8 +20,8 @@
 - [x] M3 FB-F3 来源筛选扩展（`MusicSourceFilter = 'all' | MusicSource`），选项按库中实际来源生成 —— **commit `327fa22d`**
 - [x] M4 FB-F1 + FB-C4 Hub 拖动真修复（`anim-pop` 覆盖内联 `translate`）+ 几何浏览器断言 + 规则写入文档 —— **commit `543c3ee1`**
 - [x] M5 FB-U1 窗口 chrome 强化：8 向缩放 / 可见把手 / 双击标题栏最大化 / `touch-action` / 视口变化重夹取 —— **commit `ae1beee0`**
-- [x] M6 FB-S4 音源目录单一来源（client / worker 同源 + 契约测试）—— **commit `—`**（下一提交回填）
-- [ ] M7 FB-F4 + FB-F7 + FB-S6 音乐设置分区（音源组 + 播放默认组 + 音质 + 风险告知）+ Hub 齿轮直达
+- [x] M6 FB-S4 音源目录单一来源（client / worker 同源 + 契约测试）—— **commit `3ec70a46`**
+- [x] M7 FB-F4 + FB-F7 + FB-S6 音乐设置分区（音源组 + 播放默认组 + 音质 + 风险告知）+ Hub 齿轮直达 —— **commit `—`**（下一提交回填）
 - [ ] M8 FB-F5 + FB-PF5 在线曲目封面 / 歌词 / 时长
 
 ## M② · 移动端与门禁
@@ -71,7 +71,9 @@
 
 | 2026-09-27 | M2 FB-F6 逐源状态 + 重试、FB-C1 catch 注释、FB-U5 来源名本地化 | `d6b90f93` | 先红：`gds.test.ts` 按新 `ProviderPage` 形状重写、`providerPanelState` 新增 `failedSources` 入参、`music-provider-results.test.ts` 新增 5 例（空结果 + 有名失败 → failed、全挂与部分挂的文案分支、失败与命中并存 + 重试、本地化名）——旧实现下这些均无法通过；实现后 music + routes + locale-keys 107 文件 / 751 例 ✅；`npm run typecheck` ✅；13 项静态门禁 ✅（comments 白名单同步至 9522 条） | 每源状态用三态 `ok/empty/error`（「答了但没匹配」与「没答」是两件事）；`searchGds` 返回 `{results, failedSources}`，`searchGdsPages` 返回每源页（`swapFailedProviderTrack` 改为 `flatMap(page.results)`）；新增 `providerFailedSources` store 字段（不持久化，属会话态）；`providers/labels.ts` 新建本地化名映射并经 `providers/index.ts` 公开（未知 slug 回退显示 slug）；**大小写门禁**：`size:check` 先报组件与测试各 1 个 longFn，拆出 `ProviderPanelBody`/`ProviderFailureNotice`/`Notice` 与独立 describe 后 ✅（未改基线） |
 
-| 2026-09-27 | M6 FB-S4 音源目录单一来源 | `—` | 先红：客户端 `gds.test.ts` 新增身份断言得 1 failed（本地字面量不是共享列表），worker 新增 `provider.test.ts` 得 1 failed、1 passed（共享列表尚不存在）；实现后两侧 7 例 ✅；music + routes + constants 110 文件 / 776 例 ✅；`npm run typecheck` ✅；静态门禁在提交钩里全绿 | 目录清单移到 `@shared/constants` 的 `GDS_UPSTREAM_SOURCES`（带 `GdsUpstreamSource` 类型），客户端 `GDS_SOURCES` 直接指向它（身份相同，不是拷贝），worker 的 `isProviderSource` 改读同一数组；契约两头各钉一半：客户端钉「是同一数组」，worker 钉「共享表里的名字全收、其余全拒（含大小写 / 空白 / 路径穿越串）」；**变异证明**：把客户端断言改成 `[...GDS_UPSTREAM_SOURCES]`、把 worker 收回本地字面量并少写 `bilibili`，两条断言分别报错（牙口实测，非推断） |
+| 2026-09-27 | M7 FB-F4 + FB-F7 + FB-S6 音乐设置分区 + Hub 齿轮 + 在线音质 + 风险告知 | `—` | 先红（改实现前跑新测试）：`provider-prefs.test.ts` 6 例、`stream-quality.test.ts` 2 例、`music-settings.test.ts` 8 例、`settings-request.test.ts` 4 例、`music-hub-window.test.ts` 齿轮 1 例、worker `provider.test.ts` 档位 3 例 —— 5 个文件 **14 failed**（`musicStreamUrl` 不带档位、`providerStreamQuality` 不存在、设置分区 / `settingsSection` / `openSettings` 不存在）。实现后 music + routes + shared + store 123 文件 / 924 例 ✅；`npm run test:unit` **530 文件 / 4716 例 ✅**（过程里揪出一条真问题：`tests/merge-preflight.test.ts` 抓到新测试被写成 `.test.tsx`，而 vitest 两个工程的 include 只选 `*.test.ts` —— 那文件永远不会进全量套件；改名并改 `createElement` 后通过）；`npm run typecheck` ✅；11 项静态门禁 ✅（hardcoded 先报 `--text-11.5` 未转义点号；size 先报 2 处 longFn 与 2 处行数增长，拆出 `initialProviderState` 与两个 describe 后只为行数重快照：audio-engine 541→542、player.ts 511→518）；`scripts/e2e-visual.mjs`（对 :7714）**547 通过 / 1 失败**，唯一失败仍是已登记的看板遗留，本次新增的 5 条（齿轮存在、打开后导航停在「音乐」、正文有「在线音源」、该页 axe 无违规、无未登记审查项）全绿；`npm run contrast:check -- http://localhost:7714` 两主题全绿 | 设置面板新增 `music` 分区（在线音源组：逐源开关 + 一次性风险告知门 + 音质下拉 + 来源角标开关；播放默认组：直接复用播放器弹层的 `MusicEqPanel`，另加背景模式 / 歌词对齐 / 歌词字号 / 悬浮窗）；`ui.openSettings(section)` + `settingsSection` 一次性请求（采用即清）；Hub 头部齿轮；音质表收敛到 `@shared/constants` 的 `MUSIC_PROVIDER_QUALITIES`（`LIMITS` 指向同一元组），provider 行的 stream URL 带 `?quality=`，worker 用 `readProviderQuality` 校验（白名单外 400，不静默降级），播放 / 预载 / 交叉淡入三条路径都带该值而上传行不带；新偏好 `providerQuality` / `providerNoticeAccepted` / `showSourceBadge` 写入持久化；**顺带修复**：启动时 `providerEnabled` 从偏好恢复（此前硬置 `{}`，开关每次刷新都回到关闭）；`SECURITY.md` 新增「Online music sources」 |
+
+| 2026-09-27 | M6 FB-S4 音源目录单一来源 | `3ec70a46` | 先红：客户端 `gds.test.ts` 新增身份断言得 1 failed（本地字面量不是共享列表），worker 新增 `provider.test.ts` 得 1 failed、1 passed（共享列表尚不存在）；实现后两侧 7 例 ✅；music + routes + constants 110 文件 / 776 例 ✅；`npm run typecheck` ✅；静态门禁在提交钩里全绿 | 目录清单移到 `@shared/constants` 的 `GDS_UPSTREAM_SOURCES`（带 `GdsUpstreamSource` 类型），客户端 `GDS_SOURCES` 直接指向它（身份相同，不是拷贝），worker 的 `isProviderSource` 改读同一数组；契约两头各钉一半：客户端钉「是同一数组」，worker 钉「共享表里的名字全收、其余全拒（含大小写 / 空白 / 路径穿越串）」；**变异证明**：把客户端断言改成 `[...GDS_UPSTREAM_SOURCES]`、把 worker 收回本地字面量并少写 `bilibili`，两条断言分别报错（牙口实测，非推断） |
 
 | 2026-09-27 | M5 FB-U1 窗口 chrome | `ae1beee0` | 先红：新增 `music-hub-window.test.ts` 13 例在旧实现下 12 失败（`resizeHubGeometry` 不存在、无八向手柄、无 `touch-action`、无双击、无视口重夹取）。实现后 music 全量 105 文件 / 752 例 ✅；music + routes 108 文件 / 772 例 ✅；`npm run typecheck` ✅；静态门禁 ✅（size 先报 2 处 longFn：`HubResizeZones` 与测试描述块，各拆出子组件 / 独立 describe 后过，comments 白名单同步到 9627 条）；`scripts/e2e-visual.mjs` 对 :7714 **542 通过 / 1 失败**（唯一失败仍为已登记看板遗留）；`npm run contrast:check -- http://localhost:7714` ✅（两主题、桌面与手机宽度全表面 AA + 外壳与 Hub 的 axe 全绿） | 八个命中区一份表驱动，东南角是唯一具名可聚焦控件（方向键两维缩放），其余七个 `aria-hidden` + `tabIndex={-1}` 只服务指针——先测护栏：`axe` 的 `aria-hidden-focus` 不报 `tabindex="-1"`（用 jsdom + axe-core 实测确认后才落笔）；居中窗口按住一条边时须同时平移“一半的变化量”，否则被按住的那条边不会跟着指针走（`resizeHubGeometry` 的纯函数契约 6 例钉住四个方向与两个夹取）；手势起点从**屏幕上的盒子**量取（`closest('[role=\"dialog\"]').getBoundingClientRect()`），不再用回退值（jsdom 量到 0 时才回落）；双击标题栏两态都走（最大化后同一个手势还原）；`resize` 监听重夹取宽度/高度/偏移。**类型事故记录**：键盘路径把 `{dx,dy}` 当 `{x,y}` 传进 `resizeHubGeometry`，`vitest` 只看到 NaN 与死循环（`Maximum update depth exceeded`：NaN !== NaN 使重夹取不断写回），`tsc -b` 能一眼报出参数形状不符——本轮起每项改动都先跑 typecheck 再跑测试 |
 
@@ -87,6 +89,12 @@
 - kuwo 源当前上游 400（实测），属上游状态；本仓库只保证「失败可见 + 可关闭」。
 - 服务器型音源受 `global_fetch_strictly_public` 约束，只能指向公网 HTTPS；LAN 自建服务需反向代理 / 隧道（Alist 今天同样受限），该限制写进文档而非绕过。
 - `blog-frontend/src/components/music/` 与 app 版不共享代码（独立实现），本轮不动。
+- **M7 的齿轮会替换 Hub**：单面板 UI 里打开设置即关掉音乐库，关掉设置后不会自动回到音乐库（再开一次即可）；如需「关掉设置回到库」，属跨面板返回栈，另立条目。
+- **音质档位只对 provider 引用行生效**：上传 / WebDAV / Alist 行按文件自身编码播放，档位对它们没有意义（也不发送）。
+- **风险告知是每浏览器一次**：`providerNoticeAccepted` 存偏好；清空站点数据后会再问一次，这是有意的（告知是给「第一次决定的人」看的）。
+- **`providerEnabled` 现在从偏好恢复**（M7 顺带修掉启动时硬置 `{}` 导致的「刷新即回到关闭」）；缺键仍视为关闭，与「每源默认关闭」不冲突。
+- **播放默认组与播放器弹层是同一份 store**：EQ 面板直接复用 `MusicEqPanel`（不是副本），其余开关各自写同一个偏好字段。
+- 设置分区里没有库级批量操作（清理、去重、导出等留在音乐库自身），避免跨层重复入口。
 
 ## 不做清单（保留既有决策）
 

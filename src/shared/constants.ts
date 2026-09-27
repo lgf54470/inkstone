@@ -42,6 +42,13 @@ export const SESSION_RENEW_BEFORE_MS = SESSION_TTL_MS / 2
  */
 export const EXPIRING_SOON_DAYS = 7
 
+// FB-F7: the bitrates the aggregate upstream understands, in the order the setting lists them.
+// The worker has held this list as its own whitelist all along; the client reads the same tuple,
+// so a tier the setting can store can never be one the proxy refuses.
+export const MUSIC_PROVIDER_QUALITIES = [128, 192, 320, 740, 999] as const
+export type MusicProviderQuality = (typeof MUSIC_PROVIDER_QUALITIES)[number]
+export const MUSIC_PROVIDER_DEFAULT_QUALITY: MusicProviderQuality = 320
+
 export const LIMITS = {
   passwordMaxLength: 128,
   sharePasscodeMinLength: 8,
@@ -117,7 +124,7 @@ export const LIMITS = {
   musicProviderRequestsPerHour: 120,
   musicProviderBodyMaxBytes: 1024 * 1024,
   musicProviderSearchCount: 20,
-  musicProviderQualities: [128, 192, 320, 740, 999],
+  musicProviderQualities: MUSIC_PROVIDER_QUALITIES,
   musicPlaylistNameMaxLength: 120,
   musicPlaylistDescriptionMaxLength: 500,
   musicPlaylistItemsMax: 5000,

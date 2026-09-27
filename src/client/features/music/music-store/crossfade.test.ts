@@ -74,7 +74,17 @@ afterEach(() => {
 describe('crossfade start decisions', () => {
   it('starts the fade once the next track is within the window', () => {
     audioBridge.onTime(7_500)
-    expect(startCrossfade).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }))
+    // The second argument is the online quality tier, which only a provider row carries (FB-F7).
+    expect(startCrossfade).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }), undefined)
+  })
+
+  it('hands the fade the online tier for a provider row (FB-F7)', () => {
+    useMusic.setState({
+      tracks: [track('a'), { ...track('b'), source: 'provider' } as MusicTrack],
+      providerQuality: 999,
+    })
+    audioBridge.onTime(7_500)
+    expect(startCrossfade).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }), 999)
   })
 
   it('does not start far from the end', () => {

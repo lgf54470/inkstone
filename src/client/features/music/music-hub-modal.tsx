@@ -25,6 +25,7 @@ import { MusicTransferDialog } from './music-transfer-dialog'
 import { MusicAlistModal } from './music-alist-modal'
 import { MusicPodcastModal } from './music-podcast-modal'
 import { MusicWebdavModal } from './music-webdav-modal'
+import { useUi } from '../../store/ui'
 import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicScope } from './music-store'
 import { MUSIC_NARROW_BREAKPOINT } from './music-utils'
@@ -97,6 +98,7 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
           onToggleMaximized={() => setHubMaximized(!hubMaximized)}
           onOpenNavigation={() => openPanel('navigation')}
           onOpenNowPlaying={() => openPanel('nowPlaying')}
+          onOpenSettings={() => useUi.getState().openSettings('music')}
         />
         <div className='flex min-h-0 flex-1'>
           {columnsWide && <Sidebar onManageTags={dialogs.openTagManager} onCreatePlaylist={dialogs.openCreatePlaylist} />}

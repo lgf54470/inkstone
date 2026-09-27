@@ -2,6 +2,7 @@ import { Cloud, Link, Server } from 'lucide-react'
 import type { MusicSource } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
+import { useMusic } from './music-store'
 
 // Reference rows must not masquerade as the R2 cloud badge: webdav/alist/external
 // each carry their own label, and the accent tint stays a webdav-only distinction.
@@ -14,6 +15,10 @@ const BADGE_LABELS: Record<MusicSource, 'music.source_r2' | 'music.source_webdav
 }
 
 export function MusicSourceBadge({ source, className }: { source: MusicSource; className?: string }) {
+  // The badge is part of the reading surface, so the switch that turns it off lives with the
+  // other surface preferences rather than as a prop on every row and card that draws one.
+  const visible = useMusic((state) => state.showSourceBadge)
+  if (!visible) return null
   const label = BADGE_LABELS[source]
   const isRemote = source === 'webdav'
   const isLinked = source === 'external' || source === 'alist' || source === 'provider'

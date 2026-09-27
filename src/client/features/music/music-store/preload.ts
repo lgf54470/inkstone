@@ -1,4 +1,5 @@
 import { preloadNext } from '../audio-engine'
+import { providerStreamQuality } from '../music-utils'
 import { nextTrackIndex } from './crossfade'
 import type { MusicGet } from './types'
 
@@ -21,5 +22,5 @@ export function maybePreloadNext(get: MusicGet, ms: number): void {
   // request itself is pure waste, so the same-recording next stays unprefetched.
   if (track.id === state.queue[state.currentIndex]) return
   if (track.durationMs - ms > PRELOAD_AHEAD_MS) return
-  preloadNext(track)
+  preloadNext(track, providerStreamQuality(track, state.providerQuality))
 }

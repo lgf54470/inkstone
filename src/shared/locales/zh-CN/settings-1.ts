@@ -46,6 +46,7 @@ export const messages = {
 'settings.automatic_backups': '自动备份',
 'settings.autosave_delay': '自动保存延迟',
 'settings.new_notes': '新笔记',
+'settings.music': '音乐',
 'settings.new_note_template': '新建笔记模板',
 'settings.new_note_template_description': '插入到每篇新建笔记的开头。留空则从空白笔记开始。',
 'settings.new_note_template_hint': '可用占位符：{{title}} 笔记标题、{{createdAt}} 创建时间、{{date}} 日期、{{time}} 时间、{{today}} 今天、{{tomorrow}} 明天、{{yesterday}} 昨天、{{folder}} 当前文件夹名、{{tags}} 标签视图下的当前标签（多个标签用逗号分隔）、{{cursor}} 新建后光标位置（不会写入笔记）。',

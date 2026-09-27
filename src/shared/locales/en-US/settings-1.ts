@@ -46,6 +46,7 @@ export const messages = {
 'settings.automatic_backups': 'Automatic backups',
 'settings.autosave_delay': 'Autosave delay',
 'settings.new_notes': 'New notes',
+'settings.music': 'Music',
 'settings.new_note_template': 'New note template',
 'settings.new_note_template_description': 'Inserted at the top of every new note. Leave empty to start from a blank note.',
 'settings.new_note_template_hint': 'Placeholders: {{title}} note title, {{createdAt}} creation time, {{date}} date, {{time}} time, {{today}} today, {{tomorrow}} tomorrow, {{yesterday}} yesterday, {{folder}} current folder, {{tags}} current tag in a tag view (comma-separated for multiple), {{cursor}} caret position after creation (not written into the note).',

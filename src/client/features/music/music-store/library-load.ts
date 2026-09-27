@@ -3,6 +3,7 @@ import { api } from '../../../lib/api'
 import { duplicateTracks } from '../music-duplicates'
 import { ensureRomanized, LYRIC_QUERY_MIN_LENGTH, needsRomanization, SEARCH_RESULT_LIMIT, searchTracks } from '../music-search'
 import { collectTagIds } from '../music-utils'
+import { persist } from './persist'
 import { pushHistory } from './state'
 import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSortDirection, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest, TrackMenuTarget } from './types'
 
@@ -91,6 +92,13 @@ export function setSortDirection(set: MusicSet, sortDirection: MusicSortDirectio
 
 export function setViewMode(set: MusicSet, viewMode: MusicViewMode): void {
   set({ viewMode })
+}
+
+// The rows and cards both ask for this one flag, so turning it off is one write rather
+// than a prop threaded through every list in the hub.
+export function setShowSourceBadge(set: MusicSet, get: MusicGet, showSourceBadge: boolean): void {
+  set({ showSourceBadge })
+  persist(get)
 }
 
 // One menu instance for the whole hub; the rows only ever post requests to it.

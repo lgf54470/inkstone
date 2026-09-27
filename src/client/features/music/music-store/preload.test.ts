@@ -67,7 +67,18 @@ afterEach(() => {
 describe('next-track preload decision (FEA-C1)', () => {
   it('preloads the next track once it is inside the window', () => {
     audioBridge.onTime(20_000)
-    expect(preloadNext).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }))
+    // The second argument is the online quality tier: an uploaded track carries none, a
+    // provider row carries the chosen one (FB-F7).
+    expect(preloadNext).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }), undefined)
+  })
+
+  it('hands the preload the online tier for a provider row (FB-F7)', () => {
+    useMusic.setState({
+      tracks: [track('a'), { ...track('b'), source: 'provider' } as MusicTrack, track('c')],
+      providerQuality: 740,
+    })
+    audioBridge.onTime(20_000)
+    expect(preloadNext).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }), 740)
   })
 
   it('does not preload far from the end', () => {
@@ -78,7 +89,7 @@ describe('next-track preload decision (FEA-C1)', () => {
   it('preloads for the plain advance too — the window is not tied to the crossfade switch', () => {
     useMusic.setState({ crossfadeEnabled: false })
     audioBridge.onTime(20_000)
-    expect(preloadNext).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }))
+    expect(preloadNext).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }), undefined)
   })
 
   it('honours repeat-one, stop-after-current-track and the last queue item', () => {

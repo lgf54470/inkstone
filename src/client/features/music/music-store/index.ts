@@ -50,11 +50,7 @@ function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> 
     alistServers: [],
     alistServersLoading: false,
     alistBrowse: initialAlistBrowseState(),
-    providerEnabled: {},
-    providerResults: null,
-    providerSearching: false,
-    providerKeywords: '',
-    providerFailedSources: [],
+    ...initialProviderState(prefs),
     podcastFeeds: [],
     podcastFeedsLoading: false,
     podcastEpisodesFeedId: null,
@@ -63,6 +59,22 @@ function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> 
     uploadTarget: 'r2',
     transfersOpen: false,
     webdav: initialWebdavState(),
+  }
+}
+
+// FB-F4: the online-source half of the library state — the switches, the quality tier they
+// write and the notice that guards them — travels together, so it is read from the
+// preferences in one place rather than four lines apart in the big initializer.
+function initialProviderState(prefs: MusicPreferences): Partial<MusicStoreState> {
+  return {
+    providerEnabled: prefs.providerEnabled,
+    providerQuality: prefs.providerQuality,
+    providerNoticeAccepted: prefs.providerNoticeAccepted,
+    showSourceBadge: prefs.showSourceBadge,
+    providerResults: null,
+    providerSearching: false,
+    providerKeywords: '',
+    providerFailedSources: [],
   }
 }
 
@@ -105,7 +117,11 @@ export type {
   MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,
 } from './types'
 export { currentTrack } from './player'
-export { PLAYBACK_RATES, RATE_FINE_STEP, RATE_MAX, RATE_MIN, EQ_GAIN_RANGE_DB, LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, MIN_LOOP_MS, SLEEP_FADE_MS } from './state'
+export {
+  PLAYBACK_RATES, RATE_FINE_STEP, RATE_MAX, RATE_MIN, EQ_GAIN_RANGE_DB,
+  IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_TEXT_SIZES,
+  LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, MIN_LOOP_MS, SLEEP_FADE_MS,
+} from './state'
 export { playbackChange, restorePlayback, savePlayback, savePosition, schedulePlaybackSave } from './playback-sync'
 export type { PlaybackChange } from './playback-sync'
 export { progressTimeMs, setProgressTime, useProgress } from './progress'

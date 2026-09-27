@@ -1,5 +1,6 @@
 import type { MusicTrack } from '@shared/types'
 import { isVideoMime } from '@shared/music-media'
+import type { MusicProviderQuality } from '@shared/constants'
 import { musicStreamUrl } from '../../lib/api'
 import { currentMediaStage, registerMediaStagePlacer } from './media-stage'
 
@@ -254,10 +255,10 @@ function readMediaError(audio: HTMLMediaElement): string {
   return 'unknown'
 }
 
-export async function startPlayback(track: MusicTrack): Promise<'playing' | 'blocked' | 'unavailable'> {
+export async function startPlayback(track: MusicTrack, quality?: MusicProviderQuality): Promise<'playing' | 'blocked' | 'unavailable'> {
   if (typeof document === 'undefined') return 'unavailable'
   cancelCrossfade()
-  const src = musicStreamUrl(track.id)
+  const src = musicStreamUrl(track.id, quality)
   const audio = setActiveElement(kindOfTrack(track), src)
   if (!audio.src.endsWith(src)) audio.src = src
   try {
@@ -455,20 +456,20 @@ export function crossfadeActive(): boolean {
 // a crossfade start and a plain track change — begin from a buffer. Audio only: video
 // advances cut hard by design and carry a visible stage, so they never take the shelf.
 // A running fade owns the standby, and a stream already parked is left untouched.
-export function preloadNext(track: MusicTrack | null): void {
+export function preloadNext(track: MusicTrack | null, quality?: MusicProviderQuality): void {
   if (!track || fade || typeof document === 'undefined') return
   if (kindOfTrack(track) !== 'audio' || !element) return
   const spare = spareElement && kindOfElement(spareElement) === 'audio' ? spareElement : createMediaElement('audio')
   spareElement = spare
   spare.preload = 'auto'
-  const src = musicStreamUrl(track.id)
+  const src = musicStreamUrl(track.id, quality)
   if (!spare.src.endsWith(src)) spare.src = src
 }
 
 // Plays the next track on the standby element while the current one fades out on the
 // volume slider, absorbing any user volume change made mid-fade. Returns false when
 // there is nothing to fade (no active element yet, or a fade already running).
-export function startCrossfade(track: MusicTrack): boolean {
+export function startCrossfade(track: MusicTrack, quality?: MusicProviderQuality): boolean {
   const outgoing = element
   if (!outgoing || fade) return false
   // The ramp only blends sound: the standby element holds no picture slot, so a video
@@ -481,7 +482,7 @@ export function startCrossfade(track: MusicTrack): boolean {
   incoming.muted = outgoing.muted
   // A preload parked by preloadNext already holds this stream: keep it, so the fade
   // starts from buffered bytes instead of reloading over the prefetch.
-  const src = musicStreamUrl(track.id)
+  const src = musicStreamUrl(track.id, quality)
   if (!incoming.src.endsWith(src)) incoming.src = src
   fade = {
     outgoing, incoming, trackId: track.id, elapsed: 0,

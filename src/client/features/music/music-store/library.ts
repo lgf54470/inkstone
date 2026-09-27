@@ -1,7 +1,7 @@
 import type { MusicBatchAction } from '../../../lib/api'
 import {
   clearSearchHistory, clearSelection, commitQuery, closeTrackMenu, invertSelection, loadLibrary, openTrackMenu, prepareRomanization,
-  selectAll, setQuery, setScope, setSort, setSortDirection, setSourceFilter, setViewMode, toggleSelect,
+  selectAll, setQuery, setScope, setShowSourceBadge, setSort, setSortDirection, setSourceFilter, setViewMode, toggleSelect,
 } from './library-load'
 import { batchTracks, deleteTrack, ensureTrackLyric, patchTrack, refreshTrackMetadata, toggleFavorite, togglePin } from './library-tracks'
 import { matchMissingCovers } from './library-covers'
@@ -17,12 +17,13 @@ import { browseWebdav, deleteWebdavObjects, importTrackFromUrl, importWebdavFold
 import { closeTrash, openTrash, purgeTrashEntry, restoreFromTrash } from './trash'
 import { browseAlist, createAlistServer, deleteAlistServer, importAlistFolder, importAlistTrack, loadAlistServers, patchAlistServer, searchAlist } from './alist'
 import { closePodcastEpisodes, createPodcastFeed, deletePodcastFeed, importPodcastOpml, loadPodcastEpisodes, loadPodcastFeeds, playPodcastEpisode, renamePodcastFeed } from './podcast'
-import { playProviderTrack, searchProviders, setProviderEnabled } from './providers'
+import { acceptProviderNotice, playProviderTrack, searchProviders, setProviderEnabled, setProviderQuality } from './providers'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type LibrarySlice = Pick<MusicStoreState,
   | 'loadLibrary' | 'setScope' | 'setQuery' | 'commitQuery' | 'clearSearchHistory' | 'setSort' | 'setSortDirection' | 'prepareRomanization'
   | 'setViewMode' | 'openTrackMenu' | 'closeTrackMenu' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
+  | 'setProviderQuality' | 'acceptProviderNotice' | 'setShowSourceBadge'
   | 'importTrackFromUrl'
   | 'openTrash' | 'closeTrash' | 'restoreFromTrash' | 'purgeTrashEntry'
   | 'loadAlistServers' | 'createAlistServer' | 'patchAlistServer' | 'deleteAlistServer'
@@ -52,6 +53,9 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     openTrackMenu: (menu) => openTrackMenu(set, get, menu),
     closeTrackMenu: () => closeTrackMenu(set),
     setSourceFilter: (filter) => setSourceFilter(set, filter),
+    setProviderQuality: (quality) => setProviderQuality(set, get, quality),
+    acceptProviderNotice: () => acceptProviderNotice(set, get),
+    setShowSourceBadge: (visible) => setShowSourceBadge(set, get, visible),
     prepareRomanization: () => prepareRomanization(set, get),
     toggleSelect: (id, additive) => toggleSelect(set, id, additive),
     selectAll: (ids) => selectAll(set, ids),

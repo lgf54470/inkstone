@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BrainCircuit, Cloud, Database, FilePlus2, Info, Keyboard, Palette, RefreshCw, Type, UserRound, X, } from 'lucide-react'
+import { BrainCircuit, Cloud, Database, FilePlus2, Info, Keyboard, Music, Palette, RefreshCw, Type, UserRound, X, } from 'lucide-react'
 import { ACCENTS } from '@shared/constants'
 import { cn } from '../../lib/cn'
 import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../components/overlay'
@@ -24,6 +24,7 @@ const SECTION_LOADERS = {
   about: () => import('./about-settings').then((m) => ({ default: m.AboutSettings })),
   backup: () => import('./backup-settings').then((m) => ({ default: m.BackupSettings })),
   mcp: () => import('./mcp-settings').then((m) => ({ default: m.McpSettings })),
+  music: () => import('./music-settings').then((m) => ({ default: m.MusicSettings })),
 }
 const EditorSettings = lazy(SECTION_LOADERS.editor)
 const NoteSettings = lazy(SECTION_LOADERS.notes)
@@ -33,7 +34,14 @@ const AccountSettings = lazy(SECTION_LOADERS.account)
 const AboutSettings = lazy(SECTION_LOADERS.about)
 const BackupSettings = lazy(SECTION_LOADERS.backup)
 const McpSettings = lazy(SECTION_LOADERS.mcp)
-type Section = 'appearance' | 'editor' | 'notes' | 'backup' | 'sync' | 'mcp' | 'account' | 'data' | 'about'
+const MusicSettings = lazy(SECTION_LOADERS.music)
+export type Section = 'appearance' | 'editor' | 'notes' | 'backup' | 'sync' | 'mcp' | 'music' | 'account' | 'data' | 'about'
+
+// FB-F4: the hub's gear asks for the music page by name. The list of pages lives here, so the
+// decision about whether a request names one belongs here too.
+export function resolveSettingsSection(requested: string | null): Section {
+  return SECTIONS.some((item) => item.id === requested) ? requested as Section : 'appearance'
+}
 const SECTIONS: {
   id: Section
   label: () => string
@@ -45,6 +53,7 @@ const SECTIONS: {
   { id: 'backup', label: () => t('settings.backup'), icon: <Cloud size={14}/> },
   { id: 'sync', label: () => t('settings.sync'), icon: <RefreshCw size={14}/> },
   { id: 'mcp', label: () => t('settings.mcp'), icon: <BrainCircuit size={14}/> },
+  { id: 'music', label: () => t('settings.music'), icon: <Music size={14}/> },
   { id: 'account', label: () => t('settings.account'), icon: <UserRound size={14}/> },
   { id: 'data', label: () => t('settings.data'), icon: <Database size={14}/> },
   { id: 'about', label: () => t('settings.about'), icon: <Info size={14}/> },
@@ -52,9 +61,17 @@ const SECTIONS: {
 export function SettingsPanel({ onClose }: {
   onClose: () => void
 }) {
-  const [section, setSection] = useState<Section>('appearance')
+  const [section, setSection] = useState<Section>(() => resolveSettingsSection(useUi.getState().settingsSection))
   const [reloadKey, setReloadKey] = useState(0)
   const openPanel = useUi((s) => s.openPanel)
+  const requestedSection = useUi((s) => s.settingsSection)
+  // A request is spent the moment it is honoured: closing and reopening the panel goes back to
+  // its own default rather than to whatever page was asked for the last time.
+  useEffect(() => {
+    if (!requestedSection) return
+    setSection(resolveSettingsSection(requestedSection))
+    useUi.setState({ settingsSection: null })
+  }, [requestedSection])
   const panelRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
@@ -147,6 +164,7 @@ function SectionContent({ section }: { section: Section }) {
       {section === 'notes' && <NoteSettings />}
       {section === 'sync' && <SyncSettings />}
       {section === 'mcp' && <McpSettings />}
+      {section === 'music' && <MusicSettings />}
       {section === 'account' && <AccountSettings />}
       {section === 'data' && <DataSettings />}
       {section === 'about' && <AboutSettings />}

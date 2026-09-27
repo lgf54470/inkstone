@@ -1,5 +1,5 @@
 import type { Context, Hono } from 'hono'
-import { GDS_UPSTREAM_SOURCES, LIMITS } from '@shared/constants'
+import { GDS_UPSTREAM_SOURCES, LIMITS, MUSIC_PROVIDER_DEFAULT_QUALITY, MUSIC_PROVIDER_QUALITIES, type MusicProviderQuality } from '@shared/constants'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
@@ -23,6 +23,19 @@ const GDS_API_BASE = 'https://music-api.gdstudio.xyz'
 // reaches the upstream is exactly the catalogue name the client offered.
 export function isProviderSource(source: string): boolean {
   return (GDS_UPSTREAM_SOURCES as readonly string[]).includes(source)
+}
+
+// FB-F7: the tier arrives as a query parameter, and the whitelist is the half of the
+// contract the client cannot be trusted with. An absent tier is the historical default; a
+// tier that is not on the list is refused rather than quietly replaced, so a stale client
+// value can never pass for a choice nobody made.
+export function readProviderQuality(value: string | undefined): MusicProviderQuality {
+  if (value === undefined || value === '') return MUSIC_PROVIDER_DEFAULT_QUALITY
+  const parsed = Number(value)
+  if (!(MUSIC_PROVIDER_QUALITIES as readonly number[]).includes(parsed)) {
+    throw ApiError.badRequest('Unsupported quality')
+  }
+  return parsed as MusicProviderQuality
 }
 
 // Provider reference rows keep their identity in music_tracks.object_key as
@@ -97,18 +110,19 @@ async function providerUrl(c: Context<AppBindings>): Promise<Response> {
   await enforceMusicBudget(c.env.DB, 'provider', userId)
   const source = c.req.query('source') ?? ''
   const id = (c.req.query('id') ?? '').trim()
-  const quality = Number(c.req.query('quality') ?? 320)
+  const quality = readProviderQuality(c.req.query('quality'))
   if (!isProviderSource(source)) throw ApiError.badRequest('Unknown online source')
   if (!id) throw ApiError.badRequest('The song id is required')
-  if (!LIMITS.musicProviderQualities.includes(quality as 128 | 192 | 320 | 740 | 999)) {
-    throw ApiError.badRequest('Unsupported quality')
-  }
   return c.json({ url: await resolveProviderPlayUrl(source, id, quality) })
 }
 
 // Shared by the url endpoint and the stream branch: one per-play resolution of
 // the upstream's temporary link, the same lifecycle an Alist signed URL has.
-export async function resolveProviderPlayUrl(source: string, songId: string, quality = 320): Promise<string> {
+export async function resolveProviderPlayUrl(
+  source: string,
+  songId: string,
+  quality: MusicProviderQuality = MUSIC_PROVIDER_DEFAULT_QUALITY,
+): Promise<string> {
   const query = new URLSearchParams({ types: 'url', source, id: songId, br: String(quality) })
   const payload = await fetchUpstreamJson(`${GDS_API_BASE}/api.php?${query}`) as { url?: unknown } | null
   const url = typeof payload?.url === 'string' && payload.url ? payload.url : null

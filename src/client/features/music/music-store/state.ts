@@ -1,3 +1,4 @@
+import { MUSIC_PROVIDER_DEFAULT_QUALITY, MUSIC_PROVIDER_QUALITIES, type MusicProviderQuality } from '@shared/constants'
 import type { MusicPlayMode } from '@shared/types'
 import type {
   MusicHubGeometry, MusicImmersiveBackground, MusicLyricAlign, MusicLyricTextSize, MusicSort, MusicSortDirection, MusicSourceFilter, MusicViewMode,
@@ -38,6 +39,12 @@ export interface MusicPreferences {
   lyricOffsets: Record<string, number>
   /** FEA-A1-1: per online provider opt-in; every provider ships absent (off). */
   providerEnabled: Record<string, boolean>
+  /** FB-F7: the tier asked of the aggregate upstream when a playable link is resolved. */
+  providerQuality: MusicProviderQuality
+  /** FB-S6: the one-time notice shown before the first catalogue is switched on. */
+  providerNoticeAccepted: boolean
+  /** Whether rows and cards name the source a track came from. */
+  showSourceBadge: boolean
 }
 
 const PLAY_MODES: MusicPlayMode[] = ['order', 'repeat-all', 'repeat-one', 'shuffle']
@@ -129,6 +136,9 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   lyricTextSize: 'default',
   lyricOffsets: {},
   providerEnabled: {},
+  providerQuality: MUSIC_PROVIDER_DEFAULT_QUALITY,
+  providerNoticeAccepted: false,
+  showSourceBadge: true,
 }
 
 function readStored(key: string): Record<string, unknown> | null {
@@ -180,6 +190,10 @@ export function loadPreferences(): MusicPreferences {
     lyricTextSize: readListed(parsed.lyricTextSize, LYRIC_TEXT_SIZES, DEFAULT_PREFERENCES.lyricTextSize),
     lyricOffsets: readLyricOffsets(parsed.lyricOffsets),
     providerEnabled: readProviderEnabled(parsed.providerEnabled),
+    providerQuality: readListed(parsed.providerQuality, MUSIC_PROVIDER_QUALITIES, MUSIC_PROVIDER_DEFAULT_QUALITY),
+    providerNoticeAccepted: parsed.providerNoticeAccepted === true,
+    // The badge is on unless it was explicitly turned off, so an older payload keeps it.
+    showSourceBadge: parsed.showSourceBadge !== false,
   }
 }
 
@@ -192,7 +206,7 @@ export function savePreferences(prefs: MusicPreferences): void {
   }
 }
 
-function readListed<T extends string>(value: unknown, allowed: T[], fallback: T): T {
+function readListed<T extends string | number>(value: unknown, allowed: readonly T[], fallback: T): T {
   return allowed.includes(value as T) ? (value as T) : fallback
 }
 

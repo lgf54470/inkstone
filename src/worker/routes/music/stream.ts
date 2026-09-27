@@ -7,7 +7,7 @@ import { isDerivedCoverKey } from './cover'
 import { alignKvRangeWindow, contentRangeHeader, isWellFormedContentLength, isWellFormedContentRange, parseByteRange } from './range'
 import type { MusicTrackRow } from './rows'
 import { alistApi, joinAlistPath, parseAlistObjectKey, resolveAlistServer } from './alist'
-import { parseGdsObjectKey, resolveProviderPlayUrl } from './provider'
+import { parseGdsObjectKey, readProviderQuality, resolveProviderPlayUrl } from './provider'
 import { buildDownloadTag } from './id3'
 import { readMusicObjectStream, requireMusicStorage } from './storage'
 import { fetchMusicObject, resolveMusicWebdav } from './webdav'
@@ -208,7 +208,9 @@ async function streamProviderTrack(
 ): Promise<Response> {
   const key = parseGdsObjectKey(row.object_key)
   if (!key) throw ApiError.internal('The provider track key is invalid')
-  const playUrl = await resolveProviderPlayUrl(key.source, key.songId)
+  // FB-F7: the media element carries the chosen tier as a query parameter, so this is where
+  // the preference reaches the resolver. The whitelist check throws for anything else.
+  const playUrl = await resolveProviderPlayUrl(key.source, key.songId, readProviderQuality(c.req.query('quality')))
   const range = c.req.header('Range')
   let upstream: Response
   try {

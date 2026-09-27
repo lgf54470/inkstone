@@ -1,7 +1,7 @@
 import { api } from '../../../lib/api'
 import { CROSSFADE_MS, cancelCrossfade, crossfadeActive, startCrossfade } from '../audio-engine'
 import { publishMediaSession } from '../media-session'
-import { computeNextIndex } from '../music-utils'
+import { computeNextIndex, providerStreamQuality } from '../music-utils'
 import { orderAfterQueueSync, shuffleStep } from '../music-shuffle'
 import { setProgressTime } from './progress'
 import { persist } from './persist'
@@ -20,7 +20,7 @@ export function maybeStartCrossfade(get: MusicGet, ms: number): void {
   const track = state.tracks.find((candidate) => candidate.id === state.queue[next])
   if (!track || !(track.durationMs > 0)) return
   if (track.durationMs - ms > CROSSFADE_MS) return
-  startCrossfade(track)
+  startCrossfade(track, providerStreamQuality(track, state.providerQuality))
 }
 
 // Shuffle fades into the sequence's next track. A missing order means shuffle was

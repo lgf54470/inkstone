@@ -1,3 +1,4 @@
+import type { MessageKey } from '../../../lib/i18n'
 import type { MusicPreferences } from '../music-store/state'
 
 // FEA-A1-1: an online provider is an identity plus a search capability. The
@@ -5,7 +6,8 @@ import type { MusicPreferences } from '../music-store/state'
 // opting into third-party catalogues is an explicit, per-provider decision.
 export interface MusicProvider {
   id: string
-  labelKey: string
+  /** The name the switch is shown under; a message id, because it is user-visible copy. */
+  labelKey: MessageKey
   isEnabled: (prefs: MusicPreferences) => boolean
 }
 

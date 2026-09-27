@@ -83,6 +83,8 @@ export interface UiState {
 
 
   panel: PanelName | null
+  /** FB-F4: the settings page a caller asked for when it opened the panel; null means the default. */
+  settingsSection: string | null
   outlineOpen: boolean
   backlinksOpen: boolean
   toasts: ToastItem[]
@@ -124,6 +126,8 @@ export interface UiState {
   setSelected: (ids: string[]) => void
   toggleSelected: (id: string, additive: boolean) => void
   openPanel: (panel: PanelName) => void
+  /** Opens the settings panel on a named section (a caller that knows which page it wants). */
+  openSettings: (section?: string) => void
   closePanel: () => void
   togglePanel: (panel: PanelName) => void
   toggleOutline: () => void

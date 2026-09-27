@@ -1,5 +1,6 @@
 import { api } from '../../../lib/api'
 import type { MusicProviderTrack } from '../../../lib/api'
+import type { MusicProviderQuality } from '@shared/constants'
 import type { MusicTrack } from '@shared/types'
 import { GDS_PROVIDER_ID, listProviders, matchScore, searchGds, searchGdsPages } from '../providers'
 import { persist } from './persist'
@@ -10,6 +11,20 @@ import type { MusicGet, MusicSet } from './types'
 // provider on; A1-3 adds the aggregate search and the play path behind them.
 export function setProviderEnabled(set: MusicSet, get: MusicGet, providerId: string, enabled: boolean): void {
   set((state) => ({ providerEnabled: { ...state.providerEnabled, [providerId]: enabled } }))
+  persist(get)
+}
+
+// FB-F7: the tier is a preference, not a per-request argument — the stream URL reads it, so
+// every play of a provider row asks the proxy for the same quality.
+export function setProviderQuality(set: MusicSet, get: MusicGet, quality: MusicProviderQuality): void {
+  set({ providerQuality: quality })
+  persist(get)
+}
+
+// FB-S6: remembered with the preferences, so the notice is a once-per-install decision
+// rather than a speed bump in front of every switch.
+export function acceptProviderNotice(set: MusicSet, get: MusicGet): void {
+  set({ providerNoticeAccepted: true })
   persist(get)
 }
 

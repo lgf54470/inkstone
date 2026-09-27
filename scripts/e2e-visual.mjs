@@ -107,6 +107,9 @@ const LABELS = {
   mindMapOutline: ['大纲思维导图', 'Outline Mind Map'],
   musicHub: ['音乐库', 'Music library'],
   musicOpenHub: ['打开音乐库', 'Open music library'],
+  musicOpenSettings: ['音乐设置', 'Music settings'],
+  musicSettingsNav: ['音乐', 'Music'],
+  musicSettingsSources: ['在线音源', 'Online sources'],
   musicHubNavigation: ['音乐导航', 'Music navigation'],
   musicHubOpenNavigation: ['打开音乐导航', 'Open music navigation'],
   musicExpandPlayer: ['展开播放器', 'Expand the player'],
@@ -4509,6 +4512,39 @@ async function focusRevealedActivate(page, selector) {
   return true
 }
 
+// FB-F4: the library had no door to its own preferences — the switches lived inside a search
+// result panel. The header gear is that door, and it has to land on the music section of the
+// settings panel rather than on whatever section was open last time.
+async function assertMusicHubSettingsShortcut(page) {
+  const gear = await page.$(cssByLabels('div[role="dialog"] button', LABELS.musicOpenSettings))
+  check('music: the hub header carries a settings shortcut', Boolean(gear))
+  if (!gear) return
+  await gear.click()
+  const navigated = await page.waitForFunction((navLabels) => {
+    const current = [...document.querySelectorAll('nav button[aria-current="page"]')]
+    return current.some((button) => navLabels.includes((button.textContent ?? '').trim()))
+  }, { timeout: 15_000 }, LABELS.musicSettingsNav).then(() => true, () => false)
+  check('music: the settings shortcut opens the music section', navigated)
+  // The section is a lazy chunk: the nav label lights up first and the page arrives after it, so
+  // the group is waited for rather than read the instant the panel opens.
+  const showsSources = await page.waitForFunction(
+    (labels) => labels.some((label) => (document.body.textContent ?? '').includes(label)),
+    { timeout: 15_000 },
+    LABELS.musicSettingsSources,
+  ).then(() => true, () => false)
+  check('music: the music settings page holds the online sources group', showsSources)
+  // The section is new, so it is measured rather than assumed: axe reads the page the reader is
+  // actually on, and only the globally reviewed review items are allowed through.
+  await waitForPanelSettled(page, SETTINGS_PANEL)
+  await ensureAxe(page)
+  const report = await runAxe(page, SETTINGS_PANEL)
+  check('a11y: the music settings page has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
+  const unexpected = report.incomplete.filter((item) => !isReviewedIncomplete(item))
+  check('a11y: the music settings page sends axe no unexpected review items', unexpected.length === 0, JSON.stringify(unexpected))
+  await page.keyboard.press('Escape')
+  await sleep(400)
+}
+
 async function assertMusicSurface(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(500)
@@ -4537,6 +4573,10 @@ async function assertMusicSurface(page) {
   check('music: the status bar opens the library hub', true)
   await assertMusicHubDrag(page)
   await assertMusicHubResize(page)
+  // The settings panel takes the hub's place, so the shortcut has to hand the hub back before
+  // the rest of the scenario reads its list.
+  await assertMusicHubSettingsShortcut(page)
+  await openMusicHub(page)
 
   // The hub's own footer is the transport while it is open; a floating card on top of it would
   // put two play buttons for one track on screen.

@@ -60,6 +60,7 @@
 - **不能设置**：**全仓 0 处音乐设置面**（`grep music.settings` 无命中）。`MusicProvider` 接口只有 `id / labelKey / isEnabled`；`GDS_SOURCES` 五源写死、无逐源开关 / 排序 / 可见性；worker 侧还有第二份字面量 `GDS_UPSTREAM_SOURCES`（漂移即表现为「客户端提供、服务端 400」）。
 - **数据不完整**：worker 归一化丢弃上游 `pic_id` / `lyric_id`（实测均可取），而 netease 搜索响应里根本没有 `duration` → 在线曲目**无封面、无歌词、时长为 0**。
 - **死能力**：worker 白名单了音质 128/192/320/740/999，客户端从不发送，`quality=320` 三处硬编码。
+- **静默丢失**（M7 顺带修复）：`providerEnabled` 一直随偏好写进 localStorage，但启动时被硬置为 `{}`——开关每次刷新都回到关闭，而持久化写的是它，两条路各自「看着正确」。
 
 ---
 
@@ -74,10 +75,10 @@
 | FB-F1 | **P0** | Hub 拖动无效：`anim-pop` 的 `transform: none` 永久覆盖内联 `translate` | 位移改用**独立 `translate` 属性**（CSS Transforms 2，不被 `transform` 动画覆盖；备选 `left/top`，均无需 `!important`）；补浏览器断言「真实按在标题栏拖 120px，窗口在屏幕上跟着走且能拖回」 | `music-hub-window.tsx`、`music-hub-modal.tsx`、`scripts/e2e-visual.mjs` | S 代码 + M 门禁 | **已修复（M4）**：实测同一断言——改前 dx/dy = 0/0（store 已写对、屏幕不动），改后 120/60，拖回后回到原点 |
 | FB-F2 | **P0** | 在线开关打开不触发搜索；关闭 / 加载 / 无匹配 / 全源失败四态混同 | 开关纳入 effect 依赖（或订阅偏好变化重发）；四态文案分开，全源失败带「重试」 | `music-provider-results.tsx`、`music-store/providers.ts`、locales | S | 先做，用户可见收益最大 |
 | FB-F3 | P1 | 来源筛选只有 `all/r2/webdav`，`alist/external/provider/podcast` 行无法筛选（角标已支持） | 扩展值域 + 工具栏按「库中实际存在的来源」动态生成 + `applySourceFilter` 兼容；未知旧值回落 `all`（已有逻辑） | `music-store/types.ts`、`state.ts`、`library-load.ts`、`music-hub-toolbar.tsx` | S–M | 顺手把来源名走 i18n（现为英文 slug） |
-| FB-F4 | P1 | 全仓无音乐设置面；音源开关埋在搜索结果里，EQ / 响度 / 交叉淡入 / 歌词样式 / 背景模式 / 悬浮窗散落各弹层 | 全局设置面板新增「音乐」分区（唯一真源）+ Hub 头部齿轮直达同一分区 | `features/settings/*`、`features/music/*`、locales | L | 分两步：先壳 + 音源组，后播放默认组 |
+| FB-F4 | P1 | 全仓无音乐设置面；音源开关埋在搜索结果里，EQ / 响度 / 交叉淡入 / 歌词样式 / 背景模式 / 悬浮窗散落各弹层 | 全局设置面板新增「音乐」分区（唯一真源）+ Hub 头部齿轮直达同一分区 | `features/settings/*`、`features/music/*`、locales | L | **已修复（M7）**：设置面板新增 `music` 分区（在线音源组 + 播放默认组；EQ 组直接渲染播放器弹层自己的 `MusicEqPanel`，不是副本）+ Hub 头部齿轮走 `ui.openSettings('music')`（请求按名转成该页面，用完即清）；浏览器断言：齿轮打开设置且导航停在「音乐」、正文有「在线音源」 |
 | FB-F5 | P1 | 在线曲目无封面、无歌词、时长为 0（`pic_id`/`lyric_id` 被丢弃；netease 无 duration） | worker 新增 `types=pic` / `types=lyric` 代抓（复用既有 allowlist 主机）；封面经派生键落库、歌词入 `hasLyric` + `ensureTrackLyric` 链路；时长缺失显式显示「未知」 | `worker/routes/music/provider.ts`、`music-store/providers.ts`、`music-track-row.tsx`、`music-artwork.tsx` | L | 可拆「封面」「歌词 / 时长」两次提交 |
 | FB-F6 | P2 | 单源失败静默：`searchGdsPages` 每源 `catch → []`，五源全挂与「无匹配」同形（实测 kuwo 400） | 返回每源状态（ok / empty / error），在线结果区显示「N 源失败 · 重试」；保留「一个死源不拖垮其余源」 | `providers/gds.ts`、`music-store/providers.ts`、`music-provider-results.tsx` | M | 与 FB-F2 同批，四态文案正好承接 |
-| FB-F7 | P2 | 音质档位无 UI（worker 白名单 5 档，客户端永不发送，320 三处硬编码） | 设置里给在线音源音质档位，存偏好、随请求传（含流解析） | `music-store/state.ts`、`providers.ts`、`worker/routes/music/provider.ts` | S | 与 FB-F4 同批 |
+| FB-F7 | P2 | 音质档位无 UI（worker 白名单 5 档，客户端永不发送，320 三处硬编码） | 设置里给在线音源音质档位，存偏好、随请求传（含流解析） | `music-store/state.ts`、`providers.ts`、`worker/routes/music/provider.ts` | S | **已修复（M7）**：档位表 `MUSIC_PROVIDER_QUALITIES` 单一来源（shared，`LIMITS` 指向同一元组）；偏好 `providerQuality` 持久化；provider 行的 stream URL 带 `?quality=`，worker 用 `readProviderQuality` 校验（非白名单 400，不静默降级）；播放 / 预载 / 交叉淡入三条路径都带该值，上传行不带 |
 | FB-F8 | P2 | 只有自动换源，无「把这首换成 X 源」；也没有智能换源开关 | 曲目菜单「切换音源」→ 复用 `matchScore` 列候选 → 复用 `swapFailedProviderTrack` 回写；设置给换源开关 | `music-track-menu.tsx`、`music-store/providers.ts` | M | 对齐 otter v2.4.12 |
 | FB-F9 | P2 | 引用行（external/provider/alist）失效后只能逐首点播发现 | 库健康扫描：批量 Range 探测 → 结果视图 + 批量换源 / 移入回收站 | `music-store/*`、新 worker 端点、新面板 | L | 引用源变多后价值陡增 |
 | FB-F10 | P2 | 在线结果行只能逐条「添加」：无试听、无批量、无封面 | 行内试听（登记 + 播放，已有 `playProviderTrack`）、行复选框 + 批量添加、封面 / 专辑 / 时长补全 | `music-provider-results.tsx` | M | 依赖 FB-F5 的封面 |
@@ -124,7 +125,7 @@
 | FB-S3 | P2 | 用户 / 第三方给的播放 URL 未过 `isAllowedOutboundUrl`，仅靠 `global_fetch_strictly_public` 兜底（`wrangler.toml` / `kv.toml` 已声明；`wrangler.demo.toml` 是纯静态 assets 无 worker，不构成缺口） | 统一走 `isAllowedOutboundUrl(url, { allowHttp: true })` + 保留运行时标志（external 直链常为 http / 自建 HTTPS，需显式策略） | `worker/routes/music/stream.ts` | S | 纵深防御，记录策略依据 |
 | FB-S4 | P2 | 源枚举双份字面量：`GDS_SOURCES`（client）与 `GDS_UPSTREAM_SOURCES`（worker） | 单一来源（`@shared/constants` 或 provider catalog）+ 契约测试钉住两侧一致 | `shared/constants.ts`、`providers/gds.ts`、`worker/routes/music/provider.ts` | S | **已修复（M6）**：列表移到 `@shared/constants`，客户端与 worker 读同一数组；契约分两头（客户端钉身份、worker 钉收拒口径），并用变异（客户端改拷贝 / worker 收回本地字面量且缺 `bilibili`）实测两条断言都会报错 |
 | FB-S5 | P3 | 搜索关键词是否进入观测 / 日志需核对（搜索词是敏感行为数据） | 核对 `[observability]` 是否记录 query string；必要时脱敏或不记 | `wrangler*.toml`、`provider.ts` | S | 只核对，不改行为 |
-| FB-S6 | P3 | 在线音源属版权灰色地带，无风险告知 | 首次开启给一次性告知 + 写入文档（otter 亦为自担风险） | 设置分区、locales、`SECURITY.md` | S | 与 F4 同批 |
+| FB-S6 | P3 | 在线音源属版权灰色地带，无风险告知 | 首次开启给一次性告知 + 写入文档（otter 亦为自担风险） | 设置分区、locales、`SECURITY.md` | S | **已修复（M7）**：设置里的音源组带一次性告知（`providerNoticeAccepted` 持久化，未接受时开关 `disabled` 且正文可见，接受后方可开启）；`SECURITY.md` 新增「Online music sources」一节 |
 
 ### D6 规范符合性（C）
 

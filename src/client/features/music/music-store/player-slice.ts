@@ -1,7 +1,7 @@
 import {
   applyEqPreset, clearLoopRange, connectAudio, currentTrack, cycleMode, markLoopEnd, markLoopStart, playCollection,
   playNext, playPrevious, playQueueAt, playTrack, seek, setEqBand, setEqEnabled,
-  setFloatingPosition, setImmersive, setImmersiveBackground, setLyricAlign, setLyricTextSize, setNormalizeEnabled,
+  setFloatingPosition, setFloatingVisible, setImmersive, setImmersiveBackground, setLyricAlign, setLyricTextSize, setNormalizeEnabled,
   setPlaybackRate, setSleepAfterCurrentTrack, setSleepTimer, setVolume,
   toggleFloating, toggleFloatingCollapsed, toggleMute, togglePlay,
 } from './player'
@@ -19,7 +19,7 @@ type PlayerSlice = Pick<MusicStoreState,
   | 'setImmersiveBackground'
   | 'nudgeLyricOffset' | 'resetLyricOffset' | 'markLoopStart' | 'markLoopEnd' | 'clearLoopRange'
   | 'addToQueue' | 'addManyToQueue' | 'removeFromQueue' | 'moveQueueItem' | 'clearQueue'
-  | 'toggleFloating' | 'toggleFloatingCollapsed' | 'setFloatingPosition' | 'setHubMaximized' | 'setHubGeometry'>
+  | 'toggleFloating' | 'toggleFloatingCollapsed' | 'setFloatingPosition' | 'setFloatingVisible' | 'setHubMaximized' | 'setHubGeometry'>
 
 export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
   connectAudio(set, get)
@@ -59,6 +59,7 @@ export function playerSlice(set: MusicSet, get: MusicGet): PlayerSlice {
     toggleFloating: () => toggleFloating(set, get),
     toggleFloatingCollapsed: () => toggleFloatingCollapsed(set, get),
     setFloatingPosition: (position) => setFloatingPosition(set, get, position),
+    setFloatingVisible: (visible) => setFloatingVisible(set, get, visible),
     setHubMaximized: (maximized) => setHubMaximized(set, get, maximized),
     setHubGeometry: (geometry) => setHubGeometry(set, get, geometry),
   }

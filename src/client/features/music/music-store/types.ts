@@ -4,6 +4,7 @@ import type {
   MusicPlayMode, MusicPlaylistDetail, MusicSource, MusicStats, MusicTag, MusicTrack, MusicWebdavEntry,
 } from '@shared/types'
 import type { MusicEqPresetId } from '../music-eq-presets'
+import type { MusicProviderQuality } from '@shared/constants'
 
 export type MusicSort = 'recent' | 'title' | 'artist' | 'album' | 'duration' | 'plays'
 export type MusicSortDirection = 'asc' | 'desc'
@@ -183,6 +184,12 @@ export interface MusicStoreState {
   podcastFeeds: MusicPodcastFeedView[]
   podcastFeedsLoading: boolean
   providerEnabled: Record<string, boolean>
+  /** FB-F7: what the stream URL asks the proxy for; only provider rows carry it. */
+  providerQuality: MusicProviderQuality
+  /** FB-S6: set once the reader has read the notice about third-party catalogues. */
+  providerNoticeAccepted: boolean
+  /** Whether the source badge is painted on rows and cards. */
+  showSourceBadge: boolean
   providerResults: MusicProviderTrack[] | null
   providerSearching: boolean
   providerKeywords: string
@@ -214,6 +221,9 @@ export interface MusicStoreState {
   openTrackMenu: (menu: TrackMenuRequest) => void
   closeTrackMenu: () => void
   setSourceFilter: (filter: MusicSourceFilter) => void
+  setProviderQuality: (quality: MusicProviderQuality) => void
+  acceptProviderNotice: () => void
+  setShowSourceBadge: (visible: boolean) => void
   prepareRomanization: () => Promise<void>
   toggleSelect: (id: string, additive: boolean) => void
   selectAll: (ids: string[]) => void
@@ -229,6 +239,7 @@ export interface MusicStoreState {
   playPrevious: () => Promise<void>
   seek: (ms: number) => void
   setImmersiveBackground: (mode: MusicImmersiveBackground) => void
+  setFloatingVisible: (visible: boolean) => void
   setLyricAlign: (align: MusicLyricAlign) => void
   setLyricTextSize: (size: MusicLyricTextSize) => void
   setVolume: (volume: number) => void

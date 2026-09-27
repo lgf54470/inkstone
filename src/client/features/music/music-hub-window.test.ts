@@ -3,6 +3,7 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { t } from '../../lib/i18n'
+import { useUi } from '../../store/ui'
 import { MusicHubModal } from './music-hub-modal'
 import { HUB_MAX_OFFSET_PX, HUB_MAX_WIDTH, HUB_MIN_HEIGHT, HUB_MIN_WIDTH, resizeHubGeometry } from './music-hub-window'
 import { useMusic } from './music-store'
@@ -195,5 +196,19 @@ describe('hub window against the viewport (FB-U1)', () => {
     // 700 - 32 is all the width the app keeps for itself, and the offset budget is the same one
     // the pointer drag answers to.
     expect(useMusic.getState().hubGeometry).toEqual({ width: 668, height: 568, dx: 120, dy: 0 })
+  })
+})
+
+// FB-F4: the music preferences had no door of their own on the library, so the header now
+// carries one and it opens the settings panel already turned to the music page.
+describe('hub settings shortcut (FB-F4)', () => {
+  it('opens the settings panel on the music section', async () => {
+    await mountHub()
+    const gear = document.querySelector<HTMLButtonElement>(`button[aria-label="${t('music.open_settings')}"]`)
+    expect(gear).not.toBeNull()
+    await act(async () => { gear!.click() })
+    expect(useUi.getState().panel).toBe('settings')
+    expect(useUi.getState().settingsSection).toBe('music')
+    useUi.getState().closePanel()
   })
 })

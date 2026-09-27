@@ -1,4 +1,4 @@
-import { ACCENTS, LIMITS } from '@shared/constants'
+import { ACCENTS, LIMITS, type MusicProviderQuality } from '@shared/constants'
 import type { MessageKey } from '../../lib/i18n'
 import type { MusicPlaylistDetail, MusicPlayMode, MusicTag, MusicTrack } from '@shared/types'
 
@@ -284,4 +284,11 @@ export function downloadFileName(track: MusicTrack): string {
 
 function extensionFor(track: MusicTrack): string {
   return '.' + (track.format ?? CONTENT_EXTENSIONS[track.mime] ?? 'mp3')
+}
+
+// FB-F7: the tier is a property of the resolver, not of the track — an uploaded file plays at
+// whatever it was encoded with. Only reference rows ask the proxy for one, so the stream URL
+// carries the parameter exactly for them.
+export function providerStreamQuality(track: MusicTrack, providerQuality: MusicProviderQuality): MusicProviderQuality | undefined {
+  return track.source === 'provider' ? providerQuality : undefined
 }

@@ -20,6 +20,21 @@ Please avoid accessing data that is not yours, degrading a production service, o
 
 Inkstone is self-hosted software, not a hosted service. Deployment owners are responsible for their Cloudflare account, custom domains, access policies, backup destinations, and timely updates. Inkstone does not provide a password-reset bypass; losing the owner password requires restoring from a trusted backup or reinitializing the instance.
 
+## Online music sources
+
+Inkstone's music library can search and play songs from third-party catalogue aggregators. These
+are not licensed music services, and the feature is opt-in per source, off by default, and stated
+before it is first switched on.
+
+- Requests are made by the Worker, never by the browser: the page CSP forbids the third-party
+  origin, and the proxy accepts only catalogue names from a fixed server-side list.
+- The server resolves a temporary playable link per play and stores no audio. Reference rows hold
+  metadata only.
+- No third-party credentials are involved, so the feature adds no secret to the deployment.
+- Whether the deployment may use such a catalogue, and how links behave, is the deployment
+  owner's decision and responsibility: links expire, catalogues change, and none of it is under
+  Inkstone's control.
+
 ## Sandbox notes
 
 - **S1 (resolved):** Runnable-JS example blocks (`js-example` fenced blocks)

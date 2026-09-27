@@ -2,7 +2,7 @@ import type { MusicTrack } from '@shared/types'
 import { api } from '../../../lib/api'
 import { toastMusicError, toastMusicNotice } from '../music-feedback'
 import { EQ_PRESETS, type MusicEqPresetId } from '../music-eq-presets'
-import { computeNextIndex, computePrevIndex, nextPlayMode } from '../music-utils'
+import { computeNextIndex, computePrevIndex, nextPlayMode, providerStreamQuality } from '../music-utils'
 import {
   applyVolume, mediaElement, cancelCrossfade, configureAudio, configureEqualizer, configureLoudnessNormalization,
   ensureAudioGraph, pausePlayback,
@@ -390,6 +390,13 @@ export function toggleFloating(set: MusicSet, get: MusicGet): void {
   persist(get)
 }
 
+// The floating player's own button toggles; the settings switch states the value it wants.
+// Both write the one preference the overlay reads.
+export function setFloatingVisible(set: MusicSet, get: MusicGet, floatingVisible: boolean): void {
+  set({ floatingVisible })
+  persist(get)
+}
+
 export function setFloatingPosition(set: MusicSet, get: MusicGet, position: { x: number; y: number }): void {
   set({ floatingPosition: position })
   persist(get)
@@ -405,7 +412,7 @@ async function loadAndPlay(set: MusicSet, get: MusicGet): Promise<void> {
   applyVolume(get().volume, get().muted)
   applyPlaybackRate(get().playbackRate)
   persist(get)
-  const outcome = await startPlayback(track)
+  const outcome = await startPlayback(track, providerStreamQuality(track, get().providerQuality))
   publishMediaSession(track, outcome === 'playing')
   if (outcome !== 'playing') {
     await handlePlaybackFailure(set, get, 'auto')

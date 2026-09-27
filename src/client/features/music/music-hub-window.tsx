@@ -1,5 +1,5 @@
 import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { GripHorizontal, Maximize2, Minimize2, MoveDiagonal2, Music, PanelLeft, SlidersHorizontal, X } from 'lucide-react'
+import { GripHorizontal, Maximize2, Minimize2, MoveDiagonal2, Music, PanelLeft, Settings, SlidersHorizontal, X } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
@@ -253,6 +253,7 @@ export interface HubHeaderProps {
   onToggleMaximized: () => void
   onOpenNavigation: () => void
   onOpenNowPlaying: () => void
+  onOpenSettings: () => void
 }
 
 export function HubHeader(props: HubHeaderProps) {
@@ -300,7 +301,7 @@ export function HubHeader(props: HubHeaderProps) {
   )
 }
 
-function HubHeaderActions({ onClose, narrow, maximized, onToggleMaximized, onOpenNavigation, onOpenNowPlaying }: HubHeaderProps) {
+function HubHeaderActions({ onClose, narrow, maximized, onToggleMaximized, onOpenNavigation, onOpenNowPlaying, onOpenSettings }: HubHeaderProps) {
   return (
     <div className='flex items-center gap-1'>
       {narrow && (
@@ -311,6 +312,16 @@ function HubHeaderActions({ onClose, narrow, maximized, onToggleMaximized, onOpe
           <IconButton label={t('music.hub_open_now_playing')} size='sm' className={TOUCH_TARGET_CLASS} onClick={onOpenNowPlaying}><SlidersHorizontal size={15} /></IconButton>
         </>
       )}
+      {/* FB-F4: the music preferences live in the settings panel, and this is the way there
+          from the library — the same control on a phone, where the hub is the only surface. */}
+      <IconButton
+        label={t('music.open_settings')}
+        size='sm'
+        className={narrow ? TOUCH_TARGET_CLASS : undefined}
+        onClick={onOpenSettings}
+      >
+        <Settings size={15} />
+      </IconButton>
       {/* REF-1a: the header owned only a close button, so the library could never grow
           past the width it was built with. The toggle is a plain state flip on the same
           dialog — no remount, so the scroll position and the queue survive it. */}
