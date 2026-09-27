@@ -184,6 +184,8 @@ export interface MusicStoreState {
   providerResults: MusicProviderTrack[] | null
   providerSearching: boolean
   providerKeywords: string
+  /** FB-F6: the catalogues that did not answer the last search, by upstream source id. */
+  providerFailedSources: string[]
   podcastEpisodesFeedId: string | null
   podcastEpisodes: MusicPodcastEpisode[]
   podcastEpisodesLoading: boolean

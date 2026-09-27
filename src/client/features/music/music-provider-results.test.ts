@@ -3,7 +3,7 @@ import { act, createElement } from 'react'
 import { t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
 import { useMusic } from './music-store'
-import { MusicProviderResults, providerPanelState } from './music-provider-results'
+import { MusicProviderResults, providerFailureKey, providerPanelState } from './music-provider-results'
 
 vi.mock('../../lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/api')>()
@@ -24,6 +24,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
 import { api } from '../../lib/api'
 
 const QUERY = 'origin'
+const CLEAR = { query: '', providerEnabled: {}, providerResults: null, providerSearching: false, providerKeywords: '', providerFailedSources: [] }
 
 let rendered: ReturnType<typeof renderElement> | null = null
 
@@ -56,8 +57,12 @@ async function clickSwitch(): Promise<void> {
   await act(async () => { providerSwitch().click() })
 }
 
+function state(overrides: Partial<Parameters<typeof providerPanelState>[0]> = {}) {
+  return providerPanelState({ enabled: true, searching: false, results: null, failedSources: [], keywords: QUERY, query: QUERY, ...overrides })
+}
+
 beforeEach(() => {
-  useMusic.setState({ query: '', providerEnabled: {}, providerResults: null, providerSearching: false, providerKeywords: '' })
+  useMusic.setState(CLEAR)
 })
 
 afterEach(() => {
@@ -74,20 +79,31 @@ afterEach(() => {
 // reader reached by turning the switch on with a search already on screen.
 describe('online results panel state (FB-F2)', () => {
   it('reads an enabled provider with an unanswered query as loading', () => {
-    expect(providerPanelState({ enabled: true, searching: false, results: null, keywords: '', query: QUERY })).toBe('loading')
+    expect(state({ keywords: '' })).toBe('loading')
   })
 
   it('keeps reading as loading while the settled answer belongs to an older query', () => {
-    expect(providerPanelState({ enabled: true, searching: false, results: [hit('a')], keywords: 'previous', query: QUERY })).toBe('loading')
+    expect(state({ results: [hit('a')], keywords: 'previous' })).toBe('loading')
   })
 
   it('names the off state before anything else', () => {
-    expect(providerPanelState({ enabled: false, searching: true, results: [hit('a')], keywords: QUERY, query: QUERY })).toBe('off')
+    expect(state({ enabled: false, searching: true, results: [hit('a')] })).toBe('off')
   })
 
   it('separates a settled empty answer from a settled answer with hits', () => {
-    expect(providerPanelState({ enabled: true, searching: false, results: [], keywords: QUERY, query: QUERY })).toBe('none')
-    expect(providerPanelState({ enabled: true, searching: false, results: [hit('a')], keywords: QUERY, query: QUERY })).toBe('ready')
+    expect(state({ results: [] })).toBe('none')
+    expect(state({ results: [hit('a')] })).toBe('ready')
+  })
+
+  // FB-F6: five catalogues with no match and five catalogues that did not answer used to
+  // read as the same sentence.
+  it('reads an empty answer with named failures as failed, not as no match', () => {
+    expect(state({ results: [], failedSources: ['netease'] })).toBe('failed')
+  })
+
+  it('says every source failed only when every source failed', () => {
+    expect(providerFailureKey(5)).toBe('music.provider_all_failed')
+    expect(providerFailureKey(1)).toBe('music.provider_partial_failed')
   })
 })
 
@@ -115,17 +131,6 @@ describe('online results panel switch (FB-F2)', () => {
     expect(bodyText()).toContain(t('common.loading'))
   })
 
-  it('renders the hits once the answer for the current query settles', async () => {
-    vi.useFakeTimers()
-    mountWithQuery()
-
-    await clickSwitch()
-    await settle()
-
-    expect(bodyText()).toContain(QUERY)
-    expect(bodyText()).toContain(t('music.provider_add'))
-  })
-
   it('stops asking and says so when the switch is turned off again', async () => {
     vi.useFakeTimers()
     useMusic.setState({ query: QUERY, providerEnabled: { gds: true }, providerResults: [hit('a')], providerKeywords: QUERY })
@@ -136,5 +141,68 @@ describe('online results panel switch (FB-F2)', () => {
 
     expect(useMusic.getState().providerResults).toBeNull()
     expect(bodyText()).toContain(t('music.provider_off'))
+  })
+})
+
+describe('online results panel rows (FB-U5)', () => {
+  it('renders the hits with an add control once the answer settles', async () => {
+    vi.useFakeTimers()
+    mountWithQuery()
+
+    await clickSwitch()
+    await settle()
+
+    expect(bodyText()).toContain(QUERY)
+    expect(bodyText()).toContain(t('music.provider_add'))
+  })
+
+  // FB-U5: the row used to print the upstream's own slug, which is not a name anyone reads.
+  // The row paints the key the label map picks; a missing mapping would paint the raw slug
+  // in its place, which is what this asserts against.
+  it('names the catalogue with its localized label', async () => {
+    vi.useFakeTimers()
+    mountWithQuery()
+
+    await clickSwitch()
+    await settle()
+
+    expect(bodyText()).toContain(t('music.provider_source_netease'))
+    expect(bodyText()).toContain(t('music.provider_source_kuwo'))
+  })
+})
+
+// FB-F6: a source that did not answer is reported and can be retried; the sources that did
+// answer keep their results either way.
+describe('online results panel failures (FB-F6)', () => {
+  it('reports the failed sources above the hits of the rest and retries them', async () => {
+    vi.useFakeTimers()
+    vi.mocked(api.music.providerSearch).mockRejectedValueOnce(new Error('source down'))
+    mountWithQuery()
+
+    await clickSwitch()
+    await settle()
+
+    expect(bodyText()).toContain(t('music.provider_partial_failed', { value0: 1 }))
+    expect(useMusic.getState().providerResults).toHaveLength(4)
+    const retry = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === t('music.retry'))
+    expect(retry).toBeTruthy()
+
+    await act(async () => { retry?.click() })
+    await settle()
+
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(10)
+    expect(useMusic.getState().providerFailedSources).toEqual([])
+  })
+
+  it('says no source answered when every one of them failed', async () => {
+    vi.useFakeTimers()
+    vi.mocked(api.music.providerSearch).mockRejectedValue(new Error('source down'))
+    mountWithQuery()
+
+    await clickSwitch()
+    await settle()
+
+    expect(bodyText()).toContain(t('music.provider_all_failed'))
+    expect(bodyText()).not.toContain(t('music.provider_none'))
   })
 })

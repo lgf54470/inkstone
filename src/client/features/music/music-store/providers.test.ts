@@ -69,6 +69,24 @@ describe('provider search flow (FEA-A1-3)', () => {
     expect(useMusic.getState().providerKeywords).toBe('song a')
   })
 
+  // FB-F6: the panel separates "no match" from "nothing answered", so the source that
+  // threw has to survive the merge as a named failure rather than vanish into an empty page.
+  it('records the catalogues that did not answer', async () => {
+    vi.mocked(api.music.providerSearch).mockImplementationOnce(async () => {
+      throw new Error('source down')
+    })
+    useMusic.setState({ providerEnabled: { gds: true }, tracks: [], providerFailedSources: [] })
+    await useMusic.getState().searchProviders('song a')
+    expect(useMusic.getState().providerFailedSources).toEqual(['netease'])
+    expect(useMusic.getState().providerResults).toHaveLength(1)
+  })
+
+  it('clears the named failures along with the results when the provider is turned off', async () => {
+    useMusic.setState({ providerEnabled: {}, providerFailedSources: ['netease'] })
+    await useMusic.getState().searchProviders('song a')
+    expect(useMusic.getState().providerFailedSources).toEqual([])
+  })
+
   it('clears the results when the provider is off or the query is empty', async () => {
     useMusic.setState({ providerEnabled: {}, providerResults: [{ provider: 'gds', source: 'netease', sourceId: 'a1', title: 'X', artist: '', album: '', durationMs: null }] })
     await useMusic.getState().searchProviders('song')

@@ -16,15 +16,19 @@ export function setProviderEnabled(set: MusicSet, get: MusicGet, providerId: str
 export async function searchProviders(set: MusicSet, get: MusicGet, keywords: string): Promise<void> {
   const enabled = listProviders().some((provider) => provider.id === GDS_PROVIDER_ID && provider.isEnabled(get()))
   if (!enabled || !keywords.trim()) {
-    set({ providerResults: null, providerSearching: false, providerKeywords: '' })
+    set({ providerResults: null, providerFailedSources: [], providerSearching: false, providerKeywords: '' })
     return
   }
   set({ providerSearching: true, providerKeywords: keywords })
   try {
-    const results = await searchGds(keywords)
-    set((state) => (state.providerKeywords === keywords ? { providerResults: results, providerSearching: false } : {}))
+    const { results, failedSources } = await searchGds(keywords)
+    set((state) => (state.providerKeywords === keywords ? { providerResults: results, providerFailedSources: failedSources, providerSearching: false } : {}))
   } catch (error) {
-    set((state) => (state.providerKeywords === keywords ? { providerResults: [], providerSearching: false } : {}))
+    // FB-C1: `searchGds` absorbs a dead catalogue per source, so reaching this branch means
+    // something outside the catalogue contract went wrong (a shape change upstream, a bug in
+    // the merge). The reader is told through the toast and the panel falls back to "no online
+    // matches" rather than pretending a source list failed that we cannot name.
+    set((state) => (state.providerKeywords === keywords ? { providerResults: [], providerFailedSources: [], providerSearching: false } : {}))
     toastMusicError(error, 'music.action_failed')
   }
 }
@@ -62,7 +66,7 @@ export async function swapFailedProviderTrack(set: MusicSet, get: MusicGet, trac
   if (!listProviders().some((provider) => provider.isEnabled(state))) return false
   const keywords = track.artist ? `${track.title} ${track.artist}` : track.title
   const ranked = (await searchGdsPages(keywords))
-    .flat()
+    .flatMap((page) => page.results)
     .map((hit) => ({ hit, score: matchScore(hit, track) }))
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score)
@@ -91,6 +95,8 @@ async function importCandidate(hit: MusicProviderTrack): Promise<MusicTrack | nu
       durationMs: hit.durationMs ?? undefined,
     })
   } catch {
+    // FB-C1: fallback ranking only — a candidate that will not register is skipped and the
+    // next one is tried, and the caller still reports failure if none of them lands.
     return null
   }
 }

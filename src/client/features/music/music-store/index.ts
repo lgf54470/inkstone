@@ -54,6 +54,7 @@ function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> 
     providerResults: null,
     providerSearching: false,
     providerKeywords: '',
+    providerFailedSources: [],
     podcastFeeds: [],
     podcastFeedsLoading: false,
     podcastEpisodesFeedId: null,
