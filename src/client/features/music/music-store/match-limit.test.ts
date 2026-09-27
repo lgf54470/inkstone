@@ -85,3 +85,43 @@ describe('match limit (FB-PF2)', () => {
     expect(hiddenMatchCount(store.get())).toBe(0)
   })
 })
+
+// FB-PF4: the budget was reached from the query path only, so a library nobody had searched still
+// mounted a card per row the moment the reader switched to covers — the cost of opening the grid
+// was the size of the collection, not the size of the page.
+describe('unsearched grid (FB-PF4)', () => {
+  function browsingStore(viewMode: 'grid' | 'list') {
+    const store = musicStoreStub({ lastLoadedAt: 0, prepareRomanization: () => Promise.resolve() })
+    const tracks = Array.from({ length: 250 }, (_, index) => track(String(index)))
+    store.set({ tracks, query: '', romanized: {}, scope: { kind: 'all' }, sourceFilter: 'all', sort: 'recent', sortDirection: 'asc', viewMode })
+    return store
+  }
+
+  it('mounts one page of cards and counts the rest instead of the whole library', () => {
+    const store = browsingStore('grid')
+    expect(visibleTracks(store.get())).toHaveLength(SEARCH_RESULT_LIMIT)
+    expect(hiddenMatchCount(store.get())).toBe(250 - SEARCH_RESULT_LIMIT)
+  })
+
+  it('shows the next page when the reader asks, so the notice is a way through and not a wall', () => {
+    const store = browsingStore('grid')
+    showMoreMatches(store.set)
+    expect(visibleTracks(store.get())).toHaveLength(250)
+    expect(hiddenMatchCount(store.get())).toBe(0)
+  })
+
+  it('keeps the cap on a playlist too, whose rows the grid also draws one by one', () => {
+    const store = browsingStore('grid')
+    const ids = store.get().tracks.map((entry) => entry.id)
+    store.set({
+      playlists: [{
+        id: 'p1', name: 'p', description: '', isPinned: false, isFavorite: false, shareSlug: null,
+        coverUrl: null, sortOrder: 0, createdAt: 0, updatedAt: 0, trackCount: ids.length,
+        items: ids.map((trackId, sortOrder) => ({ id: `i${sortOrder}`, playlistId: 'p1', trackId, sortOrder })),
+      }],
+      scope: { kind: 'playlist', playlistId: 'p1' },
+    })
+    expect(visibleTracks(store.get())).toHaveLength(SEARCH_RESULT_LIMIT)
+    expect(hiddenMatchCount(store.get())).toBe(250 - SEARCH_RESULT_LIMIT)
+  })
+})

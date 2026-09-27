@@ -6,7 +6,7 @@ import type { MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { MusicTrackList } from './music-track-list'
 import { SEARCH_RESULT_LIMIT } from './music-search'
-import { useMusic } from './music-store'
+import { useMusic, useVisibleTracks } from './music-store'
 
 beforeAll(() => {
   ;(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
@@ -54,6 +54,23 @@ async function mountList(list: MusicTrack[] = tracks): Promise<void> {
   root = createRoot(container)
   await act(async () => {
     root?.render(createElement(MusicTrackList, { tracks: list, loading: false, emptyTitle: 'x', onEdit: () => {} }))
+  })
+}
+
+// A windowed list has to be read where the hub reads it: the page holds the capped list it asked the
+// store for (`useVisibleTracks`), and a raw array prop is the caller's own list, not the library's —
+// so the budget is invisible down that path and those cases would pass on any implementation.
+function StoreList(): ReturnType<typeof createElement> {
+  const visible = useVisibleTracks()
+  return createElement(MusicTrackList, { tracks: visible, loading: false, emptyTitle: 'x', onEdit: () => {} })
+}
+
+async function mountStoreList(): Promise<void> {
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  root = createRoot(container)
+  await act(async () => {
+    root?.render(createElement(StoreList))
   })
 }
 
@@ -352,6 +369,24 @@ describe('match limit action (FB-PF2)', () => {
     return [...document.querySelectorAll('button')]
       .find((node) => node.textContent === t('music.load_more_matches')) as HTMLButtonElement | undefined
   }
+
+  // FB-PF4: the table windows its rows, so an unfiltered library costs it a window; the grid
+  // mounts a card per row, and until this budget reached it too, opening the grid on a library
+  // nobody had searched mounted every card it had — the search-only cap was the whole guard.
+  function gridCards(): number {
+    return document.querySelector('div.grid.grid-cols-2')?.children.length ?? 0
+  }
+
+  it('mounts one page of cards for a library nobody searched', async () => {
+    useMusic.setState({ tracks: many, query: '', viewMode: 'grid', viewModeChosen: true, romanized: {} })
+    await mountStoreList()
+    expect(gridCards()).toBe(SEARCH_RESULT_LIMIT)
+    const button = loadMoreButton()
+    expect(button).toBeTruthy()
+    await act(async () => { button?.click() })
+    expect(useMusic.getState().matchLimit).toBe(SEARCH_RESULT_LIMIT * 2)
+    expect(gridCards()).toBe(many.length)
+  })
 
   it('offers the remainder instead of only counting it', async () => {
     useMusic.setState({ tracks: many, query: 'moonlight', viewMode: 'grid', viewModeChosen: true, romanized: {} })

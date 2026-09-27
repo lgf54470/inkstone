@@ -244,11 +244,20 @@ export function showMoreMatches(set: MusicSet): void {
 export function visibleTracks(state: MusicLibraryView): MusicTrack[] {
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
   const query = state.query.trim()
-  const filtered = query ? filterByQuery(scoped, state, query) : scoped
+  if (query) return filterByQuery(scoped, state, query)
   // A playlist row carries the order the user arranged; sorting or hoisting pins would rewrite it.
   // The duplicates view carries its own group order, so the same bypass applies.
-  if (state.scope.kind === 'playlist' || state.scope.kind === 'duplicates') return filtered
-  return sortTracks(filtered, state.sort, state.sortDirection)
+  if (state.scope.kind === 'playlist' || state.scope.kind === 'duplicates') return gridWindow(scoped, state)
+  return gridWindow(sortTracks(scoped, state.sort, state.sortDirection), state)
+}
+
+// FB-PF4: the query path capped itself for the grid, but a library nobody had searched yet went
+// through the branch below and mounted a card per row — the search-only cap was the whole guard,
+// so opening the grid on a few thousand tracks cost the DOM a few thousand cards. The table
+// windows its own rows, so this budget is the grid's alone.
+function gridWindow(tracks: MusicTrack[], state: MusicLibraryView): MusicTrack[] {
+  if (state.viewMode !== 'grid') return tracks
+  return tracks.slice(0, matchLimitOf(state))
 }
 
 function applySourceFilter(tracks: MusicTrack[], filter: MusicSourceFilter): MusicTrack[] {
@@ -321,11 +330,13 @@ function rankedWithLyricMatches(state: MusicLibraryView, tracks: MusicTrack[], q
 // A scope that cannot hold more matches than the cap short-circuits before ranking anything.
 export function hiddenMatchCount(state: MusicMatchCountView): number {
   const limit = matchLimitOf(state)
-  const query = state.query.trim()
-  if (!query) return 0
   // The list view shows every match, so nothing is ever hidden there.
   if (state.viewMode !== 'grid') return 0
   const scoped = applySourceFilter(applyScope(state), state.sourceFilter)
+  const query = state.query.trim()
+  // FB-PF4: an unsearched library is windowed by the same budget, so it owes the same
+  // "what did not fit" answer the query path gives — the notice is how the rest is asked for.
+  if (!query) return Math.max(0, scoped.length - limit)
   const local = searchTracks(scoped, state.romanized, query, state.tags)
   const remote = state.remoteLyricMatches
   if (!remote || remote.query !== query || state.scope.kind !== 'all' || state.sourceFilter !== 'all') {

@@ -30,11 +30,16 @@ const renderingFixtureFiles = new Set([
 // the gates are locale-agnostic; the strings are test selectors, never UI copy
 // rendered by the i18n layer. The harness walks the board's own view tabs, and a
 // tab is named in whichever language the account was left in.
+// The music measurement harness is here for both reasons its siblings are: it presses the same
+// controls by their locale-dependent names, and its synthetic library is written with hanzi titles
+// and artists on purpose — that mix is what makes the pinyin pass do real work, so the fixture is
+// data rather than UI copy. Both are gate material, not strings the app renders.
 const localizedFixtureFiles = new Set([
   path.resolve('scripts/e2e-visual.mjs'),
   path.resolve('scripts/check-contrast.mjs'),
   path.resolve('scripts/e2e-harness.mjs'),
   path.resolve('scripts/measure-kanban.mjs'),
+  path.resolve('scripts/measure-music.mjs'),
 ])
 const failures = []
 const usedKeys = new Set()
