@@ -1,10 +1,10 @@
-import { memo, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { Button } from '../../components/primitives'
 import { Drawer, Modal } from '../../components/overlay'
 import { Empty } from '../../components/feedback'
 import { cn } from '../../lib/cn'
-import { useMediaQuery } from '../../lib/hooks'
+import { useElementWidth, useMediaQuery } from '../../lib/hooks'
 import { Z_INDEX } from '../../lib/z-index'
 import { t } from '../../lib/i18n'
 import { formatBytes } from '../../lib/time'
@@ -28,7 +28,7 @@ import { MusicWebdavModal } from './music-webdav-modal'
 import { useUi } from '../../store/ui'
 import { useMusic, useVisibleTracks } from './music-store'
 import type { MusicScope } from './music-store'
-import { MUSIC_CONTENT_MIN_HEIGHT, MUSIC_NARROW_BREAKPOINT } from './music-utils'
+import { MUSIC_CONTENT_MIN_HEIGHT, MUSIC_HUB_COLUMNS_MIN_WIDTH, hubColumnsWide } from './music-utils'
 
 // REF-9: 84vh of a phone screen, or of a short laptop window, leaves the track list a
 // couple of hundred pixels once the header, toolbar and transport have taken their fixed
@@ -43,13 +43,23 @@ const HUB_NOW_PLAYING_DRAWER_WIDTH = 256
 
 type NarrowPanel = 'navigation' | 'nowPlaying' | null
 
-function useNarrowColumns() {
-  const columnsWide = useMediaQuery(`(min-width: ${MUSIC_NARROW_BREAKPOINT}px)`)
+// FB-R2: the fold answers the box the hub was given, not the screen behind it, and this is the ref
+// of the row that spans that box whatever the columns do (a side column takes its width out of the
+// centre, never out of this row). The viewport read survives for two jobs and only those two: the
+// fallback for environments that cannot measure (see `hubColumnsWide`), and whether the hub floats
+// at all — that one is genuinely a question about the screen, and it must never be asked of the
+// measured box, or the answer would feed back into the box's own width and flip it between the two
+// shapes forever.
+function useHubColumns() {
+  const columnsRef = useRef<HTMLDivElement>(null)
+  const hubWidth = useElementWidth(columnsRef)
+  const screenWide = useMediaQuery(`(min-width: ${MUSIC_HUB_COLUMNS_MIN_WIDTH}px)`)
+  const columnsWide = hubColumnsWide({ containerWidth: hubWidth, viewportWide: screenWide })
   const [narrowPanel, setNarrowPanel] = useState<NarrowPanel>(null)
   useEffect(() => {
     if (columnsWide) setNarrowPanel(null)
   }, [columnsWide])
-  return { columnsWide, narrowPanel, openPanel: setNarrowPanel, closePanels: () => setNarrowPanel(null) }
+  return { columnsRef, columnsWide, screenWide, narrowPanel, openPanel: setNarrowPanel, closePanels: () => setNarrowPanel(null) }
 }
 
 export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -59,9 +69,12 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
   const geometry = useMusic((state) => state.hubGeometry)
   const setHubGeometry = useMusic((state) => state.setHubGeometry)
   const dialogs = useHubDialogs()
-  const { columnsWide, narrowPanel, openPanel, closePanels } = useNarrowColumns()
+  const { columnsRef, columnsWide, screenWide, narrowPanel, openPanel, closePanels } = useHubColumns()
   const tallEnough = useMediaQuery(`(min-height: ${HUB_SHORT_VIEWPORT}px)`)
-  const fillViewport = hubMaximized || !columnsWide || !tallEnough
+  // REF-9/UI-14: a hub that fills the screen is the answer to a small screen or a short one — not to
+  // a narrow window the reader dragged that way on purpose (FB-R2), which now simply folds its
+  // columns inside the shape it was given.
+  const fillViewport = hubMaximized || !screenWide || !tallEnough
   // REF-1b: a window that fills the viewport has nothing to drag or resize, so the
   // chrome only exists while the hub is its own centred box.
   const windowed = !fillViewport
@@ -105,7 +118,7 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
           onOpenNowPlaying={() => openPanel('nowPlaying')}
           onOpenSettings={() => useUi.getState().openSettings('music')}
         />
-        <div className='flex min-h-0 flex-1'>
+        <div ref={columnsRef} className='flex min-h-0 flex-1'>
           {columnsWide && <Sidebar onManageTags={dialogs.openTagManager} onCreatePlaylist={dialogs.openCreatePlaylist} />}
           <HubCentre
             shortViewport={!tallEnough}

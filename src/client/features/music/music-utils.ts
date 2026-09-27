@@ -56,6 +56,27 @@ export function barMore({ eqInline, pinInline }: { eqInline: boolean; pinInline:
   return { pin: !pinInline, eq: !eqInline }
 }
 
+// FB-R2: the two side columns are 224 + 256px of fixed width, so below this much hub there is
+// nothing left for the list to live in. The number is read off the hub's own box rather than the
+// viewport: the hub can be dragged narrow on a wide screen (and maximised on a small one), and the
+// viewport never changes while it is — the columns used to keep squeezing the list in that case. It
+// is deliberately the same number the immersive player folds at (MUSIC_NARROW_BREAKPOINT), so the
+// surfaces fold together instead of each answering a breakpoint of its own.
+export const MUSIC_HUB_COLUMNS_MIN_WIDTH = MUSIC_NARROW_BREAKPOINT
+
+/**
+ * Whether the hub's side columns fit the box the hub was given. `null` means nothing could be
+ * measured (jsdom, SSR), where the viewport read is the only width there is — and there the answer
+ * is the narrow one, because guessing a column that does not fit is how the list got crushed before.
+ */
+export function hubColumnsWide({ containerWidth, viewportWide }: {
+  containerWidth: number | null
+  viewportWide: boolean
+}): boolean {
+  const width = containerWidth ?? (viewportWide ? MUSIC_HUB_COLUMNS_MIN_WIDTH : 0)
+  return width >= MUSIC_HUB_COLUMNS_MIN_WIDTH
+}
+
 export interface MusicToolbarShape {
   /** Low-frequency actions live in the "more" menu rather than inline. */
   folded: boolean

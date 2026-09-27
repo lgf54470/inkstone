@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { MusicPlaylistDetail, MusicTag, MusicTrack } from '@shared/types'
 import {
   activeLyricIndex, collectTagIds, computeNextIndex, computePrevIndex, flattenTags,
-  barMore, isArtistSuffixedTitle, nextPlayMode, parseLyric, playlistCoverUrl, rangeIds, tagColorValue, toolbarShape,
+  barMore, hubColumnsWide, isArtistSuffixedTitle, nextPlayMode, parseLyric, playlistCoverUrl, rangeIds, tagColorValue, toolbarShape,
+  MUSIC_HUB_COLUMNS_MIN_WIDTH,
 } from './music-utils'
 
 function tag(id: string, parentId: string | null, name = id, isPinned = false): MusicTag {
@@ -66,6 +67,27 @@ describe('status bar more entry (FB-U3)', () => {
 
   it('is not drawn at all where nothing is hidden', () => {
     expect(barMore({ eqInline: true, pinInline: true })).toBeNull()
+  })
+})
+
+// FB-R2: the hub's side columns are 480px of fixed width, and whether they fit is a fact about the
+// box the hub was given rather than about the screen behind it. The hub can be dragged narrow on a
+// wide screen — the viewport never changes while it is, and the columns kept squeezing the list.
+// The viewport read stays only for environments that cannot measure a box at all (jsdom, SSR).
+describe('hub side columns (FB-R2)', () => {
+  it('answers the width of the hub, not the width of the viewport', () => {
+    expect(hubColumnsWide({ containerWidth: 700, viewportWide: true })).toBe(false)
+    expect(hubColumnsWide({ containerWidth: 1200, viewportWide: false })).toBe(true)
+  })
+
+  it('folds exactly below the breakpoint the immersive player folds at', () => {
+    expect(hubColumnsWide({ containerWidth: MUSIC_HUB_COLUMNS_MIN_WIDTH - 1, viewportWide: true })).toBe(false)
+    expect(hubColumnsWide({ containerWidth: MUSIC_HUB_COLUMNS_MIN_WIDTH, viewportWide: false })).toBe(true)
+  })
+
+  it('reads the viewport only where nothing can be measured', () => {
+    expect(hubColumnsWide({ containerWidth: null, viewportWide: true })).toBe(true)
+    expect(hubColumnsWide({ containerWidth: null, viewportWide: false })).toBe(false)
   })
 })
 

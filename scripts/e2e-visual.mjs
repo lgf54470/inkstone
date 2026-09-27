@@ -4473,6 +4473,12 @@ async function dragZoneBy(page, zone, delta) {
  */
 const MUSIC_BUDGET_POLICY_FLOOR = 100
 
+// FB-R2: the same number `MUSIC_HUB_COLUMNS_MIN_WIDTH` (music-utils.ts) folds the hub's side
+// columns at. It is repeated here on purpose and kept under this name: the assertion below is about
+// what the browser draws, so it must not be handed the app's own answer to read back — a threshold
+// that drifts in the app still has to make the box and the columns agree on screen.
+const MUSIC_HUB_COLUMNS_FOLD_WIDTH = 900
+
 async function readMusicToolbarBudget(page) {
   return page.evaluate(() => {
     const toolbar = document.querySelector('[data-music-toolbar]')
@@ -4590,6 +4596,41 @@ async function assertMusicHubResize(page) {
   check('music: a second double click gives back the window it filled',
     Boolean(restored) && Math.abs(restored.width - shorter.width) <= 8 && Math.abs(restored.height - shorter.height) <= 8,
     `shorter=${JSON.stringify(shorter)} restored=${JSON.stringify(restored)}`)
+
+  // FB-R2: the side columns answer the box the hub was given, not the screen behind it. The viewport
+  // is the desktop one throughout this drag, so the answer the old code gave (a viewport query) would
+  // have kept both columns inline here and let them squeeze the list toward zero. Read twice: once in
+  // the folded window, once after the width is given back — a fold that never comes back is the other
+  // half of the same bug.
+  const foldWidth = 860
+  await dragZoneBy(page, 'e', { x: foldWidth - restored.width, y: 0 })
+  const folded = await readHubColumns(page)
+  check('music: the side columns fold on the window they were given, not on the viewport',
+    folded.width < MUSIC_HUB_COLUMNS_FOLD_WIDTH && folded.viewport >= 1280 && !folded.sidebar && folded.opener,
+    JSON.stringify(folded))
+  await dragZoneBy(page, 'e', { x: restored.width - foldWidth, y: 0 })
+  const unfolded = await readHubColumns(page)
+  check('music: widening the window again brings the columns back',
+    unfolded.width >= MUSIC_HUB_COLUMNS_FOLD_WIDTH && unfolded.sidebar && !unfolded.opener,
+    JSON.stringify(unfolded))
+}
+
+/**
+ * What the hub is drawing about its side columns right now: the box it has, whether the sidebar is
+ * inline inside that box, and whether the header offers the drawer that replaces it.
+ */
+async function readHubColumns(page) {
+  return page.evaluate(({ dialogLabels, sidebarLabels, openerLabels }) => {
+    const dialog = dialogLabels
+      .map((label) => document.querySelector(`[role="dialog"][aria-label="${label}"]`))
+      .find(Boolean)
+    return {
+      width: Math.round(dialog?.getBoundingClientRect().width ?? 0),
+      viewport: window.innerWidth,
+      sidebar: sidebarLabels.some((label) => Boolean(dialog?.querySelector(`aside[aria-label="${label}"]`))),
+      opener: openerLabels.some((label) => Boolean(dialog?.querySelector(`button[aria-label="${label}"]`))),
+    }
+  }, { dialogLabels: LABELS.musicHub, sidebarLabels: LABELS.musicHubNavigation, openerLabels: LABELS.musicHubOpenNavigation })
 }
 
 async function doubleClickHubHeader(page) {

@@ -191,20 +191,35 @@ describe('MusicHubModal search truncation — UI-16', () => {
   })
 })
 
+function stubViewportWidth(width: number): void {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: /min-width:\s*(\d+)px/.test(query) ? width >= Number(/min-width:\s*(\d+)px/.exec(query)?.[1]) : false,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
+}
+
+function findButton(dialog: Element | null, label: string): HTMLElement | undefined {
+  return [...(dialog?.querySelectorAll('button') ?? [])].find((button) => button.getAttribute('aria-label') === label)
+}
+
+// FB-R2: the box the hub was given is what decides, and this stub is that box.
+function stubHubWidth(width: number): void {
+  vi.stubGlobal('ResizeObserver', class {
+    private readonly callback: ResizeObserverCallback
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback
+    }
+    observe(): void {
+      this.callback([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver)
+    }
+    unobserve(): void {}
+    disconnect(): void {}
+  })
+}
+
 describe('MusicHubModal column folding — UI-14', () => {
-  function stubViewportWidth(width: number): void {
-    vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: /min-width:\s*(\d+)px/.test(query) ? width >= Number(/min-width:\s*(\d+)px/.exec(query)?.[1]) : false,
-      media: query,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    }))
-  }
-
-  function findButton(dialog: Element | null, label: string): HTMLElement | undefined {
-    return [...(dialog?.querySelectorAll('button') ?? [])].find((button) => button.getAttribute('aria-label') === label)
-  }
-
   it('keeps both side columns inline on a wide viewport', async () => {
     stubViewportWidth(1280)
     useMusic.setState({ loadLibrary: vi.fn(async () => {}) })
@@ -232,6 +247,32 @@ describe('MusicHubModal column folding — UI-14', () => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     })
     expect(document.querySelector('[data-surface="drawer"]')).toBeNull()
+  })
+})
+
+// FB-R2: the fold used to read the viewport, so a hub dragged narrow on a wide screen kept both
+// columns inline and let them squeeze the list; the viewport is a fact about the screen, and the
+// columns are a fact about the box. The viewport answers the same query in both cases below — the
+// point is that it stops being the answer.
+describe('MusicHubModal column fold follows the hub box (FB-R2)', () => {
+  it('folds the columns on the box the hub was given, wide viewport or not', async () => {
+    stubViewportWidth(1440)
+    stubHubWidth(700)
+    useMusic.setState({ loadLibrary: vi.fn(async () => {}) })
+    await mountHub()
+    const dialog = document.querySelector('[role="dialog"]')
+    expect(dialog?.querySelector(`aside[aria-label="${t('music.hub_sidebar')}"]`)).toBeNull()
+    expect(findButton(dialog, t('music.hub_open_navigation'))).toBeDefined()
+  })
+
+  it('keeps the columns inline on a wide box, narrow viewport or not', async () => {
+    stubViewportWidth(375)
+    stubHubWidth(1200)
+    useMusic.setState({ loadLibrary: vi.fn(async () => {}) })
+    await mountHub()
+    const dialog = document.querySelector('[role="dialog"]')
+    expect(dialog?.querySelector(`aside[aria-label="${t('music.hub_sidebar')}"]`)).toBeDefined()
+    expect(findButton(dialog, t('music.hub_open_navigation'))).toBeUndefined()
   })
 })
 
