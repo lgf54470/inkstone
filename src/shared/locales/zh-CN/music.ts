@@ -90,7 +90,7 @@ export const messages = {
 'music.job_covers': '在线匹配封面',
 'music.job_progress': '已处理 {value0}/{value1} 首',
 'music.job_failed': '任务已中断',
-'music.upload_hint': '把音频或视频文件拖到这里，或从设备中选择文件；标题、歌手、专辑、封面与歌词会自动读取文件内标签。',
+'music.upload_hint': '把音频或视频文件（或整个文件夹）拖到这里，或从设备中选择文件；标题、歌手、专辑、封面与歌词会自动读取文件内标签。',
 'music.upload_choose': '选择文件',
 'music.upload_choose_folder': '选择文件夹',
 'music.upload_progress': '正在上传 {value0}%',

@@ -131,6 +131,12 @@ const LABELS = {
   // FB-M16: the toolbar entry of the reader's own music server, and the two sentences its first-run
   // form shows. Nothing in this gate registers a server — a registration is verified against the
   // real server before it is stored — so the search half of that modal is read by the unit tests.
+  // FB2-F2: the upload entry and the folder door. The rule reads the absence of a directory input
+  // in the surface that takes folders, so both spellings of the door and the panel's own title are
+  // needed to find it by an accessible name.
+  musicUpload: ['上传', 'Upload'],
+  musicTransferTitle: ['音乐传输', 'Music transfer'],
+  musicUploadFolder: ['选择文件夹', 'Choose folder'],
   musicServers: ['音乐服务器', 'Music servers'],
   musicServersNone: ['还没有注册音乐服务器', 'No music server registered yet'],
   musicServersAdd: ['添加服务器', 'Add server'],
@@ -4872,6 +4878,43 @@ async function assertMusicServerSource(page) {
   check('music: the music server modal hands focus back to the entry', focus.returned, JSON.stringify(focus))
 }
 
+// FB2-F2: folders used to be chosen through `<input webkitdirectory>`, and that attribute is what
+// makes Chrome put up its own "upload these files to this site?" confirmation — a browser dialog the
+// app cannot style, localise or dismiss. The invariant is read here rather than trusted to a code
+// review: the panel that takes folders holds no directory input at all, and the folder door is
+// drawn only where the browser's own directory picker exists.
+async function assertMusicUploadPicker(page) {
+  const trigger = (await page.$$(`xpath/.//*[@data-music-toolbar]//button[${ariaOrTextAttr(LABELS.musicUpload)}]`)).at(0)
+  check('music: the toolbar carries the upload entry', Boolean(trigger))
+  if (!trigger) return
+  await trigger.click()
+  const opened = await page.waitForFunction(
+    (titles) => [...document.querySelectorAll('div[role="dialog"]')].some((dialog) => titles.some((title) => (dialog.textContent ?? '').includes(title))),
+    { timeout: 15_000 },
+    LABELS.musicTransferTitle,
+  ).then(() => true, () => false)
+  check('music: the upload entry opens the transfer panel', opened)
+  // The panel is picked by its own title rather than by "the dialog with a file input": the hub's
+  // toolbar carries one too (the m3u import), and it is the first of the two in the document.
+  const shape = await page.evaluate(({ titles, folderDoors }) => {
+    const dialog = [...document.querySelectorAll('div[role="dialog"]')]
+      .find((item) => titles.some((title) => (item.textContent ?? '').includes(title)))
+    if (!dialog) return null
+    return {
+      fileInputs: dialog.querySelectorAll('input[type="file"]').length,
+      directoryInputs: dialog.querySelectorAll('input[webkitdirectory]').length,
+      folderDoor: [...dialog.querySelectorAll('button')].some((button) => folderDoors.includes((button.textContent ?? '').trim())),
+      hasDirectoryPicker: typeof window.showDirectoryPicker === 'function',
+    }
+  }, { titles: LABELS.musicTransferTitle, folderDoors: LABELS.musicUploadFolder })
+  check('music: nothing in the transfer panel asks to upload a folder through a directory input',
+    Boolean(shape) && shape.directoryInputs === 0 && shape.fileInputs === 1, JSON.stringify(shape))
+  check('music: the folder door is drawn exactly where the browser has its own picker',
+    Boolean(shape) && shape.folderDoor === shape.hasDirectoryPicker, JSON.stringify(shape))
+  await page.keyboard.press('Escape')
+  await sleep(300)
+}
+
 async function assertMusicSurface(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(500)
@@ -4911,6 +4954,7 @@ async function assertMusicSurface(page) {
   const playerUnderHub = await rectOf(page, cssByLabels('aside', LABELS.musicMiniPlayer))
   check('music: the floating player steps aside while the hub is open', playerUnderHub === null, JSON.stringify(playerUnderHub))
   await assertMusicServerSource(page)
+  await assertMusicUploadPicker(page)
 
   const rowsReady = await page
     .waitForFunction(() => [...document.querySelectorAll('[role="row"]')]

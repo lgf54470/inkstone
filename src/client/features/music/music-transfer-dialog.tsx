@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { CheckCircle2, TriangleAlert, Upload, X } from 'lucide-react'
 import { Button, IconButton, Spinner } from '../../components/primitives'
 import { Segmented } from '../../components/form'
@@ -8,6 +8,8 @@ import { t, type MessageKey } from '../../lib/i18n'
 import type { MusicDownloadTask, MusicLibraryJob, MusicLibraryJobKind, MusicTransferTarget, MusicUploadTask } from './music-store'
 import { useMusic } from './music-store'
 import { UPLOAD_ACCEPT } from './music-utils'
+import { filesFromDirectoryPicker, filesFromDrop, supportsDirectoryPicker } from './music-folder-drop'
+import { toastMusicNotice } from './music-feedback'
 
 const TRANSFER_WIDTH = 520
 const TARGETS: { value: MusicTransferTarget; label: 'music.source_r2' | 'music.source_webdav' }[] = [
@@ -66,18 +68,28 @@ function TransferBody() {
 export function UploadPicker({ target }: { target: MusicTransferTarget }) {
   const uploadFiles = useMusic((state) => state.uploadFiles)
   const inputRef = useRef<HTMLInputElement>(null)
-  const folderInputRef = useRef<HTMLInputElement>(null)
+  // FB2-F2: the standard directory picker replaces the directory input. Where the browser has none
+  // the chooser is not drawn at all, rather than offering a door whose only other implementation is
+  // the attribute that makes Chrome ask whether the reader really trusts this site.
+  const canPickFolder = supportsDirectoryPicker()
 
-  const accept = useCallback((files: FileList | null) => {
-    if (files?.length) void uploadFiles([...files], target)
+  const accept = useCallback((files: File[]) => {
+    if (files.length) void uploadFiles(files, target)
   }, [uploadFiles, target])
+
+  const pickFolder = async (): Promise<void> => {
+    const picked = await filesFromDirectoryPicker()
+    if (!picked) return
+    if (picked.skipped) toastMusicNotice('music.upload_skipped_count', { value0: picked.skipped })
+    accept(picked.files)
+  }
 
   return (
     <>
       <DropZone
         onFiles={accept}
         onChoose={() => inputRef.current?.click()}
-        onChooseFolder={() => folderInputRef.current?.click()}
+        onChooseFolder={canPickFolder ? () => void pickFolder() : undefined}
       />
       <input
         ref={inputRef}
@@ -86,22 +98,7 @@ export function UploadPicker({ target }: { target: MusicTransferTarget }) {
         multiple
         hidden
         onChange={(event) => {
-          accept(event.target.files)
-          event.target.value = ''
-        }}
-      />
-      <input
-        ref={(node) => {
-          folderInputRef.current = node
-          // The directory picker relies on non-standard attributes React types do not carry.
-          node?.setAttribute('webkitdirectory', '')
-          node?.setAttribute('directory', '')
-        }}
-        type='file'
-        multiple
-        hidden
-        onChange={(event) => {
-          accept(event.target.files)
+          accept([...(event.target.files ?? [])])
           event.target.value = ''
         }}
       />
@@ -112,7 +109,7 @@ export function UploadPicker({ target }: { target: MusicTransferTarget }) {
 // dragenter and dragleave also fire when the pointer crosses a child, so the highlight
 // follows an enter/leave depth count and only clears once the pointer really leaves.
 export function DropZone({ onFiles, onChoose, onChooseFolder }: {
-  onFiles: (files: FileList | null) => void
+  onFiles: (files: File[]) => void
   onChoose: () => void
   onChooseFolder?: () => void
 }) {
@@ -121,6 +118,15 @@ export function DropZone({ onFiles, onChoose, onChooseFolder }: {
   const setOver = (over: boolean): void => {
     if (!over) depthRef.current = 0
     setIsDragOver(over)
+  }
+  // FB2-F2: a dropped folder is walked through its entries, which is also how the plain-file case
+  // arrives — so one handler answers both and the ceilings (and what they leave out) are reported.
+  const acceptDrop = async (event: DragEvent<HTMLDivElement>): Promise<void> => {
+    event.preventDefault()
+    setOver(false)
+    const { files, skipped } = await filesFromDrop(event.dataTransfer)
+    if (skipped) toastMusicNotice('music.upload_skipped_count', { value0: skipped })
+    onFiles(files)
   }
   return (
     <div
@@ -133,11 +139,7 @@ export function DropZone({ onFiles, onChoose, onChooseFolder }: {
         depthRef.current -= 1
         if (depthRef.current <= 0) setOver(false)
       }}
-      onDrop={(event) => {
-        event.preventDefault()
-        setOver(false)
-        onFiles(event.dataTransfer.files)
-      }}
+      onDrop={(event) => void acceptDrop(event)}
       className={cn(
         'flex flex-col items-center gap-2 rounded-[var(--r-lg)] border border-dashed px-4 py-8 text-center transition-colors',
         isDragOver ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--border-default)] bg-[var(--bg-inset)]',

@@ -90,7 +90,7 @@ export const messages = {
 'music.job_covers': 'Matching covers online',
 'music.job_progress': '{value0} of {value1} tracks',
 'music.job_failed': 'Task interrupted',
-'music.upload_hint': 'Drop audio or video files here or choose them from your device. Title, artist, album, cover and lyrics are read from the file tags.',
+'music.upload_hint': 'Drop audio or video files — or a whole folder — here, or choose them from your device. Title, artist, album, cover and lyrics are read from the file tags.',
 'music.upload_choose': 'Choose files',
 'music.upload_choose_folder': 'Choose folder',
 'music.upload_progress': 'Uploading {value0}%',

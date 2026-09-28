@@ -33,6 +33,7 @@ afterEach(() => {
   act(() => root?.unmount())
   root = null
   document.body.innerHTML = ''
+  vi.unstubAllGlobals()
 })
 
 describe('DropZone drag highlight', () => {
@@ -76,19 +77,81 @@ describe('DropZone drag highlight', () => {
   })
 })
 
-describe('UploadPicker folder support', () => {
-  it('offers a folder chooser next to the file chooser', async () => {
-    useMusic.setState({ uploadFiles: vi.fn(async () => {}) })
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    root = createRoot(container)
-    await act(async () => {
-      root?.render(createElement(UploadPicker, { target: 'r2' }))
-    })
+// FB2-F2: a directory input is what makes Chrome ask the reader whether they really mean to upload
+// the folder to this site — a browser dialog the app cannot style, localize or test, and the exact
+// prompt this file used to assert was there. Folders arrive through the drop walker now, or through
+// the standard directory picker where the browser has one.
+async function mountPicker(): Promise<HTMLElement> {
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  root = createRoot(container)
+  await act(async () => {
+    root?.render(createElement(UploadPicker, { target: 'r2' }))
+  })
+  return container
+}
 
-    const folderInput = container.querySelector('input[webkitdirectory]')
-    expect(folderInput).not.toBeNull()
-    expect([...container.querySelectorAll('button')].some((button) => button.textContent?.includes(t('music.upload_choose_folder')))).toBe(true)
+function folderButton(container: HTMLElement): HTMLButtonElement | undefined {
+  return [...container.querySelectorAll('button')].find((button) => button.textContent?.trim() === t('music.upload_choose_folder'))
+}
+
+describe('UploadPicker folder support (FB2-F2)', () => {
+  it('offers no directory input, so the browser never asks about uploading a folder', async () => {
+    useMusic.setState({ uploadFiles: vi.fn(async () => {}) })
+    const container = await mountPicker()
+    expect(container.querySelector('input[webkitdirectory]')).toBeNull()
+    expect(container.querySelectorAll('input[type="file"]')).toHaveLength(1)
+  })
+
+  it('hides the folder chooser on a browser without the directory picker', async () => {
+    useMusic.setState({ uploadFiles: vi.fn(async () => {}) })
+    const container = await mountPicker()
+    expect(folderButton(container)).toBeUndefined()
+  })
+
+})
+
+// The picker half of the same rule: where the browser has a directory picker the door is drawn and
+// what it returns walks the same upload path as a drop.
+describe('UploadPicker folder picker (FB2-F2)', () => {
+  it('hands the files of a picked folder over to the same upload path', async () => {
+    const uploadFiles = vi.fn(async () => {})
+    useMusic.setState({ uploadFiles })
+    vi.stubGlobal('showDirectoryPicker', vi.fn(async () => ({
+      kind: 'directory',
+      name: 'Music',
+      values: () => ({
+        async *[Symbol.asyncIterator]() {
+          yield {
+            kind: 'file',
+            name: 'song.mp3',
+            values: () => ({ async *[Symbol.asyncIterator]() {} }),
+            getFile: async () => new File(['x'], 'song.mp3'),
+          }
+        },
+      }),
+      getFile: async () => new File(['x'], 'Music'),
+    })))
+    const container = await mountPicker()
+    const button = folderButton(container)
+    expect(button).toBeDefined()
+    await act(async () => {
+      button?.click()
+    })
+    expect(uploadFiles).toHaveBeenCalledWith([expect.objectContaining({ name: 'song.mp3' })], 'r2')
+  })
+
+  it('uploads nothing when the reader closes the picker', async () => {
+    const uploadFiles = vi.fn(async () => {})
+    useMusic.setState({ uploadFiles })
+    vi.stubGlobal('showDirectoryPicker', vi.fn(async () => {
+      throw new DOMException('aborted', 'AbortError')
+    }))
+    const container = await mountPicker()
+    await act(async () => {
+      folderButton(container)?.click()
+    })
+    expect(uploadFiles).not.toHaveBeenCalled()
   })
 })
 
