@@ -4,7 +4,7 @@
  * app while the gate still carried the older wording, so `assertMusicSearchClear` built a selector that
  * could never match and the assertion failed for the wrong reason. No other gate can see that drift —
  * `i18n:check` compares the two languages with each other, never with the gate — so this one reads
- * every label list in the two gate files, requires each string to be one the resources carry today (in
+ * every label list in the gate files, requires each string to be one the resources carry today (in
  * either language), and requires each `localeLabel('key')` to name a key both bundles hold.
  *
  * What it cannot do: it does not know which entry a string belongs to (many of the lists name words
@@ -15,14 +15,15 @@
  *
  * Text that is deliberately not resource copy — a fixture name, a structural word, a template's leading
  * text — belongs in the table below with its reason. It is empty on purpose: every label in the two
- * files is a resource string today, and the next one that is not has to say why.
+ * files is a resource string today, and the next one that is not has to say why. Every browser gate is
+ * read, not only the two that own their own lists.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const GATE_FILES = ['scripts/e2e-visual.mjs', 'scripts/e2e-harness.mjs']
+const GATE_FILES = ['scripts/e2e-visual.mjs', 'scripts/e2e-harness.mjs', 'scripts/check-contrast.mjs']
 const LOCALES = ['zh-CN', 'en-US']
 const RESOURCE_ROOT = 'src/shared/locales'
 

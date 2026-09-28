@@ -127,66 +127,66 @@ function localePrefix(key) {
 // locale-agnostic. Every string in them has to be one the resources carry today: scripts/check-visual-labels.mjs
 // holds this file and the harness to that rule, so a reworded control fails the gate instead of the browser.
 const LABELS = {
-  newNote: ['新建笔记', 'New note'],
+  newNote: localeLabel('common.new_note'),
   list: ['笔记', 'Notes'],
-  edit: ['编辑', 'Edit'],
-  preview: ['预览', 'Preview'],
-  present: ['演示模式', 'Presentation mode'],
-  presentExit: ['退出演示', 'Exit presentation'],
-  presentExport: ['导出幻灯片为 PDF', 'Export deck as PDF'],
-  presentExportImages: ['导出幻灯片为图片序列', 'Export deck as images'],
-  slidesPrint: ['打印 / PDF', 'Print / PDF'],
-  slidesDuplicate: ['再复制一个', 'Duplicate'],
+  edit: localeLabel('common.edit'),
+  preview: localeLabel('preview.kanban_file_preview'),
+  present: localeLabel('workspace.presentation_mode'),
+  presentExit: localeLabel('workspace.presentation_exit'),
+  presentExport: localeLabel('workspace.presentation_export'),
+  presentExportImages: localeLabel('workspace.presentation_export_images'),
+  slidesPrint: localeLabel('preview.kanban_export_print', 'slides.tool_print'),
+  slidesDuplicate: localeLabel('slides.duplicate_element'),
   presentRail: localeLabel('workspace.presentation_show_slides', 'workspace.presentation_hide_slides'),
-  presentFreeze: ['冻结当前快照', 'Freeze this snapshot'],
-  presentFollow: ['跟随笔记更新', 'Follow the note'],
-  outline: ['大纲', 'Outline', 'outline'],
-  insert: ['插入', 'Insert'],
-  mindMap: ['思维导图', 'Mind map'],
-  mindMapOutline: ['大纲思维导图', 'Outline Mind Map'],
-  musicHub: ['音乐库', 'Music library'],
-  musicOpenHub: ['打开音乐库', 'Open music library'],
-  musicOpenSettings: ['音乐设置', 'Music settings'],
-  musicSettingsNav: ['音乐', 'Music'],
-  musicSettingsSources: ['在线音源', 'Online sources'],
-  musicHubNavigation: ['音乐导航', 'Music navigation'],
-  musicHubOpenNavigation: ['打开音乐导航', 'Open music navigation'],
-  musicExpandPlayer: ['展开播放器', 'Expand the player'],
-  musicAddToQueue: ['添加到队列', 'Add to queue'],
-  musicGridView: ['网格视图', 'Grid view'],
-  musicListView: ['列表视图', 'List view'],
-  musicFavorite: ['收藏', 'Add to favorites'],
-  musicMoreActions: ['更多操作', 'More actions'],
+  presentFreeze: localeLabel('workspace.presentation_freeze'),
+  presentFollow: localeLabel('workspace.presentation_follow'),
+  outline: localeLabel('common.outline', 'preview.mindmap_mode_outline'),
+  insert: localeLabel('contextmenu.insert'),
+  mindMap: localeLabel('contextmenu.convert_to_mindmap', 'preview.mindmap', 'preview.mindmap_untitled', 'workspace.mind_map'),
+  mindMapOutline: localeLabel('contextmenu.mindmap_outline'),
+  musicHub: localeLabel('music.hub_title'),
+  musicOpenHub: localeLabel('music.open_hub'),
+  musicOpenSettings: localeLabel('music.open_settings'),
+  musicSettingsNav: localeLabel('settings.music'),
+  musicSettingsSources: localeLabel('music.settings_sources'),
+  musicHubNavigation: localeLabel('music.hub_sidebar'),
+  musicHubOpenNavigation: localeLabel('music.hub_open_navigation'),
+  musicExpandPlayer: localeLabel('music.expand_player'),
+  musicAddToQueue: localeLabel('music.add_to_queue'),
+  musicGridView: localeLabel('music.view_grid'),
+  musicListView: localeLabel('music.view_list'),
+  musicFavorite: localeLabel('music.favorite'),
+  musicMoreActions: localeLabel('common.more_actions', 'music.more_actions', 'music.open_menu'),
   // FB-U4: the two columns that fold into the row when the list's own box cannot afford them.
-  musicTableArtist: ['歌手', 'Artist'],
-  musicTableAlbum: ['专辑', 'Album'],
+  musicTableArtist: localeLabel('music.field_artist', 'music.sort_artist', 'music.table_artist'),
+  musicTableAlbum: localeLabel('music.field_album', 'music.table_album'),
   // FB-U3: the two controls the status bar hides below lg / xl, and the pin's own two spellings
   // (the label flips with the track's state).
-  musicEq: ['均衡器', 'Equalizer'],
-  musicPin: ['置顶', 'Pin'],
-  musicUnpin: ['取消置顶', 'Unpin'],
-  musicQueue: ['播放队列', 'Play queue'],
+  musicEq: localeLabel('music.eq'),
+  musicPin: localeLabel('attachments.pin', 'blog.link_pin', 'music.pin', 'music.batch_pin', 'notes.pin'),
+  musicUnpin: localeLabel('attachments.unpin', 'blog.link_unpin', 'music.unpin', 'music.batch_unpin', 'notes.unpin'),
+  musicQueue: localeLabel('music.queue'),
   // FB2-C1: the online results panel's own controls and words.
-  musicProviderResults: ['在线结果', 'Online results'],
-  musicProviderSwitch: ['聚合搜索（GD）', 'Aggregate search (GD)'],
+  musicProviderResults: localeLabel('music.provider_results'),
+  musicProviderSwitch: localeLabel('music.provider_gds'),
   // FB3-F1: the scope control beside that switch, and the aggregate entry in it — the two read as one
   // answer, so they are read as one group.
-  musicProviderScope: ['搜索范围', 'Search in'],
-  musicProviderScopeAll: ['聚合搜索', 'All sources'],
-  musicOpenSettings: ['音乐设置', 'Music settings'],
-  musicRiskAccept: ['我已了解', 'I understand'],
-  musicProviderPreview: ['试听', 'Audition'],
-  musicProviderAdd: ['添加', 'Add'],
-  musicProviderInLibrary: ['已在库中', 'In library'],
+  musicProviderScope: localeLabel('music.provider_scope'),
+  musicProviderScopeAll: localeLabel('music.provider_scope_all'),
+  musicOpenSettings: localeLabel('music.open_settings'),
+  musicRiskAccept: localeLabel('music.settings_risk_accept'),
+  musicProviderPreview: localeLabel('music.provider_preview'),
+  musicProviderAdd: localeLabel('blog.add_tag', 'common.add', 'music.import_url_add', 'music.provider_add', 'music.server_add_one'),
+  musicProviderInLibrary: localeLabel('music.provider_in_library'),
   musicSearchSuggestions: localeLabel('music.search_suggestions'),
-  musicProviderAddSelected: ['添加所选', 'Add selected'],
-  musicSearch: ['搜索歌曲、歌手、专辑或拼音', 'Search tracks, artists, albums or pinyin'],
-  musicSearchClear: ['清除搜索', 'Clear search'],
+  musicProviderAddSelected: localeLabel('music.provider_add_selected'),
+  musicSearch: localeLabel('music.search_placeholder'),
+  musicSearchClear: localeLabel('music.search_clear', 'music.alist_search_clear', 'notes.clear_search_query'),
   // FB3-C1: the popup's own action, and the two names the empty state's action has had (FB3-U8 renamed
   // it away from the clear control's name, so the read below accepts either spelling of the same thing).
-  musicSearchHistory: ['最近搜索', 'Recent searches'],
-  musicSearchClearHistory: ['清空历史', 'Clear history'],
-  musicEqPresets: ['预设', 'Presets'],
+  musicSearchHistory: localeLabel('music.search_history'),
+  musicSearchClearHistory: localeLabel('music.history_clear', 'music.search_clear_history'),
+  musicEqPresets: localeLabel('music.eq_presets'),
   // FB3-F6: the groups of the settings page, in the order the page is meant to read. Each entry is
   // every spelling of one heading, so the read works in either language without pairing them.
   musicSettingsGroups: [
@@ -195,58 +195,58 @@ const LABELS = {
     ['下载与离线', 'Downloads and offline'],
     ['音乐服务器', 'Music servers'],
   ],
-  musicSearchEmptyAction: ['清除搜索', 'Clear search', '显示全部歌曲', 'Show all tracks'],
+  musicSearchEmptyAction: localeLabel('music.search_clear', 'music.search_show_all', 'music.alist_search_clear', 'notes.clear_search_query'),
   // FB2-U1: the queue's own controls — the count in the immersive header is the way in there, and
   // the search is what the hub and the floating card already answer with.
-  musicQueueToggle: ['展开或收起队列', 'Show or hide the queue'],
-  musicQueueSearch: ['搜索播放队列', 'Search the queue'],
+  musicQueueToggle: localeLabel('music.queue_toggle'),
+  musicQueueSearch: localeLabel('music.queue_search'),
   // FB3-C5: the library's own reload control, which this gate presses before it reads a library the
   // fixture has just written into.
-  musicRefresh: ['刷新', 'Refresh'],
+  musicRefresh: localeLabel('common.refresh'),
   // FB-M16: the toolbar entry of the reader's own music server, and the two sentences its first-run
   // form shows. Nothing in this gate registers a server — a registration is verified against the
   // real server before it is stored — so the search half of that modal is read by the unit tests.
   // FB2-F2: the upload entry and the folder door. The rule reads the absence of a directory input
   // in the surface that takes folders, so both spellings of the door and the panel's own title are
   // needed to find it by an accessible name.
-  musicUpload: ['上传', 'Upload'],
+  musicUpload: localeLabel('music.upload'),
   musicTransferTitle: localeLabel('music.transfer_title'),
-  musicUploadFolder: ['选择文件夹', 'Choose folder'],
-  musicServers: ['音乐服务器', 'Music servers'],
-  musicServersNone: ['还没有注册音乐服务器', 'No music server registered yet'],
-  musicServersAdd: ['添加服务器', 'Add server'],
-  musicRemoveFromQueue: ['从队列移除', 'Remove from the queue'],
-  musicMiniPlayer: ['浮动播放器', 'Floating player'],
+  musicUploadFolder: localeLabel('music.upload_choose_folder'),
+  musicServers: localeLabel('music.server_title'),
+  musicServersNone: localeLabel('music.server_none'),
+  musicServersAdd: localeLabel('music.alist_add', 'music.server_add'),
+  musicRemoveFromQueue: localeLabel('music.remove_from_queue'),
+  musicMiniPlayer: localeLabel('music.mini_player'),
   // The windowed hub's own chrome (REF-1b, repaired in FB-F1): the label is how the drag guard
   // below knows the hub is a movable window rather than a viewport-filling sheet.
-  musicMoveHub: ['移动音乐库窗口', 'Move the music library window'],
-  musicMobileNav: ['手机端导航', 'Mobile navigation'],
-  musicImmersive: ['沉浸式播放', 'Full screen player'],
+  musicMoveHub: localeLabel('music.move_hub'),
+  musicMobileNav: localeLabel('shell.mobile_navigation'),
+  musicImmersive: localeLabel('music.immersive'),
   // The immersive header's own window control (REF-10): the label flips with the state, so both
   // spellings are here — the desktop spelling is the app's own en-GB 'Maximise'.
-  musicMaximizePlayer: ['最大化播放器', 'Maximise the player'],
-  musicRestorePlayer: ['还原播放器窗口', 'Restore the player window'],
+  musicMaximizePlayer: localeLabel('music.maximize_player'),
+  musicRestorePlayer: localeLabel('music.restore_player'),
   // The hub's own window control. It is the same store flip the header's double click makes, and
   // the pair is read where the box can be measured rather than through the toolbar sweep.
-  musicMaximizeHub: ['最大化音乐库', 'Maximise the music library'],
-  musicRestoreHub: ['还原音乐库窗口', 'Restore the music library window'],
-  musicLyrics: ['歌词', 'Lyrics'],
+  musicMaximizeHub: localeLabel('music.maximize_hub'),
+  musicRestoreHub: localeLabel('music.restore_hub'),
+  musicLyrics: localeLabel('music.lyrics'),
   // The share center's own four pairs (its entry, dialog, manage control and All Shares row) live
   // in `SHARE_LABELS` in the harness, shared with the contrast gate (SH-99); what stays here is
   // what only this gate reads.
-  shareKpi: ['总访问量 (PV)', 'Total Views (PV)'],
-  shareCategoryDashboard: ['数据看板', 'Dashboard'],
+  shareKpi: localeLabel('blog.total_views_pv', 'share.total_views_pv'),
+  shareCategoryDashboard: localeLabel('share.category_dashboard'),
   shareChannelCollection: localePrefix('share.channel_collection_row'),
-  shareSearch: ['搜索笔记标题、链接或标签…', 'Search note title, link, or tag…'],
-  sharePrintQr: ['打印二维码表', 'Print QR sheet'],
-  shareChannelField: ['分发标记', 'Distribution marker'],
-  shareTrafficFilter: ['流量过滤设置', 'Traffic Filters'],
+  shareSearch: localeLabel('share.search_placeholder'),
+  sharePrintQr: localeLabel('share.batch_print_qr'),
+  shareChannelField: localeLabel('share.channel_input_label'),
+  shareTrafficFilter: localeLabel('share.filter_traffic_title'),
   // The board's compact top bar: one trigger for the actions it has no room to draw, and the rows
   // its menu offers in place of the labeled controls the wide bar shows.
-  kanbanMoreActions: ['更多看板操作', 'More board actions'],
-  kanbanFilterRow: ['筛选', 'Filter'],
-  kanbanSortRow: ['排序', 'Sort'],
-  kanbanShortcuts: ['键盘快捷键', 'Keyboard shortcuts'],
+  kanbanMoreActions: localeLabel('preview.kanban_more_actions'),
+  kanbanFilterRow: localeLabel('preview.kanban_filter'),
+  kanbanSortRow: localeLabel('music.sort', 'preview.kanban_sort'),
+  kanbanShortcuts: localeLabel('command.keyboard_shortcuts_021cf9', 'music.keyboard_help', 'preview.kanban_shortcuts', 'templates.keyboard_shortcuts'),
 }
 
 /**
