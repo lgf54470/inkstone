@@ -26,7 +26,10 @@ import { api, musicProviderCoverUrl, type MusicProviderTrack } from '../../lib/a
 import type { MusicTrack } from '@shared/types'
 
 const QUERY = 'origin'
-const CLEAR = { query: '', providerEnabled: {}, providerScope: 'all' as const, providerResults: null, providerSearching: false, providerKeywords: '', providerFailedSources: [] }
+const CLEAR = {
+  query: '', providerEnabled: {}, providerScope: 'all' as const, providerSourceEnabled: {}, providerSourceOrder: [],
+  providerResults: null, providerSearching: false, providerKeywords: '', providerFailedSources: [],
+}
 
 let rendered: ReturnType<typeof renderElement> | null = null
 
@@ -231,6 +234,29 @@ describe('online results panel search scope (FB3-F1 + FB3-U6)', () => {
     // The aggregate option first, then one entry per catalogue the proxy forwards — the reader picks
     // by the same names the hits are labelled with.
     expect([...scopeSelect().options].map((option) => option.value)).toEqual(['all', 'netease', 'kuwo', 'migu', 'qq', 'bilibili'])
+  })
+
+  // FB3-F2: the control offers what the reader's table leaves on. A catalogue they switched off in
+  // settings is not a catalogue this search can name.
+  it('offers only the catalogues the reader left switched on', async () => {
+    vi.useFakeTimers()
+    useMusic.setState({ providerSourceEnabled: { kuwo: false } })
+    mountWithQuery()
+    await clickSwitch()
+    await settle()
+    expect([...scopeSelect().options].map((option) => option.value)).toEqual(['all', 'netease', 'migu', 'qq', 'bilibili'])
+  })
+
+  it('says no catalogue is on rather than blaming the query, and asks nothing', async () => {
+    vi.useFakeTimers()
+    const off = Object.fromEntries(['netease', 'kuwo', 'migu', 'qq', 'bilibili'].map((source) => [source, false]))
+    useMusic.setState({ providerSourceEnabled: off })
+    mountWithQuery()
+    await clickSwitch()
+    await settle()
+    expect(bodyText()).toContain(t('music.provider_no_sources'))
+    expect(bodyText()).not.toContain(t('music.provider_none'))
+    expect(api.music.providerSearch).not.toHaveBeenCalled()
   })
 
   it('narrows the next search to the chosen catalogue', async () => {

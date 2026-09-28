@@ -165,6 +165,8 @@ export const messages = {
   'music.provider_add_selected': '添加所选',
   'music.provider_clear_selection': '清除',
 'music.provider_none': '没有在线匹配',
+// FB3-F2: with no catalogue switched on this says so, instead of blaming the query for it.
+'music.provider_no_sources': '没有启用任何在线音源，可在音乐设置里开启',
 'music.provider_all_failed': '所有在线音源都没有响应（网络或上游不可用）',
 'music.provider_partial_failed': '{value0} 个在线音源没有响应',
 'music.provider_source_netease': '网易云音乐',
@@ -409,6 +411,12 @@ export const messages = {
 'music.settings_sources': '在线音源',
 'music.settings_sources_hint': '从这里添加的歌曲是引用行：服务端代理每次搜索，并在每次播放时解析可用链接，不存储音频。',
 'music.settings_provider_gds_desc': '一个聚合入口，覆盖五个第三方曲库。',
+// FB3-F2: the order is both the merge order of an answer and the ranking the switch-source candidates
+// come back in, so it is named rather than left to a drag handle.
+'music.settings_source_order': '音源顺序',
+'music.settings_source_order_hint': '决定检索时的先后。',
+'music.source_move_up': '上移 {value0}',
+'music.source_move_down': '下移 {value0}',
 'music.settings_risk_title': '开启前请知悉',
 'music.settings_risk_body': '第三方曲库不是已授权的音乐服务：链接会失效、音质不稳定，是否使用由你自行判断并自行承担风险。请求经本服务器代理，不会共享任何账号凭据。',
 'music.settings_risk_accept': '我已了解',

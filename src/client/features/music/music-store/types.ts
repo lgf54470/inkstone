@@ -204,6 +204,9 @@ export interface MusicStoreState {
   providerEnabled: Record<string, boolean>
   /** FB3-F1: which catalogue the next search asks; `all` is the aggregate fan-out. */
   providerScope: MusicProviderScope
+  /** FB3-F2: per-catalogue opt-out (absent = on) and the order the aggregate asks them in. */
+  providerSourceEnabled: Record<string, boolean>
+  providerSourceOrder: string[]
   /** FB-F7: what the stream URL asks the proxy for; only provider rows carry it. */
   providerQuality: MusicProviderQuality
   /** FB-S6: set once the reader has read the notice about third-party catalogues. */
@@ -384,6 +387,10 @@ export interface MusicStoreState {
   setProviderEnabled: (providerId: string, enabled: boolean) => void
   /** FB3-F1: how many catalogues one query is allowed to cost. */
   setProviderScope: (scope: MusicProviderScope) => void
+  /** FB3-F2: switching one catalogue off also drops a scope that named it. */
+  setProviderSourceEnabled: (source: string, enabled: boolean) => void
+  /** FB3-F2: `delta` is -1 or 1 — one place up or down the ask order. */
+  moveProviderSource: (source: string, delta: number) => void
   /** FB3-P1: `force` skips the session's memory of the same (scope, keywords) — the retry path. */
   searchProviders: (keywords: string, options?: { force?: boolean }) => Promise<void>
   playProviderTrack: (hit: MusicProviderTrack) => Promise<void>

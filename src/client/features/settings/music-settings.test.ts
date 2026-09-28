@@ -12,6 +12,9 @@ beforeEach(() => {
   window.localStorage.clear()
   useMusic.setState({
     providerEnabled: {},
+    providerSourceEnabled: {},
+    providerSourceOrder: [],
+    providerScope: 'all',
     providerQuality: 320,
     providerNoticeAccepted: false,
     showSourceBadge: true,
@@ -184,6 +187,56 @@ describe('music settings section · playback defaults', () => {
     const { container, unmount } = render(createElement(MusicSettings))
     click(switchByLabel(container, t('music.mini_player')))
     expect(useMusic.getState().floatingVisible).toBe(false)
+    unmount()
+  })
+})
+
+// FB3-F2: the aggregate used to be one switch over five catalogues the reader could not see. This is
+// the table they now hold: one row per catalogue, each with its own switch and its place in the ask
+// order — and the order is not cosmetic, it is the merge order of a search answer and the order the
+// switch-source candidates are ranked in.
+describe('music settings section · the catalogue table (FB3-F2)', () => {
+  const sourceRow = (container: HTMLElement, label: string): HTMLElement => {
+    const row = [...container.querySelectorAll('li')].find((item) => item.textContent?.includes(label))
+    if (!row) throw new Error(`no catalogue row for ${label}`)
+    return row
+  }
+
+  const SOURCES = ['netease', 'kuwo', 'migu', 'qq', 'bilibili'] as const
+  const labelOf = (source: string): string => t(`music.provider_source_${source}` as 'music.provider_source_netease')
+  const moveUp = (container: HTMLElement, label: string): HTMLButtonElement => {
+    const button = sourceRow(container, label).querySelector<HTMLButtonElement>(`button[aria-label="${t('music.source_move_up', { value0: label })}"]`)
+    if (!button) throw new Error(`no move-earlier control for ${label}`)
+    return button
+  }
+
+  it('draws one row per catalogue, in the shared order, with its own switch', () => {
+    const { container, unmount } = render(createElement(MusicSettings))
+    const rows = [...container.querySelectorAll('li')].filter((item) => item.querySelector('[role="switch"]'))
+    const labels = SOURCES.map(labelOf)
+    expect(rows).toHaveLength(5)
+    expect(rows.map((row) => row.textContent?.trim())).toEqual(labels)
+    // The ends hold: the first catalogue cannot move earlier and the last cannot move later.
+    expect(moveUp(container, labels[0]).disabled).toBe(true)
+    expect(sourceRow(container, labels[4]).querySelector<HTMLButtonElement>(`button[aria-label="${t('music.source_move_down', { value0: labels[4] })}"]`)?.disabled).toBe(true)
+    unmount()
+  })
+
+  it('switches one catalogue off, and drops a scope that named it', () => {
+    // The per-catalogue switches sit behind the same acknowledgement as the aggregate one.
+    useMusic.setState({ providerNoticeAccepted: true, providerScope: 'kuwo' })
+    const { container, unmount } = render(createElement(MusicSettings))
+    click(switchByLabel(container, t('music.provider_source_kuwo')))
+    expect(useMusic.getState().providerSourceEnabled).toEqual({ kuwo: false })
+    expect(useMusic.getState().providerScope).toBe('all')
+    unmount()
+  })
+
+  it('moves a catalogue one place earlier', () => {
+    useMusic.setState({ providerNoticeAccepted: true })
+    const { container, unmount } = render(createElement(MusicSettings))
+    click(moveUp(container, labelOf('migu')))
+    expect(useMusic.getState().providerSourceOrder).toEqual(['netease', 'migu', 'kuwo', 'qq', 'bilibili'])
     unmount()
   })
 })

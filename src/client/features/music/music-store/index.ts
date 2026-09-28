@@ -77,6 +77,8 @@ function initialProviderState(prefs: MusicPreferences): Partial<MusicStoreState>
   return {
     providerEnabled: prefs.providerEnabled,
     providerScope: prefs.providerScope,
+    providerSourceEnabled: prefs.providerSourceEnabled,
+    providerSourceOrder: prefs.providerSourceOrder,
     providerQuality: prefs.providerQuality,
     providerNoticeAccepted: prefs.providerNoticeAccepted,
     showSourceBadge: prefs.showSourceBadge,

@@ -21,12 +21,11 @@ export function isProviderScope(value: unknown): value is MusicProviderScope {
   return typeof value === 'string' && (PROVIDER_SCOPES as readonly string[]).includes(value)
 }
 
-// FB3-S1: the scope decides which catalogues are asked, never what is sent. A value off the shared
-// list — a stale preference, a hand-edited localStorage — is read as if no scope had been passed, so
-// an unlisted slug can never reach a request. The aggregate answer is the shared list itself rather
-// than a copy of it, because the catalogue list's identity is asserted in tests (see gds.test.ts).
-export function scopeSources(scope: unknown): readonly string[] {
-  return isProviderScope(scope) && scope !== PROVIDER_SCOPE_ALL ? [scope] : GDS_SOURCES
+// FB3-S1: the request boundary is where the whitelist has to hold, whatever the caller computed. A
+// name off the shared list — a stale preference, a hand-edited localStorage, a bug upstream of here —
+// is dropped before a request is built from it, so an unlisted slug can never be sent.
+function askableSources(sources: readonly string[]): readonly string[] {
+  return sources.filter((source) => (GDS_SOURCES as readonly string[]).includes(source))
 }
 
 // One source's answer, kept apart from the merged list. FB-F6: a source that failed
@@ -48,8 +47,8 @@ export interface ProviderSearchOutcome {
 // contributes no page — one dead catalogue must not blank the results of the
 // others. FEA-A1-4 needs the unmerged pages: the rank-order merge hides the
 // lower-ranked duplicate that a dead link should fail over to.
-export async function searchGdsPages(keywords: string, scope: MusicProviderScope = PROVIDER_SCOPE_ALL): Promise<ProviderSourcePage[]> {
-  return Promise.all(scopeSources(scope).map(async (source) => {
+export async function searchGdsPages(keywords: string, sources: readonly string[] = GDS_SOURCES): Promise<ProviderSourcePage[]> {
+  return Promise.all(askableSources(sources).map(async (source) => {
     try {
       const { results } = await api.music.providerSearch(source, keywords)
       const hits = results as MusicProviderTrack[]
@@ -63,8 +62,8 @@ export async function searchGdsPages(keywords: string, scope: MusicProviderScope
   }))
 }
 
-export async function searchGds(keywords: string, scope: MusicProviderScope = PROVIDER_SCOPE_ALL): Promise<ProviderSearchOutcome> {
-  const pages = await searchGdsPages(keywords, scope)
+export async function searchGds(keywords: string, sources: readonly string[] = GDS_SOURCES): Promise<ProviderSearchOutcome> {
+  const pages = await searchGdsPages(keywords, sources)
   return {
     results: mergeProviderResults(pages.map((page) => page.results)),
     failedSources: pages.filter((page) => page.status === 'error').map((page) => page.source),

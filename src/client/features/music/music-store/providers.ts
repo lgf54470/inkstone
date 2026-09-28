@@ -3,7 +3,10 @@ import type { MusicProviderTrack, MusicProviderTrackImportInput } from '../../..
 import type { MusicProviderQuality } from '@shared/constants'
 import type { MusicTrack } from '@shared/types'
 import type { MusicStoreState } from './types'
-import { GDS_PROVIDER_ID, listProviders, matchScore, searchGds, searchGdsPages, type MusicProviderScope } from '../providers'
+import {
+  GDS_PROVIDER_ID, PROVIDER_SCOPE_ALL, listProviders, matchScore, moveSource, orderedSources, scopeSources,
+  searchGds, searchGdsPages, type MusicProviderScope, type ProviderSourceSelection,
+} from '../providers'
 import { persist } from './persist'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import type { MusicGet, MusicSet } from './types'
@@ -70,7 +73,35 @@ export function setProviderEnabled(set: MusicSet, get: MusicGet, providerId: str
 // costs requests, so it has to be readable where the fan-out happens.
 export function setProviderScope(set: MusicSet, get: MusicGet, scope: MusicProviderScope): void {
   set({ providerScope: scope })
+  // FB3-P1: a different scope is a different question, so what the session remembered about the old
+  // one is not an answer to it — and keeping it would let a scope the reader just left come back.
+  clearProviderSearchCache()
   persist(get)
+}
+
+// FB3-F2: one catalogue's own switch. Switching it off also drops a scope that named it: a control the
+// reader cannot see asking the catalogue they just turned off is the switch not meaning anything.
+export function setProviderSourceEnabled(set: MusicSet, get: MusicGet, source: string, enabled: boolean): void {
+  set((state) => ({
+    providerSourceEnabled: { ...state.providerSourceEnabled, [source]: enabled },
+    ...(enabled || state.providerScope !== source ? {} : { providerScope: PROVIDER_SCOPE_ALL as MusicProviderScope }),
+  }))
+  clearProviderSearchCache()
+  persist(get)
+}
+
+// FB3-F2: the ask order, as a permutation of the shared catalogue list. The merge order and the
+// switch-source candidates both read it, because both are "which catalogue would we rather have this
+// song from" (see `mergeProviderResults`).
+export function moveProviderSource(set: MusicSet, get: MusicGet, source: string, delta: number): void {
+  set({ providerSourceOrder: moveSource(orderedSources(sourceSelection(get())), source, delta) })
+  clearProviderSearchCache()
+  persist(get)
+}
+
+// FB3-F2: the two preference lists in the shape the selection helpers read.
+function sourceSelection(state: Pick<MusicStoreState, 'providerSourceEnabled' | 'providerSourceOrder'>): ProviderSourceSelection {
+  return { enabled: state.providerSourceEnabled, order: state.providerSourceOrder }
 }
 
 // FB-F7: the tier is a preference, not a per-request argument — the stream URL reads it, so
@@ -98,7 +129,11 @@ export async function searchProviders(
     set({ providerResults: null, providerFailedSources: [], providerSearching: false, providerKeywords: '' })
     return
   }
+  // FB3-F1 + FB3-F2: the scope narrows to one catalogue, or expands to the reader's own table — which
+  // can be empty, and an empty list is the honest answer rather than asking all five behind a switch
+  // the reader turned off.
   const scope = get().providerScope
+  const sources = scopeSources(scope, sourceSelection(get()))
   const memoKey = `${scope}\n${keywords}`
   // FB3-P1: this session already asked exactly this question. The retry after a failure comes through
   // `force`, because a reader pressing retry is asking again rather than being served a memory.
@@ -109,7 +144,7 @@ export async function searchProviders(
   }
   set({ providerSearching: true, providerKeywords: keywords })
   try {
-    const { results, failedSources } = await searchGds(keywords, scope)
+    const { results, failedSources } = await searchGds(keywords, sources)
     writeProviderSearchMemo(memoKey, { at: Date.now(), results, failedSources })
     set((state) => (state.providerKeywords === keywords ? { providerResults: results, providerFailedSources: failedSources, providerSearching: false } : {}))
   } catch (error) {

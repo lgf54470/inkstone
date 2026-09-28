@@ -1,9 +1,12 @@
+import { useMemo } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { MUSIC_PROVIDER_QUALITIES, type MusicProviderQuality } from '@shared/constants'
-import { Button } from '../../components/primitives'
+import { Button, IconButton } from '../../components/primitives'
 import { Segmented, Select, SettingRow, Switch } from '../../components/form'
 import { t, type MessageKey } from '../../lib/i18n'
 import {
-  IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_SOURCES, LYRIC_TEXT_SIZES, MusicEqPanel, listProviders, useMusic,
+  IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_SOURCES, LYRIC_TEXT_SIZES, MusicEqPanel, listProviders, orderedSources,
+  providerSourceLabel, useMusic,
   type MusicImmersiveBackground, type MusicLyricAlign, type MusicLyricSource, type MusicLyricTextSize, type MusicProvider,
 } from '../music'
 import { MusicServers } from './music-servers'
@@ -81,6 +84,7 @@ function OnlineSources() {
       {listProviders().map((provider) => (
         <ProviderSwitch key={provider.id} provider={provider} locked={!accepted} />
       ))}
+      <SourceTable locked={!accepted} />
       <SettingRow title={t('music.settings_quality')} description={t('music.settings_quality_hint')}>
         <Select
           aria-label={t('music.settings_quality')}
@@ -118,6 +122,58 @@ function ProviderNotice({ onAccept }: { onAccept: () => void }) {
       <p className='text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>{t('music.settings_risk_title')}</p>
       <p className='pt-1 text-[length:var(--text-12)] leading-relaxed text-[var(--text-secondary)]'>{t('music.settings_risk_body')}</p>
       <Button size='sm' variant='secondary' className='mt-2' onClick={onAccept}>{t('music.settings_risk_accept')}</Button>
+    </div>
+  )
+}
+
+// FB3-F2: the aggregate was one switch over five catalogues the reader could neither see nor
+// arrange — and the order is not cosmetic: it is the merge order of an answer and the order the
+// switch-source candidates are ranked in. One row per catalogue, each with its own switch and its
+// place in the ask order.
+function SourceTable({ locked }: { locked: boolean }) {
+  const sourceEnabled = useMusic((state) => state.providerSourceEnabled)
+  const sourceOrder = useMusic((state) => state.providerSourceOrder)
+  const setEnabled = useMusic((state) => state.setProviderSourceEnabled)
+  const move = useMusic((state) => state.moveProviderSource)
+  const order = useMemo(() => orderedSources({ enabled: sourceEnabled, order: sourceOrder }), [sourceEnabled, sourceOrder])
+  return (
+    <div className='mb-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] p-1'>
+      <div className='flex items-baseline justify-between gap-2 px-2 py-1'>
+        <span className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>{t('music.settings_source_order')}</span>
+        <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.settings_source_order_hint')}</span>
+      </div>
+      <ul>
+        {order.map((source, index) => {
+          const label = providerSourceLabel(source)
+          return (
+            <li key={source} className='flex items-center gap-2 rounded-[var(--r-sm)] px-2 py-1 hover:bg-[var(--bg-hover)]'>
+              <span className='min-w-0 flex-1 truncate text-[length:var(--text-12)] text-[var(--text-primary)]'>{label}</span>
+              <IconButton
+                size='sm'
+                label={t('music.source_move_up', { value0: label })}
+                disabled={index === 0}
+                onClick={() => move(source, -1)}
+              >
+                <ChevronUp size={13} />
+              </IconButton>
+              <IconButton
+                size='sm'
+                label={t('music.source_move_down', { value0: label })}
+                disabled={index === order.length - 1}
+                onClick={() => move(source, 1)}
+              >
+                <ChevronDown size={13} />
+              </IconButton>
+              <Switch
+                checked={sourceEnabled[source] !== false}
+                disabled={locked}
+                onChange={(next) => setEnabled(source, next)}
+                label={label}
+              />
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }

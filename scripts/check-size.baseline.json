@@ -24,7 +24,8 @@
     "longFns": 1
   },
   "src/client/features/music/music-provider-results.test.ts": {
-    "lines": 544
+    "lines": 570,
+    "longFns": 1
   },
   "src/client/features/music/music-share-page/page.test.ts": {
     "longFns": 1
@@ -104,13 +105,13 @@
     "longFns": 1
   },
   "src/shared/locales/en-US/music.ts": {
-    "lines": 520
+    "lines": 529
   },
   "src/shared/locales/en-US/preview.ts": {
     "lines": 520
   },
   "src/shared/locales/zh-CN/music.ts": {
-    "lines": 514
+    "lines": 522
   },
   "src/shared/locales/zh-CN/preview.ts": {
     "lines": 520

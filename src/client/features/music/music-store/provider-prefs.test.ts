@@ -46,6 +46,41 @@ describe('online search scope (FB3-F1)', () => {
   })
 })
 
+// FB3-F2: the aggregate was one switch over five catalogues the reader could not see. Per catalogue
+// they now decide both halves — on or off, and in what order they are asked — and that table is a
+// preference like the rest, so it outlives the settings page that set it.
+describe('per-catalogue table (FB3-F2)', () => {
+  it('switches one catalogue off, and a scope that named it back to the aggregate', () => {
+    vi.useFakeTimers()
+    useMusic.setState({ providerSourceEnabled: {}, providerScope: 'kuwo' })
+    useMusic.getState().setProviderSourceEnabled('kuwo', false)
+    vi.advanceTimersByTime(300)
+    expect(useMusic.getState().providerSourceEnabled).toEqual({ kuwo: false })
+    expect(useMusic.getState().providerScope).toBe('all')
+    expect(storedPrefs()?.providerSourceEnabled).toEqual({ kuwo: false })
+    expect(storedPrefs()?.providerScope).toBe('all')
+  })
+
+  it('moves a catalogue up the ask order and persists the order', () => {
+    vi.useFakeTimers()
+    useMusic.setState({ providerSourceOrder: [] })
+    useMusic.getState().moveProviderSource('migu', -1)
+    vi.advanceTimersByTime(300)
+    expect(useMusic.getState().providerSourceOrder).toEqual(['netease', 'migu', 'kuwo', 'qq', 'bilibili'])
+    expect(storedPrefs()?.providerSourceOrder).toEqual(['netease', 'migu', 'kuwo', 'qq', 'bilibili'])
+  })
+
+  it('reads the stored table back and drops anything the proxy would refuse', () => {
+    window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({
+      providerSourceEnabled: { kuwo: false, spotify: false, qq: 'yes' },
+      providerSourceOrder: ['qq', 'spotify', 'netease'],
+    }))
+    const prefs = loadPreferences()
+    expect(prefs.providerSourceEnabled).toEqual({ kuwo: false })
+    expect(prefs.providerSourceOrder).toEqual(['qq', 'netease'])
+  })
+})
+
 // FB-S6: the opt-in is a decision with consequences, so it is stated once and on purpose.
 describe('online source notice (FB-S6)', () => {
   it('ships unacknowledged and records the acknowledgement', () => {

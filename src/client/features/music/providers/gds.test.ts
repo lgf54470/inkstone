@@ -12,7 +12,7 @@ vi.mock('../../../lib/api', () => ({
 
 import { GDS_UPSTREAM_SOURCES } from '@shared/constants'
 import { api } from '../../../lib/api'
-import { GDS_SOURCES, PROVIDER_SCOPE_ALL, scopeSources, searchGds, searchGdsPages, type MusicProviderScope } from './gds'
+import { GDS_SOURCES, searchGds, searchGdsPages } from './gds'
 
 // FB-S4: the catalogues the search box offers and the catalogues the proxy forwards were two
 // hand-kept lists. Drift is quiet in both directions: a name the client offers and the worker
@@ -62,43 +62,35 @@ describe('gds source status (FB-F6)', () => {
 })
 
 // FB3-F1: five catalogues per query is five requests and five slots of the proxy's budget for a
-// reader who usually has one in mind. The scope narrows the fan-out. FB3-S1 is the other half of the
-// same rule: the scope is a client-side way to ask fewer catalogues, never a slug that reaches a
-// request — anything off the shared list is read as if no scope had been passed at all.
-describe('gds search scope (FB3-F1 + FB3-S1)', () => {
+// reader who usually has one in mind. Which catalogues a search asks is the caller's decision (see
+// `selection.ts`: the scope, and FB3-F2's per-catalogue table); this is the boundary that decision
+// arrives at, and FB3-S1 is the half that has to hold here — nothing off the shared list is sent,
+// whatever the caller computed.
+describe('gds search fan-out (FB3-F1 + FB3-S1)', () => {
   beforeEach(() => {
     vi.mocked(api.music.providerSearch).mockClear()
   })
 
-  it('asks only the chosen catalogue when one source is in scope', async () => {
-    const pages = await searchGdsPages('song', 'kuwo')
+  it('asks only the catalogues it was handed', async () => {
+    const pages = await searchGdsPages('song', ['kuwo'])
     expect(pages.map((page) => page.source)).toEqual(['kuwo'])
     expect(api.music.providerSearch).toHaveBeenCalledTimes(1)
     expect(api.music.providerSearch).toHaveBeenCalledWith('kuwo', 'song')
   })
 
-  it('fans out to every catalogue for the aggregate scope', async () => {
-    const pages = await searchGdsPages('song', PROVIDER_SCOPE_ALL)
+  it('asks every catalogue when no list was named', async () => {
+    const pages = await searchGdsPages('song')
     expect(pages.map((page) => page.source)).toEqual([...GDS_UPSTREAM_SOURCES])
   })
 
-  it('reads a name off the shared list as the aggregate scope rather than as a catalogue', async () => {
-    const pages = await searchGdsPages('song', 'spotify' as MusicProviderScope)
-    expect(pages.map((page) => page.source)).toEqual([...GDS_UPSTREAM_SOURCES])
+  it('never lets a name off the shared list reach a request', async () => {
+    await searchGdsPages('song', ['kuwo', 'spotify', 'https://evil.example/steal'])
+    expect(vi.mocked(api.music.providerSearch).mock.calls.map(([source]) => source)).toEqual(['kuwo'])
   })
 
-  it('never lets an off-list scope reach a request', async () => {
-    await searchGdsPages('song', 'https://evil.example/steal' as MusicProviderScope)
-    const asked = vi.mocked(api.music.providerSearch).mock.calls.map(([source]) => source)
-    expect(asked).toEqual([...GDS_UPSTREAM_SOURCES])
-  })
-
-  // The aggregate answer is the shared list itself rather than a copy of it: the identity the
-  // catalogue list already rests on (FB-S4) has to hold for the scope's expansion too, or a later
-  // edit to the list would quietly apply in one place and not the other.
-  it('gives the shared catalogue list itself for anything that is not one of its entries', () => {
-    expect(scopeSources(PROVIDER_SCOPE_ALL)).toBe(GDS_SOURCES)
-    expect(scopeSources('unknown')).toBe(GDS_SOURCES)
-    expect(scopeSources('migu')).toEqual(['migu'])
+  it('asks nothing when the reader has switched every catalogue off', async () => {
+    const pages = await searchGdsPages('song', [])
+    expect(pages).toEqual([])
+    expect(api.music.providerSearch).not.toHaveBeenCalled()
   })
 })

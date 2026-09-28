@@ -6,14 +6,14 @@ import { t, type MessageKey } from '../../lib/i18n'
 import { formatTimecode } from '../../lib/time'
 import type { MusicTrack } from '@shared/types'
 import { useMusic } from './music-store'
-import { GDS_SOURCES, PROVIDER_SCOPE_ALL, isProviderScope, providerSourceLabel, scopeSources, type MusicProviderScope } from './providers'
+import { GDS_SOURCES, PROVIDER_SCOPE_ALL, enabledSources, isProviderScope, providerSourceLabel, type MusicProviderScope } from './providers'
 import { musicProviderCoverUrl, type MusicProviderTrack } from '../../lib/api'
 
 // FB-F2: every state the panel can be in has words. The old render chain fell through
 // to nothing whenever the settled keywords did not match the query, and that is exactly
 // what a reader saw after flipping the switch on with a search already on screen:
 // enabled, no request in flight, no result and no message — the panel looked dead.
-export type ProviderPanelState = 'off' | 'loading' | 'ready' | 'none' | 'failed'
+export type ProviderPanelState = 'off' | 'loading' | 'ready' | 'none' | 'failed' | 'sources'
 
 export function providerPanelState(input: {
   enabled: boolean
@@ -22,8 +22,13 @@ export function providerPanelState(input: {
   failedSources: string[]
   keywords: string
   query: string
+  /** FB3-F2: how many catalogues the reader's table leaves switched on. */
+  sourceCount?: number
 }): ProviderPanelState {
   if (!input.enabled) return 'off'
+  // FB3-F2: a search with no catalogue behind it is not a search that found nothing, and saying "no
+  // online matches" would blame the query for a switch the reader turned off.
+  if (input.sourceCount === 0) return 'sources'
   // An answer belongs to the query it was asked for. Anything else means this query
   // has not been answered yet, which from the reader's side of the screen is loading.
   if (input.searching || input.keywords !== input.query) return 'loading'
@@ -72,6 +77,7 @@ export function MusicProviderResults() {
   const setProviderEnabled = useMusic((state) => state.setProviderEnabled)
   const scope = useMusic((state) => state.providerScope)
   const setProviderScope = useMusic((state) => state.setProviderScope)
+  const askable = useAskableSources()
   // FB2-U3: whether the library already holds a hit is a fact about the reader's own rows, so it is
   // read from them — and a hit is the same song as a row when the catalogue and the song id agree.
   const libraryTracks = useMusic((state) => state.tracks)
@@ -82,12 +88,13 @@ export function MusicProviderResults() {
   useProviderSearch(query, enabled, scope, searchProviders)
 
   if (!query.trim()) return null
-  const state = providerPanelState({ enabled, searching, results, failedSources, keywords, query })
+  const state = providerPanelState({ enabled, searching, results, failedSources, keywords, query, sourceCount: askable.length })
   return (
     <section aria-label={t('music.provider_results')} className='border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'>
       <ProviderPanelHeader
         enabled={enabled}
         scope={scope}
+        sources={askable}
         onToggle={(value) => setProviderEnabled('gds', value)}
         onScope={setProviderScope}
       />
@@ -95,7 +102,7 @@ export function MusicProviderResults() {
         state={state}
         results={results}
         failedSources={failedSources}
-        scopeSize={scopeSources(scope).length}
+        scopeSize={askable.length}
         selected={selection.selected}
         adding={selection.adding}
         busy={busy}
@@ -128,12 +135,22 @@ function useProviderSearch(
   }, [query, enabled, scope, search])
 }
 
+// FB3-F2: the reader's own table decides which catalogues the aggregate asks, which ones the scope
+// control may name, and how many a failure is counted against.
+function useAskableSources(): string[] {
+  const enabled = useMusic((state) => state.providerSourceEnabled)
+  const order = useMusic((state) => state.providerSourceOrder)
+  return useMemo(() => enabledSources({ enabled, order }), [enabled, order])
+}
+
 // FB3-F1 + FB3-U6: which catalogue to ask is the reader's first question about an online list, and
 // the switch that governs the list is their second. Both live in this one row rather than in two
 // places, because they answer the same question — how much is this query allowed to cost.
-function ProviderPanelHeader({ enabled, scope, onToggle, onScope }: {
+function ProviderPanelHeader({ enabled, scope, sources, onToggle, onScope }: {
   enabled: boolean
   scope: MusicProviderScope
+  /** FB3-F2: the catalogues the reader's table leaves on; the scope can only name one of these. */
+  sources: readonly string[]
   onToggle: (value: boolean) => void
   onScope: (scope: MusicProviderScope) => void
 }) {
@@ -149,7 +166,7 @@ function ProviderPanelHeader({ enabled, scope, onToggle, onScope }: {
           onChange={(event) => onScope(readScope(event.target.value))}
         >
           <option value={PROVIDER_SCOPE_ALL}>{t('music.provider_scope_all')}</option>
-          {GDS_SOURCES.map((source) => (
+          {sources.map((source) => (
             <option key={source} value={source}>{providerSourceLabel(source)}</option>
           ))}
         </Select>
@@ -280,6 +297,7 @@ function ProviderPanelBody({
   onRetry, onToggle, onAddSelected, onClearSelection,
 }: ProviderPanelBodyProps) {
   if (state === 'off') return <Notice text={t('music.provider_off')} align='start' />
+  if (state === 'sources') return <Notice text={t('music.provider_no_sources')} align='start' />
   if (state === 'loading') return <Notice text={t('common.loading')} />
   if (state === 'none') return <Notice text={t('music.provider_none')} />
   if (state === 'failed') return <ProviderFailureNotice failedSources={failedSources} scopeSize={scopeSize} onRetry={onRetry} />

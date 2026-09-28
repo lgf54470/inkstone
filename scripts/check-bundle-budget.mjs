@@ -19,7 +19,14 @@ const BUDGETS = {
   // immersive layer and the shared transport/artwork code. All of them are
   // opened on demand, so the cap is per chunk and the layer they belong to is
   // asserted by MUST_BE_LAZY below.
-  music: 96_000,
+  //
+  // 96_000 → 100_000: the shared store chunk carries the online-source half of the feature, and one
+  // round added three of them to it — the search scope, the per-catalogue table (switch + ask order)
+  // and the session memo that stops a query being asked twice. Measured 96.8 KiB against the old cap,
+  // with the biggest other music chunk (the hub modal) at 92.3 KiB and unchanged by that work. The cap
+  // stays per chunk and the lazy assertion below still holds the layer; what it buys is headroom for
+  // the next feature rather than room for a rewrite.
+  music: 100_000,
 }
 
 // Eager layer: what the document pulls in plus the boot chunk the entry imports,

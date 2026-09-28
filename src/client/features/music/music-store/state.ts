@@ -1,7 +1,7 @@
 import { MUSIC_PROVIDER_DEFAULT_QUALITY, MUSIC_PROVIDER_QUALITIES, type MusicProviderQuality } from '@shared/constants'
 import type { MusicPlayMode } from '@shared/types'
 import { LYRIC_SOURCES, type MusicLyricSource } from '../music-utils'
-import { PROVIDER_SCOPES, PROVIDER_SCOPE_ALL, type MusicProviderScope } from '../providers'
+import { GDS_SOURCES, PROVIDER_SCOPES, PROVIDER_SCOPE_ALL, type MusicProviderScope } from '../providers'
 import type {
   MusicHubGeometry, MusicImmersiveBackground, MusicLyricAlign, MusicLyricTextSize, MusicSort, MusicSortDirection, MusicSourceFilter, MusicViewMode,
 } from './types'
@@ -49,6 +49,10 @@ export interface MusicPreferences {
   providerEnabled: Record<string, boolean>
   /** FB3-F1: which catalogue a search asks — the aggregate fan-out, or one named upstream. */
   providerScope: MusicProviderScope
+  /** FB3-F2: per-catalogue opt-out; an absent entry is on, so the table ships all five. */
+  providerSourceEnabled: Record<string, boolean>
+  /** FB3-F2: the ask order — the reader's arrangement first, the shared order behind it. */
+  providerSourceOrder: string[]
   /** FB-F7: the tier asked of the aggregate upstream when a playable link is resolved. */
   providerQuality: MusicProviderQuality
   /** FB-S6: the one-time notice shown before the first catalogue is switched on. */
@@ -111,6 +115,28 @@ function readLyricOffsets(value: unknown): Record<string, number> {
   return offsets
 }
 
+// FB3-F2: the per-catalogue table. A stored `false` is the reader turning a catalogue off, so only
+// that direction is kept — an entry saying `true` is the same as the entry being absent, and keeping
+// it out of the map means the shipped default stays "every catalogue is on".
+function readSourceEnabled(value: unknown): Record<string, boolean> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const enabled: Record<string, boolean> = {}
+  for (const source of GDS_SOURCES) {
+    if ((value as Record<string, unknown>)[source] === false) enabled[source] = false
+  }
+  return enabled
+}
+
+function readSourceOrder(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const order: string[] = []
+  for (const entry of value) {
+    if (typeof entry !== 'string' || !(GDS_SOURCES as readonly string[]).includes(entry) || order.includes(entry)) continue
+    order.push(entry)
+  }
+  return order
+}
+
 // A provider switch is a boolean keyed by the provider id; junk entries are off.
 function readProviderEnabled(value: unknown): Record<string, boolean> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
@@ -151,6 +177,8 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   lyricOffsets: {},
   providerEnabled: {},
   providerScope: PROVIDER_SCOPE_ALL,
+  providerSourceEnabled: {},
+  providerSourceOrder: [],
   providerQuality: MUSIC_PROVIDER_DEFAULT_QUALITY,
   providerNoticeAccepted: false,
   // On by default: this is what the fallback has always done, and the switch exists to turn it off.
@@ -209,14 +237,30 @@ export function loadPreferences(): MusicPreferences {
     lyricAlign: readListed(parsed.lyricAlign, LYRIC_ALIGNS, DEFAULT_PREFERENCES.lyricAlign),
     lyricTextSize: readListed(parsed.lyricTextSize, LYRIC_TEXT_SIZES, DEFAULT_PREFERENCES.lyricTextSize),
     lyricOffsets: readLyricOffsets(parsed.lyricOffsets),
-    providerEnabled: readProviderEnabled(parsed.providerEnabled),
-    providerScope: readListed(parsed.providerScope, PROVIDER_SCOPES, PROVIDER_SCOPE_ALL),
-    providerQuality: readListed(parsed.providerQuality, MUSIC_PROVIDER_QUALITIES, MUSIC_PROVIDER_DEFAULT_QUALITY),
-    providerNoticeAccepted: parsed.providerNoticeAccepted === true,
+    ...readProviderPreferences(parsed),
     // The badge is on unless it was explicitly turned off, so an older payload keeps it.
     showSourceBadge: parsed.showSourceBadge !== false,
     lyricSource: readListed(parsed.lyricSource, LYRIC_SOURCES, DEFAULT_PREFERENCES.lyricSource),
     providerAutoSwap: parsed.providerAutoSwap !== false,
+  }
+}
+
+// FB3-F1 + FB3-F2: the online-source half of the preferences — the aggregate switch, the per-catalogue
+// table and the scope. They are read in one place because they answer one question (which catalogues
+// does a search ask), and because a scope that names a catalogue the table has switched off has to be
+// read back as the aggregate: the switch is the reader's decision and it wins over the scope they left
+// set.
+function readProviderPreferences(parsed: Record<string, unknown>): Pick<MusicPreferences,
+  'providerEnabled' | 'providerScope' | 'providerSourceEnabled' | 'providerSourceOrder' | 'providerQuality' | 'providerNoticeAccepted'> {
+  const sourceEnabled = readSourceEnabled(parsed.providerSourceEnabled)
+  const scope = readListed(parsed.providerScope, PROVIDER_SCOPES, PROVIDER_SCOPE_ALL)
+  return {
+    providerEnabled: readProviderEnabled(parsed.providerEnabled),
+    providerSourceEnabled: sourceEnabled,
+    providerSourceOrder: readSourceOrder(parsed.providerSourceOrder),
+    providerQuality: readListed(parsed.providerQuality, MUSIC_PROVIDER_QUALITIES, MUSIC_PROVIDER_DEFAULT_QUALITY),
+    providerNoticeAccepted: parsed.providerNoticeAccepted === true,
+    providerScope: scope !== PROVIDER_SCOPE_ALL && sourceEnabled[scope] === false ? PROVIDER_SCOPE_ALL : scope,
   }
 }
 

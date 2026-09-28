@@ -171,6 +171,9 @@ export const messages = {
   'music.provider_add_selected': 'Add selected',
   'music.provider_clear_selection': 'Clear',
 'music.provider_none': 'No online matches',
+// FB3-F2: a search with no catalogue behind it is a switch the reader turned off, not a query that
+// matched nothing.
+'music.provider_no_sources': 'No online source is switched on — turn one on in the music settings',
 'music.provider_all_failed': 'No online source answered — every catalogue is unreachable from here',
 'music.provider_partial_failed': '{value0} online sources did not answer',
 'music.provider_source_netease': 'NetEase Cloud Music',
@@ -415,6 +418,12 @@ export const messages = {
 'music.settings_sources': 'Online sources',
 'music.settings_sources_hint': 'Songs added from here are reference rows: the server proxies each search and resolves a playable link per play, and stores no audio.',
 'music.settings_provider_gds_desc': 'One aggregator over five third-party catalogues.',
+// FB3-F2: the per-catalogue table. The order is the merge order of an answer and the order the
+// switch-source candidates are ranked in, so it is named rather than left to a drag handle.
+'music.settings_source_order': 'Catalogue order',
+'music.settings_source_order_hint': 'The order a search asks them in.',
+'music.source_move_up': 'Move {value0} earlier',
+'music.source_move_down': 'Move {value0} later',
 'music.settings_risk_title': 'Before you turn this on',
 'music.settings_risk_body': 'Third-party catalogues are not licensed music services. Links break, quality varies, and using them is your own decision and your own risk. Requests are proxied by this server and no account credentials are shared.',
 'music.settings_risk_accept': 'I understand',
