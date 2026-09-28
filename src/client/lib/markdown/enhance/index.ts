@@ -63,8 +63,9 @@ interface EnhanceOptions {
   /**
    * Whether charts are drawn with their entrance animation. A surface that hands the result to
    * something that reads its pixels — the printed deck, whose sheet is handed to the print pipeline
-   * the moment the webfonts land — passes `true`: chart.js animates towards its data, so a canvas
-   * read while an animation runs is blank, and a resize clears it and starts another one.
+   * the moment the webfonts land, and the note export, which turns every canvas into a PNG inside
+   * the tick it created them — passes `true`: chart.js animates towards its data, so a canvas read
+   * while an animation runs is blank, and a resize clears it and starts another one.
    */
   instantCharts?: boolean
 }

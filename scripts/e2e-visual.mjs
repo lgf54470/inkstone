@@ -516,6 +516,8 @@ async function assertPresentationPages(page) {
   check('presentation pages: a thumbnail renders the markup the projector prepared', sameArtifacts(prepared), `stage=${describeArtifacts(prepared.stage)} thumb=${describeArtifacts(prepared.thumb)}`)
   check('presentation pages: the projector draws the chart on its own canvas', prepared.stage.live && prepared.stage.painted > 0, describeArtifacts(prepared.stage))
   check('presentation pages: the slide list shows the chart as a picture', prepared.thumb.still > 0, describeArtifacts(prepared.thumb))
+  const stillPixels = await readStillPixels(page)
+  check('presentation pages: the picture in the slide list was drawn, not an empty frame', stillPixels > 0, `pixels=${stillPixels}`)
 
   await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])
   await sleep(400)
@@ -684,6 +686,37 @@ async function assertDeckImageExport(page) {
   check('export: the deck images are saved as one archive', saved.some((name) => name.endsWith('.zip')), JSON.stringify(saved))
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
+}
+
+// The note export writes a document instead of printing one, and it turns every chart canvas in that
+// document into a PNG inside the same tick the chart was created — so the file it wrote carried fully
+// transparent chart pictures: on a four-bar chart, 0 of the 69246 pixels a drawn chart has were on the
+// canvas when the picture was taken, and the exported PNG held the same nothing. This reads the
+// document the export produces (the same function the note row's menu calls) and counts the pixels of
+// the chart picture inside it, because every read this path had counted elements — and an empty PNG is
+// an element.
+async function assertNoteExportCharts(page) {
+  const read = await page.evaluate(async () => {
+    const note = await import('/src/client/lib/export-note.ts')
+    const chart = { type: 'bar', data: { labels: ['A', 'B'], datasets: [{ label: 'Probe', data: [3, 5], backgroundColor: '#2563eb' }] } }
+    const content = ['# Export probe', '', '```chart', JSON.stringify(chart), '```'].join('\n')
+    const html = await note.renderNoteToExportHtml({ title: 'Export probe', content }, 'zh-CN')
+    const picture = new DOMParser().parseFromString(html, 'text/html').querySelector('img.chartjs-image')
+    if (!picture) return { pictures: 0, painted: -1, size: '' }
+    const image = new Image()
+    image.src = picture.getAttribute('src') ?? ''
+    await image.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = image.naturalWidth
+    canvas.height = image.naturalHeight
+    const context = canvas.getContext('2d')
+    context.drawImage(image, 0, 0)
+    const data = context.getImageData(0, 0, canvas.width, canvas.height).data
+    let painted = 0
+    for (let index = 3; index < data.length; index += 400) if (data[index] > 0) painted++
+    return { pictures: 1, painted, size: `${image.naturalWidth}x${image.naturalHeight}` }
+  })
+  check('export: an exported note carries a chart that was drawn, not an empty frame', read.pictures > 0 && read.painted > 0, JSON.stringify(read))
 }
 
 // The mind map block is the surface with the most moving parts: the library loads on demand, the
@@ -1245,6 +1278,37 @@ async function readRenderedMarkup(page) {
       theme: document.documentElement.dataset.theme ?? '',
       stage: artifacts(stage),
       thumb: artifacts(active),
+    }
+  })
+}
+
+// The list draws the still the measuring pass captured, and that capture reads the chart's canvas
+// (slide-html's freezeChart). So a still that is there but empty is a picture of nothing — which is
+// what the pass shipped while it drew its charts with the entrance animation: the capture runs in the
+// tick the chart is created, and chart.js draws on a later one (probe: 0 painted pixels of the 51604 a
+// drawn chart has, the whole chart once the animation had run). The read above counts elements, and a
+// fully transparent PNG is an element, so it was green on that pass. The count is sampled every 400th
+// byte, like the sheet's own painted read: this asks whether the frame holds a chart at all.
+async function readStillPixels(page) {
+  return page.evaluate(async () => {
+    const still = document.querySelector('[data-presentation-rail] [aria-current="true"] img.chartjs-still')
+    if (!still) return -1
+    try {
+      const image = new Image()
+      image.src = still.getAttribute('src') ?? ''
+      await image.decode()
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d')
+      context.drawImage(image, 0, 0)
+      const data = context.getImageData(0, 0, canvas.width, canvas.height).data
+      let drawn = 0
+      for (let index = 3; index < data.length; index += 400) if (data[index] > 0) drawn++
+      return drawn
+    }
+    catch {
+      return -1
     }
   })
 }
@@ -7295,6 +7359,7 @@ async function main() {
     await assertPresentationAccessibility(page)
     await assertDeckExport(page)
     await assertDeckImageExport(page)
+    await assertNoteExportCharts(page)
     await assertMindmapBlock(page)
     await assertMindmapSplitEditing(page)
     await assertSlidesEditor(page)

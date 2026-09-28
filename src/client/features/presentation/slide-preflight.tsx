@@ -83,6 +83,9 @@ export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, content,
         contentWidth={metrics.contentWidth}
         contentHeight={metrics.contentHeight}
         onPlan={report}
+        // This pass is invisible and its markup is captured for the slide list, so its charts are
+        // drawn instantly — the list draws the picture the capture took (SlideCanvasProps).
+        instantCharts
       />
     </div>
   )

@@ -21,6 +21,14 @@ export interface SlideCanvasProps {
    * plan is measured because it renders the same markup the projector shows.
    */
   onPlan: (plan: SlidePlan) => void
+  /**
+   * Whether charts are drawn with their entrance animation. Off by default, because the projector's
+   * canvas is looked at. The measuring pass turns it on: it is invisible, and its markup is captured
+   * for the slide list — the capture reads the canvas, and chart.js draws its first frame on a later
+   * one, so a pass that captured an animated chart shipped a picture of nothing (measured: 0 of
+   * 51604 pixels drawn at capture, the whole chart after the animation).
+   */
+  instantCharts?: boolean
 }
 
 // The design canvas is laid out at its design size and scaled, so the slide image
@@ -44,7 +52,7 @@ export function SlideViewport({ metrics, cacheKey, source, subPage, onPlan }: { 
   )
 }
 
-export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHeight, onPlan }: SlideCanvasProps) {
+export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHeight, onPlan, instantCharts = false }: SlideCanvasProps) {
   const proseFont = useSession((s) => s.settings.appearance.proseFont)
   const preview = useSession((s) => s.settings.preview)
   const dark = useIsDarkTheme()
@@ -61,7 +69,7 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   const [renderVersion, setRenderVersion] = useState(0)
   const markDiagramsRendered = useCallback(() => setRenderVersion((version) => version + 1), [])
   const { plan, measured } = useSlideLayout(hostRef, html, subPage, contentWidth, contentHeight, renderVersion)
-  useSlideDiagrams(hostRef, html, dark, markDiagramsRendered)
+  useSlideDiagrams(hostRef, html, dark, markDiagramsRendered, instantCharts)
   useFontLoadedMeasure(markDiagramsRendered)
   // Only a measurement of the markup on screen is published. The canvas is reused when
   // the show moves to another slide, so its state still holds the previous slide's plan
@@ -171,7 +179,7 @@ function applySlidePage(children: HTMLElement[], plan: SlidePlan, subPage: numbe
 // editor preview does: an observer-driven re-render would fire on the diagram's
 // own DOM writes and re-render them forever, and every pagination re-measure
 // would then see the leftover placeholders instead of the diagram's real height.
-function useSlideDiagrams(hostRef: RefObject<HTMLDivElement | null>, html: string, dark: boolean, onRendered: () => void): void {
+function useSlideDiagrams(hostRef: RefObject<HTMLDivElement | null>, html: string, dark: boolean, onRendered: () => void, instantCharts: boolean): void {
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
@@ -179,7 +187,7 @@ function useSlideDiagrams(hostRef: RefObject<HTMLDivElement | null>, html: strin
     const render = async () => {
       await renderPendingMermaid(host, dark)
       if (cancelled) return
-      await renderChartJs(host, dark)
+      await renderChartJs(host, dark, { instant: instantCharts })
       if (!cancelled) onRendered()
     }
     void render().catch((error: unknown) => {
@@ -189,7 +197,7 @@ function useSlideDiagrams(hostRef: RefObject<HTMLDivElement | null>, html: strin
       cancelled = true
       destroyChartInstances(host)
     }
-  }, [html, dark, hostRef, onRendered])
+  }, [html, dark, hostRef, onRendered, instantCharts])
 }
 
 function useFontLoadedMeasure(onLoaded: () => void): void {

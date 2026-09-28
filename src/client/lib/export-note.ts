@@ -89,6 +89,7 @@ async function runExportEnhancements(container: HTMLDivElement, note: { title: s
     await enhancePreview(container, {
       math: true,
       mermaid: true,
+      instantCharts: true,
       // The exported document is standalone, so a map travels as a drawn image.
       mindmap: 'snapshot',
       // The same for a whiteboard: a board cannot draw itself inside a document.
@@ -111,7 +112,7 @@ async function runExportEnhancements(container: HTMLDivElement, note: { title: s
   }
 
   try {
-    await renderChartJs(container, false)
+    await renderChartJs(container, false, { instant: true })
     const canvases = [...container.querySelectorAll<HTMLCanvasElement>('canvas.chartjs-canvas')]
     for (const canvas of canvases) canvasToImage(canvas)
     destroyChartInstances(container)

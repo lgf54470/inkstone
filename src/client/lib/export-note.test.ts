@@ -2,6 +2,22 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { initI18n } from './i18n'
 import { exportNoteAsMarkdown, renderNoteToExportHtml } from './export-note'
 
+// The library is replaced so the config the export hands it can be read back: jsdom refuses to draw,
+// and the chart picture is a question only a browser can answer (the visual gate reads the pixels).
+const { chartConfigs } = vi.hoisted(() => ({ chartConfigs: [] as Array<{ options?: { animation?: unknown } }> }))
+
+vi.mock('chart.js/auto', () => ({
+  Chart: class MockChart {
+    constructor(_canvas: unknown, config: { options?: { animation?: unknown } }) {
+      chartConfigs.push(config)
+    }
+
+    destroy(): void {}
+
+    resize(): void {}
+  },
+}))
+
 beforeAll(async () => {
   await initI18n()
 })
@@ -61,6 +77,30 @@ describe('export-note markdown export', () => {
 
     expect(clickSpy).toHaveBeenCalled()
     appendSpy.mockRestore()
+  })
+})
+
+// The exported document is read as pixels, not looked at: every chart in it becomes a PNG inside the
+// same tick the chart was created, and chart.js draws its first frame on a later one. So an exported
+// note carried fully transparent chart pictures — measured on a four-bar chart, 0 of the 69246 pixels
+// a finished chart paints were on the canvas when the export read it, and the exported file held the
+// same nothing; asking for the instant draw is what makes the read land on a drawn canvas.
+describe('export-note chart pictures', () => {
+  const CHART_NOTE = [
+    '# Chart note',
+    '',
+    '```chart',
+    JSON.stringify({ type: 'bar', data: { labels: ['A'], datasets: [{ data: [1] }] } }),
+    '```',
+  ].join('\n')
+
+  it('asks for charts that are drawn by the time the picture is taken', async () => {
+    await withCanvasMock(async () => {
+      chartConfigs.length = 0
+      await renderNoteToExportHtml({ title: 'Chart Note', content: CHART_NOTE }, 'zh-CN')
+      expect(chartConfigs).toHaveLength(1)
+      expect(chartConfigs[0].options?.animation).toBe(false)
+    })
   })
 })
 
