@@ -42,8 +42,8 @@ export function MusicPlayerControls({
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
   const loopRange = useActiveLoopRange()
-  const containerRef = useRef<HTMLDivElement>(null)
-  const tier = transportTier(useElementWidth(containerRef))
+  const { ref: containerRef, width: containerWidth } = useElementWidth<HTMLDivElement>()
+  const tier = transportTier(containerWidth)
 
   return (
     <div ref={containerRef} className='flex h-16 shrink-0 items-center gap-3 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3'>

@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { relativeTime } from './time'
 
 
@@ -24,23 +24,51 @@ export function useMediaQuery(query: string): boolean {
 }
 
 // A component that folds by available space has to measure the box it was actually given:
-// the viewport says nothing about a dialog's centre column. Null until the first
-// measurement, so callers keep a fallback where ResizeObserver does not exist (jsdom, SSR).
-export function useElementWidth(ref: RefObject<HTMLElement | null>): number | null {
+// the viewport says nothing about a dialog's centre column. Null until a box is measured, so callers
+// keep a fallback where ResizeObserver does not exist (jsdom, SSR).
+//
+// FB3-C9: the ref is handed out by the hook instead of being passed in, because the box a caller
+// measures often does not exist yet when the component first renders — the library draws its loading
+// state first and only mounts the box its rows live in once they arrive. An observer attached from a
+// mount effect never sees that box, and the caller then answers from its fallback for as long as it
+// lives (measured in the running app: a hub window 1060px wide with a 538px centre column drew the
+// full 572px-wide table, a row wider than the column holding it).
+//
+// The node is also read as it is attached, in the commit that puts it on screen: the observer's first
+// callback arrives a task later, and a frame drawn from the fallback is a frame drawn in the shape the
+// fold exists to avoid. The read reports the content box, the same number the observer reports next, so
+// the two cannot disagree and jump on the first callback.
+export function useElementWidth<T extends HTMLElement = HTMLElement>(): { ref: (node: T | null) => void; width: number | null } {
   const [width, setWidth] = useState<number | null>(null)
-  useEffect(() => {
-    const element = ref.current
-    if (!element || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver((entries) => {
+  const observer = useRef<ResizeObserver | null>(null)
+  const ref = useCallback((node: T | null) => {
+    observer.current?.disconnect()
+    observer.current = null
+    if (!node) return
+    // A box the browser draws nothing for is not a measurement: jsdom has no layout and answers 0 for
+    // every box, and an element inside a `display: none` subtree answers 0 too. Those keep the `null`
+    // that says nothing was measured, so the caller answers from its own fallback.
+    if (node.clientWidth > 0) setWidth(contentBoxWidth(node))
+    if (typeof ResizeObserver === 'undefined') return
+    const next = new ResizeObserver((entries) => {
       const entry = entries[0]
       if (!entry) return
-      const next = Math.round(entry.contentRect.width)
-      setWidth((previous) => (previous === next ? previous : next))
+      const value = Math.round(entry.contentRect.width)
+      setWidth((previous) => (previous === value ? previous : value))
     })
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [ref])
-  return width
+    next.observe(node)
+    observer.current = next
+  }, [])
+  useEffect(() => () => observer.current?.disconnect(), [])
+  return { ref, width }
+}
+
+// What `ResizeObserverEntry.contentRect` reports, read without an observer. An environment that
+// answers no computed padding (jsdom) keeps the padding box rather than subtracting nothing.
+function contentBoxWidth(node: HTMLElement): number {
+  const style = getComputedStyle(node)
+  const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
+  return Math.round(node.clientWidth - (Number.isFinite(padding) ? padding : 0))
 }
 
 export type Breakpoint = 'mobile' | 'tablet' | 'desktop'

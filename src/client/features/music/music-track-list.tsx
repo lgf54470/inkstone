@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { Download, History, Play, Shuffle } from 'lucide-react'
 import type { MusicTrack } from '@shared/types'
 import { Button } from '../../components/primitives'
@@ -45,8 +45,7 @@ export const MusicTrackList = memo(function MusicTrackList({
   const playlistDrag = usePlaylistDrag()
   // FB-U4: the columns are the width of this list's own box, not the screen's — measured on the
   // element that holds the rows, with the viewport as the pre-measurement guess.
-  const rootRef = useRef<HTMLDivElement>(null)
-  const containerWidth = useElementWidth(rootRef)
+  const { ref: rootRef, width: containerWidth } = useElementWidth<HTMLDivElement>()
   const viewportWide = useMediaQuery(`(min-width: ${MUSIC_LIST_FULL_MIN_WIDTH}px)`)
   const density = listDensity({ containerWidth, viewportWide })
   useDefaultViewMode(narrow, viewMode)

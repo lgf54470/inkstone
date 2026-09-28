@@ -70,18 +70,18 @@ function immersivePaneWidth(width: number | null): string {
 // of the moment rather than a preference carried across sessions. The measured width also
 // decides how much of the window the artwork column is allowed to keep.
 function useImmersiveWindow(): {
-  containerRef: RefObject<HTMLDivElement | null>
+  containerRef: (node: HTMLDivElement | null) => void
   maximized: boolean
   toggleMaximized: () => void
   paneWidth: string
 } {
   const [maximized, setMaximized] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const { ref: containerRef, width } = useElementWidth<HTMLDivElement>()
   return {
     containerRef,
     maximized,
     toggleMaximized: () => setMaximized((value) => !value),
-    paneWidth: immersivePaneWidth(useElementWidth(containerRef)),
+    paneWidth: immersivePaneWidth(width),
   }
 }
 

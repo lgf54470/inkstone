@@ -186,6 +186,40 @@ describe('table column density (FB-U4)', () => {
   })
 })
 
+// FB3-C9: the box the list measures is the one its rows are drawn in, and that box does not exist
+// while the list is still showing a loading state — a list that mounted on that state and attached its
+// measurement once would never see the box, and every read after that came from the viewport fallback.
+// Measured in the running hub: a 1060px window whose centre column was 538px drew the full 572px-wide
+// table, i.e. a row wider than the column it was in. The premise here is the state the gate read: the
+// viewport says the columns fit, the box says they do not.
+describe('the list folds by the box its rows land in (FB3-C9)', () => {
+  const oneTrack = [{ ...track('t9', 'Alpha', 'Zoe'), album: 'Nightfall' }]
+
+  async function mountThenFill(): Promise<void> {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    await act(async () => {
+      root?.render(createElement(MusicTrackList, { tracks: [], loading: true, emptyTitle: 'x', onEdit: () => {} }))
+    })
+    useMusic.setState({ tracks: oneTrack })
+    await act(async () => {
+      root?.render(createElement(MusicTrackList, { tracks: oneTrack, loading: false, emptyTitle: 'x', onEdit: () => {} }))
+    })
+  }
+
+  it('reads the box that arrives with the rows, not the viewport that was there first', async () => {
+    // The viewport would draw all three columns; only the measured box says to move them onto the row.
+    stubColumnsWide()
+    stubMeasuredWidth(520)
+    useMusic.setState({ viewMode: 'list', viewModeChosen: true })
+    await mountThenFill()
+    expect(columnheaderOf(t('music.table_artist'))).toBeUndefined()
+    expect(columnheaderOf(t('music.table_album'))).toBeUndefined()
+    expect(document.querySelector('[role="rowgroup"] > [role="row"]')?.textContent).toContain('Nightfall')
+  })
+})
+
 describe('table header sorting', () => {
   it('clicking the title header sorts ascending, clicking again descending', async () => {
     await mountList()

@@ -38,8 +38,7 @@ export function MusicHubToolbar({ tracks, libraryTracks, shortViewport = false, 
 }) {
   // REF-7: the row folds on the width it is given, so the same toolbar unfolds again
   // when the hub is maximised instead of staying folded for a viewport it cannot see.
-  const containerRef = useRef<HTMLDivElement>(null)
-  const containerWidth = useElementWidth(containerRef)
+  const { ref: containerRef, width: containerWidth } = useElementWidth<HTMLDivElement>()
   const viewportWide = useMediaQuery(`(min-width: ${MUSIC_TOOLBAR_VIEWPORT_FALLBACK}px)`)
   const shape = toolbarShape({ containerWidth, viewportWide, shortViewport })
   const fileRef = useRef<HTMLInputElement>(null)

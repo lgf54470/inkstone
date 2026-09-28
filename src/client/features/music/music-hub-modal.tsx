@@ -1,4 +1,4 @@
-import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { Button } from '../../components/primitives'
 import { Drawer, Modal } from '../../components/overlay'
@@ -61,8 +61,7 @@ type NarrowPanel = 'navigation' | 'nowPlaying' | null
 // measured box, or the answer would feed back into the box's own width and flip it between the two
 // shapes forever.
 function useHubColumns() {
-  const columnsRef = useRef<HTMLDivElement>(null)
-  const hubWidth = useElementWidth(columnsRef)
+  const { ref: columnsRef, width: hubWidth } = useElementWidth<HTMLDivElement>()
   const screenWide = useMediaQuery(`(min-width: ${MUSIC_HUB_COLUMNS_MIN_WIDTH}px)`)
   const columnsWide = hubColumnsWide({ containerWidth: hubWidth, viewportWide: screenWide })
   const [narrowPanel, setNarrowPanel] = useState<NarrowPanel>(null)
