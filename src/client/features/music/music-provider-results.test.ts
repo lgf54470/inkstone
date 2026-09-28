@@ -317,9 +317,11 @@ describe('online result selection follows the answer (FB-F10)', () => {
 })
 
 // FB-F5: several catalogues do not report a length at all, and 00:00 on screen is a claim the
-// upstream never made. A missing duration is named, and a real one is drawn.
-describe('online result rows (FB-F5)', () => {
-  it('names a duration the catalogue did not report', async () => {
+// upstream never made. FB2-F3: what a hit list draws instead is nothing — repeating "unknown" on
+// every row of a foreign list says nothing about any of them, and the reader is comparing rows.
+// The library still names the absence, where it is a fact about a row the reader owns.
+describe('online result rows (FB-F5 / FB2-F3)', () => {
+  it('leaves the duration cell out when the catalogue did not report one', async () => {
     vi.useFakeTimers()
     // clearAllMocks keeps the implementation the previous case installed, so this one states the
     // answer it is about rather than inheriting a rejection.
@@ -332,7 +334,10 @@ describe('online result rows (FB-F5)', () => {
     mountWithQuery()
     await clickSwitch()
     await settle()
-    expect(bodyText()).toContain(t('music.duration_unknown'))
+    // The row is there and says what it knows: no timecode, and no "unknown" either.
+    expect(bodyText()).toContain('No length')
+    expect(bodyText()).toContain('Ann')
+    expect(bodyText()).not.toContain(t('music.duration_unknown'))
   })
 
   it('draws the timecode when the catalogue reported one', async () => {

@@ -88,7 +88,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | FB2-U1 | P1 | 沉浸层队列是歌词下方的 160px 条带（`music-immersive-player.tsx:291`），左列传输条以下大片空白（`ImmersiveLeft` `:369`），且该队列**没有搜索**——Hub 与浮窗用的是自带搜索的 `MusicQueueBrowser` | 宽版（容器 ≥ `IMMERSIVE_MID_PANE_WIDTH`）在左列传输条之下放可折叠队列区，**复用 `MusicQueueBrowser`**（搜索 + 空态），左列成为「正在播放 + 传输 + 队列」；窄/堆叠版保留底部条带；队列计数与折叠开关仍在歌词头部 | `music-immersive-player.tsx`、`music-queue-browser.tsx`、locales | L | 布局必须落在 AGENTS.md 允许的「独立一列或抽屉」这一种去处，**不能**做成头部的内联展开（该表面在 `TOOLBAR_SURFACES` 里，头部高度是被断言的） |
 | FB2-U2 | P1 | 工具栏两行且下方一行大片留白（`music-hub-toolbar.tsx:51` 两层 `flex-wrap` + `justify-between`）；根因是折叠档位（`folded`，`music-utils.ts:131`）与「能放下的宽度」（`MUSIC_TOOLBAR_INLINE_MIN_WIDTH = 1040`）不是同一个数，560–1040 区间必然换行且无人右对齐 | **先量后改**：三档宽度记录行带数 / `data-shape` / 每行末尾到右缘的间距，然后 ① `compact` 与「能放下的宽度」同源；② 紧凑档搜索框可收缩（`min-w-0 flex-1`）而非固定 240px；③ 溢出行右对齐（`ml-auto`），任何一行末尾都贴右缘；④ 「更多」与刷新并入溢出行 | `music-hub-toolbar.tsx`、`music-utils.ts`、`scripts/e2e-visual.mjs` | M | 会改既有 `toolbarShape` 契约——这是设计变更，同批更新契约并写明原因，不要偷偷放宽断言 |
-| FB2-F3 | P1 | 在线时长恒为「未知」（netease 搜索响应无 `duration`），且**没有任何回填路径**；截图 3 逐行重复同一句「时长未知」 | ① 在线结果行在目录未报长度时**不画该格**（逐行重复「不知道」的信息量是零）；② 库里保留「未知」这个事实，但**首次真的播过之后回写**：`loadedmetadata` 得到真实长度，仅在行上为 0 时 best-effort PATCH 一次（去重、失败静默但记日志）；③ lrclib 命中时顺带回填（其响应自带 duration） | `music-provider-results.tsx`、`music-store/player.ts`、`music-store/library-tracks.ts` | S–M | 「未知」在曲库里是有意义的事实（它是一行你确实不知道长度的数据），在搜索结果里是噪声——两处口径要分开写清楚 |
+| FB2-F3 | P1 | 在线时长恒为「未知」（netease 搜索响应无 `duration`），截图 3 逐行重复同一句「时长未知」。**订正（M5 取证时发现）**：首稿写「没有任何回填路径」是错的——播放器早就有回填：`player.ts:49` 的 `onDuration` → `recordLearnedDuration`（`player.ts:76-79`，只在行上 `durationMs === 0` 时 `patchTrack` 一次），事件源是 `audio-engine.ts:199`/`:525` 的 `loadedmetadata`。真正缺的只有「命中列表逐行念一遍不知道」这一件 | ① 命中列表（在线结果、自建服务器搜索）在目录/服务器未报长度时**不画该格**（FB-F5 拒绝的是「00:00」这个假声明，本项把「逐行念一遍不知道」也去掉；库里照旧写明「未知」，因为那是对自己库内一行的陈述）；② 已存在，无需改；③ lrclib 命中自带 duration，但歌词接口只回正文——要回填得改 API 契约，且只覆盖「取过歌词但从未播过」的行，价值低，**本轮不做**（记入不做清单） | `music-provider-results.tsx`、`music-server-modal.tsx` | S | 源切换候选**不跟这条**：那一屏是在几条候选之间挑一条替换失效行，长度对比正是决策依据，所以照旧写明「未知」——同一个词在不同屏上的价值不同，要分开写 |
 | FB2-PF1 | P1 | 封面缩略图吃掉播放额度：`provider/cover`（`provider.ts:143`）每次请求都进 `provider` 族，而 `LIMITS.musicProviderRequestsPerHour = 120`（`shared/constants.ts:124`），与搜索、取流解析**同族**。一页 20 条命中 = 20 个单位，两次搜索就能把「解析播放地址」拖进 429 | 新增 `providerArtwork` 预算族（上限按「一页结果 × 若干页/小时」定，理由写进常量注释：翻页看图不该花播放解析的额度）；客户端按 `source:id` 加一层会话缓存，避免重挂载重取 | `worker/routes/music/{budget,provider}.ts`、`shared/constants.ts` | S–M | 这不是「安全漏洞」而是**配额设计错位**：同一小时里，浏览一张图和开始播放一首歌的价值完全不同 |
 | FB2-C1 | P1 | 在线链路零浏览器断言（M14 明确记为已知限制），P0-1 正是从这里漏检 | 在 `scripts/e2e-visual.mjs` 新增音乐在线场景，用**请求拦截造桩**（不引入第三方依赖）：命中列表、封面字节、歌词、import 成功与 502 降级。断言：勾选/试听/添加/批量添加的可见结果、封面真的解码、失败只降级不报错、库里行数 +N | `scripts/e2e-visual.mjs`、新增 `scripts/lib/music-provider-stub.mjs` | M | 这是本轮**最重要的新增项**：它不是为了覆盖这一屏，而是为了让下一个同类事故必须先把门禁改绿才能进主干 |
 
@@ -152,7 +152,8 @@
 
 - `showDirectoryPicker` 只有 Chromium 有；Firefox/Safari 上「选择文件夹」按钮隐藏，只保留拖放。门禁只能覆盖到收集器纯函数的这一层，真实拖放的浏览器断言能力有限。
 - FB2-F1 之后，封面由 worker 按上游 `size=PROVIDER_COVER_SIZE` 给出的缩放图落库；若某源不认这个参数、回了原图，按字节上限拒绝并降级为无封面（不静默存超大对象）。这条只有单测，没有真实上游矩阵。
-- 时长回填依赖「真的播过一次」；目录不报长度且从未播放的行仍然显示「未知」——这是诚实的状态，不是缺陷。
+- 时长回填依赖「真的播过一次」（`player.ts:49`/`76-79` + `audio-engine.ts:199`，本项首稿错记为「没有回填路径」，M5 已订正）；目录不报长度且从未播放的行仍然显示「未知」——这是诚实的状态，不是缺陷。
+- lrclib 的命中自带 `duration`，但歌词接口只回正文；要拿它回填得改 API 契约，而它只覆盖「取过歌词但从未播过」的行——本轮不做。
 - 在线链路的浏览器场景基于请求拦截造桩，**证明的是渲染与交互**，不证明上游行为；上游真实性仍由人工探针负责（首轮 M8/M22/M23 的先例）。
 
 **不做清单**（写下来是为了下一轮不重复讨论）：
@@ -160,5 +161,6 @@
 - 在线目录升级为可浏览（专辑/歌手/榜单）：独立产品方向，见 §E。
 - 在线曲目直达歌单、离线可播预取：同上。
 - 逐字歌词与歌词分享图：首轮已记为残留。
+- lrclib 的 duration 回填（FB2-F3 ③）：需改歌词接口契约，而它只覆盖「取过歌词但从未播过」的行；播放回填已经盖住真正会播的那批。
 - 移动端底部主 tab：首轮 §I 已有结论与复核条件。
 - 侧栏中段留白若判断为「留给后续分区」，则记录理由不做（FB2-U5）。

@@ -204,10 +204,14 @@ function HitRow({ hit, importing }: { hit: MusicServerHit; importing: boolean })
         <span className='block truncate text-[length:var(--text-12)] text-[var(--text-primary)]'>{hit.title}</span>
         {subtitle && <span className='block truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{subtitle}</span>}
       </span>
-      {/* Several servers report no length at all, and 00:00 would be a claim they did not make. */}
-      <span className='tabular shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-        {hit.durationMs ? formatTimecode(hit.durationMs) : t('music.duration_unknown')}
-      </span>
+      {/* FB2-F3: a server that reports no length gets no cell rather than a per-row "unknown" — the
+          same rule the catalogue list follows, and for the same reason: naming the absence on every
+          row of a foreign list says nothing about any of them. A length that is there is drawn. */}
+      {hit.durationMs ? (
+        <span className='tabular shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+          {formatTimecode(hit.durationMs)}
+        </span>
+      ) : null}
       <Button
         size='sm'
         icon={<Plus size={12} />}

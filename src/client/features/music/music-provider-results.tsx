@@ -249,11 +249,16 @@ function ProviderResultRow({ hit, checked, onToggle, onPreview, onAdd }: Provide
         {subtitle && <span className='block truncate text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{subtitle}</span>}
       </span>
       <span className='hidden shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)] sm:inline'>{providerSourceLabel(hit.source)}</span>
-      {/* FB-F5: several catalogues never report a length, and 00:00 would be a claim they did
-          not make — a missing duration is named as missing. */}
-      <span className='tabular shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-        {hit.durationMs ? formatTimecode(hit.durationMs) : t('music.duration_unknown')}
-      </span>
+      {/* FB-F5 rejected "00:00" here, because a catalogue that reported no length never made that
+          claim. FB2-F3 takes the same rule one step further: on a hit list the cell is drawn only
+          when there is a length to draw. Naming the absence on every row of a foreign list says
+          nothing about any of them, and the reader is comparing rows, not auditing metadata. The
+          library keeps naming it — there it is a fact about a row the reader owns. */}
+      {hit.durationMs ? (
+        <span className='tabular shrink-0 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+          {formatTimecode(hit.durationMs)}
+        </span>
+      ) : null}
       <IconButton
         label={t('music.provider_preview')}
         size='sm'

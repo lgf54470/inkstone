@@ -91,6 +91,26 @@ describe('music server modal with no server registered (FB-M16)', () => {
   })
 })
 
+// FB2-F3: a server that reports no length gets no duration cell — the same rule the catalogue hit
+// list follows — while a reported length is still drawn. Its own block because the rule is its own
+// concern, and because a describe is a function the size gate reads.
+describe('music server hit duration (FB2-F3)', () => {
+  it('draws a reported length and leaves the cell out when the server reported none', async () => {
+    vi.mocked(api.music.searchServerSource).mockResolvedValueOnce({
+      serverId: 'sv-1', kind: 'subsonic', results: [{ ...HIT, itemId: 'it-2', title: 'No length', durationMs: 0 }, HIT],
+    })
+    await mount()
+    await runSearch('origin')
+    expect(document.body.textContent).toContain('03:34')
+    expect(document.body.textContent).not.toContain(t('music.duration_unknown'))
+    vi.mocked(api.music.searchServerSource).mockResolvedValueOnce({ serverId: 'sv-1', kind: 'subsonic', results: [{ ...HIT, durationMs: 0 }] })
+    await runSearch('origin again')
+    expect(document.body.textContent).toContain('Origin')
+    expect(document.body.textContent).not.toContain('03:34')
+    expect(document.body.textContent).not.toContain(t('music.duration_unknown'))
+  })
+})
+
 describe('music server search and add (FB-M16)', () => {
   it('searches the first registered server and shows what it holds', async () => {
     await mount()
