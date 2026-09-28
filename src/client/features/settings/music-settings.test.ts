@@ -240,3 +240,30 @@ describe('music settings section · the catalogue table (FB3-F2)', () => {
     unmount()
   })
 })
+
+// FB3-F3: three capabilities the module already had were only reachable from the player popover and
+// the transport menus — the volume, the sleep timer and the playback speed. The settings page is where
+// a reader looks for them, and it renders the same components rather than copies, so a change made
+// here is a change made there.
+describe('music settings section · volume, speed and sleep (FB3-F3)', () => {
+  it('writes the volume from the settings page', () => {
+    const { container, unmount } = render(createElement(MusicSettings))
+    const slider = container.querySelector<HTMLInputElement>(`input[type="range"][aria-label="${t('music.volume')}"]`)
+    expect(slider).toBeTruthy()
+    const setValue = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+    act(() => {
+      setValue?.call(slider, '35')
+      slider!.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect(useMusic.getState().volume).toBeCloseTo(0.35)
+    unmount()
+  })
+
+  it('offers the playback speed and the sleep timer as named rows', () => {
+    const { container, unmount } = render(createElement(MusicSettings))
+    const rows = [...container.querySelectorAll('button')].map((button) => button.getAttribute('aria-label') ?? button.textContent?.trim())
+    expect(rows).toContain(t('music.playback_rate'))
+    expect(rows).toContain(t('music.sleep_timer'))
+    unmount()
+  })
+})

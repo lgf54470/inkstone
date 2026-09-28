@@ -6227,6 +6227,10 @@ const allowed = new Map([
     '// switch-source candidates are ranked in.',
     '// The ends hold: the first catalogue cannot move earlier and the last cannot move later.',
     '// The per-catalogue switches sit behind the same acknowledgement as the aggregate one.',
+    '// FB3-F3: three capabilities the module already had were only reachable from the player popover and',
+    '// the transport menus — the volume, the sleep timer and the playback speed. The settings page is where',
+    '// a reader looks for them, and it renders the same components rather than copies, so a change made',
+    '// here is a change made there.',
   ]],
   ['src/client/features/settings/music-settings.tsx', [
     '// FB-F4: the one page where the music preferences live. It is not a second settings system —',
@@ -6239,6 +6243,7 @@ const allowed = new Map([
     '// arrange — and the order is not cosmetic: it is the merge order of an answer and the order the',
     '// switch-source candidates are ranked in. One row per catalogue, each with its own switch and its',
     '// place in the ask order.',
+    '/* FB3-F3: three capabilities the module already had and the settings page did not offer — the\n          volume only lived in the player popover, and the sleep timer and playback speed only in the\n          transport menus. They are the same components, not copies, so a change here is a change there. */',
     '// FEA-C4 + FB-F13: how lyrics are drawn and where a lookup starts — one group, because both are',
     '// answers to "what do I want when I press play".',
   ]],

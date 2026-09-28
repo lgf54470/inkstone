@@ -5,8 +5,8 @@ import { Button, IconButton } from '../../components/primitives'
 import { Segmented, Select, SettingRow, Switch } from '../../components/form'
 import { t, type MessageKey } from '../../lib/i18n'
 import {
-  IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_SOURCES, LYRIC_TEXT_SIZES, MusicEqPanel, listProviders, orderedSources,
-  providerSourceLabel, useMusic,
+  IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_SOURCES, LYRIC_TEXT_SIZES, MusicEqPanel, MusicRateButton, MusicSleepButton,
+  MusicVolumeSlider, listProviders, orderedSources, providerSourceLabel, useMusic,
   type MusicImmersiveBackground, type MusicLyricAlign, type MusicLyricSource, type MusicLyricTextSize, type MusicProvider,
 } from '../music'
 import { MusicServers } from './music-servers'
@@ -201,6 +201,18 @@ function PlaybackDefaults() {
   return (
     <section>
       <SectionTitle title={t('music.settings_playback')} hint={t('music.settings_playback_hint')} />
+      {/* FB3-F3: three capabilities the module already had and the settings page did not offer — the
+          volume only lived in the player popover, and the sleep timer and playback speed only in the
+          transport menus. They are the same components, not copies, so a change here is a change there. */}
+      <SettingRow title={t('music.volume')}>
+        <MusicVolumeSlider className='w-56 max-w-full' />
+      </SettingRow>
+      <SettingRow title={t('music.playback_rate')}>
+        <MusicRateButton size='md' />
+      </SettingRow>
+      <SettingRow title={t('music.sleep_timer')}>
+        <MusicSleepButton size='md' />
+      </SettingRow>
       <MusicEqPanel />
       <SettingRow title={t('music.background_mode')}>
         <Segmented
