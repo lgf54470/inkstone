@@ -144,7 +144,9 @@ const LABELS = {
   musicSearchClear: ['清除搜索', 'Clear search'],
   // FB3-C1: the popup's own action, and the two names the empty state's action has had (FB3-U8 renamed
   // it away from the clear control's name, so the read below accepts either spelling of the same thing).
-  musicSearchClearHistory: ['清除历史', 'Clear history'],
+  musicSearchHistory: ['搜索历史', 'Recent searches'],
+  musicSearchClearHistory: ['清空历史', 'Clear history'],
+  musicEqPresets: ['预设', 'Presets'],
   musicSearchEmptyAction: ['清除搜索', 'Clear search', '显示全部歌曲', 'Show all tracks'],
   // FB2-U1: the queue's own controls — the count in the immersive header is the way in there, and
   // the search is what the hub and the floating card already answer with.
@@ -5201,11 +5203,57 @@ async function assertMusicSurface(page) {
   await assertMusicFloatingStrip(page)
   await assertMusicImmersiveFullscreen(page)
   await assertMusicStatusBarMore(page)
+  // FB3-U3: both reads are geometry, so they belong here rather than in a class-name assertion.
+  await assertMusicSettingsLayout(page)
   // FB3-C1 runs before the online scenario for the same reason that one runs last: it types a query.
   await assertMusicSearchClear(page)
   // FB2-C1 last: it types a query and turns the online switch on, which the reads above would
   // otherwise be measuring around.
   await assertMusicProviderResults(page)
+}
+
+// FB3-U3: the settings page draws two components at a width they were not designed against — the player
+// popover's preset grid at ten times its width, and a two-column server form whose labels sized
+// themselves to their own text. The class names say what was intended; these two reads say what the
+// column actually did with them.
+async function assertMusicSettingsLayout(page) {
+  if (!(await page.$(MUSIC_HUB_ROOT))) await openMusicHubForSweep(page)
+  const hubOpen = await page.waitForSelector(MUSIC_HUB_ROOT, { timeout: 15_000 }).then(() => true, () => false)
+  check('music: the hub opens for the settings layout read', hubOpen)
+  if (!hubOpen) return
+  await pressSurfaceControl(page, LABELS.musicOpenSettings)
+  const opened = await page.waitForSelector(SETTINGS_PANEL, { timeout: 15_000 }).then(() => true, () => false)
+  check('music: the settings page opens for the music layout read', opened)
+  if (!opened) return
+  await sleep(600)
+  const layout = await page.evaluate(({ panel, presetLabels }) => {
+    const root = document.querySelector(panel)
+    if (!root) return null
+    const group = root.querySelector(presetLabels.map((label) => `[role="group"][aria-label="${label}"]`).join(', '))
+    const presets = [...(group?.querySelectorAll('button') ?? [])]
+    // The fields are laid out as (label, control) pairs across four columns, so the ones in column A are the
+    // 1st, 3rd and 5th and the ones in column B are the 2nd and 4th — which is what "aligned" means here.
+    const fields = [...root.querySelectorAll('[data-server-field]')]
+    const lefts = fields.map((field) => {
+      const box = field.querySelector('input, select')?.getBoundingClientRect()
+      return box ? Math.round(box.left) : -1
+    })
+    return {
+      presets: presets.length,
+      presetRows: new Set(presets.map((button) => Math.round(button.getBoundingClientRect().top))).size,
+      fields: fields.length,
+      lefts,
+      aligned: lefts.length === 5
+        && new Set([lefts[0], lefts[2], lefts[4]]).size === 1
+        && new Set([lefts[1], lefts[3]]).size === 1,
+    }
+  }, { panel: SETTINGS_PANEL, presetLabels: LABELS.musicEqPresets })
+  check('music: the five equalizer presets share one row on the settings page',
+    Boolean(layout) && layout.presets === 5 && layout.presetRows === 1, JSON.stringify(layout))
+  check('music: the add-server fields share their label columns',
+    Boolean(layout) && layout.fields === 5 && layout.aligned, JSON.stringify(layout))
+  await page.keyboard.press('Escape')
+  await sleep(400)
 }
 
 // FB3-C1: the box's clear control, which no gate had ever read. The gate's own teardown had been pressing

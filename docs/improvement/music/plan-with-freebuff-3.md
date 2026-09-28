@@ -17,7 +17,9 @@
 
 - [x] M1 FB3-U1 + FB3-U5 + FB3-C1 搜索框 × 不清查询（`clearAll` 语义错）→ 清查询（新增 `clearQuery`，与历史的 `clearAll` 分开）+ 焦点留在输入框；门禁新增 `assertMusicSearchClear` 四条（空态与筛选 / × 清查询且列表回来 / 焦点与历史未被触碰 / 弹出动作只清历史）—— **commit `待回填`**
 - [x] M2 FB3-U2 + FB3-U9 + FB3-C3 沉浸层队列默认态按形态分档（宽版默认展开、窄版默认折叠；读者按压后按读者的）+ 门禁补「队列至少一整行可见且左列不长出第二个滚动条」「375px 条带整行可见、歌词列不套第二滚动条」—— **commit `待回填`**
-- [ ] M3 FB3-U3 + FB3-C2 设置面板三处：EQ 预设行容器查询换挡（`@[24rem]:grid-cols-5`）、服务器表单标签列 subgrid 对齐、去掉重复说明并拆出动作向的表单说明
+- [x] M3 FB3-U3 + FB3-C2 设置面板三处：EQ 预设行容器查询换挡（`@sm:grid-cols-5`）、服务器表单标签列 subgrid 对齐、去掉重复说明并拆出动作向的表单说明（`music.server_form_hint`）—— **commit `待回填`**
+- [x] M1b 浏览器探针实测发现并修掉的一处：× 之后弹出没打开（`clearQuery` 显式 `setOpen(true)`）+ M1 门禁里的两处标签错误 —— **commit `待回填`**
+- [ ] M15（新增）FB3-C5 门禁自身：全新实例上音乐场景因客户端 60s 库缓存空读而提前返回，需在读数前强制一次库刷新（本轮只登记与取证，见下「浏览器实测」）
 
 ## M② · 信息与历史（P1）
 
@@ -43,6 +45,23 @@
 - [ ] M14 FB3-U7 沉浸层左列两行「多少」的行为分级复核（随 M2 的形态断言一起读）
 - [ ] M15 报告定稿：逐项状态 + 已知限制 + 全量清单回填哈希
 
+## 浏览器实测（M1b/M2/M3 的几何证据）
+
+全新实例（`INKSTONE_EPHEMERAL_DEV=1` + `scripts/e2e.mjs` 播种）上一次浏览器探针的读数（读法与门禁里新增的场景完全相同；探针为一次性工具，已删除）：
+
+| 项 | 读数 |
+| --- | --- |
+| FB3-U3 预设行 | `presets: 5, presetRows: 1, presetWidth: 128` |
+| FB3-U3 表单对齐 | `fields: 5, lefts: [536, 873, 536, 873, 536], aligned: true` |
+| FB3-U1 空态 | `value: 'zzzz no such track', library: false, emptyAction: true` |
+| FB3-U1 × 清查询 | `pressed: true, value: '', library: true, emptyAction: false` |
+| FB3-U1/U5 历史未被触碰 | `caretInBox: true, listboxes: ['搜索历史:1'], historyRows: 1` |
+| FB3-U1 弹出动作只清历史 | `pressed: true, listboxes: [], historyRows: 0, value: ''` |
+| FB3-U2 宽版队列默认就位 | `host: 'artwork', search: true, rows: 8` |
+| FB3-U9 整行与滚动条 | `wholeRows: 8, artworkScrolls: false` |
+
+**探针同时量出门禁本身的一个缺陷（FB3-C5）**：整轮 `scripts/e2e-visual.mjs` 在全新实例上会在「music: the hub lists the seeded tracks」提前返回——夹具刚上传的两条探针曲目，客户端因为 `LIBRARY_FRESH_MS = 60s` 的库缓存（早于上传的一次加载）而看不到，于是该轮音乐场景（含本轮新增的断言）全部未执行。既有各轮之所以绿，是因为它们跑在积留了探针曲目的长寿命实例上。修法（下一轮首选）：在读数前让门禁按自己的刷新控件强制一次库加载，或让夹具在客户端首次加载前完成上传。
+
 ## 每项验收标准（通用）
 
 1. 复现测试先红（新增 / 修改 `src/client/features/music/*.test.ts`、`src/worker/routes/music/*.test.ts` 或 `tests/*.test.ts`；几何与默认态类由 `scripts/e2e-visual.mjs` 先红），进度日志里写下失败条数与原因。
@@ -56,6 +75,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-28 | M3 FB3-U3 + FB3-C2 设置面板三处（先红后改） | `待回填` | 先红（单测）：`music-settings.test.ts` 新增两例（服务器说明只出现一次且表单换成动作向的说明 / 五个字段共用一组标签列）+ `music-eq-presets.test.ts` 新增一例（预设行向自身容器换挡），对 HEAD 跑得 **3 failed**。实现：`MusicEqPanel` 根加 `@container`、预设行加 `@sm:grid-cols-5`（弹层 224px 仍是三列）；`ServerFields` 改 `grid-cols-[auto_1fr_auto_1fr]` 且每个字段 `col-span-2 grid-cols-subgrid`（标签列由整个表单共有，不再各自量字）；表单去掉与小节重复的那句 `music.server_hint`、改为新增的 `music.server_form_hint`（双语），并去掉与按钮同名的表单小标题。回归：`npx vitest run src/client/features/settings src/client/features/music/music-eq-presets.test.ts` **5 文件 / 29 例 ✅**；`npm run typecheck` ✅。门禁：新增 `assertMusicSettingsLayout`（五个预设同一顶边 / 五个字段的两列左缘各对齐）+ `LABELS.musicEqPresets` | 门禁场景本身随 FB3-C5（全新实例上的音乐空读）尚不能在整轮里跑到，实测证据来自同读法的浏览器探针（见下） |
+| 2026-09-28 | M1b 探针实测修掉的一处：× 之后弹出没打开 | `待回填` | 浏览器探针首次跑出：点完 × 后弹出是关的（`historyRows: 0`）——因为「提交搜索」的 Enter 已经把弹出收起来（`close()`），而按下 × 在 Chrome 里 `activeElement` 仍是输入框（按钮不取焦），于是 `onFocus` 不再触发，仅靠交回焦点恢复不了历史形态。实现：`clearQuery` 显式 `setOpen(true)`（“清空后回到历史形态”不再依赖焦点事件）。同时修掉 M1 门禁里的两处标签错误（`musicSearchHistory` 不存在、`search_clear_history` 的中文是「清空历史」）。探针重跑 **13/13 全绿** | 代码层修正，jsdom 用例本来就绿（jsdom 会移焦，所以旧机制在那里看起来是对的） |
 | 2026-09-28 | M2 FB3-U2 + FB3-U9 + FB3-C3 沉浸层队列默认态分档（先红后改） | `待回填` | 先红（单测）：`music-immersive-queue.test.ts` 新增 FB3-U2 组三例（宽版刚挂载即已在封面列且带搜索 / 堆叠形状仍默认折叠且入口行在位 / 读者折合后重渲染仍保持），对 HEAD 跑得 **4 failed / 2 passed**（连同两个按旧默认写的既有用例）。实现：`useQueueFold(stacked)` 用 `chosen: boolean | null` 表示「读者还没选」，未选时按形状给默认（`!stacked`），调用点改为 `useQueueFold(stacked)`。`music-immersive-player.test.ts` 的四处按旧默认更新（队列焦点停靠改为「宽版默认出场、折合后消失」；看板视频舞台的「无封面图」改为排除队列自己的行封面）。回归：`npx vitest run src/client/features/music` **120 文件 / 958 例 ✅**。门禁：`assertMusicImmersiveQueue` 重写为「宽版就位（已开）/ 整行可见且左列不长出第二滚动条 / 折合 / 头部高度不变 / 封面让位 / 搜索收窄 / 用过后再折合」，`readNarrowQueue` 补 `rows` 与 `lyricsScrolls`，375px 场景补一条 | 门禁未跑（与 M1/M3 一起在同一实例上跑一次）；「窄版默认折叠」在门禁里读不到纯粹的默认态（折合状态随表面存活，先前的宽版场景已经写过一次），因此该默认由 jsdom 的新挂载用例钉住，门禁只断言窄版折合后的行为与成本 |
 | 2026-09-28 | M1 FB3-U1 + FB3-U5 + FB3-C1 搜索框 × 清查询（先红后改） | `待回填` | 先红（单测）：`music-search-box.test.ts` 新增 3 例（× 清空输入与 store 查询且不动历史 / 清空后焦点仍在输入框并回到历史形态 / 弹出里的动作仍只清历史），对 HEAD 跑得 **2 failed / 15 passed**——× 走的是 `clearAll`（清历史），输入框文本与 store 查询都没动。实现：`useSearchPopup` 新增 `clearQuery`（`setText('')` + `flush('')` + 收起高亮），`SearchBox` 给输入框持有 ref 并在 × 后把焦点交回。回归：`npx vitest run src/client/features/music` **120 文件 / 955 例 ✅**；`npm run typecheck` ✅。门禁：新增 `assertMusicSearchClear`（四读：无命中即空态 / × 清查询且列表回来 / 焦点在框内且历史未被触碰 / 弹出动作只清历史），`LABELS` 补 `musicSearchClearHistory` 与 `musicSearchEmptyAction` | 门禁四条断言与 M2/M3 的门禁改动一并跑（同一实例一次运行），结果记在 M3 的进度行；只跑单测时这四条未被执行 |
 | 2026-09-28 | M0b 按「全做」重写两份文档 | `待回填` | —（无代码改动） | — |

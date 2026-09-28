@@ -70,6 +70,17 @@ describe('MusicEqPanel preset row (F-7)', () => {
     expect(presetButton(t('music.eq_preset_rock'))?.getAttribute('aria-pressed')).toBe('false')
   })
 
+  // FB3-U3: the panel is drawn at two widths — the player popover's 224px and the settings page's full
+  // column — and the preset row kept three columns at both, so five presets read as 3 + 2 with a hole
+  // beside the second row. The row asks its own container instead of the window.
+  it('lets the preset row take one line of five where its container has the room', async () => {
+    await mountPanel()
+    const group = document.querySelector(`[role="group"][aria-label="${t('music.eq_presets')}"]`)
+    expect(group?.className).toContain('grid-cols-3')
+    expect(group?.className).toContain('@sm:grid-cols-5')
+    expect(group?.parentElement?.className).toContain('@container')
+  })
+
   it('arms the preset that was clicked', async () => {
     await mountPanel()
     const rock = EQ_PRESETS.find((preset) => preset.id === 'rock')

@@ -360,6 +360,8 @@ export const messages = {
 'music.alist_search_clear': 'Clear search',
 'music.server_title': 'Music servers',
 'music.server_hint': 'Your own Subsonic, Navidrome, Airsonic, Jellyfin or Emby server. The password is stored encrypted on the server and never sent back to the browser',
+  // FB3-U3: the form's own note is about the action, because the sentence above it already explains what a server is.
+  'music.server_form_hint': 'Fill this in and press Add server — the password only travels up, and a refused registration keeps every field as you typed it',
 'music.server_none': 'No music server registered yet',
 'music.server_add': 'Add server',
 'music.server_name': 'Name',

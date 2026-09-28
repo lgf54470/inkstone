@@ -131,12 +131,16 @@ function useSearchPopup({ history, text, listId, suggestions, setScope, setText,
       close()
     },
     // The × and the popup's row were one callback, so the × emptied the history and left the query
-    // standing. Emptying the query is what the control is named for; the popup is left as it is, so an
-    // empty box falls back to the history shape the reader can then clear on purpose.
+    // standing. Emptying the query is what the control is named for, and the popup is then shown in the
+    // shape an empty box has — the history the reader can clear on purpose. `open` is set here rather than
+    // left to the focus event: a committed search closes the popup, and a press on the × does not always
+    // move the caret (`activeElement` is already the box in Chrome when the button takes no focus), so
+    // relying on `onFocus` left the popup shut in the one case the reader clears right after searching.
     clearQuery: () => {
       setText('')
       flush('')
       setHighlight(() => -1)
+      setOpen(true)
     },
     inputProps: popupInputProps(show, highlight, listId),
     inputHandlers: popupHandlers({ show, highlight, options, text, setOpen, setHighlight, setText, schedule, commit, flush, close }),

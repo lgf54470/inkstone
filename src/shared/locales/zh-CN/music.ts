@@ -358,6 +358,8 @@ export const messages = {
 'music.alist_search_clear': '清除搜索',
 'music.server_title': '音乐服务器',
 'music.server_hint': '你自己的 Subsonic、Navidrome、Airsonic、Jellyfin 或 Emby 服务器。密码加密存放在服务端，不会回传到浏览器',
+  // FB3-U3: the form's own note is about the action, because the sentence above it already explains what a server is.
+  'music.server_form_hint': '填好后按「添加服务器」；密码只上行，注册被拒时已填内容会原样保留',
 'music.server_none': '还没有注册音乐服务器',
 'music.server_add': '添加服务器',
 'music.server_name': '名称',

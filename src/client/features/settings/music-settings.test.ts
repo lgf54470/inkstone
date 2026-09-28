@@ -133,6 +133,32 @@ describe('music settings section · online sources', () => {
   })
 })
 
+// FB3-U3 + FB3-C2: the add-server form was drawn inside the group that already explains what a music
+// server is, and said the same sentence again; and its two columns each sized their label to their own
+// text, so the four inputs and the select sat on four different left edges. The explanation lives once,
+// the form names the action instead, and the fields share one label column.
+describe('music settings section · add server form (FB3-U3)', () => {
+  it('explains what a music server is once, and the form names the action', () => {
+    const { container, unmount } = render(createElement(MusicSettings))
+    const text = container.textContent ?? ''
+    expect(text.split(t('music.server_hint')).length - 1).toBe(1)
+    expect(text).toContain(t('music.server_form_hint'))
+    unmount()
+  })
+
+  it('puts every field on one shared label column', () => {
+    const { container, unmount } = render(createElement(MusicSettings))
+    const fields = [...container.querySelectorAll('[data-server-field]')]
+    expect(fields).toHaveLength(5)
+    expect(fields[0].parentElement?.className).toContain('grid-cols-[auto_1fr_auto_1fr]')
+    for (const field of fields) {
+      expect(field.className).toContain('col-span-2')
+      expect(field.className).toContain('grid-cols-subgrid')
+    }
+    unmount()
+  })
+})
+
 describe('music settings section · playback defaults', () => {
   // The playback group is not a second copy of the player popover: it renders the same
   // panel, so a change made here is a change made there.

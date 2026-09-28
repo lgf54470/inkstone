@@ -344,7 +344,10 @@ function EqPresetRow() {
   const applyEqPreset = useMusic((state) => state.applyEqPreset)
   const active = matchEqPreset({ low, mid, high })
   return (
-    <div role='group' aria-label={t('music.eq_presets')} className='grid grid-cols-3 gap-1 pb-1'>
+    // FB3-U3: five presets in a three-column grid read as 3 + 2 with a hole beside them on the settings
+    // page. The popover's 224px is what three columns are for; a wider column takes all five in a row, and
+    // the row asks its own container rather than the window, because both widths are drawn on one desktop.
+    <div role='group' aria-label={t('music.eq_presets')} className='grid grid-cols-3 gap-1 pb-1 @sm:grid-cols-5'>
       {EQ_PRESETS.map((preset) => (
         <Button
           key={preset.id}
@@ -369,7 +372,7 @@ export function MusicEqPanel({ className }: { className?: string }) {
   const crossfadeEnabled = useMusic((state) => state.crossfadeEnabled)
   const setCrossfadeEnabled = useMusic((state) => state.setCrossfadeEnabled)
   return (
-    <div className={cn('space-y-1 px-1.5 py-1', className)}>
+    <div className={cn('@container space-y-1 px-1.5 py-1', className)}>
       <div className='flex items-center justify-between gap-2'>
         <span className='text-[length:var(--text-11)] text-[var(--text-secondary)]'>{t('music.eq_enable')}</span>
         <Switch checked={eqEnabled} onChange={setEqEnabled} label={t('music.eq_enable')} />

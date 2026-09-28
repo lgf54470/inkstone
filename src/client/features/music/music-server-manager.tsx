@@ -142,8 +142,10 @@ function AddServerForm() {
         void draft.add()
       }}
     >
-      <p className='text-[length:var(--text-12)] font-medium text-[var(--text-secondary)]'>{t('music.server_add')}</p>
-      <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.server_hint')}</p>
+      {/* FB3-U3 + FB3-C2: the group above already says what a music server is, so the form says what to do
+          with it instead of repeating the sentence — and the button below is the one place its name needs to
+          appear, because a heading with the same words as the button it sits over reads as two controls. */}
+      <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('music.server_form_hint')}</p>
       <ServerFields draft={draft} />
       <div className='flex items-center justify-end'>
         <Button size='sm' variant='primary' icon={<Plus size={12} />} loading={draft.creating} onClick={() => void draft.add()}>
@@ -154,9 +156,13 @@ function AddServerForm() {
   )
 }
 
+// FB3-U3: the fields sat in two independent columns, and each label sized itself to its own text — so
+// "Server URL" pushed its input right while "Username" did not, and the four inputs landed on four left
+// edges. The grid declares the two label/control pairs once and every field adopts them, so the labels
+// line up whatever the two languages' own lengths are.
 function ServerFields({ draft }: { draft: ReturnType<typeof useServerDraft> }) {
   return (
-    <div className='grid grid-cols-2 gap-2'>
+    <div className='grid grid-cols-[auto_1fr_auto_1fr] gap-2'>
       <ServerField label={t('music.server_name')}>
         <Input ref={draft.name} className='h-8 flex-1' aria-label={t('music.server_name')} />
       </ServerField>
@@ -187,7 +193,10 @@ function ServerFields({ draft }: { draft: ReturnType<typeof useServerDraft> }) {
 
 function ServerField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className='flex items-center gap-2 text-[length:var(--text-11)] text-[var(--text-secondary)]'>
+    <label
+      data-server-field=''
+      className='col-span-2 grid grid-cols-subgrid items-center gap-2 text-[length:var(--text-11)] text-[var(--text-secondary)]'
+    >
       <span className='shrink-0'>{label}</span>
       {children}
     </label>
