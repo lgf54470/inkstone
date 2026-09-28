@@ -173,53 +173,31 @@ describe('music search history combobox semantics', () => {
   })
 })
 
-// FEA-A1-5: while typing, the same popup offers jump targets into the library —
-// artists, albums, and playlists matching the text, straight to their scope.
-describe('music search suggestion rows (FEA-A1-5)', () => {
-
-  it('offers matching artists, albums, and playlists while typing', () => {
+// FEA-A1-5 + FB3-C7: while typing, the jump targets into the library — artists, albums and playlists
+// matching the words — used to be rows of this box's drop-down. They are drawn in the online panel now,
+// beside the hits they lead to, because that drop-down hung over the panel's own first rows: the visual
+// gate pressed a hit's tick and the press landed on the suggestion above it (the tick measured at x=297,
+// the popup's box starting at x=298). The box's popup is the history, and only the history.
+describe('the typed box has no drop-down of its own (FB3-C7)', () => {
+  it('draws no popup while there are words in the box', () => {
     const input = mountWithLibrary()
     typeText(input, 'sun')
-    const options = [...document.querySelectorAll('[role="option"]')]
-    expect(options.map((option) => option.getAttribute('aria-label'))).toEqual([
-      `Sun Yi ${t('music.suggest_artist')}`,
-      `Sunrise ${t('music.suggest_album')}`,
-      `Sunset ${t('music.suggest_album')}`,
-      `Sunday Chill ${t('music.suggest_playlist')}`,
-    ])
-    expect(options[2]?.textContent).toContain('Moon')
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
   })
-})
 
-describe('music search suggestion jumps (FEA-A1-5)', () => {
+  it('commits what was typed on Enter, because that is the way out of the box now', () => {
+    const input = mountWithLibrary()
+    typeText(input, 'sun')
+    pressEnter(input)
+    expect(useMusic.getState().query).toBe('sun')
+  })
 
-  it('jumps to the highlighted artist on Enter and clears the query', () => {
+  it('leaves the scope to the panel rows, not to a keypress in the box', () => {
     const input = mountWithLibrary()
     typeText(input, 'sun')
     pressKey(input, 'ArrowDown')
     pressKey(input, 'Enter')
-    expect(useMusic.getState().scope).toEqual({ kind: 'artist', artist: 'Sun Yi' })
-    expect(useMusic.getState().query).toBe('')
-    expect(inputOf(historyRendered!.container).value).toBe('')
-    expect(document.querySelector('[role="listbox"]')).toBeNull()
-  })
-
-  it('jumps to the album scope on click, carrying the artist', () => {
-    const input = mountWithLibrary()
-    typeText(input, 'sunset')
-    const option = [...document.querySelectorAll('[role="option"]')]
-      .find((entry) => entry.textContent?.includes('Sunset')) as HTMLButtonElement
-    act(() => { option.click() })
-    expect(useMusic.getState().scope).toEqual({ kind: 'album', artist: 'Moon', album: 'Sunset' })
-    expect(useMusic.getState().query).toBe('')
-  })
-
-  it('falls back to a plain search when nothing matches', () => {
-    const input = mountWithLibrary()
-    typeText(input, 'zzz')
-    expect(document.querySelector('[role="listbox"]')).toBeNull()
-    pressEnter(input)
-    expect(useMusic.getState().query).toBe('zzz')
+    expect(useMusic.getState().scope).toEqual({ kind: 'all' })
   })
 })
 
@@ -297,33 +275,24 @@ describe('music search popup keeps only its rows for itself (FB2-U7)', () => {
 // escape stack runs the top of the stack and stops the event there, and the popup had never registered —
 // so Escape closed the whole music library while the popup stayed up over it.
 describe('music search popup takes Escape before the surface behind it (FB2-U8)', () => {
-  it('closes the popup on Escape and leaves what was typed alone', () => {
-    const input = mountWithLibrary()
-    typeText(input, 'sun')
+  it('closes the history popup on Escape and leaves the box as it was', () => {
+    const input = mountWithHistory()
     expect(document.querySelector('[role="listbox"]')).not.toBeNull()
     act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
     expect(document.querySelector('[role="listbox"]')).toBeNull()
-    expect(input.value).toBe('sun')
+    expect(input.value).toBe('')
   })
 
   it('closes the popup rather than the surface that also listens for Escape', () => {
     const behind = vi.fn()
     // Mounted exactly the way the hub mounts it: the surface first, the box inside it after.
-    act(() => {
-      useMusic.setState({
-        tracks: [{ id: '1', title: 'Song 1', artist: 'Sun Yi', album: 'Sunrise', durationMs: 1000, isPinned: false }] as MusicTrack[],
-        playlists: [],
-      })
-    })
+    act(() => { useMusic.setState({ searchHistory: ['sun'] }) })
     historyRendered = renderElement(createElement(Fragment, null,
       createElement(Behind, { onEscape: behind }),
       createElement(SearchBox),
     ))
     const input = inputOf(historyRendered.container)
     act(() => { input.focus() })
-    act(() => { input.blur() })
-    act(() => { input.focus() })
-    typeText(input, 'sun')
     expect(document.querySelector('[role="listbox"]')).not.toBeNull()
     act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
     expect(behind).not.toHaveBeenCalled()
@@ -375,50 +344,23 @@ describe('music search history completeness (FB3-F5)', () => {
   })
 })
 
-// FB3-F8: the catalogue's answer to the same words is offered beside the library's own jump targets.
-// It is only offered while the box still holds the words the answer belongs to.
-// FB3-C6: picking one hands its words to the search rather than taking the player over. The visual
-// gate found the difference: the popup hangs over the online panel, so its batch press landed on a
-// suggestion — and a suggestion that plays turns a missed press into the player going somewhere the
-// reader never asked for. Auditioning a hit is the panel row's own control.
-describe('online suggestions in the search popup (FB3-F8)', () => {
+// FB3-F8 + FB3-C7: the catalogue's answer to the words in the box is drawn with the hits — in the online
+// panel — and its rows are the panel's own (see music-provider-results.test.ts). The box draws no
+// suggestion rows at all any more, which is what this reads from the box's side.
+describe('the catalogue answer is not a row of this popup (FB3-C7)', () => {
   const hit = (sourceId: string, title: string) => ({
     provider: 'gds', source: 'netease', sourceId, title, artist: 'Ann', album: '', durationMs: null, coverId: null, lyricId: null,
   })
 
-  it('lists the catalogue answer under the library rows and searches the hit it carries', () => {
-    vi.useFakeTimers()
-    const play = vi.fn(async () => {})
-    useMusic.setState({ providerResults: [hit('b9', 'Echo Beach')], providerKeywords: 'echo', playProviderTrack: play })
-    const rendered = renderElement(createElement(SearchBox))
-    const input = inputOf(rendered.container)
-    // The popup opens on focus (the box is a combobox), so the caret comes first.
-    act(() => { input.focus() })
-    typeText(input, 'echo')
-    act(() => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS) })
-
-    const options = [...document.querySelectorAll('[role="option"]')]
-    const online = options.find((option) => (option.textContent ?? '').includes('Echo Beach'))
-    expect(online).toBeTruthy()
-    expect(online?.getAttribute('aria-label')).toBe(`Echo Beach ${t('music.suggest_online')}`)
-
-    act(() => { (online as HTMLElement).click() })
-    expect(play).not.toHaveBeenCalled()
-    expect(useMusic.getState().query).toBe('Echo Beach')
-    expect(input.value).toBe('Echo Beach')
-    expect(document.querySelector('[role="listbox"]')).toBeNull()
-    rendered.unmount()
-  })
-
-  it('stops offering an answer whose words have been typed past', () => {
+  it('draws no popup even when the catalogue has answered the words in the box', () => {
     vi.useFakeTimers()
     useMusic.setState({ providerResults: [hit('b9', 'Echo Beach')], providerKeywords: 'echo' })
     const rendered = renderElement(createElement(SearchBox))
     const input = inputOf(rendered.container)
     act(() => { input.focus() })
-    typeText(input, 'echoo')
+    typeText(input, 'echo')
     act(() => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS) })
-    expect([...document.querySelectorAll('[role="option"]')].some((option) => (option.textContent ?? '').includes('Echo Beach'))).toBe(false)
+    expect(document.querySelector('[role="option"]')).toBeNull()
     rendered.unmount()
   })
 })

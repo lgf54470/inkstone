@@ -5568,43 +5568,39 @@ async function assertMusicProviderResults(page) {
     // Then the whole selection in one press: every row ticked, which is the only path that lands the
     // hit the audition did not already register.
     //
-    // FB2-U7 / FB2-U8, both found by this scenario and fixed here: the search box's suggestion popup
-    // drops over the panel's own top — its switch, its header and this selection bar — and used to take
-    // the press aimed at them for itself (the frame counts as inside the box, so the box's outside-press
-    // rule never fired and the press vanished). It could not be put away either: Escape was taken by the
-    // modal's own stack before the box saw it, so it closed the library instead of the popup. Both are
-    // read here as facts about the screen, and the ticks are placed with the real pointer a reader has —
-    // which is the assertion: the press has to reach the control it was aimed at, and reaching it is
-    // what puts the popup away.
-    // The popup is read by its own name: the page holds other listboxes (the note list, the command
-    // palette), and "a listbox exists" would be an assertion about whichever one happened to be there.
-    await page.click(cssByLabels('input', LABELS.musicSearch))
-    const suggestionPopup = cssByLabels('[role="listbox"]', LABELS.musicSearchSuggestions)
-    const suggestionsUp = Boolean(await page.$(suggestionPopup))
-    check('music: the search suggestions are drawn over the panel while the query is being edited', suggestionsUp)
-    // The press above is a real press on the panel, and putting the popup away is what such a press
-    // does. It is the first tick, read as a pair — the popup was up to take this press, and the row it
-    // was aimed at is the one that changed — because either half alone is satisfiable by accident.
-    // FB3-C6: the popup hangs over the panel's right-hand side, so a press that lands on a suggestion
-    // is the other way this read could pass — and that is why the popup's own rows hand their words to
-    // the search instead of playing anything. A suggestion that started the music turned a missed press
-    // into the player going somewhere the reader never asked for.
-    const pressTick = (title) => pressSurfaceControl(page, [`选择 ${title}`, `Select ${title}`],
-      cssByLabels('section', LABELS.musicProviderResults))
-    const firstTick = await pressTick(PROVIDER_STUB_HITS[0].title)
-    const popupAway = !(await page.$(suggestionPopup))
-    const listboxes = await page.evaluate(() => [...document.querySelectorAll('[role="listbox"]')]
-      .map((item) => item.getAttribute('aria-label')))
-    check('music: a real press on the panel puts the suggestions away and reaches its control',
-      firstTick && popupAway, JSON.stringify({ firstTick, popupAway, listboxes }))
-    // The rest of the answer is ticked the same way, so the batch this scenario presses is the one the
-    // rows are showing — read back as the ticks themselves rather than as the count of controls drawn.
-    await pressTick(PROVIDER_STUB_HITS[1].title)
-    const ticked = await page.evaluate((selector) => {
+    // FB3-C7: the words in the box are read *in the panel* — the library's jump targets and the
+    // catalogue's answer are rows of it, drawn with the hits they lead to. They used to be a drop-down
+    // over the panel, and that drop-down's box covered the first hits' own ticks and buttons: a press
+    // aimed at a tick landed on a suggestion instead (measured then — the tick at x=297, the popup's box
+    // starting at x=298). FB2-U7/U8's rule is kept here by construction and read as the pair below:
+    // with the suggestion rows drawn, a real press on a tick reaches *that* tick. The rows are read by
+    // the name the popup used to carry, because that is the name the reader hears for them.
+    const suggestionStrip = await page.evaluate(({ selector, labels }) => {
+      const strip = document.querySelector(`${selector} [data-provider-suggestions]`)
+      const named = strip?.getAttribute('aria-label') ?? null
+      return {
+        present: Boolean(strip),
+        named: named !== null && labels.includes(named),
+        rows: [...(strip?.querySelectorAll('button') ?? [])].map((button) => (button.textContent ?? '').trim()),
+      }
+    }, { selector: cssByLabels('section', LABELS.musicProviderResults), labels: LABELS.musicSearchSuggestions })
+    check('music: the jump targets and the catalogue answer are rows of the panel',
+      suggestionStrip.present && suggestionStrip.named, JSON.stringify(suggestionStrip))
+    const tickCount = () => page.evaluate((selector) => {
       const panel = document.querySelector(selector)
       return [...(panel?.querySelectorAll('[role="checkbox"]') ?? [])]
         .filter((box) => box.getAttribute('aria-checked') === 'true').length
     }, cssByLabels('section', LABELS.musicProviderResults))
+    const pressTick = (title) => pressSurfaceControl(page, [`选择 ${title}`, `Select ${title}`],
+      cssByLabels('section', LABELS.musicProviderResults))
+    const firstTick = await pressTick(PROVIDER_STUB_HITS[0].title)
+    const ticksAfterOne = await tickCount()
+    check('music: a real press on a tick reaches it, with the suggestion rows beside it',
+      firstTick && ticksAfterOne === 1, JSON.stringify({ firstTick, ticksAfterOne, rows: suggestionStrip.rows.length }))
+    // The rest of the answer is ticked the same way, so the batch this scenario presses is the one the
+    // rows are showing — read back as the ticks themselves rather than as the count of controls drawn.
+    await pressTick(PROVIDER_STUB_HITS[1].title)
+    const ticked = await tickCount()
     check('music: the panel offers a tick per hit', ticked === PROVIDER_STUB_HITS.length, String(ticked))
     // The tick is what draws the bar, so the gate waits for the control it is about to press instead of
     // pressing into a re-render.

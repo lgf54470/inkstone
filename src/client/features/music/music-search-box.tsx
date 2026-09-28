@@ -1,15 +1,11 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
-import { Clock3, Cloud, Disc3, ListMusic, Search, User, X } from 'lucide-react'
+import { Clock3, Search, X } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { Input } from '../../components/form'
 import { useClickOutside, useEscape } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useMusic } from './music-store'
-import type { MusicScope } from './music-store'
-import { buildSearchSuggestions } from './music-search-suggestions'
-import type { MusicSearchSuggestion } from './music-search-suggestions'
-import { providerSourceLabel } from './providers'
 
 // Every store query write re-filters the library; typing must not pay for that per keystroke.
 export const SEARCH_DEBOUNCE_MS = 200
@@ -55,8 +51,9 @@ function useDebouncedText(value: string, send: (value: string) => void) {
   return { text, setText, schedule, flush }
 }
 
-// FEA-A1-5: one row shape for both popup modes — search history entries and
-// library jump targets (artist / album / playlist) walk the same highlight.
+// FB3-C7: one row shape for the popup — search history entries. The library jump targets and the
+// catalogue's answer are drawn in the online panel instead, where the hits they lead to are, because a
+// drop-down at the top of that panel covers the rows it would be suggesting.
 interface PopupOption {
   key: string
   label: string
@@ -70,7 +67,6 @@ interface PopupOption {
 
 interface PopupState {
   show: boolean
-  historyMode: boolean
   highlight: number
   options: PopupOption[]
   close: () => void
@@ -96,8 +92,6 @@ interface PopupArgs {
   history: string[]
   text: string
   listId: string
-  suggestions: MusicSearchSuggestion[]
-  setScope: (scope: MusicScope) => void
   setText: (value: string) => void
   schedule: (value: string) => void
   commit: (value: string) => void
@@ -106,20 +100,17 @@ interface PopupArgs {
   removeEntry: (entry: string) => void
 }
 
-// The ARIA projection of the popup state onto the combobox input. Empty text
-// offers the search history; typed text offers jump targets into the library.
-function useSearchPopup({ history, text, listId, suggestions, setScope, setText, schedule, commit, flush, clearHistory, removeEntry }: PopupArgs): PopupState {
+// The ARIA projection of the popup state onto the combobox input. The popup is the history the reader
+// can come back to — a query in the box is answered by the panel below, not by a drop-down over it.
+function useSearchPopup({ history, text, listId, setText, schedule, commit, flush, clearHistory, removeEntry }: PopupArgs): PopupState {
   const [open, setOpen] = useState(false)
   const [highlight, setHighlight] = useState(-1)
-  const historyMode = !text.trim()
   const close = useCallback((): void => {
     setOpen(false)
     setHighlight(-1)
   }, [])
-  const options = useMemo<PopupOption[]>(() => historyMode
-    ? historyOptions(history, commit, flush, close, removeEntry)
-    : suggestionOptions(suggestions, setScope, flush, setText, commit, close),
-  [historyMode, history, suggestions, commit, flush, setScope, setText, close, removeEntry])
+  const options = useMemo<PopupOption[]>(() => (text.trim() ? [] : historyOptions(history, commit, flush, close, removeEntry)),
+    [history, text, commit, flush, close, removeEntry])
   const show = open && options.length > 0
   // FB2-U8: the popup has to own Escape while it is up. Inside the hub it did not: `useEscape` runs the
   // top of the stack and stops the event there, and this popup had never registered — so Escape was
@@ -129,7 +120,6 @@ function useSearchPopup({ history, text, listId, suggestions, setScope, setText,
   useEscape(show, close)
   return {
     show,
-    historyMode,
     highlight,
     options,
     close,
@@ -200,13 +190,6 @@ function popupHandlers(context: {
   }
 }
 
-const SUGGESTION_KIND_KEYS = {
-  artist: 'music.suggest_artist',
-  album: 'music.suggest_album',
-  playlist: 'music.suggest_playlist',
-  online: 'music.suggest_online',
-} as const
-
 function historyOptions(history: string[], commit: (value: string) => void, flush: (value: string) => void, close: () => void, removeEntry: (entry: string) => void): PopupOption[] {
   return history.map((entry) => ({
     key: entry,
@@ -223,52 +206,6 @@ function historyOptions(history: string[], commit: (value: string) => void, flus
   }))
 }
 
-function suggestionOptions(
-  suggestions: MusicSearchSuggestion[],
-  setScope: (scope: MusicScope) => void,
-  flush: (value: string) => void,
-  setText: (value: string) => void,
-  commit: (value: string) => void,
-  close: () => void,
-): PopupOption[] {
-  return suggestions.map((suggestion) => ({
-    key: suggestion.key,
-    label: suggestion.label,
-    // FB3-F8: an online row says which it is — a catalogue the reader can hear now, or one the library
-    // already holds. The catalogue's own name is the second line of the library jump targets' shape.
-    meta: suggestion.hit ? (suggestion.inLibrary ? t('music.provider_in_library') : providerSourceLabel(suggestion.hit.source)) : suggestion.meta,
-    icon: kindIcon(suggestion.kind),
-    ariaLabel: `${suggestion.label} ${t(SUGGESTION_KIND_KEYS[suggestion.kind])}`,
-    // A jump is not a text search: the box empties while the scope change repaints the library behind
-    // it. A catalogue row is a jump target of the same kind — the words it carries become the query
-    // and are searched, which is where the hits (and their own audition / add controls) are listed.
-    pick: () => {
-      if (suggestion.hit) {
-        // FB3-C6: this row used to play the hit. A drop-down that starts the music on a press is a
-        // press the reader cannot aim: the popup hangs over the panel's own controls, so a press meant
-        // for one of those landed on a suggestion and took the player over instead — which is exactly
-        // what the visual gate found when its batch press played a track. Taking the player over is the
-        // panel row's own audition control; here the words are handed to the search.
-        setText(suggestion.label)
-        commit(suggestion.label)
-        close()
-        return
-      }
-      if (suggestion.scope) setScope(suggestion.scope)
-      flush('')
-      setText('')
-      close()
-    },
-  }))
-}
-
-function kindIcon(kind: MusicSearchSuggestion['kind']): ReactNode {
-  if (kind === 'artist') return <User size={12} className='shrink-0 opacity-70' />
-  if (kind === 'album') return <Disc3 size={12} className='shrink-0 opacity-70' />
-  if (kind === 'online') return <Cloud size={12} className='shrink-0 opacity-70' />
-  return <ListMusic size={12} className='shrink-0 opacity-70' />
-}
-
 function popupInputProps(show: boolean, highlight: number, listId: string): PopupState['inputProps'] {
   return {
     role: 'combobox',
@@ -279,21 +216,6 @@ function popupInputProps(show: boolean, highlight: number, listId: string): Popu
   }
 }
 
-// FEA-A1-5 + FB3-F8: what the popup offers under the words being typed — the library's own jump
-// targets, plus the catalogue's answer to the same words. The online half is read from the panel's
-// answer (`providerResults`/`providerKeywords`), so the two surfaces can never disagree about what the
-// catalogues said; the builder drops an answer the box has been typed past.
-function useSearchSuggestions(text: string): MusicSearchSuggestion[] {
-  const tracks = useMusic((state) => state.tracks)
-  const playlists = useMusic((state) => state.playlists)
-  const providerResults = useMusic((state) => state.providerResults)
-  const providerKeywords = useMusic((state) => state.providerKeywords)
-  return useMemo(
-    () => buildSearchSuggestions(tracks, playlists, text, { hits: providerResults ?? [], keywords: providerKeywords }),
-    [tracks, playlists, text, providerResults, providerKeywords],
-  )
-}
-
 export function SearchBox() {
   const query = useMusic((state) => state.query)
   const history = useMusic((state) => state.searchHistory)
@@ -302,12 +224,10 @@ export function SearchBox() {
   const clearSearchHistory = useMusic((state) => state.clearSearchHistory)
   const recordSearchQuery = useMusic((state) => state.recordSearchQuery)
   const removeSearchHistory = useMusic((state) => state.removeSearchHistory)
-  const setScope = useMusic((state) => state.setScope)
   const listId = useId()
   const { text, setText, schedule, flush } = useDebouncedText(query, setQuery)
-  const suggestions = useSearchSuggestions(text)
   const popup = useSearchPopup({
-    history, text, listId, suggestions, setScope, setText, schedule, commit: commitQuery, flush,
+    history, text, listId, setText, schedule, commit: commitQuery, flush,
     clearHistory: clearSearchHistory, removeEntry: removeSearchHistory,
   })
   useSettledSearch(text, recordSearchQuery)
@@ -352,9 +272,8 @@ function useSettledSearch(text: string, record: (query: string) => void): void {
   }, [text, record])
 }
 
-// What the popup shows for the state the box is in — the history before a query and the jump targets
-// after one, each with its own title and its one action. Kept beside the box rather than inside it so
-// the box itself reads as the input it is.
+// What the popup shows: the queries this reader has already searched for, each with its one action.
+// Kept beside the box rather than inside it so the box itself reads as the input it is.
 function SearchPopupFromState({ popup, listId }: { popup: PopupState; listId: string }) {
   if (!popup.show) return null
   return (
@@ -362,14 +281,12 @@ function SearchPopupFromState({ popup, listId }: { popup: PopupState; listId: st
       options={popup.options}
       highlight={popup.highlight}
       listId={listId}
-      title={popup.historyMode ? t('music.search_history') : t('music.search_suggestions')}
-      action={popup.historyMode
-        ? (
-            <button type='button' onClick={popup.clearAll} className='pointer-events-auto min-h-6 rounded px-1.5 hover:text-[var(--text-secondary)]'>
-              {t('music.search_clear_history')}
-            </button>
-          )
-        : null}
+      title={t('music.search_history')}
+      action={(
+        <button type='button' onClick={popup.clearAll} className='pointer-events-auto min-h-6 rounded px-1.5 hover:text-[var(--text-secondary)]'>
+          {t('music.search_clear_history')}
+        </button>
+      )}
     />
   )
 }

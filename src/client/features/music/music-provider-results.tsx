@@ -7,6 +7,7 @@ import { formatTimecode } from '../../lib/time'
 import type { MusicTrack } from '@shared/types'
 import { useMusic } from './music-store'
 import { GDS_SOURCES, PROVIDER_SCOPE_ALL, enabledSources, isProviderScope, providerSourceLabel, type MusicProviderScope } from './providers'
+import { ProviderSuggestions } from './music-provider-suggestions'
 import { musicProviderCoverUrl, type MusicProviderTrack } from '../../lib/api'
 
 // FB-F2: every state the panel can be in has words. The old render chain fell through
@@ -304,6 +305,7 @@ function ProviderPanelBody({
   return (
     <>
       {failedSources.length > 0 && <ProviderFailureNotice failedSources={failedSources} scopeSize={scopeSize} onRetry={onRetry} />}
+      <ProviderSuggestions />
       {selected.length > 0 && (
         <ProviderSelectionBar
           count={selected.length}

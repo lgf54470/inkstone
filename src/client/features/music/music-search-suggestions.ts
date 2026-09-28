@@ -43,7 +43,11 @@ export function buildSearchSuggestions(
   const needle = text.trim().toLowerCase()
   if (!needle) return []
   const matches = (name: string): boolean => name.toLowerCase().includes(needle)
-  const artists = buildGroups(tracks, 'artists')
+  // FB3-C7: the panel draws these rows with the hits it lists, so this runs on every online answer —
+  // and a row that cannot name a group (an offline cache written before the field existed) would take
+  // the whole panel down with it. A track with no artist is simply not an artist to jump to.
+  const named = tracks.filter((track) => typeof track.artist === 'string' && typeof track.album === 'string')
+  const artists = buildGroups(named, 'artists')
     .filter((group) => group.name && matches(group.name))
     .slice(0, MAX_PER_KIND)
     .map((group) => ({
@@ -53,7 +57,7 @@ export function buildSearchSuggestions(
       meta: '',
       scope: { kind: 'artist', artist: group.name } satisfies MusicScope,
     }))
-  const albums = buildGroups(tracks, 'albums')
+  const albums = buildGroups(named, 'albums')
     .filter((group) => group.name && matches(group.name))
     .slice(0, MAX_PER_KIND)
     .map((group) => ({
