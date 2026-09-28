@@ -5,7 +5,6 @@ import { Button, IconButton } from '../../components/primitives'
 import { Segmented, Select } from '../../components/form'
 import { Menu, Tooltip, confirm } from '../../components/overlay'
 import type { MenuItem } from '../../components/overlay'
-import { cn } from '../../lib/cn'
 import { useElementWidth, useMediaQuery } from '../../lib/hooks'
 import { t, type MessageKey } from '../../lib/i18n'
 import { toastMusicNotice } from './music-feedback'
@@ -45,32 +44,28 @@ export function MusicHubToolbar({ tracks, libraryTracks, shortViewport = false, 
   const shape = toolbarShape({ containerWidth, viewportWide, shortViewport })
   const fileRef = useRef<HTMLInputElement>(null)
   const pickM3u = (): void => fileRef.current?.click()
+  // FB2-U2: the tail (refresh + "more") rides the search's row whenever the actions row has no room
+  // left for it. The search grows to fill that row, so it still ends at the toolbar's edge.
+  const tailOnSearchRow = shape.stacked || shape.hoisted
   return (
     <div
       ref={containerRef}
       data-music-toolbar=''
       data-shape={shape.stacked ? 'stacked' : shape.compact ? 'compact' : 'inline'}
-      className='flex flex-wrap items-center justify-between gap-x-2 gap-y-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'
+      className='flex flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'
     >
-      <div className={cn('flex min-w-0 items-center gap-2', shape.stacked && 'w-full')}>
-        <SearchBox grow={shape.stacked} />
-        {/* FB-U2: the stacked shape keeps the sort beside the search instead of in the menu the
-            review suggested — the shared menu draws a checked row as `menuitemcheckbox`, which is
-            multi-select semantics, while a native select keeps this a single choice and gets the
-            keyboard model for free. It costs one row's width the search row has room for. */}
-        {shape.stacked && <SortControl variant='select' />}
-        {!shape.compact && <SourceFilter libraryTracks={libraryTracks} />}
-        {shape.stacked && (
-          <>
-            <RefreshButton />
-            <FoldedActions tracks={tracks} onPickM3u={pickM3u} />
-          </>
-        )}
-      </div>
+      <SearchRow
+        tracks={tracks}
+        libraryTracks={libraryTracks}
+        shape={shape}
+        tailOnSearchRow={tailOnSearchRow}
+        onPickM3u={pickM3u}
+      />
       <ToolbarActions
         tracks={tracks}
         libraryTracks={libraryTracks}
         shape={shape}
+        tailOnSearchRow={tailOnSearchRow}
         fileRef={fileRef}
         onPickM3u={pickM3u}
         onUpload={onUpload}
@@ -110,6 +105,35 @@ export function buildSourceFilterOptions(
     ...include.filter((value) => value !== 'all'),
   ])
   return ['all', ...SOURCE_FILTER_ORDER.filter((source) => present.has(source))]
+}
+
+// FB2-U2: the rows are declared, not left to the wrap. This one owns the line — it is the row the
+// search fills, so the actions cannot land beside it and then split themselves in half — and
+// `data-music-row` names it for the tests that pin which row a control is drawn on.
+function SearchRow({ tracks, libraryTracks, shape, tailOnSearchRow, onPickM3u }: {
+  tracks: MusicTrack[]
+  libraryTracks: readonly Pick<MusicTrack, 'source'>[]
+  shape: MusicToolbarShape
+  tailOnSearchRow: boolean
+  onPickM3u: () => void
+}) {
+  return (
+    <div data-music-row='search' className='flex w-full min-w-0 items-center gap-2'>
+      <SearchBox />
+      {/* FB-U2: the stacked shape keeps the sort beside the search instead of in the menu the
+          review suggested — the shared menu draws a checked row as `menuitemcheckbox`, which is
+          multi-select semantics, while a native select keeps this a single choice and gets the
+          keyboard model for free. It costs one row's width the search row has room for. */}
+      {shape.stacked && <SortControl variant='select' />}
+      {!shape.compact && <SourceFilter libraryTracks={libraryTracks} />}
+      {tailOnSearchRow && (
+        <>
+          <RefreshButton />
+          <FoldedActions tracks={tracks} onPickM3u={onPickM3u} />
+        </>
+      )}
+    </div>
+  )
 }
 
 function SourceFilter({ libraryTracks }: { libraryTracks: readonly Pick<MusicTrack, 'source'>[] }) {
@@ -246,10 +270,12 @@ function PrimaryActions({ shape, onUpload, onBrowseWebdav, onBrowseAlist, onBrow
   )
 }
 
-function ToolbarActions({ tracks, libraryTracks, shape, fileRef, onPickM3u, onUpload, onBrowseWebdav, onBrowseAlist, onBrowseServers, onPodcasts }: {
+function ToolbarActions({ tracks, libraryTracks, shape, tailOnSearchRow, fileRef, onPickM3u, onUpload, onBrowseWebdav, onBrowseAlist, onBrowseServers, onPodcasts }: {
   tracks: MusicTrack[]
   libraryTracks: readonly Pick<MusicTrack, 'source'>[]
   shape: MusicToolbarShape
+  /** FB2-U2: the parent already decided this; the tail is drawn on the search's row instead. */
+  tailOnSearchRow: boolean
   fileRef: RefObject<HTMLInputElement | null>
   onPickM3u: () => void
   onUpload: () => void
@@ -259,7 +285,7 @@ function ToolbarActions({ tracks, libraryTracks, shape, fileRef, onPickM3u, onUp
   onPodcasts: () => void
 }) {
   return (
-    <div className='flex min-w-0 flex-wrap items-center gap-2'>
+    <div data-music-row='actions' className='flex min-w-0 flex-wrap items-center gap-2'>
       {shape.compact && <SourceFilterSelect libraryTracks={libraryTracks} />}
       {shape.compact && !shape.stacked && <SortControl variant='select' />}
       {!shape.compact && <SortControl variant='segmented' />}
@@ -274,9 +300,10 @@ function ToolbarActions({ tracks, libraryTracks, shape, fileRef, onPickM3u, onUp
           event.target.value = ''
         }}
       />
-      {/* FB-U2: the stacked shape draws the menu and the refresh beside the search, one row up. */}
-      {!shape.stacked && (shape.folded ? <FoldedActions tracks={tracks} onPickM3u={onPickM3u} /> : <InlineActions tracks={tracks} onPickM3u={onPickM3u} />)}
-      {!shape.stacked && <RefreshButton />}
+      {/* FB-U2 / FB2-U2: a row that has no room for the tail does not get it — the search's row
+          draws it one row up, where the search's own growth leaves the space. */}
+      {!tailOnSearchRow && (shape.folded ? <FoldedActions tracks={tracks} onPickM3u={onPickM3u} /> : <InlineActions tracks={tracks} onPickM3u={onPickM3u} />)}
+      {!tailOnSearchRow && <RefreshButton />}
     </div>
   )
 }

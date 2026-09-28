@@ -4488,6 +4488,10 @@ async function dragZoneBy(page, zone, delta) {
  * of being repeated here, so a budget the app stops drawing fails this rather than passing quietly;
  * the only number this side contributes is the policy floor below, the point under which a budget
  * stops saying anything.
+ *
+ * FB2-U2: a band's own width and the gap after the band the search is on come back too. The row the
+ * toolbar draws first is the one the search fills, so it has to end at the toolbar's edge — the fix
+ * for the layout that wrapped a third row carrying two icons and 630px of nothing.
  */
 const MUSIC_BUDGET_POLICY_FLOOR = 100
 
@@ -4502,21 +4506,64 @@ async function readMusicToolbarBudget(page) {
     const toolbar = document.querySelector('[data-music-toolbar]')
     const content = document.querySelector('[data-music-content]')
     if (!toolbar || !content) return null
-    const centres = [...toolbar.querySelectorAll('button, input, select, [role="radiogroup"]')]
+    const style = getComputedStyle(toolbar)
+    const box = toolbar.getBoundingClientRect()
+    const contentRight = box.right - Number.parseFloat(style.paddingRight)
+    const controls = [...toolbar.querySelectorAll('button, input, select, [role="radiogroup"]')]
       .filter((element) => element.getClientRects().length > 0)
       .map((element) => {
-        const box = element.getBoundingClientRect()
-        return Math.round(box.top + box.height / 2)
+        const rect = element.getBoundingClientRect()
+        return { centre: Math.round(rect.top + rect.height / 2), left: rect.left, right: rect.right }
       })
-      .sort((a, b) => a - b)
+      .sort((a, b) => a.centre - b.centre)
+    const bands = []
+    for (const control of controls) {
+      const last = bands.at(-1)
+      if (!last || control.centre - last.centre > 10) bands.push({ centre: control.centre, controls: [control] })
+      else last.controls.push(control)
+    }
+    const widths = bands.map((band) => Math.round(Math.max(...band.controls.map((c) => c.right)) - Math.min(...band.controls.map((c) => c.left))))
     return {
       shape: toolbar.getAttribute('data-shape'),
-      bands: centres.filter((centre, index) => index === 0 || centre - centres[index - 1] > 10).length,
+      bands: bands.length,
+      bandWidths: widths,
+      // The first row is the search's own: the search grows into whatever else that row does not
+      // hold, so the gap after its last control measures whether the row really reaches the edge.
+      searchEndGap: bands.length ? Math.round(contentRight - Math.max(...bands[0].controls.map((c) => c.right))) : -1,
       floor: Math.round(Number.parseFloat(getComputedStyle(content).minHeight) || 0),
       content: Math.round(content.getBoundingClientRect().height),
       viewport: window.innerHeight,
     }
   })
+}
+
+// FB2-U2: what a band has to be worth. Measured before this fix, on the hub's own centre column
+// (718px on a 1440px screen): three bands, the last of them 56px — the refresh and the "more" menu
+// with 630px of empty space beside them. The narrowest row the plan draws on purpose is the phone's
+// filter + five icons at ~280px.
+const MUSIC_TOOLBAR_BAND_MIN_WIDTH = 200
+
+/**
+ * FB2-U2: the toolbar's rows are planned from measured widths, so the leftover row cannot come back.
+ * Read at the two widths a desktop run can reach without dragging anything (the windowed hub on a
+ * 1440 screen and the maximised one): every band is a row worth drawing, there are never more than
+ * two of them, and the search's row ends at the toolbar's own edge.
+ */
+async function assertMusicToolbarRows(page) {
+  await page.setViewport({ width: 1440, height: 900 })
+  await sleep(500)
+  const windowed = await readMusicToolbarBudget(page)
+  const planned = (read) => Boolean(read) && read.bands <= 2 && read.searchEndGap <= 1
+    && Math.min(...read.bandWidths) >= MUSIC_TOOLBAR_BAND_MIN_WIDTH
+  check('music: the toolbar plans its rows instead of wrapping into a leftover one', planned(windowed), JSON.stringify(windowed))
+  await clickButton(page, LABELS.musicMaximizeHub)
+  await sleep(500)
+  const filled = await readMusicToolbarBudget(page)
+  check('music: the maximised hub keeps the same two rows and the search row still reaches the edge', planned(filled), JSON.stringify(filled))
+  await clickButton(page, LABELS.musicRestoreHub)
+  await sleep(400)
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(400)
 }
 
 /**
@@ -4965,6 +5012,7 @@ async function assertMusicSurface(page) {
   // FB-U4: the rows exist now, so the columns can be read in both of the shapes the same screen
   // gives them (windowed vs maximised).
   await assertMusicListDensity(page)
+  await assertMusicToolbarRows(page)
 
   const motion = await hubMotionDurations(page)
   check('music: the hub opens with an entrance animation',

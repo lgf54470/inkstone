@@ -152,6 +152,57 @@ const optionsOf = (label: string): string[] => [...document.querySelectorAll(`se
 const toolbarShapeAttr = (): string | null =>
   document.querySelector<HTMLElement>('[data-music-toolbar]')?.getAttribute('data-shape') ?? null
 
+const rowOf = (label: string): string | null => {
+  const control = [...document.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === label)
+  return control?.closest('[data-music-row]')?.getAttribute('data-music-row') ?? null
+}
+
+// FB2-U2: which row a control lands on is the layout, and jsdom draws none of it — this is the half
+// the browser gate cannot name. The gate reads the consequence (no third row, the search's row ends
+// at the toolbar's edge); here the plan itself is pinned: the tail rides the search's row exactly
+// when the labelled actions row has no room left for it.
+describe('hub toolbar row plan (FB2-U2)', () => {
+  it('hoists the tail onto the search row when the actions row cannot carry it', () => {
+    stubMatchMedia(true)
+    stubContainerWidth(860)
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, PROPS)) })
+    expect(rowOf(t('music.more_actions'))).toBe('search')
+    expect(rowOf(t('common.refresh'))).toBe('search')
+    // The whole point of hoisting rather than compacting: the flows keep their labels on that row.
+    expect(buttonLabels()).toContain(t('music.upload'))
+    expect(buttonLabels()).toContain(t('music.podcast_title'))
+  })
+
+  it('leaves the tail on the actions row once that row has the room', () => {
+    stubMatchMedia(true)
+    stubContainerWidth(960)
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, PROPS)) })
+    expect(rowOf(t('music.more_actions'))).toBe('actions')
+    expect(rowOf(t('common.refresh'))).toBe('actions')
+    expect(buttonLabels()).toContain(t('music.upload'))
+  })
+
+  // The hub's own centre column on a 1440px screen: neither the labelled row nor the same row with
+  // the tail fits, so the labels go *and* the tail is hoisted — the two steps are not exclusive, and
+  // the shape the reader gets has to be both.
+  it('hoists the tail and drops the labels where neither row fits otherwise', () => {
+    stubMatchMedia(true)
+    stubContainerWidth(686)
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, PROPS)) })
+    expect(toolbarShapeAttr()).toBe('compact')
+    expect(rowOf(t('music.more_actions'))).toBe('search')
+    expect(rowOf(t('music.upload'))).toBe('actions')
+    expect(buttonLabels()).not.toContain(t('music.upload'))
+  })
+
+  it('hoists the tail onto the search row on a phone as well', () => {
+    stubMatchMedia(false)
+    act(() => { rendered = renderElement(createElement(MusicHubToolbar, PROPS)) })
+    expect(toolbarShapeAttr()).toBe('stacked')
+    expect(rowOf(t('music.more_actions'))).toBe('search')
+  })
+})
+
 describe('hub toolbar on a phone-width container (FB-U2)', () => {
   it('stacks the search and answers both filters with a dropdown', () => {
     stubMatchMedia(false)

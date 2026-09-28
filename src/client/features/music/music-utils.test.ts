@@ -11,29 +11,44 @@ function tag(id: string, parentId: string | null, name = id, isPinned = false): 
 }
 
 // FB-U2 / FB-R3: one decision serves the width squeeze and the height squeeze, so the two cannot
-// disagree about how much of the row folds. The widths below are the ones a hub centre column
-// really gets: ~360 on a phone, ~760 on a 1440 screen with both side columns, ~1240 maximised.
+// disagree about how much of the row folds. The widths below are the content boxes a hub centre
+// column really gets, measured in the running app: 686 on a 1440px screen, 662 on a 1280px one, 928
+// with the hub maximised, 1408 with it maximised on a 1920px screen.
 describe('hub toolbar shape (FB-U2 / FB-R3)', () => {
   it('keeps everything inline on a wide, tall container', () => {
-    expect(toolbarShape({ containerWidth: 1440, viewportWide: true, shortViewport: false }))
-      .toEqual({ folded: false, compact: false, stacked: false })
+    // A maximised hub gets this much only on a 1920px screen, and the inline row measures 1357px
+    // there — the number the old 1040 threshold was unfolding at.
+    expect(toolbarShape({ containerWidth: 1408, viewportWide: true, shortViewport: false }))
+      .toEqual({ folded: false, compact: false, stacked: false, hoisted: false })
   })
 
-  it('folds only the low-frequency actions on the centre column of a desktop hub', () => {
-    expect(toolbarShape({ containerWidth: 760, viewportWide: true, shortViewport: false }))
-      .toEqual({ folded: true, compact: false, stacked: false })
+  it('keeps the labels and folds the low-frequency actions on a maximised hub', () => {
+    // 928: the labelled actions row measures 883 with the refresh and the "more" menu on it, so it
+    // fits with the tail on its own row and the search takes the row above.
+    expect(toolbarShape({ containerWidth: 928, viewportWide: true, shortViewport: false }))
+      .toEqual({ folded: true, compact: false, stacked: false, hoisted: false })
+  })
+
+  it('drops the labels and hoists the tail on the centre column of a desktop hub', () => {
+    // FB2-U2: 686px — the hub's own centre column on a 1440px screen (1240 hub − sidebar 224 − now
+    // playing 256 − the row's 32px of padding). Neither the labelled row (819) nor the labelled row
+    // with the tail (883) fits, so the flows keep their names without their labels and the tail rides
+    // the search's row, which the search grows to fill. The layout this replaces wrapped into a third
+    // row carrying those two icons and 630px of nothing.
+    expect(toolbarShape({ containerWidth: 686, viewportWide: true, shortViewport: false }))
+      .toEqual({ folded: true, compact: true, stacked: false, hoisted: true })
   })
 
   it('stacks the search and compacts the controls on a phone-width container', () => {
     expect(toolbarShape({ containerWidth: 360, viewportWide: false, shortViewport: false }))
-      .toEqual({ folded: true, compact: true, stacked: true })
+      .toEqual({ folded: true, compact: true, stacked: true, hoisted: false })
   })
 
   it('compacts without stacking when a wide container is short on height', () => {
     // The height squeeze is answered by dropping the controls' labels and the inline sort, not by
     // spending another row: this container has the width to keep its row in one line.
     expect(toolbarShape({ containerWidth: 1180, viewportWide: true, shortViewport: true }))
-      .toEqual({ folded: true, compact: true, stacked: false })
+      .toEqual({ folded: true, compact: true, stacked: false, hoisted: false })
   })
 
   it('stacks a phone-width container whether or not the viewport is short', () => {
@@ -41,14 +56,48 @@ describe('hub toolbar shape (FB-U2 / FB-R3)', () => {
     // two dropdowns, six named controls and the refresh to wrap into four lines — the height answer
     // spending the very height it exists to save.
     expect(toolbarShape({ containerWidth: 360, viewportWide: false, shortViewport: true }))
-      .toEqual({ folded: true, compact: true, stacked: true })
+      .toEqual({ folded: true, compact: true, stacked: true, hoisted: false })
+  })
+})
+
+// FB2-U2: the same planner read as thresholds — each step is taken at the width the row it spends
+// really needs, so no shape asks for room its own plan has already refused, and the width answer is
+// never guessed when nothing can be measured.
+describe('hub toolbar shape thresholds (FB2-U2)', () => {
+  it('drops the labels before it leaves a row with nothing room for them', () => {
+    // 819 measured for the five labelled flows plus the sort segments in the wider locale: the row
+    // they need of their own, rounded up to 840.
+    expect(toolbarShape({ containerWidth: 839, viewportWide: true, shortViewport: false }).compact).toBe(true)
+    expect(toolbarShape({ containerWidth: 840, viewportWide: true, shortViewport: false }).compact).toBe(false)
+  })
+
+  it('stops hoisting once the actions row has the room to carry its own tail', () => {
+    // 883 measured for that row: five labelled flows, the sort segments, the refresh and the menu.
+    expect(toolbarShape({ containerWidth: 899, viewportWide: true, shortViewport: false }).hoisted).toBe(true)
+    expect(toolbarShape({ containerWidth: 900, viewportWide: true, shortViewport: false }).hoisted).toBe(false)
+  })
+
+  it('keeps the low-frequency actions inline only once their whole row fits', () => {
+    // 1357 measured for that row with the six import / metadata / health controls back on it, so a
+    // fold that ended at 1040 was unfolding into a row that then wrapped into a third one.
+    expect(toolbarShape({ containerWidth: 1399, viewportWide: true, shortViewport: false }).folded).toBe(true)
+    expect(toolbarShape({ containerWidth: 1400, viewportWide: true, shortViewport: false }).folded).toBe(false)
+  })
+
+  it('never stacks without compacting, nor compacts without folding', () => {
+    // Each step is a row this planner is allowed to spend, and spending a later one without the
+    // earlier one would mean a shape asking for room its own plan has already refused.
+    for (const width of [240, 360, 559, 560, 686, 839, 840, 899, 900, 928, 1399, 1408, 1600]) {
+      const shape = toolbarShape({ containerWidth: width, viewportWide: true, shortViewport: false })
+      expect([width, shape.stacked && !shape.compact, shape.compact && !shape.folded]).toEqual([width, false, false])
+    }
   })
 
   it('falls back to the viewport only when nothing can be measured', () => {
     // No ResizeObserver (jsdom, SSR): the viewport read is the sole width there is, and it is read
     // as the *narrow* answer rather than as a wide one — the fallback must not guess a row that fits.
-    expect(toolbarShape({ containerWidth: null, viewportWide: true, shortViewport: false })).toEqual({ folded: false, compact: false, stacked: false })
-    expect(toolbarShape({ containerWidth: null, viewportWide: false, shortViewport: false })).toEqual({ folded: true, compact: true, stacked: true })
+    expect(toolbarShape({ containerWidth: null, viewportWide: true, shortViewport: false })).toEqual({ folded: false, compact: false, stacked: false, hoisted: false })
+    expect(toolbarShape({ containerWidth: null, viewportWide: false, shortViewport: false })).toEqual({ folded: true, compact: true, stacked: true, hoisted: false })
   })
 })
 

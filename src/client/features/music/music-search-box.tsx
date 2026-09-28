@@ -233,7 +233,7 @@ function popupInputProps(show: boolean, highlight: number, listId: string): Popu
   }
 }
 
-export function SearchBox({ grow = false }: { grow?: boolean }) {
+export function SearchBox() {
   const query = useMusic((state) => state.query)
   const history = useMusic((state) => state.searchHistory)
   const tracks = useMusic((state) => state.tracks)
@@ -252,9 +252,10 @@ export function SearchBox({ grow = false }: { grow?: boolean }) {
   const boxRef = useRef<HTMLDivElement>(null)
   useClickOutside([boxRef], popup.show, popup.close)
   return (
-    // FB-U2: the stacked toolbar gives the search a row of its own, where a fixed 240px box would
-    // leave the refresh and the menu to wrap onto another one.
-    <div ref={boxRef} className={cn('relative', grow ? 'min-w-0 flex-1' : 'w-60 md:w-72')}>
+    // FB-U2 / FB2-U2: the toolbar gives the search a row of its own and the search fills whatever the
+    // rest of that row does not take, so the row ends at the toolbar's edge instead of trailing off
+    // into empty space after a fixed 240px box.
+    <div ref={boxRef} className='relative min-w-0 flex-1'>
       <Input
         leading={<Search size={13} className='text-[var(--text-quaternary)]' />}
         value={text}
@@ -265,22 +266,30 @@ export function SearchBox({ grow = false }: { grow?: boolean }) {
         {...popup.inputHandlers}
       />
       {text && <SearchClearButton onClear={() => popup.clearAll()} />}
-      {popup.show && (
-        <SearchPopup
-          options={popup.options}
-          highlight={popup.highlight}
-          listId={listId}
-          title={popup.historyMode ? t('music.search_history') : t('music.search_suggestions')}
-          action={popup.historyMode
-            ? (
-                <button type='button' onClick={popup.clearAll} className='min-h-6 rounded px-1.5 hover:text-[var(--text-secondary)]'>
-                  {t('music.search_clear_history')}
-                </button>
-              )
-            : null}
-        />
-      )}
+      <SearchPopupFromState popup={popup} listId={listId} />
     </div>
+  )
+}
+
+// What the popup shows for the state the box is in — the history before a query and the jump targets
+// after one, each with its own title and its one action. Kept beside the box rather than inside it so
+// the box itself reads as the input it is.
+function SearchPopupFromState({ popup, listId }: { popup: PopupState; listId: string }) {
+  if (!popup.show) return null
+  return (
+    <SearchPopup
+      options={popup.options}
+      highlight={popup.highlight}
+      listId={listId}
+      title={popup.historyMode ? t('music.search_history') : t('music.search_suggestions')}
+      action={popup.historyMode
+        ? (
+            <button type='button' onClick={popup.clearAll} className='min-h-6 rounded px-1.5 hover:text-[var(--text-secondary)]'>
+              {t('music.search_clear_history')}
+            </button>
+          )
+        : null}
+    />
   )
 }
 

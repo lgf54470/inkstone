@@ -16,17 +16,37 @@ export const COVER_LOOKUP_CONCURRENCY = 4
 // Below this viewport width the music surfaces' fixed-width side columns squeeze the main area
 // toward zero, so they fold (UI-14): the hub into drawers, the immersive player into a stack.
 export const MUSIC_NARROW_BREAKPOINT = 900
-// REF-7: the toolbar row needs about this much width to stay on one line; below it the
-// low-frequency actions fold into the "more" menu. Measured on the row's own container,
-// not on the viewport: the hub's centre column is ~760px even on a 1440px screen
-// (hub 1240 − sidebar 224 − now playing 256), and a maximised hub gives it far more.
-export const MUSIC_TOOLBAR_INLINE_MIN_WIDTH = 1040
+// The toolbar spends its rows from these, and each one is a width a row really measures rather than
+// a round number — in the same space `useElementWidth` answers in, the row's *content* box, which is
+// 32px narrower than the box the browser gate reads. Measured on the running app (2026-09-28) in
+// both locales, because a threshold taken from one of them is a fold that wraps in the other: the
+// labels are 674px of row in zh-CN and 819px in en-US, the same row with the refresh and the "more"
+// menu on it 738 / 883, and the row with the six import / metadata / health controls back on it
+// 1197 / 1357. Each is rounded up to the next ten of the wider locale. A fold decided by a width the
+// row does not need is what left the toolbar wrapping into a third row that carried two icons and
+// 630px of nothing.
+//
+// The five flows with their labels and the sort segments. Below this the labels are the first thing
+// to go, because an icon with a name and a tooltip keeps the action available while a wrapped row
+// costs the reader a line of the library.
+export const MUSIC_TOOLBAR_LABEL_MIN_WIDTH = 840
+// The same row with the refresh and the "more" menu on it. Below this the tail rides the search's row
+// — which the search grows to fill, so that row still ends at the toolbar's edge — instead of
+// spending a row of its own on two icons.
+export const MUSIC_TOOLBAR_TAIL_HOIST_WIDTH = 900
+// REF-7: at or above this the low-frequency actions stay out of the "more" menu. FB2-U2: that number
+// used to be 1040, which unfolded six controls into a row that then wrapped anyway (see above). It
+// is measured on the row's own container, not on the viewport: the hub's centre column is 686px even
+// on a 1440px screen (hub 1240 − sidebar 224 − now playing 256, less the row's own padding), 928
+// with that hub maximised, and 1408 with it maximised on a 1920px screen.
+export const MUSIC_TOOLBAR_INLINE_MIN_WIDTH = 1400
 // Only for environments without ResizeObserver (jsdom, SSR), where the viewport read is
-// the sole width available; real browsers take the measured branch above.
+// the sole width available; real browsers take the measured branches above.
 export const MUSIC_TOOLBAR_VIEWPORT_FALLBACK = 1240
 // FB-U2: below this measured width the row is a phone's centre column, where a fixed-width search
 // box, two segmented rows and four labelled buttons wrapped into six lines. Measured on the running
 // app (2026-09-27): 390px wide, header + toolbar 189px of an 844px screen, the toolbar alone 145px.
+// FB2-U2: the source filter and the five flows then take a row of their own, which measures 280px.
 export const MUSIC_TOOLBAR_NARROW_MAX_WIDTH = 560
 // FB-R3: what the list is worth at its smallest. The chrome folds before this is spent — the toolbar
 // answers with its compact shape rather than a second row — and the browser gate reads this value
@@ -118,6 +138,8 @@ export interface MusicToolbarShape {
   compact: boolean
   /** The search box takes a row of its own. */
   stacked: boolean
+  /** FB2-U2: the refresh and the "more" menu ride the search's row instead of the actions row. */
+  hoisted: boolean
 }
 
 // FB-U2 / FB-R3: one decision answers both squeezes, so the width answer and the height answer cannot
@@ -127,7 +149,8 @@ export interface MusicToolbarShape {
 // into two), while compacting is the answer to either squeeze, since a short viewport cannot afford
 // the labels and the segmented rows that a narrow one cannot fit. Not stacking a narrow-and-short
 // container is what the first draft did, and it wrapped into four lines — the height answer spending
-// the height it was there to save.
+// the height it was there to save. FB2-U2: each step is now taken at the width the row it spends
+// really needs (the constants above), so no shape asks for room its own plan has already refused.
 export function toolbarShape({ containerWidth, viewportWide, shortViewport }: {
   containerWidth: number | null
   viewportWide: boolean
@@ -136,12 +159,15 @@ export function toolbarShape({ containerWidth, viewportWide, shortViewport }: {
   // REF-7: the measured container decides, and an unmeasurable environment (jsdom) is read as the
   // narrow answer rather than a wide one — guessing a row that fits is how the fold went wrong before.
   const width = containerWidth ?? (viewportWide ? MUSIC_TOOLBAR_INLINE_MIN_WIDTH : MUSIC_TOOLBAR_NARROW_MAX_WIDTH - 1)
-  const narrow = width < MUSIC_TOOLBAR_NARROW_MAX_WIDTH
-  const compact = shortViewport || narrow
+  const stacked = width < MUSIC_TOOLBAR_NARROW_MAX_WIDTH
+  const compact = shortViewport || width < MUSIC_TOOLBAR_LABEL_MIN_WIDTH
   return {
     folded: compact || width < MUSIC_TOOLBAR_INLINE_MIN_WIDTH,
     compact,
-    stacked: narrow,
+    stacked,
+    // A stacked row already keeps the tail beside the search — there is no room for it below — so
+    // this answers only for the shapes the fold leaves behind, and never contradicts `stacked`.
+    hoisted: !stacked && width < MUSIC_TOOLBAR_TAIL_HOIST_WIDTH,
   }
 }
 
