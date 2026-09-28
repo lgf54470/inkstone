@@ -4,6 +4,7 @@ import { t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
 import { useMusic } from './music-store'
 import { MusicProviderResults, providerFailureKey, providerPanelState } from './music-provider-results'
+import { clearProviderSearchCache } from './music-store/providers'
 
 vi.mock('../../lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/api')>()
@@ -118,6 +119,9 @@ function state(overrides: Partial<Parameters<typeof providerPanelState>[0]> = {}
 }
 
 beforeEach(() => {
+  // FB3-P1: the panel re-asks on a settle and the memo answers the second ask, so every case starts
+  // from a session that has never seen this query.
+  clearProviderSearchCache()
   useMusic.setState(CLEAR)
 })
 

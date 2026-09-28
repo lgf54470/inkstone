@@ -384,7 +384,8 @@ export interface MusicStoreState {
   setProviderEnabled: (providerId: string, enabled: boolean) => void
   /** FB3-F1: how many catalogues one query is allowed to cost. */
   setProviderScope: (scope: MusicProviderScope) => void
-  searchProviders: (keywords: string) => Promise<void>
+  /** FB3-P1: `force` skips the session's memory of the same (scope, keywords) — the retry path. */
+  searchProviders: (keywords: string, options?: { force?: boolean }) => Promise<void>
   playProviderTrack: (hit: MusicProviderTrack) => Promise<void>
   /** FB-F10: registers the hit in the library without handing it to the player. */
   addProviderTrack: (hit: MusicProviderTrack) => Promise<boolean>

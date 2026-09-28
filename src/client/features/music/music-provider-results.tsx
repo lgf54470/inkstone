@@ -100,7 +100,7 @@ export function MusicProviderResults() {
         adding={selection.adding}
         busy={busy}
         held={held}
-        onRetry={() => void searchProviders(query)}
+        onRetry={() => void searchProviders(query, { force: true })}
         onToggle={selection.toggle}
         onAddSelected={selection.addSelected}
         onClearSelection={selection.clear}

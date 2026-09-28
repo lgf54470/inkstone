@@ -1,8 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MusicTrack } from '@shared/types'
 import { MUSIC_PREFS_KEY } from './state'
 import { useMusic } from './index'
-import { swapFailedProviderTrack } from './providers'
+import { PROVIDER_SEARCH_MEMO_MS, clearProviderSearchCache, swapFailedProviderTrack } from './providers'
 
 vi.mock('../../../lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../lib/api')>()
@@ -37,6 +37,10 @@ function storedPrefs(): Record<string, unknown> | null {
 afterEach(() => {
   vi.useRealTimers()
   window.localStorage.clear()
+})
+
+beforeEach(() => {
+  clearProviderSearchCache()
 })
 
 describe('provider switch (FEA-A1-1)', () => {
@@ -112,6 +116,62 @@ describe('provider search flow (FEA-A1-3)', () => {
 // and nothing larger — the artwork and the words are the worker's to resolve, because sending them
 // from here is exactly what used to fail: the body's ceiling is 8 KiB and a cover's base64 alone is
 // several times that, so every add of a hit with artwork was refused before it was ever read.
+// FB3-P1: one query was five upstream requests and five slots of the proxy's budget, and a reader who
+// types a word, changes their mind and comes back pays for it twice. The memo is per (scope, keywords)
+// and lives only in this session: an answer to the same question is the same answer, so asking again
+// costs nothing — until the reader asks on purpose (the retry after a failure) or leaves the state the
+// answer was made under (the catalogue switched off).
+describe('provider search memo (FB3-P1)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    useMusic.setState({
+      providerEnabled: { gds: true }, providerScope: 'all', tracks: [],
+      providerResults: null, providerKeywords: '', providerSearching: false, providerFailedSources: [],
+    })
+    vi.clearAllMocks()
+  })
+
+  it('answers a repeated query from the session instead of asking five catalogues again', async () => {
+    await useMusic.getState().searchProviders('echo')
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(5)
+    // The query is left behind and typed again, which is the reader's actual cost today.
+    await useMusic.getState().searchProviders('echoo')
+    await useMusic.getState().searchProviders('echo')
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(10)
+    expect(useMusic.getState().providerResults).toHaveLength(1)
+    expect(useMusic.getState().providerKeywords).toBe('echo')
+  })
+
+  it('asks again when the same words are asked of a different catalogue', async () => {
+    await useMusic.getState().searchProviders('echo')
+    useMusic.setState({ providerScope: 'migu' })
+    await useMusic.getState().searchProviders('echo')
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(6)
+    expect(api.music.providerSearch).toHaveBeenLastCalledWith('migu', 'echo')
+  })
+
+  it('forgets the answer once the session has held it long enough', async () => {
+    await useMusic.getState().searchProviders('echo')
+    vi.advanceTimersByTime(PROVIDER_SEARCH_MEMO_MS + 1)
+    await useMusic.getState().searchProviders('echo')
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(10)
+  })
+
+  it('asks again when the reader asks on purpose', async () => {
+    await useMusic.getState().searchProviders('echo')
+    await useMusic.getState().searchProviders('echo', { force: true })
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(10)
+  })
+
+  it('drops what it remembered when the catalogue is switched off', async () => {
+    await useMusic.getState().searchProviders('echo')
+    useMusic.getState().setProviderEnabled('gds', false)
+    useMusic.getState().setProviderEnabled('gds', true)
+    await useMusic.getState().searchProviders('echo')
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(10)
+  })
+})
+
 describe('provider add flow (FB2-F1)', () => {
   afterEach(() => {
     useMusic.setState({ tracks: [] })

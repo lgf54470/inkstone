@@ -151,7 +151,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     playPodcastEpisode: (feed, episode) => playPodcastEpisode(set, get, feed, episode),
     setProviderEnabled: (providerId, enabled) => setProviderEnabled(set, get, providerId, enabled),
     setProviderScope: (scope) => setProviderScope(set, get, scope),
-    searchProviders: (keywords) => searchProviders(set, get, keywords),
+    searchProviders: (keywords, options) => searchProviders(set, get, keywords, options),
     playProviderTrack: (hit) => playProviderTrack(set, get, hit),
     addProviderTrack: (hit) => addProviderTrack(set, hit),
     addProviderTracks: (hits) => addProviderTracks(set, hits),

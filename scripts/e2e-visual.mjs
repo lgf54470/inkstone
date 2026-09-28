@@ -5483,12 +5483,18 @@ async function assertMusicProviderResults(page) {
     const narrowedSources = [...new Set(narrowed.map((call) => new URL(call.url).searchParams.get('source')))]
     check('music: narrowing the scope asks one catalogue instead of five',
       narrowedSources.length === 1 && narrowedSources[0] === 'kuwo', JSON.stringify({ sources: narrowedSources }))
-    // Handed back to the aggregate for every read below, which expects every catalogue's answer: a
-    // narrowed search costs one request and an aggregate one costs five, so the pair is counted.
+    // FB3-P1: back to the aggregate is answered from this session's memory of the same (scope,
+    // keywords) — the reader pays once per question, not once per keystroke or per change of mind —
+    // and the hits come back with it, which is what the reads below are about.
     await page.select('[data-provider-scope]', 'all')
-    const restored = await waitForTruth(async () => searches().length - beforeNarrow >= 6, 20_000)
-    check('music: the aggregate scope is handed back for the reads below', restored,
-      JSON.stringify({ searches: searches().length - beforeNarrow }))
+    const relisted = await waitForTruth(() => page.evaluate((titles) => {
+      const body = document.querySelector('[aria-label="Online results"], [aria-label="在线结果"]')
+      return Boolean(body) && titles.every((title) => (body?.textContent ?? '').includes(title))
+    }, PROVIDER_STUB_HITS.map((hit) => hit.title)), 20_000)
+    await sleep(700)
+    check('music: going back to the aggregate is answered from the session, not from five catalogues',
+      relisted && searches().length - beforeNarrow === 1,
+      JSON.stringify({ searches: searches().length - beforeNarrow, relisted }))
 
     const listedText = await panelText(page)
     check('music: a hit that reported a length shows it and a hit that did not names nothing',

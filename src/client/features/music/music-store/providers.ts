@@ -8,9 +8,59 @@ import { persist } from './persist'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import type { MusicGet, MusicSet } from './types'
 
+// FB3-P1: one query is up to five upstream requests and five slots of the proxy's budget, and the
+// panel re-asks on a 500ms settle — so a reader who types a word, changes their mind and comes back
+// paid for the same answer twice. The memo is per (scope, keywords) and lives only in this session:
+// the same question has the same answer, and the two things that make it stale — a different scope,
+// or a catalogue list that has moved on — both change the key or are handled by dropping it. It is
+// deliberately not persisted: an answer from an earlier visit is exactly the kind of "cache" that
+// would show a reader a catalogue's last-known state as if it were current.
+interface ProviderSearchMemoEntry {
+  at: number
+  results: MusicProviderTrack[]
+  failedSources: string[]
+}
+
+const PROVIDER_SEARCH_MEMO_MAX = 20
+
+// Long enough to cover a reader thinking between two keystrokes and short enough that coming back to
+// a query later in the session still asks the catalogues.
+export const PROVIDER_SEARCH_MEMO_MS = 30_000
+
+const providerSearchMemo = new Map<string, ProviderSearchMemoEntry>()
+
+// The reader's own gestures are what invalidate it: asking on purpose is not remembering, and a
+// catalogue that has just been switched off is a state the answer was not made under.
+export function clearProviderSearchCache(): void {
+  providerSearchMemo.clear()
+}
+
+function readProviderSearchMemo(key: string, now: number): ProviderSearchMemoEntry | null {
+  const entry = providerSearchMemo.get(key)
+  if (!entry) return null
+  if (now - entry.at > PROVIDER_SEARCH_MEMO_MS) {
+    providerSearchMemo.delete(key)
+    return null
+  }
+  return entry
+}
+
+function writeProviderSearchMemo(key: string, entry: ProviderSearchMemoEntry): void {
+  providerSearchMemo.set(key, entry)
+  // The cap only bounds what one session can hold; the oldest answer is the least likely to be asked
+  // for again, and a Map iterates in insertion order.
+  while (providerSearchMemo.size > PROVIDER_SEARCH_MEMO_MAX) {
+    const oldest = providerSearchMemo.keys().next().value
+    if (oldest === undefined) break
+    providerSearchMemo.delete(oldest)
+  }
+}
+
 // FEA-A1-1: the online-source switches. Nothing runs unless the user turned a
 // provider on; A1-3 adds the aggregate search and the play path behind them.
 export function setProviderEnabled(set: MusicSet, get: MusicGet, providerId: string, enabled: boolean): void {
+  // FB3-P1: switching a catalogue off is a state the memoized answers were not made under.
+  if (!enabled) clearProviderSearchCache()
   set((state) => ({ providerEnabled: { ...state.providerEnabled, [providerId]: enabled } }))
   persist(get)
 }
@@ -37,15 +87,30 @@ export function acceptProviderNotice(set: MusicSet, get: MusicGet): void {
   persist(get)
 }
 
-export async function searchProviders(set: MusicSet, get: MusicGet, keywords: string): Promise<void> {
+export async function searchProviders(
+  set: MusicSet,
+  get: MusicGet,
+  keywords: string,
+  options: { force?: boolean } = {},
+): Promise<void> {
   const enabled = listProviders().some((provider) => provider.id === GDS_PROVIDER_ID && provider.isEnabled(get()))
   if (!enabled || !keywords.trim()) {
     set({ providerResults: null, providerFailedSources: [], providerSearching: false, providerKeywords: '' })
     return
   }
+  const scope = get().providerScope
+  const memoKey = `${scope}\n${keywords}`
+  // FB3-P1: this session already asked exactly this question. The retry after a failure comes through
+  // `force`, because a reader pressing retry is asking again rather than being served a memory.
+  const remembered = options.force ? null : readProviderSearchMemo(memoKey, Date.now())
+  if (remembered) {
+    set({ providerResults: remembered.results, providerFailedSources: remembered.failedSources, providerSearching: false, providerKeywords: keywords })
+    return
+  }
   set({ providerSearching: true, providerKeywords: keywords })
   try {
-    const { results, failedSources } = await searchGds(keywords, get().providerScope)
+    const { results, failedSources } = await searchGds(keywords, scope)
+    writeProviderSearchMemo(memoKey, { at: Date.now(), results, failedSources })
     set((state) => (state.providerKeywords === keywords ? { providerResults: results, providerFailedSources: failedSources, providerSearching: false } : {}))
   } catch (error) {
     // FB-C1: `searchGds` absorbs a dead catalogue per source, so reaching this branch means
