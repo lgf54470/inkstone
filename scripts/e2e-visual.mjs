@@ -42,6 +42,8 @@ import {
   waitForPanelSettled,
 } from './e2e-harness.mjs'
 
+import { PROVIDER_STUB_HITS, installMusicProviderStub } from './lib/music-provider-stub.mjs'
+
 const BASE = process.argv[2] ?? 'http://localhost:7712'
 // Credentials of an existing account to sign in as. CI runs this gate right
 // after scripts/e2e.mjs, which registered Owner-1, rotated its password to
@@ -128,6 +130,16 @@ const LABELS = {
   musicPin: ['置顶', 'Pin'],
   musicUnpin: ['取消置顶', 'Unpin'],
   musicQueue: ['播放队列', 'Play queue'],
+  // FB2-C1: the online results panel's own controls and words.
+  musicProviderResults: ['在线结果', 'Online results'],
+  musicProviderSwitch: ['聚合搜索（GD）', 'Aggregate search (GD)'],
+  musicOpenSettings: ['音乐设置', 'Music settings'],
+  musicRiskAccept: ['我已了解', 'I understand'],
+  musicProviderPreview: ['试听', 'Audition'],
+  musicProviderAdd: ['添加', 'Add'],
+  musicProviderAddSelected: ['添加所选', 'Add selected'],
+  musicSearch: ['搜索歌曲、歌手、专辑或拼音', 'Search tracks, artists, albums or pinyin'],
+  musicSearchClear: ['清除搜索', 'Clear search'],
   // FB2-U1: the queue's own controls — the count in the immersive header is the way in there, and
   // the search is what the hub and the floating card already answer with.
   musicQueueToggle: ['展开或收起队列', 'Show or hide the queue'],
@@ -5182,6 +5194,211 @@ async function assertMusicSurface(page) {
   await assertMusicFloatingStrip(page)
   await assertMusicImmersiveFullscreen(page)
   await assertMusicStatusBarMore(page)
+  // FB2-C1 last: it types a query and turns the online switch on, which the reads above would
+  // otherwise be measuring around.
+  await assertMusicProviderResults(page)
+}
+
+// FB2-C1: the online half of the library, which had no browser assertion at all — and the payload
+// regression (an add whose body carried the catalogue's artwork, refused as "too large" before the
+// schema ever saw it) lived exactly there. The catalogue is replaced by request interception, so
+// this runs in CI without a third-party dependency; what it reads is the page's own shape and the
+// presses a reader makes, including the one assertion that would have caught that regression on the
+// day it landed: the body the page actually sends.
+//
+async function assertMusicProviderResults(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(400)
+  const probe = await probeTrackForStub(page)
+  if (!probe) {
+    check('music: the online result list has a playable probe track to point its stream at', false)
+    return
+  }
+  const stub = await installMusicProviderStub(page, { playUrl: `/api/music/tracks/${probe.id}/stream` })
+  const libraryTitles = async () => ((await apiCall(page, 'GET', '/api/music/library')).data?.tracks ?? []).map((track) => track.title)
+  // What the worker itself answered is read here rather than through the stub: the import is the half
+  // the fixture deliberately leaves real, so its status is the evidence this scenario is about.
+  const importStatuses = []
+  const streamRequests = []
+  const onImportResponse = (response) => { if (response.url().includes('/tracks/import-provider')) importStatuses.push(response.status()) }
+  const onStreamRequest = (request) => { if (/\/api\/music\/tracks\/[^/]+\/stream/.test(request.url())) streamRequests.push(request.url()) }
+  page.on('response', onImportResponse)
+  page.on('request', onStreamRequest)
+  // The switch is a preference of the account, so the state it was found in is the state this
+  // scenario hands back: a run that left the online catalogue on would change what the next run reads.
+  let switchWasOn = false
+  try {
+    // Whatever an earlier run left behind goes first, through the same endpoint that removes it at the
+    // end. This scenario reads the library's own length to see its adds land, so a leftover row would
+    // be read as "this add did nothing".
+    await cleanupStubLibraryRows(page, PROVIDER_STUB_HITS.map((hit) => hit.title))
+    const before = await libraryTitles()
+    // The switch that turns the catalogue on lives in settings, and the panel only exists once it is
+    // on — so the gate walks there the way a reader does, through the gear in the library's header
+    // (FB-F4), rather than writing a preference behind the app's back.
+    await openMusicHubForSweep(page)
+    let hubOpen = await page.waitForSelector(MUSIC_HUB_ROOT, { timeout: 15_000 }).then(() => true, () => false)
+    if (!hubOpen) {
+      // A notice left by an earlier surface is what a press can land on, and this scenario runs after
+      // all of them: the hub not opening is retried once rather than read as a missing panel.
+      await sleep(1_500)
+      await openMusicHubForSweep(page)
+      hubOpen = await page.waitForSelector(MUSIC_HUB_ROOT, { timeout: 15_000 }).then(() => true, () => false)
+    }
+    check('music: the hub opens for the online results read', hubOpen)
+    if (!hubOpen) return
+    await pressSurfaceControl(page, LABELS.musicOpenSettings)
+    const settingsOpen = await page.waitForSelector(SETTINGS_PANEL, { timeout: 15_000 }).then(() => true, () => false)
+    check('music: the library keeps a way to the music settings page in its header', settingsOpen)
+    if (!settingsOpen) return
+    // The opt-in is a decision with consequences: the notice beside the switch is acknowledged before
+    // the switch will move, and a run that finds it already acknowledged just carries on.
+    await pressSurfaceControl(page, LABELS.musicRiskAccept, SETTINGS_PANEL)
+    switchWasOn = await readProviderSwitch(page, SETTINGS_PANEL)
+    if (!switchWasOn) await pressSurfaceControl(page, LABELS.musicProviderSwitch, SETTINGS_PANEL)
+    const switched = await waitForTruth(() => readProviderSwitch(page, SETTINGS_PANEL))
+    check('music: the online catalogue is switched on from the settings page', switched)
+    await page.keyboard.press('Escape')
+    await sleep(600)
+    // The gear leaves the library for the settings page, so the way back in is the opener again.
+    await openMusicHubForSweep(page)
+    const backInLibrary = await waitForTruth(async () => Boolean(await page.$(MUSIC_HUB_ROOT)), 15_000)
+    check('music: closing the settings page hands the library back', backInLibrary)
+    if (!backInLibrary) return
+    await page.click(cssByLabels('input', LABELS.musicSearch))
+    await page.keyboard.type('stub', { delay: 30 })
+    const panel = await page.waitForSelector(cssByLabels('section', LABELS.musicProviderResults), { timeout: 15_000 }).then(() => true, () => false)
+    if (!panel) {
+      const why = await page.evaluate((labels) => ({
+        hub: Boolean(document.querySelector('[role="dialog"]')),
+        typed: document.querySelector(`input[aria-label="${labels[0]}"]`)?.value ?? null,
+        sections: [...document.querySelectorAll('section')].map((item) => item.getAttribute('aria-label')).slice(0, 12),
+      }), LABELS.musicSearch)
+      check('music: a query opens the online results panel', false, JSON.stringify(why))
+      return
+    }
+    check('music: a query opens the online results panel', true)
+    const listed = await waitForTruth(() => page.evaluate((titles) => {
+      const body = document.querySelector('[aria-label="Online results"], [aria-label="在线结果"]')
+      return Boolean(body) && titles.every((title) => (body?.textContent ?? '').includes(title))
+    }, PROVIDER_STUB_HITS.map((hit) => hit.title)), 20_000)
+    check('music: the stubbed catalogue hits reach the panel', listed, JSON.stringify(stub.endpoints()))
+    const listedText = await panelText(page)
+    check('music: a hit that reported a length shows it and a hit that did not names nothing',
+      listedText.includes('03:34') && !listedText.includes('时长未知') && !listedText.includes('Length unknown'), JSON.stringify(listedText.slice(0, 200)))
+
+    // Audition: the row is taken by the player. This is the symptom the payload regression was read
+    // as — a hit that could be listed but never added, let alone played — so what it asserts is the
+    // registration and the source handed to the player. Whether that stream then resolves is the
+    // catalogue's answer and not this app's: from inside the sandbox the upstream is unreachable, and
+    // the row is meant to land anyway (the degradation the import path is built to survive).
+    await pressSurfaceControl(page, LABELS.musicProviderPreview, cssByLabels('section', LABELS.musicProviderResults))
+    const previewed = await waitForTruth(async () => (await libraryTitles()).length === before.length + 1, 15_000)
+    check('music: auditioning a hit registers it and hands the player its stream',
+      previewed && streamRequests.length >= 1,
+      JSON.stringify({ before: before.length, after: (await libraryTitles()).length, streams: streamRequests.length }))
+
+    // The Add button on the row the audition just registered: the row is already in the library, so
+    // what this reads is the app's own idempotency rather than a second copy of it. With nothing
+    // ticked the selection bar is not drawn, which is what leaves the row's own "Add" the only
+    // control under that name — read rather than assumed, because a press landing on "Add selected"
+    // would quietly exercise the batch path here instead.
+    const batchBarAbsent = await page.evaluate((selector) => !/添加所选|Add selected/.test(document.querySelector(selector)?.textContent ?? ''),
+      cssByLabels('section', LABELS.musicProviderResults))
+    check('music: the row add is unambiguous before anything is ticked', batchBarAbsent)
+    await pressSurfaceControl(page, LABELS.musicProviderAdd, cssByLabels('section', LABELS.musicProviderResults))
+    await sleep(1_200)
+    const afterAdd = await libraryTitles()
+    check('music: adding a hit that is already in the library does not duplicate it',
+      afterAdd.length === before.length + 1, JSON.stringify(afterAdd))
+
+    // Then the whole selection in one press: both rows ticked, which is the only path that lands the
+    // second hit.
+    const ticked = await page.evaluate((selector) => {
+      const panel = document.querySelector(selector)
+      const boxes = [...(panel?.querySelectorAll('[role="checkbox"]') ?? [])].filter((box) => box.getClientRects().length > 0)
+      boxes.forEach((box) => box.click())
+      return boxes.length
+    }, cssByLabels('section', LABELS.musicProviderResults))
+    check('music: the panel offers a tick per hit', ticked === PROVIDER_STUB_HITS.length, String(ticked))
+    await pressSurfaceControl(page, LABELS.musicProviderAddSelected, cssByLabels('section', LABELS.musicProviderResults))
+    const afterBatch = await waitForTruth(async () => {
+      const titles = await libraryTitles()
+      return PROVIDER_STUB_HITS.every((hit) => titles.includes(hit.title))
+    }, 15_000)
+    check('music: adding the whole selection lands every hit', afterBatch, JSON.stringify(await libraryTitles()))
+
+    // The regression guard: every import the page sent carried the catalogue's ids, and none of them
+    // carried the artwork or the words. The ceiling is well under the route's 8 KiB allowance, which
+    // is what a body holding a cover could never stay beneath.
+    const imports = stub.calls.filter((call) => call.endpoint === 'import')
+    const shapes = imports.map((call) => ({ bytes: call.bytes, shape: call.shape }))
+    check('music: every online import the page sent is metadata and ids, never the artwork',
+      imports.length >= 2 && imports.every((call) => call.bytes <= 4096 && call.shape.coverId && call.shape.lyricId
+        && !('coverDataUrl' in call.shape) && !('lyric' in call.shape)),
+      JSON.stringify(shapes))
+    check('music: the online import is never refused for its size',
+      importStatuses.length >= 2 && importStatuses.every((status) => status < 400), JSON.stringify(importStatuses))
+  } finally {
+    // The switch goes back first, while the panel that holds it is still drawn; turning it off both
+    // restores the setting the run found and takes the online panel out of the surfaces after it.
+    if (!switchWasOn) await pressSurfaceControl(page, LABELS.musicProviderSwitch, cssByLabels('section', LABELS.musicProviderResults))
+    await stub.stop()
+    page.off('response', onImportResponse)
+    page.off('request', onStreamRequest)
+    await cleanupStubLibraryRows(page, PROVIDER_STUB_HITS.map((hit) => hit.title))
+    // The query the scenario typed is left in the store, and a later read of the hub would then be a
+    // read of a filtered hub. The box's own clear control is the way it goes.
+    await pressSurfaceControl(page, LABELS.musicSearchClear)
+    await page.keyboard.press('Escape')
+    await sleep(400)
+  }
+}
+
+/**
+ * Polls a predicate that lives on this side of the wire (an API call, an interception log). The
+ * page-side waits below use `waitForFunction` instead, which is the same thing asked in the browser.
+ */
+async function waitForTruth(predicate, timeoutMs = 15_000, stepMs = 250) {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    if (await predicate()) return true
+    if (Date.now() > deadline) return false
+    await sleep(stepMs)
+  }
+}
+
+/** The probe track the stub's play URL points at: a real, decodable, same-origin stream. */
+async function probeTrackForStub(page) {
+  const fixture = await seedMusicProbeTracks({ page })
+  if (!fixture.found.length) return null
+  const tracks = (await apiCall(page, 'GET', '/api/music/library')).data?.tracks ?? []
+  return tracks.find((track) => track.title === MUSIC_PROBE.titles[0]) ?? null
+}
+
+/** Whether the aggregate-search switch is already on, so a run leaves it the way it found it. */
+async function readProviderSwitch(page, scope = '') {
+  return page.evaluate(({ selector, scope }) => {
+    const root = scope ? document.querySelector(scope) : document
+    return root?.querySelector(selector)?.getAttribute('aria-checked') === 'true'
+  }, { selector: cssByLabels('button', LABELS.musicProviderSwitch), scope })
+}
+
+/** The panel's own text, so the two duration rules can be read off one answer. */
+async function panelText(page) {
+  return page.evaluate(() => document.querySelector('[aria-label="Online results"], [aria-label="在线结果"]')?.textContent ?? '')
+}
+
+/**
+ * Whatever this scenario added is removed again by title, the way it was added: through the
+ * product's own endpoint. The music surfaces the contrast gate reads later must not inherit rows
+ * this run invented, and a stub artwork on one of them would make that read about the wrong thing.
+ */
+async function cleanupStubLibraryRows(page, titles) {
+  const tracks = (await apiCall(page, 'GET', '/api/music/library')).data?.tracks ?? []
+  for (const track of tracks.filter((row) => titles.includes(row.title))) {
+    await apiCall(page, 'DELETE', `/api/music/tracks/${track.id}`)
+  }
 }
 
 /**
@@ -5787,7 +6004,7 @@ async function assertPublicCollectionPage(browser, page, consoleErrors) {
 
   const context = await browser.createBrowserContext()
   const visitor = await context.newPage()
-  visitor.on('pageerror', (error) => consoleErrors.push(`[collection] ${String(error)}`))
+  visitor.on('pageerror', (error) => consoleErrors.push({ text: `[collection] ${String(error)}`, url: '' }))
   // What the gate was told, in order. A refusal and a lock both leave the visitor looking at the same
   // password prompt, so without this the only readable failure is "it never unlocked".
   const answers = []
@@ -6561,9 +6778,11 @@ async function main() {
   try {
     const page = await browser.newPage()
     page.on('console', (message) => {
-      if (message.type() === 'error') consoleErrors.push(message.text())
+      // The failing resource's own URL travels with the message: a failed load is judged by what was
+      // loaded and not only by what Chrome said about it.
+      if (message.type() === 'error') consoleErrors.push({ text: message.text(), url: message.location()?.url ?? '' })
     })
-    page.on('pageerror', (error) => consoleErrors.push(String(error)))
+    page.on('pageerror', (error) => consoleErrors.push({ text: String(error), url: '' }))
 
     await page.setViewport(MOBILE_VIEWPORT)
     await page.goto(BASE, { waitUntil: 'networkidle2' })
@@ -6607,11 +6826,19 @@ async function main() {
     // container watcher the moment the pane has a box — lib/markdown/mindmap/resize.ts), the map is
     // drawn again from real numbers, and this run asserts that drawing below. Every other page
     // error, including any other malformed path, still fails the gate.
+    // A request this run provokes and then reads is not an app error. The online results scenario
+    // presses audition on a stubbed catalogue hit, and the row it registers plays through the worker's
+    // own stream route — which resolves a playable URL from the catalogue, unreachable from inside this
+    // sandbox, so that one request answers 502. It is allowed by URL and not by message, so no other
+    // failed load can hide behind it, and the scenario that provokes it asserts both the request and
+    // the row that landed without a stream.
     const ALLOWED_PAGE_ERRORS = [
-      /Failed to load resource.*(401|403|404)/,
-      /attribute d: Expected number, "M NaN/,
+      { text: /Failed to load resource.*(401|403|404)/ },
+      { text: /attribute d: Expected number, "M NaN/ },
+      { text: /Failed to load resource.*5\d\d/, url: /\/api\/music\/tracks\/[^/]+\/stream/ },
     ]
-    const fatal = consoleErrors.filter((text) => !ALLOWED_PAGE_ERRORS.some((allowed) => allowed.test(text)))
+    const fatal = consoleErrors.filter((entry) => !ALLOWED_PAGE_ERRORS.some((allowed) =>
+      allowed.text.test(entry.text) && (!allowed.url || allowed.url.test(entry.url))))
     check('console: no page errors', fatal.length === 0, JSON.stringify(fatal.slice(0, 3)))
   } finally {
     await browser.close()

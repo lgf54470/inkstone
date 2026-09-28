@@ -7,7 +7,10 @@ import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
 import { MUSIC_PLAYBACK_MIGRATION_STATEMENTS } from '../src/worker/db/schema/music'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
+import { JSON_BODY_LIMITS } from '../src/worker/lib/request'
+import { LIMITS } from '@shared/constants'
 import { musicRoutes } from '../src/worker/routes/music'
+import { importProviderTrackSchema } from '../src/worker/routes/music/schemas'
 import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
@@ -298,6 +301,34 @@ describe('provider proxy (FEA-A1-2)', () => {
     expect(await res.json()).toMatchObject({ url: 'https://cdn.example.com/stream.mp3' })
     expect(calls[0]).toContain('types=url')
     expect((await request(app, '/api/music/provider/url?source=netease&id=')).status).toBe(400)
+  })
+
+  // FB2-C2: the two ends of one body, asked together. This route allows 8 KiB and the schema says
+  // which fields may fill it, so the largest body that schema accepts has to arrive — otherwise the
+  // request is refused as "too large" before the validator ever runs, which is the FB2-F1
+  // regression: the page used to send the catalogue's artwork and words, and met the ceiling rather
+  // than the schema. The margin is asked for at half the allowance, because the payload that broke
+  // it was measured in hundreds of kilobytes.
+  it('holds the widest body its own schema accepts inside the route allowance', async () => {
+    await makeDb()
+    const app = makeApp()
+    bindKv()
+    vi.stubGlobal('fetch', async () => new Response('nope', { status: 503 }))
+    const widest = {
+      source: 'netease',
+      sourceId: 'i'.repeat(128),
+      // A snowman encodes to three bytes, the same as a CJK character: the worst case for a
+      // character count that is really a byte count.
+      title: '☃'.repeat(LIMITS.musicTitleMaxLength),
+      artist: '☃'.repeat(LIMITS.musicArtistMaxLength),
+      album: '☃'.repeat(LIMITS.musicAlbumMaxLength),
+      durationMs: 3_600_000,
+      coverId: 'c'.repeat(128),
+      lyricId: 'l'.repeat(128),
+    }
+    expect(importProviderTrackSchema.safeParse(widest).success).toBe(true)
+    expect(Buffer.byteLength(JSON.stringify(widest))).toBeLessThan(JSON_BODY_LIMITS.small / 2)
+    expect((await json(app, '/api/music/tracks/import-provider', widest)).status).toBe(201)
   })
 })
 
