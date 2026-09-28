@@ -209,6 +209,9 @@ export const messages = {
 'music.suggest_artist': 'Artist',
 'music.suggest_album': 'Album',
 'music.suggest_playlist': 'Playlist',
+// FB3-F8: an online suggestion is the catalogue's answer to the same words, listed beside the
+// library's own jump targets.
+'music.suggest_online': 'Online',
 'music.more_actions': 'More actions',
 'music.import_text': 'Paste list',
 'music.import_text_title': 'Import from text',

@@ -374,3 +374,47 @@ describe('music search history completeness (FB3-F5)', () => {
     expect(document.querySelectorAll('[role="option"]')).toHaveLength(1)
   })
 })
+
+// FB3-F8: the catalogue's answer to the same words is offered beside the library's own jump targets,
+// and picking one is a direct play — the row may not exist in the library until this press registers
+// it, so "jump to it" would have nothing to jump to. It is also only offered while the box still holds
+// the words the answer belongs to.
+describe('online suggestions in the search popup (FB3-F8)', () => {
+  const hit = (sourceId: string, title: string) => ({
+    provider: 'gds', source: 'netease', sourceId, title, artist: 'Ann', album: '', durationMs: null, coverId: null, lyricId: null,
+  })
+
+  it('lists the catalogue answer under the library rows and plays the hit it carries', () => {
+    vi.useFakeTimers()
+    const play = vi.fn(async () => {})
+    useMusic.setState({ providerResults: [hit('b9', 'Echo Beach')], providerKeywords: 'echo', playProviderTrack: play })
+    const rendered = renderElement(createElement(SearchBox))
+    const input = inputOf(rendered.container)
+    // The popup opens on focus (the box is a combobox), so the caret comes first.
+    act(() => { input.focus() })
+    typeText(input, 'echo')
+    act(() => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS) })
+
+    const options = [...document.querySelectorAll('[role="option"]')]
+    const online = options.find((option) => (option.textContent ?? '').includes('Echo Beach'))
+    expect(online).toBeTruthy()
+    expect(online?.getAttribute('aria-label')).toBe(`Echo Beach ${t('music.suggest_online')}`)
+
+    act(() => { (online as HTMLElement).click() })
+    expect(play).toHaveBeenCalledWith(expect.objectContaining({ sourceId: 'b9' }))
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+    rendered.unmount()
+  })
+
+  it('stops offering an answer whose words have been typed past', () => {
+    vi.useFakeTimers()
+    useMusic.setState({ providerResults: [hit('b9', 'Echo Beach')], providerKeywords: 'echo' })
+    const rendered = renderElement(createElement(SearchBox))
+    const input = inputOf(rendered.container)
+    act(() => { input.focus() })
+    typeText(input, 'echoo')
+    act(() => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS) })
+    expect([...document.querySelectorAll('[role="option"]')].some((option) => (option.textContent ?? '').includes('Echo Beach'))).toBe(false)
+    rendered.unmount()
+  })
+})

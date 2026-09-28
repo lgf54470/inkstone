@@ -202,6 +202,7 @@ export const messages = {
 'music.suggest_artist': '歌手',
 'music.suggest_album': '专辑',
 'music.suggest_playlist': '歌单',
+'music.suggest_online': '在线',
 'music.more_actions': '更多操作',
 'music.import_text': '粘贴导入',
 'music.import_text_title': '从文本导入',
