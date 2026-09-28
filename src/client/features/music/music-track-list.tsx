@@ -117,14 +117,20 @@ function useRowHandlers({ actions, toggle, onEdit, drag }: {
 }
 
 // A search that matched nothing is not an empty library; offer the way back rather than the upload pitch.
+// FB3-U4: "no matching tracks" was the whole screen's verdict while the online panel above it listed
+// hits for the same query. The words say which library came up empty, and when there are online matches
+// they are counted — the reader's next move is up there, not here.
 function NoTracks({ emptyTitle, query, onClearQuery }: { emptyTitle: string; query: string; onClearQuery: () => void }) {
+  // Reading what the online panel is showing is what keeps this sentence true rather than hopeful.
+  const onlineMatches = useMusic((state) => state.providerResults?.length ?? 0)
   if (query.trim()) {
+    const where = t('music.search_results', { value0: query.trim() })
     return (
       <Empty
         art='search'
         title={t('music.no_results')}
-        description={t('music.search_results', { value0: query.trim() })}
-        action={<Button size='sm' onClick={onClearQuery}>{t('music.search_clear')}</Button>}
+        description={onlineMatches > 0 ? `${where} · ${t('music.no_results_online', { value0: onlineMatches })}` : where}
+        action={<Button size='sm' onClick={onClearQuery}>{t('music.search_show_all')}</Button>}
         compact
       />
     )

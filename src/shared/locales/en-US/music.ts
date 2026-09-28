@@ -36,7 +36,7 @@ export const messages = {
 'music.no_tracks_hint': 'Upload an audio file to start your library.',
 'music.no_favorites': 'No favorites yet',
 'music.no_pinned': 'Nothing pinned yet',
-'music.no_results': 'No matching tracks',
+'music.no_results': 'No matching tracks in your library',
 'music.open_lyrics': 'Open full lyrics',
 'music.no_lyrics': 'No lyrics for this track',
 'music.lyrics_loading': 'Loading lyrics',
@@ -120,6 +120,12 @@ export const messages = {
 'music.search_history': 'Recent searches',
 'music.search_clear_history': 'Clear history',
 'music.search_clear': 'Clear search',
+  // FB3-U4: a search that matched nothing here is not a search that found nothing — the online panel may
+  // be listing hits right above these words.
+  'music.no_results_online': '{value0} online matches are listed above',
+  // FB3-U8: the empty state's action used to carry the clear control's own name, which read as two
+  // controls with one label on screen.
+  'music.search_show_all': 'Show all tracks',
 'music.search_results': 'Results for "{value0}"',
 'music.search_truncated': 'Top {value0} of {value1} matches',
   'music.load_more_matches': 'Load more',

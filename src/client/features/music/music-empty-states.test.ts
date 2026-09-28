@@ -83,13 +83,15 @@ afterEach(() => {
 })
 
 describe('empty search results (UI-10)', () => {
-  it('offers clearing the search instead of the upload pitch when a query found nothing', async () => {
+  // FB3-U8: the action reads as what it does now — showing the whole library again — instead of wearing
+  // the name the box's × carries.
+  it('offers showing the whole library instead of the upload pitch when a query found nothing', async () => {
     useMusic.setState({ query: 'zzznope' })
     await mount(emptyList())
     expect(document.body.textContent).toContain(t('music.no_results'))
     expect(document.body.textContent).not.toContain(t('music.no_tracks_hint'))
     await act(async () => {
-      buttonWithText(t('music.search_clear'))?.click()
+      buttonWithText(t('music.search_show_all'))?.click()
     })
     expect(useMusic.getState().query).toBe('')
   })
@@ -128,5 +130,38 @@ describe('webdav browse failure (UI-11)', () => {
     expect(list).not.toBeNull()
     expect(list?.getAttribute('tabindex')).toBe('0')
     expect(list?.getAttribute('aria-label')).toBe(t('music.webdav_title'))
+  })
+})
+
+// FB3-U4 + FB3-U8: a search that matched nothing in the library is not a search that found nothing —
+// with the online panel listing five hits right above it, "no matching tracks" reads as the whole
+// screen's verdict, and the action under it carried the same words as the × in the box.
+describe('music search empty state wording (FB3-U4)', () => {
+  const ONLINE_HIT = {
+    provider: 'gds', source: 'netease', sourceId: '1', title: 'Origin', artist: 'Alice',
+    album: 'Debut', durationMs: 214_000, coverId: null, lyricId: null,
+  }
+
+  it('says the library has nothing, and names the online matches above it', async () => {
+    useMusic.setState({ query: 'zzzz', providerResults: [ONLINE_HIT, { ...ONLINE_HIT, sourceId: '2' }] })
+    await mount(createElement(MusicTrackList, { tracks: [], loading: false, emptyTitle: 'library is empty', onEdit: () => {} }))
+    expect(document.body.textContent).toContain(t('music.search_results', { value0: 'zzzz' }))
+    expect(document.body.textContent).toContain(t('music.no_results_online', { value0: 2 }))
+    expect(document.body.textContent).not.toContain('library is empty')
+  })
+
+  it('gives its action a name of its own, not the clear control’s', async () => {
+    useMusic.setState({ query: 'zzzz', providerResults: [] })
+    await mount(createElement(MusicTrackList, { tracks: [], loading: false, emptyTitle: 'library is empty', onEdit: () => {} }))
+    const action = buttonWithText(t('music.search_show_all'))
+    expect(action).toBeDefined()
+    expect(buttonWithText(t('music.search_clear'))).toBeUndefined()
+  })
+
+  it('does not promise online matches the panel is not showing', async () => {
+    useMusic.setState({ query: 'zzzz', providerResults: null })
+    await mount(createElement(MusicTrackList, { tracks: [], loading: false, emptyTitle: 'library is empty', onEdit: () => {} }))
+    expect(document.body.textContent).not.toContain(t('music.no_results_online', { value0: 0 }))
+    expect(document.body.textContent).toContain(t('music.search_results', { value0: 'zzzz' }))
   })
 })
