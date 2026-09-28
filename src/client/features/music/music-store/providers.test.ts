@@ -150,6 +150,21 @@ describe('provider search memo (FB3-P1)', () => {
     expect(api.music.providerSearch).toHaveBeenLastCalledWith('migu', 'echo')
   })
 
+  // The reader's cheapest gesture is the one that has to stay cheap: narrowing the scope and going
+  // back. The answer belongs to the scope it was asked under, so it never answered for the other one,
+  // and the cost already paid for the aggregate is still the cost of that question.
+  it('answers the aggregate from the session after a detour through one catalogue', async () => {
+    await useMusic.getState().searchProviders('echo')
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(5)
+    useMusic.getState().setProviderScope('migu')
+    await useMusic.getState().searchProviders('echo')
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(6)
+    useMusic.getState().setProviderScope('all')
+    await useMusic.getState().searchProviders('echo')
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(6)
+    expect(useMusic.getState().providerResults).toHaveLength(1)
+  })
+
   it('forgets the answer once the session has held it long enough', async () => {
     await useMusic.getState().searchProviders('echo')
     vi.advanceTimersByTime(PROVIDER_SEARCH_MEMO_MS + 1)

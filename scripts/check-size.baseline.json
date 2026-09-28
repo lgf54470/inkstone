@@ -45,6 +45,9 @@
   "src/client/features/music/music-store/player.ts": {
     "lines": 518
   },
+  "src/client/features/music/music-store/providers.test.ts": {
+    "longFns": 1
+  },
   "src/client/features/music/music-store/transfers.test.ts": {
     "longFns": 1
   },

@@ -73,9 +73,11 @@ export function setProviderEnabled(set: MusicSet, get: MusicGet, providerId: str
 // costs requests, so it has to be readable where the fan-out happens.
 export function setProviderScope(set: MusicSet, get: MusicGet, scope: MusicProviderScope): void {
   set({ providerScope: scope })
-  // FB3-P1: a different scope is a different question, so what the session remembered about the old
-  // one is not an answer to it — and keeping it would let a scope the reader just left come back.
-  clearProviderSearchCache()
+  // FB3-P1: nothing is dropped here on purpose. The memory is keyed by (scope, keywords), so an answer
+  // belongs to the scope it was asked under and cannot stand in for another one — and the cost this
+  // session already paid for the aggregate is still the cost of that question, which is why narrowing
+  // the scope and coming back asks nobody again. The switches that change *which* catalogues answer,
+  // and the order they are merged in, do clear it (below): those make a different answer.
   persist(get)
 }
 
