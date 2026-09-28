@@ -136,6 +136,42 @@ describe('chart rendering', () => {
   })
 })
 
+// The surfaces that read the canvas instead of watching it — the printed deck — ask for a chart with no
+// entrance animation. chart.js animates towards its data, so a canvas sampled while one is running is
+// blank, and a resize clears the canvas and starts another: the deck's sheet is resized exactly as it is
+// handed to the print pipeline (the webfonts land and the pages reflow), which printed an empty chart box
+// on a page that looked finished (e2e-visual export: `live=1 painted=0`, reproduced with the canvas's
+// painted pixels dropping from 1569 to 203 a second after the sheet said it was ready). jsdom gets no
+// further than the options the library was handed — it cannot draw, and the library refuses its stub
+// canvas — so what is pinned here is the config; the pixels are read by the visual gate.
+describe('chart animation', () => {
+  it('leaves out the entrance animation when the caller says it reads the canvas', async () => {
+    const restoreCanvasContext = stubCanvasContext()
+    const chartJson = JSON.stringify({ type: 'bar', data: { labels: ['A'], datasets: [{ data: [1] }] } })
+    const block = `<div data-chart="${encodeDataValue(chartJson)}"></div>`
+    const animateRoot = document.createElement('div')
+    const instantRoot = document.createElement('div')
+    animateRoot.innerHTML = block
+    instantRoot.innerHTML = block
+    document.body.append(animateRoot, instantRoot)
+    const animationOf = (root: HTMLElement): unknown =>
+      (root.querySelector<HTMLElement>('[data-chart]') as unknown as { __chartInstance?: { options: { animation?: unknown } } })
+        .__chartInstance?.options.animation
+    try {
+      await Promise.all([renderChartJs(animateRoot, false), renderChartJs(instantRoot, false, { instant: true })])
+      // The default keeps whatever the fence asked for; the instant surface pins it off.
+      expect(animationOf(instantRoot)).toBe(false)
+      expect(animationOf(animateRoot)).not.toBe(false)
+    } finally {
+      destroyChartInstances(animateRoot)
+      destroyChartInstances(instantRoot)
+      restoreCanvasContext()
+      animateRoot.remove()
+      instantRoot.remove()
+    }
+  })
+})
+
 describe('chart sizing', () => {
   // jsdom lays nothing out, so the box the stylesheet would give the container is stubbed. This is
   // the size the chart has to be drawn at: the slide canvas is scaled with a CSS transform, and a

@@ -160,6 +160,11 @@ async function prepareDeckSheet(root: HTMLElement, dark: boolean, metrics: Stage
       excalidraw: 'snapshot',
       // A board cannot run on the sheet either; its cards print as a list.
       kanban: 'snapshot',
+      // A chart on a printed page has no entrance to animate: the sheet is handed over — and printed —
+      // as soon as the fonts land, and the reflow that lands them resizes the chart's box, which clears
+      // its canvas and animates again from nothing. Drawn instantly, the chart is on the canvas before
+      // the sheet says it is ready and stays there through that resize.
+      instantCharts: true,
       // No `fences` for the root: every page registers the bodies it was built from on its own box,
       // and a block reads the nearest set above it (P-01). The sheet holds pages from different
       // slides, which no single document's numbering could answer for.

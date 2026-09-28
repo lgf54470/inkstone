@@ -95,7 +95,7 @@ function themedScales(userScales: Record<string, unknown>, textColor: string, gr
   return scales
 }
 
-function buildChartConfig(config: Record<string, unknown>, dark: boolean, sized: boolean): Record<string, unknown> {
+function buildChartConfig(config: Record<string, unknown>, dark: boolean, sized: boolean, instant: boolean): Record<string, unknown> {
   const { text, grid } = chartThemeColors(dark)
   const userOptions = (config.options && typeof config.options === 'object' ? config.options : {}) as Record<string, unknown>
   const userScales = (userOptions.scales && typeof userOptions.scales === 'object' ? userOptions.scales : {}) as Record<string, unknown>
@@ -123,6 +123,12 @@ function buildChartConfig(config: Record<string, unknown>, dark: boolean, sized:
     options.responsive = false
     options.devicePixelRatio = window.devicePixelRatio
   }
+  // A surface that reads the canvas instead of a pair of eyes — the printed deck, the exported note —
+  // draws with no entrance animation: chart.js animates towards its data, so a canvas sampled while an
+  // animation runs is blank or partial, and *every* resize clears the canvas and starts one again. The
+  // deck's sheet is resized exactly as it is handed to the print pipeline (the webfonts land and the
+  // pages reflow), so a print could catch an empty chart box on a page that looked finished.
+  if (instant) options.animation = false
   return { ...config, options }
 }
 
@@ -153,7 +159,7 @@ function watchChartSize(node: HTMLElement, container: HTMLElement, instance: { r
 // One block: parse the config, then instantiate the chart; both failures land
 // on the same error banner. The root-containment check aborts the whole batch
 // once the node was detached mid-render (the original behavior).
-async function renderChartNode(root: HTMLElement, node: HTMLElement, raw: string, signature: string, dark: boolean): Promise<void> {
+async function renderChartNode(root: HTMLElement, node: HTMLElement, raw: string, signature: string, dark: boolean, instant: boolean): Promise<void> {
   let config: Record<string, unknown>
   try {
     config = parseChartConfig(raw)
@@ -183,7 +189,7 @@ async function renderChartNode(root: HTMLElement, node: HTMLElement, raw: string
       canvas.width = size.width
       canvas.height = size.height
     }
-    const instance = new Chart(canvas, buildChartConfig(config, dark, size !== null) as never);
+    const instance = new Chart(canvas, buildChartConfig(config, dark, size !== null, instant) as never);
     (node as unknown as { __chartInstance?: unknown }).__chartInstance = instance
     if (size) watchChartSize(node, container, instance)
     node.dataset.rendered = signature
@@ -204,13 +210,18 @@ function hasLiveChart(node: HTMLElement): boolean {
   return Boolean((node as unknown as { __chartInstance?: unknown }).__chartInstance)
 }
 
-export async function renderChartJs(root: HTMLElement, dark: boolean): Promise<void> {
+/**
+ * Draws every chart block under a root. `instant` is for the surfaces whose canvas is read rather than
+ * looked at — a printed sheet, an exported document — where an entrance animation is a picture of
+ * nothing at all (see `buildChartConfig`).
+ */
+export async function renderChartJs(root: HTMLElement, dark: boolean, { instant = false } = {}): Promise<void> {
   const nodes = [...root.querySelectorAll<HTMLElement>('[data-chart]')]
   for (const node of nodes) {
     const raw = decodeDataValue(node.dataset.chart)
     const signature = `${dark ? 'd' : 'l'}:${raw.length}:${shortHash(raw)}`
     if (node.dataset.rendered === signature && hasLiveChart(node))
       continue
-    await renderChartNode(root, node, raw, signature, dark)
+    await renderChartNode(root, node, raw, signature, dark, instant)
   }
 }

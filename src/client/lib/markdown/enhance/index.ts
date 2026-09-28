@@ -60,6 +60,13 @@ interface EnhanceOptions {
    * a control nobody can press once the markup is a document.
    */
   zoomableImages?: boolean
+  /**
+   * Whether charts are drawn with their entrance animation. A surface that hands the result to
+   * something that reads its pixels — the printed deck, whose sheet is handed to the print pipeline
+   * the moment the webfonts land — passes `true`: chart.js animates towards its data, so a canvas
+   * read while an animation runs is blank, and a resize clears it and starts another one.
+   */
+  instantCharts?: boolean
 }
 export async function enhancePreview(root: HTMLElement, options: EnhanceOptions): Promise<void> {
   // Every block under this root resolves its fence body through the element chain, so the set has
@@ -91,7 +98,7 @@ export async function enhancePreview(root: HTMLElement, options: EnhanceOptions)
   await Promise.allSettled([
     highlightCodeBlocks(root),
     options.math ? renderMath(root) : Promise.resolve(),
-    root.isConnected ? renderChartJs(root, options.dark) : Promise.resolve(),
+    root.isConnected ? renderChartJs(root, options.dark, { instant: options.instantCharts ?? false }) : Promise.resolve(),
     options.mindmap === 'snapshot' ? renderStaticMindmaps(root, { dark: options.dark, locale: getLocale(), box: options.mindmapBox }) : Promise.resolve(),
     options.excalidraw === 'snapshot' ? renderStaticExcalidraws(root, { dark: options.dark }) : Promise.resolve(),
   ])
