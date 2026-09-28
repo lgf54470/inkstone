@@ -10,7 +10,6 @@ import type { MusicScope } from './music-store'
 import { buildSearchSuggestions } from './music-search-suggestions'
 import type { MusicSearchSuggestion } from './music-search-suggestions'
 import { providerSourceLabel } from './providers'
-import type { MusicProviderTrack } from '../../lib/api'
 
 // Every store query write re-filters the library; typing must not pay for that per keystroke.
 export const SEARCH_DEBOUNCE_MS = 200
@@ -105,12 +104,11 @@ interface PopupArgs {
   flush: (value: string) => void
   clearHistory: () => void
   removeEntry: (entry: string) => void
-  play: (hit: MusicProviderTrack) => Promise<void>
 }
 
 // The ARIA projection of the popup state onto the combobox input. Empty text
 // offers the search history; typed text offers jump targets into the library.
-function useSearchPopup({ history, text, listId, suggestions, setScope, setText, schedule, commit, flush, clearHistory, removeEntry, play }: PopupArgs): PopupState {
+function useSearchPopup({ history, text, listId, suggestions, setScope, setText, schedule, commit, flush, clearHistory, removeEntry }: PopupArgs): PopupState {
   const [open, setOpen] = useState(false)
   const [highlight, setHighlight] = useState(-1)
   const historyMode = !text.trim()
@@ -120,8 +118,8 @@ function useSearchPopup({ history, text, listId, suggestions, setScope, setText,
   }, [])
   const options = useMemo<PopupOption[]>(() => historyMode
     ? historyOptions(history, commit, flush, close, removeEntry)
-    : suggestionOptions(suggestions, setScope, flush, setText, close, play),
-  [historyMode, history, suggestions, commit, flush, setScope, setText, close, removeEntry, play])
+    : suggestionOptions(suggestions, setScope, flush, setText, commit, close),
+  [historyMode, history, suggestions, commit, flush, setScope, setText, close, removeEntry])
   const show = open && options.length > 0
   // FB2-U8: the popup has to own Escape while it is up. Inside the hub it did not: `useEscape` runs the
   // top of the stack and stops the event there, and this popup had never registered — so Escape was
@@ -230,8 +228,8 @@ function suggestionOptions(
   setScope: (scope: MusicScope) => void,
   flush: (value: string) => void,
   setText: (value: string) => void,
+  commit: (value: string) => void,
   close: () => void,
-  play: (hit: MusicProviderTrack) => Promise<void>,
 ): PopupOption[] {
   return suggestions.map((suggestion) => ({
     key: suggestion.key,
@@ -242,11 +240,21 @@ function suggestionOptions(
     icon: kindIcon(suggestion.kind),
     ariaLabel: `${suggestion.label} ${t(SUGGESTION_KIND_KEYS[suggestion.kind])}`,
     // A jump is not a text search: the box empties while the scope change repaints the library behind
-    // it. An online row is the same gesture with a different destination — it plays the hit, because
-    // the song may not exist in the library at all until this press registers it.
+    // it. A catalogue row is a jump target of the same kind — the words it carries become the query
+    // and are searched, which is where the hits (and their own audition / add controls) are listed.
     pick: () => {
-      if (suggestion.hit) void play(suggestion.hit)
-      else if (suggestion.scope) setScope(suggestion.scope)
+      if (suggestion.hit) {
+        // FB3-C6: this row used to play the hit. A drop-down that starts the music on a press is a
+        // press the reader cannot aim: the popup hangs over the panel's own controls, so a press meant
+        // for one of those landed on a suggestion and took the player over instead — which is exactly
+        // what the visual gate found when its batch press played a track. Taking the player over is the
+        // panel row's own audition control; here the words are handed to the search.
+        setText(suggestion.label)
+        commit(suggestion.label)
+        close()
+        return
+      }
+      if (suggestion.scope) setScope(suggestion.scope)
       flush('')
       setText('')
       close()
@@ -295,13 +303,12 @@ export function SearchBox() {
   const recordSearchQuery = useMusic((state) => state.recordSearchQuery)
   const removeSearchHistory = useMusic((state) => state.removeSearchHistory)
   const setScope = useMusic((state) => state.setScope)
-  const playProviderTrack = useMusic((state) => state.playProviderTrack)
   const listId = useId()
   const { text, setText, schedule, flush } = useDebouncedText(query, setQuery)
   const suggestions = useSearchSuggestions(text)
   const popup = useSearchPopup({
     history, text, listId, suggestions, setScope, setText, schedule, commit: commitQuery, flush,
-    clearHistory: clearSearchHistory, removeEntry: removeSearchHistory, play: playProviderTrack,
+    clearHistory: clearSearchHistory, removeEntry: removeSearchHistory,
   })
   useSettledSearch(text, recordSearchQuery)
   const boxRef = useRef<HTMLDivElement>(null)

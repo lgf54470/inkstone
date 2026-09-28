@@ -375,16 +375,18 @@ describe('music search history completeness (FB3-F5)', () => {
   })
 })
 
-// FB3-F8: the catalogue's answer to the same words is offered beside the library's own jump targets,
-// and picking one is a direct play — the row may not exist in the library until this press registers
-// it, so "jump to it" would have nothing to jump to. It is also only offered while the box still holds
-// the words the answer belongs to.
+// FB3-F8: the catalogue's answer to the same words is offered beside the library's own jump targets.
+// It is only offered while the box still holds the words the answer belongs to.
+// FB3-C6: picking one hands its words to the search rather than taking the player over. The visual
+// gate found the difference: the popup hangs over the online panel, so its batch press landed on a
+// suggestion — and a suggestion that plays turns a missed press into the player going somewhere the
+// reader never asked for. Auditioning a hit is the panel row's own control.
 describe('online suggestions in the search popup (FB3-F8)', () => {
   const hit = (sourceId: string, title: string) => ({
     provider: 'gds', source: 'netease', sourceId, title, artist: 'Ann', album: '', durationMs: null, coverId: null, lyricId: null,
   })
 
-  it('lists the catalogue answer under the library rows and plays the hit it carries', () => {
+  it('lists the catalogue answer under the library rows and searches the hit it carries', () => {
     vi.useFakeTimers()
     const play = vi.fn(async () => {})
     useMusic.setState({ providerResults: [hit('b9', 'Echo Beach')], providerKeywords: 'echo', playProviderTrack: play })
@@ -401,7 +403,9 @@ describe('online suggestions in the search popup (FB3-F8)', () => {
     expect(online?.getAttribute('aria-label')).toBe(`Echo Beach ${t('music.suggest_online')}`)
 
     act(() => { (online as HTMLElement).click() })
-    expect(play).toHaveBeenCalledWith(expect.objectContaining({ sourceId: 'b9' }))
+    expect(play).not.toHaveBeenCalled()
+    expect(useMusic.getState().query).toBe('Echo Beach')
+    expect(input.value).toBe('Echo Beach')
     expect(document.querySelector('[role="listbox"]')).toBeNull()
     rendered.unmount()
   })

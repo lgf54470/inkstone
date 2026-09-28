@@ -5565,25 +5565,47 @@ async function assertMusicProviderResults(page) {
 
     // Then the whole selection in one press: both rows ticked, which is the only path that lands the
     // second hit.
-    const ticked = await page.evaluate((selector) => {
-      const panel = document.querySelector(selector)
-      const boxes = [...(panel?.querySelectorAll('[role="checkbox"]') ?? [])].filter((box) => box.getClientRects().length > 0)
-      boxes.forEach((box) => box.click())
-      return boxes.length
-    }, cssByLabels('section', LABELS.musicProviderResults))
-    check('music: the panel offers a tick per hit', ticked === PROVIDER_STUB_HITS.length, String(ticked))
+    // Then the whole selection in one press: every row ticked, which is the only path that lands the
+    // hit the audition did not already register.
+    //
     // FB2-U7 / FB2-U8, both found by this scenario and fixed here: the search box's suggestion popup
     // drops over the panel's own top — its switch, its header and this selection bar — and used to take
     // the press aimed at them for itself (the frame counts as inside the box, so the box's outside-press
     // rule never fired and the press vanished). It could not be put away either: Escape was taken by the
     // modal's own stack before the box saw it, so it closed the library instead of the popup. Both are
-    // read here as facts about the screen, and the bar is pressed with the real pointer a reader has —
-    // which is the assertion: the press has to reach the control it was aimed at.
+    // read here as facts about the screen, and the ticks are placed with the real pointer a reader has —
+    // which is the assertion: the press has to reach the control it was aimed at, and reaching it is
+    // what puts the popup away.
     // The popup is read by its own name: the page holds other listboxes (the note list, the command
     // palette), and "a listbox exists" would be an assertion about whichever one happened to be there.
+    await page.click(cssByLabels('input', LABELS.musicSearch))
     const suggestionPopup = cssByLabels('[role="listbox"]', LABELS.musicSearchSuggestions)
     const suggestionsUp = Boolean(await page.$(suggestionPopup))
     check('music: the search suggestions are drawn over the panel while the query is being edited', suggestionsUp)
+    // The press above is a real press on the panel, and putting the popup away is what such a press
+    // does. It is the first tick, read as a pair — the popup was up to take this press, and the row it
+    // was aimed at is the one that changed — because either half alone is satisfiable by accident.
+    // FB3-C6: the popup hangs over the panel's right-hand side, so a press that lands on a suggestion
+    // is the other way this read could pass — and that is why the popup's own rows hand their words to
+    // the search instead of playing anything. A suggestion that started the music turned a missed press
+    // into the player going somewhere the reader never asked for.
+    const pressTick = (title) => pressSurfaceControl(page, [`选择 ${title}`, `Select ${title}`],
+      cssByLabels('section', LABELS.musicProviderResults))
+    const firstTick = await pressTick(PROVIDER_STUB_HITS[0].title)
+    const popupAway = !(await page.$(suggestionPopup))
+    const listboxes = await page.evaluate(() => [...document.querySelectorAll('[role="listbox"]')]
+      .map((item) => item.getAttribute('aria-label')))
+    check('music: a real press on the panel puts the suggestions away and reaches its control',
+      firstTick && popupAway, JSON.stringify({ firstTick, popupAway, listboxes }))
+    // The rest of the answer is ticked the same way, so the batch this scenario presses is the one the
+    // rows are showing — read back as the ticks themselves rather than as the count of controls drawn.
+    await pressTick(PROVIDER_STUB_HITS[1].title)
+    const ticked = await page.evaluate((selector) => {
+      const panel = document.querySelector(selector)
+      return [...(panel?.querySelectorAll('[role="checkbox"]') ?? [])]
+        .filter((box) => box.getAttribute('aria-checked') === 'true').length
+    }, cssByLabels('section', LABELS.musicProviderResults))
+    check('music: the panel offers a tick per hit', ticked === PROVIDER_STUB_HITS.length, String(ticked))
     // The tick is what draws the bar, so the gate waits for the control it is about to press instead of
     // pressing into a re-render.
     const barDrawn = await waitForTruth(() => page.evaluate((selector) => {
@@ -5593,11 +5615,8 @@ async function assertMusicProviderResults(page) {
     }, cssByLabels('section', LABELS.musicProviderResults)))
     check('music: ticking a hit draws the add-selected control', barDrawn, JSON.stringify(stub.endpoints()))
     const pressedBatch = await pressSurfaceControl(page, LABELS.musicProviderAddSelected, cssByLabels('section', LABELS.musicProviderResults))
-    const popupAway = !(await page.$(suggestionPopup))
-    const listboxes = await page.evaluate(() => [...document.querySelectorAll('[role="listbox"]')]
-      .map((item) => item.getAttribute('aria-label')))
-    check('music: a real press on the panel puts the suggestions away and reaches its control',
-      pressedBatch && popupAway, JSON.stringify({ pressedBatch, popupAway, listboxes }))
+    check('music: the selection bar answers the press that was aimed at it',
+      pressedBatch, JSON.stringify({ pressedBatch }))
     const afterBatch = await waitForTruth(async () => {
       const titles = await libraryTitles()
       return PROVIDER_STUB_HITS.every((hit) => titles.includes(hit.title))
@@ -5615,9 +5634,13 @@ async function assertMusicProviderResults(page) {
     // geometry read rather than a class-name read: how many rows there are, and whether the list is
     // scrolling at all when they all fit.
     stub.setHits(PROVIDER_STUB_FULL_PAGE)
+    const fullPageQuery = 'stubpage'
+    // FB3-P1: this session already holds the answer to 'stub', and answering it again from what it
+    // remembers is what the memo above is for — so the longer page is asked for under words the
+    // session has not used. This read is about the list's geometry, not about what a repeat costs.
     await pressSurfaceControl(page, LABELS.musicSearchClear)
     await page.click(cssByLabels('input', LABELS.musicSearch))
-    await page.keyboard.type('stub', { delay: 30 })
+    await page.keyboard.type(fullPageQuery, { delay: 30 })
     const fullPageDrawn = await waitForTruth(async () => page.evaluate((count) =>
       document.querySelectorAll('[data-provider-results] > li').length === count, PROVIDER_STUB_FULL_PAGE.length), 15_000)
     const listBox = await page.evaluate(() => {
