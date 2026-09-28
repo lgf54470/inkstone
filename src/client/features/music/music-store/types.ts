@@ -209,6 +209,11 @@ export interface MusicStoreState {
   providerSourceOrder: string[]
   /** FB-F7: what the stream URL asks the proxy for; only provider rows carry it. */
   providerQuality: MusicProviderQuality
+  /** FB3-F4: the tier a kept file is fetched at — playback keeps asking `providerQuality`. */
+  downloadQuality: MusicProviderQuality
+  /** FB3-F4: whether an offline copy carries the track's cover / lyric as well as its audio. */
+  offlineWithCover: boolean
+  offlineWithLyric: boolean
   /** FB-S6: set once the reader has read the notice about third-party catalogues. */
   providerNoticeAccepted: boolean
   /** Whether the source badge is painted on rows and cards. */
@@ -280,6 +285,11 @@ export interface MusicStoreState {
   closeTrackMenu: () => void
   setSourceFilter: (filter: MusicSourceFilter) => void
   setProviderQuality: (quality: MusicProviderQuality) => void
+  /** FB3-F4: the tier a kept file is fetched at, decided apart from the tier playback uses. */
+  setDownloadQuality: (quality: MusicProviderQuality) => void
+  /** FB3-F4: whether an offline copy carries the track's cover / lyric as well as its audio. */
+  setOfflineWithCover: (enabled: boolean) => void
+  setOfflineWithLyric: (enabled: boolean) => void
   acceptProviderNotice: () => void
   setShowSourceBadge: (visible: boolean) => void
   setLyricSource: (source: MusicLyricSource) => void

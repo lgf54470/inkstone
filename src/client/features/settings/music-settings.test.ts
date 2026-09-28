@@ -281,7 +281,37 @@ describe('music settings section · group order (FB3-F6)', () => {
       return index
     }
     expect(at(t('music.settings_playback'))).toBeLessThan(at(t('music.settings_sources')))
-    expect(at(t('music.settings_sources'))).toBeLessThan(at(t('music.server_title')))
+    expect(at(t('music.settings_sources'))).toBeLessThan(at(t('music.settings_download')))
+    expect(at(t('music.settings_download'))).toBeLessThan(at(t('music.server_title')))
+    unmount()
+  })
+})
+
+// FB3-F4: what is kept on the device is its own group — the quality a download is fetched at and
+// the two parts of the offline copy that are more than the audio.
+describe('music settings section · downloads and offline (FB3-F4)', () => {
+  it('offers the download tier and writes it to the store the download reads', () => {
+    useMusic.setState({ providerQuality: 128, downloadQuality: 320 })
+    const { container, unmount } = render(createElement(MusicSettings))
+    const select = selectByLabel(container, t('music.download_quality'))
+    expect([...select.options].map((option) => option.value)).toEqual(['128', '192', '320', '740', '999'])
+    expect(select.value).toBe('320')
+    act(() => {
+      select.value = '740'
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(useMusic.getState().downloadQuality).toBe(740)
+    expect(useMusic.getState().providerQuality).toBe(128)
+    unmount()
+  })
+
+  it('turns the cover and the lyric off for the offline copy', () => {
+    useMusic.setState({ offlineWithCover: true, offlineWithLyric: true })
+    const { container, unmount } = render(createElement(MusicSettings))
+    click(switchByLabel(container, t('music.embed_cover')))
+    click(switchByLabel(container, t('music.embed_lyric')))
+    expect(useMusic.getState().offlineWithCover).toBe(false)
+    expect(useMusic.getState().offlineWithLyric).toBe(false)
     unmount()
   })
 })

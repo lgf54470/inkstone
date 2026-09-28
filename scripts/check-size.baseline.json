@@ -11,6 +11,9 @@
   "src/client/features/music/music-duplicates.test.ts": {
     "longFns": 1
   },
+  "src/client/features/music/music-health-modal.test.ts": {
+    "longFns": 1
+  },
   "src/client/features/music/music-hub-modal.tsx": {
     "longFns": 1
   },
@@ -33,11 +36,17 @@
   "src/client/features/music/music-share-page/page.test.ts": {
     "longFns": 1
   },
+  "src/client/features/music/music-store/health.test.ts": {
+    "longFns": 1
+  },
   "src/client/features/music/music-store/library.ts": {
     "longFns": 1
   },
   "src/client/features/music/music-store/player.ts": {
     "lines": 518
+  },
+  "src/client/features/music/music-store/transfers.test.ts": {
+    "longFns": 1
   },
   "src/client/features/music/music-track-menu.test.ts": {
     "longFns": 1
@@ -108,13 +117,13 @@
     "longFns": 1
   },
   "src/shared/locales/en-US/music.ts": {
-    "lines": 532
+    "lines": 542
   },
   "src/shared/locales/en-US/preview.ts": {
     "lines": 520
   },
   "src/shared/locales/zh-CN/music.ts": {
-    "lines": 523
+    "lines": 533
   },
   "src/shared/locales/zh-CN/preview.ts": {
     "lines": 520

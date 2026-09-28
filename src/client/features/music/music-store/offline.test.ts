@@ -29,6 +29,9 @@ function makeStore(overrides: Partial<MusicStoreState> = {}) {
   let state = {
     tracks: [track('a'), track('b'), track('c')],
     offlineTrackIds: [] as string[],
+    // FB3-F4: an offline copy carries the cover and the lyric unless the reader turned them off.
+    offlineWithCover: true,
+    offlineWithLyric: true,
     ...overrides,
   } as unknown as MusicStoreState
   return {
@@ -74,7 +77,7 @@ describe('toggleTrackOffline', () => {
   it('saves a not-yet-offline track and announces it', async () => {
     const store = makeStore()
     await toggleTrackOffline(store.set, store.get, 'a')
-    expect(saveTrackOffline).toHaveBeenCalledWith('a', 'audio/mpeg')
+    expect(saveTrackOffline).toHaveBeenCalledWith('a', 'audio/mpeg', { cover: true, lyric: true })
     expect(store.state().offlineTrackIds).toEqual(['a'])
     expect(toastMusic).toHaveBeenCalledWith('music.offline_saved', { value0: 1 })
   })
@@ -119,6 +122,16 @@ describe('batch offline saving', () => {
     await setTracksOffline(store.set, store.get, ['a', 'b'], true)
     expect(store.state().offlineTrackIds).toEqual(['b'])
     expect(toastMusicNotice).toHaveBeenCalledWith('music.offline_save_failed')
+  })
+})
+
+// FB3-F4: the two extras are asked for at the call site, so the decision travels with the save
+// instead of being re-read inside the byte pump.
+describe('offline extras (FB3-F4)', () => {
+  it('asks for exactly the parts the reader chose to keep', async () => {
+    const store = makeStore({ offlineWithCover: false, offlineWithLyric: true })
+    await toggleTrackOffline(store.set, store.get, 'a')
+    expect(saveTrackOffline).toHaveBeenCalledWith('a', 'audio/mpeg', { cover: false, lyric: true })
   })
 })
 

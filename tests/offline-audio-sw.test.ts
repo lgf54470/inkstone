@@ -261,3 +261,79 @@ describe('service worker offline audio store protocol', () => {
     expect(await storedList(worker)).toEqual([])
   })
 })
+
+// FB3-F4: an offline copy is meant to be read with no network at all, so the cover and the lyric
+// travel with the audio and are served from the same cache when the network is gone.
+describe('service worker offline media (FB3-F4)', () => {
+  const COVER_PATH = '/api/music/tracks/a/cover'
+  const LYRIC_PATH = '/api/music/tracks/a/lyric'
+
+  function extras(): { path: string; blob: Blob; mime: string }[] {
+    return [
+      { path: COVER_PATH, blob: new Blob([audioBytes(60)]), mime: 'image/png' },
+      { path: LYRIC_PATH, blob: new Blob([audioBytes(20)]), mime: 'application/json' },
+    ]
+  }
+
+  it('serves a stored cover and lyric from the cache once the network is gone', async () => {
+    const worker = startWorker()
+    await worker.send({ type: 'STORE_OFFLINE_AUDIO', requestId: 20, path: STREAM_PATH, blob: new Blob([audioBytes(10)]), extra: extras() })
+    worker.setNetwork(async () => { throw new Error('the network is out') })
+    const cover = intercepted(await worker.fireStream(COVER_PATH))
+    expect(cover.headers.get('content-type')).toBe('image/png')
+    expect(await audioBody(cover)).toHaveLength(60)
+    const lyric = intercepted(await worker.fireStream(LYRIC_PATH))
+    expect(lyric.headers.get('content-type')).toBe('application/json')
+    expect(await audioBody(lyric)).toHaveLength(20)
+  })
+
+  it('leaves the track list alone and keeps the media out of it', async () => {
+    const worker = startWorker()
+    await worker.send({ type: 'STORE_OFFLINE_AUDIO', requestId: 21, path: STREAM_PATH, blob: new Blob([audioBytes(10)]), extra: extras() })
+    expect(await storedList(worker)).toEqual([STREAM_PATH])
+  })
+
+  it('goes to the network for a cover that was never stored', async () => {
+    const worker = startWorker()
+    worker.setNetwork(async () => new Response(audioBytes(30), { headers: { 'Content-Type': 'image/png' } }))
+    expect(await audioBody(intercepted(await worker.fireStream(COVER_PATH)))).toHaveLength(30)
+    worker.setNetwork(async () => { throw new Error('the network is out') })
+    expect(intercepted(await worker.fireStream(COVER_PATH)).type).toBe('error')
+  })
+
+  // The senders are ours, so an extra that names another track — or a path that is not a track
+  // medium at all — is a bug; dropping it keeps the cache and the audio intact.
+  it('drops an extra that is not this track\'s own medium', async () => {
+    const worker = startWorker()
+    const stored = await worker.send({
+      type: 'STORE_OFFLINE_AUDIO', requestId: 22, path: STREAM_PATH, blob: new Blob([audioBytes(10)]),
+      extra: [
+        { path: '/api/music/tracks/b/cover', blob: new Blob([audioBytes(5)]), mime: 'image/png' },
+        { path: '/index.html', blob: new Blob([audioBytes(5)]), mime: 'text/html' },
+      ],
+    })
+    expect(stored[0]).toMatchObject({ ok: true })
+    expect(await storedList(worker)).toEqual([STREAM_PATH])
+    const cache = await worker.caches.open(AUDIO_CACHE)
+    expect(cache.entries.size).toBe(1)
+  })
+
+  it('counts the extras against the budget when it evicts', async () => {
+    const worker = startWorker({ budgetBytes: 250 })
+    await worker.send({ type: 'STORE_OFFLINE_AUDIO', requestId: 23, path: STREAM_PATH, blob: new Blob([audioBytes(100)]), extra: extras() })
+    await worker.send({ type: 'STORE_OFFLINE_AUDIO', requestId: 24, path: '/api/music/tracks/b/stream', blob: new Blob([audioBytes(100)]) })
+    expect(await storedList(worker)).toEqual(['/api/music/tracks/b/stream'])
+    const cache = await worker.caches.open(AUDIO_CACHE)
+    expect(cache.entries.has(COVER_PATH)).toBe(false)
+    expect(cache.entries.has(LYRIC_PATH)).toBe(false)
+  })
+
+  it('removes the extras with the track they belong to', async () => {
+    const worker = startWorker()
+    await worker.send({ type: 'STORE_OFFLINE_AUDIO', requestId: 25, path: STREAM_PATH, blob: new Blob([audioBytes(10)]), extra: extras() })
+    const removed = await worker.send({ type: 'REMOVE_OFFLINE_AUDIO', requestId: 26, path: STREAM_PATH })
+    expect(removed[0]).toMatchObject({ ok: true })
+    const cache = await worker.caches.open(AUDIO_CACHE)
+    expect(cache.entries.size).toBe(0)
+  })
+})

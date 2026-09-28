@@ -4,6 +4,7 @@ vi.mock('./api', () => ({
   musicStreamUrl: (id: string) => `/api/music/tracks/${encodeURIComponent(id)}/stream`,
 }))
 
+import type { Mock } from 'vitest'
 import {
   clearOfflineAudioTracks, listOfflineAudioTracks, removeTrackOffline, saveTrackOffline,
   trackIdFromOfflinePath,
@@ -96,6 +97,57 @@ describe('offline-audio save flow', () => {
     await expect(saveTrackOffline('gone', 'audio/mpeg')).resolves.toBe('failed')
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(worker?.posted).toHaveLength(0)
+  })
+})
+
+// FB3-F4: "keep the cover and the lyric too" is one extra two requests and one extra field on
+// the message already being sent, so the offline copy is complete the first time it is read.
+describe('offline extras (FB3-F4)', () => {
+  function routedFetch(): Mock {
+    return vi.fn(async (url: string) => url.endsWith('/cover')
+      ? new Response(new TextEncoder().encode('cover-bytes'), { status: 200 })
+      : new Response(new TextEncoder().encode('{"lyric":"la"}'), { status: 200 }))
+  }
+
+  it('carries the cover and the lyric in the same store message', async () => {
+    vi.stubGlobal('fetch', routedFetch())
+    const pending = saveTrackOffline('t1', 'audio/mpeg', { cover: true, lyric: true })
+    await vi.waitFor(() => expect(worker?.posted).toHaveLength(1))
+    const message = worker?.posted[0] as Record<string, unknown>
+    const extra = message.extra as { path: string; mime: string; blob: Blob }[]
+    expect(extra.map((entry) => entry.path)).toEqual([
+      '/api/music/tracks/t1/cover',
+      '/api/music/tracks/t1/lyric',
+    ])
+    // The cover route always states its medium; jpeg is only the stand-in for a reply that did not.
+    expect(extra.map((entry) => entry.mime)).toEqual(['image/jpeg', 'application/json'])
+    deliver({ type: 'OFFLINE_AUDIO_STORED', requestId: lastPostedRequestId(), ok: true, reason: null })
+    expect(await pending).toBe('saved')
+  })
+
+  it('asks for nothing extra when neither part was chosen', async () => {
+    const fetchMock = routedFetch()
+    vi.stubGlobal('fetch', fetchMock)
+    const pending = saveTrackOffline('t1', 'audio/mpeg', { cover: false, lyric: false })
+    await vi.waitFor(() => expect(worker?.posted).toHaveLength(1))
+    expect((worker?.posted[0] as Record<string, unknown>).extra).toEqual([])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    deliver({ type: 'OFFLINE_AUDIO_STORED', requestId: lastPostedRequestId(), ok: true, reason: null })
+    expect(await pending).toBe('saved')
+  })
+
+  // A cover the account never stored and a lyric the catalogue never matched are both normal,
+  // and neither may cost the reader the audio they asked for.
+  it('keeps the audio when a chosen extra cannot be fetched', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/cover')
+      ? new Response(null, { status: 404 })
+      : new Response(new TextEncoder().encode('audio-bytes'), { status: 200 })))
+    const pending = saveTrackOffline('t1', 'audio/mpeg', { cover: true, lyric: true })
+    await vi.waitFor(() => expect(worker?.posted).toHaveLength(1))
+    const message = worker?.posted[0] as Record<string, unknown>
+    expect((message.extra as { path: string }[]).map((entry) => entry.path)).toEqual(['/api/music/tracks/t1/lyric'])
+    deliver({ type: 'OFFLINE_AUDIO_STORED', requestId: lastPostedRequestId(), ok: true, reason: null })
+    expect(await pending).toBe('saved')
   })
 })
 

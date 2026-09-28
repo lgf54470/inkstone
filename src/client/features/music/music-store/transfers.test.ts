@@ -54,7 +54,9 @@ function respond(body: unknown[], totalBytes?: number): unknown {
 }
 
 function makeStore(tracks: MusicTrack[]) {
-  const store = musicStoreStub({ tracks, downloads: [], transfersOpen: false, providerQuality: 128 })
+  const store = musicStoreStub({
+    tracks, downloads: [], transfersOpen: false, providerQuality: 128, downloadQuality: 740,
+  })
   return { ...store, state: store.read }
 }
 
@@ -114,6 +116,17 @@ describe('downloadTracks', () => {
     expect(store.state().downloads).toEqual([])
   })
 
+  // FB3-F4: the tier a stream is auditioned at and the tier a file is kept at stopped being the
+  // same question the moment the reader could answer it twice.
+  it('fetches the bytes at the download tier, not the playback tier', async () => {
+    const store = makeStore([track({ source: 'provider', format: 'mp3', mime: 'audio/mpeg', webdavPath: null })])
+    const fetchMock = vi.fn((_url: string) => Promise.resolve(respond(chunks(300), 300)))
+    vi.stubGlobal('fetch', fetchMock)
+    await downloadTracks(store.set, store.get, ['track-1'])
+    expect(String(fetchMock.mock.calls[0]![0])).toContain('quality=740')
+    expect(store.state().downloads).toEqual([])
+  })
+
   it('keeps a failed task and reports it', async () => {
     const store = makeStore([track()])
     vi.stubGlobal('fetch', () => Promise.resolve({ ok: false, status: 404 }))
@@ -148,6 +161,9 @@ describe('download quality (FB-F7)', () => {
   it('asks the proxy for the chosen tier on online rows only', async () => {
     const urls: string[] = []
     const store = makeStore([track(), track({ id: 'track-2', source: 'provider' })])
+    // FB3-F4: the tier a download asks for is its own preference, so this case pins the one it
+    // is about instead of inheriting whatever the shared fixture happens to ship.
+    store.set({ providerQuality: 128, downloadQuality: 128 })
     vi.stubGlobal('fetch', (url: string) => {
       urls.push(url)
       return Promise.resolve(respond(chunks(300), 300))

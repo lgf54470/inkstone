@@ -171,6 +171,9 @@ export function serviceWorkerSource(
 	const AUDIO_CACHE = 'inkstone-audio-v1'
 	const AUDIO_META_HEADER = 'x-inkstone-audio-meta'
 	const AUDIO_STREAM_PATTERN = /^\\/api\\/music\\/tracks\\/[^/]+\\/stream$/
+	// The cover and the lyric of a kept track live in the same cache as its audio, so an offline
+	// copy is read with no network at all — the same network-first / cache-when-offline rule.
+	const AUDIO_MEDIA_PATTERN = /^\\/api\\/music\\/tracks\\/[^/]+\\/(stream|cover|lyric)$/
 	const AUDIO_BUDGET_BYTES = ${audioBudgetBytes}
 	let warmPromise = null
 
@@ -232,7 +235,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   // Music streams stay network-only while online; the cache below only speaks
   // up once the network is gone, so auth, expiry and range semantics are untouched.
-  if (url.origin === self.location.origin && AUDIO_STREAM_PATTERN.test(url.pathname)) {
+  if (url.origin === self.location.origin && AUDIO_MEDIA_PATTERN.test(url.pathname)) {
     event.respondWith(handleAudioStream(request, url.pathname))
     return
   }
@@ -338,6 +341,31 @@ async function listOfflineAudio() {
   return tracks
 }
 
+// The two media paths that belong to a track are derived from its stream path, so an extra can
+// only ever name this track's own cover or lyric — anything else is dropped.
+function trackExtraPaths(streamPath) {
+  const prefix = streamPath.slice(0, -'/stream'.length)
+  return [prefix + '/cover', prefix + '/lyric']
+}
+
+function readOfflineExtras(path, extra) {
+  if (!Array.isArray(extra)) return []
+  const allowed = trackExtraPaths(path)
+  const kept = []
+  for (const entry of extra) {
+    const extraPath = String(entry?.path || '')
+    const blob = entry?.blob
+    if (!allowed.includes(extraPath) || !(blob instanceof Blob) || !blob.size) continue
+    if (kept.some((taken) => taken.path === extraPath)) continue
+    kept.push({ path: extraPath, blob, mime: String(entry?.mime || 'application/octet-stream') })
+  }
+  return kept
+}
+
+async function deleteOfflineTrack(cache, streamPath) {
+  for (const mediaPath of [streamPath, ...trackExtraPaths(streamPath)]) await cache.delete(mediaPath)
+}
+
 async function storeOfflineAudio(source, data) {
   const reply = (ok, reason) => source?.postMessage({
     type: 'OFFLINE_AUDIO_STORED', requestId: data.requestId, ok, reason,
@@ -348,6 +376,8 @@ async function storeOfflineAudio(source, data) {
     await reply(false, 'invalid')
     return
   }
+  const extras = readOfflineExtras(path, data.extra)
+  const keptBytes = blob.size + extras.reduce((sum, entry) => sum + entry.blob.size, 0)
   const cache = await caches.open(AUDIO_CACHE)
   // Re-storing a path replaces its entry, so its old bytes do not count
   // against the budget and it is never an eviction candidate.
@@ -355,22 +385,31 @@ async function storeOfflineAudio(source, data) {
   let used = entries.reduce((sum, entry) => sum + entry.sizeBytes, 0)
   const doomed = []
   for (const entry of entries.sort((left, right) => left.addedAt - right.addedAt)) {
-    if (used + blob.size <= AUDIO_BUDGET_BYTES) break
+    if (used + keptBytes <= AUDIO_BUDGET_BYTES) break
     doomed.push(entry)
     used -= entry.sizeBytes
   }
-  if (used + blob.size > AUDIO_BUDGET_BYTES) {
+  if (used + keptBytes > AUDIO_BUDGET_BYTES) {
     // A single track larger than the whole budget is refused before a single
     // existing copy gets deleted.
     await reply(false, 'quota')
     return
   }
-  for (const entry of doomed) await cache.delete(entry.path)
+  // Extras of an earlier save of this same track must not outlive the parts the
+  // reader just turned off, so the whole media set is replaced together.
+  for (const entry of doomed) await deleteOfflineTrack(cache, entry.path)
+  await deleteOfflineTrack(cache, path)
   try {
     await cache.put(path, new Response(blob, { headers: {
       'Content-Type': String(data.mime || 'application/octet-stream'),
       [AUDIO_META_HEADER]: JSON.stringify({ sizeBytes: blob.size, addedAt: Date.now() }),
     } }))
+    for (const entry of extras) {
+      await cache.put(entry.path, new Response(entry.blob, { headers: {
+        'Content-Type': entry.mime,
+        [AUDIO_META_HEADER]: JSON.stringify({ sizeBytes: entry.blob.size, addedAt: Date.now() }),
+      } }))
+    }
   } catch {
     // Storage failures (disk full, quota enforced by the browser) surface to the
     // page as a rejected save so the user sees the toast instead of silence.
@@ -388,7 +427,14 @@ async function listOfflineAudioWithAge() {
     if (!AUDIO_STREAM_PATTERN.test(path)) continue
     const response = await cache.match(request)
     if (!response) continue
-    entries.push({ path, request, ...audioMeta(response) })
+    // A track owns its extras, so they count against the budget with it and leave
+    // with it — the reader keeps tracks, not files.
+    let sizeBytes = audioMeta(response).sizeBytes
+    for (const mediaPath of trackExtraPaths(path)) {
+      const extra = await cache.match(mediaPath)
+      if (extra) sizeBytes += audioMeta(extra).sizeBytes
+    }
+    entries.push({ path, request, sizeBytes, addedAt: audioMeta(response).addedAt })
   }
   return entries
 }
@@ -399,6 +445,7 @@ async function removeOfflineAudio(source, data) {
   if (AUDIO_STREAM_PATTERN.test(path)) {
     const cache = await caches.open(AUDIO_CACHE)
     ok = await cache.delete(path)
+    for (const mediaPath of trackExtraPaths(path)) await cache.delete(mediaPath)
   }
   source?.postMessage({ type: 'OFFLINE_AUDIO_REMOVED', requestId: data.requestId, ok })
 }

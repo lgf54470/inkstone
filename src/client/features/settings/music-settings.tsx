@@ -54,6 +54,7 @@ export function MusicSettings() {
     <div className='space-y-6'>
       <PlaybackDefaults />
       <OnlineSources />
+      <Downloads />
       <MusicServers />
     </div>
   )
@@ -67,6 +68,40 @@ export function SectionTitle({ title, hint }: { title: string; hint?: string }) 
       </h3>
       {hint && <p className='pt-1 text-[length:var(--text-12)] leading-relaxed text-[var(--text-quaternary)]'>{hint}</p>}
     </div>
+  )
+}
+
+// FB3-F4: what is kept on the device is its own question, asked after "where do songs come from"
+// and before the reader's own servers — the tier a file is fetched at is not the tier playback
+// uses, and an offline copy that is only the audio is often not the thing they asked to keep.
+function Downloads() {
+  const downloadQuality = useMusic((state) => state.downloadQuality)
+  const setDownloadQuality = useMusic((state) => state.setDownloadQuality)
+  const offlineWithCover = useMusic((state) => state.offlineWithCover)
+  const setOfflineWithCover = useMusic((state) => state.setOfflineWithCover)
+  const offlineWithLyric = useMusic((state) => state.offlineWithLyric)
+  const setOfflineWithLyric = useMusic((state) => state.setOfflineWithLyric)
+  return (
+    <section>
+      <SectionTitle title={t('music.settings_download')} hint={t('music.settings_download_hint')} />
+      <SettingRow title={t('music.download_quality')} description={t('music.download_quality_hint')}>
+        <Select
+          aria-label={t('music.download_quality')}
+          value={downloadQuality}
+          onChange={(event) => setDownloadQuality(Number(event.target.value) as MusicProviderQuality)}
+        >
+          {MUSIC_PROVIDER_QUALITIES.map((tier) => (
+            <option key={tier} value={tier}>{t(QUALITY_LABELS[tier])}</option>
+          ))}
+        </Select>
+      </SettingRow>
+      <SettingRow title={t('music.embed_cover')} description={t('music.embed_cover_desc')}>
+        <Switch checked={offlineWithCover} onChange={setOfflineWithCover} label={t('music.embed_cover')} />
+      </SettingRow>
+      <SettingRow title={t('music.embed_lyric')} description={t('music.embed_lyric_desc')}>
+        <Switch checked={offlineWithLyric} onChange={setOfflineWithLyric} label={t('music.embed_lyric')} />
+      </SettingRow>
+    </section>
   )
 }
 

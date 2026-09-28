@@ -11,9 +11,11 @@ import { matchMissingCovers } from './library-covers'
 import { searchTrackLyric } from './library-lyrics'
 import {
   cancelDownloads, dismissDownload, dismissLibraryJob, downloadTracks, retryDownload, retryFailedDownloads,
-  setTransfersOpen, setUploadTarget,
+  setDownloadQuality, setTransfersOpen, setUploadTarget,
 } from './transfers'
-import { setTracksOffline, syncOfflineTracks, toggleTrackOffline } from './offline'
+import {
+  setOfflineWithCover, setOfflineWithLyric, setTracksOffline, syncOfflineTracks, toggleTrackOffline,
+} from './offline'
 import {
   addSelectionToPlaylist, addToPlaylist, createPlaylist, createPlaylistWithTracks, createTag, deletePlaylist, deleteTag, dismissUpload,
   movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist,
@@ -187,7 +189,8 @@ function playlistActions(set: MusicSet, get: MusicGet): PlaylistItemActions {
 
 type TransferActions = Pick<MusicStoreState,
   | 'downloadTracks' | 'dismissDownload' | 'retryDownload' | 'retryFailedDownloads' | 'cancelDownloads'
-  | 'syncOfflineTracks' | 'toggleTrackOffline' | 'setTracksOffline'
+  | 'setDownloadQuality' | 'syncOfflineTracks' | 'toggleTrackOffline' | 'setTracksOffline'
+  | 'setOfflineWithCover' | 'setOfflineWithLyric'
   | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'>
 
 function transferActions(set: MusicSet, get: MusicGet): TransferActions {
@@ -197,9 +200,12 @@ function transferActions(set: MusicSet, get: MusicGet): TransferActions {
     retryDownload: (id) => retryDownload(set, get, id),
     retryFailedDownloads: () => retryFailedDownloads(set, get),
     cancelDownloads: () => cancelDownloads(set, get),
+    setDownloadQuality: (quality) => setDownloadQuality(set, get, quality),
     syncOfflineTracks: () => syncOfflineTracks(set),
     toggleTrackOffline: (id) => toggleTrackOffline(set, get, id),
     setTracksOffline: (ids, enabled) => setTracksOffline(set, get, ids, enabled),
+    setOfflineWithCover: (enabled) => setOfflineWithCover(set, get, enabled),
+    setOfflineWithLyric: (enabled) => setOfflineWithLyric(set, get, enabled),
     dismissLibraryJob: (kind) => dismissLibraryJob(set, kind),
     setTransfersOpen: (open) => setTransfersOpen(set, open),
     setUploadTarget: (target) => setUploadTarget(set, target),

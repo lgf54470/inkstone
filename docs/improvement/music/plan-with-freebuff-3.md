@@ -38,7 +38,7 @@
 ## M④ · 设置项补缺（P2）
 
 - [x] M10 FB3-F3 设置页补「音量」滑杆与睡眠 / 倍速入口（复用既有组件，不新造）—— **commit `d54ef06d`**
-- [ ] M11 FB3-F4 下载设置：离线补齐音质选择 + 「嵌入封面/歌词」选项（含浏览器侧封装的技术选型与降级说明）
+- [x] M11 FB3-F4 下载设置：离线补齐音质选择（`downloadQuality`，与播放档位分开）+ 「保留封面/保留歌词」两项（离线副本连同封面与歌词一起进同一个缓存）—— **commit `待回填`**
 - [x] M12 FB3-F6 设置页分组顺序：播放默认前置（服务器组后置），并补一条顺序断言 —— **commit `a9c93e6a`**
 
 ## M⑤ · 体验收尾（P3）
@@ -54,7 +54,9 @@
 
 **已交付（第二批，续）**：M4（空态措辞）、M5 + FB3-C4（搜索历史完整性）、M6 + M16 + M17（单源检索范围与门禁自身的三处读数缺陷）、M7（会话内检索记忆）、M8（逐源开关与顺序）、M9（在线建议）、M10（设置页音量/倍速/睡眠入口）、M12（设置页分组顺序）、M14（沉浸层两行「多少」的分级）。
 
-**尚未开始**：M11（下载设置）与 M13（失效行一键在线补齐），以及 M15（报告定稿）—— 它们仍是本计划的待办项，逐条顺序与验收标准不变。
+**已交付（第三批）**：M11（下载设置：下载音质 + 保留封面/歌词两项，含 service worker 侧的离线媒体）。
+
+**尚未开始**：M13（失效行一键在线补齐）与 M15（报告定稿）—— 它们仍是本计划的待办项，逐条顺序与验收标准不变。
 
 **入库方式（第二批）**：`951223c3` 同时带上了 M6 与 M16/M17 的改动——M16/M17 是同一份 `scripts/e2e-visual.mjs` 里的修复，而 M6 那一提交用路径法一次性暂存了整份文件（含 `check-comments.mjs` 的白名单重建），于是它们跟着一起落库。顺序上这反而较合理：先落能读到东西的门禁，再落依赖它的范围断言（三条新断言的通过证据就来自同一工作区的那一轮实测）。与 M3/M1b 一样，不重写已提交历史，这里如实登记；后续条目恢复「一项一提交」，提交前先 `git status` 确认暂存区只有本项文件。
 
@@ -90,6 +92,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-28 | M11 FB3-F4 下载设置与离线媒体（先红后改） | `待回填` | 先红：把实现（state/types/persist/transfers/offline/library/offline-audio/music-settings/locales/pwa.config）逐个 stash 出去、只留测试，跑六个文件得 **15 failed / 76 passed**（SW 的新协议 3 例、offline-audio 的 extra 3 例、设置页 3 例、offline store 2 例、provider-prefs 3 例、transfers 1 例）。实现：偏好加 `downloadQuality` + `offlineWithCover`/`offlineWithLyric`（落库与读取白名单同一处）；`downloadTracks`/`retryDownload` 改读 `downloadQuality`；保存前把两项开关作为 `OfflineExtras` 交到 `saveTrackOffline`，由它在同一个 store 消息里带上封面与歌词（取不到的封面或歌词只少那一样，不连累音频）；service worker 侧新增 `AUDIO_MEDIA_PATTERN`（stream/cover/lyric 同一套网络优先 + 离线回源规则）、`readOfflineExtras`（只认本曲自己的两个媒体路径）、预算把 extras 计入、淘汰与删除都按曲目整体进行。设置页新增「下载与离线」组（下载音质选择器 + 两个开关，用的是与在线音质同一个 `Select`/`Switch`）。回归：`npx vitest run src/client/features/music src/client/features/settings tests/offline-audio-sw.test.ts src/client/lib/offline-audio.test.ts` **127 文件 / 1066 例 ✅**；`npm run typecheck` ✅；13 项静态门禁 ✅ | 门禁的 `assertMusicSettingsLayout` 里那条顺序读数从三组改成四组（多出「下载与离线」），断言与 `LABELS.musicSettingsGroups` 同步；本轮未在真实浏览器里量这一组的位置（见下） |
 | 2026-09-28 | M14 FB3-U7 沉浸层两行「多少」的行为分级 | `本轮 M14 提交` | 先红：新增一例对 HEAD 跑得 **1 failed / 26 passed**（计数行没有把「可展开」画出来）。读出的结论：两行确实不同级——队列计数行是 discloseditor（有 `aria-expanded`、有悬浮变色），而「时长 · 体积」是事实；但前者只靠悬浮色表达可点，静止时与下面那行长得一样（且悬浮在触屏上不存在）。处置取「可视指示」：三处队列计数控件（沉浸头部行、折合条带入口、已展开面板的收起键）的谢夫龙加 `data-queue-chevron` 与 `aria-hidden`，头部那枚随开合旋转，于是静止态也能区分；「时长 · 体积」保持纯文本（断言它既不在按钮里、里面也没有按钮）。回归：`npx vitest run src/client/features/music/music-immersive-player.test.ts src/client/features/music/music-immersive-queue.test.ts` **33 例 ✅** | 门禁的沉浸层场景本轮只读高度/滚动/默认态，未新加几何断言（本次只加了装饰性图标，不改变布局高度——头部高度断言仍在同一场景里守住） |
 | 2026-09-28 | M12 FB3-F6 设置页分组顺序 | `a9c93e6a` | 实现：`MusicSettings` 的三个分组改为「播放默认 → 在线音源 → 音乐服务器」，并把「为什么是这个顺序」写在注释里（读者抵达时的提问顺序）。测试：`music-settings.test.ts` 新增一例，读渲染后 `h3` 的顺序断言三个分组标题的相对位置；门禁在 `assertMusicSettingsLayout` 里新增一读（三个分组标题的位置递增，每项允许多种拼写所以中英皆可），与布局两读同一次打开、同一主题。回归：`npx vitest run src/client/features/settings` **18 例 ✅**；`npm run typecheck` ✅ | 门禁新读数与设置页布局读数同批（本项只动顺序，不动布局，两者互不影响） |
 | 2026-09-28 | M10 FB3-F3 设置页补音量/倍速/睡眠入口 | `d54ef06d` | 无先红（新增入口与既有能力同源，不改变任何现有断言的预期）：`music-settings.test.ts` 新增两例，对 HEAD 跑为红（行不存在），实现后转绿——包含一条真实拖动：`input[type=range]` 置 35 后 `volume` 为 0.35。实现：设置页「播放」组前插三行（`MusicVolumeSlider` / `MusicRateButton` / `MusicSleepButton`，均为播放器弹层与传输菜单的同一组件），音乐 barrel 透出这三个组件。回归：`npx vitest run src/client/features/settings` **17 例 ✅**；`npm run typecheck` ✅ | 未新造控件（铁律 10：全部复用既有组件，滑杆就是播放器里那一个）；睡眠定时入口在设置页与传输菜单上是同一个 Menu，状态互通 |

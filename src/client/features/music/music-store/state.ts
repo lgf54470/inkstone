@@ -55,6 +55,12 @@ export interface MusicPreferences {
   providerSourceOrder: string[]
   /** FB-F7: the tier asked of the aggregate upstream when a playable link is resolved. */
   providerQuality: MusicProviderQuality
+  /** FB3-F4: the tier a kept file is fetched at — the one playback uses is a separate question. */
+  downloadQuality: MusicProviderQuality
+  /** FB3-F4: whether an offline copy also carries the track's cover. */
+  offlineWithCover: boolean
+  /** FB3-F4: whether an offline copy also carries the track's lyric. */
+  offlineWithLyric: boolean
   /** FB-S6: the one-time notice shown before the first catalogue is switched on. */
   providerNoticeAccepted: boolean
   /** FB-F8: whether a play that dies may be re-served from another catalogue on its own. */
@@ -180,6 +186,11 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   providerSourceEnabled: {},
   providerSourceOrder: [],
   providerQuality: MUSIC_PROVIDER_DEFAULT_QUALITY,
+  downloadQuality: MUSIC_PROVIDER_DEFAULT_QUALITY,
+  // On by default: an offline copy that plays without its cover or lyric is not the thing the
+  // reader asked to keep, and both are a rounding error against the audio they sit beside.
+  offlineWithCover: true,
+  offlineWithLyric: true,
   providerNoticeAccepted: false,
   // On by default: this is what the fallback has always done, and the switch exists to turn it off.
   providerAutoSwap: true,
@@ -237,6 +248,9 @@ export function loadPreferences(): MusicPreferences {
     lyricAlign: readListed(parsed.lyricAlign, LYRIC_ALIGNS, DEFAULT_PREFERENCES.lyricAlign),
     lyricTextSize: readListed(parsed.lyricTextSize, LYRIC_TEXT_SIZES, DEFAULT_PREFERENCES.lyricTextSize),
     lyricOffsets: readLyricOffsets(parsed.lyricOffsets),
+    downloadQuality: readListed(parsed.downloadQuality, MUSIC_PROVIDER_QUALITIES, MUSIC_PROVIDER_DEFAULT_QUALITY),
+    offlineWithCover: parsed.offlineWithCover !== false,
+    offlineWithLyric: parsed.offlineWithLyric !== false,
     ...readProviderPreferences(parsed),
     // The badge is on unless it was explicitly turned off, so an older payload keeps it.
     showSourceBadge: parsed.showSourceBadge !== false,

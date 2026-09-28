@@ -5,6 +5,7 @@ import { mapWithConcurrency, throttledProgress } from '../../../lib/async'
 import { saveBlob } from '../music-export'
 import { downloadFileName, providerStreamQuality, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { toastMusic, toastMusicError } from '../music-feedback'
+import { persist } from './persist'
 import type { MusicDownloadTask, MusicGet, MusicLibraryJobKind, MusicSet, MusicTransferTarget } from './types'
 
 const DOWNLOAD_TIMEOUT_MS = 10 * 60_000
@@ -15,7 +16,9 @@ export async function downloadTracks(set: MusicSet, get: MusicGet, ids: string[]
     .map((id) => get().tracks.find((track) => track.id === id))
     .filter((track): track is MusicTrack => Boolean(track))
   if (!tracks.length) return
-  const quality = get().providerQuality
+  // FB3-F4: the tier a file is kept at is its own preference — a reader auditioning at 128 may
+  // still want the copy on their disk at 740, and before this they could not say so.
+  const quality = get().downloadQuality
   const tasks = tracks.map((track, index) => makeDownloadTask(track, index))
   set((state) => ({ downloads: [...state.downloads, ...tasks], transfersOpen: true }))
   await mapWithConcurrency(tracks, TRACK_IO_CONCURRENCY, (track, index) => downloadOne(set, get, track, tasks[index]!, quality))
@@ -30,8 +33,14 @@ export async function retryDownload(set: MusicSet, get: MusicGet, id: string): P
   if (!task || !track || task.status === 'downloading') return
   const retried: MusicDownloadTask = { ...task, percent: 0, status: 'downloading', controller: new AbortController() }
   set((state) => ({ downloads: state.downloads.map((entry) => (entry.id === id ? retried : entry)) }))
-  await downloadOne(set, get, track, retried, get().providerQuality)
+  await downloadOne(set, get, track, retried, get().downloadQuality)
   dropFinishedDownloads(set)
+}
+
+// FB3-F4: a download tier is set once and outlives the transfer dialog that showed it.
+export function setDownloadQuality(set: MusicSet, get: MusicGet, quality: MusicProviderQuality): void {
+  set({ downloadQuality: quality })
+  persist(get)
 }
 
 export async function retryFailedDownloads(set: MusicSet, get: MusicGet): Promise<void> {

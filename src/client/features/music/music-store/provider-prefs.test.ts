@@ -131,3 +131,45 @@ describe('reading the new preferences back', () => {
     expect(prefs.showSourceBadge).toBe(true)
   })
 })
+
+// FB3-F4: what a download costs and what it carries are two questions the reader answers once,
+// and neither is the same question as how playback sounds — a tier picked for the stream at the
+// desk is not the one wanted for a file kept on the device.
+describe('download and offline settings (FB3-F4)', () => {
+  it('keeps a download tier that is not the playback tier', () => {
+    vi.useFakeTimers()
+    useMusic.setState({ providerQuality: 128, downloadQuality: 320 })
+    useMusic.getState().setDownloadQuality(740)
+    vi.advanceTimersByTime(300)
+    expect(useMusic.getState().downloadQuality).toBe(740)
+    expect(useMusic.getState().providerQuality).toBe(128)
+    expect(storedPrefs()?.downloadQuality).toBe(740)
+    expect(storedPrefs()?.providerQuality).toBe(128)
+  })
+
+  it('records the two extras the offline copy may carry', () => {
+    vi.useFakeTimers()
+    useMusic.setState({ offlineWithCover: true, offlineWithLyric: true })
+    useMusic.getState().setOfflineWithCover(false)
+    useMusic.getState().setOfflineWithLyric(false)
+    vi.advanceTimersByTime(300)
+    expect(useMusic.getState().offlineWithCover).toBe(false)
+    expect(useMusic.getState().offlineWithLyric).toBe(false)
+    expect(storedPrefs()?.offlineWithCover).toBe(false)
+    expect(storedPrefs()?.offlineWithLyric).toBe(false)
+  })
+
+  it('reads them back, refusing a tier the worker would not take', () => {
+    window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({
+      downloadQuality: 999,
+      offlineWithCover: false,
+      offlineWithLyric: 'yes',
+    }))
+    const prefs = loadPreferences()
+    expect(prefs.downloadQuality).toBe(999)
+    expect(prefs.offlineWithCover).toBe(false)
+    expect(prefs.offlineWithLyric).toBe(true)
+    window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({ downloadQuality: 256 }))
+    expect(loadPreferences().downloadQuality).toBe(320)
+  })
+})
