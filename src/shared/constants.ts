@@ -122,6 +122,13 @@ export const LIMITS = {
   musicPodcastEpisodeMax: 500,
   musicPodcastCacheTtlMs: 10 * 60 * 1000,
   musicProviderRequestsPerHour: 120,
+  // FB2-PF1: the catalogue's own pictures are a browsing cost, not a playback one. A page of hits
+  // asks for one picture each, so charging them to the family above spent the allowance that
+  // resolves playable URLs — two pages of browsing could refuse the next play. This family is sized
+  // for scrolling (a page of hits × several pages an hour) and its own key is what keeps the two
+  // costs from trading places: the artwork route never draws on `provider`, and resolving a URL
+  // never draws on this one.
+  musicProviderArtworkPerHour: 600,
   musicProviderBodyMaxBytes: 1024 * 1024,
   // FB-S1: how long an upstream may take to *start* answering a stream. The transfer itself is not
   // bounded — a song streams for minutes — and the byte cap below is a runaway guard rather than a

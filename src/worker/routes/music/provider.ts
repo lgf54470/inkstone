@@ -149,12 +149,19 @@ export async function resolveProviderLyric(source: string, id: string): Promise<
 // followed — a catalogue that answers with an address on this network must not be reached.
 async function providerCover(c: Context<AppBindings>): Promise<Response> {
   const userId = c.get('userId')
-  await enforceMusicBudget(c.env.DB, 'provider', userId)
+  // FB2-PF1: browsing spends the artwork family, not the one that resolves playable URLs. A page of
+  // results asks for a picture per row, and charging those to `provider` meant two pages of
+  // scrolling could refuse the next play.
+  await enforceMusicBudget(c.env.DB, 'providerArtwork', userId)
   const source = c.req.query('source') ?? ''
   const id = (c.req.query('id') ?? '').trim()
   if (!isProviderSource(source)) throw ApiError.badRequest('Unknown online source')
   if (!id) throw ApiError.badRequest('The cover id is required')
   const cover = await resolveProviderCoverBytes(source, id)
+  // The URL is a pure function of source and id and the response carries its own Cache-Control,
+  // which the API's `no-store` default deliberately does not override (security-headers.ts sets it
+  // only when a route has not). So a re-render re-reads the browser's copy rather than this budget:
+  // what is metered above is a picture the reader has not seen before.
   return new Response(cover.bytes, {
     headers: { ...coverHeaders(cover.mime), 'Cache-Control': 'public, max-age=86400' },
   })

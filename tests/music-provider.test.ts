@@ -131,6 +131,23 @@ describe('provider proxy (FEA-A1-2)', () => {
     expect((await request(app, '/api/music/provider/lyric?source=spotify&id=l1')).status).toBe(400)
   })
 
+  // FB2-PF1: browsing for pictures and resolving a playable URL are two different costs, and the
+  // families are read straight off the metering table so a route that quietly went back to the
+  // shared one fails here rather than in production.
+  it('charges the artwork against its own hourly family', async () => {
+    const db = await makeDb()
+    const app = makeApp()
+    vi.stubGlobal('fetch', async (url: string | URL) => {
+      const target = String(url)
+      if (target.includes('p2.music.126.net')) return new Response(new Uint8Array([0xff, 0xd8, 0xff]), { status: 200, headers: { 'Content-Type': 'image/jpeg' } })
+      return new Response(JSON.stringify({ url: 'https://p2.music.126.net/cover.jpg' }), { status: 200 })
+    })
+    expect((await request(app, '/api/music/provider/cover?source=netease&id=p1')).status).toBe(200)
+    const { results } = await db.prepare('SELECT key, fails FROM login_attempts ORDER BY key').all<{ key: string; fails: number }>()
+    expect(results).toEqual(expect.arrayContaining([{ key: 'music-providerArtwork:user-1', fails: 1 }]))
+    expect(results.some((row) => row.key === 'music-provider:user-1')).toBe(false)
+  })
+
   it('proxies the artwork bytes and refuses a private address', async () => {
     await makeDb()
     const app = makeApp()
