@@ -3,7 +3,6 @@ import type { MusicProviderTrack, MusicProviderTrackImportInput } from '../../..
 import type { MusicProviderQuality } from '@shared/constants'
 import type { MusicTrack } from '@shared/types'
 import type { MusicStoreState } from './types'
-import { providerCoverDataUrl } from '../music-provider-artwork'
 import { GDS_PROVIDER_ID, listProviders, matchScore, searchGds, searchGdsPages } from '../providers'
 import { persist } from './persist'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
@@ -158,17 +157,16 @@ export async function addProviderTracks(
   return { added, failed }
 }
 
-// The one place a hit becomes a library row: resolve what only the search response knows (the
-// artwork and the words), register the row idempotently, and append it to the list. A failure is
-// reported by the caller — a single add names the song, a batch tallies — so the toast is optional
-// here rather than always on.
+// The one place a hit becomes a library row: register it idempotently and append it to the list. A
+// failure is reported by the caller — a single add names the song, a batch tallies — so the toast
+// is optional here rather than always on.
 async function importHit(
   set: MusicSet,
   hit: MusicProviderTrack,
   options: { silent?: boolean } = {},
 ): Promise<MusicTrack | null> {
   try {
-    const track = await api.music.importProviderTrack(await resolveImportInput(hit))
+    const track = await api.music.importProviderTrack(importInput(hit))
     set((state) => (state.tracks.some((entry) => entry.id === track.id) ? {} : { tracks: [...state.tracks, track] }))
     return track
   } catch (error) {
@@ -180,15 +178,12 @@ async function importHit(
   }
 }
 
-// FB-F5: adding a hit is the only moment the ids the search handed out are still in hand — after
-// the row is written there is nothing left to ask the catalogue with. Both lookups are best
-// effort: a catalogue that will not answer about its own artwork or words still gets the song
-// added, without them.
-async function resolveImportInput(hit: MusicProviderTrack): Promise<MusicProviderTrackImportInput> {
-  const [lyric, coverDataUrl] = await Promise.all([
-    fetchProviderLyric(hit),
-    providerCoverDataUrl(hit.source, hit.coverId),
-  ])
+// FB2-F1: the body is the metadata and the two catalogue ids — the artwork and the words are the
+// worker's to resolve. Posting them from here is what broke every add: the body's ceiling is 8 KiB
+// while a cover's base64 alone is several times that, so the request was refused before anybody
+// read it. Both paths that write a provider row (a press of "add", the automatic repair) share this
+// shape, because they write the same row.
+export function importInput(hit: MusicProviderTrack): MusicProviderTrackImportInput {
   return {
     source: hit.source,
     sourceId: hit.sourceId,
@@ -196,24 +191,8 @@ async function resolveImportInput(hit: MusicProviderTrack): Promise<MusicProvide
     artist: hit.artist || undefined,
     album: hit.album || undefined,
     durationMs: hit.durationMs ?? undefined,
-    lyric: lyric ?? undefined,
-    coverDataUrl: coverDataUrl ?? undefined,
-  }
-}
-
-async function fetchProviderLyric(hit: MusicProviderTrack): Promise<string | null> {
-  // Most catalogues keep the words under the song id itself; when the hit names its own lyric id,
-  // that is the one it asked to be used.
-  const id = hit.lyricId ?? hit.sourceId
-  if (!id) return null
-  try {
-    const { lyric } = await api.music.providerLyric(hit.source, id)
-    return lyric.trim() || null
-  } catch (error) {
-    // Best effort by design — the add continues without words, and the reader is not told about a
-    // lookup they did not ask for. The reason is logged rather than swallowed.
-    console.warn('[inkstone] music provider lyric lookup failed:', error)
-    return null
+    coverId: hit.coverId ?? undefined,
+    lyricId: hit.lyricId ?? undefined,
   }
 }
 
@@ -249,14 +228,7 @@ export async function swapFailedProviderTrack(set: MusicSet, get: MusicGet, trac
 // ranking; the player's normal failure path still runs underneath.
 async function importCandidate(hit: MusicProviderTrack): Promise<MusicTrack | null> {
   try {
-    return await api.music.importProviderTrack({
-      source: hit.source,
-      sourceId: hit.sourceId,
-      title: hit.title,
-      artist: hit.artist || undefined,
-      album: hit.album || undefined,
-      durationMs: hit.durationMs ?? undefined,
-    })
+    return await api.music.importProviderTrack(importInput(hit))
   } catch {
     // FB-C1: fallback ranking only — a candidate that will not register is skipped and the
     // next one is tried, and the caller still reports failure if none of them lands.

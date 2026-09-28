@@ -26,11 +26,6 @@ vi.mock('../music-feedback', () => ({
   toastMusicError: vi.fn(),
   toastMusicNotice: vi.fn(),
 }))
-// The cover lookup fetches image bytes and re-encodes them; the store only has to pass what it
-// gets back, so the encoder is stubbed here and covered by its own test elsewhere.
-vi.mock('../music-provider-artwork', () => ({
-  providerCoverDataUrl: vi.fn(async () => 'data:image/jpeg;base64,AAAA'),
-}))
 
 import { api } from '../../../lib/api'
 
@@ -103,9 +98,11 @@ describe('provider search flow (FEA-A1-3)', () => {
 
 })
 
-// FB-F5: adding is where a hit becomes a row, and the artwork and words the search handed out
-// have to be resolved here — after the row exists there is nothing left to ask the catalogue.
-describe('provider add flow (FB-F5)', () => {
+// FB2-F1: adding is where a hit becomes a row. The request carries the ids the search handed out
+// and nothing larger — the artwork and the words are the worker's to resolve, because sending them
+// from here is exactly what used to fail: the body's ceiling is 8 KiB and a cover's base64 alone is
+// several times that, so every add of a hit with artwork was refused before it was ever read.
+describe('provider add flow (FB2-F1)', () => {
   afterEach(() => {
     useMusic.setState({ tracks: [] })
     vi.clearAllMocks()
@@ -118,33 +115,33 @@ describe('provider add flow (FB-F5)', () => {
     expect(useMusic.getState().tracks.map((track) => track.id)).toContain('trk-1')
   })
 
-  // FB-F5: adding an online hit is the only moment the ids the search handed out are still in
-  // hand — after the row is written there is nothing left to ask, so the artwork and the words
-  // are resolved here and stored with it.
-  it('resolves the cover and the lyric before registering the row', async () => {
+  it('registers the row with the catalogue ids instead of the artwork and the words', async () => {
     useMusic.setState({ tracks: [] })
     await useMusic.getState().playProviderTrack({
-      provider: 'gds', source: 'netease', sourceId: 'a1', title: 'Song A', artist: 'Ann', album: '', durationMs: null,
+      provider: 'gds', source: 'netease', sourceId: 'a1', title: 'Song A', artist: 'Ann', album: 'Album One', durationMs: 210_000,
       coverId: 'p1', lyricId: 'l1',
     })
-    expect(api.music.providerLyric).toHaveBeenCalledWith('netease', 'l1')
     expect(api.music.importProviderTrack).toHaveBeenCalledWith(expect.objectContaining({
-      lyric: '[00:01.000]la la',
-      coverDataUrl: 'data:image/jpeg;base64,AAAA',
+      source: 'netease', sourceId: 'a1', title: 'Song A', artist: 'Ann', album: 'Album One', durationMs: 210_000,
+      coverId: 'p1', lyricId: 'l1',
     }))
+    const sent = vi.mocked(api.music.importProviderTrack).mock.calls[0]?.[0] ?? {}
+    expect(sent).not.toHaveProperty('coverDataUrl')
+    expect(sent).not.toHaveProperty('lyric')
+    // Nothing is fetched from here any more, so there is no second request left to fail.
+    expect(api.music.providerLyric).not.toHaveBeenCalled()
   })
 
-  // Best effort by design: a catalogue that will not answer about artwork must not stop the
-  // song from being added.
-  it('still adds the row when the artwork or lyric lookup fails', async () => {
-    vi.mocked(api.music.providerLyric).mockRejectedValueOnce(new Error('no lyric'))
+  // A hit the catalogue knows nothing more about is still a song: the row is written from what the
+  // search knew and the ids stay absent rather than becoming empty strings.
+  it('adds a hit that carries no catalogue ids', async () => {
     useMusic.setState({ tracks: [] })
-    await useMusic.getState().playProviderTrack({
-      provider: 'gds', source: 'netease', sourceId: 'a1', title: 'Song A', artist: 'Ann', album: '', durationMs: null,
-      coverId: 'p1', lyricId: 'l1',
+    await useMusic.getState().addProviderTrack({
+      provider: 'gds', source: 'netease', sourceId: 'a9', title: 'Song A', artist: '', album: '', durationMs: null,
+      coverId: null, lyricId: null,
     })
-    expect(api.music.importProviderTrack).toHaveBeenCalledWith(expect.objectContaining({ lyric: undefined }))
     expect(useMusic.getState().tracks.map((track) => track.id)).toContain('trk-1')
+    expect(vi.mocked(api.music.importProviderTrack).mock.calls[0]?.[0]).toMatchObject({ coverId: undefined, lyricId: undefined })
   })
 })
 
@@ -202,7 +199,11 @@ describe('provider failure fallback (FEA-A1-4)', () => {
     expect(swapped).toBe(true)
     expect(useMusic.getState().queue).toEqual(['trk-1'])
     expect(useMusic.getState().tracks.map((track) => track.id)).toContain('trk-1')
-    expect(api.music.importProviderTrack).toHaveBeenCalledWith(expect.objectContaining({ source: 'netease', sourceId: 'a1' }))
+    // FB2-F4: the repair writes the same row shape as a manual add. Without the ids the re-served
+    // row comes back coverless and wordless even though the catalogue knows both.
+    expect(api.music.importProviderTrack).toHaveBeenCalledWith(expect.objectContaining({
+      source: 'netease', sourceId: 'a1', coverId: 'p1', lyricId: 'l1',
+    }))
   })
 
   it('skips a hit that resolves back to the failed row itself and reports no swap when nothing else fits', async () => {

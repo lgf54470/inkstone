@@ -21,12 +21,6 @@ vi.mock('../../lib/api', async (importOriginal) => {
     },
   }
 })
-// The cover lookup fetches image bytes and re-encodes them; the store only passes on what it gets
-// back, and the encoder has its own test. Stubbed here so an add in this file stays offline.
-vi.mock('./music-provider-artwork', () => ({
-  providerCoverDataUrl: vi.fn(async () => null),
-}))
-
 import { api, musicProviderCoverUrl, type MusicProviderTrack } from '../../lib/api'
 
 const QUERY = 'origin'

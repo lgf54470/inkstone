@@ -10,11 +10,11 @@
 
 ## M0 · 文档基线
 
-- [x] M0 写入 `review-with-freebuff-2.md`（完整报告：三重盲区结论 + 14 项清单 + 对标缺口 + 门禁缺口）与 `plan-with-freebuff-2.md`（本跟踪表）
+- [x] M0 写入 `review-with-freebuff-2.md`（完整报告：三重盲区结论 + 14 项清单 + 对标缺口 + 门禁缺口）与 `plan-with-freebuff-2.md`（本跟踪表）—— **commit `76eaf07c`**
 
 ## M① · P0 可用性
 
-- [ ] M1 FB2-F1 + FB2-F4 在线导入改由 worker 自取封面与歌词（body 只留元数据 + `coverId`/`lyricId`；`storeCoverBytes`；`resolveProviderLyric`；换源候选同改）
+- [x] M1 FB2-F1 + FB2-F4 在线导入改由 worker 自取封面与歌词（body 只留元数据 + `coverId`/`lyricId`；`storeCoverBytes`；`resolveProviderLyric`/`resolveProviderCoverBytes`；换源候选同改）—— **commit `待回填`**
 - [ ] M2 FB2-F2 文件夹上传去掉 `webkitdirectory` 与原生确认框（递归拖放收集器 + `showDirectoryPicker` + 诚实降级）
 
 ## M② · 布局与信息
@@ -48,4 +48,5 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-28 | M0 文档基线（二次复审报告 + 执行计划） | `待回填` | —（无代码改动，静态门禁与单测不适用） | 报告结论均落到文件:行或实测量；浏览器门禁在 M1 起逐项补跑 |
+| 2026-09-28 | M0 文档基线（二次复审报告 + 执行计划） | `76eaf07c` | —（无代码改动，静态门禁与单测不适用） | 报告结论均落到文件:行或实测量；浏览器门禁在 M1 起逐项补跑 |
+| 2026-09-28 | M1 FB2-F1 + FB2-F4 在线导入改由 worker 自取封面与歌词 | `待回填` | 先红（单测）：worker `tests/music-provider.test.ts` 新增 3 例（歌词由 worker 解析而不接受 body 传入 / 退休字段 `coverDataUrl`・`lyric` 被拒 / 封面由 worker 抓取并按派生键落库且向上游要 `size=300`），客户端 `music-store/providers.test.ts` 新增 3 例（请求体带 `coverId`/`lyricId` 且不含 `coverDataUrl`/`lyric`、不再调用 `providerLyric` / 无 ids 的命中照样入库 / 换源候选带 ids）——对 HEAD 跑两文件得 **6 failed / 21 passed**。实现后：两文件 **49 例 ✅**；music + `worker/routes/music` + 音乐跨模块回归 **131 文件 / 1110 例 ✅**；`npm run test:unit` **550 文件 / 4929 passed + 1 skipped**（1 例 `tests/blog-visit-guards.test.ts > SH-47` 在并行负载下失败，单跑 4 例 ✅，判定为负载 flaky，与本次改动无关）；`npm run typecheck` ✅；13 项静态门禁 ✅（comments 白名单同步到 10740 条 / 1189 文件）；`npm run build` ✅ + `budget:check` **exit 0**（最大的音乐 chunk 91.8 KiB，预算 93.8）；`scripts/e2e-visual.mjs` 对 :7714 **579 通过 / 1 失败**（唯一失败仍是已登记的看板高度遗留，音乐场景全绿）；`npm run contrast:check` **全绿** | **形状**：body = 元数据 + `coverId`/`lyricId`，`.strict()` 所以旧客户端的 `coverDataUrl`/`lyric` 被 400 拒而不是静默丢弃（「禁止静默降级」）。**两次上游查找**在 worker 内并行、best-effort，失败只丢那一半且记日志；`provider` 预算族按「一次添加 = 一次」记，不按两次抓取记两笔。**封面**走新增的 `storeCoverBytes`（与上传路径共用 `coverObjectKey`/`putMusicObject`），超过 `COVER_MAX_BYTES` 按上游不认 `size` 处理：记 warn 并降级为无封面。**删除**：`music-provider-artwork.ts`（含三处测试桩）与客户端两次抓取，`importCandidate` 改用同一 `importInput`（FB2-F4） | 上游不认 `size=PROVIDER_COVER_SIZE` 而回原图时按字节上限拒绝并降级，只有单测覆盖，没有真实上游矩阵；在线结果屏仍无浏览器断言（M7 补）；`npm run test:unit` 里那 1 例 flaky 未在本次提交内复跑第二次全量以证明「非本次引入」之外的更多信息 |

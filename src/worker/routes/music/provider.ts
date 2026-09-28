@@ -8,10 +8,10 @@ import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { cancelStreamBestEffort } from '../../lib/streams'
 import { requireAuth } from '../../middleware/auth'
 import { enforceMusicBudget } from './budget'
-import { coverHeaders, storeCoverObject } from './cover'
+import { coverHeaders, storeCoverBytes } from './cover'
 import { gdsObjectKey, resolveMusicTrackType } from './keys'
 import { fetchAllowedResource, fetchPublicResource, readUpstreamBytes } from './outbound'
-import { importProviderTrackSchema } from './schemas'
+import { importProviderTrackSchema, type ImportProviderTrackBody } from './schemas'
 import { insertWebdavTrack } from './webdav-routes'
 import { toTrack, type MusicTrackRow } from './rows'
 
@@ -131,9 +131,16 @@ async function providerLyric(c: Context<AppBindings>): Promise<Response> {
   const id = (c.req.query('id') ?? '').trim()
   if (!isProviderSource(source)) throw ApiError.badRequest('Unknown online source')
   if (!id) throw ApiError.badRequest('The lyric id is required')
+  return c.json({ lyric: await resolveProviderLyric(source, id) })
+}
+
+// FB2-F1: the lookup the import runs for itself, in one implementation. The route above and the
+// import path ask the same question about the same id, and a catalogue that answered them
+// differently would be a bug invisible from either side.
+export async function resolveProviderLyric(source: string, id: string): Promise<string> {
   const query = new URLSearchParams({ types: 'lyric', source, id })
   const payload = await fetchProviderUpstream(`${GDS_API_BASE}/api.php?${query}`) as { lyric?: unknown } | null
-  return c.json({ lyric: typeof payload?.lyric === 'string' ? payload.lyric.trim() : '' })
+  return typeof payload?.lyric === 'string' ? payload.lyric.trim() : ''
 }
 
 // FB-F5: the artwork is one more per-song lookup: the catalogue names a picture URL and the
@@ -147,7 +154,18 @@ async function providerCover(c: Context<AppBindings>): Promise<Response> {
   const id = (c.req.query('id') ?? '').trim()
   if (!isProviderSource(source)) throw ApiError.badRequest('Unknown online source')
   if (!id) throw ApiError.badRequest('The cover id is required')
-  const imageUrl = await resolveProviderCoverUrl(source, id)
+  const cover = await resolveProviderCoverBytes(source, id)
+  return new Response(cover.bytes, {
+    headers: { ...coverHeaders(cover.mime), 'Cache-Control': 'public, max-age=86400' },
+  })
+}
+
+// FB2-F1: one picture's bytes, shared by the proxy route above and the import below.
+export async function resolveProviderCoverBytes(
+  source: string,
+  coverId: string,
+): Promise<{ bytes: Uint8Array; mime: string }> {
+  const imageUrl = await resolveProviderCoverUrl(source, coverId)
   // FB-S2: the image host is the upstream's choice, so the address rule itself is the guard — and
   // it is applied to every hop, not only to the first.
   const response = await fetchPublicResource(imageUrl, 'image/*')
@@ -159,9 +177,7 @@ async function providerCover(c: Context<AppBindings>): Promise<Response> {
   const bytes = await readUpstreamBytes(response, LIMITS.musicProviderBodyMaxBytes)
   if (!bytes) throw new ApiError(502, 'storage_unavailable', 'The online cover is too large')
   const mime = (response.headers.get('content-type') ?? '').split(';')[0]?.trim() || 'image/jpeg'
-  return new Response(bytes, {
-    headers: { ...coverHeaders(mime.startsWith('image/') ? mime : 'image/jpeg'), 'Cache-Control': 'public, max-age=86400' },
-  })
+  return { bytes, mime: mime.startsWith('image/') ? mime : 'image/jpeg' }
 }
 
 // The cover lookup answers with a temporary URL on a third-party image host; the guard is the
@@ -218,10 +234,14 @@ async function importProviderTrack(c: Context<AppBindings>): Promise<Response> {
   if (!trackType) throw ApiError.internal('The provider track mime is unresolvable')
   const now = Date.now()
   const id = newId()
+  // FB2-F1: the artwork and the words are resolved here, from the two ids the search handed out.
+  // They used to be fetched by the page and posted back, which is what made every add of a hit
+  // with artwork fail on a body ceiling far below what the shape allowed.
+  const assets = await resolveProviderAssets(c.env, userId, body)
   // FB-F5: the cover goes through the same object-store path an uploaded cover takes, so the
   // row's cover_url stays a derived key and the read side needs no special case. A write that
   // cannot land leaves the row coverless rather than failing the add.
-  const coverKey = await storeCoverObject(c.env, id, now, body.coverDataUrl ?? null)
+  const coverKey = assets.cover ? await storeCoverBytes(c.env, id, now, assets.cover.bytes, assets.cover.mime) : null
   const row: MusicTrackRow = {
     id,
     title,
@@ -233,7 +253,7 @@ async function importProviderTrack(c: Context<AppBindings>): Promise<Response> {
     mime: trackType.mime,
     size_bytes: 0,
     cover_url: coverKey,
-    lyric: body.lyric?.trim() || null,
+    lyric: assets.lyric,
     is_favorite: 0,
     is_pinned: 0,
     play_count: 0,
@@ -244,6 +264,47 @@ async function importProviderTrack(c: Context<AppBindings>): Promise<Response> {
   }
   await insertWebdavTrack(c.env.DB, userId, row)
   return c.json(toProviderTrackFromRow(row), 201)
+}
+
+// FB2-F1: the two catalogue lookups an add needs, run here rather than posted from the page. They
+// go together (a press of "add" is one event, and the pair is what it costs the catalogue) and
+// either one failing leaves the row without that half instead of failing the add.
+async function resolveProviderAssets(
+  env: AppBindings['Bindings'],
+  userId: string,
+  body: ImportProviderTrackBody,
+): Promise<{ cover: { bytes: Uint8Array; mime: string } | null; lyric: string | null }> {
+  const coverId = body.coverId?.trim() ?? ''
+  // Most catalogues keep the words under the song id itself; the hit's own lyric id wins when it
+  // names one.
+  const lyricId = body.lyricId?.trim() || body.sourceId
+  await enforceMusicBudget(env.DB, 'provider', userId)
+  const [cover, lyric] = await Promise.all([
+    fetchCoverBestEffort(body.source, coverId),
+    fetchLyricBestEffort(body.source, lyricId),
+  ])
+  return { cover, lyric }
+}
+
+// Best effort by design: a catalogue that will not answer about its own artwork must not stop the
+// song from being added. The reason is logged rather than swallowed.
+async function fetchCoverBestEffort(source: string, coverId: string): Promise<{ bytes: Uint8Array; mime: string } | null> {
+  if (!coverId) return null
+  try {
+    return await resolveProviderCoverBytes(source, coverId)
+  } catch (error) {
+    console.warn('[inkstone] music provider cover lookup failed:', error)
+    return null
+  }
+}
+
+async function fetchLyricBestEffort(source: string, id: string): Promise<string | null> {
+  try {
+    return (await resolveProviderLyric(source, id)).trim() || null
+  } catch (error) {
+    console.warn('[inkstone] music provider lyric lookup failed:', error)
+    return null
+  }
 }
 
 // The row mapping is the library's own, so a provider row answers with its cover and lyric the

@@ -298,17 +298,25 @@ export type ImportPodcastEpisodeBody = z.infer<typeof importPodcastEpisodeSchema
 // FEA-A1-3: an online hit becomes a provider reference row; the source must be
 // one the worker's allowlist recognizes (re-checked there) and the title must
 // survive trimming so the library never stores a blank row.
-export const importProviderTrackSchema = z.object({
-  source: z.string().min(1).max(32),
-  sourceId: z.string().min(1).max(128),
-  title: trimmed(LIMITS.musicTitleMaxLength).optional(),
-  artist: optionalTrimmed(LIMITS.musicArtistMaxLength),
-  album: optionalTrimmed(LIMITS.musicAlbumMaxLength),
-  durationMs: z.number().int().min(0).max(60 * 60 * 1000).optional(),
-  // FB-F5: the artwork and the words resolved at add time, in the same shapes the patch path
-  // already accepts. The cover is decoded and stored as an object; the lyric is stored on the row.
-  coverDataUrl: z.string().max(800_000).optional(),
-  lyric: z.string().max(LIMITS.musicLyricMaxBytes).optional(),
-})
+//
+// FB2-F1: the body is metadata plus the two catalogue ids, and nothing larger. It used to carry the
+// artwork and the words resolved by the page, which is exactly what broke every add — this body's
+// ceiling is the small tier (8 KiB) while a cover's base64 alone is several times that. The worker
+// resolves both from these ids instead. The shape is strict so a stale client's `coverDataUrl` is
+// refused rather than silently dropped.
+export const importProviderTrackSchema = z
+  .object({
+    source: z.string().min(1).max(32),
+    sourceId: z.string().min(1).max(128),
+    title: trimmed(LIMITS.musicTitleMaxLength).optional(),
+    artist: optionalTrimmed(LIMITS.musicArtistMaxLength),
+    album: optionalTrimmed(LIMITS.musicAlbumMaxLength),
+    durationMs: z.number().int().min(0).max(60 * 60 * 1000).optional(),
+    /** FB-F5: the catalogue's own artwork id; the picture is fetched and stored here. */
+    coverId: optionalTrimmed(128),
+    /** FB-F5: the catalogue's lyric id; absent means "ask under the song id". */
+    lyricId: optionalTrimmed(128),
+  })
+  .strict()
 
 export type ImportProviderTrackBody = z.infer<typeof importProviderTrackSchema>

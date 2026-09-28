@@ -205,10 +205,10 @@ export interface MusicProviderTrackImportInput {
   artist?: string
   album?: string
   durationMs?: number
-  /** FB-F5: a data URL resolved from the catalogue's own picture id at add time. */
-  coverDataUrl?: string
-  /** FB-F5: the lyric text fetched through the proxy at add time. */
-  lyric?: string
+  /** FB-F5/FB2-F1: the catalogue's own artwork id. The worker fetches and stores the picture. */
+  coverId?: string
+  /** FB-F5/FB2-F1: the catalogue's lyric id; absent means "ask under the song id". */
+  lyricId?: string
 }
 
 export interface MusicPodcastEpisodeImportInput {

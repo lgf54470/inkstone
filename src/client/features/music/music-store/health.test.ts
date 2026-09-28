@@ -35,10 +35,6 @@ vi.mock('../music-feedback', () => ({
   toastMusicNotice: vi.fn(),
 }))
 
-vi.mock('../music-provider-artwork', () => ({
-  providerCoverDataUrl: vi.fn(async () => null),
-}))
-
 import { api } from '../../../lib/api'
 
 function track(id: string, source: MusicTrack['source']): MusicTrack {

@@ -50,9 +50,29 @@ export async function storeCoverObject(
 ): Promise<string | null> {
   const decoded = decodeCoverDataUrl(dataUrl)
   if (!decoded) return null
-  const key = coverObjectKey(trackId, createdAt, decoded.mime)
+  return storeCoverBytes(env, trackId, createdAt, decoded.bytes, decoded.mime)
+}
+
+// FB2-F1: the same write for bytes that never were a data URL — the online import fetches the
+// catalogue's own picture and hands the raw bytes here, so the row's key, mime rule and failure
+// behaviour stay one implementation instead of two that can drift.
+export async function storeCoverBytes(
+  env: AppBindings['Bindings'],
+  trackId: string,
+  createdAt: number,
+  bytes: Uint8Array,
+  mime: string,
+): Promise<string | null> {
+  if (bytes.byteLength === 0) return null
+  if (bytes.byteLength > COVER_MAX_BYTES) {
+    // The catalogue's own size parameter decides what arrives; a source that ignores it must not
+    // put a megabyte of JPEG behind every row. Dropping it is logged rather than silent.
+    console.warn('[inkstone] music cover exceeds the stored budget:', bytes.byteLength)
+    return null
+  }
+  const key = coverObjectKey(trackId, createdAt, mime)
   try {
-    await putMusicObject(env, requireMusicStorage(env), key, decoded.bytes, decoded.mime)
+    await putMusicObject(env, requireMusicStorage(env), key, bytes, mime)
     return key
   } catch (error) {
     console.warn('[inkstone] music cover write failed:', error)

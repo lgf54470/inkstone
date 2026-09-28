@@ -34,10 +34,6 @@ vi.mock('../music-feedback', () => ({
   toastMusicNotice: vi.fn(),
 }))
 
-vi.mock('../music-provider-artwork', () => ({
-  providerCoverDataUrl: vi.fn(async () => null),
-}))
-
 import { api } from '../../../lib/api'
 
 const NETEASE_ROW: MusicTrack = {

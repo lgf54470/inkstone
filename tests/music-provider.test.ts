@@ -56,8 +56,22 @@ function json(app: Hono<AppBindings>, path: string, body: unknown, method = 'POS
   return request(app, path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 }
 
+// FB2-F1 (red): the import stores artwork on the server side, so the harness needs somewhere for
+// it to land. Only the two calls `putMusicObject` makes are needed.
+function bindKv() {
+  const values = new Map<string, Uint8Array>()
+  const kv = {
+    put: vi.fn(async (key: string, value: Uint8Array) => { values.set(key, value) }),
+    get: vi.fn(async (key: string) => values.get(key) ?? null),
+    delete: vi.fn(async (key: string) => { values.delete(key) }),
+  }
+  DB_ENV.env.FILES_KV = kv as unknown as AppBindings['Bindings']['FILES_KV']
+  return kv
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
+  DB_ENV.env.FILES_KV = undefined as unknown as AppBindings['Bindings']['FILES_KV']
 })
 
 describe('provider proxy (FEA-A1-2)', () => {
@@ -136,24 +150,102 @@ describe('provider proxy (FEA-A1-2)', () => {
     expect((await request(app, '/api/music/provider/cover?source=netease&id=p1')).status).toBe(502)
   })
 
-  // FB-F5: an online row is metadata only, but the words are worth keeping, so the import
-  // accepts a lyric and stores it where every lyric surface already looks.
-  it('imports a provider track with its lyric', async () => {
+  // FB2-F1: the request carries metadata and the two catalogue ids, and the worker resolves the
+  // artwork and the words itself. Posting them back is what made every add of a hit with artwork
+  // fail: the body's ceiling is 8 KiB and a cover's base64 alone is several times that.
+  it('resolves the lyric from the catalogue instead of accepting it in the body', async () => {
     await makeDb()
     const app = makeApp()
+    const calls: string[] = []
+    vi.stubGlobal('fetch', async (url: string | URL) => {
+      calls.push(String(url))
+      return new Response(JSON.stringify({ lyric: '[00:01.000]la' }), { status: 200 })
+    })
     const res = await json(app, '/api/music/tracks/import-provider', {
       source: 'netease',
       sourceId: 'a1',
       title: 'Song A',
       artist: 'Ann',
-      lyric: '[00:01.000]la',
+      lyricId: 'l1',
     })
     expect(res.status).toBe(201)
     const body = await res.json() as { lyric: string | null; hasLyric: boolean; coverUrl: string | null }
     expect(body.lyric).toBe('[00:01.000]la')
     expect(body.hasLyric).toBe(true)
+    expect(calls[0]).toContain('types=lyric')
+    expect(calls[0]).toContain('id=l1')
     // No object storage in this harness, so a cover is dropped rather than failing the add.
     expect(body.coverUrl).toBeNull()
+
+    // Most catalogues keep the words under the song id itself, which is the fallback.
+    const fallback = await json(app, '/api/music/tracks/import-provider', {
+      source: 'netease', sourceId: 'a2', title: 'Song B',
+    })
+    expect(fallback.status).toBe(201)
+    expect(calls[1]).toContain('id=a2')
+  })
+
+  // The retired fields are refused rather than ignored: a stale client that still posts the cover
+  // and the words must not look like it worked while both are dropped on the floor.
+  it('refuses a body that still carries the artwork or the words', async () => {
+    await makeDb()
+    const app = makeApp()
+    const withCover = await json(app, '/api/music/tracks/import-provider', {
+      source: 'netease', sourceId: 'a1', title: 'Song A', coverDataUrl: 'data:image/jpeg;base64,AAAA',
+    })
+    expect(withCover.status).toBe(400)
+    const withLyric = await json(app, '/api/music/tracks/import-provider', {
+      source: 'netease', sourceId: 'a2', title: 'Song B', lyric: '[00:01.000]la',
+    })
+    expect(withLyric.status).toBe(400)
+  })
+
+  // FB2-F1: the picture is fetched here too, from the catalogue's own picture id, and stored
+  // through the same derived-key path an uploaded cover takes — so `cover_url` stays a key and
+  // every read surface keeps working without a special case for online rows.
+  it('fetches and stores the artwork itself, asking the catalogue for its small size', async () => {
+    await makeDb()
+    const app = makeApp()
+    const kv = bindKv()
+    const calls: string[] = []
+    vi.stubGlobal('fetch', async (url: string | URL) => {
+      const target = String(url)
+      calls.push(target)
+      if (target.includes('p2.music.126.net')) {
+        return new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xdb]), { status: 200, headers: { 'Content-Type': 'image/jpeg' } })
+      }
+      if (target.includes('types=pic')) {
+        return new Response(JSON.stringify({ url: 'https://p2.music.126.net/cover.jpg' }), { status: 200 })
+      }
+      return new Response(JSON.stringify({ lyric: '' }), { status: 200 })
+    })
+    const res = await json(app, '/api/music/tracks/import-provider', {
+      source: 'netease', sourceId: 'a1', title: 'Song A', coverId: 'p1', lyricId: 'l1',
+    })
+    expect(res.status).toBe(201)
+    const body = await res.json() as { coverUrl: string | null; hasLyric: boolean }
+    // The row answers with the cover route, and the bytes behind it sit under the same derived key
+    // an uploaded cover uses — that key is what every read surface already resolves.
+    expect(body.coverUrl).toMatch(/^\/api\/music\/tracks\/[^/]+\/cover$/)
+    expect(kv.put.mock.calls[0]?.[0]).toMatch(/^music\/cover\/\d{4}-\d{2}-\d{2}\/.+\.jpg$/)
+    // A 300px square is what the list and card surfaces draw; anything larger is bytes nobody sees.
+    expect(calls.find((target) => target.includes('types=pic'))).toContain('size=300')
+    // An empty answer is "nothing to store", not a lyric.
+    expect(body.hasLyric).toBe(false)
+  })
+
+  // Best effort by design: a catalogue that will not answer about its own artwork or words must
+  // not stop the song from being added.
+  it('still adds the row when the artwork or the lyric lookup fails', async () => {
+    await makeDb()
+    const app = makeApp()
+    bindKv()
+    vi.stubGlobal('fetch', async () => new Response('nope', { status: 503 }))
+    const res = await json(app, '/api/music/tracks/import-provider', {
+      source: 'netease', sourceId: 'a1', title: 'Song A', coverId: 'p1', lyricId: 'l1',
+    })
+    expect(res.status).toBe(201)
+    expect(await res.json()).toMatchObject({ coverUrl: null, hasLyric: false })
   })
 
   // FB-F8: the row carries the catalogue it came from, so the client can ask for "the same song
