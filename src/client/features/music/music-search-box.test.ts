@@ -223,6 +223,57 @@ describe('music search suggestion jumps (FEA-A1-5)', () => {
   })
 })
 
+// FB3-U1: the box's clear control used to run the history action — the one callback `clearAll` fed both
+// the × in the input and the "clear history" row in the popup, so the × emptied the history and left the
+// typed query exactly where it was. The two intents are their own controls now, and these cases read the
+// one thing neither of them can fake: what the box shows and what the store holds afterwards.
+function buttonByLabel(label: string): HTMLButtonElement | undefined {
+  return [...document.querySelectorAll('button')]
+    .find((button) => button.getAttribute('aria-label') === label) as HTMLButtonElement | undefined
+}
+
+describe('music search box clear control (FB3-U1)', () => {
+  it('empties the box and the store query, and leaves the history alone', () => {
+    act(() => { useMusic.setState({ searchHistory: ['jazz'] }) })
+    const rendered = renderElement(createElement(SearchBox))
+    const input = inputOf(rendered.container)
+    typeText(input, 'moon')
+
+    act(() => { buttonByLabel(t('music.search_clear'))?.click() })
+
+    expect(input.value).toBe('')
+    expect(useMusic.getState().query).toBe('')
+    expect(useMusic.getState().searchHistory).toEqual(['jazz'])
+    expect(document.querySelector('input')?.value).toBe('')
+    rendered.unmount()
+  })
+
+  // FB3-U5: clearing and then having to click back into the box to see the history it just left behind is
+  // the same gesture asked twice. The caret stays where it was, and the popup the box now answers with is
+  // the history it did not touch.
+  it('keeps the caret in the box and shows the untouched history afterwards', () => {
+    const input = mountWithHistory()
+    typeText(input, 'moon')
+
+    act(() => { buttonByLabel(t('music.search_clear'))?.click() })
+
+    expect(document.activeElement).toBe(input)
+    expect(useMusic.getState().searchHistory).toEqual(['jazz', 'moon'])
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+  })
+
+  // The other half of the split: the popup's own action still means what it says.
+  it('still clears the history from the popup action, and only that', () => {
+    mountWithHistory()
+    const clear = [...document.querySelectorAll('button')]
+      .find((button) => button.textContent?.trim() === t('music.search_clear_history'))
+
+    act(() => { clear?.click() })
+
+    expect(useMusic.getState().searchHistory).toEqual([])
+  })
+})
+
 // FB2-U7: the popup drops over whatever sits below the box, and in the hub that is the online results
 // panel — its switch, its heading and its selection bar. A press aimed at one of those controls used to
 // land on the popup's frame instead, and vanish: the frame is inside the box, so the box's own

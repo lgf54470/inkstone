@@ -142,6 +142,10 @@ const LABELS = {
   musicProviderAddSelected: ['添加所选', 'Add selected'],
   musicSearch: ['搜索歌曲、歌手、专辑或拼音', 'Search tracks, artists, albums or pinyin'],
   musicSearchClear: ['清除搜索', 'Clear search'],
+  // FB3-C1: the popup's own action, and the two names the empty state's action has had (FB3-U8 renamed
+  // it away from the clear control's name, so the read below accepts either spelling of the same thing).
+  musicSearchClearHistory: ['清除历史', 'Clear history'],
+  musicSearchEmptyAction: ['清除搜索', 'Clear search', '显示全部歌曲', 'Show all tracks'],
   // FB2-U1: the queue's own controls — the count in the immersive header is the way in there, and
   // the search is what the hub and the floating card already answer with.
   musicQueueToggle: ['展开或收起队列', 'Show or hide the queue'],
@@ -5197,9 +5201,71 @@ async function assertMusicSurface(page) {
   await assertMusicFloatingStrip(page)
   await assertMusicImmersiveFullscreen(page)
   await assertMusicStatusBarMore(page)
+  // FB3-C1 runs before the online scenario for the same reason that one runs last: it types a query.
+  await assertMusicSearchClear(page)
   // FB2-C1 last: it types a query and turns the online switch on, which the reads above would
   // otherwise be measuring around.
   await assertMusicProviderResults(page)
+}
+
+// FB3-C1: the box's clear control, which no gate had ever read. The gate's own teardown had been pressing
+// it and believing the query was gone; it was not — the × ran the history action, so the box kept its text
+// and every read after it was a read of a filtered hub. That belief is an assertion now, and the other half
+// of the split (the popup's own action still means the history) is read in the same pass.
+//
+async function assertMusicSearchClear(page) {
+  if (!(await page.$(MUSIC_HUB_ROOT))) await openMusicHubForSweep(page)
+  const hubOpen = await page.waitForSelector(MUSIC_HUB_ROOT, { timeout: 15_000 }).then(() => true, () => false)
+  check('music: the hub opens for the search clear control read', hubOpen)
+  if (!hubOpen) return
+  const input = cssByLabels('input', LABELS.musicSearch)
+  // The library half is read as text rather than as rows: the same title is drawn by the table's rows and
+  // by the grid's cards, and this read is about whether the list is filtered, not about which view it is in.
+  const read = () => page.evaluate(({ input, emptyLabels, historyLabels }) => {
+    const box = document.querySelector(input)
+    const panel = document.querySelector('[role="dialog"]')
+    const text = panel?.textContent ?? ''
+    const emptyAction = [...(panel?.querySelectorAll('button') ?? [])].some((button) => {
+      const name = (button.getAttribute('aria-label') ?? '').trim() || (button.textContent ?? '').trim()
+      return emptyLabels.includes(name)
+    })
+    const history = panel?.querySelector(historyLabels.map((label) => `[role="listbox"][aria-label="${label}"]`).join(', '))
+    return {
+      value: box?.value ?? null,
+      caretInBox: box !== null && document.activeElement === box,
+      library: text.includes('E2E Probe Audio'),
+      emptyAction,
+      historyRows: history ? history.querySelectorAll('[role="option"]').length : 0,
+    }
+  }, { input, emptyLabels: LABELS.musicSearchEmptyAction, historyLabels: LABELS.musicSearchHistory })
+
+  await page.click(input)
+  await page.keyboard.type('zzzz no such track', { delay: 20 })
+  const filtered = await waitForTruth(async () => {
+    const state = await read()
+    return !state.library && state.emptyAction ? state : null
+  }, 15_000)
+  check('music: a query that matches nothing leaves the library and draws the empty state',
+    Boolean(filtered), JSON.stringify(filtered))
+  // Committed so the history has an entry to leave alone; the caret stays in the box for the read below.
+  await page.keyboard.press('Enter')
+  await sleep(400)
+  const pressed = await pressSurfaceControl(page, LABELS.musicSearchClear)
+  await sleep(500)
+  const cleared = await read()
+  check('music: the box clear control empties the query and brings the library back',
+    pressed && cleared.value === '' && cleared.library && !cleared.emptyAction,
+    `pressed=${pressed} ${JSON.stringify(cleared)}`)
+  check('music: clearing the query leaves the caret in the box, on the history it did not touch',
+    cleared.caretInBox && cleared.historyRows >= 1, JSON.stringify(cleared))
+  const clearedHistory = await pressSurfaceControl(page, LABELS.musicSearchClearHistory)
+  await sleep(400)
+  const afterHistory = await read()
+  check("music: the popup's own action still clears the history, and only that",
+    clearedHistory && afterHistory.historyRows === 0 && afterHistory.value === '',
+    `pressed=${clearedHistory} ${JSON.stringify(afterHistory)}`)
+  await page.keyboard.press('Escape')
+  await sleep(300)
 }
 
 // FB2-C1: the online half of the library, which had no browser assertion at all — and the payload

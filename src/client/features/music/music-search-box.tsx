@@ -68,7 +68,10 @@ interface PopupState {
   highlight: number
   options: PopupOption[]
   close: () => void
+  /** FB3-U1: the history action — what the popup's own row means. */
   clearAll: () => void
+  /** FB3-U1: the box's own action — empty the query, leave the history where it is. */
+  clearQuery: () => void
   inputProps: {
     role: 'combobox'
     'aria-expanded': boolean
@@ -126,6 +129,14 @@ function useSearchPopup({ history, text, listId, suggestions, setScope, setText,
     clearAll: () => {
       clearHistory()
       close()
+    },
+    // The × and the popup's row were one callback, so the × emptied the history and left the query
+    // standing. Emptying the query is what the control is named for; the popup is left as it is, so an
+    // empty box falls back to the history shape the reader can then clear on purpose.
+    clearQuery: () => {
+      setText('')
+      flush('')
+      setHighlight(() => -1)
     },
     inputProps: popupInputProps(show, highlight, listId),
     inputHandlers: popupHandlers({ show, highlight, options, text, setOpen, setHighlight, setText, schedule, commit, flush, close }),
@@ -256,13 +267,21 @@ export function SearchBox() {
   )
   const popup = useSearchPopup({ history, text, listId, suggestions, setScope, setText, schedule, commit: commitQuery, flush, clearHistory: clearSearchHistory })
   const boxRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   useClickOutside([boxRef], popup.show, popup.close)
+  // FB3-U5: a press on the × moves the caret to the button, so the caret is handed back — otherwise the
+  // reader who cleared the box has to click it again before the history it did not touch will show.
+  const clearQuery = (): void => {
+    popup.clearQuery()
+    inputRef.current?.focus()
+  }
   return (
     // FB-U2 / FB2-U2: the toolbar gives the search a row of its own and the search fills whatever the
     // rest of that row does not take, so the row ends at the toolbar's edge instead of trailing off
     // into empty space after a fixed 240px box.
     <div ref={boxRef} className='relative min-w-0 flex-1'>
       <Input
+        ref={inputRef}
         leading={<Search size={13} className='text-[var(--text-quaternary)]' />}
         value={text}
         aria-label={t('music.search_placeholder')}
@@ -271,7 +290,7 @@ export function SearchBox() {
         {...popup.inputProps}
         {...popup.inputHandlers}
       />
-      {text && <SearchClearButton onClear={() => popup.clearAll()} />}
+      {text && <SearchClearButton onClear={clearQuery} />}
       <SearchPopupFromState popup={popup} listId={listId} />
     </div>
   )
