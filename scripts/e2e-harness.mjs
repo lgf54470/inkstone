@@ -372,7 +372,11 @@ const SHARE_ENTRY_TEXT = /^(\d+|99\+)?(分享|Share)$/
 const MOBILE_PANE = '.mobile-pane-layer[data-active]'
 
 /**
- * Opens the share center down the path a person takes, and returns whether it opened.
+ * Opens the share center down the path a person takes, and reports whether it opened together with
+ * the step that stopped it (SH-104). The check that reads this printed nothing but `false` before,
+ * and the three ways it can fail — no entry in the sidebar, no manage control in the share view, a
+ * press that opened no dialog — ask for three different fixes, so the answer travels with the call
+ * rather than being re-derived from a screenshot.
  *
  * The list's own toolbar is the entry, and it only draws in the shared view, so the Share nav entry
  * comes first — through the shell's bottom bar at phone width, where the sidebar lives in the
@@ -413,14 +417,17 @@ export async function openShareCenter(page, { base, mobile = false, fixture = fa
     const box = control.getBoundingClientRect()
     return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
   }, { scope, labels: SHARE_LABELS.nav, pattern: SHARE_ENTRY_TEXT.source })
-  if (!point) return false
+  if (!point) return {
+    opened: false,
+    reason: `no control named ${SHARE_LABELS.nav.join(' / ')} is drawn in the sidebar (${await sidebarButtons(page)})`,
+  }
   await page.mouse.click(point.x, point.y)
   const manage = await page.waitForFunction(({ labels, scope }) => {
     const root = scope ? document.querySelector(scope) : document
     return [...(root?.querySelectorAll('button') ?? [])]
       .some((item) => labels.includes(item.getAttribute('aria-label') ?? '') && item.getBoundingClientRect().width > 0)
   }, { timeout: 15_000 }, { labels: SHARE_LABELS.manage, scope: mobile ? MOBILE_PANE : '' }).then(() => true, () => false)
-  if (!manage) return false
+  if (!manage) return { opened: false, reason: `the share view never drew a control named ${SHARE_LABELS.manage.join(' / ')} within 15s` }
   const managePoint = await page.evaluate(({ labels, scope }) => {
     // The opener a focus-return assertion reads is the last one that was pressed, so the mark
     // travels with it — an older mark left behind would answer for the wrong control.
@@ -435,17 +442,26 @@ export async function openShareCenter(page, { base, mobile = false, fixture = fa
     const box = control.getBoundingClientRect()
     return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
   }, { labels: SHARE_LABELS.manage, scope: mobile ? MOBILE_PANE : '' })
-  if (!managePoint) return false
+  if (!managePoint) return { opened: false, reason: 'the manage control is drawn but off screen' }
   await page.mouse.click(managePoint.x, managePoint.y)
   const opened = await page
     .waitForSelector(SHARE_HUB_DIALOG, { timeout: 15_000 })
     .then(() => true, () => false)
-  if (!opened) return false
+  if (!opened) return { opened: false, reason: 'the press on the manage control opened no share center within 15s' }
   await waitForPanelSettled(page, SHARE_HUB_DIALOG)
   if (category) {
     await clickButton(page, category)
   }
-  return true
+  return { opened: true, reason: '' }
+}
+
+/** The names of the sidebar's buttons, for a failure that has to say what was there instead (SH-104). */
+async function sidebarButtons(page) {
+  const names = await page.evaluate(() => [...document.querySelectorAll('aside button')]
+    .filter((item) => item.getBoundingClientRect().width > 0)
+    .map((item) => item.getAttribute('aria-label') ?? (item.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 24))
+    .slice(0, 12))
+  return names.join(' | ') || 'the sidebar draws no buttons'
 }
 
 /**

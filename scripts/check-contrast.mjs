@@ -333,8 +333,8 @@ async function openShareSurface(page) {
   // account has neither until this puts them there. Without it the pass measures a quieter center
   // and says nothing about either pair (SH-103) — so the fixture is a prerequisite here rather than
   // a silent possibility, the same way the music surfaces above require their seeded tracks.
-  const opened = await openShareCenter(page, { base: BASE, fixture: true, category: SHARE_LABELS.categoryAll })
-  if (!opened) throw new Error('the shell sidebar offers no share entry to open')
+  const { opened, reason } = await openShareCenter(page, { base: BASE, fixture: true, category: SHARE_LABELS.categoryAll })
+  if (!opened) throw new Error(`the share center did not open: ${reason}`)
   await sleep(SETTLE_MS)
 }
 
@@ -506,7 +506,7 @@ async function openPhoneShareSurface(page) {
   // center's own default here because at this width the category row lives behind the phone's own
   // navigation, and a press that has to look for it fails the whole run instead of opening a
   // surface (that is what the first version of this pass did).
-  const opened = await openShareCenter(page, { base: BASE, mobile: true, fixture: true })
+  const { opened } = await openShareCenter(page, { base: BASE, mobile: true, fixture: true })
   if (!opened) throw new Error('the phone shell offers no share entry to open the center from')
   await sleep(SETTLE_MS)
 }

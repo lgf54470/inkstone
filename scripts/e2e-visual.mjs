@@ -4898,6 +4898,27 @@ async function openMusicHub(page) {
   return true
 }
 
+/**
+ * Closes the library the way a person does, and reports how many presses that took (or -1 if it is
+ * still up). One press is not always enough, and that is the app's documented layering rather than a
+ * fault: a popup standing inside the surface owns the first Escape — the search box's history popup
+ * registers after the hub it stands in, so one Escape puts the popup away and the next the hub.
+ *
+ * The teardown below clears the search box before it reaches here, and a cleared box shows that popup,
+ * so a single press left the hub open. The next scenario then pressed the sidebar's Share entry and got
+ * the hub's own scrim instead of the control it aimed at: the note list never switched to the shared
+ * view, its manage control never drew, and the run reported a share center that would not open (SH-104)
+ * — while the scenario after it, by then pressing a clean shell, opened the very same center.
+ */
+async function closeMusicHub(page, { attempts = 3 } = {}) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (!(await page.$(MUSIC_HUB_ROOT))) return attempt
+    await page.keyboard.press('Escape')
+    await sleep(400)
+  }
+  return (await page.$(MUSIC_HUB_ROOT)) ? -1 : attempts
+}
+
 async function hubMotionDurations(page) {
   return page.evaluate((hubLabels) => {
     const dialog = [...document.querySelectorAll('[role="dialog"]')]
@@ -5737,9 +5758,12 @@ async function assertMusicProviderResults(page) {
     // The query the scenario typed is left in the store, and a later read of the hub would then be a
     // read of a filtered hub. The box's own clear control is the way it goes.
     await pressSurfaceControl(page, LABELS.musicSearchClear)
-    await page.keyboard.press('Escape')
-    await sleep(400)
+    await closeMusicHub(page)
   }
+  // The shell is handed back closed, and said so: the next scenario presses a shell control, and a hub
+  // left standing turns that press into a press on its scrim (see `closeMusicHub`).
+  check('music: the scenario hands the shell back with no library open',
+    (await page.$(MUSIC_HUB_ROOT)) === null)
 }
 
 /**
@@ -6125,8 +6149,8 @@ async function assertShareCenter(page) {
   check('share: the account carries a tag and a visit so the reads below are about a real one',
     fixture.views > 0 && fixture.share === 200 && (fixture.tag === 200 || fixture.tag === 201),
     JSON.stringify(fixture))
-  const opened = await openShareHub(page)
-  check('share: the shared view opens the share center', opened)
+  const { opened, reason } = await openShareHub(page)
+  check('share: the shared view opens the share center', opened, reason)
   if (!opened) return
   await waitForPanelSettled(page, SHARE_DIALOG)
   await ensureAxe(page)
@@ -6183,8 +6207,8 @@ async function assertShareCenter(page) {
 
   await page.setViewport(MOBILE_VIEWPORT)
   await sleep(700)
-  const reopened = await openShareHub(page, { mobile: true })
-  check('share: the phone breakpoint opens the center from the bottom bar', reopened)
+  const { opened: reopened, reason: reopenReason } = await openShareHub(page, { mobile: true })
+  check('share: the phone breakpoint opens the center from the bottom bar', reopened, reopenReason)
   if (!reopened) return
   await waitForPanelSettled(page, SHARE_DIALOG)
 
@@ -6330,8 +6354,8 @@ const SHEET_CHANNEL = 'gate-sheet'
 async function assertShareQrSheet(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(600)
-  const opened = await openShareHub(page)
-  check('qr sheet: the center opens for the sheet', opened)
+  const { opened, reason } = await openShareHub(page)
+  check('qr sheet: the center opens for the sheet', opened, reason)
   if (!opened) return
   await waitForPanelSettled(page, SHARE_DIALOG)
   const listed = await gotoSidebarCategory(page, SHARE_LABELS.categoryAll)
@@ -6537,7 +6561,7 @@ async function assertPublicCollectionPage(browser, page, consoleErrors) {
   const recorded = await waitForVisitChannel(page, noteSlug, marker)
   check('collection: the visit is recorded with the collection channel', recorded)
 
-  const hubOpened = await openShareHub(page)
+  const { opened: hubOpened } = await openShareHub(page)
   // The center opens on whatever category it was last left in, and the split lives on the
   // dashboard's referrer card — so the category is chosen rather than assumed.
   const onDashboard = hubOpened && await gotoSidebarCategory(page, LABELS.shareCategoryDashboard)
