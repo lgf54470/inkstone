@@ -109,4 +109,25 @@ describe('acting on a dead link from the panel (FB-F9)', () => {
     const trashAll = buttonsByText(t('music.health_trash_all', { value0: 0 }))[0]
     expect(trashAll.disabled).toBe(true)
   })
+
+  // FB3-F7: one gesture for the list, over the same rows the per-row control already re-points. A
+  // dead row with no catalogue of its own is not part of the count, because nothing can be asked.
+  it('offers one gesture for every dead online row, and counts only those', async () => {
+    const repairDeadReferences = vi.fn(async () => {})
+    useMusic.setState({
+      healthOpen: true, tracks: [DEAD, SLOW], repairDeadReferences,
+      healthResults: [{ id: 'dead', status: 'dead' }, { id: 'slow', status: 'dead' }],
+    })
+    mount()
+    const repairAll = buttonsByText(t('music.health_repair_all', { value0: 1 }))[0]
+    expect(repairAll.disabled).toBe(false)
+    await act(async () => { repairAll?.click() })
+    expect(repairDeadReferences).toHaveBeenCalledWith(['dead'])
+  })
+
+  it('leaves the batch re-point unusable when no dead row has a catalogue to be re-pointed at', () => {
+    useMusic.setState({ healthOpen: true, tracks: [SLOW], healthResults: [{ id: 'slow', status: 'dead' }] })
+    mount()
+    expect(buttonsByText(t('music.health_repair_all', { value0: 0 }))[0]?.disabled).toBe(true)
+  })
 })

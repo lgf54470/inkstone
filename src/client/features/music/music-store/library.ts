@@ -30,7 +30,7 @@ import {
 } from './servers'
 import { closePodcastEpisodes, createPodcastFeed, deletePodcastFeed, importPodcastOpml, loadPodcastEpisodes, loadPodcastFeeds, playPodcastEpisode, renamePodcastFeed } from './podcast'
 import {
-  closeHealthScan, openHealthScan, repairDeadReference, scanReferences, trashDeadReferences,
+  closeHealthScan, openHealthScan, repairDeadReference, repairDeadReferences, scanReferences, trashDeadReferences,
 } from './health'
 import {
   acceptProviderNotice, addProviderTrack, addProviderTracks, closeSourceSwitch, openSourceSwitch, playProviderTrack,
@@ -55,7 +55,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'loadPodcastEpisodes' | 'closePodcastEpisodes' | 'importPodcastOpml' | 'playPodcastEpisode'
   | 'setProviderEnabled' | 'setProviderScope' | 'setProviderSourceEnabled' | 'moveProviderSource' | 'searchProviders' | 'playProviderTrack' | 'addProviderTrack' | 'addProviderTracks'
   | 'setProviderAutoSwap' | 'openSourceSwitch' | 'closeSourceSwitch' | 'switchTrackSource'
-  | 'openHealthScan' | 'closeHealthScan' | 'scanReferences' | 'repairDeadReference' | 'trashDeadReferences'
+  | 'openHealthScan' | 'closeHealthScan' | 'scanReferences' | 'repairDeadReference' | 'repairDeadReferences' | 'trashDeadReferences'
   | 'trashTracks' | 'forgetPlayHistory'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
@@ -168,6 +168,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     closeHealthScan: () => closeHealthScan(set),
     scanReferences: () => scanReferences(set, get),
     repairDeadReference: (id) => repairDeadReference(set, get, id),
+    repairDeadReferences: (ids) => repairDeadReferences(set, get, ids),
     trashDeadReferences: (ids) => trashDeadReferences(set, get, ids),
     trashTracks: (ids) => trashTracks(set, get, ids),
     forgetPlayHistory: (ids) => forgetPlayHistory(set, ids),

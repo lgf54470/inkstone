@@ -21,11 +21,15 @@ export function MusicHealthModal() {
   const close = useMusic((state) => state.closeHealthScan)
   const scan = useMusic((state) => state.scanReferences)
   const repair = useMusic((state) => state.repairDeadReference)
+  const repairAll = useMusic((state) => state.repairDeadReferences)
   const trash = useMusic((state) => state.trashDeadReferences)
   const openHealth = useMusic((state) => state.openHealthScan)
 
   if (!open) return null
   const dead = deadReferenceIds(results)
+  // FB3-F7: only an online row has a catalogue to be asked, so those — and only those — are what the
+  // batch gesture counts and offers.
+  const repairable = dead.filter((id) => tracks.find((track) => track.id === id)?.source === 'provider')
   return (
     <Modal
       open
@@ -34,14 +38,14 @@ export function MusicHealthModal() {
       description={t('music.health_desc')}
       width={HEALTH_WIDTH}
       footer={(
-        <div className='flex flex-wrap items-center justify-end gap-2'>
-          <Button size='sm' variant='ghost' icon={<RefreshCw size={13} />} loading={scanning} onClick={() => void scan()}>
-            {t('music.health_rescan')}
-          </Button>
-          <Button size='sm' variant='ghost' disabled={!dead.length} onClick={() => void trash(dead)}>
-            {t('music.health_trash_all', { value0: dead.length })}
-          </Button>
-        </div>
+        <HealthFooter
+          scanning={scanning}
+          dead={dead}
+          repairable={repairable}
+          onScan={scan}
+          onRepairAll={repairAll}
+          onTrashAll={trash}
+        />
       )}
     >
       <HealthBody
@@ -54,6 +58,37 @@ export function MusicHealthModal() {
         onRetry={() => void openHealth()}
       />
     </Modal>
+  )
+}
+
+// FB3-F7: the footer is where the list-wide gestures live — a scan again, the batch re-point, the
+// batch clear. Each of the last two counts only the rows it can actually act on.
+function HealthFooter({ scanning, dead, repairable, onScan, onRepairAll, onTrashAll }: {
+  scanning: boolean
+  dead: string[]
+  repairable: string[]
+  onScan: () => Promise<void>
+  onRepairAll: (ids: string[]) => Promise<void>
+  onTrashAll: (ids: string[]) => Promise<void>
+}) {
+  return (
+    <div className='flex flex-wrap items-center justify-end gap-2'>
+      <Button size='sm' variant='ghost' icon={<RefreshCw size={13} />} loading={scanning} onClick={() => void onScan()}>
+        {t('music.health_rescan')}
+      </Button>
+      <Button
+        size='sm'
+        variant='ghost'
+        icon={<Shuffle size={13} />}
+        disabled={!repairable.length}
+        onClick={() => void onRepairAll(repairable)}
+      >
+        {t('music.health_repair_all', { value0: repairable.length })}
+      </Button>
+      <Button size='sm' variant='ghost' disabled={!dead.length} onClick={() => void onTrashAll(dead)}>
+        {t('music.health_trash_all', { value0: dead.length })}
+      </Button>
+    </div>
   )
 }
 

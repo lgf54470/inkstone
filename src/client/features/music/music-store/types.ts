@@ -421,6 +421,8 @@ export interface MusicStoreState {
   scanReferences: () => Promise<void>
   /** FB-F9: re-points a dead online row at another catalogue and clears the broken one out. */
   repairDeadReference: (id: string) => Promise<void>
+  /** FB3-F7: the same repair for the whole dead list, in one gesture. */
+  repairDeadReferences: (ids: string[]) => Promise<void>
   trashDeadReferences: (ids: string[]) => Promise<void>
   /** FB-F9: the cleanup path the health panel shares with the batch bar and the trash action. */
   trashTracks: (ids: string[]) => Promise<string[]>

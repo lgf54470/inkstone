@@ -193,6 +193,8 @@ export const messages = {
   'music.health_failed': '扫描未能完成',
   'music.health_rescan': '重新扫描',
   'music.health_repair': '换到其他音源',
+  'music.health_repair_all': '为 {value0} 行换源补齐',
+  'music.health_repaired': '已为 {value0} 行补齐可用音源',
   'music.health_trash': '移入回收站',
   'music.health_trash_all': '将 {value0} 行移入回收站',
   'music.health_cleared': '已将 {value0} 行移入回收站',

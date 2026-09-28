@@ -1,5 +1,6 @@
 import { LIMITS } from '@shared/constants'
 import { chunkIds } from '@shared/chunk'
+import { mapWithConcurrency } from '../../../lib/async'
 import type { MusicReferenceHealthResult } from '@shared/types'
 import { api } from '../../../lib/api'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
@@ -57,17 +58,46 @@ export async function scanReferences(set: MusicSet, get: MusicGet): Promise<void
 // runs from a list of rows the scan has just proved broken, so the dead row is trashed in the same
 // gesture (the trash is the recoverable place; nothing is destroyed).
 export async function repairDeadReference(set: MusicSet, get: MusicGet, id: string): Promise<void> {
-  const track = get().tracks.find((entry) => entry.id === id)
-  if (!track || track.source !== 'provider') return
-  if (!await swapFailedProviderTrack(set, get, id)) {
+  if (!await repointDeadTrack(set, get, id)) {
     // No other catalogue has this song, so there is nothing to re-point the row at. The dead row
     // stays listed, which is the honest answer — and the reader can still clear it out by hand.
     toastMusicNotice('music.source_switch_none')
     return
   }
+  toastMusic('music.provider_fallback_used')
+}
+
+// FB3-F7: a scan that finds several broken links used to ask the reader to press once per row. The
+// same repair, applied to the whole list in one gesture, with one sentence at the end instead of one
+// per row. Rows with no catalogue of their own are simply not part of it — there is nobody to ask.
+const REPAIR_CONCURRENCY = 3
+
+export async function repairDeadReferences(set: MusicSet, get: MusicGet, ids: string[]): Promise<void> {
+  const repairable = ids.filter((id) => get().tracks.find((entry) => entry.id === id)?.source === 'provider')
+  if (!repairable.length) {
+    toastMusicNotice('music.source_switch_none')
+    return
+  }
+  const outcomes = await mapWithConcurrency(repairable, REPAIR_CONCURRENCY, (id) => repointDeadTrack(set, get, id))
+  const repaired = outcomes.filter(Boolean).length
+  if (!repaired) {
+    // Every row was asked about and no other catalogue has any of them; the list stays as it was,
+    // because a row that is still broken is still the honest answer.
+    toastMusicNotice('music.source_switch_none')
+    return
+  }
+  toastMusic('music.health_repaired', { value0: repaired })
+}
+
+// The shared half of both repairs: ask the other catalogues for this song, move the dead row to the
+// trash (the recoverable place; nothing is destroyed) and take it out of the panel.
+async function repointDeadTrack(set: MusicSet, get: MusicGet, id: string): Promise<boolean> {
+  const track = get().tracks.find((entry) => entry.id === id)
+  if (!track || track.source !== 'provider') return false
+  if (!await swapFailedProviderTrack(set, get, id)) return false
   const applied = await get().trashTracks([id])
   if (applied.length) set((state) => ({ healthResults: dropResults(state.healthResults, new Set(applied)) }))
-  toastMusic('music.provider_fallback_used')
+  return true
 }
 
 export async function trashDeadReferences(set: MusicSet, get: MusicGet, ids: string[]): Promise<void> {

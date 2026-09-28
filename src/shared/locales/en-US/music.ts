@@ -200,6 +200,8 @@ export const messages = {
   'music.health_failed': 'The scan could not be finished',
   'music.health_rescan': 'Scan again',
   'music.health_repair': 'Re-point at another catalogue',
+  'music.health_repair_all': 'Re-point {value0} at other catalogues',
+  'music.health_repaired': 'Re-pointed {value0} rows at another catalogue',
   'music.health_trash': 'Move to trash',
   'music.health_trash_all': 'Move {value0} to trash',
   'music.health_cleared': 'Moved {value0} rows to the trash',

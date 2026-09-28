@@ -36,6 +36,7 @@ vi.mock('../music-feedback', () => ({
 }))
 
 import { api } from '../../../lib/api'
+import { toastMusic, toastMusicNotice } from '../music-feedback'
 
 function track(id: string, source: MusicTrack['source']): MusicTrack {
   return { id, title: `Song ${id}`, artist: 'Ann', album: '', durationMs: 1000, source } as MusicTrack
@@ -115,6 +116,53 @@ describe('acting on what the scan found (FB-F9)', () => {
     expect(useMusic.getState().queue).toEqual(['trk-new'])
     expect(api.music.batchTracks).toHaveBeenCalledWith(['dead-row'], 'delete', undefined)
     expect(useMusic.getState().healthResults).toEqual([])
+  })
+
+  // FB3-F7: the panel already knew which rows are dead and how to re-point one of them; what it
+  // lacked was the gesture for the list — a scan that finds five broken links asked the reader to
+  // press five times.
+  it('re-points every dead online row in one gesture and says how many landed', async () => {
+    const rows = ['dead-1', 'dead-2'].map((id) => ({
+      ...track(id, 'provider'), title: 'Song A', providerSource: 'netease', providerSongId: 'a1',
+    } as MusicTrack))
+    useMusic.setState({
+      tracks: rows,
+      providerEnabled: { gds: true },
+      healthResults: [{ id: 'dead-1', status: 'dead' }, { id: 'dead-2', status: 'dead' }],
+      queue: ['dead-1', 'dead-2'],
+      currentIndex: 0,
+    })
+    await useMusic.getState().repairDeadReferences(['dead-1', 'dead-2'])
+    expect(api.music.providerSearch).toHaveBeenCalled()
+    expect((api.music.batchTracks as unknown as { mock: { calls: [string[], string][] } }).mock.calls.map(([ids]) => ids))
+      .toEqual([['dead-1'], ['dead-2']])
+    expect(useMusic.getState().healthResults).toEqual([])
+    expect(toastMusic).toHaveBeenCalledWith('music.health_repaired', { value0: 2 })
+  })
+
+  it('keeps the rows nothing else knows about and says so once', async () => {
+    vi.mocked(api.music.providerSearch).mockResolvedValue({ results: [] })
+    useMusic.setState({
+      tracks: [track('dead-1', 'provider')],
+      providerEnabled: { gds: true },
+      healthResults: [{ id: 'dead-1', status: 'dead' }],
+    })
+    await useMusic.getState().repairDeadReferences(['dead-1'])
+    expect(api.music.batchTracks).not.toHaveBeenCalled()
+    expect(useMusic.getState().healthResults).toEqual([{ id: 'dead-1', status: 'dead' }])
+    expect(toastMusicNotice).toHaveBeenCalledTimes(1)
+    expect(toastMusic).not.toHaveBeenCalled()
+  })
+
+  it('leaves a row with no catalogue of its own alone', async () => {
+    useMusic.setState({
+      tracks: [track('local-row', 'external')],
+      healthResults: [{ id: 'local-row', status: 'dead' }],
+    })
+    await useMusic.getState().repairDeadReferences(['local-row'])
+    expect(api.music.providerSearch).not.toHaveBeenCalled()
+    expect(api.music.batchTracks).not.toHaveBeenCalled()
+    expect(toastMusicNotice).toHaveBeenCalledWith('music.source_switch_none')
   })
 
   it('leaves the row listed when no other catalogue has the song', async () => {
