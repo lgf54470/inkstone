@@ -48,10 +48,13 @@ const LYRIC_SOURCE_LABELS: Record<MusicLyricSource, MessageKey> = {
 // literally the popover's own panel rather than a copy of it.
 export function MusicSettings() {
   return (
+    // FB3-F6: the order follows the questions a reader arrives with — how it plays (the defaults they
+    // set once), where songs are searched for (the online catalogues), and finally the boxes of their
+    // own they stream from (the music servers, the least-frequent visit of the three).
     <div className='space-y-6'>
+      <PlaybackDefaults />
       <OnlineSources />
       <MusicServers />
-      <PlaybackDefaults />
     </div>
   )
 }

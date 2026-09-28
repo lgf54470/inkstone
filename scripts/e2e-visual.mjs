@@ -151,6 +151,13 @@ const LABELS = {
   musicSearchHistory: ['最近搜索', 'Recent searches'],
   musicSearchClearHistory: ['清空历史', 'Clear history'],
   musicEqPresets: ['预设', 'Presets'],
+  // FB3-F6: the three music groups of the settings page, in the order the page is meant to read. Each
+  // entry is every spelling of one heading, so the read works in either language without pairing them.
+  musicSettingsGroups: [
+    ['播放默认', 'Playback defaults'],
+    ['在线音源', 'Online sources'],
+    ['音乐服务器', 'Music servers'],
+  ],
   musicSearchEmptyAction: ['清除搜索', 'Clear search', '显示全部歌曲', 'Show all tracks'],
   // FB2-U1: the queue's own controls — the count in the immersive header is the way in there, and
   // the search is what the hub and the floating card already answer with.
@@ -5292,6 +5299,15 @@ async function assertMusicSettingsLayout(page) {
     Boolean(layout) && layout.presets === 5 && layout.presetRows === 1, JSON.stringify(layout))
   check('music: the add-server fields share their label columns',
     Boolean(layout) && layout.fields === 5 && layout.aligned, JSON.stringify(layout))
+  // FB3-F6: the order of the page is a claim about it, so it is read rather than left to the source:
+  // playback defaults, then the online catalogues, then the reader's own servers.
+  const groupOrder = await page.evaluate(({ panel, groups }) => {
+    const headings = [...(document.querySelector(panel)?.querySelectorAll('h3') ?? [])].map((heading) => heading.textContent ?? '')
+    return groups.map((spellings) => Math.min(...spellings.map((spelling) => headings.indexOf(spelling)).filter((index) => index >= 0), Infinity))
+  }, { panel: SETTINGS_PANEL, groups: LABELS.musicSettingsGroups })
+  check('music: the settings groups read playback → online sources → servers',
+    groupOrder.every((index) => Number.isFinite(index)) && groupOrder[0] < groupOrder[1] && groupOrder[1] < groupOrder[2],
+    JSON.stringify(groupOrder))
   await page.keyboard.press('Escape')
   await sleep(400)
 }

@@ -267,3 +267,21 @@ describe('music settings section · volume, speed and sleep (FB3-F3)', () => {
     unmount()
   })
 })
+
+// FB3-F6: the page was ordered by when each group was built rather than by what a reader arrives
+// asking. The order now follows the questions: how it plays, where songs are searched for, and the
+// reader's own servers last.
+describe('music settings section · group order (FB3-F6)', () => {
+  it('asks the playback questions first and keeps the server group last', () => {
+    const { container, unmount } = render(createElement(MusicSettings))
+    const headings = [...container.querySelectorAll('h3')].map((heading) => heading.textContent ?? '')
+    const at = (title: string): number => {
+      const index = headings.indexOf(title)
+      expect(index).toBeGreaterThanOrEqual(0)
+      return index
+    }
+    expect(at(t('music.settings_playback'))).toBeLessThan(at(t('music.settings_sources')))
+    expect(at(t('music.settings_sources'))).toBeLessThan(at(t('music.server_title')))
+    unmount()
+  })
+})
