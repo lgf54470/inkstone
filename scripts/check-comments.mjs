@@ -4666,10 +4666,15 @@ const allowed = new Map([
     '// the resolving, so the two imports cannot drift apart.',
   ]],
   ['src/client/features/music/music-track-card.test.ts', [
+    '// FB2-C3: the length pill sits on the artwork, and a translucent scrim over a picture is a background',
+    '// nothing can judge — axe reads it as "the element contains an image node" and the contrast gate\'s',
+    '// verdict then depends on whether the instance\'s library happened to hold a cover. An opaque token is',
+    '// the pill\'s own background, so the pair is measurable whatever the picture is.',
     '// The grid card used to be a bare div that selected on click and played on double click: no role,',
     '// no keyboard path, and a container that swallowed clicks meant for its own controls.',
   ]],
   ['src/client/features/music/music-track-card.tsx', [
+    '/* FB2-C3: this pill is read against the picture it sits on, and a translucent scrim over a\n          picture is a background no one can measure — axe reports it as "the element contains an image\n          node", which made the contrast gate\'s verdict about the instance\'s data rather than the card.\n          The card\'s own buttons already answer with an opaque overlay; the pill does too. */',
     '/* FB-U4: the card is the narrow shape, and the album is the one thing the table\'s columns\n          carried that it did not. Drawn only when there is one: a card is not a table cell, and a\n          bare dash here would read as a value. */',
     '// Selecting and playing live on the checkbox and the artwork button: a container that',
     '// answers clicks itself has no keyboard path and swallows the ones meant for its controls.',

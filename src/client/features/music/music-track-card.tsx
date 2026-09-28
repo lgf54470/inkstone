@@ -36,7 +36,11 @@ function CardArtwork({
       <span className='absolute inset-0 flex items-center justify-center bg-[var(--scrim)] text-[var(--text-primary)] opacity-0 transition-opacity group-hover/art:opacity-100 group-focus-visible/art:opacity-100'>
         {isStreamLoading && isCurrent ? <Spinner size={18} /> : isCurrent && isPlaying ? <Pause size={20} /> : <Play size={20} />}
       </span>
-      <span className='tabular absolute right-1.5 bottom-1.5 rounded-[var(--r-sm)] bg-[var(--scrim)] px-1 text-[length:var(--text-12)] text-[var(--text-primary)]'>
+      {/* FB2-C3: this pill is read against the picture it sits on, and a translucent scrim over a
+          picture is a background no one can measure — axe reports it as "the element contains an image
+          node", which made the contrast gate's verdict about the instance's data rather than the card.
+          The card's own buttons already answer with an opaque overlay; the pill does too. */}
+      <span className='tabular absolute right-1.5 bottom-1.5 rounded-[var(--r-sm)] bg-[var(--bg-overlay)] px-1 text-[length:var(--text-12)] text-[var(--text-primary)]'>
         {durationCellText(track.durationMs)}
       </span>
     </button>

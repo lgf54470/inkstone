@@ -54,6 +54,21 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+// FB2-C3: the length pill sits on the artwork, and a translucent scrim over a picture is a background
+// nothing can judge — axe reads it as "the element contains an image node" and the contrast gate's
+// verdict then depends on whether the instance's library happened to hold a cover. An opaque token is
+// the pill's own background, so the pair is measurable whatever the picture is.
+describe('the length pill carries its own background (FB2-C3)', () => {
+  it('paints the pill with an opaque token rather than the artwork scrim', async () => {
+    const { container } = await mount()
+    const pill = [...container.querySelectorAll('span')]
+      .find((span) => span.textContent?.trim() === '03:20')
+    expect(pill).toBeDefined()
+    expect(pill?.className).toContain('bg-[var(--bg-overlay)]')
+    expect(pill?.className).not.toContain('bg-[var(--scrim)]')
+  })
+})
+
 // The grid card used to be a bare div that selected on click and played on double click: no role,
 // no keyboard path, and a container that swallowed clicks meant for its own controls.
 describe('the grid card is a named container, not a click surface', () => {
