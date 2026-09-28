@@ -138,6 +138,7 @@ const LABELS = {
   musicProviderPreview: ['试听', 'Audition'],
   musicProviderAdd: ['添加', 'Add'],
   musicProviderInLibrary: ['已在库中', 'In library'],
+  musicSearchSuggestions: ['搜索建议', 'Search suggestions'],
   musicProviderAddSelected: ['添加所选', 'Add selected'],
   musicSearch: ['搜索歌曲、歌手、专辑或拼音', 'Search tracks, artists, albums or pinyin'],
   musicSearchClear: ['清除搜索', 'Clear search'],
@@ -5341,13 +5342,17 @@ async function assertMusicProviderResults(page) {
       return boxes.length
     }, cssByLabels('section', LABELS.musicProviderResults))
     check('music: the panel offers a tick per hit', ticked === PROVIDER_STUB_HITS.length, String(ticked))
-    // FB2-U7 / FB2-U8, both found by this scenario and fixed in the next commit: the search box's
-    // suggestion popup drops over the panel's own top — its switch, its header and this selection bar —
-    // and a press aimed at them lands on a suggestion instead, quietly changing the query. It also
-    // cannot be put away from here: Escape is taken by the modal's own stack before the box sees it, so
-    // it closes the library rather than the popup. Both are read here as facts about the screen, and the
-    // press below reaches its control directly until the fix lets a real one through.
-    const suggestionsUp = await page.evaluate(() => Boolean(document.querySelector('[role="listbox"]')))
+    // FB2-U7 / FB2-U8, both found by this scenario and fixed here: the search box's suggestion popup
+    // drops over the panel's own top — its switch, its header and this selection bar — and used to take
+    // the press aimed at them for itself (the frame counts as inside the box, so the box's outside-press
+    // rule never fired and the press vanished). It could not be put away either: Escape was taken by the
+    // modal's own stack before the box saw it, so it closed the library instead of the popup. Both are
+    // read here as facts about the screen, and the bar is pressed with the real pointer a reader has —
+    // which is the assertion: the press has to reach the control it was aimed at.
+    // The popup is read by its own name: the page holds other listboxes (the note list, the command
+    // palette), and "a listbox exists" would be an assertion about whichever one happened to be there.
+    const suggestionPopup = cssByLabels('[role="listbox"]', LABELS.musicSearchSuggestions)
+    const suggestionsUp = Boolean(await page.$(suggestionPopup))
     check('music: the search suggestions are drawn over the panel while the query is being edited', suggestionsUp)
     // The tick is what draws the bar, so the gate waits for the control it is about to press instead of
     // pressing into a re-render.
@@ -5357,14 +5362,12 @@ async function assertMusicProviderResults(page) {
         .some((button) => /添加所选|Add selected/.test(button.textContent ?? '') && button.getClientRects().length > 0)
     }, cssByLabels('section', LABELS.musicProviderResults)))
     check('music: ticking a hit draws the add-selected control', barDrawn, JSON.stringify(stub.endpoints()))
-    const pressedBatch = await page.evaluate((selector) => {
-      const root = document.querySelector(selector)
-      const button = [...(root?.querySelectorAll('button') ?? [])].find((item) => /添加所选|Add selected/.test(item.textContent ?? ''))
-      if (!button) return false
-      button.click()
-      return true
-    }, cssByLabels('section', LABELS.musicProviderResults))
-    check('music: the add-selected control takes the whole selection', pressedBatch)
+    const pressedBatch = await pressSurfaceControl(page, LABELS.musicProviderAddSelected, cssByLabels('section', LABELS.musicProviderResults))
+    const popupAway = !(await page.$(suggestionPopup))
+    const listboxes = await page.evaluate(() => [...document.querySelectorAll('[role="listbox"]')]
+      .map((item) => item.getAttribute('aria-label')))
+    check('music: a real press on the panel puts the suggestions away and reaches its control',
+      pressedBatch && popupAway, JSON.stringify({ pressedBatch, popupAway, listboxes }))
     const afterBatch = await waitForTruth(async () => {
       const titles = await libraryTitles()
       return PROVIDER_STUB_HITS.every((hit) => titles.includes(hit.title))

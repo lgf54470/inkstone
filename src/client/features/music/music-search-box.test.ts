@@ -3,6 +3,8 @@ import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { act, createElement } from 'react'
 import { t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
+import { Fragment } from 'react'
+import { useEscape } from '../../components/overlay'
 import { SearchBox, SEARCH_DEBOUNCE_MS } from './music-search-box'
 import { useMusic } from './music-store'
 
@@ -122,16 +124,19 @@ function mountWithLibrary(): HTMLInputElement {
   return input
 }
 
+// The same box with a recorded history behind it: the popup's other shape, where its one action is the
+// clear-history button.
+function mountWithHistory(): HTMLInputElement {
+  act(() => { useMusic.setState({ searchHistory: ['jazz', 'moon'] }) })
+  historyRendered = renderElement(createElement(SearchBox))
+  const input = inputOf(historyRendered.container)
+  act(() => { input.focus() })
+  return input
+}
+
 // UI-22: the history dropdown is a popup list attached to the input; without
 // combobox semantics a screen-reader user cannot see it open or walk its rows.
 describe('music search history combobox semantics', () => {
-  function mountWithHistory(): HTMLInputElement {
-    act(() => { useMusic.setState({ searchHistory: ['jazz', 'moon'] }) })
-    historyRendered = renderElement(createElement(SearchBox))
-    const input = inputOf(historyRendered.container)
-    act(() => { input.focus() })
-    return input
-  }
 
   it('wires the opened list to the input', () => {
     const input = mountWithHistory()
@@ -217,3 +222,67 @@ describe('music search suggestion jumps (FEA-A1-5)', () => {
     expect(useMusic.getState().query).toBe('zzz')
   })
 })
+
+// FB2-U7: the popup drops over whatever sits below the box, and in the hub that is the online results
+// panel — its switch, its heading and its selection bar. A press aimed at one of those controls used to
+// land on the popup's frame instead, and vanish: the frame is inside the box, so the box's own
+// outside-press rule never fired, and nothing on screen changed. The rows are the popup; the frame
+// around them lets the pointer through to whatever the reader was aiming at.
+describe('music search popup keeps only its rows for itself (FB2-U7)', () => {
+  it('lets a press through its frame, and keeps the rows and their one action', () => {
+    mountWithHistory()
+    const listbox = document.querySelector('[role="listbox"]')
+    expect(listbox?.parentElement?.className).toContain('pointer-events-none')
+    const options = [...document.querySelectorAll('[role="option"]')]
+    expect(options).toHaveLength(2)
+    for (const option of options) expect(option.className).toContain('pointer-events-auto')
+    const clear = [...document.querySelectorAll('button')]
+      .find((button) => button.textContent?.trim() === t('music.search_clear_history'))
+    expect(clear?.className).toContain('pointer-events-auto')
+  })
+})
+
+// FB2-U8: the box's own contract says Escape closes the popup. In the hub that was not true: the modal's
+// escape stack runs the top of the stack and stops the event there, and the popup had never registered —
+// so Escape closed the whole music library while the popup stayed up over it.
+describe('music search popup takes Escape before the surface behind it (FB2-U8)', () => {
+  it('closes the popup on Escape and leaves what was typed alone', () => {
+    const input = mountWithLibrary()
+    typeText(input, 'sun')
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+    expect(input.value).toBe('sun')
+  })
+
+  it('closes the popup rather than the surface that also listens for Escape', () => {
+    const behind = vi.fn()
+    // Mounted exactly the way the hub mounts it: the surface first, the box inside it after.
+    act(() => {
+      useMusic.setState({
+        tracks: [{ id: '1', title: 'Song 1', artist: 'Sun Yi', album: 'Sunrise', durationMs: 1000, isPinned: false }] as MusicTrack[],
+        playlists: [],
+      })
+    })
+    historyRendered = renderElement(createElement(Fragment, null,
+      createElement(Behind, { onEscape: behind }),
+      createElement(SearchBox),
+    ))
+    const input = inputOf(historyRendered.container)
+    act(() => { input.focus() })
+    act(() => { input.blur() })
+    act(() => { input.focus() })
+    typeText(input, 'sun')
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect(behind).not.toHaveBeenCalled()
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+  })
+})
+
+// The surface the box stands inside: nothing but an escape handler, which is what the hub's modal is to
+// the box from Escape's point of view.
+function Behind({ onEscape }: { onEscape: () => void }) {
+  useEscape(true, onEscape)
+  return null
+}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEv
 import { Clock3, Disc3, ListMusic, Search, User, X } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { Input } from '../../components/form'
-import { useClickOutside } from '../../components/overlay'
+import { useClickOutside, useEscape } from '../../components/overlay'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useMusic } from './music-store'
@@ -111,6 +111,12 @@ function useSearchPopup({ history, text, listId, suggestions, setScope, setText,
     : suggestionOptions(suggestions, setScope, flush, setText, close),
   [historyMode, history, suggestions, commit, flush, setScope, setText, close])
   const show = open && options.length > 0
+  // FB2-U8: the popup has to own Escape while it is up. Inside the hub it did not: `useEscape` runs the
+  // top of the stack and stops the event there, and this popup had never registered — so Escape was
+  // taken by the modal and closed the whole music library, with the popup still drawn over it. It
+  // registers after the surface it stands in, which makes it the top: one Escape for the popup, the
+  // next for the surface behind it.
+  useEscape(show, close)
   return {
     show,
     historyMode,
@@ -284,7 +290,7 @@ function SearchPopupFromState({ popup, listId }: { popup: PopupState; listId: st
       title={popup.historyMode ? t('music.search_history') : t('music.search_suggestions')}
       action={popup.historyMode
         ? (
-            <button type='button' onClick={popup.clearAll} className='min-h-6 rounded px-1.5 hover:text-[var(--text-secondary)]'>
+            <button type='button' onClick={popup.clearAll} className='pointer-events-auto min-h-6 rounded px-1.5 hover:text-[var(--text-secondary)]'>
               {t('music.search_clear_history')}
             </button>
           )
@@ -315,7 +321,12 @@ function SearchPopup({
   action: ReactNode
 }) {
   return (
-    <div className='absolute top-full left-0 z-[var(--z-popover)] mt-1 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'>
+    // FB2-U7: the frame is not something to press. It drops over whatever sits below the box — in the
+    // hub that is the online panel with its own switch and selection bar — and a press aimed at those
+    // used to land here and vanish, because this frame counts as inside the box and so the box's
+    // outside-press rule never fired. Letting the pointer through the frame is what leaves the rows (and
+    // the one action on the header) as the only things this popup takes for itself.
+    <div className='pointer-events-none absolute top-full left-0 z-[var(--z-popover)] mt-1 w-full rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'>
       <div className='flex items-center justify-between px-2 py-1 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
         <span>{title}</span>
         {action}
@@ -331,7 +342,7 @@ function SearchPopup({
             aria-label={option.ariaLabel}
             onClick={option.pick}
             className={cn(
-              'flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12)]',
+              'pointer-events-auto flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12)]',
               index === highlight
                 ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
