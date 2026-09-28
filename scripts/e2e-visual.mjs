@@ -5124,6 +5124,18 @@ async function assertMusicSurface(page) {
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(400)
   await clickButton(page, LABELS.musicListView)
+  // Every read below is about the list view and asks for it as `div[role="row"]`. If the switch did
+  // not take — the hub's window state decides whether the control is drawn at all — then each read
+  // would answer about the grid, and the phone-width block after them would wait for a header control
+  // that is not there and abort the whole run, taking the scenarios after this one with it. So the
+  // switch is read once, here: one honest failure instead of four and a crash.
+  const listViewDrawn = await page.waitForSelector('div[role="row"]', { timeout: 15_000 }).then(() => true, () => false)
+  check('music: the view switch draws the list the narrow reads are about', listViewDrawn)
+  if (!listViewDrawn) {
+    await page.setViewport(DESKTOP_VIEWPORT)
+    await sleep(400)
+    return
+  }
   await page.setViewport({ width: 700, height: 900 })
   await sleep(500)
   const rowFavorite = await controlState(page, cssByLabels('div[role="row"] button', LABELS.musicFavorite))
