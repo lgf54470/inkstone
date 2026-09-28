@@ -234,7 +234,12 @@ describe('MusicImmersivePlayer video picture', () => {
     await mountPlayer(vi.fn())
     const pane = document.querySelector('[role="dialog"] section')
     expect(pane?.querySelector('.music-video-stage')).not.toBeNull()
-    expect(pane?.querySelector('img')).toBeNull()
+    // FB3-U2: the queue is open in this column by default now, and its rows draw the catalogue's own
+    // thumbnails. This assertion is about the cover tile the stage replaced, so the queue's images are
+    // read as what they are instead of counting as one.
+    const queue = pane?.querySelector(`[aria-label="${t('music.queue')}"]`)
+    const coverTiles = [...(pane?.querySelectorAll('img') ?? [])].filter((image) => !queue?.contains(image))
+    expect(coverTiles).toHaveLength(0)
   })
 })
 
@@ -305,24 +310,24 @@ describe('MusicImmersivePlayer scroll regions (UI-17)', () => {
     const lyrics = document.querySelector(`[aria-label="${t('music.lyrics')}"]`) as HTMLElement | null
     expect(lyrics?.classList.contains('overflow-y-auto')).toBe(true)
     expect(lyrics?.getAttribute('tabindex')).toBe('0')
-    // REF-5: the queue answers a trigger instead of holding a permanent slice of the
-    // column, so it earns its focus stop only while it is open.
-    expect(document.querySelector(`[aria-label="${t('music.queue')}"]`)).toBeNull()
+    // REF-5 with FB3-U2: the queue answers a trigger instead of holding a permanent slice of the
+    // column. On a wide window it is out by default, and folding it takes its focus stop with it.
+    const queue = document.querySelector(`[aria-label="${t('music.queue')}"]`) as HTMLElement | null
+    expect(queue?.classList.contains('overflow-y-auto')).toBe(true)
+    expect(queue?.getAttribute('tabindex')).toBe('0')
     const toggle = [...document.querySelectorAll('button')].find(
       (button) => button.getAttribute('aria-label') === t('music.queue_toggle'),
     ) as HTMLButtonElement
     await act(async () => {
       toggle.click()
     })
-    const queue = document.querySelector(`[aria-label="${t('music.queue')}"]`) as HTMLElement | null
-    expect(queue?.classList.contains('overflow-y-auto')).toBe(true)
-    expect(queue?.getAttribute('tabindex')).toBe('0')
+    expect(document.querySelector(`[aria-label="${t('music.queue')}"]`)).toBeNull()
   })
 })
 
 // REF-5: the queue block used to keep ~160px of the lyrics column at all times, which
-// shortened the lyric scroller into two competing scroll areas. It now defaults to a
-// single-line entry and takes the space only when asked.
+// shortened the lyric scroller into two competing scroll areas. It answers a trigger now — out in the
+// artwork column by default on a wide window (FB3-U2), and folded from its own header on demand.
 describe('MusicImmersivePlayer queue folding (REF-5)', () => {
   function queuePane(): HTMLElement | null {
     return document.querySelector(`[aria-label="${t('music.queue')}"]`)
@@ -334,22 +339,27 @@ describe('MusicImmersivePlayer queue folding (REF-5)', () => {
     ) as HTMLButtonElement | undefined
   }
 
-  it('leaves the lyrics the whole column until the queue is asked for', async () => {
+  it('opens with the queue out on a wide window and folds it from its own header', async () => {
     await mountPlayer(vi.fn())
+    expect(queuePane()).not.toBeNull()
+    expect(queueToggle()?.getAttribute('aria-expanded')).toBe('true')
+    await act(async () => {
+      queueToggle()?.click()
+    })
     expect(queuePane()).toBeNull()
     expect(queueToggle()?.getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('collapses the queue again from its header', async () => {
+  it('gives the column back to the lyrics while the queue is folded', async () => {
     await mountPlayer(vi.fn())
     await act(async () => {
       queueToggle()?.click()
     })
-    expect(queuePane()).not.toBeNull()
+    expect(queuePane()).toBeNull()
     await act(async () => {
       queueToggle()?.click()
     })
-    expect(queuePane()).toBeNull()
+    expect(queuePane()).not.toBeNull()
   })
 })
 // FB2-U1: where the queue lives — the artwork column on a wide window, the strip under the lyrics

@@ -5624,20 +5624,29 @@ async function assertNarrowImmersiveQueue(page) {
   check('music: at 375px the queue opens as the strip under the lyrics, with no search box',
     pressed && opened.open && !opened.inArtworkColumn && !opened.hasSearch, `pressed=${pressed} ${JSON.stringify(opened)}`)
   check('music: at 375px the queue strip stays inside the viewport', opened.insideViewport, JSON.stringify(opened))
+  // FB3-U9: the strip is a slice of the lyrics column, so its cost has to be bounded — a row of it has
+  // to be readable, and the column under the words may not start scrolling around it as well.
+  check('music: at 375px the open strip keeps a whole row and adds no second scrollbar',
+    opened.rows >= 1 && opened.lyricsScrolls === false, JSON.stringify(opened))
 }
 
 /** Whether the narrow queue is open, where it landed, and whether it fits the viewport. */
 async function readNarrowQueue(page) {
   return page.evaluate(({ root, queueLabels, searchLabels }) => {
     const dialog = document.querySelector(root)
-    const artwork = dialog?.querySelector('section')
+    const sections = [...(dialog?.querySelectorAll('section') ?? [])]
+    const artwork = sections[0]
+    const lyrics = sections[1]
     const group = dialog?.querySelector(queueLabels.map((label) => `[aria-label="${label}"]`).join(', '))
     const box = group?.getBoundingClientRect()
+    const rows = group ? group.querySelectorAll('button').length : 0
     return {
       open: Boolean(group),
       inArtworkColumn: Boolean(group && artwork?.contains(group)),
       hasSearch: Boolean(dialog?.querySelector(searchLabels.map((label) => `input[aria-label="${label}"]`).join(', '))),
       insideViewport: box ? box.bottom <= window.innerHeight + 1 && box.top >= 0 : false,
+      rows,
+      lyricsScrolls: lyrics ? lyrics.scrollHeight > lyrics.clientHeight + 1 : false,
       bottom: box ? Math.round(box.bottom) : 0,
       viewport: window.innerHeight,
     }
@@ -5706,10 +5715,23 @@ async function assertMusicImmersiveQueue(page) {
     const rows = [...(group?.querySelectorAll('button') ?? [])]
       .map((button) => (button.textContent ?? '').trim())
       .filter((text) => text.includes('Probe Audio'))
+    // FB3-U9: the queue takes the room the artwork does not need, and the column itself may not
+    // start scrolling around it — a second scrollbar beside the queue's own is the shape this read
+    // exists to rule out. "A whole row" is a row whose box sits inside the queue's box, because a
+    // pane squeezed to its header would still hold rows below the fold.
+    const groupBox = group?.getBoundingClientRect()
+    const visibleRows = groupBox
+      ? [...group.querySelectorAll('button')].filter((row) => {
+        const box = row.getBoundingClientRect()
+        return box.height > 0 && box.top >= groupBox.top - 1 && box.bottom <= groupBox.bottom + 1
+      }).length
+      : 0
     return {
       host: group ? (artwork?.contains(group) ? 'artwork' : lyrics?.contains(group) ? 'lyrics' : 'other') : 'none',
       search: Boolean(dialog?.querySelector(searchSelector)),
       rows,
+      visibleRows,
+      artworkScrolls: artwork ? artwork.scrollHeight > artwork.clientHeight + 1 : false,
       headerHeight: header ? Math.round(header.getBoundingClientRect().height) : 0,
       pictureWidth: artwork?.firstElementChild ? Math.round(artwork.firstElementChild.getBoundingClientRect().width) : 0,
     }
@@ -5726,31 +5748,36 @@ async function assertMusicImmersiveQueue(page) {
     return true
   }, { root: MUSIC_IMMERSIVE_ROOT, labels: LABELS })
 
-  // The disclosure sweep this run already did presses every toggle this surface has, and the fold
-  // lives with the surface rather than with the press — so the read normalises before it measures
-  // instead of assuming a fresh mount.
-  let before = await read()
-  if (before.host !== 'none') {
+  // FB3-U2: the fold opens in the shape's own default, and on this window that default is out — the
+  // column the queue lives in had half of itself empty on every open, so asking for it first was a press
+  // spent on nothing. An earlier surface may have folded it (the fold lives with the surface), so this
+  // read normalises to open rather than assuming a fresh mount.
+  let opened = await read()
+  if (opened.host === 'none') {
     await press()
     await sleep(400)
-    before = await read()
+    opened = await read()
   }
-  check('music: the immersive queue starts folded, in neither column',
-    before.host === 'none' && !before.search, JSON.stringify(before))
-  const opened = await press()
-  await sleep(400)
-  const after = await read()
-  check('music: the immersive queue opens in the artwork column, with its search',
-    opened && after.host === 'artwork' && after.search && after.rows.length >= 1,
-    `opened=${opened} ${JSON.stringify(after)}`)
-  check('music: the immersive header keeps its height while the queue opens',
-    after.headerHeight > 0 && after.headerHeight === before.headerHeight,
-    `${before.headerHeight} -> ${after.headerHeight}`)
+  check('music: a wide window opens the immersive queue in the artwork column, with its search',
+    opened.host === 'artwork' && opened.search && opened.rows.length >= 1, JSON.stringify(opened))
+  check('music: the open queue shows a whole row and the column does not grow a second scrollbar',
+    opened.visibleRows >= 1 && opened.artworkScrolls === false, JSON.stringify(opened))
   // The queue takes the room the artwork does not need: a pane squeezed to its own header is a
   // control that opens nothing, which is what the strip this replaces left in its place.
+  const tucked = await press()
+  await sleep(400)
+  const folded = await read()
+  check('music: the immersive queue folds away from its own header',
+    tucked && folded.host === 'none' && !folded.search, `pressed=${tucked} ${JSON.stringify(folded)}`)
+  check('music: the immersive header keeps its height while the queue moves',
+    folded.headerHeight > 0 && folded.headerHeight === opened.headerHeight,
+    `${opened.headerHeight} -> ${folded.headerHeight}`)
   check('music: the artwork gives the queue its room while it is open',
-    after.pictureWidth > 0 && after.pictureWidth < before.pictureWidth,
-    `${before.pictureWidth} -> ${after.pictureWidth}`)
+    opened.pictureWidth > 0 && opened.pictureWidth < folded.pictureWidth,
+    `${folded.pictureWidth} -> ${opened.pictureWidth}`)
+  await press()
+  await sleep(400)
+  const after = await read()
   // A search that is merely drawn is not a search: the query has to narrow the rows.
   const typed = await page.evaluate(({ root, searchSelector }) => {
     const dialog = document.querySelector(root)
@@ -5768,9 +5795,9 @@ async function assertMusicImmersiveQueue(page) {
     `typed=${typed} rows=${after.rows.length} -> ${filtered.rows.length}`)
   await press()
   await sleep(300)
-  const folded = await read()
-  check('music: the immersive queue folds away again from its own header',
-    folded.host === 'none' && folded.pictureWidth === before.pictureWidth, JSON.stringify(folded))
+  const refolded = await read()
+  check('music: the queue folds away again after its search was used',
+    refolded.host === 'none' && refolded.pictureWidth === folded.pictureWidth, JSON.stringify(refolded))
 }
 
 /**

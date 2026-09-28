@@ -9,9 +9,18 @@ import { MusicQueueList } from './music-queue-list'
 // FB2-U1: the queue's fold is one state for the whole surface, because two shapes host the queue —
 // the artwork column on a wide window and the strip under the lyrics when the columns stack. It
 // lives beside the components that spend it rather than in the player that threads it through.
-export function useQueueFold(): { queueOpen: boolean; onToggleQueue: () => void } {
-  const [queueOpen, setQueueOpen] = useState(false)
-  return { queueOpen, onToggleQueue: () => setQueueOpen((value) => !value) }
+//
+// FB3-U2: the fold opens in the shape's own default rather than in "folded": on a wide window the
+// queue's column is already there and its lower half was empty on every open, while the stacked strip
+// costs the lyrics ~160px of a phone screen. The default is not a state of its own — until the reader
+// presses the toggle, the fold follows the shape (`null` means "nobody has chosen yet"), and after
+// that their answer stands whatever the window does.
+export function useQueueFold(stacked: boolean): { queueOpen: boolean; onToggleQueue: () => void } {
+  const [chosen, setChosen] = useState<boolean | null>(null)
+  return {
+    queueOpen: chosen ?? !stacked,
+    onToggleQueue: () => setChosen((value) => !(value ?? !stacked)),
+  }
 }
 
 // FB2-U1: the queue the hub and the floating player both answer with a search box now lives in this

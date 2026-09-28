@@ -94,13 +94,55 @@ function typeInto(input: HTMLInputElement, value: string): void {
   })
 }
 
+// FB3-U2: which shape opens with the queue already out. A wide window has a column whose lower half
+// was empty on every open, and folding it first meant the reader had to ask for a panel the surface had
+// room for; the stacked shape's queue is a strip that costs the lyrics ~160px, so it stays folded until
+// it is asked for. The asymmetry is the point, and it is the default only: once the reader presses the
+// toggle their answer wins, whatever the window does afterwards.
+function queueEntryRow(): HTMLButtonElement | undefined {
+  return [...document.querySelectorAll('button')].find(
+    (button) => button.getAttribute('aria-label') === t('music.queue_toggle')
+      && button.getAttribute('aria-expanded') === 'false',
+  ) as HTMLButtonElement | undefined
+}
+
+describe('MusicImmersivePlayer queue fold default (FB3-U2)', () => {
+  it('opens with the searchable queue already in the artwork column on a wide window', async () => {
+    stubViewportWidth(1280)
+    seedQueue(['Song One', 'Song Two'])
+    await mountPlayer()
+    const [artwork, lyrics] = dialogSections()
+    expect(artwork.querySelector(`[aria-label="${t('music.queue')}"]`)).not.toBeNull()
+    expect(lyrics.querySelector(`[aria-label="${t('music.queue')}"]`)).toBeNull()
+    expect(queueSearch()).not.toBeNull()
+    expect(queueToggleButton()?.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('still starts folded where the columns stack, with the strip row as the way in', async () => {
+    stubViewportWidth(MUSIC_NARROW_BREAKPOINT - 1)
+    seedQueue(['Song One', 'Song Two'])
+    await mountPlayer()
+    expect(queueGroup()).toBeNull()
+    expect(queueEntryRow()).toBeDefined()
+  })
+
+  it('keeps the fold the reader chose when the surface re-renders', async () => {
+    stubViewportWidth(1280)
+    seedQueue(['Song One', 'Song Two'])
+    await mountPlayer()
+    await act(async () => { queueToggleButton()?.click() })
+    expect(queueGroup()).toBeNull()
+    await act(async () => { useMusic.setState({ durationMs: 12_345 }) })
+    expect(queueGroup()).toBeNull()
+    expect(queueToggleButton()?.getAttribute('aria-expanded')).toBe('false')
+  })
+})
+
 describe('MusicImmersivePlayer queue placement (FB2-U1)', () => {
   it('puts the searchable queue in the artwork column on a wide window', async () => {
     stubViewportWidth(1280)
     seedQueue(['Song One', 'Song Two'])
     await mountPlayer()
-    expect(queueGroup()).toBeNull()
-    await act(async () => { queueToggleButton()?.click() })
     const [artwork, lyrics] = dialogSections()
     expect(artwork.querySelector(`[aria-label="${t('music.queue')}"]`)).not.toBeNull()
     expect(lyrics.querySelector(`[aria-label="${t('music.queue')}"]`)).toBeNull()
@@ -112,7 +154,6 @@ describe('MusicImmersivePlayer queue placement (FB2-U1)', () => {
     stubViewportWidth(1280)
     seedQueue(['Song One', 'Song Two'])
     await mountPlayer()
-    await act(async () => { queueToggleButton()?.click() })
     expect(queueRowTitles()).toEqual(['Song One', 'Song Two'])
     await act(async () => { typeInto(queueSearch()!, 'two') })
     expect(queueRowTitles()).toEqual(['Song Two'])
@@ -122,7 +163,7 @@ describe('MusicImmersivePlayer queue placement (FB2-U1)', () => {
     stubViewportWidth(MUSIC_NARROW_BREAKPOINT - 1)
     seedQueue(['Song One', 'Song Two'])
     await mountPlayer()
-    await act(async () => { queueToggleButton()?.click() })
+    await act(async () => { queueEntryRow()?.click() })
     const [artwork, lyrics] = dialogSections()
     expect(artwork.querySelector(`[aria-label="${t('music.queue')}"]`)).toBeNull()
     expect(lyrics.querySelector(`[aria-label="${t('music.queue')}"]`)).not.toBeNull()

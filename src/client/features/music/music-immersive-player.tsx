@@ -96,7 +96,7 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
   useTrackLyric(track)
   const { lyrics, lyricOffsetMs, activeIndex, pending } = useImmersiveLyrics(track)
   const scrollerRef = useRef<HTMLDivElement>(null)
-  const { queueOpen, onToggleQueue } = useQueueFold()
+  const { queueOpen, onToggleQueue } = useQueueFold(stacked)
   const { containerRef, maximized, toggleMaximized, paneWidth } = useImmersiveWindow()
 
   useLyricScroll(open, activeIndex, scrollerRef)
