@@ -305,7 +305,7 @@ wide={"viewport":1440,"centre":960,"headers":[…同上…],"cells":10}
 - **整轮视觉门禁仍有两处与本模块无关的失败**：看板块高度（`kanban in the note: the block is no taller than the header and board it draws`）与分享中心（`share: the shared view opens the share center`）。它们在本模块各轮里一贯红/绿无关，按铁律 14 未顺手修；数字已写进 §I。
 - 本轮的一次性探针（在线结果面板、密度读数）**已删除**，不留在仓库里当第二套夹具：它们的读数已转成门禁断言（或本节的数字）。
 - M3 与 M1b 落进了同一个提交（`958f5cdc`）、M13 之前的几项（M18 系列）各自单提：不重写已提交历史，登记在计划文档的「入库方式」里。M19/M20 的白名单按 hunk 分批，快照单独验证过。
-- 逐项 `npm run test:unit` 全量在 M13 的 pre-commit 钩子里跑过一次（**359 文件 / 3 192 例 ✅**）；M19/M20 跑的是受影响的 321 文件 / 3 126 例与整轮浏览器门禁，未再重跑全量。
+- 收尾跑过一次全量单测（**555 文件 / 5 051 例 + 1 skipped ✅**，2026-09-29）：它报出 M18b 留下的一处死代码（四个已无人引用的建议分组键，`c51e83f4` 删掉并重建白名单与 size 基线）——这正是全量跑得值的证据。逐项过程里跑的是受影响集合（音乐 + lib 321 文件 / 3 126 例）加上整轮浏览器门禁。
 
 - 沙箱内上游不可达：在线检索与导入的一切断言基于**请求拦截桩**与契约测试；「真的能播出声音」没有自动断言（与前两轮同）。
 - 参考项目**只读其源码与 README，未运行**：它的能力以材料为准，「车载蓝牙歌词」「分P/合集」这类平台相关能力我没有实测。
@@ -328,6 +328,9 @@ wide={"viewport":1440,"centre":960,"headers":[…同上…],"cells":10}
 收尾整轮（全新实例 :7728，INKSTONE_EPHEMERAL_DEV=1）
 scripts/e2e.mjs        ：177 通过 / 0 失败
 scripts/e2e-visual.mjs：615 通过 / 2 失败（看板块高度、分享中心；音乐场景零失败）
+src 静态门禁：13 项全绿（style / size / comments / escape / empty-catch / hardcoded / tokens / i18n / module-state / deep-imports / surfaces / vendor / budget）
+npm run typecheck：绿    npm run test:unit：555 文件 / 5 051 例 + 1 skipped ✅
+npm run contrast:check -- http://127.0.0.1:7728：绿（两主题、桌面 + 手机）
 密度实测（一次探针，读法与门禁相同）：
   修前 hub 1060 / 中心列 538 / 表宽 572 / cells 10（行比盒子宽 34px）
   修后 hub 1060 / 中心列 538 / 表宽 538 / cells 7（行内写出歌手 · 专辑与来源）
