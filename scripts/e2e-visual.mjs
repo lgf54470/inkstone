@@ -1505,7 +1505,13 @@ const TOOLBAR_SURFACES = [
   // viewport, so the third toggle (fill the screen) changes nothing and is pressed along with the
   // rest. The person's path in is the status bar's music control, and Escape has to hand the
   // keyboard back to the music controls (see the `data-music-opener` marker).
-  { name: 'music hub', viewport: MUSIC_HUB_SWEEP_VIEWPORT, open: openMusicHubForSweep, root: MUSIC_HUB_ROOT, toolbar: '[data-hub-header]', minToggles: 2, skipToggles: [...LABELS.musicMaximizeHub, ...LABELS.musicRestoreHub], successorAttributes: ['data-music-opener'], loaded: { selector: '[role="row"], div.grid-cols-2 button', min: 1 } },
+  // FB3-C10: the one entry here whose content comes from the server. Every other surface draws what
+  // the page already holds, so `loaded` was read the instant its panel settled and always answered;
+  // the library has to be fetched, and on a clean instance the sweep read an empty hub (`count: 0`)
+  // while the same check passed on a long-lived server that still had an earlier run's tracks. The
+  // fixture is declared here the way the contrast gate's music surface declares its own, so this
+  // entry answers for the hub rather than for whatever the instance happened to be holding.
+  { name: 'music hub', viewport: MUSIC_HUB_SWEEP_VIEWPORT, open: openMusicHubForSweep, root: MUSIC_HUB_ROOT, toolbar: '[data-hub-header]', minToggles: 2, skipToggles: [...LABELS.musicMaximizeHub, ...LABELS.musicRestoreHub], successorAttributes: ['data-music-opener'], fixture: seedMusicProbeTracks, loaded: { selector: '[role="row"], div.grid-cols-2 button', min: 1 } },
   // FB-C3: the immersive player, opened the way the floating card offers it. Its lyrics header is
   // the toolbar: the queue it folds out is drawn below that row, and the row may not notice. The
   // header's other control resizes the surface itself — the dialog grows to the viewport and the
@@ -4249,6 +4255,28 @@ async function assertKanbanBoard(page) {
   check('kanban board: closing hands the one instance back to the block', returned.inOverlay === 0 && returned.inBlock === 1 && returned.cards >= 2, JSON.stringify(returned))
 }
 
+/**
+ * What a swept surface opened with, read once its own content is actually there. The wait is bounded by
+ * a deadline rather than by hoping the read is late enough — and it is not a weaker assertion: the
+ * check below still fails on a surface that reports empty, so this only stops a fetch that is still in
+ * flight from being read as a surface that opened with nothing (FB3-C10).
+ */
+async function readSweepContent(page, surface) {
+  const read = () => page.evaluate(({ root, selector, decoded }) => {
+    const scope = document.querySelector(root)
+    const found = scope ? [...scope.querySelectorAll(selector)] : []
+    const settled = decoded ? found.filter((element) => element.complete && element.naturalWidth > 0) : found
+    return { count: found.length, settled: settled.length, selector }
+  }, { root: surface.root, selector: surface.loaded.selector, decoded: Boolean(surface.loaded.decoded) })
+  const deadline = Date.now() + 15_000
+  let loaded = await read()
+  while (loaded.count < surface.loaded.min && Date.now() < deadline) {
+    await sleep(250)
+    loaded = await read()
+  }
+  return loaded
+}
+
 async function assertFullscreenToolbars(page) {
   // The hotkeys below are the app's own, and half of them are refused while a text field has the
   // keyboard: each surface starts from no focus at all rather than from wherever the last scenario
@@ -4261,16 +4289,18 @@ async function assertFullscreenToolbars(page) {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     })
     await sleep(300)
+    // A surface whose content is fetched declares the fixture its read needs, and says here whether it
+    // took: without this the entry below answers about whatever the instance happened to hold (FB3-C10).
+    if (surface.fixture) {
+      const fixture = await surface.fixture({ page })
+      check(`toolbar stability: the ${surface.name} arranged the content its read needs`,
+        fixture.found.length >= surface.loaded.min, JSON.stringify(fixture.found))
+    }
     await surface.open(page)
     await page.waitForSelector(surface.root, { timeout: 15_000 })
     await waitForPanelSettled(page, surface.root)
     await sleep(400)
-    const loaded = await page.evaluate(({ root, selector, decoded }) => {
-      const scope = document.querySelector(root)
-      const found = scope ? [...scope.querySelectorAll(selector)] : []
-      const settled = decoded ? found.filter((element) => element.complete && element.naturalWidth > 0) : found
-      return { count: found.length, settled: settled.length, selector }
-    }, { root: surface.root, selector: surface.loaded.selector, decoded: Boolean(surface.loaded.decoded) })
+    const loaded = await readSweepContent(page, surface)
     check(`toolbar stability: the ${surface.name} opened with its content, not an error state`, loaded.count >= surface.loaded.min && loaded.settled >= surface.loaded.min, JSON.stringify(loaded))
     const result = await sweepToolbar(page, surface)
     check(`toolbar stability: the ${surface.name} toolbar holds its height`, result.growth === 0, JSON.stringify(result))
