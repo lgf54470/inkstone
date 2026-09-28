@@ -31,7 +31,7 @@
 - [x] M9 FB2-U7 + FB2-U8 搜索建议浮层的两处不可用：外按被吞、Escape 被模态抢走 —— **commit `76e5d799`**
 - [x] M10 FB2-U6 窄版沉浸层复核（375px 上队列仍是歌词下方的条带、无搜索框、不落在封面列、且留在视口内；FB2-U5 判断记入 review，本轮不做）—— **commit `27c808b9`**
 - [x] M11 FB2-C3 曲库面 axe 前提：时长徽章改为不透明的令牌底衬（不再靠实例里“恰好没有封面”才绿）—— **commit `1ef010ad`**
-- [x] M12 收尾：报告定稿（逐项状态 + 已知限制 + 不做清单）+ 计划回填全部哈希 —— **commit `待回填`**
+- [x] M12 收尾：报告定稿（逐项状态 + 已知限制 + 不做清单）+ 计划回填全部哈希 —— **commit `010d6025`**
 
 ## FB2-C3 的取证（M11 实测）
 
@@ -64,7 +64,7 @@
 | M9 | `76e5d799` | 建议浮层不再吞按压、不再抢走整个音乐库的 Escape |
 | M10 | `27c808b9` | 375px 沉浸层队列复核 |
 | M11 | `1ef010ad` | 时长徽章自带不透明底衬 |
-| M12 | 本次 | 报告定稿与台账 |
+| M12 | `010d6025` | 报告定稿与台账 |
 
 ## 每项验收标准（通用）
 
@@ -79,6 +79,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-28 | M12 报告定稿与台账（含 M12 自身哈希回填） | `010d6025` + 本次 | 收尾全量：`npm run test:unit` **552 文件 / 4965 passed + 1 skipped**，失败均在并行负载下出现且**单独跑逐文件全绿**（实测把 5 个文件单独跑：138 例 ✅；名单位于 review 的已知限制）。`typecheck` ✅；13 项静态门禁 ✅；`e2e-visual` **612 通过 / 1 失败**（已登记看板高度遗留）；`contrast:check` 对 `:7714` 与 `:7712` 均 exit 0 | 本轮所有条目已交付；仅 FB2-U5（侧栏中段）与 M13（备份收集器复用）明记为不做，理由在 review 的不做清单 |
 | 2026-09-28 | M11 FB2-C3 时长徽章换为不透明令牌底衬 | `待回填` | 先红（单测）：`music-track-card.test.ts` 新增一例（徽章类名含 `bg-[var(--bg-overlay)]` 且不含 `bg-[var(--scrim)]`）——把 `music-track-card.tsx` 回退到 HEAD 跑得 **1 failed / 3 passed**，实现后 4 例 ✅。实测（同一个门禁、同一实例）：`:7714`（无封面夹具）曲库网格 25 checks / 0 violations / 0 unreviewed；`:7712`（带封面行，修前同一门禁在该实例报 4 个音乐表面红）改为 **28 checks / 0 violations / 0 unreviewed**——即徽章被真正量到并达标，而不是被放行；两侧对比度门禁均 exit 0 | 只改了网格卡上的那一枚徽章（`music-track-card.tsx:39`）；行内视图与队列里的时长文本不在画面上，不属这一条。悬停遮罩（同一 `--scrim`）保持不动：它 `opacity-0` 时不参与可访问性树，且它没有文字需要量 |
 | 2026-09-28 | M10 FB2-U6 窄版沉浸层队列复核 | `待回填` | `scripts/e2e-visual.mjs` 的 375px 沉浸层块新增两条实测：`at 375px the queue opens as the strip under the lyrics, with no search box`（读队列组的归属、`inArtworkColumn`、以及宽版面板才有的搜索框存在与否）与 `at 375px the queue strip stays inside the viewport`。回归：`scripts/e2e-visual.mjs` 对 :7714 **612 通过 / 1 失败**（唯一失败仍是已登记的看板高度遗留）；13 项静态门禁 ✅；`size:check` ✅ | 门禁首跑实测到一件事实：队列折叠状态**随表面存活**，所以在这一幕里它可能已由先前的（宽版）场景打开，那段没有「入口行」可按 —— 读法因此先归一化（已开则先用它自己的收起控件折回去）再量，与 M4 阅读器的做法一致。另：同一次运行里 `export: the printed deck draws its charts live` 偶发红（rAF 绘制竞态，重跑全绿），与音乐无关 |
 | 2026-09-28 | M9 FB2-U7 + FB2-U8 搜索建议浮层不再吞掉面板上的按压，也不再抢走整个音乐库的 Escape | `待回填` | 先红（单测）：`music-search-box.test.ts` 新增 3 例（浮层框架让出指针而只留住行与其唯一动作 / Escape 关掉浮层且不动输入 / 浮层身后的表面也监听 Escape 时只关浮层），对 HEAD 跑得 **3 failed / 11 passed**。实现（`music-search-box.tsx`）：浮层框架 `pointer-events-none`（选项与「清除历史」`pointer-events-auto`）、`useEscape(show, close)` 入栈。回归：两文件+音乐全量 **14 例 ✅**（搜索框）与 **1053 例 ✅**（music）；`npm run test:unit` **552 文件 / 4960 passed + 1 skipped**（5 例在并行负载下红，重跑全绿，均为已登记 flaky：share-collections、starter-deck、calendar 差分模糊、hub-modal 搜索截断）；`npm run typecheck` ✅；13 项静态门禁 ✅；`scripts/e2e-visual.mjs` 对 :7714 **611 通过 / 1 失败**（唯一失败仍是已登记的看板高度遗留）；`npm run contrast:check` 对 :7714 全绿 | 浮层框架让出指针意味着**框架区域的按压会直接落到下面的控件**并同时关掉浮层（这正是读者期望的）；只有行本身与该动作留在浮层内。门禁里那条 `[role="listbox"]` 的全局读取也修了：页面本来就常驻别的 listbox（笔记列表、命令面板），改成按名字（`aria-label=搜索建议`）读，否则断言的会是「恰好在那儿的那一个」 |
