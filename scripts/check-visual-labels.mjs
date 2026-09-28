@@ -77,6 +77,14 @@ for (const file of GATE_FILES) {
   const source = fs.readFileSync(path.join(ROOT, file), 'utf8')
   for (const list of labelLists(source)) {
     const body = withoutNotes(list.body)
+    // A name written twice is the later one that counts, which is how `musicOpenSettings` sat in the list
+    // twice with the same value: a reader looking the label up has two places to keep in step, and the
+    // first one is read by nobody. The list is a table, so a repeated name is a mistake in it.
+    const names = [...body.matchAll(/^ {2}(\w+):/gm)].map(([, name]) => name)
+    for (const name of new Set(names)) {
+      if (names.filter((written) => written === name).length > 1)
+        problems.push(`${file} ${list.name}: ${name} is written twice, and the later one is the one that counts`)
+    }
     // An entry that names its key is checked as a key, not as text: its arguments are its own call.
     const copied = body.replace(/\b(localeLabel|localePrefix)\([^)]*\)/g, '')
     for (const [, text] of copied.matchAll(/'([^']*)'/g)) {

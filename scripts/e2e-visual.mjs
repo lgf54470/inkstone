@@ -173,7 +173,6 @@ const LABELS = {
   // answer, so they are read as one group.
   musicProviderScope: localeLabel('music.provider_scope'),
   musicProviderScopeAll: localeLabel('music.provider_scope_all'),
-  musicOpenSettings: localeLabel('music.open_settings'),
   musicRiskAccept: localeLabel('music.settings_risk_accept'),
   musicProviderPreview: localeLabel('music.provider_preview'),
   musicProviderAdd: localeLabel('blog.add_tag', 'common.add', 'music.import_url_add', 'music.provider_add', 'music.server_add_one'),

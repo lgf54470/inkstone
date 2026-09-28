@@ -733,6 +733,9 @@ const allowed = new Map([
     '// The lists carry notes about what each read is for, and an English possessive reads to a quote scan as',
     '// the start of a string ("the list\'s own box" opened one that ran into the next apostrophe). The notes',
     '// are dropped before the strings are read; nothing else in a label list is a `//` comment.',
+    '// A name written twice is the later one that counts, which is how `musicOpenSettings` sat in the list',
+    '// twice with the same value: a reader looking the label up has two places to keep in step, and the',
+    '// first one is read by nobody. The list is a table, so a repeated name is a mistake in it.',
     '// An entry that names its key is checked as a key, not as text: its arguments are its own call.',
   ]],
   ['scripts/ci-bench-report.mjs', [
