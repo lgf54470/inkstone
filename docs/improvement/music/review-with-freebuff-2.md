@@ -97,8 +97,10 @@
 | 编号 | 优先级 | 问题 | 修改方案 | 涉及范围 | 代价 | 修改建议 |
 | --- | --- | --- | --- | --- | --- | --- |
 | FB2-F4 | P2 | 自动换源的行必然无封面无歌词：`providers.ts:252` 的 `importCandidate` 不带 `coverId`/`lyricId` | 与 FB2-F1 同批：候选也带上两个 id，由 worker 侧解析 | `music-store/providers.ts` | S | 与 F1 同一个请求形状，分开改两次等于把同一处返工两遍 |
-| FB2-U3 | P2 | 在线行没有「正在试听这一行 / 添加中 / 已在库中」三态；添加按钮可连点且无反馈（幂等所以不会重复，但读者看不出发生了什么） | 三态：当前播放登记的正是该 hit 时行内显示播放态；添加中按钮 `loading` + 禁用；库中已有同 `providerSource`+`providerSongId` 的行显示「已在库中」（复用幂等三元组判定） | `music-provider-results.tsx`、`music-store/providers.ts`、locales | M | 「已在库中」把幂等这个事实**说给读者听**，是这一屏最便宜的可信度提升 |
-| FB2-U4 | P2 | 结果面板 `max-h-56` 内滚动叠加外层曲库列表滚动；8 条命中只看得到 4 条 | 面板高度自适应（`min(45vh, …)`）+ 超过一屏给「展开/收起」，至少消除内滚动套外滚动 | `music-provider-results.tsx` | S–M | 嵌套滚动是触屏上的陷阱：在手机上一滑就滑错层 |
+| FB2-U3 | P2 | 在线行没有「正在试听这一行 / 添加中 / 已在库中」三态；添加按钮可连点且无反馈（幂等所以不会重复，但读者看不出发生了什么） | **已实施（M8）**：`useRowBusy()` 按 `providerHitKey` 记账，单按与批量**共用同一套 busy**（批量开始即 mark 全部勾选行、结束时 release，所以批量写的行自己也带 `aria-busy`）；试听中的行按钮换 `Spinner` 且禁用（不给第二次按压）；`libraryProviderKeys()` 把「库中已有同 `providerSource`+`providerSongId` 的行」变成一次集合查表，命中的行**整个换成**禁用的「已在库中」（而不是给「添加」再补一句提示——一个禁用的按钮比一个会静默 no-op 的按钮诚实） | `music-provider-results.tsx`、locales | M | 「已在库中」把幂等这个事实**说给读者听**，是这一屏最便宜的可信度提升 |
+| FB2-U4 | P2 | 结果面板 `max-h-56` 内滚动叠加外层曲库列表滚动；8 条命中只看得到 4 条 | **已实施（M8），方案比首稿更小**：首稿的「`min(45vh)` + 展开/收起」是多加两级机制；实测一行是 `min-h-11`（2.75rem）+ `0.125rem` 间隙，所以**八行 = 366px**，把上限换成 `max-h-96`（384px）即可让一整页命中不再套内滚动条。外层滚动其实是 Hub 自己的 body（`music-hub-modal.tsx:118` 的 `overflow-y-auto`，为 `MUSIC_CONTENT_MIN_HEIGHT` 而设），所以面板仍保留自己的上限而不是无限长：把曲库自己的行挤出屏幕比多一条滚动条更糟。几何由门禁按行数与 `scrollHeight ≤ clientHeight + 1` 两重实读，不是按类名 | `music-provider-results.tsx`、`scripts/lib/music-provider-stub.mjs`（可换答案）、`scripts/e2e-visual.mjs` | S | 嵌套滚动是触屏上的陷阱：在手机上一滑就滑错层 |
+| FB2-U7 | P1 | **（M8 门禁实测发现）**搜索建议浮层压在在线面板之上：`SearchPopup` 是 `absolute top-full`（`music-search-box.tsx:305`），落在面板自己的开关、标题与选中条之上。瞄准这些控件的真实按压会被浮层接住并落到某条建议上，**悄悄改掉查询**——实测 `elementFromPoint` 命中的是 `DIV.absolute top-full…`（文本「搜索建议」）。批量添加因此从来没能被真实按压触发过（上一轮的绿是行内「添加」误撞补上的） | 浮层在**外部 `pointerdown`（捕获）**时关闭：关掉后该次按压仍落到读者瞄准的控件；顺便补上浮层一直没有的「点外面收起」 | `music-search-box.tsx` | S | 这是「浮动控件完整可用」的一部分：浮层必须是能被让开的，否则它下面是不可用区域 |
+| FB2-U8 | P1 | **（M8 门禁实测发现）**搜索框注释写着「Escape closes」，但在 Hub 里 Escape 关掉的是**整个音乐库**：`useEscape`（`overlay/hooks.ts:18`）在 window **捕获阶段**跑 `escStack` 栈顶并 `stopPropagation`，而浮层从未入栈（`ownsEscape` 只认导图画布与 `[data-owns-escape]`），所以栈顶是模态自己；输入框的 React handler 在冒泡阶段，永远收不到。即浮层在 Hub 里**没有任何办法只关它自己** | 浮层用 `useEscape(show, close)` 入栈（它比模态后注册，所以是栈顶），Escape 先关浮层、再按一次才关库 | `music-search-box.tsx`、可能需从 `components/overlay` 公开入口导出 `useEscape` | S | 同一按键在两个层级上做两件事是标准的「一次一层」约定，这里缺的是下层没登记 |
 | FB2-C2 | P2 | 与 P0-1 同类的隐患没有任何守卫 | 契约测试：客户端请求体形状的上限必须 ≤ worker 的 body 档位（由类型/常量推导，不硬编码数字），任一侧单独改动立刻变红 | `tests/`、`worker/lib/request.ts` 注释 | S | 把「两个数字必须一起改」变成编译器之外的自动门禁 |
 | FB2-U5 | P3 | Hub 侧栏中段大片空白（歌单之后直接跳到页脚统计） | 加「置顶 / 最近播放（5）」短段，或把这些短列表上移 | `music-hub-sidebar.tsx` | S | **可选项**：若判断该留白是留给后续分区的，就写明理由不做，不要为了填满而塞无意义内容 |
 | FB2-U6 | P3 | 堆叠（窄）版左列被压成一行横排、控件拥挤；本轮改左列队列后需复核窄版 | 复核 375/390：底部条带保留、左列不出现队列、传输条不溢出 | `music-immersive-player.tsx` | S | 与 FB2-U1 同批复核，避免宽版改好窄版变坏 |
@@ -156,6 +158,18 @@
 - **失败资源按 URL 放行**：门禁的页面错误过滤器从「按消息」升级为「`{text, url}` 双条件」，那条 5xx 只有在目标是 `/api/music/tracks/*/stream` 时才放行，别的失败加载遮不住。
 
 **反证（这条门禁不是空转）**：把 `provider.ts` 的 import body 上限临时改成 128 字节后重跑探针——import 变 413、行不落库、stream 请求为 0，即「试听登记」「批量落库」「不因体积被拒」三条会同时红；随后已回滚。
+
+### M8 实施记录（FB2-U3 + FB2-U4，以及由它读出来的 FB2-U7 / FB2-U8）
+
+单测先红：`music-provider-results.test.ts` 新增 5 例（添加中带 `aria-busy` 且落地即清 + 只标被按的那一行 / 试听中同样带 `aria-busy` 且禁用 / 已在库中不再给「添加」而给禁用的「已在库中」/ 批量运行时勾选行各自带 `aria-busy` 且两首都落地），对 HEAD 跑得 **5 failed / 22 passed**。
+
+浏览器门禁本轮新增 6 条：一条整页命中不出现内滚动条（几何实读：行数 + `scrollHeight ≤ clientHeight + 1`）、一条「库中已有」的行说的是事实而不是再给一次导入、一条「同一行不会被添加两次」（勾选里包含已登记的那行，批量后库内该命中仍然只有一行——这才是幂等断言真正可达的路径）、一条建议浮层确实压在面板之上（新发现的**事实**，也是 M9 要修的）、一条「勾选了才画出批量控件」与一条批量控件真的能按下。
+
+三条实施中的实测修正：
+
+- **门禁自身的坑**：`cssByLabels('section', …)` 返回的是**逗号分隔的两个选择器**，拼成 `` `${selector} li` `` 会连整个 `section` 一起命中（`a, b li` 的优先级），于是「那一行」实际读到的是两行合起来的文本（既看到「已在库中」又看到「添加」）。行级读取必须先在 Node 侧取到 section 元素，再 `panel.querySelectorAll('li')`。M4 也踩过同源的一次。
+- **上一轮的绿是假的**：批量添加断言此前被行内「添加」的副产物愚弄（那两个标题是被行内按钮撞进去的），而真实的批量按压一直被建议浮层吞掉——即 FB2-U7 在 M7 就已经存在，只是当时的断言看不出来。这一轮先把那条断言改成只读事实（「库中已有同源行」），再在 M9 里把按压换回真实指针。
+- **Escape 在 Hub 里不能只关浮层**（FB2-U8）：本想「像读者那样按 Escape 收起建议」，实测那把整个音乐库关了（浮层从未入 `escStack`，模态在捕获阶段抢先）。这一条写进 M9。
 
 ---
 

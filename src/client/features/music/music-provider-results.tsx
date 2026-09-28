@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
-import { Music, Play, Plus } from 'lucide-react'
-import { Button, IconButton } from '../../components/primitives'
+import { useEffect, useMemo, useState } from 'react'
+import { Check, Music, Play, Plus } from 'lucide-react'
+import { Button, IconButton, Spinner } from '../../components/primitives'
 import { Checkbox, Switch } from '../../components/form'
 import { t, type MessageKey } from '../../lib/i18n'
 import { formatTimecode } from '../../lib/time'
+import type { MusicTrack } from '@shared/types'
 import { useMusic } from './music-store'
 import { GDS_SOURCES, providerSourceLabel } from './providers'
 import { musicProviderCoverUrl, type MusicProviderTrack } from '../../lib/api'
@@ -44,6 +45,17 @@ export function providerHitKey(hit: MusicProviderTrack): string {
   return `${hit.source}:${hit.sourceId}`
 }
 
+// FB2-U3: a library row remembers the catalogue it came from and the song it answers to there, so
+// "this hit is already in the library" is a lookup rather than a request. The key is deliberately the
+// same shape `providerHitKey` builds — that is what makes a foreign hit and an owned row comparable.
+export function libraryProviderKeys(tracks: readonly MusicTrack[]): ReadonlySet<string> {
+  const keys = new Set<string>()
+  for (const track of tracks) {
+    if (track.providerSource && track.providerSongId) keys.add(`${track.providerSource}:${track.providerSongId}`)
+  }
+  return keys
+}
+
 // FEA-A1-3: the online half of a library search. It trails the local results
 // while a query is showing, behind the per-provider opt-in from A1-1 — the
 // section exists visually only once the query is non-empty.
@@ -55,10 +67,13 @@ export function MusicProviderResults() {
   const keywords = useMusic((state) => state.providerKeywords)
   const failedSources = useMusic((state) => state.providerFailedSources)
   const searchProviders = useMusic((state) => state.searchProviders)
-  const playProviderTrack = useMusic((state) => state.playProviderTrack)
-  const addProviderTrack = useMusic((state) => state.addProviderTrack)
   const setProviderEnabled = useMusic((state) => state.setProviderEnabled)
-  const selection = useProviderSelection(results)
+  // FB2-U3: whether the library already holds a hit is a fact about the reader's own rows, so it is
+  // read from them — and a hit is the same song as a row when the catalogue and the song id agree.
+  const libraryTracks = useMusic((state) => state.tracks)
+  const held = useMemo(() => libraryProviderKeys(libraryTracks), [libraryTracks])
+  const busy = useRowBusy()
+  const selection = useProviderSelection(results, busy)
 
   // FB-F2: `enabled` is a dependency of its own. Turning the switch on is a reason to
   // ask, not just a change of who is allowed to ask — without it the reader had to
@@ -83,9 +98,9 @@ export function MusicProviderResults() {
         failedSources={failedSources}
         selected={selection.selected}
         adding={selection.adding}
+        busy={busy}
+        held={held}
         onRetry={() => void searchProviders(query)}
-        onPreview={(hit) => void playProviderTrack(hit)}
-        onAdd={(hit) => void addProviderTrack(hit)}
         onToggle={selection.toggle}
         onAddSelected={selection.addSelected}
         onClearSelection={selection.clear}
@@ -100,17 +115,63 @@ interface ProviderPanelBodyProps {
   failedSources: string[]
   selected: readonly string[]
   adding: boolean
+  busy: RowBusy
+  held: ReadonlySet<string>
   onRetry: () => void
-  onPreview: (hit: MusicProviderTrack) => void
-  onAdd: (hit: MusicProviderTrack) => void
   onToggle: (hit: MusicProviderTrack, next: boolean) => void
   onAddSelected: () => void
   onClearSelection: () => void
 }
 
+// FB2-U3: what the rows report while they wait. `mark`/`release` take keys so the batch can borrow the
+// same state the single presses use — a row being written by the batch is the same wait, seen from the
+// row, and the reader who ticked it should not have to look at the bar to find that out.
+interface RowBusy {
+  adding: readonly string[]
+  previewing: string | null
+  preview: (hit: MusicProviderTrack) => void
+  add: (hit: MusicProviderTrack) => void
+  mark: (keys: readonly string[]) => void
+  release: (keys: readonly string[]) => void
+}
+
+// Both presses are imports, and an import takes a round trip; the row states it for as long as it
+// lasts. Keys are dropped by identity, so a second press never clears the first row's state, and the
+// audition keeps its own slot because taking the player over is a different wait from copying a row.
+function useRowBusy(): RowBusy {
+  const playProviderTrack = useMusic((state) => state.playProviderTrack)
+  const addProviderTrack = useMusic((state) => state.addProviderTrack)
+  const [adding, setAdding] = useState<readonly string[]>([])
+  const [previewing, setPreviewing] = useState<string | null>(null)
+
+  const mark = (keys: readonly string[]): void => {
+    setAdding((current) => [...current, ...keys.filter((key) => !current.includes(key))])
+  }
+  const release = (keys: readonly string[]): void => {
+    setAdding((current) => current.filter((entry) => !keys.includes(entry)))
+  }
+
+  return {
+    adding,
+    previewing,
+    mark,
+    release,
+    preview: (hit) => {
+      const key = providerHitKey(hit)
+      setPreviewing(key)
+      void playProviderTrack(hit).finally(() => setPreviewing((current) => (current === key ? null : current)))
+    },
+    add: (hit) => {
+      const key = providerHitKey(hit)
+      mark([key])
+      void addProviderTrack(hit).finally(() => release([key]))
+    },
+  }
+}
+
 // FB-F10: what is ticked, and what a tick can do, are one concern — so the panel asks this hook
 // for its selection instead of holding three pieces of state and the rule that keeps them true.
-function useProviderSelection(results: MusicProviderTrack[] | null) {
+function useProviderSelection(results: MusicProviderTrack[] | null, busy: RowBusy) {
   const addProviderTracks = useMusic((state) => state.addProviderTracks)
   const [selected, setSelected] = useState<readonly string[]>([])
   const [adding, setAdding] = useState(false)
@@ -129,12 +190,16 @@ function useProviderSelection(results: MusicProviderTrack[] | null) {
   const addSelected = (): void => {
     const batch = (results ?? []).filter((hit) => selected.includes(providerHitKey(hit)))
     if (!batch.length) return
+    const keys = batch.map(providerHitKey)
     setAdding(true)
+    // FB2-U3: the batch borrows the row state, so the rows it is writing say so while it runs.
+    busy.mark(keys)
     void addProviderTracks(batch).finally(() => {
       // Only the ticks that were part of this batch go away: a row ticked while the batch ran is
       // still the reader's choice.
-      const done = new Set(batch.map(providerHitKey))
+      const done = new Set(keys)
       setSelected((current) => current.filter((key) => !done.has(key)))
+      busy.release(keys)
       setAdding(false)
     })
   }
@@ -152,8 +217,8 @@ function useProviderSelection(results: MusicProviderTrack[] | null) {
 }
 
 function ProviderPanelBody({
-  state, results, failedSources, selected, adding,
-  onRetry, onPreview, onAdd, onToggle, onAddSelected, onClearSelection,
+  state, results, failedSources, selected, adding, busy, held,
+  onRetry, onToggle, onAddSelected, onClearSelection,
 }: ProviderPanelBodyProps) {
   if (state === 'off') return <Notice text={t('music.provider_off')} align='start' />
   if (state === 'loading') return <Notice text={t('common.loading')} />
@@ -170,17 +235,27 @@ function ProviderPanelBody({
           onClear={onClearSelection}
         />
       )}
-      <ul className='max-h-56 space-y-0.5 overflow-y-auto'>
-        {results?.map((hit) => (
-          <ProviderResultRow
-            key={providerHitKey(hit)}
-            hit={hit}
-            checked={selected.includes(providerHitKey(hit))}
-            onToggle={(next) => onToggle(hit, next)}
-            onPreview={() => onPreview(hit)}
-            onAdd={() => onAdd(hit)}
-          />
-        ))}
+      {/* FB2-U4: the cap is a full page of hits (eight rows of `min-h-11` plus their gaps ≈ 366px),
+          so an ordinary answer is read in one piece instead of four rows at a time behind a scrollbar
+          inside a panel that already sits in a scrolling column. A longer answer still scrolls here —
+          the library's own rows below must not be pushed off the screen by a catalogue's. */}
+      <ul data-provider-results='' className='max-h-96 space-y-0.5 overflow-y-auto'>
+        {results?.map((hit) => {
+          const key = providerHitKey(hit)
+          return (
+            <ProviderResultRow
+              key={key}
+              hit={hit}
+              checked={selected.includes(key)}
+              inLibrary={held.has(key)}
+              adding={busy.adding.includes(key)}
+              previewing={busy.previewing === key}
+              onToggle={(next) => onToggle(hit, next)}
+              onPreview={() => busy.preview(hit)}
+              onAdd={() => busy.add(hit)}
+            />
+          )
+        })}
       </ul>
     </>
   )
@@ -226,6 +301,12 @@ function Notice({ text, align = 'center' }: { text: string; align?: 'start' | 'c
 interface ProviderResultRowProps {
   hit: MusicProviderTrack
   checked: boolean
+  /** FB2-U3: the library already holds this catalogue row. */
+  inLibrary: boolean
+  /** FB2-U3: this row's own import is in flight, whether the reader pressed it or the batch did. */
+  adding: boolean
+  /** FB2-U3: this row's audition is in flight. */
+  previewing: boolean
   onToggle: (next: boolean) => void
   onPreview: () => void
   onAdd: () => void
@@ -234,7 +315,7 @@ interface ProviderResultRowProps {
 // FB-F10: a hit reads like a library row — artwork, title, artist and album on two lines — and it
 // carries the two intents a search result has. Auditioning is the icon (taking over the player is
 // the louder act, so it is the one that stays small); taking the song into the library is named.
-function ProviderResultRow({ hit, checked, onToggle, onPreview, onAdd }: ProviderResultRowProps) {
+function ProviderResultRow({ hit, checked, inLibrary, adding, previewing, onToggle, onPreview, onAdd }: ProviderResultRowProps) {
   const subtitle = [hit.artist, hit.album].filter(Boolean).join(' · ')
   return (
     <li className='flex min-h-11 items-center gap-2 rounded-[var(--r-md)] px-1 hover:bg-[var(--bg-hover)]'>
@@ -259,18 +340,53 @@ function ProviderResultRow({ hit, checked, onToggle, onPreview, onAdd }: Provide
           {formatTimecode(hit.durationMs)}
         </span>
       ) : null}
+      <ProviderRowActions
+        previewing={previewing}
+        adding={adding}
+        inLibrary={inLibrary}
+        onPreview={onPreview}
+        onAdd={onAdd}
+      />
+    </li>
+  )
+}
+
+// FB2-U3: the two things a row can be asked to do, and what each says while it waits. Kept apart from
+// the row's facts so the busy rule and the already-held rule sit in one place rather than in the
+// middle of a layout.
+function ProviderRowActions({ previewing, adding, inLibrary, onPreview, onAdd }: {
+  previewing: boolean
+  adding: boolean
+  inLibrary: boolean
+  onPreview: () => void
+  onAdd: () => void
+}) {
+  return (
+    <>
+      {/* The audition is the louder act — it takes the player over — so it stays the small icon, but
+          while its import runs it is the icon that says so, and it takes no second press. */}
       <IconButton
         label={t('music.provider_preview')}
         size='sm'
         data-provider-preview=''
+        aria-busy={previewing ? true : undefined}
+        disabled={previewing}
         onClick={onPreview}
       >
-        <Play size={12} />
+        {previewing ? <Spinner size={12} /> : <Play size={12} />}
       </IconButton>
-      <Button size='sm' icon={<Plus size={12} />} onClick={onAdd}>
-        {t('music.provider_add')}
-      </Button>
-    </li>
+      {inLibrary ? (
+        // A copy already exists, so the honest control is the fact: the import would be a no-op, and
+        // its only visible effect would be a toast about a row the reader already has.
+        <Button size='sm' variant='ghost' icon={<Check size={12} />} disabled>
+          {t('music.provider_in_library')}
+        </Button>
+      ) : (
+        <Button size='sm' icon={<Plus size={12} />} loading={adding} onClick={onAdd}>
+          {t('music.provider_add')}
+        </Button>
+      )}
+    </>
   )
 }
 

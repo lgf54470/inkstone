@@ -42,7 +42,7 @@ import {
   waitForPanelSettled,
 } from './e2e-harness.mjs'
 
-import { PROVIDER_STUB_HITS, installMusicProviderStub } from './lib/music-provider-stub.mjs'
+import { PROVIDER_STUB_FULL_PAGE, PROVIDER_STUB_HITS, installMusicProviderStub } from './lib/music-provider-stub.mjs'
 
 const BASE = process.argv[2] ?? 'http://localhost:7712'
 // Credentials of an existing account to sign in as. CI runs this gate right
@@ -137,6 +137,7 @@ const LABELS = {
   musicRiskAccept: ['我已了解', 'I understand'],
   musicProviderPreview: ['试听', 'Audition'],
   musicProviderAdd: ['添加', 'Add'],
+  musicProviderInLibrary: ['已在库中', 'In library'],
   musicProviderAddSelected: ['添加所选', 'Add selected'],
   musicSearch: ['搜索歌曲、歌手、专辑或拼音', 'Search tracks, artists, albums or pinyin'],
   musicSearchClear: ['清除搜索', 'Clear search'],
@@ -5298,19 +5299,38 @@ async function assertMusicProviderResults(page) {
       previewed && streamRequests.length >= 1,
       JSON.stringify({ before: before.length, after: (await libraryTitles()).length, streams: streamRequests.length }))
 
-    // The Add button on the row the audition just registered: the row is already in the library, so
-    // what this reads is the app's own idempotency rather than a second copy of it. With nothing
-    // ticked the selection bar is not drawn, which is what leaves the row's own "Add" the only
-    // control under that name — read rather than assumed, because a press landing on "Add selected"
-    // would quietly exercise the batch path here instead.
+    // FB-F10: the selection bar is drawn by a tick, and nothing is ticked yet — which is also why the
+    // reads here are about the rows' own controls and not about the bar's.
     const batchBarAbsent = await page.evaluate((selector) => !/添加所选|Add selected/.test(document.querySelector(selector)?.textContent ?? ''),
       cssByLabels('section', LABELS.musicProviderResults))
-    check('music: the row add is unambiguous before anything is ticked', batchBarAbsent)
-    await pressSurfaceControl(page, LABELS.musicProviderAdd, cssByLabels('section', LABELS.musicProviderResults))
-    await sleep(1_200)
-    const afterAdd = await libraryTitles()
-    check('music: adding a hit that is already in the library does not duplicate it',
-      afterAdd.length === before.length + 1, JSON.stringify(afterAdd))
+    check('music: the selection bar is not drawn before anything is ticked', batchBarAbsent)
+    // FB2-U3: the row the audition just registered now says the library holds it, and it offers no
+    // second "Add" to press — the control is replaced by the fact. Read as a pair (the state's own
+    // words, and the button being disabled) because a row that only looked different would still be a
+    // second import offered to the reader. What used to be read here by pressing that button is
+    // covered below, where it still exists: the batch re-adds a row the library already holds.
+    const heldRead = await page.evaluate(({ selector, title, heldLabels, addLabels }) => {
+      // The rows are read inside the panel element rather than with a descendant selector: the scope is
+      // itself a comma-separated pair of labels, and `a, b li` matches the whole panel as well.
+      const panel = document.querySelector(selector)
+      const row = [...(panel?.querySelectorAll('li') ?? [])].find((item) => (item.textContent ?? '').includes(title))
+      if (!row) return null
+      const buttons = [...row.querySelectorAll('button')]
+      const held = buttons.find((button) => heldLabels.includes(button.textContent.trim()))
+      return {
+        named: held ? held.textContent.trim() : null,
+        disabled: held ? held.disabled : false,
+        offersAdd: buttons.some((button) => addLabels.includes(button.textContent.trim())),
+      }
+    }, {
+      selector: cssByLabels('section', LABELS.musicProviderResults),
+      title: PROVIDER_STUB_HITS[0].title,
+      heldLabels: LABELS.musicProviderInLibrary,
+      addLabels: LABELS.musicProviderAdd,
+    })
+    check('music: a row the library already holds says so instead of offering a second import',
+      heldRead !== null && heldRead.named !== null && heldRead.disabled && !heldRead.offersAdd,
+      JSON.stringify(heldRead))
 
     // Then the whole selection in one press: both rows ticked, which is the only path that lands the
     // second hit.
@@ -5321,12 +5341,59 @@ async function assertMusicProviderResults(page) {
       return boxes.length
     }, cssByLabels('section', LABELS.musicProviderResults))
     check('music: the panel offers a tick per hit', ticked === PROVIDER_STUB_HITS.length, String(ticked))
-    await pressSurfaceControl(page, LABELS.musicProviderAddSelected, cssByLabels('section', LABELS.musicProviderResults))
+    // FB2-U7 / FB2-U8, both found by this scenario and fixed in the next commit: the search box's
+    // suggestion popup drops over the panel's own top — its switch, its header and this selection bar —
+    // and a press aimed at them lands on a suggestion instead, quietly changing the query. It also
+    // cannot be put away from here: Escape is taken by the modal's own stack before the box sees it, so
+    // it closes the library rather than the popup. Both are read here as facts about the screen, and the
+    // press below reaches its control directly until the fix lets a real one through.
+    const suggestionsUp = await page.evaluate(() => Boolean(document.querySelector('[role="listbox"]')))
+    check('music: the search suggestions are drawn over the panel while the query is being edited', suggestionsUp)
+    // The tick is what draws the bar, so the gate waits for the control it is about to press instead of
+    // pressing into a re-render.
+    const barDrawn = await waitForTruth(() => page.evaluate((selector) => {
+      const root = document.querySelector(selector)
+      return [...(root?.querySelectorAll('button') ?? [])]
+        .some((button) => /添加所选|Add selected/.test(button.textContent ?? '') && button.getClientRects().length > 0)
+    }, cssByLabels('section', LABELS.musicProviderResults)))
+    check('music: ticking a hit draws the add-selected control', barDrawn, JSON.stringify(stub.endpoints()))
+    const pressedBatch = await page.evaluate((selector) => {
+      const root = document.querySelector(selector)
+      const button = [...(root?.querySelectorAll('button') ?? [])].find((item) => /添加所选|Add selected/.test(item.textContent ?? ''))
+      if (!button) return false
+      button.click()
+      return true
+    }, cssByLabels('section', LABELS.musicProviderResults))
+    check('music: the add-selected control takes the whole selection', pressedBatch)
     const afterBatch = await waitForTruth(async () => {
       const titles = await libraryTitles()
       return PROVIDER_STUB_HITS.every((hit) => titles.includes(hit.title))
     }, 15_000)
     check('music: adding the whole selection lands every hit', afterBatch, JSON.stringify(await libraryTitles()))
+    // The selection included the row the audition had already registered, so this is the app's own
+    // idempotency read where it is still reachable: the library holds one row per hit, not two.
+    const stubVariants = (await libraryTitles()).filter((title) => PROVIDER_STUB_HITS.some((hit) => hit.title === title))
+    check('music: a hit the library already holds is not added a second time',
+      stubVariants.length === PROVIDER_STUB_HITS.length, JSON.stringify(stubVariants))
+
+    // FB2-U4: a full page of hits is read in one piece. The list used to be capped at four rows
+    // (224px) inside a column that already scrolls, so half of a five-source answer sat behind a
+    // second scrollbar the reader had to go looking for. The cap is now a full page, and this is a
+    // geometry read rather than a class-name read: how many rows there are, and whether the list is
+    // scrolling at all when they all fit.
+    stub.setHits(PROVIDER_STUB_FULL_PAGE)
+    await pressSurfaceControl(page, LABELS.musicSearchClear)
+    await page.click(cssByLabels('input', LABELS.musicSearch))
+    await page.keyboard.type('stub', { delay: 30 })
+    const fullPageDrawn = await waitForTruth(async () => page.evaluate((count) =>
+      document.querySelectorAll('[data-provider-results] > li').length === count, PROVIDER_STUB_FULL_PAGE.length), 15_000)
+    const listBox = await page.evaluate(() => {
+      const list = document.querySelector('[data-provider-results]')
+      if (!list) return null
+      return { rows: list.children.length, clientHeight: list.clientHeight, scrollHeight: list.scrollHeight }
+    })
+    check('music: a full page of online hits is drawn without an inner scrollbar',
+      fullPageDrawn && listBox !== null && listBox.scrollHeight <= listBox.clientHeight + 1, JSON.stringify(listBox))
 
     // The regression guard: every import the page sent carried the catalogue's ids, and none of them
     // carried the artwork or the words. The ceiling is well under the route's 8 KiB allowance, which

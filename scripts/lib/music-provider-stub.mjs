@@ -19,6 +19,13 @@ export const PROVIDER_STUB_HITS = [
   { title: 'Stub Hit Two', artist: 'Stub Artist', album: 'Stub Album', durationMs: null, sourceId: 'stub-2' },
 ]
 
+// FB2-U4: a full page of hits — eight rows, which is what the panel's list is capped to fit. A second
+// answer rather than a second stub, so the same scenario can read the panel at both sizes.
+export const PROVIDER_STUB_FULL_PAGE = Array.from({ length: 8 }, (_, index) => ({
+  title: `Stub Page ${index + 1}`, artist: 'Stub Artist', album: 'Stub Album',
+  durationMs: 180_000 + index * 1_000, sourceId: `page-${index + 1}`,
+}))
+
 const STUB_COVER_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=='
 
 /**
@@ -26,8 +33,11 @@ const STUB_COVER_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4
  * scenario can assert the presses rather than only the pixels. `playUrl` is a same-origin stream the
  * preview can really open.
  */
-export async function installMusicProviderStub(page, { playUrl }) {
+export async function installMusicProviderStub(page, { playUrl, hits = PROVIDER_STUB_HITS }) {
   const calls = []
+  // FB2-U4: the answer is swappable, so a scenario can ask the same catalogue for a longer page
+  // without tearing the interception down and building a second one.
+  let answering = hits
   await page.setRequestInterception(true)
   const onRequest = (request) => {
     const url = request.url()
@@ -35,7 +45,7 @@ export async function installMusicProviderStub(page, { playUrl }) {
     if (url.includes('/api/music/provider/search')) {
       calls.push({ endpoint: 'search', url })
       return respond(JSON.stringify({
-        results: PROVIDER_STUB_HITS.map((hit) => ({
+        results: answering.map((hit) => ({
           provider: 'gds', source: 'netease', sourceId: hit.sourceId, title: hit.title,
           artist: hit.artist, album: hit.album, durationMs: hit.durationMs,
           coverId: `${hit.sourceId}-cover`, lyricId: `${hit.sourceId}-lyric`,
@@ -71,6 +81,7 @@ export async function installMusicProviderStub(page, { playUrl }) {
   page.on('request', onRequest)
   return {
     calls,
+    setHits: (next) => { answering = next },
     endpoints: () => calls.map((call) => call.endpoint),
     stop: async () => {
       // Interception goes first: with the listener gone and interception still on, a request arriving

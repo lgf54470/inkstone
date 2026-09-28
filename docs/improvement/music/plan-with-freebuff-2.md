@@ -23,15 +23,16 @@
 - [x] M4 FB2-U1 沉浸层：播放队列搬到左列并复用带搜索的 `MusicQueueBrowser`（头部计数即开关；窄版保留底部条带；队列组件拆到 `music-immersive-queue.tsx`）—— **commit `8e8f3f22`**
 - [x] M5 FB2-F3 时长口径：命中列表不再逐行重复「未知」（首次播放回填经取证**早已存在**，首稿误记为缺失，已订正）—— **commit `166bb742`**
 - [x] M6 FB2-PF1 封面抓取独立预算族（`providerArtwork` 600/小时；浏览器侧不加缓存层，理由已取证）—— **commit `93901291`**
-- [x] M7 FB2-C1 + FB2-C2 在线搜索 / 导入链路纳入浏览器门禁（请求拦截造桩）+ body 形状契约测试 —— **commit `待回填`**
-- [ ] M8 FB2-U3 + FB2-U4 在线行三态（试听中 / 添加中 / 已在库中）+ 面板高度与嵌套滚动
+- [x] M7 FB2-C1 + FB2-C2 在线搜索 / 导入链路纳入浏览器门禁（请求拦截造桩）+ body 形状契约测试 —— **commit `e98cb077`**
+- [x] M8 FB2-U3 + FB2-U4 在线行三态（试听中 / 添加中 / 已在库中）+ 面板高度（八行不再套内滚动条）—— **commit `待回填`**
 
-## M④ · 复核与收尾
+## M③ · 实测新发现（由 M8 的浏览器门禁读出来，不是猜的）
 
-- [ ] M9 FB2-U6 窄版沉浸层复核（+ FB2-U5 侧栏留白判断后做或记理由不做）
-- [ ] M10 FB2-C3 曲库面 axe 前提：徽标底衬可量测，或按表面具名声明该 incomplete（含 M7 不得把带封面的行留在共享实例）
-- [ ] M11 收尾：报告定稿（逐项状态 + 已知限制 + 不做清单）+ 计划回填全部哈希
-- [ ] M12（可选、独立、非音乐）FB2-F2b 备份文件夹还原复用同一个收集器
+- [ ] M9 FB2-U7 + FB2-U8 搜索建议浮层：外按不关、Escape 被模态抢走。**FB2-U7**：浮层落在在线面板顶部之上（面板自己的开关、标题与选中条全在它下面），瞄准这些控件的一次按压会落到某条建议上并**悄悄改掉查询**（实测 `elementFromPoint` 命中 `DIV.absolute top-full` + 文本「搜索建议」）；**FB2-U8**：`useEscape` 在 window 捕获阶段跑栈顶并 `stopPropagation`，而浮层从未入栈，所以在 Hub 里按 Escape 关掉的是**整个音乐库**（搜索框自己注释里写的「Escape closes」在 Hub 里不可达）。修法：浮层在 `pointerdown`（外部、捕获）时关闭——关掉后该次按压仍能落到读者瞄准的控件；并把浮层压入 `escStack`（`useEscape(show, close)`）让 Escape 先关它。改后把 M8 门禁里的直调 `.click()` 换回真实按压
+- [ ] M10 FB2-U6 窄版沉浸层复核（+ FB2-U5 侧栏留白判断后做或记理由不做）
+- [ ] M11 FB2-C3 曲库面 axe 前提：徽标底衬可量测，或按表面具名声明该 incomplete（含 M7 不得把带封面的行留在共享实例）
+- [ ] M12 收尾：报告定稿（逐项状态 + 已知限制 + 不做清单）+ 计划回填全部哈希
+- [ ] M13（可选、独立、非音乐）FB2-F2b 备份文件夹还原复用同一个收集器
 
 ## 每项验收标准（通用）
 
@@ -46,6 +47,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-28 | M8 FB2-U3 + FB2-U4 在线行三态与面板高度 | `待回填` | 先红（单测）：`music-provider-results.test.ts` 新增 5 例（添加中带 `aria-busy` 且落地即清 / 只标被按的那行 / 试听中同样带 `aria-busy` 并禁用且播完进队列 / 已在库中不再给「添加」而给禁用的「已在库中」/ 批量运行时勾选行各自 busy 且两首都落地）——对 HEAD 跑得 **5 failed / 22 passed**。实现：`useRowBusy()`（按 key 记账，单按与批量共用同一套 busy）、`libraryProviderKeys()`（`providerSource:providerSongId`，与 `providerHitKey` 同形状所以两方可比）、行拆出 `ProviderRowActions`、结果列表 `max-h-56 → max-h-96`（八行 `min-h-11` + 间隙 ≈ 366px）并加 `data-provider-results`。回归：music **122 文件 / 1051 例 ✅**；`npm run test:unit` **552 文件 / 4962 passed + 1 skipped ✅**；`npm run typecheck` ✅；13 项静态门禁 ✅（size 先报 `ProviderResultRow` 51 行与新 describe 91 行 → 抽出 `ProviderRowActions` 并把 describe 拆成三个，同时按门禁要求 `--update-baseline` 记录两个 locale 的真实增长）；`scripts/e2e-visual.mjs` 对 :7714 **610 通过 / 1 失败**（唯一失败仍是已登记的看板高度遗留），本轮新增 6 条断言 | 门禁跑出两个新缺陷（FB2-U7 / FB2-U8，见 M9）：建议浮层压在面板顶部之上会吞掉按压，且 Escape 在 Hub 里关掉整个音乐库。因此本轮**批量按压暂时直调 `.click()`**（浮层挡着，真实按压送不到），M9 修好后换回 `pressSurfaceControl`。另外门禁自身踩了一个坑已记下：`cssByLabels('section', ...)` 返回的是逗号分隔的两个选择器，拼成 `${selector} li` 会连整个 section 一起命中（读到的是两行合起来的文本），所以行级读取必须先在 Node 侧取到 section 元素再用 `querySelectorAll('li')` |
 | 2026-09-28 | M7 FB2-C1 + FB2-C2 在线链路纳入浏览器门禁 + body 形状契约 | `待回填` | 先红（单测）：`tests/music-provider.test.ts` 新增一例「schema 能接受的最宽 body 必须装得进路由的额度」（用 128 字符 id / 200 字符 × 3 个三字节字符 / 两个 128 字符封面歌词 id 拼出最宽体，断言 `safeParse` 通过、UTF-8 字节数 < 8 KiB 的一半，并把该体真的 POST 给路由拿 201）—— 该例在 M1 之前会红（那时 schema 允许 800 000 字符的 `coverDataUrl`）。实现后 `tests/music-provider.test.ts` **13 例 ✅**。新门禁 `scripts/lib/music-provider-stub.mjs`（请求拦截造桩：search/url/lyric/cover 从内存作答，import 故意**不**桩，因为那正是回归的证据本身）+ `scripts/e2e-visual.mjs` 的 `assertMusicProviderResults` 12 条 + 入口断言改造（`consoleErrors` 记 `{text, url}`，失败资源按 URL 判定）。`npm run typecheck` ✅；13 项静态门禁 ✅（comments 白名单 10999 条 / 1195 文件；i18n 先报测试里的中文样例字，换成同为三字节的『☃』）；`scripts/e2e-visual.mjs` 对 :7714 **605 通过 / 1 失败**（唯一失败仍是已登记的看板高度遗留）；`npm run test:unit` **552 文件 / 4957 passed + 1 skipped**（1 例 `tests/starter-deck-render.test.ts` 在并行负载下失败，单跑 ✅，判定为负载 flaky）。**反证**：把路由的 body 上限临时改成 128 字节后重跑探针——import 变 413、行不落库、`stream` 请求为 0，即新门禁的三条断言全部会红（随后已回滚），证明它不是空转 | 沙箱里上游曲库不可达，所以**试听后的流一定 5xx**（实测 502/500）：门禁因此断言「行已登记 + 播放器拿到了该行的 stream 请求」，而不断言「真的播出声音」——这是上游的答案不是本 app 的。相应地 `ALLOWED_PAGE_ERRORS` 新增一条按 URL 限定（`/api/music/tracks/*/stream` 的 5xx），不按消息放行，别的失败加载遮不住。门禁自己会先按标题清理上一轮遗留（否则长度断言会把旧行读成「本次添加没生效」——首次全量跑时 `:7714` 上正好留着上一轮手工验证的 `Stub Hit One`，五个音乐断言因此变红，清理后全绿）。`provider/url` 路由**未被这次试听走到**（试听走库内行的 stream 路由，由 worker 侧解析上游地址），故 stub 的 `url` 分支只有单测覆盖 |
 | 2026-09-28 | M0 文档基线（二次复审报告 + 执行计划） | `76eaf07c` | —（无代码改动，静态门禁与单测不适用） | 报告结论均落到文件:行或实测量；浏览器门禁在 M1 起逐项补跑 |
 | 2026-09-28 | M2 FB2-F2 文件夹上传不再触发浏览器原生确认框 | `0bb7aaa9` | 先红（单测）：新建 `music-folder-drop.test.ts` 10 例（嵌套目录按批读完 / 浏览器拒读的条目跳过并计数 / 深度上限两侧 / 文件数上限 / 无 entry API 时回退到文件列表 / 拖放里的文本条目被忽略 / picker 只在有它的浏览器可见 / 句柄走同一套上限 / 关闭选择器不算失败），并把 `music-transfer-dialog.test.ts` 旧断言（`input[webkitdirectory]` 必须存在）改成相反的事实——实现前两文件 **3 failed**（新模块不存在、旧实现仍画目录 input、无 picker 时仍画文件夹按钮）。实现后：两文件 **19 例 ✅**；music + `worker/routes/music` + 音乐跨模块 **132 文件 / 1123 例 ✅**；`npm run typecheck` ✅；13 项静态门禁 ✅（size 先报新测试的 describe 过长，把 `mountPicker`/`folderButton` 提到模块级并拆出第二个 describe 后未动基线；escape 先报 `as unknown as`，改成一个窄的 `DirectoryPickerWindow` 类型；comments 白名单同步 10784 条 / 1192 文件）；`npm run build` ✅ + `budget:check` exit 0；`scripts/e2e-visual.mjs` 对 :7714 **583 通过 / 1 失败**（580 → 583 即本轮新增三条：上传入口打开传输面板 / 面板里没有目录 input 且只有一个文件 input / 文件夹门只在浏览器有 picker 时出现；唯一失败仍是已登记的看板高度遗留），`npm run contrast:check` 未跑（本轮无颜色或层级改动，M3/M4 的布局改动处一并复跑） | **一个收集器两扇门**：拖放走 `DataTransferItem.webkitGetAsEntry()` 递归（`readEntries` 按批读到空为止），「选择文件夹」走 Chromium 的 `showDirectoryPicker()` 并把句柄适配成同一个 entry 形状，所以深度/数量上限与「跳过了多少」在两扇门上不可能漂移。**上限是给家庭目录的**：深度 8 层、500 个文件，被拦下的都计数并通过已有的 `music.upload_skipped_count` 报出。**降级是诚实的**：`showDirectoryPicker` 不存在时按钮隐藏，提示文案补上「或整个文件夹拖进来」。**浏览器断言选错了 dialog 的修正**：Hub 工具栏自己带一个 m3u 的 file input，而断言原来取「第一个带 file input 的 dialog」，实际量到的是 Hub；改为按面板自己的标题定位（先用临时探针确认了应用侧本来就画出了「选择文件夹」且目录 input 为 0） | 真实拖放无法在门禁里构造 `DataTransfer` 的 entry 列表，所以拖放路径只有收集器纯函数这一层覆盖，浏览器只断言「不存在目录 input」与「文件夹门的存在与 picker 一致」；Firefox/Safari 上没有「选择文件夹」按钮（只保留拖放），这条差异写在文案里而不是假装跨浏览器一致。**一次运行记录**：同一命令第一次跑时 `surface keyboard: the kanban board hands focus back…` 失败、第二次通过，该断言位于工具栏扫描（在音乐场景之前），与本次改动无交集，判定为该表面既有几何竞态（与已登记的看板高度缺陷同源），已如实记下未做降级 |

@@ -22,6 +22,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
   }
 })
 import { api, musicProviderCoverUrl, type MusicProviderTrack } from '../../lib/api'
+import type { MusicTrack } from '@shared/types'
 
 const QUERY = 'origin'
 const CLEAR = { query: '', providerEnabled: {}, providerResults: null, providerSearching: false, providerKeywords: '', providerFailedSources: [] }
@@ -68,6 +69,33 @@ function rowTicks(): HTMLButtonElement[] {
 
 function auditionButtons(): HTMLButtonElement[] {
   return [...document.querySelectorAll<HTMLButtonElement>('[data-provider-preview]')]
+}
+
+// FB2-U3: a press that starts a round trip is reported on the control that started it, so the read is
+// the attribute the platform has for exactly that rather than a class or a word. Scoped to the row
+// list: the batch bar's own button is busy for the same reason and is not a row.
+function busyButtons(): HTMLButtonElement[] {
+  return [...document.querySelectorAll<HTMLButtonElement>('[data-provider-results] [aria-busy="true"]')]
+}
+
+// A request whose answer this test decides, so the in-flight window can be read instead of raced.
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}
+
+// The library row a catalogue import lands: the provider halves are what make a hit and a row the same
+// song again, which is the fact FB2-U3 reads.
+function libraryTrack(overrides: Partial<MusicTrack> = {}): MusicTrack {
+  return {
+    id: 'trk-1', title: 'With art', artist: 'Ann', album: 'The Album', durationMs: 245_000,
+    source: 'provider', format: null, webdavPath: null, providerSource: 'netease', providerSongId: 'a1',
+    mime: 'audio/mpeg', sizeBytes: 1, coverUrl: null, lyric: null, hasLyric: false, tagIds: [],
+    isFavorite: false, isPinned: false, playCount: 0, lastPlayedAt: null, contentHash: null,
+    createdAt: 1, updatedAt: 1,
+    ...overrides,
+  }
 }
 
 // The reader's road: the query is already typed (and may have settled), then the switch is
@@ -353,5 +381,110 @@ describe('online result rows (FB-F5 / FB2-F3)', () => {
     await settle()
     expect(bodyText()).toContain('04:05')
     expect(bodyText()).not.toContain(t('music.duration_unknown'))
+  })
+})
+
+// FB2-U3: an import is a round trip — the worker asks the catalogue for the artwork and the words
+// before the row exists — so the row the reader pressed has to say it is working. Before this the add
+// button was live and silent the whole time: a press that took a second looked like a press that did
+// nothing, and the same button happily took a second press on top of the first.
+describe('online result rows report what they are doing (FB2-U3)', () => {
+  beforeEach(() => {
+    useMusic.setState({ tracks: [], queue: [], currentIndex: 0 })
+  })
+
+  // Two hits, so the same read covers both halves of the rule: the row that was pressed is busy, and
+  // the row nobody touched is not.
+  it('marks the row being added while its import is in flight, and clears it when the row lands', async () => {
+    const pending = deferred<MusicTrack>()
+    vi.mocked(api.music.importProviderTrack).mockImplementation(() => pending.promise)
+    await mountHits([HIT, { ...HIT, sourceId: 'a2', title: 'Second' }])
+
+    await act(async () => { buttonsByText(t('music.provider_add'))[0]?.click() })
+    expect(busyButtons()).toHaveLength(1)
+    expect(busyButtons()[0].textContent?.trim()).toBe(t('music.provider_add'))
+    expect(busyButtons()[0].closest('li')?.textContent).toContain(HIT.title)
+
+    await act(async () => {
+      pending.resolve(libraryTrack())
+      await pending.promise
+    })
+
+    expect(busyButtons()).toHaveLength(0)
+    expect(useMusic.getState().tracks.map((entry) => entry.id)).toContain('trk-1')
+  })
+
+  it('marks the row being auditioned while its import is in flight', async () => {
+    const pending = deferred<MusicTrack>()
+    vi.mocked(api.music.importProviderTrack).mockImplementation(() => pending.promise)
+    await mountHits([HIT])
+
+    await act(async () => { auditionButtons()[0]?.click() })
+    const audition = auditionButtons()[0]
+    expect(audition.getAttribute('aria-busy')).toBe('true')
+    expect(audition.disabled).toBe(true)
+
+    await act(async () => {
+      pending.resolve(libraryTrack())
+      await pending.promise
+    })
+
+    expect(auditionButtons()[0].getAttribute('aria-busy')).not.toBe('true')
+    expect(useMusic.getState().queue).toEqual(['trk-1'])
+  })
+})
+
+// FB2-U3: the fact a reader cannot see otherwise — the catalogue has a copy and the library already
+// holds it. Offering the same button again would be a second import whose only visible effect is a
+// toast about a row the reader already has.
+describe('online result rows say what the library already holds (FB2-U3)', () => {
+  beforeEach(() => {
+    useMusic.setState({ tracks: [], queue: [], currentIndex: 0 })
+  })
+
+  it('names a hit the library already holds instead of offering to add it again', async () => {
+    useMusic.setState({ tracks: [libraryTrack()] })
+    await mountHits([HIT])
+
+    expect(buttonsByText(t('music.provider_add'))).toHaveLength(0)
+    const held = buttonsByText(t('music.provider_in_library'))[0]
+    expect(held).toBeTruthy()
+    expect(held.disabled).toBe(true)
+  })
+
+})
+
+// FB2-U3: a row the batch is writing is the same wait seen from the row, so it says so there as well
+// as on the bar — the reader who ticked it should not have to look somewhere else to find out that
+// something is happening.
+describe('the online batch reports on the rows it is writing (FB2-U3)', () => {
+  beforeEach(() => {
+    useMusic.setState({ tracks: [], queue: [], currentIndex: 0 })
+  })
+
+  it('reports every ticked row busy while the batch runs, and lands them all', async () => {
+    const pendings: Array<ReturnType<typeof deferred<MusicTrack>>> = []
+    vi.mocked(api.music.importProviderTrack).mockImplementation(() => {
+      const next = deferred<MusicTrack>()
+      pendings.push(next)
+      return next.promise
+    })
+    await mountHits([HIT, { ...HIT, sourceId: 'a2', title: 'Second' }])
+    const ticks = rowTicks()
+    await act(async () => { ticks[0].click(); ticks[1].click() })
+
+    await act(async () => { buttonsByText(t('music.provider_add_selected'))[0]?.click() })
+    expect(busyButtons()).toHaveLength(2)
+
+    await act(async () => {
+      pendings[0]?.resolve(libraryTrack({ id: 'trk-1' }))
+      await Promise.resolve()
+      await Promise.resolve()
+      pendings[1]?.resolve(libraryTrack({ id: 'trk-2', providerSongId: 'a2' }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(useMusic.getState().tracks.map((entry) => entry.id)).toEqual(['trk-1', 'trk-2'])
   })
 })

@@ -147,6 +147,9 @@ export const messages = {
 'music.provider_results': 'Online results',
 'music.provider_off': 'Turn on "Aggregate search" to look up and add songs from online sources',
 'music.provider_add': 'Add',
+// FB2-U3: the row already has a copy of this song, and saying so is the honest version of a
+// button that would otherwise only be idempotent behind the reader's back.
+'music.provider_in_library': 'In library',
   // FB-F10: two gestures, two buttons — the audition takes over the player, the add does not.
   'music.provider_preview': 'Audition',
   'music.provider_added': 'Added “{value0}” to the library',

@@ -147,6 +147,7 @@ export const messages = {
 'music.provider_results': '在线结果',
 'music.provider_off': '开启「聚合搜索」后，可搜索并添加在线音源的歌曲',
 'music.provider_add': '添加',
+'music.provider_in_library': '已在库中',
   // FB-F10: the audition takes over the player; the add does not.
   'music.provider_preview': '试听',
   'music.provider_added': '已添加「{value0}」到音乐库',
