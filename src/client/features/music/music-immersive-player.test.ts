@@ -489,3 +489,32 @@ describe('immersive background modes (FEA-C2)', () => {
     expect(document.querySelector('[data-immersive-background]')).not.toBeNull()
   })
 })
+
+// FB3-U7: the left column draws two lines that both say "how much" — the queue count, which opens the
+// queue, and the track's "duration · size", which is a fact. They read the same unless the pressable
+// one says so on screen, so the disclosure carries its own chevron (the state is drawn, not hovered)
+// and the fact stays plain text with no control underneath it.
+describe('MusicImmersivePlayer count rows (FB3-U7)', () => {
+  it('draws the queue count as a disclosure and the duration line as a fact', async () => {
+    useMusic.setState({
+      tracks: [{ id: 't1', title: 'Song', artist: '', album: '', durationMs: 245_000, sizeBytes: 4_194_304, source: 'r2' } as never],
+      queue: ['t1'], currentIndex: 0,
+    })
+    await mountPlayer(vi.fn())
+
+    // Every control that carries the queue's count is a disclosure, in either shape (the header row and
+    // the stacked strip), and each of them says so with a chevron — the queue icon the row already had
+    // names the thing, not the gesture.
+    const toggles = [...document.querySelectorAll<HTMLButtonElement>(`button[aria-label="${t('music.queue_toggle')}"]`)]
+    expect(toggles.length).toBeGreaterThan(0)
+    for (const toggle of toggles) {
+      expect(toggle.getAttribute('aria-expanded')).toMatch(/true|false/)
+      expect(toggle.querySelector('[data-queue-chevron]')).toBeTruthy()
+    }
+
+    const line = [...document.querySelectorAll('p')].find((item) => (item.textContent ?? '').includes('04:05'))
+    expect(line).toBeTruthy()
+    expect(line?.querySelector('button')).toBeNull()
+    expect(line?.closest('button')).toBeNull()
+  })
+})

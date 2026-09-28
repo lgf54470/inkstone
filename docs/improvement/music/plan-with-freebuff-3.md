@@ -31,27 +31,30 @@
 ## M③ · 在线音源（P1 / P2）
 
 - [x] M6 FB3-F1 + FB3-U6 + FB3-S1 单源检索范围：偏好 `providerScope`（白名单校验）+ 面板同排的范围选择器 + 只扇出选中源 + 契约测试（非法取值按未传入、不放宽出站白名单）—— **commit `951223c3`**（该提交同时带上了 M16/M17 的门禁修复，见「入库方式」）
-- [x] M7 FB3-P1 检索成本：按 `(scope, keywords)` 的会话内短 TTL 记忆，改回一个字再改回来不再重新扇出 —— **commit `待回填`**
-- [x] M8 FB3-F2 逐源开关与顺序：设置页逐源开关 + 排序（聚合顺序同时被「合并顺序」与「换源候选」消费）—— **commit `待回填`**
-- [x] M9 FB3-F8 在线检索建议：在线命中与本地建议并列呈现（优先给「已经在你库里/可直达的源」分组），不引入第三方接口 —— **commit `待回填`**
+- [x] M7 FB3-P1 检索成本：按 `(scope, keywords)` 的会话内短 TTL 记忆，改回一个字再改回来不再重新扇出 —— **commit `ed6d3d6d`**
+- [x] M8 FB3-F2 逐源开关与顺序：设置页逐源开关 + 排序（聚合顺序同时被「合并顺序」与「换源候选」消费）—— **commit `041f7e2f`**
+- [x] M9 FB3-F8 在线检索建议：在线命中与本地建议并列呈现（优先给「已经在你库里/可直达的源」分组），不引入第三方接口 —— **commit `d0e9acff`**
 
 ## M④ · 设置项补缺（P2）
 
-- [x] M10 FB3-F3 设置页补「音量」滑杆与睡眠 / 倍速入口（复用既有组件，不新造）—— **commit `待回填`**
+- [x] M10 FB3-F3 设置页补「音量」滑杆与睡眠 / 倍速入口（复用既有组件，不新造）—— **commit `d54ef06d`**
 - [ ] M11 FB3-F4 下载设置：离线补齐音质选择 + 「嵌入封面/歌词」选项（含浏览器侧封装的技术选型与降级说明）
-- [x] M12 FB3-F6 设置页分组顺序：播放默认前置（服务器组后置），并补一条顺序断言 —— **commit `待回填`**
+- [x] M12 FB3-F6 设置页分组顺序：播放默认前置（服务器组后置），并补一条顺序断言 —— **commit `a9c93e6a`**
 
 ## M⑤ · 体验收尾（P3）
 
 - [ ] M13 FB3-F7 为「最近播放 / 失效行」补一键在线补齐（复用 `openSourceSwitch` 与健康扫描的既有能力）
-- [ ] M14 FB3-U7 沉浸层左列两行「多少」的行为分级复核（随 M2 的形态断言一起读）
+
+- [x] M14 FB3-U7 沉浸层左列两行「多少」的行为分级复核（随 M2 的形态断言一起读）—— **commit `待回填`（随 M11 提交回填）**
 - [ ] M15 报告定稿：逐项状态 + 已知限制 + 全量清单回填哈希
 
 ## 本轮交付状态（2026-09-28 收尾）
 
 **已交付并验证**：M0 / M0b（文档）、M1 / M1b（搜索框清除按钮与历史形态）、M2（沉浸层队列默认态分档）、M3（设置页三处 UI）。四类证据齐备：jsdom 先红后绿（逐项有失败条数）、`npm run typecheck`、13 项静态门禁与 pre-commit 钩子（typecheck + vitest related）、以及浏览器实测（见下）。
 
-**尚未开始**：M4–M14（内容与历史、在线音源粒度、设置项补缺、体验收尾）与 M16（门禁自身的 FB3-C5）。它们仍是本计划的待办项，逐条顺序与验收标准不变；本轮未动的原因只有一个——时间预算（每一项都要求「先红后绿 + 门禁」两轮验证，而单次 pre-commit 钩子在音乐相关文件上要跑 ~3 分钟，完整 `test:unit` ~7 分钟），不是结论改变或降级。
+**已交付（第二批，续）**：M4（空态措辞）、M5 + FB3-C4（搜索历史完整性）、M6 + M16 + M17（单源检索范围与门禁自身的三处读数缺陷）、M7（会话内检索记忆）、M8（逐源开关与顺序）、M9（在线建议）、M10（设置页音量/倍速/睡眠入口）、M12（设置页分组顺序）、M14（沉浸层两行「多少」的分级）。
+
+**尚未开始**：M11（下载设置）与 M13（失效行一键在线补齐），以及 M15（报告定稿）—— 它们仍是本计划的待办项，逐条顺序与验收标准不变。
 
 **入库方式（第二批）**：`951223c3` 同时带上了 M6 与 M16/M17 的改动——M16/M17 是同一份 `scripts/e2e-visual.mjs` 里的修复，而 M6 那一提交用路径法一次性暂存了整份文件（含 `check-comments.mjs` 的白名单重建），于是它们跟着一起落库。顺序上这反而较合理：先落能读到东西的门禁，再落依赖它的范围断言（三条新断言的通过证据就来自同一工作区的那一轮实测）。与 M3/M1b 一样，不重写已提交历史，这里如实登记；后续条目恢复「一项一提交」，提交前先 `git status` 确认暂存区只有本项文件。
 
@@ -87,7 +90,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-28 | M12 FB3-F6 设置页分组顺序 | `待回填` | 实现：`MusicSettings` 的三个分组改为「播放默认 → 在线音源 → 音乐服务器」，并把「为什么是这个顺序」写在注释里（读者抵达时的提问顺序）。测试：`music-settings.test.ts` 新增一例，读渲染后 `h3` 的顺序断言三个分组标题的相对位置；门禁在 `assertMusicSettingsLayout` 里新增一读（三个分组标题的位置递增，每项允许多种拼写所以中英皆可），与布局两读同一次打开、同一主题。回归：`npx vitest run src/client/features/settings` **18 例 ✅**；`npm run typecheck` ✅ | 门禁新读数与设置页布局读数同批（本项只动顺序，不动布局，两者互不影响） |
+| 2026-09-28 | M14 FB3-U7 沉浸层两行「多少」的行为分级 | `本轮 M14 提交` | 先红：新增一例对 HEAD 跑得 **1 failed / 26 passed**（计数行没有把「可展开」画出来）。读出的结论：两行确实不同级——队列计数行是 discloseditor（有 `aria-expanded`、有悬浮变色），而「时长 · 体积」是事实；但前者只靠悬浮色表达可点，静止时与下面那行长得一样（且悬浮在触屏上不存在）。处置取「可视指示」：三处队列计数控件（沉浸头部行、折合条带入口、已展开面板的收起键）的谢夫龙加 `data-queue-chevron` 与 `aria-hidden`，头部那枚随开合旋转，于是静止态也能区分；「时长 · 体积」保持纯文本（断言它既不在按钮里、里面也没有按钮）。回归：`npx vitest run src/client/features/music/music-immersive-player.test.ts src/client/features/music/music-immersive-queue.test.ts` **33 例 ✅** | 门禁的沉浸层场景本轮只读高度/滚动/默认态，未新加几何断言（本次只加了装饰性图标，不改变布局高度——头部高度断言仍在同一场景里守住） |
+| 2026-09-28 | M12 FB3-F6 设置页分组顺序 | `a9c93e6a` | 实现：`MusicSettings` 的三个分组改为「播放默认 → 在线音源 → 音乐服务器」，并把「为什么是这个顺序」写在注释里（读者抵达时的提问顺序）。测试：`music-settings.test.ts` 新增一例，读渲染后 `h3` 的顺序断言三个分组标题的相对位置；门禁在 `assertMusicSettingsLayout` 里新增一读（三个分组标题的位置递增，每项允许多种拼写所以中英皆可），与布局两读同一次打开、同一主题。回归：`npx vitest run src/client/features/settings` **18 例 ✅**；`npm run typecheck` ✅ | 门禁新读数与设置页布局读数同批（本项只动顺序，不动布局，两者互不影响） |
 | 2026-09-28 | M10 FB3-F3 设置页补音量/倍速/睡眠入口 | `d54ef06d` | 无先红（新增入口与既有能力同源，不改变任何现有断言的预期）：`music-settings.test.ts` 新增两例，对 HEAD 跑为红（行不存在），实现后转绿——包含一条真实拖动：`input[type=range]` 置 35 后 `volume` 为 0.35。实现：设置页「播放」组前插三行（`MusicVolumeSlider` / `MusicRateButton` / `MusicSleepButton`，均为播放器弹层与传输菜单的同一组件），音乐 barrel 透出这三个组件。回归：`npx vitest run src/client/features/settings` **17 例 ✅**；`npm run typecheck` ✅ | 未新造控件（铁律 10：全部复用既有组件，滑杆就是播放器里那一个）；睡眠定时入口在设置页与传输菜单上是同一个 Menu，状态互通 |
 | 2026-09-28 | M9 FB3-F8 在线建议进搜索弹出层（先红后改） | `d0e9acff` | 先红：`music-search-suggestions.test.ts` 新增五例对 HEAD 跑得 **3 failed / 5 passed**（在线行不存在、库中命中不排前、封顶不正确）；弹出层两例后加（先红由类型断言缺失阶段覆盖，已记入上表该批）。实现：`MusicSearchSuggestion` 加 `kind: 'online'` 与可选的 `hit`/`inLibrary`（`scope` 变可选），`buildSearchSuggestions` 收 `online?: { hits, keywords }`：只在 `keywords` 仍等于当前输入时列入，按标题/歌手匹配、库中已有的排在前、封顶 3 条；弹出层给在线行第二行文字（已在库中 / 音源名）与 `music.suggest_online` 的可访问名称，选中即 `playProviderTrack` 并清空关闭（在线命中可能还不在库里，「跳转」无目标可跳）；`SearchBox` 的本地/在线建议抽成 `useSearchSuggestions`。回归：`npx vitest run src/client/features/music` **121 文件 / 999 例 ✅**；`npm run typecheck` ✅；i18n/注释/尺寸/预算四项门禁 ✅ | 未新增第三方接口（只用面板已有的聚合命中）；在线建议的行数与面板的 max-h-96 列表相互独立，但两者同源所以不会不一致 |
 | 2026-09-28 | M8 FB3-F2 逐源开关与顺序（先红后改） | `041f7e2f` | 先红：把实现回退后跑新测试，**8 failed / 53 passed**（`selection.test.ts` 新模块不存在整文件红；设置表 3 例、面板 2 例、`gds` 扇出 3 例）+ 经窄范围回退再测偏好组 **3 failed / 7 passed**（逐源开关、排序落库、脏值读取）。实现：新增 `providers/selection.ts`（`orderedSources` / `enabledSources` / `scopeSources(scope, selection)` / `moveSource`，均对未知名、重复名与越界移动做归一）；扇出决策从 `searchGdsPages` 移到调用方（现收 `sources` 列表），`gds.ts` 在请求边界上继续过滤非共享列表名（FB3-S1）；偏好加 `providerSourceEnabled`（只存 `false`，缺省即开）与 `providerSourceOrder`（读者序在前、共享序在后），读取时丢弃非法名，并把指向已关闭音源的 scope 归一为聚合；`setProviderSourceEnabled`/`moveProviderSource` 落库并清检索记忆；设置页新增 `SourceTable`（每源一行：上移/下移 + 自己的开关，端点上按钮禁用）；面板的范围选项只列已开启的源，无源可问时显示专门文案而不是「没有在线匹配」。回归：`npx vitest run src/client/features/music src/client/features/settings` **125 文件 / 1017 例 ✅**；`npm run typecheck` ✅；13 项静态门禁 ✅ | 合并顺序（`mergeProviderResults`）与换源候选（`rankAlternatives`）都读同一张表，因为两者都是「更希望这首歌出自哪个源」；`budget:check` 的 `music` 上限 96_000 → 100_000（共享 store chunk 实测 96.8 KiB，本轮三个特性都在里面；理由与实测写在 `scripts/check-bundle-budget.mjs` 注释里，属 SHOULD 例外，已登记） |

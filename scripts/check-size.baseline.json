@@ -20,6 +20,9 @@
   "src/client/features/music/music-hub-playlists.tsx": {
     "longFns": 1
   },
+  "src/client/features/music/music-immersive-player.test.ts": {
+    "lines": 521
+  },
   "src/client/features/music/music-podcast-modal.tsx": {
     "longFns": 1
   },

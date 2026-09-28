@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { Heart, Keyboard, ListMusic, Maximize2, Minimize2, Minus, Pin, Plus, RotateCcw, X } from 'lucide-react'
+import { ChevronDown, Heart, Keyboard, ListMusic, Maximize2, Minimize2, Minus, Pin, Plus, RotateCcw, X } from 'lucide-react'
 import { isVideoMime } from '@shared/music-media'
 import { Modal, Tooltip } from '../../components/overlay'
 import { IconButton } from '../../components/primitives'
@@ -272,6 +272,10 @@ function LyricsHeader({ track, queueLength, queueToggle, offsetMs, maximized, on
               className='flex items-center gap-1 rounded-[var(--r-sm)] px-1 transition-colors hover:text-[var(--text-secondary)]'
             >
               <ListMusic size={12} />{t('music.queue_count', { value0: queueLength })}
+              {/* FB3-U7: the row below this one is the track's duration and size — a fact. This one
+                  opens the queue, so it draws that: a chevron that follows the state, not only a hover
+                  colour. Two rows about "how much" no longer read the same. */}
+              <ChevronDown size={11} aria-hidden='true' data-queue-chevron='' className={queueToggle.open ? 'rotate-180' : undefined} />
             </button>
           )
           : <span className='flex items-center gap-1'><ListMusic size={12} />{t('music.queue_count', { value0: queueLength })}</span>}

@@ -36,7 +36,7 @@ export function ImmersiveQueuePane({ open, onClose }: { open: boolean; onClose: 
           {t('music.queue_count', { value0: queueLength })}
         </span>
         <IconButton label={t('music.queue_toggle')} size='sm' aria-expanded onClick={onClose}>
-          <ChevronDown size={13} />
+          <ChevronDown size={13} aria-hidden='true' data-queue-chevron='' />
         </IconButton>
       </div>
       {/* The group is the scroll region itself, so the arrow keys work from the focus stop rather
@@ -62,7 +62,7 @@ export function ImmersiveQueueEntry({ count, onOpen }: { count: number; onOpen: 
       aria-label={t('music.queue_toggle')}
       className='flex h-9 shrink-0 items-center justify-center gap-1.5 border-t border-[var(--border-subtle)] text-[length:var(--text-11)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-secondary)]'
     >
-      <ChevronUp size={13} />
+      <ChevronUp size={13} aria-hidden='true' data-queue-chevron='' />
       {t('music.queue_count', { value0: count })}
     </button>
   )
