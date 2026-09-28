@@ -5542,9 +5542,12 @@ async function assertMusicProviderResults(page) {
     // covered below, where it still exists: the batch re-adds a row the library already holds.
     const heldRead = await page.evaluate(({ selector, title, heldLabels, addLabels }) => {
       // The rows are read inside the panel element rather than with a descendant selector: the scope is
-      // itself a comma-separated pair of labels, and `a, b li` matches the whole panel as well.
+      // itself a comma-separated pair of labels, and `a, b li` matches the whole panel as well. Which
+      // list is asked is named too (FB3-C7): the panel draws the suggestion rows above the hits, and a
+      // hit the library already holds *is* one of those suggestions — so `li` would have answered with
+      // the suggestion row, whose one button is its name plus the meta.
       const panel = document.querySelector(selector)
-      const row = [...(panel?.querySelectorAll('li') ?? [])].find((item) => (item.textContent ?? '').includes(title))
+      const row = [...(panel?.querySelectorAll('[data-provider-results] > li') ?? [])].find((item) => (item.textContent ?? '').includes(title))
       if (!row) return null
       const buttons = [...row.querySelectorAll('button')]
       const held = buttons.find((button) => heldLabels.includes(button.textContent.trim()))
@@ -5576,7 +5579,9 @@ async function assertMusicProviderResults(page) {
     // with the suggestion rows drawn, a real press on a tick reaches *that* tick. The rows are read by
     // the name the popup used to carry, because that is the name the reader hears for them.
     const suggestionStrip = await page.evaluate(({ selector, labels }) => {
-      const strip = document.querySelector(`${selector} [data-provider-suggestions]`)
+      // Read from the panel element, not with a descendant selector: the scope is a comma-separated
+      // pair, and `a, b [data-provider-suggestions]` is two selectors — the first one wins.
+      const strip = document.querySelector(selector)?.querySelector('[data-provider-suggestions]')
       const named = strip?.getAttribute('aria-label') ?? null
       return {
         present: Boolean(strip),
