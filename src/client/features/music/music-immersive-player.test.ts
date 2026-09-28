@@ -352,6 +352,9 @@ describe('MusicImmersivePlayer queue folding (REF-5)', () => {
     expect(queuePane()).toBeNull()
   })
 })
+// FB2-U1: where the queue lives — the artwork column on a wide window, the strip under the lyrics
+// when the columns stack — is read in `music-immersive-queue.test.ts`, beside the components that
+// draw it.
 const CALIBRATED_LYRIC = '[00:01.000]first line\n[00:05.000]second line'
 
 function lyricTrack(lyric: string): MusicTrack {
