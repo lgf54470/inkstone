@@ -1,6 +1,7 @@
 import type { MusicBatchAction } from '../../../lib/api'
 import {
   clearSearchHistory, clearSelection, commitQuery, closeTrackMenu, invertSelection, loadLibrary, openTrackMenu, prepareRomanization,
+  recordSearchQuery, removeSearchHistory,
   selectAll, setDefaultViewMode, setLyricSource, setQuery, setScope, setShowSourceBadge, setSort, setSortDirection, setSourceFilter, setViewMode, showMoreMatches, toggleSelect,
 } from './library-load'
 import {
@@ -36,7 +37,8 @@ import {
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
 type LibrarySlice = Pick<MusicStoreState,
-  | 'loadLibrary' | 'setScope' | 'setQuery' | 'commitQuery' | 'clearSearchHistory' | 'setSort' | 'setSortDirection' | 'prepareRomanization'
+  | 'loadLibrary' | 'setScope' | 'setQuery' | 'commitQuery' | 'clearSearchHistory' | 'recordSearchQuery' | 'removeSearchHistory'
+  | 'setSort' | 'setSortDirection' | 'prepareRomanization'
   | 'setViewMode' | 'setDefaultViewMode' | 'showMoreMatches' | 'openTrackMenu' | 'closeTrackMenu' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
   | 'setProviderQuality' | 'acceptProviderNotice' | 'setShowSourceBadge' | 'setLyricSource'
   | 'importTrackFromUrl'
@@ -69,6 +71,8 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     setQuery: (query) => setQuery(set, get, query),
     commitQuery: (query) => commitQuery(set, get, query),
     clearSearchHistory: () => clearSearchHistory(set),
+    recordSearchQuery: (query) => recordSearchQuery(set, get, query),
+    removeSearchHistory: (entry) => removeSearchHistory(set, get, entry),
     setSort: (sort) => setSort(set, sort),
     setSortDirection: (direction) => setSortDirection(set, direction),
     setViewMode: (mode) => setViewMode(set, mode),

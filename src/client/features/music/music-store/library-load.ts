@@ -4,7 +4,7 @@ import { duplicateTracks } from '../music-duplicates'
 import { ensureRomanized, LYRIC_QUERY_MIN_LENGTH, needsRomanization, SEARCH_RESULT_LIMIT, searchTracks } from '../music-search'
 import { collectTagIds, type MusicLyricSource } from '../music-utils'
 import { persist } from './persist'
-import { pushHistory } from './state'
+import { pushHistory, SEARCH_HISTORY_MIN_LENGTH } from './state'
 import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSortDirection, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest, TrackMenuTarget } from './types'
 
 // Opening the hub, retrying, and several mutations all want the library at once;
@@ -174,6 +174,26 @@ async function fetchLyricMatches(set: MusicSet, get: MusicGet, trimmed: string):
 
 export function clearSearchHistory(set: MusicSet): void {
   set({ searchHistory: [] })
+}
+
+// FB3-F5: dropping one entry is the same act as dropping all of them, one line at a time. Nothing else
+// about the box changes — the query stays where it is.
+export function removeSearchHistory(set: MusicSet, get: MusicGet, entry: string): void {
+  set({ searchHistory: get().searchHistory.filter((item) => item !== entry) })
+  persist(get)
+}
+
+// FB3-F5: what actually happened when the reader searched. History used to be written only by Enter, so
+// the common path — type, read the results, move on — left no trace. A settled query of at least two
+// characters is written here (typing "m" is not a search), and the same entry moving to the front is not
+// a second entry.
+export function recordSearchQuery(set: MusicSet, get: MusicGet, query: string): void {
+  const trimmed = query.trim()
+  if (trimmed.length < SEARCH_HISTORY_MIN_LENGTH) return
+  const current = get().searchHistory
+  if (current[0]?.toLowerCase() === trimmed.toLowerCase()) return
+  set({ searchHistory: pushHistory(current, trimmed) })
+  persist(get)
 }
 
 // One dictionary load and one romanization pass at a time; debounced keystrokes

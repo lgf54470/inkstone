@@ -12,6 +12,9 @@ import type { MusicSearchSuggestion } from './music-search-suggestions'
 
 // Every store query write re-filters the library; typing must not pay for that per keystroke.
 export const SEARCH_DEBOUNCE_MS = 200
+// FB3-F5: how long a query has to stand still before it counts as one the reader searched for. Writing
+// history on the debounce would record every prefix; this is the pause after the results have been read.
+export const SEARCH_HISTORY_SETTLE_MS = 1_200
 
 // Store writes this box did not send (cleared elsewhere, another surface) must still adopt.
 function useDebouncedText(value: string, send: (value: string) => void) {
@@ -60,6 +63,8 @@ interface PopupOption {
   icon: ReactNode
   ariaLabel: string
   pick: () => void
+  /** FB3-F5: history rows carry their own removal, because one wrong entry is not a reason to lose all. */
+  remove?: { label: string; run: () => void }
 }
 
 interface PopupState {
@@ -97,11 +102,12 @@ interface PopupArgs {
   commit: (value: string) => void
   flush: (value: string) => void
   clearHistory: () => void
+  removeEntry: (entry: string) => void
 }
 
 // The ARIA projection of the popup state onto the combobox input. Empty text
 // offers the search history; typed text offers jump targets into the library.
-function useSearchPopup({ history, text, listId, suggestions, setScope, setText, schedule, commit, flush, clearHistory }: PopupArgs): PopupState {
+function useSearchPopup({ history, text, listId, suggestions, setScope, setText, schedule, commit, flush, clearHistory, removeEntry }: PopupArgs): PopupState {
   const [open, setOpen] = useState(false)
   const [highlight, setHighlight] = useState(-1)
   const historyMode = !text.trim()
@@ -110,9 +116,9 @@ function useSearchPopup({ history, text, listId, suggestions, setScope, setText,
     setHighlight(-1)
   }, [])
   const options = useMemo<PopupOption[]>(() => historyMode
-    ? historyOptions(history, commit, flush, close)
+    ? historyOptions(history, commit, flush, close, removeEntry)
     : suggestionOptions(suggestions, setScope, flush, setText, close),
-  [historyMode, history, suggestions, commit, flush, setScope, setText, close])
+  [historyMode, history, suggestions, commit, flush, setScope, setText, close, removeEntry])
   const show = open && options.length > 0
   // FB2-U8: the popup has to own Escape while it is up. Inside the hub it did not: `useEscape` runs the
   // top of the stack and stops the event there, and this popup had never registered — so Escape was
@@ -199,7 +205,7 @@ const SUGGESTION_KIND_KEYS = {
   playlist: 'music.suggest_playlist',
 } as const
 
-function historyOptions(history: string[], commit: (value: string) => void, flush: (value: string) => void, close: () => void): PopupOption[] {
+function historyOptions(history: string[], commit: (value: string) => void, flush: (value: string) => void, close: () => void, removeEntry: (entry: string) => void): PopupOption[] {
   return history.map((entry) => ({
     key: entry,
     label: entry,
@@ -211,6 +217,7 @@ function historyOptions(history: string[], commit: (value: string) => void, flus
       else flush('')
       close()
     },
+    remove: { label: t('music.search_remove_entry', { value0: entry }), run: () => removeEntry(entry) },
   }))
 }
 
@@ -262,6 +269,8 @@ export function SearchBox() {
   const setQuery = useMusic((state) => state.setQuery)
   const commitQuery = useMusic((state) => state.commitQuery)
   const clearSearchHistory = useMusic((state) => state.clearSearchHistory)
+  const recordSearchQuery = useMusic((state) => state.recordSearchQuery)
+  const removeSearchHistory = useMusic((state) => state.removeSearchHistory)
   const setScope = useMusic((state) => state.setScope)
   const listId = useId()
   const { text, setText, schedule, flush } = useDebouncedText(query, setQuery)
@@ -269,7 +278,8 @@ export function SearchBox() {
     () => buildSearchSuggestions(tracks, playlists, text),
     [tracks, playlists, text],
   )
-  const popup = useSearchPopup({ history, text, listId, suggestions, setScope, setText, schedule, commit: commitQuery, flush, clearHistory: clearSearchHistory })
+  const popup = useSearchPopup({ history, text, listId, suggestions, setScope, setText, schedule, commit: commitQuery, flush, clearHistory: clearSearchHistory, removeEntry: removeSearchHistory })
+  useSettledSearch(text, recordSearchQuery)
   const boxRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   useClickOutside([boxRef], popup.show, popup.close)
@@ -298,6 +308,17 @@ export function SearchBox() {
       <SearchPopupFromState popup={popup} listId={listId} />
     </div>
   )
+}
+
+// FB3-F5: the common path is type, read, move on — and it left no history at all, because only Enter
+// wrote one. A query that stands still for `SEARCH_HISTORY_SETTLE_MS` is one the reader searched for;
+// the store keeps its own rules about length and duplicates.
+function useSettledSearch(text: string, record: (query: string) => void): void {
+  useEffect(() => {
+    if (!text.trim()) return undefined
+    const timer = window.setTimeout(() => record(text), SEARCH_HISTORY_SETTLE_MS)
+    return () => window.clearTimeout(timer)
+  }, [text, record])
 }
 
 // What the popup shows for the state the box is in — the history before a query and the jump targets
@@ -356,25 +377,34 @@ function SearchPopup({
       </div>
       <div role='listbox' id={listId} aria-label={title}>
         {options.map((option, index) => (
-          <button
-            key={option.key}
-            id={`${listId}-option-${index}`}
-            type='button'
-            role='option'
-            aria-selected={index === highlight}
-            aria-label={option.ariaLabel}
-            onClick={option.pick}
-            className={cn(
-              'pointer-events-auto flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12)]',
-              index === highlight
-                ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+          // FB3-F5: the row and its removal are siblings rather than nested buttons — a button inside a
+          // button is not a control a browser will deliver presses to. The option keeps the whole row but
+          // the removal's width, so picking an entry works exactly where it did.
+          <div key={option.key} className='flex items-center gap-1'>
+            <button
+              id={`${listId}-option-${index}`}
+              type='button'
+              role='option'
+              aria-selected={index === highlight}
+              aria-label={option.ariaLabel}
+              onClick={option.pick}
+              className={cn(
+                'pointer-events-auto flex min-w-0 flex-1 items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12)]',
+                index === highlight
+                  ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+              )}
+            >
+              {option.icon}
+              <span className='min-w-0 flex-1 truncate'>{option.label}</span>
+              {option.meta && <span className='shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{option.meta}</span>}
+            </button>
+            {option.remove && (
+              <IconButton label={option.remove.label} size='sm' className='pointer-events-auto' onClick={option.remove.run}>
+                <X size={11} />
+              </IconButton>
             )}
-          >
-            {option.icon}
-            <span className='min-w-0 flex-1 truncate'>{option.label}</span>
-            {option.meta && <span className='shrink-0 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{option.meta}</span>}
-          </button>
+          </div>
         ))}
       </div>
     </div>

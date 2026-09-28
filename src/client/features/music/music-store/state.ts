@@ -8,6 +8,9 @@ import type {
 export const MUSIC_PREFS_KEY = 'inkstone.music-prefs.v2'
 export const LEGACY_PREFS_KEY = 'inkstone.music-prefs.v1'
 export const SEARCH_HISTORY_MAX = 20
+// FB3-F5: one character is a keystroke, not a search — the settle rule that writes history uses this so
+// the list holds words the reader meant rather than every prefix they passed through.
+export const SEARCH_HISTORY_MIN_LENGTH = 2
 
 export interface MusicPreferences {
   volume: number

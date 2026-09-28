@@ -261,6 +261,10 @@ export interface MusicStoreState {
   setQuery: (query: string) => void
   commitQuery: (query: string) => void
   clearSearchHistory: () => void
+  /** FB3-F5: the query the reader settled on, written without touching what is being searched for. */
+  recordSearchQuery: (query: string) => void
+  /** FB3-F5: dropping one entry rather than the whole list. */
+  removeSearchHistory: (entry: string) => void
   setSort: (sort: MusicSort) => void
   setSortDirection: (direction: MusicSortDirection) => void
   setViewMode: (mode: MusicViewMode) => void

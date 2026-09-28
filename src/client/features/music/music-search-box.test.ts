@@ -5,7 +5,7 @@ import { t } from '../../lib/i18n'
 import { renderElement } from '../../lib/test-render'
 import { Fragment } from 'react'
 import { useEscape } from '../../components/overlay'
-import { SearchBox, SEARCH_DEBOUNCE_MS } from './music-search-box'
+import { SearchBox, SEARCH_DEBOUNCE_MS, SEARCH_HISTORY_SETTLE_MS } from './music-search-box'
 import { useMusic } from './music-store'
 
 let historyRendered: ReturnType<typeof renderElement> | null = null
@@ -337,3 +337,40 @@ function Behind({ onEscape }: { onEscape: () => void }) {
   useEscape(true, onEscape)
   return null
 }
+
+// FB3-F5: the history was written only when Enter confirmed a query, could only be emptied whole, and
+// its title read differently in the two languages. A search the reader actually looked at is a search
+// they may want back; one of their own rows is theirs to drop.
+describe('music search history completeness (FB3-F5)', () => {
+  it('records a query the reader settled on, without needing a commitment', () => {
+    vi.useFakeTimers()
+    const rendered = renderElement(createElement(SearchBox))
+    const input = inputOf(rendered.container)
+    typeText(input, 'moon')
+    act(() => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS + SEARCH_HISTORY_SETTLE_MS) })
+    expect(useMusic.getState().searchHistory).toEqual(['moon'])
+    rendered.unmount()
+    vi.useRealTimers()
+  })
+
+  it('keeps a single letter out of it, because that is typing and not a search', () => {
+    vi.useFakeTimers()
+    const rendered = renderElement(createElement(SearchBox))
+    typeText(inputOf(rendered.container), 'm')
+    act(() => { vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS + SEARCH_HISTORY_SETTLE_MS) })
+    expect(useMusic.getState().searchHistory).toEqual([])
+    rendered.unmount()
+    vi.useRealTimers()
+  })
+
+  it('lets one entry go without clearing the rest', () => {
+    const input = mountWithHistory()
+    expect(input.value).toBe('')
+    const remove = [...document.querySelectorAll('button')]
+      .find((button) => button.getAttribute('aria-label') === t('music.search_remove_entry', { value0: 'jazz' }))
+    expect(remove).toBeDefined()
+    act(() => { (remove as HTMLButtonElement).click() })
+    expect(useMusic.getState().searchHistory).toEqual(['moon'])
+    expect(document.querySelectorAll('[role="option"]')).toHaveLength(1)
+  })
+})

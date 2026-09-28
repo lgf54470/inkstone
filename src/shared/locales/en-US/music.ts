@@ -126,6 +126,7 @@ export const messages = {
   // FB3-U8: the empty state's action used to carry the clear control's own name, which read as two
   // controls with one label on screen.
   'music.search_show_all': 'Show all tracks',
+  'music.search_remove_entry': 'Remove {value0} from the search history',
 'music.search_results': 'Results for "{value0}"',
 'music.search_truncated': 'Top {value0} of {value1} matches',
   'music.load_more_matches': 'Load more',
