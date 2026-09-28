@@ -39,11 +39,17 @@
   "src/client/features/music/music-store/health.test.ts": {
     "longFns": 1
   },
+  "src/client/features/music/music-store/index.ts": {
+    "longFns": 1
+  },
   "src/client/features/music/music-store/library.ts": {
     "longFns": 1
   },
   "src/client/features/music/music-store/player.ts": {
     "lines": 518
+  },
+  "src/client/features/music/music-store/provider-prefs.test.ts": {
+    "longFns": 1
   },
   "src/client/features/music/music-store/providers.test.ts": {
     "longFns": 1

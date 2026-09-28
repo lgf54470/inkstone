@@ -56,6 +56,7 @@ function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> 
     alistServersError: null,
     alistBrowse: initialAlistBrowseState(),
     ...initialServerSourceState(),
+    ...initialDownloadState(prefs),
     ...initialProviderState(prefs),
     podcastFeeds: [],
     podcastFeedsLoading: false,
@@ -67,6 +68,18 @@ function initialLibraryState(prefs: MusicPreferences): Partial<MusicStoreState> 
     uploadTarget: 'r2',
     transfersOpen: false,
     webdav: initialWebdavState(),
+  }
+}
+
+// FB3-F4: declaring a preference is not seeding it. These three were read back correctly but never
+// copied into the store, so until a setter ran they were `undefined` — a switch whose `checked` is
+// undefined renders without `aria-checked` (what the settings page's axe pass reported), and a
+// download asked the proxy for a tier nobody named.
+function initialDownloadState(prefs: MusicPreferences): Partial<MusicStoreState> {
+  return {
+    downloadQuality: prefs.downloadQuality,
+    offlineWithCover: prefs.offlineWithCover,
+    offlineWithLyric: prefs.offlineWithLyric,
   }
 }
 

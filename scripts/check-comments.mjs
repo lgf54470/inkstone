@@ -4278,6 +4278,10 @@ const allowed = new Map([
     '// stored width or height of zero would collapse the dialog, so both start empty.',
   ]],
   ['src/client/features/music/music-store/index.ts', [
+    '// FB3-F4: declaring a preference is not seeding it. These three were read back correctly but never',
+    '// copied into the store, so until a setter ran they were `undefined` — a switch whose `checked` is',
+    '// undefined renders without `aria-checked` (what the settings page\'s axe pass reported), and a',
+    '// download asked the proxy for a tier nobody named.',
     '// FB-F4: the online-source half of the library state — the switches, the quality tier they',
     '// write and the notice that guards them — travels together, so it is read from the',
     '// preferences in one place rather than four lines apart in the big initializer.',
@@ -4606,6 +4610,10 @@ const allowed = new Map([
     '// FB3-F4: what a download costs and what it carries are two questions the reader answers once,',
     '// and neither is the same question as how playback sounds — a tier picked for the stream at the',
     '// desk is not the one wanted for a file kept on the device.',
+    '// The settings page\'s own axe pass found this: the two switches were drawn with `checked`',
+    '// undefined, which React renders by leaving `aria-checked` off a `role=switch`. The preference was',
+    '// declared and read back, but never copied into the state a session starts from — so this reads a',
+    '// store built *after* the stored payload is in place, rather than the one this file already holds.',
   ]],
   ['src/client/features/music/music-store/providers.test.ts', [
     '// FB3-F1: the scope is what the fan-out reads, so a scope naming one catalogue costs one request',

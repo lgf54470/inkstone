@@ -159,6 +159,24 @@ describe('download and offline settings (FB3-F4)', () => {
     expect(storedPrefs()?.offlineWithLyric).toBe(false)
   })
 
+  // The settings page's own axe pass found this: the two switches were drawn with `checked`
+  // undefined, which React renders by leaving `aria-checked` off a `role=switch`. The preference was
+  // declared and read back, but never copied into the state a session starts from — so this reads a
+  // store built *after* the stored payload is in place, rather than the one this file already holds.
+  it('seeds a fresh store from the stored download preferences', async () => {
+    window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({
+      downloadQuality: 740,
+      offlineWithCover: false,
+      offlineWithLyric: false,
+    }))
+    vi.resetModules()
+    const fresh = await import('./index')
+    const state = fresh.useMusic.getState()
+    expect(state.downloadQuality).toBe(740)
+    expect(state.offlineWithCover).toBe(false)
+    expect(state.offlineWithLyric).toBe(false)
+  })
+
   it('reads them back, refusing a tier the worker would not take', () => {
     window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({
       downloadQuality: 999,
