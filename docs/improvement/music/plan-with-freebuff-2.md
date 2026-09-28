@@ -30,9 +30,8 @@
 
 - [x] M9 FB2-U7 + FB2-U8 搜索建议浮层的两处不可用：外按被吞、Escape 被模态抢走 —— **commit `76e5d799`**
 - [x] M10 FB2-U6 窄版沉浸层复核（375px 上队列仍是歌词下方的条带、无搜索框、不落在封面列、且留在视口内；FB2-U5 判断记入 review，本轮不做）—— **commit `27c808b9`**
-- [x] M11 FB2-C3 曲库面 axe 前提：时长徒章改为不透明的令牌底衬（不再靠实例里“恰好没有封面”才绿）—— **commit `待回填`**
-- [ ] M11 FB2-C3 曲库面 axe 前提：徽标底衬可量测，或按表面具名声明该 incomplete（含 M7 不得把带封面的行留在共享实例）
-- [ ] M12 收尾：报告定稿（逐项状态 + 已知限制 + 不做清单）+ 计划回填全部哈希
+- [x] M11 FB2-C3 曲库面 axe 前提：时长徽章改为不透明的令牌底衬（不再靠实例里“恰好没有封面”才绿）—— **commit `1ef010ad`**
+- [x] M12 收尾：报告定稿（逐项状态 + 已知限制 + 不做清单）+ 计划回填全部哈希 —— **commit `待回填`**
 
 ## FB2-C3 的取证（M11 实测）
 
@@ -41,10 +40,31 @@
 | 实例 | 曲库网格 axe 读取 | 结论 |
 | --- | --- | --- |
 | :7714（门禁夹具，无封面） | 25 checks，0 violations，0 unreviewed | 两期都一样（本来就绿） |
-| :7712（带封面行） | **28 checks，0 violations，0 unreviewed** | 修订前同一实例报 4 个音乐表面红（`color-contrast` incomplete ×6/×3，目标就是那个徒章） |
+| :7712（带封面行） | **28 checks，0 violations，0 unreviewed** | 修订前同一实例报 4 个音乐表面红（`color-contrast` incomplete ×6/×3，目标就是那个徽章） |
 
-即：徒章现在真的被量到并达标（检查数从 25 升到 28，多出来的是被判断的节点），而不是「报了个 incomplete 但被放行」。门禁不再取决于库里恰好有没有封面。
-- [ ] M13（可选、独立、非音乐）FB2-F2b 备份文件夹还原复用同一个收集器
+即：徽章现在真的被量到并达标（检查数从 25 升到 28，多出来的是被判断的节点），而不是「报了个 incomplete 但被放行」。门禁不再取决于库里恰好有没有封面。
+
+## M⑤ · 本轮之外
+
+- [ ] M13（可选、独立、非音乐）FB2-F2b 备份文件夹还原复用同一个收集器 —— **本轮不做**，理由写在 review 的不做清单（跨模块重构 + 会改变还原交互，不属音乐模块；且两者对「文件夹」的语义不同：一个收音频，一个收备份包）
+
+## 本轮台账（全部提交）
+
+| 项 | commit | 一句话 |
+| --- | --- | --- |
+| M0 | `76eaf07c` | 二次复审报告 + 本计划 |
+| M1 | `a95728f8` | 在线导入改由 worker 自取封面与歌词（修掉「内容过大」） |
+| M2 | `0bb7aaa9` | 文件夹上传不再触发浏览器原生确认框 |
+| M3 | `300461f7` | 工具栏按实测宽度分行，消除溢出行与尾部留白 |
+| M4 | `8e8f3f22` | 沉浸式队列搬进左侧封面列并带回搜索 |
+| M5 | `166bb742` | 命中列表不再逐行重复「时长未知」 |
+| M6 | `93901291` | 封面记入自己的预算族 |
+| M7 | `e98cb077` | 在线搜索 / 导入链路纳入浏览器门禁 + body 形状契约 |
+| M8 | `522a5377` | 在线行三态 + 面板高度（八行不再套内滚动条） |
+| M9 | `76e5d799` | 建议浮层不再吞按压、不再抢走整个音乐库的 Escape |
+| M10 | `27c808b9` | 375px 沉浸层队列复核 |
+| M11 | `1ef010ad` | 时长徽章自带不透明底衬 |
+| M12 | 本次 | 报告定稿与台账 |
 
 ## 每项验收标准（通用）
 
@@ -59,7 +79,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-28 | M11 FB2-C3 时长徒章换为不透明令牌底衬 | `待回填` | 先红（单测）：`music-track-card.test.ts` 新增一例（徒章类名含 `bg-[var(--bg-overlay)]` 且不含 `bg-[var(--scrim)]`）——把 `music-track-card.tsx` 回退到 HEAD 跑得 **1 failed / 3 passed**，实现后 4 例 ✅。实测（同一个门禁、同一实例）：`:7714`（无封面夹具）曲库网格 25 checks / 0 violations / 0 unreviewed；`:7712`（带封面行，修前同一门禁在该实例报 4 个音乐表面红）改为 **28 checks / 0 violations / 0 unreviewed**——即徒章被真正量到并达标，而不是被放行；两侧对比度门禁均 exit 0 | 只改了网格卡上的那一枚徒章（`music-track-card.tsx:39`）；行内视图与队列里的时长文本不在画面上，不属这一条。悬停遮罩（同一 `--scrim`）保持不动：它 `opacity-0` 时不参与可访问性树，且它没有文字需要量 |
+| 2026-09-28 | M11 FB2-C3 时长徽章换为不透明令牌底衬 | `待回填` | 先红（单测）：`music-track-card.test.ts` 新增一例（徽章类名含 `bg-[var(--bg-overlay)]` 且不含 `bg-[var(--scrim)]`）——把 `music-track-card.tsx` 回退到 HEAD 跑得 **1 failed / 3 passed**，实现后 4 例 ✅。实测（同一个门禁、同一实例）：`:7714`（无封面夹具）曲库网格 25 checks / 0 violations / 0 unreviewed；`:7712`（带封面行，修前同一门禁在该实例报 4 个音乐表面红）改为 **28 checks / 0 violations / 0 unreviewed**——即徽章被真正量到并达标，而不是被放行；两侧对比度门禁均 exit 0 | 只改了网格卡上的那一枚徽章（`music-track-card.tsx:39`）；行内视图与队列里的时长文本不在画面上，不属这一条。悬停遮罩（同一 `--scrim`）保持不动：它 `opacity-0` 时不参与可访问性树，且它没有文字需要量 |
 | 2026-09-28 | M10 FB2-U6 窄版沉浸层队列复核 | `待回填` | `scripts/e2e-visual.mjs` 的 375px 沉浸层块新增两条实测：`at 375px the queue opens as the strip under the lyrics, with no search box`（读队列组的归属、`inArtworkColumn`、以及宽版面板才有的搜索框存在与否）与 `at 375px the queue strip stays inside the viewport`。回归：`scripts/e2e-visual.mjs` 对 :7714 **612 通过 / 1 失败**（唯一失败仍是已登记的看板高度遗留）；13 项静态门禁 ✅；`size:check` ✅ | 门禁首跑实测到一件事实：队列折叠状态**随表面存活**，所以在这一幕里它可能已由先前的（宽版）场景打开，那段没有「入口行」可按 —— 读法因此先归一化（已开则先用它自己的收起控件折回去）再量，与 M4 阅读器的做法一致。另：同一次运行里 `export: the printed deck draws its charts live` 偶发红（rAF 绘制竞态，重跑全绿），与音乐无关 |
 | 2026-09-28 | M9 FB2-U7 + FB2-U8 搜索建议浮层不再吞掉面板上的按压，也不再抢走整个音乐库的 Escape | `待回填` | 先红（单测）：`music-search-box.test.ts` 新增 3 例（浮层框架让出指针而只留住行与其唯一动作 / Escape 关掉浮层且不动输入 / 浮层身后的表面也监听 Escape 时只关浮层），对 HEAD 跑得 **3 failed / 11 passed**。实现（`music-search-box.tsx`）：浮层框架 `pointer-events-none`（选项与「清除历史」`pointer-events-auto`）、`useEscape(show, close)` 入栈。回归：两文件+音乐全量 **14 例 ✅**（搜索框）与 **1053 例 ✅**（music）；`npm run test:unit` **552 文件 / 4960 passed + 1 skipped**（5 例在并行负载下红，重跑全绿，均为已登记 flaky：share-collections、starter-deck、calendar 差分模糊、hub-modal 搜索截断）；`npm run typecheck` ✅；13 项静态门禁 ✅；`scripts/e2e-visual.mjs` 对 :7714 **611 通过 / 1 失败**（唯一失败仍是已登记的看板高度遗留）；`npm run contrast:check` 对 :7714 全绿 | 浮层框架让出指针意味着**框架区域的按压会直接落到下面的控件**并同时关掉浮层（这正是读者期望的）；只有行本身与该动作留在浮层内。门禁里那条 `[role="listbox"]` 的全局读取也修了：页面本来就常驻别的 listbox（笔记列表、命令面板），改成按名字（`aria-label=搜索建议`）读，否则断言的会是「恰好在那儿的那一个」 |
 | 2026-09-28 | M8 FB2-U3 + FB2-U4 在线行三态与面板高度 | `待回填` | 先红（单测）：`music-provider-results.test.ts` 新增 5 例（添加中带 `aria-busy` 且落地即清 / 只标被按的那行 / 试听中同样带 `aria-busy` 并禁用且播完进队列 / 已在库中不再给「添加」而给禁用的「已在库中」/ 批量运行时勾选行各自 busy 且两首都落地）——对 HEAD 跑得 **5 failed / 22 passed**。实现：`useRowBusy()`（按 key 记账，单按与批量共用同一套 busy）、`libraryProviderKeys()`（`providerSource:providerSongId`，与 `providerHitKey` 同形状所以两方可比）、行拆出 `ProviderRowActions`、结果列表 `max-h-56 → max-h-96`（八行 `min-h-11` + 间隙 ≈ 366px）并加 `data-provider-results`。回归：music **122 文件 / 1051 例 ✅**；`npm run test:unit` **552 文件 / 4962 passed + 1 skipped ✅**；`npm run typecheck` ✅；13 项静态门禁 ✅（size 先报 `ProviderResultRow` 51 行与新 describe 91 行 → 抽出 `ProviderRowActions` 并把 describe 拆成三个，同时按门禁要求 `--update-baseline` 记录两个 locale 的真实增长）；`scripts/e2e-visual.mjs` 对 :7714 **610 通过 / 1 失败**（唯一失败仍是已登记的看板高度遗留），本轮新增 6 条断言 | 门禁跑出两个新缺陷（FB2-U7 / FB2-U8，见 M9）：建议浮层压在面板顶部之上会吞掉按压，且 Escape 在 Hub 里关掉整个音乐库。因此本轮**批量按压暂时直调 `.click()`**（浮层挡着，真实按压送不到），M9 修好后换回 `pressSurfaceControl`。另外门禁自身踩了一个坑已记下：`cssByLabels('section', ...)` 返回的是逗号分隔的两个选择器，拼成 `${selector} li` 会连整个 section 一起命中（读到的是两行合起来的文本），所以行级读取必须先在 Node 侧取到 section 元素再用 `querySelectorAll('li')` |
