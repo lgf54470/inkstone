@@ -149,7 +149,6 @@
 
 .ink-prose .kanban-canvas {
   width: 100%;
-  max-height: var(--kanban-canvas-cap);
   overflow: hidden;
   position: relative;
 }

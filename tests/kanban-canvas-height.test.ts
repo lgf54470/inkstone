@@ -13,14 +13,22 @@ import { KanbanRoot } from '../src/client/lib/markdown/kanban/ui/kanban-root'
  * under the columns (user report 2026-09-23). The board is now as tall as its columns need and no
  * taller, and the columns are not stretched at all.
  *
+ * The ceiling belongs to the **board**, not to the canvas. It was written on the canvas — which is the
+ * block's whole box, header and notice strip included — so the chrome above the board spent the board's
+ * own budget: with the overdue-notice strip drawn and a column of cards, the canvas stopped at 480px
+ * while the tree inside it needed 614, and the bottom 134px of the board (its horizontal scrollbar with
+ * it) was cut off by the canvas's `overflow: hidden`. A `max-height` on the canvas cannot bound the
+ * board anyway: the canvas's height is auto, so its children are laid out against the height the content
+ * asks for and the clamp only takes effect after they have been placed.
+ *
  * Two halves of one rule, and neither can be read from the other. The stylesheet holds the caps —
  * `styles/kanban.css` carries no comments by policy, so the reasoning reads here, next to the only
  * assertions that look at it. The stretch itself is a class on the board's own root, so that half is
  * asserted on what the component actually renders.
  *
  * What jsdom cannot do is lay any of this out, so nothing here measures a column. That the columns are
- * in fact as tall as their cards, and that the canvas stops at them, is measured on real pixels in
- * `scripts/e2e-visual.mjs` (`assertKanbanSurfaces`).
+ * in fact as tall as their cards, that the canvas covers the chrome and the board it draws with nothing
+ * clipped, is measured on real pixels in `scripts/e2e-visual.mjs` (`assertKanbanColumnHeights`).
  */
 const KANBAN_CSS = fs.readFileSync('src/client/styles/kanban.css', 'utf8')
 
@@ -50,13 +58,13 @@ function declaration(selector: string, property: string): string | null {
 }
 
 describe('the block stops at what the board needs', () => {
-  it('caps the canvas rather than fixing its height', () => {
+  it('leaves the canvas to hug the chrome and the board it draws', () => {
     const canvas = blockOf('.ink-prose .kanban-canvas')
-    expect(declaration('.ink-prose .kanban-canvas', 'max-height')).toBe('var(--kanban-canvas-cap)')
+    expect(declaration('.ink-prose .kanban-canvas', 'max-height')).toBeNull()
     expect(canvas).not.toMatch(/(?:^|;)\s*height\s*:/)
   })
 
-  it('caps the board at the same ceiling, so its scrollbar sits under the columns', () => {
+  it('caps the board, which is the half that scrolls', () => {
     expect(declaration('.ink-prose .kanban-canvas [data-kanban-board]', 'max-height')).toBe(
       'var(--kanban-canvas-cap)',
     )
@@ -71,7 +79,7 @@ describe('the block stops at what the board needs', () => {
     expect(column).toBe('calc(var(--kanban-canvas-cap) - var(--sp-4) * 2)')
   })
 
-  it('keeps the ceiling in one place, so the canvas and the columns cannot drift apart', () => {
+  it('keeps the ceiling in one place, so the board and the columns cannot drift apart', () => {
     const declared = KANBAN_CSS.match(/--kanban-canvas-cap\s*:\s*([^;]+)/)
     expect(declared?.[1]?.trim()).toBe('480px')
     expect(KANBAN_CSS.match(/--kanban-canvas-cap\s*:/g)).toHaveLength(1)

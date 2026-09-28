@@ -3057,10 +3057,18 @@ async function assertKanbanSurfaces(page, scope, where) {
  * emptiness rather than under the columns (user report 2026-09-23).
  *
  * Three numbers, and each one is load-bearing. A column that is taller than what it draws means it was
- * stretched; a canvas taller than the board's content outside it means the block is still holding a
- * height nobody asked for; and a board taller than the canvas means the cap is not doing its job and
- * something will be clipped that should have scrolled. Read in both the note and the overlay, because
- * the two get their height from different rules.
+ * stretched; a canvas taller than the tree it draws means the block is still holding a height nobody
+ * asked for; and a canvas shorter than that tree means something is being clipped — which is what the
+ * ceiling used to do: it was written on the canvas, the block's whole box, so the header and the
+ * overdue-notice strip spent the board's own budget and the bottom of the board (its scrollbar with it)
+ * fell outside the canvas's `overflow: hidden`. The ceiling is the board's now (styles/kanban.css), and
+ * the block hugs the chrome plus the board. Read in both the note and the overlay, because the two get
+ * their height from different rules.
+ *
+ * The tree is read as the boxes the canvas's own root lays out — the top bar, the notice strip, the view
+ * panel and anything else a state adds — rather than as a named sum: the check is "the block covers what
+ * it draws", and a reader who has to update this line every time the block gains a strip is a check that
+ * goes stale quietly.
  */
 async function assertKanbanColumnHeights(page, scope, where) {
   const read = await page.evaluate((scope) => {
@@ -3098,16 +3106,28 @@ async function assertKanbanColumnHeights(page, scope, where) {
       }]
     })
     const round = (node) => Math.round(node.getBoundingClientRect().height)
+    const children = canvas.firstElementChild ? [...canvas.firstElementChild.children] : []
     return {
       rows: columns.length,
       canvas: round(canvas),
       board: round(board),
       // The header is drawn above the board and inside the canvas, so a canvas that stops at the board
-      // would cut the controls off; the space the block has to cover is the two of them together.
+      // would cut the controls off; the space the block has to cover is the whole tree inside it.
       header: Math.round(root?.querySelector('[data-kanban-header]')?.getBoundingClientRect().height ?? 0),
       // The overlay fills the stage it is given; only the note is supposed to give space back.
       fullscreen: canvas.classList.contains('is-fullscreen'),
       columns,
+      // The boxes the canvas has to cover, top to bottom: the board's own root is the canvas's single
+      // child, and its children are the chrome and the view's panel. They travel with the read so a
+      // failure names what the canvas was measured against instead of re-deriving it.
+      drawn: children.reduce((sum, child) => sum + child.getBoundingClientRect().height, 0),
+      children: children.map((child) => ({
+        tag: child.tagName.toLowerCase(),
+        cls: (child.getAttribute('class') ?? '').slice(0, 48),
+        height: Math.round(child.getBoundingClientRect().height),
+      })),
+      view: canvas?.querySelector('[data-kanban-view-type]')?.getAttribute('data-kanban-view-type') ??
+        canvas?.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim() ?? '',
     }
   }, scope)
   if (read.reason) {
@@ -3128,22 +3148,23 @@ async function assertKanbanColumnHeights(page, scope, where) {
     JSON.stringify({ stretched: stretched.slice(0, 3), rows: read.rows }),
   )
   // Then the block itself: with the columns no longer filling it, a canvas still sized to the old fixed
-  // height would show as plane under a short board. The canvas has to cover what it draws — the header
-  // and the board — and nothing beyond it. Neither check reads the board's own slack: its last child is
-  // the add-column button, which is short by design, not a column with room to spare.
+  // height would show as plane under a short board. The canvas has to cover what it draws — the top bar,
+  // the notice strip, the view's panel — with nothing held beyond it and nothing clipped inside it.
+  // Neither check reads the board's own slack: its last child is the add-column button, which is short
+  // by design, not a column with room to spare.
   //
   // Only the note gives space back: in its own overlay the canvas fills the stage it was given, and a
   // plane that stopped at the last card would leave the note's furniture under a full screen board.
-  const needed = read.board + read.header
+  const extra = { canvas: read.canvas, drawn: read.drawn, board: read.board, header: read.header, view: read.view, children: read.children }
   check(
-    `kanban ${where}: the block is no taller than the header and board it draws`,
-    read.fullscreen || read.canvas <= needed + 1,
-    JSON.stringify({ canvas: read.canvas, needed, board: read.board, header: read.header }),
+    `kanban ${where}: the block is no taller than the tree it draws`,
+    read.fullscreen || read.canvas <= read.drawn + 1,
+    JSON.stringify(extra),
   )
   check(
-    `kanban ${where}: the block is tall enough for the header and board it draws`,
-    read.canvas >= needed - 1,
-    JSON.stringify({ canvas: read.canvas, needed }),
+    `kanban ${where}: the block is tall enough for the tree it draws`,
+    read.canvas >= read.drawn - 1,
+    JSON.stringify(extra),
   )
 }
 
