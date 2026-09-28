@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, Music, Play, Plus } from 'lucide-react'
 import { Button, IconButton, Spinner } from '../../components/primitives'
-import { Checkbox, Switch } from '../../components/form'
+import { Checkbox, Select, Switch } from '../../components/form'
 import { t, type MessageKey } from '../../lib/i18n'
 import { formatTimecode } from '../../lib/time'
 import type { MusicTrack } from '@shared/types'
 import { useMusic } from './music-store'
-import { GDS_SOURCES, providerSourceLabel } from './providers'
+import { GDS_SOURCES, PROVIDER_SCOPE_ALL, isProviderScope, providerSourceLabel, scopeSources, type MusicProviderScope } from './providers'
 import { musicProviderCoverUrl, type MusicProviderTrack } from '../../lib/api'
 
 // FB-F2: every state the panel can be in has words. The old render chain fell through
@@ -35,8 +35,10 @@ export function providerPanelState(input: {
 
 // Every source down is an outage; some of them down is a partial answer. The sentence
 // has to say which, because a retry helps in the first case and only partly in the second.
-export function providerFailureKey(failedCount: number): MessageKey {
-  return failedCount >= GDS_SOURCES.length ? 'music.provider_all_failed' : 'music.provider_partial_failed'
+// FB3-F1: "every source" is the sources this search asked, so the count is compared against the
+// scope's own size — with the scope narrowed to one catalogue, that catalogue failing is all of them.
+export function providerFailureKey(failedCount: number, sourceCount: number = GDS_SOURCES.length): MessageKey {
+  return failedCount >= sourceCount ? 'music.provider_all_failed' : 'music.provider_partial_failed'
 }
 
 // FB-F10: a tick is stored as the hit's own identity (`source:sourceId`), so a selection survives
@@ -68,6 +70,8 @@ export function MusicProviderResults() {
   const failedSources = useMusic((state) => state.providerFailedSources)
   const searchProviders = useMusic((state) => state.searchProviders)
   const setProviderEnabled = useMusic((state) => state.setProviderEnabled)
+  const scope = useMusic((state) => state.providerScope)
+  const setProviderScope = useMusic((state) => state.setProviderScope)
   // FB2-U3: whether the library already holds a hit is a fact about the reader's own rows, so it is
   // read from them — and a hit is the same song as a row when the catalogue and the song id agree.
   const libraryTracks = useMusic((state) => state.tracks)
@@ -75,27 +79,23 @@ export function MusicProviderResults() {
   const busy = useRowBusy()
   const selection = useProviderSelection(results, busy)
 
-  // FB-F2: `enabled` is a dependency of its own. Turning the switch on is a reason to
-  // ask, not just a change of who is allowed to ask — without it the reader had to
-  // retype the query before the switch did anything at all.
-  useEffect(() => {
-    if (!query.trim()) return
-    const timer = window.setTimeout(() => void searchProviders(query), 500)
-    return () => window.clearTimeout(timer)
-  }, [query, enabled, searchProviders])
+  useProviderSearch(query, enabled, scope, searchProviders)
 
   if (!query.trim()) return null
   const state = providerPanelState({ enabled, searching, results, failedSources, keywords, query })
   return (
     <section aria-label={t('music.provider_results')} className='border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2'>
-      <div className='flex items-center justify-between pb-1'>
-        <span className='text-[length:var(--text-12)] font-semibold text-[var(--text-tertiary)]'>{t('music.provider_results')}</span>
-        <Switch checked={enabled} onChange={(value) => setProviderEnabled('gds', value)} label={t('music.provider_gds')} />
-      </div>
+      <ProviderPanelHeader
+        enabled={enabled}
+        scope={scope}
+        onToggle={(value) => setProviderEnabled('gds', value)}
+        onScope={setProviderScope}
+      />
       <ProviderPanelBody
         state={state}
         results={results}
         failedSources={failedSources}
+        scopeSize={scopeSources(scope).length}
         selected={selection.selected}
         adding={selection.adding}
         busy={busy}
@@ -109,10 +109,62 @@ export function MusicProviderResults() {
   )
 }
 
+// FB-F2: `enabled` is a dependency of its own — turning the switch on is a reason to ask, not just a
+// change of who is allowed to ask, and without it the reader had to retype the query before the
+// switch did anything at all. FB3-F1 puts the scope under the same rule: picking a catalogue narrows
+// *this* search, so it re-asks rather than waiting for the next keystroke.
+const PROVIDER_SEARCH_DEBOUNCE_MS = 500
+
+function useProviderSearch(
+  query: string,
+  enabled: boolean,
+  scope: MusicProviderScope,
+  search: (keywords: string) => Promise<void>,
+): void {
+  useEffect(() => {
+    if (!query.trim()) return
+    const timer = window.setTimeout(() => void search(query), PROVIDER_SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [query, enabled, scope, search])
+}
+
+// FB3-F1 + FB3-U6: which catalogue to ask is the reader's first question about an online list, and
+// the switch that governs the list is their second. Both live in this one row rather than in two
+// places, because they answer the same question — how much is this query allowed to cost.
+function ProviderPanelHeader({ enabled, scope, onToggle, onScope }: {
+  enabled: boolean
+  scope: MusicProviderScope
+  onToggle: (value: boolean) => void
+  onScope: (scope: MusicProviderScope) => void
+}) {
+  return (
+    <div data-provider-header='' className='flex items-center justify-between gap-2 pb-1'>
+      <span className='text-[length:var(--text-12)] font-semibold text-[var(--text-tertiary)]'>{t('music.provider_results')}</span>
+      <span className='flex shrink-0 items-center gap-2'>
+        <Select
+          data-provider-scope=''
+          aria-label={t('music.provider_scope')}
+          className='h-8 w-auto min-w-32'
+          value={scope}
+          onChange={(event) => onScope(readScope(event.target.value))}
+        >
+          <option value={PROVIDER_SCOPE_ALL}>{t('music.provider_scope_all')}</option>
+          {GDS_SOURCES.map((source) => (
+            <option key={source} value={source}>{providerSourceLabel(source)}</option>
+          ))}
+        </Select>
+        <Switch checked={enabled} onChange={onToggle} label={t('music.provider_gds')} />
+      </span>
+    </div>
+  )
+}
+
 interface ProviderPanelBodyProps {
   state: ProviderPanelState
   results: MusicProviderTrack[] | null
   failedSources: string[]
+  /** FB3-F1: how many catalogues this search asked, so the failure copy counts against the right total. */
+  scopeSize: number
   selected: readonly string[]
   adding: boolean
   busy: RowBusy
@@ -216,17 +268,24 @@ function useProviderSelection(results: MusicProviderTrack[] | null, busy: RowBus
   }
 }
 
+// The select's value is a string from the DOM; the store's is a scope. A value that is not on the
+// shared list is impossible through this control (it only offers entries), but reading it through the
+// same guard the store's loader uses keeps one rule in one place instead of trusting the markup.
+function readScope(value: string): MusicProviderScope {
+  return isProviderScope(value) ? value : PROVIDER_SCOPE_ALL
+}
+
 function ProviderPanelBody({
-  state, results, failedSources, selected, adding, busy, held,
+  state, results, failedSources, selected, adding, busy, held, scopeSize,
   onRetry, onToggle, onAddSelected, onClearSelection,
 }: ProviderPanelBodyProps) {
   if (state === 'off') return <Notice text={t('music.provider_off')} align='start' />
   if (state === 'loading') return <Notice text={t('common.loading')} />
   if (state === 'none') return <Notice text={t('music.provider_none')} />
-  if (state === 'failed') return <ProviderFailureNotice failedSources={failedSources} onRetry={onRetry} />
+  if (state === 'failed') return <ProviderFailureNotice failedSources={failedSources} scopeSize={scopeSize} onRetry={onRetry} />
   return (
     <>
-      {failedSources.length > 0 && <ProviderFailureNotice failedSources={failedSources} onRetry={onRetry} />}
+      {failedSources.length > 0 && <ProviderFailureNotice failedSources={failedSources} scopeSize={scopeSize} onRetry={onRetry} />}
       {selected.length > 0 && (
         <ProviderSelectionBar
           count={selected.length}
@@ -283,11 +342,11 @@ function ProviderSelectionBar({ count, adding, onAddSelected, onClear }: {
 
 // FB-F6: the sources that did not answer are named in the open, with a way to ask again —
 // and only ever beside the hits that did arrive, never instead of them.
-function ProviderFailureNotice({ failedSources, onRetry }: { failedSources: string[]; onRetry: () => void }) {
+function ProviderFailureNotice({ failedSources, scopeSize, onRetry }: { failedSources: string[]; scopeSize: number; onRetry: () => void }) {
   return (
     <div role='status' className='flex flex-wrap items-center justify-center gap-2 py-2'>
       <span className='text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
-        {t(providerFailureKey(failedSources.length), { value0: failedSources.length })}
+        {t(providerFailureKey(failedSources.length, scopeSize), { value0: failedSources.length })}
       </span>
       <Button size='sm' onClick={onRetry}>{t('music.retry')}</Button>
     </div>

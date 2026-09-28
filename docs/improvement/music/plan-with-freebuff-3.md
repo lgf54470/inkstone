@@ -19,7 +19,8 @@
 - [x] M2 FB3-U2 + FB3-U9 + FB3-C3 沉浸层队列默认态按形态分档（宽版默认展开、窄版默认折叠；读者按压后按读者的）+ 门禁补「队列至少一整行可见且左列不长出第二个滚动条」「375px 条带整行可见、歌词列不套第二滚动条」—— **commit `6ade04bc`**
 - [x] M3 FB3-U3 + FB3-C2 设置面板三处：EQ 预设行容器查询换挡（`@sm:grid-cols-5`）、服务器表单标签列 subgrid 对齐、去掉重复说明并拆出动作向的表单说明（`music.server_form_hint`）—— **commit `958f5cdc`**
 - [x] M1b 浏览器探针实测发现并修掉的一处：× 之后弹出没打开（`clearQuery` 显式 `setOpen(true)`）+ M1 门禁里的两处标签错误 —— **commit `958f5cdc`（混入 M3，见下「入库方式」）**
-- [ ] M16（新增）FB3-C5 门禁自身：全新实例上音乐场景因客户端 60s 库缓存空读而提前返回，需在读数前强制一次库刷新（本轮只登记与取证，见下「浏览器实测」）
+- [x] M16（新增）FB3-C5 门禁自身：全新实例上音乐场景因客户端 60s 库缓存空读而提前返回，需在读数前强制一次库刷新（本轮只登记与取证，见下「浏览器实测」）—— **commit `待回填`**
+- [x] M17（新增，同一次实测暴露）门禁自身另两处读数缺陷：`assertMusicListDensity` 的两次读数会撞上列表自己对宽度的那一次测量（ResizeObserver 的首次回调），把上一版布局当成读数（实测在窄窗上读到全列）；`assertMusicSearchClear` 的「曲库已过滤」读的是整个 hub 的文本，而侧栏的最近播放与队列面板本来就会写出曲名（实测 `library: true`、`rows: 0`）—— **commit `待回填`（与 M16 同批）**
 
 ## M② · 信息与历史（P1）
 
@@ -29,7 +30,7 @@
 
 ## M③ · 在线音源（P1 / P2）
 
-- [ ] M6 FB3-F1 + FB3-U6 + FB3-S1 单源检索范围：偏好 `providerScope`（白名单校验）+ 面板同排的范围选择器 + 只扇出选中源 + 契约测试（非法取值按未传入、不放宽出站白名单）
+- [x] M6 FB3-F1 + FB3-U6 + FB3-S1 单源检索范围：偏好 `providerScope`（白名单校验）+ 面板同排的范围选择器 + 只扇出选中源 + 契约测试（非法取值按未传入、不放宽出站白名单）—— **commit `待回填`**（门禁新增三条读数的通过依赖随后一批的 M16/M17，同一工作区一并跑到）
 - [ ] M7 FB3-P1 检索成本：按 `(scope, keywords)` 的会话内短 TTL 记忆，改回一个字再改回来不再重新扇出
 - [ ] M8 FB3-F2 逐源开关与顺序：设置页逐源开关 + 排序（聚合顺序同时被「合并顺序」与「换源候选」消费）
 - [ ] M9 FB3-F8 在线检索建议：在线命中与本地建议并列呈现（优先给「已经在你库里/可直达的源」分组），不引入第三方接口
@@ -84,7 +85,9 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-28 | M5b 门禁里搜索历史的标签跟随 M5 的新措辞 | `待回填` | 无需先红：这是门禁自己的字符串与已交付文案不一致（M5 把 `music.search_history` 的 zh 改为「最近搜索」）。M6 复核门禁时读到 `assertMusicSearchClear` 用它拼 `[role="listbox"][aria-label="搜索历史"]`，改后必然选不到历史列，于是「清空查询后焦点留在输入框、历史未被触碰」会假失败 | 这属于「门禁的字符串靠人手抄资源文件」这一整类风险；本项只修当前的错，类级护栏（让标签从资源文件派生，或加一条比对）登记为 FB3-C6 |
+| 2026-09-28 | M6 FB3-F1 + FB3-U6 + FB3-S1 单源检索范围（先红后改） | `待回填` | 先红（单测）四个文件八例：`gds.test.ts` 新增「单源只问一个上游」（对 HEAD 仍返回 5 页）、`scopeSources` 尚不存在；`providers.test.ts` 新增「只问 scope 指名的那几个」（对 HEAD 仍是 5 次请求）；`provider-prefs.test.ts` 新增两例（偏好不落库 / 非法值不回退）；`music-provider-results.test.ts` 新增两例（头部同排的选择器不存在 / 改范围不再扇出）与一条改写的失败文案用例（`providerFailureKey` 改为带「本次问源数」）——对 HEAD **8 failed / 54 passed**。实现：`providers/gds.ts` 加 `PROVIDER_SCOPE_ALL` / `PROVIDER_SCOPES` / `isProviderScope` / `scopeSources`（聚合回的是 `GDS_SOURCES` **本身**，非法值同样走聚合，所以未列名的 slug 不可能进 URL），`searchGdsPages/searchGds` 收 `scope`；`music-store/state.ts` 加 `providerScope` 偏好与白名单校验（`readListed`）；`providers.ts` 加 `setProviderScope`，`searchProviders` 把 `get().providerScope` 传给 `searchGds`（换源/自动补齐**不**走 scope，它们的意义就是找别的源，已写在注释里）；`music-provider-results.tsx` 把选择器与开关放进同一行（`data-provider-header` / `data-provider-scope`），撤销搜索的 `useEffect` 抽成 `useProviderSearch` 并把 scope 列入依赖（换范围即重新问，不等下一次击键）；失败文案按「本次问源数」分档。回归：`npx vitest run src/client/features/music` **120 文件 / 975 例 ✅**；`npm run typecheck` ✅；13 项静态门禁 ✅。门禁新增三读（选择器与开关同排、六项取值、收窄后只剩一个上游、还原聚合） | 范围是客户端减少请求的手段，不是服务端信任的输入（FB3-S1）——本轮没有给 worker 传任何新参数，出站白名单一字未改；换源/自动补齐仍固定向全部上游问（见上）。三条新门禁读数的整轮实测见 M16/M17 行 |
+| 2026-09-28 | M16 + M17 FB3-C5 与本次实测暴露的另两处门禁读数缺陷 | `待回填` | 先在浏览器里复现：`assertMusicSearchClear` 的读数在列表已空时仍报 `library: true`，逐元素摸到两个写出曲名的元素分别属于侧栏（`p < header < aside`）与队列面板，证实读得太宽；把该读数改为只读列表自己那一列（`[data-music-content]`）后同一状态下本报 `false`。`assertMusicListDensity` 的两处读数则实测会被测量滞后污染（窄窗上读到 10 列，而手动把窗口由最大化还原后 1 秒内稳定到 7 列，列表自身宽度与中心列同宽、无溢出，排除「内容撑宽导致自锁」），改为「三份相同读数才算定稿」的 `readSettled`。整轮 `e2e-visual.mjs`：**611 passed / 2 failed**（两者皆与本模块无关：看板块高度、分享中心），音乐场景全部断言绿，包括 M16 的新前置断言（`music: the toolbar reload control hands the just-uploaded fixture to the client library` / `music: the hub lists the seeded tracks`）与 M17 的两处 | 测量滞后本身（窗口刚改大小后的前几帧仍按旧宽度画）未在 app 侧处理，登记为已知限制：门禁改读稳定态，而 app 侧该瞬态需要一次真正的测量分层才能消除（见下「已知限制」） |
+| 2026-09-28 | M5b 门禁里搜索历史的标签跟随 M5 的新措辞 | `f9a69a0a` | 无需先红：这是门禁自己的字符串与已交付文案不一致（M5 把 `music.search_history` 的 zh 改为「最近搜索」）。M6 复核门禁时读到 `assertMusicSearchClear` 用它拼 `[role="listbox"][aria-label="搜索历史"]`，改后必然选不到历史列，于是「清空查询后焦点留在输入框、历史未被触碰」会假失败 | 这属于「门禁的字符串靠人手抄资源文件」这一整类风险；本项只修当前的错，类级护栏（让标签从资源文件派生，或加一条比对）登记为 FB3-C6 |
 | 2026-09-28 | M5 FB3-F5 + FB3-C4 搜索历史完整度与措辞对齐（先红后改） | `待回填` | 先红（单测）：`music-search-box.test.ts` 新增三例（停手后落库 / 单字符不落库 / 逐条删除只删那一条），对 HEAD 跑得 **2 failed / 18 passed**（第三条因动作不存在而红，第二条是按规则绿）。实现：`state.ts` 加 `SEARCH_HISTORY_MIN_LENGTH = 2`；`library-load.ts` 加 `recordSearchQuery`（跳过首位重复、persist）与 `removeSearchHistory`；`types.ts`/`library.ts` 暴露；`music-search-box.tsx` 加 `SEARCH_HISTORY_SETTLE_MS = 1200` 与 `useSettledSearch`，历史行渲染为「行（role=option，占满除删除键外的宽度）+ 兄弟删除键」（按钮里套按钮浏览器不会把按压交给内层）；`music.search_history` 中文改「最近搜索」。回归：`npx vitest run src/client/features/music` **120 文件 / 965 例 ✅** | 落库规则依赖「读者停手」，所以快速改词不会留下半截前缀；这与「提交即落库」并存，两者都幂等（同一条会提到最前） |
 | 2026-09-28 | M4 FB3-U4 + FB3-U8 搜索空态措辞与动作名（先红后改） | `e667efbb` | 先红（单测）：`music-empty-states.test.ts` 新增三例（库内无命中且在线有两条时说明上方有两条 / 动作叫「显示全部歌曲」而不再叫「清除搜索」/ 在线面板没有结果时不承诺），对 HEAD 跑得 **2 failed / 6 passed**；同时改掉一条既有用例（它按旧动作名点击）。实现：`music.no_results` 改为「曲库中没有匹配的歌曲」、新增 `music.no_results_online` 与 `music.search_show_all`（双语）；`music-track-list.tsx` 的 `NoTracks` 读 `providerResults.length`，有命中才补那一句。回归：相关三个测试文件 **46 例 ✅** | 在线命中数是本地渲染态（不是服务端事实），但它正是画面上方列着的东西，所以这句话跟着实况走 |
 | 2026-09-28 | M3 FB3-U3 + FB3-C2 设置面板三处（先红后改） | `958f5cdc` | 先红（单测）：`music-settings.test.ts` 新增两例（服务器说明只出现一次且表单换成动作向的说明 / 五个字段共用一组标签列）+ `music-eq-presets.test.ts` 新增一例（预设行向自身容器换挡），对 HEAD 跑得 **3 failed**。实现：`MusicEqPanel` 根加 `@container`、预设行加 `@sm:grid-cols-5`（弹层 224px 仍是三列）；`ServerFields` 改 `grid-cols-[auto_1fr_auto_1fr]` 且每个字段 `col-span-2 grid-cols-subgrid`（标签列由整个表单共有，不再各自量字）；表单去掉与小节重复的那句 `music.server_hint`、改为新增的 `music.server_form_hint`（双语），并去掉与按钮同名的表单小标题。回归：`npx vitest run src/client/features/settings src/client/features/music/music-eq-presets.test.ts` **5 文件 / 29 例 ✅**；`npm run typecheck` ✅。门禁：新增 `assertMusicSettingsLayout`（五个预设同一顶边 / 五个字段的两列左缘各对齐）+ `LABELS.musicEqPresets` | 门禁场景本身随 FB3-C5（全新实例上的音乐空读）尚不能在整轮里跑到，实测证据来自同读法的浏览器探针（见下） |

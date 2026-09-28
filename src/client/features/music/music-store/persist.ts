@@ -58,6 +58,7 @@ function writePreferences(get: MusicGet): void {
     lyricTextSize: state.lyricTextSize,
     lyricOffsets: state.lyricOffsets,
     providerEnabled: state.providerEnabled,
+    providerScope: state.providerScope,
     providerQuality: state.providerQuality,
     providerNoticeAccepted: state.providerNoticeAccepted,
     providerAutoSwap: state.providerAutoSwap,

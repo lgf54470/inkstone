@@ -26,6 +26,26 @@ describe('online quality (FB-F7)', () => {
   })
 })
 
+// FB3-F1: the search scope is a preference like the tier beside it — it decides how much one query
+// costs, so it outlives the panel that set it and is read back where the fan-out happens.
+describe('online search scope (FB3-F1)', () => {
+  it('ships the aggregate scope and persists a single catalogue', () => {
+    vi.useFakeTimers()
+    useMusic.setState({ providerScope: 'all' })
+    useMusic.getState().setProviderScope('migu')
+    vi.advanceTimersByTime(300)
+    expect(useMusic.getState().providerScope).toBe('migu')
+    expect(storedPrefs()?.providerScope).toBe('migu')
+  })
+
+  it('keeps a stored catalogue and reads anything else as the aggregate scope', () => {
+    window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({ providerScope: 'bilibili' }))
+    expect(loadPreferences().providerScope).toBe('bilibili')
+    window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({ providerScope: 'spotify' }))
+    expect(loadPreferences().providerScope).toBe('all')
+  })
+})
+
 // FB-S6: the opt-in is a decision with consequences, so it is stated once and on purpose.
 describe('online source notice (FB-S6)', () => {
   it('ships unacknowledged and records the acknowledgement', () => {

@@ -5,6 +5,7 @@ import type {
   MusicWebdavEntry,
 } from '@shared/types'
 import type { MusicEqPresetId } from '../music-eq-presets'
+import type { MusicProviderScope } from '../providers'
 import type { MusicProviderQuality } from '@shared/constants'
 import type { MusicLyricSource } from '../music-utils'
 
@@ -201,6 +202,8 @@ export interface MusicStoreState {
   podcastFeedsLoading: boolean
   podcastFeedsError: string | null
   providerEnabled: Record<string, boolean>
+  /** FB3-F1: which catalogue the next search asks; `all` is the aggregate fan-out. */
+  providerScope: MusicProviderScope
   /** FB-F7: what the stream URL asks the proxy for; only provider rows carry it. */
   providerQuality: MusicProviderQuality
   /** FB-S6: set once the reader has read the notice about third-party catalogues. */
@@ -379,6 +382,8 @@ export interface MusicStoreState {
   importServerHit: (serverId: string, hit: MusicServerHit) => Promise<boolean>
   importServerHits: (serverId: string, hits: MusicServerHit[]) => Promise<{ added: number; failed: number }>
   setProviderEnabled: (providerId: string, enabled: boolean) => void
+  /** FB3-F1: how many catalogues one query is allowed to cost. */
+  setProviderScope: (scope: MusicProviderScope) => void
   searchProviders: (keywords: string) => Promise<void>
   playProviderTrack: (hit: MusicProviderTrack) => Promise<void>
   /** FB-F10: registers the hit in the library without handing it to the player. */

@@ -1,6 +1,7 @@
 import { MUSIC_PROVIDER_DEFAULT_QUALITY, MUSIC_PROVIDER_QUALITIES, type MusicProviderQuality } from '@shared/constants'
 import type { MusicPlayMode } from '@shared/types'
 import { LYRIC_SOURCES, type MusicLyricSource } from '../music-utils'
+import { PROVIDER_SCOPES, PROVIDER_SCOPE_ALL, type MusicProviderScope } from '../providers'
 import type {
   MusicHubGeometry, MusicImmersiveBackground, MusicLyricAlign, MusicLyricTextSize, MusicSort, MusicSortDirection, MusicSourceFilter, MusicViewMode,
 } from './types'
@@ -46,6 +47,8 @@ export interface MusicPreferences {
   lyricOffsets: Record<string, number>
   /** FEA-A1-1: per online provider opt-in; every provider ships absent (off). */
   providerEnabled: Record<string, boolean>
+  /** FB3-F1: which catalogue a search asks — the aggregate fan-out, or one named upstream. */
+  providerScope: MusicProviderScope
   /** FB-F7: the tier asked of the aggregate upstream when a playable link is resolved. */
   providerQuality: MusicProviderQuality
   /** FB-S6: the one-time notice shown before the first catalogue is switched on. */
@@ -147,6 +150,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   lyricTextSize: 'default',
   lyricOffsets: {},
   providerEnabled: {},
+  providerScope: PROVIDER_SCOPE_ALL,
   providerQuality: MUSIC_PROVIDER_DEFAULT_QUALITY,
   providerNoticeAccepted: false,
   // On by default: this is what the fallback has always done, and the switch exists to turn it off.
@@ -206,6 +210,7 @@ export function loadPreferences(): MusicPreferences {
     lyricTextSize: readListed(parsed.lyricTextSize, LYRIC_TEXT_SIZES, DEFAULT_PREFERENCES.lyricTextSize),
     lyricOffsets: readLyricOffsets(parsed.lyricOffsets),
     providerEnabled: readProviderEnabled(parsed.providerEnabled),
+    providerScope: readListed(parsed.providerScope, PROVIDER_SCOPES, PROVIDER_SCOPE_ALL),
     providerQuality: readListed(parsed.providerQuality, MUSIC_PROVIDER_QUALITIES, MUSIC_PROVIDER_DEFAULT_QUALITY),
     providerNoticeAccepted: parsed.providerNoticeAccepted === true,
     // The badge is on unless it was explicitly turned off, so an older payload keeps it.

@@ -3,7 +3,7 @@ import type { MusicProviderTrack, MusicProviderTrackImportInput } from '../../..
 import type { MusicProviderQuality } from '@shared/constants'
 import type { MusicTrack } from '@shared/types'
 import type { MusicStoreState } from './types'
-import { GDS_PROVIDER_ID, listProviders, matchScore, searchGds, searchGdsPages } from '../providers'
+import { GDS_PROVIDER_ID, listProviders, matchScore, searchGds, searchGdsPages, type MusicProviderScope } from '../providers'
 import { persist } from './persist'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import type { MusicGet, MusicSet } from './types'
@@ -12,6 +12,14 @@ import type { MusicGet, MusicSet } from './types'
 // provider on; A1-3 adds the aggregate search and the play path behind them.
 export function setProviderEnabled(set: MusicSet, get: MusicGet, providerId: string, enabled: boolean): void {
   set((state) => ({ providerEnabled: { ...state.providerEnabled, [providerId]: enabled } }))
+  persist(get)
+}
+
+// FB3-F1: how much one search asks for. A preference rather than a per-search argument, because the
+// reader's answer to "which catalogue" does not change with every query — and the fan-out is what
+// costs requests, so it has to be readable where the fan-out happens.
+export function setProviderScope(set: MusicSet, get: MusicGet, scope: MusicProviderScope): void {
+  set({ providerScope: scope })
   persist(get)
 }
 
@@ -37,7 +45,7 @@ export async function searchProviders(set: MusicSet, get: MusicGet, keywords: st
   }
   set({ providerSearching: true, providerKeywords: keywords })
   try {
-    const { results, failedSources } = await searchGds(keywords)
+    const { results, failedSources } = await searchGds(keywords, get().providerScope)
     set((state) => (state.providerKeywords === keywords ? { providerResults: results, providerFailedSources: failedSources, providerSearching: false } : {}))
   } catch (error) {
     // FB-C1: `searchGds` absorbs a dead catalogue per source, so reaching this branch means
@@ -57,7 +65,9 @@ export function setProviderAutoSwap(set: MusicSet, get: MusicGet, value: boolean
 }
 
 // FB-F8: the manual half of the same idea. Everything under this row's name is asked for, ranked
-// against the row itself, and offered — the reader picks.
+// against the row itself, and offered — the reader picks. FB3-F1's search scope deliberately stops
+// at the search panel: the point of a switch is the catalogues the reader was *not* already
+// listening to, so narrowing it would hide the very candidates this action exists to offer.
 export async function openSourceSwitch(set: MusicSet, get: MusicGet, trackId: string): Promise<void> {
   const track = get().tracks.find((entry) => entry.id === trackId)
   if (!track || track.source !== 'provider') return

@@ -152,6 +152,10 @@ export const messages = {
 'music.source_alist': 'Alist drive',
 'music.source_online': 'Online',
 'music.provider_results': 'Online results',
+// FB3-F1: where a search walks. The aggregate entry names the behaviour rather than a catalogue, so
+// it reads as a choice beside the five names instead of as a sixth source.
+'music.provider_scope': 'Search in',
+'music.provider_scope_all': 'All sources',
 'music.provider_off': 'Turn on "Aggregate search" to look up and add songs from online sources',
 'music.provider_add': 'Add',
 // FB2-U3: the row already has a copy of this song, and saying so is the honest version of a

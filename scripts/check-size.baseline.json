@@ -23,6 +23,9 @@
   "src/client/features/music/music-podcast-modal.tsx": {
     "longFns": 1
   },
+  "src/client/features/music/music-provider-results.test.ts": {
+    "lines": 540
+  },
   "src/client/features/music/music-share-page/page.test.ts": {
     "longFns": 1
   },
@@ -101,13 +104,13 @@
     "longFns": 1
   },
   "src/shared/locales/en-US/music.ts": {
-    "lines": 516
+    "lines": 520
   },
   "src/shared/locales/en-US/preview.ts": {
     "lines": 520
   },
   "src/shared/locales/zh-CN/music.ts": {
-    "lines": 510
+    "lines": 514
   },
   "src/shared/locales/zh-CN/preview.ts": {
     "lines": 520

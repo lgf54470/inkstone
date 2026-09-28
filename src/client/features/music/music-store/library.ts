@@ -32,7 +32,7 @@ import {
 } from './health'
 import {
   acceptProviderNotice, addProviderTrack, addProviderTracks, closeSourceSwitch, openSourceSwitch, playProviderTrack,
-  searchProviders, setProviderAutoSwap, setProviderEnabled, setProviderQuality, switchTrackSource,
+  searchProviders, setProviderAutoSwap, setProviderEnabled, setProviderQuality, setProviderScope, switchTrackSource,
 } from './providers'
 import type { MusicGet, MusicSet, MusicStoreState } from './types'
 
@@ -50,7 +50,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'importServerHit' | 'importServerHits'
   | 'loadPodcastFeeds' | 'createPodcastFeed' | 'renamePodcastFeed' | 'deletePodcastFeed'
   | 'loadPodcastEpisodes' | 'closePodcastEpisodes' | 'importPodcastOpml' | 'playPodcastEpisode'
-  | 'setProviderEnabled' | 'searchProviders' | 'playProviderTrack' | 'addProviderTrack' | 'addProviderTracks'
+  | 'setProviderEnabled' | 'setProviderScope' | 'searchProviders' | 'playProviderTrack' | 'addProviderTrack' | 'addProviderTracks'
   | 'setProviderAutoSwap' | 'openSourceSwitch' | 'closeSourceSwitch' | 'switchTrackSource'
   | 'openHealthScan' | 'closeHealthScan' | 'scanReferences' | 'repairDeadReference' | 'trashDeadReferences'
   | 'trashTracks' | 'forgetPlayHistory'
@@ -150,6 +150,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     importPodcastOpml: (opml) => importPodcastOpml(set, opml),
     playPodcastEpisode: (feed, episode) => playPodcastEpisode(set, get, feed, episode),
     setProviderEnabled: (providerId, enabled) => setProviderEnabled(set, get, providerId, enabled),
+    setProviderScope: (scope) => setProviderScope(set, get, scope),
     searchProviders: (keywords) => searchProviders(set, get, keywords),
     playProviderTrack: (hit) => playProviderTrack(set, get, hit),
     addProviderTrack: (hit) => addProviderTrack(set, hit),

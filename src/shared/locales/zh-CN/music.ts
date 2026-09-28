@@ -148,6 +148,10 @@ export const messages = {
 'music.source_alist': 'Alist 网盘',
 'music.source_online': '在线',
 'music.provider_results': '在线结果',
+// FB3-F1: the aggregate entry deliberately shares its wording with the switch above, so the two
+// controls read as one answer.
+'music.provider_scope': '搜索范围',
+'music.provider_scope_all': '聚合搜索',
 'music.provider_off': '开启「聚合搜索」后，可搜索并添加在线音源的歌曲',
 'music.provider_add': '添加',
 'music.provider_in_library': '已在库中',

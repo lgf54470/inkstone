@@ -25,7 +25,7 @@ import { api, musicProviderCoverUrl, type MusicProviderTrack } from '../../lib/a
 import type { MusicTrack } from '@shared/types'
 
 const QUERY = 'origin'
-const CLEAR = { query: '', providerEnabled: {}, providerResults: null, providerSearching: false, providerKeywords: '', providerFailedSources: [] }
+const CLEAR = { query: '', providerEnabled: {}, providerScope: 'all' as const, providerResults: null, providerSearching: false, providerKeywords: '', providerFailedSources: [] }
 
 let rendered: ReturnType<typeof renderElement> | null = null
 
@@ -157,9 +157,13 @@ describe('online results panel state (FB-F2)', () => {
     expect(state({ results: [], failedSources: ['netease'] })).toBe('failed')
   })
 
-  it('says every source failed only when every source failed', () => {
-    expect(providerFailureKey(5)).toBe('music.provider_all_failed')
-    expect(providerFailureKey(1)).toBe('music.provider_partial_failed')
+  // FB3-F1: "every source" is the sources this search asked. With the scope narrowed to one
+  // catalogue that catalogue failing is all of them, and the copy has to say so instead of counting
+  // against the full five (a sentence about five sources when one was asked is a wrong fact).
+  it('says every source failed only when every source that was asked failed', () => {
+    expect(providerFailureKey(5, 5)).toBe('music.provider_all_failed')
+    expect(providerFailureKey(1, 5)).toBe('music.provider_partial_failed')
+    expect(providerFailureKey(1, 1)).toBe('music.provider_all_failed')
   })
 })
 
@@ -197,6 +201,51 @@ describe('online results panel switch (FB-F2)', () => {
 
     expect(useMusic.getState().providerResults).toBeNull()
     expect(bodyText()).toContain(t('music.provider_off'))
+  })
+})
+
+// FB3-F1 + FB3-U6: the reader's first question about an online list is which catalogue to ask, so the
+// scope is a control of the panel's own header row beside the aggregate switch rather than a setting
+// four screens away — and changing it is a reason to ask again, not just a change of who may answer.
+describe('online results panel search scope (FB3-F1 + FB3-U6)', () => {
+  function scopeSelect(): HTMLSelectElement {
+    const select = document.querySelector<HTMLSelectElement>('[data-provider-scope]')
+    if (!select) throw new Error('the online results panel draws no scope selector')
+    return select
+  }
+
+  it('draws the scope selector in the same row as the aggregate switch', async () => {
+    vi.useFakeTimers()
+    mountWithQuery()
+    await clickSwitch()
+    await settle()
+
+    const header = document.querySelector('[data-provider-header]')
+    expect(header).toBeTruthy()
+    expect(header?.contains(providerSwitch())).toBe(true)
+    expect(header?.contains(scopeSelect())).toBe(true)
+    // The aggregate option first, then one entry per catalogue the proxy forwards — the reader picks
+    // by the same names the hits are labelled with.
+    expect([...scopeSelect().options].map((option) => option.value)).toEqual(['all', 'netease', 'kuwo', 'migu', 'qq', 'bilibili'])
+  })
+
+  it('narrows the next search to the chosen catalogue', async () => {
+    vi.useFakeTimers()
+    mountWithQuery()
+    await clickSwitch()
+    await settle()
+    vi.mocked(api.music.providerSearch).mockClear()
+
+    const select = scopeSelect()
+    await act(async () => {
+      select.value = 'migu'
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await settle()
+
+    expect(useMusic.getState().providerScope).toBe('migu')
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(1)
+    expect(api.music.providerSearch).toHaveBeenCalledWith('migu', QUERY)
   })
 })
 

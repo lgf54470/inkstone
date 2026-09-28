@@ -59,7 +59,7 @@ describe('provider switch (FEA-A1-1)', () => {
 
 describe('provider search flow (FEA-A1-3)', () => {
   afterEach(() => {
-    useMusic.setState({ providerResults: null, providerSearching: false, providerKeywords: '' })
+    useMusic.setState({ providerResults: null, providerSearching: false, providerKeywords: '', providerScope: 'all' })
     vi.clearAllMocks()
   })
 
@@ -68,6 +68,16 @@ describe('provider search flow (FEA-A1-3)', () => {
     await useMusic.getState().searchProviders('song a')
     expect(useMusic.getState().providerResults).toHaveLength(1)
     expect(useMusic.getState().providerKeywords).toBe('song a')
+  })
+
+  // FB3-F1: the scope is what the fan-out reads, so a scope naming one catalogue costs one request
+  // and the reader is not paying five slots of the proxy's budget for an answer they did not want.
+  it('asks only the catalogues the chosen scope names', async () => {
+    useMusic.setState({ providerEnabled: { gds: true }, providerScope: 'migu', tracks: [] })
+    await useMusic.getState().searchProviders('song a')
+    expect(api.music.providerSearch).toHaveBeenCalledTimes(1)
+    expect(api.music.providerSearch).toHaveBeenCalledWith('migu', 'song a')
+    expect(useMusic.getState().providerResults).toHaveLength(1)
   })
 
   // FB-F6: the panel separates "no match" from "nothing answered", so the source that

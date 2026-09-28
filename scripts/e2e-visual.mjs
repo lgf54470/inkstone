@@ -133,6 +133,10 @@ const LABELS = {
   // FB2-C1: the online results panel's own controls and words.
   musicProviderResults: ['在线结果', 'Online results'],
   musicProviderSwitch: ['聚合搜索（GD）', 'Aggregate search (GD)'],
+  // FB3-F1: the scope control beside that switch, and the aggregate entry in it — the two read as one
+  // answer, so they are read as one group.
+  musicProviderScope: ['搜索范围', 'Search in'],
+  musicProviderScopeAll: ['聚合搜索', 'All sources'],
   musicOpenSettings: ['音乐设置', 'Music settings'],
   musicRiskAccept: ['我已了解', 'I understand'],
   musicProviderPreview: ['试听', 'Audition'],
@@ -152,6 +156,9 @@ const LABELS = {
   // the search is what the hub and the floating card already answer with.
   musicQueueToggle: ['展开或收起队列', 'Show or hide the queue'],
   musicQueueSearch: ['搜索播放队列', 'Search the queue'],
+  // FB3-C5: the library's own reload control, which this gate presses before it reads a library the
+  // fixture has just written into.
+  musicRefresh: ['刷新', 'Refresh'],
   // FB-M16: the toolbar entry of the reader's own music server, and the two sentences its first-run
   // form shows. Nothing in this gate registers a server — a registration is verified against the
   // real server before it is stored — so the search half of that modal is read by the unit tests.
@@ -4649,11 +4656,9 @@ async function assertMusicStatusBarMore(page) {
  */
 async function assertMusicListDensity(page) {
   await page.setViewport({ width: 1440, height: 900 })
-  await sleep(500)
-  const narrow = await readMusicListDensity(page)
+  const narrow = await readSettled(() => readMusicListDensity(page))
   await clickButton(page, LABELS.musicMaximizeHub)
-  await sleep(500)
-  const wide = await readMusicListDensity(page)
+  const wide = await readSettled(() => readMusicListDensity(page))
   const shows = (read, labels) => labels.some((label) => read.headers.includes(label))
   check('music: a narrow centre column moves the table columns onto the row',
     narrow.centre < 900 && narrow.viewport >= 1440 && !shows(narrow, LABELS.musicTableArtist)
@@ -4667,6 +4672,28 @@ async function assertMusicListDensity(page) {
   await sleep(400)
   await page.setViewport(DESKTOP_VIEWPORT)
   await sleep(400)
+}
+
+/**
+ * FB3-C7: the columns are decided by a width the list measures on itself (a ResizeObserver), and that
+ * measurement lands on a frame boundary — so a read taken a fixed moment after a layout change can
+ * catch the shape the *previous* width asked for. On a loaded machine the two reads below were both
+ * taken before the measurement arrived and both saw the full table (measured on a narrow window,
+ * which is exactly the state the check rules out). This waits for the read to hold still instead: N
+ * successive samples that agree. It does not weaken either check — an unchanged screen is still read
+ * as it is, and a list that genuinely kept the wrong columns would settle on them just the same.
+ */
+async function readSettled(read, { stable = 3, stepMs = 200 } = {}) {
+  let previous = null
+  let agreed = 0
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const next = JSON.stringify(await read())
+    agreed = next === previous ? agreed + 1 : 0
+    if (agreed >= stable - 1) return JSON.parse(next)
+    previous = next
+    await sleep(stepMs)
+  }
+  return JSON.parse(previous ?? 'null')
 }
 
 /**
@@ -5027,12 +5054,25 @@ async function assertMusicSurface(page) {
   await assertMusicServerSource(page)
   await assertMusicUploadPicker(page)
 
+  // FB3-C5: the fixture uploads after the client's first library load, and the client serves that
+  // listing for a minute (LIBRARY_FRESH_MS in the store). On a *fresh* instance that meant every read
+  // below was reading a library the fixture was never in — the scenario returned here, and its new
+  // assertions never ran. It used to pass on a long-lived server only because of the rows an earlier
+  // run had left behind, which is a gate reading its own leftovers rather than the app. The refresh
+  // control the toolbar already draws is the reader's own way out, so the gate takes that path: the
+  // fixture must be in the *client's* library before anything here reads that library.
+  const refreshed = await pressSurfaceControl(page, LABELS.musicRefresh, '[data-music-toolbar]')
+  check('music: the toolbar reload control hands the just-uploaded fixture to the client library', refreshed)
   const rowsReady = await page
-    .waitForFunction(() => [...document.querySelectorAll('[role="row"]')]
-      .some((row) => row.textContent.includes('E2E Probe Audio One')), { timeout: 15_000 })
+    .waitForFunction((titles) => titles.every((title) => [...document.querySelectorAll('[role="row"]')]
+      .some((row) => row.textContent.includes(title))), { timeout: 15_000 }, MUSIC_TRACK_TITLES)
     .then(() => true, () => false)
-  check('music: the hub lists the seeded tracks', rowsReady)
-  if (!rowsReady) return
+  if (!rowsReady) {
+    const listed = await page.evaluate(() => [...document.querySelectorAll('[role="row"]')].map((row) => (row.textContent ?? '').slice(0, 40)))
+    check('music: the hub lists the seeded tracks', false, JSON.stringify({ checked: ['both titles'], listed }).slice(0, 300))
+    return
+  }
+  check('music: the hub lists the seeded tracks', true)
   // FB-U4: the rows exist now, so the columns can be read in both of the shapes the same screen
   // gives them (windowed vs maximised).
   await assertMusicListDensity(page)
@@ -5269,10 +5309,15 @@ async function assertMusicSearchClear(page) {
   const input = cssByLabels('input', LABELS.musicSearch)
   // The library half is read as text rather than as rows: the same title is drawn by the table's rows and
   // by the grid's cards, and this read is about whether the list is filtered, not about which view it is in.
+  // FB3-C8: "the library" is the list's own column, not the whole hub — the sidebar's recently played
+  // entry and the queue panel are other surfaces that legitimately name a track, so reading the dialog
+  // as a whole answered "the library still lists it" for a hub whose list was already empty. This
+  // passed when it was written only because nothing had been played yet in that run.
   const read = () => page.evaluate(({ input, emptyLabels, historyLabels }) => {
     const box = document.querySelector(input)
     const panel = document.querySelector('[role="dialog"]')
-    const text = panel?.textContent ?? ''
+    const list = panel?.querySelector('[data-music-content]')
+    const text = list?.textContent ?? ''
     const emptyAction = [...(panel?.querySelectorAll('button') ?? [])].some((button) => {
       const name = (button.getAttribute('aria-label') ?? '').trim() || (button.textContent ?? '').trim()
       return emptyLabels.includes(name)
@@ -5289,12 +5334,16 @@ async function assertMusicSearchClear(page) {
 
   await page.click(input)
   await page.keyboard.type('zzzz no such track', { delay: 20 })
+  // The last read is kept for the message: a predicate that answers true/false leaves a failure with
+  // nothing to read, and this is the assertion whose two halves (list gone, empty state drawn) are the
+  // whole point of saying which one did not arrive.
+  let filteredRead = null
   const filtered = await waitForTruth(async () => {
-    const state = await read()
-    return !state.library && state.emptyAction ? state : null
+    filteredRead = await read()
+    return !filteredRead.library && filteredRead.emptyAction
   }, 15_000)
   check('music: a query that matches nothing leaves the library and draws the empty state',
-    Boolean(filtered), JSON.stringify(filtered))
+    filtered, JSON.stringify(filteredRead))
   // Committed so the history has an entry to leave alone; the caret stays in the box for the read below.
   await page.keyboard.press('Enter')
   await sleep(400)
@@ -5400,6 +5449,47 @@ async function assertMusicProviderResults(page) {
       return Boolean(body) && titles.every((title) => (body?.textContent ?? '').includes(title))
     }, PROVIDER_STUB_HITS.map((hit) => hit.title)), 20_000)
     check('music: the stubbed catalogue hits reach the panel', listed, JSON.stringify(stub.endpoints()))
+    // FB3-F1 + FB3-U6: which catalogue to ask is the reader's first question about this list, and the
+    // switch that governs the list is their second — so the two controls share the panel's header row,
+    // and the scope is a real preference rather than decoration: narrowing it must cost one catalogue.
+    const headerRead = await page.evaluate((section) => {
+      const root = document.querySelector(section)
+      const header = root?.querySelector('[data-provider-header]')
+      const select = header?.querySelector('[data-provider-scope]')
+      const toggle = header?.querySelector('[role="switch"]')
+      return {
+        labelled: select?.getAttribute('aria-label') ?? null,
+        options: [...(select?.options ?? [])].map((option) => option.value),
+        // The first entry is the aggregate; it is read by its own words rather than by its value.
+        aggregate: select?.options?.[0]?.textContent ?? null,
+        value: select?.value ?? null,
+        switchInRow: Boolean(toggle) && Boolean(header?.contains(toggle)),
+      }
+    }, cssByLabels('section', LABELS.musicProviderResults))
+    check('music: the search scope sits in the panel header beside the aggregate switch',
+      Boolean(headerRead) && headerRead.switchInRow
+        && LABELS.musicProviderScope.includes(headerRead.labelled)
+        && LABELS.musicProviderScopeAll.includes(headerRead.aggregate)
+        && headerRead.value === 'all'
+        && headerRead.options.join(',') === 'all,netease,kuwo,migu,qq,bilibili',
+      JSON.stringify(headerRead))
+    // The stub records the search request, so the scope's cost is read from what the page asked for: a
+    // narrowed scope has to be one request for that catalogue, which no class name can state.
+    const searches = () => stub.calls.filter((call) => call.endpoint === 'search')
+    const beforeNarrow = searches().length
+    await page.select('[data-provider-scope]', 'kuwo')
+    await waitForTruth(async () => searches().length > beforeNarrow, 20_000)
+    const narrowed = searches().slice(beforeNarrow)
+    const narrowedSources = [...new Set(narrowed.map((call) => new URL(call.url).searchParams.get('source')))]
+    check('music: narrowing the scope asks one catalogue instead of five',
+      narrowedSources.length === 1 && narrowedSources[0] === 'kuwo', JSON.stringify({ sources: narrowedSources }))
+    // Handed back to the aggregate for every read below, which expects every catalogue's answer: a
+    // narrowed search costs one request and an aggregate one costs five, so the pair is counted.
+    await page.select('[data-provider-scope]', 'all')
+    const restored = await waitForTruth(async () => searches().length - beforeNarrow >= 6, 20_000)
+    check('music: the aggregate scope is handed back for the reads below', restored,
+      JSON.stringify({ searches: searches().length - beforeNarrow }))
+
     const listedText = await panelText(page)
     check('music: a hit that reported a length shows it and a hit that did not names nothing',
       listedText.includes('03:34') && !listedText.includes('时长未知') && !listedText.includes('Length unknown'), JSON.stringify(listedText.slice(0, 200)))
