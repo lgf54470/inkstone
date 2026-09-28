@@ -208,12 +208,6 @@ export const messages = {
   'music.settings_auto_swap': 'Repair dead links automatically',
   'music.settings_auto_swap_desc': 'When an online track will not play, look for the same song on another catalogue and keep playing. Turning this off leaves the failure in place so you can pick a source yourself.',
 'music.search_suggestions': 'Suggestions',
-'music.suggest_artist': 'Artist',
-'music.suggest_album': 'Album',
-'music.suggest_playlist': 'Playlist',
-// FB3-F8: an online suggestion is the catalogue's answer to the same words, listed beside the
-// library's own jump targets.
-'music.suggest_online': 'Online',
 'music.more_actions': 'More actions',
 'music.import_text': 'Paste list',
 'music.import_text_title': 'Import from text',

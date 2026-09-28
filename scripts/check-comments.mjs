@@ -11533,8 +11533,6 @@ const allowed = new Map([
     '// matched nothing.',
     '// FB-F8: the manual switch — the reader picks the catalogue, the row keeps its place.',
     '// FB-F9: the health scan — what it found, and the two things worth doing about it.',
-    '// FB3-F8: an online suggestion is the catalogue\'s answer to the same words, listed beside the',
-    '// library\'s own jump targets.',
     '// FB3-U3: the form\'s own note is about the action, because the sentence above it already explains what a server is.',
     '// FB3-F2: the per-catalogue table. The order is the merge order of an answer and the order the',
     '// switch-source candidates are ranked in, so it is named rather than left to a drag handle.',
