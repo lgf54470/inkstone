@@ -103,7 +103,7 @@
 | FB2-U8 | P1 | **（M8 门禁实测发现）**搜索框注释写着「Escape closes」，但在 Hub 里 Escape 关掉的是**整个音乐库**：`useEscape`（`overlay/hooks.ts:18`）在 window **捕获阶段**跑 `escStack` 栈顶并 `stopPropagation`，而浮层从未入栈（`ownsEscape` 只认导图画布与 `[data-owns-escape]`），所以栈顶是模态自己；输入框的 React handler 在冒泡阶段，永远收不到。即浮层在 Hub 里**没有任何办法只关它自己** | **已实施（M9）**：浮层 `useEscape(show, close)` 入栈（它比模态后注册，所以是栈顶）——Escape 先关浮层，再按一次才关库；jsdom 用「身后也监听 Escape 的表面」钉住「一次一层」这条契约 | `music-search-box.tsx`（`useEscape` 已由 `components/overlay` 公开入口导出） | S | 同一按键在两个层级上做两件事是标准的「一次一层」约定，这里缺的是下层没登记 |
 | FB2-C2 | P2 | 与 P0-1 同类的隐患没有任何守卫 | 契约测试：客户端请求体形状的上限必须 ≤ worker 的 body 档位（由类型/常量推导，不硬编码数字），任一侧单独改动立刻变红 | `tests/`、`worker/lib/request.ts` 注释 | S | 把「两个数字必须一起改」变成编译器之外的自动门禁 |
 | FB2-U5 | P3 | Hub 侧栏中段大片空白（歌单之后直接跳到页脚统计） | 加「置顶 / 最近播放（5）」短段，或把这些短列表上移 | `music-hub-sidebar.tsx` | S | **可选项**：若判断该留白是留给后续分区的，就写明理由不做，不要为了填满而塞无意义内容 |
-| FB2-U6 | P3 | 堆叠（窄）版左列被压成一行横排、控件拥挤；本轮改左列队列后需复核窄版 | 复核 375/390：底部条带保留、左列不出现队列、传输条不溢出 | `music-immersive-player.tsx` | S | 与 FB2-U1 同批复核，避免宽版改好窄版变坏 |
+| FB2-U6 | P3 | 堆叠（窄）版左列被压成一行横排、控件拥挤；本轮改左列队列后需复核窄版 | **已复核（M10，实测无回归）**：375px 上队列仍是歌词下方的条带（`stacked` 分支渲染 `ImmersiveQueueEntry` → `ImmersiveQueue`，头部在该形状下本就不带计数），条带里**没有**宽版面板才有的搜索框，也不落在封面列里，且贴底时仍在视口内（实测 `bottom=667 / viewport=667`）。两条断言写在 `scripts/e2e-visual.mjs` 的 375px 沉浸层块 | `scripts/e2e-visual.mjs` | S | 与 FB2-U1 同批复核，避免宽版改好窄版变坏 |
 | FB2-PF2 | P3 | 新引入的 `MusicQueueBrowser` 进入沉浸层后的 chunk 与预算 | `npm run build` + `node scripts/check-bundle-budget.mjs` | — | S | 不为了省体积把它塞回静态图（队列是即时可用的高频能力） |
 | FB2-C3 | P2 | **门禁前提未写明**：曲库网格面与手机面的 axe 读取依赖「卡片里没有画面」这个事实。`durationCellText` 徽标（`music-track-card.tsx:39`，`--scrim` 底衬）叠在封面上时，按钮因此含 `<img>`，axe 只能报 `color-contrast` incomplete（`…because element contains an image node`）——M3 复核时本机 `:7712` 实例因上一轮手工验证留下的 7 条带封面在线行（`/api/music/library` 实测 9 条中 7 条有 `coverUrl`）而红 4 个表面，全新实例（闸门自己的无封面夹具）三面全绿。**即：同一个门禁的结论取决于实例库里有没有封面** | ① 先量后定：`--scrim` 是不透明白底的替代品时，徽标对任意画面都能达标 → 换成一个可量测的令牌底衬并在矩阵里量那一对；② 若确认要保留半透明叠图（视觉上更轻），则在 `scripts/lib/axe-review.mjs` 里按表面具名声明该 incomplete（`id` + `messageKey` + 目标形状三重命中，与导图那条同规），并把理由、命中条数与「底色由画面决定、无法量测」写进结果行；③ 无论选哪条，M7 的在线导入浏览器场景都不能把带封面的行留在共享实例上（或在场景末尾自行清理），否则后续的对比度门禁会因数据而红 | `music-track-card.tsx`、`scripts/lib/axe-review.mjs`、`scripts/check-contrast.mjs`、`scripts/e2e-visual.mjs` | S–M | 这条是**门禁自己的前提**，不是又一次「按名字放行」。放行的对象必须是「画面当底衬、比值不可知」这一类形状；形状一变（换成令牌底衬、或换了别的审查项）必须重新变红 |
 
@@ -202,4 +202,4 @@
 - 逐字歌词与歌词分享图：首轮已记为残留。
 - lrclib 的 duration 回填（FB2-F3 ③）：需改歌词接口契约，而它只覆盖「取过歌词但从未播过」的行；播放回填已经盖住真正会播的那批。
 - 移动端底部主 tab：首轮 §I 已有结论与复核条件。
-- 侧栏中段留白若判断为「留给后续分区」，则记录理由不做（FB2-U5）。
+- 侧栏中段留白若判断为「留给后续分区」，则记录理由不做（FB2-U5）——**本轮决定不做**（M10 一并记录）：`music-hub-sidebar` 的固定段（视图、歌单、标签）是读者自己建的清单，长度随库而变；中段留白因此不是一个固定高度的洞，而是一个会在库变大时被填满的空区。要「填满」它得引入新的数据来源与排序规则（置顶/最近播放的截断与刷新时机），而那是一件产品决定而不是布局修正。按本轮纪律（不为了填满而塞无意义内容），登记为下一轮候选而不是现在动它。

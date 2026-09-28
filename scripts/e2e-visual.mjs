@@ -5184,6 +5184,7 @@ async function assertMusicSurface(page) {
     }, LABELS.musicImmersive, LABELS.musicLyrics)
     check('music: the immersive lyrics pane keeps its width at 375px',
       lyricsWidth >= 300, String(lyricsWidth))
+    await assertNarrowImmersiveQueue(page)
     await page.keyboard.press('Escape')
     await sleep(300)
   }
@@ -5537,6 +5538,59 @@ async function assertMusicFloatingStrip(page) {
  * toggle, the dialog the shell draws has to be the viewport. Opened from the floating card's
  * immersive control, which is the path the card itself offers at this width, and Escape closes it.
  */
+/**
+ * FB2-U6: the same queue at the width where the columns have stacked. There is no second column to move
+ * it into, so the strip under the lyrics is its home and the strip's own row is the way in — the header
+ * has no count at this width (the count tick lives with the columns). What this reads is that the narrow
+ * shape kept the strip rather than inheriting the wide pane: no search box, not inside the artwork
+ * column, and inside the viewport, because this row is the last one on a surface that fills the screen.
+ */
+async function assertNarrowImmersiveQueue(page) {
+  // The fold lives with the surface rather than with the press, so the read normalises before it
+  // measures: an earlier surface may have left the queue open, and then there is no entry row to press.
+  if ((await readNarrowQueue(page)).open) {
+    await pressNarrowQueueToggle(page, true)
+    await sleep(300)
+  }
+  const pressed = await pressNarrowQueueToggle(page, false)
+  await sleep(400)
+  const opened = await readNarrowQueue(page)
+  check('music: at 375px the queue opens as the strip under the lyrics, with no search box',
+    pressed && opened.open && !opened.inArtworkColumn && !opened.hasSearch, `pressed=${pressed} ${JSON.stringify(opened)}`)
+  check('music: at 375px the queue strip stays inside the viewport', opened.insideViewport, JSON.stringify(opened))
+}
+
+/** Whether the narrow queue is open, where it landed, and whether it fits the viewport. */
+async function readNarrowQueue(page) {
+  return page.evaluate(({ root, queueLabels, searchLabels }) => {
+    const dialog = document.querySelector(root)
+    const artwork = dialog?.querySelector('section')
+    const group = dialog?.querySelector(queueLabels.map((label) => `[aria-label="${label}"]`).join(', '))
+    const box = group?.getBoundingClientRect()
+    return {
+      open: Boolean(group),
+      inArtworkColumn: Boolean(group && artwork?.contains(group)),
+      hasSearch: Boolean(dialog?.querySelector(searchLabels.map((label) => `input[aria-label="${label}"]`).join(', '))),
+      insideViewport: box ? box.bottom <= window.innerHeight + 1 && box.top >= 0 : false,
+      bottom: box ? Math.round(box.bottom) : 0,
+      viewport: window.innerHeight,
+    }
+  }, { root: MUSIC_IMMERSIVE_ROOT, queueLabels: LABELS.musicQueue, searchLabels: LABELS.musicQueueSearch })
+}
+
+/** The queue's own control in the state asked for: the strip's way in is the folded one. */
+async function pressNarrowQueueToggle(page, expanded) {
+  return page.evaluate(({ root, labels, expanded }) => {
+    const dialog = document.querySelector(root)
+    const control = [...(dialog?.querySelectorAll('button') ?? [])]
+      .find((item) => labels.musicQueueToggle.includes(item.getAttribute('aria-label') ?? '')
+        && item.getAttribute('aria-expanded') === String(expanded) && item.getClientRects().length > 0)
+    if (!control) return false
+    control.click()
+    return true
+  }, { root: MUSIC_IMMERSIVE_ROOT, labels: LABELS, expanded })
+}
+
 async function assertMusicImmersiveFullscreen(page) {
   // The card's own control, scoped to the card: the label is shared with the surface itself, and an
   // unscoped lookup finds the dialog's title where the button should be.
