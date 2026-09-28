@@ -15,6 +15,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import puppeteer from 'puppeteer-core'
 import {
   PALETTE_PANEL,
@@ -88,8 +89,43 @@ function check(name, cond, extra = '') {
   }
 }
 
-// zh-CN and en-US labels, matched on both text and aria-label so the gate is
-// locale-agnostic. Keep in sync with src/shared/locales/*/common.ts.
+// The resources, read a file at a time: the index module the app imports leaves the extensions off its
+// own imports, which Node cannot resolve, while every page of it is a plain object literal.
+const LOCALE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/shared/locales')
+const localeMessages = { 'zh-CN': {}, 'en-US': {} }
+for (const locale of ['zh-CN', 'en-US']) {
+  const dir = path.join(LOCALE_ROOT, locale)
+  for (const file of fs.readdirSync(dir)) {
+    if (!file.endsWith('.ts') || file === 'index.ts') continue
+    Object.assign(localeMessages[locale], (await import(pathToFileURL(path.join(dir, file)).href)).messages)
+  }
+}
+
+/**
+ * The spellings the resources give a key, in both languages — what a control is looked for by. The
+ * strings used to be copied here by hand, and a copy goes stale the day the copy is reworded: the
+ * search history popup had moved to its new wording in the app while the gate still selected the old
+ * one, so the read found nothing and the assertion failed for the wrong reason (M5b). Naming the key
+ * makes a rename follow by itself, and a key that does not exist is a load-time failure instead of a
+ * selector that matches nothing.
+ */
+function localeLabel(...keys) {
+  return keys.flatMap((key) => {
+    const zh = localeMessages['zh-CN'][key]
+    const en = localeMessages['en-US'][key]
+    if (zh === undefined || en === undefined) throw new Error(`gate label: no resource for ${key}`)
+    return zh === en ? [zh] : [zh, en]
+  })
+}
+
+/** The leading text of a templated row: what a reader sees before the placeholder is filled in. */
+function localePrefix(key) {
+  return localeLabel(key).map((text) => (text.includes('{') ? text.slice(0, text.indexOf('{')).trimEnd() : text))
+}
+
+// The lists below are what each read is looking for, matched on both text and aria-label so the gate is
+// locale-agnostic. Every string in them has to be one the resources carry today: scripts/check-visual-labels.mjs
+// holds this file and the harness to that rule, so a reworded control fails the gate instead of the browser.
 const LABELS = {
   newNote: ['新建笔记', 'New note'],
   list: ['笔记', 'Notes'],
@@ -101,7 +137,7 @@ const LABELS = {
   presentExportImages: ['导出幻灯片为图片序列', 'Export deck as images'],
   slidesPrint: ['打印 / PDF', 'Print / PDF'],
   slidesDuplicate: ['再复制一个', 'Duplicate'],
-  presentRail: ['显示幻灯片列表', '隐藏幻灯片列表', 'Show slides', 'Hide slides'],
+  presentRail: localeLabel('workspace.presentation_show_slides', 'workspace.presentation_hide_slides'),
   presentFreeze: ['冻结当前快照', 'Freeze this snapshot'],
   presentFollow: ['跟随笔记更新', 'Follow the note'],
   outline: ['大纲', 'Outline', 'outline'],
@@ -142,7 +178,7 @@ const LABELS = {
   musicProviderPreview: ['试听', 'Audition'],
   musicProviderAdd: ['添加', 'Add'],
   musicProviderInLibrary: ['已在库中', 'In library'],
-  musicSearchSuggestions: ['搜索建议', 'Search suggestions'],
+  musicSearchSuggestions: localeLabel('music.search_suggestions'),
   musicProviderAddSelected: ['添加所选', 'Add selected'],
   musicSearch: ['搜索歌曲、歌手、专辑或拼音', 'Search tracks, artists, albums or pinyin'],
   musicSearchClear: ['清除搜索', 'Clear search'],
@@ -174,7 +210,7 @@ const LABELS = {
   // in the surface that takes folders, so both spellings of the door and the panel's own title are
   // needed to find it by an accessible name.
   musicUpload: ['上传', 'Upload'],
-  musicTransferTitle: ['音乐传输', 'Music transfer'],
+  musicTransferTitle: localeLabel('music.transfer_title'),
   musicUploadFolder: ['选择文件夹', 'Choose folder'],
   musicServers: ['音乐服务器', 'Music servers'],
   musicServersNone: ['还没有注册音乐服务器', 'No music server registered yet'],
@@ -200,7 +236,7 @@ const LABELS = {
   // what only this gate reads.
   shareKpi: ['总访问量 (PV)', 'Total Views (PV)'],
   shareCategoryDashboard: ['数据看板', 'Dashboard'],
-  shareChannelCollection: ['Collection ·', '集合 ·'],
+  shareChannelCollection: localePrefix('share.channel_collection_row'),
   shareSearch: ['搜索笔记标题、链接或标签…', 'Search note title, link, or tag…'],
   sharePrintQr: ['打印二维码表', 'Print QR sheet'],
   shareChannelField: ['分发标记', 'Distribution marker'],

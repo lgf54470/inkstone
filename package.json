@@ -42,6 +42,7 @@
     "contrast:check": "node scripts/check-contrast.mjs",
     "i18n:check": "node scripts/check-i18n.mjs",
     "comments:check": "node scripts/check-comments.mjs",
+    "labels:check": "node scripts/check-visual-labels.mjs",
     "escape:check": "node scripts/check-escape-hatches.mjs",
     "hardcoded:check": "node scripts/check-hardcoded.mjs",
     "empty-catch:check": "node scripts/check-empty-catches.mjs",
