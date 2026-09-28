@@ -24,6 +24,7 @@
 ## M② · 信息与历史（P1）
 
 - [x] M4 FB3-U4 + FB3-U8 查询态空态改为「曲库中没有匹配的歌曲」并指向在线结果（在线命中数>0 时补一句「上方在线结果里有 N 条」）；空态动作改为「显示全部歌曲」，与 × 区分 —— **commit `待回填`**
+- [ ] M5b（随 M6 复核时发现）门禁里 `musicSearchHistory` 的标签仍写「搜索历史」，而 M5 已把它改成「最近搜索」——`assertMusicSearchClear` 用该标签拼 `[role="listbox"][aria-label=...]` 选择器，改后必然选不到历史列，那条断言会假失败
 - [x] M5 FB3-F5 + FB3-C4 搜索历史完整度：新增 `recordSearchQuery`（停手 1.2s 且 ≥2 字符才落库，`SEARCH_HISTORY_SETTLE_MS`）与 `removeSearchHistory`（逐条删除，行尾一行一个 ×，与行本身是兄弟节点而非嵌套按钮）；`music.search_history` 中文改「最近搜索」与 en 对齐 —— **commit `待回填`**
 
 ## M③ · 在线音源（P1 / P2）
@@ -83,6 +84,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-28 | M5b 门禁里搜索历史的标签跟随 M5 的新措辞 | `待回填` | 无需先红：这是门禁自己的字符串与已交付文案不一致（M5 把 `music.search_history` 的 zh 改为「最近搜索」）。M6 复核门禁时读到 `assertMusicSearchClear` 用它拼 `[role="listbox"][aria-label="搜索历史"]`，改后必然选不到历史列，于是「清空查询后焦点留在输入框、历史未被触碰」会假失败 | 这属于「门禁的字符串靠人手抄资源文件」这一整类风险；本项只修当前的错，类级护栏（让标签从资源文件派生，或加一条比对）登记为 FB3-C6 |
 | 2026-09-28 | M5 FB3-F5 + FB3-C4 搜索历史完整度与措辞对齐（先红后改） | `待回填` | 先红（单测）：`music-search-box.test.ts` 新增三例（停手后落库 / 单字符不落库 / 逐条删除只删那一条），对 HEAD 跑得 **2 failed / 18 passed**（第三条因动作不存在而红，第二条是按规则绿）。实现：`state.ts` 加 `SEARCH_HISTORY_MIN_LENGTH = 2`；`library-load.ts` 加 `recordSearchQuery`（跳过首位重复、persist）与 `removeSearchHistory`；`types.ts`/`library.ts` 暴露；`music-search-box.tsx` 加 `SEARCH_HISTORY_SETTLE_MS = 1200` 与 `useSettledSearch`，历史行渲染为「行（role=option，占满除删除键外的宽度）+ 兄弟删除键」（按钮里套按钮浏览器不会把按压交给内层）；`music.search_history` 中文改「最近搜索」。回归：`npx vitest run src/client/features/music` **120 文件 / 965 例 ✅** | 落库规则依赖「读者停手」，所以快速改词不会留下半截前缀；这与「提交即落库」并存，两者都幂等（同一条会提到最前） |
 | 2026-09-28 | M4 FB3-U4 + FB3-U8 搜索空态措辞与动作名（先红后改） | `e667efbb` | 先红（单测）：`music-empty-states.test.ts` 新增三例（库内无命中且在线有两条时说明上方有两条 / 动作叫「显示全部歌曲」而不再叫「清除搜索」/ 在线面板没有结果时不承诺），对 HEAD 跑得 **2 failed / 6 passed**；同时改掉一条既有用例（它按旧动作名点击）。实现：`music.no_results` 改为「曲库中没有匹配的歌曲」、新增 `music.no_results_online` 与 `music.search_show_all`（双语）；`music-track-list.tsx` 的 `NoTracks` 读 `providerResults.length`，有命中才补那一句。回归：相关三个测试文件 **46 例 ✅** | 在线命中数是本地渲染态（不是服务端事实），但它正是画面上方列着的东西，所以这句话跟着实况走 |
 | 2026-09-28 | M3 FB3-U3 + FB3-C2 设置面板三处（先红后改） | `958f5cdc` | 先红（单测）：`music-settings.test.ts` 新增两例（服务器说明只出现一次且表单换成动作向的说明 / 五个字段共用一组标签列）+ `music-eq-presets.test.ts` 新增一例（预设行向自身容器换挡），对 HEAD 跑得 **3 failed**。实现：`MusicEqPanel` 根加 `@container`、预设行加 `@sm:grid-cols-5`（弹层 224px 仍是三列）；`ServerFields` 改 `grid-cols-[auto_1fr_auto_1fr]` 且每个字段 `col-span-2 grid-cols-subgrid`（标签列由整个表单共有，不再各自量字）；表单去掉与小节重复的那句 `music.server_hint`、改为新增的 `music.server_form_hint`（双语），并去掉与按钮同名的表单小标题。回归：`npx vitest run src/client/features/settings src/client/features/music/music-eq-presets.test.ts` **5 文件 / 29 例 ✅**；`npm run typecheck` ✅。门禁：新增 `assertMusicSettingsLayout`（五个预设同一顶边 / 五个字段的两列左缘各对齐）+ `LABELS.musicEqPresets` | 门禁场景本身随 FB3-C5（全新实例上的音乐空读）尚不能在整轮里跑到，实测证据来自同读法的浏览器探针（见下） |

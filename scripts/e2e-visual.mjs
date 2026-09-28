@@ -144,7 +144,7 @@ const LABELS = {
   musicSearchClear: ['清除搜索', 'Clear search'],
   // FB3-C1: the popup's own action, and the two names the empty state's action has had (FB3-U8 renamed
   // it away from the clear control's name, so the read below accepts either spelling of the same thing).
-  musicSearchHistory: ['搜索历史', 'Recent searches'],
+  musicSearchHistory: ['最近搜索', 'Recent searches'],
   musicSearchClearHistory: ['清空历史', 'Clear history'],
   musicEqPresets: ['预设', 'Presets'],
   musicSearchEmptyAction: ['清除搜索', 'Clear search', '显示全部歌曲', 'Show all tracks'],
