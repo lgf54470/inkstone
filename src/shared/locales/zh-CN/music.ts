@@ -259,6 +259,8 @@ export const messages = {
 'music.shared_playlist': '分享的歌单',
 'music.playlist_link_gone': '该歌单分享链接已失效或已被取消。',
 'music.playlist_link_failed': '歌单加载失败。',
+// A track that will not play has no row of its own to go wrong: the native control just stays silent.
+'music.playback_failed': '这首歌现在放不出来，可能已被移除或暂时不可用。',
 'music.tags': '标签',
 'music.remove_tag': '从歌曲中移除标签',
 'music.refresh_metadata': '扫描封面与歌词',

@@ -173,6 +173,37 @@ describe('the reminder when the effect runs twice (M-51)', () => {
   })
 })
 
+// The element the page draws is the browser's own control, so a stream that fails leaves a reader with
+// nothing to read: it just never starts. These cases pin the page saying so, and saying it about the
+// track that failed rather than about the playlist.
+describe('a track that will not play (M-51)', () => {
+  async function pick(id: string): Promise<void> {
+    await act(async () => { trackRow(id).click() })
+  }
+
+  it('names the failure where the track is playing', async () => {
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('broken')]))
+    await mount()
+    await pick('broken')
+    expect(document.body.textContent).not.toContain(t('music.playback_failed'))
+
+    await act(async () => { media()?.dispatchEvent(new Event('error')) })
+    const alert = document.querySelector('[role="alert"]')
+    expect(alert?.textContent).toBe(t('music.playback_failed'))
+  })
+
+  it('clears it when the reader picks another track', async () => {
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('broken'), track('fine')]))
+    await mount()
+    await pick('broken')
+    await act(async () => { media()?.dispatchEvent(new Event('error')) })
+    expect(document.querySelector('[role="alert"]')).not.toBeNull()
+
+    await pick('fine')
+    expect(document.querySelector('[role="alert"]')).toBeNull()
+  })
+})
+
 describe('anonymous playlist page (M-51)', () => {
   it('shows a loading state before the fetch resolves', async () => {
     let resolve!: (value: PublicPlaylist) => void

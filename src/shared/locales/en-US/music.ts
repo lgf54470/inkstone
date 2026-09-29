@@ -266,6 +266,8 @@ export const messages = {
 'music.shared_playlist': 'Shared playlist',
 'music.playlist_link_gone': 'This playlist link no longer exists or has been revoked.',
 'music.playlist_link_failed': 'Could not load this playlist.',
+// A track that will not play has no row of its own to go wrong: the native control just stays silent.
+'music.playback_failed': 'This track cannot be played right now — it may have been removed or be temporarily unavailable.',
 'music.tags': 'Tags',
 'music.remove_tag': 'Remove tag from track',
 'music.refresh_metadata': 'Scan covers and lyrics',

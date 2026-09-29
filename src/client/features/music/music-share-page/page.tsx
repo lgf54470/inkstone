@@ -72,13 +72,7 @@ function useRememberVisit(slug: string, tracks: PublicPlaylistTrack[] | null): v
 export function MusicPlaylistSharePage({ slug }: { slug: string }) {
   const { load, newTrackIds, forgetVisit } = useSharedPlaylist(slug)
   const [currentId, setCurrentId] = useState<string | null>(null)
-  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark')
-
-  const toggleTheme = () => {
-    const next = !dark
-    setDark(next)
-    document.documentElement.dataset.theme = next ? 'dark' : 'light'
-  }
+  const { dark, toggleTheme } = useDocumentTheme()
 
   const playlist = load.status === 'ready' ? load.playlist : null
   const tracks = playlist?.tracks ?? []
@@ -103,7 +97,11 @@ export function MusicPlaylistSharePage({ slug }: { slug: string }) {
         />
       </main>
       {current && (
+        // Keyed on the track: the bar's own failure state belongs to the track it was drawn for, so a
+        // new track is a new bar and the message goes away with the old one instead of being cleared
+        // by hand.
         <NowPlayingBar
+          key={current.id}
           track={current}
           onNext={currentIndex + 1 < tracks.length ? () => setCurrentId(tracks[currentIndex + 1]!.id) : undefined}
         />
@@ -133,10 +131,27 @@ function ShareTopBar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: ()
   )
 }
 
+// The theme of an anonymous page is the document's own: there is no account to read a preference from,
+// so the toggle writes it here and reads it back on the next click.
+function useDocumentTheme(): { dark: boolean; toggleTheme: () => void } {
+  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark')
+  const toggleTheme = () => {
+    const next = !dark
+    setDark(next)
+    document.documentElement.dataset.theme = next ? 'dark' : 'light'
+  }
+  return { dark, toggleTheme }
+}
+
 function NowPlayingBar({ track, onNext }: {
   track: PublicPlaylist['tracks'][number]
   onNext?: () => void
 }) {
+  // A track that will not play is the one failure this page has to name itself: the visitor has no
+  // library, no queue and no second source, and the control the browser draws gives them nothing — the
+  // element simply never starts. The bar is mounted per track by its parent, so the message belongs
+  // here; the control is the retry, since a press asks for the stream again.
+  const [failed, setFailed] = useState(false)
   // Keyed on the track id: the browser restarts playback of the new src, and the
   // native controls stay the only transport a reader without a session needs.
   const media = {
@@ -144,13 +159,26 @@ function NowPlayingBar({ track, onNext }: {
     controls: true,
     autoPlay: true,
     onEnded: () => onNext?.(),
+    // The element reports its own failure, and this is the page saying so out loud.
+    onError: () => setFailed(true),
   }
   // A video container in an <audio> element plays its sound and hides its picture, so the
   // anonymous reader gets a black box for a clip; the element follows the stored mime.
   const isVideo = isVideoMime(track.mime)
+  // A landmark with its own name, because this strip is outside the page's `main` and the failure
+  // sentence it can carry has to be reachable by landmark navigation as well as by reading straight
+  // through: a `div` here left the page's only transport outside every landmark (axe's `region`).
   return (
-    <div className='fixed inset-x-0 bottom-0 z-[var(--z-sticky)] border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 px-4 pb-[env(safe-area-inset-bottom)] backdrop-blur'>
+    <section
+      aria-label={t('music.now_playing')}
+      className='fixed inset-x-0 bottom-0 z-[var(--z-sticky)] border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 px-4 pb-[env(safe-area-inset-bottom)] backdrop-blur'
+    >
       <div className='mx-auto max-w-215 py-2 md:px-1'>
+        {failed && (
+          <p role='alert' className='mb-1 text-[length:var(--text-11)] leading-relaxed text-[var(--danger)]'>
+            {t('music.playback_failed')}
+          </p>
+        )}
         <p className='truncate text-[length:var(--text-12)] font-semibold text-[var(--text-primary)]'>
           {track.title}
           {track.artist ? <span className='font-normal text-[var(--text-tertiary)]'> · {track.artist}</span> : null}
@@ -159,7 +187,7 @@ function NowPlayingBar({ track, onNext }: {
           ? <video key={track.id} {...media} playsInline className='max-h-60 w-full' />
           : <audio key={track.id} {...media} className='w-full' />}
       </div>
-    </div>
+    </section>
   )
 }
 
