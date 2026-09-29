@@ -247,6 +247,8 @@ const LABELS = {
   musicShareNewBadge: localeLabel('music.share_new_badge'),
   musicShareVisitMemoryNote: localeLabel('music.share_visit_memory_note'),
   musicShareForgetVisit: localeLabel('music.share_forget_visit'),
+  // The sentence a visitor gets when the stream behind a track will not answer.
+  musicPlaybackFailed: localeLabel('music.playback_failed'),
   // The share center's own four pairs (its entry, dialog, manage control and All Shares row) live
   // in `SHARE_LABELS` in the harness, shared with the contrast gate (SH-99); what stays here is
   // what only this gate reads.
@@ -7011,6 +7013,18 @@ const PLAYLIST_PROBE = {
 }
 
 /**
+ * The one item the anonymous playlist page cannot be judged by, and only once a track is picked: axe
+ * files the page's own media element under `no-autoplay-audio` because it cannot tell a reader's press
+ * from an autoplay — the element carries `controls`, and the sound started because this scenario
+ * pressed Enter on the row. It is named by the rule and by the element this page draws for a track, so
+ * a second review item on the same surface, or the same rule about anything but this element, still
+ * fails the gate (the shape is a bare tag selector: `audio`, or `video` for a shared clip).
+ */
+function isPlaylistMediaReviewItem(item) {
+  return item.id === 'no-autoplay-audio' && /^(audio|video)$/.test(item.target)
+}
+
+/**
  * What a visitor gets at `/playlist/:slug`, read the way a visitor gets it: a browser context of its
  * own, a real user agent and no session. The page loads none of the app's store — that split is the
  * point of the surface — so nothing measured inside the signed-in page can stand in for it.
@@ -7122,6 +7136,7 @@ async function assertPublicPlaylistPage(browser, page, consoleErrors) {
       return false
     })()
     check('playlist link: the keyboard reaches a track', reachedRow)
+    let playingTitle = ''
     if (reachedRow) {
       const focusedRow = await visitor.evaluate(() => (document.activeElement?.textContent ?? '').replace(/\s+/g, ' ').trim())
       await visitor.keyboard.press('Enter')
@@ -7136,9 +7151,50 @@ async function assertPublicPlaylistPage(browser, page, consoleErrors) {
       // The row that was pressed is the track that must play: both the element's own source and the
       // element's tag follow that track (the fixture is a wav, so it is the audio half of the choice).
       const pressed = focusedRow.includes(later.title) ? later : opening
+      playingTitle = pressed.title
       check('playlist link: Enter on a track plays that track',
         started && stream.tag === 'AUDIO' && stream.src.includes(`/playlists/${slug}/tracks/${pressed.id}/`),
         JSON.stringify({ focusedRow, stream, started }))
+    }
+
+    // The other half of the page's promise, and the half only a browser can arrange: the stream is
+    // answered by the worker, so a failing one is made by refusing the request rather than by a
+    // fixture — the shape the provider stub uses for its catalogue. The refusal is counted too, so a
+    // green line here cannot be a stream that worked with an alert drawn for some other reason.
+    const refusedStreams = []
+    const refuseStreams = (request) => {
+      const url = request.url()
+      if (url.includes(`/playlists/${slug}/tracks/`) && url.endsWith('/stream')) {
+        refusedStreams.push(url)
+        return request.respond({ status: 502, contentType: 'text/plain', body: 'the file behind this track is gone' })
+      }
+      return request.continue()
+    }
+    const other = playingTitle === later.title ? opening : later
+    await visitor.setRequestInterception(true)
+    visitor.on('request', refuseStreams)
+    try {
+      const reachedOther = await focusSurfaceControl(visitor, [other.title])
+      check('playlist link: the keyboard reaches the track that has not been tried', reachedOther)
+      if (reachedOther) await visitor.keyboard.press('Enter')
+      const announced = await visitor.waitForFunction((words) => {
+        const alert = document.querySelector('[role="alert"]')
+        return Boolean(alert) && words.some((word) => (alert.textContent ?? '').includes(word))
+      }, { timeout: 15_000 }, LABELS.musicPlaybackFailed).then(() => true, () => false)
+      // A sentence in the tree is not the same as one a reader can see: the bar it is drawn in is fixed
+      // to the bottom of the window, and an alert with no box would satisfy the read above and nothing
+      // else. Measured while the failure is on screen.
+      const onScreen = await visitor.evaluate(() => {
+        const box = document.querySelector('[role="alert"]')?.getBoundingClientRect()
+        return Boolean(box) && box.width > 0 && box.height > 0
+      })
+      check('playlist link: the failing stream really was refused', refusedStreams.length === 1, `refused=${refusedStreams.length}`)
+      check('playlist link: a track that will not play is named rather than left silent', announced, `onScreen=${onScreen}`)
+      check('playlist link: the failure is drawn, not only announced', onScreen)
+      await checkSurfaceAxe(visitor, '', 'playlist link (a track that will not play)', isPlaylistMediaReviewItem)
+    } finally {
+      visitor.off('request', refuseStreams)
+      await visitor.setRequestInterception(false)
     }
 
     // Forgetting has to be a fact about the memory and not about this render: a reload after it must
@@ -7894,11 +7950,12 @@ async function main() {
     // own stream route — which resolves a playable URL from the catalogue, unreachable from inside this
     // sandbox, so that one request answers 502. It is allowed by URL and not by message, so no other
     // failed load can hide behind it, and the scenario that provokes it asserts both the request and
-    // the row that landed without a stream.
+    // the row that landed without a stream. The anonymous playlist scenario provokes the same answer
+    // deliberately, on the public stream route, and asserts the sentence the visitor is given for it.
     const ALLOWED_PAGE_ERRORS = [
       { text: /Failed to load resource.*(401|403|404)/ },
       { text: /attribute d: Expected number, "M NaN/ },
-      { text: /Failed to load resource.*5\d\d/, url: /\/api\/music\/tracks\/[^/]+\/stream/ },
+      { text: /Failed to load resource.*5\d\d/, url: /(\/api\/music\/tracks\/[^/]+\/stream|\/api\/blog\/public\/music\/playlists\/[^/]+\/tracks\/[^/]+\/stream)/ },
     ]
     const fatal = consoleErrors.filter((entry) => !ALLOWED_PAGE_ERRORS.some((allowed) =>
       allowed.text.test(entry.text) && (!allowed.url || allowed.url.test(entry.url))))
