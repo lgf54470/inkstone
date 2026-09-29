@@ -65,8 +65,10 @@
 | 音乐目录 | `npx vitest run src/client/features/music` | **128 文件 / 1096 例** ✅ |
 | 全部单元 | `npm run test:unit` | **561 文件 / 5134 通过 + 1 跳过** ✅ |
 | 静态门禁 | `style/comments/i18n/size/hardcoded/tokens/deep-imports/module-state/surfaces/empty-catch/escape/budget/vendor:check` | 13 项全绿（`i18n:check` **3849** 键两语言齐全；注释白名单 **12053** 条 / 1222 文件） |
-| 端到端 | `node scripts/e2e.mjs http://127.0.0.1:7761` | **177 / 0** ✅ |
-| 视觉与 a11y | `node scripts/e2e-visual.mjs http://127.0.0.1:7761` | **652 / 0** ✅ |
+| 端到端 | `node scripts/e2e.mjs http://127.0.0.1:7762` | **177 / 0** ✅ |
+| 视觉与 a11y | `node scripts/e2e-visual.mjs http://127.0.0.1:7762` | **652 / 0** ✅ |
+
+两个端到端门禁都在**收口后的最终树上**对一个全新临时实例（`:7762`）复跑得到：最后一次提交删掉的那处死代码就在视觉门禁会走到的音乐 store 模块里，所以不沿用更早那次的读数。
 
 **真实浏览器上单独验证过的两处**（`:7761` 全新实例，`Owner-1`）：
 
