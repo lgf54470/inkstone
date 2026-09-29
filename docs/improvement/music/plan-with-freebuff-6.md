@@ -79,6 +79,7 @@
 | 2026-09-29 | P6-4 公开歌单回访 | `042199d8` | `visit-memory.test.ts` 9 例、`page.test.ts` 13 例（新增后 14）✅；真实浏览器走通首访 → 有新增 → 不再提示 | 只记在本机（换设备就重新算首次）；首次访问不报「全部是新的」；没有端到端门禁（分享页不在应用外壳里），登记为下一轮候选 |
 | 2026-09-29 | P6-5 提示条对比度（自检） | `adf689cf` | `comments:check` / `size:check` ✅；真实浏览器读计算样式确认竖线与文字各落在已校准底色上 | 强调色作为文字落在**自身软底**的规则仍由 `check-contrast.mjs` 按全部强调色量测（行内徽标属这一类） |
 | 2026-09-29 | P6-6 StrictMode 双跑（自检） | `9cfc4760` | 先红：**1 failed / 22 passed**（新增的 StrictMode 用例）；修后 `page.test.ts` 23 例全绿 ✅；`typecheck` ✅ | 症状只在开发模式出现（生产构建不双跑），所以它是「门禁绿着、功能在 dev 里没有」的那一类；补齐的办法是在 StrictMode 下问同一个问题 |
+| 2026-09-29 | P6-8 公开歌单的端到端门禁 + 四处修正（补做） | `7954e6bd`、`deaa6ac9`、`64dfd0ea` | 分享页 27 例 ✅、`tests/music-playlist-share.test.ts` 15 例 ✅、`test:unit` 561 文件 / 5139 通过 + 1 跳过 ✅、`e2e-visual.mjs` **674 / 0**（`+22` 全是新场景）、`e2e.mjs` **177 / 0** ✅ | 门禁只跑浅色（与其余视觉场景一致）；`api/music.ts` 的尺寸基线因此上移 |
 | 2026-09-29 | P6-7 删死代码（自检） | `83ac8f96` | `pending-writes.test.ts` 7 例 ✅；提交时钩子跑相关回归 90 文件 / 763 例 ✅ | 队列因此没有「还有几条待同步」的读数；若以后要做这个读数，应在真实需求出现时连同界面一起加 |
 
 **入库方式（本轮）**：7 项各自一个原子提交，共 7 个提交；`scripts/check-comments.mjs` 的白名单按文件块随各批暂存，工作区始终停在最终状态；`size:check` 只在用例文件因新增用例而增长时记入基线，超长用例块则拆开而不是记基线。
@@ -91,6 +92,25 @@
 
 ## 下一轮候选（登记，不在本轮）
 
-1. **公开歌单回访的端到端门禁**：`e2e-visual.mjs` 不含 `/playlist/:slug`（它不加载应用 store），因此这条功能目前只有单测 + 实测。需要一个「建歌单 → 分享 → 以访客打开 → 二次访问」的场景。
+1. ~~**公开歌单回访的端到端门禁**~~ → 已做，见 P6-8。
 2. **播放事件表**：让统计面板从「最近播放时间的直方图」升级为真正的按周收听次数。
 3. **音乐写队列的可见读数**：待同步条数若真要显示，应与界面一并购入，而不是先留一个没有使用者的访问器。
+4. **`PublicPlaylist`／`PublicPlaylistTrack` 的位置**：这两个契约现在住在 `src/client/lib/api/music.ts`（该文件因此越过 500 行预算，记在基线里）。按 AGENTS.md「公共接口类型集中定义」，它们应搬到 `src/shared/types/`。
+
+## P6-8 · 匿名公开歌单页的端到端门禁，以及它为这件事查出的四处（补做）
+
+- [x] `scripts/e2e-visual.mjs` 新增 `assertPublicPlaylistPage`（7000 行附近）：以访客身份（独立浏览器上下文、真实 UA、无会话）打开 `/playlist/:slug`，把「上次访问以来新增了什么」按两次访问来量——首访与「无变化的重开」都必须报不出东西，然后在访客背后往歌单里加一首曲子再重开。加的是 **已存在** 的曲目（真实读者的常见情形），所以它同时钉住了基准必须是入单时间这一点。
+- [x] 断言含：面板与提示各跑一遍 axe（无违规、无未审阅项）、曲目行是真正的 `button`、Tab 能到「不再提示更新」与曲目行、Enter 播放该行自己的流（`audio` 元素、公共 stream URL、且确实在播）、点「不再提示更新」后重开回到「首次访问」。场景自带建歌单、分享与收尾（删除歌单）。
+- **发现并修掉四处**（每一处都是门禁真正跑起来才暴露的，单测全绿时都在）：
+
+| # | 症状 | 根因 | 处置 |
+| --- | --- | --- | --- |
+| F6-8 | 提示读作「新增 1 首」后又自行消失，徽标一起消失 | 回访比对顺手把时间戳推进了，而 React 在 StrictMode 下跑两次 effect，第二次读回的正是第一次刚写下的值（读者看到的正是第二次的结果） | 比对改成纯读；时间戳改由 `useRememberVisit` 在 `pagehide` 写下读者实际看到的最新一条 |
+| F6-9 | 面板列出的曲目数落后于歌单实际内容（加歌后重开仍是旧列表） | 服务端列表 `Cache-Control: public, max-age=15`，而页面用同一个 URL 取数据决定「有没有新东西」 | transport 新增 `cache` 选项，`publicPlaylist` 用 `no-store` |
+| F6-10 | 把一首**早已在库里**的歌加进歌单，永远报不出「新增」 | 载荷里的 `createdAt` 是曲目自己的创建时间，不是它进这个歌单的时间 | 歌单详情多取 `pi.created_at` 作为 `addedAt`，比对改用它 |
+| F6-11 | axe 报 `aria-prohibited-attr`（`span[aria-label]` 无有效 role） | 头部 logo 外层 span 挂了无障碍名，而 Logo 自身已是 `aria-hidden` 装饰 | 去掉该属性（与分享笔记页头部写法一致） |
+
+- [x] `transport.ts` 的 `cache` 选项、`api/music.ts` 的 `PublicPlaylistTrack.addedAt`、`public.ts` 的 `addedAt`、页面的纯读比对与 `useRememberVisit`、两侧测试跟改；`tests/music-playlist-share.test.ts` 新增一例：把曲目 `created_at` 改成 1 后入单，断言下发的 `createdAt` 为 1 而 `addedAt` 远大于它。
+- **验收**：`typecheck` ✅；分享页 27 例 ✅（新增 4 例）；`tests/music-playlist-share.test.ts` 15 例 ✅；`test:unit` **561 文件 / 5139 通过 + 1 跳过** ✅；13 项静态门禁 ✅；`e2e.mjs` **177 / 0** ✅；`e2e-visual.mjs` **674 / 0**（`+22` 全部是新场景的断言）✅ —— 两个端到端都是对一个 `:7763` 的全新实例、按 CI 的顺序（先 e2e 再视觉）跑出来的。
+- **尺寸**：`page.test.ts` 因新增用例撑大的 describe 被拆成两个（不记基线）；`api/music.ts` 因新增字段与注释越过其 533 行基线，按「有意增长」记入基线（该文件本来就已超 500 行预算，见下一轮候选 4）。
+- **入库**：`7954e6bd`（基准与新鲜度）、`deaa6ac9`（无障碍名）、`64dfd0ea`（门禁）——按 AGENTS.md「分批与门禁」拆 hunk：`page.tsx` 的无障碍名 hunk 单独一个提交，白名单条目随各批暂存，每批快照都用 `git checkout-index` 导出后单独跑过 `comments/size/i18n/code-style/visual-labels`。
