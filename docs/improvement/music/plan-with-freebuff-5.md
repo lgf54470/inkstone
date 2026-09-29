@@ -75,6 +75,6 @@
 | 2026-09-29 | P5-3 参考项目与部署实例的出处 | `663e6715` | `i18n:check` ✅（**3830** 键两语言齐全）；`hardcoded:check` 先报 `about-settings.tsx:176` 的 `--text-11\.5` 转义（JS 字符串会被煮掉），改用与页脚同样的 JSX 属性写法后 ✅；`typecheck` ✅ | 本机绝对路径只写文档；界面只放两条公开 URL |
 | 2026-09-29 | P5-4 歌单的收藏与置顶入口（先红后改）；同提交带上 P5-5 的徽标 `fill-current` | `895687f5` | 先红：`music-hub-playlists.test.ts` 新增三例得 **3 failed / 10 passed**。实现：`setPlaylistFlags` + 菜单两项 + 本地按服务端规则稳定重排。回归：该文件 **13 例** ✅、`library-collections.test.ts` **23 例** ✅（新增三例覆盖重排、只改收藏、服务端拒绝） | 重排只做「置顶优先」这一级，与 `ORDER BY is_pinned DESC, sort_order ASC` 同义；同一组内保持服务端给的顺序（稳定排序） |
 | 2026-09-29 | P5-5 迷你播放器补齐置顶（先红后改） | `2c666e15` | 先红：`music-floating-player.test.ts` 新增两例得 **2 failed / 7 passed**。实现：`FloatTrack` 补一枚置顶（与心同尺寸、同 `active`）；歌单的置顶徽标补 `fill-current`。回归：该文件 **9 例** ✅ | 卡片宽度不变（两枚 12px 图标并排），已在窄档实测 |
-| 2026-09-29 | P5-6 文档与登记 | `本提交`（本行由紧接着这次的一行回填补上，同第四轮 P4-7 的做法） | 两份文档落纸；F5-6（队列行没有常驻开关）与 F5-7（`plan-with-freebuff-2.md` 的 5 处 `待回填`）登记不改 | 两条都是「本轮不做」的显式登记，不是遗漏 |
+| 2026-09-29 | P5-6 文档与登记 | `c63f8134`（定稿提交；本行原写 `本提交`，由紧接着这次的一行回填补上，同第四轮 P4-7 的做法） | 两份文档落纸；F5-6（队列行没有常驻开关）与 F5-7（`plan-with-freebuff-2.md` 的 5 处 `待回填`）登记不改 | 两条都是「本轮不做」的显式登记，不是遗漏 |
 
 **入库方式（本轮）**：本轮 6 项各自一个原子提交，`scripts/check-comments.mjs` 的白名单按文件块逐提交暂存（`git apply --cached`），工作区始终停在最终状态；每个提交的暂存快照另用 `git archive HEAD` + 暂存版本单独跑过 `comments:check` 与 `size:check`。
