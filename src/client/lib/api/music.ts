@@ -54,6 +54,11 @@ export interface PublicPlaylistTrack {
   streamUrl: string
   tagIds: string[]
   createdAt: number
+  /**
+   * When this track entered this playlist, which is not when the track itself was created. The
+   * returning reader's question — "what changed here since I last looked?" — is answered by this one.
+   */
+  addedAt: number
 }
 
 export interface PublicPlaylist {
@@ -345,8 +350,8 @@ export const music = {
     onEtag?: (etag: string | null) => void,
   ) => request<MusicLibrary | null>('/api/music/library', { ifNoneMatch: etag ?? undefined, onEtag }),
 
-  publicPlaylist: (slug: string) =>
-    request<PublicPlaylist>(`/api/blog/public/music/playlists/${encodeURIComponent(slug)}`),
+  // The page reads this payload to decide what changed since the last visit, so it asks for freshness.
+  publicPlaylist: (slug: string) => request<PublicPlaylist>(`/api/blog/public/music/playlists/${encodeURIComponent(slug)}`, { cache: 'no-store' }),
 
   publicSettings: () => request<{ enabled: boolean }>('/api/music/public-settings'),
 

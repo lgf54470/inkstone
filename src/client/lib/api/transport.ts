@@ -48,6 +48,12 @@ interface RequestOptions {
   ifNoneMatch?: string
   /** Receives the response validator so the caller can send it back next time. */
   onEtag?: (etag: string | null) => void
+  /**
+   * Opts this call out of the browser's HTTP cache. A public response is cacheable by design, so a
+   * caller whose answer depends on how fresh the payload is has to ask for freshness itself — a
+   * stored copy is not a slower answer to that question, it is a different one.
+   */
+  cache?: RequestCache
 }
 
 
@@ -131,6 +137,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       body: payload,
       signal: timeout?.controller.signal ?? signal,
       credentials: 'same-origin',
+      cache: options.cache,
     })
 
     const notifyOtherTabs = method !== 'GET' && shouldNotifyOtherTabs(path)

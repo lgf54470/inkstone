@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
 import { isVideoMime } from '@shared/music-media'
 import type { PublicPlaylist, PublicPlaylistTrack } from '../../../lib/api'
@@ -9,7 +9,7 @@ import { Tooltip } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { formatTimecode, formatTotalDuration } from '../../../lib/time'
 import { MusicArtwork } from '../music-artwork'
-import { forgetPlaylistVisit, readPlaylistVisit, rememberPlaylistVisit, tracksSinceVisit } from './visit-memory'
+import { forgetPlaylistVisit, newestTrackAt, readPlaylistVisit, rememberPlaylistVisit, tracksSinceVisit } from './visit-memory'
 
 type Load =
   | { status: 'loading' }
@@ -17,25 +17,23 @@ type Load =
   | { status: 'unavailable' }
   | { status: 'failed' }
 
-// The stamp behind "since your last visit" is captured once per slug and never re-read, so the claim
-// stays a pure comparison against it. The app renders under StrictMode, which runs an effect twice:
-// whichever pass wrote the stamp first would leave the other comparing against the new value and
-// reporting an empty reminder — and the pass the reader sees is the last one, so the reminder would
-// vanish in development only. The comparison reads a captured stamp; only the write moves it, so both
-// passes answer the same thing. The visit is recorded even when the render was cancelled, because the
-// reader did open the page.
+// Reading the playlist and reporting what is new are one effect because they are one answer: the
+// comparison is made against the stamp the last visit left, and it is what the payload resolves with.
+//
+// The claim is a pure read, and that is what keeps it honest. React runs effects twice under
+// StrictMode, so a claim that wrote the stamp it had just compared would be read back by the second
+// run as "nothing is new" — and the run a reader sees is the last one, which would leave the reminder
+// reported and then withdrawn. Writing the stamp is left to `useRememberVisit`, which the teardown
+// below performs once the visit is over.
 function useSharedPlaylist(slug: string): { load: Load; newTrackIds: ReadonlySet<string>; forgetVisit: () => void } {
   const [load, setLoad] = useState<Load>({ status: 'loading' })
   const [newTrackIds, setNewTrackIds] = useState<ReadonlySet<string>>(() => new Set())
-  const lastSeen = useRef<{ slug: string; at: number | null } | null>(null)
   useEffect(() => {
     let cancelled = false
     setLoad({ status: 'loading' })
-    if (lastSeen.current?.slug !== slug) lastSeen.current = { slug, at: readPlaylistVisit(slug).lastSeenAt }
     api.music.publicPlaylist(slug)
       .then((playlist) => {
-        setNewTrackIds(new Set(tracksSinceVisit(playlist.tracks, lastSeen.current?.at ?? null)))
-        rememberPlaylistVisit(slug)
+        setNewTrackIds(new Set(tracksSinceVisit(playlist.tracks, readPlaylistVisit(slug).lastSeenAt)))
         if (!cancelled) setLoad({ status: 'ready', playlist })
       })
       .catch((error) => {
@@ -47,10 +45,26 @@ function useSharedPlaylist(slug: string): { load: Load; newTrackIds: ReadonlySet
   }, [slug])
   const forgetVisit = () => {
     forgetPlaylistVisit(slug)
-    lastSeen.current = { slug, at: null }
     setNewTrackIds(new Set())
   }
+  useRememberVisit(slug, load.status === 'ready' ? load.playlist.tracks : null)
   return { load, newTrackIds, forgetVisit }
+}
+
+// The visit is remembered as the document goes away, not as it arrives, and what it remembers is the
+// newest track the reader was actually shown. `pagehide` is the one moment that covers a reload, a
+// close and the back button; a track added while the page is open is not in that payload, so the next
+// visit still has it to report. Only the listener is torn down on unmount — a write there would be the
+// same write-at-arrival this avoids, since StrictMode unmounts the effect once before the real mount.
+function useRememberVisit(slug: string, tracks: PublicPlaylistTrack[] | null): void {
+  useEffect(() => {
+    if (!tracks) return
+    const seenAt = newestTrackAt(tracks)
+    if (seenAt === null) return
+    const remember = () => rememberPlaylistVisit(slug, seenAt)
+    window.addEventListener('pagehide', remember)
+    return () => window.removeEventListener('pagehide', remember)
+  }, [slug, tracks])
 }
 
 // The anonymous half of M-51: a shared playlist opens for anyone at

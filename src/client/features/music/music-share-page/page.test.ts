@@ -28,7 +28,9 @@ beforeAll(() => {
 
 const SLUG = 'abc234def567ghi890jkl'
 
-function track(id: string, over: Partial<{ artist: string; coverUrl: string | null; mime: string; createdAt: number }> = {}) {
+// `createdAt` is when the track itself was created and `addedAt` is when it entered this playlist;
+// the visit cases set the second, and leave the first where it does not matter.
+function track(id: string, over: Partial<{ artist: string; coverUrl: string | null; mime: string; createdAt: number; addedAt: number }> = {}) {
   return {
     id,
     title: `Track ${id}`,
@@ -41,6 +43,7 @@ function track(id: string, over: Partial<{ artist: string; coverUrl: string | nu
     streamUrl: `/api/blog/public/music/playlists/${SLUG}/tracks/${id}/stream`,
     tagIds: [],
     createdAt: 0,
+    addedAt: 0,
     ...over,
   }
 }
@@ -54,7 +57,7 @@ let root: Root | null = null
 // The app itself renders under StrictMode (main.tsx), which runs an effect twice, so a case that
 // depends on what an effect decides has to be asked in that mode too — a claim that reads the stamp
 // it just wrote answers differently the second time.
-async function mount(strict = false): Promise<void> {
+async function mount(strict = false): Promise<HTMLDivElement> {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -62,6 +65,7 @@ async function mount(strict = false): Promise<void> {
   await act(async () => {
     root?.render(strict ? createElement(StrictMode, null, page) : page)
   })
+  return container
 }
 
 function trackRow(id: string): HTMLButtonElement {
@@ -94,7 +98,7 @@ const visitKey = `inkstone.playlist-visit.${SLUG}`
 // what a returning reader is told, and that a first visit is told nothing.
 describe('what changed since the last visit (M-51)', () => {
   it('says nothing at all on a first visit', async () => {
-    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('t1', { createdAt: 5_000 })]))
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('t1', { addedAt: 5_000 })]))
     await mount()
     expect(document.body.textContent).not.toContain(t('music.share_new_badge'))
     expect(document.body.textContent).not.toContain(t('music.share_visit_memory_note'))
@@ -103,32 +107,54 @@ describe('what changed since the last visit (M-51)', () => {
   it('names the new tracks and marks each one', async () => {
     window.localStorage.setItem(visitKey, String(1_000))
     vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([
-      track('old', { createdAt: 500 }),
-      track('fresh', { createdAt: 2_000 }),
+      track('old', { addedAt: 500 }),
+      track('fresh', { addedAt: 2_000 }),
     ]))
     await mount()
     expect(document.body.textContent).toContain(t('music.share_new_since_visit', { value0: 1 }))
     expect(trackRow('fresh').textContent).toContain(t('music.share_new_badge'))
     expect(trackRow('old').textContent).not.toContain(t('music.share_new_badge'))
   })
-
-  // Opening the page moves the stamp, which is what makes the *next* visit comparable. Without this
-  // the reminder would report the same tracks every time.
-  it('remembers this visit for the next one', async () => {
-    window.localStorage.setItem(visitKey, String(1_000))
-    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('fresh', { createdAt: 2_000 })]))
-    await mount()
-    expect(Number(window.localStorage.getItem(visitKey))).toBeGreaterThan(2_000)
-  })
-
   it('drops the reminder and the stamp when the reader says to stop', async () => {
     window.localStorage.setItem(visitKey, String(1_000))
-    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('fresh', { createdAt: 2_000 })]))
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('fresh', { addedAt: 2_000 })]))
     await mount()
     const stop = [...document.querySelectorAll('button')].find((button) => button.textContent === t('music.share_forget_visit'))
     await act(async () => { stop?.click() })
     expect(window.localStorage.getItem(visitKey)).toBeNull()
     expect(document.body.textContent).not.toContain(t('music.share_new_since_visit', { value0: 1 }))
+  })
+})
+
+// The stamp is written as the visit ends and records what was shown — not when the reader arrived.
+// Without it the reminder would report the same tracks every time, and a stamp of "now" would swallow
+// whatever appeared while the page was open, so both halves are pinned here.
+describe('what a visit leaves behind (M-51)', () => {
+  it('remembers what it showed once the visit ends, not when it began', async () => {
+    window.localStorage.setItem(visitKey, String(1_000))
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('old', { addedAt: 500 })]))
+    await mount()
+    expect(window.localStorage.getItem(visitKey)).toBe(String(1_000))
+    await act(async () => { window.dispatchEvent(new Event('pagehide')) })
+    expect(window.localStorage.getItem(visitKey)).toBe('500')
+  })
+
+  it('still reports a track that appeared while the page was open', async () => {
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('first', { addedAt: 1_000 })]))
+    // The first page is taken out of the document rather than left behind: a second mount would
+    // otherwise be read together with the first one's rows.
+    const visited = await mount()
+    await act(async () => { window.dispatchEvent(new Event('pagehide')) })
+    act(() => root?.unmount())
+    root = null
+    visited.remove()
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([
+      track('first', { addedAt: 1_000 }),
+      track('during', { addedAt: 1_500 }),
+    ]))
+    await mount()
+    expect(document.body.textContent).toContain(t('music.share_new_since_visit', { value0: 1 }))
+    expect(trackRow('during').textContent).toContain(t('music.share_new_badge'))
   })
 })
 
@@ -138,8 +164,8 @@ describe('the reminder when the effect runs twice (M-51)', () => {
   it('still reports the change under StrictMode', async () => {
     window.localStorage.setItem(visitKey, String(1_000))
     vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([
-      track('old', { createdAt: 500 }),
-      track('fresh', { createdAt: 2_000 }),
+      track('old', { addedAt: 500 }),
+      track('fresh', { addedAt: 2_000 }),
     ]))
     await mount(true)
     expect(document.body.textContent).toContain(t('music.share_new_since_visit', { value0: 1 }))

@@ -141,6 +141,27 @@ describe('playlist share routes (real D1 + fake R2)', () => {
     expect((await request(app, `/api/blog/public/music/playlists/${slug}/tracks/${track.id}/stream`)).headers.get('Cache-Control')).toBe(MUSIC_PUBLIC_CACHE.stream)
   })
 
+  // The two timestamps a public track carries are different facts. A returning reader asks what was
+  // put *in this playlist* since they last looked, so the payload dates each item by when it entered
+  // the playlist: a song uploaded a year ago and added this morning is news about the playlist, and
+  // the reader's question is not about the library behind it.
+  it('dates each track by when it entered the playlist, not by when it was uploaded', async () => {
+    const db = await makeDb()
+    const app = makeApp()
+    const playlistId = await createPlaylist(app, 'Night Drive')
+    const track = await uploadTrack(app, 'first.mp3')
+    await runSql(db, 'UPDATE music_tracks SET created_at = 1 WHERE id = ?1', track.id!)
+    await addItem(app, playlistId, track.id!)
+    const slug = (await (await share(app, playlistId)).json() as { shareSlug: string }).shareSlug
+
+    const page = await (await request(app, `/api/blog/public/music/playlists/${slug}`)).json() as {
+      tracks: Array<{ id: string; createdAt: number; addedAt: number }>
+    }
+    expect(page.tracks).toHaveLength(1)
+    expect(page.tracks[0]!.createdAt).toBe(1)
+    expect(page.tracks[0]!.addedAt).toBeGreaterThan(1)
+  })
+
   it('withholds the open cross-origin grant from a shared playlist and its media', async () => {
     await makeDb()
     const app = makeApp()

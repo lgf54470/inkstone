@@ -84,16 +84,22 @@ function registerSharedPlaylistRoutes(routes: Hono<AppBindings>): void {
       .prepare('SELECT id, name, description, cover_url FROM music_playlists WHERE share_slug = ?1')
       .bind(slug).first<{ id: string; name: string; description: string; cover_url: string | null }>()
     if (!playlist) throw ApiError.notFound('Playlist not found')
+    // The item's own `created_at` travels beside the track's: a reader returning to a playlist is
+    // asking what was put *in it* since they last looked, and a track uploaded a year ago that was
+    // added this morning is news about this playlist — the library behind it is not the subject.
     const tracks = await c.env.DB
-      .prepare(`SELECT ${TRACK_COLUMNS} FROM music_playlist_items pi JOIN music_tracks t ON t.id = pi.track_id AND t.user_id = pi.user_id
+      .prepare(`SELECT ${TRACK_COLUMNS}, pi.created_at AS added_at FROM music_playlist_items pi JOIN music_tracks t ON t.id = pi.track_id AND t.user_id = pi.user_id
                 WHERE pi.playlist_id = ?1 ORDER BY pi.sort_order ASC, pi.created_at ASC`)
-      .bind(playlist.id).all<MusicTrackRow>()
+      .bind(playlist.id).all<MusicTrackRow & { added_at: number }>()
     const origin = new URL(c.req.url).origin
     return c.json({
       name: playlist.name,
       description: playlist.description,
       coverUrl: playlist.cover_url ? `${origin}${PUBLIC_MUSIC_PATH}/playlists/${encodeURIComponent(slug)}/cover` : null,
-      tracks: tracks.results.map((row) => toPublicTrack(row, origin, [], `${PUBLIC_MUSIC_PATH}/playlists/${encodeURIComponent(slug)}/tracks/${row.id}`)),
+      tracks: tracks.results.map((row) => ({
+        ...toPublicTrack(row, origin, [], `${PUBLIC_MUSIC_PATH}/playlists/${encodeURIComponent(slug)}/tracks/${row.id}`),
+        addedAt: row.added_at,
+      })),
     })
   })
 

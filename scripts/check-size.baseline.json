@@ -67,7 +67,7 @@
     "longFns": 1
   },
   "src/client/lib/api/music.ts": {
-    "lines": 533
+    "lines": 538
   },
   "src/client/lib/markdown/kanban/ui/kanban-add-operations.test.ts": {
     "longFns": 1

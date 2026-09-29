@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { PublicPlaylistTrack } from '../../../lib/api'
-import { forgetPlaylistVisit, readPlaylistVisit, rememberPlaylistVisit, tracksSinceVisit } from './visit-memory'
+import { forgetPlaylistVisit, newestTrackAt, readPlaylistVisit, rememberPlaylistVisit, tracksSinceVisit } from './visit-memory'
 
 const SLUG = 'abc234def567ghi890jkl'
 
-function track(id: string, createdAt: number): PublicPlaylistTrack {
+// `addedAt` is what the comparison reads, and `createdAt` defaults somewhere else on purpose: an old
+// track can be added to a playlist today, and the case below that pins the distinction sets both.
+function track(id: string, addedAt: number, createdAt = addedAt - 5): PublicPlaylistTrack {
   return {
     id, title: id, artist: '', album: '', durationMs: 1_000, mime: 'audio/mpeg', lyric: null,
-    coverUrl: null, streamUrl: `/stream/${id}`, tagIds: [], createdAt,
+    coverUrl: null, streamUrl: `/stream/${id}`, tagIds: [], createdAt, addedAt,
   }
 }
 
@@ -74,5 +76,26 @@ describe('what changed since the last visit', () => {
 
   it('reports nothing when the playlist has not grown', () => {
     expect(tracksSinceVisit([track('a', 1_000)], 5_000)).toEqual([])
+  })
+
+  // The two timestamps a public track carries are different facts, and only one of them is about this
+  // playlist: an upload from last year that was added this morning is news here, and a fresh upload
+  // that has been sitting in the playlist for a month is not.
+  it('goes by when the item entered the playlist, not when the track was created', () => {
+    const addedToday = track('added-today', 3_000, 1)
+    const oldItem = track('old-item', 10, 9_000)
+    expect(tracksSinceVisit([addedToday, oldItem], 1_000)).toEqual(['added-today'])
+  })
+})
+
+// What a visit hands to the next one: the newest item it displayed. Order is not assumed — the payload
+// is ordered by the playlist's own arrangement, which says nothing about when a track was added.
+describe('what a visit leaves behind', () => {
+  it('is the newest item, wherever it sits in the list', () => {
+    expect(newestTrackAt([track('a', 1_000), track('c', 3_000), track('b', 2_000)])).toBe(3_000)
+  })
+
+  it('is nothing at all for an empty playlist', () => {
+    expect(newestTrackAt([])).toBeNull()
   })
 })
