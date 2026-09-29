@@ -192,6 +192,20 @@ describe('a track that will not play (M-51)', () => {
     expect(alert?.textContent).toBe(t('music.playback_failed'))
   })
 
+  // The control the page draws is the retry, so the sentence has to be able to leave the way it
+  // arrived: a second press that starts the stream leaves a bar that says "this one will not play"
+  // playing, which is the page telling a reader something untrue about what they can hear.
+  it('takes the failure back when a retry starts playing', async () => {
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('broken')]))
+    await mount()
+    await pick('broken')
+    await act(async () => { media()?.dispatchEvent(new Event('error')) })
+    expect(document.querySelector('[role="alert"]')).not.toBeNull()
+
+    await act(async () => { media()?.dispatchEvent(new Event('playing')) })
+    expect(document.querySelector('[role="alert"]')).toBeNull()
+  })
+
   it('clears it when the reader picks another track', async () => {
     vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('broken'), track('fine')]))
     await mount()

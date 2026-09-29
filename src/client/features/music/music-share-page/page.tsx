@@ -161,6 +161,10 @@ function NowPlayingBar({ track, onNext }: {
     onEnded: () => onNext?.(),
     // The element reports its own failure, and this is the page saying so out loud.
     onError: () => setFailed(true),
+    // The control the browser draws is the retry, so the sentence has to be able to leave the way it
+    // arrived: sound that starts playing is the page being told otherwise, and a bar still claiming
+    // otherwise would be lying about what the reader can hear.
+    onPlaying: () => setFailed(false),
   }
   // A video container in an <audio> element plays its sound and hides its picture, so the
   // anonymous reader gets a black box for a clip; the element follows the stored mime.
