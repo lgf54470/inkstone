@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import { GripVertical, Heart, Library, ListMusic, Maximize2, Minimize2 } from 'lucide-react'
+import { GripVertical, Heart, Library, ListMusic, Maximize2, Minimize2, Pin } from 'lucide-react'
 import { IconButton } from '../../components/primitives'
 import { Tooltip } from '../../components/overlay'
 import { cn } from '../../lib/cn'
@@ -180,9 +180,12 @@ function FloatHeader({ drag, size }: { drag: ReturnType<typeof useCardDrag>; siz
   )
 }
 
+// Both favours, not just the heart: this card is the whole music surface on a phone, and the
+// immersive player, the hub's now-playing panel and the status bar all offer the pair together.
 function FloatTrack() {
   const track = useCurrentTrack()
   const toggleFavorite = useMusic((state) => state.toggleFavorite)
+  const togglePin = useMusic((state) => state.togglePin)
   return (
     <div className='flex shrink-0 items-center gap-2.5 p-2.5'>
       <MusicArtwork url={track?.coverUrl ?? null} alt={track?.title ?? ''} className='size-14 rounded-[var(--r-md)]' iconSize={20} />
@@ -194,14 +197,24 @@ function FloatTrack() {
         <div className='truncate text-[length:var(--text-10)] text-[var(--text-quaternary)]'>{track?.album || ''}</div>
       </div>
       {track && (
-        <IconButton
-          label={track.isFavorite ? t('music.unfavorite') : t('music.favorite')}
-          size='sm'
-          active={track.isFavorite}
-          onClick={() => void toggleFavorite(track.id)}
-        >
-          <Heart size={12} className={track.isFavorite ? 'fill-current' : undefined} />
-        </IconButton>
+        <>
+          <IconButton
+            label={track.isFavorite ? t('music.unfavorite') : t('music.favorite')}
+            size='sm'
+            active={track.isFavorite}
+            onClick={() => void toggleFavorite(track.id)}
+          >
+            <Heart size={12} className={track.isFavorite ? 'fill-current' : undefined} />
+          </IconButton>
+          <IconButton
+            label={track.isPinned ? t('music.unpin') : t('music.pin')}
+            size='sm'
+            active={track.isPinned}
+            onClick={() => void togglePin(track.id)}
+          >
+            <Pin size={12} className={track.isPinned ? 'fill-current' : undefined} />
+          </IconButton>
+        </>
       )}
     </div>
   )

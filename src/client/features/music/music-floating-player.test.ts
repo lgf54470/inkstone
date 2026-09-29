@@ -2,6 +2,7 @@ import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
+import type { MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { useUi } from '../../store/ui'
 import { MusicFloatingPlayer } from './music-floating-player'
@@ -50,6 +51,34 @@ describe('floating player defers to the open hub', () => {
   it('returns when the hub closes', async () => {
     await mountPlayer(vi.fn())
     expect(document.querySelector(`aside[aria-label="${t('music.mini_player')}"]`)).not.toBeNull()
+  })
+})
+
+// Running on a phone, this card is the whole music surface — and it carried one of the track's two
+// favours. Pinning is the heart's twin: the immersive player, the hub's now-playing panel and the
+// status bar all offer both beside each other.
+describe('the mini player carries both favours', () => {
+  const track: MusicTrack = {
+    id: 't1', title: 'Alpha', artist: '', album: '', durationMs: 0, source: 'r2', format: 'mp3',
+    webdavPath: null, mime: 'audio/mpeg', sizeBytes: 0, coverUrl: null, lyric: null, hasLyric: false,
+    tagIds: [], isFavorite: false, isPinned: false, playCount: 0, lastPlayedAt: null, contentHash: null,
+    createdAt: 0, updatedAt: 0,
+  }
+
+  it('pins the playing track from the card', async () => {
+    const togglePin = vi.fn(async () => {})
+    useMusic.setState({ tracks: [track], queue: ['t1'], currentIndex: 0, togglePin })
+    await mountPlayer(vi.fn())
+    const pin = document.querySelector(`button[aria-label="${t('music.pin')}"]`) as HTMLButtonElement | null
+    expect(pin).toBeDefined()
+    await act(async () => { pin?.click() })
+    expect(togglePin).toHaveBeenCalledWith('t1')
+  })
+
+  it('offers unpinning once the track is pinned', async () => {
+    useMusic.setState({ tracks: [{ ...track, isPinned: true }], queue: ['t1'], currentIndex: 0 })
+    await mountPlayer(vi.fn())
+    expect(document.querySelector(`button[aria-label="${t('music.unpin')}"]`)).not.toBeNull()
   })
 })
 

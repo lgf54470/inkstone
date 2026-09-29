@@ -3149,6 +3149,9 @@ const allowed = new Map([
   ['src/client/features/music/music-floating-player.test.ts', [
     '// V-4: the hub draws its own transport in the dialog footer; the floating card on top of it made',
     '// two play buttons for one track, and neither said which one was in charge.',
+    '// Running on a phone, this card is the whole music surface — and it carried one of the track\'s two',
+    '// favours. Pinning is the heart\'s twin: the immersive player, the hub\'s now-playing panel and the',
+    '// status bar all offer both beside each other.',
     '// FB-C3: the card is the phone\'s whole music surface, and its way into the hub is the control the',
     '// shell focuses again when the hub closes — the card unmounts while the hub is open, so the marker',
     '// is what the hand-off reads to find it once it is back (`successorOf`).',
@@ -3161,6 +3164,8 @@ const allowed = new Map([
     '// The corner the card falls back to before anyone has dragged it. Clamping an out-of-bounds',
     '// request is what keeps the card whole whatever it currently measures.',
     '/* A handle that answers only to arrow keys is a control with no click action at all:\n          activating it sends the card back to the corner it starts from. */',
+    '// Both favours, not just the heart: this card is the whole music surface on a phone, and the',
+    '// immersive player, the hub\'s now-playing panel and the status bar all offer the pair together.',
     '/* FB-C3: the same successor marker the status bar\'s controls carry. This card is the phone\'s\n            way into the hub, and it unmounts while the hub is open — the marker is how the keyboard\n            finds it again when the hub closes (`successorOf`, components/overlay/hooks.ts). */',
   ]],
   ['src/client/features/music/music-folder-drop.test.ts', [
