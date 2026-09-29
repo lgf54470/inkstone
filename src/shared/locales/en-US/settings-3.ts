@@ -1,4 +1,6 @@
 export const messages = {
+'settings.music_library_reference': 'Music library reference',
+'settings.music_library_reference_hint': 'The music library is built against this player; its source and a running instance are both open.',
 'settings.notes': ' notes · ',
 'settings.off_default_only_existing_accounts_can_log_in': 'Off (default): Only existing accounts can log in.',
 'settings.offline': 'Offline',
@@ -36,6 +38,9 @@ export const messages = {
 'settings.rebuild_search_index': 'Rebuild search index',
 'settings.rebuilt_the_index_for_value0_notes': 'Rebuilt the index for {value0} notes',
 'settings.receive_changes_from_other_devices_quickly': 'Show changes from your other devices as soon as possible',
+'settings.reference_demo': 'Live instance',
+'settings.reference_name': 'otter-music',
+'settings.reference_source': 'Upstream repository',
 'settings.registration_closed': 'Registration closed',
 'settings.registration_open': 'Registration open',
 'settings.registration_status': 'Registration status',

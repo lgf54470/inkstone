@@ -5,6 +5,10 @@ export const APP_VERSION = packageVersion
 export const GITHUB_REPOSITORY_URL = 'https://github.com/shuaiplus/inkstone'
 export const GITHUB_PACKAGE_URL =
   'https://raw.githubusercontent.com/shuaiplus/inkstone/refs/heads/main/package.json'
+// The player the music library is built against. Its source and a running instance are the two things
+// a reader checking a music behaviour against it needs, and neither is reachable from inside the app.
+export const OTTER_MUSIC_REPOSITORY_URL = 'https://github.com/DJChanahCJD/otter-music'
+export const OTTER_MUSIC_DEMO_URL = 'https://otter-music.pages.dev'
 // Blog settings fallback used across the worker default, the demo seed, and
 // every client consumer that renders links before the user configures a URL.
 export const DEFAULT_BLOG_FRONTEND_URL = 'http://localhost:4321'

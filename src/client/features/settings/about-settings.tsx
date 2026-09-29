@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Download, ExternalLink, GitFork, LogOut, RefreshCw, Shield, UserRound } from 'lucide-react'
-import { GITHUB_REPOSITORY_URL } from '@shared/constants'
+import { GITHUB_REPOSITORY_URL, OTTER_MUSIC_DEMO_URL, OTTER_MUSIC_REPOSITORY_URL } from '@shared/constants'
 import type { PublicUser, SiteInfo, UpdateCheckResponse } from '@shared/types'
 import { fullTime } from '../../lib/time'
 import { Avatar, Badge, Button, Logo } from '../../components/primitives'
@@ -34,6 +34,7 @@ export function AboutSettings() {
     <AccessControlSection site={site}/>
     {user?.role === 'owner' && <UpdateSection site={site} updateStatus={updateStatus} updateInfo={updateInfo} updateAvailable={updateAvailable} checkForUpdates={checkForUpdates} openUpdatePage={openUpdatePage}/>}
     {(installAvailable || installed || offlineStatus !== 'idle') && <PwaSection installAvailable={installAvailable} installed={installed} installing={installing} install={install} offlineStatus={offlineStatus} offlineCompleted={offlineCompleted} offlineTotal={offlineTotal}/>}
+    <ReferenceSection/>
     <FooterSection site={site}/>
   </div>)
 }
@@ -164,6 +165,37 @@ function PwaSection({ installAvailable, installed, installing, install, offlineS
           })}
       </Badge>
       </SettingRow>)}
+    </section>
+  )
+}
+
+// The music library is built against a reference player, and both halves of that reference — its source
+// and a running instance — are what a music behaviour gets checked against. Neither is reachable from
+// inside the app otherwise, so the two are named here.
+function ReferenceSection() {
+  return (
+    <section>
+      <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.music_library_reference')}</h3>
+      <SettingRow title={t('settings.reference_name')} description={t('settings.music_library_reference_hint')}>
+      <div className='flex flex-wrap items-center gap-2'>
+      <a
+      href={OTTER_MUSIC_REPOSITORY_URL}
+      target='_blank'
+      rel='noopener noreferrer'
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-11\.5)] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+      >
+      <GitFork size={14}/>{t('settings.reference_source')}
+      </a>
+      <a
+      href={OTTER_MUSIC_DEMO_URL}
+      target='_blank'
+      rel='noopener noreferrer'
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--r-md)] px-2.5 text-[length:var(--text-11\.5)] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+      >
+      <ExternalLink size={14}/>{t('settings.reference_demo')}
+      </a>
+      </div>
+      </SettingRow>
     </section>
   )
 }

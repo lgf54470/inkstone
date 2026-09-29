@@ -1,4 +1,6 @@
 export const messages = {
+'settings.music_library_reference': '音乐库参考项目',
+'settings.music_library_reference_hint': '音乐库以这个播放器为参照实现，源码与可运行实例都公开。',
 'settings.notes': '篇 ·',
 'settings.off_default_only_existing_accounts_can_log_in': '已关闭（默认）：只有现有账号可以登录。',
 'settings.offline': '当前离线',
@@ -36,6 +38,9 @@ export const messages = {
 'settings.rebuild_search_index': '重建搜索索引',
 'settings.rebuilt_the_index_for_value0_notes': '已重建 {value0} 篇笔记的索引',
 'settings.receive_changes_from_other_devices_quickly': '让其他设备上的修改尽快显示在这里',
+'settings.reference_demo': '部署实例',
+'settings.reference_name': 'otter-music',
+'settings.reference_source': '上游仓库',
 'settings.registration_closed': '已关闭注册',
 'settings.registration_open': '已开放注册',
 'settings.registration_status': '注册状态',
