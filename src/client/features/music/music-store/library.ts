@@ -19,7 +19,7 @@ import {
 import {
   addSelectionToPlaylist, addToPlaylist, createPlaylist, createPlaylistWithTracks, createTag, deletePlaylist, deleteTag, dismissUpload,
   movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, patchTag, removeFromPlaylist, renamePlaylist,
-  setPlaylistCover, sharePlaylist, unsharePlaylist, uploadFiles,
+  setPlaylistCover, setPlaylistFlags, sharePlaylist, unsharePlaylist, uploadFiles,
 } from './library-collections'
 import { browseWebdav, deleteWebdavObjects, importTrackFromUrl, importWebdavFolder, importWebdavTrack } from './webdav'
 import { closeTrash, openTrash, purgeTrashEntry, restoreFromTrash } from './trash'
@@ -61,7 +61,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
   | 'patchTrack' | 'ensureTrackLyric' | 'refreshTrackMetadata' | 'matchMissingCovers' | 'searchTrackLyric' | 'toggleFavorite' | 'togglePin' | 'deleteTrack' | 'batchTracks'
   | 'createTag' | 'patchTag' | 'deleteTag'
-  | 'createPlaylist' | 'createPlaylistWithTracks' | 'renamePlaylist' | 'deletePlaylist' | 'sharePlaylist' | 'unsharePlaylist' | 'setPlaylistCover' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
+  | 'createPlaylist' | 'createPlaylistWithTracks' | 'renamePlaylist' | 'deletePlaylist' | 'sharePlaylist' | 'unsharePlaylist' | 'setPlaylistCover' | 'setPlaylistFlags' | 'addToPlaylist' | 'removeFromPlaylist' | 'movePlaylistItem' | 'movePlaylistItemToIndex'
   | 'uploadFiles' | 'dismissUpload'
   | 'downloadTracks' | 'dismissDownload' | 'retryDownload' | 'retryFailedDownloads' | 'cancelDownloads'
   | 'dismissLibraryJob' | 'setTransfersOpen' | 'setUploadTarget'
@@ -117,6 +117,7 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     sharePlaylist: (id) => sharePlaylist(set, id),
     unsharePlaylist: (id) => unsharePlaylist(set, id),
     setPlaylistCover: (id, coverDataUrl) => setPlaylistCover(set, id, coverDataUrl),
+    setPlaylistFlags: (id, patch) => setPlaylistFlags(set, id, patch),
     ...playlistActions(set, get),
 
     uploadFiles: (files, target) => uploadFiles(set, get, files, target),

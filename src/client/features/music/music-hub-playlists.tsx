@@ -147,6 +147,10 @@ function PlaylistRow({
   }
   const items: MenuItem[] = [
     { id: 'play', label: t('music.play_all'), icon: <Play size={14} />, onSelect: onPlay },
+    // The row badge and the list's server-side ordering both read these two flags, and until this menu
+    // carried them nothing in the app could set either one.
+    { id: 'favorite', label: playlist.isFavorite ? t('music.unfavorite') : t('music.favorite'), icon: <Heart size={14} />, onSelect: () => { void useMusic.getState().setPlaylistFlags(playlist.id, { isFavorite: !playlist.isFavorite }) } },
+    { id: 'pin', label: playlist.isPinned ? t('music.unpin') : t('music.pin'), icon: <Pin size={14} />, onSelect: () => { void useMusic.getState().setPlaylistFlags(playlist.id, { isPinned: !playlist.isPinned }) } },
     { id: 'rename', label: t('music.rename'), icon: <PencilLine size={14} />, separatorBefore: true, onSelect: () => setDraft(playlist.name) },
     { id: 'cover', label: t('music.playlist_cover'), icon: <ImagePlus size={14} />, onSelect: () => coverInputRef.current?.click() },
     ...(playlist.coverUrl
@@ -253,7 +257,8 @@ function PlaylistBadges({ playlist, active }: { playlist: MusicPlaylistDetail; a
   return (
     <>
       {playlist.isFavorite && <Heart size={10} className='shrink-0 fill-current text-[var(--accent)]' aria-hidden='true' />}
-      {playlist.isPinned && <Pin size={10} className='shrink-0 text-[var(--warning)]' aria-hidden='true' />}
+      {/* Filled like the track rows' pin, so a marked playlist reads the same way as a marked track. */}
+      {playlist.isPinned && <Pin size={10} className='shrink-0 fill-current text-[var(--warning)]' aria-hidden='true' />}
       {/* The active row's accent tint puts the dim tiers under AA, so its count takes the row's
           accent — the one pairing the token system calibrates (accent as text on its own tint). */}
       <span className={cn('tabular shrink-0 text-[length:var(--text-10)]', active ? 'text-[var(--accent)]' : 'text-[var(--text-quaternary)]')}>{playlist.items.length}</span>

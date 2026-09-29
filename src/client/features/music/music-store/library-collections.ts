@@ -152,6 +152,25 @@ export async function setPlaylistCover(set: MusicSet, id: string, coverDataUrl: 
   }
 }
 
+// A playlist's two favours are the only part of it the row menu could not reach: the API has carried
+// both flags since the list's ordering was written (`ORDER BY is_pinned DESC, sort_order ASC`), and
+// the row already draws a badge for each — but nothing wrote them, so the badges and that ordering
+// clause had no way to come true. Pinning also reorders the local list, because a badge on a row that
+// stayed put reads as a write that never landed; the sort is stable, which is what keeps the playlists
+// nobody touched in the order the server sent them.
+export async function setPlaylistFlags(set: MusicSet, id: string, patch: { isPinned?: boolean; isFavorite?: boolean }): Promise<void> {
+  try {
+    const updated = await api.music.patchPlaylist(id, patch)
+    set((state) => ({
+      playlists: state.playlists
+        .map((entry) => (entry.id === id ? updated : entry))
+        .sort((a, b) => Number(b.isPinned) - Number(a.isPinned)),
+    }))
+  } catch (error) {
+    toastMusicError(error, 'music.action_failed')
+  }
+}
+
 // The share endpoint is idempotent, so the slug a visitor already holds keeps working.
 export async function sharePlaylist(set: MusicSet, id: string): Promise<string | null> {
   try {

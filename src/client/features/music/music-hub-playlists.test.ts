@@ -137,6 +137,36 @@ describe('playlist controls are reachable without a pointer', () => {
   })
 })
 
+// The playlist list is ordered by `is_pinned` on the server, and the row already draws a badge for
+// each favour — but nothing in the client could ever set either one, so the ordering clause and both
+// badges had no way to come true. The row menu is where a playlist's own actions live.
+describe('a playlist can be pinned and favoured from its menu', () => {
+  it('offers pinning an unpinned playlist and asks the store for it', async () => {
+    const setPlaylistFlags = vi.fn(async () => {})
+    useMusic.setState({ setPlaylistFlags })
+    await mount()
+    await openMenu(0)
+    expect(menuItem(t('music.pin'))).toBeDefined()
+    await clickItem(t('music.pin'))
+    expect(setPlaylistFlags).toHaveBeenCalledWith('p1', { isPinned: true })
+  })
+
+  it('labels each favour with the state it would leave the playlist in', async () => {
+    useMusic.setState({ playlists: [{ ...playlist('p1', 'Road Trip', ['t1']), isPinned: true, isFavorite: true }] })
+    await mount()
+    await openMenu(0)
+    expect(menuItem(t('music.unpin'))).toBeDefined()
+    expect(menuItem(t('music.unfavorite'))).toBeDefined()
+  })
+
+  it('offers favouriting one that carries neither', async () => {
+    await mount()
+    await openMenu(0)
+    expect(menuItem(t('music.pin'))).toBeDefined()
+    expect(menuItem(t('music.favorite'))).toBeDefined()
+  })
+})
+
 describe('playlist share menu (M-51)', () => {
   it('sharing an unshared playlist copies the anonymous link and says so', async () => {
     const writeText = vi.fn(async () => {})

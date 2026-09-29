@@ -33,7 +33,7 @@ vi.mock('../music-feedback', () => ({
 
 import { api } from '../../../lib/api'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
-import { addSelectionToPlaylist, createPlaylist, createTag, movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, renamePlaylist, sharePlaylist, unsharePlaylist } from './library-collections'
+import { addSelectionToPlaylist, createPlaylist, createTag, movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, renamePlaylist, setPlaylistFlags, sharePlaylist, unsharePlaylist } from './library-collections'
 import type { MusicStoreState } from './types'
 
 function makeStore() {
@@ -265,6 +265,50 @@ describe('movePlaylistItemToIndex', () => {
     const store = threeItemStore()
     await movePlaylistItemToIndex(store.set, store.get, 'p1', 'i2', 1)
     expect(api.music.reorderPlaylist).not.toHaveBeenCalled()
+  })
+})
+
+// The list arrives in the server's order (`is_pinned DESC, sort_order ASC`), so pinning has to move
+// the row locally as well as write the flag — a badge on a row that stayed put reads as a write that
+// did not land. The sort is stable, which is what keeps the untouched playlists where they were.
+describe('playlist favours', () => {
+  function playlistStore() {
+    const store = makeStore()
+    store.set({
+      playlists: [
+        { id: 'p2', name: 'Pinned', isPinned: true, isFavorite: false },
+        { id: 'p1', name: 'Road', isPinned: false, isFavorite: false },
+        { id: 'p3', name: 'Late', isPinned: false, isFavorite: false },
+      ] as unknown as MusicStoreState['playlists'],
+    })
+    return store
+  }
+
+  beforeEach(() => {
+    vi.mocked(api.music.patchPlaylist).mockClear()
+    vi.mocked(toastMusicError).mockClear()
+  })
+
+  it('writes the flag and brings a newly pinned playlist to the top', async () => {
+    const store = playlistStore()
+    await setPlaylistFlags(store.set, 'p3', { isPinned: true })
+    expect(api.music.patchPlaylist).toHaveBeenCalledWith('p3', { isPinned: true })
+    expect(store.get().playlists.map((entry) => entry.id)).toEqual(['p2', 'p3', 'p1'])
+  })
+
+  it('leaves the order alone when only the favourite changes', async () => {
+    const store = playlistStore()
+    await setPlaylistFlags(store.set, 'p1', { isFavorite: true })
+    expect(store.get().playlists.map((entry) => entry.id)).toEqual(['p2', 'p1', 'p3'])
+    expect(store.get().playlists.find((entry) => entry.id === 'p1')?.isFavorite).toBe(true)
+  })
+
+  it('reports a refused write instead of moving the row', async () => {
+    vi.mocked(api.music.patchPlaylist).mockRejectedValueOnce(new Error('offline'))
+    const store = playlistStore()
+    await setPlaylistFlags(store.set, 'p1', { isPinned: true })
+    expect(store.get().playlists.map((entry) => entry.id)).toEqual(['p2', 'p1', 'p3'])
+    expect(toastMusicError).toHaveBeenCalledWith(expect.anything(), 'music.action_failed')
   })
 })
 
