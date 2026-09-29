@@ -7162,9 +7162,10 @@ async function assertPublicPlaylistPage(browser, page, consoleErrors) {
     // fixture — the shape the provider stub uses for its catalogue. The refusal is counted too, so a
     // green line here cannot be a stream that worked with an alert drawn for some other reason.
     const refusedStreams = []
+    let refusing = true
     const refuseStreams = (request) => {
       const url = request.url()
-      if (url.includes(`/playlists/${slug}/tracks/`) && url.endsWith('/stream')) {
+      if (refusing && url.includes(`/playlists/${slug}/tracks/`) && url.endsWith('/stream')) {
         refusedStreams.push(url)
         return request.respond({ status: 502, contentType: 'text/plain', body: 'the file behind this track is gone' })
       }
@@ -7192,6 +7193,22 @@ async function assertPublicPlaylistPage(browser, page, consoleErrors) {
       check('playlist link: a track that will not play is named rather than left silent', announced, `onScreen=${onScreen}`)
       check('playlist link: the failure is drawn, not only announced', onScreen)
       await checkSurfaceAxe(visitor, '', 'playlist link (a track that will not play)', isPlaylistMediaReviewItem)
+      // The control the bar offers is the browser's own, so a retry is not scriptable as a press: it is
+      // the two calls that press makes — ask for the source again, then play it. The stream answers this
+      // time, which is also the other shape a dead track takes: the same row, a source that works again.
+      refusing = false
+      await visitor.evaluate(() => {
+        const media = document.querySelector('audio, video')
+        if (!media) return
+        media.load()
+        void media.play()
+      })
+      const recovered = await visitor.waitForFunction(() => {
+        const media = document.querySelector('audio, video')
+        return Boolean(media) && !document.querySelector('[role="alert"]') && !media.paused && media.currentTime > 0
+      }, { timeout: 15_000 }).then(() => true, () => false)
+      check('playlist link: a stream that answers again takes the failure away', recovered,
+        JSON.stringify({ refused: refusedStreams.length }))
     } finally {
       visitor.off('request', refuseStreams)
       await visitor.setRequestInterception(false)
