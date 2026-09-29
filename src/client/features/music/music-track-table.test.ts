@@ -46,6 +46,27 @@ function track(id: string, title: string, artist: string): MusicTrack {
 
 const tracks = [track('t1', 'Alpha', 'Zoe'), track('t2', 'Beta', 'Ann')]
 
+// The row that is playing used to trade its number for a pause glyph, which left the one row a reader
+// looks for as the only row without a place in the list — and play/pause reachable only by a double
+// click nothing announces. Both are read here as the number *plus* a control of its own.
+describe('a row keeps its place and carries its own play control', () => {
+  it('draws the number and a pause control on the row that is playing', async () => {
+    useMusic.setState({ queue: ['t1'], currentIndex: 0, isPlaying: true })
+    await mountList()
+    const current = document.querySelector('[role="row"][aria-current="true"]')
+    expect(current?.textContent?.trim().startsWith('1')).toBe(true)
+    expect(current?.querySelector('button')?.getAttribute('aria-label')).toBe(`${t('music.pause')}: Alpha`)
+  })
+
+  it('draws the number and a play control on the rows that are not playing', async () => {
+    useMusic.setState({ queue: ['t1'], currentIndex: 0, isPlaying: true })
+    await mountList()
+    const other = [...document.querySelectorAll('[role="row"]')].find((row) => row.textContent?.includes('Beta'))
+    expect(other?.textContent?.trim().startsWith('2')).toBe(true)
+    expect(other?.querySelector('button')?.getAttribute('aria-label')).toBe(`${t('music.play')}: Beta`)
+  })
+})
+
 let root: Root | null = null
 
 async function mountList(list: MusicTrack[] = tracks): Promise<void> {

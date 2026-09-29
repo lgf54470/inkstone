@@ -126,7 +126,7 @@ export const MusicTrackRow = memo(function MusicTrackRow({
       )}
     >
       <RowSelectCell track={track} isSelected={isSelected} onSelect={handlers.onSelect} />
-      <RowIndex index={index} isCurrent={isCurrent} isPlaying={isCurrent && isPlaying} />
+      <RowIndex index={index} label={label} title={track.title} isCurrent={isCurrent} isPlaying={isCurrent && isPlaying} onPlay={() => handlers.onPlay(track)} />
       <RowArtwork
         track={track}
         label={label}
@@ -220,10 +220,33 @@ function RowSubstitute({ track }: { track: MusicTrack }) {
   )
 }
 
-function RowIndex({ index, isCurrent, isPlaying }: { index: number; isCurrent: boolean; isPlaying: boolean }) {
+// The number is the row's place in the list, so it stays where it is: the control that plays or pauses
+// this row sits beside it instead of replacing it. Replacing it meant the one row a reader is most
+// likely to look for — the one playing — was the only row without a number, and the only way to press
+// play was a double click nothing announces. The space is reserved at every width so revealing the
+// control never moves the number; the playing row keeps its own visible.
+function RowIndex({ index, label, title, isCurrent, isPlaying, onPlay }: {
+  index: number
+  label: string
+  title: string
+  isCurrent: boolean
+  isPlaying: boolean
+  onPlay: () => void
+}) {
+  const revealIndexControl = 'opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto'
   return (
-    <span role='cell' className={cn('tabular w-5 shrink-0 text-center text-[length:var(--text-12)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
-      {isPlaying ? <Pause size={11} className='mx-auto text-[var(--accent)]' /> : index + 1}
+    <span role='cell' className='flex w-10 shrink-0 items-center justify-center gap-0.5'>
+      <span className={cn('tabular w-4 text-right text-[length:var(--text-12)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
+        {index + 1}
+      </span>
+      <IconButton
+        label={label + ': ' + title}
+        size='sm'
+        onClick={onPlay}
+        className={cn(revealIndexControl, isPlaying && 'text-[var(--accent)] md:opacity-100 md:pointer-events-auto')}
+      >
+        {isPlaying ? <Pause size={12} /> : <Play size={12} />}
+      </IconButton>
     </span>
   )
 }
