@@ -4411,6 +4411,8 @@ const allowed = new Map([
     '// The reminder is announced rather than silent (a returning reader should not have to spot a badge on',
     '// their own), and it says where the memory lives so nobody reads it as a server-side subscription.',
     '// The one control forgets the stamp, which stops the comparison on later visits and hides it now.',
+    '// Emphasis comes from an accent rule, not from an accent-soft fill: on that fill only the top text',
+    '// level is calibrated, and the dim levels this notice needs would fall under AA.',
   ]],
   ['src/client/features/music/music-share-page/visit-memory.test.ts', [
     '// A storage that throws is the normal case in private mode, and the page has to render anyway.',

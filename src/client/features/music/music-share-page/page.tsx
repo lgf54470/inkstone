@@ -201,9 +201,11 @@ function PlaylistBody({ load, currentId, onPlay, coverUrl, trackCount, totalDura
 // The reminder is announced rather than silent (a returning reader should not have to spot a badge on
 // their own), and it says where the memory lives so nobody reads it as a server-side subscription.
 // The one control forgets the stamp, which stops the comparison on later visits and hides it now.
+// Emphasis comes from an accent rule, not from an accent-soft fill: on that fill only the top text
+// level is calibrated, and the dim levels this notice needs would fall under AA.
 function VisitNotice({ count, onForget }: { count: number; onForget: () => void }) {
   return (
-    <div role='status' className='mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--r-md)] bg-[var(--accent-soft)] px-3 py-2'>
+    <div role='status' className='mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-l-2 border-[var(--accent)] pl-2.5'>
       <span className='text-[length:var(--text-12)] text-[var(--accent)]'>
         {t('music.share_new_since_visit', { value0: count })}
       </span>
