@@ -16,7 +16,7 @@ import { HUB_MAX_WIDTH, HubHeader, HubResizeZones, hubStyle, useHubViewportClamp
 import { MusicPlayerControls } from './music-player-controls'
 import { MusicTrackList } from './music-track-list'
 import { useUi } from '../../store/ui'
-import { useMusic, useVisibleTracks } from './music-store'
+import { flushMusicWrites, useMusic, useVisibleTracks } from './music-store'
 import type { MusicScope } from './music-store'
 import { MUSIC_CONTENT_MIN_HEIGHT, MUSIC_HUB_COLUMNS_MIN_WIDTH, MUSIC_QUEUE_PANEL_HEIGHT, hubColumnsWide } from './music-utils'
 
@@ -93,6 +93,22 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
 
   useEffect(() => {
     if (open) void loadLibrary()
+  }, [open, loadLibrary])
+
+  // Coming back online is when a deferred write can move again, and the hub is the surface that owns
+  // the library. With the hub closed the queue simply waits for the next open, where `loadLibrary`
+  // flushes before it reads.
+  useEffect(() => {
+    if (!open) return
+    const onOnline = () => {
+      void flushMusicWrites().then((dropped) => {
+        // An entry the server refused is gone from the queue, so the library fetch is what repairs
+        // the optimistic row it had been holding up.
+        if (dropped > 0) void loadLibrary(true)
+      })
+    }
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
   }, [open, loadLibrary])
 
   // The track menu is opened from surfaces the hub does not own now (the immersive player, the queue),

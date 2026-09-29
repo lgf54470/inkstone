@@ -163,6 +163,7 @@ export {
 } from './state'
 export { playbackChange, restorePlayback, savePlayback, savePosition, schedulePlaybackSave } from './playback-sync'
 export type { PlaybackChange } from './playback-sync'
+export { flushMusicWrites } from './pending-writes'
 export { progressTimeMs, setProgressTime, useProgress } from './progress'
 export { resumeSleepTimer } from './player'
 export { visibleTracks, sortTracks } from './library-load'

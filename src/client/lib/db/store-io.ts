@@ -1,6 +1,6 @@
 import { get, getMany, set, setMany } from 'idb-keyval'
 import { delMany, entries, store, KEY, supportsUserNamespaces } from './keys'
-import type { OutboxItem } from './types'
+import type { MusicPendingWrite, OutboxItem } from './types'
 import { dbState } from './keys'
 export function normalizeOutbox(value: unknown): OutboxItem[] {
   if (!Array.isArray(value)) return []
@@ -11,6 +11,26 @@ export function normalizeOutbox(value: unknown): OutboxItem[] {
       typeof candidate.clientId === 'string' &&
       typeof candidate.writeId === 'string' &&
       typeof candidate.noteId === 'string' &&
+      Boolean(candidate.payload) &&
+      typeof candidate.payload === 'object' &&
+      !Array.isArray(candidate.payload) &&
+      typeof candidate.attempts === 'number' &&
+      Number.isInteger(candidate.attempts) &&
+      typeof candidate.createdAt === 'number' &&
+      Number.isFinite(candidate.createdAt)
+  })
+}
+// Reads and writes of the music queue cross a process boundary the same way the note outbox does, so
+// the value is re-validated on every read: a truncated or hand-edited entry is dropped instead of
+// replayed.
+export function normalizeMusicWrites(value: unknown): MusicPendingWrite[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is MusicPendingWrite => {
+    if (!item || typeof item !== 'object') return false
+    const candidate = item as Partial<MusicPendingWrite>
+    return typeof candidate.id === 'string' &&
+      (candidate.kind === 'trackFlags' || candidate.kind === 'playlistFlags') &&
+      typeof candidate.targetId === 'string' &&
       Boolean(candidate.payload) &&
       typeof candidate.payload === 'object' &&
       !Array.isArray(candidate.payload) &&

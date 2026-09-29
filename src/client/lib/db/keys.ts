@@ -21,6 +21,7 @@ export const KEY = {
   content: (id: string) => `note:${id}`,
   outbox: 'outbox',
   outboxReplayLease: 'outboxReplayLease',
+  musicWrites: 'musicWrites',
   userId: 'userId',
   session: 'session',
   templateLibrary: 'templateLibrary',

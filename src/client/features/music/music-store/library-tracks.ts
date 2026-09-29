@@ -8,6 +8,7 @@ import { probeTrackDuration, scanTrackMetadata, type ScannedMetadata } from '../
 import { isArtistSuffixedTitle, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { orderAfterQueueSync } from '../music-shuffle'
 import { summarizeLibrary } from './library-load'
+import { isOfflineError, queueMusicWrite } from './pending-writes'
 import { forgetOfflineTracks } from './offline'
 import { runLibraryJob } from './transfers'
 import type { MusicGet, MusicSet, MusicStoreState, MusicTrackPatchInput } from './types'
@@ -150,6 +151,13 @@ async function toggleFlag(
     mergeTrack(set, id, updated)
     toastMusic(next ? onKey : offKey)
   } catch (error) {
+    // Offline is a deferred write, not a refused one: the toggle is already on screen because the
+    // reader asked for it, so rolling it back would undo their action. Keeping the value and
+    // replaying it later is what keeps the library usable in a tunnel.
+    if (isOfflineError(error)) {
+      await queueMusicWrite({ kind: 'trackFlags', targetId: id, payload: { [field]: next } })
+      return
+    }
     applyLocal(set, id, { [field]: !next })
     toastMusicError(error, 'music.action_failed')
   }

@@ -4,6 +4,7 @@ import { duplicateTracks } from '../music-duplicates'
 import { ensureRomanized, LYRIC_QUERY_MIN_LENGTH, needsRomanization, SEARCH_RESULT_LIMIT, searchTracks } from '../music-search'
 import { collectTagIds, type MusicLyricSource } from '../music-utils'
 import { persist } from './persist'
+import { flushMusicWrites } from './pending-writes'
 import { pushHistory, SEARCH_HISTORY_MIN_LENGTH } from './state'
 import type { MusicGet, MusicScope, MusicSet, MusicSort, MusicSortDirection, MusicSourceFilter, MusicStoreState, MusicViewMode, TrackMenuRequest, TrackMenuTarget } from './types'
 
@@ -29,6 +30,10 @@ export async function loadLibrary(set: MusicSet, get: MusicGet, force = false): 
 
 async function fetchLibrary(set: MusicSet, force: boolean): Promise<void> {
   try {
+    // Whatever the reader changed while offline lands before the library is read, so this fetch
+    // cannot paint a state the queue is about to supersede. A refused entry has already been
+    // dropped by then, which makes the same fetch the thing that repairs the optimistic row.
+    await flushMusicWrites()
     const library = await api.music.library(force ? null : libraryEtag, (etag) => {
       libraryEtag = etag
     })

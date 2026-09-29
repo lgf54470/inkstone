@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LIMITS } from '@shared/constants'
 import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 
-vi.mock('../../../lib/api', () => ({
+// The real module is kept alongside the stub because `ApiError` is what tells a deferred write apart
+// from a refused one: a mocked-away class would make `instanceof` throw instead of classifying.
+vi.mock('../../../lib/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../lib/api')>()),
   api: {
     music: {
       createPlaylist: vi.fn(async (input: object) => ({ id: 'pl-1', items: [], ...input })),
@@ -30,8 +33,17 @@ vi.mock('../music-feedback', () => ({
   toastMusicNotice: vi.fn(),
   toastUploadError: vi.fn(),
 }))
+vi.mock('../../../lib/db', () => ({
+  localDb: {
+    getMusicWrites: vi.fn(async () => []),
+    enqueueMusicWrite: vi.fn(async () => {}),
+    completeMusicWrite: vi.fn(async () => {}),
+    markMusicWriteFailure: vi.fn(async () => {}),
+  },
+}))
 
-import { api } from '../../../lib/api'
+import { ApiError, api } from '../../../lib/api'
+import { localDb } from '../../../lib/db'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
 import { addSelectionToPlaylist, createPlaylist, createTag, movePlaylistItem, movePlaylistItemToIndex, moveSelectionToTag, renamePlaylist, setPlaylistFlags, sharePlaylist, unsharePlaylist } from './library-collections'
 import type { MusicStoreState } from './types'
@@ -271,22 +283,23 @@ describe('movePlaylistItemToIndex', () => {
 // The list arrives in the server's order (`is_pinned DESC, sort_order ASC`), so pinning has to move
 // the row locally as well as write the flag — a badge on a row that stayed put reads as a write that
 // did not land. The sort is stable, which is what keeps the untouched playlists where they were.
-describe('playlist favours', () => {
-  function playlistStore() {
-    const store = makeStore()
-    store.set({
-      playlists: [
-        { id: 'p2', name: 'Pinned', isPinned: true, isFavorite: false },
-        { id: 'p1', name: 'Road', isPinned: false, isFavorite: false },
-        { id: 'p3', name: 'Late', isPinned: false, isFavorite: false },
-      ] as unknown as MusicStoreState['playlists'],
-    })
-    return store
-  }
+function playlistStore() {
+  const store = makeStore()
+  store.set({
+    playlists: [
+      { id: 'p2', name: 'Pinned', isPinned: true, isFavorite: false },
+      { id: 'p1', name: 'Road', isPinned: false, isFavorite: false },
+      { id: 'p3', name: 'Late', isPinned: false, isFavorite: false },
+    ] as unknown as MusicStoreState['playlists'],
+  })
+  return store
+}
 
+describe('playlist favours', () => {
   beforeEach(() => {
     vi.mocked(api.music.patchPlaylist).mockClear()
     vi.mocked(toastMusicError).mockClear()
+    vi.mocked(localDb.enqueueMusicWrite).mockClear()
   })
 
   it('writes the flag and brings a newly pinned playlist to the top', async () => {
@@ -309,6 +322,29 @@ describe('playlist favours', () => {
     await setPlaylistFlags(store.set, 'p1', { isPinned: true })
     expect(store.get().playlists.map((entry) => entry.id)).toEqual(['p2', 'p1', 'p3'])
     expect(toastMusicError).toHaveBeenCalledWith(expect.anything(), 'music.action_failed')
+  })
+})
+
+// A network that is gone is not a refusal, so the row still moves and the write waits: the reader sees
+// the badge and the order they asked for, and the queue carries the intent to the server.
+describe('playlist favours while offline', () => {
+  beforeEach(() => {
+    vi.mocked(api.music.patchPlaylist).mockClear()
+    vi.mocked(toastMusicError).mockClear()
+    vi.mocked(localDb.enqueueMusicWrite).mockClear()
+  })
+
+  it('keeps an offline pin, in the order it asked for, and queues the write', async () => {
+    vi.mocked(api.music.patchPlaylist).mockRejectedValueOnce(new ApiError(0, 'offline', 'Failed to fetch'))
+    const store = playlistStore()
+    await setPlaylistFlags(store.set, 'p1', { isPinned: true })
+    expect(store.get().playlists.map((entry) => entry.id)).toEqual(['p2', 'p1', 'p3'])
+    expect(store.get().playlists.find((entry) => entry.id === 'p1')?.isPinned).toBe(true)
+    expect(localDb.enqueueMusicWrite).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'playlistFlags:p1',
+      payload: { isPinned: true },
+    }))
+    expect(toastMusicError).not.toHaveBeenCalled()
   })
 })
 

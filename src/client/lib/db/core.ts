@@ -1,8 +1,8 @@
 import { clear as clearStore, del, getMany, set, setMany, update } from 'idb-keyval'
 import type { Folder, NoteSummary, SessionInfo, Tag } from '@shared/types'
 import { store, KEY, supportsUserNamespaces, dbState } from './keys'
-import type { ShellData, ShellBaseline, TemplateLibraryData, OutboxItem, CachedNoteContent } from './types'
-import { normalizeOutbox, safeGet, safeSet, userScopedKey, migrateLegacyData } from './store-io'
+import type { ShellData, ShellBaseline, TemplateLibraryData, OutboxItem, CachedNoteContent, MusicPendingWrite } from './types'
+import { normalizeMusicWrites, normalizeOutbox, safeGet, safeSet, userScopedKey, migrateLegacyData } from './store-io'
 import { foldersEqual, tagsEqual, isRecord, isPublicUser, isSiteInfo, isFiniteNumber, isNoteSummary, isFolder, isTag, isNoteTemplateCategory, isNoteTemplate } from './validators'
 import { collectBaselineShellWrites, collectFullShellWrites, loadIndexNotes, migrateLegacyNotes, SHELL_SET_CHUNK } from './shell-helpers'
 import { acquireOutboxReplayLease, refreshOutboxReplayLease, releaseOutboxReplayLease } from './outbox-lease'
@@ -338,6 +338,49 @@ export const localDb = {
         .map((item) => item.id === id && item.writeId === writeId
           ? { ...item, attempts: item.attempts + 1, lastError: message, lastAttemptAt: Date.now() }
           : item),
+      store,
+    )
+  },
+
+  getMusicWrites: async (): Promise<MusicPendingWrite[]> =>
+    normalizeMusicWrites(await safeGet<unknown>(userScopedKey(KEY.musicWrites))),
+
+  // The item id is the target, not a timestamp, so re-queuing the same target replaces the pending
+  // intent instead of stacking a second write — and the payloads are merged rather than swapped:
+  // pinning and favouriting the same track offline must leave both flags, not whichever came last.
+  enqueueMusicWrite(item: MusicPendingWrite): Promise<void> {
+    return update<MusicPendingWrite[]>(
+      userScopedKey(KEY.musicWrites),
+      (current) => {
+        const items = normalizeMusicWrites(current)
+        const previous = items.find((entry) => entry.id === item.id)
+        return [
+          ...items.filter((entry) => entry.id !== item.id),
+          {
+            ...item,
+            payload: { ...previous?.payload, ...item.payload },
+            createdAt: previous?.createdAt ?? item.createdAt,
+          },
+        ]
+      },
+      store,
+    )
+  },
+
+  completeMusicWrite(id: string): Promise<void> {
+    return update<MusicPendingWrite[]>(
+      userScopedKey(KEY.musicWrites),
+      (current) => normalizeMusicWrites(current).filter((item) => item.id !== id),
+      store,
+    )
+  },
+
+  markMusicWriteFailure(id: string, message: string): Promise<void> {
+    return update<MusicPendingWrite[]>(
+      userScopedKey(KEY.musicWrites),
+      (current) => normalizeMusicWrites(current).map((item) => item.id === id
+        ? { ...item, attempts: item.attempts + 1, lastError: message, lastAttemptAt: Date.now() }
+        : item),
       store,
     )
   },

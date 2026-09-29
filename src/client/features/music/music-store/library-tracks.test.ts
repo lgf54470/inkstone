@@ -7,7 +7,10 @@ vi.mock('../music-metadata', () => ({
   scanTrackMetadata: vi.fn(),
   probeTrackDuration: vi.fn(async () => 0),
 }))
-vi.mock('../../../lib/api', () => ({
+// The real module is kept alongside the stub because `ApiError` is what tells a deferred write apart
+// from a refused one: a mocked-away class would make `instanceof` throw instead of classifying.
+vi.mock('../../../lib/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../lib/api')>()),
   api: {
     music: {
       patchTrack: vi.fn(async (id: string, patch: object) => ({ id, ...patch })),
@@ -20,6 +23,14 @@ vi.mock('../../../lib/api', () => ({
     },
   },
 }))
+vi.mock('../../../lib/db', () => ({
+  localDb: {
+    getMusicWrites: vi.fn(async () => []),
+    enqueueMusicWrite: vi.fn(async () => {}),
+    completeMusicWrite: vi.fn(async () => {}),
+    markMusicWriteFailure: vi.fn(async () => {}),
+  },
+}))
 vi.mock('../music-feedback', () => ({
   toastMusic: vi.fn(),
   toastMusicError: vi.fn(),
@@ -29,10 +40,11 @@ vi.mock('./offline', () => ({
   forgetOfflineTracks: vi.fn(),
 }))
 
-import { api } from '../../../lib/api'
+import { ApiError, api } from '../../../lib/api'
+import { localDb } from '../../../lib/db'
 import { scanTrackMetadata } from '../music-metadata'
 import { toastMusic, toastMusicError, toastMusicNotice } from '../music-feedback'
-import { batchTracks, deleteTrack, ensureTrackLyric, refreshTrackMetadata } from './library-tracks'
+import { batchTracks, deleteTrack, ensureTrackLyric, refreshTrackMetadata, toggleFavorite, togglePin } from './library-tracks'
 import { forgetOfflineTracks } from './offline'
 import type { MusicStoreState } from './types'
 
@@ -44,6 +56,8 @@ afterEach(() => {
   vi.mocked(toastMusic).mockClear()
   vi.mocked(toastMusicError).mockClear()
   vi.mocked(toastMusicNotice).mockClear()
+  vi.mocked(api.music.patchTrack).mockReset().mockImplementation(async (id: string, patch: object) => ({ id, ...patch }) as MusicTrack)
+  vi.mocked(localDb.enqueueMusicWrite).mockClear()
 })
 
 function track(id: string): MusicTrack {
@@ -283,5 +297,47 @@ describe('deleting forgets the offline copies', () => {
     store.set({ selectedIds: ['a'] })
     await batchTracks(store.set, store.get, 'favorite')
     expect(forgetOfflineTracks).not.toHaveBeenCalled()
+  })
+})
+
+// A flag the reader set on a plane is work to keep, not an action to undo. The two failures have to
+// stay apart: `status: 0` means the request never arrived (defer it), anything else is the server's
+// answer about the value (undo it and say so) — replaying a refusal would just be refused again.
+describe('the two favours survive a dead network', () => {
+  function offline(): ApiError {
+    return new ApiError(0, 'offline', 'Failed to fetch')
+  }
+
+  it('keeps a favourite that never reached the server and queues it', async () => {
+    vi.mocked(api.music.patchTrack).mockRejectedValueOnce(offline())
+    const store = makeStore([track('a')])
+    await toggleFavorite(store.set, store.get, 'a')
+    expect(store.read().tracks[0]?.isFavorite).toBe(true)
+    expect(localDb.enqueueMusicWrite).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'trackFlags',
+      targetId: 'a',
+      payload: { isFavorite: true },
+    }))
+    expect(toastMusicError).not.toHaveBeenCalled()
+    expect(toastMusicNotice).toHaveBeenCalled()
+  })
+
+  it('keeps a pin that never reached the server, and queues the flag it read', async () => {
+    vi.mocked(api.music.patchTrack).mockRejectedValueOnce(offline())
+    const store = makeStore([{ ...track('a'), isPinned: true }])
+    await togglePin(store.set, store.get, 'a')
+    expect(store.read().tracks[0]?.isPinned).toBe(false)
+    expect(localDb.enqueueMusicWrite).toHaveBeenCalledWith(expect.objectContaining({
+      payload: { isPinned: false },
+    }))
+  })
+
+  it('still undoes a write the server refused', async () => {
+    vi.mocked(api.music.patchTrack).mockRejectedValueOnce(new ApiError(403, 'forbidden', 'nope'))
+    const store = makeStore([track('a')])
+    await toggleFavorite(store.set, store.get, 'a')
+    expect(store.read().tracks[0]?.isFavorite).toBe(false)
+    expect(localDb.enqueueMusicWrite).not.toHaveBeenCalled()
+    expect(toastMusicError).toHaveBeenCalled()
   })
 })

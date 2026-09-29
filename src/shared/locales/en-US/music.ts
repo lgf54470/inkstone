@@ -64,6 +64,7 @@ export const messages = {
 'music.pin_added': 'Pinned',
 'music.pin_removed': 'Unpinned',
 'music.action_failed': 'The action failed',
+'music.saved_offline': 'Saved offline — it will sync when you are back online',
 'music.upload': 'Upload',
 'music.transfer_title': 'Music transfers',
 'music.upload_target': 'Upload target',

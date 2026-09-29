@@ -64,6 +64,7 @@ export const messages = {
 'music.pin_added': '已置顶',
 'music.pin_removed': '已取消置顶',
 'music.action_failed': '操作失败',
+'music.saved_offline': '已离线保存，联网后会自动同步',
 'music.upload': '上传',
 'music.transfer_title': '音乐传输',
 'music.upload_target': '上传目标',

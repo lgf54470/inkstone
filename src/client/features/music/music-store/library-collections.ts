@@ -9,6 +9,7 @@ import { readDurationMs } from '../music-probe'
 import { partitionUploadableFiles, TRACK_IO_CONCURRENCY } from '../music-utils'
 import { applyTagsLocally, sendBatches } from './library-tracks'
 import { summarizeLibrary } from './library-load'
+import { isOfflineError, queueMusicWrite } from './pending-writes'
 import type { MusicGet, MusicSet, MusicStoreState, MusicTransferTarget, MusicUploadTask } from './types'
 
 // "demo/test" creates the parent path first, matching how note tags nest by name.
@@ -161,14 +162,28 @@ export async function setPlaylistCover(set: MusicSet, id: string, coverDataUrl: 
 export async function setPlaylistFlags(set: MusicSet, id: string, patch: { isPinned?: boolean; isFavorite?: boolean }): Promise<void> {
   try {
     const updated = await api.music.patchPlaylist(id, patch)
-    set((state) => ({
-      playlists: state.playlists
-        .map((entry) => (entry.id === id ? updated : entry))
-        .sort((a, b) => Number(b.isPinned) - Number(a.isPinned)),
-    }))
+    set((state) => ({ playlists: applyPlaylistFlags(state.playlists, id, updated) }))
   } catch (error) {
+    // Same reasoning as a track's flags: offline defers the write instead of refusing it. The row
+    // takes the patch locally so its badges and its order match what will be sent, and the queue
+    // replays it once the network is back.
+    if (isOfflineError(error)) {
+      set((state) => ({ playlists: applyPlaylistFlags(state.playlists, id, patch) }))
+      await queueMusicWrite({ kind: 'playlistFlags', targetId: id, payload: patch })
+      return
+    }
     toastMusicError(error, 'music.action_failed')
   }
+}
+
+function applyPlaylistFlags(
+  playlists: MusicStoreState['playlists'],
+  id: string,
+  patch: Partial<MusicPlaylistDetail>,
+): MusicStoreState['playlists'] {
+  return playlists
+    .map((entry) => (entry.id === id ? { ...entry, ...patch } : entry))
+    .sort((a, b) => Number(b.isPinned) - Number(a.isPinned))
 }
 
 // The share endpoint is idempotent, so the slug a visitor already holds keeps working.
