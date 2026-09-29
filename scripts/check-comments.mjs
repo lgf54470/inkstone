@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import ts from 'typescript'
+import { commentsIn } from './lib/comment-scan.mjs'
 
 const allowed = new Map([
   ['pwa.config.ts', [
@@ -2032,6 +2032,9 @@ const allowed = new Map([
     '/**\n * The share center\'s table is the second item, and this one is not about a colour: at phone width the\n * table is 940px wide inside a 390px viewport (measured on the running instance), and axe\'s own\n * `color-contrast` throws on the header cell it lays down in it — "Element midpoint exceeds the grid\n * bounds" — because the cell it is asking about sits outside the grid axe built for the scrollable\n * area. axe files a thrown rule under its `error-occurred` check, so the surface is left unjudged\n * rather than judged, and the gate used to read that as an unreviewed item. Measured on the way to\n * this: the error is not about scroll position (the container and the window are both at 0/0 when it\n * happens) and not about the sticky header (making the header static changes nothing); forcing the\n * table to fit the width — `width: 100%` with a fixed layout — makes it disappear, which is what ties\n * it to the horizontal overflow and to nothing this app paints. It is declared on the phone pass\'s\n * share surface only, because desktop width fits and the same table is judged there normally.\n *\n * The triple keeps it narrow in both directions: the id, axe\'s `error-occurred` key (the harness\n * reports that check\'s id where axe gave no `messageKey`), and a header cell\'s shape. A judged item on\n * the same cell still fails the gate, an item filed under no key at all is not this rule, and a rule\n * error anywhere else in that surface is still reviewed.\n *\n * A `target` regexp must not carry the `g` flag here either: the match has to be the same answer every\n * time it is asked.\n */',
     '/**\n * Splits one surface\'s `incomplete` list into what the surface named (`named`), what the gate\'s own\n * global categories cover, and what still fails (`review`). `allowed` counts the first two, so a\n * surface can be reported as measured-with-exceptions rather than as clean.\n */',
   ]],
+  ['scripts/lib/comment-scan.mjs', [
+    '/**\n * Every comment in a script file, in source order, read from the token tree rather than by matching\n * comment glyphs in the text.\n *\n * A text match cannot tell a comment from the same characters inside a string: `\'/api/blog/*\'`\n * followed by any later block comment looked like one long comment, so every real comment between\n * the two was never produced — and a comment the checker never sees is one it stops requiring to be\n * approved, which is the one direction a comment policy must not fail in. Tokens carry no such\n * ambiguity: the range helpers answer only for trivia a token really owns, so a `//` inside a string\n * or a template is not trivia in the first place.\n *\n * Both the checker and the allowlist generator read comments through this one function, so the\n * inventory they compare can never be built by a different rule than the check applies.\n */',
+  ]],
   ['scripts/lib/contrast.mjs', [
     '// The colour maths behind the contrast gates, shared by the browser gate',
     '// (scripts/check-contrast.mjs, which measures the painted pairs) and the token',
@@ -2384,7 +2387,7 @@ const allowed = new Map([
     '// stamps "now", yielding a degenerate single-day vault).',
   ]],
   ['scripts/sync-comments-allowlist.mjs', [
-    '/**\n * One-off regeneration of the comment allowlist inside check-comments.mjs.\n * Mirrors the checker\'s scanScript logic (TypeScript AST literal ranges +\n * comment regex) so the allowlist stays an exact inventory of every comment\n * in the scanned files. Run: node scripts/sync-comments-allowlist.mjs\n */',
+    '/**\n * One-off regeneration of the comment allowlist inside check-comments.mjs.\n * Reads the comments through the same scanner the checker uses\n * (`scripts/lib/comment-scan.mjs`), so the allowlist stays an exact inventory of\n * every comment in the scanned files. Run: node scripts/sync-comments-allowlist.mjs\n */',
   ]],
   ['src/client/components/activity-calendar.test.ts', [
     '// jsdom has no layout engine, so these guards assert the anti-wrap CSS contract',
@@ -11413,6 +11416,7 @@ const allowed = new Map([
     '// element is muted here rather than left to the document to remember.',
   ]],
   ['src/client/lib/markdown/slides/ui/pick-image.ts', [
+    '/**\n * Asks the browser for one picture. The input is created for the duration of the dialog\n * rather than kept in the markup because the only thing that opens it is a toolbar button —\n * and it is removed on every path, including the one where nobody picked anything, because\n * a detached input left in the body would still hold the file\'s bytes alive.\n */',
     '// Safari has no `cancel` event on a file input: the dialog closing hands focus back to',
     '// the window with no change, and that is the only signal that nothing was picked.',
   ]],
@@ -13947,6 +13951,11 @@ const allowed = new Map([
     '// The slug belongs to Alice\'s blog, so Bob\'s form cannot be answered with Alice\'s post.',
     '// The duplicate check is the blog\'s own directory, so the same site may apply to the other blog.',
   ]],
+  ['tests/blog-routes.test.ts', [
+    '// The public site reads the blog it serves, not a second key nobody writes: patching the site',
+    '// name has to reach the reader, which is what this used to assert the opposite of (SEC-09).',
+    '/** Seeds one post of this account and one of another, each with a comment. */',
+  ]],
   ['tests/blog-visit-cleanup.test.ts', [
     '// Recent by design: a row older than the account retention is now the',
     '// retention sweep\'s business, not this one\'s (SH-43).',
@@ -13985,6 +13994,11 @@ const allowed = new Map([
     '// Both directions: an entry whose file no longer writes the shape it excuses fails, and so does a',
     '// file that grew a second one — the reason above describes the sites that were read, and a site',
     '// nobody reasoned about is exactly what this list is for.',
+  ]],
+  ['tests/comment-scan.test.ts', [
+    '// The regression this scanner exists for: the comment glyphs inside \'/api/blog/*\' used to pair up',
+    '// with the next closing `*/` and swallow every real comment between them, so the checker never',
+    '// saw the notes after it and had nothing to require an approval for.',
   ]],
   ['tests/credential-vault-records.test.ts', [
     '/**\n * The vault is two halves that have to agree about the *shape* of what goes in: `encryptSecret`\n * writes whatever the caller hands it, and `decryptSecret` only hands back a value that still looks\n * like one of the records the app stores. That second check is what keeps a stray blob from coming\n * back as a credential — and it is also what breaks a consumer whose record names a field the list\n * does not have.\n *\n * Alist was exactly that consumer: it stored `{ token }` from the day it shipped, the record check\n * only allowed `password` / `accessKeyId` / `secretAccessKey`, so every Alist resolve answered\n * "the token is unreadable" — browse, search, import and streaming of Alist rows were all dead, and\n * no test noticed because none of them round-tripped through the vault. The rows already in the\n * database are encrypted with that field name, so the list is the half that has to accept it.\n *\n * Each case below is one shape a route actually stores: fix the list, not the writer, and pin the\n * shapes so the next consumer cannot add a fourth silently.\n */',
@@ -14491,6 +14505,7 @@ const allowed = new Map([
     '// Upsert rather than update: an UPDATE against a missing owner would silently do nothing, and a',
     '// test that quietly wrote no settings would go green on the default instead of the value stated.',
     '/** The stored marker of one visit row, or undefined when the row is not there at all. */',
+    '/**\n * One public access with the visit write it deferred awaited, the way `waitUntil` hands it back: a\n * test cannot see what the recording wrote until that task has run.\n */',
     '/** The visitor rows one public link holds, in write order. */',
     '/** The view counter the same link reports. */',
     '// Counts D1 round-trips: `direct` = a serial prepare().all()/.first(), `batch` =',
@@ -14582,6 +14597,7 @@ const allowed = new Map([
     '// take a request down while saying so.',
     '// `?? 1` would have turned the legacy row\'s deliberate NULL into an enabled row, and every',
     '// assertion about the NULL arm would then have been passing on a fixture that never had one.',
+    '/** Every share the account holds, as the payload the client is handed — the subjects the JS\n * predicate reads, rather than a second shape this test invented for it. */',
     '/**\n * The selection as SQL, over the same `FROM`/`WHERE` the list query builds (account, then the row is\n * live, then the fragment), with `now` given explicitly rather than read from the clock.\n */',
     '// The route reads its own clock, a few milliseconds after NOW, which every fixture boundary is',
     '// hours clear of.',
@@ -14688,36 +14704,7 @@ if (failures.length) {
 console.log(`comment policy check passed: ${approvedCount} approved English architecture notes across ${allowed.size} files and no other code comments`)
 
 function scanScript(file, text) {
-  const scriptKind = file.endsWith('.tsx') || file.endsWith('.jsx')
-    ? ts.ScriptKind.TSX
-    : file.endsWith('.js') || file.endsWith('.mjs') || file.endsWith('.cjs')
-      ? ts.ScriptKind.JS
-      : ts.ScriptKind.TS
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, scriptKind)
-  const literalRanges = []
-  collectLiterals(source)
-  literalRanges.sort((left, right) => left.start - right.start)
-
-  const comments = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g
-  for (const match of text.matchAll(comments)) {
-    if (!insideLiteral(match.index)) check(file, match[0])
-  }
-
-  function collectLiterals(node) {
-    if (
-      ts.isRegularExpressionLiteral(node) ||
-      ts.isStringLiteralLike(node) ||
-      ts.isTemplateHead(node) ||
-      ts.isTemplateMiddle(node) ||
-      ts.isTemplateTail(node) ||
-      ts.isJsxText(node)
-    ) literalRanges.push({ start: node.getStart(source), end: node.getEnd() })
-    ts.forEachChild(node, collectLiterals)
-  }
-
-  function insideLiteral(index) {
-    return literalRanges.some((range) => index >= range.start && index < range.end)
-  }
+  for (const comment of commentsIn(file, text)) check(file, comment.text)
 }
 
 function scanCss(file, text) {

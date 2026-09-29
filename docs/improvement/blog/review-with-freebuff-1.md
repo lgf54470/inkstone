@@ -53,8 +53,8 @@
 | SB-04 / P1-6 `range='all'` 时时间轴落 1970 | 仍存在 | **已修** | `analyticsWindow()`（`share-analytics.ts:369-373`）用该用户的 `MIN(visited_at)` 作为起点，无数据时退回近 30 天 |
 | B2-18 `DevicesCard` 缺空态 | 仍存在 | **已修** | `audience-cards.tsx:62-88` 有 `devices.length === 0 && osList.length === 0 ? <NoVisitData/>` |
 | P2-1 图表 `svg` 缺 `role=img`/aria-label | 仍存在 | **已修** | `big-svg-chart.tsx:128` `role='img' aria-label={ariaLabel}`（刻度圆整问题仍开放，见 UI-12） |
-| P0-2 / SB-01 公开路由无租户过滤 | 仍存在 | **仍存在** | `public-links.ts:21-33`、`public.ts:119-365`、`public-comments.ts:24-37` |
-| P0-3 / SB-02 友链 upsert 无 owner 守卫 | 仍存在 | **仍存在** | `links.ts:86-142`、回读 `links.ts:89-92` |
+| P0-2 / SB-01 公开路由无租户过滤 | 仍存在 | **本轮已修** | `routes/blog/owner.ts` 解析 `?owner=`，13 个公开端点全部改绑 `blogOwnerOf(c).userId`；`tests/blog-public-owner.test.ts`（9 条两账号契约） |
+| P0-3 / SB-02 友链 upsert 无 owner 守卫 | 仍存在 | **本轮已修** | `routes/blog/owned-rows.ts` 的 id/引用归属判定接入两条 upsert、回读与批量 setCategory；`tests/blog-links-routes.test.ts`（+7 条） |
 | P0-4 仪表盘伪造数据 | 仍存在 | **仍存在** | `stats.ts:297`、`:314`、`:335-352` |
 | P0-6 / SB-09 设置写用户、读全站 | 仍存在 | **仍存在** | `settings.ts:38-39,64,88`、`public.ts:66`、`public-comments.ts:61` |
 | P0-5 真实读者记为 bot / PV 恒 0 | 仍存在 | **仍存在** | `share-analytics.ts:78-81`、`visits.ts:52`、`blog-frontend/src/pages/posts/[slug].astro:24-27` |
@@ -77,14 +77,14 @@
 
 ### 4.1 安全与租户边界（SEC）
 
-#### SEC-01 [P0][开放] 公开接口没有任何租户过滤
+#### SEC-01 [P0][已修] 公开接口没有任何租户过滤
 - **问题**：`/api/blog/public/*` 的每个读端点都只按「实例即本站」假设查询。`public.ts` 的文章列表/详情、分类、标签、时间线、日历，`public-comments.ts` 的评论列表，`public-links.ts` 的友链目录与分类，全部不带 `user_id`。对照管理端（`links.ts:57-63`、`posts.ts:57-64`）都带。
 - **影响**：多用户实例（owner+member，`src/worker/routes/auth.ts` 允许 owner 开启注册）下，任一作者的已发布文章、标签、分类、slug、友链条目（含 `id`、`url`、`clicks`）都会被别人的博客站列出。泄露的 `id` 又是 SEC-02 的输入，两条连起来是完整的越权攻击链。此外 `public.ts:218` 把 `noteId` 一并发给匿名访客。
 - **方案**：新增 `src/worker/routes/blog/owner.ts` 的 `resolveBlogOwner(c, db)`：按 `?owner=<username>` 查 `users`（`username` 已是唯一列），缺省回退「实例默认 owner = 最早注册用户」并打一条 `[blog]` 日志；所有公开查询绑定 `user_id = ?`；`/posts/:slug`、`/comments/:postSlug` 按 (owner, slug) 双条件，查不到即 404；匿名响应去掉 `noteId`。前台 `middleware.ts` 从 `/u/<username>` 前缀或 `?owner=` 解析 owner 写入 `Astro.locals.owner`，`lib/api.ts` 的所有公开取数带上它。
 - **范围**：`worker/routes/blog/{public,public-comments,public-links,owner}.ts`、`blog-frontend/src/{middleware.ts,lib/api.ts,env.d.ts}`。代价 **M**（前台另计，见 COR-04）。
 - **建议**：这是批次 1 的**第一个**落地项——SEC-02/08/09 与 COR-04 都以「请求 → owner」为共同前置。契约上把 `owner` 当公共 API 参数：过渡窗口内缺省回退默认 owner，窗口到期删除回退并同步文档与 `src/shared/types`。
 
-#### SEC-02 [P0][开放] 友链 / 分类的 upsert 与 import 可越权改写他人行，且回读无 owner
+#### SEC-02 [P0][已修] 友链 / 分类的 upsert 与 import 可越权改写他人行，且回读无 owner
 - **问题**：`links.ts:86-142` 允许客户端指定 `body.id`，`INSERT ... ON CONFLICT(id) DO UPDATE SET …` 只按主键冲突就更新，`user_id` 只出现在 INSERT 值里；随后 `SELECT * FROM blog_links WHERE id = ?1`（`:89-92`）无 owner 条件，把受害者的行原样回显。分类 upsert（`:311-328`）、导入（`:393-464`）同型。
 - **影响**：拿到他人 link id（SEC-01 已公开）即可改写其友链 URL——受害者博客前台的外链变成攻击者控制的钓鱼地址，并能读回确认。
 - **方案**：改成「按 `id AND user_id` 先判归属，不存在则 INSERT、存在则 UPDATE」，或 `DO UPDATE … WHERE blog_links.user_id = excluded.user_id` 并检查 `meta.changes`；回读补 `AND user_id = ?`；导入侧忽略客户端 `id`，走 old→new 映射（该函数已有 `categoryIdMap` 等价机制可照抄）。
@@ -395,6 +395,17 @@
 - **方案**：抽共享 `copyText(text, toast)`，统一成功/失败提示；`setTimeout` 句柄在卸载时清除。
 - **范围**：`link-qr-modal.tsx`、`blog-links-view/index.tsx`、`use-blog-post-card.tsx`（改为调用共享函数）。代价 **S**。
 
+### 4.5 门禁与工程化（GATE）
+
+本轮开工后新增发现，不在前两轮报告中。
+
+#### GATE-01 [P1][已修] 注释门禁的扫描器会被字符串里的 `/*` 骗过，从而不再要求其后的注释被登记
+- **问题**：`scripts/check-comments.mjs` 的 `scanScript` 用正则 `/\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g` 找注释，只用 AST 字面量区间排除「匹配起点落在字符串里」的那些（`insideLiteral`）。于是字符串里的 `/*`（本仓就有：`app.use('/api/blog/*', …)`）会与文件中**后面第一个** `*/` 配成一段幻觉块注释，正则跳过了这段区间里的所有真注释——注释从未被 `check()` 看到，门禁也就**不再要求**它们出现在白名单里。这个失败方向最危险：正则少看到一条注释，门禁就少一条约束，而输出仍然是「passed」。
+- **实证**：用与 `insideLiteral` 同一套判定跑全仓（`src`/`scripts`/`tests` + 根配置），正则可见 12 191 条、AST 可见 12 197 条——`src/client/lib/markdown/slides/ui/pick-image.ts`、`tests/blog-routes.test.ts`（本轮改到这里才暴露）、`tests/share-routes.test.ts`、`tests/share-selection-parity.test.ts`、`tests/blog-links-routes.test.ts` 共 6 条注释对门禁不可见。反向（正则看得到、AST 看不到）为 0，因此换成 AST 不会丢条目。
+- **影响面**：注释白名单是仓库的核心不变量（每个注释都必须是已登记的英文架构说明），`scripts/sync-comments-allowlist.mjs` 与 `check-comments.mjs` 互为镜像；镜像错的后果是**双向失败里少了一个方向**（新注释漏登记不会报错）。本轮 B1-01/B1-02 在这两个测试文件里加 `/** */` 后，旧注释被吞、白名单条目随 `sync` 消失而门禁仍显示 passed——是实际发生的，不是理论风险。
+- **方案**：两脚本统一改用 AST 注释区间（对每个节点取 `getLeadingCommentRanges(text, node.pos)` 与 `getTrailingCommentRanges(text, node.end)`，递归覆盖全部 token 含 `endOfFileToken`）并抽成共享模块 `scripts/lib/comment-scan.mjs`，两处不再各自实现；补 `tests/comment-scan.test.ts` 钉住三个回归：字符串 / 模板 / 正则里的 `//` `/*` 不算注释、`'/api/blog/*'` 之后的块注释与其后的 `//` 仍被看见、文件末尾注释与模板插值里的注释都在。
+- **范围**：`scripts/lib/comment-scan.mjs`（新）、`scripts/check-comments.mjs`、`scripts/sync-comments-allowlist.mjs`、`tests/comment-scan.test.ts`（新）。代价 **S**（已完成；白名单重生成后 6 条重新纳入，总数 12 176 → 12 201）。
+
 ---
 
 ## 五、功能完整度：作为独立博客后台对比主流
@@ -438,7 +449,7 @@
 | 批次 | 内容 | 条数 | 代价 |
 | --- | --- | --- | --- |
 | 0 | 两份文档（本报告 + 执行计划） | 1 | XS |
-| 1 | 租户边界与安全：SEC-01 → SEC-02 → SEC-08 → SEC-09 → SEC-03 → SEC-04 → SEC-05 → SEC-06 → SEC-07 → SEC-10..15 | 15 | M |
+| 1 | 租户边界与安全：SEC-01 → SEC-02 → SEC-08 → SEC-09 → SEC-03 → SEC-04 → SEC-05 → SEC-06 → SEC-07 → SEC-10..15；另加 GATE-01（动手时发现，见 §4.5） | 16 | M |
 | 2 | 统计可信：COR-01（含 COR-03/05）→ COR-02 → COR-04（含 BF-1/3）→ COR-06 → COR-08 | 6 | L |
 | 3 | 失败语义与性能：ENG-01 → ENG-02 → ENG-03 → ENG-04 → ENG-05 → ENG-06/16 → ENG-07/08/14 → ENG-09/10 → ENG-11/12/13/15 | 9 | M～L |
 | 4 | UI / a11y / i18n / 令牌：UI-01 → UI-02/03 → UI-04/05 → UI-06/07 → UI-08/13 → UI-09/10 → UI-11/12 | 7 | M |

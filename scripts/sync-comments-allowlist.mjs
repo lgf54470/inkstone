@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
  * One-off regeneration of the comment allowlist inside check-comments.mjs.
- * Mirrors the checker's scanScript logic (TypeScript AST literal ranges +
- * comment regex) so the allowlist stays an exact inventory of every comment
- * in the scanned files. Run: node scripts/sync-comments-allowlist.mjs
+ * Reads the comments through the same scanner the checker uses
+ * (`scripts/lib/comment-scan.mjs`), so the allowlist stays an exact inventory of
+ * every comment in the scanned files. Run: node scripts/sync-comments-allowlist.mjs
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
-import ts from 'typescript'
+import { commentsIn } from './lib/comment-scan.mjs'
 
 const ROOTS = ['src', 'scripts', 'tests']
 const EXTRA_FILES = ['vite.config.ts', 'vitest.config.ts', 'pwa.config.ts', 'index.html', 'wrangler.toml']
@@ -25,37 +25,7 @@ function relative(file) {
 }
 
 function commentsOf(file, text) {
-  const scriptKind = file.endsWith('.tsx') || file.endsWith('.jsx')
-    ? ts.ScriptKind.TSX
-    : file.endsWith('.js') || file.endsWith('.mjs') || file.endsWith('.cjs')
-      ? ts.ScriptKind.JS
-      : ts.ScriptKind.TS
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, scriptKind)
-  const literalRanges = []
-  collectLiterals(source)
-  literalRanges.sort((a, b) => a.start - b.start)
-  const comments = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g
-  const found = []
-  for (const match of text.matchAll(comments)) {
-    if (!insideLiteral(match.index)) found.push(match[0])
-  }
-  return found
-
-  function collectLiterals(node) {
-    if (
-      ts.isRegularExpressionLiteral(node) ||
-      ts.isStringLiteralLike(node) ||
-      ts.isTemplateHead(node) ||
-      ts.isTemplateMiddle(node) ||
-      ts.isTemplateTail(node) ||
-      ts.isJsxText(node)
-    ) literalRanges.push({ start: node.getStart(source), end: node.getEnd() })
-    ts.forEachChild(node, collectLiterals)
-  }
-
-  function insideLiteral(index) {
-    return literalRanges.some((range) => index >= range.start && index < range.end)
-  }
+  return commentsIn(file, text).map((comment) => comment.text)
 }
 
 const inventory = new Map()
