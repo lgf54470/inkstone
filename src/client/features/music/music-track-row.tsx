@@ -233,7 +233,15 @@ function RowIndex({ index, label, title, isCurrent, isPlaying, onPlay }: {
   isPlaying: boolean
   onPlay: () => void
 }) {
-  const revealIndexControl = 'opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto'
+  // Two states, spelled out rather than layered: the current row's control is simply drawn — pressed
+  // to play it, pressed again to pause — and every other one is revealed by the row it belongs to.
+  // The reveal is the convention the rest of the app uses (cards, the artwork overlay): hidden until
+  // the row is hovered or holds focus, always drawn on a coarse pointer, where there is no hover to
+  // reveal anything — a tablet is wider than the breakpoint that used to gate this and would
+  // otherwise keep the control invisible and inert.
+  const reveal = isCurrent
+    ? 'opacity-100'
+    : 'opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:pointer-events-auto pointer-coarse:!opacity-100 pointer-coarse:!pointer-events-auto'
   return (
     <span role='cell' className='flex w-10 shrink-0 items-center justify-center gap-0.5'>
       <span className={cn('tabular w-4 text-right text-[length:var(--text-12)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
@@ -243,7 +251,7 @@ function RowIndex({ index, label, title, isCurrent, isPlaying, onPlay }: {
         label={label + ': ' + title}
         size='sm'
         onClick={onPlay}
-        className={cn(revealIndexControl, isPlaying && 'text-[var(--accent)] md:opacity-100 md:pointer-events-auto')}
+        className={cn('transition-opacity', reveal, isPlaying && 'text-[var(--accent)]')}
       >
         {isPlaying ? <Pause size={12} /> : <Play size={12} />}
       </IconButton>

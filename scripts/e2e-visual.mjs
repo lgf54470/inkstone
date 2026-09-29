@@ -156,6 +156,9 @@ const LABELS = {
   musicGridView: localeLabel('music.view_grid'),
   musicListView: localeLabel('music.view_list'),
   musicFavorite: localeLabel('music.favorite'),
+  // The index control's own label flips with the track's state, so both spellings are read.
+  musicPlay: localeLabel('music.play'),
+  musicPause: localeLabel('music.pause'),
   musicMoreActions: localeLabel('common.more_actions', 'music.more_actions', 'music.open_menu'),
   // FB-U4: the two columns that fold into the row when the list's own box cannot afford them.
   musicTableArtist: localeLabel('music.field_artist', 'music.sort_artist', 'music.table_artist'),
@@ -5441,6 +5444,9 @@ async function assertMusicSurface(page) {
   // FB2-C1 last: it types a query and turns the online switch on, which the reads above would
   // otherwise be measuring around.
   await assertMusicProviderResults(page)
+  // The row index read runs last of all: it is the only read here that starts playback, and a current
+  // track changes the footer every earlier read walks past.
+  await assertMusicRowIndexControl(page)
 }
 
 // FB3-U3: the settings page draws two components at a width they were not designed against — the player
@@ -5565,6 +5571,98 @@ async function assertMusicSearchClear(page) {
     `pressed=${clearedHistory} ${JSON.stringify(afterHistory)}`)
   await page.keyboard.press('Escape')
   await sleep(300)
+}
+
+// Reads the index cell of every row that names the probe track: its number, the control beside it, and
+// where those two boxes are drawn. Split from the assertions below because both the press and the reads
+// after it ask the same question of the DOM, and asking it twice differently is how the two answers drift.
+async function readMusicIndexCells(page, title) {
+  return page.evaluate(({ title, play, pause }) => {
+    const rows = [...document.querySelectorAll('div[role="row"]')].filter((row) => row.querySelector(':scope > [role="cell"]'))
+    return rows.map((row, at) => {
+      const cell = row.querySelectorAll(':scope > [role="cell"]')[1]
+      const control = cell?.querySelector('button')
+      const number = cell?.querySelector('span')
+      const style = control ? getComputedStyle(control) : null
+      const name = control?.getAttribute('aria-label') ?? ''
+      const box = (element) => element.getBoundingClientRect()
+      const named = (labels) => labels.some((label) => name.startsWith(label + ': '))
+      return {
+        namesTrack: (row.textContent ?? '').includes(title),
+        place: at + 1,
+        isCurrent: row.getAttribute('aria-current') === 'true',
+        number: number?.textContent.trim() ?? '',
+        numberRight: number ? Math.round(box(number).right) : 0,
+        numberWidth: number ? Math.round(box(number).width) : 0,
+        name,
+        plays: named(play),
+        pauses: named(pause),
+        controlLeft: control ? Math.round(box(control).left) : 0,
+        controlWidth: control ? Math.round(box(control).width) : 0,
+        drawable: Boolean(style) && Number(style.opacity) === 1 && style.pointerEvents !== 'none',
+      }
+    })
+  }, { title, play: LABELS.musicPlay, pause: LABELS.musicPause })
+}
+
+// The row's number and the control that plays it. The defect this reads against is the one a reader
+// reported: the playing row swapped its number for a pause glyph, so the row they were looking for was
+// the only one without a number, and pressing play meant a double click nothing announces. The hover
+// that reveals the control at desktop widths cannot fire in this shell (headless answers `hover: none`,
+// see `focusRevealedActivate`), so the trigger read here is the focus-within sibling of that rule — the
+// one a keyboard user walks — and the control is activated with Enter rather than with a pointer.
+async function assertMusicRowIndexControl(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(400)
+  if (!(await page.$(MUSIC_HUB_ROOT))) await openMusicHubForSweep(page)
+  const hubOpen = await page.waitForSelector(MUSIC_HUB_ROOT, { timeout: 15_000 }).then(() => true, () => false)
+  check('music: the hub opens for the row index control read', hubOpen)
+  if (!hubOpen) return
+  const title = MUSIC_TRACK_TITLES[0]
+  const rowsDrawn = await waitForTruth(async () => (await readMusicIndexCells(page, title)).some((cell) => cell.namesTrack), 15_000)
+  check('music: the row index control read has a probe track to press', rowsDrawn, title)
+  if (!rowsDrawn) return
+  const focus = () => page.evaluate((title) => {
+    const row = [...document.querySelectorAll('div[role="row"]')].find((item) => item.textContent.includes(title))
+    const control = row?.querySelectorAll(':scope > [role="cell"]')[1]?.querySelector('button')
+    if (!control) return null
+    control.focus()
+    return control.getAttribute('aria-label')
+  }, title)
+  const idle = (await readMusicIndexCells(page, title)).find((cell) => cell.namesTrack)
+  // The number is drawn for every row before anything is pressed, and it sits where the control is not:
+  // an invisible control on top of it is the same defect with the number still in the DOM.
+  check('music: every row draws its number beside, not under, the control that plays it',
+    Boolean(idle) && idle.number === String(idle.place) && idle.numberWidth > 0 && idle.numberRight <= idle.controlLeft + 1,
+    JSON.stringify(idle))
+  const focusedName = await focus()
+  await sleep(300)
+  const revealed = (await readMusicIndexCells(page, title)).find((cell) => cell.namesTrack)
+  check('music: focusing a row draws the index control it keeps for the pointer',
+    Boolean(focusedName) && Boolean(revealed) && revealed.plays && revealed.drawable,
+    JSON.stringify({ focusedName, revealed }))
+  await page.keyboard.press('Enter')
+  const started = await waitForTruth(async () => {
+    const cells = await readMusicIndexCells(page, title)
+    return cells.some((cell) => cell.namesTrack && cell.isCurrent && cell.pauses)
+  }, 15_000)
+  const playing = (await readMusicIndexCells(page, title)).find((cell) => cell.namesTrack && cell.isCurrent)
+  // Two claims in one read: the playing row is the row that was pressed (it answers with the pause
+  // spelling), and it still carries its place in the list while it plays.
+  check('music: playing a row keeps its number and turns the control beside it into a pause',
+    started && Boolean(playing) && playing.number === String(playing.place) && playing.drawable,
+    JSON.stringify({ started, playing }))
+  await focus()
+  await page.keyboard.press('Enter')
+  const paused = await waitForTruth(async () => {
+    const cells = await readMusicIndexCells(page, title)
+    return cells.some((cell) => cell.namesTrack && cell.isCurrent && cell.plays)
+  }, 15_000)
+  const resting = (await readMusicIndexCells(page, title)).find((cell) => cell.namesTrack && cell.isCurrent)
+  check('music: pausing keeps the playing row its number and a control to press again',
+    paused && Boolean(resting) && resting.number === String(resting.place) && resting.drawable && resting.plays,
+    JSON.stringify({ paused, resting }))
+  await closeMusicHub(page)
 }
 
 // FB2-C1: the online half of the library, which had no browser assertion at all — and the payload
