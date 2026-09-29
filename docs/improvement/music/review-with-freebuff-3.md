@@ -3,7 +3,7 @@
 > 范围：`src/client/features/music/`（含 `music-store/`、`providers/`、`music-share-page/`）、`src/client/features/settings/music-{settings,servers}.tsx`、`src/worker/routes/music/`、以及两侧 `music` 文案资源。
 > 配套执行计划：`docs/improvement/music/plan-with-freebuff-3.md`（逐项提交 + 进度日志 + 哈希回填）。
 > 与前两轮的关系：`review-with-freebuff.md`（首轮 38 项，已全部结案）与 `review-with-freebuff-2.md`（二次复审 15 项，M0–M12 全部交付）的结论不再重复；**本报告只登记它们之后新出现、它们未覆盖、以及它们自己订下的「下一轮候选」**。
-> 对标基准：`/home/kubuntu/projects/reference/otter-music`（水獭音乐，同为 GD Studio 聚合 API 之上的播放器），对标依据是它自己的材料而不是印象：`README.md` 的「核心功能 / 音源支持」表、`src/components/settings/*`（28 个设置组件）、`src/store/music-store/*`（8 个 slice）、`src/lib/{netease,qqmusic,bilibili,kuwo,kugou,migu,jamendo,higequ,alist,webdav,apple-music,billboard,awards,music-provider}` 的源实现清单。
+> 对标基准：`/home/kubuntu/projects/reference/otter-music`（水獭音乐，同为 GD Studio 聚合 API 之上的播放器），上游 `https://github.com/DJChanahCJD/otter-music`，部署后的实例 `https://otter-music.pages.dev`；对标依据是它自己的材料而不是印象：`README.md` 的「核心功能 / 音源支持」表、`src/components/settings/*`（28 个设置组件）、`src/store/music-store/*`（8 个 slice）、`src/lib/{netease,qqmusic,bilibili,kuwo,kugou,migu,jamendo,higequ,alist,webdav,apple-music,billboard,awards,music-provider}` 的源实现清单。
 > 取证方式：源码逐行定位（下文每项带 `文件:行`）、本轮用户点名的六张截图（1–3 为 inkstone，4–6 为参考项目）、既有门禁脚本的断言清单与实际跑数。
 > 本轮共登记 **22 项**（20 项 + 实测新增两项 FB3-C4/C5，见 §D-13b/D-13c）：点名 4 项（其中 1 项是「一行代码的语义错」、1 项是「宽容器下没有换挡」、1 项是「默认态」、1 项是跨多轮的在线音源粒度），自行发现 13 项，门禁/文档 3 项。**全部纳入执行**（见 §F 与配套计划 M1–M15），只有规范红线项（第三方平台 Cookie）与环境限制项（车载/横屏）不在实现之列。
 

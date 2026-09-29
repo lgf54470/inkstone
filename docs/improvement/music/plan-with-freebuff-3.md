@@ -1,6 +1,7 @@
 # 音乐库整改执行计划（第三轮 · Freebuff · 2026-09-28）
 
 > 依据：`docs/improvement/music/review-with-freebuff-3.md`（三次复审报告：20 项 + otter-music 对标 + 全量纳入决定）。
+> 对标对象：参考项目在本机 `/home/kubuntu/projects/reference/otter-music`（上游 `https://github.com/DJChanahCJD/otter-music`），部署后的实例 `https://otter-music.pages.dev`。
 > 分支：`dev` 直接逐项提交。约定与前两轮一致：每个条目 = 一个原子提交；先写能失败的复现测试（jsdom / worker 契约 / 门禁几何）；实现后跑回归再提交。
 > **没有「本轮之外」分桶**：报告里登记的每一项都在下表里，逐条做。唯一不进表的是**规范红线项**（`AGENTS.md` 铁律 1 不允许降级的那一类，例如把第三方平台 Cookie 存进本系统），它们不是「本轮不做」，而是按规范禁止，理由写在 review §H。
 > **每次提交都必须更新本文件**（勾选、commit 短哈希、进度日志一行）；发现新问题或结论变化时同步更新 review 文档；批次末一次 `docs(music)` 提交统一回填短哈希。

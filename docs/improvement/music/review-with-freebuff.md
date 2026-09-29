@@ -1,7 +1,7 @@
 # 音乐库模块复审报告 · 把音乐库当作独立音乐 app 审查（Freebuff · 2026-09-27）
 
 > 范围：`src/client/features/music/`（含 `music-store/`、`providers/`）与 `src/worker/routes/music/` 的**全部**能力，含 UI 规范符合性、信息与交互完整性、作为独立音乐 app 的功能完整度、性能与安全。
-> 参考项目：`/home/kubuntu/projects/reference/otter-music`（GD Studio API 多音源聚合播放器，React 19 + Zustand + Capacitor）。
+> 参考项目：`/home/kubuntu/projects/reference/otter-music`（GD Studio API 多音源聚合播放器，React 19 + Zustand + Capacitor）；上游 `https://github.com/DJChanahCJD/otter-music`，部署后的实例 `https://otter-music.pages.dev`。
 > 配套执行计划：`docs/improvement/music/plan-with-freebuff.md`（逐项提交 + 进度日志）。
 > 与既有三条线的关系：`docs/improvement/music/*-with-zcode_glm53fmax.md`（缺陷）、`docs/features/music/*`（对标缺失功能）、`docs/refactor/music/*`（UI 重构）均已收束；本报告只登记**残留、回归、以及它们未覆盖的面**，不重复其条目。
 > 用户点名的三个症状（不能拖动/调宽高、移动端不适配、在线搜索不可用且不可设置）在 C 节给出定位结论，其中两项是 P0。

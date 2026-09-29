@@ -1,6 +1,7 @@
 # 音乐库对标执行计划 · 参考项目 otter-music 缺失功能（ZCode · GLM-5.3-Flash · 2026-09）
 
 > 依据：`docs/features/music/review-with-zcode_glm53fmax.md`（2026-09-26 对标报告）。用户已拍板：外接内容源三类全部纳入。
+> 对标对象：参考项目在本机 `/home/kubuntu/projects/reference/otter-music`（上游 `https://github.com/DJChanahCJD/otter-music`），部署后的实例 `https://otter-music.pages.dev`——对照它的行为时以跑起来的实例为准，源码只用来解释它为什么这样跑。
 > 分支：`dev` 直接逐项提交。
 > 约定：每个条目 = 一个原子提交；顺序执行；**先写能失败的复现测试**，实现后跑回归再提交，**提交后立刻更新本文件**（勾选 + commit 短哈希 + 进度日志一行）。
 > 状态图例：`[ ]` 待办 · `[~]` 进行中 · `[x]` 已提交（附 commit short hash）

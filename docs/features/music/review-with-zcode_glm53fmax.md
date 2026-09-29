@@ -1,6 +1,6 @@
 # 音乐库对标报告 · 参考项目 otter-music 缺失功能（ZCode · GLM-5.3-Flash · 2026-09-26）
 
-> 参考项目：`/home/kubuntu/projects/reference/otter-music`（GD Studio API 多音源聚合播放器，Web PWA + Capacitor Android；React 19 + Zustand 5 + dnd-kit）。
+> 参考项目：`/home/kubuntu/projects/reference/otter-music`（GD Studio API 多音源聚合播放器，Web PWA + Capacitor Android；React 19 + Zustand 5 + dnd-kit）。上游 `https://github.com/DJChanahCJD/otter-music`，部署后的实例 `https://otter-music.pages.dev`（对标时先看它跑起来的样子，再看源码）。
 > 对比对象：本仓库音乐库模块（`src/client/features/music/`、`src/worker/routes/music/`），把它当独立音乐 app 看待。
 > 结论先行：**Inkstone 在播放内核与曲库管理上多处领先 otter**（见文末反向优势清单）；真正缺失集中在「外接内容源、曲库完整性、数据出口、播放体验细节」四类。
 > 用户已拍板（2026-09-26）：在线多音源聚合、播客 RSS、Alist 网盘源**全部纳入**计划。
