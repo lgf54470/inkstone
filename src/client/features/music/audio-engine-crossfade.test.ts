@@ -1,10 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
+import { EQ_BAND_COUNT } from './music-eq-bands'
 import {
   FakeAudioContext, fadeTrack, installMediaElementPlayback, normalizedEngine,
   recordingBridge, standbyAudio, useFakeAudioStack,
 } from './audio-engine.test-helpers'
 
 useFakeAudioStack()
+
+// Only the lowest band is moved in these cases, so the voicing is written by the band that carries it
+// and the rest of the table stays flat.
+function lowBand(db: number): number[] {
+  return Array.from({ length: EQ_BAND_COUNT }, (_, index) => (index === 0 ? db : 0))
+}
 
 async function crossfadeEngine() {
   const engine = await import('./audio-engine')
@@ -146,17 +153,18 @@ describe('crossfade yields to transport commands', () => {
 describe('crossfade audio graph follows the swap', () => {
   it('builds a chain for the incoming element and retunes both afterwards', async () => {
     const { engine, outgoing } = await crossfadeEngine()
-    engine.configureEqualizer({ enabled: true, lowDb: 3, midDb: 0, highDb: 0 })
+    engine.configureEqualizer({ enabled: true, bandsDb: lowBand(3) })
     await engine.ensureAudioGraph()
     engine.startCrossfade(fadeTrack('b'))
     vi.advanceTimersByTime(3_000)
     const context = FakeAudioContext.instances[0]
     if (!context) throw new Error('the swap should have reused the one audio context')
     expect(FakeAudioContext.instances).toHaveLength(1)
-    expect(context.biquads).toHaveLength(6)
-    expect(context.biquads.map((node) => node.gain.value)).toEqual([3, 0, 0, 3, 0, 0])
-    engine.configureEqualizer({ enabled: true, lowDb: 5, midDb: 0, highDb: 0 })
-    expect(context.biquads.map((node) => node.gain.value)).toEqual([5, 0, 0, 5, 0, 0])
+    // Two elements, so two chains: every retune has to reach both, or the incoming track plays flat.
+    expect(context.biquads).toHaveLength(EQ_BAND_COUNT * 2)
+    expect(context.biquads.map((node) => node.gain.value)).toEqual([...lowBand(3), ...lowBand(3)])
+    engine.configureEqualizer({ enabled: true, bandsDb: lowBand(5) })
+    expect(context.biquads.map((node) => node.gain.value)).toEqual([...lowBand(5), ...lowBand(5)])
     expect(outgoing.getAttribute('src')).toBeNull()
   })
 

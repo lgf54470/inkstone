@@ -123,9 +123,7 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
     sleepMinutes: prefs.sleepMinutes,
     sleepAfterCurrentTrack: prefs.sleepAfterCurrentTrack,
     eqEnabled: prefs.eqEnabled,
-    eqLowDb: prefs.eqLowDb,
-    eqMidDb: prefs.eqMidDb,
-    eqHighDb: prefs.eqHighDb,
+    eqBandsDb: prefs.eqBandsDb,
     normalizeEnabled: prefs.normalizeEnabled,
     crossfadeEnabled: prefs.crossfadeEnabled,
     immersiveBackground: prefs.immersiveBackground,
@@ -147,7 +145,7 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
 }
 
 export type {
-  MusicBatch, MusicDownloadTask, MusicEqBand, MusicHubGeometry, MusicImmersiveBackground, MusicLibraryJob, MusicLibraryJobKind, MusicLoopRange,
+  MusicBatch, MusicDownloadTask, MusicHubGeometry, MusicImmersiveBackground, MusicLibraryJob, MusicLibraryJobKind, MusicLoopRange,
   MusicLyricAlign, MusicLyricTextSize,
   MusicScope, MusicSort, MusicSourceFilter, MusicStoreState, MusicTransferTarget,
   MusicUploadTask, MusicViewMode, MusicWebdavState, TrackMenuRequest, TrackMenuTarget,
@@ -157,8 +155,11 @@ export { deadReferenceIds, referenceTrackIds } from './health'
 // FB-F13: the lyric source list and its order live with the pure helpers, so the settings page and
 // the lookup read the same tuple.
 export { LYRIC_SOURCES, lyricSourceOrder, type MusicLyricSource } from '../music-utils'
+// The equalizer's own vocabulary is re-exported here so the store's public surface still answers for
+// it, while the table itself stays in the leaf module the audio graph can import without a cycle.
+export { EQ_BAND_COUNT, EQ_BANDS, EQ_GAIN_RANGE_DB, emptyEqBands, eqBandLabel, readEqBands, readEqDb } from '../music-eq-bands'
 export {
-  PLAYBACK_RATES, RATE_FINE_STEP, RATE_MAX, RATE_MIN, EQ_GAIN_RANGE_DB,
+  PLAYBACK_RATES, RATE_FINE_STEP, RATE_MAX, RATE_MIN,
   IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_TEXT_SIZES,
   LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, MIN_LOOP_MS, SLEEP_FADE_MS,
 } from './state'

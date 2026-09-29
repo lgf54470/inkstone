@@ -1,6 +1,7 @@
 import type { MusicTrack } from '@shared/types'
 import { api } from '../../../lib/api'
 import { toastMusicError, toastMusicNotice } from '../music-feedback'
+import { readEqDb } from '../music-eq-bands'
 import { EQ_PRESETS, type MusicEqPresetId } from '../music-eq-presets'
 import { computeNextIndex, computePrevIndex, nextPlayMode, providerStreamQuality } from '../music-utils'
 import {
@@ -16,10 +17,10 @@ import { swapFailedProviderTrack } from './providers'
 import { loadLibrary, visibleTracks } from './library-load'
 import { progressTimeMs, setProgressTime } from './progress'
 import { persist } from './persist'
-import { MIN_LOOP_MS, SLEEP_FADE_MS, loadPreferences, readEqDb } from './state'
+import { MIN_LOOP_MS, SLEEP_FADE_MS, loadPreferences } from './state'
 import { createShuffleOrder, shuffleOrderFor, shuffleStep } from '../music-shuffle'
 import type {
-  MusicEqBand, MusicGet, MusicImmersiveBackground, MusicLyricAlign, MusicLyricTextSize, MusicSet, MusicStoreState,
+  MusicGet, MusicImmersiveBackground, MusicLyricAlign, MusicLyricTextSize, MusicSet, MusicStoreState,
 } from './types'
 
 const STREAM_START_TIMEOUT_MS = 20_000
@@ -350,21 +351,25 @@ export function setEqEnabled(set: MusicSet, get: MusicGet, enabled: boolean): vo
   persist(get)
 }
 
-// One preset moves all three bands, so the graph is re-configured once instead of
-// three times and a single persist carries the whole voicing.
+// A preset moves every band at once, so the graph is re-configured once instead of
+// ten times and a single persist carries the whole voicing. The array is copied rather
+// than stored by reference: the preset table is a module constant, and one manual slider
+// move must not rewrite the voicing every other reader gets from it.
 export function applyEqPreset(set: MusicSet, get: MusicGet, presetId: MusicEqPresetId): void {
   const preset = EQ_PRESETS.find((entry) => entry.id === presetId)
   if (!preset) return
-  set({ eqLowDb: preset.bands.low, eqMidDb: preset.bands.mid, eqHighDb: preset.bands.high })
+  set({ eqBandsDb: [...preset.bands] })
   applyEqualizer(get())
   persist(get)
 }
 
-export function setEqBand(set: MusicSet, get: MusicGet, band: MusicEqBand, db: number): void {
-  const value = readEqDb(db)
-  if (band === 'low') set({ eqLowDb: value })
-  else if (band === 'mid') set({ eqMidDb: value })
-  else set({ eqHighDb: value })
+// The slider names a band by position, which is the only identity the audio graph has for it; the
+// table that gives that position a frequency is shared with the graph and the labels.
+export function setEqBand(set: MusicSet, get: MusicGet, index: number, db: number): void {
+  const bands = [...get().eqBandsDb]
+  if (index < 0 || index >= bands.length) return
+  bands[index] = readEqDb(db)
+  set({ eqBandsDb: bands })
   applyEqualizer(get())
   persist(get)
 }
@@ -377,8 +382,8 @@ export function setNormalizeEnabled(set: MusicSet, get: MusicGet, enabled: boole
   persist(get)
 }
 
-function readEqualizer(state: Pick<MusicStoreState, 'eqEnabled' | 'eqLowDb' | 'eqMidDb' | 'eqHighDb'>): EqualizerSettings {
-  return { enabled: state.eqEnabled, lowDb: state.eqLowDb, midDb: state.eqMidDb, highDb: state.eqHighDb }
+function readEqualizer(state: Pick<MusicStoreState, 'eqEnabled' | 'eqBandsDb'>): EqualizerSettings {
+  return { enabled: state.eqEnabled, bandsDb: state.eqBandsDb }
 }
 
 function applyEqualizer(state: MusicStoreState): void {

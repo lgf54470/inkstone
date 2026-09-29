@@ -3,7 +3,7 @@
     "longFns": 1
   },
   "src/client/features/music/audio-engine.ts": {
-    "lines": 542
+    "lines": 537
   },
   "src/client/features/music/music-alist-modal.tsx": {
     "longFns": 3
@@ -46,7 +46,7 @@
     "longFns": 1
   },
   "src/client/features/music/music-store/player.ts": {
-    "lines": 518
+    "lines": 523
   },
   "src/client/features/music/music-store/provider-prefs.test.ts": {
     "longFns": 1
@@ -129,13 +129,13 @@
     "longFns": 1
   },
   "src/shared/locales/en-US/music.ts": {
-    "lines": 554
+    "lines": 551
   },
   "src/shared/locales/en-US/preview.ts": {
     "lines": 520
   },
   "src/shared/locales/zh-CN/music.ts": {
-    "lines": 547
+    "lines": 544
   },
   "src/shared/locales/zh-CN/preview.ts": {
     "lines": 520

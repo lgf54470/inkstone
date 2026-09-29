@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { EQ_BAND_COUNT, EQ_BANDS } from './music-eq-bands'
 import { FakeAudioContext, loadedEngine, normalizedEngine, useFakeAudioStack } from './audio-engine.test-helpers'
 
 useFakeAudioStack()
+
+// A gain per band, named by the band it belongs to. Spelled as an index map rather than a ten-element
+// array so the intent of an assertion stays readable now that every band has to be listed.
+function bands(entries: Record<number, number>): number[] {
+  return Array.from({ length: EQ_BAND_COUNT }, (_, index) => entries[index] ?? 0)
+}
 
 describe('analyser context lifecycle', () => {
   it('suspends the context only after a pause that stuck', async () => {
@@ -33,44 +40,49 @@ describe('analyser context lifecycle', () => {
 })
 
 describe('equalizer graph', () => {
-  it('routes playback through a normalization gain and three EQ filters before the analyser', async () => {
+  it('routes playback through a normalization gain and one filter per band before the analyser', async () => {
     const { context } = await loadedEngine()
+    // The chain is asserted from the shared table rather than spelled out: what this test is about is
+    // that the graph matches the table, band for band, and that every filter is wired to the next.
+    const chain = EQ_BANDS.map((_, index) => [
+      `filter${index}`,
+      index + 1 < EQ_BAND_COUNT ? `filter${index + 1}` : 'analyser',
+    ])
     expect(context.connections).toEqual([
       ['source', 'norm'],
       ['norm', 'filter0'],
       ['source', 'loudness-tap'],
-      ['filter0', 'filter1'],
-      ['filter1', 'filter2'],
-      ['filter2', 'analyser'],
+      ...chain,
       ['analyser', 'destination'],
     ])
     expect(context.analysers[1]?.fftSize).toBe(2_048)
-    expect(context.biquads.map((node) => node.type)).toEqual(['lowshelf', 'peaking', 'highshelf'])
-    expect(context.biquads.map((node) => node.frequency.value)).toEqual([180, 1_000, 4_500])
-    expect(context.biquads[1]?.Q.value).toBe(1)
-    expect(context.biquads.map((node) => node.gain.value)).toEqual([0, 0, 0])
+    expect(context.biquads).toHaveLength(EQ_BAND_COUNT)
+    expect(context.biquads.map((node) => node.type)).toEqual(EQ_BANDS.map((band) => band.type))
+    expect(context.biquads.map((node) => node.frequency.value)).toEqual(EQ_BANDS.map((band) => band.frequencyHz))
+    expect(context.biquads[1]?.Q.value).toBe(1.41)
+    expect(context.biquads.map((node) => node.gain.value)).toEqual(bands({}))
   })
 
   it('reuses the chain when asked again for the same element', async () => {
     const { context, engine } = await loadedEngine()
     await engine.ensureAudioGraph()
-    expect(context.biquads).toHaveLength(3)
+    expect(context.biquads).toHaveLength(EQ_BAND_COUNT)
     expect(context.analysers).toHaveLength(2)
   })
 
   it('applies stored settings to a graph built afterwards', async () => {
     const engine = await import('./audio-engine')
-    engine.configureEqualizer({ enabled: true, lowDb: 6, midDb: -3, highDb: 2 })
+    engine.configureEqualizer({ enabled: true, bandsDb: bands({ 0: 6, 4: -3, 9: 2 }) })
     const { context } = await loadedEngine()
-    expect(context.biquads.map((node) => node.gain.value)).toEqual([6, -3, 2])
+    expect(context.biquads.map((node) => node.gain.value)).toEqual(bands({ 0: 6, 4: -3, 9: 2 }))
   })
 
   it('retunes a live graph and silences every band when disabled', async () => {
     const { engine, context } = await loadedEngine()
-    engine.configureEqualizer({ enabled: true, lowDb: 4, midDb: 0, highDb: -5 })
-    expect(context.biquads.map((node) => node.gain.value)).toEqual([4, 0, -5])
-    engine.configureEqualizer({ enabled: false, lowDb: 4, midDb: 0, highDb: -5 })
-    expect(context.biquads.map((node) => node.gain.value)).toEqual([0, 0, 0])
+    engine.configureEqualizer({ enabled: true, bandsDb: bands({ 0: 4, 9: -5 }) })
+    expect(context.biquads.map((node) => node.gain.value)).toEqual(bands({ 0: 4, 9: -5 }))
+    engine.configureEqualizer({ enabled: false, bandsDb: bands({ 0: 4, 9: -5 }) })
+    expect(context.biquads.map((node) => node.gain.value)).toEqual(bands({}))
   })
 })
 
@@ -79,11 +91,11 @@ describe('play gesture graph retry', () => {
     const engine = await import('./audio-engine')
     const audio = engine.mediaElement()
     if (!audio) throw new Error('jsdom should provide an Audio constructor')
-    engine.configureEqualizer({ enabled: true, lowDb: 3, midDb: 0, highDb: 0 })
+    engine.configureEqualizer({ enabled: true, bandsDb: bands({ 0: 3 }) })
     expect(FakeAudioContext.instances).toEqual([])
     audio.dispatchEvent(new Event('play'))
     expect(FakeAudioContext.instances).toHaveLength(1)
-    expect(FakeAudioContext.instances[0]?.biquads.map((node) => node.gain.value)).toEqual([3, 0, 0])
+    expect(FakeAudioContext.instances[0]?.biquads.map((node) => node.gain.value)).toEqual(bands({ 0: 3 }))
   })
 
   it('leaves a plain play event without a graph while the EQ is off', async () => {

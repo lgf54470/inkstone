@@ -5,9 +5,8 @@ import { Input, Slider, Switch } from '../../components/form'
 import { Tooltip } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import { formatTimecode } from '../../lib/time'
-import { EQ_GAIN_RANGE_DB, PLAYBACK_RATES, RATE_FINE_STEP, RATE_MAX, RATE_MIN, progressTimeMs } from './music-store'
+import { EQ_BANDS, EQ_GAIN_RANGE_DB, PLAYBACK_RATES, RATE_FINE_STEP, RATE_MAX, RATE_MIN, eqBandLabel, progressTimeMs } from './music-store'
 import { useMusic } from './music-store'
-import type { MusicEqBand } from './music-store'
 import { EQ_PRESETS, matchEqPreset } from './music-eq-presets'
 import { MusicPopover } from './music-popover'
 import { confirmClearQueue } from './music-queue-clear'
@@ -338,11 +337,9 @@ export function MusicLoopButton({ size = 'sm' }: { size?: 'sm' | 'md' }) {
 // The presets are shortcuts onto the same three bands, so the group marks which one
 // the sliders currently agree with and lets a manual move clear that mark.
 function EqPresetRow() {
-  const low = useMusic((state) => state.eqLowDb)
-  const mid = useMusic((state) => state.eqMidDb)
-  const high = useMusic((state) => state.eqHighDb)
+  const bandsDb = useMusic((state) => state.eqBandsDb)
   const applyEqPreset = useMusic((state) => state.applyEqPreset)
-  const active = matchEqPreset({ low, mid, high })
+  const active = matchEqPreset(bandsDb)
   return (
     // FB3-U3: five presets in a three-column grid read as 3 + 2 with a hole beside them on the settings
     // page. The popover's 224px is what three columns are for; a wider column takes all five in a row, and
@@ -378,9 +375,13 @@ export function MusicEqPanel({ className }: { className?: string }) {
         <Switch checked={eqEnabled} onChange={setEqEnabled} label={t('music.eq_enable')} />
       </div>
       <EqPresetRow />
-      <EqBandSlider band='low' label={t('music.eq_bass')} />
-      <EqBandSlider band='mid' label={t('music.eq_mids')} />
-      <EqBandSlider band='high' label={t('music.eq_treble')} />
+      {/* Ten bands, two columns where the container can take it: a single column would make this
+          popover taller than the viewport it opens over. */}
+      <div className='grid gap-x-3 @sm:grid-cols-2'>
+        {EQ_BANDS.map((band, index) => (
+          <EqBandSlider key={band.frequencyHz} index={index} />
+        ))}
+      </div>
       <div className='flex items-center justify-between gap-2 border-t border-[var(--border-subtle)] pt-1'>
         <span className='text-[length:var(--text-11)] text-[var(--text-secondary)]'>{t('music.normalize')}</span>
         <Switch checked={normalizeEnabled} onChange={setNormalizeEnabled} label={t('music.normalize')} />
@@ -393,19 +394,23 @@ export function MusicEqPanel({ className }: { className?: string }) {
   )
 }
 
-function EqBandSlider({ band, label }: { band: MusicEqBand; label: string }) {
-  const value = useMusic((state) => band === 'low' ? state.eqLowDb : band === 'mid' ? state.eqMidDb : state.eqHighDb)
+// The band is named by its position and labelled by its centre frequency, both read from the same
+// table the audio graph builds its filters from — so the slider a reader drags is the filter that
+// moves, whatever the table says later.
+function EqBandSlider({ index }: { index: number }) {
+  const value = useMusic((state) => state.eqBandsDb[index] ?? 0)
   const setEqBand = useMusic((state) => state.setEqBand)
+  const label = eqBandLabel(index)
   return (
     <div className='flex items-center gap-2'>
-      <span className='w-11 shrink-0 text-[length:var(--text-11)] text-[var(--text-secondary)]'>{label}</span>
+      <span className='tabular w-11 shrink-0 text-[length:var(--text-11)] text-[var(--text-secondary)]'>{label}</span>
       <Slider
         label={label}
         value={value}
         min={-EQ_GAIN_RANGE_DB}
         max={EQ_GAIN_RANGE_DB}
         suffix='dB'
-        onChange={(next) => setEqBand(band, next)}
+        onChange={(next) => setEqBand(index, next)}
         className='min-w-0 flex-1'
       />
     </div>

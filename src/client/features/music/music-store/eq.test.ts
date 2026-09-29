@@ -26,8 +26,12 @@ vi.mock('../audio-engine', () => ({
 }))
 
 import { configureEqualizer, configureLoudnessNormalization, ensureAudioGraph } from '../audio-engine'
+import { EQ_BANDS, emptyEqBands } from '../music-eq-bands'
 import { useMusic } from './index'
 import { MUSIC_PREFS_KEY, loadPreferences, savePreferences } from './state'
+
+const MID = 4
+const HIGH = 9
 
 afterEach(() => {
   vi.useRealTimers()
@@ -36,25 +40,28 @@ afterEach(() => {
   vi.mocked(ensureAudioGraph).mockClear()
   window.localStorage.clear()
   // The store module is shared across tests in this file; leave no sound-setting residue.
-  useMusic.setState({ eqEnabled: false, eqLowDb: 0, eqMidDb: 0, eqHighDb: 0, normalizeEnabled: false })
+  useMusic.setState({ eqEnabled: false, eqBandsDb: emptyEqBands(), normalizeEnabled: false })
 })
 
 describe('equalizer preferences drive the engine', () => {
   it('pushes band edits to the engine with the live enable flag', () => {
-    useMusic.getState().setEqBand('low', 6)
+    useMusic.getState().setEqBand(0, 6)
     useMusic.getState().setEqEnabled(true)
-    expect(useMusic.getState().eqLowDb).toBe(6)
+    expect(useMusic.getState().eqBandsDb[0]).toBe(6)
     expect(useMusic.getState().eqEnabled).toBe(true)
-    expect(configureEqualizer).toHaveBeenLastCalledWith({ enabled: true, lowDb: 6, midDb: 0, highDb: 0 })
+    expect(configureEqualizer).toHaveBeenLastCalledWith({
+      enabled: true,
+      bandsDb: [6, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    })
   })
 
   it('clamps band gains to the audible range and rejects junk', () => {
-    useMusic.getState().setEqBand('mid', 99)
-    expect(useMusic.getState().eqMidDb).toBe(12)
-    useMusic.getState().setEqBand('mid', -99)
-    expect(useMusic.getState().eqMidDb).toBe(-12)
-    useMusic.getState().setEqBand('mid', Number.NaN)
-    expect(useMusic.getState().eqMidDb).toBe(0)
+    useMusic.getState().setEqBand(MID, 99)
+    expect(useMusic.getState().eqBandsDb[MID]).toBe(12)
+    useMusic.getState().setEqBand(MID, -99)
+    expect(useMusic.getState().eqBandsDb[MID]).toBe(-12)
+    useMusic.getState().setEqBand(MID, Number.NaN)
+    expect(useMusic.getState().eqBandsDb[MID]).toBe(0)
   })
 
   it('tries to start a blocked audio graph when the EQ is switched on', () => {
@@ -66,21 +73,33 @@ describe('equalizer preferences drive the engine', () => {
 
   it('persists the EQ state into the debounced preference write', () => {
     vi.useFakeTimers()
-    useMusic.getState().setEqBand('mid', 7)
+    useMusic.getState().setEqBand(MID, 7)
     useMusic.getState().setEqEnabled(true)
     vi.advanceTimersByTime(250)
     const raw = window.localStorage.getItem(MUSIC_PREFS_KEY)
     const stored = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
     expect(stored.eqEnabled).toBe(true)
-    expect(stored.eqMidDb).toBe(7)
+    expect(stored.eqBandsDb).toEqual([0, 0, 0, 0, 7, 0, 0, 0, 0, 0])
   })
 
   it('stores band gains per band without disturbing the others', () => {
-    useMusic.getState().setEqBand('low', 4)
-    useMusic.getState().setEqBand('mid', 2)
-    useMusic.getState().setEqBand('high', -3)
-    const state = useMusic.getState()
-    expect([state.eqLowDb, state.eqMidDb, state.eqHighDb]).toEqual([4, 2, -3])
+    useMusic.getState().setEqBand(0, 4)
+    useMusic.getState().setEqBand(MID, 2)
+    useMusic.getState().setEqBand(HIGH, -3)
+    const bands = useMusic.getState().eqBandsDb
+    expect([bands[0], bands[MID], bands[HIGH]]).toEqual([4, 2, -3])
+    expect(bands.filter((db) => db !== 0)).toHaveLength(3)
+  })
+
+})
+
+// A slider names its band by position, so a position the table does not have is a programming error
+// rather than a gain — it must not silently grow the array the graph is indexed by.
+describe('band edits stay inside the table', () => {
+  it('ignores a band index the table does not have', () => {
+    useMusic.getState().setEqBand(EQ_BANDS.length, 8)
+    useMusic.getState().setEqBand(-1, 8)
+    expect(useMusic.getState().eqBandsDb).toEqual(emptyEqBands())
   })
 })
 
@@ -89,35 +108,63 @@ describe('equalizer preferences survive a reload', () => {
     savePreferences({
       ...loadPreferences(),
       eqEnabled: true,
-      eqLowDb: 5,
-      eqMidDb: -2,
-      eqHighDb: 12,
+      eqBandsDb: [5, 5, 5, 0, -2, -2, -2, 12, 12, 12],
     })
     const prefs = loadPreferences()
     expect(prefs.eqEnabled).toBe(true)
-    expect([prefs.eqLowDb, prefs.eqMidDb, prefs.eqHighDb]).toEqual([5, -2, 12])
+    expect(prefs.eqBandsDb).toEqual([5, 5, 5, 0, -2, -2, -2, 12, 12, 12])
   })
 
   it('falls back to a flat off EQ when stored values are junk', () => {
     window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({
       eqEnabled: 'yes',
-      eqLowDb: Infinity,
-      eqMidDb: 9_999,
-      eqHighDb: null,
+      eqBandsDb: [Infinity, 9_999, null],
     }))
     const prefs = loadPreferences()
     expect(prefs.eqEnabled).toBe(false)
-    expect([prefs.eqLowDb, prefs.eqMidDb, prefs.eqHighDb]).toEqual([0, 12, 0])
+    expect(prefs.eqBandsDb).toEqual([0, 12, 0, 0, 0, 0, 0, 0, 0, 0])
+  })
+
+  it('reads a stored array of an older length without discarding it', () => {
+    window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({ eqBandsDb: [1, 2, 3] }))
+    expect(loadPreferences().eqBandsDb).toEqual([1, 2, 3, 0, 0, 0, 0, 0, 0, 0])
+  })
+})
+
+// The three-band equalizer voiced a low shelf (180 Hz), one octave around 1 kHz and a high shelf
+// (4.5 kHz). An upgrade that dropped those values would silently flatten a sound the reader had
+// shaped, so each one is copied onto every band it used to cover.
+describe('upgrading from the three-band equalizer', () => {
+  it('spreads each old band over the new bands it covered', () => {
+    window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({
+      eqLowDb: 5,
+      eqMidDb: -2,
+      eqHighDb: 12,
+    }))
+    expect(loadPreferences().eqBandsDb).toEqual([5, 5, 5, 0, -2, -2, -2, 12, 12, 12])
+  })
+
+  it('leaves the new shape alone once it exists', () => {
+    window.localStorage.setItem(MUSIC_PREFS_KEY, JSON.stringify({
+      eqBandsDb: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+      eqLowDb: 9,
+      eqMidDb: 9,
+      eqHighDb: 9,
+    }))
+    expect(loadPreferences().eqBandsDb).toEqual([0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
   })
 })
 
 describe('equalizer boots from stored preferences', () => {
   it('seeds the engine when a fresh store is created', async () => {
-    savePreferences({ ...loadPreferences(), eqEnabled: true, eqLowDb: 8 })
+    savePreferences({ ...loadPreferences(), eqEnabled: true, eqBandsDb: [8, 0, 0, 0, 0, 0, 0, 0, 0, 0] })
     vi.resetModules()
     const engine = await import('../audio-engine')
     await import('./index')
-    expect(engine.configureEqualizer).toHaveBeenCalledWith({ enabled: true, lowDb: 8, midDb: 0, highDb: 0 })
+    expect(engine.configureEqualizer).toHaveBeenCalledWith({
+      enabled: true,
+      bandsDb: [8, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    })
   })
 })
 

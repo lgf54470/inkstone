@@ -1,5 +1,6 @@
 import { MUSIC_PROVIDER_DEFAULT_QUALITY, MUSIC_PROVIDER_QUALITIES, type MusicProviderQuality } from '@shared/constants'
 import type { MusicPlayMode } from '@shared/types'
+import { emptyEqBands, readEqBands, readEqDb } from '../music-eq-bands'
 import { LYRIC_SOURCES, type MusicLyricSource } from '../music-utils'
 import { GDS_SOURCES, PROVIDER_SCOPES, PROVIDER_SCOPE_ALL, type MusicProviderScope } from '../providers'
 import type {
@@ -35,9 +36,8 @@ export interface MusicPreferences {
   sleepMinutes: number | null
   sleepAfterCurrentTrack: boolean
   eqEnabled: boolean
-  eqLowDb: number
-  eqMidDb: number
-  eqHighDb: number
+  /** One gain per band, in `EQ_BANDS` order. */
+  eqBandsDb: number[]
   normalizeEnabled: boolean
   crossfadeEnabled: boolean
   immersiveBackground: MusicImmersiveBackground
@@ -85,7 +85,7 @@ export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
 export const RATE_FINE_STEP = 0.05
 export const RATE_MIN = PLAYBACK_RATES[0] as number
 export const RATE_MAX = PLAYBACK_RATES[PLAYBACK_RATES.length - 1] as number
-export const EQ_GAIN_RANGE_DB = 12
+
 // Lyrics drift by fractions of a second as much as by whole ones, so the nudge
 // is a quarter second and the window stays narrow enough to stay useful.
 export const LYRIC_OFFSET_STEP_MS = 250
@@ -98,11 +98,6 @@ export const MIN_LOOP_MS = 500
 export const SLEEP_FADE_MS = 20_000
 // One entry per calibrated track; the cap only bounds what localStorage can grow to.
 export const LYRIC_OFFSET_MAX_TRACKS = 500
-
-export function readEqDb(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 0
-  return Math.min(EQ_GAIN_RANGE_DB, Math.max(-EQ_GAIN_RANGE_DB, Math.round(value)))
-}
 
 export function clampLyricOffset(value: number): number {
   if (!Number.isFinite(value)) return 0
@@ -172,9 +167,7 @@ export const DEFAULT_PREFERENCES: MusicPreferences = {
   sleepMinutes: null,
   sleepAfterCurrentTrack: false,
   eqEnabled: false,
-  eqLowDb: 0,
-  eqMidDb: 0,
-  eqHighDb: 0,
+  eqBandsDb: emptyEqBands(),
   normalizeEnabled: false,
   crossfadeEnabled: false,
   immersiveBackground: 'theme',
@@ -210,6 +203,27 @@ function readStored(key: string): Record<string, unknown> | null {
   }
 }
 
+// The three-band equalizer this replaced voiced a low shelf (180 Hz), one octave around 1 kHz and a
+// high shelf (4.5 kHz). Each of those covered a stretch of the ten bands, so the saved value is copied
+// onto every band inside the stretch it covered: a reader who had shaped their sound keeps that shape
+// instead of finding the sliders flattened by an upgrade. Read only when there is no array, so a
+// library already saved in the new shape is never migrated twice.
+const LEGACY_EQ_BANDS: ReadonlyArray<readonly [string, readonly number[]]> = [
+  ['eqLowDb', [0, 1, 2]],
+  ['eqMidDb', [4, 5, 6]],
+  ['eqHighDb', [7, 8, 9]],
+]
+
+function readStoredEqBands(parsed: Record<string, unknown>): number[] {
+  if (Array.isArray(parsed.eqBandsDb)) return readEqBands(parsed.eqBandsDb)
+  const bands = emptyEqBands()
+  for (const [key, indexes] of LEGACY_EQ_BANDS) {
+    const db = readEqDb(parsed[key])
+    for (const index of indexes) bands[index] = db
+  }
+  return bands
+}
+
 export function loadPreferences(): MusicPreferences {
   const parsed = readStored(MUSIC_PREFS_KEY) ?? readStored(LEGACY_PREFS_KEY)
   if (!parsed) return DEFAULT_PREFERENCES
@@ -239,9 +253,7 @@ export function loadPreferences(): MusicPreferences {
     sleepMinutes: readSleepMinutes(parsed.sleepMinutes),
     sleepAfterCurrentTrack: parsed.sleepAfterCurrentTrack === true,
     eqEnabled: parsed.eqEnabled === true,
-    eqLowDb: readEqDb(parsed.eqLowDb),
-    eqMidDb: readEqDb(parsed.eqMidDb),
-    eqHighDb: readEqDb(parsed.eqHighDb),
+    eqBandsDb: readStoredEqBands(parsed),
     normalizeEnabled: parsed.normalizeEnabled === true,
     crossfadeEnabled: parsed.crossfadeEnabled === true,
     immersiveBackground: readListed(parsed.immersiveBackground, IMMERSIVE_BACKGROUNDS, DEFAULT_PREFERENCES.immersiveBackground),

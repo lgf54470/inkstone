@@ -2,6 +2,7 @@ import type { MusicTrack } from '@shared/types'
 import { isVideoMime } from '@shared/music-media'
 import type { MusicProviderQuality } from '@shared/constants'
 import { musicStreamUrl } from '../../lib/api'
+import { EQ_BANDS } from './music-eq-bands'
 import { currentMediaStage, registerMediaStagePlacer } from './media-stage'
 
 export interface AudioBridge {
@@ -16,9 +17,8 @@ export interface AudioBridge {
 
 export interface EqualizerSettings {
   enabled: boolean
-  lowDb: number
-  midDb: number
-  highDb: number
+  /** One gain per band, in `EQ_BANDS` order. */
+  bandsDb: number[]
 }
 
 // One WebAudio chain per element: a media element source can only ever be
@@ -54,7 +54,7 @@ const chains = new WeakMap<HTMLMediaElement, AudioChain>()
 const elementsByKind = new Map<MediaKind, HTMLMediaElement>()
 const knownChains: AudioChain[] = []
 let suspendTimer: number | null = null
-let equalizer: EqualizerSettings = { enabled: false, lowDb: 0, midDb: 0, highDb: 0 }
+let equalizer: EqualizerSettings = { enabled: false, bandsDb: [] }
 let normalizeEnabled = false
 let normPollTimer: number | null = null
 const ANALYSER_FFT_SIZE = 256
@@ -71,11 +71,6 @@ export const CROSSFADE_MS = 3_000
 const CROSSFADE_STEP_MS = 50
 // A three-band shelf/peak chain covers bass, voice and treble shaping without the
 // node count of a graphic EQ; the fixed corners are the usual audible crossover points.
-const EQ_BANDS: Array<{ type: BiquadFilterType; frequencyHz: number; q?: number }> = [
-  { type: 'lowshelf', frequencyHz: 180 },
-  { type: 'peaking', frequencyHz: 1_000, q: 1 },
-  { type: 'highshelf', frequencyHz: 4_500 },
-]
 // Suspend a little after the pause instead of at it: transport taps and track changes
 // resume within this window and must not churn the audio hardware.
 const PAUSE_SUSPEND_DELAY_MS = 5_000
@@ -377,7 +372,7 @@ export function configureEqualizer(next: EqualizerSettings): void {
 }
 
 function applyEqualizerToGraph(): void {
-  const gains = equalizer.enabled ? [equalizer.lowDb, equalizer.midDb, equalizer.highDb] : EQ_BANDS.map(() => 0)
+  const gains = equalizer.enabled ? equalizer.bandsDb : EQ_BANDS.map(() => 0)
   for (const chain of knownChains) {
     chain.eqNodes.forEach((filter, index) => {
       filter.gain.value = gains[index] ?? 0

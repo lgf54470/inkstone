@@ -3,6 +3,7 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { initI18n, t } from '../../lib/i18n'
+import { EQ_BAND_COUNT, EQ_GAIN_RANGE_DB, eqBandLabel, emptyEqBands } from './music-eq-bands'
 import { MusicEqPanel } from './music-transport-widgets'
 import { useMusic } from './music-store'
 import { EQ_PRESETS, matchEqPreset } from './music-eq-presets'
@@ -19,7 +20,7 @@ afterEach(() => {
   root = null
   document.body.innerHTML = ''
   vi.useRealTimers()
-  useMusic.setState({ eqEnabled: false, eqLowDb: 0, eqMidDb: 0, eqHighDb: 0 })
+  useMusic.setState({ eqEnabled: false, eqBandsDb: emptyEqBands() })
   window.localStorage.clear()
 })
 
@@ -27,11 +28,35 @@ function presetButton(label: string): HTMLElement | undefined {
   return [...document.querySelectorAll('button')].find((button) => button.textContent === label)
 }
 
+// Every preset has to voice every band: a short array would leave the tail of the spectrum at 0 dB
+// while looking like a complete preset in the menu.
+describe('EQ preset table', () => {
+  it('states one gain per band for every preset', () => {
+    for (const preset of EQ_PRESETS) {
+      expect([preset.id, preset.bands.length]).toEqual([preset.id, EQ_BAND_COUNT])
+      expect(preset.bands.every((db) => Number.isInteger(db) && Math.abs(db) <= 12)).toBe(true)
+    }
+  })
+
+  it('makes flat the only preset that leaves every band alone', () => {
+    const silent = EQ_PRESETS.filter((preset) => preset.bands.every((db) => db === 0))
+    expect(silent.map((preset) => preset.id)).toEqual(['flat'])
+  })
+})
+
 describe('EQ presets (F-7)', () => {
-  it('moves all three bands in one step', () => {
+  it('moves every band in one step', () => {
     useMusic.getState().applyEqPreset('rock')
-    const state = useMusic.getState()
-    expect([state.eqLowDb, state.eqMidDb, state.eqHighDb]).toEqual([4, -2, 3])
+    expect(useMusic.getState().eqBandsDb).toEqual(EQ_PRESETS.find((preset) => preset.id === 'rock')?.bands)
+  })
+
+  // The preset table is a module constant, so handing it to the store by reference would let one
+  // reader's slider move the voicing every other reader gets from the menu.
+  it('does not let a band edit rewrite the preset it came from', () => {
+    useMusic.getState().applyEqPreset('bass')
+    const before = [...(EQ_PRESETS.find((preset) => preset.id === 'bass')?.bands ?? [])]
+    useMusic.getState().setEqBand(3, -6)
+    expect(EQ_PRESETS.find((preset) => preset.id === 'bass')?.bands).toEqual(before)
   })
 
   it('persists the preset so the next session opens on it', () => {
@@ -39,31 +64,33 @@ describe('EQ presets (F-7)', () => {
     useMusic.getState().applyEqPreset('vocal')
     vi.advanceTimersByTime(500)
     const stored = JSON.parse(window.localStorage.getItem('inkstone.music-prefs.v2') ?? '{}')
-    expect([stored.eqLowDb, stored.eqMidDb, stored.eqHighDb]).toEqual([-2, 3, 1])
+    expect(stored.eqBandsDb).toEqual(EQ_PRESETS.find((preset) => preset.id === 'vocal')?.bands)
   })
 
   it('names the preset the current bands stand for', () => {
-    expect(matchEqPreset({ low: 0, mid: 0, high: 0 })).toBe('flat')
-    expect(matchEqPreset({ low: 4, mid: -2, high: 3 })).toBe('rock')
+    expect(matchEqPreset(emptyEqBands())).toBe('flat')
+    expect(matchEqPreset(EQ_PRESETS.find((preset) => preset.id === 'rock')?.bands ?? [])).toBe('rock')
   })
 
   it('reports no preset once a band was moved by hand', () => {
-    expect(matchEqPreset({ low: 4, mid: -1, high: 3 })).toBeNull()
+    const rock = [...(EQ_PRESETS.find((preset) => preset.id === 'rock')?.bands ?? [])]
+    rock[2] = (rock[2] ?? 0) + 1
+    expect(matchEqPreset(rock)).toBeNull()
   })
 })
 
-describe('MusicEqPanel preset row (F-7)', () => {
-  async function mountPanel(): Promise<void> {
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    root = createRoot(container)
-    await act(async () => {
-      root?.render(createElement(MusicEqPanel))
-    })
-  }
+async function mountPanel(): Promise<void> {
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  root = createRoot(container)
+  await act(async () => {
+    root?.render(createElement(MusicEqPanel))
+  })
+}
 
+describe('MusicEqPanel (F-7)', () => {
   it('offers every preset and marks the one in force', async () => {
-    useMusic.setState({ eqLowDb: 2, eqMidDb: -1, eqHighDb: 2 })
+    useMusic.setState({ eqBandsDb: [...(EQ_PRESETS.find((preset) => preset.id === 'pop')?.bands ?? [])] })
     await mountPanel()
     for (const preset of EQ_PRESETS) expect(presetButton(t(preset.labelKey))).toBeDefined()
     expect(presetButton(t('music.eq_preset_pop'))?.getAttribute('aria-pressed')).toBe('true')
@@ -87,8 +114,26 @@ describe('MusicEqPanel preset row (F-7)', () => {
     await act(async () => {
       presetButton(t(rock!.labelKey))?.click()
     })
-    const state = useMusic.getState()
-    expect([state.eqLowDb, state.eqMidDb, state.eqHighDb]).toEqual([4, -2, 3])
-    expect(matchEqPreset({ low: state.eqLowDb, mid: state.eqMidDb, high: state.eqHighDb })).toBe('rock')
+    expect(useMusic.getState().eqBandsDb).toEqual(rock?.bands)
+    expect(matchEqPreset(useMusic.getState().eqBandsDb)).toBe('rock')
+  })
+
+})
+
+// The sliders are named by their centre frequency and a band moves the filter it names, so both the
+// count of sliders and the labels they carry come from the shared table.
+describe('MusicEqPanel band sliders (F-7)', () => {
+  it('draws one labelled slider per band, and none past the table', async () => {
+    await mountPanel()
+    for (let index = 0; index < EQ_BAND_COUNT; index += 1) {
+      expect(document.querySelector(`[aria-label="${eqBandLabel(index)}"]`)).not.toBeNull()
+    }
+    expect(document.querySelector(`[aria-label="${eqBandLabel(EQ_BAND_COUNT)}"]`)).toBeNull()
+  })
+
+  it('ranges every slider over the shared gain window', async () => {
+    await mountPanel()
+    const slider = document.querySelector<HTMLInputElement>(`input[aria-label="${eqBandLabel(0)}"]`)
+    expect([slider?.min, slider?.max]).toEqual([String(-EQ_GAIN_RANGE_DB), String(EQ_GAIN_RANGE_DB)])
   })
 })

@@ -54,8 +54,6 @@ export type MusicScope =
 
 export type MusicTransferTarget = 'r2' | 'webdav'
 
-export type MusicEqBand = 'low' | 'mid' | 'high'
-
 export interface TrackMenuTarget {
   track: MusicTrack
   itemId?: string
@@ -169,9 +167,8 @@ export interface MusicStoreState {
   sleepMinutes: number | null
   sleepAfterCurrentTrack: boolean
   eqEnabled: boolean
-  eqLowDb: number
-  eqMidDb: number
-  eqHighDb: number
+  /** One gain per band, in `EQ_BANDS` order; the table itself lives in `music-eq-bands`. */
+  eqBandsDb: number[]
   normalizeEnabled: boolean
   crossfadeEnabled: boolean
   lyricOffsets: Record<string, number>
@@ -333,7 +330,7 @@ export interface MusicStoreState {
   markLoopEnd: () => void
   clearLoopRange: () => void
   setEqEnabled: (enabled: boolean) => void
-  setEqBand: (band: MusicEqBand, db: number) => void
+  setEqBand: (index: number, db: number) => void
   applyEqPreset: (presetId: MusicEqPresetId) => void
   setNormalizeEnabled: (enabled: boolean) => void
   setCrossfadeEnabled: (enabled: boolean) => void
