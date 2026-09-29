@@ -116,7 +116,7 @@ function ShareTopBar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: ()
   return (
     <header className='sticky top-0 z-[var(--z-sticky)] border-b border-[var(--border-subtle)] bg-[var(--bg-base)]/85 pt-[env(safe-area-inset-top)] backdrop-blur'>
       <div className='mx-auto flex h-12 max-w-215 items-center gap-1.5 px-4 text-[var(--accent)] md:px-5'>
-        <span aria-label={t('music.shared_playlist')}><Logo size={15} /></span>
+        <Logo size={15} />
         <span className='flex-1' />
         <Tooltip label={t('share.switch_theme')} side='left'>
           <button
