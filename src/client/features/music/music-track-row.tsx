@@ -307,6 +307,39 @@ function RowArtwork({
   )
 }
 
+// The row's two favours are one control twice: a toggle that stays drawn while it is on — hiding the
+// control that says why the row is marked would hide the state — and that reports that state through
+// `active` (`aria-pressed`), the way the card's pair already does. They share this component so the
+// two cannot drift apart again: the odd one out was the favourite, which painted its own accent text
+// and told a screen reader nothing about being on, while the pin beside it did both.
+function RowToggle({
+  label,
+  active,
+  reveal,
+  onClick,
+  children,
+}: {
+  label: string
+  active: boolean
+  reveal: string
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <span role='cell' className='flex w-6 shrink-0 items-center justify-center'>
+      <IconButton
+        label={label}
+        size='sm'
+        active={active}
+        onClick={onClick}
+        className={cn(reveal, active && 'md:opacity-100 md:pointer-events-auto')}
+      >
+        {children}
+      </IconButton>
+    </span>
+  )
+}
+
 function RowActions({
   isFavorite,
   isPinned,
@@ -324,30 +357,12 @@ function RowActions({
   const revealActions = cn('opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto', REVEAL_ON_COARSE_POINTER)
   return (
     <>
-      {/* A pinned row keeps its pin drawn — hiding the control that says why the row is pinned would
-          hide the state — and the control carries that state itself (`active` → `aria-pressed`),
-          the way the card's pin already does. */}
-      <span role='cell' className='flex w-6 shrink-0 items-center justify-center'>
-        <IconButton
-          label={isPinned ? t('music.unpin') : t('music.pin')}
-          size='sm'
-          active={isPinned}
-          onClick={onTogglePin}
-          className={cn(revealActions, isPinned && 'md:opacity-100 md:pointer-events-auto')}
-        >
-          <Pin size={13} className={isPinned ? 'fill-current' : undefined} />
-        </IconButton>
-      </span>
-      <span role='cell' className='flex w-6 shrink-0 items-center justify-center'>
-        <IconButton
-          label={isFavorite ? t('music.unfavorite') : t('music.favorite')}
-          size='sm'
-          onClick={onToggleFavorite}
-          className={cn(revealActions, isFavorite && 'md:opacity-100 md:pointer-events-auto text-[var(--accent)]')}
-        >
-          <Heart size={13} className={isFavorite ? 'fill-current' : undefined} />
-        </IconButton>
-      </span>
+      <RowToggle label={isPinned ? t('music.unpin') : t('music.pin')} active={isPinned} reveal={revealActions} onClick={onTogglePin}>
+        <Pin size={13} className={isPinned ? 'fill-current' : undefined} />
+      </RowToggle>
+      <RowToggle label={isFavorite ? t('music.unfavorite') : t('music.favorite')} active={isFavorite} reveal={revealActions} onClick={onToggleFavorite}>
+        <Heart size={13} className={isFavorite ? 'fill-current' : undefined} />
+      </RowToggle>
       <span role='cell' className='flex w-6 shrink-0 items-center justify-center'>
         <IconButton
           label={t('music.open_menu')}

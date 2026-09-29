@@ -68,19 +68,20 @@ describe('a row keeps its place and carries its own play control', () => {
   })
 })
 
+function actionControl(row: Element, label: string): HTMLButtonElement | undefined {
+  return [...row.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === label)
+}
+
+function rows(): Element[] {
+  return [...document.querySelectorAll('[role="rowgroup"] > [role="row"]')]
+}
+
 // Pinning is the favourite's twin: same place in the row, same rule about when it is drawn (a row
 // that carries the state keeps the control that says so, hover or not), different glyph and label.
 // Both halves are read here, because the row is where a reader meets them.
 describe('the row offers pinning beside the favourite', () => {
-  function actionControl(row: Element, label: string): HTMLButtonElement | undefined {
-    return [...row.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === label)
-  }
-
-  function rows(): Element[] {
-    return [...document.querySelectorAll('[role="rowgroup"] > [role="row"]')]
-  }
-
   const mixed = [{ ...tracks[0]!, isPinned: true }, tracks[1]!]
+  const favourites = [{ ...tracks[0]!, isFavorite: true }, tracks[1]!]
 
   it('labels the control with the state it would leave the row in', async () => {
     await mountList(mixed)
@@ -108,7 +109,29 @@ describe('the row offers pinning beside the favourite', () => {
     expect(actionControl(unpinned!, t('music.pin'))?.getAttribute('aria-pressed')).toBe('false')
   })
 
-  it('gives the header and the rows the same width for the place in the list', async () => {
+  // The favourite is the pin's twin in every way: the row draws both in the same place, keeps both
+  // drawn while they are on, and both answer `aria-pressed`. Read here too — the row's favourite was
+  // the one that only changed its label, so a screen reader could not hear whether it was on.
+  it('reports the favourite as a pressed toggle, the way the card does', async () => {
+    await mountList(favourites)
+    const [favourite, plain] = rows()
+    expect(actionControl(favourite!, t('music.unfavorite'))?.getAttribute('aria-pressed')).toBe('true')
+    expect(actionControl(plain!, t('music.favorite'))?.getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('keeps a favourited row drawn without a hover, exactly like a pinned one', async () => {
+    await mountList(favourites)
+    const [favourite, plain] = rows()
+    expect(actionControl(favourite!, t('music.unfavorite'))?.classList.contains('md:opacity-100')).toBe(true)
+    expect(actionControl(plain!, t('music.favorite'))?.classList.contains('md:pointer-events-auto')).toBe(false)
+  })
+
+})
+
+// The header used to sit at a narrower width than the rows, which shifted every column to its right
+// off the rows'. Read here rather than in either action describe: it is about the place in the list.
+describe('the header and the rows agree on the index column', () => {
+  it('gives both the same width for the place in the list', async () => {
     await mountList()
     const header = columnheaderOf(t('music.table_index'))
     const cell = document.querySelector('[role="rowgroup"] > [role="row"] [role="cell"]:nth-child(2)')
