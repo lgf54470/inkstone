@@ -24,7 +24,7 @@
 
 ### 2) 参考项目与部署实例的网址
 
-- 工作区里**已有另一位作者**对 5 份文档头部的改动，加的正是同一句话（`plan/review-with-zcode_glm53fmax.md`、`plan/review-with-freebuff-3.md`、`review-with-freebuff.md`）。那不是我的 hunk，本轮**没有动它们**（见「入库方式」）。
+- 5 份文档的头部（`plan/review-with-zcode_glm53fmax.md`、`plan/review-with-freebuff-3.md`、`review-with-freebuff.md`）在本轮开工时工作区里就已经带着同一句话的改动。它们与 P5-3 同源同值，因此收口时一并作为一次 `docs(music)` 提交入库（`457c06f7`），不再留在工作区——否则「出处只写进一半文档」本身就是这条要消除的不一致。
 - 本轮补两个真实缺口：
   1. **第五轮的两份文档头部**（本报告与计划）写明同一个出处；
   2. **应用里终于有出处**：「设置 → 关于」新增「音乐库参考项目 / otter-music」一行，两个链接分别到上游仓库与部署实例（`about-settings.tsx:175`）。**本机的绝对路径只写进文档，不进界面**——开发机路径对使用者没有意义，而界面上的两条 URL 才是读者能点开的。
