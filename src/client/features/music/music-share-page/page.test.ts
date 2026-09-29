@@ -28,7 +28,7 @@ beforeAll(() => {
 
 const SLUG = 'abc234def567ghi890jkl'
 
-function track(id: string, over: Partial<{ artist: string; coverUrl: string | null; mime: string }> = {}) {
+function track(id: string, over: Partial<{ artist: string; coverUrl: string | null; mime: string; createdAt: number }> = {}) {
   return {
     id,
     title: `Track ${id}`,
@@ -78,6 +78,52 @@ afterEach(() => {
   act(() => root?.unmount())
   root = null
   document.body.innerHTML = ''
+  // The visit stamp lives in storage, so a case that sets one must not decide the next case's answer.
+  window.localStorage.clear()
+})
+
+// The reminder is a comparison against a stamp this browser keeps, so these cases pin both halves:
+// what a returning reader is told, and that a first visit is told nothing.
+describe('what changed since the last visit (M-51)', () => {
+  const visitKey = `inkstone.playlist-visit.${SLUG}`
+
+  it('says nothing at all on a first visit', async () => {
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('t1', { createdAt: 5_000 })]))
+    await mount()
+    expect(document.body.textContent).not.toContain(t('music.share_new_badge'))
+    expect(document.body.textContent).not.toContain(t('music.share_visit_memory_note'))
+  })
+
+  it('names the new tracks and marks each one', async () => {
+    window.localStorage.setItem(visitKey, String(1_000))
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([
+      track('old', { createdAt: 500 }),
+      track('fresh', { createdAt: 2_000 }),
+    ]))
+    await mount()
+    expect(document.body.textContent).toContain(t('music.share_new_since_visit', { value0: 1 }))
+    expect(trackRow('fresh').textContent).toContain(t('music.share_new_badge'))
+    expect(trackRow('old').textContent).not.toContain(t('music.share_new_badge'))
+  })
+
+  // Opening the page moves the stamp, which is what makes the *next* visit comparable. Without this
+  // the reminder would report the same tracks every time.
+  it('remembers this visit for the next one', async () => {
+    window.localStorage.setItem(visitKey, String(1_000))
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('fresh', { createdAt: 2_000 })]))
+    await mount()
+    expect(Number(window.localStorage.getItem(visitKey))).toBeGreaterThan(2_000)
+  })
+
+  it('drops the reminder and the stamp when the reader says to stop', async () => {
+    window.localStorage.setItem(visitKey, String(1_000))
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('fresh', { createdAt: 2_000 })]))
+    await mount()
+    const stop = [...document.querySelectorAll('button')].find((button) => button.textContent === t('music.share_forget_visit'))
+    await act(async () => { stop?.click() })
+    expect(window.localStorage.getItem(visitKey)).toBeNull()
+    expect(document.body.textContent).not.toContain(t('music.share_new_since_visit', { value0: 1 }))
+  })
 })
 
 describe('anonymous playlist page (M-51)', () => {
