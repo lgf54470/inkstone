@@ -54,7 +54,7 @@
 ## P4-7 · 文档与数字回填（F4-6）
 
 - [x] `review-with-freebuff-4.md`（本报告的定稿）、`plan-with-freebuff-4.md`（本文件的哈希回填与进度日志）。
-- [x] `review-with-freebuff-3.md` 的收尾数字旁注明「本轮续增到 650/0，见第四轮报告」。
+- [x] `review-with-freebuff-3.md` 的收尾数字旁注明「续增到 651/0，见第四轮报告」（连同随手回填 `plan-with-freebuff-3.md` 里 M11 漏写的 `19bc5836`）。
 - **验收**：三份文档的数字互不矛盾；`git status` 干净。
 - **范围**：3 个文档。
 
