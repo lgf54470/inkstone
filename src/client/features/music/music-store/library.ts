@@ -56,6 +56,7 @@ type LibrarySlice = Pick<MusicStoreState,
   | 'setProviderEnabled' | 'setProviderScope' | 'setProviderSourceEnabled' | 'moveProviderSource' | 'searchProviders' | 'playProviderTrack' | 'addProviderTrack' | 'addProviderTracks'
   | 'setProviderAutoSwap' | 'openSourceSwitch' | 'closeSourceSwitch' | 'switchTrackSource'
   | 'openHealthScan' | 'closeHealthScan' | 'scanReferences' | 'repairDeadReference' | 'repairDeadReferences' | 'trashDeadReferences'
+  | 'openInsights' | 'closeInsights'
   | 'trashTracks' | 'forgetPlayHistory'
   | 'toggleSelect' | 'selectAll' | 'invertSelection' | 'clearSelection'
   | 'moveSelectionToTag' | 'addSelectionToPlaylist'
@@ -169,6 +170,8 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     switchTrackSource: (hit) => switchTrackSource(set, get, hit),
     openHealthScan: () => openHealthScan(set, get),
     closeHealthScan: () => closeHealthScan(set),
+    openInsights: () => set({ insightsOpen: true }),
+    closeInsights: () => set({ insightsOpen: false }),
     scanReferences: () => scanReferences(set, get),
     repairDeadReference: (id) => repairDeadReference(set, get, id),
     repairDeadReferences: (ids) => repairDeadReferences(set, get, ids),

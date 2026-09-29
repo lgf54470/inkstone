@@ -106,6 +106,7 @@ function initialProviderState(prefs: MusicPreferences): Partial<MusicStoreState>
     sourceSwitchLoading: false,
     sourceSwitchFailed: false,
     healthOpen: false,
+    insightsOpen: false,
     healthScanning: false,
     healthFailed: false,
     healthResults: null,

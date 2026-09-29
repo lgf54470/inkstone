@@ -35,6 +35,7 @@ const LazyServerModal = lazy(() => import('./music-server-modal').then((m) => ({
 const LazyPodcastModal = lazy(() => import('./music-podcast-modal').then((m) => ({ default: m.MusicPodcastModal })))
 const LazySourceSwitchModal = lazy(() => import('./music-source-switch-modal').then((m) => ({ default: m.MusicSourceSwitchModal })))
 const LazyHealthModal = lazy(() => import('./music-health-modal').then((m) => ({ default: m.MusicHealthModal })))
+const LazyInsightsModal = lazy(() => import('./music-insights-modal').then((m) => ({ default: m.MusicInsightsModal })))
 const LazyGroupBrowse = lazy(() => import('./music-group-browse').then((m) => ({ default: m.MusicGroupBrowse })))
 const LazyGroupDetailHeader = lazy(() => import('./music-group-browse').then((m) => ({ default: m.MusicGroupDetailHeader })))
 const LazyProviderResults = lazy(() => import('./music-provider-results').then((m) => ({ default: m.MusicProviderResults })))
@@ -198,6 +199,7 @@ function HubPeers({ dialogs }: { dialogs: ReturnType<typeof useHubDialogs> }) {
   const setTransfersOpen = useMusic((state) => state.setTransfersOpen)
   const sourceSwitchOpen = useMusic((state) => state.sourceSwitchTrackId !== null)
   const healthOpen = useMusic((state) => state.healthOpen)
+  const insightsOpen = useMusic((state) => state.insightsOpen)
   return (
     <>
       <LazyPeer open={dialogs.editingTrack !== null}>
@@ -229,6 +231,9 @@ function HubPeers({ dialogs }: { dialogs: ReturnType<typeof useHubDialogs> }) {
       </LazyPeer>
       <LazyPeer open={healthOpen}>
         <LazyHealthModal />
+      </LazyPeer>
+      <LazyPeer open={insightsOpen}>
+        <LazyInsightsModal />
       </LazyPeer>
     </>
   )

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type RefObject } from 'react'
 import type { MusicSource, MusicTrack } from '@shared/types'
-import { Activity, Cloud, CloudDownload, HardDrive, ImageDown, ListPlus, Podcast, RefreshCw, RotateCw, Server, Upload, ClipboardList, Ellipsis, Link } from 'lucide-react'
+import { Activity, BarChart3, Cloud, CloudDownload, HardDrive, ImageDown, ListPlus, Podcast, RefreshCw, RotateCw, Server, Upload, ClipboardList, Ellipsis, Link } from 'lucide-react'
 import { Button, IconButton } from '../../components/primitives'
 import { Segmented, Select } from '../../components/form'
 import { Menu, Tooltip, confirm } from '../../components/overlay'
@@ -326,6 +326,18 @@ function InlineActions({ tracks, onPickM3u }: { tracks: MusicTrack[]; onPickM3u:
           <Activity size={14} className={healthScanning ? 'animate-pulse' : undefined} />
         </IconButton>
       </Tooltip>
+      {/* The statistics panel reads the library already in the store, so this button is a door
+          rather than a request — and it sits with the other library-wide actions for the same
+          reason the health scan does. */}
+      <Tooltip label={t('music.insights_open')} side='left'>
+        <IconButton
+          label={t('music.insights_open')}
+          size='sm'
+          onClick={() => useMusic.getState().openInsights()}
+        >
+          <BarChart3 size={14} />
+        </IconButton>
+      </Tooltip>
     </>
   )
 }
@@ -346,6 +358,7 @@ function FoldedActions({ tracks, onPickM3u }: { tracks: MusicTrack[]; onPickM3u:
     { id: 'metadata-force', label: t('music.metadata_force'), icon: <RotateCw size={13} />, disabled: metadata.forceDisabled, onSelect: metadata.forceScan },
     { id: 'metadata-covers', label: t('music.match_covers'), icon: <CloudDownload size={13} />, disabled: metadata.coversDisabled, onSelect: metadata.matchCovers },
     { id: 'health-scan', label: t('music.health_scan'), icon: <Activity size={13} />, separatorBefore: true, onSelect: () => void useMusic.getState().openHealthScan() },
+    { id: 'insights', label: t('music.insights_open'), icon: <BarChart3 size={13} />, onSelect: () => useMusic.getState().openInsights() },
   ]
   return (
     <>

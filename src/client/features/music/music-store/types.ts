@@ -241,6 +241,9 @@ export interface MusicStoreState {
   healthScanning: boolean
   healthFailed: boolean
   healthResults: MusicReferenceHealthResult[] | null
+  /** The library statistics panel. It reads the library already in the store, so it has no state of
+   *  its own beyond being open. */
+  insightsOpen: boolean
   podcastEpisodesFeedId: string | null
   podcastEpisodes: MusicPodcastEpisode[]
   podcastEpisodesLoading: boolean
@@ -425,6 +428,8 @@ export interface MusicStoreState {
   /** FB-F9: opens the panel and asks every reference row for one byte. */
   openHealthScan: () => Promise<void>
   closeHealthScan: () => void
+  openInsights: () => void
+  closeInsights: () => void
   scanReferences: () => Promise<void>
   /** FB-F9: re-points a dead online row at another catalogue and clears the broken one out. */
   repairDeadReference: (id: string) => Promise<void>
