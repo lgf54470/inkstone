@@ -238,6 +238,15 @@ const LABELS = {
   musicMaximizeHub: localeLabel('music.maximize_hub'),
   musicRestoreHub: localeLabel('music.restore_hub'),
   musicLyrics: localeLabel('music.lyrics'),
+  // M-51: the anonymous playlist page, which no other surface in this gate reaches. Its own words are
+  // read there — the page name, the count it promises to a returning reader (templated, so only the
+  // leading text before the number is fixed), the badge a new track carries, where the memory is said
+  // to live, and the one control that forgets it.
+  musicSharedPlaylist: localeLabel('music.shared_playlist'),
+  musicShareSinceVisit: localePrefix('music.share_new_since_visit'),
+  musicShareNewBadge: localeLabel('music.share_new_badge'),
+  musicShareVisitMemoryNote: localeLabel('music.share_visit_memory_note'),
+  musicShareForgetVisit: localeLabel('music.share_forget_visit'),
   // The share center's own four pairs (its entry, dialog, manage control and All Shares row) live
   // in `SHARE_LABELS` in the harness, shared with the contrast gate (SH-99); what stays here is
   // what only this gate reads.
@@ -6997,6 +7006,158 @@ async function assertPublicCollectionPage(browser, page, consoleErrors) {
   })
 }
 
+const PLAYLIST_PROBE = {
+  name: 'E2E Shared Playlist Probe',
+}
+
+/**
+ * What a visitor gets at `/playlist/:slug`, read the way a visitor gets it: a browser context of its
+ * own, a real user agent and no session. The page loads none of the app's store — that split is the
+ * point of the surface — so nothing measured inside the signed-in page can stand in for it.
+ *
+ * The reminder is the half that only exists across two visits, so two are measured: the first has
+ * nothing to compare against and must say nothing while it remembers the visit, and the second is
+ * opened after a track is added behind the reader's back. That arrangement is what makes a stamp
+ * written too early — or a claim that ran twice, which StrictMode makes it — read as silence rather
+ * than as a passing gate, which is how it went unnoticed until a browser was pointed at the page.
+ */
+async function assertPublicPlaylistPage(browser, page, consoleErrors) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  const fixture = await seedMusicProbeTracks({ page })
+  const listed = (await apiCall(page, 'GET', '/api/music/library')).data?.tracks ?? []
+  const newestFor = (title) => listed
+    .filter((track) => track.title === title)
+    .sort((left, right) => right.createdAt - left.createdAt)[0]
+  const [opening, later] = MUSIC_PROBE.titles.map(newestFor)
+  const fixtureReady = fixture.unplayable.length === 0 && Boolean(opening) && Boolean(later)
+  check('playlist link: the library holds the two playable probe tracks', fixtureReady,
+    JSON.stringify({ unplayable: fixture.unplayable, titles: MUSIC_PROBE.titles }))
+  if (!fixtureReady) return
+
+  // A create answers 201 for a new row and 200 for one that was already there (the seed is fixed so a
+  // rerun reuses it), and so does adding an item; the slug is the only thing that has to be new work.
+  const accepted = (status) => status === 200 || status === 201
+  const created = await apiCall(page, 'POST', '/api/music/playlists', { name: PLAYLIST_PROBE.name })
+  const playlistId = created.data?.id ?? ''
+  const firstAdd = playlistId
+    ? await apiCall(page, 'POST', `/api/music/playlists/${playlistId}/items`, { trackId: opening.id })
+    : { status: 0 }
+  const shared = playlistId ? await apiCall(page, 'POST', `/api/music/playlists/${playlistId}/share`, {}) : { status: 0 }
+  const slug = shared.data?.shareSlug ?? ''
+  check('playlist link: the account shares a playlist holding one track',
+    accepted(created.status) && accepted(firstAdd.status) && shared.status === 200 && Boolean(slug),
+    JSON.stringify({ create: created.status, add: firstAdd.status, share: shared.status, slug }))
+  if (!slug) return
+
+  const context = await browser.createBrowserContext()
+  const visitor = await context.newPage()
+  visitor.on('pageerror', (error) => consoleErrors.push({ text: `[playlist] ${String(error)}`, url: '' }))
+  const reminder = () => visitor.evaluate(() => document.querySelector('[role="status"]')?.textContent ?? null)
+  const rowTexts = () => visitor.evaluate(() => [...document.querySelectorAll('ol li')]
+    .map((item) => (item.textContent ?? '').replace(/\s+/g, ' ').trim()))
+  const mentions = (values, text) => values.some((value) => (text ?? '').includes(value))
+  try {
+    await visitor.setViewport(DESKTOP_VIEWPORT)
+    await visitor.setUserAgent(REAL_VISITOR_UA)
+    // The page paints whichever theme the document carries, and this is the light reading — the two
+    // themes of the shell are measured by scripts/check-contrast.mjs. A document with no account
+    // setting follows the OS preference, so the preference is stated rather than inherited.
+    await visitor.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }])
+    await visitor.goto(`${BASE}/playlist/${slug}`, { waitUntil: 'networkidle2' })
+
+    const firstRows = await rowTexts()
+    const shown = await visitor.evaluate(() => ({
+      name: document.querySelector('h1')?.textContent?.trim() ?? '',
+      body: document.body.innerText,
+      row: document.querySelector('ol li > *')?.tagName ?? null,
+    }))
+    // The heading is the playlist's own name, and the kicker above it is what says this is a shared
+    // playlist: both are read, because a page that named neither would still pass a row count.
+    check('playlist link: a visitor sees the shared tracks without a session',
+      firstRows.length === 1 && firstRows[0].includes(opening.title) && shown.row === 'BUTTON' && shown.name === PLAYLIST_PROBE.name,
+      JSON.stringify({ rows: firstRows, name: shown.name, row: shown.row }))
+    check('playlist link: the page says what it is',
+      mentions(LABELS.musicSharedPlaylist, shown.body))
+    check('playlist link: a first visit has nothing to compare against and says nothing',
+      (await reminder()) === null)
+
+    // A reload with nothing added behind it is the same answer rather than a second one: the visit is
+    // remembered, and "nothing changed" is reported as nothing. This is what makes the read after the
+    // next track mean something.
+    await visitor.reload({ waitUntil: 'networkidle2' })
+    check('playlist link: reopening an unchanged playlist still reports no change', (await reminder()) === null)
+    await checkSurfaceAxe(visitor, '', 'playlist link (nothing new)')
+
+    // The track appears behind the visitor's back: the one arrangement in which the comparison has an
+    // answer, and the one a reminder that compared against a stamp it had already moved cannot pass.
+    const secondAdd = await apiCall(page, 'POST', `/api/music/playlists/${playlistId}/items`, { trackId: later.id })
+    check('playlist link: a second track lands in the shared playlist', accepted(secondAdd.status), String(secondAdd.status))
+    await visitor.reload({ waitUntil: 'networkidle2' })
+    const reported = await reminder()
+    const afterRows = await rowTexts()
+    const badged = afterRows.filter((text) => mentions(LABELS.musicShareNewBadge, text))
+    check('playlist link: the second visit names what changed',
+      mentions(LABELS.musicShareSinceVisit, reported), `reminder=${JSON.stringify(reported)}`)
+    check('playlist link: only the track that appeared carries the badge',
+      afterRows.length === 2 && badged.length === 1 && badged[0].includes(later.title),
+      JSON.stringify(afterRows))
+    check('playlist link: the reminder says where the memory lives',
+      mentions(LABELS.musicShareVisitMemoryNote, reported), String(reported))
+
+    // Read with the reminder drawn rather than after dismissing it: the notice is a surface the fifth
+    // round reshaped (the fill it used to carry put dim text on an accent tint), and the badge on a new
+    // row is the accent on its own soft ground — the pair the token layer calibrates, and one this gate
+    // can only vouch for by measuring it here.
+    await checkSurfaceAxe(visitor, '', 'playlist link (the change named)')
+
+    // The keyboard path, from the top of the page: the reminder's own control comes before the list it
+    // describes, so Tab reaches it first, then a track. Enter on that track has to start that track.
+    const reachedForget = await focusSurfaceControl(visitor, LABELS.musicShareForgetVisit)
+    check('playlist link: the keyboard reaches the control that forgets the visit', reachedForget)
+    const reachedRow = await (async () => {
+      for (let press = 0; press < 6; press += 1) {
+        await visitor.keyboard.press('Tab')
+        if (await visitor.evaluate(() => Boolean(document.activeElement?.closest('ol')))) return true
+      }
+      return false
+    })()
+    check('playlist link: the keyboard reaches a track', reachedRow)
+    if (reachedRow) {
+      const focusedRow = await visitor.evaluate(() => (document.activeElement?.textContent ?? '').replace(/\s+/g, ' ').trim())
+      await visitor.keyboard.press('Enter')
+      const started = await visitor.waitForFunction(() => {
+        const media = document.querySelector('audio, video')
+        return Boolean(media) && !media.paused && media.currentTime > 0
+      }, { timeout: 15_000 }).then(() => true, () => false)
+      const stream = await visitor.evaluate(() => {
+        const media = document.querySelector('audio, video')
+        return { tag: media?.tagName ?? null, src: media?.currentSrc ?? '', error: media?.error?.code ?? null }
+      })
+      // The row that was pressed is the track that must play: both the element's own source and the
+      // element's tag follow that track (the fixture is a wav, so it is the audio half of the choice).
+      const pressed = focusedRow.includes(later.title) ? later : opening
+      check('playlist link: Enter on a track plays that track',
+        started && stream.tag === 'AUDIO' && stream.src.includes(`/playlists/${slug}/tracks/${pressed.id}/`),
+        JSON.stringify({ focusedRow, stream, started }))
+    }
+
+    // Forgetting has to be a fact about the memory and not about this render: a reload after it must
+    // find a page that has never been here, and therefore one with nothing to report.
+    const dismissed = await pressSurfaceControl(visitor, LABELS.musicShareForgetVisit)
+    check('playlist link: the memory is forgotten from its own control', dismissed)
+    await visitor.reload({ waitUntil: 'networkidle2' })
+    const forgottenRows = await rowTexts()
+    check('playlist link: after forgetting, the next visit is a first visit again',
+      (await reminder()) === null && !forgottenRows.some((text) => mentions(LABELS.musicShareNewBadge, text)),
+      JSON.stringify(forgottenRows))
+  } finally {
+    await context.close()
+  }
+
+  const removed = await apiCall(page, 'DELETE', `/api/music/playlists/${playlistId}`)
+  check('playlist link: the probe playlist is removed', removed.status === 200, String(removed.status))
+}
+
 // -------------------------------------------------------------------------------------------------
 // The surfaces whose accessible names only the static guard read (SH-93, closed here)
 // -------------------------------------------------------------------------------------------------
@@ -7716,6 +7877,7 @@ async function main() {
     await assertShareQrSheet(page)
     await assertNamedControlSurfaces(page)
     await assertPublicCollectionPage(browser, page, consoleErrors)
+    await assertPublicPlaylistPage(browser, page, consoleErrors)
 
     // Demo backend intentionally logs a 401 for the logged-out ping; only
     // render-breaking errors matter here.
