@@ -30,7 +30,7 @@ vi.mock('../../../lib/db', () => ({
 import { ApiError, api } from '../../../lib/api'
 import { localDb } from '../../../lib/db'
 import { toastMusicNotice } from '../music-feedback'
-import { flushMusicWrites, isOfflineError, pendingMusicWriteCount, queueMusicWrite } from './pending-writes'
+import { flushMusicWrites, isOfflineError, queueMusicWrite } from './pending-writes'
 
 function pending(overrides: Partial<MusicPendingWrite> & { id: string }): MusicPendingWrite {
   return {
@@ -78,11 +78,6 @@ describe('queueing an intent', () => {
       attempts: 0,
     }))
     expect(toastMusicNotice).toHaveBeenCalledWith('music.saved_offline')
-  })
-
-  it('counts what is still waiting', async () => {
-    vi.mocked(localDb.getMusicWrites).mockResolvedValue([pending({ id: 'trackFlags:a' })])
-    expect(await pendingMusicWriteCount()).toBe(1)
   })
 })
 

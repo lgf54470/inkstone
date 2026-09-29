@@ -84,8 +84,3 @@ export async function flushMusicWrites(): Promise<number> {
     isFlushing = false
   }
 }
-
-// What the settings row and the offline notices read to say how much is still waiting.
-export async function pendingMusicWriteCount(): Promise<number> {
-  return (await localDb.getMusicWrites()).length
-}

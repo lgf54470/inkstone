@@ -4904,7 +4904,6 @@ const allowed = new Map([
     '// that one entry so a single dead target cannot block every write behind it forever. The number of',
     '// dropped entries comes back so the caller can reconcile the optimistic state it kept on the reader\'s',
     '// behalf — the one case where the screen is deliberately ahead of the server.',
-    '// What the settings row and the offline notices read to say how much is still waiting.',
   ]],
   ['src/client/features/music/music-store/persist.ts', [
     '// Volume drags and queue churn used to serialise and write localStorage per event.',
