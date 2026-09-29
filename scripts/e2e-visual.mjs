@@ -5502,6 +5502,12 @@ async function assertMusicImmersiveMenu(page) {
   const wanted = LABELS.musicEditTrack.some((label) => items.some((item) => item.includes(label)))
   check('music: a right click on the immersive player opens the track menu the rows open',
     menuDrawn && wanted, `menu=${menuDrawn} items=${JSON.stringify(items.map((item) => item.trim()).slice(0, 4))}`)
+  // The gesture is what a reader reaches for to start or stop the song in front of them, so the menu
+  // that answers it has to carry the transport — and on the track that is playing it reads as pause.
+  // Matched exactly: "play all" is a different item and must not satisfy this read.
+  const transport = [...LABELS.musicPlay, ...LABELS.musicPause].some((label) => items.some((item) => item.trim() === label))
+  check('music: the immersive menu carries the transport for the track it was opened on',
+    menuDrawn && transport, `items=${JSON.stringify(items.map((item) => item.trim()).slice(0, 4))}`)
   if (!menuDrawn) return
   const pressed = await pressSurfaceControl(page, LABELS.musicEditTrack)
   const readEditor = () => page.evaluate(({ immersiveRoot, title }) => {

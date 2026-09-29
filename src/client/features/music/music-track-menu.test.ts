@@ -173,6 +173,47 @@ describe('track menu singleton items', () => {
   })
 })
 
+// The immersive player opens this menu off a right click, and the one thing that gesture most wants
+// was missing from it: start or stop the track. The item is first, and it reads the store's playback
+// state as well as the track — on the track that is playing it is the pause control, which is why the
+// label is not a property of the track alone.
+describe('track menu transport item', () => {
+  function exactItem(label: string): HTMLButtonElement | undefined {
+    return [...document.querySelectorAll('[role="menu"] [role="menuitem"], [role="menu"] [role="menuitemcheckbox"]')]
+      .find((item) => item.textContent?.trim() === label) as HTMLButtonElement | undefined
+  }
+
+  it('offers pausing when the menu was opened on the track that is playing', async () => {
+    const togglePlay = vi.fn(async () => {})
+    useMusic.setState({ queue: ['t2'], currentIndex: 0, isPlaying: true, togglePlay })
+    await mountList()
+    await act(async () => {
+      menuButtons()[1]?.click()
+    })
+    const item = exactItem(t('music.pause'))
+    expect(item).toBeDefined()
+    await act(async () => {
+      item?.click()
+    })
+    expect(togglePlay).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers playing the track when the menu was opened on another one', async () => {
+    const playTrack = vi.fn(async () => {})
+    useMusic.setState({ queue: ['t2'], currentIndex: 0, isPlaying: true, playTrack })
+    await mountList()
+    await act(async () => {
+      menuButtons()[0]?.click()
+    })
+    const item = exactItem(t('music.play'))
+    expect(item).toBeDefined()
+    await act(async () => {
+      item?.click()
+    })
+    expect(playTrack).toHaveBeenCalledWith('t1')
+  })
+})
+
 describe('track menu offline item', () => {
   it('offers saving a track that is not cached on this device and runs the toggle', async () => {
     const toggleTrackOffline = vi.fn(async () => {})

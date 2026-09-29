@@ -1,5 +1,5 @@
 import { useMemo, type RefObject } from 'react'
-import { ArrowDown, ArrowUp, CloudDownload, CloudOff, Download, Heart, History, ListEnd, ListPlus, ListStart, PencilLine, Pin, Server, Shuffle, Tag, TextSearch, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, CloudDownload, CloudOff, Download, Heart, History, ListEnd, ListPlus, ListStart, Pause, PencilLine, Pin, Play, Server, Shuffle, Tag, TextSearch, Trash2, X } from 'lucide-react'
 import type { MusicTag, MusicTrack } from '@shared/types'
 import { Menu, confirm, submenuFor, type MenuItem } from '../../components/overlay'
 import { t, type MessageKey } from '../../lib/i18n'
@@ -91,6 +91,10 @@ function useTrackMenuItems(
 ): MenuItem[] {
   const playlists = useMusic((state) => state.playlists)
   const tags = useMusic((state) => state.tags)
+  const currentTrackId = useMusic((state) => state.queue[state.currentIndex] ?? null)
+  const isPlaying = useMusic((state) => state.isPlaying)
+  const playTrack = useMusic((state) => state.playTrack)
+  const togglePlay = useMusic((state) => state.togglePlay)
   const playCollection = useMusic((state) => state.playCollection)
   const addToQueue = useMusic((state) => state.addToQueue)
   const addToPlaylist = useMusic((state) => state.addToPlaylist)
@@ -115,7 +119,7 @@ function useTrackMenuItems(
     const actions = {
       wrap, playlists, tags, playCollection, addToQueue, addToPlaylist, patchTrack, searchTrackLyric,
       toggleFavorite, togglePin, onEdit, downloadTracks, offlineTrackIds, toggleTrackOffline, openSourceSwitch,
-      forgetPlayHistory,
+      forgetPlayHistory, currentTrackId, isPlaying, playTrack, togglePlay,
     }
     const items = baseMenuItems(track, actions)
     items.push(...playlistMenuItems({ target, playlists, wrap, movePlaylistItem, removeFromPlaylist }))
@@ -129,7 +133,7 @@ function useTrackMenuItems(
       onSelect: wrap(() => confirmDeleteTrack(track, deleteTrack)),
     })
     return items
-  }, [target, playlists, tags, playCollection, addToQueue, addToPlaylist, toggleFavorite, togglePin, patchTrack, searchTrackLyric, removeFromPlaylist, movePlaylistItem, deleteTrack, deleteWebdavFiles, downloadTracks, offlineTrackIds, toggleTrackOffline, openSourceSwitch, forgetPlayHistory, onClose, onEdit])
+  }, [target, playlists, tags, currentTrackId, isPlaying, playTrack, togglePlay, playCollection, addToQueue, addToPlaylist, toggleFavorite, togglePin, patchTrack, searchTrackLyric, removeFromPlaylist, movePlaylistItem, deleteTrack, deleteWebdavFiles, downloadTracks, offlineTrackIds, toggleTrackOffline, openSourceSwitch, forgetPlayHistory, onClose, onEdit])
 }
 
 // Rows inside a playlist carry an item identity; these are the order-scoped actions.
@@ -170,12 +174,27 @@ interface TrackMenuActions {
   toggleTrackOffline: (id: string) => Promise<void>
   openSourceSwitch: (id: string) => Promise<void>
   forgetPlayHistory: (ids: string[]) => Promise<void>
+  currentTrackId: string | null
+  isPlaying: boolean
+  playTrack: (id: string) => Promise<void>
+  togglePlay: () => Promise<void>
 }
 
 function baseMenuItems(track: MusicTrack, actions: TrackMenuActions): MenuItem[] {
   const wrap = actions.wrap
   const isOffline = actions.offlineTrackIds.includes(track.id)
+  // The transport comes first: a menu opened over the player (right click, or the menu key) is opened
+  // on a song the reader is looking at, and start/stop is what that gesture most often means. On the
+  // track that is playing it becomes the pause control — resuming a paused track is the same request
+  // as pausing a playing one, so the item reads the store's state instead of the track alone.
+  const isTransportHere = track.id === actions.currentTrackId
   return [
+    {
+      id: 'playback',
+      label: isTransportHere && actions.isPlaying ? t('music.pause') : t('music.play'),
+      icon: isTransportHere && actions.isPlaying ? <Pause size={14} /> : <Play size={14} />,
+      onSelect: wrap(() => void (isTransportHere ? actions.togglePlay() : actions.playTrack(track.id))),
+    },
     { id: 'play-next', label: t('music.play_next'), icon: <ListStart size={14} />, onSelect: wrap(() => actions.addToQueue(track.id, true)) },
     { id: 'queue', label: t('music.add_to_queue'), icon: <ListEnd size={14} />, onSelect: wrap(() => actions.addToQueue(track.id)) },
     { id: 'play-all', label: t('music.play_all'), onSelect: wrap(() => playFromTrack(track, actions.playCollection)) },
