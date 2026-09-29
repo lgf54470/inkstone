@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, createElement } from 'react'
+import { StrictMode, act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { t } from '../../../lib/i18n'
@@ -51,12 +51,16 @@ function playlist(tracks: ReturnType<typeof track>[]): PublicPlaylist {
 
 let root: Root | null = null
 
-async function mount(): Promise<void> {
+// The app itself renders under StrictMode (main.tsx), which runs an effect twice, so a case that
+// depends on what an effect decides has to be asked in that mode too — a claim that reads the stamp
+// it just wrote answers differently the second time.
+async function mount(strict = false): Promise<void> {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
+  const page = createElement(MusicPlaylistSharePage, { slug: SLUG })
   await act(async () => {
-    root?.render(createElement(MusicPlaylistSharePage, { slug: SLUG }))
+    root?.render(strict ? createElement(StrictMode, null, page) : page)
   })
 }
 
@@ -82,11 +86,13 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
+// One key per share slug, so the cases below share the name the page writes rather than each spelling
+// the prefix out.
+const visitKey = `inkstone.playlist-visit.${SLUG}`
+
 // The reminder is a comparison against a stamp this browser keeps, so these cases pin both halves:
 // what a returning reader is told, and that a first visit is told nothing.
 describe('what changed since the last visit (M-51)', () => {
-  const visitKey = `inkstone.playlist-visit.${SLUG}`
-
   it('says nothing at all on a first visit', async () => {
     vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([track('t1', { createdAt: 5_000 })]))
     await mount()
@@ -123,6 +129,21 @@ describe('what changed since the last visit (M-51)', () => {
     await act(async () => { stop?.click() })
     expect(window.localStorage.getItem(visitKey)).toBeNull()
     expect(document.body.textContent).not.toContain(t('music.share_new_since_visit', { value0: 1 }))
+  })
+})
+
+// The app renders under StrictMode, so the same question is asked in the mode the app actually runs in:
+// the claim has to answer the same thing twice, because the pass the reader sees is the last one.
+describe('the reminder when the effect runs twice (M-51)', () => {
+  it('still reports the change under StrictMode', async () => {
+    window.localStorage.setItem(visitKey, String(1_000))
+    vi.mocked(api.music.publicPlaylist).mockResolvedValue(playlist([
+      track('old', { createdAt: 500 }),
+      track('fresh', { createdAt: 2_000 }),
+    ]))
+    await mount(true)
+    expect(document.body.textContent).toContain(t('music.share_new_since_visit', { value0: 1 }))
+    expect(trackRow('fresh').textContent).toContain(t('music.share_new_badge'))
   })
 })
 
