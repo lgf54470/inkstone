@@ -116,6 +116,40 @@ describe('api.getPosts request behavior', () => {
   })
 })
 
+describe('blog owner passthrough', () => {
+  function requestedUrl(): string {
+    return vi.mocked(fetch).mock.calls[0]![0] as string
+  }
+
+  afterEach(() => {
+    delete window.__INKSTONE_BLOG_OWNER__
+    for (const meta of document.querySelectorAll('meta[name="inkstone-blog-owner"]')) meta.remove()
+    vi.unstubAllEnvs()
+  })
+
+  it('addresses the configured blog on a public request', async () => {
+    window.__INKSTONE_BLOG_OWNER__ = '  Inkstone  '
+    stubFetch({ posts: [], pagination: { total: 0, page: 1, limit: 10, totalPages: 0 } })
+    await api.getPosts({ page: 1 })
+    expect(requestedUrl()).toContain('owner=inkstone')
+  })
+
+  it('keeps the existing query string and appends owner to it', async () => {
+    document.head.insertAdjacentHTML('beforeend', '<meta name="inkstone-blog-owner" content="writer">')
+    stubFetch({ posts: [], pagination: { total: 0, page: 1, limit: 8, totalPages: 0 } })
+    await api.getPosts({ search: 'hello' })
+    expect(requestedUrl()).toContain('search=hello')
+    expect(requestedUrl()).toContain('owner=writer')
+  })
+
+  it('sends no owner when the deployment names none', async () => {
+    vi.stubEnv('PUBLIC_BLOG_OWNER', '')
+    stubFetch({ posts: [], pagination: { total: 0, page: 1, limit: 10, totalPages: 0 } })
+    await api.getPosts({ page: 1 })
+    expect(requestedUrl()).not.toContain('owner=')
+  })
+})
+
 describe('api.getSiteInfo', () => {
   it('merges payload with fallback defaults', async () => {
     stubFetch({ settings: { siteName: 'My Blog', socialLinks: { github: 'https://g' } } })

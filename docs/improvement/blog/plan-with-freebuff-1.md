@@ -26,7 +26,11 @@
 
 顺序固定，后项依赖前项。
 
-- [ ] B1-01 **SEC-01** 公开 API owner resolver（`?owner=` + 缺省回退默认 owner）+ 公开读全部绑定 `user_id` + 匿名响应去掉 `noteId` + 前台 `middleware.ts`/`api.ts` 透传 owner
+- [x] B1-01 **SEC-01** 公开 API owner resolver（`?owner=` + 缺省回退默认 owner）+ 公开读全部绑定 `user_id` + 匿名响应去掉 `noteId` + 前台 `api.ts` 透传 owner — 已提交（hash 见下一提交）
+  - 实现：新增 `src/worker/routes/blog/owner.ts`（`registerBlogOwnerMiddleware` + `blogOwnerOf`）；`/api/blog/public/*` 13 个公开端点全部改绑 `blogOwnerOf(c).userId`（音乐子树按自己的发布开关解析，中间件显式跳过）；每个公开响应带 `X-Inkstone-Blog-Owner`；匿名响应不再下发 `noteId`。
+  - 前台形态取舍：单一部署即单一博客，`PUBLIC_BLOG_OWNER`（另有 `window.__INKSTONE_BLOG_OWNER__` / `<meta name="inkstone-blog-owner">`）在 `fetchWithTimeout` 这一个出口给全部公开请求补 `?owner=`；`/u/<username>/` 路径前缀属多租户前台路由，留待 FEA 批次单开（当前部署模型不需要）。
+  - 复现测试：新增 `tests/blog-public-owner.test.ts`（9 条，真实 D1：两个账号各自的文章/友链/标签/时间轴/日历/设置/评论/友链申请/点击互不可见；缺省寻址钉最早注册账号；未开设的账号 404）；`tests/blog-routes.test.ts` 中原先把「跨 key 共享」钉成期望的 `/site` 断言已订正。
+  - 回归：`typecheck` 绿；`test:unit` 5150 通过 / 1 失败（见进度日志的既有失败）；本批门禁（`comments:check`、`escape:check`、`empty-catch:check`、`module-state:check`、`deep-imports:check`、`style:check`、`hardcoded:check`）全绿；`blog-frontend`：`npm test` 295 通过（新增 3 条 owner 透传用例）、`npm run typecheck` 只有 3 条既有的 `astro check` 报错（见进度日志）。
 - [ ] B1-02 **SEC-02** 友链 / 分类 upsert 与 import 改「先判归属再写」，回读补 owner 条件
 - [ ] B1-03 **SEC-08** slug 唯一性下放到 per-user：`db/schema/blog-posts.ts` + 基线同步 + rebuild 迁移（RENAME → 建新表 → `INSERT…SELECT` → 重建索引 → DROP）+ 全部 slug 查询带 owner + 去掉 `/check-slug` oracle；**单独提交，要求先备份**
 - [ ] B1-04 **SEC-09** 站点设置单一键（per-user），公开侧按 owner 读；订正 `tests/blog-routes.test.ts` 里把错误行为钉成期望的断言
@@ -105,3 +109,4 @@
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
 | 2026-09-30 | B0 文档基线（review + plan） | — | —（无代码改动，静态门禁与单测不适用） | 报告结论全部落到 file:line；统计与性能量级为明示假设下的推算，未做 profiling；订正了前两轮报告的 8 条过时结论（review §三） |
+| 2026-09-30 | B1-01 SEC-01 公开 API owner resolver | 见下一条回填 | `typecheck` 绿；`test:unit` 5150 通过 / 1 失败；新增 45 条 blog 契约测试全绿；`blog-frontend` 295 通过；7 项静态门禁绿 | **两处既有失败，与本批改动无关，已核实非本轮引入**：① `src/client/lib/markdown/kanban/ui/kanban-view-rows.test.ts:156` 日历视图「新增于该日」产出 `2026-08-30` 而用例期望今天的 key（该文件与 kanban 源码均为未修改的 HEAD 状态，且与本批改动的 blog 模块无任何交集）；② `blog-frontend` 的 `astro check` 在 HEAD 上就有 3 条 `ts(2345)`（`music-player-video.test.ts:53/84`、`music-video-stage.test.ts:43` 的 `document.body.append(container)`），同为未修改文件。两者按 AGENTS.md §14 不夹带进本批，另开 issue 处理 |

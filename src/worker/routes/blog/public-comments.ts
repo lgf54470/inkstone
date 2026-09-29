@@ -10,21 +10,34 @@ import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import type { BlogPublicCommentRow } from '../../db/rows'
 import { blogPublicCommentSchema } from './schemas'
 import { getBlogSettings } from './settings'
+import { blogOwnerOf } from './owner'
 
 export function registerBlogPublicCommentsRoutes(blogPublicRoutes: Hono<AppBindings>): void {
   registerBlogPublicCommentsListRoute(blogPublicRoutes)
   registerBlogPublicCommentSubmitRoute(blogPublicRoutes)
 }
 
+/**
+ * The post a comment page is about, scoped to the addressed blog: another account's post with the
+ * same slug is a different post, and answering with it would be the cross-tenant read this module
+ * was missing.
+ */
+async function loadCommentedPost(
+  db: D1Database,
+  ownerId: string,
+  slugOrId: string,
+): Promise<{ id: string; allow_comments: number }> {
+  const post = await db
+    .prepare('SELECT id, allow_comments FROM blog_posts WHERE (slug = ?1 OR id = ?1) AND is_published = 1 AND user_id = ?2')
+    .bind(slugOrId, ownerId)
+    .first<{ id: string; allow_comments: number }>()
+  if (!post) throw ApiError.notFound('Post not found')
+  return post
+}
+
 function registerBlogPublicCommentsListRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.get('/comments/:postSlug', async (c) => {
-    const postSlug = c.req.param('postSlug')
-
-    const post = await c.env.DB
-      .prepare('SELECT id, allow_comments FROM blog_posts WHERE (slug = ?1 OR id = ?1) AND is_published = 1')
-      .bind(postSlug)
-      .first<{ id: string; allow_comments: number }>()
-    if (!post) throw ApiError.notFound('Post not found')
+    const post = await loadCommentedPost(c.env.DB, blogOwnerOf(c).userId, c.req.param('postSlug'))
 
     const { results } = await c.env.DB
       .prepare(`
@@ -48,17 +61,14 @@ function registerBlogPublicCommentSubmitRoute(blogPublicRoutes: Hono<AppBindings
     const body = await readJsonValidated(c, blogPublicCommentSchema, JSON_BODY_LIMITS.comment)
     assertPublicCommentValid(body)
 
-    const post = await c.env.DB
-      .prepare('SELECT id, allow_comments FROM blog_posts WHERE (slug = ?1 OR id = ?1) AND is_published = 1')
-      .bind(body.postSlug)
-      .first<{ id: string; allow_comments: number }>()
-    if (!post) throw ApiError.notFound('Post not found')
+    const owner = blogOwnerOf(c)
+    const post = await loadCommentedPost(c.env.DB, owner.userId, body.postSlug)
     if (!post.allow_comments) throw ApiError.forbidden('Comments are disabled for this post')
 
-    await assertCommentRateBudget(c.env.DB, c, body.postSlug)
+    await assertCommentRateBudget(c.env.DB, c, owner.userId, body.postSlug)
     if (body.parentId) await assertParentCommentOnPost(c.env.DB, body.parentId, post.id)
 
-    const settings = await getBlogSettings(c.env.DB)
+    const settings = await getBlogSettings(c.env.DB, owner.userId)
     const status: BlogCommentStatus = settings.requireCommentApproval ? 'pending' : 'approved'
     const avatar = body.authorAvatar || `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(body.authorName)}`
 
@@ -80,11 +90,13 @@ function registerBlogPublicCommentSubmitRoute(blogPublicRoutes: Hono<AppBindings
 const BLOG_COMMENT_IP_BUDGET = { key: '', maxAttempts: 5, windowMs: 10 * 60 * 1000, lockMs: 10 * 60 * 1000 }
 const BLOG_COMMENT_POST_BUDGET = { key: '', maxAttempts: 100, windowMs: 10 * 60 * 1000, lockMs: 10 * 60 * 1000 }
 
-async function assertCommentRateBudget(db: D1Database, c: Context<AppBindings>, postSlug: string): Promise<void> {
+async function assertCommentRateBudget(db: D1Database, c: Context<AppBindings>, ownerId: string, postSlug: string): Promise<void> {
   try {
     await consumeAttemptBudget(db, [
       { ...BLOG_COMMENT_IP_BUDGET, key: `blog-comment:ip:${requestClientIp(c)}` },
-      { ...BLOG_COMMENT_POST_BUDGET, key: `blog-comment:post:${postSlug}` },
+      // The blog is part of the key: two accounts may publish the same slug, and one of them being
+      // under a comment flood must not close the other's form.
+      { ...BLOG_COMMENT_POST_BUDGET, key: `blog-comment:post:${ownerId}:${postSlug}` },
     ])
   } catch (error) {
     if (error instanceof ThrottleError) {

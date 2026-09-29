@@ -1,5 +1,6 @@
 
 import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider'
+import type { BlogOwner } from '@shared/types'
 
 export interface Env {
 
@@ -48,6 +49,9 @@ export interface Variables {
 
   database: DatabaseState
   userId: string
+
+  /** Which account's blog a public request is for; set by the blog public owner middleware. */
+  blogOwner: BlogOwner
 
   sessionId: string
 

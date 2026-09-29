@@ -1,5 +1,15 @@
 import type { ShareBreakdownItem, ShareTimelinePoint, ShareTimelineRange } from './share'
 
+/**
+ * The account a public blog request is for. The address travels as `?owner=<username>` until the
+ * host-based routes land; a request that carries none is answered by the instance default blog, and
+ * every public answer names the blog it answered for in `X-Inkstone-Blog-Owner`.
+ */
+export interface BlogOwner {
+  userId: string
+  username: string
+}
+
 export interface BlogPost {
   id: string
   slug: string

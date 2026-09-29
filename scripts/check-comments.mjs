@@ -12240,6 +12240,9 @@ const allowed = new Map([
   ['src/shared/types/api.ts', [
     '/** A rolling date filter: N days ending either at the newest edit (`edit`) or at today (`today`). */',
   ]],
+  ['src/shared/types/blog.ts', [
+    '/**\n * The account a public blog request is for. The address travels as `?owner=<username>` until the\n * host-based routes land; a request that carries none is answered by the instance default blog, and\n * every public answer names the blog it answered for in `X-Inkstone-Blog-Owner`.\n */',
+  ]],
   ['src/shared/types/board-library.ts', [
     '/**\n * Whiteboard libraries as the API hands them around: an account owns a set of *named*\n * libraries — the same shape the public directory lists — and each one is a single\n * `.excalidrawlib` document stored as its own object. Boards draw from the one the user\n * selected (`preview.boardLibrary`), so every note sees the same items.\n */',
     '/**\n   * The library\'s items as JSON text: an `.excalidrawlib` body (the format is JSON, not an\n   * archive), kept verbatim so a file round-trips with excalidraw.com. Null before the\n   * first save, which the boards read as an empty library.\n   */',
@@ -12563,6 +12566,7 @@ const allowed = new Map([
     '/**\n   * Instance secret (`wrangler secret put VISIT_FP_SECRET`) keying visitor fingerprints. Unset means\n   * visit rows carry no fingerprint at all: nothing to deduplicate a repeated view against, and no\n   * unique visitors to report — which the site info passes on so the surfaces can say so.\n   */',
     '/** Workers AI binding for semantic search; optional so AI search degrades gracefully. */',
     '/** Present only in the dev-only wrangler.kv.toml; unlocks /api/dev/seed for local perf seeding. */',
+    '/** Which account\'s blog a public request is for; set by the blog public owner middleware. */',
   ]],
   ['src/worker/import/attachments.ts', [
     '/** Attachment handling for the import pipeline: dedupe, persist, map and link. */',
@@ -12882,12 +12886,28 @@ const allowed = new Map([
     '// current hop. The caller receives the first non-redirect response.',
     '// Best-effort body release; a failed cancel does not change the verdict.',
   ]],
+  ['src/worker/routes/blog/owner.ts', [
+    '/** The address a public blog answers to. */',
+    '/**\n * The music subtree underneath the blog public prefix keeps its own publish switch and resolves the\n * account that switch names, so it is left to do that instead of being handed this one.\n */',
+    '/**\n * Resolves the account a public blog request is for and publishes the answer on the context, so no\n * public handler can query without one.\n *\n * What the address will become: the host is the next source (`<username>.blog.example.com`), which is\n * why resolution is a middleware rather than a per-handler query — a new source is one branch here,\n * not a sweep over every read. Until then `?owner=` is the only address, and a request without one is\n * answered by the instance default blog, which is what every pre-multi-tenant link already means.\n */',
+    '// The answer names the blog it answered for, so a cached response or an operator reading a log',
+    '// can tell which account a body belongs to without reconstructing the request.',
+    '/**\n * The owner a public handler must query with. Throws instead of returning nothing: a public route\n * registered ahead of the middleware would otherwise bind an undefined owner and answer "this blog is\n * empty" — an outage that looks like data loss.\n */',
+    '// A name that could not be issued is answered as not found rather than as a format error: the',
+    '// reader asked for a blog, and no blog has that name.',
+    '/**\n * The instance\'s first account is the blog that existed before addresses did. The ordering is by\n * `created_at` and then by insertion order, so two accounts seeded in the same millisecond still\n * resolve to the one that was created first.\n */',
+  ]],
   ['src/worker/routes/blog/posts.ts', [
     '// One batch, so a post cannot survive while its log rows go missing (or the other way round).',
     '// `blog_comments` has no owner column, so the delete asks blog_posts who owns the post and has to',
     '// run before the post row itself disappears.',
     '// One statement per group: D1 rejects a statement that binds more than 100 variables.',
     '// Comments have no owner column: both child deletes must land before the post rows go.',
+  ]],
+  ['src/worker/routes/blog/public-comments.ts', [
+    '/**\n * The post a comment page is about, scoped to the addressed blog: another account\'s post with the\n * same slug is a different post, and answering with it would be the cross-tenant read this module\n * was missing.\n */',
+    '// The blog is part of the key: two accounts may publish the same slug, and one of them being',
+    '// under a comment flood must not close the other\'s form.',
   ]],
   ['src/worker/routes/blog/public-links.ts', [
     '/**\n * The budget one visitor gets for applying: the count used to be over the whole table, so\n * five applications from anywhere took the endpoint down for everyone for a minute while\n * doing nothing to stop the one source that sent them.\n */',
@@ -13897,6 +13917,16 @@ const allowed = new Map([
     '// Every request in the harness arrives from the same client, which is what makes the',
     '// budget observable at all: the count used to be over the whole table, so the sixth',
     '// application here would have been the sixth from anywhere.',
+  ]],
+  ['tests/blog-public-owner.test.ts', [
+    '/** Two accounts whose creation order is explicit, so the instance default is not a coin flip. */',
+    '/** A manage app that answers as the given account, plus the public app mount the reader uses. */',
+    '// The later-inserted account is the earlier registration, so this pins the default to the',
+    '// earliest account rather than to whichever row happens to come back first.',
+    '// The public answer carries the rendered markdown, never the id of the note it came from.',
+    '// Alice reviews before publishing; Bob posts straight through.',
+    '// The slug belongs to Alice\'s blog, so Bob\'s form cannot be answered with Alice\'s post.',
+    '// The duplicate check is the blog\'s own directory, so the same site may apply to the other blog.',
   ]],
   ['tests/blog-visit-cleanup.test.ts', [
     '// Recent by design: a row older than the account retention is now the',

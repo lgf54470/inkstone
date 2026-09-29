@@ -52,6 +52,37 @@ export function getApiBase(): string {
 }
 
 
+/**
+ * 本部署指向的博客归属账号。公开 API 用 `?owner=` 说明请求的是哪个账号的博客；未配置时
+ * 不带该参数，由服务端回落到实例默认博客（多租户上线前已有的公开地址就是这个含义）。
+ * 取值来源与 API 地址同构：window 注入 → meta 标签 → 构建期环境变量。
+ */
+export function getBlogOwner(): string {
+  if (typeof window !== 'undefined') {
+    const injected = window.__INKSTONE_BLOG_OWNER__
+    if (injected) return injected.trim().toLowerCase()
+    const meta = document.querySelector('meta[name="inkstone-blog-owner"]')
+    const content = meta?.getAttribute('content')
+    if (content) return content.trim().toLowerCase()
+  }
+  const envOwner =
+    (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_BLOG_OWNER) ||
+    (typeof process !== 'undefined' && process.env.PUBLIC_BLOG_OWNER)
+  return envOwner ? envOwner.trim().toLowerCase() : ''
+}
+
+/**
+ * 给公开 API 路径补上归属账号。所有请求都经过 fetchWithTimeout 这一个出口，所以这里补一次
+ * 就覆盖了全部读与写；配置成服务端没有的账号会得到一个 404（页面走降级横幅），不会静默回落到
+ * 别人的博客。
+ */
+function withBlogOwner(path: string): string {
+  const owner = getBlogOwner()
+  if (!owner) return path
+  const separator = path.includes('?') ? '&' : '?'
+  return `${path}${separator}owner=${encodeURIComponent(owner)}`
+}
+
 // 健康状态只在浏览器端记录：SSR 侧失败不代表站点离线，且 Worker 跨请求共享模块实例，
 // 不能让一次瞬时失败污染后续请求的渲染。
 let degraded = false
@@ -88,7 +119,7 @@ async function fetchWithTimeout(path: string, init?: RequestInit): Promise<Respo
     else external.addEventListener('abort', onExternalAbort)
   }
   try {
-    return await fetch(`${getApiBase()}${path}`, { ...init, signal: controller.signal })
+    return await fetch(`${getApiBase()}${withBlogOwner(path)}`, { ...init, signal: controller.signal })
   } finally {
     clearTimeout(timer)
     external?.removeEventListener('abort', onExternalAbort)

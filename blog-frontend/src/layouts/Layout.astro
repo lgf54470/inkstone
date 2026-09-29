@@ -6,7 +6,7 @@ import AppearanceDrawer from '../components/AppearanceDrawer'
 import SearchModal from '../components/SearchModal'
 import MusicWidget from '../components/music/MusicWidget'
 import DegradedBanner from '../components/DegradedBanner'
-import { api, getApiBase } from '../lib/api'
+import { api, getApiBase, getBlogOwner } from '../lib/api'
 import { serializeLdJson } from '../lib/ld-json'
 import type { BlogSiteInfo } from '../lib/types'
 import { DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
@@ -45,6 +45,9 @@ const {
 
 const locale: BlogLocale = propLocale ?? Astro.locals?.locale ?? DEFAULT_LOCALE
 
+// 本部署归属的博客账号：以 meta 标签下发，客户端岛与页面脚本据此给每个公开请求带上 owner
+const blogOwner = getBlogOwner()
+
 // 站点信息在布局层只取一次并下发 Header/Footer，避免每请求 2–3 次重复请求
 const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
 ---
@@ -61,6 +64,7 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     <meta name="description" content={description} />
     {coverUrl && <meta property="og:image" content={coverUrl} />}
     <meta name="inkstone-api-url" content={getApiBase()} />
+    {blogOwner && <meta name="inkstone-blog-owner" content={blogOwner} />}
     <meta name="inkstone-locale" content={locale} />
     <link rel="canonical" href={`${Astro.url.origin}${Astro.url.pathname}`} />
     {articleMeta && (

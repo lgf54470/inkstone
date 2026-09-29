@@ -7,6 +7,7 @@ import { JSON_BODY_LIMITS, readJsonValidated, requestClientIp } from '../../lib/
 import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import type { BlogLinkCategoryRow, BlogLinkRow } from '../../db/rows'
 import { blogPublicLinkRequestSchema } from './schemas'
+import { blogOwnerOf } from './owner'
 
 export function registerBlogPublicLinksRoutes(blogPublicRoutes: Hono<AppBindings>): void {
   registerPublicLinksListRoute(blogPublicRoutes)
@@ -17,20 +18,22 @@ export function registerBlogPublicLinksRoutes(blogPublicRoutes: Hono<AppBindings
 function registerPublicLinksListRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.get('/links', async (c) => {
     const db = c.env.DB
+    const ownerId = blogOwnerOf(c).userId
 
     const [categoriesResult, linksResult] = await Promise.all([
       db.prepare(`
         SELECT id, name, icon, parent_id, sort_order
         FROM blog_link_categories
+        WHERE user_id = ?1
         ORDER BY sort_order ASC, created_at ASC
-      `).all<BlogLinkCategoryRow>(),
+      `).bind(ownerId).all<BlogLinkCategoryRow>(),
       db.prepare(`
         SELECT id, name, url, description, avatar, category_id,
           is_pinned, pinned_order, is_favorite, sort_order, clicks, created_at
         FROM blog_links
-        WHERE status = 'approved' AND is_active = 1
+        WHERE user_id = ?1 AND status = 'approved' AND is_active = 1
         ORDER BY is_pinned DESC, pinned_order ASC, sort_order ASC, created_at ASC
-      `).all<BlogLinkRow>(),
+      `).bind(ownerId).all<BlogLinkRow>(),
     ])
 
     const categories = (categoriesResult.results || []).map((cat) => ({
@@ -65,12 +68,10 @@ function registerPublicLinkRequestRoute(blogPublicRoutes: Hono<AppBindings>): vo
     const db = c.env.DB
     const body = await readJsonValidated(c, blogPublicLinkRequestSchema, JSON_BODY_LIMITS.note)
     const now = Date.now()
+    const ownerId = blogOwnerOf(c).userId
 
     await enforcePublicRateLimit(c, db)
-    await checkDuplicateUrl(db, body.url)
-
-    const admin = await db.prepare('SELECT id FROM users ORDER BY created_at ASC LIMIT 1').first<{ id: string }>()
-    const userId = admin?.id || 'default'
+    await checkDuplicateUrl(db, ownerId, body.url)
 
     await db.prepare(`
       INSERT INTO blog_links (
@@ -80,7 +81,7 @@ function registerPublicLinkRequestRoute(blogPublicRoutes: Hono<AppBindings>): vo
       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL, 'pending', 0, 0, 0, 1, 0, ?8, ?8)
     `).bind(
       newId(),
-      userId,
+      ownerId,
       body.name.trim(),
       body.url.trim(),
       (body.description || '').trim(),
@@ -116,13 +117,13 @@ async function enforcePublicRateLimit(c: Context<AppBindings>, db: D1Database): 
   }
 }
 
-async function checkDuplicateUrl(db: D1Database, rawUrl: string): Promise<void> {
+async function checkDuplicateUrl(db: D1Database, ownerId: string, rawUrl: string): Promise<void> {
   const cleanUrl = rawUrl.trim()
   const existing = await db.prepare(`
     SELECT id FROM blog_links
-    WHERE url = ?1 AND status IN ('pending', 'approved')
+    WHERE user_id = ?2 AND url = ?1 AND status IN ('pending', 'approved')
     LIMIT 1
-  `).bind(cleanUrl).first<{ id: string }>()
+  `).bind(cleanUrl, ownerId).first<{ id: string }>()
 
   if (existing) {
     throw ApiError.conflict('This site has already been submitted or exists')
@@ -135,8 +136,8 @@ function registerPublicLinkClickRoute(blogPublicRoutes: Hono<AppBindings>): void
     await c.env.DB.prepare(`
       UPDATE blog_links
       SET clicks = clicks + 1
-      WHERE id = ?1 AND is_active = 1
-    `).bind(id).run()
+      WHERE id = ?1 AND user_id = ?2 AND is_active = 1
+    `).bind(id, blogOwnerOf(c).userId).run()
 
     return c.json({ ok: true })
   })

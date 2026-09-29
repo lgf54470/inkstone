@@ -476,7 +476,7 @@ describe('blog public routes (real D1)', () => {
 })
 
 describe('blog settings routes (real D1)', () => {
-  it('reads defaults, patches settings, and serves them publicly', async () => {
+  it('reads defaults, patches settings, and serves the patched values publicly', async () => {
     const db = await makeDb()
     await seedUser(db)
     const app = makeApp()
@@ -491,8 +491,10 @@ describe('blog settings routes (real D1)', () => {
     const manage = await request(app, '/api/blog/settings')
     expect((await manage.json()).settings.siteName).toBe('My Journal')
 
+    // The public site reads the blog it serves, not a second key nobody writes: patching the site
+    // name has to reach the reader, which is what this used to assert the opposite of (SEC-09).
     const site = await request(app, '/api/blog/public/site')
-    expect((await site.json()).settings.siteName).toBe('Inkstone Blog')
+    expect((await site.json()).settings.siteName).toBe('My Journal')
   })
 
   it('checks slug availability against existing posts', async () => {

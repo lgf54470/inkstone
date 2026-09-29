@@ -9,12 +9,14 @@ import { safeDecodeTagParam, summarizePostTagCounts } from './helpers'
 
 import { registerMusicPublicRoutes } from '../music'
 import { getBlogSettings } from './settings'
+import { blogOwnerOf, registerBlogOwnerMiddleware } from './owner'
 import { registerBlogPublicCommentsRoutes } from './public-comments'
 import { registerBlogPublicLinksRoutes } from './public-links'
 
 export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): void {
   registerBlogCorsMiddleware(blogPublicRoutes)
   registerBlogCacheMiddleware(blogPublicRoutes)
+  registerBlogOwnerMiddleware(blogPublicRoutes)
   registerBlogSiteRoute(blogPublicRoutes)
   registerBlogPublicPostsRoutes(blogPublicRoutes)
   registerBlogPublicCategoriesRoute(blogPublicRoutes)
@@ -81,7 +83,7 @@ function registerBlogCacheMiddleware(blogPublicRoutes: Hono<AppBindings>): void 
 
 function registerBlogSiteRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.get('/site', async (c) => {
-    const settings = await getBlogSettings(c.env.DB)
+    const settings = await getBlogSettings(c.env.DB, blogOwnerOf(c).userId)
     return c.json({ settings })
   })
 }
@@ -93,6 +95,7 @@ function registerBlogPublicPostsRoutes(blogPublicRoutes: Hono<AppBindings>): voi
 
 function registerBlogPublicPostsListRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.get('/posts', async (c) => {
+    const ownerId = blogOwnerOf(c).userId
     const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
     const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '10', 10)))
     const offset = (page - 1) * limit
@@ -100,10 +103,11 @@ function registerBlogPublicPostsListRoute(blogPublicRoutes: Hono<AppBindings>): 
     const categorySlug = c.req.query('category')?.trim()
     const search = c.req.query('search')?.trim()
 
-    const pageQuery = blogPublicPostsQuery({ categorySlug, search, tag }, limit, offset)
+    const pageQuery = blogPublicPostsQuery(ownerId, { categorySlug, search, tag }, limit, offset)
+    const countQuery = blogPublicPostsCountQuery(ownerId, { categorySlug, search, tag })
     const [pageResult, countRow] = await Promise.all([
       c.env.DB.prepare(pageQuery.sql).bind(...pageQuery.params).all<BlogPostPublicRow>(),
-      c.env.DB.prepare(blogPublicPostsCountQuery({ categorySlug, search, tag }).sql).bind(...blogPublicPostsCountQuery({ categorySlug, search, tag }).params).first<{ n: number }>(),
+      c.env.DB.prepare(countQuery.sql).bind(...countQuery.params).first<{ n: number }>(),
     ])
 
     const total = countRow?.n ?? 0
@@ -134,10 +138,10 @@ function blogTagNeedles(tag: string): [string, string] {
   return [`%"${inner}"%`, `%"${inner}/%`]
 }
 
-function blogPublicPostsWhere(filter: PublicPostsFilter): { clauses: string; params: unknown[] } {
-  const clauses = ['p.is_published = 1']
-  const params: unknown[] = []
-  let idx = 1
+function blogPublicPostsWhere(ownerId: string, filter: PublicPostsFilter): { clauses: string; params: unknown[] } {
+  const clauses = ['p.is_published = 1', 'p.user_id = ?1']
+  const params: unknown[] = [ownerId]
+  let idx = 2
 
   if (filter.categorySlug) {
     clauses.push(`c.slug = ?${idx++}`)
@@ -160,8 +164,8 @@ function blogPublicPostsWhere(filter: PublicPostsFilter): { clauses: string; par
   return { clauses: clauses.join(' AND '), params }
 }
 
-function blogPublicPostsQuery(filter: PublicPostsFilter, limit: number, offset: number): { sql: string; params: unknown[] } {
-  const { clauses, params } = blogPublicPostsWhere(filter)
+function blogPublicPostsQuery(ownerId: string, filter: PublicPostsFilter, limit: number, offset: number): { sql: string; params: unknown[] } {
+  const { clauses, params } = blogPublicPostsWhere(ownerId, filter)
   const sql = `
     SELECT p.id, p.slug, p.title, p.excerpt, p.cover_url, p.category_id, p.tags,
            p.views, p.published_at, p.updated_at,
@@ -176,8 +180,8 @@ function blogPublicPostsQuery(filter: PublicPostsFilter, limit: number, offset: 
   return { sql, params: [...params, limit, offset] }
 }
 
-function blogPublicPostsCountQuery(filter: PublicPostsFilter): { sql: string; params: unknown[] } {
-  const { clauses, params } = blogPublicPostsWhere(filter)
+function blogPublicPostsCountQuery(ownerId: string, filter: PublicPostsFilter): { sql: string; params: unknown[] } {
+  const { clauses, params } = blogPublicPostsWhere(ownerId, filter)
   return {
     sql: `SELECT COUNT(*) AS n FROM blog_posts p LEFT JOIN blog_categories c ON p.category_id = c.id WHERE ${clauses}`,
     params,
@@ -218,8 +222,9 @@ function toPublicPostSummary(row: BlogPostPublicRow): {
 
 function registerBlogPublicPostDetailRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.get('/posts/:slug', async (c) => {
+    const ownerId = blogOwnerOf(c).userId
     const slug = c.req.param('slug')
-    const row = await loadPublicPostBySlug(c.env.DB, slug)
+    const row = await loadPublicPostBySlug(c.env.DB, ownerId, slug)
 
     const now = Date.now()
 
@@ -233,21 +238,20 @@ function registerBlogPublicPostDetailRoute(blogPublicRoutes: Hono<AppBindings>):
 
     const post = {
       ...toPublicPostSummary(row),
-      noteId: row.note_id,
       content: row.content,
       allowComments: Boolean(row.allow_comments),
       isPinned: Boolean(row.is_pinned),
       views: (row.views || 0) + (countsForViews ? 1 : 0),
     }
 
-    const prevPost = await loadAdjacentPost(c.env.DB, row.published_at, false)
-    const nextPost = await loadAdjacentPost(c.env.DB, row.published_at, true)
+    const prevPost = await loadAdjacentPost(c.env.DB, ownerId, row.published_at, false)
+    const nextPost = await loadAdjacentPost(c.env.DB, ownerId, row.published_at, true)
 
     return c.json({ post, prevPost, nextPost })
   })
 }
 
-async function loadPublicPostBySlug(db: D1Database, slug: string): Promise<BlogPostPublicRow> {
+async function loadPublicPostBySlug(db: D1Database, ownerId: string, slug: string): Promise<BlogPostPublicRow> {
   const row = await db
     .prepare(`
       SELECT p.*,
@@ -255,9 +259,9 @@ async function loadPublicPostBySlug(db: D1Database, slug: string): Promise<BlogP
         (SELECT COUNT(*) FROM blog_comments cm WHERE cm.post_id = p.id AND cm.status = 'approved') as comments_count
       FROM blog_posts p
       LEFT JOIN blog_categories c ON p.category_id = c.id
-      WHERE p.slug = ?1 AND p.is_published = 1
+      WHERE p.slug = ?1 AND p.is_published = 1 AND p.user_id = ?2
     `)
-    .bind(slug)
+    .bind(slug, ownerId)
     .first<BlogPostPublicRow>()
 
   if (!row) {
@@ -266,15 +270,15 @@ async function loadPublicPostBySlug(db: D1Database, slug: string): Promise<BlogP
   return row
 }
 
-async function loadAdjacentPost(db: D1Database, publishedAt: number, newer: boolean): Promise<{ slug: string; title: string } | null> {
+async function loadAdjacentPost(db: D1Database, ownerId: string, publishedAt: number, newer: boolean): Promise<{ slug: string; title: string } | null> {
   const row = newer
     ? await db
-        .prepare('SELECT slug, title FROM blog_posts WHERE is_published = 1 AND published_at > ?1 ORDER BY published_at ASC LIMIT 1')
-        .bind(publishedAt)
+        .prepare('SELECT slug, title FROM blog_posts WHERE is_published = 1 AND user_id = ?2 AND published_at > ?1 ORDER BY published_at ASC LIMIT 1')
+        .bind(publishedAt, ownerId)
         .first<{ slug: string; title: string }>()
     : await db
-        .prepare('SELECT slug, title FROM blog_posts WHERE is_published = 1 AND published_at < ?1 ORDER BY published_at DESC LIMIT 1')
-        .bind(publishedAt)
+        .prepare('SELECT slug, title FROM blog_posts WHERE is_published = 1 AND user_id = ?2 AND published_at < ?1 ORDER BY published_at DESC LIMIT 1')
+        .bind(publishedAt, ownerId)
         .first<{ slug: string; title: string }>()
   return row || null
 }
@@ -287,9 +291,11 @@ function registerBlogPublicCategoriesRoute(blogPublicRoutes: Hono<AppBindings>):
           COUNT(p.id) as posts_count
         FROM blog_categories c
         LEFT JOIN blog_posts p ON c.id = p.category_id AND p.is_published = 1
+        WHERE c.user_id = ?1
         GROUP BY c.id
         ORDER BY c.position ASC, c.created_at ASC
       `)
+      .bind(blogOwnerOf(c).userId)
       .all<BlogPublicCategoryRow>()
 
     return c.json({ categories: results || [] })
@@ -299,7 +305,8 @@ function registerBlogPublicCategoriesRoute(blogPublicRoutes: Hono<AppBindings>):
 function registerBlogPublicTagsRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.get('/tags', async (c) => {
     const { results } = await c.env.DB
-      .prepare('SELECT tags FROM blog_posts WHERE is_published = 1')
+      .prepare('SELECT tags FROM blog_posts WHERE is_published = 1 AND user_id = ?1')
+      .bind(blogOwnerOf(c).userId)
       .all<{ tags: string }>()
 
     const tagCounts = summarizePostTagCounts(results || [])
@@ -318,9 +325,10 @@ function registerBlogPublicTimelineRoute(blogPublicRoutes: Hono<AppBindings>): v
       .prepare(`
         SELECT id, slug, title, published_at, cover_url, tags, views
         FROM blog_posts
-        WHERE is_published = 1
+        WHERE is_published = 1 AND user_id = ?1
         ORDER BY published_at DESC
       `)
+      .bind(blogOwnerOf(c).userId)
       .all<BlogTimelineRow>()
 
     return c.json({ timeline: buildBlogTimelineMap(results || []) })
@@ -361,7 +369,8 @@ function buildBlogTimelineMap(rows: BlogTimelineRow[]): Record<number, Record<nu
 function registerBlogPublicCalendarRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.get('/calendar', async (c) => {
     const { results } = await c.env.DB
-      .prepare('SELECT slug, title, published_at FROM blog_posts WHERE is_published = 1 ORDER BY published_at ASC')
+      .prepare('SELECT slug, title, published_at FROM blog_posts WHERE is_published = 1 AND user_id = ?1 ORDER BY published_at ASC')
+      .bind(blogOwnerOf(c).userId)
       .all<BlogCalendarRow>()
 
     return c.json({ calendar: buildBlogCalendarMap(results || []) })
