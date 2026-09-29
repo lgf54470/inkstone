@@ -5,7 +5,7 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { useMusic } from './music-store'
 import type { MusicSort } from './music-store'
-import { MusicTrackRow, SOURCE_COLUMN_CELL, type TrackRowHandlers } from './music-track-row'
+import { INDEX_COLUMN_CELL, MusicTrackRow, SOURCE_COLUMN_CELL, type TrackRowHandlers } from './music-track-row'
 import type { MusicListDensity } from './music-utils'
 import type { TrackSelection } from './use-track-list'
 
@@ -140,7 +140,10 @@ function TableHeader({
           className='size-3.5 cursor-pointer accent-[var(--accent)]'
         />
       </span>
-      <span role='columnheader' className='w-5 shrink-0 text-center'>{t('music.table_index')}</span>
+      {/* The width the rows draw their place in: the number plus the control beside it, so the title
+          column starts at the same x in the header and in every row. A narrower header cell here
+          shifted every column to its right off the rows'. */}
+      <span role='columnheader' className={cn(INDEX_COLUMN_CELL, 'text-center')}>{t('music.table_index')}</span>
       <ColumnSpacer className='size-9 shrink-0' />
       <SortableColumn field='title' label={t('music.table_title')} className='min-w-0 flex-1' />
       {/* FB-U4: the columns and the row's own cells go together — a header for a column the rows
@@ -155,11 +158,12 @@ function TableHeader({
       <SortableColumn field='duration' label={t('music.table_duration')} className='w-11 shrink-0 text-right' />
       <ColumnSpacer className='w-6 shrink-0' />
       <ColumnSpacer className='w-6 shrink-0' />
+      <ColumnSpacer className='w-6 shrink-0' />
     </div>
   )
 }
 
-// A row's children have to be cells, but these three columns (artwork, favourite, menu) carry
+// A row's children have to be cells, but these four columns (artwork, pin, favourite, menu) carry
 // nothing a screen reader could read — naming them would announce an empty header. They take the
 // role and hide themselves: the grid stays legal and the accessibility tree stays clean.
 function ColumnSpacer({ className }: { className: string }) {

@@ -95,6 +95,18 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
     if (open) void loadLibrary()
   }, [open, loadLibrary])
 
+  // The track menu is opened from surfaces the hub does not own now (the immersive player, the queue),
+  // and the editor is the hub's own dialog — so the request is answered here, once, and cleared before
+  // the dialog opens so a second request for the same track is not swallowed as an unchanged value.
+  const trackEditRequest = useMusic((state) => state.trackEditRequest)
+  const clearTrackEdit = useMusic((state) => state.clearTrackEdit)
+  const openEditTrack = dialogs.openEditTrack
+  useEffect(() => {
+    if (!trackEditRequest) return
+    clearTrackEdit()
+    openEditTrack(trackEditRequest)
+  }, [trackEditRequest, clearTrackEdit, openEditTrack])
+
   return (
     <>
       <Modal
@@ -135,7 +147,6 @@ export function MusicHubModal({ open, onClose }: { open: boolean; onClose: () =>
             // windowed hub on a 1440 screen keeps rows — its centre column is narrow, but the
             // reader's screen is not, and the centre column is not a phone.
             narrow={!columnsWide}
-            onEditTrack={dialogs.openEditTrack}
             onUpload={dialogs.openUpload}
             onBrowseWebdav={dialogs.openWebdav}
             onBrowseAlist={dialogs.openAlist}
@@ -256,7 +267,6 @@ function FoldedColumns({
 const HubCentre = memo(function HubCentre({
   shortViewport,
   narrow,
-  onEditTrack,
   onUpload,
   onBrowseWebdav,
   onBrowseAlist,
@@ -269,7 +279,6 @@ const HubCentre = memo(function HubCentre({
   shortViewport: boolean
   /** FB-R1: the hub is at its narrow shape, where an unchosen view opens as covers. */
   narrow: boolean
-  onEditTrack: (track: MusicTrack) => void
   onUpload: () => void
   onBrowseWebdav: () => void
   onBrowseAlist: () => void
@@ -319,7 +328,7 @@ const HubCentre = memo(function HubCentre({
             />
           : browseKind
             ? <Suspense fallback={null}><LazyGroupBrowse kind={browseKind} /></Suspense>
-            : <MusicTrackList tracks={tracks} loading={loading} emptyTitle={emptyTitle(scope)} onEdit={onEditTrack} narrow={narrow} />}
+            : <MusicTrackList tracks={tracks} loading={loading} emptyTitle={emptyTitle(scope)} narrow={narrow} />}
       </div>
       <LazyPeer open={queueOpen}>
         <LazyQueuePanel open={queueOpen} onClose={onCloseQueue} height={queueHeight} onResize={setQueueHeight} />

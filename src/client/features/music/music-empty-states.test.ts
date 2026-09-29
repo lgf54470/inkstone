@@ -35,7 +35,7 @@ function buttonWithText(label: string): HTMLButtonElement | undefined {
 }
 
 function emptyList() {
-  return createElement(MusicTrackList, { tracks: [], loading: false, emptyTitle: 'library is empty', onEdit: () => {} })
+  return createElement(MusicTrackList, { tracks: [], loading: false, emptyTitle: 'library is empty' })
 }
 
 function webdavState(overrides: Partial<{ error: string | null; entries: MusicWebdavEntry[] }> = {}) {
@@ -144,7 +144,7 @@ describe('music search empty state wording (FB3-U4)', () => {
 
   it('says the library has nothing, and names the online matches above it', async () => {
     useMusic.setState({ query: 'zzzz', providerResults: [ONLINE_HIT, { ...ONLINE_HIT, sourceId: '2' }] })
-    await mount(createElement(MusicTrackList, { tracks: [], loading: false, emptyTitle: 'library is empty', onEdit: () => {} }))
+    await mount(createElement(MusicTrackList, { tracks: [], loading: false, emptyTitle: 'library is empty' }))
     expect(document.body.textContent).toContain(t('music.search_results', { value0: 'zzzz' }))
     expect(document.body.textContent).toContain(t('music.no_results_online', { value0: 2 }))
     expect(document.body.textContent).not.toContain('library is empty')
@@ -152,7 +152,7 @@ describe('music search empty state wording (FB3-U4)', () => {
 
   it('gives its action a name of its own, not the clear control’s', async () => {
     useMusic.setState({ query: 'zzzz', providerResults: [] })
-    await mount(createElement(MusicTrackList, { tracks: [], loading: false, emptyTitle: 'library is empty', onEdit: () => {} }))
+    await mount(createElement(MusicTrackList, { tracks: [], loading: false, emptyTitle: 'library is empty' }))
     const action = buttonWithText(t('music.search_show_all'))
     expect(action).toBeDefined()
     expect(buttonWithText(t('music.search_clear'))).toBeUndefined()
@@ -160,7 +160,7 @@ describe('music search empty state wording (FB3-U4)', () => {
 
   it('does not promise online matches the panel is not showing', async () => {
     useMusic.setState({ query: 'zzzz', providerResults: null })
-    await mount(createElement(MusicTrackList, { tracks: [], loading: false, emptyTitle: 'library is empty', onEdit: () => {} }))
+    await mount(createElement(MusicTrackList, { tracks: [], loading: false, emptyTitle: 'library is empty' }))
     expect(document.body.textContent).not.toContain(t('music.no_results_online', { value0: 0 }))
     expect(document.body.textContent).toContain(t('music.search_results', { value0: 'zzzz' }))
   })

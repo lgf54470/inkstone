@@ -27,25 +27,51 @@ function handlers(): TrackRowHandlers {
   return {
     onPlay: vi.fn(),
     onToggleFavorite: vi.fn(),
+    onTogglePin: vi.fn(),
     onSelect: vi.fn(),
     onContextMenu: vi.fn(),
     onMenuButton: vi.fn(),
-    onEdit: vi.fn(),
   }
 }
 
-async function mount(props: Partial<{ handlers: TrackRowHandlers }> = {}): Promise<{ container: HTMLElement; handlers: TrackRowHandlers }> {
+async function mount(props: Partial<{ handlers: TrackRowHandlers; track: MusicTrack }> = {}): Promise<{ container: HTMLElement; handlers: TrackRowHandlers }> {
   const rowHandlers = props.handlers ?? handlers()
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => {
     root?.render(createElement(MusicTrackCard, {
-      track: card(), index: 0, isCurrent: false, isPlaying: false, isStreamLoading: false, isSelected: false, handlers: rowHandlers,
+      track: props.track ?? card(), index: 0, isCurrent: false, isPlaying: false, isStreamLoading: false, isSelected: false, handlers: rowHandlers,
     }))
   })
   return { container, handlers: rowHandlers }
 }
+
+// The card's actions used to be the favourite and the menu; a pinned row is a state the card could
+// only show in its info line. The control now sits with the favourite, and reports its own state the
+// way the immersive player's does — `aria-pressed`, not only a filled glyph.
+describe('the card offers pinning beside the favourite', () => {
+  function actionControl(container: HTMLElement, label: string): HTMLButtonElement | undefined {
+    return [...container.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === label)
+  }
+
+  it('presses to pin, and says it is not pinned yet', async () => {
+    const { container, handlers: rowHandlers } = await mount()
+    const pin = actionControl(container, t('music.pin'))
+    expect(pin).toBeDefined()
+    expect(pin?.getAttribute('aria-pressed')).toBe('false')
+    await act(async () => { pin?.click() })
+    expect(rowHandlers.onTogglePin).toHaveBeenCalledTimes(1)
+    expect(rowHandlers.onToggleFavorite).not.toHaveBeenCalled()
+  })
+
+  it('reads the pinned card as pressed, and offers the way out', async () => {
+    const { container } = await mount({ track: { ...card(), isPinned: true } })
+    const pin = actionControl(container, t('music.unpin'))
+    expect(pin).toBeDefined()
+    expect(pin?.getAttribute('aria-pressed')).toBe('true')
+  })
+})
 
 afterEach(() => {
   act(() => root?.unmount())

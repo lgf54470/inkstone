@@ -16,13 +16,11 @@ export interface TrackSelection {
   clear: () => void
 }
 
-export function useTrackListActions(
-  tracks: MusicTrack[],
-  onEdit: (track: MusicTrack) => void,
-) {
+export function useTrackListActions(tracks: MusicTrack[]) {
   const playCollection = useMusic((state) => state.playCollection)
   const togglePlay = useMusic((state) => state.togglePlay)
   const toggleFavorite = useMusic((state) => state.toggleFavorite)
+  const togglePin = useMusic((state) => state.togglePin)
   // Which track is current is read at click time, not subscribed to: every row holds
   // this callback, so taking it as a dependency would re-render the whole list on
   // every track change instead of the two rows that swapped.
@@ -36,8 +34,8 @@ export function useTrackListActions(
     void playCollection(tracks.map((entry) => entry.id), index < 0 ? 0 : index)
   }, [tracks, playCollection, togglePlay])
   return useMemo(
-    () => ({ onPlay, onToggleFavorite: toggleFavorite, onEdit }),
-    [onPlay, toggleFavorite, onEdit],
+    () => ({ onPlay, onToggleFavorite: toggleFavorite, onTogglePin: togglePin }),
+    [onPlay, toggleFavorite, togglePin],
   )
 }
 

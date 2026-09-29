@@ -1,6 +1,9 @@
 export { MusicStatusBar } from './music-status-bar'
 export { MusicFloatingPlayer, MusicImmersiveOverlay } from './music-overlays-lazy'
 export { MusicSessionSync } from './music-session-sync'
+// The one track menu, mounted by the shell: the hub's list, the queue and the immersive player all
+// post to the same request, so the menu is not owned by whichever surface opened it.
+export { MusicTrackMenuHost } from './music-track-menu'
 export { MusicHubModal } from './music-hub-lazy'
 export { useMusic, useCurrentTrack, useVisibleTracks, IMMERSIVE_BACKGROUNDS, LYRIC_ALIGNS, LYRIC_SOURCES, LYRIC_TEXT_SIZES } from './music-store'
 export type { MusicLyricSource } from './music-store'

@@ -13,7 +13,6 @@ import { useHiddenMatchCount, useMusic } from './music-store'
 import type { MusicViewMode } from './music-store'
 import { MusicSelectionBar } from './music-selection-bar'
 import { MusicTrackCard } from './music-track-card'
-import { MusicTrackMenuHost } from './music-track-menu'
 import { MusicTagRowsProvider } from './music-track-tags'
 import { MusicTrackTable } from './music-track-table'
 import type { TrackRowDragHandlers, TrackRowHandlers } from './music-track-row'
@@ -24,13 +23,11 @@ export const MusicTrackList = memo(function MusicTrackList({
   tracks,
   loading,
   emptyTitle,
-  onEdit,
   narrow = false,
 }: {
   tracks: MusicTrack[]
   loading: boolean
   emptyTitle: string
-  onEdit: (track: MusicTrack) => void
   /** FB-R1: the surface this list is drawn in is at its narrow (phone) shape. */
   narrow?: boolean
 }) {
@@ -41,7 +38,7 @@ export const MusicTrackList = memo(function MusicTrackList({
   const scope = useMusic((state) => state.scope)
   const query = useMusic((state) => state.query)
   const setQuery = useMusic((state) => state.setQuery)
-  const actions = useTrackListActions(tracks, onEdit)
+  const actions = useTrackListActions(tracks)
   const playlistDrag = usePlaylistDrag()
   // FB-U4: the columns are the width of this list's own box, not the screen's — measured on the
   // element that holds the rows, with the viewport as the pre-measurement guess.
@@ -55,7 +52,7 @@ export const MusicTrackList = memo(function MusicTrackList({
   // `selection` itself changes identity on every selection change; only its stable
   // `toggle` may reach the rows, otherwise all of them re-render for one checkbox.
   const { toggle } = selection
-  const handlers = useRowHandlers({ actions, toggle, onEdit, drag: playlistDrag })
+  const handlers = useRowHandlers({ actions, toggle, drag: playlistDrag })
   const playback = useMemo(() => ({ isPlaying, isStreamLoading }), [isPlaying, isStreamLoading])
 
   if (loading && !tracks.length) return <LoadingBlock label={t('music.loading')} />
@@ -69,7 +66,6 @@ export const MusicTrackList = memo(function MusicTrackList({
         {viewMode === 'grid'
           ? <TrackGrid tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} />
           : <MusicTrackTable tracks={tracks} currentId={currentId} playback={playback} selection={selection} handlers={handlers} density={density} />}
-        <MusicTrackMenuHost onEdit={onEdit} />
       </div>
     </MusicTagRowsProvider>
   )
@@ -90,10 +86,9 @@ function useDefaultViewMode(narrow: boolean, viewMode: MusicViewMode): void {
 
 // Rows hold these callbacks, and a list of a thousand rows re-renders as a whole
 // when any one of them changes identity; they are built once per list instead.
-function useRowHandlers({ actions, toggle, onEdit, drag }: {
+function useRowHandlers({ actions, toggle, drag }: {
   actions: ReturnType<typeof useTrackListActions>
   toggle: TrackSelection['toggle']
-  onEdit: TrackRowHandlers['onEdit']
   drag: TrackRowDragHandlers | undefined
 }): TrackRowHandlers {
   const openTrackMenu = useMusic((state) => state.openTrackMenu)
@@ -108,10 +103,9 @@ function useRowHandlers({ actions, toggle, onEdit, drag }: {
         openTrackMenu({ target, anchor: { x: event.clientX, y: event.clientY } })
       },
       onMenuButton: (event, target) => openTrackMenu({ target, anchor: event.currentTarget }),
-      onEdit,
       drag,
     }),
-    [actions, toggle, onEdit, openTrackMenu, drag],
+    [actions, toggle, openTrackMenu, drag],
   )
 }
 

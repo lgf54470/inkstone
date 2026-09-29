@@ -27,6 +27,7 @@ import {
   chromeExecutablePath,
   clickButton,
   ensureAxe,
+  dismissUpdatePrompt,
   ensurePaneVisible,
   isReviewedIncomplete,
   loginThroughUi,
@@ -156,6 +157,10 @@ const LABELS = {
   musicGridView: localeLabel('music.view_grid'),
   musicListView: localeLabel('music.view_list'),
   musicFavorite: localeLabel('music.favorite'),
+  // The row's favourite control flips its label with its state, and the fixture is left favourited by
+  // the card read earlier in this scenario — so both spellings belong to the same control.
+  musicUnfavorite: localeLabel('music.unfavorite'),
+  musicEditTrack: localeLabel('music.edit_track'),
   // The index control's own label flips with the track's state, so both spellings are read.
   musicPlay: localeLabel('music.play'),
   musicPause: localeLabel('music.pause'),
@@ -5444,9 +5449,210 @@ async function assertMusicSurface(page) {
   // FB2-C1 last: it types a query and turns the online switch on, which the reads above would
   // otherwise be measuring around.
   await assertMusicProviderResults(page)
-  // The row index read runs last of all: it is the only read here that starts playback, and a current
-  // track changes the footer every earlier read walks past.
+  // The row index read runs first of the three at the end: it is the only one that starts playback, and
+  // a current track changes the footer every earlier read walks past.
   await assertMusicRowIndexControl(page)
+  // Then the immersive surface, which needs something playing to have a menu about.
+  await assertMusicImmersiveMenu(page)
+  // The touch pass first, and deliberately: touch emulation reloads the page, so everything after it
+  // would be reading a shell that had just been rebuilt.
+  await assertMusicTouchReveal(page)
+  // Then the same rule read back on a pointer that can hover, against a pinned row this gate made.
+  await assertMusicRowActionReveal(page)
+  // The check the online scenario makes is about its own teardown; this one is about the three reads
+  // above it, which open the hub and the player for themselves. A library left open turns the next
+  // scenario's press on a shell control into a press on its scrim, and that is a failure two scenarios
+  // away from its cause — so it is asserted where it happens.
+  check('music: the surface reads at the end of the scenario leave no library open',
+    (await page.$(MUSIC_HUB_ROOT)) === null)
+}
+
+// The immersive player used to hand right clicks to the browser: over a page of one song the menu
+// offered reload, print and inspect. It answers with the track's own menu now — the same one the rows
+// open, because it is the same store-held request — and the menu's "edit track" item reaches the hub's
+// editor across a surface the menu does not own. The press is a real right button click at a measured
+// point rather than a dispatched event, so what is read is the path a reader takes.
+async function assertMusicImmersiveMenu(page) {
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(400)
+  if (!(await page.$(MUSIC_HUB_ROOT))) await openMusicHubForSweep(page)
+  const hubOpen = await page.waitForSelector(MUSIC_HUB_ROOT, { timeout: 15_000 }).then(() => true, () => false)
+  check('music: the hub opens for the immersive menu read', hubOpen)
+  if (!hubOpen) return
+  const opened = await pressSurfaceControl(page, LABELS.musicImmersive, MUSIC_HUB_ROOT)
+  const immersive = cssByLabels('[role="dialog"]', LABELS.musicImmersive)
+  const shown = await page.waitForSelector(immersive, { timeout: 15_000 }).then(() => true, () => false)
+  check('music: the toolbar button opens the immersive player for the menu read', opened && shown)
+  if (!shown) return
+  const point = await page.evaluate(({ dialog, lyric }) => {
+    // Scoped to the dialog: the hub behind it keeps a lyrics pane of its own with the same name.
+    const pane = document.querySelector(dialog)?.querySelector(lyric)
+    if (!pane) return null
+    const box = pane.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + 60) }
+  }, { dialog: immersive, lyric: cssByLabels('[role="group"]', LABELS.musicLyrics) })
+  if (!point) {
+    check('music: the immersive player draws a lyrics pane to right click', false, immersive)
+    return
+  }
+  await page.mouse.click(point.x, point.y, { button: 'right' })
+  const menuDrawn = await page.waitForSelector('[role="menu"]', { timeout: 10_000 }).then(() => true, () => false)
+  const items = await page.evaluate(() => [...document.querySelectorAll('[role="menu"] [role="menuitem"], [role="menu"] [role="menuitemcheckbox"]')]
+    .map((item) => item.textContent ?? ''))
+  const wanted = LABELS.musicEditTrack.some((label) => items.some((item) => item.includes(label)))
+  check('music: a right click on the immersive player opens the track menu the rows open',
+    menuDrawn && wanted, `menu=${menuDrawn} items=${JSON.stringify(items.map((item) => item.trim()).slice(0, 4))}`)
+  if (!menuDrawn) return
+  const pressed = await pressSurfaceControl(page, LABELS.musicEditTrack)
+  const readEditor = () => page.evaluate(({ immersiveRoot, title }) => {
+    const dialogs = [...document.querySelectorAll('[role="dialog"]')]
+    const top = dialogs.at(-1) ?? null
+    return {
+      topIsEditor: Boolean(top) && !top.matches(immersiveRoot) && (top.textContent ?? '').includes(title),
+      playerStillOpen: Boolean(document.querySelector(immersiveRoot)),
+    }
+  }, { immersiveRoot: MUSIC_IMMERSIVE_ROOT, title: LABELS.musicEditTrack[0] })
+  const editorDrawn = await waitForTruth(async () => (await readEditor()).topIsEditor, 15_000)
+  check('music: the menu\u2019s edit item opens the hub\u2019s editor over the player', pressed && editorDrawn,
+    JSON.stringify(await readEditor()))
+  if (editorDrawn) {
+    await page.keyboard.press('Escape')
+    await sleep(600)
+    const after = await readEditor()
+    check('music: escape closes the editor and leaves the player it opened over',
+      after.playerStillOpen && !after.topIsEditor, JSON.stringify(after))
+  }
+  await page.keyboard.press('Escape')
+  await sleep(400)
+  await closeMusicHub(page)
+  check('music: the immersive menu read leaves no library open', (await page.$(MUSIC_HUB_ROOT)) === null)
+}
+
+// A tablet is wider than `md` and still cannot hover, so the md-gated reveal left those screens with
+// row actions nobody could see or press — the row menu among them, which is the only way to the
+// actions a row does not carry. Touch emulation is what makes the shell answer `(pointer: coarse)`,
+// and it reloads the page, so the shell is opened again after each change rather than assumed.
+async function assertMusicTouchReveal(page) {
+  await page.setViewport({ width: 1400, height: 900, hasTouch: true })
+  await sleep(1500)
+  await dismissUpdatePrompt(page)
+  const rows = await sweptRowsForReveal(page)
+  const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches)
+  await parkPointer(page)
+  const touch = await readRowActionControls(page)
+  check('music: a touch screen keeps every row\u2019s actions drawn without a hover',
+    coarse && rows && Array.isArray(touch) && touch.length > 0 && touch.every((row) => row.found >= 3 && row.hidden.length === 0),
+    `coarse=${coarse} rows=${rows} ${JSON.stringify(touch)}`)
+  // The pinned row the read below is about is made here, where the controls are drawn and a real press
+  // can land on one. The fixture seeds none, so the state is this gate's own rather than something the
+  // database happened to hold.
+  if (Array.isArray(touch) && touch.length > 0 && !touch.some((row) => row.pinned)) {
+    await pressSurfaceControl(page, LABELS.musicPin, MUSIC_HUB_ROOT)
+    await sleep(400)
+  }
+  // Back to the pointer a laptop has, which reloads the page again — so the read below opens the
+  // library for itself rather than inheriting this one.
+  await page.setViewport(DESKTOP_VIEWPORT)
+  await sleep(1500)
+  await dismissUpdatePrompt(page)
+}
+
+/**
+ * FB4-2: the reveal rule is per row, so it is asserted per row rather than on whichever row the list
+ * starts with — a row that is not pinned hides every action until the pointer arrives, and a row that
+ * is pinned keeps the one control that says so and hides the rest (that control is why a pinned row can
+ * be unpinned at all, which is how the state is handed back before leaving).
+ */
+async function assertMusicRowActionReveal(page) {
+  const rowsOpen = await sweptRowsForReveal(page)
+  if (!rowsOpen) {
+    check('music: the row action read has rows to read', false)
+    return
+  }
+  await parkPointer(page)
+  const read = await readRowActionControls(page)
+  const rows = Array.isArray(read) ? read : []
+  const plain = rows.find((row) => !row.pinned)
+  const marked = rows.find((row) => row.pinned)
+  const hiddenHas = (row, labels) => Boolean(row) && row.hidden.some((label) => labels.includes(label))
+  const shownHas = (row, labels) => Boolean(row) && row.shown.some((label) => labels.includes(label))
+  // Asserted by which control, not by how many: a track the reader has favourited keeps its favourite
+  // drawn too (the same rule the pin follows), so "exactly one control" would be asserting this
+  // scenario's leftover state rather than the reveal rule.
+  check('music: a row that is not pinned hides its pin and its menu for a pointer that can hover',
+    Boolean(plain) && plain.found >= 3 && hiddenHas(plain, LABELS.musicPin) && hiddenHas(plain, LABELS.musicMoreActions),
+    `rows=${rowsOpen} ${JSON.stringify(plain)}`)
+  check('music: a pinned row keeps the control that says so drawn, and hides its menu',
+    Boolean(marked) && marked.pinned && marked.found >= 3 &&
+      shownHas(marked, LABELS.musicUnpin) && hiddenHas(marked, LABELS.musicMoreActions),
+    `rows=${rowsOpen} ${JSON.stringify(marked)}`)
+  if (marked) {
+    await pressSurfaceControl(page, LABELS.musicUnpin, MUSIC_HUB_ROOT)
+    await sleep(400)
+  }
+  await closeMusicHub(page)
+}
+
+/**
+ * Opens the hub on the list view and waits for a row, which is the shape the reveal reads are about.
+ * The reload the viewport change causes leaves the stored view mode in charge, so the list is asked for
+ * again rather than assumed — a run that finished on the grid would otherwise have no rows to read.
+ */
+async function sweptRowsForReveal(page) {
+  if (!(await page.$(MUSIC_HUB_ROOT))) await openMusicHubForSweep(page)
+  const hubOpen = await page.waitForSelector(MUSIC_HUB_ROOT, { timeout: 15_000 }).then(() => true, () => false)
+  if (!hubOpen) return false
+  if ((await hubRowCount(page)) === 0) await pressSurfaceControl(page, LABELS.musicListView)
+  return waitForTruth(async () => (await hubRowCount(page)) > 0, 15_000)
+}
+
+/**
+ * Moves the pointer off the rows. The reveal rule is about a pointer that is *not* on the row, so a read
+ * taken with the cursor still resting where the last press left it would measure a hover instead.
+ */
+async function parkPointer(page) {
+  await page.mouse.move(2, 2)
+  await sleep(300)
+}
+
+/**
+ * How many rows the hub itself draws. The count is built from each row outward rather than by appending
+ * a descendant to the hub's root selector: that root is a *list* of alternatives (one per language), and
+ * a descendant only narrows the last of them — the first alternative alone matches the whole dialog, so
+ * `MUSIC_HUB_ROOT + ' [role="row"]'` answers with the library whether or not it drew a row. That is what
+ * the row-action read below used to measure, which is how it could report a pinned row's counts while
+ * never looking at a row.
+ */
+async function hubRowCount(page) {
+  return page.$$eval('[role="rowgroup"] > [role="row"]', (rows, root) => rows.filter((row) => row.closest(root)).length, MUSIC_HUB_ROOT)
+}
+
+/**
+ * Every row's action controls: how many it carries, which are drawn, and whether the row says it is
+ * pinned. Pinning is read off the row's own control (its label is the way out) rather than from the
+ * order the rows come in, so a fixture that reorders itself cannot quietly stop testing this.
+ */
+async function readRowActionControls(page) {
+  return page.evaluate(({ labels, root }) => {
+    const wanted = [...labels.pin, ...labels.unpin, ...labels.favorite, ...labels.more]
+    const labelOf = (button) => button.getAttribute('aria-label') ?? ''
+    const isHidden = (button) => {
+      const style = getComputedStyle(button)
+      return Number(style.opacity) === 0 || style.pointerEvents === 'none'
+    }
+    // Each row outward (`closest`), for the reason spelled out on `hubRowCount`: the hub's root is a
+    // selector list, and interpolating it here made the whole dialog the first "row".
+    const rows = [...document.querySelectorAll('[role="rowgroup"] > [role="row"]')].filter((row) => row.closest(root))
+    return rows.map((row) => {
+      const controls = [...row.querySelectorAll('button')].filter((button) => wanted.includes(labelOf(button)))
+      return {
+        pinned: controls.some((button) => labels.unpin.includes(labelOf(button))),
+        found: controls.length,
+        shown: controls.filter((button) => !isHidden(button)).map(labelOf),
+        hidden: controls.filter(isHidden).map(labelOf),
+      }
+    })
+  }, { root: MUSIC_HUB_ROOT, labels: { pin: LABELS.musicPin, unpin: LABELS.musicUnpin, favorite: [...LABELS.musicFavorite, ...LABELS.musicUnfavorite], more: LABELS.musicMoreActions } })
 }
 
 // FB3-U3: the settings page draws two components at a width they were not designed against — the player

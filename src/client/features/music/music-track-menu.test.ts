@@ -6,7 +6,7 @@ import type { MusicPlaylistDetail, MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { ConfirmHost } from '../../components/overlay'
 import { MusicTrackList } from './music-track-list'
-import { lyricSubmenu } from './music-track-menu'
+import { lyricSubmenu, MusicTrackMenuHost } from './music-track-menu'
 import { useMusic } from './music-store'
 
 beforeAll(() => {
@@ -49,12 +49,15 @@ const tracks = [track('t1', 'Alpha'), track('t2', 'Beta')]
 
 let root: Root | null = null
 
+// The menu is one instance for the whole app, mounted by the shell rather than by the list — the
+// immersive player and the queue open the same one. This fixture mounts it the same way the shell
+// does, so what these reads are about stays the menu and not who renders it.
 async function mountList(rows: MusicTrack[] = tracks): Promise<void> {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => {
-    root?.render(createElement(Fragment, null, createElement(ConfirmHost), createElement(MusicTrackList, { tracks: rows, loading: false, emptyTitle: 'x', onEdit: () => {} })))
+    root?.render(createElement(Fragment, null, createElement(ConfirmHost), createElement(MusicTrackMenuHost), createElement(MusicTrackList, { tracks: rows, loading: false, emptyTitle: 'x' })))
   })
 }
 
@@ -314,7 +317,8 @@ describe('track menu lyric search (M-52)', () => {
     await act(async () => {
       root?.render(createElement(Fragment, null,
         createElement(ConfirmHost),
-        createElement(MusicTrackList, { tracks: [target], loading: false, emptyTitle: 'x', onEdit: () => {} })))
+        createElement(MusicTrackMenuHost),
+        createElement(MusicTrackList, { tracks: [target], loading: false, emptyTitle: 'x' })))
     })
     await act(async () => {
       menuButtons()[0]?.click()

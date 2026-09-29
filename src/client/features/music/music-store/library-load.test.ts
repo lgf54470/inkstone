@@ -12,7 +12,7 @@ vi.mock('../music-search', async (importOriginal) => {
 
 import { api } from '../../../lib/api'
 import { ensureRomanized } from '../music-search'
-import { hiddenMatchCount, loadLibrary, openTrackMenu, prepareRomanization, setSort, setSortDirection, sortTracks, visibleTracks } from './library-load'
+import { clearTrackEdit, hiddenMatchCount, loadLibrary, openTrackMenu, prepareRomanization, requestTrackEdit, setSort, setSortDirection, sortTracks, visibleTracks } from './library-load'
 import type { MusicSet, MusicStoreState } from './types'
 
 const libraryPayload = { tracks: [] as MusicTrack[], tags: [], playlists: [], stats: statsFixture() }
@@ -371,6 +371,30 @@ describe('openTrackMenu playlist identity', () => {
     const track = { id: 't1', title: 'x' } as MusicTrack
     openTrackMenu(menuSetter(holder), () => holder.current, { target: { track, itemId: 'iX', playlistId: 'p9' }, anchor: { x: 0, y: 0 } })
     expect(holder.current.trackMenu?.target).toEqual({ track, itemId: 'iX', playlistId: 'p9' })
+  })
+})
+
+// The menu's "edit track" item is the one item whose dialog the hub owns, while the menu itself is
+// opened from surfaces the hub does not own. The request is what carries it there — and clearing it
+// is what lets the same track be asked for twice, which is why the pair is read together.
+describe('the track editor request', () => {
+  function requestStore(): { current: MusicStoreState } {
+    return { current: { ...trackMenuStore({ kind: 'all' }), trackEditRequest: null } }
+  }
+
+  it('carries the track the menu was opened for', () => {
+    const holder = requestStore()
+    const track = { id: 't1', title: 'x' } as MusicTrack
+    requestTrackEdit(menuSetter(holder), track)
+    expect(holder.current.trackEditRequest).toBe(track)
+  })
+
+  it('empties once the hub has answered it', () => {
+    const holder = requestStore()
+    const track = { id: 't1', title: 'x' } as MusicTrack
+    requestTrackEdit(menuSetter(holder), track)
+    clearTrackEdit(menuSetter(holder))
+    expect(holder.current.trackEditRequest).toBeNull()
   })
 })
 

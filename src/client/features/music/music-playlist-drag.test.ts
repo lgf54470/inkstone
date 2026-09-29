@@ -107,7 +107,7 @@ async function mountList(): Promise<void> {
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => {
-    root?.render(createElement(MusicTrackList, { tracks, loading: false, emptyTitle: 'x', onEdit: () => {} }))
+    root?.render(createElement(MusicTrackList, { tracks, loading: false, emptyTitle: 'x' }))
   })
 }
 

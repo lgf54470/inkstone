@@ -17,7 +17,7 @@ import { useUpdate } from '../../store/update'
 import { PresentationOverlay } from '../presentation'
 import { NoteList, useGapIndicator, useRollingDateFilter } from '../list'
 import { Sidebar } from '../sidebar'
-import { MUSIC_HOTKEYS, MusicFloatingPlayer, MusicHubModal, MusicImmersiveOverlay, MusicSessionSync } from '../music'
+import { MUSIC_HOTKEYS, MusicFloatingPlayer, MusicHubModal, MusicImmersiveOverlay, MusicSessionSync, MusicTrackMenuHost } from '../music'
 import { Resizer, SplitResizer } from './resizer'
 import { PinnedWindowsLayer } from '../preview'
 import { t } from '../../lib/i18n'
@@ -59,6 +59,9 @@ export function AppShell() {
           presenter back to the note mid-talk. */}
       <PresentationOverlay />
       <MusicImmersiveOverlay />
+      {/* The menu every music surface posts to. It lives here rather than inside the hub's list
+          because the immersive player and the queue open the same menu, and both outlive the list. */}
+      <MusicTrackMenuHost />
       <MusicSessionSync />
     </>
   )

@@ -4,6 +4,8 @@ import type { MusicTrack } from '@shared/types'
 import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
+import { REVEAL_ON_COARSE_POINTER } from './music-reveal'
+import { trackMenuFromKey, trackMenuFromPointer } from './music-track-menu'
 import { durationCellText } from './music-utils'
 import { useMusic } from './music-store'
 import { MusicArtwork } from './music-artwork'
@@ -16,7 +18,7 @@ interface QueueRow {
 }
 
 // Touch shows row actions by default; desktop reveals them on hover/focus only.
-const REVEAL_ON_HOVER = 'opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/queue:opacity-100 md:group-hover/queue:pointer-events-auto md:group-focus-within/queue:opacity-100 md:group-focus-within/queue:pointer-events-auto'
+const REVEAL_ON_HOVER = cn('opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/queue:opacity-100 md:group-hover/queue:pointer-events-auto md:group-focus-within/queue:opacity-100 md:group-focus-within/queue:pointer-events-auto', REVEAL_ON_COARSE_POINTER)
 
 export function MusicQueueList({
   className,
@@ -145,10 +147,23 @@ const QueueRowItem = memo(function QueueRowItem({
   const currentIndex = useMusic((state) => state.currentIndex)
   const isPlaying = useMusic((state) => state.isPlaying)
   const playQueueAt = useMusic((state) => state.playQueueAt)
+  const openTrackMenu = useMusic((state) => state.openTrackMenu)
   const isCurrent = row.index === currentIndex
   return (
     <div
       className={cn('group/queue flex h-9 items-center gap-2 rounded-[var(--r-sm)] px-2', isCurrent && 'bg-[var(--accent-soft)]', isDragSource && 'opacity-40', rowClassName)}
+      // This row's track, not the player's: the same list is drawn in the hub's queue panel and in the
+      // immersive player's pane, where the surface would otherwise answer for whatever is playing while
+      // the reader is pointing at something else in the queue.
+      onContextMenu={(event) => {
+        event.stopPropagation()
+        trackMenuFromPointer(event, row.track, openTrackMenu)
+      }}
+      // A row that took the key keeps the surface around it (the immersive player) from answering for
+      // the track that happens to be playing instead.
+      onKeyDown={(event) => {
+        if (trackMenuFromKey(event, row.track, openTrackMenu)) event.stopPropagation()
+      }}
       {...queueDragProps({ reorderable, index: row.index, onDragStartRow, onDropRow, onDragEndRow })}
     >
       <MusicArtwork url={row.track.coverUrl} alt='' className='size-6 rounded-[var(--r-xs)]' iconSize={10} />

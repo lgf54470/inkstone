@@ -3,12 +3,50 @@ import { ArrowDown, ArrowUp, CloudDownload, CloudOff, Download, Heart, History, 
 import type { MusicTag, MusicTrack } from '@shared/types'
 import { Menu, confirm, submenuFor, type MenuItem } from '../../components/overlay'
 import { t, type MessageKey } from '../../lib/i18n'
-import { useMusic, visibleTracks, type MusicLyricSource, type TrackMenuTarget } from './music-store'
+import { useMusic, visibleTracks, type MusicLyricSource, type TrackMenuRequest, type TrackMenuTarget } from './music-store'
 import { flattenTags } from './music-utils'
 
 export type { TrackMenuTarget }
 
 const TRACK_MENU_WIDTH = 220
+
+/**
+ * The request a surface posts when a reader right clicks a track: the menu the rows open, anchored at
+ * the pointer. Shared so the immersive player and the queue open the same menu the rows do rather than
+ * a subset of it — and so the one thing they must not swallow (a form control, whose own menu the
+ * reader may be reaching for) is decided in one place.
+ */
+export function trackMenuFromPointer(
+  event: React.MouseEvent,
+  track: MusicTrack,
+  openTrackMenu: (request: TrackMenuRequest) => void,
+): void {
+  if ((event.target as HTMLElement).closest('input, textarea, [contenteditable="true"]')) return
+  event.preventDefault()
+  openTrackMenu({ target: { track }, anchor: { x: event.clientX, y: event.clientY } })
+}
+
+/**
+ * The same request from a keyboard. Two surfaces open this menu off a pointer alone (the immersive
+ * player and a queue row), and neither has a menu button of its own to reach it another way — so the
+ * menu key answers, and Shift+F10 does too because a keyboard without a menu key sends that instead.
+ * The handler lives on the surface rather than on a control: the event bubbles, so whatever the reader
+ * has focused inside it is enough and no extra tab stop is added.
+ *
+ * Returns whether it took the key, so a surface nested in another (a queue row inside the immersive
+ * player) can keep the outer one from answering for a track the reader is not pointing at.
+ */
+export function trackMenuFromKey(
+  event: React.KeyboardEvent,
+  track: MusicTrack,
+  openTrackMenu: (request: TrackMenuRequest) => void,
+): boolean {
+  if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return false
+  event.preventDefault()
+  const box = event.currentTarget.getBoundingClientRect()
+  openTrackMenu({ target: { track }, anchor: { x: box.left + box.width / 2, y: box.top + box.height / 2 } })
+  return true
+}
 
 type MenuRunner = (run: () => void) => () => void
 
@@ -30,14 +68,20 @@ export function MusicTrackMenu({
   return <Menu open={open} anchor={anchor} items={items} onClose={onClose} label={t('music.track_menu')} width={TRACK_MENU_WIDTH} />
 }
 
-// One instance for the whole hub. Rows and cards post their request to the store,
-// so the item builder below — with its store subscriptions — no longer runs per row.
-export function MusicTrackMenuHost({ onEdit }: { onEdit: (track: MusicTrack) => void }) {
+// One instance for the whole app, mounted by the shell when the immersive player, the queue and the
+// hub's list are all posting to the same request. Rows and cards post their request to the store, so
+// the item builder below — with its store subscriptions — no longer runs per row, and a surface that
+// is not the hub (the immersive player) gets the same menu rather than a subset of it.
+//
+// "Edit track" is the one item whose dialog the hub owns, so it is posted back to the hub instead of
+// being answered here: the menu stays a builder with no surface of its own behind it.
+export function MusicTrackMenuHost() {
   const menu = useMusic((state) => state.trackMenu)
   const closeTrackMenu = useMusic((state) => state.closeTrackMenu)
+  const requestTrackEdit = useMusic((state) => state.requestTrackEdit)
   if (!menu) return null
   const anchor = menu.anchor instanceof HTMLElement ? { current: menu.anchor } : menu.anchor
-  return <MusicTrackMenu target={menu.target} anchor={anchor} open onClose={closeTrackMenu} onEdit={onEdit} />
+  return <MusicTrackMenu target={menu.target} anchor={anchor} open onClose={closeTrackMenu} onEdit={requestTrackEdit} />
 }
 
 function useTrackMenuItems(

@@ -1,7 +1,7 @@
 import type { MusicBatchAction } from '../../../lib/api'
 import {
-  clearSearchHistory, clearSelection, commitQuery, closeTrackMenu, invertSelection, loadLibrary, openTrackMenu, prepareRomanization,
-  recordSearchQuery, removeSearchHistory,
+  clearSearchHistory, clearSelection, clearTrackEdit, commitQuery, closeTrackMenu, invertSelection, loadLibrary, openTrackMenu, prepareRomanization,
+  recordSearchQuery, removeSearchHistory, requestTrackEdit,
   selectAll, setDefaultViewMode, setLyricSource, setQuery, setScope, setShowSourceBadge, setSort, setSortDirection, setSourceFilter, setViewMode, showMoreMatches, toggleSelect,
 } from './library-load'
 import {
@@ -42,7 +42,7 @@ import type { MusicGet, MusicSet, MusicStoreState } from './types'
 type LibrarySlice = Pick<MusicStoreState,
   | 'loadLibrary' | 'setScope' | 'setQuery' | 'commitQuery' | 'clearSearchHistory' | 'recordSearchQuery' | 'removeSearchHistory'
   | 'setSort' | 'setSortDirection' | 'prepareRomanization'
-  | 'setViewMode' | 'setDefaultViewMode' | 'showMoreMatches' | 'openTrackMenu' | 'closeTrackMenu' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
+  | 'setViewMode' | 'setDefaultViewMode' | 'showMoreMatches' | 'openTrackMenu' | 'closeTrackMenu' | 'requestTrackEdit' | 'clearTrackEdit' | 'setSourceFilter' | 'browseWebdav' | 'importWebdavTrack' | 'importWebdavFolder' | 'deleteWebdavFiles'
   | 'setProviderQuality' | 'acceptProviderNotice' | 'setShowSourceBadge' | 'setLyricSource'
   | 'importTrackFromUrl'
   | 'openTrash' | 'closeTrash' | 'restoreFromTrash' | 'purgeTrashEntry'
@@ -83,6 +83,8 @@ export function librarySlice(set: MusicSet, get: MusicGet): LibrarySlice {
     showMoreMatches: () => showMoreMatches(set),
     openTrackMenu: (menu) => openTrackMenu(set, get, menu),
     closeTrackMenu: () => closeTrackMenu(set),
+    requestTrackEdit: (track) => requestTrackEdit(set, track),
+    clearTrackEdit: () => clearTrackEdit(set),
     setSourceFilter: (filter) => setSourceFilter(set, filter),
     setProviderQuality: (quality) => setProviderQuality(set, get, quality),
     acceptProviderNotice: () => acceptProviderNotice(set, get),

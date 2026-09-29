@@ -141,6 +141,7 @@ function initialPlaybackState(prefs: MusicPreferences): Partial<MusicStoreState>
     shuffleOrder: null,
     remoteLyricMatches: null,
     trackMenu: null,
+    trackEditRequest: null,
   }
 }
 

@@ -4,6 +4,7 @@ import type { MusicTrack } from '@shared/types'
 import { IconButton, Spinner } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
+import { REVEAL_ON_COARSE_POINTER } from './music-reveal'
 import { durationCellText } from './music-utils'
 import { MusicArtwork } from './music-artwork'
 import type { TrackMenuTarget } from './music-track-menu'
@@ -19,6 +20,11 @@ const ROW_CONTAINMENT = { contentVisibility: 'auto', containIntrinsicSize: 'auto
 // density decides, not a media query.
 export const SOURCE_COLUMN_CELL = 'w-24 shrink-0'
 
+// The place in the list and the control that plays it, side by side in one column. The header cell
+// and every row take this one budget so the columns to their right line up down the table — the
+// header used to sit at a narrower width than the rows, which shifted the title column by that much.
+export const INDEX_COLUMN_CELL = 'w-10 shrink-0'
+
 export interface TrackRowDragHandlers {
   onDragStart: (event: React.DragEvent, track: MusicTrack) => void
   onDragOver: (event: React.DragEvent) => void
@@ -30,10 +36,10 @@ export interface TrackRowDragHandlers {
 export interface TrackRowHandlers {
   onPlay: (track: MusicTrack) => void
   onToggleFavorite: (id: string) => void
+  onTogglePin: (id: string) => void
   onSelect: (track: MusicTrack, modifiers: { shift: boolean; additive: boolean }) => void
   onContextMenu: (event: React.MouseEvent, target: TrackMenuTarget) => void
   onMenuButton: (event: React.MouseEvent<HTMLElement>, target: TrackMenuTarget) => void
-  onEdit: (track: MusicTrack) => void
   drag?: TrackRowDragHandlers
 }
 
@@ -78,6 +84,21 @@ export interface TrackRowProps {
   compact?: boolean
 }
 
+// Selection, playback and the two favours all need the row's track, so they are made once here rather
+// than as four inline arrows in the markup — the row is memoized, and stable callbacks keep the cells
+// that take them from being redrawn with it.
+function useRowHandlers(track: MusicTrack, handlers: TrackRowHandlers) {
+  return {
+    onPlay: useCallback(() => handlers.onPlay(track), [handlers, track]),
+    onToggleFavorite: useCallback(() => handlers.onToggleFavorite(track.id), [handlers, track.id]),
+    onTogglePin: useCallback(() => handlers.onTogglePin(track.id), [handlers, track.id]),
+    onSelect: useCallback((event: React.MouseEvent) => {
+      if (isInteractiveTarget(event.target)) return
+      handlers.onSelect(track, { shift: event.shiftKey, additive: event.metaKey || event.ctrlKey })
+    }, [handlers, track]),
+  }
+}
+
 // Drag handlers all need the row's track; spreading keeps the row itself presentational.
 function dragProps(drag: TrackRowDragHandlers | undefined, track: MusicTrack) {
   if (!drag) return { draggable: false as const }
@@ -100,11 +121,7 @@ export const MusicTrackRow = memo(function MusicTrackRow({
   handlers,
   compact = false,
 }: TrackRowProps) {
-  const handleFavourite = useCallback(() => handlers.onToggleFavorite(track.id), [handlers, track.id])
-  const handleSelect = useCallback((event: React.MouseEvent) => {
-    if (isInteractiveTarget(event.target)) return
-    handlers.onSelect(track, { shift: event.shiftKey, additive: event.metaKey || event.ctrlKey })
-  }, [handlers, track])
+  const { onPlay, onSelect, onToggleFavorite, onTogglePin } = useRowHandlers(track, handlers)
   const label = isCurrent && isPlaying ? t('music.pause') : t('music.play')
 
   return (
@@ -112,8 +129,8 @@ export const MusicTrackRow = memo(function MusicTrackRow({
       role='row'
       aria-selected={isSelected}
       aria-current={isCurrent ? 'true' : undefined}
-      onClick={handleSelect}
-      onDoubleClick={() => handlers.onPlay(track)}
+      onClick={onSelect}
+      onDoubleClick={onPlay}
       onContextMenu={(event) => handlers.onContextMenu(event, { track })}
       {...dragProps(handlers.drag, track)}
       style={ROW_CONTAINMENT}
@@ -126,22 +143,24 @@ export const MusicTrackRow = memo(function MusicTrackRow({
       )}
     >
       <RowSelectCell track={track} isSelected={isSelected} onSelect={handlers.onSelect} />
-      <RowIndex index={index} label={label} title={track.title} isCurrent={isCurrent} isPlaying={isCurrent && isPlaying} onPlay={() => handlers.onPlay(track)} />
+      <RowIndex index={index} label={label} title={track.title} isCurrent={isCurrent} isPlaying={isCurrent && isPlaying} onPlay={onPlay} />
       <RowArtwork
         track={track}
         label={label}
         isCurrent={isCurrent}
         isPlaying={isPlaying}
         isStreamLoading={isStreamLoading}
-        onPlay={() => handlers.onPlay(track)}
+        onPlay={onPlay}
       />
 
-      <TrackTitle track={track} isCurrent={isCurrent} onPlay={handlers.onPlay} compact={compact} />
+      <TrackTitle track={track} isCurrent={isCurrent} onPlay={onPlay} compact={compact} />
       {!compact && <RowArtist track={track} isCurrent={isCurrent} />}
       <RowMeta track={track} isCurrent={isCurrent} compact={compact} />
       <RowActions
         isFavorite={track.isFavorite}
-        onToggleFavorite={handleFavourite}
+        isPinned={track.isPinned}
+        onToggleFavorite={onToggleFavorite}
+        onTogglePin={onTogglePin}
         onOpenMenu={(event) => handlers.onMenuButton(event, { track })}
       />
     </div>
@@ -234,16 +253,13 @@ function RowIndex({ index, label, title, isCurrent, isPlaying, onPlay }: {
   onPlay: () => void
 }) {
   // Two states, spelled out rather than layered: the current row's control is simply drawn — pressed
-  // to play it, pressed again to pause — and every other one is revealed by the row it belongs to.
-  // The reveal is the convention the rest of the app uses (cards, the artwork overlay): hidden until
-  // the row is hovered or holds focus, always drawn on a coarse pointer, where there is no hover to
-  // reveal anything — a tablet is wider than the breakpoint that used to gate this and would
-  // otherwise keep the control invisible and inert.
+  // to play it, pressed again to pause — and every other one is revealed by the row it belongs to
+  // (hover, focus, or a coarse pointer that has no hover at all).
   const reveal = isCurrent
     ? 'opacity-100'
-    : 'opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:pointer-events-auto pointer-coarse:!opacity-100 pointer-coarse:!pointer-events-auto'
+    : cn('opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:pointer-events-auto', REVEAL_ON_COARSE_POINTER)
   return (
-    <span role='cell' className='flex w-10 shrink-0 items-center justify-center gap-0.5'>
+    <span role='cell' className={cn(INDEX_COLUMN_CELL, 'flex items-center justify-center gap-0.5')}>
       <span className={cn('tabular w-4 text-right text-[length:var(--text-12)]', isCurrent ? 'text-[var(--text-secondary)]' : 'text-[var(--text-quaternary)]')}>
         {index + 1}
       </span>
@@ -293,17 +309,35 @@ function RowArtwork({
 
 function RowActions({
   isFavorite,
+  isPinned,
   onToggleFavorite,
+  onTogglePin,
   onOpenMenu,
 }: {
   isFavorite: boolean
+  isPinned: boolean
   onToggleFavorite: () => void
+  onTogglePin: () => void
   onOpenMenu: (event: React.MouseEvent<HTMLElement>) => void
 }) {
   // Row action buttons stay visible on touch; only from md up do they reveal on hover/focus.
-  const revealActions = 'opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto'
+  const revealActions = cn('opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto', REVEAL_ON_COARSE_POINTER)
   return (
     <>
+      {/* A pinned row keeps its pin drawn — hiding the control that says why the row is pinned would
+          hide the state — and the control carries that state itself (`active` → `aria-pressed`),
+          the way the card's pin already does. */}
+      <span role='cell' className='flex w-6 shrink-0 items-center justify-center'>
+        <IconButton
+          label={isPinned ? t('music.unpin') : t('music.pin')}
+          size='sm'
+          active={isPinned}
+          onClick={onTogglePin}
+          className={cn(revealActions, isPinned && 'md:opacity-100 md:pointer-events-auto')}
+        >
+          <Pin size={13} className={isPinned ? 'fill-current' : undefined} />
+        </IconButton>
+      </span>
       <span role='cell' className='flex w-6 shrink-0 items-center justify-center'>
         <IconButton
           label={isFavorite ? t('music.unfavorite') : t('music.favorite')}
@@ -336,12 +370,12 @@ function TrackTitle({
 }: {
   track: MusicTrack
   isCurrent: boolean
-  onPlay: (track: MusicTrack) => void
+  onPlay: () => void
   compact: boolean
 }) {
   return (
     <div role='cell' className='flex min-w-0 flex-1 flex-col'>
-      <button type='button' onClick={() => onPlay(track)} className='min-w-0 text-left'>
+      <button type='button' onClick={onPlay} className='min-w-0 text-left'>
         <span className={cn('block truncate text-[length:var(--text-13)] font-medium', isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]')}>
           {track.title}
         </span>

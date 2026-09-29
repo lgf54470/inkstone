@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useRef, useState, type RefObject } from 'react'
 import { ChevronDown, Heart, Keyboard, ListMusic, Maximize2, Minimize2, Minus, Pin, Plus, RotateCcw, X } from 'lucide-react'
 import { isVideoMime } from '@shared/music-media'
 import { Modal, Tooltip } from '../../components/overlay'
@@ -6,13 +6,16 @@ import { IconButton } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { useElementWidth, useMediaQuery } from '../../lib/hooks'
 import { t, type MessageKey } from '../../lib/i18n'
-import { preferredScrollBehavior } from '../../lib/motion'
 import { formatBytes, formatTimecode } from '../../lib/time'
-import { LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, useActiveLoopRange, useCurrentTrack, useMusic, useProgress } from './music-store'
+import {
+  LYRIC_OFFSET_LIMIT_MS, LYRIC_OFFSET_STEP_MS, useActiveLoopRange, useCurrentTrack, useMusic, useProgress,
+  type TrackMenuRequest,
+} from './music-store'
 import { MusicArtwork } from './music-artwork'
 import { ImmersiveBackground, MusicBackgroundButton } from './music-immersive-background'
 import { LYRIC_ALIGN_CLASSES, LYRIC_IMMERSIVE_SIZE_CLASSES, MusicLyricStyleButton } from './music-lyric-style'
 import { MusicPlayButtons } from './music-play-buttons'
+import { trackMenuFromKey, trackMenuFromPointer } from './music-track-menu'
 import { ImmersiveQueue, ImmersiveQueueEntry, ImmersiveQueuePane, useQueueFold } from './music-immersive-queue'
 import { MusicSeekBar } from './music-seek-bar'
 import { MusicVideoStage } from './music-video-stage'
@@ -20,9 +23,9 @@ import {
   MusicEqButton, MusicLoopButton, MusicModeButton, MusicNudgeButton, MusicRateButton, MusicSleepButton, MusicVolumeButton,
 } from './music-transport-widgets'
 import { MusicPopover } from './music-popover'
-import { useTrackLyric } from './music-lyrics'
+import { useImmersiveLyrics, useLyricScroll, useTrackLyric } from './music-lyrics'
 import type { LyricLine } from './music-utils'
-import { activeLyricIndex, formatLyricOffset, lyricsEmptyKey, lyricsPending, MUSIC_NARROW_BREAKPOINT, parseLyric } from './music-utils'
+import { formatLyricOffset, lyricsEmptyKey, MUSIC_NARROW_BREAKPOINT, parseLyric } from './music-utils'
 
 const IMMERSIVE_WIDTH = 1000
 // REF-10: the artwork column used to keep 384px of a 1000px dialog whatever the window
@@ -34,29 +37,6 @@ export function MusicImmersiveOverlay() {
   const immersive = useMusic((state) => state.immersive)
   const setImmersive = useMusic((state) => state.setImmersive)
   return <MusicImmersivePlayer open={immersive} onClose={() => setImmersive(false)} />
-}
-
-// The lyrics a track carries, where the playhead is among them, and how far the track's
-// own calibration shifts that reading. A positive calibration means "these lyrics run
-// early", so the line under the playhead is found that much further back.
-function useImmersiveLyrics(track: ReturnType<typeof useCurrentTrack>): {
-  lyrics: LyricLine[]
-  lyricOffsetMs: number
-  activeIndex: number
-  pending: boolean
-} {
-  const lyrics = useMemo(() => parseLyric(track?.lyric), [track?.lyric])
-  const lyricOffsetMs = useMusic((state) => (track ? state.lyricOffsets[track.id] ?? 0 : 0))
-  const activeIndex = useProgress((state) => activeLyricIndex(lyrics, state.currentTimeMs - lyricOffsetMs))
-  return { lyrics, lyricOffsetMs, activeIndex, pending: lyricsPending(track) }
-}
-
-// The active line is brought into view when it changes, not on every tick of the clock.
-function useLyricScroll(open: boolean, activeIndex: number, scrollerRef: RefObject<HTMLElement | null>): void {
-  useEffect(() => {
-    if (!open || activeIndex < 0) return
-    scrollerRef.current?.querySelector<HTMLElement>('[data-active-line="true"]')?.scrollIntoView({ block: 'center', behavior: preferredScrollBehavior() })
-  }, [activeIndex, open, scrollerRef])
 }
 
 // A null width means nothing could be measured, which is the wide layout the column was
@@ -85,10 +65,34 @@ function useImmersiveWindow(): {
   }
 }
 
-export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose: () => void }) {
+// Everything the surface reads or measures, gathered once: what is playing, what the lyrics are doing,
+// and how much room the window has for the queue. The dialog body and the two columns below it take
+// this one object, so what used to be a fifteen-argument pass-through has one name to read.
+interface ImmersiveSurface {
+  track: ReturnType<typeof useCurrentTrack>
+  durationMs: number
+  seek: (ms: number) => void
+  openTrackMenu: (request: TrackMenuRequest) => void
+  lyrics: LyricLine[]
+  activeIndex: number
+  lyricPending: boolean
+  lyricOffsetMs: number
+  queueLength: number
+  queueOpen: boolean
+  scrollerRef: RefObject<HTMLDivElement | null>
+  stacked: boolean
+  paneWidth: string
+  maximized: boolean
+  containerRef: (node: HTMLDivElement | null) => void
+  onToggleQueue: () => void
+  toggleMaximized: () => void
+}
+
+function useImmersiveSurface(open: boolean): ImmersiveSurface {
   const track = useCurrentTrack()
   const durationMs = useMusic((state) => state.durationMs)
   const seek = useMusic((state) => state.seek)
+  const openTrackMenu = useMusic((state) => state.openTrackMenu)
   // A render-time getState() read only looked fresh because the track subscription
   // above happens to cover the queue too; subscribing keeps the count its own concern.
   const queueLength = useMusic((state) => state.queue.length)
@@ -101,114 +105,77 @@ export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose
 
   useLyricScroll(open, activeIndex, scrollerRef)
 
+  return {
+    track, durationMs, seek, openTrackMenu, lyrics,
+    activeIndex, lyricPending: pending, lyricOffsetMs, queueLength, queueOpen,
+    scrollerRef, stacked, paneWidth, maximized, containerRef, onToggleQueue, toggleMaximized,
+  }
+}
+
+export function MusicImmersivePlayer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const surface = useImmersiveSurface(open)
   return (
     <Modal
       open={open}
       onClose={onClose}
       ariaLabel={t('music.immersive')}
       width={IMMERSIVE_WIDTH}
-      variant={maximized ? 'fullscreen' : 'dialog'}
-      className={cn('p-0 overflow-hidden', maximized ? 'h-full' : 'h-[86vh]')}
+      variant={surface.maximized ? 'fullscreen' : 'dialog'}
+      className={cn('p-0 overflow-hidden', surface.maximized ? 'h-full' : 'h-[86vh]')}
       bodyClassName='p-0 flex-1 min-h-0 flex'
     >
-      <div ref={containerRef} className={cn('relative flex min-h-0 flex-1 overflow-hidden', stacked && 'flex-col')}>
-        <ImmersiveColumns
-          track={track}
-          durationMs={durationMs}
-          seek={seek}
-          lyrics={lyrics}
-          activeIndex={activeIndex}
-          lyricPending={pending}
-          lyricOffsetMs={lyricOffsetMs}
-          queueLength={queueLength}
-          queueOpen={queueOpen}
-          scrollerRef={scrollerRef}
-          stacked={stacked}
-          paneWidth={paneWidth}
-          maximized={maximized}
-          onToggleQueue={onToggleQueue}
-          onToggleMaximized={toggleMaximized}
-          onClose={onClose}
-        />
-      </div>
+      <ImmersiveStage surface={surface} onClose={onClose} />
     </Modal>
   )
 }
 
-function ImmersiveColumns({ track, durationMs, seek, lyrics, activeIndex, lyricPending, lyricOffsetMs, queueLength, queueOpen, scrollerRef, stacked, paneWidth, maximized, onToggleQueue, onToggleMaximized, onClose }: {
-  track: ReturnType<typeof useCurrentTrack>
-  durationMs: number
-  seek: (ms: number) => void
-  lyrics: LyricLine[]
-  activeIndex: number
-  lyricPending: boolean
-  lyricOffsetMs: number
-  queueLength: number
-  queueOpen: boolean
-  scrollerRef: RefObject<HTMLDivElement | null>
-  stacked: boolean
-  paneWidth: string
-  maximized: boolean
-  onToggleQueue: () => void
-  onToggleMaximized: () => void
-  onClose: () => void
-}) {
+// The stage is the surface the reader right clicks. Left to the browser that gesture offered reload,
+// print and inspect over a page of one song; it answers with the track's own menu now — the same
+// request the rows post, so "play next", pinning and the rest sit in the same place wherever they
+// were opened.
+function ImmersiveStage({ surface, onClose }: { surface: ImmersiveSurface; onClose: () => void }) {
+  const { track, openTrackMenu, containerRef, stacked } = surface
+  return (
+    <div
+      ref={containerRef}
+      onContextMenu={track ? (event) => trackMenuFromPointer(event, track, openTrackMenu) : undefined}
+      onKeyDown={track ? (event) => { trackMenuFromKey(event, track, openTrackMenu) } : undefined}
+      className={cn('relative flex min-h-0 flex-1 overflow-hidden', stacked && 'flex-col')}
+    >
+      <ImmersiveColumns surface={surface} onClose={onClose} />
+    </div>
+  )
+}
+
+function ImmersiveColumns({ surface, onClose }: { surface: ImmersiveSurface; onClose: () => void }) {
   return (
     <>
-      <ImmersiveBackground track={track} />
-      <ImmersiveLeft
-        track={track}
-        durationMs={durationMs}
-        seek={seek}
-        stacked={stacked}
-        paneWidth={paneWidth}
-        queueOpen={queueOpen}
-        onToggleQueue={onToggleQueue}
-      />
+      <ImmersiveBackground track={surface.track} />
+      <ImmersiveLeft surface={surface} />
       <LyricsPanel
-        track={track}
-        lyrics={lyrics}
-        activeIndex={activeIndex}
-        lyricPending={lyricPending}
-        offsetMs={lyricOffsetMs}
-        queueLength={queueLength}
-        queueOpen={queueOpen}
-        scrollerRef={scrollerRef}
-        stacked={stacked}
-        maximized={maximized}
-        onToggleQueue={onToggleQueue}
-        onToggleMaximized={onToggleMaximized}
-        onSeekLine={(lineTimeMs) => seek(lineTimeMs + lyricOffsetMs)}
+        surface={surface}
+        onToggleMaximized={surface.toggleMaximized}
+        onSeekLine={(lineTimeMs) => surface.seek(lineTimeMs + surface.lyricOffsetMs)}
         onClose={onClose}
       />
     </>
   )
 }
 
-
-function LyricsPanel({ track, lyrics, activeIndex, lyricPending, offsetMs, queueLength, queueOpen, scrollerRef, stacked, maximized, onToggleQueue, onToggleMaximized, onSeekLine, onClose }: {
-  track: ReturnType<typeof useCurrentTrack>
-  lyrics: LyricLine[]
-  activeIndex: number
-  lyricPending: boolean
-  offsetMs: number
-  queueLength: number
-  queueOpen: boolean
-  scrollerRef: RefObject<HTMLDivElement | null>
-  stacked: boolean
-  maximized: boolean
-  onToggleQueue: () => void
+function LyricsPanel({ surface, onToggleMaximized, onSeekLine, onClose }: {
+  surface: ImmersiveSurface
   onToggleMaximized: () => void
   onSeekLine: (lineTimeMs: number) => void
   onClose: () => void
 }) {
+  const { track, lyrics, activeIndex, lyricPending, lyricOffsetMs, queueLength, queueOpen, scrollerRef, stacked, maximized } = surface
   return (
     <section className='flex min-w-0 flex-1 flex-col'>
       <LyricsHeader
         track={track}
         queueLength={queueLength}
-        queueToggle={stacked ? undefined : { open: queueOpen, onToggle: onToggleQueue }}
-        offsetMs={offsetMs}
+        queueToggle={stacked ? undefined : { open: queueOpen, onToggle: surface.onToggleQueue }}
+        offsetMs={lyricOffsetMs}
         maximized={maximized}
         onToggleMaximized={onToggleMaximized}
         onClose={onClose}
@@ -233,8 +200,8 @@ function LyricsPanel({ track, lyrics, activeIndex, lyricPending, offsetMs, queue
           in; on a wide window the queue lives in the artwork column and this column ends on the
           words. The header's count is that queue's way in. */}
       {stacked && (queueOpen
-        ? <ImmersiveQueue onCollapse={onToggleQueue} />
-        : <ImmersiveQueueEntry count={queueLength} onOpen={onToggleQueue} />)}
+        ? <ImmersiveQueue onCollapse={surface.onToggleQueue} />
+        : <ImmersiveQueueEntry count={queueLength} onOpen={surface.onToggleQueue} />)}
     </section>
   )
 }
@@ -370,23 +337,8 @@ function ImmersiveButtons({ track, stacked }: { track: ReturnType<typeof useCurr
   )
 }
 
-function ImmersiveLeft({
-  track,
-  durationMs,
-  seek,
-  stacked,
-  paneWidth,
-  queueOpen,
-  onToggleQueue,
-}: {
-  track: ReturnType<typeof useCurrentTrack>
-  durationMs: number
-  seek: (ms: number) => void
-  stacked: boolean
-  paneWidth: string
-  queueOpen: boolean
-  onToggleQueue: () => void
-}) {
+function ImmersiveLeft({ surface }: { surface: ImmersiveSurface }) {
+  const { track, durationMs, seek, stacked, paneWidth, queueOpen } = surface
   const currentTimeMs = useProgress((state) => state.currentTimeMs)
   const loopRange = useActiveLoopRange()
   // FB2-U1: the window's own step — while the queue is open the artwork gives up the room the queue
@@ -420,7 +372,7 @@ function ImmersiveLeft({
         </div>
         <ImmersiveButtons track={track} stacked={stacked} />
       </div>
-      {!stacked && <ImmersiveQueuePane open={queueOpen} onClose={onToggleQueue} />}
+      {!stacked && <ImmersiveQueuePane open={queueOpen} onClose={surface.onToggleQueue} />}
     </section>
   )
 }

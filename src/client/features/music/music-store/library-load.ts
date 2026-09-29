@@ -136,6 +136,16 @@ export function closeTrackMenu(set: MusicSet): void {
   set({ trackMenu: null })
 }
 
+// The menu's "edit track" item, answered by the hub wherever the menu was opened from: the editor
+// is the hub's own dialog, and the immersive player and the queue are not the hub.
+export function requestTrackEdit(set: MusicSet, track: MusicTrack): void {
+  set({ trackEditRequest: track })
+}
+
+export function clearTrackEdit(set: MusicSet): void {
+  set({ trackEditRequest: null })
+}
+
 export function setSourceFilter(set: MusicSet, sourceFilter: MusicSourceFilter): void {
   set({ sourceFilter, matchLimit: SEARCH_RESULT_LIMIT })
 }

@@ -108,7 +108,7 @@ afterEach(() => {
 
 describe('view mode toggle (UI-16)', () => {
   async function mountList(): Promise<HTMLElement> {
-    return mount(createElement(MusicTrackList, { tracks, loading: false, emptyTitle: 'x', onEdit: () => {} }))
+    return mount(createElement(MusicTrackList, { tracks, loading: false, emptyTitle: 'x' }))
   }
 
   function group(container: HTMLElement): Element {
@@ -150,7 +150,7 @@ describe('narrow default view (FB-R1)', () => {
   // The shape is a prop the hub hands down (it is the one that knows its own box); the list does not
   // read the viewport for it, so this file states the shape instead of stubbing a measurement.
   function mountList(narrow: boolean): Promise<HTMLElement> {
-    return mount(createElement(MusicTrackList, { tracks, loading: false, emptyTitle: 'x', onEdit: () => {}, narrow }))
+    return mount(createElement(MusicTrackList, { tracks, loading: false, emptyTitle: 'x', narrow }))
   }
 
   function cards(): Element | null {

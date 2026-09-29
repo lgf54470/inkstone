@@ -5,6 +5,7 @@ import type { Root } from 'react-dom/client'
 import type { MusicTrack } from '@shared/types'
 import { t } from '../../lib/i18n'
 import { MusicTrackList } from './music-track-list'
+import { INDEX_COLUMN_CELL } from './music-track-row'
 import { SEARCH_RESULT_LIMIT } from './music-search'
 import { useMusic, useVisibleTracks } from './music-store'
 
@@ -67,6 +68,57 @@ describe('a row keeps its place and carries its own play control', () => {
   })
 })
 
+// Pinning is the favourite's twin: same place in the row, same rule about when it is drawn (a row
+// that carries the state keeps the control that says so, hover or not), different glyph and label.
+// Both halves are read here, because the row is where a reader meets them.
+describe('the row offers pinning beside the favourite', () => {
+  function actionControl(row: Element, label: string): HTMLButtonElement | undefined {
+    return [...row.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === label)
+  }
+
+  function rows(): Element[] {
+    return [...document.querySelectorAll('[role="rowgroup"] > [role="row"]')]
+  }
+
+  const mixed = [{ ...tracks[0]!, isPinned: true }, tracks[1]!]
+
+  it('labels the control with the state it would leave the row in', async () => {
+    await mountList(mixed)
+    const [pinned, unpinned] = rows()
+    expect(actionControl(pinned!, t('music.unpin'))).toBeDefined()
+    expect(actionControl(unpinned!, t('music.pin'))).toBeDefined()
+  })
+
+  it('keeps a pinned row drawn without a hover, the way a favourite row is', async () => {
+    await mountList(mixed)
+    const [pinned, unpinned] = rows()
+    const shown = actionControl(pinned!, t('music.unpin'))
+    const hidden = actionControl(unpinned!, t('music.pin'))
+    expect(shown?.classList.contains('md:opacity-100')).toBe(true)
+    expect(shown?.classList.contains('md:pointer-events-auto')).toBe(true)
+    expect(hidden?.classList.contains('md:opacity-100')).toBe(false)
+  })
+
+  // The same control on the card reports this state (`aria-pressed`), so the two surfaces that offer
+  // pinning read the same way to a screen reader; a toggle that cannot be read as on or off is not one.
+  it('reports the pin as a pressed toggle, the way the card does', async () => {
+    await mountList(mixed)
+    const [pinned, unpinned] = rows()
+    expect(actionControl(pinned!, t('music.unpin'))?.getAttribute('aria-pressed')).toBe('true')
+    expect(actionControl(unpinned!, t('music.pin'))?.getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('gives the header and the rows the same width for the place in the list', async () => {
+    await mountList()
+    const header = columnheaderOf(t('music.table_index'))
+    const cell = document.querySelector('[role="rowgroup"] > [role="row"] [role="cell"]:nth-child(2)')
+    for (const classes of INDEX_COLUMN_CELL.split(' ')) {
+      expect(header?.classList.contains(classes)).toBe(true)
+      expect(cell?.classList.contains(classes)).toBe(true)
+    }
+  })
+})
+
 let root: Root | null = null
 
 async function mountList(list: MusicTrack[] = tracks): Promise<void> {
@@ -74,7 +126,7 @@ async function mountList(list: MusicTrack[] = tracks): Promise<void> {
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => {
-    root?.render(createElement(MusicTrackList, { tracks: list, loading: false, emptyTitle: 'x', onEdit: () => {} }))
+    root?.render(createElement(MusicTrackList, { tracks: list, loading: false, emptyTitle: 'x' }))
   })
 }
 
@@ -83,7 +135,7 @@ async function mountList(list: MusicTrack[] = tracks): Promise<void> {
 // so the budget is invisible down that path and those cases would pass on any implementation.
 function StoreList(): ReturnType<typeof createElement> {
   const visible = useVisibleTracks()
-  return createElement(MusicTrackList, { tracks: visible, loading: false, emptyTitle: 'x', onEdit: () => {} })
+  return createElement(MusicTrackList, { tracks: visible, loading: false, emptyTitle: 'x' })
 }
 
 async function mountStoreList(): Promise<void> {
@@ -221,11 +273,11 @@ describe('the list folds by the box its rows land in (FB3-C9)', () => {
     document.body.appendChild(container)
     root = createRoot(container)
     await act(async () => {
-      root?.render(createElement(MusicTrackList, { tracks: [], loading: true, emptyTitle: 'x', onEdit: () => {} }))
+      root?.render(createElement(MusicTrackList, { tracks: [], loading: true, emptyTitle: 'x' }))
     })
     useMusic.setState({ tracks: oneTrack })
     await act(async () => {
-      root?.render(createElement(MusicTrackList, { tracks: oneTrack, loading: false, emptyTitle: 'x', onEdit: () => {} }))
+      root?.render(createElement(MusicTrackList, { tracks: oneTrack, loading: false, emptyTitle: 'x' }))
     })
   }
 
@@ -327,12 +379,12 @@ describe('table ARIA structure', () => {
   it('every columnheader is readable, and the icon-only ones hide instead of going unroled', async () => {
     await mountList()
     const headerCells = [...headerRow().children]
-    // A row's children must all be cells; a roleless span leaves the row malformed. The three
+    // A row's children must all be cells; a roleless span leaves the row malformed. The four
     // columns with nothing readable keep the role and hide themselves from the a11y tree, so
     // the grid is legal without announcing empty headers (axe empty-table-header).
     expect(headerCells.every((cell) => cell.getAttribute('role') === 'columnheader')).toBe(true)
     const hidden = headerCells.filter((cell) => cell.getAttribute('aria-hidden') === 'true')
-    expect(hidden).toHaveLength(3)
+    expect(hidden).toHaveLength(4)
     for (const cell of headerCells.filter((child) => child.getAttribute('aria-hidden') !== 'true')) {
       expect(cell.textContent?.trim() || cell.querySelector('input[aria-label]')).toBeTruthy()
     }
@@ -355,7 +407,7 @@ describe('the track table window (IMP-3)', () => {
     document.body.appendChild(container)
     root = createRoot(container)
     await act(async () => {
-      root?.render(createElement(MusicTrackList, { tracks: list, loading: false, emptyTitle: 'x', onEdit: () => {} }))
+      root?.render(createElement(MusicTrackList, { tracks: list, loading: false, emptyTitle: 'x' }))
     })
   }
 

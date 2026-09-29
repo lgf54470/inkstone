@@ -60,6 +60,9 @@
   "src/client/features/music/music-track-menu.test.ts": {
     "longFns": 1
   },
+  "src/client/features/music/music-track-table.test.ts": {
+    "lines": 509
+  },
   "src/client/features/preview/kanban-fullscreen.test.ts": {
     "longFns": 1
   },

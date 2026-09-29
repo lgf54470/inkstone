@@ -187,6 +187,10 @@ export interface MusicStoreState {
   lyricTextSize: MusicLyricTextSize
   loopRange: MusicLoopRange | null
   trackMenu: TrackMenuRequest | null
+  // The track editor belongs to the hub, and the track menu is now opened from surfaces the hub does
+  // not own (the immersive player, the queue). They post the request here so every surface offers
+  // the same menu; the hub is the one that answers it.
+  trackEditRequest: MusicTrack | null
   uploads: MusicUploadTask[]
   downloads: MusicDownloadTask[]
   offlineTrackIds: string[]
@@ -283,6 +287,8 @@ export interface MusicStoreState {
   showMoreMatches: () => void
   openTrackMenu: (menu: TrackMenuRequest) => void
   closeTrackMenu: () => void
+  requestTrackEdit: (track: MusicTrack) => void
+  clearTrackEdit: () => void
   setSourceFilter: (filter: MusicSourceFilter) => void
   setProviderQuality: (quality: MusicProviderQuality) => void
   /** FB3-F4: the tier a kept file is fetched at, decided apart from the tier playback uses. */

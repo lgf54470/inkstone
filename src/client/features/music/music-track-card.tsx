@@ -3,6 +3,7 @@ import { memo } from 'react'
 import { IconButton, Spinner } from '../../components/primitives'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
+import { REVEAL_ON_COARSE_POINTER } from './music-reveal'
 import { durationCellText } from './music-utils'
 import { MusicArtwork } from './music-artwork'
 import type { TrackMenuTarget } from './music-track-menu'
@@ -49,15 +50,32 @@ function CardArtwork({
 
 function CardActions({
   isFavorite,
+  isPinned,
   onToggleFavorite,
+  onTogglePin,
   onOpenMenu,
 }: {
   isFavorite: boolean
+  isPinned: boolean
   onToggleFavorite: () => void
+  onTogglePin: () => void
   onOpenMenu: (event: React.MouseEvent<HTMLElement>) => void
 }) {
   return (
-    <div className='opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/card:opacity-100 md:group-hover/card:pointer-events-auto md:group-focus-within/card:opacity-100 md:group-focus-within/card:pointer-events-auto absolute top-3 right-3 flex flex-col gap-1'>
+    <div className={cn('opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/card:opacity-100 md:group-hover/card:pointer-events-auto md:group-focus-within/card:opacity-100 md:group-focus-within/card:pointer-events-auto absolute top-3 right-3 flex flex-col gap-1', REVEAL_ON_COARSE_POINTER)}>
+      {/* `active` is what says the card is pinned (it is also the `aria-pressed` below). The overlay
+          ground it is given here wins over the accent-soft one `active` would paint — deliberately:
+          a control drawn on a cover needs a ground that reads against any artwork, while the row's
+          pin sits on a solid surface and takes the accent-soft ground as it is. */}
+      <IconButton
+        label={isPinned ? t('music.unpin') : t('music.pin')}
+        size='sm'
+        active={isPinned}
+        onClick={onTogglePin}
+        className='bg-[var(--bg-overlay)] shadow-[var(--shadow-sm)]'
+      >
+        <Pin size={12} className={isPinned ? 'fill-current' : undefined} />
+      </IconButton>
       <IconButton
         label={isFavorite ? t('music.unfavorite') : t('music.favorite')}
         size='sm'
@@ -153,7 +171,9 @@ export const MusicTrackCard = memo(function MusicTrackCard({ track, isCurrent, i
 
       <CardActions
         isFavorite={track.isFavorite}
+        isPinned={track.isPinned}
         onToggleFavorite={() => handlers.onToggleFavorite(track.id)}
+        onTogglePin={() => handlers.onTogglePin(track.id)}
         onOpenMenu={(event) => handlers.onMenuButton(event, menuTarget)}
       />
     </div>
