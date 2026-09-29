@@ -12886,6 +12886,21 @@ const allowed = new Map([
     '// current hop. The caller receives the first non-redirect response.',
     '// Best-effort body release; a failed cancel does not change the verdict.',
   ]],
+  ['src/worker/routes/blog/link-import.ts', [
+    '/**\n * Applies a links export to the caller\'s own directory.\n *\n * The file is data rather than instructions: it was written by another account as often as by this\n * one (an export handed over, a restore into a second account), and every id it carries is also a\n * primary key on the receiving instance. Two rules follow. An id another account already holds is\n * replaced with a fresh one, because keeping it would rewrite that account\'s row; and a reference\n * into a tree this account does not own is dropped, so an import cannot graft rows onto another\n * blog. Both are reported, because a file that had to be renumbered was not this account\'s.\n */',
+    '// A parent is a file id like any other, and the file may list it after its child, so the whole map',
+    '// has to exist before any statement is built. A parent the file does not carry is kept only when',
+    '// this account already owns it.',
+    '/**\n * Where each parent reference lands: the file\'s own target when the file carries that category, and\n * the reference itself only when this account already owns it. Anyone else\'s category resolves to\n * nothing, so the imported child surfaces at the top level instead of under another blog.\n */',
+  ]],
+  ['src/worker/routes/blog/owned-rows.ts', [
+    '/**\n * The per-account tables whose rows a client may address by primary key. The name is a literal from\n * this union and never a value a request carries, because it is interpolated into the statement.\n */',
+    '/** D1 refuses a statement that binds more than 100 variables. */',
+    '/**\n * Refuses a client-chosen id that another account already holds.\n *\n * `INSERT … ON CONFLICT(id) DO UPDATE` keys on the primary key rather than on the owner, so a save\n * whose id belongs to someone else rewrites their row and then reads it back — an upsert and a\n * response body across tenants. An id nobody holds is an insert, which is what a new row sends.\n */',
+    '/**\n * The owner of every id that exists, keyed by id. A missing id is absent rather than null: import\n * reads that absence to tell "nobody holds this yet" (keep the file\'s id) from "another account\n * holds it" (write a fresh one), and the two mean different rows.\n */',
+    '/**\n * The id a row from a file is written under: the file\'s own when this account holds it or nobody\n * does, a fresh one when another account does. Refusing the whole file instead would make a\n * legitimate hand-over (or a restore into a second account) impossible.\n */',
+    '/**\n * Requires every reference a request carries to be a row of the caller\'s own. A link\'s category and\n * a category\'s parent travel as raw ids; one from another account files the caller\'s row under\n * another blog, which is the same cross-tenant write in a foreign key instead of a primary one.\n */',
+  ]],
   ['src/worker/routes/blog/owner.ts', [
     '/** The address a public blog answers to. */',
     '/**\n * The music subtree underneath the blog public prefix keeps its own publish switch and resolves the\n * account that switch names, so it is left to do that instead of being handed this one.\n */',
@@ -13917,6 +13932,10 @@ const allowed = new Map([
     '// Every request in the harness arrives from the same client, which is what makes the',
     '// budget observable at all: the count used to be over the whole table, so the sixth',
     '// application here would have been the sixth from anywhere.',
+    '// The ids in a saved link are the row\'s primary key, and the upsert keys on that rather than on the',
+    '// owner, so a second account that guesses or imports an id can save over the first account\'s row —',
+    '// and read it back. Every case here is that shape, plus the two foreign keys a save carries (a',
+    '// link\'s category, a category\'s parent).',
   ]],
   ['tests/blog-public-owner.test.ts', [
     '/** Two accounts whose creation order is explicit, so the instance default is not a coin flip. */',

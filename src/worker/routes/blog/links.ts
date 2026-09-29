@@ -24,6 +24,8 @@ import {
   blogLinkUpsertSchema,
 } from './schemas'
 import { checkUrlsBatch } from './link-checker'
+import { importLinkCategories, importLinkItems } from './link-import'
+import { assertRefsMine, assertRowIdWritable } from './owned-rows'
 
 export function registerBlogLinksRoutes(blogManageRoutes: Hono<AppBindings>): void {
   registerBlogLinksGetRoute(blogManageRoutes)
@@ -85,10 +87,12 @@ function registerBlogLinksUpsertRoute(blogManageRoutes: Hono<AppBindings>): void
     const now = Date.now()
     const id = body.id || newId()
 
+    await assertRowIdWritable(c.env.DB, 'blog_links', id, userId)
+    await assertRefsMine(c.env.DB, 'blog_link_categories', userId, [body.categoryId], 'Category')
     await prepareLinkUpsertStatement(c.env.DB, userId, id, body, now).run()
 
-    const row = await c.env.DB.prepare('SELECT * FROM blog_links WHERE id = ?1')
-      .bind(id)
+    const row = await c.env.DB.prepare('SELECT * FROM blog_links WHERE id = ?1 AND user_id = ?2')
+      .bind(id, userId)
       .first<BlogLinkRow>()
     if (!row) throw ApiError.internal('Failed to load saved link')
 
@@ -245,6 +249,9 @@ function registerBlogLinksBatchRoute(blogManageRoutes: Hono<AppBindings>): void 
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogLinkBatchSchema, JSON_BODY_LIMITS.note)
     const db = c.env.DB
+    if (body.action === 'setCategory') {
+      await assertRefsMine(db, 'blog_link_categories', userId, [body.categoryId], 'Category')
+    }
     const count = await executeLinksBatch(db, userId, body)
     return c.json({ ok: true, count })
   })
@@ -308,6 +315,9 @@ function registerBlogLinkCategoryUpsertRoute(blogManageRoutes: Hono<AppBindings>
     const now = Date.now()
     const id = body.id || newId()
 
+    await assertRowIdWritable(c.env.DB, 'blog_link_categories', id, userId)
+    await assertRefsMine(c.env.DB, 'blog_link_categories', userId, [body.parentId], 'Parent category')
+
     await c.env.DB.prepare(`
       INSERT INTO blog_link_categories (id, user_id, name, icon, parent_id, sort_order, created_at, updated_at)
       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
@@ -327,8 +337,8 @@ function registerBlogLinkCategoryUpsertRoute(blogManageRoutes: Hono<AppBindings>
       now,
     ).run()
 
-    const row = await c.env.DB.prepare('SELECT * FROM blog_link_categories WHERE id = ?1')
-      .bind(id)
+    const row = await c.env.DB.prepare('SELECT * FROM blog_link_categories WHERE id = ?1 AND user_id = ?2')
+      .bind(id, userId)
       .first<BlogLinkCategoryRow>()
     if (!row) throw ApiError.internal('Failed to load category')
 
@@ -374,110 +384,4 @@ function registerBlogLinksImportRoute(blogManageRoutes: Hono<AppBindings>): void
       importedCategories: Object.keys(categoryIdMap).length,
     })
   })
-}
-
-async function importLinkCategories(
-  db: D1Database,
-  userId: string,
-  categories: z.infer<typeof blogLinkImportSchema>['categories'],
-  now: number,
-): Promise<Record<string, string>> {
-  const categoryIdMap: Record<string, string> = {}
-  const stmts: D1PreparedStatement[] = []
-
-  for (const cat of categories) {
-    const targetId = cat.id || newId()
-    if (cat.id) categoryIdMap[cat.id] = targetId
-
-    stmts.push(
-      db.prepare(`
-        INSERT INTO blog_link_categories (id, user_id, name, icon, parent_id, sort_order, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
-        ON CONFLICT(id) DO UPDATE SET
-          name = excluded.name,
-          icon = excluded.icon,
-          parent_id = excluded.parent_id,
-          sort_order = excluded.sort_order,
-          updated_at = excluded.updated_at
-      `).bind(
-        targetId,
-        userId,
-        cat.name.trim(),
-        cat.icon?.trim() || null,
-        cat.parentId || null,
-        cat.sortOrder || 0,
-        now,
-      ),
-    )
-  }
-
-  if (stmts.length > 0) {
-    await db.batch(stmts)
-  }
-  return categoryIdMap
-}
-
-function prepareImportItemStatement(
-  db: D1Database,
-  userId: string,
-  item: z.infer<typeof blogLinkImportSchema>['links'][number],
-  targetCatId: string | null,
-  now: number,
-): D1PreparedStatement {
-  const id = item.id || newId()
-  return db.prepare(`
-    INSERT INTO blog_links (
-      id, user_id, name, url, description, avatar, email, category_id,
-      status, is_pinned, pinned_order, is_favorite, sort_order, is_active, clicks,
-      created_at, updated_at
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?15)
-    ON CONFLICT(id) DO UPDATE SET
-      name = excluded.name,
-      url = excluded.url,
-      description = excluded.description,
-      avatar = excluded.avatar,
-      email = excluded.email,
-      category_id = excluded.category_id,
-      status = excluded.status,
-      is_pinned = excluded.is_pinned,
-      pinned_order = excluded.pinned_order,
-      is_favorite = excluded.is_favorite,
-      sort_order = excluded.sort_order,
-      is_active = excluded.is_active,
-      updated_at = excluded.updated_at
-  `).bind(
-    id,
-    userId,
-    item.name.trim(),
-    item.url.trim(),
-    (item.description || '').trim(),
-    (item.avatar || '').trim(),
-    (item.email || '').trim(),
-    targetCatId,
-    item.status || 'approved',
-    item.isPinned ? 1 : 0,
-    item.pinnedOrder || 0,
-    item.isFavorite ? 1 : 0,
-    item.sortOrder || 0,
-    item.isActive !== false ? 1 : 0,
-    now,
-  )
-}
-
-async function importLinkItems(
-  db: D1Database,
-  userId: string,
-  links: z.infer<typeof blogLinkImportSchema>['links'],
-  categoryIdMap: Record<string, string>,
-  now: number,
-): Promise<number> {
-  const stmts = links.map((item) => {
-    const targetCatId = item.categoryId ? (categoryIdMap[item.categoryId] || item.categoryId) : null
-    return prepareImportItemStatement(db, userId, item, targetCatId, now)
-  })
-
-  if (stmts.length > 0) {
-    await db.batch(stmts)
-  }
-  return stmts.length
 }

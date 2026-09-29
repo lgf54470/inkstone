@@ -29,14 +29,14 @@ async function seedUser(db: D1Shim, id = USER): Promise<void> {
   )
 }
 
-function makeApp(): Hono<AppBindings> {
+function makeApp(actingUserId: string = USER): Hono<AppBindings> {
   const app = new Hono<AppBindings>()
   app.use('/api/blog', async (c, next) => {
-    c.set('userId', USER)
+    c.set('userId', actingUserId)
     await next()
   })
   app.use('/api/blog/*', async (c, next) => {
-    c.set('userId', USER)
+    c.set('userId', actingUserId)
     await next()
   })
   app.onError((err, c) => errorResponse(c, err))
@@ -305,6 +305,198 @@ describe('blog links management and public routes', () => {
     expect(Array.isArray(checkData.results)).toBe(true)
     expect(checkData.results.length).toBe(1)
     expect(checkData.results[0].level).toBe('broken')
+  })
+})
+
+const OTHER = 'user-test-2'
+
+interface LinkRowSnapshot {
+  name: string
+  url: string
+  user_id: string
+  email: string
+}
+
+interface CategoryRowSnapshot {
+  name: string
+  user_id: string
+  parent_id: string | null
+}
+
+// The ids in a saved link are the row's primary key, and the upsert keys on that rather than on the
+// owner, so a second account that guesses or imports an id can save over the first account's row —
+// and read it back. Every case here is that shape, plus the two foreign keys a save carries (a
+// link's category, a category's parent).
+describe('blog links ownership guards', () => {
+  async function twoAccounts(): Promise<{
+    db: D1Shim
+    mine: Hono<AppBindings>
+    theirs: Hono<AppBindings>
+  }> {
+    const db = await makeDb()
+    await seedUser(db, USER)
+    await seedUser(db, OTHER)
+    return { db, mine: makeApp(USER), theirs: makeApp(OTHER) }
+  }
+
+  async function snapshotLink(db: D1Shim, id: string): Promise<LinkRowSnapshot> {
+    const row = await db
+      .prepare('SELECT name, url, user_id, email FROM blog_links WHERE id = ?1')
+      .bind(id)
+      .first<LinkRowSnapshot>()
+    expect(row).not.toBeNull()
+    return row as LinkRowSnapshot
+  }
+
+  it('refuses to save over a link another account owns', async () => {
+    const { db, mine, theirs } = await twoAccounts()
+    const created = await postJson(theirs, '/api/blog/links', {
+      name: 'Their link',
+      url: 'https://theirs.example',
+      email: 'theirs@example.com',
+    })
+    const { link } = await created.json() as { link: { id: string } }
+
+    const hijack = await postJson(mine, '/api/blog/links', {
+      id: link.id,
+      name: 'Hijacked',
+      url: 'https://hijacked.example',
+    })
+    expect(hijack.status).toBe(404)
+    expect(JSON.stringify(await hijack.json())).not.toContain('theirs@example.com')
+
+    expect(await snapshotLink(db, link.id)).toMatchObject({
+      name: 'Their link',
+      url: 'https://theirs.example',
+      user_id: OTHER,
+    })
+  })
+
+  it('refuses to save over a link category another account owns', async () => {
+    const { db, mine, theirs } = await twoAccounts()
+    const created = await postJson(theirs, '/api/blog/links/categories', { name: 'Their group' })
+    const { category } = await created.json() as { category: { id: string } }
+
+    const hijack = await postJson(mine, '/api/blog/links/categories', {
+      id: category.id,
+      name: 'Hijacked group',
+    })
+    expect(hijack.status).toBe(404)
+
+    const row = await db
+      .prepare('SELECT name, user_id, parent_id FROM blog_link_categories WHERE id = ?1')
+      .bind(category.id)
+      .first<CategoryRowSnapshot>()
+    expect(row).toMatchObject({ name: 'Their group', user_id: OTHER })
+  })
+
+  it('refuses a category parented under another account', async () => {
+    const { db, mine, theirs } = await twoAccounts()
+    const created = await postJson(theirs, '/api/blog/links/categories', { name: 'Their group' })
+    const { category } = await created.json() as { category: { id: string } }
+
+    const res = await postJson(mine, '/api/blog/links/categories', {
+      name: 'My child',
+      parentId: category.id,
+    })
+    expect(res.status).toBe(400)
+
+    const count = await db
+      .prepare('SELECT COUNT(*) AS n FROM blog_link_categories WHERE user_id = ?1')
+      .bind(USER)
+      .first<{ n: number }>()
+    expect(Number(count?.n)).toBe(0)
+  })
+
+  it('refuses a link filed under another account category', async () => {
+    const { db, mine, theirs } = await twoAccounts()
+    const created = await postJson(theirs, '/api/blog/links/categories', { name: 'Their group' })
+    const { category } = await created.json() as { category: { id: string } }
+
+    const res = await postJson(mine, '/api/blog/links', {
+      name: 'My link',
+      url: 'https://mine.example',
+      categoryId: category.id,
+    })
+    expect(res.status).toBe(400)
+
+    const count = await db.prepare('SELECT COUNT(*) AS n FROM blog_links').first<{ n: number }>()
+    expect(Number(count?.n)).toBe(0)
+  })
+
+  it('refuses a batch refile into another account category', async () => {
+    const { db, mine, theirs } = await twoAccounts()
+    const categoryRes = await postJson(theirs, '/api/blog/links/categories', { name: 'Their group' })
+    const { category } = await categoryRes.json() as { category: { id: string } }
+    const linkRes = await postJson(mine, '/api/blog/links', { name: 'My link', url: 'https://mine.example', status: 'pending' })
+    const { link } = await linkRes.json() as { link: { id: string } }
+
+    const batch = await postJson(mine, '/api/blog/links/batch', {
+      action: 'setCategory',
+      linkIds: [link.id],
+      categoryId: category.id,
+    })
+    expect(batch.status).toBe(400)
+
+    const row = await db
+      .prepare('SELECT category_id FROM blog_links WHERE id = ?1')
+      .bind(link.id)
+      .first<{ category_id: string | null }>()
+    expect(row?.category_id).toBeNull()
+  })
+
+  it('imports a file whose ids another account holds without touching that account', async () => {
+    const { mine, theirs } = await twoAccounts()
+    const categoryRes = await postJson(theirs, '/api/blog/links/categories', { name: 'Their group' })
+    const { category } = await categoryRes.json() as { category: { id: string } }
+    const linkRes = await postJson(theirs, '/api/blog/links', {
+      name: 'Their link',
+      url: 'https://theirs.example',
+      categoryId: category.id,
+    })
+    const { link } = await linkRes.json() as { link: { id: string } }
+
+    const res = await postJson(mine, '/api/blog/links/import', {
+      categories: [{ id: category.id, name: 'Their group', parentId: null, sortOrder: 0 }],
+      links: [{ id: link.id, name: 'Their link', url: 'https://theirs.example', categoryId: category.id }],
+    })
+    expect(res.status).toBe(200)
+
+    const mineList = await (await request(mine, '/api/blog/links')).json() as {
+      links: Array<{ id: string; name: string; categoryId: string | null }>
+      categories: Array<{ id: string; name: string }>
+    }
+    expect(mineList.categories).toHaveLength(1)
+    expect(mineList.categories[0]!.id).not.toBe(category.id)
+    expect(mineList.links).toHaveLength(1)
+    expect(mineList.links[0]!.id).not.toBe(link.id)
+    expect(mineList.links[0]!.categoryId).toBe(mineList.categories[0]!.id)
+
+    const theirList = await (await request(theirs, '/api/blog/links')).json() as {
+      links: Array<{ id: string; name: string }>
+      categories: Array<{ id: string; name: string }>
+    }
+    expect(theirList.categories).toHaveLength(1)
+    expect(theirList.categories[0]!.name).toBe('Their group')
+    expect(theirList.links).toHaveLength(1)
+    expect(theirList.links[0]!.name).toBe('Their link')
+  })
+
+  it('drops an imported link category reference the file does not carry and this account does not own', async () => {
+    const { mine, theirs } = await twoAccounts()
+    const categoryRes = await postJson(theirs, '/api/blog/links/categories', { name: 'Their group' })
+    const { category } = await categoryRes.json() as { category: { id: string } }
+
+    const res = await postJson(mine, '/api/blog/links/import', {
+      links: [{ name: 'Orphan', url: 'https://orphan.example', categoryId: category.id }],
+    })
+    expect(res.status).toBe(200)
+
+    const list = await (await request(mine, '/api/blog/links')).json() as {
+      links: Array<{ name: string; categoryId: string | null }>
+    }
+    expect(list.links).toHaveLength(1)
+    expect(list.links[0]!.categoryId).toBeNull()
   })
 })
 
