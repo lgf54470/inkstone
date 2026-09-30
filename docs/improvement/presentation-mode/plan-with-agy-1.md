@@ -40,9 +40,10 @@
   - 涉及文件：`src/client/features/presentation/presentation-state.ts` (`escapeAction`)、`src/client/features/presentation/presentation-state.test.ts`、`src/client/features/presentation/presentation-overlay.tsx` (`useDialogBehavior`)
   - 目标：放映时按 Esc 优先退至窗口态，再次按 Esc 退出模式，避免误关演说。
   - 验证：单元测试覆盖全屏返回 exitFullscreen、窗口返回 close，overlay 行为正确衔接。
-- [ ] **B1-03** `P-03 (PERF-01)`: 舞台设计画幅固定为 `1280x720`，彻底解耦侧栏尺寸与缓存死锁
-  - 涉及文件：`src/client/features/presentation/slide-stage.ts` (`measureStage`)、`src/client/features/presentation/presentation-overlay.tsx`
+- [x] **B1-03** `P-03 (PERF-01)`: 舞台设计画幅固定为 `1280x720`，彻底解耦侧栏尺寸与缓存死锁 — 已完成
+  - 涉及文件：`src/client/features/presentation/slide-stage.ts` (`measureStage`)、`src/client/features/presentation/slide-stage.test.ts`、`scripts/check-comments.mjs`
   - 目标：将设计画幅固定为 1280x720，容器缩放使用 CSS scale，开合侧栏不再改变设计宽高，100% 杜绝预热缓存失效。
+  - 验证：新增 `slide-stage.test.ts` 验证在不同分辨率与侧栏开合时设计画幅与内容区稳定为 1280x720 / 1168x632。
 - [ ] **B1-04** `P-06 (SPEC-05)`: Follow/Freeze 图标与激活态语义纠偏
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`PresentationControls`)
   - 目标：跟随中高亮脉冲 `<Radio />`；冻结后不高亮显示 `<Snowflake />`。
