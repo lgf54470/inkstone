@@ -1,7 +1,7 @@
 import { Activity } from 'lucide-react'
 import type { BlogGlobalAnalytics } from '@shared/types'
 import { t } from '../../../lib/i18n'
-import { countryFlag, countryNameLocalized } from '../../share'
+import { countryFlag, countryNameLocalized } from '../../../lib/visitor-geo'
 import { relativeTime } from '../../../lib/time'
 
 interface VisitLogsCardProps {

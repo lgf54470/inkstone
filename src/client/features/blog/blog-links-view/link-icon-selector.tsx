@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
-import { Search, X, icons } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { Search, X } from 'lucide-react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { t } from '../../../lib/i18n'
 import { LinkDynamicIcon } from './link-dynamic-icon'
+import { LUCIDE_LINK_ICON_NAMES, PRESET_LINK_ICON_NAMES, lucideSlugOf } from './link-icons'
 
 export interface LinkIconSelectorProps {
   value: string
@@ -15,25 +16,20 @@ const PRESET_EMOJIS = [
   '☕', '❤️', '🎯', '🛠️', '🧭', '🛸', '🛰️', '📡', '🔒', '📦',
 ]
 
-const PRESET_LUCIDE = [
-  'Globe', 'Bookmark', 'Star', 'Sparkles', 'Compass', 'Code', 'Terminal',
-  'Bot', 'Cpu', 'Layers', 'BookOpen', 'Film', 'Music', 'Gamepad2',
-  'ShoppingCart', 'Briefcase', 'Heart', 'Coffee', 'Zap', 'Flame',
-  'Search', 'Cloud', 'Database', 'Share2', 'Folder', 'Settings',
-  'Shield', 'Wrench', 'Key', 'FileText', 'Send', 'Activity',
-]
+const MAX_ICON_RESULTS = 48
 
 export function LinkIconSelector({ value, onChange }: LinkIconSelectorProps) {
   const [tab, setTab] = useState<'lucide' | 'emoji'>('lucide')
   const [query, setQuery] = useState('')
 
-  const allIcons: Record<string, LucideIcon | undefined> = icons
+  // An unqueried picker draws the presets, which are already imported, and a query is matched
+  // against lucide's name list — matching costs no request and no icon code; the cells that end up
+  // drawn fetch their own module (see `link-icons.ts`).
   const filteredLucide = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return PRESET_LUCIDE
-    const iconNames = Object.keys(allIcons).filter((k) => k !== 'default' && typeof allIcons[k] === 'function')
-    return iconNames.filter((name) => name.toLowerCase().includes(q)).slice(0, 48)
-  }, [query, allIcons])
+    if (!q) return PRESET_LINK_ICON_NAMES
+    return LUCIDE_LINK_ICON_NAMES.filter((name) => name.toLowerCase().includes(q)).slice(0, MAX_ICON_RESULTS)
+  }, [query])
 
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-2.5 space-y-2 text-[length:var(--text-12)]'>
@@ -54,7 +50,7 @@ export function LinkIconSelector({ value, onChange }: LinkIconSelectorProps) {
 
       <div className='grid grid-cols-8 gap-1 max-h-32 overflow-y-auto p-1 bg-[var(--bg-surface)] rounded-[var(--r-sm)] border border-[var(--border-subtle)]'>
         {tab === 'lucide' ? (
-          <LucideIconGrid icons={filteredLucide} allIcons={allIcons} value={value} onSelect={onChange} />
+          <LucideIconGrid names={filteredLucide} value={value} onSelect={onChange} />
         ) : (
           <EmojiIconGrid value={value} onSelect={onChange} />
         )}
@@ -118,21 +114,19 @@ function IconSelectorHeader({
 }
 
 function LucideIconGrid({
-  icons,
-  allIcons,
+  names,
   value,
   onSelect,
 }: {
-  icons: string[]
-  allIcons: Record<string, LucideIcon | undefined>
+  names: readonly string[]
   value: string
   onSelect: (val: string) => void
 }) {
   return (
     <>
-      {icons.map((iconName) => {
-        const Comp = allIcons[iconName]
-        if (!Comp) return null
+      {names.map((iconName) => {
+        const slug = lucideSlugOf(iconName)
+        if (!slug) return null
         const isSelected = value === iconName
         return (
           <button
@@ -146,7 +140,7 @@ function LucideIconGrid({
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
             }`}
           >
-            <Comp size={15} />
+            <DynamicIcon name={slug} size={15} />
           </button>
         )
       })}

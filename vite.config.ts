@@ -28,6 +28,18 @@ const isLucideModule = (id: string) =>
   normalizeModuleId(id).includes('/node_modules/lucide-react/')
 
 /**
+ * The library ships one module per icon, and `lucide-react/dynamic` loads them one at a time.
+ * Grouping them into the shared vendor chunk defeated that: the group is statically reachable from
+ * the first chunk importing a single icon, so a full-registry lookup — or the dynamic table — put
+ * every icon (688 KiB measured) on the boot path. Left ungrouped, a statically imported icon is
+ * inlined into its importer and an on-demand one keeps its own async chunk.
+ */
+const isLucideIconModule = (id: string) => {
+  const path = normalizeModuleId(id)
+  return path.includes('/node_modules/lucide-react/') && path.includes('/icons/')
+}
+
+/**
  * Vite serves `node_modules` assets (webfonts, mostly) by their resolved path and only
  * below `server.fs.allow`. A git worktree whose install is a symlink into the main
  * checkout therefore answers 403 for every font.
@@ -179,7 +191,7 @@ const config: UserConfigFnPromise = async ({ mode, command }) => ({
             },
             {
               name: 'vendor-icons',
-              test: isLucideModule,
+              test: (id) => isLucideModule(id) && !isLucideIconModule(id),
               priority: 25,
             },
             {

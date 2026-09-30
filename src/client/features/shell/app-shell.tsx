@@ -18,6 +18,7 @@ import { PresentationOverlay } from '../presentation'
 import { NoteList, useGapIndicator, useRollingDateFilter } from '../list'
 import { Sidebar } from '../sidebar'
 import { MUSIC_HOTKEYS, MusicFloatingPlayer, MusicHubModal, MusicImmersiveOverlay, MusicSessionSync, MusicTrackMenuHost } from '../music'
+import { BlogHubModal, BlogPublishModal } from '../blog'
 import { Resizer, SplitResizer } from './resizer'
 import { PinnedWindowsLayer } from '../preview'
 import { t } from '../../lib/i18n'
@@ -28,11 +29,9 @@ const ShortcutsPanel = lazy(() => import('../command').then((m) => ({ default: m
 const GraphPanel = lazy(() => import('../graph').then((m) => ({ default: m.GraphPanel })))
 const ShareHubModal = lazy(() => import('../share/modals').then((m) => ({ default: m.ShareHubModal })))
 const ShareEditModal = lazy(() => import('../share/modals').then((m) => ({ default: m.ShareEditModal })))
-const BlogHubModal = lazy(() => import('../blog').then((m) => ({ default: m.BlogHubModal })))
 
 const NAV_DRAWER_WIDTH = 272
 const NAV_RAIL_COLLAPSED_WIDTH = 48
-const BlogPublishModal = lazy(() => import('../blog').then((m) => ({ default: m.BlogPublishModal })))
 const VersionsPanel = lazy(() => import('../workspace').then((m) => ({ default: m.VersionsPanel })))
 const TemplateGallery = lazy(() => import('../templates').then((m) => ({ default: m.TemplateGallery })))
 const ManageFoldersModal = lazy(() => import('../folders').then((m) => ({ default: m.ManageFoldersModal })))

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Inbox } from 'lucide-react'
 import type { BlogLink } from '@shared/types'
 import { Button } from '../../../components/primitives'
@@ -11,12 +11,15 @@ import { LinkEditModal } from './link-edit-modal'
 import { LinkCategoryModal } from './link-category-modal'
 import { LinkImportExportModal } from './link-import-export-modal'
 import { LinkCheckerModal } from './link-checker-modal'
-import { LinkQrModal } from './link-qr-modal'
 import { LinkContextMenu } from './link-context-menu'
 import { BlogLoadFailure } from '../blog-load-failure'
 
 /** The server caps the list at 500 rows; the DOM does not need all of them at once. */
 const LINKS_RENDER_STEP = 100
+
+// The QR panel is the one place in this view that carries qrcode.react, so it loads when a code is
+// first opened instead of joining the hub's own chunk (the rule SH-20 set for the share modals).
+const LinkQrModal = lazy(() => import('./link-qr-modal').then((m) => ({ default: m.LinkQrModal })))
 
 export function BlogLinksView() {
   const view = useBlogLinksView()
@@ -198,11 +201,13 @@ function LinksToolModals({ view }: { view: ReturnType<typeof useBlogLinksView> }
         onEditLink={view.handleOpenEdit}
       />
 
-      <LinkQrModal
-        open={Boolean(view.qrModalLink)}
-        onClose={() => view.setQrModalLink(null)}
-        link={view.qrModalLink}
-      />
+      <Suspense fallback={null}>
+        <LinkQrModal
+          open={Boolean(view.qrModalLink)}
+          onClose={() => view.setQrModalLink(null)}
+          link={view.qrModalLink}
+        />
+      </Suspense>
 
       <LinkContextMenu
         state={view.contextMenu}

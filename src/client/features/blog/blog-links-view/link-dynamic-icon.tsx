@@ -1,8 +1,9 @@
 import { useState, memo } from 'react'
 import type { ReactNode } from 'react'
-import { Globe, icons } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { Globe } from 'lucide-react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { safeExternalUrl } from '@shared/url-safety'
+import { PRESET_LINK_ICONS, lucideSlugOf } from './link-icons'
 
 export interface LinkDynamicIconProps {
   icon?: string | null
@@ -54,8 +55,14 @@ export const LinkDynamicIcon = memo(function LinkDynamicIcon({
 
   if (isEmojiString(trimmed)) return <IconEmoji value={trimmed} size={size} className={className} />
 
-  const Comp = (icons as Record<string, LucideIcon | undefined>)[trimmed]
-  if (Comp) return <Comp size={size} className={`shrink-0 ${className}`} />
+  const PresetIcon = PRESET_LINK_ICONS[trimmed]
+  if (PresetIcon) return <PresetIcon size={size} className={`shrink-0 ${className}`} />
+
+  // Picked from a search rather than from the presets: only this icon's own module is fetched, and
+  // the library draws nothing until it arrives. A value no lucide version knows keeps the avatar,
+  // like an empty one.
+  const slug = lucideSlugOf(trimmed)
+  if (slug) return <DynamicIcon name={slug} size={size} className={`shrink-0 ${className}`} />
 
   return spare()
 })

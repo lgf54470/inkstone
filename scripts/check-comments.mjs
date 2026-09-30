@@ -6,6 +6,7 @@ const allowed = new Map([
   ['pwa.config.ts', [
     '// Cap for the per-track offline audio cache inside the service worker: when a',
     '// new save would cross it, the oldest-saved tracks are evicted first.',
+    '/**\n * lucide ships one module per icon and the links picker loads them one at a time (ENG-11), so the\n * client build emits a chunk per icon. They belong in the app, not in the offline manifest: listing\n * ~1,700 of them would grow this service worker by tens of kilobytes and make every warm pass fetch\n * each one in turn, which is more than the offline copy of an icon is worth. An icon that has been\n * drawn is kept by the browser\'s own cache of the immutable asset, so the offline gap is limited to\n * icons a reader never saw while online.\n */',
   ]],
   ['scripts/bench-scrypt.mjs', [
     '/**\n * Measures scrypt cost with the production parameters\n * (SCRYPT_N = 2**14, r = 8, p = 5) so parameter and throttle-budget\n * decisions are grounded in measured numbers, not guesses.\n */',
@@ -2924,6 +2925,9 @@ const allowed = new Map([
     '// Both menus are built only while they are open: a closed row used to construct every folder',
     '// entry (and the whole context menu) on each render, for fifty rows at a time.',
   ]],
+  ['src/client/features/blog/blog-hub-lazy.ts', [
+    '/**\n * The hub is the heaviest surface of the feature — the links view under it alone carries the icon\n * picker, qrcode and the link checker — and it opens on demand. The barrel therefore re-exports this\n * wrapper instead of the modal: `features/blog/index.ts` is imported statically by the note list and\n * the sidebar for the blog store, and a direct re-export put the whole hub into their chunk, which\n * also made the shell\'s own `lazy(() => import(\'../blog\'))` split nothing. Render it inside a\n * Suspense (the shell already does).\n */',
+  ]],
   ['src/client/features/blog/blog-hub-sidebar/tag-counts.test.ts', [
     '/**\n * The sidebar summed each node\'s whole subtree during render, so a tag tree of T nodes did O(T²)\n * work per paint. The counts are the same values, computed in one post-order walk.\n */',
   ]],
@@ -2937,6 +2941,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-links-view/index.tsx', [
     '/** The server caps the list at 500 rows; the DOM does not need all of them at once. */',
+    '// The QR panel is the one place in this view that carries qrcode.react, so it loads when a code is',
+    '// first opened instead of joining the hub\'s own chunk (the rule SH-20 set for the share modals).',
     '// A different filter or search term is a different list: start it from its own top.',
   ]],
   ['src/client/features/blog/blog-links-view/link-card-row.test.ts', [
@@ -2961,14 +2967,42 @@ const allowed = new Map([
     '// A reader submitted this address; opening is offered only when it is one a link may carry, so the',
     '// menu never becomes the click that runs it inside the admin\'s session.',
   ]],
+  ['src/client/features/blog/blog-links-view/link-dynamic-icon.test.ts', [
+    '/**\n * The row renderer answers most values without leaving the module: the presets are imported, an\n * address and an emoji are drawn locally, and only an icon picked from a search pulls its own\n * module. Before this, resolving any of them meant having lucide\'s entire registry in the bundle.\n */',
+    '// The module loads, then the icon\'s own effect runs: two turns after the row\'s first render.',
+  ]],
   ['src/client/features/blog/blog-links-view/link-dynamic-icon.tsx', [
     '// A reader may have supplied this picture: an address that is not an image source this app will',
     '// fetch is treated like a load that failed, so the initial is drawn instead of it.',
+    '// Picked from a search rather than from the presets: only this icon\'s own module is fetched, and',
+    '// the library draws nothing until it arrives. A value no lucide version knows keeps the avatar,',
+    '// like an empty one.',
   ]],
   ['src/client/features/blog/blog-links-view/link-health.test.ts', [
     '/**\n * A request that never reached the site and a site that answered "gone" are different findings, and\n * the checker used to record both as broken — which the bulk delete then acted on. The cache had the\n * same problem in the other direction: it was read without its timestamp, so a verdict from months\n * ago was shown as current.\n */',
     '// A cache written by an older version carries no timestamp, and an unreadable age is not a',
     '// reason to call it fresh.',
+  ]],
+  ['src/client/features/blog/blog-links-view/link-icon-selector.test.ts', [
+    '// React tracks the value it last wrote, so the native setter is what makes it see a change.',
+    '// Each result cell loads its own icon module and settles in a follow-up turn.',
+    '/**\n * The picker draws the presets from static imports and matches a query against lucide\'s name list,\n * so opening it and searching it cost no icon code; the grid\'s cells then load the icon modules they\n * show (see `link-icons.ts` for why that replaced the full registry).\n */',
+  ]],
+  ['src/client/features/blog/blog-links-view/link-icon-selector.tsx', [
+    '// An unqueried picker draws the presets, which are already imported, and a query is matched',
+    '// against lucide\'s name list — matching costs no request and no icon code; the cells that end up',
+    '// drawn fetch their own module (see `link-icons.ts`).',
+  ]],
+  ['src/client/features/blog/blog-links-view/link-icons.test.ts', [
+    '/**\n * A stored icon is a lucide export name (`FileText`) while the per-icon loader is keyed by the name\n * the library\'s files use (`file-text`); a value that resolves to neither is drawn as the letter\n * avatar, so a mapping that quietly stopped matching would show up as avatars everywhere rather than\n * as a failure.\n */',
+  ]],
+  ['src/client/features/blog/blog-links-view/link-icons.ts', [
+    '/**\n * The icons a link can carry, keyed by the value that is stored — a lucide export name (`FileText`),\n * not the kebab-case name of the library\'s files, because the public site resolves the same stored\n * value against its own lucide import: the spelling is a contract between the two surfaces.\n *\n * They are imported one by one on purpose. The picker and the row renderer used to answer from\n * lucide\'s full `icons` map, and because that map is one module the whole set — 1,756 components,\n * 507 KiB measured — stayed in a chunk the shell loads at boot; splitting the hub out of the blog\n * barrel did not help, since a statically reached `icons` object cannot be tree-shaken away from the\n * chunks that import single icons (ENG-11). The preset set is what both surfaces draw without help;\n * anything else is resolved to its own module by `lucideSlugOf` and loaded on demand.\n */',
+    '/**\n * `lucide-react/dynamic` ships a table of one thunk per icon — the modules themselves, not their\n * components — which is what makes a per-icon load possible without a registry. Its keys are the\n * kebab-case file names; the stored value is the export name, so the two spellings are mapped here,\n * derived from the table\'s own keys rather than hand-written so a lucide update cannot leave the\n * picker offering a name the renderer cannot load.\n */',
+    '// The table carries aliases (`alarm-check` → `alarm-clock-check`); the first wins, and both load',
+    '// the same icon module anyway.',
+    '/** Every lucide icon the picker can offer, in the stored spelling, sorted for a stable grid. */',
+    '/** The loader key for a stored icon value, or null when the value is not a lucide icon at all. */',
   ]],
   ['src/client/features/blog/blog-links-view/link-qr-modal.tsx', [
     '/* The address arrived from a reader: it opens only when a link may carry it. */',
@@ -3009,6 +3043,9 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-post-pager.tsx', [
     '/**\n * The list holds one page of the account\'s posts; when there are more, this is how the reader reaches\n * them. It reads and writes the store directly because the page is part of the query, not of a view\'s\n * local state, and the store clamps it to the pages that exist.\n */',
+  ]],
+  ['src/client/features/blog/blog-publish-lazy.ts', [
+    '/**\n * The publish form (title, slug availability check, tags, cover, summary) is opened from a note\n * row\'s blog submenu, so the note list — which imports the blog barrel for the store and the\n * submenu — must not carry it. Same rule as the hub: exported as a lazy component, rendered inside a\n * Suspense by every caller.\n */',
   ]],
   ['src/client/features/blog/blog-publish-modal/use-blog-publish-form.ts', [
     '/**\n * The dialog loads what it draws when it opens: the note body once, and the category list. It used\n * to re-run on every `content` change, so one session fetched the categories two or three times.\n */',
@@ -3139,6 +3176,13 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/frontend-base.ts', [
     '/**\n * The blog\'s own site address, as a link may carry it.\n *\n * The stored value is checked on the way in, but a blog configured before that rule existed still\n * holds whatever was typed, and this address becomes an `href` in the admin session — so a value a\n * link may not use falls back to the shipped default instead of being rendered as written.\n */',
+  ]],
+  ['src/client/features/blog/index.ts', [
+    '// The feature\'s slim public entry: what a note row, the sidebar or the workspace need while they',
+    '// render — the store and the row submenu — plus the two surfaces that open on demand, exported as',
+    '// lazy components. The hub\'s own views (blog-hub-modal, blog-links-view and everything under them)',
+    '// are deliberately not re-exported from here: anything that imports this barrel would otherwise pull',
+    '// the whole hub into its chunk, and the shell\'s lazy hub panel would never split.',
   ]],
   ['src/client/features/blog/use-blog-comments-view.ts', [
     '/** Same 250ms as the post list\'s box: the reader pauses, and the server is asked once. */',
@@ -7484,12 +7528,12 @@ const allowed = new Map([
     '/**\n * One card in the grid. Memoised like the table row, and for the same reason: a selection change\n * redraws one card, not the whole grid — which is why every handler it takes is note-scoped and\n * stable and the folder lookup is a map instead of a scan per card.\n */',
   ]],
   ['src/client/features/share/share-helpers.ts', [
+    '// Sunk into lib: the blog dashboard draws the same labels and must not import this barrel for them.',
     '/**\n * The traffic classes a visit list can be narrowed to. It is the shared vocabulary rather than a local\n * union, because the browsing hook, the CSV export walk and the worker\'s log query all have to agree\n * on what "bot" means — that agreement is what the export of a filtered view rests on.\n */',
     '/**\n * The ranges every share analytics surface offers, in one place: the dashboard\'s segmented control\n * and the single-note modal both draw this list, so "30d" can never mean two different windows.\n */',
     '/**\n * The names in the channel split (ADR-0004). The two reserved names become copy; anything else is\n * a token the owner wrote, rendered as text by React and never through a markup API — the stored\n * value is charset-bounded, but the display path does not rely on that alone.\n *\n * `label` is the one name the client cannot derive: a directory\'s marker is `collection-<slug>`, and\n * the collection\'s title lives in the account\'s records, so the worker resolves it (SH-82\'s rule:\n * the marker ships as a token, the name ships only when the worker can prove it).\n */',
     '/**\n * What to say about unique visitors, in one place: the log table and the sessions panel describe the\n * same caliber, and an instance that keeps no visitor fingerprint has no caliber to describe — every\n * visit is its own row there, and there is no fingerprint to count anyone from.\n */',
     '/**\n * How the three traffic switches read as one sentence. The badge and the exported CSV both state\n * this, and a file that describes the filters differently from the screen is worse than no file.\n */',
-    '/**\n * The three device classes the breakdown card names in words. Shared with the dashboard export so a\n * file that leaves the app says "Desktop" where the card said "Desktop", not the raw `desktop`.\n */',
     '// The largest multiple of the charset size that still fits a byte: rejecting the tail keeps',
     '// `byte % 30` uniform, which plain `Math.random()` also managed but a CSPRNG demands explicitly.',
     '/**\n * The dice button next to the custom-slug field. The slug becomes a public URL, so the suggestion\n * comes from `crypto.getRandomValues` rather than `Math.random` — the server generates its own\n * 20-character slug for auto-shares, but a suggestion a person can accept outright should not be\n * the weakest link in the chain.\n */',
@@ -12089,6 +12133,10 @@ const allowed = new Map([
     '// Quota or private-mode writes can throw; the pref stays authoritative in memory.',
     '/** Whether undo toasts should auto-focus their action button (explicit "no-distraction" opt-out). */',
   ]],
+  ['src/client/lib/visitor-geo.ts', [
+    '/**\n * The country and device labels both analytics surfaces draw. They live here rather than in the share\n * feature\'s helpers because the blog dashboard needs exactly these two answers and used to import\n * the whole share barrel for them, which dragged the share modals into the blog chunk.\n */',
+    '/**\n * The three device classes the breakdown card names in words. Shared with the dashboard export so a\n * file that leaves the app says "Desktop" where the card said "Desktop", not the raw `desktop`.\n */',
+  ]],
   ['src/client/lib/wipe-password-prompt.ts', [
     '// Clearing visit logs is unrecoverable, so the endpoint requires the current password',
     '// (SH-12, SH-47 for the blog twin, SH-63 for a single link\'s history). Every clean entry',
@@ -15147,6 +15195,7 @@ const allowed = new Map([
   ]],
   ['vite.config.ts', [
     '// Keep optional preview renderers and their language modules behind dynamic-import boundaries.',
+    '/**\n * The library ships one module per icon, and `lucide-react/dynamic` loads them one at a time.\n * Grouping them into the shared vendor chunk defeated that: the group is statically reachable from\n * the first chunk importing a single icon, so a full-registry lookup — or the dynamic table — put\n * every icon (688 KiB measured) on the boot path. Left ungrouped, a statically imported icon is\n * inlined into its importer and an on-demand one keeps its own async chunk.\n */',
     '/**\n * Vite serves `node_modules` assets (webfonts, mostly) by their resolved path and only\n * below `server.fs.allow`. A git worktree whose install is a symlink into the main\n * checkout therefore answers 403 for every font.\n */',
     '/**\n * The whiteboard library resolves the fonts it draws with at runtime, from paths\n * relative to the app root (`/fonts/<family>/<file>`), and falls back to its own CDN\n * when they are missing — which a self-hosted instance\'s CSP blocks, leaving the board\n * drawn with system fonts instead of the hand-drawn ones. The package\'s font files are\n * therefore materialized into public/ (generated output, gitignored) before dev and\n * build; the copy is skipped while it is current, and refreshed when the package moves.\n */',
   ]],

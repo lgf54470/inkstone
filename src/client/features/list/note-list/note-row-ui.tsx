@@ -270,14 +270,16 @@ function NoteRowModalOverlays({ state }: { state: NoteRowState }) {
         />
       )}
     </Suspense>
-    {isBlogPublishOpen && (
-      <BlogPublishModal
-        open={isBlogPublishOpen}
-        onClose={() => setIsBlogPublishOpen(false)}
-        noteId={note.id}
-        post={noteBlogPost}
-      />
-    )}
+    <Suspense fallback={null}>
+      {isBlogPublishOpen && (
+        <BlogPublishModal
+          open={isBlogPublishOpen}
+          onClose={() => setIsBlogPublishOpen(false)}
+          noteId={note.id}
+          post={noteBlogPost}
+        />
+      )}
+    </Suspense>
   </>)
 }
 

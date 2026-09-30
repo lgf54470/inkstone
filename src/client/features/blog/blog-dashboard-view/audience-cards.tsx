@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Compass, Globe2, Laptop } from 'lucide-react'
 import type { BlogGlobalAnalytics } from '@shared/types'
 import { t } from '../../../lib/i18n'
-import { countryFlag, countryNameLocalized } from '../../share'
+import { countryFlag, countryNameLocalized } from '../../../lib/visitor-geo'
 import { BreakdownRow } from '../../../components/dashboard-blocks'
 
 interface AudienceCardsProps {

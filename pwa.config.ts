@@ -52,6 +52,19 @@ type BuildAsset = {
 
 type BuildBundle = Record<string, BuildChunk | BuildAsset>
 
+/**
+ * lucide ships one module per icon and the links picker loads them one at a time (ENG-11), so the
+ * client build emits a chunk per icon. They belong in the app, not in the offline manifest: listing
+ * ~1,700 of them would grow this service worker by tens of kilobytes and make every warm pass fetch
+ * each one in turn, which is more than the offline copy of an icon is worth. An icon that has been
+ * drawn is kept by the browser's own cache of the immutable asset, so the offline gap is limited to
+ * icons a reader never saw while online.
+ */
+function isPerIconChunk(entry: BuildChunk | BuildAsset): boolean {
+  if (entry.type !== 'chunk') return false
+  return Boolean(entry.facadeModuleId?.replaceAll('\\', '/').includes('/lucide-react/dist/esm/icons/'))
+}
+
 export function inkstonePwa(): Plugin {
   return {
     name: 'inkstone:pwa',
@@ -59,8 +72,8 @@ export function inkstonePwa(): Plugin {
     applyToEnvironment: (environment) => environment.name === 'client',
     generateBundle(_options, bundle) {
       const bundleFiles = Object.values(bundle)
+        .filter((entry) => !entry.fileName.endsWith('.map') && !isPerIconChunk(entry))
         .map((entry) => entry.fileName)
-        .filter((fileName) => !fileName.endsWith('.map'))
       const allFiles = [...new Set([
         'index.html',
         ...bundleFiles,
