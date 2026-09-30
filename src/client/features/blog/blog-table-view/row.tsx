@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
 import { Copy, ExternalLink, FolderClosed, FolderInput, Pin, RefreshCw, Settings2, Trash2 } from 'lucide-react'
-import type { BlogCategory, BlogFolder, BlogPost } from '@shared/types'
+import type { BlogCategory, BlogFolder, BlogPostSummary } from '@shared/types'
 import { Checkbox } from '../../../components/form'
 import { IconButton } from '../../../components/primitives'
 import { Menu } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
-import { useBlogPostCard } from '../blog-grid-view/use-blog-post-card'
+import { useBlogPostSummaryCard } from '../blog-grid-view/use-blog-post-card'
 import { PostCoverImage } from '../blog-grid-view'
 
 export function BlogTableRow({
@@ -19,16 +19,16 @@ export function BlogTableRow({
   onToggleSelect,
   onOpenEdit,
 }: {
-  post: BlogPost
+  post: BlogPostSummary
   isSelected: boolean
   cat: BlogCategory | null
   folder: BlogFolder | null
   folders: BlogFolder[]
   frontendBase: string
   onToggleSelect: () => void
-  onOpenEdit: (post: BlogPost) => void
+  onOpenEdit: (post: BlogPostSummary) => void
 }) {
-  const row = useBlogPostCard({
+  const row = useBlogPostSummaryCard({
     post,
     folders,
     frontendBase,
@@ -77,7 +77,7 @@ function startRowDrag(e: React.DragEvent, postId: string): void {
   e.dataTransfer.effectAllowed = 'move'
 }
 
-function TableRowTitleCell({ post }: { post: BlogPost }) {
+function TableRowTitleCell({ post }: { post: BlogPostSummary }) {
   return (
     <td className='px-3 py-2.5'>
       <div className='flex items-center gap-2.5 min-w-0'>
@@ -124,7 +124,7 @@ function ColoredBadge({ name, color }: { name?: string; color?: string | null })
   )
 }
 
-function TableRowTagsCell({ post }: { post: BlogPost }) {
+function TableRowTagsCell({ post }: { post: BlogPostSummary }) {
   return (
     <td className='px-3 py-2.5 whitespace-nowrap'>
       <div className='flex flex-wrap gap-1 max-w-27.5'>
@@ -147,7 +147,7 @@ function TableRowTagsCell({ post }: { post: BlogPost }) {
   )
 }
 
-function TableRowStatusCell({ post }: { post: BlogPost }) {
+function TableRowStatusCell({ post }: { post: BlogPostSummary }) {
   return (
     <td className='px-3 py-2.5 text-center whitespace-nowrap'>
       {post.isPublished ? (
@@ -169,10 +169,10 @@ function TableRowActionsCell({
   isSelected,
   onOpenEdit,
 }: {
-  row: ReturnType<typeof useBlogPostCard>
-  post: BlogPost
+  row: ReturnType<typeof useBlogPostSummaryCard>
+  post: BlogPostSummary
   isSelected: boolean
-  onOpenEdit: (post: BlogPost) => void
+  onOpenEdit: (post: BlogPostSummary) => void
 }) {
   return (
     <td
@@ -194,9 +194,9 @@ function ActionButtonsGroup({
   post,
   onOpenEdit,
 }: {
-  row: ReturnType<typeof useBlogPostCard>
-  post: BlogPost
-  onOpenEdit: (post: BlogPost) => void
+  row: ReturnType<typeof useBlogPostSummaryCard>
+  post: BlogPostSummary
+  onOpenEdit: (post: BlogPostSummary) => void
 }) {
   return (
     <div className='flex items-center justify-end gap-1'>

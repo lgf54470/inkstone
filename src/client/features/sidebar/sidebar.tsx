@@ -31,6 +31,18 @@ import { ViewItem } from './sidebar/sidebar-nav-buttons'
 
 const TRACKING_APP_TITLE = 'tracking-[var(--tracking-app-title)]'
 
+/**
+ * The badges this sidebar shows come from two summaries read once per mount: the share summary and
+ * the body-free post index — the index, not the management list, because the note list badges every
+ * note with the post it owns and one page of that list cannot answer for the notes on other pages.
+ */
+function useSidebarBootstrap(): void {
+    useEffect(() => {
+      void useShareStore.getState().loadSummary()
+      void useBlogStore.getState().loadPostIndex()
+    }, [])
+}
+
 export function Sidebar({ collapsed = false, onCollapse, }: {
     collapsed?: boolean
     onCollapse?: () => void
@@ -40,11 +52,7 @@ export function Sidebar({ collapsed = false, onCollapse, }: {
     const openView = useUi((s) => s.openView)
     const closePanel = useUi((s) => s.closePanel)
     const counts = useNavigationCounts()
-
-    useEffect(() => {
-      void useShareStore.getState().loadSummary()
-      void useBlogStore.getState().loadPosts()
-    }, [])
+    useSidebarBootstrap()
 
     const goTo = (next: ViewKind) => {
       if (panel) closePanel()

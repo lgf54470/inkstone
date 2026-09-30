@@ -237,12 +237,13 @@
 - **落地（B3-01，`ddfd54e7` 三态 + mutation 部分）**：store 增 `loadErrors: Set<'posts'|'comments'|'links'|'stats'>`，四个 loader 落错且成功清位、失败刷新保留上次数据；新增 `blog-load-failure.tsx`（`role='status'` + 重试）接入文章列表、评论、友链与仪表盘（`stats` + analytics）。mutation 侧新增 `blog-store/mutation.ts`：失败统一 `console.error` + danger toast，乐观更新回滚（`updatePost` 只回滚那一行；批量按快照回滚 `posts`/`stats`）并以 `false`/`null` 返回；`content.ts` 的 folders/tags CRUD 不再静默返回 null；所有成功提示改为按返回值判断，`void updatePost(...)` 这类未处理 rejection 消失；友链检测器的批量删除失败时不再清空选择。复现测试为 `blog-store/mutation-failures.test.ts`（6 条，含回滚变异证明 1 failed / 5 passed）。限制：`use-blog-note-submenu.ts` 直连 `api` 的两处写入沿用其自有的 catch/toast，未并入。
 
 
-#### ENG-02 [P0][开放] 文章列表回传全文且无分页
+#### ENG-02 [P0][已修] 文章列表回传全文且无分页
 - **问题**：`posts.ts:55-68` 的列表 SQL 是 `SELECT p.*, (SELECT COUNT(*) FROM blog_comments …)`，**没有列白名单、没有 LIMIT**；`helpers.ts:8-27` 的 `toBlogPost` 带 `content`；`filterPostsByTag`（`posts.ts:100-110`）在取回全部含正文的行之后于 JS 里过滤 tag。
 - **量级**（明示假设：100 篇 × 12 KB 正文）：单次请求 ≈ **1.2 MB raw / ~340 KB gzip**，而列表真正需要的字段约 0.5 KB/行 → **≈96% 的字节是死重**；服务端另做 100 次相关子查询 COUNT + 100 次 `JSON.parse(tags)`。
 - **方案**：列表 SQL 显式列白名单（去掉 `content`，`excerpt` 保留）→ 新增 `BlogPostSummary` 类型；`LIMIT/OFFSET`（或 keyset 分页）+ 总数走一条独立 `COUNT(*)`；tag 用 `EXISTS` / `LIKE` 下推（`public.ts` 已有 `blogTagNeedles()` 的正解可复用）。前端表格/网格补分页控件（当前无任何分页 UI）。
 - **范围**：`posts.ts`、`helpers.ts`、`shared/types/blog.ts`、`blog-store/loaders.ts`、`blog-table-view`、`blog-grid-view`、demo backend 的对应实现。代价 **M**。
 - **建议**：这是 ENG-04/ENG-05 的前置（列表变小以后，每次搜索的成本才可控）。
+- **落地（B3-02）**：列表 SQL 改显式列白名单（`POST_LIST_COLUMNS` 去 `content`），`LIMIT/OFFSET`（页 ≥1，limit 1–200，默认 50）与独立 `COUNT(*)` 同用一段 `blogPostsWhere()`（分页与总数不可能是两套筛选）；tag 过滤下推 SQL——新增 `tag-needles.ts` 抽出 `blogTagNeedles`/`blogTagFilterSql`，公开端一并复用，原 `filterPostsByTag`（取回全文后 JS 过滤）删除。响应变为 `{ posts, pagination }`。新增 `GET /post-index`：全量、无正文的索引，供记事列表徽标与发布弹窗回填（这两问对不在当前页的记事也必须有一致答案，故刻意不分页）；侧栏挂载从「预取 `posts` 全量」改为预取该索引。前端补分页控件 `blog-post-pager.tsx`（>1 页才出现），store 持有 `postsPage/postsTotal/postsTotalPages`，筛选改变回第一页，当前页被删空自动退到最后一页。演示后端同步。复现测试：worker 4 条 + 客户端 store 4 条 + 分页控件 2 条；tag 短路与 offset 写死两处变异各实测 1 failed。
 
 #### ENG-03 [P0][已修] `GET /api/blog/links` 忽略客户端发来的全部筛选参数
 - **问题**：`links.ts:44-48` 的 handler 只取 `userId`，完全不读 `status/categoryId/search`；`:56-60` 无 `LIMIT`；`:64-79` 在 JS 里数 counts。客户端确实发了这些参数（`blog-store/links.ts` 与 `src/client/lib/api/share.ts` 的 blog 段），拿回全量后 `use-blog-links-view.ts:17-20` 再本地过滤一遍。

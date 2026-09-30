@@ -98,7 +98,7 @@
 
 ## 批次 3 · 失败语义与性能
 
-- [x] B3-01 **ENG-01** store 增 `error` 通道 + 四个视图的三态渲染（加载 / 失败 + 重试 / 空）+ 全部 mutation `try/catch` + 乐观回滚 + danger 提示 — 三态部分已提交 `ddfd54e7`，mutation 部分已提交（hash 由下一提交回填，见进度日志）
+- [x] B3-01 **ENG-01** store 增 `error` 通道 + 四个视图的三态渲染（加载 / 失败 + 重试 / 空）+ 全部 mutation `try/catch` + 乐观回滚 + danger 提示 — 三态部分已提交 `ddfd54e7`，mutation 部分已提交 `7188ae3a`
   - 实现（三态）：`blog-store` 增 `loadErrors: Set<BlogLoadScope>`（`posts/comments/links/stats`）与 `markLoadFailed`/`markLoadSucceeded`；posts/comments/links/stats 四个 loader 落错，成功时清位（同一个 Set 不变则不改身份，避免多余重渲染）；失败刷新保留上次数据，只有「标志置位且手里没有数据」才渲染失败态。
   - 新增 `features/blog/blog-load-failure.tsx`（同一句话 + 重试，`role='status'`）与新 key `blog.load_failed`；四处接入：文章列表（hub）、评论、友链，仪表盘另外把 analytics 的本地失败态与 `stats` 一起接入（`useAnalyticsLoad` 抽出取数 effect，控制台仍记原因）。
   - 复现测试：新增 `blog-store/load-errors.test.ts`（4 条：置位与成功清位、失败刷新保留旧行、作用域互不污染、友链同规则）与 `blog-comments-view-failure.test.ts`（2 条 jsdom：失败画失败态而非空态且重试后恢复、失败刷新保留已有评论）。
@@ -110,7 +110,16 @@
   - 回归：`typecheck` 绿；blog 相关 16 文件 116 条全绿（含新 6 条）；`test:unit` 574 文件 5223 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线：发布表单抽出 `readNoteContent`/`writePostFrontMatter`，测试拆成两个 describe）。
   - 已知限制：`use-blog-note-submenu.ts` 里两处直连 `api` 的写入（同步/取消发布）本来就有自己的 catch 与 toast，未并入本次改动。
   - 回归：`typecheck` 绿；`src/client/features/blog` 13 文件 39 条全绿；合并 `tests/blog-routes.test.ts` 共 14 文件 86 条全绿；九项静态门禁绿（`size` 未动基线，按门槛把 `useBlogHubModal` 的发布弹窗状态、评论列表的空/失败分支与仪表盘的 analytics 取数各自抽成小件）。
-- [ ] B3-02 **ENG-02** 文章列表去 `content`（列白名单）+ `LIMIT/OFFSET` + 总数独立查询 + tag 下推 + 前端分页控件
+- [x] B3-02 **ENG-02** 文章列表去 `content`（列白名单）+ `LIMIT/OFFSET` + 总数独立查询 + tag 下推 + 前端分页控件 — 已提交（hash 由下一提交回填，见进度日志）
+  - 实现（服务端）：`post-list-query.ts` 列白名单拆成两层——`POST_LIST_COLUMNS`（列表，无 `content`）与 `POST_INDEX_COLUMNS`（记事列表用的无正文索引）；`blogPostsWhere()` 一段 WHERE 同时喂分页查询与 `COUNT(*)`（同一筛选的两问，翻页器不会按另一套条件画总页数）；`blogPostsListQuery` 加 `LIMIT/OFFSET`，`blogPostsCountQuery` 是独立总数，`blogPostIndexQuery` 是全量无正文索引；tag 过滤下推 SQL（新增 `tag-needles.ts` 抽出 `blogTagNeedles`/`blogTagFilterSql`，`public.ts` 改为复用，管理端与公开端共享同一段父子标签语义），删掉原先取回全文后在 JS 里过滤的 `filterPostsByTag`。
+  - 路由：`GET /posts` 读 `page`/`limit`（`clampInt`：页 ≥1，limit 1–200，默认 50），响应 `{ posts, pagination: { page, limit, total, totalPages } }`；新增 `GET /post-index`（body-free 全量，供记事列表徽标与发布弹窗回填——这两问对不在当前页的记事也必须有一致答案）。
+  - 共享类型：`BlogPostSummary = Omit<BlogPost, 'content'>`、`BlogPostIndexEntry`；`db/rows.ts` 对应两个行型；`helpers.ts` 的 `toBlogPostSummary` / `toBlogPostIndexEntry` / `toBlogPost`（最后一个在 summary 上叠回正文）。
+  - 客户端：store 增 `postIndex` 与 `postsPage`/`postsTotal`/`postsTotalPages` + `setPostsPage`（按服务端给的总页数夹紧，同页不重复请求）；`loadPosts` 带 `page`，筛选改变一律回第 1 页；当前页被删空（`posts.length === 0 && total > 0 && page > totalPages`）自动退到最后一页而不是画「暂无文章」；`loadAll` 与全部文章 mutation 一并刷新 `postIndex`；新增 `blog-post-pager.tsx`（>1 页才出现，上一页/下一页 + 位置与总数）；侧栏挂载改预取 `loadPostIndex()`（原来取整份 `posts`——分页后一页装不下每篇记事的徽标）；记事列表与子菜单改读 `postIndex`（`note-row-state.ts`、`use-blog-note-submenu.ts`，发布弹窗收 `BlogPostIndexEntry`）。
+  - demo backend 同步：`/api/blog/posts` 分页 + `pagination`、`/api/blog/post-index`；列表与索引分别去掉正文与统计字段。
+  - 复现测试：`tests/blog-routes.test.ts` 新增 4 条（分页与 `content` 缺席；tag 在 SQL 里下推且跨页可命中；总数跟随筛选；`/post-index` 全量无正文）；客户端新增 `blog-store/posts-pagination.test.ts` 4 条（查询带页、夹紧与同页不重发、筛选回第一页、删空当前页回退）与 `blog-post-pager.test.ts` 2 条（单页不渲染、位置与两端禁用）。
+  - 先红证据：把 tag 分支短路为 `false && tag` 后 tag 用例 **1 failed / 50 skipped**；把 offset 写死 0 后分页用例 **1 failed / 50 skipped**（均恢复后全绿）。
+  - 回归：`typecheck` 绿；blog 相关 18 文件 62 条全绿；`test:unit` 576 文件 5233 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线；`comments` 白名单随新注释重生）。
+  - 已知限制：`post-index` 刻意不分页（每篇记事都要一个答案），代价是账号文章很多时这份无正文索引本身也不小；请求 `limit` 上限 200。
 - [x] B3-03 **ENG-03** `GET /links` 服务端真消费 `status/categoryId/search` + `LIMIT` + counts 改 `GROUP BY` — 已提交 `60b83bcb`
   - 实现：新增 `src/worker/routes/blog/link-list-query.ts`（列表与计数共用一段 WHERE）：`status` 映射 `pending/approved/rejected` 或两个标记页签 `pinned/favorite`（片段是常量表，请求只能选不能写）、`categoryId` 精确匹配、`search` 走 `escapeLike` + `ESCAPE`；列表 `LIMIT 500`；计数一条 `GROUP BY status`，**不带 status 条件**（切页签时徽标不缩水）、带 category/search（徽标描述眼前这批）；未知 `status` 回 400 而不是静默当 `all`。`links.ts` 因 500 行门槛把查询构建器拆出（同 `post-list-query.ts` 先例）。
   - `BlogLinkStats` 增 `pinned`/`favorite`：这两个页签的计数原本由客户端在数组上数，服务端一次 GROUP BY 即可给出，且不必受 LIMIT 影响。
@@ -175,7 +184,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-30 | B3-01 ENG-01（mutation 部分）写入自带失败提示与乐观回滚 | （下一提交回填） | `typecheck` 绿；blog 相关 16 文件 116 条全绿（含新 6 条）；回滚变异证明 1 failed / 5 passed；九项静态门禁绿（`size` 未动基线）；`test:unit` 574 文件 5223 通过 / 1 skipped | 直连 `api` 的两处笔记侧写入未并入；folders/tags/categories/settings 的 loader 仍只记日志 |
+| 2026-09-30 | B3-02 ENG-02 文章列表去正文 + LIMIT/OFFSET + 独立总数 + tag 下推 + 分页控件 | （下一提交回填） | `typecheck` 绿；`tests/blog-routes.test.ts` 51 条（含新 4 条）+ 客户端新 6 条全绿；两处先红变异各 1 failed；`test:unit` 576 文件 5233 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线） | `post-index` 刻意不分页（每篇记事都要答案）；`limit` 上限 200；demo 后端已同步 |
+| 2026-09-30 | B3-01 ENG-01（mutation 部分）写入自带失败提示与乐观回滚 | 7188ae3a | `typecheck` 绿；blog 相关 16 文件 116 条全绿（含新 6 条）；回滚变异证明 1 failed / 5 passed；九项静态门禁绿（`size` 未动基线）；`test:unit` 574 文件 5223 通过 / 1 skipped | 直连 `api` 的两处笔记侧写入未并入；folders/tags/categories/settings 的 loader 仍只记日志 |
 | 2026-09-30 | B3-01 ENG-01（三态部分）加载失败成为独立状态 + 失败可重试 | ddfd54e7 | `typecheck` 绿；`src/client/features/blog` 13 文件 39 条 + `tests/blog-routes.test.ts` 47 条全绿（含新 6 条）；失败分支短路的变异证明 1 failed；九项静态门禁绿 | mutation 的 catch/回滚/提示尚未做（进行中）；folders/tags/categories/settings 的 loader 仍只记日志（本条只覆盖四个视图） |
 | 2026-09-30 | B3-03 ENG-03 友链列表服务端筛选 + 限页 + `GROUP BY` 计数 | 60b83bcb | `typecheck` 绿；`tests/blog-links-routes.test.ts` 24 条（含新 3 条）+ `blog-store/links-request.test.ts` 新 3 条全绿；三条新用例已实测在旧实现上先红；九项静态门禁绿（`size` 无需动基线）；`test:unit` 571 文件 5211 通过 / 1 skipped | 500 是上限而非分页，界面提示「只显示前 N 条」；demo 后端本无该端点 |
 | 2026-09-30 | B3-04 ENG-04 搜索防抖 + 取消/序号线（含 `/check-slug`） | 1ea6a399 | `typecheck` 绿；`blog-store/posts-request.test.ts` 新 2 条绿；收尾 `test:unit` 571 文件 5211 通过 / 1 skipped（全绿） | 本条只覆盖文章列表；友链搜索的取消/序号线随 B3-03 补上，未加防抖 |

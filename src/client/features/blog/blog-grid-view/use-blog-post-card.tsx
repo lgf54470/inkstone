@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { BarChart2, Check, Copy, ExternalLink, FolderClosed, FolderInput, PauseCircle, Pin, PlayCircle, Settings2, Trash2 } from 'lucide-react'
-import type { BlogFolder, BlogPost } from '@shared/types'
+import type { BlogFolder, BlogPostSummary } from '@shared/types'
 import { confirm, useContextMenu, type MenuItem } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
@@ -8,17 +8,17 @@ import type { UiState } from '../../../store/ui'
 import { useUi } from '../../../store/ui'
 import { useBlogStore, type BlogStoreState } from '../blog-store'
 
-export function useBlogPostCard({
+export function useBlogPostSummaryCard({
   post,
   folders,
   frontendBase,
   onOpenEdit,
   deleteConfirmKey = 'blog.confirm_delete_post',
 }: {
-  post: BlogPost
+  post: BlogPostSummary
   folders: BlogFolder[]
   frontendBase: string
-  onOpenEdit: (post: BlogPost) => void
+  onOpenEdit: (post: BlogPostSummary) => void
   deleteConfirmKey?: DeleteConfirmKey
 }) {
   const toast = useUi((s) => s.toast)
@@ -70,7 +70,7 @@ async function syncPostNow(id: string, syncPost: BlogStoreState['syncPost'], toa
   if (ok) toast({ title: t('blog.sync_success'), tone: 'success' })
 }
 
-async function deletePostFlow(post: BlogPost, deletePost: BlogStoreState['deletePost'], toast: UiState['toast'], deleteConfirmKey: DeleteConfirmKey): Promise<void> {
+async function deletePostFlow(post: BlogPostSummary, deletePost: BlogStoreState['deletePost'], toast: UiState['toast'], deleteConfirmKey: DeleteConfirmKey): Promise<void> {
   const ok = await confirm({
     title: t('common.delete'),
     description: t(deleteConfirmKey, { value0: post.title }),
@@ -98,7 +98,7 @@ async function movePostToFolder(
 }
 
 function buildFolderMenuItems(
-  post: BlogPost,
+  post: BlogPostSummary,
   folders: BlogFolder[],
   handleMoveToFolder: (folderId: string | null) => Promise<void>,
 ): MenuItem[] {
@@ -125,10 +125,10 @@ function buildFolderMenuItems(
 }
 
 interface CardMenuCtx {
-  post: BlogPost
+  post: BlogPostSummary
   postUrl: string
   folders: BlogFolder[]
-  onOpenEdit: (post: BlogPost) => void
+  onOpenEdit: (post: BlogPostSummary) => void
   setActiveTab: BlogStoreState['setActiveTab']
   handleCopyLink: (slug: string) => Promise<void>
   handleDelete: () => Promise<void>
@@ -166,7 +166,7 @@ function FolderMoveSubmenu({
   onMove,
   closeMenu,
 }: {
-  post: BlogPost
+  post: BlogPostSummary
   folders: BlogFolder[]
   onMove: (folderId: string | null) => Promise<void>
   closeMenu: () => void

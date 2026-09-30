@@ -1,7 +1,8 @@
-import type { BlogComment, BlogCommentStatus, BlogPost } from '@shared/types'
-import type { BlogCommentModerationRow, BlogPostRow } from '../../db/rows'
+import type { BlogComment, BlogCommentStatus, BlogPost, BlogPostIndexEntry, BlogPostSummary } from '@shared/types'
+import type { BlogCommentModerationRow, BlogPostIndexRow, BlogPostRow, BlogPostSummaryRow } from '../../db/rows'
 
-export function toBlogPost(row: BlogPostRow & { comments_count?: number }): BlogPost {
+/** The body-free shape every list and index answer shares; `toBlogPost` adds the body on top of it. */
+export function toBlogPostSummary(row: BlogPostSummaryRow): BlogPostSummary {
   return {
     id: row.id,
     slug: row.slug,
@@ -9,7 +10,6 @@ export function toBlogPost(row: BlogPostRow & { comments_count?: number }): Blog
     userId: row.user_id,
     title: row.title,
     excerpt: row.excerpt,
-    content: row.content,
     coverUrl: row.cover_url,
     categoryId: row.category_id,
     folderId: row.folder_id || null,
@@ -22,6 +22,30 @@ export function toBlogPost(row: BlogPostRow & { comments_count?: number }): Blog
     publishedAt: row.published_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  }
+}
+
+export function toBlogPostIndexEntry(row: BlogPostIndexRow): BlogPostIndexEntry {
+  return {
+    id: row.id,
+    noteId: row.note_id,
+    slug: row.slug,
+    title: row.title,
+    excerpt: row.excerpt,
+    coverUrl: row.cover_url,
+    categoryId: row.category_id,
+    folderId: row.folder_id || null,
+    tags: JSON.parse(row.tags || '[]'),
+    isPublished: Boolean(row.is_published),
+    allowComments: Boolean(row.allow_comments),
+    isPinned: Boolean(row.is_pinned),
+  }
+}
+
+export function toBlogPost(row: BlogPostRow & { comments_count?: number }): BlogPost {
+  return {
+    ...toBlogPostSummary(row),
+    content: row.content,
   }
 }
 

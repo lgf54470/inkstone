@@ -1,6 +1,6 @@
 import { Globe, Image as ImageIcon, Check, Hash, X, Sparkles, ExternalLink } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { BlogPost } from '@shared/types'
+import type { BlogPostIndexEntry } from '@shared/types'
 import { Modal } from '../../../components/overlay'
 import { Button, IconButton } from '../../../components/primitives'
 import { Input, Select, Switch, Textarea } from '../../../components/form'
@@ -340,7 +340,7 @@ export function BlogPublishModal({
   open: boolean
   onClose: () => void
   noteId: string
-  post?: BlogPost | null
+  post?: BlogPostIndexEntry | null
   onSaved?: () => void
 }) {
   const form = useBlogPublishForm({ open, onClose, noteId, initialPost, onSaved })

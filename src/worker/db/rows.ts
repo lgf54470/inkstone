@@ -141,6 +141,27 @@ export interface BlogPostCountsRow extends BlogPostRow {
   comments_count: number
 }
 
+/** A management-list row: the same columns minus the body, which the list never draws. */
+export interface BlogPostSummaryRow extends Omit<BlogPostRow, 'content'> {
+  comments_count?: number
+}
+
+/** The body-free index row the note list reads (id, note and what the publish dialog needs). */
+export interface BlogPostIndexRow {
+  id: string
+  note_id: string
+  slug: string
+  title: string
+  excerpt: string
+  cover_url: string
+  category_id: string | null
+  folder_id: string | null
+  tags: string
+  is_published: number
+  allow_comments: number
+  is_pinned: number
+}
+
 export interface BlogPostPublicRow extends BlogPostCountsRow {
   category_name: string | null
   category_slug: string | null

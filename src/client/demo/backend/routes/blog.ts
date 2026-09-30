@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { DemoState } from '../../state'
-import type { BlogCommentStatus, BlogPost, ShareTimelineRange } from '@shared/types'
+import type { BlogCommentStatus, BlogPost, BlogPostIndexEntry, BlogPostSummary, ShareTimelineRange } from '@shared/types'
 import { apiError, jsonBody } from '../helpers/info'
 import { buildAnalytics, buildStats, createBlogDemoData, type BlogDemoData } from './blog-seed'
 import {
@@ -61,11 +61,44 @@ function registerBlogSettingsRoutes(app: Hono, data: BlogDemoData): void {
   })
 }
 
+const DEMO_BLOG_PAGE_SIZE = 50
+const DEMO_BLOG_PAGE_SIZE_MAX = 200
+
+/** The same split the real route makes: the list carries no body, the index carries no statistics. */
+function toPostSummary(post: BlogPost): BlogPostSummary {
+  return {
+    id: post.id, slug: post.slug, noteId: post.noteId, userId: post.userId,
+    title: post.title, excerpt: post.excerpt, coverUrl: post.coverUrl,
+    categoryId: post.categoryId, folderId: post.folderId, tags: post.tags,
+    isPublished: post.isPublished, allowComments: post.allowComments, isPinned: post.isPinned,
+    views: post.views, commentsCount: post.commentsCount, publishedAt: post.publishedAt,
+    createdAt: post.createdAt, updatedAt: post.updatedAt,
+  }
+}
+
+function toIndexEntry(post: BlogPost): BlogPostIndexEntry {
+  return {
+    id: post.id, noteId: post.noteId, slug: post.slug, title: post.title,
+    excerpt: post.excerpt, coverUrl: post.coverUrl, categoryId: post.categoryId,
+    folderId: post.folderId, tags: post.tags, isPublished: post.isPublished,
+    allowComments: post.allowComments, isPinned: post.isPinned,
+  }
+}
+
 function registerBlogPostListRoute(app: Hono, data: BlogDemoData): void {
   app.get('/api/blog/posts', (c) => {
     const filtered = data.posts.filter((post) => matchPostFilters(post, c.req.query('status') ?? 'all', c.req.query('categoryId'), c.req.query('folderId'), c.req.query('tag'), c.req.query('search')?.toLowerCase()))
-    return c.json({ posts: sortPosts(filtered, c.req.query('sort') ?? 'published_desc') })
+    const sorted = sortPosts(filtered, c.req.query('sort') ?? 'published_desc')
+    const page = Math.max(1, Number(c.req.query('page') ?? 1) || 1)
+    const limit = Math.min(DEMO_BLOG_PAGE_SIZE_MAX, Math.max(1, Number(c.req.query('limit') ?? DEMO_BLOG_PAGE_SIZE) || DEMO_BLOG_PAGE_SIZE))
+    const offset = (page - 1) * limit
+    return c.json({
+      posts: sorted.slice(offset, offset + limit).map(toPostSummary),
+      pagination: { page, limit, total: sorted.length, totalPages: Math.ceil(sorted.length / limit) },
+    })
   })
+
+  app.get('/api/blog/post-index', (c) => c.json({ posts: data.posts.map(toIndexEntry) }))
 }
 
 function registerBlogCommentRoutes(app: Hono, data: BlogDemoData): void {

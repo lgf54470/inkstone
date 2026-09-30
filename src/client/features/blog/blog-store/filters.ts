@@ -1,7 +1,7 @@
 import { loadInitialFilters, TRAFFIC_FILTERS_KEY } from './state'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
-export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'setActiveTab' | 'setStatusFilter' | 'setCategoryId' | 'setFolderId' | 'setTag' | 'setSearch' | 'setSort' | 'setViewMode' | 'toggleSelectPost' | 'selectAllPosts' | 'clearPostSelection' | 'setCommentStatusFilter' | 'setCommentSearch' | 'toggleSelectComment' | 'selectAllComments' | 'clearCommentSelection' | 'setFilters' | 'hydrateTrafficFilters'> => ({
+export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'setActiveTab' | 'setStatusFilter' | 'setCategoryId' | 'setFolderId' | 'setTag' | 'setSearch' | 'setSort' | 'setViewMode' | 'setPostsPage' | 'toggleSelectPost' | 'selectAllPosts' | 'clearPostSelection' | 'setCommentStatusFilter' | 'setCommentSearch' | 'toggleSelectComment' | 'selectAllComments' | 'clearCommentSelection' | 'setFilters' | 'hydrateTrafficFilters'> => ({
   hydrateTrafficFilters: () => set(loadInitialFilters()),
   setFilters: (newFilters) => setFiltersImpl(newFilters, set, get),
   setActiveTab: (activeTab) => set({ activeTab }),
@@ -11,6 +11,7 @@ export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreS
   setTag: (tag) => applyPostFilter(set, get, { tag, folderId: null, statusFilter: 'all', activeTab: 'posts' }),
   setSearch: (search) => applyPostFilter(set, get, { search }),
   setSort: (sort) => applyPostFilter(set, get, { sort }),
+  setPostsPage: (page) => setPostsPageImpl(page, set, get),
   setViewMode: (viewMode) => set({ viewMode }),
   toggleSelectPost: (id) => set((state) => ({ selectedPostIds: toggleSelectedId(state.selectedPostIds, id) })),
   selectAllPosts: (ids) => set({ selectedPostIds: new Set(ids) }),
@@ -23,7 +24,17 @@ export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreS
 })
 
 function applyPostFilter(set: SetBlogStoreState, get: () => BlogStoreState, patch: Partial<BlogStoreState>): void {
-  set(patch)
+  // Any filter change re-asks page one: staying on the old page after narrowing the list would show
+  // an empty screen for a filter that does have matches.
+  set({ ...patch, postsPage: 1 })
+  void get().loadPosts()
+}
+
+function setPostsPageImpl(page: number, set: SetBlogStoreState, get: () => BlogStoreState): void {
+  const lastPage = Math.max(1, get().postsTotalPages)
+  const next = Math.min(Math.max(1, Math.trunc(page)), lastPage)
+  if (next === get().postsPage) return
+  set({ postsPage: next })
   void get().loadPosts()
 }
 

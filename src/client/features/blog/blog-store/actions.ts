@@ -34,7 +34,7 @@ async function batchToggleGroupImpl(
   }))
   try {
     await api.blog.batchToggleGroup(type, target, enabled)
-    await Promise.all([get().loadPosts(), get().loadStats()])
+    await Promise.all([get().loadPosts(), get().loadStats(), get().loadPostIndex()])
     return true
   } catch (error) {
     set(previous)
@@ -110,7 +110,7 @@ async function batchMoveToFolderImpl(
   try {
     await api.blog.posts.batch('setFolder', postIds, { folderId })
     get().clearPostSelection()
-    await Promise.all([get().loadPosts(), get().loadStats()])
+    await Promise.all([get().loadPosts(), get().loadStats(), get().loadPostIndex()])
     return true
   } catch (error) {
     set({ posts: previous })
@@ -127,7 +127,7 @@ async function savePostImpl(
 ): Promise<{ ok: boolean; id: string; slug: string } | null> {
   try {
     const res = await api.blog.posts.create(data)
-    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
+    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags(), get().loadPostIndex()])
     return res
   } catch (error) {
     reportBlogMutationError(error)
@@ -147,7 +147,7 @@ async function updatePostImpl(
   }))
   try {
     await api.blog.posts.patch(id, patch)
-    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
+    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags(), get().loadPostIndex()])
     return true
   } catch (error) {
     set((state) => ({
@@ -161,12 +161,12 @@ async function updatePostImpl(
 async function deletePostImpl(id: string, get: () => BlogStoreState): Promise<boolean> {
   return runBlogMutation(
     () => api.blog.posts.remove(id),
-    () => Promise.all([get().loadPosts(), get().loadStats()]),
+    () => Promise.all([get().loadPosts(), get().loadStats(), get().loadPostIndex()]),
   )
 }
 
 async function syncPostImpl(id: string, get: () => BlogStoreState): Promise<boolean> {
-  return runBlogMutation(() => api.blog.posts.sync(id), () => get().loadPosts())
+  return runBlogMutation(() => api.blog.posts.sync(id), () => Promise.all([get().loadPosts(), get().loadPostIndex()]))
 }
 
 async function batchPostsImpl(
@@ -186,7 +186,7 @@ async function batchPostsImpl(
       isPinned: pinnedState,
     })
     get().clearPostSelection()
-    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
+    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags(), get().loadPostIndex()])
     return true
   } catch (error) {
     reportBlogMutationError(error)

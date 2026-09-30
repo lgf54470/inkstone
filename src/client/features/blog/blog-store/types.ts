@@ -1,4 +1,4 @@
-import type { BlogPost, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats } from '@shared/types'
+import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats } from '@shared/types'
 import type { StoreApi } from 'zustand'
 
 export type SetBlogStoreState = StoreApi<BlogStoreState>['setState']
@@ -43,7 +43,13 @@ export interface BlogStoreState {
   linkSearch: string
   selectedLinkIds: Set<string>
 
-  posts: BlogPost[]
+  posts: BlogPostSummary[]
+  /**
+   * Every post of the account in its body-free index form (see `BlogPostIndexEntry`). The list above
+   * is one page, so the note list cannot read "which notes are published" from it, and the publish
+   * dialog cannot be pre-filled from it either.
+   */
+  postIndex: BlogPostIndexEntry[]
   folders: BlogFolder[]
   tags: BlogTag[]
   categories: BlogCategory[]
@@ -89,6 +95,7 @@ export interface BlogStoreState {
 
   loadAll: () => Promise<void>
   loadPosts: () => Promise<void>
+  loadPostIndex: () => Promise<void>
   loadFolders: () => Promise<void>
   loadTags: () => Promise<void>
   loadCategories: () => Promise<void>
@@ -168,6 +175,12 @@ export interface BlogStoreState {
    */
   postsRequestSeq: number
   postsAbort: AbortController | null
+
+  /** Which page of the post list is on screen, and what the server said about the whole list. */
+  postsPage: number
+  postsTotal: number
+  postsTotalPages: number
+  setPostsPage: (page: number) => void
 
   /** The same latest-wins rule as the post list, for the link list's status/category/search. */
   linksRequestSeq: number

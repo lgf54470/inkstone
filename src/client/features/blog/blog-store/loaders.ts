@@ -3,9 +3,10 @@ import { api } from '../../../lib/api'
 import { markLoadFailed, markLoadSucceeded } from './state'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
-export const blogLoadersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'loadAll' | 'loadPosts' | 'loadFolders' | 'loadTags' | 'loadCategories' | 'loadComments' | 'loadStats' | 'loadSettings'> => ({
+export const blogLoadersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'loadAll' | 'loadPosts' | 'loadPostIndex' | 'loadFolders' | 'loadTags' | 'loadCategories' | 'loadComments' | 'loadStats' | 'loadSettings'> => ({
   loadAll: () => loadAllImpl(set, get),
   loadPosts: () => loadPostsImpl(set, get),
+  loadPostIndex: () => loadPostIndexImpl(set),
   loadFolders: () => loadFoldersImpl(set),
   loadTags: () => loadTagsImpl(set),
   loadCategories: () => loadCategoriesImpl(set),
@@ -20,6 +21,7 @@ async function loadAllImpl(set: SetBlogStoreState, get: () => BlogStoreState): P
     await Promise.allSettled([
       get().loadStats(),
       get().loadPosts(),
+      get().loadPostIndex(),
       get().loadFolders(),
       get().loadTags(),
       get().loadCategories(),
@@ -40,7 +42,7 @@ async function loadAllImpl(set: SetBlogStoreState, get: () => BlogStoreState): P
  * not an error — the caller asked for it and then changed its mind.
  */
 async function loadPostsImpl(set: SetBlogStoreState, get: () => BlogStoreState): Promise<void> {
-  const { statusFilter, categoryId, folderId, tag, search, sort, postsRequestSeq, postsAbort } = get()
+  const { statusFilter, categoryId, folderId, tag, search, sort, postsPage, postsRequestSeq, postsAbort } = get()
   const seq = postsRequestSeq + 1
   postsAbort?.abort()
   const controller = new AbortController()
@@ -54,19 +56,40 @@ async function loadPostsImpl(set: SetBlogStoreState, get: () => BlogStoreState):
       tag: tag || undefined,
       search: search || undefined,
       sort,
+      page: postsPage,
     }, controller.signal)
     if (get().postsRequestSeq !== seq) return
     const posts = (res.posts || []).map((p) => ({
       ...p,
       coverUrl: extractCoverUrl(p.coverUrl),
     }))
-    set((s) => ({ posts, loadErrors: markLoadSucceeded(s.loadErrors, 'posts') }))
+    const total = res.pagination?.total ?? posts.length
+    const totalPages = res.pagination?.totalPages ?? 1
+    set((s) => ({ posts, postsTotal: total, postsTotalPages: totalPages, loadErrors: markLoadSucceeded(s.loadErrors, 'posts') }))
+    // The page in hand may have emptied under the reader (a delete on the last page, or a filter
+    // that shrank the list): ask once more for the page that exists rather than draw "no posts".
+    if (posts.length === 0 && total > 0 && postsPage > totalPages) {
+      set({ postsPage: Math.max(1, totalPages) })
+      void loadPostsImpl(set, get)
+    }
   } catch (err) {
     // A refresh failure leaves the previous list where it is and raises the flag: an empty screen
     // because a request failed would read as "your posts are gone".
     if (controller.signal.aborted) return
     console.error('Failed to load blog posts', err)
     set((s) => ({ loadErrors: markLoadFailed(s.loadErrors, 'posts') }))
+  }
+}
+
+async function loadPostIndexImpl(set: SetBlogStoreState): Promise<void> {
+  try {
+    const res = await api.blog.postIndex()
+    set({ postIndex: res.posts || [] })
+  } catch (err) {
+    // The index feeds the note list's published badges and the publish dialog's starting values. A
+    // failure keeps the previous answer instead of clearing it, and is logged here rather than shown
+    // as a broken note list: there is no surface that could render it without lying about the notes.
+    console.error('Failed to load blog post index', err)
   }
 }
 

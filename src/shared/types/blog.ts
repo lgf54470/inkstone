@@ -32,6 +32,22 @@ export interface BlogPost {
   updatedAt: number
 }
 
+/**
+ * One page of the management list: every column the table and grid draw, and never the body. The
+ * body is the one field measured in kilobytes, and the list asked for it only to drop it again.
+ */
+export type BlogPostSummary = Omit<BlogPost, 'content'>
+
+/**
+ * The complete body-free view of an account's posts, keyed by the note each was published from. The
+ * note list both badges a note with the post it owns and pre-fills the publish dialog from it, and a
+ * paginated row list cannot answer for a note that sits on another page.
+ */
+export type BlogPostIndexEntry = Omit<
+  BlogPostSummary,
+  'userId' | 'views' | 'commentsCount' | 'publishedAt' | 'createdAt' | 'updatedAt'
+>
+
 export interface BlogFolder {
   id: string
   userId?: string

@@ -1,5 +1,5 @@
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
-import type { BlogPost } from '@shared/types'
+import type { BlogPostSummary } from '@shared/types'
 import { Checkbox } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 import { useBlogStore } from '../blog-store'
@@ -9,8 +9,8 @@ export function BlogTableView({
   posts,
   onOpenEdit,
 }: {
-  posts: BlogPost[]
-  onOpenEdit: (post: BlogPost) => void
+  posts: BlogPostSummary[]
+  onOpenEdit: (post: BlogPostSummary) => void
 }) {
   const categories = useBlogStore((s) => s.categories)
   const folders = useBlogStore((s) => s.folders)
@@ -60,7 +60,7 @@ export function BlogTableView({
 
 function toggleAllSelected(
   isAllSelected: boolean,
-  posts: BlogPost[],
+  posts: BlogPostSummary[],
   clearPostSelection: () => void,
   selectAllPosts: (ids: string[]) => void,
 ): void {

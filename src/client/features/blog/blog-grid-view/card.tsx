@@ -1,12 +1,12 @@
 import type { ReactNode, RefObject } from 'react'
 import { Copy, ExternalLink, Eye, FolderClosed, FolderInput, MessageSquare, Pin, RefreshCw, Settings2, Trash2 } from 'lucide-react'
-import type { BlogCategory, BlogFolder, BlogPost } from '@shared/types'
+import type { BlogCategory, BlogFolder, BlogPostSummary } from '@shared/types'
 import { Checkbox } from '../../../components/form'
 import { IconButton } from '../../../components/primitives'
 import { Menu, type MenuItem } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
-import { useBlogPostCard } from './use-blog-post-card'
+import { useBlogPostSummaryCard } from './use-blog-post-card'
 import { PostCoverImage } from './cover-image'
 
 export function BlogGridCard({
@@ -19,16 +19,16 @@ export function BlogGridCard({
   onToggleSelect,
   onOpenEdit,
 }: {
-  post: BlogPost
+  post: BlogPostSummary
   isSelected: boolean
   cat: BlogCategory | null
   folder: BlogFolder | null
   folders: BlogFolder[]
   frontendBase: string
   onToggleSelect: () => void
-  onOpenEdit: (post: BlogPost) => void
+  onOpenEdit: (post: BlogPostSummary) => void
 }) {
-  const card = useBlogPostCard({ post, folders, frontendBase, onOpenEdit })
+  const card = useBlogPostSummaryCard({ post, folders, frontendBase, onOpenEdit })
 
   return (
     <div
@@ -83,14 +83,14 @@ function startCardDrag(e: React.DragEvent, postId: string): void {
   e.dataTransfer.effectAllowed = 'move'
 }
 
-function openCardContextMenu(e: React.MouseEvent, card: ReturnType<typeof useBlogPostCard>): void {
+function openCardContextMenu(e: React.MouseEvent, card: ReturnType<typeof useBlogPostSummaryCard>): void {
   e.preventDefault()
   e.stopPropagation()
   card.setIsFolderMenuOpen(false)
   card.contextMenu.onContextMenu(e)
 }
 
-function CardBody({ post, folder, cat }: { post: BlogPost; folder: BlogFolder | null; cat: BlogCategory | null }) {
+function CardBody({ post, folder, cat }: { post: BlogPostSummary; folder: BlogFolder | null; cat: BlogCategory | null }) {
   return (
     <>
       <CardMeta post={post} folder={folder} cat={cat} />
@@ -111,7 +111,7 @@ function CardTopControls({
   onToggleSelect,
   onTogglePin,
 }: {
-  post: BlogPost
+  post: BlogPostSummary
   isSelected: boolean
   onToggleSelect: () => void
   onTogglePin: () => void
@@ -144,7 +144,7 @@ function CardTopControls({
   )
 }
 
-function CardCover({ post }: { post: BlogPost }) {
+function CardCover({ post }: { post: BlogPostSummary }) {
   return (
     <div className='relative h-36 w-full bg-[var(--bg-sunken)] overflow-hidden'>
       <PostCoverImage src={post.coverUrl} alt={post.title} />
@@ -164,7 +164,7 @@ function CardCover({ post }: { post: BlogPost }) {
   )
 }
 
-function CardMeta({ post, folder, cat }: { post: BlogPost; folder: BlogFolder | null; cat: BlogCategory | null }) {
+function CardMeta({ post, folder, cat }: { post: BlogPostSummary; folder: BlogFolder | null; cat: BlogCategory | null }) {
   return (
     <div className='flex items-center gap-1.5 mb-1.5 flex-wrap'>
       {folder && (
@@ -199,7 +199,7 @@ function CardMeta({ post, folder, cat }: { post: BlogPost; folder: BlogFolder | 
   )
 }
 
-function CardTags({ post }: { post: BlogPost }) {
+function CardTags({ post }: { post: BlogPostSummary }) {
   if (post.tags.length === 0) return null
   return (
     <div className='mt-2.5 flex flex-wrap gap-1'>
@@ -234,7 +234,7 @@ function CardFooter({
   onSync,
   onDelete,
 }: {
-  post: BlogPost
+  post: BlogPostSummary
   postUrl: string
   folderButtonRef: RefObject<HTMLButtonElement | null>
   isFolderMenuOpen: boolean

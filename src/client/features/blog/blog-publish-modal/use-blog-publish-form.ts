@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
-import type { BlogPost } from '@shared/types'
+import type { BlogPostIndexEntry } from '@shared/types'
 import { parseFrontMatter, upsertFrontMatterProperty } from '@shared/markdown-utils'
 import { api } from '../../../lib/api'
 import { errorMessage } from '../../../lib/errors'
@@ -20,7 +20,7 @@ export function useBlogPublishForm({
   open: boolean
   onClose: () => void
   noteId: string
-  initialPost?: BlogPost | null
+  initialPost?: BlogPostIndexEntry | null
   onSaved?: () => void
 }) {
   const toast = useUi((s) => s.toast)
@@ -112,7 +112,7 @@ interface PublishFormSetters {
 interface InitProps {
   open: boolean
   note: { title?: string; excerpt?: string; tags?: string[] } | null
-  initialPost?: BlogPost | null
+  initialPost?: BlogPostIndexEntry | null
   content: string
   currentStoreFolderId: string | null
   firstImageInContent: { url: string } | null
@@ -130,7 +130,7 @@ function usePublishFormInit({ open, note, initialPost, content, currentStoreFold
   }, [open, note, initialPost, firstImageInContent, currentStoreFolderId])
 }
 
-function applyInitialPost(initialPost: BlogPost, note: { title?: string; excerpt?: string }, setters: PublishFormSetters): void {
+function applyInitialPost(initialPost: BlogPostIndexEntry, note: { title?: string; excerpt?: string }, setters: PublishFormSetters): void {
   setters.setTitle(initialPost.title || note.title || '')
   setters.setSlug(initialPost.slug || '')
   setters.setCoverUrl(cleanImageUrl(initialPost.coverUrl || ''))

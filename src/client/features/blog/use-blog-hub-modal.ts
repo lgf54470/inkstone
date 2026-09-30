@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { BlogPost } from '@shared/types'
+import type { BlogPostIndexEntry, BlogPostSummary } from '@shared/types'
 import { useNotes } from '../../store/notes'
 import { useBlogStore, type BlogStoreState, type BlogTab } from './blog-store'
 
@@ -14,7 +14,7 @@ export interface BlogHubModalBundle {
   selectedCount: number
   onSwitchTab: (tab: BlogTab) => void
   onOpenNewPost: () => void
-  onOpenEditPost: (post: BlogPost) => void
+  onOpenEditPost: (post: BlogPostSummary) => void
   onOpenSettings: () => void
   onClearSelection: () => void
   onSaved: () => Promise<void>
@@ -71,7 +71,7 @@ export function useBlogHubModal({
 /** The publish dialog's own state: what it edits, which note it targets, and whether it is open. */
 function useBlogPublishModal(initialNoteId: string | undefined, activeNote: { id: string } | null) {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false)
-  const [editingPost, setEditingPost] = useState<BlogPost | null>(null)
+  const [editingPost, setEditingPost] = useState<BlogPostIndexEntry | null>(null)
   const [targetNoteId, setTargetNoteId] = useState<string>('')
 
   const openNewPost = () => {
@@ -80,7 +80,7 @@ function useBlogPublishModal(initialNoteId: string | undefined, activeNote: { id
     setIsPublishModalOpen(true)
   }
 
-  const openEditPost = (post: BlogPost) => {
+  const openEditPost = (post: BlogPostSummary) => {
     setEditingPost(post)
     setTargetNoteId(post.noteId)
     setIsPublishModalOpen(true)
@@ -114,7 +114,7 @@ function useBlogHubModalEffects({
   clearPostSelection: () => void
   setTargetNoteId: (id: string) => void
   setIsPublishModalOpen: (open: boolean) => void
-  setEditingPost: (post: BlogPost | null) => void
+  setEditingPost: (post: BlogPostIndexEntry | null) => void
   setIsCategoriesModalOpen: (open: boolean) => void
   setIsSettingsModalOpen: (open: boolean) => void
 }) {

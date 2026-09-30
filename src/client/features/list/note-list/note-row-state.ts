@@ -26,7 +26,9 @@ function useNoteRowShareState(noteId: string) {
 }
 
 function useNoteRowBlogState(noteId: string) {
-  const blogPosts = useBlogStore((s) => s.posts)
+  // The body-free index, not the page of the management list that happens to be loaded: a note's
+  // published state cannot depend on which page of the blog hub is open.
+  const blogPosts = useBlogStore((s) => s.postIndex)
   const noteBlogPost = useMemo(() => blogPosts.find((p) => p.noteId === noteId) ?? null, [blogPosts, noteId])
   return { noteBlogPost, isBlogPublished: Boolean(noteBlogPost && noteBlogPost.isPublished) }
 }

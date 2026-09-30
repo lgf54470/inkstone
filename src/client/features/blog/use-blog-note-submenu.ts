@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { BlogPost } from '@shared/types'
+import type { BlogPostIndexEntry } from '@shared/types'
 import { upsertFrontMatterProperty } from '@shared/markdown-utils'
 import { api } from '../../lib/api'
 import { t } from '../../lib/i18n'
@@ -27,7 +27,7 @@ export function useBlogNoteSubmenu({
   closeMenu,
 }: {
   noteId: string
-  post: BlogPost
+  post: BlogPostIndexEntry
   closeMenu: () => void
 }): BlogNoteSubmenuBundle {
   const toast = useUi((s) => s.toast)
@@ -67,7 +67,7 @@ function useCopyLink(postUrl: string, toast: UiState['toast'], closeMenu: () => 
 }
 
 async function syncPostImpl(
-  post: BlogPost,
+  post: BlogPostIndexEntry,
   toast: UiState['toast'],
   setIsBusy: (busy: boolean) => void,
   closeMenu: () => void,
@@ -93,7 +93,7 @@ async function unpublishPostImpl({
   closeMenu,
 }: {
   noteId: string
-  post: BlogPost
+  post: BlogPostIndexEntry
   toast: UiState['toast']
   setIsBusy: (busy: boolean) => void
   closeMenu: () => void

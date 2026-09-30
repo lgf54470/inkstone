@@ -261,6 +261,84 @@ describe('blog posts routes (real D1)', () => {
   })
 })
 
+describe('blog management list shape and paging (ENG-02)', () => {
+  it('answers one page without the post body and reports the whole list with it', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { title: 'Newest', slug: 'newest', published_at: 3 })
+    await seedBlogPost(db, { title: 'Middle', slug: 'middle', published_at: 2 })
+    await seedBlogPost(db, { title: 'Oldest', slug: 'oldest', published_at: 1 })
+    const app = makeApp()
+
+    const first = await request(app, '/api/blog/posts?limit=2')
+    expect(first.status).toBe(200)
+    const firstBody = await first.json()
+    expect(firstBody.posts.map((p: { slug: string }) => p.slug)).toEqual(['newest', 'middle'])
+    expect(firstBody.pagination).toEqual({ page: 1, limit: 2, total: 3, totalPages: 2 })
+    // The body is the one column measured in kilobytes, and the list draws titles and counters.
+    expect(firstBody.posts[0].content).toBeUndefined()
+
+    const second = await request(app, '/api/blog/posts?limit=2&page=2')
+    const secondBody = await second.json()
+    expect(secondBody.posts.map((p: { slug: string }) => p.slug)).toEqual(['oldest'])
+    expect(secondBody.pagination.totalPages).toBe(2)
+  })
+
+  it('filters by tag inside SQL, descendants included, before the page is cut', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { title: 'Parent tag', slug: 'parent-tag', tags: ['tech'], published_at: 3 })
+    await seedBlogPost(db, { title: 'Child tag', slug: 'child-tag', tags: ['tech/vue'], published_at: 2 })
+    await seedBlogPost(db, { title: 'Unrelated', slug: 'unrelated', tags: ['life'], published_at: 1 })
+    const app = makeApp()
+
+    const first = await request(app, `/api/blog/posts?tag=${encodeURIComponent('tech')}&limit=1`)
+    const firstBody = await first.json()
+    expect(firstBody.posts.map((p: { slug: string }) => p.slug)).toEqual(['parent-tag'])
+    expect(firstBody.pagination).toEqual({ page: 1, limit: 1, total: 2, totalPages: 2 })
+
+    // The old filter ran in JS after fetching everything. Cutting a page first would have answered
+    // "no posts" for every tag match that lived on another page.
+    const second = await request(app, `/api/blog/posts?tag=${encodeURIComponent('tech')}&limit=1&page=2`)
+    expect((await second.json()).posts.map((p: { slug: string }) => p.slug)).toEqual(['child-tag'])
+  })
+
+  it('counts the same filter its page answers', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { title: 'Live', slug: 'live', is_published: 1 })
+    await seedBlogPost(db, { title: 'Draft', slug: 'draft', is_published: 0 })
+    const app = makeApp()
+
+    const drafts = await request(app, '/api/blog/posts?status=draft&limit=1')
+    const draftBody = await drafts.json()
+    expect(draftBody.posts).toHaveLength(1)
+    expect(draftBody.pagination.total).toBe(1)
+
+    const search = await request(app, '/api/blog/posts?search=Live')
+    expect((await search.json()).pagination).toEqual({ page: 1, limit: 50, total: 1, totalPages: 1 })
+  })
+
+  it('serves the body-free post index the note list reads', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { title: 'Published', slug: 'published', is_published: 1 })
+    const draft = await seedBlogPost(db, { title: 'Draft', slug: 'draft', is_published: 0 })
+    const app = makeApp()
+
+    const res = await request(app, '/api/blog/post-index')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.posts).toHaveLength(2)
+    const entry = body.posts.find((p: { id: string }) => p.id === draft.id)
+    expect(entry.title).toBe('Draft')
+    expect(entry.noteId).toBeTruthy()
+    expect(entry.isPublished).toBe(false)
+    expect(entry.content).toBeUndefined()
+    expect(entry.views).toBeUndefined()
+  })
+})
+
 describe('blog public routes (real D1)', () => {
   it('lists only published posts with pagination and serves detail with view counting', async () => {
     const db = await makeDb()

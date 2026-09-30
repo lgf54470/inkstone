@@ -1,22 +1,22 @@
 import type { z } from 'zod'
 import { Hono } from 'hono'
 import { extractCoverUrl, parseFrontMatter } from '@shared/markdown-utils'
-import type { BlogPost } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId, newSlug } from '../../lib/id'
-import { assertContentSize, JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
-import type { BlogPostCountsRow, BlogPostRow } from '../../db/rows'
+import { assertContentSize, clampInt, JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
+import type { BlogPostIndexRow, BlogPostRow, BlogPostSummaryRow } from '../../db/rows'
 import { blogPostWriteSchema } from './schemas'
 import { blogPostPatchSchema } from './schemas'
 import { blogBatchSchema } from './schemas'
-import { safeDecodeTagParam, toBlogPost } from './helpers'
-import { blogPostsListQuery, filterPostsByTag } from './post-list-query'
+import { safeDecodeTagParam, toBlogPostIndexEntry, toBlogPostSummary } from './helpers'
+import { BLOG_POSTS_PAGE_SIZE, BLOG_POSTS_PAGE_SIZE_MAX, blogPostIndexQuery, blogPostsCountQuery, blogPostsListQuery } from './post-list-query'
 
 const SLUG_RE = /^[a-zA-Z0-9_-]{2,80}$/
 
 export function registerBlogPostsRoutes(blogManageRoutes: Hono<AppBindings>): void {
   registerBlogPostsListRoute(blogManageRoutes)
+  registerBlogPostIndexRoute(blogManageRoutes)
   registerBlogPostsWriteRoute(blogManageRoutes)
   registerBlogPostsPatchRoute(blogManageRoutes)
   registerBlogPostsDeleteRoute(blogManageRoutes)
@@ -27,23 +27,45 @@ export function registerBlogPostsRoutes(blogManageRoutes: Hono<AppBindings>): vo
 function registerBlogPostsListRoute(blogManageRoutes: Hono<AppBindings>): void {
   blogManageRoutes.get('/posts', async (c) => {
     const userId = c.get('userId')!
+    const page = clampInt(c.req.query('page'), 1, Number.MAX_SAFE_INTEGER, 1)
+    const limit = clampInt(c.req.query('limit'), 1, BLOG_POSTS_PAGE_SIZE_MAX, BLOG_POSTS_PAGE_SIZE)
     const tag = safeDecodeTagParam(c.req.query('tag'))
-    const { sql, params } = blogPostsListQuery(userId, {
+    const filter = {
       status: c.req.query('status'),
       categoryId: c.req.query('categoryId'),
       folderId: c.req.query('folderId'),
       tag,
       search: c.req.query('search')?.trim(),
       sort: c.req.query('sort') || 'published_desc',
-    })
-    const { results } = await c.env.DB.prepare(sql).bind(...params).all<BlogPostCountsRow>()
-
-    let posts: BlogPost[] = (results || []).map(toBlogPost)
-    if (tag) {
-      posts = filterPostsByTag(posts, tag)
     }
+    const pageQuery = blogPostsListQuery(userId, filter, limit, (page - 1) * limit)
+    const countQuery = blogPostsCountQuery(userId, filter)
+    // The page and the total are two questions with one answer each; asking them together keeps the
+    // pager from drawing a page count that belongs to a different filter than the rows.
+    const [pageResult, countRow] = await Promise.all([
+      c.env.DB.prepare(pageQuery.sql).bind(...pageQuery.params).all<BlogPostSummaryRow>(),
+      c.env.DB.prepare(countQuery.sql).bind(...countQuery.params).first<{ n: number }>(),
+    ])
+    const total = countRow?.n ?? 0
 
-    return c.json({ posts })
+    return c.json({
+      posts: (pageResult.results || []).map(toBlogPostSummary),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    })
+  })
+}
+
+/**
+ * The note list's own view of the account's posts: every post, no body, no page. It answers "which
+ * notes are published, and what should the publish dialog start from" — questions a paginated page
+ * cannot answer for a note that is not on it.
+ */
+function registerBlogPostIndexRoute(blogManageRoutes: Hono<AppBindings>): void {
+  blogManageRoutes.get('/post-index', async (c) => {
+    const userId = c.get('userId')!
+    const { sql, params } = blogPostIndexQuery(userId)
+    const { results } = await c.env.DB.prepare(sql).bind(...params).all<BlogPostIndexRow>()
+    return c.json({ posts: (results || []).map(toBlogPostIndexEntry) })
   })
 }
 

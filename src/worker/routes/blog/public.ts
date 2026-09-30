@@ -5,6 +5,7 @@ import { escapeLike, likeAny } from '../../lib/like'
 import { loadPublicPostBySlug } from './public-post'
 import { registerBlogPublicVisitBeaconRoute } from './visit-beacon'
 import { safeDecodeTagParam, summarizePostTagCounts } from './helpers'
+import { blogTagFilterSql } from './tag-needles'
 
 
 import { registerMusicPublicRoutes } from '../music'
@@ -131,14 +132,6 @@ interface PublicPostsFilter {
   tag?: string
 }
 
-// A blog tag lives inside a JSON array column, so the LIKE needle must be the
-// JSON-escaped tag text, LIKE-escaped on top (ESCAPE '\\'); the second
-// pattern keeps the parent-tag-matches-descendants hierarchy semantics.
-function blogTagNeedles(tag: string): [string, string] {
-  const inner = escapeLike(JSON.stringify(tag).slice(1, -1))
-  return [`%"${inner}"%`, `%"${inner}/%`]
-}
-
 function blogPublicPostsWhere(ownerId: string, filter: PublicPostsFilter): { clauses: string; params: unknown[] } {
   const clauses = ['p.is_published = 1', 'p.user_id = ?1']
   const params: unknown[] = [ownerId]
@@ -158,9 +151,9 @@ function blogPublicPostsWhere(ownerId: string, filter: PublicPostsFilter): { cla
   }
 
   if (filter.tag) {
-    const [exact, descendant] = blogTagNeedles(filter.tag)
-    clauses.push(`(p.tags LIKE ?${idx} ESCAPE '\\' OR p.tags LIKE ?${idx + 1} ESCAPE '\\')`)
-    params.push(exact, descendant)
+    const tagFilter = blogTagFilterSql('p.tags', filter.tag, idx)
+    clauses.push(tagFilter.clause)
+    params.push(...tagFilter.params)
     idx += 2
   }
 

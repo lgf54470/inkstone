@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { BlogPost } from '@shared/types'
+import type { BlogPostIndexEntry } from '@shared/types'
 import { BarChart2, Check, Copy, ExternalLink, RefreshCw, Settings2, Trash2 } from 'lucide-react'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/cn'
@@ -13,7 +13,7 @@ export function BlogNoteSubmenu({
   onOpenStats,
 }: {
   noteId: string
-  post: BlogPost
+  post: BlogPostIndexEntry
   closeMenu: () => void
   onOpenSettings: () => void
   onOpenStats: () => void

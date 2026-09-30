@@ -1,6 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
-import type { BlogPost, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -207,9 +207,12 @@ export const share = {
       request<{ available: boolean; reason?: string }>(`/api/blog/check-slug${toQuery({ slug, currentPostId })}`, { signal }),
     getNotePost: (noteId: string, signal?: AbortSignal) =>
       request<{ post: BlogPost | null }>(`/api/blog/note-post/${noteId}`, { signal }),
+    /** The complete body-free post index the note list reads; not paginated by design. */
+    postIndex: (signal?: AbortSignal) =>
+      request<{ posts: BlogPostIndexEntry[] }>('/api/blog/post-index', { signal }),
     posts: {
-      list: (params?: { status?: string; categoryId?: string; folderId?: string; tag?: string; search?: string; sort?: string }, signal?: AbortSignal) =>
-        request<{ posts: BlogPost[] }>(`/api/blog/posts${toQuery(params ?? {})}`, { signal }),
+      list: (params?: { status?: string; categoryId?: string; folderId?: string; tag?: string; search?: string; sort?: string; page?: number }, signal?: AbortSignal) =>
+        request<{ posts: BlogPostSummary[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(`/api/blog/posts${toQuery(params ?? {})}`, { signal }),
       create: (body: {
         noteId: string
         title: string

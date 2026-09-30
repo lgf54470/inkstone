@@ -15,6 +15,7 @@ import { BlogPublishModal } from './blog-publish-modal'
 import { BlogCategoriesModal } from './blog-categories-modal'
 import { BlogSettingsModal } from './blog-settings-modal'
 import { BlogLoadFailure } from './blog-load-failure'
+import { BlogPostPager } from './blog-post-pager'
 
 const MODAL_WIDTH = 1300
 
@@ -129,6 +130,8 @@ function BlogHubContent({ bundle }: { bundle: BlogHubModalBundle }) {
               <BlogGridView posts={bundle.posts} onOpenEdit={bundle.onOpenEditPost} />
             )}
           </div>
+
+          {bundle.posts.length > 0 && <BlogPostPager />}
 
           <BlogBatchBar
             selectedCount={bundle.selectedCount}

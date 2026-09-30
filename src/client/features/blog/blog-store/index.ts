@@ -36,6 +36,7 @@ function initialBlogState(): Partial<BlogStoreState> {
         linkSearch: '',
         selectedLinkIds: new Set<string>(),
         posts: [],
+        postIndex: [],
         folders: [],
         tags: [],
         categories: [],
@@ -50,6 +51,9 @@ function initialBlogState(): Partial<BlogStoreState> {
         loadErrors: new Set(),
         postsRequestSeq: 0,
         postsAbort: null,
+        postsPage: 1,
+        postsTotal: 0,
+        postsTotalPages: 0,
         linksRequestSeq: 0,
         linksAbort: null,
         excludeBots: DEFAULT_TRAFFIC_FILTERS.excludeBots,
@@ -63,10 +67,12 @@ export { buildBlogFolderTree } from './folders'
 
 // Feed the notes store's visibility projection (published note ids) without
 // creating a store → feature import edge: selectors read the neutral registry
-// in store/visibility-sources.ts, not this module.
+// in store/visibility-sources.ts, not this module. The projection reads the
+// body-free index, not the page on screen: whether a note is published does not
+// depend on which page of the management list happens to be open.
 useBlogStore.subscribe((state) => {
   pushVisibilitySnapshot({
     ...getVisibilitySnapshot(),
-    publishedNoteIds: new Set(state.posts.filter((post) => post.isPublished).map((post) => post.noteId)),
+    publishedNoteIds: new Set(state.postIndex.filter((post) => post.isPublished).map((post) => post.noteId)),
   })
 })

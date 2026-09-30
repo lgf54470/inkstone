@@ -2690,6 +2690,9 @@ const allowed = new Map([
     '// Unnamed fallbacks below are authored demo seed data (mirroring the welcome',
     '// content in blog-seed.ts), not UI copy: the i18n layer never renders them.',
   ]],
+  ['src/client/demo/backend/routes/blog.ts', [
+    '/** The same split the real route makes: the list carries no body, the index carries no statistics. */',
+  ]],
   ['src/client/demo/backend/routes/board-library.ts', [
     '/**\n * The demo keeps the named whiteboard libraries in memory like the rest of its state, with\n * the same contract as the worker route: one JSON document per name, stored verbatim, so\n * the picker and the boards behave here exactly as they do against a real instance within\n * one session.\n */',
   ]],
@@ -2945,6 +2948,12 @@ const allowed = new Map([
   ['src/client/features/blog/blog-load-failure.tsx', [
     '/**\n * The failed state of a load. One component for the surfaces that used to paint a failed request as\n * an empty list — the reader gets the same sentence and the same retry wherever it happens.\n */',
   ]],
+  ['src/client/features/blog/blog-post-pager.test.ts', [
+    '/**\n * ENG-02: the list used to hold every post; it now holds one page. Without a pager the rest of the\n * list would be unreachable in the interface — the store\'s page state exists, but nobody could move\n * it.\n */',
+  ]],
+  ['src/client/features/blog/blog-post-pager.tsx', [
+    '/**\n * The list holds one page of the account\'s posts; when there are more, this is how the reader reaches\n * them. It reads and writes the store directly because the page is part of the query, not of a view\'s\n * local state, and the store clamps it to the pages that exist.\n */',
+  ]],
   ['src/client/features/blog/blog-publish-modal/use-blog-publish-form.ts', [
     '// Debounced, cancelled and sequence-checked: only the answer to the slug as it is typed last may',
     '// set the badge, or a slow reply about a previous slug claims the current one is taken.',
@@ -2965,6 +2974,8 @@ const allowed = new Map([
     '// it twice, and each run wrote the storage.',
   ]],
   ['src/client/features/blog/blog-store/filters.ts', [
+    '// Any filter change re-asks page one: staying on the old page after narrowing the list would show',
+    '// an empty screen for a filter that does have matches.',
     '// The store updater has to stay pure (StrictMode runs it twice), so both the write and the',
     '// persistence happen outside it — once, in the order the reader\'s click implies. The two list',
     '// refetches that used to follow are gone: these switches decide what the analytics endpoint',
@@ -2974,7 +2985,9 @@ const allowed = new Map([
   ['src/client/features/blog/blog-store/index.ts', [
     '// Feed the notes store\'s visibility projection (published note ids) without',
     '// creating a store → feature import edge: selectors read the neutral registry',
-    '// in store/visibility-sources.ts, not this module.',
+    '// in store/visibility-sources.ts, not this module. The projection reads the',
+    '// body-free index, not the page on screen: whether a note is published does not',
+    '// depend on which page of the management list happens to be open.',
   ]],
   ['src/client/features/blog/blog-store/links-request.test.ts', [
     '/**\n * The link list is filtered by the server now, so its answer has to belong to the filter that is on\n * screen. These cases pin the question the client asks and the two rules that keep a late answer\n * from overwriting it: the request a newer one replaces is cancelled, and an answer that arrives\n * after a newer request went out is dropped.\n */',
@@ -2987,8 +3000,13 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-store/loaders.ts', [
     '/**\n * The post list, asked once per change of the query and answered with the newest answer only. Two\n * things follow from that: the request a newer one replaces is cancelled (a search box sends one per\n * keystroke) and an answer that arrives after a newer request went out is dropped, because comparing\n * sequence numbers is the only way to know which of two responses is current. The dropped answer is\n * not an error — the caller asked for it and then changed its mind.\n */',
+    '// The page in hand may have emptied under the reader (a delete on the last page, or a filter',
+    '// that shrank the list): ask once more for the page that exists rather than draw "no posts".',
     '// A refresh failure leaves the previous list where it is and raises the flag: an empty screen',
     '// because a request failed would read as "your posts are gone".',
+    '// The index feeds the note list\'s published badges and the publish dialog\'s starting values. A',
+    '// failure keeps the previous answer instead of clearing it, and is logged here rather than shown',
+    '// as a broken note list: there is no surface that could render it without lying about the notes.',
   ]],
   ['src/client/features/blog/blog-store/mutation-failures.test.ts', [
     '/**\n * Every mutation resolves to whether it went through, reports a failure itself (danger toast) and\n * rolls back the optimistic change. The callers that wrote `void updatePost(...)` had no other way\n * to learn it failed — the rejection was unhandled and the optimistic row stayed painted.\n */',
@@ -2996,6 +3014,9 @@ const allowed = new Map([
   ['src/client/features/blog/blog-store/mutation.ts', [
     '/**\n * Reports one failed blog mutation. The handling lives here rather than at each call site for two\n * reasons: the store is where the optimistic change has to be undone, and the callers that wrote\n * `void updatePost(...)` had nothing to catch — the rejection was an unhandled promise, the row\n * kept a change the server had refused, and nothing on screen said so.\n */',
     '/**\n * Runs a mutation that answers only whether it went through (`false` after reporting the failure).\n * `refresh` runs only on success, so a request that failed never overwrites the list it could not\n * change.\n */',
+  ]],
+  ['src/client/features/blog/blog-store/posts-pagination.test.ts', [
+    '/**\n * ENG-02: the list is one page now. The page is part of the query, so it belongs to the store —\n * every place that changes a filter has to ask for page one again, and the pager may only ask for a\n * page the server said exists.\n */',
   ]],
   ['src/client/features/blog/blog-store/posts-request.test.ts', [
     '/**\n * The list is asked once per keystroke in the search box, and answers can arrive out of order. Two\n * rules keep the screen honest: the request a newer one replaces is cancelled, and an answer that\n * arrives after a newer request went out is dropped instead of overwriting it.\n */',
@@ -3010,9 +3031,11 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-store/types.ts', [
     '/**\n * The lists whose load result a view draws. A failed load is a state of its own — the alternative\n * was rendering it as an empty list, which told the reader their data was gone.\n */',
+    '/**\n   * Every post of the account in its body-free index form (see `BlogPostIndexEntry`). The list above\n   * is one page, so the note list cannot read "which notes are published" from it, and the publish\n   * dialog cannot be pre-filled from it either.\n   */',
     '/**\n   * Scopes whose last load failed. A refresh failure leaves the previous data in place — only a view\n   * with nothing to show asks this flag to render a failure instead of an empty state.\n   */',
     '/**\n   * Everything below is a mutation: it reports its own failure (see `mutation.ts`), resolves to\n   * `false`/`null` after a danger toast and rolls back any optimistic change it made, so no caller\n   * has to catch a rejection from it.\n   */',
     '/**\n   * The post list\'s in-flight request: `seq` lets a late answer be dropped (the reader may have\n   * typed again since), and the controller cancels the request the newest one replaces. Both are\n   * request lifecycle, not data — the list itself lives in `posts`.\n   */',
+    '/** Which page of the post list is on screen, and what the server said about the whole list. */',
     '/** The same latest-wins rule as the post list, for the link list\'s status/category/search. */',
   ]],
   ['src/client/features/blog/frontend-base.ts', [
@@ -3058,6 +3081,10 @@ const allowed = new Map([
   ['src/client/features/list/note-list/note-row-items.tsx', [
     '// SH-20: part of the share modal graph, so it loads when the submenu first',
     '// opens instead of joining the note list\'s chunk.',
+  ]],
+  ['src/client/features/list/note-list/note-row-state.ts', [
+    '// The body-free index, not the page of the management list that happens to be loaded: a note\'s',
+    '// published state cannot depend on which page of the blog hub is open.',
   ]],
   ['src/client/features/list/note-list/note-row-ui.tsx', [
     '// SH-20: these carry qrcode.react and the analytics charts, so they must not',
@@ -7745,6 +7772,9 @@ const allowed = new Map([
   ['src/client/features/sidebar/sidebar-calendar.tsx', [
     '// Single cached projection replaces three whole-vault Object.values scans; untouched output identities stay stable between typing commits.',
   ]],
+  ['src/client/features/sidebar/sidebar.tsx', [
+    '/**\n * The badges this sidebar shows come from two summaries read once per mount: the share summary and\n * the body-free post index — the index, not the management list, because the note list badges every\n * note with the post it owns and one page of that list cannot answer for the notes on other pages.\n */',
+  ]],
   ['src/client/features/sidebar/sidebar/search-button.tsx', [
     '// The one search entry for every shell (sidebar row, collapsed rail icon): it',
     '// replaces the floating button so the corner it used to claim stays free for',
@@ -7844,6 +7874,7 @@ const allowed = new Map([
     '/** `document.referrer`, when the visitor\'s browser sent one. */',
     '/** The `?ref=` marker from the visitor\'s own URL, forwarded so the worker can record it. */',
     '// A long document.referrer must not turn into a 400 for a legitimate viewer; the server caps at the same length.',
+    '/** The complete body-free post index the note list reads; not paginated by design. */',
   ]],
   ['src/client/lib/api/transport.ts', [
     '/**\n * Client-side ApiError (consumer of the HTTP boundary). Deliberately mirrors\n * the worker\'s ApiError (src/worker/lib/errors.ts) without sharing the class:\n * the two layers must stay import-decoupled, and the client carries extra\n * client-only states (offline/timeout) that have no server counterpart.\n */',
@@ -12386,6 +12417,8 @@ const allowed = new Map([
   ]],
   ['src/shared/types/blog.ts', [
     '/**\n * The account a public blog request is for. The address travels as `?owner=<username>` until the\n * host-based routes land; a request that carries none is answered by the instance default blog, and\n * every public answer names the blog it answered for in `X-Inkstone-Blog-Owner`.\n */',
+    '/**\n * One page of the management list: every column the table and grid draw, and never the body. The\n * body is the one field measured in kilobytes, and the list asked for it only to drop it again.\n */',
+    '/**\n * The complete body-free view of an account\'s posts, keyed by the note each was published from. The\n * note list both badges a note with the post it owns and pre-fills the publish dialog from it, and a\n * paginated row list cannot answer for a note that sits on another page.\n */',
     '/** The two flag tabs; the admin list filters on them exactly like a status. */',
     '/** The posts\' own cumulative counter, which is not the range\'s visits. */',
   ]],
@@ -12602,6 +12635,10 @@ const allowed = new Map([
   ['src/worker/db/metadata.ts', [
     '// `notes` carries the accounts that own any note, which is the set the index audit has to walk:',
     '// an account with a drifted index and nothing queued would never show up through the queues.',
+  ]],
+  ['src/worker/db/rows.ts', [
+    '/** A management-list row: the same columns minus the body, which the list never draws. */',
+    '/** The body-free index row the note list reads (id, note and what the publish dialog needs). */',
   ]],
   ['src/worker/db/schema/blog-posts.ts', [
     '/**\n * `blog_posts` declares its own shape because the slug constraint is part of it, and changing that\n * constraint costs a table rebuild.\n *\n * A slug names a post inside one blog. Instance-wide uniqueness made the second account unable to\n * publish a name the first had used, and answered "is this taken?" for every blog at once, so the\n * uniqueness belongs on `(user_id, slug)`. SQLite cannot drop a UNIQUE the table declares, so the\n * move is a rebuild — rename, create the current shape, copy, drop — and the rebuild must create\n * exactly the shape the running schema declares. Both therefore come from the constants below\n * rather than from a statement written twice.\n */',
@@ -13049,6 +13086,7 @@ const allowed = new Map([
     '// call — the update branch had never been asked to change a single comment.',
   ]],
   ['src/worker/routes/blog/helpers.ts', [
+    '/** The body-free shape every list and index answer shares; `toBlogPost` adds the body on top of it. */',
     '/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */',
   ]],
   ['src/worker/routes/blog/index.ts', [
@@ -13100,10 +13138,20 @@ const allowed = new Map([
     '/**\n * The instance\'s first account is the blog that existed before addresses did. The ordering is by\n * `created_at` and then by insertion order, so two accounts seeded in the same millisecond still\n * resolve to the one that was created first.\n */',
   ]],
   ['src/worker/routes/blog/post-list-query.ts', [
+    '/** Default page size of the management list; a request may ask for less, never for more than the cap. */',
+    '// The list draws a title, a summary of metadata and counters — never the body. `content` is the one',
+    '// column measured in kilobytes, and it used to travel with every row only to be dropped client-side.',
+    '/**\n * One WHERE for the page query and the count query: if the two disagree about what the filter\n * selects, the pager offers a page the total does not know about.\n */',
+    '// Pushed into SQL for the same reason as the public listing\'s: filtering a fetched page in JS',
+    '// would answer "this tag has no posts" for every post that lives on another page.',
     '// Escaped like the public listing\'s needle: an unescaped `%` here scans every post of the',
     '// account, and `_` silently matches unrelated titles.',
+    '/**\n * The complete, body-free index of the account\'s posts, used by the note list to know which notes\n * were published and what the publish dialog should start from. It is deliberately not paginated —\n * the caller needs every note\'s answer — which is affordable only because the post body is absent.\n */',
   ]],
   ['src/worker/routes/blog/posts.ts', [
+    '// The page and the total are two questions with one answer each; asking them together keeps the',
+    '// pager from drawing a page count that belongs to a different filter than the rows.',
+    '/**\n * The note list\'s own view of the account\'s posts: every post, no body, no page. It answers "which\n * notes are published, and what should the publish dialog start from" — questions a paginated page\n * cannot answer for a note that is not on it.\n */',
     '/**\n * A slug only has to be free inside the account\'s own blog: another account publishing the same name\n * is a different post on a different site, and treating it as a conflict would both block that\n * account\'s publish and tell it what the other blog has published.\n */',
     '// One batch, so a post cannot survive while its log rows go missing (or the other way round).',
     '// `blog_comments` has no owner column, so the delete asks blog_posts who owns the post and has to',
@@ -13143,9 +13191,6 @@ const allowed = new Map([
     '// Audio and artwork routes build their own Response, which drops headers set on the context,',
     '// so the origin has to be stamped on the final response to keep cross-origin playback working.',
     '// Routes that know their own lifetime (artwork, audio) keep the header they set.',
-    '// A blog tag lives inside a JSON array column, so the LIKE needle must be the',
-    '// JSON-escaped tag text, LIKE-escaped on top (ESCAPE \'\\\\\'); the second',
-    '// pattern keeps the parent-tag-matches-descendants hierarchy semantics.',
     '// The needle is escaped like the tag one above, or a query of `%` turns the public listing',
     '// into a full scan of every post body.',
     '// Reading a post does not count as a view. This request comes from the reader\'s server (the blog',
@@ -13186,6 +13231,12 @@ const allowed = new Map([
     '// Wiping the whole trail is unrecoverable, so a stolen session must re-prove',
     '// it holds the account password before the delete runs (same as share SH-12).',
     '/**\n * `older_than` must name its own window: reading an unparseable count as the default would delete a\n * span the caller never asked for, and `parseInt` would take `12.7` or `30abc` as a number rather\n * than refuse them. A rejected value is a 400; an accepted one is bounded by the shared clamp.\n */',
+  ]],
+  ['src/worker/routes/blog/tag-needles.ts', [
+    '// A blog tag lives inside a JSON array column, so the LIKE needle must be the JSON-escaped tag text,',
+    '// LIKE-escaped on top (ESCAPE \'\\\'); the second pattern keeps the parent-tag-matches-descendants',
+    '// hierarchy semantics both the public listing and the management list promise.',
+    '/**\n * The WHERE fragment for one tag including its descendants. Both callers build their clause list the\n * same way, so the placeholders are numbered by the caller and the two needles stay in step.\n */',
   ]],
   ['src/worker/routes/blog/visit-beacon.ts', [
     '/**\n * A page view is reported by the browser that rendered the page, not by the server that fetched it:\n * the reader\'s own request is the only one that carries their user-agent and their referrer, and the\n * server-side fetch had neither (which is why every recorded visit used to be a bot and the counter\n * never moved). The endpoint is public and write-once-per-window, so it is budgeted per client and\n * deduplicated per (post, fingerprint) like the rest of the visit path.\n */',
@@ -14212,6 +14263,9 @@ const allowed = new Map([
     '// A post carries its note\'s body into a second row, so the write that copies it must weigh the',
     '// same budget the note was allowed; otherwise a caller can park an arbitrarily large body in',
     '// blog_posts while every note-side guard still reads as satisfied.',
+    '// The body is the one column measured in kilobytes, and the list draws titles and counters.',
+    '// The old filter ran in JS after fetching everything. Cutting a page first would have answered',
+    '// "no posts" for every tag match that lived on another page.',
     '// Reading a post is not a view: the beacon the reader\'s browser sends is (see visit-beacon.ts).',
     '// The beacon is what counts, and it counts what the visit path has always counted: one view per',
     '// visitor fingerprint inside the dedupe window, another when a different reader arrives.',
