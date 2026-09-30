@@ -4,6 +4,7 @@ import {
   aggregateFromRows,
   visitAggregateFromResults,
   visitAggregateStatements,
+  visitWhere,
   type VisitAggregate,
   type VisitAggregateQuery,
   type VisitFactRow,
@@ -93,17 +94,22 @@ async function makeDb(): Promise<D1Shim> {
   return db
 }
 
-// The row path is what a bounded range answers with, so asking the same builder
-// for a bounded range yields exactly the rows the SQL path has to summarize.
-async function rowPathAggregate(db: D1Shim, scope: VisitScope): Promise<VisitAggregate> {
-  const [statement] = visitAggregateStatements(db, SHARE_VISIT_SOURCE, scope, { ...QUERY, range: '7d' })
-  const result = await statement.run()
-  return aggregateFromRows((result.results ?? []) as VisitFactRow[], QUERY, SHARE_VISIT_SOURCE)
+// The row path is the reference the SQL path is checked against: it fetches the window's rows and
+// groups them in JS, so the two must agree about what every range means.
+async function rowPathAggregate(db: D1Shim, scope: VisitScope, query: VisitAggregateQuery = QUERY): Promise<VisitAggregate> {
+  const where = visitWhere(SHARE_VISIT_SOURCE, scope, query)
+  const result = await db.prepare(
+    `SELECT visited_at, visitor_fp, country, referrer_host, device_type, os, browser,
+            ${SHARE_VISIT_SOURCE.targetColumn} AS target_id, slug
+       FROM ${SHARE_VISIT_SOURCE.table}
+      WHERE ${where.sql}`,
+  ).bind(...where.binds).run()
+  return aggregateFromRows((result.results ?? []) as VisitFactRow[], query, SHARE_VISIT_SOURCE)
 }
 
-async function sqlPathAggregate(db: D1Shim, scope: VisitScope): Promise<VisitAggregate> {
-  const results = await db.batch(visitAggregateStatements(db, SHARE_VISIT_SOURCE, scope, QUERY))
-  return visitAggregateFromResults(results, QUERY, SHARE_VISIT_SOURCE)
+async function sqlPathAggregate(db: D1Shim, scope: VisitScope, query: VisitAggregateQuery = QUERY): Promise<VisitAggregate> {
+  const results = await db.batch(visitAggregateStatements(db, SHARE_VISIT_SOURCE, scope, query))
+  return visitAggregateFromResults(results, query)
 }
 
 describe('visit aggregates: SQL path matches the row path', () => {
@@ -116,6 +122,13 @@ describe('visit aggregates: SQL path matches the row path', () => {
     const db = await makeDb()
     expect(await sqlPathAggregate(db, { userId: 'u1', targetId: 'note-a' }))
       .toEqual(await rowPathAggregate(db, { userId: 'u1', targetId: 'note-a' }))
+  })
+
+  it('answers a bounded range the same totals, buckets, distributions and targets', async () => {
+    const db = await makeDb()
+    const query = { ...QUERY, range: '7d' as const }
+    expect(await sqlPathAggregate(db, { userId: 'u1' }, query))
+      .toEqual(await rowPathAggregate(db, { userId: 'u1' }, query))
   })
 
   it('counts the seeded visits the way the dashboards show them', async () => {
@@ -162,15 +175,17 @@ describe('visit aggregates: SQL path matches the row path', () => {
 })
 
 /**
- * SH-74: an unbounded range is summarized in SQL rather than by fetching rows, and that
- * budget is what makes the request expensive rather than free. Measured on node:sqlite over
- * 200,000 visit rows for one account, the eight statements cost ~1.25 s of CPU and the cost
- * grows linearly with the account's history (the heaviest single pass is the per-target
- * GROUP BY at ~246 ms). A cache needs state the worker is not allowed to keep in-process
- * (check-module-state forbids module-scope mutable bindings), so the cost is currently held
- * still rather than amortized: this pins the budget so a ninth pass has to be a deliberate act.
+ * SH-74: every range is summarized in SQL rather than by fetching rows, and that budget is what
+ * makes the request expensive rather than free. A bounded range used to fetch its window and group
+ * it in the worker, which put the whole window in memory (10k visits ≈ 1.5 MB) and made a rapid
+ * range switch worse; it is now the same eight statements an unbounded range has always used.
+ * Measured on node:sqlite over 200,000 visit rows for one account, the eight statements cost
+ * ~1.25 s of CPU and the cost grows linearly with the account's history (the heaviest single pass
+ * is the per-target GROUP BY at ~246 ms). A cache needs state the worker is not allowed to keep
+ * in-process (check-module-state forbids module-scope mutable bindings), so the cost is currently
+ * held still rather than amortized: this pins the budget so a ninth pass has to be a deliberate act.
  */
-describe('all-range aggregate statement budget (SH-74)', () => {
+describe('visit aggregate statement budget (SH-74)', () => {
   it('summarizes an unbounded range in eight statements and never fetches visit rows', () => {
     const db = createD1Database()
     const seen = captureSql(db)
@@ -183,13 +198,15 @@ describe('all-range aggregate statement budget (SH-74)', () => {
     expect(seen.filter((sql) => sql.includes('GROUP BY'))).toHaveLength(7)
   })
 
-  it('answers a bounded range by fetching rows, in exactly one statement', () => {
+  it('summarizes a bounded range in the same eight statements instead of fetching its rows', () => {
     const db = createD1Database()
     const seen = captureSql(db)
 
     const statements = visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId: 'u1' }, { ...QUERY, range: '7d' })
 
-    expect(statements).toHaveLength(1)
-    expect(seen[0]).toMatch(/^SELECT visited_at, visitor_fp/)
+    expect(statements).toHaveLength(8)
+    expect(seen).toHaveLength(8)
+    expect(seen.filter((sql) => sql.startsWith('SELECT visited_at, visitor_fp'))).toEqual([])
+    expect(seen.filter((sql) => sql.includes('GROUP BY'))).toHaveLength(7)
   })
 })

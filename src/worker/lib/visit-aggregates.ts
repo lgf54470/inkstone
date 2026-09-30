@@ -2,10 +2,11 @@ import type { ShareTimelineRange } from '@shared/types'
 import { bucketsFromVisitRows, timelineBucketCount, type TimelineBucket } from './share-analytics'
 
 // Both visit tables answer the same questions (totals, timeline buckets, five
-// distributions, per-target stats). A bounded range can be answered by grouping
-// the fetched rows in JS, but `all` has no bound on the row count, so it must be
-// answered by SQL aggregation. Both paths build the same normalized shape, which
-// is what the dashboards actually consume.
+// distributions, per-target stats). Every range is summarized in SQL: a bounded range used to fetch
+// its rows and group them in JS, which put the whole window in memory (10k visits ≈ 1.5 MB) and
+// made a rapid range switch worse. `aggregateFromRows` remains as the reference implementation the
+// SQL path is verified against (tests/visit-aggregates.test.ts compares them over the same
+// predicate); both build the same normalized shape, which is what the dashboards consume.
 
 export interface VisitAggregateSource {
   table: string
@@ -148,9 +149,10 @@ export function visitWhere(source: VisitAggregateSource, scope: VisitScope, quer
   return { sql: `${conditions.join(' AND ')} ${query.clause}`, binds, startTsParam: binds.length }
 }
 
-// One statement for a bounded range (the rows themselves), eight for `all`
-// (totals, buckets, five distributions, per-target). `visitAggregateFromResults`
-// unpacks them back in the same order.
+// Eight statements, whichever range is asked: totals, buckets (bounded to the
+// window's end, while the totals keep counting what sits past it), five
+// distributions and per-target stats. `visitAggregateFromResults` unpacks them
+// back in the same order.
 export function visitAggregateStatements(
   db: D1Database,
   source: VisitAggregateSource,
@@ -158,14 +160,6 @@ export function visitAggregateStatements(
   query: VisitAggregateQuery,
 ): D1PreparedStatement[] {
   const where = visitWhere(source, scope, query)
-  const rows = `
-    SELECT visited_at, visitor_fp, country, referrer_host, device_type, os, browser,
-           ${source.targetColumn} AS target_id, slug
-      FROM ${source.table}
-     WHERE ${where.sql}`
-  if (query.range !== 'all') {
-    return [db.prepare(rows).bind(...where.binds)]
-  }
   const bucketWidth = query.duration / timelineBucketCount(query.range)
   return [
     db.prepare(
@@ -240,11 +234,7 @@ export interface VisitTargetSqlRow {
 export function visitAggregateFromResults(
   results: D1Rows[],
   query: VisitAggregateQuery,
-  source: VisitAggregateSource,
 ): VisitAggregate {
-  if (query.range !== 'all') {
-    return aggregateFromRows((results[0]?.results ?? []) as VisitFactRow[], query, source)
-  }
   const buckets: TimelineBucket[] = Array.from({ length: timelineBucketCount(query.range) }, () => ({ views: 0, visitors: 0 }))
   for (const row of sqlRows<VisitBucketSqlRow>(results[1])) {
     const bucket = buckets[row.bucket]

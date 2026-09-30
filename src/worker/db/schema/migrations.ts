@@ -1,6 +1,7 @@
 import { BOARD_LIBRARY_DEFAULT_NAME } from '@shared/constants'
 import { BLOG_POSTS_SLUG_REBUILD_STATEMENTS } from './blog-posts'
 import { BOARD_LIBRARY_TABLE_STATEMENTS } from './board-library'
+import { BLOG_ORDER_INDEX_STATEMENTS } from './indexes'
 import { MUSIC_LEGACY_REBUILD_STATEMENTS, MUSIC_PLAYBACK_MIGRATION_STATEMENTS, MUSIC_SCHEMA_STATEMENTS, MUSIC_SOURCE_MIGRATION_STATEMENTS, MUSIC_TAG_ORDER_MIGRATION_STATEMENTS, MUSIC_TAG_PARENT_MIGRATION_STATEMENTS, MUSIC_TAG_SCOPE_MIGRATION_STATEMENTS } from './music'
 import type { SchemaMigration } from './types'
 export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
@@ -796,5 +797,13 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   {
     version: 52,
     statements: BLOG_POSTS_SLUG_REBUILD_STATEMENTS,
+  },
+  // ENG-14: the order indexes the blog management lists actually read. An applied migration's
+  // statements must not change, so they are added here rather than folded into the index lists
+  // migration 52 already ran. The comments list still sorts through an index without the account
+  // prefix; adding one is a table-shape change of its own and is not part of this batch.
+  {
+    version: 53,
+    statements: BLOG_ORDER_INDEX_STATEMENTS,
   },
 ]

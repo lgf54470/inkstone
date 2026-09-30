@@ -12,7 +12,7 @@ import { blogTagCreateSchema } from './schemas'
 import { blogTagPatchSchema } from './schemas'
 import { blogCategoryCreateSchema } from './schemas'
 import { blogCategoryPatchSchema } from './schemas'
-import { summarizePostTagCounts } from './helpers'
+import { blogPostTagCountsStatement, type BlogPostTagCountRow } from './post-counts'
 
 export function registerBlogOrganizerRoutes(blogManageRoutes: Hono<AppBindings>): void {
   registerBlogFolderRoutes(blogManageRoutes)
@@ -57,11 +57,10 @@ function registerBlogTagsListRoute(blogManageRoutes: Hono<AppBindings>): void {
          FROM blog_tags WHERE user_id = ?1 ORDER BY is_pinned DESC, name ASC`,
     ).bind(userId).all<BlogTagRow>()
 
-    const { results: postsWithTags } = await c.env.DB.prepare(
-      `SELECT tags FROM blog_posts WHERE user_id = ?1`,
-    ).bind(userId).all<{ tags: string }>()
-
-    const countMap = summarizePostTagCounts(postsWithTags || [])
+    // Counted from the tags JSON by SQL: the list used to read every post row back and parse the
+    // array here, which was a second full scan beside the one this endpoint already ran for stats.
+    const { results: countRows } = await blogPostTagCountsStatement(c.env.DB, userId).all<BlogPostTagCountRow>()
+    const countMap = new Map((countRows ?? []).map((row) => [row.name, row.total]))
     const tagsList: BlogTag[] = (tagRows || []).map((r) => ({
       id: r.id,
       userId: r.user_id,

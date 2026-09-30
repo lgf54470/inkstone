@@ -271,17 +271,19 @@
 - **范围**：`comments.ts`、`blog-store/*`、`use-blog-comments-view.ts`、`blog-comments-view.tsx`。代价 **S～M**。
 - **落地（B3-06）**：列表加 `LIMIT 500`；计数改为接口内一条 `GROUP BY status`（与列表共用 `blogCommentsWhere()`，不带 status 条件、保留 search/postId），响应增 `counts`——比用 `stats` 更完整（stats 只有 total/pending，而界面有五个页签）；搜索真的接通：`setCommentSearch` 进 store，本地 draft + 250ms 防抖，`loadComments` 带 AbortSignal + 序号线，本地 `filterComments`/`computeStatusCounts` 删除；截断时顶部提示「只显示前 N 条」；侧栏评论徽标改读 `commentStats`。复现测试：worker 2 条（计数真实且搜索上下生效、501 只回 500 而计数 501）+ 客户端 `comments-request.test.ts` 3 条；两处先红变异各 1 failed。演示后端同步。
 
-#### ENG-07 [P1][开放] `stats` 做七条串行查询 + 全表扫 + JS 端 `JSON.parse`
+#### ENG-07 [P1][已修] `stats` 做七条串行查询 + 全表扫 + JS 端 `JSON.parse`
 - **问题**：`stats.ts:48-62`：`:49-55` 是 7 个串行 `await`，`:57-60` 无 `LIMIT` 扫全 `blog_posts` 取 `folder_id/is_published/tags`，`:62` 在 JS 里汇总；`organizer.ts:56-65` 又扫一遍同样的数据。每次开窗、每次 pin 都触发两轮全表扫。
 - **方案**：7 条计数合成 `db.batch`（并发）或 2～3 条 `GROUP BY`；tags 计数用 SQL（`json_each` 或一次取回后在一次遍历里同时算 folder/tag，去掉重复的全表扫）。
 - **范围**：`stats.ts`、`organizer.ts`。代价 **M**。
+- **落地（B3-07）**：`loadBlogStats` 改为一个 `db.batch` 五条聚合：文章总览一条（total/published/pinned/`SUM(views)`）、评论一条（total/pending）、分类一条、`GROUP BY folder_id` 一条、`json_each` 按标签分组一条（均带 published 拆分）；后两条落在新模块 `post-counts.ts`，`organizer.ts` 的 `GET /tags` 复用同一条标签计数，不再自己扫一遍 `SELECT tags FROM blog_posts`。损坏的 tags 行由嵌套 `CASE`（`json_valid` → `json_type = 'array'`，同 `share-selection-sql.ts` 的守卫）跳过而不是 500；trim/空成员/非字符串成员与旧 JS 累加器逐条一致。复现测试：`tests/blog-routes.test.ts` 两条（一次 batch/direct 往返数为 0 且不复现“取行”语句、损坏 tags 不影响其余计数），实现前 1 failed；`/tags` 的“不再取行”断言同样先红。
 
-#### ENG-08 [P1][开放] analytics 六段串行；非 `all` 区间把明细行整片读进内存
+#### ENG-08 [P1][已修] analytics 六段串行；非 `all` 区间把明细行整片读进内存
 - **问题**：`loadBlogAnalyticsPayload`（`stats.ts:227-268`）按 `posts → aggregate → prevStats → filterStats → topPosts → recentVisits` 六段串行；`visitAggregateStatements`（`visit-aggregates.ts:154-168`）在 `range !== 'all'` 时返回**一条取出所有明细行**（含 `country/referrer_host/device_type/os/browser`）的语句，由 Worker 在内存里分桶与聚合——`all` 反而走了 `GROUP BY`（正确方向）。
 - **量级**：1 万 visits ≈1.5 MB 进 Worker 内存（128 MB 上限下属高风险），且 range 连切三次会并发放大。
 - **方案**：把分桶与分布都改成 SQL 聚合（`GROUP BY bucket` / `GROUP BY country` …），与 `all` 分支统一；`prevStats`/`filterStats` 并入同一次 `db.batch`；前端 range 切换加 abort。
 - **范围**：`lib/visit-aggregates.ts`、`routes/blog/stats.ts`、`use-blog-dashboard-view.ts`。代价 **M**。
 - **建议**：与 share 侧共用 `visit-aggregates.ts`，改动需双覆盖回归。
+- **落地（B3-07）**：`visitAggregateStatements` 对任何区间都返回同一组 8 条 SQL 聚合（总量、时间桶、五个分布、per-target），旧的「有界区间取明细行 + `aggregateFromRows` 内存分桶」分支删除；`visitAggregateFromResults` 同步去分支，`aggregateFromRows` 只留作对照实现（`tests/visit-aggregates.test.ts` 的自取行参考路径继续逐值对拍，含新增的有界区间等价用例）。`loadBlogAnalyticsPayload` 把 summary、上一窗口、过滤器计数、最近访问与 8 条聚合合并为一次 `db.batch`（只有 top-post 标题需第二跳），往返数计数测试钉住 batch=1、direct=1；仪表盘切区间时 abort 在飞请求（`api.blog.analytics` 收 signal），旧区间迟到不再覆盖新图。share 侧双覆盖已随 `tests/share-routes.test.ts` 189 条回归。
 
 #### ENG-09 [P1][开放] 写操作后的全量重拉放大 3～12 倍，且乐观更新失败无回滚
 - **问题**：`blog-store/actions.ts:128-139` 的 `updatePost` 先 `set` 乐观改 → `await api…patch` **无 try/catch** → `Promise.all([loadPosts, loadStats, loadTags])`。一次 pin 切换 = 1 PATCH + 全表 posts + stats(8 条 D1) + tags(全表扫) ≈ **4 请求 / 11 条 D1 / ~1.4 MB 下行**，实际变更 1 bit。一次发布保存 = create + 3 loader + `onSaved → loadAll`(8 loader) ≈ **12 请求 / ~2.6 MB**。
@@ -312,10 +314,11 @@
 - **方案**：补 `loading='lazy' decoding='async'` 与宽高（或 `aspect-ratio`）；表格缩略图走尺寸变体（若部署有 `/cdn-cgi/image/`）或至少限制请求尺寸。仓库正解可照抄 `link-dynamic-icon.tsx:56-64`。
 - **范围**：`cover-image.tsx`、`blog-comments-view.tsx`。代价 **S**。
 
-#### ENG-14 [P1][开放] 索引与实际 `ORDER BY` / `WHERE` 错配，且缺两条
+#### ENG-14 [P1][已修] 索引与实际 `ORDER BY` / `WHERE` 错配，且缺两条
 - **问题**：① 友链主列表排序是 `is_pinned DESC, pinned_order ASC, sort_order ASC, created_at DESC`（`links.ts:56-60`），而现有索引 `idx_blog_links_user(user_id, status, is_pinned DESC, sort_order ASC, created_at ASC)` 的 `status` 卡在中间且方向不符 → 无索引可覆盖，每次全排序；② 评论查询 `WHERE p.user_id` + `ORDER BY c.created_at DESC` 命中 `idx_blog_comments_status(status, created_at DESC)`（该索引无 `user_id` 前缀）→ 扫全用户同状态行；③ 缺 `(user_id, is_pinned)`（`posts` 排序含 `is_pinned DESC`）与 `(user_id, views)`（`/stats` 与 top posts 都按 views 排序）。
 - **方案**：新增 `idx_blog_links_user_order`、`idx_blog_posts_user_pinned`、`idx_blog_posts_user_views`；评论加 `user_id` 属表结构级改动（`blog_comments` 无 `user_id` 列），建议单开一项评估是否需要反范式化，不在本批夹带。
 - **范围**：`db/schema/indexes.ts` + 一条迁移 + `checks.ts`。代价 **S**（索引）/ **M**（评论）。
+- **落地（B3-07）**：新增 `idx_blog_posts_user_pinned (user_id, is_pinned DESC, published_at DESC)`、`idx_blog_posts_user_views (user_id, views DESC)`、`idx_blog_links_user_order (user_id, is_pinned DESC, pinned_order ASC, sort_order ASC, created_at DESC)`。两条 posts 索引放在新常量 `BLOG_POSTS_ORDER_INDEX_STATEMENTS`（不进 `BLOG_POSTS_INDEX_STATEMENTS`，避免改变已应用的迁移 52 的语句集），连 links 那条一起由 `BLOG_ORDER_INDEX_STATEMENTS` 同时供给 schema 路径与追加的迁移 **53**；`REQUIRED_INDEXES` 加名，由 `tests/schema-migrations.test.ts` 的收敛用例守住「fresh 库」与「已有库补迁移」两条路径。评论索引的 `user_id` 前缀仍未做（`blog_comments` 无该列，表结构级改动），建议单开一项评估。
 
 #### ENG-15 [P1][开放] link checker：批次未用满、停止不中断在飞请求、缓存无 TTL、updater 不纯
 - **问题**：`use-link-checker.ts:13` `BATCH_SIZE = 8`，而服务端 `blogLinkCheckSchema` 允许 15（`schemas.ts:182`）→ 100 条要 13 批而非 7 批；`stopRequested`（`RunCheckerLoop:120`）只在批间检查，不传给 `fetch`，进行中的一批无法取消；缓存只写 `timestamp` 从不校验（见 COR-08）；`saveCachedResults` 在 `setResults` 的 updater 内调用（`:136,147`）——updater 必须纯，StrictMode 下双写；进度条无 `role="progressbar"`（`grep` 确认 `link-checker-modal.tsx` 无该 role）。

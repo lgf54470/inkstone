@@ -54,7 +54,9 @@ export function useBlogDashboardView() {
 /**
  * The analytics question is asked once per range or switch change. The switches are read in the
  * dependencies rather than captured in the closure: a change to any of them is a new question for
- * the same endpoint.
+ * the same endpoint. Switching the range aborts the window being left behind — a rapid switch would
+ * otherwise hold several aggregates in flight at once, and a late answer for the old range would
+ * land on the chart drawn for the new one.
  */
 function useAnalyticsLoad(
   range: ShareTimelineRange,
@@ -62,11 +64,14 @@ function useAnalyticsLoad(
   setLoading: (v: boolean) => void,
   setAnalytics: (v: BlogGlobalAnalytics | null) => void,
   setAnalyticsError: (v: boolean) => void,
-): () => Promise<void> {
+): (signal?: AbortSignal) => Promise<void> {
   const { excludeBots, excludeSelfReferrers, excludeOwner } = switches
-  const loadData = () => loadAnalytics(range, switches, setLoading, setAnalytics, setAnalyticsError)
+  const loadData = (signal?: AbortSignal) =>
+    loadAnalytics(range, switches, setLoading, setAnalytics, setAnalyticsError, signal)
   useEffect(() => {
-    void loadData()
+    const controller = new AbortController()
+    void loadData(controller.signal)
+    return () => controller.abort()
   }, [range, excludeBots, excludeSelfReferrers, excludeOwner])
   return loadData
 }
@@ -118,6 +123,7 @@ async function loadAnalytics(
   setLoading: (v: boolean) => void,
   setAnalytics: (v: BlogGlobalAnalytics | null) => void,
   setError: (v: boolean) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   setLoading(true)
   setError(false)
@@ -126,12 +132,14 @@ async function loadAnalytics(
       excludeBots: switches.excludeBots,
       excludeSelf: switches.excludeSelfReferrers,
       excludeOwner: switches.excludeOwner,
-    })
+    }, signal)
     setAnalytics(res.analytics)
   } catch (err) {
+    // An aborted request is the reader changing the question, not a failed load.
+    if (signal?.aborted) return
     console.error('Failed to load blog analytics:', err)
     setError(true)
   } finally {
-    setLoading(false)
+    if (!signal?.aborted) setLoading(false)
   }
 }

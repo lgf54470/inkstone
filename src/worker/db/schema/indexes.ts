@@ -1,5 +1,16 @@
-import { BLOG_POSTS_INDEX_STATEMENTS } from './blog-posts'
+import { BLOG_POSTS_INDEX_STATEMENTS, BLOG_POSTS_ORDER_INDEX_STATEMENTS } from './blog-posts'
 import { MUSIC_INDEX_STATEMENTS } from './music'
+
+/**
+ * The blog order indexes added by migration 53 (ENG-14), exported so the migration runs exactly the
+ * statements the schema path declares. Each one matches an ORDER BY the management list really
+ * issues: the old links index carried `status` in the middle and the wrong directions, so a page
+ * sorted the account's whole table every time.
+ */
+export const BLOG_ORDER_INDEX_STATEMENTS: readonly string[] = [
+  ...BLOG_POSTS_ORDER_INDEX_STATEMENTS,
+  `CREATE INDEX IF NOT EXISTS idx_blog_links_user_order ON blog_links(user_id, is_pinned DESC, pinned_order ASC, sort_order ASC, created_at DESC)`,
+]
 
 export const INDEX_STATEMENTS: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id, parent_id, position)`,
@@ -85,6 +96,7 @@ export const INDEX_STATEMENTS: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_community_templates_created
        ON community_templates(created_at DESC)`,
   ...BLOG_POSTS_INDEX_STATEMENTS,
+  ...BLOG_ORDER_INDEX_STATEMENTS,
   `CREATE INDEX IF NOT EXISTS idx_blog_folders_user ON blog_folders(user_id, position)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_folders_parent ON blog_folders(parent_id)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_blog_tags_user ON blog_tags(user_id, name)`,

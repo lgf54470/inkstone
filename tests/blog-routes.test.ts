@@ -786,6 +786,84 @@ describe('blog organizer routes (real D1)', () => {
   })
 })
 
+interface PreparedLike {
+  bind(...values: unknown[]): PreparedLike
+  all(): Promise<{ results: unknown[] }>
+  first(): Promise<Record<string, unknown> | null>
+  run(): Promise<unknown>
+}
+
+/**
+ * Counts D1 round-trips for the next request: `direct` is a serial prepare().<all|first>(), `batch`
+ * is one flight however many statements ride along. The analytics route used to take a flight per
+ * segment; the point of merging them is that the answer now costs one.
+ */
+function instrumentRoundTrips(): { direct: number; batch: number } {
+  const calls = { direct: 0, batch: 0 }
+  const real = DB_ENV.env.DB as unknown as {
+    prepare(sql: string): PreparedLike
+    batch(statements: PreparedLike[]): Promise<unknown>
+  }
+  const wrap = (statement: PreparedLike): PreparedLike => ({
+    bind: (...values: unknown[]) => wrap(statement.bind(...values)),
+    all: async () => { calls.direct += 1; return statement.all() },
+    first: async () => { calls.direct += 1; return statement.first() },
+    run: async () => statement.run(),
+  })
+  DB_ENV.env.DB = {
+    prepare: (sql: string) => wrap(real.prepare(sql)),
+    batch: (statements: PreparedLike[]) => { calls.batch += 1; return real.batch(statements) },
+  } as unknown as D1Database
+  return calls
+}
+
+describe('blog stats aggregates (ENG-07)', () => {
+  it('counts folders and tags from SQL aggregates without reading every post row', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'agg-a', tags: ['alpha', 'beta'] })
+    await seedBlogPost(db, { slug: 'agg-b', tags: ['alpha'], is_published: false })
+    await seedBlogPost(db, { slug: 'agg-c', tags: ['beta'], is_published: false })
+    await runSql(db, "UPDATE blog_posts SET folder_id = 'f-1'")
+    // One corrupt tags value must not take the dashboard down: the row still counts as a post.
+    await runSql(db, "UPDATE blog_posts SET tags = '{not json' WHERE slug = 'agg-b'")
+    const statements = captureSql(db)
+    const calls = instrumentRoundTrips()
+
+    const { stats } = await (await request(makeApp(), '/api/blog/stats')).json()
+
+    expect(stats.totalPosts).toBe(3)
+    expect(stats.publishedPosts).toBe(1)
+    expect(stats.draftPosts).toBe(2)
+    expect(stats.folderCounts['f-1']).toEqual({ total: 3, published: 1 })
+    expect(stats.tagCounts.alpha).toEqual({ total: 1, published: 1 })
+    expect(stats.tagCounts.beta).toEqual({ total: 2, published: 1 })
+    expect(stats.tagsCount).toBe(2)
+    // The counts answer in one batch of aggregates, and the tags one reads the JSON itself.
+    expect(calls.batch).toBe(1)
+    expect(calls.direct).toBe(0)
+    expect(statements.some((sql) => sql.includes('json_each'))).toBe(true)
+    expect(statements.filter((sql) => /SELECT folder_id, is_published, tags FROM blog_posts/.test(sql))).toEqual([])
+  })
+
+  it('lists tag counts from the tags JSON without parsing every post in the worker', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'tag-a', tags: ['alpha', 'beta'] })
+    await seedBlogPost(db, { slug: 'tag-b', tags: ['alpha'], is_published: false })
+    await runSql(db, "UPDATE blog_posts SET tags = '{not json' WHERE slug = 'tag-b'")
+    const statements = captureSql(db)
+
+    const tags = await (await request(makeApp(), '/api/blog/tags')).json()
+
+    // The corrupt row contributes nothing but does not remove the tag the other post carries.
+    expect(tags.find((t: { name: string }) => t.name === 'alpha').postsCount).toBe(1)
+    expect(tags.find((t: { name: string }) => t.name === 'beta').postsCount).toBe(1)
+    expect(statements.some((sql) => /SELECT tags FROM blog_posts/.test(sql))).toBe(false)
+    expect(statements.some((sql) => sql.includes('json_each'))).toBe(true)
+  })
+})
+
 describe('blog analytics routes (real D1)', () => {
   it('sanitizes an unknown range to the 30d window instead of answering with full history', async () => {
     const db = await makeDb()
@@ -924,6 +1002,28 @@ describe('blog analytics routes (real D1)', () => {
     expect(analytics.topPosts[0].views).toBe(2)
     expect(statements.some((sql) => sql.includes('GROUP BY'))).toBe(true)
     expect(statements.filter((sql) => /^SELECT visited_at, visitor_fp/.test(sql))).toEqual([])
+  })
+
+  it('answers a bounded range from SQL aggregation, asking the database once for all of it', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const { id, slug } = await seedBlogPost(db, { slug: 'bounded-post' })
+    await seedVisitAt(db, id, slug, Date.now() - 60_000, 'fp-bounded-1')
+    await seedVisitAt(db, id, slug, Date.now() - 8 * 86_400_000, 'fp-bounded-old')
+    const statements = captureSql(db)
+    const calls = instrumentRoundTrips()
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=7d')).json()
+
+    expect(analytics.totalViews).toBe(1)
+    expect(analytics.totalVisitors).toBe(1)
+    // The window is summarized by GROUP BYs now, not fetched row by row.
+    expect(statements.filter((sql) => /^SELECT visited_at, visitor_fp/.test(sql))).toEqual([])
+    expect(statements.some((sql) => sql.includes('GROUP BY'))).toBe(true)
+    // Summary, previous window, filter counts and recent visits ride the aggregate's batch; only
+    // the top-post titles need a second look-up.
+    expect(calls.batch).toBe(1)
+    expect(calls.direct).toBe(1)
   })
 
   it('deletes visit logs by type', async () => {

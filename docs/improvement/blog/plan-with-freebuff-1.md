@@ -141,7 +141,7 @@
   - 先红证据：把作用域选择突变成「所有作用域」后，links tab 用例 **1 failed / 2 skipped**（恢复后全绿）。
   - 回归：`typecheck` 绿；blog 相关 19 文件 65 条全绿；`test:unit` 577 文件 5236 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线）。
   - 已知限制：未访问过的 tab 的侧栏徽标（评论/友链计数）在首次切到该 tab 前可能为 0 或旧值（计数改由 `stats` 直接提供属 B3-06）；仪表盘不再预载 `posts`。
-- [x] B3-06 **ENG-06 + ENG-16** 评论列表 `LIMIT` + 服务端 search 接通（删本地过滤与死通道）+ tab 计数改服务端计数 + 发布弹窗分类拉取修复 — 已提交（hash 由下一提交回填，见进度日志）
+- [x] B3-06 **ENG-06 + ENG-16** 评论列表 `LIMIT` + 服务端 search 接通（删本地过滤与死通道）+ tab 计数改服务端计数 + 发布弹窗分类拉取修复 — 已提交 `3d7c6d9e`
   - 实现（服务端）：`GET /comments` 新增 `LIMIT 500`（`BLOG_COMMENTS_LIST_LIMIT`）与一条 `GROUP BY status` 计数，二者共用一段 WHERE（`blogCommentsWhere()`）；计数**不带 status 条件**（保留 search/postId 上下文），因此五个页签显示的计数都是真实规模；响应变为 `{ comments, counts }`。
   - 与计划的差异（有意）：计划写「tab 计数改 `stats.pendingComments/totalComments`」，但 `BlogStats` 只有 total/pending 两个数，支撑不了 approved/rejected/spam 五个页签；改为在评论接口用一条 GROUP BY 返回全量计数（同 B3-03 友链的做法），搜索上下文一并保留。`stats` 本批不改。
   - 客户端：`comments.list` 契约加 `counts`；store 新增 `commentStats` 与 `commentsRequestSeq`/`commentsAbort`（`loadComments` 带 AbortSignal 与序号线——搜索改问服务端后，迟到的答案必须先发后至丢弃）；`use-blog-comments-view.ts` 删本地 `filterComments`/`computeStatusCounts`，搜索改 store（本地 draft + 250ms 防抖，同文章列表），tab 计数只读 `commentStats`（未加载时不再画 0），列表被截断时提示「只显示前 N 条」；侧栏评论徽标改用 `commentStats.pending/all`。
@@ -151,7 +151,13 @@
   - 先红证据：把计数查询改回带 status 条件后计数用例 **1 failed / 52 skipped**；把 search 写死为 undefined 后客户端用例 **1 failed / 2 skipped**（均恢复后全绿）。
   - 回归：`typecheck` 绿；blog 相关 21 文件 121 条全绿；`test:unit` 578 文件 5241 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线：按门槛把评论列表滚区抽成 `CommentsList`、搜索抽成 `useCommentSearchBox`、发布弹窗取数抽成 `usePublishDialogData`）。
   - 已知限制：`counts` 描述的是「当前搜索词下的全站评论」，不是全局——搜索时页签计数随搜索收敛是刻意的。
-- [ ] B3-07 **ENG-07 + ENG-08 + ENG-14** stats 七条串行改 `db.batch`/`GROUP BY`；analytics 六段合并 + 分布改 SQL 聚合；补三条索引
+- [x] B3-07 **ENG-07 + ENG-08 + ENG-14** stats 七条串行改 `db.batch`/`GROUP BY`；analytics 六段合并 + 分布改 SQL 聚合；补三条索引 — 已提交（hash 由下一提交回填，见进度日志）
+  - 实现（ENG-07）：`loadBlogStats` 由「7 条串行计数 + 一次无 LIMIT 全表扫 + JS `JSON.parse`」改为**一个 `db.batch` 五条聚合**：文章总览一条（total/published/pinned/`SUM(views)`）、评论一条（total/pending）、分类一条、文件夹一条（`GROUP BY folder_id`，带 published 拆分）、标签一条（`json_each` 分组，带 published 拆分）。新模块 `post-counts.ts` 承载后两条与行→值的映射，`GET /tags` 改为复用标签计数（它原来自己又扫一遍同一批行），`summarizePostTagCounts` 仅剩公开标签端点还在用（那里带着 2000 篇的窗口语义，不在本批改）。tags 的解析全部下推 SQL：损坏行用嵌套 `CASE`（`json_valid` → `json_type = 'array'`，同 `lib/share-selection-sql.ts` 的守卫）跳过而不是让整个面板 500；trim、空成员、非字符串成员的语义与旧 JS 累加器一致（后者按 JSON 文本字符串化）。
+  - 实现（ENG-08）：`loadBlogAnalyticsPayload` 的 summary、上一窗口、过滤器计数、最近访问与**八条访问聚合**合并为**一次 `db.batch`**（只剩 topPosts 的标题查询需要第二跳）；`lib/visit-aggregates.ts` 的有界区间不再取明细行，与 `all` 一样走 8 条 SQL 聚合（总量、时间桶、五个分布、per-target），`visitAggregateFromResults` 去掉按区间分支；仪表盘切区间时 abort 在飞请求（`api.blog.analytics` 本就收 signal），迟到的旧区间不再覆盖新图，快速切换也不再并发放大。
+  - 实现（ENG-14）：三条索引——`idx_blog_posts_user_pinned (user_id, is_pinned DESC, published_at DESC)`（列表默认序与 pinned 筛选）、`idx_blog_posts_user_views (user_id, views DESC)`（`sort=views_desc`）、`idx_blog_links_user_order (user_id, is_pinned DESC, pinned_order ASC, sort_order ASC, created_at DESC)`（友链主列表真实 ORDER BY；旧索引中间卡着 `status` 且方向不符）。两条 posts 索引放在新常量 `BLOG_POSTS_ORDER_INDEX_STATEMENTS`（刻意不进 `BLOG_POSTS_INDEX_STATEMENTS`，避免改动已应用的迁移 52 的语句集），与 links 那条一起由 `BLOG_ORDER_INDEX_STATEMENTS` 同时供给 schema 路径与迁移 **53**；`REQUIRED_INDEXES` 同步。评论索引缺 `user_id` 前缀一条（`blog_comments` 无该列）按 review 的建议不在本批夹带，属表结构级改动。
+  - 复现测试：`tests/blog-routes.test.ts` 新增 3 条（stats 一次 batch 且不取原始 `tags` 行、损坏 tags 不 500、`/tags` 不再取行解析、有界区间不取明细行且只剩一跳）；`tests/visit-aggregates.test.ts` 新增/改写 2 条（有界区间同为八条语句、有界区间与行路径逐值等价）；`traffic-switches.test.ts` 新增 1 条（切区间取消前一发）。实现前实测 **4 failed**（有界区间取明细行、`SELECT tags FROM blog_posts`、`/stats` 的 batch/direct 往返数、八条语句预算），实现后全绿。
+  - 回归：`typecheck` 绿；目标 10 文件 263 条全绿（含 share 双覆盖 189 条）；`test:unit` 578 文件 5246 通过 / 1 skipped；九项静态门禁绿（`size` 因 `migrations.ts` 801→810 重建基线，差异仅此一行；`traffic-switches.test.ts` 的 describe 主体超 50 行靠拆分两个 describe 首修，未进基线）。
+  - 已知限制：分享侧的有界区间同样改为 8 条聚合语句（语句数变多，但不再把整个窗口读进内存）；`json_each` 只在 SQLite 的 JSON 支持可用时成立（D1/本地 sqlite 均内置）；`/stats` 的标签计数现在遵循 SQL 侧的字符串化规则。
 - [ ] B3-08 **ENG-09 + ENG-10** 写操作 refetch 定向收敛 + 回滚；友链批量删除走 `batch` 端点
 - [ ] B3-09 **ENG-11 + ENG-12 + ENG-13 + ENG-15** barrel 拆瘦让 lazy 生效 + 去 `icons` 全量 registry + qrcode 懒载 + geo/device 纯函数下沉；列表 `memo`/`useMemo`/窗口化；图片 lazy + 尺寸；link checker 批次 15 / abort / TTL / updater 纯净 / progressbar
 
@@ -202,7 +208,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-30 | B3-06 ENG-06/ENG-16 评论限页 + 服务端搜索 + 服务端计数 + 发布弹窗取数修复 | （下一提交回填） | `typecheck` 绿；blog 相关 21 文件 121 条全绿（含新 5 条）；两处先红变异各 1 failed；`test:unit` 578 文件 5241 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线） | 计数随搜索上下文收敛（刻意）；与计划的「用 stats 计数」有差异（stats 只有 total/pending） |
+| 2026-09-30 | B3-07 ENG-07/ENG-08/ENG-14 stats 计数并批 + 访问聚合统一 SQL + 三条顺序索引 | （下一提交回填） | `typecheck` 绿；目标 10 文件 263 条全绿（含 share 双覆盖 189 条）；先红 4 failed；`test:unit` 578 文件 5246 通过 / 1 skipped；九项静态门禁绿（`size` 重建基线：仅 `migrations.ts` 801→810） | 评论 `user_id` 前缀未做（表结构级，另开）；share 有界区间同为 8 条语句；`json_each` 依赖 SQLite JSON1 |
+| 2026-09-30 | B3-06 ENG-06/ENG-16 评论限页 + 服务端搜索 + 服务端计数 + 发布弹窗取数修复 | 3d7c6d9e | `typecheck` 绿；blog 相关 21 文件 121 条全绿（含新 5 条）；两处先红变异各 1 failed；`test:unit` 578 文件 5241 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线） | 计数随搜索上下文收敛（刻意）；与计划的「用 stats 计数」有差异（stats 只有 total/pending） |
 | 2026-09-30 | B3-05 ENG-05 hub 数据按 tab 收敛 + 30s SWR + 删重复 effect | f74e68e1 | `typecheck` 绿；blog 相关 19 文件 65 条全绿（含新 3 条）；作用域突变先红 1 failed；`test:unit` 577 文件 5236 通过 / 1 skipped；九项静态门禁绿 | 未访问 tab 的侧栏徽标可能滞后（待 B3-06 的 stats 计数）；dashboard 不再预载 posts |
 | 2026-09-30 | B3-02 ENG-02 文章列表去正文 + LIMIT/OFFSET + 独立总数 + tag 下推 + 分页控件 | 9b39fc57 | `typecheck` 绿；`tests/blog-routes.test.ts` 51 条（含新 4 条）+ 客户端新 6 条全绿；两处先红变异各 1 failed；`test:unit` 576 文件 5233 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线） | `post-index` 刻意不分页（每篇记事都要答案）；`limit` 上限 200；demo 后端已同步 |
 | 2026-09-30 | B3-01 ENG-01（mutation 部分）写入自带失败提示与乐观回滚 | 7188ae3a | `typecheck` 绿；blog 相关 16 文件 116 条全绿（含新 6 条）；回滚变异证明 1 failed / 5 passed；九项静态门禁绿（`size` 未动基线）；`test:unit` 574 文件 5223 通过 / 1 skipped | 直连 `api` 的两处笔记侧写入未并入；folders/tags/categories/settings 的 loader 仍只记日志 |

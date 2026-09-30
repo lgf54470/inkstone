@@ -25,6 +25,14 @@ import {
   type VisitDistributionMaps,
   type VisitTargetStat,
 } from '../../lib/visit-aggregates'
+import {
+  blogPostFolderCountsStatement,
+  blogPostTagCountsStatement,
+  toBlogPostFolderCounts,
+  toBlogPostTagCounts,
+  type BlogPostFolderCountRow,
+  type BlogPostTagCountRow,
+} from './post-counts'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -48,106 +56,87 @@ function registerBlogStatsRoute(blogManageRoutes: Hono<AppBindings>): void {
   })
 }
 
+/**
+ * The dashboard's counts in one batch: five aggregates instead of seven serial reads and two full
+ * scans of `blog_posts`. The folder and tag counts read the posts' JSON in SQL rather than bringing
+ * every row back to parse it here (`post-counts.ts`), the half `GET /tags` reuses.
+ */
 async function loadBlogStats(db: D1Database, userId: string): Promise<BlogStats> {
-  const totalPosts = (await countBlogPosts(db, userId, 'SELECT COUNT(*) as count FROM blog_posts WHERE user_id = ?1')) ?? 0
-  const publishedPosts = (await countBlogPosts(db, userId, 'SELECT COUNT(*) as count FROM blog_posts WHERE user_id = ?1 AND is_published = 1')) ?? 0
-  const pinnedPosts = (await countBlogPosts(db, userId, 'SELECT COUNT(*) as count FROM blog_posts WHERE user_id = ?1 AND is_pinned = 1')) ?? 0
-  const totalViews = (await countBlogPosts(db, userId, 'SELECT COALESCE(SUM(views), 0) as count FROM blog_posts WHERE user_id = ?1')) ?? 0
-  const totalComments = (await countBlogComments(db, userId, false)) ?? 0
-  const pendingComments = (await countBlogComments(db, userId, true)) ?? 0
-  const categoriesCount = (await countBlogPosts(db, userId, 'SELECT COUNT(*) as count FROM blog_categories WHERE user_id = ?1')) ?? 0
-
-  const postsFolderStats = await db
-    .prepare('SELECT folder_id, is_published, tags FROM blog_posts WHERE user_id = ?1')
-    .bind(userId)
-    .all<{ folder_id: string | null; is_published: number; tags: string }>()
-
-  const { uniqueTags, folderCounts, tagCounts } = accumulatePostCounts(postsFolderStats.results ?? [])
+  const [postsResult, commentsResult, categoriesResult, foldersResult, tagsResult] = await db.batch([
+    blogPostsSummaryStatement(db, userId),
+    blogCommentsSummaryStatement(db, userId),
+    db.prepare('SELECT COUNT(*) AS count FROM blog_categories WHERE user_id = ?1').bind(userId),
+    blogPostFolderCountsStatement(db, userId),
+    blogPostTagCountsStatement(db, userId),
+  ])
+  const posts = firstRow<BlogPostsSummaryRow>(postsResult)
+  const comments = firstRow<BlogCommentsSummaryRow>(commentsResult)
+  const totalPosts = posts?.total_posts ?? 0
+  const publishedPosts = posts?.published_posts ?? 0
+  const { tagCounts, tagsCount } = toBlogPostTagCounts(rowsOf<BlogPostTagCountRow>(tagsResult))
 
   return {
     totalPosts,
     publishedPosts,
     draftPosts: totalPosts - publishedPosts,
-    pinnedPosts,
-    totalViews,
-    totalComments,
-    pendingComments,
-    categoriesCount,
-    tagsCount: uniqueTags.size,
-    folderCounts,
+    pinnedPosts: posts?.pinned_posts ?? 0,
+    totalViews: posts?.total_views ?? 0,
+    totalComments: comments?.total_comments ?? 0,
+    pendingComments: comments?.pending_comments ?? 0,
+    categoriesCount: firstRow<BlogCountRow>(categoriesResult)?.count ?? 0,
+    tagsCount,
+    folderCounts: toBlogPostFolderCounts(rowsOf<BlogPostFolderCountRow>(foldersResult)),
     tagCounts,
   }
 }
 
-async function countBlogPosts(db: D1Database, userId: string, sql: string): Promise<number> {
-  const row = await db.prepare(sql).bind(userId).first<{ count: number }>()
-  return row?.count ?? 0
+interface BlogPostsSummaryRow {
+  total_posts: number
+  published_posts: number
+  pinned_posts: number
+  total_views: number
 }
 
-async function countBlogComments(db: D1Database, userId: string, pendingOnly: boolean): Promise<number> {
-  const row = await db.prepare(
-    pendingOnly
-      ? "SELECT COUNT(*) as count FROM blog_comments c JOIN blog_posts p ON c.post_id = p.id WHERE p.user_id = ?1 AND c.status = 'pending'"
-      : 'SELECT COUNT(*) as count FROM blog_comments c JOIN blog_posts p ON c.post_id = p.id WHERE p.user_id = ?1',
-  ).bind(userId).first<{ count: number }>()
-  return row?.count ?? 0
+interface BlogCommentsSummaryRow {
+  total_comments: number
+  pending_comments: number
 }
 
-function accumulatePostCounts(rows: Array<{ folder_id: string | null; is_published: number; tags: string }>): {
-  uniqueTags: Set<string>
-  folderCounts: Record<string, { total: number; published: number }>
-  tagCounts: Record<string, { total: number; published: number }>
-} {
-  const uniqueTags = new Set<string>()
-  const folderCounts: Record<string, { total: number; published: number }> = {}
-  const tagCounts: Record<string, { total: number; published: number }> = {}
-
-  for (const post of rows) {
-    accumulatePostFolder(folderCounts, post.folder_id, post.is_published === 1)
-    accumulatePostTags(uniqueTags, tagCounts, post.tags, post.is_published === 1)
-  }
-
-  return { uniqueTags, folderCounts, tagCounts }
+interface BlogCountRow {
+  count: number
 }
 
-function accumulatePostFolder(
-  folderCounts: Record<string, { total: number; published: number }>,
-  folderId: string | null,
-  published: boolean,
-): void {
-  if (!folderId) return
-  if (!folderCounts[folderId]) {
-    folderCounts[folderId] = { total: 0, published: 0 }
-  }
-  folderCounts[folderId].total += 1
-  if (published) {
-    folderCounts[folderId].published += 1
-  }
+function blogPostsSummaryStatement(db: D1Database, userId: string): D1PreparedStatement {
+  return db.prepare(
+    `SELECT COUNT(*) as total_posts,
+            COUNT(CASE WHEN is_published = 1 THEN 1 END) as published_posts,
+            COUNT(CASE WHEN is_pinned = 1 THEN 1 END) as pinned_posts,
+            COALESCE(SUM(views), 0) as total_views
+       FROM blog_posts WHERE user_id = ?1`,
+  ).bind(userId)
 }
 
-function accumulatePostTags(
-  uniqueTags: Set<string>,
-  tagCounts: Record<string, { total: number; published: number }>,
-  raw: string,
-  published: boolean,
-): void {
-  let arr: unknown
-  try {
-    arr = JSON.parse(raw || '[]')
-  } catch { /* Corrupt post tags are skipped so one bad row cannot break the dashboard. */ }
-  if (!Array.isArray(arr)) return
-  for (const t of arr) {
-    const strT = String(t).trim()
-    if (!strT) continue
-    uniqueTags.add(strT)
-    if (!tagCounts[strT]) {
-      tagCounts[strT] = { total: 0, published: 0 }
-    }
-    tagCounts[strT].total += 1
-    if (published) {
-      tagCounts[strT].published += 1
-    }
-  }
+function blogCommentsSummaryStatement(db: D1Database, userId: string): D1PreparedStatement {
+  return db.prepare(
+    `SELECT COUNT(*) as total_comments,
+            COUNT(CASE WHEN c.status = 'pending' THEN 1 END) as pending_comments
+       FROM blog_comments c
+       JOIN blog_posts p ON c.post_id = p.id
+      WHERE p.user_id = ?1`,
+  ).bind(userId)
+}
+
+interface D1ResultRows {
+  results?: unknown[]
+}
+
+/** Row readers for `db.batch` results, which is how every aggregate on this page comes back. */
+function firstRow<Row>(result: D1ResultRows | undefined): Row | null {
+  return (result?.results?.[0] as Row | undefined) ?? null
+}
+
+function rowsOf<Row>(result: D1ResultRows | undefined): Row[] {
+  return (result?.results ?? []) as Row[]
 }
 
 function registerBlogAnalyticsRoute(blogManageRoutes: Hono<AppBindings>): void {
@@ -166,20 +155,28 @@ async function analyticsContext(db: D1Database, c: { req: { query(key: string): 
   return { ...request, ...analyticsWindow(request.range, request.now, minRow?.min_ts ?? null) }
 }
 
+/**
+ * One batch carries every segment of the answer that does not depend on another: the post summary,
+ * the previous window, the filter counts, the recent visits and the eight visit aggregates. Only
+ * the top-post titles need a second flight, because they are looked up once the aggregates have
+ * decided which posts are on the list.
+ */
 async function loadBlogAnalyticsPayload(
   db: D1Database,
   ctx: AnalyticsContext,
   userId: string,
 ): Promise<BlogGlobalAnalytics> {
-  const posts = blogPostCounts(await loadBlogPostsSummary(db, userId))
-
-  const aggregate = visitAggregateFromResults(
-    await db.batch(visitAggregateStatements(db, BLOG_VISIT_SOURCE, { userId }, ctx)),
-    ctx,
-    BLOG_VISIT_SOURCE,
-  )
-  const prevStats = await loadBlogPrevVisits(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause)
-  const filterStats = await loadBlogFilterStats(db, userId, ctx.startTs)
+  const [summaryResult, prevResult, filterResult, recentResult, ...visitResults] = await db.batch([
+    blogPostsSummaryStatement(db, userId),
+    blogPrevVisitsStatement(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause),
+    blogFilterStatsStatement(db, userId, ctx.startTs),
+    blogRecentVisitsStatement(db, userId, ctx.filters),
+    ...visitAggregateStatements(db, BLOG_VISIT_SOURCE, { userId }, ctx),
+  ])
+  const posts = blogPostCounts(firstRow<BlogPostsSummaryRow>(summaryResult))
+  const aggregate = visitAggregateFromResults(visitResults, ctx)
+  const prevStats = firstRow<BlogPrevVisitsRow>(prevResult)
+  const filterStats = firstRow<BlogFilterStatsRow>(filterResult)
 
   const totals = blogDisplayTotals(aggregate.views, ctx.duration)
 
@@ -189,8 +186,7 @@ async function loadBlogAnalyticsPayload(
 
   const topPosts = await loadBlogTopPosts(db, userId, aggregate.targets)
   const breakdown = breakdownStats(aggregate)
-
-  const recentVisits = await loadBlogRecentVisits(db, userId, ctx.filters)
+  const recentVisits = toBlogVisitLogs(rowsOf<BlogRecentVisitRow>(recentResult))
 
   return {
     range: ctx.range,
@@ -212,14 +208,12 @@ async function loadBlogAnalyticsPayload(
     topPosts,
     ...breakdown,
     recentVisits,
-    filterStats,
+    filterStats: {
+      bots: filterStats?.bots ?? 0,
+      selfReferrals: filterStats?.self_referrals ?? 0,
+      owner: filterStats?.owner ?? 0,
+    },
   }
-}
-
-interface BlogPostsSummaryRow {
-  total_posts: number
-  published_posts: number
-  total_views: number
 }
 
 function blogPostCounts(summary: BlogPostsSummaryRow | null): {
@@ -238,48 +232,41 @@ function blogPostCounts(summary: BlogPostsSummaryRow | null): {
   }
 }
 
-async function loadBlogPostsSummary(db: D1Database, userId: string): Promise<BlogPostsSummaryRow | null> {
-  return db.prepare(
-    `SELECT
-       COUNT(*) as total_posts,
-       COUNT(CASE WHEN is_published = 1 THEN 1 END) as published_posts,
-       COALESCE(SUM(views), 0) as total_views
-     FROM blog_posts WHERE user_id = ?1`,
-  )
-    .bind(userId)
-    .first<BlogPostsSummaryRow>()
+interface BlogPrevVisitsRow {
+  prev_views: number
+  prev_uv: number
 }
 
-async function loadBlogPrevVisits(
+interface BlogFilterStatsRow {
+  bots: number
+  self_referrals: number
+  owner: number
+}
+
+function blogPrevVisitsStatement(
   db: D1Database,
   userId: string,
   prevStartTs: number,
   startTs: number,
   clause: string,
-): Promise<{ prev_views: number; prev_uv: number } | null> {
+): D1PreparedStatement {
   return db.prepare(
     `SELECT COUNT(*) as prev_views, COUNT(DISTINCT visitor_fp) as prev_uv
        FROM blog_visits
       WHERE user_id = ?1 AND visited_at >= ?2 AND visited_at < ?3 ${clause}`,
   )
     .bind(userId, prevStartTs, startTs)
-    .first<{ prev_views: number; prev_uv: number }>()
 }
 
-async function loadBlogFilterStats(db: D1Database, userId: string, startTs: number): Promise<{ bots: number; selfReferrals: number; owner: number }> {
-  const row = await db.prepare(
+function blogFilterStatsStatement(db: D1Database, userId: string, startTs: number): D1PreparedStatement {
+  return db.prepare(
     `SELECT
        COUNT(CASE WHEN is_bot = 1 THEN 1 END) as bots,
        COUNT(CASE WHEN is_self_referrer = 1 THEN 1 END) as self_referrals,
        COUNT(CASE WHEN is_owner = 1 THEN 1 END) as owner
      FROM blog_visits
     WHERE user_id = ?1 AND visited_at >= ?2`,
-  ).bind(userId, startTs).first<{ bots: number; self_referrals: number; owner: number }>()
-  return {
-    bots: row?.bots ?? 0,
-    selfReferrals: row?.self_referrals ?? 0,
-    owner: row?.owner ?? 0,
-  }
+  ).bind(userId, startTs)
 }
 
 /**
@@ -369,8 +356,8 @@ interface BlogRecentVisitRow {
   post_title: string
 }
 
-async function loadBlogRecentVisits(db: D1Database, userId: string, filters: VisitTrafficFilters): Promise<BlogVisitLog[]> {
-  const rows = await db.prepare(
+function blogRecentVisitsStatement(db: D1Database, userId: string, filters: VisitTrafficFilters): D1PreparedStatement {
+  return db.prepare(
     `SELECT bv.id, bv.post_id, bv.slug, bv.visited_at, bv.country, bv.region, bv.city,
             bv.referrer, bv.referrer_host, bv.device_type, bv.os, bv.browser, bv.user_agent,
             bv.is_bot, bv.is_self_referrer, bv.is_owner,
@@ -382,9 +369,10 @@ async function loadBlogRecentVisits(db: D1Database, userId: string, filters: Vis
       LIMIT 20`,
   )
     .bind(userId)
-    .all<BlogRecentVisitRow>()
+}
 
-  return (rows.results ?? []).map((r) => ({
+function toBlogVisitLogs(rows: BlogRecentVisitRow[]): BlogVisitLog[] {
+  return rows.map((r) => ({
     id: r.id,
     postId: r.post_id,
     postTitle: r.post_title,

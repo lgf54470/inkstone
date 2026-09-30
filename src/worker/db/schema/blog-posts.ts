@@ -39,6 +39,18 @@ export const BLOG_POSTS_INDEX_STATEMENTS: readonly string[] = [
 ]
 
 /**
+ * The order indexes the management list actually reads (ENG-14), added after the slug rebuild.
+ * They stay out of `BLOG_POSTS_INDEX_STATEMENTS` so migration 52's statement list remains exactly
+ * what it was when it was applied — this list is what migration 53 and the schema path both run.
+ */
+export const BLOG_POSTS_ORDER_INDEX_STATEMENTS: readonly string[] = [
+  // The list's default order (`is_pinned DESC, published_at DESC`) and its pinned filter.
+  `CREATE INDEX IF NOT EXISTS idx_blog_posts_user_pinned ON blog_posts(user_id, is_pinned DESC, published_at DESC)`,
+  // The `sort=views_desc` ordering the list offers.
+  `CREATE INDEX IF NOT EXISTS idx_blog_posts_user_views ON blog_posts(user_id, views DESC)`,
+]
+
+/**
  * The shipped shape declared `slug TEXT NOT NULL UNIQUE`, whose implicit index cannot be dropped,
  * so the table is rebuilt to move uniqueness onto `(user_id, slug)`.
  *

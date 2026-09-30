@@ -139,7 +139,7 @@ async function loadGlobalAnalytics(
     collectionChannelLabelsStatement(db, userId),
     ...visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId }, ctx),
   ])
-  const aggregate = visitAggregateFromResults(visitResults, ctx, SHARE_VISIT_SOURCE)
+  const aggregate = visitAggregateFromResults(visitResults, ctx)
   const topNotes = await loadTopNotes(db, userId, aggregate.targets)
   return composeGlobalAnalytics({
     ctx,
@@ -239,7 +239,7 @@ function registerNoteAnalyticsRoute(shareManageRoutes: Hono<AppBindings>): void 
       collectionChannelLabelsStatement(db, userId),
       ...visitAggregateStatements(db, SHARE_VISIT_SOURCE, { userId, targetId: noteId }, ctx),
     ])
-    const aggregate = visitAggregateFromResults(visitResults, ctx, SHARE_VISIT_SOURCE)
+    const aggregate = visitAggregateFromResults(visitResults, ctx)
     const recentVisits = toVisitLogs(rowsOf<RecentVisitRow>(recentResult), row.note_title)
     const timeline = buildBucketedTimeline(aggregate.buckets, ctx.range, ctx.startTs, ctx.duration)
     const breakdown = breakdownTotals(aggregate, aggregate.views)
