@@ -78,11 +78,23 @@
 
 ## 批次 2 · 统计可信
 
-- [ ] B2-01 **COR-01 + COR-03 + COR-05** 删 `stats.ts` 全部伪造分支（fallback 分布 / 0.75 UV / 单篇伪造 visitors / `blogDisplayTotals` 兜底）；`BotsFilterBanner` 用真实 `filterStats`；区间值与全站累计分列标注；前端用 `KpiCard` 的 `unavailable` 与空态表达「未采集」
-- [ ] B2-02 **COR-02** `computeDelta` 无基数不再报 +100%（共用于 share，双覆盖回归）
-- [ ] B2-03 **COR-04 + BF-1** PV 计数根治：新增公开 beacon 端点（同源 + CF 头 + 每 (post, fp) 30 分钟去重 + IP 限流），服务端不再在 SSR 取数路径计数；前台删 `FALLBACK_POSTS` 失败伪造、feed/sitemap 失败 5xx + `no-store`
-- [ ] B2-04 **SEC-14 + COR-06** 流量过滤器单一真值：仪表盘读 store 并把三值透传 `analytics()`；popover / 设置弹窗共用同一处
-- [ ] B2-05 **COR-08** 链接检测新增 `error` 语义（失败 ≠ 失效）+ 缓存 TTL + 批量删除确认文案带真实条数
+- [x] B2-01 **COR-01 + COR-05** 删 `stats.ts` 全部伪造分支；区间值与全站累计分列标注；前端用 `KpiCard` 的 `unavailable` 与空态表达「未采集」 — 已提交 `091a39eb`（COR-03 的横幅真实值落在 B2-04 一并做，两条本就要求同批）
+  - 实现：删除 `fillFallbackDistributions()`（硬编码的「中国 100% / Direct 100% / desktop 60% / macOS 50% / Chrome 60%」）与 `Math.ceil(postStoredViews * 0.75)` 两处编造；`blogDisplayTotals` 只回答本区间（不再取三个值里的最大）；单篇 visitors 不再编造；排行榜改为「本区间有访问的文章、按本区间访问排序」（原为按存量 views 排序再给无数据者编一个 visitors）；载荷新增 `storedViews`（存量计数器）与区间值并列；客户端 KPI 只读区间值、累计计数器降为卡片附注（`KpiCard` 新增可选 `hint`），未加载显示「未采集」；文案改为「本区间…」。
+  - 复现测试：`tests/blog-routes.test.ts` 把「用存量视图估算分布」的旧断言**订正**为「未采集即空」（含 `storedViews` 仍为 20），并新增「排行榜只含本区间有数据的文章」。
+- [x] B2-02 **COR-02** `computeDelta` 无基数不再报 +100%（共用于 share，双覆盖回归） — 已提交 `93cf290d`
+  - 实现：`previous === 0` 一律返回 `undefined`（0→n 是从无到有，0/0 无从度量）；前端两处徽标因此不渲染。
+  - 复现测试：`tests/share-analytics.test.ts` 订正 `computeDelta(50, 0)` 的旧断言；`tests/blog-routes.test.ts` 新增「上一窗口无流量时不画 delta」。
+- [x] B2-03 **COR-04**（PV 计数根治，beacon 部分） — 已提交 `43243ee4`；**BF-1（前台失败伪造）仍未做，见下**
+  - 实现：新增公开 `POST /api/blog/public/visits`（`visit-beacon.ts`）：按 `(文章, 访客指纹)` 30 分钟去重（复用既有 `recordBlogVisit`）、按 IP 120/10 分钟限流（超限 429）、只接受已发布且属于本站的文章（否则 404）、按真实 UA 判 bot（bot 不计也不写 views）；`GET /posts/:slug` **不再**写访问行、不再加计数（那次请求来自前台服务器，无 UA 无来源，记下的每一行都被判成爬虫——这正是「PV 恒 0」的根因）；`is_self_referrer` 改按博蝢自身配置的地址（`settings.frontendUrl`）判定，而不是 API 主机。
+  - 前台：新增 `blog-frontend/src/lib/visit-beacon.ts`，文章页水合后以 `sendBeacon`（退化 `keepalive fetch`）带**真实 `document.referrer`** 上报一次；文章元素带上服务端认可的 slug。
+  - 复现测试：`tests/blog-routes.test.ts` 的计数类用例改走 beacon（按指纹只计一次、第二个读者再计一次），并新增「未发布/不存在的文章 404」「bot 不计」「同站与外部来源的 self-referrer 判定」「取数路径不再留任何访问行」。
+  - **未完成部分（BF-1）**：前台 `lib/api.ts` 的 `FALLBACK_POSTS` 失败伪造（`getPosts`/`getPostBySlug`/`getTimeline` 三处）与 feed/sitemap 的失败处理（应 5xx + `no-store`，不返回空文档）尚未改，`blog-frontend/src/lib/api.test.ts` 里还有一条把回退当期望的断言等着一并订正；下一步接 B2-03 的尾。
+- [x] B2-04 **SEC-14 + COR-06 + COR-03** 流量过滤器单一真值 — 已提交 `25fa85bf`
+  - 实现：三个开关只存在 store 里一份，仪表盘读 store 并把**三个值全部**透传 `analytics()`（原来自己拿一份 `excludeBots`，而 store 那份不被任何查询消费）；横幅改用服务端回传的真实 `bots/selfReferrals/owner`（原来两个参数写死 0）；`setFilters` 里白发的 `loadPosts`/`loadStats` 删除（它们从不带这三个值）。
+  - 复现测试：新增 `blog-dashboard-view/traffic-switches.test.ts`（按 store 三值查询；别处改开关会重查）。
+- [x] B2-05 **COR-08** 链接检测新增 `error` 语义 + 缓存 TTL + 批量删除确认带条数 — 已提交 `7dba4896`
+  - 实现：新增 `error` 级别（请求根本没到达 ≠ 站点回答失效），统计/筛选/徽标各自分开，只有 `broken` 是可删的判定；缓存新增 24 小时 TTL，超时不再丢弃而是显示「陈旧」提示；批量删除确认改为带条数的专用文案。
+  - 复现测试：新增 `blog-links-view/link-health.test.ts`（失败与失效分桶；TTL 边界与无时间戳的旧缓存算陈旧）。
 
 ## 批次 3 · 失败语义与性能
 
@@ -143,6 +155,12 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-30 | B2-05 COR-08 链接检测失败≠失效 + 缓存时效 + 批量删除条数 | 7dba4896 | `typecheck` 绿；`src/client/features/blog` 9 文件 28 条全绿（含新 2 条）；`i18n:check`/`hardcoded:check`/`comments:check` 绿 | 陈旧结果仍会展示（按计划要求标注而不丢弃） |
+| 2026-09-30 | B2-03 COR-04 浏览计数改浏览器 beacon（前台 BF-1 待做） | 43243ee4 | `typecheck` 绿；`tests/blog-routes.test.ts` 47 条全绿；7 项静态门禁绿；`blog-frontend`：`npm test` 295 通过、`astro check` 仅 3 条既有报错 | 访客侧浏览器未执行 JS 时不再计数（取数路径不再代计）；作者自身访问的 `is_owner` 目前仍为 0（beacon 不带会话）；BF-1 未做 |
+| 2026-09-30 | B2-04 SEC-14/COR-06/COR-03 流量开关单一真值 | 25fa85bf | `typecheck` 绿；`src/client/features/blog` 26 条全绿（含新 2 条）；`size:check` 因抽出派生值函数后通过 | 无 |
+| 2026-09-30 | B2-02 COR-02 无基数不报 +100% | 93cf290d | `typecheck` 绿；`share-analytics`/`blog-routes`/`share-routes` 191 条全绿（含新 1 条） | 共用于 share，两侧回归都在跑 |
+| 2026-09-30 | （附带）kanban 日历用例按日期定位格子 | 099adc59 | 该文件 7 条全绿；此前它是「既有失败」，且会随月末在本地门禁里反复变红 | 与本轮博客工作无关，单独提交 |
+| 2026-09-30 | B2-01 COR-01/COR-05 删伪造统计 + 区间/累计分列 | 091a39eb | `typecheck` 绿；`tests/blog-routes.test.ts` 45 条全绿（含订正 1 条 + 新 1 条）；`i18n/hardcoded/comments` 绿 | 只删伪造而不修计数会让看板变「永久 0」，故与 B2-03 同批收尾 |
 | 2026-09-30 | B1-10 SEC-10/11/12/13/15 头像不外发 + 鉴权兜底 + 自引荐真实值 + store 副作用 | d73bda36 | `typecheck` 绿；`test:unit` 5195 通过 / 1 失败（仍为既有 kanban 日期用例）；新增 2 条（自引荐、空头像）+ 新建 `blog-store/filters.test.ts` 2 条全绿；12 项静态门禁绿 | SEC-12 经核验在 B1-04 已修；SSR 不转发 referer，故该路径的 `is_self_referrer` 仍为 0（等 B2-03 的浏览器 beacon）；同左的既有 kanban 失败 |
 | 2026-09-30 | B1-09 SEC-07 LIKE 转义 + 公开列表上限 + days 校验 | 15ce276a | `typecheck` 绿；本批 4 个 blog 测试文件 74 条全绿（含新 5 条）；12 项静态门禁绿；`size:check` 因 `posts.ts` 拆出 `post-list-query.ts` 通过 | 上限是天花板不是分页：超过 2000 篇时最旧文章从归档/标签计数掉出，已在条目内写明 |
 | 2026-09-30 | B1-08 SEC-06 友链点击限流与状态守卫 | 1317e1d2 | `typecheck` 绿；`tests/blog-links-routes.test.ts` 21 条 + `tests/blog-public-owner.test.ts` 10 条全绿；12 项静态门禁绿 | 同一访客在同一链接上半小时只计一次，之后回 `counted:false` 而非 429（点击确实发生） |
