@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { AlertCircle, CheckCircle, FileText, XCircle } from 'lucide-react'
 import type { BlogComment, BlogCommentStatus } from '@shared/types'
 import type { BlogTab } from '../blog-store'
 import { t } from '../../../lib/i18n'
 import { shortTime } from '../../../lib/time'
+import { useUi } from '../../../store/ui'
 
 interface PendingCommentsCardProps {
   pendingComments: BlogComment[]
@@ -63,6 +65,21 @@ function PendingCommentItem({ comment, updateCommentStatus }: {
   comment: BlogComment
   updateCommentStatus: (id: string, status: BlogCommentStatus) => Promise<boolean>
 }) {
+  const toast = useUi((s) => s.toast)
+  // Which of the two buttons is being written: both keep their place and both stop accepting
+  // clicks while an answer is in flight (the two save-gestures used to be fire-and-forget).
+  const [busy, setBusy] = useState<BlogCommentStatus | null>(null)
+
+  const handleStatus = async (status: BlogCommentStatus) => {
+    setBusy(status)
+    try {
+      const done = await updateCommentStatus(comment.id, status)
+      if (done) toast({ title: t('blog.comment_status_updated'), tone: 'success' })
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-3 space-y-1.5'>
       <div className='flex items-center justify-between'>
@@ -80,10 +97,10 @@ function PendingCommentItem({ comment, updateCommentStatus }: {
         {comment.content}
       </p>
       <div className='flex items-center justify-end gap-2 pt-1 border-t border-[var(--border-subtle)]'>
-        <button type='button' onClick={() => void updateCommentStatus(comment.id, 'rejected')} className='inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--danger)] hover:underline'>
+        <button type='button' disabled={busy !== null} aria-busy={busy === 'rejected'} onClick={() => void handleStatus('rejected')} className='inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--danger)] hover:underline disabled:opacity-50 disabled:no-underline'>
           <XCircle size={12} /> {t('blog.reject')}
         </button>
-        <button type='button' onClick={() => void updateCommentStatus(comment.id, 'approved')} className='inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--success)] hover:underline font-medium'>
+        <button type='button' disabled={busy !== null} aria-busy={busy === 'approved'} onClick={() => void handleStatus('approved')} className='inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--success)] hover:underline font-medium disabled:opacity-50 disabled:no-underline'>
           <CheckCircle size={12} /> {t('blog.approve')}
         </button>
       </div>

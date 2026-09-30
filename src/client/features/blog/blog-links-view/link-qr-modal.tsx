@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, ExternalLink, QrCode } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import type { BlogLink } from '@shared/types'
 import { safeExternalUrl } from '@shared/url-safety'
 import { Modal } from '../../../components/overlay'
 import { Button } from '../../../components/primitives'
+import { copyText } from '../../../lib/clipboard'
 import { t } from '../../../lib/i18n'
+import { useUi } from '../../../store/ui'
 import { LinkDynamicIcon } from './link-dynamic-icon'
 
 export interface LinkQrModalProps {
@@ -17,18 +19,24 @@ export interface LinkQrModalProps {
 const MODAL_WIDTH = 380
 
 export function LinkQrModal({ open, onClose, link }: LinkQrModalProps) {
+  const toast = useUi((s) => s.toast)
   const [copied, setCopied] = useState(false)
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // The tick belongs to this panel's own state, so its timer has to go when the panel does — it
+  // used to keep firing into an unmounted component.
+  useEffect(() => () => {
+    if (resetTimer.current) clearTimeout(resetTimer.current)
+  }, [])
 
   if (!link) return null
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(link.url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setCopied(false)
-    }
+    // `copyText` reports a refusal on its own; the tick is only for the copy that happened.
+    if (!(await copyText(link.url, toast))) return
+    setCopied(true)
+    if (resetTimer.current) clearTimeout(resetTimer.current)
+    resetTimer.current = setTimeout(() => setCopied(false), 2000)
   }
 
   return (

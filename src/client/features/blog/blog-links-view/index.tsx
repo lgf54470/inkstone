@@ -4,6 +4,8 @@ import type { BlogLink } from '@shared/types'
 import { Button } from '../../../components/primitives'
 import { Checkbox } from '../../../components/form'
 import { t } from '../../../lib/i18n'
+import { copyText } from '../../../lib/clipboard'
+import { useUi } from '../../../store/ui'
 import { useBlogLinksView } from './use-blog-links-view'
 import { LinksFilterBar, LinksHeader } from './links-toolbar'
 import { LinkCardRow } from './link-card-row'
@@ -189,6 +191,7 @@ function LinksCoreModals({ view }: { view: ReturnType<typeof useBlogLinksView> }
 }
 
 function LinksToolModals({ view }: { view: ReturnType<typeof useBlogLinksView> }) {
+  const toast = useUi((s) => s.toast)
   return (
     <>
       <LinkCheckerModal
@@ -214,7 +217,7 @@ function LinksToolModals({ view }: { view: ReturnType<typeof useBlogLinksView> }
         categories={view.linkCategories}
         onClose={view.handleCloseContextMenu}
         onCopy={(link) => {
-          void navigator.clipboard.writeText(link.url)
+          void copyText(link.url, toast)
         }}
         onQRCode={(link) => view.setQrModalLink(link)}
         onTogglePin={(link) => void view.togglePinLink(link.id, !link.isPinned)}

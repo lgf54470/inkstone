@@ -2880,6 +2880,10 @@ const allowed = new Map([
   ['src/client/features/blog/blog-comments-view-failure.test.ts', [
     '/**\n * ENG-01: a failed load is a state of its own. This surface used to draw `filteredComments` and, when\n * it was empty because nothing had arrived, say there were no comments — so being offline looked\n * exactly like a blog nobody had commented on.\n */',
   ]],
+  ['src/client/features/blog/blog-comments-view.test.ts', [
+    '// UI-08: the card\'s status buttons were wired straight to the store and could be clicked again while',
+    '// the first write was in flight; a change that landed said nothing.',
+  ]],
   ['src/client/features/blog/blog-comments-view.tsx', [
     '/** The comment avatar\'s rendered size, also declared as its intrinsic size so the row reserves it. */',
     '/** The server caps the list at 500 rows; the DOM does not need all of them at once. */',
@@ -2895,6 +2899,14 @@ const allowed = new Map([
   ['src/client/features/blog/blog-dashboard-view/index.tsx', [
     '/**\n * What the switches are actually hiding, counted by the same query that hides it. The self-referral\n * and author counts used to be the literals `0` while the server returned real ones, so the banner\n * described a filter that was not running.\n */',
     '/**\n * The range\'s numbers, and the cumulative counter named as what it is. A card used to answer with\n * whichever of the two was larger (`analytics.totalViews ?? stats.totalViews`), so a week with no\n * visits displayed the blog\'s whole history next to a real PV of 0, and both were labelled the same\n * way. An unloaded payload says "not collected" rather than 0.\n */',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/pending-comments-card.test.ts', [
+    '// UI-08: the card\'s two buttons were fire-and-forget. A reader could click either one repeatedly',
+    '// while the first write was still in flight, and a change that landed said nothing.',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/pending-comments-card.tsx', [
+    '// Which of the two buttons is being written: both keep their place and both stop accepting',
+    '// clicks while an answer is in flight (the two save-gestures used to be fire-and-forget).',
   ]],
   ['src/client/features/blog/blog-dashboard-view/radiogroup-names.test.ts', [
     '/**\n * SH-46 brought the blog dashboard\'s two `Segmented` controls under the same rules\n * the share dashboard already follows: the toolbar range picker carries its own\n * `label`, and the metric picker is named by the card heading it sits beside. The\n * locale is not loaded in this harness, so `t()` echoes the key and the assertions\n * compare against keys.\n */',
@@ -2998,6 +3010,20 @@ const allowed = new Map([
     '// A reader submitted this address and it is not one a link may carry: it is shown as the',
     '// text it is, without an affordance that would open it in the admin\'s session.',
   ]],
+  ['src/client/features/blog/blog-links-view/link-category-modal.test.ts', [
+    '// UI-08: the category CRUD had no success feedback — creating or saving said nothing — and its',
+    '// delete question was the *delete-a-link* sentence. These pin the three answers the modal now gives.',
+    '// `Modal` portals to the body, so the dialog is not inside the render container.',
+    '// The old question was the sentence used for a single link, and it named no category.',
+  ]],
+  ['src/client/features/blog/blog-links-view/link-category-modal.tsx', [
+    '/**\n * What a category action asks before it runs. It names the category and says what the server does to\n * the rows around it — this used to reuse the delete-a-link question, which answered neither.\n */',
+    '// The one category being written right now: its row stops accepting a second click while its',
+    '// answer is in flight, and the success sentence is announced once the store says it landed (the',
+    '// failure sentence comes from the store layer, which holds the error it saw).',
+    '/** The modal\'s state and callbacks, handed to the three actions below so each stays a small unit. */',
+    '// A failure keeps the row in edit mode: it still holds the reader\'s unsaved words.',
+  ]],
   ['src/client/features/blog/blog-links-view/link-checker-modal.tsx', [
     '/** A result-level filter\'s face: the level\'s own colour plus how many links are in it. */',
     '/* A reader submitted this address: the open control exists only when a link may carry it. */',
@@ -3050,7 +3076,14 @@ const allowed = new Map([
     '/** Every lucide icon the picker can offer, in the stored spelling, sorted for a stable grid. */',
     '/** The loader key for a stored icon value, or null when the value is not a lucide icon at all. */',
   ]],
+  ['src/client/features/blog/blog-links-view/link-qr-modal.test.ts', [
+    '// UI-13: a refused copy drew nothing at all — the tick simply never appeared, which reads the same as',
+    '// a copy that has not been registered yet. Both outcomes are announced now.',
+  ]],
   ['src/client/features/blog/blog-links-view/link-qr-modal.tsx', [
+    '// The tick belongs to this panel\'s own state, so its timer has to go when the panel does — it',
+    '// used to keep firing into an unmounted component.',
+    '// `copyText` reports a refusal on its own; the tick is only for the copy that happened.',
     '/* The address arrived from a reader: it opens only when a link may carry it. */',
   ]],
   ['src/client/features/blog/blog-links-view/links-toolbar.tsx', [
@@ -3272,7 +3305,10 @@ const allowed = new Map([
     '/** Same 250ms as the post list\'s box: the reader pauses, and the server is asked once. */',
     '// The server caps the list; a tab whose real size is larger than what came back is truncated and',
     '// the view says so rather than letting the reader believe those are all of them.',
+    '// The row that is mid-change: the status buttons of every other row stay where they are, and the',
+    '// one being written cannot be clicked twice while its answer is in flight.',
     '/**\n * The box types instantly and asks once; the value it shows is its own, while the query lives in the\n * store. Filtering in the browser used to narrow only the page that happened to arrive.\n */',
+    '/**\n * One comment\'s moderation change: the success sentence belongs here, the failure sentence belongs to\n * the store layer (`runBlogMutation` reports the error it saw), and the row\'s disabled state belongs\n * to neither — it has to outlive both answers.\n */',
   ]],
   ['src/client/features/blog/use-blog-hub-modal.ts', [
     '/** Nothing came back and the load failed: the list draws a failure, not an empty state. */',
@@ -8214,6 +8250,14 @@ const allowed = new Map([
     '// Shared shape types for the virtual calendar/todo trees. Kept in their own',
     '// module (instead of periods.ts) so ids.ts can import them without creating a',
     '// module cycle: ids.ts holds the runtime id helpers that periods.ts consumes.',
+  ]],
+  ['src/client/lib/clipboard.test.ts', [
+    '// UI-13: a refused copy used to be answered by "nothing happened" (an inline tick that never',
+    '// appeared, or a discarded promise). The helper reports both outcomes, so a reader always learns',
+    '// that the text is — or is not — on the clipboard.',
+  ]],
+  ['src/client/lib/clipboard.ts', [
+    '/**\n * The clipboard is the one browser API this app writes to that can refuse: an insecure origin, a\n * denied permission, or no API at all. Each copy point used to answer a refusal its own way — an\n * inline check mark that never appeared, or a `void` with no message — so the reader saw "nothing\n * happened". One helper now says what happened in both directions: the success title the caller\n * chooses, and the shared failure sentence.\n */',
   ]],
   ['src/client/lib/db-cache-spec.ts', [
     '// Shared behavior specs for the two-level shell cache. Each backend test file',

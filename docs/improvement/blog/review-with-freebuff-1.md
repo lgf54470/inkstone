@@ -398,10 +398,11 @@
 - **范围**：4 个组件 + `blog-batch-bar.tsx`。代价 **M**。
 - **落地（B4-04）**：侧栏两个分区标题的「新建」与网格卡的置顶按钮改为同仓 `ROW_ACTION_CLASS` 的既有写法（`opacity-100 md:opacity-0 md:group-hover… md:focus-visible:opacity-100`）：手机常显、桌面悬停显示、聚焦必然显示；批量条改 `inset-x-4 mx-auto w-fit max-w-full flex-wrap`，窄屏换行而不是把后几个控件推出屏外；四个自绘头部的弹窗都传给 `Modal` 一个 `ariaLabel`（publish 随编辑态换名）；`blog-categories-modal.tsx` 的自造 `CategoryField`（`<label>` 无 `htmlFor`）改 `Field`、颜色选择器改 `fieldset`/`legend`（B4-03 留的口子）。回归 8 条（侧栏可聚焦 1、网格标题按钮与置顶可聚焦 2、四个弹窗可访问名 5）。限制：批量条仍是浮条（只允许换行，未改成独立横条）；手机上的置顶按钮现在常显，这是刻意的。
 
-#### UI-08 [P1][开放] 单条评论审核与友链分类 CRUD 零反馈
+#### UI-08 [P1][已修] 单条评论审核与友链分类 CRUD 零反馈
 - **问题**：`blog-comments-view.tsx` 把 store action 当同步 `void` 用（bundle 类型 `(id,status)=>void`），失败即未处理 rejection，UI 原地不动，无 pending/disabled 可连点（`pending-comments-card.tsx:82,85` 同病）；友链分类侧 `blog-store/links.ts` 的 `createLinkCategory` 失败 `console.error + return null`，`update/deleteLinkCategory` 抛错被调用点 `void` 吞掉 → 失败时 `setEditingCatId(null)` 不执行，行内编辑态打结；分类删除的确认框复用了「删除友链」的文案。
 - **方案**：统一 `handleStatusChange`/`handleCategoryAction`（行级 busy + `try/catch` + 成功/失败双 toast + 失败回滚）；补分类专用确认文案。
 - **范围**：`blog-comments-view.tsx`、`use-blog-comments-view.ts`、`pending-comments-card.tsx`、`blog-links-view/link-category-modal.tsx`、`blog-store/links.ts`、locales。代价 **S～M**。
+- **落地（B4-05）**：评论侧——`useBlogCommentsView` 新增 `statusBusyIds` 与 `handleStatusChange`，写入期间该行三个状态按钮一起禁用，成功才出提示（失败提示由 store 层的 `runBlogMutation` 发，那里持有错误本身，避免双 toast），`CommentCardBundle` 的类型从 `(id,status)=>void` 改为返回 `Promise<void>`；待审卡片同理（`aria-busy` + 行级禁用）。友链分类侧——删除确认不再复用「删除友链」的文案（`blog.confirm_delete_link_category` 点名分类并说明子分类上移、友链变未分类，与服务端那三条语句一致）；创建/保存/删除各自出成功提示；`busyId` 逐层下沉到根/子分类行，写入期间该行的编辑/删除与行内保存/取消一起禁用。回归 6 条（评论列表 1、待审卡 2、分类弹窗 3）。**未做**：批量审核/批量删除仍是整条 `batchBusy` 禁用，未做行级；`blog-store/links.ts` 的错误上报未改（失败提示已经由 `reportBlogMutationError` 发出，本次只缺成功侧）。
 
 #### UI-09 [P1][开放] 复制 / 二维码 / 检测只在右键菜单内，键盘无入口
 - **问题**：`link-card-row.tsx:186-242` 的行内 IconButton 只有批准/拒绝/收藏/置顶/编辑/删除，`复制`/`二维码`/`检测` 只在 `LinkContextMenu` 内（`link-context-menu.tsx:178-181`）；`link-context-menu.tsx` 还是自绘 portal 弹层（无 `role="menu"`、子菜单只靠 `onMouseEnter`、键盘 `contextmenu` 时菜单开在左上角），而同模块 `use-blog-post-card.tsx:31` 已在用 `useContextMenu` + `Menu`。
@@ -423,10 +424,12 @@
 - **方案**：nice-ceiling（把 maxVal 提到 1/2/5×10ⁿ 的刻度）或 `maxVal < 5` 时改用整数刻度并去重标签；`preserveAspectRatio='none'` 改成固定比例或让容器跟随比例；key 改用有意义的标签。
 - **范围**：`components/big-svg-chart.tsx`（与 share 共用，双覆盖回归）。代价 **S**。
 
-#### UI-13 [P2][开放] 复制链接 / 二维码复制静默失败
+#### UI-13 [P2][已修] 复制链接 / 二维码复制静默失败
 - **问题**：`link-qr-modal.tsx:24-32` 的 `handleCopy` 把失败压成 `setCopied(false)`（用户看到的是「没反应」），且 `setTimeout` 未在卸载时清理；`blog-links-view/index.tsx` 的复制按钮也是 `void navigator.clipboard.writeText(...)`。仓库在 `use-blog-post-card.tsx:60-66` 有正解（try/catch + 双 toast）。
 - **方案**：抽共享 `copyText(text, toast)`，统一成功/失败提示；`setTimeout` 句柄在卸载时清除。
 - **范围**：`link-qr-modal.tsx`、`blog-links-view/index.tsx`、`use-blog-post-card.tsx`（改为调用共享函数）。代价 **S**。
+- **落地（B4-05）**：新增 `src/client/lib/clipboard.ts` 的 `copyText(text, toast, successTitle?)`：成功给调用方的句子（默认 `common.copied`），失败一律 `common.action_failed`（含 API 缺失）。三处改用：`use-blog-post-card.tsx`（原本就是正解，现只复用）、`blog-links-view/index.tsx` 的右键复制、`link-qr-modal.tsx`（勾号只在成功时出现，`setTimeout` 句柄随卸载清除）。回归 6 条（helper 4、二维码弹窗 2）。
+- **待办（不属本条）**：`share-qr-modal.tsx`、`templates/gallery-export.ts`、`share-page/use-share-page.ts`、`settings/totp-settings` 等仍有各自实现的复制点，helper 已就位但本批按范围只改了 blog 模块。
 
 ### 4.5 门禁与工程化（GATE）
 

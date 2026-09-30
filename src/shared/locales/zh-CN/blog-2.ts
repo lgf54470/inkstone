@@ -74,6 +74,8 @@ export const messages = {
 'blog.delete_link': '删除友链',
 'blog.confirm_delete_link': '确定要删除此友链吗？',
 'blog.confirm_delete_links': '确定要删除选中的 {value0} 条友链吗？此操作不可撤销。',
+'blog.confirm_delete_link_category': '删除「{value0}」后，其中的友链会变为未分类，子分类会移到顶层。此操作不可恢复。',
+'blog.comment_status_updated': '评论状态已更新',
 'blog.link_name': '网站名称',
 'blog.link_url': '网站链接',
 'blog.link_description': '网站描述',

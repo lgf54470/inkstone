@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
+import type { BlogCommentStatus } from '@shared/types'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
 import { useUi } from '../../store/ui'
@@ -35,9 +36,15 @@ export function useBlogCommentsView() {
   // the view says so rather than letting the reader believe those are all of them.
   const isTruncated = Boolean(commentStats && commentStats[commentStatusFilter] > comments.length)
 
+  // The row that is mid-change: the status buttons of every other row stay where they are, and the
+  // one being written cannot be clicked twice while its answer is in flight.
+  const [statusBusyIds, setStatusBusyIds] = useState<Set<string>>(new Set())
+
   const handleToggleSelectAll = () => toggleAllComments(isAllSelected, comments, clearCommentSelection, selectAllComments)
   const handleDeleteSingle = (id: string) => deleteSingleComment(id, deleteComment, toast)
   const handleBatch = (action: CommentBatchAction) => batchCommentsAction(action, selectedCommentIds.size, batchComments, toast)
+  const handleStatusChange = (id: string, status: BlogCommentStatus) =>
+    changeCommentStatus(id, status, updateCommentStatus, toast, setStatusBusyIds)
 
   return {
     search, setSearch,
@@ -47,6 +54,7 @@ export function useBlogCommentsView() {
     loading, loadComments, batchBusy,
     selectedCommentIds, toggleSelectComment, clearCommentSelection,
     updateCommentStatus, frontendBase,
+    statusBusyIds, handleStatusChange,
     handleToggleSelectAll, handleDeleteSingle, handleBatch,
   }
 }
@@ -118,6 +126,32 @@ async function batchCommentsAction(
   if (done) toast({ title: t('blog.batch_action_success'), tone: 'success' })
 }
 
+/**
+ * One comment's moderation change: the success sentence belongs here, the failure sentence belongs to
+ * the store layer (`runBlogMutation` reports the error it saw), and the row's disabled state belongs
+ * to neither — it has to outlive both answers.
+ */
+async function changeCommentStatus(
+  id: string,
+  status: BlogCommentStatus,
+  updateCommentStatus: BlogStoreUpdateCommentStatus,
+  toast: UiState['toast'],
+  setBusyIds: Dispatch<SetStateAction<Set<string>>>,
+): Promise<void> {
+  setBusyIds((ids) => new Set(ids).add(id))
+  try {
+    const done = await updateCommentStatus(id, status)
+    if (done) toast({ title: t('blog.comment_status_updated'), tone: 'success' })
+  } finally {
+    setBusyIds((ids) => {
+      const next = new Set(ids)
+      next.delete(id)
+      return next
+    })
+  }
+}
+
+type BlogStoreUpdateCommentStatus = ReturnType<typeof useBlogStore.getState>['updateCommentStatus']
 type CommentBatchAction = 'approve' | 'reject' | 'spam' | 'delete'
 type BlogStoreDeleteComment = ReturnType<typeof useBlogStore.getState>['deleteComment']
 type BlogStoreBatchComments = ReturnType<typeof useBlogStore.getState>['batchComments']

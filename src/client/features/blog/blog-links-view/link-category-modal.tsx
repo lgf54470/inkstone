@@ -5,6 +5,7 @@ import { Modal, confirm } from '../../../components/overlay'
 import { Button, IconButton } from '../../../components/primitives'
 import { Input, Select } from '../../../components/form'
 import { t } from '../../../lib/i18n'
+import { useUi, type UiState } from '../../../store/ui'
 import { LinkDynamicIcon } from './link-dynamic-icon'
 import { LinkIconSelector } from './link-icon-selector'
 
@@ -39,6 +40,7 @@ export function LinkCategoryModal(props: LinkCategoryModalProps) {
         <CategoryTreeSection
           rootCategories={state.rootCategories}
           categories={props.categories}
+          busyId={state.busyId}
           editingCatId={state.editingCatId}
           editName={state.editName}
           editIcon={state.editIcon}
@@ -57,12 +59,23 @@ export function LinkCategoryModal(props: LinkCategoryModalProps) {
   )
 }
 
-async function confirmAndDeleteCategory(cat: BlogLinkCategory, onDelete: (id: string) => Promise<boolean>) {
-  const ok = await confirm({ title: t('common.delete'), description: t('blog.confirm_delete_link'), confirmLabel: t('common.delete'), tone: 'danger' })
-  if (ok) await onDelete(cat.id)
+/**
+ * What a category action asks before it runs. It names the category and says what the server does to
+ * the rows around it — this used to reuse the delete-a-link question, which answered neither.
+ */
+export function linkCategoryDeletePrompt(cat: BlogLinkCategory): { title: string; description: string } {
+  return {
+    title: t('common.delete'),
+    description: t('blog.confirm_delete_link_category', { value0: cat.name }),
+  }
 }
 
 function useCategoryModalState(props: LinkCategoryModalProps) {
+  const toast = useUi((s) => s.toast)
+  // The one category being written right now: its row stops accepting a second click while its
+  // answer is in flight, and the success sentence is announced once the store says it landed (the
+  // failure sentence comes from the store layer, which holds the error it saw).
+  const [busyId, setBusyId] = useState<string | null>(null)
   const [editingCatId, setEditingCatId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editIcon, setEditIcon] = useState('')
@@ -82,29 +95,78 @@ function useCategoryModalState(props: LinkCategoryModalProps) {
     setEditingCatId(cat.id); setEditName(cat.name); setEditIcon(cat.icon || ''); setEditParentId(cat.parentId || '')
   }
 
-  const handleSaveEdit = async (id: string) => {
-    if (!editName.trim()) return
-    const saved = await props.onUpdateCategory(id, { name: editName.trim(), icon: editIcon.trim() || null, parentId: editParentId || null })
-    if (saved) setEditingCatId(null)
-  }
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newName.trim()) return
-    setCreating(true)
-    try {
-      const created = await props.onCreateCategory({ name: newName.trim(), icon: newIcon.trim() || null, parentId: newParentId || null })
-      if (!created) return
-      setNewName(''); setNewIcon(''); setNewParentId('')
-    } finally {
-      setCreating(false)
-    }
+  const ctx: CategoryActionCtx = {
+    ...props, toast, setBusyId, setEditingCatId, setCreating,
+    resetCreateForm: () => { setNewName(''); setNewIcon(''); setNewParentId('') },
+    editName, editIcon, editParentId, newName, newIcon, newParentId,
   }
 
   return {
     editingCatId, setEditingCatId, editName, setEditName, editIcon, setEditIcon, editParentId, setEditParentId,
     newName, setNewName, newIcon, setNewIcon, newParentId, setNewParentId, creating, rootCategories, parentSelectOptions,
-    handleStartEdit, handleSaveEdit, handleCreate, handleDelete: (cat: BlogLinkCategory) => void confirmAndDeleteCategory(cat, props.onDeleteCategory),
+    busyId, handleStartEdit,
+    handleSaveEdit: (id: string) => void saveCategoryEdit(id, ctx),
+    handleCreate: (e: React.FormEvent) => void createCategoryFromForm(e, ctx),
+    handleDelete: (cat: BlogLinkCategory) => void deleteCategoryFlow(cat, ctx),
+  }
+}
+
+/** The modal's state and callbacks, handed to the three actions below so each stays a small unit. */
+interface CategoryActionCtx extends LinkCategoryModalProps {
+  toast: UiState['toast']
+  setBusyId: (id: string | null) => void
+  setEditingCatId: (id: string | null) => void
+  setCreating: (value: boolean) => void
+  resetCreateForm: () => void
+  editName: string
+  editIcon: string
+  editParentId: string
+  newName: string
+  newIcon: string
+  newParentId: string
+}
+
+async function saveCategoryEdit(id: string, ctx: CategoryActionCtx): Promise<void> {
+  if (!ctx.editName.trim()) return
+  ctx.setBusyId(id)
+  try {
+    const saved = await ctx.onUpdateCategory(id, {
+      name: ctx.editName.trim(), icon: ctx.editIcon.trim() || null, parentId: ctx.editParentId || null,
+    })
+    // A failure keeps the row in edit mode: it still holds the reader's unsaved words.
+    if (!saved) return
+    ctx.setEditingCatId(null)
+    ctx.toast({ title: t('common.saved'), tone: 'success' })
+  } finally {
+    ctx.setBusyId(null)
+  }
+}
+
+async function createCategoryFromForm(e: React.FormEvent, ctx: CategoryActionCtx): Promise<void> {
+  e.preventDefault()
+  if (!ctx.newName.trim()) return
+  ctx.setCreating(true)
+  try {
+    const created = await ctx.onCreateCategory({
+      name: ctx.newName.trim(), icon: ctx.newIcon.trim() || null, parentId: ctx.newParentId || null,
+    })
+    if (!created) return
+    ctx.resetCreateForm()
+    ctx.toast({ title: t('common.created'), tone: 'success' })
+  } finally {
+    ctx.setCreating(false)
+  }
+}
+
+async function deleteCategoryFlow(cat: BlogLinkCategory, ctx: CategoryActionCtx): Promise<void> {
+  const ok = await confirm({ ...linkCategoryDeletePrompt(cat), confirmLabel: t('common.delete'), tone: 'danger' })
+  if (!ok) return
+  ctx.setBusyId(cat.id)
+  try {
+    const deleted = await ctx.onDeleteCategory(cat.id)
+    if (deleted) ctx.toast({ title: t('common.delete'), tone: 'success' })
+  } finally {
+    ctx.setBusyId(null)
   }
 }
 
@@ -167,12 +229,13 @@ function CategoryCreateForm({
 }
 
 function CategoryTreeSection({
-  rootCategories, categories, editingCatId, editName, editIcon, editParentId,
+  rootCategories, categories, busyId, editingCatId, editName, editIcon, editParentId,
   parentOptions, onStartEdit, onChangeName, onChangeIcon, onChangeParent,
   onSaveEdit, onCancelEdit, onDelete,
 }: {
   rootCategories: BlogLinkCategory[]
   categories: BlogLinkCategory[]
+  busyId: string | null
   editingCatId: string | null
   editName: string
   editIcon: string
@@ -193,6 +256,7 @@ function CategoryTreeSection({
           key={root.id}
           root={root}
           categories={categories}
+          busyId={busyId}
           editingCatId={editingCatId}
           editName={editName}
           editIcon={editIcon}
@@ -214,6 +278,7 @@ function CategoryTreeSection({
 interface RootCategoryBlockProps {
   root: BlogLinkCategory
   categories: BlogLinkCategory[]
+  busyId: string | null
   editingCatId: string | null
   editName: string
   editIcon: string
@@ -229,7 +294,7 @@ interface RootCategoryBlockProps {
 }
 
 function RootCategoryBlock({
-  root, categories, editingCatId, editName, editIcon, editParentId,
+  root, categories, busyId, editingCatId, editName, editIcon, editParentId,
   parentOptions, onStartEdit, onChangeName, onChangeIcon, onChangeParent,
   onSaveEdit, onCancelEdit, onDelete,
 }: RootCategoryBlockProps) {
@@ -245,16 +310,18 @@ function RootCategoryBlock({
           onChangeName={onChangeName}
           onChangeIcon={onChangeIcon}
           onChangeParent={onChangeParent}
+          saving={busyId === root.id}
           onSave={() => onSaveEdit(root.id)}
           onCancel={onCancelEdit}
         />
       ) : (
-        <CategoryRowItem cat={root} onStartEdit={() => onStartEdit(root)} onDelete={() => onDelete(root)} />
+        <CategoryRowItem cat={root} busy={busyId === root.id} onStartEdit={() => onStartEdit(root)} onDelete={() => onDelete(root)} />
       )}
 
       {children.length > 0 && (
         <SubCategoryList
           childrenList={children}
+          busyId={busyId}
           editingCatId={editingCatId}
           editName={editName}
           editIcon={editIcon}
@@ -274,10 +341,11 @@ function RootCategoryBlock({
 }
 
 function SubCategoryList({
-  childrenList, editingCatId, editName, editIcon, editParentId, parentOptions,
+  childrenList, busyId, editingCatId, editName, editIcon, editParentId, parentOptions,
   onChangeName, onChangeIcon, onChangeParent, onSaveEdit, onCancelEdit, onStartEdit, onDelete,
 }: {
   childrenList: BlogLinkCategory[]
+  busyId: string | null
   editingCatId: string | null
   editName: string
   editIcon: string
@@ -304,11 +372,12 @@ function SubCategoryList({
             onChangeName={onChangeName}
             onChangeIcon={onChangeIcon}
             onChangeParent={onChangeParent}
+            saving={busyId === sub.id}
             onSave={() => onSaveEdit(sub.id)}
             onCancel={onCancelEdit}
           />
         ) : (
-          <CategoryRowItem key={sub.id} cat={sub} isSub onStartEdit={() => onStartEdit(sub)} onDelete={() => onDelete(sub)} />
+          <CategoryRowItem key={sub.id} cat={sub} isSub busy={busyId === sub.id} onStartEdit={() => onStartEdit(sub)} onDelete={() => onDelete(sub)} />
         ),
       )}
     </div>
@@ -318,11 +387,13 @@ function SubCategoryList({
 function CategoryRowItem({
   cat,
   isSub = false,
+  busy = false,
   onStartEdit,
   onDelete,
 }: {
   cat: BlogLinkCategory
   isSub?: boolean
+  busy?: boolean
   onStartEdit: () => void
   onDelete: () => void
 }) {
@@ -346,10 +417,10 @@ function CategoryRowItem({
         )}
       </div>
       <div className='flex items-center gap-1 shrink-0'>
-        <IconButton label={t('common.edit')} size='sm' onClick={onStartEdit}>
+        <IconButton label={t('common.edit')} size='sm' disabled={busy} onClick={onStartEdit}>
           <Edit2 size={13} />
         </IconButton>
-        <IconButton label={t('common.delete')} size='sm' onClick={onDelete} className='hover:text-[var(--danger)]'>
+        <IconButton label={t('common.delete')} size='sm' disabled={busy} onClick={onDelete} className='hover:text-[var(--danger)]'>
           <Trash2 size={13} />
         </IconButton>
       </div>
@@ -362,6 +433,7 @@ function InlineCategoryEdit({
   icon,
   parentId,
   parentOptions,
+  saving,
   onChangeName,
   onChangeIcon,
   onChangeParent,
@@ -372,6 +444,7 @@ function InlineCategoryEdit({
   icon: string
   parentId: string
   parentOptions: Array<{ value: string; label: string }>
+  saving: boolean
   onChangeName: (v: string) => void
   onChangeIcon: (v: string) => void
   onChangeParent: (v: string) => void
@@ -399,10 +472,10 @@ function InlineCategoryEdit({
             </option>
           ))}
         </Select>
-        <Button type='button' variant='primary' size='sm' onClick={onSave} disabled={!name.trim()}>
+        <Button type='button' variant='primary' size='sm' loading={saving} onClick={onSave} disabled={!name.trim() || saving}>
           {t('common.save')}
         </Button>
-        <Button type='button' variant='ghost' size='sm' onClick={onCancel}>
+        <Button type='button' variant='ghost' size='sm' disabled={saving} onClick={onCancel}>
           {t('common.cancel')}
         </Button>
       </div>

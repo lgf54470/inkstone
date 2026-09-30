@@ -74,6 +74,8 @@ export const messages = {
 'blog.delete_link': 'Delete Link',
 'blog.confirm_delete_link': 'Are you sure you want to delete this link?',
 'blog.confirm_delete_links': 'Delete {value0} selected links? This cannot be undone.',
+'blog.confirm_delete_link_category': 'Deleting "{value0}" leaves its links uncategorized and moves its subcategories to the top level. This cannot be undone.',
+'blog.comment_status_updated': 'Comment updated',
 'blog.link_name': 'Site Name',
 'blog.link_url': 'Site URL',
 'blog.link_description': 'Description',

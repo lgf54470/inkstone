@@ -3,6 +3,7 @@ import { BarChart2, Check, Copy, ExternalLink, FolderClosed, FolderInput, PauseC
 import type { BlogFolder, BlogPostSummary } from '@shared/types'
 import { confirm, useContextMenu, type MenuItem } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
+import { copyText } from '../../../lib/clipboard'
 import { t } from '../../../lib/i18n'
 import type { UiState } from '../../../store/ui'
 import { useUi } from '../../../store/ui'
@@ -65,12 +66,7 @@ type DeleteConfirmKey = 'blog.confirm_delete_post' | 'blog.confirm_delete_post_d
 
 
 async function copyPostLink(slug: string, frontendBase: string, toast: UiState['toast']): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(`${frontendBase}/posts/${slug}`)
-    toast({ title: t('blog.link_copied'), tone: 'success' })
-  } catch {
-    toast({ title: t('common.action_failed'), tone: 'danger' })
-  }
+  await copyText(`${frontendBase}/posts/${slug}`, toast, t('blog.link_copied'))
 }
 
 async function syncPostNow(id: string, syncPost: BlogStoreState['syncPost'], toast: UiState['toast']): Promise<void> {

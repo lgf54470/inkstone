@@ -105,8 +105,9 @@ function commentCardBundle(view: ReturnType<typeof useBlogCommentsView>, comment
     comment,
     frontendBase: view.frontendBase,
     isSelected: view.selectedCommentIds.has(comment.id),
+    isStatusBusy: view.statusBusyIds.has(comment.id),
     onToggleSelect: () => view.toggleSelectComment(comment.id),
-    onStatusChange: view.updateCommentStatus,
+    onStatusChange: view.handleStatusChange,
     onDelete: view.handleDeleteSingle,
   }
 }
@@ -265,8 +266,9 @@ interface CommentCardBundle {
   comment: BlogComment
   frontendBase: string
   isSelected: boolean
+  isStatusBusy: boolean
   onToggleSelect: () => void
-  onStatusChange: (id: string, status: BlogCommentStatus) => void
+  onStatusChange: (id: string, status: BlogCommentStatus) => Promise<void>
   onDelete: (id: string) => void
 }
 
@@ -370,20 +372,20 @@ function StatusBadge({ status }: { status: BlogCommentStatus }) {
 }
 
 function CommentCardActions({ bundle }: { bundle: CommentCardBundle }) {
-  const { comment, onStatusChange, onDelete } = bundle
+  const { comment, isStatusBusy, onStatusChange, onDelete } = bundle
 
   return (
     <div className='mt-3 flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]'>
       {comment.status !== 'approved' && (
-        <CommentActionButton icon={<CheckCircle size={12} className='mr-1' />} label={t('blog.approve')} onClick={() => onStatusChange(comment.id, 'approved')} className='text-[var(--success)] hover:bg-[var(--success)]/10' />
+        <CommentActionButton icon={<CheckCircle size={12} className='mr-1' />} label={t('blog.approve')} disabled={isStatusBusy} onClick={() => void onStatusChange(comment.id, 'approved')} className='text-[var(--success)] hover:bg-[var(--success)]/10' />
       )}
 
       {comment.status !== 'rejected' && (
-        <CommentActionButton icon={<XCircle size={12} className='mr-1' />} label={t('blog.reject')} onClick={() => onStatusChange(comment.id, 'rejected')} className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)]' />
+        <CommentActionButton icon={<XCircle size={12} className='mr-1' />} label={t('blog.reject')} disabled={isStatusBusy} onClick={() => void onStatusChange(comment.id, 'rejected')} className='text-[var(--text-tertiary)] hover:text-[var(--text-primary)]' />
       )}
 
       {comment.status !== 'spam' && (
-        <CommentActionButton icon={<AlertTriangle size={12} className='mr-1' />} label={t('blog.status_spam')} onClick={() => onStatusChange(comment.id, 'spam')} className='text-[var(--warning)] hover:bg-[var(--warning)]/10' />
+        <CommentActionButton icon={<AlertTriangle size={12} className='mr-1' />} label={t('blog.status_spam')} disabled={isStatusBusy} onClick={() => void onStatusChange(comment.id, 'spam')} className='text-[var(--warning)] hover:bg-[var(--warning)]/10' />
       )}
 
       <CommentActionButton icon={<Trash2 size={12} className='mr-1' />} label={t('common.delete')} onClick={() => onDelete(comment.id)} className='text-[var(--danger)] hover:bg-[var(--danger-soft)]' />
@@ -396,14 +398,16 @@ function CommentActionButton({
   label,
   onClick,
   className,
+  disabled,
 }: {
   icon: ReactNode
   label: string
   onClick: () => void
   className?: string
+  disabled?: boolean
 }) {
   return (
-    <Button size='sm' variant='ghost' onClick={onClick} className={className}>
+    <Button size='sm' variant='ghost' onClick={onClick} className={className} disabled={disabled}>
       {icon}
       {label}
     </Button>
