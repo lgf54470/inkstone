@@ -166,7 +166,8 @@
   - 复现测试：新增 `blog-store/targeted-refresh.test.ts` 10 条（pin 不拉 tags、标题不拉任何计数、publish 拉 stats 不拉 tags、tags 补拉 tags、categoryId 只拉 categories、批量 setPinned/setCategory/delete 各自的作用域、`batchDeleteLinks` 单请求与失败不重拉）。实现前实测 **7 failed / 2 passed**（另 2 条锁的是旧实现已成立的行为）；再做一次「作用域恒为三项」的变异得到 **4 failed**。
   - 回归：`typecheck` 绿（顺手清掉 B3-06 遗留的未用 import `BlogCommentStatus`，它让 `tsc -b` 报错）；`src/client/features/blog` 19 文件 68 条全绿；九项静态门禁绿（`size` 未动基线）。
   - 已知限制：`savePost`（新建）仍是结构性全量（posts/stats/tags/postIndex）——新文章可以带来新标签；单篇删除后分类的 `postsCount` 仍要等下一次 `loadCategories`（未在本条扩面）。
-- [~] B3-09 **ENG-11 + ENG-12 + ENG-13 + ENG-15** barrel 拆瘦让 lazy 生效 + 去 `icons` 全量 registry + qrcode 懒载 + geo/device 纯函数下沉；列表 `memo`/`useMemo`/窗口化；图片 lazy + 尺寸；link checker 批次 15 / abort / TTL / updater 纯净 / progressbar — 进行中（ENG-15 已提交，见进度日志；ENG-11/12/13 待做）
+- [~] B3-09 **ENG-11 + ENG-12 + ENG-13 + ENG-15** barrel 拆瘦让 lazy 生效 + 去 `icons` 全量 registry + qrcode 懒载 + geo/device 纯函数下沉；列表 `memo`/`useMemo`/窗口化；图片 lazy + 尺寸；link checker 批次 15 / abort / TTL / updater 纯净 / progressbar — 进行中（ENG-12/13/15 已提交，见进度日志；ENG-11 待做）
+  - ENG-12（已提交）：`BlogGridCard`/`BlogTableRow` 包 `memo` 且 prop 全部变稳（`onToggleSelect` 传 store action、`onOpenEdit` 用 `useCallback`、`cat`/`folder` 来自 `useMemo` 的 Map）；`use-blog-post-card` 两份菜单只在打开时构造；侧栏标签计数改一次后序遍历（`buildTagNodeCounts`）；store 的 `publishedNoteIds` 投影只在索引数组替换时重建；评论/友链改渐进渲染（首屏 100 行 + 显示更多）。复现测试 3 条；窗口测试变异 1 failed。限制：评论/友链行级 `memo` 未做（内联箭头与 bundle API），窗口是渐进渲染非滚动虚拟化。
   - ENG-13（已提交）：`PostCoverImage` 与评论头像补 `loading='lazy'` + `decoding='async'`，头像另补 `width/height=32`；封面不再写 `width/height`（容器已固定盒尺寸，写死会与真实比例冲突）；36px 表格缩略图仍取原图字节（无 CDN 尺寸变体，部署侧能力）。复现测试 `blog-grid-view/cover-image.test.ts` 2 条。
   - ENG-15（已提交）：批次改 15（服务端上限）；一次运行一个 `AbortController`，`handlePause` 停止即 abort 在飞请求，catch 先判 `signal.aborted || stopRequested.current` 再决定是否写 `error`（被停止的批次保留 `checking`，不产出没人测过的结论）；`api.blog.links.check` 增 `AbortSignal`；缓存写移出 `setResults` updater（`applyResults` 先算 next、同步 ref、再 set + 写缓存，updater 回到纯函数，顺序批次也能看到上一批的值）；进度条补 `role='progressbar'` + `aria-valuemin/max/now` 与可访问名（新 key `blog.link_check_progress` 双语）。TTL 已在 B2-05 落地。复现测试 `link-checker-run.test.ts` 3 条；两处变异（批次回 8、去掉 abort 分支）各 1 failed。
 
@@ -217,7 +218,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-30 | B3-09b ENG-13 封面/头像懒加载与异步解码 | （下一提交回填） | `typecheck` 绿；新 `cover-image.test.ts` 2 条绿；`size` 未动基线 | 表格 36px 缩略图仍取原图字节（无 CDN 尺寸变体）；封面不写死 width/height（容器已定盒尺寸） |
+| 2026-09-30 | B3-09c ENG-12 列表 memo/菜单懒构/计数一次遍历/渐进渲染 | （下一提交回填） | `typecheck` 绿；blog 相关 23 文件 76 条 + 新 4 条全绿（含窗口用例）；窗口变异（步长 250）1 failed；`size` 绿（`blog-links-view/index.tsx` 拆出 `links-toolbar.tsx`） | 评论/友链行级 memo 未做（内联箭头/bundle API）；窗口为渐进渲染而非滚动虚拟化 |
+| 2026-09-30 | B3-09b ENG-13 封面/头像懒加载与异步解码 | 6127201e | `typecheck` 绿；新 `cover-image.test.ts` 2 条绿；`size` 未动基线 | 表格 36px 缩略图仍取原图字节（无 CDN 尺寸变体）；封面不写死 width/height（容器已定盒尺寸） |
 | 2026-09-30 | B3-09a ENG-15 检测器批次 15 + 停止即 abort + 缓存写移出 updater + progressbar | d2e16114 | `typecheck` 绿；`blog-links-view` 3 文件 7 条全绿（含新 3 条）；两处变异各 1 failed；`i18n:check` 双语新 key 已补 | 旧结果仍展示（按 B2-05 计划标注而不丢弃）；缓存写靠 ref 同步，未改成 reducer |
 | 2026-09-30 | B3-08 ENG-09/ENG-10 写操作定向失效 + 友链批量删除走 `batch` | （下一提交回填） | `typecheck` 绿（顺手清 B3-06 未用 import）；`src/client/features/blog` 19 文件 68 条全绿（含新 10 条）；实现前 7 failed、作用域变异 4 failed；九项静态门禁绿（`size` 未动基线） | `savePost` 仍结构性全量；单篇删除不刷新分类 `postsCount`；review 的「pin 不需要 stats」按侧栏计数订正 |
 | 2026-09-30 | B3-07 ENG-07/ENG-08/ENG-14 stats 计数并批 + 访问聚合统一 SQL + 三条顺序索引 | 8fec693d | `typecheck` 绿；目标 10 文件 263 条全绿（含 share 双覆盖 189 条）；先红 4 failed；`test:unit` 578 文件 5246 通过 / 1 skipped；九项静态门禁绿（`size` 重建基线：仅 `migrations.ts` 801→810） | 评论 `user_id` 前缀未做（表结构级，另开）；share 有界区间同为 8 条语句；`json_each` 依赖 SQLite JSON1 |

@@ -69,6 +69,7 @@ export function useBlogHubSidebar() {
   const folderTree = useMemo(() => buildBlogFolderTree(store.folders), [store.folders])
   const tagTree = useMemo(() => buildTagTree(mapBlogTags(store.tags, store.stats)), [store.tags, store.stats])
   const parentTagPaths = useMemo(() => collectParentTagPaths(tagTree), [tagTree])
+  const tagCounts = useMemo(() => buildTagNodeCounts(tagTree, store.stats), [tagTree, store.stats])
   const flattenedTagNodes = useMemo(() => flattenTagTree(tagTree, expandedTagPaths), [tagTree, expandedTagPaths])
 
   useExpandedParentTagPaths(parentTagPaths, setExpandedTagPaths)
@@ -88,7 +89,7 @@ export function useBlogHubSidebar() {
 
   const tagRowCtx: TagRowCtx = {
     activeTab: store.activeTab, selectedTag: store.selectedTag, expandedTagPaths, renamingTagId,
-    batchBusy: store.batchBusy, getTagNodeCounts: (node) => getTagNodeCounts(node, store.stats),
+    batchBusy: store.batchBusy, getTagNodeCounts: (node) => tagCounts.get(node.fullPath) ?? EMPTY_TAG_COUNTS,
     tags: store.tags, setTag: store.setTag, setExpandedTagPaths, setRenamingTagId,
     batchToggleGroup: store.batchToggleGroup, toast: store.toast, patchTag: store.patchTag, deleteTag: store.deleteTag,
   }
@@ -170,21 +171,35 @@ function collectParentTagPaths(tagTree: TagTreeNode[]): string[] {
   return result
 }
 
-export function getTagNodeCounts(node: TagTreeNode, stats: BlogStats | null): { total: number; published: number } {
-  let total = 0
-  let published = 0
-  const visit = (n: TagTreeNode) => {
-    const direct = stats?.tagCounts?.[n.fullPath]
+const EMPTY_TAG_COUNTS = { total: 0, published: 0 }
+
+/**
+ * Subtree totals for every tag node, computed once per tree. Each row used to walk its own
+ * descendants during render, which summed the same subtrees once per node — O(T²) over the sidebar.
+ * The fallback rules are unchanged: the split counts come from `stats`, and a node's own total is a
+ * floor, so a tag whose posts are all on other pages still shows how many there are.
+ */
+export function buildTagNodeCounts(tagTree: TagTreeNode[], stats: BlogStats | null): Map<string, { total: number; published: number }> {
+  const counts = new Map<string, { total: number; published: number }>()
+  const visit = (node: TagTreeNode): { total: number; published: number } => {
+    let total = 0
+    let published = 0
+    const direct = stats?.tagCounts?.[node.fullPath]
     if (direct) {
       total += direct.total
       published += direct.published
     }
-    for (const ch of n.children) {
-      visit(ch)
+    for (const child of node.children) {
+      const childCounts = visit(child)
+      total += childCounts.total
+      published += childCounts.published
     }
+    const result = { total: Math.max(total, node.totalCount), published }
+    counts.set(node.fullPath, result)
+    return result
   }
-  visit(node)
-  return { total: Math.max(total, node.totalCount), published }
+  for (const node of tagTree) visit(node)
+  return counts
 }
 
 interface NavCtx {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { BlogPostIndexEntry, BlogPostSummary } from '@shared/types'
 import { useNotes } from '../../store/notes'
 import { useBlogStore, type BlogStoreState, type BlogTab } from './blog-store'
@@ -74,17 +74,19 @@ function useBlogPublishModal(initialNoteId: string | undefined, activeNote: { id
   const [editingPost, setEditingPost] = useState<BlogPostIndexEntry | null>(null)
   const [targetNoteId, setTargetNoteId] = useState<string>('')
 
-  const openNewPost = () => {
+  // Stable identities: these travel down to every list row, whose `memo` is defeated by a handler
+  // that is rebuilt on each hub render.
+  const openNewPost = useCallback(() => {
     setEditingPost(null)
     setTargetNoteId(initialNoteId || (activeNote?.id ?? ''))
     setIsPublishModalOpen(true)
-  }
+  }, [initialNoteId, activeNote?.id])
 
-  const openEditPost = (post: BlogPostSummary) => {
+  const openEditPost = useCallback((post: BlogPostSummary) => {
     setEditingPost(post)
     setTargetNoteId(post.noteId)
     setIsPublishModalOpen(true)
-  }
+  }, [])
 
   return {
     isPublishModalOpen, setIsPublishModalOpen,

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { BarChart2, Check, Copy, ExternalLink, FolderClosed, FolderInput, PauseCircle, Pin, PlayCircle, Settings2, Trash2 } from 'lucide-react'
 import type { BlogFolder, BlogPostSummary } from '@shared/types'
 import { confirm, useContextMenu, type MenuItem } from '../../../components/overlay'
@@ -39,11 +39,19 @@ export function useBlogPostSummaryCard({
   const handleDelete = () => deletePostFlow(post, deletePost, toast, deleteConfirmKey)
   const handleMoveToFolder = (folderId: string | null) => movePostToFolder(post.id, folderId, batchMoveToFolder, toast)
 
-  const folderMenuItems = buildFolderMenuItems(post, folders, handleMoveToFolder)
-  const contextMenuItems = buildCardContextMenuItems({
-    post, postUrl, folders, onOpenEdit, setActiveTab,
-    handleCopyLink, handleDelete, handleMoveToFolder, updatePost,
-  })
+  // Both menus are built only while they are open: a closed row used to construct every folder
+  // entry (and the whole context menu) on each render, for fifty rows at a time.
+  const folderMenuItems = useMemo(
+    () => (isFolderMenuOpen ? buildFolderMenuItems(post, folders, handleMoveToFolder) : []),
+    [isFolderMenuOpen, post, folders, handleMoveToFolder],
+  )
+  const contextMenuItems = useMemo(
+    () => (contextMenu.point ? buildCardContextMenuItems({
+      post, postUrl, folders, onOpenEdit, setActiveTab,
+      handleCopyLink, handleDelete, handleMoveToFolder, updatePost,
+    }) : []),
+    [contextMenu.point, post, postUrl, folders, onOpenEdit, setActiveTab, handleCopyLink, handleDelete, handleMoveToFolder, updatePost],
+  )
 
   return {
     toast, updatePost, setActiveTab,

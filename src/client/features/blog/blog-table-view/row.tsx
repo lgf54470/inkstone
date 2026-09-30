@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { memo, type ReactNode } from 'react'
 import { Copy, ExternalLink, FolderClosed, FolderInput, Pin, RefreshCw, Settings2, Trash2 } from 'lucide-react'
 import type { BlogCategory, BlogFolder, BlogPostSummary } from '@shared/types'
 import { Checkbox } from '../../../components/form'
@@ -9,7 +9,11 @@ import { t } from '../../../lib/i18n'
 import { useBlogPostSummaryCard } from '../blog-grid-view/use-blog-post-card'
 import { PostCoverImage } from '../blog-grid-view'
 
-export function BlogTableRow({
+/**
+ * Every prop is either the row's own data or a stable handler, so selecting one row no longer
+ * re-renders the other forty-nine.
+ */
+export const BlogTableRow = memo(function BlogTableRow({
   post,
   isSelected,
   cat,
@@ -25,7 +29,7 @@ export function BlogTableRow({
   folder: BlogFolder | null
   folders: BlogFolder[]
   frontendBase: string
-  onToggleSelect: () => void
+  onToggleSelect: (postId: string) => void
   onOpenEdit: (post: BlogPostSummary) => void
 }) {
   const row = useBlogPostSummaryCard({
@@ -54,7 +58,7 @@ export function BlogTableRow({
       <td className='px-3 py-2.5 text-center'>
         <Checkbox
           checked={isSelected}
-          onChange={onToggleSelect}
+          onChange={() => onToggleSelect(post.id)}
           aria-label={post.title}
           className='min-h-0'
         />
@@ -70,7 +74,7 @@ export function BlogTableRow({
       <TableRowActionsCell row={row} post={post} isSelected={isSelected} onOpenEdit={onOpenEdit} />
     </tr>
   )
-}
+})
 
 function startRowDrag(e: React.DragEvent, postId: string): void {
   e.dataTransfer.setData('application/inkstone-blog-post-ids', JSON.stringify([postId]))

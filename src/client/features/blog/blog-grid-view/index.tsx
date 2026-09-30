@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogPostSummary } from '@shared/types'
 import { useBlogStore } from '../blog-store'
@@ -19,8 +20,9 @@ export function BlogGridView({
   const settings = useBlogStore((s) => s.settings)
 
   const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
-  const categoryMap = new Map(categories.map((c) => [c.id, c]))
-  const folderMap = new Map(folders.map((f) => [f.id, f]))
+  // Rebuilt only when the lists change, not on every selection toggle and keystroke.
+  const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
+  const folderMap = useMemo(() => new Map(folders.map((f) => [f.id, f])), [folders])
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 text-[length:var(--text-12\.5)]">
@@ -38,7 +40,7 @@ export function BlogGridView({
             folder={folder}
             folders={folders}
             frontendBase={frontendBase}
-            onToggleSelect={() => toggleSelectPost(post.id)}
+            onToggleSelect={toggleSelectPost}
             onOpenEdit={onOpenEdit}
           />
         )

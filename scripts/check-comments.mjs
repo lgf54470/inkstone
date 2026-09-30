@@ -2874,10 +2874,15 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-comments-view.tsx', [
     '/** The comment avatar\'s rendered size, also declared as its intrinsic size so the row reserves it. */',
+    '/** The server caps the list at 500 rows; the DOM does not need all of them at once. */',
+    '// A different filter or search term is a different list: start it from its own top.',
     '// The picture comes from a reader\'s own form, so the source is whatever this app will render:',
     '// an image URL that passed the allowlist, or an avatar drawn locally from the name. A comment',
     '// stores no third-party default any more, because fetching one would put every reader\'s browser',
     '// (and this admin\'s) on someone else\'s server for a name they typed.',
+  ]],
+  ['src/client/features/blog/blog-comments-window.test.ts', [
+    '/**\n * The moderation list accepts up to 500 rows from the server, and the view used to build and mount\n * every one of them before the reader had scrolled past the first screen.\n */',
   ]],
   ['src/client/features/blog/blog-dashboard-view/index.tsx', [
     '/**\n * What the switches are actually hiding, counted by the same query that hides it. The self-referral\n * and author counts used to be the literals `0` while the server returned real ones, so the banner\n * described a filter that was not running.\n */',
@@ -2901,6 +2906,9 @@ const allowed = new Map([
     '/**\n * What the payload means under the switches. A number only counts as filtered when the switch hiding\n * it is on: the server reports all three regardless, and the banner that reads these is describing\n * what is not in the chart above it.\n */',
     '// An aborted request is the reader changing the question, not a failed load.',
   ]],
+  ['src/client/features/blog/blog-grid-view/card.tsx', [
+    '/**\n * Every prop is either the row\'s own data or a stable handler (store actions and the hub\'s two\n * `useCallback`s), so selecting one card no longer re-renders the other forty-nine.\n */',
+  ]],
   ['src/client/features/blog/blog-grid-view/cover-image.test.ts', [
     '/**\n * A list of fifty cards used to fetch every cover as eagerly as the browser allowed and decode them\n * on the main thread while the reader was still scrolling the first screen.\n */',
   ]],
@@ -2909,12 +2917,27 @@ const allowed = new Map([
     '// `h-36 w-full`, the table\'s `size-9`), so the layout does not wait for the bytes; deferring the',
     '// fetch and decoding off the main thread keeps fifty cards from competing with the first paint.',
   ]],
+  ['src/client/features/blog/blog-grid-view/index.tsx', [
+    '// Rebuilt only when the lists change, not on every selection toggle and keystroke.',
+  ]],
+  ['src/client/features/blog/blog-grid-view/use-blog-post-card.tsx', [
+    '// Both menus are built only while they are open: a closed row used to construct every folder',
+    '// entry (and the whole context menu) on each render, for fifty rows at a time.',
+  ]],
+  ['src/client/features/blog/blog-hub-sidebar/tag-counts.test.ts', [
+    '/**\n * The sidebar summed each node\'s whole subtree during render, so a tag tree of T nodes did O(T²)\n * work per paint. The counts are the same values, computed in one post-order walk.\n */',
+  ]],
   ['src/client/features/blog/blog-hub-sidebar/use-blog-hub-sidebar.tsx', [
+    '/**\n * Subtree totals for every tag node, computed once per tree. Each row used to walk its own\n * descendants during render, which summed the same subtrees once per node — O(T²) over the sidebar.\n * The fallback rules are unchanged: the split counts come from `stats`, and a node\'s own total is a\n * floor, so a tag whose posts are all on other pages still shows how many there are.\n */',
     '// The comment badge reads the server\'s unfiltered tally: counting the loaded rows would read the',
     '// status tab (and the list cap) as if it were the whole blog\'s pending count.',
   ]],
   ['src/client/features/blog/blog-hub-toolbar.tsx', [
     '/**\n * The search box types instantly and asks once. It used to call the store on every keystroke, so\n * thirteen characters were thirteen full list requests, each one started before the last had\n * answered. The value shown is this component\'s own, so typing never waits for a round trip.\n */',
+  ]],
+  ['src/client/features/blog/blog-links-view/index.tsx', [
+    '/** The server caps the list at 500 rows; the DOM does not need all of them at once. */',
+    '// A different filter or search term is a different list: start it from its own top.',
   ]],
   ['src/client/features/blog/blog-links-view/link-card-row.test.ts', [
     '/**\n * A link\'s address arrives from a reader. Rows stored before the server learned to refuse an\n * unrenderable one still reach this component, so the row itself must not turn that value into an\n * affordance — the browser runs a `javascript:` href in the admin\'s own session.\n */',
@@ -3037,6 +3060,7 @@ const allowed = new Map([
     '// in store/visibility-sources.ts, not this module. The projection reads the',
     '// body-free index, not the page on screen: whether a note is published does not',
     '// depend on which page of the management list happens to be open.',
+    '/**\n * The projection is rebuilt only when the index array itself is replaced. `subscribe` fires on every\n * `set` — each keystroke in the search box, each selection toggle — and rebuilding the set there\n * allocated a fresh Set per store write for a value that had not changed.\n */',
   ]],
   ['src/client/features/blog/blog-store/links-request.test.ts', [
     '/**\n * The link list is filtered by the server now, so its answer has to belong to the filter that is on\n * screen. These cases pin the question the client asks and the two rules that keep a late answer\n * from overwriting it: the request a newer one replaces is cancelled, and an answer that arrives\n * after a newer request went out is dropped.\n */',
@@ -3068,6 +3092,9 @@ const allowed = new Map([
   ['src/client/features/blog/blog-store/mutation.ts', [
     '/**\n * Reports one failed blog mutation. The handling lives here rather than at each call site for two\n * reasons: the store is where the optimistic change has to be undone, and the callers that wrote\n * `void updatePost(...)` had nothing to catch — the rejection was an unhandled promise, the row\n * kept a change the server had refused, and nothing on screen said so.\n */',
     '/**\n * Runs a mutation that answers only whether it went through (`false` after reporting the failure).\n * `refresh` runs only on success, so a request that failed never overwrites the list it could not\n * change.\n */',
+  ]],
+  ['src/client/features/blog/blog-store/post-index-projection.test.ts', [
+    '/**\n * The notes-store projection used to rebuild its Set on every blog-store write (the subscribe fires\n * for each `set`, including every search keystroke and selection toggle), even though only loading\n * the index can change what notes are published.\n */',
   ]],
   ['src/client/features/blog/blog-store/posts-pagination.test.ts', [
     '/**\n * ENG-02: the list is one page now. The page is part of the query, so it belongs to the store —\n * every place that changes a filter has to ask for page one again, and the pager may only ask for a\n * page the server said exists.\n */',
@@ -3103,6 +3130,13 @@ const allowed = new Map([
     '/** The same latest-wins rule as the post list, for the comment list\'s status/search. */',
     '/** The same latest-wins rule as the post list, for the link list\'s status/category/search. */',
   ]],
+  ['src/client/features/blog/blog-table-view/index.tsx', [
+    '// The maps are rebuilt only when the lists change: they used to be rebuilt on every render, which',
+    '// is every selection toggle and every search keystroke, for fifty rows to look up.',
+  ]],
+  ['src/client/features/blog/blog-table-view/row.tsx', [
+    '/**\n * Every prop is either the row\'s own data or a stable handler, so selecting one row no longer\n * re-renders the other forty-nine.\n */',
+  ]],
   ['src/client/features/blog/frontend-base.ts', [
     '/**\n * The blog\'s own site address, as a link may carry it.\n *\n * The stored value is checked on the way in, but a blog configured before that rule existed still\n * holds whatever was typed, and this address becomes an `href` in the admin session — so a value a\n * link may not use falls back to the shipped default instead of being rendered as written.\n */',
   ]],
@@ -3115,6 +3149,8 @@ const allowed = new Map([
   ['src/client/features/blog/use-blog-hub-modal.ts', [
     '/** Nothing came back and the load failed: the list draws a failure, not an empty state. */',
     '/** The publish dialog\'s own state: what it edits, which note it targets, and whether it is open. */',
+    '// Stable identities: these travel down to every list row, whose `memo` is defeated by a handler',
+    '// that is rebuilt on each hub render.',
     '/**\n * Opening loads the tab\'s own data and closing clears whatever belonged to the open session. The\n * open note is deliberately not a dependency here: it used to be, so editing a note while the hub\n * was open re-ran the whole bootstrap.\n */',
     '// The stored switches are read here rather than when the store module loads: only this hub',
     '// shows them, and the read belongs to opening it.',

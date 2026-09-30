@@ -107,6 +107,7 @@ export const messages = {
 'blog.link_list_truncated': 'Showing the first {value0} links. Narrow the filters to see the rest.',
 'blog.posts_page_info': 'Page {page} of {totalPages} · {total} posts',
 'blog.comment_list_truncated': 'Showing the first {value0} comments. Use the filters or the search box to narrow the list.',
+'blog.list_show_more': 'Show more ({value0} of {value1})',
 'blog.posts_prev_page': 'Previous page',
 'blog.posts_next_page': 'Next page',
 'blog.link_category_add_root': 'Add Root Category',

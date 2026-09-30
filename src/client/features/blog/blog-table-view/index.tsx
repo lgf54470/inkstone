@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogPostSummary } from '@shared/types'
 import { Checkbox } from '../../../components/form'
@@ -22,8 +23,10 @@ export function BlogTableView({
 
   const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
   const isAllSelected = posts.length > 0 && posts.every((p) => selectedPostIds.has(p.id))
-  const categoryMap = new Map(categories.map((c) => [c.id, c]))
-  const folderMap = new Map(folders.map((f) => [f.id, f]))
+  // The maps are rebuilt only when the lists change: they used to be rebuilt on every render, which
+  // is every selection toggle and every search keystroke, for fifty rows to look up.
+  const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
+  const folderMap = useMemo(() => new Map(folders.map((f) => [f.id, f])), [folders])
 
   return (
     <div className='w-full overflow-x-auto'>
@@ -47,7 +50,7 @@ export function BlogTableView({
                 folder={folder}
                 folders={folders}
                 frontendBase={frontendBase}
-                onToggleSelect={() => toggleSelectPost(post.id)}
+                onToggleSelect={toggleSelectPost}
                 onOpenEdit={onOpenEdit}
               />
             )

@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react'
+import { memo, type ReactNode, type RefObject } from 'react'
 import { Copy, ExternalLink, Eye, FolderClosed, FolderInput, MessageSquare, Pin, RefreshCw, Settings2, Trash2 } from 'lucide-react'
 import type { BlogCategory, BlogFolder, BlogPostSummary } from '@shared/types'
 import { Checkbox } from '../../../components/form'
@@ -9,7 +9,11 @@ import { t } from '../../../lib/i18n'
 import { useBlogPostSummaryCard } from './use-blog-post-card'
 import { PostCoverImage } from './cover-image'
 
-export function BlogGridCard({
+/**
+ * Every prop is either the row's own data or a stable handler (store actions and the hub's two
+ * `useCallback`s), so selecting one card no longer re-renders the other forty-nine.
+ */
+export const BlogGridCard = memo(function BlogGridCard({
   post,
   isSelected,
   cat,
@@ -25,7 +29,7 @@ export function BlogGridCard({
   folder: BlogFolder | null
   folders: BlogFolder[]
   frontendBase: string
-  onToggleSelect: () => void
+  onToggleSelect: (postId: string) => void
   onOpenEdit: (post: BlogPostSummary) => void
 }) {
   const card = useBlogPostSummaryCard({ post, folders, frontendBase, onOpenEdit })
@@ -44,7 +48,7 @@ export function BlogGridCard({
       )}
       title={t('blog.drag_to_folder_hint')}
     >
-      <CardTopControls post={post} isSelected={isSelected} onToggleSelect={onToggleSelect} onTogglePin={() => void card.updatePost(post.id, { isPinned: !post.isPinned })} />
+      <CardTopControls post={post} isSelected={isSelected} onToggleSelect={() => onToggleSelect(post.id)} onTogglePin={() => void card.updatePost(post.id, { isPinned: !post.isPinned })} />
 
       <CardCover post={post} />
 
@@ -76,7 +80,7 @@ export function BlogGridCard({
       )}
     </div>
   )
-}
+})
 
 function startCardDrag(e: React.DragEvent, postId: string): void {
   e.dataTransfer.setData('application/inkstone-blog-post-ids', JSON.stringify([postId]))

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { AlertTriangle, CheckCircle, ExternalLink, Inbox, RefreshCw, Search, ShieldCheck, Trash2, XCircle } from 'lucide-react'
 import type { BlogComment, BlogCommentsCounts, BlogCommentStatus } from '@shared/types'
 import { Button, IconButton } from '../../components/primitives'
@@ -10,6 +10,9 @@ import { BlogLoadFailure } from './blog-load-failure'
 
 /** The comment avatar's rendered size, also declared as its intrinsic size so the row reserves it. */
 const AVATAR_SIZE_PX = 32
+
+/** The server caps the list at 500 rows; the DOM does not need all of them at once. */
+const COMMENTS_RENDER_STEP = 100
 
 export function BlogCommentsView() {
   const view = useBlogCommentsView()
@@ -41,6 +44,14 @@ export function BlogCommentsView() {
 }
 
 function CommentsList({ view }: { view: ReturnType<typeof useBlogCommentsView> }) {
+  const [renderLimit, setRenderLimit] = useState(COMMENTS_RENDER_STEP)
+  // A different filter or search term is a different list: start it from its own top.
+  useEffect(() => {
+    setRenderLimit(COMMENTS_RENDER_STEP)
+  }, [view.commentStatusFilter, view.search])
+
+  const visibleComments = view.comments.slice(0, renderLimit)
+
   return (
     <div className='flex-1 overflow-y-auto p-4 space-y-3'>
       {view.isTruncated && (
@@ -64,7 +75,15 @@ function CommentsList({ view }: { view: ReturnType<typeof useBlogCommentsView> }
       {view.comments.length === 0 ? (
         <CommentsEmptyState view={view} />
       ) : (
-        view.comments.map((comment) => <CommentCard key={comment.id} bundle={commentCardBundle(view, comment)} />)
+        visibleComments.map((comment) => <CommentCard key={comment.id} bundle={commentCardBundle(view, comment)} />)
+      )}
+
+      {visibleComments.length < view.comments.length && (
+        <div className='flex justify-center pt-1'>
+          <Button variant='secondary' size='sm' onClick={() => setRenderLimit((limit) => limit + COMMENTS_RENDER_STEP)}>
+            {t('blog.list_show_more', { value0: visibleComments.length, value1: view.comments.length })}
+          </Button>
+        </div>
       )}
     </div>
   )
@@ -260,6 +279,7 @@ function CommentCard({ bundle }: { bundle: CommentCardBundle }) {
 
   return (
     <div
+      data-comment-id={comment.id}
       className={`rounded-[var(--r-lg)] border p-4 transition-colors ${
         bundle.isSelected
           ? 'border-[var(--accent)] bg-[var(--accent-softer)]'

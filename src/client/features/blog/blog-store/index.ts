@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { BlogPostIndexEntry } from '@shared/types'
 import type { BlogStoreState } from './types'
 import { DEFAULT_TRAFFIC_FILTERS } from './state'
 import { blogFiltersActions } from './filters'
@@ -74,9 +75,28 @@ export { buildBlogFolderTree } from './folders'
 // in store/visibility-sources.ts, not this module. The projection reads the
 // body-free index, not the page on screen: whether a note is published does not
 // depend on which page of the management list happens to be open.
+/**
+ * The projection is rebuilt only when the index array itself is replaced. `subscribe` fires on every
+ * `set` — each keystroke in the search box, each selection toggle — and rebuilding the set there
+ * allocated a fresh Set per store write for a value that had not changed.
+ */
+export function createPostIndexProjection(): (postIndex: BlogPostIndexEntry[]) => Set<string> {
+  let lastIndex: BlogPostIndexEntry[] | null = null
+  let publishedNoteIds = new Set<string>()
+  return (postIndex) => {
+    if (postIndex !== lastIndex) {
+      lastIndex = postIndex
+      publishedNoteIds = new Set(postIndex.filter((post) => post.isPublished).map((post) => post.noteId))
+    }
+    return publishedNoteIds
+  }
+}
+
+const projectPublishedNoteIds = createPostIndexProjection()
+
 useBlogStore.subscribe((state) => {
   pushVisibilitySnapshot({
     ...getVisibilitySnapshot(),
-    publishedNoteIds: new Set(state.postIndex.filter((post) => post.isPublished).map((post) => post.noteId)),
+    publishedNoteIds: projectPublishedNoteIds(state.postIndex),
   })
 })

@@ -306,11 +306,13 @@
 - **范围**：`features/blog/index.ts`、`features/sidebar/sidebar.tsx`、`features/list/note-list/note-row-items.tsx`、`blog-links-view/{link-icon-selector,link-dynamic-icon,link-qr-modal}.tsx`、`blog-dashboard-view/audience-cards.tsx`。代价 **M～L**（需构建产物前后对比）。
 - **建议**：用 `npm run size:check` + `budget:check` 做前后对比作为验收证据。
 
-#### ENG-12 [P1][开放] 列表渲染零优化：未 memo、每行重建菜单、无虚拟化
+#### ENG-12 [P1][已修] 列表渲染零优化：未 memo、每行重建菜单、无虚拟化
 - **问题**：`blog-grid-view/card.tsx`、`blog-comments-view.tsx`、`blog-links-view/link-card-row.tsx` 均无 `memo`（`grep` 确认）；`blog-comments-view.tsx:52` 每行 `bundle={commentCardBundle(view, comment)}` 新建对象；`use-blog-post-card.tsx:49-56` 每次渲染无条件构造 `folderMenuItems`（O(帖子 × 文件夹)）与 `contextMenuItems` 两份 MenuItem 数组；`blog-table-view/index.tsx:25-26` 每渲染新建两个 Map；`use-blog-hub-sidebar.tsx` 的 `getTagNodeCounts` 对每个标签节点递归求和（无 memo 时 O(T²)），`:215` 用 `comments.filter().length` 而 `stats.pendingComments` 已存在；`blog-store/index.ts:64-69` 的模块级 subscribe 每次 `set` 都重建一个 Set。
 - **量级**（假设 100 行 × 11 文件夹）：每渲染 ≈2,900 个 JSX 对象 + 200 个 `<Menu>` 实例；搜索每击键 ≈200 次 React 提交。
 - **方案**：`memo` + `useCallback`/`useMemo`；Map 与菜单项提 `useMemo`，菜单项延迟到打开时构造；长列表接窗口化（仓库有 `features/list/note-list/render-window.tsx` 可复用）；store 的 subscribe 加键过滤并在无变化时跳过。
 - **范围**：四个视图 + `use-blog-post-card.tsx` + `use-blog-hub-sidebar.tsx` + `blog-store/index.ts`。代价 **M**。
+- **落地（B3-09）**：行组件 `BlogGridCard`/`BlogTableRow` 包 `memo`，并把它们的 prop 全部变稳——`onToggleSelect` 直接传 store action（由行自己带上 id）、`onOpenEdit` 在 `use-blog-hub-modal` 里 `useCallback`、`cat`/`folder` 来自 `useMemo` 的 Map（表格与网格原来每次渲染各建两个 Map）；`use-blog-post-card.tsx` 的两份菜单只在打开时构造（它们原来每行每次渲染都建 O(文件夹数) 的数组和整份右键菜单）；侧栏标签计数改为一次后序遍历产出 `Map<fullPath, counts>`（原来每个节点在渲染里递归自己的子树）；`blog-store` 的 `publishedNoteIds` 投影只在索引数组被替换时重建（原来每次 `set`（含每次击键）都新建一个 Set）。评论与友链这两个 500 行上限的列表改为渐进渲染：首屏 100 行，「显示更多」按页增长，换筛选/搜索词回到第一页——比 `render-window.tsx` 的 IntersectionObserver 方案更简单且按钮键盘可达，「全选」仍作用于已加载的全部行；`links-toolbar.tsx` 从 `blog-links-view/index.tsx` 拆出（工具栏部分，500 行门槛）。复现测试 3 条：`post-index-projection.test.ts`（同一数组返回同一 Set 实例）、`tag-counts.test.ts`（子树求和与自身下限两条规则）、`blog-comments-window.test.ts`（250 行只挂 100 行、两次点击增长到 250）；窗口测试的变异（步长改 250）实测 **1 failed**。
+  - **已知限制**：评论与友链的**行级** `memo` 未做——它们从调用点收到内联箭头（含 `bundle` 对象），要包 `memo` 得先改 `use-blog-links-view` 与评论 bundle 的 API；列表窗口是渐进渲染而非滚动虚拟化。
 
 #### ENG-13 [P1][已修] 封面/头像图片无懒加载、无宽高
 - **问题**：`blog-grid-view/cover-image.tsx:35-39` 的 `<img>` 无 `loading`/`decoding`/宽高，`blog-comments-view.tsx:296-302` 的头像同病；表格行用 36px 的框加载原图。

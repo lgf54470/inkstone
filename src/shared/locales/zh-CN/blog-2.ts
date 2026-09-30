@@ -107,6 +107,7 @@ export const messages = {
 'blog.link_list_truncated': '只显示前 {value0} 条友链，缩小筛选范围可查看其余。',
 'blog.posts_page_info': '第 {page} / {totalPages} 页 · 共 {total} 篇',
 'blog.comment_list_truncated': '只显示前 {value0} 条评论，可用筛选或搜索缩小范围。',
+'blog.list_show_more': '显示更多（{value0}/{value1}）',
 'blog.posts_prev_page': '上一页',
 'blog.posts_next_page': '下一页',
 'blog.link_category_add_root': '添加主分类',
