@@ -32,9 +32,13 @@ export interface SlideCanvasProps {
   instantCharts?: boolean
 }
 
+export function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 // The design canvas is laid out at its design size and scaled, so the slide image
 // matches the stage box exactly and the browser does the scaling on the compositor.
-export function SlideViewport({ metrics, cacheKey, source, subPage, onPlan }: { metrics: StageMetrics } & Omit<SlideCanvasProps, 'contentWidth' | 'contentHeight'>) {
+export function SlideViewport({ metrics, cacheKey, source, subPage, onPlan, instantCharts }: { metrics: StageMetrics } & Omit<SlideCanvasProps, 'contentWidth' | 'contentHeight'>) {
   return (
     <div
       data-slide-canvas
@@ -48,6 +52,7 @@ export function SlideViewport({ metrics, cacheKey, source, subPage, onPlan }: { 
         contentWidth={metrics.contentWidth}
         contentHeight={metrics.contentHeight}
         onPlan={onPlan}
+        instantCharts={instantCharts}
       />
     </div>
   )
@@ -70,7 +75,9 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   const [renderVersion, setRenderVersion] = useState(0)
   const markDiagramsRendered = useCallback(() => setRenderVersion((version) => version + 1), [])
   const { plan, measured } = useSlideLayout(hostRef, html, subPage, contentWidth, contentHeight, renderVersion)
-  useSlideDiagrams(hostRef, html, dark, markDiagramsRendered, instantCharts)
+  const prefersMotion = prefersReducedMotion()
+  const effectiveInstantCharts = instantCharts || prefersMotion
+  useSlideDiagrams(hostRef, html, dark, markDiagramsRendered, effectiveInstantCharts)
   useFontLoadedMeasure(markDiagramsRendered)
   // Only a measurement of the markup on screen is published. The canvas is reused when
   // the show moves to another slide, so its state still holds the previous slide's plan

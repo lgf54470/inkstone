@@ -102,13 +102,13 @@
   - 目标：全面采用 `var(--sp-*)`，消除残余的 `p-1`, `mx-1`, `h-4`, `py-0.5`, `h-0.5`, `bottom-4`。
   - 方案：将所有硬编码间距与尺寸类名系统性对齐全局设计系统令牌。
   - 验证：运行 `npm run tokens:check`、`npm run style:check`，确保零硬编码阶梯值违规。
-- [x] **B3-04** `P-15 (SPEC-04)`: 侧栏补充标准 ARIA 集合语义声明 — 已完成
+- [x] **B3-04** `P-15 (SPEC-04)`: 侧栏补充标准 ARIA 集合语义声明 — 已完成 (`333a755c`)
   - 涉及文件：`src/client/features/presentation/slide-rail.tsx` (`SlideRail`, `SlideRailList`, `SlideRailItem`)、`src/client/features/presentation/slide-rail.test.ts`
   - 目标：为侧栏导航声明标准 `tablist`/`tab` 集合语义，规范屏幕阅读器体验。
   - 方案：外层导航标注 `role="tablist"`，列表项按钮标注 `role="tab"` 与 `aria-selected`，并准确标注集合尺寸 `aria-setsize` 与序号 `aria-posinset`。
   - 验证：通过组件单元测试断言列表项包含完整的集合角色与可访问状态声明。
-- [ ] **B3-05** `P-16 (SPEC-06)`: Canvas/JS 层接入系统减弱动画偏好（`prefers-reduced-motion`）
-  - 涉及文件：`src/client/features/presentation/slide-canvas.tsx` (`SlideCanvas`, `SlideViewport`)
+- [x] **B3-05** `P-16 (SPEC-06)`: Canvas/JS 层接入系统减弱动画偏好（`prefers-reduced-motion`） — 已完成
+  - 涉及文件：`src/client/features/presentation/slide-canvas.tsx` (`SlideCanvas`, `SlideViewport`)、`src/client/features/presentation/slide-canvas.test.ts`
   - 目标：减弱动画偏好开启时，Chart.js 采用 `instant: true`，禁用入场缩放动画。
   - 方案：读取媒体查询 `prefers-reduced-motion: reduce`，在满足时将 `instantCharts` 强制设为 `true`。
   - 验证：单元测试模拟媒体查询激活状态，断言 Chart.js 以无动画模式极速挂载。
