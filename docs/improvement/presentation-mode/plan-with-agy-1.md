@@ -19,8 +19,8 @@
 | **批次 0** | 文档基线 | 审查报告与整改计划初始化 | `[x]` 已提交 (`d8aa7a00`) |
 | **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
 | **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[~]` 进行中 (已提交: `bbe158b8`, `52c2ab4a`, `332de745`, `100648a4`) |
-| **批次 3** | 导航效率、合规收尾与编辑联动 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-22 | `[ ]` 待处理 |
-| **批次 4** | 深度性能治理与高级演说能力 (P2/P3) | P-18, P-19, P-20, P-21, P-23, P-24, P-25, P-26, P-27, P-28 | `[ ]` 待处理 |
+| **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[ ]` 待处理 |
+| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[ ]` 待处理 |
 
 ---
 
@@ -85,7 +85,7 @@
 
 ---
 
-## 批次 3 · 导航效率、合规收尾与编辑联动
+## 批次 3 · 阶段三：导航强化、合规收尾与性能深度治理 (P2)
 
 - [ ] **B3-01** `P-12 (UX-06)`: 侧栏缩略图补充大纲标题文字标签
   - 涉及文件：`src/client/features/presentation/slide-rail.tsx` (`SlideRailItem`, `extractSlideHeading`)、`src/client/features/presentation/slide-rail.test.ts`
@@ -117,62 +117,62 @@
   - 目标：长文编辑无需从第 0 页翻起，直接从当前光标所在幻灯片起播。
   - 方案：在 `slides.ts` 中实现纯函数 `findSlideIndexByOffset(source, offset)`；在 `useWorkspace` 的启动入口处获取当前 CodeMirror 光标偏移量，计算目标页索引并传入 `usePresentation.getState().start({ initialSlideIndex })`。
   - 验证：单元测试覆盖文档首段、中间分页处、末尾及边界位置的光标映射精度。
-- [ ] **B3-07** `P-22 (SEC-04)`: 命令面板注册“启动演示模式”命令
-  - 涉及文件：`src/client/features/command/command-palette/use-commands.tsx` (`currentNoteCommands`)
-  - 目标：`Cmd+K` 支持快速呼出演示模式。
-  - 方案：在 `currentNoteCommands` 中注册 `cmd-presentation-mode`，带有 `Play` 图标，快捷呼起当前笔记的全屏演说。
-  - 验证：单元测试断言当前笔记命令列表中包含该项，且调用 `run` 成功启动演示。
-
----
-
-## 批次 4 · 深度性能治理与高级演说能力
-
-- [ ] **B4-01** `P-18 (PERF-02)`: 单 Slide 内容哈希增量缓存（避免跟随模式协同全篇重算）
+- [ ] **B3-07** `P-18 (PERF-02)`: 单 Slide 内容哈希增量缓存（避免跟随模式协同全篇重算）
   - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx` (`useSlidePlans`)、`src/client/features/presentation/slide-html.ts`、`src/client/features/presentation/slide-preflight.tsx`
   - 目标：改整篇 fingerprint 失效为每张 Slide 基于其源码的独立哈希缓存，打字时仅重算改动 Slide 的 Plan，其余页坚决复用。
   - 方案：使用 `hashContent(slideSource)` 作为单页子指纹，在 `useSlidePlans` 中维护按 Slide 源码哈希索引的 Plan 映射，未编辑页缓存稳如磐石。
   - 验证：单元测试模拟长文档部分行修改，断言未改动页的 SlidePlan 对象引用与缓存 100% 保持复用。
-- [ ] **B4-02** `P-19 (PERF-03)`: 侧栏单例 Observer 与细粒度事件订阅
+- [ ] **B3-08** `P-19 (PERF-03)`: 侧栏单例 Observer 与细粒度事件订阅
   - 涉及文件：`src/client/features/presentation/slide-rail.tsx`、`src/client/features/presentation/slide-html.ts`
   - 目标：消除 100 个 `IntersectionObserver` 实例并解决全量广播惊群效应。
   - 方案：在 `SlideRail` 顶层统一构建单例 `IntersectionObserver` 实例供各子项共享；重构 `subscribeSlideHtml` 为按 `cacheKey` 精准派发的订阅机制。
   - 验证：单元测试断言单张幻灯片完成预热时仅触发对应 key 的监听器，其余缩略图无虚假渲染。
-- [ ] **B4-03** `P-20 (PERF-04)`: 导出图片流式分批与进度提示
+- [ ] **B3-09** `P-20 (PERF-04)`: 导出图片流式分批与进度提示
   - 涉及文件：`src/client/features/presentation/deck-print.tsx` (`saveDeckPages`, `DeckImageSheet`)
   - 目标：导出过程提供实时模态进度反馈，串行分批挂载和流式生成，防范浏览器 OOM 崩溃。
   - 方案：在 `saveDeckPages` 中引入进度回调驱动 UI 状态展示 `正在导出 (3/30)...`，每完成一张图片即时入流并释放 Canvas 与位图 Blob。
   - 验证：单元测试模拟多页导出，断言进度回调按预期每页递增且最终正确完成打包。
-- [ ] **B4-04** `P-21 (SEC-03)`: 嵌套 Bento-Slides 优雅占位降级
+- [ ] **B3-10** `P-21 (SEC-03)`: 嵌套 Bento-Slides 优雅占位降级
   - 涉及文件：`src/client/features/presentation/slide-canvas.tsx` (`useBentoSlidesFallback`)
   - 目标：全笔记演示模式中遇到 Bento-Slides 代码块不再永久停留于 "Loading slides..." 占位态。
   - 方案：在 `SlideCanvas` 中提供 `useBentoSlidesFallback`，解析围栏内的卡片结构并直接呈现为整洁的静态卡片网格预览，移除 `loading` 类并设置 `aria-busy="false"`。
   - 验证：单元测试验证包含 ` ```slides ` 的内容在 SlideCanvas 中被正确增强为静态卡片结构，无残留 loading 状态。
-- [ ] **B4-05** `P-23 (FEAT-01)`: 智能标题识别切分长笔记（H1/H2 分页）
+- [ ] **B3-11** `P-22 (SEC-04)`: 命令面板注册“启动演示模式”命令
+  - 涉及文件：`src/client/features/command/command-palette/use-commands.tsx` (`currentNoteCommands`)
+  - 目标：`Cmd+K` 支持快速呼出演示模式。
+  - 方案：在 `currentNoteCommands` 中注册 `cmd-presentation-mode`，带有 `Play` 图标，快捷呼起当前笔记的全屏演说。
+  - 验证：单元测试断言当前笔记命令列表中包含该项，且调用 `run` 成功启动演示。
+- [ ] **B3-12** `P-23 (FEAT-01)`: 智能标题识别切分长笔记（H1/H2 分页）
   - 涉及文件：`src/client/features/presentation/slides.ts` (`splitIntoSlides`)、`src/client/features/presentation/slides.test.ts`
   - 目标：对于未显式插入 `---` 分割线的一般笔记，支持根据 H1/H2 智能切分幻灯片。
   - 方案：支持 Frontmatter 配置 `slide-level: 1 | 2`；在无显式分割线时自动将顶层标题行作为分页断点。
   - 验证：单元测试覆盖带 H1/H2 标题的长文智能切分用例，验证生成的幻灯片页数与内容边界。
-- [ ] **B4-06** `P-24 (FEAT-03)`: 演讲私有备注语法支持 (`<!-- note: ... -->`)
+
+---
+
+## 批次 4 · 阶段四：旗舰演说生态对齐 (P3)
+
+- [ ] **B4-01** `P-24 (FEAT-03)`: 演讲私有备注语法支持 (`<!-- note: ... -->`)
   - 涉及文件：`src/client/features/presentation/slide-html.ts`、`src/client/features/presentation/slides.ts`
   - 目标：抽取 `<!-- note: ... -->` 作为 Slide 演说备注元数据，正文展示时剔除该块防止公屏泄露。
   - 方案：在流水线中正则解析抽取备忘小抄，从投影 HTML 中安全剥离，并将备注内容保留在 Slide 元数据结构中。
   - 验证：单元测试验证投影 HTML 纯净无备注注释，且返回数据中包含正确的私有备注文本。
-- [ ] **B4-07** `P-25 (FEAT-04)`: 虚拟激光笔与聚光灯 (L)
+- [ ] **B4-02** `P-25 (FEAT-04)`: 虚拟激光笔与聚光灯 (L)
   - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx`、`src/client/features/presentation/presentation-stage.tsx`、`src/client/features/presentation/presentation-keys.ts`
   - 目标：按 `L` 键激活虚拟红光激光笔，大屏投映时高亮引导视觉焦点。
   - 方案：在 `presentation-keys.ts` 注册 `'laser'` 命令；在 `PresentationStage` 顶层叠加 `LaserCanvas` 跟踪指针绘制带发光脉冲与微光拖尾的激光粒子。
   - 验证：单元测试验证激光笔模式开关状态切换与指针跟踪渲染事件。
-- [ ] **B4-08** `P-26 (FEAT-06)`: 全局幻灯片全览网格矩阵 (Overview Grid)
+- [ ] **B4-03** `P-26 (FEAT-06)`: 全局幻灯片全览网格矩阵 (Overview Grid)
   - 涉及文件：新增 `src/client/features/presentation/slide-overview-grid.tsx`、联动 `src/client/features/presentation/presentation-overlay.tsx`
   - 目标：按 `G` 或 `O` 键全屏展开自适应响应式缩略图矩阵，便于问答阶段快速跳页。
   - 方案：新增 `SlideOverviewGrid` 组件，以 4~5 列响应式网格全屏平铺所有幻灯片缩略图，支持键盘上下左右漫游选择与回车跳转。
   - 验证：单元测试覆盖网格渲染、键盘焦点遍历与跳页回调触发。
-- [ ] **B4-09** `P-27 (FEAT-08)`: 封面居中与双栏排版模板
+- [ ] **B4-04** `P-27 (FEAT-08)`: 封面居中与双栏排版模板
   - 涉及文件：`src/client/features/presentation/slide-prose.tsx`、`src/client/styles/presentation.css`
   - 目标：支持 `<!-- layout: cover -->` 首页垂直水平双向居中，以及 `::: two-columns` 双栏排版。
   - 方案：识别版式元数据，向 `SlideProse` 容器注入对应的布局 CSS 类，丰富大屏视觉层级。
   - 验证：单元测试验证包含封面与双栏标记的内容正确挂载对应 class，无样式冲突。
-- [ ] **B4-10** `P-28 (FEAT-02)`: 独立双屏演讲者模式 (Presenter View)
+- [ ] **B4-05** `P-28 (FEAT-02)`: 独立双屏演讲者模式 (Presenter View)
   - 涉及文件：新增 `src/client/features/presentation/presenter-view/presenter-window.tsx`、`src/client/features/presentation/presenter-view/use-presenter-channel.ts`
   - 目标：双屏独立输出，讲者窗口独立展示当前页、下一页预览、私有小抄与时钟。
   - 方案：通过 `window.open` 弹出独立窗口作为第二屏控制台，主子窗口借助 `BroadcastChannel` 传输页码、时间戳与小抄，实现低延迟双向联动。

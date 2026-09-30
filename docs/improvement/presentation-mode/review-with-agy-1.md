@@ -304,35 +304,86 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
 ---
 
 ### P-09 (SEC-02): 超链接原生跳转导致演讲跳出与地址栏污染
-- **涉及文件**：`src/client/features/presentation/slide-prose.tsx` 与 `slide-canvas.tsx`
+- **涉及文件**：`src/client/features/presentation/slide-canvas.tsx` (L88-L107)、`src/client/features/presentation/presentation-state.ts` (L75-L95)、`src/client/features/presentation/slide-prose.tsx` (L17-L23)
+- **涉及函数/组件/Hook**：`useSlideLinkInterceptor`、`interceptSlideLink`、`SlideCanvas`、`SlideProse`
+- **现有代码 (Ground Truth)**：
+  ```tsx
+  // src/client/features/presentation/slide-prose.tsx L21-L22
+  <div ref={hostRef} data-font={font} data-slide-page className={cn('ink-prose relative', className)} dangerouslySetInnerHTML={htmlObj} />
+  ```
 - **问题机制**：
-  Markdown 渲染出的内部或外部链接未做拦截沙箱保护。点击普通外部链接直接在当前全屏窗口导航跳出，打断整场演示；点击双链 WikiLink 或锚点链接触发 `href="#"` 导致地址栏 URL 哈希突变与跳顶。
-- **修复方案**：
-  在 `SlideCanvas` 挂载事件代理，监听幻灯片容器内部 `<a>` 点击事件：
-  - 拦截默认导航 `event.preventDefault()`。
-  - 外部链接安全使用 `window.open(url, '_blank', 'noopener,noreferrer')` 打开新标签页，不打乱主屏。
-  - 站内双链做轻量提示或弹窗预览，禁止页面跳出。
+  Markdown 渲染出的富文本通过 `dangerouslySetInnerHTML` 注入 DOM，其中包含的普通网页链接或内部双链若未做事件拦截，用户在演讲中不慎点击普通外部链接时，浏览器将在当前全屏窗口执行整页导航直接跳转打断演示；点击 WikiLink 双链或锚点时触发 `href="#"` 导致地址栏 URL 哈希突变与跳顶。
+- **修复方案与落地设计**：
+  在 `presentation-state.ts` 实现安全的纯函数 `interceptSlideLink`，并在 `SlideCanvas` 挂载全局事件代理监听 `<a>` 点击：
+  ```ts
+  // src/client/features/presentation/presentation-state.ts
+  export function interceptSlideLink(
+    href: string | null | undefined,
+    openWindow: (url: string, target?: string, features?: string) => Window | null = (url, target, features) => window.open(url, target, features),
+  ): boolean {
+    if (!href || href === '#' || href.startsWith('#')) return false
+    try {
+      const parsed = new URL(href, window.location.origin)
+      if (['http:', 'https:', 'mailto:', 'tel:'].includes(parsed.protocol)) {
+        openWindow(href, '_blank', 'noopener,noreferrer')
+        return true
+      }
+    } catch {
+      return false
+    }
+    return false
+  }
+
+  // src/client/features/presentation/slide-canvas.tsx L88-L107
+  function useSlideLinkInterceptor() {
+    return useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+      const anchor = (event.target as HTMLElement | null)?.closest('a')
+      if (!anchor) return
+      event.preventDefault()
+      event.stopPropagation()
+      interceptSlideLink(anchor.getAttribute('href'), (url, target, features) => window.open(url, target, features))
+    }, [])
+  }
+  ```
 
 ---
 
 ### P-10 (FEAT-05): 黑屏 (B) 与白屏 (W) 口头互动控制缺失
-- **涉及文件**：
-  1. `src/client/features/presentation/presentation-keys.ts`
-  2. `src/client/features/presentation/presentation-overlay.tsx`
-  3. `src/client/features/presentation/use-presentation-keys.ts`
+- **涉及文件**：`src/client/features/presentation/presentation-keys.ts` (L7, L44-L51)、`src/client/features/presentation/use-presentation-keys.ts` (L30-L55)、`src/client/features/presentation/presentation-stage.tsx` (L20-L40)、`src/client/features/presentation/presentation-overlay.tsx`
+- **涉及函数/Hook/组件**：`presentationCommand`、`useScreenCover`、`ScreenCover`、`PresentationStage`
+- **现有代码 (Ground Truth)**：
+  ```ts
+  // presentation-keys.ts L44-L51
+  case 'b':
+  case 'B':
+  case '.':
+    return context.onControl ? null : 'blackout'
+  case 'w':
+  case 'W':
+  case ',':
+    return context.onControl ? null : 'whiteout'
+  ```
 - **问题机制**：
-  演讲过程中，演讲者常需要暂停幻灯片视觉焦点，让观众注意力转移到讲者本人的口头互动上。行业标准快捷键为 `B` 键黑屏（Blackout）、`W` 键白屏（Whiteout）。目前按 `B`/`W` 没有任何响应。
-- **修复方案**：
-  1. 在 `presentation-keys.ts` 注册 `'blackout' | 'whiteout'` 命令。
-  2. 在 `presentation-overlay.tsx` 中维护 `screenCover: 'black' | 'white' | null` 状态。
-  3. 当按下 `B` 时切换黑屏遮罩，按 `W` 时切换白屏遮罩，按任意按键恢复正常展示。
+  演讲过程中，演讲者常需要暂停幻灯片视觉焦点，让观众注意力转移到讲者本人的口头互动上。行业标准快捷键为 `B` 键纯黑遮罩（Blackout）、`W` 键纯白遮罩（Whiteout）。此前系统未监听 `B`/`W` 按键，舞台无法即时提供遮罩保护。
+- **修复方案与落地设计**：
+  1. 在 `presentation-keys.ts` 注册 `'blackout' | 'whiteout'` 命令；
+  2. 在 `useScreenCover` Hook 中维护 `screenCover: 'black' | 'white' | null` 状态；
+  3. 当按下 `B` 或 `.` 触发纯黑遮罩，按下 `W` 或 `,` 触发纯白遮罩；在遮罩显示期间，按下键盘任意键或点击舞台任意位置自动解除遮罩；
+  4. 遮罩层声明 `role="status"` 与 `aria-label`，满足 A11y 要求。
 
 ---
 
 ### P-11 (UX-03): 高危导出按钮混排在控制条中间易误触
-- **涉及文件**：`src/client/features/presentation/presentation-controls.tsx` (L56-L65)
-- **现有代码**：
-  ```ts
+- **涉及文件**：`src/client/features/presentation/presentation-controls.tsx` (L52-L71)
+- **涉及函数/组件**：`PresentationControls`
+- **现有代码 (Ground Truth)**：
+  ```tsx
+  // src/client/features/presentation/presentation-controls.tsx L52-L71
+  <Tooltip label={fullscreenLabel} side='top'>
+    <IconButton label={fullscreenLabel} size='sm' onClick={onToggleFullscreen}>
+      {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+    </IconButton>
+  </Tooltip>
   <Tooltip label={t('workspace.presentation_export')} side='top'>
     <IconButton label={t('workspace.presentation_export')} size='sm' onClick={onExport}>
       <Download size={14} />
@@ -343,34 +394,108 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
       <Images size={14} />
     </IconButton>
   </Tooltip>
+  <Tooltip label={t('workspace.presentation_exit')} side='top'>
+    <IconButton label={t('workspace.presentation_exit')} size='sm' onClick={onClose}>
+      <X size={15} />
+    </IconButton>
+  </Tooltip>
   ```
 - **问题机制**：
-  导出 PDF 与导出 ZIP 图片的按钮紧挨全屏和关闭按钮（间距仅 2px）。演讲者在现场全屏状态下用鼠标寻找退出或翻页按钮时，极易误触导出 PDF，导致浏览器直接弹出原生打印遮罩，现场体验极为尴尬。
-- **修复方案**：
-  将导出 PDF 和图片收敛进“更多（More）”二级下拉菜单，或者将其移至侧边栏顶部/控制条右端，增加安全间距与防误触缓冲。
+  导出 PDF 与导出 ZIP 图片的按钮紧挨全屏和关闭退出按钮（中间没有任何分隔间隙，间距仅为 `gap-0.5` 约 2px）。演讲者在现场全屏状态下用鼠标寻找退出或全屏按钮时，极易误触导出 PDF，导致浏览器直接弹出原生打印遮罩，现场体验极为尴尬。
+- **修复方案与落地设计**：
+  重构悬浮控制条结构，将控制区划分为清晰的四个功能组，并在导出组两侧插入垂直分隔线（Separator），建立视觉与点击安全隔离带：
+  ```tsx
+  {/* 分组 2：视图控制 */}
+  <Tooltip label={fullscreenLabel} side='top'>
+    <IconButton label={fullscreenLabel} size='sm' onClick={onToggleFullscreen}>
+      {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+    </IconButton>
+  </Tooltip>
+  {/* 安全分隔隔离线 */}
+  <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
+  {/* 分组 3：分发与导出 */}
+  <Tooltip label={t('workspace.presentation_export')} side='top'>
+    <IconButton label={t('workspace.presentation_export')} size='sm' onClick={onExport}>
+      <Download size={14} />
+    </IconButton>
+  </Tooltip>
+  <Tooltip label={t('workspace.presentation_export_images')} side='top'>
+    <IconButton label={t('workspace.presentation_export_images')} size='sm' onClick={onExportImages}>
+      <Images size={14} />
+    </IconButton>
+  </Tooltip>
+  {/* 安全分隔隔离线 */}
+  <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
+  {/* 分组 4：退出演说 */}
+  <Tooltip label={t('workspace.presentation_exit')} side='top'>
+    <IconButton label={t('workspace.presentation_exit')} size='sm' onClick={onClose}>
+      <X size={15} />
+    </IconButton>
+  </Tooltip>
+  ```
 
 ---
 
 ### P-12 (UX-06): 侧栏缺少大纲标题文本
 - **涉及文件**：`src/client/features/presentation/slide-rail.tsx` (L180-L202)
-- **现有代码**：
+- **涉及函数/组件**：`SlideRailItem`、`extractSlideHeading`
+- **现有代码 (Ground Truth)**：
   ```tsx
-  <button ...>
-    <span ...>{entryIndex + 1}</span>
-    <SlideThumb ... />
+  // src/client/features/presentation/slide-rail.tsx L181-L201
+  <button
+    ref={buttonRef}
+    type='button'
+    data-entry-index={entryIndex}
+    data-slide-index={entry.slide}
+    data-slide-page={entry.sub}
+    aria-current={active ? 'true' : undefined}
+    aria-label={pageLabel(entry, deckLength)}
+    tabIndex={active ? 0 : -1}
+    onClick={() => onSelectPage(entry.slide, entry.sub)}
+    className={cn(
+      'flex items-start gap-[var(--sp-2)] rounded-[var(--r-md)] p-[var(--sp-1)] text-left',
+      'transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)]',
+      active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-hover)]',
+    )}
+  >
+    <span className={cn('tabular w-[var(--sp-4)] shrink-0 pt-0.5 text-center text-[length:var(--text-11)]', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')} aria-hidden='true'>
+      {entryIndex + 1}
+    </span>
+    <SlideThumb thumbRef={thumbRef} near={near} html={html} active={active} view={view} />
   </button>
   ```
 - **问题机制**：
   列表项仅渲染一个微缩至 0.11 的超小缩略图与序号数字。超过 15~20 页的大型演说中，所有缩略图文字均缩为模糊色块，演讲者无法通过肉眼辨别具体幻灯片章节，导航定位极其低效。
-- **修复方案**：
-  提取每个 Slide 的首个有效 Heading（H1/H2/H3）或第一行正文作为 Slide 简短标题，在缩略图右侧或下方以清晰的文字大纲形式呈现，支持扫视检索。
+- **修复方案与落地设计**：
+  提取每个 Slide 的首个有效 Heading（H1/H2/H3）或第一行正文作为 Slide 简短标题，在缩略图右侧或下方以清晰的文字大纲形式呈现，支持扫视检索：
+  ```ts
+  export function extractSlideHeading(source: string): string {
+    const lines = source.split(/\r?\n/)
+    for (const line of lines) {
+      const trimmed = line.trim()
+      const headingMatch = /^#{1,6}\s+(.+)$/.exec(trimmed)
+      if (headingMatch?.[1]) {
+        return headingMatch[1].trim()
+      }
+    }
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed && !trimmed.startsWith('<!--') && !trimmed.startsWith('```')) {
+        return trimmed.slice(0, 30)
+      }
+    }
+    return ''
+  }
+  ```
 
 ---
 
 ### P-13 (UX-07 / REV-05): 侧栏获焦时左右方向键穿透全局触发翻页
-- **涉及文件**：`src/client/features/presentation/presentation-keys.ts` (L18-L23) 与 `src/client/features/presentation/slide-rail.tsx` (L107-L127)
-- **现有代码**：
+- **涉及文件**：`src/client/features/presentation/presentation-keys.ts` (L18-L27) 与 `src/client/features/presentation/slide-rail.tsx` (L107-L127)
+- **涉及函数/Hook**：`presentationCommand`、`useRailKeyboard`
+- **现有代码 (Ground Truth)**：
   ```ts
+  // src/client/features/presentation/presentation-keys.ts L18-L27
   case 'ArrowRight':
   case 'PageDown':
     return 'next'
@@ -383,38 +508,78 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
     return context.onSlideList ? null : 'prev'
   ```
 - **问题机制**：
-  `ArrowDown` 和 `ArrowUp` 校验了 `context.onSlideList ? null : ...`，但 `ArrowRight` 和 `ArrowLeft` 未做隔离。当用户在侧栏列表中使用方向键时，若误触左右键，全局舞台会翻页，而侧栏焦点未同步移动，导致舞台与列表焦点错位。
-- **修复方案**：
-  在 `presentation-keys.ts` 或 `useRailKeyboard` 中统一管理列表导航按键，避免非预期的焦点穿透。
+  `ArrowDown` 和 `ArrowUp` 校验了 `context.onSlideList ? null : ...`，但 `ArrowRight` 和 `ArrowLeft` 未做隔离。当用户焦点在侧栏缩略图列表中使用方向键时，若误触左右键，全局舞台会翻页，而侧栏焦点未同步移动，导致舞台与列表焦点错位。
+- **修复方案与落地设计**：
+  在 `presentation-keys.ts` 中针对 `ArrowRight` 和 `ArrowLeft` 补充 `context.onSlideList ? null : ...` 守卫：
+  ```ts
+  case 'ArrowRight':
+    return context.onSlideList ? null : 'next'
+  case 'PageDown':
+    return 'next'
+  case 'ArrowLeft':
+    return context.onSlideList ? null : 'prev'
+  case 'PageUp':
+    return 'prev'
+  ```
 
 ---
 
 ### P-14 (SPEC-01): 设计令牌混用裸 Tailwind 尺寸（违背 AGENTS.md 铁律 4/12）
-- **涉及文件**：`src/client/features/presentation/presentation-controls.tsx`
+- **涉及文件**：`src/client/features/presentation/presentation-controls.tsx` (L35, L41, L104, L117)
+- **现有代码 (Ground Truth)**：
+  ```tsx
+  // L35:
+  'absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]'
+  // L41:
+  <span className='mx-1 h-4 w-px bg-[var(--border-subtle)]' aria-hidden='true' />
+  // L104:
+  className='tabular mr-1 rounded-[var(--r-full)] bg-[var(--accent-soft)] px-[var(--sp-2)] py-0.5 text-[length:var(--text-11)] text-[var(--accent)]'
+  // L117:
+  className='pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-[var(--border-subtle)]'
+  ```
 - **问题机制**：
-  代码中混用了裸 Tailwind 阶梯数值：
-  - `p-1` (L34) 违规，应为 `p-[var(--sp-1)]`
-  - `mx-1`、`h-4` (L40) 违规，应为 `mx-[var(--sp-1)] h-[var(--sp-4)]`
-  - `py-0.5` (L102) 违规，应为 `py-[var(--sp-0-5)]`
-  - `h-0.5` (L116) 违规，应为 `h-[2px]` 或令牌高度
-- **修复方案**：
-  全面遵照项目规范替换为 `var(--sp-*)` 设计令牌。
+  代码中混用了裸 Tailwind 阶梯数值：`bottom-4`, `p-1`, `mx-1`, `h-4`, `mr-1`, `py-0.5`, `h-0.5`，破坏全局设计系统比例阶梯与暗色模式变量透传。
+- **修复方案与落地设计**：
+  全面对齐项目设计系统令牌：
+  - `bottom-4` -> `bottom-[var(--sp-4)]`
+  - `p-1` -> `p-[var(--sp-1)]`
+  - `mx-1 h-4` -> `mx-[var(--sp-1)] h-[var(--sp-4)]`
+  - `mr-1` -> `mr-[var(--sp-1)]`
+  - `py-0.5` -> `py-[var(--sp-0-5)]`
+  - `h-0.5` -> `h-[2px]`
 
 ---
 
 ### P-15 (SPEC-04): 侧栏缺少复合 ARIA 语义声明
-- **涉及文件**：`src/client/features/presentation/slide-rail.tsx` (L82-L104, L181-L201)
+- **涉及文件**：`src/client/features/presentation/slide-rail.tsx` (L82-L104, L140, L181-L202)
+- **涉及函数/组件**：`SlideRail`、`SlideRailList`、`SlideRailItem`
+- **现有代码 (Ground Truth)**：
+  ```tsx
+  // src/client/features/presentation/slide-rail.tsx L140 & L181
+  <div className='flex min-h-0 flex-1 flex-col gap-[var(--sp-1)] overflow-y-auto px-[var(--sp-2)] pb-[var(--sp-3)]'>
+    ...
+    <button
+      ref={buttonRef}
+      type='button'
+      aria-current={active ? 'true' : undefined}
+      aria-label={pageLabel(entry, deckLength)}
+      tabIndex={active ? 0 : -1}
+      ...
+    >
+  ```
 - **问题机制**：
-  外层使用 `<nav>`，内部项目使用 `tabIndex={active ? 0 : -1}` 漫游焦点与 `aria-current`，但未声明复合列表角色（如 `role="tablist"` / `role="tab"` 或 `role="listbox"` / `role="option"`），无障碍辅助工具无法播报列表项在集合中的位置关系（如 "第 3 项，共 20 项"）。
-- **修复方案**：
-  补充标准 ARIA 集合语义，规范键盘可达性。
+  外层使用 `<nav>`，内部列表项使用 `tabIndex={active ? 0 : -1}` 漫游焦点与 `aria-current`，但未声明复合列表角色（如 `role="tablist"` / `role="tab"` 或 `role="listbox"` / `role="option"`），无障碍辅助工具无法播报列表项在集合中的位置关系（如 "第 3 项，共 20 项"）。
+- **修复方案与落地设计**：
+  为容器添加 `role="tablist"` 与 `aria-orientation="vertical"`；列表项 `<button>` 增加 `role="tab"`、`aria-selected={Boolean(active)}`、`aria-setsize={entries.length}`、`aria-posinset={entryIndex + 1}`。
 
 ---
 
 ### P-16 (SPEC-06 / REV-01): Canvas/JS 层忽略减弱动画偏好
-- **涉及文件**：`src/client/features/presentation/slide-canvas.tsx` (L55, L72, L190)
-- **现有代码**：
+- **涉及文件**：`src/client/features/presentation/slide-canvas.tsx` (L32, L56, L73, L195-L214)
+- **涉及函数/组件**：`SlideCanvas`、`SlideViewport`、`useSlideDiagrams`
+- **现有代码 (Ground Truth)**：
   ```ts
+  // src/client/features/presentation/slide-canvas.tsx L56, L73, L195
   export function SlideCanvas({ ..., instantCharts = false }: SlideCanvasProps) {
     ...
     useSlideDiagrams(hostRef, html, dark, markDiagramsRendered, instantCharts)
@@ -422,96 +587,121 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
   ```
 - **问题机制**：
   `instantCharts` 在正常放映时硬编码为 `false`。虽然 CSS 动效已被全局 `tokens.css` 重置，但 Chart.js 是 JS/Canvas 动效，依旧在放映时播放完整入场动画。在系统开启 `prefers-reduced-motion: reduce` 时，图表仍会进行繁复的缩放旋转动效，可能引发前庭功能障碍用户的不适。
-- **修复方案**：
-  检测 `window.matchMedia('(prefers-reduced-motion: reduce)').matches`，当用户开启减弱动画偏好时，强制将 `instantCharts` 设为 `true`。
+- **修复方案与落地设计**：
+  在 `SlideCanvas` 中读取媒体查询 `prefers-reduced-motion`：
+  ```ts
+  const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const effectiveInstantCharts = instantCharts || prefersReducedMotion
+  useSlideDiagrams(hostRef, html, dark, markDiagramsRendered, effectiveInstantCharts)
+  ```
 
 ---
 
 ### P-17 (FEAT-07): 从当前光标所在位置就近启动演示
 - **涉及文件**：
-  1. `src/client/features/workspace/workspace/use-workspace.ts` (L309-L313)
+  1. `src/client/features/presentation/slides.ts` (L20-L56)
   2. `src/client/store/presentation.ts` (L20, L33)
-  3. `src/client/features/presentation/slides.ts`
-- **问题机制**：
-  目前点击演示模式按钮时，始终强制从第 0 页开始：
+  3. `src/client/features/workspace/workspace/use-workspace.ts` (L309-L313)
+- **涉及函数**：`findSlideIndexByOffset`、`useStartPresentation`、`usePresentation`
+- **现有代码 (Ground Truth)**：
   ```ts
+  // src/client/features/workspace/workspace/use-workspace.ts L309-L313
   function useStartPresentation(note: NotesState['notes'][string] | null | undefined, content: string): () => void {
     return useCallback(() => {
       if (note) usePresentation.getState().start({ noteId: note.id, content, title: note.title })
     }, [note, content])
   }
   ```
-  在编辑长篇笔记（如 50 页）时，用户每次想要预览正在编辑的某张幻灯片，都必须从第 0 页重新翻 40 次，效率极其低下。
-- **修复方案**：
-  1. 在 `slides.ts` 中提供 `slideIndexAtOffset(source: string, offset: number): number` 工具函数。
-  2. 获取 CodeMirror 编辑器当前光标行/偏移量，计算出当前编辑的 Slide 索引。
-  3. 在 `usePresentation.getState().start({ ..., initialSlideIndex })` 中传入该索引，使演示模式就近从当前正在撰写的幻灯片启动。
+- **问题机制**：
+  目前点击演示模式按钮时，始终强制从第 0 页开始。在编辑长篇笔记（如 50 页）时，用户每次想要预览正在编辑的某张幻灯片，都必须从第 0 页重新翻 40 次，效率极其低下。
+- **修复方案与落地设计**：
+  1. 在 `slides.ts` 中实现纯函数 `findSlideIndexByOffset(source: string, offset: number): number`；
+  2. 在 `useWorkspace` 启动演示时，从编辑器实例获取光标字符偏移量：`const offset = getActiveEditorView()?.state.selection.main.head ?? 0`；
+  3. 在 `usePresentation.getState().start({ ..., initialSlideIndex })` 中应用该索引。
 
 ---
 
 ### P-18 (PERF-02): 跟随模式协同打字时全篇推倒重测雪崩
-- **涉及文件**：`src/client/features/presentation/presentation-overlay.tsx` (L407-L418)
-- **现有代码**：
+- **涉及文件**：`src/client/features/presentation/presentation-overlay.tsx` (L421-L432)、`src/client/features/presentation/slide-html.ts`
+- **涉及函数/Hook**：`useSlidePlans`
+- **现有代码 (Ground Truth)**：
   ```ts
+  // src/client/features/presentation/presentation-overlay.tsx L421-L432
   function useSlidePlans(fingerprint: string) {
     const [plans, setPlans] = useState<Record<number, SlidePlan>>({})
     useEffect(() => {
       setPlans({})
     }, [fingerprint])
-    ...
+    const reportPlan = useCallback((slide: number, plan: SlidePlan) => {
+      setPlans((current) => (samePlan(current[slide], plan) ? current : { ...current, [slide]: plan }))
+    }, [])
+    return { plans, reportPlan }
   }
   ```
 - **问题机制**：
   协同编辑或本地跟随打字时，全篇笔记的 `fingerprint` 改变，导致所有幻灯片的 `SlidePlan` 被整齐清空为 `{}`，预热线程从第 0 页开始从头量测。若一篇长文有 30 页，每次打字都会引发全篇重测风暴。
-- **修复方案**：
-  为每个 Slide 建立独立的子指纹（`hashContent(slideSource)`）。当某页正文内容未改变时，坚决复用其缓存与已测 Plan，仅对内容变更的 Slide 进行增量失效。
+- **修复方案与落地设计**：
+  为每个 Slide 建立独立的子指纹（`hashContent(slideSource)`）。当某页正文内容未改变时，坚决复用其缓存与已测 Plan，仅对内容变更的 Slide 进行增量失效：
+  ```ts
+  // 维护按 Slide 源码内容哈希索引的 LRU 缓存池
+  const planCache = new Map<string, SlidePlan>()
+  ```
 
 ---
 
 ### P-19 (PERF-03 / REV-03): 侧栏多 Observer 实例与广播惊群效应
-- **涉及文件**：`src/client/features/presentation/slide-rail.tsx` (L177, L260-L272)
-- **现有代码**：
+- **涉及文件**：`src/client/features/presentation/slide-rail.tsx` (L177, L260-L272)、`src/client/features/presentation/slide-html.ts`
+- **现有代码 (Ground Truth)**：
   ```ts
+  // src/client/features/presentation/slide-rail.tsx L177, L260-L272
   const cached = useSyncExternalStore(subscribeSlideHtml, () => readSlideHtml(cacheKey)?.html ?? '', () => '')
   ...
   function useNearViewport(ref: RefObject<HTMLElement | null>): boolean {
     ...
     const observer = new IntersectionObserver(...)
     observer.observe(element)
-    ...
   }
   ```
 - **问题机制**：
   1. 100 张幻灯片的列表会创建 100 个 `IntersectionObserver` 实例，浪费浏览器内部资源。
   2. 全局只有一个 `subscribeSlideHtml` 事件通道，后台预热线程每完成 1 页，就触发一次广播，导致 100 个 `SlideRailItem` 同时被唤醒执行 `useSyncExternalStore` 回调，产生惊群效应。
-- **修复方案**：
-  1. 侧栏顶层使用单例共享的 `IntersectionObserver`。
-  2. 订阅机制优化为带 Key 的精准订阅，单页量测完成仅通知关联的该页缩略图。
+- **修复方案与落地设计**：
+  1. 侧栏顶层使用单例共享的 `IntersectionObserver` 实例供各子项复用；
+  2. 订阅机制优化为带 Key 的精准订阅 `subscribeSlideHtmlByKey(cacheKey, callback)`，单页量测完成仅通知关联的该页缩略图。
 
 ---
 
 ### P-20 (PERF-04 / REV-07): 导出 PDF/图片缺乏进度反馈且长篇存在 OOM 风险
 - **涉及文件**：`src/client/features/presentation/deck-print.tsx` (L91-L108, L138-L148)
-- **现有代码**：
+- **涉及函数/组件**：`DeckImageSheet`、`saveDeckPages`
+- **现有代码 (Ground Truth)**：
   ```ts
-  for (const [index, page] of pages.entries()) {
-    images.push({ path: `...`, blob: await renderDeckPagePng(page, geometry, css) })
+  // src/client/features/presentation/deck-print.tsx L138-L148
+  async function saveDeckPages(root: HTMLElement, metrics: StageMetrics, title: string): Promise<number> {
+    const pages = [...root.querySelectorAll<HTMLElement>('.deck-print-page')]
+    const geometry = deckImageGeometry(metrics)
+    const css = await collectDeckCss()
+    const images: { path: string; blob: Blob }[] = []
+    for (const [index, page] of pages.entries()) {
+      images.push({ path: `${safeFileName(title) || 'deck'}-${String(index + 1).padStart(2, '0')}.png`, blob: await renderDeckPagePng(page, geometry, css) })
+    }
+    saveDeckImages(await zipDeckImages(images), `${safeFileName(title) || 'deck'}-images.zip`)
+    return images.length
   }
-  saveDeckImages(await zipDeckImages(images), `...`)
   ```
 - **问题机制**：
-  1. 长达数十页的高清幻灯片渲染为 2K/4K 物理分辨率 PNG，所有 Blob 同时常驻于 `images` 数组中，极易打爆移动端或轻薄本的可用内存，触发浏览器 OOM 崩溃。
+  1. 长达数十页的高清幻灯片渲染为 2K/4K 物理分辨率 PNG，所有 Blob 同时常驻于 `images` 数组中，极易打爆可用内存，触发浏览器 OOM 崩溃。
   2. 导出过程中界面没有任何进度条指示，用户以为卡死会重复点击。
-- **修复方案**：
-  1. 增加导出进度弹窗/Toast 实时展示 `正在导出 (3/30)...`。
-  2. 串行分批挂载和流式生成，减轻瞬时内存峰值。
+- **修复方案与落地设计**：
+  1. 引入进度回调 `onProgress(current, total)`，驱动 Toast / 模态条实时展示 `正在导出 (3/30)...`；
+  2. 串行分批挂载和流式生成，处理完单页即时压缩打包并释放位图 Blob 与内存。
 
 ---
 
 ### P-21 (SEC-03): 嵌套 Bento-Slides 代码块卡死在 Loading 状态
 - **涉及文件**：`src/client/features/presentation/slide-canvas.tsx` (L60-L96)、`src/client/lib/markdown/renderer/fence.ts` (L230-L245)
 - **涉及函数/组件**：`SlideCanvas`、`useSlideDiagrams` 与 Bento-Slides 容器
-- **现有代码**：
+- **现有代码 (Ground Truth)**：
   ```ts
   // src/client/lib/markdown/renderer/fence.ts L233-L241
   `<div class="bento-slides-block loading"${line} data-bento-slides="" data-bento-slides-index="${index}" aria-busy="true">`,
@@ -525,7 +715,7 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
   ```
 - **问题机制**：
   在常规 Markdown 预览中，`useBentoSlides` Hook 会扫描所有 `div[data-bento-slides]` 并实例化 Bento-Slides 运行时渲染交互卡片。然而全笔记演示模式的 `SlideCanvas` 仅挂载了 `useSlideDiagrams`（仅处理 Chart.js 和 Mermaid），未引入 Bento-Slides 运行时。若用户笔记中包含 ` ```slides ` 围栏块，放映时这些代码块在舞台中央永久呈现带有旋转微标的 "Loading slides..." 占位态，无法展示任何内容。
-- **修复方案**：
+- **修复方案与落地设计**：
   在 `SlideCanvas` 中对 Bento-Slides 代码块提供优雅降级：
   1. 引入轻量级静态降级 Hook `useBentoSlidesFallback(hostRef, html)`；
   2. 遍历 `.bento-slides-block.loading`，解析其绑定的 `fences.slides` 内容，提取幻灯片标题与正文摘要，直接渲染为静态多栏卡片网格预览；
@@ -536,7 +726,7 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
 ### P-22 (SEC-04): 命令面板（Cmd+K / Cmd+P）缺少演示模式入口
 - **涉及文件**：`src/client/features/command/command-palette/use-commands.tsx` (L97-L110)
 - **涉及函数**：`currentNoteCommands(activeNote, deps)`
-- **现有代码**：
+- **现有代码 (Ground Truth)**：
   ```ts
   // src/client/features/command/command-palette/use-commands.tsx L104-L106
   { id: 'cmd-kanban-from-outline', kind: 'command', label: t('workspace.kanban_from_outline'), icon: <Kanban size={14} />, group: currentNoteGroup, run: () => { const view = getActiveEditorView(); if (view) generateKanbanFromOutline(view) } },
@@ -545,7 +735,7 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
   ```
 - **问题机制**：
   `currentNoteCommands` 包含了“从大纲生成幻灯片代码块”（`cmd-slides-from-outline`），却没有直接“启动演示模式”命令。键盘流用户在调起命令面板后输入“演示”或“presentation”，只能看到生成代码块命令，无法快捷呼出全笔记演示模式。
-- **修复方案**：
+- **修复方案与落地设计**：
   在 `currentNoteCommands` 中注册 `cmd-presentation-mode` 命令项：
   ```ts
   {
@@ -568,7 +758,7 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
 ### P-23 (FEAT-01): 切分规则仅限水平线 `---`，无法智能切分长笔记
 - **涉及文件**：`src/client/features/presentation/slides.ts` (L20-L56)
 - **涉及函数**：`splitIntoSlides(source: string): string[]`
-- **现有代码**：
+- **现有代码 (Ground Truth)**：
   ```ts
   // src/client/features/presentation/slides.ts L44-L47
   if (SLIDE_BREAK.test(line) && (current.length === 0 || current[current.length - 1]!.trim() === '')) {
@@ -578,17 +768,28 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
   ```
 - **问题机制**：
   目前仅识别显式水平分割线 `---`（且必须上方有空行）。对于普通的长篇 Markdown 笔记（包含大量 H1 / H2 章节），直接打开演示模式会把整篇笔记塞进单张超长 Slide，生成几十个子页，失去幻灯片讲演视觉。
-- **修复方案**：
+- **修复方案与落地设计**：
   在 `slides.ts` 中增强智能切分能力：
   1. 解析 Frontmatter 配置（如 `slide-level: 1 | 2`）；
-  2. 若文档中未出现显式 `---` 分隔符，自动检测一级标题（`^# `）或二级标题（`^## `），在代码块围栏之外将目标标题行作为分页断点，实现普通笔记“一键无痛转 PPT 演示”。
+  2. 若文档中未出现显式 `---` 分隔符，自动检测一级标题（`^# `）或二级标题（`^## `），在代码块围栏之外将目标标题行作为分页断点，实现普通笔记“一键无痛转 PPT 演示”：
+  ```ts
+  export function splitIntoSlides(source: string): string[] {
+    const hasBreaks = /(?:^|\r?\n) {0,3}-{3,}[ \t]*(?:\r?\n|$)/.test(source)
+    if (!hasBreaks) {
+      // 智能基于 H1/H2 标题进行切分
+      return splitByHeadings(source)
+    }
+    // 原有基于 --- 切分逻辑
+    ...
+  }
+  ```
 
 ---
 
 ### P-24 (FEAT-03): 演讲私有备注语法支持 (`<!-- note: ... -->`)
-- **涉及文件**：`src/client/features/presentation/slide-html.ts` (L1-L60)、`src/client/features/presentation/slides.ts`
+- **涉及文件**：`src/client/features/presentation/slide-html.ts` (L48-L60)、`src/client/features/presentation/slides.ts`
 - **涉及函数**：`extractSpeakerNotes(source: string): { cleanSource: string; notes: string }`
-- **现有代码**：
+- **现有代码 (Ground Truth)**：
   ```ts
   // src/client/features/presentation/slide-html.ts L48-L50
   export function slideMarkup(rendered: RenderResult): SlideMarkup {
@@ -597,22 +798,33 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
   ```
 - **问题机制**：
   演讲过程中，演讲者常需要针对某张幻灯片记录私有备忘小抄（Speaker Notes）。Inkstone 目前将所有文本全量送入 Markdown 渲染流水线，若用户在正文中写入备忘内容，将直接投射在大屏上，造成隐私泄露。
-- **修复方案**：
-  1. 在 Markdown 解析流水线中抽取 `<!-- note: ... -->` 或 `<!-- speaker: ... -->` 注释块；
+- **修复方案与落地设计**：
+  1. 在 Markdown 解析流水线中抽取 `<!--\s*(?:note|speaker):\s*([\s\S]*?)-->` 注释块；
   2. 正文展示时剔除该注释块，杜绝公屏投影泄露；
-  3. 将抽取的备注字符串结构化存储为 Slide 元数据，供演讲者双屏模式（P-28）实时读取呈现。
+  3. 将抽取的备注字符串结构化存储为 Slide 元数据，供演讲者双屏模式（P-28）实时读取呈现：
+  ```ts
+  const NOTE_BLOCK = /<!--\s*(?:note|speaker):\s*([\s\S]*?)-->/gi
+  export function extractSpeakerNotes(source: string): { cleanSource: string; notes: string } {
+    const notes: string[] = []
+    const cleanSource = source.replace(NOTE_BLOCK, (_, noteContent: string) => {
+      notes.push(noteContent.trim())
+      return ''
+    })
+    return { cleanSource: cleanSource.trim(), notes: notes.join('\n\n') }
+  }
+  ```
 
 ---
 
 ### P-25 (FEAT-04): 虚拟激光笔 (Laser Pointer) 与聚光灯工具
-- **涉及文件**：`src/client/features/presentation/presentation-overlay.tsx`、`src/client/features/presentation/presentation-stage.tsx`
+- **涉及文件**：`src/client/features/presentation/presentation-overlay.tsx`、`src/client/features/presentation/presentation-keys.ts`
 - **涉及函数/组件**：`PresentationStage`、`LaserCanvas`
-- **现有代码**：
+- **现有代码 (Ground Truth)**：
   舞台上目前仅显示系统标准鼠标光标，无激光指引图层。
 - **问题机制**：
   在线上共享屏幕或大型会议厅投影时，普通鼠标小箭头在复杂图表与文字间极难被观众捕捉。演讲者需要醒目的虚拟激光红点进行视觉引导。
-- **修复方案**：
-  1. 在 `presentation-keys.ts` 注册 `'laser'` 快捷键（`L` 键，或 `Shift+L`）；
+- **修复方案与落地设计**：
+  1. 在 `presentation-keys.ts` 注册 `'laser'` 快捷键（`L` 键）；
   2. 在 `PresentationStage` 顶层覆盖 `LaserCanvas`：
      - 激活激光笔时将指针光标设为 `cursor: none`；
      - 监听光标坐标，在 Canvas 上实时绘制具有柔和红光脉冲光晕与粒子微光拖尾的激光笔圆点；
@@ -623,10 +835,10 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
 ### P-26 (FEAT-06): 全局幻灯片全览网格矩阵 (Overview Grid)
 - **涉及文件**：新增 `src/client/features/presentation/slide-overview-grid.tsx`、联动 `src/client/features/presentation/presentation-overlay.tsx`
 - **涉及函数/组件**：`SlideOverviewGrid`
-- **现有代码**：当前仅有左侧纵向缩略图抽屉（`SlideRail`），无全览矩阵。
+- **现有代码 (Ground Truth)**：当前仅有左侧纵向缩略图抽屉（`SlideRail`），无全览矩阵。
 - **问题机制**：
   在演说 Q&A 问答环节或长达数十页的报告中，演讲者需要快速鸟瞰全篇幻灯片并精准跳转。单列抽屉需要大量滚动，无法一览全局。
-- **修复方案**：
+- **修复方案与落地设计**：
   1. 在 `presentation-keys.ts` 注册 `'overview'` 快捷键（`G` 或 `O` 键）；
   2. 新增 `SlideOverviewGrid` 弹层组件：
      - 全屏展示响应式 Grid 缩略图矩阵（每行 4~5 张幻灯片卡片）；
@@ -636,9 +848,9 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
 ---
 
 ### P-27 (FEAT-08): 封面居中版式与两栏对比排版
-- **涉及文件**：`src/client/features/presentation/slide-prose.tsx` (L9-L24)、`src/client/styles/presentation.css`
+- **涉及文件**：`src/client/features/presentation/slide-prose.tsx` (L17-L23)、`src/client/styles/presentation.css`
 - **涉及函数/组件**：`SlideProse`
-- **现有代码**：
+- **现有代码 (Ground Truth)**：
   ```tsx
   // src/client/features/presentation/slide-prose.tsx L17-L23
   <div className='mx-auto' style={{ width: contentWidth }}>
@@ -649,7 +861,7 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
   ```
 - **问题机制**：
   所有幻灯片均强制采用单调的流式左对齐排版。演说首页的“主标题 + 副标题 + 演说者”无法居中展示；两栏概念对比或图文并茂时缺乏原生分栏布局。
-- **修复方案**：
+- **修复方案与落地设计**：
   1. 识别版式标记：
      - 若首页包含一级标题，或包含 `<!-- layout: cover -->`，添加 `slide-layout-cover` 样式类，通过 Flexbox/Grid 实现垂直与水平双向居中排版；
      - 支持 `<!-- layout: split -->` 或 `::: two-columns` 分栏标记，渲染为左右等宽双栏网格；
@@ -660,10 +872,10 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
 ### P-28 (FEAT-02): 独立演讲者双屏模式 (Presenter View)
 - **涉及文件**：新增 `src/client/features/presentation/presenter-view/presenter-window.tsx`、`src/client/features/presentation/presenter-view/use-presenter-channel.ts`
 - **涉及函数/组件**：`openPresenterWindow`、`usePresenterChannel`
-- **现有代码**：完全缺失双屏演讲者模式。
+- **现有代码 (Ground Truth)**：完全缺失双屏演讲者模式。
 - **问题机制**：
   在实际接投影仪/外接大屏演讲时，演讲者需要自身屏幕显示：当前页、下一页预览、耗时计时器、当前时间、演讲私有备忘录（Speaker Notes）；而投影幕布仅显示当前幻灯片画面。目前 Inkstone 仅有单屏模式，两者画面完全镜像，严重制约专业演讲体验。
-- **修复方案**：
+- **修复方案与落地设计**：
   1. 控制条提供“演讲者控制台（Presenter View）”按钮（快捷键 `P` / `Alt+P`）；
   2. 点击后通过 `window.open` 弹出独立窗口作为第二屏控制台；
   3. 主窗口与子窗口通过 `new BroadcastChannel('inkstone-presenter-sync')` 进行低延迟状态双向同步：
