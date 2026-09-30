@@ -152,6 +152,7 @@ function CalendarDayCellHeader({
       <button
         type='button'
         onClick={addOnThisDay}
+        data-day={day.dateStr}
         aria-label={t('preview.kanban_new_item_on_value0', { value0: day.dayNum })}
         className={`cursor-pointer rounded-[var(--r-full)] text-[length:var(--text-12)] ${
           day.isToday

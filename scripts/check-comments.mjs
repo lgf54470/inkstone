@@ -2435,6 +2435,7 @@ const allowed = new Map([
   ]],
   ['src/client/components/dashboard-blocks.tsx', [
     '/** What the percentage is measured against, read to screen readers only ("vs previous period"). */',
+    '/** A second measure shown under the number when the card would otherwise be read as covering it. */',
     '/**\n   * Shown instead of the number when this instance cannot collect it at all. A zero would answer a\n   * question nobody asked — "nobody visited" — where the truth is "not counted here".\n   */',
     '/* The arrow says nothing to a screen reader, and the percentage needs what it was\n                measured against. That hint used to ride on an `aria-label` here, which a span with no\n                role may not carry: axe reports it as `aria-prohibited-attr` and the attribute is\n                dropped, so the badge read as a bare percentage. The fixture account never painted a\n                badge at all (no traffic, no delta — SH-103), which is why it went unnoticed\n                (SH-102). Visually hidden text needs no role: it is read where it sits, so the badge\n                still says "+12% against the previous period". */',
     '// The line repeats the number above it, so it stays out of the reading order.',
@@ -2869,6 +2870,9 @@ const allowed = new Map([
     '// an image URL that passed the allowlist, or an avatar drawn locally from the name. A comment',
     '// stores no third-party default any more, because fetching one would put every reader\'s browser',
     '// (and this admin\'s) on someone else\'s server for a name they typed.',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/index.tsx', [
+    '/**\n * The range\'s numbers, and the cumulative counter named as what it is. A card used to answer with\n * whichever of the two was larger (`analytics.totalViews ?? stats.totalViews`), so a week with no\n * visits displayed the blog\'s whole history next to a real PV of 0, and both were labelled the same\n * way. An unloaded payload says "not collected" rather than 0.\n */',
   ]],
   ['src/client/features/blog/blog-dashboard-view/radiogroup-names.test.ts', [
     '/**\n * SH-46 brought the blog dashboard\'s two `Segmented` controls under the same rules\n * the share dashboard already follows: the toolbar range picker carries its own\n * `label`, and the metric picker is named by the card heading it sits beside. The\n * locale is not loaded in this harness, so `t()` echoes the key and the assertions\n * compare against keys.\n */',
@@ -10519,6 +10523,7 @@ const allowed = new Map([
     '// opens.',
     '// The view hands the day over as the defaults for the new item, keyed by the view\'s own date',
     '// field (the root writes them onto the item it creates), not as a bare date string.',
+    '/**\n   * The day number button of today\'s cell. It is addressed by the day it stands for: a month grid\n   * starts in the last days of the previous month, so its number (e.g. the 30th) can appear twice and\n   * the accessible name — which is only the number — cannot tell the two cells apart.\n   */',
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-view-state.test.ts', [
     '// The tag filter is view state like the rest of them, and a test of its own lives below.',
@@ -12294,6 +12299,7 @@ const allowed = new Map([
   ]],
   ['src/shared/types/blog.ts', [
     '/**\n * The account a public blog request is for. The address travels as `?owner=<username>` until the\n * host-based routes land; a request that carries none is answered by the instance default blog, and\n * every public answer names the blog it answered for in `X-Inkstone-Blog-Owner`.\n */',
+    '/** The posts\' own cumulative counter, which is not the range\'s visits. */',
   ]],
   ['src/shared/types/board-library.ts', [
     '/**\n * Whiteboard libraries as the API hands them around: an account owns a set of *named*\n * libraries — the same shape the public directory lists — and each one is a single\n * `.excalidrawlib` document stored as its own object. Boards draw from the one the user\n * selected (`preview.boardLibrary`), so every note sees the same items.\n */',
@@ -13063,6 +13069,12 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/blog/stats.ts', [
     '/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */',
+    '// The counter on the posts is a different measure from the range\'s own visits (it also holds',
+    '// what a browser reported before this account ever kept visit rows), so it travels separately',
+    '// instead of being folded into the range numbers.',
+    '/**\n * The range\'s own numbers, and nothing else. It used to answer with the largest of three values —\n * the range count, the cumulative counter on the posts, and a `views × 0.75` visitors estimate — so\n * a range with no visits at all reported the blog\'s whole history under a "this week" label, and the\n * estimate appeared next to a real PV of 0.\n */',
+    '/**\n * The ranking is the range\'s own: a post is on it because this range has visits for it, and its\n * numbers are those visits. It used to be ranked by the cumulative `views` column and to invent a\n * visitor count (`max(1, views × 0.75)`) for posts the range had no data for — a fabricated number\n * was the only possible one there, because the question it answered was about a window nothing had\n * recorded.\n */',
+    '/**\n * Every card is answered from the range\'s own rows. With no rows the maps are empty and the cards\n * say so; they used to be filled with a hard-coded picture ("China 100%, Direct 100%, desktop 60%, macOS\n * 50%, Chrome 60%") scaled by the posts\' cumulative counter, which is how a blog with no collected\n * traffic showed a full audience breakdown.\n */',
     '// Wiping the whole trail is unrecoverable, so a stolen session must re-prove',
     '// it holds the account password before the delete runs (same as share SH-12).',
     '/**\n * `older_than` must name its own window: reading an unparseable count as the default would delete a\n * span the caller never asked for, and `parseInt` would take `12.7` or `30abc` as a number rather\n * than refuse them. A rejected value is a 400; an accepted one is bounded by the shared clamp.\n */',
@@ -14084,6 +14096,12 @@ const allowed = new Map([
     '// that service and put whoever opened the moderation queue on its server.',
     '// The public site reads the blog it serves, not a second key nobody writes: patching the site',
     '// name has to reach the reader, which is what this used to assert the opposite of (SEC-09).',
+    '// The cumulative counter on the posts is not the range\'s traffic, and no amount of it can be',
+    '// turned into a visitor count or a country distribution — the app never recorded those rows. It',
+    '// used to be, at 0.75 and a hard-coded "China 100% / Direct 100% / desktop 60% / macOS 50%"',
+    '// picture, which is what made a blog with no collected traffic show a full audience breakdown.',
+    '// The ranking used to be the posts\' stored views, with a visitor count invented for the ones the',
+    '// range had no data for; it is the range\'s own ranking now, and only posts it recorded appear.',
     '/** Seeds one post of this account and one of another, each with a comment. */',
     '// LIKE reads `_` and `%` as wildcards, so a needle bound raw answers with unrelated rows — and a',
     '// search for `%` alone degenerates into a scan of everything — on both the admin listings and the',
