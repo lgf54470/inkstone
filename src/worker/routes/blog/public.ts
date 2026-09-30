@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
 import type { AppBindings } from '../../env'
-import { ApiError } from '../../lib/errors'
 import type { BlogCalendarRow, BlogPostPublicRow, BlogPublicCategoryRow, BlogTimelineRow } from '../../db/rows'
 import { escapeLike, likeAny } from '../../lib/like'
-import { recordBlogVisit } from './visits'
+import { loadPublicPostBySlug } from './public-post'
+import { registerBlogPublicVisitBeaconRoute } from './visit-beacon'
 import { safeDecodeTagParam, summarizePostTagCounts } from './helpers'
 
 
@@ -25,6 +25,7 @@ export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): v
   registerBlogPublicCalendarRoute(blogPublicRoutes)
   registerBlogPublicCommentsRoutes(blogPublicRoutes)
   registerBlogPublicLinksRoutes(blogPublicRoutes)
+  registerBlogPublicVisitBeaconRoute(blogPublicRoutes)
   registerPublicMusicRoutes(blogPublicRoutes)
 }
 
@@ -228,22 +229,16 @@ function registerBlogPublicPostDetailRoute(blogPublicRoutes: Hono<AppBindings>):
     const slug = c.req.param('slug')
     const row = await loadPublicPostBySlug(c.env.DB, ownerId, slug)
 
-    const now = Date.now()
-
-    const countsForViews = await recordBlogVisit(c, row, now)
-    if (countsForViews) {
-      await c.env.DB
-        .prepare('UPDATE blog_posts SET views = views + 1 WHERE id = ?1')
-        .bind(row.id)
-        .run()
-    }
-
+    // Reading a post does not count as a view. This request comes from the reader's server (the blog
+    // frontend renders server-side), so it carries no visitor user-agent and `isBot('')` was true for
+    // every one of them: the rows it wrote were all bots, the counter never moved, and the dashboard
+    // therefore read 0 PV for traffic it had in fact recorded. The count comes from the browser's own
+    // beacon (see visit-beacon.ts) and this path only serves the post.
     const post = {
       ...toPublicPostSummary(row),
       content: row.content,
       allowComments: Boolean(row.allow_comments),
       isPinned: Boolean(row.is_pinned),
-      views: (row.views || 0) + (countsForViews ? 1 : 0),
     }
 
     const prevPost = await loadAdjacentPost(c.env.DB, ownerId, row.published_at, false)
@@ -251,25 +246,6 @@ function registerBlogPublicPostDetailRoute(blogPublicRoutes: Hono<AppBindings>):
 
     return c.json({ post, prevPost, nextPost })
   })
-}
-
-async function loadPublicPostBySlug(db: D1Database, ownerId: string, slug: string): Promise<BlogPostPublicRow> {
-  const row = await db
-    .prepare(`
-      SELECT p.*,
-        c.name as category_name, c.slug as category_slug,
-        (SELECT COUNT(*) FROM blog_comments cm WHERE cm.post_id = p.id AND cm.status = 'approved') as comments_count
-      FROM blog_posts p
-      LEFT JOIN blog_categories c ON p.category_id = c.id
-      WHERE p.slug = ?1 AND p.is_published = 1 AND p.user_id = ?2
-    `)
-    .bind(slug, ownerId)
-    .first<BlogPostPublicRow>()
-
-  if (!row) {
-    throw ApiError.notFound('Post not found')
-  }
-  return row
 }
 
 async function loadAdjacentPost(db: D1Database, ownerId: string, publishedAt: number, newer: boolean): Promise<{ slug: string; title: string } | null> {

@@ -25,7 +25,19 @@ interface BlogVisitParams {
   isOwner: number
 }
 
-async function collectVisitParams(c: Context<AppBindings>, row: BlogPostPublicRow, now: number): Promise<BlogVisitParams> {
+interface VisitContext {
+  /** The reader's own referrer. Absent on the server-side read path, which forwards none. */
+  referrer?: string | null
+  /** The site the blog is served at, used to tell a referral from the blog itself. */
+  selfReferrerHost?: string | null
+}
+
+async function collectVisitParams(
+  c: Context<AppBindings>,
+  row: BlogPostPublicRow,
+  now: number,
+  context: VisitContext,
+): Promise<BlogVisitParams> {
   // CF-Connecting-IP is injected by the Cloudflare edge (see requestClientIp);
   // raw x-forwarded-for is client-controlled and must not feed analytics.
   const rawIp = requestClientIp(c) || ''
@@ -36,7 +48,7 @@ async function collectVisitParams(c: Context<AppBindings>, row: BlogPostPublicRo
   // per owner, and a missing secret records no fingerprint at all.
   const fpSecret = c.env.VISIT_FP_SECRET ? `${c.env.VISIT_FP_SECRET}:${row.user_id}` : null
   const visitorFp = fpSecret ? await computeVisitorFingerprint(rawIp, '', fpSecret) : null
-  const referrerCandidate = c.req.header('referer') || null
+  const referrerCandidate = context.referrer ?? c.req.header('referer') ?? null
   const referrerInfo = sanitizeVisitReferrer(referrerCandidate)
   return {
     userId: row.user_id,
@@ -58,7 +70,7 @@ async function collectVisitParams(c: Context<AppBindings>, row: BlogPostPublicRo
     // The same judgement the share side applies (server-side, against the host the request arrived
     // on): the column was written as a literal 0, so the dashboard's "exclude self-referrals"
     // switch had nothing to exclude and reported a number that was never measured.
-    isSelfReferrer: isSelfReferrer(referrerCandidate, new URL(c.req.url).host) ? 1 : 0,
+    isSelfReferrer: isSelfReferrer(referrerCandidate, context.selfReferrerHost ?? new URL(c.req.url).host) ? 1 : 0,
     isOwner: loggedInUserId && loggedInUserId === row.user_id ? 1 : 0,
   }
 }
@@ -98,9 +110,14 @@ async function insertBlogVisit(db: D1Database, params: BlogVisitParams): Promise
 // The analytics row is written for every visit; the boolean tells the caller
 // whether this visit should bump the post's views counter (new fingerprint
 // within the dedupe window, not a bot).
-export async function recordBlogVisit(c: Context<AppBindings>, row: BlogPostPublicRow, now: number): Promise<boolean> {
+export async function recordBlogVisit(
+  c: Context<AppBindings>,
+  row: BlogPostPublicRow,
+  now: number,
+  context: VisitContext = {},
+): Promise<boolean> {
   try {
-    const params = await collectVisitParams(c, row, now)
+    const params = await collectVisitParams(c, row, now, context)
     if (params.visitorFp) {
       const seen = await c.env.DB
         .prepare('SELECT 1 AS seen FROM blog_visits WHERE post_id = ?1 AND visitor_fp = ?2 AND visited_at > ?3')

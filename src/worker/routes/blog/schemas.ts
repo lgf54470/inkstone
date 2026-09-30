@@ -108,6 +108,16 @@ export const blogCommentBatchSchema = z.object({
   commentIds: z.array(z.string()).max(BATCH_ROW_LIMIT, `At most ${BATCH_ROW_LIMIT} comments per request`),
 })
 
+/**
+ * What a page-view beacon carries. The view itself is what is being reported, so the body is only
+ * the post it happened on and where the reader came from; everything else (address, user-agent,
+ * country) is read off the request rather than trusted from the page.
+ */
+export const blogVisitBeaconSchema = z.object({
+  slug: z.string().min(1).max(200),
+  referrer: z.string().max(2048).nullable().optional(),
+})
+
 export const blogPublicCommentSchema = z.object({
   postSlug: z.string().min(1).max(200),
   parentId: z.string().max(64).nullable().optional(),

@@ -99,6 +99,23 @@ async function requestWithIp(
   return app.request(req, undefined, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
 }
 
+/** The reader's browser reporting a page view: the only caller that counts one. */
+async function postVisitBeacon(
+  app: Hono<AppBindings>,
+  slug: string,
+  clientIp: string,
+  headers?: Record<string, string>,
+  referrer?: string,
+): Promise<Response> {
+  const req = new Request('http://localhost/api/blog/public/visits', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': clientIp, ...headers },
+    body: JSON.stringify({ slug, referrer }),
+  })
+  Object.defineProperty(req, 'cf', { value: { clientIp } })
+  return app.request(req, undefined, DB_ENV.env as AppBindings['Bindings'], EXECUTION_CTX)
+}
+
 async function seedVisitAt(
   db: D1Shim,
   postId: string,
@@ -265,7 +282,9 @@ describe('blog public routes (real D1)', () => {
     expect(detail.status).toBe(200)
     const { post } = await detail.json()
     expect(post.title).toBe('Published')
-    expect(post.views).toBe(1)
+    // Reading a post is not a view: the beacon the reader's browser sends is (see visit-beacon.ts).
+    expect(post.views).toBe(0)
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_visits')).toMatchObject({ n: 0 })
 
     const timelineRes = await request(app, '/api/blog/public/timeline')
     expect(timelineRes.status).toBe(200)
@@ -276,31 +295,50 @@ describe('blog public routes (real D1)', () => {
     const timelinePosts = timelineData.timeline[postYear]?.[postMonth] || []
     expect(timelinePosts).toHaveLength(1)
     expect(timelinePosts[0].slug).toBe('published-one')
-    expect(timelinePosts[0].views).toBe(1)
+    expect(timelinePosts[0].views).toBe(0)
 
     const hidden = await request(app, '/api/blog/public/posts/draft-one')
     expect(hidden.status).toBe(404)
   })
 
-  it('counts blog views once per visitor fingerprint within the dedupe window', async () => {
+  // The beacon is what counts, and it counts what the visit path has always counted: one view per
+  // visitor fingerprint inside the dedupe window, another when a different reader arrives.
+  it('counts a beaconed view once per visitor fingerprint, and a second reader again', async () => {
     const db = await makeDb()
     await seedUser(db)
     await seedBlogPost(db, { slug: 'viewed-post', title: 'Viewed' })
     DB_ENV.env.VISIT_FP_SECRET = 'blog-dedupe-secret'
 
     const app = makeApp()
-    const first = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '203.0.113.11', { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' })
-    expect((await first.json()).post.views).toBe(1)
-    const second = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '203.0.113.11', { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' })
-    expect((await second.json()).post.views).toBe(1)
-    const row = await firstRow(db, 'SELECT views FROM blog_posts WHERE slug = ?1', 'viewed-post')
-    expect(row?.views).toBe(1)
+    const first = await postVisitBeacon(app, 'viewed-post', '203.0.113.11', { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' })
+    expect((await first.json()).counted).toBe(true)
 
-    const rotatedUa = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '203.0.113.11', { 'user-agent': 'Mozilla/5.0 Rotated/2.0' })
-    expect((await rotatedUa.json()).post.views).toBe(1)
+    const second = await postVisitBeacon(app, 'viewed-post', '203.0.113.11', { 'user-agent': 'Mozilla/5.0 Rotated/2.0' })
+    expect((await second.json()).counted).toBe(false)
+    expect(await firstRow(db, 'SELECT views FROM blog_posts WHERE slug = ?1', 'viewed-post')).toMatchObject({ views: 1 })
 
-    const freshVisitor = await requestWithIp(app, '/api/blog/public/posts/viewed-post', '198.51.100.99', { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' })
-    expect((await freshVisitor.json()).post.views).toBe(2)
+    const freshReader = await postVisitBeacon(app, 'viewed-post', '198.51.100.99', { 'user-agent': 'Mozilla/5.0 BlogTest/1.0' })
+    expect((await freshReader.json()).counted).toBe(true)
+
+    const detail = await request(app, '/api/blog/public/posts/viewed-post')
+    expect((await detail.json()).post.views).toBe(2)
+  })
+
+  it('refuses a beacon for a post this blog has not published, and does not count a bot', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'beacon-post', title: 'Beacon' })
+    await seedBlogPost(db, { slug: 'beacon-draft', title: 'Draft', is_published: false })
+
+    const app = makeApp()
+    const missing = await postVisitBeacon(app, 'no-such-post', '203.0.113.11')
+    expect(missing.status).toBe(404)
+    const draft = await postVisitBeacon(app, 'beacon-draft', '203.0.113.11')
+    expect(draft.status).toBe(404)
+
+    const bot = await postVisitBeacon(app, 'beacon-post', '203.0.113.12', { 'user-agent': 'Googlebot/2.1 (+http://www.google.com/bot.html)' })
+    expect((await bot.json()).counted).toBe(false)
+    expect(await firstRow(db, 'SELECT views FROM blog_posts WHERE slug = ?1', 'beacon-post')).toMatchObject({ views: 0 })
   })
 
   it('records no visitor fingerprint instead of a publicly-derivable date salt', async () => {
@@ -309,8 +347,8 @@ describe('blog public routes (real D1)', () => {
     await seedBlogPost(db, { slug: 'nosecret-post', title: 'NoSecret' })
 
     const app = makeApp()
-    await requestWithIp(app, '/api/blog/public/posts/nosecret-post', '203.0.113.11')
-    await requestWithIp(app, '/api/blog/public/posts/nosecret-post', '203.0.113.11')
+    await postVisitBeacon(app, 'nosecret-post', '203.0.113.11')
+    await postVisitBeacon(app, 'nosecret-post', '203.0.113.11')
     const rows = await db.prepare('SELECT visitor_fp FROM blog_visits WHERE slug = ?1').bind('nosecret-post').all()
     expect(rows.results).toHaveLength(2)
     expect(rows.results.every((r: { visitor_fp: unknown }) => r.visitor_fp === null)).toBe(true)
@@ -323,7 +361,7 @@ describe('blog public routes (real D1)', () => {
     DB_ENV.env.VISIT_FP_SECRET = 'blog-ref-secret'
 
     const app = makeApp()
-    await requestWithIp(app, '/api/blog/public/posts/ref-js', '203.0.113.11', { referer: 'javascript:alert(document.domain)' })
+    await postVisitBeacon(app, 'ref-js', '203.0.113.11', undefined, 'javascript:alert(document.domain)')
     const row = await firstRow(db, 'SELECT referrer, referrer_host FROM blog_visits WHERE slug = ?1', 'ref-js')
     expect(row?.referrer).toBeNull()
     expect(row?.referrer_host).toBeNull()
@@ -336,7 +374,7 @@ describe('blog public routes (real D1)', () => {
     DB_ENV.env.VISIT_FP_SECRET = 'blog-ref-secret'
 
     const app = makeApp()
-    await requestWithIp(app, '/api/blog/public/posts/ref-https', '203.0.113.11', { referer: 'https://news.example.com/article/42?token=secret#frag' })
+    await postVisitBeacon(app, 'ref-https', '203.0.113.11', undefined, 'https://news.example.com/article/42?token=secret#frag')
     const row = await firstRow(db, 'SELECT referrer, referrer_host FROM blog_visits WHERE slug = ?1', 'ref-https')
     expect(row?.referrer).toBe('https://news.example.com/article/42')
     expect(row?.referrer_host).toBe('news.example.com')
@@ -349,27 +387,37 @@ describe('blog public routes (real D1)', () => {
     DB_ENV.env.VISIT_FP_SECRET = 'blog-ref-secret'
 
     const app = makeApp()
-    await requestWithIp(app, '/api/blog/public/posts/ref-long', '203.0.113.11', { referer: `https://a.example.com/${'x'.repeat(600)}` })
+    await postVisitBeacon(app, 'ref-long', '203.0.113.11', undefined, `https://a.example.com/${'x'.repeat(600)}`)
     const row = await firstRow(db, 'SELECT referrer FROM blog_visits WHERE slug = ?1', 'ref-long')
     expect(typeof row?.referrer).toBe('string')
     expect((row?.referrer as string).length).toBeLessThanOrEqual(512)
   })
 
   // The column exists because the dashboard has a switch for it, and it was written as a literal 0,
-  // so the switch never had anything to exclude and the number it showed was never measured.
-  it('records a same-site referrer as a self-referral and an external one as not', async () => {
+  // so the switch never had anything to exclude and the number it showed was never measured. What a
+  // referral is measured against is the site the blog is served at (its own configured address), not
+  // the API host this beacon arrives at.
+  it('records a referral from the blog itself as a self-referral and an external one as not', async () => {
     const db = await makeDb()
     await seedUser(db)
     await seedBlogPost(db, { slug: 'ref-self', title: 'RefSelf' })
     DB_ENV.env.VISIT_FP_SECRET = 'blog-ref-secret'
 
     const app = makeApp()
-    await requestWithIp(app, '/api/blog/public/posts/ref-self', '203.0.113.11', { referer: 'http://localhost/archive' })
-    const selfRow = await firstRow(db, 'SELECT is_self_referrer FROM blog_visits WHERE slug = ?1', 'ref-self')
-    expect(selfRow?.is_self_referrer).toBe(1)
+    // The blog's own address is what the settings name, so point them at one before reporting a view
+    // that came from it.
+    await patchJson(app, '/api/blog/settings', { frontendUrl: 'https://blog.example.com' })
+    await postVisitBeacon(app, 'ref-self', '203.0.113.11', undefined, 'https://blog.example.com/archive')
+    expect(await firstRow(db, 'SELECT is_self_referrer FROM blog_visits WHERE slug = ?1', 'ref-self'))
+      .toMatchObject({ is_self_referrer: 1 })
+
+    await seedBlogPost(db, { slug: 'ref-api-host', title: 'RefApiHost' })
+    await postVisitBeacon(app, 'ref-api-host', '203.0.113.12', undefined, 'http://localhost/archive')
+    const apiHostRow = await firstRow(db, 'SELECT is_self_referrer FROM blog_visits WHERE slug = ?1', 'ref-api-host')
+    expect(apiHostRow?.is_self_referrer, 'the API host is not the blog').toBe(0)
 
     await seedBlogPost(db, { slug: 'ref-other', title: 'RefOther' })
-    await requestWithIp(app, '/api/blog/public/posts/ref-other', '203.0.113.12', { referer: 'https://news.example.com/article/42' })
+    await postVisitBeacon(app, 'ref-other', '203.0.113.13', undefined, 'https://news.example.com/article/42')
     const otherRow = await firstRow(db, 'SELECT is_self_referrer FROM blog_visits WHERE slug = ?1', 'ref-other')
     expect(otherRow?.is_self_referrer).toBe(0)
   })
