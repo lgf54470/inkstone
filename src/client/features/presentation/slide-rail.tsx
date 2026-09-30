@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { entryIndexOf, railEntries, type RailEntry } from './presentation-state'
 import type { PreflightProgress } from './slide-preflight'
-import { readSlideHtml, renderSlideSource, slicePageHtml, subscribeSlideHtml } from './slide-html'
+import { readSlideHtml, renderSlideSource, slicePageHtml, subscribeSlideHtmlKey } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import { SlideProse } from './slide-prose'
 import { SLIDE_PAD_X, SLIDE_PAD_Y } from './slide-stage'
@@ -208,7 +208,8 @@ function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, 
   // The thumbnail renders the prepared markup the projector shows, so it follows the cache
   // rather than reading it once: a theme flip or an edit replaces a slide's markup under it,
   // and a single read left the thumbnail on an un-rendered placeholder for the rest of the show.
-  const cached = useSyncExternalStore(subscribeSlideHtml, () => readSlideHtml(cacheKey)?.html ?? '', () => '')
+  const subscribe = useCallback((cb: () => void) => subscribeSlideHtmlKey(cacheKey, cb), [cacheKey])
+  const cached = useSyncExternalStore(subscribe, () => readSlideHtml(cacheKey)?.html ?? '', () => '')
   const html = usePageHtml({ near, cacheKey, cached, source, plan, sub: entry.sub, view })
   const heading = useMemo(() => extractSlideHeading(source), [source])
 
@@ -303,16 +304,43 @@ function SlideThumb({ thumbRef, near, html, active, view }: {
   )
 }
 
+type ObserverCallback = (isIntersecting: boolean) => void
+
+let sharedRailObserver: IntersectionObserver | null = null
+const railObserverCallbacks = new Map<Element, ObserverCallback>()
+
+function getSharedRailObserver(): IntersectionObserver {
+  if (!sharedRailObserver) {
+    sharedRailObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const cb = railObserverCallbacks.get(entry.target)
+        if (cb) cb(entry.isIntersecting)
+      }
+    }, { rootMargin: THUMB_PREFETCH_MARGIN })
+  }
+  return sharedRailObserver
+}
+
+function observeRailElement(element: Element, callback: ObserverCallback): () => void {
+  const observer = getSharedRailObserver()
+  railObserverCallbacks.set(element, callback)
+  observer.observe(element)
+  return () => {
+    railObserverCallbacks.delete(element)
+    observer.unobserve(element)
+    if (railObserverCallbacks.size === 0) {
+      observer.disconnect()
+      sharedRailObserver = null
+    }
+  }
+}
+
 function useNearViewport(ref: RefObject<HTMLElement | null>): boolean {
   const [near, setNear] = useState(false)
   useEffect(() => {
     const element = ref.current
     if (!element) return
-    const observer = new IntersectionObserver((entries) => {
-      setNear(entries.some((entry) => entry.isIntersecting))
-    }, { rootMargin: THUMB_PREFETCH_MARGIN })
-    observer.observe(element)
-    return () => observer.disconnect()
+    return observeRailElement(element, setNear)
   }, [ref])
   return near
 }

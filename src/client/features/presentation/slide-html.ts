@@ -87,6 +87,8 @@ export function slideMarkup(rendered: RenderResult): SlideMarkup {
   return { html: rendered.html, fences: rendered.fences }
 }
 
+const slideKeyListeners = new Map<string, Set<() => void>>()
+
 export function rememberSlideHtml(key: string, markup: SlideMarkup): void {
   slideHtmlCache.delete(key)
   slideHtmlCache.set(key, markup)
@@ -94,6 +96,10 @@ export function rememberSlideHtml(key: string, markup: SlideMarkup): void {
     const oldest = slideHtmlCache.keys().next().value
     if (oldest === undefined) break
     slideHtmlCache.delete(oldest)
+  }
+  const keyListeners = slideKeyListeners.get(key)
+  if (keyListeners) {
+    for (const listener of keyListeners) listener()
   }
   for (const listener of slideHtmlListeners) listener()
 }
@@ -105,6 +111,19 @@ export function subscribeSlideHtml(listener: () => void): () => void {
   slideHtmlListeners.add(listener)
   return () => {
     slideHtmlListeners.delete(listener)
+  }
+}
+
+export function subscribeSlideHtmlKey(key: string, listener: () => void): () => void {
+  let set = slideKeyListeners.get(key)
+  if (!set) {
+    set = new Set()
+    slideKeyListeners.set(key, set)
+  }
+  set.add(listener)
+  return () => {
+    set?.delete(listener)
+    if (set && set.size === 0) slideKeyListeners.delete(key)
   }
 }
 

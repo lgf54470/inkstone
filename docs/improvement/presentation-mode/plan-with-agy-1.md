@@ -117,12 +117,12 @@
   - 目标：长文编辑无需从第 0 页翻起，直接从当前光标所在幻灯片起播。
   - 方案：在 `slides.ts` 中实现纯函数 `findSlideIndexByOffset(source, offset)`；在 `useWorkspace` 的启动入口处获取当前 CodeMirror 光标偏移量，计算目标页索引并传入 `usePresentation.getState().start({ initialSlideIndex })`。
   - 验证：单元测试覆盖文档首段、中间分页处、末尾及边界位置的光标映射精度。
-- [x] **B3-07** `P-18 (PERF-02)`: 单 Slide 内容哈希增量缓存（避免跟随模式协同全篇重算） — 已完成
+- [x] **B3-07** `P-18 (PERF-02)`: 单 Slide 内容哈希增量缓存（避免跟随模式协同全篇重算） — 已完成 (`ea66634f`)
   - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx` (`useSlidePlans`)、`src/client/features/presentation/slide-html.ts`、`src/client/features/presentation/slide-preflight.tsx`
   - 目标：改整篇 fingerprint 失效为每张 Slide 基于其源码的独立哈希缓存，打字时仅重算改动 Slide 的 Plan，其余页坚决复用。
   - 方案：使用 `hashContent(slideSource)` 作为单页子指纹，在 `useSlidePlans` 中维护按 Slide 源码哈希索引的 Plan 映射，未编辑页缓存稳如磐石。
   - 验证：单元测试模拟长文档部分行修改，断言未改动页的 SlidePlan 对象引用与缓存 100% 保持复用。
-- [ ] **B3-08** `P-19 (PERF-03)`: 侧栏单例 Observer 与细粒度事件订阅
+- [x] **B3-08** `P-19 (PERF-03)`: 侧栏单例 Observer 与细粒度事件订阅 — 已完成
   - 涉及文件：`src/client/features/presentation/slide-rail.tsx`、`src/client/features/presentation/slide-html.ts`
   - 目标：消除 100 个 `IntersectionObserver` 实例并解决全量广播惊群效应。
   - 方案：在 `SlideRail` 顶层统一构建单例 `IntersectionObserver` 实例供各子项共享；重构 `subscribeSlideHtml` 为按 `cacheKey` 精准派发的订阅机制。

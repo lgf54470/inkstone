@@ -1,7 +1,8 @@
 import { act, createElement } from 'react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../lib/test-render'
-import { clearSlidePlanCache, readSlidePlan, rememberSlidePlan } from './slide-html'
+import { createFenceBodies } from '../../lib/markdown/fence-bodies'
+import { clearSlidePlanCache, readSlidePlan, rememberSlideHtml, rememberSlidePlan, subscribeSlideHtmlKey } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import { useSlidePlans } from './presentation-overlay'
 
@@ -51,5 +52,31 @@ describe('useSlidePlans incremental caching', () => {
     expect(latestPlans[0]).toBeUndefined()
     expect(latestPlans[1]).toBe(planB)
     rendered.unmount()
+  })
+})
+
+describe('subscribeSlideHtmlKey fine-grained subscription', () => {
+  it('triggers only listeners matching the updated cacheKey', () => {
+    const fnKey1 = vi.fn()
+    const fnKey2 = vi.fn()
+
+    const unsub1 = subscribeSlideHtmlKey('key-1', fnKey1)
+    const unsub2 = subscribeSlideHtmlKey('key-2', fnKey2)
+
+    rememberSlideHtml('key-1', { html: '<p>slide 1</p>', fences: createFenceBodies() })
+
+    expect(fnKey1).toHaveBeenCalledTimes(1)
+    expect(fnKey2).not.toHaveBeenCalled()
+
+    rememberSlideHtml('key-2', { html: '<p>slide 2</p>', fences: createFenceBodies() })
+
+    expect(fnKey1).toHaveBeenCalledTimes(1)
+    expect(fnKey2).toHaveBeenCalledTimes(1)
+
+    unsub1()
+    unsub2()
+
+    rememberSlideHtml('key-1', { html: '<p>slide 1 updated</p>', fences: createFenceBodies() })
+    expect(fnKey1).toHaveBeenCalledTimes(1)
   })
 })
