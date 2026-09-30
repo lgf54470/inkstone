@@ -132,7 +132,7 @@
   - 目标：导出过程提供实时模态进度反馈，串行分批挂载和流式生成，防范浏览器 OOM 崩溃。
   - 方案：在 `saveDeckPages` 中引入进度回调驱动 UI 状态展示 `正在导出 (3/30)...`，每完成一张图片即时入流并释放 Canvas 与位图 Blob。
   - 验证：单元测试模拟多页导出，断言进度回调按预期每页递增且最终正确完成打包。
-- [ ] **B3-10** `P-21 (SEC-03)`: 嵌套 Bento-Slides 优雅占位降级
+- [x] **B3-10** `P-21 (SEC-03)`: 嵌套 Bento-Slides 优雅占位降级 — 已完成
   - 涉及文件：`src/client/features/presentation/slide-canvas.tsx` (`useBentoSlidesFallback`)
   - 目标：全笔记演示模式中遇到 Bento-Slides 代码块不再永久停留于 "Loading slides..." 占位态。
   - 方案：在 `SlideCanvas` 中提供 `useBentoSlidesFallback`，解析围栏内的卡片结构并直接呈现为整洁的静态卡片网格预览，移除 `loading` 类并设置 `aria-busy="false"`。
