@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type MutableRefObject, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react'
 import { CircleDot, FolderOpen, PanelRightClose } from 'lucide-react'
 import type { GraphResponse } from '@shared/types'
 import { Menu, type MenuItem } from '../../../components/overlay'
@@ -54,7 +54,7 @@ function useGraphFit(canvasRef: RefObject<HTMLCanvasElement | null>, stateRef: R
   }, [canvasRef, stateRef])
 }
 
-function useGraphCanvasLoop(data: GraphResponse, prefs: GraphPreferences, canvasRef: RefObject<HTMLCanvasElement | null>, stateRef: RefObject<CanvasState>, hoverRef: MutableRefObject<CanvasNode | null>, selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>, setHover: (node: CanvasNode | null) => void, setSelectedId: React.Dispatch<React.SetStateAction<string | null>>, fitGraph: () => void) {
+function useGraphCanvasLoop(data: GraphResponse, prefsRef: MutableRefObject<GraphPreferences>, canvasRef: RefObject<HTMLCanvasElement | null>, stateRef: RefObject<CanvasState>, hoverRef: MutableRefObject<CanvasNode | null>, selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>, setHover: (node: CanvasNode | null) => void, setSelectedId: React.Dispatch<React.SetStateAction<string | null>>, fitGraph: () => void) {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !data) return
@@ -64,12 +64,12 @@ function useGraphCanvasLoop(data: GraphResponse, prefs: GraphPreferences, canvas
     hoverRef.current = null
     setHover(null)
     setSelectedId((current) => data.nodes.some((node) => node.id === current) ? current : null)
-    buildInitialLayout(data, prefs, state)
+    buildInitialLayout(data, prefsRef.current, state)
     const colors = readThemeColors()
     const { resize, observer } = createCanvasResizer(canvas, ctx, state)
     resize()
     const style = getComputedStyle(document.documentElement)
-    createGraphTicker(state, canvas, ctx, colors, prefs, hoverRef, selectedIdRef, activeNoteIdRef, style)
+    createGraphTicker(state, canvas, ctx, colors, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style)
     const linkedTargetId = getLinkHoverTarget()
     const linkedNode = linkedTargetId ? state.nodes.find((candidate) => candidate.id === linkedTargetId) ?? null : null
     hoverRef.current = linkedNode
@@ -82,7 +82,7 @@ function useGraphCanvasLoop(data: GraphResponse, prefs: GraphPreferences, canvas
       state.raf = 0; state.schedule = null
       observer.disconnect()
     }
-  }, [data, fitGraph, prefs.arrows, prefs.groupBy, prefs.labels, prefs.linkDistance, prefs.nodeScale, prefs.repulsion])
+  }, [activeNoteIdRef, canvasRef, data, fitGraph, hoverRef, prefsRef, selectedIdRef, setHover, setSelectedId, stateRef])
 }
 
 function useGraphWorldMath(stateRef: RefObject<CanvasState>, canvasRef: RefObject<HTMLCanvasElement | null>) {
@@ -340,6 +340,36 @@ function GraphCanvasElement({ canvasRef, handlers }: {
   )
 }
 
+function useDynamicGraphPrefs(stateRef: RefObject<CanvasState>, prefs: GraphPreferences) {
+  useEffect(() => {
+    const state = stateRef.current
+    if (state && state.nodes.length > 0) {
+      state.frame = Math.min(state.frame, PHYSICS_FRAME_LIMIT - 90)
+      state.schedule?.()
+    }
+  }, [prefs.repulsion, prefs.linkDistance, stateRef])
+  useEffect(() => {
+    const state = stateRef.current
+    if (state && state.nodes.length > 0) {
+      for (const node of state.nodes) {
+        node.r = (4 + Math.min(9, Math.sqrt(node.degree) * 2.4)) * prefs.nodeScale
+      }
+      state.schedule?.()
+    }
+  }, [prefs.nodeScale, stateRef])
+  useEffect(() => {
+    stateRef.current.schedule?.()
+  }, [prefs.arrows, prefs.labels, prefs.groupBy, stateRef])
+}
+
+function useGraphControls(controlsRef: MutableRefObject<GraphControls | null>, stateRef: RefObject<CanvasState>, fitGraph: () => void) {
+  controlsRef.current = {
+    zoomIn: () => { stateRef.current.scale = Math.min(4, stateRef.current.scale + 0.2); stateRef.current.schedule?.() },
+    zoomOut: () => { stateRef.current.scale = Math.max(0.2, stateRef.current.scale - 0.2); stateRef.current.schedule?.() },
+    fit: fitGraph,
+  }
+}
+
 export function GraphCanvas({ data, prefs, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, controlsRef }: GraphCanvasProps) {
   const [hover, setHover] = useState<CanvasNode | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -359,23 +389,18 @@ export function GraphCanvas({ data, prefs, activeNoteId, canvasRef, stateRef, ho
     setHover(node)
     state.schedule?.()
   }), [])
+  const prefsRef = useRef(prefs)
+  useEffect(() => {
+    prefsRef.current = prefs
+  }, [prefs])
+  useDynamicGraphPrefs(stateRef, prefs)
   const fitGraph = useGraphFit(canvasRef, stateRef)
-  useGraphCanvasLoop(data, prefs, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph)
+  useGraphCanvasLoop(data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph)
   const { toWorld, nodeAt } = useGraphWorldMath(stateRef, canvasRef)
   const { beginDrag, moveDrag, endDrag } = useGraphDrag(stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote, onClose)
   const selected = data.nodes.find((node) => node.id === selectedId) ?? null
   const menuItems = graphMenuItems(context, onOpenNote, onCreateNote, onClose, onMakeLocal)
-  const zoomIn = () => {
-    const state = stateRef.current
-    state.scale = Math.min(4, state.scale + 0.2)
-    state.schedule?.()
-  }
-  const zoomOut = () => {
-    const state = stateRef.current
-    state.scale = Math.max(0.2, state.scale - 0.2)
-    state.schedule?.()
-  }
-  controlsRef.current = { zoomIn, zoomOut, fit: fitGraph }
+  useGraphControls(controlsRef, stateRef, fitGraph)
   const handlers: CanvasHandlers = {
     stateRef, hoverRef, selectedIdRef, lastPointerEventAtRef,
     setHover, setSelectedId, setContext,

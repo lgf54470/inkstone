@@ -139,11 +139,12 @@ function drawLabels(ctx: CanvasRenderingContext2D, state: CanvasState, colors: T
   }
 }
 
-export function createGraphTicker(state: CanvasState, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, colors: ThemeColors, prefs: GraphPreferences, hoverRef: MutableRefObject<CanvasNode | null>, selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>, style: CSSStyleDeclaration): void {
+export function createGraphTicker(state: CanvasState, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, colors: ThemeColors, prefsRef: GraphPreferences | { current: GraphPreferences }, hoverRef: MutableRefObject<CanvasNode | null>, selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>, style: CSSStyleDeclaration): void {
   const schedule = () => { if (!state.raf) state.raf = requestAnimationFrame(tick) }
   const tick = () => {
     state.raf = 0
     const rect = canvas.getBoundingClientRect()
+    const prefs = 'current' in prefsRef ? prefsRef.current : prefsRef
     advancePhysics(state, prefs)
     ctx.clearRect(0, 0, rect.width, rect.height)
     ctx.save()

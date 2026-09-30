@@ -238,6 +238,31 @@ function GraphBody({ data, loadError, onRetry, children }: {
   return children(data)
 }
 
+function useGraphQueryRequest(prefs: GraphPreferences, activeNoteId: string | null, query: string, selectedTags: string[]): GraphQuery {
+  return useMemo(() => graphRequest(prefs, activeNoteId, query, selectedTags), [
+    activeNoteId,
+    prefs.mode,
+    prefs.depth,
+    prefs.folderId,
+    prefs.tag,
+    prefs.tagsMatch,
+    prefs.includeOrphans,
+    prefs.includeUnresolved,
+    query,
+    selectedTags,
+  ])
+}
+
+function useTagReset(prefs: GraphPreferences, changePref: <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => void) {
+  const closePanel = useUi((state) => state.closePanel)
+  return () => {
+    const key = clearSelectionToastKey(prefs.clearResetsTag, prefs.clearClosesPanel)
+    clearTagSelection({ notify: key ? t(key) : true })
+    if (prefs.clearResetsTag) changePref('tag', '')
+    if (prefs.clearClosesPanel) closePanel()
+  }
+}
+
 export function GraphPanel({ onClose }: { onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
@@ -260,20 +285,12 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     if (selectedTags.length < LIMITS.tagSelectionMax)
       setIsLimitOpen(false)
   }, [selectedTags.length])
-  const closePanel = useUi((state) => state.closePanel)
-  const request: GraphQuery = useMemo(() => graphRequest(prefs, activeNoteId, query, selectedTags), [activeNoteId, prefs, query, selectedTags])
+  const request = useGraphQueryRequest(prefs, activeNoteId, query, selectedTags)
   const { data, loadError, setReload } = useGraphData(request)
   const changePref = <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => {
     setPrefs((current) => ({ ...current, [key]: value }))
   }
-  const resetTagFilters = () => {
-    const key = clearSelectionToastKey(prefs.clearResetsTag, prefs.clearClosesPanel)
-    clearTagSelection({ notify: key ? t(key) : true })
-    if (prefs.clearResetsTag)
-      changePref('tag', '')
-    if (prefs.clearClosesPanel)
-      closePanel()
-  }
+  const resetTagFilters = useTagReset(prefs, changePref)
   return createPortal(<div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1} data-surface='graph'
     className='app-viewport-fixed fixed z-[var(--z-graph)] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0'>
     <GraphHeader titleId={titleId} data={data} prefs={prefs} hasActiveNote={Boolean(activeNoteId)} onModeChange={(mode) => changePref('mode', mode)} search={search} onSearchChange={setSearch} canZoom={Boolean(data?.nodes.length)} isSettingsOpen={isSettingsOpen} onZoomOut={() => refs.controlsRef.current?.zoomOut()} onFit={() => refs.controlsRef.current?.fit()} onZoomIn={() => refs.controlsRef.current?.zoomIn()} onToggleSettings={() => setIsSettingsOpen((value) => !value)} onClose={onClose}/>

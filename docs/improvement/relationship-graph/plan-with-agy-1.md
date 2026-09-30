@@ -35,14 +35,14 @@
 
 ### 第一阶段：止血与核心体验救治 (Sprint 1)
 
-#### 1. 【PERF-01】解耦远程查询与客户端视觉参数（消除滑块全量网络请求与螺旋线白屏重置）
-- **涉及文件**：`src/client/features/graph/graph-panel/index.tsx`, `canvas.tsx`, `helpers.ts`
+- [x] **1. 【PERF-01】解耦远程查询与客户端视觉参数（消除滑块全量网络请求与螺旋线白屏重置）**
+- **涉及文件**：`src/client/features/graph/graph-panel/index.tsx`, `canvas.tsx`, `canvas-draw.ts`
 - **修改要点**：
-  1. 将 `GraphPreferences` 分解为服务器查询参数与前端视觉渲染参数；
-  2. 拖动动力学参数滑块（`repulsion`, `linkDistance`, `nodeScale`）以及切换视觉开关（`arrows`, `labels`, `groupBy`）时不触发 API 重复请求，不清空数据，不卸载画布；
-  3. 画布内部通过 ref 或更新物理参数直接调度单次退火唤醒（`wakePhysics`）。
+  1. 解耦 `request` 查询依赖项，视觉与动力学参数不触发 API 重新请求与白屏重置；
+  2. `useGraphCanvasLoop` 改用 `prefsRef` 避免首帧布局循环重建；
+  3. 新增 `repulsion`/`linkDistance` 退火唤醒与 `nodeScale` 半径就地更新响应。
 - **验证命令**：`npm run typecheck && npx vitest run src/client/lib/graph-settings.test.ts`
-- **提交哈希**：`待提交`
+- **状态**：已完成并验证通过
 
 #### 2. 【UX-01】重构节点交互模式（单击聚焦高亮、双击打开、Cmd+单击分屏）
 - **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`
