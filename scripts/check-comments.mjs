@@ -2923,6 +2923,8 @@ const allowed = new Map([
     '/* The address arrived from a reader: it opens only when a link may carry it. */',
   ]],
   ['src/client/features/blog/blog-links-view/use-blog-links-view.ts', [
+    '// The server answers the filter this time, so what came back *is* the filtered list — the badge',
+    '// count is only used to notice that the list hit its page limit.',
     '// The confirmation names the number it is about to delete: it used to reuse the single-link',
     '// sentence, so deleting forty broken links asked about "this link".',
   ]],
@@ -2964,6 +2966,12 @@ const allowed = new Map([
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
   ]],
+  ['src/client/features/blog/blog-store/links-request.test.ts', [
+    '/**\n * The link list is filtered by the server now, so its answer has to belong to the filter that is on\n * screen. These cases pin the question the client asks and the two rules that keep a late answer\n * from overwriting it: the request a newer one replaces is cancelled, and an answer that arrives\n * after a newer request went out is dropped.\n */',
+  ]],
+  ['src/client/features/blog/blog-store/links.ts', [
+    '/**\n * The link list is filtered by the server now, so its answer has to match the filter that is on\n * screen: the request a newer one replaces is cancelled, and an answer that arrives after a newer\n * request went out is dropped. Without this, typing in the search box could show the results of an\n * earlier keystroke — before the server answered the filters, the browser re-filtered whatever\n * arrived and the mismatch corrected itself.\n */',
+  ]],
   ['src/client/features/blog/blog-store/loaders.ts', [
     '/**\n * The post list, asked once per change of the query and answered with the newest answer only. Two\n * things follow from that: the request a newer one replaces is cancelled (a search box sends one per\n * keystroke) and an answer that arrives after a newer request went out is dropped, because comparing\n * sequence numbers is the only way to know which of two responses is current. The dropped answer is\n * not an error — the caller asked for it and then changed its mind.\n */',
   ]],
@@ -2979,6 +2987,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-store/types.ts', [
     '/**\n   * The post list\'s in-flight request: `seq` lets a late answer be dropped (the reader may have\n   * typed again since), and the controller cancels the request the newest one replaces. Both are\n   * request lifecycle, not data — the list itself lives in `posts`.\n   */',
+    '/** The same latest-wins rule as the post list, for the link list\'s status/category/search. */',
   ]],
   ['src/client/features/blog/frontend-base.ts', [
     '/**\n * The blog\'s own site address, as a link may carry it.\n *\n * The stored value is checked on the way in, but a blog configured before that rule existed still\n * holds whatever was typed, and this address becomes an `href` in the admin session — so a value a\n * link may not use falls back to the shipped default instead of being rendered as written.\n */',
@@ -12349,6 +12358,7 @@ const allowed = new Map([
   ]],
   ['src/shared/types/blog.ts', [
     '/**\n * The account a public blog request is for. The address travels as `?owner=<username>` until the\n * host-based routes land; a request that carries none is answered by the instance default blog, and\n * every public answer names the blog it answered for in `X-Inkstone-Blog-Owner`.\n */',
+    '/** The two flag tabs; the admin list filters on them exactly like a status. */',
     '/** The posts\' own cumulative counter, which is not the range\'s visits. */',
   ]],
   ['src/shared/types/board-library.ts', [
@@ -13030,6 +13040,17 @@ const allowed = new Map([
     '// has to exist before any statement is built. A parent the file does not carry is kept only when',
     '// this account already owns it.',
     '/**\n * Where each parent reference lands: the file\'s own target when the file carries that category, and\n * the reference itself only when this account already owns it. Anyone else\'s category resolves to\n * nothing, so the imported child surfaces at the top level instead of under another blog.\n */',
+  ]],
+  ['src/worker/routes/blog/link-list-query.ts', [
+    '/**\n * A link list past this many rows is no longer a list anyone reads; the tab counts still report the\n * true totals, so the client can say it is showing the first page rather than dropping rows quietly.\n */',
+    '/** The link tabs pick a status or one of the two flags the reader can pin star-wise. */',
+    '/**\n * What each tab means in SQL. The fragments are constants keyed by the validated filter, so a\n * request can select a condition but never write one.\n */',
+    '/**\n * The `WHERE` shared by the list and the counts. `withStatus` is what separates them: the page shows\n * one status (or flag) at a time, while each badge answers "how many are in this bucket", so it must\n * not shrink when the reader switches tabs. Category and search do apply to both — the badges should\n * describe the rows the reader is looking at.\n */',
+    '// Escaped like every other needle: an unescaped `%` would match every link of the account.',
+    '// One row per status, so these sums add each flagged link exactly once.',
+  ]],
+  ['src/worker/routes/blog/links.ts', [
+    '/**\n * The client used to send these three and get the whole table back, filtering it again in the\n * browser. The server now answers the question that was asked: one statement for the page, one for\n * the tab badges. An unknown status is refused rather than quietly treated as `all`.\n */',
   ]],
   ['src/worker/routes/blog/owned-rows.ts', [
     '/**\n * The per-account tables whose rows a client may address by primary key. The name is a literal from\n * this union and never a value a request carries, because it is interpolated into the statement.\n */',
@@ -14133,6 +14154,12 @@ const allowed = new Map([
     '// Every request in the harness arrives from the same client, which is what makes the',
     '// budget observable at all: the count used to be over the whole table, so the sixth',
     '// application here would have been the sixth from anywhere.',
+    '// The links view drives this endpoint from every filter control, and until now the endpoint ignored',
+    '// all three parameters: the client got the whole table back and filtered it again in the browser.',
+    '// These cases pin the question the client actually asks, plus the two answers that have to stay',
+    '// honest — the tab badges count every matching link (not just the page that came back), and an',
+    '// unknown status is refused instead of being answered as "all".',
+    '// Switching tabs must not shrink the badge the reader is about to switch back to.',
     '// A URL from a reader is rendered inside the admin session, so the allowlist is asked of the server',
     '// first: a link\'s target, a picture, the site\'s own address and everything an import carries.',
     '// The ids in a saved link are the row\'s primary key, and the upsert keys on that rather than on the',

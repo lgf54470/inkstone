@@ -152,6 +152,10 @@ export interface BlogStoreState {
   postsRequestSeq: number
   postsAbort: AbortController | null
 
+  /** The same latest-wins rule as the post list, for the link list's status/category/search. */
+  linksRequestSeq: number
+  linksAbort: AbortController | null
+
   excludeBots: boolean
   excludeSelfReferrers: boolean
   excludeOwner: boolean

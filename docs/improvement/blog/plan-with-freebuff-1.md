@@ -100,8 +100,17 @@
 
 - [ ] B3-01 **ENG-01** store 增 `error` 通道 + 四个视图的三态渲染（加载 / 失败 + 重试 / 空）+ 全部 mutation `try/catch` + 乐观回滚 + 双 toast
 - [ ] B3-02 **ENG-02** 文章列表去 `content`（列白名单）+ `LIMIT/OFFSET` + 总数独立查询 + tag 下推 + 前端分页控件
-- [ ] B3-03 **ENG-03** `GET /links` 服务端真消费 `status/categoryId/search` + `LIMIT` + counts 改 `GROUP BY`
-- [ ] B3-04 **ENG-04** 搜索防抖 + `AbortSignal` + 乱序守卫；`/check-slug` 同步修
+- [x] B3-03 **ENG-03** `GET /links` 服务端真消费 `status/categoryId/search` + `LIMIT` + counts 改 `GROUP BY` — 已提交（hash 见下一提交）
+  - 实现：新增 `src/worker/routes/blog/link-list-query.ts`（列表与计数共用一段 WHERE）：`status` 映射 `pending/approved/rejected` 或两个标记页签 `pinned/favorite`（片段是常量表，请求只能选不能写）、`categoryId` 精确匹配、`search` 走 `escapeLike` + `ESCAPE`；列表 `LIMIT 500`；计数一条 `GROUP BY status`，**不带 status 条件**（切页签时徽标不缩水）、带 category/search（徽标描述眼前这批）；未知 `status` 回 400 而不是静默当 `all`。`links.ts` 因 500 行门槛把查询构建器拆出（同 `post-list-query.ts` 先例）。
+  - `BlogLinkStats` 增 `pinned`/`favorite`：这两个页签的计数原本由客户端在数组上数，服务端一次 GROUP BY 即可给出，且不必受 LIMIT 影响。
+  - 截断不静默：客户端用「徽标数 > 返回行数」识别命中上限，列表顶部显示「只显示前 N 条」（新 key `blog.link_list_truncated`，双语文案）。
+  - 客户端删掉本地二次过滤（`use-blog-links-view.ts` 的 `filterLinks` 与 `computeStatusCounts` 的兜底数法），徽标只读服务端；`loadLinks` 补 `AbortSignal` + 序号线——服务端筛选后迟到的答案不再能自我纠正（以前浏览器会重新过滤刚到的数组），必须只认最新一发；配套 3 条 jsdom 用例。
+  - 复现测试：`tests/blog-links-routes.test.ts` 新增 3 条（四筛选与计数、通配符按字符处理与非法 status、501 行只回 500 而计数 501）；三条已实测在旧实现上先红（全回 501 行、筛选不生效）。
+  - 回归：`typecheck` 绿；`test:unit` 571 文件 5211 通过 / 1 skipped（全绿）；`comments/escape-hatches/empty-catches/module-state/deep-imports/code-style/hardcoded/size/i18n` 九项静态门禁绿（`size` 无需动基线）。
+  - 已知限制：500 是上限而非分页——超过时靠筛选收敛，界面明说「只显示前 N 条」；demo 后端本就没有 `/api/blog/links`，无需同步。
+- [x] B3-04 **ENG-04** 搜索防抖 + `AbortSignal` + 乱序守卫；`/check-slug` 同步修 — 已提交 `1ea6a399`
+  - 实现：`blog-hub-toolbar.tsx` 的搜索框改本地 draft + 250ms 防抖（打字即显示，只把停下的那次问出去）；`loaders.ts` 的 `loadPosts` 带 `AbortController` 与 `postsRequestSeq` 序号线（迟到答案丢弃、被取消的请求不算错误）；`api/share.ts` 的 `checkSlug` 收 `AbortSignal`，`use-blog-publish-form.ts` 忽略迟到的校验结果。
+  - 复现测试：新增 `blog-store/posts-request.test.ts`（被替换的请求确实被取消；只认最新一发；取消不写 console.error）。
 - [ ] B3-05 **ENG-05** `loadAll` 按当前 tab 收敛 + 30s SWR + 删侧栏重复 effect + 复位 effect 去 `activeNote` 依赖
 - [ ] B3-06 **ENG-06 + ENG-16** 评论列表 `LIMIT` + 服务端 search 接通（删本地过滤与死通道）+ tab 计数改 `stats` + 发布弹窗分类拉取两行修复
 - [ ] B3-07 **ENG-07 + ENG-08 + ENG-14** stats 七条串行改 `db.batch`/`GROUP BY`；analytics 六段合并 + 分布改 SQL 聚合；补三条索引
@@ -155,6 +164,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-30 | B3-03 ENG-03 友链列表服务端筛选 + 限页 + `GROUP BY` 计数 | （下一提交回填） | `typecheck` 绿；`tests/blog-links-routes.test.ts` 24 条（含新 3 条）+ `blog-store/links-request.test.ts` 新 3 条全绿；三条新用例已实测在旧实现上先红；九项静态门禁绿（`size` 无需动基线）；`test:unit` 571 文件 5211 通过 / 1 skipped | 500 是上限而非分页，界面提示「只显示前 N 条」；demo 后端本无该端点 |
+| 2026-09-30 | B3-04 ENG-04 搜索防抖 + 取消/序号线（含 `/check-slug`） | 1ea6a399 | `typecheck` 绿；`blog-store/posts-request.test.ts` 新 2 条绿；收尾 `test:unit` 571 文件 5211 通过 / 1 skipped（全绿） | 本条只覆盖文章列表；友链搜索的取消/序号线随 B3-03 补上，未加防抖 |
 | 2026-09-30 | B2-05 COR-08 链接检测失败≠失效 + 缓存时效 + 批量删除条数 | 7dba4896 | `typecheck` 绿；`src/client/features/blog` 9 文件 28 条全绿（含新 2 条）；`i18n:check`/`hardcoded:check`/`comments:check` 绿 | 陈旧结果仍会展示（按计划要求标注而不丢弃） |
 | 2026-09-30 | B2-03 COR-04 浏览计数改浏览器 beacon（前台 BF-1 待做） | 43243ee4 | `typecheck` 绿；`tests/blog-routes.test.ts` 47 条全绿；7 项静态门禁绿；`blog-frontend`：`npm test` 295 通过、`astro check` 仅 3 条既有报错 | 访客侧浏览器未执行 JS 时不再计数（取数路径不再代计）；作者自身访问的 `is_owner` 目前仍为 0（beacon 不带会话）；BF-1 未做 |
 | 2026-09-30 | B2-04 SEC-14/COR-06/COR-03 流量开关单一真值 | 25fa85bf | `typecheck` 绿；`src/client/features/blog` 26 条全绿（含新 2 条）；`size:check` 因抽出派生值函数后通过 | 无 |

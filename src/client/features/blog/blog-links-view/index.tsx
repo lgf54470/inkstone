@@ -49,11 +49,20 @@ export function BlogLinksView() {
       )}
 
       <div className='flex-1 overflow-y-auto p-4 space-y-2.5'>
+        {view.isTruncated && <LinksTruncationNotice shown={view.filteredLinks.length} />}
         <LinksListContent view={view} />
       </div>
 
       <LinksModals view={view} />
     </div>
+  )
+}
+
+function LinksTruncationNotice({ shown }: { shown: number }) {
+  return (
+    <p className='px-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+      {t('blog.link_list_truncated', { value0: shown })}
+    </p>
   )
 }
 

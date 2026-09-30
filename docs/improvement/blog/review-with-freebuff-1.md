@@ -242,17 +242,19 @@
 - **范围**：`posts.ts`、`helpers.ts`、`shared/types/blog.ts`、`blog-store/loaders.ts`、`blog-table-view`、`blog-grid-view`、demo backend 的对应实现。代价 **M**。
 - **建议**：这是 ENG-04/ENG-05 的前置（列表变小以后，每次搜索的成本才可控）。
 
-#### ENG-03 [P0][开放] `GET /api/blog/links` 忽略客户端发来的全部筛选参数
+#### ENG-03 [P0][已修] `GET /api/blog/links` 忽略客户端发来的全部筛选参数
 - **问题**：`links.ts:44-48` 的 handler 只取 `userId`，完全不读 `status/categoryId/search`；`:56-60` 无 `LIMIT`；`:64-79` 在 JS 里数 counts。客户端确实发了这些参数（`blog-store/links.ts` 与 `src/client/lib/api/share.ts` 的 blog 段），拿回全量后 `use-blog-links-view.ts:17-20` 再本地过滤一遍。
 - **量级**（假设 300 条）：≈105 KB raw/次；搜索框输入 8 个字符 = 8 次 ≈840 KB，且每次都是全表取回。
 - **方案**：服务端实现筛选 + `LIMIT`（推荐），并把 counts 改成一条 `GROUP BY status`；客户端的本地二次过滤随之删除（避免两份过滤逻辑漂移）。
 - **范围**：`links.ts`、`blog-store/{links,loaders}.ts`、`use-blog-links-view.ts`、demo backend。代价 **S～M**。
+- **落地（B3-03）**：查询构建器拆到 `link-list-query.ts`（同 `post-list-query.ts` 先例）：两个标记页签 `pinned`/`favorite` 也从服务端筛，计数是一段**不带 status 条件**的 `GROUP BY status`（切页签时徽标不缩水，category/search 仍生效），`BlogLinkStats` 随之增 `pinned`/`favorite`。列表 `LIMIT 500`，超出不再静默：客户端按「徽标数 > 返回行数」在列表顶部提示「只显示前 N 条」。未知 `status` 回 400 而不是当 `all`。本地 `filterLinks` 与客户端兜底计数删除；`loadLinks` 另补 `AbortSignal` + 序号线（服务端筛选后迟到的答案必须丢弃，这是本地过滤不再兜底后的必要条件）。demo backend 本无 `/api/blog/links`，无需同步。
 
-#### ENG-04 [P0][开放] 搜索无防抖、无 abort、无乱序守卫
+#### ENG-04 [P0][已修] 搜索无防抖、无 abort、无乱序守卫
 - **问题**：`blog-hub-toolbar.tsx` 的 `SearchBox` 每次 `onChange` 直接 `setSearch` → `blog-store/filters.ts:25-33` 的 `applyPostFilter` 立即 `void get().loadPosts()` → `loaders.ts:34-53` 调用 API **未传 signal**（`transport` 已支持 `AbortSignal`）。全目录 `grep useDeferredValue` 为 0。
 - **量级**（现状假设 100 篇 × 12 KB）：输入 13 个字符 = 13 次全量请求 ≈ **15 MB raw / 4.3 MB gzip** 下行 + 13 次全表扫；无序号守卫 → 后发先至时结果与输入框不一致。
 - **方案**：输入防抖（250～300ms）+ `AbortController`（新一轮取消上一轮）+ 序号线（只接受最新一次的结果）；仓库正解可照抄 `features/graph/graph-panel/index.tsx`。`/check-slug` 的防抖已有但同样缺 abort 与最新守卫（`use-blog-publish-form.ts:220-240`），一并修。
 - **范围**：`blog-store/{filters,loaders}.ts`、`blog-hub-toolbar.tsx`、`use-blog-publish-form.ts`、`src/client/lib/api` 的 blog 段。代价 **S**。
+- **落地（B3-04，1ea6a399）**：搜索框改本地 draft + 250ms 防抖；`loadPosts` 带 `AbortController` 与 `postsRequestSeq`（被替换的请求取消、迟到答案丢弃、取消不算错误）；`/check-slug` 同步收 `AbortSignal` 并忽略迟到结果。
 
 #### ENG-05 [P0][开放] 打开博客中心 = 11 个 HTTP / ~22 条 D1，且开窗期间可能反复重跑
 - **问题**：`blog-store/loaders.ts:19-28` 的 `loadAll` 八连发（stats/posts/folders/tags/categories/comments/links/settings）；`use-blog-hub-modal.ts:98-111` 的复位 effect 依赖含 **`activeNote` 对象身份**，打开期间任何笔记变更都会再触发一次 8 并发；`use-blog-hub-sidebar.tsx:111-114` 的挂载 effect 又各发一次 `loadFolders/loadTags`（与 `loadAll` 重叠）；默认 tab 是 dashboard，`use-blog-dashboard-view.ts:32-34` 再发一次 analytics。两条串行链（stats 8 段、analytics 6 段）各 ≈120～160ms 纯 DB。

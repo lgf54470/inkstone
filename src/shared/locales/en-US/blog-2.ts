@@ -104,6 +104,7 @@ export const messages = {
 'blog.link_import_success': 'Imported {categories} categories and {links} links',
 'blog.link_auto_fetch_favicon': 'Get Favicon',
 'blog.link_no_links': 'No links found',
+'blog.link_list_truncated': 'Showing the first {value0} links. Narrow the filters to see the rest.',
 'blog.link_category_add_root': 'Add Root Category',
 'blog.link_category_add_sub': 'Add Subcategory',
 'blog.link_category_name': 'Category Name',

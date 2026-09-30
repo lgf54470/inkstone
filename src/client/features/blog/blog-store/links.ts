@@ -64,20 +64,34 @@ export const blogLinksActions = (
   importLinksData: (payload) => importLinksDataImpl(payload, get),
 })
 
+/**
+ * The link list is filtered by the server now, so its answer has to match the filter that is on
+ * screen: the request a newer one replaces is cancelled, and an answer that arrives after a newer
+ * request went out is dropped. Without this, typing in the search box could show the results of an
+ * earlier keystroke — before the server answered the filters, the browser re-filtered whatever
+ * arrived and the mismatch corrected itself.
+ */
 async function loadLinksImpl(set: SetBlogStoreState, get: () => BlogStoreState): Promise<void> {
-  const { linkStatusFilter, linkCategoryId, linkSearch } = get()
+  const { linkStatusFilter, linkCategoryId, linkSearch, linksRequestSeq, linksAbort } = get()
+  const seq = linksRequestSeq + 1
+  linksAbort?.abort()
+  const controller = new AbortController()
+  set({ linksRequestSeq: seq, linksAbort: controller })
+
   try {
     const res = await api.blog.links.list({
       status: linkStatusFilter === 'all' ? undefined : linkStatusFilter,
       categoryId: linkCategoryId || undefined,
       search: linkSearch || undefined,
-    })
+    }, controller.signal)
+    if (get().linksRequestSeq !== seq) return
     set({
       links: res.links || [],
       linkCategories: res.categories || [],
       linkStats: res.counts || null,
     })
   } catch (err) {
+    if (controller.signal.aborted) return
     console.error('Failed to load blog links', err)
   }
 }

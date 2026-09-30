@@ -348,6 +348,95 @@ describe('blog links management and public routes', () => {
   })
 })
 
+// The links view drives this endpoint from every filter control, and until now the endpoint ignored
+// all three parameters: the client got the whole table back and filtered it again in the browser.
+// These cases pin the question the client actually asks, plus the two answers that have to stay
+// honest — the tab badges count every matching link (not just the page that came back), and an
+// unknown status is refused instead of being answered as "all".
+describe('blog links list filters and counts', () => {
+  async function seedFilterableLinks(db: D1Shim): Promise<void> {
+    const rows: Array<[string, string, string, string, string | null, number, number]> = [
+      ['l-pinned', 'Alpha React', 'https://react.dev', 'approved', 'cat-a', 1, 0],
+      ['l-favorite', 'Beta Vue', 'https://vuejs.org', 'pending', 'cat-a', 0, 1],
+      ['l-rejected', 'Gamma', 'https://gamma.example', 'rejected', null, 0, 0],
+      ['l-percent', '100% Wild', 'https://wild.example', 'approved', 'cat-b', 0, 0],
+    ]
+    await db.batch(rows.map(([id, name, url, status, categoryId, isPinned, isFavorite]) =>
+      db.prepare(`
+        INSERT INTO blog_links (id, user_id, name, url, category_id, status, is_pinned, is_favorite, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 1000, 1000)
+      `).bind(id, USER, name, url, categoryId, status, isPinned, isFavorite),
+    ))
+  }
+
+  const listedIds = (data: { links: Array<{ id: string }> }): string[] =>
+    data.links.map((link) => link.id).sort()
+
+  it('filters by status, flag, category and search, and counts every matching link', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedFilterableLinks(db)
+    const app = makeApp()
+
+    const all = await (await request(app, '/api/blog/links')).json() as any
+    expect(listedIds(all)).toEqual(['l-favorite', 'l-percent', 'l-pinned', 'l-rejected'])
+    expect(all.counts).toMatchObject({ total: 4, pending: 1, approved: 2, rejected: 1, pinned: 1, favorite: 1 })
+
+    const pending = await (await request(app, '/api/blog/links?status=pending')).json() as any
+    expect(listedIds(pending)).toEqual(['l-favorite'])
+    // Switching tabs must not shrink the badge the reader is about to switch back to.
+    expect(pending.counts).toMatchObject({ total: 4, pending: 1, approved: 2, pinned: 1 })
+
+    expect(listedIds(await (await request(app, '/api/blog/links?status=pinned')).json() as any)).toEqual(['l-pinned'])
+    expect(listedIds(await (await request(app, '/api/blog/links?status=favorite')).json() as any)).toEqual(['l-favorite'])
+
+    const category = await (await request(app, '/api/blog/links?categoryId=cat-a')).json() as any
+    expect(listedIds(category)).toEqual(['l-favorite', 'l-pinned'])
+    expect(category.counts).toMatchObject({ total: 2, pending: 1, approved: 1, pinned: 1, favorite: 1 })
+
+    const narrowed = await (await request(app, '/api/blog/links?categoryId=cat-a&status=pending')).json() as any
+    expect(listedIds(narrowed)).toEqual(['l-favorite'])
+    expect(narrowed.counts).toMatchObject({ total: 2, pending: 1 })
+
+    expect(listedIds(await (await request(app, '/api/blog/links?search=react')).json() as any)).toEqual(['l-pinned'])
+  })
+
+  it('reads the search needle\'s wildcards as characters and refuses a status it does not know', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedFilterableLinks(db)
+    const app = makeApp()
+
+    const percent = await (await request(app, `/api/blog/links?search=${encodeURIComponent('100%')}`)).json() as any
+    expect(listedIds(percent)).toEqual(['l-percent'])
+
+    const underscore = await (await request(app, '/api/blog/links?search=100_')).json() as any
+    expect(listedIds(underscore)).toEqual([])
+
+    expect((await request(app, '/api/blog/links?status=spam')).status).toBe(400)
+  })
+
+  it('answers a bounded page while the badges still count every matching link', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    await db.batch(Array.from({ length: 501 }, (_, index) =>
+      db.prepare(`
+        INSERT INTO blog_links (id, user_id, name, url, status, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, 'approved', ?5, ?5)
+      `).bind(`bulk-${index}`, USER, `Bulk ${index}`, `https://bulk-${index}.example`, 1000 + index),
+    ))
+
+    const data = await (await request(app, '/api/blog/links?status=approved')).json() as {
+      links: unknown[]
+      counts: { approved: number }
+    }
+    expect(data.links).toHaveLength(500)
+    expect(data.counts.approved).toBe(501)
+  })
+})
+
 // A URL from a reader is rendered inside the admin session, so the allowlist is asked of the server
 // first: a link's target, a picture, the site's own address and everything an import carries.
 describe('blog URL allowlist', () => {

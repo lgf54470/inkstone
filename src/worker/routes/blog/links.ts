@@ -1,6 +1,6 @@
 import type { z } from 'zod'
-import { Hono } from 'hono'
-import type { BlogLink, BlogLinkCategory, BlogLinkStats } from '@shared/types'
+import { Hono, type Context } from 'hono'
+import type { BlogLink, BlogLinkCategory } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
@@ -24,6 +24,15 @@ import {
 } from './schemas'
 import { checkUrlsBatch } from './link-checker'
 import { importLinkCategories, importLinkItems } from './link-import'
+import {
+  blogLinkCountsQuery,
+  blogLinksListQuery,
+  BLOG_LINK_STATUS_FILTERS,
+  isBlogLinkStatusFilter,
+  toBlogLinkCounts,
+  type BlogLinkCountsRow,
+  type BlogLinksFilter,
+} from './link-list-query'
 import { assertRefsMine, assertRowIdWritable } from './owned-rows'
 
 export function registerBlogLinksRoutes(blogManageRoutes: Hono<AppBindings>): void {
@@ -45,8 +54,11 @@ function registerBlogLinksGetRoute(blogManageRoutes: Hono<AppBindings>): void {
   blogManageRoutes.get('/links', async (c) => {
     const userId = c.get('userId')!
     const db = c.env.DB
+    const filter = readBlogLinksFilter(c)
+    const list = blogLinksListQuery(userId, filter)
+    const counts = blogLinkCountsQuery(userId, filter)
 
-    const [categoriesResult, linksResult] = await Promise.all([
+    const [categoriesResult, linksResult, countsResult] = await Promise.all([
       db.prepare(`
         SELECT c.*,
           (SELECT COUNT(*) FROM blog_links l WHERE l.category_id = c.id) as links_count
@@ -54,29 +66,32 @@ function registerBlogLinksGetRoute(blogManageRoutes: Hono<AppBindings>): void {
         WHERE c.user_id = ?1
         ORDER BY c.sort_order ASC, c.created_at ASC
       `).bind(userId).all<BlogLinkCategoryRow>(),
-      db.prepare(`
-        SELECT * FROM blog_links
-        WHERE user_id = ?1
-        ORDER BY is_pinned DESC, pinned_order ASC, sort_order ASC, created_at DESC
-      `).bind(userId).all<BlogLinkRow>(),
+      db.prepare(list.sql).bind(...list.params).all<BlogLinkRow>(),
+      db.prepare(counts.sql).bind(...counts.params).all<BlogLinkCountsRow>(),
     ])
 
-    const categories: BlogLinkCategory[] = (categoriesResult.results || []).map(toBlogLinkCategory)
     const links: BlogLink[] = (linksResult.results || []).map(toBlogLink)
-    const counts = computeLinkCounts(links)
+    const categories: BlogLinkCategory[] = (categoriesResult.results || []).map(toBlogLinkCategory)
 
-    return c.json({ links, categories, counts })
+    return c.json({ links, categories, counts: toBlogLinkCounts(countsResult.results || []) })
   })
 }
 
-function computeLinkCounts(links: BlogLink[]): BlogLinkStats {
-  const counts: BlogLinkStats = { total: links.length, pending: 0, approved: 0, rejected: 0 }
-  for (const l of links) {
-    if (l.status === 'pending') counts.pending++
-    if (l.status === 'approved') counts.approved++
-    if (l.status === 'rejected') counts.rejected++
+/**
+ * The client used to send these three and get the whole table back, filtering it again in the
+ * browser. The server now answers the question that was asked: one statement for the page, one for
+ * the tab badges. An unknown status is refused rather than quietly treated as `all`.
+ */
+function readBlogLinksFilter(c: Context<AppBindings>): BlogLinksFilter {
+  const status = c.req.query('status')?.trim() || 'all'
+  if (!isBlogLinkStatusFilter(status)) {
+    throw ApiError.badRequest(`status must be one of: ${BLOG_LINK_STATUS_FILTERS.join(', ')}`)
   }
-  return counts
+  return {
+    status,
+    categoryId: c.req.query('categoryId')?.trim() || undefined,
+    search: c.req.query('search')?.trim() || undefined,
+  }
 }
 
 function registerBlogLinksUpsertRoute(blogManageRoutes: Hono<AppBindings>): void {

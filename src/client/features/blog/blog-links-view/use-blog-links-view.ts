@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import type { BlogLink } from '@shared/types'
+import type { BlogLink, BlogLinkStats } from '@shared/types'
 import { confirm } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
-import { useBlogStore } from '../blog-store'
+import { useBlogStore, type BlogLinkFilterType } from '../blog-store'
 
 export function useBlogLinksView() {
   const toast = useUi((s) => s.toast)
@@ -13,11 +13,11 @@ export function useBlogLinksView() {
   const contextMenuState = useBlogLinksContextMenu()
   const batchOps = useBlogLinksBatchOperations(store, toast)
 
-  const statusCounts = useMemo(() => computeStatusCounts(store.linkStats, store.links), [store.linkStats, store.links])
-  const filteredLinks = useMemo(
-    () => filterLinks(store.links, store.linkStatusFilter, store.linkCategoryId, store.linkSearch),
-    [store.links, store.linkStatusFilter, store.linkCategoryId, store.linkSearch],
-  )
+  const statusCounts = useMemo(() => linkStatusCounts(store.linkStats), [store.linkStats])
+  // The server answers the filter this time, so what came back *is* the filtered list — the badge
+  // count is only used to notice that the list hit its page limit.
+  const filteredLinks = store.links
+  const isTruncated = statusCounts[store.linkStatusFilter] > filteredLinks.length
   const isAllSelected = filteredLinks.length > 0 && filteredLinks.every((l) => store.selectedLinkIds.has(l.id))
 
   const handleToggleSelectAll = () => {
@@ -44,6 +44,7 @@ export function useBlogLinksView() {
     ...batchOps,
     statusCounts,
     filteredLinks,
+    isTruncated,
     isAllSelected,
     handleToggleSelectAll,
     handleDelete,
@@ -240,41 +241,13 @@ function useBlogLinksContextMenu() {
   }
 }
 
-function computeStatusCounts(
-  linkStats: { total: number; pending: number; approved: number; rejected: number } | null,
-  links: BlogLink[],
-) {
+function linkStatusCounts(linkStats: BlogLinkStats | null): Record<BlogLinkFilterType, number> {
   return {
-    all: linkStats?.total ?? links.length,
-    pending: linkStats?.pending ?? links.filter((l) => l.status === 'pending').length,
-    approved: linkStats?.approved ?? links.filter((l) => l.status === 'approved').length,
-    rejected: linkStats?.rejected ?? links.filter((l) => l.status === 'rejected').length,
-    pinned: links.filter((l) => Boolean(l.isPinned)).length,
-    favorite: links.filter((l) => Boolean(l.isFavorite)).length,
+    all: linkStats?.total ?? 0,
+    pending: linkStats?.pending ?? 0,
+    approved: linkStats?.approved ?? 0,
+    rejected: linkStats?.rejected ?? 0,
+    pinned: linkStats?.pinned ?? 0,
+    favorite: linkStats?.favorite ?? 0,
   }
-}
-
-function filterLinks(links: BlogLink[], statusFilter: string, categoryId: string | null, search: string): BlogLink[] {
-  let result = links
-  if (statusFilter === 'pinned') {
-    result = result.filter((l) => Boolean(l.isPinned))
-  } else if (statusFilter === 'favorite') {
-    result = result.filter((l) => Boolean(l.isFavorite))
-  } else if (statusFilter !== 'all') {
-    result = result.filter((l) => l.status === statusFilter)
-  }
-  if (categoryId) {
-    result = result.filter((l) => l.categoryId === categoryId)
-  }
-  if (search.trim()) {
-    const q = search.trim().toLowerCase()
-    result = result.filter(
-      (l) =>
-        l.name.toLowerCase().includes(q) ||
-        l.url.toLowerCase().includes(q) ||
-        (l.description && l.description.toLowerCase().includes(q)) ||
-        (l.email && l.email.toLowerCase().includes(q)),
-    )
-  }
-  return result
 }

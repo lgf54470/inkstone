@@ -109,6 +109,9 @@ export interface BlogLinkStats {
   pending: number
   approved: number
   rejected: number
+  /** The two flag tabs; the admin list filters on them exactly like a status. */
+  pinned: number
+  favorite: number
 }
 
 export interface BlogComment {

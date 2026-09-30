@@ -104,6 +104,7 @@ export const messages = {
 'blog.link_import_success': '成功导入 {categories} 个分类，{links} 个友链',
 'blog.link_auto_fetch_favicon': '获取图标',
 'blog.link_no_links': '暂无友链',
+'blog.link_list_truncated': '只显示前 {value0} 条友链，缩小筛选范围可查看其余。',
 'blog.link_category_add_root': '添加主分类',
 'blog.link_category_add_sub': '添加子分类',
 'blog.link_category_name': '分类名称',
