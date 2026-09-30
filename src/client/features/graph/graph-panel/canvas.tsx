@@ -1,22 +1,27 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react'
-import { CircleDot, FolderOpen, PanelRightClose } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react'
 import type { GraphResponse } from '@shared/types'
-import { Menu, type MenuItem } from '../../../components/overlay'
+import { Menu } from '../../../components/overlay'
 import { usePinnedWindows } from '../../../store/pinned-windows'
 import { t } from '../../../lib/i18n'
 import { getLinkHoverTarget, subscribeLinkHoverTarget } from '../../preview'
-import { graphScaleAfterWheel } from './helpers'
-import { PHYSICS_FRAME_LIMIT } from './constants'
-import type { CanvasNode, CanvasState, GraphCanvasLoopOptions, GraphDragOptions } from './types'
+import { buildColorLegends, graphScaleAfterWheel } from './helpers'
+import type { CanvasNode, CanvasState, GraphCanvasLoopOptions } from './types'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 import type { WorkspacePane } from '../../../store/ui'
 import { buildInitialLayout, createCanvasResizer, createGraphTicker, createThemeObserver, readThemeColors } from './canvas-draw'
+import { GraphOverlays } from './graph-overlays'
+import { useGraphNodePreview } from './use-graph-preview'
+import {
+  type GraphControls,
+  graphMenuItems,
+  useDynamicGraphPrefs,
+  useGraphControls,
+  useGraphDrag,
+  useGraphFit,
+  useGraphWorldMath,
+} from './canvas-hooks'
 
-export interface GraphControls {
-  zoomIn: () => void
-  zoomOut: () => void
-  fit: () => void
-}
+export type { GraphControls }
 
 interface GraphCanvasProps {
   data: GraphResponse
@@ -35,23 +40,26 @@ interface GraphCanvasProps {
   controlsRef: MutableRefObject<GraphControls | null>
 }
 
-function useGraphFit(canvasRef: RefObject<HTMLCanvasElement | null>, stateRef: RefObject<CanvasState>) {
-  return useCallback(() => {
-    const canvas = canvasRef.current
-    const state = stateRef.current
-    if (!canvas || !state.nodes.length) return
-    const rect = canvas.getBoundingClientRect()
-    const xs = state.nodes.map((node) => node.x)
-    const ys = state.nodes.map((node) => node.y)
-    const minX = Math.min(...xs), maxX = Math.max(...xs)
-    const minY = Math.min(...ys), maxY = Math.max(...ys)
-    const width = Math.max(80, maxX - minX + 80)
-    const height = Math.max(80, maxY - minY + 80)
-    state.scale = Math.min(2.5, Math.max(0.2, Math.min(rect.width / width, rect.height / height)))
-    state.offsetX = rect.width / 2 - ((minX + maxX) / 2) * state.scale
-    state.offsetY = rect.height / 2 - ((minY + maxY) / 2) * state.scale
-    state.schedule?.()
-  }, [canvasRef, stateRef])
+interface CanvasHandlers {
+  stateRef: RefObject<CanvasState>
+  hoverRef: MutableRefObject<CanvasNode | null>
+  selectedIdRef: MutableRefObject<string | null>
+  lastPointerEventAtRef: MutableRefObject<number>
+  isSpaceDownRef: MutableRefObject<boolean>
+  setHover: (node: CanvasNode | null) => void
+  setSelectedId: (id: string | null) => void
+  setContext: (value: { x: number; y: number; node: CanvasNode } | null) => void
+  beginDrag: (clientX: number, clientY: number, button: number, forcePan?: boolean) => void
+  moveDrag: (clientX: number, clientY: number) => void
+  endDrag: (clientX: number, clientY: number, modifierKey?: boolean) => void
+  toWorld: (clientX: number, clientY: number) => { x: number; y: number }
+  nodeAt: (x: number, y: number) => CanvasNode | null
+  fitGraph: () => void
+  onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void
+  onCreateNote: (title: string) => void
+  onClose: () => void
+  hover: CanvasNode | null
+  isDragging: boolean
 }
 
 function useGraphCanvasLoop(options: GraphCanvasLoopOptions) {
@@ -71,15 +79,16 @@ function useGraphCanvasLoop(options: GraphCanvasLoopOptions) {
     const { resize, observer } = createCanvasResizer(canvas, ctx, state)
     resize()
     const style = getComputedStyle(document.documentElement)
-    createGraphTicker({ state, canvas, ctx, colorsRef, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style })
+    createGraphTicker({
+      state, canvas, ctx, colorsRef, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style,
+      onSettled: fitGraph,
+    })
     const linkedTargetId = getLinkHoverTarget()
     const linkedNode = linkedTargetId ? state.nodes.find((candidate) => candidate.id === linkedTargetId) ?? null : null
     hoverRef.current = linkedNode
     setHover(linkedNode)
     state.schedule?.()
-    const fitTimer = window.setTimeout(fitGraph, 120)
     return () => {
-      window.clearTimeout(fitTimer)
       cancelAnimationFrame(state.raf)
       state.raf = 0; state.schedule = null
       observer.disconnect()
@@ -88,105 +97,21 @@ function useGraphCanvasLoop(options: GraphCanvasLoopOptions) {
   }, [activeNoteIdRef, canvasRef, data, fitGraph, hoverRef, prefsRef, selectedIdRef, setHover, setSelectedId, stateRef])
 }
 
-function useGraphWorldMath(stateRef: RefObject<CanvasState>, canvasRef: RefObject<HTMLCanvasElement | null>) {
-  const toWorld = useCallback((clientX: number, clientY: number) => {
-    const state = stateRef.current
-    const rect = canvasRef.current!.getBoundingClientRect()
-    return { x: (clientX - rect.left - state.offsetX) / state.scale, y: (clientY - rect.top - state.offsetY) / state.scale }
-  }, [canvasRef, stateRef])
-  const nodeAt = useCallback((x: number, y: number): CanvasNode | null => {
-    const nodes = stateRef.current.nodes
-    for (let index = nodes.length - 1; index >= 0; index--) {
-      const node = nodes[index]!
-      if (Math.hypot(node.x - x, node.y - y) <= node.r + 7) return node
-    }
-    return null
-  }, [stateRef])
-  return { toWorld, nodeAt }
-}
-
-function useGraphDrag(options: GraphDragOptions) {
-  const { stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote } = options
-  const beginDrag = useCallback((clientX: number, clientY: number, button: number) => {
-    if (button !== 0) return
-    const state = stateRef.current
-    const point = toWorld(clientX, clientY)
-    const node = nodeAt(point.x, point.y)
-    state.dragging = { node, startX: clientX, startY: clientY, ox: state.offsetX, oy: state.offsetY }
-    if (node) setSelectedId(node.id)
-  }, [nodeAt, setSelectedId, stateRef, toWorld])
-
-  const moveDrag = useCallback((clientX: number, clientY: number) => {
-    const state = stateRef.current
-    const point = toWorld(clientX, clientY)
-    if (state.dragging) {
-      if (state.dragging.node) {
-        state.dragging.node.x = point.x; state.dragging.node.y = point.y
-        state.dragging.node.vx = 0; state.dragging.node.vy = 0
-        state.frame = Math.min(state.frame, PHYSICS_FRAME_LIMIT - 100)
-      } else {
-        state.offsetX = state.dragging.ox + clientX - state.dragging.startX
-        state.offsetY = state.dragging.oy + clientY - state.dragging.startY
-      }
-      state.schedule?.(); return
-    }
-    const node = nodeAt(point.x, point.y)
-    if (hoverRef.current?.id !== node?.id) {
-      hoverRef.current = node; setHover(node); state.schedule?.()
-    }
-  }, [hoverRef, nodeAt, setHover, stateRef, toWorld])
-
-  const endDrag = useCallback((clientX: number, clientY: number, modifierKey = false) => {
-    const state = stateRef.current
-    const drag = state.dragging
-    state.dragging = null
-    if (!drag) return
-    const moved = Math.abs(clientX - drag.startX) + Math.abs(clientY - drag.startY)
-    if (moved >= 5) return
-    if (!drag.node) {
-      setSelectedId(null)
-      return
-    }
-    setSelectedId(drag.node.id)
-    if (modifierKey) {
-      if (drag.node.kind === 'note') void onOpenNote(drag.node.id, { pane: 'secondary' })
-      else void onCreateNote(drag.node.title)
-    }
-  }, [onCreateNote, onOpenNote, setSelectedId, stateRef])
-  return { beginDrag, moveDrag, endDrag }
-}
-
-interface CanvasHandlers {
-  stateRef: RefObject<CanvasState>
-  hoverRef: MutableRefObject<CanvasNode | null>
-  selectedIdRef: MutableRefObject<string | null>
-  lastPointerEventAtRef: MutableRefObject<number>
-  setHover: (node: CanvasNode | null) => void
-  setSelectedId: (id: string | null) => void
-  setContext: (value: { x: number; y: number; node: CanvasNode } | null) => void
-  beginDrag: (clientX: number, clientY: number, button: number) => void
-  moveDrag: (clientX: number, clientY: number) => void
-  endDrag: (clientX: number, clientY: number, modifierKey?: boolean) => void
-  toWorld: (clientX: number, clientY: number) => { x: number; y: number }
-  nodeAt: (x: number, y: number) => CanvasNode | null
-  fitGraph: () => void
-  onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void
-  onCreateNote: (title: string) => void
-  onClose: () => void
-}
-
 function handleCanvasPointerDown(event: React.PointerEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
-  if (event.button !== 0) return
+  if (event.button !== 0 && event.button !== 1) return
   h.lastPointerEventAtRef.current = performance.now()
   event.currentTarget.setPointerCapture(event.pointerId)
   const state = h.stateRef.current
   state.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
   if (state.pointers.size === 1) {
-    h.beginDrag(event.clientX, event.clientY, event.button)
+    h.beginDrag(event.clientX, event.clientY, event.button, h.isSpaceDownRef.current)
   } else if (state.pointers.size === 2) {
     const [a, b] = [...state.pointers.values()]
     state.dragging = null
-    state.pinch = { distance: Math.hypot(b!.x - a!.x, b!.y - a!.y), scale: state.scale, centerX: (a!.x + b!.x) / 2, centerY: (a!.y + b!.y) / 2 }
+    const rect = event.currentTarget.getBoundingClientRect()
+    const cx = (a!.x + b!.x) / 2 - rect.left
+    const cy = (a!.y + b!.y) / 2 - rect.top
+    state.pinch = { distance: Math.hypot(b!.x - a!.x, b!.y - a!.y), scale: state.scale, centerX: cx, centerY: cy }
   }
 }
 
@@ -197,18 +122,21 @@ function handleCanvasPointerMove(event: React.PointerEvent<HTMLCanvasElement>, h
   if (state.pointers.size >= 2 && state.pinch) {
     const [a, b] = [...state.pointers.values()]
     const distance = Math.hypot(b!.x - a!.x, b!.y - a!.y)
-    state.scale = Math.min(4, Math.max(0.2, state.pinch.scale * distance / Math.max(1, state.pinch.distance)))
-    state.schedule?.(); return
+    const rect = event.currentTarget.getBoundingClientRect()
+    const cx = (a!.x + b!.x) / 2 - rect.left
+    const cy = (a!.y + b!.y) / 2 - rect.top
+    const nextScale = Math.min(4, Math.max(0.2, (state.pinch.scale * distance) / Math.max(1, state.pinch.distance)))
+    const worldX = (state.pinch.centerX - state.offsetX) / state.scale
+    const worldY = (state.pinch.centerY - state.offsetY) / state.scale
+    state.scale = nextScale
+    state.offsetX = cx - worldX * nextScale
+    state.offsetY = cy - worldY * nextScale
+    state.pinch.centerX = cx
+    state.pinch.centerY = cy
+    state.schedule?.()
+    return
   }
   h.moveDrag(event.clientX, event.clientY)
-}
-
-function handleCanvasPointerUp(event: React.PointerEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
-  h.lastPointerEventAtRef.current = performance.now()
-  const state = h.stateRef.current
-  state.pointers.delete(event.pointerId)
-  if (!state.pinch) h.endDrag(event.clientX, event.clientY, event.metaKey || event.ctrlKey)
-  if (state.pointers.size < 2) state.pinch = null
 }
 
 function handleCanvasDoubleClick(event: React.MouseEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
@@ -224,13 +152,6 @@ function handleCanvasDoubleClick(event: React.MouseEvent<HTMLCanvasElement>, h: 
   h.onClose()
 }
 
-function handleCanvasPointerCancel(event: React.PointerEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
-  const state = h.stateRef.current
-  state.pointers.delete(event.pointerId)
-  state.dragging = null
-  state.pinch = null
-}
-
 function handleCanvasWheel(event: React.WheelEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
   const state = h.stateRef.current
   const rect = event.currentTarget.getBoundingClientRect()
@@ -244,52 +165,29 @@ function handleCanvasWheel(event: React.WheelEvent<HTMLCanvasElement>, h: Canvas
   state.schedule?.()
 }
 
-function handleCanvasContextMenu(event: React.MouseEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
-  event.preventDefault()
-  const point = h.toWorld(event.clientX, event.clientY)
-  const node = h.nodeAt(point.x, point.y)
-  if (node) {
-    h.setSelectedId(node.id)
-    h.setContext({ x: event.clientX, y: event.clientY, node })
-  }
-}
-
-function handleCanvasMouseLeave(h: CanvasHandlers): void {
-  const state = h.stateRef.current
-  state.dragging = null
-  h.hoverRef.current = null
-  h.setHover(null)
-  state.schedule?.()
-}
-
 function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
   const state = h.stateRef.current
+  if (event.key === ' ') {
+    h.isSpaceDownRef.current = true
+    event.preventDefault(); return
+  }
   if (event.key === '+' || event.key === '=') {
-    state.scale = Math.min(4, state.scale + 0.2)
-    event.preventDefault(); state.schedule?.()
-    return
+    state.scale = Math.min(4, state.scale + 0.2); event.preventDefault(); state.schedule?.(); return
   }
   if (event.key === '-') {
-    state.scale = Math.max(0.2, state.scale - 0.2)
-    event.preventDefault(); state.schedule?.()
-    return
+    state.scale = Math.max(0.2, state.scale - 0.2); event.preventDefault(); state.schedule?.(); return
   }
   if (event.key === 'Home') {
-    h.fitGraph()
-    event.preventDefault(); state.schedule?.()
-    return
+    h.fitGraph(); event.preventDefault(); state.schedule?.(); return
   }
   if (event.key === 'Enter' && h.selectedIdRef.current) {
     const selectedNode = state.nodes.find((node) => node.id === h.selectedIdRef.current)
     if (selectedNode?.kind === 'note') {
       if (usePinnedWindows.getState().focusPinnedByNote(selectedNode.id)) return
       void h.onOpenNote(selectedNode.id)
-    } else if (selectedNode) {
-      void h.onCreateNote(selectedNode.title)
-    }
+    } else if (selectedNode) void h.onCreateNote(selectedNode.title)
     if (selectedNode) h.onClose()
-    event.preventDefault(); state.schedule?.()
-    return
+    event.preventDefault(); state.schedule?.(); return
   }
   if (event.key.startsWith('Arrow')) {
     const current = Math.max(0, state.nodes.findIndex((node) => node.id === h.selectedIdRef.current))
@@ -300,140 +198,167 @@ function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLCanvasElement>, h: C
   }
 }
 
-function graphMenuItems(context: { x: number; y: number; node: CanvasNode } | null, onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void, onCreateNote: (title: string) => void, onClose: () => void, onMakeLocal: () => void): MenuItem[] {
-  if (!context)
-    return []
-  const node = context.node
-  return [
-    { id: 'open', label: node.kind === 'unresolved' ? t('graph.create_note') : t('graph.open_note'), icon: <FolderOpen size={14}/>, onSelect: () => {
-      if (node.kind === 'unresolved') void onCreateNote(node.title)
-      else void onOpenNote(node.id)
-      onClose()
-    } },
-    { id: 'right', label: t('graph.open_to_right'), icon: <PanelRightClose size={14}/>, disabled: node.kind === 'unresolved', onSelect: () => { void onOpenNote(node.id, { pane: 'secondary' }) } },
-    { id: 'local', label: t('graph.make_local_center'), icon: <CircleDot size={14}/>, disabled: node.kind === 'unresolved', separatorBefore: true, onSelect: () => {
-      void onOpenNote(node.id)
-      onMakeLocal()
-    } },
-  ]
-}
-
-function GraphOverlays({ data, hover, selected, hint }: {
-  data: GraphResponse
-  hover: CanvasNode | null
-  selected: GraphResponse['nodes'][number] | null
-  hint: string
-}) {
-  const shown = hover ?? selected
-  return (
-    <>
-      {data.meta.truncated && <div role='status' className='absolute top-3 left-1/2 -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3 py-1 text-[length:var(--text-11)] text-[var(--text-secondary)] shadow-[var(--shadow-sm)]'>
-        {t('graph.showing_limit', { shown: data.nodes.length, total: data.meta.totalNodes })}
-      </div>}
-      {shown && <div className='pointer-events-none absolute bottom-4 left-1/2 max-w-[80vw] -translate-x-1/2 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3.5 py-1.5 text-[length:var(--text-12)] shadow-[var(--shadow-pop)]'>
-        <span className='max-w-[50vw] truncate'>{shown.title || t('common.untitled_note')}</span>
-        <span className='ml-2 text-[var(--text-quaternary)]'>{t('graph.direction_counts', { incoming: shown.inDegree, outgoing: shown.outDegree })}</span>
-      </div>}
-      <div className='pointer-events-none absolute top-3 left-4 hidden text-[length:var(--text-11)] text-[var(--text-quaternary)] md:block'>{hint}</div>
-    </>
-  )
-}
-
 function GraphCanvasElement({ canvasRef, handlers }: {
   canvasRef: RefObject<HTMLCanvasElement | null>
   handlers: CanvasHandlers
 }) {
+  const cursorClass = handlers.isDragging
+    ? 'cursor-grabbing'
+    : handlers.isSpaceDownRef.current
+      ? 'cursor-grab'
+      : handlers.hover
+        ? 'cursor-pointer'
+        : 'cursor-grab active:cursor-grabbing'
+
   return (
     <canvas ref={canvasRef} tabIndex={0} role='application' aria-label={t('graph.graph_canvas_accessible')}
-      className='size-full touch-none cursor-grab outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] active:cursor-grabbing'
+      className={`size-full touch-none ${cursorClass} outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]`}
       onPointerDown={(event) => handleCanvasPointerDown(event, handlers)}
       onPointerMove={(event) => handleCanvasPointerMove(event, handlers)}
-      onPointerUp={(event) => handleCanvasPointerUp(event, handlers)}
-      onPointerCancel={(event) => handleCanvasPointerCancel(event, handlers)}
-      onMouseDown={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.beginDrag(event.clientX, event.clientY, event.button) }}
+      onPointerUp={(event) => {
+        handlers.lastPointerEventAtRef.current = performance.now()
+        handlers.stateRef.current.pointers.delete(event.pointerId)
+        if (!handlers.stateRef.current.pinch) handlers.endDrag(event.clientX, event.clientY, event.metaKey || event.ctrlKey)
+        if (handlers.stateRef.current.pointers.size < 2) handlers.stateRef.current.pinch = null
+      }}
+      onPointerCancel={(event) => {
+        handlers.stateRef.current.pointers.delete(event.pointerId)
+        handlers.stateRef.current.dragging = null
+        handlers.stateRef.current.pinch = null
+      }}
+      onMouseDown={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.beginDrag(event.clientX, event.clientY, event.button, handlers.isSpaceDownRef.current) }}
       onMouseMove={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.moveDrag(event.clientX, event.clientY) }}
       onMouseUp={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.endDrag(event.clientX, event.clientY, event.metaKey || event.ctrlKey) }}
       onDoubleClick={(event) => handleCanvasDoubleClick(event, handlers)}
-      onMouseLeave={() => handleCanvasMouseLeave(handlers)}
-      onContextMenu={(event) => handleCanvasContextMenu(event, handlers)}
+      onMouseLeave={() => { handlers.stateRef.current.dragging = null; handlers.hoverRef.current = null; handlers.setHover(null); handlers.stateRef.current.schedule?.() }}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        const point = handlers.toWorld(event.clientX, event.clientY)
+        const node = handlers.nodeAt(point.x, point.y)
+        if (node) { handlers.setSelectedId(node.id); handlers.setContext({ x: event.clientX, y: event.clientY, node }) }
+      }}
       onWheel={(event) => handleCanvasWheel(event, handlers)}
       onKeyDown={(event) => handleCanvasKeyDown(event, handlers)}
+      onKeyUp={(event) => { if (event.key === ' ') handlers.isSpaceDownRef.current = false }}
     />
   )
 }
 
-function useDynamicGraphPrefs(stateRef: RefObject<CanvasState>, prefs: GraphPreferences) {
-  useEffect(() => {
-    const state = stateRef.current
-    if (state && state.nodes.length > 0) {
-      state.frame = Math.min(state.frame, PHYSICS_FRAME_LIMIT - 90)
-      state.schedule?.()
-    }
-  }, [prefs.repulsion, prefs.linkDistance, stateRef])
-  useEffect(() => {
-    const state = stateRef.current
-    if (state && state.nodes.length > 0) {
-      for (const node of state.nodes) {
-        node.r = (4 + Math.min(9, Math.sqrt(node.degree) * 2.4)) * prefs.nodeScale
-      }
-      state.schedule?.()
-    }
-  }, [prefs.nodeScale, stateRef])
-  useEffect(() => {
-    stateRef.current.schedule?.()
-  }, [prefs.arrows, prefs.labels, prefs.groupBy, stateRef])
-}
+function useGraphPreviewAndA11y(
+  canvasRef: RefObject<HTMLCanvasElement | null>,
+  stateRef: RefObject<CanvasState>,
+  hoverRef: MutableRefObject<CanvasNode | null>,
+  setHover: (node: CanvasNode | null) => void,
+  selectedId: string | null,
+  activeNoteId: string | null,
+  activeNoteIdRef: MutableRefObject<string | null>,
+) {
+  const [liveAnnouncement, setLiveAnnouncement] = useState('')
+  const preview = useGraphNodePreview(canvasRef, stateRef)
 
-function useGraphControls(controlsRef: MutableRefObject<GraphControls | null>, stateRef: RefObject<CanvasState>, fitGraph: () => void) {
-  controlsRef.current = {
-    zoomIn: () => { stateRef.current.scale = Math.min(4, stateRef.current.scale + 0.2); stateRef.current.schedule?.() },
-    zoomOut: () => { stateRef.current.scale = Math.max(0.2, stateRef.current.scale - 0.2); stateRef.current.schedule?.() },
-    fit: fitGraph,
-  }
-}
-
-export function GraphCanvas({ data, prefs, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, controlsRef }: GraphCanvasProps) {
-  const [hover, setHover] = useState<CanvasNode | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [context, setContext] = useState<{ x: number; y: number; node: CanvasNode } | null>(null)
   useEffect(() => {
     activeNoteIdRef.current = activeNoteId
     stateRef.current.schedule?.()
-  }, [activeNoteId])
+  }, [activeNoteId, activeNoteIdRef, stateRef])
+
   useEffect(() => {
-    selectedIdRef.current = selectedId
     stateRef.current.schedule?.()
-  }, [selectedId])
+    if (selectedId) {
+      const node = stateRef.current.nodes.find((candidate) => candidate.id === selectedId)
+      if (node) {
+        setLiveAnnouncement(`${node.title || t('common.untitled_note')}, ${t('graph.direction_counts', { incoming: node.inDegree, outgoing: node.outDegree })}`)
+        preview.showPreview(node)
+      }
+    }
+  }, [selectedId, stateRef, preview])
+
   useEffect(() => subscribeLinkHoverTarget((noteId) => {
     const state = stateRef.current
     const node = noteId ? state.nodes.find((candidate) => candidate.id === noteId) ?? null : null
     hoverRef.current = node
     setHover(node)
+    preview.onHoverNode(node)
     state.schedule?.()
-  }), [])
+  }), [hoverRef, setHover, preview, stateRef])
+
+  return { preview, liveAnnouncement }
+}
+
+function useGraphCanvasController(props: GraphCanvasProps) {
+  const { data, prefs, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, controlsRef } = props
+  const [hover, setHover] = useState<CanvasNode | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [context, setContext] = useState<{ x: number; y: number; node: CanvasNode } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const isSpaceDownRef = useRef(false)
+  const { preview, liveAnnouncement } = useGraphPreviewAndA11y(canvasRef, stateRef, hoverRef, setHover, selectedId, activeNoteId, activeNoteIdRef)
+
+  useEffect(() => { selectedIdRef.current = selectedId }, [selectedId, selectedIdRef])
   const prefsRef = useRef(prefs)
-  useEffect(() => {
-    prefsRef.current = prefs
-  }, [prefs])
+  useEffect(() => { prefsRef.current = prefs }, [prefs])
   useDynamicGraphPrefs(stateRef, prefs)
   const fitGraph = useGraphFit(canvasRef, stateRef)
   useGraphCanvasLoop({ data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph })
   const { toWorld, nodeAt } = useGraphWorldMath(stateRef, canvasRef)
-  const { beginDrag, moveDrag, endDrag } = useGraphDrag({ stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote })
-  const selected = data.nodes.find((node) => node.id === selectedId) ?? null
-  const menuItems = graphMenuItems(context, onOpenNote, onCreateNote, onClose, onMakeLocal)
+
+  const { beginDrag: origBeginDrag, moveDrag, endDrag: origEndDrag } = useGraphDrag({
+    stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote,
+    onDragStart: () => { setIsDragging(true); preview.clearTimers(); preview.closePreview() },
+    onHoverChange: (node) => preview.onHoverNode(node),
+    onSelectNode: (node) => preview.showPreview(node),
+  })
+
+  const beginDrag = useCallback((clientX: number, clientY: number, button: number, forcePan?: boolean) => {
+    origBeginDrag(clientX, clientY, button, forcePan); setIsDragging(true)
+  }, [origBeginDrag])
+
+  const endDrag = useCallback((clientX: number, clientY: number, modifierKey?: boolean) => {
+    origEndDrag(clientX, clientY, modifierKey); setIsDragging(false)
+  }, [origEndDrag])
+
+  const onTogglePin = useCallback((node: CanvasNode) => {
+    node.pinned = !node.pinned; stateRef.current.schedule?.()
+  }, [stateRef])
+
+  const menuItems = graphMenuItems(context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin)
   useGraphControls(controlsRef, stateRef, fitGraph)
+  const colorLegends = useMemo(() => buildColorLegends(stateRef.current.nodes, prefs.groupBy), [stateRef, prefs.groupBy])
+
   const handlers: CanvasHandlers = {
-    stateRef, hoverRef, selectedIdRef, lastPointerEventAtRef,
+    stateRef, hoverRef, selectedIdRef, lastPointerEventAtRef, isSpaceDownRef,
     setHover, setSelectedId, setContext,
     beginDrag, moveDrag, endDrag, toWorld, nodeAt, fitGraph,
-    onOpenNote, onCreateNote, onClose,
+    onOpenNote, onCreateNote, onClose, hover, isDragging,
   }
+
+  return { handlers, preview, colorLegends, liveAnnouncement, menuItems, hover, selectedId, context, setContext }
+}
+
+export function GraphCanvas(props: GraphCanvasProps) {
+  const { data, canvasRef } = props
+  const b = useGraphCanvasController(props)
+  const selected = data.nodes.find((node) => node.id === b.selectedId) ?? null
+
   return (
     <>
-      <GraphCanvasElement canvasRef={canvasRef} handlers={handlers}/>
-      <GraphOverlays data={data} hover={hover} selected={selected} hint={t('graph.interaction_hint')}/>
-      <Menu anchor={context ?? { x: 0, y: 0 }} open={Boolean(context)} onClose={() => setContext(null)} items={menuItems} label={t('graph.node_actions')}/>
+      <GraphCanvasElement canvasRef={canvasRef} handlers={b.handlers}/>
+      <GraphOverlays
+        data={data}
+        hover={b.hover}
+        selected={selected}
+        hint={t('graph.interaction_hint')}
+        previewCard={b.preview.previewCard}
+        anchorPos={b.preview.anchorPos}
+        anchorRef={b.preview.anchorRef}
+        isDark={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark'}
+        onClosePreview={b.preview.closePreview}
+        onEnterPreview={b.preview.pauseHide}
+        onLeavePreview={b.preview.resumeHide}
+        onPinPreview={b.preview.onPinPreview}
+        colorLegends={b.colorLegends}
+        liveAnnouncement={b.liveAnnouncement}
+      />
+      <Menu anchor={b.context ?? { x: 0, y: 0 }} open={Boolean(b.context)} onClose={() => b.setContext(null)} items={b.menuItems} label={t('graph.node_actions')}/>
     </>
   )
 }

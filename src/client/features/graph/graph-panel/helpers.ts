@@ -54,10 +54,59 @@ function booleanPreference(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
 }
 
+const TAG_FALLBACK_PALETTE = [
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#ec4899',
+  '#8b5cf6',
+  '#06b6d4',
+  '#f97316',
+  '#14b8a6',
+  '#6366f1',
+  '#84cc16',
+]
+
+export function tagHashColor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash << 5) - hash + name.charCodeAt(i)
+    hash |= 0
+  }
+  const index = Math.abs(hash) % TAG_FALLBACK_PALETTE.length
+  return TAG_FALLBACK_PALETTE[index]!
+}
+
 export function nodeColor(node: CanvasNode, groupBy: GroupBy, fallback: string): string {
   if (groupBy === 'folder') return organizerColorOrNull(node.folderColor) ?? fallback
-  if (groupBy === 'tag') return organizerColorOrNull(node.tags[0]?.color) ?? fallback
+  if (groupBy === 'tag') {
+    const firstTag = node.tags[0]
+    if (!firstTag) return fallback
+    return organizerColorOrNull(firstTag.color) ?? tagHashColor(firstTag.name)
+  }
   return fallback
+}
+
+function extractNodeLegend(node: CanvasNode, groupBy: GroupBy): { label: string; color: string } | null {
+  if (groupBy === 'folder' && node.folderName) {
+    const color = organizerColorOrNull(node.folderColor)
+    return color ? { label: node.folderName, color } : null
+  }
+  if (groupBy === 'tag' && node.tags[0]) {
+    const tag = node.tags[0]
+    return { label: tag.name, color: organizerColorOrNull(tag.color) ?? tagHashColor(tag.name) }
+  }
+  return null
+}
+
+export function buildColorLegends(nodes: CanvasNode[], groupBy: GroupBy): Array<{ label: string; color: string }> {
+  if (groupBy === 'none') return []
+  const map = new Map<string, string>()
+  for (const node of nodes) {
+    const entry = extractNodeLegend(node, groupBy)
+    if (entry && !map.has(entry.label)) map.set(entry.label, entry.color)
+  }
+  return [...map.entries()].slice(0, 10).map(([label, color]) => ({ label, color }))
 }
 
 export function normalizedResponse(response: GraphResponse): GraphResponse {

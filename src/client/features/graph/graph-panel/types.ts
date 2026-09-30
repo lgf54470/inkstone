@@ -9,6 +9,7 @@ export interface CanvasNode extends GraphNode {
   vx: number
   vy: number
   r: number
+  pinned?: boolean
 }
 
 export interface CanvasState {
@@ -83,6 +84,7 @@ export interface GraphTickerOptions {
   selectedIdRef: MutableRefObject<string | null>
   activeNoteIdRef: MutableRefObject<string | null>
   style: CSSStyleDeclaration
+  onSettled?: () => void
 }
 
 export interface GraphCanvasLoopOptions {
@@ -107,6 +109,9 @@ export interface GraphDragOptions {
   setSelectedId: (id: string | null) => void
   onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void
   onCreateNote: (title: string) => void
+  onDragStart?: () => void
+  onHoverChange?: (node: CanvasNode | null) => void
+  onSelectNode?: (node: CanvasNode) => void
 }
 
 export interface GraphHeaderActionsProps {

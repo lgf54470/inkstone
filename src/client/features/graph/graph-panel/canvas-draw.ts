@@ -37,14 +37,13 @@ function applyRepulsion(state: CanvasState, repulsion: number): void {
         dy = (Math.random() - 0.5) * 0.6
         distanceSquared = 0.36
       }
-      if (distanceSquared > 120000) continue
       const distance = Math.sqrt(distanceSquared)
-      const force = repulsion / distanceSquared
-      const fx = dx / distance * force, fy = dy / distance * force
+      const force = (repulsion / (distanceSquared + 400)) * Math.max(0.04, 1 - distance / 2400)
+      const fx = (dx / distance) * force, fy = (dy / distance) * force
       a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy
     }
-    a.vx -= a.x * 0.0022
-    a.vy -= a.y * 0.0022
+    a.vx -= a.x * 0.0012
+    a.vy -= a.y * 0.0012
   }
 }
 
@@ -63,7 +62,7 @@ function applySprings(state: CanvasState, linkDistance: number): void {
 function applyVelocities(state: CanvasState): number {
   let movement = 0
   for (const node of state.nodes) {
-    if (state.dragging?.node === node) continue
+    if (state.dragging?.node === node || node.pinned) continue
     node.vx *= 0.86; node.vy *= 0.86
     const moveX = Math.max(-8, Math.min(8, node.vx))
     const moveY = Math.max(-8, Math.min(8, node.vy))
@@ -148,6 +147,10 @@ function drawNodes({
       ctx.strokeStyle = colors.accent; ctx.globalAlpha = 0.42; ctx.lineWidth = 3 / state.scale
       ctx.beginPath(); ctx.arc(node.x, node.y, node.r + 4, 0, Math.PI * 2); ctx.stroke()
     }
+    if (node.pinned) {
+      ctx.strokeStyle = colors.accent; ctx.globalAlpha = 0.8; ctx.lineWidth = 1.5 / state.scale
+      ctx.beginPath(); ctx.arc(node.x, node.y, node.r + 2.5, 0, Math.PI * 2); ctx.stroke()
+    }
   }
 }
 
@@ -226,10 +229,15 @@ export function createGraphTicker(
         style: style!,
       }
 
+  let settledFired = false
   const schedule = () => { if (!options.state.raf) options.state.raf = requestAnimationFrame(tick) }
   const tick = () => {
     options.state.raf = 0
     renderGraphScene(options)
+    if (!settledFired && (options.state.frame >= 70 || options.state.frame >= PHYSICS_FRAME_LIMIT)) {
+      settledFired = true
+      options.onSettled?.()
+    }
     if (options.state.frame < PHYSICS_FRAME_LIMIT) schedule()
   }
   options.state.schedule = schedule
