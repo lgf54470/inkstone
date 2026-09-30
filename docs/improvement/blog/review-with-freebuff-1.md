@@ -137,23 +137,23 @@
 - **方案**：删掉 `userId?` 的双键设计，统一为「一个 owner 一个键」（与 SEC-01 同源），公开侧按解析出的 owner 读；订正测试断言。
 - **范围**：`settings.ts`、`public.ts`、`public-comments.ts`、`tests/blog-routes.test.ts`。代价 **M**。
 
-#### SEC-10 [P2][开放] 匿名可控的头像 URL 被管理端直接渲染；默认头像还走第三方
+#### SEC-10 [P2][本轮已修] 匿名可控的头像 URL 被管理端直接渲染；默认头像还走第三方
 - **问题**：`public-comments.ts:69` 默认头像写死 `https://api.dicebear.com/7.x/micah/svg?seed=<authorName>`，且 `blogPublicCommentSchema.authorAvatar` 允许任意 ≤2048 字符的 URL；管理端 `blog-comments-view.tsx:290-305` 直接 `<img src={comment.authorAvatar}>`。
 - **影响**：① 匿名访客提交一条评论即可让**管理员的浏览器**向任意外站发请求（IP/UA 泄露，可用于确认管理端何时被打开）；② dicebear 收到每条未审核评论的昵称（含中文个人昵称），是把第三方引入隐私链路的默认值；③ 若将来任何导出/邮件消费该字段，风险面扩大。
 - **方案**：默认头像改本地生成（首字母 + `--bg-sunken` 底色，纯 CSS/内联 SVG，零外链）；`authorAvatar` 过 SEC-04 的 `isSafeExternalUrl`，非法值在服务端丢弃为 `null`；渲染端保留首字母降级。
 - **范围**：`public-comments.ts`、`schemas.ts`、`blog-comments-view.tsx`、`src/shared/locales/*/blog-*.ts`（新增降级文案如需）。代价 **S**。
 
-#### SEC-11 [P3][开放] 鉴权链缺挂载级兜底，且 `loadSession` 双挂载
+#### SEC-11 [P3][本轮已修] 鉴权链缺挂载级兜底，且 `loadSession` 双挂载
 - **问题**：`blog/index.ts:16` 的 `blogManageRoutes.use('*', loadSession)` 与 `app.ts:116` 的 `app.use('/api/*', loadSession)` 重复，`/api/blog/*` 每请求跑两次会话查询/续期写；且不像 share 侧（`share/index.ts:18`）有 `requireAuth` 挂载级兜底——现在依赖每条路由自己记得写 `requireAuth`，漏一条即匿名可读。
 - **方案**：去掉子应用的 `loadSession`，改为 `blogManageRoutes.use('*', requireAuth)`，逐路由的 `requireAuth` 随之删除。
 - **范围**：`blog/index.ts` 与各 route 注册函数签名。代价 **S**。
 
-#### SEC-12 [P2][开放] `getBlogSettings` JSON 解析失败静默回默认值
+#### SEC-12 [P2][已修] `getBlogSettings` JSON 解析失败静默回默认值
 - **问题**：`settings.ts:44-52` 的 `catch { return DEFAULT_BLOG_SETTINGS }` 不记日志、不区分错误类型。存储被写坏时前台会静默显示默认站点信息，管理员无从知道自己的设置已失效——属 AGENTS 铁律 2 的「静默降级」。
 - **方案**：catch 体加 `console.warn('[blog] blog settings JSON is unreadable; falling back to defaults', …)`（只记键名与错误类型，不记内容）。
 - **范围**：`settings.ts`。代价 **XS**。
 
-#### SEC-13 [P0][开放·本轮新发现] `is_self_referrer` 在写入时被硬编码为 0
+#### SEC-13 [P0][本轮已修] `is_self_referrer` 在写入时被硬编码为 0
 - **问题**：`visits.ts:60-88` 的 INSERT 列清单含 `is_self_referrer`，而绑定列表对应位置是**字面量 `0`**（`:86`）。share 侧有完整实现可对照：`share/public.ts:288` 绑定 `referrerInfo.selfReferrer ? 1 : 0`，判定在 `:300-306` 的 `isSelfReferrer(candidateReferrer, requestHost, slug)`。
 - **影响**：① 后台「排除自引荐」开关永久无效（`share-selection-sql.ts:175` 的 `is_self_referrer = 0` 条件永远成立）；② `filterStats.selfReferrals`（`stats.ts:276`）恒为 0；③ 仪表盘把该值显示成「0 次自引荐」，与 SEC-13 的服务端恒 0 叠成同一数字的两次谎报（客户端侧见 COR-03）。
 - **方案**：把 `sanitizeVisitReferrer` 的返回扩展为「是否站内引荐」，blog 侧复用 share 的 `isSelfReferrer()` 并把真实值写入；补一条 worker 契约测试：带本站 referer 的请求落库 `is_self_referrer = 1`。
@@ -165,7 +165,7 @@
 - **方案**：二选一——① 删掉 store 里的那份与 popover 入口（铁律 5：死代码直接删）；② 让仪表盘读 store（单一真值）并把三个值透传给 `analytics()`，popover 与设置弹窗共用同一处。**建议 ②**，因为「真实访客」是产品的核心开关，用户期望它持久且全局生效。
 - **范围**：`blog-store/{filters,types,state,index}.ts`、`blog-traffic-filter-popover.tsx`、`use-blog-dashboard-view.ts`、`blog-settings-modal`/`use-blog-settings-modal.ts`。代价 **S**。
 
-#### SEC-15 [P3][开放·本轮新发现] 模块级读 localStorage + 在 `set` updater 内写 localStorage
+#### SEC-15 [P3][本轮已修] 模块级读 localStorage + 在 `set` updater 内写 localStorage
 - **问题**：`blog-store/state.ts:33` 的 `initialFilters = loadInitialFilters()` 在模块求值时读 localStorage（服务端渲染与测试环境都走一遍）；`filters.ts:44-58` 的 `persistTrafficFilters()` 写在 `set((state) => …)` 的 updater 内——updater 必须是纯函数，StrictMode 下双跑即双写。
 - **方案**：改为惰性读取（首次 `setFilters`/订阅时）与「在 `set` 之外写副作用」；参考 `share-store` 若已有正解就照抄。
 - **范围**：`blog-store/{state,filters}.ts`。代价 **XS**。

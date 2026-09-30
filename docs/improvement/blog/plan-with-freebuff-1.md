@@ -55,11 +55,26 @@
   - 渲染侧兜底（存储里可能有旧行）：新增 `features/blog/frontend-base.ts` 把三处重复的 `frontendUrl` 取值收敛为一处并做安全回退；链接行无法渲染的地址只当文本显示（不再生成 `<a>`）；右键菜单 / 二维码弹窗 / 检测弹窗的「打开」控件仅当地址可用时存在；评论头像与链接图标对不可渲染的地址回退到首字母/地球图标；`link-dynamic-icon.tsx` 顺带把图片与 emoji 两个分支抽成子组件（改后主函数不再超行）。
   - 复现测试：新增 `src/shared/url-safety.test.ts`（8 条：允许/x 拒绝/控制字符走私/协议相对/空值/图片不放 mailto）与 `src/client/features/blog/blog-links-view/link-card-row.test.ts`（2 条 jsdom：可渲染地址生成带 `noopener` 的链、`javascript:` 只渲染为文本）——这也是 `features/blog` 目录下的第一批测试；`tests/blog-links-routes.test.ts` 新增 5 条契约（链接/申请/评论/设置/导入 均拒绝不可渲染地址，且不落库）。
   - 未纳入本批：前台（`blog-frontend`）的 `window.open(link.url)` 与旧行兼容（BF-2，批次 2）；demo 后端是单用户模拟，未同步该规则。
-- [ ] B1-07 **SEC-05** `assertContentSize` 接入 blog 写入 + `title/excerpt` 加 `.max()`
-- [ ] B1-08 **SEC-06** `POST /links/:id/click` 加限流 + `status='approved'` + 站点归属
-- [ ] B1-09 **SEC-07** `days` 走 `clampInt` + 三处 LIKE 补 `escapeLike` + 公开列表补 `LIMIT`
-- [x] B1-11 **GATE-01** 修注释门禁扫描器（本轮动手时发现，已真实发生）：`check-comments.mjs` / `sync-comments-allowlist.mjs` 用正则找注释、只用 AST 字面量区间排除「落在字符串里的匹配」，于是字符串里的 `/*`（如 `'/api/blog/*'`）会与文件后面第一个 `*/` 组成幻觉块注释，**吞掉中间所有真注释**——正则不再产出它们，门禁也就不再要求它们被登记。实测仓内已 5 个文件 / 10 条注释对门禁不可见（`pick-image.ts`、`tests/blog-routes.test.ts`、`tests/share-routes.test.ts`、`tests/share-selection-parity.test.ts` 与 `tests/blog-links-routes.test.ts`，后者正是本轮 B1-01/B1-02 在这两个测试文件里加 `/** */` 后新暴露的）。  修法：两脚本统一改用 AST 注释区间（`getLeadingCommentRanges` / `getTrailingCommentRanges`，递归覆盖全部 token 含 `endOfFileToken`）并抽成共享模块 `scripts/lib/comment-scan.mjs`，`tests/comment-scan.test.ts` 钉住回归（字符串/模板/正则里的注释符不算注释、`'/api/blog/*'` 之后的注释仍被看见、文件末尾与模板插值里的注释都在）；重生成后这 6 条重新进入白名单（双向失败因此重新生效）。**不是本轮安全检查的附带改动，单独一个提交。** — 已提交（hash 见下一提交）
-- [ ] B1-10 **SEC-10 + SEC-11 + SEC-12 + SEC-13 + SEC-15** 小项打包：头像本地生成（去 dicebear）+ 协议校验；去重 `loadSession` 改挂载级 `requireAuth`；`getBlogSettings` 解析失败记日志；`is_self_referrer` 真实计算；模块级 localStorage 取值与 updater 内副作用收敛
+- [x] B1-07 **SEC-05** `assertContentSize` 接入 blog 写入 + `title/excerpt` 加 `.max()` — 已提交 `8df97f23`
+  - 实现：`assertContentSize(content, subject='Note')` 增 subject，`posts.ts` 创建与 patch 两条写入路径调用（`'Blog post'`）；`schemas.ts` 的 `title` 用 `LIMITS.titleMaxLength`、`slug.max(200)`、`excerpt.max(2000)`；顺手把 `coverUrl` 接上 B1-06 的 `safeUrl('image')`（B1-06 漏了这一个字段）。
+  - 复现测试：`tests/blog-routes.test.ts` 新增「两条写入路径都拒收超过笔记内容预算的正文」（413）。
+- [x] B1-08 **SEC-06** `POST /links/:id/click` 加限流 + `status='approved'` + 站点归属 — 已提交 `1317e1d2`
+  - 实现：先判归属/`status='approved'`/`is_active`（不合格的请求回 `counted:false` 且不花掉该访客在那条链接上的窗口），再按 `(访客 IP, 链接)` 半小时间隔计一次；超限的请求只回 `counted:false`，不写库、不报错（点击确实发生了，只是不再计数）；响应多一个 `counted` 字段，前台忽略响应体故无契约破坏。
+  - 复现测试：`tests/blog-links-routes.test.ts` 新增「未获批不计、同一访客只计一次」；`tests/blog-public-owner.test.ts` 原有的跨博客点击用例继续通过（它正是「不合格请求不花窗口」的理由）。
+- [x] B1-09 **SEC-07** `days` 走 `clampInt` + 三处 LIKE 补 `escapeLike` + 公开列表补 `LIMIT` — 已提交 `15ce276a`
+  - 实现：`likeAny(columns, placeholder)` 抽进 `lib/like.ts`（三处调用点各自拼 `ESCAPE '\\'` 的写法正是这个 bug 的来源），`posts.ts`/`comments.ts`/`public.ts` 三处裸 LIKE 改为 `escapeLike` + `ESCAPE`；`days` 改为「必须是安全正整数，否则 400」再走 `clampInt` 收敛上界；公开列表补上限：时间轴/日历/标签 2000（取最新，日历外层再按渲染顺序排回来）、评论 500（取最新再反转成渲染顺序）、友链 500、友链分类 200。
+  - `posts.ts` 因此触到 500 行上限，列表查询构建器拆到 `src/worker/routes/blog/post-list-query.ts`（`size:check` 是硬门槛，不是为拆分而拆分）。
+  - 复现测试：`tests/blog-routes.test.ts` 新增「文章/评论列表与公开列表把 `_`、`%` 当字面量」「days 拒收 `abc`/`12.7`/`30abc`/`0`/`-5`」。
+  - 已知限制：上限是「个人博客发文量的天花板」而非分页——超过 2000 篇时最旧的文章会从归档视图与标签计数里掉出（保留最新的那批），这是本条能诚实做的取舍；真正的分页属于前台条目（FEA-12）。
+- [x] B1-10 **SEC-10 + SEC-11 + SEC-12 + SEC-13 + SEC-15** 小项打包 — 已提交 `d73bda36`
+  - SEC-10：服务端不再写 `api.dicebear.com` 默认头像（空值即空值）；管理端评论卡改用 `resolveAvatarSource()`（允许列表内的图片 URL，或按昵称本地生成），于是匿名的表单再也不能让管理员的浏览器去请求任意外站。
+  - SEC-11：`blog/index.ts` 的 `loadSession` 换成挂载级 `requireAuth`（会话加载本来就由 `app.use('/api/*', loadSession)` 做一次），六个 route 文件里 40 余处路由级 `requireAuth` 随之删除——漏写一条即匿名可读的那类隐患从此不存在。
+  - SEC-12：**本轮核验为已修**（B1-04 已把解析失败改成 `console.error` 并保留默认值回退），本批不再改动。
+  - SEC-13：`is_self_referrer` 改由 share 侧的 `isSelfReferrer()` 按请求 host 真实判定后写入（此前是字面量 `0`）。
+  - SEC-15：`blog-store/state.ts` 去掉模块级 `initialFilters`，改 `hydrateTrafficFilters()` 在打开 hub 时读取；`persistTrafficFilters()` 移出 `set` updater（StrictMode 下不再双写）。
+  - 复现测试：`tests/blog-routes.test.ts` 新增自引荐落库（同站 referer → 1，外站 → 0）与空头像两条；新增 `src/client/features/blog/blog-store/filters.test.ts`（`vi.resetModules()` 钉住「导入不读 localStorage」，及一次改动一次写入）。
+  - 已知限制：前台 SSR 刻意不转发访客的 `referer`（`blog-frontend/src/pages/posts/[slug].astro` 的注释），所以走 SSR 取数路径的访问其 referer 仍是空的、`is_self_referrer` 也就仍是 0；真实的自引荐要等 B2-03 的浏览器 beacon（同源/浏览器直发才会带上 referer）。本批只保证「有 referer 到达 worker 时它是真值」。
+- [x] B1-11 **GATE-01** 修注释门禁扫描器（本轮动手时发现，已真实发生）：`check-comments.mjs` / `sync-comments-allowlist.mjs` 用正则找注释、只用 AST 字面量区间排除「落在字符串里的匹配」，于是字符串里的 `/*`（如 `'/api/blog/*'`）会与文件后面第一个 `*/` 组成幻觉块注释，**吞掉中间所有真注释**——正则不再产出它们，门禁也就不再要求它们被登记。实测仓内已 5 个文件 / 10 条注释对门禁不可见（`pick-image.ts`、`tests/blog-routes.test.ts`、`tests/share-routes.test.ts`、`tests/share-selection-parity.test.ts` 与 `tests/blog-links-routes.test.ts`，后者正是本轮 B1-01/B1-02 在这两个测试文件里加 `/** */` 后新暴露的）。  修法：两脚本统一改用 AST 注释区间（`getLeadingCommentRanges` / `getTrailingCommentRanges`，递归覆盖全部 token 含 `endOfFileToken`）并抽成共享模块 `scripts/lib/comment-scan.mjs`，`tests/comment-scan.test.ts` 钉住回归（字符串/模板/正则里的注释符不算注释、`'/api/blog/*'` 之后的注释仍被看见、文件末尾与模板插值里的注释都在）；重生成后这 6 条重新进入白名单（双向失败因此重新生效）。**不是本轮安全检查的附带改动，单独一个提交。** — 已提交 `e7cf3a8d`
 
 ## 批次 2 · 统计可信
 
@@ -128,6 +143,10 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-09-30 | B1-10 SEC-10/11/12/13/15 头像不外发 + 鉴权兜底 + 自引荐真实值 + store 副作用 | d73bda36 | `typecheck` 绿；`test:unit` 5195 通过 / 1 失败（仍为既有 kanban 日期用例）；新增 2 条（自引荐、空头像）+ 新建 `blog-store/filters.test.ts` 2 条全绿；12 项静态门禁绿 | SEC-12 经核验在 B1-04 已修；SSR 不转发 referer，故该路径的 `is_self_referrer` 仍为 0（等 B2-03 的浏览器 beacon）；同左的既有 kanban 失败 |
+| 2026-09-30 | B1-09 SEC-07 LIKE 转义 + 公开列表上限 + days 校验 | 15ce276a | `typecheck` 绿；本批 4 个 blog 测试文件 74 条全绿（含新 5 条）；12 项静态门禁绿；`size:check` 因 `posts.ts` 拆出 `post-list-query.ts` 通过 | 上限是天花板不是分页：超过 2000 篇时最旧文章从归档/标签计数掉出，已在条目内写明 |
+| 2026-09-30 | B1-08 SEC-06 友链点击限流与状态守卫 | 1317e1d2 | `typecheck` 绿；`tests/blog-links-routes.test.ts` 21 条 + `tests/blog-public-owner.test.ts` 10 条全绿；12 项静态门禁绿 | 同一访客在同一链接上半小时只计一次，之后回 `counted:false` 而非 429（点击确实发生） |
+| 2026-09-30 | B1-07 SEC-05 博文正文与标题的内容预算 | 8df97f23 | `typecheck` 绿；`tests/blog-routes.test.ts` 40 条全绿（含新 1 条）；8 项静态门禁绿 | 顺手补上 B1-06 漏掉的 `coverUrl` 协议白名单 |
 | 2026-09-30 | B0 文档基线（review + plan） | — | —（无代码改动，静态门禁与单测不适用） | 报告结论全部落到 file:line；统计与性能量级为明示假设下的推算，未做 profiling；订正了前两轮报告的 8 条过时结论（review §三） |
 | 2026-09-30 | B1-06 SEC-04 URL 协议白名单（共享谓词 + schema + 渲染兜底） | 已提交（见下一条回填） | `typecheck` 绿；`test:unit` 5187 通过 / 1 失败（仍为既有 kanban 用例）；新增 15 条（8 谓词 + 2 组件 + 5 契约）全绿；`comments/escape/empty-catch/module-state/deep-imports/style/size/hardcoded` 八项门禁绿（未动 size 基线） | 前台 BF-2 与 demo 后端不在本批；已有行里的不可渲染地址靠渲染兜底而非数据清理 |
 | 2026-09-30 | B1-05 SEC-03 批量上限/分块/分组原子化（+ 修好评论批量改状态的编号 bug） | 已提交（见下一条回填） | `typecheck` 绿；本批四个 blog 测试文件 68 条全绿（含新 3 条）；`comments/escape/empty-catch/module-state/deep-imports/style/size` 七项门禁绿 | 与计划的 `.max(100)` 有意偏离（见条目内理由：SH-42 已有 120 条必须成功的用例）；同左的既有 kanban 失败 |
