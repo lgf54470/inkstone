@@ -188,10 +188,12 @@
   - **提交哈希**：`24157e33`
   - **状态**：已完成并验证通过
 
-- [ ] **14. 【FEAT-02】常驻分屏与伴随式局部图谱工作流 (Secondary Pane / Companion Local Graph)**
+- [x] **14. 【FEAT-02】常驻分屏与伴随式局部图谱工作流 (Secondary Pane / Companion Local Graph)**
   - **涉及文件**：`src/client/features/graph/`, `src/client/features/workspace/`
   - **修改要点**：将 `GraphCanvas` 解耦为支持独立嵌入形态的视图，允许在工作区分屏面板作为当前笔记的伴随局部图谱实时漫游。
-  - **提交哈希**：`待提交`
+  - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && node scripts/check-i18n.mjs && npm run typecheck && npm test`
+  - **提交哈希**：`64be16a4`
+  - **状态**：已完成并验证通过
 
 - [ ] **15. 【FEAT-03】缺失“标签作为拓扑实体节点”能力 (Tags as Explicit Topology Nodes)**
   - **涉及文件**：`src/worker/routes/search/graph.ts`, `src/client/features/graph/graph-panel/types.ts`, `canvas-draw.ts`
