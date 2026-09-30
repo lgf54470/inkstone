@@ -97,13 +97,13 @@
   - 目标：焦点在侧栏缩略图列表时，左右方向键（`ArrowLeft` / `ArrowRight`）不穿透导致舞台翻页。
   - 方案：在 `presentationCommand` 中针对 `ArrowLeft` / `ArrowRight` 增加 `if (context.onSlideList) return null;` 守卫条件。
   - 验证：单元测试覆盖 `onSlideList: true` 下按 `ArrowLeft`/`ArrowRight` 均返回 `null`，既有侧栏上下导航保持顺畅。
-- [x] **B3-03** `P-14 (SPEC-01)`: 统一替换裸 Tailwind 阶梯尺寸为设计令牌（AGENTS.md 铁律 4/12） — 已完成
+- [x] **B3-03** `P-14 (SPEC-01)`: 统一替换裸 Tailwind 阶梯尺寸为设计令牌（AGENTS.md 铁律 4/12） — 已完成 (`913d5f36`)
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx`
   - 目标：全面采用 `var(--sp-*)`，消除残余的 `p-1`, `mx-1`, `h-4`, `py-0.5`, `h-0.5`, `bottom-4`。
   - 方案：将所有硬编码间距与尺寸类名系统性对齐全局设计系统令牌。
   - 验证：运行 `npm run tokens:check`、`npm run style:check`，确保零硬编码阶梯值违规。
-- [ ] **B3-04** `P-15 (SPEC-04)`: 侧栏补充标准 ARIA 集合语义声明
-  - 涉及文件：`src/client/features/presentation/slide-rail.tsx` (`SlideRail`, `SlideRailList`, `SlideRailItem`)
+- [x] **B3-04** `P-15 (SPEC-04)`: 侧栏补充标准 ARIA 集合语义声明 — 已完成
+  - 涉及文件：`src/client/features/presentation/slide-rail.tsx` (`SlideRail`, `SlideRailList`, `SlideRailItem`)、`src/client/features/presentation/slide-rail.test.ts`
   - 目标：为侧栏导航声明标准 `tablist`/`tab` 集合语义，规范屏幕阅读器体验。
   - 方案：外层导航标注 `role="tablist"`，列表项按钮标注 `role="tab"` 与 `aria-selected`，并准确标注集合尺寸 `aria-setsize` 与序号 `aria-posinset`。
   - 验证：通过组件单元测试断言列表项包含完整的集合角色与可访问状态声明。

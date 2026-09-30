@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import { extractSlideHeading } from './slide-rail'
+import { createElement } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderElement } from '../../lib/test-render'
+import { extractSlideHeading, SlideRail } from './slide-rail'
 
 describe('extractSlideHeading', () => {
   it('extracts H1 heading as the slide title', () => {
@@ -27,5 +29,51 @@ describe('extractSlideHeading', () => {
     expect(extractSlideHeading('')).toBe('')
     expect(extractSlideHeading('   \n\n  ')).toBe('')
     expect(extractSlideHeading('<!-- note: speaker notes only -->')).toBe('')
+  })
+})
+
+const defaultRailProps = {
+  deck: ['# Slide 1', '# Slide 2', '# Slide 3'],
+  cacheKeys: ['k1', 'k2', 'k3'],
+  plans: {},
+  index: 1,
+  sub: 0,
+  designWidth: 1280,
+  designHeight: 720,
+  title: 'Test Deck',
+  externalImages: false,
+  proseFont: 'sans' as const,
+  chromeHidden: false,
+  progress: { finished: true, measured: 3, slides: 3 },
+  onSelectPage: vi.fn(),
+}
+
+describe('SlideRail ARIA semantics', () => {
+  beforeEach(() => {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn()
+    class ObserverStub {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('IntersectionObserver', ObserverStub)
+  })
+
+  afterEach(() => {
+    document.body.innerHTML = ''
+    vi.unstubAllGlobals()
+  })
+
+  it('declares tablist and tab roles with accurate setsize and posinset', () => {
+    const { container } = renderElement(createElement(SlideRail, defaultRailProps))
+    const tablist = container.querySelector('[role="tablist"]')
+    expect(tablist?.getAttribute('aria-orientation')).toBe('vertical')
+
+    const tabs = container.querySelectorAll('[role="tab"]')
+    expect(tabs.length).toBe(3)
+    expect(tabs[0]?.getAttribute('aria-posinset')).toBe('1')
+    expect(tabs[0]?.getAttribute('aria-selected')).toBe('false')
+    expect(tabs[1]?.getAttribute('aria-posinset')).toBe('2')
+    expect(tabs[1]?.getAttribute('aria-selected')).toBe('true')
   })
 })

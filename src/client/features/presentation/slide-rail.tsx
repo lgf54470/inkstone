@@ -137,7 +137,11 @@ function SlideRailList({ deck, cacheKeys, plans, entries, active, view, onSelect
   registerItem: (element: HTMLButtonElement | null) => void
 }) {
   return (
-    <div className='flex min-h-0 flex-1 flex-col gap-[var(--sp-1)] overflow-y-auto px-[var(--sp-2)] pb-[var(--sp-3)]'>
+    <div
+      role='tablist'
+      aria-orientation='vertical'
+      className='flex min-h-0 flex-1 flex-col gap-[var(--sp-1)] overflow-y-auto px-[var(--sp-2)] pb-[var(--sp-3)]'
+    >
       {entries.map((entry, item) => (
         <SlideRailItem
           key={`${entry.slide}-${entry.sub}`}
@@ -151,6 +155,8 @@ function SlideRailList({ deck, cacheKeys, plans, entries, active, view, onSelect
           view={view}
           onSelectPage={onSelectPage}
           buttonRef={registerItem}
+          setsize={entries.length}
+          posinset={item + 1}
         />
       ))}
     </div>
@@ -181,7 +187,7 @@ export function extractSlideHeading(source: string): string {
   return ''
 }
 
-function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, active, view, onSelectPage, buttonRef }: {
+interface SlideRailItemProps {
   entry: RailEntry
   entryIndex: number
   cacheKey: string
@@ -192,7 +198,11 @@ function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, 
   view: RailView
   onSelectPage: (slide: number, sub: number) => void
   buttonRef: (element: HTMLButtonElement | null) => void
-}) {
+  setsize: number
+  posinset: number
+}
+
+function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, active, view, onSelectPage, buttonRef, setsize, posinset }: SlideRailItemProps) {
   const thumbRef = useRef<HTMLSpanElement>(null)
   const near = useNearViewport(thumbRef)
   // The thumbnail renders the prepared markup the projector shows, so it follows the cache
@@ -206,6 +216,10 @@ function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, 
     <button
       ref={buttonRef}
       type='button'
+      role='tab'
+      aria-selected={active}
+      aria-setsize={setsize}
+      aria-posinset={posinset}
       data-entry-index={entryIndex}
       data-slide-index={entry.slide}
       data-slide-page={entry.sub}
