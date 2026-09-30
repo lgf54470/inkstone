@@ -2424,8 +2424,15 @@ const allowed = new Map([
   ['src/client/components/activity-calendar/use-activity-calendar.ts', [
     '// Marks an external month jump (settings preview click) or an internal jump (week click, gap-cell follow, endpoint locate) with the same fade-in + receding accent ring.',
   ]],
+  ['src/client/components/big-svg-chart.test.ts', [
+    '// UI-12: the grid rounded quarter steps of the peak to integers, so a small peak wrote the same',
+    '// number down the whole axis (1/1/1/0 for a peak of 1) and the chart told the reader nothing.',
+    '// `none` scaled x and y by different factors, so every dot and glyph came out distorted.',
+  ]],
   ['src/client/components/big-svg-chart.tsx', [
     '/**\n * What the chart says in words: the zone\'s total, and the peak with the label it happened under.\n * Callers put those three into their own localized sentence for the chart\'s accessible name — the\n * drawing itself is not readable by a screen reader, and the per-point `<title>` only answers a\n * pointer.\n */',
+    '/** A ceiling a reader can count by: 1, 2 or 5 × 10ⁿ at or above the peak. */',
+    '/**\n * The grid\'s label values, bottom to top, always distinct. Quarter steps of the old fixed scale were\n * rounded to integers for the labels, so a peak of 3 read 1/2/2/3 and a peak of 1 read 1/1/1/0 —\n * the whole axis said one thing. The ceiling picks the division instead: five when it divides\n * evenly, then four, then the halving; when even that is fractional (a peak of 1) the grid is the\n * two lines that differ rather than five that do not.\n */',
   ]],
   ['src/client/components/count-badge.ts', [
     '/**\n * Count badges — the shell\'s sidebar, its calendar tree and the share hub\'s category rail all draw\n * them — sit on rows that take the accent tint when they are selected,\n * and the dimmest text tier does not clear AA on that tint (the axe gate\n * measured 3.86:1 on a selected row), so the selected row uses the next tier up.\n */',
@@ -2895,6 +2902,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-comments-window.test.ts', [
     '/**\n * The moderation list accepts up to 500 rows from the server, and the view used to build and mount\n * every one of them before the reader had scrolled past the first screen.\n */',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/audience-cards.test.ts', [
+    '// UI-11: `\'Direct\'` is the worker\'s word for a visit that carried no referrer — a value, not a host.',
+    '// The share dashboard mapped it; this one drew it as if a site were called Direct.',
   ]],
   ['src/client/features/blog/blog-dashboard-view/index.tsx', [
     '/**\n * What the switches are actually hiding, counted by the same query that hides it. The self-referral\n * and author counts used to be the literals `0` while the server returned real ones, so the banner\n * described a filter that was not running.\n */',
@@ -12315,6 +12326,7 @@ const allowed = new Map([
     '/**\n * The country and device labels both analytics surfaces draw. They live here rather than in the share\n * feature\'s helpers because the blog dashboard needs exactly these two answers and used to import\n * the whole share barrel for them, which dragged the share modals into the blog chunk.\n */',
     '/**\n * A browser or OS name is a proper noun the UA parser read off the header, with one exception: its\n * own `\'Other\'` sentinel means it could not read one. That sentinel is a value, not a name, so it\n * becomes the caller\'s word for "unknown" — as does a missing column. The caller passes that word\n * because the share and blog surfaces word it differently (`share.env_unknown` vs `blog.env_unknown`).\n */',
     '/**\n * The three device classes the breakdown card names in words. Shared with the dashboard export so a\n * file that leaves the app says "Desktop" where the card said "Desktop", not the raw `desktop`.\n */',
+    '/**\n * The referrer breakdown\'s `\'Direct\'` is the server\'s sentinel for "no referrer at all": a value, not\n * a host. It read as a host name in the blog dashboard, which drew the raw string while the share\n * dashboard had this mapping — moving it next to its siblings is what lets both ask once.\n */',
   ]],
   ['src/client/lib/wipe-password-prompt.ts', [
     '// Clearing visit logs is unrecoverable, so the endpoint requires the current password',

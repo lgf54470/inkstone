@@ -141,7 +141,7 @@ function BotsFilterBanner({ bots, self, owner }: { bots: number; self: number; o
       <div className='flex items-center gap-2'>
         <span className='flex h-2 w-2 rounded-full bg-[var(--success)]' />
         <span>
-          {t('share.filter_stats_summary', {
+          {t('blog.filter_stats_summary', {
             bots,
             self,
             owner,

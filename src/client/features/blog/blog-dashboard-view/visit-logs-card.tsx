@@ -16,7 +16,7 @@ export function VisitLogsCard({ analytics, locale }: VisitLogsCardProps) {
       <div className='flex items-center gap-2'>
         <Activity size={15} className='text-[var(--accent)]' />
         <h3 className='text-[length:var(--text-13)] font-semibold text-[var(--text-primary)]'>
-          {t('blog.realtime_logs')}
+          {t('blog.recent_visits_title')}
         </h3>
         <span className="rounded-full bg-[var(--accent-soft)] px-1.5 py-0.2 text-[length:var(--text-10\.5)] font-medium text-[var(--accent)]">
           {visits.length}

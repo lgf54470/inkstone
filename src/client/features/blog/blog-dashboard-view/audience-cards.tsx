@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Compass, Globe2, Laptop } from 'lucide-react'
 import type { BlogGlobalAnalytics } from '@shared/types'
 import { t } from '../../../lib/i18n'
-import { countryFlag, countryNameLocalized } from '../../../lib/visitor-geo'
+import { countryFlag, countryNameLocalized, localizeDeviceName, localizeReferrerName } from '../../../lib/visitor-geo'
 import { BreakdownRow } from '../../../components/dashboard-blocks'
 
 interface AudienceCardsProps {
@@ -53,7 +53,7 @@ function TrafficSourcesCard({ analytics }: { analytics: BlogGlobalAnalytics | nu
   return (
     <AudienceCard icon={<Compass size={15} className='text-[var(--accent)]' />} title={t('blog.traffic_sources')} trailing={referrers.length}>
       {referrers.length === 0 ? <NoVisitData /> : referrers.map((item) => (
-        <BreakdownRow key={item.name} name={item.name} count={item.count} percentage={item.percentage ?? 0} />
+        <BreakdownRow key={item.name} name={localizeReferrerName(item.name)} count={item.count} percentage={item.percentage ?? 0} />
       ))}
     </AudienceCard>
   )
@@ -95,8 +95,5 @@ function DeviceSubheading({ label }: { label: string }) {
 }
 
 function deviceNameOf(name: string): string {
-  if (name === 'desktop') return t('share.device_desktop')
-  if (name === 'mobile') return t('share.device_mobile')
-  if (name === 'tablet') return t('share.device_tablet')
-  return name
+  return localizeDeviceName(name)
 }

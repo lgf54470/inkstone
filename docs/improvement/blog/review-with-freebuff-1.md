@@ -422,15 +422,17 @@
   - **CSV 回环**：`parseCsvRows()` 按 RFC 4180 风格处理引号（嵌入逗号 / 嵌入引号 / 换行 / CRLF），能读回自己导出的含逗号字段；回归里用「Smith, "A" & Co」与分类「Partners, Ltd」实跑导出→导入一圈，断言名字、描述与分类都没丢。
   - 回归 8 条（JSON 报错映射、跳过计数、CSV 回环、空行/非链接行、书签 HTML 拒 `chrome://`、全深度导出回环、文件类型/大小与格式判定）；两处变异各 1 failed（关掉 CSV 引号分支、去掉跳过过滤）。
 
-#### UI-11 [P2][开放] 「实时访问日志」既不实时，也不随所选时间窗变化
+#### UI-11 [P2][已修] 「实时访问日志」既不实时，也不随所选时间窗变化
 - **问题**：文案是「实时访问日志」（`visit-logs-card.tsx:19`），服务端是 `ORDER BY visited_at DESC LIMIT 20` 且只带 `exclude*` 过滤、不含时间窗（`stats.ts:368-378`），前端无轮询；同一张卡把服务端语义值 `'Direct'/'Other'` 与 `visit.browser || 'Other'`、`botName || 'Bot'` 当业务数据直出；看板卡还借用了 `share.*` 文案（`index.tsx:114`）、`use-blog-post-card.tsx:147` 借 `share.view_note_analytics`。（`DevicesCard` 缺空态已修，见第三节。）
 - **方案**：文案改为「最近访问」并把时间窗写进副标题，或让查询真的带上区间；服务端语义值改由前端映射表本地化；把借用的 `share.*` key 迁到 `blog.*`（或明确升格为共享 key 并去掉误导性的 `share.` 前缀）。
 - **范围**：`visit-logs-card.tsx`、`stats.ts`、`locales/*/blog-*.ts`。代价 **S～M**。
+- **落地（B4-07）**：取文案方案（不给查询加区间）——标题改 `blog.recent_visits_title`（最近访问 / Recent Visits），副标题改成「最新 20 条 · 不受上方时间范围影响」：这张卡的查询本就是 `ORDER BY visited_at DESC LIMIT 20`、不带区间也没有轮询，副标题把这两点都说清楚，而不是给概览卡再开一个区间视图。语义值：`localizeReferrerName()` 由 `share-helpers.ts` 移入 `lib/visitor-geo.ts`（share 侧再导出），博客渠道卡改用它，`'Direct'` 不再当站点名直出；`audience-cards.tsx` 自带的设备名映射换成共用的 `localizeDeviceName()`。借用 key：review 点名的两个归位（`blog.filter_stats_summary`、`blog.view_note_analytics`）；访问模型本身的词汇（`share.direct_access`/`share.device_*`/`share.filter_*`/`share.retention_*`）仍留在 share 资源，理由是它们描述同一套访问模型与同一组控件、两个界面共用，`visitor-geo.ts` 本就在引同族 key——这是刻意约定，非遗漏。回归 1 条（渠道哨兵本地化），变异 1 failed。
 
-#### UI-12 [P2][开放] 图表小值刻度全被圆整成 1/1/1/0
+#### UI-12 [P2][已修] 图表小值刻度全被圆整成 1/1/1/0
 - **问题**：`big-svg-chart.tsx:34` `Math.max(...values, 1)` + `:64` `Math.round(maxVal * g)`——当最大值为 1～3 时五条网格线全部显示 1/1/1/1/0（用户截图可见）。`preserveAspectRatio='none'`（`:128`）会把数据点与圆拉变形（宽高比随容器变化）。`role='img'` 与 `aria-label` 已补（第三节），但 `ChartDots`/`ChartGridLines` 仍用 index 作 key。
 - **方案**：nice-ceiling（把 maxVal 提到 1/2/5×10ⁿ 的刻度）或 `maxVal < 5` 时改用整数刻度并去重标签；`preserveAspectRatio='none'` 改成固定比例或让容器跟随比例；key 改用有意义的标签。
 - **范围**：`components/big-svg-chart.tsx`（与 share 共用，双覆盖回归）。代价 **S**。
+- **落地（B4-07）**：两项都做——天花板上取 1/2/5×10ⁿ，等分从 5 / 4 / 2 里挑第一个整除的（都除不开时只画首尾两条），因此每条线都是不同的数：峰值 3 读作 0..5，峰值 7 读作 0/2/4/6/8/10，峰值 1 只画 0 与 1（两条不同胜过五条相同）。几何跟着天花板走，峰不再被拉到顶线（原先 `Math.max(...values, 1)` 使最高点贴住上边框）。`preserveAspectRatio` 由 `none` 改 `xMidYMid meet`：前者按两轴不同比例缩放，圆点变椭圆、字号也失真；key 改有意义的值（网格线按刻度、数据点按时间点标签）。共享组件，博客与 share 三个调用点同时受益，回归 4 条（刻度唯一性 / 天花板取值 / 画出的标签无重复 / 比例属性），三处变异共 5 failed。**未做**：图表没有滚动/缩放，`meet` 在极宽容器里会在两侧留白（不再拉伸）。
 
 #### UI-13 [P2][已修] 复制链接 / 二维码复制静默失败
 - **问题**：`link-qr-modal.tsx:24-32` 的 `handleCopy` 把失败压成 `setCopied(false)`（用户看到的是「没反应」），且 `setTimeout` 未在卸载时清理；`blog-links-view/index.tsx` 的复制按钮也是 `void navigator.clipboard.writeText(...)`。仓库在 `use-blog-post-card.tsx:60-66` 有正解（try/catch + 双 toast）。

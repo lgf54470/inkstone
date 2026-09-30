@@ -5,7 +5,7 @@ import { t } from '../../lib/i18n'
 import { localizePlatformName } from '../../lib/visitor-geo'
 
 // Sunk into lib: the blog dashboard draws the same labels and must not import this barrel for them.
-export { countryFlag, countryNameLocalized, localizeDeviceName } from '../../lib/visitor-geo'
+export { countryFlag, countryNameLocalized, localizeDeviceName, localizeReferrerName } from '../../lib/visitor-geo'
 
 /**
  * The traffic classes a visit list can be narrowed to. It is the shared vocabulary rather than a local
@@ -64,10 +64,6 @@ export function trafficFilterLabel(
   if (excludeBots) return t('share.filter_real_visitors_badge')
   if (!excludeSelfReferrers && !excludeOwner) return t('share.filter_all_traffic_badge')
   return t('share.filter_custom_traffic_badge')
-}
-
-export function localizeReferrerName(name: string): string {
-  return name === 'Direct' ? t('share.direct_access') : name
 }
 
 export function localizeEnvName(name: string | null | undefined): string {

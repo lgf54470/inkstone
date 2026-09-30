@@ -144,7 +144,7 @@ function buildCardContextMenuItems(ctx: CardMenuCtx): MenuItem[] {
   return [
     { id: 'open_link', label: t('preview.open_in_new_tab'), icon: <ExternalLink size={13} />, onSelect: () => window.open(ctx.postUrl, '_blank') },
     { id: 'copy_link', label: t('blog.copy_link'), icon: <Copy size={13} />, onSelect: () => void ctx.handleCopyLink(ctx.post.slug) },
-    { id: 'analytics', label: t('share.view_note_analytics'), icon: <BarChart2 size={13} />, onSelect: () => ctx.setActiveTab('dashboard') },
+    { id: 'analytics', label: t('blog.view_note_analytics'), icon: <BarChart2 size={13} />, onSelect: () => ctx.setActiveTab('dashboard') },
     { id: 'settings', label: t('blog.post_settings'), icon: <Settings2 size={13} />, onSelect: () => ctx.onOpenEdit(ctx.post) },
     {
       id: 'move',

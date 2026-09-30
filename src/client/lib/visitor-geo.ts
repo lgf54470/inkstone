@@ -54,3 +54,12 @@ export function localizeDeviceName(name: string): string {
   if (name === 'tablet') return t('share.device_tablet')
   return name
 }
+
+/**
+ * The referrer breakdown's `'Direct'` is the server's sentinel for "no referrer at all": a value, not
+ * a host. It read as a host name in the blog dashboard, which drew the raw string while the share
+ * dashboard had this mapping — moving it next to its siblings is what lets both ask once.
+ */
+export function localizeReferrerName(name: string): string {
+  return name === 'Direct' ? t('share.direct_access') : name
+}
