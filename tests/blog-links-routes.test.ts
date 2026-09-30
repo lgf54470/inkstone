@@ -216,6 +216,35 @@ describe('blog links management and public routes', () => {
     expect(clickRes.status).toBe(200)
   })
 
+  // The click counter is public-facing and used to move on every request, so both halves are
+  // asserted here: a link the blog has not approved is not the public's to count, and one visitor
+  // counts once per window however many times the same link is clicked.
+  it('counts one click per visitor per window and none on an unapproved link', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    const pending = await postJson(app, '/api/blog/links', { name: 'Pending', url: 'https://pending.com', status: 'pending' })
+    const approved = await postJson(app, '/api/blog/links', { name: 'Approved', url: 'https://approved.com', status: 'approved' })
+    const pendingId = (await pending.json() as any).link.id
+    const approvedId = (await approved.json() as any).link.id
+
+    const unapproved = await postJson(app, `/api/blog/public/links/${pendingId}/click`, {})
+    expect((await unapproved.json() as any).counted).toBe(false)
+
+    const first = await postJson(app, `/api/blog/public/links/${approvedId}/click`, {})
+    expect((await first.json() as any).counted).toBe(true)
+    const repeated = await postJson(app, `/api/blog/public/links/${approvedId}/click`, {})
+    expect((await repeated.json() as any).counted).toBe(false)
+
+    const clicksOf = async (id: string): Promise<number> => {
+      const row = await db.prepare('SELECT clicks FROM blog_links WHERE id = ?1').bind(id).first()
+      return Number((row as { clicks: number }).clicks)
+    }
+    expect(await clicksOf(approvedId)).toBe(1)
+    expect(await clicksOf(pendingId)).toBe(0)
+  })
+
   // Every request in the harness arrives from the same client, which is what makes the
   // budget observable at all: the count used to be over the whole table, so the sixth
   // application here would have been the sixth from anywhere.

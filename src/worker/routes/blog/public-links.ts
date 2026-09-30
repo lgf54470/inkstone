@@ -130,15 +130,46 @@ async function checkDuplicateUrl(db: D1Database, ownerId: string, rawUrl: string
   }
 }
 
+/**
+ * One counted click per visitor per link per half hour. The counter lives in the same row the public
+ * site reads, and it used to be a bare `clicks + 1` any request could drive — a loop over one id was
+ * an unlimited write. Eligibility is read first so that a request nobody may count (another blog's
+ * link, or one this blog has not approved) does not spend the visitor's window on that link; the
+ * budget is spent before the update, and a request past it costs a read and no write at all. It is
+ * answered as uncounted rather than as an error: the visit happened, only the counter is not moved.
+ */
+const LINK_CLICK_BUDGET = { maxAttempts: 1, windowMs: 30 * 60 * 1000, lockMs: 30 * 60 * 1000 }
+
 function registerPublicLinkClickRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.post('/links/:id/click', async (c) => {
     const id = c.req.param('id')
-    await c.env.DB.prepare(`
+    const ownerId = blogOwnerOf(c).userId
+    const eligible = await c.env.DB.prepare(`
+      SELECT 1 AS ok FROM blog_links
+      WHERE id = ?1 AND user_id = ?2 AND status = 'approved' AND is_active = 1
+    `).bind(id, ownerId).first()
+    if (!eligible) return c.json({ ok: true, counted: false })
+    if (!await withinClickBudget(c, id)) return c.json({ ok: true, counted: false })
+
+    const result = await c.env.DB.prepare(`
       UPDATE blog_links
       SET clicks = clicks + 1
-      WHERE id = ?1 AND user_id = ?2 AND is_active = 1
-    `).bind(id, blogOwnerOf(c).userId).run()
+      WHERE id = ?1 AND user_id = ?2 AND status = 'approved' AND is_active = 1
+    `).bind(id, ownerId).run()
 
-    return c.json({ ok: true })
+    return c.json({ ok: true, counted: Boolean(result.meta.changes) })
   })
+}
+
+async function withinClickBudget(c: Context<AppBindings>, linkId: string): Promise<boolean> {
+  try {
+    await consumeAttemptBudget(c.env.DB, [{
+      ...LINK_CLICK_BUDGET,
+      key: `blog-link-click:${requestClientIp(c)}:${linkId}`,
+    }])
+    return true
+  } catch (error) {
+    if (error instanceof ThrottleError) return false
+    throw error
+  }
 }

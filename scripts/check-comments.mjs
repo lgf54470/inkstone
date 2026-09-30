@@ -12985,6 +12985,7 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/blog/public-links.ts', [
     '/**\n * The budget one visitor gets for applying: the count used to be over the whole table, so\n * five applications from anywhere took the endpoint down for everyone for a minute while\n * doing nothing to stop the one source that sent them.\n */',
+    '/**\n * One counted click per visitor per link per half hour. The counter lives in the same row the public\n * site reads, and it used to be a bare `clicks + 1` any request could drive — a loop over one id was\n * an unlimited write. Eligibility is read first so that a request nobody may count (another blog\'s\n * link, or one this blog has not approved) does not spend the visitor\'s window on that link; the\n * budget is spent before the update, and a request past it costs a read and no write at all. It is\n * answered as uncounted rather than as an error: the visit happened, only the counter is not moved.\n */',
   ]],
   ['src/worker/routes/blog/public.ts', [
     '// The blog player reads the owner\'s music library read-only, gated by the publish switch.',
@@ -14002,6 +14003,9 @@ const allowed = new Map([
   ]],
   ['tests/blog-links-routes.test.ts', [
     '/** One published post, so a comment submission has something to be filed under. */',
+    '// The click counter is public-facing and used to move on every request, so both halves are',
+    '// asserted here: a link the blog has not approved is not the public\'s to count, and one visitor',
+    '// counts once per window however many times the same link is clicked.',
     '// Every request in the harness arrives from the same client, which is what makes the',
     '// budget observable at all: the count used to be over the whole table, so the sixth',
     '// application here would have been the sixth from anywhere.',
