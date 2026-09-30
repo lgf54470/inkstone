@@ -36,7 +36,12 @@
   - 导入的「不静默」取舍：文件里的 id 已被他人持有时**换新 id**（拒绝整个文件会让合法转让 / 第二个账号恢复成为不可能），引用到别人分类时**置空并 `console.warn` 报数**；另外修了导入路径一个真 bug：`parentId` 之前原样写入，文件里父项排在子项之后或父项被重编号时都会指向错处，现改为两趟：先定 id 映射，再写语句。
   - 复现测试：`tests/blog-links-routes.test.ts` 新增 7 条（两账号）：覆盖链接 / 分类 upsert 撞他人 id、父分类与链接分类引用他人、批量改归属、导入他人 id（不碰对方数据且引用指向自己的新分类）、导入孤立分类引用置空。
   - 回归：`typecheck` 绿；`test:unit` 5157 通过 / 1 失败（仍是那条既有 kanban 日期用例）；本批门禁全绿；`size:check` 1821 文件（新文件均 < 500 行）。
-- [ ] B1-03 **SEC-08** slug 唯一性下放到 per-user：`db/schema/blog-posts.ts` + 基线同步 + rebuild 迁移（RENAME → 建新表 → `INSERT…SELECT` → 重建索引 → DROP）+ 全部 slug 查询带 owner + 去掉 `/check-slug` oracle；**单独提交，要求先备份**
+- [x] B1-03 **SEC-08** slug 唯一性下放到 per-user：`db/schema/blog-posts.ts` + 基线同步 + rebuild 迁移（RENAME → 建新表 → `INSERT…SELECT` → 重建索引 → DROP）+ 全部 slug 查询带 owner + 去掉 `/check-slug` oracle；**单独提交，要求先备份** — 已提交（hash 见下一提交）
+  - 实现：新增 `src/worker/db/schema/blog-posts.ts`（表 DDL + 5 条索引 + `BLOG_POSTS_SLUG_REBUILD_STATEMENTS`）：`slug TEXT NOT NULL`（去 UNIQUE）、新增 `CREATE UNIQUE INDEX idx_blog_posts_user_slug ON blog_posts(user_id, slug)` 替代 `idx_blog_posts_slug`；`tables.ts` / `indexes.ts` 改为引用该模块（单一来源，重建建的就是当前形状），`checks.ts` 的 `REQUIRED_INDEXES` 同步换成新索引名；迁移 **version 52**（migrations.ts 末尾追加，满足 `version === index + 1` 连续性断言），**无 skip 守卫、无条件执行**（理由写在 `blog-posts.ts` 注释里：守卫信号可能被正常建表路径产生，一旦误跳会让遗留库继续保留全局 UNIQUE 而索引检查仍报健康；重建在空库上只是空拷贝）。
+  - 查询侧：`posts.ts` 的 `assertSlugFree` 改带 `user_id`（同账号重复仍 409）；`settings.ts` 的 `GET /check-slug` 改按 `user_id` 查询（不再回答别人的博客），端点保留供发布弹窗实时反馈。公开详情/相邻篇/分类/日历在 B1-01 已按 owner 绑定。
+  - 复现测试：新增 `tests/blog-slug-scope.test.ts`（4 条：两账号同名 slug 均可发布、同账号重复仍 409、`check-slug` 只答自己的帖子、公开详情各取各家）；`tests/schema-migrations.test.ts` 增一条遗留库重建用例（先建旧形状 + 旧索引 + 一行数据，删 `schema_migrations >= 52` 后重跑 `initializeDatabase`：数据保留、跨账号同名插入成功、同账号重复被 UNIQUE 拒、旧索引名消失、新索引存在）。
+  - 回归：`typecheck` 绿；`test:unit` 5168 通过 / 1 失败（仍为既有 kanban 用例）；7 项静态门禁绿（`size:check` 因 migrations.ts 793→801 行重建基线，差异仅此一行）；已跑 `npm run deploy` 前置无涉（本批未部署）。
+  - **部署要求（不可逆，必须遵守）**：上生产前先备份 D1（`wrangler d1 export` 或既有备份链路）；迁移在一个 D1 batch（事务）里完成，拷贝失败即整体回滚，回滚路径只能是「从备份恢复并回退代码」；本仓 fork 不自行部署。
 - [ ] B1-04 **SEC-09** 站点设置单一键（per-user），公开侧按 owner 读；订正 `tests/blog-routes.test.ts` 里把错误行为钉成期望的断言
 - [ ] B1-05 **SEC-03** 五个批量 schema `.max(100)` + 分块（复用 `files/helpers.ts` 约定）+ 批量删除改单条带 owner 的语句
 - [ ] B1-06 **SEC-04** 共享 `isSafeExternalUrl()`（http/https + 站内相对 + mailto），schema 强制 + 渲染侧兜底（含 `frontendUrl` / `socialLinks`）
@@ -114,6 +119,7 @@
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
 | 2026-09-30 | B0 文档基线（review + plan） | — | —（无代码改动，静态门禁与单测不适用） | 报告结论全部落到 file:line；统计与性能量级为明示假设下的推算，未做 profiling；订正了前两轮报告的 8 条过时结论（review §三） |
+| 2026-09-30 | B1-03 SEC-08 slug 唯一性下放到 per-user（含表重建迁移 52） | 已提交（见下一条回填） | `typecheck` 绿；`test:unit` 5168 通过 / 1 失败（仍为既有 kanban 用例）；`tests/blog-slug-scope.test.ts` 4 条 + `tests/schema-migrations.test.ts` 新增遗留库重建用例全绿；6 个 blog/schema 测试文件共 75 条全绿；`comments/escape/empty-catch/module-state/deep-imports/style/size` 七项门禁绿 | **不可逆迁移**：部署侧必须先备份；`size:check` 基线只动了 `migrations.ts` 一行（793→801）；同左的既有 kanban 失败 |
 | 2026-09-30 | B1-11 GATE-01 注释门禁扫描器改用 token 树 | 已提交（见下一条回填） | `npm run comments:check` 绿且总数 12191 → 12201（6 条被吞的重新纳入）；反向探针：往 `owned-rows.ts` 加一条未登记注释后门禁**报错**（非静默通过），移除后恢复绿；`typecheck` 绿；`test:unit` 5163 通过 / 1 失败（仍为既有 kanban 用例）；`tests/comment-scan.test.ts` 6 条全绿；七项静态门禁绿 | 修的是扫描器本身，不是博客模块；影响面为全仓注释白名单（已实测“正则可见 ⊆ AST 可见”，因此不会丢条目） |
 | 2026-09-30 | B1-02 SEC-02 友链/分类归属守卫与导入重编号 | 已提交（见下一条回填） | `typecheck` 绿；`test:unit` 5157 通过 / 1 失败（仍为既有 kanban 用例）；`tests/blog-links-routes.test.ts` 15 条（8 旧 + 7 新）全绿；`comments/escape/empty-catch/module-state/deep-imports/style/size` 七项门禁绿 | 同左：那条 kanban 既有失败；另发现并记录 **GATE-01**（注释门禁扫描器被字符串里的 `/*` 骗过，仓内 10 条注释对门禁不可见），单独提交修 |
 | 2026-09-30 | B1-01 SEC-01 公开 API owner resolver | 见下一条回填 | `typecheck` 绿；`test:unit` 5150 通过 / 1 失败；新增 45 条 blog 契约测试全绿；`blog-frontend` 295 通过；7 项静态门禁绿 | **两处既有失败，与本批改动无关，已核实非本轮引入**：① `src/client/lib/markdown/kanban/ui/kanban-view-rows.test.ts:156` 日历视图「新增于该日」产出 `2026-08-30` 而用例期望今天的 key（该文件与 kanban 源码均为未修改的 HEAD 状态，且与本批改动的 blog 模块无任何交集）；② `blog-frontend` 的 `astro check` 在 HEAD 上就有 3 条 `ts(2345)`（`music-player-video.test.ts:53/84`、`music-video-stage.test.ts:43` 的 `document.body.append(container)`），同为未修改文件。两者按 AGENTS.md §14 不夹带进本批，另开 issue 处理 |

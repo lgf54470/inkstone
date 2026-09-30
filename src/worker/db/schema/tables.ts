@@ -1,3 +1,4 @@
+import { BLOG_POSTS_TABLE_STATEMENT } from './blog-posts'
 import { BOARD_LIBRARY_TABLE_STATEMENTS } from './board-library'
 import { MUSIC_TABLE_STATEMENTS } from './music'
 
@@ -366,26 +367,7 @@ export const TABLE_STATEMENTS: readonly string[] = [
       category TEXT NOT NULL DEFAULT '',
       created_at INTEGER NOT NULL
     )`,
-  `CREATE TABLE IF NOT EXISTS blog_posts (
-      id TEXT PRIMARY KEY,
-      slug TEXT NOT NULL UNIQUE,
-      note_id TEXT NOT NULL UNIQUE,
-      user_id TEXT NOT NULL,
-      title TEXT NOT NULL,
-      excerpt TEXT NOT NULL DEFAULT '',
-      content TEXT NOT NULL,
-      cover_url TEXT NOT NULL DEFAULT '',
-      category_id TEXT,
-      folder_id TEXT,
-      tags TEXT NOT NULL DEFAULT '[]',
-      is_published INTEGER NOT NULL DEFAULT 1,
-      allow_comments INTEGER NOT NULL DEFAULT 1,
-      is_pinned INTEGER NOT NULL DEFAULT 0,
-      views INTEGER NOT NULL DEFAULT 0,
-      published_at INTEGER NOT NULL,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    )`,
+  BLOG_POSTS_TABLE_STATEMENT,
   `CREATE TABLE IF NOT EXISTS blog_folders (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,

@@ -1,3 +1,4 @@
+import { BLOG_POSTS_INDEX_STATEMENTS } from './blog-posts'
 import { MUSIC_INDEX_STATEMENTS } from './music'
 
 export const INDEX_STATEMENTS: readonly string[] = [
@@ -83,11 +84,7 @@ export const INDEX_STATEMENTS: readonly string[] = [
        ON fts_index_queue(user_id, created_at, note_id)`,
   `CREATE INDEX IF NOT EXISTS idx_community_templates_created
        ON community_templates(created_at DESC)`,
-  `CREATE INDEX IF NOT EXISTS idx_blog_posts_user ON blog_posts(user_id, is_published, published_at DESC)`,
-  `CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug)`,
-  `CREATE INDEX IF NOT EXISTS idx_blog_posts_note ON blog_posts(note_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_blog_posts_category ON blog_posts(category_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_blog_posts_folder ON blog_posts(user_id, folder_id)`,
+  ...BLOG_POSTS_INDEX_STATEMENTS,
   `CREATE INDEX IF NOT EXISTS idx_blog_folders_user ON blog_folders(user_id, position)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_folders_parent ON blog_folders(parent_id)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_blog_tags_user ON blog_tags(user_id, name)`,

@@ -178,7 +178,7 @@ export const REQUIRED_INDEXES = [
   'idx_fts_index_queue_due',
   'idx_community_templates_created',
   'idx_blog_posts_user',
-  'idx_blog_posts_slug',
+  'idx_blog_posts_user_slug',
   'idx_blog_posts_note',
   'idx_blog_posts_category',
   'idx_blog_posts_folder',

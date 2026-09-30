@@ -12454,6 +12454,10 @@ const allowed = new Map([
     '// `notes` carries the accounts that own any note, which is the set the index audit has to walk:',
     '// an account with a drifted index and nothing queued would never show up through the queues.',
   ]],
+  ['src/worker/db/schema/blog-posts.ts', [
+    '/**\n * `blog_posts` declares its own shape because the slug constraint is part of it, and changing that\n * constraint costs a table rebuild.\n *\n * A slug names a post inside one blog. Instance-wide uniqueness made the second account unable to\n * publish a name the first had used, and answered "is this taken?" for every blog at once, so the\n * uniqueness belongs on `(user_id, slug)`. SQLite cannot drop a UNIQUE the table declares, so the\n * move is a rebuild — rename, create the current shape, copy, drop — and the rebuild must create\n * exactly the shape the running schema declares. Both therefore come from the constants below\n * rather than from a statement written twice.\n */',
+    '/**\n * The shipped shape declared `slug TEXT NOT NULL UNIQUE`, whose implicit index cannot be dropped,\n * so the table is rebuilt to move uniqueness onto `(user_id, slug)`.\n *\n * Every index is dropped first: a renamed table keeps its indexes, so the names would still be taken\n * when the new table asks for them — and the ones left behind would be dropped along with the old\n * table, leaving the new one unindexed. The rebuild runs unconditionally, including on a database\n * that already has the current shape (a fresh install creates the table before migrations apply):\n * the copy is then empty, the shape it creates is the declared one, and the alternative — a guard\n * whose signal the normal schema path could also produce — would let a legacy table keep its\n * instance-wide UNIQUE while the index check reported the schema healthy.\n */',
+  ]],
   ['src/worker/db/schema/board-library.ts', [
     '/**\n * An account owns a set of *named* whiteboard libraries, the way the public directory\n * lists them: one row per name, one JSON object per row (see attachments/backend.ts) —\n * a library can grow past what a D1 row should carry, and the stored hash lets a re-save\n * of identical content skip the object write.\n */',
   ]],
@@ -12543,6 +12547,9 @@ const allowed = new Map([
     '// Navidrome / Airsonic, or Jellyfin / Emby) with a URL and an account; the password or access',
     '// token is encrypted at rest like every other music credential, and rows imported from it are',
     '// metadata-only references whose play address is resolved per play.',
+    '// SEC-08: a blog belongs to one account, so a slug names a post inside that blog rather than inside',
+    '// the instance — the second account may publish `hello-world` too, and the slug check stops',
+    '// answering for a blog the caller does not own.',
   ]],
   ['src/worker/db/schema/music.ts', [
     '// Databases created before the music tag tree shipped can hold a music_tags',
@@ -12917,6 +12924,7 @@ const allowed = new Map([
     '/**\n * The instance\'s first account is the blog that existed before addresses did. The ordering is by\n * `created_at` and then by insertion order, so two accounts seeded in the same millisecond still\n * resolve to the one that was created first.\n */',
   ]],
   ['src/worker/routes/blog/posts.ts', [
+    '/**\n * A slug only has to be free inside the account\'s own blog: another account publishing the same name\n * is a different post on a different site, and treating it as a conflict would both block that\n * account\'s publish and tell it what the other blog has published.\n */',
     '// One batch, so a post cannot survive while its log rows go missing (or the other way round).',
     '// `blog_comments` has no owner column, so the delete asks blog_posts who owns the post and has to',
     '// run before the post row itself disappears.',
@@ -12949,6 +12957,10 @@ const allowed = new Map([
   ['src/worker/routes/blog/schemas.ts', [
     '// Body of DELETE /api/blog/visits?type=all: the wipe is unrecoverable, so the',
     '// current password travels in the body rather than the query string (SH-47).',
+  ]],
+  ['src/worker/routes/blog/settings.ts', [
+    '// The answer is about this account\'s own blog: asking whether a slug is free used to report',
+    '// every account\'s posts, which told one blog\'s editor what another blog had published.',
   ]],
   ['src/worker/routes/blog/stats.ts', [
     '/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */',
@@ -13956,6 +13968,9 @@ const allowed = new Map([
     '// name has to reach the reader, which is what this used to assert the opposite of (SEC-09).',
     '/** Seeds one post of this account and one of another, each with a comment. */',
   ]],
+  ['tests/blog-slug-scope.test.ts', [
+    '/**\n * A slug names a post inside one blog. Instance-wide uniqueness made the second account\'s own post\n * fail to publish because the first account had used the name, and `/check-slug` answered the same\n * question for both, so one blog\'s naming was readable from another\'s editor.\n */',
+  ]],
   ['tests/blog-visit-cleanup.test.ts', [
     '// Recent by design: a row older than the account retention is now the',
     '// retention sweep\'s business, not this one\'s (SH-43).',
@@ -14416,6 +14431,8 @@ const allowed = new Map([
     '// A new handle and a cleared fingerprint force the migration pass to run again.',
     '// The shipped index marked note_id UNINDEXED, so the deletes that reach a row through',
     '// MATCH(\'note_id : …\') matched nothing and left the previous body behind.',
+    '// The shipped shape declared slug UNIQUE instance-wide, which SQLite cannot drop in place.',
+    '// The other account may now use the same slug; the first account still may not repeat its own.',
   ]],
   ['tests/share-analytics.test.ts', [
     '// too short (< 6)',

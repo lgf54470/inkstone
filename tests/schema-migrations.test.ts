@@ -197,6 +197,67 @@ describe('schema migrations and convergence', () => {
     ).toEqual([])
   })
 
+  it('rebuilds blog_posts so a slug is unique per account and carries the posts across', async () => {
+    const db = createD1Database()
+    await initializeDatabase(makeEnv(db))
+
+    // The shipped shape declared slug UNIQUE instance-wide, which SQLite cannot drop in place.
+    await runSql(db, 'DROP TABLE blog_posts')
+    await runSql(db, `CREATE TABLE blog_posts (
+      id TEXT PRIMARY KEY,
+      slug TEXT NOT NULL UNIQUE,
+      note_id TEXT NOT NULL UNIQUE,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      excerpt TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL,
+      cover_url TEXT NOT NULL DEFAULT '',
+      category_id TEXT,
+      folder_id TEXT,
+      tags TEXT NOT NULL DEFAULT '[]',
+      is_published INTEGER NOT NULL DEFAULT 1,
+      allow_comments INTEGER NOT NULL DEFAULT 1,
+      is_pinned INTEGER NOT NULL DEFAULT 0,
+      views INTEGER NOT NULL DEFAULT 0,
+      published_at INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`)
+    await runSql(db, `CREATE INDEX idx_blog_posts_slug ON blog_posts(slug)`)
+    await runSql(
+      db,
+      `INSERT INTO blog_posts (id, slug, note_id, user_id, title, content, tags, views, published_at, created_at, updated_at)
+        VALUES ('p-alice', 'hello-world', 'n-alice', 'alice', 'Alice post', 'alice body', '["a"]', 7, 10, 10, 10)`,
+    )
+    await runSql(db, 'DELETE FROM schema_migrations WHERE version >= 52')
+    await runSql(db, 'DELETE FROM app_meta WHERE key = ?1', DATABASE_STATE_KEY)
+
+    await initializeDatabase(makeEnv({ ...db }))
+
+    expect(await queryRows(db, 'SELECT id, slug, user_id, title, content, views FROM blog_posts')).toEqual([
+      { id: 'p-alice', slug: 'hello-world', user_id: 'alice', title: 'Alice post', content: 'alice body', views: 7 },
+    ])
+
+    // The other account may now use the same slug; the first account still may not repeat its own.
+    await runSql(
+      db,
+      `INSERT INTO blog_posts (id, slug, note_id, user_id, title, content, published_at, created_at, updated_at)
+        VALUES ('p-bob', 'hello-world', 'n-bob', 'bob', 'Bob post', 'bob body', 20, 20, 20)`,
+    )
+    await expect(
+      runSql(
+        db,
+        `INSERT INTO blog_posts (id, slug, note_id, user_id, title, content, published_at, created_at, updated_at)
+          VALUES ('p-alice-2', 'hello-world', 'n-alice-2', 'alice', 'Second', 'body', 30, 30, 30)`,
+      ),
+    ).rejects.toThrow(/UNIQUE/)
+
+    const indexes = (await queryRows(db, "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'blog_posts'"))
+      .map((row) => row.name as string)
+    expect(indexes).toContain('idx_blog_posts_user_slug')
+    expect(indexes).not.toContain('idx_blog_posts_slug')
+  })
+
   it('rejects an incompatible schema if a required column is missing', async () => {
     const db = createD1Database()
     const env = makeEnv(db)

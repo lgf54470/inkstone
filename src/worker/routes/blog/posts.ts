@@ -132,12 +132,12 @@ function registerBlogPostsWriteRoute(blogManageRoutes: Hono<AppBindings>): void 
       .first<{ id: string; slug: string }>()
 
     if (existingPost) {
-      if (slug !== existingPost.slug) await assertSlugFree(c.env.DB, slug, existingPost.id)
+      if (slug !== existingPost.slug) await assertSlugFree(c.env.DB, userId, slug, existingPost.id)
       await updateBlogPost(c.env.DB, existingPost.id, postInput)
       return c.json({ ok: true, id: existingPost.id, slug })
     }
 
-    await assertSlugFree(c.env.DB, slug)
+    await assertSlugFree(c.env.DB, userId, slug)
     const id = newId()
     await insertBlogPost(c.env.DB, { ...postInput, id, noteId: body.noteId, userId })
     return c.json({ ok: true, id, slug })
@@ -209,10 +209,17 @@ function postInputFromBody(
   }
 }
 
-async function assertSlugFree(db: D1Database, slug: string, excludeId?: string): Promise<void> {
+/**
+ * A slug only has to be free inside the account's own blog: another account publishing the same name
+ * is a different post on a different site, and treating it as a conflict would both block that
+ * account's publish and tell it what the other blog has published.
+ */
+async function assertSlugFree(db: D1Database, userId: string, slug: string, excludeId?: string): Promise<void> {
   const conflict = excludeId
-    ? await db.prepare('SELECT id FROM blog_posts WHERE slug = ?1 AND id != ?2').bind(slug, excludeId).first()
-    : await db.prepare('SELECT id FROM blog_posts WHERE slug = ?1').bind(slug).first()
+    ? await db.prepare('SELECT id FROM blog_posts WHERE user_id = ?1 AND slug = ?2 AND id != ?3')
+        .bind(userId, slug, excludeId).first()
+    : await db.prepare('SELECT id FROM blog_posts WHERE user_id = ?1 AND slug = ?2')
+        .bind(userId, slug).first()
   if (conflict) throw ApiError.conflict('Slug already exists')
 }
 

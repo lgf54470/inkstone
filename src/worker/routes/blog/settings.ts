@@ -100,9 +100,11 @@ function registerBlogSlugCheckRoute(blogManageRoutes: Hono<AppBindings>): void {
       return c.json({ available: false, reason: 'Slug must be 2-80 characters (letters, numbers, hyphens, underscores)' })
     }
 
+    // The answer is about this account's own blog: asking whether a slug is free used to report
+    // every account's posts, which told one blog's editor what another blog had published.
     const existing = await c.env.DB
-      .prepare('SELECT id FROM blog_posts WHERE slug = ?1')
-      .bind(slug)
+      .prepare('SELECT id FROM blog_posts WHERE user_id = ?1 AND slug = ?2')
+      .bind(c.get('userId')!, slug)
       .first<{ id: string }>()
 
     if (!existing || (currentPostId && existing.id === currentPostId)) {

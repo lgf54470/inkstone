@@ -124,7 +124,7 @@
 - **范围**：`stats.ts`、`posts.ts`、`comments.ts`、`public.ts`、`public-comments.ts`、`public-links.ts`。代价 **M**。
 - **建议**：与 share 侧的 LIKE/分页条目同批，避免同一份 `escapeLike` 约定第三次漂移。
 
-#### SEC-08 [P0][开放] `blog_posts.slug` 全局唯一，与「每用户一个博客」冲突且构成跨用户 oracle
+#### SEC-08 [P0][已修] `blog_posts.slug` 全局唯一，与「每用户一个博客」冲突且构成跨用户 oracle
 - **问题**：`db/schema/tables.ts:371` 与 `migrations.ts:330` 都是 `slug TEXT NOT NULL UNIQUE`——SQLite 的列级 `UNIQUE` 生成的是 `sqlite_autoindex_*`，**无法用 `DROP INDEX` 去掉**，改唯一性必须重建表。所有 slug 查询也都不带 owner：`assertSlugFree()`（`posts.ts:210-216`）全局判重，`/check-slug`（`settings.ts:100-122`）全局查询并把「已被占用」回给任何登录用户。
 - **影响**：① 用户 A 占用的 slug 用户 B 永远无法使用，且 B 能从错误信息推断出该 slug 属于别人（跨用户枚举 oracle）；② `note_id` 同为全局 `UNIQUE`，传他人的 noteId 并命中时会撞 UNIQUE 变成未映射的 500；③ 只要公开端按 owner 隔离（SEC-01）而 slug 仍全局唯一，就会出现「我的 slug 被别人的站占用」这种无法自解的状态。
 - **方案**：① 新增 `db/schema/blog-posts.ts` 承载 `blog_posts` 的当前定义（`UNIQUE(user_id, slug)`，`note_id` 保持全局唯一——笔记 id 本身全局唯一，这是正确的）；② 基线 `tables.ts` 同步；③ 新增一条 rebuild 迁移，照 version 36（`board_library`）与 version 32（`MUSIC_LEGACY_REBUILD_STATEMENTS`）的既有范式：`ALTER TABLE blog_posts RENAME TO blog_posts_global_slug` → 建新表 → `INSERT … SELECT` → 重建索引 → `DROP TABLE`，并用 `skipIfColumnExists: { table:'blog_posts', column:'folder_id' }` 让全新实例跳过（基线已经是新形状）；④ 所有 slug 查询（`assertSlugFree`、`/check-slug`、`loadPublicPostBySlug`、`/note-post/:noteId`）带 `user_id`，`checks.ts` 与 `tests/schema-migrations.test.ts` 同步。

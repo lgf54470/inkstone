@@ -1,4 +1,5 @@
 import { BOARD_LIBRARY_DEFAULT_NAME } from '@shared/constants'
+import { BLOG_POSTS_SLUG_REBUILD_STATEMENTS } from './blog-posts'
 import { BOARD_LIBRARY_TABLE_STATEMENTS } from './board-library'
 import { MUSIC_LEGACY_REBUILD_STATEMENTS, MUSIC_PLAYBACK_MIGRATION_STATEMENTS, MUSIC_SCHEMA_STATEMENTS, MUSIC_SOURCE_MIGRATION_STATEMENTS, MUSIC_TAG_ORDER_MIGRATION_STATEMENTS, MUSIC_TAG_PARENT_MIGRATION_STATEMENTS, MUSIC_TAG_SCOPE_MIGRATION_STATEMENTS } from './music'
 import type { SchemaMigration } from './types'
@@ -788,5 +789,12 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
        )`,
       `CREATE INDEX IF NOT EXISTS idx_music_server_sources_user ON music_server_sources(user_id, created_at ASC)`,
     ],
+  },
+  // SEC-08: a blog belongs to one account, so a slug names a post inside that blog rather than inside
+  // the instance — the second account may publish `hello-world` too, and the slug check stops
+  // answering for a blog the caller does not own.
+  {
+    version: 52,
+    statements: BLOG_POSTS_SLUG_REBUILD_STATEMENTS,
   },
 ]
