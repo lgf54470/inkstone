@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { BlogCommentStatus } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
+import { escapeLike, likeAny } from '../../lib/like'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import type { BlogCommentModerationRow } from '../../db/rows'
@@ -57,8 +58,9 @@ function blogCommentsListQuery(userId: string, filter: BlogCommentsFilter): { sq
   }
 
   if (search) {
-    sql += ` AND (c.author_name LIKE ?${idx} OR c.author_email LIKE ?${idx} OR c.content LIKE ?${idx} OR p.title LIKE ?${idx})`
-    params.push(`%${search}%`)
+    // Same needle rule as the post list: escape what LIKE reads as wildcards before binding it.
+    sql += ` AND (${likeAny(['c.author_name', 'c.author_email', 'c.content', 'p.title'], `?${idx}`)})`
+    params.push(`%${escapeLike(search)}%`)
     idx++
   }
 

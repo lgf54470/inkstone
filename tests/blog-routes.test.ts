@@ -1018,3 +1018,62 @@ describe('blog batch statements stay inside the D1 bind limit (SH-42)', () => {
       .toMatchObject({ n: 120 })
   })
 })
+
+// LIKE reads `_` and `%` as wildcards, so a needle bound raw answers with unrelated rows — and a
+// search for `%` alone degenerates into a scan of everything — on both the admin listings and the
+// public one. The tag branch already escaped; these are the three that did not.
+describe('blog LIKE wildcard escaping (SEC-07)', () => {
+  it('treats a wildcard in the post list search as a literal', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'under-score', title: 'a_b report' })
+    await seedBlogPost(db, { slug: 'no-underscore', title: 'axb report' })
+    const app = makeApp()
+
+    const admin = await (await request(app, '/api/blog/posts?search=a_b')).json()
+    expect(admin.posts.map((p: { slug: string }) => p.slug)).toEqual(['under-score'])
+
+    const publicList = await (await request(app, '/api/blog/public/posts?search=a_b')).json()
+    expect(publicList.posts.map((p: { slug: string }) => p.slug)).toEqual(['under-score'])
+
+    const wildcard = await (await request(app, '/api/blog/public/posts?search=%25')).json()
+    expect(wildcard.posts).toEqual([])
+  })
+
+  it('treats a wildcard in the comment list search as a literal', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const post = await seedBlogPost(db, { slug: 'commented' })
+    await runSql(
+      db,
+      `INSERT INTO blog_comments (id, post_id, parent_id, author_name, author_email, author_url,
+         author_avatar, content, status, created_at)
+       VALUES ('c-1', ?1, NULL, 'a_b', 'a_b@example.com', NULL, '', 'first', 'approved', ?2),
+              ('c-2', ?1, NULL, 'axb', 'axb@example.com', NULL, '', 'second', 'approved', ?2)`,
+      post.id, H.now,
+    )
+    const app = makeApp()
+
+    const body = await (await request(app, '/api/blog/comments?search=a_b')).json()
+    expect(body.comments.map((c: { id: string }) => c.id)).toEqual(['c-1'])
+  })
+
+  // `parseInt` reads `12.7` and `30abc` as numbers rather than refusing them, and a window nobody
+  // asked for is exactly what an `older_than` delete must not fall back to.
+  it('refuses a visit cleanup day count that is not a plain positive integer', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const post = await seedBlogPost(db, { slug: 'visited' })
+    await seedVisitAt(db, post.id, post.slug, H.now - 1_000, 'fp-1')
+    const app = makeApp()
+
+    for (const raw of ['abc', '12.7', '30abc', '0', '-5']) {
+      const res = await request(app, `/api/blog/visits?type=older_than&days=${encodeURIComponent(raw)}`, { method: 'DELETE' })
+      expect(res.status, raw).toBe(400)
+    }
+
+    const ok = await request(app, '/api/blog/visits?type=older_than&days=3650', { method: 'DELETE' })
+    expect(ok.status).toBe(200)
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_visits')).toMatchObject({ n: 1 })
+  })
+})

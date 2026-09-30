@@ -35,23 +35,28 @@ async function loadCommentedPost(
   return post
 }
 
+/** One screen of a comment thread; a post past it shows its newest approved comments. */
+const PUBLIC_COMMENT_LIMIT = 500
+
 function registerBlogPublicCommentsListRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.get('/comments/:postSlug', async (c) => {
     const post = await loadCommentedPost(c.env.DB, blogOwnerOf(c).userId, c.req.param('postSlug'))
 
+    // The page renders the thread oldest first, so the query takes the newest rows under the
+    // ceiling (the ones a reader scrolls to) and hands them back in that same render order.
     const { results } = await c.env.DB
       .prepare(`
         SELECT id, post_id, parent_id, author_name, author_url, author_avatar, content, created_at
         FROM blog_comments
         WHERE post_id = ?1 AND status = 'approved'
-        ORDER BY created_at ASC
+        ORDER BY created_at DESC LIMIT ${PUBLIC_COMMENT_LIMIT}
       `)
       .bind(post.id)
       .all<BlogPublicCommentRow>()
 
     return c.json({
       allowComments: Boolean(post.allow_comments),
-      comments: results || [],
+      comments: [...(results || [])].reverse(),
     })
   })
 }

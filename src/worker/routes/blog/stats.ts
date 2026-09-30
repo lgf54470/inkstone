@@ -3,7 +3,7 @@ import type { BlogGlobalAnalytics, BlogStats, BlogVisitLog, ShareBreakdownItem, 
 import type { AppBindings } from '../../env'
 import { requireAuth } from '../../middleware/auth'
 import { ApiError } from '../../lib/errors'
-import { JSON_BODY_LIMITS, readOptionalJsonValidated } from '../../lib/request'
+import { clampInt, JSON_BODY_LIMITS, readOptionalJsonValidated } from '../../lib/request'
 import { requireCurrentPassword } from '../../lib/reauth'
 import { blogVisitWipeSchema } from './schemas'
 import {
@@ -419,10 +419,7 @@ function registerBlogVisitsDeleteRoute(blogManageRoutes: Hono<AppBindings>): voi
   blogManageRoutes.delete('/visits', requireAuth, async (c) => {
     const userId = c.get('userId')!
     const type = c.req.query('type') || 'all'
-    const days = parseInt(c.req.query('days') || '30', 10)
-    if (type === 'older_than' && !(days >= 1)) {
-      throw ApiError.badRequest('Cleaning visit logs older than N days requires a positive integer for days')
-    }
+    const days = cleanupVisitDays(c.req.query('days'), type)
     if (type === 'all') {
       // Wiping the whole trail is unrecoverable, so a stolen session must re-prove
       // it holds the account password before the delete runs (same as share SH-12).
@@ -432,6 +429,23 @@ function registerBlogVisitsDeleteRoute(blogManageRoutes: Hono<AppBindings>): voi
     const deleted = await deleteBlogVisitLogs(c.env.DB, userId, type, days)
     return c.json({ ok: true as const, deleted })
   })
+}
+
+const CLEANUP_DAYS_DEFAULT = 30
+const CLEANUP_DAYS_MAX = 3650
+
+/**
+ * `older_than` must name its own window: reading an unparseable count as the default would delete a
+ * span the caller never asked for, and `parseInt` would take `12.7` or `30abc` as a number rather
+ * than refuse them. A rejected value is a 400; an accepted one is bounded by the shared clamp.
+ */
+function cleanupVisitDays(raw: string | undefined, type: string): number {
+  if (type !== 'older_than') return CLEANUP_DAYS_DEFAULT
+  const days = Number((raw ?? '').trim())
+  if (!Number.isSafeInteger(days) || days < 1) {
+    throw ApiError.badRequest('Cleaning visit logs older than N days requires a positive integer for days')
+  }
+  return clampInt(String(days), 1, CLEANUP_DAYS_MAX, CLEANUP_DAYS_DEFAULT)
 }
 
 async function deleteBlogVisitLogs(db: D1Database, userId: string, type: string, days: number): Promise<number> {

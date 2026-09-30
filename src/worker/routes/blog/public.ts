@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import type { BlogCalendarRow, BlogPostPublicRow, BlogPublicCategoryRow, BlogTimelineRow } from '../../db/rows'
-import { escapeLike } from '../../lib/like'
+import { escapeLike, likeAny } from '../../lib/like'
 import { recordBlogVisit } from './visits'
 import { safeDecodeTagParam, summarizePostTagCounts } from './helpers'
 
@@ -149,8 +149,10 @@ function blogPublicPostsWhere(ownerId: string, filter: PublicPostsFilter): { cla
   }
 
   if (filter.search) {
-    clauses.push(`(p.title LIKE ?${idx} OR p.excerpt LIKE ?${idx} OR p.content LIKE ?${idx})`)
-    params.push(`%${filter.search}%`)
+    // The needle is escaped like the tag one above, or a query of `%` turns the public listing
+    // into a full scan of every post body.
+    clauses.push(`(${likeAny(['p.title', 'p.excerpt', 'p.content'], `?${idx}`)})`)
+    params.push(`%${escapeLike(filter.search)}%`)
     idx++
   }
 
@@ -302,10 +304,22 @@ function registerBlogPublicCategoriesRoute(blogPublicRoutes: Hono<AppBindings>):
   })
 }
 
+/**
+ * The archive endpoints answer with the whole published blog by design — a timeline or a calendar is
+ * only useful complete — so their bound is a ceiling far above a personal blog's post count rather
+ * than a page size, and every one of them keeps the newest rows: past the ceiling the oldest posts
+ * fall out of the archive views, never the recent ones.
+ */
+const PUBLIC_ARCHIVE_LIMIT = 2000
+
 function registerBlogPublicTagsRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.get('/tags', async (c) => {
     const { results } = await c.env.DB
-      .prepare('SELECT tags FROM blog_posts WHERE is_published = 1 AND user_id = ?1')
+      .prepare(`
+        SELECT tags FROM blog_posts
+        WHERE is_published = 1 AND user_id = ?1
+        ORDER BY published_at DESC LIMIT ${PUBLIC_ARCHIVE_LIMIT}
+      `)
       .bind(blogOwnerOf(c).userId)
       .all<{ tags: string }>()
 
@@ -326,7 +340,7 @@ function registerBlogPublicTimelineRoute(blogPublicRoutes: Hono<AppBindings>): v
         SELECT id, slug, title, published_at, cover_url, tags, views
         FROM blog_posts
         WHERE is_published = 1 AND user_id = ?1
-        ORDER BY published_at DESC
+        ORDER BY published_at DESC LIMIT ${PUBLIC_ARCHIVE_LIMIT}
       `)
       .bind(blogOwnerOf(c).userId)
       .all<BlogTimelineRow>()
@@ -369,7 +383,15 @@ function buildBlogTimelineMap(rows: BlogTimelineRow[]): Record<number, Record<nu
 function registerBlogPublicCalendarRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.get('/calendar', async (c) => {
     const { results } = await c.env.DB
-      .prepare('SELECT slug, title, published_at FROM blog_posts WHERE is_published = 1 AND user_id = ?1 ORDER BY published_at ASC')
+      // The inner order picks which posts the ceiling keeps (the newest), the outer one keeps the
+      // order the calendar renders in (a day's posts oldest first).
+      .prepare(`
+        SELECT slug, title, published_at FROM (
+          SELECT slug, title, published_at FROM blog_posts
+          WHERE is_published = 1 AND user_id = ?1
+          ORDER BY published_at DESC LIMIT ${PUBLIC_ARCHIVE_LIMIT}
+        ) ORDER BY published_at ASC
+      `)
       .bind(blogOwnerOf(c).userId)
       .all<BlogCalendarRow>()
 

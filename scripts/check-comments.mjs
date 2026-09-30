@@ -12686,6 +12686,9 @@ const allowed = new Map([
   ['src/worker/lib/image.ts', [
     '// Malformed or truncated image data is routine for probes; degrade to unknown dimensions.',
   ]],
+  ['src/worker/lib/like.ts', [
+    '/**\n * The `column LIKE ?n` comparison for each column, all bound to the same needle, with the ESCAPE\n * clause the escaped needle needs. Every caller binds a needle through `escapeLike`; without the\n * matching ESCAPE that backslash is just a character, so a search for `%` scans the whole table and\n * `_` matches anything — which is how three of these ended up written without it.\n */',
+  ]],
   ['src/worker/lib/maintenance.ts', [
     '/**\n * A per-account number read straight out of the stored settings document: a\n * missing or unparsable value falls back to the shipped default, so an account\n * that never opened the settings modal still has a bounded log. `json_valid`\n * guards a corrupt document, which would otherwise make `json_extract` throw\n * and take the whole sweep down. The reading query must alias `users` as `u`.\n */',
     '/**\n * The boolean twin of `userSettingsNumberSql`: SQLite\'s JSON functions answer a stored `true`/\n * `false` as 1/0, so only the absence of the field needs a fallback. Used by the public visit\n * write path, which must not ship the whole settings document to answer one question — the same\n * reason the sweeps read their threshold through SQL. The reading query must alias `users` as `u`.\n */',
@@ -12923,6 +12926,7 @@ const allowed = new Map([
     '// shared IP / NAT is never locked out by a full window of attempts.',
   ]],
   ['src/worker/routes/blog/comments.ts', [
+    '// Same needle rule as the post list: escape what LIKE reads as wildcards before binding it.',
     '// D1 refuses a statement that binds more than 100 variables, and this action binds one per id, so a',
     '// selection wider than that is split rather than handed to the platform to fail on: the ids are',
     '// bound per chunk, and every chunk keeps the same ownership predicate.',
@@ -12969,6 +12973,10 @@ const allowed = new Map([
     '// reader asked for a blog, and no blog has that name.',
     '/**\n * The instance\'s first account is the blog that existed before addresses did. The ordering is by\n * `created_at` and then by insertion order, so two accounts seeded in the same millisecond still\n * resolve to the one that was created first.\n */',
   ]],
+  ['src/worker/routes/blog/post-list-query.ts', [
+    '// Escaped like the public listing\'s needle: an unescaped `%` here scans every post of the',
+    '// account, and `_` silently matches unrelated titles.',
+  ]],
   ['src/worker/routes/blog/posts.ts', [
     '/**\n * A slug only has to be free inside the account\'s own blog: another account publishing the same name\n * is a different post on a different site, and treating it as a conflict would both block that\n * account\'s publish and tell it what the other blog has published.\n */',
     '// One batch, so a post cannot survive while its log rows go missing (or the other way round).',
@@ -12980,10 +12988,14 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/blog/public-comments.ts', [
     '/**\n * The post a comment page is about, scoped to the addressed blog: another account\'s post with the\n * same slug is a different post, and answering with it would be the cross-tenant read this module\n * was missing.\n */',
+    '/** One screen of a comment thread; a post past it shows its newest approved comments. */',
+    '// The page renders the thread oldest first, so the query takes the newest rows under the',
+    '// ceiling (the ones a reader scrolls to) and hands them back in that same render order.',
     '// The blog is part of the key: two accounts may publish the same slug, and one of them being',
     '// under a comment flood must not close the other\'s form.',
   ]],
   ['src/worker/routes/blog/public-links.ts', [
+    '/**\n * A friend-links page is read in one glance, so both lists are bounded by what one page can show;\n * the order decides what the ceiling keeps, and it is the one the page renders in — pinned links\n * first, then categories in their sort order — so the tail that drops is the least prominent one.\n */',
     '/**\n * The budget one visitor gets for applying: the count used to be over the whole table, so\n * five applications from anywhere took the endpoint down for everyone for a minute while\n * doing nothing to stop the one source that sent them.\n */',
     '/**\n * One counted click per visitor per link per half hour. The counter lives in the same row the public\n * site reads, and it used to be a bare `clicks + 1` any request could drive — a loop over one id was\n * an unlimited write. Eligibility is read first so that a request nobody may count (another blog\'s\n * link, or one this blog has not approved) does not spend the visitor\'s window on that link; the\n * budget is spent before the update, and a request past it costs a read and no write at all. It is\n * answered as uncounted rather than as an error: the visit happened, only the counter is not moved.\n */',
   ]],
@@ -13001,6 +13013,11 @@ const allowed = new Map([
     '// A blog tag lives inside a JSON array column, so the LIKE needle must be the',
     '// JSON-escaped tag text, LIKE-escaped on top (ESCAPE \'\\\\\'); the second',
     '// pattern keeps the parent-tag-matches-descendants hierarchy semantics.',
+    '// The needle is escaped like the tag one above, or a query of `%` turns the public listing',
+    '// into a full scan of every post body.',
+    '/**\n * The archive endpoints answer with the whole published blog by design — a timeline or a calendar is\n * only useful complete — so their bound is a ceiling far above a personal blog\'s post count rather\n * than a page size, and every one of them keeps the newest rows: past the ceiling the oldest posts\n * fall out of the archive views, never the recent ones.\n */',
+    '// The inner order picks which posts the ceiling keeps (the newest), the outer one keeps the',
+    '// order the calendar renders in (a day\'s posts oldest first).',
   ]],
   ['src/worker/routes/blog/schemas.ts', [
     '/**\n * A URL a request carries has to be one the app may render, and the rule is the shared allowlist — a\n * scheme check is only as good as the renderer trusting the same answer. An empty value stays valid:\n * every one of these fields is optional, and "no picture" is not a bad URL.\n */',
@@ -13023,6 +13040,7 @@ const allowed = new Map([
     '/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */',
     '// Wiping the whole trail is unrecoverable, so a stolen session must re-prove',
     '// it holds the account password before the delete runs (same as share SH-12).',
+    '/**\n * `older_than` must name its own window: reading an unparseable count as the default would delete a\n * span the caller never asked for, and `parseInt` would take `12.7` or `30abc` as a number rather\n * than refuse them. A rejected value is a 400; an accepted one is bounded by the shared clamp.\n */',
   ]],
   ['src/worker/routes/blog/visits.ts', [
     '// CF-Connecting-IP is injected by the Cloudflare edge (see requestClientIp);',
@@ -14035,6 +14053,11 @@ const allowed = new Map([
     '// The public site reads the blog it serves, not a second key nobody writes: patching the site',
     '// name has to reach the reader, which is what this used to assert the opposite of (SEC-09).',
     '/** Seeds one post of this account and one of another, each with a comment. */',
+    '// LIKE reads `_` and `%` as wildcards, so a needle bound raw answers with unrelated rows — and a',
+    '// search for `%` alone degenerates into a scan of everything — on both the admin listings and the',
+    '// public one. The tag branch already escaped; these are the three that did not.',
+    '// `parseInt` reads `12.7` and `30abc` as numbers rather than refusing them, and a window nobody',
+    '// asked for is exactly what an `older_than` delete must not fall back to.',
   ]],
   ['tests/blog-slug-scope.test.ts', [
     '/**\n * A slug names a post inside one blog. Instance-wide uniqueness made the second account\'s own post\n * fail to publish because the first account had used the name, and `/check-slug` answered the same\n * question for both, so one blog\'s naming was readable from another\'s editor.\n */',

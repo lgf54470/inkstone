@@ -15,6 +15,14 @@ export function registerBlogPublicLinksRoutes(blogPublicRoutes: Hono<AppBindings
   registerPublicLinkClickRoute(blogPublicRoutes)
 }
 
+/**
+ * A friend-links page is read in one glance, so both lists are bounded by what one page can show;
+ * the order decides what the ceiling keeps, and it is the one the page renders in — pinned links
+ * first, then categories in their sort order — so the tail that drops is the least prominent one.
+ */
+const PUBLIC_LINK_LIMIT = 500
+const PUBLIC_LINK_CATEGORY_LIMIT = 200
+
 function registerPublicLinksListRoute(blogPublicRoutes: Hono<AppBindings>): void {
   blogPublicRoutes.get('/links', async (c) => {
     const db = c.env.DB
@@ -25,7 +33,7 @@ function registerPublicLinksListRoute(blogPublicRoutes: Hono<AppBindings>): void
         SELECT id, name, icon, parent_id, sort_order
         FROM blog_link_categories
         WHERE user_id = ?1
-        ORDER BY sort_order ASC, created_at ASC
+        ORDER BY sort_order ASC, created_at ASC LIMIT ${PUBLIC_LINK_CATEGORY_LIMIT}
       `).bind(ownerId).all<BlogLinkCategoryRow>(),
       db.prepare(`
         SELECT id, name, url, description, avatar, category_id,
@@ -33,6 +41,7 @@ function registerPublicLinksListRoute(blogPublicRoutes: Hono<AppBindings>): void
         FROM blog_links
         WHERE user_id = ?1 AND status = 'approved' AND is_active = 1
         ORDER BY is_pinned DESC, pinned_order ASC, sort_order ASC, created_at ASC
+        LIMIT ${PUBLIC_LINK_LIMIT}
       `).bind(ownerId).all<BlogLinkRow>(),
     ])
 
