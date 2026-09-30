@@ -14,6 +14,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import type { BlogLink, BlogLinkCategory } from '@shared/types'
+import { safeExternalUrl } from '@shared/url-safety'
 import { useClickOutside, useEscape } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 
@@ -144,11 +145,16 @@ function PrimaryMenuItems({
   onQRCode: (link: BlogLink) => void
   onClose: () => void
 }) {
+  // A reader submitted this address; opening is offered only when it is one a link may carry, so the
+  // menu never becomes the click that runs it inside the admin's session.
+  const openUrl = safeExternalUrl(link.url)
   return (
     <>
       <ContextMenuItem icon={<Copy size={13} />} label={t('blog.link_menu_copy')} onClick={() => { onCopy(link); onClose() }} />
       <ContextMenuItem icon={<QrCode size={13} />} label={t('blog.link_menu_qrcode')} onClick={() => { onQRCode(link); onClose() }} />
-      <ContextMenuItem icon={<ExternalLink size={13} />} label={t('blog.link_menu_open')} onClick={() => { window.open(link.url, '_blank', 'noopener,noreferrer'); onClose() }} />
+      {openUrl && (
+        <ContextMenuItem icon={<ExternalLink size={13} />} label={t('blog.link_menu_open')} onClick={() => { window.open(openUrl, '_blank', 'noopener,noreferrer'); onClose() }} />
+      )}
     </>
   )
 }

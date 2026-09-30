@@ -4,6 +4,7 @@ import { Badge, IconButton } from '../../../components/primitives'
 import { Checkbox } from '../../../components/form'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
+import { safeExternalUrl } from '@shared/url-safety'
 import { LinkDynamicIcon } from './link-dynamic-icon'
 
 export interface LinkCardRowProps {
@@ -141,6 +142,8 @@ function LinkRowInfo({
   isSelected: boolean
   onToggleSelect: () => void
 }) {
+  // The address arrived from a reader, so it becomes a link only when a link may carry it.
+  const safeUrl = safeExternalUrl(link.url)
   return (
     <div className='flex items-center gap-3 min-w-0 flex-1'>
       <Checkbox
@@ -161,16 +164,22 @@ function LinkRowInfo({
           categoryLabel={categoryLabel}
         />
         <div className='flex items-center gap-2 text-[length:var(--text-11)] text-[var(--text-tertiary)] truncate'>
-          <a
-            href={link.url}
-            target='_blank'
-            rel='noopener noreferrer'
-            className='hover:underline hover:text-[var(--accent)] flex items-center gap-1 truncate max-w-70'
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span className='truncate'>{link.url}</span>
-            <ExternalLink size={11} className='shrink-0' />
-          </a>
+          {safeUrl ? (
+            <a
+              href={safeUrl}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='hover:underline hover:text-[var(--accent)] flex items-center gap-1 truncate max-w-70'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className='truncate'>{link.url}</span>
+              <ExternalLink size={11} className='shrink-0' />
+            </a>
+          ) : (
+            // A reader submitted this address and it is not one a link may carry: it is shown as the
+            // text it is, without an affordance that would open it in the admin's session.
+            <span className='truncate max-w-70'>{link.url}</span>
+          )}
           {link.description && (
             <>
               <span>•</span>

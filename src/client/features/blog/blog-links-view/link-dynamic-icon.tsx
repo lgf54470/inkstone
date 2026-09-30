@@ -2,6 +2,7 @@ import { useState, memo } from 'react'
 import type { ReactNode } from 'react'
 import { Globe, icons } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { safeExternalUrl } from '@shared/url-safety'
 
 export interface LinkDynamicIconProps {
   icon?: string | null
@@ -39,53 +40,65 @@ export const LinkDynamicIcon = memo(function LinkDynamicIcon({
   className = '',
   fallback,
 }: LinkDynamicIconProps) {
-  const [imgFailed, setImgFailed] = useState(false)
   const trimmed = (icon || '').trim()
+  const spare = () => (fallback ? <>{fallback}</> : <FallbackAvatar name={name} size={size} className={className} />)
 
-  if (!trimmed) {
-    if (fallback) return <>{fallback}</>
-    return <FallbackAvatar name={name} size={size} className={className} />
-  }
+  if (!trimmed) return spare()
 
   if (isUrlString(trimmed)) {
-    if (imgFailed) {
-      if (fallback) return <>{fallback}</>
-      return <FallbackAvatar name={name} size={size} className={className} />
-    }
-    return (
-      <img
-        src={trimmed}
-        alt={name}
-        loading='lazy'
-        referrerPolicy='no-referrer'
-        onError={() => setImgFailed(true)}
-        style={{ width: size, height: size }}
-        className={`object-contain rounded shrink-0 ${className}`}
-      />
-    )
+    // A reader may have supplied this picture: an address that is not an image source this app will
+    // fetch is treated like a load that failed, so the initial is drawn instead of it.
+    const src = safeExternalUrl(trimmed, 'image')
+    return src ? <IconImage src={src} name={name} size={size} className={className} spare={spare} /> : spare()
   }
 
-  if (isEmojiString(trimmed)) {
-    return (
-      <span
-        style={{ fontSize: size, lineHeight: 1 }}
-        aria-hidden
-        className={`inline-flex items-center justify-center shrink-0 select-none ${className}`}
-      >
-        {trimmed}
-      </span>
-    )
-  }
+  if (isEmojiString(trimmed)) return <IconEmoji value={trimmed} size={size} className={className} />
 
-  const allIcons: Record<string, LucideIcon | undefined> = icons
-  const Comp = allIcons[trimmed]
-  if (Comp) {
-    return <Comp size={size} className={`shrink-0 ${className}`} />
-  }
+  const Comp = (icons as Record<string, LucideIcon | undefined>)[trimmed]
+  if (Comp) return <Comp size={size} className={`shrink-0 ${className}`} />
 
-  if (fallback) return <>{fallback}</>
-  return <FallbackAvatar name={name} size={size} className={className} />
+  return spare()
 })
+
+function IconImage({
+  src,
+  name,
+  size,
+  className,
+  spare,
+}: {
+  src: string
+  name: string
+  size: number
+  className: string
+  spare: () => ReactNode
+}) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return <>{spare()}</>
+  return (
+    <img
+      src={src}
+      alt={name}
+      loading='lazy'
+      referrerPolicy='no-referrer'
+      onError={() => setFailed(true)}
+      style={{ width: size, height: size }}
+      className={`object-contain rounded shrink-0 ${className}`}
+    />
+  )
+}
+
+function IconEmoji({ value, size, className }: { value: string; size: number; className: string }) {
+  return (
+    <span
+      style={{ fontSize: size, lineHeight: 1 }}
+      aria-hidden
+      className={`inline-flex items-center justify-center shrink-0 select-none ${className}`}
+    >
+      {value}
+    </span>
+  )
+}
 
 const MIN_FALLBACK_FONT_SIZE = 10
 const FALLBACK_FONT_SCALE = 0.65

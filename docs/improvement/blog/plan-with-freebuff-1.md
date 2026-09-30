@@ -50,7 +50,11 @@
   - 与计划的差异（有意）：计划写「五个 schema 一律 `.max(100)`」，但 HEAD 上已有 `tests/blog-routes.test.ts` 的 SH-42 用例（120 篇文章批量删除/发布必须成功，靠分块达成），硬上限 100 会把既有行为改成 400。故上限取「一次请求的工作量上界」（1000），把平台限制交给分块。
   - **顺带修掉一个此前无覆盖的真 bug**：`comments.ts` 的批量改状态分支占位符从 `?2` 起编号，而 `?2` 同时是 owner，绑定数比占位符多一个 → 该接口对任何「批准/驳回/标垃圾邮件」调用都 500（只有 delete 分支正确）。已按分支各自起步编号，并补两条用例（单条 150 条）。
   - 复现测试：`tests/blog-routes.test.ts` 新增「单条改状态」「150 条改状态（分块）」「超过 1000 条一律 400（posts/comments/links/import 四处）」，共 3 条 describe。
-- [ ] B1-06 **SEC-04** 共享 `isSafeExternalUrl()`（http/https + 站内相对 + mailto），schema 强制 + 渲染侧兜底（含 `frontendUrl` / `socialLinks`）
+- [x] B1-06 **SEC-04** 共享 `isSafeExternalUrl()`（http/https + 站内相对 + mailto），schema 强制 + 渲染侧兜底（含 `frontendUrl` / `socialLinks`） — 已提交（hash 见下一提交）
+  - 实现：新增 `src/shared/url-safety.ts`（`isSafeExternalUrl(value, kind)` / `safeExternalUrl()`；先去掉 ASCII 控制字符再判 scheme，所以 `java\tscript:` 这类不会漏网；`//host` 不算站内相对；mailto 只对链接开放）；`schemas.ts` 用它约束链接 url/avatar、公开友链申请、公开评论 authorUrl/authorAvatar、导入行、`frontendUrl` 与 `socialLinks.*`（空串仍合法）。
+  - 渲染侧兜底（存储里可能有旧行）：新增 `features/blog/frontend-base.ts` 把三处重复的 `frontendUrl` 取值收敛为一处并做安全回退；链接行无法渲染的地址只当文本显示（不再生成 `<a>`）；右键菜单 / 二维码弹窗 / 检测弹窗的「打开」控件仅当地址可用时存在；评论头像与链接图标对不可渲染的地址回退到首字母/地球图标；`link-dynamic-icon.tsx` 顺带把图片与 emoji 两个分支抽成子组件（改后主函数不再超行）。
+  - 复现测试：新增 `src/shared/url-safety.test.ts`（8 条：允许/x 拒绝/控制字符走私/协议相对/空值/图片不放 mailto）与 `src/client/features/blog/blog-links-view/link-card-row.test.ts`（2 条 jsdom：可渲染地址生成带 `noopener` 的链、`javascript:` 只渲染为文本）——这也是 `features/blog` 目录下的第一批测试；`tests/blog-links-routes.test.ts` 新增 5 条契约（链接/申请/评论/设置/导入 均拒绝不可渲染地址，且不落库）。
+  - 未纳入本批：前台（`blog-frontend`）的 `window.open(link.url)` 与旧行兼容（BF-2，批次 2）；demo 后端是单用户模拟，未同步该规则。
 - [ ] B1-07 **SEC-05** `assertContentSize` 接入 blog 写入 + `title/excerpt` 加 `.max()`
 - [ ] B1-08 **SEC-06** `POST /links/:id/click` 加限流 + `status='approved'` + 站点归属
 - [ ] B1-09 **SEC-07** `days` 走 `clampInt` + 三处 LIKE 补 `escapeLike` + 公开列表补 `LIMIT`
@@ -125,6 +129,7 @@
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
 | 2026-09-30 | B0 文档基线（review + plan） | — | —（无代码改动，静态门禁与单测不适用） | 报告结论全部落到 file:line；统计与性能量级为明示假设下的推算，未做 profiling；订正了前两轮报告的 8 条过时结论（review §三） |
+| 2026-09-30 | B1-06 SEC-04 URL 协议白名单（共享谓词 + schema + 渲染兜底） | 已提交（见下一条回填） | `typecheck` 绿；`test:unit` 5187 通过 / 1 失败（仍为既有 kanban 用例）；新增 15 条（8 谓词 + 2 组件 + 5 契约）全绿；`comments/escape/empty-catch/module-state/deep-imports/style/size/hardcoded` 八项门禁绿（未动 size 基线） | 前台 BF-2 与 demo 后端不在本批；已有行里的不可渲染地址靠渲染兜底而非数据清理 |
 | 2026-09-30 | B1-05 SEC-03 批量上限/分块/分组原子化（+ 修好评论批量改状态的编号 bug） | 已提交（见下一条回填） | `typecheck` 绿；本批四个 blog 测试文件 68 条全绿（含新 3 条）；`comments/escape/empty-catch/module-state/deep-imports/style/size` 七项门禁绿 | 与计划的 `.max(100)` 有意偏离（见条目内理由：SH-42 已有 120 条必须成功的用例）；同左的既有 kanban 失败 |
 | 2026-09-30 | B1-04 SEC-09 站点设置单一键 | 00dbfa9d | `typecheck` 绿；`tests/blog-public-owner.test.ts` 10 条 + 相关 blog 测试全绿；七项门禁绿；同提交按 AGENTS「分批与门禁」只暂存了本批白名单分块（工作区保持最终态） | 已核实“全局键从未被写过”，故无数据迁移；B1-04 与 B1-05 的注释白名单同属一个文件，B1-05 一行在下一个提交回填 |
 | 2026-09-30 | B1-03 SEC-08 slug 唯一性下放到 per-user（含表重建迁移 52） | 已提交（见下一条回填） | `typecheck` 绿；`test:unit` 5168 通过 / 1 失败（仍为既有 kanban 用例）；`tests/blog-slug-scope.test.ts` 4 条 + `tests/schema-migrations.test.ts` 新增遗留库重建用例全绿；6 个 blog/schema 测试文件共 75 条全绿；`comments/escape/empty-catch/module-state/deep-imports/style/size` 七项门禁绿 | **不可逆迁移**：部署侧必须先备份；`size:check` 基线只动了 `migrations.ts` 一行（793→801）；同左的既有 kanban 失败 |

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogPost } from '@shared/types'
 import { upsertFrontMatterProperty } from '@shared/markdown-utils'
 import { api } from '../../lib/api'
@@ -9,6 +8,7 @@ import { useUi } from '../../store/ui'
 import { useNotes } from '../../store/notes'
 import { confirm } from '../../components/overlay'
 import { useBlogStore } from './blog-store'
+import { blogFrontendBase } from './frontend-base'
 
 
 interface BlogNoteSubmenuBundle {
@@ -34,7 +34,7 @@ export function useBlogNoteSubmenu({
   const settings = useBlogStore((s) => s.settings)
   const [isBusy, setIsBusy] = useState(false)
 
-  const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
+  const frontendBase = blogFrontendBase(settings?.frontendUrl)
   const postUrl = `${frontendBase}/posts/${post.slug}`
 
   const { isCopied, handleCopyLink } = useCopyLink(postUrl, toast, closeMenu)

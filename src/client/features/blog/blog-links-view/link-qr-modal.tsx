@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, Copy, ExternalLink, QrCode } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import type { BlogLink } from '@shared/types'
+import { safeExternalUrl } from '@shared/url-safety'
 import { Modal } from '../../../components/overlay'
 import { Button } from '../../../components/primitives'
 import { t } from '../../../lib/i18n'
@@ -72,21 +73,25 @@ function QrCardHeader({ link }: { link: BlogLink }) {
 }
 
 function QrActions({ url, copied, onCopy }: { url: string; copied: boolean; onCopy: () => void }) {
+  const safeOpenUrl = safeExternalUrl(url)
   return (
     <div className='flex items-center gap-2 w-full pt-2'>
       <Button variant='secondary' size='sm' className='flex-1 justify-center' onClick={onCopy}>
         {copied ? <Check size={14} className='text-[var(--success)]' /> : <Copy size={14} />}
         <span>{copied ? t('common.copied') : t('blog.link_menu_copy')}</span>
       </Button>
-      <Button
-        variant='primary'
-        size='sm'
-        className='flex-1 justify-center'
-        onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
-      >
-        <ExternalLink size={14} />
-        <span>{t('blog.link_menu_open')}</span>
-      </Button>
+      {/* The address arrived from a reader: it opens only when a link may carry it. */}
+      {safeOpenUrl && (
+        <Button
+          variant='primary'
+          size='sm'
+          className='flex-1 justify-center'
+          onClick={() => window.open(safeOpenUrl, '_blank', 'noopener,noreferrer')}
+        >
+          <ExternalLink size={14} />
+          <span>{t('blog.link_menu_open')}</span>
+        </Button>
+      )}
     </div>
   )
 }

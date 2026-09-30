@@ -1,5 +1,17 @@
 import { z } from 'zod'
 import { LIMITS } from '@shared/constants'
+import { isSafeExternalUrl } from '@shared/url-safety'
+
+/**
+ * A URL a request carries has to be one the app may render, and the rule is the shared allowlist — a
+ * scheme check is only as good as the renderer trusting the same answer. An empty value stays valid:
+ * every one of these fields is optional, and "no picture" is not a bad URL.
+ */
+const SAFE_URL_MESSAGE = 'URL must be http(s), mailto or a site-relative path'
+
+function safeUrl(kind: 'link' | 'image' = 'link') {
+  return (value: string | undefined) => !value || isSafeExternalUrl(value, kind)
+}
 
 /**
  * How many rows one batch or import request may carry.
@@ -95,8 +107,8 @@ export const blogPublicCommentSchema = z.object({
   parentId: z.string().max(64).nullable().optional(),
   authorName: z.string().max(100),
   authorEmail: z.string().max(200),
-  authorUrl: z.string().max(500).optional(),
-  authorAvatar: z.string().max(2048).optional(),
+  authorUrl: z.string().max(500).optional().refine(safeUrl(), SAFE_URL_MESSAGE),
+  authorAvatar: z.string().max(2048).optional().refine(safeUrl('image'), SAFE_URL_MESSAGE),
   content: z.string().min(1).max(4000),
 })
 
@@ -107,14 +119,14 @@ export const blogSettingsSchema = z.object({
   authorName: z.string().optional(),
   authorAvatar: z.string().optional(),
   socialLinks: z.object({
-    github: z.string().optional(),
-    twitter: z.string().optional(),
-    email: z.string().optional(),
-    website: z.string().optional(),
+    github: z.string().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
+    twitter: z.string().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
+    email: z.string().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
+    website: z.string().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
   }).optional(),
   requireCommentApproval: z.boolean().optional(),
   postsPerPage: z.number().optional(),
-  frontendUrl: z.string().optional(),
+  frontendUrl: z.string().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
   appearance: z.object({
     theme: z.enum(['light', 'dark', 'system']).optional(),
     accent: z.string().optional(),
@@ -127,9 +139,9 @@ export const blogSettingsSchema = z.object({
 export const blogLinkUpsertSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'Name is required').max(200),
-  url: z.string().min(1, 'URL is required').max(2000),
+  url: z.string().min(1, 'URL is required').max(2000).refine(safeUrl(), SAFE_URL_MESSAGE),
   description: z.string().max(1000).optional().default(''),
-  avatar: z.string().max(2000).optional().default(''),
+  avatar: z.string().max(2000).optional().default('').refine(safeUrl('image'), SAFE_URL_MESSAGE),
   email: z.string().max(200).optional().default(''),
   categoryId: z.string().nullable().optional(),
   status: z.enum(['pending', 'approved', 'rejected']).optional().default('approved'),
@@ -195,9 +207,9 @@ export const blogLinkCheckSchema = z.object({
 
 export const blogPublicLinkRequestSchema = z.object({
   name: z.string().min(1, 'Name is required').max(200),
-  url: z.string().min(1, 'URL is required').max(2000),
+  url: z.string().min(1, 'URL is required').max(2000).refine(safeUrl(), SAFE_URL_MESSAGE),
   description: z.string().max(1000).optional().default(''),
-  avatar: z.string().max(2000).optional().default(''),
+  avatar: z.string().max(2000).optional().default('').refine(safeUrl('image'), SAFE_URL_MESSAGE),
   email: z.string().max(200).optional().default(''),
 })
 
@@ -206,9 +218,9 @@ export const blogLinkImportSchema = z.object({
     z.object({
       id: z.string().optional(),
       name: z.string().min(1).max(200),
-      url: z.string().min(1).max(2000),
+      url: z.string().min(1).max(2000).refine(safeUrl(), SAFE_URL_MESSAGE),
       description: z.string().max(1000).optional().default(''),
-      avatar: z.string().max(2000).optional().default(''),
+      avatar: z.string().max(2000).optional().default('').refine(safeUrl('image'), SAFE_URL_MESSAGE),
       email: z.string().max(200).optional().default(''),
       categoryId: z.string().nullable().optional(),
       status: z.enum(['pending', 'approved', 'rejected']).optional().default('approved'),

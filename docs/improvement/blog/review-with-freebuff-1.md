@@ -97,7 +97,7 @@
 - **范围**：`schemas.ts`、`posts.ts`、`comments.ts`、`links.ts`、`organizer.ts`；前端 `blog-store/actions.ts` 目前只校验非空，补超限提示。代价 **S**。
 - **建议**：与 share 侧同根问题（SH-02）同批处理，避免两边再漂移。
 
-#### SEC-04 [P1][开放] 用户可控 URL 无协议白名单，且直接落到 `href` / `<img src>` / `window.open`
+#### SEC-04 [P1][已修] 用户可控 URL 无协议白名单，且直接落到 `href` / `<img src>` / `window.open`
 - **问题**：`schemas.ts` 对 `link.url`（:117）、`link.avatar`、`publicLinkRequest.url/avatar`（:184-190）、`blogPublicCommentSchema.authorUrl/authorAvatar`（:125-128）只做长度限制；`blogSettingsSchema.frontendUrl/socialLinks` 同样只做长度。落点：`link-card-row.tsx:164` 渲染**匿名提交**的 `link.url`（在管理会话里）、`link-context-menu.tsx:151` `window.open(link.url)`、`link-checker-modal.tsx:299` `window.open(url)`、`blog-comments-view.tsx:290-305` `src={authorAvatar}`、`blog-dashboard-view/index.tsx:99` `<a href={frontendBase}>`。`link-checker.ts` 还会主动 fetch 存储的 URL。
 - **影响**：React 19 会拦属性上的 `javascript:`，故当前不是直接 XSS；但服务端才是信任边界——同一份数据还被 RSS、导出、二维码、第三方（dicebear）与 link-checker 消费。`frontendUrl` 落到 `<a href>` 且用于拼接前台 URL，没有 scheme 与应用层校验。全仓没有 URL 净化辅助函数。
 - **方案**：新增共享 `isSafeExternalUrl(raw, { allowRelative, allowMailto })`（http/https；avatar 允许站内相对路径；authorUrl 允许 mailto），schema 层 `refine` 强制并在失败时 400 说明；渲染侧统一兜底（不安全则不渲染为链接、图片退化为首字母/图标）；`frontendUrl` 额外要求是绝对 http(s) origin。

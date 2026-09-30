@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type MouseEvent, type ReactNode, type SetStateAction } from 'react'
 import { FileEdit, FileText, LayoutDashboard, Link2, MessageSquare, Pin, PlayCircle } from 'lucide-react'
-import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogStats, BlogTag, Tag } from '@shared/types'
 import { confirm, prompt } from '../../../components/overlay'
 import { HubFolderItem } from '../../../components/hub-folder-item'
@@ -9,6 +8,7 @@ import type { UiState } from '../../../store/ui'
 import { useUi } from '../../../store/ui'
 import { buildTagTree, flattenTagTree, type TagTreeNode } from '../../../lib/tag-tree'
 import { buildBlogFolderTree, useBlogStore, type BlogFolderNode, type BlogStoreState, type BlogTab } from '../blog-store'
+import { blogFrontendBase } from '../frontend-base'
 
 export interface SidebarNavItem {
   id: string
@@ -73,7 +73,7 @@ export function useBlogHubSidebar() {
 
   useBlogHubSidebarEffects(store, parentTagPaths, setExpandedTagPaths)
 
-  const frontendBase = (store.settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
+  const frontendBase = blogFrontendBase(store.settings?.frontendUrl)
   const navItems = buildSidebarNavItems(store)
   const handleCreateRootFolder = () => createRootFolder(store.createFolder, setExpandedFolders, setRenamingFolderId)
   const handleCreateNewTag = () => createNewTag(store.createTag)

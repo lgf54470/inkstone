@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogGlobalAnalytics, ShareTimelineRange } from '@shared/types'
 import { api } from '../../../lib/api'
 import { useLocale } from '../../../lib/i18n'
 import { useBlogStore } from '../blog-store'
+import { blogFrontendBase } from '../frontend-base'
 
 export function useBlogDashboardView() {
   const locale = useLocale()
@@ -20,7 +20,7 @@ export function useBlogDashboardView() {
   const [analytics, setAnalytics] = useState<BlogGlobalAnalytics | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
 
-  const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
+  const frontendBase = blogFrontendBase(settings?.frontendUrl)
   const pendingComments = comments.filter((c) => c.status === 'pending')
 
   const loadData = (selectedRange = range, selectedExcludeBots = excludeBots) => loadAnalytics(selectedRange, selectedExcludeBots, setLoading, setAnalytics)

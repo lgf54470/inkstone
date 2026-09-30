@@ -65,6 +65,17 @@ function patchJson(app: Hono<AppBindings>, path: string, body: unknown): Promise
   })
 }
 
+/** One published post, so a comment submission has something to be filed under. */
+async function seedPostForComments(db: D1Shim): Promise<string> {
+  await runSql(
+    db,
+    `INSERT INTO blog_posts (id, slug, note_id, user_id, title, content, is_published, published_at, created_at, updated_at)
+     VALUES ('post-comments', 'url-comments', 'note-comments', ?1, 'Comments', 'body', 1, 1000, 1000, 1000)`,
+    USER,
+  )
+  return 'post-comments'
+}
+
 describe('blog links management and public routes', () => {
   it('manages link categories with two-level hierarchy', async () => {
     const db = await makeDb()
@@ -305,6 +316,82 @@ describe('blog links management and public routes', () => {
     expect(Array.isArray(checkData.results)).toBe(true)
     expect(checkData.results.length).toBe(1)
     expect(checkData.results[0].level).toBe('broken')
+  })
+})
+
+// A URL from a reader is rendered inside the admin session, so the allowlist is asked of the server
+// first: a link's target, a picture, the site's own address and everything an import carries.
+describe('blog URL allowlist', () => {
+  const EXECUTABLE = 'javascript:alert(document.cookie)'
+
+  it('refuses a link URL that is not one a link may carry', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    expect((await postJson(app, '/api/blog/links', { name: 'X', url: EXECUTABLE })).status).toBe(400)
+    expect((await postJson(app, '/api/blog/links', { name: 'X', url: 'data:text/html,<script>1</script>' })).status).toBe(400)
+    expect((await postJson(app, '/api/blog/links', { name: 'X', url: '//evil.example/x' })).status).toBe(400)
+    expect((await postJson(app, '/api/blog/links', { name: 'X', url: 'mailto:a@b.c' })).status).toBe(200)
+    expect((await postJson(app, '/api/blog/links', { name: 'Y', url: '/posts/hello' })).status).toBe(200)
+  })
+
+  it('refuses a reader application whose site or picture is not renderable', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    const executable = await postJson(app, '/api/blog/public/link-requests', {
+      name: 'Spam', url: EXECUTABLE, email: 'spam@example.com',
+    })
+    expect(executable.status).toBe(400)
+
+    const picture = await postJson(app, '/api/blog/public/link-requests', {
+      name: 'Spam', url: 'https://spam.example', avatar: 'data:image/svg+xml,<svg onload=alert(1)>',
+    })
+    expect(picture.status).toBe(400)
+
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM blog_links').first<{ n: number }>()).toMatchObject({ n: 0 })
+  })
+
+  it('refuses a comment whose author URL would run in the admin session', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const post = await seedPostForComments(db)
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/blog/public/comments', {
+      postSlug: 'url-comments',
+      authorName: 'Reader',
+      authorEmail: 'reader@example.com',
+      content: 'Hello',
+      authorUrl: EXECUTABLE,
+    })
+    expect(res.status).toBe(400)
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM blog_comments WHERE post_id = ?1').bind(post).first<{ n: number }>())
+      .toMatchObject({ n: 0 })
+  })
+
+  it('refuses a frontend address the blog cannot be linked from', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    expect((await patchJson(app, '/api/blog/settings', { frontendUrl: EXECUTABLE })).status).toBe(400)
+    expect((await patchJson(app, '/api/blog/settings', { frontendUrl: 'https://blog.example' })).status).toBe(200)
+    const social = await patchJson(app, '/api/blog/settings', { socialLinks: { github: EXECUTABLE } })
+    expect(social.status).toBe(400)
+  })
+
+  it('refuses an imported row the same way', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/blog/links/import', {
+      links: [{ name: 'X', url: EXECUTABLE }],
+    })
+    expect(res.status).toBe(400)
   })
 })
 

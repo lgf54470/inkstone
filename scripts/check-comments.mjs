@@ -2864,10 +2864,36 @@ const allowed = new Map([
     '// Rebuilt only when the folders change: every consumer of the tree reads it on each',
     '// render, and a new array each time would invalidate theirs as well.',
   ]],
+  ['src/client/features/blog/blog-comments-view.tsx', [
+    '// The picture comes from a reader\'s own form: a value that is not an image source this app will',
+    '// fetch falls back to the initial, rather than being handed to the browser as written.',
+  ]],
   ['src/client/features/blog/blog-dashboard-view/radiogroup-names.test.ts', [
     '/**\n * SH-46 brought the blog dashboard\'s two `Segmented` controls under the same rules\n * the share dashboard already follows: the toolbar range picker carries its own\n * `label`, and the metric picker is named by the card heading it sits beside. The\n * locale is not loaded in this harness, so `t()` echoes the key and the assertions\n * compare against keys.\n */',
     '// A failed assertion must not leave its tree behind: the next case reads the',
     '// first radiogroup in the document, so stale DOM would be attributed to it.',
+  ]],
+  ['src/client/features/blog/blog-links-view/link-card-row.test.ts', [
+    '/**\n * A link\'s address arrives from a reader. Rows stored before the server learned to refuse an\n * unrenderable one still reach this component, so the row itself must not turn that value into an\n * affordance — the browser runs a `javascript:` href in the admin\'s own session.\n */',
+  ]],
+  ['src/client/features/blog/blog-links-view/link-card-row.tsx', [
+    '// The address arrived from a reader, so it becomes a link only when a link may carry it.',
+    '// A reader submitted this address and it is not one a link may carry: it is shown as the',
+    '// text it is, without an affordance that would open it in the admin\'s session.',
+  ]],
+  ['src/client/features/blog/blog-links-view/link-checker-modal.tsx', [
+    '/* A reader submitted this address: the open control exists only when a link may carry it. */',
+  ]],
+  ['src/client/features/blog/blog-links-view/link-context-menu.tsx', [
+    '// A reader submitted this address; opening is offered only when it is one a link may carry, so the',
+    '// menu never becomes the click that runs it inside the admin\'s session.',
+  ]],
+  ['src/client/features/blog/blog-links-view/link-dynamic-icon.tsx', [
+    '// A reader may have supplied this picture: an address that is not an image source this app will',
+    '// fetch is treated like a load that failed, so the initial is drawn instead of it.',
+  ]],
+  ['src/client/features/blog/blog-links-view/link-qr-modal.tsx', [
+    '/* The address arrived from a reader: it opens only when a link may carry it. */',
   ]],
   ['src/client/features/blog/blog-settings-retention.test.ts', [
     '// A test that fails before its unmount would otherwise leave its modal in the',
@@ -2884,6 +2910,9 @@ const allowed = new Map([
   ['src/client/features/blog/blog-store/retention.test.ts', [
     '// Seeded before the store module above is evaluated, so the cached record cap',
     '// is already in browser storage when the store builds its initial state.',
+  ]],
+  ['src/client/features/blog/frontend-base.ts', [
+    '/**\n * The blog\'s own site address, as a link may carry it.\n *\n * The stored value is checked on the way in, but a blog configured before that rule existed still\n * holds whatever was typed, and this address becomes an `href` in the admin session — so a value a\n * link may not use falls back to the shipped default instead of being rendered as written.\n */',
   ]],
   ['src/client/features/blog/use-blog-settings-modal.ts', [
     '// The sweep runs on the server, so the value it reads has to be the account\'s.',
@@ -12336,6 +12365,13 @@ const allowed = new Map([
   ['src/shared/types/site.ts', [
     '/** Whether this instance keeps a visitor fingerprint — the only thing unique visitors can be counted from. */',
   ]],
+  ['src/shared/url-safety.ts', [
+    '/**\n * What may be used as a link or an image source.\n *\n * The blog takes URLs from readers — a friend-link application, a comment author\'s own site and\n * picture — and renders them inside the admin session, so the data arrives from a place the app does\n * not control. `javascript:` in an `href` and a `data:` document in an `<img>` are the two forms that\n * turn that data into code; a scheme allowlist closes both, and a renderer that refuses to make an\n * unsafe value clickable is what covers rows stored before the rule existed.\n *\n * Three shapes are allowed: `http(s):`, `mailto:` for a link, and a site-relative path. Everything\n * else is refused, including a protocol-relative `//host/path`, which names a host but no scheme.\n */',
+    '// The scheme is read with ASCII control characters removed, for the reason a browser removes them:',
+    '// `java\\tscript:alert(1)` is the `javascript:` URL it renders as, so judging the raw string would',
+    '// allow exactly the form the allowlist exists to refuse.',
+    '/**\n * The value when it may be used as a link or image source, otherwise null so the caller renders it as\n * text instead of as an affordance. Returning the original string (trimmed) rather than a rebuilt URL\n * keeps a site-relative path exactly as the author wrote it.\n */',
+  ]],
   ['src/shared/user-settings.test.ts', [
     '// Both live in the share section, which used to be one knob: the second must not be wiped by a',
     '// patch that never mentioned it.',
@@ -12965,6 +13001,7 @@ const allowed = new Map([
     '// pattern keeps the parent-tag-matches-descendants hierarchy semantics.',
   ]],
   ['src/worker/routes/blog/schemas.ts', [
+    '/**\n * A URL a request carries has to be one the app may render, and the rule is the shared allowlist — a\n * scheme check is only as good as the renderer trusting the same answer. An empty value stays valid:\n * every one of these fields is optional, and "no picture" is not a bad URL.\n */',
     '/**\n * How many rows one batch or import request may carry.\n *\n * The platform\'s limit is per statement, not per request — D1 refuses a statement that binds more\n * than 100 variables — and the handlers answer it by splitting the list (see `chunkIds` in\n * `comments.ts`), so this number is not that one. It bounds a single request\'s work instead: a\n * selection a person made, or a directory they exported, not an arbitrary payload that reaches the\n * route and spends a transaction\'s worth of statements before anything can be said about it.\n */',
     '// Body of DELETE /api/blog/visits?type=all: the wipe is unrecoverable, so the',
     '// current password travels in the body rather than the query string (SH-47).',
@@ -13959,9 +13996,12 @@ const allowed = new Map([
     '// Neither of the gate\'s global categories covers it either, so nothing rescues a drifted target.',
   ]],
   ['tests/blog-links-routes.test.ts', [
+    '/** One published post, so a comment submission has something to be filed under. */',
     '// Every request in the harness arrives from the same client, which is what makes the',
     '// budget observable at all: the count used to be over the whole table, so the sixth',
     '// application here would have been the sixth from anywhere.',
+    '// A URL from a reader is rendered inside the admin session, so the allowlist is asked of the server',
+    '// first: a link\'s target, a picture, the site\'s own address and everything an import carries.',
     '// The ids in a saved link are the row\'s primary key, and the upsert keys on that rather than on the',
     '// owner, so a second account that guesses or imports an id can save over the first account\'s row —',
     '// and read it back. Every case here is that shape, plus the two foreign keys a save carries (a',

@@ -11,6 +11,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import type { BlogLink, BlogLinkCategory } from '@shared/types'
+import { safeExternalUrl } from '@shared/url-safety'
 import { Modal } from '../../../components/overlay'
 import { Button } from '../../../components/primitives'
 import { Checkbox } from '../../../components/form'
@@ -283,6 +284,7 @@ function CheckerRowActions({
   onEdit: () => void
   onDelete: () => void
 }) {
+  const safeOpenUrl = safeExternalUrl(url)
   return (
     <div className='flex items-center gap-1 shrink-0'>
       <button
@@ -293,14 +295,17 @@ function CheckerRowActions({
       >
         <RotateCw size={12} className={isChecking ? 'animate-spin' : ''} />
       </button>
-      <button
-        type='button'
-        aria-label={t('blog.link_menu_open')}
-        onClick={() => window.open(url, '_blank')}
-        className='p-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-      >
-        <ExternalLink size={12} />
-      </button>
+      {/* A reader submitted this address: the open control exists only when a link may carry it. */}
+      {safeOpenUrl && (
+        <button
+          type='button'
+          aria-label={t('blog.link_menu_open')}
+          onClick={() => window.open(safeOpenUrl, '_blank')}
+          className='p-1 rounded text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+        >
+          <ExternalLink size={12} />
+        </button>
+      )}
       <button
         type='button'
         onClick={onEdit}
