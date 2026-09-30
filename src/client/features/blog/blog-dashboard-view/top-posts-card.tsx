@@ -44,7 +44,7 @@ function TopPostRow({ post, index, maxViews, frontendBase }: {
   const pct = Math.max(2, Math.round((post.views / maxViews) * 100))
   return (
     <div className='flex items-center gap-3 py-2.5 hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-[var(--r-md)] transition-colors'>
-      <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[length:var(--text-10)] font-bold', index < 3 ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-base)] text-[var(--text-tertiary)]')}>
+      <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[length:var(--text-10)] font-bold', index < 3 ? 'bg-[var(--accent)] text-[var(--accent-contrast)]' : 'bg-[var(--bg-base)] text-[var(--text-tertiary)]')}>
         {index + 1}
       </span>
 

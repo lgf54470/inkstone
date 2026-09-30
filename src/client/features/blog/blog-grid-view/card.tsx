@@ -155,11 +155,11 @@ function CardCover({ post }: { post: BlogPostSummary }) {
 
       <div className='absolute bottom-2 left-2'>
         {post.isPublished ? (
-          <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[length:var(--text-10\.5)] font-semibold text-white shadow-[var(--shadow-sm)] backdrop-blur whitespace-nowrap">
+          <span className="rounded-full bg-[var(--success)]/90 px-2 py-0.5 text-[length:var(--text-10\.5)] font-semibold text-[var(--success-on)] shadow-[var(--shadow-sm)] backdrop-blur whitespace-nowrap">
             {t('blog.published')}
           </span>
         ) : (
-          <span className="rounded-full bg-stone-600/80 px-2 py-0.5 text-[length:var(--text-10\.5)] font-medium text-white shadow-[var(--shadow-sm)] backdrop-blur whitespace-nowrap">
+          <span className="rounded-full bg-[var(--bg-overlay)]/90 px-2 py-0.5 text-[length:var(--text-10\.5)] font-medium text-[var(--text-secondary)] shadow-[var(--shadow-sm)] backdrop-blur whitespace-nowrap">
             {t('blog.draft')}
           </span>
         )}

@@ -219,7 +219,7 @@ function StatusTabButton({
       onClick={onClick}
       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--r-sm)] text-[length:var(--text-12)] font-medium transition-colors ${
         active
-          ? 'bg-[var(--accent)] text-white shadow-sm'
+          ? 'bg-[var(--accent)] text-[var(--accent-contrast)] shadow-sm'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
       }`}
     >
@@ -228,9 +228,9 @@ function StatusTabButton({
         <span
           className={`text-[length:var(--text-10)] px-1.5 py-0.2 rounded-full font-bold tabular ${
             badgeTone === 'danger' && !active
-              ? 'bg-[var(--danger)] text-white animate-pulse'
+              ? 'bg-[var(--danger)] text-[var(--danger-on)] animate-pulse'
               : active
-                ? 'bg-white/25 text-white'
+                ? 'bg-[var(--accent-contrast)]/25 text-[var(--accent-contrast)]'
                 : 'bg-[var(--bg-raised)] text-[var(--text-tertiary)]'
           }`}
         >

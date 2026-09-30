@@ -175,7 +175,7 @@ function StateMenuItems({
   return (
     <>
       <ContextMenuItem
-        icon={<Star size={13} className={link.isFavorite ? 'fill-amber-500 text-amber-500' : ''} />}
+        icon={<Star size={13} className={link.isFavorite ? 'fill-[var(--warning)] text-[var(--warning)]' : ''} />}
         label={link.isFavorite ? t('blog.link_unfavorite') : t('blog.link_favorite')}
         onClick={() => { onToggleFavorite(link); onClose() }}
       />

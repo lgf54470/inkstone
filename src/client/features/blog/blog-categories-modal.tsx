@@ -214,7 +214,7 @@ function CategoryColorPicker({ selected, onSelect }: { selected: string; onSelec
           }`}
           style={{ backgroundColor: c }}
         >
-          {selected === c && <Check size={12} className='text-white' />}
+          {selected === c && <Check size={12} className='text-[var(--accent-contrast)]' />}
         </button>
       ))}
     </div>

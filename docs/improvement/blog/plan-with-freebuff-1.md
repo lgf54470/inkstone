@@ -176,7 +176,11 @@
 
 ## 批次 4 · UI / a11y / i18n / 令牌
 
-- [ ] B4-01 **UI-01** `text-white` 与裸调色板收敛到令牌 + `--update-baseline` + `contrast:check` 实测两套主题
+- [x] B4-01 **UI-01** `text-white` 与裸调色板收敛到令牌 + `--update-baseline` + `contrast:check` 实测两套主题 — 已提交（hash 由下一提交回填，见进度日志）
+  - 实现：13 处 `text-white` → `text-[var(--accent-contrast)]`（accent 底），实体状态底新增 `--success-on`/`--danger-on`（浅色白字、深色深墨，与 `--accent-contrast` 同值同翻转；不加未使用的 `--warning-on`）。12 处裸调色板收敛：amber → `--warning`/`--warning-soft`、`bg-emerald-500/90` → `--success`/`--success-on`、`bg-stone-600/80` → `bg-[var(--bg-overlay)]/90`+`--text-secondary`、评论状态徽标改用共享 `Badge`（顺带消掉两处失效的 `dark:` 变体）、`bg-black/20` → `--accent-contrast`/20、二维码底板 → `--swatch-white`。
+  - 验收：`check-hardcoded.palette-baseline.json` -11 条（模块内 11 文件归零）；`tokens:check` 未动共享契约（新令牌客户端私密，89 tokens 不变）；`contrast:check` 两套主题×桌面/手机宽度通过；视觉门禁 682 通过；`tsc -b` 绿；blog+share 81 文件 356 条全绿。
+  - 限制：share 侧 SH-32 与本模块外的实体 warning 底（`attachments/attachment-grid-view.tsx:175` 浅色下 2.94:1）不在本条范围，已记在 review。
+
 - [ ] B4-02 **UI-02 + UI-03** 四处日期本地化 + 硬编码文案改 message id（含 `col_created_at` 表头语义修正）
 - [ ] B4-03 **UI-04 + UI-05** 表单迁移到 `Field`（htmlFor / aria-describedby）+ `Switch` 补 label + slug 不可用阻断 + 五套分段控件收敛 `Segmented`
 - [ ] B4-04 **UI-06 + UI-07** 键盘可达（单击 / 回车）+ 排序 UI + 表 `caption`/`scope`；hover-only 改 `focus-visible`；批量条窄屏；四个 Modal 补可访问名
@@ -221,7 +225,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-30 | B3-09d ENG-11 barrel 拆瘦 + 图标按需加载 + qrcode/geo 归位 | （下一提交回填） | `typecheck` 绿；新增 11 条用例全绿（3 文件），两处变异各 4 failed / 2 failed；九项静态门禁绿（`comments` 白名单重建 1309 文件 12578 条）；`npm run build` + `budget:check` + `vendor:check`：eager 931.4 → 596.7 KiB、`vendor-icons` 507.3 → 149.0 KB；`test:unit` 587 文件 5276 通过 / 1 skipped；视觉门禁 682 通过、`e2e.mjs` 177 通过、`check-contrast.mjs` 通过（同一实例） | 产物多约 1700 个图标小 chunk，纯图标 chunk 已排除出离线清单，未在线用过的自定义图标离线不保证；`vendor-icons` 分组排除 lucide `icons/` 是前提，改动它会让 eager 反弹 |
+| 2026-09-30 | B4-01 UI-01 `text-white`/裸调色板收敛到令牌 | （下一提交回填） | `tsc -b` 绿；blog+share 81 文件 356 条全绿；九项静态门禁绿（palette baseline -11 条）；`tokens:check` 89 tokens 值稳定；`contrast:check` 两套主题通过；视觉门禁 682 通过 | 两个新令牌（`--success-on`/`--danger-on`）仅客户端私有；share 侧 SH-32 与附件网格的实体 warning 底未动 |
+| 2026-09-30 | B3-09d ENG-11 barrel 拆瘦 + 图标按需加载 + qrcode/geo 归位 | 35762135 | `typecheck` 绿；新增 11 条用例全绿（3 文件），两处变异各 4 failed / 2 failed；九项静态门禁绿（`comments` 白名单重建 1309 文件 12578 条）；`npm run build` + `budget:check` + `vendor:check`：eager 931.4 → 596.7 KiB、`vendor-icons` 507.3 → 149.0 KB；`test:unit` 587 文件 5276 通过 / 1 skipped；视觉门禁 682 通过、`e2e.mjs` 177 通过、`check-contrast.mjs` 通过（同一实例） | 产物多约 1700 个图标小 chunk，纯图标 chunk 已排除出离线清单，未在线用过的自定义图标离线不保证；`vendor-icons` 分组排除 lucide `icons/` 是前提，改动它会让 eager 反弹 |
 | 2026-09-30 | B3-09c ENG-12 列表 memo/菜单懒构/计数一次遍历/渐进渲染 | 0bcc38b2 | `typecheck` 绿；blog 相关 23 文件 76 条 + 新 4 条全绿（含窗口用例）；窗口变异（步长 250）1 failed；`size` 绿（`blog-links-view/index.tsx` 拆出 `links-toolbar.tsx`） | 评论/友链行级 memo 未做（内联箭头/bundle API）；窗口为渐进渲染而非滚动虚拟化 |
 | 2026-09-30 | B3-09b ENG-13 封面/头像懒加载与异步解码 | 6127201e | `typecheck` 绿；新 `cover-image.test.ts` 2 条绿；`size` 未动基线 | 表格 36px 缩略图仍取原图字节（无 CDN 尺寸变体）；封面不写死 width/height（容器已定盒尺寸） |
 | 2026-09-30 | B3-09a ENG-15 检测器批次 15 + 停止即 abort + 缓存写移出 updater + progressbar | d2e16114 | `typecheck` 绿；`blog-links-view` 3 文件 7 条全绿（含新 3 条）；两处变异各 1 failed；`i18n:check` 双语新 key 已补 | 旧结果仍展示（按 B2-05 计划标注而不丢弃）；缓存写靠 ref 同步，未改成 reducer |

@@ -346,7 +346,7 @@
 
 ### 4.4 UI / 交互 / 可访问性 / 规范（UI）
 
-#### UI-01 [P1][开放] `text-white` 与裸调色板绕过令牌，深色主题下 AA 可能不达标
+#### UI-01 [P1][已修] `text-white` 与裸调色板绕过令牌，深色主题下 AA 可能不达标
 - **问题**：`--accent-contrast` 随主题翻转，深色下 `--accent` 是 L≈72-80% 的亮色，写死 `text-white` 等于亮色底叠白字。清单（`grep` 实测，本模块共 13 处 `text-white` 与 12 处裸调色板）：
   - `text-white`：`blog-hub-sidebar/index.tsx:88`、`blog-categories-modal.tsx:218`、`top-posts-card.tsx:47`、`blog-links-view/index.tsx:410,419,421`、`link-icon-selector.tsx:84,93,145`、`blog-grid-view/card.tsx:154,158`、`blog-comments-view.tsx:166`。
   - 裸调色板：`link-context-menu.tsx:172`、`link-card-row.tsx:118,220`、`link-checker-modal.tsx:152,344`、`blog-comments-view.tsx:326,328,330,332`（其中两处还带 `dark:` 变体——本项目按 `data-theme` 切主题，Tailwind v4 的 `dark:` 走 `prefers-color-scheme`，在「深色主题 + 浅色系统偏好」下整体失效）、`blog-comments-view.tsx:164` `bg-black/20`、`link-qr-modal.tsx:47` `bg-white`（QR 底板，需保留但应走具名常量）。
@@ -354,6 +354,9 @@
 - **方案**：`text-white` → `text-[var(--accent-contrast)]`；状态色收敛到共享 `Badge` 组件（`link-card-row.tsx:245-253` 已是正解）；语义色补 `--success-on/--danger-on`；QR 底板的白色提为具名常量；`--update-baseline` 更新 palette baseline 并跑 `npm run contrast:check` 实测两套主题。
 - **范围**：上述 14 个文件 + `src/client/styles/tokens.css`（如需新令牌）。代价 **S**。
 - **建议**：与 share 侧同型问题（SH-32）同批，避免同一份令牌约定再分叉。
+- **落地（B4-01）**：13 处 `text-white` 全部改为令牌——accent 底用仓库既有约定 `text-[var(--accent-contrast)]`（hub 侧栏计数、分类选中勾、TOP 榜前三、友链筛选条、图标选择器两个标签与网格选中、评论状态 tab）；实体状态底新增两个“背景上的文字”令牌 `--success-on`/`--danger-on`（浅色 `oklch(99% 0 0)`、深色 `oklch(16% 0.008 265)`，与 `--accent-contrast` 同值同翻转；刻意不加 `--warning-on`：本模块没有实体 warning 底，加成未使用的令牌就是死代码）。实测三个实体底与文字的比值：浅色 `--success`(#006a2f)/`--danger`(#b3102a) 配白字 6.55/6.74:1，深色 `--success`(#49bf7b)/`--danger`(#ff6f71) 配深墨 8.32/7.48:1，均过 AA（脚本按 oklch→线性 sRGB→WCAG 相对亮度算）。12 处裸调色板同样收敛：`bg-amber-500/15`/`bg-amber-500/10` → `bg-[var(--warning-soft)]`、`fill-amber-500`/`text-amber-500`/`hover:text-amber-500` → `--warning`；`bg-emerald-500/90`（封面“已发布”芯片）→ `bg-[var(--success)]/90` + `--success-on`；`bg-stone-600/80`（“草稿”芯片）→ `bg-[var(--bg-overlay)]/90` + `--text-secondary`；评论状态徽标整体改用共享 `Badge`（pending→warning、approved→success、rejected→neutral、spam→danger），同时消掉两处**失效**的 `dark:` 变体（本项目按 `data-theme` 切主题，`dark:` 走系统偏好，在“深色主题 + 浅色系统偏好”下本来就不生效）；`bg-black/20`（accent tab 里的计数底）→ `bg-[var(--accent-contrast)]/20`；二维码底板 `bg-white` → `bg-[var(--swatch-white)]`。
+- **落地验收**：`scripts/check-hardcoded.palette-baseline.json` **-11 条**（11 个模块文件归零，全局仍 160 条历史存量在 41 个文件里）；`tokens:check` 未改动共享契约（两个新令牌仅客户端私有，漂移基线仍 89 tokens，值稳定），`undefined-var` 断言每个 `var()` 都指向已声明令牌；`contrast:check` 两套主题 × 桌面/手机宽度通过；视觉门禁 682 通过（含 blog hub 的 axe 与对比度量）。
+- **未做（外溢）**：share 侧同型问题（SH-32）与本模块外的实体 warning 底（`attachments/attachment-grid-view.tsx:175` 用 `--text-inverse` 配 `bg-[var(--warning)]`，浅色下实测仅 2.94:1）不在本条范围，已单独记在下次 share 复审。
 
 #### UI-02 [P1][开放] 四处日期格式化未传 locale
 - **问题**：`pending-comments-card.tsx:75`、`blog-grid-view/card.tsx:196`、`blog-comments-view.tsx:280`、`blog-table-view/row.tsx:69` 用裸 `toLocaleDateString()/toLocaleString()`，同模块其余位置已用 `useLocale()`/`formatDate`。另外 `row.tsx:69` 渲染的是 `publishedAt` 而表头写「创建时间」`blog.col_created_at`。

@@ -77,7 +77,7 @@ function IconSelectorHeader({
           type='button'
           onClick={() => setTab('lucide')}
           className={`px-2 py-0.5 rounded-[var(--r-sm)] text-[length:var(--text-11)] font-medium transition-colors ${
-            tab === 'lucide' ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            tab === 'lucide' ? 'bg-[var(--accent)] text-[var(--accent-contrast)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           {t('blog.link_icon_tab_lucide')}
@@ -86,7 +86,7 @@ function IconSelectorHeader({
           type='button'
           onClick={() => setTab('emoji')}
           className={`px-2 py-0.5 rounded-[var(--r-sm)] text-[length:var(--text-11)] font-medium transition-colors ${
-            tab === 'emoji' ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            tab === 'emoji' ? 'bg-[var(--accent)] text-[var(--accent-contrast)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           {t('blog.link_icon_tab_emoji')}
@@ -136,7 +136,7 @@ function LucideIconGrid({
             onClick={() => onSelect(iconName)}
             className={`size-7 flex items-center justify-center rounded-[var(--r-sm)] transition-colors ${
               isSelected
-                ? 'bg-[var(--accent)] text-white shadow-xs'
+                ? 'bg-[var(--accent)] text-[var(--accent-contrast)] shadow-xs'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
             }`}
           >

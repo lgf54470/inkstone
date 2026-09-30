@@ -85,7 +85,7 @@ function SidebarNav({ items }: { items: SidebarNavItem[] }) {
               className={cn(
                 'tabular text-[length:var(--text-10)] px-1.5 py-0.5 rounded-full shrink-0',
                 item.badgeTone === 'danger'
-                  ? 'bg-[var(--danger)] text-white font-bold animate-pulse'
+                  ? 'bg-[var(--danger)] text-[var(--danger-on)] font-bold animate-pulse'
                   : item.active
                     ? 'bg-[var(--accent)]/15 text-[var(--accent)] font-medium'
                     : 'text-[var(--text-quaternary)]',

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { AlertTriangle, CheckCircle, ExternalLink, Inbox, RefreshCw, Search, ShieldCheck, Trash2, XCircle } from 'lucide-react'
 import type { BlogComment, BlogCommentsCounts, BlogCommentStatus } from '@shared/types'
-import { Button, IconButton } from '../../components/primitives'
+import { Badge, Button, IconButton } from '../../components/primitives'
 import { Checkbox, Input } from '../../components/form'
 import { resolveAvatarSource } from '../../lib/avatar'
 import { t } from '../../lib/i18n'
@@ -197,9 +197,9 @@ function CommentStatusTabs({
               <span
                 className={`rounded-full px-1.5 py-0.1 text-[length:var(--text-10)] ${
                   isActive
-                    ? 'bg-black/20 text-[var(--accent-contrast)]'
+                    ? 'bg-[var(--accent-contrast)]/20 text-[var(--accent-contrast)]'
                     : alert
-                      ? 'bg-[var(--danger)] text-white font-bold'
+                      ? 'bg-[var(--danger)] text-[var(--danger-on)] font-bold'
                       : 'bg-[var(--bg-sunken)] text-[var(--text-tertiary)]'
                 }`}
               >
@@ -363,13 +363,13 @@ function CommentPostLink({ comment, postUrl }: { comment: BlogComment; postUrl: 
 function StatusBadge({ status }: { status: BlogCommentStatus }) {
   switch (status) {
     case 'pending':
-      return <span className='rounded-full bg-amber-500/10 px-2 py-0.5 text-[length:var(--text-11)] font-medium text-[var(--warning)]'>{t('blog.status_pending')}</span>
+      return <Badge tone='warning'>{t('blog.status_pending')}</Badge>
     case 'approved':
-      return <span className='rounded-full bg-emerald-500/10 px-2 py-0.5 text-[length:var(--text-11)] font-medium text-emerald-600 dark:text-emerald-400'>{t('blog.status_approved')}</span>
+      return <Badge tone='success'>{t('blog.status_approved')}</Badge>
     case 'rejected':
-      return <span className='rounded-full bg-stone-500/10 px-2 py-0.5 text-[length:var(--text-11)] font-medium text-stone-500'>{t('blog.status_rejected')}</span>
+      return <Badge>{t('blog.status_rejected')}</Badge>
     case 'spam':
-      return <span className='rounded-full bg-rose-500/10 px-2 py-0.5 text-[length:var(--text-11)] font-medium text-rose-600 dark:text-rose-400'>{t('blog.status_spam')}</span>
+      return <Badge tone='danger'>{t('blog.status_spam')}</Badge>
   }
 }
 

@@ -45,7 +45,7 @@ export function LinkQrModal({ open, onClose, link }: LinkQrModalProps) {
     >
       <div className='flex flex-col items-center gap-4 py-3'>
         <QrCardHeader link={link} />
-        <div className='p-4 bg-white rounded-[var(--r-lg)] shadow-sm border border-[var(--border-subtle)]'>
+        <div className='p-4 bg-[var(--swatch-white)] rounded-[var(--r-lg)] shadow-sm border border-[var(--border-subtle)]'>
           <QRCodeSVG value={link.url} size={190} level='M' />
         </div>
         <QrActions url={link.url} copied={copied} onCopy={handleCopy} />

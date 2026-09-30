@@ -168,7 +168,7 @@ function FilterBadge({ label, count, tone = 'default', active, onClick }: { labe
   const colorMap = {
     default: 'text-[var(--text-secondary)]',
     success: 'text-[var(--success)]',
-    warning: 'text-amber-500',
+    warning: 'text-[var(--warning)]',
     danger: 'text-[var(--danger)]',
   }
   return (
@@ -364,7 +364,7 @@ function HealthBadge({ result }: { result?: HealthResult }) {
   }
   if (result.level === 'warning') {
     return (
-      <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-semibold bg-amber-500/15 text-[var(--warning)]'>
+      <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-semibold bg-[var(--warning-soft)] text-[var(--warning)]'>
         <AlertCircle size={10} />
         <span>{result.status || 400}</span>
       </span>

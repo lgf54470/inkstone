@@ -116,7 +116,7 @@ function LinkRowHeader({
         </span>
       )}
       {isFavorite && (
-        <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-medium bg-amber-500/15 text-[var(--warning)]'>
+        <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-medium bg-[var(--warning-soft)] text-[var(--warning)]'>
           <Star size={10} className='fill-current' />
           {t('blog.link_favorite')}
         </span>
@@ -226,7 +226,7 @@ function LinkRowActions({
         label={link.isFavorite ? t('blog.link_unfavorite') : t('blog.link_favorite')}
         size='sm'
         onClick={onToggleFavorite}
-        className={link.isFavorite ? 'text-amber-500 fill-amber-500' : 'text-[var(--text-quaternary)] hover:text-amber-500'}
+        className={link.isFavorite ? 'text-[var(--warning)] fill-[var(--warning)]' : 'text-[var(--text-quaternary)] hover:text-[var(--warning)]'}
       >
         <Star size={14} className={link.isFavorite ? 'fill-current' : ''} />
       </IconButton>
