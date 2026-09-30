@@ -4,7 +4,6 @@ import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import type { BlogSettings } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
-import { requireAuth } from '../../middleware/auth'
 import { getMeta, setMeta } from '../../db/metadata'
 import type { BlogPostRow } from '../../db/rows'
 import { blogSettingsSchema } from './schemas'
@@ -86,7 +85,7 @@ export function registerBlogSettingsRoutes(blogManageRoutes: Hono<AppBindings>):
 }
 
 function registerBlogSettingsGetRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.get('/settings', requireAuth, async (c) => {
+  blogManageRoutes.get('/settings', async (c) => {
     const userId = c.get('userId')!
     const settings = await getBlogSettings(c.env.DB, userId)
     return c.json({ settings })
@@ -94,7 +93,7 @@ function registerBlogSettingsGetRoute(blogManageRoutes: Hono<AppBindings>): void
 }
 
 function registerBlogSettingsPatchRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.patch('/settings', requireAuth, async (c) => {
+  blogManageRoutes.patch('/settings', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogSettingsSchema, JSON_BODY_LIMITS.note)
     const settings = await saveBlogSettings(c.env.DB, body, userId)
@@ -103,7 +102,7 @@ function registerBlogSettingsPatchRoute(blogManageRoutes: Hono<AppBindings>): vo
 }
 
 function registerBlogSlugCheckRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.get('/check-slug', requireAuth, async (c) => {
+  blogManageRoutes.get('/check-slug', async (c) => {
     const slug = c.req.query('slug')?.trim() || ''
     const currentPostId = c.req.query('currentPostId')?.trim()
 
@@ -127,7 +126,7 @@ function registerBlogSlugCheckRoute(blogManageRoutes: Hono<AppBindings>): void {
 }
 
 function registerBlogNotePostRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.get('/note-post/:noteId', requireAuth, async (c) => {
+  blogManageRoutes.get('/note-post/:noteId', async (c) => {
     const noteId = c.req.param('noteId')
     const userId = c.get('userId')!
 

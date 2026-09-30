@@ -4,7 +4,6 @@ import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { escapeLike, likeAny } from '../../lib/like'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
-import { requireAuth } from '../../middleware/auth'
 import type { BlogCommentModerationRow } from '../../db/rows'
 import { blogCommentStatusSchema } from './schemas'
 import { blogCommentBatchSchema } from './schemas'
@@ -18,7 +17,7 @@ export function registerBlogCommentsRoutes(blogManageRoutes: Hono<AppBindings>):
 }
 
 function registerBlogCommentsListRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.get('/comments', requireAuth, async (c) => {
+  blogManageRoutes.get('/comments', async (c) => {
     const userId = c.get('userId')!
     const status = c.req.query('status')
     const postId = c.req.query('postId')
@@ -70,7 +69,7 @@ function blogCommentsListQuery(userId: string, filter: BlogCommentsFilter): { sq
 }
 
 function registerBlogCommentStatusRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.patch('/comments/:id/status', requireAuth, async (c) => {
+  blogManageRoutes.patch('/comments/:id/status', async (c) => {
     const id = c.req.param('id')
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogCommentStatusSchema, JSON_BODY_LIMITS.note)
@@ -87,7 +86,7 @@ function registerBlogCommentStatusRoute(blogManageRoutes: Hono<AppBindings>): vo
 }
 
 function registerBlogCommentDeleteRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.delete('/comments/:id', requireAuth, async (c) => {
+  blogManageRoutes.delete('/comments/:id', async (c) => {
     const id = c.req.param('id')
     const userId = c.get('userId')!
 
@@ -124,7 +123,7 @@ function chunkIds(ids: readonly string[]): string[][] {
 }
 
 function registerBlogCommentsBatchRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/comments/batch', requireAuth, async (c) => {
+  blogManageRoutes.post('/comments/batch', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogCommentBatchSchema, JSON_BODY_LIMITS.note)
 

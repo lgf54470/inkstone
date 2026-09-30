@@ -1,7 +1,7 @@
 import type { Context } from 'hono'
 import type { AppBindings } from '../../env'
 import { requestClientIp } from '../../lib/request'
-import { VIEW_DEDUPE_WINDOW_MS, isBot, parseDeviceType, parseOS, parseBrowser, computeVisitorFingerprint, sanitizeVisitReferrer } from '../../lib/share-analytics'
+import { VIEW_DEDUPE_WINDOW_MS, isBot, isSelfReferrer, parseDeviceType, parseOS, parseBrowser, computeVisitorFingerprint, sanitizeVisitReferrer } from '../../lib/share-analytics'
 import type { BlogPostPublicRow } from '../../db/rows'
 
 interface BlogVisitParams {
@@ -21,6 +21,7 @@ interface BlogVisitParams {
   language: string | null
   userAgent: string
   isBot: number
+  isSelfReferrer: number
   isOwner: number
 }
 
@@ -35,7 +36,8 @@ async function collectVisitParams(c: Context<AppBindings>, row: BlogPostPublicRo
   // per owner, and a missing secret records no fingerprint at all.
   const fpSecret = c.env.VISIT_FP_SECRET ? `${c.env.VISIT_FP_SECRET}:${row.user_id}` : null
   const visitorFp = fpSecret ? await computeVisitorFingerprint(rawIp, '', fpSecret) : null
-  const referrerInfo = sanitizeVisitReferrer(c.req.header('referer') || null)
+  const referrerCandidate = c.req.header('referer') || null
+  const referrerInfo = sanitizeVisitReferrer(referrerCandidate)
   return {
     userId: row.user_id,
     postId: row.id,
@@ -53,6 +55,10 @@ async function collectVisitParams(c: Context<AppBindings>, row: BlogPostPublicRo
     language: c.req.header('accept-language')?.slice(0, 32) || null,
     userAgent: ua.slice(0, 256),
     isBot: isBot(ua) ? 1 : 0,
+    // The same judgement the share side applies (server-side, against the host the request arrived
+    // on): the column was written as a literal 0, so the dashboard's "exclude self-referrals"
+    // switch had nothing to exclude and reported a number that was never measured.
+    isSelfReferrer: isSelfReferrer(referrerCandidate, new URL(c.req.url).host) ? 1 : 0,
     isOwner: loggedInUserId && loggedInUserId === row.user_id ? 1 : 0,
   }
 }
@@ -83,7 +89,7 @@ async function insertBlogVisit(db: D1Database, params: BlogVisitParams): Promise
       params.language,
       params.userAgent,
       params.isBot,
-      0,
+      params.isSelfReferrer,
       params.isOwner,
     )
     .run()

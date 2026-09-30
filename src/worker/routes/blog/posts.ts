@@ -6,7 +6,6 @@ import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId, newSlug } from '../../lib/id'
 import { assertContentSize, JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
-import { requireAuth } from '../../middleware/auth'
 import type { BlogPostCountsRow, BlogPostRow } from '../../db/rows'
 import { blogPostWriteSchema } from './schemas'
 import { blogPostPatchSchema } from './schemas'
@@ -26,7 +25,7 @@ export function registerBlogPostsRoutes(blogManageRoutes: Hono<AppBindings>): vo
 }
 
 function registerBlogPostsListRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.get('/posts', requireAuth, async (c) => {
+  blogManageRoutes.get('/posts', async (c) => {
     const userId = c.get('userId')!
     const tag = safeDecodeTagParam(c.req.query('tag'))
     const { sql, params } = blogPostsListQuery(userId, {
@@ -49,7 +48,7 @@ function registerBlogPostsListRoute(blogManageRoutes: Hono<AppBindings>): void {
 }
 
 function registerBlogPostsWriteRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/posts', requireAuth, async (c) => {
+  blogManageRoutes.post('/posts', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogPostWriteSchema, JSON_BODY_LIMITS.note)
 
@@ -226,7 +225,7 @@ async function insertBlogPost(
 }
 
 function registerBlogPostsPatchRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.patch('/posts/:id', requireAuth, async (c) => {
+  blogManageRoutes.patch('/posts/:id', async (c) => {
     const id = c.req.param('id')
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogPostPatchSchema, JSON_BODY_LIMITS.note)
@@ -293,7 +292,7 @@ function blogPostPatchStatement(
 }
 
 function registerBlogPostsDeleteRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.delete('/posts/:id', requireAuth, async (c) => {
+  blogManageRoutes.delete('/posts/:id', async (c) => {
     const id = c.req.param('id')
     const userId = c.get('userId')!
 
@@ -314,7 +313,7 @@ function registerBlogPostsDeleteRoute(blogManageRoutes: Hono<AppBindings>): void
 }
 
 function registerBlogPostsSyncRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/posts/:id/sync', requireAuth, async (c) => {
+  blogManageRoutes.post('/posts/:id/sync', async (c) => {
     const id = c.req.param('id')
     const userId = c.get('userId')!
 
@@ -363,7 +362,7 @@ interface BlogBatchStatement {
 }
 
 function registerBlogPostsBatchRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/posts/batch', requireAuth, async (c) => {
+  blogManageRoutes.post('/posts/batch', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogBatchSchema, JSON_BODY_LIMITS.note)
 

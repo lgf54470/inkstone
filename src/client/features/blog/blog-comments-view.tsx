@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
-import { AlertTriangle, CheckCircle, ExternalLink, Inbox, RefreshCw, Search, ShieldCheck, Trash2, User, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle, ExternalLink, Inbox, RefreshCw, Search, ShieldCheck, Trash2, XCircle } from 'lucide-react'
 import type { BlogComment, BlogCommentStatus } from '@shared/types'
-import { safeExternalUrl } from '@shared/url-safety'
 import { Button, IconButton } from '../../components/primitives'
 import { Checkbox, Input } from '../../components/form'
+import { resolveAvatarSource } from '../../lib/avatar'
 import { t } from '../../lib/i18n'
 import { useBlogCommentsView } from './use-blog-comments-view'
 
@@ -289,16 +289,11 @@ function CommentCardHeader({ bundle }: { bundle: CommentCardBundle }) {
 }
 
 function CommentAuthorAvatar({ comment }: { comment: BlogComment }) {
-  // The picture comes from a reader's own form: a value that is not an image source this app will
-  // fetch falls back to the initial, rather than being handed to the browser as written.
-  const src = safeExternalUrl(comment.authorAvatar, 'image')
-  if (!src) {
-    return (
-      <div className='flex size-8 items-center justify-center rounded-full bg-[var(--bg-sunken)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]'>
-        <User size={14} />
-      </div>
-    )
-  }
+  // The picture comes from a reader's own form, so the source is whatever this app will render:
+  // an image URL that passed the allowlist, or an avatar drawn locally from the name. A comment
+  // stores no third-party default any more, because fetching one would put every reader's browser
+  // (and this admin's) on someone else's server for a name they typed.
+  const src = resolveAvatarSource(comment.authorAvatar, comment.authorName)
   return (
     <img
       src={src}

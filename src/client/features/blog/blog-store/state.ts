@@ -1,10 +1,16 @@
-
-
-
-
 export const TRAFFIC_FILTERS_KEY = 'inkstone_blog_traffic_filters'
 
-
+/**
+ * What an unread store holds. The stored filters are read when the hub opens (see
+ * `hydrateTrafficFilters`), not when this module is evaluated: the module loads with the app, so a
+ * read at module scope would touch `localStorage` on every page and in every test for a switch only
+ * the blog hub shows.
+ */
+export const DEFAULT_TRAFFIC_FILTERS = {
+  excludeBots: true,
+  excludeSelfReferrers: false,
+  excludeOwner: false,
+}
 
 export function loadInitialFilters(): { excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean } {
   if (typeof window !== 'undefined') {
@@ -22,13 +28,5 @@ export function loadInitialFilters(): { excludeBots: boolean; excludeSelfReferre
       console.warn('[blog-store] failed to load traffic filters', error)
     }
   }
-  return {
-    excludeBots: true,
-    excludeSelfReferrers: false,
-    excludeOwner: false,
-  }
+  return { ...DEFAULT_TRAFFIC_FILTERS }
 }
-
-
-
-export const initialFilters = loadInitialFilters()

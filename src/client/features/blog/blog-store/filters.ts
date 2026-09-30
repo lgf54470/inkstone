@@ -1,7 +1,8 @@
-import { TRAFFIC_FILTERS_KEY } from './state'
+import { loadInitialFilters, TRAFFIC_FILTERS_KEY } from './state'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
-export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'setActiveTab' | 'setStatusFilter' | 'setCategoryId' | 'setFolderId' | 'setTag' | 'setSearch' | 'setSort' | 'setViewMode' | 'toggleSelectPost' | 'selectAllPosts' | 'clearPostSelection' | 'setCommentStatusFilter' | 'setCommentSearch' | 'toggleSelectComment' | 'selectAllComments' | 'clearCommentSelection' | 'setFilters'> => ({
+export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'setActiveTab' | 'setStatusFilter' | 'setCategoryId' | 'setFolderId' | 'setTag' | 'setSearch' | 'setSort' | 'setViewMode' | 'toggleSelectPost' | 'selectAllPosts' | 'clearPostSelection' | 'setCommentStatusFilter' | 'setCommentSearch' | 'toggleSelectComment' | 'selectAllComments' | 'clearCommentSelection' | 'setFilters' | 'hydrateTrafficFilters'> => ({
+  hydrateTrafficFilters: () => set(loadInitialFilters()),
   setFilters: (newFilters) => setFiltersImpl(newFilters, set, get),
   setActiveTab: (activeTab) => set({ activeTab }),
   setStatusFilter: (statusFilter) => applyPostFilter(set, get, { statusFilter, folderId: null, tag: null, activeTab: 'posts' }),
@@ -43,15 +44,16 @@ function setFiltersImpl(
   set: SetBlogStoreState,
   get: () => BlogStoreState,
 ): void {
-  set((state) => {
-    const updated = {
-      excludeBots: newFilters.excludeBots ?? state.excludeBots,
-      excludeSelfReferrers: newFilters.excludeSelfReferrers ?? state.excludeSelfReferrers,
-      excludeOwner: newFilters.excludeOwner ?? state.excludeOwner,
-    }
-    persistTrafficFilters(updated)
-    return updated
-  })
+  const current = get()
+  const updated = {
+    excludeBots: newFilters.excludeBots ?? current.excludeBots,
+    excludeSelfReferrers: newFilters.excludeSelfReferrers ?? current.excludeSelfReferrers,
+    excludeOwner: newFilters.excludeOwner ?? current.excludeOwner,
+  }
+  // The store updater has to stay pure (StrictMode runs it twice), so both the write and the
+  // persistence happen outside it — once, in the order the reader's click implies.
+  set(updated)
+  persistTrafficFilters(updated)
   void get().loadPosts()
   void get().loadStats()
 }

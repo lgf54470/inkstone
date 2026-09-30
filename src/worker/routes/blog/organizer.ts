@@ -5,7 +5,6 @@ import { ApiError } from '../../lib/errors'
 import { isValidId, newId } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { createScopedFolder, deleteScopedFolder, listScopedFolders, updateScopedFolder } from '../../lib/scoped-organizer'
-import { requireAuth } from '../../middleware/auth'
 import type { BlogCategoryCountsRow, BlogCategoryRow, BlogTagRow } from '../../db/rows'
 import { blogToggleGroupSchema } from './schemas'
 import { blogScopedFolderSchema } from './schemas'
@@ -23,21 +22,21 @@ export function registerBlogOrganizerRoutes(blogManageRoutes: Hono<AppBindings>)
 }
 
 function registerBlogFolderRoutes(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.get('/folders', requireAuth, async (c) => {
+  blogManageRoutes.get('/folders', async (c) => {
     return c.json(await listScopedFolders(c.env.DB, 'blog_folders', c.get('userId')!))
   })
 
-  blogManageRoutes.post('/folders', requireAuth, async (c) => {
+  blogManageRoutes.post('/folders', async (c) => {
     const body = await readJsonValidated(c, blogScopedFolderSchema, JSON_BODY_LIMITS.small)
     return c.json(await createScopedFolder(c.env.DB, 'blog_folders', c.get('userId')!, body), 201)
   })
 
-  blogManageRoutes.patch('/folders/:id', requireAuth, async (c) => {
+  blogManageRoutes.patch('/folders/:id', async (c) => {
     const body = await readJsonValidated(c, blogScopedFolderSchema, JSON_BODY_LIMITS.small)
     return c.json(await updateScopedFolder(c.env.DB, 'blog_folders', c.get('userId')!, c.req.param('id'), body))
   })
 
-  blogManageRoutes.delete('/folders/:id', requireAuth, async (c) => {
+  blogManageRoutes.delete('/folders/:id', async (c) => {
     await deleteScopedFolder(c.env.DB, 'blog_folders', 'blog_posts', c.get('userId')!, c.req.param('id'))
     return c.json({ ok: true })
   })
@@ -51,7 +50,7 @@ function registerBlogTagRoutes(blogManageRoutes: Hono<AppBindings>): void {
 }
 
 function registerBlogTagsListRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.get('/tags', requireAuth, async (c) => {
+  blogManageRoutes.get('/tags', async (c) => {
     const userId = c.get('userId')!
     const { results: tagRows } = await c.env.DB.prepare(
       `SELECT id, user_id, name, color, is_pinned, created_at
@@ -91,7 +90,7 @@ function registerBlogTagsListRoute(blogManageRoutes: Hono<AppBindings>): void {
 }
 
 function registerBlogTagCreateRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/tags', requireAuth, async (c) => {
+  blogManageRoutes.post('/tags', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogTagCreateSchema, JSON_BODY_LIMITS.small)
     const name = body.name.trim().slice(0, 50)
@@ -147,7 +146,7 @@ async function existingTagAfterConflict(
 }
 
 function registerBlogTagPatchRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.patch('/tags/:id', requireAuth, async (c) => {
+  blogManageRoutes.patch('/tags/:id', async (c) => {
     const userId = c.get('userId')!
     const id = c.req.param('id')
     const body = await readJsonValidated(c, blogTagPatchSchema, JSON_BODY_LIMITS.small)
@@ -205,7 +204,7 @@ async function createMissingTag(db: D1Database, userId: string, id: string, body
 }
 
 function registerBlogTagDeleteRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.delete('/tags/:id', requireAuth, async (c) => {
+  blogManageRoutes.delete('/tags/:id', async (c) => {
     const userId = c.get('userId')!
     const id = c.req.param('id')
     await c.env.DB.prepare(
@@ -216,7 +215,7 @@ function registerBlogTagDeleteRoute(blogManageRoutes: Hono<AppBindings>): void {
 }
 
 function registerBlogToggleGroupRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/batch-toggle-group', requireAuth, async (c) => {
+  blogManageRoutes.post('/batch-toggle-group', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogToggleGroupSchema, JSON_BODY_LIMITS.small)
 
@@ -266,7 +265,7 @@ function registerBlogCategoryRoutes(blogManageRoutes: Hono<AppBindings>): void {
 }
 
 function registerBlogCategoriesListRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.get('/categories', requireAuth, async (c) => {
+  blogManageRoutes.get('/categories', async (c) => {
     const userId = c.get('userId')!
     const { results } = await c.env.DB
       .prepare(`
@@ -298,7 +297,7 @@ function registerBlogCategoriesListRoute(blogManageRoutes: Hono<AppBindings>): v
 }
 
 function registerBlogCategoryCreateRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/categories', requireAuth, async (c) => {
+  blogManageRoutes.post('/categories', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogCategoryCreateSchema, JSON_BODY_LIMITS.note)
 
@@ -340,7 +339,7 @@ function registerBlogCategoryCreateRoute(blogManageRoutes: Hono<AppBindings>): v
 }
 
 function registerBlogCategoryPatchRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.patch('/categories/:id', requireAuth, async (c) => {
+  blogManageRoutes.patch('/categories/:id', async (c) => {
     const id = c.req.param('id')
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogCategoryPatchSchema, JSON_BODY_LIMITS.note)
@@ -381,7 +380,7 @@ function registerBlogCategoryPatchRoute(blogManageRoutes: Hono<AppBindings>): vo
 }
 
 function registerBlogCategoryDeleteRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.delete('/categories/:id', requireAuth, async (c) => {
+  blogManageRoutes.delete('/categories/:id', async (c) => {
     const id = c.req.param('id')
     const userId = c.get('userId')!
 

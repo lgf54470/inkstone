@@ -32,6 +32,7 @@ export function useBlogHubModal({
   const clearPostSelection = useBlogStore((s) => s.clearPostSelection)
   const loadAll = useBlogStore((s) => s.loadAll)
   const setActiveTab = useBlogStore((s) => s.setActiveTab)
+  const hydrateTrafficFilters = useBlogStore((s) => s.hydrateTrafficFilters)
 
   const activeNote = useNotes((s) => (initialNoteId ? s.notes[initialNoteId] ?? null : null))
 
@@ -43,7 +44,7 @@ export function useBlogHubModal({
 
   useBlogHubModalEffects({
     open, initialNoteId, activeNote,
-    loadAll, clearPostSelection, setTargetNoteId,
+    loadAll, hydrateTrafficFilters, clearPostSelection, setTargetNoteId,
     setIsPublishModalOpen, setEditingPost,
     setIsCategoriesModalOpen, setIsSettingsModalOpen,
   })
@@ -77,6 +78,7 @@ function useBlogHubModalEffects({
   initialNoteId,
   activeNote,
   loadAll,
+  hydrateTrafficFilters,
   clearPostSelection,
   setTargetNoteId,
   setIsPublishModalOpen,
@@ -88,6 +90,7 @@ function useBlogHubModalEffects({
   initialNoteId?: string
   activeNote: { id: string } | null
   loadAll: () => Promise<void>
+  hydrateTrafficFilters: () => void
   clearPostSelection: () => void
   setTargetNoteId: (id: string) => void
   setIsPublishModalOpen: (open: boolean) => void
@@ -97,6 +100,9 @@ function useBlogHubModalEffects({
 }) {
   useEffect(() => {
     if (open) {
+      // The stored switches are read here rather than when the store module loads: only this hub
+      // shows them, and the read belongs to opening it.
+      hydrateTrafficFilters()
       void loadAll()
       if (initialNoteId && activeNote) {
         setTargetNoteId(initialNoteId)
@@ -108,5 +114,5 @@ function useBlogHubModalEffects({
       setIsCategoriesModalOpen(false)
       setIsSettingsModalOpen(false)
     }
-  }, [open, loadAll, clearPostSelection, initialNoteId, activeNote])
+  }, [open, loadAll, hydrateTrafficFilters, clearPostSelection, initialNoteId, activeNote])
 }

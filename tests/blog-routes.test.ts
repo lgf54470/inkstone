@@ -355,6 +355,25 @@ describe('blog public routes (real D1)', () => {
     expect((row?.referrer as string).length).toBeLessThanOrEqual(512)
   })
 
+  // The column exists because the dashboard has a switch for it, and it was written as a literal 0,
+  // so the switch never had anything to exclude and the number it showed was never measured.
+  it('records a same-site referrer as a self-referral and an external one as not', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, { slug: 'ref-self', title: 'RefSelf' })
+    DB_ENV.env.VISIT_FP_SECRET = 'blog-ref-secret'
+
+    const app = makeApp()
+    await requestWithIp(app, '/api/blog/public/posts/ref-self', '203.0.113.11', { referer: 'http://localhost/archive' })
+    const selfRow = await firstRow(db, 'SELECT is_self_referrer FROM blog_visits WHERE slug = ?1', 'ref-self')
+    expect(selfRow?.is_self_referrer).toBe(1)
+
+    await seedBlogPost(db, { slug: 'ref-other', title: 'RefOther' })
+    await requestWithIp(app, '/api/blog/public/posts/ref-other', '203.0.113.12', { referer: 'https://news.example.com/article/42' })
+    const otherRow = await firstRow(db, 'SELECT is_self_referrer FROM blog_visits WHERE slug = ?1', 'ref-other')
+    expect(otherRow?.is_self_referrer).toBe(0)
+  })
+
   it('pushes tag hierarchy and pagination into SQL with correct totals', async () => {
     const db = await makeDb()
     await seedUser(db)
@@ -416,6 +435,11 @@ describe('blog public routes (real D1)', () => {
     const after = await publicAfter.json()
     expect(after.comments).toHaveLength(1)
     expect(after.comments[0].author_name).toBe('Reader')
+
+    // The default used to be a third-party avatar URL, so submitting a comment sent the nickname to
+    // that service and put whoever opened the moderation queue on its server.
+    const stored = await firstRow(db, 'SELECT author_avatar FROM blog_comments')
+    expect(stored?.author_avatar).toBe('')
   })
 
   it('rejects comments on missing or comment-disabled posts', async () => {

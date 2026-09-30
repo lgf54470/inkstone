@@ -5,7 +5,6 @@ import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId } from '../../lib/id'
 import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
-import { requireAuth } from '../../middleware/auth'
 import {
   toBlogLink,
   toBlogLinkCategory,
@@ -43,7 +42,7 @@ export function registerBlogLinksRoutes(blogManageRoutes: Hono<AppBindings>): vo
 }
 
 function registerBlogLinksGetRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.get('/links', requireAuth, async (c) => {
+  blogManageRoutes.get('/links', async (c) => {
     const userId = c.get('userId')!
     const db = c.env.DB
 
@@ -81,7 +80,7 @@ function computeLinkCounts(links: BlogLink[]): BlogLinkStats {
 }
 
 function registerBlogLinksUpsertRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/links', requireAuth, async (c) => {
+  blogManageRoutes.post('/links', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogLinkUpsertSchema, JSON_BODY_LIMITS.note)
     const now = Date.now()
@@ -147,7 +146,7 @@ function prepareLinkUpsertStatement(
 }
 
 function registerBlogLinksDeleteRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.delete('/links/:id', requireAuth, async (c) => {
+  blogManageRoutes.delete('/links/:id', async (c) => {
     const userId = c.get('userId')!
     const id = c.req.param('id')
     await c.env.DB.prepare('DELETE FROM blog_links WHERE id = ?1 AND user_id = ?2')
@@ -158,7 +157,7 @@ function registerBlogLinksDeleteRoute(blogManageRoutes: Hono<AppBindings>): void
 }
 
 function registerBlogLinksStatusRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.patch('/links/:id/status', requireAuth, async (c) => {
+  blogManageRoutes.patch('/links/:id/status', async (c) => {
     const userId = c.get('userId')!
     const id = c.req.param('id')
     const body = await readJsonValidated(c, blogLinkStatusSchema, JSON_BODY_LIMITS.small)
@@ -175,7 +174,7 @@ function registerBlogLinksStatusRoute(blogManageRoutes: Hono<AppBindings>): void
 }
 
 function registerBlogLinksPinRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.patch('/links/:id/pin', requireAuth, async (c) => {
+  blogManageRoutes.patch('/links/:id/pin', async (c) => {
     const userId = c.get('userId')!
     const id = c.req.param('id')
     const body = await readJsonValidated(c, blogLinkPinSchema, JSON_BODY_LIMITS.small)
@@ -192,7 +191,7 @@ function registerBlogLinksPinRoute(blogManageRoutes: Hono<AppBindings>): void {
 }
 
 function registerBlogLinksFavoriteRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.patch('/links/:id/favorite', requireAuth, async (c) => {
+  blogManageRoutes.patch('/links/:id/favorite', async (c) => {
     const userId = c.get('userId')!
     const id = c.req.param('id')
     const body = await readJsonValidated(c, blogLinkFavoriteSchema, JSON_BODY_LIMITS.small)
@@ -209,7 +208,7 @@ function registerBlogLinksFavoriteRoute(blogManageRoutes: Hono<AppBindings>): vo
 }
 
 function registerBlogLinksReorderRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/links/reorder', requireAuth, async (c) => {
+  blogManageRoutes.post('/links/reorder', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogLinkReorderSchema, JSON_BODY_LIMITS.note)
     const now = Date.now()
@@ -237,7 +236,7 @@ function registerBlogLinksReorderRoute(blogManageRoutes: Hono<AppBindings>): voi
 }
 
 function registerBlogLinksCheckRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/links/check', requireAuth, async (c) => {
+  blogManageRoutes.post('/links/check', async (c) => {
     const body = await readJsonValidated(c, blogLinkCheckSchema, JSON_BODY_LIMITS.note)
     const results = await checkUrlsBatch(body.urls)
     return c.json({ results })
@@ -245,7 +244,7 @@ function registerBlogLinksCheckRoute(blogManageRoutes: Hono<AppBindings>): void 
 }
 
 function registerBlogLinksBatchRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/links/batch', requireAuth, async (c) => {
+  blogManageRoutes.post('/links/batch', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogLinkBatchSchema, JSON_BODY_LIMITS.note)
     const db = c.env.DB
@@ -309,7 +308,7 @@ async function executeLinksBatch(
 }
 
 function registerBlogLinkCategoryUpsertRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/links/categories', requireAuth, async (c) => {
+  blogManageRoutes.post('/links/categories', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogLinkCategoryUpsertSchema, JSON_BODY_LIMITS.small)
     const now = Date.now()
@@ -347,7 +346,7 @@ function registerBlogLinkCategoryUpsertRoute(blogManageRoutes: Hono<AppBindings>
 }
 
 function registerBlogLinkCategoryDeleteRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.delete('/links/categories/:id', requireAuth, async (c) => {
+  blogManageRoutes.delete('/links/categories/:id', async (c) => {
     const userId = c.get('userId')!
     const id = c.req.param('id')
     const db = c.env.DB
@@ -369,7 +368,7 @@ function registerBlogLinkCategoryDeleteRoute(blogManageRoutes: Hono<AppBindings>
 }
 
 function registerBlogLinksImportRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.post('/links/import', requireAuth, async (c) => {
+  blogManageRoutes.post('/links/import', async (c) => {
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogLinkImportSchema, JSON_BODY_LIMITS.note)
     const db = c.env.DB

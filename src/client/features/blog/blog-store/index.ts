@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { BlogStoreState } from './types'
-import { initialFilters } from './state'
+import { DEFAULT_TRAFFIC_FILTERS } from './state'
 import { blogFiltersActions } from './filters'
 import { blogLoadersActions } from './loaders'
 import { blogContentActions } from './content'
@@ -47,9 +47,9 @@ function initialBlogState(): Partial<BlogStoreState> {
         settings: null,
         loading: false,
         batchBusy: false,
-        excludeBots: initialFilters.excludeBots,
-        excludeSelfReferrers: initialFilters.excludeSelfReferrers,
-        excludeOwner: initialFilters.excludeOwner,
+        excludeBots: DEFAULT_TRAFFIC_FILTERS.excludeBots,
+        excludeSelfReferrers: DEFAULT_TRAFFIC_FILTERS.excludeSelfReferrers,
+        excludeOwner: DEFAULT_TRAFFIC_FILTERS.excludeOwner,
     }
 }
 

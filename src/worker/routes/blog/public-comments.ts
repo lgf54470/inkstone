@@ -75,7 +75,11 @@ function registerBlogPublicCommentSubmitRoute(blogPublicRoutes: Hono<AppBindings
 
     const settings = await getBlogSettings(c.env.DB, owner.userId)
     const status: BlogCommentStatus = settings.requireCommentApproval ? 'pending' : 'approved'
-    const avatar = body.authorAvatar || `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(body.authorName)}`
+    // No picture means no picture: an empty value is what the reader submitted, and the admin's card
+    // (and the public page) draw an avatar locally from the name. The alternative this replaced
+    // wrote a third-party generator URL into every comment, which sent each reader's nickname to
+    // that service and put the admin's browser on it when the moderation queue was opened.
+    const avatar = body.authorAvatar?.trim() || ''
 
     await publicCommentInsertStatement(c.env.DB, {
       id: newId(),

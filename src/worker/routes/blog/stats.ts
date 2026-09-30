@@ -1,7 +1,6 @@
 import { Hono } from 'hono'
 import type { BlogGlobalAnalytics, BlogStats, BlogVisitLog, ShareBreakdownItem, ShareTimelineRange } from '@shared/types'
 import type { AppBindings } from '../../env'
-import { requireAuth } from '../../middleware/auth'
 import { ApiError } from '../../lib/errors'
 import { clampInt, JSON_BODY_LIMITS, readOptionalJsonValidated } from '../../lib/request'
 import { requireCurrentPassword } from '../../lib/reauth'
@@ -42,7 +41,7 @@ export function registerBlogStatsRoutes(blogManageRoutes: Hono<AppBindings>): vo
 }
 
 function registerBlogStatsRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.get('/stats', requireAuth, async (c) => {
+  blogManageRoutes.get('/stats', async (c) => {
     const userId = c.get('userId')!
     const stats = await loadBlogStats(c.env.DB, userId)
     return c.json({ stats })
@@ -152,7 +151,7 @@ function accumulatePostTags(
 }
 
 function registerBlogAnalyticsRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.get('/analytics', requireAuth, async (c) => {
+  blogManageRoutes.get('/analytics', async (c) => {
     const userId = c.get('userId')!
     const analytics = await loadBlogAnalyticsPayload(c.env.DB, await analyticsContext(c.env.DB, c, userId), userId)
     return c.json({ analytics })
@@ -416,7 +415,7 @@ async function loadBlogRecentVisits(db: D1Database, userId: string, filters: Vis
 }
 
 function registerBlogVisitsDeleteRoute(blogManageRoutes: Hono<AppBindings>): void {
-  blogManageRoutes.delete('/visits', requireAuth, async (c) => {
+  blogManageRoutes.delete('/visits', async (c) => {
     const userId = c.get('userId')!
     const type = c.req.query('type') || 'all'
     const days = cleanupVisitDays(c.req.query('days'), type)

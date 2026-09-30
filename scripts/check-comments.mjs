@@ -2865,8 +2865,10 @@ const allowed = new Map([
     '// render, and a new array each time would invalidate theirs as well.',
   ]],
   ['src/client/features/blog/blog-comments-view.tsx', [
-    '// The picture comes from a reader\'s own form: a value that is not an image source this app will',
-    '// fetch falls back to the initial, rather than being handed to the browser as written.',
+    '// The picture comes from a reader\'s own form, so the source is whatever this app will render:',
+    '// an image URL that passed the allowlist, or an avatar drawn locally from the name. A comment',
+    '// stores no third-party default any more, because fetching one would put every reader\'s browser',
+    '// (and this admin\'s) on someone else\'s server for a name they typed.',
   ]],
   ['src/client/features/blog/blog-dashboard-view/radiogroup-names.test.ts', [
     '/**\n * SH-46 brought the blog dashboard\'s two `Segmented` controls under the same rules\n * the share dashboard already follows: the toolbar range picker carries its own\n * `label`, and the metric picker is named by the card heading it sits beside. The\n * locale is not loaded in this harness, so `t()` echoes the key and the assertions\n * compare against keys.\n */',
@@ -2902,6 +2904,16 @@ const allowed = new Map([
     '// Cleaning by age needs no re-authentication, so the password stays unset.',
     '// The tab switcher and the retention period; nothing else asks for a count.',
   ]],
+  ['src/client/features/blog/blog-store/filters.test.ts', [
+    '// The store module loads with the app; reading `localStorage` there would touch it on every page',
+    '// for a switch only the blog hub shows, so the read belongs to opening the hub.',
+    '// The persistence used to run inside the `set` updater, which has to stay pure: StrictMode runs',
+    '// it twice, and each run wrote the storage.',
+  ]],
+  ['src/client/features/blog/blog-store/filters.ts', [
+    '// The store updater has to stay pure (StrictMode runs it twice), so both the write and the',
+    '// persistence happen outside it — once, in the order the reader\'s click implies.',
+  ]],
   ['src/client/features/blog/blog-store/index.ts', [
     '// Feed the notes store\'s visibility projection (published note ids) without',
     '// creating a store → feature import edge: selectors read the neutral registry',
@@ -2911,8 +2923,15 @@ const allowed = new Map([
     '// Seeded before the store module above is evaluated, so the cached record cap',
     '// is already in browser storage when the store builds its initial state.',
   ]],
+  ['src/client/features/blog/blog-store/state.ts', [
+    '/**\n * What an unread store holds. The stored filters are read when the hub opens (see\n * `hydrateTrafficFilters`), not when this module is evaluated: the module loads with the app, so a\n * read at module scope would touch `localStorage` on every page and in every test for a switch only\n * the blog hub shows.\n */',
+  ]],
   ['src/client/features/blog/frontend-base.ts', [
     '/**\n * The blog\'s own site address, as a link may carry it.\n *\n * The stored value is checked on the way in, but a blog configured before that rule existed still\n * holds whatever was typed, and this address becomes an `href` in the admin session — so a value a\n * link may not use falls back to the shipped default instead of being rendered as written.\n */',
+  ]],
+  ['src/client/features/blog/use-blog-hub-modal.ts', [
+    '// The stored switches are read here rather than when the store module loads: only this hub',
+    '// shows them, and the read belongs to opening it.',
   ]],
   ['src/client/features/blog/use-blog-settings-modal.ts', [
     '// The sweep runs on the server, so the value it reads has to be the account\'s.',
@@ -12939,7 +12958,9 @@ const allowed = new Map([
     '/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */',
   ]],
   ['src/worker/routes/blog/index.ts', [
-    '// Ensure session loaded for manage routes',
+    '// The session is loaded once by the app (`app.use(\'/api/*\', loadSession)`), so this mount is the',
+    '// only place that has to remember the blog is private: with the check here, a route added later',
+    '// without its own `requireAuth` is still closed rather than anonymously readable.',
   ]],
   ['src/worker/routes/blog/link-checker.ts', [
     '// Every hop is re-validated, so a public URL cannot redirect the checker',
@@ -12991,6 +13012,10 @@ const allowed = new Map([
     '/** One screen of a comment thread; a post past it shows its newest approved comments. */',
     '// The page renders the thread oldest first, so the query takes the newest rows under the',
     '// ceiling (the ones a reader scrolls to) and hands them back in that same render order.',
+    '// No picture means no picture: an empty value is what the reader submitted, and the admin\'s card',
+    '// (and the public page) draw an avatar locally from the name. The alternative this replaced',
+    '// wrote a third-party generator URL into every comment, which sent each reader\'s nickname to',
+    '// that service and put the admin\'s browser on it when the moderation queue was opened.',
     '// The blog is part of the key: two accounts may publish the same slug, and one of them being',
     '// under a comment flood must not close the other\'s form.',
   ]],
@@ -13048,6 +13073,9 @@ const allowed = new Map([
     '// Same rules as share visit recording (SH-04/SH-08, mirrored for blog here):',
     '// the dedupe key excludes the UA, salt is HMAC under the instance secret and',
     '// per owner, and a missing secret records no fingerprint at all.',
+    '// The same judgement the share side applies (server-side, against the host the request arrived',
+    '// on): the column was written as a literal 0, so the dashboard\'s "exclude self-referrals"',
+    '// switch had nothing to exclude and reported a number that was never measured.',
     '// The analytics row is written for every visit; the boolean tells the caller',
     '// whether this visit should bump the post\'s views counter (new fingerprint',
     '// within the dedupe window, not a bot).',
@@ -14050,6 +14078,10 @@ const allowed = new Map([
     '// A post carries its note\'s body into a second row, so the write that copies it must weigh the',
     '// same budget the note was allowed; otherwise a caller can park an arbitrarily large body in',
     '// blog_posts while every note-side guard still reads as satisfied.',
+    '// The column exists because the dashboard has a switch for it, and it was written as a literal 0,',
+    '// so the switch never had anything to exclude and the number it showed was never measured.',
+    '// The default used to be a third-party avatar URL, so submitting a comment sent the nickname to',
+    '// that service and put whoever opened the moderation queue on its server.',
     '// The public site reads the blog it serves, not a second key nobody writes: patching the site',
     '// name has to reach the reader, which is what this used to assert the opposite of (SEC-09).',
     '/** Seeds one post of this account and one of another, each with a comment. */',

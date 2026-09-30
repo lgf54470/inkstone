@@ -147,6 +147,7 @@ export interface BlogStoreState {
   excludeBots: boolean
   excludeSelfReferrers: boolean
   excludeOwner: boolean
+  hydrateTrafficFilters: () => void
   setFilters: (filters: Partial<{ excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }>) => void
 
   saveSettings: (settings: Partial<BlogSettings>) => Promise<void>
