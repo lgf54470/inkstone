@@ -1,4 +1,4 @@
-import { ArrowLeft, Columns2, Download, Eye, FolderClosed, Globe, Hash, History, LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Presentation, Share2, Star, Type, X } from 'lucide-react'
+import { ArrowLeft, Columns2, Download, Eye, FolderClosed, Globe, Hash, History, LinkIcon, ListTree, MoreHorizontal, PanelRightClose, Paperclip, Pencil, Presentation, Share2, Star, Type, Waypoints, X } from 'lucide-react'
 import { readingMinutes } from '@shared/markdown-utils'
 import { LIMITS } from '@shared/constants'
 import { type EditorLayout } from '@shared/types'
@@ -15,6 +15,7 @@ import { Outline, Preview } from '../../preview'
 import { SplitResizer, SaveIndicator } from '../../shell'
 import { EditorToolbar } from '../editor-toolbar'
 import { BacklinksPanel } from '../backlinks-panel'
+import { LocalGraphPanel } from '../../graph'
 import { AttachmentDriveModal } from '../../attachments'
 import { folderPathLabel, openFolderView } from '../../../lib/folders'
 import { useUi, type WorkspacePane } from '../../../store/ui'
@@ -109,7 +110,7 @@ function GroupedHeaderActions({ b }: { b: WorkspaceBundle }) {
 }
 
 function StandaloneHeaderActions({ b, exportMenuItems }: { b: WorkspaceBundle; exportMenuItems: MenuItem[] }) {
-  const { note, patchNote, isAttachmentDriveOpen, setIsAttachmentDriveOpen, backlinksOpen, toggleBacklinks, isMobile, openPanel, exportMenuRef, isExportMenuOpen, setIsExportMenuOpen, showPreview, outlineOpen, isMobileOutlineOpen, setIsMobileOutlineOpen, toggleOutline, moreButtonRef, setIsMoreMenuOpen, startPresentation } = b
+  const { note, patchNote, isAttachmentDriveOpen, setIsAttachmentDriveOpen, backlinksOpen, toggleBacklinks, localGraphOpen, toggleLocalGraph, isMobile, openPanel, exportMenuRef, isExportMenuOpen, setIsExportMenuOpen, showPreview, outlineOpen, isMobileOutlineOpen, setIsMobileOutlineOpen, toggleOutline, moreButtonRef, setIsMoreMenuOpen, startPresentation } = b
   return (
     <>
       <span className='mr-1 hidden xl:inline-flex'><SaveIndicator /></span>
@@ -118,6 +119,7 @@ function StandaloneHeaderActions({ b, exportMenuItems }: { b: WorkspaceBundle; e
       <Tooltip label={note.isStarred ? t('common.remove_from_favorites') : t('navigation.favorites')} combo='mod+d'><IconButton label={note.isStarred ? t('common.remove_from_favorites') : t('navigation.favorites')} size='sm' active={note.isStarred} onClick={() => void patchNote(note.id, { isStarred: !note.isStarred })}><Star size={14} className={note.isStarred ? 'fill-current' : undefined} /></IconButton></Tooltip>
       <Tooltip label={t('attachments.manage')}><IconButton label={t('attachments.manage')} size='sm' active={isAttachmentDriveOpen} onClick={() => setIsAttachmentDriveOpen(true)}><Paperclip size={14} /></IconButton></Tooltip>
       <Tooltip label={t('common.backlinks')}><IconButton label={t('common.backlinks')} size='sm' active={backlinksOpen} onClick={toggleBacklinks}><LinkIcon size={14} /></IconButton></Tooltip>
+      <Tooltip label={t('graph.local_graph')}><IconButton label={t('graph.local_graph')} size='sm' active={localGraphOpen} onClick={toggleLocalGraph}><Waypoints size={14} /></IconButton></Tooltip>
       {!isMobile && <Tooltip label={t('common.version_history')}><IconButton label={t('common.version_history')} size='sm' onClick={() => openPanel('versions')}><History size={14} /></IconButton></Tooltip>}
       {!isMobile && (
         <>
@@ -293,6 +295,16 @@ export function WorkspaceToolbar({ b }: { b: WorkspaceBundle }) {
 
 export function BacklinksSection({ b }: { b: WorkspaceBundle }) {
   return b.backlinksOpen && b.paneActive ? <BacklinksPanel noteId={b.note.id} /> : null
+}
+
+export function LocalGraphSection({ b }: { b: WorkspaceBundle }) {
+  return b.localGraphOpen && b.paneActive ? (
+    <LocalGraphPanel
+      noteId={b.note.id}
+      onClose={b.toggleLocalGraph}
+      onOpenFullGraph={() => b.openPanel('graph')}
+    />
+  ) : null
 }
 
 export function AttachmentDrive({ b }: { b: WorkspaceBundle }) {

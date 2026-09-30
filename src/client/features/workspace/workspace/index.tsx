@@ -6,7 +6,7 @@ import type { WorkspacePane } from '../../../store/ui'
 import { NoNoteSelected } from './no-note-selected'
 import { useWorkspace, type WorkspaceBundle } from './use-workspace'
 import { buildExportMenuItems, buildMobileItems, buildGroupedItems, activateWorkspacePane } from './workspace-menus'
-import { WorkspaceHeader, WorkspacePanes, WorkspaceOverlays, WorkspaceFooter, FileInputs, WorkspaceToolbar, BacklinksSection, AttachmentDrive } from './workspace-views'
+import { WorkspaceHeader, WorkspacePanes, WorkspaceOverlays, WorkspaceFooter, FileInputs, WorkspaceToolbar, BacklinksSection, LocalGraphSection, AttachmentDrive } from './workspace-views'
 
 export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active', grouped = false }: {
     mobileLayout?: 'edit' | 'preview'
@@ -42,6 +42,7 @@ export function Workspace({ mobileLayout = 'edit', onMobileBack, pane = 'active'
         <WorkspacePanes b={b} />
       </div>
       <BacklinksSection b={b} />
+      <LocalGraphSection b={b} />
       <WorkspaceOverlays b={b} grouped={grouped} exportNote={b.exportNote} groupedItems={groupedItems} mobileItems={mobileItems} />
       <WorkspaceFooter b={b} grouped={grouped} pane={pane} />
       <FileInputs b={b} />

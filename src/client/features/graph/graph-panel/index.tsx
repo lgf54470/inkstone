@@ -18,11 +18,12 @@ import { useNotes } from '../../../store/notes'
 import { useSession } from '../../../store/session'
 import { useUi } from '../../../store/ui'
 import { t } from '../../../lib/i18n'
-import { GraphCanvas, type GraphControls } from './canvas'
+import { GraphCanvas } from './canvas'
+import { useGraphCanvasRefs } from './canvas-hooks'
 import { GraphSettingsPanel } from './settings'
 import { DEFAULT_PREFERENCES } from './constants'
 import { graphPrefsStorageKey, loadPreferences, normalizedResponse } from './helpers'
-import type { CanvasNode, CanvasState, GraphHeaderActionsProps, GraphHeaderProps } from './types'
+import type { GraphHeaderActionsProps, GraphHeaderProps } from './types'
 
 const TRACKING_TITLE = 'tracking-[var(--tracking-graph-title)]'
 
@@ -46,22 +47,6 @@ function useDebouncedQuery(search: string, delayMs: number): string {
     return () => window.clearTimeout(timer)
   }, [search, delayMs])
   return query
-}
-
-function useGraphCanvasRefs(activeNoteId: string | null) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const hoverRef = useRef<CanvasNode | null>(null)
-  const selectedIdRef = useRef<string | null>(null)
-  const activeNoteIdRef = useRef(activeNoteId)
-  const lastPointerEventAtRef = useRef(Number.NEGATIVE_INFINITY)
-  const stateRef = useRef<CanvasState>({
-    nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0,
-    width: 0, height: 0,
-    dragging: null, pointers: new Map(), pinch: null,
-    frame: 0, raf: 0, schedule: null,
-  })
-  const controlsRef = useRef<GraphControls | null>(null)
-  return { canvasRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, stateRef, controlsRef }
 }
 
 function useCreateScopedNote(prefs: GraphPreferences) {

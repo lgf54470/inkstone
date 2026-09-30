@@ -1,4 +1,4 @@
-import { FileCode, FileDown, FileText, Globe, History, LayoutGrid, LinkIcon, ListTree, Music, Presentation, Share2, Star } from 'lucide-react'
+import { FileCode, FileDown, FileText, Globe, History, LayoutGrid, LinkIcon, ListTree, Music, Presentation, Share2, Star, Waypoints } from 'lucide-react'
 import type { MenuItem } from '../../../components/overlay'
 import type { PanelName, WorkspacePane } from '../../../store/ui'
 import type { WorkspaceBundle } from './use-workspace'
@@ -16,6 +16,7 @@ export function buildExportMenuItems(exportNote: ExportNote): MenuItem[] {
 
 export function buildMobileItems(openPanel: (panel: PanelName) => void, exportNote: ExportNote, startPresentation: () => void): MenuItem[] {
   return [
+    { id: 'graph', label: t('common.graph'), icon: <Waypoints size={13} />, onSelect: () => openPanel('graph') },
     { id: 'presentation', label: t('workspace.presentation_mode'), icon: <Presentation size={13} />, onSelect: startPresentation },
     { id: 'versions', label: t('common.version_history'), icon: <History size={13} />, onSelect: () => openPanel('versions') },
     { id: 'share', label: t('workspace.share'), icon: <Share2 size={13} />, onSelect: () => openPanel('share') },
@@ -30,7 +31,7 @@ export function buildMobileItems(openPanel: (panel: PanelName) => void, exportNo
 }
 
 export function buildGroupedItems(b: WorkspaceBundle, exportNote: ExportNote): MenuItem[] {
-  const { note, layout, setEditorLayout, patchNote, backlinksOpen, paneActive, toggleBacklinks, showPreview, outlineOpen, toggleOutline, openPanel, startPresentation } = b
+  const { note, layout, setEditorLayout, patchNote, backlinksOpen, localGraphOpen, paneActive, toggleBacklinks, toggleLocalGraph, showPreview, outlineOpen, toggleOutline, openPanel, startPresentation } = b
   return [
     { id: 'layout-edit', label: t('workspace.edit_only'), checked: layout === 'edit', onSelect: () => setEditorLayout('edit') },
     { id: 'layout-live', label: t('workspace.live_preview'), checked: layout === 'live', onSelect: () => setEditorLayout('live') },
@@ -49,6 +50,13 @@ export function buildGroupedItems(b: WorkspaceBundle, exportNote: ExportNote): M
       icon: <LinkIcon size={13} />,
       checked: backlinksOpen && paneActive,
       onSelect: toggleBacklinks,
+    },
+    {
+      id: 'local_graph',
+      label: t('graph.local_graph'),
+      icon: <Waypoints size={13} />,
+      checked: localGraphOpen && paneActive,
+      onSelect: toggleLocalGraph,
     },
     ...(showPreview
       ? [

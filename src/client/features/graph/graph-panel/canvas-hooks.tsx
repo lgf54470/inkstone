@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type MutableRefObject, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, type MutableRefObject, type RefObject } from 'react'
 import { CircleDot, FolderOpen, PanelRightClose, Pin } from 'lucide-react'
 import { type MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
@@ -11,6 +11,22 @@ export interface GraphControls {
   zoomIn: () => void
   zoomOut: () => void
   fit: () => void
+}
+
+export function useGraphCanvasRefs(activeNoteId: string | null = null) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const hoverRef = useRef<CanvasNode | null>(null)
+  const selectedIdRef = useRef<string | null>(null)
+  const activeNoteIdRef = useRef(activeNoteId)
+  const lastPointerEventAtRef = useRef(Number.NEGATIVE_INFINITY)
+  const stateRef = useRef<CanvasState>({
+    nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0,
+    width: 0, height: 0,
+    dragging: null, pointers: new Map(), pinch: null,
+    frame: 0, raf: 0, schedule: null,
+  })
+  const controlsRef = useRef<GraphControls | null>(null)
+  return { canvasRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, stateRef, controlsRef }
 }
 
 export function useGraphFit(canvasRef: RefObject<HTMLCanvasElement | null>, stateRef: RefObject<CanvasState>) {

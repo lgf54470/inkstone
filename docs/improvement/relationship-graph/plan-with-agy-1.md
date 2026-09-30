@@ -161,26 +161,32 @@
 
 ### 第三阶段：功能进阶与产品力赶超 (Sprint 3)
 
-- [ ] **11. 【FEAT-01】悬停节点即时卡片预览 (Page Preview)**
-  - **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`, `graph-overlays.tsx`
+- [x] **11. 【FEAT-01】悬停节点即时卡片预览 (Page Preview)**
+  - **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`, `graph-overlays.tsx`, `use-graph-preview.ts`
   - **修改要点**：悬停节点或单击选中时在节点旁显示 Markdown 预览浮层，支持快速查看笔记摘要内容。
-  - **提交哈希**：`待提交`
+  - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && node scripts/check-i18n.mjs && npm run typecheck`
+  - **提交哈希**：`24157e33`
+  - **状态**：已完成并验证通过
 
-- [ ] **12. 【UX-04 & UX-05 & UX-06】移动端 Pinch 仿射补偿、光标增强与无障碍读屏**
-  - **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`
+- [x] **12. 【UX-04 & UX-05 & UX-06】移动端 Pinch 仿射补偿、光标增强与无障碍读屏**
+  - **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`, `canvas-hooks.tsx`, `graph-overlays.tsx`
   - **修改要点**：
     1. **UX-04**：双指缩放计算两点几何中心并反向补偿 `offsetX/Y`，消除偏心跳动；
     2. **UX-05**：悬停节点显示 `pointer` 光标，支持空格平移与鼠标中键平移；
     3. **UX-06**：状态信息与节点选中增加 `aria-live="polite"` 读屏宣告。
-  - **提交哈希**：`待提交`
+  - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && node scripts/check-i18n.mjs && npm run typecheck`
+  - **提交哈希**：`24157e33`
+  - **状态**：已完成并验证通过
 
-- [ ] **13. 【UI-04 & PERF-05 & PERF-06】色彩图例、力导向衰减模型与 fitGraph 竞态修复**
-  - **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `canvas.tsx`, `helpers.ts`
+- [x] **13. 【UI-04 & PERF-05 & PERF-06】色彩图例、力导向衰减模型与 fitGraph 竞态修复**
+  - **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `canvas.tsx`, `helpers.ts`, `graph-overlays.tsx`
   - **修改要点**：
     1. **UI-04**：增加半透明调色盘图例，未设色标签通过 Hash 色板兜底；
     2. **PERF-05**：排斥力采用平滑衰减模型替代 346px 硬截断；
     3. **PERF-06**：物理收敛后平滑过渡居中自适应，消除开屏弹飞。
-  - **提交哈希**：`待提交`
+  - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && node scripts/check-i18n.mjs && npm run typecheck`
+  - **提交哈希**：`24157e33`
+  - **状态**：已完成并验证通过
 
 - [ ] **14. 【FEAT-02】常驻分屏与伴随式局部图谱工作流 (Secondary Pane / Companion Local Graph)**
   - **涉及文件**：`src/client/features/graph/`, `src/client/features/workspace/`

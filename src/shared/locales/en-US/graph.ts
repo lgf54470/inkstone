@@ -62,4 +62,13 @@ export const messages = {
 'graph.stats_unresolved': '{count} unresolved',
 'graph.pin_node': 'Pin node',
 'graph.unpin_node': 'Unpin node',
+'graph.local_graph': 'Local graph',
+'graph.open_full_graph': 'Open full graph',
+'graph.show_tags': 'Show tags as nodes',
+'graph.tag_node': 'Tag node',
+'graph.color_groups': 'Color groups',
+'graph.add_color_rule': 'Add color rule',
+'graph.color_rule_query': 'Query (e.g. tag:todo or -path:archive)',
+'graph.export_png': 'Export as PNG',
+'graph.export_svg': 'Export as SVG',
 }

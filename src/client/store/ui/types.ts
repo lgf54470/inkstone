@@ -87,6 +87,7 @@ export interface UiState {
   settingsSection: string | null
   outlineOpen: boolean
   backlinksOpen: boolean
+  localGraphOpen: boolean
   toasts: ToastItem[]
   lightbox: { src: string; alt: string } | null
 
@@ -132,6 +133,7 @@ export interface UiState {
   togglePanel: (panel: PanelName) => void
   toggleOutline: () => void
   toggleBacklinks: () => void
+  toggleLocalGraph: () => void
   setLightbox: (value: UiState['lightbox']) => void
   toast: (input: Omit<ToastItem, 'id' | 'duration' | 'tone'> & { tone?: ToastItem['tone']; duration?: number }) => string
   dismissToast: (id: string) => void

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { withPinnedWindowSize } from '../../../lib/pinned-window-size'
 import { usePinnedWindows } from '../../../store/pinned-windows'
 import type { WikiLinkHoverCardState } from '../../preview'
@@ -68,6 +68,10 @@ export function useGraphNodePreview(
     usePinnedWindows.getState().pin(card, withPinnedWindowSize(rect))
     setPreviewCard(null)
   }, [])
+
+  useEffect(() => {
+    return () => clearTimers()
+  }, [clearTimers])
 
   return {
     previewCard, anchorPos, anchorRef, clearTimers, showPreview, onHoverNode, onPinPreview,

@@ -62,4 +62,13 @@ export const messages = {
 'graph.stats_unresolved': '{count} 篇未创建',
 'graph.pin_node': '固定节点',
 'graph.unpin_node': '取消固定',
+'graph.local_graph': '局部关系图',
+'graph.open_full_graph': '打开完整图谱',
+'graph.show_tags': '将标签显示为节点',
+'graph.tag_node': '标签节点',
+'graph.color_groups': '颜色分组规则',
+'graph.add_color_rule': '添加颜色规则',
+'graph.color_rule_query': '过滤规则（如 tag:todo 或 -path:archive）',
+'graph.export_png': '导出为 PNG',
+'graph.export_svg': '导出为 SVG',
 }
