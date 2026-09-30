@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { entryIndexOf, escapeAction, formatMicroPage, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
+import { describe, expect, it, vi } from 'vitest'
+import { entryIndexOf, escapeAction, formatMicroPage, interceptSlideLink, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
 import type { SlidePlan } from './slide-pagination'
 
 const planOf = (pages: number): SlidePlan => ({
@@ -195,3 +195,41 @@ describe('formatMicroPage', () => {
     expect(formatMicroPage(0, 0)).toBe('')
   })
 })
+
+describe('interceptSlideLink', () => {
+  it('opens safe external https and http links in new window', () => {
+    const openMock = vi.fn()
+    const result = interceptSlideLink('https://example.com/talk', openMock)
+    expect(result).toBe(true)
+    expect(openMock).toHaveBeenCalledWith('https://example.com/talk', '_blank', 'noopener,noreferrer')
+  })
+
+  it('opens mailto links in new window', () => {
+    const openMock = vi.fn()
+    const result = interceptSlideLink('mailto:speaker@example.com', openMock)
+    expect(result).toBe(true)
+    expect(openMock).toHaveBeenCalledWith('mailto:speaker@example.com', '_blank', 'noopener,noreferrer')
+  })
+
+  it('rejects hash jumps and does not open window', () => {
+    const openMock = vi.fn()
+    expect(interceptSlideLink('#slide-heading', openMock)).toBe(false)
+    expect(interceptSlideLink('#', openMock)).toBe(false)
+    expect(openMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects unsafe protocols like javascript:', () => {
+    const openMock = vi.fn()
+    expect(interceptSlideLink('javascript:alert(1)', openMock)).toBe(false)
+    expect(openMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects empty and null links', () => {
+    const openMock = vi.fn()
+    expect(interceptSlideLink('', openMock)).toBe(false)
+    expect(interceptSlideLink(null, openMock)).toBe(false)
+    expect(interceptSlideLink(undefined, openMock)).toBe(false)
+    expect(openMock).not.toHaveBeenCalled()
+  })
+})
+

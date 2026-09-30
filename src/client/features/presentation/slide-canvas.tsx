@@ -6,6 +6,7 @@ import { readSlideHtml, renderSlideSource, subscribeSlideHtml } from './slide-ht
 import { planSlidePages, resolvePageIndex, samePlan, type SlideBlock, type SlidePlan } from './slide-pagination'
 import { SlideProse } from './slide-prose'
 import { SLIDE_PAD_Y, type StageMetrics } from './slide-stage'
+import { interceptSlideLink } from './presentation-state'
 
 const HEADING_TAG = /^H[1-6]$/
 
@@ -84,13 +85,25 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   }, [measured, plan, renderVersion, onPlan])
   const page = plan.pages[resolvePageIndex(plan, subPage)]
 
+  const handleLinkClick = useSlideLinkInterceptor()
+
   return (
-    <div className='ink-slide relative h-full w-full overflow-hidden'>
+    <div className='ink-slide relative h-full w-full overflow-hidden' onClick={handleLinkClick}>
       <div className='absolute inset-x-0' style={{ top: SLIDE_PAD_Y, transform: `translateY(-${page?.top ?? 0}px)` }}>
         <SlideProse html={html} contentWidth={contentWidth} font={proseFont} hostRef={hostRef} />
       </div>
     </div>
   )
+}
+
+function useSlideLinkInterceptor() {
+  return useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const anchor = (event.target as HTMLElement | null)?.closest('a')
+    if (!anchor) return
+    event.preventDefault()
+    event.stopPropagation()
+    interceptSlideLink(anchor.getAttribute('href'), (url, target, features) => window.open(url, target, features))
+  }, [])
 }
 
 // Measuring and applying happen in the same pass, because an out-of-plan block

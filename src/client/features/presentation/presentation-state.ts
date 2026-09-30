@@ -53,6 +53,24 @@ export function formatMicroPage(index: number, count: number, subPage = 0, pageC
   return `${current} / ${total}`
 }
 
+export function interceptSlideLink(
+  href: string | null | undefined,
+  openWindow: (url: string, target: string, features: string) => void,
+): boolean {
+  if (!href || href === '#' || href.startsWith('#')) return false
+  const trimmed = href.trim()
+  if (
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('mailto:') ||
+    trimmed.startsWith('tel:')
+  ) {
+    openWindow(trimmed, '_blank', 'noopener,noreferrer')
+    return true
+  }
+  return false
+}
+
 /** One navigable page: a `---` slide plus the overflow page inside it. */
 export interface RailEntry {
   slide: number

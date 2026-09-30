@@ -69,9 +69,10 @@
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`SlideProgress`)、`src/client/features/presentation/presentation-stage.tsx` (`PresentationStage`)、`src/client/features/presentation/presentation-state.ts` (`formatMicroPage`)、`src/client/features/presentation/presentation-state.test.ts`
   - 目标：屏幕底部进度条环境常驻，舞台角落显示无侵入式微型页码。
   - 验证：单元测试覆盖 formatMicroPage 单双页及子页格式化，底部进度条常驻渲染。
-- [ ] **B2-03** `P-09 (SEC-02)`: 幻灯片超链接安全拦截代理（外链新标签页打开，双链防跳顶）
-  - 涉及文件：`src/client/features/presentation/slide-canvas.tsx`
+- [x] **B2-03** `P-09 (SEC-02)`: 幻灯片超链接安全拦截代理（外链新标签页打开，双链防跳顶） — 已完成
+  - 涉及文件：`src/client/features/presentation/presentation-state.ts` (`interceptSlideLink`)、`src/client/features/presentation/presentation-state.test.ts`、`src/client/features/presentation/slide-canvas.tsx` (`useSlideLinkInterceptor`)
   - 目标：拦截幻灯片内 `<a>` 标签，保护演讲主舞台不跳出。
+  - 验证：单元测试覆盖安全协议（https/http/mailto/tel）新窗打开与不安全协议/锚点防跳顶拦截，SlideCanvas 挂载代理监听。
 - [ ] **B2-04** `P-10 (FEAT-05)`: 黑屏 (B) 与白屏 (W) 口头互动控制
   - 涉及文件：`src/client/features/presentation/presentation-keys.ts`、`src/client/features/presentation/presentation-overlay.tsx`、`src/client/features/presentation/use-presentation-keys.ts`
   - 目标：按 `B` 切换纯黑全屏遮罩，按 `W` 切换纯白全屏遮罩，按任意键复原。
