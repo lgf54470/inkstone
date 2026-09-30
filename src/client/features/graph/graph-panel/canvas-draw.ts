@@ -181,9 +181,15 @@ export function buildInitialLayout(data: GraphResponse, prefs: GraphPreferences,
     const a = byId.get(edge.source), b = byId.get(edge.target)
     return a && b ? [{ a, b }] : []
   })
-  state.frame = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
-    ? PHYSICS_FRAME_LIMIT
-    : 0
+  const prefersReduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (prefersReduced) {
+    for (let step = 0; step < 120 && state.frame < PHYSICS_FRAME_LIMIT; step++) {
+      advancePhysics(state, prefs)
+    }
+    state.frame = PHYSICS_FRAME_LIMIT
+  } else {
+    state.frame = 0
+  }
 }
 
 export function readThemeColors(): ThemeColors {

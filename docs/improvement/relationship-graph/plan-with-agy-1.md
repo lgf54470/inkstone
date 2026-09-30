@@ -52,16 +52,18 @@
   2. 双击节点与 Enter 触发打开并关闭图谱；
   3. Cmd / Ctrl + 单击在次面板打开笔记且图谱保持常驻；
   4. 同步更新中英文操作提示文本。
-- **验证命令**：`node scripts/check-size.mjs && node scripts/check-i18n.mjs && npm run typecheck`
+- **验证命令**：`node scripts/check-size.mjs && node scripts/check-i18n.mjs && npm run typecheck && vitest`
+- **提交哈希**：`cec83ccb`
 - **状态**：已完成并验证通过
 
-#### 3. 【UX-02】修复开启“减少动画”时图谱死锁阿基米德螺旋线
-- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`
+- [x] **3. 【UX-02】修复开启“减少动画”时图谱死锁阿基米德螺旋线**
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `canvas-draw.test.ts`
 - **修改要点**：
-  1. 检测到 `prefers-reduced-motion: reduce` 时，不直接将 `state.frame` 置为 360 跳过计算；
-  2. 在首帧同步循环执行 120 步力导向计算，得到稳定的力导向坐标后直接绘制单帧静止画面。
-- **验证命令**：`npm run typecheck && npx vitest run`
-- **提交哈希**：`待提交`
+  1. 检测到 `prefers-reduced-motion: reduce` 时，首帧离屏同步计算力导向终态；
+  2. 消除节点永久死锁在阿基米德螺旋线问题，首帧即呈现静止完整图谱；
+  3. 新增 `canvas-draw.test.ts` 自动化回归测试。
+- **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npx vitest run src/client/features/graph/graph-panel/canvas-draw.test.ts`
+- **状态**：已完成并验证通过
 
 #### 4. 【UX-03】修复设置抽屉按 ESC 误关整个图谱（ESC 逃逸栈穿透）
 - **涉及文件**：`src/client/features/graph/graph-panel/settings.tsx`, `index.tsx`
