@@ -40,8 +40,12 @@ export function BlogDashboardView({
         onRefresh={() => void view.handleRefresh()}
       />
 
-      {view.excludeBots && view.filteredBots > 0 && (
-        <BotsFilterBanner filteredBots={view.filteredBots} />
+      {view.filteredBots + view.filteredVisitorTraffic.self + view.filteredVisitorTraffic.owner > 0 && (
+        <BotsFilterBanner
+          bots={view.filteredVisitorTraffic.bots}
+          self={view.filteredVisitorTraffic.self}
+          owner={view.filteredVisitorTraffic.owner}
+        />
       )}
 
       <DashboardKpis stats={view.stats} analytics={view.analytics} postsCount={view.posts.length} />
@@ -106,16 +110,21 @@ function DashboardWelcomeBanner({
   )
 }
 
-function BotsFilterBanner({ filteredBots }: { filteredBots: number }) {
+/**
+ * What the switches are actually hiding, counted by the same query that hides it. The self-referral
+ * and author counts used to be the literals `0` while the server returned real ones, so the banner
+ * described a filter that was not running.
+ */
+function BotsFilterBanner({ bots, self, owner }: { bots: number; self: number; owner: number }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)] shadow-[var(--shadow-soft)]">
       <div className='flex items-center gap-2'>
         <span className='flex h-2 w-2 rounded-full bg-[var(--success)]' />
         <span>
           {t('share.filter_stats_summary', {
-            bots: filteredBots,
-            self: 0,
-            owner: 0,
+            bots,
+            self,
+            owner,
           })}
         </span>
       </div>

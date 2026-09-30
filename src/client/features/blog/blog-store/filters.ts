@@ -51,11 +51,12 @@ function setFiltersImpl(
     excludeOwner: newFilters.excludeOwner ?? current.excludeOwner,
   }
   // The store updater has to stay pure (StrictMode runs it twice), so both the write and the
-  // persistence happen outside it — once, in the order the reader's click implies.
+  // persistence happen outside it — once, in the order the reader's click implies. The two list
+  // refetches that used to follow are gone: these switches decide what the analytics endpoint
+  // measures, and the dashboard that reads them re-queries on its own. `loadPosts`/`loadStats` never
+  // sent them, so those requests only re-downloaded the same rows.
   set(updated)
   persistTrafficFilters(updated)
-  void get().loadPosts()
-  void get().loadStats()
 }
 
 function persistTrafficFilters(updated: { excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }): void {

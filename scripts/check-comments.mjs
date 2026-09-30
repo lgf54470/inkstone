@@ -2872,12 +2872,25 @@ const allowed = new Map([
     '// (and this admin\'s) on someone else\'s server for a name they typed.',
   ]],
   ['src/client/features/blog/blog-dashboard-view/index.tsx', [
+    '/**\n * What the switches are actually hiding, counted by the same query that hides it. The self-referral\n * and author counts used to be the literals `0` while the server returned real ones, so the banner\n * described a filter that was not running.\n */',
     '/**\n * The range\'s numbers, and the cumulative counter named as what it is. A card used to answer with\n * whichever of the two was larger (`analytics.totalViews ?? stats.totalViews`), so a week with no\n * visits displayed the blog\'s whole history next to a real PV of 0, and both were labelled the same\n * way. An unloaded payload says "not collected" rather than 0.\n */',
   ]],
   ['src/client/features/blog/blog-dashboard-view/radiogroup-names.test.ts', [
     '/**\n * SH-46 brought the blog dashboard\'s two `Segmented` controls under the same rules\n * the share dashboard already follows: the toolbar range picker carries its own\n * `label`, and the metric picker is named by the card heading it sits beside. The\n * locale is not loaded in this harness, so `t()` echoes the key and the assertions\n * compare against keys.\n */',
     '// A failed assertion must not leave its tree behind: the next case reads the',
     '// first radiogroup in the document, so stale DOM would be attributed to it.',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/traffic-switches.test.ts', [
+    '/**\n * The dashboard is mounted for its side effect only: which question it asks the analytics endpoint.\n * The switches used to be split in two — the dashboard kept its own `excludeBots` and sent that one\n * alone while the store held three that nothing sent — so flipping "exclude self-referrals" in the\n * toolbar changed the label and nothing else.\n */',
+    '// A probe left mounted keeps answering the store, and its request would land in the next case.',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/use-blog-dashboard-view.ts', [
+    '// The three traffic switches live in the store, which the toolbar popover and the settings dialog',
+    '// also write. The dashboard used to keep its own `excludeBots` and send only that one, so a switch',
+    '// flipped anywhere else changed nothing here — and the store\'s own copies changed nothing anywhere.',
+    '// The switches are read here rather than captured: a change to any of them is a new question for',
+    '// the same endpoint.',
+    '/**\n * What the payload means under the switches. A number only counts as filtered when the switch hiding\n * it is on: the server reports all three regardless, and the banner that reads these is describing\n * what is not in the chart above it.\n */',
   ]],
   ['src/client/features/blog/blog-links-view/link-card-row.test.ts', [
     '/**\n * A link\'s address arrives from a reader. Rows stored before the server learned to refuse an\n * unrenderable one still reach this component, so the row itself must not turn that value into an\n * affordance — the browser runs a `javascript:` href in the admin\'s own session.\n */',
@@ -2916,7 +2929,10 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-store/filters.ts', [
     '// The store updater has to stay pure (StrictMode runs it twice), so both the write and the',
-    '// persistence happen outside it — once, in the order the reader\'s click implies.',
+    '// persistence happen outside it — once, in the order the reader\'s click implies. The two list',
+    '// refetches that used to follow are gone: these switches decide what the analytics endpoint',
+    '// measures, and the dashboard that reads them re-queries on its own. `loadPosts`/`loadStats` never',
+    '// sent them, so those requests only re-downloaded the same rows.',
   ]],
   ['src/client/features/blog/blog-store/index.ts', [
     '// Feed the notes store\'s visibility projection (published note ids) without',
