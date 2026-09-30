@@ -2939,6 +2939,8 @@ const allowed = new Map([
     '// count is only used to notice that the list hit its page limit.',
     '// The confirmation names the number it is about to delete: it used to reuse the single-link',
     '// sentence, so deleting forty broken links asked about "this link".',
+    '// One batch request for the whole set: the per-row loop sent a DELETE and a full list reload',
+    '// for each link the checker had selected.',
   ]],
   ['src/client/features/blog/blog-links-view/use-link-checker.ts', [
     '/**\n * How long a stored verdict stays current. The checker used to read its cache without ever looking at\n * the timestamp it wrote, so a result from months ago was displayed — and bulk-deleted on — as if it\n * were this morning\'s.\n */',
@@ -2974,6 +2976,14 @@ const allowed = new Map([
     '// Cleaning by age needs no re-authentication, so the password stays unset.',
     '// The tab switcher and the retention period; nothing else asks for a count.',
   ]],
+  ['src/client/features/blog/blog-store/actions.ts', [
+    '// A delete is structural: it moves the summary counts and can strip a tag of its last post, which',
+    '// is exactly the case the tag list draws its count for once the split counts stop mentioning it.',
+    '/** The aggregates a post change can move; the list and the body-free index are always re-read. */',
+    '/**\n * What a patch invalidates. The rows and the note index carry every field, so both are always\n * re-read; the counts answer narrower questions and are asked for only when the patch moved what\n * they count — the pinned count with `isPinned`, the published split with `isPublished`, the folder\n * split with `folderId`, the tag split and the tag list with `tags`, and a category\'s post count with\n * `categoryId`. Toggling one pin used to re-ask for the dashboard\'s counts and the whole tag list.\n */',
+    '/**\n * What each batch action moves, beyond the list and the index. Only deleting removes posts, so only\n * it can change what the tag list counts; a category move changes the categories\' post counts and no\n * summary count. The fixed reload asked for the tag list on every action and for the categories on\n * none of them.\n */',
+    '/** The reloads one post change asks for; see `patchedPostScopes` and `batchPostScopes`. */',
+  ]],
   ['src/client/features/blog/blog-store/comments-request.test.ts', [
     '/**\n * The search box used to narrow the fetched page in the browser, and the tab badges were counted on\n * that same filtered array — so selecting a tab drew every other tab as zero. The query now goes to\n * the server and the tally comes back from it, which is why late answers cannot be painted over the\n * newer question any more.\n */',
   ]],
@@ -3008,6 +3018,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-store/links.ts', [
     '/**\n * The link list is filtered by the server now, so its answer has to match the filter that is on\n * screen: the request a newer one replaces is cancelled, and an answer that arrives after a newer\n * request went out is dropped. Without this, typing in the search box could show the results of an\n * earlier keystroke — before the server answered the filters, the browser re-filtered whatever\n * arrived and the mismatch corrected itself.\n */',
+    '/**\n * One batch call for a set of links, whichever view selected them. The link checker used to call\n * `deleteLink` per row: deleting twenty broken links was twenty DELETEs and twenty full list\n * reloads. The selection is left alone here — the caller clears it only once the answer says the\n * rows are gone.\n */',
   ]],
   ['src/client/features/blog/blog-store/load-errors.test.ts', [
     '/**\n * A loader that fails must say so. Before this channel existed the failure was only a console line,\n * and every surface rendered it as an empty result — a reader who was offline was told they had no\n * posts. The flag is per scope: one failed list must not paint the others as broken.\n */',
@@ -3047,6 +3058,12 @@ const allowed = new Map([
     '/**\n * Both helpers return the same set when the flag already reads that way, so a successful refresh\n * does not re-render every surface that subscribes to the failure flags.\n */',
     '/** Stamped on success only: a failed load must stay eligible for the next attempt. */',
     '/**\n * What an unread store holds. The stored filters are read when the hub opens (see\n * `hydrateTrafficFilters`), not when this module is evaluated: the module loads with the app, so a\n * read at module scope would touch `localStorage` on every page and in every test for a switch only\n * the blog hub shows.\n */',
+  ]],
+  ['src/client/features/blog/blog-store/targeted-refresh.test.ts', [
+    '/**\n * A mutation used to re-ask for everything the hub caches: toggling one pin cost the post list, the\n * note index, the dashboard\'s counts and the whole tag list. What a change invalidates depends on\n * what it changed, so the patch itself decides which aggregates are asked for again.\n */',
+    '// The sidebar draws its "Pinned" count from the summary stats, so a pin does move one; the tag',
+    '// list is the expensive question this used to ask on every patch and never needed answered.',
+    '/**\n * The checker\'s bulk delete used to call `deleteLink` per row: twenty broken links were twenty\n * DELETEs and twenty full list reloads. The batch endpoint answers the whole set with one call, and\n * the list is reloaded once.\n */',
   ]],
   ['src/client/features/blog/blog-store/types.ts', [
     '/**\n * The lists whose load result a view draws. A failed load is a state of its own — the alternative\n * was rendering it as an empty list, which told the reader their data was gone.\n */',

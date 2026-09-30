@@ -85,12 +85,11 @@ function useBlogLinksBatchOperations(
       tone: 'danger',
     })
     if (!ok) return false
-    let failed = false
-    for (const id of ids) {
-      if (!(await store.deleteLink(id))) failed = true
-    }
-    if (!failed) toast({ title: t('blog.link_deleted'), tone: 'success' })
-    return !failed
+    // One batch request for the whole set: the per-row loop sent a DELETE and a full list reload
+    // for each link the checker had selected.
+    const deleted = await store.batchDeleteLinks(ids)
+    if (deleted) toast({ title: t('blog.link_deleted'), tone: 'success' })
+    return deleted
   }
 
   return { handleBatch, handleBatchDeleteLinks }
@@ -122,6 +121,7 @@ function useBlogLinksStore() {
   const toggleFavoriteLink = useBlogStore((s) => s.toggleFavoriteLink)
   const reorderLinks = useBlogStore((s) => s.reorderLinks)
   const batchLinks = useBlogStore((s) => s.batchLinks)
+  const batchDeleteLinks = useBlogStore((s) => s.batchDeleteLinks)
   const createLinkCategory = useBlogStore((s) => s.createLinkCategory)
   const updateLinkCategory = useBlogStore((s) => s.updateLinkCategory)
   const deleteLinkCategory = useBlogStore((s) => s.deleteLinkCategory)
@@ -133,7 +133,7 @@ function useBlogLinksStore() {
     linkSearch, setLinkSearch, selectedLinkIds, toggleSelectLink,
     selectAllLinks, clearLinkSelection, loadLinks, createLink,
     updateLink, deleteLink, updateLinkStatus, togglePinLink,
-    toggleFavoriteLink, reorderLinks, batchLinks,
+    toggleFavoriteLink, reorderLinks, batchLinks, batchDeleteLinks,
     createLinkCategory, updateLinkCategory, deleteLinkCategory, importLinksData,
   }
 }

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
-import type { BlogCommentStatus } from '@shared/types'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
 import { useUi } from '../../store/ui'

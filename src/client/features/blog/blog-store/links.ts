@@ -24,6 +24,7 @@ export const blogLinksActions = (
   | 'toggleFavoriteLink'
   | 'reorderLinks'
   | 'batchLinks'
+  | 'batchDeleteLinks'
   | 'createLinkCategory'
   | 'updateLinkCategory'
   | 'deleteLinkCategory'
@@ -59,6 +60,7 @@ export const blogLinksActions = (
   toggleFavoriteLink: (id, isFavorite) => toggleFavoriteLinkImpl(id, isFavorite, get),
   reorderLinks: (orders) => reorderLinksImpl(orders, get),
   batchLinks: (action, categoryId) => batchLinksImpl(action, categoryId, set, get),
+  batchDeleteLinks: (ids) => batchDeleteLinksImpl(ids, set, get),
 
   createLinkCategory: (data) => createLinkCategoryImpl(data, get),
   updateLinkCategory: (id, patch) => updateLinkCategoryImpl(id, patch, get),
@@ -151,6 +153,31 @@ async function batchLinksImpl(
   try {
     await api.blog.links.batch(action, Array.from(selectedLinkIds), categoryId)
     set({ selectedLinkIds: new Set() })
+    await get().loadLinks()
+    return true
+  } catch (error) {
+    reportBlogMutationError(error)
+    return false
+  } finally {
+    set({ batchBusy: false })
+  }
+}
+
+/**
+ * One batch call for a set of links, whichever view selected them. The link checker used to call
+ * `deleteLink` per row: deleting twenty broken links was twenty DELETEs and twenty full list
+ * reloads. The selection is left alone here — the caller clears it only once the answer says the
+ * rows are gone.
+ */
+async function batchDeleteLinksImpl(
+  ids: string[],
+  set: SetBlogStoreState,
+  get: () => BlogStoreState,
+): Promise<boolean> {
+  if (ids.length === 0) return false
+  set({ batchBusy: true })
+  try {
+    await api.blog.links.batch('delete', ids)
     await get().loadLinks()
     return true
   } catch (error) {

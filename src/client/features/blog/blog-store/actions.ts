@@ -1,3 +1,4 @@
+import type { BlogPost } from '@shared/types'
 import { api } from '../../../lib/api'
 import { reportBlogMutationError, runBlogMutation } from './mutation'
 import type { BlogStoreState, SetBlogStoreState } from './types'
@@ -147,7 +148,7 @@ async function updatePostImpl(
   }))
   try {
     await api.blog.posts.patch(id, patch)
-    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags(), get().loadPostIndex()])
+    await Promise.all(postChangeReloads(patchedPostScopes(patch), get))
     return true
   } catch (error) {
     set((state) => ({
@@ -159,9 +160,11 @@ async function updatePostImpl(
 }
 
 async function deletePostImpl(id: string, get: () => BlogStoreState): Promise<boolean> {
+  // A delete is structural: it moves the summary counts and can strip a tag of its last post, which
+  // is exactly the case the tag list draws its count for once the split counts stop mentioning it.
   return runBlogMutation(
     () => api.blog.posts.remove(id),
-    () => Promise.all([get().loadPosts(), get().loadStats(), get().loadPostIndex()]),
+    () => Promise.all(postChangeReloads(['stats', 'tags'], get)),
   )
 }
 
@@ -186,7 +189,7 @@ async function batchPostsImpl(
       isPinned: pinnedState,
     })
     get().clearPostSelection()
-    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags(), get().loadPostIndex()])
+    await Promise.all(postChangeReloads(batchPostScopes(action), get))
     return true
   } catch (error) {
     reportBlogMutationError(error)
@@ -194,6 +197,56 @@ async function batchPostsImpl(
   } finally {
     set({ batchBusy: false })
   }
+}
+
+/** The aggregates a post change can move; the list and the body-free index are always re-read. */
+type PostChangeScope = 'stats' | 'tags' | 'categories'
+
+/**
+ * What a patch invalidates. The rows and the note index carry every field, so both are always
+ * re-read; the counts answer narrower questions and are asked for only when the patch moved what
+ * they count — the pinned count with `isPinned`, the published split with `isPublished`, the folder
+ * split with `folderId`, the tag split and the tag list with `tags`, and a category's post count with
+ * `categoryId`. Toggling one pin used to re-ask for the dashboard's counts and the whole tag list.
+ */
+function patchedPostScopes(patch: Partial<BlogPost>): PostChangeScope[] {
+  const keys = new Set(Object.keys(patch))
+  const scopes: PostChangeScope[] = []
+  if (keys.has('isPublished') || keys.has('isPinned') || keys.has('folderId') || keys.has('tags')) scopes.push('stats')
+  if (keys.has('tags')) scopes.push('tags')
+  if (keys.has('categoryId')) scopes.push('categories')
+  return scopes
+}
+
+/**
+ * What each batch action moves, beyond the list and the index. Only deleting removes posts, so only
+ * it can change what the tag list counts; a category move changes the categories' post counts and no
+ * summary count. The fixed reload asked for the tag list on every action and for the categories on
+ * none of them.
+ */
+function batchPostScopes(action: Parameters<BlogStoreState['batchPosts']>[0]): PostChangeScope[] {
+  switch (action) {
+    case 'setCategory':
+      return ['categories']
+    case 'delete':
+      return ['stats', 'tags']
+    case 'publish':
+    case 'unpublish':
+    case 'setPinned':
+    case 'setFolder':
+      return ['stats']
+  }
+}
+
+/** The reloads one post change asks for; see `patchedPostScopes` and `batchPostScopes`. */
+function postChangeReloads(scopes: PostChangeScope[], get: () => BlogStoreState): Array<Promise<void>> {
+  return [
+    get().loadPosts(),
+    get().loadPostIndex(),
+    ...(scopes.includes('stats') ? [get().loadStats()] : []),
+    ...(scopes.includes('tags') ? [get().loadTags()] : []),
+    ...(scopes.includes('categories') ? [get().loadCategories()] : []),
+  ]
 }
 
 async function updateCommentStatusImpl(

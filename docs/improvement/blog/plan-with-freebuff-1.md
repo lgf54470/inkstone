@@ -151,14 +151,21 @@
   - 先红证据：把计数查询改回带 status 条件后计数用例 **1 failed / 52 skipped**；把 search 写死为 undefined 后客户端用例 **1 failed / 2 skipped**（均恢复后全绿）。
   - 回归：`typecheck` 绿；blog 相关 21 文件 121 条全绿；`test:unit` 578 文件 5241 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线：按门槛把评论列表滚区抽成 `CommentsList`、搜索抽成 `useCommentSearchBox`、发布弹窗取数抽成 `usePublishDialogData`）。
   - 已知限制：`counts` 描述的是「当前搜索词下的全站评论」，不是全局——搜索时页签计数随搜索收敛是刻意的。
-- [x] B3-07 **ENG-07 + ENG-08 + ENG-14** stats 七条串行改 `db.batch`/`GROUP BY`；analytics 六段合并 + 分布改 SQL 聚合；补三条索引 — 已提交（hash 由下一提交回填，见进度日志）
+- [x] B3-07 **ENG-07 + ENG-08 + ENG-14** stats 七条串行改 `db.batch`/`GROUP BY`；analytics 六段合并 + 分布改 SQL 聚合；补三条索引 — 已提交 `8fec693d`
   - 实现（ENG-07）：`loadBlogStats` 由「7 条串行计数 + 一次无 LIMIT 全表扫 + JS `JSON.parse`」改为**一个 `db.batch` 五条聚合**：文章总览一条（total/published/pinned/`SUM(views)`）、评论一条（total/pending）、分类一条、文件夹一条（`GROUP BY folder_id`，带 published 拆分）、标签一条（`json_each` 分组，带 published 拆分）。新模块 `post-counts.ts` 承载后两条与行→值的映射，`GET /tags` 改为复用标签计数（它原来自己又扫一遍同一批行），`summarizePostTagCounts` 仅剩公开标签端点还在用（那里带着 2000 篇的窗口语义，不在本批改）。tags 的解析全部下推 SQL：损坏行用嵌套 `CASE`（`json_valid` → `json_type = 'array'`，同 `lib/share-selection-sql.ts` 的守卫）跳过而不是让整个面板 500；trim、空成员、非字符串成员的语义与旧 JS 累加器一致（后者按 JSON 文本字符串化）。
   - 实现（ENG-08）：`loadBlogAnalyticsPayload` 的 summary、上一窗口、过滤器计数、最近访问与**八条访问聚合**合并为**一次 `db.batch`**（只剩 topPosts 的标题查询需要第二跳）；`lib/visit-aggregates.ts` 的有界区间不再取明细行，与 `all` 一样走 8 条 SQL 聚合（总量、时间桶、五个分布、per-target），`visitAggregateFromResults` 去掉按区间分支；仪表盘切区间时 abort 在飞请求（`api.blog.analytics` 本就收 signal），迟到的旧区间不再覆盖新图，快速切换也不再并发放大。
   - 实现（ENG-14）：三条索引——`idx_blog_posts_user_pinned (user_id, is_pinned DESC, published_at DESC)`（列表默认序与 pinned 筛选）、`idx_blog_posts_user_views (user_id, views DESC)`（`sort=views_desc`）、`idx_blog_links_user_order (user_id, is_pinned DESC, pinned_order ASC, sort_order ASC, created_at DESC)`（友链主列表真实 ORDER BY；旧索引中间卡着 `status` 且方向不符）。两条 posts 索引放在新常量 `BLOG_POSTS_ORDER_INDEX_STATEMENTS`（刻意不进 `BLOG_POSTS_INDEX_STATEMENTS`，避免改动已应用的迁移 52 的语句集），与 links 那条一起由 `BLOG_ORDER_INDEX_STATEMENTS` 同时供给 schema 路径与迁移 **53**；`REQUIRED_INDEXES` 同步。评论索引缺 `user_id` 前缀一条（`blog_comments` 无该列）按 review 的建议不在本批夹带，属表结构级改动。
   - 复现测试：`tests/blog-routes.test.ts` 新增 3 条（stats 一次 batch 且不取原始 `tags` 行、损坏 tags 不 500、`/tags` 不再取行解析、有界区间不取明细行且只剩一跳）；`tests/visit-aggregates.test.ts` 新增/改写 2 条（有界区间同为八条语句、有界区间与行路径逐值等价）；`traffic-switches.test.ts` 新增 1 条（切区间取消前一发）。实现前实测 **4 failed**（有界区间取明细行、`SELECT tags FROM blog_posts`、`/stats` 的 batch/direct 往返数、八条语句预算），实现后全绿。
   - 回归：`typecheck` 绿；目标 10 文件 263 条全绿（含 share 双覆盖 189 条）；`test:unit` 578 文件 5246 通过 / 1 skipped；九项静态门禁绿（`size` 因 `migrations.ts` 801→810 重建基线，差异仅此一行；`traffic-switches.test.ts` 的 describe 主体超 50 行靠拆分两个 describe 首修，未进基线）。
   - 已知限制：分享侧的有界区间同样改为 8 条聚合语句（语句数变多，但不再把整个窗口读进内存）；`json_each` 只在 SQLite 的 JSON 支持可用时成立（D1/本地 sqlite 均内置）；`/stats` 的标签计数现在遵循 SQL 侧的字符串化规则。
-- [ ] B3-08 **ENG-09 + ENG-10** 写操作 refetch 定向收敛 + 回滚；友链批量删除走 `batch` 端点
+- [x] B3-08 **ENG-09 + ENG-10** 写操作 refetch 定向收敛；友链批量删除走 `batch` 端点 — 已提交（hash 由下一提交回填，见进度日志）
+  - 实现（ENG-09）：`updatePost` 不再固定重拉四个 loader——列表与记事索引永远重读（每一列都可能出现在那里），stats/tags/categories 只在 patch 触及对应聚合时才问：`isPinned` → stats、`isPublished` → stats、`folderId` → stats、`tags` → stats + tags、`categoryId` → categories（`GET /categories` 的 `postsCount` 是逐分类子查询）；标题类 patch 只重读列表与索引，等于省下原来每次 patch 都跑的标签全扫。`batchPosts` 同规则：`setCategory` → categories、`delete` → stats + tags、其余（publish/unpublish/setPinned/setFolder）→ stats；`deletePost` 一并补上 tags 重读（删掉某标签的最后一篇后 `stats.tagCounts` 不再提它，侧栏会回落到标签列表里那个过期的 `postsCount`，这是删文章唯一会漏的计数）。
+  - 与 review 的差异（订正）：review 写「pin/title 不需要 stats 与 tags」——标题成立，**pin 不成立**：侧栏「已置顶」计数取 `stats.pinnedPosts`（`use-blog-hub-sidebar.tsx:244`），pin 确实移动一个计数，故保留 pin → stats；本条真正省下的是每次 patch 都跑的 `GET /tags`（JSON 全扫）与本来就不该问的 categories。
+  - 实现（ENG-10）：store 新增 `batchDeleteLinks(ids)`（一次 `links.batch('delete', ids)` + 一次 `loadLinks`）；检测器的 `handleBatchDeleteLinks` 从逐条 `deleteLink` 改调它——删 20 条从 20 DELETE + 20 次全量重拉降到 2 个请求。选择集仍由调用方在成功后才清空（失败保留选择的行为不变），`batchBusy` 防重复提交。
+  - `onSaved` 已是定向的：B3-05 起它走非强制 `loadHubData()`，只补当前 tab 且超过 30 秒窗口的作用域；mutation 自己已经把相关作用域盖章，所以它通常什么都不问。
+  - 复现测试：新增 `blog-store/targeted-refresh.test.ts` 10 条（pin 不拉 tags、标题不拉任何计数、publish 拉 stats 不拉 tags、tags 补拉 tags、categoryId 只拉 categories、批量 setPinned/setCategory/delete 各自的作用域、`batchDeleteLinks` 单请求与失败不重拉）。实现前实测 **7 failed / 2 passed**（另 2 条锁的是旧实现已成立的行为）；再做一次「作用域恒为三项」的变异得到 **4 failed**。
+  - 回归：`typecheck` 绿（顺手清掉 B3-06 遗留的未用 import `BlogCommentStatus`，它让 `tsc -b` 报错）；`src/client/features/blog` 19 文件 68 条全绿；九项静态门禁绿（`size` 未动基线）。
+  - 已知限制：`savePost`（新建）仍是结构性全量（posts/stats/tags/postIndex）——新文章可以带来新标签；单篇删除后分类的 `postsCount` 仍要等下一次 `loadCategories`（未在本条扩面）。
 - [ ] B3-09 **ENG-11 + ENG-12 + ENG-13 + ENG-15** barrel 拆瘦让 lazy 生效 + 去 `icons` 全量 registry + qrcode 懒载 + geo/device 纯函数下沉；列表 `memo`/`useMemo`/窗口化；图片 lazy + 尺寸；link checker 批次 15 / abort / TTL / updater 纯净 / progressbar
 
 ## 批次 4 · UI / a11y / i18n / 令牌
@@ -208,7 +215,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-30 | B3-07 ENG-07/ENG-08/ENG-14 stats 计数并批 + 访问聚合统一 SQL + 三条顺序索引 | （下一提交回填） | `typecheck` 绿；目标 10 文件 263 条全绿（含 share 双覆盖 189 条）；先红 4 failed；`test:unit` 578 文件 5246 通过 / 1 skipped；九项静态门禁绿（`size` 重建基线：仅 `migrations.ts` 801→810） | 评论 `user_id` 前缀未做（表结构级，另开）；share 有界区间同为 8 条语句；`json_each` 依赖 SQLite JSON1 |
+| 2026-09-30 | B3-08 ENG-09/ENG-10 写操作定向失效 + 友链批量删除走 `batch` | （下一提交回填） | `typecheck` 绿（顺手清 B3-06 未用 import）；`src/client/features/blog` 19 文件 68 条全绿（含新 10 条）；实现前 7 failed、作用域变异 4 failed；九项静态门禁绿（`size` 未动基线） | `savePost` 仍结构性全量；单篇删除不刷新分类 `postsCount`；review 的「pin 不需要 stats」按侧栏计数订正 |
+| 2026-09-30 | B3-07 ENG-07/ENG-08/ENG-14 stats 计数并批 + 访问聚合统一 SQL + 三条顺序索引 | 8fec693d | `typecheck` 绿；目标 10 文件 263 条全绿（含 share 双覆盖 189 条）；先红 4 failed；`test:unit` 578 文件 5246 通过 / 1 skipped；九项静态门禁绿（`size` 重建基线：仅 `migrations.ts` 801→810） | 评论 `user_id` 前缀未做（表结构级，另开）；share 有界区间同为 8 条语句；`json_each` 依赖 SQLite JSON1 |
 | 2026-09-30 | B3-06 ENG-06/ENG-16 评论限页 + 服务端搜索 + 服务端计数 + 发布弹窗取数修复 | 3d7c6d9e | `typecheck` 绿；blog 相关 21 文件 121 条全绿（含新 5 条）；两处先红变异各 1 failed；`test:unit` 578 文件 5241 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线） | 计数随搜索上下文收敛（刻意）；与计划的「用 stats 计数」有差异（stats 只有 total/pending） |
 | 2026-09-30 | B3-05 ENG-05 hub 数据按 tab 收敛 + 30s SWR + 删重复 effect | f74e68e1 | `typecheck` 绿；blog 相关 19 文件 65 条全绿（含新 3 条）；作用域突变先红 1 failed；`test:unit` 577 文件 5236 通过 / 1 skipped；九项静态门禁绿 | 未访问 tab 的侧栏徽标可能滞后（待 B3-06 的 stats 计数）；dashboard 不再预载 posts |
 | 2026-09-30 | B3-02 ENG-02 文章列表去正文 + LIMIT/OFFSET + 独立总数 + tag 下推 + 分页控件 | 9b39fc57 | `typecheck` 绿；`tests/blog-routes.test.ts` 51 条（含新 4 条）+ 客户端新 6 条全绿；两处先红变异各 1 failed；`test:unit` 576 文件 5233 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线） | `post-index` 刻意不分页（每篇记事都要答案）；`limit` 上限 200；demo 后端已同步 |

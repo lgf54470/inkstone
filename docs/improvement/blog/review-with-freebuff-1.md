@@ -285,16 +285,20 @@
 - **建议**：与 share 侧共用 `visit-aggregates.ts`，改动需双覆盖回归。
 - **落地（B3-07）**：`visitAggregateStatements` 对任何区间都返回同一组 8 条 SQL 聚合（总量、时间桶、五个分布、per-target），旧的「有界区间取明细行 + `aggregateFromRows` 内存分桶」分支删除；`visitAggregateFromResults` 同步去分支，`aggregateFromRows` 只留作对照实现（`tests/visit-aggregates.test.ts` 的自取行参考路径继续逐值对拍，含新增的有界区间等价用例）。`loadBlogAnalyticsPayload` 把 summary、上一窗口、过滤器计数、最近访问与 8 条聚合合并为一次 `db.batch`（只有 top-post 标题需第二跳），往返数计数测试钉住 batch=1、direct=1；仪表盘切区间时 abort 在飞请求（`api.blog.analytics` 收 signal），旧区间迟到不再覆盖新图。share 侧双覆盖已随 `tests/share-routes.test.ts` 189 条回归。
 
-#### ENG-09 [P1][开放] 写操作后的全量重拉放大 3～12 倍，且乐观更新失败无回滚
+#### ENG-09 [P1][已修] 写操作后的全量重拉放大 3～12 倍，且乐观更新失败无回滚
 - **问题**：`blog-store/actions.ts:128-139` 的 `updatePost` 先 `set` 乐观改 → `await api…patch` **无 try/catch** → `Promise.all([loadPosts, loadStats, loadTags])`。一次 pin 切换 = 1 PATCH + 全表 posts + stats(8 条 D1) + tags(全表扫) ≈ **4 请求 / 11 条 D1 / ~1.4 MB 下行**，实际变更 1 bit。一次发布保存 = create + 3 loader + `onSaved → loadAll`(8 loader) ≈ **12 请求 / ~2.6 MB**。
 - **方案**：`try/catch` + 快照回滚 + toast；按变更内容定向失效（pin/title 不需要 stats 与 tags；`onSaved` 改为定向刷新当前 tab）；把「全量重拉」限制为结构性变更（增删文章/分类）。
 - **范围**：`blog-store/actions.ts`、`blog-store/links.ts`、`use-blog-hub-modal.ts`。代价 **M**。
+- **落地（B3-01 `7188ae3a` + B3-08）**：失败语义在 B3-01 完成（全部 mutation 包 `try/catch`、乐观更新失败快照回滚、`danger` toast，`void updatePost(...)` 不再产生未处理 rejection）。定向失效在 B3-08：`updatePost` 的列表与记事索引永远重读（每一列都可能出现在那里），stats/tags/categories 只在 patch 触及对应聚合时才问——`isPinned`/`isPublished`/`folderId` → stats，`tags` → stats + tags，`categoryId` → categories；标题类 patch 只重读两者。`batchPosts` 按 action 定：`setCategory` → categories、`delete` → stats + tags、其余 → stats。`deletePost` 顺带补上 tags 重读（删掉某标签的最后一篇后 `stats.tagCounts` 不再提它，侧栏会回落到标签列表里过期的 `postsCount`）。`onSaved` 自 ENG-05 起已走非强制 `loadHubData()`，只补当前 tab 且超 30 秒窗口的作用域，而 mutation 自己已盖章，所以它通常什么都不问。
+  - **订正**：本条写「pin/title 不需要 stats 与 tags」——**pin 需要 stats**：侧栏「已置顶」计数取 `stats.pinnedPosts`（`blog-hub-sidebar/use-blog-hub-sidebar.tsx:244`），pin 确实移动一个计数。真正省下的是每次 patch 都跑的 `GET /tags`（JSON 全扫，B3-07 后仍是这一条最重）与本来就不该问的 categories。
+  - 复现测试 `blog-store/targeted-refresh.test.ts` 10 条；实现前 **7 failed / 2 passed**，作用域变异后 **4 failed**。
 
-#### ENG-10 [P1][开放] 友链批量删除退化为 N 次单删 + N 次全表重拉
+#### ENG-10 [P1][已修] 友链批量删除退化为 N 次单删 + N 次全表重拉
 - **问题**：`use-blog-links-view.ts:76-91` 的 `handleBatchDeleteLinks` 是 `for (const id of ids) await store.deleteLink(id)`，而 `blog-store/links.ts` 的每个 mutation 都 `await loadLinks()`。服务端已有 `batch` 端点且用单条 `db.batch` 实现（`links.ts:287-302`）。
 - **量级**：删 20 条 = `20 × (DELETE + 全量 loadLinks)` = **40 请求 / ~2.1 MB**。
 - **方案**：改走 `batch('delete', ids)` + 一次重拉；`handleBatch` 已经走对了，两处保持一致。
 - **范围**：`use-blog-links-view.ts`、`blog-store/links.ts`。代价 **S**。
+- **落地（B3-08）**：store 新增 `batchDeleteLinks(ids)`（一次 `links.batch('delete', ids)` + 一次 `loadLinks`），检测器的 `handleBatchDeleteLinks` 改调它：删 20 条从 20 次 DELETE + 20 次全量重拉（≈40 请求）降到 2 个请求。选择集仍由调用方在成功后才清空（失败保留选择的行为不变），store 的 `batchBusy` 防重复提交。复现测试 2 条（单请求 + 失败不重拉），实现前因 store 无此 action 而 `TypeError`（红）。
 
 #### ENG-11 [P1][开放] barrel 让 lazy 失效，`lucide` 全量 registry 被拖进主路径
 - **问题**：`features/blog/index.ts` 是 4 条 `export *`，而 `features/sidebar/sidebar.tsx:22`、`features/list/note-list/note-row-items.tsx:23` 从该 barrel 静态 import → `app-shell.tsx:31` 的 `lazy(() => import('../blog'))` 形同虚设。`link-icon-selector.tsx:2,30`（`import { icons }` + `Object.keys(allIcons)`）与 `link-dynamic-icon.tsx:3` 把 lucide 的完整图标映射表（前轮实测 1,755 个绑定）拉进 blog chunk；`link-qr-modal.tsx:3` 的 `qrcode.react` 同样随静态链进入。

@@ -177,6 +177,7 @@ export interface BlogStoreState {
     action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'pin' | 'unpin' | 'favorite' | 'unfavorite',
     categoryId?: string | null,
   ) => Promise<boolean>
+  batchDeleteLinks: (ids: string[]) => Promise<boolean>
 
   createLinkCategory: (data: { name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<BlogLinkCategory | null>
   updateLinkCategory: (id: string, patch: { name?: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<boolean>
