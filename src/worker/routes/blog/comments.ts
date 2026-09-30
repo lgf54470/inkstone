@@ -108,6 +108,19 @@ async function assertOwnedBlogComment(db: D1Database, id: string, userId: string
   if (!comment) throw ApiError.notFound('Comment not found')
 }
 
+// D1 refuses a statement that binds more than 100 variables, and this action binds one per id, so a
+// selection wider than that is split rather than handed to the platform to fail on: the ids are
+// bound per chunk, and every chunk keeps the same ownership predicate.
+const COMMENT_ID_CHUNK = 50
+
+function chunkIds(ids: readonly string[]): string[][] {
+  const groups: string[][] = []
+  for (let index = 0; index < ids.length; index += COMMENT_ID_CHUNK) {
+    groups.push(ids.slice(index, index + COMMENT_ID_CHUNK))
+  }
+  return groups
+}
+
 function registerBlogCommentsBatchRoute(blogManageRoutes: Hono<AppBindings>): void {
   blogManageRoutes.post('/comments/batch', requireAuth, async (c) => {
     const userId = c.get('userId')!
@@ -115,30 +128,27 @@ function registerBlogCommentsBatchRoute(blogManageRoutes: Hono<AppBindings>): vo
 
     if (!body.commentIds?.length) return c.json({ ok: true, count: 0 })
 
-    const placeholders = body.commentIds.map((_, i) => `?${i + 2}`).join(',')
+    const targetStatus: BlogCommentStatus =
+      body.action === 'approve' ? 'approved' : body.action === 'reject' ? 'rejected' : 'spam'
 
-    if (body.action === 'delete') {
-      await c.env.DB
-        .prepare(`
-          DELETE FROM blog_comments
-          WHERE id IN (${placeholders})
-          AND post_id IN (SELECT id FROM blog_posts WHERE user_id = ?1)
-        `)
-        .bind(userId, ...body.commentIds)
-        .run()
-    } else {
-      const targetStatus: BlogCommentStatus =
-        body.action === 'approve' ? 'approved' : body.action === 'reject' ? 'rejected' : 'spam'
-
-      await c.env.DB
-        .prepare(`
-          UPDATE blog_comments
-          SET status = ?1
-          WHERE id IN (${placeholders})
-          AND post_id IN (SELECT id FROM blog_posts WHERE user_id = ?2)
-        `)
-        .bind(targetStatus, userId, ...body.commentIds)
-        .run()
+    for (const chunk of chunkIds(body.commentIds)) {
+      // The ids start after the parameters each branch binds first: one for the delete (the owner),
+      // two for the update (status, owner). Numbering them from a shared offset made `?2` mean both
+      // the owner and the first id, which the platform answers with a parameter-count error on every
+      // call — the update branch had never been asked to change a single comment.
+      const statement = body.action === 'delete'
+        ? c.env.DB.prepare(`
+            DELETE FROM blog_comments
+            WHERE id IN (${chunk.map((_, i) => `?${i + 2}`).join(',')})
+            AND post_id IN (SELECT id FROM blog_posts WHERE user_id = ?1)
+          `).bind(userId, ...chunk)
+        : c.env.DB.prepare(`
+            UPDATE blog_comments
+            SET status = ?1
+            WHERE id IN (${chunk.map((_, i) => `?${i + 3}`).join(',')})
+            AND post_id IN (SELECT id FROM blog_posts WHERE user_id = ?2)
+          `).bind(targetStatus, userId, ...chunk)
+      await statement.run()
     }
 
     return c.json({ ok: true, count: body.commentIds.length })

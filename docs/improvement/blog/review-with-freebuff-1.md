@@ -91,7 +91,7 @@
 - **范围**：`links.ts` 四处。代价 **S**。
 - **建议**：与 SEC-01 同批；先写复现测试（X 用户持 Y 用户的 id 调用 upsert，断言 404/403 且 Y 的行未变）。
 
-#### SEC-03 [P1][开放] 五个批量 schema 没有上限，≥100 条绑定必然 500
+#### SEC-03 [P1][已修] 批量请求无上限；评论批量改状态恒 500（占位符 ?2 既当 owner 又当首个 id）
 - **问题**：`schemas.ts` 的 `postIds`（:23）、`commentIds`（:79）、`linkIds`（:165）、`orders`（:172）、`links`（:194）、`categories`（:211）只有类型或 `min(1)`，没有 `.max()`；请求体上限 `JSON_BODY_LIMITS.note ≈12.6 MB`。D1 单语句绑定变量上限 100，仓库在 `files/helpers.ts` 与图谱侧已确立「100 条/批」的分块约定，blog 是唯一漏网模块。叠加 `posts.ts:431-433` 是 `for` 循环逐条 `await` 非原子——第 2 条语句挂掉时第 1 条（删文章）已提交，是「500 + 部分提交」的合流点。
 - **方案**：五个 schema 一律 `.max(100)`，超限 400 并给出可读文案；服务端复用既有分块范式（`files/helpers.ts:30,102-103`）与 `db.batch(chunk)`；批量删除改成单条带 owner 的语句，避免「先删评论后删文章」的中途失败。
 - **范围**：`schemas.ts`、`posts.ts`、`comments.ts`、`links.ts`、`organizer.ts`；前端 `blog-store/actions.ts` 目前只校验非空，补超限提示。代价 **S**。
@@ -131,7 +131,7 @@
 - **范围**：`db/schema/{tables,blog-posts,migrations,checks,indexes}.ts`、`posts.ts`、`settings.ts`、`public.ts`、`public-comments.ts`、`tests/schema-migrations.test.ts`。代价 **M**（DDL 部分 S，核验与测试 M）。
 - **建议**：**单独一个提交**，且要求部署侧先备份——表重建不可逆，回滚只能从备份恢复；`check-migration-immutability` 与 schema 测试是这条的守卫。顺序上必须在 SEC-01 之后（per-user slug 需要 owner 身份），并与前台 `/u/<username>/` 路由同时上线，否则同一 slug 在旧 URL 上会歧义。
 
-#### SEC-09 [P1][开放] 站点设置「写按用户、读全站」
+#### SEC-09 [P1][已修] 站点设置「写按用户、读全站」
 - **问题**：`getBlogSettings(db, userId?)` 用 userId 是否存在决定键名（`settings.ts:38-39`），写入固定带 userId（`:64,88`），而公开侧 `public.ts:66`（`/site`）与 `public-comments.ts:61`（`requireCommentApproval`）都不传 → 永远读**没有任何写入方**的 `blog_settings_global`。
 - **影响**：站点名/简介/社交链接/外观/每页条数对前台全部无效；最严重的是把「评论需审核」改成 `false` 后公开端点仍按默认 `true` 走（评论仍进 pending）。此外 `tests/blog-routes.test.ts` 里把这一错误行为当成了期望断言，需要一并订正。
 - **方案**：删掉 `userId?` 的双键设计，统一为「一个 owner 一个键」（与 SEC-01 同源），公开侧按解析出的 owner 读；订正测试断言。

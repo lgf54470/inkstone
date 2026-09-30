@@ -42,8 +42,14 @@
   - 复现测试：新增 `tests/blog-slug-scope.test.ts`（4 条：两账号同名 slug 均可发布、同账号重复仍 409、`check-slug` 只答自己的帖子、公开详情各取各家）；`tests/schema-migrations.test.ts` 增一条遗留库重建用例（先建旧形状 + 旧索引 + 一行数据，删 `schema_migrations >= 52` 后重跑 `initializeDatabase`：数据保留、跨账号同名插入成功、同账号重复被 UNIQUE 拒、旧索引名消失、新索引存在）。
   - 回归：`typecheck` 绿；`test:unit` 5168 通过 / 1 失败（仍为既有 kanban 用例）；7 项静态门禁绿（`size:check` 因 migrations.ts 793→801 行重建基线，差异仅此一行）；已跑 `npm run deploy` 前置无涉（本批未部署）。
   - **部署要求（不可逆，必须遵守）**：上生产前先备份 D1（`wrangler d1 export` 或既有备份链路）；迁移在一个 D1 batch（事务）里完成，拷贝失败即整体回滚，回滚路径只能是「从备份恢复并回退代码」；本仓 fork 不自行部署。
-- [ ] B1-04 **SEC-09** 站点设置单一键（per-user），公开侧按 owner 读；订正 `tests/blog-routes.test.ts` 里把错误行为钉成期望的断言
-- [ ] B1-05 **SEC-03** 五个批量 schema `.max(100)` + 分块（复用 `files/helpers.ts` 约定）+ 批量删除改单条带 owner 的语句
+- [x] B1-04 **SEC-09** 站点设置单一键（per-user），公开侧按 owner 读；订正 `tests/blog-routes.test.ts` 里把错误行为钉成期望的断言 — 已提交 `00dbfa9d`
+  - 实现：`settings.ts` 的 `getBlogSettings`/`saveBlogSettings` 的 `userId` 改为必填，键由 `blogSettingsKey(userId)` 唯一给出（删掉 `blog_settings_global` 分支）；解析失败改记日志；`/site` 断言已在 B1-01 订正。
+  - 结论订正：公开侧「写按用户、读全站」实际由 B1-01 绑定 owner 后已闭合；本条实际清掉的是「缺账号则读全局键」这条死分支——它让任何忘记传 owner 的调用静默拿到默认值。新测试钉住「无人认领的 `blog_settings_global` 行不被读」。仓库历史上无人写过全局键（`git log -S` 可查），故不需数据迁移。
+- [x] B1-05 **SEC-03** 批量请求上限 + 分块 + 分组原子化 — 已提交（hash 见下一提交）
+  - 实现：`schemas.ts` 新增 `BATCH_ROW_LIMIT = 1000` 并加在 `postIds` / `commentIds` / `linkIds` / `orders` / 导入的 `links`、`categories` 上（超限 400 并带可读文案）；`comments.ts` 按 50 一条分块；`posts.ts` 的每组语句改走 `db.batch`（一次事务，不再「先删评论后删文章」中途失败）。
+  - 与计划的差异（有意）：计划写「五个 schema 一律 `.max(100)`」，但 HEAD 上已有 `tests/blog-routes.test.ts` 的 SH-42 用例（120 篇文章批量删除/发布必须成功，靠分块达成），硬上限 100 会把既有行为改成 400。故上限取「一次请求的工作量上界」（1000），把平台限制交给分块。
+  - **顺带修掉一个此前无覆盖的真 bug**：`comments.ts` 的批量改状态分支占位符从 `?2` 起编号，而 `?2` 同时是 owner，绑定数比占位符多一个 → 该接口对任何「批准/驳回/标垃圾邮件」调用都 500（只有 delete 分支正确）。已按分支各自起步编号，并补两条用例（单条 150 条）。
+  - 复现测试：`tests/blog-routes.test.ts` 新增「单条改状态」「150 条改状态（分块）」「超过 1000 条一律 400（posts/comments/links/import 四处）」，共 3 条 describe。
 - [ ] B1-06 **SEC-04** 共享 `isSafeExternalUrl()`（http/https + 站内相对 + mailto），schema 强制 + 渲染侧兜底（含 `frontendUrl` / `socialLinks`）
 - [ ] B1-07 **SEC-05** `assertContentSize` 接入 blog 写入 + `title/excerpt` 加 `.max()`
 - [ ] B1-08 **SEC-06** `POST /links/:id/click` 加限流 + `status='approved'` + 站点归属
@@ -119,6 +125,8 @@
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
 | 2026-09-30 | B0 文档基线（review + plan） | — | —（无代码改动，静态门禁与单测不适用） | 报告结论全部落到 file:line；统计与性能量级为明示假设下的推算，未做 profiling；订正了前两轮报告的 8 条过时结论（review §三） |
+| 2026-09-30 | B1-05 SEC-03 批量上限/分块/分组原子化（+ 修好评论批量改状态的编号 bug） | 已提交（见下一条回填） | `typecheck` 绿；本批四个 blog 测试文件 68 条全绿（含新 3 条）；`comments/escape/empty-catch/module-state/deep-imports/style/size` 七项门禁绿 | 与计划的 `.max(100)` 有意偏离（见条目内理由：SH-42 已有 120 条必须成功的用例）；同左的既有 kanban 失败 |
+| 2026-09-30 | B1-04 SEC-09 站点设置单一键 | 00dbfa9d | `typecheck` 绿；`tests/blog-public-owner.test.ts` 10 条 + 相关 blog 测试全绿；七项门禁绿；同提交按 AGENTS「分批与门禁」只暂存了本批白名单分块（工作区保持最终态） | 已核实“全局键从未被写过”，故无数据迁移；B1-04 与 B1-05 的注释白名单同属一个文件，B1-05 一行在下一个提交回填 |
 | 2026-09-30 | B1-03 SEC-08 slug 唯一性下放到 per-user（含表重建迁移 52） | 已提交（见下一条回填） | `typecheck` 绿；`test:unit` 5168 通过 / 1 失败（仍为既有 kanban 用例）；`tests/blog-slug-scope.test.ts` 4 条 + `tests/schema-migrations.test.ts` 新增遗留库重建用例全绿；6 个 blog/schema 测试文件共 75 条全绿；`comments/escape/empty-catch/module-state/deep-imports/style/size` 七项门禁绿 | **不可逆迁移**：部署侧必须先备份；`size:check` 基线只动了 `migrations.ts` 一行（793→801）；同左的既有 kanban 失败 |
 | 2026-09-30 | B1-11 GATE-01 注释门禁扫描器改用 token 树 | 已提交（见下一条回填） | `npm run comments:check` 绿且总数 12191 → 12201（6 条被吞的重新纳入）；反向探针：往 `owned-rows.ts` 加一条未登记注释后门禁**报错**（非静默通过），移除后恢复绿；`typecheck` 绿；`test:unit` 5163 通过 / 1 失败（仍为既有 kanban 用例）；`tests/comment-scan.test.ts` 6 条全绿；七项静态门禁绿 | 修的是扫描器本身，不是博客模块；影响面为全仓注释白名单（已实测“正则可见 ⊆ AST 可见”，因此不会丢条目） |
 | 2026-09-30 | B1-02 SEC-02 友链/分类归属守卫与导入重编号 | 已提交（见下一条回填） | `typecheck` 绿；`test:unit` 5157 通过 / 1 失败（仍为既有 kanban 用例）；`tests/blog-links-routes.test.ts` 15 条（8 旧 + 7 新）全绿；`comments/escape/empty-catch/module-state/deep-imports/style/size` 七项门禁绿 | 同左：那条 kanban 既有失败；另发现并记录 **GATE-01**（注释门禁扫描器被字符串里的 `/*` 骗过，仓内 10 条注释对门禁不可见），单独提交修 |

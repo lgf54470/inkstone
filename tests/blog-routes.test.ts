@@ -882,6 +882,73 @@ describe('blog comment cascade ownership (SH-41)', () => {
   })
 })
 
+describe('blog comment batch statements stay inside the D1 bind limit', () => {
+  async function seedComments(db: D1Shim, count: number): Promise<string[]> {
+    const post = await seedBlogPost(db, { id: 'p-comments', slug: 'comments', note_id: 'n-comments' })
+    const ids: string[] = []
+    for (let index = 0; index < count; index++) {
+      const id = `c-${index}`
+      await runSql(
+        db,
+        `INSERT INTO blog_comments (id, post_id, author_name, author_email, content, status, created_at)
+         VALUES (?1, ?2, 'Reader', 'reader@example.com', 'A comment', 'pending', ?3)`,
+        id, post.id, H.now,
+      )
+      ids.push(id)
+    }
+    return ids
+  }
+
+  it('changes the status of a single comment', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedComments(db, 1)
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/blog/comments/batch', { action: 'approve', commentIds: ['c-0'] })
+
+    expect(res.status).toBe(200)
+    expect(await firstRow(db, "SELECT COUNT(*) AS n FROM blog_comments WHERE status = 'approved'"))
+      .toMatchObject({ n: 1 })
+  })
+
+  it('approves more comments than one statement can bind', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const ids = await seedComments(db, 150)
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/blog/comments/batch', { action: 'approve', commentIds: ids })
+
+    expect(res.status).toBe(200)
+    expect(await firstRow(db, "SELECT COUNT(*) AS n FROM blog_comments WHERE status = 'approved'"))
+      .toMatchObject({ n: 150 })
+  })
+})
+
+describe('blog batch requests are bounded', () => {
+  it('refuses a list larger than one request may carry with a readable 400', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const tooMany = Array.from({ length: 1001 }, (_, index) => `p-${index}`)
+
+    const posts = await postJson(app, '/api/blog/posts/batch', { action: 'publish', postIds: tooMany })
+    expect(posts.status).toBe(400)
+
+    const comments = await postJson(app, '/api/blog/comments/batch', { action: 'approve', commentIds: tooMany })
+    expect(comments.status).toBe(400)
+
+    const links = await postJson(app, '/api/blog/links/batch', { action: 'approve', linkIds: tooMany })
+    expect(links.status).toBe(400)
+
+    const imported = await postJson(app, '/api/blog/links/import', {
+      links: tooMany.map((id) => ({ id, name: 'L', url: 'https://example.com' })),
+    })
+    expect(imported.status).toBe(400)
+  })
+})
+
 describe('blog batch statements stay inside the D1 bind limit (SH-42)', () => {
   async function seedManyPosts(db: D1Shim, count: number): Promise<string[]> {
     const ids: string[] = []

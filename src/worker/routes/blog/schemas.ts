@@ -1,6 +1,17 @@
 import { z } from 'zod'
 import { LIMITS } from '@shared/constants'
 
+/**
+ * How many rows one batch or import request may carry.
+ *
+ * The platform's limit is per statement, not per request — D1 refuses a statement that binds more
+ * than 100 variables — and the handlers answer it by splitting the list (see `chunkIds` in
+ * `comments.ts`), so this number is not that one. It bounds a single request's work instead: a
+ * selection a person made, or a directory they exported, not an arbitrary payload that reaches the
+ * route and spends a transaction's worth of statements before anything can be said about it.
+ */
+const BATCH_ROW_LIMIT = 1000
+
 export const blogPostWriteSchema = z.object({
   noteId: z.string().min(1, 'noteId is required'),
   title: z.string().optional(),
@@ -20,7 +31,7 @@ export const blogPostPatchSchema = blogPostWriteSchema.omit({ noteId: true })
 
 export const blogBatchSchema = z.object({
   action: z.enum(['publish', 'unpublish', 'delete', 'setCategory', 'setFolder', 'setPinned']),
-  postIds: z.array(z.string()),
+  postIds: z.array(z.string()).max(BATCH_ROW_LIMIT, `At most ${BATCH_ROW_LIMIT} posts per request`),
   categoryId: z.string().nullable().optional(),
   folderId: z.string().nullable().optional(),
   isPinned: z.boolean().optional(),
@@ -76,7 +87,7 @@ export const blogCommentStatusSchema = z.object({
 
 export const blogCommentBatchSchema = z.object({
   action: z.enum(['approve', 'reject', 'spam', 'delete']),
-  commentIds: z.array(z.string()),
+  commentIds: z.array(z.string()).max(BATCH_ROW_LIMIT, `At most ${BATCH_ROW_LIMIT} comments per request`),
 })
 
 export const blogPublicCommentSchema = z.object({
@@ -162,7 +173,7 @@ export const blogLinkBatchSchema = z.object({
     'favorite',
     'unfavorite',
   ]),
-  linkIds: z.array(z.string()).min(1),
+  linkIds: z.array(z.string()).min(1).max(BATCH_ROW_LIMIT, `At most ${BATCH_ROW_LIMIT} links per request`),
   categoryId: z.string().nullable().optional(),
   isPinned: z.boolean().optional(),
   isFavorite: z.boolean().optional(),
@@ -175,7 +186,7 @@ export const blogLinkReorderSchema = z.object({
       sortOrder: z.number().int().optional(),
       pinnedOrder: z.number().int().optional(),
     }),
-  ).min(1),
+  ).min(1).max(BATCH_ROW_LIMIT, `At most ${BATCH_ROW_LIMIT} links per request`),
 })
 
 export const blogLinkCheckSchema = z.object({
@@ -207,7 +218,7 @@ export const blogLinkImportSchema = z.object({
       sortOrder: z.number().int().optional().default(0),
       isActive: z.boolean().optional().default(true),
     }),
-  ),
+  ).max(BATCH_ROW_LIMIT, `At most ${BATCH_ROW_LIMIT} links per import`),
   categories: z.array(
     z.object({
       id: z.string().optional(),
@@ -216,7 +227,7 @@ export const blogLinkImportSchema = z.object({
       parentId: z.string().nullable().optional(),
       sortOrder: z.number().int().optional().default(0),
     }),
-  ).optional().default([]),
+  ).max(BATCH_ROW_LIMIT, `At most ${BATCH_ROW_LIMIT} categories per import`).optional().default([]),
 })
 
 // Body of DELETE /api/blog/visits?type=all: the wipe is unrecoverable, so the

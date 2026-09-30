@@ -12885,6 +12885,15 @@ const allowed = new Map([
     '// clear every throttling key (identity, IP, and account level) so a',
     '// shared IP / NAT is never locked out by a full window of attempts.',
   ]],
+  ['src/worker/routes/blog/comments.ts', [
+    '// D1 refuses a statement that binds more than 100 variables, and this action binds one per id, so a',
+    '// selection wider than that is split rather than handed to the platform to fail on: the ids are',
+    '// bound per chunk, and every chunk keeps the same ownership predicate.',
+    '// The ids start after the parameters each branch binds first: one for the delete (the owner),',
+    '// two for the update (status, owner). Numbering them from a shared offset made `?2` mean both',
+    '// the owner and the first id, which the platform answers with a parameter-count error on every',
+    '// call — the update branch had never been asked to change a single comment.',
+  ]],
   ['src/worker/routes/blog/helpers.ts', [
     '/* Corrupt post tags are skipped so one bad row cannot break the dashboard. */',
   ]],
@@ -12928,7 +12937,8 @@ const allowed = new Map([
     '// One batch, so a post cannot survive while its log rows go missing (or the other way round).',
     '// `blog_comments` has no owner column, so the delete asks blog_posts who owns the post and has to',
     '// run before the post row itself disappears.',
-    '// One statement per group: D1 rejects a statement that binds more than 100 variables.',
+    '// One group at a time: D1 rejects a statement that binds more than 100 variables, and the group\'s',
+    '// statements go in one batch so a delete cannot stop between the rows it has to take together.',
     '// Comments have no owner column: both child deletes must land before the post rows go.',
   ]],
   ['src/worker/routes/blog/public-comments.ts', [
@@ -12955,6 +12965,7 @@ const allowed = new Map([
     '// pattern keeps the parent-tag-matches-descendants hierarchy semantics.',
   ]],
   ['src/worker/routes/blog/schemas.ts', [
+    '/**\n * How many rows one batch or import request may carry.\n *\n * The platform\'s limit is per statement, not per request — D1 refuses a statement that binds more\n * than 100 variables — and the handlers answer it by splitting the list (see `chunkIds` in\n * `comments.ts`), so this number is not that one. It bounds a single request\'s work instead: a\n * selection a person made, or a directory they exported, not an arbitrary payload that reaches the\n * route and spends a transaction\'s worth of statements before anything can be said about it.\n */',
     '// Body of DELETE /api/blog/visits?type=all: the wipe is unrecoverable, so the',
     '// current password travels in the body rather than the query string (SH-47).',
   ]],
