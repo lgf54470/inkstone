@@ -1,7 +1,7 @@
 import type { BlogLink, BlogLinkCategory, BlogLinkStatus } from '@shared/types'
 import { api } from '../../../lib/api'
 import { reportBlogMutationError, runBlogMutation } from './mutation'
-import { markLoadFailed, markLoadSucceeded } from './state'
+import { markDataLoaded, markLoadFailed, markLoadSucceeded } from './state'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
 export const blogLinksActions = (
@@ -92,6 +92,7 @@ async function loadLinksImpl(set: SetBlogStoreState, get: () => BlogStoreState):
       linkCategories: res.categories || [],
       linkStats: res.counts || null,
       loadErrors: markLoadSucceeded(s.loadErrors, 'links'),
+      dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'links'),
     }))
   } catch (err) {
     if (controller.signal.aborted) return

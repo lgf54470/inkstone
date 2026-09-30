@@ -4,7 +4,7 @@ import type { BlogStoreState, SetBlogStoreState } from './types'
 export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'setActiveTab' | 'setStatusFilter' | 'setCategoryId' | 'setFolderId' | 'setTag' | 'setSearch' | 'setSort' | 'setViewMode' | 'setPostsPage' | 'toggleSelectPost' | 'selectAllPosts' | 'clearPostSelection' | 'setCommentStatusFilter' | 'setCommentSearch' | 'toggleSelectComment' | 'selectAllComments' | 'clearCommentSelection' | 'setFilters' | 'hydrateTrafficFilters'> => ({
   hydrateTrafficFilters: () => set(loadInitialFilters()),
   setFilters: (newFilters) => setFiltersImpl(newFilters, set, get),
-  setActiveTab: (activeTab) => set({ activeTab }),
+  setActiveTab: (activeTab) => setActiveTabImpl(activeTab, set, get),
   setStatusFilter: (statusFilter) => applyPostFilter(set, get, { statusFilter, folderId: null, tag: null, activeTab: 'posts' }),
   setCategoryId: (categoryId) => applyPostFilter(set, get, { categoryId, activeTab: 'posts' }),
   setFolderId: (folderId) => applyPostFilter(set, get, { folderId, tag: null, statusFilter: 'all', activeTab: 'posts' }),
@@ -22,6 +22,12 @@ export const blogFiltersActions = (set: SetBlogStoreState, get: () => BlogStoreS
   selectAllComments: (ids) => set({ selectedCommentIds: new Set(ids) }),
   clearCommentSelection: () => set({ selectedCommentIds: new Set() }),
 })
+
+function setActiveTabImpl(activeTab: BlogStoreState['activeTab'], set: SetBlogStoreState, get: () => BlogStoreState): void {
+  set({ activeTab })
+  // Switching tabs is what loads a tab now; opening the hub no longer pre-loads every tab's data.
+  void get().loadHubData()
+}
 
 function applyPostFilter(set: SetBlogStoreState, get: () => BlogStoreState, patch: Partial<BlogStoreState>): void {
   // Any filter change re-asks page one: staying on the old page after narrowing the list would show

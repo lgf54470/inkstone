@@ -11,6 +11,13 @@ export type BlogTab = 'dashboard' | 'posts' | 'comments' | 'categories' | 'links
  */
 export type BlogLoadScope = 'posts' | 'comments' | 'links' | 'stats'
 
+/**
+ * Everything the hub caches, with one timestamp each. Opening the hub or switching tabs asks only
+ * for what the current tab draws and for whatever is older than the freshness window — the first
+ * version asked for all of it on every open, and again whenever the open note changed.
+ */
+export type BlogDataScope = 'posts' | 'postIndex' | 'folders' | 'tags' | 'categories' | 'comments' | 'stats' | 'links' | 'settings'
+
 
 
 export interface BlogFolderNode {
@@ -68,6 +75,9 @@ export interface BlogStoreState {
    */
   loadErrors: Set<BlogLoadScope>
 
+  /** When each scope last answered successfully; see `BlogDataScope` and `loadHubData`. */
+  dataLoadedAt: Partial<Record<BlogDataScope, number>>
+
   setActiveTab: (tab: BlogTab) => void
   setStatusFilter: (status: 'all' | 'published' | 'draft' | 'pinned') => void
   setCategoryId: (id: string | null) => void
@@ -93,7 +103,7 @@ export interface BlogStoreState {
   selectAllLinks: (ids: string[]) => void
   clearLinkSelection: () => void
 
-  loadAll: () => Promise<void>
+  loadHubData: (options?: { force?: boolean }) => Promise<void>
   loadPosts: () => Promise<void>
   loadPostIndex: () => Promise<void>
   loadFolders: () => Promise<void>

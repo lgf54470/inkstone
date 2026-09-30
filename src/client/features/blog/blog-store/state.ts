@@ -1,4 +1,4 @@
-import type { BlogLoadScope } from './types'
+import type { BlogDataScope, BlogLoadScope } from './types'
 
 export const TRAFFIC_FILTERS_KEY = 'inkstone_blog_traffic_filters'
 
@@ -16,6 +16,14 @@ export function markLoadSucceeded(errors: Set<BlogLoadScope>, scope: BlogLoadSco
   const next = new Set(errors)
   next.delete(scope)
   return next
+}
+
+/** Stamped on success only: a failed load must stay eligible for the next attempt. */
+export function markDataLoaded(
+  loadedAt: Partial<Record<BlogDataScope, number>>,
+  scope: BlogDataScope,
+): Partial<Record<BlogDataScope, number>> {
+  return { ...loadedAt, [scope]: Date.now() }
 }
 
 /**

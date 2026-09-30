@@ -259,10 +259,11 @@
 - **范围**：`blog-store/{filters,loaders}.ts`、`blog-hub-toolbar.tsx`、`use-blog-publish-form.ts`、`src/client/lib/api` 的 blog 段。代价 **S**。
 - **落地（B3-04，1ea6a399）**：搜索框改本地 draft + 250ms 防抖；`loadPosts` 带 `AbortController` 与 `postsRequestSeq`（被替换的请求取消、迟到答案丢弃、取消不算错误）；`/check-slug` 同步收 `AbortSignal` 并忽略迟到结果。
 
-#### ENG-05 [P0][开放] 打开博客中心 = 11 个 HTTP / ~22 条 D1，且开窗期间可能反复重跑
+#### ENG-05 [P0][已修] 打开博客中心 = 11 个 HTTP / ~22 条 D1，且开窗期间可能反复重跑
 - **问题**：`blog-store/loaders.ts:19-28` 的 `loadAll` 八连发（stats/posts/folders/tags/categories/comments/links/settings）；`use-blog-hub-modal.ts:98-111` 的复位 effect 依赖含 **`activeNote` 对象身份**，打开期间任何笔记变更都会再触发一次 8 并发；`use-blog-hub-sidebar.tsx:111-114` 的挂载 effect 又各发一次 `loadFolders/loadTags`（与 `loadAll` 重叠）；默认 tab 是 dashboard，`use-blog-dashboard-view.ts:32-34` 再发一次 analytics。两条串行链（stats 8 段、analytics 6 段）各 ≈120～160ms 纯 DB。
 - **方案**：`loadAll` 收敛为「当前 tab 所需的最小集合」+ 30 秒 stale-while-revalidate 窗口（带 `fetchedAt` 时间戳）；删掉侧栏的重复 effect；复位 effect 的依赖改为 `open`/`initialNoteId`（`activeNote` 只用于取初值，不进依赖）。
 - **范围**：`blog-store/loaders.ts`、`use-blog-hub-modal.ts`、`use-blog-hub-sidebar.tsx`。代价 **M**。
+- **落地（B3-05）**：`loadAll` 改名 `loadHubData({ force? })`；`dataLoadedAt` 为九个作用域各记一枚成功时间戳，`BLOG_TAB_SCOPES` 给出每 tab 的最小集（公共 `folders/tags/categories/settings/stats` + 各自的内容），30s 窗口内不重问、显式刷新走 `force`；`setActiveTab` 本身触发按新 tab 补齐；打开/复位 effect 不再依赖 `activeNote`（拆出只做 `setTargetNoteId` 的第二个 effect），`onSaved` 走非强制刷新；侧栏删掉与 bootstrap 重叠的 folders/tags effect。仪表盘的 `posts.length` 在 B3-02 后不再等于总数，改为 `stats.totalPosts`（dashboard 作用域随之不含 `posts`）。复现测试 `blog-store/hub-data.test.ts` 3 条；作用域选择突变成全量后 links tab 用例 1 failed。
 
 #### ENG-06 [P1][开放] 评论列表无 LIMIT；服务端 search 是死通道；tab 计数口径失真
 - **问题**：`comments.ts:40-45` 的 `SELECT c.*, p.title, p.slug` 无 `LIMIT`，且带 `ip`/`user_agent` 文本列；`:59-63` 支持 `search` 而前端从不传——`setCommentSearch` 在 `blog-store/types.ts:66` 与 `filters.ts:18` 有定义，**全仓零调用点**（`grep` 确认），`loaders.ts:87` 的 `search` 永远是 `undefined`。而 `use-blog-comments-view.ts` 用自己的 `useState` + 本地 `filterComments`，tab 计数在**服务端已按 status 过滤**的数组上统计（`computeStatusCounts(comments)`）→ 选「待处理」后其它 tab 全显示 0。

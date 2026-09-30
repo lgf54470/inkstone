@@ -8,10 +8,9 @@ import { blogFrontendBase } from '../frontend-base'
 export function useBlogDashboardView() {
   const locale = useLocale()
   const stats = useBlogStore((s) => s.stats)
-  const posts = useBlogStore((s) => s.posts)
   const comments = useBlogStore((s) => s.comments)
   const settings = useBlogStore((s) => s.settings)
-  const loadAll = useBlogStore((s) => s.loadAll)
+  const loadHubData = useBlogStore((s) => s.loadHubData)
   const updateCommentStatus = useBlogStore((s) => s.updateCommentStatus)
   // The three traffic switches live in the store, which the toolbar popover and the settings dialog
   // also write. The dashboard used to keep its own `excludeBots` and send only that one, so a switch
@@ -35,13 +34,13 @@ export function useBlogDashboardView() {
   const loadData = useAnalyticsLoad(range, switches, setLoading, setAnalytics, setAnalyticsError)
 
   const handleRefresh = async () => {
-    await Promise.all([loadData(), loadAll()])
+    await Promise.all([loadData(), loadHubData({ force: true })])
   }
 
   const derived = dashboardDerivedValues(analytics, metricMode, switches)
 
   return {
-    stats, posts, comments, settings, loadAll, updateCommentStatus, locale,
+    stats, comments, settings, loadHubData, updateCommentStatus, locale,
     range, setRange, metricMode, setMetricMode,
     excludeBots, excludeSelfReferrers, excludeOwner,
     setExcludeBots: (next: boolean) => setFilters({ excludeBots: next }),

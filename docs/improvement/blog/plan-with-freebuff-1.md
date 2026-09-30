@@ -131,7 +131,16 @@
 - [x] B3-04 **ENG-04** 搜索防抖 + `AbortSignal` + 乱序守卫；`/check-slug` 同步修 — 已提交 `1ea6a399`
   - 实现：`blog-hub-toolbar.tsx` 的搜索框改本地 draft + 250ms 防抖（打字即显示，只把停下的那次问出去）；`loaders.ts` 的 `loadPosts` 带 `AbortController` 与 `postsRequestSeq` 序号线（迟到答案丢弃、被取消的请求不算错误）；`api/share.ts` 的 `checkSlug` 收 `AbortSignal`，`use-blog-publish-form.ts` 忽略迟到的校验结果。
   - 复现测试：新增 `blog-store/posts-request.test.ts`（被替换的请求确实被取消；只认最新一发；取消不写 console.error）。
-- [ ] B3-05 **ENG-05** `loadAll` 按当前 tab 收敛 + 30s SWR + 删侧栏重复 effect + 复位 effect 去 `activeNote` 依赖
+- [x] B3-05 **ENG-05** `loadAll` 按当前 tab 收敛 + 30s SWR + 删侧栏重复 effect + 复位 effect 去 `activeNote` 依赖 — 已提交（hash 由下一提交回填，见进度日志）
+  - 实现：`loadAll` 改名 `loadHubData({ force? })`（名字不再声称“全部”）；store 新增 `dataLoadedAt: Partial<Record<BlogDataScope, number>>`（九个作用域各一枚时间戳，只在成功时盖章——失败的作用域下次仍会被重试）；`BLOG_TAB_SCOPES` 给出每个 tab 真正绘制的最小集合：公共部分是 `folders/tags/categories/settings/stats`（侧栏与导航计数四项每个 tab 都画），dashboard 另加 `comments`（待审评论卡），posts 另加 `posts/postIndex`，comments 另加 `comments`，links 另加 `links`。30 秒 `BLOG_HUB_SWR_MS` 窗口内的作用域不再重问；显式刷新（工具栏、仪表盘重试、刷新按钮）传 `force`。
+  - `setActiveTab` 改为 `setActiveTabImpl`：切 tab 本身触发 `loadHubData()`，因此「打开中心」不再预载所有 tab，而是「哪个 tab 缺什么补什么」。
+  - `use-blog-hub-modal.ts` 拆成两个 effect：开启/关闭复位 effect 的依赖里**不再有 `activeNote`**（开启时编辑记事不再重跑整套 bootstrap），打开来源记事由另一个只做 `setTargetNoteId` 的 effect 在可读时应用；`onSaved` 走非强制 `loadHubData`（保存流程自己已经定向刷新了相关作用域）。
+  - 侧栏删掉挂载时与 `loadHubData` 重叠的 `loadFolders`/`loadTags` effect（`useBlogHubSidebarEffects` 收窄成只管理标签展开状态的 `useExpandedParentTagPaths`，`useBlogHubSidebarStore` 不再持有这两个 loader）。
+  - 顺手纠正 B3-02 分页带来的回归：仪表盘的 `posts.length` 不再等于文章总数，KPI 与待审评论卡的「管理文章 (N)」改用 `stats.totalPosts`，hook 不再读 `posts`（dashboard 作用域因此不含 `posts`）。
+  - 复现测试：新增 `blog-store/hub-data.test.ts` 3 条（当前 tab 只拉自己的作用域；窗口内不重问、`force` 才重问；切 tab 只补缺的——folders 不重拉、posts 首次拉）。
+  - 先红证据：把作用域选择突变成「所有作用域」后，links tab 用例 **1 failed / 2 skipped**（恢复后全绿）。
+  - 回归：`typecheck` 绿；blog 相关 19 文件 65 条全绿；`test:unit` 577 文件 5236 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线）。
+  - 已知限制：未访问过的 tab 的侧栏徽标（评论/友链计数）在首次切到该 tab 前可能为 0 或旧值（计数改由 `stats` 直接提供属 B3-06）；仪表盘不再预载 `posts`。
 - [ ] B3-06 **ENG-06 + ENG-16** 评论列表 `LIMIT` + 服务端 search 接通（删本地过滤与死通道）+ tab 计数改 `stats` + 发布弹窗分类拉取两行修复
 - [ ] B3-07 **ENG-07 + ENG-08 + ENG-14** stats 七条串行改 `db.batch`/`GROUP BY`；analytics 六段合并 + 分布改 SQL 聚合；补三条索引
 - [ ] B3-08 **ENG-09 + ENG-10** 写操作 refetch 定向收敛 + 回滚；友链批量删除走 `batch` 端点
@@ -184,7 +193,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-30 | B3-02 ENG-02 文章列表去正文 + LIMIT/OFFSET + 独立总数 + tag 下推 + 分页控件 | （下一提交回填） | `typecheck` 绿；`tests/blog-routes.test.ts` 51 条（含新 4 条）+ 客户端新 6 条全绿；两处先红变异各 1 failed；`test:unit` 576 文件 5233 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线） | `post-index` 刻意不分页（每篇记事都要答案）；`limit` 上限 200；demo 后端已同步 |
+| 2026-09-30 | B3-05 ENG-05 hub 数据按 tab 收敛 + 30s SWR + 删重复 effect | （下一提交回填） | `typecheck` 绿；blog 相关 19 文件 65 条全绿（含新 3 条）；作用域突变先红 1 failed；`test:unit` 577 文件 5236 通过 / 1 skipped；九项静态门禁绿 | 未访问 tab 的侧栏徽标可能滞后（待 B3-06 的 stats 计数）；dashboard 不再预载 posts |
+| 2026-09-30 | B3-02 ENG-02 文章列表去正文 + LIMIT/OFFSET + 独立总数 + tag 下推 + 分页控件 | 9b39fc57 | `typecheck` 绿；`tests/blog-routes.test.ts` 51 条（含新 4 条）+ 客户端新 6 条全绿；两处先红变异各 1 failed；`test:unit` 576 文件 5233 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线） | `post-index` 刻意不分页（每篇记事都要答案）；`limit` 上限 200；demo 后端已同步 |
 | 2026-09-30 | B3-01 ENG-01（mutation 部分）写入自带失败提示与乐观回滚 | 7188ae3a | `typecheck` 绿；blog 相关 16 文件 116 条全绿（含新 6 条）；回滚变异证明 1 failed / 5 passed；九项静态门禁绿（`size` 未动基线）；`test:unit` 574 文件 5223 通过 / 1 skipped | 直连 `api` 的两处笔记侧写入未并入；folders/tags/categories/settings 的 loader 仍只记日志 |
 | 2026-09-30 | B3-01 ENG-01（三态部分）加载失败成为独立状态 + 失败可重试 | ddfd54e7 | `typecheck` 绿；`src/client/features/blog` 13 文件 39 条 + `tests/blog-routes.test.ts` 47 条全绿（含新 6 条）；失败分支短路的变异证明 1 failed；九项静态门禁绿 | mutation 的 catch/回滚/提示尚未做（进行中）；folders/tags/categories/settings 的 loader 仍只记日志（本条只覆盖四个视图） |
 | 2026-09-30 | B3-03 ENG-03 友链列表服务端筛选 + 限页 + `GROUP BY` 计数 | 60b83bcb | `typecheck` 绿；`tests/blog-links-routes.test.ts` 24 条（含新 3 条）+ `blog-store/links-request.test.ts` 新 3 条全绿；三条新用例已实测在旧实现上先红；九项静态门禁绿（`size` 无需动基线）；`test:unit` 571 文件 5211 通过 / 1 skipped | 500 是上限而非分页，界面提示「只显示前 N 条」；demo 后端本无该端点 |

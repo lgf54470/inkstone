@@ -159,7 +159,7 @@ export function BlogHubToolbar({
   onOpenSettings: () => void
   onOpenNewPost: () => void
 }) {
-  const loadAll = useBlogStore((s) => s.loadAll)
+  const loadHubData = useBlogStore((s) => s.loadHubData)
   const loading = useBlogStore((s) => s.loading)
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 text-[length:var(--text-12\\.5)]">
@@ -184,7 +184,7 @@ export function BlogHubToolbar({
           label={t('common.refresh')}
           size='sm'
           disabled={loading}
-          onClick={() => void loadAll()}
+          onClick={() => void loadHubData({ force: true })}
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
         </IconButton>

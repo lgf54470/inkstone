@@ -2974,6 +2974,7 @@ const allowed = new Map([
     '// it twice, and each run wrote the storage.',
   ]],
   ['src/client/features/blog/blog-store/filters.ts', [
+    '// Switching tabs is what loads a tab now; opening the hub no longer pre-loads every tab\'s data.',
     '// Any filter change re-asks page one: staying on the old page after narrowing the list would show',
     '// an empty screen for a filter that does have matches.',
     '// The store updater has to stay pure (StrictMode runs it twice), so both the write and the',
@@ -2981,6 +2982,9 @@ const allowed = new Map([
     '// refetches that used to follow are gone: these switches decide what the analytics endpoint',
     '// measures, and the dashboard that reads them re-queries on its own. `loadPosts`/`loadStats` never',
     '// sent them, so those requests only re-downloaded the same rows.',
+  ]],
+  ['src/client/features/blog/blog-store/hub-data.test.ts', [
+    '/**\n * ENG-05: opening the hub used to fire every endpoint it knew of (eight requests, ~22 D1 statements)\n * and the effect\'s dependency on the open note re-ran that fan-out whenever a note changed. A tab\n * now asks for what it draws, and a scope that answered within the freshness window is not asked\n * again — except by an explicit refresh, where the reader\'s click must always mean a new answer.\n */',
   ]],
   ['src/client/features/blog/blog-store/index.ts', [
     '// Feed the notes store\'s visibility projection (published note ids) without',
@@ -2999,6 +3003,9 @@ const allowed = new Map([
     '/**\n * A loader that fails must say so. Before this channel existed the failure was only a console line,\n * and every surface rendered it as an empty result — a reader who was offline was told they had no\n * posts. The flag is per scope: one failed list must not paint the others as broken.\n */',
   ]],
   ['src/client/features/blog/blog-store/loaders.ts', [
+    '/** How long an answer stays fresh: reopening the hub within this window reads what is already here. */',
+    '/**\n * What each tab draws. The sidebar (folders, tags, categories, settings) and the navigation counts\n * (`stats`) are shared by every tab, so they are the common part; everything else belongs to the tab\n * that renders it. The dashboard reads stats and the pending comments card — not `posts`, whose\n * length stopped being the account\'s post count when the list became one page.\n */',
+    '/**\n * The hub\'s bootstrap: ask for the current tab\'s scopes, skipping whatever answered within the\n * freshness window, and never ask for another tab\'s data. An explicit refresh passes `force`, so the\n * reader\'s own click always gets a new answer; everything else settles for a recent one.\n */',
     '/**\n * The post list, asked once per change of the query and answered with the newest answer only. Two\n * things follow from that: the request a newer one replaces is cancelled (a search box sends one per\n * keystroke) and an answer that arrives after a newer request went out is dropped, because comparing\n * sequence numbers is the only way to know which of two responses is current. The dropped answer is\n * not an error — the caller asked for it and then changed its mind.\n */',
     '// The page in hand may have emptied under the reader (a delete on the last page, or a filter',
     '// that shrank the list): ask once more for the page that exists rather than draw "no posts".',
@@ -3027,12 +3034,15 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-store/state.ts', [
     '/**\n * Both helpers return the same set when the flag already reads that way, so a successful refresh\n * does not re-render every surface that subscribes to the failure flags.\n */',
+    '/** Stamped on success only: a failed load must stay eligible for the next attempt. */',
     '/**\n * What an unread store holds. The stored filters are read when the hub opens (see\n * `hydrateTrafficFilters`), not when this module is evaluated: the module loads with the app, so a\n * read at module scope would touch `localStorage` on every page and in every test for a switch only\n * the blog hub shows.\n */',
   ]],
   ['src/client/features/blog/blog-store/types.ts', [
     '/**\n * The lists whose load result a view draws. A failed load is a state of its own — the alternative\n * was rendering it as an empty list, which told the reader their data was gone.\n */',
+    '/**\n * Everything the hub caches, with one timestamp each. Opening the hub or switching tabs asks only\n * for what the current tab draws and for whatever is older than the freshness window — the first\n * version asked for all of it on every open, and again whenever the open note changed.\n */',
     '/**\n   * Every post of the account in its body-free index form (see `BlogPostIndexEntry`). The list above\n   * is one page, so the note list cannot read "which notes are published" from it, and the publish\n   * dialog cannot be pre-filled from it either.\n   */',
     '/**\n   * Scopes whose last load failed. A refresh failure leaves the previous data in place — only a view\n   * with nothing to show asks this flag to render a failure instead of an empty state.\n   */',
+    '/** When each scope last answered successfully; see `BlogDataScope` and `loadHubData`. */',
     '/**\n   * Everything below is a mutation: it reports its own failure (see `mutation.ts`), resolves to\n   * `false`/`null` after a danger toast and rolls back any optimistic change it made, so no caller\n   * has to catch a rejection from it.\n   */',
     '/**\n   * The post list\'s in-flight request: `seq` lets a late answer be dropped (the reader may have\n   * typed again since), and the controller cancels the request the newest one replaces. Both are\n   * request lifecycle, not data — the list itself lives in `posts`.\n   */',
     '/** Which page of the post list is on screen, and what the server said about the whole list. */',
@@ -3044,8 +3054,10 @@ const allowed = new Map([
   ['src/client/features/blog/use-blog-hub-modal.ts', [
     '/** Nothing came back and the load failed: the list draws a failure, not an empty state. */',
     '/** The publish dialog\'s own state: what it edits, which note it targets, and whether it is open. */',
+    '/**\n * Opening loads the tab\'s own data and closing clears whatever belonged to the open session. The\n * open note is deliberately not a dependency here: it used to be, so editing a note while the hub\n * was open re-ran the whole bootstrap.\n */',
     '// The stored switches are read here rather than when the store module loads: only this hub',
     '// shows them, and the read belongs to opening it.',
+    '/** The note the hub was opened from: applied once it is readable, not as a trigger to reload. */',
   ]],
   ['src/client/features/blog/use-blog-settings-modal.ts', [
     '// The sweep runs on the server, so the value it reads has to be the account\'s.',

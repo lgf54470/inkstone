@@ -49,6 +49,7 @@ function initialBlogState(): Partial<BlogStoreState> {
         loading: false,
         batchBusy: false,
         loadErrors: new Set(),
+        dataLoadedAt: {},
         postsRequestSeq: 0,
         postsAbort: null,
         postsPage: 1,

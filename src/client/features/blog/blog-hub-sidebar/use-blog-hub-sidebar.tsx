@@ -71,7 +71,7 @@ export function useBlogHubSidebar() {
   const parentTagPaths = useMemo(() => collectParentTagPaths(tagTree), [tagTree])
   const flattenedTagNodes = useMemo(() => flattenTagTree(tagTree, expandedTagPaths), [tagTree, expandedTagPaths])
 
-  useBlogHubSidebarEffects(store, parentTagPaths, setExpandedTagPaths)
+  useExpandedParentTagPaths(parentTagPaths, setExpandedTagPaths)
 
   const frontendBase = blogFrontendBase(store.settings?.frontendUrl)
   const navItems = buildSidebarNavItems(store)
@@ -101,17 +101,12 @@ export function useBlogHubSidebar() {
   }
 }
 
-function useBlogHubSidebarEffects(store: ReturnType<typeof useBlogHubSidebarStore>, parentTagPaths: string[], setExpandedTagPaths: Dispatch<SetStateAction<Set<string>>>) {
+function useExpandedParentTagPaths(parentTagPaths: string[], setExpandedTagPaths: Dispatch<SetStateAction<Set<string>>>) {
   useEffect(() => {
     if (parentTagPaths.length > 0) {
       setExpandedTagPaths((prev) => (prev.size === 0 ? new Set(parentTagPaths) : prev))
     }
   }, [parentTagPaths])
-
-  useEffect(() => {
-    void store.loadFolders()
-    void store.loadTags()
-  }, [store.loadFolders, store.loadTags])
 }
 
 function useBlogHubSidebarStore() {
@@ -132,8 +127,6 @@ function useBlogHubSidebarStore() {
   const links = useBlogStore((s) => s.links)
   const linkStats = useBlogStore((s) => s.linkStats)
   const batchBusy = useBlogStore((s) => s.batchBusy)
-  const loadFolders = useBlogStore((s) => s.loadFolders)
-  const loadTags = useBlogStore((s) => s.loadTags)
   const createFolder = useBlogStore((s) => s.createFolder)
   const patchFolder = useBlogStore((s) => s.patchFolder)
   const deleteFolder = useBlogStore((s) => s.deleteFolder)
@@ -146,7 +139,7 @@ function useBlogHubSidebarStore() {
     toast, activeTab, setActiveTab, statusFilter, setStatusFilter,
     selectedFolderId, setFolderId, selectedTag, setTag,
     stats, comments, links, linkStats, settings, folders, tags, batchBusy,
-    loadFolders, loadTags, createFolder, patchFolder, deleteFolder,
+    createFolder, patchFolder, deleteFolder,
     createTag, patchTag, deleteTag, batchToggleGroup, batchMoveToFolder,
   }
 }

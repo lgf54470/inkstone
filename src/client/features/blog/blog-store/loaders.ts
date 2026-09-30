@@ -1,10 +1,40 @@
 import { extractCoverUrl } from '@shared/markdown-utils'
 import { api } from '../../../lib/api'
-import { markLoadFailed, markLoadSucceeded } from './state'
-import type { BlogStoreState, SetBlogStoreState } from './types'
+import { markDataLoaded, markLoadFailed, markLoadSucceeded } from './state'
+import type { BlogDataScope, BlogStoreState, BlogTab, SetBlogStoreState } from './types'
 
-export const blogLoadersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'loadAll' | 'loadPosts' | 'loadPostIndex' | 'loadFolders' | 'loadTags' | 'loadCategories' | 'loadComments' | 'loadStats' | 'loadSettings'> => ({
-  loadAll: () => loadAllImpl(set, get),
+/** How long an answer stays fresh: reopening the hub within this window reads what is already here. */
+export const BLOG_HUB_SWR_MS = 30_000
+
+/**
+ * What each tab draws. The sidebar (folders, tags, categories, settings) and the navigation counts
+ * (`stats`) are shared by every tab, so they are the common part; everything else belongs to the tab
+ * that renders it. The dashboard reads stats and the pending comments card — not `posts`, whose
+ * length stopped being the account's post count when the list became one page.
+ */
+const BLOG_TAB_SCOPES: Record<BlogTab, BlogDataScope[]> = {
+  dashboard: ['folders', 'tags', 'categories', 'settings', 'stats', 'comments'],
+  posts: ['folders', 'tags', 'categories', 'settings', 'stats', 'posts', 'postIndex'],
+  comments: ['folders', 'tags', 'categories', 'settings', 'stats', 'comments'],
+  links: ['folders', 'tags', 'categories', 'settings', 'stats', 'links'],
+  categories: ['folders', 'tags', 'categories', 'settings', 'stats'],
+  settings: ['folders', 'tags', 'categories', 'settings', 'stats'],
+}
+
+const BLOG_SCOPE_LOADERS: Record<BlogDataScope, (get: () => BlogStoreState) => Promise<void>> = {
+  posts: (get) => get().loadPosts(),
+  postIndex: (get) => get().loadPostIndex(),
+  folders: (get) => get().loadFolders(),
+  tags: (get) => get().loadTags(),
+  categories: (get) => get().loadCategories(),
+  comments: (get) => get().loadComments(),
+  stats: (get) => get().loadStats(),
+  links: (get) => get().loadLinks(),
+  settings: (get) => get().loadSettings(),
+}
+
+export const blogLoadersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'loadHubData' | 'loadPosts' | 'loadPostIndex' | 'loadFolders' | 'loadTags' | 'loadCategories' | 'loadComments' | 'loadStats' | 'loadSettings'> => ({
+  loadHubData: (options) => loadHubDataImpl(options?.force ?? false, set, get),
   loadPosts: () => loadPostsImpl(set, get),
   loadPostIndex: () => loadPostIndexImpl(set),
   loadFolders: () => loadFoldersImpl(set),
@@ -15,20 +45,20 @@ export const blogLoadersActions = (set: SetBlogStoreState, get: () => BlogStoreS
   loadSettings: () => loadSettingsImpl(set),
 })
 
-async function loadAllImpl(set: SetBlogStoreState, get: () => BlogStoreState): Promise<void> {
+/**
+ * The hub's bootstrap: ask for the current tab's scopes, skipping whatever answered within the
+ * freshness window, and never ask for another tab's data. An explicit refresh passes `force`, so the
+ * reader's own click always gets a new answer; everything else settles for a recent one.
+ */
+async function loadHubDataImpl(force: boolean, set: SetBlogStoreState, get: () => BlogStoreState): Promise<void> {
+  const scopes = BLOG_TAB_SCOPES[get().activeTab]
+  const loadedAt = get().dataLoadedAt
+  const now = Date.now()
+  const due = scopes.filter((scope) => force || now - (loadedAt[scope] ?? 0) >= BLOG_HUB_SWR_MS)
+  if (due.length === 0) return
   set({ loading: true })
   try {
-    await Promise.allSettled([
-      get().loadStats(),
-      get().loadPosts(),
-      get().loadPostIndex(),
-      get().loadFolders(),
-      get().loadTags(),
-      get().loadCategories(),
-      get().loadComments(),
-      get().loadLinks(),
-      get().loadSettings(),
-    ])
+    await Promise.allSettled(due.map((scope) => BLOG_SCOPE_LOADERS[scope](get)))
   } finally {
     set({ loading: false })
   }
@@ -65,7 +95,7 @@ async function loadPostsImpl(set: SetBlogStoreState, get: () => BlogStoreState):
     }))
     const total = res.pagination?.total ?? posts.length
     const totalPages = res.pagination?.totalPages ?? 1
-    set((s) => ({ posts, postsTotal: total, postsTotalPages: totalPages, loadErrors: markLoadSucceeded(s.loadErrors, 'posts') }))
+    set((s) => ({ posts, postsTotal: total, postsTotalPages: totalPages, loadErrors: markLoadSucceeded(s.loadErrors, 'posts'), dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'posts') }))
     // The page in hand may have emptied under the reader (a delete on the last page, or a filter
     // that shrank the list): ask once more for the page that exists rather than draw "no posts".
     if (posts.length === 0 && total > 0 && postsPage > totalPages) {
@@ -84,7 +114,7 @@ async function loadPostsImpl(set: SetBlogStoreState, get: () => BlogStoreState):
 async function loadPostIndexImpl(set: SetBlogStoreState): Promise<void> {
   try {
     const res = await api.blog.postIndex()
-    set({ postIndex: res.posts || [] })
+    set((s) => ({ postIndex: res.posts || [], dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'postIndex') }))
   } catch (err) {
     // The index feeds the note list's published badges and the publish dialog's starting values. A
     // failure keeps the previous answer instead of clearing it, and is logged here rather than shown
@@ -96,7 +126,7 @@ async function loadPostIndexImpl(set: SetBlogStoreState): Promise<void> {
 async function loadFoldersImpl(set: SetBlogStoreState): Promise<void> {
   try {
     const folders = await api.blog.folders.list()
-    set({ folders })
+    set((s) => ({ folders, dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'folders') }))
   } catch (err) {
     console.error('Failed to load blog folders', err)
   }
@@ -105,7 +135,7 @@ async function loadFoldersImpl(set: SetBlogStoreState): Promise<void> {
 async function loadTagsImpl(set: SetBlogStoreState): Promise<void> {
   try {
     const tags = await api.blog.tags.list()
-    set({ tags })
+    set((s) => ({ tags, dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'tags') }))
   } catch (err) {
     console.error('Failed to load blog tags', err)
   }
@@ -114,7 +144,7 @@ async function loadTagsImpl(set: SetBlogStoreState): Promise<void> {
 async function loadCategoriesImpl(set: SetBlogStoreState): Promise<void> {
   try {
     const res = await api.blog.categories.list()
-    set({ categories: res.categories })
+    set((s) => ({ categories: res.categories, dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'categories') }))
   } catch (err) {
     console.error('Failed to load blog categories', err)
   }
@@ -127,7 +157,7 @@ async function loadCommentsImpl(set: SetBlogStoreState, get: () => BlogStoreStat
       status: commentStatusFilter,
       search: commentSearch || undefined,
     })
-    set((s) => ({ comments: res.comments, loadErrors: markLoadSucceeded(s.loadErrors, 'comments') }))
+    set((s) => ({ comments: res.comments, loadErrors: markLoadSucceeded(s.loadErrors, 'comments'), dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'comments') }))
   } catch (err) {
     console.error('Failed to load blog comments', err)
     set((s) => ({ loadErrors: markLoadFailed(s.loadErrors, 'comments') }))
@@ -137,7 +167,7 @@ async function loadCommentsImpl(set: SetBlogStoreState, get: () => BlogStoreStat
 async function loadStatsImpl(set: SetBlogStoreState): Promise<void> {
   try {
     const res = await api.blog.stats()
-    set((s) => ({ stats: res.stats, loadErrors: markLoadSucceeded(s.loadErrors, 'stats') }))
+    set((s) => ({ stats: res.stats, loadErrors: markLoadSucceeded(s.loadErrors, 'stats'), dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'stats') }))
   } catch (err) {
     console.error('Failed to load blog stats', err)
     set((s) => ({ loadErrors: markLoadFailed(s.loadErrors, 'stats') }))
@@ -147,7 +177,7 @@ async function loadStatsImpl(set: SetBlogStoreState): Promise<void> {
 async function loadSettingsImpl(set: SetBlogStoreState): Promise<void> {
   try {
     const res = await api.blog.settings.get()
-    set({ settings: res.settings })
+    set((s) => ({ settings: res.settings, dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'settings') }))
   } catch (err) {
     console.error('Failed to load blog settings', err)
   }

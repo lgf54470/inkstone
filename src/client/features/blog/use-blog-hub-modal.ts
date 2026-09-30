@@ -35,7 +35,7 @@ export function useBlogHubModal({
   const loadPosts = useBlogStore((s) => s.loadPosts)
   const selectedPostIds = useBlogStore((s) => s.selectedPostIds)
   const clearPostSelection = useBlogStore((s) => s.clearPostSelection)
-  const loadAll = useBlogStore((s) => s.loadAll)
+  const loadHubData = useBlogStore((s) => s.loadHubData)
   const setActiveTab = useBlogStore((s) => s.setActiveTab)
   const hydrateTrafficFilters = useBlogStore((s) => s.hydrateTrafficFilters)
 
@@ -45,12 +45,12 @@ export function useBlogHubModal({
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
   const publish = useBlogPublishModal(initialNoteId, activeNote)
 
-  useBlogHubModalEffects({
-    open, initialNoteId, activeNote,
-    loadAll, hydrateTrafficFilters, clearPostSelection, setTargetNoteId: publish.setTargetNoteId,
+  useBlogHubBootstrapEffect({
+    open, loadHubData, hydrateTrafficFilters, clearPostSelection,
     setIsPublishModalOpen: publish.setIsPublishModalOpen, setEditingPost: publish.setEditingPost,
     setIsCategoriesModalOpen, setIsSettingsModalOpen,
   })
+  useBlogHubTargetNoteEffect({ open, initialNoteId, activeNote, setTargetNoteId: publish.setTargetNoteId })
 
   return {
     activeTab, viewMode, posts, loading,
@@ -60,7 +60,7 @@ export function useBlogHubModal({
     onSwitchTab: setActiveTab, onOpenNewPost: publish.openNewPost,
     onOpenEditPost: publish.openEditPost,
     onOpenSettings: () => setIsSettingsModalOpen(true),
-    onClearSelection: clearPostSelection, onSaved: loadAll,
+    onClearSelection: clearPostSelection, onSaved: () => loadHubData(),
     isPublishModalOpen: publish.isPublishModalOpen, setIsPublishModalOpen: publish.setIsPublishModalOpen,
     editingPost: publish.editingPost, targetNoteId: publish.targetNoteId,
     isCategoriesModalOpen, setIsCategoriesModalOpen,
@@ -93,26 +93,25 @@ function useBlogPublishModal(initialNoteId: string | undefined, activeNote: { id
   }
 }
 
-function useBlogHubModalEffects({
+/**
+ * Opening loads the tab's own data and closing clears whatever belonged to the open session. The
+ * open note is deliberately not a dependency here: it used to be, so editing a note while the hub
+ * was open re-ran the whole bootstrap.
+ */
+function useBlogHubBootstrapEffect({
   open,
-  initialNoteId,
-  activeNote,
-  loadAll,
+  loadHubData,
   hydrateTrafficFilters,
   clearPostSelection,
-  setTargetNoteId,
   setIsPublishModalOpen,
   setEditingPost,
   setIsCategoriesModalOpen,
   setIsSettingsModalOpen,
 }: {
   open: boolean
-  initialNoteId?: string
-  activeNote: { id: string } | null
-  loadAll: () => Promise<void>
+  loadHubData: () => Promise<void>
   hydrateTrafficFilters: () => void
   clearPostSelection: () => void
-  setTargetNoteId: (id: string) => void
   setIsPublishModalOpen: (open: boolean) => void
   setEditingPost: (post: BlogPostIndexEntry | null) => void
   setIsCategoriesModalOpen: (open: boolean) => void
@@ -123,10 +122,7 @@ function useBlogHubModalEffects({
       // The stored switches are read here rather than when the store module loads: only this hub
       // shows them, and the read belongs to opening it.
       hydrateTrafficFilters()
-      void loadAll()
-      if (initialNoteId && activeNote) {
-        setTargetNoteId(initialNoteId)
-      }
+      void loadHubData()
     } else {
       clearPostSelection()
       setIsPublishModalOpen(false)
@@ -134,5 +130,22 @@ function useBlogHubModalEffects({
       setIsCategoriesModalOpen(false)
       setIsSettingsModalOpen(false)
     }
-  }, [open, loadAll, hydrateTrafficFilters, clearPostSelection, initialNoteId, activeNote])
+  }, [open, loadHubData, hydrateTrafficFilters, clearPostSelection, setIsPublishModalOpen, setEditingPost, setIsCategoriesModalOpen, setIsSettingsModalOpen])
+}
+
+/** The note the hub was opened from: applied once it is readable, not as a trigger to reload. */
+function useBlogHubTargetNoteEffect({
+  open,
+  initialNoteId,
+  activeNote,
+  setTargetNoteId,
+}: {
+  open: boolean
+  initialNoteId: string | undefined
+  activeNote: { id: string } | null
+  setTargetNoteId: (id: string) => void
+}) {
+  useEffect(() => {
+    if (open && initialNoteId && activeNote) setTargetNoteId(initialNoteId)
+  }, [open, initialNoteId, activeNote, setTargetNoteId])
 }

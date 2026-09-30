@@ -50,9 +50,9 @@ export function BlogDashboardView({
       )}
 
       {view.statsFailed ? (
-        <BlogLoadFailure onRetry={() => void view.loadAll()} />
+        <BlogLoadFailure onRetry={() => void view.loadHubData({ force: true })} />
       ) : (
-        <DashboardKpis stats={view.stats} analytics={view.analytics} postsCount={view.posts.length} />
+        <DashboardKpis stats={view.stats} analytics={view.analytics} />
       )}
 
       <DashboardAnalytics view={view} onSwitchTab={onSwitchTab} />
@@ -84,7 +84,7 @@ function DashboardAnalytics({
 
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
         <VisitLogsCard analytics={view.analytics} locale={view.locale} />
-        <PendingCommentsCard pendingComments={view.pendingComments} totalComments={view.comments.length} totalPosts={view.posts.length} onSwitchTab={onSwitchTab} updateCommentStatus={view.updateCommentStatus} />
+        <PendingCommentsCard pendingComments={view.pendingComments} totalComments={view.comments.length} totalPosts={view.stats?.totalPosts ?? 0} onSwitchTab={onSwitchTab} updateCommentStatus={view.updateCommentStatus} />
       </div>
     </>
   )
@@ -161,7 +161,7 @@ function BotsFilterBanner({ bots, self, owner }: { bots: number; self: number; o
  * visits displayed the blog's whole history next to a real PV of 0, and both were labelled the same
  * way. An unloaded payload says "not collected" rather than 0.
  */
-function DashboardKpis({ stats, analytics, postsCount }: { stats: BlogStats | null; analytics: BlogGlobalAnalytics | null; postsCount: number }) {
+function DashboardKpis({ stats, analytics }: { stats: BlogStats | null; analytics: BlogGlobalAnalytics | null }) {
   const notCollected = analytics ? undefined : t('blog.not_collected')
   return (
     <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
@@ -188,7 +188,7 @@ function DashboardKpis({ stats, analytics, postsCount }: { stats: BlogStats | nu
 
       <PublishedPostsCard
         published={stats?.publishedPosts ?? analytics?.publishedPosts ?? 0}
-        total={stats?.totalPosts ?? analytics?.totalPosts ?? postsCount}
+        total={stats?.totalPosts ?? analytics?.totalPosts ?? 0}
       />
 
       <KpiCard
