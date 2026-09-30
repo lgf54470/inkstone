@@ -48,6 +48,15 @@ describe('presentationCommand — toggles and focus ownership', () => {
     expect(presentationCommand('Enter', onControl)).toBeNull()
   })
 
+  it('leaves single-letter toggle keys to the focused control so typing is not hijacked', () => {
+    expect(presentationCommand('f', onControl)).toBeNull()
+    expect(presentationCommand('F', onControl)).toBeNull()
+    expect(presentationCommand('s', onControl)).toBeNull()
+    expect(presentationCommand('S', onControl)).toBeNull()
+    expect(presentationCommand('l', onControl)).toBeNull()
+    expect(presentationCommand('L', onControl)).toBeNull()
+  })
+
   it('lets the slide list keep the arrows it walks its own items with', () => {
     expect(presentationCommand('ArrowUp', onSlideList)).toBeNull()
     expect(presentationCommand('ArrowDown', onSlideList)).toBeNull()

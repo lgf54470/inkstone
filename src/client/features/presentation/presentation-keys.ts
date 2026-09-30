@@ -34,13 +34,13 @@ export function presentationCommand(key: string, context: PresentationKeyContext
       return context.onControl ? null : 'next'
     case 'f':
     case 'F':
-      return 'fullscreen'
+      return context.onControl ? null : 'fullscreen'
     case 'l':
     case 'L':
-      return 'follow'
+      return context.onControl ? null : 'follow'
     case 's':
     case 'S':
-      return 'slideList'
+      return context.onControl ? null : 'slideList'
     default:
       return null
   }

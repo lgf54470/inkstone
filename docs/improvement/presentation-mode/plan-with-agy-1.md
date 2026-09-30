@@ -32,9 +32,10 @@
 
 ## 批次 1 · 核心架构、安全守卫与 A11y 红线
 
-- [ ] **B1-01** `P-01 (SEC-01)`: 全局快捷键表单输入守卫（`F/S/L` 忽略 `onControl` 修复）
+- [x] **B1-01** `P-01 (SEC-01)`: 全局快捷键表单输入守卫（`F/S/L` 忽略 `onControl` 修复） — 已完成
   - 涉及文件：`src/client/features/presentation/presentation-keys.ts` (`presentationCommand`)、`src/client/features/presentation/presentation-keys.test.ts`
   - 目标：当焦点位于 input / textarea / editable 等控件时，不拦截 `F/S/L`。
+  - 验证：单元测试新增用例覆盖 `onControl: true` 下 `f/F/s/S/l/L` 均返回 `null`，既有导航用例全绿。
 - [ ] **B1-02** `P-02 (UX-05)`: Escape 键退出层级优化（全屏放映时优先退出全屏，窗口态才关闭演说）
   - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx` (`useDialogBehavior`)
   - 目标：放映时按 Esc 优先退至窗口态，再次按 Esc 退出模式，避免误关演说。
