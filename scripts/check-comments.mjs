@@ -12710,6 +12710,7 @@ const allowed = new Map([
     '// CF-Connecting-IP is injected by the Cloudflare edge and cannot be',
     '// spoofed there. On any other runtime the header is client-controlled,',
     '// so ignore it rather than trusting it for throttling.',
+    '/**\n * Refuses a body past the content budget, measured in bytes rather than characters: the limit exists\n * to bound what one row (and one response) costs, and a character count lets a CJK or emoji body of\n * the same length weigh several times more. `subject` names what was too large, because a blog post\n * and a note reach the same budget by different routes.\n */',
   ]],
   ['src/worker/lib/scoped-organizer.ts', [
     '/**\n * Scoped folder/tag CRUD shared by the "hub" organizer stacks (attachment\n * drive, share center, blog). Each hub keeps its own tables\n * (`*_folders` / `*_tags`) and its own detach target, but the row shape,\n * defaults and ordering rules are identical, so a single implementation\n * replaces the three near-copy route sections.\n *\n * The notes `folders`/`tags` tables are intentionally NOT routed through this\n * module: they carry note-specific semantics (nested depth limits, concurrent\n * guarded soft-delete, note-content tag rewrites with rollback, the changes\n * log) that a shared simple engine cannot express without distortion.\n */',
@@ -13003,6 +13004,10 @@ const allowed = new Map([
   ['src/worker/routes/blog/schemas.ts', [
     '/**\n * A URL a request carries has to be one the app may render, and the rule is the shared allowlist — a\n * scheme check is only as good as the renderer trusting the same answer. An empty value stays valid:\n * every one of these fields is optional, and "no picture" is not a bad URL.\n */',
     '/**\n * How many rows one batch or import request may carry.\n *\n * The platform\'s limit is per statement, not per request — D1 refuses a statement that binds more\n * than 100 variables — and the handlers answer it by splitting the list (see `chunkIds` in\n * `comments.ts`), so this number is not that one. It bounds a single request\'s work instead: a\n * selection a person made, or a directory they exported, not an arbitrary payload that reaches the\n * route and spends a transaction\'s worth of statements before anything can be said about it.\n */',
+    '/** What a card shows of a post before it is cut off; a longer one is a body, not an excerpt. */',
+    '// The shape a post is written in mirrors the note it came from, so the title and excerpt are',
+    '// bounded by the same number the note side uses. The body is bounded by bytes in the handler, not',
+    '// by a character count here: a limit that counts characters does not bound what the row weighs.',
     '// Body of DELETE /api/blog/visits?type=all: the wipe is unrecoverable, so the',
     '// current password travels in the body rather than the query string (SH-47).',
   ]],
@@ -14020,6 +14025,9 @@ const allowed = new Map([
     '// The duplicate check is the blog\'s own directory, so the same site may apply to the other blog.',
   ]],
   ['tests/blog-routes.test.ts', [
+    '// A post carries its note\'s body into a second row, so the write that copies it must weigh the',
+    '// same budget the note was allowed; otherwise a caller can park an arbitrarily large body in',
+    '// blog_posts while every note-side guard still reads as satisfied.',
     '// The public site reads the blog it serves, not a second key nobody writes: patching the site',
     '// name has to reach the reader, which is what this used to assert the opposite of (SEC-09).',
     '/** Seeds one post of this account and one of another, each with a comment. */',

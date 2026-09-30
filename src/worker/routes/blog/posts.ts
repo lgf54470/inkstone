@@ -5,7 +5,7 @@ import type { BlogPost } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { newId, newSlug } from '../../lib/id'
-import { JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
+import { assertContentSize, JSON_BODY_LIMITS, readJsonValidated } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import type { BlogPostCountsRow, BlogPostRow } from '../../db/rows'
 import { blogPostWriteSchema } from './schemas'
@@ -123,6 +123,7 @@ function registerBlogPostsWriteRoute(blogManageRoutes: Hono<AppBindings>): void 
     const body = await readJsonValidated(c, blogPostWriteSchema, JSON_BODY_LIMITS.note)
 
     const note = await resolvePostSource(c.env.DB, userId, body)
+    assertContentSize(note.noteContent, 'Blog post')
     const slug = normalizedSlug(body.slug)
     const postInput = postInputFromBody(body, note, slug)
 
@@ -311,6 +312,8 @@ function registerBlogPostsPatchRoute(blogManageRoutes: Hono<AppBindings>): void 
       await assertSlugFree(c.env.DB, slug, id)
       current.slug = slug
     }
+
+    if (body.content !== undefined) assertContentSize(body.content, 'Blog post')
 
     await blogPostPatchStatement(c.env.DB, body, current, id, Date.now()).run()
     return c.json({ ok: true })

@@ -10,7 +10,7 @@ import { isSafeExternalUrl } from '@shared/url-safety'
 const SAFE_URL_MESSAGE = 'URL must be http(s), mailto or a site-relative path'
 
 function safeUrl(kind: 'link' | 'image' = 'link') {
-  return (value: string | undefined) => !value || isSafeExternalUrl(value, kind)
+  return (value: string | null | undefined) => !value || isSafeExternalUrl(value, kind)
 }
 
 /**
@@ -24,13 +24,19 @@ function safeUrl(kind: 'link' | 'image' = 'link') {
  */
 const BATCH_ROW_LIMIT = 1000
 
+/** What a card shows of a post before it is cut off; a longer one is a body, not an excerpt. */
+const EXCERPT_MAX_LENGTH = 2000
+
 export const blogPostWriteSchema = z.object({
   noteId: z.string().min(1, 'noteId is required'),
-  title: z.string().optional(),
-  slug: z.string().optional(),
-  excerpt: z.string().optional(),
+  // The shape a post is written in mirrors the note it came from, so the title and excerpt are
+  // bounded by the same number the note side uses. The body is bounded by bytes in the handler, not
+  // by a character count here: a limit that counts characters does not bound what the row weighs.
+  title: z.string().max(LIMITS.titleMaxLength).optional(),
+  slug: z.string().max(200).optional(),
+  excerpt: z.string().max(EXCERPT_MAX_LENGTH).optional(),
   content: z.string().optional(),
-  coverUrl: z.string().nullable().optional(),
+  coverUrl: z.string().nullable().optional().refine(safeUrl('image'), SAFE_URL_MESSAGE),
   categoryId: z.string().nullable().optional(),
   folderId: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),

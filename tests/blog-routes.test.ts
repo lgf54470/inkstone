@@ -12,6 +12,7 @@ vi.mock('../src/worker/lib/id', async (importOriginal) => {
 import type { D1Database } from '@cloudflare/workers-types'
 import { TABLE_STATEMENTS } from '../src/worker/db/schema/tables'
 import { INDEX_STATEMENTS } from '../src/worker/db/schema/indexes'
+import { LIMITS } from '../src/shared/constants'
 import type { AppBindings } from '../src/worker/env'
 import { errorResponse } from '../src/worker/lib/errors'
 import { blogManageRoutes, blogPublicRoutes } from '../src/worker/routes/blog'
@@ -192,6 +193,36 @@ describe('blog posts routes (real D1)', () => {
 
     const noNote = await postJson(app, '/api/blog/posts', { noteId: 'n-missing' })
     expect(noNote.status).toBe(404)
+  })
+
+  // A post carries its note's body into a second row, so the write that copies it must weigh the
+  // same budget the note was allowed; otherwise a caller can park an arbitrarily large body in
+  // blog_posts while every note-side guard still reads as satisfied.
+  it('refuses a body past the note content budget on both write paths', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    const oversized = 'x'.repeat(LIMITS.contentMaxBytes + 1)
+    const created = await postJson(app, '/api/blog/posts', {
+      noteId: `n-${++H.counter}`,
+      title: 'Too big',
+      content: oversized,
+      slug: 'too-big',
+    })
+    expect(created.status).toBe(413)
+
+    const ok = await postJson(app, '/api/blog/posts', {
+      noteId: `n-${++H.counter}`,
+      title: 'Fits',
+      content: 'small',
+      slug: 'fits',
+    })
+    expect(ok.status).toBe(200)
+    const { id } = await ok.json()
+
+    const patched = await patchJson(app, `/api/blog/posts/${id}`, { content: oversized })
+    expect(patched.status).toBe(413)
   })
 
   it('applies batch publish and setCategory actions', async () => {

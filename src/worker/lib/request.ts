@@ -221,8 +221,14 @@ export function clampInt(
 }
 
 
-export function assertContentSize(content: string): void {
+/**
+ * Refuses a body past the content budget, measured in bytes rather than characters: the limit exists
+ * to bound what one row (and one response) costs, and a character count lets a CJK or emoji body of
+ * the same length weigh several times more. `subject` names what was too large, because a blog post
+ * and a note reach the same budget by different routes.
+ */
+export function assertContentSize(content: string, subject = 'Note'): void {
   if (new TextEncoder().encode(content).byteLength > LIMITS.contentMaxBytes) {
-    throw ApiError.tooLarge('Note content exceeds the 2 MB limit')
+    throw ApiError.tooLarge(`${subject} content exceeds the 2 MB limit`)
   }
 }
