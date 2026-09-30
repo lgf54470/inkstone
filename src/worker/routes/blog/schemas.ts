@@ -27,6 +27,9 @@ const BATCH_ROW_LIMIT = 1000
 /** What a card shows of a post before it is cut off; a longer one is a body, not an excerpt. */
 const EXCERPT_MAX_LENGTH = 2000
 
+/** Nothing in this century is scheduled past 3000-01-01: a bound keeps a typo from doing so. */
+const PUBLISHED_AT_MAX = 32503680000000
+
 export const blogPostWriteSchema = z.object({
   noteId: z.string().min(1, 'noteId is required'),
   // The shape a post is written in mirrors the note it came from, so the title and excerpt are
@@ -41,6 +44,9 @@ export const blogPostWriteSchema = z.object({
   folderId: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
   isPublished: z.boolean().optional(),
+  // The post's own publish moment, in epoch milliseconds: a past value backdates it, a future one
+  // schedules it (readers do not see the post until then).
+  publishedAt: z.number().int().min(0).max(PUBLISHED_AT_MAX).optional(),
   allowComments: z.boolean().optional(),
   isPinned: z.boolean().optional(),
 })

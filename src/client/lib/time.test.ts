@@ -2,8 +2,8 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { initI18n, localeTag, setLocale } from './i18n'
 import {
   addDaysKey, dateKey, daysBetweenKeys, formatBytes, formatDate, formatDateKey, formatTimecode,
-  formatTotalDuration, isWeekRangeKey, narrowWeekdayLabels, parseDateKey, rollingWindowKey,
-  weekStartFor, weekStartKeyOf,
+  formatTotalDuration, fromDateTimeLocalValue, isWeekRangeKey, narrowWeekdayLabels, parseDateKey,
+  rollingWindowKey, toDateTimeLocalValue, weekStartFor, weekStartKeyOf,
 } from './time'
 
 /** The label the reader's own calendar would produce, recomputed rather than written out. */
@@ -225,3 +225,23 @@ describe('narrowWeekdayLabels', () => {
 function narrowWeekday(locale: string, jsDay: number): string {
   return new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(2024, 0, 7 + jsDay))
 }
+// FEA-01: the publish dialog's own control speaks a local wall time with no zone, while the post
+// stores an epoch millisecond; these two are the boundary between them.
+describe('datetime-local values', () => {
+  it('round-trips a moment through the control’s value format', () => {
+    const ts = new Date(2026, 9, 1, 8, 30).getTime()
+    expect(toDateTimeLocalValue(ts)).toBe('2026-10-01T08:30')
+    expect(fromDateTimeLocalValue('2026-10-01T08:30')).toBe(ts)
+  })
+
+  it('pads single-digit months, days, hours and minutes', () => {
+    expect(toDateTimeLocalValue(new Date(2026, 0, 5, 6, 7).getTime())).toBe('2026-01-05T06:07')
+  })
+
+  it('reads an empty or unreadable value as no moment at all', () => {
+    expect(fromDateTimeLocalValue('')).toBeNull()
+    expect(fromDateTimeLocalValue('   ')).toBeNull()
+    expect(fromDateTimeLocalValue('not a date')).toBeNull()
+    expect(toDateTimeLocalValue(0)).toBe('')
+  })
+})

@@ -1,10 +1,11 @@
-import { Globe, Image as ImageIcon, Check, Hash, X, Sparkles, ExternalLink } from 'lucide-react'
+import { Globe, Image as ImageIcon, Check, Clock, Hash, X, Sparkles, ExternalLink } from 'lucide-react'
 import type { BlogPostIndexEntry } from '@shared/types'
 import { Modal } from '../../../components/overlay'
 import { Button, IconButton } from '../../../components/primitives'
 import { Field, Input, Select, Switch, Textarea } from '../../../components/form'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
+import { fromDateTimeLocalValue } from '../../../lib/time'
 import { useBlogPublishForm } from './use-blog-publish-form'
 
 const MODAL_WIDTH = 640
@@ -52,6 +53,29 @@ function SlugField({ form }: { form: PublishForm }) {
         onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
         placeholder={t('blog.slug_placeholder')}
         invalid={slugAvailable === false}
+      />
+    </Field>
+  )
+}
+
+/**
+ * When the post goes out. The moment is stored as a timestamp; the control speaks the reader's own
+ * wall clock, which is what an author picking a time means. A future moment schedules the post — the
+ * public pages do not show it until then — so the hint says so rather than leaving the author to
+ * discover it. An empty field is not "no date": it lets the server stamp a draft being published
+ * with now and keep an already published post's own moment.
+ */
+function PublishTimeField({ form }: { form: PublishForm }) {
+  const { publishedAt, setPublishedAt } = form
+  const picked = fromDateTimeLocalValue(publishedAt)
+  const isScheduled = picked !== null && picked > Date.now()
+  return (
+    <Field label={t('blog.publish_time_label')} hint={isScheduled ? t('blog.publish_time_scheduled') : t('blog.publish_time_hint')}>
+      <Input
+        type='datetime-local'
+        value={publishedAt}
+        onChange={(e) => setPublishedAt(e.target.value)}
+        leading={<Clock size={13} className='text-[var(--text-quaternary)]' />}
       />
     </Field>
   )
@@ -346,6 +370,7 @@ export function BlogPublishModal({
           <FolderField form={form} />
           <CategoryField form={form} />
         </div>
+        <PublishTimeField form={form} />
         <PinRow form={form} />
         <TagsSection form={form} />
         <ExcerptField form={form} />

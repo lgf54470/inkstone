@@ -224,7 +224,12 @@
 
 按 `FEA-01 → 02 → 03 → 04 → 06 → 07 → 09 → 10 → 11 → 05 → 08 → 12` 顺序；每项开工前确认，触及公共契约或数据形态的（FEA-05 版本历史、FEA-10 分类/标签统一）各自单开 ADR。
 
-- [ ] B5-01 **FEA-01** 发布时间可设 + 定时发布
+- [x] B5-01 **FEA-01** 发布时间可设 + 定时发布 — 已提交（hash 由下一提交回填，见进度日志）
+  - 实现（写入侧）：`schemas.ts` 的 `publishedAt`（int、0..3000-01-01，非法值 400）；新增 `publish-moment.ts` 集中两条规则：`resolvedPublishedAt(body, current, now)` —— 显式时间优先（定时与回填就是它），否则草稿发布盖「现在」、已发布行保持原时刻；`insertBlogPost` 用 UI 选定的时间、`updateBlogPost`（POST /posts 的 upsert）与补丁路由改用它；批量发布（`posts.ts` 与 `organizer.ts` 的按文件夹/标签发布）用 SQL `published_at = CASE WHEN is_published = 0 THEN ? ELSE published_at END`，因此草稿盖时间、已发布行不被重写。
+  - 实现（读取侧）：`publicPostVisibleSql(alias)` 把「已发布且时刻已到」变成一段可复用 SQL（`publishReachedSql`），公开列表/详情/相邻篇/分类计数/标签/时间轴/日历与评论读写路径（提交评论、拉评论列表）全部改用它——定时中的文章对读者完全不存在。比较写进 SQL 而不是多传一个绑定，每个查询不用重编自己的占位符编号。**踩过的坑**：`strftime('%s','now')` 只到秒，直接与毫秒比会把「刚刚发布」的文章隐藏最多一秒（`blog-slug-scope` 的即时发布用例在改后先红），因此比较写成 `< (now_seconds + 1) * 1000`，并补了一条「刚发布即可见」的回归。
+  - 实现（客户端）：`lib/time.ts` 新增 `toDateTimeLocalValue`/`fromDateTimeLocalValue`（控件说本地时间、存储说 epoch 毫秒）；发布弹窗新增「发布时间」`Field`（`datetime-local`），从 `postIndex` 的 `publishedAt` 预填（共享类型与 worker 索引列因此加上该字段，demo 后端同步），留空即交给服务端默认规则，选中未来时刻时提示改为「将定时发布」。新键 3 个（`publish_time_label`/`_hint`/`_scheduled`，双语）。
+  - 验收：`tsc -b` 绿；`tests/blog-routes.test.ts` 62 条（含新 6 条：定时不可见、草稿发布盖时间/已发布不变/重新发布再盖、显式定时与回填、批量只盖草稿、非法值 400、刚发布即可见）；`blog-slug-scope` 与 `blog-public-owner` 的种子改为「真实过去」（阅读侧按真实时钟判定，`H.now` 是 2033 的确定性时间戳，规则会正确地把它当定时）；两处变异实测 1 / 3 failed；`test:unit` 复跑 602 文件 5341 通过 / 1 skipped（首轮 1 条满负载超时，后续两次全绿）；十项静态门禁（含 `tokens:check`）+ `surfaces` 绿（`size` 未动基线，comments 白名单 1338 文件 12744 条）；本地实例 `e2e.mjs` 177 通过、视觉门禁 682 通过、`check-contrast.mjs` 通过。
+  - 限制：作者的列表/统计仍把定时中的文章计入「已发布」（从作者视角它已经不在草稿状态），没有单独的「定时中」徽标或计数；定时不是后台任务（到点可见靠每次查询的实时比较，无需 cron）；弹窗的时间控件精度到分钟（与 `datetime-local` 一致），没有时区选择（按读者本地时区解释，存储为 UTC 时间戳）。
 - [ ] B5-02 **FEA-02** 文章级 SEO 字段（metaTitle / description / ogImage / canonical / noindex）
 - [ ] B5-03 **FEA-03** slug 变更 301 重定向表
 - [ ] B5-04 **FEA-04** 文章回收站（软删 + 还原）
@@ -257,7 +262,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-10-01 | B4-07 UI-11/UI-12 访问卡文案与 `Direct` 本地化 + 借用 key 归位 + 图表刻度与比例 | （下一提交回填） | `tsc -b` 绿；`test:unit` 602 文件 5332 通过 / 1 skipped；新增 5 条（图表 4 + 受众卡 1）；三处变异共 5 failed（刻度回旧算法、比例属性回 `none`、渠道名回原值）；十一项静态门禁 + `surfaces` 绿（`size` 未动基线，comments 白名单 1337 文件 12713 条）；本地实例 `e2e.mjs` 177 通过、视觉门禁 682 通过、`check-contrast.mjs` 通过 | 访问卡不给查询加区间（review 两种做法皆可，取文案）；共享访问词汇（`share.filter_*`/`retention_*`/`device_*`）仍在 share 资源，属刻意；图表 `meet` 在极宽容器会留白；B4-06 的 `4a13c62d` 已回填 |
+| 2026-10-01 | B5-01 FEA-01 发布时间可设 + 定时发布 | （下一提交回填） | `tsc -b` 绿；`tests/blog-routes.test.ts` 62 条（含新 6 条）；两处变异实测 1 / 3 failed；`test:unit` 复跑 602 文件 5341 通过 / 1 skipped（首轮 1 条满负载超时）；十项静态门禁（含 `tokens:check`）+ `surfaces` 绿（`size` 未动基线，comments 白名单 1338 文件 12744 条）；本地实例 `e2e.mjs` 177 通过、视觉门禁 682 通过、`check-contrast.mjs` 通过 | 作者侧计数仍把定时中的文章算已发布；无「定时中」徽标/计数；无时区选择（按本地时区解释、存 UTC 时间戳）；定时不靠 cron，靠查询时实时比较 |
+| 2026-10-01 | B4-07 UI-11/UI-12 访问卡文案与 `Direct` 本地化 + 借用 key 归位 + 图表刻度与比例 | 4758620a | `tsc -b` 绿；`test:unit` 602 文件 5332 通过 / 1 skipped；新增 5 条（图表 4 + 受众卡 1）；三处变异共 5 failed（刻度回旧算法、比例属性回 `none`、渠道名回原值）；十一项静态门禁 + `surfaces` 绿（`size` 未动基线，comments 白名单 1337 文件 12713 条）；本地实例 `e2e.mjs` 177 通过、视觉门禁 682 通过、`check-contrast.mjs` 通过 | 访问卡不给查询加区间（review 两种做法皆可，取文案）；共享访问词汇（`share.filter_*`/`retention_*`/`device_*`）仍在 share 资源，属刻意；图表 `meet` 在极宽容器会留白；B4-06 的 `4a13c62d` 已回填 |
 | 2026-10-01 | B4-06 UI-09/UI-10 行内「更多操作」菜单 + 共享 `Menu` 面板 + 导入导出解析外置 | 4a13c62d | `tsc -b` 绿；`test:unit` 602 文件 5327 通过 / 1 skipped；新增 3 文件 17 条（解析 8 + 菜单 7 + 行按钮 2）；两处变异各 1 failed（CSV 引号分支关掉、跳过过滤移除）；十项静态门禁（含 `tokens:check`）+ `surfaces` 绿（`size` 未动基线，comments 白名单 1335 文件 12705 条）；本地实例 `e2e.mjs` 177 通过、视觉门禁 682 通过、`check-contrast.mjs` 通过 | 复制/二维码/检测在面板里而非三颗独立行内图标；面板是应用内 `Menu`，触屏长按仍不打开；CSV 未处理引号外的其它边缘；遗留的已初始化 dev 实例必须先杀掉，否则 e2e 前提不成立 |
 | 2026-10-01 | B4-05 UI-08/UI-13 审核与分类 CRUD 反馈 + 共享 copyText | 39a3814a | `tsc -b` 绿；`test:unit` 600 文件 5309 通过 / 1 skipped；新增 5 文件 12 条；六处变异各 1～2 failed；九项静态门禁 + `surfaces` 绿（`size` 未动基线，comments 白名单 1331 文件 12667 条）；`e2e.mjs` 177 通过、视觉门禁 682 通过、`check-contrast.mjs` 通过（同一实例） | 失败提示仍由 store 层发（此处只补成功侧）；批量审核未做行级 busy；另修无关的 kanban 日历用例时钟（单独提交 85702071）；`blog-comments-window` 在满负载下曾 5s 超时，单独运行通过 |
 | 2026-09-30 | B4-04 UI-06/UI-07 标题按钮与表语义 + 排序 UI + hover-only 改聚焦可见 + 批量条换行 + 四弹窗可访问名 | cc066e7b | `tsc -b` 绿；`test:unit` 595 文件 5298 通过 / 1 skipped；新增 11 条（表 2 + 卡 2 + 侧栏 1 + 排序 1 + 弹窗名 5）；四处变异各 1 failed（排序取值、`th` 去 scope、弹窗去 ariaLabel、侧栏去 focus-visible 臂）；九项静态门禁 + `surfaces` 绿（`size` 未动基线，comments 白名单 1323 文件 12636 条）；`e2e.mjs` 177 通过、视觉门禁 682 通过、`check-contrast.mjs` 通过（同一实例） | 双击打开改单击标题（review 明确允许）；排序在工具栏而非表头；批量条仍为浮条、仅允许换行；手机上置顶按钮常显 |

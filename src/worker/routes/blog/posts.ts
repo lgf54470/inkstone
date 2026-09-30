@@ -10,6 +10,7 @@ import { blogPostWriteSchema } from './schemas'
 import { blogPostPatchSchema } from './schemas'
 import { blogBatchSchema } from './schemas'
 import { safeDecodeTagParam, toBlogPostIndexEntry, toBlogPostSummary } from './helpers'
+import { resolvedPublishedAt } from './publish-moment'
 import { BLOG_POSTS_PAGE_SIZE, BLOG_POSTS_PAGE_SIZE_MAX, blogPostIndexQuery, blogPostsCountQuery, blogPostsListQuery } from './post-list-query'
 
 const SLUG_RE = /^[a-zA-Z0-9_-]{2,80}$/
@@ -80,13 +81,13 @@ function registerBlogPostsWriteRoute(blogManageRoutes: Hono<AppBindings>): void 
     const postInput = postInputFromBody(body, note, slug)
 
     const existingPost = await c.env.DB
-      .prepare('SELECT id, slug FROM blog_posts WHERE note_id = ?1 AND user_id = ?2')
+      .prepare('SELECT id, slug, is_published, published_at FROM blog_posts WHERE note_id = ?1 AND user_id = ?2')
       .bind(body.noteId, userId)
-      .first<{ id: string; slug: string }>()
+      .first<{ id: string; slug: string; is_published: number; published_at: number }>()
 
     if (existingPost) {
       if (slug !== existingPost.slug) await assertSlugFree(c.env.DB, userId, slug, existingPost.id)
-      await updateBlogPost(c.env.DB, existingPost.id, postInput)
+      await updateBlogPost(c.env.DB, existingPost.id, postInput, resolvedPublishedAt(body, existingPost, Date.now()))
       return c.json({ ok: true, id: existingPost.id, slug })
     }
 
@@ -138,6 +139,7 @@ interface PostWriteInput {
   folderId: string | null
   tagsJson: string
   isPublished: number
+  publishedAt?: number
   allowComments: number
   isPinned: number
 }
@@ -157,6 +159,7 @@ function postInputFromBody(
     folderId: body.folderId || null,
     tagsJson: JSON.stringify(body.tags || []),
     isPublished: body.isPublished !== false ? 1 : 0,
+    publishedAt: body.publishedAt,
     allowComments: body.allowComments !== false ? 1 : 0,
     isPinned: body.isPinned ? 1 : 0,
   }
@@ -176,7 +179,7 @@ async function assertSlugFree(db: D1Database, userId: string, slug: string, excl
   if (conflict) throw ApiError.conflict('Slug already exists')
 }
 
-async function updateBlogPost(db: D1Database, id: string, input: PostWriteInput): Promise<void> {
+async function updateBlogPost(db: D1Database, id: string, input: PostWriteInput, publishedAt: number): Promise<void> {
   const now = Date.now()
   await db
     .prepare(`
@@ -192,8 +195,9 @@ async function updateBlogPost(db: D1Database, id: string, input: PostWriteInput)
         is_published = ?9,
         allow_comments = ?10,
         is_pinned = ?11,
-        updated_at = ?12
-      WHERE id = ?13
+        published_at = ?12,
+        updated_at = ?13
+      WHERE id = ?14
     `)
     .bind(
       input.slug,
@@ -207,6 +211,7 @@ async function updateBlogPost(db: D1Database, id: string, input: PostWriteInput)
       input.isPublished,
       input.allowComments,
       input.isPinned,
+      publishedAt,
       now,
       id,
     )
@@ -224,7 +229,7 @@ async function insertBlogPost(
         id, slug, note_id, user_id, title, excerpt, content, cover_url,
         category_id, folder_id, tags, is_published, allow_comments, is_pinned, views,
         published_at, created_at, updated_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?15, ?15)
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?16, ?16)
     `)
     .bind(
       input.id,
@@ -241,6 +246,8 @@ async function insertBlogPost(
       input.isPublished,
       input.allowComments,
       input.isPinned,
+      // A new post takes the moment its author picked; without one it went out as it was written.
+      input.publishedAt ?? now,
       now,
     )
     .run()
@@ -293,8 +300,9 @@ function blogPostPatchStatement(
         is_published = ?9,
         allow_comments = ?10,
         is_pinned = ?11,
-        updated_at = ?12
-      WHERE id = ?13
+        published_at = ?12,
+        updated_at = ?13
+      WHERE id = ?14
     `)
     .bind(
       body.slug ?? current.slug,
@@ -308,6 +316,7 @@ function blogPostPatchStatement(
       body.isPublished !== undefined ? (body.isPublished ? 1 : 0) : current.is_published,
       body.allowComments !== undefined ? (body.allowComments ? 1 : 0) : current.allow_comments,
       body.isPinned !== undefined ? (body.isPinned ? 1 : 0) : current.is_pinned,
+      resolvedPublishedAt(body, current, now),
       now,
       id,
     )
@@ -425,7 +434,12 @@ function blogBatchStatements(
 
   switch (action) {
     case 'publish':
-      return [{ sql: `UPDATE blog_posts SET is_published = 1, updated_at = ?${withIds}`, binds: [now, userId, ...postIds] }]
+      // Drafts stamp the moment they go out; already published rows keep their own, so a batch
+      // publish cannot rewrite an archive's dates. SQLite reads the old `is_published` here.
+      return [{
+        sql: `UPDATE blog_posts SET is_published = 1, published_at = CASE WHEN is_published = 0 THEN ? ELSE published_at END, updated_at = ?${withIds}`,
+        binds: [now, now, userId, ...postIds],
+      }]
     case 'unpublish':
       return [{ sql: `UPDATE blog_posts SET is_published = 0, updated_at = ?${withIds}`, binds: [now, userId, ...postIds] }]
     case 'delete':

@@ -11,6 +11,7 @@ import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
 const DB_ENV = { env: { DB: null as unknown as D1Database } }
 const EXECUTION_CTX = { waitUntil: vi.fn() } as unknown as ExecutionContext
 const NOW = 2_000_000_000_000
+const VISIBLE_PUBLISHED_AT = 1_700_000_000_000
 
 interface SeededAccount {
   id: string
@@ -51,7 +52,7 @@ async function seedPost(
     db,
     `INSERT INTO blog_posts (id, slug, note_id, user_id, title, excerpt, content, cover_url, category_id,
        folder_id, tags, is_published, allow_comments, is_pinned, views, published_at, created_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, '', ?6, '', NULL, NULL, ?7, ?8, ?9, 0, 0, ?10, ?10, ?10)`,
+     VALUES (?1, ?2, ?3, ?4, ?5, '', ?6, '', NULL, NULL, ?7, ?8, ?9, 0, 0, ?10, ?11, ?11)`,
     id,
     fields.slug,
     `note-${id}`,
@@ -61,6 +62,9 @@ async function seedPost(
     JSON.stringify(['shared-tag']),
     fields.isPublished === false ? 0 : 1,
     fields.allowComments === false ? 0 : 1,
+    // A visitor's clock has already passed this moment: reader-facing queries hide a post whose
+    // publish time is still in the future (that is what scheduling is), and `NOW` is 2033.
+    VISIBLE_PUBLISHED_AT,
     NOW,
   )
   return id

@@ -220,6 +220,12 @@ function registerBlogToggleGroupRoute(blogManageRoutes: Hono<AppBindings>): void
 
     const isPublished = body.enabled ? 1 : 0
     const now = Date.now()
+    // Publishing a group stamps the drafts it contains (the batch route's rule, applied here too);
+    // unpublishing leaves every publish moment where it was.
+    const stampMoment = body.enabled
+      ? ', published_at = CASE WHEN is_published = 0 THEN ? ELSE published_at END'
+      : ''
+    const momentBinds = body.enabled ? [now] : []
 
     if (body.type === 'folder') {
       const { results: allFolders } = await c.env.DB.prepare(
@@ -229,12 +235,12 @@ function registerBlogToggleGroupRoute(blogManageRoutes: Hono<AppBindings>): void
       const ids = expandFolderSubtree(allFolders || [], body.target)
       const placeholders = ids.map(() => '?').join(',')
       await c.env.DB.prepare(
-        `UPDATE blog_posts SET is_published = ?, updated_at = ? WHERE user_id = ? AND folder_id IN (${placeholders})`,
-      ).bind(isPublished, now, userId, ...ids).run()
+        `UPDATE blog_posts SET is_published = ?, updated_at = ?${stampMoment} WHERE user_id = ? AND folder_id IN (${placeholders})`,
+      ).bind(isPublished, now, ...momentBinds, userId, ...ids).run()
     } else if (body.type === 'tag') {
       await c.env.DB.prepare(
-        `UPDATE blog_posts SET is_published = ?, updated_at = ? WHERE user_id = ? AND (tags LIKE ? OR tags LIKE ?)`,
-      ).bind(isPublished, now, userId, `%\"${body.target}\"%`, `%\"${body.target}/%`).run()
+        `UPDATE blog_posts SET is_published = ?, updated_at = ?${stampMoment} WHERE user_id = ? AND (tags LIKE ? OR tags LIKE ?)`,
+      ).bind(isPublished, now, ...momentBinds, userId, `%\"${body.target}\"%`, `%\"${body.target}/%`).run()
     }
 
     return c.json({ ok: true })

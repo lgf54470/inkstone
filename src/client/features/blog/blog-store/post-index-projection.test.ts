@@ -4,7 +4,7 @@ import { createPostIndexProjection } from './index'
 function entry(id: string, isPublished: boolean) {
   return {
     id, slug: id, noteId: `n-${id}`, title: id, excerpt: '', coverUrl: '',
-    categoryId: null, folderId: null, tags: [], isPublished, allowComments: true, isPinned: false,
+    categoryId: null, folderId: null, tags: [], publishedAt: 1, isPublished, allowComments: true, isPinned: false,
   }
 }
 

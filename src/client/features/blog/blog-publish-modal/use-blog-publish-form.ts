@@ -5,6 +5,7 @@ import { parseFrontMatter, upsertFrontMatterProperty } from '@shared/markdown-ut
 import { api } from '../../../lib/api'
 import { errorMessage } from '../../../lib/errors'
 import { t } from '../../../lib/i18n'
+import { fromDateTimeLocalValue, toDateTimeLocalValue } from '../../../lib/time'
 import type { UiState } from '../../../store/ui'
 import { useUi } from '../../../store/ui'
 import { useNotes } from '../../../store/notes'
@@ -36,10 +37,10 @@ export function useBlogPublishForm({
   const fields = usePublishFormFields()
   const {
     title, slug, coverUrl, folderId, categoryId, tagInput, tags, excerpt,
-    allowComments, isPinned, isSaving, slugAvailable, slugReason,
+    allowComments, isPinned, isSaving, slugAvailable, slugReason, publishedAt,
     setTitle, setSlug, setCoverUrl, setFolderId, setCategoryId,
     setTagInput, setTags, setExcerpt, setAllowComments,
-    setIsPinned, setIsSaving, setSlugAvailable, setSlugReason,
+    setIsPinned, setIsSaving, setSlugAvailable, setSlugReason, setPublishedAt,
   } = fields
 
   const flatFolderList = useFolderFlatList(folders)
@@ -49,14 +50,14 @@ export function useBlogPublishForm({
 
   usePublishFormInit({
     open, note, initialPost, content, currentStoreFolderId, firstImageInContent,
-    setters: { setTitle, setSlug, setCoverUrl, setFolderId, setCategoryId, setTags, setExcerpt, setAllowComments, setIsPinned },
+    setters: { setTitle, setSlug, setCoverUrl, setFolderId, setCategoryId, setTags, setExcerpt, setAllowComments, setIsPinned, setPublishedAt },
   })
   useSlugValidation(slug, initialPost?.id, setSlugAvailable, setSlugReason)
 
   const handleAddTag = () => addTag(tagInput, tags, setTags, setTagInput)
   const handleRemoveTag = (tag: string) => setTags(tags.filter((t) => t !== tag))
 
-  const handleSave = (publish: boolean) => savePublishedPost(publish, { note, noteId, title, slug, coverUrl, folderId, categoryId, tags, excerpt, allowComments, isPinned, slugAvailable, slugReason, toast, setIsSaving, onSaved, onClose })
+  const handleSave = (publish: boolean) => savePublishedPost(publish, { note, noteId, title, slug, coverUrl, folderId, categoryId, tags, excerpt, allowComments, isPinned, publishedAt, slugAvailable, slugReason, toast, setIsSaving, onSaved, onClose })
 
   const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
   const previewUrl = `${frontendBase}/posts/${slug.trim() || 'preview'}`
@@ -65,6 +66,7 @@ export function useBlogPublishForm({
     title, setTitle, slug, setSlug, coverUrl, setCoverUrl, folderId, setFolderId,
     categoryId, setCategoryId, tagInput, setTagInput, tags, setTags,
     excerpt, setExcerpt, allowComments, setAllowComments, isPinned, setIsPinned,
+    publishedAt, setPublishedAt,
     isSaving, slugAvailable, slugReason, flatFolderList, firstImageInContent,
     note, availableTags, categories, previewUrl, handleAddTag, handleRemoveTag, handleSave,
   }
@@ -93,10 +95,12 @@ function usePublishFormFields() {
   const [excerpt, setExcerpt] = useState('')
   const [allowComments, setAllowComments] = useState(true)
   const [isPinned, setIsPinned] = useState(false)
+  // Empty means "let the server decide": now for a draft being published, its own moment otherwise.
+  const [publishedAt, setPublishedAt] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
   const [slugReason, setSlugReason] = useState('')
-  return { title, setTitle, slug, setSlug, coverUrl, setCoverUrl, folderId, setFolderId, categoryId, setCategoryId, tagInput, setTagInput, tags, setTags, excerpt, setExcerpt, allowComments, setAllowComments, isPinned, setIsPinned, isSaving, setIsSaving, slugAvailable, setSlugAvailable, slugReason, setSlugReason }
+  return { title, setTitle, slug, setSlug, coverUrl, setCoverUrl, folderId, setFolderId, categoryId, setCategoryId, tagInput, setTagInput, tags, setTags, excerpt, setExcerpt, allowComments, setAllowComments, isPinned, setIsPinned, publishedAt, setPublishedAt, isSaving, setIsSaving, slugAvailable, setSlugAvailable, slugReason, setSlugReason }
 }
 
 function addTag(tagInput: string, tags: string[], setTags: (v: string[]) => void, setTagInput: (v: string) => void): void {
@@ -116,6 +120,7 @@ interface PublishFormSetters {
   setExcerpt: (v: string) => void
   setAllowComments: (v: boolean) => void
   setIsPinned: (v: boolean) => void
+  setPublishedAt: (v: string) => void
 }
 
 interface InitProps {
@@ -149,6 +154,7 @@ function applyInitialPost(initialPost: BlogPostIndexEntry, note: { title?: strin
   setters.setExcerpt(initialPost.excerpt || note.excerpt || '')
   setters.setAllowComments(initialPost.allowComments)
   setters.setIsPinned(initialPost.isPinned)
+  setters.setPublishedAt(toDateTimeLocalValue(initialPost.publishedAt))
 }
 
 function applyFreshNote(
@@ -183,6 +189,8 @@ function applyFreshNote(
   setters.setExcerpt(note.excerpt || '')
   setters.setAllowComments(true)
   setters.setIsPinned(false)
+  // Nothing picked yet: a note published for the first time goes out when its author says so.
+  setters.setPublishedAt('')
 }
 
 function cleanImageUrl(raw: string): string {
@@ -273,6 +281,7 @@ interface SavePostCtx {
   excerpt: string
   allowComments: boolean
   isPinned: boolean
+  publishedAt: string
   slugAvailable: boolean | null
   slugReason: string
   toast: UiState['toast']
@@ -308,6 +317,7 @@ async function savePublishedPost(publish: boolean, ctx: SavePostCtx): Promise<vo
       isPublished: publish,
       allowComments: ctx.allowComments,
       isPinned: ctx.isPinned,
+      publishedAt: fromDateTimeLocalValue(ctx.publishedAt) ?? undefined,
     })
     if (!saved) return
 

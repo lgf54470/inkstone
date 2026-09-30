@@ -19,6 +19,10 @@ import { blogManageRoutes, blogPublicRoutes } from '../src/worker/routes/blog'
 import { createD1Database as createDb, captureSql, runSql, type D1Shim } from './d1-harness'
 
 const USER = 'user-1'
+// 2023-11-14: reader-facing queries compare a post's publish moment against the real clock (that is
+// what makes a scheduled post invisible), so a fixture that must be readable sits in the real past —
+// `H.now` is a deterministic 2033, which the rule would rightly treat as scheduling.
+const VISIBLE_PUBLISHED_AT = 1_700_000_000_000
 const DB_ENV = { env: { DB: null as unknown as D1Database, VISIT_FP_SECRET: undefined as string | undefined } }
 const EXECUTION_CTX = { waitUntil: vi.fn() } as unknown as ExecutionContext
 
@@ -59,7 +63,7 @@ async function seedBlogPost(db: D1Shim, fields: Record<string, unknown>): Promis
     fields.allow_comments === undefined ? 1 : fields.allow_comments ? 1 : 0,
     fields.is_pinned ? 1 : 0,
     (fields.views as number) ?? 0,
-    (fields.published_at as number) ?? H.now,
+    (fields.published_at as number) ?? VISIBLE_PUBLISHED_AT,
   )
   return { id, slug }
 }
@@ -417,7 +421,7 @@ describe('blog public routes (real D1)', () => {
     const timelineRes = await request(app, '/api/blog/public/timeline')
     expect(timelineRes.status).toBe(200)
     const timelineData = await timelineRes.json()
-    const postDate = new Date(H.now)
+    const postDate = new Date(VISIBLE_PUBLISHED_AT)
     const postYear = postDate.getFullYear()
     const postMonth = postDate.getMonth() + 1
     const timelinePosts = timelineData.timeline[postYear]?.[postMonth] || []
@@ -1409,5 +1413,125 @@ describe('blog LIKE wildcard escaping (SEC-07)', () => {
     const ok = await request(app, '/api/blog/visits?type=older_than&days=3650', { method: 'DELETE' })
     expect(ok.status).toBe(200)
     expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_visits')).toMatchObject({ n: 1 })
+  })
+})
+
+describe('blog publish moment (FEA-01)', () => {
+  const DAY = 24 * 60 * 60 * 1000
+
+  it('keeps a scheduled post out of every reader-facing view until its moment', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const seededAt = Date.now()
+    await seedBlogPost(db, { slug: 'already-out', published_at: seededAt - DAY, tags: ['tech'] })
+    await seedBlogPost(db, { slug: 'scheduled', published_at: seededAt + DAY, tags: ['tech'] })
+    const app = makeApp()
+
+    const list = await (await request(app, '/api/blog/public/posts')).json()
+    expect(list.posts.map((post: { slug: string }) => post.slug)).toEqual(['already-out'])
+    expect(list.pagination.total).toBe(1)
+
+    const categories = await (await request(app, '/api/blog/public/categories')).json()
+    expect(categories.categories[0]?.postsCount ?? 0).toBe(0)
+
+    const tags = await (await request(app, '/api/blog/public/tags')).json()
+    expect(tags.tags).toEqual([{ name: 'tech', postsCount: 1 }])
+
+    // Detail, comments and the comment form all read the post through the same gate.
+    expect((await request(app, '/api/blog/public/posts/scheduled')).status).toBe(404)
+    expect((await request(app, '/api/blog/public/posts/already-out')).status).toBe(200)
+    expect((await request(app, '/api/blog/public/comments/scheduled')).status).toBe(404)
+    const submitted = await postJson(app, '/api/blog/public/comments', {
+      postSlug: 'scheduled', authorName: 'Reader', authorEmail: 'reader@example.com', content: 'Too early?',
+    })
+    expect(submitted.status).toBe(404)
+  })
+
+  it('stamps a draft being published now and keeps the moment an already published post had', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const oldMoment = Date.now() - 10 * DAY
+    const draft = await seedBlogPost(db, { slug: 'draft-stamp', is_published: 0, published_at: oldMoment })
+    const live = await seedBlogPost(db, { slug: 'live-keep', is_published: 1, published_at: oldMoment })
+    const app = makeApp()
+
+    const before = Date.now()
+    expect((await patchJson(app, `/api/blog/posts/${draft.id}`, { isPublished: true })).status).toBe(200)
+    const stamped = await firstRow(db, 'SELECT published_at FROM blog_posts WHERE id = ?1', draft.id)
+    expect(stamped?.published_at as number).toBeGreaterThanOrEqual(before)
+
+    // Editing a live post must not move it: the archive order is a date readers already saw.
+    expect((await patchJson(app, `/api/blog/posts/${live.id}`, { title: 'Retitled' })).status).toBe(200)
+    const kept = await firstRow(db, 'SELECT published_at, title FROM blog_posts WHERE id = ?1', live.id)
+    expect(kept?.published_at).toBe(oldMoment)
+    expect(kept?.title).toBe('Retitled')
+
+    // Republishing it (unpublish, publish) is a new moment — it was a draft at that point.
+    await patchJson(app, `/api/blog/posts/${live.id}`, { isPublished: false })
+    expect((await patchJson(app, `/api/blog/posts/${live.id}`, { isPublished: true })).status).toBe(200)
+    const republished = await firstRow(db, 'SELECT published_at FROM blog_posts WHERE id = ?1', live.id)
+    expect(republished?.published_at as number).toBeGreaterThan(oldMoment)
+  })
+
+  it('takes an explicit moment for scheduling and backdating', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const scheduledAt = Date.now() + 3 * DAY
+
+    const created = await postJson(app, '/api/blog/posts', {
+      noteId: 'n-scheduled', title: 'Later', slug: 'later', content: 'Body', isPublished: true, publishedAt: scheduledAt,
+    })
+    expect(created.status).toBe(200)
+    const { id } = await created.json()
+    expect((await firstRow(db, 'SELECT published_at FROM blog_posts WHERE id = ?1', id))?.published_at).toBe(scheduledAt)
+    expect((await request(app, '/api/blog/public/posts/later')).status).toBe(404)
+
+    // The same field, the other direction: a moment in the past puts it back on the shelf.
+    const backdated = Date.now() - DAY
+    expect((await patchJson(app, `/api/blog/posts/${id}`, { publishedAt: backdated })).status).toBe(200)
+    expect((await firstRow(db, 'SELECT published_at FROM blog_posts WHERE id = ?1', id))?.published_at).toBe(backdated)
+    expect((await request(app, '/api/blog/public/posts/later')).status).toBe(200)
+  })
+
+  it('stamps drafts in a batch publish and leaves the rest of the archive where it was', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const oldMoment = Date.now() - 10 * DAY
+    const draft = await seedBlogPost(db, { slug: 'batch-draft', is_published: 0, published_at: oldMoment })
+    const live = await seedBlogPost(db, { slug: 'batch-live', is_published: 1, published_at: oldMoment })
+    const app = makeApp()
+
+    const res = await postJson(app, '/api/blog/posts/batch', { action: 'publish', postIds: [draft.id, live.id] })
+    expect(res.status).toBe(200)
+    const stamped = await firstRow(db, 'SELECT published_at FROM blog_posts WHERE id = ?1', draft.id)
+    expect(stamped?.published_at as number).toBeGreaterThan(oldMoment)
+    expect((await firstRow(db, 'SELECT published_at FROM blog_posts WHERE id = ?1', live.id))?.published_at).toBe(oldMoment)
+  })
+
+  it('shows a post published right now without waiting for the clock to tick', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    const created = await postJson(app, '/api/blog/posts', {
+      noteId: 'n-now', title: 'Now', slug: 'just-now', content: 'Body', isPublished: true,
+    })
+    expect(created.status).toBe(200)
+    // The stored moment carries milliseconds while `strftime` reports whole seconds; a rule that
+    // compares the two directly hides every fresh post for up to a second.
+    expect((await request(app, '/api/blog/public/posts/just-now')).status).toBe(200)
+  })
+
+  it('refuses a publish moment that is not a plain epoch millisecond', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const post = await seedBlogPost(db, { slug: 'guarded' })
+    const app = makeApp()
+
+    for (const bad of [-1, 1.5, 'later', 32_503_680_000_001]) {
+      const res = await patchJson(app, `/api/blog/posts/${post.id}`, { publishedAt: bad })
+      expect(res.status, String(bad)).toBe(400)
+    }
   })
 })

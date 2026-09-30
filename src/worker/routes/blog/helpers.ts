@@ -36,6 +36,7 @@ export function toBlogPostIndexEntry(row: BlogPostIndexRow): BlogPostIndexEntry 
     categoryId: row.category_id,
     folderId: row.folder_id || null,
     tags: JSON.parse(row.tags || '[]'),
+    publishedAt: row.published_at,
     isPublished: Boolean(row.is_published),
     allowComments: Boolean(row.allow_comments),
     isPinned: Boolean(row.is_pinned),

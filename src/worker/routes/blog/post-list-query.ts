@@ -21,7 +21,7 @@ const POST_LIST_COLUMNS = `p.id, p.slug, p.note_id, p.user_id, p.title, p.excerp
   p.is_pinned, p.views, p.published_at, p.created_at, p.updated_at`
 
 const POST_INDEX_COLUMNS = `p.id, p.note_id, p.slug, p.title, p.excerpt, p.cover_url,
-  p.category_id, p.folder_id, p.tags, p.is_published, p.allow_comments, p.is_pinned`
+  p.category_id, p.folder_id, p.tags, p.published_at, p.is_published, p.allow_comments, p.is_pinned`
 
 /**
  * One WHERE for the page query and the count query: if the two disagree about what the filter

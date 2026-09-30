@@ -90,6 +90,7 @@ describe('blog dialog names', () => {
         coverUrl: '',
         categoryId: null,
         tags: [],
+        publishedAt: 1,
         isPublished: true,
         allowComments: true,
         isPinned: false,

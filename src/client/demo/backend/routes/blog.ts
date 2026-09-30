@@ -80,8 +80,8 @@ function toIndexEntry(post: BlogPost): BlogPostIndexEntry {
   return {
     id: post.id, noteId: post.noteId, slug: post.slug, title: post.title,
     excerpt: post.excerpt, coverUrl: post.coverUrl, categoryId: post.categoryId,
-    folderId: post.folderId, tags: post.tags, isPublished: post.isPublished,
-    allowComments: post.allowComments, isPinned: post.isPinned,
+    folderId: post.folderId, tags: post.tags, publishedAt: post.publishedAt,
+    isPublished: post.isPublished, allowComments: post.allowComments, isPinned: post.isPinned,
   }
 }
 

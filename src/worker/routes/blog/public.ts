@@ -6,6 +6,7 @@ import { loadPublicPostBySlug } from './public-post'
 import { registerBlogPublicVisitBeaconRoute } from './visit-beacon'
 import { safeDecodeTagParam, summarizePostTagCounts } from './helpers'
 import { blogTagFilterSql } from './tag-needles'
+import { publicPostVisibleSql } from './publish-moment'
 
 
 import { registerMusicPublicRoutes } from '../music'
@@ -133,7 +134,7 @@ interface PublicPostsFilter {
 }
 
 function blogPublicPostsWhere(ownerId: string, filter: PublicPostsFilter): { clauses: string; params: unknown[] } {
-  const clauses = ['p.is_published = 1', 'p.user_id = ?1']
+  const clauses = [publicPostVisibleSql('p'), 'p.user_id = ?1']
   const params: unknown[] = [ownerId]
   let idx = 2
 
@@ -244,11 +245,11 @@ function registerBlogPublicPostDetailRoute(blogPublicRoutes: Hono<AppBindings>):
 async function loadAdjacentPost(db: D1Database, ownerId: string, publishedAt: number, newer: boolean): Promise<{ slug: string; title: string } | null> {
   const row = newer
     ? await db
-        .prepare('SELECT slug, title FROM blog_posts WHERE is_published = 1 AND user_id = ?2 AND published_at > ?1 ORDER BY published_at ASC LIMIT 1')
+        .prepare(`SELECT slug, title FROM blog_posts WHERE ${publicPostVisibleSql('blog_posts')} AND user_id = ?2 AND published_at > ?1 ORDER BY published_at ASC LIMIT 1`)
         .bind(publishedAt, ownerId)
         .first<{ slug: string; title: string }>()
     : await db
-        .prepare('SELECT slug, title FROM blog_posts WHERE is_published = 1 AND user_id = ?2 AND published_at < ?1 ORDER BY published_at DESC LIMIT 1')
+        .prepare(`SELECT slug, title FROM blog_posts WHERE ${publicPostVisibleSql('blog_posts')} AND user_id = ?2 AND published_at < ?1 ORDER BY published_at DESC LIMIT 1`)
         .bind(publishedAt, ownerId)
         .first<{ slug: string; title: string }>()
   return row || null
@@ -261,7 +262,7 @@ function registerBlogPublicCategoriesRoute(blogPublicRoutes: Hono<AppBindings>):
         SELECT c.id, c.name, c.slug, c.description, c.color, c.icon,
           COUNT(p.id) as posts_count
         FROM blog_categories c
-        LEFT JOIN blog_posts p ON c.id = p.category_id AND p.is_published = 1
+        LEFT JOIN blog_posts p ON c.id = p.category_id AND ${publicPostVisibleSql('p')}
         WHERE c.user_id = ?1
         GROUP BY c.id
         ORDER BY c.position ASC, c.created_at ASC
@@ -286,7 +287,7 @@ function registerBlogPublicTagsRoute(blogPublicRoutes: Hono<AppBindings>): void 
     const { results } = await c.env.DB
       .prepare(`
         SELECT tags FROM blog_posts
-        WHERE is_published = 1 AND user_id = ?1
+        WHERE ${publicPostVisibleSql('blog_posts')} AND user_id = ?1
         ORDER BY published_at DESC LIMIT ${PUBLIC_ARCHIVE_LIMIT}
       `)
       .bind(blogOwnerOf(c).userId)
@@ -308,7 +309,7 @@ function registerBlogPublicTimelineRoute(blogPublicRoutes: Hono<AppBindings>): v
       .prepare(`
         SELECT id, slug, title, published_at, cover_url, tags, views
         FROM blog_posts
-        WHERE is_published = 1 AND user_id = ?1
+        WHERE ${publicPostVisibleSql('blog_posts')} AND user_id = ?1
         ORDER BY published_at DESC LIMIT ${PUBLIC_ARCHIVE_LIMIT}
       `)
       .bind(blogOwnerOf(c).userId)
@@ -357,7 +358,7 @@ function registerBlogPublicCalendarRoute(blogPublicRoutes: Hono<AppBindings>): v
       .prepare(`
         SELECT slug, title, published_at FROM (
           SELECT slug, title, published_at FROM blog_posts
-          WHERE is_published = 1 AND user_id = ?1
+          WHERE ${publicPostVisibleSql('blog_posts')} AND user_id = ?1
           ORDER BY published_at DESC LIMIT ${PUBLIC_ARCHIVE_LIMIT}
         ) ORDER BY published_at ASC
       `)

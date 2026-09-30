@@ -157,6 +157,7 @@ export interface BlogPostIndexRow {
   category_id: string | null
   folder_id: string | null
   tags: string
+  published_at: number
   is_published: number
   allow_comments: number
   is_pinned: number

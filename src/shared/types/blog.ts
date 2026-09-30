@@ -45,7 +45,7 @@ export type BlogPostSummary = Omit<BlogPost, 'content'>
  */
 export type BlogPostIndexEntry = Omit<
   BlogPostSummary,
-  'userId' | 'views' | 'commentsCount' | 'publishedAt' | 'createdAt' | 'updatedAt'
+  'userId' | 'views' | 'commentsCount' | 'createdAt' | 'updatedAt'
 >
 
 export interface BlogFolder {

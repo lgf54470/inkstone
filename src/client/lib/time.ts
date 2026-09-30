@@ -122,6 +122,26 @@ export function formatDateKey(key: string, now = new Date()): string {
   return formatDate(date.getTime(), now) || key
 }
 
+/**
+ * A `datetime-local` control's own value format, in the reader's zone: the control reads and writes
+ * a local wall time with no zone, which is exactly what an author picking a publish moment means.
+ */
+export function toDateTimeLocalValue(ts: number): string {
+  if (!Number.isFinite(ts) || !ts) return ''
+  const date = new Date(ts)
+  if (Number.isNaN(date.getTime())) return ''
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+/** The moment the control's value names, or null when it names nothing readable (or nothing at all). */
+export function fromDateTimeLocalValue(value: string): number | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const parsed = new Date(trimmed).getTime()
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export function shortTime(ts: number, now = Date.now()): string {
   if (!Number.isFinite(ts) || !ts) return ''
   const date = new Date(ts)

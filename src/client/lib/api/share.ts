@@ -224,6 +224,7 @@ export const share = {
         folderId?: string | null
         tags?: string[]
         isPublished?: boolean
+        publishedAt?: number
         allowComments?: boolean
         isPinned?: boolean
       }) => request<{ ok: true; id: string; slug: string }>('/api/blog/posts', { method: 'POST', body }),

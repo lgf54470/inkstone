@@ -146,6 +146,7 @@ export interface BlogStoreState {
     categoryId?: string | null
     tags?: string[]
     isPublished?: boolean
+    publishedAt?: number
     allowComments?: boolean
     isPinned?: boolean
   }) => Promise<{ ok: boolean; id: string; slug: string } | null>

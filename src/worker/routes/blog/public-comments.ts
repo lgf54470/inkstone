@@ -10,6 +10,7 @@ import { consumeAttemptBudget, ThrottleError } from '../../lib/throttle'
 import type { BlogPublicCommentRow } from '../../db/rows'
 import { blogPublicCommentSchema } from './schemas'
 import { getBlogSettings } from './settings'
+import { publicPostVisibleSql } from './publish-moment'
 import { blogOwnerOf } from './owner'
 
 export function registerBlogPublicCommentsRoutes(blogPublicRoutes: Hono<AppBindings>): void {
@@ -28,7 +29,7 @@ async function loadCommentedPost(
   slugOrId: string,
 ): Promise<{ id: string; allow_comments: number }> {
   const post = await db
-    .prepare('SELECT id, allow_comments FROM blog_posts WHERE (slug = ?1 OR id = ?1) AND is_published = 1 AND user_id = ?2')
+    .prepare(`SELECT id, allow_comments FROM blog_posts WHERE (slug = ?1 OR id = ?1) AND ${publicPostVisibleSql('blog_posts')} AND user_id = ?2`)
     .bind(slugOrId, ownerId)
     .first<{ id: string; allow_comments: number }>()
   if (!post) throw ApiError.notFound('Post not found')
