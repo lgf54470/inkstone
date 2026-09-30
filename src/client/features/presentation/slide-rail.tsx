@@ -157,6 +157,30 @@ function SlideRailList({ deck, cacheKeys, plans, entries, active, view, onSelect
   )
 }
 
+export function extractSlideHeading(source: string): string {
+  const lines = source.split(/\r?\n/)
+  for (const line of lines) {
+    const trimmed = line.trim()
+    const headingMatch = /^#{1,6}\s+(.+)$/.exec(trimmed)
+    if (headingMatch?.[1]) {
+      return headingMatch[1].trim()
+    }
+  }
+  let inFence = false
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('```')) {
+      inFence = !inFence
+      continue
+    }
+    if (inFence) continue
+    if (trimmed && !trimmed.startsWith('<!--') && !trimmed.startsWith('---')) {
+      return trimmed.slice(0, 30)
+    }
+  }
+  return ''
+}
+
 function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, active, view, onSelectPage, buttonRef }: {
   entry: RailEntry
   entryIndex: number
@@ -176,6 +200,7 @@ function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, 
   // and a single read left the thumbnail on an un-rendered placeholder for the rest of the show.
   const cached = useSyncExternalStore(subscribeSlideHtml, () => readSlideHtml(cacheKey)?.html ?? '', () => '')
   const html = usePageHtml({ near, cacheKey, cached, source, plan, sub: entry.sub, view })
+  const heading = useMemo(() => extractSlideHeading(source), [source])
 
   return (
     <button
@@ -197,7 +222,14 @@ function SlideRailItem({ entry, entryIndex, cacheKey, source, plan, deckLength, 
       <span className={cn('tabular w-[var(--sp-4)] shrink-0 pt-0.5 text-center text-[length:var(--text-11)]', active ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]')} aria-hidden='true'>
         {entryIndex + 1}
       </span>
-      <SlideThumb thumbRef={thumbRef} near={near} html={html} active={active} view={view} />
+      <div className='flex min-w-0 flex-1 flex-col gap-[var(--sp-1)]'>
+        <SlideThumb thumbRef={thumbRef} near={near} html={html} active={active} view={view} />
+        {heading && (
+          <span className='truncate text-[length:var(--text-11)] text-[var(--text-secondary)]'>
+            {heading}
+          </span>
+        )}
+      </div>
     </button>
   )
 }

@@ -77,7 +77,7 @@
   - 涉及文件：`src/client/features/presentation/presentation-keys.ts` (`blackout`/`whiteout`)、`src/client/features/presentation/presentation-keys.test.ts`、`src/client/features/presentation/use-presentation-keys.ts` (`useScreenCover`)、`src/client/features/presentation/presentation-stage.tsx` (`ScreenCover`)、`src/client/features/presentation/presentation-overlay.tsx`
   - 目标：按 `B`/`.` 切换纯黑全屏遮罩，按 `W`/`,` 切换纯白全屏遮罩，按任意键或点击复原。
   - 验证：单元测试覆盖按键映射与获焦守卫，遮罩唤醒与任意键解除闭环。
-- [x] **B2-05** `P-11 (UX-03)`: 导出按钮安全收敛与防误触隔离 — 已完成
+- [x] **B2-05** `P-11 (UX-03)`: 导出按钮安全收敛与防误触隔离 — 已完成 (`c6426131`)
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`PresentationControls`)、`src/client/features/presentation/presentation-controls.test.ts`
   - 目标：将导出 PDF 与图片 ZIP 等高危不可逆操作从全屏/退出等高频视窗按钮间剥离，设置专属安全分隔带，杜绝演说误触调出原生打印窗口。
   - 方案：重构悬浮控制条布局结构，在全屏控制项与导出按钮之间增加明确的垂直分隔线与安全间隔，按语义将动作区划分为“导航翻页”、“状态与视图”、“导出与分发”、“退出模式”四个子群组。
@@ -87,7 +87,7 @@
 
 ## 批次 3 · 阶段三：导航强化、合规收尾与性能深度治理 (P2)
 
-- [ ] **B3-01** `P-12 (UX-06)`: 侧栏缩略图补充大纲标题文字标签
+- [x] **B3-01** `P-12 (UX-06)`: 侧栏缩略图补充大纲标题文字标签 — 已完成
   - 涉及文件：`src/client/features/presentation/slide-rail.tsx` (`SlideRailItem`, `extractSlideHeading`)、`src/client/features/presentation/slide-rail.test.ts`
   - 目标：长篇演说支持文字大纲快速扫视定位。
   - 方案：新增 `extractSlideHeading(source: string): string` 纯函数，提取每个 Slide 的首个有效 Heading（H1~H3）或第一行正文作为 Slide 简明标题，在缩略图右侧或下方以清晰文本标签呈现，超长智能截断。
