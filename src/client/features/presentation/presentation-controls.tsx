@@ -100,6 +100,7 @@ function SlideStepper({ slideIndex, slideCount, subPage, pageCount, onPrev, onNe
       </Tooltip>
       {pageCount > 1 && (
         <span
+          aria-live='polite'
           className='tabular mr-1 rounded-[var(--r-full)] bg-[var(--accent-soft)] px-[var(--sp-2)] py-0.5 text-[length:var(--text-11)] text-[var(--accent)]'
           title={t('workspace.presentation_page_of', { value0: subPage + 1, value1: pageCount })}
         >
