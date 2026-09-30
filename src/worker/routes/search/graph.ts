@@ -220,6 +220,9 @@ async function runLocalGraphQuery(
      WHERE ${filters.join(' AND ')}
      ORDER BY nearby.depth ASC, COALESCE(d.degree, 0) DESC, n.updated_at DESC, n.id ASC LIMIT ?`,
   ).bind(...prefixBinds, params.userId, params.userId, ...filterBinds, params.limit + 1).all<GraphRow>()
+  if (result.results.length <= params.limit) {
+    return { rows: result.results, totalNodes: result.results.length }
+  }
   const count = await db.prepare(
     `${neighborhood} SELECT COUNT(*) AS count FROM nearby JOIN notes n ON n.id = nearby.id
      WHERE ${filters.join(' AND ')}`,
@@ -241,6 +244,9 @@ async function runGlobalGraphQuery(
      WHERE ${filters.join(' AND ')}
      ORDER BY COALESCE(d.degree, 0) DESC, n.updated_at DESC, n.id ASC LIMIT ?`,
   ).bind(params.userId, params.userId, ...filterBinds, params.limit + 1).all<GraphRow>()
+  if (result.results.length <= params.limit) {
+    return { rows: result.results, totalNodes: result.results.length }
+  }
   const count = await db.prepare(
     `SELECT COUNT(*) AS count FROM notes n WHERE ${filters.join(' AND ')}`,
   ).bind(...filterBinds).first<{ count: number }>()
@@ -275,6 +281,7 @@ async function loadGraphLinkRows(
   const pageIds = new Set(ids)
   const linkRows: GraphLinkRow[] = []
   const tagRows: GraphTagRow[] = []
+  const statements: D1PreparedStatement[] = []
   for (let index = 0; index < ids.length; index += GRAPH_NOTE_ID_CHUNK) {
     const chunk = ids.slice(index, index + GRAPH_NOTE_ID_CHUNK)
     const placeholders = chunk.map(() => '?').join(',')
@@ -283,24 +290,29 @@ async function loadGraphLinkRows(
     // below instead, because a link that leaves the page and comes back in a later chunk would be
     // dropped by a per-chunk target list. The edge candidate cap is applied when the edges are built,
     // on the whole page at once, so no statement carries its own LIMIT any more.
-    const [linkResult, tagResult] = await Promise.all([
+    statements.push(
       db.prepare(
         `SELECT source_note_id, target_note_id, target_key, target_title FROM links
          WHERE user_id = ? AND source_note_id IN (${placeholders})
          ORDER BY target_key ASC`,
-      ).bind(userId, ...chunk).all<GraphLinkRow>(),
+      ).bind(userId, ...chunk),
       db.prepare(
         `SELECT nt.note_id, t.name, t.color FROM note_tags nt
          JOIN tags t ON t.id = nt.tag_id AND t.user_id = ?
          WHERE nt.note_id IN (${placeholders}) ORDER BY t.name COLLATE NOCASE ASC`,
-      ).bind(userId, ...chunk).all<GraphTagRow>(),
-    ])
-    for (const row of linkResult.results) {
+      ).bind(userId, ...chunk),
+    )
+  }
+  const batchResults = await db.batch<GraphLinkRow | GraphTagRow>(statements)
+  for (let i = 0; i < batchResults.length; i += 2) {
+    const linkResult = (batchResults[i]?.results ?? []) as GraphLinkRow[]
+    const tagResult = (batchResults[i + 1]?.results ?? []) as GraphTagRow[]
+    for (const row of linkResult) {
       // Unresolved links (no target note) stay in: they become nodes of their own when the caller
       // asked for them and are skipped otherwise. Everything else has to end inside the page.
       if (row.target_note_id === null || pageIds.has(row.target_note_id)) linkRows.push(row)
     }
-    tagRows.push(...tagResult.results)
+    tagRows.push(...tagResult)
   }
   // Each chunk was ordered on its own, so the rows are put back into the order a single statement
   // would have produced: the edge cap keeps whichever rows come first, and those should not depend

@@ -108,14 +108,18 @@
   2. 节点文字绘制前增加基于背景色的描边（`strokeText`），防止复杂拓扑关系线切断字迹；
   3. 新增单元测试覆盖一度邻居判定逻辑与文字描边光晕调用。
 - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npm run typecheck && npx vitest run src/client/features/graph/graph-panel/canvas-draw.test.ts`
+- **提交哈希**：`929c8cc5`
 - **状态**：已完成并验证通过
 
-#### 8. 【PERF-03 & PERF-04】后端 D1 改用 batch 批量执行并消除冗余 COUNT
-- **涉及文件**：`src/worker/routes/search/graph.ts`
+- [x] **8. 【PERF-03 & PERF-04】后端 D1 改用 batch 批量执行并消除冗余 COUNT**
+- **涉及文件**：`src/worker/routes/search/graph.ts`, `tests/graph-routes.test.ts`
 - **修改要点**：
   1. `loadGraphLinkRows` 改用 `db.batch([...statements])` 单次 RPC 往返；
-  2. `rows.length <= limit` 时直接复用长度作为 `totalNodes`，避免冗余全表 count 扫描。
+  2. `rows.length <= limit` 时直接复用长度作为 `totalNodes`，避免冗余全表 count 扫描；
+  3. 新增单元测试断言 `db.batch` 批量调用及在未溢出和溢出时对 COUNT 查询的跳过与触发。
+- **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npm run typecheck && npx vitest run tests/graph-routes.test.ts`
 - **提交哈希**：`待提交`
+- **状态**：已完成并验证通过
 
 #### 9. 【SEC-01 & SEC-02 & SEC-03 & SEC-04】后端安全防御与状态隔离
 - **涉及文件**：`src/worker/routes/search/graph.ts`, `src/client/features/graph/graph-panel/helpers.ts`

@@ -7,7 +7,7 @@ import { searchRoutes } from '../src/worker/routes/search'
 import { loadSession } from '../src/worker/middleware/auth'
 import { createSession } from '../src/worker/lib/session-store'
 import { errorResponse } from '../src/worker/lib/errors'
-import { createD1Database as createDb, runSql, type D1Shim } from './d1-harness'
+import { createD1Database as createDb, captureSql, runSql, type D1Shim } from './d1-harness'
 
 const NOW = 2_000_000_000_000
 
@@ -54,6 +54,12 @@ async function seedNote(id: string, userId: string, updatedAt: number, folderId:
      VALUES (?1, ?2, ?3, ?4, ?4, '# note', '', 1, 1, 6, 0, 0, 0, 0, 'hash', ?5, ?5)`,
     id, userId, folderId, `Title ${id}`, updatedAt,
   )
+}
+
+async function seedNotes(count: number, userId: string, prefix = 'n'): Promise<string[]> {
+  const ids = Array.from({ length: count }, (_, index) => vid(`${prefix}${index}`))
+  for (const [index, id] of ids.entries()) await seedNote(id, userId, NOW + index)
+  return ids
 }
 
 async function seedLink(userId: string, source: string, target: string | null): Promise<void> {
@@ -197,5 +203,46 @@ describe('graph route degree aggregation (real D1)', () => {
     const tagged = await request(app, '/api/search/graph?tags=work', token)
     const taggedBody = await tagged.json()
     expect(taggedBody.nodes.map((node: GraphNode) => node.id)).toEqual([vid('wh')])
+  })
+
+  it('batches link and tag statements into a single db.batch roundtrip', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNotes(45, userId, 'p')
+    const token = await signIn(userId)
+    const app = makeApp()
+    const batchSpy = vi.spyOn(db, 'batch')
+
+    const res = await request(app, '/api/search/graph?limit=50', token)
+    expect(res.status).toBe(200)
+    expect(batchSpy).toHaveBeenCalledTimes(1)
+    expect(batchSpy.mock.calls[0][0].length).toBe(4)
+    batchSpy.mockRestore()
+  })
+
+  it('skips COUNT query when result is below limit', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNotes(5, userId, 'under')
+    const token = await signIn(userId)
+    const app = makeApp()
+
+    const captured = captureSql(db)
+    const res = await request(app, '/api/search/graph?limit=50', token)
+    expect(res.status).toBe(200)
+    expect(captured.some((sql) => sql.includes('COUNT(*)'))).toBe(false)
+  })
+
+  it('runs COUNT query when result exceeds limit', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNotes(52, userId, 'over')
+    const token = await signIn(userId)
+    const app = makeApp()
+
+    const captured = captureSql(db)
+    const res = await request(app, '/api/search/graph?limit=50', token)
+    expect(res.status).toBe(200)
+    expect(captured.some((sql) => sql.includes('COUNT(*)'))).toBe(true)
   })
 })
