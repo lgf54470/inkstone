@@ -129,6 +129,11 @@ export function normalizePost(value: unknown): BlogPost {
     commentsCount: toNumber(p.commentsCount) || toNumber(p.comments_count) || 0,
     createdAt: toTimestamp(p.createdAt) || toTimestamp(p.created_at) || Date.now(),
     updatedAt: toTimestamp(p.updatedAt) || toTimestamp(p.updated_at) || Date.now(),
+    seoTitle: asString(p.seoTitle) || asString(p.seo_title),
+    seoDescription: asString(p.seoDescription) || asString(p.seo_description),
+    seoImageUrl: extractCoverUrl(asString(p.seoImageUrl) || asString(p.seo_image_url)),
+    seoCanonicalUrl: asString(p.seoCanonicalUrl) || asString(p.seo_canonical_url),
+    seoNoindex: Boolean(p.seoNoindex ?? p.seo_noindex ?? false),
   }
 }
 

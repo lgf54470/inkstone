@@ -7,6 +7,7 @@ import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
 import { fromDateTimeLocalValue } from '../../../lib/time'
 import { useBlogPublishForm } from './use-blog-publish-form'
+import { SeoFields } from './seo-fields'
 
 const MODAL_WIDTH = 640
 
@@ -374,6 +375,7 @@ export function BlogPublishModal({
         <PinRow form={form} />
         <TagsSection form={form} />
         <ExcerptField form={form} />
+        <SeoFields form={form} />
         <CommentsRow form={form} />
       </div>
 

@@ -149,6 +149,11 @@ export interface BlogStoreState {
     publishedAt?: number
     allowComments?: boolean
     isPinned?: boolean
+    seoTitle?: string
+    seoDescription?: string
+    seoImageUrl?: string
+    seoCanonicalUrl?: string
+    seoNoindex?: boolean
   }) => Promise<{ ok: boolean; id: string; slug: string } | null>
   updatePost: (id: string, patch: Partial<BlogPost>) => Promise<boolean>
   deletePost: (id: string) => Promise<boolean>

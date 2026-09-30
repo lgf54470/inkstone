@@ -12,6 +12,7 @@ import { categoryChipStyle } from '../../lib/category-style'
 import type { BlogCategory } from '../../lib/types'
 import { WORDS_PER_MINUTE } from '../../lib/constants'
 import { t, formatDate, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
+import { resolvePostSeo } from '../../lib/seo'
 
 const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
 
@@ -54,20 +55,25 @@ if (post.categoryId) {
 
 const formattedDate = formatDate(post.publishedAt || post.createdAt, locale)
 
+// 文章级 SEO 字段优先于文章本身的标题/摘要/封面（规则与单测在 ../../lib/seo.ts）。
+const seo = resolvePostSeo(post, `${Astro.url.origin}${Astro.url.pathname}`)
+
 // Estimated reading time based on Chinese chars per minute
 const wordCount = bodyContent.replace(/\s+/g, '').length
 const readingMinutes = Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE))
 ---
 
 <Layout
-  title={`${post.title} - Inkstone Blog`}
-  description={post.excerpt}
-  coverUrl={post.coverUrl}
+  title={`${seo.title} - Inkstone Blog`}
+  description={seo.description}
+  coverUrl={seo.image}
   locale={locale}
+  canonicalUrl={seo.canonicalUrl}
+  noindex={seo.noindex}
   articleMeta={{
-    title: post.title,
-    description: post.excerpt,
-    coverUrl: post.coverUrl,
+    title: seo.title,
+    description: seo.description,
+    coverUrl: seo.image,
     publishedAt: post.publishedAt || post.createdAt,
     updatedAt: post.updatedAt,
     url: Astro.url.href,

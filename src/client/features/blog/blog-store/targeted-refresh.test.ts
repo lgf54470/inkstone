@@ -30,6 +30,7 @@ const POST = {
   coverUrl: '', categoryId: null, folderId: null, tags: [], isPublished: true,
   allowComments: true, isPinned: false, views: 0, commentsCount: 0,
   publishedAt: 0, createdAt: 0, updatedAt: 0,
+  seoTitle: '', seoDescription: '', seoImageUrl: '', seoCanonicalUrl: '', seoNoindex: false,
 }
 
 function resetMocks() {

@@ -8,6 +8,12 @@
  * move is a rebuild — rename, create the current shape, copy, drop — and the rebuild must create
  * exactly the shape the running schema declares. Both therefore come from the constants below
  * rather than from a statement written twice.
+ *
+ * Columns added after the rebuild (the per-post SEO fields, FEA-02) are appended to the declared
+ * shape and replicated by their own `ALTER TABLE` migration with a `skipIfColumnExists` guard: a
+ * database that has not run the rebuild yet gets them from the declared shape here, one that has gets
+ * them from the migration. The rebuild's `INSERT … SELECT` names the columns it copies, so appended
+ * ones simply take their defaults.
  */
 export const BLOG_POSTS_TABLE_STATEMENT = `CREATE TABLE IF NOT EXISTS blog_posts (
       id TEXT PRIMARY KEY,
@@ -27,7 +33,12 @@ export const BLOG_POSTS_TABLE_STATEMENT = `CREATE TABLE IF NOT EXISTS blog_posts
       views INTEGER NOT NULL DEFAULT 0,
       published_at INTEGER NOT NULL,
       created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
+      updated_at INTEGER NOT NULL,
+      seo_title TEXT NOT NULL DEFAULT '',
+      seo_description TEXT NOT NULL DEFAULT '',
+      seo_image_url TEXT NOT NULL DEFAULT '',
+      seo_canonical_url TEXT NOT NULL DEFAULT '',
+      seo_noindex INTEGER NOT NULL DEFAULT 0
     )`
 
 export const BLOG_POSTS_INDEX_STATEMENTS: readonly string[] = [

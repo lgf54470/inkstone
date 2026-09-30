@@ -29,6 +29,12 @@ interface Props {
   fitViewport?: boolean
   scrollableMain?: boolean
   articleMeta?: ArticleMeta
+  /**
+   * 文章自己的规范地址与收录开关（后台的文章级 SEO 字段）。缺省时 canonical 就是当前地址，
+   * 页面照常可收录，因而没有设置过 SEO 字段的文章与从前完全一致。
+   */
+  canonicalUrl?: string
+  noindex?: boolean
 }
 
 const {
@@ -40,6 +46,8 @@ const {
   fitViewport = false,
   scrollableMain = true,
   articleMeta,
+  canonicalUrl,
+  noindex = false,
 } = Astro.props
 
 
@@ -66,7 +74,8 @@ const siteInfo = propSiteInfo ?? (await api.getSiteInfo())
     <meta name="inkstone-api-url" content={getApiBase()} />
     {blogOwner && <meta name="inkstone-blog-owner" content={blogOwner} />}
     <meta name="inkstone-locale" content={locale} />
-    <link rel="canonical" href={`${Astro.url.origin}${Astro.url.pathname}`} />
+    <link rel="canonical" href={canonicalUrl || `${Astro.url.origin}${Astro.url.pathname}`} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
     {articleMeta && (
       <script type="application/ld+json" is:inline set:html={serializeLdJson({
         '@context': 'https://schema.org',

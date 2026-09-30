@@ -258,6 +258,37 @@ describe('schema migrations and convergence', () => {
     expect(indexes).not.toContain('idx_blog_posts_slug')
   })
 
+  it('adds the per-post SEO columns to an installation that predates them', async () => {
+    const db = createD1Database()
+    await initializeDatabase(makeEnv(db))
+
+    // The shape every installation that has already run the slug rebuild has: the declared columns
+    // minus the SEO fields, which arrived afterwards.
+    await runSql(db, 'ALTER TABLE blog_posts DROP COLUMN seo_noindex')
+    await runSql(db, 'ALTER TABLE blog_posts DROP COLUMN seo_canonical_url')
+    await runSql(db, 'ALTER TABLE blog_posts DROP COLUMN seo_image_url')
+    await runSql(db, 'ALTER TABLE blog_posts DROP COLUMN seo_description')
+    await runSql(db, 'ALTER TABLE blog_posts DROP COLUMN seo_title')
+    await runSql(
+      db,
+      `INSERT INTO blog_posts (id, slug, note_id, user_id, title, content, published_at, created_at, updated_at)
+        VALUES ('p-legacy', 'legacy-post', 'n-legacy', 'u', 'Legacy post', 'body', 10, 10, 10)`,
+    )
+    await runSql(db, 'DELETE FROM schema_migrations WHERE version >= 54')
+    await runSql(db, 'DELETE FROM app_meta WHERE key = ?1', DATABASE_STATE_KEY)
+
+    await initializeDatabase(makeEnv({ ...db }))
+
+    const columns = (await queryRows(db, 'PRAGMA table_info(blog_posts)')).map((row) => row.name as string)
+    for (const column of ['seo_title', 'seo_description', 'seo_image_url', 'seo_canonical_url', 'seo_noindex']) {
+      expect(columns, `blog_posts must gain ${column}`).toContain(column)
+    }
+    // The post that was already there keeps its text, and an untouched post previews as itself.
+    expect(await queryRows(db, 'SELECT id, title, seo_title, seo_noindex FROM blog_posts')).toEqual([
+      { id: 'p-legacy', title: 'Legacy post', seo_title: '', seo_noindex: 0 },
+    ])
+  })
+
   it('rejects an incompatible schema if a required column is missing', async () => {
     const db = createD1Database()
     const env = makeEnv(db)

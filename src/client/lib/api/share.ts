@@ -227,6 +227,11 @@ export const share = {
         publishedAt?: number
         allowComments?: boolean
         isPinned?: boolean
+        seoTitle?: string
+        seoDescription?: string
+        seoImageUrl?: string
+        seoCanonicalUrl?: string
+        seoNoindex?: boolean
       }) => request<{ ok: true; id: string; slug: string }>('/api/blog/posts', { method: 'POST', body }),
       patch: (id: string, body: Partial<BlogPost>) =>
         request<{ ok: true }>(`/api/blog/posts/${id}`, { method: 'PATCH', body }),

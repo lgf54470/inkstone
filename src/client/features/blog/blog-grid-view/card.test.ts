@@ -33,6 +33,11 @@ const POST: BlogPostSummary = {
   publishedAt: 1_700_000_000_000,
   createdAt: 1_700_000_000_000,
   updatedAt: 1_700_000_000_000,
+  seoTitle: '',
+  seoDescription: '',
+  seoImageUrl: '',
+  seoCanonicalUrl: '',
+  seoNoindex: false,
 }
 
 function mount(onOpenEdit = vi.fn()) {

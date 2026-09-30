@@ -22,6 +22,28 @@ export function toBlogPostSummary(row: BlogPostSummaryRow): BlogPostSummary {
     publishedAt: row.published_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    ...toBlogSeoFields(row),
+  }
+}
+
+/**
+ * The per-post search and social preview values (FEA-02). The row stores text and a 0/1 flag; every
+ * reader gets the same shape, so the public post page and the management list cannot disagree about
+ * what an empty value means.
+ */
+export function toBlogSeoFields(row: {
+  seo_title: string
+  seo_description: string
+  seo_image_url: string
+  seo_canonical_url: string
+  seo_noindex: number
+}): Pick<BlogPostSummary, 'seoTitle' | 'seoDescription' | 'seoImageUrl' | 'seoCanonicalUrl' | 'seoNoindex'> {
+  return {
+    seoTitle: row.seo_title || '',
+    seoDescription: row.seo_description || '',
+    seoImageUrl: row.seo_image_url || '',
+    seoCanonicalUrl: row.seo_canonical_url || '',
+    seoNoindex: Boolean(row.seo_noindex),
   }
 }
 
@@ -40,6 +62,7 @@ export function toBlogPostIndexEntry(row: BlogPostIndexRow): BlogPostIndexEntry 
     isPublished: Boolean(row.is_published),
     allowComments: Boolean(row.allow_comments),
     isPinned: Boolean(row.is_pinned),
+    ...toBlogSeoFields(row),
   }
 }
 

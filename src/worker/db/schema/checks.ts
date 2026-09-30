@@ -49,7 +49,7 @@ export const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   ai_index_queue: ['user_id', 'note_id', 'kind', 'created_at'],
   fts_index_queue: ['user_id', 'note_id', 'kind', 'created_at'],
   community_templates: ['id', 'author_id', 'author_name', 'name', 'description', 'content', 'tags', 'category', 'created_at'],
-  blog_posts: ['id', 'slug', 'note_id', 'user_id', 'title', 'excerpt', 'content', 'cover_url', 'category_id', 'folder_id', 'tags', 'is_published', 'allow_comments', 'is_pinned', 'views', 'published_at', 'created_at', 'updated_at'],
+  blog_posts: ['id', 'slug', 'note_id', 'user_id', 'title', 'excerpt', 'content', 'cover_url', 'category_id', 'folder_id', 'tags', 'is_published', 'allow_comments', 'is_pinned', 'views', 'published_at', 'created_at', 'updated_at', 'seo_title', 'seo_description', 'seo_image_url', 'seo_canonical_url', 'seo_noindex'],
   blog_folders: ['id', 'user_id', 'parent_id', 'name', 'icon', 'color', 'position', 'created_at', 'updated_at'],
   blog_tags: ['id', 'user_id', 'name', 'color', 'is_pinned', 'created_at'],
   blog_categories: ['id', 'user_id', 'name', 'slug', 'description', 'color', 'icon', 'position', 'created_at', 'updated_at'],

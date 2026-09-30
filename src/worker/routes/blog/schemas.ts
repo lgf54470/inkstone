@@ -24,7 +24,11 @@ function safeUrl(kind: 'link' | 'image' = 'link') {
  */
 const BATCH_ROW_LIMIT = 1000
 
-/** What a card shows of a post before it is cut off; a longer one is a body, not an excerpt. */
+/**
+ * What a card shows of a post before it is cut off; a longer one is a body, not an excerpt. It bounds
+ * the SEO description too, for the same reason: both are the post's short text, and the difference
+ * between them is where they are shown rather than how much they may carry.
+ */
 const EXCERPT_MAX_LENGTH = 2000
 
 /** Nothing in this century is scheduled past 3000-01-01: a bound keeps a typo from doing so. */
@@ -40,6 +44,14 @@ export const blogPostWriteSchema = z.object({
   excerpt: z.string().max(EXCERPT_MAX_LENGTH).optional(),
   content: z.string().optional(),
   coverUrl: z.string().nullable().optional().refine(safeUrl('image'), SAFE_URL_MESSAGE),
+  // What a crawler or a chat client shows instead of the post page's own title, description and
+  // cover. Empty means "use the post's own", so an untouched post previews exactly as it did; the two
+  // addresses go through the shared allowlist because both are rendered as links or images.
+  seoTitle: z.string().max(LIMITS.titleMaxLength).optional(),
+  seoDescription: z.string().max(EXCERPT_MAX_LENGTH).optional(),
+  seoImageUrl: z.string().max(2048).nullable().optional().refine(safeUrl('image'), SAFE_URL_MESSAGE),
+  seoCanonicalUrl: z.string().max(2048).nullable().optional().refine(safeUrl(), SAFE_URL_MESSAGE),
+  seoNoindex: z.boolean().optional(),
   categoryId: z.string().nullable().optional(),
   folderId: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),

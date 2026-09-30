@@ -11,6 +11,7 @@ import { blogPostPatchSchema } from './schemas'
 import { blogBatchSchema } from './schemas'
 import { safeDecodeTagParam, toBlogPostIndexEntry, toBlogPostSummary } from './helpers'
 import { resolvedPublishedAt } from './publish-moment'
+import { blogBatchStatements, chunkPostIds } from './posts-batch'
 import { BLOG_POSTS_PAGE_SIZE, BLOG_POSTS_PAGE_SIZE_MAX, blogPostIndexQuery, blogPostsCountQuery, blogPostsListQuery } from './post-list-query'
 
 const SLUG_RE = /^[a-zA-Z0-9_-]{2,80}$/
@@ -142,6 +143,11 @@ interface PostWriteInput {
   publishedAt?: number
   allowComments: number
   isPinned: number
+  seoTitle: string
+  seoDescription: string
+  seoImageUrl: string
+  seoCanonicalUrl: string
+  seoNoindex: number
 }
 
 function postInputFromBody(
@@ -162,6 +168,11 @@ function postInputFromBody(
     publishedAt: body.publishedAt,
     allowComments: body.allowComments !== false ? 1 : 0,
     isPinned: body.isPinned ? 1 : 0,
+    seoTitle: body.seoTitle || '',
+    seoDescription: body.seoDescription || '',
+    seoImageUrl: body.seoImageUrl || '',
+    seoCanonicalUrl: body.seoCanonicalUrl || '',
+    seoNoindex: body.seoNoindex ? 1 : 0,
   }
 }
 
@@ -196,8 +207,13 @@ async function updateBlogPost(db: D1Database, id: string, input: PostWriteInput,
         allow_comments = ?10,
         is_pinned = ?11,
         published_at = ?12,
-        updated_at = ?13
-      WHERE id = ?14
+        updated_at = ?13,
+        seo_title = ?14,
+        seo_description = ?15,
+        seo_image_url = ?16,
+        seo_canonical_url = ?17,
+        seo_noindex = ?18
+      WHERE id = ?19
     `)
     .bind(
       input.slug,
@@ -213,6 +229,11 @@ async function updateBlogPost(db: D1Database, id: string, input: PostWriteInput,
       input.isPinned,
       publishedAt,
       now,
+      input.seoTitle,
+      input.seoDescription,
+      input.seoImageUrl,
+      input.seoCanonicalUrl,
+      input.seoNoindex,
       id,
     )
     .run()
@@ -228,8 +249,10 @@ async function insertBlogPost(
       INSERT INTO blog_posts (
         id, slug, note_id, user_id, title, excerpt, content, cover_url,
         category_id, folder_id, tags, is_published, allow_comments, is_pinned, views,
-        published_at, created_at, updated_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?16, ?16)
+        published_at, created_at, updated_at,
+        seo_title, seo_description, seo_image_url, seo_canonical_url, seo_noindex
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?16, ?16,
+        ?17, ?18, ?19, ?20, ?21)
     `)
     .bind(
       input.id,
@@ -249,6 +272,11 @@ async function insertBlogPost(
       // A new post takes the moment its author picked; without one it went out as it was written.
       input.publishedAt ?? now,
       now,
+      input.seoTitle,
+      input.seoDescription,
+      input.seoImageUrl,
+      input.seoCanonicalUrl,
+      input.seoNoindex,
     )
     .run()
 }
@@ -301,8 +329,13 @@ function blogPostPatchStatement(
         allow_comments = ?10,
         is_pinned = ?11,
         published_at = ?12,
-        updated_at = ?13
-      WHERE id = ?14
+        updated_at = ?13,
+        seo_title = ?14,
+        seo_description = ?15,
+        seo_image_url = ?16,
+        seo_canonical_url = ?17,
+        seo_noindex = ?18
+      WHERE id = ?19
     `)
     .bind(
       body.slug ?? current.slug,
@@ -318,6 +351,11 @@ function blogPostPatchStatement(
       body.isPinned !== undefined ? (body.isPinned ? 1 : 0) : current.is_pinned,
       resolvedPublishedAt(body, current, now),
       now,
+      body.seoTitle ?? current.seo_title,
+      body.seoDescription ?? current.seo_description,
+      body.seoImageUrl !== undefined ? body.seoImageUrl || '' : current.seo_image_url,
+      body.seoCanonicalUrl !== undefined ? body.seoCanonicalUrl || '' : current.seo_canonical_url,
+      body.seoNoindex !== undefined ? (body.seoNoindex ? 1 : 0) : current.seo_noindex,
       id,
     )
 }
@@ -387,11 +425,6 @@ function coverUrlFromNote(content: string): string | null {
   return rawCover ? extractCoverUrl(rawCover) : null
 }
 
-interface BlogBatchStatement {
-  sql: string
-  binds: unknown[]
-}
-
 function registerBlogPostsBatchRoute(blogManageRoutes: Hono<AppBindings>): void {
   blogManageRoutes.post('/posts/batch', async (c) => {
     const userId = c.get('userId')!
@@ -412,54 +445,4 @@ function registerBlogPostsBatchRoute(blogManageRoutes: Hono<AppBindings>): void 
   })
 }
 
-const BLOG_POST_ID_CHUNK = 50
 
-function chunkPostIds(postIds: string[]): string[][] {
-  const groups: string[][] = []
-  for (let index = 0; index < postIds.length; index += BLOG_POST_ID_CHUNK) {
-    groups.push(postIds.slice(index, index + BLOG_POST_ID_CHUNK))
-  }
-  return groups
-}
-
-function blogBatchStatements(
-  userId: string,
-  action: string,
-  postIds: string[],
-  body: { categoryId?: string | null; folderId?: string | null; isPinned?: boolean },
-  now: number,
-): BlogBatchStatement[] {
-  const placeholders = postIds.map(() => '?').join(',')
-  const withIds = ` WHERE user_id = ? AND id IN (${placeholders})`
-
-  switch (action) {
-    case 'publish':
-      // Drafts stamp the moment they go out; already published rows keep their own, so a batch
-      // publish cannot rewrite an archive's dates. SQLite reads the old `is_published` here.
-      return [{
-        sql: `UPDATE blog_posts SET is_published = 1, published_at = CASE WHEN is_published = 0 THEN ? ELSE published_at END, updated_at = ?${withIds}`,
-        binds: [now, now, userId, ...postIds],
-      }]
-    case 'unpublish':
-      return [{ sql: `UPDATE blog_posts SET is_published = 0, updated_at = ?${withIds}`, binds: [now, userId, ...postIds] }]
-    case 'delete':
-      return [
-        // Comments have no owner column: both child deletes must land before the post rows go.
-        {
-          sql: `DELETE FROM blog_comments WHERE post_id IN (
-                  SELECT id FROM blog_posts WHERE user_id = ? AND id IN (${placeholders}))`,
-          binds: [userId, ...postIds],
-        },
-        { sql: `DELETE FROM blog_visits WHERE user_id = ? AND post_id IN (${placeholders})`, binds: [userId, ...postIds] },
-        { sql: `DELETE FROM blog_posts${withIds}`, binds: [userId, ...postIds] },
-      ]
-    case 'setCategory':
-      return [{ sql: `UPDATE blog_posts SET category_id = ?, updated_at = ?${withIds}`, binds: [body.categoryId || null, now, userId, ...postIds] }]
-    case 'setFolder':
-      return [{ sql: `UPDATE blog_posts SET folder_id = ?, updated_at = ?${withIds}`, binds: [body.folderId || null, now, userId, ...postIds] }]
-    case 'setPinned':
-      return [{ sql: `UPDATE blog_posts SET is_pinned = ?, updated_at = ?${withIds}`, binds: [body.isPinned ? 1 : 0, now, userId, ...postIds] }]
-    default:
-      return []
-  }
-}

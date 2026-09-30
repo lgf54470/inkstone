@@ -806,4 +806,21 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
     version: 53,
     statements: BLOG_ORDER_INDEX_STATEMENTS,
   },
+  // FEA-02: a post carries its own search and social preview text — the title, description and image
+  // a crawler or a chat client shows instead of what the post page renders, plus an explicit
+  // canonical address and a noindex switch. They are appended columns rather than part of the
+  // declared shape's rebuild: migration 52 must keep running exactly what it ran, and a database that
+  // has not reached it yet takes these from the declared table instead (hence the skip guard, which
+  // asks about the first column and only ever skips when all five are already there).
+  {
+    version: 54,
+    skipIfColumnExists: { table: 'blog_posts', column: 'seo_title' },
+    statements: [
+      `ALTER TABLE blog_posts ADD COLUMN seo_title TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE blog_posts ADD COLUMN seo_description TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE blog_posts ADD COLUMN seo_image_url TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE blog_posts ADD COLUMN seo_canonical_url TEXT NOT NULL DEFAULT ''`,
+      `ALTER TABLE blog_posts ADD COLUMN seo_noindex INTEGER NOT NULL DEFAULT 0`,
+    ],
+  },
 ]

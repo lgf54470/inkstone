@@ -16,6 +16,15 @@ export interface BlogPost {
   commentsCount?: number
   createdAt: number
   updatedAt: number
+  /**
+   * The post's own search and social preview values, present on the detail answer only (the list is
+   * kept lean). Empty means "use the post's own title, excerpt and cover".
+   */
+  seoTitle?: string
+  seoDescription?: string
+  seoImageUrl?: string
+  seoCanonicalUrl?: string
+  seoNoindex?: boolean
 }
 
 export interface BlogCategory {

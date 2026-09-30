@@ -477,6 +477,8 @@
 
 **已落地（B5-01，FEA-01）**：写入侧新增 `publishedAt`（int，0..3000-01-01；非法值 400），规则集中在 `src/worker/routes/blog/publish-moment.ts`：显式时间优先（定时与回填），否则草稿发布盖「现在」、已发布行保持原时刻；单篇发布、`POST /posts` 的 upsert 与批量发布（列表批量与按文件夹/标签）都是同一规则。读取侧以 `publicPostVisibleSql(alias)` 统一公开可见性（已发布 **且** 时刻已到），公开列表/详情/相邻篇/分类计数/标签/时间轴/日历与评论读写全部改用它，因此定时中的文章对读者完全不存在。比较写进 SQL（`published_at < (strftime('%s','now') + 1) * 1000`——加一秒是因为 `strftime` 只到秒，否则刚发布的文章会被隐藏最多一秒，已有回归钉住）。客户端发布弹窗新增「发布时间」控件（本地时间 ↔ epoch 毫秒），从 `postIndex` 预填，留空即用服务端默认规则，未来时刻提示「将定时发布」。限制：作者侧计数仍把定时中的文章算作已发布；没有单独的「定时中」徽标；不靠 cron（到点可见靠查询时实时比较）；时间精度到分钟、无时区选择。
 
+**已落地（B5-02，FEA-02）**：`blog_posts` 追加 5 列（`seo_title`/`seo_description`/`seo_image_url`/`seo_canonical_url`/`seo_noindex`）：新库由声明的建表语句带出，老库由迁移 54 补列（`skipIfColumnExists` 守卫）——迁移 52 一个字未动，它的重建本来就从同一份声明出发生成表与拷贝列名。写入侧 5 个字段进 zod 契约（两个地址走共享 `safeUrl` 白名单，非法值 400），并在 upsert、补丁与插入三条路径上落库，补丁只在字段被显式给出时改写（空串=清空，缺省=保持）。读取侧带上管理列表、`/post-index`（发布弹窗的预填来源）与公开详情答案；**公开列表刻意不带**，由一个断言钉住这条边界。客户端发布弹窗新增「搜索与分享」分组（4 个 `Field` + 1 个 noindex `Switch`），全部从被编辑的文章预填、留空即「用文章自己的值」。前台文章页按同一优先级渲染标题/描述/OG 图/`canonical`/`robots`，规则收在纯函数 `blog-frontend/src/lib/seo.ts`（含 4 条单测），`Layout.astro` 的两个新属性缺省时行为与从前完全一致。限制：sitemap 仍不排除 noindex 文章、也无 `lastmod`（属 FEA-08/BF-6）；RSS 与 og:type/twitter:card 未加；后台列表没有「已 noindex」的徽标；SEO 描述与摘要共用同一上限。
+
 ---
 
 ## 六、前台（blog-frontend）——与主应用耦合的部分

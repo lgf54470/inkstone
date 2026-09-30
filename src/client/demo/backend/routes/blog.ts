@@ -72,7 +72,15 @@ function toPostSummary(post: BlogPost): BlogPostSummary {
     categoryId: post.categoryId, folderId: post.folderId, tags: post.tags,
     isPublished: post.isPublished, allowComments: post.allowComments, isPinned: post.isPinned,
     views: post.views, commentsCount: post.commentsCount, publishedAt: post.publishedAt,
-    createdAt: post.createdAt, updatedAt: post.updatedAt,
+    createdAt: post.createdAt, updatedAt: post.updatedAt, ...demoSeo(post),
+  }
+}
+
+/** The demo backend hands the same SEO shape back that the real one stores (FEA-02). */
+function demoSeo(post: BlogPost) {
+  return {
+    seoTitle: post.seoTitle, seoDescription: post.seoDescription, seoImageUrl: post.seoImageUrl,
+    seoCanonicalUrl: post.seoCanonicalUrl, seoNoindex: post.seoNoindex,
   }
 }
 
@@ -82,6 +90,7 @@ function toIndexEntry(post: BlogPost): BlogPostIndexEntry {
     excerpt: post.excerpt, coverUrl: post.coverUrl, categoryId: post.categoryId,
     folderId: post.folderId, tags: post.tags, publishedAt: post.publishedAt,
     isPublished: post.isPublished, allowComments: post.allowComments, isPinned: post.isPinned,
+    ...demoSeo(post),
   }
 }
 

@@ -14,7 +14,11 @@ function categorySlug(name: string, rawSlug: string | undefined, seq: number): s
   return base || `category-${seq}`
 }
 
-const POST_PATCH_KEYS = new Set(['slug', 'title', 'excerpt', 'content', 'coverUrl', 'categoryId', 'folderId', 'tags', 'isPublished', 'allowComments', 'isPinned'])
+const POST_PATCH_KEYS = new Set([
+  'slug', 'title', 'excerpt', 'content', 'coverUrl', 'categoryId', 'folderId', 'tags',
+  'isPublished', 'allowComments', 'isPinned',
+  'seoTitle', 'seoDescription', 'seoImageUrl', 'seoCanonicalUrl', 'seoNoindex',
+])
 
 function applyPostPatch(post: BlogPost, body: Record<string, unknown>, slug: string): void {
   const now = Date.now()
@@ -58,6 +62,11 @@ function registerBlogPostWriteRoute(app: Hono, data: BlogDemoData): void {
       isPinned: body.isPinned === true,
       views: 0,
       commentsCount: 0,
+      seoTitle: (body.seoTitle as string | undefined) ?? '',
+      seoDescription: (body.seoDescription as string | undefined) ?? '',
+      seoImageUrl: (body.seoImageUrl as string | undefined) ?? '',
+      seoCanonicalUrl: (body.seoCanonicalUrl as string | undefined) ?? '',
+      seoNoindex: body.seoNoindex === true,
       publishedAt: isPublished ? now : 0,
       createdAt: now,
       updatedAt: now,

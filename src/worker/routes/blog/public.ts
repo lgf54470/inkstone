@@ -4,7 +4,7 @@ import type { BlogCalendarRow, BlogPostPublicRow, BlogPublicCategoryRow, BlogTim
 import { escapeLike, likeAny } from '../../lib/like'
 import { loadPublicPostBySlug } from './public-post'
 import { registerBlogPublicVisitBeaconRoute } from './visit-beacon'
-import { safeDecodeTagParam, summarizePostTagCounts } from './helpers'
+import { safeDecodeTagParam, summarizePostTagCounts, toBlogSeoFields } from './helpers'
 import { blogTagFilterSql } from './tag-needles'
 import { publicPostVisibleSql } from './publish-moment'
 
@@ -233,6 +233,9 @@ function registerBlogPublicPostDetailRoute(blogPublicRoutes: Hono<AppBindings>):
       content: row.content,
       allowComments: Boolean(row.allow_comments),
       isPinned: Boolean(row.is_pinned),
+      // The post's own preview values ride on the detail answer rather than on the list: a page that
+      // draws meta tags needs them, a list that draws cards does not (FEA-02).
+      ...toBlogSeoFields(row),
     }
 
     const prevPost = await loadAdjacentPost(c.env.DB, ownerId, row.published_at, false)

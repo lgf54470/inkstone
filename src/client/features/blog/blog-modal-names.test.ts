@@ -94,6 +94,11 @@ describe('blog dialog names', () => {
         isPublished: true,
         allowComments: true,
         isPinned: false,
+        seoTitle: '',
+        seoDescription: '',
+        seoImageUrl: '',
+        seoCanonicalUrl: '',
+        seoNoindex: false,
       },
     }))
     expect(dialogName()).toBe('blog.edit_modal_title')

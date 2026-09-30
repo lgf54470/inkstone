@@ -54,8 +54,10 @@ async function seedBlogPost(db: D1Shim, fields: Record<string, unknown>): Promis
   await runSql(
     db,
     `INSERT INTO blog_posts (id, slug, note_id, user_id, title, excerpt, content, cover_url, category_id,
-       folder_id, tags, is_published, allow_comments, is_pinned, views, published_at, created_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, '', ?6, '', NULL, NULL, ?7, ?8, ?9, ?10, ?11, ?12, ?12, ?12)`,
+       folder_id, tags, is_published, allow_comments, is_pinned, views, published_at, created_at, updated_at,
+       seo_title, seo_description, seo_image_url, seo_canonical_url, seo_noindex)
+     VALUES (?1, ?2, ?3, ?4, ?5, '', ?6, '', NULL, NULL, ?7, ?8, ?9, ?10, ?11, ?12, ?12, ?12,
+       ?13, ?14, ?15, ?16, ?17)`,
     id, slug, fields.note_id ?? `n-${++H.counter}`, USER,
     fields.title ?? 'Post title', fields.content ?? 'Post content',
     JSON.stringify((fields.tags as string[]) ?? []),
@@ -64,6 +66,11 @@ async function seedBlogPost(db: D1Shim, fields: Record<string, unknown>): Promis
     fields.is_pinned ? 1 : 0,
     (fields.views as number) ?? 0,
     (fields.published_at as number) ?? VISIBLE_PUBLISHED_AT,
+    (fields.seo_title as string) ?? '',
+    (fields.seo_description as string) ?? '',
+    (fields.seo_image_url as string) ?? '',
+    (fields.seo_canonical_url as string) ?? '',
+    fields.seo_noindex ? 1 : 0,
   )
   return { id, slug }
 }
@@ -1533,5 +1540,106 @@ describe('blog publish moment (FEA-01)', () => {
       const res = await patchJson(app, `/api/blog/posts/${post.id}`, { publishedAt: bad })
       expect(res.status, String(bad)).toBe(400)
     }
+  })
+})
+
+/**
+ * FEA-02: a post carries its own search and social preview values. They travel with every management
+ * read (the list and the note index feed the editor, so a field the row does not carry would be
+ * written back empty) and with the public detail answer, which is what draws the meta tags.
+ */
+describe('blog post SEO fields (FEA-02)', () => {
+  const SEO = {
+    seoTitle: 'Preview title',
+    seoDescription: 'Preview description',
+    seoImageUrl: 'https://cdn.test/og.png',
+    seoCanonicalUrl: 'https://blog.test/original',
+    seoNoindex: true,
+  }
+
+  it('stores them on create and reads them back on every management answer', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    const created = await postJson(app, '/api/blog/posts', {
+      noteId: 'n-seo', title: 'SEO post', content: 'Body', slug: 'seo-post', ...SEO,
+    })
+    expect(created.status).toBe(200)
+    const { id } = await created.json()
+
+    const list = await (await request(app, '/api/blog/posts')).json()
+    expect(list.posts[0]).toMatchObject(SEO)
+
+    const index = await (await request(app, '/api/blog/post-index')).json()
+    expect(index.posts[0]).toMatchObject(SEO)
+
+    const notePost = await (await request(app, '/api/blog/note-post/n-seo')).json()
+    expect(notePost.post).toMatchObject(SEO)
+
+    // A patch that names the fields rewrites them; one that does not leaves them alone.
+    const cleared = await patchJson(app, `/api/blog/posts/${id}`, { seoNoindex: false, seoCanonicalUrl: '' })
+    expect(cleared.status).toBe(200)
+    const afterClear = await (await request(app, '/api/blog/posts')).json()
+    expect(afterClear.posts[0]).toMatchObject({ ...SEO, seoCanonicalUrl: '', seoNoindex: false })
+
+    const untouched = await patchJson(app, `/api/blog/posts/${id}`, { title: 'Renamed' })
+    expect(untouched.status).toBe(200)
+    const afterRename = await (await request(app, '/api/blog/posts')).json()
+    expect(afterRename.posts[0]).toMatchObject({ ...SEO, seoCanonicalUrl: '', seoNoindex: false })
+  })
+
+  it('refuses addresses and text the renderer or the row cannot accept', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const post = await seedBlogPost(db, { slug: 'seo-guarded' })
+    const app = makeApp()
+
+    for (const bad of ['javascript:alert(1)', 'data:text/html,<script>', '//cdn.test/og.png']) {
+      const res = await patchJson(app, `/api/blog/posts/${post.id}`, { seoImageUrl: bad })
+      expect(res.status, bad).toBe(400)
+    }
+
+    const script = await patchJson(app, `/api/blog/posts/${post.id}`, { seoCanonicalUrl: 'javascript:alert(1)' })
+    expect(script.status).toBe(400)
+
+    const longTitle = await patchJson(app, `/api/blog/posts/${post.id}`, {
+      seoTitle: 'x'.repeat(LIMITS.titleMaxLength + 1),
+    })
+    expect(longTitle.status).toBe(400)
+
+    const longDescription = await patchJson(app, `/api/blog/posts/${post.id}`, {
+      seoDescription: 'x'.repeat(2001),
+    })
+    expect(longDescription.status).toBe(400)
+
+    // A site-relative canonical is what a blog without its own domain writes, so it is allowed.
+    const relative = await patchJson(app, `/api/blog/posts/${post.id}`, { seoCanonicalUrl: '/posts/seo-guarded' })
+    expect(relative.status).toBe(200)
+  })
+
+  it('hands the values to the public detail answer only', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedBlogPost(db, {
+      slug: 'seo-public', title: 'Public',
+      seo_title: 'Public preview', seo_description: 'Public description',
+      seo_image_url: 'https://cdn.test/public.png', seo_canonical_url: 'https://blog.test/public',
+      seo_noindex: 1,
+    })
+    const app = makeApp()
+
+    const detail = await (await request(app, '/api/blog/public/posts/seo-public')).json()
+    expect(detail.post).toMatchObject({
+      seoTitle: 'Public preview',
+      seoDescription: 'Public description',
+      seoImageUrl: 'https://cdn.test/public.png',
+      seoCanonicalUrl: 'https://blog.test/public',
+      seoNoindex: true,
+    })
+
+    // The list is drawn as cards and kept lean: the preview text belongs to the page that renders it.
+    const list = await (await request(app, '/api/blog/public/posts')).json()
+    expect('seoTitle' in list.posts[0]).toBe(false)
   })
 })

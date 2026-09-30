@@ -34,7 +34,13 @@ export interface BlogDemoData {
   seq: { post: number; folder: number; tag: number; category: number; comment: number }
 }
 
-const POST_SEEDS: Array<Omit<BlogPost, 'id' | 'userId' | 'views' | 'createdAt' | 'updatedAt' | 'publishedAt' | 'commentsCount'>> = [
+type SeededPost = Omit<
+  BlogPost,
+  'id' | 'userId' | 'views' | 'createdAt' | 'updatedAt' | 'publishedAt' | 'commentsCount'
+    | 'seoTitle' | 'seoDescription' | 'seoImageUrl' | 'seoCanonicalUrl' | 'seoNoindex'
+>
+
+const POST_SEEDS: SeededPost[] = [
   {
     slug: 'welcome-to-inkstone',
     noteId: 'demo-note-welcome',
@@ -103,6 +109,13 @@ const VIEWS_BY_POST: Record<string, number> = {
 function seedPosts(userId: string): BlogPost[] {
   return POST_SEEDS.map((seed, index) => ({
     ...seed,
+    // Seeded posts carry no SEO overrides: an untouched post previews as itself, which is what the
+    // empty values mean (FEA-02).
+    seoTitle: '',
+    seoDescription: '',
+    seoImageUrl: '',
+    seoCanonicalUrl: '',
+    seoNoindex: false,
     id: POST_IDS[index]!,
     userId,
     views: VIEWS_BY_POST[POST_IDS[index]!] ?? 0,

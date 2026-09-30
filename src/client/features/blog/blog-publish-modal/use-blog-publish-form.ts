@@ -34,41 +34,26 @@ export function useBlogPublishForm({
   const currentStoreFolderId = useBlogStore((s) => s.folderId)
   const settings = useBlogStore((s) => s.settings)
 
+  // The field set is one object: the dialog re-exports it, hands it to the init effect as the setter
+  // bag and spreads it into the write body, so a new field is wired in exactly one place.
   const fields = usePublishFormFields()
-  const {
-    title, slug, coverUrl, folderId, categoryId, tagInput, tags, excerpt,
-    allowComments, isPinned, isSaving, slugAvailable, slugReason, publishedAt,
-    setTitle, setSlug, setCoverUrl, setFolderId, setCategoryId,
-    setTagInput, setTags, setExcerpt, setAllowComments,
-    setIsPinned, setIsSaving, setSlugAvailable, setSlugReason, setPublishedAt,
-  } = fields
-
   const flatFolderList = useFolderFlatList(folders)
   const firstImageInContent = useCoverSuggestion(content)
 
   usePublishDialogData(open, noteId, loadCategories)
+  usePublishFormInit({ open, note, initialPost, content, currentStoreFolderId, firstImageInContent, setters: fields })
+  useSlugValidation(fields.slug, initialPost?.id, fields.setSlugAvailable, fields.setSlugReason)
 
-  usePublishFormInit({
-    open, note, initialPost, content, currentStoreFolderId, firstImageInContent,
-    setters: { setTitle, setSlug, setCoverUrl, setFolderId, setCategoryId, setTags, setExcerpt, setAllowComments, setIsPinned, setPublishedAt },
-  })
-  useSlugValidation(slug, initialPost?.id, setSlugAvailable, setSlugReason)
-
-  const handleAddTag = () => addTag(tagInput, tags, setTags, setTagInput)
-  const handleRemoveTag = (tag: string) => setTags(tags.filter((t) => t !== tag))
-
-  const handleSave = (publish: boolean) => savePublishedPost(publish, { note, noteId, title, slug, coverUrl, folderId, categoryId, tags, excerpt, allowComments, isPinned, publishedAt, slugAvailable, slugReason, toast, setIsSaving, onSaved, onClose })
+  const handleAddTag = () => addTag(fields.tagInput, fields.tags, fields.setTags, fields.setTagInput)
+  const handleRemoveTag = (tag: string) => fields.setTags(fields.tags.filter((t) => t !== tag))
+  const handleSave = (publish: boolean) => savePublishedPost(publish, { ...fields, note, noteId, toast, onSaved, onClose })
 
   const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
-  const previewUrl = `${frontendBase}/posts/${slug.trim() || 'preview'}`
+  const previewUrl = `${frontendBase}/posts/${fields.slug.trim() || 'preview'}`
 
   return {
-    title, setTitle, slug, setSlug, coverUrl, setCoverUrl, folderId, setFolderId,
-    categoryId, setCategoryId, tagInput, setTagInput, tags, setTags,
-    excerpt, setExcerpt, allowComments, setAllowComments, isPinned, setIsPinned,
-    publishedAt, setPublishedAt,
-    isSaving, slugAvailable, slugReason, flatFolderList, firstImageInContent,
-    note, availableTags, categories, previewUrl, handleAddTag, handleRemoveTag, handleSave,
+    ...fields, flatFolderList, firstImageInContent, note, availableTags, categories, previewUrl,
+    handleAddTag, handleRemoveTag, handleSave,
   }
 }
 
@@ -97,10 +82,16 @@ function usePublishFormFields() {
   const [isPinned, setIsPinned] = useState(false)
   // Empty means "let the server decide": now for a draft being published, its own moment otherwise.
   const [publishedAt, setPublishedAt] = useState('')
+  // Search and social previews, all optional: empty means "use the post's own value" (FEA-02).
+  const [seoTitle, setSeoTitle] = useState('')
+  const [seoDescription, setSeoDescription] = useState('')
+  const [seoImageUrl, setSeoImageUrl] = useState('')
+  const [seoCanonicalUrl, setSeoCanonicalUrl] = useState('')
+  const [seoNoindex, setSeoNoindex] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
   const [slugReason, setSlugReason] = useState('')
-  return { title, setTitle, slug, setSlug, coverUrl, setCoverUrl, folderId, setFolderId, categoryId, setCategoryId, tagInput, setTagInput, tags, setTags, excerpt, setExcerpt, allowComments, setAllowComments, isPinned, setIsPinned, publishedAt, setPublishedAt, isSaving, setIsSaving, slugAvailable, setSlugAvailable, slugReason, setSlugReason }
+  return { title, setTitle, slug, setSlug, coverUrl, setCoverUrl, folderId, setFolderId, categoryId, setCategoryId, tagInput, setTagInput, tags, setTags, excerpt, setExcerpt, allowComments, setAllowComments, isPinned, setIsPinned, publishedAt, setPublishedAt, isSaving, setIsSaving, slugAvailable, setSlugAvailable, slugReason, setSlugReason, seoTitle, setSeoTitle, seoDescription, setSeoDescription, seoImageUrl, setSeoImageUrl, seoCanonicalUrl, setSeoCanonicalUrl, seoNoindex, setSeoNoindex }
 }
 
 function addTag(tagInput: string, tags: string[], setTags: (v: string[]) => void, setTagInput: (v: string) => void): void {
@@ -121,6 +112,11 @@ interface PublishFormSetters {
   setAllowComments: (v: boolean) => void
   setIsPinned: (v: boolean) => void
   setPublishedAt: (v: string) => void
+  setSeoTitle: (v: string) => void
+  setSeoDescription: (v: string) => void
+  setSeoImageUrl: (v: string) => void
+  setSeoCanonicalUrl: (v: string) => void
+  setSeoNoindex: (v: boolean) => void
 }
 
 interface InitProps {
@@ -155,6 +151,11 @@ function applyInitialPost(initialPost: BlogPostIndexEntry, note: { title?: strin
   setters.setAllowComments(initialPost.allowComments)
   setters.setIsPinned(initialPost.isPinned)
   setters.setPublishedAt(toDateTimeLocalValue(initialPost.publishedAt))
+  setters.setSeoTitle(initialPost.seoTitle || '')
+  setters.setSeoDescription(initialPost.seoDescription || '')
+  setters.setSeoImageUrl(cleanImageUrl(initialPost.seoImageUrl || ''))
+  setters.setSeoCanonicalUrl(initialPost.seoCanonicalUrl || '')
+  setters.setSeoNoindex(Boolean(initialPost.seoNoindex))
 }
 
 function applyFreshNote(
@@ -191,6 +192,12 @@ function applyFreshNote(
   setters.setIsPinned(false)
   // Nothing picked yet: a note published for the first time goes out when its author says so.
   setters.setPublishedAt('')
+  // A post that has never been published has nothing to override, and being indexed is the default.
+  setters.setSeoTitle('')
+  setters.setSeoDescription('')
+  setters.setSeoImageUrl('')
+  setters.setSeoCanonicalUrl('')
+  setters.setSeoNoindex(false)
 }
 
 function cleanImageUrl(raw: string): string {
@@ -269,7 +276,7 @@ function useSlugValidation(
   }, [slug, postId])
 }
 
-interface SavePostCtx {
+export interface SavePostCtx {
   note: { title?: string } | null
   noteId: string
   title: string
@@ -282,6 +289,11 @@ interface SavePostCtx {
   allowComments: boolean
   isPinned: boolean
   publishedAt: string
+  seoTitle: string
+  seoDescription: string
+  seoImageUrl: string
+  seoCanonicalUrl: string
+  seoNoindex: boolean
   slugAvailable: boolean | null
   slugReason: string
   toast: UiState['toast']
@@ -304,21 +316,9 @@ async function savePublishedPost(publish: boolean, ctx: SavePostCtx): Promise<vo
   ctx.setIsSaving(true)
   try {
     const noteContent = await readNoteContent(ctx.noteId)
-    const saved = await useBlogStore.getState().savePost({
-      noteId: ctx.noteId,
-      title: finalTitle,
-      slug: finalSlug,
-      excerpt: ctx.excerpt.trim(),
-      content: noteContent,
-      coverUrl: ctx.coverUrl.trim(),
-      folderId: ctx.folderId,
-      categoryId: ctx.categoryId,
-      tags: ctx.tags,
-      isPublished: publish,
-      allowComments: ctx.allowComments,
-      isPinned: ctx.isPinned,
-      publishedAt: fromDateTimeLocalValue(ctx.publishedAt) ?? undefined,
-    })
+    const saved = await useBlogStore.getState().savePost(postWritePayload({
+      publish, ctx, finalTitle, finalSlug, noteContent,
+    }))
     if (!saved) return
 
     await writePostFrontMatter(ctx, noteContent, publish)
@@ -329,6 +329,42 @@ async function savePublishedPost(publish: boolean, ctx: SavePostCtx): Promise<vo
     ctx.toast({ title: errorMessage(error) || t('common.action_failed'), tone: 'danger' })
   } finally {
     ctx.setIsSaving(false)
+  }
+}
+
+interface PostWriteInputs {
+  publish: boolean
+  ctx: SavePostCtx
+  finalTitle: string
+  finalSlug: string
+  noteContent: string
+}
+
+/**
+ * The body the dialog sends. It is exported because the mapping from the form's fields to the write
+ * contract is the part worth testing on its own: a control the dialog draws but this function forgets
+ * is stored as empty, and only reading the body can show that.
+ */
+export function postWritePayload({ publish, ctx, finalTitle, finalSlug, noteContent }: PostWriteInputs) {
+  return {
+    noteId: ctx.noteId,
+    title: finalTitle,
+    slug: finalSlug,
+    excerpt: ctx.excerpt.trim(),
+    content: noteContent,
+    coverUrl: ctx.coverUrl.trim(),
+    folderId: ctx.folderId,
+    categoryId: ctx.categoryId,
+    tags: ctx.tags,
+    isPublished: publish,
+    allowComments: ctx.allowComments,
+    isPinned: ctx.isPinned,
+    publishedAt: fromDateTimeLocalValue(ctx.publishedAt) ?? undefined,
+    seoTitle: ctx.seoTitle.trim(),
+    seoDescription: ctx.seoDescription.trim(),
+    seoImageUrl: ctx.seoImageUrl.trim(),
+    seoCanonicalUrl: ctx.seoCanonicalUrl.trim(),
+    seoNoindex: ctx.seoNoindex,
   }
 }
 

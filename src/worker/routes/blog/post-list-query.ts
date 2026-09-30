@@ -16,12 +16,18 @@ export interface BlogPostsFilter {
 
 // The list draws a title, a summary of metadata and counters — never the body. `content` is the one
 // column measured in kilobytes, and it used to travel with every row only to be dropped client-side.
+// The SEO columns travel with the list and the index for the same reason the excerpt does: editing a
+// post starts from one of these rows, and a field the editor draws but the row does not carry would
+// be silently written back as empty.
+const POST_SEO_COLUMNS = `p.seo_title, p.seo_description, p.seo_image_url, p.seo_canonical_url, p.seo_noindex`
+
 const POST_LIST_COLUMNS = `p.id, p.slug, p.note_id, p.user_id, p.title, p.excerpt,
   p.cover_url, p.category_id, p.folder_id, p.tags, p.is_published, p.allow_comments,
-  p.is_pinned, p.views, p.published_at, p.created_at, p.updated_at`
+  p.is_pinned, p.views, p.published_at, p.created_at, p.updated_at, ${POST_SEO_COLUMNS}`
 
 const POST_INDEX_COLUMNS = `p.id, p.note_id, p.slug, p.title, p.excerpt, p.cover_url,
-  p.category_id, p.folder_id, p.tags, p.published_at, p.is_published, p.allow_comments, p.is_pinned`
+  p.category_id, p.folder_id, p.tags, p.published_at, p.is_published, p.allow_comments, p.is_pinned,
+  ${POST_SEO_COLUMNS}`
 
 /**
  * One WHERE for the page query and the count query: if the two disagree about what the filter

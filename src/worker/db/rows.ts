@@ -135,6 +135,11 @@ export interface BlogPostRow {
   published_at: number
   created_at: number
   updated_at: number
+  seo_title: string
+  seo_description: string
+  seo_image_url: string
+  seo_canonical_url: string
+  seo_noindex: number
 }
 
 export interface BlogPostCountsRow extends BlogPostRow {
@@ -161,6 +166,11 @@ export interface BlogPostIndexRow {
   is_published: number
   allow_comments: number
   is_pinned: number
+  seo_title: string
+  seo_description: string
+  seo_image_url: string
+  seo_canonical_url: string
+  seo_noindex: number
 }
 
 export interface BlogPostPublicRow extends BlogPostCountsRow {

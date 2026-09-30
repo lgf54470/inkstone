@@ -30,6 +30,16 @@ export interface BlogPost {
   publishedAt: number
   createdAt: number
   updatedAt: number
+  /**
+   * The post's own search and social preview values. Empty means "use what the post says" — the
+   * title, the excerpt and the cover — so an untouched post behaves exactly as it did before these
+   * existed, and `seoNoindex` is the one flag that has to be read (false = indexable).
+   */
+  seoTitle: string
+  seoDescription: string
+  seoImageUrl: string
+  seoCanonicalUrl: string
+  seoNoindex: boolean
 }
 
 /**
