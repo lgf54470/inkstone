@@ -58,4 +58,6 @@ export const messages = {
 'graph.tag': 'Tag',
 'graph.unresolved_short': ' unresolved',
 'graph.reset': 'Reset',
+'graph.stats_summary': '{notes} notes · {links} links',
+'graph.stats_unresolved': '{count} unresolved',
 }

@@ -168,8 +168,7 @@ describe('neighbor highlighting and text halo (UI-02, UI-03)', () => {
     const prefsRef = { current: { ...DEFAULT_PREFERENCES, labels: true } }
     const hoverRef = { current: null }, selectedIdRef = { current: null }, activeNoteIdRef = { current: null }
     const style = document.createElement('div').style
-
-    createGraphTicker(state, canvas, ctx, colors, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style)
+    createGraphTicker({ state, canvas, ctx, colorsRef: colors, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style })
     state.schedule?.()
 
     expect(strokeTextCalls.length).toBeGreaterThan(0)
@@ -198,7 +197,7 @@ describe('layout thrashing prevention (PERF-02)', () => {
     const prefsRef = { current: DEFAULT_PREFERENCES }
     const hoverRef = { current: null }, selectedIdRef = { current: null }, activeNoteIdRef = { current: null }
     const style = document.createElement('div').style
-    createGraphTicker(state, canvas, ctx, colors, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style)
+    createGraphTicker({ state, canvas, ctx, colorsRef: colors, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style })
     state.schedule?.()
     expect(getBoundingClientRectSpy).toHaveBeenCalledTimes(1)
     expect(clearRectCalls.length).toBeGreaterThanOrEqual(1)

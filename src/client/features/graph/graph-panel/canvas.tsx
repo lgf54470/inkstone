@@ -7,7 +7,7 @@ import { t } from '../../../lib/i18n'
 import { getLinkHoverTarget, subscribeLinkHoverTarget } from '../../preview'
 import { graphScaleAfterWheel } from './helpers'
 import { PHYSICS_FRAME_LIMIT } from './constants'
-import type { CanvasNode, CanvasState } from './types'
+import type { CanvasNode, CanvasState, GraphCanvasLoopOptions, GraphDragOptions } from './types'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 import type { WorkspacePane } from '../../../store/ui'
 import { buildInitialLayout, createCanvasResizer, createGraphTicker, createThemeObserver, readThemeColors } from './canvas-draw'
@@ -54,7 +54,8 @@ function useGraphFit(canvasRef: RefObject<HTMLCanvasElement | null>, stateRef: R
   }, [canvasRef, stateRef])
 }
 
-function useGraphCanvasLoop(data: GraphResponse, prefsRef: MutableRefObject<GraphPreferences>, canvasRef: RefObject<HTMLCanvasElement | null>, stateRef: RefObject<CanvasState>, hoverRef: MutableRefObject<CanvasNode | null>, selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>, setHover: (node: CanvasNode | null) => void, setSelectedId: React.Dispatch<React.SetStateAction<string | null>>, fitGraph: () => void) {
+function useGraphCanvasLoop(options: GraphCanvasLoopOptions) {
+  const { data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph } = options
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !data) return
@@ -70,7 +71,7 @@ function useGraphCanvasLoop(data: GraphResponse, prefsRef: MutableRefObject<Grap
     const { resize, observer } = createCanvasResizer(canvas, ctx, state)
     resize()
     const style = getComputedStyle(document.documentElement)
-    createGraphTicker(state, canvas, ctx, colorsRef, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style)
+    createGraphTicker({ state, canvas, ctx, colorsRef, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style })
     const linkedTargetId = getLinkHoverTarget()
     const linkedNode = linkedTargetId ? state.nodes.find((candidate) => candidate.id === linkedTargetId) ?? null : null
     hoverRef.current = linkedNode
@@ -104,7 +105,8 @@ function useGraphWorldMath(stateRef: RefObject<CanvasState>, canvasRef: RefObjec
   return { toWorld, nodeAt }
 }
 
-function useGraphDrag(stateRef: RefObject<CanvasState>, toWorld: (clientX: number, clientY: number) => { x: number; y: number }, nodeAt: (x: number, y: number) => CanvasNode | null, hoverRef: MutableRefObject<CanvasNode | null>, setHover: (node: CanvasNode | null) => void, setSelectedId: (id: string | null) => void, onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void, onCreateNote: (title: string) => void) {
+function useGraphDrag(options: GraphDragOptions) {
+  const { stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote } = options
   const beginDrag = useCallback((clientX: number, clientY: number, button: number) => {
     if (button !== 0) return
     const state = stateRef.current
@@ -113,6 +115,7 @@ function useGraphDrag(stateRef: RefObject<CanvasState>, toWorld: (clientX: numbe
     state.dragging = { node, startX: clientX, startY: clientY, ox: state.offsetX, oy: state.offsetY }
     if (node) setSelectedId(node.id)
   }, [nodeAt, setSelectedId, stateRef, toWorld])
+
   const moveDrag = useCallback((clientX: number, clientY: number) => {
     const state = stateRef.current
     const point = toWorld(clientX, clientY)
@@ -132,6 +135,7 @@ function useGraphDrag(stateRef: RefObject<CanvasState>, toWorld: (clientX: numbe
       hoverRef.current = node; setHover(node); state.schedule?.()
     }
   }, [hoverRef, nodeAt, setHover, stateRef, toWorld])
+
   const endDrag = useCallback((clientX: number, clientY: number, modifierKey = false) => {
     const state = stateRef.current
     const drag = state.dragging
@@ -413,9 +417,9 @@ export function GraphCanvas({ data, prefs, activeNoteId, canvasRef, stateRef, ho
   }, [prefs])
   useDynamicGraphPrefs(stateRef, prefs)
   const fitGraph = useGraphFit(canvasRef, stateRef)
-  useGraphCanvasLoop(data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph)
+  useGraphCanvasLoop({ data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph })
   const { toWorld, nodeAt } = useGraphWorldMath(stateRef, canvasRef)
-  const { beginDrag, moveDrag, endDrag } = useGraphDrag(stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote)
+  const { beginDrag, moveDrag, endDrag } = useGraphDrag({ stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote })
   const selected = data.nodes.find((node) => node.id === selectedId) ?? null
   const menuItems = graphMenuItems(context, onOpenNote, onCreateNote, onClose, onMakeLocal)
   useGraphControls(controlsRef, stateRef, fitGraph)

@@ -9,7 +9,7 @@ import {
   type GraphPreferences,
   type GroupBy,
 } from '../../../lib/graph-settings'
-import { IconButton } from '../../../components/primitives'
+import { Button, IconButton } from '../../../components/primitives'
 import { Select, Switch } from '../../../components/form'
 import { Tooltip, useEscape } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
@@ -45,12 +45,12 @@ export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTag
           {selectedTags.length >= LIMITS.tagSelectionMax && <div>
               <div className='flex items-center justify-between gap-2'>
                 <p className='text-[length:var(--text-11)] font-medium leading-relaxed text-[var(--danger)]'>{t('tags.selection_limit', { value0: LIMITS.tagSelectionMax })}</p>
-                <button type='button' onClick={onResetTagFilters} className='shrink-0 text-[length:var(--text-11)] font-medium text-[var(--accent)] transition-colors hover:underline'>{t('common.clear_selection')}</button>
+                <Button type='button' variant='ghost' size='sm' onClick={onResetTagFilters} className='h-6 shrink-0 px-1.5 text-[length:var(--text-11)] font-medium text-[var(--accent)] hover:bg-transparent hover:underline'>{t('common.clear_selection')}</Button>
               </div>
-              <button type='button' onClick={onToggleLimit} className="mt-1 flex items-center gap-1 text-[length:var(--text-10\.5)] font-medium text-[var(--text-quaternary)] transition-colors hover:text-[var(--text-secondary)]">
+              <Button type='button' variant='ghost' size='sm' onClick={onToggleLimit} className="mt-1 h-6 gap-1 px-1 text-[length:var(--text-10\.5)] font-medium text-[var(--text-quaternary)] hover:bg-transparent hover:text-[var(--text-secondary)]">
                 <ChevronRight size={10} className={'transition-transform duration-[var(--dur-fast)] ' + (isLimitOpen ? 'rotate-90' : '')}/>
                 {isLimitOpen ? t('common.collapse') : t('graph.tags_limit_more', { value0: LIMITS.tagSelectionMax })}
-              </button>
+              </Button>
               {isLimitOpen && <p className="mt-1 text-[length:var(--text-10\.5)] leading-relaxed text-[var(--text-tertiary)]">{t('graph.tags_limit_detail', { value0: LIMITS.tagSelectionMax })}</p>}
             </div>}
           {GRAPH_SHOW_TOGGLES.map((control) => (
@@ -68,7 +68,7 @@ export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTag
           <GraphRange label={t('graph.repulsion')} min={300} max={1800} step={50} value={prefs.repulsion} onChange={(value) => onChange('repulsion', value)}/>
           <GraphRange label={t('graph.link_distance')} min={40} max={150} step={5} value={prefs.linkDistance} onChange={(value) => onChange('linkDistance', value)}/>
           <GraphRange label={t('graph.node_size')} min={0.7} max={1.8} step={0.1} value={prefs.nodeScale} onChange={(value) => onChange('nodeScale', value)}/>
-          <button type='button' onClick={onRestoreDefaults} className="mt-1 flex h-8 w-full items-center justify-center gap-2 rounded-[var(--r-md)] border border-[var(--border-default)] text-[length:var(--text-11\.5)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"><ArrowDownToLine size={13}/>{t('graph.restore_defaults')}</button>
+          <Button type='button' variant='secondary' size='sm' onClick={onRestoreDefaults} className="mt-1 flex h-8 w-full items-center justify-center gap-2 text-[length:var(--text-11\.5)] text-[var(--text-secondary)]"><ArrowDownToLine size={13}/>{t('graph.restore_defaults')}</Button>
         </GraphSection>
       </aside>
     </>

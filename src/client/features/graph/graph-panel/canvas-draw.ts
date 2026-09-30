@@ -3,16 +3,25 @@ import type { GraphResponse } from '@shared/types'
 import { truncateText } from '@shared/text-utils'
 import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, PHYSICS_FRAME_LIMIT } from './constants'
 import { nodeColor } from './helpers'
-import type { CanvasNode, CanvasState } from './types'
+import type {
+  CanvasNode,
+  CanvasState,
+  DrawArrowHeadOptions,
+  DrawEdgesOptions,
+  DrawLabelsOptions,
+  DrawNodesOptions,
+  GraphTickerOptions,
+  ThemeColors,
+} from './types'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 
-
-export interface ThemeColors {
-  edge: string
-  node: string
-  accent: string
-  text: string
-  bgBase: string
+export type {
+  DrawArrowHeadOptions,
+  DrawEdgesOptions,
+  DrawLabelsOptions,
+  DrawNodesOptions,
+  GraphTickerOptions,
+  ThemeColors,
 }
 
 
@@ -77,10 +86,10 @@ function advancePhysics(state: CanvasState, prefs: GraphPreferences): void {
 }
 
 
-function drawArrowHead(ctx: CanvasRenderingContext2D, a: CanvasNode, b: CanvasNode, color: string, scale: number): void {
-  const angle = Math.atan2(b.y - a.y, b.x - a.x)
-  const x = b.x - Math.cos(angle) * (b.r + 2)
-  const y = b.y - Math.sin(angle) * (b.r + 2)
+function drawArrowHead({ ctx, from, to, color, scale }: DrawArrowHeadOptions): void {
+  const angle = Math.atan2(to.y - from.y, to.x - from.x)
+  const x = to.x - Math.cos(angle) * (to.r + 2)
+  const y = to.y - Math.sin(angle) * (to.r + 2)
   const size = 5 / Math.sqrt(scale)
   ctx.beginPath()
   ctx.moveTo(x, y)
@@ -89,8 +98,7 @@ function drawArrowHead(ctx: CanvasRenderingContext2D, a: CanvasNode, b: CanvasNo
   ctx.closePath(); ctx.fillStyle = color; ctx.fill()
 }
 
-
-function drawEdges(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, arrows: boolean): void {
+function drawEdges({ ctx, state, colors, emphasizedId, arrows }: DrawEdgesOptions): void {
   ctx.lineWidth = 1 / state.scale
   for (const edge of state.edges) {
     const related = emphasizedId === edge.a.id || emphasizedId === edge.b.id
@@ -98,10 +106,9 @@ function drawEdges(ctx: CanvasRenderingContext2D, state: CanvasState, colors: Th
     ctx.globalAlpha = related ? 0.9 : emphasizedId ? 0.14 : 0.42
     ctx.beginPath(); ctx.moveTo(edge.a.x, edge.a.y); ctx.lineTo(edge.b.x, edge.b.y); ctx.stroke()
     if (arrows)
-      drawArrowHead(ctx, edge.a, edge.b, related ? colors.accent : colors.edge, state.scale)
+      drawArrowHead({ ctx, from: edge.a, to: edge.b, color: related ? colors.accent : colors.edge, scale: state.scale })
   }
 }
-
 
 export function getConnectedNeighborIds(state: CanvasState, targetId: string | null): Set<string> {
   const neighbors = new Set<string>()
@@ -113,8 +120,16 @@ export function getConnectedNeighborIds(state: CanvasState, targetId: string | n
   return neighbors
 }
 
-
-function drawNodes(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, neighborIds: Set<string>, groupBy: GraphPreferences['groupBy'], selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>): void {
+function drawNodes({
+  ctx,
+  state,
+  colors,
+  emphasizedId,
+  neighborIds,
+  groupBy,
+  selectedIdRef,
+  activeNoteIdRef,
+}: DrawNodesOptions): void {
   for (const node of state.nodes) {
     const active = node.id === activeNoteIdRef.current
     const emphasized = node.id === emphasizedId
@@ -136,8 +151,16 @@ function drawNodes(ctx: CanvasRenderingContext2D, state: CanvasState, colors: Th
   }
 }
 
-
-function drawLabels(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, neighborIds: Set<string>, fontFamily: string, scale: number, labels: boolean): void {
+function drawLabels({
+  ctx,
+  state,
+  colors,
+  emphasizedId,
+  neighborIds,
+  fontFamily,
+  scale,
+  labels,
+}: DrawLabelsOptions): void {
   if (!labels || !(scale > 0.68 || emphasizedId))
     return
   ctx.font = `${11 / scale}px ${fontFamily}`
@@ -156,32 +179,62 @@ function drawLabels(ctx: CanvasRenderingContext2D, state: CanvasState, colors: T
   }
 }
 
-export function createGraphTicker(state: CanvasState, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, colorsRef: ThemeColors | { current: ThemeColors }, prefsRef: GraphPreferences | { current: GraphPreferences }, hoverRef: MutableRefObject<CanvasNode | null>, selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>, style: CSSStyleDeclaration): void {
-  const schedule = () => { if (!state.raf) state.raf = requestAnimationFrame(tick) }
-  const tick = () => {
-    state.raf = 0
-    const prefs = 'current' in prefsRef ? prefsRef.current : prefsRef
-    const colors = 'current' in colorsRef ? colorsRef.current : colorsRef
-    advancePhysics(state, prefs)
-    const width = state.width || canvas.width || 800
-    const height = state.height || canvas.height || 600
-    ctx.clearRect(0, 0, width, height)
-    ctx.save()
-    ctx.translate(state.offsetX, state.offsetY)
-    ctx.scale(state.scale, state.scale)
-    const emphasizedId = hoverRef.current?.id ?? selectedIdRef.current
-    const neighborIds = getConnectedNeighborIds(state, emphasizedId)
-    drawEdges(ctx, state, colors, emphasizedId, prefs.arrows)
-    ctx.globalAlpha = 1
-    drawNodes(ctx, state, colors, emphasizedId, neighborIds, prefs.groupBy, selectedIdRef, activeNoteIdRef)
-    ctx.globalAlpha = 1
-    drawLabels(ctx, state, colors, emphasizedId, neighborIds, style.getPropertyValue('--font-ui'), state.scale, prefs.labels)
-    ctx.globalAlpha = 1
-    ctx.restore()
-    if (state.frame < PHYSICS_FRAME_LIMIT) schedule()
-  }
-  state.schedule = schedule
+function renderGraphScene(options: GraphTickerOptions): void {
+  const { state, canvas, ctx, colorsRef, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style } = options
+  const prefs = 'current' in prefsRef ? prefsRef.current : prefsRef
+  const colors = 'current' in colorsRef ? colorsRef.current : colorsRef
+  advancePhysics(state, prefs)
+  const width = state.width || canvas.width || 800
+  const height = state.height || canvas.height || 600
+  ctx.clearRect(0, 0, width, height)
+  ctx.save()
+  ctx.translate(state.offsetX, state.offsetY)
+  ctx.scale(state.scale, state.scale)
+  const emphasizedId = hoverRef.current?.id ?? selectedIdRef.current
+  const neighborIds = getConnectedNeighborIds(state, emphasizedId)
+  drawEdges({ ctx, state, colors, emphasizedId, arrows: prefs.arrows })
+  ctx.globalAlpha = 1
+  drawNodes({ ctx, state, colors, emphasizedId, neighborIds, groupBy: prefs.groupBy, selectedIdRef, activeNoteIdRef })
+  ctx.globalAlpha = 1
+  drawLabels({ ctx, state, colors, emphasizedId, neighborIds, fontFamily: style.getPropertyValue('--font-ui'), scale: state.scale, labels: prefs.labels })
+  ctx.globalAlpha = 1
+  ctx.restore()
 }
+
+export function createGraphTicker(
+  optionsOrState: GraphTickerOptions | CanvasState,
+  canvas?: HTMLCanvasElement,
+  ctx?: CanvasRenderingContext2D,
+  colorsRef?: ThemeColors | { current: ThemeColors },
+  prefsRef?: GraphPreferences | { current: GraphPreferences },
+  hoverRef?: MutableRefObject<CanvasNode | null>,
+  selectedIdRef?: MutableRefObject<string | null>,
+  activeNoteIdRef?: MutableRefObject<string | null>,
+  style?: CSSStyleDeclaration,
+): void {
+  const options: GraphTickerOptions = 'canvas' in optionsOrState
+    ? optionsOrState
+    : {
+        state: optionsOrState,
+        canvas: canvas!,
+        ctx: ctx!,
+        colorsRef: colorsRef!,
+        prefsRef: prefsRef!,
+        hoverRef: hoverRef!,
+        selectedIdRef: selectedIdRef!,
+        activeNoteIdRef: activeNoteIdRef!,
+        style: style!,
+      }
+
+  const schedule = () => { if (!options.state.raf) options.state.raf = requestAnimationFrame(tick) }
+  const tick = () => {
+    options.state.raf = 0
+    renderGraphScene(options)
+    if (options.state.frame < PHYSICS_FRAME_LIMIT) schedule()
+  }
+  options.state.schedule = schedule
+}
+
 
 export function buildInitialLayout(data: GraphResponse, prefs: GraphPreferences, state: CanvasState): void {
   state.nodes = data.nodes.map((node, index) => {

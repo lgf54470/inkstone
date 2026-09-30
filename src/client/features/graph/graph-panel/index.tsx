@@ -11,6 +11,7 @@ import { type GraphPreferences, type GroupBy } from '../../../lib/graph-settings
 export type { GraphPreferences, GroupBy }
 
 import { Button, IconButton } from '../../../components/primitives'
+import { Input, Segmented } from '../../../components/form'
 import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../../components/overlay'
 import { Empty, LoadingBlock } from '../../../components/feedback'
 import { useNotes } from '../../../store/notes'
@@ -21,7 +22,7 @@ import { GraphCanvas, type GraphControls } from './canvas'
 import { GraphSettingsPanel } from './settings'
 import { DEFAULT_PREFERENCES } from './constants'
 import { graphPrefsStorageKey, loadPreferences, normalizedResponse } from './helpers'
-import type { CanvasNode, CanvasState } from './types'
+import type { CanvasNode, CanvasState, GraphHeaderActionsProps, GraphHeaderProps } from './types'
 
 const TRACKING_TITLE = 'tracking-[var(--tracking-graph-title)]'
 
@@ -124,10 +125,13 @@ function useGraphData(request: GraphQuery) {
 }
 
 function GraphStats({ data }: { data: GraphResponse }) {
+  const noteCount = data.nodes.filter((node) => node.kind === 'note').length
+  const linkCount = data.edges.length
+  const unresolvedCount = data.nodes.filter((node) => node.kind === 'unresolved').length
   return (
     <span className="whitespace-nowrap text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">
-      {data.nodes.filter((node) => node.kind === 'note').length}{t('graph.notes')}{data.edges.length}{t('graph.links')}
-      {data.nodes.some((node) => node.kind === 'unresolved') && ` · ${data.nodes.filter((node) => node.kind === 'unresolved').length}${t('graph.unresolved_short')}`}
+      {t('graph.stats_summary', { notes: noteCount, links: linkCount })}
+      {unresolvedCount > 0 && ` · ${t('graph.stats_unresolved', { count: unresolvedCount })}`}
     </span>
   )
 }
@@ -137,17 +141,19 @@ function GraphScopeToggle({ mode, onModeChange, hasActiveNote }: {
   onModeChange: (mode: GraphPreferences['mode']) => void
   hasActiveNote: boolean
 }) {
+  const options = useMemo(() => [
+    { value: 'global' as const, label: t('graph.global') },
+    { value: 'local' as const, label: t('graph.local'), disabled: !hasActiveNote },
+  ], [hasActiveNote])
+
   return (
-    <div className='flex h-8 items-center rounded-[var(--r-md)] bg-[var(--bg-inset)] p-0.5' role='group' aria-label={t('graph.scope')}>
-      <button type='button' aria-pressed={mode === 'global'} onClick={() => onModeChange('global')}
-        className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\\.5)] ${mode === 'global' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]'}`}>
-        {t('graph.global')}
-      </button>
-      <button type='button' aria-pressed={mode === 'local'} disabled={!hasActiveNote} onClick={() => onModeChange('local')}
-        className={`h-7 rounded-[var(--r-sm)] px-2.5 text-[length:var(--text-11\\.5)] disabled:opacity-40 ${mode === 'local' ? 'bg-[var(--bg-overlay)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-tertiary)]'}`}>
-        {t('graph.local')}
-      </button>
-    </div>
+    <Segmented
+      size='sm'
+      label={t('graph.scope')}
+      options={options}
+      value={mode}
+      onChange={onModeChange}
+    />
   )
 }
 
@@ -156,34 +162,33 @@ function GraphSearchBox({ search, onSearchChange }: {
   onSearchChange: (value: string) => void
 }) {
   return (
-    <label className='flex h-8 min-w-37.5 flex-1 items-center gap-2 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-inset)] px-2.5 md:max-w-80'>
-      <Search size={13} className='shrink-0 text-[var(--text-quaternary)]'/>
-      <span className='sr-only'>{t('graph.search_notes')}</span>
-      <input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder={t('graph.search_notes')}
-        className='min-w-0 flex-1 bg-transparent text-[length:var(--text-12)] outline-none placeholder:text-[var(--text-quaternary)]'/>
-      {search && (
-        <button
-          type='button'
-          aria-label={t('common.clear')}
-          onClick={() => onSearchChange('')}
-          className='flex size-5 items-center justify-center rounded-[var(--r-sm)] text-[var(--text-quaternary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]'
-        >
-          <X size={12}/>
-        </button>
-      )}
-    </label>
+    <div className='min-w-37.5 flex-1 md:max-w-80'>
+      <Input
+        value={search}
+        onChange={(event) => onSearchChange(event.target.value)}
+        placeholder={t('graph.search_notes')}
+        aria-label={t('graph.search_notes')}
+        leading={<Search size={13} className='text-[var(--text-quaternary)]'/>}
+        trailing={
+          search ? (
+            <IconButton
+              size='sm'
+              label={t('common.clear')}
+              onClick={() => onSearchChange('')}
+              className='size-5 text-[var(--text-quaternary)] hover:text-[var(--text-secondary)]'
+            >
+              <X size={12}/>
+            </IconButton>
+          ) : undefined
+        }
+        className='h-8 text-[length:var(--text-12)]'
+      />
+    </div>
   )
 }
 
-function GraphHeaderActions({ canZoom, isSettingsOpen, onZoomOut, onFit, onZoomIn, onToggleSettings, onClose }: {
-  canZoom: boolean
-  isSettingsOpen: boolean
-  onZoomOut: () => void
-  onFit: () => void
-  onZoomIn: () => void
-  onToggleSettings: () => void
-  onClose: () => void
-}) {
+function GraphHeaderActions({ actions }: { actions: GraphHeaderActionsProps }) {
+  const { canZoom, isSettingsOpen, onZoomOut, onFit, onZoomIn, onToggleSettings, onClose } = actions
   return (
     <div className='ml-auto flex items-center gap-1'>
       <Tooltip label={t('common.zoom_out')}><IconButton label={t('common.zoom_out')} size='sm' disabled={!canZoom} onClick={onZoomOut}><Minus size={14}/></IconButton></Tooltip>
@@ -195,22 +200,25 @@ function GraphHeaderActions({ canZoom, isSettingsOpen, onZoomOut, onFit, onZoomI
   )
 }
 
-function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search, onSearchChange, canZoom, isSettingsOpen, onZoomOut, onFit, onZoomIn, onToggleSettings, onClose }: {
-  titleId: string
-  data: GraphResponse | null
-  prefs: GraphPreferences
-  hasActiveNote: boolean
-  onModeChange: (mode: GraphPreferences['mode']) => void
-  search: string
-  onSearchChange: (value: string) => void
-  canZoom: boolean
-  isSettingsOpen: boolean
-  onZoomOut: () => void
-  onFit: () => void
-  onZoomIn: () => void
-  onToggleSettings: () => void
-  onClose: () => void
-}) {
+function useGraphHeaderActions(
+  data: GraphResponse | null,
+  isSettingsOpen: boolean,
+  setIsSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>,
+  refs: ReturnType<typeof useGraphCanvasRefs>,
+  onClose: () => void,
+): GraphHeaderActionsProps {
+  return useMemo(() => ({
+    canZoom: Boolean(data?.nodes.length),
+    isSettingsOpen,
+    onZoomOut: () => refs.controlsRef.current?.zoomOut(),
+    onFit: () => refs.controlsRef.current?.fit(),
+    onZoomIn: () => refs.controlsRef.current?.zoomIn(),
+    onToggleSettings: () => setIsSettingsOpen((value) => !value),
+    onClose,
+  }), [data?.nodes.length, isSettingsOpen, onClose, refs.controlsRef, setIsSettingsOpen])
+}
+
+function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search, onSearchChange, actions }: GraphHeaderProps) {
   return (
     <header className='flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] px-3 py-2 md:px-4'>
       <div className='mr-1 flex min-w-0 items-baseline gap-2.5'>
@@ -219,7 +227,7 @@ function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search
       </div>
       <GraphScopeToggle mode={prefs.mode} onModeChange={onModeChange} hasActiveNote={hasActiveNote} />
       <GraphSearchBox search={search} onSearchChange={onSearchChange}/>
-      <GraphHeaderActions canZoom={canZoom} isSettingsOpen={isSettingsOpen} onZoomOut={onZoomOut} onFit={onFit} onZoomIn={onZoomIn} onToggleSettings={onToggleSettings} onClose={onClose}/>
+      <GraphHeaderActions actions={actions}/>
     </header>
   )
 }
@@ -298,9 +306,10 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     }
   }, [folders, prefs.folderId])
   const resetTagFilters = useTagReset(prefs, changePref)
+  const headerActions = useGraphHeaderActions(data, isSettingsOpen, setIsSettingsOpen, refs, onClose)
   return createPortal(<div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1} data-surface='graph'
     className='app-viewport-fixed fixed z-[var(--z-graph)] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0'>
-    <GraphHeader titleId={titleId} data={data} prefs={prefs} hasActiveNote={Boolean(activeNoteId)} onModeChange={(mode) => changePref('mode', mode)} search={search} onSearchChange={setSearch} canZoom={Boolean(data?.nodes.length)} isSettingsOpen={isSettingsOpen} onZoomOut={() => refs.controlsRef.current?.zoomOut()} onFit={() => refs.controlsRef.current?.fit()} onZoomIn={() => refs.controlsRef.current?.zoomIn()} onToggleSettings={() => setIsSettingsOpen((value) => !value)} onClose={onClose}/>
+    <GraphHeader titleId={titleId} data={data} prefs={prefs} hasActiveNote={Boolean(activeNoteId)} onModeChange={(mode) => changePref('mode', mode)} search={search} onSearchChange={setSearch} actions={headerActions}/>
     <div className='relative flex min-h-0 flex-1 overflow-hidden'>
       <main className='relative min-w-0 flex-1'>
         <GraphBody data={data} loadError={loadError} onRetry={() => setReload((value) => value + 1)}>
