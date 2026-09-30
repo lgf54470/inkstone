@@ -203,8 +203,8 @@ export const share = {
       patch: (body: Partial<BlogSettings>) =>
         request<{ settings: BlogSettings }>('/api/blog/settings', { method: 'PATCH', body }),
     },
-    checkSlug: (slug: string, currentPostId?: string) =>
-      request<{ available: boolean; reason?: string }>(`/api/blog/check-slug${toQuery({ slug, currentPostId })}`),
+    checkSlug: (slug: string, currentPostId?: string, signal?: AbortSignal) =>
+      request<{ available: boolean; reason?: string }>(`/api/blog/check-slug${toQuery({ slug, currentPostId })}`, { signal }),
     getNotePost: (noteId: string, signal?: AbortSignal) =>
       request<{ post: BlogPost | null }>(`/api/blog/note-post/${noteId}`, { signal }),
     posts: {

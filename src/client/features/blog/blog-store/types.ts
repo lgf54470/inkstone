@@ -144,6 +144,14 @@ export interface BlogStoreState {
   deleteLinkCategory: (id: string) => Promise<void>
   importLinksData: (payload: { categories: Array<{ id?: string; name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }>; links: Array<Partial<BlogLink>> }) => Promise<{ importedCategories: number; importedLinks: number }>
 
+  /**
+   * The post list's in-flight request: `seq` lets a late answer be dropped (the reader may have
+   * typed again since), and the controller cancels the request the newest one replaces. Both are
+   * request lifecycle, not data — the list itself lives in `posts`.
+   */
+  postsRequestSeq: number
+  postsAbort: AbortController | null
+
   excludeBots: boolean
   excludeSelfReferrers: boolean
   excludeOwner: boolean

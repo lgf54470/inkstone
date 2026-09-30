@@ -226,17 +226,24 @@ function useSlugValidation(
       return
     }
 
+    // Debounced, cancelled and sequence-checked: only the answer to the slug as it is typed last may
+    // set the badge, or a slow reply about a previous slug claims the current one is taken.
+    const controller = new AbortController()
     const timer = setTimeout(async () => {
       try {
-        const res = await api.blog.checkSlug(trimmed, postId)
+        const res = await api.blog.checkSlug(trimmed, postId, controller.signal)
+        if (controller.signal.aborted) return
         setSlugAvailable(res.available)
         setSlugReason(res.reason || '')
       } catch {
-        setSlugAvailable(null)
+        if (!controller.signal.aborted) setSlugAvailable(null)
       }
     }, 300)
 
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
   }, [slug, postId])
 }
 

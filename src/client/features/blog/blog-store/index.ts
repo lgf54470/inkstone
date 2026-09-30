@@ -47,6 +47,8 @@ function initialBlogState(): Partial<BlogStoreState> {
         settings: null,
         loading: false,
         batchBusy: false,
+        postsRequestSeq: 0,
+        postsAbort: null,
         excludeBots: DEFAULT_TRAFFIC_FILTERS.excludeBots,
         excludeSelfReferrers: DEFAULT_TRAFFIC_FILTERS.excludeSelfReferrers,
         excludeOwner: DEFAULT_TRAFFIC_FILTERS.excludeOwner,

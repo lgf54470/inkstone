@@ -31,8 +31,20 @@ async function loadAllImpl(set: SetBlogStoreState, get: () => BlogStoreState): P
   }
 }
 
+/**
+ * The post list, asked once per change of the query and answered with the newest answer only. Two
+ * things follow from that: the request a newer one replaces is cancelled (a search box sends one per
+ * keystroke) and an answer that arrives after a newer request went out is dropped, because comparing
+ * sequence numbers is the only way to know which of two responses is current. The dropped answer is
+ * not an error — the caller asked for it and then changed its mind.
+ */
 async function loadPostsImpl(set: SetBlogStoreState, get: () => BlogStoreState): Promise<void> {
-  const { statusFilter, categoryId, folderId, tag, search, sort } = get()
+  const { statusFilter, categoryId, folderId, tag, search, sort, postsRequestSeq, postsAbort } = get()
+  const seq = postsRequestSeq + 1
+  postsAbort?.abort()
+  const controller = new AbortController()
+  set({ postsRequestSeq: seq, postsAbort: controller })
+
   try {
     const res = await api.blog.posts.list({
       status: statusFilter,
@@ -41,13 +53,15 @@ async function loadPostsImpl(set: SetBlogStoreState, get: () => BlogStoreState):
       tag: tag || undefined,
       search: search || undefined,
       sort,
-    })
+    }, controller.signal)
+    if (get().postsRequestSeq !== seq) return
     const posts = (res.posts || []).map((p) => ({
       ...p,
       coverUrl: extractCoverUrl(p.coverUrl),
     }))
     set({ posts })
   } catch (err) {
+    if (controller.signal.aborted) return
     console.error('Failed to load blog posts', err)
   }
 }

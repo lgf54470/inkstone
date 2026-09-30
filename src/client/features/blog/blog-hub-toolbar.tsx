@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Search, LayoutGrid, LayoutList, Settings, Plus, RefreshCw, FolderClosed, Hash, X } from 'lucide-react'
 import { IconButton, Button } from '../../components/primitives'
 import { Input } from '../../components/form'
@@ -81,15 +81,30 @@ function ActiveFilterChips() {
   )
 }
 
+/**
+ * The search box types instantly and asks once. It used to call the store on every keystroke, so
+ * thirteen characters were thirteen full list requests, each one started before the last had
+ * answered. The value shown is this component's own, so typing never waits for a round trip.
+ */
+const SEARCH_DEBOUNCE_MS = 250
+
 function SearchBox() {
   const search = useBlogStore((s) => s.search)
   const setSearch = useBlogStore((s) => s.setSearch)
+  const [draft, setDraft] = useState(search)
+
+  useEffect(() => {
+    if (draft === search) return
+    const timer = setTimeout(() => setSearch(draft), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [draft, search, setSearch])
+
   return (
     <div className='relative w-45 md:w-55'>
       <Input
         leading={<Search size={13} className='text-[var(--text-quaternary)]' />}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
         placeholder={t('blog.search_posts_placeholder')}
         className='h-8 text-[length:var(--text-12)]'
       />

@@ -2892,6 +2892,9 @@ const allowed = new Map([
     '// the same endpoint.',
     '/**\n * What the payload means under the switches. A number only counts as filtered when the switch hiding\n * it is on: the server reports all three regardless, and the banner that reads these is describing\n * what is not in the chart above it.\n */',
   ]],
+  ['src/client/features/blog/blog-hub-toolbar.tsx', [
+    '/**\n * The search box types instantly and asks once. It used to call the store on every keystroke, so\n * thirteen characters were thirteen full list requests, each one started before the last had\n * answered. The value shown is this component\'s own, so typing never waits for a round trip.\n */',
+  ]],
   ['src/client/features/blog/blog-links-view/link-card-row.test.ts', [
     '/**\n * A link\'s address arrives from a reader. Rows stored before the server learned to refuse an\n * unrenderable one still reach this component, so the row itself must not turn that value into an\n * affordance — the browser runs a `javascript:` href in the admin\'s own session.\n */',
   ]],
@@ -2932,6 +2935,10 @@ const allowed = new Map([
     '// An old verdict is still worth showing — it is the last thing anyone measured — but it is',
     '// shown as old.',
   ]],
+  ['src/client/features/blog/blog-publish-modal/use-blog-publish-form.ts', [
+    '// Debounced, cancelled and sequence-checked: only the answer to the slug as it is typed last may',
+    '// set the badge, or a slow reply about a previous slug claims the current one is taken.',
+  ]],
   ['src/client/features/blog/blog-settings-retention.test.ts', [
     '// A test that fails before its unmount would otherwise leave its modal in the',
     '// document, and the next test\'s button lookup would drive that stale instance.',
@@ -2957,12 +2964,21 @@ const allowed = new Map([
     '// creating a store → feature import edge: selectors read the neutral registry',
     '// in store/visibility-sources.ts, not this module.',
   ]],
+  ['src/client/features/blog/blog-store/loaders.ts', [
+    '/**\n * The post list, asked once per change of the query and answered with the newest answer only. Two\n * things follow from that: the request a newer one replaces is cancelled (a search box sends one per\n * keystroke) and an answer that arrives after a newer request went out is dropped, because comparing\n * sequence numbers is the only way to know which of two responses is current. The dropped answer is\n * not an error — the caller asked for it and then changed its mind.\n */',
+  ]],
+  ['src/client/features/blog/blog-store/posts-request.test.ts', [
+    '/**\n * The list is asked once per keystroke in the search box, and answers can arrive out of order. Two\n * rules keep the screen honest: the request a newer one replaces is cancelled, and an answer that\n * arrives after a newer request went out is dropped instead of overwriting it.\n */',
+  ]],
   ['src/client/features/blog/blog-store/retention.test.ts', [
     '// Seeded before the store module above is evaluated, so the cached record cap',
     '// is already in browser storage when the store builds its initial state.',
   ]],
   ['src/client/features/blog/blog-store/state.ts', [
     '/**\n * What an unread store holds. The stored filters are read when the hub opens (see\n * `hydrateTrafficFilters`), not when this module is evaluated: the module loads with the app, so a\n * read at module scope would touch `localStorage` on every page and in every test for a switch only\n * the blog hub shows.\n */',
+  ]],
+  ['src/client/features/blog/blog-store/types.ts', [
+    '/**\n   * The post list\'s in-flight request: `seq` lets a late answer be dropped (the reader may have\n   * typed again since), and the controller cancels the request the newest one replaces. Both are\n   * request lifecycle, not data — the list itself lives in `posts`.\n   */',
   ]],
   ['src/client/features/blog/frontend-base.ts', [
     '/**\n * The blog\'s own site address, as a link may carry it.\n *\n * The stored value is checked on the way in, but a blog configured before that rule existed still\n * holds whatever was typed, and this address becomes an `href` in the admin session — so a value a\n * link may not use falls back to the shipped default instead of being rendered as written.\n */',
