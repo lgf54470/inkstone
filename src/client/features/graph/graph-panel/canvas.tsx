@@ -102,7 +102,7 @@ function useGraphWorldMath(stateRef: RefObject<CanvasState>, canvasRef: RefObjec
   return { toWorld, nodeAt }
 }
 
-function useGraphDrag(stateRef: RefObject<CanvasState>, toWorld: (clientX: number, clientY: number) => { x: number; y: number }, nodeAt: (x: number, y: number) => CanvasNode | null, hoverRef: MutableRefObject<CanvasNode | null>, setHover: (node: CanvasNode | null) => void, setSelectedId: (id: string | null) => void, onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void, onCreateNote: (title: string) => void, onClose: () => void) {
+function useGraphDrag(stateRef: RefObject<CanvasState>, toWorld: (clientX: number, clientY: number) => { x: number; y: number }, nodeAt: (x: number, y: number) => CanvasNode | null, hoverRef: MutableRefObject<CanvasNode | null>, setHover: (node: CanvasNode | null) => void, setSelectedId: (id: string | null) => void, onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void, onCreateNote: (title: string) => void) {
   const beginDrag = useCallback((clientX: number, clientY: number, button: number) => {
     if (button !== 0) return
     const state = stateRef.current
@@ -130,21 +130,23 @@ function useGraphDrag(stateRef: RefObject<CanvasState>, toWorld: (clientX: numbe
       hoverRef.current = node; setHover(node); state.schedule?.()
     }
   }, [hoverRef, nodeAt, setHover, stateRef, toWorld])
-  const endDrag = useCallback((clientX: number, clientY: number) => {
+  const endDrag = useCallback((clientX: number, clientY: number, modifierKey = false) => {
     const state = stateRef.current
     const drag = state.dragging
     state.dragging = null
     if (!drag) return
     const moved = Math.abs(clientX - drag.startX) + Math.abs(clientY - drag.startY)
-    if (drag.node && moved < 5) {
-      if (drag.node.kind === 'note') {
-        if (usePinnedWindows.getState().focusPinnedByNote(drag.node.id)) return
-        void onOpenNote(drag.node.id)
-      }
-      else void onCreateNote(drag.node.title)
-      onClose()
+    if (moved >= 5) return
+    if (!drag.node) {
+      setSelectedId(null)
+      return
     }
-  }, [onCreateNote, onClose, onOpenNote, stateRef])
+    setSelectedId(drag.node.id)
+    if (modifierKey) {
+      if (drag.node.kind === 'note') void onOpenNote(drag.node.id, { pane: 'secondary' })
+      else void onCreateNote(drag.node.title)
+    }
+  }, [onCreateNote, onOpenNote, setSelectedId, stateRef])
   return { beginDrag, moveDrag, endDrag }
 }
 
@@ -158,7 +160,7 @@ interface CanvasHandlers {
   setContext: (value: { x: number; y: number; node: CanvasNode } | null) => void
   beginDrag: (clientX: number, clientY: number, button: number) => void
   moveDrag: (clientX: number, clientY: number) => void
-  endDrag: (clientX: number, clientY: number) => void
+  endDrag: (clientX: number, clientY: number, modifierKey?: boolean) => void
   toWorld: (clientX: number, clientY: number) => { x: number; y: number }
   nodeAt: (x: number, y: number) => CanvasNode | null
   fitGraph: () => void
@@ -199,8 +201,21 @@ function handleCanvasPointerUp(event: React.PointerEvent<HTMLCanvasElement>, h: 
   h.lastPointerEventAtRef.current = performance.now()
   const state = h.stateRef.current
   state.pointers.delete(event.pointerId)
-  if (!state.pinch) h.endDrag(event.clientX, event.clientY)
+  if (!state.pinch) h.endDrag(event.clientX, event.clientY, event.metaKey || event.ctrlKey)
   if (state.pointers.size < 2) state.pinch = null
+}
+
+function handleCanvasDoubleClick(event: React.MouseEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
+  const point = h.toWorld(event.clientX, event.clientY)
+  const node = h.nodeAt(point.x, point.y)
+  if (!node) return
+  if (node.kind === 'note') {
+    if (usePinnedWindows.getState().focusPinnedByNote(node.id)) return
+    void h.onOpenNote(node.id)
+  } else {
+    void h.onCreateNote(node.title)
+  }
+  h.onClose()
 }
 
 function handleCanvasPointerCancel(event: React.PointerEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
@@ -331,7 +346,8 @@ function GraphCanvasElement({ canvasRef, handlers }: {
       onPointerCancel={(event) => handleCanvasPointerCancel(event, handlers)}
       onMouseDown={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.beginDrag(event.clientX, event.clientY, event.button) }}
       onMouseMove={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.moveDrag(event.clientX, event.clientY) }}
-      onMouseUp={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.endDrag(event.clientX, event.clientY) }}
+      onMouseUp={(event) => { if (performance.now() - handlers.lastPointerEventAtRef.current > 80) handlers.endDrag(event.clientX, event.clientY, event.metaKey || event.ctrlKey) }}
+      onDoubleClick={(event) => handleCanvasDoubleClick(event, handlers)}
       onMouseLeave={() => handleCanvasMouseLeave(handlers)}
       onContextMenu={(event) => handleCanvasContextMenu(event, handlers)}
       onWheel={(event) => handleCanvasWheel(event, handlers)}
@@ -397,7 +413,7 @@ export function GraphCanvas({ data, prefs, activeNoteId, canvasRef, stateRef, ho
   const fitGraph = useGraphFit(canvasRef, stateRef)
   useGraphCanvasLoop(data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph)
   const { toWorld, nodeAt } = useGraphWorldMath(stateRef, canvasRef)
-  const { beginDrag, moveDrag, endDrag } = useGraphDrag(stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote, onClose)
+  const { beginDrag, moveDrag, endDrag } = useGraphDrag(stateRef, toWorld, nodeAt, hoverRef, setHover, setSelectedId, onOpenNote, onCreateNote)
   const selected = data.nodes.find((node) => node.id === selectedId) ?? null
   const menuItems = graphMenuItems(context, onOpenNote, onCreateNote, onClose, onMakeLocal)
   useGraphControls(controlsRef, stateRef, fitGraph)

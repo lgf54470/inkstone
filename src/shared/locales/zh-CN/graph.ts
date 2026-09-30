@@ -20,7 +20,7 @@ export const messages = {
 'graph.graph_canvas_accessible': '关系图谱画布。方向键选择节点，加减号缩放，回车打开，Home 适应画布。',
 'graph.group_by': '按颜色分组',
 'graph.group_none': '不分组',
-'graph.interaction_hint': '拖动平移 · 滚轮或双指缩放 · 点击打开 · 右键查看更多',
+'graph.interaction_hint': '拖动平移 · 滚轮或双指缩放 · 点击选中 · 双击打开 · 右键查看更多',
 'graph.link_distance': '链接长度',
 'graph.local': '局部',
 'graph.local_requires_note': '请先打开一篇笔记，再查看它的局部图谱',

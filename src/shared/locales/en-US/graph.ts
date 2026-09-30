@@ -20,7 +20,7 @@ export const messages = {
 'graph.graph_canvas_accessible': 'Graph canvas. Use arrow keys to select nodes, plus and minus to zoom, Enter to open, and Home to fit.',
 'graph.group_by': 'Color by',
 'graph.group_none': 'No grouping',
-'graph.interaction_hint': 'Drag to pan · Scroll or pinch to zoom · Click to open · Right-click for more',
+'graph.interaction_hint': 'Drag to pan · Scroll or pinch to zoom · Click to select · Double-click to open · Right-click for more',
 'graph.link_distance': 'Link distance',
 'graph.local': 'Local',
 'graph.local_requires_note': 'Open a note before viewing its local graph',

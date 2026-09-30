@@ -42,17 +42,18 @@
   2. `useGraphCanvasLoop` 改用 `prefsRef` 避免首帧布局循环重建；
   3. 新增 `repulsion`/`linkDistance` 退火唤醒与 `nodeScale` 半径就地更新响应。
 - **验证命令**：`npm run typecheck && npx vitest run src/client/lib/graph-settings.test.ts`
+- **提交哈希**：`cef97815`
 - **状态**：已完成并验证通过
 
-#### 2. 【UX-01】重构节点交互模式（单击聚焦高亮、双击打开、Cmd+单击分屏）
-- **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`
+- [x] **2. 【UX-01】重构节点交互模式（单击聚焦高亮、双击打开、Cmd+单击分屏）**
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`, `src/shared/locales/`
 - **修改要点**：
-  1. 单击节点（位移 < 5px 且无按键修饰符）：仅将该节点设为选中态（`selectedId`），高亮一度邻居网络，绝不关闭图谱；
-  2. 双击节点（Double Click）或在选中时按 Enter：打开笔记并调用 `onClose()`；
-  3. Cmd / Ctrl + 单击：在后台/辅助面板打开笔记，图谱保持开启；
-  4. 单击空白画布：清空 `selectedId`，恢复全局全亮。
-- **验证命令**：`npm run typecheck && npx vitest run`
-- **提交哈希**：`待提交`
+  1. 单击节点设为选中聚焦态，空白点击取消选中；
+  2. 双击节点与 Enter 触发打开并关闭图谱；
+  3. Cmd / Ctrl + 单击在次面板打开笔记且图谱保持常驻；
+  4. 同步更新中英文操作提示文本。
+- **验证命令**：`node scripts/check-size.mjs && node scripts/check-i18n.mjs && npm run typecheck`
+- **状态**：已完成并验证通过
 
 #### 3. 【UX-02】修复开启“减少动画”时图谱死锁阿基米德螺旋线
 - **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`
