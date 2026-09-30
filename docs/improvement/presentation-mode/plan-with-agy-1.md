@@ -73,9 +73,10 @@
   - 涉及文件：`src/client/features/presentation/presentation-state.ts` (`interceptSlideLink`)、`src/client/features/presentation/presentation-state.test.ts`、`src/client/features/presentation/slide-canvas.tsx` (`useSlideLinkInterceptor`)
   - 目标：拦截幻灯片内 `<a>` 标签，保护演讲主舞台不跳出。
   - 验证：单元测试覆盖安全协议（https/http/mailto/tel）新窗打开与不安全协议/锚点防跳顶拦截，SlideCanvas 挂载代理监听。
-- [ ] **B2-04** `P-10 (FEAT-05)`: 黑屏 (B) 与白屏 (W) 口头互动控制
-  - 涉及文件：`src/client/features/presentation/presentation-keys.ts`、`src/client/features/presentation/presentation-overlay.tsx`、`src/client/features/presentation/use-presentation-keys.ts`
-  - 目标：按 `B` 切换纯黑全屏遮罩，按 `W` 切换纯白全屏遮罩，按任意键复原。
+- [x] **B2-04** `P-10 (FEAT-05)`: 黑屏 (B) 与白屏 (W) 口头互动控制 — 已完成
+  - 涉及文件：`src/client/features/presentation/presentation-keys.ts` (`blackout`/`whiteout`)、`src/client/features/presentation/presentation-keys.test.ts`、`src/client/features/presentation/use-presentation-keys.ts` (`useScreenCover`)、`src/client/features/presentation/presentation-stage.tsx` (`ScreenCover`)、`src/client/features/presentation/presentation-overlay.tsx`
+  - 目标：按 `B`/`.` 切换纯黑全屏遮罩，按 `W`/`,` 切换纯白全屏遮罩，按任意键或点击复原。
+  - 验证：单元测试覆盖按键映射与获焦守卫，遮罩唤醒与任意键解除闭环。
 - [ ] **B2-05** `P-11 (UX-03)`: 导出按钮安全收敛与防误触隔离
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx`
   - 目标：高危导出功能与核心全屏/退出控件做物理视觉隔离。

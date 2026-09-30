@@ -1,5 +1,7 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { presentationCommand, type PresentationCommand } from './presentation-keys'
+
+export type ScreenCoverType = 'black' | 'white' | null
 
 export interface PresentationKeysOptions {
   open: boolean
@@ -12,31 +14,69 @@ export interface PresentationKeysOptions {
   toggleFollowing: () => void
 }
 
-export function usePresentationKeys(options: PresentationKeysOptions): void {
-  const { open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing } = options
-  // One runner per command keeps the listener itself short, and a command that is not
-  // claimed leaves the event alone instead of swallowing it for the rest of the page.
-  const run = useCallback((command: PresentationCommand) => {
+function useScreenCover(open: boolean) {
+  const [screenCover, setScreenCover] = useState<ScreenCoverType>(null)
+  const clearCover = useCallback(() => setScreenCover(null), [])
+  const toggleBlackout = useCallback(() => setScreenCover((c) => (c === 'black' ? null : 'black')), [])
+  const toggleWhiteout = useCallback(() => setScreenCover((c) => (c === 'white' ? null : 'white')), [])
+  useEffect(() => {
+    if (!open) setScreenCover(null)
+  }, [open])
+  return { screenCover, clearCover, toggleBlackout, toggleWhiteout }
+}
+
+// One runner per command keeps the listener itself short, and a command that is not
+// claimed leaves the event alone instead of swallowing it for the rest of the page.
+function usePresentationRunner(actions: {
+  goNext: () => void
+  goPrev: () => void
+  jumpTo: (index: number) => void
+  slideCount: number
+  toggleFullscreen: () => void
+  toggleRail: () => void
+  toggleFollowing: () => void
+  toggleBlackout: () => void
+  toggleWhiteout: () => void
+}) {
+  return useCallback((command: PresentationCommand) => {
     switch (command) {
       case 'next':
-        return goNext()
+        return actions.goNext()
       case 'prev':
-        return goPrev()
+        return actions.goPrev()
       case 'first':
-        return jumpTo(0)
+        return actions.jumpTo(0)
       case 'last':
-        return jumpTo(slideCount - 1)
+        return actions.jumpTo(actions.slideCount - 1)
       case 'fullscreen':
-        return toggleFullscreen()
+        return actions.toggleFullscreen()
       case 'slideList':
-        return toggleRail()
+        return actions.toggleRail()
       case 'follow':
-        return toggleFollowing()
+        return actions.toggleFollowing()
+      case 'blackout':
+        return actions.toggleBlackout()
+      case 'whiteout':
+        return actions.toggleWhiteout()
     }
-  }, [goNext, goPrev, jumpTo, slideCount, toggleFullscreen, toggleRail, toggleFollowing])
+  }, [actions])
+}
+
+export function usePresentationKeys(options: PresentationKeysOptions): {
+  screenCover: ScreenCoverType
+  clearCover: () => void
+} {
+  const { open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing } = options
+  const { screenCover, clearCover, toggleBlackout, toggleWhiteout } = useScreenCover(open)
+  const run = usePresentationRunner({ goNext, goPrev, jumpTo, slideCount, toggleFullscreen, toggleRail, toggleFollowing, toggleBlackout, toggleWhiteout })
 
   const onKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+    if (screenCover) {
+      event.preventDefault()
+      clearCover()
+      return
+    }
     const target = event.target as HTMLElement | null
     const command = presentationCommand(event.key, {
       onControl: Boolean(target?.closest('button, a, input, select, textarea, [contenteditable="true"]')),
@@ -45,11 +85,13 @@ export function usePresentationKeys(options: PresentationKeysOptions): void {
     if (!command) return
     event.preventDefault()
     run(command)
-  }, [run])
+  }, [clearCover, run, screenCover])
 
   useEffect(() => {
     if (!open) return
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [open, onKeyDown])
+
+  return { screenCover, clearCover }
 }

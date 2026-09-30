@@ -12,7 +12,7 @@ import { useSession } from '../../store/session'
 import { escapeAction, presentedNoteContent, railOpenFor } from './presentation-state'
 import { useIsDarkTheme } from './presentation-theme'
 import { PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
-import { PresentationStage, stageProps } from './presentation-stage'
+import { PresentationStage, ScreenCover, stageProps } from './presentation-stage'
 import { hashContent, slideCacheKey } from './slide-html'
 import { samePlan, type SlidePlan } from './slide-pagination'
 import { SlidePreflight, type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
@@ -106,6 +106,7 @@ function PresentationSheets({ session }: { session: PresentationSession }) {
       {session.images && (
         <DeckImageSheet pages={session.images.pages} metrics={session.images.metrics} font={session.proseFont} dark={session.images.dark} title={session.images.title} onDone={session.images.done} />
       )}
+      {session.screenCover && <ScreenCover cover={session.screenCover} onClear={session.clearCover} />}
     </>
   )
 }
@@ -168,6 +169,8 @@ interface PresentationSession {
   images: (DeckSheetPayload & { title: string }) | null
   /** Everything the idle deck-measuring pass needs, grouped so the dialog can spread it. */
   preflight: SlidePreflightProps
+  screenCover: 'black' | 'white' | null
+  clearCover: () => void
 }
 
 function usePresentationSession({ open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose }: {
@@ -192,15 +195,12 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
   const chromeHidden = useChromeAutoHide(open && isFullscreen)
   const toggleFollowing = useCallback(() => usePresentation.getState().setFollowing(!following), [following])
   const noteTitle = liveTitle ?? storedTitle
-  const cacheKeys = useMemo(
-    () => deck.map((_, item) => slideCacheKey({ fingerprint, dark, index: item, contentWidth: metrics.contentWidth, contentHeight: metrics.contentHeight })),
-    [deck, fingerprint, dark, metrics.contentWidth, metrics.contentHeight],
-  )
+  const cacheKeys = useSlideCacheKeys(deck, fingerprint, dark, metrics)
   const exports = useDeckExport({ deck, cacheKeys, plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
   useDialogBehavior(open, panelRef, isFullscreen, toggleFullscreen, onClose)
   useSlideHtml({ open, deck, index, fingerprint, content: presentedContent, noteTitle, dark, metrics })
-  usePresentationKeys({ open, slideCount: deck.length, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing })
+  const { screenCover, clearCover } = usePresentationKeys({ open, slideCount: deck.length, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing })
   return {
     deck,
     cacheKeys,
@@ -227,7 +227,16 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
     ...exports,
     preflight: { deck, cacheKeys, fingerprint, metrics, content: presentedContent, noteTitle, onPlan: nav.reportPlan, onProgress },
     listProgress,
+    screenCover,
+    clearCover,
   }
+}
+
+function useSlideCacheKeys(deck: string[], fingerprint: string, dark: boolean, metrics: StageMetrics): string[] {
+  return useMemo(
+    () => deck.map((_, item) => slideCacheKey({ fingerprint, dark, index: item, contentWidth: metrics.contentWidth, contentHeight: metrics.contentHeight })),
+    [deck, fingerprint, dark, metrics.contentWidth, metrics.contentHeight],
+  )
 }
 
 // How far the idle pass has got in listing the deck. It is state rather than a guess about whether

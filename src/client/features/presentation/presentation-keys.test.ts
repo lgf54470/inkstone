@@ -70,3 +70,24 @@ describe('presentationCommand — toggles and focus ownership', () => {
     expect(presentationCommand('Escape', onSlideList)).toBeNull()
   })
 })
+
+describe('presentationCommand — blackout and whiteout', () => {
+  it('toggles blackout and whiteout on B/W and period/comma', () => {
+    expect(presentationCommand('b', plain)).toBe('blackout')
+    expect(presentationCommand('B', plain)).toBe('blackout')
+    expect(presentationCommand('.', plain)).toBe('blackout')
+    expect(presentationCommand('w', plain)).toBe('whiteout')
+    expect(presentationCommand('W', plain)).toBe('whiteout')
+    expect(presentationCommand(',', plain)).toBe('whiteout')
+  })
+
+  it('leaves B and W to the focused control so form fields are not hijacked', () => {
+    expect(presentationCommand('b', onControl)).toBeNull()
+    expect(presentationCommand('B', onControl)).toBeNull()
+    expect(presentationCommand('w', onControl)).toBeNull()
+    expect(presentationCommand('W', onControl)).toBeNull()
+    expect(presentationCommand('.', onControl)).toBeNull()
+    expect(presentationCommand(',', onControl)).toBeNull()
+  })
+})
+
