@@ -1,0 +1,153 @@
+# Inkstone 笔记应用「关系图谱」重构与缺陷修复推进计划
+
+> **基线分支/提交**：`39a3814a9123a636acf7bb8f56f2df8c2406e054`  
+> **工作分支**：`improvement/relationship-graph-agy`  
+> **审查报告参考**：[`review-with-agy-1.md`](./review-with-agy-1.md)  
+> **工程规范**：[`AGENTS.md`](../../../AGENTS.md)  
+> **核心原则**：逐项修复，每项修复按照 AGENTS.md 规范原子化提交 Git，跑通全量门禁与回归，严禁破坏原有功能或引入新 Bug，实时在此文档中记录每次提交哈希与进展。
+
+---
+
+## 进展概览与统计
+
+| 阶段 | 涵盖问题 | 目标与范围 | 状态 |
+| :--- | :--- | :--- | :--- |
+| **准备工作** | 环境配置 | 创建 Worktree、软连 `node_modules`、编写深度审查报告与推进计划 | ✅ 已完成 |
+| **第一阶段 (Sprint 1)** | PERF-01, UX-01, UX-02, UX-03, UI-01 | 修复核心阻断 Bug：滑块白屏/请求风暴、单击强退、减少动画死锁、ESC 误杀、Canvas 主题跟随 | ⏳ 进行中 |
+| **第二阶段 (Sprint 2)** | PERF-02, UI-02, UI-03, PERF-03, PERF-04, SPEC-01, SPEC-02, SPEC-03, SEC-01, SEC-02, SEC-03, SEC-04 | 消除 Layout Thrashing、邻居高亮矛盾、微光晕、D1 batch、冗余 COUNT、规范重构与安全一致性 | ⏳ 待开始 |
+| **第三阶段 (Sprint 3)** | FEAT-01, UX-04, UX-05, UX-06, UI-04, PERF-05, PERF-06, FEAT-02~05, TEST-01 | 悬停预览卡片、移动端 Pinch 仿射补偿、光标增强、颜色图例、力导向优化、自动化测试补齐 | ⏳ 待开始 |
+
+---
+
+## 详细任务执行清单 (Task Breakdown)
+
+### 0. 基础工作 (Infrastructure & Documentation)
+- [x] **0.1 创建 git worktree 与 node_modules 软连接**
+  - 分支：`improvement/relationship-graph-agy` 基于 `39a3814a9123a636acf7bb8f56f2df8c2406e054`
+  - 目录：`/home/kubuntu/code/cloudflare/inkstone-relationship-graph-agy`
+- [x] **0.2 整理并落地详细审查报告**
+  - 文档：`docs/improvement/relationship-graph/review-with-agy-1.md`
+  - 覆盖全部 29 项问题的具体文件、函数名称、缺陷代码行与修复方案。
+- [x] **0.3 建立执行计划与追踪表**
+  - 文档：`docs/improvement/relationship-graph/plan-with-agy-1.md`
+
+---
+
+### 第一阶段：止血与核心体验救治 (Sprint 1)
+
+#### 1. 【PERF-01】解耦远程查询与客户端视觉参数（消除滑块全量网络请求与螺旋线白屏重置）
+- **涉及文件**：`src/client/features/graph/graph-panel/index.tsx`, `canvas.tsx`, `helpers.ts`
+- **修改要点**：
+  1. 将 `GraphPreferences` 分解为服务器查询参数与前端视觉渲染参数；
+  2. 拖动动力学参数滑块（`repulsion`, `linkDistance`, `nodeScale`）以及切换视觉开关（`arrows`, `labels`, `groupBy`）时不触发 API 重复请求，不清空数据，不卸载画布；
+  3. 画布内部通过 ref 或更新物理参数直接调度单次退火唤醒（`wakePhysics`）。
+- **验证命令**：`npm run typecheck && npx vitest run src/client/lib/graph-settings.test.ts`
+- **提交哈希**：`待提交`
+
+#### 2. 【UX-01】重构节点交互模式（单击聚焦高亮、双击打开、Cmd+单击分屏）
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`
+- **修改要点**：
+  1. 单击节点（位移 < 5px 且无按键修饰符）：仅将该节点设为选中态（`selectedId`），高亮一度邻居网络，绝不关闭图谱；
+  2. 双击节点（Double Click）或在选中时按 Enter：打开笔记并调用 `onClose()`；
+  3. Cmd / Ctrl + 单击：在后台/辅助面板打开笔记，图谱保持开启；
+  4. 单击空白画布：清空 `selectedId`，恢复全局全亮。
+- **验证命令**：`npm run typecheck && npx vitest run`
+- **提交哈希**：`待提交`
+
+#### 3. 【UX-02】修复开启“减少动画”时图谱死锁阿基米德螺旋线
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`
+- **修改要点**：
+  1. 检测到 `prefers-reduced-motion: reduce` 时，不直接将 `state.frame` 置为 360 跳过计算；
+  2. 在首帧同步循环执行 120 步力导向计算，得到稳定的力导向坐标后直接绘制单帧静止画面。
+- **验证命令**：`npm run typecheck && npx vitest run`
+- **提交哈希**：`待提交`
+
+#### 4. 【UX-03】修复设置抽屉按 ESC 误关整个图谱（ESC 逃逸栈穿透）
+- **涉及文件**：`src/client/features/graph/graph-panel/settings.tsx`, `index.tsx`
+- **修改要点**：
+  1. `GraphSettingsPanel` 内部挂载 `useEscape(isOpen, onClose)`；
+  2. 打开设置面板时作为顶层 ESC 响应者，优先关闭自身；
+  3. 移动端添加背景遮罩与点击外部关闭支持。
+- **验证命令**：`npm run typecheck && npx vitest run`
+- **提交哈希**：`待提交`
+
+#### 5. 【UI-01】修复 Canvas 内部渲染色不跟随系统主题翻转 (ADR-0002)
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `canvas.tsx`
+- **修改要点**：
+  1. 通过 MutationObserver 监听 `document.documentElement` 的 `data-theme` 属性变化；
+  2. 变化时动态调用 `readThemeColors()` 更新调色板，并调用 `state.schedule?.()` 触发重绘；
+  3. 不销毁画布、不重置节点物理坐标。
+- **验证命令**：`npm run typecheck && npx vitest run`
+- **提交哈希**：`待提交`
+
+---
+
+### 第二阶段：渲染管线优化与规范达标 (Sprint 2)
+
+#### 6. 【PERF-02】消除 60fps 强制同步重排 (Layout Thrashing)
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `canvas.tsx`
+- **修改要点**：
+  1. 移除 `tick()` 中的 `canvas.getBoundingClientRect()`；
+  2. 由 `ResizeObserver` 维护画布逻辑宽高并在 `state` 中缓存，`tick` 内部纯读取缓存变量。
+- **提交哈希**：`待提交`
+
+#### 7. 【UI-02 & UI-03】修复邻居节点标签弱化视觉矛盾，增加文本微光晕 (Text Halo)
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`
+- **修改要点**：
+  1. 构建当前聚焦节点的邻居集合，聚焦时当前节点及其直接邻居维持 1.0 高亮，非相关节点弱化；
+  2. 文字绘制增加背景色描边（`strokeText`）防止线条切断字迹。
+- **提交哈希**：`待提交`
+
+#### 8. 【PERF-03 & PERF-04】后端 D1 改用 batch 批量执行并消除冗余 COUNT
+- **涉及文件**：`src/worker/routes/search/graph.ts`
+- **修改要点**：
+  1. `loadGraphLinkRows` 改用 `db.batch([...statements])` 单次 RPC 往返；
+  2. `rows.length <= limit` 时直接复用长度作为 `totalNodes`，避免冗余全表 count 扫描。
+- **提交哈希**：`待提交`
+
+#### 9. 【SEC-01 & SEC-02 & SEC-03 & SEC-04】后端安全防御与状态隔离
+- **涉及文件**：`src/worker/routes/search/graph.ts`, `src/client/features/graph/graph-panel/helpers.ts`
+- **修改要点**：
+  1. 递归 CTE 增加限制防指数爆炸；
+  2. `wikiNoteTarget` 输出截断为 `LIMITS.titleMaxLength`；
+  3. `degreeJoin` 联查增加 `adjacent.is_archived = 0 AND adjacent.deleted_at IS NULL` 过滤；
+  4. LocalStorage 偏好配置支持当前用户作用域或无效 `folderId` 自动校验兜底。
+- **提交哈希**：`待提交`
+
+#### 10. 【SPEC-01 & SPEC-02 & SPEC-03】代码规范与 i18n 整改
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`, `canvas-draw.ts`, `index.tsx`, `settings.tsx`, `src/shared/locales/`
+- **修改要点**：
+  1. 超过 3 个参数的函数全部重构成结构体/对象传参；
+  2. 原生标签替换为统一 UI 组件库（`Segmented`, `Input`, `Button` 等）；
+  3. 统计文案改用单一具名参数插值 key，消除动态字符串拼接。
+- **提交哈希**：`待提交`
+
+---
+
+### 第三阶段：功能进阶与产品力赶超 (Sprint 3)
+
+#### 11. 【FEAT-01】悬停节点即时卡片预览 (Page Preview)
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`, `graph-overlays.tsx`
+- **修改要点**：悬停节点或单击选中时在节点旁显示 Markdown 预览浮层。
+- **提交哈希**：`待提交`
+
+#### 12. 【UX-04 & UX-05 & UX-06】移动端 Pinch 仿射补偿、光标增强与无障碍读屏
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`
+- **修改要点**：
+  1. 双指缩放增加中心点反向坐标补偿，消除偏心跳动；
+  2. 悬停节点显示 `pointer` 光标，支持空格平移与鼠标中键平移；
+  3. 状态增加 `aria-live` 播报。
+- **提交哈希**：`待提交`
+
+#### 13. 【UI-04 & PERF-05 & PERF-06】色彩图例、力导向衰减模型与 fitGraph 竞态修复
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `canvas.tsx`, `helpers.ts`
+- **修改要点**：
+  1. 增加半透明调色盘图例，未设色标签通过 Hash 色板兜底；
+  2. 排斥力采用平滑衰减模型替代 346px 硬截断；
+  3. 物理收敛后平滑过渡居中自适应。
+- **提交哈希**：`待提交`
+
+#### 14. 【TEST-01】图谱模块自动化单元与集成测试补齐
+- **涉及文件**：`src/client/features/graph/graph-panel/` 测试套件
+- **修改要点**：编写 Vitest 测试覆盖物理计算收敛、主题跟随、无障碍终态、ESC 逃逸栈与参数隔离。
+- **提交哈希**：`待提交`
