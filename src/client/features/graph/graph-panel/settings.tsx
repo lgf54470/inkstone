@@ -11,7 +11,7 @@ import {
 } from '../../../lib/graph-settings'
 import { IconButton } from '../../../components/primitives'
 import { Select, Switch } from '../../../components/form'
-import { Tooltip } from '../../../components/overlay'
+import { Tooltip, useEscape } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 
 interface GraphSettingsPanelProps {
@@ -28,7 +28,10 @@ interface GraphSettingsPanelProps {
 }
 
 export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTags, isLimitOpen, onToggleLimit, onClose, onResetTagFilters, onRestoreDefaults }: GraphSettingsPanelProps) {
+  useEscape(true, onClose)
   return (
+    <>
+      <div className='anim-fade absolute inset-0 z-[var(--z-sticky)] bg-[var(--scrim)] md:hidden' onClick={onClose} aria-hidden='true'/>
       <aside aria-label={t('graph.settings')} className='absolute inset-y-0 right-0 z-[var(--z-sticky)] w-[min(88vw,300px)] overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--bg-base)] p-4 shadow-[var(--shadow-edge)] md:static md:shadow-none'>
         <div className='mb-4 flex items-center justify-between'><h3 className='text-[length:var(--text-13)] font-semibold'>{t('graph.settings')}</h3><Tooltip label={t('common.close')}><IconButton size='sm' label={t('common.close')} onClick={onClose}><X size={14}/></IconButton></Tooltip></div>
         <GraphSection icon={<Filter size={13}/>} title={t('graph.filters')}>
@@ -68,6 +71,7 @@ export function GraphSettingsPanel({ prefs, onChange, folders, tags, selectedTag
           <button type='button' onClick={onRestoreDefaults} className="mt-1 flex h-8 w-full items-center justify-center gap-2 rounded-[var(--r-md)] border border-[var(--border-default)] text-[length:var(--text-11\.5)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"><ArrowDownToLine size={13}/>{t('graph.restore_defaults')}</button>
         </GraphSection>
       </aside>
+    </>
   )
 }
 

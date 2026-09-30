@@ -63,16 +63,17 @@
   2. 消除节点永久死锁在阿基米德螺旋线问题，首帧即呈现静止完整图谱；
   3. 新增 `canvas-draw.test.ts` 自动化回归测试。
 - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npx vitest run src/client/features/graph/graph-panel/canvas-draw.test.ts`
+- **提交哈希**：`83d212a9`
 - **状态**：已完成并验证通过
 
-#### 4. 【UX-03】修复设置抽屉按 ESC 误关整个图谱（ESC 逃逸栈穿透）
-- **涉及文件**：`src/client/features/graph/graph-panel/settings.tsx`, `index.tsx`
+- [x] **4. 【UX-03】修复设置抽屉按 ESC 误关整个图谱（ESC 逃逸栈穿透）**
+- **涉及文件**：`src/client/features/graph/graph-panel/settings.tsx`
 - **修改要点**：
-  1. `GraphSettingsPanel` 内部挂载 `useEscape(isOpen, onClose)`；
+  1. `GraphSettingsPanel` 内部挂载 `useEscape(true, onClose)`；
   2. 打开设置面板时作为顶层 ESC 响应者，优先关闭自身；
   3. 移动端添加背景遮罩与点击外部关闭支持。
-- **验证命令**：`npm run typecheck && npx vitest run`
-- **提交哈希**：`待提交`
+- **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npm run typecheck`
+- **状态**：已完成并验证通过
 
 #### 5. 【UI-01】修复 Canvas 内部渲染色不跟随系统主题翻转 (ADR-0002)
 - **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `canvas.tsx`
