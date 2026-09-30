@@ -14,26 +14,27 @@ import { Button, IconButton } from '../../../components/primitives'
 import { Tooltip, useDialogFocus, useEscape, useLockScroll } from '../../../components/overlay'
 import { Empty, LoadingBlock } from '../../../components/feedback'
 import { useNotes } from '../../../store/notes'
+import { useSession } from '../../../store/session'
 import { useUi } from '../../../store/ui'
 import { t } from '../../../lib/i18n'
 import { GraphCanvas, type GraphControls } from './canvas'
 import { GraphSettingsPanel } from './settings'
 import { DEFAULT_PREFERENCES } from './constants'
-import { loadPreferences, normalizedResponse } from './helpers'
-import { GRAPH_PREFS_KEY } from './constants'
+import { graphPrefsStorageKey, loadPreferences, normalizedResponse } from './helpers'
 import type { CanvasNode, CanvasState } from './types'
 
 const TRACKING_TITLE = 'tracking-[var(--tracking-graph-title)]'
 
 function useGraphPrefs() {
-  const [prefs, setPrefs] = useState(loadPreferences)
+  const userId = useSession((state) => state.user?.id)
+  const [prefs, setPrefs] = useState(() => loadPreferences(userId))
   useEffect(() => {
     try {
-      localStorage.setItem(GRAPH_PREFS_KEY, JSON.stringify(prefs))
+      localStorage.setItem(graphPrefsStorageKey(userId), JSON.stringify(prefs))
     } catch {
       // Private browsing or a locked-down browser can reject local preferences.
     }
-  }, [prefs])
+  }, [prefs, userId])
   return [prefs, setPrefs] as const
 }
 
@@ -291,6 +292,11 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
   const changePref = <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => {
     setPrefs((current) => ({ ...current, [key]: value }))
   }
+  useEffect(() => {
+    if (prefs.folderId && folders.length > 0 && !folders.some((f) => f.id === prefs.folderId)) {
+      changePref('folderId', '')
+    }
+  }, [folders, prefs.folderId])
   const resetTagFilters = useTagReset(prefs, changePref)
   return createPortal(<div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1} data-surface='graph'
     className='app-viewport-fixed fixed z-[var(--z-graph)] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0'>

@@ -245,4 +245,59 @@ describe('graph route degree aggregation (real D1)', () => {
     expect(res.status).toBe(200)
     expect(captured.some((sql) => sql.includes('COUNT(*)'))).toBe(true)
   })
+
+  it('prevents cycle loops in recursive neighborhood CTE for mutual links', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('cyc1'), userId, NOW)
+    await seedNote(vid('cyc2'), userId, NOW)
+    await seedLink(userId, vid('cyc1'), vid('cyc2'))
+    await seedLink(userId, vid('cyc2'), vid('cyc1'))
+    const token = await signIn(userId)
+    const app = makeApp()
+
+    const res = await request(app, `/api/search/graph?mode=local&center=${vid('cyc1')}&depth=3`, token)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.nodes.map((n: GraphNode) => n.id).sort()).toEqual([vid('cyc1'), vid('cyc2')])
+  })
+
+  it('truncates oversized unresolved note titles in buildGraphEdges', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    const longTitle = 'A'.repeat(1000)
+    await seedNote(vid('long'), userId, NOW)
+    await runSql(
+      db,
+      `INSERT INTO links (source_note_id, target_note_id, target_key, target_title, user_id)
+       VALUES (?1, NULL, 'long-key', ?2, ?3)`,
+      vid('long'), longTitle, userId,
+    )
+    const token = await signIn(userId)
+    const app = makeApp()
+
+    const res = await request(app, '/api/search/graph?includeUnresolved=1', token)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const unresolvedNode = body.nodes.find((n: { kind: string }) => n.kind === 'unresolved')
+    expect(unresolvedNode).toBeDefined()
+    expect(unresolvedNode.title.length).toBe(512)
+  })
+
+  it('excludes links to or from archived notes from node degree counts', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('active'), userId, NOW)
+    await seedNote(vid('archived'), userId, NOW)
+    await runSql(db, 'UPDATE notes SET is_archived = 1 WHERE id = ?', vid('archived'))
+    await seedLink(userId, vid('active'), vid('archived'))
+    const token = await signIn(userId)
+    const app = makeApp()
+
+    const res = await request(app, '/api/search/graph', token)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const activeNode = body.nodes.find((n: GraphNode) => n.id === vid('active'))
+    expect(activeNode).toMatchObject({ degree: 0, inDegree: 0, outDegree: 0 })
+  })
 })

@@ -10,10 +10,16 @@ export function graphScaleAfterWheel(scale: number, deltaY: number): number {
   return Math.min(4, Math.max(0.2, scale * (deltaY > 0 ? 0.92 : 1.08)))
 }
 
-export function loadPreferences(): GraphPreferences {
+export function graphPrefsStorageKey(userId?: string | null): string {
+  return userId ? `${GRAPH_PREFS_KEY}.${userId}` : GRAPH_PREFS_KEY
+}
+
+export function loadPreferences(userId?: string | null): GraphPreferences {
   if (typeof localStorage === 'undefined') return DEFAULT_PREFERENCES
   try {
-    const stored = JSON.parse(localStorage.getItem(GRAPH_PREFS_KEY) ?? '{}') as Partial<GraphPreferences>
+    const key = graphPrefsStorageKey(userId)
+    const raw = localStorage.getItem(key) ?? (userId ? localStorage.getItem(GRAPH_PREFS_KEY) : null)
+    const stored = JSON.parse(raw ?? '{}') as Partial<GraphPreferences>
     return {
       mode: stored.mode === 'local' ? 'local' : 'global',
       depth: boundedPreference(stored.depth, DEFAULT_PREFERENCES.depth, 1, 3),

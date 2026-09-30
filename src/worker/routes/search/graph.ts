@@ -1,5 +1,6 @@
 import { Hono, type Context } from 'hono'
 import { LIMITS } from '@shared/constants'
+import { truncateText } from '@shared/text-utils'
 import { wikiNoteTarget } from '@shared/markdown-utils'
 import type { GraphResponse } from '@shared/types'
 import type { AppBindings } from '../../env'
@@ -62,11 +63,17 @@ const degreeJoin = `
            SUM(is_target) AS in_degree,
            SUM(is_source) AS out_degree
     FROM (
-      SELECT source_note_id AS note_id, 1 AS is_endpoint, 0 AS is_target, 1 AS is_source
-        FROM links WHERE user_id = ? AND target_note_id IS NOT NULL
+      SELECT l.source_note_id AS note_id, 1 AS is_endpoint, 0 AS is_target, 1 AS is_source
+        FROM links l
+        JOIN notes adj ON adj.id = l.target_note_id AND adj.user_id = l.user_id
+          AND adj.deleted_at IS NULL AND adj.is_archived = 0
+        WHERE l.user_id = ? AND l.target_note_id IS NOT NULL
       UNION ALL
-      SELECT target_note_id AS note_id, 1, 1, 0
-        FROM links WHERE user_id = ? AND target_note_id IS NOT NULL
+      SELECT l.target_note_id AS note_id, 1, 1, 0
+        FROM links l
+        JOIN notes adj ON adj.id = l.source_note_id AND adj.user_id = l.user_id
+          AND adj.deleted_at IS NULL AND adj.is_archived = 0
+        WHERE l.user_id = ? AND l.target_note_id IS NOT NULL
     ) GROUP BY note_id
   ) d ON d.note_id = n.id`
 
@@ -196,20 +203,21 @@ async function runLocalGraphQuery(
   filters: string[],
   filterBinds: unknown[],
 ): Promise<{ rows: GraphRow[]; totalNodes: number }> {
-  const neighborhood = `WITH RECURSIVE neighborhood(id, depth) AS (
-    SELECT ? AS id, 0 AS depth
+  const neighborhood = `WITH RECURSIVE neighborhood(id, depth, path) AS (
+    SELECT ? AS id, 0 AS depth, ',' || ? || ',' AS path
     UNION
-    SELECT CASE WHEN l.source_note_id = neighborhood.id THEN l.target_note_id ELSE l.source_note_id END,
-      neighborhood.depth + 1
+    SELECT adjacent.id,
+      neighborhood.depth + 1,
+      neighborhood.path || adjacent.id || ','
     FROM neighborhood
     JOIN links l ON l.user_id = ? AND l.target_note_id IS NOT NULL
       AND (l.source_note_id = neighborhood.id OR l.target_note_id = neighborhood.id)
     JOIN notes adjacent ON adjacent.id = CASE
       WHEN l.source_note_id = neighborhood.id THEN l.target_note_id ELSE l.source_note_id END
       AND adjacent.user_id = l.user_id AND adjacent.deleted_at IS NULL AND adjacent.is_archived = 0
-    WHERE neighborhood.depth < ?
+    WHERE neighborhood.depth < ? AND INSTR(neighborhood.path, ',' || adjacent.id || ',') = 0
   ), nearby AS (SELECT id, MIN(depth) AS depth FROM neighborhood GROUP BY id)`
-  const prefixBinds = [params.centerId, params.userId, params.depth]
+  const prefixBinds = [params.centerId, params.centerId, params.userId, params.depth]
   const result = await db.prepare(
     `${neighborhood}
      SELECT n.id, n.title, n.folder_id, f.name AS folder_name, f.color AS folder_color,
@@ -347,7 +355,7 @@ function buildGraphEdges(
     if (link.target_note_id === null) {
       if (!includeUnresolved || unresolved.size >= 50 && !unresolved.has(link.target_key)) continue
       const current = unresolved.get(link.target_key) ?? {
-        title: wikiNoteTarget(link.target_title),
+        title: truncateText(wikiNoteTarget(link.target_title), LIMITS.titleMaxLength),
         sources: new Set<string>(),
       }
       current.sources.add(link.source_note_id)

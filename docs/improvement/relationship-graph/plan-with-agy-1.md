@@ -118,17 +118,20 @@
   2. `rows.length <= limit` 时直接复用长度作为 `totalNodes`，避免冗余全表 count 扫描；
   3. 新增单元测试断言 `db.batch` 批量调用及在未溢出和溢出时对 COUNT 查询的跳过与触发。
 - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npm run typecheck && npx vitest run tests/graph-routes.test.ts`
-- **提交哈希**：`待提交`
+- **提交哈希**：`029f252b`
 - **状态**：已完成并验证通过
 
-#### 9. 【SEC-01 & SEC-02 & SEC-03 & SEC-04】后端安全防御与状态隔离
-- **涉及文件**：`src/worker/routes/search/graph.ts`, `src/client/features/graph/graph-panel/helpers.ts`
+- [x] **9. 【SEC-01 & SEC-02 & SEC-03 & SEC-04】后端安全防御与状态隔离**
+- **涉及文件**：`src/worker/routes/search/graph.ts`, `src/client/features/graph/graph-panel/helpers.ts`, `src/client/features/graph/graph-panel/index.tsx`, `tests/graph-routes.test.ts`, `src/client/features/graph/graph-panel/helpers.test.ts`
 - **修改要点**：
-  1. 递归 CTE 增加限制防指数爆炸；
-  2. `wikiNoteTarget` 输出截断为 `LIMITS.titleMaxLength`；
-  3. `degreeJoin` 联查增加 `adjacent.is_archived = 0 AND adjacent.deleted_at IS NULL` 过滤；
-  4. LocalStorage 偏好配置支持当前用户作用域或无效 `folderId` 自动校验兜底。
+  1. 递归 CTE 增加 `path` 跟踪与 `INSTR(path, ',' || adjacent.id || ',') = 0` 防环过滤，阻断互链指数爆炸；
+  2. `wikiNoteTarget` 输出通过 `truncateText` 截断为 `LIMITS.titleMaxLength`；
+  3. `degreeJoin` 联查增加 `adj.deleted_at IS NULL AND adj.is_archived = 0` 过滤；
+  4. LocalStorage 偏好配置支持当前用户作用域隔离（`graphPrefsStorageKey`），并在前端自动校验 `folderId` 存在性兜底回退；
+  5. 补充针对防环、标题截断、归档度数排除与多用户偏好隔离的自动化测试。
+- **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npm run typecheck && npx vitest run tests/graph-routes.test.ts src/client/features/graph/graph-panel/helpers.test.ts`
 - **提交哈希**：`待提交`
+- **状态**：已完成并验证通过
 
 #### 10. 【SPEC-01 & SPEC-02 & SPEC-03】代码规范与 i18n 整改
 - **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`, `canvas-draw.ts`, `index.tsx`, `settings.tsx`, `src/shared/locales/`
