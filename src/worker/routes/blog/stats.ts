@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import type { BlogGlobalAnalytics, BlogStats, BlogVisitLog, ShareBreakdownItem, ShareTimelineRange } from '@shared/types'
+import type { BlogGlobalAnalytics, BlogStats, BlogVisitLog, ShareBreakdownItem } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { clampInt, JSON_BODY_LIMITS, readOptionalJsonValidated } from '../../lib/request'
@@ -181,20 +181,14 @@ async function loadBlogAnalyticsPayload(
   const prevStats = await loadBlogPrevVisits(db, userId, ctx.prevStartTs, ctx.startTs, ctx.clause)
   const filterStats = await loadBlogFilterStats(db, userId, ctx.startTs)
 
-  const totals = blogDisplayTotals({
-    currentViews: aggregate.views,
-    currentVisitors: aggregate.visitors,
-    postStoredViews: posts.postStoredViews,
-    range: ctx.range,
-    duration: ctx.duration,
-  })
+  const totals = blogDisplayTotals(aggregate.views, ctx.duration)
 
   const timeline = buildBucketedTimeline(aggregate.buckets, ctx.range, ctx.startTs, ctx.duration)
   const sparklineViews = timeline.slice(-7).map((p) => p.views)
   const sparklineVisitors = timeline.slice(-7).map((p) => p.visitors)
 
   const topPosts = await loadBlogTopPosts(db, userId, aggregate.targets)
-  const breakdown = breakdownStats(aggregate, posts.postStoredViews)
+  const breakdown = breakdownStats(aggregate)
 
   const recentVisits = await loadBlogRecentVisits(db, userId, ctx.filters)
 
@@ -204,7 +198,11 @@ async function loadBlogAnalyticsPayload(
     publishedPosts: posts.publishedPosts,
     draftPosts: posts.draftPosts,
     totalViews: totals.views,
-    totalVisitors: totals.visitors,
+    totalVisitors: aggregate.visitors,
+    // The counter on the posts is a different measure from the range's own visits (it also holds
+    // what a browser reported before this account ever kept visit rows), so it travels separately
+    // instead of being folded into the range numbers.
+    storedViews: posts.postStoredViews,
     viewsDelta: computeDelta(aggregate.views, prevStats?.prev_views ?? 0),
     visitorsDelta: computeDelta(aggregate.visitors, prevStats?.prev_uv ?? 0),
     viewsPerDay: totals.viewsPerDay,
@@ -284,41 +282,46 @@ async function loadBlogFilterStats(db: D1Database, userId: string, startTs: numb
   }
 }
 
-function blogDisplayTotals(params: {
-  currentViews: number
-  currentVisitors: number
-  postStoredViews: number
-  range: ShareTimelineRange
-  duration: number
-}): { views: number; visitors: number; viewsPerDay: number } {
-  const { currentViews, currentVisitors, postStoredViews, range, duration } = params
-  const views = Math.max(currentViews, range === 'all' ? postStoredViews : currentViews)
-  const visitors = Math.max(currentVisitors, currentViews > 0 ? currentVisitors : (postStoredViews > 0 ? Math.ceil(postStoredViews * 0.75) : 0))
+/**
+ * The range's own numbers, and nothing else. It used to answer with the largest of three values —
+ * the range count, the cumulative counter on the posts, and a `views × 0.75` visitors estimate — so
+ * a range with no visits at all reported the blog's whole history under a "this week" label, and the
+ * estimate appeared next to a real PV of 0.
+ */
+function blogDisplayTotals(currentViews: number, duration: number): { views: number; viewsPerDay: number } {
   const daysSpan = Math.max(1, Math.round(duration / DAY_MS))
-  return { views, visitors, viewsPerDay: Math.round(views / daysSpan) }
+  return { views: currentViews, viewsPerDay: Math.round(currentViews / daysSpan) }
 }
 
+/**
+ * The ranking is the range's own: a post is on it because this range has visits for it, and its
+ * numbers are those visits. It used to be ranked by the cumulative `views` column and to invent a
+ * visitor count (`max(1, views × 0.75)`) for posts the range had no data for — a fabricated number
+ * was the only possible one there, because the question it answered was about a window nothing had
+ * recorded.
+ */
 async function loadBlogTopPosts(
   db: D1Database,
   userId: string,
   targets: Map<string, VisitTargetStat>,
 ): Promise<BlogGlobalAnalytics['topPosts']> {
-  const allUserPosts = await db.prepare(
-    `SELECT id, title, slug, views FROM blog_posts WHERE user_id = ?1 AND is_published = 1 ORDER BY views DESC LIMIT 10`,
-  ).bind(userId).all<{ id: string; title: string; slug: string; views: number }>()
+  const ranked = [...targets.entries()]
+    .filter(([, stat]) => stat.views > 0)
+    .sort((a, b) => b[1].views - a[1].views)
+    .slice(0, 10)
+  if (!ranked.length) return []
 
-  return (allUserPosts.results ?? []).map((p) => {
-    const visitData = targets.get(p.id)
-    const views = Math.max(visitData?.views ?? 0, p.views ?? 0)
-    const visitors = visitData ? visitData.visitors : Math.max(1, Math.round(views * 0.75))
-    return {
-      postId: p.id,
-      title: p.title,
-      slug: p.slug,
-      views,
-      visitors,
-    }
-  }).sort((a, b) => b.views - a.views)
+  const placeholders = ranked.map((_, index) => `?${index + 2}`).join(', ')
+  const titles = await db.prepare(
+    `SELECT id, title, slug FROM blog_posts WHERE user_id = ?1 AND id IN (${placeholders})`,
+  ).bind(userId, ...ranked.map(([postId]) => postId)).all<{ id: string; title: string; slug: string }>()
+  const byId = new Map((titles.results ?? []).map((row) => [row.id, row]))
+
+  return ranked.flatMap(([postId, stat]) => {
+    const row = byId.get(postId)
+    if (!row) return []
+    return [{ postId, title: row.title, slug: row.slug, views: stat.views, visitors: stat.visitors }]
+  })
 }
 
 interface BlogBreakdown {
@@ -329,33 +332,21 @@ interface BlogBreakdown {
   browsers: ShareBreakdownItem[]
 }
 
-function breakdownStats(aggregate: VisitAggregate, postStoredViews: number): BlogBreakdown {
+/**
+ * Every card is answered from the range's own rows. With no rows the maps are empty and the cards
+ * say so; they used to be filled with a hard-coded picture ("China 100%, Direct 100%, desktop 60%, macOS
+ * 50%, Chrome 60%") scaled by the posts' cumulative counter, which is how a blog with no collected
+ * traffic showed a full audience breakdown.
+ */
+function breakdownStats(aggregate: VisitAggregate): BlogBreakdown {
   const maps: VisitDistributionMaps = aggregate
-
-  if (aggregate.views === 0 && postStoredViews > 0) {
-    fillFallbackDistributions(maps, postStoredViews)
-  }
-
-  const breakdownTotal = aggregate.views > 0 ? aggregate.views : postStoredViews
   return {
-    topCountries: toBreakdown(maps.countries, breakdownTotal),
-    topReferrers: toBreakdown(maps.referrers, breakdownTotal),
-    devices: toBreakdown(maps.devices, breakdownTotal),
-    osList: toBreakdown(maps.osList, breakdownTotal),
-    browsers: toBreakdown(maps.browsers, breakdownTotal),
+    topCountries: toBreakdown(maps.countries, aggregate.views),
+    topReferrers: toBreakdown(maps.referrers, aggregate.views),
+    devices: toBreakdown(maps.devices, aggregate.views),
+    osList: toBreakdown(maps.osList, aggregate.views),
+    browsers: toBreakdown(maps.browsers, aggregate.views),
   }
-}
-
-function fillFallbackDistributions(maps: VisitDistributionMaps, postStoredViews: number): void {
-  maps.countries.set('CN', postStoredViews)
-  maps.referrers.set('Direct', postStoredViews)
-  maps.devices.set('desktop', Math.round(postStoredViews * 0.6))
-  maps.devices.set('mobile', postStoredViews - Math.round(postStoredViews * 0.6))
-  maps.osList.set('macOS', Math.round(postStoredViews * 0.5))
-  maps.osList.set('Windows', Math.round(postStoredViews * 0.3))
-  maps.osList.set('iOS', postStoredViews - Math.round(postStoredViews * 0.8))
-  maps.browsers.set('Chrome', Math.round(postStoredViews * 0.6))
-  maps.browsers.set('Safari', postStoredViews - Math.round(postStoredViews * 0.6))
 }
 
 interface BlogRecentVisitRow {

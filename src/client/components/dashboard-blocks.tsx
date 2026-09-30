@@ -9,6 +9,7 @@ export function KpiCard({
   deltaHint,
   sparkline,
   unavailable,
+  hint,
 }: {
   icon: React.ReactNode
   label: string
@@ -17,6 +18,8 @@ export function KpiCard({
   /** What the percentage is measured against, read to screen readers only ("vs previous period"). */
   deltaHint?: string
   sparkline?: number[]
+  /** A second measure shown under the number when the card would otherwise be read as covering it. */
+  hint?: string
   /**
    * Shown instead of the number when this instance cannot collect it at all. A zero would answer a
    * question nobody asked — "nobody visited" — where the truth is "not counted here".
@@ -54,6 +57,10 @@ export function KpiCard({
           </span>
         )}
       </div>
+
+      {unavailable === undefined && hint && (
+        <p className='pt-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{hint}</p>
+      )}
 
       {sparkline && sparkline.length > 1 && sparkline.some((v) => v > 0) && (
         // The line repeats the number above it, so it stays out of the reading order.

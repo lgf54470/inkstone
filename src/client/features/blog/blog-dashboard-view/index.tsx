@@ -3,6 +3,7 @@ import type { BlogGlobalAnalytics, BlogStats } from '@shared/types'
 import { KpiCard } from '../../../components/dashboard-blocks'
 import { Button } from '../../../components/primitives'
 import { t } from '../../../lib/i18n'
+import { formatNumber } from '../../../lib/time'
 import type { BlogTab } from '../blog-store'
 import { useBlogDashboardView } from './use-blog-dashboard-view'
 import { DashboardControls } from './dashboard-controls'
@@ -125,13 +126,22 @@ function BotsFilterBanner({ filteredBots }: { filteredBots: number }) {
   )
 }
 
+/**
+ * The range's numbers, and the cumulative counter named as what it is. A card used to answer with
+ * whichever of the two was larger (`analytics.totalViews ?? stats.totalViews`), so a week with no
+ * visits displayed the blog's whole history next to a real PV of 0, and both were labelled the same
+ * way. An unloaded payload says "not collected" rather than 0.
+ */
 function DashboardKpis({ stats, analytics, postsCount }: { stats: BlogStats | null; analytics: BlogGlobalAnalytics | null; postsCount: number }) {
+  const notCollected = analytics ? undefined : t('blog.not_collected')
   return (
     <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
       <KpiCard
         icon={<MousePointerClick size={16} className='text-[var(--accent)]' />}
         label={t('blog.total_views_pv')}
-        value={analytics?.totalViews ?? stats?.totalViews ?? 0}
+        value={analytics?.totalViews ?? 0}
+        unavailable={notCollected}
+        hint={analytics ? t('blog.stored_views_hint', { count: formatNumber(analytics.storedViews) }) : undefined}
         delta={analytics?.viewsDelta}
         deltaHint={t('blog.delta_vs_previous')}
         sparkline={analytics?.sparklineViews}
@@ -141,6 +151,7 @@ function DashboardKpis({ stats, analytics, postsCount }: { stats: BlogStats | nu
         icon={<Users size={16} className='text-[var(--success)]' />}
         label={t('blog.total_visitors_uv')}
         value={analytics?.totalVisitors ?? 0}
+        unavailable={notCollected}
         delta={analytics?.visitorsDelta}
         deltaHint={t('blog.delta_vs_previous')}
         sparkline={analytics?.sparklineVisitors}
@@ -155,6 +166,7 @@ function DashboardKpis({ stats, analytics, postsCount }: { stats: BlogStats | nu
         icon={<Activity size={16} className='text-[var(--warning)]' />}
         label={t('blog.views_per_day')}
         value={analytics?.viewsPerDay ?? 0}
+        unavailable={notCollected}
         sparkline={analytics?.sparklineViews}
       />
     </div>

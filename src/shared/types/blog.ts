@@ -195,6 +195,8 @@ export interface BlogGlobalAnalytics {
   draftPosts: number
   totalViews: number
   totalVisitors: number
+  /** The posts' own cumulative counter, which is not the range's visits. */
+  storedViews: number
   viewsDelta?: number
   visitorsDelta?: number
   viewsPerDay: number

@@ -651,21 +651,41 @@ describe('blog analytics routes (real D1)', () => {
     expect(analytics.timeline[0].timestamp).toBeGreaterThan(0)
   })
 
-  it('estimates the breakdown from stored post views while no visit was logged', async () => {
+  // The cumulative counter on the posts is not the range's traffic, and no amount of it can be
+  // turned into a visitor count or a country distribution — the app never recorded those rows. It
+  // used to be, at 0.75 and a hard-coded "China 100% / Direct 100% / desktop 60% / macOS 50%"
+  // picture, which is what made a blog with no collected traffic show a full audience breakdown.
+  it('reports an uncollected range as empty instead of estimating it from stored views', async () => {
     const db = await makeDb()
     await seedUser(db)
     await seedBlogPost(db, { slug: 'legacy-post', views: 20 })
 
     const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=all')).json()
-    expect(analytics.totalViews).toBe(20)
-    expect(analytics.totalVisitors).toBe(15)
-    expect(analytics.topCountries).toEqual([{ name: 'CN', count: 20, percentage: 100 }])
-    expect(analytics.devices.find((d: { name: string }) => d.name === 'desktop')).toEqual({
-      name: 'desktop', count: 12, percentage: 60,
-    })
-    expect(analytics.osList.find((o: { name: string }) => o.name === 'iOS')).toEqual({
-      name: 'iOS', count: 4, percentage: 20,
-    })
+    expect(analytics.totalViews).toBe(0)
+    expect(analytics.totalVisitors).toBe(0)
+    expect(analytics.storedViews).toBe(20)
+    expect(analytics.topCountries).toEqual([])
+    expect(analytics.devices).toEqual([])
+    expect(analytics.osList).toEqual([])
+    expect(analytics.topPosts).toEqual([])
+  })
+
+  // The ranking used to be the posts' stored views, with a visitor count invented for the ones the
+  // range had no data for; it is the range's own ranking now, and only posts it recorded appear.
+  it('ranks top posts by the range and leaves out the ones it recorded nothing for', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const quiet = await seedBlogPost(db, { slug: 'quiet-top', views: 900 })
+    const read = await seedBlogPost(db, { slug: 'read-top', views: 5 })
+    await seedVisitAt(db, read.id, read.slug, Date.now() - 60_000, 'fp-read-1')
+    await seedVisitAt(db, read.id, read.slug, Date.now() - 120_000, 'fp-read-2')
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=7d')).json()
+    expect(analytics.storedViews).toBe(905)
+    expect(analytics.topPosts.map((p: { slug: string }) => p.slug)).toEqual(['read-top'])
+    expect(analytics.topPosts[0].views).toBe(2)
+    expect(analytics.topPosts[0].visitors).toBe(2)
+    expect(analytics.topPosts.some((p: { postId: string }) => p.postId === quiet.id)).toBe(false)
   })
 
 

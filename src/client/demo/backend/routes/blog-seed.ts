@@ -311,6 +311,7 @@ export function buildAnalytics(posts: BlogPost[], range: ShareTimelineRange, vis
     draftPosts: posts.filter((post) => !post.isPublished).length,
     totalViews,
     totalVisitors,
+    storedViews: totalViews,
     viewsDelta: Math.round(totalViews * 0.09),
     visitorsDelta: Math.round(totalVisitors * 0.06),
     viewsPerDay: Math.round(totalViews / rangeDays(range)),
