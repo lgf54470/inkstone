@@ -97,6 +97,9 @@ export const INDEX_STATEMENTS: readonly string[] = [
        ON community_templates(created_at DESC)`,
   ...BLOG_POSTS_INDEX_STATEMENTS,
   ...BLOG_ORDER_INDEX_STATEMENTS,
+  // One retired slug names one post inside one blog, and the lookup is by slug alone.
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_blog_post_slugs_user_slug ON blog_post_slugs(user_id, slug)`,
+  `CREATE INDEX IF NOT EXISTS idx_blog_post_slugs_post ON blog_post_slugs(post_id)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_folders_user ON blog_folders(user_id, position)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_folders_parent ON blog_folders(parent_id)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_blog_tags_user ON blog_tags(user_id, name)`,

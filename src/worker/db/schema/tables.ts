@@ -368,6 +368,15 @@ export const TABLE_STATEMENTS: readonly string[] = [
       created_at INTEGER NOT NULL
     )`,
   BLOG_POSTS_TABLE_STATEMENT,
+  // A post that was renamed keeps answering on its old address: the reader (or the search engine that
+  // indexed it) is sent to the new one instead of getting a 404. One row per retired slug — the
+  // current slug is never in here, and a slug somebody else takes is removed (FEA-03).
+  `CREATE TABLE IF NOT EXISTS blog_post_slugs (
+      post_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`,
   `CREATE TABLE IF NOT EXISTS blog_folders (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,

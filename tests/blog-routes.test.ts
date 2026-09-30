@@ -58,7 +58,7 @@ async function seedBlogPost(db: D1Shim, fields: Record<string, unknown>): Promis
        seo_title, seo_description, seo_image_url, seo_canonical_url, seo_noindex)
      VALUES (?1, ?2, ?3, ?4, ?5, '', ?6, '', NULL, NULL, ?7, ?8, ?9, ?10, ?11, ?12, ?12, ?12,
        ?13, ?14, ?15, ?16, ?17)`,
-    id, slug, fields.note_id ?? `n-${++H.counter}`, USER,
+    id, slug, fields.note_id ?? `n-${++H.counter}`, (fields.user_id as string) ?? USER,
     fields.title ?? 'Post title', fields.content ?? 'Post content',
     JSON.stringify((fields.tags as string[]) ?? []),
     fields.is_published === undefined ? 1 : fields.is_published ? 1 : 0,
@@ -1641,5 +1641,123 @@ describe('blog post SEO fields (FEA-02)', () => {
     // The list is drawn as cards and kept lean: the preview text belongs to the page that renders it.
     const list = await (await request(app, '/api/blog/public/posts')).json()
     expect('seoTitle' in list.posts[0]).toBe(false)
+  })
+})
+
+/**
+ * FEA-03: renaming a post must not break the links and index entries pointing at its old address. The
+ * rename records the retired slug, and the public answer says which address it belongs to now — never
+ * a destination the reader could not open anyway, and never another account's post.
+ */
+describe('blog slug history (FEA-03)', () => {
+  async function renamedPost(app: Hono<AppBindings>, db: D1Shim, from: string, to: string): Promise<string> {
+    const post = await seedBlogPost(db, { slug: from })
+    const res = await patchJson(app, `/api/blog/posts/${post.id}`, { slug: to })
+    expect(res.status).toBe(200)
+    return post.id
+  }
+
+  it('points a retired address at the post current one', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    await renamedPost(app, db, 'first-name', 'second-name')
+
+    const resolved = await request(app, '/api/blog/public/resolve-slug/first-name')
+    expect(await resolved.json()).toEqual({ slug: 'second-name' })
+
+    // The detail route still answers only the address a post really has: the reader is moved by the
+    // front end, not by the API guessing what they meant.
+    expect((await request(app, '/api/blog/public/posts/first-name')).status).toBe(404)
+
+    // A current address is nobody's redirect, and an address nobody ever used has no answer at all.
+    expect(await (await request(app, '/api/blog/public/resolve-slug/second-name')).json()).toEqual({ slug: null })
+    expect(await (await request(app, '/api/blog/public/resolve-slug/never-used')).json()).toEqual({ slug: null })
+  })
+
+  it('stops redirecting once another post takes the retired address', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    await renamedPost(app, db, 'alpha', 'beta')
+
+    const created = await postJson(app, '/api/blog/posts', {
+      noteId: 'n-alpha', title: 'Second post', content: 'Body', slug: 'alpha',
+    })
+    expect(created.status).toBe(200)
+
+    // `alpha` is a real address again — the one the new post lives at — so nothing may redirect it.
+    expect(await (await request(app, '/api/blog/public/resolve-slug/alpha')).json()).toEqual({ slug: null })
+    expect((await request(app, '/api/blog/public/posts/alpha')).status).toBe(200)
+    expect(await (await request(app, '/api/blog/public/resolve-slug/beta')).json()).toEqual({ slug: null })
+  })
+
+  it('answers nothing when the post behind the old address is not readable', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const id = await renamedPost(app, db, 'live-name', 'hidden-name')
+
+    const unpublished = await patchJson(app, `/api/blog/posts/${id}`, { isPublished: false })
+    expect(unpublished.status).toBe(200)
+    expect(await (await request(app, '/api/blog/public/resolve-slug/live-name')).json()).toEqual({ slug: null })
+
+    // Scheduled is the same answer: the destination is not readable yet, so the old address is not a
+    // redirect to it.
+    const scheduled = await patchJson(app, `/api/blog/posts/${id}`, {
+      isPublished: true, publishedAt: Date.now() + 86_400_000,
+    })
+    expect(scheduled.status).toBe(200)
+    expect(await (await request(app, '/api/blog/public/resolve-slug/live-name')).json()).toEqual({ slug: null })
+  })
+
+  it('records the retired address through the note upsert path as well', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+
+    const first = await postJson(app, '/api/blog/posts', {
+      noteId: 'n-upsert', title: 'Draft', content: 'Body', slug: 'draft-one',
+    })
+    expect(first.status).toBe(200)
+    const second = await postJson(app, '/api/blog/posts', {
+      noteId: 'n-upsert', title: 'Draft', content: 'Body', slug: 'draft-two',
+    })
+    expect(second.status).toBe(200)
+
+    expect(await (await request(app, '/api/blog/public/resolve-slug/draft-one')).json()).toEqual({ slug: 'draft-two' })
+  })
+
+  it('keeps the retired addresses of one blog out of another blog answers', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const other = await seedBlogPost(db, { slug: 'their-name', user_id: 'user-2' })
+    await runSql(
+      db,
+      `INSERT INTO blog_post_slugs (post_id, user_id, slug, created_at) VALUES (?1, 'user-2', 'their-old-name', ?2)`,
+      other.id, H.now,
+    )
+    // The rename itself has to be visible to the resolver, so the post answers on its new address.
+    await runSql(db, 'UPDATE blog_posts SET slug = ?1 WHERE id = ?2', 'their-new-name', other.id)
+
+    const app = makeApp()
+    expect(await (await request(app, '/api/blog/public/resolve-slug/their-old-name')).json()).toEqual({ slug: null })
+  })
+
+  it('forgets a post retired addresses once the post is gone', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const single = await renamedPost(app, db, 'gone-one', 'gone-two')
+    const batched = await renamedPost(app, db, 'batch-one', 'batch-two')
+
+    expect((await request(app, `/api/blog/posts/${single}`, { method: 'DELETE' })).status).toBe(200)
+    const batch = await postJson(app, '/api/blog/posts/batch', { action: 'delete', postIds: [batched] })
+    expect(batch.status).toBe(200)
+
+    expect(await (await request(app, '/api/blog/public/resolve-slug/gone-one')).json()).toEqual({ slug: null })
+    expect(await (await request(app, '/api/blog/public/resolve-slug/batch-one')).json()).toEqual({ slug: null })
+    const left = await db.prepare('SELECT COUNT(*) AS n FROM blog_post_slugs').first<{ n: number }>()
+    expect(left?.n).toBe(0)
   })
 })

@@ -479,6 +479,8 @@
 
 **已落地（B5-02，FEA-02）**：`blog_posts` 追加 5 列（`seo_title`/`seo_description`/`seo_image_url`/`seo_canonical_url`/`seo_noindex`）：新库由声明的建表语句带出，老库由迁移 54 补列（`skipIfColumnExists` 守卫）——迁移 52 一个字未动，它的重建本来就从同一份声明出发生成表与拷贝列名。写入侧 5 个字段进 zod 契约（两个地址走共享 `safeUrl` 白名单，非法值 400），并在 upsert、补丁与插入三条路径上落库，补丁只在字段被显式给出时改写（空串=清空，缺省=保持）。读取侧带上管理列表、`/post-index`（发布弹窗的预填来源）与公开详情答案；**公开列表刻意不带**，由一个断言钉住这条边界。客户端发布弹窗新增「搜索与分享」分组（4 个 `Field` + 1 个 noindex `Switch`），全部从被编辑的文章预填、留空即「用文章自己的值」。前台文章页按同一优先级渲染标题/描述/OG 图/`canonical`/`robots`，规则收在纯函数 `blog-frontend/src/lib/seo.ts`（含 4 条单测），`Layout.astro` 的两个新属性缺省时行为与从前完全一致。限制：sitemap 仍不排除 noindex 文章、也无 `lastmod`（属 FEA-08/BF-6）；RSS 与 og:type/twitter:card 未加；后台列表没有「已 noindex」的徽标；SEO 描述与摘要共用同一上限。
 
+**已落地（B5-03，FEA-03）**：新表 `blog_post_slugs(post_id, user_id, slug, created_at)`（唯一索引 `(user_id, slug)`）记录**退役地址**，迁移 55 与声明形状同源。写入侧把「改名」拆成两句并和写本身同批：`claimSlugStatements()`（拿到一个 slug 就等于它又成了活地址，该地址上任何重定向行都要删——包括**新建文章直接占用一个退役地址**这种情形）与 `renameSlugStatements()`（退役旧地址）。三条写入路径（`POST /posts` 的 upsert、新建、`PATCH /posts/:id`）共用 `slugStatementsFor()`；删除路径（单篇与批量）一并清历史。读取侧新增公开的 `GET /api/blog/public/resolve-slug/:slug`：JOIN 文章并套用 B5-01 的可见性规则（目标未发布/定时中时不回答），按 `user_id` 限定博客。前台文章页在 404 前问一次 resolve，拿到不同地址就 `301`（规则收在纯函数 `blog-frontend/src/lib/post-redirect.ts`），拿不到就是真实 404——**真机验证过**：本地实例建文 `alpha`→改名 `beta`，`GET /posts/alpha` 返回 301 且 `location: /posts/beta`，`/posts/beta` 200，未知地址 404。限制：`/check-slug` 不会提醒作者「这个地址正指向另一篇」（占用后那条重定向会按设计消失）；历史只在改名/删除时维护，直接改库不受保护；分类与标签改名仍会 404。
+
 ---
 
 ## 六、前台（blog-frontend）——与主应用耦合的部分

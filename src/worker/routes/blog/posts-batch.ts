@@ -50,6 +50,9 @@ export function blogBatchStatements(
           binds: [userId, ...postIds],
         },
         { sql: `DELETE FROM blog_visits WHERE user_id = ? AND post_id IN (${placeholders})`, binds: [userId, ...postIds] },
+        // The retired addresses go with the posts: a redirect to a row that is gone would resolve to
+        // nothing, and the rows would sit in the table forever.
+        { sql: `DELETE FROM blog_post_slugs WHERE user_id = ? AND post_id IN (${placeholders})`, binds: [userId, ...postIds] },
         { sql: `DELETE FROM blog_posts${withIds}`, binds: [userId, ...postIds] },
       ]
     case 'setCategory':

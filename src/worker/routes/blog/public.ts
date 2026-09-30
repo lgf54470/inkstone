@@ -6,6 +6,7 @@ import { loadPublicPostBySlug } from './public-post'
 import { registerBlogPublicVisitBeaconRoute } from './visit-beacon'
 import { safeDecodeTagParam, summarizePostTagCounts, toBlogSeoFields } from './helpers'
 import { blogTagFilterSql } from './tag-needles'
+import { resolveRetiredSlug } from './slug-history'
 import { publicPostVisibleSql } from './publish-moment'
 
 
@@ -21,6 +22,7 @@ export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): v
   registerBlogOwnerMiddleware(blogPublicRoutes)
   registerBlogSiteRoute(blogPublicRoutes)
   registerBlogPublicPostsRoutes(blogPublicRoutes)
+  registerBlogPublicRetiredSlugRoute(blogPublicRoutes)
   registerBlogPublicCategoriesRoute(blogPublicRoutes)
   registerBlogPublicTagsRoute(blogPublicRoutes)
   registerBlogPublicTimelineRoute(blogPublicRoutes)
@@ -242,6 +244,19 @@ function registerBlogPublicPostDetailRoute(blogPublicRoutes: Hono<AppBindings>):
     const nextPost = await loadAdjacentPost(c.env.DB, ownerId, row.published_at, true)
 
     return c.json({ post, prevPost, nextPost })
+  })
+}
+
+/**
+ * Where a reader asking for a retired address should be sent (FEA-03). The answer is the post's
+ * current slug, or null when nothing readable owns that address — the front end keeps the request a
+ * 404 in that case instead of inventing a destination.
+ */
+function registerBlogPublicRetiredSlugRoute(blogPublicRoutes: Hono<AppBindings>): void {
+  blogPublicRoutes.get('/resolve-slug/:slug', async (c) => {
+    const slug = c.req.param('slug')
+    const current = await resolveRetiredSlug(c.env.DB, blogOwnerOf(c).userId, slug)
+    return c.json({ slug: current })
   })
 }
 

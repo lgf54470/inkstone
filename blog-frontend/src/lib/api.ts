@@ -249,6 +249,20 @@ export const api = {
     }
   },
 
+  /**
+   * 某个已退役地址现在属于哪篇文章（FEA-03）。拿不到答案就返回 null，页面据此保持 404——
+   * 这里绝不能猜一个目标：把读者送到一个不存在的地址比 404 更糟。
+   */
+  async resolveSlug(slug: string): Promise<string | null> {
+    try {
+      const data = asRecord(await requestJsonCached(`/api/blog/public/resolve-slug/${encodeURIComponent(slug)}`, 300))
+      return typeof data.slug === 'string' && data.slug ? data.slug : null
+    } catch (err) {
+      console.warn(`[api.resolveSlug] request failed for "${slug}":`, err)
+      return null
+    }
+  },
+
   async getCategories(): Promise<BlogCategory[]> {
     try {
       const data = asRecord(await requestJsonCached('/api/blog/public/categories', 60))

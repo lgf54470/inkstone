@@ -823,4 +823,20 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
       `ALTER TABLE blog_posts ADD COLUMN seo_noindex INTEGER NOT NULL DEFAULT 0`,
     ],
   },
+  // FEA-03: a renamed post keeps answering on its old slug, so a link or an index entry that points
+  // at the previous address lands on the post instead of a 404. One row per retired slug; the two
+  // indexes are the lookup (`user_id, slug`) and the cleanup by post (`post_id`).
+  {
+    version: 55,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS blog_post_slugs (
+         post_id TEXT NOT NULL,
+         user_id TEXT NOT NULL,
+         slug TEXT NOT NULL,
+         created_at INTEGER NOT NULL
+       )`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_blog_post_slugs_user_slug ON blog_post_slugs(user_id, slug)`,
+      `CREATE INDEX IF NOT EXISTS idx_blog_post_slugs_post ON blog_post_slugs(post_id)`,
+    ],
+  },
 ]

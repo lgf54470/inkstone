@@ -13,6 +13,7 @@ import type { BlogCategory } from '../../lib/types'
 import { WORDS_PER_MINUTE } from '../../lib/constants'
 import { t, formatDate, DEFAULT_LOCALE, type BlogLocale } from '../../lib/i18n'
 import { resolvePostSeo } from '../../lib/seo'
+import { redirectTargetFor } from '../../lib/post-redirect'
 
 const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
 
@@ -26,7 +27,11 @@ if (!slug) {
 // 访问统计统一由 API 侧读取 CF 边缘注入的 CF-Connecting-IP / cf-* 头，避免伪造刷量
 const post = await api.getPostBySlug(slug)
 if (!post) {
-  // 保留原始 URL 并返回真实 404，避免 302 软 404 污染搜索引擎索引
+  // 改过名的文章：旧地址 301 到当前地址，让旧链接与索引继续有效（FEA-03）。
+  // 没有可用的新地址时——服务端说不出来、或目标不可读——保持真实 404，
+  // 不用 302 软 404 污染索引（判断与单测在 ../../lib/post-redirect.ts）。
+  const target = redirectTargetFor(slug, await api.resolveSlug(slug))
+  if (target) return Astro.redirect(target, 301)
   Astro.response.status = 404
   return Astro.rewrite('/404')
 }

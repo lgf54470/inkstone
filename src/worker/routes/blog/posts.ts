@@ -12,6 +12,7 @@ import { blogBatchSchema } from './schemas'
 import { safeDecodeTagParam, toBlogPostIndexEntry, toBlogPostSummary } from './helpers'
 import { resolvedPublishedAt } from './publish-moment'
 import { blogBatchStatements, chunkPostIds } from './posts-batch'
+import { claimSlugStatements, renameSlugStatements } from './slug-history'
 import { BLOG_POSTS_PAGE_SIZE, BLOG_POSTS_PAGE_SIZE_MAX, blogPostIndexQuery, blogPostsCountQuery, blogPostsListQuery } from './post-list-query'
 
 const SLUG_RE = /^[a-zA-Z0-9_-]{2,80}$/
@@ -87,14 +88,21 @@ function registerBlogPostsWriteRoute(blogManageRoutes: Hono<AppBindings>): void 
       .first<{ id: string; slug: string; is_published: number; published_at: number }>()
 
     if (existingPost) {
-      if (slug !== existingPost.slug) await assertSlugFree(c.env.DB, userId, slug, existingPost.id)
-      await updateBlogPost(c.env.DB, existingPost.id, postInput, resolvedPublishedAt(body, existingPost, Date.now()))
+      const renamed = slug !== existingPost.slug
+      if (renamed) await assertSlugFree(c.env.DB, userId, slug, existingPost.id)
+      const now = Date.now()
+      const statements = [updateBlogPost(c.env.DB, existingPost.id, postInput, resolvedPublishedAt(body, existingPost, now))]
+      statements.push(...slugStatementsFor({ db: c.env.DB, userId, postId: existingPost.id, from: existingPost.slug, to: slug, now }))
+      await c.env.DB.batch(statements)
       return c.json({ ok: true, id: existingPost.id, slug })
     }
 
     await assertSlugFree(c.env.DB, userId, slug)
     const id = newId()
-    await insertBlogPost(c.env.DB, { ...postInput, id, noteId: body.noteId, userId })
+    await c.env.DB.batch([
+      insertBlogPost(c.env.DB, { ...postInput, id, noteId: body.noteId, userId }),
+      ...claimSlugStatements({ db: c.env.DB, userId, slug }),
+    ])
     return c.json({ ok: true, id, slug })
   })
 }
@@ -190,9 +198,9 @@ async function assertSlugFree(db: D1Database, userId: string, slug: string, excl
   if (conflict) throw ApiError.conflict('Slug already exists')
 }
 
-async function updateBlogPost(db: D1Database, id: string, input: PostWriteInput, publishedAt: number): Promise<void> {
+function updateBlogPost(db: D1Database, id: string, input: PostWriteInput, publishedAt: number): D1PreparedStatement {
   const now = Date.now()
-  await db
+  return db
     .prepare(`
       UPDATE blog_posts SET
         slug = ?1,
@@ -236,15 +244,33 @@ async function updateBlogPost(db: D1Database, id: string, input: PostWriteInput,
       input.seoNoindex,
       id,
     )
-    .run()
 }
 
-async function insertBlogPost(
+/**
+ * What a write does to the slug it stores: nothing when the address did not move, and otherwise the
+ * full take-and-retire pair. One function so the patch route, the upsert route and the create route
+ * cannot disagree about which half of it applies.
+ */
+function slugStatementsFor({
+  db, userId, postId, from, to, now,
+}: {
+  db: D1Database
+  userId: string
+  postId: string
+  from: string
+  to: string
+  now: number
+}): D1PreparedStatement[] {
+  if (from === to) return []
+  return renameSlugStatements({ db, userId, postId, previousSlug: from, nextSlug: to, now })
+}
+
+function insertBlogPost(
   db: D1Database,
   input: PostWriteInput & { id: string; noteId: string; userId: string },
-): Promise<void> {
+): D1PreparedStatement {
   const now = Date.now()
-  await db
+  return db
     .prepare(`
       INSERT INTO blog_posts (
         id, slug, note_id, user_id, title, excerpt, content, cover_url,
@@ -278,7 +304,6 @@ async function insertBlogPost(
       input.seoCanonicalUrl,
       input.seoNoindex,
     )
-    .run()
 }
 
 function registerBlogPostsPatchRoute(blogManageRoutes: Hono<AppBindings>): void {
@@ -293,6 +318,7 @@ function registerBlogPostsPatchRoute(blogManageRoutes: Hono<AppBindings>): void 
       .first<BlogPostRow>()
     if (!current) throw ApiError.notFound('Post not found')
 
+    const previousSlug = current.slug
     if (body.slug && body.slug !== current.slug) {
       const slug = body.slug.trim().toLowerCase()
       if (!SLUG_RE.test(slug)) throw ApiError.badRequest('Invalid slug format')
@@ -302,7 +328,10 @@ function registerBlogPostsPatchRoute(blogManageRoutes: Hono<AppBindings>): void 
 
     if (body.content !== undefined) assertContentSize(body.content, 'Blog post')
 
-    await blogPostPatchStatement(c.env.DB, body, current, id, Date.now()).run()
+    const now = Date.now()
+    const statements = [blogPostPatchStatement(c.env.DB, body, current, id, now)]
+    statements.push(...slugStatementsFor({ db: c.env.DB, userId, postId: id, from: previousSlug, to: current.slug, now }))
+    await c.env.DB.batch(statements)
     return c.json({ ok: true })
   })
 }
@@ -374,6 +403,8 @@ function registerBlogPostsDeleteRoute(blogManageRoutes: Hono<AppBindings>): void
           WHERE post_id = ?1 AND EXISTS (SELECT 1 FROM blog_posts bp WHERE bp.id = ?1 AND bp.user_id = ?2)`,
       ).bind(id, userId),
       c.env.DB.prepare('DELETE FROM blog_visits WHERE post_id = ?1 AND user_id = ?2').bind(id, userId),
+      // The retired addresses of the post go with it: nothing may redirect to a row that is gone.
+      c.env.DB.prepare('DELETE FROM blog_post_slugs WHERE post_id = ?1 AND user_id = ?2').bind(id, userId),
       c.env.DB.prepare('DELETE FROM blog_posts WHERE id = ?1 AND user_id = ?2').bind(id, userId),
     ])
 
