@@ -24,9 +24,6 @@ export interface PresentationControlsProps {
 }
 
 export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, following, chromeHidden, onPrev, onNext, onToggleRail, onToggleFollowing, onToggleFullscreen, onExport, onExportImages, onClose }: PresentationControlsProps) {
-  const fullscreenLabel = isFullscreen ? t('workspace.presentation_exit_fullscreen') : t('workspace.presentation_fullscreen')
-  const railLabel = railOpen ? t('workspace.presentation_hide_slides') : t('workspace.presentation_show_slides')
-  const followLabel = following ? t('workspace.presentation_freeze') : t('workspace.presentation_follow')
   return (
     <div
       data-presentation-chrome
@@ -39,6 +36,32 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
     >
       <SlideStepper slideIndex={slideIndex} slideCount={slideCount} subPage={subPage} pageCount={pageCount} onPrev={onPrev} onNext={onNext} />
       <span className='mx-1 h-4 w-px bg-[var(--border-subtle)]' aria-hidden='true' />
+      <ViewControls railOpen={railOpen} following={following} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} />
+      <span className='mx-1 h-4 w-px bg-[var(--border-subtle)]' aria-hidden='true' />
+      <ExportControls onExport={onExport} onExportImages={onExportImages} />
+      <span className='mx-1 h-4 w-px bg-[var(--border-subtle)]' aria-hidden='true' />
+      <Tooltip label={t('workspace.presentation_exit')} side='top'>
+        <IconButton label={t('workspace.presentation_exit')} size='sm' onClick={onClose}>
+          <X size={15} />
+        </IconButton>
+      </Tooltip>
+    </div>
+  )
+}
+
+function ViewControls({ railOpen, following, isFullscreen, onToggleRail, onToggleFollowing, onToggleFullscreen }: {
+  railOpen: boolean
+  following: boolean
+  isFullscreen: boolean
+  onToggleRail: () => void
+  onToggleFollowing: () => void
+  onToggleFullscreen: () => void
+}) {
+  const fullscreenLabel = isFullscreen ? t('workspace.presentation_exit_fullscreen') : t('workspace.presentation_fullscreen')
+  const railLabel = railOpen ? t('workspace.presentation_hide_slides') : t('workspace.presentation_show_slides')
+  const followLabel = following ? t('workspace.presentation_freeze') : t('workspace.presentation_follow')
+  return (
+    <>
       <Tooltip label={railLabel} side='top'>
         <IconButton label={railLabel} size='sm' active={railOpen} onClick={onToggleRail}>
           {railOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
@@ -54,6 +77,13 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
           {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
         </IconButton>
       </Tooltip>
+    </>
+  )
+}
+
+function ExportControls({ onExport, onExportImages }: { onExport: () => void; onExportImages: () => void }) {
+  return (
+    <>
       <Tooltip label={t('workspace.presentation_export')} side='top'>
         <IconButton label={t('workspace.presentation_export')} size='sm' onClick={onExport}>
           <Download size={14} />
@@ -64,12 +94,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
           <Images size={14} />
         </IconButton>
       </Tooltip>
-      <Tooltip label={t('workspace.presentation_exit')} side='top'>
-        <IconButton label={t('workspace.presentation_exit')} size='sm' onClick={onClose}>
-          <X size={15} />
-        </IconButton>
-      </Tooltip>
-    </div>
+    </>
   )
 }
 

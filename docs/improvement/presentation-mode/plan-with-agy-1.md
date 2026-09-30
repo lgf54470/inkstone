@@ -77,8 +77,8 @@
   - 涉及文件：`src/client/features/presentation/presentation-keys.ts` (`blackout`/`whiteout`)、`src/client/features/presentation/presentation-keys.test.ts`、`src/client/features/presentation/use-presentation-keys.ts` (`useScreenCover`)、`src/client/features/presentation/presentation-stage.tsx` (`ScreenCover`)、`src/client/features/presentation/presentation-overlay.tsx`
   - 目标：按 `B`/`.` 切换纯黑全屏遮罩，按 `W`/`,` 切换纯白全屏遮罩，按任意键或点击复原。
   - 验证：单元测试覆盖按键映射与获焦守卫，遮罩唤醒与任意键解除闭环。
-- [ ] **B2-05** `P-11 (UX-03)`: 导出按钮安全收敛与防误触隔离
-  - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`PresentationControls`)
+- [x] **B2-05** `P-11 (UX-03)`: 导出按钮安全收敛与防误触隔离 — 已完成
+  - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`PresentationControls`)、`src/client/features/presentation/presentation-controls.test.ts`
   - 目标：将导出 PDF 与图片 ZIP 等高危不可逆操作从全屏/退出等高频视窗按钮间剥离，设置专属安全分隔带，杜绝演说误触调出原生打印窗口。
   - 方案：重构悬浮控制条布局结构，在全屏控制项与导出按钮之间增加明确的垂直分隔线与安全间隔，按语义将动作区划分为“导航翻页”、“状态与视图”、“导出与分发”、“退出模式”四个子群组。
   - 验证：组件结构测试与样式检查，确保各操作组拥有明确边界与分隔标记。
