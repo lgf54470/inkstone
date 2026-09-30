@@ -65,6 +65,7 @@ export const messages = {
 'blog.article': '对应文章',
 'blog.no_comments': '暂无相关评论',
 'blog.no_posts': '暂无相关文章',
+'blog.load_failed': '加载失败，请检查网络后重试。',
 'blog.category_name': '分类名称',
 'blog.category_slug': '分类别名',
 'blog.add_category': '新建分类',

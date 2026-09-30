@@ -2865,6 +2865,9 @@ const allowed = new Map([
     '// Rebuilt only when the folders change: every consumer of the tree reads it on each',
     '// render, and a new array each time would invalidate theirs as well.',
   ]],
+  ['src/client/features/blog/blog-comments-view-failure.test.ts', [
+    '/**\n * ENG-01: a failed load is a state of its own. This surface used to draw `filteredComments` and, when\n * it was empty because nothing had arrived, say there were no comments — so being offline looked\n * exactly like a blog nobody had commented on.\n */',
+  ]],
   ['src/client/features/blog/blog-comments-view.tsx', [
     '// The picture comes from a reader\'s own form, so the source is whatever this app will render:',
     '// an image URL that passed the allowlist, or an avatar drawn locally from the name. A comment',
@@ -2888,8 +2891,8 @@ const allowed = new Map([
     '// The three traffic switches live in the store, which the toolbar popover and the settings dialog',
     '// also write. The dashboard used to keep its own `excludeBots` and send only that one, so a switch',
     '// flipped anywhere else changed nothing here — and the store\'s own copies changed nothing anywhere.',
-    '// The switches are read here rather than captured: a change to any of them is a new question for',
-    '// the same endpoint.',
+    '/**\n * The analytics question is asked once per range or switch change. The switches are read in the\n * dependencies rather than captured in the closure: a change to any of them is a new question for\n * the same endpoint.\n */',
+    '/**\n * A failed load with nothing on screen is its own state: a failed refresh over existing data keeps\n * drawing what it has, but an empty dashboard says the load failed instead of "no visitors yet".\n */',
     '/**\n * What the payload means under the switches. A number only counts as filtered when the switch hiding\n * it is on: the server reports all three regardless, and the banner that reads these is describing\n * what is not in the chart above it.\n */',
   ]],
   ['src/client/features/blog/blog-hub-toolbar.tsx', [
@@ -2937,6 +2940,9 @@ const allowed = new Map([
     '// An old verdict is still worth showing — it is the last thing anyone measured — but it is',
     '// shown as old.',
   ]],
+  ['src/client/features/blog/blog-load-failure.tsx', [
+    '/**\n * The failed state of a load. One component for the surfaces that used to paint a failed request as\n * an empty list — the reader gets the same sentence and the same retry wherever it happens.\n */',
+  ]],
   ['src/client/features/blog/blog-publish-modal/use-blog-publish-form.ts', [
     '// Debounced, cancelled and sequence-checked: only the answer to the slug as it is typed last may',
     '// set the badge, or a slow reply about a previous slug claims the current one is taken.',
@@ -2972,8 +2978,13 @@ const allowed = new Map([
   ['src/client/features/blog/blog-store/links.ts', [
     '/**\n * The link list is filtered by the server now, so its answer has to match the filter that is on\n * screen: the request a newer one replaces is cancelled, and an answer that arrives after a newer\n * request went out is dropped. Without this, typing in the search box could show the results of an\n * earlier keystroke — before the server answered the filters, the browser re-filtered whatever\n * arrived and the mismatch corrected itself.\n */',
   ]],
+  ['src/client/features/blog/blog-store/load-errors.test.ts', [
+    '/**\n * A loader that fails must say so. Before this channel existed the failure was only a console line,\n * and every surface rendered it as an empty result — a reader who was offline was told they had no\n * posts. The flag is per scope: one failed list must not paint the others as broken.\n */',
+  ]],
   ['src/client/features/blog/blog-store/loaders.ts', [
     '/**\n * The post list, asked once per change of the query and answered with the newest answer only. Two\n * things follow from that: the request a newer one replaces is cancelled (a search box sends one per\n * keystroke) and an answer that arrives after a newer request went out is dropped, because comparing\n * sequence numbers is the only way to know which of two responses is current. The dropped answer is\n * not an error — the caller asked for it and then changed its mind.\n */',
+    '// A refresh failure leaves the previous list where it is and raises the flag: an empty screen',
+    '// because a request failed would read as "your posts are gone".',
   ]],
   ['src/client/features/blog/blog-store/posts-request.test.ts', [
     '/**\n * The list is asked once per keystroke in the search box, and answers can arrive out of order. Two\n * rules keep the screen honest: the request a newer one replaces is cancelled, and an answer that\n * arrives after a newer request went out is dropped instead of overwriting it.\n */',
@@ -2983,9 +2994,12 @@ const allowed = new Map([
     '// is already in browser storage when the store builds its initial state.',
   ]],
   ['src/client/features/blog/blog-store/state.ts', [
+    '/**\n * Both helpers return the same set when the flag already reads that way, so a successful refresh\n * does not re-render every surface that subscribes to the failure flags.\n */',
     '/**\n * What an unread store holds. The stored filters are read when the hub opens (see\n * `hydrateTrafficFilters`), not when this module is evaluated: the module loads with the app, so a\n * read at module scope would touch `localStorage` on every page and in every test for a switch only\n * the blog hub shows.\n */',
   ]],
   ['src/client/features/blog/blog-store/types.ts', [
+    '/**\n * The lists whose load result a view draws. A failed load is a state of its own — the alternative\n * was rendering it as an empty list, which told the reader their data was gone.\n */',
+    '/**\n   * Scopes whose last load failed. A refresh failure leaves the previous data in place — only a view\n   * with nothing to show asks this flag to render a failure instead of an empty state.\n   */',
     '/**\n   * The post list\'s in-flight request: `seq` lets a late answer be dropped (the reader may have\n   * typed again since), and the controller cancels the request the newest one replaces. Both are\n   * request lifecycle, not data — the list itself lives in `posts`.\n   */',
     '/** The same latest-wins rule as the post list, for the link list\'s status/category/search. */',
   ]],
@@ -2993,6 +3007,8 @@ const allowed = new Map([
     '/**\n * The blog\'s own site address, as a link may carry it.\n *\n * The stored value is checked on the way in, but a blog configured before that rule existed still\n * holds whatever was typed, and this address becomes an `href` in the admin session — so a value a\n * link may not use falls back to the shipped default instead of being rendered as written.\n */',
   ]],
   ['src/client/features/blog/use-blog-hub-modal.ts', [
+    '/** Nothing came back and the load failed: the list draws a failure, not an empty state. */',
+    '/** The publish dialog\'s own state: what it edits, which note it targets, and whether it is open. */',
     '// The stored switches are read here rather than when the store module loads: only this hub',
     '// shows them, and the read belongs to opening it.',
   ]],

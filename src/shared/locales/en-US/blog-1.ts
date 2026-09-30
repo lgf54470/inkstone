@@ -65,6 +65,7 @@ export const messages = {
 'blog.article': 'Article',
 'blog.no_comments': 'No comments found',
 'blog.no_posts': 'No posts found',
+'blog.load_failed': 'Could not load this section. Check your connection and try again.',
 'blog.category_name': 'Category Name',
 'blog.category_slug': 'Category Slug',
 'blog.add_category': 'New Category',

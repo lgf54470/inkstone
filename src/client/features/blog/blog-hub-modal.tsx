@@ -14,6 +14,7 @@ import { BlogLinksView } from './blog-links-view'
 import { BlogPublishModal } from './blog-publish-modal'
 import { BlogCategoriesModal } from './blog-categories-modal'
 import { BlogSettingsModal } from './blog-settings-modal'
+import { BlogLoadFailure } from './blog-load-failure'
 
 const MODAL_WIDTH = 1300
 
@@ -116,6 +117,8 @@ function BlogHubContent({ bundle }: { bundle: BlogHubModalBundle }) {
               <div className='flex h-64 items-center justify-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>
                 {t('common.loading')}
               </div>
+            ) : bundle.postsFailed ? (
+              <BlogLoadFailure onRetry={bundle.onRetryPosts} />
             ) : bundle.posts.length === 0 ? (
               <div className='flex h-64 flex-col items-center justify-center text-[var(--text-quaternary)] space-y-2'>
                 <p>{t('blog.no_posts')}</p>

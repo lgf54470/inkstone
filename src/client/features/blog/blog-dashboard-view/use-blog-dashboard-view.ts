@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { BlogGlobalAnalytics, ShareTimelineRange } from '@shared/types'
 import { api } from '../../../lib/api'
 import { useLocale } from '../../../lib/i18n'
-import { useBlogStore } from '../blog-store'
+import { useBlogStore, type BlogStoreState } from '../blog-store'
 import { blogFrontendBase } from '../frontend-base'
 
 export function useBlogDashboardView() {
@@ -25,22 +25,18 @@ export function useBlogDashboardView() {
   const [metricMode, setMetricMode] = useState<'views' | 'visitors'>('views')
   const [analytics, setAnalytics] = useState<BlogGlobalAnalytics | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
+  const [analyticsError, setAnalyticsError] = useState<boolean>(false)
+  const loadErrors = useBlogStore((s) => s.loadErrors)
 
   const frontendBase = blogFrontendBase(settings?.frontendUrl)
   const pendingComments = comments.filter((c) => c.status === 'pending')
   const switches = { excludeBots, excludeSelfReferrers, excludeOwner }
 
-  const loadData = () => loadAnalytics(range, switches, setLoading, setAnalytics)
+  const loadData = useAnalyticsLoad(range, switches, setLoading, setAnalytics, setAnalyticsError)
 
   const handleRefresh = async () => {
     await Promise.all([loadData(), loadAll()])
   }
-
-  useEffect(() => {
-    void loadData()
-    // The switches are read here rather than captured: a change to any of them is a new question for
-    // the same endpoint.
-  }, [range, excludeBots, excludeSelfReferrers, excludeOwner])
 
   const derived = dashboardDerivedValues(analytics, metricMode, switches)
 
@@ -50,8 +46,45 @@ export function useBlogDashboardView() {
     excludeBots, excludeSelfReferrers, excludeOwner,
     setExcludeBots: (next: boolean) => setFilters({ excludeBots: next }),
     analytics, loading,
+    ...dashboardLoadStates(stats, analytics, analyticsError, loadErrors),
     frontendBase, pendingComments, handleRefresh,
     ...derived,
+  }
+}
+
+/**
+ * The analytics question is asked once per range or switch change. The switches are read in the
+ * dependencies rather than captured in the closure: a change to any of them is a new question for
+ * the same endpoint.
+ */
+function useAnalyticsLoad(
+  range: ShareTimelineRange,
+  switches: { excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean },
+  setLoading: (v: boolean) => void,
+  setAnalytics: (v: BlogGlobalAnalytics | null) => void,
+  setAnalyticsError: (v: boolean) => void,
+): () => Promise<void> {
+  const { excludeBots, excludeSelfReferrers, excludeOwner } = switches
+  const loadData = () => loadAnalytics(range, switches, setLoading, setAnalytics, setAnalyticsError)
+  useEffect(() => {
+    void loadData()
+  }, [range, excludeBots, excludeSelfReferrers, excludeOwner])
+  return loadData
+}
+
+/**
+ * A failed load with nothing on screen is its own state: a failed refresh over existing data keeps
+ * drawing what it has, but an empty dashboard says the load failed instead of "no visitors yet".
+ */
+function dashboardLoadStates(
+  stats: BlogStoreState['stats'],
+  analytics: BlogGlobalAnalytics | null,
+  analyticsError: boolean,
+  loadErrors: BlogStoreState['loadErrors'],
+) {
+  return {
+    analyticsFailed: analytics === null && analyticsError,
+    statsFailed: stats === null && loadErrors.has('stats'),
   }
 }
 
@@ -85,8 +118,10 @@ async function loadAnalytics(
   switches: { excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean },
   setLoading: (v: boolean) => void,
   setAnalytics: (v: BlogGlobalAnalytics | null) => void,
+  setError: (v: boolean) => void,
 ): Promise<void> {
   setLoading(true)
+  setError(false)
   try {
     const res = await api.blog.analytics(selectedRange, {
       excludeBots: switches.excludeBots,
@@ -96,6 +131,7 @@ async function loadAnalytics(
     setAnalytics(res.analytics)
   } catch (err) {
     console.error('Failed to load blog analytics:', err)
+    setError(true)
   } finally {
     setLoading(false)
   }

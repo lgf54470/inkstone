@@ -47,6 +47,7 @@ function initialBlogState(): Partial<BlogStoreState> {
         settings: null,
         loading: false,
         batchBusy: false,
+        loadErrors: new Set(),
         postsRequestSeq: 0,
         postsAbort: null,
         linksRequestSeq: 0,
@@ -57,7 +58,7 @@ function initialBlogState(): Partial<BlogStoreState> {
     }
 }
 
-export type { BlogTab, BlogFolderNode, BlogStoreState, BlogLinkFilterType } from './types'
+export type { BlogTab, BlogFolderNode, BlogStoreState, BlogLinkFilterType, BlogLoadScope } from './types'
 export { buildBlogFolderTree } from './folders'
 
 // Feed the notes store's visibility projection (published note ids) without

@@ -1,4 +1,22 @@
+import type { BlogLoadScope } from './types'
+
 export const TRAFFIC_FILTERS_KEY = 'inkstone_blog_traffic_filters'
+
+/**
+ * Both helpers return the same set when the flag already reads that way, so a successful refresh
+ * does not re-render every surface that subscribes to the failure flags.
+ */
+export function markLoadFailed(errors: Set<BlogLoadScope>, scope: BlogLoadScope): Set<BlogLoadScope> {
+  if (errors.has(scope)) return errors
+  return new Set(errors).add(scope)
+}
+
+export function markLoadSucceeded(errors: Set<BlogLoadScope>, scope: BlogLoadScope): Set<BlogLoadScope> {
+  if (!errors.has(scope)) return errors
+  const next = new Set(errors)
+  next.delete(scope)
+  return next
+}
 
 /**
  * What an unread store holds. The stored filters are read when the hub opens (see

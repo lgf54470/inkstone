@@ -23,6 +23,7 @@ export function useBlogCommentsView() {
   const deleteComment = useBlogStore((s) => s.deleteComment)
   const batchComments = useBlogStore((s) => s.batchComments)
   const batchBusy = useBlogStore((s) => s.batchBusy)
+  const loadErrors = useBlogStore((s) => s.loadErrors)
 
   const [search, setSearch] = useState('')
 
@@ -41,6 +42,7 @@ export function useBlogCommentsView() {
   return {
     search, setSearch,
     statusCounts, filteredComments, isAllSelected,
+    loadFailed: comments.length === 0 && loadErrors.has('comments'),
     commentStatusFilter, setCommentStatusFilter,
     loading, loadComments, batchBusy,
     selectedCommentIds, toggleSelectComment, clearCommentSelection,

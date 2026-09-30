@@ -1,5 +1,6 @@
 import { extractCoverUrl } from '@shared/markdown-utils'
 import { api } from '../../../lib/api'
+import { markLoadFailed, markLoadSucceeded } from './state'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
 export const blogLoadersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'loadAll' | 'loadPosts' | 'loadFolders' | 'loadTags' | 'loadCategories' | 'loadComments' | 'loadStats' | 'loadSettings'> => ({
@@ -59,10 +60,13 @@ async function loadPostsImpl(set: SetBlogStoreState, get: () => BlogStoreState):
       ...p,
       coverUrl: extractCoverUrl(p.coverUrl),
     }))
-    set({ posts })
+    set((s) => ({ posts, loadErrors: markLoadSucceeded(s.loadErrors, 'posts') }))
   } catch (err) {
+    // A refresh failure leaves the previous list where it is and raises the flag: an empty screen
+    // because a request failed would read as "your posts are gone".
     if (controller.signal.aborted) return
     console.error('Failed to load blog posts', err)
+    set((s) => ({ loadErrors: markLoadFailed(s.loadErrors, 'posts') }))
   }
 }
 
@@ -100,18 +104,20 @@ async function loadCommentsImpl(set: SetBlogStoreState, get: () => BlogStoreStat
       status: commentStatusFilter,
       search: commentSearch || undefined,
     })
-    set({ comments: res.comments })
+    set((s) => ({ comments: res.comments, loadErrors: markLoadSucceeded(s.loadErrors, 'comments') }))
   } catch (err) {
     console.error('Failed to load blog comments', err)
+    set((s) => ({ loadErrors: markLoadFailed(s.loadErrors, 'comments') }))
   }
 }
 
 async function loadStatsImpl(set: SetBlogStoreState): Promise<void> {
   try {
     const res = await api.blog.stats()
-    set({ stats: res.stats })
+    set((s) => ({ stats: res.stats, loadErrors: markLoadSucceeded(s.loadErrors, 'stats') }))
   } catch (err) {
     console.error('Failed to load blog stats', err)
+    set((s) => ({ loadErrors: markLoadFailed(s.loadErrors, 'stats') }))
   }
 }
 

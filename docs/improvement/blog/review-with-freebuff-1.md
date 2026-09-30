@@ -247,7 +247,7 @@
 - **量级**（假设 300 条）：≈105 KB raw/次；搜索框输入 8 个字符 = 8 次 ≈840 KB，且每次都是全表取回。
 - **方案**：服务端实现筛选 + `LIMIT`（推荐），并把 counts 改成一条 `GROUP BY status`；客户端的本地二次过滤随之删除（避免两份过滤逻辑漂移）。
 - **范围**：`links.ts`、`blog-store/{links,loaders}.ts`、`use-blog-links-view.ts`、demo backend。代价 **S～M**。
-- **落地（B3-03）**：查询构建器拆到 `link-list-query.ts`（同 `post-list-query.ts` 先例）：两个标记页签 `pinned`/`favorite` 也从服务端筛，计数是一段**不带 status 条件**的 `GROUP BY status`（切页签时徽标不缩水，category/search 仍生效），`BlogLinkStats` 随之增 `pinned`/`favorite`。列表 `LIMIT 500`，超出不再静默：客户端按「徽标数 > 返回行数」在列表顶部提示「只显示前 N 条」。未知 `status` 回 400 而不是当 `all`。本地 `filterLinks` 与客户端兜底计数删除；`loadLinks` 另补 `AbortSignal` + 序号线（服务端筛选后迟到的答案必须丢弃，这是本地过滤不再兜底后的必要条件）。demo backend 本无 `/api/blog/links`，无需同步。
+- **落地（B3-03，60b83bcb）**：查询构建器拆到 `link-list-query.ts`（同 `post-list-query.ts` 先例）：两个标记页签 `pinned`/`favorite` 也从服务端筛，计数是一段**不带 status 条件**的 `GROUP BY status`（切页签时徽标不缩水，category/search 仍生效），`BlogLinkStats` 随之增 `pinned`/`favorite`。列表 `LIMIT 500`，超出不再静默：客户端按「徽标数 > 返回行数」在列表顶部提示「只显示前 N 条」。未知 `status` 回 400 而不是当 `all`。本地 `filterLinks` 与客户端兜底计数删除；`loadLinks` 另补 `AbortSignal` + 序号线（服务端筛选后迟到的答案必须丢弃，这是本地过滤不再兜底后的必要条件）。demo backend 本无 `/api/blog/links`，无需同步。
 
 #### ENG-04 [P0][已修] 搜索无防抖、无 abort、无乱序守卫
 - **问题**：`blog-hub-toolbar.tsx` 的 `SearchBox` 每次 `onChange` 直接 `setSearch` → `blog-store/filters.ts:25-33` 的 `applyPostFilter` 立即 `void get().loadPosts()` → `loaders.ts:34-53` 调用 API **未传 signal**（`transport` 已支持 `AbortSignal`）。全目录 `grep useDeferredValue` 为 0。

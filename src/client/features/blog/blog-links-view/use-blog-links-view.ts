@@ -14,6 +14,7 @@ export function useBlogLinksView() {
   const batchOps = useBlogLinksBatchOperations(store, toast)
 
   const statusCounts = useMemo(() => linkStatusCounts(store.linkStats), [store.linkStats])
+  const loadFailed = store.links.length === 0 && store.loadErrors.has('links')
   // The server answers the filter this time, so what came back *is* the filtered list — the badge
   // count is only used to notice that the list hit its page limit.
   const filteredLinks = store.links
@@ -44,6 +45,7 @@ export function useBlogLinksView() {
     ...batchOps,
     statusCounts,
     filteredLinks,
+    loadFailed,
     isTruncated,
     isAllSelected,
     handleToggleSelectAll,
@@ -96,6 +98,7 @@ function useBlogLinksStore() {
   const links = useBlogStore((s) => s.links)
   const linkCategories = useBlogStore((s) => s.linkCategories)
   const linkStats = useBlogStore((s) => s.linkStats)
+  const loadErrors = useBlogStore((s) => s.loadErrors)
   const loading = useBlogStore((s) => s.loading)
   const batchBusy = useBlogStore((s) => s.batchBusy)
   const linkStatusFilter = useBlogStore((s) => s.linkStatusFilter)
@@ -123,7 +126,7 @@ function useBlogLinksStore() {
   const importLinksData = useBlogStore((s) => s.importLinksData)
 
   return {
-    links, linkCategories, linkStats, loading, batchBusy,
+    links, linkCategories, linkStats, loadErrors, loading, batchBusy,
     linkStatusFilter, setLinkStatusFilter, linkCategoryId, setLinkCategoryId,
     linkSearch, setLinkSearch, selectedLinkIds, toggleSelectLink,
     selectAllLinks, clearLinkSelection, loadLinks, createLink,

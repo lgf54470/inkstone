@@ -8,6 +8,9 @@ export interface BlogHubModalBundle {
   viewMode: 'table' | 'grid'
   posts: BlogStoreState['posts']
   loading: boolean
+  /** Nothing came back and the load failed: the list draws a failure, not an empty state. */
+  postsFailed: boolean
+  onRetryPosts: () => void
   selectedCount: number
   onSwitchTab: (tab: BlogTab) => void
   onOpenNewPost: () => void
@@ -28,6 +31,8 @@ export function useBlogHubModal({
   const viewMode = useBlogStore((s) => s.viewMode)
   const posts = useBlogStore((s) => s.posts)
   const loading = useBlogStore((s) => s.loading)
+  const postsFailed = useBlogStore((s) => s.loadErrors.has('posts'))
+  const loadPosts = useBlogStore((s) => s.loadPosts)
   const selectedPostIds = useBlogStore((s) => s.selectedPostIds)
   const clearPostSelection = useBlogStore((s) => s.clearPostSelection)
   const loadAll = useBlogStore((s) => s.loadAll)
@@ -36,40 +41,55 @@ export function useBlogHubModal({
 
   const activeNote = useNotes((s) => (initialNoteId ? s.notes[initialNoteId] ?? null : null))
 
-  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false)
-  const [editingPost, setEditingPost] = useState<BlogPost | null>(null)
-  const [targetNoteId, setTargetNoteId] = useState<string>('')
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const publish = useBlogPublishModal(initialNoteId, activeNote)
 
   useBlogHubModalEffects({
     open, initialNoteId, activeNote,
-    loadAll, hydrateTrafficFilters, clearPostSelection, setTargetNoteId,
-    setIsPublishModalOpen, setEditingPost,
+    loadAll, hydrateTrafficFilters, clearPostSelection, setTargetNoteId: publish.setTargetNoteId,
+    setIsPublishModalOpen: publish.setIsPublishModalOpen, setEditingPost: publish.setEditingPost,
     setIsCategoriesModalOpen, setIsSettingsModalOpen,
   })
 
-  const handleOpenNewPost = () => {
+  return {
+    activeTab, viewMode, posts, loading,
+    postsFailed: postsFailed && posts.length === 0,
+    onRetryPosts: () => void loadPosts(),
+    selectedCount: selectedPostIds.size,
+    onSwitchTab: setActiveTab, onOpenNewPost: publish.openNewPost,
+    onOpenEditPost: publish.openEditPost,
+    onOpenSettings: () => setIsSettingsModalOpen(true),
+    onClearSelection: clearPostSelection, onSaved: loadAll,
+    isPublishModalOpen: publish.isPublishModalOpen, setIsPublishModalOpen: publish.setIsPublishModalOpen,
+    editingPost: publish.editingPost, targetNoteId: publish.targetNoteId,
+    isCategoriesModalOpen, setIsCategoriesModalOpen,
+    isSettingsModalOpen, setIsSettingsModalOpen,
+  }
+}
+
+/** The publish dialog's own state: what it edits, which note it targets, and whether it is open. */
+function useBlogPublishModal(initialNoteId: string | undefined, activeNote: { id: string } | null) {
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false)
+  const [editingPost, setEditingPost] = useState<BlogPost | null>(null)
+  const [targetNoteId, setTargetNoteId] = useState<string>('')
+
+  const openNewPost = () => {
     setEditingPost(null)
     setTargetNoteId(initialNoteId || (activeNote?.id ?? ''))
     setIsPublishModalOpen(true)
   }
 
-  const handleOpenEditPost = (post: BlogPost) => {
+  const openEditPost = (post: BlogPost) => {
     setEditingPost(post)
     setTargetNoteId(post.noteId)
     setIsPublishModalOpen(true)
   }
 
   return {
-    activeTab, viewMode, posts, loading, selectedCount: selectedPostIds.size,
-    onSwitchTab: setActiveTab, onOpenNewPost: handleOpenNewPost,
-    onOpenEditPost: handleOpenEditPost,
-    onOpenSettings: () => setIsSettingsModalOpen(true),
-    onClearSelection: clearPostSelection, onSaved: loadAll,
-    isPublishModalOpen, setIsPublishModalOpen, editingPost, targetNoteId,
-    isCategoriesModalOpen, setIsCategoriesModalOpen,
-    isSettingsModalOpen, setIsSettingsModalOpen,
+    isPublishModalOpen, setIsPublishModalOpen,
+    editingPost, setEditingPost, targetNoteId, setTargetNoteId,
+    openNewPost, openEditPost,
   }
 }
 

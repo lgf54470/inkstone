@@ -5,6 +5,12 @@ export type SetBlogStoreState = StoreApi<BlogStoreState>['setState']
 
 export type BlogTab = 'dashboard' | 'posts' | 'comments' | 'categories' | 'links' | 'settings'
 
+/**
+ * The lists whose load result a view draws. A failed load is a state of its own — the alternative
+ * was rendering it as an empty list, which told the reader their data was gone.
+ */
+export type BlogLoadScope = 'posts' | 'comments' | 'links' | 'stats'
+
 
 
 export interface BlogFolderNode {
@@ -49,6 +55,12 @@ export interface BlogStoreState {
   settings: BlogSettings | null
   loading: boolean
   batchBusy: boolean
+
+  /**
+   * Scopes whose last load failed. A refresh failure leaves the previous data in place — only a view
+   * with nothing to show asks this flag to render a failure instead of an empty state.
+   */
+  loadErrors: Set<BlogLoadScope>
 
   setActiveTab: (tab: BlogTab) => void
   setStatusFilter: (status: 'all' | 'published' | 'draft' | 'pinned') => void

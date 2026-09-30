@@ -11,6 +11,7 @@ import { LinkImportExportModal } from './link-import-export-modal'
 import { LinkCheckerModal } from './link-checker-modal'
 import { LinkQrModal } from './link-qr-modal'
 import { LinkContextMenu } from './link-context-menu'
+import { BlogLoadFailure } from '../blog-load-failure'
 
 export function BlogLinksView() {
   const view = useBlogLinksView()
@@ -68,6 +69,7 @@ function LinksTruncationNotice({ shown }: { shown: number }) {
 
 function LinksListContent({ view }: { view: ReturnType<typeof useBlogLinksView> }) {
   if (view.filteredLinks.length === 0) {
+    if (view.loadFailed) return <BlogLoadFailure onRetry={() => void view.loadLinks()} />
     return (
       <div className='flex h-64 flex-col items-center justify-center text-[var(--text-quaternary)] space-y-2'>
         <Inbox size={32} className='opacity-40' />

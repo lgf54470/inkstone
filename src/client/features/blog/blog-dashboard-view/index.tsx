@@ -12,6 +12,7 @@ import { TopPostsCard } from './top-posts-card'
 import { AudienceCards } from './audience-cards'
 import { VisitLogsCard } from './visit-logs-card'
 import { PendingCommentsCard } from './pending-comments-card'
+import { BlogLoadFailure } from '../blog-load-failure'
 
 export function BlogDashboardView({
   onSwitchTab,
@@ -48,8 +49,27 @@ export function BlogDashboardView({
         />
       )}
 
-      <DashboardKpis stats={view.stats} analytics={view.analytics} postsCount={view.posts.length} />
+      {view.statsFailed ? (
+        <BlogLoadFailure onRetry={() => void view.loadAll()} />
+      ) : (
+        <DashboardKpis stats={view.stats} analytics={view.analytics} postsCount={view.posts.length} />
+      )}
 
+      <DashboardAnalytics view={view} onSwitchTab={onSwitchTab} />
+    </div>
+  )
+}
+
+function DashboardAnalytics({
+  view,
+  onSwitchTab,
+}: {
+  view: ReturnType<typeof useBlogDashboardView>
+  onSwitchTab: (tab: BlogTab) => void
+}) {
+  if (view.analyticsFailed) return <BlogLoadFailure onRetry={() => void view.handleRefresh()} />
+  return (
+    <>
       <TrendChartCard
         metricMode={view.metricMode}
         onMetricModeChange={view.setMetricMode}
@@ -66,7 +86,7 @@ export function BlogDashboardView({
         <VisitLogsCard analytics={view.analytics} locale={view.locale} />
         <PendingCommentsCard pendingComments={view.pendingComments} totalComments={view.comments.length} totalPosts={view.posts.length} onSwitchTab={onSwitchTab} updateCommentStatus={view.updateCommentStatus} />
       </div>
-    </div>
+    </>
   )
 }
 

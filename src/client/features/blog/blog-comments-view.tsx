@@ -6,6 +6,7 @@ import { Checkbox, Input } from '../../components/form'
 import { resolveAvatarSource } from '../../lib/avatar'
 import { t } from '../../lib/i18n'
 import { useBlogCommentsView } from './use-blog-comments-view'
+import { BlogLoadFailure } from './blog-load-failure'
 
 export function BlogCommentsView() {
   const view = useBlogCommentsView()
@@ -45,14 +46,21 @@ export function BlogCommentsView() {
         )}
 
         {view.filteredComments.length === 0 ? (
-          <div className='flex h-64 flex-col items-center justify-center text-[var(--text-quaternary)] space-y-2'>
-            <Inbox size={32} className='opacity-40' />
-            <p>{t('blog.no_comments')}</p>
-          </div>
+          <CommentsEmptyState view={view} />
         ) : (
           view.filteredComments.map((comment) => <CommentCard key={comment.id} bundle={commentCardBundle(view, comment)} />)
         )}
       </div>
+    </div>
+  )
+}
+
+function CommentsEmptyState({ view }: { view: ReturnType<typeof useBlogCommentsView> }) {
+  if (view.loadFailed) return <BlogLoadFailure onRetry={() => void view.loadComments()} />
+  return (
+    <div className='flex h-64 flex-col items-center justify-center text-[var(--text-quaternary)] space-y-2'>
+      <Inbox size={32} className='opacity-40' />
+      <p>{t('blog.no_comments')}</p>
     </div>
   )
 }

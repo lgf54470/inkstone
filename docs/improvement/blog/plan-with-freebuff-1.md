@@ -98,9 +98,14 @@
 
 ## 批次 3 · 失败语义与性能
 
-- [ ] B3-01 **ENG-01** store 增 `error` 通道 + 四个视图的三态渲染（加载 / 失败 + 重试 / 空）+ 全部 mutation `try/catch` + 乐观回滚 + 双 toast
+- [~] B3-01 **ENG-01** store 增 `error` 通道 + 四个视图的三态渲染（加载 / 失败 + 重试 / 空）+ 全部 mutation `try/catch` + 乐观回滚 + 双 toast — **三态部分已提交（hash 见下一提交）；mutation 部分进行中**
+  - 实现（三态）：`blog-store` 增 `loadErrors: Set<BlogLoadScope>`（`posts/comments/links/stats`）与 `markLoadFailed`/`markLoadSucceeded`；posts/comments/links/stats 四个 loader 落错，成功时清位（同一个 Set 不变则不改身份，避免多余重渲染）；失败刷新保留上次数据，只有「标志置位且手里没有数据」才渲染失败态。
+  - 新增 `features/blog/blog-load-failure.tsx`（同一句话 + 重试，`role='status'`）与新 key `blog.load_failed`；四处接入：文章列表（hub）、评论、友链，仪表盘另外把 analytics 的本地失败态与 `stats` 一起接入（`useAnalyticsLoad` 抽出取数 effect，控制台仍记原因）。
+  - 复现测试：新增 `blog-store/load-errors.test.ts`（4 条：置位与成功清位、失败刷新保留旧行、作用域互不污染、友链同规则）与 `blog-comments-view-failure.test.ts`（2 条 jsdom：失败画失败态而非空态且重试后恢复、失败刷新保留已有评论）。
+  - 先红证据：把评论视图的失败分支短路成 `false ? ... : ...` 后，第一条渲染用例 **1 failed / 1 passed**，恢复后全绿（证明断言真的盯在失败态上）。
+  - 回归：`typecheck` 绿；`src/client/features/blog` 13 文件 39 条全绿；合并 `tests/blog-routes.test.ts` 共 14 文件 86 条全绿；九项静态门禁绿（`size` 未动基线，按门槛把 `useBlogHubModal` 的发布弹窗状态、评论列表的空/失败分支与仪表盘的 analytics 取数各自抽成小件）。
 - [ ] B3-02 **ENG-02** 文章列表去 `content`（列白名单）+ `LIMIT/OFFSET` + 总数独立查询 + tag 下推 + 前端分页控件
-- [x] B3-03 **ENG-03** `GET /links` 服务端真消费 `status/categoryId/search` + `LIMIT` + counts 改 `GROUP BY` — 已提交（hash 见下一提交）
+- [x] B3-03 **ENG-03** `GET /links` 服务端真消费 `status/categoryId/search` + `LIMIT` + counts 改 `GROUP BY` — 已提交 `60b83bcb`
   - 实现：新增 `src/worker/routes/blog/link-list-query.ts`（列表与计数共用一段 WHERE）：`status` 映射 `pending/approved/rejected` 或两个标记页签 `pinned/favorite`（片段是常量表，请求只能选不能写）、`categoryId` 精确匹配、`search` 走 `escapeLike` + `ESCAPE`；列表 `LIMIT 500`；计数一条 `GROUP BY status`，**不带 status 条件**（切页签时徽标不缩水）、带 category/search（徽标描述眼前这批）；未知 `status` 回 400 而不是静默当 `all`。`links.ts` 因 500 行门槛把查询构建器拆出（同 `post-list-query.ts` 先例）。
   - `BlogLinkStats` 增 `pinned`/`favorite`：这两个页签的计数原本由客户端在数组上数，服务端一次 GROUP BY 即可给出，且不必受 LIMIT 影响。
   - 截断不静默：客户端用「徽标数 > 返回行数」识别命中上限，列表顶部显示「只显示前 N 条」（新 key `blog.link_list_truncated`，双语文案）。
@@ -164,7 +169,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-30 | B3-03 ENG-03 友链列表服务端筛选 + 限页 + `GROUP BY` 计数 | （下一提交回填） | `typecheck` 绿；`tests/blog-links-routes.test.ts` 24 条（含新 3 条）+ `blog-store/links-request.test.ts` 新 3 条全绿；三条新用例已实测在旧实现上先红；九项静态门禁绿（`size` 无需动基线）；`test:unit` 571 文件 5211 通过 / 1 skipped | 500 是上限而非分页，界面提示「只显示前 N 条」；demo 后端本无该端点 |
+| 2026-09-30 | B3-01 ENG-01（三态部分）加载失败成为独立状态 + 失败可重试 | （下一提交回填） | `typecheck` 绿；`src/client/features/blog` 13 文件 39 条 + `tests/blog-routes.test.ts` 47 条全绿（含新 6 条）；失败分支短路的变异证明 1 failed；九项静态门禁绿 | mutation 的 catch/回滚/提示尚未做（进行中）；folders/tags/categories/settings 的 loader 仍只记日志（本条只覆盖四个视图） |
+| 2026-09-30 | B3-03 ENG-03 友链列表服务端筛选 + 限页 + `GROUP BY` 计数 | 60b83bcb | `typecheck` 绿；`tests/blog-links-routes.test.ts` 24 条（含新 3 条）+ `blog-store/links-request.test.ts` 新 3 条全绿；三条新用例已实测在旧实现上先红；九项静态门禁绿（`size` 无需动基线）；`test:unit` 571 文件 5211 通过 / 1 skipped | 500 是上限而非分页，界面提示「只显示前 N 条」；demo 后端本无该端点 |
 | 2026-09-30 | B3-04 ENG-04 搜索防抖 + 取消/序号线（含 `/check-slug`） | 1ea6a399 | `typecheck` 绿；`blog-store/posts-request.test.ts` 新 2 条绿；收尾 `test:unit` 571 文件 5211 通过 / 1 skipped（全绿） | 本条只覆盖文章列表；友链搜索的取消/序号线随 B3-03 补上，未加防抖 |
 | 2026-09-30 | B2-05 COR-08 链接检测失败≠失效 + 缓存时效 + 批量删除条数 | 7dba4896 | `typecheck` 绿；`src/client/features/blog` 9 文件 28 条全绿（含新 2 条）；`i18n:check`/`hardcoded:check`/`comments:check` 绿 | 陈旧结果仍会展示（按计划要求标注而不丢弃） |
 | 2026-09-30 | B2-03 COR-04 浏览计数改浏览器 beacon（前台 BF-1 待做） | 43243ee4 | `typecheck` 绿；`tests/blog-routes.test.ts` 47 条全绿；7 项静态门禁绿；`blog-frontend`：`npm test` 295 通过、`astro check` 仅 3 条既有报错 | 访客侧浏览器未执行 JS 时不再计数（取数路径不再代计）；作者自身访问的 `is_owner` 目前仍为 0（beacon 不带会话）；BF-1 未做 |
