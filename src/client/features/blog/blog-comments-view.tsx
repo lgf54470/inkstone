@@ -8,6 +8,9 @@ import { t } from '../../lib/i18n'
 import { useBlogCommentsView } from './use-blog-comments-view'
 import { BlogLoadFailure } from './blog-load-failure'
 
+/** The comment avatar's rendered size, also declared as its intrinsic size so the row reserves it. */
+const AVATAR_SIZE_PX = 32
+
 export function BlogCommentsView() {
   const view = useBlogCommentsView()
 
@@ -312,6 +315,10 @@ function CommentAuthorAvatar({ comment }: { comment: BlogComment }) {
     <img
       src={src}
       alt={comment.authorName}
+      loading='lazy'
+      decoding='async'
+      width={AVATAR_SIZE_PX}
+      height={AVATAR_SIZE_PX}
       className='size-8 rounded-full bg-[var(--bg-sunken)] object-cover border border-[var(--border-subtle)]'
     />
   )

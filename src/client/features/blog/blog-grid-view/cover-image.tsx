@@ -31,10 +31,15 @@ export function PostCoverImage({
     )
   }
 
+  // Every caller draws the picture inside a box that already reserves its space (the grid's
+  // `h-36 w-full`, the table's `size-9`), so the layout does not wait for the bytes; deferring the
+  // fetch and decoding off the main thread keeps fifty cards from competing with the first paint.
   return (
     <img
       src={clean}
       alt={alt}
+      loading='lazy'
+      decoding='async'
       onError={() => setIsError(true)}
       className={className}
     />

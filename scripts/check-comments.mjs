@@ -2873,6 +2873,7 @@ const allowed = new Map([
     '/**\n * ENG-01: a failed load is a state of its own. This surface used to draw `filteredComments` and, when\n * it was empty because nothing had arrived, say there were no comments — so being offline looked\n * exactly like a blog nobody had commented on.\n */',
   ]],
   ['src/client/features/blog/blog-comments-view.tsx', [
+    '/** The comment avatar\'s rendered size, also declared as its intrinsic size so the row reserves it. */',
     '// The picture comes from a reader\'s own form, so the source is whatever this app will render:',
     '// an image URL that passed the allowlist, or an avatar drawn locally from the name. A comment',
     '// stores no third-party default any more, because fetching one would put every reader\'s browser',
@@ -2899,6 +2900,14 @@ const allowed = new Map([
     '/**\n * A failed load with nothing on screen is its own state: a failed refresh over existing data keeps\n * drawing what it has, but an empty dashboard says the load failed instead of "no visitors yet".\n */',
     '/**\n * What the payload means under the switches. A number only counts as filtered when the switch hiding\n * it is on: the server reports all three regardless, and the banner that reads these is describing\n * what is not in the chart above it.\n */',
     '// An aborted request is the reader changing the question, not a failed load.',
+  ]],
+  ['src/client/features/blog/blog-grid-view/cover-image.test.ts', [
+    '/**\n * A list of fifty cards used to fetch every cover as eagerly as the browser allowed and decode them\n * on the main thread while the reader was still scrolling the first screen.\n */',
+  ]],
+  ['src/client/features/blog/blog-grid-view/cover-image.tsx', [
+    '// Every caller draws the picture inside a box that already reserves its space (the grid\'s',
+    '// `h-36 w-full`, the table\'s `size-9`), so the layout does not wait for the bytes; deferring the',
+    '// fetch and decoding off the main thread keeps fifty cards from competing with the first paint.',
   ]],
   ['src/client/features/blog/blog-hub-sidebar/use-blog-hub-sidebar.tsx', [
     '// The comment badge reads the server\'s unfiltered tally: counting the loaded rows would read the',

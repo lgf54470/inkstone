@@ -312,11 +312,12 @@
 - **方案**：`memo` + `useCallback`/`useMemo`；Map 与菜单项提 `useMemo`，菜单项延迟到打开时构造；长列表接窗口化（仓库有 `features/list/note-list/render-window.tsx` 可复用）；store 的 subscribe 加键过滤并在无变化时跳过。
 - **范围**：四个视图 + `use-blog-post-card.tsx` + `use-blog-hub-sidebar.tsx` + `blog-store/index.ts`。代价 **M**。
 
-#### ENG-13 [P1][开放] 封面/头像图片无懒加载、无宽高
+#### ENG-13 [P1][已修] 封面/头像图片无懒加载、无宽高
 - **问题**：`blog-grid-view/cover-image.tsx:35-39` 的 `<img>` 无 `loading`/`decoding`/宽高，`blog-comments-view.tsx:296-302` 的头像同病；表格行用 36px 的框加载原图。
 - **量级**（假设 30 张有封面的卡片，原图 1200×630 ≈200～400 KB）：≈**6～12 MB** 未延迟下载，且无 `width/height` 导致 CLS。
 - **方案**：补 `loading='lazy' decoding='async'` 与宽高（或 `aspect-ratio`）；表格缩略图走尺寸变体（若部署有 `/cdn-cgi/image/`）或至少限制请求尺寸。仓库正解可照抄 `link-dynamic-icon.tsx:56-64`。
 - **范围**：`cover-image.tsx`、`blog-comments-view.tsx`。代价 **S**。
+- **落地（B3-09）**：`PostCoverImage` 与评论头像补 `loading='lazy'` + `decoding='async'`，评论头像另补 `width/height=32`。封面没有再加 `width/height`：调用方的容器本来就各自固定了盒尺寸（网格 `h-36 w-full`、表格 `size-9`），写死的属性反而会与真实图片比例冲突。表格 36px 缩略图仍取原图字节——全仓无 `/cdn-cgi/image/`，部署未配置 Cloudflare Image Resizing，尺寸变体属部署侧能力，不在本批。复现测试 `blog-grid-view/cover-image.test.ts` 2 条（懒加载/异步解码属性存在、不可渲染地址画占位符而不发请求）。
 
 #### ENG-14 [P1][已修] 索引与实际 `ORDER BY` / `WHERE` 错配，且缺两条
 - **问题**：① 友链主列表排序是 `is_pinned DESC, pinned_order ASC, sort_order ASC, created_at DESC`（`links.ts:56-60`），而现有索引 `idx_blog_links_user(user_id, status, is_pinned DESC, sort_order ASC, created_at ASC)` 的 `status` 卡在中间且方向不符 → 无索引可覆盖，每次全排序；② 评论查询 `WHERE p.user_id` + `ORDER BY c.created_at DESC` 命中 `idx_blog_comments_status(status, created_at DESC)`（该索引无 `user_id` 前缀）→ 扫全用户同状态行；③ 缺 `(user_id, is_pinned)`（`posts` 排序含 `is_pinned DESC`）与 `(user_id, views)`（`/stats` 与 top posts 都按 views 排序）。
