@@ -61,7 +61,7 @@ function useBlogLinksBatchOperations(
     if (action === 'delete') {
       const ok = await confirm({
         title: t('blog.link_batch_delete'),
-        description: t('blog.confirm_delete_link'),
+        description: t('blog.confirm_delete_links', { value0: store.selectedLinkIds.size }),
         confirmLabel: t('common.delete'),
         tone: 'danger',
       })
@@ -73,9 +73,11 @@ function useBlogLinksBatchOperations(
 
   const handleBatchDeleteLinks = async (ids: string[]) => {
     if (ids.length === 0) return
+    // The confirmation names the number it is about to delete: it used to reuse the single-link
+    // sentence, so deleting forty broken links asked about "this link".
     const ok = await confirm({
       title: t('blog.link_batch_delete'),
-      description: t('blog.confirm_delete_link'),
+      description: t('blog.confirm_delete_links', { value0: ids.length }),
       confirmLabel: t('common.delete'),
       tone: 'danger',
     })

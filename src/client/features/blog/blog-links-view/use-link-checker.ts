@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BlogLink } from '@shared/types'
 import { api } from '../../../lib/api'
 
+export type LinkHealthLevel = 'ok' | 'warning' | 'broken' | 'error' | 'skipped' | 'checking'
+
 export interface HealthResult {
   status: number | null
   ok: boolean
-  level: 'ok' | 'warning' | 'broken' | 'skipped' | 'checking'
+  level: LinkHealthLevel
   durationMs: number
   error?: string
   finalUrl?: string
@@ -13,6 +15,17 @@ export interface HealthResult {
 
 const BATCH_SIZE = 8
 const CACHE_KEY = 'inkstone_blog_link_check_cache'
+
+/**
+ * How long a stored verdict stays current. The checker used to read its cache without ever looking at
+ * the timestamp it wrote, so a result from months ago was displayed — and bulk-deleted on — as if it
+ * were this morning's.
+ */
+export const CACHE_TTL_MS = 24 * 60 * 60 * 1000
+
+export function isCacheStale(timestamp: unknown, now: number): boolean {
+  return typeof timestamp !== 'number' || !Number.isFinite(timestamp) || now - timestamp > CACHE_TTL_MS
+}
 
 export function useLinkCheckerState(
   links: BlogLink[],
@@ -22,7 +35,8 @@ export function useLinkCheckerState(
   const [results, setResults] = useState<Record<string, HealthResult>>({})
   const [running, setRunning] = useState(false)
   const [progressIndex, setProgressIndex] = useState(0)
-  const [filterLevel, setFilterLevel] = useState<'all' | 'broken' | 'warning' | 'ok'>('all')
+  const [filterLevel, setFilterLevel] = useState<'all' | 'broken' | 'error' | 'warning' | 'ok'>('all')
+  const [cacheStale, setCacheStale] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [batchDeleting, setBatchDeleting] = useState(false)
   const stopRequested = useRef(false)
@@ -33,7 +47,7 @@ export function useLinkCheckerState(
       setRunning(false)
       return
     }
-    loadCachedResults(setResults)
+    loadCachedResults(setResults, setCacheStale)
   }, [open])
 
   const stats = useMemo(() => computeStats(links, results), [links, results])
@@ -49,7 +63,7 @@ export function useLinkCheckerState(
 
   return {
     results, running, progressIndex, filterLevel, setFilterLevel,
-    selectedIds, setSelectedIds, batchDeleting, stats, filteredLinks,
+    selectedIds, setSelectedIds, batchDeleting, stats, filteredLinks, cacheStale,
     ...actions,
   }
 }
@@ -93,7 +107,9 @@ function useCheckerActions(props: CheckerActionProps) {
         })
       }
     } catch (err: unknown) {
-      props.setResults((prev) => ({ ...prev, [url]: { status: null, ok: false, level: 'broken', durationMs: 0, error: (err as Error).message } }))
+      // A request that never reached the site says nothing about the site: 'error' is not a verdict,
+      // and only a verdict may be deleted.
+      props.setResults((prev) => ({ ...prev, [url]: { status: null, ok: false, level: 'error', durationMs: 0, error: (err as Error).message } }))
     }
   }
 
@@ -112,10 +128,11 @@ function useCheckerActions(props: CheckerActionProps) {
 }
 
 export function computeStats(links: BlogLink[], results: Record<string, HealthResult>) {
-  const counts = { ok: 0, warning: 0, broken: 0, unchecked: 0 }
+  const counts: Record<'ok' | 'warning' | 'broken' | 'error' | 'unchecked', number> =
+    { ok: 0, warning: 0, broken: 0, error: 0, unchecked: 0 }
   for (const l of links) {
     const level = results[l.url]?.level
-    const key = level === 'ok' || level === 'warning' || level === 'broken' ? level : 'unchecked'
+    const key = level === 'ok' || level === 'warning' || level === 'broken' || level === 'error' ? level : 'unchecked'
     counts[key]++
   }
   return counts
@@ -154,10 +171,12 @@ async function runCheckerLoop(
         return next
       })
     } catch (err: unknown) {
+      // One flaky request must not mark a whole batch broken: a failure to ask is recorded as an
+      // error, which the filter, the counts and the bulk delete all keep apart from a verdict.
       setResults((prev) => {
         const next = { ...prev }
         for (const u of urls) {
-          next[u] = { status: null, ok: false, level: 'broken', durationMs: 0, error: (err as Error).message }
+          next[u] = { status: null, ok: false, level: 'error', durationMs: 0, error: (err as Error).message }
         }
         return next
       })
@@ -166,12 +185,20 @@ async function runCheckerLoop(
   }
 }
 
-function loadCachedResults(set: (r: Record<string, HealthResult>) => void) {
+function loadCachedResults(
+  set: (r: Record<string, HealthResult>) => void,
+  setStale: (stale: boolean) => void,
+) {
   try {
     const raw = localStorage.getItem(CACHE_KEY)
     if (!raw) return
     const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed.results === 'object') set(parsed.results)
+    if (parsed && typeof parsed.results === 'object') {
+      // An old verdict is still worth showing — it is the last thing anyone measured — but it is
+      // shown as old.
+      setStale(isCacheStale(parsed.timestamp, Date.now()))
+      set(parsed.results)
+    }
   } catch {
     set({})
   }

@@ -52,6 +52,7 @@ export function LinkCheckerModal({
           running={state.running}
           progressIndex={state.progressIndex}
           filterLevel={state.filterLevel}
+          stale={state.cacheStale}
           onSelectFilter={state.setFilterLevel}
           onStart={state.handleStart}
           onPause={state.handlePause}
@@ -94,16 +95,18 @@ function CheckerStatsHeader({
   running,
   progressIndex,
   filterLevel,
+  stale,
   onSelectFilter,
   onStart,
   onPause,
 }: {
-  stats: { ok: number; warning: number; broken: number; unchecked: number }
+  stats: { ok: number; warning: number; broken: number; error: number; unchecked: number }
   total: number
   running: boolean
   progressIndex: number
-  filterLevel: 'all' | 'broken' | 'warning' | 'ok'
-  onSelectFilter: (f: 'all' | 'broken' | 'warning' | 'ok') => void
+  stale: boolean
+  filterLevel: 'all' | 'broken' | 'error' | 'warning' | 'ok'
+  onSelectFilter: (f: 'all' | 'broken' | 'error' | 'warning' | 'ok') => void
   onStart: () => void
   onPause: () => void
 }) {
@@ -132,10 +135,15 @@ function CheckerStatsHeader({
         <div className='flex items-center gap-1.5 text-[length:var(--text-11)]'>
           <FilterBadge label={t('blog.link_check_filter_all')} count={total} active={filterLevel === 'all'} onClick={() => onSelectFilter('all')} />
           <FilterBadge label={t('blog.link_check_broken')} count={stats.broken} tone='danger' active={filterLevel === 'broken'} onClick={() => onSelectFilter('broken')} />
+          <FilterBadge label={t('blog.link_check_failed')} count={stats.error} tone='warning' active={filterLevel === 'error'} onClick={() => onSelectFilter('error')} />
           <FilterBadge label={t('blog.link_check_warning')} count={stats.warning} tone='warning' active={filterLevel === 'warning'} onClick={() => onSelectFilter('warning')} />
           <FilterBadge label={t('blog.link_check_ok')} count={stats.ok} tone='success' active={filterLevel === 'ok'} onClick={() => onSelectFilter('ok')} />
         </div>
       </div>
+
+      {stale && (
+        <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('blog.link_check_cache_stale')}</p>
+      )}
 
       {running && (
         <div className='h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-surface)]'>
@@ -349,6 +357,14 @@ function HealthBadge({ result }: { result?: HealthResult }) {
       <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-semibold bg-amber-500/15 text-[var(--warning)]'>
         <AlertCircle size={10} />
         <span>{result.status || 400}</span>
+      </span>
+    )
+  }
+  if (result.level === 'error') {
+    return (
+      <span className='inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[length:var(--text-10)] font-semibold bg-[var(--bg-sunken)] text-[var(--text-secondary)]' title={result.error}>
+        <AlertCircle size={10} />
+        <span>{t('blog.link_check_failed')}</span>
       </span>
     )
   }

@@ -2911,8 +2911,26 @@ const allowed = new Map([
     '// A reader may have supplied this picture: an address that is not an image source this app will',
     '// fetch is treated like a load that failed, so the initial is drawn instead of it.',
   ]],
+  ['src/client/features/blog/blog-links-view/link-health.test.ts', [
+    '/**\n * A request that never reached the site and a site that answered "gone" are different findings, and\n * the checker used to record both as broken — which the bulk delete then acted on. The cache had the\n * same problem in the other direction: it was read without its timestamp, so a verdict from months\n * ago was shown as current.\n */',
+    '// A cache written by an older version carries no timestamp, and an unreadable age is not a',
+    '// reason to call it fresh.',
+  ]],
   ['src/client/features/blog/blog-links-view/link-qr-modal.tsx', [
     '/* The address arrived from a reader: it opens only when a link may carry it. */',
+  ]],
+  ['src/client/features/blog/blog-links-view/use-blog-links-view.ts', [
+    '// The confirmation names the number it is about to delete: it used to reuse the single-link',
+    '// sentence, so deleting forty broken links asked about "this link".',
+  ]],
+  ['src/client/features/blog/blog-links-view/use-link-checker.ts', [
+    '/**\n * How long a stored verdict stays current. The checker used to read its cache without ever looking at\n * the timestamp it wrote, so a result from months ago was displayed — and bulk-deleted on — as if it\n * were this morning\'s.\n */',
+    '// A request that never reached the site says nothing about the site: \'error\' is not a verdict,',
+    '// and only a verdict may be deleted.',
+    '// One flaky request must not mark a whole batch broken: a failure to ask is recorded as an',
+    '// error, which the filter, the counts and the bulk delete all keep apart from a verdict.',
+    '// An old verdict is still worth showing — it is the last thing anyone measured — but it is',
+    '// shown as old.',
   ]],
   ['src/client/features/blog/blog-settings-retention.test.ts', [
     '// A test that fails before its unmount would otherwise leave its modal in the',
