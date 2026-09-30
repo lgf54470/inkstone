@@ -98,11 +98,17 @@
 
 ## 批次 3 · 失败语义与性能
 
-- [~] B3-01 **ENG-01** store 增 `error` 通道 + 四个视图的三态渲染（加载 / 失败 + 重试 / 空）+ 全部 mutation `try/catch` + 乐观回滚 + 双 toast — **三态部分已提交（hash 见下一提交）；mutation 部分进行中**
+- [x] B3-01 **ENG-01** store 增 `error` 通道 + 四个视图的三态渲染（加载 / 失败 + 重试 / 空）+ 全部 mutation `try/catch` + 乐观回滚 + danger 提示 — 三态部分已提交 `ddfd54e7`，mutation 部分已提交（hash 由下一提交回填，见进度日志）
   - 实现（三态）：`blog-store` 增 `loadErrors: Set<BlogLoadScope>`（`posts/comments/links/stats`）与 `markLoadFailed`/`markLoadSucceeded`；posts/comments/links/stats 四个 loader 落错，成功时清位（同一个 Set 不变则不改身份，避免多余重渲染）；失败刷新保留上次数据，只有「标志置位且手里没有数据」才渲染失败态。
   - 新增 `features/blog/blog-load-failure.tsx`（同一句话 + 重试，`role='status'`）与新 key `blog.load_failed`；四处接入：文章列表（hub）、评论、友链，仪表盘另外把 analytics 的本地失败态与 `stats` 一起接入（`useAnalyticsLoad` 抽出取数 effect，控制台仍记原因）。
   - 复现测试：新增 `blog-store/load-errors.test.ts`（4 条：置位与成功清位、失败刷新保留旧行、作用域互不污染、友链同规则）与 `blog-comments-view-failure.test.ts`（2 条 jsdom：失败画失败态而非空态且重试后恢复、失败刷新保留已有评论）。
   - 先红证据：把评论视图的失败分支短路成 `false ? ... : ...` 后，第一条渲染用例 **1 failed / 1 passed**，恢复后全绿（证明断言真的盯在失败态上）。
+  - 实现（mutation）：新增 `blog-store/mutation.ts`——`reportBlogMutationError`（`console.error` 带上下文 + `errorMessage(error) || t('common.action_failed')` 的 danger toast）与 `runBlogMutation`（成功才刷新，失败只上报）；`actions.ts`/`links.ts`/`content.ts` 的全部写入改走它或自带的 try/catch：`updatePost` 只回滚被改的那一行、`batchToggleGroup`/`batchMoveToFolder` 按快照回滚 `posts`/`stats`，其余（删除、同步、评论状态与批量、分类、设置、友链全部写入）报错后返回 `false`/`null` 而非抛错。
+  - 契约随之改为「mutation 自己报告失败」：调用点不再有人 `void` 一个会 reject 的 Promise，成功提示一律按返回值判断（文章卡片、评论、友链、批量条、分类/设置/发布/友链编辑/导入/友链分类树）；友链检测器的批量删除在失败时不再清空选择。
+  - 复现测试：新增 `blog-store/mutation-failures.test.ts`（6 条：乐观 patch 被拒后回滚且提示、成功则不回滚也不提示、删除被拒返回 `false`、批量发布被拒回滚 `posts` + `stats`、文件夹创建失败不再静默、友链状态修改失败提示）。
+  - 先红证据：把回滚那一行短路成 `previous ? previous : p` 不生效（`&& false`）后，第一条用例 **1 failed / 5 passed**，恢复后全绿。
+  - 回归：`typecheck` 绿；blog 相关 16 文件 116 条全绿（含新 6 条）；`test:unit` 574 文件 5223 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线：发布表单抽出 `readNoteContent`/`writePostFrontMatter`，测试拆成两个 describe）。
+  - 已知限制：`use-blog-note-submenu.ts` 里两处直连 `api` 的写入（同步/取消发布）本来就有自己的 catch 与 toast，未并入本次改动。
   - 回归：`typecheck` 绿；`src/client/features/blog` 13 文件 39 条全绿；合并 `tests/blog-routes.test.ts` 共 14 文件 86 条全绿；九项静态门禁绿（`size` 未动基线，按门槛把 `useBlogHubModal` 的发布弹窗状态、评论列表的空/失败分支与仪表盘的 analytics 取数各自抽成小件）。
 - [ ] B3-02 **ENG-02** 文章列表去 `content`（列白名单）+ `LIMIT/OFFSET` + 总数独立查询 + tag 下推 + 前端分页控件
 - [x] B3-03 **ENG-03** `GET /links` 服务端真消费 `status/categoryId/search` + `LIMIT` + counts 改 `GROUP BY` — 已提交 `60b83bcb`
@@ -169,7 +175,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-30 | B3-01 ENG-01（三态部分）加载失败成为独立状态 + 失败可重试 | （下一提交回填） | `typecheck` 绿；`src/client/features/blog` 13 文件 39 条 + `tests/blog-routes.test.ts` 47 条全绿（含新 6 条）；失败分支短路的变异证明 1 failed；九项静态门禁绿 | mutation 的 catch/回滚/提示尚未做（进行中）；folders/tags/categories/settings 的 loader 仍只记日志（本条只覆盖四个视图） |
+| 2026-09-30 | B3-01 ENG-01（mutation 部分）写入自带失败提示与乐观回滚 | （下一提交回填） | `typecheck` 绿；blog 相关 16 文件 116 条全绿（含新 6 条）；回滚变异证明 1 failed / 5 passed；九项静态门禁绿（`size` 未动基线）；`test:unit` 574 文件 5223 通过 / 1 skipped | 直连 `api` 的两处笔记侧写入未并入；folders/tags/categories/settings 的 loader 仍只记日志 |
+| 2026-09-30 | B3-01 ENG-01（三态部分）加载失败成为独立状态 + 失败可重试 | ddfd54e7 | `typecheck` 绿；`src/client/features/blog` 13 文件 39 条 + `tests/blog-routes.test.ts` 47 条全绿（含新 6 条）；失败分支短路的变异证明 1 failed；九项静态门禁绿 | mutation 的 catch/回滚/提示尚未做（进行中）；folders/tags/categories/settings 的 loader 仍只记日志（本条只覆盖四个视图） |
 | 2026-09-30 | B3-03 ENG-03 友链列表服务端筛选 + 限页 + `GROUP BY` 计数 | 60b83bcb | `typecheck` 绿；`tests/blog-links-routes.test.ts` 24 条（含新 3 条）+ `blog-store/links-request.test.ts` 新 3 条全绿；三条新用例已实测在旧实现上先红；九项静态门禁绿（`size` 无需动基线）；`test:unit` 571 文件 5211 通过 / 1 skipped | 500 是上限而非分页，界面提示「只显示前 N 条」；demo 后端本无该端点 |
 | 2026-09-30 | B3-04 ENG-04 搜索防抖 + 取消/序号线（含 `/check-slug`） | 1ea6a399 | `typecheck` 绿；`blog-store/posts-request.test.ts` 新 2 条绿；收尾 `test:unit` 571 文件 5211 通过 / 1 skipped（全绿） | 本条只覆盖文章列表；友链搜索的取消/序号线随 B3-03 补上，未加防抖 |
 | 2026-09-30 | B2-05 COR-08 链接检测失败≠失效 + 缓存时效 + 批量删除条数 | 7dba4896 | `typecheck` 绿；`src/client/features/blog` 9 文件 28 条全绿（含新 2 条）；`i18n:check`/`hardcoded:check`/`comments:check` 绿 | 陈旧结果仍会展示（按计划要求标注而不丢弃） |

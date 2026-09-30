@@ -2935,6 +2935,8 @@ const allowed = new Map([
     '/**\n * How long a stored verdict stays current. The checker used to read its cache without ever looking at\n * the timestamp it wrote, so a result from months ago was displayed — and bulk-deleted on — as if it\n * were this morning\'s.\n */',
     '// A request that never reached the site says nothing about the site: \'error\' is not a verdict,',
     '// and only a verdict may be deleted.',
+    '// Keep the selection when nothing was deleted: a failed run should not lose the rows the',
+    '// reader picked while the toast is still on screen.',
     '// One flaky request must not mark a whole batch broken: a failure to ask is recorded as an',
     '// error, which the filter, the counts and the bulk delete all keep apart from a verdict.',
     '// An old verdict is still worth showing — it is the last thing anyone measured — but it is',
@@ -2946,6 +2948,8 @@ const allowed = new Map([
   ['src/client/features/blog/blog-publish-modal/use-blog-publish-form.ts', [
     '// Debounced, cancelled and sequence-checked: only the answer to the slug as it is typed last may',
     '// set the badge, or a slow reply about a previous slug claims the current one is taken.',
+    '/** The note may still be a stub in memory; storage holds the body in that case. */',
+    '/** Mirrors what was published into the note\'s front matter, so the note list agrees with the post. */',
   ]],
   ['src/client/features/blog/blog-settings-retention.test.ts', [
     '// A test that fails before its unmount would otherwise leave its modal in the',
@@ -2986,6 +2990,13 @@ const allowed = new Map([
     '// A refresh failure leaves the previous list where it is and raises the flag: an empty screen',
     '// because a request failed would read as "your posts are gone".',
   ]],
+  ['src/client/features/blog/blog-store/mutation-failures.test.ts', [
+    '/**\n * Every mutation resolves to whether it went through, reports a failure itself (danger toast) and\n * rolls back the optimistic change. The callers that wrote `void updatePost(...)` had no other way\n * to learn it failed — the rejection was unhandled and the optimistic row stayed painted.\n */',
+  ]],
+  ['src/client/features/blog/blog-store/mutation.ts', [
+    '/**\n * Reports one failed blog mutation. The handling lives here rather than at each call site for two\n * reasons: the store is where the optimistic change has to be undone, and the callers that wrote\n * `void updatePost(...)` had nothing to catch — the rejection was an unhandled promise, the row\n * kept a change the server had refused, and nothing on screen said so.\n */',
+    '/**\n * Runs a mutation that answers only whether it went through (`false` after reporting the failure).\n * `refresh` runs only on success, so a request that failed never overwrites the list it could not\n * change.\n */',
+  ]],
   ['src/client/features/blog/blog-store/posts-request.test.ts', [
     '/**\n * The list is asked once per keystroke in the search box, and answers can arrive out of order. Two\n * rules keep the screen honest: the request a newer one replaces is cancelled, and an answer that\n * arrives after a newer request went out is dropped instead of overwriting it.\n */',
   ]],
@@ -3000,6 +3011,7 @@ const allowed = new Map([
   ['src/client/features/blog/blog-store/types.ts', [
     '/**\n * The lists whose load result a view draws. A failed load is a state of its own — the alternative\n * was rendering it as an empty list, which told the reader their data was gone.\n */',
     '/**\n   * Scopes whose last load failed. A refresh failure leaves the previous data in place — only a view\n   * with nothing to show asks this flag to render a failure instead of an empty state.\n   */',
+    '/**\n   * Everything below is a mutation: it reports its own failure (see `mutation.ts`), resolves to\n   * `false`/`null` after a danger toast and rolls back any optimistic change it made, so no caller\n   * has to catch a rejection from it.\n   */',
     '/**\n   * The post list\'s in-flight request: `seq` lets a late answer be dropped (the reader may have\n   * typed again since), and the controller cancels the request the newest one replaces. Both are\n   * request lifecycle, not data — the list itself lives in `posts`.\n   */',
     '/** The same latest-wins rule as the post list, for the link list\'s status/category/search. */',
   ]],

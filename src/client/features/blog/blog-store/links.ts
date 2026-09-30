@@ -1,5 +1,6 @@
 import type { BlogLink, BlogLinkCategory, BlogLinkStatus } from '@shared/types'
 import { api } from '../../../lib/api'
+import { reportBlogMutationError, runBlogMutation } from './mutation'
 import { markLoadFailed, markLoadSucceeded } from './state'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
@@ -104,43 +105,37 @@ async function createLinkImpl(data: Partial<BlogLink>, get: () => BlogStoreState
     const res = await api.blog.links.create(data)
     await get().loadLinks()
     return res.link
-  } catch (err) {
-    console.error('Failed to create link', err)
+  } catch (error) {
+    reportBlogMutationError(error)
     return null
   }
 }
 
-async function updateLinkImpl(id: string, patch: Partial<BlogLink>, get: () => BlogStoreState): Promise<void> {
-  await api.blog.links.patch(id, patch)
-  await get().loadLinks()
+async function updateLinkImpl(id: string, patch: Partial<BlogLink>, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(() => api.blog.links.patch(id, patch), () => get().loadLinks())
 }
 
-async function deleteLinkImpl(id: string, get: () => BlogStoreState): Promise<void> {
-  await api.blog.links.remove(id)
-  await get().loadLinks()
+async function deleteLinkImpl(id: string, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(() => api.blog.links.remove(id), () => get().loadLinks())
 }
 
-async function updateLinkStatusImpl(id: string, status: BlogLinkStatus, get: () => BlogStoreState): Promise<void> {
-  await api.blog.links.updateStatus(id, status)
-  await get().loadLinks()
+async function updateLinkStatusImpl(id: string, status: BlogLinkStatus, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(() => api.blog.links.updateStatus(id, status), () => get().loadLinks())
 }
 
-async function togglePinLinkImpl(id: string, isPinned: boolean, get: () => BlogStoreState): Promise<void> {
-  await api.blog.links.togglePin(id, isPinned)
-  await get().loadLinks()
+async function togglePinLinkImpl(id: string, isPinned: boolean, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(() => api.blog.links.togglePin(id, isPinned), () => get().loadLinks())
 }
 
-async function toggleFavoriteLinkImpl(id: string, isFavorite: boolean, get: () => BlogStoreState): Promise<void> {
-  await api.blog.links.toggleFavorite(id, isFavorite)
-  await get().loadLinks()
+async function toggleFavoriteLinkImpl(id: string, isFavorite: boolean, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(() => api.blog.links.toggleFavorite(id, isFavorite), () => get().loadLinks())
 }
 
 async function reorderLinksImpl(
   orders: Array<{ id: string; sortOrder?: number; pinnedOrder?: number }>,
   get: () => BlogStoreState,
-): Promise<void> {
-  await api.blog.links.reorder(orders)
-  await get().loadLinks()
+): Promise<boolean> {
+  return runBlogMutation(() => api.blog.links.reorder(orders), () => get().loadLinks())
 }
 
 async function batchLinksImpl(
@@ -148,14 +143,18 @@ async function batchLinksImpl(
   categoryId: string | null | undefined,
   set: SetBlogStoreState,
   get: () => BlogStoreState,
-): Promise<void> {
+): Promise<boolean> {
   const { selectedLinkIds } = get()
-  if (selectedLinkIds.size === 0) return
+  if (selectedLinkIds.size === 0) return false
   set({ batchBusy: true })
   try {
     await api.blog.links.batch(action, Array.from(selectedLinkIds), categoryId)
     set({ selectedLinkIds: new Set() })
     await get().loadLinks()
+    return true
+  } catch (error) {
+    reportBlogMutationError(error)
+    return false
   } finally {
     set({ batchBusy: false })
   }
@@ -169,8 +168,8 @@ async function createLinkCategoryImpl(
     const res = await api.blog.linkCategories.create(data)
     await get().loadLinks()
     return res.category
-  } catch (err) {
-    console.error('Failed to create link category', err)
+  } catch (error) {
+    reportBlogMutationError(error)
     return null
   }
 }
@@ -179,14 +178,12 @@ async function updateLinkCategoryImpl(
   id: string,
   patch: { name?: string; icon?: string | null; parentId?: string | null; sortOrder?: number },
   get: () => BlogStoreState,
-): Promise<void> {
-  await api.blog.linkCategories.patch(id, patch)
-  await get().loadLinks()
+): Promise<boolean> {
+  return runBlogMutation(() => api.blog.linkCategories.patch(id, patch), () => get().loadLinks())
 }
 
-async function deleteLinkCategoryImpl(id: string, get: () => BlogStoreState): Promise<void> {
-  await api.blog.linkCategories.remove(id)
-  await get().loadLinks()
+async function deleteLinkCategoryImpl(id: string, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(() => api.blog.linkCategories.remove(id), () => get().loadLinks())
 }
 
 async function importLinksDataImpl(
@@ -195,11 +192,16 @@ async function importLinksDataImpl(
     links: Array<Partial<BlogLink>>
   },
   get: () => BlogStoreState,
-): Promise<{ importedCategories: number; importedLinks: number }> {
-  const res = await api.blog.links.import(payload)
-  await get().loadLinks()
-  return {
-    importedCategories: res.importedCategories,
-    importedLinks: res.importedLinks,
+): Promise<{ importedCategories: number; importedLinks: number } | null> {
+  try {
+    const res = await api.blog.links.import(payload)
+    await get().loadLinks()
+    return {
+      importedCategories: res.importedCategories,
+      importedLinks: res.importedLinks,
+    }
+  } catch (error) {
+    reportBlogMutationError(error)
+    return null
   }
 }

@@ -66,12 +66,8 @@ async function copyPostLink(slug: string, frontendBase: string, toast: UiState['
 }
 
 async function syncPostNow(id: string, syncPost: BlogStoreState['syncPost'], toast: UiState['toast']): Promise<void> {
-  try {
-    await syncPost(id)
-    toast({ title: t('blog.sync_success'), tone: 'success' })
-  } catch {
-    toast({ title: t('common.action_failed'), tone: 'danger' })
-  }
+  const ok = await syncPost(id)
+  if (ok) toast({ title: t('blog.sync_success'), tone: 'success' })
 }
 
 async function deletePostFlow(post: BlogPost, deletePost: BlogStoreState['deletePost'], toast: UiState['toast'], deleteConfirmKey: DeleteConfirmKey): Promise<void> {
@@ -82,8 +78,8 @@ async function deletePostFlow(post: BlogPost, deletePost: BlogStoreState['delete
     tone: 'danger',
   })
   if (!ok) return
-  await deletePost(post.id)
-  toast({ title: t('blog.post_deleted'), tone: 'default' })
+  const deleted = await deletePost(post.id)
+  if (deleted) toast({ title: t('blog.post_deleted'), tone: 'default' })
 }
 
 async function movePostToFolder(

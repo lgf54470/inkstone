@@ -104,8 +104,8 @@ async function deleteSingleComment(
     tone: 'danger',
   })
   if (!ok) return
-  await deleteComment(id)
-  toast({ title: t('blog.comment_deleted'), tone: 'default' })
+  const deleted = await deleteComment(id)
+  if (deleted) toast({ title: t('blog.comment_deleted'), tone: 'default' })
 }
 
 async function batchCommentsAction(
@@ -124,8 +124,8 @@ async function batchCommentsAction(
     })
     if (!ok) return
   }
-  await batchComments(action)
-  toast({ title: t('blog.batch_action_success'), tone: 'success' })
+  const done = await batchComments(action)
+  if (done) toast({ title: t('blog.batch_action_success'), tone: 'success' })
 }
 
 type CommentBatchAction = 'approve' | 'reject' | 'spam' | 'delete'

@@ -277,13 +277,8 @@ async function savePublishedPost(publish: boolean, ctx: SavePostCtx): Promise<vo
 
   ctx.setIsSaving(true)
   try {
-    const notesState = useNotes.getState()
-    let noteContent = notesState.contents[ctx.noteId]
-    if (noteContent === undefined) {
-      noteContent = (await notesState.peekContent(ctx.noteId)) ?? ''
-    }
-
-    await useBlogStore.getState().savePost({
+    const noteContent = await readNoteContent(ctx.noteId)
+    const saved = await useBlogStore.getState().savePost({
       noteId: ctx.noteId,
       title: finalTitle,
       slug: finalSlug,
@@ -297,16 +292,10 @@ async function savePublishedPost(publish: boolean, ctx: SavePostCtx): Promise<vo
       allowComments: ctx.allowComments,
       isPinned: ctx.isPinned,
     })
+    if (!saved) return
 
-    let updatedContent = upsertFrontMatterProperty(noteContent, 'isPublished', publish)
-    if (ctx.coverUrl.trim()) {
-      updatedContent = upsertFrontMatterProperty(updatedContent, 'Cover', ctx.coverUrl.trim())
-    }
-    notesState.editContent(ctx.noteId, updatedContent)
-    await notesState.flush({ immediate: true })
-
+    await writePostFrontMatter(ctx, noteContent, publish)
     ctx.toast({ title: publish ? t('blog.publish_now') : t('common.saved'), tone: 'success' })
-
     ctx.onSaved?.()
     ctx.onClose()
   } catch (error: unknown) {
@@ -314,6 +303,25 @@ async function savePublishedPost(publish: boolean, ctx: SavePostCtx): Promise<vo
   } finally {
     ctx.setIsSaving(false)
   }
+}
+
+/** The note may still be a stub in memory; storage holds the body in that case. */
+async function readNoteContent(noteId: string): Promise<string> {
+  const notesState = useNotes.getState()
+  const content = notesState.contents[noteId]
+  if (content !== undefined) return content
+  return (await notesState.peekContent(noteId)) ?? ''
+}
+
+/** Mirrors what was published into the note's front matter, so the note list agrees with the post. */
+async function writePostFrontMatter(ctx: SavePostCtx, noteContent: string, publish: boolean): Promise<void> {
+  const notesState = useNotes.getState()
+  let updatedContent = upsertFrontMatterProperty(noteContent, 'isPublished', publish)
+  if (ctx.coverUrl.trim()) {
+    updatedContent = upsertFrontMatterProperty(updatedContent, 'Cover', ctx.coverUrl.trim())
+  }
+  notesState.editContent(ctx.noteId, updatedContent)
+  await notesState.flush({ immediate: true })
 }
 
 type BlogStoreFolders = ReturnType<typeof useBlogStore.getState>['folders']

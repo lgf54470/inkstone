@@ -25,7 +25,7 @@ export interface LinkCheckerModalProps {
   links: BlogLink[]
   categories: BlogLinkCategory[]
   onDeleteLink: (link: BlogLink) => Promise<void>
-  onBatchDeleteLinks: (ids: string[]) => Promise<void>
+  onBatchDeleteLinks: (ids: string[]) => Promise<boolean>
   onEditLink: (link: BlogLink) => void
 }
 

@@ -15,7 +15,7 @@ export interface LinkImportExportModalProps {
   onImport: (payload: {
     categories: Array<{ id?: string; name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }>
     links: Array<Partial<BlogLink>>
-  }) => Promise<{ importedCategories: number; importedLinks: number }>
+  }) => Promise<{ importedCategories: number; importedLinks: number } | null>
 }
 
 const MODAL_WIDTH = 620
@@ -121,6 +121,7 @@ function useImportExportState({ links, categories, onImport, onClose }: LinkImpo
     try {
       const payload = format === 'html' ? parseBookmarksHtml(inputText) : format === 'csv' ? parseCsvLinks(inputText) : parseJsonLinks(inputText)
       const result = await onImport(payload)
+      if (!result) return
       toast({ title: t('blog.link_import_success', { categories: result.importedCategories, links: result.importedLinks }), tone: 'success' })
       setInputText('')
       onClose()

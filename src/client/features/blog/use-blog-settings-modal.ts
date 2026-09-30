@@ -163,7 +163,7 @@ async function saveSettingsFlow(e: FormEvent, ctx: SaveSettingsCtx): Promise<voi
   ctx.setVisitLogRetentionDays(parseInt(ctx.retentionDays, 10))
 
   try {
-    await ctx.saveSettings({
+    const saved = await ctx.saveSettings({
       siteName: ctx.siteName.trim() || 'Inkstone Blog',
       subtitle: ctx.subtitle.trim(),
       bio: ctx.bio.trim(),
@@ -179,10 +179,9 @@ async function saveSettingsFlow(e: FormEvent, ctx: SaveSettingsCtx): Promise<voi
         website: ctx.website.trim(),
       },
     })
+    if (!saved) return
     ctx.toast({ title: t('blog.settings_saved'), tone: 'success' })
     ctx.onClose()
-  } catch {
-    ctx.toast({ title: t('common.action_failed'), tone: 'danger' })
   } finally {
     ctx.setIsSaving(false)
   }

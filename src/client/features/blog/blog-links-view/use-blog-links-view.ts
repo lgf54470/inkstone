@@ -33,8 +33,8 @@ export function useBlogLinksView() {
       tone: 'danger',
     })
     if (!ok) return
-    await store.deleteLink(link.id)
-    toast({ title: t('blog.link_deleted'), tone: 'success' })
+    const deleted = await store.deleteLink(link.id)
+    if (deleted) toast({ title: t('blog.link_deleted'), tone: 'success' })
   }
 
   return {
@@ -70,12 +70,12 @@ function useBlogLinksBatchOperations(
       })
       if (!ok) return
     }
-    await store.batchLinks(action, catId)
-    toast({ title: t('blog.link_saved'), tone: 'success' })
+    const done = await store.batchLinks(action, catId)
+    if (done) toast({ title: t('blog.link_saved'), tone: 'success' })
   }
 
-  const handleBatchDeleteLinks = async (ids: string[]) => {
-    if (ids.length === 0) return
+  const handleBatchDeleteLinks = async (ids: string[]): Promise<boolean> => {
+    if (ids.length === 0) return false
     // The confirmation names the number it is about to delete: it used to reuse the single-link
     // sentence, so deleting forty broken links asked about "this link".
     const ok = await confirm({
@@ -84,11 +84,13 @@ function useBlogLinksBatchOperations(
       confirmLabel: t('common.delete'),
       tone: 'danger',
     })
-    if (!ok) return
+    if (!ok) return false
+    let failed = false
     for (const id of ids) {
-      await store.deleteLink(id)
+      if (!(await store.deleteLink(id))) failed = true
     }
-    toast({ title: t('blog.link_deleted'), tone: 'success' })
+    if (!failed) toast({ title: t('blog.link_deleted'), tone: 'success' })
+    return !failed
   }
 
   return { handleBatch, handleBatchDeleteLinks }
@@ -167,7 +169,7 @@ function useBlogLinksModals() {
 
 function useBlogLinksDragAndDrop(
   links: BlogLink[],
-  reorderLinks: (orders: Array<{ id: string; sortOrder?: number; pinnedOrder?: number }>) => Promise<void>,
+  reorderLinks: (orders: Array<{ id: string; sortOrder?: number; pinnedOrder?: number }>) => Promise<boolean>,
   toast: (opts: { title: string; tone?: 'success' | 'danger' | 'warning' | 'default' }) => unknown,
 ) {
   const [isSortingMode, setIsSortingMode] = useState(false)
@@ -197,12 +199,8 @@ function useBlogLinksDragAndDrop(
     const [removed] = currentList.splice(sourceIndex, 1)
     currentList.splice(targetIndex, 0, removed)
     const items = currentList.map((item, index) => ({ id: item.id, sortOrder: index + 1 }))
-    try {
-      await reorderLinks(items)
-      toast({ title: t('blog.link_reorder_success'), tone: 'success' })
-    } catch {
-      toast({ title: t('common.save_failed'), tone: 'danger' })
-    }
+    const saved = await reorderLinks(items)
+    if (saved) toast({ title: t('blog.link_reorder_success'), tone: 'success' })
   }
 
   const handleDragEnd = () => {

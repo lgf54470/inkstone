@@ -135,11 +135,8 @@ function LinksCoreModals({ view }: { view: ReturnType<typeof useBlogLinksView> }
         link={view.editingLink}
         categories={view.linkCategories}
         onSave={async (data) => {
-          if (view.editingLink) {
-            await view.updateLink(view.editingLink.id, data)
-          } else {
-            await view.createLink(data)
-          }
+          if (view.editingLink) return view.updateLink(view.editingLink.id, data)
+          return Boolean(await view.createLink(data))
         }}
       />
 

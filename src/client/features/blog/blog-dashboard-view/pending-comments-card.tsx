@@ -8,7 +8,7 @@ interface PendingCommentsCardProps {
   totalComments: number
   totalPosts: number
   onSwitchTab: (tab: BlogTab) => void
-  updateCommentStatus: (id: string, status: BlogCommentStatus) => Promise<void>
+  updateCommentStatus: (id: string, status: BlogCommentStatus) => Promise<boolean>
 }
 
 export function PendingCommentsCard({ pendingComments, totalComments, totalPosts, onSwitchTab, updateCommentStatus }: PendingCommentsCardProps) {
@@ -60,7 +60,7 @@ function AllCommentsReviewed({ onSwitchTab, totalPosts }: {
 
 function PendingCommentItem({ comment, updateCommentStatus }: {
   comment: BlogComment
-  updateCommentStatus: (id: string, status: BlogCommentStatus) => Promise<void>
+  updateCommentStatus: (id: string, status: BlogCommentStatus) => Promise<boolean>
 }) {
   return (
     <div className='rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-base)] p-3 space-y-1.5'>

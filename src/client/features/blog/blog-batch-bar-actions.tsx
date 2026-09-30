@@ -31,8 +31,8 @@ export async function batchDelete(batchPosts: BlogStoreState['batchPosts'], sele
 }
 
 export async function batchPin(batchPosts: BlogStoreState['batchPosts'], toast: UiState['toast']): Promise<void> {
-  await batchPosts('setPinned', null, true)
-  toast({ title: t('blog.batch_pin'), tone: 'success' })
+  const ok = await batchPosts('setPinned', null, true)
+  if (ok) toast({ title: t('blog.batch_pin'), tone: 'success' })
 }
 
 export async function batchSetCategory(batchPosts: BlogStoreState['batchPosts'], catId: string): Promise<void> {
@@ -53,8 +53,8 @@ export function buildFolderMenuItems(
       icon: <FolderClosed size={13} className='text-[var(--text-quaternary)]' />,
       onSelect: async () => {
         closeMenu()
-        await batchPosts('setFolder', null)
-        toast({ title: t('blog.batch_move_folder_success', { count: selectedCount }), tone: 'success' })
+        const ok = await batchPosts('setFolder', null)
+        if (ok) toast({ title: t('blog.batch_move_folder_success', { count: selectedCount }), tone: 'success' })
       },
     },
     ...folders.map((f) => ({
@@ -67,8 +67,8 @@ export function buildFolderMenuItems(
       ),
       onSelect: async () => {
         closeMenu()
-        await batchPosts('setFolder', f.id)
-        toast({ title: t('blog.batch_move_folder_success', { count: selectedCount }), tone: 'success' })
+        const ok = await batchPosts('setFolder', f.id)
+        if (ok) toast({ title: t('blog.batch_move_folder_success', { count: selectedCount }), tone: 'success' })
       },
     })),
   ]

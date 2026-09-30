@@ -1,4 +1,5 @@
 import { api } from '../../../lib/api'
+import { reportBlogMutationError, runBlogMutation } from './mutation'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
 export const blogActionsActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'batchToggleGroup' | 'batchMoveToFolder' | 'savePost' | 'updatePost' | 'deletePost' | 'syncPost' | 'batchPosts' | 'updateCommentStatus' | 'deleteComment' | 'batchComments' | 'createCategory' | 'updateCategory' | 'deleteCategory' | 'saveSettings'> => ({
@@ -26,6 +27,7 @@ async function batchToggleGroupImpl(
   get: () => BlogStoreState,
 ): Promise<boolean> {
   set({ batchBusy: true })
+  const previous = { posts: get().posts, stats: get().stats }
   set((state) => ({
     posts: toggledPostRows(type, target, enabled, state.posts),
     stats: toggledGroupStats(type, target, enabled, state.stats),
@@ -34,8 +36,9 @@ async function batchToggleGroupImpl(
     await api.blog.batchToggleGroup(type, target, enabled)
     await Promise.all([get().loadPosts(), get().loadStats()])
     return true
-  } catch {
-    await Promise.all([get().loadPosts(), get().loadStats()])
+  } catch (error) {
+    set(previous)
+    reportBlogMutationError(error)
     return false
   } finally {
     set({ batchBusy: false })
@@ -100,6 +103,7 @@ async function batchMoveToFolderImpl(
 ): Promise<boolean> {
   if (!postIds.length) return false
   set({ batchBusy: true })
+  const previous = get().posts
   set((state) => ({
     posts: state.posts.map((p) => (postIds.includes(p.id) ? { ...p, folderId } : p)),
   }))
@@ -108,8 +112,9 @@ async function batchMoveToFolderImpl(
     get().clearPostSelection()
     await Promise.all([get().loadPosts(), get().loadStats()])
     return true
-  } catch {
-    await get().loadPosts()
+  } catch (error) {
+    set({ posts: previous })
+    reportBlogMutationError(error)
     return false
   } finally {
     set({ batchBusy: false })
@@ -119,10 +124,15 @@ async function batchMoveToFolderImpl(
 async function savePostImpl(
   data: Parameters<BlogStoreState['savePost']>[0],
   get: () => BlogStoreState,
-): Promise<{ ok: boolean; id: string; slug: string }> {
-  const res = await api.blog.posts.create(data)
-  await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
-  return res
+): Promise<{ ok: boolean; id: string; slug: string } | null> {
+  try {
+    const res = await api.blog.posts.create(data)
+    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
+    return res
+  } catch (error) {
+    reportBlogMutationError(error)
+    return null
+  }
 }
 
 async function updatePostImpl(
@@ -130,22 +140,33 @@ async function updatePostImpl(
   patch: Parameters<BlogStoreState['updatePost']>[1],
   set: SetBlogStoreState,
   get: () => BlogStoreState,
-): Promise<void> {
+): Promise<boolean> {
+  const previous = get().posts.find((p) => p.id === id)
   set((state) => ({
     posts: state.posts.map((p) => (p.id === id ? { ...p, ...patch } : p)),
   }))
-  await api.blog.posts.patch(id, patch)
-  await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
+  try {
+    await api.blog.posts.patch(id, patch)
+    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
+    return true
+  } catch (error) {
+    set((state) => ({
+      posts: state.posts.map((p) => (p.id === id && previous ? previous : p)),
+    }))
+    reportBlogMutationError(error)
+    return false
+  }
 }
 
-async function deletePostImpl(id: string, get: () => BlogStoreState): Promise<void> {
-  await api.blog.posts.remove(id)
-  await Promise.all([get().loadPosts(), get().loadStats()])
+async function deletePostImpl(id: string, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(
+    () => api.blog.posts.remove(id),
+    () => Promise.all([get().loadPosts(), get().loadStats()]),
+  )
 }
 
-async function syncPostImpl(id: string, get: () => BlogStoreState): Promise<void> {
-  await api.blog.posts.sync(id)
-  await get().loadPosts()
+async function syncPostImpl(id: string, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(() => api.blog.posts.sync(id), () => get().loadPosts())
 }
 
 async function batchPostsImpl(
@@ -154,9 +175,9 @@ async function batchPostsImpl(
   pinnedState: Parameters<BlogStoreState['batchPosts']>[2],
   set: SetBlogStoreState,
   get: () => BlogStoreState,
-): Promise<void> {
+): Promise<boolean> {
   const ids = Array.from(get().selectedPostIds)
-  if (!ids.length) return
+  if (!ids.length) return false
   set({ batchBusy: true })
   try {
     await api.blog.posts.batch(action, ids, {
@@ -166,6 +187,10 @@ async function batchPostsImpl(
     })
     get().clearPostSelection()
     await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags()])
+    return true
+  } catch (error) {
+    reportBlogMutationError(error)
+    return false
   } finally {
     set({ batchBusy: false })
   }
@@ -175,28 +200,36 @@ async function updateCommentStatusImpl(
   id: string,
   status: Parameters<BlogStoreState['updateCommentStatus']>[1],
   get: () => BlogStoreState,
-): Promise<void> {
-  await api.blog.comments.updateStatus(id, status)
-  await Promise.all([get().loadComments(), get().loadStats()])
+): Promise<boolean> {
+  return runBlogMutation(
+    () => api.blog.comments.updateStatus(id, status),
+    () => Promise.all([get().loadComments(), get().loadStats()]),
+  )
 }
 
-async function deleteCommentImpl(id: string, get: () => BlogStoreState): Promise<void> {
-  await api.blog.comments.remove(id)
-  await Promise.all([get().loadComments(), get().loadStats()])
+async function deleteCommentImpl(id: string, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(
+    () => api.blog.comments.remove(id),
+    () => Promise.all([get().loadComments(), get().loadStats()]),
+  )
 }
 
 async function batchCommentsImpl(
   action: Parameters<BlogStoreState['batchComments']>[0],
   set: SetBlogStoreState,
   get: () => BlogStoreState,
-): Promise<void> {
+): Promise<boolean> {
   const ids = Array.from(get().selectedCommentIds)
-  if (!ids.length) return
+  if (!ids.length) return false
   set({ batchBusy: true })
   try {
     await api.blog.comments.batch(action, ids)
     get().clearCommentSelection()
     await Promise.all([get().loadComments(), get().loadStats()])
+    return true
+  } catch (error) {
+    reportBlogMutationError(error)
+    return false
   } finally {
     set({ batchBusy: false })
   }
@@ -205,29 +238,35 @@ async function batchCommentsImpl(
 async function createCategoryImpl(
   data: Parameters<BlogStoreState['createCategory']>[0],
   get: () => BlogStoreState,
-): Promise<void> {
-  await api.blog.categories.create(data)
-  await get().loadCategories()
+): Promise<boolean> {
+  return runBlogMutation(() => api.blog.categories.create(data), () => get().loadCategories())
 }
 
 async function updateCategoryImpl(
   id: string,
   patch: Parameters<BlogStoreState['updateCategory']>[1],
   get: () => BlogStoreState,
-): Promise<void> {
-  await api.blog.categories.patch(id, patch)
-  await get().loadCategories()
+): Promise<boolean> {
+  return runBlogMutation(() => api.blog.categories.patch(id, patch), () => get().loadCategories())
 }
 
-async function deleteCategoryImpl(id: string, get: () => BlogStoreState): Promise<void> {
-  await api.blog.categories.remove(id)
-  await Promise.all([get().loadCategories(), get().loadPosts()])
+async function deleteCategoryImpl(id: string, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(
+    () => api.blog.categories.remove(id),
+    () => Promise.all([get().loadCategories(), get().loadPosts()]),
+  )
 }
 
 async function saveSettingsImpl(
   settings: Parameters<BlogStoreState['saveSettings']>[0],
   set: SetBlogStoreState,
-): Promise<void> {
-  const res = await api.blog.settings.patch(settings)
-  set({ settings: res.settings })
+): Promise<boolean> {
+  try {
+    const res = await api.blog.settings.patch(settings)
+    set({ settings: res.settings })
+    return true
+  } catch (error) {
+    reportBlogMutationError(error)
+    return false
+  }
 }

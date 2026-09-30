@@ -13,8 +13,8 @@ export interface LinkCategoryModalProps {
   onClose: () => void
   categories: BlogLinkCategory[]
   onCreateCategory: (data: { name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<BlogLinkCategory | null>
-  onUpdateCategory: (id: string, patch: { name?: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<void>
-  onDeleteCategory: (id: string) => Promise<void>
+  onUpdateCategory: (id: string, patch: { name?: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<boolean>
+  onDeleteCategory: (id: string) => Promise<boolean>
 }
 
 const MODAL_WIDTH = 600
@@ -57,7 +57,7 @@ export function LinkCategoryModal(props: LinkCategoryModalProps) {
   )
 }
 
-async function confirmAndDeleteCategory(cat: BlogLinkCategory, onDelete: (id: string) => Promise<void>) {
+async function confirmAndDeleteCategory(cat: BlogLinkCategory, onDelete: (id: string) => Promise<boolean>) {
   const ok = await confirm({ title: t('common.delete'), description: t('blog.confirm_delete_link'), confirmLabel: t('common.delete'), tone: 'danger' })
   if (ok) await onDelete(cat.id)
 }
@@ -84,8 +84,8 @@ function useCategoryModalState(props: LinkCategoryModalProps) {
 
   const handleSaveEdit = async (id: string) => {
     if (!editName.trim()) return
-    await props.onUpdateCategory(id, { name: editName.trim(), icon: editIcon.trim() || null, parentId: editParentId || null })
-    setEditingCatId(null)
+    const saved = await props.onUpdateCategory(id, { name: editName.trim(), icon: editIcon.trim() || null, parentId: editParentId || null })
+    if (saved) setEditingCatId(null)
   }
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -93,7 +93,8 @@ function useCategoryModalState(props: LinkCategoryModalProps) {
     if (!newName.trim()) return
     setCreating(true)
     try {
-      await props.onCreateCategory({ name: newName.trim(), icon: newIcon.trim() || null, parentId: newParentId || null })
+      const created = await props.onCreateCategory({ name: newName.trim(), icon: newIcon.trim() || null, parentId: newParentId || null })
+      if (!created) return
       setNewName(''); setNewIcon(''); setNewParentId('')
     } finally {
       setCreating(false)

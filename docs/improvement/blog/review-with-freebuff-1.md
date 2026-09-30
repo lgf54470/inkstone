@@ -228,12 +228,14 @@
 
 ### 4.3 失败语义与性能（ENG）
 
-#### ENG-01 [P0][开放] store 无 error 态，失败被渲染成「暂无数据」；多处 mutation 静默吞错
+#### ENG-01 [P0][已修] store 无 error 态，失败被渲染成「暂无数据」；多处 mutation 静默吞错
 - **问题**：`blog-store/loaders.ts:38-110` 的 7 个 loader 全部 `catch (err) { console.error(...) }`；`types.ts:50-51` 只有 `loading/batchBusy`。渲染侧把失败当空态：`blog-hub-modal.tsx:119-122`（列表）、`blog-comments-view.tsx:46-50`、`blog-links-view/index.tsx` 的空态、`use-blog-dashboard-view.ts:61-63`（analytics 失败无任何提示）。mutation 侧：`blog-store/actions.ts:128-139`（`updatePost` 乐观改后 `await patch` 无 try/catch）、`links.ts` 的分类 CRUD、`blog-table-view/row.tsx` 与 `card.tsx` 的 `void updatePost(...)`、`pending-comments-card.tsx:82,85` 的 `void updateCommentStatus(...)`——失败即未处理的 rejection，UI 原地不动。另有 `use-link-checker.ts` 的 `saveCachedResults` 在 catch 里 `return false` 却不告知调用方。
 - **影响**：典型症状是「断网后打开博客中心，看到的是空列表而不是错误」，用户会以为数据丢了。违反 AGENTS 铁律 2 的三态要求。
 - **方案**：store 增 `error: { scope, message } | null` 与 `lastFailedLoad`，各 loader 落错并保留上一次数据；新增共享的 `LoadState` 组件渲染「加载中 / 失败 + 重试 / 空结果」三态；全部 mutation 包 `try/catch`（乐观更新失败回滚 + `danger` toast，参照 `use-blog-post-card.tsx:60-66` 的既有正解）。
 - **范围**：`blog-store/*`、四个视图组件、`components/`（若需新组件）。代价 **M**。
 - **建议**：先写复现测试（mock `api` 抛错 → 断言渲染错误态而非空态），再实现。
+- **落地（B3-01，`ddfd54e7` 三态 + mutation 部分）**：store 增 `loadErrors: Set<'posts'|'comments'|'links'|'stats'>`，四个 loader 落错且成功清位、失败刷新保留上次数据；新增 `blog-load-failure.tsx`（`role='status'` + 重试）接入文章列表、评论、友链与仪表盘（`stats` + analytics）。mutation 侧新增 `blog-store/mutation.ts`：失败统一 `console.error` + danger toast，乐观更新回滚（`updatePost` 只回滚那一行；批量按快照回滚 `posts`/`stats`）并以 `false`/`null` 返回；`content.ts` 的 folders/tags CRUD 不再静默返回 null；所有成功提示改为按返回值判断，`void updatePost(...)` 这类未处理 rejection 消失；友链检测器的批量删除失败时不再清空选择。复现测试为 `blog-store/mutation-failures.test.ts`（6 条，含回滚变异证明 1 failed / 5 passed）。限制：`use-blog-note-submenu.ts` 直连 `api` 的两处写入沿用其自有的 catch/toast，未并入。
+
 
 #### ENG-02 [P0][开放] 文章列表回传全文且无分页
 - **问题**：`posts.ts:55-68` 的列表 SQL 是 `SELECT p.*, (SELECT COUNT(*) FROM blog_comments …)`，**没有列白名单、没有 LIMIT**；`helpers.ts:8-27` 的 `toBlogPost` 带 `content`；`filterPostsByTag`（`posts.ts:100-110`）在取回全部含正文的行之后于 JS 里过滤 tag。

@@ -1,4 +1,5 @@
 import { api } from '../../../lib/api'
+import { reportBlogMutationError } from './mutation'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
 export const blogContentActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'createFolder' | 'patchFolder' | 'deleteFolder' | 'createTag' | 'patchTag' | 'deleteTag'> => ({
@@ -32,7 +33,8 @@ async function createFolderImpl(
         : null,
     }))
     return folder
-  } catch {
+  } catch (error) {
+    reportBlogMutationError(error)
     return null
   }
 }
@@ -48,7 +50,8 @@ async function patchFolderImpl(
       folders: s.folders.map((f) => (f.id === id ? folder : f)),
     }))
     return folder
-  } catch {
+  } catch (error) {
+    reportBlogMutationError(error)
     return null
   }
 }
@@ -62,7 +65,8 @@ async function deleteFolderImpl(id: string, set: SetBlogStoreState, get: () => B
     }))
     await Promise.all([get().loadPosts(), get().loadStats()])
     return true
-  } catch {
+  } catch (error) {
+    reportBlogMutationError(error)
     return false
   }
 }
@@ -87,7 +91,8 @@ async function createTagImpl(
         : null,
     }))
     return tag
-  } catch {
+  } catch (error) {
+    reportBlogMutationError(error)
     return null
   }
 }
@@ -103,7 +108,8 @@ async function patchTagImpl(
       tags: s.tags.map((t) => (t.id === id ? tag : t)),
     }))
     return tag
-  } catch {
+  } catch (error) {
+    reportBlogMutationError(error)
     return null
   }
 }
@@ -118,7 +124,8 @@ async function deleteTagImpl(id: string, set: SetBlogStoreState, get: () => Blog
     }))
     await Promise.all([get().loadPosts(), get().loadStats()])
     return true
-  } catch {
+  } catch (error) {
+    reportBlogMutationError(error)
     return false
   }
 }

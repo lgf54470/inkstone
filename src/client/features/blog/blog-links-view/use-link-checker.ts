@@ -30,7 +30,7 @@ export function isCacheStale(timestamp: unknown, now: number): boolean {
 export function useLinkCheckerState(
   links: BlogLink[],
   open: boolean,
-  onBatchDeleteLinks: (ids: string[]) => Promise<void>,
+  onBatchDeleteLinks: (ids: string[]) => Promise<boolean>,
 ) {
   const [results, setResults] = useState<Record<string, HealthResult>>({})
   const [running, setRunning] = useState(false)
@@ -75,7 +75,7 @@ interface CheckerActionProps {
   setProgressIndex: (n: number) => void
   stopRequested: React.RefObject<boolean>
   setRunning: (r: boolean) => void
-  onBatchDeleteLinks: (ids: string[]) => Promise<void>
+  onBatchDeleteLinks: (ids: string[]) => Promise<boolean>
   selectedIds: Set<string>
   setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>
   setBatchDeleting: (b: boolean) => void
@@ -117,8 +117,10 @@ function useCheckerActions(props: CheckerActionProps) {
     if (props.selectedIds.size === 0) return
     props.setBatchDeleting(true)
     try {
-      await props.onBatchDeleteLinks(Array.from(props.selectedIds))
-      props.setSelectedIds(new Set())
+      // Keep the selection when nothing was deleted: a failed run should not lose the rows the
+      // reader picked while the toast is still on screen.
+      const deleted = await props.onBatchDeleteLinks(Array.from(props.selectedIds))
+      if (deleted) props.setSelectedIds(new Set())
     } finally {
       props.setBatchDeleting(false)
     }

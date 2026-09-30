@@ -13,7 +13,7 @@ export interface LinkEditModalProps {
   onClose: () => void
   link: BlogLink | null
   categories: BlogLinkCategory[]
-  onSave: (data: Partial<BlogLink>) => Promise<void>
+  onSave: (data: Partial<BlogLink>) => Promise<boolean>
 }
 
 const MODAL_WIDTH = 560
@@ -102,12 +102,12 @@ function useLinkEditForm({ link, open, onSave, onClose }: LinkEditModalProps) {
     if (!name.trim() || !url.trim()) return
     setSaving(true)
     try {
-      await onSave({
+      const saved = await onSave({
         name: name.trim(), url: url.trim(), description: description.trim() || null,
         avatar: avatar.trim() || null, email: email.trim() || null, categoryId: categoryId || null,
         status, isPinned, isFavorite, sortOrder,
       })
-      onClose()
+      if (saved) onClose()
     } finally {
       setSaving(false)
     }

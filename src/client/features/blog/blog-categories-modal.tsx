@@ -5,7 +5,6 @@ import { BLOG_CATEGORY_COLORS } from '@shared/organizer-colors'
 import { Button, IconButton } from '../../components/primitives'
 import { Input } from '../../components/form'
 import { Modal, confirm } from '../../components/overlay'
-import { errorMessage } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
 import { useUi } from '../../store/ui'
@@ -325,29 +324,25 @@ async function submitCategoryForm(e: FormEvent, ctx: CategoryFormCtx): Promise<v
 
   ctx.setIsSaving(true)
   try {
-    if (ctx.editingId) {
-      await ctx.updateCategory(ctx.editingId, {
+    const done = ctx.editingId
+      ? await ctx.updateCategory(ctx.editingId, {
         name: ctx.name.trim(),
         slug: ctx.slug.trim(),
         description: ctx.description.trim(),
         color: ctx.selectedColor,
       })
-      ctx.toast({ title: t('common.saved'), tone: 'success' })
-    } else {
-      await ctx.createCategory({
+      : await ctx.createCategory({
         name: ctx.name.trim(),
         slug: ctx.slug.trim() || undefined,
         description: ctx.description.trim(),
         color: ctx.selectedColor,
       })
-      ctx.toast({ title: t('common.created'), tone: 'success' })
-    }
+    if (!done) return
+    ctx.toast({ title: ctx.editingId ? t('common.saved') : t('common.created'), tone: 'success' })
     ctx.setEditingId(null)
     ctx.setName('')
     ctx.setSlug('')
     ctx.setDescription('')
-  } catch (error: unknown) {
-    ctx.toast({ title: errorMessage(error) || t('common.action_failed'), tone: 'danger' })
   } finally {
     ctx.setIsSaving(false)
   }
@@ -365,10 +360,6 @@ async function deleteCategoryFlow(
     tone: 'danger',
   })
   if (!ok) return
-  try {
-    await deleteCategory(cat.id)
-    toast({ title: t('common.delete'), tone: 'default' })
-  } catch {
-    toast({ title: t('common.action_failed'), tone: 'danger' })
-  }
+  const deleted = await deleteCategory(cat.id)
+  if (deleted) toast({ title: t('common.delete'), tone: 'default' })
 }

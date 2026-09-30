@@ -97,6 +97,11 @@ export interface BlogStoreState {
   loadStats: () => Promise<void>
   loadSettings: () => Promise<void>
 
+  /**
+   * Everything below is a mutation: it reports its own failure (see `mutation.ts`), resolves to
+   * `false`/`null` after a danger toast and rolls back any optimistic change it made, so no caller
+   * has to catch a rejection from it.
+   */
   createFolder: (name: string, parentId?: string | null, color?: string | null, icon?: string | null) => Promise<BlogFolder | null>
   patchFolder: (id: string, patch: { name?: string; parentId?: string | null; color?: string | null; icon?: string | null; position?: number }) => Promise<BlogFolder | null>
   deleteFolder: (id: string) => Promise<boolean>
@@ -121,40 +126,40 @@ export interface BlogStoreState {
     isPublished?: boolean
     allowComments?: boolean
     isPinned?: boolean
-  }) => Promise<{ ok: boolean; id: string; slug: string }>
-  updatePost: (id: string, patch: Partial<BlogPost>) => Promise<void>
-  deletePost: (id: string) => Promise<void>
-  syncPost: (id: string) => Promise<void>
+  }) => Promise<{ ok: boolean; id: string; slug: string } | null>
+  updatePost: (id: string, patch: Partial<BlogPost>) => Promise<boolean>
+  deletePost: (id: string) => Promise<boolean>
+  syncPost: (id: string) => Promise<boolean>
   batchPosts: (
     action: 'publish' | 'unpublish' | 'delete' | 'setCategory' | 'setFolder' | 'setPinned',
     extraId?: string | null,
     pinnedState?: boolean,
-  ) => Promise<void>
+  ) => Promise<boolean>
 
-  updateCommentStatus: (id: string, status: BlogCommentStatus) => Promise<void>
-  deleteComment: (id: string) => Promise<void>
-  batchComments: (action: 'approve' | 'reject' | 'spam' | 'delete') => Promise<void>
+  updateCommentStatus: (id: string, status: BlogCommentStatus) => Promise<boolean>
+  deleteComment: (id: string) => Promise<boolean>
+  batchComments: (action: 'approve' | 'reject' | 'spam' | 'delete') => Promise<boolean>
 
-  createCategory: (data: { name: string; slug?: string; description?: string; color?: string; icon?: string }) => Promise<void>
-  updateCategory: (id: string, patch: Partial<BlogCategory>) => Promise<void>
-  deleteCategory: (id: string) => Promise<void>
+  createCategory: (data: { name: string; slug?: string; description?: string; color?: string; icon?: string }) => Promise<boolean>
+  updateCategory: (id: string, patch: Partial<BlogCategory>) => Promise<boolean>
+  deleteCategory: (id: string) => Promise<boolean>
 
   createLink: (data: Partial<BlogLink>) => Promise<BlogLink | null>
-  updateLink: (id: string, patch: Partial<BlogLink>) => Promise<void>
-  deleteLink: (id: string) => Promise<void>
-  updateLinkStatus: (id: string, status: BlogLinkStatus) => Promise<void>
-  togglePinLink: (id: string, isPinned: boolean) => Promise<void>
-  toggleFavoriteLink: (id: string, isFavorite: boolean) => Promise<void>
-  reorderLinks: (orders: Array<{ id: string; sortOrder?: number; pinnedOrder?: number }>) => Promise<void>
+  updateLink: (id: string, patch: Partial<BlogLink>) => Promise<boolean>
+  deleteLink: (id: string) => Promise<boolean>
+  updateLinkStatus: (id: string, status: BlogLinkStatus) => Promise<boolean>
+  togglePinLink: (id: string, isPinned: boolean) => Promise<boolean>
+  toggleFavoriteLink: (id: string, isFavorite: boolean) => Promise<boolean>
+  reorderLinks: (orders: Array<{ id: string; sortOrder?: number; pinnedOrder?: number }>) => Promise<boolean>
   batchLinks: (
     action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'pin' | 'unpin' | 'favorite' | 'unfavorite',
     categoryId?: string | null,
-  ) => Promise<void>
+  ) => Promise<boolean>
 
   createLinkCategory: (data: { name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<BlogLinkCategory | null>
-  updateLinkCategory: (id: string, patch: { name?: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<void>
-  deleteLinkCategory: (id: string) => Promise<void>
-  importLinksData: (payload: { categories: Array<{ id?: string; name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }>; links: Array<Partial<BlogLink>> }) => Promise<{ importedCategories: number; importedLinks: number }>
+  updateLinkCategory: (id: string, patch: { name?: string; icon?: string | null; parentId?: string | null; sortOrder?: number }) => Promise<boolean>
+  deleteLinkCategory: (id: string) => Promise<boolean>
+  importLinksData: (payload: { categories: Array<{ id?: string; name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }>; links: Array<Partial<BlogLink>> }) => Promise<{ importedCategories: number; importedLinks: number } | null>
 
   /**
    * The post list's in-flight request: `seq` lets a late answer be dropped (the reader may have
@@ -174,5 +179,5 @@ export interface BlogStoreState {
   hydrateTrafficFilters: () => void
   setFilters: (filters: Partial<{ excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }>) => void
 
-  saveSettings: (settings: Partial<BlogSettings>) => Promise<void>
+  saveSettings: (settings: Partial<BlogSettings>) => Promise<boolean>
 }
