@@ -16,9 +16,9 @@
 
 | 批次 | 领域 | 覆盖问题项 | 状态 |
 | :--- | :--- | :--- | :--- |
-| **批次 0** | 文档基线 | 审查报告与整改计划初始化 | `[x]` 已提交 |
-| **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 |
-| **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[ ]` 待处理 |
+| **批次 0** | 文档基线 | 审查报告与整改计划初始化 | `[x]` 已提交 (`d8aa7a00`) |
+| **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
+| **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[~]` 进行中 (已提交: `bbe158b8`, `52c2ab4a`, `332de745`, `100648a4`) |
 | **批次 3** | 导航效率、合规收尾与编辑联动 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-22 | `[ ]` 待处理 |
 | **批次 4** | 深度性能治理与高级演说能力 (P2/P3) | P-18, P-19, P-20, P-21, P-23, P-24, P-25, P-26, P-27, P-28 | `[ ]` 待处理 |
 
@@ -26,33 +26,33 @@
 
 ## 批次 0 · 文档基线
 
-- [x] **B0-DOC**: 建立 `review-with-agy-1.md`（全量问题深度诊断、涉及文件与函数、修复代码设计）与 `plan-with-agy-1.md`（执行跟踪计划） — 已提交
+- [x] **B0-DOC**: 建立 `review-with-agy-1.md`（全量问题深度诊断、涉及文件与函数、修复代码设计）与 `plan-with-agy-1.md`（执行跟踪计划） — 已提交 (`d8aa7a00`)
 
 ---
 
 ## 批次 1 · 核心架构、安全守卫与 A11y 红线
 
-- [x] **B1-01** `P-01 (SEC-01)`: 全局快捷键表单输入守卫（`F/S/L` 忽略 `onControl` 修复） — 已完成
+- [x] **B1-01** `P-01 (SEC-01)`: 全局快捷键表单输入守卫（`F/S/L` 忽略 `onControl` 修复） — 已完成 (`bfa28129`)
   - 涉及文件：`src/client/features/presentation/presentation-keys.ts` (`presentationCommand`)、`src/client/features/presentation/presentation-keys.test.ts`
   - 目标：当焦点位于 input / textarea / editable 等控件时，不拦截 `F/S/L`。
   - 验证：单元测试新增用例覆盖 `onControl: true` 下 `f/F/s/S/l/L` 均返回 `null`，既有导航用例全绿。
-- [x] **B1-02** `P-02 (UX-05)`: Escape 键退出层级优化（全屏放映时优先退出全屏，窗口态才关闭演说） — 已完成
+- [x] **B1-02** `P-02 (UX-05)`: Escape 键退出层级优化（全屏放映时优先退出全屏，窗口态才关闭演说） — 已完成 (`15652917`)
   - 涉及文件：`src/client/features/presentation/presentation-state.ts` (`escapeAction`)、`src/client/features/presentation/presentation-state.test.ts`、`src/client/features/presentation/presentation-overlay.tsx` (`useDialogBehavior`)
   - 目标：放映时按 Esc 优先退至窗口态，再次按 Esc 退出模式，避免误关演说。
   - 验证：单元测试覆盖全屏返回 exitFullscreen、窗口返回 close，overlay 行为正确衔接。
-- [x] **B1-03** `P-03 (PERF-01)`: 舞台设计画幅固定为 `1280x720`，彻底解耦侧栏尺寸与缓存死锁 — 已完成
+- [x] **B1-03** `P-03 (PERF-01)`: 舞台设计画幅固定为 `1280x720`，彻底解耦侧栏尺寸与缓存死锁 — 已完成 (`59a988fe`)
   - 涉及文件：`src/client/features/presentation/slide-stage.ts` (`measureStage`)、`src/client/features/presentation/slide-stage.test.ts`、`scripts/check-comments.mjs`
   - 目标：将设计画幅固定为 1280x720，容器缩放使用 CSS scale，开合侧栏不再改变设计宽高，100% 杜绝预热缓存失效。
   - 验证：新增 `slide-stage.test.ts` 验证在不同分辨率与侧栏开合时设计画幅与内容区稳定为 1280x720 / 1168x632。
-- [x] **B1-04** `P-06 (SPEC-05)`: Follow/Freeze 图标与激活态语义纠偏 — 已完成
+- [x] **B1-04** `P-06 (SPEC-05)`: Follow/Freeze 图标与激活态语义纠偏 — 已完成 (`1c63d758`)
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`PresentationControls`)
   - 目标：跟随中高亮脉冲 `<Radio />`；冻结后不高亮显示 `<Snowflake />`。
   - 验证：纠偏状态图标渲染逻辑，跟随态显示广播电波，冻结态显示冰冻雪花。
-- [x] **B1-05** `P-07 (SPEC-03)`: 控制条自动隐藏时移出 Tab 键顺序（`inert` 与 `invisible` 修复） — 已完成
+- [x] **B1-05** `P-07 (SPEC-03)`: 控制条自动隐藏时移出 Tab 键顺序（`inert` 与 `invisible` 修复） — 已完成 (`a1ad08f5`)
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`PresentationControls`)
   - 目标：`chromeHidden` 为 true 时增加 `inert` 和 `invisible`，杜绝键盘焦点盲跳。
   - 验证：自动隐藏时节点赋予 inert 属性并切换 visibility: hidden，键盘焦点与辅助树不再穿透。
-- [x] **B1-06** `P-08 (SPEC-02)`: 自动分排子页微标纳入读屏实时播报区域（`aria-live='polite'`） — 已完成
+- [x] **B1-06** `P-08 (SPEC-02)`: 自动分排子页微标纳入读屏实时播报区域（`aria-live='polite'`） — 已完成 (`3250081d`)
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`SlideStepper`)
   - 目标：视障用户在子页间翻动时能感知到页码变化。
   - 验证：子页徽标配置 aria-live='polite'，长篇内容自动拆分子页翻动时读屏器实时接收播报。
@@ -61,63 +61,119 @@
 
 ## 批次 2 · 演说交互体验与视觉信息强化
 
-- [x] **B2-01** `P-04 (UX-04)`: 舞台左右半区分区点击翻页与触摸手势识别 — 已完成
+- [x] **B2-01** `P-04 (UX-04)`: 舞台左右半区分区点击翻页与触摸手势识别 — 已完成 (`bbe158b8`)
   - 涉及文件：`src/client/features/presentation/presentation-state.ts` (`stageClickDirection`, `swipeDirection`)、`src/client/features/presentation/presentation-state.test.ts`、`src/client/features/presentation/presentation-overlay.tsx` (`PresentationStage`)
   - 目标：支持屏幕左 35% 后退、右 65% 前进与触摸轻扫。
   - 验证：单元测试覆盖点击坐标分区及滑动阈值判断，控件元素点击不穿透。
-- [x] **B2-02** `P-05 (UX-01/02)`: 底部细线进度条常驻（解耦 `chromeHidden`）与舞台微型角落页码指示 — 已完成
+- [x] **B2-02** `P-05 (UX-01/02)`: 底部细线进度条常驻（解耦 `chromeHidden`）与舞台微型角落页码指示 — 已完成 (`52c2ab4a`)
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`SlideProgress`)、`src/client/features/presentation/presentation-stage.tsx` (`PresentationStage`)、`src/client/features/presentation/presentation-state.ts` (`formatMicroPage`)、`src/client/features/presentation/presentation-state.test.ts`
   - 目标：屏幕底部进度条环境常驻，舞台角落显示无侵入式微型页码。
   - 验证：单元测试覆盖 formatMicroPage 单双页及子页格式化，底部进度条常驻渲染。
-- [x] **B2-03** `P-09 (SEC-02)`: 幻灯片超链接安全拦截代理（外链新标签页打开，双链防跳顶） — 已完成
+- [x] **B2-03** `P-09 (SEC-02)`: 幻灯片超链接安全拦截代理（外链新标签页打开，双链防跳顶） — 已完成 (`332de745`)
   - 涉及文件：`src/client/features/presentation/presentation-state.ts` (`interceptSlideLink`)、`src/client/features/presentation/presentation-state.test.ts`、`src/client/features/presentation/slide-canvas.tsx` (`useSlideLinkInterceptor`)
   - 目标：拦截幻灯片内 `<a>` 标签，保护演讲主舞台不跳出。
   - 验证：单元测试覆盖安全协议（https/http/mailto/tel）新窗打开与不安全协议/锚点防跳顶拦截，SlideCanvas 挂载代理监听。
-- [x] **B2-04** `P-10 (FEAT-05)`: 黑屏 (B) 与白屏 (W) 口头互动控制 — 已完成
+- [x] **B2-04** `P-10 (FEAT-05)`: 黑屏 (B) 与白屏 (W) 口头互动控制 — 已完成 (`100648a4`)
   - 涉及文件：`src/client/features/presentation/presentation-keys.ts` (`blackout`/`whiteout`)、`src/client/features/presentation/presentation-keys.test.ts`、`src/client/features/presentation/use-presentation-keys.ts` (`useScreenCover`)、`src/client/features/presentation/presentation-stage.tsx` (`ScreenCover`)、`src/client/features/presentation/presentation-overlay.tsx`
   - 目标：按 `B`/`.` 切换纯黑全屏遮罩，按 `W`/`,` 切换纯白全屏遮罩，按任意键或点击复原。
   - 验证：单元测试覆盖按键映射与获焦守卫，遮罩唤醒与任意键解除闭环。
 - [ ] **B2-05** `P-11 (UX-03)`: 导出按钮安全收敛与防误触隔离
-  - 涉及文件：`src/client/features/presentation/presentation-controls.tsx`
-  - 目标：高危导出功能与核心全屏/退出控件做物理视觉隔离。
+  - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`PresentationControls`)
+  - 目标：将导出 PDF 与图片 ZIP 等高危不可逆操作从全屏/退出等高频视窗按钮间剥离，设置专属安全分隔带，杜绝演说误触调出原生打印窗口。
+  - 方案：重构悬浮控制条布局结构，在全屏控制项与导出按钮之间增加明确的垂直分隔线与安全间隔，按语义将动作区划分为“导航翻页”、“状态与视图”、“导出与分发”、“退出模式”四个子群组。
+  - 验证：组件结构测试与样式检查，确保各操作组拥有明确边界与分隔标记。
 
 ---
 
 ## 批次 3 · 导航效率、合规收尾与编辑联动
 
 - [ ] **B3-01** `P-12 (UX-06)`: 侧栏缩略图补充大纲标题文字标签
-  - 涉及文件：`src/client/features/presentation/slide-rail.tsx` (`SlideRailItem`)
+  - 涉及文件：`src/client/features/presentation/slide-rail.tsx` (`SlideRailItem`, `extractSlideHeading`)、`src/client/features/presentation/slide-rail.test.ts`
   - 目标：长篇演说支持文字大纲快速扫视定位。
+  - 方案：新增 `extractSlideHeading(source: string): string` 纯函数，提取每个 Slide 的首个有效 Heading（H1~H3）或第一行正文作为 Slide 简明标题，在缩略图右侧或下方以清晰文本标签呈现，超长智能截断。
+  - 验证：单元测试覆盖多级 Heading、无 Heading 纯文本、带代码块与空页等场景的大纲文本提取正确性。
 - [ ] **B3-02** `P-13 (UX-07)`: 侧栏获焦时左右方向键隔离
-  - 涉及文件：`src/client/features/presentation/presentation-keys.ts`
-  - 目标：焦点在侧栏时左右键不穿透导致舞台焦点脱节。
+  - 涉及文件：`src/client/features/presentation/presentation-keys.ts` (`presentationCommand`)、`src/client/features/presentation/presentation-keys.test.ts`
+  - 目标：焦点在侧栏缩略图列表时，左右方向键（`ArrowLeft` / `ArrowRight`）不穿透导致舞台翻页。
+  - 方案：在 `presentationCommand` 中针对 `ArrowLeft` / `ArrowRight` 增加 `if (context.onSlideList) return null;` 守卫条件。
+  - 验证：单元测试覆盖 `onSlideList: true` 下按 `ArrowLeft`/`ArrowRight` 均返回 `null`，既有侧栏上下导航保持顺畅。
 - [ ] **B3-03** `P-14 (SPEC-01)`: 统一替换裸 Tailwind 阶梯尺寸为设计令牌（AGENTS.md 铁律 4/12）
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx`
-  - 目标：全面采用 `var(--sp-*)`。
+  - 目标：全面采用 `var(--sp-*)`，消除残余的 `p-1`, `mx-1`, `h-4`, `py-0.5`, `h-0.5`, `bottom-4`。
+  - 方案：将所有硬编码间距与尺寸类名系统性对齐全局设计系统令牌。
+  - 验证：运行 `npm run tokens:check`、`npm run style:check`，确保零硬编码阶梯值违规。
 - [ ] **B3-04** `P-15 (SPEC-04)`: 侧栏补充标准 ARIA 集合语义声明
-  - 涉及文件：`src/client/features/presentation/slide-rail.tsx`
-  - 目标：为侧栏导航声明标准 `tablist`/`tab` 集合语义。
+  - 涉及文件：`src/client/features/presentation/slide-rail.tsx` (`SlideRail`, `SlideRailList`, `SlideRailItem`)
+  - 目标：为侧栏导航声明标准 `tablist`/`tab` 集合语义，规范屏幕阅读器体验。
+  - 方案：外层导航标注 `role="tablist"`，列表项按钮标注 `role="tab"` 与 `aria-selected`，并准确标注集合尺寸 `aria-setsize` 与序号 `aria-posinset`。
+  - 验证：通过组件单元测试断言列表项包含完整的集合角色与可访问状态声明。
 - [ ] **B3-05** `P-16 (SPEC-06)`: Canvas/JS 层接入系统减弱动画偏好（`prefers-reduced-motion`）
-  - 涉及文件：`src/client/features/presentation/slide-canvas.tsx`
-  - 目标：减弱动画偏好开启时，Chart.js 采用 `instant: true`。
+  - 涉及文件：`src/client/features/presentation/slide-canvas.tsx` (`SlideCanvas`, `SlideViewport`)
+  - 目标：减弱动画偏好开启时，Chart.js 采用 `instant: true`，禁用入场缩放动画。
+  - 方案：读取媒体查询 `prefers-reduced-motion: reduce`，在满足时将 `instantCharts` 强制设为 `true`。
+  - 验证：单元测试模拟媒体查询激活状态，断言 Chart.js 以无动画模式极速挂载。
 - [ ] **B3-06** `P-17 (FEAT-07)`: 光标就近启动演示（根据编辑器当前位置定位 Slide）
-  - 涉及文件：`src/client/features/presentation/slides.ts`、`src/client/store/presentation.ts`、`src/client/features/workspace/workspace/use-workspace.ts`
-  - 目标：长文编辑无需从第 0 页翻起。
+  - 涉及文件：`src/client/features/presentation/slides.ts` (`findSlideIndexByOffset`)、`src/client/features/presentation/slides.test.ts`、`src/client/store/presentation.ts`、`src/client/features/workspace/workspace/use-workspace.ts`
+  - 目标：长文编辑无需从第 0 页翻起，直接从当前光标所在幻灯片起播。
+  - 方案：在 `slides.ts` 中实现纯函数 `findSlideIndexByOffset(source, offset)`；在 `useWorkspace` 的启动入口处获取当前 CodeMirror 光标偏移量，计算目标页索引并传入 `usePresentation.getState().start({ initialSlideIndex })`。
+  - 验证：单元测试覆盖文档首段、中间分页处、末尾及边界位置的光标映射精度。
 - [ ] **B3-07** `P-22 (SEC-04)`: 命令面板注册“启动演示模式”命令
-  - 涉及文件：`src/client/features/command/command-palette/use-commands.tsx`
+  - 涉及文件：`src/client/features/command/command-palette/use-commands.tsx` (`currentNoteCommands`)
   - 目标：`Cmd+K` 支持快速呼出演示模式。
+  - 方案：在 `currentNoteCommands` 中注册 `cmd-presentation-mode`，带有 `Play` 图标，快捷呼起当前笔记的全屏演说。
+  - 验证：单元测试断言当前笔记命令列表中包含该项，且调用 `run` 成功启动演示。
 
 ---
 
 ## 批次 4 · 深度性能治理与高级演说能力
 
 - [ ] **B4-01** `P-18 (PERF-02)`: 单 Slide 内容哈希增量缓存（避免跟随模式协同全篇重算）
+  - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx` (`useSlidePlans`)、`src/client/features/presentation/slide-html.ts`、`src/client/features/presentation/slide-preflight.tsx`
+  - 目标：改整篇 fingerprint 失效为每张 Slide 基于其源码的独立哈希缓存，打字时仅重算改动 Slide 的 Plan，其余页坚决复用。
+  - 方案：使用 `hashContent(slideSource)` 作为单页子指纹，在 `useSlidePlans` 中维护按 Slide 源码哈希索引的 Plan 映射，未编辑页缓存稳如磐石。
+  - 验证：单元测试模拟长文档部分行修改，断言未改动页的 SlidePlan 对象引用与缓存 100% 保持复用。
 - [ ] **B4-02** `P-19 (PERF-03)`: 侧栏单例 Observer 与细粒度事件订阅
+  - 涉及文件：`src/client/features/presentation/slide-rail.tsx`、`src/client/features/presentation/slide-html.ts`
+  - 目标：消除 100 个 `IntersectionObserver` 实例并解决全量广播惊群效应。
+  - 方案：在 `SlideRail` 顶层统一构建单例 `IntersectionObserver` 实例供各子项共享；重构 `subscribeSlideHtml` 为按 `cacheKey` 精准派发的订阅机制。
+  - 验证：单元测试断言单张幻灯片完成预热时仅触发对应 key 的监听器，其余缩略图无虚假渲染。
 - [ ] **B4-03** `P-20 (PERF-04)`: 导出图片流式分批与进度提示
+  - 涉及文件：`src/client/features/presentation/deck-print.tsx` (`saveDeckPages`, `DeckImageSheet`)
+  - 目标：导出过程提供实时模态进度反馈，串行分批挂载和流式生成，防范浏览器 OOM 崩溃。
+  - 方案：在 `saveDeckPages` 中引入进度回调驱动 UI 状态展示 `正在导出 (3/30)...`，每完成一张图片即时入流并释放 Canvas 与位图 Blob。
+  - 验证：单元测试模拟多页导出，断言进度回调按预期每页递增且最终正确完成打包。
 - [ ] **B4-04** `P-21 (SEC-03)`: 嵌套 Bento-Slides 优雅占位降级
+  - 涉及文件：`src/client/features/presentation/slide-canvas.tsx` (`useBentoSlidesFallback`)
+  - 目标：全笔记演示模式中遇到 Bento-Slides 代码块不再永久停留于 "Loading slides..." 占位态。
+  - 方案：在 `SlideCanvas` 中提供 `useBentoSlidesFallback`，解析围栏内的卡片结构并直接呈现为整洁的静态卡片网格预览，移除 `loading` 类并设置 `aria-busy="false"`。
+  - 验证：单元测试验证包含 ` ```slides ` 的内容在 SlideCanvas 中被正确增强为静态卡片结构，无残留 loading 状态。
 - [ ] **B4-05** `P-23 (FEAT-01)`: 智能标题识别切分长笔记（H1/H2 分页）
+  - 涉及文件：`src/client/features/presentation/slides.ts` (`splitIntoSlides`)、`src/client/features/presentation/slides.test.ts`
+  - 目标：对于未显式插入 `---` 分割线的一般笔记，支持根据 H1/H2 智能切分幻灯片。
+  - 方案：支持 Frontmatter 配置 `slide-level: 1 | 2`；在无显式分割线时自动将顶层标题行作为分页断点。
+  - 验证：单元测试覆盖带 H1/H2 标题的长文智能切分用例，验证生成的幻灯片页数与内容边界。
 - [ ] **B4-06** `P-24 (FEAT-03)`: 演讲私有备注语法支持 (`<!-- note: ... -->`)
+  - 涉及文件：`src/client/features/presentation/slide-html.ts`、`src/client/features/presentation/slides.ts`
+  - 目标：抽取 `<!-- note: ... -->` 作为 Slide 演说备注元数据，正文展示时剔除该块防止公屏泄露。
+  - 方案：在流水线中正则解析抽取备忘小抄，从投影 HTML 中安全剥离，并将备注内容保留在 Slide 元数据结构中。
+  - 验证：单元测试验证投影 HTML 纯净无备注注释，且返回数据中包含正确的私有备注文本。
 - [ ] **B4-07** `P-25 (FEAT-04)`: 虚拟激光笔与聚光灯 (L)
+  - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx`、`src/client/features/presentation/presentation-stage.tsx`、`src/client/features/presentation/presentation-keys.ts`
+  - 目标：按 `L` 键激活虚拟红光激光笔，大屏投映时高亮引导视觉焦点。
+  - 方案：在 `presentation-keys.ts` 注册 `'laser'` 命令；在 `PresentationStage` 顶层叠加 `LaserCanvas` 跟踪指针绘制带发光脉冲与微光拖尾的激光粒子。
+  - 验证：单元测试验证激光笔模式开关状态切换与指针跟踪渲染事件。
 - [ ] **B4-08** `P-26 (FEAT-06)`: 全局幻灯片全览网格矩阵 (Overview Grid)
+  - 涉及文件：新增 `src/client/features/presentation/slide-overview-grid.tsx`、联动 `src/client/features/presentation/presentation-overlay.tsx`
+  - 目标：按 `G` 或 `O` 键全屏展开自适应响应式缩略图矩阵，便于问答阶段快速跳页。
+  - 方案：新增 `SlideOverviewGrid` 组件，以 4~5 列响应式网格全屏平铺所有幻灯片缩略图，支持键盘上下左右漫游选择与回车跳转。
+  - 验证：单元测试覆盖网格渲染、键盘焦点遍历与跳页回调触发。
 - [ ] **B4-09** `P-27 (FEAT-08)`: 封面居中与双栏排版模板
+  - 涉及文件：`src/client/features/presentation/slide-prose.tsx`、`src/client/styles/presentation.css`
+  - 目标：支持 `<!-- layout: cover -->` 首页垂直水平双向居中，以及 `::: two-columns` 双栏排版。
+  - 方案：识别版式元数据，向 `SlideProse` 容器注入对应的布局 CSS 类，丰富大屏视觉层级。
+  - 验证：单元测试验证包含封面与双栏标记的内容正确挂载对应 class，无样式冲突。
 - [ ] **B4-10** `P-28 (FEAT-02)`: 独立双屏演讲者模式 (Presenter View)
+  - 涉及文件：新增 `src/client/features/presentation/presenter-view/presenter-window.tsx`、`src/client/features/presentation/presenter-view/use-presenter-channel.ts`
+  - 目标：双屏独立输出，讲者窗口独立展示当前页、下一页预览、私有小抄与时钟。
+  - 方案：通过 `window.open` 弹出独立窗口作为第二屏控制台，主子窗口借助 `BroadcastChannel` 传输页码、时间戳与小抄，实现低延迟双向联动。
+  - 验证：单元测试验证 BroadcastChannel 跨窗口消息同步协议与控制事件收发。

@@ -509,64 +509,171 @@ Inkstone 全笔记演示模式位于 `src/client/features/presentation` 目录�
 ---
 
 ### P-21 (SEC-03): 嵌套 Bento-Slides 代码块卡死在 Loading 状态
-- **涉及文件**：`src/client/features/presentation/slide-canvas.tsx`
+- **涉及文件**：`src/client/features/presentation/slide-canvas.tsx` (L60-L96)、`src/client/lib/markdown/renderer/fence.ts` (L230-L245)
+- **涉及函数/组件**：`SlideCanvas`、`useSlideDiagrams` 与 Bento-Slides 容器
+- **现有代码**：
+  ```ts
+  // src/client/lib/markdown/renderer/fence.ts L233-L241
+  `<div class="bento-slides-block loading"${line} data-bento-slides="" data-bento-slides-index="${index}" aria-busy="true">`,
+  `<div class="bento-slides-block-head">`,
+  `<span class="bento-slides-block-title">${escapeHtml(t('preview.slides'))}</span>`,
+  `<span class="bento-slides-block-mode">${escapeHtml(mode)}</span>`,
+  `<span class="bento-slides-block-actions">`,
+  `<button type="button" class="bento-slides-block-btn" data-bento-slides-fullscreen aria-label="${fullscreenLabel}" title="${fullscreenLabel}"></button>`,
+  `</span></div>`,
+  `<div class="bento-slides-block-placeholder" data-bento-slides-placeholder>${escapeHtml(t('preview.slides_loading'))}</div>`
+  ```
 - **问题机制**：
-  若用户的笔记中包含 ` ```slides ` 围栏块（Bento-Slides 块），全笔记演示模式中并没有挂载 Bento-Slides 的运行时激活逻辑，导致这些代码块在投影大屏上永久停留在 "Loading slides..." 静态占位态。
+  在常规 Markdown 预览中，`useBentoSlides` Hook 会扫描所有 `div[data-bento-slides]` 并实例化 Bento-Slides 运行时渲染交互卡片。然而全笔记演示模式的 `SlideCanvas` 仅挂载了 `useSlideDiagrams`（仅处理 Chart.js 和 Mermaid），未引入 Bento-Slides 运行时。若用户笔记中包含 ` ```slides ` 围栏块，放映时这些代码块在舞台中央永久呈现带有旋转微标的 "Loading slides..." 占位态，无法展示任何内容。
 - **修复方案**：
-  在 `SlideCanvas` 中对 Bento-Slides 代码块提供优雅降级：直接提取 Bento 卡片内容渲染为静态卡片网格，或者展示整洁的静态预览。
+  在 `SlideCanvas` 中对 Bento-Slides 代码块提供优雅降级：
+  1. 引入轻量级静态降级 Hook `useBentoSlidesFallback(hostRef, html)`；
+  2. 遍历 `.bento-slides-block.loading`，解析其绑定的 `fences.slides` 内容，提取幻灯片标题与正文摘要，直接渲染为静态多栏卡片网格预览；
+  3. 移除 `loading` 类并设置 `aria-busy="false"`，杜绝永久 Loading。
 
 ---
 
 ### P-22 (SEC-04): 命令面板（Cmd+K / Cmd+P）缺少演示模式入口
-- **涉及文件**：`src/client/features/command/command-palette/use-commands.tsx`
+- **涉及文件**：`src/client/features/command/command-palette/use-commands.tsx` (L97-L110)
+- **涉及函数**：`currentNoteCommands(activeNote, deps)`
+- **现有代码**：
+  ```ts
+  // src/client/features/command/command-palette/use-commands.tsx L104-L106
+  { id: 'cmd-kanban-from-outline', kind: 'command', label: t('workspace.kanban_from_outline'), icon: <Kanban size={14} />, group: currentNoteGroup, run: () => { const view = getActiveEditorView(); if (view) generateKanbanFromOutline(view) } },
+  { id: 'cmd-slides-from-outline', kind: 'command', label: t('workspace.slides_from_outline'), icon: <Presentation size={14} />, group: currentNoteGroup, run: () => { const view = getActiveEditorView(); if (view) generateSlidesFromOutline(view) } },
+  { id: 'cmd-share', kind: 'command', label: t('command.share_current_note'), icon: <Share2 size={14} />, group: currentNoteGroup, run: () => deps.openPanel('share') },
+  ```
 - **问题机制**：
-  `currentNoteCommands` 包含了“生成 Slides 提纲”（`cmd-slides-from-outline`），却没有直接“启动演示模式”命令。键盘流用户在调起命令面板后无法快捷呼出演示。
+  `currentNoteCommands` 包含了“从大纲生成幻灯片代码块”（`cmd-slides-from-outline`），却没有直接“启动演示模式”命令。键盘流用户在调起命令面板后输入“演示”或“presentation”，只能看到生成代码块命令，无法快捷呼出全笔记演示模式。
 - **修复方案**：
-  在 `currentNoteCommands` 中注册 `cmd-presentation-mode`，执行 `usePresentation.getState().start(...)`。
+  在 `currentNoteCommands` 中注册 `cmd-presentation-mode` 命令项：
+  ```ts
+  {
+    id: 'cmd-presentation-mode',
+    kind: 'command',
+    label: t('workspace.presentation_mode'),
+    icon: <Play size={14} />,
+    combo: 'mod+alt+p',
+    group: currentNoteGroup,
+    run: () => {
+      const state = useNotes.getState()
+      const note = state.notes[activeNote.id]
+      if (note) usePresentation.getState().start({ noteId: note.id, content: note.content, title: note.title })
+    },
+  },
+  ```
 
 ---
 
 ### P-23 (FEAT-01): 切分规则仅限水平线 `---`，无法智能切分长笔记
-- **涉及文件**：`src/client/features/presentation/slides.ts`
+- **涉及文件**：`src/client/features/presentation/slides.ts` (L20-L56)
+- **涉及函数**：`splitIntoSlides(source: string): string[]`
+- **现有代码**：
+  ```ts
+  // src/client/features/presentation/slides.ts L44-L47
+  if (SLIDE_BREAK.test(line) && (current.length === 0 || current[current.length - 1]!.trim() === '')) {
+    flush()
+    continue
+  }
+  ```
 - **问题机制**：
-  目前只识别显式的水平分割线 `---`（且必须上方有空行）。对于普通的长篇 Markdown 笔记（包含大量 H1 / H2 章节），直接打开演示模式会把整篇笔记塞进单张超长 Slide，生成几十个子页，无法形成幻灯片视觉。
+  目前仅识别显式水平分割线 `---`（且必须上方有空行）。对于普通的长篇 Markdown 笔记（包含大量 H1 / H2 章节），直接打开演示模式会把整篇笔记塞进单张超长 Slide，生成几十个子页，失去幻灯片讲演视觉。
 - **修复方案**：
-  支持智能分页检测：如果整篇笔记没有任何 `---` 分隔符，或者在 Frontmatter 中声明了 `slide-level: 2`，则自动按照最高级标题（H1 或 H2）切分为独立幻灯片。
+  在 `slides.ts` 中增强智能切分能力：
+  1. 解析 Frontmatter 配置（如 `slide-level: 1 | 2`）；
+  2. 若文档中未出现显式 `---` 分隔符，自动检测一级标题（`^# `）或二级标题（`^## `），在代码块围栏之外将目标标题行作为分页断点，实现普通笔记“一键无痛转 PPT 演示”。
 
 ---
 
 ### P-24 (FEAT-03): 演讲私有备注语法支持 (`<!-- note: ... -->`)
-- **涉及文件**：`src/client/features/presentation/slide-html.ts`
+- **涉及文件**：`src/client/features/presentation/slide-html.ts` (L1-L60)、`src/client/features/presentation/slides.ts`
+- **涉及函数**：`extractSpeakerNotes(source: string): { cleanSource: string; notes: string }`
+- **现有代码**：
+  ```ts
+  // src/client/features/presentation/slide-html.ts L48-L50
+  export function slideMarkup(rendered: RenderResult): SlideMarkup {
+    return { html: rendered.html, fences: rendered.fences }
+  }
+  ```
+- **问题机制**：
+  演讲过程中，演讲者常需要针对某张幻灯片记录私有备忘小抄（Speaker Notes）。Inkstone 目前将所有文本全量送入 Markdown 渲染流水线，若用户在正文中写入备忘内容，将直接投射在大屏上，造成隐私泄露。
 - **修复方案**：
-  在 HTML 渲染流水线中抽取 `<!-- note: ... -->` 注释内容，正文展示时剔除该块，但将其作为 Slide 的 Speaker Notes 元数据留存。
+  1. 在 Markdown 解析流水线中抽取 `<!-- note: ... -->` 或 `<!-- speaker: ... -->` 注释块；
+  2. 正文展示时剔除该注释块，杜绝公屏投影泄露；
+  3. 将抽取的备注字符串结构化存储为 Slide 元数据，供演讲者双屏模式（P-28）实时读取呈现。
 
 ---
 
 ### P-25 (FEAT-04): 虚拟激光笔 (Laser Pointer) 与聚光灯工具
-- **涉及文件**：`src/client/features/presentation/presentation-overlay.tsx`
+- **涉及文件**：`src/client/features/presentation/presentation-overlay.tsx`、`src/client/features/presentation/presentation-stage.tsx`
+- **涉及函数/组件**：`PresentationStage`、`LaserCanvas`
+- **现有代码**：
+  舞台上目前仅显示系统标准鼠标光标，无激光指引图层。
+- **问题机制**：
+  在线上共享屏幕或大型会议厅投影时，普通鼠标小箭头在复杂图表与文字间极难被观众捕捉。演讲者需要醒目的虚拟激光红点进行视觉引导。
 - **修复方案**：
-  支持快捷键 `L` 切换激光笔模式。激活后隐藏系统鼠标箭头，在画布最上层绘制高亮红光微粒与移动拖尾，便于投影引导。
+  1. 在 `presentation-keys.ts` 注册 `'laser'` 快捷键（`L` 键，或 `Shift+L`）；
+  2. 在 `PresentationStage` 顶层覆盖 `LaserCanvas`：
+     - 激活激光笔时将指针光标设为 `cursor: none`；
+     - 监听光标坐标，在 Canvas 上实时绘制具有柔和红光脉冲光晕与粒子微光拖尾的激光笔圆点；
+     - 按 `Esc` 或再次按 `L` 退出激光笔模式。
 
 ---
 
 ### P-26 (FEAT-06): 全局幻灯片全览网格矩阵 (Overview Grid)
-- **涉及文件**：新增 `src/client/features/presentation/slide-overview-grid.tsx`
+- **涉及文件**：新增 `src/client/features/presentation/slide-overview-grid.tsx`、联动 `src/client/features/presentation/presentation-overlay.tsx`
+- **涉及函数/组件**：`SlideOverviewGrid`
+- **现有代码**：当前仅有左侧纵向缩略图抽屉（`SlideRail`），无全览矩阵。
+- **问题机制**：
+  在演说 Q&A 问答环节或长达数十页的报告中，演讲者需要快速鸟瞰全篇幻灯片并精准跳转。单列抽屉需要大量滚动，无法一览全局。
 - **修复方案**：
-  支持快捷键 `G` 或 `O` 展开全屏响应式网格矩阵，呈现所有幻灯片缩略卡片，支持键盘方向键聚焦和回车跳转，方便问答互动。
+  1. 在 `presentation-keys.ts` 注册 `'overview'` 快捷键（`G` 或 `O` 键）；
+  2. 新增 `SlideOverviewGrid` 弹层组件：
+     - 全屏展示响应式 Grid 缩略图矩阵（每行 4~5 张幻灯片卡片）；
+     - 显示大号页码徽标与标题标签；
+     - 支持键盘方向键在网格内漫游焦点，按 `Enter` 即刻选定跳入并关闭全览，按 `Esc` 恢复放映。
 
 ---
 
 ### P-27 (FEAT-08): 封面居中版式与两栏对比排版
-- **涉及文件**：`src/client/features/presentation/slide-prose.tsx`
+- **涉及文件**：`src/client/features/presentation/slide-prose.tsx` (L9-L24)、`src/client/styles/presentation.css`
+- **涉及函数/组件**：`SlideProse`
+- **现有代码**：
+  ```tsx
+  // src/client/features/presentation/slide-prose.tsx L17-L23
+  <div className='mx-auto' style={{ width: contentWidth }}>
+    <div className='ink-preview-container' data-font={font}>
+      <div ref={hostRef} data-font={font} data-slide-page className={cn('ink-prose relative', className)} dangerouslySetInnerHTML={htmlObj} />
+    </div>
+  </div>
+  ```
+- **问题机制**：
+  所有幻灯片均强制采用单调的流式左对齐排版。演说首页的“主标题 + 副标题 + 演说者”无法居中展示；两栏概念对比或图文并茂时缺乏原生分栏布局。
 - **修复方案**：
-  支持 `<!-- layout: cover -->` 或分栏语法，使首页标题与副标题自动居中排版。
+  1. 识别版式标记：
+     - 若首页包含一级标题，或包含 `<!-- layout: cover -->`，添加 `slide-layout-cover` 样式类，通过 Flexbox/Grid 实现垂直与水平双向居中排版；
+     - 支持 `<!-- layout: split -->` 或 `::: two-columns` 分栏标记，渲染为左右等宽双栏网格；
+  2. 在 `presentation.css` 中扩展对应的排版类。
 
 ---
 
 ### P-28 (FEAT-02): 独立演讲者双屏模式 (Presenter View)
-- **涉及文件**：`src/client/features/presentation/presenter-view/*`
+- **涉及文件**：新增 `src/client/features/presentation/presenter-view/presenter-window.tsx`、`src/client/features/presentation/presenter-view/use-presenter-channel.ts`
+- **涉及函数/组件**：`openPresenterWindow`、`usePresenterChannel`
+- **现有代码**：完全缺失双屏演讲者模式。
+- **问题机制**：
+  在实际接投影仪/外接大屏演讲时，演讲者需要自身屏幕显示：当前页、下一页预览、耗时计时器、当前时间、演讲私有备忘录（Speaker Notes）；而投影幕布仅显示当前幻灯片画面。目前 Inkstone 仅有单屏模式，两者画面完全镜像，严重制约专业演讲体验。
 - **修复方案**：
-  通过 `window.open` 弹出独立窗口作为第二屏控制台，借助 `BroadcastChannel` 同步页码、备注、时钟与下一页预览。
+  1. 控制条提供“演讲者控制台（Presenter View）”按钮（快捷键 `P` / `Alt+P`）；
+  2. 点击后通过 `window.open` 弹出独立窗口作为第二屏控制台；
+  3. 主窗口与子窗口通过 `new BroadcastChannel('inkstone-presenter-sync')` 进行低延迟状态双向同步：
+     - 主窗口广播：当前 Slide/Subpage 索引、总页数、开始演说时间戳、私有备忘录；
+     - 子窗口界面布局：
+       - 左半区：当前大屏投射内容实时画面（只读同步）；
+       - 右上半区：下一页缩略预览（提前感知下一张内容）；
+       - 右下半区：当前页私有备忘录（Speaker Notes，大字号清晰展示）；
+       - 顶栏：实时时钟、累计演讲计时器（可暂停/重置）、总进度指示；
+     - 控制联动：在演讲者子窗口按方向键翻页，通过通道同步驱动主屏舞台翻页。
 
 ---
 
