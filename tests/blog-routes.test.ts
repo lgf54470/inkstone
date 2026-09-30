@@ -339,6 +339,56 @@ describe('blog management list shape and paging (ENG-02)', () => {
   })
 })
 
+describe('blog comment moderation list (ENG-06)', () => {
+  async function seedCommentStatuses(db: D1Shim, postId: string, statuses: string[]): Promise<void> {
+    for (const [index, status] of statuses.entries()) {
+      await runSql(
+        db,
+        `INSERT INTO blog_comments (id, post_id, author_name, author_email, content, status, created_at)
+         VALUES (?1, ?2, 'Reader', 'reader@example.com', 'Comment body', ?3, ?4)`,
+        `c-${index}`, postId, status, H.now + index,
+      )
+    }
+  }
+
+  it('counts every tab over the whole list while the tab only narrows the page', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const post = await seedBlogPost(db, { title: 'Threaded', slug: 'threaded' })
+    await seedCommentStatuses(db, post.id, ['pending', 'pending', 'approved', 'spam'])
+    const app = makeApp()
+
+    const pending = await request(app, '/api/blog/comments?status=pending')
+    const pendingBody = await pending.json()
+    expect(pendingBody.comments).toHaveLength(2)
+    // Counting the rows the status filter already narrowed down drew every other tab as zero.
+    expect(pendingBody.counts).toEqual({ all: 4, pending: 2, approved: 1, rejected: 0, spam: 1 })
+
+    const searched = await request(app, '/api/blog/comments?search=Nobody')
+    const searchedBody = await searched.json()
+    expect(searchedBody.comments).toHaveLength(0)
+    expect(searchedBody.counts.all).toBe(0)
+  })
+
+  it('caps the returned list while the counts keep describing the whole result', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const post = await seedBlogPost(db, { title: 'Many comments', slug: 'many-comments' })
+    await db.batch(Array.from({ length: 501 }, (_, index) =>
+      db.prepare(
+        `INSERT INTO blog_comments (id, post_id, author_name, author_email, content, status, created_at)
+         VALUES (?1, ?2, 'Reader', 'reader@example.com', 'Comment body', 'approved', ?3)`,
+      ).bind(`c-${index}`, post.id, index),
+    ))
+    const app = makeApp()
+
+    const res = await request(app, '/api/blog/comments')
+    const body = await res.json()
+    expect(body.comments).toHaveLength(500)
+    expect(body.counts.approved).toBe(501)
+  })
+})
+
 describe('blog public routes (real D1)', () => {
   it('lists only published posts with pagination and serves detail with view counting', async () => {
     const db = await makeDb()

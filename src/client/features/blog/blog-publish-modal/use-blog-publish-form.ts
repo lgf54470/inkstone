@@ -45,10 +45,7 @@ export function useBlogPublishForm({
   const flatFolderList = useFolderFlatList(folders)
   const firstImageInContent = useCoverSuggestion(content)
 
-  useEffect(() => {
-    if (open && noteId && !content) void useNotes.getState().peekContent(noteId)
-    void loadCategories()
-  }, [open, noteId, content, loadCategories])
+  usePublishDialogData(open, noteId, loadCategories)
 
   usePublishFormInit({
     open, note, initialPost, content, currentStoreFolderId, firstImageInContent,
@@ -71,6 +68,18 @@ export function useBlogPublishForm({
     isSaving, slugAvailable, slugReason, flatFolderList, firstImageInContent,
     note, availableTags, categories, previewUrl, handleAddTag, handleRemoveTag, handleSave,
   }
+}
+
+/**
+ * The dialog loads what it draws when it opens: the note body once, and the category list. It used
+ * to re-run on every `content` change, so one session fetched the categories two or three times.
+ */
+function usePublishDialogData(open: boolean, noteId: string, loadCategories: () => Promise<void>): void {
+  useEffect(() => {
+    if (!open) return
+    if (noteId && !useNotes.getState().contents[noteId]) void useNotes.getState().peekContent(noteId)
+    void loadCategories()
+  }, [open, noteId, loadCategories])
 }
 
 function usePublishFormFields() {

@@ -148,6 +148,15 @@ export interface BlogComment {
   replies?: BlogComment[]
 }
 
+/** The moderation list's tab sizes, counted without the status filter so every tab is real. */
+export interface BlogCommentsCounts {
+  all: number
+  pending: number
+  approved: number
+  rejected: number
+  spam: number
+}
+
 export interface BlogStats {
   totalPosts: number
   publishedPosts: number

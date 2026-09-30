@@ -1,4 +1,4 @@
-import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats } from '@shared/types'
+import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats } from '@shared/types'
 import type { StoreApi } from 'zustand'
 
 export type SetBlogStoreState = StoreApi<BlogStoreState>['setState']
@@ -61,6 +61,11 @@ export interface BlogStoreState {
   tags: BlogTag[]
   categories: BlogCategory[]
   comments: BlogComment[]
+  /**
+   * The moderation tabs' real sizes, answered by the server without the status filter. Counting the
+   * rows on screen (which the status filter already narrowed) drew every other tab as zero.
+   */
+  commentStats: BlogCommentsCounts | null
   links: BlogLink[]
   linkCategories: BlogLinkCategory[]
   linkStats: BlogLinkStats | null
@@ -191,6 +196,10 @@ export interface BlogStoreState {
   postsTotal: number
   postsTotalPages: number
   setPostsPage: (page: number) => void
+
+  /** The same latest-wins rule as the post list, for the comment list's status/search. */
+  commentsRequestSeq: number
+  commentsAbort: AbortController | null
 
   /** The same latest-wins rule as the post list, for the link list's status/category/search. */
   linksRequestSeq: number

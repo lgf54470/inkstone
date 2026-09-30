@@ -265,10 +265,11 @@
 - **范围**：`blog-store/loaders.ts`、`use-blog-hub-modal.ts`、`use-blog-hub-sidebar.tsx`。代价 **M**。
 - **落地（B3-05）**：`loadAll` 改名 `loadHubData({ force? })`；`dataLoadedAt` 为九个作用域各记一枚成功时间戳，`BLOG_TAB_SCOPES` 给出每 tab 的最小集（公共 `folders/tags/categories/settings/stats` + 各自的内容），30s 窗口内不重问、显式刷新走 `force`；`setActiveTab` 本身触发按新 tab 补齐；打开/复位 effect 不再依赖 `activeNote`（拆出只做 `setTargetNoteId` 的第二个 effect），`onSaved` 走非强制刷新；侧栏删掉与 bootstrap 重叠的 folders/tags effect。仪表盘的 `posts.length` 在 B3-02 后不再等于总数，改为 `stats.totalPosts`（dashboard 作用域随之不含 `posts`）。复现测试 `blog-store/hub-data.test.ts` 3 条；作用域选择突变成全量后 links tab 用例 1 failed。
 
-#### ENG-06 [P1][开放] 评论列表无 LIMIT；服务端 search 是死通道；tab 计数口径失真
+#### ENG-06 [P1][已修] 评论列表无 LIMIT；服务端 search 是死通道；tab 计数口径失真
 - **问题**：`comments.ts:40-45` 的 `SELECT c.*, p.title, p.slug` 无 `LIMIT`，且带 `ip`/`user_agent` 文本列；`:59-63` 支持 `search` 而前端从不传——`setCommentSearch` 在 `blog-store/types.ts:66` 与 `filters.ts:18` 有定义，**全仓零调用点**（`grep` 确认），`loaders.ts:87` 的 `search` 永远是 `undefined`。而 `use-blog-comments-view.ts` 用自己的 `useState` + 本地 `filterComments`，tab 计数在**服务端已按 status 过滤**的数组上统计（`computeStatusCounts(comments)`）→ 选「待处理」后其它 tab 全显示 0。
 - **方案**：评论列表加 `LIMIT`（+ 分页或「加载更多」）；搜索二选一并做到一致——**接服务端**（带防抖与 abort）并删掉本地过滤，或删掉 `setCommentSearch` 这条死通道；tab 计数改用 `stats.pendingComments/totalComments`（服务端已有，勿在过滤后的数组上数）。
 - **范围**：`comments.ts`、`blog-store/*`、`use-blog-comments-view.ts`、`blog-comments-view.tsx`。代价 **S～M**。
+- **落地（B3-06）**：列表加 `LIMIT 500`；计数改为接口内一条 `GROUP BY status`（与列表共用 `blogCommentsWhere()`，不带 status 条件、保留 search/postId），响应增 `counts`——比用 `stats` 更完整（stats 只有 total/pending，而界面有五个页签）；搜索真的接通：`setCommentSearch` 进 store，本地 draft + 250ms 防抖，`loadComments` 带 AbortSignal + 序号线，本地 `filterComments`/`computeStatusCounts` 删除；截断时顶部提示「只显示前 N 条」；侧栏评论徽标改读 `commentStats`。复现测试：worker 2 条（计数真实且搜索上下生效、501 只回 500 而计数 501）+ 客户端 `comments-request.test.ts` 3 条；两处先红变异各 1 failed。演示后端同步。
 
 #### ENG-07 [P1][开放] `stats` 做七条串行查询 + 全表扫 + JS 端 `JSON.parse`
 - **问题**：`stats.ts:48-62`：`:49-55` 是 7 个串行 `await`，`:57-60` 无 `LIMIT` 扫全 `blog_posts` 取 `folder_id/is_published/tags`，`:62` 在 JS 里汇总；`organizer.ts:56-65` 又扫一遍同样的数据。每次开窗、每次 pin 都触发两轮全表扫。
@@ -321,9 +322,10 @@
 - **方案**：批次改 15；接入 `AbortController`（停止即 abort 在飞的 fetch）；缓存加 24h TTL；把写缓存移出 updater（在 `set` 之后或 `useEffect` 里）；进度条补 `role="progressbar"` + `aria-valuenow/min/max`。
 - **范围**：`use-link-checker.ts`、`link-checker-modal.tsx`。代价 **S～M**。
 
-#### ENG-16 [P2][开放] 发布弹窗每次会话多拉 2～3 次分类
+#### ENG-16 [P2][已修] 发布弹窗每次会话多拉 2～3 次分类
 - **问题**：`use-blog-publish-form.ts:48-51`——`peekContent` 在 `if (open && noteId && !content)` 内（正确），而 `void loadCategories()` 在其**之后无条件**执行，且 deps 含 `content` → 挂载时（`open=false`）一次、`open→true` 再一次、`content` 变非空又一次。
 - **方案**：把 `loadCategories()` 移进 `if (!open) return` 之后，并从 deps 去掉 `content`。**两行**。
+- **落地（B3-06）**：取数 effect 抽成 `usePublishDialogData(open, noteId, loadCategories)`：`if (!open) return` 后先按 `useNotes.getState().contents[noteId]` 判一次 `peekContent`、再 `loadCategories()`，deps 只有 `[open, noteId, loadCategories]`（去掉 `content`）。抽成函数同时为 `size:check` 的 50 行门槛让位。
 - **范围**：`use-blog-publish-form.ts`。代价 **XS**。
 
 ---

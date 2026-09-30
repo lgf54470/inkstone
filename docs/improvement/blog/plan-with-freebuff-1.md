@@ -141,7 +141,16 @@
   - 先红证据：把作用域选择突变成「所有作用域」后，links tab 用例 **1 failed / 2 skipped**（恢复后全绿）。
   - 回归：`typecheck` 绿；blog 相关 19 文件 65 条全绿；`test:unit` 577 文件 5236 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线）。
   - 已知限制：未访问过的 tab 的侧栏徽标（评论/友链计数）在首次切到该 tab 前可能为 0 或旧值（计数改由 `stats` 直接提供属 B3-06）；仪表盘不再预载 `posts`。
-- [ ] B3-06 **ENG-06 + ENG-16** 评论列表 `LIMIT` + 服务端 search 接通（删本地过滤与死通道）+ tab 计数改 `stats` + 发布弹窗分类拉取两行修复
+- [x] B3-06 **ENG-06 + ENG-16** 评论列表 `LIMIT` + 服务端 search 接通（删本地过滤与死通道）+ tab 计数改服务端计数 + 发布弹窗分类拉取修复 — 已提交（hash 由下一提交回填，见进度日志）
+  - 实现（服务端）：`GET /comments` 新增 `LIMIT 500`（`BLOG_COMMENTS_LIST_LIMIT`）与一条 `GROUP BY status` 计数，二者共用一段 WHERE（`blogCommentsWhere()`）；计数**不带 status 条件**（保留 search/postId 上下文），因此五个页签显示的计数都是真实规模；响应变为 `{ comments, counts }`。
+  - 与计划的差异（有意）：计划写「tab 计数改 `stats.pendingComments/totalComments`」，但 `BlogStats` 只有 total/pending 两个数，支撑不了 approved/rejected/spam 五个页签；改为在评论接口用一条 GROUP BY 返回全量计数（同 B3-03 友链的做法），搜索上下文一并保留。`stats` 本批不改。
+  - 客户端：`comments.list` 契约加 `counts`；store 新增 `commentStats` 与 `commentsRequestSeq`/`commentsAbort`（`loadComments` 带 AbortSignal 与序号线——搜索改问服务端后，迟到的答案必须先发后至丢弃）；`use-blog-comments-view.ts` 删本地 `filterComments`/`computeStatusCounts`，搜索改 store（本地 draft + 250ms 防抖，同文章列表），tab 计数只读 `commentStats`（未加载时不再画 0），列表被截断时提示「只显示前 N 条」；侧栏评论徽标改用 `commentStats.pending/all`。
+  - ENG-16：发布弹窗的取数 effect 抽成 `usePublishDialogData`——只在 `open` 时执行、deps 去 `content`（原来挂载时（open=false）一次、打开时一次、内容变非空再一次）。
+  - demo backend 同步（响应加 counts、列表加 500 上限）。
+  - 复现测试：`tests/blog-routes.test.ts` 新增 2 条（五个页签计数真实且搜索上下生效；501 条只回 500 而计数 501）；客户端新增 `blog-store/comments-request.test.ts` 3 条（搜索进查询且服务端计数入 store、取消前一发、取消不算错误）。
+  - 先红证据：把计数查询改回带 status 条件后计数用例 **1 failed / 52 skipped**；把 search 写死为 undefined 后客户端用例 **1 failed / 2 skipped**（均恢复后全绿）。
+  - 回归：`typecheck` 绿；blog 相关 21 文件 121 条全绿；`test:unit` 578 文件 5241 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线：按门槛把评论列表滚区抽成 `CommentsList`、搜索抽成 `useCommentSearchBox`、发布弹窗取数抽成 `usePublishDialogData`）。
+  - 已知限制：`counts` 描述的是「当前搜索词下的全站评论」，不是全局——搜索时页签计数随搜索收敛是刻意的。
 - [ ] B3-07 **ENG-07 + ENG-08 + ENG-14** stats 七条串行改 `db.batch`/`GROUP BY`；analytics 六段合并 + 分布改 SQL 聚合；补三条索引
 - [ ] B3-08 **ENG-09 + ENG-10** 写操作 refetch 定向收敛 + 回滚；友链批量删除走 `batch` 端点
 - [ ] B3-09 **ENG-11 + ENG-12 + ENG-13 + ENG-15** barrel 拆瘦让 lazy 生效 + 去 `icons` 全量 registry + qrcode 懒载 + geo/device 纯函数下沉；列表 `memo`/`useMemo`/窗口化；图片 lazy + 尺寸；link checker 批次 15 / abort / TTL / updater 纯净 / progressbar
@@ -193,7 +202,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-30 | B3-05 ENG-05 hub 数据按 tab 收敛 + 30s SWR + 删重复 effect | （下一提交回填） | `typecheck` 绿；blog 相关 19 文件 65 条全绿（含新 3 条）；作用域突变先红 1 failed；`test:unit` 577 文件 5236 通过 / 1 skipped；九项静态门禁绿 | 未访问 tab 的侧栏徽标可能滞后（待 B3-06 的 stats 计数）；dashboard 不再预载 posts |
+| 2026-09-30 | B3-06 ENG-06/ENG-16 评论限页 + 服务端搜索 + 服务端计数 + 发布弹窗取数修复 | （下一提交回填） | `typecheck` 绿；blog 相关 21 文件 121 条全绿（含新 5 条）；两处先红变异各 1 failed；`test:unit` 578 文件 5241 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线） | 计数随搜索上下文收敛（刻意）；与计划的「用 stats 计数」有差异（stats 只有 total/pending） |
+| 2026-09-30 | B3-05 ENG-05 hub 数据按 tab 收敛 + 30s SWR + 删重复 effect | f74e68e1 | `typecheck` 绿；blog 相关 19 文件 65 条全绿（含新 3 条）；作用域突变先红 1 failed；`test:unit` 577 文件 5236 通过 / 1 skipped；九项静态门禁绿 | 未访问 tab 的侧栏徽标可能滞后（待 B3-06 的 stats 计数）；dashboard 不再预载 posts |
 | 2026-09-30 | B3-02 ENG-02 文章列表去正文 + LIMIT/OFFSET + 独立总数 + tag 下推 + 分页控件 | 9b39fc57 | `typecheck` 绿；`tests/blog-routes.test.ts` 51 条（含新 4 条）+ 客户端新 6 条全绿；两处先红变异各 1 failed；`test:unit` 576 文件 5233 通过 / 1 skipped；九项静态门禁绿（`size` 未动基线） | `post-index` 刻意不分页（每篇记事都要答案）；`limit` 上限 200；demo 后端已同步 |
 | 2026-09-30 | B3-01 ENG-01（mutation 部分）写入自带失败提示与乐观回滚 | 7188ae3a | `typecheck` 绿；blog 相关 16 文件 116 条全绿（含新 6 条）；回滚变异证明 1 failed / 5 passed；九项静态门禁绿（`size` 未动基线）；`test:unit` 574 文件 5223 通过 / 1 skipped | 直连 `api` 的两处笔记侧写入未并入；folders/tags/categories/settings 的 loader 仍只记日志 |
 | 2026-09-30 | B3-01 ENG-01（三态部分）加载失败成为独立状态 + 失败可重试 | ddfd54e7 | `typecheck` 绿；`src/client/features/blog` 13 文件 39 条 + `tests/blog-routes.test.ts` 47 条全绿（含新 6 条）；失败分支短路的变异证明 1 failed；九项静态门禁绿 | mutation 的 catch/回滚/提示尚未做（进行中）；folders/tags/categories/settings 的 loader 仍只记日志（本条只覆盖四个视图） |

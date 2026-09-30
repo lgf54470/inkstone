@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { AlertTriangle, CheckCircle, ExternalLink, Inbox, RefreshCw, Search, ShieldCheck, Trash2, XCircle } from 'lucide-react'
-import type { BlogComment, BlogCommentStatus } from '@shared/types'
+import type { BlogComment, BlogCommentsCounts, BlogCommentStatus } from '@shared/types'
 import { Button, IconButton } from '../../components/primitives'
 import { Checkbox, Input } from '../../components/form'
 import { resolveAvatarSource } from '../../lib/avatar'
@@ -32,25 +32,37 @@ export function BlogCommentsView() {
         />
       )}
 
-      <div className='flex-1 overflow-y-auto p-4 space-y-3'>
-        {view.filteredComments.length > 0 && (
-          <div className='flex items-center gap-2 px-1 pb-1'>
-            <Checkbox
-              checked={view.isAllSelected}
-              onChange={view.handleToggleSelectAll}
-              aria-label={t('blog.select_all_list')}
-              className='min-h-0'
-            />
-            <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)] select-none'>{t('blog.select_all_list')} ({view.filteredComments.length})</span>
-          </div>
-        )}
+      <CommentsList view={view} />
+    </div>
+  )
+}
 
-        {view.filteredComments.length === 0 ? (
-          <CommentsEmptyState view={view} />
-        ) : (
-          view.filteredComments.map((comment) => <CommentCard key={comment.id} bundle={commentCardBundle(view, comment)} />)
-        )}
-      </div>
+function CommentsList({ view }: { view: ReturnType<typeof useBlogCommentsView> }) {
+  return (
+    <div className='flex-1 overflow-y-auto p-4 space-y-3'>
+      {view.isTruncated && (
+        <p className='px-1 text-[length:var(--text-11)] text-[var(--text-tertiary)]'>
+          {t('blog.comment_list_truncated', { value0: view.comments.length })}
+        </p>
+      )}
+
+      {view.comments.length > 0 && (
+        <div className='flex items-center gap-2 px-1 pb-1'>
+          <Checkbox
+            checked={view.isAllSelected}
+            onChange={view.handleToggleSelectAll}
+            aria-label={t('blog.select_all_list')}
+            className='min-h-0'
+          />
+          <span className='text-[length:var(--text-11)] text-[var(--text-tertiary)] select-none'>{t('blog.select_all_list')} ({view.comments.length})</span>
+        </div>
+      )}
+
+      {view.comments.length === 0 ? (
+        <CommentsEmptyState view={view} />
+      ) : (
+        view.comments.map((comment) => <CommentCard key={comment.id} bundle={commentCardBundle(view, comment)} />)
+      )}
     </div>
   )
 }
@@ -76,14 +88,6 @@ function commentCardBundle(view: ReturnType<typeof useBlogCommentsView>, comment
   }
 }
 
-interface StatusCounts {
-  all: number
-  pending: number
-  approved: number
-  rejected: number
-  spam: number
-}
-
 function CommentsToolbar({
   commentStatusFilter,
   setCommentStatusFilter,
@@ -95,7 +99,7 @@ function CommentsToolbar({
 }: {
   commentStatusFilter: BlogCommentStatus | 'all'
   setCommentStatusFilter: (status: BlogCommentStatus | 'all') => void
-  statusCounts: StatusCounts
+  statusCounts: BlogCommentsCounts | null
   search: string
   setSearch: (v: string) => void
   loading: boolean
@@ -147,14 +151,14 @@ function CommentStatusTabs({
   onSelect,
 }: {
   active: BlogCommentStatus | 'all'
-  counts: StatusCounts
+  counts: BlogCommentsCounts | null
   onSelect: (status: BlogCommentStatus | 'all') => void
 }) {
   return (
     <div className='flex items-center gap-1'>
       {STATUS_TABS.map((tab) => {
         const isActive = active === tab.key
-        const alert = tab.key === 'pending' && counts.pending > 0
+        const alert = tab.key === 'pending' && Boolean(counts && counts.pending > 0)
         return (
           <button
             key={tab.key}
@@ -167,17 +171,19 @@ function CommentStatusTabs({
             }`}
           >
             <span>{tab.label()}</span>
-            <span
-              className={`rounded-full px-1.5 py-0.1 text-[length:var(--text-10)] ${
-                isActive
-                  ? 'bg-black/20 text-[var(--accent-contrast)]'
-                  : alert
-                    ? 'bg-[var(--danger)] text-white font-bold'
-                    : 'bg-[var(--bg-sunken)] text-[var(--text-tertiary)]'
-              }`}
-            >
-              {counts[tab.key]}
-            </span>
+            {counts && (
+              <span
+                className={`rounded-full px-1.5 py-0.1 text-[length:var(--text-10)] ${
+                  isActive
+                    ? 'bg-black/20 text-[var(--accent-contrast)]'
+                    : alert
+                      ? 'bg-[var(--danger)] text-white font-bold'
+                      : 'bg-[var(--bg-sunken)] text-[var(--text-tertiary)]'
+                }`}
+              >
+                {counts[tab.key]}
+              </span>
+            )}
           </button>
         )
       })}

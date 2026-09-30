@@ -1,6 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
-import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -282,7 +282,7 @@ export const share = {
     },
     comments: {
       list: (params?: { status?: string; postId?: string; search?: string }, signal?: AbortSignal) =>
-        request<{ comments: BlogComment[] }>(`/api/blog/comments${toQuery(params ?? {})}`, { signal }),
+        request<{ comments: BlogComment[]; counts: BlogCommentsCounts }>(`/api/blog/comments${toQuery(params ?? {})}`, { signal }),
       updateStatus: (id: string, status: BlogCommentStatus) =>
         request<{ ok: true; status: BlogCommentStatus }>(`/api/blog/comments/${id}/status`, { method: 'PATCH', body: { status } }),
       remove: (id: string) =>

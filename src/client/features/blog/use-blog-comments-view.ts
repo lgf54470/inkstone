@@ -1,20 +1,25 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
-import type { BlogComment, BlogCommentStatus } from '@shared/types'
+import type { BlogCommentStatus } from '@shared/types'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
 import { useUi } from '../../store/ui'
 import { confirm } from '../../components/overlay'
 import { useBlogStore } from './blog-store'
 
+/** Same 250ms as the post list's box: the reader pauses, and the server is asked once. */
+const COMMENT_SEARCH_DEBOUNCE_MS = 250
+
 export function useBlogCommentsView() {
   const toast = useUi((s) => s.toast)
   const comments = useBlogStore((s) => s.comments)
+  const commentStats = useBlogStore((s) => s.commentStats)
   const settings = useBlogStore((s) => s.settings)
   const loading = useBlogStore((s) => s.loading)
   const loadComments = useBlogStore((s) => s.loadComments)
   const commentStatusFilter = useBlogStore((s) => s.commentStatusFilter)
   const setCommentStatusFilter = useBlogStore((s) => s.setCommentStatusFilter)
+  const { search, setSearch } = useCommentSearchBox()
   const selectedCommentIds = useBlogStore((s) => s.selectedCommentIds)
   const toggleSelectComment = useBlogStore((s) => s.toggleSelectComment)
   const selectAllComments = useBlogStore((s) => s.selectAllComments)
@@ -25,23 +30,19 @@ export function useBlogCommentsView() {
   const batchBusy = useBlogStore((s) => s.batchBusy)
   const loadErrors = useBlogStore((s) => s.loadErrors)
 
-  const [search, setSearch] = useState('')
-
   const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
-  const statusCounts = useMemo(() => computeStatusCounts(comments), [comments])
-  const filteredComments = useMemo(
-    () => filterComments(comments, commentStatusFilter, search),
-    [comments, commentStatusFilter, search],
-  )
-  const isAllSelected = filteredComments.length > 0 && filteredComments.every((c) => selectedCommentIds.has(c.id))
+  const isAllSelected = comments.length > 0 && comments.every((c) => selectedCommentIds.has(c.id))
+  // The server caps the list; a tab whose real size is larger than what came back is truncated and
+  // the view says so rather than letting the reader believe those are all of them.
+  const isTruncated = Boolean(commentStats && commentStats[commentStatusFilter] > comments.length)
 
-  const handleToggleSelectAll = () => toggleAllComments(isAllSelected, filteredComments, clearCommentSelection, selectAllComments)
+  const handleToggleSelectAll = () => toggleAllComments(isAllSelected, comments, clearCommentSelection, selectAllComments)
   const handleDeleteSingle = (id: string) => deleteSingleComment(id, deleteComment, toast)
   const handleBatch = (action: CommentBatchAction) => batchCommentsAction(action, selectedCommentIds.size, batchComments, toast)
 
   return {
     search, setSearch,
-    statusCounts, filteredComments, isAllSelected,
+    statusCounts: commentStats, comments, isTruncated, isAllSelected,
     loadFailed: comments.length === 0 && loadErrors.has('comments'),
     commentStatusFilter, setCommentStatusFilter,
     loading, loadComments, batchBusy,
@@ -51,44 +52,34 @@ export function useBlogCommentsView() {
   }
 }
 
+/**
+ * The box types instantly and asks once; the value it shows is its own, while the query lives in the
+ * store. Filtering in the browser used to narrow only the page that happened to arrive.
+ */
+function useCommentSearchBox(): { search: string; setSearch: (value: string) => void } {
+  const commentSearch = useBlogStore((s) => s.commentSearch)
+  const setCommentSearch = useBlogStore((s) => s.setCommentSearch)
+  const [draft, setDraft] = useState(commentSearch)
 
-function computeStatusCounts(comments: BlogComment[]): Record<BlogCommentStatus | 'all', number> {
-  const counts: Record<BlogCommentStatus | 'all', number> = { all: comments.length, pending: 0, approved: 0, rejected: 0, spam: 0 }
-  for (const c of comments) {
-    if (c.status in counts) counts[c.status as BlogCommentStatus]++
-  }
-  return counts
-}
+  useEffect(() => {
+    if (draft === commentSearch) return
+    const timer = setTimeout(() => setCommentSearch(draft), COMMENT_SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [draft, commentSearch, setCommentSearch])
 
-
-function filterComments(comments: BlogComment[], statusFilter: BlogCommentStatus | 'all', search: string): BlogComment[] {
-  let list = comments
-  if (statusFilter !== 'all') {
-    list = list.filter((c) => c.status === statusFilter)
-  }
-  if (search.trim()) {
-    const q = search.trim().toLowerCase()
-    list = list.filter(
-      (c) =>
-        c.authorName.toLowerCase().includes(q) ||
-        c.authorEmail.toLowerCase().includes(q) ||
-        c.content.toLowerCase().includes(q) ||
-        (c.postTitle && c.postTitle.toLowerCase().includes(q)),
-    )
-  }
-  return list
+  return { search: draft, setSearch: setDraft }
 }
 
 function toggleAllComments(
   isAllSelected: boolean,
-  filteredComments: BlogComment[],
+  comments: { id: string }[],
   clearCommentSelection: () => void,
   selectAllComments: (ids: string[]) => void,
 ): void {
   if (isAllSelected) {
     clearCommentSelection()
   } else {
-    selectAllComments(filteredComments.map((c) => c.id))
+    selectAllComments(comments.map((c) => c.id))
   }
 }
 

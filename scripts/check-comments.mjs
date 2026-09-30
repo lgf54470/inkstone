@@ -2692,6 +2692,7 @@ const allowed = new Map([
   ]],
   ['src/client/demo/backend/routes/blog.ts', [
     '/** The same split the real route makes: the list carries no body, the index carries no statistics. */',
+    '/** The same split the real route makes: counts ignore the status tab so every tab\'s size is real. */',
   ]],
   ['src/client/demo/backend/routes/board-library.ts', [
     '/**\n * The demo keeps the named whiteboard libraries in memory like the rest of its state, with\n * the same contract as the worker route: one JSON document per name, stored verbatim, so\n * the picker and the boards behave here exactly as they do against a real instance within\n * one session.\n */',
@@ -2898,6 +2899,10 @@ const allowed = new Map([
     '/**\n * A failed load with nothing on screen is its own state: a failed refresh over existing data keeps\n * drawing what it has, but an empty dashboard says the load failed instead of "no visitors yet".\n */',
     '/**\n * What the payload means under the switches. A number only counts as filtered when the switch hiding\n * it is on: the server reports all three regardless, and the banner that reads these is describing\n * what is not in the chart above it.\n */',
   ]],
+  ['src/client/features/blog/blog-hub-sidebar/use-blog-hub-sidebar.tsx', [
+    '// The comment badge reads the server\'s unfiltered tally: counting the loaded rows would read the',
+    '// status tab (and the list cap) as if it were the whole blog\'s pending count.',
+  ]],
   ['src/client/features/blog/blog-hub-toolbar.tsx', [
     '/**\n * The search box types instantly and asks once. It used to call the store on every keystroke, so\n * thirteen characters were thirteen full list requests, each one started before the last had\n * answered. The value shown is this component\'s own, so typing never waits for a round trip.\n */',
   ]],
@@ -2955,6 +2960,7 @@ const allowed = new Map([
     '/**\n * The list holds one page of the account\'s posts; when there are more, this is how the reader reaches\n * them. It reads and writes the store directly because the page is part of the query, not of a view\'s\n * local state, and the store clamps it to the pages that exist.\n */',
   ]],
   ['src/client/features/blog/blog-publish-modal/use-blog-publish-form.ts', [
+    '/**\n * The dialog loads what it draws when it opens: the note body once, and the category list. It used\n * to re-run on every `content` change, so one session fetched the categories two or three times.\n */',
     '// Debounced, cancelled and sequence-checked: only the answer to the slug as it is typed last may',
     '// set the badge, or a slow reply about a previous slug claims the current one is taken.',
     '/** The note may still be a stub in memory; storage holds the body in that case. */',
@@ -2966,6 +2972,9 @@ const allowed = new Map([
     '// The period belongs to the account: nothing in this save may re-cache it.',
     '// Cleaning by age needs no re-authentication, so the password stays unset.',
     '// The tab switcher and the retention period; nothing else asks for a count.',
+  ]],
+  ['src/client/features/blog/blog-store/comments-request.test.ts', [
+    '/**\n * The search box used to narrow the fetched page in the browser, and the tab badges were counted on\n * that same filtered array — so selecting a tab drew every other tab as zero. The query now goes to\n * the server and the tally comes back from it, which is why late answers cannot be painted over the\n * newer question any more.\n */',
   ]],
   ['src/client/features/blog/blog-store/filters.test.ts', [
     '// The store module loads with the app; reading `localStorage` there would touch it on every page',
@@ -3014,6 +3023,7 @@ const allowed = new Map([
     '// The index feeds the note list\'s published badges and the publish dialog\'s starting values. A',
     '// failure keeps the previous answer instead of clearing it, and is logged here rather than shown',
     '// as a broken note list: there is no surface that could render it without lying about the notes.',
+    '/**\n * The comment search is asked of the server now (the box used to filter whatever page arrived), so\n * it needs the same latest-wins rule as the other lists: the request a newer one replaces is\n * cancelled and a late answer is dropped rather than painted over the newer query.\n */',
   ]],
   ['src/client/features/blog/blog-store/mutation-failures.test.ts', [
     '/**\n * Every mutation resolves to whether it went through, reports a failure itself (danger toast) and\n * rolls back the optimistic change. The callers that wrote `void updatePost(...)` had no other way\n * to learn it failed — the rejection was unhandled and the optimistic row stayed painted.\n */',
@@ -3041,15 +3051,23 @@ const allowed = new Map([
     '/**\n * The lists whose load result a view draws. A failed load is a state of its own — the alternative\n * was rendering it as an empty list, which told the reader their data was gone.\n */',
     '/**\n * Everything the hub caches, with one timestamp each. Opening the hub or switching tabs asks only\n * for what the current tab draws and for whatever is older than the freshness window — the first\n * version asked for all of it on every open, and again whenever the open note changed.\n */',
     '/**\n   * Every post of the account in its body-free index form (see `BlogPostIndexEntry`). The list above\n   * is one page, so the note list cannot read "which notes are published" from it, and the publish\n   * dialog cannot be pre-filled from it either.\n   */',
+    '/**\n   * The moderation tabs\' real sizes, answered by the server without the status filter. Counting the\n   * rows on screen (which the status filter already narrowed) drew every other tab as zero.\n   */',
     '/**\n   * Scopes whose last load failed. A refresh failure leaves the previous data in place — only a view\n   * with nothing to show asks this flag to render a failure instead of an empty state.\n   */',
     '/** When each scope last answered successfully; see `BlogDataScope` and `loadHubData`. */',
     '/**\n   * Everything below is a mutation: it reports its own failure (see `mutation.ts`), resolves to\n   * `false`/`null` after a danger toast and rolls back any optimistic change it made, so no caller\n   * has to catch a rejection from it.\n   */',
     '/**\n   * The post list\'s in-flight request: `seq` lets a late answer be dropped (the reader may have\n   * typed again since), and the controller cancels the request the newest one replaces. Both are\n   * request lifecycle, not data — the list itself lives in `posts`.\n   */',
     '/** Which page of the post list is on screen, and what the server said about the whole list. */',
+    '/** The same latest-wins rule as the post list, for the comment list\'s status/search. */',
     '/** The same latest-wins rule as the post list, for the link list\'s status/category/search. */',
   ]],
   ['src/client/features/blog/frontend-base.ts', [
     '/**\n * The blog\'s own site address, as a link may carry it.\n *\n * The stored value is checked on the way in, but a blog configured before that rule existed still\n * holds whatever was typed, and this address becomes an `href` in the admin session — so a value a\n * link may not use falls back to the shipped default instead of being rendered as written.\n */',
+  ]],
+  ['src/client/features/blog/use-blog-comments-view.ts', [
+    '/** Same 250ms as the post list\'s box: the reader pauses, and the server is asked once. */',
+    '// The server caps the list; a tab whose real size is larger than what came back is truncated and',
+    '// the view says so rather than letting the reader believe those are all of them.',
+    '/**\n * The box types instantly and asks once; the value it shows is its own, while the query lives in the\n * store. Filtering in the browser used to narrow only the page that happened to arrive.\n */',
   ]],
   ['src/client/features/blog/use-blog-hub-modal.ts', [
     '/** Nothing came back and the load failed: the list draws a failure, not an empty state. */',
@@ -12432,6 +12450,7 @@ const allowed = new Map([
     '/**\n * One page of the management list: every column the table and grid draw, and never the body. The\n * body is the one field measured in kilobytes, and the list asked for it only to drop it again.\n */',
     '/**\n * The complete body-free view of an account\'s posts, keyed by the note each was published from. The\n * note list both badges a note with the post it owns and pre-fills the publish dialog from it, and a\n * paginated row list cannot answer for a note that sits on another page.\n */',
     '/** The two flag tabs; the admin list filters on them exactly like a status. */',
+    '/** The moderation list\'s tab sizes, counted without the status filter so every tab is real. */',
     '/** The posts\' own cumulative counter, which is not the range\'s visits. */',
   ]],
   ['src/shared/types/board-library.ts', [
@@ -13088,6 +13107,8 @@ const allowed = new Map([
     '// shared IP / NAT is never locked out by a full window of attempts.',
   ]],
   ['src/worker/routes/blog/comments.ts', [
+    '/** The moderation list is a working set, not the archive: past this the reader narrows the filters. */',
+    '/**\n * One WHERE for the page and the counts. The counts deliberately leave the status out: counting the\n * rows the status filter already narrowed down would draw every other tab as zero, which is what the\n * old client-side count on the filtered array did.\n */',
     '// Same needle rule as the post list: escape what LIKE reads as wildcards before binding it.',
     '// D1 refuses a statement that binds more than 100 variables, and this action binds one per id, so a',
     '// selection wider than that is split rather than handed to the platform to fail on: the ids are',
@@ -14278,6 +14299,7 @@ const allowed = new Map([
     '// The body is the one column measured in kilobytes, and the list draws titles and counters.',
     '// The old filter ran in JS after fetching everything. Cutting a page first would have answered',
     '// "no posts" for every tag match that lived on another page.',
+    '// Counting the rows the status filter already narrowed down drew every other tab as zero.',
     '// Reading a post is not a view: the beacon the reader\'s browser sends is (see visit-beacon.ts).',
     '// The beacon is what counts, and it counts what the visit path has always counted: one view per',
     '// visitor fingerprint inside the dedupe window, another when a different reader arrives.',

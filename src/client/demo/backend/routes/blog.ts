@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { DemoState } from '../../state'
-import type { BlogCommentStatus, BlogPost, BlogPostIndexEntry, BlogPostSummary, ShareTimelineRange } from '@shared/types'
+import type { BlogCommentsCounts, BlogCommentStatus, BlogPost, BlogPostIndexEntry, BlogPostSummary, ShareTimelineRange } from '@shared/types'
 import { apiError, jsonBody } from '../helpers/info'
 import { buildAnalytics, buildStats, createBlogDemoData, type BlogDemoData } from './blog-seed'
 import {
@@ -101,17 +101,29 @@ function registerBlogPostListRoute(app: Hono, data: BlogDemoData): void {
   app.get('/api/blog/post-index', (c) => c.json({ posts: data.posts.map(toIndexEntry) }))
 }
 
+const DEMO_COMMENTS_PAGE_LIMIT = 500
+
+/** The same split the real route makes: counts ignore the status tab so every tab's size is real. */
+function countCommentsByStatus(comments: BlogDemoData['comments']): BlogCommentsCounts {
+  const counts: BlogCommentsCounts = { all: comments.length, pending: 0, approved: 0, rejected: 0, spam: 0 }
+  for (const comment of comments) counts[comment.status] += 1
+  return counts
+}
+
 function registerBlogCommentRoutes(app: Hono, data: BlogDemoData): void {
   app.get('/api/blog/comments', (c) => {
     const status = c.req.query('status') ?? 'all'
     const postId = c.req.query('postId')
     const search = c.req.query('search')?.toLowerCase()
-    const filtered = data.comments
-      .filter((comment) => status === 'all' || comment.status === status)
+    const matching = data.comments
       .filter((comment) => !postId || comment.postId === postId)
       .filter((comment) => !search || `${comment.authorName} ${comment.content} ${comment.postTitle}`.toLowerCase().includes(search))
+    const counts = countCommentsByStatus(matching)
+    const filtered = matching
+      .filter((comment) => status === 'all' || comment.status === status)
       .sort((a, b) => b.createdAt - a.createdAt)
-    return c.json({ comments: filtered })
+      .slice(0, DEMO_COMMENTS_PAGE_LIMIT)
+    return c.json({ comments: filtered, counts })
   })
 
   app.patch('/api/blog/comments/:id/status', async (c) => {

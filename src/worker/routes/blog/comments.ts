@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import type { BlogCommentStatus } from '@shared/types'
+import type { BlogCommentsCounts, BlogCommentStatus } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { escapeLike, likeAny } from '../../lib/like'
@@ -8,6 +8,9 @@ import type { BlogCommentModerationRow } from '../../db/rows'
 import { blogCommentStatusSchema } from './schemas'
 import { blogCommentBatchSchema } from './schemas'
 import { toBlogComment } from './helpers'
+
+/** The moderation list is a working set, not the archive: past this the reader narrows the filters. */
+export const BLOG_COMMENTS_LIST_LIMIT = 500
 
 export function registerBlogCommentsRoutes(blogManageRoutes: Hono<AppBindings>): void {
   registerBlogCommentsListRoute(blogManageRoutes)
@@ -19,13 +22,19 @@ export function registerBlogCommentsRoutes(blogManageRoutes: Hono<AppBindings>):
 function registerBlogCommentsListRoute(blogManageRoutes: Hono<AppBindings>): void {
   blogManageRoutes.get('/comments', async (c) => {
     const userId = c.get('userId')!
-    const status = c.req.query('status')
-    const postId = c.req.query('postId')
-    const search = c.req.query('search')?.trim()
-    const { sql, params } = blogCommentsListQuery(userId, { status, postId, search })
-    const { results } = await c.env.DB.prepare(sql).bind(...params).all<BlogCommentModerationRow>()
-    const comments = (results || []).map(toBlogComment)
-    return c.json({ comments })
+    const filter = {
+      status: c.req.query('status'),
+      postId: c.req.query('postId'),
+      search: c.req.query('search')?.trim(),
+    }
+    const listQuery = blogCommentsListQuery(userId, filter)
+    const countsQuery = blogCommentsCountsQuery(userId, filter)
+    const [list, counts] = await Promise.all([
+      c.env.DB.prepare(listQuery.sql).bind(...listQuery.params).all<BlogCommentModerationRow>(),
+      c.env.DB.prepare(countsQuery.sql).bind(...countsQuery.params).all<BlogCommentStatusCountRow>(),
+    ])
+    const comments = (list.results || []).map(toBlogComment)
+    return c.json({ comments, counts: toBlogCommentsCounts(counts.results || []) })
   })
 }
 
@@ -35,37 +44,71 @@ interface BlogCommentsFilter {
   search?: string
 }
 
-function blogCommentsListQuery(userId: string, filter: BlogCommentsFilter): { sql: string; params: unknown[] } {
+/**
+ * One WHERE for the page and the counts. The counts deliberately leave the status out: counting the
+ * rows the status filter already narrowed down would draw every other tab as zero, which is what the
+ * old client-side count on the filtered array did.
+ */
+function blogCommentsWhere(userId: string, filter: BlogCommentsFilter, includeStatus: boolean): { clause: string; params: unknown[] } {
   const { status, postId, search } = filter
-  let sql = `
-    SELECT c.*, p.title as post_title, p.slug as post_slug
-    FROM blog_comments c
-    JOIN blog_posts p ON c.post_id = p.id
-    WHERE p.user_id = ?1
-  `
+  let clause = 'p.user_id = ?1'
   const params: unknown[] = [userId]
   let idx = 2
 
-  if (status && status !== 'all') {
-    sql += ` AND c.status = ?${idx++}`
+  if (includeStatus && status && status !== 'all') {
+    clause += ` AND c.status = ?${idx++}`
     params.push(status)
   }
 
   if (postId) {
-    sql += ` AND c.post_id = ?${idx++}`
+    clause += ` AND c.post_id = ?${idx++}`
     params.push(postId)
   }
 
   if (search) {
     // Same needle rule as the post list: escape what LIKE reads as wildcards before binding it.
-    sql += ` AND (${likeAny(['c.author_name', 'c.author_email', 'c.content', 'p.title'], `?${idx}`)})`
+    clause += ` AND (${likeAny(['c.author_name', 'c.author_email', 'c.content', 'p.title'], `?${idx}`)})`
     params.push(`%${escapeLike(search)}%`)
-    idx++
   }
 
-  sql += ` ORDER BY c.created_at DESC`
+  return { clause, params }
+}
 
-  return { sql, params }
+function blogCommentsListQuery(userId: string, filter: BlogCommentsFilter): { sql: string; params: unknown[] } {
+  const { clause, params } = blogCommentsWhere(userId, filter, true)
+  const sql = `
+    SELECT c.*, p.title as post_title, p.slug as post_slug
+    FROM blog_comments c
+    JOIN blog_posts p ON c.post_id = p.id
+    WHERE ${clause}
+    ORDER BY c.created_at DESC
+    LIMIT ?${params.length + 1}
+  `
+  return { sql, params: [...params, BLOG_COMMENTS_LIST_LIMIT] }
+}
+
+interface BlogCommentStatusCountRow {
+  status: string
+  n: number
+}
+
+function blogCommentsCountsQuery(userId: string, filter: BlogCommentsFilter): { sql: string; params: unknown[] } {
+  const { clause, params } = blogCommentsWhere(userId, filter, false)
+  return {
+    sql: `SELECT c.status, COUNT(*) as n FROM blog_comments c JOIN blog_posts p ON c.post_id = p.id WHERE ${clause} GROUP BY c.status`,
+    params,
+  }
+}
+
+function toBlogCommentsCounts(rows: BlogCommentStatusCountRow[]): BlogCommentsCounts {
+  const counts: BlogCommentsCounts = { all: 0, pending: 0, approved: 0, rejected: 0, spam: 0 }
+  for (const row of rows) {
+    counts.all += row.n
+    if (row.status === 'pending' || row.status === 'approved' || row.status === 'rejected' || row.status === 'spam') {
+      counts[row.status] = row.n
+    }
+  }
+  return counts
 }
 
 function registerBlogCommentStatusRoute(blogManageRoutes: Hono<AppBindings>): void {

@@ -121,6 +121,7 @@ function useBlogHubSidebarStore() {
   const setTag = useBlogStore((s) => s.setTag)
   const stats = useBlogStore((s) => s.stats)
   const comments = useBlogStore((s) => s.comments)
+  const commentStats = useBlogStore((s) => s.commentStats)
   const settings = useBlogStore((s) => s.settings)
   const folders = useBlogStore((s) => s.folders)
   const tags = useBlogStore((s) => s.tags)
@@ -138,7 +139,7 @@ function useBlogHubSidebarStore() {
   return {
     toast, activeTab, setActiveTab, statusFilter, setStatusFilter,
     selectedFolderId, setFolderId, selectedTag, setTag,
-    stats, comments, links, linkStats, settings, folders, tags, batchBusy,
+    stats, comments, commentStats, links, linkStats, settings, folders, tags, batchBusy,
     createFolder, patchFolder, deleteFolder,
     createTag, patchTag, deleteTag, batchToggleGroup, batchMoveToFolder,
   }
@@ -205,7 +206,10 @@ function isPostsTab(ctx: NavCtx, status: 'all' | 'published' | 'draft' | 'pinned
 }
 
 function buildSidebarNavItems(store: ReturnType<typeof useBlogHubSidebarStore>): SidebarNavItem[] {
-  const pendingCommentsCount = store.comments.filter((c) => c.status === 'pending').length
+  // The comment badge reads the server's unfiltered tally: counting the loaded rows would read the
+  // status tab (and the list cap) as if it were the whole blog's pending count.
+  const pendingCommentsCount = store.commentStats?.pending ?? 0
+  const commentsCount = store.commentStats?.all ?? store.comments.length
   const pendingLinksCount = store.linkStats?.pending ?? store.links.filter((l) => l.status === 'pending').length
   const totalLinksCount = store.linkStats?.total ?? store.links.length
 
@@ -215,7 +219,7 @@ function buildSidebarNavItems(store: ReturnType<typeof useBlogHubSidebarStore>):
     selectedFolderId: store.selectedFolderId,
     selectedTag: store.selectedTag,
     stats: store.stats,
-    commentsCount: store.comments.length,
+    commentsCount,
     pendingCommentsCount,
     linksCount: totalLinksCount,
     pendingLinksCount,

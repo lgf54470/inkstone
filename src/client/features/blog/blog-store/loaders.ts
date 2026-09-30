@@ -150,15 +150,31 @@ async function loadCategoriesImpl(set: SetBlogStoreState): Promise<void> {
   }
 }
 
+/**
+ * The comment search is asked of the server now (the box used to filter whatever page arrived), so
+ * it needs the same latest-wins rule as the other lists: the request a newer one replaces is
+ * cancelled and a late answer is dropped rather than painted over the newer query.
+ */
 async function loadCommentsImpl(set: SetBlogStoreState, get: () => BlogStoreState): Promise<void> {
-  const { commentStatusFilter, commentSearch } = get()
+  const { commentStatusFilter, commentSearch, commentsRequestSeq, commentsAbort } = get()
+  const seq = commentsRequestSeq + 1
+  commentsAbort?.abort()
+  const controller = new AbortController()
+  set({ commentsRequestSeq: seq, commentsAbort: controller })
   try {
     const res = await api.blog.comments.list({
       status: commentStatusFilter,
       search: commentSearch || undefined,
-    })
-    set((s) => ({ comments: res.comments, loadErrors: markLoadSucceeded(s.loadErrors, 'comments'), dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'comments') }))
+    }, controller.signal)
+    if (get().commentsRequestSeq !== seq) return
+    set((s) => ({
+      comments: res.comments,
+      commentStats: res.counts ?? null,
+      loadErrors: markLoadSucceeded(s.loadErrors, 'comments'),
+      dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'comments'),
+    }))
   } catch (err) {
+    if (controller.signal.aborted) return
     console.error('Failed to load blog comments', err)
     set((s) => ({ loadErrors: markLoadFailed(s.loadErrors, 'comments') }))
   }
