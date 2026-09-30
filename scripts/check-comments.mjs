@@ -9930,6 +9930,9 @@ const allowed = new Map([
   ]],
   ['src/client/lib/markdown/kanban/ui/kanban-day-move.test.ts', [
     '/**\n * KU-21b. The calendar drew a bar per card and the bar answered one press — it opened the card. A\n * board\'s dates could be changed from this view only by opening the detail dialog, scrolling to the\n * date field and picking a day, which is the shape every other drag in this module replaced (KU-21a\n * did it for the two time views). Now the bar is draggable and the cells are the drop targets, so\n * what is asserted here is the wiring rather than the arithmetic: a real dragstart on a bar and a\n * real drop on another day cell reaches the board\'s writer once, with the patch the pure layer names\n * (`calendar-helpers.test.ts` pins that); the keyboard gets the same move one day at a time; and a\n * drop made with no bar in flight writes nothing, because a cell that can receive a drop from\n * anywhere must not invent a card to move.\n */',
+    '// The calendar opens on the month `new Date()` is in, so a fixture written in September stopped',
+    '// drawing its bar the day the clock rolled into October. Only `Date` is faked: the drag and drop',
+    '// path itself uses real timers, and freezing those would change what these cases exercise.',
     '/** September 2026 opens on a Tuesday with the 10th in its second week; any cell of the grid is reachable. */',
     '/** A drag the way the browser delivers it: the payload travels through `dataTransfer`. */',
     '// The in-flight bar was cleared by the drop; a second drop on the same cell is a stray.',

@@ -10,7 +10,7 @@
  * anywhere must not invent a card to move.
  */
 import { act, createElement } from 'react'
-import { afterEach, beforeAll, describe, expect, it, vi, type Mock } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi, type Mock } from 'vitest'
 import { initI18n } from '../../../i18n'
 import { installTestGlobals, renderElement } from '../../../test-render'
 import type { KanbanData, KanbanItem } from '../types'
@@ -19,6 +19,14 @@ import { KanbanRoot } from './kanban-root'
 beforeAll(async () => {
   installTestGlobals()
   await initI18n()
+  // The calendar opens on the month `new Date()` is in, so a fixture written in September stopped
+  // drawing its bar the day the clock rolled into October. Only `Date` is faked: the drag and drop
+  // path itself uses real timers, and freezing those would change what these cases exercise.
+  vi.useFakeTimers({ now: new Date('2026-09-15T12:00:00Z'), toFake: ['Date'] })
+})
+
+afterAll(() => {
+  vi.useRealTimers()
 })
 
 const mounted: ReturnType<typeof renderElement>[] = []
