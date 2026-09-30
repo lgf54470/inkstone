@@ -29,17 +29,17 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
       data-presentation-chrome
       inert={chromeHidden ? true : undefined}
       className={cn(
-        'absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]',
+        'absolute bottom-[var(--sp-4)] left-1/2 flex -translate-x-1/2 items-center gap-[var(--sp-0\\.5)] rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] p-[var(--sp-1)] shadow-[var(--shadow-pop)]',
         'transition-opacity duration-[var(--dur-base)] ease-[var(--ease-out)]',
         chromeHidden && 'pointer-events-none opacity-0 invisible',
       )}
     >
       <SlideStepper slideIndex={slideIndex} slideCount={slideCount} subPage={subPage} pageCount={pageCount} onPrev={onPrev} onNext={onNext} />
-      <span className='mx-1 h-4 w-px bg-[var(--border-subtle)]' aria-hidden='true' />
+      <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <ViewControls railOpen={railOpen} following={following} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} />
-      <span className='mx-1 h-4 w-px bg-[var(--border-subtle)]' aria-hidden='true' />
+      <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <ExportControls onExport={onExport} onExportImages={onExportImages} />
-      <span className='mx-1 h-4 w-px bg-[var(--border-subtle)]' aria-hidden='true' />
+      <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <Tooltip label={t('workspace.presentation_exit')} side='top'>
         <IconButton label={t('workspace.presentation_exit')} size='sm' onClick={onClose}>
           <X size={15} />
@@ -126,7 +126,7 @@ function SlideStepper({ slideIndex, slideCount, subPage, pageCount, onPrev, onNe
       {pageCount > 1 && (
         <span
           aria-live='polite'
-          className='tabular mr-1 rounded-[var(--r-full)] bg-[var(--accent-soft)] px-[var(--sp-2)] py-0.5 text-[length:var(--text-11)] text-[var(--accent)]'
+          className='tabular mr-[var(--sp-1)] rounded-[var(--r-full)] bg-[var(--accent-soft)] px-[var(--sp-2)] py-[var(--sp-0\\.5)] text-[length:var(--text-11)] text-[var(--accent)]'
           title={t('workspace.presentation_page_of', { value0: subPage + 1, value1: pageCount })}
         >
           {subPage + 1}/{pageCount}
@@ -139,7 +139,7 @@ function SlideStepper({ slideIndex, slideCount, subPage, pageCount, onPrev, onNe
 export function SlideProgress({ index, count, chromeHidden: _chromeHidden }: { index: number; count: number; chromeHidden?: boolean }) {
   return (
     <div
-      className='pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-[var(--border-subtle)]'
+      className='pointer-events-none absolute inset-x-0 bottom-0 h-[var(--sp-0\\.5)] bg-[var(--border-subtle)]'
       aria-hidden='true'
     >
       <div className='h-full bg-[var(--accent)] transition-[width] duration-[var(--dur-base)] ease-[var(--ease-out)]' style={{ width: `${Math.round(((index + 1) / count) * 100)}%` }} />

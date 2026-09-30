@@ -92,12 +92,12 @@
   - 目标：长篇演说支持文字大纲快速扫视定位。
   - 方案：新增 `extractSlideHeading(source: string): string` 纯函数，提取每个 Slide 的首个有效 Heading（H1~H3）或第一行正文作为 Slide 简明标题，在缩略图右侧或下方以清晰文本标签呈现，超长智能截断。
   - 验证：单元测试覆盖多级 Heading、无 Heading 纯文本、带代码块与空页等场景的大纲文本提取正确性。
-- [x] **B3-02** `P-13 (UX-07)`: 侧栏获焦时左右方向键隔离 — 已完成
+- [x] **B3-02** `P-13 (UX-07)`: 侧栏获焦时左右方向键隔离 — 已完成 (`a8a99505`)
   - 涉及文件：`src/client/features/presentation/presentation-keys.ts` (`presentationCommand`)、`src/client/features/presentation/presentation-keys.test.ts`
   - 目标：焦点在侧栏缩略图列表时，左右方向键（`ArrowLeft` / `ArrowRight`）不穿透导致舞台翻页。
   - 方案：在 `presentationCommand` 中针对 `ArrowLeft` / `ArrowRight` 增加 `if (context.onSlideList) return null;` 守卫条件。
   - 验证：单元测试覆盖 `onSlideList: true` 下按 `ArrowLeft`/`ArrowRight` 均返回 `null`，既有侧栏上下导航保持顺畅。
-- [ ] **B3-03** `P-14 (SPEC-01)`: 统一替换裸 Tailwind 阶梯尺寸为设计令牌（AGENTS.md 铁律 4/12）
+- [x] **B3-03** `P-14 (SPEC-01)`: 统一替换裸 Tailwind 阶梯尺寸为设计令牌（AGENTS.md 铁律 4/12） — 已完成
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx`
   - 目标：全面采用 `var(--sp-*)`，消除残余的 `p-1`, `mx-1`, `h-4`, `py-0.5`, `h-0.5`, `bottom-4`。
   - 方案：将所有硬编码间距与尺寸类名系统性对齐全局设计系统令牌。
