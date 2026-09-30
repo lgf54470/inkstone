@@ -33,6 +33,16 @@ export function escapeAction(isFullscreen: boolean): 'exitFullscreen' | 'close' 
   return isFullscreen ? 'exitFullscreen' : 'close'
 }
 
+export function stageClickDirection(clickX: number, stageWidth: number): 'prev' | 'next' {
+  return clickX < stageWidth * 0.35 ? 'prev' : 'next'
+}
+
+export function swipeDirection(deltaX: number, threshold = 50): 'prev' | 'next' | null {
+  if (deltaX < -threshold) return 'next'
+  if (deltaX > threshold) return 'prev'
+  return null
+}
+
 /** One navigable page: a `---` slide plus the overflow page inside it. */
 export interface RailEntry {
   slide: number

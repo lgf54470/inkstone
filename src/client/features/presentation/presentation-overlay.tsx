@@ -12,7 +12,7 @@ import { useSession } from '../../store/session'
 import { escapeAction, presentedNoteContent, railOpenFor } from './presentation-state'
 import { useIsDarkTheme } from './presentation-theme'
 import { PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
-import { SlideViewport } from './slide-canvas'
+import { PresentationStage } from './presentation-stage'
 import { hashContent, slideCacheKey } from './slide-html'
 import { samePlan, type SlidePlan } from './slide-pagination'
 import { SlidePreflight, type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
@@ -85,10 +85,27 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
             onSelectPage={session.jumpToPage}
           />
         )}
-        <PresentationStage stageRef={stageRef} session={session} />
+        <PresentationStage
+          stageRef={stageRef}
+          metrics={session.metrics}
+          cacheKey={session.cacheKeys[session.index] ?? ''}
+          source={session.deck[session.index] ?? ''}
+          subPage={session.sub}
+          onPlan={session.handlePlan}
+          onPrev={session.goPrev}
+          onNext={session.goNext}
+        />
         <PresentationControls {...controlProps(session, onClose)} />
         <SlideProgress index={session.index} count={session.deck.length} chromeHidden={session.chromeHidden} />
       </div>
+      <PresentationSheets session={session} />
+    </>
+  )
+}
+
+function PresentationSheets({ session }: { session: PresentationSession }) {
+  return (
+    <>
       {/* The whole deck is measured off-screen while the show is open, so the slide
           list lists every page from the start instead of only the slides visited. */}
       <SlidePreflight {...session.preflight} />
@@ -125,19 +142,6 @@ function controlProps(session: PresentationSession, onClose: () => void): Presen
   }
 }
 
-function PresentationStage({ stageRef, session }: { stageRef: RefObject<HTMLDivElement | null>; session: PresentationSession }) {
-  return (
-    <div ref={stageRef} className='relative flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden'>
-      <SlideViewport
-        metrics={session.metrics}
-        cacheKey={session.cacheKeys[session.index] ?? ''}
-        source={session.deck[session.index] ?? ''}
-        subPage={session.sub}
-        onPlan={session.handlePlan}
-      />
-    </div>
-  )
-}
 
 interface PresentationSession {
   deck: string[]

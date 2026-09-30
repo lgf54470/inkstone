@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entryIndexOf, escapeAction, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, presentedNoteContent, railEntries, railOpenFor } from './presentation-state'
+import { entryIndexOf, escapeAction, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
 import type { SlidePlan } from './slide-pagination'
 
 const planOf = (pages: number): SlidePlan => ({
@@ -151,5 +151,32 @@ describe('escapeAction', () => {
 
   it('closes presentation overlay when presentation is in windowed mode', () => {
     expect(escapeAction(false)).toBe('close')
+  })
+})
+
+describe('stageClickDirection', () => {
+  it('goes previous on the left 35% of the stage', () => {
+    expect(stageClickDirection(0, 1000)).toBe('prev')
+    expect(stageClickDirection(349, 1000)).toBe('prev')
+  })
+
+  it('goes next on the right 65% of the stage', () => {
+    expect(stageClickDirection(350, 1000)).toBe('next')
+    expect(stageClickDirection(999, 1000)).toBe('next')
+  })
+})
+
+describe('swipeDirection', () => {
+  it('goes next when swiping left past threshold', () => {
+    expect(swipeDirection(-60, 50)).toBe('next')
+  })
+
+  it('goes prev when swiping right past threshold', () => {
+    expect(swipeDirection(60, 50)).toBe('prev')
+  })
+
+  it('ignores minor movement below threshold', () => {
+    expect(swipeDirection(-20, 50)).toBeNull()
+    expect(swipeDirection(20, 50)).toBeNull()
   })
 })

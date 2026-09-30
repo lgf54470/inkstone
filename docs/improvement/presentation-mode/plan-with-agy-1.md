@@ -61,9 +61,10 @@
 
 ## 批次 2 · 演说交互体验与视觉信息强化
 
-- [ ] **B2-01** `P-04 (UX-04)`: 舞台左右半区分区点击翻页与触摸手势识别
-  - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx` (`PresentationStage`)
+- [x] **B2-01** `P-04 (UX-04)`: 舞台左右半区分区点击翻页与触摸手势识别 — 已完成
+  - 涉及文件：`src/client/features/presentation/presentation-state.ts` (`stageClickDirection`, `swipeDirection`)、`src/client/features/presentation/presentation-state.test.ts`、`src/client/features/presentation/presentation-overlay.tsx` (`PresentationStage`)
   - 目标：支持屏幕左 35% 后退、右 65% 前进与触摸轻扫。
+  - 验证：单元测试覆盖点击坐标分区及滑动阈值判断，控件元素点击不穿透。
 - [ ] **B2-02** `P-05 (UX-01/02)`: 底部细线进度条常驻（解耦 `chromeHidden`）与舞台微型角落页码指示
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`SlideProgress`)、`src/client/features/presentation/presentation-overlay.tsx`
   - 目标：屏幕底部进度条环境常驻，舞台角落显示无侵入式微型页码。
