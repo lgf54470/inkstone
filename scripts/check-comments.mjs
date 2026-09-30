@@ -12959,6 +12959,9 @@ const allowed = new Map([
     '// current password travels in the body rather than the query string (SH-47).',
   ]],
   ['src/worker/routes/blog/settings.ts', [
+    '/**\n * One blog has one settings row, under a key that names its account. The key used to be optional\n * (`blog_settings_global` when no account was given), which is the shape that made the public side\n * read a row nobody wrote: the only writers always had an account, so a global reader silently got\n * the defaults instead of the blog\'s settings. The reading and the writing are therefore the same\n * key by construction, not by both callers remembering to pass an account.\n */',
+    '// A row that cannot be parsed is reported rather than answered with defaults: the stored value is',
+    '// what this blog will render until someone fixes it, and a silent fallback hides that.',
     '// The answer is about this account\'s own blog: asking whether a slug is free used to report',
     '// every account\'s posts, which told one blog\'s editor what another blog had published.',
   ]],
@@ -13959,6 +13962,8 @@ const allowed = new Map([
     '// The later-inserted account is the earlier registration, so this pins the default to the',
     '// earliest account rather than to whichever row happens to come back first.',
     '// The public answer carries the rendered markdown, never the id of the note it came from.',
+    '// The key a build without tenant addressing could read but never wrote: settings live under the',
+    '// account they belong to, so a stray row here must not be served to anyone.',
     '// Alice reviews before publishing; Bob posts straight through.',
     '// The slug belongs to Alice\'s blog, so Bob\'s form cannot be answered with Alice\'s post.',
     '// The duplicate check is the blog\'s own directory, so the same site may apply to the other blog.',

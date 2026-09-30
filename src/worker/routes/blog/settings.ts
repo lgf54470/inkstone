@@ -35,25 +35,38 @@ const DEFAULT_BLOG_SETTINGS: BlogSettings = {
   },
 }
 
-export async function getBlogSettings(db: D1Database, userId?: string): Promise<BlogSettings> {
-  const metaKey = userId ? `blog_settings_${userId}` : 'blog_settings_global'
-  const raw = await getMeta(db, metaKey)
+/**
+ * One blog has one settings row, under a key that names its account. The key used to be optional
+ * (`blog_settings_global` when no account was given), which is the shape that made the public side
+ * read a row nobody wrote: the only writers always had an account, so a global reader silently got
+ * the defaults instead of the blog's settings. The reading and the writing are therefore the same
+ * key by construction, not by both callers remembering to pass an account.
+ */
+export async function getBlogSettings(db: D1Database, userId: string): Promise<BlogSettings> {
+  const raw = await getMeta(db, blogSettingsKey(userId))
   if (!raw) return DEFAULT_BLOG_SETTINGS
   try {
-    const parsed = JSON.parse(raw)
+    const parsed = JSON.parse(raw) as Partial<BlogSettings>
     return {
       ...DEFAULT_BLOG_SETTINGS,
       ...parsed,
       appearance: { ...DEFAULT_BLOG_SETTINGS.appearance, ...(parsed.appearance || {}) },
       socialLinks: { ...DEFAULT_BLOG_SETTINGS.socialLinks, ...(parsed.socialLinks || {}) },
     }
-  } catch {
+  } catch (error) {
+    // A row that cannot be parsed is reported rather than answered with defaults: the stored value is
+    // what this blog will render until someone fixes it, and a silent fallback hides that.
+    console.error('[blog] failed to parse stored settings, using defaults:', error instanceof Error ? error.message : error)
     return DEFAULT_BLOG_SETTINGS
   }
 }
 
+function blogSettingsKey(userId: string): string {
+  return `blog_settings_${userId}`
+}
 
-async function saveBlogSettings(db: D1Database, settings: z.infer<typeof blogSettingsSchema>, userId?: string): Promise<BlogSettings> {
+
+async function saveBlogSettings(db: D1Database, settings: z.infer<typeof blogSettingsSchema>, userId: string): Promise<BlogSettings> {
   const current = await getBlogSettings(db, userId)
   const merged: BlogSettings = {
     ...current,
@@ -61,8 +74,7 @@ async function saveBlogSettings(db: D1Database, settings: z.infer<typeof blogSet
     appearance: { ...current.appearance, ...(settings.appearance || {}) },
     socialLinks: { ...current.socialLinks, ...(settings.socialLinks || {}) },
   }
-  const metaKey = userId ? `blog_settings_${userId}` : 'blog_settings_global'
-  await setMeta(db, metaKey, JSON.stringify(merged))
+  await setMeta(db, blogSettingsKey(userId), JSON.stringify(merged))
   return merged
 }
 

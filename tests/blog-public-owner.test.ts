@@ -236,6 +236,24 @@ describe('blog public owner resolution (real D1)', () => {
     expect((await forBob.json() as { settings: { siteName: string } }).settings.siteName).toBe('Bob Journal')
   })
 
+  it('ignores a settings row that no account owns', async () => {
+    const db = await makeDb()
+    await seedAccount(db, ALICE)
+    // The key a build without tenant addressing could read but never wrote: settings live under the
+    // account they belong to, so a stray row here must not be served to anyone.
+    await runSql(
+      db,
+      `INSERT INTO app_meta (key, value) VALUES ('blog_settings_global', ?1)`,
+      JSON.stringify({ siteName: 'Nobody Blog' }),
+    )
+
+    const app = makeApp()
+    const publicSite = await request(app, '/api/blog/public/site?owner=alice')
+    const manage = await request(app, '/api/blog/settings')
+    expect((await publicSite.json() as { settings: { siteName: string } }).settings.siteName).toBe('Inkstone Blog')
+    expect((await manage.json() as { settings: { siteName: string } }).settings.siteName).toBe('Inkstone Blog')
+  })
+
   it('files a public comment on the addressed blog and honours that blog approval switch', async () => {
     const db = await makeDb()
     await seedAccount(db, ALICE)
