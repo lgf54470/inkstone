@@ -48,9 +48,10 @@
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`PresentationControls`)
   - 目标：跟随中高亮脉冲 `<Radio />`；冻结后不高亮显示 `<Snowflake />`。
   - 验证：纠偏状态图标渲染逻辑，跟随态显示广播电波，冻结态显示冰冻雪花。
-- [ ] **B1-05** `P-07 (SPEC-03)`: 控制条自动隐藏时移出 Tab 键顺序（`inert` 与 `invisible` 修复）
+- [x] **B1-05** `P-07 (SPEC-03)`: 控制条自动隐藏时移出 Tab 键顺序（`inert` 与 `invisible` 修复） — 已完成
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`PresentationControls`)
   - 目标：`chromeHidden` 为 true 时增加 `inert` 和 `invisible`，杜绝键盘焦点盲跳。
+  - 验证：自动隐藏时节点赋予 inert 属性并切换 visibility: hidden，键盘焦点与辅助树不再穿透。
 - [ ] **B1-06** `P-08 (SPEC-02)`: 自动分排子页微标纳入读屏实时播报区域（`aria-live='polite'`）
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`SlideStepper`)
   - 目标：视障用户在子页间翻动时能感知到页码变化。

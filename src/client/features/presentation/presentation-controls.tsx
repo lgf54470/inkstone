@@ -30,10 +30,11 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
   return (
     <div
       data-presentation-chrome
+      inert={chromeHidden ? true : undefined}
       className={cn(
         'absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1 shadow-[var(--shadow-pop)]',
         'transition-opacity duration-[var(--dur-base)] ease-[var(--ease-out)]',
-        chromeHidden && 'pointer-events-none opacity-0',
+        chromeHidden && 'pointer-events-none opacity-0 invisible',
       )}
     >
       <SlideStepper slideIndex={slideIndex} slideCount={slideCount} subPage={subPage} pageCount={pageCount} onPrev={onPrev} onNext={onNext} />
