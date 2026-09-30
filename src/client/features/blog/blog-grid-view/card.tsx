@@ -43,7 +43,6 @@ export const BlogGridCard = memo(function BlogGridCard({
       draggable
       onDragStart={(e) => startCardDrag(e, post.id)}
       onContextMenu={(e) => openCardContextMenu(e, card)}
-      onDoubleClick={() => onOpenEdit(post)}
       className={cardShellClass(isSelected)}
       title={t('blog.drag_to_folder_hint')}
     >
@@ -52,7 +51,7 @@ export const BlogGridCard = memo(function BlogGridCard({
       <CardCover post={post} />
 
       <div className='flex flex-1 flex-col p-4'>
-        <CardBody post={post} folder={folder} cat={cat} />
+        <CardBody post={post} folder={folder} cat={cat} onOpenEdit={() => onOpenEdit(post)} />
 
         <CardFooter
           post={post}
@@ -102,12 +101,32 @@ function openCardContextMenu(e: React.MouseEvent, card: ReturnType<typeof useBlo
   card.contextMenu.onContextMenu(e)
 }
 
-function CardBody({ post, folder, cat }: { post: BlogPostSummary; folder: BlogFolder | null; cat: BlogCategory | null }) {
+function CardBody({
+  post,
+  folder,
+  cat,
+  onOpenEdit,
+}: {
+  post: BlogPostSummary
+  folder: BlogFolder | null
+  cat: BlogCategory | null
+  onOpenEdit: () => void
+}) {
   return (
     <>
       <CardMeta post={post} folder={folder} cat={cat} />
-      <h3 className='font-semibold text-[length:var(--text-14)] text-[var(--text-primary)] line-clamp-1 group-hover:text-[var(--accent)] transition-colors'>
-        {post.title}
+      {/*
+        * The card used to open on a double-click — unreachable by keyboard and by touch, and named
+        * for nothing. The title is the card's control now: one click or Enter opens the post.
+        */}
+      <h3 className='min-w-0'>
+        <button
+          type='button'
+          onClick={onOpenEdit}
+          className='block w-full truncate text-left font-semibold text-[length:var(--text-14)] text-[var(--text-primary)] transition-colors group-hover:text-[var(--accent)]'
+        >
+          {post.title}
+        </button>
       </h3>
       <p className='mt-1 text-[length:var(--text-12)] text-[var(--text-tertiary)] line-clamp-2 leading-relaxed flex-1'>
         {post.excerpt || t('blog.no_excerpt')}
@@ -146,7 +165,7 @@ function CardTopControls({
           'absolute top-2.5 right-2.5 z-[var(--z-sticky)] flex size-6 items-center justify-center rounded-full shadow-[var(--shadow-sm)] backdrop-blur transition-all',
           post.isPinned
             ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
-            : 'bg-[var(--bg-overlay)]/90 text-[var(--text-quaternary)] opacity-0 group-hover:opacity-100 hover:text-[var(--accent)]',
+            : 'bg-[var(--bg-overlay)]/90 text-[var(--text-quaternary)] opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 hover:text-[var(--accent)]',
         )}
         title={post.isPinned ? t('blog.unpin_post') : t('blog.pin_post')}
       >

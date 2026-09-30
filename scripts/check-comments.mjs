@@ -2870,6 +2870,13 @@ const allowed = new Map([
     '// Rebuilt only when the folders change: every consumer of the tree reads it on each',
     '// render, and a new array each time would invalidate theirs as well.',
   ]],
+  ['src/client/features/blog/blog-batch-bar.tsx', [
+    '/**\n * `inset-x-4` + `mx-auto w-fit` centres the pill without the `left-1/2 -translate-x-1/2` measure,\n * and `max-w-full flex-wrap` lets it wrap onto a second line on a phone instead of pushing the last\n * of its eight controls off the screen (the bar held `whitespace-nowrap`).\n */',
+  ]],
+  ['src/client/features/blog/blog-categories-modal.tsx', [
+    '// The swatches are a group of buttons rather than one control, so the naming element is a `legend`',
+    '// (`Field` would point a `label` at the `<div>` that wraps them and associate nothing).',
+  ]],
   ['src/client/features/blog/blog-comments-view-failure.test.ts', [
     '/**\n * ENG-01: a failed load is a state of its own. This surface used to draw `filteredComments` and, when\n * it was empty because nothing had arrived, say there were no comments — so being offline looked\n * exactly like a blog nobody had commented on.\n */',
   ]],
@@ -2910,10 +2917,16 @@ const allowed = new Map([
   ['src/client/features/blog/blog-dashboard-view/visit-logs-card.test.ts', [
     '/**\n * The locale is not loaded in this harness, so `t()` echoes the key and the assertions read keys.\n * What they pin is that the card no longer prints the UA parser\'s raw `\'Other\'` sentinel, nor the\n * English word `\'Bot\'`, on either language.\n */',
   ]],
+  ['src/client/features/blog/blog-grid-view/card.test.ts', [
+    '// UI-06/UI-07 on the grid: the card opened on a double-click and its pin control was drawn only on',
+    '// hover, so neither was reachable from a keyboard. Both are named controls with a `focus-visible`',
+    '// arm now.',
+  ]],
   ['src/client/features/blog/blog-grid-view/card.tsx', [
     '/**\n * Every prop is either the row\'s own data or a stable handler (store actions and the hub\'s two\n * `useCallback`s), so selecting one card no longer re-renders the other forty-nine.\n */',
     '// `memo` means a language switch never reaches this card through its props, and the date below is',
     '// formatted per render.',
+    '/*\n        * The card used to open on a double-click — unreachable by keyboard and by touch, and named\n        * for nothing. The title is the card\'s control now: one click or Enter opens the post.\n        */',
   ]],
   ['src/client/features/blog/blog-grid-view/cover-image.test.ts', [
     '/**\n * A list of fifty cards used to fetch every cover as eagerly as the browser allowed and decode them\n * on the main thread while the reader was still scrolling the first screen.\n */',
@@ -2933,6 +2946,20 @@ const allowed = new Map([
   ['src/client/features/blog/blog-hub-lazy.ts', [
     '/**\n * The hub is the heaviest surface of the feature — the links view under it alone carries the icon\n * picker, qrcode and the link checker — and it opens on demand. The barrel therefore re-exports this\n * wrapper instead of the modal: `features/blog/index.ts` is imported statically by the note list and\n * the sidebar for the blog store, and a direct re-export put the whole hub into their chunk, which\n * also made the shell\'s own `lazy(() => import(\'../blog\'))` split nothing. Render it inside a\n * Suspense (the shell already does).\n */',
   ]],
+  ['src/client/features/blog/blog-hub-modal.tsx', [
+    '/** The dialogs the hub opens over itself: publish, categories, settings. */',
+  ]],
+  ['src/client/features/blog/blog-hub-sidebar/index.test.ts', [
+    '// UI-07: the folder and tag sections\' create buttons were `opacity-0 group-hover/head:opacity-100`,',
+    '// so a desktop keyboard user could tab to a control that was never drawn. The `focus-visible` arm is',
+    '// what makes the control appear when it takes focus.',
+  ]],
+  ['src/client/features/blog/blog-hub-sidebar/index.tsx', [
+    '// The section\'s create button used to be drawn only on hover of its heading, which left it invisible',
+    '// to a keyboard user who could still tab to it. Always on below `md`, hover-revealed above it, and',
+    '// the `focus-visible` arm is what keeps the desktop keyboard arm from landing on nothing — the same',
+    '// string the hub rows spell (components/hub-tag-item.tsx).',
+  ]],
   ['src/client/features/blog/blog-hub-sidebar/tag-counts.test.ts', [
     '/**\n * The sidebar summed each node\'s whole subtree during render, so a tag tree of T nodes did O(T²)\n * work per paint. The counts are the same values, computed in one post-order walk.\n */',
   ]],
@@ -2942,12 +2969,19 @@ const allowed = new Map([
     '// status tab (and the list cap) as if it were the whole blog\'s pending count.',
   ]],
   ['src/client/features/blog/blog-hub-toolbar.test.ts', [
-    '/**\n * The toolbar\'s two pickers used to be `<button>`s with no state a reader could query. They are\n * radiogroups now, and this pins the names and the option names that make them more than visual.\n * The locale is not loaded in this harness, so `t()` echoes the key.\n */',
+    '// The toolbar\'s two pickers used to be `<button>`s with no state a reader could query. They are',
+    '// radiogroups now, and this pins the names and the option names that make them more than visual.',
+    '// The locale is not loaded in this harness, so `t()` echoes the key.',
+    '// The sort select asks the store for a new order, and the store re-asks the list; the answer is not',
+    '// what this file is about, so the request is stubbed and read back.',
+    '// UI-06: `setSort` was wired and the server honoured three orders, but nothing in the UI could ask',
+    '// for one. The select offers exactly those three values and hands the choice to the store.',
   ]],
   ['src/client/features/blog/blog-hub-toolbar.tsx', [
     '// `pinned` is set from the sidebar and has no tab here, but it is part of the value\'s type: with it',
     '// in the union the radiogroup simply has no checked option while that filter is on.',
     '/**\n * The search box types instantly and asks once. It used to call the store on every keystroke, so\n * thirteen characters were thirteen full list requests, each one started before the last had\n * answered. The value shown is this component\'s own, so typing never waits for a round trip.\n */',
+    '/**\n * The store\'s `sort` had no control at all: `setSort` was wired and the server honoured three\n * orders, but the only way to ask for one was to reach into the store. The options are exactly the\n * values the list query understands; anything else falls back to the default order server-side.\n */',
     '// Icon-only options: `title` is what names each radio, and it also becomes its tooltip.',
   ]],
   ['src/client/features/blog/blog-links-view/index.tsx', [
@@ -3052,6 +3086,12 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-load-failure.tsx', [
     '/**\n * The failed state of a load. One component for the surfaces that used to paint a failed request as\n * an empty list — the reader gets the same sentence and the same retry wherever it happens.\n */',
+  ]],
+  ['src/client/features/blog/blog-modal-names.test.ts', [
+    '// UI-07: all four dialogs draw their own heading and close button, so they never handed `Modal` a',
+    '// `title` and a screen reader announced them as the generic "Dialog". Each one now names itself.',
+    '// The dialogs open by asking the hub for its data; every answer here is the empty one, shaped the',
+    '// way the loaders read it (a list scope receives an array, not `{}`).',
   ]],
   ['src/client/features/blog/blog-post-pager.test.ts', [
     '/**\n * ENG-02: the list used to hold every post; it now holds one page. Without a pager the rest of the\n * list would be unreachable in the interface — the store\'s page state exists, but nobody could move\n * it.\n */',
@@ -3203,6 +3243,11 @@ const allowed = new Map([
     '/** The same latest-wins rule as the post list, for the comment list\'s status/search. */',
     '/** The same latest-wins rule as the post list, for the link list\'s status/category/search. */',
   ]],
+  ['src/client/features/blog/blog-table-view/index.test.ts', [
+    '// UI-06: the table drew no name for itself and no `scope` on its headings, so a reader walked it as',
+    '// nine anonymous cells, and opening a post was a double-click on the row — a gesture neither a',
+    '// keyboard nor a touch screen can make. The title is a real button now.',
+  ]],
   ['src/client/features/blog/blog-table-view/index.tsx', [
     '// The maps are rebuilt only when the lists change: they used to be rebuilt on every render, which',
     '// is every selection toggle and every search keystroke, for fifty rows to look up.',
@@ -3211,6 +3256,7 @@ const allowed = new Map([
     '/**\n * Every prop is either the row\'s own data or a stable handler, so selecting one row no longer\n * re-renders the other forty-nine.\n */',
     '// `memo` means a language switch never reaches this row through its props, and the published date',
     '// below is formatted per render.',
+    '/*\n              * Opening the post used to be a double-click on the whole row: a gesture a keyboard\n              * and a touch screen cannot make, and one that named nothing. The title is a real\n              * button now, so one click (or Enter) on the post\'s own name opens it.\n              */',
   ]],
   ['src/client/features/blog/frontend-base.ts', [
     '/**\n * The blog\'s own site address, as a link may carry it.\n *\n * The stored value is checked on the way in, but a blog configured before that rule existed still\n * holds whatever was typed, and this address becomes an `href` in the admin session — so a value a\n * link may not use falls back to the shipped default instead of being rendered as written.\n */',

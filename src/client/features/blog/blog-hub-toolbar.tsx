@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Search, LayoutGrid, LayoutList, Settings, Plus, RefreshCw, FolderClosed, Hash, X } from 'lucide-react'
 import { IconButton, Button } from '../../components/primitives'
-import { Input, Segmented } from '../../components/form'
+import { Input, Segmented, Select } from '../../components/form'
 import { t } from '../../lib/i18n'
 import { useBlogStore } from './blog-store'
 import { BlogTrafficFilterPopover } from './blog-traffic-filter-popover'
@@ -92,6 +92,28 @@ function SearchBox() {
   )
 }
 
+/**
+ * The store's `sort` had no control at all: `setSort` was wired and the server honoured three
+ * orders, but the only way to ask for one was to reach into the store. The options are exactly the
+ * values the list query understands; anything else falls back to the default order server-side.
+ */
+function PostSortSelect() {
+  const sort = useBlogStore((s) => s.sort)
+  const setSort = useBlogStore((s) => s.setSort)
+  return (
+    <Select
+      aria-label={t('blog.sort_label')}
+      value={sort}
+      onChange={(e) => setSort(e.target.value)}
+      className='h-8 text-[length:var(--text-12)] text-[var(--text-secondary)]'
+    >
+      <option value='published_desc'>{t('blog.sort_newest')}</option>
+      <option value='published_asc'>{t('blog.sort_oldest')}</option>
+      <option value='views_desc'>{t('blog.sort_views')}</option>
+    </Select>
+  )
+}
+
 function ViewModeToggle() {
   const viewMode = useBlogStore((s) => s.viewMode)
   const setViewMode = useBlogStore((s) => s.setViewMode)
@@ -125,6 +147,7 @@ export function BlogHubToolbar({
         <StatusFilterTabs />
         <ActiveFilterChips />
         <SearchBox />
+        <PostSortSelect />
       </div>
 
       <div className='flex items-center gap-2'>

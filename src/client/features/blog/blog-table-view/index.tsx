@@ -31,6 +31,7 @@ export function BlogTableView({
   return (
     <div className='w-full overflow-x-auto'>
       <table className='w-full border-collapse text-left'>
+        <caption className='sr-only'>{t('blog.posts_table_caption')}</caption>
         <TableHeader
           isAllSelected={isAllSelected}
           onToggleAll={() => toggleAllSelected(isAllSelected, posts, clearPostSelection, selectAllPosts)}
@@ -78,7 +79,7 @@ function TableHeader({ isAllSelected, onToggleAll }: { isAllSelected: boolean; o
   return (
     <thead className='sticky top-0 z-[var(--z-sticky)] bg-[var(--bg-card)] shadow-[var(--shadow-xs)]'>
       <tr className='border-b border-[var(--border-subtle)] text-[length:var(--text-11)] font-semibold text-[var(--text-tertiary)]'>
-        <th className='w-10 px-3 py-2 text-center'>
+        <th scope='col' className='w-10 px-3 py-2 text-center'>
           <Checkbox
             checked={isAllSelected}
             onChange={onToggleAll}
@@ -86,15 +87,15 @@ function TableHeader({ isAllSelected, onToggleAll }: { isAllSelected: boolean; o
             className='min-h-0'
           />
         </th>
-        <th className='px-3 py-2 min-w-40 whitespace-nowrap'>{t('blog.col_title')}</th>
-        <th className='w-24 px-3 py-2 whitespace-nowrap'>{t('blog.folders')}</th>
-        <th className='w-24 px-3 py-2 whitespace-nowrap'>{t('blog.category')}</th>
-        <th className='w-28 px-3 py-2 whitespace-nowrap'>{t('blog.tags')}</th>
-        <th className='w-20 px-3 py-2 text-center whitespace-nowrap'>{t('blog.col_status')}</th>
-        <th className='w-20 px-3 py-2 text-right whitespace-nowrap'>{t('blog.col_views')}</th>
-        <th className='w-16 px-3 py-2 text-right whitespace-nowrap'>{t('blog.col_comments')}</th>
-        <th className='w-24 px-3 py-2 text-right whitespace-nowrap'>{t('blog.col_created_at')}</th>
-        <th className='w-52 px-3 py-2 text-right whitespace-nowrap sticky right-0 z-[var(--z-sticky)] bg-[var(--bg-card)] border-l border-[var(--border-subtle)]'>
+        <th scope='col' className='px-3 py-2 min-w-40 whitespace-nowrap'>{t('blog.col_title')}</th>
+        <th scope='col' className='w-24 px-3 py-2 whitespace-nowrap'>{t('blog.folders')}</th>
+        <th scope='col' className='w-24 px-3 py-2 whitespace-nowrap'>{t('blog.category')}</th>
+        <th scope='col' className='w-28 px-3 py-2 whitespace-nowrap'>{t('blog.tags')}</th>
+        <th scope='col' className='w-20 px-3 py-2 text-center whitespace-nowrap'>{t('blog.col_status')}</th>
+        <th scope='col' className='w-20 px-3 py-2 text-right whitespace-nowrap'>{t('blog.col_views')}</th>
+        <th scope='col' className='w-16 px-3 py-2 text-right whitespace-nowrap'>{t('blog.col_comments')}</th>
+        <th scope='col' className='w-24 px-3 py-2 text-right whitespace-nowrap'>{t('blog.col_created_at')}</th>
+        <th scope='col' className='w-52 px-3 py-2 text-right whitespace-nowrap sticky right-0 z-[var(--z-sticky)] bg-[var(--bg-card)] border-l border-[var(--border-subtle)]'>
           {t('blog.col_actions')}
         </th>
       </tr>

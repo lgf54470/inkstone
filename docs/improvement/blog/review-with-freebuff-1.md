@@ -386,15 +386,17 @@
 - **范围**：5 个文件 + 可能给 `form.tsx` 加一个紧凑尺寸。代价 **M**。
 - **落地（B4-03）**：五处全部改用共享 `Segmented`（radio 语义 + 方向键 + 组名）：hub 工具栏状态筛选与视图切换（图标选项用 `option.title` 作可访问名与 tooltip）、评论状态筛选（计数徽标进 label）、友链状态筛选（6 项）、检测结果筛选（5 项，分档文字色保留）。`form.tsx` 未改（`size='sm'` 已够紧凑）；新增 5 个组名 key。视觉变化（已跑视觉门禁 682 通过）：选中态由强调色实底改为 `Segmented` 的中性表面底；变异（去掉工具栏状态组的组名）实测 1 failed；pending/待审徽标不再随选中态变色（原条件样式依赖 active，`Segmented` 不向 label 传该状态）。
 
-#### UI-06 [P1][开放] 仅双击可开编辑；表头语义错位；store 有 `sort` 却无排序 UI
+#### UI-06 [P1][已修] 仅双击可开编辑；表头语义错位；store 有 `sort` 却无排序 UI
 - **问题**：`blog-table-view/row.tsx:47` 与 `blog-grid-view/card.tsx:38` 只在 `onDoubleClick` 上打开编辑（键盘与触摸不可达，`<tr>`/`<div>` 无 `tabIndex`/`role`）；表头 `blog.col_created_at`（`table-view/index.tsx:93`）实际渲染 `publishedAt`（`row.tsx:69`）；`setSort`（`filters.ts:12`）全仓无调用点，用户无法排序；`<table>` 缺 `caption`、`<th>` 缺 `scope`。
 - **方案**：主操作按钮已存在（`TableRowActionsCell` 的「文章设置」），把双击改/加为「单击标题进入」或给行补 `tabIndex=0` + `onKeyDown(Enter)`；表头文案与字段对齐；补排序按钮（下拉或表头点击，接入已有 `setSort`）；表补 `caption`（可 `sr-only`）与 `scope`。
 - **范围**：`blog-table-view/*`、`blog-grid-view/card.tsx`、`locales/*/blog-*.ts`。代价 **M**。
+- **落地（B4-04）**：标题在表格行与网格卡里都换成真 `<button>`（单击或回车进入编辑），两处 `onDoubleClick` 删除——手势只剩一个且落在有可访问名的控件上；表格补 `<caption className='sr-only'>`（`blog.posts_table_caption`）与每个 `<th scope='col'>`；`setSort` 接上工具栏的新 `Select`，三个取值与服务端 `postListOrderSql` 一一对应（`blog.sort_label`/`sort_newest`/`sort_oldest`/`sort_views`）。回归 3 条（表 `caption`/`scope`、表标题按钮、排序经 store 落到请求）。**订正**：「表头语义错位（`col_created_at` 实为 `publishedAt`）」的前提不成立，见 B4-02 的订正——双语值与渲染字段都已是发布时间，本批未动文案。
 
-#### UI-07 [P1][开放] hover-only 控件、批量条窄屏溢出、四个 Modal 无可访问名
+#### UI-07 [P1][已修] hover-only 控件、批量条窄屏溢出、四个 Modal 无可访问名
 - **问题**：`blog-hub-sidebar/index.tsx:132,183` 与 `blog-grid-view/card.tsx:137` 用 `opacity-0 group-hover:opacity-100`——**聚焦时仍不可见**（AGENTS 可访问性红线，键盘用户看不到「新建文件夹/标签」「置顶」）；`blog-batch-bar.tsx:34` 是 `absolute left-1/2 -translate-x-1/2 whitespace-nowrap` 排 8 个控件，窄屏必然溢出；`blog-hub-modal.tsx:33-40`、`blog-publish-modal/index.tsx:349`、`blog-settings-modal.tsx:22`、`blog-categories-modal.tsx:33` 自绘头部，`Modal` 未拿到 `title`/`ariaLabel`，读屏只得通用 dialog 名（同模块 `link-*-modal` 是正解，传了 `title`）。
 - **方案**：hover-only 改 `focus-visible:opacity-100`（或常显低对比、悬停增强）；批量条改工具栏下方的独立横条（AGENTS 明列的四种合格去处之一）或允许换行；四个 Modal 传 `ariaLabel`（或改用 `title`）。
 - **范围**：4 个组件 + `blog-batch-bar.tsx`。代价 **M**。
+- **落地（B4-04）**：侧栏两个分区标题的「新建」与网格卡的置顶按钮改为同仓 `ROW_ACTION_CLASS` 的既有写法（`opacity-100 md:opacity-0 md:group-hover… md:focus-visible:opacity-100`）：手机常显、桌面悬停显示、聚焦必然显示；批量条改 `inset-x-4 mx-auto w-fit max-w-full flex-wrap`，窄屏换行而不是把后几个控件推出屏外；四个自绘头部的弹窗都传给 `Modal` 一个 `ariaLabel`（publish 随编辑态换名）；`blog-categories-modal.tsx` 的自造 `CategoryField`（`<label>` 无 `htmlFor`）改 `Field`、颜色选择器改 `fieldset`/`legend`（B4-03 留的口子）。回归 8 条（侧栏可聚焦 1、网格标题按钮与置顶可聚焦 2、四个弹窗可访问名 5）。限制：批量条仍是浮条（只允许换行，未改成独立横条）；手机上的置顶按钮现在常显，这是刻意的。
 
 #### UI-08 [P1][开放] 单条评论审核与友链分类 CRUD 零反馈
 - **问题**：`blog-comments-view.tsx` 把 store action 当同步 `void` 用（bundle 类型 `(id,status)=>void`），失败即未处理 rejection，UI 原地不动，无 pending/disabled 可连点（`pending-comments-card.tsx:82,85` 同病）；友链分类侧 `blog-store/links.ts` 的 `createLinkCategory` 失败 `console.error + return null`，`update/deleteLinkCategory` 抛错被调用点 `void` 吞掉 → 失败时 `setEditingCatId(null)` 不执行，行内编辑态打结；分类删除的确认框复用了「删除友链」的文案。

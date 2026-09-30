@@ -36,6 +36,7 @@ export function BlogHubModal({
         open={open}
         onClose={onClose}
         width={MODAL_WIDTH}
+        ariaLabel={t('blog.hub_title')}
         className='h-[84vh] min-h-145 max-h-220 p-0 overflow-hidden flex flex-col'
         bodyClassName='p-0 flex-1 min-h-0 flex flex-col overflow-hidden'
       >
@@ -51,6 +52,15 @@ export function BlogHubModal({
         </div>
       </Modal>
 
+      <HubSecondaryDialogs modal={modal} />
+    </>
+  )
+}
+
+/** The dialogs the hub opens over itself: publish, categories, settings. */
+function HubSecondaryDialogs({ modal }: { modal: ReturnType<typeof useBlogHubModal> }) {
+  return (
+    <>
       {modal.isPublishModalOpen && modal.targetNoteId && (
         <BlogPublishModal
           open={modal.isPublishModalOpen}

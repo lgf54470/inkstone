@@ -10,6 +10,11 @@ import { useUi } from '../../store/ui'
 import { useBlogStore, type BlogStoreState } from './blog-store'
 import { batchDelete, batchPin, batchPublish, batchSetCategory, batchUnpublish, buildFolderMenuItems } from './blog-batch-bar-actions'
 
+/**
+ * `inset-x-4` + `mx-auto w-fit` centres the pill without the `left-1/2 -translate-x-1/2` measure,
+ * and `max-w-full flex-wrap` lets it wrap onto a second line on a phone instead of pushing the last
+ * of its eight controls off the screen (the bar held `whitespace-nowrap`).
+ */
 export function BlogBatchBar({
   selectedCount,
   onClearSelection,
@@ -31,8 +36,8 @@ export function BlogBatchBar({
   const menuItems = buildFolderMenuItems(folders, selectedCount, batchPosts, () => setIsFolderMenuOpen(false), toast)
 
   return (
-    <div className='absolute bottom-4 left-1/2 -translate-x-1/2 z-[var(--z-menu)] flex items-center gap-2 rounded-[var(--r-xl)] border border-[var(--border-strong)] bg-[var(--bg-overlay)]/95 px-4 py-2 shadow-[var(--shadow-modal)] backdrop-blur text-[length:var(--text-12)] whitespace-nowrap'>
-      <span className='font-semibold text-[var(--text-primary)]'>
+    <div className='absolute inset-x-4 bottom-4 z-[var(--z-menu)] mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 rounded-[var(--r-xl)] border border-[var(--border-strong)] bg-[var(--bg-overlay)]/95 px-4 py-2 shadow-[var(--shadow-modal)] backdrop-blur text-[length:var(--text-12)]'>
+      <span className='font-semibold text-[var(--text-primary)] whitespace-nowrap'>
         {t('blog.selected_posts_count', { value0: selectedCount })}
       </span>
 

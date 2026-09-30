@@ -52,7 +52,6 @@ export const BlogTableRow = memo(function BlogTableRow({
         row.setIsFolderMenuOpen(false)
         row.contextMenu.onContextMenu(e)
       }}
-      onDoubleClick={() => onOpenEdit(post)}
       className={cn(
         'group transition-colors hover:bg-[var(--bg-hover)] cursor-grab active:cursor-grabbing select-none',
         isSelected && 'bg-[var(--accent-softer)]',
@@ -67,7 +66,7 @@ export const BlogTableRow = memo(function BlogTableRow({
           className='min-h-0'
         />
       </td>
-      <TableRowTitleCell post={post} />
+      <TableRowTitleCell post={post} onOpenEdit={onOpenEdit} />
       <td className='px-3 py-2.5 whitespace-nowrap'><ColoredBadge name={folder?.name} color={folder?.color} /></td>
       <td className='px-3 py-2.5 whitespace-nowrap'><ColoredBadge name={cat?.name} color={cat?.color} /></td>
       <TableRowTagsCell post={post} />
@@ -85,7 +84,7 @@ function startRowDrag(e: React.DragEvent, postId: string): void {
   e.dataTransfer.effectAllowed = 'move'
 }
 
-function TableRowTitleCell({ post }: { post: BlogPostSummary }) {
+function TableRowTitleCell({ post, onOpenEdit }: { post: BlogPostSummary; onOpenEdit: (post: BlogPostSummary) => void }) {
   return (
     <td className='px-3 py-2.5'>
       <div className='flex items-center gap-2.5 min-w-0'>
@@ -103,9 +102,18 @@ function TableRowTitleCell({ post }: { post: BlogPostSummary }) {
             {post.isPinned && (
               <Pin size={11} className='text-[var(--accent)] shrink-0 fill-current' />
             )}
-            <span className='truncate text-[length:var(--text-13)] font-medium text-[var(--text-primary)]'>
+            {/*
+              * Opening the post used to be a double-click on the whole row: a gesture a keyboard
+              * and a touch screen cannot make, and one that named nothing. The title is a real
+              * button now, so one click (or Enter) on the post's own name opens it.
+              */}
+            <button
+              type='button'
+              onClick={() => onOpenEdit(post)}
+              className='min-w-0 truncate text-left text-[length:var(--text-13)] font-medium text-[var(--text-primary)] transition-colors hover:text-[var(--accent)]'
+            >
               {post.title}
-            </span>
+            </button>
           </div>
           <div className='text-[length:var(--text-11)] text-[var(--text-quaternary)] truncate'>
             /{post.slug}

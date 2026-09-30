@@ -319,7 +319,13 @@ export function BlogPublishModal({
   const form = useBlogPublishForm({ open, onClose, noteId, initialPost, onSaved })
   const editing = Boolean(initialPost)
   return (
-    <Modal open={open} onClose={onClose} width={MODAL_WIDTH} className='p-0 overflow-hidden'>
+    <Modal
+      open={open}
+      onClose={onClose}
+      width={MODAL_WIDTH}
+      ariaLabel={editing ? t('blog.edit_modal_title') : t('blog.publish_modal_title')}
+      className='p-0 overflow-hidden'
+    >
       <div className='flex h-12 items-center justify-between border-b border-[var(--border-subtle)] px-4 bg-[var(--bg-surface)]'>
         <div className='flex items-center gap-2'>
           <Globe size={16} className='text-[var(--accent)]' />

@@ -23,6 +23,7 @@ export function BlogSettingsModal({
       open={open}
       onClose={onClose}
       width={MODAL_WIDTH}
+      ariaLabel={t('blog.settings')}
       className='p-0 overflow-hidden'
     >
       <SettingsModalHeader onClose={onClose} />

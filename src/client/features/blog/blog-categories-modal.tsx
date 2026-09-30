@@ -1,9 +1,9 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Check, Edit2, FolderPlus, Trash2, X } from 'lucide-react'
 import type { BlogCategory } from '@shared/types'
 import { BLOG_CATEGORY_COLORS } from '@shared/organizer-colors'
 import { Button, IconButton } from '../../components/primitives'
-import { Input } from '../../components/form'
+import { Field, Input } from '../../components/form'
 import { Modal, confirm } from '../../components/overlay'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
@@ -33,6 +33,7 @@ export function BlogCategoriesModal({
       open={open}
       onClose={onClose}
       width={MODAL_WIDTH}
+      ariaLabel={t('blog.categories')}
       className='p-0 overflow-hidden'
     >
       <CategoriesModalHeader onClose={onClose} />
@@ -149,21 +150,21 @@ function CategoriesForm({ bundle }: { bundle: CategoryFormBundle }) {
       </div>
 
       <div className='grid grid-cols-2 gap-3'>
-        <CategoryField label={t('blog.category_name')}>
+        <Field label={t('blog.category_name')}>
           <Input
             value={bundle.name}
             onChange={(e) => bundle.setName(e.target.value)}
             placeholder={t('blog.category_name_placeholder')}
             autoFocus
           />
-        </CategoryField>
-        <CategoryField label={t('blog.category_slug')}>
+        </Field>
+        <Field label={t('blog.category_slug')}>
           <Input
             value={bundle.slug}
             onChange={(e) => bundle.setSlug(slugify(e.target.value))}
             placeholder='tech'
           />
-        </CategoryField>
+        </Field>
       </div>
 
       <CategoryColorField selected={bundle.selectedColor} onSelect={bundle.setSelectedColor} />
@@ -177,25 +178,16 @@ function CategoriesForm({ bundle }: { bundle: CategoryFormBundle }) {
   )
 }
 
-function CategoryField({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
-        {label}
-      </label>
-      {children}
-    </div>
-  )
-}
-
+// The swatches are a group of buttons rather than one control, so the naming element is a `legend`
+// (`Field` would point a `label` at the `<div>` that wraps them and associate nothing).
 function CategoryColorField({ selected, onSelect }: { selected: string; onSelect: (c: string) => void }) {
   return (
-    <div>
-      <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
+    <fieldset>
+      <legend className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
         {t('blog.category_color')}
-      </label>
+      </legend>
       <CategoryColorPicker selected={selected} onSelect={onSelect} />
-    </div>
+    </fieldset>
   )
 }
 

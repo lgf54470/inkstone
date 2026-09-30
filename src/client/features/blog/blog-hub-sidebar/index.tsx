@@ -13,6 +13,11 @@ import {
   useBlogHubSidebar,
   type SidebarNavItem, type TagRowCtx,
 } from './use-blog-hub-sidebar'
+// The section's create button used to be drawn only on hover of its heading, which left it invisible
+// to a keyboard user who could still tab to it. Always on below `md`, hover-revealed above it, and
+// the `focus-visible` arm is what keeps the desktop keyboard arm from landing on nothing — the same
+// string the hub rows spell (components/hub-tag-item.tsx).
+const SECTION_ACTION_CLASS = 'opacity-100 transition-opacity md:opacity-0 md:group-hover/head:opacity-100 md:focus-visible:opacity-100'
 
 export function BlogHubSidebar({
   onOpenCategoriesModal,
@@ -129,7 +134,7 @@ function FolderSection({
             label={t('folders.create_new')}
             size='sm'
             onClick={onCreate}
-            className='opacity-0 group-hover/head:opacity-100 transition-opacity'
+            className={SECTION_ACTION_CLASS}
           >
             <Plus size={13} />
           </IconButton>
@@ -180,7 +185,7 @@ function TagSection({
             label={t('tags.new')}
             size='sm'
             onClick={onCreate}
-            className='opacity-0 group-hover/head:opacity-100 transition-opacity'
+            className={SECTION_ACTION_CLASS}
           >
             <Plus size={13} />
           </IconButton>
