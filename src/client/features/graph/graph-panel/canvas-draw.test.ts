@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { GraphResponse } from '@shared/types'
 import { DEFAULT_PREFERENCES } from './constants'
-import { buildInitialLayout, createThemeObserver, readThemeColors } from './canvas-draw'
+import {
+  buildInitialLayout,
+  createCanvasResizer,
+  createGraphTicker,
+  createThemeObserver,
+  readThemeColors,
+} from './canvas-draw'
 import type { CanvasState } from './types'
 
 const sampleData: GraphResponse = {
@@ -32,6 +38,8 @@ function createInitialState(): CanvasState {
     scale: 1,
     offsetX: 0,
     offsetY: 0,
+    width: 0,
+    height: 0,
     dragging: null,
     pointers: new Map(),
     pinch: null,
@@ -98,5 +106,61 @@ describe('theme following', () => {
 
     expect(onUpdate).toHaveBeenCalled()
     observer.disconnect()
+  })
+})
+
+function mockCanvasContext(clearRectCalls: Array<[number, number, number, number]>) {
+  const original = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'getContext')!
+  Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+    configurable: true,
+    writable: true,
+    value: () => ({
+      setTransform: () => {},
+      clearRect: (x: number, y: number, w: number, h: number) => { clearRectCalls.push([x, y, w, h]) },
+      save: () => {},
+      translate: () => {},
+      scale: () => {},
+      restore: () => {},
+      beginPath: () => {},
+      arc: () => {},
+      fill: () => {},
+      stroke: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      closePath: () => {},
+      fillText: () => {},
+    }),
+  })
+  return () => Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', original)
+}
+
+describe('layout thrashing prevention (PERF-02)', () => {
+  it('caches canvas width and height during resize without measuring in tick', () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { cb(0); return 1 })
+    const clearRectCalls: Array<[number, number, number, number]> = []
+    const restoreContext = mockCanvasContext(clearRectCalls)
+    const canvas = document.createElement('canvas')
+    const getBoundingClientRectSpy = vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+      width: 800, height: 600, top: 0, left: 0, bottom: 600, right: 800, x: 0, y: 0, toJSON: () => {},
+    })
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+    const state = createInitialState()
+    const { resize, observer } = createCanvasResizer(canvas, ctx, state)
+    resize()
+    expect(state.width).toBe(800)
+    expect(state.height).toBe(600)
+    expect(getBoundingClientRectSpy).toHaveBeenCalledTimes(1)
+    const colors = readThemeColors()
+    const prefsRef = { current: DEFAULT_PREFERENCES }
+    const hoverRef = { current: null }, selectedIdRef = { current: null }, activeNoteIdRef = { current: null }
+    const style = document.createElement('div').style
+    createGraphTicker(state, canvas, ctx, colors, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style)
+    state.schedule?.()
+    expect(getBoundingClientRectSpy).toHaveBeenCalledTimes(1)
+    expect(clearRectCalls.length).toBeGreaterThanOrEqual(1)
+    expect(clearRectCalls[0]).toEqual([0, 0, 800, 600])
+    observer.disconnect()
+    restoreContext()
   })
 })

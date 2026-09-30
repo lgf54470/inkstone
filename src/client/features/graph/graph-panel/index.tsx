@@ -54,6 +54,7 @@ function useGraphCanvasRefs(activeNoteId: string | null) {
   const lastPointerEventAtRef = useRef(Number.NEGATIVE_INFINITY)
   const stateRef = useRef<CanvasState>({
     nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0,
+    width: 0, height: 0,
     dragging: null, pointers: new Map(), pinch: null,
     frame: 0, raf: 0, schedule: null,
   })

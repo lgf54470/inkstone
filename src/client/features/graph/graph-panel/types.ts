@@ -14,6 +14,8 @@ export interface CanvasState {
   scale: number
   offsetX: number
   offsetY: number
+  width: number
+  height: number
   dragging: { node: CanvasNode | null; startX: number; startY: number; ox: number; oy: number } | null
   pointers: Map<number, { x: number; y: number }>
   pinch: { distance: number; scale: number; centerX: number; centerY: number } | null

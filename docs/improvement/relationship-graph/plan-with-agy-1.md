@@ -84,18 +84,21 @@
   3. 不销毁画布、不重置节点物理坐标与相机；
   4. 新增自动化测试覆盖调色板读取与主题/强调色变更响应。
 - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npm run typecheck && npx vitest run src/client/features/graph/graph-panel/canvas-draw.test.ts`
+- **提交哈希**：`75ff31a1`
 - **状态**：已完成并验证通过
 
 ---
 
 ### 第二阶段：渲染管线优化与规范达标 (Sprint 2)
 
-#### 6. 【PERF-02】消除 60fps 强制同步重排 (Layout Thrashing)
-- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `canvas.tsx`
+- [x] **6. 【PERF-02】消除 60fps 强制同步重排 (Layout Thrashing)**
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `types.ts`, `index.tsx`, `canvas-draw.test.ts`
 - **修改要点**：
   1. 移除 `tick()` 中的 `canvas.getBoundingClientRect()`；
-  2. 由 `ResizeObserver` 维护画布逻辑宽高并在 `state` 中缓存，`tick` 内部纯读取缓存变量。
-- **提交哈希**：`待提交`
+  2. 由 `createCanvasResizer` 维护画布逻辑宽高并在 `state.width`/`state.height` 中缓存，`tick` 内部纯读取缓存变量；
+  3. 新增单元测试断言动画每帧渲染不触发 `getBoundingClientRect`。
+- **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npm run typecheck && npx vitest run src/client/features/graph/graph-panel/canvas-draw.test.ts`
+- **状态**：已完成并验证通过
 
 #### 7. 【UI-02 & UI-03】修复邻居节点标签弱化视觉矛盾，增加文本微光晕 (Text Halo)
 - **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`

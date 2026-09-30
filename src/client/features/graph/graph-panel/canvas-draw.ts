@@ -143,11 +143,12 @@ export function createGraphTicker(state: CanvasState, canvas: HTMLCanvasElement,
   const schedule = () => { if (!state.raf) state.raf = requestAnimationFrame(tick) }
   const tick = () => {
     state.raf = 0
-    const rect = canvas.getBoundingClientRect()
     const prefs = 'current' in prefsRef ? prefsRef.current : prefsRef
     const colors = 'current' in colorsRef ? colorsRef.current : colorsRef
     advancePhysics(state, prefs)
-    ctx.clearRect(0, 0, rect.width, rect.height)
+    const width = state.width || canvas.width || 800
+    const height = state.height || canvas.height || 600
+    ctx.clearRect(0, 0, width, height)
     ctx.save()
     ctx.translate(state.offsetX, state.offsetY)
     ctx.scale(state.scale, state.scale)
@@ -219,6 +220,8 @@ export function createCanvasResizer(canvas: HTMLCanvasElement, ctx: CanvasRender
   const resize = () => {
     const dpr = Math.min(2, devicePixelRatio || 1)
     const rect = canvas.getBoundingClientRect()
+    state.width = rect.width
+    state.height = rect.height
     canvas.width = Math.max(1, Math.round(rect.width * dpr))
     canvas.height = Math.max(1, Math.round(rect.height * dpr))
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
