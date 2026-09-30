@@ -45,7 +45,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
       </Tooltip>
       <Tooltip label={followLabel} side='top'>
         <IconButton label={followLabel} size='sm' active={following} onClick={onToggleFollowing}>
-          {following ? <Snowflake size={14} /> : <Radio size={14} />}
+          {following ? <Radio size={14} /> : <Snowflake size={14} />}
         </IconButton>
       </Tooltip>
       <Tooltip label={fullscreenLabel} side='top'>

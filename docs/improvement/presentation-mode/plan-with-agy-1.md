@@ -44,9 +44,10 @@
   - 涉及文件：`src/client/features/presentation/slide-stage.ts` (`measureStage`)、`src/client/features/presentation/slide-stage.test.ts`、`scripts/check-comments.mjs`
   - 目标：将设计画幅固定为 1280x720，容器缩放使用 CSS scale，开合侧栏不再改变设计宽高，100% 杜绝预热缓存失效。
   - 验证：新增 `slide-stage.test.ts` 验证在不同分辨率与侧栏开合时设计画幅与内容区稳定为 1280x720 / 1168x632。
-- [ ] **B1-04** `P-06 (SPEC-05)`: Follow/Freeze 图标与激活态语义纠偏
+- [x] **B1-04** `P-06 (SPEC-05)`: Follow/Freeze 图标与激活态语义纠偏 — 已完成
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`PresentationControls`)
   - 目标：跟随中高亮脉冲 `<Radio />`；冻结后不高亮显示 `<Snowflake />`。
+  - 验证：纠偏状态图标渲染逻辑，跟随态显示广播电波，冻结态显示冰冻雪花。
 - [ ] **B1-05** `P-07 (SPEC-03)`: 控制条自动隐藏时移出 Tab 键顺序（`inert` 与 `invisible` 修复）
   - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`PresentationControls`)
   - 目标：`chromeHidden` 为 true 时增加 `inert` 和 `invisible`，杜绝键盘焦点盲跳。
