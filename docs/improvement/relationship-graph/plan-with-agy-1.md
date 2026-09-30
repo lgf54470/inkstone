@@ -73,16 +73,18 @@
   2. 打开设置面板时作为顶层 ESC 响应者，优先关闭自身；
   3. 移动端添加背景遮罩与点击外部关闭支持。
 - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npm run typecheck`
+- **提交哈希**：`7946bb73`
 - **状态**：已完成并验证通过
 
-#### 5. 【UI-01】修复 Canvas 内部渲染色不跟随系统主题翻转 (ADR-0002)
-- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `canvas.tsx`
+- [x] **5. 【UI-01】修复 Canvas 内部渲染色不跟随系统主题翻转 (ADR-0002)**
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `canvas.tsx`, `canvas-draw.test.ts`
 - **修改要点**：
-  1. 通过 MutationObserver 监听 `document.documentElement` 的 `data-theme` 属性变化；
+  1. 通过 MutationObserver 监听 `document.documentElement` 的 `data-theme` 与 `data-accent` 属性变化；
   2. 变化时动态调用 `readThemeColors()` 更新调色板，并调用 `state.schedule?.()` 触发重绘；
-  3. 不销毁画布、不重置节点物理坐标。
-- **验证命令**：`npm run typecheck && npx vitest run`
-- **提交哈希**：`待提交`
+  3. 不销毁画布、不重置节点物理坐标与相机；
+  4. 新增自动化测试覆盖调色板读取与主题/强调色变更响应。
+- **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npm run typecheck && npx vitest run src/client/features/graph/graph-panel/canvas-draw.test.ts`
+- **状态**：已完成并验证通过
 
 ---
 

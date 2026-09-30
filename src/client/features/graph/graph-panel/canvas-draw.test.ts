@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { GraphResponse } from '@shared/types'
 import { DEFAULT_PREFERENCES } from './constants'
-import { buildInitialLayout } from './canvas-draw'
+import { buildInitialLayout, createThemeObserver, readThemeColors } from './canvas-draw'
 import type { CanvasState } from './types'
 
 const sampleData: GraphResponse = {
@@ -64,5 +64,39 @@ describe('buildInitialLayout', () => {
     expect(state.nodes).toHaveLength(3)
     expect(state.edges).toHaveLength(2)
     expect(state.frame).toBe(360)
+  })
+})
+
+describe('theme following', () => {
+  it('reads theme colors from document computed style or fallbacks', () => {
+    const colors = readThemeColors()
+    expect(colors.edge).toBeTruthy()
+    expect(colors.node).toBeTruthy()
+    expect(colors.accent).toBeTruthy()
+    expect(colors.text).toBeTruthy()
+  })
+
+  it('updates colorsRef and triggers onUpdate when data-theme changes', async () => {
+    const colorsRef = { current: readThemeColors() }
+    const onUpdate = vi.fn()
+    const observer = createThemeObserver(colorsRef, onUpdate)
+
+    document.documentElement.setAttribute('data-theme', 'dark')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(onUpdate).toHaveBeenCalled()
+    observer.disconnect()
+  })
+
+  it('updates colorsRef and triggers onUpdate when data-accent changes', async () => {
+    const colorsRef = { current: readThemeColors() }
+    const onUpdate = vi.fn()
+    const observer = createThemeObserver(colorsRef, onUpdate)
+
+    document.documentElement.setAttribute('data-accent', 'emerald')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(onUpdate).toHaveBeenCalled()
+    observer.disconnect()
   })
 })

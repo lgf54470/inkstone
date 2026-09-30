@@ -7,7 +7,7 @@ import type { CanvasNode, CanvasState } from './types'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 
 
-interface ThemeColors {
+export interface ThemeColors {
   edge: string
   node: string
   accent: string
@@ -139,12 +139,13 @@ function drawLabels(ctx: CanvasRenderingContext2D, state: CanvasState, colors: T
   }
 }
 
-export function createGraphTicker(state: CanvasState, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, colors: ThemeColors, prefsRef: GraphPreferences | { current: GraphPreferences }, hoverRef: MutableRefObject<CanvasNode | null>, selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>, style: CSSStyleDeclaration): void {
+export function createGraphTicker(state: CanvasState, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, colorsRef: ThemeColors | { current: ThemeColors }, prefsRef: GraphPreferences | { current: GraphPreferences }, hoverRef: MutableRefObject<CanvasNode | null>, selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>, style: CSSStyleDeclaration): void {
   const schedule = () => { if (!state.raf) state.raf = requestAnimationFrame(tick) }
   const tick = () => {
     state.raf = 0
     const rect = canvas.getBoundingClientRect()
     const prefs = 'current' in prefsRef ? prefsRef.current : prefsRef
+    const colors = 'current' in colorsRef ? colorsRef.current : colorsRef
     advancePhysics(state, prefs)
     ctx.clearRect(0, 0, rect.width, rect.height)
     ctx.save()
@@ -200,6 +201,18 @@ export function readThemeColors(): ThemeColors {
     accent: style.getPropertyValue('--accent').trim() || FALLBACK_ACCENT_COLOR,
     text: style.getPropertyValue('--text-secondary').trim() || FALLBACK_TEXT_COLOR,
   }
+}
+
+export function createThemeObserver(colorsRef: { current: ThemeColors }, onUpdate: () => void): MutationObserver {
+  const observer = new MutationObserver(() => {
+    colorsRef.current = readThemeColors()
+    onUpdate()
+  })
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme', 'data-accent'],
+  })
+  return observer
 }
 
 export function createCanvasResizer(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, state: CanvasState): { resize: () => void; observer: ResizeObserver } {

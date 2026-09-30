@@ -10,7 +10,7 @@ import { PHYSICS_FRAME_LIMIT } from './constants'
 import type { CanvasNode, CanvasState } from './types'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 import type { WorkspacePane } from '../../../store/ui'
-import { buildInitialLayout, createCanvasResizer, createGraphTicker, readThemeColors } from './canvas-draw'
+import { buildInitialLayout, createCanvasResizer, createGraphTicker, createThemeObserver, readThemeColors } from './canvas-draw'
 
 export interface GraphControls {
   zoomIn: () => void
@@ -65,11 +65,12 @@ function useGraphCanvasLoop(data: GraphResponse, prefsRef: MutableRefObject<Grap
     setHover(null)
     setSelectedId((current) => data.nodes.some((node) => node.id === current) ? current : null)
     buildInitialLayout(data, prefsRef.current, state)
-    const colors = readThemeColors()
+    const colorsRef = { current: readThemeColors() }
+    const themeObserver = createThemeObserver(colorsRef, () => state.schedule?.())
     const { resize, observer } = createCanvasResizer(canvas, ctx, state)
     resize()
     const style = getComputedStyle(document.documentElement)
-    createGraphTicker(state, canvas, ctx, colors, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style)
+    createGraphTicker(state, canvas, ctx, colorsRef, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style)
     const linkedTargetId = getLinkHoverTarget()
     const linkedNode = linkedTargetId ? state.nodes.find((candidate) => candidate.id === linkedTargetId) ?? null : null
     hoverRef.current = linkedNode
@@ -81,6 +82,7 @@ function useGraphCanvasLoop(data: GraphResponse, prefsRef: MutableRefObject<Grap
       cancelAnimationFrame(state.raf)
       state.raf = 0; state.schedule = null
       observer.disconnect()
+      themeObserver.disconnect()
     }
   }, [activeNoteIdRef, canvasRef, data, fitGraph, hoverRef, prefsRef, selectedIdRef, setHover, setSelectedId, stateRef])
 }
