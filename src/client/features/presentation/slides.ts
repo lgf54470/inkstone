@@ -54,3 +54,50 @@ export function splitIntoSlides(source: string): string[] {
   while (slides.length > 1 && slides[slides.length - 1] === '') slides.pop()
   return slides
 }
+
+function stepFence(line: string, fence: FenceMarker | null): FenceMarker | null {
+  const match = FENCE.exec(line)
+  if (fence) return isClosingFence(match, fence) ? null : fence
+  if (match) return { char: match[1]![0]!, length: match[1]!.length }
+  return null
+}
+
+export function findSlideIndexByOffset(source: string, offset: number): number {
+  if (offset <= 0) return 0
+  const slides = splitIntoSlides(source)
+  if (slides.length <= 1) return 0
+
+  const fmMatch = LEADING_FRONT_MATTER.exec(source)
+  const bodyStart = fmMatch ? fmMatch[0].length : 0
+  if (offset <= bodyStart) return 0
+
+  let currentSlide = 0
+  let fence: FenceMarker | null = null
+  let prevLineBlank = true
+
+  const lineRegex = /([^\r\n]*)(\r?\n|$)/g
+  while (true) {
+    const match = lineRegex.exec(source)
+    if (!match || (match.index >= source.length && match[0] === '')) break
+    const lineStart = match.index
+    const lineEnd = match.index + match[0].length
+    const line = match[1]!
+    if (lineStart < bodyStart) continue
+
+    const nextFence = stepFence(line, fence)
+    const isBreak = !fence && !nextFence && SLIDE_BREAK.test(line) && prevLineBlank
+    fence = nextFence
+
+    if (isBreak) {
+      currentSlide++
+      prevLineBlank = true
+    } else {
+      prevLineBlank = line.trim() === ''
+    }
+
+    if (offset <= lineEnd) return Math.min(currentSlide, slides.length - 1)
+    if (lineEnd === source.length) break
+  }
+
+  return Math.max(0, Math.min(currentSlide, slides.length - 1))
+}

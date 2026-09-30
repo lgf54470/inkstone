@@ -35,10 +35,11 @@ export function PresentationOverlay() {
   const snapshot = usePresentation((s) => s.snapshot)
   const following = usePresentation((s) => s.following)
   const storedTitle = usePresentation((s) => s.title)
+  const initialSlideIndex = usePresentation((s) => s.initialSlideIndex)
   const onClose = usePresentation((s) => s.stop)
   const panelRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  const session = usePresentationSession({ open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose })
+  const session = usePresentationSession({ open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose, initialSlideIndex })
 
   if (!open) return null
 
@@ -173,7 +174,7 @@ interface PresentationSession {
   clearCover: () => void
 }
 
-function usePresentationSession({ open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose }: {
+function usePresentationSession({ open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose, initialSlideIndex = 0 }: {
   open: boolean
   noteId: string | null
   snapshot: string
@@ -182,12 +183,13 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
   panelRef: RefObject<HTMLDivElement | null>
   stageRef: RefObject<HTMLDivElement | null>
   onClose: () => void
+  initialSlideIndex?: number
 }): PresentationSession {
   const { content: presentedContent, title: liveTitle } = usePresentedContent({ open, noteId, snapshot, following })
   const { deck, fingerprint } = useShowDeck(presentedContent)
   useCapturePresented(open, following, presentedContent)
   const { dark, externalImages, proseFont } = useShowSettings()
-  const nav = usePresentationNav(deck.length, fingerprint)
+  const nav = usePresentationNav(deck.length, fingerprint, initialSlideIndex)
   const { index, sub, pageCount, plans, handlePlan, goNext, goPrev, jumpTo, jumpToPage } = nav
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
   const metrics = useStageMetrics(open, stageRef)
@@ -365,8 +367,8 @@ function useCapturePresented(open: boolean, following: boolean, presentedContent
 
 // Renders the enhanced markup off-DOM and caches it per slide; the cache hit is
 // what keeps diagrams alive across any remount of the slide subtree.
-function useDeckIndex(deckLength: number) {
-  const [index, setIndex] = useState(0)
+function useDeckIndex(deckLength: number, initialSlideIndex: number = 0) {
+  const [index, setIndex] = useState(() => Math.max(0, Math.min(initialSlideIndex, Math.max(0, deckLength - 1))))
   useEffect(() => {
     setIndex((current) => Math.min(current, deckLength - 1))
   }, [deckLength])
@@ -378,8 +380,8 @@ function useDeckIndex(deckLength: number) {
 // blocks overflow the canvas reports its page plan, and next/prev walk through its
 // sub-pages before moving to the neighboring slide. The plans also drive the slide
 // list, which is why the show keeps them instead of only the current page count.
-function usePresentationNav(deckLength: number, fingerprint: string) {
-  const { index, goTo } = useDeckIndex(deckLength)
+function usePresentationNav(deckLength: number, fingerprint: string, initialSlideIndex: number = 0) {
+  const { index, goTo } = useDeckIndex(deckLength, initialSlideIndex)
   const { plans, reportPlan } = useSlidePlans(fingerprint)
   const currentPlan = plans[index]
   const pageCount = currentPlan?.pages.length ?? 1

@@ -7,10 +7,11 @@ import { errorMessage } from '../../../lib/errors'
 import { exportNoteAsHtml, exportNoteAsMarkdown, exportNoteAsPdf } from '../../../lib/export-note'
 import { detectEditorContext, detectPreviewContext, type EditorContextData, type PreviewContextData } from '../context-menu-detect'
 import { useBreakpoint, useRelativeTime } from '../../../lib/hooks'
-import { setActiveEditorView } from '../../../editor/commands'
+import { getActiveEditorView, setActiveEditorView } from '../../../editor/commands'
 import { optimizeImageFile } from '../../../lib/image'
 import { useBlogStore } from '../../blog'
 import { isNoteShared, useShareStore } from '../../share'
+import { findSlideIndexByOffset } from '../../presentation'
 import { type Heading } from '../../../lib/markdown/renderer'
 import type { WorkspacePane, UiState } from '../../../store/ui'
 import { useUi } from '../../../store/ui'
@@ -308,7 +309,10 @@ function buildWorkspaceSources(notes: NotesState['notes'], tags: NotesState['tag
 // follows it, so a pane-local copy of the buffer is never the deck's source.
 function useStartPresentation(note: NotesState['notes'][string] | null | undefined, content: string): () => void {
   return useCallback(() => {
-    if (note) usePresentation.getState().start({ noteId: note.id, content, title: note.title })
+    if (!note) return
+    const offset = getActiveEditorView()?.state.selection.main.head ?? 0
+    const initialSlideIndex = findSlideIndexByOffset(content, offset)
+    usePresentation.getState().start({ noteId: note.id, content, title: note.title, initialSlideIndex })
   }, [note, content])
 }
 

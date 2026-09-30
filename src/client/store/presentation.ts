@@ -17,7 +17,8 @@ interface PresentationState {
    */
   snapshot: string
   following: boolean
-  start: (note: { noteId: string; content: string; title: string }) => void
+  initialSlideIndex: number
+  start: (note: { noteId: string; content: string; title: string; initialSlideIndex?: number }) => void
   stop: () => void
   capture: (content: string) => void
   setFollowing: (following: boolean) => void
@@ -29,13 +30,14 @@ export const usePresentation = create<PresentationState>((set) => ({
   title: '',
   snapshot: '',
   following: true,
+  initialSlideIndex: 0,
 
-  start({ noteId, content, title }) {
-    set({ open: true, noteId, title, snapshot: content, following: true })
+  start({ noteId, content, title, initialSlideIndex = 0 }) {
+    set({ open: true, noteId, title, snapshot: content, following: true, initialSlideIndex })
   },
 
   stop() {
-    set({ open: false, noteId: null, title: '', snapshot: '', following: true })
+    set({ open: false, noteId: null, title: '', snapshot: '', following: true, initialSlideIndex: 0 })
   },
 
   capture(content) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { splitIntoSlides } from './slides'
+import { findSlideIndexByOffset, splitIntoSlides } from './slides'
 
 describe('splitIntoSlides — separators and code fences', () => {
   it('returns the whole note as a single slide when there is no separator', () => {
@@ -54,5 +54,34 @@ describe('splitIntoSlides — front matter and deck edges', () => {
 
   it('produces one empty slide for an empty note instead of zero slides', () => {
     expect(splitIntoSlides('')).toEqual([''])
+  })
+})
+
+describe('findSlideIndexByOffset', () => {
+  it('returns 0 for negative or zero offset or single-slide note', () => {
+    expect(findSlideIndexByOffset('# Single\n\nSlide', 0)).toBe(0)
+    expect(findSlideIndexByOffset('# Single\n\nSlide', -5)).toBe(0)
+    expect(findSlideIndexByOffset('# Single\n\nSlide', 10)).toBe(0)
+  })
+
+  it('locates current slide based on character offset', () => {
+    const doc = '# First\n\n---\n\n# Second\n\n---\n\n# Third'
+    expect(findSlideIndexByOffset(doc, 4)).toBe(0)
+    expect(findSlideIndexByOffset(doc, 10)).toBe(1)
+    expect(findSlideIndexByOffset(doc, 18)).toBe(1)
+    expect(findSlideIndexByOffset(doc, 30)).toBe(2)
+    expect(findSlideIndexByOffset(doc, 999)).toBe(2)
+  })
+
+  it('skips front matter and handles code fences properly', () => {
+    const doc = '---\ntitle: test\n---\n\n# Slide 1\n\n```yaml\n---\n```\n\n---\n\n# Slide 2'
+    const slide1Pos = doc.indexOf('# Slide 1')
+    const yamlSepPos = doc.indexOf('---\n```')
+    const slide2Pos = doc.indexOf('# Slide 2')
+
+    expect(findSlideIndexByOffset(doc, 5)).toBe(0)
+    expect(findSlideIndexByOffset(doc, slide1Pos)).toBe(0)
+    expect(findSlideIndexByOffset(doc, yamlSepPos)).toBe(0)
+    expect(findSlideIndexByOffset(doc, slide2Pos)).toBe(1)
   })
 })
