@@ -60,12 +60,15 @@ describe('presentationCommand — toggles and focus ownership', () => {
   it('lets the slide list keep the arrows it walks its own items with', () => {
     expect(presentationCommand('ArrowUp', onSlideList)).toBeNull()
     expect(presentationCommand('ArrowDown', onSlideList)).toBeNull()
+    expect(presentationCommand('ArrowLeft', onSlideList)).toBeNull()
+    expect(presentationCommand('ArrowRight', onSlideList)).toBeNull()
     expect(presentationCommand('Home', onSlideList)).toBeNull()
     expect(presentationCommand('End', onSlideList)).toBeNull()
   })
 
-  it('still turns pages from the list when the key is not list navigation', () => {
-    expect(presentationCommand('ArrowRight', onSlideList)).toBe('next')
+  it('still turns pages from the list when the key is not an arrow or home/end', () => {
+    expect(presentationCommand('PageDown', onSlideList)).toBe('next')
+    expect(presentationCommand('PageUp', onSlideList)).toBe('prev')
     expect(presentationCommand(' ', onSlideList)).toBe('next')
     expect(presentationCommand('Escape', onSlideList)).toBeNull()
   })

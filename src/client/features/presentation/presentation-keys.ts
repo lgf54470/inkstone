@@ -16,9 +16,11 @@ export interface PresentationKeyContext {
 export function presentationCommand(key: string, context: PresentationKeyContext): PresentationCommand | null {
   switch (key) {
     case 'ArrowRight':
+      return context.onSlideList ? null : 'next'
     case 'PageDown':
       return 'next'
     case 'ArrowLeft':
+      return context.onSlideList ? null : 'prev'
     case 'PageUp':
       return 'prev'
     case 'ArrowDown':

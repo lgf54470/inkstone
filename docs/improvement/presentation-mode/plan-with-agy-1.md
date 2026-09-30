@@ -87,12 +87,12 @@
 
 ## 批次 3 · 阶段三：导航强化、合规收尾与性能深度治理 (P2)
 
-- [x] **B3-01** `P-12 (UX-06)`: 侧栏缩略图补充大纲标题文字标签 — 已完成
+- [x] **B3-01** `P-12 (UX-06)`: 侧栏缩略图补充大纲标题文字标签 — 已完成 (`5f02e2d4`)
   - 涉及文件：`src/client/features/presentation/slide-rail.tsx` (`SlideRailItem`, `extractSlideHeading`)、`src/client/features/presentation/slide-rail.test.ts`
   - 目标：长篇演说支持文字大纲快速扫视定位。
   - 方案：新增 `extractSlideHeading(source: string): string` 纯函数，提取每个 Slide 的首个有效 Heading（H1~H3）或第一行正文作为 Slide 简明标题，在缩略图右侧或下方以清晰文本标签呈现，超长智能截断。
   - 验证：单元测试覆盖多级 Heading、无 Heading 纯文本、带代码块与空页等场景的大纲文本提取正确性。
-- [ ] **B3-02** `P-13 (UX-07)`: 侧栏获焦时左右方向键隔离
+- [x] **B3-02** `P-13 (UX-07)`: 侧栏获焦时左右方向键隔离 — 已完成
   - 涉及文件：`src/client/features/presentation/presentation-keys.ts` (`presentationCommand`)、`src/client/features/presentation/presentation-keys.test.ts`
   - 目标：焦点在侧栏缩略图列表时，左右方向键（`ArrowLeft` / `ArrowRight`）不穿透导致舞台翻页。
   - 方案：在 `presentationCommand` 中针对 `ArrowLeft` / `ArrowRight` 增加 `if (context.onSlideList) return null;` 守卫条件。
