@@ -29,6 +29,10 @@ export function railOpenFor(choice: boolean | null, fitsViewport: boolean): bool
   return choice ?? fitsViewport
 }
 
+export function escapeAction(isFullscreen: boolean): 'exitFullscreen' | 'close' {
+  return isFullscreen ? 'exitFullscreen' : 'close'
+}
+
 /** One navigable page: a `---` slide plus the overflow page inside it. */
 export interface RailEntry {
   slide: number

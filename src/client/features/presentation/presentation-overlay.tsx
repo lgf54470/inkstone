@@ -9,7 +9,7 @@ import { useDeckExport, type DeckSheetPayload } from './deck-export'
 import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
 import { useSession } from '../../store/session'
-import { presentedNoteContent, railOpenFor } from './presentation-state'
+import { escapeAction, presentedNoteContent, railOpenFor } from './presentation-state'
 import { useIsDarkTheme } from './presentation-theme'
 import { PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
 import { SlideViewport } from './slide-canvas'
@@ -203,7 +203,7 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
   )
   const exports = useDeckExport({ deck, cacheKeys, plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
-  useDialogBehavior(open, panelRef, onClose)
+  useDialogBehavior(open, panelRef, isFullscreen, toggleFullscreen, onClose)
   useSlideHtml({ open, deck, index, fingerprint, content: presentedContent, noteTitle, dark, metrics })
   usePresentationKeys({ open, slideCount: deck.length, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing })
   return {
@@ -295,8 +295,18 @@ function useSlideList(open: boolean): { railOpen: boolean; toggleRail: () => voi
 
 // The dialog's own browser contracts: Escape closes, the page behind stops scrolling,
 // and focus stays inside the dialog until it goes back to whatever opened it.
-function useDialogBehavior(open: boolean, panelRef: RefObject<HTMLDivElement | null>, onClose: () => void): void {
-  useEscape(open, onClose)
+function useDialogBehavior(
+  open: boolean,
+  panelRef: RefObject<HTMLDivElement | null>,
+  isFullscreen: boolean,
+  toggleFullscreen: () => void,
+  onClose: () => void,
+): void {
+  const handleEscape = useCallback(() => {
+    if (escapeAction(isFullscreen) === 'exitFullscreen') toggleFullscreen()
+    else onClose()
+  }, [isFullscreen, toggleFullscreen, onClose])
+  useEscape(open, handleEscape)
   useLockScroll(open)
   useDialogFocus(open, panelRef, panelRef)
 }

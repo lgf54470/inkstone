@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entryIndexOf, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, presentedNoteContent, railEntries, railOpenFor } from './presentation-state'
+import { entryIndexOf, escapeAction, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, presentedNoteContent, railEntries, railOpenFor } from './presentation-state'
 import type { SlidePlan } from './slide-pagination'
 
 const planOf = (pages: number): SlidePlan => ({
@@ -141,5 +141,15 @@ describe('railOpenFor', () => {
   it('lets an explicit choice outlive a viewport change', () => {
     expect(railOpenFor(true, false)).toBe(true)
     expect(railOpenFor(false, true)).toBe(false)
+  })
+})
+
+describe('escapeAction', () => {
+  it('exits fullscreen when presentation is fullscreen to prevent accidental dismissal', () => {
+    expect(escapeAction(true)).toBe('exitFullscreen')
+  })
+
+  it('closes presentation overlay when presentation is in windowed mode', () => {
+    expect(escapeAction(false)).toBe('close')
   })
 })
