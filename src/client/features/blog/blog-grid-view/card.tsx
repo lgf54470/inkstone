@@ -5,7 +5,8 @@ import { Checkbox } from '../../../components/form'
 import { IconButton } from '../../../components/primitives'
 import { Menu, type MenuItem } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
-import { t } from '../../../lib/i18n'
+import { t, useLocaleRepaint } from '../../../lib/i18n'
+import { formatDate } from '../../../lib/time'
 import { useBlogPostSummaryCard } from './use-blog-post-card'
 import { PostCoverImage } from './cover-image'
 
@@ -32,6 +33,9 @@ export const BlogGridCard = memo(function BlogGridCard({
   onToggleSelect: (postId: string) => void
   onOpenEdit: (post: BlogPostSummary) => void
 }) {
+  // `memo` means a language switch never reaches this card through its props, and the date below is
+  // formatted per render.
+  useLocaleRepaint()
   const card = useBlogPostSummaryCard({ post, folders, frontendBase, onOpenEdit })
 
   return (
@@ -40,12 +44,7 @@ export const BlogGridCard = memo(function BlogGridCard({
       onDragStart={(e) => startCardDrag(e, post.id)}
       onContextMenu={(e) => openCardContextMenu(e, card)}
       onDoubleClick={() => onOpenEdit(post)}
-      className={cn(
-        'group relative flex flex-col rounded-[var(--r-xl)] border transition-all overflow-hidden cursor-grab active:cursor-grabbing select-none',
-        isSelected
-          ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-sm)]'
-          : 'border-[var(--border-default)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)]',
-      )}
+      className={cardShellClass(isSelected)}
       title={t('blog.drag_to_folder_hint')}
     >
       <CardTopControls post={post} isSelected={isSelected} onToggleSelect={() => onToggleSelect(post.id)} onTogglePin={() => void card.updatePost(post.id, { isPinned: !post.isPinned })} />
@@ -81,6 +80,15 @@ export const BlogGridCard = memo(function BlogGridCard({
     </div>
   )
 })
+
+function cardShellClass(isSelected: boolean): string {
+  return cn(
+    'group relative flex flex-col rounded-[var(--r-xl)] border transition-all overflow-hidden cursor-grab active:cursor-grabbing select-none',
+    isSelected
+      ? 'border-[var(--accent)] bg-[var(--accent-softer)] shadow-[var(--shadow-sm)]'
+      : 'border-[var(--border-default)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)]',
+  )
+}
 
 function startCardDrag(e: React.DragEvent, postId: string): void {
   e.dataTransfer.setData('application/inkstone-blog-post-ids', JSON.stringify([postId]))
@@ -197,7 +205,7 @@ function CardMeta({ post, folder, cat }: { post: BlogPostSummary; folder: BlogFo
       )}
 
       <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)] ml-auto whitespace-nowrap'>
-        {new Date(post.publishedAt).toLocaleDateString()}
+        {formatDate(post.publishedAt)}
       </span>
     </div>
   )

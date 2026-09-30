@@ -1,7 +1,7 @@
 import { Activity } from 'lucide-react'
 import type { BlogGlobalAnalytics } from '@shared/types'
 import { t } from '../../../lib/i18n'
-import { countryFlag, countryNameLocalized } from '../../../lib/visitor-geo'
+import { countryFlag, countryNameLocalized, localizePlatformName } from '../../../lib/visitor-geo'
 import { relativeTime } from '../../../lib/time'
 
 interface VisitLogsCardProps {
@@ -58,14 +58,14 @@ function VisitLogRow({ visit, locale }: {
         </span>
         {visit.isBot && (
           <span className='rounded bg-[var(--danger-soft)] px-1.5 py-0.5 text-[length:var(--text-10)] font-semibold text-[var(--danger)]'>
-            🤖 {visit.botName || 'Bot'}
+            🤖 {visit.botName || t('blog.bot_fallback')}
           </span>
         )}
       </div>
 
       <div className='flex items-center gap-2 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
         <span className='rounded bg-[var(--bg-base)] px-1.5 py-0.5 font-mono'>
-          {visit.browser || 'Other'} / {visit.os || 'other'}
+          {localizePlatformName(visit.browser, t('blog.env_unknown'))} / {localizePlatformName(visit.os, t('blog.env_unknown'))}
         </span>
         {visit.referrerHost && (
           <span className='truncate max-w-[100px] hidden md:inline' title={visit.referrerHost}>

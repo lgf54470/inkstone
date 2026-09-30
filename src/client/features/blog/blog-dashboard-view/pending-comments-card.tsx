@@ -2,6 +2,7 @@ import { AlertCircle, CheckCircle, FileText, XCircle } from 'lucide-react'
 import type { BlogComment, BlogCommentStatus } from '@shared/types'
 import type { BlogTab } from '../blog-store'
 import { t } from '../../../lib/i18n'
+import { shortTime } from '../../../lib/time'
 
 interface PendingCommentsCardProps {
   pendingComments: BlogComment[]
@@ -72,7 +73,7 @@ function PendingCommentItem({ comment, updateCommentStatus }: {
           </span>
         </div>
         <span className="text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
-          {new Date(comment.createdAt).toLocaleDateString()}
+          {shortTime(comment.createdAt)}
         </span>
       </div>
       <p className='text-[length:var(--text-12)] text-[var(--text-secondary)] line-clamp-2'>

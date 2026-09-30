@@ -2907,8 +2907,13 @@ const allowed = new Map([
     '/**\n * What the payload means under the switches. A number only counts as filtered when the switch hiding\n * it is on: the server reports all three regardless, and the banner that reads these is describing\n * what is not in the chart above it.\n */',
     '// An aborted request is the reader changing the question, not a failed load.',
   ]],
+  ['src/client/features/blog/blog-dashboard-view/visit-logs-card.test.ts', [
+    '/**\n * The locale is not loaded in this harness, so `t()` echoes the key and the assertions read keys.\n * What they pin is that the card no longer prints the UA parser\'s raw `\'Other\'` sentinel, nor the\n * English word `\'Bot\'`, on either language.\n */',
+  ]],
   ['src/client/features/blog/blog-grid-view/card.tsx', [
     '/**\n * Every prop is either the row\'s own data or a stable handler (store actions and the hub\'s two\n * `useCallback`s), so selecting one card no longer re-renders the other forty-nine.\n */',
+    '// `memo` means a language switch never reaches this card through its props, and the date below is',
+    '// formatted per render.',
   ]],
   ['src/client/features/blog/blog-grid-view/cover-image.test.ts', [
     '/**\n * A list of fifty cards used to fetch every cover as eagerly as the browser allowed and decode them\n * on the main thread while the reader was still scrolling the first screen.\n */',
@@ -3173,6 +3178,8 @@ const allowed = new Map([
   ]],
   ['src/client/features/blog/blog-table-view/row.tsx', [
     '/**\n * Every prop is either the row\'s own data or a stable handler, so selecting one row no longer\n * re-renders the other forty-nine.\n */',
+    '// `memo` means a language switch never reaches this row through its props, and the published date',
+    '// below is formatted per render.',
   ]],
   ['src/client/features/blog/frontend-base.ts', [
     '/**\n * The blog\'s own site address, as a link may carry it.\n *\n * The stored value is checked on the way in, but a blog configured before that rule existed still\n * holds whatever was typed, and this address becomes an `href` in the admin session — so a value a\n * link may not use falls back to the shipped default instead of being rendered as written.\n */',
@@ -12122,7 +12129,8 @@ const allowed = new Map([
     '// 2024-01-07 is a Sunday, so the offset alone selects the weekday.',
     '/** Key of the week\'s first day (per `weekStart`) containing `key`. */',
     '/** Whether an inclusive day-key range spans exactly one aligned week. */',
-    '/**\n * A stored day key as reader-facing text. Rich-media blocks persist `YYYY-MM-DD` because that is\n * what round-trips into a note body, so every surface that prints one goes through here instead of\n * showing the key; the year only appears when the day is not in the current year.\n */',
+    '/**\n * A stored timestamp as reader-facing calendar text, without the time of day (that is what\n * `shortTime`/`fullTime` are for). The year only appears when the day is not in the current year,\n * and a timestamp of 0 reads as "no date" rather than as 1970. `formatDateKey` shares the day rule\n * so a persisted day key and a timestamp print the same way.\n */',
+    '/**\n * A stored day key as reader-facing text. Rich-media blocks persist `YYYY-MM-DD` because that is\n * what round-trips into a note body, so every surface that prints one goes through here instead of\n * showing the key.\n */',
     '/** Media position or track length, as a mm:ss timecode (minutes are not capped at 60). */',
     '// The units belong to the locale, not to the source, so no English literal leaks into a',
     '// translated UI. DurationFormat leaves zero-valued parts out entirely, so the sub-minute',
@@ -12135,6 +12143,7 @@ const allowed = new Map([
   ]],
   ['src/client/lib/visitor-geo.ts', [
     '/**\n * The country and device labels both analytics surfaces draw. They live here rather than in the share\n * feature\'s helpers because the blog dashboard needs exactly these two answers and used to import\n * the whole share barrel for them, which dragged the share modals into the blog chunk.\n */',
+    '/**\n * A browser or OS name is a proper noun the UA parser read off the header, with one exception: its\n * own `\'Other\'` sentinel means it could not read one. That sentinel is a value, not a name, so it\n * becomes the caller\'s word for "unknown" — as does a missing column. The caller passes that word\n * because the share and blog surfaces word it differently (`share.env_unknown` vs `blog.env_unknown`).\n */',
     '/**\n * The three device classes the breakdown card names in words. Shared with the dashboard export so a\n * file that leaves the app says "Desktop" where the card said "Desktop", not the raw `desktop`.\n */',
   ]],
   ['src/client/lib/wipe-password-prompt.ts', [

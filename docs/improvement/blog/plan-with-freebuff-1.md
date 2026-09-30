@@ -176,12 +176,17 @@
 
 ## 批次 4 · UI / a11y / i18n / 令牌
 
-- [x] B4-01 **UI-01** `text-white` 与裸调色板收敛到令牌 + `--update-baseline` + `contrast:check` 实测两套主题 — 已提交（hash 由下一提交回填，见进度日志）
+- [x] B4-01 **UI-01** `text-white` 与裸调色板收敛到令牌 + `--update-baseline` + `contrast:check` 实测两套主题 — 已提交 `07f9351f`
   - 实现：13 处 `text-white` → `text-[var(--accent-contrast)]`（accent 底），实体状态底新增 `--success-on`/`--danger-on`（浅色白字、深色深墨，与 `--accent-contrast` 同值同翻转；不加未使用的 `--warning-on`）。12 处裸调色板收敛：amber → `--warning`/`--warning-soft`、`bg-emerald-500/90` → `--success`/`--success-on`、`bg-stone-600/80` → `bg-[var(--bg-overlay)]/90`+`--text-secondary`、评论状态徽标改用共享 `Badge`（顺带消掉两处失效的 `dark:` 变体）、`bg-black/20` → `--accent-contrast`/20、二维码底板 → `--swatch-white`。
   - 验收：`check-hardcoded.palette-baseline.json` -11 条（模块内 11 文件归零）；`tokens:check` 未动共享契约（新令牌客户端私密，89 tokens 不变）；`contrast:check` 两套主题×桌面/手机宽度通过；视觉门禁 682 通过；`tsc -b` 绿；blog+share 81 文件 356 条全绿。
   - 限制：share 侧 SH-32 与本模块外的实体 warning 底（`attachments/attachment-grid-view.tsx:175` 浅色下 2.94:1）不在本条范围，已记在 review。
 
-- [ ] B4-02 **UI-02 + UI-03** 四处日期本地化 + 硬编码文案改 message id（含 `col_created_at` 表头语义修正）
+- [x] B4-02 **UI-02 + UI-03** 四处日期本地化 + 硬编码文案改 message id（含 `col_created_at` 表头语义修正）— 已提交（hash 由下一提交回填，见进度日志）
+  - 实现（UI-02）：`lib/time.ts` 新增 `formatDate(ts)`（本地化「月/日」，跨年才带年份；`0`/非有限值输出空串——草稿的 `publishedAt = 0` 因此不再渲染成 1970），`formatDateKey()` 改为复用同一条日规则。四处调用点：`pending-comments-card` → `shortTime`（与同页访问日志一致）、`blog-comments-view` → `fullTime`（原 `toLocaleString()` 的日期+时间语义不变）、网格卡与表格行的 `publishedAt` → `formatDate`。网格卡与表格行是 B3-09 的 `memo` 组件，props 全稳、语言切换本来到不了它们（行内其它 `t()` 文案同理），各自补 `useLocaleRepaint()`；卡片外壳类名顺带提为 `cardShellClass()`，函数从 53 行落到 48 行、不动 size 基线。
+  - 订正（UI-02 的表头语义）：经 `git show` 核验，`blog.col_created_at` 的双语值在 review 基线（`ff2ab047`）与当前树上都是「发布时间 / Published At」，与 `row.tsx` 渲染的 `publishedAt` 一致——review 里「表头写创建时间」的前提不成立，本条不做文案改动（键名是历史遗留，重命名无用户可见收益）。
+  - 实现（UI-03）：`'TOP 10'` → `blog.top_posts_limit`；`'PV'` → 复用既有 `blog.col_views`；`🤖` 徽标的 `'Bot'` → `blog.bot_fallback`；浏览器/OS 的 `'Other'/'other'` 与空列 → 新增 `blog.env_unknown`；`'Inkstone Blog'` → `blog.default_site_name`（仍只作为落库的站点名默认值）；分类树前缀 `'  └ '` 三处 → `blog.tree_branch_prefix`（结构字符，双语刻意同值，只做外置）。服务端语义值不再直出：`lib/visitor-geo.ts` 新增 `localizePlatformName(name, fallback)`——UA 解析器读不出时写 `'Other'` 哨兵，它不是名字；share 的 `localizeEnvName()` 改为调用同一实现，重复逻辑只剩一份。
+  - 验收：`tsc -b` 绿；`test:unit` 588 文件 5281 通过 / 1 skipped；新增 5 条（`time.test.ts` 3 条 `formatDate`、`visit-logs-card.test.ts` 2 条设备标签）；两处变异分别实测 3 failed / 1 failed（`formatDate` 恒带年份、`localizePlatformName` 直接回值）；九项静态门禁 + `surfaces` 绿（`size` 未动基线，`i18n:check` 双语 5 键已补）。
+  - 限制：`check-i18n.mjs` 仍拦不住「JSX 里新增裸英文」这类回归（review 建议的英文词表属独立改动，未夹带）。
 - [ ] B4-03 **UI-04 + UI-05** 表单迁移到 `Field`（htmlFor / aria-describedby）+ `Switch` 补 label + slug 不可用阻断 + 五套分段控件收敛 `Segmented`
 - [ ] B4-04 **UI-06 + UI-07** 键盘可达（单击 / 回车）+ 排序 UI + 表 `caption`/`scope`；hover-only 改 `focus-visible`；批量条窄屏；四个 Modal 补可访问名
 - [ ] B4-05 **UI-08 + UI-13** 单条评论审核与分类 CRUD 反馈 + `copyText()` 共享（含 QR 与列表复制）
@@ -225,7 +230,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-09-30 | B4-01 UI-01 `text-white`/裸调色板收敛到令牌 | （下一提交回填） | `tsc -b` 绿；blog+share 81 文件 356 条全绿；九项静态门禁绿（palette baseline -11 条）；`tokens:check` 89 tokens 值稳定；`contrast:check` 两套主题通过；视觉门禁 682 通过 | 两个新令牌（`--success-on`/`--danger-on`）仅客户端私有；share 侧 SH-32 与附件网格的实体 warning 底未动 |
+| 2026-09-30 | B4-02 UI-02/UI-03 日期本地化 + 硬编码文案改 message id + UA 哨兵映射 | （下一提交回填） | `tsc -b` 绿；`test:unit` 588 文件 5281 通过 / 1 skipped；新增 5 条（`formatDate` 3 + 设备标签 2）；两处变异实测 3 / 1 failed；九项静态门禁 + `surfaces` 绿（`size` 未动基线） | `check-i18n` 的英文词表未做（独立改动）；树前缀双语同值；表头「创建时间」前提不成立已订正 |
+| 2026-09-30 | B4-01 UI-01 `text-white`/裸调色板收敛到令牌 | 07f9351f | `tsc -b` 绿；blog+share 81 文件 356 条全绿；九项静态门禁绿（palette baseline -11 条）；`tokens:check` 89 tokens 值稳定；`contrast:check` 两套主题通过；视觉门禁 682 通过 | 两个新令牌（`--success-on`/`--danger-on`）仅客户端私有；share 侧 SH-32 与附件网格的实体 warning 底未动 |
 | 2026-09-30 | B3-09d ENG-11 barrel 拆瘦 + 图标按需加载 + qrcode/geo 归位 | 35762135 | `typecheck` 绿；新增 11 条用例全绿（3 文件），两处变异各 4 failed / 2 failed；九项静态门禁绿（`comments` 白名单重建 1309 文件 12578 条）；`npm run build` + `budget:check` + `vendor:check`：eager 931.4 → 596.7 KiB、`vendor-icons` 507.3 → 149.0 KB；`test:unit` 587 文件 5276 通过 / 1 skipped；视觉门禁 682 通过、`e2e.mjs` 177 通过、`check-contrast.mjs` 通过（同一实例） | 产物多约 1700 个图标小 chunk，纯图标 chunk 已排除出离线清单，未在线用过的自定义图标离线不保证；`vendor-icons` 分组排除 lucide `icons/` 是前提，改动它会让 eager 反弹 |
 | 2026-09-30 | B3-09c ENG-12 列表 memo/菜单懒构/计数一次遍历/渐进渲染 | 0bcc38b2 | `typecheck` 绿；blog 相关 23 文件 76 条 + 新 4 条全绿（含窗口用例）；窗口变异（步长 250）1 failed；`size` 绿（`blog-links-view/index.tsx` 拆出 `links-toolbar.tsx`） | 评论/友链行级 memo 未做（内联箭头/bundle API）；窗口为渐进渲染而非滚动虚拟化 |
 | 2026-09-30 | B3-09b ENG-13 封面/头像懒加载与异步解码 | 6127201e | `typecheck` 绿；新 `cover-image.test.ts` 2 条绿；`size` 未动基线 | 表格 36px 缩略图仍取原图字节（无 CDN 尺寸变体）；封面不写死 width/height（容器已定盒尺寸） |

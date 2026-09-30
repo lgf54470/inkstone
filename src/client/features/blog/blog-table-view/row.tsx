@@ -5,7 +5,8 @@ import { Checkbox } from '../../../components/form'
 import { IconButton } from '../../../components/primitives'
 import { Menu } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
-import { t } from '../../../lib/i18n'
+import { t, useLocaleRepaint } from '../../../lib/i18n'
+import { formatDate } from '../../../lib/time'
 import { useBlogPostSummaryCard } from '../blog-grid-view/use-blog-post-card'
 import { PostCoverImage } from '../blog-grid-view'
 
@@ -32,6 +33,9 @@ export const BlogTableRow = memo(function BlogTableRow({
   onToggleSelect: (postId: string) => void
   onOpenEdit: (post: BlogPostSummary) => void
 }) {
+  // `memo` means a language switch never reaches this row through its props, and the published date
+  // below is formatted per render.
+  useLocaleRepaint()
   const row = useBlogPostSummaryCard({
     post,
     folders,
@@ -70,7 +74,7 @@ export const BlogTableRow = memo(function BlogTableRow({
       <TableRowStatusCell post={post} />
       <td className='px-3 py-2.5 text-right font-mono text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] whitespace-nowrap'>{post.views}</td>
       <td className='px-3 py-2.5 text-right font-mono text-[length:var(--text-12)] font-medium text-[var(--text-secondary)] whitespace-nowrap'>{post.commentsCount ?? 0}</td>
-      <td className='px-3 py-2.5 text-right text-[length:var(--text-11)] text-[var(--text-quaternary)] whitespace-nowrap'>{new Date(post.publishedAt).toLocaleDateString()}</td>
+      <td className='px-3 py-2.5 text-right text-[length:var(--text-11)] text-[var(--text-quaternary)] whitespace-nowrap'>{formatDate(post.publishedAt)}</td>
       <TableRowActionsCell row={row} post={post} isSelected={isSelected} onOpenEdit={onOpenEdit} />
     </tr>
   )

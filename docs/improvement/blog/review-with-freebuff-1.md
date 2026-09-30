@@ -358,16 +358,20 @@
 - **落地验收**：`scripts/check-hardcoded.palette-baseline.json` **-11 条**（11 个模块文件归零，全局仍 160 条历史存量在 41 个文件里）；`tokens:check` 未改动共享契约（两个新令牌仅客户端私有，漂移基线仍 89 tokens，值稳定），`undefined-var` 断言每个 `var()` 都指向已声明令牌；`contrast:check` 两套主题 × 桌面/手机宽度通过；视觉门禁 682 通过（含 blog hub 的 axe 与对比度量）。
 - **未做（外溢）**：share 侧同型问题（SH-32）与本模块外的实体 warning 底（`attachments/attachment-grid-view.tsx:175` 用 `--text-inverse` 配 `bg-[var(--warning)]`，浅色下实测仅 2.94:1）不在本条范围，已单独记在下次 share 复审。
 
-#### UI-02 [P1][开放] 四处日期格式化未传 locale
+#### UI-02 [P1][已修] 四处日期格式化未传 locale
 - **问题**：`pending-comments-card.tsx:75`、`blog-grid-view/card.tsx:196`、`blog-comments-view.tsx:280`、`blog-table-view/row.tsx:69` 用裸 `toLocaleDateString()/toLocaleString()`，同模块其余位置已用 `useLocale()`/`formatDate`。另外 `row.tsx:69` 渲染的是 `publishedAt` 而表头写「创建时间」`blog.col_created_at`。
 - **影响**：中文/英文界面下日期格式随浏览器而非应用语言变化；表头与数据语义不符。AGENTS 要求日期按 locale 格式化。
 - **方案**：统一走 `lib/time` 的 `formatDate`/`relativeTime` + `useLocale()`；表头文案改为「发布时间」或改渲染 `createdAt`（二选一，建议前者，与排序口径一致）。
 - **范围**：四处 + `locales/*/blog-*.ts`。代价 **S**。
+- **落地（B4-02）**：`lib/time.ts` 新增 `formatDate(ts)`——本地化「月/日」、跨年才带年份、`0`/非有限值输出空串（草稿的 `publishedAt = 0` 因此不再渲染成 1970-1-1）；`formatDateKey()` 改为复用同一条日规则。四个调用点：`pending-comments-card.tsx` → `shortTime()`（与同页访问日志同一风格）、`blog-comments-view.tsx` → `fullTime()`（原来 `toLocaleString()` 的日期+时间语义不变）、`blog-grid-view/card.tsx` 与 `blog-table-view/row.tsx` 的 `publishedAt` → `formatDate()`。后两者是 B3-09 的 `memo` 组件：props 全稳，语言切换本来到不了它们（连行内其它 `t()` 文案也是），各自补 `useLocaleRepaint()`；卡片外壳类名提为 `cardShellClass()`，函数 53 → 48 行，不动 size 基线。回归 `time.test.ts` 3 条；变异（`formatDate` 恒带年份）实测 3 failed（连带 `formatDateKey` 的跨年断言一起变红）。
+- **订正**：表头语义**本来就对**——`git show ff2ab047` 与当前树上 `blog.col_created_at` 的双语值都是「发布时间 / Published At」，与 `row.tsx` 渲染的 `publishedAt` 一致；本条「表头写创建时间」的前提不成立，未改文案（键名是历史遗留，重命名无用户可见收益）。
 
-#### UI-03 [P2][开放] 硬编码 UI 文案（i18n 门禁的盲区）
+#### UI-03 [P2][已修] 硬编码 UI 文案（i18n 门禁的盲区）
 - **问题**：`top-posts-card.tsx:20` `{'TOP 10'}`、`:56` `{'PV'}`、`visit-logs-card.tsx:61` `🤖 {visit.botName || 'Bot'}`、`:68` `{visit.browser || 'Other'} / {visit.os || 'other'}`、`use-blog-settings-modal.ts:167` `'Inkstone Blog'`、`blog-hub-sidebar` 的树前缀。`scripts/check-i18n.mjs` 只拦中文字面量，英文硬编码是盲区（前轮 P2-3 已指出）。
 - **方案**：全部改 message id 并补 en-US/zh-CN 两份资源；把 `'Bot'/'Other'/'other'` 这类服务端语义值改由服务端返回本地化 key 或前端映射表。
 - **范围**：4 个组件 + `use-blog-settings-modal.ts` + 两份 locales。代价 **S**。
+- **落地（B4-02）**：`'TOP 10'` → `blog.top_posts_limit`；`'PV'` → 复用既有 `blog.col_views`；`🤖` 徽标的 `'Bot'` → `blog.bot_fallback`；浏览器/OS 的 `'Other'/'other'` 与空列 → 新增 `blog.env_unknown`；`'Inkstone Blog'` → `blog.default_site_name`（仍只作为落库的站点名默认值）；分类树前缀 `'  └ '`（`links-toolbar.tsx` / `link-edit-modal.tsx` / `link-context-menu.tsx` 三处）→ `blog.tree_branch_prefix`（结构字符，双语刻意同值，只做外置而非翻译）。服务端语义值不再直出：`lib/visitor-geo.ts` 新增 `localizePlatformName(name, fallback)`——UA 解析器读不出时写 `'Other'` 哨兵，它不是名字；`features/share/share-helpers.ts` 的 `localizeEnvName()` 改为调用同一实现，重复逻辑只剩一份。回归 `visit-logs-card.test.ts` 2 条（哨兵与空名不落 `'Other'`、真实名保留）+ `time.test.ts`；变异（`localizePlatformName` 直接回值）实测 1 failed。
+- **未做**：给 `check-i18n.mjs` 加「JSX 文本节点里的裸英文」词表仍属独立改动（见下方「建议」），未夹带。
 - **建议**：可选增强——给 `check-i18n.mjs` 加一条「JSX 文本节点中的裸英文短语」词表，把这类回归变成门禁。属独立改动，勿夹带。
 
 #### UI-04 [P1][开放] 表单可访问性缺口

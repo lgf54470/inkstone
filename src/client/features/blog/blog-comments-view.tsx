@@ -5,6 +5,7 @@ import { Badge, Button, IconButton } from '../../components/primitives'
 import { Checkbox, Input } from '../../components/form'
 import { resolveAvatarSource } from '../../lib/avatar'
 import { t } from '../../lib/i18n'
+import { fullTime } from '../../lib/time'
 import { useBlogCommentsView } from './use-blog-comments-view'
 import { BlogLoadFailure } from './blog-load-failure'
 
@@ -315,7 +316,7 @@ function CommentCardHeader({ bundle }: { bundle: CommentCardBundle }) {
           <div className='mt-0.5 flex flex-wrap items-center gap-x-2 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
             <span>{comment.authorEmail}</span>
             {comment.ip && <span>{`· ${t('blog.comment_ip')} ${comment.ip}`}</span>}
-            <span>· {new Date(comment.createdAt).toLocaleString()}</span>
+            <span>· {fullTime(comment.createdAt)}</span>
           </div>
         </div>
       </div>

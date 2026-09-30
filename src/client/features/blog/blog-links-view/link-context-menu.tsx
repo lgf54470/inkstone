@@ -271,7 +271,7 @@ function CategoryItemButton({
         isSelected ? 'font-semibold text-[var(--accent)]' : ''
       }`}
     >
-      <span className='truncate'>{cat.parentId ? `  └ ${cat.name}` : cat.name}</span>
+      <span className='truncate'>{cat.parentId ? `${t('blog.tree_branch_prefix')}${cat.name}` : cat.name}</span>
       {isSelected && <Check size={12} />}
     </button>
   )

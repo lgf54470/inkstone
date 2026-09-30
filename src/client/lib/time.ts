@@ -96,17 +96,30 @@ function dateTimeFormat(options: Intl.DateTimeFormatOptions): Intl.DateTimeForma
 }
 
 /**
+ * A stored timestamp as reader-facing calendar text, without the time of day (that is what
+ * `shortTime`/`fullTime` are for). The year only appears when the day is not in the current year,
+ * and a timestamp of 0 reads as "no date" rather than as 1970. `formatDateKey` shares the day rule
+ * so a persisted day key and a timestamp print the same way.
+ */
+export function formatDate(ts: number, now = new Date()): string {
+  if (!Number.isFinite(ts) || !ts) return ''
+  const date = new Date(ts)
+  if (Number.isNaN(date.getTime())) return ''
+  const parts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+  if (date.getFullYear() !== now.getFullYear()) parts.year = 'numeric'
+  return dateTimeFormat(parts).format(date)
+}
+
+/**
  * A stored day key as reader-facing text. Rich-media blocks persist `YYYY-MM-DD` because that is
  * what round-trips into a note body, so every surface that prints one goes through here instead of
- * showing the key; the year only appears when the day is not in the current year.
+ * showing the key.
  */
 export function formatDateKey(key: string, now = new Date()): string {
   if (!key) return ''
   const date = parseDateKey(key)
   if (Number.isNaN(date.getTime())) return key
-  const parts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-  if (date.getFullYear() !== now.getFullYear()) parts.year = 'numeric'
-  return dateTimeFormat(parts).format(date)
+  return formatDate(date.getTime(), now) || key
 }
 
 export function shortTime(ts: number, now = Date.now()): string {

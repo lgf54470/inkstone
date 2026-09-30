@@ -128,6 +128,7 @@ export const messages = {
 'blog.site_basic_info': 'Basic Site Information',
 'blog.settings_tab_label': 'Blog settings section',
 'blog.site_name_placeholder': 'Inkstone Blog',
+'blog.default_site_name': 'Inkstone Blog',
 'blog.site_subtitle_placeholder': 'Quiet waters run deep, ink on stone',
 'blog.author_profile_settings': 'Author Profile',
 'blog.author_name_placeholder': 'Author Nickname',

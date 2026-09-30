@@ -169,7 +169,7 @@ function CategorySearchControls({
     { value: '', label: t('blog.link_status_all') },
     ...categories.map((c) => ({
       value: c.id,
-      label: c.parentId ? `  └ ${c.name}` : c.name,
+      label: c.parentId ? `${t('blog.tree_branch_prefix')}${c.name}` : c.name,
     })),
   ]
 

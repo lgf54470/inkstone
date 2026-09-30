@@ -34,6 +34,17 @@ export function countryNameLocalized(countryCode: string | null | undefined, loc
 }
 
 /**
+ * A browser or OS name is a proper noun the UA parser read off the header, with one exception: its
+ * own `'Other'` sentinel means it could not read one. That sentinel is a value, not a name, so it
+ * becomes the caller's word for "unknown" — as does a missing column. The caller passes that word
+ * because the share and blog surfaces word it differently (`share.env_unknown` vs `blog.env_unknown`).
+ */
+export function localizePlatformName(name: string | null | undefined, fallback: string): string {
+  const value = name?.trim()
+  return !value || value.toLowerCase() === 'other' ? fallback : value
+}
+
+/**
  * The three device classes the breakdown card names in words. Shared with the dashboard export so a
  * file that leaves the app says "Desktop" where the card said "Desktop", not the raw `desktop`.
  */

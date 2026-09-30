@@ -128,6 +128,7 @@ export const messages = {
 'blog.site_basic_info': '站点基础信息',
 'blog.settings_tab_label': '博客设置分组',
 'blog.site_name_placeholder': 'Inkstone Blog',
+'blog.default_site_name': 'Inkstone 博客',
 'blog.site_subtitle_placeholder': '静水流深，石上墨香',
 'blog.author_profile_settings': '博主名片设置',
 'blog.author_name_placeholder': '博主昵称',

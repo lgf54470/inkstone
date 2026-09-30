@@ -164,7 +164,7 @@ async function saveSettingsFlow(e: FormEvent, ctx: SaveSettingsCtx): Promise<voi
 
   try {
     const saved = await ctx.saveSettings({
-      siteName: ctx.siteName.trim() || 'Inkstone Blog',
+      siteName: ctx.siteName.trim() || t('blog.default_site_name'),
       subtitle: ctx.subtitle.trim(),
       bio: ctx.bio.trim(),
       authorName: ctx.authorName.trim(),

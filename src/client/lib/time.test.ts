@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { initI18n, localeTag, setLocale } from './i18n'
 import {
-  addDaysKey, dateKey, daysBetweenKeys, formatBytes, formatDateKey, formatTimecode,
+  addDaysKey, dateKey, daysBetweenKeys, formatBytes, formatDate, formatDateKey, formatTimecode,
   formatTotalDuration, isWeekRangeKey, narrowWeekdayLabels, parseDateKey, rollingWindowKey,
   weekStartFor, weekStartKeyOf,
 } from './time'
@@ -33,6 +33,36 @@ describe('formatDateKey', () => {
     expect(formatDateKey('', now)).toBe('')
     expect(formatDateKey('someday', now)).toBe('someday')
     expect(formatDateKey('someday', now)).not.toContain('Invalid Date')
+  })
+})
+
+describe('formatDate', () => {
+  const now = new Date(2026, 8, 17)
+  const stamp = (key: string) => parseDateKey(key).getTime()
+
+  afterEach(async () => {
+    await setLocale('en-US', false)
+  })
+
+  it('renders a timestamp as a day, with the year only outside the current year', () => {
+    expect(formatDate(stamp('2026-09-05'), now)).toBe(expectedLabel('2026-09-05', false))
+    expect(formatDate(stamp('2026-09-05'), now)).not.toContain('2026')
+    expect(formatDate(stamp('2025-12-31'), now)).toBe(expectedLabel('2025-12-31', true))
+    expect(formatDate(stamp('2025-12-31'), now)).toContain('2025')
+  })
+
+  it('reads a timestamp in the app language, not in the runtime default', async () => {
+    await initI18n()
+    const ts = parseDateKey('2026-09-05').getTime()
+    const english = formatDate(ts, now)
+    await setLocale('zh-CN', false)
+    expect(formatDate(ts, now)).toBe(expectedLabel('2026-09-05', false))
+    expect(formatDate(ts, now)).not.toBe(english)
+  })
+
+  it('prints nothing for a missing timestamp instead of a 1970 date', () => {
+    expect(formatDate(0, now)).toBe('')
+    expect(formatDate(Number.NaN, now)).toBe('')
   })
 })
 

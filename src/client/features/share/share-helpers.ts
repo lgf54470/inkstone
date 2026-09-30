@@ -2,6 +2,7 @@ import type { ShareTimelineRange } from '@shared/types'
 import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED } from '@shared/share-channel'
 import type { VisitLogFilter } from '@shared/share-selection'
 import { t } from '../../lib/i18n'
+import { localizePlatformName } from '../../lib/visitor-geo'
 
 // Sunk into lib: the blog dashboard draws the same labels and must not import this barrel for them.
 export { countryFlag, countryNameLocalized, localizeDeviceName } from '../../lib/visitor-geo'
@@ -70,8 +71,7 @@ export function localizeReferrerName(name: string): string {
 }
 
 export function localizeEnvName(name: string | null | undefined): string {
-  if (!name || name.toLowerCase() === 'other') return t('share.env_unknown')
-  return name
+  return localizePlatformName(name, t('share.env_unknown'))
 }
 
 const SLUG_CHARSET = '23456789abcdefghjkmnpqrstvwxyz'

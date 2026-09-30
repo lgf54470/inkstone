@@ -227,7 +227,7 @@ function buildCategoryOptions(categories: BlogLinkCategory[]): Array<{ value: st
     options.push({ value: root.id, label: root.name })
     const children = categories.filter((c) => c.parentId === root.id)
     for (const child of children) {
-      options.push({ value: child.id, label: `  └ ${child.name}` })
+      options.push({ value: child.id, label: `${t('blog.tree_branch_prefix')}${child.name}` })
     }
   }
 

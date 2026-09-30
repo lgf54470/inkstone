@@ -17,7 +17,9 @@ export function TopPostsCard({ posts, frontendBase }: TopPostsCardProps) {
           <BarChart3 size={15} className='text-[var(--accent)]' />
           {t('blog.top_posts_title')}
         </h3>
-        <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{'TOP 10'}</span>
+        <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
+          {t('blog.top_posts_limit')}
+        </span>
       </div>
 
       <div className='divide-y divide-[var(--border-subtle)] pt-1'>
@@ -53,7 +55,9 @@ function TopPostRow({ post, index, maxViews, frontendBase }: {
           <span className='truncate font-medium text-[var(--text-primary)]'>{post.title}</span>
           <span className='font-mono font-semibold text-[var(--text-primary)] ml-2 whitespace-nowrap'>
             {post.views}{' '}
-            <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>{'PV'}</span>
+            <span className='text-[length:var(--text-10)] font-normal text-[var(--text-tertiary)]'>
+              {t('blog.col_views')}
+            </span>
           </span>
         </div>
         <div className='mt-1 h-1.5 w-full rounded-full bg-[var(--bg-base)] overflow-hidden'>
