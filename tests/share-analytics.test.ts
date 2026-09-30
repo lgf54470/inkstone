@@ -137,9 +137,9 @@ describe('analytics math and country flag formatting', () => {
     expect(computeDelta(150, 100)).toBe(50)
     expect(computeDelta(50, 100)).toBe(-50)
     expect(computeDelta(100, 100)).toBe(0)
-    expect(computeDelta(50, 0)).toBe(100)
-    // A period that never saw traffic has no trend to report: 0/0 is
-    // indeterminate, so the server says "no delta" rather than "flat 0%".
+    // A period that never saw traffic has no trend to report: 0/0 is indeterminate and 0 → n is a
+    // rise from nothing, so the server says "no delta" rather than "flat 0%" or "+100%".
+    expect(computeDelta(50, 0)).toBeUndefined()
     expect(computeDelta(0, 0)).toBeUndefined()
   })
 

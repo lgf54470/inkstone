@@ -719,6 +719,20 @@ describe('blog analytics routes (real D1)', () => {
     expect(analytics.topPosts[0].slug).toBe('stats-post')
   })
 
+  // The badge used to read "+100%" for any range whose previous window held nothing, which is the
+  // first week of traffic every blog ever has.
+  it('reports no delta while the previous window holds no traffic', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const { id, slug } = await seedBlogPost(db, { slug: 'delta-post' })
+    await seedVisitAt(db, id, slug, Date.now() - 60_000, 'fp-delta')
+
+    const { analytics } = await (await request(makeApp(), '/api/blog/analytics?range=7d')).json()
+    expect(analytics.totalViews).toBe(1)
+    expect(analytics.viewsDelta).toBeUndefined()
+    expect(analytics.visitorsDelta).toBeUndefined()
+  })
+
   it('answers range=all with SQL aggregation instead of fetching every visit row', async () => {
     const db = await makeDb()
     await seedUser(db)

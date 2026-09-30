@@ -318,9 +318,14 @@ export function perDayRate(views: number, daysSpan: number): number {
   return Math.round((views / Math.max(1, daysSpan)) * 10) / 10
 }
 
+/**
+ * The change against the previous period, or nothing at all when that period holds no traffic. A
+ * previous of 0 can only answer 0% (a trend measured against nothing) or +100% (a rise from
+ * nothing), and the second one is what made the first week of traffic to a blog read as "+100%";
+ * both dashboards now draw no badge there instead.
+ */
 export function computeDelta(current: number, previous: number): number | undefined {
-  // 0 vs 0 is indeterminate: reporting 0% would claim a trend measured against real traffic
-  if (previous === 0) return current > 0 ? 100 : undefined
+  if (previous === 0) return undefined
   return Math.round(((current - previous) / previous) * 100)
 }
 
