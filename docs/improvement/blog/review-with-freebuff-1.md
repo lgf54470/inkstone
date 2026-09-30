@@ -404,15 +404,23 @@
 - **范围**：`blog-comments-view.tsx`、`use-blog-comments-view.ts`、`pending-comments-card.tsx`、`blog-links-view/link-category-modal.tsx`、`blog-store/links.ts`、locales。代价 **S～M**。
 - **落地（B4-05）**：评论侧——`useBlogCommentsView` 新增 `statusBusyIds` 与 `handleStatusChange`，写入期间该行三个状态按钮一起禁用，成功才出提示（失败提示由 store 层的 `runBlogMutation` 发，那里持有错误本身，避免双 toast），`CommentCardBundle` 的类型从 `(id,status)=>void` 改为返回 `Promise<void>`；待审卡片同理（`aria-busy` + 行级禁用）。友链分类侧——删除确认不再复用「删除友链」的文案（`blog.confirm_delete_link_category` 点名分类并说明子分类上移、友链变未分类，与服务端那三条语句一致）；创建/保存/删除各自出成功提示；`busyId` 逐层下沉到根/子分类行，写入期间该行的编辑/删除与行内保存/取消一起禁用。回归 6 条（评论列表 1、待审卡 2、分类弹窗 3）。**未做**：批量审核/批量删除仍是整条 `batchBusy` 禁用，未做行级；`blog-store/links.ts` 的错误上报未改（失败提示已经由 `reportBlogMutationError` 发出，本次只缺成功侧）。
 
-#### UI-09 [P1][开放] 复制 / 二维码 / 检测只在右键菜单内，键盘无入口
+#### UI-09 [P1][已修] 复制 / 二维码 / 检测只在右键菜单内，键盘无入口
 - **问题**：`link-card-row.tsx:186-242` 的行内 IconButton 只有批准/拒绝/收藏/置顶/编辑/删除，`复制`/`二维码`/`检测` 只在 `LinkContextMenu` 内（`link-context-menu.tsx:178-181`）；`link-context-menu.tsx` 还是自绘 portal 弹层（无 `role="menu"`、子菜单只靠 `onMouseEnter`、键盘 `contextmenu` 时菜单开在左上角），而同模块 `use-blog-post-card.tsx:31` 已在用 `useContextMenu` + `Menu`。
 - **方案**：把这三个动作提到行内（或加「更多」`Menu`）；`link-context-menu` 整体改用共享 `Menu` + `useContextMenu`（与前轮 P1-17 同一处）。
 - **范围**：`link-card-row.tsx`、`link-context-menu.tsx`。代价 **M**。
+- **落地（B4-06）**：取「更多」方案——每行新增一颗 `IconButton`（`aria-haspopup='menu'`、`aria-expanded` 随面板开合、打开时 `highlight`），打开的就是右键那一张面板，因此复制 / 二维码 / 检测对指针用户可发现、对键盘用户可达（`Space`/`Enter` 打开，方向键走行，`ArrowRight` 开分类子菜单，`Esc` 关闭并把焦点还给按钮）。自绘 portal 整体换成共享 `Menu`（`role='menu'`、漫游光标、分隔线、危险色行、焦点归还）。新增导出 `linkMenuAnchorPoint(event)`：指针右键用事件坐标；键盘 `contextmenu`（上下文菜单键 / Shift+F10）在部分浏览器报 `0,0`，此时回退到触发元素的盒子，面板不再钉在页面左上角（回归含这条，用 `getBoundingClientRect` 桩断言）。**未用 `useContextMenu`**：那个 hook 只保存一个坐标点，而这张面板还要携带行数据与分类树，两个入口（按钮与右键）共用 `use-blog-links-view.ts` 里同一段状态，行为与 `Menu` 一致而没有把行数据塞进 hook。回归 11 条（菜单 7 + 行按钮 2 + 坐标回退 2 在其一），变异（关掉键盘坐标回退、去掉 `aria-haspopup`）各 1 failed。
 
-#### UI-10 [P2][开放] 友链导入/导出：静默丢数据、英文报错上屏、CSV 回环自破
+#### UI-10 [P2][已修] 友链导入/导出：静默丢数据、英文报错上屏、CSV 回环自破
 - **问题**：HTML 导出只遍历 root 分类及其一层子分类（`link-import-export-modal.tsx:366-386`），未分类/更深层被丢弃，界面计数与成功 toast 仍报全量；JSON 解析无 try（`:128` 直接把 `SyntaxError` 的英文原文塞进 toast，`'Import failed'` 也是英文字面量）；空 `name/url` 条目照样入 payload（服务端 zod `min(1)` 会让整批 400）；上传无大小/类型校验、`file.text()` 无 catch、input 不复位；CSV 用 `split(',')`（`:276`）读不回自己导出时加引号的含逗号字段（`:396-408`）。
 - **方案**：导出前先算并显示真实条数、把丢数据的过滤条件写进导出说明；解析包 `try/catch` 并映射为本地化文案；条目级校验后过滤并报告跳过的条数；上传校验类型与大小；CSV 换成引号感知的解析（或改用 JSON 为唯一导出格式）。
 - **范围**：`link-import-export-modal.tsx`、locales。代价 **M**。
+- **落地（B4-06）**：文本处理整段外置为 `link-import-format.ts`（纯模块，可在 jsdom 里直接驱动），弹窗只剩控件：
+  - **丢数据**：HTML 导出改为全深度遍历（不再只写 root 及一层子分类），并兜底写出未被任何分类认领的友链（未分类、或分类陷于父子环时的成员）——文件内容与导出摘要的计数一致；导出摘要取自当前分类与友链实例，因此与写出的文件同出一源。
+  - **英文报错**：JSON 解析包进 `ImportParseError`（携带 message id，`SyntaxError` 的英文原文不再上屏）；另新增 `wrong_type` / `file_too_large` / `read_failed` / `nothing_to_import` / `skipped` 五个本地化提示，双语各 8 键。
+  - **条目校验**：缺名称或缺 URL 的条目在发送前丢弃并计数（服务端按整批 zod 校验，留下一条会让整批 400），导入完成后单独一条提示跳过条数；全部被丢弃时提示「没有可导入的条目」而不发请求。
+  - **上传**：先过 `importFileRejection()`（扩展名 `.json/.csv/.html/.htm` + 2 MB 上限，`accept` 只是提示而非保证），`file.text()` 有 `catch`，读取前复位 input（同一文件选两次仍会触发 `change`）；选完文件格式页签跟随扩展名。
+  - **CSV 回环**：`parseCsvRows()` 按 RFC 4180 风格处理引号（嵌入逗号 / 嵌入引号 / 换行 / CRLF），能读回自己导出的含逗号字段；回归里用「Smith, "A" & Co」与分类「Partners, Ltd」实跑导出→导入一圈，断言名字、描述与分类都没丢。
+  - 回归 8 条（JSON 报错映射、跳过计数、CSV 回环、空行/非链接行、书签 HTML 拒 `chrome://`、全深度导出回环、文件类型/大小与格式判定）；两处变异各 1 failed（关掉 CSV 引号分支、去掉跳过过滤）。
 
 #### UI-11 [P2][开放] 「实时访问日志」既不实时，也不随所选时间窗变化
 - **问题**：文案是「实时访问日志」（`visit-logs-card.tsx:19`），服务端是 `ORDER BY visited_at DESC LIMIT 20` 且只带 `exclude*` 过滤、不含时间窗（`stats.ts:368-378`），前端无轮询；同一张卡把服务端语义值 `'Direct'/'Other'` 与 `visit.browser || 'Other'`、`botName || 'Bot'` 当业务数据直出；看板卡还借用了 `share.*` 文案（`index.tsx:114`）、`use-blog-post-card.tsx:147` 借 `share.view_note_analytics`。（`DevicesCard` 缺空态已修，见第三节。）

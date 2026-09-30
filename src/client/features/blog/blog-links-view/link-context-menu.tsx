@@ -1,28 +1,27 @@
-import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import {
-  Check,
-  ChevronRight,
-  Copy,
-  Edit2,
-  ExternalLink,
-  FolderInput,
-  Pin,
-  QrCode,
-  Search,
-  Star,
-  Trash2,
-} from 'lucide-react'
+import { Check, Copy, Edit2, ExternalLink, FolderInput, Pin, QrCode, Search, Star, Trash2 } from 'lucide-react'
 import type { BlogLink, BlogLinkCategory } from '@shared/types'
 import { safeExternalUrl } from '@shared/url-safety'
-import { useClickOutside, useEscape } from '../../../components/overlay'
+import { Menu, type MenuItem } from '../../../components/overlay'
+import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
 
-const MENU_ESTIMATED_WIDTH = 220
-const MENU_ESTIMATED_HEIGHT = 360
-const VIEWPORT_PADDING = 10
-const SUBMENU_WIDTH_THRESHOLD = 360
-const SUBMENU_BOTTOM_THRESHOLD = 260
+const MENU_WIDTH = 208
+
+/**
+ * Where the panel opens for the event that asked for it: a pointer reports the coordinates it
+ * happened at, while a keyboard-invoked `contextmenu` (the context-menu key, Shift+F10) reaches
+ * some browsers with 0,0 — anchored there the panel landed pinned to the page corner. The
+ * trigger's own box is the fallback that puts it where the reader is looking instead.
+ */
+export function linkMenuAnchorPoint(event: {
+  clientX: number
+  clientY: number
+  currentTarget: EventTarget & Element
+}): { x: number; y: number } {
+  if (event.clientX || event.clientY) return { x: event.clientX, y: event.clientY }
+  const rect = event.currentTarget.getBoundingClientRect()
+  return { x: rect.left, y: rect.bottom }
+}
 
 export interface LinkContextMenuState {
   isOpen: boolean
@@ -45,6 +44,12 @@ export interface LinkContextMenuProps {
   onDelete: (link: BlogLink) => void
 }
 
+/**
+ * The panel every row can open — from its own actions button and from a right-click. It is the
+ * shared `Menu`, so the rows are real `menuitem`s with a cursor and a panel arrow, rather than the
+ * hand-positioned portal this used to draw, whose submenu answered to hover alone and which put
+ * itself in the corner when a keyboard opened it.
+ */
 export function LinkContextMenu({
   state,
   categories,
@@ -58,248 +63,130 @@ export function LinkContextMenu({
   onEdit,
   onDelete,
 }: LinkContextMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null)
-  useContextMenuDismiss(menuRef, state.isOpen, onClose)
-  const pos = useMenuCoordinates(state.x, state.y)
-  if (!state.isOpen || !state.link) return null
-
-  const { link } = state
-  return createPortal(
-    <div
-      ref={menuRef}
-      style={{ left: pos.posX, top: pos.posY }}
-      onClick={(e) => e.stopPropagation()}
-      onContextMenu={(e) => e.preventDefault()}
-      className='fixed z-[var(--z-pop)] min-w-44 rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-1 text-[var(--text-primary)] shadow-lg animate-in fade-in zoom-in-95 duration-100 text-[length:var(--text-12)] select-none'
-    >
-      <div className='px-2 py-1 border-b border-[var(--border-subtle)] mb-1'>
-        <p className='truncate font-semibold text-[length:var(--text-11)] text-[var(--text-secondary)]'>{link.name}</p>
-      </div>
-
-      <PrimaryMenuItems link={link} onCopy={onCopy} onQRCode={onQRCode} onClose={onClose} />
-      <div className='my-1 h-px bg-[var(--border-subtle)]' />
-
-      <StateMenuItems link={link} onTogglePin={onTogglePin} onToggleFavorite={onToggleFavorite} onCheckLink={onCheckLink} onClose={onClose} />
-      <CategorySubmenuItem
-        link={link}
-        categories={categories}
-        onMoveCategory={onMoveCategory}
-        onClose={onClose}
-        isNearRight={pos.isNearRight}
-        isNearBottom={pos.isNearBottom}
-      />
-      <div className='my-1 h-px bg-[var(--border-subtle)]' />
-
-      <ActionMenuItems link={link} onEdit={onEdit} onDelete={onDelete} onClose={onClose} />
-    </div>,
-    document.body,
-  )
-}
-
-function useMenuCoordinates(x: number, y: number) {
-  const posX = Math.max(VIEWPORT_PADDING, Math.min(x, window.innerWidth - MENU_ESTIMATED_WIDTH))
-  const posY = Math.max(VIEWPORT_PADDING, Math.min(y, window.innerHeight - MENU_ESTIMATED_HEIGHT))
-  const isNearRight = posX > window.innerWidth - SUBMENU_WIDTH_THRESHOLD
-  const isNearBottom = posY > window.innerHeight - SUBMENU_BOTTOM_THRESHOLD
-  return { posX, posY, isNearRight, isNearBottom }
-}
-
-function ActionMenuItems({
-  link,
-  onEdit,
-  onDelete,
-  onClose,
-}: {
-  link: BlogLink
-  onEdit: (link: BlogLink) => void
-  onDelete: (link: BlogLink) => void
-  onClose: () => void
-}) {
+  const link = state.link
+  const items = link
+    ? buildLinkMenuItems(link, categories, { onCopy, onQRCode, onTogglePin, onToggleFavorite, onMoveCategory, onCheckLink, onEdit, onDelete })
+    : []
   return (
-    <>
-      <ContextMenuItem icon={<Edit2 size={13} />} label={t('blog.edit_link')} onClick={() => { onEdit(link); onClose() }} />
-      <ContextMenuItem icon={<Trash2 size={13} />} label={t('blog.delete_link')} danger onClick={() => { onDelete(link); onClose() }} />
-    </>
+    <Menu
+      anchor={{ x: state.x, y: state.y }}
+      open={state.isOpen && Boolean(link)}
+      onClose={onClose}
+      items={items}
+      width={MENU_WIDTH}
+      label={link ? t('blog.link_menu_label', { value0: link.name }) : t('overlay.menu')}
+    />
   )
 }
 
-function useContextMenuDismiss(ref: React.RefObject<HTMLDivElement | null>, isOpen: boolean, onClose: () => void) {
-  useEscape(isOpen, onClose)
-  useClickOutside([ref], isOpen, onClose)
-  useEffect(() => {
-    if (!isOpen) return
-    const handleScroll = () => onClose()
-    window.addEventListener('scroll', handleScroll, true)
-    return () => window.removeEventListener('scroll', handleScroll, true)
-  }, [isOpen, onClose])
-}
-
-function PrimaryMenuItems({
-  link,
-  onCopy,
-  onQRCode,
-  onClose,
-}: {
-  link: BlogLink
+interface LinkMenuActions {
   onCopy: (link: BlogLink) => void
   onQRCode: (link: BlogLink) => void
-  onClose: () => void
-}) {
+  onTogglePin: (link: BlogLink) => void
+  onToggleFavorite: (link: BlogLink) => void
+  onMoveCategory: (link: BlogLink, categoryId: string | null) => void
+  onCheckLink: (link: BlogLink) => void
+  onEdit: (link: BlogLink) => void
+  onDelete: (link: BlogLink) => void
+}
+
+function buildLinkMenuItems(link: BlogLink, categories: BlogLinkCategory[], actions: LinkMenuActions): MenuItem[] {
   // A reader submitted this address; opening is offered only when it is one a link may carry, so the
   // menu never becomes the click that runs it inside the admin's session.
   const openUrl = safeExternalUrl(link.url)
-  return (
-    <>
-      <ContextMenuItem icon={<Copy size={13} />} label={t('blog.link_menu_copy')} onClick={() => { onCopy(link); onClose() }} />
-      <ContextMenuItem icon={<QrCode size={13} />} label={t('blog.link_menu_qrcode')} onClick={() => { onQRCode(link); onClose() }} />
-      {openUrl && (
-        <ContextMenuItem icon={<ExternalLink size={13} />} label={t('blog.link_menu_open')} onClick={() => { window.open(openUrl, '_blank', 'noopener,noreferrer'); onClose() }} />
-      )}
-    </>
+  const items: MenuItem[] = [
+    { id: 'copy', label: t('blog.link_menu_copy'), icon: <Copy size={13} />, onSelect: () => actions.onCopy(link) },
+    { id: 'qr', label: t('blog.link_menu_qrcode'), icon: <QrCode size={13} />, onSelect: () => actions.onQRCode(link) },
+  ]
+  if (openUrl) {
+    items.push({
+      id: 'open',
+      label: t('blog.link_menu_open'),
+      icon: <ExternalLink size={13} />,
+      onSelect: () => window.open(openUrl, '_blank', 'noopener,noreferrer'),
+    })
+  }
+  items.push(
+    {
+      id: 'favorite',
+      label: link.isFavorite ? t('blog.link_unfavorite') : t('blog.link_favorite'),
+      icon: <Star size={13} className={link.isFavorite ? 'text-[var(--warning)]' : ''} />,
+      checked: link.isFavorite,
+      separatorBefore: true,
+      onSelect: () => actions.onToggleFavorite(link),
+    },
+    {
+      id: 'pin',
+      label: link.isPinned ? t('blog.link_unpin') : t('blog.link_pin'),
+      icon: <Pin size={13} className={link.isPinned ? 'text-[var(--accent)]' : ''} />,
+      checked: link.isPinned,
+      onSelect: () => actions.onTogglePin(link),
+    },
+    { id: 'check', label: t('blog.link_menu_check'), icon: <Search size={13} />, onSelect: () => actions.onCheckLink(link) },
+    {
+      id: 'move',
+      label: t('blog.link_menu_move_category'),
+      icon: <FolderInput size={13} />,
+      separatorBefore: true,
+      submenu: ({ closeMenu }) => (
+        <CategorySubmenuList link={link} categories={categories} onMoveCategory={actions.onMoveCategory} closeMenu={closeMenu} />
+      ),
+    },
+    { id: 'edit', label: t('blog.edit_link'), icon: <Edit2 size={13} />, separatorBefore: true, onSelect: () => actions.onEdit(link) },
+    { id: 'delete', label: t('blog.delete_link'), icon: <Trash2 size={13} />, tone: 'danger', onSelect: () => actions.onDelete(link) },
   )
-}
-
-function StateMenuItems({
-  link,
-  onTogglePin,
-  onToggleFavorite,
-  onCheckLink,
-  onClose,
-}: {
-  link: BlogLink
-  onTogglePin: (link: BlogLink) => void
-  onToggleFavorite: (link: BlogLink) => void
-  onCheckLink: (link: BlogLink) => void
-  onClose: () => void
-}) {
-  return (
-    <>
-      <ContextMenuItem
-        icon={<Star size={13} className={link.isFavorite ? 'fill-[var(--warning)] text-[var(--warning)]' : ''} />}
-        label={link.isFavorite ? t('blog.link_unfavorite') : t('blog.link_favorite')}
-        onClick={() => { onToggleFavorite(link); onClose() }}
-      />
-      <ContextMenuItem
-        icon={<Pin size={13} className={link.isPinned ? 'text-[var(--accent)]' : ''} />}
-        label={link.isPinned ? t('blog.link_unpin') : t('blog.link_pin')}
-        onClick={() => { onTogglePin(link); onClose() }}
-      />
-      <ContextMenuItem icon={<Search size={13} />} label={t('blog.link_menu_check')} onClick={() => { onCheckLink(link); onClose() }} />
-    </>
-  )
-}
-
-interface CategorySubmenuProps {
-  link: BlogLink
-  categories: BlogLinkCategory[]
-  onMoveCategory: (link: BlogLink, categoryId: string | null) => void
-  onClose: () => void
-  isNearRight?: boolean
-  isNearBottom?: boolean
-}
-
-function CategorySubmenuItem(props: CategorySubmenuProps) {
-  const [show, setShow] = useState(false)
-  return (
-    <div className='relative' onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <button
-        type='button'
-        className='flex w-full items-center justify-between gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12)] hover:bg-[var(--bg-hover)]'
-      >
-        <div className='flex items-center gap-2'>
-          <FolderInput size={13} />
-          <span>{t('blog.link_menu_move_category')}</span>
-        </div>
-        <ChevronRight size={12} className='text-[var(--text-quaternary)]' />
-      </button>
-
-      {show && <CategorySubmenuList {...props} />}
-    </div>
-  )
+  return items
 }
 
 function CategorySubmenuList({
   link,
   categories,
   onMoveCategory,
-  onClose,
-  isNearRight,
-  isNearBottom,
-}: CategorySubmenuProps) {
+  closeMenu,
+}: {
+  link: BlogLink
+  categories: BlogLinkCategory[]
+  onMoveCategory: (link: BlogLink, categoryId: string | null) => void
+  closeMenu: () => void
+}) {
   return (
-    <div
-      className={`absolute ${isNearRight ? 'right-full mr-1' : 'left-full ml-1'} ${
-        isNearBottom ? 'bottom-0' : 'top-0'
-      } min-w-36 max-h-56 overflow-y-auto rounded-[var(--r-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-1 shadow-lg`}
-    >
-      <button
-        type='button'
-        onClick={() => { onMoveCategory(link, null); onClose() }}
-        className={`flex w-full items-center justify-between rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] hover:bg-[var(--bg-hover)] ${
-          !link.categoryId ? 'font-semibold text-[var(--accent)]' : ''
-        }`}
-      >
-        <span>{t('blog.link_no_category')}</span>
-        {!link.categoryId && <Check size={12} />}
-      </button>
+    <div className='max-h-72 w-54.5 overflow-y-auto rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-1.5 shadow-[var(--shadow-pop)]'>
+      <CategoryOption
+        label={t('blog.link_no_category')}
+        isSelected={!link.categoryId}
+        onSelect={() => {
+          closeMenu()
+          onMoveCategory(link, null)
+        }}
+      />
       {categories.map((cat) => (
-        <CategoryItemButton
+        <CategoryOption
           key={cat.id}
-          cat={cat}
+          label={cat.parentId ? `${t('blog.tree_branch_prefix')}${cat.name}` : cat.name}
           isSelected={link.categoryId === cat.id}
-          onClick={() => { onMoveCategory(link, cat.id); onClose() }}
+          onSelect={() => {
+            closeMenu()
+            onMoveCategory(link, cat.id)
+          }}
         />
       ))}
     </div>
   )
 }
 
-function CategoryItemButton({
-  cat,
-  isSelected,
-  onClick,
-}: {
-  cat: BlogLinkCategory
-  isSelected: boolean
-  onClick: () => void
-}) {
+function CategoryOption({ label, isSelected, onSelect }: { label: string; isSelected: boolean; onSelect: () => void }) {
   return (
     <button
       type='button'
-      onClick={onClick}
-      className={`flex w-full items-center justify-between rounded-[var(--r-sm)] px-2 py-1 text-left text-[length:var(--text-11)] hover:bg-[var(--bg-hover)] ${
-        isSelected ? 'font-semibold text-[var(--accent)]' : ''
-      }`}
+      aria-pressed={isSelected}
+      onClick={onSelect}
+      className={cn(
+        'flex h-10 w-full items-center gap-2 rounded-[var(--r-sm)] px-2 text-left text-[length:var(--text-12)] transition-colors hover:bg-[var(--bg-hover)] md:h-7.5',
+        isSelected ? 'font-semibold text-[var(--accent)]' : 'text-[var(--text-primary)]',
+      )}
     >
-      <span className='truncate'>{cat.parentId ? `${t('blog.tree_branch_prefix')}${cat.name}` : cat.name}</span>
-      {isSelected && <Check size={12} />}
-    </button>
-  )
-}
-
-function ContextMenuItem({
-  icon,
-  label,
-  onClick,
-  danger,
-}: {
-  icon: React.ReactNode
-  label: string
-  onClick: () => void
-  danger?: boolean
-}) {
-  return (
-    <button
-      type='button'
-      onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-[length:var(--text-12)] transition-colors ${
-        danger
-          ? 'text-[var(--danger)] hover:bg-[var(--danger-soft)]'
-          : 'hover:bg-[var(--bg-hover)]'
-      }`}
-    >
-      {icon}
-      <span>{label}</span>
+      <span className='min-w-0 flex-1 truncate'>{label}</span>
+      {isSelected && <Check size={12} className='shrink-0' aria-hidden />}
     </button>
   )
 }

@@ -138,6 +138,8 @@ function LinkCardRows({ links, view }: { links: BlogLink[]; view: ReturnType<typ
       onTogglePin={() => void view.togglePinLink(link.id, !link.isPinned)}
       onToggleFavorite={() => void view.toggleFavoriteLink(link.id, !link.isFavorite)}
       onContextMenu={(e) => view.handleContextMenu(e, link)}
+      onMoreActions={(e) => view.handleOpenLinkMenu(e, link)}
+      isMenuOpen={view.contextMenu.isOpen && view.contextMenu.link?.id === link.id}
       draggable={view.isSortingMode}
       onDragStart={(e) => view.handleDragStart(e, link.id)}
       onDragOver={view.handleDragOver}

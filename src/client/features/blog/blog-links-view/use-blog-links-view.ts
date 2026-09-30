@@ -4,6 +4,7 @@ import { confirm } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
 import { useBlogStore, type BlogLinkFilterType } from '../blog-store'
+import { linkMenuAnchorPoint } from './link-context-menu'
 
 export function useBlogLinksView() {
   const toast = useUi((s) => s.toast)
@@ -228,7 +229,14 @@ function useBlogLinksContextMenu() {
 
   const handleContextMenu = (e: React.MouseEvent, link: BlogLink) => {
     e.preventDefault()
-    setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, link })
+    setContextMenu({ isOpen: true, link, ...linkMenuAnchorPoint(e) })
+  }
+
+  // The row's own actions button opens the panel the right-click does. Without it copy, QR and
+  // check existed only behind a right-click: no pointer user would find them, no keyboard user
+  // could reach them at all.
+  const handleOpenLinkMenu = (e: React.MouseEvent, link: BlogLink) => {
+    setContextMenu({ isOpen: true, link, ...linkMenuAnchorPoint(e) })
   }
 
   const handleCloseContextMenu = () => {
@@ -238,6 +246,7 @@ function useBlogLinksContextMenu() {
   return {
     contextMenu,
     handleContextMenu,
+    handleOpenLinkMenu,
     handleCloseContextMenu,
   }
 }

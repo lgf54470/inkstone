@@ -6,16 +6,24 @@ import { Button } from '../../../components/primitives'
 import { Textarea } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 import { useUi } from '../../../store/ui'
+import {
+  IMPORT_FILE_MAX_BYTES,
+  ImportParseError,
+  formatFromFileName,
+  generateBookmarkHtml,
+  generateCfAstroJson,
+  generateCsv,
+  importFileRejection,
+  parseImportPayload,
+  type ParsedImport,
+} from './link-import-format'
 
 export interface LinkImportExportModalProps {
   open: boolean
   onClose: () => void
   links: BlogLink[]
   categories: BlogLinkCategory[]
-  onImport: (payload: {
-    categories: Array<{ id?: string; name: string; icon?: string | null; parentId?: string | null; sortOrder?: number }>
-    links: Array<Partial<BlogLink>>
-  }) => Promise<{ importedCategories: number; importedLinks: number } | null>
+  onImport: (payload: Pick<ParsedImport, 'categories' | 'links'>) => Promise<{ importedCategories: number; importedLinks: number } | null>
 }
 
 const MODAL_WIDTH = 620
@@ -98,6 +106,8 @@ function ImportExportHeader({
   )
 }
 
+type ImportExportToast = ReturnType<typeof useUi.getState>['toast']
+
 function useImportExportState({ links, categories, onImport, onClose }: LinkImportExportModalProps) {
   const toast = useUi((s) => s.toast)
   const [activeTab, setActiveTab] = useState<'import' | 'export'>('import')
@@ -105,41 +115,77 @@ function useImportExportState({ links, categories, onImport, onClose }: LinkImpo
   const [inputText, setInputText] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const text = await file.text()
-    setInputText(text)
-    if (file.name.endsWith('.html') || file.name.endsWith('.htm')) setFormat('html')
-    else if (file.name.endsWith('.csv')) setFormat('csv')
-    else if (file.name.endsWith('.json')) setFormat('json')
-  }
-
-  const handleExecuteImport = async () => {
-    if (!inputText.trim()) return
-    setBusy(true)
-    try {
-      const payload = format === 'html' ? parseBookmarksHtml(inputText) : format === 'csv' ? parseCsvLinks(inputText) : parseJsonLinks(inputText)
-      const result = await onImport(payload)
-      if (!result) return
-      toast({ title: t('blog.link_import_success', { categories: result.importedCategories, links: result.importedLinks }), tone: 'success' })
-      setInputText('')
-      onClose()
-    } catch (err: unknown) {
-      toast({ title: err instanceof Error ? err.message : 'Import failed', tone: 'danger' })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleExport = () => {
-    if (format === 'html') downloadFile(generateBookmarkHtml(links, categories), 'bookmarks.html', 'text/html')
-    else if (format === 'csv') downloadFile(generateCsv(links, categories), 'links.csv', 'text/csv')
-    else downloadFile(generateCfAstroJson(links, categories), 'cloudnav_backup.json', 'application/json')
-    toast({ title: t('blog.link_export_success'), tone: 'success' })
-  }
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => readChosenFile(e, { toast, setInputText, setFormat })
+  const handleExecuteImport = () => executeImport({ format, inputText, onImport, onClose, toast, setInputText, setBusy })
+  const handleExport = () => exportLinks(format, links, categories, toast)
 
   return { activeTab, setActiveTab, format, setFormat, inputText, setInputText, busy, handleFileUpload, handleExecuteImport, handleExport }
+}
+
+interface ChosenFileSink {
+  toast: ImportExportToast
+  setInputText: (text: string) => void
+  setFormat: (format: 'json' | 'html' | 'csv') => void
+}
+
+async function readChosenFile(event: React.ChangeEvent<HTMLInputElement>, sink: ChosenFileSink): Promise<void> {
+  const file = event.target.files?.[0]
+  // The input is cleared before the read: choosing the same file twice has to fire `change` again,
+  // which it does not while the control still remembers the name.
+  event.target.value = ''
+  if (!file) return
+  const rejection = importFileRejection(file)
+  if (rejection) {
+    sink.toast({ title: t(rejection, { value0: Math.round(IMPORT_FILE_MAX_BYTES / 1024) }), tone: 'danger' })
+    return
+  }
+  try {
+    sink.setInputText(await file.text())
+    // The tab follows the file: the reader chose a format by choosing a file.
+    sink.setFormat(formatFromFileName(file.name))
+  } catch {
+    sink.toast({ title: t('blog.link_import_read_failed'), tone: 'danger' })
+  }
+}
+
+interface ImportRequest {
+  format: 'json' | 'html' | 'csv'
+  inputText: string
+  onImport: LinkImportExportModalProps['onImport']
+  onClose: () => void
+  toast: ImportExportToast
+  setInputText: (text: string) => void
+  setBusy: (busy: boolean) => void
+}
+
+async function executeImport(request: ImportRequest): Promise<void> {
+  const { format, inputText, onImport, onClose, toast } = request
+  if (!inputText.trim()) return
+  request.setBusy(true)
+  try {
+    const parsed = parseImportPayload(format, inputText)
+    if (parsed.links.length === 0) {
+      toast({ title: t('blog.link_import_nothing_to_import'), tone: 'danger' })
+      return
+    }
+    const result = await onImport({ categories: parsed.categories, links: parsed.links })
+    if (!result) return
+    toast({ title: t('blog.link_import_success', { categories: result.importedCategories, links: result.importedLinks }), tone: 'success' })
+    if (parsed.skipped > 0) toast({ title: t('blog.link_import_skipped', { value0: parsed.skipped }), tone: 'default' })
+    request.setInputText('')
+    onClose()
+  } catch (err: unknown) {
+    toast({ title: err instanceof ImportParseError ? t(err.messageKey) : t('common.action_failed'), tone: 'danger' })
+  } finally {
+    request.setBusy(false)
+  }
+}
+
+function exportLinks(format: 'json' | 'html' | 'csv', links: BlogLink[], categories: BlogLinkCategory[], toast: ImportExportToast): void {
+  if (format === 'html') downloadFile(generateBookmarkHtml(links, categories), 'bookmarks.html', 'text/html')
+  else if (format === 'csv') downloadFile(generateCsv(links, categories), 'links.csv', 'text/csv')
+  else downloadFile(generateCfAstroJson(links, categories), 'cloudnav_backup.json', 'application/json')
+  toast({ title: t('blog.link_export_success'), tone: 'success' })
 }
 
 function LinkImportTab({
@@ -213,201 +259,6 @@ function FormatSelectButton({ current, target, label, icon, onSelect }: { curren
       <span>{label}</span>
     </button>
   )
-}
-
-function parseJsonLinks(text: string) {
-  const parsed = JSON.parse(text)
-  const rawCats = Array.isArray(parsed.categories) ? parsed.categories : []
-  const rawLinks = Array.isArray(parsed.links) ? parsed.links : Array.isArray(parsed) ? parsed : []
-  const categories = rawCats.map((c: Record<string, unknown>) => ({
-    id: typeof c.id === 'string' ? c.id : undefined,
-    name: String(c.name || c.title || 'Untitled'),
-    icon: typeof c.icon === 'string' ? c.icon : null,
-    parentId: typeof c.parentId === 'string' ? c.parentId : null,
-    sortOrder: typeof c.sortOrder === 'number' ? c.sortOrder : 0,
-  }))
-  const links = rawLinks.map((l: Record<string, unknown>) => ({
-    name: String(l.name || l.title || ''),
-    url: String(l.url || ''),
-    description: typeof l.description === 'string' ? l.description : null,
-    avatar: typeof l.avatar === 'string' ? l.avatar : typeof l.icon === 'string' ? l.icon : null,
-    categoryId: typeof l.categoryId === 'string' && l.categoryId !== 'default' ? l.categoryId : null,
-    isPinned: Boolean(l.isPinned ?? l.pinned),
-    isFavorite: Boolean(l.isFavorite ?? l.favorite),
-    pinnedOrder: typeof l.pinnedOrder === 'number' ? l.pinnedOrder : 0,
-    sortOrder: typeof l.sortOrder === 'number' ? l.sortOrder : 0,
-  }))
-  return { categories, links }
-}
-
-function resolveCsvCategory(
-  rootCat: string,
-  subCat: string | undefined,
-  catMap: Map<string, string>,
-  categories: Array<{ id: string; name: string; parentId: string | null }>,
-): string | null {
-  if (!rootCat) return null
-  if (!catMap.has(rootCat)) {
-    const id = `cat-${catMap.size + 1}`
-    catMap.set(rootCat, id)
-    categories.push({ id, name: rootCat, parentId: null })
-  }
-  const rootId = catMap.get(rootCat)!
-  if (!subCat) return rootId
-
-  const subKey = `${rootCat}/${subCat}`
-  if (!catMap.has(subKey)) {
-    const subId = `cat-${catMap.size + 1}`
-    catMap.set(subKey, subId)
-    categories.push({ id: subId, name: subCat, parentId: rootId })
-  }
-  return catMap.get(subKey)!
-}
-
-function parseCsvLinks(text: string) {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0)
-  if (lines.length === 0) return { categories: [], links: [] }
-
-  const catMap = new Map<string, string>()
-  const categories: Array<{ id: string; name: string; parentId: string | null }> = []
-  const links: Array<Partial<BlogLink>> = []
-
-  const startIdx = lines[0].toLowerCase().includes('url') ? 1 : 0
-  for (let i = startIdx; i < lines.length; i++) {
-    const cols = lines[i].split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''))
-    if (!cols[0] || !cols[1]) continue
-    const [name, url, description, avatar, rootCat, subCat] = cols
-    const catId = resolveCsvCategory(rootCat, subCat, catMap, categories)
-    links.push({ name, url, description: description || null, avatar: avatar || null, categoryId: catId })
-  }
-  return { categories, links }
-}
-
-function processBookmarkNode(
-  child: Element,
-  parentCatId: string | null,
-  getOrCreateCat: (name: string, parentId: string | null) => string,
-  traverse: (el: Element, pId: string | null) => void,
-  links: Array<Partial<BlogLink>>,
-) {
-  if (child.tagName.toUpperCase() !== 'DT') return
-  const h3 = child.querySelector('h3')
-  const dl = child.querySelector('dl')
-  const a = child.querySelector('a')
-  if (h3 && dl) {
-    const catName = h3.textContent?.trim() || 'Folder'
-    const currentCatId = getOrCreateCat(catName, parentCatId)
-    traverse(dl, currentCatId)
-    return
-  }
-  if (!a) return
-  const url = a.getAttribute('href')
-  if (!url || url.startsWith('chrome://') || url.startsWith('about:')) return
-  const name = a.textContent?.trim() || url
-  const icon = a.getAttribute('icon')
-  links.push({ name, url, avatar: icon || null, categoryId: parentCatId })
-}
-
-function parseBookmarksHtml(text: string) {
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(text, 'text/html')
-  const categories: Array<{ id: string; name: string; parentId: string | null }> = []
-  const links: Array<Partial<BlogLink>> = []
-  const catMap = new Map<string, string>()
-
-  const getOrCreateCat = (name: string, parentId: string | null = null): string => {
-    const key = `${parentId ?? ''}/${name}`
-    if (catMap.has(key)) return catMap.get(key)!
-    const id = `bm-cat-${catMap.size + 1}`
-    catMap.set(key, id)
-    categories.push({ id, name, parentId })
-    return id
-  }
-
-  const traverse = (element: Element, parentCatId: string | null) => {
-    for (const child of Array.from(element.children)) {
-      processBookmarkNode(child, parentCatId, getOrCreateCat, traverse, links)
-    }
-  }
-
-  const rootDl = doc.querySelector('dl')
-  if (rootDl) traverse(rootDl, null)
-  return { categories, links }
-}
-
-function generateCfAstroJson(links: BlogLink[], categories: BlogLinkCategory[]): string {
-  const catItems = categories.map((c) => ({
-    id: c.id,
-    name: c.name,
-    icon: c.icon || 'Folder',
-    parentId: c.parentId || null,
-    sortOrder: c.sortOrder || 0,
-    createdAt: c.createdAt || Date.now(),
-  }))
-  const linkItems = links.map((l) => ({
-    id: l.id,
-    title: l.name,
-    name: l.name,
-    url: l.url,
-    icon: l.avatar || null,
-    avatar: l.avatar || null,
-    description: l.description || null,
-    categoryId: l.categoryId || 'default',
-    pinned: Boolean(l.isPinned),
-    isPinned: Boolean(l.isPinned),
-    favorite: Boolean(l.isFavorite),
-    isFavorite: Boolean(l.isFavorite),
-    pinnedOrder: l.pinnedOrder || 0,
-    sortOrder: l.sortOrder || 0,
-    createdAt: l.createdAt || Date.now(),
-  }))
-  return JSON.stringify({ categories: catItems, links: linkItems }, null, 2)
-}
-
-function generateBookmarkHtml(links: BlogLink[], categories: BlogLinkCategory[]): string {
-  const now = Math.floor(Date.now() / 1000)
-  const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-  let html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n`
-  for (const cat of categories.filter((c) => !c.parentId)) {
-    html += `  <DT><H3 ADD_DATE="${now}">${escape(cat.name)}</H3>\n  <DL><p>\n`
-    for (const l of links.filter((link) => link.categoryId === cat.id)) {
-      html += `    <DT><A HREF="${escape(l.url)}" ADD_DATE="${now}">${escape(l.name)}</A>\n`
-    }
-    for (const sub of categories.filter((c) => c.parentId === cat.id)) {
-      html += `    <DT><H3 ADD_DATE="${now}">${escape(sub.name)}</H3>\n    <DL><p>\n`
-      for (const l of links.filter((link) => link.categoryId === sub.id)) {
-        html += `      <DT><A HREF="${escape(l.url)}" ADD_DATE="${now}">${escape(l.name)}</A>\n`
-      }
-      html += `    </DL><p>\n`
-    }
-    html += `  </DL><p>\n`
-  }
-  html += `</DL><p>`
-  return html
-}
-
-function getCategoryCsvNames(cat: BlogLinkCategory | undefined, categories: BlogLinkCategory[]): { rootName: string; subName: string } {
-  if (!cat) return { rootName: '', subName: '' }
-  if (!cat.parentId) return { rootName: cat.name, subName: '' }
-  const parent = categories.find((c) => c.id === cat.parentId)
-  return { rootName: parent ? parent.name : '', subName: cat.name }
-}
-
-function generateCsv(links: BlogLink[], categories: BlogLinkCategory[]): string {
-  const rows = ['Name,URL,Description,Avatar,Category,Subcategory']
-  for (const l of links) {
-    const cat = categories.find((c) => c.id === l.categoryId)
-    const { rootName, subName } = getCategoryCsvNames(cat, categories)
-    rows.push([
-      `"${(l.name || '').replace(/"/g, '""')}"`,
-      `"${(l.url || '').replace(/"/g, '""')}"`,
-      `"${(l.description || '').replace(/"/g, '""')}"`,
-      `"${(l.avatar || '').replace(/"/g, '""')}"`,
-      `"${rootName.replace(/"/g, '""')}"`,
-      `"${subName.replace(/"/g, '""')}"`,
-    ].join(','))
-  }
-  return rows.join('\n')
 }
 
 function downloadFile(content: string, filename: string, mime: string) {

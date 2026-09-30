@@ -1,4 +1,4 @@
-import { Check, Edit2, ExternalLink, GripVertical, Pin, Star, Trash2, X } from 'lucide-react'
+import { Check, Edit2, ExternalLink, GripVertical, MoreVertical, Pin, Star, Trash2, X } from 'lucide-react'
 import type { BlogLink, BlogLinkCategory } from '@shared/types'
 import { Badge, IconButton } from '../../../components/primitives'
 import { Checkbox } from '../../../components/form'
@@ -19,6 +19,8 @@ export interface LinkCardRowProps {
   onTogglePin: () => void
   onToggleFavorite: () => void
   onContextMenu?: (e: React.MouseEvent) => void
+  onMoreActions?: (e: React.MouseEvent<HTMLButtonElement>) => void
+  isMenuOpen?: boolean
   draggable?: boolean
   onDragStart?: (e: React.DragEvent) => void
   onDragOver?: (e: React.DragEvent) => void
@@ -38,6 +40,8 @@ export function LinkCardRow({
   onTogglePin,
   onToggleFavorite,
   onContextMenu,
+  onMoreActions,
+  isMenuOpen,
   draggable,
   onDragStart,
   onDragOver,
@@ -86,6 +90,8 @@ export function LinkCardRow({
         onDelete={onDelete}
         onTogglePin={onTogglePin}
         onToggleFavorite={onToggleFavorite}
+        onMoreActions={onMoreActions}
+        isMenuOpen={isMenuOpen}
       />
     </div>
   )
@@ -200,6 +206,8 @@ function LinkRowActions({
   onDelete,
   onTogglePin,
   onToggleFavorite,
+  onMoreActions,
+  isMenuOpen,
 }: {
   link: BlogLink
   onApprove?: () => void
@@ -208,20 +216,64 @@ function LinkRowActions({
   onDelete: () => void
   onTogglePin: () => void
   onToggleFavorite: () => void
+  onMoreActions?: (e: React.MouseEvent<HTMLButtonElement>) => void
+  isMenuOpen?: boolean
 }) {
   return (
     <div className='flex items-center gap-1 shrink-0'>
-      {link.status === 'pending' && (
-        <>
-          <IconButton label={t('blog.link_approve')} size='sm' onClick={onApprove} className='text-[var(--success)]'>
-            <Check size={14} />
-          </IconButton>
-          <IconButton label={t('blog.link_reject')} size='sm' onClick={onReject} className='text-[var(--danger)]'>
-            <X size={14} />
-          </IconButton>
-        </>
-      )}
+      {link.status === 'pending' && <ModerationActions onApprove={onApprove} onReject={onReject} />}
+      <LinkStateActions link={link} onTogglePin={onTogglePin} onToggleFavorite={onToggleFavorite} />
 
+      <IconButton label={t('blog.edit_link')} size='sm' onClick={onEdit}>
+        <Edit2 size={14} />
+      </IconButton>
+
+      <IconButton label={t('blog.delete_link')} size='sm' onClick={onDelete} className='hover:text-[var(--danger)]'>
+        <Trash2 size={14} />
+      </IconButton>
+
+      {/* Copy, QR and check live in the panel this opens — it used to take a right-click to find
+          them, which no keyboard could do at all. */}
+      {onMoreActions && (
+        <IconButton
+          label={t('blog.link_more_actions')}
+          size='sm'
+          aria-haspopup='menu'
+          aria-expanded={isMenuOpen}
+          highlight={isMenuOpen}
+          onClick={onMoreActions}
+        >
+          <MoreVertical size={14} />
+        </IconButton>
+      )}
+    </div>
+  )
+}
+
+function ModerationActions({ onApprove, onReject }: { onApprove?: () => void; onReject?: () => void }) {
+  return (
+    <>
+      <IconButton label={t('blog.link_approve')} size='sm' onClick={onApprove} className='text-[var(--success)]'>
+        <Check size={14} />
+      </IconButton>
+      <IconButton label={t('blog.link_reject')} size='sm' onClick={onReject} className='text-[var(--danger)]'>
+        <X size={14} />
+      </IconButton>
+    </>
+  )
+}
+
+function LinkStateActions({
+  link,
+  onTogglePin,
+  onToggleFavorite,
+}: {
+  link: BlogLink
+  onTogglePin: () => void
+  onToggleFavorite: () => void
+}) {
+  return (
+    <>
       <IconButton
         label={link.isFavorite ? t('blog.link_unfavorite') : t('blog.link_favorite')}
         size='sm'
@@ -239,15 +291,7 @@ function LinkRowActions({
       >
         <Pin size={14} />
       </IconButton>
-
-      <IconButton label={t('blog.edit_link')} size='sm' onClick={onEdit}>
-        <Edit2 size={14} />
-      </IconButton>
-
-      <IconButton label={t('blog.delete_link')} size='sm' onClick={onDelete} className='hover:text-[var(--danger)]'>
-        <Trash2 size={14} />
-      </IconButton>
-    </div>
+    </>
   )
 }
 

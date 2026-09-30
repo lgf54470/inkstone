@@ -3,7 +3,7 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import type { BlogLink } from '@shared/types'
-import { initI18n } from '../../../lib/i18n'
+import { initI18n, t } from '../../../lib/i18n'
 import { LinkCardRow } from './link-card-row'
 
 /**
@@ -45,7 +45,7 @@ function link(url: string): BlogLink {
   }
 }
 
-function mountUrl(url: string): void {
+function mountUrl(url: string, extra: Partial<Parameters<typeof LinkCardRow>[0]> = {}): void {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -59,6 +59,7 @@ function mountUrl(url: string): void {
       onDelete: vi.fn(),
       onTogglePin: vi.fn(),
       onToggleFavorite: vi.fn(),
+      ...extra,
     }))
   })
 }
@@ -77,5 +78,26 @@ describe('link row address', () => {
 
     expect(document.querySelector('a')).toBeNull()
     expect(document.body.textContent).toContain('javascript:alert(document.cookie)')
+  })
+})
+
+describe('link row actions menu button', () => {
+  /** UI-09: the panel holding copy, QR and check had no keyboard entry point until this button. */
+  it('is a named menu button that reports the panel it opens', () => {
+    const onMoreActions = vi.fn()
+    mountUrl('https://friend.example', { onMoreActions, isMenuOpen: true })
+
+    const button = document.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!
+    expect(button.getAttribute('aria-label')).toBe(t('blog.link_more_actions'))
+    expect(button.getAttribute('aria-expanded')).toBe('true')
+
+    act(() => button.click())
+    expect(onMoreActions).toHaveBeenCalledTimes(1)
+  })
+
+  it('is left out when the row has nowhere to open the panel', () => {
+    mountUrl('https://friend.example')
+
+    expect(document.querySelector('button[aria-haspopup="menu"]')).toBeNull()
   })
 })
