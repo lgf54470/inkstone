@@ -1,7 +1,7 @@
 import type { MutableRefObject } from 'react'
 import type { GraphResponse } from '@shared/types'
 import { truncateText } from '@shared/text-utils'
-import { FALLBACK_ACCENT_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, PHYSICS_FRAME_LIMIT } from './constants'
+import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, PHYSICS_FRAME_LIMIT } from './constants'
 import { nodeColor } from './helpers'
 import type { CanvasNode, CanvasState } from './types'
 import type { GraphPreferences } from '../../../lib/graph-settings'
@@ -12,6 +12,7 @@ export interface ThemeColors {
   node: string
   accent: string
   text: string
+  bgBase: string
 }
 
 
@@ -102,13 +103,25 @@ function drawEdges(ctx: CanvasRenderingContext2D, state: CanvasState, colors: Th
 }
 
 
-function drawNodes(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, groupBy: GraphPreferences['groupBy'], selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>): void {
+export function getConnectedNeighborIds(state: CanvasState, targetId: string | null): Set<string> {
+  const neighbors = new Set<string>()
+  if (!targetId) return neighbors
+  for (const edge of state.edges) {
+    if (edge.a.id === targetId) neighbors.add(edge.b.id)
+    else if (edge.b.id === targetId) neighbors.add(edge.a.id)
+  }
+  return neighbors
+}
+
+
+function drawNodes(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, neighborIds: Set<string>, groupBy: GraphPreferences['groupBy'], selectedIdRef: MutableRefObject<string | null>, activeNoteIdRef: MutableRefObject<string | null>): void {
   for (const node of state.nodes) {
     const active = node.id === activeNoteIdRef.current
     const emphasized = node.id === emphasizedId
+    const isNeighbor = neighborIds.has(node.id)
     ctx.beginPath(); ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2)
     ctx.fillStyle = active || emphasized ? colors.accent : nodeColor(node, groupBy, colors.node)
-    ctx.globalAlpha = emphasizedId && !emphasized && !active ? 0.34 : 1
+    ctx.globalAlpha = emphasizedId && !emphasized && !active && !isNeighbor ? 0.18 : 1
     if (node.kind === 'unresolved') {
       ctx.strokeStyle = ctx.fillStyle
       ctx.lineWidth = 1.5 / state.scale
@@ -124,17 +137,21 @@ function drawNodes(ctx: CanvasRenderingContext2D, state: CanvasState, colors: Th
 }
 
 
-function drawLabels(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, fontFamily: string, scale: number, labels: boolean): void {
+function drawLabels(ctx: CanvasRenderingContext2D, state: CanvasState, colors: ThemeColors, emphasizedId: string | null, neighborIds: Set<string>, fontFamily: string, scale: number, labels: boolean): void {
   if (!labels || !(scale > 0.68 || emphasizedId))
     return
   ctx.font = `${11 / scale}px ${fontFamily}`
   ctx.textAlign = 'center'
   for (const node of state.nodes) {
     const emphasized = node.id === emphasizedId
-    if (!emphasized && node.degree < 1 && scale < 1.1) continue
+    const isNeighbor = neighborIds.has(node.id)
+    if (!emphasized && !isNeighbor && node.degree < 1 && scale < 1.1) continue
     ctx.fillStyle = emphasized ? colors.accent : colors.text
-    ctx.globalAlpha = emphasized ? 1 : emphasizedId ? 0.26 : 0.72
+    ctx.globalAlpha = emphasized || isNeighbor ? 1 : emphasizedId ? 0.18 : 0.72
     const label = node.title.length > 18 ? `${truncateText(node.title, 18)}…` : node.title
+    ctx.lineWidth = 3 / scale
+    ctx.strokeStyle = colors.bgBase
+    ctx.strokeText(label, node.x, node.y + node.r + 12 / scale)
     ctx.fillText(label, node.x, node.y + node.r + 12 / scale)
   }
 }
@@ -153,11 +170,12 @@ export function createGraphTicker(state: CanvasState, canvas: HTMLCanvasElement,
     ctx.translate(state.offsetX, state.offsetY)
     ctx.scale(state.scale, state.scale)
     const emphasizedId = hoverRef.current?.id ?? selectedIdRef.current
+    const neighborIds = getConnectedNeighborIds(state, emphasizedId)
     drawEdges(ctx, state, colors, emphasizedId, prefs.arrows)
     ctx.globalAlpha = 1
-    drawNodes(ctx, state, colors, emphasizedId, prefs.groupBy, selectedIdRef, activeNoteIdRef)
+    drawNodes(ctx, state, colors, emphasizedId, neighborIds, prefs.groupBy, selectedIdRef, activeNoteIdRef)
     ctx.globalAlpha = 1
-    drawLabels(ctx, state, colors, emphasizedId, style.getPropertyValue('--font-ui'), state.scale, prefs.labels)
+    drawLabels(ctx, state, colors, emphasizedId, neighborIds, style.getPropertyValue('--font-ui'), state.scale, prefs.labels)
     ctx.globalAlpha = 1
     ctx.restore()
     if (state.frame < PHYSICS_FRAME_LIMIT) schedule()
@@ -201,6 +219,7 @@ export function readThemeColors(): ThemeColors {
     node: style.getPropertyValue('--text-tertiary').trim() || FALLBACK_NODE_COLOR,
     accent: style.getPropertyValue('--accent').trim() || FALLBACK_ACCENT_COLOR,
     text: style.getPropertyValue('--text-secondary').trim() || FALLBACK_TEXT_COLOR,
+    bgBase: style.getPropertyValue('--bg-base').trim() || FALLBACK_BG_COLOR,
   }
 }
 

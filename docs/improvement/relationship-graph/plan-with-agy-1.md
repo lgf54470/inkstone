@@ -98,14 +98,17 @@
   2. 由 `createCanvasResizer` 维护画布逻辑宽高并在 `state.width`/`state.height` 中缓存，`tick` 内部纯读取缓存变量；
   3. 新增单元测试断言动画每帧渲染不触发 `getBoundingClientRect`。
 - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npm run typecheck && npx vitest run src/client/features/graph/graph-panel/canvas-draw.test.ts`
+- **提交哈希**：`2744cec7`
 - **状态**：已完成并验证通过
 
-#### 7. 【UI-02 & UI-03】修复邻居节点标签弱化视觉矛盾，增加文本微光晕 (Text Halo)
-- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`
+- [x] **7. 【UI-02 & UI-03】修复邻居节点标签弱化视觉矛盾，增加文本微光晕 (Text Halo)**
+- **涉及文件**：`src/client/features/graph/graph-panel/canvas-draw.ts`, `constants.ts`, `canvas-draw.test.ts`
 - **修改要点**：
-  1. 构建当前聚焦节点的邻居集合，聚焦时当前节点及其直接邻居维持 1.0 高亮，非相关节点弱化；
-  2. 文字绘制增加背景色描边（`strokeText`）防止线条切断字迹。
-- **提交哈希**：`待提交`
+  1. 通过 `getConnectedNeighborIds` 构建当前聚焦节点的一度邻居集合，聚焦时当前节点及其直接邻居维持 1.0 高亮，非相关节点弱化至 0.18；
+  2. 节点文字绘制前增加基于背景色的描边（`strokeText`），防止复杂拓扑关系线切断字迹；
+  3. 新增单元测试覆盖一度邻居判定逻辑与文字描边光晕调用。
+- **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && npm run typecheck && npx vitest run src/client/features/graph/graph-panel/canvas-draw.test.ts`
+- **状态**：已完成并验证通过
 
 #### 8. 【PERF-03 & PERF-04】后端 D1 改用 batch 批量执行并消除冗余 COUNT
 - **涉及文件**：`src/worker/routes/search/graph.ts`

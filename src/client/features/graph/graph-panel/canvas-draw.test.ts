@@ -6,6 +6,7 @@ import {
   createCanvasResizer,
   createGraphTicker,
   createThemeObserver,
+  getConnectedNeighborIds,
   readThemeColors,
 } from './canvas-draw'
 import type { CanvasState } from './types'
@@ -82,6 +83,7 @@ describe('theme following', () => {
     expect(colors.node).toBeTruthy()
     expect(colors.accent).toBeTruthy()
     expect(colors.text).toBeTruthy()
+    expect(colors.bgBase).toBeTruthy()
   })
 
   it('updates colorsRef and triggers onUpdate when data-theme changes', async () => {
@@ -109,7 +111,10 @@ describe('theme following', () => {
   })
 })
 
-function mockCanvasContext(clearRectCalls: Array<[number, number, number, number]>) {
+function mockCanvasContext(
+  clearRectCalls: Array<[number, number, number, number]>,
+  strokeTextCalls: Array<[string, number, number]> = [],
+) {
   const original = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'getContext')!
   Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
     configurable: true,
@@ -128,11 +133,49 @@ function mockCanvasContext(clearRectCalls: Array<[number, number, number, number
       moveTo: () => {},
       lineTo: () => {},
       closePath: () => {},
+      strokeText: (text: string, x: number, y: number) => { strokeTextCalls.push([text, x, y]) },
       fillText: () => {},
     }),
   })
   return () => Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', original)
 }
+
+describe('neighbor highlighting and text halo (UI-02, UI-03)', () => {
+  it('identifies 1-degree connected neighbors from edges', () => {
+    const state = createInitialState()
+    buildInitialLayout(sampleData, DEFAULT_PREFERENCES, state)
+    const neighbors1 = getConnectedNeighborIds(state, 'note-1')
+    expect(neighbors1.has('note-2')).toBe(true)
+    expect(neighbors1.has('note-3')).toBe(true)
+    expect(neighbors1.has('note-1')).toBe(false)
+    const neighbors2 = getConnectedNeighborIds(state, 'note-2')
+    expect(neighbors2.has('note-1')).toBe(true)
+    expect(neighbors2.has('note-3')).toBe(false)
+    expect(getConnectedNeighborIds(state, null).size).toBe(0)
+  })
+
+  it('draws text halo with strokeText before fillText when rendering labels', () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { cb(0); return 1 })
+    const clearRectCalls: Array<[number, number, number, number]> = []
+    const strokeTextCalls: Array<[string, number, number]> = []
+    const restoreContext = mockCanvasContext(clearRectCalls, strokeTextCalls)
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+    const state = createInitialState()
+    buildInitialLayout(sampleData, DEFAULT_PREFERENCES, state)
+    const colors = readThemeColors()
+    const prefsRef = { current: { ...DEFAULT_PREFERENCES, labels: true } }
+    const hoverRef = { current: null }, selectedIdRef = { current: null }, activeNoteIdRef = { current: null }
+    const style = document.createElement('div').style
+
+    createGraphTicker(state, canvas, ctx, colors, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style)
+    state.schedule?.()
+
+    expect(strokeTextCalls.length).toBeGreaterThan(0)
+    restoreContext()
+  })
+})
 
 describe('layout thrashing prevention (PERF-02)', () => {
   it('caches canvas width and height during resize without measuring in tick', () => {
