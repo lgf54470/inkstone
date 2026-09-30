@@ -23,6 +23,44 @@ const slideHtmlCache = new Map<string, SlideMarkup>()
 const SLIDE_HTML_CACHE_LIMIT = 60
 const slideHtmlListeners = new Set<() => void>()
 
+const slidePlanCache = new Map<string, SlidePlan>()
+const SLIDE_PLAN_CACHE_LIMIT = 120
+
+export function readSlidePlan(hash: string): SlidePlan | undefined {
+  return slidePlanCache.get(hash)
+}
+
+export function rememberSlidePlan(hash: string, plan: SlidePlan): void {
+  slidePlanCache.delete(hash)
+  slidePlanCache.set(hash, plan)
+  while (slidePlanCache.size > SLIDE_PLAN_CACHE_LIMIT) {
+    const oldest = slidePlanCache.keys().next().value
+    if (oldest === undefined) break
+    slidePlanCache.delete(oldest)
+  }
+}
+
+export function clearSlidePlanCache(): void {
+  slidePlanCache.clear()
+}
+
+export function buildIncrementalSlidePlans(deck: string[], current: Record<number, SlidePlan> = {}): Record<number, SlidePlan> {
+  const next: Record<number, SlidePlan> = {}
+  let changed = false
+  for (let i = 0; i < deck.length; i++) {
+    const hash = hashContent(deck[i] ?? '')
+    const cached = readSlidePlan(hash)
+    if (cached) {
+      next[i] = cached
+      if (current[i] !== cached) changed = true
+    } else if (current[i]) {
+      changed = true
+    }
+  }
+  if (Object.keys(current).length !== Object.keys(next).length) changed = true
+  return changed ? next : current
+}
+
 export function hashContent(value: string): string {
   let hash = 5381
   for (let index = 0; index < value.length; index++) hash = ((hash << 5) + hash + value.charCodeAt(index)) | 0

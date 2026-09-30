@@ -112,12 +112,12 @@
   - 目标：减弱动画偏好开启时，Chart.js 采用 `instant: true`，禁用入场缩放动画。
   - 方案：读取媒体查询 `prefers-reduced-motion: reduce`，在满足时将 `instantCharts` 强制设为 `true`。
   - 验证：单元测试模拟媒体查询激活状态，断言 Chart.js 以无动画模式极速挂载。
-- [x] **B3-06** `P-17 (FEAT-07)`: 光标就近启动演示（根据编辑器当前位置定位 Slide） — 已完成
+- [x] **B3-06** `P-17 (FEAT-07)`: 光标就近启动演示（根据编辑器当前位置定位 Slide） — 已完成 (`666a69bb`)
   - 涉及文件：`src/client/features/presentation/slides.ts` (`findSlideIndexByOffset`)、`src/client/features/presentation/slides.test.ts`、`src/client/store/presentation.ts`、`src/client/features/workspace/workspace/use-workspace.ts`
   - 目标：长文编辑无需从第 0 页翻起，直接从当前光标所在幻灯片起播。
   - 方案：在 `slides.ts` 中实现纯函数 `findSlideIndexByOffset(source, offset)`；在 `useWorkspace` 的启动入口处获取当前 CodeMirror 光标偏移量，计算目标页索引并传入 `usePresentation.getState().start({ initialSlideIndex })`。
   - 验证：单元测试覆盖文档首段、中间分页处、末尾及边界位置的光标映射精度。
-- [ ] **B3-07** `P-18 (PERF-02)`: 单 Slide 内容哈希增量缓存（避免跟随模式协同全篇重算）
+- [x] **B3-07** `P-18 (PERF-02)`: 单 Slide 内容哈希增量缓存（避免跟随模式协同全篇重算） — 已完成
   - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx` (`useSlidePlans`)、`src/client/features/presentation/slide-html.ts`、`src/client/features/presentation/slide-preflight.tsx`
   - 目标：改整篇 fingerprint 失效为每张 Slide 基于其源码的独立哈希缓存，打字时仅重算改动 Slide 的 Plan，其余页坚决复用。
   - 方案：使用 `hashContent(slideSource)` 作为单页子指纹，在 `useSlidePlans` 中维护按 Slide 源码哈希索引的 Plan 映射，未编辑页缓存稳如磐石。

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } fro
 import { LAG_FRAME_MS, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, type SlicePace } from './presentation-state'
 import { useIsDarkTheme } from './presentation-theme'
 import { SlideCanvas } from './slide-canvas'
-import { captureSlideHtml, readSlideHtml, rememberSlideHtml } from './slide-html'
+import { captureSlideHtml, hashContent, readSlideHtml, readSlidePlan, rememberSlideHtml, rememberSlidePlan } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
 import { useSlideHtml } from './use-slide-html'
@@ -55,10 +55,10 @@ export interface PreflightProgress {
 export function SlidePreflight({ deck, cacheKeys, fingerprint, metrics, content, noteTitle, onPlan, onProgress }: SlidePreflightProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const dark = useIsDarkTheme()
-  const { cursor, report, measured, finished } = usePreflightPass({ deckLength: deck.length, fingerprint, dark, cacheKeys, hostRef, onPlan })
+  const { cursor, report, measured, finished } = usePreflightPass({ deck, fingerprint, dark, cacheKeys, hostRef, onPlan })
   const slides = deck.length
   useEffect(() => onProgress({ measured, slides, finished }), [measured, slides, finished, onProgress])
-  useSlideHtml({ open: cursor !== null, deck, index: cursor ?? 0, fingerprint, content, noteTitle, dark, metrics })
+  useSlideHtml({ open: cursor !== null, deck, index: cursor ?? 0, fingerprint: hashContent(deck[cursor ?? 0] ?? ''), content, noteTitle, dark, metrics })
   const key = cursor === null ? '' : cacheKeys[cursor] ?? ''
   // The canvas waits one frame after the markup lands. Preparing a slide is a markdown render,
   // and React would otherwise flush the mount and its layout measure into the same task, making
@@ -144,8 +144,8 @@ function usePassState(): PassState {
 // The pass itself: which slide is being measured, what to do with its measurement and how
 // one slide hands over to the next. It advances on the canvas's own report, so a slide's
 // plan is always the one measured from the markup that was really on screen.
-function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, onPlan }: {
-  deckLength: number
+function usePreflightPass({ deck, fingerprint, dark, cacheKeys, hostRef, onPlan }: {
+  deck: string[]
   fingerprint: string
   dark: boolean
   cacheKeys: string[]
@@ -154,19 +154,19 @@ function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, o
 }): { cursor: number | null; report: (plan: SlidePlan) => void; measured: number; finished: boolean } {
   const pass = usePassState()
   const { done, skipped, sliceStart, sliceCost, cursorRef } = pass
-  const queue = useSliceQueue({ deckLength, fingerprint, dark, pass })
+  const queue = useSliceQueue({ deck, fingerprint, dark, pass, onPlan })
   const { cursor, scheduleNext, countVisited } = queue
   cursorRef.current = cursor
 
   const report = useCallback((plan: SlidePlan) => {
     const slide = cursorRef.current
     if (slide === null) return
-    publishPlan(slide, plan, { hostRef, cacheKeys, onPlan })
+    publishPlan(slide, plan, { deck, hostRef, cacheKeys, onPlan })
     noteSliceCost(sliceStart, sliceCost)
     done.current.add(slide)
     countVisited()
     scheduleNext(slide + 1)
-  }, [cacheKeys, hostRef, onPlan, scheduleNext, countVisited, cursorRef, done, sliceCost, sliceStart])
+  }, [deck, cacheKeys, hostRef, onPlan, scheduleNext, countVisited, cursorRef, done, sliceCost, sliceStart])
 
   // A slide that never reports (a pathological diagram, say) is skipped instead of pausing the
   // pass; the canvas still measures it when the presenter reaches it.
@@ -180,15 +180,28 @@ function usePreflightPass({ deckLength, fingerprint, dark, cacheKeys, hostRef, o
   return { cursor, report, measured: queue.measured, finished: queue.finished }
 }
 
+function initPreflightDone(deck: string[], onPlan: (slide: number, plan: SlidePlan) => void): Set<number> {
+  const done = new Set<number>()
+  for (let i = 0; i < deck.length; i++) {
+    const cached = readSlidePlan(hashContent(deck[i] ?? ''))
+    if (cached) {
+      done.add(i)
+      onPlan(i, cached)
+    }
+  }
+  return done
+}
+
 // The queue the pass walks: which slide is up next, how long to wait before it, and how far the
 // deck has been listed. It restarts whenever the deck or the markup under it changes — an edited
 // note re-splits into different slides, and a theme flip invalidates every slide's markup, so
 // either way every slide has to be visited again.
-function useSliceQueue({ deckLength, fingerprint, dark, pass }: {
-  deckLength: number
+function useSliceQueue({ deck, fingerprint, dark, pass, onPlan }: {
+  deck: string[]
   fingerprint: string
   dark: boolean
   pass: PassState
+  onPlan: (slide: number, plan: SlidePlan) => void
 }): { cursor: number | null; finished: boolean; measured: number; scheduleNext: (from: number) => void; countVisited: () => void } {
   const { done, skipped, idle, sliceStart, sliceCost, pace } = pass
   const [cursor, setCursor] = useState<number | null>(null)
@@ -198,6 +211,7 @@ function useSliceQueue({ deckLength, fingerprint, dark, pass }: {
   // `measured` is how far along that filling is, for the list to show while it happens.
   const [finished, setFinished] = useState(false)
   const [measured, setMeasured] = useState(0)
+  const deckLength = deck.length
 
   // One slide per idle slice keeps a long deck from holding frames while someone is talking; the
   // fallback timer covers browsers without requestIdleCallback.
@@ -216,13 +230,14 @@ function useSliceQueue({ deckLength, fingerprint, dark, pass }: {
 
   const countVisited = useCallback(() => setMeasured(done.current.size + skipped.current.size), [done, skipped])
   const restart = useCallback(() => {
-    done.current = new Set()
+    const alreadyDone = initPreflightDone(deck, onPlan)
+    done.current = alreadyDone
     skipped.current = new Set()
     pace.current = { factor: 1, quietRun: 0 }
-    setFinished(false)
-    setMeasured(0)
+    setFinished(alreadyDone.size >= deck.length)
+    setMeasured(alreadyDone.size)
     scheduleNext(0)
-  }, [done, skipped, pace, scheduleNext])
+  }, [deck, onPlan, scheduleNext, done, skipped, pace])
   usePassRestart(`${deckLength}:${fingerprint}:${dark}`, restart, idle)
 
   return { cursor, finished, measured, scheduleNext, countVisited }
@@ -231,7 +246,8 @@ function useSliceQueue({ deckLength, fingerprint, dark, pass }: {
 // What a measurement means: the markup it came from goes back to the cache under the slide's key
 // (so the projector's later visit is a cache hit instead of a second render) and the plan goes to
 // the show, which lists this slide's pages.
-function publishPlan(slide: number, plan: SlidePlan, { hostRef, cacheKeys, onPlan }: {
+function publishPlan(slide: number, plan: SlidePlan, { deck, hostRef, cacheKeys, onPlan }: {
+  deck: string[]
   hostRef: RefObject<HTMLDivElement | null>
   cacheKeys: string[]
   onPlan: (slide: number, plan: SlidePlan) => void
@@ -242,6 +258,8 @@ function publishPlan(slide: number, plan: SlidePlan, { hostRef, cacheKeys, onPla
   // read from — the ones the canvas was rendering — rather than a string whose fences are empty.
   const markup = key === undefined ? undefined : readSlideHtml(key)
   if (html && key && markup) rememberSlideHtml(key, { html, fences: markup.fences })
+  const source = deck[slide] ?? ''
+  rememberSlidePlan(hashContent(source), plan)
   onPlan(slide, plan)
 }
 

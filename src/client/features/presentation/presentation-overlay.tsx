@@ -13,7 +13,7 @@ import { escapeAction, presentedNoteContent, railOpenFor } from './presentation-
 import { useIsDarkTheme } from './presentation-theme'
 import { PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
 import { PresentationStage, ScreenCover, stageProps } from './presentation-stage'
-import { hashContent, slideCacheKey } from './slide-html'
+import { buildIncrementalSlidePlans, hashContent, rememberSlidePlan, slideCacheKey } from './slide-html'
 import { samePlan, type SlidePlan } from './slide-pagination'
 import { SlidePreflight, type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
 import { SlideRail } from './slide-rail'
@@ -189,7 +189,7 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
   const { deck, fingerprint } = useShowDeck(presentedContent)
   useCapturePresented(open, following, presentedContent)
   const { dark, externalImages, proseFont } = useShowSettings()
-  const nav = usePresentationNav(deck.length, fingerprint, initialSlideIndex)
+  const nav = usePresentationNav(deck, initialSlideIndex)
   const { index, sub, pageCount, plans, handlePlan, goNext, goPrev, jumpTo, jumpToPage } = nav
   const { isFullscreen, toggleFullscreen } = useFullscreenToggle(open, panelRef)
   const metrics = useStageMetrics(open, stageRef)
@@ -197,11 +197,11 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
   const chromeHidden = useChromeAutoHide(open && isFullscreen)
   const toggleFollowing = useCallback(() => usePresentation.getState().setFollowing(!following), [following])
   const noteTitle = liveTitle ?? storedTitle
-  const cacheKeys = useSlideCacheKeys(deck, fingerprint, dark, metrics)
+  const cacheKeys = useSlideCacheKeys(deck, dark, metrics)
   const exports = useDeckExport({ deck, cacheKeys, plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
   useDialogBehavior(open, panelRef, isFullscreen, toggleFullscreen, onClose)
-  useSlideHtml({ open, deck, index, fingerprint, content: presentedContent, noteTitle, dark, metrics })
+  useSlideHtml({ open, deck, index, fingerprint: hashContent(deck[index] ?? ''), content: presentedContent, noteTitle, dark, metrics })
   const { screenCover, clearCover } = usePresentationKeys({ open, slideCount: deck.length, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing })
   return {
     deck,
@@ -234,10 +234,10 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
   }
 }
 
-function useSlideCacheKeys(deck: string[], fingerprint: string, dark: boolean, metrics: StageMetrics): string[] {
+function useSlideCacheKeys(deck: string[], dark: boolean, metrics: StageMetrics): string[] {
   return useMemo(
-    () => deck.map((_, item) => slideCacheKey({ fingerprint, dark, index: item, contentWidth: metrics.contentWidth, contentHeight: metrics.contentHeight })),
-    [deck, fingerprint, dark, metrics.contentWidth, metrics.contentHeight],
+    () => deck.map((slide, item) => slideCacheKey({ fingerprint: hashContent(slide), dark, index: item, contentWidth: metrics.contentWidth, contentHeight: metrics.contentHeight })),
+    [deck, dark, metrics.contentWidth, metrics.contentHeight],
   )
 }
 
@@ -380,9 +380,10 @@ function useDeckIndex(deckLength: number, initialSlideIndex: number = 0) {
 // blocks overflow the canvas reports its page plan, and next/prev walk through its
 // sub-pages before moving to the neighboring slide. The plans also drive the slide
 // list, which is why the show keeps them instead of only the current page count.
-function usePresentationNav(deckLength: number, fingerprint: string, initialSlideIndex: number = 0) {
+function usePresentationNav(deck: string[], initialSlideIndex: number = 0) {
+  const deckLength = deck.length
   const { index, goTo } = useDeckIndex(deckLength, initialSlideIndex)
-  const { plans, reportPlan } = useSlidePlans(fingerprint)
+  const { plans, reportPlan } = useSlidePlans(deck)
   const currentPlan = plans[index]
   const pageCount = currentPlan?.pages.length ?? 1
   const { sub, setSubPage, carryPage } = useSubPage(index, pageCount, Boolean(currentPlan))
@@ -420,16 +421,18 @@ function usePresentationNav(deckLength: number, fingerprint: string, initialSlid
 
 // Page plans live in one map because the show and the slide list both read them: the
 // canvas measures the slide it renders and the list turns those measurements into pages.
-function useSlidePlans(fingerprint: string) {
-  const [plans, setPlans] = useState<Record<number, SlidePlan>>({})
+export function useSlidePlans(deck: string[]) {
+  const [plans, setPlans] = useState<Record<number, SlidePlan>>(() => buildIncrementalSlidePlans(deck))
   // Edited content re-splits the deck, so plans measured for the previous text would
   // describe pages that no longer exist.
   useEffect(() => {
-    setPlans({})
-  }, [fingerprint])
+    setPlans((current) => buildIncrementalSlidePlans(deck, current))
+  }, [deck])
   const reportPlan = useCallback((slide: number, plan: SlidePlan) => {
+    const content = deck[slide] ?? ''
+    rememberSlidePlan(hashContent(content), plan)
     setPlans((current) => (samePlan(current[slide], plan) ? current : { ...current, [slide]: plan }))
-  }, [])
+  }, [deck])
   return { plans, reportPlan }
 }
 
