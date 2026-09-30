@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import {
   AlertCircle,
   CheckCircle2,
@@ -14,7 +14,7 @@ import type { BlogLink, BlogLinkCategory } from '@shared/types'
 import { safeExternalUrl } from '@shared/url-safety'
 import { Modal } from '../../../components/overlay'
 import { Button } from '../../../components/primitives'
-import { Checkbox } from '../../../components/form'
+import { Checkbox, Segmented } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 import { LinkDynamicIcon } from './link-dynamic-icon'
 import { useLinkCheckerState, type HealthResult } from './use-link-checker'
@@ -130,13 +130,19 @@ function CheckerStatsHeader({
           </span>
         </div>
 
-        <div className='flex items-center gap-1.5 text-[length:var(--text-11)]'>
-          <FilterBadge label={t('blog.link_check_filter_all')} count={total} active={filterLevel === 'all'} onClick={() => onSelectFilter('all')} />
-          <FilterBadge label={t('blog.link_check_broken')} count={stats.broken} tone='danger' active={filterLevel === 'broken'} onClick={() => onSelectFilter('broken')} />
-          <FilterBadge label={t('blog.link_check_failed')} count={stats.error} tone='warning' active={filterLevel === 'error'} onClick={() => onSelectFilter('error')} />
-          <FilterBadge label={t('blog.link_check_warning')} count={stats.warning} tone='warning' active={filterLevel === 'warning'} onClick={() => onSelectFilter('warning')} />
-          <FilterBadge label={t('blog.link_check_ok')} count={stats.ok} tone='success' active={filterLevel === 'ok'} onClick={() => onSelectFilter('ok')} />
-        </div>
+        <Segmented
+          size='sm'
+          label={t('blog.link_check_filter_label')}
+          value={filterLevel}
+          onChange={onSelectFilter}
+          options={[
+            { value: 'all', label: checkerTabLabel(t('blog.link_check_filter_all'), total) },
+            { value: 'broken', label: checkerTabLabel(t('blog.link_check_broken'), stats.broken, 'danger') },
+            { value: 'error', label: checkerTabLabel(t('blog.link_check_failed'), stats.error, 'warning') },
+            { value: 'warning', label: checkerTabLabel(t('blog.link_check_warning'), stats.warning, 'warning') },
+            { value: 'ok', label: checkerTabLabel(t('blog.link_check_ok'), stats.ok, 'success') },
+          ]}
+        />
       </div>
 
       {stale && (
@@ -164,23 +170,19 @@ function CheckerProgressBar({ progressIndex, total }: { progressIndex: number; t
   )
 }
 
-function FilterBadge({ label, count, tone = 'default', active, onClick }: { label: string; count: number; tone?: 'default' | 'success' | 'warning' | 'danger'; active: boolean; onClick: () => void }) {
-  const colorMap = {
-    default: 'text-[var(--text-secondary)]',
-    success: 'text-[var(--success)]',
-    warning: 'text-[var(--warning)]',
-    danger: 'text-[var(--danger)]',
-  }
+const CHECKER_TAB_TONE = {
+  default: 'text-[var(--text-secondary)]',
+  success: 'text-[var(--success)]',
+  warning: 'text-[var(--warning)]',
+  danger: 'text-[var(--danger)]',
+} as const
+
+/** A result-level filter's face: the level's own colour plus how many links are in it. */
+function checkerTabLabel(label: string, count: number, tone: keyof typeof CHECKER_TAB_TONE = 'default'): ReactNode {
   return (
-    <button
-      type='button'
-      onClick={onClick}
-      className={`px-2 py-0.5 rounded-[var(--r-sm)] font-medium transition-colors ${
-        active ? 'bg-[var(--bg-surface)] shadow-xs border border-[var(--border-subtle)]' : 'hover:bg-[var(--bg-hover)]'
-      } ${colorMap[tone]}`}
-    >
-      <span>{label}</span> <span className='font-bold ml-0.5'>{count}</span>
-    </button>
+    <span className={CHECKER_TAB_TONE[tone]}>
+      {label} <span className='font-bold ml-0.5'>{count}</span>
+    </span>
   )
 }
 

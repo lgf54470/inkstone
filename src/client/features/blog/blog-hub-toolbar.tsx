@@ -1,49 +1,29 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Search, LayoutGrid, LayoutList, Settings, Plus, RefreshCw, FolderClosed, Hash, X } from 'lucide-react'
 import { IconButton, Button } from '../../components/primitives'
-import { Input } from '../../components/form'
+import { Input, Segmented } from '../../components/form'
 import { t } from '../../lib/i18n'
 import { useBlogStore } from './blog-store'
 import { BlogTrafficFilterPopover } from './blog-traffic-filter-popover'
 
-type StatusValue = 'all' | 'published' | 'draft'
-type ViewModeValue = 'table' | 'grid'
-
-function StatusTab({
-  value,
-  active,
-  label,
-  onSelect,
-}: {
-  value: StatusValue
-  active: boolean
-  label: string
-  onSelect: (value: StatusValue) => void
-}) {
-  return (
-    <button
-      type='button'
-      onClick={() => onSelect(value)}
-      className={`rounded-[var(--r-sm)] px-2.5 py-1 text-[length:var(--text-11\\.5)] font-medium transition-colors ${
-        active
-          ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]'
-          : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
-      }`}
-    >
-      {label}
-    </button>
-  )
-}
+// `pinned` is set from the sidebar and has no tab here, but it is part of the value's type: with it
+// in the union the radiogroup simply has no checked option while that filter is on.
+type StatusValue = 'all' | 'published' | 'draft' | 'pinned'
 
 function StatusFilterTabs() {
   const statusFilter = useBlogStore((s) => s.statusFilter)
   const setStatusFilter = useBlogStore((s) => s.setStatusFilter)
   return (
-    <div className='flex items-center rounded-[var(--r-md)] bg-[var(--bg-base)] p-0.5 border border-[var(--border-default)]'>
-      <StatusTab value='all' active={statusFilter === 'all'} label={t('blog.status_all')} onSelect={setStatusFilter} />
-      <StatusTab value='published' active={statusFilter === 'published'} label={t('blog.published')} onSelect={setStatusFilter} />
-      <StatusTab value='draft' active={statusFilter === 'draft'} label={t('blog.draft')} onSelect={setStatusFilter} />
-    </div>
+    <Segmented<StatusValue>
+      label={t('blog.status_filter_label')}
+      value={statusFilter}
+      onChange={setStatusFilter}
+      options={[
+        { value: 'all', label: t('blog.status_all') },
+        { value: 'published', label: t('blog.published') },
+        { value: 'draft', label: t('blog.draft') },
+      ]}
+    />
   )
 }
 
@@ -112,43 +92,21 @@ function SearchBox() {
   )
 }
 
-function ViewModeButton({
-  mode,
-  active,
-  title,
-  icon,
-  onSelect,
-}: {
-  mode: ViewModeValue
-  active: boolean
-  title: string
-  icon: ReactNode
-  onSelect: (mode: ViewModeValue) => void
-}) {
-  return (
-    <button
-      type='button'
-      onClick={() => onSelect(mode)}
-      title={title}
-      className={`flex size-6 items-center justify-center rounded-[var(--r-sm)] transition-colors ${
-        active
-          ? 'bg-[var(--bg-surface)] text-[var(--accent)] shadow-[var(--shadow-sm)]'
-          : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
-      }`}
-    >
-      {icon}
-    </button>
-  )
-}
-
 function ViewModeToggle() {
   const viewMode = useBlogStore((s) => s.viewMode)
   const setViewMode = useBlogStore((s) => s.setViewMode)
+  // Icon-only options: `title` is what names each radio, and it also becomes its tooltip.
   return (
-    <div className='flex items-center rounded-[var(--r-md)] border border-[var(--border-default)] p-0.5 bg-[var(--bg-base)]'>
-      <ViewModeButton mode='table' active={viewMode === 'table'} title={t('blog.view_table')} icon={<LayoutList size={13} />} onSelect={setViewMode} />
-      <ViewModeButton mode='grid' active={viewMode === 'grid'} title={t('blog.view_grid')} icon={<LayoutGrid size={13} />} onSelect={setViewMode} />
-    </div>
+    <Segmented
+      size='sm'
+      label={t('blog.view_mode_label')}
+      value={viewMode}
+      onChange={setViewMode}
+      options={[
+        { value: 'table', label: <LayoutList size={13} />, title: t('blog.view_table') },
+        { value: 'grid', label: <LayoutGrid size={13} />, title: t('blog.view_grid') },
+      ]}
+    />
   )
 }
 

@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react'
 import { ArrowUpDown, CheckCircle2, Folder, Plus, RefreshCw, Search, UploadCloud } from 'lucide-react'
 import { Button, IconButton } from '../../../components/primitives'
-import { Input, Select } from '../../../components/form'
+import { Input, Segmented, Select } from '../../../components/form'
 import { t } from '../../../lib/i18n'
 import type { BlogLinkFilterType } from '../blog-store'
 
@@ -110,45 +111,20 @@ function StatusFilterTabs({
   onSelectStatus: (s: BlogLinkFilterType) => void
 }) {
   return (
-    <div className='flex items-center gap-1.5 flex-wrap'>
-      <StatusTabButton
-        active={statusFilter === 'all'}
-        label={t('blog.link_status_all')}
-        count={statusCounts.all}
-        onClick={() => onSelectStatus('all')}
-      />
-      <StatusTabButton
-        active={statusFilter === 'pending'}
-        label={t('blog.link_status_pending')}
-        count={statusCounts.pending}
-        badgeTone={statusCounts.pending > 0 ? 'danger' : 'default'}
-        onClick={() => onSelectStatus('pending')}
-      />
-      <StatusTabButton
-        active={statusFilter === 'approved'}
-        label={t('blog.link_status_approved')}
-        count={statusCounts.approved}
-        onClick={() => onSelectStatus('approved')}
-      />
-      <StatusTabButton
-        active={statusFilter === 'rejected'}
-        label={t('blog.link_status_rejected')}
-        count={statusCounts.rejected}
-        onClick={() => onSelectStatus('rejected')}
-      />
-      <StatusTabButton
-        active={statusFilter === 'pinned'}
-        label={t('blog.link_filter_pinned')}
-        count={statusCounts.pinned}
-        onClick={() => onSelectStatus('pinned')}
-      />
-      <StatusTabButton
-        active={statusFilter === 'favorite'}
-        label={t('blog.link_filter_favorite')}
-        count={statusCounts.favorite}
-        onClick={() => onSelectStatus('favorite')}
-      />
-    </div>
+    <Segmented
+      size='sm'
+      label={t('blog.link_status_filter_label')}
+      value={statusFilter}
+      onChange={onSelectStatus}
+      options={[
+        { value: 'all', label: statusTabLabel(t('blog.link_status_all'), statusCounts.all) },
+        { value: 'pending', label: statusTabLabel(t('blog.link_status_pending'), statusCounts.pending, statusCounts.pending > 0) },
+        { value: 'approved', label: statusTabLabel(t('blog.link_status_approved'), statusCounts.approved) },
+        { value: 'rejected', label: statusTabLabel(t('blog.link_status_rejected'), statusCounts.rejected) },
+        { value: 'pinned', label: statusTabLabel(t('blog.link_filter_pinned'), statusCounts.pinned) },
+        { value: 'favorite', label: statusTabLabel(t('blog.link_filter_favorite'), statusCounts.favorite) },
+      ]}
+    />
   )
 }
 
@@ -200,43 +176,20 @@ function CategorySearchControls({
   )
 }
 
-function StatusTabButton({
-  active,
-  label,
-  count,
-  badgeTone = 'default',
-  onClick,
-}: {
-  active: boolean
-  label: string
-  count: number
-  badgeTone?: 'default' | 'danger'
-  onClick: () => void
-}) {
+/** A filter tab's face: its label, plus the count when there is one to report. */
+function statusTabLabel(label: string, count: number, alert = false): ReactNode {
   return (
-    <button
-      type='button'
-      onClick={onClick}
-      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--r-sm)] text-[length:var(--text-12)] font-medium transition-colors ${
-        active
-          ? 'bg-[var(--accent)] text-[var(--accent-contrast)] shadow-sm'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-      }`}
-    >
-      <span>{label}</span>
+    <span className='inline-flex items-center gap-1.5'>
+      {label}
       {count > 0 && (
         <span
-          className={`text-[length:var(--text-10)] px-1.5 py-0.2 rounded-full font-bold tabular ${
-            badgeTone === 'danger' && !active
-              ? 'bg-[var(--danger)] text-[var(--danger-on)] animate-pulse'
-              : active
-                ? 'bg-[var(--accent-contrast)]/25 text-[var(--accent-contrast)]'
-                : 'bg-[var(--bg-raised)] text-[var(--text-tertiary)]'
+          className={`rounded-full px-1.5 py-0.2 text-[length:var(--text-10)] font-bold tabular ${
+            alert ? 'bg-[var(--danger)] text-[var(--danger-on)]' : 'bg-[var(--bg-raised)] text-[var(--text-tertiary)]'
           }`}
         >
           {count}
         </span>
       )}
-    </button>
+    </span>
   )
 }

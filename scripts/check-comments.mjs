@@ -2941,8 +2941,14 @@ const allowed = new Map([
     '// The comment badge reads the server\'s unfiltered tally: counting the loaded rows would read the',
     '// status tab (and the list cap) as if it were the whole blog\'s pending count.',
   ]],
+  ['src/client/features/blog/blog-hub-toolbar.test.ts', [
+    '/**\n * The toolbar\'s two pickers used to be `<button>`s with no state a reader could query. They are\n * radiogroups now, and this pins the names and the option names that make them more than visual.\n * The locale is not loaded in this harness, so `t()` echoes the key.\n */',
+  ]],
   ['src/client/features/blog/blog-hub-toolbar.tsx', [
+    '// `pinned` is set from the sidebar and has no tab here, but it is part of the value\'s type: with it',
+    '// in the union the radiogroup simply has no checked option while that filter is on.',
     '/**\n * The search box types instantly and asks once. It used to call the store on every keystroke, so\n * thirteen characters were thirteen full list requests, each one started before the last had\n * answered. The value shown is this component\'s own, so typing never waits for a round trip.\n */',
+    '// Icon-only options: `title` is what names each radio, and it also becomes its tooltip.',
   ]],
   ['src/client/features/blog/blog-links-view/index.tsx', [
     '/** The server caps the list at 500 rows; the DOM does not need all of them at once. */',
@@ -2959,6 +2965,7 @@ const allowed = new Map([
     '// text it is, without an affordance that would open it in the admin\'s session.',
   ]],
   ['src/client/features/blog/blog-links-view/link-checker-modal.tsx', [
+    '/** A result-level filter\'s face: the level\'s own colour plus how many links are in it. */',
     '/* A reader submitted this address: the open control exists only when a link may carry it. */',
   ]],
   ['src/client/features/blog/blog-links-view/link-checker-run.test.ts', [
@@ -3012,6 +3019,9 @@ const allowed = new Map([
   ['src/client/features/blog/blog-links-view/link-qr-modal.tsx', [
     '/* The address arrived from a reader: it opens only when a link may carry it. */',
   ]],
+  ['src/client/features/blog/blog-links-view/links-toolbar.tsx', [
+    '/** A filter tab\'s face: its label, plus the count when there is one to report. */',
+  ]],
   ['src/client/features/blog/blog-links-view/use-blog-links-view.ts', [
     '// The server answers the filter this time, so what came back *is* the filtered list — the badge',
     '// count is only used to notice that the list hit its page limit.',
@@ -3052,10 +3062,31 @@ const allowed = new Map([
   ['src/client/features/blog/blog-publish-lazy.ts', [
     '/**\n * The publish form (title, slug availability check, tags, cover, summary) is opened from a note\n * row\'s blog submenu, so the note list — which imports the blog barrel for the store and the\n * submenu — must not carry it. Same rule as the hub: exported as a lazy component, rendered inside a\n * Suspense by every caller.\n */',
   ]],
+  ['src/client/features/blog/blog-publish-modal/index.test.ts', [
+    '// The dialog loads categories and asks about the slug when it opens; neither is what this test is',
+    '// about, and both would otherwise reach for a server that is not there.',
+    '// A content already in memory keeps `peekContent` out of the picture.',
+    '/**\n * UI-04: every visible label is associated with the control it names — the modal used to draw bare\n * `<label>`s the browser could not connect to anything, and the slug\'s error was a sibling sentence\n * no screen reader would read out with the field.\n */',
+  ]],
+  ['src/client/features/blog/blog-publish-modal/index.tsx', [
+    '// The availability line is the field\'s description rather than a sibling of its label: `Field`',
+    '// wires the hint into `aria-describedby`, so the reason for an unusable slug is announced with',
+    '// the input it belongs to, and `invalid` gives the same answer as `aria-invalid`.',
+    '// A group rather than one field: the section is a set of chips plus the text entry that adds to',
+    '// it, so the legend names the group and the entry carries its own name (a `Field` label could only',
+    '// address one of the two, and the chips sit between the label and the input).',
+  ]],
+  ['src/client/features/blog/blog-publish-modal/use-blog-publish-form.test.ts', [
+    '/**\n * The dialog\'s save guard, read without the note, the store or the network. The locale is not\n * loaded in this harness, so the message ids the function returns are what gets asserted.\n */',
+  ]],
   ['src/client/features/blog/blog-publish-modal/use-blog-publish-form.ts', [
     '/**\n * The dialog loads what it draws when it opens: the note body once, and the category list. It used\n * to re-run on every `content` change, so one session fetched the categories two or three times.\n */',
+    '// A value nobody has answered for yet goes back to "unknown" before the debounce: keeping the',
+    '// previous answer would let the badge — and the save-time block, which reads this same state —',
+    '// describe a slug that is no longer in the field.',
     '// Debounced, cancelled and sequence-checked: only the answer to the slug as it is typed last may',
     '// set the badge, or a slow reply about a previous slug claims the current one is taken.',
+    '/**\n * What to say instead of saving, or null when the save may go ahead. Exported because the save path\n * itself needs the note, the store and the network while this rule is what decides whether that path\n * is worth entering: a slug the checker has already called taken (the answer is reset the moment the\n * field changes, so `false` always belongs to the value being saved) never leaves the dialog, and an\n * unanswered or positive slug does.\n */',
     '/** The note may still be a stub in memory; storage holds the body in that case. */',
     '/** Mirrors what was published into the note\'s front matter, so the note list agrees with the post. */',
   ]],

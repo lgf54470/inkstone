@@ -1,10 +1,9 @@
 import { useId } from 'react'
-import type { ReactNode } from 'react'
 import { Database, Save, Settings, Shield, X } from 'lucide-react'
 import { DEFAULT_BLOG_FRONTEND_URL } from '@shared/constants'
 import { Modal } from '../../components/overlay'
 import { Button, IconButton } from '../../components/primitives'
-import { Input, Switch, Segmented } from '../../components/form'
+import { Field, Input, Switch, Segmented } from '../../components/form'
 import { t } from '../../lib/i18n'
 import { useBlogSettingsModal } from './use-blog-settings-modal'
 
@@ -157,7 +156,7 @@ function FilterSwitchRow({ label, hint, checked, onChange }: { label: string; hi
         <div className='text-[length:var(--text-12)] font-medium text-[var(--text-primary)]'>{label}</div>
         <div className='text-[length:var(--text-11)] text-[var(--text-tertiary)]'>{hint}</div>
       </div>
-      <Switch checked={checked} onChange={onChange} />
+      <Switch checked={checked} onChange={onChange} label={label} />
     </div>
   )
 }
@@ -252,17 +251,6 @@ function SiteSettingsTab({ form }: { form: SettingsFormBundle }) {
   )
 }
 
-function SettingsField({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1 block text-[length:var(--text-11\.5)] font-medium text-[var(--text-secondary)]">
-        {label}
-      </label>
-      {children}
-    </div>
-  )
-}
-
 function SiteBasicSection({ form }: { form: SettingsFormBundle }) {
   return (
     <div className='space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4'>
@@ -271,20 +259,17 @@ function SiteBasicSection({ form }: { form: SettingsFormBundle }) {
       </h3>
 
       <div className='grid grid-cols-2 gap-3'>
-        <SettingsField label={t('blog.site_name')}>
+        <Field label={t('blog.site_name')}>
           <Input value={form.siteName} onChange={(e) => form.setSiteName(e.target.value)} placeholder={t('blog.site_name_placeholder')} />
-        </SettingsField>
-        <SettingsField label={t('blog.subtitle')}>
+        </Field>
+        <Field label={t('blog.subtitle')}>
           <Input value={form.subtitle} onChange={(e) => form.setSubtitle(e.target.value)} placeholder={t('blog.site_subtitle_placeholder')} />
-        </SettingsField>
+        </Field>
       </div>
 
-      <SettingsField label={t('blog.frontend_url')}>
+      <Field label={t('blog.frontend_url')} hint={t('blog.frontend_url_hint')}>
         <Input value={form.frontendUrl} onChange={(e) => form.setFrontendUrl(e.target.value)} placeholder={DEFAULT_BLOG_FRONTEND_URL} />
-        <p className="mt-1 text-[length:var(--text-10\.5)] text-[var(--text-quaternary)]">
-          {t('blog.frontend_url_hint')}
-        </p>
-      </SettingsField>
+      </Field>
     </div>
   )
 }
@@ -297,22 +282,23 @@ function AuthorSection({ form }: { form: SettingsFormBundle }) {
       </h3>
 
       <div className='grid grid-cols-2 gap-3'>
-        <SettingsField label={t('blog.author_name')}>
+        <Field label={t('blog.author_name')}>
           <Input value={form.authorName} onChange={(e) => form.setAuthorName(e.target.value)} placeholder={t('blog.author_name_placeholder')} />
-        </SettingsField>
-        <SettingsField label={t('blog.author_avatar')}>
+        </Field>
+        <Field label={t('blog.author_avatar')}>
           <Input value={form.authorAvatar} onChange={(e) => form.setAuthorAvatar(e.target.value)} placeholder={t('blog.avatar_placeholder')} />
-        </SettingsField>
+        </Field>
       </div>
 
-      <SettingsField label={t('blog.bio')}>
+      <Field label={t('blog.bio')}>
         <Input value={form.bio} onChange={(e) => form.setBio(e.target.value)} placeholder={t('blog.author_bio_placeholder')} />
-      </SettingsField>
+      </Field>
     </div>
   )
 }
 
 function CommentsRulesSection({ form }: { form: SettingsFormBundle }) {
+  const postsPerPageId = useId()
   return (
     <div className='space-y-3 rounded-[var(--r-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4'>
       <h3 className='font-semibold text-[length:var(--text-13)] text-[var(--text-primary)]'>
@@ -324,21 +310,22 @@ function CommentsRulesSection({ form }: { form: SettingsFormBundle }) {
           <span className='block font-medium text-[var(--text-primary)]'>{t('blog.require_approval')}</span>
           <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('blog.require_approval_hint')}</span>
         </div>
-        <Switch checked={form.requireCommentApproval} onChange={form.setRequireCommentApproval} />
+        <Switch checked={form.requireCommentApproval} onChange={form.setRequireCommentApproval} label={t('blog.require_approval')} />
       </div>
 
       <div className='flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]'>
         <div>
-          <span className='block font-medium text-[var(--text-primary)]'>{t('blog.posts_per_page')}</span>
+          <span id={postsPerPageId} className='block font-medium text-[var(--text-primary)]'>{t('blog.posts_per_page')}</span>
           <span className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('blog.posts_per_page_hint')}</span>
         </div>
-        <input
+        <Input
           type='number'
           min={1}
           max={50}
+          aria-labelledby={postsPerPageId}
           value={form.postsPerPage}
           onChange={(e) => form.setPostsPerPage(Number(e.target.value))}
-          className='w-16 rounded-[var(--r-md)] border border-[var(--border-default)] bg-[var(--bg-base)] px-2 py-1 text-center text-[length:var(--text-12)] text-[var(--text-primary)] outline-none'
+          className='w-16 text-center'
         />
       </div>
     </div>

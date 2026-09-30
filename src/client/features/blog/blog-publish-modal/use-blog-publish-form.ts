@@ -56,7 +56,7 @@ export function useBlogPublishForm({
   const handleAddTag = () => addTag(tagInput, tags, setTags, setTagInput)
   const handleRemoveTag = (tag: string) => setTags(tags.filter((t) => t !== tag))
 
-  const handleSave = (publish: boolean) => savePublishedPost(publish, { note, noteId, title, slug, coverUrl, folderId, categoryId, tags, excerpt, allowComments, isPinned, toast, setIsSaving, onSaved, onClose })
+  const handleSave = (publish: boolean) => savePublishedPost(publish, { note, noteId, title, slug, coverUrl, folderId, categoryId, tags, excerpt, allowComments, isPinned, slugAvailable, slugReason, toast, setIsSaving, onSaved, onClose })
 
   const frontendBase = (settings?.frontendUrl || DEFAULT_BLOG_FRONTEND_URL).replace(/\/+$/, '')
   const previewUrl = `${frontendBase}/posts/${slug.trim() || 'preview'}`
@@ -235,6 +235,11 @@ function useSlugValidation(
       return
     }
 
+    // A value nobody has answered for yet goes back to "unknown" before the debounce: keeping the
+    // previous answer would let the badge — and the save-time block, which reads this same state —
+    // describe a slug that is no longer in the field.
+    setSlugAvailable(null)
+
     // Debounced, cancelled and sequence-checked: only the answer to the slug as it is typed last may
     // set the badge, or a slow reply about a previous slug claims the current one is taken.
     const controller = new AbortController()
@@ -268,6 +273,8 @@ interface SavePostCtx {
   excerpt: string
   allowComments: boolean
   isPinned: boolean
+  slugAvailable: boolean | null
+  slugReason: string
   toast: UiState['toast']
   setIsSaving: (v: boolean) => void
   onSaved?: () => void
@@ -279,8 +286,9 @@ async function savePublishedPost(publish: boolean, ctx: SavePostCtx): Promise<vo
   const finalTitle = ctx.title.trim() || ctx.note.title || t('common.untitled_note')
   const finalSlug = ctx.slug.trim().toLowerCase()
 
-  if (!finalSlug) {
-    ctx.toast({ title: t('blog.slug_hint'), tone: 'warning' })
+  const notice = slugSaveNotice(finalSlug, ctx.slugAvailable, ctx.slugReason)
+  if (notice) {
+    ctx.toast({ title: notice, tone: 'warning' })
     return
   }
 
@@ -312,6 +320,19 @@ async function savePublishedPost(publish: boolean, ctx: SavePostCtx): Promise<vo
   } finally {
     ctx.setIsSaving(false)
   }
+}
+
+/**
+ * What to say instead of saving, or null when the save may go ahead. Exported because the save path
+ * itself needs the note, the store and the network while this rule is what decides whether that path
+ * is worth entering: a slug the checker has already called taken (the answer is reset the moment the
+ * field changes, so `false` always belongs to the value being saved) never leaves the dialog, and an
+ * unanswered or positive slug does.
+ */
+export function slugSaveNotice(slug: string, slugAvailable: boolean | null, slugReason: string): string | null {
+  if (!slug.trim()) return t('blog.slug_hint')
+  if (slugAvailable === false) return slugReason || t('blog.slug_hint')
+  return null
 }
 
 /** The note may still be a stub in memory; storage holds the body in that case. */

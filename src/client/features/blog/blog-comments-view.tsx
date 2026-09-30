@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { AlertTriangle, CheckCircle, ExternalLink, Inbox, RefreshCw, Search, ShieldCheck, Trash2, XCircle } from 'lucide-react'
 import type { BlogComment, BlogCommentsCounts, BlogCommentStatus } from '@shared/types'
 import { Badge, Button, IconButton } from '../../components/primitives'
-import { Checkbox, Input } from '../../components/form'
+import { Checkbox, Input, Segmented } from '../../components/form'
 import { resolveAvatarSource } from '../../lib/avatar'
 import { t } from '../../lib/i18n'
 import { fullTime } from '../../lib/time'
@@ -178,39 +178,34 @@ function CommentStatusTabs({
   onSelect: (status: BlogCommentStatus | 'all') => void
 }) {
   return (
-    <div className='flex items-center gap-1'>
-      {STATUS_TABS.map((tab) => {
-        const isActive = active === tab.key
+    <Segmented
+      size='sm'
+      label={t('blog.comment_status_filter_label')}
+      value={active}
+      onChange={onSelect}
+      options={STATUS_TABS.map((tab) => {
         const alert = tab.key === 'pending' && Boolean(counts && counts.pending > 0)
-        return (
-          <button
-            key={tab.key}
-            type='button'
-            onClick={() => onSelect(tab.key)}
-            className={`flex items-center gap-1.5 rounded-[var(--r-md)] px-2.5 py-1 font-medium transition-colors ${
-              isActive
-                ? 'bg-[var(--accent)] text-[var(--accent-contrast)]'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            <span>{tab.label()}</span>
-            {counts && (
-              <span
-                className={`rounded-full px-1.5 py-0.1 text-[length:var(--text-10)] ${
-                  isActive
-                    ? 'bg-[var(--accent-contrast)]/20 text-[var(--accent-contrast)]'
-                    : alert
+        return {
+          value: tab.key,
+          label: (
+            <span className='inline-flex items-center gap-1.5'>
+              {tab.label()}
+              {counts && (
+                <span
+                  className={`rounded-full px-1.5 py-0.1 text-[length:var(--text-10)] ${
+                    alert
                       ? 'bg-[var(--danger)] text-[var(--danger-on)] font-bold'
                       : 'bg-[var(--bg-sunken)] text-[var(--text-tertiary)]'
-                }`}
-              >
-                {counts[tab.key]}
-              </span>
-            )}
-          </button>
-        )
+                  }`}
+                >
+                  {counts[tab.key]}
+                </span>
+              )}
+            </span>
+          ),
+        }
       })}
-    </div>
+    />
   )
 }
 

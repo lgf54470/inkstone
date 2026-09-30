@@ -1,9 +1,8 @@
 import { Globe, Image as ImageIcon, Check, Hash, X, Sparkles, ExternalLink } from 'lucide-react'
-import type { ReactNode } from 'react'
 import type { BlogPostIndexEntry } from '@shared/types'
 import { Modal } from '../../../components/overlay'
 import { Button, IconButton } from '../../../components/primitives'
-import { Input, Select, Switch, Textarea } from '../../../components/form'
+import { Field, Input, Select, Switch, Textarea } from '../../../components/form'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
 import { useBlogPublishForm } from './use-blog-publish-form'
@@ -11,14 +10,6 @@ import { useBlogPublishForm } from './use-blog-publish-form'
 const MODAL_WIDTH = 640
 
 type PublishForm = ReturnType<typeof useBlogPublishForm>
-
-function FieldLabel({ children }: { children: ReactNode }) {
-  return <label className='mb-1 block font-medium text-[var(--text-secondary)]'>{children}</label>
-}
-
-function FieldNote({ children }: { children: ReactNode }) {
-  return <p className='mt-1 text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{children}</p>
-}
 
 function toggleTag(current: string[], name: string, setTags: (tags: string[]) => void) {
   if (current.includes(name)) setTags(current.filter((tag) => tag !== name))
@@ -28,128 +19,107 @@ function toggleTag(current: string[], name: string, setTags: (tags: string[]) =>
 function TitleField({ form }: { form: PublishForm }) {
   const { title, setTitle, note } = form
   return (
-    <div>
-      <FieldLabel>{t('blog.post_title')}</FieldLabel>
+    <Field label={t('blog.post_title')}>
       <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder={note?.title || t('common.untitled_note')}
       />
-    </div>
+    </Field>
   )
 }
 
 function SlugField({ form }: { form: PublishForm }) {
   const { slug, setSlug, slugAvailable, slugReason, previewUrl } = form
+  // The availability line is the field's description rather than a sibling of its label: `Field`
+  // wires the hint into `aria-describedby`, so the reason for an unusable slug is announced with
+  // the input it belongs to, and `invalid` gives the same answer as `aria-invalid`.
+  const hint = (
+    <span className='flex flex-wrap items-center gap-x-2'>
+      {slugAvailable === true && (
+        <span className='inline-flex items-center gap-1 text-[var(--success)]'>
+          <Check size={11} /> {t('blog.slug_available')}
+        </span>
+      )}
+      {slugAvailable === false && slugReason && <span className='text-[var(--danger)]'>{slugReason}</span>}
+      <span className='truncate'>{previewUrl}</span>
+    </span>
+  )
   return (
-    <div>
-      <div className='flex items-center justify-between mb-1'>
-        <label className='font-medium text-[var(--text-secondary)]'>{t('blog.slug')}</label>
-        {slugAvailable === true && (
-          <span className='inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--success)]'>
-            <Check size={11} /> {t('blog.slug_available')}
-          </span>
-        )}
-        {slugAvailable === false && slugReason && (
-          <span className='text-[length:var(--text-11)] text-[var(--danger)]'>{slugReason}</span>
-        )}
-      </div>
-      <div className='relative'>
-        <Input
-          value={slug}
-          onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-          placeholder={t('blog.slug_placeholder')}
-          className='pr-20'
-        />
-      </div>
-      <FieldNote>{previewUrl}</FieldNote>
-    </div>
+    <Field label={t('blog.slug')} hint={hint}>
+      <Input
+        value={slug}
+        onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+        placeholder={t('blog.slug_placeholder')}
+        invalid={slugAvailable === false}
+      />
+    </Field>
   )
 }
 
 function CoverField({ form }: { form: PublishForm }) {
   const { coverUrl, setCoverUrl, firstImageInContent } = form
   return (
-    <div>
-      <div className='flex items-center justify-between mb-1'>
-        <label className='font-medium text-[var(--text-secondary)]'>{t('blog.cover')}</label>
-        {firstImageInContent && (
-          <button
-            type='button'
-            onClick={() => setCoverUrl(firstImageInContent.url)}
-            className='inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--accent)] hover:underline'
-          >
-            <Sparkles size={11} />
-            {t('blog.use_first_image')}
-          </button>
-        )}
-      </div>
-      <div className='flex items-center gap-2'>
+    <div className='space-y-1.5'>
+      <Field label={t('blog.cover')} hint={`${t('blog.cover_hint')} ${t('blog.frontmatter_cover_hint')}`}>
         <Input
           leading={<ImageIcon size={13} className='text-[var(--text-quaternary)]' />}
           value={coverUrl}
           onChange={(e) => setCoverUrl(e.target.value)}
           placeholder={t('blog.cover_placeholder')}
         />
-      </div>
-      <FieldNote>
-        {t('blog.cover_hint')} {t('blog.frontmatter_cover_hint')}
-      </FieldNote>
+      </Field>
+      {firstImageInContent && (
+        <button
+          type='button'
+          onClick={() => setCoverUrl(firstImageInContent.url)}
+          className='inline-flex items-center gap-1 text-[length:var(--text-11)] text-[var(--accent)] hover:underline'
+        >
+          <Sparkles size={11} />
+          {t('blog.use_first_image')}
+        </button>
+      )}
     </div>
-  )
-}
-
-function PublishSelect({
-  value,
-  onValueChange,
-  children,
-}: {
-  value: string | null
-  onValueChange: (value: string | null) => void
-  children: ReactNode
-}) {
-  return (
-    <Select
-      value={value || ''}
-      onChange={(e) => onValueChange(e.target.value || null)}
-      className='w-full'
-    >
-      {children}
-    </Select>
   )
 }
 
 function FolderField({ form }: { form: PublishForm }) {
   const { folderId, setFolderId, flatFolderList } = form
   return (
-    <div>
-      <FieldLabel>{t('blog.folders')}</FieldLabel>
-      <PublishSelect value={folderId} onValueChange={setFolderId}>
+    <Field label={t('blog.folders')}>
+      <Select
+        value={folderId || ''}
+        onChange={(e) => setFolderId(e.target.value || null)}
+        className='w-full'
+      >
         <option value=''>{t('blog.no_folder')}</option>
         {flatFolderList.map((f) => (
           <option key={f.id} value={f.id}>
             {f.depth > 0 ? `${'— '.repeat(f.depth)}${f.name}` : f.name}
           </option>
         ))}
-      </PublishSelect>
-    </div>
+      </Select>
+    </Field>
   )
 }
 
 function CategoryField({ form }: { form: PublishForm }) {
   const { categoryId, setCategoryId, categories } = form
   return (
-    <div>
-      <FieldLabel>{t('blog.category')}</FieldLabel>
-      <PublishSelect value={categoryId} onValueChange={setCategoryId}>
+    <Field label={t('blog.category')}>
+      <Select
+        value={categoryId || ''}
+        onChange={(e) => setCategoryId(e.target.value || null)}
+        className='w-full'
+      >
         <option value=''>{t('blog.no_category')}</option>
         {categories.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name}
           </option>
         ))}
-      </PublishSelect>
-    </div>
+      </Select>
+    </Field>
   )
 }
 
@@ -162,7 +132,7 @@ function PinRow({ form }: { form: PublishForm }) {
           {t('blog.pin_to_top_hint')}
         </span>
       </div>
-      <Switch checked={form.isPinned} onChange={form.setIsPinned} />
+      <Switch checked={form.isPinned} onChange={form.setIsPinned} label={t('blog.pin_to_top')} />
     </div>
   )
 }
@@ -176,7 +146,7 @@ function CommentsRow({ form }: { form: PublishForm }) {
           {t('blog.allow_comments_hint')}
         </span>
       </div>
-      <Switch checked={form.allowComments} onChange={form.setAllowComments} />
+      <Switch checked={form.allowComments} onChange={form.setAllowComments} label={t('blog.allow_comments')} />
     </div>
   )
 }
@@ -244,6 +214,7 @@ function TagComposer({ form }: { form: PublishForm }) {
           }
         }}
         placeholder={t('blog.tags_placeholder')}
+        aria-label={t('blog.tags')}
       />
       <Button size='sm' onClick={handleAddTag}>
         {t('blog.add_tag')}
@@ -253,21 +224,23 @@ function TagComposer({ form }: { form: PublishForm }) {
 }
 
 function TagsSection({ form }: { form: PublishForm }) {
+  // A group rather than one field: the section is a set of chips plus the text entry that adds to
+  // it, so the legend names the group and the entry carries its own name (a `Field` label could only
+  // address one of the two, and the chips sit between the label and the input).
   return (
-    <div>
-      <FieldLabel>{t('blog.tags')}</FieldLabel>
+    <fieldset>
+      <legend className='mb-1 block font-medium text-[var(--text-secondary)]'>{t('blog.tags')}</legend>
       <AvailableTagPicker form={form} />
       <SelectedTagList form={form} />
       <TagComposer form={form} />
-    </div>
+    </fieldset>
   )
 }
 
 function ExcerptField({ form }: { form: PublishForm }) {
   const { excerpt, setExcerpt } = form
   return (
-    <div>
-      <FieldLabel>{t('blog.excerpt')}</FieldLabel>
+    <Field label={t('blog.excerpt')}>
       <Textarea
         value={excerpt}
         onChange={(e) => setExcerpt(e.target.value)}
@@ -275,7 +248,7 @@ function ExcerptField({ form }: { form: PublishForm }) {
         placeholder={t('blog.excerpt_placeholder')}
         className='resize-none'
       />
-    </div>
+    </Field>
   )
 }
 

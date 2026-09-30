@@ -374,15 +374,17 @@
 - **未做**：给 `check-i18n.mjs` 加「JSX 文本节点里的裸英文」词表仍属独立改动（见下方「建议」），未夹带。
 - **建议**：可选增强——给 `check-i18n.mjs` 加一条「JSX 文本节点中的裸英文短语」词表，把这类回归变成门禁。属独立改动，勿夹带。
 
-#### UI-04 [P1][开放] 表单可访问性缺口
+#### UI-04 [P1][已修] 表单可访问性缺口
 - **问题**：`blog-publish-modal/index.tsx:15-19` 自造 `FieldLabel`（`<label>` 无 `htmlFor`，全模块 7 处），slug 的错误提示未通过 `aria-describedby` 关联（`:56-70`）；`use-blog-publish-form.ts:272-276` 保存时不检查 `slugAvailable === false`（校验为「不可用」仍可提交，失败在服务端）；`blog-settings-modal.tsx:330-338` 是裸 `<input type="number">`（绕开组件体系）；`Switch` 在 `:160,339` 等 4 处无 label 关联。
 - **方案**：迁移到 `components/form` 的 `Field`（`:370-400` 已自动 wire `htmlFor`/`aria-describedby`/错误态）；`Switch` 补 `label`/`aria-labelledby`；`number` 输入改用组件；保存前阻断不可用 slug 并给出原因。
 - **范围**：`blog-publish-modal/*`、`blog-settings-modal.tsx`、`blog-categories-modal.tsx`。代价 **M**。
+- **落地（B4-03）**：发布弹窗——自造 `FieldLabel`/`FieldNote`/`PublishSelect` 删除，标题/slug/封面/文件夹/分类/摘要迁 `Field`（自动 wire `htmlFor`/`aria-labelledby`/`aria-describedby`；`Input` 的 `invalid` 同时给 `aria-invalid` 与红边）；slug 的「可用/不可用 + 预览地址」整行进 `Field` 的 `hint`，错误因此与输入框关联而不是并排一句；封面「使用首图」从标签行移到字段下方（保留文字按钮）；标签区是芯片 + 输入三类控件，改用 `fieldset`/`legend` 并给输入框自己的可访问名（用 `Field` 只能名中三者之一，且芯片横在标签与输入之间）；置顶/允许评论两个 `Switch` 补 `label`。设置弹窗——`SettingsField` 删除改 `Field`（前端地址提示改走 `hint`）；裸 `<input type="number">` 改 `Input type='number'` 并用 `useId` + `aria-labelledby` 指向可见标题；4 个 `Switch` 补 `label`。slug 阻断——新增导出 `slugSaveNotice(slug, slugAvailable, slugReason)`，`savePublishedPost` 先问它再发请求；`useSlugValidation` 在 slug 变化时把上次答案重置为 `null`，故 `false` 永远属于当前值，不会拿旧答案卡新值。回归 6 条（slug 守卫 4；发布弹窗标签 wired 1；工具栏 radiogroup 1）；变异：去掉 slug 守卫 → 2 failed，`Field` 去掉 `htmlFor` → 1 failed。**未做**：`blog-categories-modal.tsx` 本批未动（其表单在 B4-04 的 Modal 可访问名一行里一并核）。
 
-#### UI-05 [P1][开放] 五套手搓分段控件，零 `aria-pressed` / `role`
+#### UI-05 [P1][已修] 五套手搓分段控件，零 `aria-pressed` / `role`
 - **问题**：`blog-hub-toolbar.tsx:24-36`（状态 tab）与 `:112-125`（视图切换）、`blog-comments-view.tsx:146-166`、`blog-links-view/index.tsx:404-428`、`link-checker-modal.tsx:148-165` 都是 `<button>` + 类名模拟选中态，没有 `aria-pressed`/`role="tab"`/`aria-selected`；`components/form` 的 `Segmented`（`:155-231`）已经带 radio 语义与方向键。
 - **方案**：全部收敛到 `Segmented`（视图切换用 `Segmented` 的紧凑变体）；确实需要「多选筛选」的地方补 `aria-pressed`。
 - **范围**：5 个文件 + 可能给 `form.tsx` 加一个紧凑尺寸。代价 **M**。
+- **落地（B4-03）**：五处全部改用共享 `Segmented`（radio 语义 + 方向键 + 组名）：hub 工具栏状态筛选与视图切换（图标选项用 `option.title` 作可访问名与 tooltip）、评论状态筛选（计数徽标进 label）、友链状态筛选（6 项）、检测结果筛选（5 项，分档文字色保留）。`form.tsx` 未改（`size='sm'` 已够紧凑）；新增 5 个组名 key。视觉变化（已跑视觉门禁 682 通过）：选中态由强调色实底改为 `Segmented` 的中性表面底；变异（去掉工具栏状态组的组名）实测 1 failed；pending/待审徽标不再随选中态变色（原条件样式依赖 active，`Segmented` 不向 label 传该状态）。
 
 #### UI-06 [P1][开放] 仅双击可开编辑；表头语义错位；store 有 `sort` 却无排序 UI
 - **问题**：`blog-table-view/row.tsx:47` 与 `blog-grid-view/card.tsx:38` 只在 `onDoubleClick` 上打开编辑（键盘与触摸不可达，`<tr>`/`<div>` 无 `tabIndex`/`role`）；表头 `blog.col_created_at`（`table-view/index.tsx:93`）实际渲染 `publishedAt`（`row.tsx:69`）；`setSort`（`filters.ts:12`）全仓无调用点，用户无法排序；`<table>` 缺 `caption`、`<th>` 缺 `scope`。
