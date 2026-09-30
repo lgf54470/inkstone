@@ -324,10 +324,11 @@
 - **范围**：`db/schema/indexes.ts` + 一条迁移 + `checks.ts`。代价 **S**（索引）/ **M**（评论）。
 - **落地（B3-07）**：新增 `idx_blog_posts_user_pinned (user_id, is_pinned DESC, published_at DESC)`、`idx_blog_posts_user_views (user_id, views DESC)`、`idx_blog_links_user_order (user_id, is_pinned DESC, pinned_order ASC, sort_order ASC, created_at DESC)`。两条 posts 索引放在新常量 `BLOG_POSTS_ORDER_INDEX_STATEMENTS`（不进 `BLOG_POSTS_INDEX_STATEMENTS`，避免改变已应用的迁移 52 的语句集），连 links 那条一起由 `BLOG_ORDER_INDEX_STATEMENTS` 同时供给 schema 路径与追加的迁移 **53**；`REQUIRED_INDEXES` 加名，由 `tests/schema-migrations.test.ts` 的收敛用例守住「fresh 库」与「已有库补迁移」两条路径。评论索引的 `user_id` 前缀仍未做（`blog_comments` 无该列，表结构级改动），建议单开一项评估。
 
-#### ENG-15 [P1][开放] link checker：批次未用满、停止不中断在飞请求、缓存无 TTL、updater 不纯
+#### ENG-15 [P1][已修] link checker：批次未用满、停止不中断在飞请求、缓存无 TTL、updater 不纯
 - **问题**：`use-link-checker.ts:13` `BATCH_SIZE = 8`，而服务端 `blogLinkCheckSchema` 允许 15（`schemas.ts:182`）→ 100 条要 13 批而非 7 批；`stopRequested`（`RunCheckerLoop:120`）只在批间检查，不传给 `fetch`，进行中的一批无法取消；缓存只写 `timestamp` 从不校验（见 COR-08）；`saveCachedResults` 在 `setResults` 的 updater 内调用（`:136,147`）——updater 必须纯，StrictMode 下双写；进度条无 `role="progressbar"`（`grep` 确认 `link-checker-modal.tsx` 无该 role）。
 - **方案**：批次改 15；接入 `AbortController`（停止即 abort 在飞的 fetch）；缓存加 24h TTL；把写缓存移出 updater（在 `set` 之后或 `useEffect` 里）；进度条补 `role="progressbar"` + `aria-valuenow/min/max`。
 - **范围**：`use-link-checker.ts`、`link-checker-modal.tsx`。代价 **S～M**。
+- **落地（B3-09）**：批次改 15（服务端 `blogLinkCheckSchema` 的上限，35 条从 5 次调用降到 3 次）；一次运行持一个 `AbortController`，停止即 abort 在飞请求，循环的 catch 先判 `signal.aborted || stopRequested.current` 再决定是否写 `error`——被停止的批次保留 `checking` 标记，不产生没人测过的结论；`api.blog.links.check` 增可选 `AbortSignal`。缓存写入移出 `setResults` 的 updater：新增 `applyResults`（先算 next、同步写进 ref、再 `setResults` + `saveCachedResults`），updater 回到纯函数，StrictMode 不再双写，同时让顺序批次能看到上一批刚写的值（这是缓存写入搬出去后的必要条件）。进度条补 `role='progressbar'` + `aria-valuemin/max/now` 与可访问名（新 key `blog.link_check_progress`，双语）。TTL 已在 B2-05 落地（`CACHE_TTL_MS` + `isCacheStale` + 陈旧提示，按计划刻意不丢弃旧结果）。复现测试 `link-checker-run.test.ts` 3 条：批次 15/15/5、停止即 abort 且该批不写 verdict、未停止的失败批次仍记 `error`；两处变异（`BATCH_SIZE` 回 8、去掉 abort 分支）各实测 1 failed。
 
 #### ENG-16 [P2][已修] 发布弹窗每次会话多拉 2～3 次分类
 - **问题**：`use-blog-publish-form.ts:48-51`——`peekContent` 在 `if (open && noteId && !content)` 内（正确），而 `void loadCategories()` 在其**之后无条件**执行，且 deps 含 `content` → 挂载时（`open=false`）一次、`open→true` 再一次、`content` 变非空又一次。

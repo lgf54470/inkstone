@@ -162,6 +162,7 @@ export const messages = {
 'blog.link_check_status_checking': '正在检测...',
 'blog.link_check_status_idle': '准备就绪',
 'blog.link_check_status_done': '检测完成',
+'blog.link_check_progress': '友链检测进度',
 'blog.link_check_filter_all': '全部结果',
 'blog.link_check_filter_broken': '仅失效',
 'blog.link_check_filter_warning': '仅告警',

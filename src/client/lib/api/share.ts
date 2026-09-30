@@ -310,7 +310,7 @@ export const share = {
         request<{ ok: true; isFavorite: boolean }>(`/api/blog/links/${id}/favorite`, { method: 'PATCH', body: { isFavorite } }),
       reorder: (orders: Array<{ id: string; sortOrder?: number; pinnedOrder?: number }>) =>
         request<{ ok: true; count: number }>('/api/blog/links/reorder', { method: 'POST', body: { orders } }),
-      check: (urls: string[]) =>
+      check: (urls: string[], signal?: AbortSignal) =>
         request<{
           results: Array<{
             url: string
@@ -321,7 +321,7 @@ export const share = {
             error?: string
             finalUrl?: string
           }>
-        }>('/api/blog/links/check', { method: 'POST', body: { urls } }),
+        }>('/api/blog/links/check', { method: 'POST', body: { urls }, signal }),
       batch: (
         action: 'approve' | 'reject' | 'delete' | 'setCategory' | 'pin' | 'unpin' | 'favorite' | 'unfavorite',
         linkIds: string[],

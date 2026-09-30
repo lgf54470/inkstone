@@ -162,6 +162,7 @@ export const messages = {
 'blog.link_check_status_checking': 'Checking...',
 'blog.link_check_status_idle': 'Ready',
 'blog.link_check_status_done': 'Finished',
+'blog.link_check_progress': 'Link check progress',
 'blog.link_check_filter_all': 'All Results',
 'blog.link_check_filter_broken': 'Broken Only',
 'blog.link_check_filter_warning': 'Warning Only',

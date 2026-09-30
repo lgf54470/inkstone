@@ -110,8 +110,6 @@ function CheckerStatsHeader({
   onStart: () => void
   onPause: () => void
 }) {
-  const percent = total > 0 ? Math.min(100, Math.round((progressIndex / total) * 100)) : 0
-
   return (
     <div className='space-y-2.5 rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-sunken)] p-3'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
@@ -145,11 +143,23 @@ function CheckerStatsHeader({
         <p className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>{t('blog.link_check_cache_stale')}</p>
       )}
 
-      {running && (
-        <div className='h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-surface)]'>
-          <div className='h-full bg-[var(--accent)] transition-all duration-300' style={{ width: `${percent}%` }} />
-        </div>
-      )}
+      {running && <CheckerProgressBar progressIndex={progressIndex} total={total} />}
+    </div>
+  )
+}
+
+function CheckerProgressBar({ progressIndex, total }: { progressIndex: number; total: number }) {
+  const percent = total > 0 ? Math.min(100, Math.round((progressIndex / total) * 100)) : 0
+  return (
+    <div
+      role='progressbar'
+      aria-label={t('blog.link_check_progress')}
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-valuenow={Math.min(progressIndex, total)}
+      className='h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-surface)]'
+    >
+      <div className='h-full bg-[var(--accent)] transition-all duration-300' style={{ width: `${percent}%` }} />
     </div>
   )
 }

@@ -13,7 +13,11 @@ export interface HealthResult {
   finalUrl?: string
 }
 
-const BATCH_SIZE = 8
+/**
+ * The server accepts up to 15 addresses per call (`blogLinkCheckSchema`), so a batch of 8 was
+ * asking twice as often as it had to.
+ */
+export const BATCH_SIZE = 15
 const CACHE_KEY = 'inkstone_blog_link_check_cache'
 
 /**
@@ -82,51 +86,94 @@ interface CheckerActionProps {
 }
 
 function useCheckerActions(props: CheckerActionProps) {
-  const handleStart = async () => {
-    props.stopRequested.current = false
-    props.setRunning(true)
-    await runCheckerLoop(props.links, props.results, props.setResults, props.setProgressIndex, props.stopRequested)
+  const inflight = useRef<AbortController | null>(null)
+  // The newest results, readable synchronously by the loop. `setResults` cannot serve as that
+  // source: a batch has to see what the previous batch wrote before React re-renders, and the cache
+  // write that used to live inside the updater made the updater impure (StrictMode writes it twice).
+  const latest = useRef(props.results)
+  useEffect(() => {
+    latest.current = props.results
+  }, [props.results])
+
+  const applyResults: ApplyResults = (update) => {
+    const next = update(latest.current)
+    latest.current = next
+    props.setResults(next)
+    saveCachedResults(next)
+  }
+
+  return {
+    handleStart: () => startRun(props, inflight, applyResults),
+    handlePause: () => pauseRun(props, inflight),
+    handleCheckSingle: (url: string) => checkSingleLink(url, applyResults),
+    handleBatchDelete: () => deleteSelectedLinks(props),
+  }
+}
+
+/** One run at a time; the controller it creates is what `pauseRun` aborts. */
+async function startRun(
+  props: CheckerActionProps,
+  inflight: React.RefObject<AbortController | null>,
+  applyResults: ApplyResults,
+): Promise<void> {
+  props.stopRequested.current = false
+  props.setRunning(true)
+  const controller = new AbortController()
+  inflight.current = controller
+  try {
+    await runCheckerLoop({
+      links: props.links,
+      applyResults,
+      setProgressIndex: props.setProgressIndex,
+      stopRequested: props.stopRequested,
+      signal: controller.signal,
+    })
+  } finally {
+    inflight.current = null
     props.setRunning(false)
   }
+}
 
-  const handlePause = () => {
-    props.stopRequested.current = true
-    props.setRunning(false)
+function pauseRun(props: CheckerActionProps, inflight: React.RefObject<AbortController | null>): void {
+  props.stopRequested.current = true
+  // Stopping has to reach the batch in flight: waiting for it was waiting for the sites the reader
+  // had just said they were done asking about.
+  inflight.current?.abort()
+  props.setRunning(false)
+}
+
+type ApplyResults = (update: (prev: Record<string, HealthResult>) => Record<string, HealthResult>) => void
+
+/**
+ * One address, asked on its own. Same rule as the run loop: a request that never reached the site is
+ * an error, not a verdict, and only a verdict may be bulk-deleted.
+ */
+async function checkSingleLink(url: string, applyResults: ApplyResults): Promise<void> {
+  applyResults((prev) => ({ ...prev, [url]: { status: null, ok: false, level: 'checking', durationMs: 0 } }))
+  try {
+    const res = await api.blog.links.check([url])
+    const r = res.results[0]
+    if (!r) return
+    applyResults((prev) => ({
+      ...prev,
+      [url]: { status: r.status, ok: r.ok, level: r.level, durationMs: r.durationMs, error: r.error, finalUrl: r.finalUrl },
+    }))
+  } catch (err: unknown) {
+    applyResults((prev) => ({ ...prev, [url]: { status: null, ok: false, level: 'error', durationMs: 0, error: (err as Error).message } }))
   }
+}
 
-  const handleCheckSingle = async (url: string) => {
-    props.setResults((prev) => ({ ...prev, [url]: { status: null, ok: false, level: 'checking', durationMs: 0 } }))
-    try {
-      const res = await api.blog.links.check([url])
-      const r = res.results[0]
-      if (r) {
-        props.setResults((prev) => {
-          const next = { ...prev, [url]: { status: r.status, ok: r.ok, level: r.level, durationMs: r.durationMs, error: r.error, finalUrl: r.finalUrl } }
-          saveCachedResults(next)
-          return next
-        })
-      }
-    } catch (err: unknown) {
-      // A request that never reached the site says nothing about the site: 'error' is not a verdict,
-      // and only a verdict may be deleted.
-      props.setResults((prev) => ({ ...prev, [url]: { status: null, ok: false, level: 'error', durationMs: 0, error: (err as Error).message } }))
-    }
+async function deleteSelectedLinks(props: CheckerActionProps): Promise<void> {
+  if (props.selectedIds.size === 0) return
+  props.setBatchDeleting(true)
+  try {
+    // Keep the selection when nothing was deleted: a failed run should not lose the rows the reader
+    // picked while the toast is still on screen.
+    const deleted = await props.onBatchDeleteLinks(Array.from(props.selectedIds))
+    if (deleted) props.setSelectedIds(new Set())
+  } finally {
+    props.setBatchDeleting(false)
   }
-
-  const handleBatchDelete = async () => {
-    if (props.selectedIds.size === 0) return
-    props.setBatchDeleting(true)
-    try {
-      // Keep the selection when nothing was deleted: a failed run should not lose the rows the
-      // reader picked while the toast is still on screen.
-      const deleted = await props.onBatchDeleteLinks(Array.from(props.selectedIds))
-      if (deleted) props.setSelectedIds(new Set())
-    } finally {
-      props.setBatchDeleting(false)
-    }
-  }
-
-  return { handleStart, handlePause, handleCheckSingle, handleBatchDelete }
 }
 
 export function computeStats(links: BlogLink[], results: Record<string, HealthResult>) {
@@ -140,51 +187,80 @@ export function computeStats(links: BlogLink[], results: Record<string, HealthRe
   return counts
 }
 
-async function runCheckerLoop(
-  links: BlogLink[],
-  _initialResults: Record<string, HealthResult>,
-  setResults: React.Dispatch<React.SetStateAction<Record<string, HealthResult>>>,
-  setProgressIndex: (n: number) => void,
-  stopRef: React.RefObject<boolean>,
-) {
+interface CheckerRunOptions {
+  links: BlogLink[]
+  applyResults: ApplyResults
+  setProgressIndex: (n: number) => void
+  stopRequested: React.RefObject<boolean>
+  signal: AbortSignal
+}
+
+/**
+ * Walks the list in batches. A run the reader stops ends at the batch in flight: the request is
+ * aborted and its rows keep the "checking" marker rather than receiving a verdict nobody measured.
+ */
+export async function runCheckerLoop({ links, applyResults, setProgressIndex, stopRequested, signal }: CheckerRunOptions): Promise<void> {
   for (let i = 0; i < links.length; i += BATCH_SIZE) {
-    if (stopRef.current) break
-    const chunk = links.slice(i, i + BATCH_SIZE)
-    const urls = chunk.map((c) => c.url)
-
-    setResults((prev) => {
-      const next = { ...prev }
-      for (const u of urls) next[u] = { status: null, ok: false, level: 'checking', durationMs: 0 }
-      return next
-    })
-
-    try {
-      const res = await api.blog.links.check(urls)
-      const resMap = new Map(res.results.map((r) => [r.url, r]))
-      setResults((prev) => {
-        const next = { ...prev }
-        for (const u of urls) {
-          const r = resMap.get(u)
-          if (r) {
-            next[u] = { status: r.status, ok: r.ok, level: r.level, durationMs: r.durationMs, error: r.error, finalUrl: r.finalUrl }
-          }
-        }
-        saveCachedResults(next)
-        return next
-      })
-    } catch (err: unknown) {
-      // One flaky request must not mark a whole batch broken: a failure to ask is recorded as an
-      // error, which the filter, the counts and the bulk delete all keep apart from a verdict.
-      setResults((prev) => {
-        const next = { ...prev }
-        for (const u of urls) {
-          next[u] = { status: null, ok: false, level: 'error', durationMs: 0, error: (err as Error).message }
-        }
-        return next
-      })
-    }
+    if (stopRequested.current) break
+    const urls = links.slice(i, i + BATCH_SIZE).map((c) => c.url)
+    markBatchChecking(applyResults, urls)
+    if (await requestBatch({ urls, applyResults, stopRequested, signal })) break
     setProgressIndex(Math.min(links.length, i + BATCH_SIZE))
   }
+}
+
+interface CheckerBatchOptions {
+  urls: string[]
+  applyResults: ApplyResults
+  stopRequested: React.RefObject<boolean>
+  signal: AbortSignal
+}
+
+/** Returns true when the reader stopped the run while this batch was in flight. */
+async function requestBatch({ urls, applyResults, stopRequested, signal }: CheckerBatchOptions): Promise<boolean> {
+  try {
+    const res = await api.blog.links.check(urls, signal)
+    const resMap = new Map(res.results.map((r) => [r.url, r]))
+    applyResults((prev) => recordVerdicts(prev, urls, resMap))
+  } catch (err: unknown) {
+    // One flaky request must not mark a whole batch broken: a failure to ask is recorded as an
+    // error, which the filter, the counts and the bulk delete all keep apart from a verdict. An
+    // aborted batch is not even that — it was never asked. The run stops there.
+    if (signal.aborted || stopRequested.current) return true
+    applyResults((prev) => recordBatchFailure(prev, urls, err))
+  }
+  return false
+}
+
+function markBatchChecking(applyResults: ApplyResults, urls: string[]): void {
+  applyResults((prev) => {
+    const next = { ...prev }
+    for (const u of urls) next[u] = { status: null, ok: false, level: 'checking', durationMs: 0 }
+    return next
+  })
+}
+
+function recordVerdicts(
+  prev: Record<string, HealthResult>,
+  urls: string[],
+  resMap: Map<string, { url: string; status: number | null; ok: boolean; level: HealthResult['level']; durationMs: number; error?: string; finalUrl?: string }>,
+): Record<string, HealthResult> {
+  const next = { ...prev }
+  for (const u of urls) {
+    const r = resMap.get(u)
+    if (r) {
+      next[u] = { status: r.status, ok: r.ok, level: r.level, durationMs: r.durationMs, error: r.error, finalUrl: r.finalUrl }
+    }
+  }
+  return next
+}
+
+function recordBatchFailure(prev: Record<string, HealthResult>, urls: string[], err: unknown): Record<string, HealthResult> {
+  const next = { ...prev }
+  for (const u of urls) {
+    next[u] = { status: null, ok: false, level: 'error', durationMs: 0, error: (err as Error).message }
+  }
+  return next
 }
 
 function loadCachedResults(
