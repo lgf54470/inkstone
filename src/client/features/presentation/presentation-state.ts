@@ -43,6 +43,16 @@ export function swipeDirection(deltaX: number, threshold = 50): 'prev' | 'next' 
   return null
 }
 
+export function formatMicroPage(index: number, count: number, subPage = 0, pageCount = 1): string {
+  if (count <= 0) return ''
+  const current = String(index + 1).padStart(2, '0')
+  const total = String(count).padStart(2, '0')
+  if (pageCount > 1) {
+    return `${current} / ${total} (${subPage + 1}/${pageCount})`
+  }
+  return `${current} / ${total}`
+}
+
 /** One navigable page: a `---` slide plus the overflow page inside it. */
 export interface RailEntry {
   slide: number

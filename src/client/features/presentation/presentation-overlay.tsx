@@ -12,7 +12,7 @@ import { useSession } from '../../store/session'
 import { escapeAction, presentedNoteContent, railOpenFor } from './presentation-state'
 import { useIsDarkTheme } from './presentation-theme'
 import { PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
-import { PresentationStage } from './presentation-stage'
+import { PresentationStage, stageProps } from './presentation-stage'
 import { hashContent, slideCacheKey } from './slide-html'
 import { samePlan, type SlidePlan } from './slide-pagination'
 import { SlidePreflight, type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
@@ -85,18 +85,9 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
             onSelectPage={session.jumpToPage}
           />
         )}
-        <PresentationStage
-          stageRef={stageRef}
-          metrics={session.metrics}
-          cacheKey={session.cacheKeys[session.index] ?? ''}
-          source={session.deck[session.index] ?? ''}
-          subPage={session.sub}
-          onPlan={session.handlePlan}
-          onPrev={session.goPrev}
-          onNext={session.goNext}
-        />
+        <PresentationStage {...stageProps(stageRef, session)} />
         <PresentationControls {...controlProps(session, onClose)} />
-        <SlideProgress index={session.index} count={session.deck.length} chromeHidden={session.chromeHidden} />
+        <SlideProgress index={session.index} count={session.deck.length} />
       </div>
       <PresentationSheets session={session} />
     </>

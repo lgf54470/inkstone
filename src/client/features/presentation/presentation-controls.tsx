@@ -111,13 +111,10 @@ function SlideStepper({ slideIndex, slideCount, subPage, pageCount, onPrev, onNe
   )
 }
 
-export function SlideProgress({ index, count, chromeHidden }: { index: number; count: number; chromeHidden: boolean }) {
+export function SlideProgress({ index, count, chromeHidden: _chromeHidden }: { index: number; count: number; chromeHidden?: boolean }) {
   return (
     <div
-      className={cn(
-        'pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-[var(--border-subtle)] transition-opacity duration-[var(--dur-base)] ease-[var(--ease-out)]',
-        chromeHidden && 'opacity-0',
-      )}
+      className='pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-[var(--border-subtle)]'
       aria-hidden='true'
     >
       <div className='h-full bg-[var(--accent)] transition-[width] duration-[var(--dur-base)] ease-[var(--ease-out)]' style={{ width: `${Math.round(((index + 1) / count) * 100)}%` }} />

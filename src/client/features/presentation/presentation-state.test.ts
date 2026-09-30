@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entryIndexOf, escapeAction, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
+import { entryIndexOf, escapeAction, formatMicroPage, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
 import type { SlidePlan } from './slide-pagination'
 
 const planOf = (pages: number): SlidePlan => ({
@@ -178,5 +178,20 @@ describe('swipeDirection', () => {
   it('ignores minor movement below threshold', () => {
     expect(swipeDirection(-20, 50)).toBeNull()
     expect(swipeDirection(20, 50)).toBeNull()
+  })
+})
+
+describe('formatMicroPage', () => {
+  it('formats normal slide numbers with leading zeros', () => {
+    expect(formatMicroPage(3, 28)).toBe('04 / 28')
+    expect(formatMicroPage(0, 5)).toBe('01 / 05')
+  })
+
+  it('includes sub-page indicator when slide has multiple pages', () => {
+    expect(formatMicroPage(3, 28, 1, 3)).toBe('04 / 28 (2/3)')
+  })
+
+  it('handles empty count gracefully', () => {
+    expect(formatMicroPage(0, 0)).toBe('')
   })
 })

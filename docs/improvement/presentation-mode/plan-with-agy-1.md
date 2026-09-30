@@ -65,9 +65,10 @@
   - 涉及文件：`src/client/features/presentation/presentation-state.ts` (`stageClickDirection`, `swipeDirection`)、`src/client/features/presentation/presentation-state.test.ts`、`src/client/features/presentation/presentation-overlay.tsx` (`PresentationStage`)
   - 目标：支持屏幕左 35% 后退、右 65% 前进与触摸轻扫。
   - 验证：单元测试覆盖点击坐标分区及滑动阈值判断，控件元素点击不穿透。
-- [ ] **B2-02** `P-05 (UX-01/02)`: 底部细线进度条常驻（解耦 `chromeHidden`）与舞台微型角落页码指示
-  - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`SlideProgress`)、`src/client/features/presentation/presentation-overlay.tsx`
+- [x] **B2-02** `P-05 (UX-01/02)`: 底部细线进度条常驻（解耦 `chromeHidden`）与舞台微型角落页码指示 — 已完成
+  - 涉及文件：`src/client/features/presentation/presentation-controls.tsx` (`SlideProgress`)、`src/client/features/presentation/presentation-stage.tsx` (`PresentationStage`)、`src/client/features/presentation/presentation-state.ts` (`formatMicroPage`)、`src/client/features/presentation/presentation-state.test.ts`
   - 目标：屏幕底部进度条环境常驻，舞台角落显示无侵入式微型页码。
+  - 验证：单元测试覆盖 formatMicroPage 单双页及子页格式化，底部进度条常驻渲染。
 - [ ] **B2-03** `P-09 (SEC-02)`: 幻灯片超链接安全拦截代理（外链新标签页打开，双链防跳顶）
   - 涉及文件：`src/client/features/presentation/slide-canvas.tsx`
   - 目标：拦截幻灯片内 `<a>` 标签，保护演讲主舞台不跳出。

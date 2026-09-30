@@ -1,6 +1,6 @@
 import { useCallback, useRef, type RefObject } from 'react'
 import { SlideViewport } from './slide-canvas'
-import { stageClickDirection, swipeDirection } from './presentation-state'
+import { formatMicroPage, stageClickDirection, swipeDirection } from './presentation-state'
 import type { StageMetrics } from './slide-stage'
 import type { SlidePlan } from './slide-pagination'
 
@@ -10,21 +10,51 @@ export interface PresentationStageProps {
   cacheKey: string
   source: string
   subPage: number
+  pageCount?: number
+  index: number
+  count: number
   onPlan: (plan: SlidePlan) => void
   onPrev: () => void
   onNext: () => void
 }
 
-export function PresentationStage({
+export interface StageSessionSource {
+  metrics: StageMetrics
+  cacheKeys: Record<number, string>
+  deck: string[]
+  index: number
+  sub: number
+  pageCount: number
+  handlePlan: (plan: SlidePlan) => void
+  goPrev: () => void
+  goNext: () => void
+}
+
+export function stageProps(stageRef: RefObject<HTMLDivElement | null>, session: StageSessionSource): PresentationStageProps {
+  return {
+    stageRef,
+    metrics: session.metrics,
+    cacheKey: session.cacheKeys[session.index] ?? '',
+    source: session.deck[session.index] ?? '',
+    subPage: session.sub,
+    pageCount: session.pageCount,
+    index: session.index,
+    count: session.deck.length,
+    onPlan: session.handlePlan,
+    onPrev: session.goPrev,
+    onNext: session.goNext,
+  }
+}
+
+function useStageGestures({
   stageRef,
-  metrics,
-  cacheKey,
-  source,
-  subPage,
-  onPlan,
   onPrev,
   onNext,
-}: PresentationStageProps) {
+}: {
+  stageRef: RefObject<HTMLDivElement | null>
+  onPrev: () => void
+  onNext: () => void
+}) {
   const touchStartX = useRef<number | null>(null)
 
   const handleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -53,6 +83,13 @@ export function PresentationStage({
     else if (dir === 'next') onNext()
   }, [onPrev, onNext])
 
+  return { handleClick, handleTouchStart, handleTouchEnd }
+}
+
+export function PresentationStage(props: PresentationStageProps) {
+  const { stageRef, metrics, cacheKey, source, subPage, pageCount = 1, index, count, onPlan, onPrev, onNext } = props
+  const { handleClick, handleTouchStart, handleTouchEnd } = useStageGestures({ stageRef, onPrev, onNext })
+
   return (
     <div
       ref={stageRef}
@@ -61,13 +98,15 @@ export function PresentationStage({
       onTouchEnd={handleTouchEnd}
       className='relative flex min-h-0 min-w-0 flex-1 select-none items-center justify-center overflow-hidden'
     >
-      <SlideViewport
-        metrics={metrics}
-        cacheKey={cacheKey}
-        source={source}
-        subPage={subPage}
-        onPlan={onPlan}
-      />
+      <SlideViewport metrics={metrics} cacheKey={cacheKey} source={source} subPage={subPage} onPlan={onPlan} />
+      {count > 0 && (
+        <div
+          className='pointer-events-none absolute bottom-4 right-4 z-10 select-none rounded-[var(--r-full)] bg-[var(--bg-overlay)] px-[var(--sp-2)] py-0.5 text-[length:var(--text-11)] font-mono text-[var(--text-tertiary)] opacity-35 shadow-xs'
+          aria-hidden='true'
+        >
+          {formatMicroPage(index, count, subPage, pageCount)}
+        </div>
+      )}
     </div>
   )
 }
