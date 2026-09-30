@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ProseFont } from '@shared/types'
 import { settleWithin } from '../../lib/async'
@@ -90,9 +90,10 @@ export function DeckPrintSheet({ pages, metrics, font, dark, onDone }: DeckSheet
 // archived, because a download per page is a burst a browser may block.
 export function DeckImageSheet({ pages, metrics, font, dark, title, onDone }: DeckSheetProps & { title: string; onDone: () => void }) {
   const sheetRef = useRef<HTMLDivElement>(null)
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
   useDeckSheetReady(sheetRef, dark, metrics, async (root) => {
     try {
-      const count = await saveDeckPages(root, metrics, title)
+      const count = await saveDeckPages(root, metrics, title, (current, total) => setProgress({ current, total }))
       root.dataset.deckImageReady = 'true'
       useUi.getState().toast({ title: t('workspace.presentation_images_saved', { value0: count }), tone: 'success' })
     }
@@ -104,7 +105,20 @@ export function DeckImageSheet({ pages, metrics, font, dark, title, onDone }: De
       useUi.getState().toast({ title: t('workspace.presentation_images_failed'), tone: 'danger' })
     }
   }, onDone)
-  return <DeckSheet sheetRef={sheetRef} pages={pages} metrics={metrics} font={font} dark={dark} />
+  return (
+    <>
+      <DeckSheet sheetRef={sheetRef} pages={pages} metrics={metrics} font={font} dark={dark} />
+      {progress && (
+        <div
+          role='status'
+          aria-live='polite'
+          className='fixed bottom-[var(--sp-4)] left-1/2 -translate-x-1/2 z-50 rounded-[var(--r-md)] bg-[var(--bg-overlay)] px-[var(--sp-3)] py-[var(--sp-2)] text-[length:var(--text-13)] shadow-lg backdrop-blur-md border border-[var(--border-subtle)] text-[var(--text-primary)]'
+        >
+          {t('workspace.presentation_exporting_images', { value0: progress.current, value1: progress.total })}
+        </div>
+      )}
+    </>
+  )
 }
 
 // Both exports share one lifecycle: mount the sheet, let it finish drawing what it has to draw, hand
@@ -135,13 +149,17 @@ function useDeckSheetReady(
   }, [dark, metrics, handOver, onDone, sheetRef])
 }
 
-async function saveDeckPages(root: HTMLElement, metrics: StageMetrics, title: string): Promise<number> {
+export async function saveDeckPages(root: HTMLElement, metrics: StageMetrics, title: string, onProgress?: (current: number, total: number) => void): Promise<number> {
   const pages = [...root.querySelectorAll<HTMLElement>('.deck-print-page')]
   const geometry = deckImageGeometry(metrics)
   const css = await collectDeckCss()
   const images: { path: string; blob: Blob }[] = []
+  const total = pages.length
+  onProgress?.(0, total)
   for (const [index, page] of pages.entries()) {
-    images.push({ path: `${safeFileName(title) || 'deck'}-${String(index + 1).padStart(2, '0')}.png`, blob: await renderDeckPagePng(page, geometry, css) })
+    const blob = await renderDeckPagePng(page, geometry, css)
+    images.push({ path: `${safeFileName(title) || 'deck'}-${String(index + 1).padStart(2, '0')}.png`, blob })
+    onProgress?.(index + 1, total)
   }
   saveDeckImages(await zipDeckImages(images), `${safeFileName(title) || 'deck'}-images.zip`)
   return images.length

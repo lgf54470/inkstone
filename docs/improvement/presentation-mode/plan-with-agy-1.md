@@ -122,12 +122,12 @@
   - 目标：改整篇 fingerprint 失效为每张 Slide 基于其源码的独立哈希缓存，打字时仅重算改动 Slide 的 Plan，其余页坚决复用。
   - 方案：使用 `hashContent(slideSource)` 作为单页子指纹，在 `useSlidePlans` 中维护按 Slide 源码哈希索引的 Plan 映射，未编辑页缓存稳如磐石。
   - 验证：单元测试模拟长文档部分行修改，断言未改动页的 SlidePlan 对象引用与缓存 100% 保持复用。
-- [x] **B3-08** `P-19 (PERF-03)`: 侧栏单例 Observer 与细粒度事件订阅 — 已完成
+- [x] **B3-08** `P-19 (PERF-03)`: 侧栏单例 Observer 与细粒度事件订阅 — 已完成 (`9cc8bf05`)
   - 涉及文件：`src/client/features/presentation/slide-rail.tsx`、`src/client/features/presentation/slide-html.ts`
   - 目标：消除 100 个 `IntersectionObserver` 实例并解决全量广播惊群效应。
   - 方案：在 `SlideRail` 顶层统一构建单例 `IntersectionObserver` 实例供各子项共享；重构 `subscribeSlideHtml` 为按 `cacheKey` 精准派发的订阅机制。
   - 验证：单元测试断言单张幻灯片完成预热时仅触发对应 key 的监听器，其余缩略图无虚假渲染。
-- [ ] **B3-09** `P-20 (PERF-04)`: 导出图片流式分批与进度提示
+- [x] **B3-09** `P-20 (PERF-04)`: 导出图片流式分批与进度提示 — 已完成
   - 涉及文件：`src/client/features/presentation/deck-print.tsx` (`saveDeckPages`, `DeckImageSheet`)
   - 目标：导出过程提供实时模态进度反馈，串行分批挂载和流式生成，防范浏览器 OOM 崩溃。
   - 方案：在 `saveDeckPages` 中引入进度回调驱动 UI 状态展示 `正在导出 (3/30)...`，每完成一张图片即时入流并释放 Canvas 与位图 Blob。

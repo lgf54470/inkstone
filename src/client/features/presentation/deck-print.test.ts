@@ -1,9 +1,17 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createFenceBodies, takeFenceIndex, type FenceBodies } from '../../lib/markdown/fence-bodies'
-import { buildDeckPages } from './deck-print'
+import { buildDeckPages, saveDeckPages } from './deck-print'
 import { readSlideHtml, rememberSlideHtml, slideCacheKey } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
 import type { StageMetrics } from './slide-stage'
+
+vi.mock('./deck-image', () => ({
+  deckImageGeometry: vi.fn(() => ({ width: 1280, height: 720, padX: 0, padY: 0 })),
+  collectDeckCss: vi.fn(async () => ''),
+  renderDeckPagePng: vi.fn(async () => new Blob(['fake-png'], { type: 'image/png' })),
+  zipDeckImages: vi.fn(async () => new Blob(['fake-zip'], { type: 'application/zip' })),
+  saveDeckImages: vi.fn(),
+}))
 
 const METRICS: StageMetrics = { scale: 1, designWidth: 1280, designHeight: 720, contentWidth: 1168, contentHeight: 632 }
 const FIRST = '<p>one</p><p>two</p><h2>three</h2><p>four</p>'
@@ -83,5 +91,24 @@ describe('buildDeckPages — the fence bodies a page carries', () => {
     expect(pages[0]!.fences).toBe(FIRST_BODIES)
     expect(pages[1]!.fences).toBe(FIRST_BODIES)
     expect(pages[2]!.fences).toBe(SECOND_BODIES)
+  })
+})
+
+describe('saveDeckPages — streaming progress', () => {
+  it('reports progress incrementally for each page', async () => {
+    const root = document.createElement('div')
+    root.innerHTML = '<div class="deck-print-page">1</div><div class="deck-print-page">2</div><div class="deck-print-page">3</div>'
+    const progressCalls: [number, number][] = []
+    const onProgress = (current: number, total: number) => {
+      progressCalls.push([current, total])
+    }
+    const count = await saveDeckPages(root, METRICS, 'test-deck', onProgress)
+    expect(count).toBe(3)
+    expect(progressCalls).toEqual([
+      [0, 3],
+      [1, 3],
+      [2, 3],
+      [3, 3],
+    ])
   })
 })

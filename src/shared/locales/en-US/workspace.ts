@@ -88,6 +88,7 @@ export const messages = {
 'workspace.presentation_export': 'Export deck as PDF',
 'workspace.presentation_export_images': 'Export deck as images',
 'workspace.presentation_images_saved': 'Exported {value0} slide images',
+'workspace.presentation_exporting_images': 'Exporting slide images ({value0}/{value1})...',
 'workspace.presentation_images_failed': 'The deck could not be exported as images',
 'workspace.presentation_measuring': 'Measuring slide {value0} of {value1}',
 'workspace.presentation_follow': 'Follow the note',
