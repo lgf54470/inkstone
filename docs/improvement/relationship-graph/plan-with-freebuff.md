@@ -3,7 +3,7 @@
 > **文档地位**：本目录只有两份文档——问题台账 [`review-with-freebuff.md`](./review-with-freebuff.md)（`G-01…G-48`）与本执行计划。被取代的六份中间文档（`review-with-agy-1.md`、`plan-with-agy-1.md`、`review-with-qoder-1.md`、`plan-with-qoder-1.md`、`review-with-buffy-2.md`、`verify-with-buffy-1.md`）已清退；其中两份 agy 文档原为 git 跟踪文件，由一次 `docs(graph)` 提交删除。它们的有效结论已全部并入台账：29 项 agy 全部关闭并登记 7 处残留、qoder 30 项中 1 项撤下 / 6 项前提改写 / 23 项并入、buffy 20 项全部并入，去重后即 `G-01…G-48`。
 > **基线分支/提交**：`improvement/relationship-graph-agy` @ `ec916280480eb06d658cd4358ace9ba23b9c2806`。台账与本计划的行号、证据均以该树为准。
 > **工程规范**：[`AGENTS.md`](../../../AGENTS.md)、[`ADR-0002`](../../../ADR-0002-renderer-theme-following.md)。
-> **当前状态（如实说明）**：**已开工**。批次 1（P0）四项已全部落地并收尾：1.1 `d4d2e12e`、1.2 `b45dab64`、1.3 `24f2f22a`、1.4 `1358a374`；批次收尾门禁在同一棵树上实测——`test:unit` 620 文件 / 5452 通过 + 1 跳过、`budget:check` 退出码 0、`e2e` 177 passed / 0 failed、`e2e-visual` 682 passed / 0 failed、`check-contrast` 两套主题全绿（明细见 §4「批次 1 收尾门禁」）。批次 2 四项已全部落地并收尾：2.1（G-01）`17dc66de`、2.2（G-03）`023e1e7d`、2.3（G-04①）`6e3ed4c2`、2.4（G-09）`e21bde8c`；批次收尾门禁在同一棵树上实测——`test:unit` 624 文件 / 5460 通过 + 1 跳过、`budget:check` 退出码 0、`e2e` 177 passed / 0 failed、`e2e-visual` 682 passed / 0 failed、`check-contrast` 两套主题全绿（明细见 §4「批次 2 收尾门禁」）。台账 §2 的 8 条失效条目仍禁止作为任务执行。任何 `[x]` 只由真实提交与真实门禁输出来填。
+> **当前状态（如实说明）**：**已开工**。批次 1（P0）四项已全部落地并收尾：1.1 `d4d2e12e`、1.2 `b45dab64`、1.3 `24f2f22a`、1.4 `1358a374`；批次收尾门禁在同一棵树上实测——`test:unit` 620 文件 / 5452 通过 + 1 跳过、`budget:check` 退出码 0、`e2e` 177 passed / 0 failed、`e2e-visual` 682 passed / 0 failed、`check-contrast` 两套主题全绿（明细见 §4「批次 1 收尾门禁」）。批次 2 四项已全部落地并收尾：2.1（G-01）`17dc66de`、2.2（G-03）`023e1e7d`、2.3（G-04①）`6e3ed4c2`、2.4（G-09）`e21bde8c`；批次收尾门禁在同一棵树上实测——`test:unit` 624 文件 / 5460 通过 + 1 跳过、`budget:check` 退出码 0、`e2e` 177 passed / 0 failed、`e2e-visual` 682 passed / 0 failed、`check-contrast` 两套主题全绿（明细见 §4「批次 2 收尾门禁」）。批次 3 已开工：3.1（G-29）`4c24d686`——用户选定 B 方案，新增客户端私有 `--graph-tag-*` 令牌并删掉第二套回退色板，两套主题全部 ≥3:1。台账 §2 的 8 条失效条目仍禁止作为任务执行。任何 `[x]` 只由真实提交与真实门禁输出来填。
 > **核心原则**：一项一次原子提交，正文按 `- 路径: 改动` 逐文件写；先红后绿；每落地一项即在本文档登记提交哈希与实测输出；不伪造、不夹带（铁律 14）；不静默假设、不静默失败、不静默降级。
 
 **编号与优先级**：唯一编号 `G-01…G-48`；分布 P0 4 条（G-06 / G-07 / G-22 / G-02）、P1 24 条、P2 17 条、候选 3 条（G-43 / G-46 / G-48），以台账 §6 为唯一来源。本计划不新增编号；落地过程中发现的新问题写进 §8「新增发现」，另开条目。
@@ -28,14 +28,14 @@
 | **批次 0（前置）｜先量后改** | V-01…V-03（无 G 编号） | 新增 `scripts/measure-graph.mjs` + 合成大库样本，拿到布局帧成本、单请求读行数、degree 聚合耗时；三个 🔬 条目据此进入决策闸门 | — | ≈0.5–1 人日 | ⬜ 未开始 |
 | **批次 1｜P0 渲染连续性与红线** | G-06（含 G-07 步骤 1）、G-22、G-28、G-02、G-38 | 输入搜索词/切开关不再重建画布，拖过的坐标与 pin 存活；键盘可开节点菜单；标签边有预算；开启标签节点后截断读数不再自相矛盾 | 6 | ≈4–5 人日 | 🟢 6/6 已收尾（1.1 `d4d2e12e`、1.2 `b45dab64`、1.3 `24f2f22a`、1.4 `1358a374`；收尾门禁 test:unit 620 文件 / e2e 177 / e2e-visual 682 / contrast 全绿 / budget:check 退出码 0；G-07 步骤 2 属批次 6） |
 | **批次 2｜请求与开销边界** | G-01、G-03、G-04（①）、G-09 | 一次请求读多少有明确上界；读端点有超时与节流；MCP 与 UI 的归档口径一致；拖拽不再逐事件强制布局 | 4 | ≈2 人日 | 🟢 4/4 已收尾（2.1 `17dc66de`、2.2 `023e1e7d`、2.3 `6e3ed4c2`、2.4 `e21bde8c`；收尾门禁 test:unit 624 文件 / e2e 177 / e2e-visual 682 / contrast 全绿 / budget:check 退出码 0） |
-| **批次 3｜视觉、主题与门禁** | G-29、G-30、G-31、G-40、G-41（G-43① 顺手） | 调色板收敛为单一来源并达标；主题翻转预览卡同步；ADR/AGENTS 不再与代码相反且有像素断言；对比度门禁覆盖图谱表面 | 5 | ≈3.5–4 人日 | ⬜ 0/5 |
+| **批次 3｜视觉、主题与门禁** | G-29、G-30、G-31、G-40、G-41（G-43① 顺手） | 调色板收敛为单一来源并达标；主题翻转预览卡同步；ADR/AGENTS 不再与代码相反且有像素断言；对比度门禁覆盖图谱表面 | 5 | ≈3.5–4 人日 | 🟡 1/5（3.1 G-29 `4c24d686` 已登记；3.2–3.5 待做） |
 | **批次 4｜无障碍关系与键盘语义** | G-23、G-24、G-25、G-26、G-27 | 方向键按空间序且选中可见；标签节点可辨、可操作；设置抽屉关系完整；色板热区达标；说明关联与取消播报补全 | 5 | ≈2 人日 | ⬜ 0/5 |
 | **批次 5｜交互与检索语义** | G-14、G-15、G-16、G-18、G-19、G-20、G-21 | 搜索是定位不是重查；空态有出口；拖拽期间不悬停预览；窄屏不重叠、触屏提示到位；伴随图谱复用偏好；上限/深度可调 | 7 | ≈6 人日 | ⬜ 0/7 |
 | **批次 6｜设置与工程卫生** | G-11 + G-32、G-35、G-36、G-37、G-39、G-07 步骤 2、G-33（两步两提交） | 滑块走组件库且不逐事件落盘；文案/默认值/常量单一来源；pin 跨会话持久；死重载与渲染期写 ref 清除 | 7 | ≈3 人日 | ⬜ 0/7 |
 | **批次 7｜收尾与对标** | G-05 + G-45、G-12、G-13、G-17、G-34、G-42、G-44 | 导出有隐私选项；字体读取策略有据；绘制异常不静默停帧；滚轮非 passive；死键清零；单篇排除；方向过滤 | 8 | ≈4.5 人日 | ⬜ 0/8 |
 | **决策闸门** | G-08、G-10、G-47 | 按批次 0 的数字定 G-08/G-10；G-47 需归属决策而非数字；结论（含「不做」）必须登记为以证据关闭 | 3 | 由证据决定 | ⬜ 未开始 |
 | **不挂批次** | G-43 ②③、G-46、G-48 | 持久化契约变更 / 跨模块色板语义 / 候选清单 | 3 | 另立 | ⬜ 不排期 |
-| **总计** | **G-01…G-48** | 图谱本体 45 条（42 挂批次 + 3 决策闸门） | **48** | ≈25–28 人日 + 门禁 | **🟡 10/48（批次 1、2 已收尾，批次 3 待开工）** |
+| **总计** | **G-01…G-48** | 图谱本体 45 条（42 挂批次 + 3 决策闸门） | **48** | ≈25–28 人日 + 门禁 | **🟡 11/48（批次 1、2 已收尾；批次 3 进行中 1/5）** |
 
 > G-07 跨批次 1（步骤 1）与批次 6（步骤 2），编号只计一次（记在批次 1）。G-28 随 G-22 落地、不单独提交。G-04 的 ②（共享范围判定）与 G-43 的 ②③（`links` 增类型/附件节点）属**另立事项**，不进本计划排期。
 
@@ -245,15 +245,16 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
 
 > 完成判据：调色板收敛为单一来源且两套主题达标（A/B 见下）；主题翻转后预览卡与画布同步；`ADR-0002` / `AGENTS.md` 不再与代码相反、且 ADR 点名要的浏览器像素断言存在；`npm run contrast:check` 覆盖图谱表面。
 
-- [ ] **3.1 G-29｜消除第二套回退色板；浅色底不达标的 6/10 收敛**
+- [x] **3.1 G-29｜消除第二套回退色板；浅色底不达标的 6/10 收敛（B 方案）**
   - 台账：§3.5 G-29
-  - 文件：`helpers.ts`、`canvas-draw.ts`（B 方案加 `src/client/styles/tokens.css`）；`helpers.test.ts`、`canvas-color-groups.test.ts`、`canvas-legend.test.ts`
-  - 要点：**A（必做）** 删 `TAG_FALLBACK_PALETTE`，`tagHashColor` 改为在 `shared/organizer-colors.ts` 的 `ORGANIZER_COLORS` 上取模——单一来源，立刻消除两族；**B（视复算结论）** 若需更细色相区分，加 `--graph-tag-1…10` 令牌（两套主题各给值，全部 ≥3:1），画布色纳入 G-41 门禁；改共享令牌后 `node scripts/check-token-drift.mjs --update-baseline`
-  - 注意：颜色断言会变**是预期结果**，不要为了让旧断言继续绿而保留旧色板
-  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/{helpers,canvas-color-groups,canvas-legend}.test.ts` + `npm run tokens:check`
-  - 依赖：B 方案与 3.5 同批（门禁守住）
-  - 代价：S（0.5–1 人日）｜提交建议：`fix(graph)`
-  - 提交哈希：待登记｜状态：⬜ 待开始
+  - 文件：`src/client/styles/tokens.css`、`constants.ts`、`helpers.ts`、`canvas-draw.ts`、`graph-export.ts`、`types.ts`；`helpers.test.ts`、`canvas-theme.test.ts`、`canvas-legend.test.ts`；`scripts/check-comments.mjs`
+  - 要点（落地口径）：① 经用户决策走 **B 方案并一次做对**：删掉 `TAG_FALLBACK_PALETTE`，新增客户端私有令牌 `--graph-tag-1…10`（浅色取 600/700 阶、暗色取 400 阶，两套值全部 ≥3:1——实测最低 4.44:1 / 6.52:1，已含 `data-background='white'` 的 `#ffffff` 与 `#151617` 变体；这也正是 A 方案做不到的两条：`ORGANIZER_COLORS` 浅色 2/10、暗色 1/10 不达标）；② `tagHashColor` 改 `tagHashIndex`——槽位与主题无关，`nodeColor` 改对象传参接 `tagPalette`（`{ groupBy, fallback, tagPalette }`，守住 ≤3 参数规则）；③ 图例里未赋色的标签改指 `var(--graph-tag-N)`：DOM 侧由 CSS 变量解析，**主题翻转不必重算图例**；画布与导出走 `readThemeColors().tagPalette`（SVG/PNG 需要解析后的值）；④ 样式表尚未就位（jsdom、首帧）时退回共享 `ORGANIZER_COLORS`——不引入第三套板；⑤ **未改令牌漂移基线**：`--graph-tag-*` 只声明在应用侧、不属两棵树共享层，门禁输出仍是「89 tokens, values stable」，与「改共享令牌才需 `--update-baseline`」的口径一致
+  - 先红后绿（已跑）：`helpers.test.ts` 五处改新口径（改动前红在 `TypeError: tagHashIndex is not a function` 与 `expected [ { label: 'idea', color: '#ec4899' } ] to deeply equal [ { … color: 'var(--graph-tag-4)' } ]`）；`canvas-theme.test.ts` 两条（`readThemeColors()` 少 `tagPalette` 键；无令牌时 `expected undefined to deeply equal [ '#dc2626', … ]`）；`canvas-legend.test.ts` 一条（`expected 'background-color: rgb(236, 72, 153);' to contain 'background-color: var(--graph-tag-4)'`）
+  - 验证命令（已跑）：图谱聚合 **25 文件 / 165 条全绿**（较 2.4 的 162 条多出本项新增的 3 条）；typecheck 与 13 项静态门禁全绿（comments 1368 文件 / 12795 条）；提交钩子 `vitest related` **20 文件 / 118 条全绿**
+  - 边界（如实登记）：① 用户**已赋色**的标签仍旧走共享 `ORGANIZER_COLORS`（标签管理器里选的颜色属用户数据），其中浅色 2/10、暗色 1/10 低于 3:1 的问题因此仍在——那是共享色板的语义问题（G-46 另立），本项只保证「没有颜色时」的槽位达标；② 同一标签在浅/暗两套主题下取值不同（这就是「跟随主题」），槽位不变；③ 浏览器侧守住属 3.5（G-41）的对比度场景，本项只落地令牌与接线
+  - 依赖：3.5（门禁守住）；与 3.3 可并行
+  - 代价：S（本项实际约 0.4 人日 + 三个测试文件）｜提交建议：`fix(graph)`
+  - 提交哈希：`4c24d686`｜状态：✅ 已完成（2026-10-02）
 
 - [ ] **3.2 G-30｜默认 `groupBy: 'none'` 下信息密度偏低**
   - 台账：§3.5 G-30
