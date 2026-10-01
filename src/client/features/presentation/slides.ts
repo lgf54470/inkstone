@@ -1,8 +1,25 @@
 import { parseFrontMatter } from '@shared/markdown-utils'
 
-const SLIDE_BREAK = /^ {0,3}-{3,}[ \t]*$/
+// A rule may be written as three or more of `-`, `*` or `_`, with spaces between the marks. The
+// renderer accepts every one of those spellings, so the deck divides on every one of them too; a
+// pager that knew only `---` kept a note the author meant to divide as a single slide.
+const RULE = /^([-*_])(?:[ \t]*\1){2,}[ \t]*$/
+// A run of dashes or equals under a paragraph is not a rule: the renderer folds the paragraph into
+// a setext heading, so the deck sees a heading of that level and the underline divides nothing.
+// Only a contiguous run folds — spaces between the marks make it a rule instead.
+const SETEXT_DASH = /^-+[ \t]*$/
+const SETEXT_EQUAL = /^=+[ \t]*$/
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/
-const ATX_HEADING = /^ {0,3}(#{1,6})(?:[ \t]|$)/
+const ATX_HEADING = /^(#{1,6})(?:[ \t]|$)/
+const QUOTE = /^>/
+const TABLE_ROW = /^\|/
+// A block-level tag, or a line holding nothing but one tag, opens an HTML block that runs to the
+// next blank line and swallows everything inside it, separator spellings included. The names
+// mirror the tags the renderer treats as block-level.
+const HTML_BLOCK_TAG = /^<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|pre|script|section|select|style|summary|table|tbody|td|tfoot|th|thead|title|tr|track|textarea|ul)(?=[ \t/>]|$)/i
+const HTML_LONE_TAG = /^<\/?[a-z][a-z0-9-]*(?:[ \t][^<]*)?>[ \t]*$/i
+const COMMENT_LINE = /^<!--(?:.*-->)?[ \t]*$/
+const LIST_MARKER = /^ {0,3}([-*+]|\d{1,9}[.)])([ \t]+)/
 const LINE_PARTS = /(\r?\n)/
 const SLIDE_LEVEL_KEY = 'slide-level'
 const NOTE_OPEN = /^ {0,3}<!--[ \t]*(?:note|speaker):[ \t]*/i
@@ -15,6 +32,30 @@ export type SlideLayout = 'cover' | 'split'
 // `two-columns` is the name the review gives the split layout, and an author who reaches for it
 // means the same screen; a value nobody knows stays prose rather than silently becoming a switch.
 const LAYOUT_VALUES: Record<string, SlideLayout> = { cover: 'cover', split: 'split', 'two-columns': 'split' }
+
+/** What the line after a setext underline folds into: the paragraph the renderer turned into a
+ * heading, whose first line is where that slide starts. */
+interface Paragraph {
+  line: number
+  offset: number
+  /** The column the container keeps its text at: a list item sits further in than the prose a rule
+   * is written under, and only a line at or past that column continues it. */
+  column: number
+}
+
+interface BlockState {
+  fence: FenceMarker | null
+  paragraph: Paragraph | null
+  /** An open HTML block runs to the next blank line and swallows whatever is inside it, rules
+   * included, which is the one reading the renderer gives that a line-by-line pager tends to miss. */
+  html: boolean
+}
+
+interface LineRead extends BlockState {
+  kind: 'fence' | 'divider' | 'heading' | 'text'
+  level: number
+  anchor: Paragraph | null
+}
 
 interface FenceMarker {
   char: string
@@ -32,12 +73,6 @@ interface Boundary {
   level: number
 }
 
-interface LineState {
-  kind: 'fence' | 'divider' | 'heading' | 'text'
-  level: number
-  fence: FenceMarker | null
-}
-
 interface Deck {
   slides: string[]
   starts: number[]
@@ -51,20 +86,71 @@ interface NoteMark {
 
 type NoteState = { kind: 'out' } | { kind: 'open'; line: number; parts: string[] }
 
+const NO_BLOCK: BlockState = { fence: null, paragraph: null, html: false }
+
 function isClosingFence(match: RegExpExecArray | null, marker: FenceMarker): boolean {
   const mark = match?.[1]
   if (!mark || mark[0] !== marker.char || mark.length < marker.length) return false
   return match![2]!.trim() === ''
 }
 
-function classifyLine(text: string, fence: FenceMarker | null, prevBlank: boolean): LineState {
+function nextFence(text: string, fence: FenceMarker | null): FenceMarker | null {
   const match = FENCE.exec(text)
-  if (fence) return { kind: 'fence', level: 0, fence: isClosingFence(match, fence) ? null : fence }
-  if (match) return { kind: 'fence', level: 0, fence: { char: match[1]![0]!, length: match[1]!.length } }
-  if (SLIDE_BREAK.test(text) && prevBlank) return { kind: 'divider', level: 0, fence: null }
-  const heading = ATX_HEADING.exec(text)
-  if (heading) return { kind: 'heading', level: heading[1]!.length, fence: null }
-  return { kind: 'text', level: 0, fence: null }
+  if (fence) return isClosingFence(match, fence) ? null : fence
+  return match ? { char: match[1]![0]!, length: match[1]!.length } : null
+}
+
+/** The column a line's text starts at: a space steps one, a tab steps to the next multiple of four,
+ * the way the renderer measures the indent that keeps a line inside its container. */
+function advance(column: number, white: string): number {
+  let next = column
+  for (const space of white) next += space === '\t' ? 4 - (next % 4) : 1
+  return next
+}
+
+/** The column a list item's text starts at, or `null` for a line that is not a marker. */
+function markerColumn(text: string): number | null {
+  const marker = LIST_MARKER.exec(text)
+  if (!marker) return null
+  const indent = advance(0, /^[ \t]*/.exec(text)![0]!)
+  return advance(indent + marker[1]!.length, marker[2]!)
+}
+
+function readLine(text: string, at: number, offset: number, state: BlockState): LineRead {
+  const white = /^[ \t]*/.exec(text)![0]!
+  const body = text.slice(white.length)
+  const indent = advance(0, white)
+  // A paragraph keeps its container's column: a line written deeper than that is a lazy
+  // continuation whatever it looks like, and only a line within three of it starts a new block.
+  const inner = state.paragraph ? indent - state.paragraph.column : indent
+  if (text.trim() === '') return { kind: 'text', level: 0, anchor: null, ...state, paragraph: null, html: false }
+  if (inner > 3) return { kind: 'text', level: 0, anchor: null, ...state }
+
+  const opened = nextFence(text, state.fence)
+  // Nothing inside a fenced block, including a rule written there, is anything but code.
+  if (state.fence || opened) return { kind: 'fence', level: 0, anchor: null, ...NO_BLOCK, fence: opened }
+  if (state.html) return { kind: 'text', level: 0, anchor: null, ...state }
+
+  const folded = state.paragraph !== null && inner >= 0
+  if (SETEXT_DASH.test(body) && folded) return { kind: 'heading', level: 2, anchor: state.paragraph, ...state, paragraph: null }
+  if (SETEXT_EQUAL.test(body) && folded) return { kind: 'heading', level: 1, anchor: state.paragraph, ...state, paragraph: null }
+  if (RULE.test(body)) return { kind: 'divider', level: 0, anchor: null, ...state, paragraph: null }
+
+  const heading = ATX_HEADING.exec(body)
+  if (heading) return { kind: 'heading', level: heading[1]!.length, anchor: null, ...state, paragraph: null }
+  // A quote, a table row and a comment each open a block of their own, so the line after one of them
+  // is never the underline of a heading the renderer would have folded.
+  if (QUOTE.test(body) || TABLE_ROW.test(body) || COMMENT_LINE.test(body)) return { kind: 'text', level: 0, anchor: null, ...state, paragraph: null }
+  if (HTML_BLOCK_TAG.test(body) || HTML_LONE_TAG.test(body) || body.startsWith('<!--')) {
+    return { kind: 'text', level: 0, anchor: null, ...state, paragraph: null, html: true }
+  }
+
+  const column = markerColumn(text)
+  if (column !== null) return { kind: 'text', level: 0, anchor: null, ...state, paragraph: { line: at, offset, column } }
+  // A prose line continues the paragraph already open; only the first line of a paragraph is where
+  // the renderer starts the block, at its container's column.
+  if (state.paragraph) return { kind: 'text', level: 0, anchor: null, ...state }
+  return { kind: 'text', level: 0, anchor: null, ...state, paragraph: { line: at, offset, column: 0 } }
 }
 
 function trimBlankEdges(slide: string): string {
@@ -133,10 +219,10 @@ function readSpeakerNotes(lines: Line[], bodyStart: number): { notes: NoteMark[]
       continue
     }
     if (state.kind === 'out') {
-      const scan = classifyLine(line.text, fence, false)
-      fence = scan.fence
+      const inside = fence !== null
+      fence = nextFence(line.text, fence)
       // A fenced block may demo the syntax itself, so nothing inside one is ever a cue.
-      if (scan.kind === 'fence') {
+      if (inside || fence) {
         kept.push(line)
         continue
       }
@@ -169,18 +255,18 @@ function noteLimit(boundary: Boundary): number {
 function scanBoundaries(lines: Line[], bodyStart: number): { breaks: Boundary[]; headings: Boundary[] } {
   const breaks: Boundary[] = []
   const headings: Boundary[] = []
-  let fence: FenceMarker | null = null
-  let prevBlank = true
+  let block: BlockState = NO_BLOCK
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index]!
     if (line.offset < bodyStart) continue
-    const state = classifyLine(line.text, fence, prevBlank)
-    fence = state.fence
-    if (state.kind === 'divider') breaks.push({ line: index, offset: line.offset, level: 0 })
-    else if (state.kind === 'heading') headings.push({ line: index, offset: line.offset, level: state.level })
-    // A separator leaves nothing above it, so the next rule is blank-above even with no blank line
-    // between the two — the same reading the deck gave before headings could divide it.
-    prevBlank = state.kind === 'divider' || line.text.trim() === ''
+    const read = readLine(line.text, index, line.offset, block)
+    block = { fence: read.fence, paragraph: read.paragraph, html: read.html }
+    if (read.kind === 'divider') breaks.push({ line: index, offset: line.offset, level: 0 })
+    else if (read.kind === 'heading') {
+      // A setext heading begins at the prose its underline folded up, not at the underline itself.
+      const start = read.anchor ?? { line: index, offset: line.offset }
+      headings.push({ line: start.line, offset: start.offset, level: read.level })
+    }
   }
   return { breaks, headings }
 }
@@ -208,9 +294,6 @@ function joinNotes(marks: NoteMark[], from: number, to: number): string {
 }
 
 function buildDeck(source: string): Deck {
-  // A `---` with a non-blank line directly above is a setext heading rather than a
-  // rule, so it must not split the deck; requiring a blank line (or deck start) keeps
-  // slide boundaries identical to how the preview renders horizontal rules.
   const raw = readLines(source)
   const frontMatter = parseFrontMatter(source)
   const bodyStart = raw[frontMatter.lineOffset]?.offset ?? source.length
@@ -276,10 +359,10 @@ export function takeLayoutDirective(source: string): { body: string; layout: Sli
   let fence: FenceMarker | null = null
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index]!
-    const scan = classifyLine(line.text, fence, false)
-    fence = scan.fence
     // A fenced block may demo the syntax itself, so nothing inside one switches the layout.
-    if (scan.kind === 'fence') continue
+    const inside = fence !== null
+    fence = nextFence(line.text, fence)
+    if (inside || fence) continue
     const layout = readLayoutLine(line.text)
     if (!layout) continue
     // A switch takes its own line out of the slide, so the blank above it goes with it — leaving

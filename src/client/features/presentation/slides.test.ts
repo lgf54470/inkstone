@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { renderMarkdown } from '../../lib/markdown/renderer'
 import { findSlideIndexByOffset, splitIntoSlides, splitIntoSlidesWithNotes, takeLayoutDirective } from './slides'
 
 describe('splitIntoSlides — separators and code fences', () => {
@@ -32,6 +33,73 @@ describe('splitIntoSlides — separators and code fences', () => {
 
   it('splits on --- with trailing spaces or extra hyphens', () => {
     expect(splitIntoSlides('# A\n\n----  \n\n# B')).toEqual(['# A', '# B'])
+  })
+})
+
+// The deck divides where the projector draws a rule, and nowhere else. The answer is asked of the
+// app's own Markdown pipeline rather than written down here, because a hand-copied expectation is
+// exactly what drifted: the pager used to know only `---` while the renderer also draws `***`,
+// `___` and `- - -`, and folds a `---` glued to prose into a setext heading instead.
+const SPELLINGS = ['---', '-----', '***', '___', '- - -', '-  -\t-', ' ---', '  ---', '   ---', '    ---', '----- ', '--', '- -', '*', '= = =', '_ _', ' * * *', '\t---', '  ___  ', '----\t', '=', '===']
+const CONTEXTS: [string, string][] = [
+  ['a blank line', ''],
+  ['a paragraph', 'Some prose'],
+  ['a multi-line paragraph', 'Some prose\nmore prose'],
+  ['an ATX heading', '## Section'],
+  ['a list item', '- item one'],
+  ['an ordered item', '1. item one'],
+  ['a nested list item', '  - nested item'],
+  ['a quote line', '> quoted line'],
+  ['a table row', '| a | b |\n| --- | --- |\n| 1 | 2 |'],
+  ['a closed fence', '```js\nconst a = 1\n```'],
+  ['an image', '![alt](https://example.com/a.png)'],
+  ['an HTML block', '<div>x</div>'],
+  ['a bare opening tag', '<div>'],
+  ['a lone inline tag', '<span>'],
+  ['a line of inline markup', '<b>bold</b>'],
+  ['an unclosed comment', '<!-- prose'],
+]
+
+/** A note holding one separator spelling under one kind of block. The `intro` line above keeps a
+ * rule written at the very top of the document out of the front matter machinery, which is a
+ * different question from whether that rule divides the deck. */
+function parityNote(head: string, spelling: string): string {
+  return `intro\n\n${head ? `${head}\n${spelling}\ntail` : `${spelling}\ntail`}`
+}
+
+describe('splitIntoSlides — every separator spelling against the renderer that draws it', () => {
+  for (const [name, head] of CONTEXTS) {
+    for (const spelling of SPELLINGS) {
+      const source = parityNote(head, spelling)
+      const pages = /<hr/.test(renderMarkdown(source).html) ? 2 : 1
+      it(`divides on ${JSON.stringify(spelling)} below ${name} only where the renderer draws a rule`, () => {
+        expect(splitIntoSlides(source).length).toBe(pages)
+      })
+    }
+  }
+
+  it('reads a setext underline as the heading the renderer reads, so a declared level divides there', () => {
+    const prose = 'intro\n\nSome prose\n---\ntail'
+    expect(renderMarkdown(prose).html).toMatch(/<h2[^>]*>[\s\S]*?Some prose<\/h2>/)
+    expect(splitIntoSlides('---\nslide-level: 2\n---\n\n' + prose)).toEqual(['intro', 'Some prose\n---\ntail'])
+  })
+
+  it('reads a setext equals run as a top-level heading', () => {
+    const prose = 'intro\n\nSome prose\n===\ntail'
+    expect(renderMarkdown(prose).html).toMatch(/<h1[^>]*>[\s\S]*?Some prose<\/h1>/)
+    expect(splitIntoSlides('---\nslide-level: 2\n---\n\n' + prose)).toEqual(['intro', 'Some prose\n===\ntail'])
+  })
+
+  it('reads a run indented past its paragraph as more prose, so it folds no heading', () => {
+    const source = 'intro\n\nSome prose\n    ---\nmore'
+    expect(renderMarkdown(source).html).not.toMatch(/<\/?h2/)
+    expect(splitIntoSlides('---\nslide-level: 2\n---\n\n' + source)).toEqual([source])
+  })
+
+  it('closes an HTML block at the blank line, so a rule written after it divides again', () => {
+    const source = 'intro\n\n<div>x</div>\n\n***\n\ntail'
+    expect(renderMarkdown(source).html).toContain('<hr')
+    expect(splitIntoSlides(source)).toEqual(['intro\n\n<div>x</div>', 'tail'])
   })
 })
 
