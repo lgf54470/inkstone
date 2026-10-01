@@ -475,6 +475,8 @@
 
 **结论**：功能面铺得很宽（文章/评论/分类标签/文件夹/友链目录与健康检测/导入导出/看板/设置），但**发布流程本身（发布时间、SEO、slug 迁移、回收站）这条最基础的主线是缺的**。建议 FEA-01 排在最前。
 
+> **本轮收尾（2026-10-01）**：上表 12 条全部落地（FEA-01/02/03/04/05/07/09 → B5-01…B5-07；FEA-06 → B5-05；FEA-08 → B5-11；FEA-10 → B5-08；FEA-11 核验为 B1-01 已修；FEA-12 → B5-12），逐项条目与限制见上/下方各段。
+
 **已落地（B5-01，FEA-01）**：写入侧新增 `publishedAt`（int，0..3000-01-01；非法值 400），规则集中在 `src/worker/routes/blog/publish-moment.ts`：显式时间优先（定时与回填），否则草稿发布盖「现在」、已发布行保持原时刻；单篇发布、`POST /posts` 的 upsert 与批量发布（列表批量与按文件夹/标签）都是同一规则。读取侧以 `publicPostVisibleSql(alias)` 统一公开可见性（已发布 **且** 时刻已到），公开列表/详情/相邻篇/分类计数/标签/时间轴/日历与评论读写全部改用它，因此定时中的文章对读者完全不存在。比较写进 SQL（`published_at < (strftime('%s','now') + 1) * 1000`——加一秒是因为 `strftime` 只到秒，否则刚发布的文章会被隐藏最多一秒，已有回归钉住）。客户端发布弹窗新增「发布时间」控件（本地时间 ↔ epoch 毫秒），从 `postIndex` 预填，留空即用服务端默认规则，未来时刻提示「将定时发布」。限制：作者侧计数仍把定时中的文章算作已发布；没有单独的「定时中」徽标；不靠 cron（到点可见靠查询时实时比较）；时间精度到分钟、无时区选择。
 
 **已落地（B5-02，FEA-02）**：`blog_posts` 追加 5 列（`seo_title`/`seo_description`/`seo_image_url`/`seo_canonical_url`/`seo_noindex`）：新库由声明的建表语句带出，老库由迁移 54 补列（`skipIfColumnExists` 守卫）——迁移 52 一个字未动，它的重建本来就从同一份声明出发生成表与拷贝列名。写入侧 5 个字段进 zod 契约（两个地址走共享 `safeUrl` 白名单，非法值 400），并在 upsert、补丁与插入三条路径上落库，补丁只在字段被显式给出时改写（空串=清空，缺省=保持）。读取侧带上管理列表、`/post-index`（发布弹窗的预填来源）与公开详情答案；**公开列表刻意不带**，由一个断言钉住这条边界。客户端发布弹窗新增「搜索与分享」分组（4 个 `Field` + 1 个 noindex `Switch`），全部从被编辑的文章预填、留空即「用文章自己的值」。前台文章页按同一优先级渲染标题/描述/OG 图/`canonical`/`robots`，规则收在纯函数 `blog-frontend/src/lib/seo.ts`（含 4 条单测），`Layout.astro` 的两个新属性缺省时行为与从前完全一致。限制：sitemap 仍不排除 noindex 文章、也无 `lastmod`（属 FEA-08/BF-6）；RSS 与 og:type/twitter:card 未加；后台列表没有「已 noindex」的徽标；SEO 描述与摘要共用同一上限。
@@ -504,7 +506,7 @@
 - **BF-3 [P0][开放] PV 计数路径**：见 COR-04。
 - **BF-4 [P1][开放] 路由与 owner**：本轮决定「每用户一个博客」后，前台需要 `/u/<username>/…` 前缀 + `Astro.locals.owner`（`env.d.ts` 的 `App.Locals` 目前只有 `locale`），并把 owner 透传进 `api.ts` 的每一次取数；`canonical`/OG/feed/sitemap 都要带前缀，否则多用户下会互相覆盖索引。
 - **BF-5 [P1][开放] 缓存键**：`middleware.ts:52-58` 的 `pageCacheControl` 对 `/posts/` 给 `s-maxage=300`，公开 API 侧给 `public, max-age=15, s-maxage=60`。引入 owner 后必须确认 owner 进入缓存键（query 形式天然满足），并复核 `Vary`。
-- **BF-6 [P2][开放] sitemap/feed 的覆盖与 lastmod**：见 FEA-08。
+- **BF-6 [P2][已落地（B5-11）] sitemap/feed 的覆盖与 lastmod**：sitemap 补 `/links`、分类与标签页、逐篇 `lastmod` 并排除 noindex；feed 增加 WebSub 声明与发布侧 ping。仍留的取舍：RSS 不排除 noindex、分类/标签页无 `lastmod`、定时文章到点不自动 ping（见 FEA-08 段）。
 
 ---
 
