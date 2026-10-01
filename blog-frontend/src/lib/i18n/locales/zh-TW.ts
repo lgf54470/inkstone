@@ -109,12 +109,17 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   // Random Post
   'random.button': '隨機一篇',
   'random.loading': '正在抽取...',
+  'random.failed': '暫時抽不出來，請重試',
 
   // 404
   'not_found.title': '404 - 找不到頁面',
   'not_found.heading': '找不到頁面',
   'not_found.desc': '抱歉，您造訪的文章或頁面可能已被移動、下架或不存在。',
   'not_found.back_home': '返回首頁',
+  'unavailable.title': '503 - 暫時無法存取',
+  'unavailable.heading': '暫時無法存取',
+  'unavailable.desc': '部落格此刻沒能取得內容，請稍後重試。',
+  'unavailable.retry': '重試',
 
   // Pagination
   'pagination.aria': '分頁導覽',

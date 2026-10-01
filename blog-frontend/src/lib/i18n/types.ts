@@ -110,11 +110,17 @@ export type MessageKey =
   // Random Post
   | 'random.button'
   | 'random.loading'
+  | 'random.failed'
   // 404
   | 'not_found.title'
   | 'not_found.heading'
   | 'not_found.desc'
   | 'not_found.back_home'
+  // Service unavailable (BF-1)
+  | 'unavailable.title'
+  | 'unavailable.heading'
+  | 'unavailable.desc'
+  | 'unavailable.retry'
   // Pagination
   | 'pagination.aria'
   | 'pagination.prev'

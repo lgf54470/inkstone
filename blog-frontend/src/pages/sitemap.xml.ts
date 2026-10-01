@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro'
 import { api } from '../lib/api'
+import { serviceUnavailable } from '../lib/service-unavailable'
 import { escapeXml } from '../lib/xml'
 
 const STATIC_ROUTES = ['/', '/timeline', '/categories', '/tags']
@@ -11,7 +12,13 @@ const STATIC_ROUTES = ['/', '/timeline', '/categories', '/tags']
  */
 export async function getSitemapXml(url: URL): Promise<Response> {
   const origin = url.origin
-  const timeline = await api.getTimeline()
+  // 取不到全部文章时回 503 + no-store（BF-1）：只含静态路由的「成功」sitemap 会让搜索引擎
+  // 以为文章都消失了，5xx 则会被当作一次失败延后重试。
+  const timeline = await api.getTimeline().catch((err: unknown) => {
+    console.error('[sitemap] timeline unavailable:', err)
+    return null
+  })
+  if (!timeline) return serviceUnavailable('xml')
   const postSlugs = new Set<string>()
   for (const group of timeline) {
     for (const month of group.months) {

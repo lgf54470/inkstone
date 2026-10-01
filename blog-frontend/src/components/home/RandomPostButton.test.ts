@@ -81,6 +81,17 @@ describe('RandomPostButton', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 
+  it('says it could not pick one instead of navigating to a fabricated post', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(api, 'getPosts').mockRejectedValue(new Error('down'))
+    const { container, navigate } = renderButton()
+
+    await clickButton(container)
+
+    expect(navigate).not.toHaveBeenCalled()
+    expect(container.textContent).toContain('暂时抽不出来')
+  })
+
   it('shows a loading label while picking and disables repeated clicks', async () => {
     let resolveFirst: (value: PostsResponse) => void = () => {}
     let callCount = 0

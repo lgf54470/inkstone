@@ -22,7 +22,7 @@ import {
   normalizeTag,
   normalizeTimelineGroup,
 } from './normalize'
-import { FALLBACK_POSTS, FALLBACK_SITE_INFO } from './fallbacks'
+import { FALLBACK_SITE_INFO } from './fallbacks'
 import { POSTS_PER_PAGE_DEFAULT, DEFAULT_API_URL, API_TIMEOUT_MS } from './constants'
 import { safeDecodeTag } from './content'
 import {
@@ -198,55 +198,33 @@ export const api = {
     limit?: number
     signal?: AbortSignal
   }): Promise<{ posts: BlogPost[]; total: number; page: number; limit: number; totalPages: number }> {
-    try {
-      const query = new URLSearchParams()
-      if (options?.categoryId) query.set('categoryId', options.categoryId)
-      if (options?.tag) query.set('tag', safeDecodeTag(options.tag))
-      if (options?.search) query.set('search', options.search)
-      if (options?.page) query.set('page', String(options.page))
-      if (options?.limit) query.set('limit', String(options.limit))
+    // 取不到就让错误向上走（BF-1）：失败必须是失败，页面用 5xx 回答而不是把演示文章当真内容
+    // 交给读者与爬虫。可选参数在此只决定请求的筛选，不影响失败语义。
+    const query = new URLSearchParams()
+    if (options?.categoryId) query.set('categoryId', options.categoryId)
+    if (options?.tag) query.set('tag', safeDecodeTag(options.tag))
+    if (options?.search) query.set('search', options.search)
+    if (options?.page) query.set('page', String(options.page))
+    if (options?.limit) query.set('limit', String(options.limit))
 
-      const data = asRecord(await requestJson(`/api/blog/public/posts?${query.toString()}`, { signal: options?.signal }))
-      const rawPosts = asArray(data.posts)
-      const pagination = asRecord(data.pagination)
-      const total = typeof pagination.total === 'number' ? pagination.total : (typeof data.total === 'number' ? data.total : rawPosts.length)
-      const page = typeof pagination.page === 'number' ? pagination.page : (typeof data.page === 'number' ? data.page : 1)
-      const limit = typeof pagination.limit === 'number' ? pagination.limit : (typeof data.limit === 'number' ? data.limit : POSTS_PER_PAGE_DEFAULT)
-      const totalPages = typeof pagination.totalPages === 'number' ? pagination.totalPages : (typeof data.totalPages === 'number' ? data.totalPages : Math.max(1, Math.ceil(total / limit)))
+    const data = asRecord(await requestJson(`/api/blog/public/posts?${query.toString()}`, { signal: options?.signal }))
+    const rawPosts = asArray(data.posts)
+    const pagination = asRecord(data.pagination)
+    const total = typeof pagination.total === 'number' ? pagination.total : (typeof data.total === 'number' ? data.total : rawPosts.length)
+    const page = typeof pagination.page === 'number' ? pagination.page : (typeof data.page === 'number' ? data.page : 1)
+    const limit = typeof pagination.limit === 'number' ? pagination.limit : (typeof data.limit === 'number' ? data.limit : POSTS_PER_PAGE_DEFAULT)
+    const totalPages = typeof pagination.totalPages === 'number' ? pagination.totalPages : (typeof data.totalPages === 'number' ? data.totalPages : Math.max(1, Math.ceil(total / limit)))
 
-      const posts = rawPosts.map(normalizePost)
-      return { posts, total, page, limit, totalPages }
-    } catch (err) {
-      console.warn('[api.getPosts] request failed, using fallback posts:', err)
-      let filtered = [...FALLBACK_POSTS]
-      if (options?.tag) {
-        const cleanTag = safeDecodeTag(options.tag)
-        filtered = filtered.filter((p) => p.tags.some((t) => t === cleanTag || t.startsWith(`${cleanTag}/`)))
-      }
-      if (options?.categoryId) filtered = filtered.filter((p) => p.categoryId === options.categoryId)
-      if (options?.search) {
-        const s = options.search.toLowerCase()
-        filtered = filtered.filter((p) => p.title.toLowerCase().includes(s) || p.excerpt.toLowerCase().includes(s))
-      }
-      return {
-        posts: filtered,
-        total: filtered.length,
-        page: options?.page || 1,
-        limit: options?.limit || POSTS_PER_PAGE_DEFAULT,
-        totalPages: 1,
-      }
-    }
+    const posts = rawPosts.map(normalizePost)
+    return { posts, total, page, limit, totalPages }
   },
 
   async getPostBySlug(slug: string): Promise<BlogPost | null> {
-    try {
-      const data = asRecord(await requestJsonCached(`/api/blog/public/posts/${encodeURIComponent(slug)}`, 300))
-      if (!data.post) return null
-      return normalizePost(data.post)
-    } catch (err) {
-      console.warn(`[api.getPostBySlug] request failed for "${slug}", using fallback:`, err)
-      return FALLBACK_POSTS.find((p) => p.slug === slug) ?? null
-    }
+    // null 只表示「服务端回答这篇文章不存在」；请求失败会抛错（页面据此答 503），不伪造一篇
+    // 同名演示短文。
+    const data = asRecord(await requestJsonCached(`/api/blog/public/posts/${encodeURIComponent(slug)}`, 300))
+    if (!data.post) return null
+    return normalizePost(data.post)
   },
 
   /**
@@ -284,76 +262,41 @@ export const api = {
   },
 
   async getTimeline(): Promise<TimelineGroup[]> {
-    try {
-      const data = asRecord(await requestJsonCached('/api/blog/public/timeline', 120))
-      if (Array.isArray(data.timeline)) {
-        return asArray(data.timeline).map(normalizeTimelineGroup)
-      }
-      if (data.timeline && typeof data.timeline === 'object') {
-        const timeline = asRecord(data.timeline)
-        const groups = Object.keys(timeline)
-          .map(Number)
-          .sort((a, b) => b - a)
-          .map((year) => {
-            const monthMap = asRecord(timeline[String(year)])
-            const months = Object.keys(monthMap).map(Number).sort((a, b) => b - a)
-            return {
-              year,
-              months: months.map((m) => ({ month: m, posts: asArray(monthMap[String(m)]) })),
-            }
-          })
-        return groups.map(normalizeTimelineGroup)
-      }
-      return []
-    } catch (err) {
-      console.warn('[api.getTimeline] request failed, using fallback timeline:', err)
-      const now = new Date()
-      return [
-        {
-          year: now.getFullYear(),
-          months: [
-            {
-              month: now.getMonth() + 1,
-              posts: FALLBACK_POSTS.map((p) => ({
-                id: p.id,
-                title: p.title,
-                slug: p.slug,
-                publishedAt: p.publishedAt,
-                coverUrl: p.coverUrl,
-                views: p.views,
-              })),
-            },
-          ],
-        },
-      ]
+    const data = asRecord(await requestJsonCached('/api/blog/public/timeline', 120))
+    if (Array.isArray(data.timeline)) {
+      return asArray(data.timeline).map(normalizeTimelineGroup)
     }
+    if (data.timeline && typeof data.timeline === 'object') {
+      const timeline = asRecord(data.timeline)
+      const groups = Object.keys(timeline)
+        .map(Number)
+        .sort((a, b) => b - a)
+        .map((year) => {
+          const monthMap = asRecord(timeline[String(year)])
+          const months = Object.keys(monthMap).map(Number).sort((a, b) => b - a)
+          return {
+            year,
+            months: months.map((m) => ({ month: m, posts: asArray(monthMap[String(m)]) })),
+          }
+        })
+      return groups.map(normalizeTimelineGroup)
+    }
+    return []
   },
 
   async getCalendar(year?: number, month?: number): Promise<CalendarDayPost[]> {
-    try {
-      const q = new URLSearchParams()
-      if (year) q.set('year', String(year))
-      if (month) q.set('month', String(month))
-      const data = asRecord(await requestJsonCached(`/api/blog/public/calendar?${q.toString()}`, 60))
-      if (Array.isArray(data.days)) {
-        return asArray(data.days).map(normalizeCalendarDay)
-      }
-      if (data.calendar && typeof data.calendar === 'object') {
-        const calendar = asRecord(data.calendar)
-        return Object.entries(calendar).map(([date, item]) => normalizeCalendarDay({ ...asRecord(item), date }))
-      }
-      return []
-    } catch (err) {
-      console.warn('[api.getCalendar] request failed, using fallback calendar:', err)
-      const today = new Date().toISOString().slice(0, 10)
-      return [
-        {
-          date: today,
-          count: 1,
-          posts: [{ title: '欢迎来到 Inkstone 博客', slug: 'welcome-to-inkstone-blog' }],
-        },
-      ]
+    const q = new URLSearchParams()
+    if (year) q.set('year', String(year))
+    if (month) q.set('month', String(month))
+    const data = asRecord(await requestJsonCached(`/api/blog/public/calendar?${q.toString()}`, 60))
+    if (Array.isArray(data.days)) {
+      return asArray(data.days).map(normalizeCalendarDay)
     }
+    if (data.calendar && typeof data.calendar === 'object') {
+      const calendar = asRecord(data.calendar)
+      return Object.entries(calendar).map(([date, item]) => normalizeCalendarDay({ ...asRecord(item), date }))
+    }
+    return []
   },
 
   async getComments(postSlugOrId: string): Promise<BlogComment[]> {

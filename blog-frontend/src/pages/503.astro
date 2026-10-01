@@ -1,0 +1,36 @@
+---
+import Layout from '../layouts/Layout.astro'
+import { t, DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
+
+const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
+// 重试回到发起这次请求的地址（rewrite 保留了原始 URL）：刷新当前页而不是把读者送去首页。
+const retryHref = `${Astro.url.pathname}${Astro.url.search}`
+---
+
+<Layout title={t('unavailable.title', {}, locale)} locale={locale}>
+  <div class="py-24 text-center space-y-4 max-w-md mx-auto">
+    <div class="w-16 h-16 rounded-2xl bg-[var(--accent-softer)] text-[var(--accent)] font-bold text-2xl flex items-center justify-center mx-auto shadow-[var(--shadow-xs)]">
+      503
+    </div>
+    <h1 class="text-2xl font-bold text-[var(--text-primary)]">
+      {t('unavailable.heading', {}, locale)}
+    </h1>
+    <p class="text-xs text-[var(--text-secondary)] leading-relaxed">
+      {t('unavailable.desc', {}, locale)}
+    </p>
+    <div class="pt-4 flex items-center justify-center gap-3">
+      <a
+        href={retryHref}
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-xs font-semibold hover:opacity-90 transition-opacity shadow-[var(--shadow-xs)]"
+      >
+        {t('unavailable.retry', {}, locale)}
+      </a>
+      <a
+        href="/"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors"
+      >
+        {t('not_found.back_home', {}, locale)}
+      </a>
+    </div>
+  </div>
+</Layout>

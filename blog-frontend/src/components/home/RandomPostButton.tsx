@@ -9,21 +9,17 @@ interface RandomPostButtonProps {
   navigate?: (url: string) => void
 }
 
-// 随机文章：先取 totalPages 再随机页取一篇（API 失败时走离线 fallback，
-// totalPages=1，仍能抽到 fallback 文章），抽取期间禁止重复点击
-export default function RandomPostButton({
-  locale = DEFAULT_LOCALE,
-  navigate = (url) => {
-    window.location.assign(url)
-  },
-}: RandomPostButtonProps): ReactElement {
-  const [loading, setLoading] = useState(false)
+type PickerState = 'idle' | 'loading' | 'failed'
+
+/** 抽取状态与两次取数：先问 totalPages，再随机一页取一篇，失败只说这次没成（BF-1）。 */
+function useRandomPick(navigate: (url: string) => void): { state: PickerState; pick: () => Promise<void> } {
+  const [state, setState] = useState<PickerState>('idle')
   const busyRef = useRef(false)
 
-  const handleClick = async () => {
+  const pick = async () => {
     if (busyRef.current) return
     busyRef.current = true
-    setLoading(true)
+    setState('loading')
     try {
       const first = await api.getPosts({ page: 1, limit: 1 })
       if (first.totalPages < 1) return
@@ -31,16 +27,34 @@ export default function RandomPostButton({
       const picked = await api.getPosts({ page, limit: 1 })
       const post = picked.posts[0]
       if (post) navigate(`/posts/${post.slug}`)
+    } catch (err) {
+      // DegradedBanner 说明全站状态，这里只说明这次点击没成
+      console.warn('[RandomPostButton] could not pick a post:', err)
+      setState('failed')
     } finally {
       busyRef.current = false
-      setLoading(false)
+      setState((prev) => (prev === 'failed' ? prev : 'idle'))
     }
   }
+
+  return { state, pick }
+}
+
+// 随机文章按钮：取数失败就是失败，不拿一篇演示文章假装抽到了；抽取期间禁止重复点击。
+export default function RandomPostButton({
+  locale = DEFAULT_LOCALE,
+  navigate = (url) => {
+    window.location.assign(url)
+  },
+}: RandomPostButtonProps): ReactElement {
+  const { state, pick } = useRandomPick(navigate)
+  const loading = state === 'loading'
+  const label = loading ? t('random.loading', {}, locale) : state === 'failed' ? t('random.failed', {}, locale) : t('random.button', {}, locale)
 
   return (
     <button
       type='button'
-      onClick={() => void handleClick()}
+      onClick={() => void pick()}
       disabled={loading}
       className='w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs text-[var(--text-secondary)] hover:text-[var(--accent)] hover:border-[var(--accent)] hover:bg-[var(--accent-softer)] transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait'
     >
@@ -49,7 +63,7 @@ export default function RandomPostButton({
       ) : (
         <Dices className='w-3.5 h-3.5' aria-hidden='true' />
       )}
-      <span>{loading ? t('random.loading', {}, locale) : t('random.button', {}, locale)}</span>
+      <span>{label}</span>
     </button>
   )
 }

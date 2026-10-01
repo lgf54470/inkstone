@@ -109,12 +109,17 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   // Random Post
   'random.button': 'Random post',
   'random.loading': 'Picking...',
+  'random.failed': 'Could not pick one, please retry',
 
   // 404
   'not_found.title': '404 - Page Not Found',
   'not_found.heading': 'Page Not Found',
   'not_found.desc': 'Sorry, the post or page you visited may have been moved, unpublished, or does not exist.',
   'not_found.back_home': 'Back to Home',
+  'unavailable.title': '503 - Temporarily Unavailable',
+  'unavailable.heading': 'Temporarily Unavailable',
+  'unavailable.desc': 'The blog could not load its content right now. Please try again in a moment.',
+  'unavailable.retry': 'Retry',
 
   // Pagination
   'pagination.aria': 'Pagination',

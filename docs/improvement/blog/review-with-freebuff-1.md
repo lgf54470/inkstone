@@ -493,7 +493,7 @@
 
 本轮范围包含前台，但只列与博客后台**数据契约耦合**的部分（前台的独立问题见第一轮报告 BF 系列，其中多数仍开放）。
 
-- **BF-1 [P0][开放] 失败即伪造**：`blog-frontend/src/lib/api.ts` 的 `getPosts`/`getPostBySlug`/`getTimeline`/`getCalendar` 在 catch 里回填 `FALLBACK_POSTS`（`:188-206`、`:213-218`、`:264`、`:302`），`normalize.ts` 还把成功响应里的空字段也兜成 `FALLBACK_SITE_INFO`；`feed.xml.ts` 与 `sitemap.xml.ts` 走同一条 API → **爬虫与 RSS 阅读器会把假文章当真内容收录**，真实访客在网络抖动时会读到一整篇不存在的博文。这与主应用 COR-01 是同一病灶的两个器官。
+- **BF-1 [P0][已修] 失败即伪造**：`blog-frontend/src/lib/api.ts` 的 `getPosts`/`getPostBySlug`/`getTimeline`/`getCalendar` 在 catch 里回填 `FALLBACK_POSTS`（`:188-206`、`:213-218`、`:264`、`:302`），`normalize.ts` 还把成功响应里的空字段也兜成 `FALLBACK_SITE_INFO`；`feed.xml.ts` 与 `sitemap.xml.ts` 走同一条 API → **爬虫与 RSS 阅读器会把假文章当真内容收录**，真实访客在网络抖动时会读到一整篇不存在的博文。这与主应用 COR-01 是同一病灶的两个器官。**已修**：四个取数函数删除回填、失败向上抛（`null` 只剩「服务端说不存在」一个含义，文章页据此区分 404/301 与 503）；`FALLBACK_POSTS` 从 `fallbacks.ts` 删除；首页/时间轴/标签/分类/文章页与 feed/sitemap 失败回 503 + `no-store`（`lib/service-unavailable.ts` + `pages/503.astro`，middleware 不再对非 200 回答写缓存），`middleware.ts` 只缓存 `status === 200`；`blog-frontend` 309 条测试通过（新增 7 条），三处变异共 4 failed。保留项：站点身份的默认回退（`FALLBACK_SITE_INFO`，非内容）与列表类读取回空数组。
 - **BF-2 [P1][开放] 前台 `window.open` 绕过 React 属性拦截**：`components/links/link-card.tsx`、`link-context-menu.tsx` 对匿名提交的 `link.url` 直接 `window.open`，与 SEC-04 是同一处缺口的两端。
 - **BF-3 [P0][开放] PV 计数路径**：见 COR-04。
 - **BF-4 [P1][开放] 路由与 owner**：本轮决定「每用户一个博客」后，前台需要 `/u/<username>/…` 前缀 + `Astro.locals.owner`（`env.d.ts` 的 `App.Locals` 目前只有 `locale`），并把 owner 透传进 `api.ts` 的每一次取数；`canonical`/OG/feed/sitemap 都要带前缀，否则多用户下会互相覆盖索引。

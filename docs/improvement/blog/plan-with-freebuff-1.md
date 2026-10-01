@@ -84,11 +84,11 @@
 - [x] B2-02 **COR-02** `computeDelta` 无基数不再报 +100%（共用于 share，双覆盖回归） — 已提交 `93cf290d`
   - 实现：`previous === 0` 一律返回 `undefined`（0→n 是从无到有，0/0 无从度量）；前端两处徽标因此不渲染。
   - 复现测试：`tests/share-analytics.test.ts` 订正 `computeDelta(50, 0)` 的旧断言；`tests/blog-routes.test.ts` 新增「上一窗口无流量时不画 delta」。
-- [x] B2-03 **COR-04**（PV 计数根治，beacon 部分） — 已提交 `43243ee4`；**BF-1（前台失败伪造）仍未做，见下**
+- [x] B2-03 **COR-04**（PV 计数根治，beacon 部分） — 已提交 `43243ee4`；**BF-1（前台失败伪造）已收尾，见下**
   - 实现：新增公开 `POST /api/blog/public/visits`（`visit-beacon.ts`）：按 `(文章, 访客指纹)` 30 分钟去重（复用既有 `recordBlogVisit`）、按 IP 120/10 分钟限流（超限 429）、只接受已发布且属于本站的文章（否则 404）、按真实 UA 判 bot（bot 不计也不写 views）；`GET /posts/:slug` **不再**写访问行、不再加计数（那次请求来自前台服务器，无 UA 无来源，记下的每一行都被判成爬虫——这正是「PV 恒 0」的根因）；`is_self_referrer` 改按博蝢自身配置的地址（`settings.frontendUrl`）判定，而不是 API 主机。
   - 前台：新增 `blog-frontend/src/lib/visit-beacon.ts`，文章页水合后以 `sendBeacon`（退化 `keepalive fetch`）带**真实 `document.referrer`** 上报一次；文章元素带上服务端认可的 slug。
   - 复现测试：`tests/blog-routes.test.ts` 的计数类用例改走 beacon（按指纹只计一次、第二个读者再计一次），并新增「未发布/不存在的文章 404」「bot 不计」「同站与外部来源的 self-referrer 判定」「取数路径不再留任何访问行」。
-  - **未完成部分（BF-1）**：前台 `lib/api.ts` 的 `FALLBACK_POSTS` 失败伪造（`getPosts`/`getPostBySlug`/`getTimeline` 三处）与 feed/sitemap 的失败处理（应 5xx + `no-store`，不返回空文档）尚未改，`blog-frontend/src/lib/api.test.ts` 里还有一条把回退当期望的断言等着一并订正；下一步接 B2-03 的尾。
+  - **BF-1（前台失败伪造）已收尾**：前台 `lib/api.ts` 的四个取数函数（`getPosts`/`getPostBySlug`/`getTimeline`/`getCalendar`）不再回填 `FALLBACK_POSTS`，失败向上抛；页面与 feed/sitemap 用 503 + `no-store` 回答（详见下方 BF-1 条目）。
 - [x] B2-04 **SEC-14 + COR-06 + COR-03** 流量过滤器单一真值 — 已提交 `25fa85bf`
   - 实现：三个开关只存在 store 里一份，仪表盘读 store 并把**三个值全部**透传 `analytics()`（原来自己拿一份 `excludeBots`，而 store 那份不被任何查询消费）；横幅改用服务端回传的真实 `bots/selfReferrals/owner`（原来两个参数写死 0）；`setFilters` 里白发的 `loadPosts`/`loadStats` 删除（它们从不带这三个值）。
   - 复现测试：新增 `blog-dashboard-view/traffic-switches.test.ts`（按 store 三值查询；别处改开关会重查）。
@@ -275,6 +275,12 @@
 - [ ] B5-10 **FEA-05** 版本历史（需 ADR）
 - [ ] B5-11 **FEA-08** RSS 自动发现 / WebSub ping + sitemap 覆盖与 `lastmod`
 - [ ] B5-12 **FEA-12** 前台：相关文章 / 搜索页 / PWA / 嵌套评论
+- [x] BF-1 **BF-1** 前台失败不再伪造：四个取数函数抛错、页面与 feed/sitemap 用 503 + no-store — 已提交（hash 由下一提交回填，见进度日志）
+  - 实现（取数）：`blog-frontend/src/lib/api.ts` 的 `getPosts`/`getPostBySlug`/`getTimeline`/`getCalendar` 删掉 catch 里的 `FALLBACK_POSTS` 回填——失败向上抛，`null` 只剩「服务端说这篇文章不存在」一个含义；`lib/fallbacks.ts` 删掉 `FALLBACK_POSTS`，只留站点身份的 `FALLBACK_SITE_INFO`（它不是内容，Layout 需要站点名）。
+  - 实现（页面与端点）：新增 `lib/service-unavailable.ts`（feed/sitemap 共用的 503 + `no-store` 出口）与 `pages/503.astro`；首页/时间轴/标签/分类/文章页取数失败时 `Astro.response.status = 503` + `Cache-Control: no-store` + `rewrite('/503')`——文章页刻意区分「取数失败」（503，爬虫稍后重试）与「服务端说不存在」（404/301）；`feed.xml.ts`、`sitemap.xml.ts` 失败同样 503 + `no-store`（空 feed / 只含静态路由的 sitemap 会被当成「博客清空」收录）；`middleware.ts` 只给 `status === 200` 的回答配页面/sitemap 缓存，防止 5xx 被边缘缓存；随机文章按钮失败改为显示「暂时抽不出来」（三语新 key `random.failed`），不再静默。
+  - 复现测试：`lib/api.test.ts` 把「失败回退到 FALLBACK_POSTS」的旧断言订正为「失败必须 reject」，并新增 `getPostBySlug`/`getTimeline`/`getCalendar` 的失败路径（含「服务端答不存在时仍返回 null」）；`tests/endpoints.test.ts` 新增 feed/sitemap 失败回 503 + `no-store` 两条；`RandomPostButton.test.ts` 新增失败文案且不跳转一条。三处变异共 4 failed（getPosts 恢复回退、feed 与 sitemap 去掉失败分支）。
+  - 验收：根 `tsc -b` 绿；`blog-frontend`：`astro check` 仅既有 3 条 music 测试报错、`npm test` 309 通过（新增 7 条）、`npm run lint` 通过、根 `size:check:blog` 与 `deep-imports:check:blog` 通过。
+  - 限制：站点身份仍保留默认值（`FALLBACK_SITE_INFO` 与 `normalizeSiteInfo` 的空字段兜底）——review 原文把它与假文章并列，本轮按「身份显示默认 vs 内容伪造」分开处理并保留（Layout 需要站点名，且这不是可被收录的文章）；`getCategories`/`getTags`/`getComments`/`fetchPublicLinks` 失败仍回空数组（列表为空与伪造内容不同类，归前台 FEA 批次）；`/503` 经 rewrite 渲染，URL 保持不变。
 
 ---
 
@@ -296,7 +302,8 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
-| 2026-10-01 | B5-06 FEA-07 媒体库 / 封面选择器 | （下一提交回填） | `tsc -b` 绿；`tests/blog-routes.test.ts` 86 条（新 4 条）；`cover-field.test.ts` 5 条；demo `blog-media.test.ts` 2 条 + `blog-smoke.test.ts` 4 条（目标 97 条全绿）；两处变异各实测 1 failed（公开判据去掉 `is_published = 1`、删除去掉在用检查）；`test:unit` 605 文件 5389 通过 / 1 skipped（全绿）；十二项静态门禁 + `surfaces` 绿（comments 白名单 1361 文件 12991 条）；pre-commit 全量 EXIT=0；e2e / 视觉 / 对比度留到批次收尾统一跑 | 未做裁剪；选择器只列最近 200 张且无搜索；删除无撤回；公开地址无 ETag |
+| 2026-10-01 | BF-1 前台失败不再伪造（四个取数抛错、页面与 feed/sitemap 503 + no-store） | （下一提交回填） | `blog-frontend`：`npm test` 309 通过（新 7 条）、`astro check` 仅既有 3 条、`lint` 通过、根 `size:check:blog`/`deep-imports:check:blog` 绿；三处变异共 4 failed（getPosts 恢复回退、feed/sitemap 去掉失败分支）；根项目未动 | 站点身份默认回退保留（非内容）；列表类读取失败仍回空数组；`/503` 是 rewrite，URL 不变 |
+| 2026-10-01 | B5-06 FEA-07 媒体库 / 封面选择器 | aa4b0612 | `tsc -b` 绿；`tests/blog-routes.test.ts` 86 条（新 4 条）；`cover-field.test.ts` 5 条；demo `blog-media.test.ts` 2 条 + `blog-smoke.test.ts` 4 条（目标 97 条全绿）；两处变异各实测 1 failed（公开判据去掉 `is_published = 1`、删除去掉在用检查）；`test:unit` 605 文件 5389 通过 / 1 skipped（全绿）；十二项静态门禁 + `surfaces` 绿（comments 白名单 1361 文件 12991 条）；pre-commit 全量 EXIT=0；e2e / 视觉 / 对比度留到批次收尾统一跑 | 未做裁剪；选择器只列最近 200 张且无搜索；删除无撤回；公开地址无 ETag |
 | 2026-10-01 | B5-05 FEA-06 评论回复 + Webhook 通知 + 反垃圾 | d4b3e659 | `tsc -b` 绿；`tests/blog-routes.test.ts` 82 条（新 5 条）；`tests/schema-migrations.test.ts` +1；客户端 +5 条；两处变异实测 2 / 1 failed；`test:unit` 603 文件 5367 通过 / 11 failed / 1 skipped——11 条全部是满负载下的 5s 超时（逐文件重跑全绿，三条最慢的用 `--testTimeout=30000` 实测 6.9s / 6.0s / 3.9s）；十一项静态门禁 + `surfaces` 绿（comments 白名单 1355 文件 12942 条；size 基线仅 `migrations.ts` 857→869）；e2e / 视觉 / 对比度留到批次收尾统一跑 | 邮件不在仓内（只做 Webhook，邮件需作者自接）；通知无已读与重试队列；反垃圾是确定性规则（无模型/验证码）；前台尚未按 parent 缩进展示（FEA-12），也未用 `isOwner` 样式 |
 | 2026-10-01 | B5-04 FEA-04 文章回收站（软删 + 还原 + 彻底删除） | 96a5574c | `tsc -b` 绿；`tests/blog-routes.test.ts` 77 条（新 8 条）；`tests/schema-migrations.test.ts` +1；`blog-trash-view/index.test.ts` 7 条；demo `blog-smoke.test.ts` +3；两处变异实测 2 / 1 failed；`test:unit` 603 文件 5363 通过 / 5 failed / 1 skipped——5 条全部是满负载下的 5s 超时（当时 load average ≈30，另一个检出在跑 vitest）：kanban-locale-repaint-policy、starter-deck-render、share-hub-views×2 单独重跑全绿，blog-comments-window 放宽到 20s 后 5.4s 通过；十一项静态门禁 + `surfaces` 绿（comments 白名单 1348 文件 12884 条；size 基线仅 `migrations.ts` 843→857）；未动 blog-frontend | 回收站无保留期与自动清理；清空是一次确认；purge 同步批处理；`/check-slug` 对回收站地址回「不可用」（按设计）；列表无分页 |
 | 2026-10-01 | B5-03 FEA-03 slug 变更 301 重定向表 | 2d1d51de | `tsc -b` 绿；`tests/blog-routes.test.ts` 71 条（含新 6 条）；前台 +3 条；四处变异各 1 failed（其中一处复现了本轮真实 bug）；`test:unit` 602 文件 5354 通过 / 1 skipped（另一轮 1 条满负载超时，重跑全绿）；十一项静态门禁 + `surfaces` 绿（size 仅 `migrations.ts` 827→843）；`blog-frontend` test 302 / lint 通过、`astro check` 仅既有 3 条；真机：:7712 建文 alpha→改名 beta，前台 `/posts/alpha` → 301 `/posts/beta`、`/posts/beta` → 200、未知 → 404 | `/check-slug` 不提示「该地址正指向另一篇」；历史仅在改名/删除时维护；分类/标签改名仍 404 |

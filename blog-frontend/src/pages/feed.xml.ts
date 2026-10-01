@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro'
 import { api } from '../lib/api'
+import { serviceUnavailable } from '../lib/service-unavailable'
 import { escapeXml } from '../lib/xml'
 
 /** RSS 订阅源最新文章数（接口单次分页上限） */
@@ -7,12 +8,21 @@ const FEED_POST_LIMIT = 50
 
 /**
  * 动态 RSS 2.0 订阅源：基于 getPosts 最新文章（含摘要），
- * origin 自适应环境；feed 本身可被 CDN 缓存（middleware 已设 max-age=3600）。
+ * origin 自适应环境。取数失败时回 503 + no-store（BF-1）：一个空 feed 或演示文章会被阅读器
+ * 与聚合站当成真实内容收录，而 5xx 会让它们稍后重试。
  * 独立为纯函数便于单测（tests/endpoints.test.ts）。
  */
 export async function getFeedXml(url: URL): Promise<Response> {
   const origin = url.origin
-  const [siteInfo, postsData] = await Promise.all([api.getSiteInfo(), api.getPosts({ limit: FEED_POST_LIMIT })])
+  const data = await Promise.all([
+    api.getSiteInfo(),
+    api.getPosts({ limit: FEED_POST_LIMIT }),
+  ]).catch((err: unknown) => {
+    console.error('[feed] blog data unavailable:', err)
+    return null
+  })
+  if (!data) return serviceUnavailable('rss')
+  const [siteInfo, postsData] = data
 
   const items = postsData.posts.map((post) => {
     const link = `${origin}/posts/${post.slug}`

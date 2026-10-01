@@ -109,12 +109,17 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   // Random Post
   'random.button': '随机一篇',
   'random.loading': '正在抽取...',
+  'random.failed': '暂时抽不出来，请重试',
 
   // 404
   'not_found.title': '404 - 页面未找到',
   'not_found.heading': '页面未找到',
   'not_found.desc': '抱歉，您访问的文章或页面可能已被移动、下架或不存在。',
   'not_found.back_home': '返回首页',
+  'unavailable.title': '503 - 暂时无法访问',
+  'unavailable.heading': '暂时无法访问',
+  'unavailable.desc': '博客此刻没能取到内容，请稍后重试。',
+  'unavailable.retry': '重试',
 
   // Pagination
   'pagination.aria': '分页导航',

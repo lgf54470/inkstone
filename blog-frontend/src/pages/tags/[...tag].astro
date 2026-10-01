@@ -22,7 +22,15 @@ const page = parsePositiveInt(url.searchParams.get('page'), 1)
 
 // 分页大小与首页保持一致，遵循站点配置的 postsPerPage 而非硬编码 10
 const [siteInfo, categories] = await Promise.all([api.getSiteInfo(), api.getCategories()])
-const postsData = await api.getPosts({ tag: tagName, page, limit: siteInfo.postsPerPage })
+const postsData = await api.getPosts({ tag: tagName, page, limit: siteInfo.postsPerPage }).catch((err: unknown) => {
+  console.error(`[tags] fetch failed for "${tagName}":`, err)
+  return null
+})
+if (!postsData) {
+  Astro.response.status = 503
+  Astro.response.headers.set('Cache-Control', 'no-store')
+  return Astro.rewrite('/503')
+}
 
 const categoryMap = new Map(categories.map((c) => [c.id, c]))
 ---

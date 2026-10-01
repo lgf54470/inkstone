@@ -27,7 +27,15 @@ const url = Astro.url
 const page = parsePositiveInt(url.searchParams.get('page'), 1)
 
 // 分页大小与首页保持一致，遵循站点配置的 postsPerPage 而非硬编码 10
-const postsData = await api.getPosts({ categoryId: category.id, page, limit: siteInfo.postsPerPage })
+const postsData = await api.getPosts({ categoryId: category.id, page, limit: siteInfo.postsPerPage }).catch((err: unknown) => {
+  console.error(`[categories] fetch failed for "${slug}":`, err)
+  return null
+})
+if (!postsData) {
+  Astro.response.status = 503
+  Astro.response.headers.set('Cache-Control', 'no-store')
+  return Astro.rewrite('/503')
+}
 ---
 
 <Layout title={`${category.name} - ${siteInfo.siteName || 'Inkstone Blog'}`} description={category.description} siteInfo={siteInfo} locale={locale}>

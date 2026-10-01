@@ -89,6 +89,15 @@ describe('getSitemapXml', () => {
     const body = await (await getSitemapXml(new URL('https://blog.example.com/'))).text()
     expect(body).toContain('a&amp;b')
   })
+
+  it('answers 503 + no-store when the timeline cannot be read (BF-1)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockedApi.getTimeline.mockRejectedValue(new Error('down'))
+    const res = await getSitemapXml(new URL('https://blog.example.com/'))
+    // 一个只含静态路由的 200 sitemap 会被搜索引擎当作「文章都没了」，5xx 才是这次取数失败
+    expect(res.status).toBe(503)
+    expect(res.headers.get('cache-control')).toBe('no-store')
+  })
 })
 
 describe('getFeedXml', () => {
@@ -112,5 +121,14 @@ describe('getFeedXml', () => {
     const body = await (await getFeedXml(new URL('https://blog.example.com/'))).text()
     expect(body).toContain('<title>Hello &amp; Welcome</title>')
     expect(body).toContain('第一篇摘要 &lt;em&gt;带标记&lt;/em&gt;')
+  })
+
+  it('answers 503 + no-store when the posts cannot be read (BF-1)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockedApi.getPosts.mockRejectedValue(new Error('down'))
+    const res = await getFeedXml(new URL('https://blog.example.com/'))
+    // 空 feed 会被阅读器当成「博客清空了」；5xx 让它们稍后重试
+    expect(res.status).toBe(503)
+    expect(res.headers.get('cache-control')).toBe('no-store')
   })
 })

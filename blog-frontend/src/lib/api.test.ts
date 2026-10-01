@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api, extractCoverUrl, isApiDegraded, subscribeApiHealth, clearApiMemoryCache } from './api'
 import { API_TIMEOUT_MS } from './constants'
 
@@ -76,12 +76,33 @@ describe('api.getPosts payload mapping', () => {
     expect(result.posts[0]!.publishedAt).toBe(Date.parse('2026-01-02T00:00:00Z'))
   })
 
-  it('falls back to FALLBACK_POSTS when fetch fails', async () => {
+  it('rejects when fetch fails instead of fabricating posts', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down') }))
-    const result = await api.getPosts({})
-    expect(result.posts.length).toBeGreaterThan(0)
-    expect(result.total).toBe(result.posts.length)
-    expect(result.posts[0]!.slug).toBe('welcome-to-inkstone-blog')
+    await expect(api.getPosts({})).rejects.toThrow('network down')
+  })
+})
+
+describe('api failure propagation', () => {
+  beforeEach(() => {
+    clearApiMemoryCache()
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('down') }))
+  })
+
+  it('leaves null meaning "the server says this post does not exist"', async () => {
+    stubFetch({ post: null })
+    await expect(api.getPostBySlug('gone')).resolves.toBeNull()
+  })
+
+  it('rejects getPostBySlug rather than returning a demo post', async () => {
+    await expect(api.getPostBySlug('welcome-to-inkstone-blog')).rejects.toThrow('down')
+  })
+
+  it('rejects getTimeline rather than returning a fabricated month', async () => {
+    await expect(api.getTimeline()).rejects.toThrow('down')
+  })
+
+  it('rejects getCalendar rather than returning a fabricated day', async () => {
+    await expect(api.getCalendar()).rejects.toThrow('down')
   })
 })
 
@@ -110,8 +131,7 @@ describe('api.getPosts request behavior', () => {
     )
     const promise = api.getPosts({ search: 'inkstone', signal: controller.signal })
     controller.abort()
-    const result = await promise // 中止被 getPosts 吞掉并走离线 fallback
-    expect(result.posts.length).toBeGreaterThan(0)
+    await expect(promise).rejects.toThrow() // 中止向上抛给调用方，不再被吞成离线 fallback
     expect(isApiDegraded()).toBe(false) // 用户主动中止不计入降级
   })
 })

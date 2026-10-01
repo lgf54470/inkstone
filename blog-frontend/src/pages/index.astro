@@ -13,14 +13,24 @@ const page = parsePositiveInt(url.searchParams.get('page'), 1)
 const limit = Math.min(50, parsePositiveInt(url.searchParams.get('limit'), 10))
 const tag = url.searchParams.get('tag') || null
 
-// Parallel data fetching for SSR
-const [siteInfo, postsData, categories, tags, calendarDays] = await Promise.all([
+// Parallel data fetching for SSR。文章与日历的取数失败真实地表现为 503（BF-1）：交给读者一张
+// 「空首页」或一篇演示文章都会让他们读到不存在的内容。
+const data = await Promise.all([
   api.getSiteInfo(),
   api.getPosts({ page, limit, tag: tag ?? undefined }),
   api.getCategories(),
   api.getTags(),
   api.getCalendar(),
-])
+]).catch((err: unknown) => {
+  console.error('[index] blog data unavailable:', err)
+  return null
+})
+if (!data) {
+  Astro.response.status = 503
+  Astro.response.headers.set('Cache-Control', 'no-store')
+  return Astro.rewrite('/503')
+}
+const [siteInfo, postsData, categories, tags, calendarDays] = data
 ---
 
 <Layout

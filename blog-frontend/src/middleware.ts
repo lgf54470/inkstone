@@ -173,15 +173,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   let final = applyCsp(await next())
 
+  // 只给成功的回答配缓存：5xx（页面取不到数据、feed/sitemap 失败）自带 no-store，不能被这里的
+  //「缓存整页」覆盖，否则一次瞬时故障会被边缘缓存住（BF-1）。
   const contentType = final.headers.get('content-type') ?? ''
-  if (contentType.includes('text/html')) {
+  if (final.status === 200 && contentType.includes('text/html')) {
     const hasLocaleCookie = Boolean(cookieLang)
     const cacheControl = pageCacheControl(context.url, hasLocaleCookie)
     if (cacheControl) {
       final.headers.set('Cache-Control', cacheControl)
       final.headers.set('Vary', 'Accept-Language')
     }
-  } else if (context.url.pathname === '/sitemap.xml') {
+  } else if (final.status === 200 && context.url.pathname === '/sitemap.xml') {
     final.headers.set('Cache-Control', 'public, max-age=3600')
   }
   return final

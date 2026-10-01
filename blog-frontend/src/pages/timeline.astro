@@ -4,7 +4,15 @@ import { api } from '../lib/api'
 import { t, formatDate, DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
 
 const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
-const timeline = await api.getTimeline()
+const timeline = await api.getTimeline().catch((err: unknown) => {
+  console.error('[timeline] fetch failed:', err)
+  return null
+})
+if (!timeline) {
+  Astro.response.status = 503
+  Astro.response.headers.set('Cache-Control', 'no-store')
+  return Astro.rewrite('/503')
+}
 const totalCount = timeline.reduce(
   (acc, y) => acc + y.months.reduce((mAcc, m) => mAcc + m.posts.length, 0),
   0
