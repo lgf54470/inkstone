@@ -20,7 +20,7 @@
 | **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
 | **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[x]` 已完成 (`bbe158b8` ~ `c6426131`) |
 | **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[x]` 已完成 (`5f02e2d4` ~ `decd0c8d`，B3-01 ~ B3-12) |
-| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 `6888b30f`；B4-02 `e7cf8aba`；B4-11 `3d163856`；B4-03 `13997681`；B4-04 `2c304cf1`；余 B4-05 与台账 B4-06 ~ B4-13） |
+| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[x]` 已完成（P-01 ~ P-28 全 28 项核心审查问题全部闭环；B4-01 ~ B4-05 全部提交，余后续维护台账 B4-06 ~ B4-13） |
 
 ---
 
@@ -242,11 +242,37 @@
     - **本批的浏览器场景自己带过一个缺陷**：`assertSlideLayouts` 收尾只按一次 `Escape`。放映会取原生全屏，第一把 `Escape` 只把全屏交还浏览器、面板仍在，于是其后每个场景的"读 DOM"照旧通过（面板与笔记并列而非取而代之）、第一次真实指针点击被遮罩吃掉——实测两次运行都崩在下一个场景 `pickMindmapPalette` 等 `[role="menu"] [role="menuitemcheckbox"]`（15s 超时）。改为按两把并断言"面板确实没了、全屏确实退了"（新增第 12 行 `layout: the show is put away before the next scenario reaches for the pointer`），并用一次性探针读到 `after 1 Escape {dialog:"演示模式",canvas:true,fullscreen:null}`、`after 2 Escape {dialog:null,canvas:false}`、可点按钮覆盖数 0。结论：任何开过放映的场景都必须自己断言收尾，不能只按一下。
     - `waitForRailFilled` 在量测永不收尾时是"整场门禁崩在这里"而不是"红一行"（它抛 `slide list never finished {"before":…,"after":…}`）。这条诊断（B4-11 加的）本批用它定位了 M9，值得保留，但它意味着任何让量测无法收尾的改动都会伪装成门禁崩溃。
     - 本机默认并发下超 5s 的既有用例不止 blog 一条：本轮实测 `blog-comments-window`、`music-track-table`、`music-hub-modal`、`tests/radiogroup-names`、`tests/starter-deck-render` 五条按运行轮换超时，单跑 1.3~2.3s 全绿；对 `git archive HEAD` 快照单跑 `tests/starter-deck-render.test.ts` 得 1351ms，本树同法 1575ms，同量级，故与本批无关。文末基线说明按本轮更新。
-- [ ] **B4-05** `P-28 (FEAT-02)`: 独立双屏演讲者模式 (Presenter View)
-  - 涉及文件：新增 `src/client/features/presentation/presenter-view/presenter-window.tsx`、`src/client/features/presentation/presenter-view/use-presenter-channel.ts`
+- [x] **B4-05** `P-28 (FEAT-02)`: 独立双屏演讲者模式 (Presenter View) — 已完成 (`cac9c063`)
+  - 涉及文件：
+    - `src/client/features/presentation/presenter-view/use-presenter-channel.ts`
+    - `src/client/features/presentation/presenter-view/presenter-window.tsx`
+    - `src/client/features/presentation/presenter-view/use-presenter-channel.test.ts`
+    - `src/client/features/presentation/presenter-view/presenter-window.test.ts`
+    - `src/client/features/presentation/presentation-keys.ts`
+    - `src/client/features/presentation/presentation-keys.test.ts`
+    - `src/client/features/presentation/use-presentation-keys.ts`
+    - `src/client/features/presentation/presentation-controls.tsx`
+    - `src/client/features/presentation/presentation-controls.test.ts`
+    - `src/client/features/presentation/use-presentation-session.ts`
+    - `src/client/features/presentation/presentation-overlay.tsx`
+    - `src/client/features/presentation/index.ts`
+    - `src/client/app.tsx`
+    - `src/shared/locales/{en-US,zh-CN}/workspace.ts`
+    - `README.md`, `README_ZH.md`
+    - `scripts/check-comments.mjs`, `scripts/check-size.baseline.json`
   - 目标：双屏独立输出，讲者窗口独立展示当前页、下一页预览、私有小抄与时钟。
-  - 方案：通过 `window.open` 弹出独立窗口作为第二屏控制台，主子窗口借助 `BroadcastChannel` 传输页码、时间戳与小抄，实现低延迟双向联动。
-  - 验证：单元测试验证 BroadcastChannel 跨窗口消息同步协议与控制事件收发。
+  - 方案：通过 `window.open` 弹出独立窗口作为第二屏控制台（URL 带 `?presenter=1`，由独立 `PresenterRoute` 轻量挂载，绕过编辑器启动），主子窗口借助 `BroadcastChannel` 传输页码、时间戳与小抄，实现低延迟双向联动。
+  - 验证：
+    - 单测覆盖：
+      - `use-presenter-channel.test.ts`：4 例测试覆盖广播者与接收者挂载握手、状态双向同步、控制命令反向派发、广播者卸载关闭信号。
+      - `presenter-window.test.ts`：12 例测试覆盖控制台挂载、未连接状态、当前页与下一页渲染、演讲者备注提取渲染、倒计时/计时器启动暂停重置、键盘导航与全屏退出。
+      - `presentation-keys.test.ts`：补充 `P` 键触发 `presenter` 命令及表单输入守卫测试。
+      - `presentation-controls.test.ts`：测试悬浮工具栏演讲者模式按钮渲染与触发。
+    - 门禁与全量：
+      - 20 个 presentation 测试文件全绿（281 例）。
+      - `npm run typecheck` 通过。
+      - 静态门禁全部通过（`style`, `tokens`, `vendor`, `escape`, `empty-catch`, `module-state`, `deep-imports`, `surfaces`, `hardcoded`, `i18n`）。
+      - Pre-commit 全量测试 409 个文件、3474 例全绿。
 
 - [ ] **B4-06** `P-25 (FEAT-04) 后半`: 聚光灯（Spotlight）
   - 目标：把大屏其余部分压暗、只留一块跟随指针的亮区，与 B4-02 的激光笔共用同一套模式状态与 `Esc` 阶梯。
