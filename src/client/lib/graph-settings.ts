@@ -7,6 +7,8 @@ export interface GraphPreferences {
   depth: number
   includeOrphans: boolean
   includeUnresolved: boolean
+  /** Draw each tag as a node of its own, pulling notes that share it into one cluster. */
+  showTagNodes: boolean
   arrows: boolean
   labels: boolean
   groupBy: GroupBy
@@ -39,10 +41,11 @@ export const GRAPH_SETTINGS_TOGGLES: ReadonlyArray<GraphToggleControl> = [
   { prefKey: 'clearClosesPanel', labelKey: 'graph.clear_closes_panel', hintKey: 'graph.clear_closes_panel_hint', default: true },
   { prefKey: 'includeOrphans', labelKey: 'graph.show_orphans', default: true },
   { prefKey: 'includeUnresolved', labelKey: 'graph.show_unresolved', default: true },
+  { prefKey: 'showTagNodes', labelKey: 'graph.show_tags', default: false },
   { prefKey: 'arrows', labelKey: 'graph.show_arrows', default: true },
   { prefKey: 'labels', labelKey: 'graph.show_labels', default: true },
 ]
 
 export const GRAPH_CLEAR_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'clearResetsTag' || control.prefKey === 'clearClosesPanel')
-export const GRAPH_SHOW_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'includeOrphans' || control.prefKey === 'includeUnresolved')
+export const GRAPH_SHOW_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'includeOrphans' || control.prefKey === 'includeUnresolved' || control.prefKey === 'showTagNodes')
 export const GRAPH_APPEARANCE_TOGGLES = GRAPH_SETTINGS_TOGGLES.filter((control) => control.prefKey === 'arrows' || control.prefKey === 'labels')

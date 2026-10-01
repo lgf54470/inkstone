@@ -25,6 +25,7 @@ export function loadPreferences(userId?: string | null): GraphPreferences {
       depth: boundedPreference(stored.depth, DEFAULT_PREFERENCES.depth, 1, 3),
       includeOrphans: booleanPreference(stored.includeOrphans, DEFAULT_PREFERENCES.includeOrphans),
       includeUnresolved: booleanPreference(stored.includeUnresolved, DEFAULT_PREFERENCES.includeUnresolved),
+      showTagNodes: booleanPreference(stored.showTagNodes, DEFAULT_PREFERENCES.showTagNodes),
       arrows: booleanPreference(stored.arrows, DEFAULT_PREFERENCES.arrows),
       labels: booleanPreference(stored.labels, DEFAULT_PREFERENCES.labels),
       groupBy: stored.groupBy === 'folder' || stored.groupBy === 'tag' ? stored.groupBy : 'none',
@@ -77,7 +78,28 @@ export function tagHashColor(name: string): string {
   return TAG_FALLBACK_PALETTE[index]!
 }
 
+/**
+ * The colour each tag carries, read off the notes that hold it: a tag node and the notes linked to it
+ * arrive in the same response, so the palette never has to ask for the colour separately.
+ */
+export function tagColorsByName(nodes: GraphResponse['nodes']): Map<string, string | null> {
+  const colors = new Map<string, string | null>()
+  for (const node of nodes) {
+    for (const tag of node.tags) {
+      const key = tag.name.toLowerCase()
+      const known = colors.get(key)
+      if (known === undefined || (known === null && tag.color)) colors.set(key, tag.color)
+    }
+  }
+  return colors
+}
+
+function tagNodeColor(name: string, color: string | null): string {
+  return organizerColorOrNull(color) ?? tagHashColor(name)
+}
+
 export function nodeColor(node: CanvasNode, groupBy: GroupBy, fallback: string): string {
+  if (node.kind === 'tag') return tagNodeColor(node.title, node.tagColor)
   if (groupBy === 'folder') return organizerColorOrNull(node.folderColor) ?? fallback
   if (groupBy === 'tag') {
     const firstTag = node.tags[0]
@@ -87,7 +109,14 @@ export function nodeColor(node: CanvasNode, groupBy: GroupBy, fallback: string):
   return fallback
 }
 
-function extractNodeLegend(node: CanvasNode, groupBy: GroupBy): { label: string; color: string } | null {
+function extractNodeLegend(
+  node: GraphResponse['nodes'][number],
+  groupBy: GroupBy,
+  tagColors: Map<string, string | null>,
+): { label: string; color: string } | null {
+  if (node.kind === 'tag') {
+    return { label: node.title, color: tagNodeColor(node.title, tagColors.get(node.title.toLowerCase()) ?? null) }
+  }
   if (groupBy === 'folder' && node.folderName) {
     const color = organizerColorOrNull(node.folderColor)
     return color ? { label: node.folderName, color } : null
@@ -99,14 +128,22 @@ function extractNodeLegend(node: CanvasNode, groupBy: GroupBy): { label: string;
   return null
 }
 
-export function buildColorLegends(nodes: CanvasNode[], groupBy: GroupBy): Array<{ label: string; color: string }> {
-  if (groupBy === 'none') return []
+export function buildColorLegends(nodes: GraphResponse['nodes'], groupBy: GroupBy): Array<{ label: string; color: string }> {
+  if (groupBy === 'none' && !nodes.some((node) => node.kind === 'tag')) return []
+  const tagColors = tagColorsByName(nodes)
   const map = new Map<string, string>()
   for (const node of nodes) {
-    const entry = extractNodeLegend(node, groupBy)
+    const entry = extractNodeLegend(node, groupBy, tagColors)
     if (entry && !map.has(entry.label)) map.set(entry.label, entry.color)
   }
   return [...map.entries()].slice(0, 10).map(([label, color]) => ({ label, color }))
+}
+
+/** Tag memberships are drawn like links but are not wiki links, so the stats line leaves them out. */
+export function countWikiLinkEdges(data: GraphResponse): number {
+  const tagIds = new Set(data.nodes.filter((node) => node.kind === 'tag').map((node) => node.id))
+  if (!tagIds.size) return data.edges.length
+  return data.edges.filter((edge) => !tagIds.has(edge.source) && !tagIds.has(edge.target)).length
 }
 
 export function normalizedResponse(response: GraphResponse): GraphResponse {

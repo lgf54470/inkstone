@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono'
 import type { DemoState } from '../../state'
 import { deriveExcerpt, extractWikiLinks, normalizeLinkKey, wikiNoteTarget } from '@shared/markdown-utils'
 import type { GraphResponse, Note, SearchResponse } from '@shared/types'
+import { applyTagNodes } from '@shared/graph-tag-nodes'
 import { listFolders, summarize } from '../../state'
 
 interface GraphLinkRecord {
@@ -167,6 +168,7 @@ function graphResponse(c: Context, state: DemoState): Response {
   const tagsMatch = c.req.query('tagsMatch') === 'all' ? 'all' : 'any'
   const includeOrphans = c.req.query('includeOrphans') !== '0'
   const includeUnresolved = c.req.query('includeUnresolved') === '1'
+  const showTagNodes = c.req.query('tagNodes') === '1'
 
   const { active, linkRecords } = collectGraphRecords(state)
   const { uniqueEdges, degree, incoming, outgoing } = buildGraphEdges(linkRecords)
@@ -182,6 +184,9 @@ function graphResponse(c: Context, state: DemoState): Response {
   const unresolvedCount = includeUnresolved
     ? collectUnresolvedLinks(linkRecords, shownIds, nodes, edges)
     : 0
+  const tagNodes = showTagNodes
+    ? applyTagNodes(nodes, edges, new Map(shown.map((note) => [note.id, note.tags.map((name) => ({ name }))])))
+    : { added: 0, dropped: 0 }
   return c.json({
     nodes,
     edges,
@@ -189,9 +194,9 @@ function graphResponse(c: Context, state: DemoState): Response {
       mode,
       centerId: mode === 'local' ? centerId : null,
       depth,
-      totalNodes: filtered.length + unresolvedCount,
+      totalNodes: filtered.length + unresolvedCount + tagNodes.added + tagNodes.dropped,
       totalEdges: edges.length,
-      truncated: filtered.length > limit,
+      truncated: filtered.length > limit || tagNodes.dropped > 0,
       limit,
     },
   })

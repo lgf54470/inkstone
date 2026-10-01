@@ -2,7 +2,7 @@ import type { MutableRefObject } from 'react'
 import type { GraphResponse } from '@shared/types'
 import { truncateText } from '@shared/text-utils'
 import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, PHYSICS_FRAME_LIMIT } from './constants'
-import { nodeColor } from './helpers'
+import { nodeColor, tagColorsByName } from './helpers'
 import type {
   CanvasNode,
   CanvasState,
@@ -174,7 +174,8 @@ function drawLabels({
     if (!emphasized && !isNeighbor && node.degree < 1 && scale < 1.1) continue
     ctx.fillStyle = emphasized ? colors.accent : colors.text
     ctx.globalAlpha = emphasized || isNeighbor ? 1 : emphasizedId ? 0.18 : 0.72
-    const label = node.title.length > 18 ? `${truncateText(node.title, 18)}…` : node.title
+    const text = node.kind === 'tag' ? `#${node.title}` : node.title
+    const label = text.length > 18 ? `${truncateText(text, 18)}…` : text
     ctx.lineWidth = 3 / scale
     ctx.strokeStyle = colors.bgBase
     ctx.strokeText(label, node.x, node.y + node.r + 12 / scale)
@@ -245,6 +246,7 @@ export function createGraphTicker(
 
 
 export function buildInitialLayout(data: GraphResponse, prefs: GraphPreferences, state: CanvasState): void {
+  const tagColors = tagColorsByName(data.nodes)
   state.nodes = data.nodes.map((node, index) => {
     const angle = index * 2.399963
     const radius = 18 * Math.sqrt(index)
@@ -255,6 +257,7 @@ export function buildInitialLayout(data: GraphResponse, prefs: GraphPreferences,
       vx: 0,
       vy: 0,
       r: (4 + Math.min(9, Math.sqrt(node.degree) * 2.4)) * prefs.nodeScale,
+      tagColor: node.kind === 'tag' ? tagColors.get(node.title.toLowerCase()) ?? null : null,
     }
   })
   const byId = new Map(state.nodes.map((node) => [node.id, node]))

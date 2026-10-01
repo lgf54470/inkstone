@@ -206,3 +206,51 @@ describe('layout thrashing prevention (PERF-02)', () => {
     restoreContext()
   })
 })
+
+const tagData: GraphResponse = {
+  nodes: [
+    { id: 'note-1', title: 'Note 1', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderName: null, folderColor: null, tags: [{ name: 'work', color: '#059669' }] },
+    { id: 'note-2', title: 'Note 2', kind: 'note', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderName: null, folderColor: null, tags: [{ name: 'work', color: '#059669' }] },
+    { id: 'tag:work', title: 'work', kind: 'tag', degree: 2, inDegree: 2, outDegree: 0, folderId: null, folderName: null, folderColor: null, tags: [] },
+  ],
+  edges: [
+    { source: 'note-1', target: 'tag:work' },
+    { source: 'note-2', target: 'tag:work' },
+  ],
+  meta: { mode: 'global', centerId: null, depth: 1, totalNodes: 3, totalEdges: 2, truncated: false, limit: 350 },
+}
+
+describe('tag nodes (FEAT-03)', () => {
+  it('stamps each tag node with the colour its notes carry, and nothing on the notes', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: false, media: query })))
+    const state = createInitialState()
+    buildInitialLayout(tagData, DEFAULT_PREFERENCES, state)
+    expect(state.nodes.find((node) => node.kind === 'tag')!.tagColor).toBe('#059669')
+    expect(state.nodes.find((node) => node.kind === 'note')!.tagColor).toBeNull()
+    expect(state.edges).toHaveLength(2)
+    expect(state.nodes.find((node) => node.kind === 'tag')!.r).toBeGreaterThan(state.nodes[0]!.r)
+  })
+
+  it('draws a tag node under its hash-prefixed name', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: false, media: query })))
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { cb(0); return 1 })
+    const clearRectCalls: Array<[number, number, number, number]> = []
+    const strokeTextCalls: Array<[string, number, number]> = []
+    const restoreContext = mockCanvasContext(clearRectCalls, strokeTextCalls)
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+    const state = createInitialState()
+    buildInitialLayout(tagData, DEFAULT_PREFERENCES, state)
+    const prefsRef = { current: { ...DEFAULT_PREFERENCES, labels: true } }
+    const hoverRef = { current: null }, selectedIdRef = { current: null }, activeNoteIdRef = { current: null }
+    createGraphTicker({
+      state, canvas, ctx, colorsRef: readThemeColors(), prefsRef, hoverRef, selectedIdRef, activeNoteIdRef,
+      style: document.createElement('div').style,
+    })
+    state.schedule?.()
+
+    expect(strokeTextCalls.map((call) => call[0])).toContain('#work')
+    restoreContext()
+  })
+})

@@ -3341,11 +3341,21 @@ const allowed = new Map([
   ['src/client/features/command/shortcuts-panel.tsx', [
     '/** Invokes the underlying command for registry-backed rows (command-palette parity). */',
   ]],
+  ['src/client/features/graph/graph-panel/canvas.tsx', [
+    '// The legend describes the response, not the physics copy of it, so it must not read stateRef here.',
+  ]],
+  ['src/client/features/graph/graph-panel/helpers.ts', [
+    '/**\n * The colour each tag carries, read off the notes that hold it: a tag node and the notes linked to it\n * arrive in the same response, so the palette never has to ask for the colour separately.\n */',
+    '/** Tag memberships are drawn like links but are not wiki links, so the stats line leaves them out. */',
+  ]],
   ['src/client/features/graph/graph-panel/index.tsx', [
     '// Private browsing or a locked-down browser can reject local preferences.',
     '// Notes created from unresolved nodes land in the graph\'s folder scope so',
     '// they inherit the folder name for the `{{folder}}` template placeholder.',
     '// The sidebar\'s cmd/ctrl+click selections join the graph\'s own tag filter.',
+  ]],
+  ['src/client/features/graph/graph-panel/types.ts', [
+    '/** Resolved from the notes carrying the tag, stamped when the layout is built. */',
   ]],
   ['src/client/features/list/list-filter-persist.ts', [
     '// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.',
@@ -8449,6 +8459,7 @@ const allowed = new Map([
     '/**\n * Fast ordered-subsequence prefilter with the same acceptance semantics as\n * fuzzyMatch (monotonic indexOf per query character), so it never rejects a\n * candidate fuzzyMatch would accept. Used to shrink large candidate pools\n * (e.g. the note list) before scoring.\n */',
   ]],
   ['src/client/lib/graph-settings.ts', [
+    '/** Draw each tag as a node of its own, pulling notes that share it into one cluster. */',
     '/** How the tag filter combines: any tag (union) or all tags (intersection). */',
     '/** Whether clearing the sidebar selection also resets the graph\'s own tag filter. */',
     '/** Whether clearing the sidebar selection also closes the graph panel. */',
@@ -12568,6 +12579,10 @@ const allowed = new Map([
   ['src/shared/escape.ts', [
     '/**\n * HTML-escape untrusted text (all five metacharacters: & < > " \').\n * Single canonical implementation shared by client and worker so escaping\n * semantics never drift between layers.\n */',
   ]],
+  ['src/shared/graph-tag-nodes.ts', [
+    '/** Tag nodes are the densest source of edges, so only the widest clusters get one. */',
+    '/**\n * Adds one node per tag plus an edge from every note carrying it, so notes that share a tag but link\n * to nothing of each other end up in the same cluster. The link degrees of the notes stay untouched:\n * a tag membership is not a wiki link, and the read-out counts links.\n *\n * Shared by the Worker route and the demo backend so both answer `tagNodes=1` the same way.\n */',
+  ]],
   ['src/shared/http.ts', [
     '/**\n * Widens a binary body to `BodyInit` for the shared DOM/undici request types.\n *\n * Workers and undici accept `Uint8Array` and `ReadableStream` bodies at\n * runtime, but the DOM `BodyInit` union models them through `BufferSource`\n * parameterizations that reject the exact `Uint8Array`/stream shapes used\n * here, so every backup call site would otherwise repeat a double-cast. This\n * helper is the single point where that widening happens.\n */',
   ]],
@@ -12728,8 +12743,10 @@ const allowed = new Map([
     '// R2 key or WebDAV remote path; re-validated row-by-row at restore time.',
   ]],
   ['src/shared/types/graph.ts', [
+    '/** `tag` nodes are synthesized from note tags, `unresolved` from links to missing notes. */',
     '/** Tags to filter by. Overrides `tag`; sent comma-separated. */',
     '/** How multiple tags combine: `any` (default) for union, `all` for intersection. */',
+    '/** Draw each tag as its own node, linking the notes that carry it. Sent as `1`. */',
   ]],
   ['src/shared/types/list.ts', [
     '/** Exact row count of the current view; only present on the first page to keep deep-paging cheap. */',
@@ -14255,6 +14272,9 @@ const allowed = new Map([
     '// client never re-reads `total` once paging starts); deep pages skip it so',
     '// the cost does not grow with every deleted row the index has to walk.',
   ]],
+  ['src/worker/routes/search/graph-nodes.ts', [
+    '/** Turns the collected missing-link map into `unresolved:` nodes, counting each one into its source. */',
+  ]],
   ['src/worker/routes/search/graph.ts', [
     '// D1 refuses a statement with more than 100 bound variables, and the edge query binds the user once',
     '// plus the note ids on both sides of the join (and its own LIMIT), so a page of notes has to be',
@@ -14706,6 +14726,8 @@ const allowed = new Map([
     '// the graph used to answer with a 500 instead of a graph.',
     '// The links that came back are the ones that were seeded, and the degrees still come from the one',
     '// pre-aggregated pass over links rather than from the chunking.',
+    '// A tag membership is not a wiki link, so it never moves a note\'s own link degrees.',
+    '// 61 notes, 60 tag nodes, and the one tag that did not make the cut still counts as hidden.',
   ]],
   ['tests/kanban-board-title.test.ts', [
     '/**\n * A board\'s name is in the fence body, and the markup a fence renders does not read that body — so\n * the block head drew its own type name instead: the type name in the head, and the same word again\n * as the tab of the board view. A reader who had named the board saw that name nowhere, and saw a\n * twice repeated type name where the name belonged (user report 2026-09-23).\n *\n * The name now comes from the two layers that hold it, each in the host where it has the room:\n *\n *  - the note, where the registry writes it into the block\'s own head. The head is a few hundred\n *    pixels wide and its two other children take 60 of them, so the name has room there; the board\'s\n *    own header does not — a name drawn in that bar took the room the view strip needs to scroll its\n *    own tab into (the visual gate read a 26px strip for an 8-tab board when it was drawn there).\n *  - the overlay, where the same header draws it, because there is no block head in an overlay.\n *\n * Nothing is drawn for an untitled board: a placeholder would have to be translated, and nothing\n * re-renders this block when the language changes. The strings that are translated and do live in\n * markup the host made — the canvas\'s landmark name — are pinned in\n * `src/client/lib/markdown/kanban/registry-locale.test.ts`.\n */',

@@ -63,6 +63,7 @@ export const vault = {
       tagsMatch: params.tagsMatch,
       includeOrphans: params.includeOrphans === undefined ? undefined : params.includeOrphans ? 1 : 0,
       includeUnresolved: params.includeUnresolved === undefined ? undefined : params.includeUnresolved ? 1 : 0,
+      tagNodes: params.showTagNodes === undefined ? undefined : params.showTagNodes ? 1 : 0,
       limit: params.limit,
     })}`, { signal }),
   sync: (since: number, options: { after?: string; snapshot?: number } = {}) =>

@@ -9,6 +9,7 @@ describe('graph settings manifest', () => {
       ['clearClosesPanel', true],
       ['includeOrphans', true],
       ['includeUnresolved', true],
+      ['showTagNodes', false],
       ['arrows', true],
       ['labels', true],
     ])
@@ -17,7 +18,7 @@ describe('graph settings manifest', () => {
   it('covers exactly the boolean graph preferences without duplicates', () => {
     const keys = GRAPH_SETTINGS_TOGGLES.map((control) => control.prefKey)
     expect(keys).toHaveLength(new Set(keys).size)
-    expect(keys.sort()).toEqual(['arrows', 'clearClosesPanel', 'clearResetsTag', 'includeOrphans', 'includeUnresolved', 'labels'])
+    expect(keys.sort()).toEqual(['arrows', 'clearClosesPanel', 'clearResetsTag', 'includeOrphans', 'includeUnresolved', 'labels', 'showTagNodes'])
   })
 
   it('splits into the three panel groups without overlap', () => {

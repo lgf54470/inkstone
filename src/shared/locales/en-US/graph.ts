@@ -60,6 +60,8 @@ export const messages = {
 'graph.reset': 'Reset',
 'graph.stats_summary': '{notes} notes · {links} links',
 'graph.stats_unresolved': '{count} unresolved',
+'graph.stats_tags': '{count} tags',
+'graph.filter_by_tag': 'Filter by tag {value}',
 'graph.pin_node': 'Pin node',
 'graph.unpin_node': 'Unpin node',
 'graph.local_graph': 'Local graph',

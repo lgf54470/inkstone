@@ -37,6 +37,7 @@ interface GraphCanvasProps {
   onCreateNote: (title: string) => void
   onClose: () => void
   onMakeLocal: () => void
+  onFilterByTag?: (tag: string) => void
   controlsRef: MutableRefObject<GraphControls | null>
 }
 
@@ -146,8 +147,10 @@ function handleCanvasDoubleClick(event: React.MouseEvent<HTMLCanvasElement>, h: 
   if (node.kind === 'note') {
     if (usePinnedWindows.getState().focusPinnedByNote(node.id)) return
     void h.onOpenNote(node.id)
-  } else {
+  } else if (node.kind === 'unresolved') {
     void h.onCreateNote(node.title)
+  } else {
+    return
   }
   h.onClose()
 }
@@ -185,8 +188,11 @@ function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLCanvasElement>, h: C
     if (selectedNode?.kind === 'note') {
       if (usePinnedWindows.getState().focusPinnedByNote(selectedNode.id)) return
       void h.onOpenNote(selectedNode.id)
-    } else if (selectedNode) void h.onCreateNote(selectedNode.title)
-    if (selectedNode) h.onClose()
+      h.onClose()
+    } else if (selectedNode?.kind === 'unresolved') {
+      void h.onCreateNote(selectedNode.title)
+      h.onClose()
+    }
     event.preventDefault(); state.schedule?.(); return
   }
   if (event.key.startsWith('Arrow')) {
@@ -285,7 +291,7 @@ function useGraphPreviewAndA11y(
 }
 
 function useGraphCanvasController(props: GraphCanvasProps) {
-  const { data, prefs, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, controlsRef } = props
+  const { data, prefs, activeNoteId, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, onOpenNote, onCreateNote, onClose, onMakeLocal, onFilterByTag, controlsRef } = props
   const [hover, setHover] = useState<CanvasNode | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [context, setContext] = useState<{ x: number; y: number; node: CanvasNode } | null>(null)
@@ -320,9 +326,10 @@ function useGraphCanvasController(props: GraphCanvasProps) {
     node.pinned = !node.pinned; stateRef.current.schedule?.()
   }, [stateRef])
 
-  const menuItems = graphMenuItems(context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin)
+  const menuItems = graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onFilterByTag })
   useGraphControls(controlsRef, stateRef, fitGraph)
-  const colorLegends = useMemo(() => buildColorLegends(stateRef.current.nodes, prefs.groupBy), [stateRef, prefs.groupBy])
+  // The legend describes the response, not the physics copy of it, so it must not read stateRef here.
+  const colorLegends = useMemo(() => buildColorLegends(data.nodes, prefs.groupBy), [data, prefs.groupBy])
 
   const handlers: CanvasHandlers = {
     stateRef, hoverRef, selectedIdRef, lastPointerEventAtRef, isSpaceDownRef,

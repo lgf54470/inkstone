@@ -60,6 +60,8 @@ export const messages = {
 'graph.reset': '复位',
 'graph.stats_summary': '{notes} 篇笔记 · {links} 条链接',
 'graph.stats_unresolved': '{count} 篇未创建',
+'graph.stats_tags': '{count} 个标签',
+'graph.filter_by_tag': '按标签 {value} 筛选',
 'graph.pin_node': '固定节点',
 'graph.unpin_node': '取消固定',
 'graph.local_graph': '局部关系图',

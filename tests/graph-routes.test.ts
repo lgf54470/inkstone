@@ -301,3 +301,104 @@ describe('graph route degree aggregation (real D1)', () => {
     expect(activeNode).toMatchObject({ degree: 0, inDegree: 0, outDegree: 0 })
   })
 })
+
+interface TopologyNode {
+  id: string
+  kind: string
+  title: string
+  degree: number
+  inDegree: number
+  outDegree: number
+}
+
+async function seedTag(userId: string, tagId: string, name: string): Promise<void> {
+  await runSql(db, `INSERT INTO tags (id, user_id, name, created_at) VALUES (?1, ?2, ?3, ?4)`, tagId, userId, name, NOW)
+}
+
+async function tagNote(noteId: string, tagId: string): Promise<void> {
+  await runSql(db, `INSERT INTO note_tags (note_id, tag_id) VALUES (?1, ?2)`, noteId, tagId)
+}
+
+async function graphBody(path: string, userId: string): Promise<Record<string, never>> {
+  const token = await signIn(userId)
+  const res = await request(makeApp(), path, token)
+  expect(res.status).toBe(200)
+  return await res.json() as Record<string, never>
+}
+
+describe('graph route tag nodes (FEAT-03, real D1)', () => {
+  it('adds one node per tag that pulls two unlinked notes into one cluster', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('a'), userId, NOW + 3)
+    await seedNote(vid('b'), userId, NOW + 2)
+    await seedNote(vid('c'), userId, NOW + 1)
+    await seedTag(userId, 'tag-1', 'todo')
+    await seedTag(userId, 'tag-2', 'later')
+    await tagNote(vid('a'), 'tag-1')
+    await tagNote(vid('b'), 'tag-1')
+    await tagNote(vid('c'), 'tag-2')
+
+    const body = await graphBody('/api/search/graph?tagNodes=1', userId)
+    const nodes = body.nodes as TopologyNode[]
+    const edges = body.edges as Array<{ source: string, target: string }>
+    expect(nodes.find((node) => node.id === 'tag:todo'))
+      .toMatchObject({ kind: 'tag', title: 'todo', degree: 2, inDegree: 2, outDegree: 0 })
+    expect(edges).toContainEqual({ source: vid('a'), target: 'tag:todo' })
+    expect(edges).toContainEqual({ source: vid('b'), target: 'tag:todo' })
+    // A tag membership is not a wiki link, so it never moves a note's own link degrees.
+    expect(nodes.find((node) => node.id === vid('a'))).toMatchObject({ degree: 0, inDegree: 0, outDegree: 0 })
+    expect(body.meta).toMatchObject({ totalNodes: 5, truncated: false })
+  })
+
+  it('keeps tags out of the topology until the caller asks for them', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('a'), userId, NOW + 2)
+    await seedNote(vid('b'), userId, NOW + 1)
+    await seedTag(userId, 'tag-1', 'todo')
+    await tagNote(vid('a'), 'tag-1')
+    await tagNote(vid('b'), 'tag-1')
+
+    const body = await graphBody('/api/search/graph', userId)
+    const nodes = body.nodes as TopologyNode[]
+    expect(nodes.some((node) => node.kind === 'tag')).toBe(false)
+    expect(body.edges).toHaveLength(0)
+    expect(body.meta).toMatchObject({ totalNodes: 2, truncated: false })
+  })
+
+  it('merges tag names that differ only by case into a single node', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('a'), userId, NOW + 2)
+    await seedNote(vid('b'), userId, NOW + 1)
+    await seedTag(userId, 'tag-upper', 'Work')
+    await seedTag(userId, 'tag-lower', 'work')
+    await tagNote(vid('a'), 'tag-upper')
+    await tagNote(vid('b'), 'tag-lower')
+
+    const body = await graphBody('/api/search/graph?tagNodes=1', userId)
+    const tagNodes = (body.nodes as TopologyNode[]).filter((node) => node.kind === 'tag')
+    expect(tagNodes).toHaveLength(1)
+    expect(tagNodes[0]!.title.toLowerCase()).toBe('work')
+    expect(tagNodes[0]!.degree).toBe(2)
+  })
+
+  it('caps the tag nodes it adds and reports the dropped ones as truncation', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    for (let index = 1; index <= 61; index++) {
+      const noteId = vid(`t${index}`)
+      await seedNote(noteId, userId, NOW + index)
+      await seedTag(userId, `tag-${index}`, `topic-${String(index).padStart(2, '0')}`)
+      await tagNote(noteId, `tag-${index}`)
+    }
+
+    const body = await graphBody('/api/search/graph?tagNodes=1&limit=600', userId)
+    const tagNodes = (body.nodes as TopologyNode[]).filter((node) => node.kind === 'tag')
+    expect(tagNodes).toHaveLength(60)
+    expect(tagNodes.some((node) => node.id === 'tag:topic-61')).toBe(false)
+    // 61 notes, 60 tag nodes, and the one tag that did not make the cut still counts as hidden.
+    expect(body.meta).toMatchObject({ totalNodes: 122, truncated: true })
+  })
+})

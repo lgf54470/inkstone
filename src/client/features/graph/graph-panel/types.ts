@@ -10,6 +10,8 @@ export interface CanvasNode extends GraphNode {
   vy: number
   r: number
   pinned?: boolean
+  /** Resolved from the notes carrying the tag, stamped when the layout is built. */
+  tagColor: string | null
 }
 
 export interface CanvasState {

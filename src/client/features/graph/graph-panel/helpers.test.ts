@@ -1,6 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { GRAPH_PREFS_KEY } from './constants'
-import { graphPrefsStorageKey, graphScaleAfterWheel, loadPreferences, nodeColor } from './helpers'
+import {
+  buildColorLegends,
+  countWikiLinkEdges,
+  graphPrefsStorageKey,
+  graphScaleAfterWheel,
+  loadPreferences,
+  nodeColor,
+  tagColorsByName,
+  tagHashColor,
+} from './helpers'
+import type { GraphResponse } from '@shared/types'
+import type { CanvasNode } from './types'
 
 function createTestNode() {
   return {
@@ -19,6 +30,7 @@ function createTestNode() {
     vx: 0,
     vy: 0,
     r: 4,
+    tagColor: null,
   }
 }
 
@@ -61,5 +73,58 @@ describe('graph panel visuals', () => {
     expect(nodeColor(node, 'folder', '#cccccc')).toBe('#dc2626')
     expect(nodeColor(node, 'tag', '#cccccc')).toBe('#059669')
     expect(nodeColor(node, 'none', '#cccccc')).toBe('#cccccc')
+  })
+})
+
+function asTagNode(overrides: Partial<CanvasNode>): CanvasNode {
+  return { ...createTestNode(), kind: 'tag', tags: [], ...overrides }
+}
+
+function responseWith(nodes: CanvasNode[], edges: Array<{ source: string, target: string }>): GraphResponse {
+  return {
+    nodes,
+    edges,
+    meta: { mode: 'global', centerId: null, depth: 1, totalNodes: nodes.length, totalEdges: edges.length, truncated: false, limit: 350 },
+  }
+}
+
+describe('tag nodes (FEAT-03)', () => {
+  it('reads each tag color off the notes that carry it, case-insensitively', () => {
+    const first = { ...createTestNode(), id: 'a', tags: [{ name: 'Backlog', color: null }] }
+    const second = { ...createTestNode(), id: 'b', tags: [{ name: 'backlog', color: '#059669' }] }
+    expect(tagColorsByName([first, second]).get('backlog')).toBe('#059669')
+    expect(tagColorsByName([first]).get('backlog')).toBeNull()
+    expect(tagColorsByName([first, second]).has('Backlog')).toBe(false)
+  })
+
+  it('paints a tag node with its own color whatever the grouping is', () => {
+    const colored = asTagNode({ id: 'tag:work', title: 'work', tagColor: '#059669' })
+    const plain = asTagNode({ id: 'tag:idea', title: 'idea', tagColor: null })
+    expect(nodeColor(colored, 'none', '#cccccc')).toBe('#059669')
+    expect(nodeColor(colored, 'folder', '#cccccc')).toBe('#059669')
+    expect(nodeColor(plain, 'none', '#cccccc')).toBe(tagHashColor('idea'))
+  })
+
+  it('lists tag nodes in the legend even with no grouping, and stays empty without them', () => {
+    const note = { ...createTestNode(), id: 'note-1', tags: [{ name: 'work', color: '#059669' }] }
+    const tag = asTagNode({ id: 'tag:work', title: 'work', tagColor: null })
+    expect(buildColorLegends([note, tag], 'none')).toEqual([{ label: 'work', color: '#059669' }])
+    const uncolored = asTagNode({ id: 'tag:idea', title: 'idea', tagColor: null })
+    expect(buildColorLegends([note, uncolored], 'none')).toEqual([{ label: 'idea', color: tagHashColor('idea') }])
+    expect(buildColorLegends([note], 'none')).toEqual([])
+  })
+
+  it('counts only wiki links in the stats, leaving tag memberships out and ghosts in', () => {
+    const note = { ...createTestNode(), id: 'note-1' }
+    const tag = asTagNode({ id: 'tag:work', title: 'work' })
+    const ghost = { ...createTestNode(), id: 'unresolved:missing', kind: 'unresolved' as const }
+    const withoutTags = responseWith([note], [{ source: 'note-1', target: 'unresolved:missing' }])
+    expect(countWikiLinkEdges(withoutTags)).toBe(1)
+    const withTags = responseWith([note, tag, ghost], [
+      { source: 'note-1', target: 'unresolved:missing' },
+      { source: 'note-1', target: 'tag:work' },
+      { source: 'note-1', target: 'tag:work' },
+    ])
+    expect(countWikiLinkEdges(withTags)).toBe(1)
   })
 })

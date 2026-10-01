@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type MutableRefObject, type RefObject } from 'react'
-import { CircleDot, FolderOpen, PanelRightClose, Pin } from 'lucide-react'
+import { CircleDot, FolderOpen, PanelRightClose, Pin, Tag } from 'lucide-react'
 import { type MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
 import type { GraphPreferences } from '../../../lib/graph-settings'
@@ -136,7 +136,7 @@ function applyDragEnd(
   options.onSelectNode?.(drag.node)
   if (options.modifierKey) {
     if (drag.node.kind === 'note') void options.onOpenNote(drag.node.id, { pane: 'secondary' })
-    else void options.onCreateNote(drag.node.title)
+    else if (drag.node.kind === 'unresolved') void options.onCreateNote(drag.node.title)
   }
 }
 
@@ -182,16 +182,30 @@ export function useGraphDrag(options: GraphDragOptions) {
   return { beginDrag, moveDrag, endDrag }
 }
 
-export function graphMenuItems(
-  context: { x: number; y: number; node: CanvasNode } | null,
-  onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void,
-  onCreateNote: (title: string) => void,
-  onClose: () => void,
-  onMakeLocal: () => void,
-  onTogglePin: (node: CanvasNode) => void,
-): MenuItem[] {
+export interface GraphMenuItemsOptions {
+  context: { x: number; y: number; node: CanvasNode } | null
+  onOpenNote: (id: string, options?: { pane?: WorkspacePane; activate?: boolean }) => void
+  onCreateNote: (title: string) => void
+  onClose: () => void
+  onMakeLocal: () => void
+  onTogglePin: (node: CanvasNode) => void
+  onFilterByTag?: (tag: string) => void
+}
+
+export function graphMenuItems({ context, onOpenNote, onCreateNote, onClose, onMakeLocal, onTogglePin, onFilterByTag }: GraphMenuItemsOptions): MenuItem[] {
   if (!context) return []
   const node = context.node
+  const pinItem: MenuItem = { id: 'pin', label: node.pinned ? t('graph.unpin_node') : t('graph.pin_node'), icon: <Pin size={14}/>, onSelect: () => onTogglePin(node) }
+  if (node.kind === 'tag') {
+    if (!onFilterByTag) return [pinItem]
+    return [
+      { id: 'filter', label: t('graph.filter_by_tag', { value: node.title }), icon: <Tag size={14}/>, onSelect: () => {
+        onFilterByTag(node.title)
+        onClose()
+      } },
+      { ...pinItem, separatorBefore: true },
+    ]
+  }
   return [
     { id: 'open', label: node.kind === 'unresolved' ? t('graph.create_note') : t('graph.open_note'), icon: <FolderOpen size={14}/>, onSelect: () => {
       if (node.kind === 'unresolved') void onCreateNote(node.title)
@@ -199,7 +213,7 @@ export function graphMenuItems(
       onClose()
     } },
     { id: 'right', label: t('graph.open_to_right'), icon: <PanelRightClose size={14}/>, disabled: node.kind === 'unresolved', onSelect: () => { void onOpenNote(node.id, { pane: 'secondary' }) } },
-    { id: 'pin', label: node.pinned ? t('graph.unpin_node') : t('graph.pin_node'), icon: <Pin size={14}/>, onSelect: () => onTogglePin(node) },
+    pinItem,
     { id: 'local', label: t('graph.make_local_center'), icon: <CircleDot size={14}/>, disabled: node.kind === 'unresolved', separatorBefore: true, onSelect: () => {
       void onOpenNote(node.id)
       onMakeLocal()

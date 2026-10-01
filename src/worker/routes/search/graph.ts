@@ -10,6 +10,8 @@ import { clampInt } from '../../lib/request'
 import { requireAuth } from '../../middleware/auth'
 import { GRAPH_EDGE_CANDIDATE_LIMIT } from './helpers'
 import { escapeLike } from './helpers'
+import { applyUnresolvedNodes } from './graph-nodes'
+import { applyTagNodes } from '@shared/graph-tag-nodes'
 
 // D1 refuses a statement with more than 100 bound variables, and the edge query binds the user once
 // plus the note ids on both sides of the join (and its own LIMIT), so a page of notes has to be
@@ -29,6 +31,7 @@ interface GraphParams {
   tagsMatch: 'all' | 'any'
   includeOrphans: boolean
   includeUnresolved: boolean
+  showTagNodes: boolean
   rawCenter: string
   rawFolderId: string
   legacyTag: string
@@ -103,6 +106,7 @@ async function graphHandler(c: Context<AppBindings>): Promise<Response> {
     totalNodes,
     truncated,
     limit: params.limit,
+    showTagNodes: params.showTagNodes,
   })
   return c.json(body)
 }
@@ -126,6 +130,7 @@ function parseGraphParams(c: Context<AppBindings>): GraphParams {
     tagsMatch: c.req.query('tagsMatch') === 'all' ? 'all' : 'any',
     includeOrphans: c.req.query('includeOrphans') !== '0',
     includeUnresolved: c.req.query('includeUnresolved') === '1',
+    showTagNodes: c.req.query('tagNodes') === '1',
     rawCenter,
     rawFolderId,
     legacyTag,
@@ -395,10 +400,12 @@ function buildGraphBody(
     totalNodes: number
     truncated: boolean
     limit: number
+    showTagNodes: boolean
   },
 ): GraphResponse {
   const nodes: GraphResponse['nodes'] = graphNodes(rows, tagsByNote)
-  applyUnresolved(nodes, edges, unresolved)
+  applyUnresolvedNodes(nodes, edges, unresolved)
+  const tagNodes = meta.showTagNodes ? applyTagNodes(nodes, edges, tagsByNote) : { added: 0, dropped: 0 }
   return {
     nodes,
     edges,
@@ -406,9 +413,9 @@ function buildGraphBody(
       mode: meta.mode,
       centerId: meta.centerId,
       depth: meta.depth,
-      totalNodes: meta.totalNodes + unresolved.size,
+      totalNodes: meta.totalNodes + unresolved.size + tagNodes.added + tagNodes.dropped,
       totalEdges: edges.length,
-      truncated: meta.truncated,
+      truncated: meta.truncated || tagNodes.dropped > 0,
       limit: meta.limit,
     },
   }
@@ -430,35 +437,4 @@ function graphNodes(
     folderColor: row.folder_color,
     tags: tagsByNote.get(row.id) ?? [],
   }))
-}
-
-function applyUnresolved(
-  nodes: GraphResponse['nodes'],
-  edges: GraphResponse['edges'],
-  unresolved: Map<string, { title: string; sources: Set<string> }>,
-): void {
-  const nodeById = new Map(nodes.map((node) => [node.id, node]))
-  for (const [key, missing] of unresolved) {
-    const id = `unresolved:${key}`
-    nodes.push({
-      id,
-      title: missing.title,
-      kind: 'unresolved',
-      degree: missing.sources.size,
-      inDegree: missing.sources.size,
-      outDegree: 0,
-      folderId: null,
-      folderName: null,
-      folderColor: null,
-      tags: [],
-    })
-    for (const source of missing.sources) {
-      edges.push({ source, target: id })
-      const sourceNode = nodeById.get(source)
-      if (sourceNode) {
-        sourceNode.degree++
-        sourceNode.outDegree++
-      }
-    }
-  }
 }

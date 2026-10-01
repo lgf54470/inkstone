@@ -14,6 +14,7 @@ export const DEFAULT_PREFERENCES: GraphPreferences = {
   depth: 1,
   includeOrphans: true,
   includeUnresolved: true,
+  showTagNodes: false,
   arrows: true,
   labels: true,
   groupBy: 'none',

@@ -22,7 +22,7 @@ import { GraphCanvas } from './canvas'
 import { useGraphCanvasRefs } from './canvas-hooks'
 import { GraphSettingsPanel } from './settings'
 import { DEFAULT_PREFERENCES } from './constants'
-import { graphPrefsStorageKey, loadPreferences, normalizedResponse } from './helpers'
+import { countWikiLinkEdges, graphPrefsStorageKey, loadPreferences, normalizedResponse } from './helpers'
 import type { GraphHeaderActionsProps, GraphHeaderProps } from './types'
 
 const TRACKING_TITLE = 'tracking-[var(--tracking-graph-title)]'
@@ -73,6 +73,7 @@ function graphRequest(prefs: GraphPreferences, activeNoteId: string | null, quer
     tagsMatch: tagSet.size ? prefs.tagsMatch : undefined,
     includeOrphans: prefs.includeOrphans,
     includeUnresolved: prefs.includeUnresolved,
+    showTagNodes: prefs.showTagNodes,
     limit: 350,
   }
 }
@@ -111,11 +112,13 @@ function useGraphData(request: GraphQuery) {
 
 function GraphStats({ data }: { data: GraphResponse }) {
   const noteCount = data.nodes.filter((node) => node.kind === 'note').length
-  const linkCount = data.edges.length
+  const tagCount = data.nodes.filter((node) => node.kind === 'tag').length
+  const linkCount = countWikiLinkEdges(data)
   const unresolvedCount = data.nodes.filter((node) => node.kind === 'unresolved').length
   return (
     <span className="whitespace-nowrap text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">
       {t('graph.stats_summary', { notes: noteCount, links: linkCount })}
+      {tagCount > 0 && ` · ${t('graph.stats_tags', { count: tagCount })}`}
       {unresolvedCount > 0 && ` · ${t('graph.stats_unresolved', { count: unresolvedCount })}`}
     </span>
   )
@@ -243,6 +246,7 @@ function useGraphQueryRequest(prefs: GraphPreferences, activeNoteId: string | nu
     prefs.tagsMatch,
     prefs.includeOrphans,
     prefs.includeUnresolved,
+    prefs.showTagNodes,
     query,
     selectedTags,
   ])
@@ -298,7 +302,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     <div className='relative flex min-h-0 flex-1 overflow-hidden'>
       <main className='relative min-w-0 flex-1'>
         <GraphBody data={data} loadError={loadError} onRetry={() => setReload((value) => value + 1)}>
-          {(loaded) => <GraphCanvas data={loaded} prefs={prefs} activeNoteId={activeNoteId} canvasRef={refs.canvasRef} stateRef={refs.stateRef} hoverRef={refs.hoverRef} selectedIdRef={refs.selectedIdRef} activeNoteIdRef={refs.activeNoteIdRef} lastPointerEventAtRef={refs.lastPointerEventAtRef} onOpenNote={openNote} onCreateNote={createScopedNote} onClose={onClose} onMakeLocal={() => changePref('mode', 'local')} controlsRef={refs.controlsRef}/>}
+          {(loaded) => <GraphCanvas data={loaded} prefs={prefs} activeNoteId={activeNoteId} canvasRef={refs.canvasRef} stateRef={refs.stateRef} hoverRef={refs.hoverRef} selectedIdRef={refs.selectedIdRef} activeNoteIdRef={refs.activeNoteIdRef} lastPointerEventAtRef={refs.lastPointerEventAtRef} onOpenNote={openNote} onCreateNote={createScopedNote} onClose={onClose} onMakeLocal={() => changePref('mode', 'local')} onFilterByTag={(tag) => changePref('tag', tag)} controlsRef={refs.controlsRef}/>}
         </GraphBody>
       </main>
       {isSettingsOpen && <GraphSettingsPanel prefs={prefs} onChange={(key, value) => changePref(key, value)} folders={folders} tags={tags} selectedTags={selectedTags} isLimitOpen={isLimitOpen} onToggleLimit={() => setIsLimitOpen((value) => !value)} onClose={() => setIsSettingsOpen(false)} onResetTagFilters={resetTagFilters} onRestoreDefaults={() => setPrefs((current) => ({ ...DEFAULT_PREFERENCES, mode: current.mode }))}/>}

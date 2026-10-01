@@ -1,7 +1,8 @@
 export interface GraphNode {
   id: string
   title: string
-  kind: 'note' | 'unresolved'
+  /** `tag` nodes are synthesized from note tags, `unresolved` from links to missing notes. */
+  kind: 'note' | 'unresolved' | 'tag'
   degree: number
   inDegree: number
   outDegree: number
@@ -43,5 +44,7 @@ export interface GraphQuery {
   tagsMatch?: 'any' | 'all'
   includeOrphans?: boolean
   includeUnresolved?: boolean
+  /** Draw each tag as its own node, linking the notes that carry it. Sent as `1`. */
+  showTagNodes?: boolean
   limit?: number
 }
