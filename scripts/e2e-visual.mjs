@@ -610,6 +610,80 @@ async function assertPresentationPages(page) {
   await setAppTheme(page, 'light')
 }
 
+/**
+ * The graph's canvas paints its own colours, so a theme flip has to reach the pixels and not just the
+ * tokens: the renderer audit's original reading was this canvas frozen at the palette of its first
+ * paint, byte-identical across a flip. Two promises are read here — the pixels change, and they change
+ * on the element that was already on screen, because a flip that rebuilt the canvas would satisfy the
+ * first alone. The reading starts from consecutively identical frames so the physics loop cannot move
+ * the number, and the element is marked before the flip so its identity has an answer afterwards.
+ */
+async function assertGraphThemeFollow(page) {
+  await setAppTheme(page, 'system')
+  await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }])
+  await sleep(300)
+  await pressOpener(page, { labels: ['设置', 'Settings'], combo: ['Control', 'Shift', 'g'] })
+  await page.waitForSelector('[data-surface="graph"] canvas', { timeout: 15_000 })
+  const before = await waitForStillGraphCanvas(page)
+  check('graph: the canvas paints its nodes before the theme flip', Boolean(before) && before.sum > 0, JSON.stringify(before))
+  await page.evaluate(() => {
+    const canvas = document.querySelector('[data-surface="graph"] canvas')
+    if (canvas) canvas.dataset.gateGraphCanvas = 'theme-flip'
+  })
+
+  await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])
+  await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark', { timeout: 10_000 })
+  const after = await waitForChangedGraphCanvas(page, before?.sum ?? -1)
+  check('graph: a theme flip repaints the canvas element that was already on screen', after?.marker === 'theme-flip', JSON.stringify(after))
+  check('graph: the repainted pixels are the new palette, not the old one', Boolean(before) && Boolean(after) && after.sum !== before.sum, `before=${before?.sum} after=${after?.sum}`)
+
+  await page.evaluate(() => {
+    const canvas = document.querySelector('[data-surface="graph"] canvas')
+    if (canvas) delete canvas.dataset.gateGraphCanvas
+  })
+  await page.emulateMediaFeatures([])
+  await page.keyboard.press('Escape')
+  await page.waitForFunction(() => !document.querySelector('[data-surface="graph"]'), { timeout: 10_000 })
+  // Hand the run back on the light palette the scenarios after this one measure on.
+  await setAppTheme(page, 'light')
+}
+
+/** A sample of what the graph canvas has painted, taken on a stride so the read stays cheap. */
+async function readGraphCanvas(page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('[data-surface="graph"] canvas')
+    if (!canvas) return null
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    const data = context.getImageData(0, 0, canvas.width, canvas.height).data
+    let sum = 0
+    for (let index = 0; index < data.length; index += 400) sum += data[index] + data[index + 1] + data[index + 2]
+    return { sum, marker: canvas.dataset.gateGraphCanvas ?? null }
+  })
+}
+
+/** Three identical frames mean the physics loop has settled, so only a repaint can move the number. */
+async function waitForStillGraphCanvas(page) {
+  let previous = await readGraphCanvas(page)
+  let stable = 0
+  for (let attempt = 0; attempt < 24; attempt++) {
+    await sleep(250)
+    const next = await readGraphCanvas(page)
+    stable = next && previous && next.sum > 0 && next.sum === previous.sum ? stable + 1 : 0
+    if (stable >= 2) return next
+    previous = next
+  }
+  return previous
+}
+
+async function waitForChangedGraphCanvas(page, before) {
+  for (let attempt = 0; attempt < 25; attempt++) {
+    await sleep(200)
+    const next = await readGraphCanvas(page)
+    if (next && next.sum !== before) return next
+  }
+  return readGraphCanvas(page)
+}
+
 // The presentation surface is a modal dialog around a scaled canvas: exactly the shape where a
 // missing role, an unnamed control or a low-contrast token goes unnoticed by eye. axe-core is
 // injected into the live page (its own browser build, evaluated rather than added as a script
@@ -7937,6 +8011,7 @@ async function main() {
     await assertPresentation(page)
     await assertPresentationSession(page)
     await assertPresentationPages(page)
+    await assertGraphThemeFollow(page)
     await assertPresentationAccessibility(page)
     await assertDeckExport(page)
     await assertDeckImageExport(page)
