@@ -1,4 +1,4 @@
-import { RefreshCw, ShieldCheck } from 'lucide-react'
+import { Download, RefreshCw, ShieldCheck } from 'lucide-react'
 import type { ShareTimelineRange } from '@shared/types'
 import { IconButton } from '../../../components/primitives'
 import { Segmented } from '../../../components/form'
@@ -11,6 +11,8 @@ export function DashboardControls({
   onToggleBots,
   loading,
   onRefresh,
+  exportDisabled,
+  onExport,
 }: {
   range: ShareTimelineRange
   onRangeChange: (range: ShareTimelineRange) => void
@@ -18,6 +20,8 @@ export function DashboardControls({
   onToggleBots: () => void
   loading: boolean
   onRefresh: () => void
+  exportDisabled: boolean
+  onExport: () => void
 }) {
   const RANGE_OPTIONS = [
     { value: '24h', label: '24h' },
@@ -53,6 +57,16 @@ export function DashboardControls({
           onClick={onRefresh}
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+        </IconButton>
+
+        {/* The numbers can leave the app with the window they describe (FEA-09). */}
+        <IconButton
+          size='sm'
+          label={t('share.export_csv')}
+          disabled={exportDisabled}
+          onClick={onExport}
+        >
+          <Download size={14} />
         </IconButton>
       </div>
     </div>

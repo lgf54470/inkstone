@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import type { BlogGlobalAnalytics, ShareTimelineRange } from '@shared/types'
 import { api } from '../../../lib/api'
 import { useLocale } from '../../../lib/i18n'
+import { useUi } from '../../../store/ui'
 import { useBlogStore, type BlogStoreState } from '../blog-store'
 import { blogFrontendBase } from '../frontend-base'
+import { exportBlogDashboardCsv } from './blog-dashboard-export'
 
 export function useBlogDashboardView() {
   const locale = useLocale()
@@ -38,9 +40,10 @@ export function useBlogDashboardView() {
   }
 
   const derived = dashboardDerivedValues(analytics, metricMode, switches)
+  const exportCsv = useDashboardExport({ analytics, range, locale, switches })
 
   return {
-    stats, comments, settings, loadHubData, updateCommentStatus, locale,
+    stats, comments, settings, loadHubData, updateCommentStatus, locale, exportCsv,
     range, setRange, metricMode, setMetricMode,
     excludeBots, excludeSelfReferrers, excludeOwner,
     setExcludeBots: (next: boolean) => setFilters({ excludeBots: next }),
@@ -49,6 +52,36 @@ export function useBlogDashboardView() {
     frontendBase, pendingComments, handleRefresh,
     ...derived,
   }
+}
+
+/**
+ * The CSV hand-over (FEA-09). The file describes the window currently on screen, so it is bound to
+ * the same range and the same three switches the cards above it were drawn with.
+ */
+function useDashboardExport({
+  analytics,
+  range,
+  locale,
+  switches,
+}: {
+  analytics: BlogGlobalAnalytics | null
+  range: ShareTimelineRange
+  locale: string
+  switches: { excludeBots: boolean; excludeSelfReferrers: boolean; excludeOwner: boolean }
+}): () => void {
+  const toast = useUi((s) => s.toast)
+  return () =>
+    exportBlogDashboardCsv({
+      analytics,
+      range,
+      filters: {
+        excludeBots: switches.excludeBots,
+        excludeSelf: switches.excludeSelfReferrers,
+        excludeOwner: switches.excludeOwner,
+      },
+      locale,
+      toast,
+    })
 }
 
 /**

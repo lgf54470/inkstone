@@ -20,6 +20,8 @@ export const messages = {
 'blog.metric_uv': '独立访客 UV',
 'blog.top_posts_title': '最受关注博文',
 'blog.top_posts_limit': '前 10 名',
+'blog.post_analytics_title': '单篇访问分析',
+'blog.view_post_analytics': '查看本文访问分析',
 'blog.visitor_geography': '访客地域分布',
 'blog.traffic_sources': '引荐来源渠道',
 'blog.devices_and_os': '设备与操作系统',

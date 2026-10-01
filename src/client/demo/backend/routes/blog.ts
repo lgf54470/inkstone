@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import type { DemoState } from '../../state'
 import type { BlogCommentsCounts, BlogCommentStatus, BlogPost, BlogPostIndexEntry, BlogPostSummary, ShareTimelineRange } from '@shared/types'
 import { apiError, jsonBody } from '../helpers/info'
-import { buildAnalytics, buildStats, createBlogDemoData, type BlogDemoData } from './blog-seed'
+import { buildAnalytics, buildPostAnalytics, buildStats, createBlogDemoData, type BlogDemoData } from './blog-seed'
 import { registerBlogMediaRoutes } from './blog-media'
 import {
   registerBlogCategoryRoutes,
@@ -207,6 +207,12 @@ function registerBlogAnalyticsRoute(app: Hono, data: BlogDemoData): void {
   app.get('/api/blog/analytics', (c) => {
     const range = (c.req.query('range') ?? '7d') as ShareTimelineRange
     return c.json({ analytics: buildAnalytics(data.posts, range, data.visits) })
+  })
+  app.get('/api/blog/analytics/posts/:postId', (c) => {
+    const range = (c.req.query('range') ?? '7d') as ShareTimelineRange
+    const post = data.posts.find((entry) => entry.id === c.req.param('postId'))
+    if (!post) return apiError(404, 'not_found', 'Post not found')
+    return c.json({ analytics: buildPostAnalytics(post, range, data.visits) })
   })
 }
 

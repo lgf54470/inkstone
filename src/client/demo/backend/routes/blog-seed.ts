@@ -6,6 +6,7 @@ import type {
   BlogFolder,
   BlogGlobalAnalytics,
   BlogPost,
+  BlogPostAnalytics,
   BlogSettings,
   BlogStats,
   BlogTag,
@@ -332,6 +333,34 @@ function buildTimeline(posts: BlogPost[], range: ShareTimelineRange): { points: 
 function breakdown(entries: Array<[string, number]>): ShareBreakdownItem[] {
   const total = entries.reduce((sum, [, count]) => sum + count, 0) || 1
   return entries.map(([name, count]) => ({ name, count, percentage: Math.round(count * 100 / total) }))
+}
+
+/**
+ * The demo's single-post drilldown (FEA-09), derived from the same synthetic numbers the global
+ * payload draws: the post's own views drive the totals and the timeline, the breakdown lists are the
+ * demo's fixed audience, and the visit tail is the demo visits that landed on this post.
+ */
+export function buildPostAnalytics(post: BlogPost, range: ShareTimelineRange, visits: BlogVisitLog[]): BlogPostAnalytics {
+  const { points } = buildTimeline([post], range)
+  const totalViews = post.views
+  const totalVisitors = Math.round(totalViews * 0.72)
+  return {
+    range,
+    postId: post.id,
+    title: post.title,
+    slug: post.slug,
+    totalViews,
+    totalVisitors,
+    viewsDelta: Math.round(totalViews * 0.08),
+    visitorsDelta: Math.round(totalVisitors * 0.05),
+    timeline: points,
+    topCountries: breakdown([['中国', 620], ['美国', 148], ['日本', 62], ['德国', 31], ['新加坡', 27]]),
+    topReferrers: breakdown([['直接访问', 431], ['news.ycombinator.com', 198], ['github.com', 87], ['x.com', 54], ['bilibili.com', 38]]),
+    devices: breakdown([['desktop', 512], ['mobile', 331], ['tablet', 45]]),
+    osList: breakdown([['macOS', 346], ['Windows', 289], ['iOS', 152], ['Android', 79], ['Linux', 22]]),
+    browsers: breakdown([['Chrome', 415], ['Safari', 283], ['Edge', 101], ['Firefox', 67], ['其他', 22]]),
+    recentVisits: visits.filter((visit) => visit.postId === post.id).slice(0, 20),
+  }
 }
 
 export function buildAnalytics(posts: BlogPost[], range: ShareTimelineRange, visits: BlogVisitLog[]): BlogGlobalAnalytics {

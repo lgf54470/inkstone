@@ -267,6 +267,28 @@ export interface BlogVisitLog {
   visitorFp?: string | null
 }
 
+/**
+ * One post's own slice of the analytics window (FEA-09): the dashboard's range and its same-shaped
+ * breakdowns, scoped to a single post the author asked about from the ranking.
+ */
+export interface BlogPostAnalytics {
+  range: ShareTimelineRange
+  postId: string
+  title: string
+  slug: string
+  totalViews: number
+  totalVisitors: number
+  viewsDelta?: number
+  visitorsDelta?: number
+  timeline: ShareTimelinePoint[]
+  topCountries: ShareBreakdownItem[]
+  topReferrers: ShareBreakdownItem[]
+  devices: ShareBreakdownItem[]
+  osList: ShareBreakdownItem[]
+  browsers: ShareBreakdownItem[]
+  recentVisits: BlogVisitLog[]
+}
+
 export interface BlogGlobalAnalytics {
   range: ShareTimelineRange
   totalPosts: number

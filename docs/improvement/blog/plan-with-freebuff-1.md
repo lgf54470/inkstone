@@ -269,7 +269,14 @@
   - 实现（demo）：`blog-media.ts` 用内存附件镜像同一契约（列表 / 上传 / `/api/files/:id` 公开地址 / 两处拒绝），`blog-media.test.ts` 覆盖往返与拒绝（放 node 工程，因为 jsdom 的 `FormData` 不认 Node 的 `File`），`blog-smoke.test.ts` 把 media 列表并入路由覆盖名单。
   - 验收：`tsc -b` 绿；`tests/blog-routes.test.ts` 86 条（新 4 条：只列本账号图片且两地址正确、上传真 PNG 且伪图与文本被拒、删除的笔记图/在用封面/空闲图三态与清理队列回收对象、公开地址随发布状态与账号收放）；`cover-field.test.ts` 5 条（列与选、上传即入网格、删除确认与拒绝、失败可重试）；demo node 2 条；两处变异各实测 1 failed（公开判据去掉 `is_published = 1`、删除去掉在用检查）；详见进度日志。
   - 限制：没有裁剪/焦点选择（review 提到的「裁切」未做）；选择器只列最近 200 张、按上传时间倒序（搜索留给以后）；删除空闲图不设「撤回」；公开地址缓存固定 24h 且无 ETag（id 不可变，换图必换 id）；图片的宽高沿用附件嗅探结果，SVG 这类嗅探不出尺寸的图在网格里靠 CSS 固定盒高。
-- [ ] B5-07 **FEA-09** 分析导出 CSV + 单篇下钻
+- [x] B5-07 **FEA-09** 分析导出 CSV + 单篇下钻 — 已提交（hash 由下一提交回填，见进度日志）
+  - 实现（下钻后端）：新增 `GET /api/blog/analytics/posts/:postId`（`post-analytics.ts`）：同一 range 与同一三个流量开关，作用域收窄到一篇文章；只接受本账号、未在回收站的活文章（其他账号 / 回收站 / 不存在的 id 一律 404）；返回与看板同形的数字（PV/UV + 上一区间 delta、时间轴、地域 / 来源 / 设备 / 系统 / 浏览器分布、该文的访问尾）。看板与下钻共用的窗口解析、上一区间统计、访问行读取与映射抽到 `analytics-reads.ts`（每处多一个可选 `postId`，SQL 只多一个条件），免得两处对「7d + 排除机器人」的理解出现两套。
+  - 实现（下钻前端）：`top-posts-card` 行尾新增「查看本文访问分析」按钮（`IconButton` + `ChevronRight`）；新增 `post-analytics-modal.tsx`（范围切换 / 刷新 / 回到前台文章链接 + KPI 卡 + 趋势图 + 受众卡 + 访问尾，失败可重试）与 `use-blog-post-analytics.ts`（range 与三个开关取 store，每次提问 abort 上一次）；`audience-cards.tsx` 的入参改为 `Pick<BlogGlobalAnalytics, 'topCountries'|'topReferrers'|'devices'|'osList'|'browsers'>`、`visit-logs-card.tsx` 改为收 `visits: BlogVisitLog[]`，于是两块卡在全局与单篇两个表面画的是同一份实现。
+  - 实现（CSV 导出）：新增 `blog-dashboard-export.ts`（上下文区间 / 过滤器与实际过滤量 / KPI 及 delta / 时间轴双序列 / 按本区间排名的文章 / 三组分布 / 访问尾；卡上为排版截断的 OS 列表在这里写全）；看板工具栏新增导出按钮（`share.export_csv` 标签）；`csvCell` 与文件拼接从 share 抽到共享 `src/client/lib/csv.ts`（share 侧改为引用同一实现，第三处 CSV 写入口因此不再各写一份转义）。
+  - 实现（demo）：`/api/blog/analytics/posts/:postId` 由 `buildPostAnalytics()` 给出同形载荷（该文的合成数字 + 该文的访问尾），`blog-smoke.test.ts` 名单加入该路由。
+  - 复现测试：`tests/blog-routes.test.ts` 89 条（新 3 条：本区间只看这一篇的访问（含默认滤掉机器人）与同形分布、本篇上一区间为空时不报 delta、他人文章 / 回收站文章 / 不存在 id 404 而自己的活文章 200）；`blog-dashboard-export.test.ts` 12 条（表头、区间与过滤器陈述、实际过滤量、双序列、截断列表写全、本地化名称、访问尾标记、导出成功与空看板拒导）；三处变异共 3 failed（去掉 `targetId` 作用域、放行回收站文章、去掉过滤陈述行）。
+  - 验收：`tsc -b` 绿；目标 3 文件 105 条全绿；十二项静态门禁 + `surfaces` 绿（comments 白名单 1372 文件 13030 条重启）；`test:unit` 与 `blog-frontend` 见进度日志。
+  - 限制：下钻只服务看板排行榜里出现的活文章（回收站里的访问历史不能从 UI 进入，只能查库）；CSV 是「屏幕上这个窗口」的快照（与 share 的导出一致），不是服务端全量导出；设备 / 系统 / 浏览器三组分布仍不做前后区间对比。
 - [ ] B5-08 **FEA-10** 分类与标签体系统一（需 ADR）
 - [ ] B5-09 **FEA-11** 多作者归属修正
 - [ ] B5-10 **FEA-05** 版本历史（需 ADR）
@@ -302,6 +309,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-10-01 | B5-07 FEA-09 分析导出 CSV + 单篇下钻 | （下一提交回填） | `tsc -b` 绿；`tests/blog-routes.test.ts` 89 条（新 3）；`blog-dashboard-export.test.ts` 12 条；demo `blog-smoke.test.ts` 4 条（目标 105 条全绿）；三处变异共 3 failed（去掉 `targetId` 作用域、放行回收站文章、去掉过滤陈述行）；`test:unit` 606 文件 5402 通过 / 2 failed / 1 skipped——2 条均为满负载 5s 超时（`blog-comments-window`、calendar activity fuzz），放宽到 30s 后两文件 12 条全绿；十二项静态门禁 + `surfaces` 绿（comments 白名单 1372 文件 13033 条）；e2e / 视觉 / 对比度留到批次收尾统一跑 | 下钻只覆盖排行榜里的活文章（回收站文章的历史不可从 UI 进入）；CSV 是屏幕窗口快照（非服务端全量）；三组环境分布不做区间对比 |
 | 2026-10-01 | BF-1 前台失败不再伪造（四个取数抛错、页面与 feed/sitemap 503 + no-store） | （下一提交回填） | `blog-frontend`：`npm test` 309 通过（新 7 条）、`astro check` 仅既有 3 条、`lint` 通过、根 `size:check:blog`/`deep-imports:check:blog` 绿；三处变异共 4 failed（getPosts 恢复回退、feed/sitemap 去掉失败分支）；根项目未动 | 站点身份默认回退保留（非内容）；列表类读取失败仍回空数组；`/503` 是 rewrite，URL 不变 |
 | 2026-10-01 | B5-06 FEA-07 媒体库 / 封面选择器 | aa4b0612 | `tsc -b` 绿；`tests/blog-routes.test.ts` 86 条（新 4 条）；`cover-field.test.ts` 5 条；demo `blog-media.test.ts` 2 条 + `blog-smoke.test.ts` 4 条（目标 97 条全绿）；两处变异各实测 1 failed（公开判据去掉 `is_published = 1`、删除去掉在用检查）；`test:unit` 605 文件 5389 通过 / 1 skipped（全绿）；十二项静态门禁 + `surfaces` 绿（comments 白名单 1361 文件 12991 条）；pre-commit 全量 EXIT=0；e2e / 视觉 / 对比度留到批次收尾统一跑 | 未做裁剪；选择器只列最近 200 张且无搜索；删除无撤回；公开地址无 ETag |
 | 2026-10-01 | B5-05 FEA-06 评论回复 + Webhook 通知 + 反垃圾 | d4b3e659 | `tsc -b` 绿；`tests/blog-routes.test.ts` 82 条（新 5 条）；`tests/schema-migrations.test.ts` +1；客户端 +5 条；两处变异实测 2 / 1 failed；`test:unit` 603 文件 5367 通过 / 11 failed / 1 skipped——11 条全部是满负载下的 5s 超时（逐文件重跑全绿，三条最慢的用 `--testTimeout=30000` 实测 6.9s / 6.0s / 3.9s）；十一项静态门禁 + `surfaces` 绿（comments 白名单 1355 文件 12942 条；size 基线仅 `migrations.ts` 857→869）；e2e / 视觉 / 对比度留到批次收尾统一跑 | 邮件不在仓内（只做 Webhook，邮件需作者自接）；通知无已读与重试队列；反垃圾是确定性规则（无模型/验证码）；前台尚未按 parent 缩进展示（FEA-12），也未用 `isOwner` 样式 |

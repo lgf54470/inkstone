@@ -43,6 +43,8 @@ describe('blog dashboard range picker is named', () => {
       onToggleBots: vi.fn(),
       loading: false,
       onRefresh: vi.fn(),
+      exportDisabled: false,
+      onExport: vi.fn(),
     }))
 
     const group = radiogroup()

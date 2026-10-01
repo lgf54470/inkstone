@@ -20,6 +20,8 @@ export const messages = {
 'blog.metric_uv': 'Unique Visitors UV',
 'blog.top_posts_title': 'Top Posts',
 'blog.top_posts_limit': 'Top 10',
+'blog.post_analytics_title': 'Post Analytics',
+'blog.view_post_analytics': 'View this post\'s analytics',
 'blog.visitor_geography': 'Visitor Geography',
 'blog.traffic_sources': 'Traffic Sources',
 'blog.devices_and_os': 'Devices & Operating Systems',

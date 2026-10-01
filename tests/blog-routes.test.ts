@@ -2307,3 +2307,62 @@ describe('blog media library (FEA-07)', () => {
     expect((await stillListed.json()).media.map((item: { id: string }) => item.id)).toEqual(['m-live'])
   })
 })
+
+describe('blog single-post analytics drilldown (FEA-09)', () => {
+  it('answers with the post\'s own visits, breakdown and visit tail', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const read = await seedBlogPost(db, { slug: 'drill-read', title: 'Read Post' })
+    const quiet = await seedBlogPost(db, { slug: 'drill-quiet', title: 'Quiet Post' })
+    await seedVisitAt(db, read.id, read.slug, Date.now() - 60_000, 'fp-drill-1')
+    await seedVisitAt(db, read.id, read.slug, Date.now() - 120_000, 'fp-drill-2')
+    await seedVisitAt(db, quiet.id, quiet.slug, Date.now() - 60_000, 'fp-drill-other')
+    // A bot's request is filtered out by default, exactly as it is on the dashboard that led here.
+    await runSql(
+      db,
+      `INSERT INTO blog_visits (user_id, post_id, slug, visited_at, visitor_fp, is_bot, is_self_referrer, is_owner)
+       VALUES (?1, ?2, ?3, ?4, 'fp-drill-bot', 1, 0, 0)`,
+      USER, read.id, read.slug, Date.now() - 30_000,
+    )
+
+    const res = await request(makeApp(), `/api/blog/analytics/posts/${read.id}?range=7d`)
+    expect(res.status).toBe(200)
+    const { analytics } = await res.json()
+    expect(analytics.postId).toBe(read.id)
+    expect(analytics.title).toBe('Read Post')
+    expect(analytics.slug).toBe('drill-read')
+    expect(analytics.totalViews).toBe(2)
+    expect(analytics.totalVisitors).toBe(2)
+    expect(analytics.timeline.reduce((sum: number, point: { views: number }) => sum + point.views, 0)).toBe(2)
+    expect(analytics.topCountries).toEqual([{ name: 'US', count: 2, percentage: 100 }])
+    expect(analytics.recentVisits.map((visit: { slug: string }) => visit.slug)).toEqual(['drill-read', 'drill-read'])
+  })
+
+  it('reports no delta while the post\'s own previous window holds nothing', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const raced = await seedBlogPost(db, { slug: 'drill-delta' })
+    await seedVisitAt(db, raced.id, raced.slug, Date.now() - 60_000, 'fp-drill-delta')
+
+    const { analytics } = await (await request(makeApp(), `/api/blog/analytics/posts/${raced.id}?range=7d`)).json()
+    expect(analytics.totalViews).toBe(1)
+    expect(analytics.viewsDelta).toBeUndefined()
+  })
+
+  it('refuses a post of another account, a trashed post and an unknown id', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    await seedUser(db, 'user-2')
+    const mine = await seedBlogPost(db, { slug: 'drill-mine' })
+    const theirs = await seedBlogPost(db, { slug: 'drill-theirs', user_id: 'user-2' })
+    const trashed = await seedBlogPost(db, { slug: 'drill-binned' })
+    await runSql(db, 'UPDATE blog_posts SET deleted_at = ?1 WHERE id = ?2', Date.now(), trashed.id)
+    const app = makeApp()
+
+    expect((await request(app, `/api/blog/analytics/posts/${theirs.id}`)).status).toBe(404)
+    expect((await request(app, `/api/blog/analytics/posts/${trashed.id}`)).status).toBe(404)
+    expect((await request(app, '/api/blog/analytics/posts/does-not-exist')).status).toBe(404)
+    // The account's own live post still answers, so the refusals above are about scope, not a dead route.
+    expect((await request(app, `/api/blog/analytics/posts/${mine.id}`)).status).toBe(200)
+  })
+})

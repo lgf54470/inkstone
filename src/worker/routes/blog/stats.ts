@@ -1,22 +1,21 @@
 import { Hono } from 'hono'
-import type { BlogGlobalAnalytics, BlogStats, BlogVisitLog, ShareBreakdownItem } from '@shared/types'
+import type { BlogGlobalAnalytics, BlogStats, ShareBreakdownItem } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
 import { clampInt, JSON_BODY_LIMITS, readOptionalJsonValidated } from '../../lib/request'
 import { requireCurrentPassword } from '../../lib/reauth'
 import { blogVisitWipeSchema } from './schemas'
+import { buildBucketedTimeline, computeDelta, toBreakdown } from '../../lib/share-analytics'
 import {
-  analyticsWindow,
-  buildBucketedTimeline,
-  computeDelta,
-  parseAnalyticsRequest,
-  parseBotName,
-  toBreakdown,
-  type AnalyticsRequest,
-  type AnalyticsWindow,
-} from '../../lib/share-analytics'
-import type { VisitTrafficFilters } from '@shared/share-selection'
-import { visitTrafficSql } from '../../lib/share-selection-sql'
+  blogAnalyticsContext,
+  blogPrevVisitsStatement,
+  blogRecentVisitsStatement,
+  toBlogVisitLogs,
+  type BlogAnalyticsContext,
+  type BlogPrevVisitsRow,
+  type BlogRecentVisitRow,
+} from './analytics-reads'
+import { registerBlogPostAnalyticsRoute } from './post-analytics'
 import {
   BLOG_VISIT_SOURCE,
   visitAggregateFromResults,
@@ -36,15 +35,10 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-interface MinVisitedRow {
-  min_ts: number | null
-}
-
-type AnalyticsContext = AnalyticsRequest & AnalyticsWindow
-
 export function registerBlogStatsRoutes(blogManageRoutes: Hono<AppBindings>): void {
   registerBlogStatsRoute(blogManageRoutes)
   registerBlogAnalyticsRoute(blogManageRoutes)
+  registerBlogPostAnalyticsRoute(blogManageRoutes)
   registerBlogVisitsDeleteRoute(blogManageRoutes)
 }
 
@@ -148,17 +142,9 @@ function rowsOf<Row>(result: D1ResultRows | undefined): Row[] {
 function registerBlogAnalyticsRoute(blogManageRoutes: Hono<AppBindings>): void {
   blogManageRoutes.get('/analytics', async (c) => {
     const userId = c.get('userId')!
-    const analytics = await loadBlogAnalyticsPayload(c.env.DB, await analyticsContext(c.env.DB, c, userId), userId)
+    const analytics = await loadBlogAnalyticsPayload(c.env.DB, await blogAnalyticsContext(c.env.DB, c, userId), userId)
     return c.json({ analytics })
   })
-}
-
-async function analyticsContext(db: D1Database, c: { req: { query(key: string): string | undefined } }, userId: string): Promise<AnalyticsContext> {
-  const request = parseAnalyticsRequest(c)
-  const minRow = request.range === 'all'
-    ? await db.prepare('SELECT MIN(visited_at) as min_ts FROM blog_visits WHERE user_id = ?1').bind(userId).first<MinVisitedRow>()
-    : null
-  return { ...request, ...analyticsWindow(request.range, request.now, minRow?.min_ts ?? null) }
 }
 
 /**
@@ -169,7 +155,7 @@ async function analyticsContext(db: D1Database, c: { req: { query(key: string): 
  */
 async function loadBlogAnalyticsPayload(
   db: D1Database,
-  ctx: AnalyticsContext,
+  ctx: BlogAnalyticsContext,
   userId: string,
 ): Promise<BlogGlobalAnalytics> {
   const [summaryResult, prevResult, filterResult, recentResult, ...visitResults] = await db.batch([
@@ -238,30 +224,10 @@ function blogPostCounts(summary: BlogPostsSummaryRow | null): {
   }
 }
 
-interface BlogPrevVisitsRow {
-  prev_views: number
-  prev_uv: number
-}
-
 interface BlogFilterStatsRow {
   bots: number
   self_referrals: number
   owner: number
-}
-
-function blogPrevVisitsStatement(
-  db: D1Database,
-  userId: string,
-  prevStartTs: number,
-  startTs: number,
-  clause: string,
-): D1PreparedStatement {
-  return db.prepare(
-    `SELECT COUNT(*) as prev_views, COUNT(DISTINCT visitor_fp) as prev_uv
-       FROM blog_visits
-      WHERE user_id = ?1 AND visited_at >= ?2 AND visited_at < ?3 ${clause}`,
-  )
-    .bind(userId, prevStartTs, startTs)
 }
 
 function blogFilterStatsStatement(db: D1Database, userId: string, startTs: number): D1PreparedStatement {
@@ -340,63 +306,6 @@ function breakdownStats(aggregate: VisitAggregate): BlogBreakdown {
     osList: toBreakdown(maps.osList, aggregate.views),
     browsers: toBreakdown(maps.browsers, aggregate.views),
   }
-}
-
-interface BlogRecentVisitRow {
-  id: number
-  post_id: string
-  slug: string
-  visited_at: number
-  country: string | null
-  region: string | null
-  city: string | null
-  referrer: string | null
-  referrer_host: string | null
-  device_type: string | null
-  os: string | null
-  browser: string | null
-  user_agent: string | null
-  is_bot: number
-  is_self_referrer: number
-  is_owner: number
-  post_title: string
-}
-
-function blogRecentVisitsStatement(db: D1Database, userId: string, filters: VisitTrafficFilters): D1PreparedStatement {
-  return db.prepare(
-    `SELECT bv.id, bv.post_id, bv.slug, bv.visited_at, bv.country, bv.region, bv.city,
-            bv.referrer, bv.referrer_host, bv.device_type, bv.os, bv.browser, bv.user_agent,
-            bv.is_bot, bv.is_self_referrer, bv.is_owner,
-            COALESCE(p.title, bv.slug) as post_title
-       FROM blog_visits bv
-       LEFT JOIN blog_posts p ON p.id = bv.post_id
-      WHERE bv.user_id = ?1 ${visitTrafficSql(filters, 'bv')}
-      ORDER BY bv.visited_at DESC
-      LIMIT 20`,
-  )
-    .bind(userId)
-}
-
-function toBlogVisitLogs(rows: BlogRecentVisitRow[]): BlogVisitLog[] {
-  return rows.map((r) => ({
-    id: r.id,
-    postId: r.post_id,
-    postTitle: r.post_title,
-    slug: r.slug,
-    visitedAt: r.visited_at,
-    country: r.country,
-    region: r.region,
-    city: r.city,
-    referrer: r.referrer,
-    referrerHost: r.referrer_host,
-    deviceType: r.device_type,
-    os: r.os,
-    browser: r.browser,
-    isBot: r.is_bot === 1,
-    isSelfReferrer: r.is_self_referrer === 1,
-    isOwner: r.is_owner === 1,
-    botName: r.is_bot === 1 ? parseBotName(r.user_agent ?? '') : null,
-  }))
 }
 
 function registerBlogVisitsDeleteRoute(blogManageRoutes: Hono<AppBindings>): void {

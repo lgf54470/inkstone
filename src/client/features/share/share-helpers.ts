@@ -3,6 +3,11 @@ import { CHANNEL_UNMARKED, CHANNEL_UNRECOGNIZED } from '@shared/share-channel'
 import type { VisitLogFilter } from '@shared/share-selection'
 import { t } from '../../lib/i18n'
 import { localizePlatformName } from '../../lib/visitor-geo'
+import { csvCell, toCsv } from '../../lib/csv'
+
+// Kept re-exported here because this module was the original home of the escaping rules and its
+// callers (the visit log export) still ask it for them.
+export { csvCell, toCsv }
 
 // Sunk into lib: the blog dashboard draws the same labels and must not import this barrel for them.
 export { countryFlag, countryNameLocalized, localizeDeviceName, localizeReferrerName } from '../../lib/visitor-geo'
@@ -94,22 +99,6 @@ export function generateRandomSlug(length = 6): string {
   return slug
 }
 
-const CSV_CONTROL_CHARS = /[\u0000-\u001f\u007f]/g
-const CSV_FORMULA_LEAD = /^[=+\-@]/
-
-/**
- * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or
- * a line break can never split a visit into extra columns or rows. Controlling
- * characters become spaces (these fields are all single line values) and a
- * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text
- * instead of evaluating a remote formula (CSV injection).
- */
-export function csvCell(value: string | number | null | undefined): string {
-  const text = String(value ?? '').replace(CSV_CONTROL_CHARS, ' ')
-  const safe = CSV_FORMULA_LEAD.test(text) ? `'${text}` : text
-  return `"${safe.replace(/"/g, '""')}"`
-}
-
 export function exportVisitsToCsv(visits: Array<{
   id: number
   visitedAt: number
@@ -162,7 +151,7 @@ export function exportVisitsToCsv(visits: Array<{
     v.channel || '',
   ])
   const csvContent =
-    '\uFEFF' + [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n')
+    toCsv([headers, ...rows])
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

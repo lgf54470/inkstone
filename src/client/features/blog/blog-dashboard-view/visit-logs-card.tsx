@@ -1,16 +1,16 @@
 import { Activity } from 'lucide-react'
-import type { BlogGlobalAnalytics } from '@shared/types'
+import type { BlogVisitLog } from '@shared/types'
 import { t } from '../../../lib/i18n'
 import { countryFlag, countryNameLocalized, localizePlatformName } from '../../../lib/visitor-geo'
 import { relativeTime } from '../../../lib/time'
 
 interface VisitLogsCardProps {
-  analytics: BlogGlobalAnalytics | null
+  visits: BlogVisitLog[]
   locale: string
 }
 
-export function VisitLogsCard({ analytics, locale }: VisitLogsCardProps) {
-  const visits = analytics?.recentVisits ?? []
+/** The visit tail the dashboard and the single-post drilldown (FEA-09) both list, as one card. */
+export function VisitLogsCard({ visits, locale }: VisitLogsCardProps) {
   return (<div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-soft)] flex flex-col'>
     <div className='flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]'>
       <div className='flex items-center gap-2'>
@@ -42,7 +42,7 @@ export function VisitLogsCard({ analytics, locale }: VisitLogsCardProps) {
 }
 
 function VisitLogRow({ visit, locale }: {
-  visit: BlogGlobalAnalytics['recentVisits'][number]
+  visit: BlogVisitLog
   locale: string
 }) {
   return (

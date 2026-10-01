@@ -1,10 +1,10 @@
 import type { ShareBreakdownItem, ShareGlobalAnalytics, ShareTimelineRange } from '@shared/types'
+import { toCsv } from '../../lib/csv'
 import { downloadTextFile } from '../../lib/export-note'
 import { t } from '../../lib/i18n'
 import type { UiState } from '../../store/ui'
 import {
   countryNameLocalized,
-  csvCell,
   localizeDeviceName,
   localizeEnvName,
   localizeReferrerName,
@@ -196,11 +196,6 @@ function staleLinkRows(analytics: ShareGlobalAnalytics): CsvRow[] {
   const { thresholdDays, total } = analytics.staleLinks
   if (thresholdDays === 0) return []
   return [[t('share.stale_links_title'), t('share.stale_links_badge', { days: thresholdDays }), total]]
-}
-
-function toCsv(rows: CsvRow[]): string {
-  // The BOM makes a spreadsheet read the UTF-8 place names as text rather than mojibake.
-  return '\uFEFF' + rows.map((row) => row.map(csvCell).join(',')).join('\r\n')
 }
 
 export function exportDashboardCsv(params: {

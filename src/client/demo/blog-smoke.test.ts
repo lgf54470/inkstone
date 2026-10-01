@@ -28,6 +28,7 @@ const CLIENT_ROUTES: RouteProbe[] = [
   { path: '/api/blog/stats' },
   { path: '/api/blog/analytics?range=7d' },
   { path: '/api/blog/analytics?range=7d&excludeBots=true&excludeSelf=true&excludeOwner=true' },
+  { path: '/api/blog/analytics/posts/demo-post-1?range=7d' },
   { path: '/api/blog/settings' },
   { path: '/api/blog/settings', init: { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ siteName: 'Smoke' }) } },
   { path: '/api/blog/check-slug?slug=smoke-post' },

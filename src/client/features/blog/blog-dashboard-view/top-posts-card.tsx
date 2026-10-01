@@ -1,14 +1,17 @@
-import { BarChart3, ExternalLink } from 'lucide-react'
+import { BarChart3, ChevronRight, ExternalLink } from 'lucide-react'
 import type { BlogGlobalAnalytics } from '@shared/types'
+import { IconButton } from '../../../components/primitives'
 import { cn } from '../../../lib/cn'
 import { t } from '../../../lib/i18n'
 
 interface TopPostsCardProps {
   posts: BlogGlobalAnalytics['topPosts']
   frontendBase: string
+  /** A way into one post's own analytics (FEA-09); absent when the surface offers no drilldown. */
+  onSelectPost?: (postId: string) => void
 }
 
-export function TopPostsCard({ posts, frontendBase }: TopPostsCardProps) {
+export function TopPostsCard({ posts, frontendBase, onSelectPost }: TopPostsCardProps) {
   const maxViews = posts[0]?.views || 1
   return (
     <div className='rounded-[var(--r-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-soft)]'>
@@ -29,7 +32,14 @@ export function TopPostsCard({ posts, frontendBase }: TopPostsCardProps) {
           </p>
         ) : (
           posts.map((post, index) => (
-            <TopPostRow key={post.postId} post={post} index={index} maxViews={maxViews} frontendBase={frontendBase} />
+            <TopPostRow
+              key={post.postId}
+              post={post}
+              index={index}
+              maxViews={maxViews}
+              frontendBase={frontendBase}
+              onSelect={onSelectPost}
+            />
           ))
         )}
       </div>
@@ -37,11 +47,12 @@ export function TopPostsCard({ posts, frontendBase }: TopPostsCardProps) {
   )
 }
 
-function TopPostRow({ post, index, maxViews, frontendBase }: {
+function TopPostRow({ post, index, maxViews, frontendBase, onSelect }: {
   post: BlogGlobalAnalytics['topPosts'][number]
   index: number
   maxViews: number
   frontendBase: string
+  onSelect?: (postId: string) => void
 }) {
   const pct = Math.max(2, Math.round((post.views / maxViews) * 100))
   return (
@@ -68,6 +79,12 @@ function TopPostRow({ post, index, maxViews, frontendBase }: {
       <a href={`${frontendBase}/posts/${post.slug}`} target='_blank' rel='noopener noreferrer' className='p-1 text-[var(--text-quaternary)] hover:text-[var(--accent)] transition-colors' title={t('blog.view_in_blog')}>
         <ExternalLink size={13} />
       </a>
+
+      {onSelect && (
+        <IconButton size='sm' label={t('blog.view_post_analytics')} onClick={() => onSelect(post.postId)}>
+          <ChevronRight size={14} />
+        </IconButton>
+      )}
     </div>
   )
 }

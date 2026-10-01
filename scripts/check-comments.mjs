@@ -2713,6 +2713,7 @@ const allowed = new Map([
     '/**\n   * The recycle bin (FEA-04): the demo moves a deleted post here rather than dropping it, so the\n   * trash tab has something real to restore and the post\'s comments wait with it.\n   */',
     '// Seeded posts carry no SEO overrides: an untouched post previews as itself, which is what the',
     '// empty values mean (FEA-02).',
+    '/**\n * The demo\'s single-post drilldown (FEA-09), derived from the same synthetic numbers the global\n * payload draws: the post\'s own views drive the totals and the timeline, the breakdown lists are the\n * demo\'s fixed audience, and the visit tail is the demo visits that landed on this post.\n */',
   ]],
   ['src/client/demo/backend/routes/blog.ts', [
     '/** The same split the real route makes: the list carries no body, the index carries no statistics. */',
@@ -2936,7 +2937,34 @@ const allowed = new Map([
     '// UI-11: `\'Direct\'` is the worker\'s word for a visit that carried no referrer — a value, not a host.',
     '// The share dashboard mapped it; this one drew it as if a site were called Direct.',
   ]],
+  ['src/client/features/blog/blog-dashboard-view/audience-cards.tsx', [
+    '/**\n * The five breakdown lists the audience cards draw. The dashboard passes its global payload and the\n * single-post drilldown (FEA-09) passes its own; both carry exactly these fields, so one card draws\n * the same visit the same way on both surfaces.\n */',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/blog-dashboard-export.test.ts', [
+    '/**\n * FEA-09: the dashboard\'s range data as a file. The load-bearing parts are the ones that stop the\n * file from disagreeing with the screen — the window it names, the filter state it admits to, the\n * localized names it borrows from the same cards — plus the two places it deliberately does *not*\n * copy the screen: a card that shows five operating systems to fit a panel is not a statement that\n * there are five, so the export writes every row it was given, and the stored all-time counter rides\n * along named as what it is instead of being folded into the range numbers.\n */',
+    '/** Parses the fixture\'s own section/item/value output back into rows. */',
+    '// Real messages, so the file\'s labels are read as the sentences the cards draw.',
+    '// A bounded range carries no translation of its own: the control prints it as it is.',
+    '// An unfiltered file has nothing to admit to, and a line reading "filtered 0 bot hits" would read',
+    '// as a claim about the traffic rather than the absence of a filter.',
+    '// The hand-over appends an anchor and clicks it; jsdom would log a navigation it cannot perform.',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/blog-dashboard-export.ts', [
+    '/**\n * FEA-09: the dashboard could describe a window but not hand it over. The file opens with the window\n * it describes — range, traffic filters, what they removed, and when it was taken — because a CSV\n * loses every piece of context the screen had, and numbers without a window answer nothing later.\n *\n * The sections are the dashboard\'s own cards and the names are localized exactly as drawn, so the\n * file and the screen cannot describe the same visit two different ways. Cards that truncate their\n * rows for space (the OS list shows five) are *not* truncated here: the payload is the full answer,\n * and a cap that exists to fit a card is not a statement about the data.\n */',
+    '/** One row of the export: the card it came from, what it names, and its number. */',
+    '/**\n * What the numbers below are: the window, whether anything was filtered out of it, and the moment of\n * the reading. The exclusions are stated in the same sentence the dashboard\'s banner uses, and only\n * when a filter is actually on.\n */',
+    '/** The same badge wording the shared filter popover prints; the file and the screen must agree. */',
+    '/**\n * The headline cards, plus each delta as its own row (it belongs next to the promise it makes — the\n * previous period, which this file does not contain). The stored all-time counter rides along named\n * as what it is: it also holds views a browser reported before this account kept visit rows, so it is\n * not the range\'s number and must not read as one.\n */',
+    '/** Both series of the timeline, one row each: the card draws whichever the metric switch picks. */',
+    '/** A breakdown list: the name the card shows, with the share of the total the card prints beside it. */',
+    '/**\n * The visit tail the activity card lists. The value is the timestamp alone so it sorts and compares\n * as one, and everything the row says about the visit rides in the item.\n */',
+    '// Nothing drawn yet means nothing to hand over; saying so beats writing an empty file.',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/dashboard-controls.tsx', [
+    '/* The numbers can leave the app with the window they describe (FEA-09). */',
+  ]],
   ['src/client/features/blog/blog-dashboard-view/index.tsx', [
+    '// The ranking card\'s drilldown (FEA-09): which post\'s own analytics the modal is showing.',
     '/**\n * What the switches are actually hiding, counted by the same query that hides it. The self-referral\n * and author counts used to be the literals `0` while the server returned real ones, so the banner\n * described a filter that was not running.\n */',
     '/**\n * The range\'s numbers, and the cumulative counter named as what it is. A card used to answer with\n * whichever of the two was larger (`analytics.totalViews ?? stats.totalViews`), so a week with no\n * visits displayed the blog\'s whole history next to a real PV of 0, and both were labelled the same\n * way. An unloaded payload says "not collected" rather than 0.\n */',
   ]],
@@ -2948,10 +2976,18 @@ const allowed = new Map([
     '// Which of the two buttons is being written: both keep their place and both stop accepting',
     '// clicks while an answer is in flight (the two save-gestures used to be fire-and-forget).',
   ]],
+  ['src/client/features/blog/blog-dashboard-view/post-analytics-modal.tsx', [
+    '/**\n * One post\'s own analytics (FEA-09), opened from the ranking card. It answers with the dashboard\'s\n * own cards — the same KPIs, the same chart, the same audience breakdowns and visit tail — because\n * this is the dashboard\'s question asked again with a narrower scope, not a second analytics surface\n * that could come to mean something else.\n */',
+    '/** The range control, the link back to the live post and the refresh that asks again. */',
+    '// Built per render rather than at module scope: a module-level `t()` freezes the first locale.',
+  ]],
   ['src/client/features/blog/blog-dashboard-view/radiogroup-names.test.ts', [
     '/**\n * SH-46 brought the blog dashboard\'s two `Segmented` controls under the same rules\n * the share dashboard already follows: the toolbar range picker carries its own\n * `label`, and the metric picker is named by the card heading it sits beside. The\n * locale is not loaded in this harness, so `t()` echoes the key and the assertions\n * compare against keys.\n */',
     '// A failed assertion must not leave its tree behind: the next case reads the',
     '// first radiogroup in the document, so stale DOM would be attributed to it.',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/top-posts-card.tsx', [
+    '/** A way into one post\'s own analytics (FEA-09); absent when the surface offers no drilldown. */',
   ]],
   ['src/client/features/blog/blog-dashboard-view/traffic-switches.test.ts', [
     '/**\n * The dashboard is mounted for its side effect only: which question it asks the analytics endpoint.\n * The switches used to be split in two — the dashboard kept its own `excludeBots` and sent that one\n * alone while the store held three that nothing sent — so flipping "exclude self-referrals" in the\n * toolbar changed the label and nothing else.\n */',
@@ -2961,13 +2997,23 @@ const allowed = new Map([
     '// The three traffic switches live in the store, which the toolbar popover and the settings dialog',
     '// also write. The dashboard used to keep its own `excludeBots` and send only that one, so a switch',
     '// flipped anywhere else changed nothing here — and the store\'s own copies changed nothing anywhere.',
+    '/**\n * The CSV hand-over (FEA-09). The file describes the window currently on screen, so it is bound to\n * the same range and the same three switches the cards above it were drawn with.\n */',
     '/**\n * The analytics question is asked once per range or switch change. The switches are read in the\n * dependencies rather than captured in the closure: a change to any of them is a new question for\n * the same endpoint. Switching the range aborts the window being left behind — a rapid switch would\n * otherwise hold several aggregates in flight at once, and a late answer for the old range would\n * land on the chart drawn for the new one.\n */',
     '/**\n * A failed load with nothing on screen is its own state: a failed refresh over existing data keeps\n * drawing what it has, but an empty dashboard says the load failed instead of "no visitors yet".\n */',
     '/**\n * What the payload means under the switches. A number only counts as filtered when the switch hiding\n * it is on: the server reports all three regardless, and the banner that reads these is describing\n * what is not in the chart above it.\n */',
     '// An aborted request is the reader changing the question, not a failed load.',
   ]],
+  ['src/client/features/blog/blog-dashboard-view/use-blog-post-analytics.ts', [
+    '/**\n * One post\'s analytics for the drilldown (FEA-09). The range and the three traffic switches are the\n * dashboard\'s own: a post\'s panel that silently asked with different filters would disagree with the\n * card the author clicked to get here. Each new question aborts the one before it, so a slow answer\n * for a previous range cannot land on the panel drawn for the new one.\n */',
+    '// The dependencies are the question itself: another range or another traffic switch is a new',
+    '// question for the same endpoint, and `load` reads them fresh each time.',
+    '/** `null` means the answer never arrived; the abort case is left to the caller\'s signal check. */',
+  ]],
   ['src/client/features/blog/blog-dashboard-view/visit-logs-card.test.ts', [
     '/**\n * The locale is not loaded in this harness, so `t()` echoes the key and the assertions read keys.\n * What they pin is that the card no longer prints the UA parser\'s raw `\'Other\'` sentinel, nor the\n * English word `\'Bot\'`, on either language.\n */',
+  ]],
+  ['src/client/features/blog/blog-dashboard-view/visit-logs-card.tsx', [
+    '/** The visit tail the dashboard and the single-post drilldown (FEA-09) both list, as one card. */',
   ]],
   ['src/client/features/blog/blog-grid-view/card.test.ts', [
     '// UI-06/UI-07 on the grid: the card opened on a double-click and its pin control was drawn only on',
@@ -7717,7 +7763,6 @@ const allowed = new Map([
     '/** Devices and systems as the one card draws them, names localized the same way. */',
     '/**\n * The visit tail the activity card lists. The value is the timestamp alone so it sorts and compares\n * as one, and everything the row says about the visit rides in the item.\n */',
     '/**\n * The hygiene card\'s own number, written only when the report is on. A threshold of 0 is the\n * owner\'s off switch, and a file that turned that into "0 quiet links" would report the absence of\n * a report as good news about the links.\n */',
-    '// The BOM makes a spreadsheet read the UTF-8 place names as text rather than mojibake.',
     '// Nothing drawn yet means nothing to hand over; saying so beats writing an empty file.',
   ]],
   ['src/client/features/share/share-dashboard-header.tsx', [
@@ -7793,6 +7838,8 @@ const allowed = new Map([
     '/**\n * One card in the grid. Memoised like the table row, and for the same reason: a selection change\n * redraws one card, not the whole grid — which is why every handler it takes is note-scoped and\n * stable and the folder lookup is a map instead of a scan per card.\n */',
   ]],
   ['src/client/features/share/share-helpers.ts', [
+    '// Kept re-exported here because this module was the original home of the escaping rules and its',
+    '// callers (the visit log export) still ask it for them.',
     '// Sunk into lib: the blog dashboard draws the same labels and must not import this barrel for them.',
     '/**\n * The traffic classes a visit list can be narrowed to. It is the shared vocabulary rather than a local\n * union, because the browsing hook, the CSV export walk and the worker\'s log query all have to agree\n * on what "bot" means — that agreement is what the export of a filtered view rests on.\n */',
     '/**\n * The ranges every share analytics surface offers, in one place: the dashboard\'s segmented control\n * and the single-note modal both draw this list, so "30d" can never mean two different windows.\n */',
@@ -7802,7 +7849,6 @@ const allowed = new Map([
     '// The largest multiple of the charset size that still fits a byte: rejecting the tail keeps',
     '// `byte % 30` uniform, which plain `Math.random()` also managed but a CSPRNG demands explicitly.',
     '/**\n * The dice button next to the custom-slug field. The slug becomes a public URL, so the suggestion\n * comes from `crypto.getRandomValues` rather than `Math.random` — the server generates its own\n * 20-character slug for auto-shares, but a suggestion a person can accept outright should not be\n * the weakest link in the chain.\n */',
-    '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or\n * a line break can never split a visit into extra columns or rows. Controlling\n * characters become spaces (these fields are all single line values) and a\n * leading =, +, - or @ gets an apostrophe so a spreadsheet shows the text\n * instead of evaluating a remote formula (CSV injection).\n */',
     '// Localized headers, so a file that leaves the app speaks the reader\'s language the same way the',
     '// dashboard export does. Channel stays appended last so an existing script that reads the columns',
     '// before it by position keeps working (ADR-0004).',
@@ -8292,6 +8338,7 @@ const allowed = new Map([
     '/** `document.referrer`, when the visitor\'s browser sent one. */',
     '/** The `?ref=` marker from the visitor\'s own URL, forwarded so the worker can record it. */',
     '// A long document.referrer must not turn into a 400 for a legitimate viewer; the server caps at the same length.',
+    '/** One post\'s own analytics, the same question the dashboard asks with one post in scope (FEA-09). */',
     '/** The complete body-free post index the note list reads; not paginated by design. */',
   ]],
   ['src/client/lib/api/transport.ts', [
@@ -8403,6 +8450,11 @@ const allowed = new Map([
   ]],
   ['src/client/lib/clipboard.ts', [
     '/**\n * The clipboard is the one browser API this app writes to that can refuse: an insecure origin, a\n * denied permission, or no API at all. Each copy point used to answer a refusal its own way — an\n * inline check mark that never appeared, or a `void` with no message — so the reader saw "nothing\n * happened". One helper now says what happened in both directions: the success title the caller\n * chooses, and the shared failure sentence.\n */',
+  ]],
+  ['src/client/lib/csv.ts', [
+    '/**\n * Writing CSV, once (SH-64 and FEA-09 both hand the numbers on screen to a file). A second copy of\n * the escaping rules is how one export ends up quoting a value the other does not, so both the share\n * dashboard\'s export and the blog dashboard\'s export read these two functions.\n */',
+    '/**\n * RFC 4180 cell: always quoted, embedded quotes doubled, so a comma, a quote or a line break can\n * never split a visit into extra columns or rows. Control characters become spaces (these fields are\n * all single-line values) and a leading =, +, - or @ gets an apostrophe so a spreadsheet shows the\n * text instead of evaluating a remote formula (CSV injection).\n */',
+    '/** The whole file, with the BOM that makes a spreadsheet read UTF-8 names as text rather than mojibake. */',
   ]],
   ['src/client/lib/db-cache-spec.ts', [
     '// Shared behavior specs for the two-level shell cache. Each backend test file',
@@ -12883,6 +12935,7 @@ const allowed = new Map([
     '/** How many posts wait in the recycle bin; the sidebar badges the trash tab with it. */',
     '/**\n   * Where the author\'s own service is told that a comment arrived (FEA-06). Empty means nowhere;\n   * the instance has no mail transport, so this is how a notification leaves the worker.\n   */',
     '/** Words the spam rules look for in a submission, matched case-insensitively. */',
+    '/**\n * One post\'s own slice of the analytics window (FEA-09): the dashboard\'s range and its same-shaped\n * breakdowns, scoped to a single post the author asked about from the ranking.\n */',
     '/** The posts\' own cumulative counter, which is not the range\'s visits. */',
   ]],
   ['src/shared/types/board-library.ts', [
@@ -13578,6 +13631,12 @@ const allowed = new Map([
     '// clear every throttling key (identity, IP, and account level) so a',
     '// shared IP / NAT is never locked out by a full window of attempts.',
   ]],
+  ['src/worker/routes/blog/analytics-reads.ts', [
+    '/**\n * The reads the dashboard and the single-post drilldown (FEA-09) have in common. Both answer the\n * same question about the same rows; resolving the window, folding visit rows and building the visit\n * log were written once here so the drilldown cannot come to mean a different window or a different\n * shape of visit than the dashboard that led to it.\n *\n * Every statement takes an optional `postId`: the dashboard omits it, the drilldown passes one, and\n * the SQL differs only by that one condition.\n */',
+    '/**\n * The range, the traffic filters and the resolved window. `range=\'all\'` starts at the earliest visit\n * the caller can see — the account\'s earliest, or the post\'s own when a post is in scope — because a\n * single post is not older than the blog that contains it.\n */',
+    '/** The previous window\'s totals, for the delta badges; scoped to one post when one is given. */',
+    '/** The visit tail both surfaces list; the drilldown\'s copy is the same rows for one post. */',
+  ]],
   ['src/worker/routes/blog/comment-notify.ts', [
     '/**\n * Telling the author that a comment arrived (FEA-06). This is a Webhook because the instance has no\n * mail transport of its own: the author points it at their own service (which may forward to mail,\n * chat or anything else), the payload is JSON, and delivery is best-effort — a failing endpoint is\n * logged and never blocks or fails the reader\'s submission, which is already stored by then.\n */',
     '/** Delivery is bounded: a slow endpoint must not hold the request\'s context open. */',
@@ -13696,6 +13755,9 @@ const allowed = new Map([
     '// A name that could not be issued is answered as not found rather than as a format error: the',
     '// reader asked for a blog, and no blog has that name.',
     '/**\n * The instance\'s first account is the blog that existed before addresses did. The ordering is by\n * `created_at` and then by insertion order, so two accounts seeded in the same millisecond still\n * resolve to the one that was created first.\n */',
+  ]],
+  ['src/worker/routes/blog/post-analytics.ts', [
+    '/**\n * One post\'s own slice of the dashboard\'s window (FEA-09). The author sees a post on the ranking and\n * asks the obvious next question — where did its readers come from, when did they arrive — and this\n * answers exactly that: the same range, the same traffic filters and the same shape of numbers as\n * the dashboard, scoped to one post. Only a live post of the account may be asked about; a post that\n * waits in the bin is not on the ranking that offers this view.\n */',
   ]],
   ['src/worker/routes/blog/post-counts.ts', [
     '/**\n * The per-folder and per-tag post counts the dashboard and the tag list draw, answered by SQL\n * aggregates. They used to be accumulated in the worker from a `SELECT folder_id, is_published,\n * tags FROM blog_posts` — every post row crossing the wire on every hub open, and a second copy of\n * the same scan for the tag list. `json_each` reads the tags array in place, so the counts cost the\n * rows the database already had.\n */',
@@ -14991,6 +15053,8 @@ const allowed = new Map([
     '// An unpublished post no longer justifies the picture being public, and another account\'s id',
     '// is not part of this blog at all.',
     '// The management half keeps working for the owner while the picture is not public.',
+    '// A bot\'s request is filtered out by default, exactly as it is on the dashboard that led here.',
+    '// The account\'s own live post still answers, so the refusals above are about scope, not a dead route.',
   ]],
   ['tests/blog-slug-scope.test.ts', [
     '/**\n * A slug names a post inside one blog. Instance-wide uniqueness made the second account\'s own post\n * fail to publish because the first account had used the name, and `/check-slug` answered the same\n * question for both, so one blog\'s naming was readable from another\'s editor.\n */',

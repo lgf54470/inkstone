@@ -5,8 +5,18 @@ import { t } from '../../../lib/i18n'
 import { countryFlag, countryNameLocalized, localizeDeviceName, localizeReferrerName } from '../../../lib/visitor-geo'
 import { BreakdownRow } from '../../../components/dashboard-blocks'
 
+/**
+ * The five breakdown lists the audience cards draw. The dashboard passes its global payload and the
+ * single-post drilldown (FEA-09) passes its own; both carry exactly these fields, so one card draws
+ * the same visit the same way on both surfaces.
+ */
+export type AudienceBreakdowns = Pick<
+  BlogGlobalAnalytics,
+  'topCountries' | 'topReferrers' | 'devices' | 'osList' | 'browsers'
+>
+
 interface AudienceCardsProps {
-  analytics: BlogGlobalAnalytics | null
+  analytics: AudienceBreakdowns | null
   locale: string
 }
 
@@ -37,7 +47,7 @@ function NoVisitData() {
   return (<p className='py-6 text-center text-[length:var(--text-12)] text-[var(--text-quaternary)]'>{t('blog.no_visit_data')}</p>)
 }
 
-function GeographyCard({ analytics, locale }: { analytics: BlogGlobalAnalytics | null; locale: string }) {
+function GeographyCard({ analytics, locale }: { analytics: AudienceBreakdowns | null; locale: string }) {
   const countries = analytics?.topCountries ?? []
   return (
     <AudienceCard icon={<Globe2 size={15} className='text-[var(--accent)]' />} title={t('blog.visitor_geography')} trailing={countries.length}>
@@ -48,7 +58,7 @@ function GeographyCard({ analytics, locale }: { analytics: BlogGlobalAnalytics |
   )
 }
 
-function TrafficSourcesCard({ analytics }: { analytics: BlogGlobalAnalytics | null }) {
+function TrafficSourcesCard({ analytics }: { analytics: AudienceBreakdowns | null }) {
   const referrers = analytics?.topReferrers ?? []
   return (
     <AudienceCard icon={<Compass size={15} className='text-[var(--accent)]' />} title={t('blog.traffic_sources')} trailing={referrers.length}>
@@ -59,7 +69,7 @@ function TrafficSourcesCard({ analytics }: { analytics: BlogGlobalAnalytics | nu
   )
 }
 
-function DevicesCard({ analytics }: { analytics: BlogGlobalAnalytics | null }) {
+function DevicesCard({ analytics }: { analytics: AudienceBreakdowns | null }) {
   const devices = analytics?.devices ?? []
   const osList = analytics?.osList.slice(0, 5) ?? []
   return (

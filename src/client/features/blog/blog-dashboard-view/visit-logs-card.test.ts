@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import { describe, expect, it } from 'vitest'
-import type { BlogGlobalAnalytics, BlogVisitLog } from '@shared/types'
+import type { BlogVisitLog } from '@shared/types'
 import { renderElement } from '../../../lib/test-render'
 import { VisitLogsCard } from './visit-logs-card'
 
@@ -29,14 +29,10 @@ function visitLog(overrides: Partial<BlogVisitLog>): BlogVisitLog {
   }
 }
 
-function analyticsWith(visits: BlogVisitLog[]): BlogGlobalAnalytics {
-  return { recentVisits: visits } as unknown as BlogGlobalAnalytics
-}
-
 describe('blog visit log device labels', () => {
   it('words the parser sentinel and a missing name as the localized unknown, not as Other', () => {
     const { container, unmount } = renderElement(createElement(VisitLogsCard, {
-      analytics: analyticsWith([visitLog({ browser: 'Other', os: null, isBot: true, botName: null })]),
+      visits: [visitLog({ browser: 'Other', os: null, isBot: true, botName: null })],
       locale: 'en-US',
     }))
     const text = container.textContent ?? ''
@@ -48,7 +44,7 @@ describe('blog visit log device labels', () => {
 
   it('keeps a browser and OS name the parser did read', () => {
     const { container, unmount } = renderElement(createElement(VisitLogsCard, {
-      analytics: analyticsWith([visitLog({ browser: 'Chrome', os: 'Windows' })]),
+      visits: [visitLog({ browser: 'Chrome', os: 'Windows' })],
       locale: 'en-US',
     }))
     expect(container.textContent ?? '').toContain('Chrome / Windows')

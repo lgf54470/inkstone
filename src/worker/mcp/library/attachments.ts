@@ -10,7 +10,6 @@ import { ApiError } from '../../lib/errors'
 import { isValidId, newId } from '../../lib/id'
 import { enforceAttachmentUploadBudget } from '../../lib/upload-budget'
 import { runIdempotent } from '.././operations'
-import { LIMITS } from '@shared/constants'
 
 export async function listMcpAttachments(
   db: D1Database,

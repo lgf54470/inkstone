@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Activity, ExternalLink, FileText, MousePointerClick, Users } from 'lucide-react'
 import type { BlogGlobalAnalytics, BlogStats } from '@shared/types'
 import { KpiCard } from '../../../components/dashboard-blocks'
@@ -12,6 +13,7 @@ import { TopPostsCard } from './top-posts-card'
 import { AudienceCards } from './audience-cards'
 import { VisitLogsCard } from './visit-logs-card'
 import { PendingCommentsCard } from './pending-comments-card'
+import { PostAnalyticsModal } from './post-analytics-modal'
 import { BlogLoadFailure } from '../blog-load-failure'
 
 export function BlogDashboardView({
@@ -22,6 +24,8 @@ export function BlogDashboardView({
   onOpenNewPost: () => void
 }) {
   const view = useBlogDashboardView()
+  // The ranking card's drilldown (FEA-09): which post's own analytics the modal is showing.
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
 
   return (
     <div className="flex-1 overflow-y-auto bg-[var(--bg-base)] p-5 space-y-5 text-[length:var(--text-12\.5)]">
@@ -39,6 +43,8 @@ export function BlogDashboardView({
         onToggleBots={() => view.setExcludeBots(!view.excludeBots)}
         loading={view.loading}
         onRefresh={() => void view.handleRefresh()}
+        exportDisabled={!view.analytics}
+        onExport={view.exportCsv}
       />
 
       {view.filteredBots + view.filteredVisitorTraffic.self + view.filteredVisitorTraffic.owner > 0 && (
@@ -55,7 +61,14 @@ export function BlogDashboardView({
         <DashboardKpis stats={view.stats} analytics={view.analytics} />
       )}
 
-      <DashboardAnalytics view={view} onSwitchTab={onSwitchTab} />
+      <DashboardAnalytics view={view} onSwitchTab={onSwitchTab} onSelectPost={setSelectedPostId} />
+
+      <PostAnalyticsModal
+        open={selectedPostId !== null}
+        onClose={() => setSelectedPostId(null)}
+        postId={selectedPostId}
+        frontendBase={view.frontendBase}
+      />
     </div>
   )
 }
@@ -63,9 +76,11 @@ export function BlogDashboardView({
 function DashboardAnalytics({
   view,
   onSwitchTab,
+  onSelectPost,
 }: {
   view: ReturnType<typeof useBlogDashboardView>
   onSwitchTab: (tab: BlogTab) => void
+  onSelectPost: (postId: string) => void
 }) {
   if (view.analyticsFailed) return <BlogLoadFailure onRetry={() => void view.handleRefresh()} />
   return (
@@ -78,12 +93,12 @@ function DashboardAnalytics({
       />
 
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
-        <TopPostsCard posts={view.analytics?.topPosts ?? []} frontendBase={view.frontendBase} />
+        <TopPostsCard posts={view.analytics?.topPosts ?? []} frontendBase={view.frontendBase} onSelectPost={onSelectPost} />
         <AudienceCards analytics={view.analytics} locale={view.locale} />
       </div>
 
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
-        <VisitLogsCard analytics={view.analytics} locale={view.locale} />
+        <VisitLogsCard visits={view.analytics?.recentVisits ?? []} locale={view.locale} />
         <PendingCommentsCard pendingComments={view.pendingComments} totalComments={view.comments.length} totalPosts={view.stats?.totalPosts ?? 0} onSwitchTab={onSwitchTab} updateCommentStatus={view.updateCommentStatus} />
       </div>
     </>

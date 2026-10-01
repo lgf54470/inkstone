@@ -1,6 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
-import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogTrashEntry, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, BlogMediaItem, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogTrashEntry, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, BlogMediaItem, BlogPostAnalytics, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -195,6 +195,17 @@ export const share = {
     ) =>
       request<{ analytics: BlogGlobalAnalytics }>(
         `/api/blog/analytics${toQuery({ range, ...filters })}`,
+        { signal },
+      ),
+    /** One post's own analytics, the same question the dashboard asks with one post in scope (FEA-09). */
+    postAnalytics: (
+      postId: string,
+      range: ShareTimelineRange = '7d',
+      filters?: { excludeBots?: boolean; excludeSelf?: boolean; excludeOwner?: boolean },
+      signal?: AbortSignal,
+    ) =>
+      request<{ analytics: BlogPostAnalytics }>(
+        `/api/blog/analytics/posts/${encodeURIComponent(postId)}${toQuery({ range, ...filters })}`,
         { signal },
       ),
     settings: {
