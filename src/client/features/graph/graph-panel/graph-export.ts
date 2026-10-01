@@ -145,7 +145,7 @@ function svgArrowHead(from: CanvasNode, to: CanvasNode, color: string): string {
 }
 
 function svgNode(node: CanvasNode, colors: ThemeColors, groupBy: GraphPreferences['groupBy']): string {
-  const fill = attr(nodeColor(node, groupBy, colors.node))
+  const fill = attr(nodeColor(node, { groupBy, fallback: colors.node, tagPalette: colors.tagPalette }))
   const circle = `<circle cx="${num(node.x)}" cy="${num(node.y)}" r="${num(node.r)}"`
   if (node.kind === 'unresolved') return `${circle} fill="none" stroke="${fill}" stroke-width="1.5"/>`
   if (!node.pinned) return `${circle} fill="${fill}"/>`

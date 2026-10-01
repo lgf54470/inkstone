@@ -11,10 +11,13 @@ import {
   loadPreferences,
   nodeColor,
   tagColorsByName,
-  tagHashColor,
+  tagHashIndex,
 } from './helpers'
 import type { GraphResponse } from '@shared/types'
 import type { CanvasNode } from './types'
+
+/** Ten slots of the theme palette the canvas paints with; the values only label a slot here. */
+const tagPalette = ['#010101', '#020202', '#030303', '#040404', '#050505', '#060606', '#070707', '#080808', '#090909', '#0a0a0a']
 
 function createTestNode() {
   return {
@@ -74,9 +77,10 @@ describe('graph panel visuals', () => {
 
   it('resolves node colors by folder or tag groupings with fallback', () => {
     const node = createTestNode()
-    expect(nodeColor(node, 'folder', '#cccccc')).toBe('#dc2626')
-    expect(nodeColor(node, 'tag', '#cccccc')).toBe('#059669')
-    expect(nodeColor(node, 'none', '#cccccc')).toBe('#cccccc')
+    const grouped = { fallback: '#cccccc', tagPalette }
+    expect(nodeColor(node, { ...grouped, groupBy: 'folder' })).toBe('#dc2626')
+    expect(nodeColor(node, { ...grouped, groupBy: 'tag' })).toBe('#059669')
+    expect(nodeColor(node, { ...grouped, groupBy: 'none' })).toBe('#cccccc')
   })
 })
 
@@ -104,17 +108,23 @@ describe('tag nodes (FEAT-03)', () => {
   it('paints a tag node with its own color whatever the grouping is', () => {
     const colored = asTagNode({ id: 'tag:work', title: 'work', tagColor: '#059669' })
     const plain = asTagNode({ id: 'tag:idea', title: 'idea', tagColor: null })
-    expect(nodeColor(colored, 'none', '#cccccc')).toBe('#059669')
-    expect(nodeColor(colored, 'folder', '#cccccc')).toBe('#059669')
-    expect(nodeColor(plain, 'none', '#cccccc')).toBe(tagHashColor('idea'))
+    expect(nodeColor(colored, { groupBy: 'none', fallback: '#cccccc', tagPalette })).toBe('#059669')
+    expect(nodeColor(colored, { groupBy: 'folder', fallback: '#cccccc', tagPalette })).toBe('#059669')
+    expect(nodeColor(plain, { groupBy: 'none', fallback: '#cccccc', tagPalette })).toBe(tagPalette[tagHashIndex('idea')])
   })
 
-  it('lists tag nodes in the legend even with no grouping, and stays empty without them', () => {
+  it('paints a tag with no colour of its own from the palette slot its name falls on', () => {
+    const plain = asTagNode({ id: 'tag:idea', title: 'idea', tagColor: null })
+    expect(tagHashIndex('idea')).toBe(3)
+    expect(nodeColor(plain, { groupBy: 'none', fallback: '#cccccc', tagPalette })).toBe('#040404')
+  })
+
+  it('lists tag nodes in the legend as a reference to their palette token, and stays empty without them', () => {
     const note = { ...createTestNode(), id: 'note-1', tags: [{ name: 'work', color: '#059669' }] }
     const tag = asTagNode({ id: 'tag:work', title: 'work', tagColor: null })
     expect(buildColorLegends([note, tag], 'none')).toEqual([{ label: 'work', color: '#059669' }])
     const uncolored = asTagNode({ id: 'tag:idea', title: 'idea', tagColor: null })
-    expect(buildColorLegends([note, uncolored], 'none')).toEqual([{ label: 'idea', color: tagHashColor('idea') }])
+    expect(buildColorLegends([note, uncolored], 'none')).toEqual([{ label: 'idea', color: 'var(--graph-tag-4)' }])
     expect(buildColorLegends([note], 'none')).toEqual([])
   })
 
@@ -159,9 +169,10 @@ describe('color group rules (FEAT-04)', () => {
 
   it('paints the matched rule over the folder and tag groupings', () => {
     const ruled = { ...createTestNode(), colorGroup: '#4f46e5' }
-    expect(nodeColor(ruled, 'folder', '#cccccc')).toBe('#4f46e5')
-    expect(nodeColor(ruled, 'tag', '#cccccc')).toBe('#4f46e5')
-    expect(nodeColor(ruled, 'none', '#cccccc')).toBe('#4f46e5')
+    const grouped = { fallback: '#cccccc', tagPalette }
+    expect(nodeColor(ruled, { ...grouped, groupBy: 'folder' })).toBe('#4f46e5')
+    expect(nodeColor(ruled, { ...grouped, groupBy: 'tag' })).toBe('#4f46e5')
+    expect(nodeColor(ruled, { ...grouped, groupBy: 'none' })).toBe('#4f46e5')
   })
 })
 

@@ -3,7 +3,7 @@ import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
 import { graphFilterMatches, parseGraphFilter } from '@shared/graph-filter-expression'
 import { GRAPH_COLOR_GROUP_LIMIT, type GraphColorGroup, type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
-import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_LABEL_MAX, GRAPH_PREFS_KEY } from './constants'
+import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_LABEL_MAX, GRAPH_PREFS_KEY, GRAPH_TAG_PALETTE_SIZE } from './constants'
 import type { CanvasNode } from './types'
 
 export function graphScaleAfterWheel(scale: number, deltaY: number): number {
@@ -70,27 +70,22 @@ function colorGroupsPreference(value: unknown): GraphColorGroup[] {
   return groups
 }
 
-const TAG_FALLBACK_PALETTE = [
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#ec4899',
-  '#8b5cf6',
-  '#06b6d4',
-  '#f97316',
-  '#14b8a6',
-  '#6366f1',
-  '#84cc16',
-]
-
-export function tagHashColor(name: string): string {
+/**
+ * Which of the ten graph tag colours a name lands on. The slot is theme-independent, so a flip
+ * changes the values behind the slots and never which tag wears which.
+ */
+export function tagHashIndex(name: string): number {
   let hash = 0
   for (let i = 0; i < name.length; i++) {
     hash = (hash << 5) - hash + name.charCodeAt(i)
     hash |= 0
   }
-  const index = Math.abs(hash) % TAG_FALLBACK_PALETTE.length
-  return TAG_FALLBACK_PALETTE[index]!
+  return Math.abs(hash) % GRAPH_TAG_PALETTE_SIZE
+}
+
+/** The token a slot's colour lives in, so the DOM legend can name it and let the theme paint it. */
+export function graphTagTokenName(index: number): string {
+  return `--graph-tag-${index + 1}`
 }
 
 /**
@@ -109,15 +104,21 @@ export function tagColorsByName(nodes: GraphResponse['nodes']): Map<string, stri
   return colors
 }
 
-function tagNodeColor(name: string, color: string | null): string {
-  return organizerColorOrNull(color) ?? tagHashColor(name)
+/** A tag with no colour of its own takes the slot's value from the palette the surface paints with. */
+function tagFallbackColor(name: string, palette: readonly string[]): string {
+  return palette[tagHashIndex(name)] ?? palette[0]!
+}
+
+function tagNodeColor(name: string, color: string | null, palette: readonly string[]): string {
+  return organizerColorOrNull(color) ?? tagFallbackColor(name, palette)
 }
 
 /**
  * The rule each node is painted by, keyed by node id: the first rule whose filter line the note matches
  * wins, so the order the user set is the order of precedence. A rule with a blank filter line is skipped
  * rather than treated as a wildcard, or adding a row would repaint the whole graph before it is filled in.
- * Tag nodes keep their own palette: their colour is what a tag looks like everywhere else in the app.
+ * Tag nodes keep their own colour: the one the tag manager assigned, or the graph's token for the
+ * slot their name falls on.
  */
 export function colorGroupsByNodeId(
   nodes: readonly GraphNode[],
@@ -142,14 +143,22 @@ export function colorGroupsByNodeId(
   return byId
 }
 
-export function nodeColor(node: CanvasNode, groupBy: GroupBy, fallback: string): string {
+export interface NodeColorOptions {
+  groupBy: GroupBy
+  /** What a node is painted when nothing else claims it, read from the theme. */
+  fallback: string
+  /** The ten tag colours of the theme on screen, in slot order. */
+  tagPalette: readonly string[]
+}
+
+export function nodeColor(node: CanvasNode, { groupBy, fallback, tagPalette }: NodeColorOptions): string {
   if (node.colorGroup) return node.colorGroup
-  if (node.kind === 'tag') return tagNodeColor(node.title, node.tagColor)
+  if (node.kind === 'tag') return tagNodeColor(node.title, node.tagColor, tagPalette)
   if (groupBy === 'folder') return organizerColorOrNull(node.folderColor) ?? fallback
   if (groupBy === 'tag') {
     const firstTag = node.tags[0]
     if (!firstTag) return fallback
-    return organizerColorOrNull(firstTag.color) ?? tagHashColor(firstTag.name)
+    return organizerColorOrNull(firstTag.color) ?? tagFallbackColor(firstTag.name, tagPalette)
   }
   return fallback
 }
@@ -165,13 +174,18 @@ export function graphLabelVisible(node: CanvasNode, scale: number): boolean {
   return node.degree >= 1 || scale >= 1.1
 }
 
+/** A tag with no colour of its own is named by its token, so the legend follows the theme on its own. */
+function tagLegendColor(name: string, color: string | null): string {
+  return organizerColorOrNull(color) ?? `var(${graphTagTokenName(tagHashIndex(name))})`
+}
+
 function extractNodeLegend(
   node: GraphResponse['nodes'][number],
   groupBy: GroupBy,
   tagColors: Map<string, string | null>,
 ): { label: string; color: string } | null {
   if (node.kind === 'tag') {
-    return { label: node.title, color: tagNodeColor(node.title, tagColors.get(node.title.toLowerCase()) ?? null) }
+    return { label: node.title, color: tagLegendColor(node.title, tagColors.get(node.title.toLowerCase()) ?? null) }
   }
   if (groupBy === 'folder' && node.folderName) {
     const color = organizerColorOrNull(node.folderColor)
@@ -179,7 +193,7 @@ function extractNodeLegend(
   }
   if (groupBy === 'tag' && node.tags[0]) {
     const tag = node.tags[0]
-    return { label: tag.name, color: organizerColorOrNull(tag.color) ?? tagHashColor(tag.name) }
+    return { label: tag.name, color: tagLegendColor(tag.name, tag.color) }
   }
   return null
 }

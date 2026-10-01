@@ -1,5 +1,6 @@
 import { act, createElement } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { ORGANIZER_COLORS } from '@shared/organizer-colors'
 import type { GraphResponse } from '@shared/types'
 import { initI18n } from '../../../lib/i18n'
 import { renderElement, type RenderedElement } from '../../../lib/test-render'
@@ -14,12 +15,16 @@ import type { CanvasState } from './types'
  * colours come from the document, and a flip reaches the pixels that are already on screen.
  */
 
+/** A value per tag slot, so a misread token cannot pass for the right one. */
+const graphTags = Array.from({ length: 10 }, (_, index) => `rgb(${index + 1}, 6, 7)`)
+
 const dark = {
   '--border-strong': 'rgb(11, 12, 13)',
   '--text-tertiary': 'rgb(21, 22, 23)',
   '--accent': 'rgb(34, 56, 78)',
   '--text-secondary': 'rgb(44, 45, 46)',
   '--bg-base': 'rgb(5, 6, 7)',
+  ...Object.fromEntries(graphTags.map((value, index) => [`--graph-tag-${index + 1}`, value])),
 }
 
 const light = {
@@ -124,7 +129,13 @@ describe('theme colors of the document', () => {
       accent: 'rgb(34, 56, 78)',
       text: 'rgb(44, 45, 46)',
       bgBase: 'rgb(5, 6, 7)',
+      tagPalette: graphTags,
     })
+  })
+
+  it('falls back to the shared palette when the document declares no tag tokens', () => {
+    for (const name of Object.keys(dark)) document.documentElement.style.removeProperty(name)
+    expect(readThemeColors().tagPalette).toEqual([...ORGANIZER_COLORS])
   })
 
 })

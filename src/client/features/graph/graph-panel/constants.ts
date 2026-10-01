@@ -11,6 +11,9 @@ export const GRAPH_SETTLE_FRAME = 70
 export const GRAPH_PREFS_KEY = 'inkstone.graph.preferences.v1'
 export const COLOR_GROUP_QUERY_MAX = 120
 
+/** Ten slots for tag colours, the width of the --graph-tag-* token block. */
+export const GRAPH_TAG_PALETTE_SIZE = 10
+
 /** A title is cut to this many characters, however it is drawn. */
 export const GRAPH_LABEL_MAX = 18
 export const GRAPH_LABEL_FONT_SIZE = 11

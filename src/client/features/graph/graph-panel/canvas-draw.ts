@@ -1,7 +1,8 @@
 import type { MutableRefObject } from 'react'
+import { ORGANIZER_COLORS } from '@shared/organizer-colors'
 import type { GraphResponse } from '@shared/types'
-import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, GRAPH_ARROW_SIZE, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA, GRAPH_SETTLE_FRAME, PHYSICS_FRAME_LIMIT } from './constants'
-import { colorGroupsByNodeId, graphLabelVisible, graphNodeLabel, nodeColor, tagColorsByName } from './helpers'
+import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, GRAPH_ARROW_SIZE, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA, GRAPH_SETTLE_FRAME, GRAPH_TAG_PALETTE_SIZE, PHYSICS_FRAME_LIMIT } from './constants'
+import { colorGroupsByNodeId, graphLabelVisible, graphNodeLabel, graphTagTokenName, nodeColor, tagColorsByName } from './helpers'
 import type {
   CanvasNode,
   CanvasState,
@@ -143,7 +144,7 @@ export function drawNodes({
     const emphasized = node.id === emphasizedId
     const isNeighbor = neighborIds.has(node.id)
     ctx.beginPath(); ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2)
-    ctx.fillStyle = active || emphasized ? colors.accent : nodeColor(node, groupBy, colors.node)
+    ctx.fillStyle = active || emphasized ? colors.accent : nodeColor(node, { groupBy, fallback: colors.node, tagPalette: colors.tagPalette })
     ctx.globalAlpha = emphasizedId && !emphasized && !active && !isNeighbor ? 0.18 : 1
     if (node.kind === 'unresolved') {
       ctx.strokeStyle = ctx.fillStyle
@@ -298,6 +299,10 @@ export function readThemeColors(): ThemeColors {
     accent: style.getPropertyValue('--accent').trim() || FALLBACK_ACCENT_COLOR,
     text: style.getPropertyValue('--text-secondary').trim() || FALLBACK_TEXT_COLOR,
     bgBase: style.getPropertyValue('--bg-base').trim() || FALLBACK_BG_COLOR,
+    // A tag with no colour of its own reads one of these. With no stylesheet in reach (tests, the
+    // first paint) the shared organizer palette stands in, so there is no third palette to drift.
+    tagPalette: Array.from({ length: GRAPH_TAG_PALETTE_SIZE }, (_, index) =>
+      style.getPropertyValue(graphTagTokenName(index)).trim() || ORGANIZER_COLORS[index]!),
   }
 }
 

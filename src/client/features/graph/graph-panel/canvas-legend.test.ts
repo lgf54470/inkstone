@@ -152,6 +152,15 @@ describe('graph color legend', () => {
     expect(swatches[0]?.getAttribute('style')).toContain('background-color: rgb(5, 150, 105)')
     graph.close()
   })
+
+  it('paints a tag with no colour of its own by the token of its slot, so the theme decides the value', () => {
+    const idea = { ...tag, id: 'tag:idea', title: 'idea' }
+    const graph = mountLegend((canvas) => graphElement(response([idea], []), canvas))
+    const swatches = legendSwatches(graph.container, 'idea')
+    expect(swatches).toHaveLength(1)
+    expect(swatches[0]?.getAttribute('style')).toContain('background-color: var(--graph-tag-4)')
+    graph.close()
+  })
 })
 
 describe('graph color rule legend', () => {

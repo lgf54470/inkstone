@@ -3365,6 +3365,8 @@ const allowed = new Map([
     '// is the only thing that moves this canvas without also moving the panel that holds it.',
     '// Measured once before observing: the observer\'s first callback is asynchronous, and a pointer that',
     '// arrives in between would read the cached box as a zero offset.',
+    '// A tag with no colour of its own reads one of these. With no stylesheet in reach (tests, the',
+    '// first paint) the shared organizer palette stands in, so there is no third palette to drift.',
   ]],
   ['src/client/features/graph/graph-panel/canvas-dynamic-prefs.test.ts', [
     '/**\n * Forces are what a reader tunes against a graph that is already on screen, so changing one has to restart\n * the animation on the nodes that are already there — while a preference that only changes how the picture\n * looks must leave that animation alone. These cases drive the same hook the canvas uses, on a settled\n * layout whose third node the reader has dragged somewhere the physics never put it.\n */',
@@ -3385,6 +3387,7 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/canvas-theme.test.ts', [
     '/**\n * A canvas paints colours it reads itself, so nothing in the browser notices a theme flip for it: the\n * panel has to re-read the tokens and redraw. These cases read the two halves of that promise — the\n * colours come from the document, and a flip reaches the pixels that are already on screen.\n */',
     '/**\n * Frames are queued rather than run inline: a synchronous `requestAnimationFrame` would make the physics\n * loop re-enter itself, and the id it hands back would be written after the loop had already cleared it,\n * leaving the panel looking like a frame was still in flight.\n */',
+    '/** A value per tag slot, so a misread token cannot pass for the right one. */',
   ]],
   ['src/client/features/graph/graph-panel/canvas.tsx', [
     '// `preview` is a fresh object on every render: listing it as a dependency would make this effect write',
@@ -3393,6 +3396,7 @@ const allowed = new Map([
   ]],
   ['src/client/features/graph/graph-panel/constants.ts', [
     '/** A title is cut to this many characters, however it is drawn. */',
+    '/** Ten slots for tag colours, the width of the --graph-tag-* token block. */',
   ]],
   ['src/client/features/graph/graph-panel/graph-canvas-mount.test-helpers.ts', [
     '/**\n * Mounting the graph surface needs a canvas that paints, a physics state the test can read, and the\n * callbacks the panel calls back into. Tests that drive the panel by hand share this scaffolding; what\n * each of them asserts stays in its own file.\n */',
@@ -3427,10 +3431,19 @@ const allowed = new Map([
     '/**\n * The export buttons are the one part of the graph whose result leaves the app, so they are read here\n * the way a reader uses them: the real panel is mounted, the header control is pressed with a real\n * pointer, and either a named file has been handed to the browser or the button was never reachable.\n * What those buttons draw is the subject of `graph-export.test.ts`; this file holds the wiring.\n */',
     '/** jsdom hands back no 2d context, so the panel would never build a layout: the drawing is stubbed, the state it fills is real. */',
   ]],
+  ['src/client/features/graph/graph-panel/helpers.test.ts', [
+    '/** Ten slots of the theme palette the canvas paints with; the values only label a slot here. */',
+  ]],
   ['src/client/features/graph/graph-panel/helpers.ts', [
     '/** Anything can sit under this key in storage, so a rule survives only with a palette colour and a filter line. */',
+    '/**\n * Which of the ten graph tag colours a name lands on. The slot is theme-independent, so a flip\n * changes the values behind the slots and never which tag wears which.\n */',
+    '/** The token a slot\'s colour lives in, so the DOM legend can name it and let the theme paint it. */',
+    '/** A tag with no colour of its own takes the slot\'s value from the palette the surface paints with. */',
     '/**\n * The colour each tag carries, read off the notes that hold it: a tag node and the notes linked to it\n * arrive in the same response, so the palette never has to ask for the colour separately.\n */',
-    '/**\n * The rule each node is painted by, keyed by node id: the first rule whose filter line the note matches\n * wins, so the order the user set is the order of precedence. A rule with a blank filter line is skipped\n * rather than treated as a wildcard, or adding a row would repaint the whole graph before it is filled in.\n * Tag nodes keep their own palette: their colour is what a tag looks like everywhere else in the app.\n */',
+    '/**\n * The rule each node is painted by, keyed by node id: the first rule whose filter line the note matches\n * wins, so the order the user set is the order of precedence. A rule with a blank filter line is skipped\n * rather than treated as a wildcard, or adding a row would repaint the whole graph before it is filled in.\n * Tag nodes keep their own colour: the one the tag manager assigned, or the graph\'s token for the\n * slot their name falls on.\n */',
+    '/** What a node is painted when nothing else claims it, read from the theme. */',
+    '/** The ten tag colours of the theme on screen, in slot order. */',
+    '/** A tag with no colour of its own is named by its token, so the legend follows the theme on its own. */',
     '/** The words under a node: a tag carries its sigil, and every title is cut to the width that can be drawn. */',
     '/** A node nobody links to is only worth a title once the graph is zoomed in far enough to read it. */',
     '/** Tag memberships are drawn like links but are not wiki links, so the stats line leaves them out. */',
@@ -3470,6 +3483,7 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/types.ts', [
     '/** Resolved from the notes carrying the tag, stamped when the layout is built. */',
     '/** Colour of the first custom rule this node matches, or null to fall back to `groupBy`. */',
+    '/** The ten tag colours of the theme, in slot order, read from the --graph-tag-* tokens. */',
     '/** The canvas box\'s viewport offset, kept by the resizer: pointer math subtracts it instead of\n   * asking the layout engine for the box on every move, which forced a synchronous layout per event. */',
   ]],
   ['src/client/features/graph/graph-panel/use-graph-export.test.ts', [

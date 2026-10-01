@@ -42,6 +42,8 @@ export interface ThemeColors {
   edge: string
   node: string
   accent: string
+  /** The ten tag colours of the theme, in slot order, read from the --graph-tag-* tokens. */
+  tagPalette: string[]
 }
 
 export interface DrawArrowHeadOptions {
