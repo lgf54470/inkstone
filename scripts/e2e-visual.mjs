@@ -1586,8 +1586,10 @@ const TOOLBAR_SURFACES = [
   // The graph has no button of its own at this width: its entry point is the account menu, which
   // unmounts on the way to the panel, so a person reaches it by shortcut. The sidebar's account
   // control is what holds the keyboard while that shortcut runs, and that is the element focus has to
-  // come back to.
-  { name: 'graph', open: (page) => pressOpener(page, { labels: ['设置', 'Settings'], combo: ['Control', 'Shift', 'g'] }), root: '[data-surface="graph"]', toolbar: '[data-surface="graph"] > header', minToggles: 2, loaded: { selector: 'canvas', min: 1 } },
+  // come back to. The scope control of this header is a radiogroup (radio + aria-checked), which this
+  // sweep does not press and which its own naming gate reads, so the disclosure the sweep has to find is
+  // the settings button: pressing it opens the drawer this surface discloses.
+  { name: 'graph', open: (page) => pressOpener(page, { labels: ['设置', 'Settings'], combo: ['Control', 'Shift', 'g'] }), root: '[data-surface="graph"]', toolbar: '[data-surface="graph"] > header', minToggles: 1, loaded: { selector: 'canvas', min: 1 } },
   { name: 'template library', open: (page) => pressOpener(page, { labels: ['从模板新建笔记', 'New note from template'] }), root: '[data-surface="templates"]', toolbar: '[data-surface="templates"] > header', minToggles: 1, loaded: { selector: '[data-template-id]', min: 1 } },
   { name: 'settings', open: (page) => pressOpener(page, { labels: ['设置', 'Settings'] }), root: SETTINGS_PANEL, toolbar: `${SETTINGS_PANEL} header`, minToggles: 0, loaded: { selector: 'nav button', min: 3 } },
   { name: 'command palette', open: (page) => pressOpener(page, { labels: ['搜索笔记、执行命令', 'Search notes or run a command'] }), root: PALETTE_PANEL, toolbar: `${PALETTE_PANEL} > div`, minToggles: 0, loaded: { selector: '[role="option"]', min: 1 } },

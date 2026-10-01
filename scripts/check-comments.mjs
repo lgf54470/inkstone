@@ -1126,7 +1126,9 @@ const allowed = new Map([
     '// The graph has no button of its own at this width: its entry point is the account menu, which',
     '// unmounts on the way to the panel, so a person reaches it by shortcut. The sidebar\'s account',
     '// control is what holds the keyboard while that shortcut runs, and that is the element focus has to',
-    '// come back to.',
+    '// come back to. The scope control of this header is a radiogroup (radio + aria-checked), which this',
+    '// sweep does not press and which its own naming gate reads, so the disclosure the sweep has to find is',
+    '// the settings button: pressing it opens the drawer this surface discloses.',
     '// The show\'s chrome is the one toolbar that floats over its surface instead of sitting at the top',
     '// of it, and the slide list is one of the four places an expansion is allowed to live: pressing the',
     '// two toggles is what has to leave the pill the size it was.',
@@ -3430,6 +3432,9 @@ const allowed = new Map([
     '// Notes created from unresolved nodes land in the graph\'s folder scope so',
     '// they inherit the folder name for the `{{folder}}` template placeholder.',
     '// The sidebar\'s cmd/ctrl+click selections join the graph\'s own tag filter.',
+  ]],
+  ['src/client/features/graph/graph-panel/panel-disclosure-state.test.ts', [
+    '/**\n * The header control that discloses the graph settings is a reader\'s only handle on whether the drawer is\n * already open, and a button that opens a panel owes that to the accessibility tree as an expanded state.\n * These cases read it off the control itself, before and after the press, because a state that lives only\n * in React leaves the reader holding a button that says nothing.\n */',
   ]],
   ['src/client/features/graph/graph-panel/panel-escape-stack.test.ts', [
     '/**\n * Escape is how a keyboard reader unwinds the graph, and one press has to unwind exactly one layer:\n * the drawer that was opened last, the panel only once nothing sits above it. The stack that decides\n * that lives in the overlay hooks and only real mount order can put two layers on it, so these cases\n * mount the panel itself and press the keys.\n */',

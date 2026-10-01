@@ -186,7 +186,7 @@ function GraphHeaderActions({ actions }: { actions: GraphHeaderActionsProps }) {
       <Tooltip label={t('common.zoom_in')}><IconButton label={t('common.zoom_in')} size='sm' disabled={!hasGraph} onClick={onZoomIn}><Plus size={14}/></IconButton></Tooltip>
       <Tooltip label={t('graph.export_png')}><IconButton label={t('graph.export_png')} size='sm' disabled={!hasGraph || isExporting} onClick={onExportPng}><ImageDown size={14}/></IconButton></Tooltip>
       <Tooltip label={t('graph.export_svg')}><IconButton label={t('graph.export_svg')} size='sm' disabled={!hasGraph || isExporting} onClick={onExportSvg}><Download size={14}/></IconButton></Tooltip>
-      <Tooltip label={t('graph.settings')}><IconButton label={t('graph.settings')} size='sm' aria-pressed={isSettingsOpen} onClick={onToggleSettings}><Settings2 size={14}/></IconButton></Tooltip>
+      <Tooltip label={t('graph.settings')}><IconButton label={t('graph.settings')} size='sm' aria-haspopup='dialog' aria-expanded={isSettingsOpen} onClick={onToggleSettings}><Settings2 size={14}/></IconButton></Tooltip>
       <Tooltip label={t('common.close')} combo='escape' side='left'><IconButton label={t('common.close')} size='sm' onClick={onClose} className='ml-1'><X size={16}/></IconButton></Tooltip>
     </div>
   )
