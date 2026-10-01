@@ -3,7 +3,7 @@ import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
 import { graphFilterMatches, parseGraphFilter } from '@shared/graph-filter-expression'
 import { GRAPH_COLOR_GROUP_LIMIT, type GraphColorGroup, type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
-import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_PREFS_KEY } from './constants'
+import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_LABEL_MAX, GRAPH_PREFS_KEY } from './constants'
 import type { CanvasNode } from './types'
 
 export function graphScaleAfterWheel(scale: number, deltaY: number): number {
@@ -152,6 +152,17 @@ export function nodeColor(node: CanvasNode, groupBy: GroupBy, fallback: string):
     return organizerColorOrNull(firstTag.color) ?? tagHashColor(firstTag.name)
   }
   return fallback
+}
+
+/** The words under a node: a tag carries its sigil, and every title is cut to the width that can be drawn. */
+export function graphNodeLabel(node: CanvasNode): string {
+  const text = node.kind === 'tag' ? `#${node.title}` : node.title
+  return text.length > GRAPH_LABEL_MAX ? `${truncateText(text, GRAPH_LABEL_MAX)}…` : text
+}
+
+/** A node nobody links to is only worth a title once the graph is zoomed in far enough to read it. */
+export function graphLabelVisible(node: CanvasNode, scale: number): boolean {
+  return node.degree >= 1 || scale >= 1.1
 }
 
 function extractNodeLegend(

@@ -76,4 +76,6 @@ export const messages = {
 'graph.color_rule_remove': 'Remove rule',
 'graph.export_png': 'Export as PNG',
 'graph.export_svg': 'Export as SVG',
+'graph.export_done': 'Graph exported',
+'graph.export_failed': 'Could not export the graph',
 }

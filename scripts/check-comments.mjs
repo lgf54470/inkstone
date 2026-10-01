@@ -3347,16 +3347,46 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/canvas-color-groups.test.ts', [
     '/**\n * Colour rules are edited while the graph is already on screen, so an edit has to reach the nodes the\n * ticker is drawing. Rebuilding the layout would throw away the dragged positions and the physics run,\n * so a dedicated effect re-stamps the live nodes instead — which is what these cases pin.\n */',
   ]],
+  ['src/client/features/graph/graph-panel/canvas-draw.test.ts', [
+    '/**\n * The head a link is drawn with is the one piece of geometry that has to agree between the panel and an\n * exported picture, so its two rules are read off here: the tip stops short of the node it arrives at,\n * and the arms shrink as the reader zooms in so the head keeps the same size on screen.\n */',
+  ]],
+  ['src/client/features/graph/graph-panel/canvas-draw.ts', [
+    '/** The three corners of an arrow head: the tip sits just outside the node it points at. */',
+  ]],
   ['src/client/features/graph/graph-panel/canvas-legend.test.ts', [
     '/** Mounts the canvas with the painting stubbed away, and hands back the legend it drew. */',
   ]],
   ['src/client/features/graph/graph-panel/canvas.tsx', [
     '/** The legend describes the response, not the physics copy of it, so it must not read stateRef here. */',
   ]],
+  ['src/client/features/graph/graph-panel/constants.ts', [
+    '/** A title is cut to this many characters, however it is drawn. */',
+  ]],
+  ['src/client/features/graph/graph-panel/graph-export.test.ts', [
+    '/**\n * An export has to put the whole graph, and only the graph, into a file: the box is computed from the\n * nodes rather than the viewport, the vector emitter draws what the canvas draws, and the raster path\n * hands the browser a picture it can actually allocate. These cases pin the box, the file, and the\n * promise that a picture the reader asked for either arrives or says why it did not.\n */',
+    '// Read by hand from the rule the panel draws with: the tip sits 2 units short of the rim of the node',
+    '// at (100, 40) r 20, and the two arms are 5 units long at ±30 degrees off the link.',
+  ]],
+  ['src/client/features/graph/graph-panel/graph-export.ts', [
+    '/** Device pixels per world unit in the exported picture, so the file is sharper than the panel. */',
+    '/** The longest edge a raster export asks for: past this a browser hands back an empty canvas. */',
+    '/** The picture is drawn at world scale, so type and line widths match the panel at zoom 1 however far the graph is fitted. */',
+    '/** Clearance around the outermost node, so a label is not cropped by the edge of the file. */',
+    '/** The canvas the picture needs: two device pixels per world unit, unless the whole graph would not fit. */',
+    '/** Draws the whole graph into a file, named by the scope it was built for. */',
+    '/** Two decimals place a node exactly and keep the file readable. */',
+    '/** A colour or a font name arrives from CSS, so it goes into an attribute only after escaping. */',
+  ]],
+  ['src/client/features/graph/graph-panel/header-export.test.ts', [
+    '/**\n * The export buttons are the one part of the graph whose result leaves the app, so they are read here\n * the way a reader uses them: the real panel is mounted, the header control is pressed with a real\n * pointer, and either a named file has been handed to the browser or the button was never reachable.\n * What those buttons draw is the subject of `graph-export.test.ts`; this file holds the wiring.\n */',
+    '/** jsdom hands back no 2d context, so the panel would never build a layout: the drawing is stubbed, the state it fills is real. */',
+  ]],
   ['src/client/features/graph/graph-panel/helpers.ts', [
     '/** Anything can sit under this key in storage, so a rule survives only with a palette colour and a filter line. */',
     '/**\n * The colour each tag carries, read off the notes that hold it: a tag node and the notes linked to it\n * arrive in the same response, so the palette never has to ask for the colour separately.\n */',
     '/**\n * The rule each node is painted by, keyed by node id: the first rule whose filter line the note matches\n * wins, so the order the user set is the order of precedence. A rule with a blank filter line is skipped\n * rather than treated as a wildcard, or adding a row would repaint the whole graph before it is filled in.\n * Tag nodes keep their own palette: their colour is what a tag looks like everywhere else in the app.\n */',
+    '/** The words under a node: a tag carries its sigil, and every title is cut to the width that can be drawn. */',
+    '/** A node nobody links to is only worth a title once the graph is zoomed in far enough to read it. */',
     '/** Tag memberships are drawn like links but are not wiki links, so the stats line leaves them out. */',
   ]],
   ['src/client/features/graph/graph-panel/index.tsx', [
@@ -3371,6 +3401,12 @@ const allowed = new Map([
   ['src/client/features/graph/graph-panel/types.ts', [
     '/** Resolved from the notes carrying the tag, stamped when the layout is built. */',
     '/** Colour of the first custom rule this node matches, or null to fall back to `groupBy`. */',
+  ]],
+  ['src/client/features/graph/graph-panel/use-graph-export.test.ts', [
+    '/**\n * Exporting is the one graph action that leaves the app: the reader presses a button and a file\n * appears somewhere else. So the button has to stay shut while the picture is being painted, the\n * failure has to reach the reader rather than vanish, and the graph that gets drawn is the one on\n * screen. The file itself is the subject of `graph-export.test.ts`; here the promise is held open on\n * purpose to watch what the panel does around it.\n */',
+  ]],
+  ['src/client/features/graph/graph-panel/use-graph-export.ts', [
+    '/** A picture is painted off-screen and handed to the browser as a file, so the doors stay shut until it lands. */',
   ]],
   ['src/client/features/list/list-filter-persist.ts', [
     '// Quota or private-mode writes can throw; the filter stays authoritative in memory for the session.',

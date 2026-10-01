@@ -1,8 +1,7 @@
 import type { MutableRefObject } from 'react'
 import type { GraphResponse } from '@shared/types'
-import { truncateText } from '@shared/text-utils'
-import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, PHYSICS_FRAME_LIMIT } from './constants'
-import { colorGroupsByNodeId, nodeColor, tagColorsByName } from './helpers'
+import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, GRAPH_ARROW_SIZE, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA, PHYSICS_FRAME_LIMIT } from './constants'
+import { colorGroupsByNodeId, graphLabelVisible, graphNodeLabel, nodeColor, tagColorsByName } from './helpers'
 import type {
   CanvasNode,
   CanvasState,
@@ -85,24 +84,34 @@ function advancePhysics(state: CanvasState, prefs: GraphPreferences): void {
 }
 
 
-function drawArrowHead({ ctx, from, to, color, scale }: DrawArrowHeadOptions): void {
+/** The three corners of an arrow head: the tip sits just outside the node it points at. */
+export function arrowHeadPoints(from: CanvasNode, to: CanvasNode, scale: number): Array<[number, number]> {
   const angle = Math.atan2(to.y - from.y, to.x - from.x)
+  const size = GRAPH_ARROW_SIZE / Math.sqrt(scale)
   const x = to.x - Math.cos(angle) * (to.r + 2)
   const y = to.y - Math.sin(angle) * (to.r + 2)
-  const size = 5 / Math.sqrt(scale)
+  return [
+    [x, y],
+    [x - Math.cos(angle - Math.PI / 6) * size, y - Math.sin(angle - Math.PI / 6) * size],
+    [x - Math.cos(angle + Math.PI / 6) * size, y - Math.sin(angle + Math.PI / 6) * size],
+  ]
+}
+
+function drawArrowHead({ ctx, from, to, color, scale }: DrawArrowHeadOptions): void {
+  const [tip, left, right] = arrowHeadPoints(from, to, scale)
   ctx.beginPath()
-  ctx.moveTo(x, y)
-  ctx.lineTo(x - Math.cos(angle - Math.PI / 6) * size, y - Math.sin(angle - Math.PI / 6) * size)
-  ctx.lineTo(x - Math.cos(angle + Math.PI / 6) * size, y - Math.sin(angle + Math.PI / 6) * size)
+  ctx.moveTo(tip![0], tip![1])
+  ctx.lineTo(left![0], left![1])
+  ctx.lineTo(right![0], right![1])
   ctx.closePath(); ctx.fillStyle = color; ctx.fill()
 }
 
-function drawEdges({ ctx, state, colors, emphasizedId, arrows }: DrawEdgesOptions): void {
+export function drawEdges({ ctx, state, colors, emphasizedId, arrows }: DrawEdgesOptions): void {
   ctx.lineWidth = 1 / state.scale
   for (const edge of state.edges) {
     const related = emphasizedId === edge.a.id || emphasizedId === edge.b.id
     ctx.strokeStyle = related ? colors.accent : colors.edge
-    ctx.globalAlpha = related ? 0.9 : emphasizedId ? 0.14 : 0.42
+    ctx.globalAlpha = related ? 0.9 : emphasizedId ? 0.14 : GRAPH_EDGE_ALPHA
     ctx.beginPath(); ctx.moveTo(edge.a.x, edge.a.y); ctx.lineTo(edge.b.x, edge.b.y); ctx.stroke()
     if (arrows)
       drawArrowHead({ ctx, from: edge.a, to: edge.b, color: related ? colors.accent : colors.edge, scale: state.scale })
@@ -119,7 +128,7 @@ export function getConnectedNeighborIds(state: CanvasState, targetId: string | n
   return neighbors
 }
 
-function drawNodes({
+export function drawNodes({
   ctx,
   state,
   colors,
@@ -148,13 +157,13 @@ function drawNodes({
       ctx.beginPath(); ctx.arc(node.x, node.y, node.r + 4, 0, Math.PI * 2); ctx.stroke()
     }
     if (node.pinned) {
-      ctx.strokeStyle = colors.accent; ctx.globalAlpha = 0.8; ctx.lineWidth = 1.5 / state.scale
+      ctx.strokeStyle = colors.accent; ctx.globalAlpha = GRAPH_PIN_ALPHA; ctx.lineWidth = 1.5 / state.scale
       ctx.beginPath(); ctx.arc(node.x, node.y, node.r + 2.5, 0, Math.PI * 2); ctx.stroke()
     }
   }
 }
 
-function drawLabels({
+export function drawLabels({
   ctx,
   state,
   colors,
@@ -166,20 +175,19 @@ function drawLabels({
 }: DrawLabelsOptions): void {
   if (!labels || !(scale > 0.68 || emphasizedId))
     return
-  ctx.font = `${11 / scale}px ${fontFamily}`
+  ctx.font = `${GRAPH_LABEL_FONT_SIZE / scale}px ${fontFamily}`
   ctx.textAlign = 'center'
   for (const node of state.nodes) {
     const emphasized = node.id === emphasizedId
     const isNeighbor = neighborIds.has(node.id)
-    if (!emphasized && !isNeighbor && node.degree < 1 && scale < 1.1) continue
+    if (!emphasized && !isNeighbor && !graphLabelVisible(node, scale)) continue
     ctx.fillStyle = emphasized ? colors.accent : colors.text
-    ctx.globalAlpha = emphasized || isNeighbor ? 1 : emphasizedId ? 0.18 : 0.72
-    const text = node.kind === 'tag' ? `#${node.title}` : node.title
-    const label = text.length > 18 ? `${truncateText(text, 18)}…` : text
-    ctx.lineWidth = 3 / scale
+    ctx.globalAlpha = emphasized || isNeighbor ? 1 : emphasizedId ? 0.18 : GRAPH_LABEL_ALPHA
+    const label = graphNodeLabel(node)
+    ctx.lineWidth = GRAPH_LABEL_HALO / scale
     ctx.strokeStyle = colors.bgBase
-    ctx.strokeText(label, node.x, node.y + node.r + 12 / scale)
-    ctx.fillText(label, node.x, node.y + node.r + 12 / scale)
+    ctx.strokeText(label, node.x, node.y + node.r + GRAPH_LABEL_OFFSET / scale)
+    ctx.fillText(label, node.x, node.y + node.r + GRAPH_LABEL_OFFSET / scale)
   }
 }
 

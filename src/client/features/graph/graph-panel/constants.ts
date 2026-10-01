@@ -10,6 +10,17 @@ export const PHYSICS_FRAME_LIMIT = 360
 export const GRAPH_PREFS_KEY = 'inkstone.graph.preferences.v1'
 export const COLOR_GROUP_QUERY_MAX = 120
 
+/** A title is cut to this many characters, however it is drawn. */
+export const GRAPH_LABEL_MAX = 18
+export const GRAPH_LABEL_FONT_SIZE = 11
+export const GRAPH_LABEL_OFFSET = 12
+export const GRAPH_LABEL_HALO = 3
+export const GRAPH_EDGE_ALPHA = 0.42
+export const GRAPH_LABEL_ALPHA = 0.72
+export const GRAPH_PIN_ALPHA = 0.8
+export const GRAPH_ARROW_SIZE = 5
+export const FALLBACK_FONT_FAMILY = 'sans-serif'
+
 export const DEFAULT_PREFERENCES: GraphPreferences = {
   mode: 'global',
   depth: 1,

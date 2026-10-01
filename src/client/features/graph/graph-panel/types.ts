@@ -119,11 +119,14 @@ export interface GraphDragOptions {
 }
 
 export interface GraphHeaderActionsProps {
-  canZoom: boolean
+  hasGraph: boolean
   isSettingsOpen: boolean
+  isExporting: boolean
   onZoomOut: () => void
   onFit: () => void
   onZoomIn: () => void
+  onExportPng: () => void
+  onExportSvg: () => void
   onToggleSettings: () => void
   onClose: () => void
 }

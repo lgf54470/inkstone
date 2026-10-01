@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { GraphResponse } from '@shared/types'
 import { DEFAULT_PREFERENCES } from './constants'
 import {
+  arrowHeadPoints,
   buildInitialLayout,
   createCanvasResizer,
   createGraphTicker,
@@ -277,5 +278,36 @@ describe('color group rules (FEAT-04)', () => {
     const state = createInitialState()
     buildInitialLayout(tagData, prefs, state)
     expect(state.nodes.every((node) => node.colorGroup === null)).toBe(true)
+  })
+})
+
+/**
+ * The head a link is drawn with is the one piece of geometry that has to agree between the panel and an
+ * exported picture, so its two rules are read off here: the tip stops short of the node it arrives at,
+ * and the arms shrink as the reader zooms in so the head keeps the same size on screen.
+ */
+describe('arrow head geometry', () => {
+  function laidOut() {
+    const state = createInitialState()
+    buildInitialLayout(sampleData, DEFAULT_PREFERENCES, state)
+    return state.nodes
+  }
+
+  function armLength(corners: Array<[number, number]>): number {
+    const [tip, arm] = corners
+    return Math.hypot(arm![0] - tip![0], arm![1] - tip![1])
+  }
+
+  it('stops the tip just outside the node the link arrives at', () => {
+    const nodes = laidOut()
+    const [from, to] = nodes
+    const tip = arrowHeadPoints(from!, to!, 1)[0]!
+    expect(Math.hypot(tip[0] - to!.x, tip[1] - to!.y)).toBeCloseTo(to!.r + 2, 6)
+  })
+
+  it('keeps the head the same size on screen as the reader zooms in', () => {
+    const nodes = laidOut()
+    const [from, to] = nodes
+    expect(armLength(arrowHeadPoints(from!, to!, 4))).toBeCloseTo(armLength(arrowHeadPoints(from!, to!, 1)) / 2)
   })
 })

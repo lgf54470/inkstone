@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Maximize2, Minus, Plus, Search, Settings2, X } from 'lucide-react'
+import { Download, ImageDown, Maximize2, Minus, Plus, Search, Settings2, X } from 'lucide-react'
 import { LIMITS } from '@shared/constants'
 import type { GraphQuery, GraphResponse } from '@shared/types'
 import { api } from '../../../lib/api'
@@ -21,6 +21,7 @@ import { t } from '../../../lib/i18n'
 import { GraphCanvas } from './canvas'
 import { useGraphCanvasRefs } from './canvas-hooks'
 import { GraphSettingsPanel } from './settings'
+import { useGraphExport } from './use-graph-export'
 import { DEFAULT_PREFERENCES } from './constants'
 import { countWikiLinkEdges, graphPrefsStorageKey, loadPreferences, normalizedResponse } from './helpers'
 import type { GraphHeaderActionsProps, GraphHeaderProps } from './types'
@@ -177,34 +178,41 @@ function GraphSearchBox({ search, onSearchChange }: {
 }
 
 function GraphHeaderActions({ actions }: { actions: GraphHeaderActionsProps }) {
-  const { canZoom, isSettingsOpen, onZoomOut, onFit, onZoomIn, onToggleSettings, onClose } = actions
+  const { hasGraph, isSettingsOpen, isExporting, onZoomOut, onFit, onZoomIn, onExportPng, onExportSvg, onToggleSettings, onClose } = actions
   return (
     <div className='ml-auto flex items-center gap-1'>
-      <Tooltip label={t('common.zoom_out')}><IconButton label={t('common.zoom_out')} size='sm' disabled={!canZoom} onClick={onZoomOut}><Minus size={14}/></IconButton></Tooltip>
-      <Tooltip label={t('graph.fit')}><IconButton label={t('graph.reset')} size='sm' disabled={!canZoom} onClick={onFit}><Maximize2 size={13}/></IconButton></Tooltip>
-      <Tooltip label={t('common.zoom_in')}><IconButton label={t('common.zoom_in')} size='sm' disabled={!canZoom} onClick={onZoomIn}><Plus size={14}/></IconButton></Tooltip>
+      <Tooltip label={t('common.zoom_out')}><IconButton label={t('common.zoom_out')} size='sm' disabled={!hasGraph} onClick={onZoomOut}><Minus size={14}/></IconButton></Tooltip>
+      <Tooltip label={t('graph.fit')}><IconButton label={t('graph.reset')} size='sm' disabled={!hasGraph} onClick={onFit}><Maximize2 size={13}/></IconButton></Tooltip>
+      <Tooltip label={t('common.zoom_in')}><IconButton label={t('common.zoom_in')} size='sm' disabled={!hasGraph} onClick={onZoomIn}><Plus size={14}/></IconButton></Tooltip>
+      <Tooltip label={t('graph.export_png')}><IconButton label={t('graph.export_png')} size='sm' disabled={!hasGraph || isExporting} onClick={onExportPng}><ImageDown size={14}/></IconButton></Tooltip>
+      <Tooltip label={t('graph.export_svg')}><IconButton label={t('graph.export_svg')} size='sm' disabled={!hasGraph || isExporting} onClick={onExportSvg}><Download size={14}/></IconButton></Tooltip>
       <Tooltip label={t('graph.settings')}><IconButton label={t('graph.settings')} size='sm' aria-pressed={isSettingsOpen} onClick={onToggleSettings}><Settings2 size={14}/></IconButton></Tooltip>
       <Tooltip label={t('common.close')} combo='escape' side='left'><IconButton label={t('common.close')} size='sm' onClick={onClose} className='ml-1'><X size={16}/></IconButton></Tooltip>
     </div>
   )
 }
 
-function useGraphHeaderActions(
-  data: GraphResponse | null,
-  isSettingsOpen: boolean,
-  setIsSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>,
-  refs: ReturnType<typeof useGraphCanvasRefs>,
-  onClose: () => void,
-): GraphHeaderActionsProps {
+function useGraphHeaderActions(options: {
+  data: GraphResponse | null
+  isSettingsOpen: boolean
+  setIsSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>
+  refs: ReturnType<typeof useGraphCanvasRefs>
+  exportActions: ReturnType<typeof useGraphExport>
+  onClose: () => void
+}): GraphHeaderActionsProps {
+  const { data, isSettingsOpen, setIsSettingsOpen, refs, exportActions, onClose } = options
   return useMemo(() => ({
-    canZoom: Boolean(data?.nodes.length),
+    hasGraph: Boolean(data?.nodes.length),
     isSettingsOpen,
+    isExporting: exportActions.isExporting,
     onZoomOut: () => refs.controlsRef.current?.zoomOut(),
     onFit: () => refs.controlsRef.current?.fit(),
     onZoomIn: () => refs.controlsRef.current?.zoomIn(),
+    onExportPng: exportActions.exportPng,
+    onExportSvg: exportActions.exportSvg,
     onToggleSettings: () => setIsSettingsOpen((value) => !value),
     onClose,
-  }), [data?.nodes.length, isSettingsOpen, onClose, refs.controlsRef, setIsSettingsOpen])
+  }), [data?.nodes.length, isSettingsOpen, onClose, refs.controlsRef, setIsSettingsOpen, exportActions])
 }
 
 function GraphHeader({ titleId, data, prefs, hasActiveNote, onModeChange, search, onSearchChange, actions }: GraphHeaderProps) {
@@ -296,7 +304,8 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
     }
   }, [folders, prefs.folderId])
   const resetTagFilters = useTagReset(prefs, changePref)
-  const headerActions = useGraphHeaderActions(data, isSettingsOpen, setIsSettingsOpen, refs, onClose)
+  const exportActions = useGraphExport(refs.stateRef, prefs)
+  const headerActions = useGraphHeaderActions({ data, isSettingsOpen, setIsSettingsOpen, refs, exportActions, onClose })
   return createPortal(<div ref={panelRef} role='dialog' aria-modal='true' aria-labelledby={titleId} tabIndex={-1} data-surface='graph'
     className='app-viewport-fixed fixed z-[var(--z-graph)] flex flex-col bg-[var(--bg-base)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] outline-none md:py-0'>
     <GraphHeader titleId={titleId} data={data} prefs={prefs} hasActiveNote={Boolean(activeNoteId)} onModeChange={(mode) => changePref('mode', mode)} search={search} onSearchChange={setSearch} actions={headerActions}/>

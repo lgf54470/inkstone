@@ -76,4 +76,6 @@ export const messages = {
 'graph.color_rule_remove': '删除规则',
 'graph.export_png': '导出为 PNG',
 'graph.export_svg': '导出为 SVG',
+'graph.export_done': '图谱已导出',
+'graph.export_failed': '无法导出图谱',
 }
