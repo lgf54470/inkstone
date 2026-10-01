@@ -100,6 +100,10 @@ export const blogTagPatchSchema = z.object({
   isPinned: z.boolean().optional(),
 })
 
+export const blogTagMergeSchema = z.object({
+  targetId: z.string().min(1),
+})
+
 export const blogCategoryCreateSchema = z.object({
   name: z.string(),
   slug: z.string().optional(),

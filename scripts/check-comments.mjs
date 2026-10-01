@@ -3061,6 +3061,9 @@ const allowed = new Map([
   ['src/client/features/blog/blog-hub-sidebar/tag-counts.test.ts', [
     '/**\n * The sidebar summed each node\'s whole subtree during render, so a tag tree of T nodes did O(T²)\n * work per paint. The counts are the same values, computed in one post-order walk.\n */',
   ]],
+  ['src/client/features/blog/blog-hub-sidebar/tag-rename.test.ts', [
+    '/**\n * Renaming a blog tag onto a name that already exists moves the memberships in the worker (ADR-0007),\n * so the sidebar asks before it acts and calls the explicit merge endpoint instead of a second rename.\n */',
+  ]],
   ['src/client/features/blog/blog-hub-sidebar/use-blog-hub-sidebar.tsx', [
     '/**\n * Subtree totals for every tag node, computed once per tree. Each row used to walk its own\n * descendants during render, which summed the same subtrees once per node — O(T²) over the sidebar.\n * The fallback rules are unchanged: the split counts come from `stats`, and a node\'s own total is a\n * floor, so a tag whose posts are all on other pages still shows how many there are.\n */',
     '/** How many posts wait in the recycle bin, from the same stats every tab loads. */',
@@ -3068,6 +3071,8 @@ const allowed = new Map([
     '// status tab (and the list cap) as if it were the whole blog\'s pending count.',
     '// The recycle bin (FEA-04). Its count comes from `stats`, which every tab loads, so the badge is',
     '// right before the bin has ever been opened.',
+    '// Renaming onto a taken name merges the memberships (ADR-0007), so it is confirmed like the',
+    '// notes sidebar confirms its own merge — the destination\'s colour and pin are kept.',
   ]],
   ['src/client/features/blog/blog-hub-toolbar.test.ts', [
     '// The toolbar\'s two pickers used to be `<button>`s with no state a reader could query. They are',
@@ -3351,6 +3356,10 @@ const allowed = new Map([
   ['src/client/features/blog/blog-store/comments-request.test.ts', [
     '/**\n * The search box used to narrow the fetched page in the browser, and the tab badges were counted on\n * that same filtered array — so selecting a tab drew every other tab as zero. The query now goes to\n * the server and the tally comes back from it, which is why late answers cannot be painted over the\n * newer question any more.\n */',
   ]],
+  ['src/client/features/blog/blog-store/content.ts', [
+    '// Both lists move: the memberships live on the posts (the page and the body-free index) and the',
+    '// counts come from the tag list and the summary stats.',
+  ]],
   ['src/client/features/blog/blog-store/filters.test.ts', [
     '// The store module loads with the app; reading `localStorage` there would touch it on every page',
     '// for a switch only the blog hub shows, so the read belongs to opening the hub.',
@@ -3430,6 +3439,9 @@ const allowed = new Map([
     '/** Stamped on success only: a failed load must stay eligible for the next attempt. */',
     '/**\n * What an unread store holds. The stored filters are read when the hub opens (see\n * `hydrateTrafficFilters`), not when this module is evaluated: the module loads with the app, so a\n * read at module scope would touch `localStorage` on every page and in every test for a switch only\n * the blog hub shows.\n */',
   ]],
+  ['src/client/features/blog/blog-store/tag-merge.test.ts', [
+    '/**\n * A merge moves memberships (the posts) and counts (the tag list and the stats) at once, so the store\n * re-asks all three instead of patching one list and leaving the others stale.\n */',
+  ]],
   ['src/client/features/blog/blog-store/targeted-refresh.test.ts', [
     '/**\n * A mutation used to re-ask for everything the hub caches: toggling one pin cost the post list, the\n * note index, the dashboard\'s counts and the whole tag list. What a change invalidates depends on\n * what it changed, so the patch itself decides which aggregates are asked for again.\n */',
     '// The sidebar draws its "Pinned" count from the summary stats, so a pin does move one; the tag',
@@ -3445,6 +3457,7 @@ const allowed = new Map([
     '/**\n   * Scopes whose last load failed. A refresh failure leaves the previous data in place — only a view\n   * with nothing to show asks this flag to render a failure instead of an empty state.\n   */',
     '/** When each scope last answered successfully; see `BlogDataScope` and `loadHubData`. */',
     '/**\n   * Everything below is a mutation: it reports its own failure (see `mutation.ts`), resolves to\n   * `false`/`null` after a danger toast and rolls back any optimistic change it made, so no caller\n   * has to catch a rejection from it.\n   */',
+    '/** Moves every member of `id` onto `targetId` and drops the source row (ADR-0007). */',
     '/** Puts a trashed post back on the blog; `purgePost` erases it for good. */',
     '/** The author\'s answer to one reader (FEA-06); it lands approved, nested under that comment. */',
     '/**\n   * The post list\'s in-flight request: `seq` lets a late answer be dropped (the reader may have\n   * typed again since), and the controller cancels the request the newest one replaces. Both are\n   * request lifecycle, not data — the list itself lives in `posts`.\n   */',
@@ -13734,8 +13747,17 @@ const allowed = new Map([
   ['src/worker/routes/blog/organizer.ts', [
     '// Counted from the tags JSON by SQL: the list used to read every post row back and parse the',
     '// array here, which was a second full scan beside the one this endpoint already ran for stats.',
+    '/**\n * Renaming is the same operation as merging when the destination is already taken (ADR-0007): the\n * memberships move to the destination name, the destination row keeps its own metadata, and the\n * source row is dropped. The client confirms that merge before calling.\n */',
+    '// Same refusal as the merge route: renaming `a` to `a/b` would rewrite `a/b` into `a/b/b`.',
+    '/**\n * The explicit merge the sidebar\'s "merge into" action calls. It is a name move like a rename whose\n * destination is taken, except the target is addressed by id (which is a name for a derived tag) and\n * the source\'s color/pins survive when the target has no row yet.\n */',
+    '// Merging into a descendant would rewrite `a/b` into `a/b/b`; refuse instead of inventing paths.',
+    '/**\n * Called when the client patches a tag that has members but no row of its own (a derived tag): the\n * row is materialized so the color/pin the author just chose has somewhere to live.\n */',
+    '// Deleting a tag is deleting its memberships, the bin included: a trashed post restored later',
+    '// must not bring a deleted tag back (ADR-0007).',
     '// Publishing a group stamps the drafts it contains (the batch route\'s rule, applied here too);',
     '// unpublishing leaves every publish moment where it was.',
+    '// The same JSON-escaped, LIKE-escaped needles the list filter uses: a tag containing `%`, `_`',
+    '// or a quote is a name here, not a pattern.',
   ]],
   ['src/worker/routes/blog/owned-rows.ts', [
     '/**\n * The per-account tables whose rows a client may address by primary key. The name is a literal from\n * this union and never a value a request carries, because it is interpolated into the statement.\n */',
@@ -13922,6 +13944,18 @@ const allowed = new Map([
     '// Wiping the whole trail is unrecoverable, so a stolen session must re-prove',
     '// it holds the account password before the delete runs (same as share SH-12).',
     '/**\n * `older_than` must name its own window: reading an unparseable count as the default would delete a\n * span the caller never asked for, and `parseInt` would take `12.7` or `30abc` as a number rather\n * than refuse them. A rejected value is a 400; an accepted one is bounded by the shared clamp.\n */',
+  ]],
+  ['src/worker/routes/blog/tag-membership.ts', [
+    '/**\n * Blog tag memberships live in `blog_posts.tags` as a JSON array of names, and `blog_tags` rows are\n * metadata keyed by the same name (ADR-0007). Every write that changes a name therefore has to move\n * the memberships in the same request; this module owns that move and the tag resolution the routes\n * share, so rename, merge and delete cannot drift apart.\n */',
+    '/** Statements per `DB.batch`; D1 rejects oversized batches, and this keeps a rename\'s payload bounded. */',
+    '/**\n * One member under a rename/merge/delete. Exact matches and every descendant path move together —\n * the hierarchy is part of the name (`a/b`), and both the list filter and the public tag page already\n * promise that a parent tag covers its descendants.\n */',
+    '/**\n * The rewritten array, or `null` when nothing changed (the caller then skips the write). Returns\n * `string[]` because the rewrite also normalizes the non-string legacy members the read side\n * stringifies; duplicates are dropped on the first occurrence so a merge does not leave the same tag\n * twice in one post.\n */',
+    '/**\n * A tag reference from the client is a row id when the tag has a row and its own name when it is\n * derived (`GET /api/blog/tags` hands out `id = name` for those), so both spellings resolve here.\n * The membership probe is scoped to posts the counts see (the bin is excluded on purpose — a tag that\n * only lives in trashed posts is not a tag the author can act on).\n */',
+    '/** Whether any live post carries this tag (or a descendant of it). */',
+    '/** How many posts the last move rewrote; the routes report it and the tests assert on it. */',
+    '// `json_valid`/`json_type` keep a malformed legacy row out of the rewrite instead of throwing on',
+    '// JSON.parse — the read side treats such a row as having no tags, and rewriting it would replace',
+    '// whatever it holds with a value this code invented.',
   ]],
   ['src/worker/routes/blog/tag-needles.ts', [
     '// A blog tag lives inside a JSON array column, so the LIKE needle must be the JSON-escaped tag text,',
@@ -15058,6 +15092,14 @@ const allowed = new Map([
   ]],
   ['tests/blog-slug-scope.test.ts', [
     '/**\n * A slug names a post inside one blog. Instance-wide uniqueness made the second account\'s own post\n * fail to publish because the first account had used the name, and `/check-slug` answered the same\n * question for both, so one blog\'s naming was readable from another\'s editor.\n */',
+  ]],
+  ['tests/blog-tag-membership.test.ts', [
+    '// The old name is gone from both the list and the public tag filter; the metadata row followed.',
+    '// The duplicate the merge would otherwise leave inside p-1 is dropped on first occurrence.',
+    '// `beta` has members but no row: it is a derived tag addressed by its name.',
+    '// A restored post must not bring the deleted tag back.',
+    '// A descendant of the target path would be rejected, so target `other` receives `a/b` as `other/b`.',
+    '// `%` is a literal here: only the exact tag and its descendants change, `100x` does not.',
   ]],
   ['tests/blog-visit-cleanup.test.ts', [
     '// Recent by design: a row older than the account retention is now the',

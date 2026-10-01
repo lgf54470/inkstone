@@ -245,7 +245,7 @@ function TagRow({ node, ctx }: { node: TagTreeNode; ctx: TagRowCtx }) {
       onSelect={() => ctx.setTag(node.fullPath)}
       onBatchToggle={(enabled) => batchToggleTag(node, enabled, ctx.batchToggleGroup, ctx.toast)}
       onStartRename={() => ctx.setRenamingTagId(node.tag.id)}
-      onFinishRename={(nextName) => finishTagRename(node, nextName, ctx.tags, ctx.patchTag, ctx.setRenamingTagId)}
+      onFinishRename={(nextName) => void finishTagRename(node, nextName, ctx.tags, ctx.patchTag, ctx.mergeTag, ctx.setRenamingTagId)}
       onColorChange={(color) => tagColorChange(node, color, ctx.tags, ctx.patchTag)}
       onDelete={() => deleteTagFlow(node, ctx.tags, ctx.deleteTag)}
     />

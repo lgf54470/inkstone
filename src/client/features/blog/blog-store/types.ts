@@ -136,6 +136,8 @@ export interface BlogStoreState {
 
   createTag: (name: string, color?: string | null) => Promise<BlogTag | null>
   patchTag: (id: string, patch: { name?: string; color?: string | null; isPinned?: boolean }) => Promise<BlogTag | null>
+  /** Moves every member of `id` onto `targetId` and drops the source row (ADR-0007). */
+  mergeTag: (id: string, targetId: string) => Promise<boolean>
   deleteTag: (id: string) => Promise<boolean>
 
   batchToggleGroup: (type: 'folder' | 'tag', target: string, enabled: boolean) => Promise<boolean>

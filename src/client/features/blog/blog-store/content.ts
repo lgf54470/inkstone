@@ -2,12 +2,13 @@ import { api } from '../../../lib/api'
 import { reportBlogMutationError } from './mutation'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
-export const blogContentActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'createFolder' | 'patchFolder' | 'deleteFolder' | 'createTag' | 'patchTag' | 'deleteTag'> => ({
+export const blogContentActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'createFolder' | 'patchFolder' | 'deleteFolder' | 'createTag' | 'patchTag' | 'mergeTag' | 'deleteTag'> => ({
   createFolder: (name, parentId, color, icon) => createFolderImpl(name, parentId, color, icon, set),
   patchFolder: (id, patch) => patchFolderImpl(id, patch, set),
   deleteFolder: (id) => deleteFolderImpl(id, set, get),
   createTag: (name, color) => createTagImpl(name, color, set),
   patchTag: (id, patch) => patchTagImpl(id, patch, set),
+  mergeTag: (id, targetId) => mergeTagImpl(id, targetId, get),
   deleteTag: (id) => deleteTagImpl(id, set, get),
 })
 
@@ -111,6 +112,23 @@ async function patchTagImpl(
   } catch (error) {
     reportBlogMutationError(error)
     return null
+  }
+}
+
+async function mergeTagImpl(
+  id: Parameters<BlogStoreState['mergeTag']>[0],
+  targetId: Parameters<BlogStoreState['mergeTag']>[1],
+  get: () => BlogStoreState,
+): Promise<boolean> {
+  try {
+    await api.blog.tags.merge(id, targetId)
+    // Both lists move: the memberships live on the posts (the page and the body-free index) and the
+    // counts come from the tag list and the summary stats.
+    await Promise.all([get().loadTags(), get().loadPosts(), get().loadPostIndex(), get().loadStats()])
+    return true
+  } catch (error) {
+    reportBlogMutationError(error)
+    return false
   }
 }
 

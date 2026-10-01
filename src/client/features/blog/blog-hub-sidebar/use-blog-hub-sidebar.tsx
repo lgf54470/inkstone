@@ -53,6 +53,7 @@ export interface TagRowCtx {
   batchToggleGroup: BlogStoreState['batchToggleGroup']
   toast: UiState['toast']
   patchTag: BlogStoreState['patchTag']
+  mergeTag: BlogStoreState['mergeTag']
   deleteTag: BlogStoreState['deleteTag']
 }
 
@@ -91,7 +92,8 @@ export function useBlogHubSidebar() {
     activeTab: store.activeTab, selectedTag: store.selectedTag, expandedTagPaths, renamingTagId,
     batchBusy: store.batchBusy, getTagNodeCounts: (node) => tagCounts.get(node.fullPath) ?? EMPTY_TAG_COUNTS,
     tags: store.tags, setTag: store.setTag, setExpandedTagPaths, setRenamingTagId,
-    batchToggleGroup: store.batchToggleGroup, toast: store.toast, patchTag: store.patchTag, deleteTag: store.deleteTag,
+    batchToggleGroup: store.batchToggleGroup, toast: store.toast, patchTag: store.patchTag,
+    mergeTag: store.mergeTag, deleteTag: store.deleteTag,
   }
 
   return {
@@ -134,6 +136,7 @@ function useBlogHubSidebarStore() {
   const deleteFolder = useBlogStore((s) => s.deleteFolder)
   const createTag = useBlogStore((s) => s.createTag)
   const patchTag = useBlogStore((s) => s.patchTag)
+  const mergeTag = useBlogStore((s) => s.mergeTag)
   const deleteTag = useBlogStore((s) => s.deleteTag)
   const batchToggleGroup = useBlogStore((s) => s.batchToggleGroup)
   const batchMoveToFolder = useBlogStore((s) => s.batchMoveToFolder)
@@ -142,7 +145,7 @@ function useBlogHubSidebarStore() {
     selectedFolderId, setFolderId, selectedTag, setTag,
     stats, comments, commentStats, links, linkStats, settings, folders, tags, batchBusy,
     createFolder, patchFolder, deleteFolder,
-    createTag, patchTag, deleteTag, batchToggleGroup, batchMoveToFolder,
+    createTag, patchTag, mergeTag, deleteTag, batchToggleGroup, batchMoveToFolder,
   }
 }
 
@@ -412,17 +415,35 @@ export async function batchToggleTag(node: TagTreeNode, enabled: boolean, batchT
   }
 }
 
-export function finishTagRename(node: TagTreeNode, nextName: string, tags: BlogTag[], patchTag: BlogStoreState['patchTag'], setRenamingTagId: (id: string | null) => void): void {
+export async function finishTagRename(
+  node: TagTreeNode,
+  nextName: string,
+  tags: BlogTag[],
+  patchTag: BlogStoreState['patchTag'],
+  mergeTag: BlogStoreState['mergeTag'],
+  setRenamingTagId: (id: string | null) => void,
+): Promise<void> {
   setRenamingTagId(null)
-  if (nextName && nextName !== node.name) {
-    const segments = node.fullPath.split('/')
-    segments[segments.length - 1] = nextName
-    const nextFullPath = segments.join('/')
-    const realTag = tags.find((t) => t.id === node.tag.id || t.name === node.fullPath)
-    if (realTag) {
-      void patchTag(realTag.id, { name: nextFullPath })
-    }
+  if (!nextName || nextName === node.name) return
+  const segments = node.fullPath.split('/')
+  segments[segments.length - 1] = nextName
+  const nextFullPath = segments.join('/')
+  const realTag = tags.find((t) => t.id === node.tag.id || t.name === node.fullPath)
+  if (!realTag) return
+  const target = tags.find((candidate) => candidate.name === nextFullPath && candidate.name !== realTag.name)
+  if (target) {
+    // Renaming onto a taken name merges the memberships (ADR-0007), so it is confirmed like the
+    // notes sidebar confirms its own merge — the destination's colour and pin are kept.
+    const merge = await confirm({
+      title: t('tags.merge_confirm_value0_value1', { value0: realTag.name, value1: target.name }),
+      description: t('tags.merge_description'),
+      confirmLabel: t('tags.merge'),
+    })
+    if (!merge) return
+    void mergeTag(realTag.id, target.id)
+    return
   }
+  void patchTag(realTag.id, { name: nextFullPath })
 }
 
 export function tagColorChange(node: TagTreeNode, color: string | null, tags: BlogTag[], patchTag: BlogStoreState['patchTag']): void {

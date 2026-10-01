@@ -277,7 +277,12 @@
   - 复现测试：`tests/blog-routes.test.ts` 89 条（新 3 条：本区间只看这一篇的访问（含默认滤掉机器人）与同形分布、本篇上一区间为空时不报 delta、他人文章 / 回收站文章 / 不存在 id 404 而自己的活文章 200）；`blog-dashboard-export.test.ts` 12 条（表头、区间与过滤器陈述、实际过滤量、双序列、截断列表写全、本地化名称、访问尾标记、导出成功与空看板拒导）；三处变异共 3 failed（去掉 `targetId` 作用域、放行回收站文章、去掉过滤陈述行）。
   - 验收：`tsc -b` 绿；目标 3 文件 105 条全绿；十二项静态门禁 + `surfaces` 绿（comments 白名单 1372 文件 13030 条重启）；`test:unit` 与 `blog-frontend` 见进度日志。
   - 限制：下钻只服务看板排行榜里出现的活文章（回收站里的访问历史不能从 UI 进入，只能查库）；CSV 是「屏幕上这个窗口」的快照（与 share 的导出一致），不是服务端全量导出；设备 / 系统 / 浏览器三组分布仍不做前后区间对比。
-- [ ] B5-08 **FEA-10** 分类与标签体系统一（需 ADR）
+- [x] B5-08 **FEA-10** 分类与标签体系统一（需 ADR）— 已提交（hash 见下一提交）
+  - 决策记录：新增根目录 `ADR-0007-blog-tag-membership.md`——`blog_posts.tags` 保持名称数组（公开读取路径的 LIKE / `json_each` / 层级前缀语义全部继续成立），`blog_tags` 行只是元数据（允许缺席、允许空标签）；改名/合并/删除在**同一请求内**迁移成员关系，覆盖 `from` 及其全部 `from/` 后代路径，去重保留首次出现。
+  - 实现（服务端）：新增 `src/worker/routes/blog/tag-membership.ts`（`remapTagMember` / `rewriteTagMembership` / `resolveBlogTag` / `moveBlogTagMemberships`，每 40 条一次 `DB.batch`；成员迁移覆盖回收站里的帖子，否则还原一篇旧文会把已删标签带回来）；`organizer.ts`：`PATCH /tags/:id` 改名即迁移（目标名已存在就地合并、目标保留自己的元数据；未知 ref 404、空名 400、改到自己后代路径 400），新增 `POST /tags/:id/merge`（`{ targetId }` 可为登记行 id 或派生标签名；目标无登记行时继承源的颜色与置顶；拒绝自合并与并入自己的后代），`DELETE /tags/:id` 先迁移成员再删行并返回 `removed`；`batch-toggle-group` 的按标签发布改用与列表筛选同源的 `blogTagNeedles`（此前把标签名直接拼进 LIKE，`%`/`_` 是通配符）。
+  - 实现（客户端）：API `blog.tags.merge`；store `mergeTag`（一次 merge + 重问 tags/posts/postIndex/stats，失败走共享 `runBlogMutation` 上报）；侧栏改名落在已存在的名称上时先确认「合并」，确认后调 merge 端点——与笔记侧同名合并的交互一致。
+  - 复现测试：新增 `tests/blog-tag-membership.test.ts` 11 条（改名迁移含后代与公开筛选、撞名合并去重与目标元数据保留、拒绝改到自己路径、显式 merge 与派生目标物化、自合并/后代合并/未知目标、删除覆盖回收站、派生标签改名与删除、跨账号四操作皆 404 且不碰对方数据、`updated_at` 变而 `published_at` 不变、按标签批量发布的通配符按字面量）；`tag-rename.test.ts` 3 条（自由名直接 patch、撞名先确认再 merge、取消不动）；`tag-merge.test.ts` 2 条（merge 后重问四作用域、失败不重问）。实现前实测：把成员迁移变异成 no-op 后 7 failed；除实现外还先红并修掉两个真实缺陷——改名未拒绝自己的后代路径（会把 `a/b` 写成 `a/b/b`）、PATCH 未知引用会静默建行（应为 404）。
+  - 限制：标签行仍可缺席（派生态是模型的一部分）；改名/删除不保留旧名（标签级历史不做）；公开标签页按名称派生，所以旧名地址会 404（ADR 已记录这是「名称即成员关系」的推论）。
 - [ ] B5-09 **FEA-11** 多作者归属修正
 - [ ] B5-10 **FEA-05** 版本历史（需 ADR）
 - [ ] B5-11 **FEA-08** RSS 自动发现 / WebSub ping + sitemap 覆盖与 `lastmod`
@@ -309,6 +314,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-10-01 | B5-08 FEA-10 标签体系统一（ADR-0007 + 改名/合并/删除迁移成员关系） | （下一提交回填） | `tsc -b` 绿；新增 `tests/blog-tag-membership.test.ts` 11 条 + 客户端 5 条（rename 3 / merge 2）；迁移 no-op 变异 7 failed；blog 目标集 52 文件 313 通过（`blog-comments-window` 满负载 5s 超时，单独重跑通过）；`comments`/`style`/`size`/`deep-imports` 绿（comments 白名单 1377 文件 13065 条） | 标签行仍可缺席（派生态合法）；改名/删除不留旧名；公开标签页旧地址 404；回收站里的帖子成员一并迁移（刻意） |
 | 2026-10-01 | B5-07 FEA-09 分析导出 CSV + 单篇下钻 | （下一提交回填） | `tsc -b` 绿；`tests/blog-routes.test.ts` 89 条（新 3）；`blog-dashboard-export.test.ts` 12 条；demo `blog-smoke.test.ts` 4 条（目标 105 条全绿）；三处变异共 3 failed（去掉 `targetId` 作用域、放行回收站文章、去掉过滤陈述行）；`test:unit` 606 文件 5402 通过 / 2 failed / 1 skipped——2 条均为满负载 5s 超时（`blog-comments-window`、calendar activity fuzz），放宽到 30s 后两文件 12 条全绿；十二项静态门禁 + `surfaces` 绿（comments 白名单 1372 文件 13033 条）；e2e / 视觉 / 对比度留到批次收尾统一跑 | 下钻只覆盖排行榜里的活文章（回收站文章的历史不可从 UI 进入）；CSV 是屏幕窗口快照（非服务端全量）；三组环境分布不做区间对比 |
 | 2026-10-01 | BF-1 前台失败不再伪造（四个取数抛错、页面与 feed/sitemap 503 + no-store） | （下一提交回填） | `blog-frontend`：`npm test` 309 通过（新 7 条）、`astro check` 仅既有 3 条、`lint` 通过、根 `size:check:blog`/`deep-imports:check:blog` 绿；三处变异共 4 failed（getPosts 恢复回退、feed/sitemap 去掉失败分支）；根项目未动 | 站点身份默认回退保留（非内容）；列表类读取失败仍回空数组；`/503` 是 rewrite，URL 不变 |
 | 2026-10-01 | B5-06 FEA-07 媒体库 / 封面选择器 | aa4b0612 | `tsc -b` 绿；`tests/blog-routes.test.ts` 86 条（新 4 条）；`cover-field.test.ts` 5 条；demo `blog-media.test.ts` 2 条 + `blog-smoke.test.ts` 4 条（目标 97 条全绿）；两处变异各实测 1 failed（公开判据去掉 `is_published = 1`、删除去掉在用检查）；`test:unit` 605 文件 5389 通过 / 1 skipped（全绿）；十二项静态门禁 + `surfaces` 绿（comments 白名单 1361 文件 12991 条）；pre-commit 全量 EXIT=0；e2e / 视觉 / 对比度留到批次收尾统一跑 | 未做裁剪；选择器只列最近 200 张且无搜索；删除无撤回；公开地址无 ETag |

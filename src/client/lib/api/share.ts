@@ -298,6 +298,8 @@ export const share = {
         request<BlogTag>('/api/blog/tags', { method: 'POST', body }),
       patch: (id: string, body: { name?: string; color?: string | null; isPinned?: boolean }) =>
         request<BlogTag>(`/api/blog/tags/${id}`, { method: 'PATCH', body }),
+      merge: (id: string, targetId: string) =>
+        request<{ ok: true; moved: number }>(`/api/blog/tags/${encodeURIComponent(id)}/merge`, { method: 'POST', body: { targetId } }),
       remove: (id: string) =>
         request<{ ok: true }>(`/api/blog/tags/${id}`, { method: 'DELETE' }),
     },
