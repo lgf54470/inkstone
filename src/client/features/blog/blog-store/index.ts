@@ -38,6 +38,7 @@ function initialBlogState(): Partial<BlogStoreState> {
         selectedLinkIds: new Set<string>(),
         posts: [],
         postIndex: [],
+        trashPosts: [],
         folders: [],
         tags: [],
         categories: [],

@@ -220,7 +220,8 @@ function updateBlogPost(db: D1Database, id: string, input: PostWriteInput, publi
         seo_description = ?15,
         seo_image_url = ?16,
         seo_canonical_url = ?17,
-        seo_noindex = ?18
+        seo_noindex = ?18,
+        deleted_at = NULL
       WHERE id = ?19
     `)
     .bind(
@@ -312,8 +313,10 @@ function registerBlogPostsPatchRoute(blogManageRoutes: Hono<AppBindings>): void 
     const userId = c.get('userId')!
     const body = await readJsonValidated(c, blogPostPatchSchema, JSON_BODY_LIMITS.note)
 
+    // A post in the trash is not offered for editing: the row still exists, but to the author it is
+    // gone until it is restored.
     const current = await c.env.DB
-      .prepare('SELECT * FROM blog_posts WHERE id = ?1 AND user_id = ?2')
+      .prepare('SELECT * FROM blog_posts WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL')
       .bind(id, userId)
       .first<BlogPostRow>()
     if (!current) throw ApiError.notFound('Post not found')
@@ -394,19 +397,13 @@ function registerBlogPostsDeleteRoute(blogManageRoutes: Hono<AppBindings>): void
     const id = c.req.param('id')
     const userId = c.get('userId')!
 
-    // One batch, so a post cannot survive while its log rows go missing (or the other way round).
-    // `blog_comments` has no owner column, so the delete asks blog_posts who owns the post and has to
-    // run before the post row itself disappears.
-    await c.env.DB.batch([
-      c.env.DB.prepare(
-        `DELETE FROM blog_comments
-          WHERE post_id = ?1 AND EXISTS (SELECT 1 FROM blog_posts bp WHERE bp.id = ?1 AND bp.user_id = ?2)`,
-      ).bind(id, userId),
-      c.env.DB.prepare('DELETE FROM blog_visits WHERE post_id = ?1 AND user_id = ?2').bind(id, userId),
-      // The retired addresses of the post go with it: nothing may redirect to a row that is gone.
-      c.env.DB.prepare('DELETE FROM blog_post_slugs WHERE post_id = ?1 AND user_id = ?2').bind(id, userId),
-      c.env.DB.prepare('DELETE FROM blog_posts WHERE id = ?1 AND user_id = ?2').bind(id, userId),
-    ])
+    // FEA-04: deleting moves the post to the recycle bin instead of erasing it, and the row keeps
+    // everything it owned — comments, retired addresses, visit history — so a restore puts the post
+    // back exactly as it was. The row is only really erased from the trash routes.
+    await c.env.DB
+      .prepare('UPDATE blog_posts SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2 AND user_id = ?3 AND deleted_at IS NULL')
+      .bind(Date.now(), id, userId)
+      .run()
 
     return c.json({ ok: true })
   })
@@ -418,7 +415,7 @@ function registerBlogPostsSyncRoute(blogManageRoutes: Hono<AppBindings>): void {
     const userId = c.get('userId')!
 
     const post = await c.env.DB
-      .prepare('SELECT note_id FROM blog_posts WHERE id = ?1 AND user_id = ?2')
+      .prepare('SELECT note_id FROM blog_posts WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL')
       .bind(id, userId)
       .first<{ note_id: string }>()
     if (!post) throw ApiError.notFound('Post not found')

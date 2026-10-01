@@ -3,7 +3,7 @@ export type { ApiErrorBody, ApiErrorCode, DateRangeFilter, RelativeFilter } from
 export type { Attachment, AttachmentFolder, AttachmentStats, AttachmentTag, AttachmentWithUsage } from './attachments'
 export type { Backlink, CommunityTemplate, CommunityTemplateInput, Folder, Note, NoteSummary, NoteTemplate, NoteTemplateCategory, NoteVersion, NoteVersionMeta, Tag } from './notes'
 export type { BackupMode, BackupRun, BackupTarget, BackupTargetConfig, BackupTargetInput, BackupTargetPatchInput, BackupTargetResult, BackupTargetType, S3Config, TestConnectionResult, WebdavConfig } from './backup'
-export type { BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogFolder, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStats, BlogLinkStatus, BlogOwner, BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogSettings, BlogStats, BlogTag, BlogVisitLog } from './blog'
+export type { BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogFolder, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStats, BlogLinkStatus, BlogOwner, BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogSettings, BlogStats, BlogTag, BlogTrashEntry, BlogVisitLog } from './blog'
 export type { BoardLibraryList, BoardLibrarySnapshot, BoardLibrarySummary } from './board-library'
 export type { ConflictPayload, CreateNoteBody, ListNotesQuery, ListNotesResponse, PatchNoteBody, SortKey, SortOrder, ViewKind } from './list'
 export type { ExportAttachment, ExportBundle, ExportBundleMusic, ExportedMusicPlaylistItem, ExportedMusicTrack, ImportResult } from './export'

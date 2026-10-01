@@ -80,6 +80,7 @@ async function loadBlogStats(db: D1Database, userId: string): Promise<BlogStats>
     publishedPosts,
     draftPosts: totalPosts - publishedPosts,
     pinnedPosts: posts?.pinned_posts ?? 0,
+    trashedPosts: posts?.trashed_posts ?? 0,
     totalViews: posts?.total_views ?? 0,
     totalComments: comments?.total_comments ?? 0,
     pendingComments: comments?.pending_comments ?? 0,
@@ -94,6 +95,7 @@ interface BlogPostsSummaryRow {
   total_posts: number
   published_posts: number
   pinned_posts: number
+  trashed_posts: number
   total_views: number
 }
 
@@ -107,11 +109,15 @@ interface BlogCountRow {
 }
 
 function blogPostsSummaryStatement(db: D1Database, userId: string): D1PreparedStatement {
+  // Live posts are the account's posts; a trashed one is counted only by the bin's own badge. Every
+  // aggregate carries the live filter rather than the WHERE, because the same query also has to
+  // count what the bin holds.
   return db.prepare(
-    `SELECT COUNT(*) as total_posts,
-            COUNT(CASE WHEN is_published = 1 THEN 1 END) as published_posts,
-            COUNT(CASE WHEN is_pinned = 1 THEN 1 END) as pinned_posts,
-            COALESCE(SUM(views), 0) as total_views
+    `SELECT COUNT(CASE WHEN deleted_at IS NULL THEN 1 END) as total_posts,
+            COUNT(CASE WHEN deleted_at IS NULL AND is_published = 1 THEN 1 END) as published_posts,
+            COUNT(CASE WHEN deleted_at IS NULL AND is_pinned = 1 THEN 1 END) as pinned_posts,
+            COUNT(CASE WHEN deleted_at IS NOT NULL THEN 1 END) as trashed_posts,
+            COALESCE(SUM(CASE WHEN deleted_at IS NULL THEN views ELSE 0 END), 0) as total_views
        FROM blog_posts WHERE user_id = ?1`,
   ).bind(userId)
 }
@@ -122,7 +128,7 @@ function blogCommentsSummaryStatement(db: D1Database, userId: string): D1Prepare
             COUNT(CASE WHEN c.status = 'pending' THEN 1 END) as pending_comments
        FROM blog_comments c
        JOIN blog_posts p ON c.post_id = p.id
-      WHERE p.user_id = ?1`,
+      WHERE p.user_id = ?1 AND p.deleted_at IS NULL`,
   ).bind(userId)
 }
 
@@ -300,7 +306,7 @@ async function loadBlogTopPosts(
 
   const placeholders = ranked.map((_, index) => `?${index + 2}`).join(', ')
   const titles = await db.prepare(
-    `SELECT id, title, slug FROM blog_posts WHERE user_id = ?1 AND id IN (${placeholders})`,
+    `SELECT id, title, slug FROM blog_posts WHERE user_id = ?1 AND deleted_at IS NULL AND id IN (${placeholders})`,
   ).bind(userId, ...ranked.map(([postId]) => postId)).all<{ id: string; title: string; slug: string }>()
   const byId = new Map((titles.results ?? []).map((row) => [row.id, row]))
 

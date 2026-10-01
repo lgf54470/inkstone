@@ -1,22 +1,22 @@
-import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats } from '@shared/types'
+import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogTrashEntry, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats } from '@shared/types'
 import type { StoreApi } from 'zustand'
 
 export type SetBlogStoreState = StoreApi<BlogStoreState>['setState']
 
-export type BlogTab = 'dashboard' | 'posts' | 'comments' | 'categories' | 'links' | 'settings'
+export type BlogTab = 'dashboard' | 'posts' | 'comments' | 'categories' | 'links' | 'settings' | 'trash'
 
 /**
  * The lists whose load result a view draws. A failed load is a state of its own — the alternative
  * was rendering it as an empty list, which told the reader their data was gone.
  */
-export type BlogLoadScope = 'posts' | 'comments' | 'links' | 'stats'
+export type BlogLoadScope = 'posts' | 'comments' | 'links' | 'stats' | 'trash'
 
 /**
  * Everything the hub caches, with one timestamp each. Opening the hub or switching tabs asks only
  * for what the current tab draws and for whatever is older than the freshness window — the first
  * version asked for all of it on every open, and again whenever the open note changed.
  */
-export type BlogDataScope = 'posts' | 'postIndex' | 'folders' | 'tags' | 'categories' | 'comments' | 'stats' | 'links' | 'settings'
+export type BlogDataScope = 'posts' | 'postIndex' | 'folders' | 'tags' | 'categories' | 'comments' | 'stats' | 'links' | 'settings' | 'trash'
 
 
 
@@ -57,6 +57,11 @@ export interface BlogStoreState {
    * dialog cannot be pre-filled from it either.
    */
   postIndex: BlogPostIndexEntry[]
+  /**
+   * What waits in the recycle bin. It is loaded only by its own tab, so a delete elsewhere must ask
+   * for it again rather than assume the bin it left behind is still accurate.
+   */
+  trashPosts: BlogTrashEntry[]
   folders: BlogFolder[]
   tags: BlogTag[]
   categories: BlogCategory[]
@@ -111,6 +116,7 @@ export interface BlogStoreState {
   loadHubData: (options?: { force?: boolean }) => Promise<void>
   loadPosts: () => Promise<void>
   loadPostIndex: () => Promise<void>
+  loadTrash: () => Promise<void>
   loadFolders: () => Promise<void>
   loadTags: () => Promise<void>
   loadCategories: () => Promise<void>
@@ -157,6 +163,10 @@ export interface BlogStoreState {
   }) => Promise<{ ok: boolean; id: string; slug: string } | null>
   updatePost: (id: string, patch: Partial<BlogPost>) => Promise<boolean>
   deletePost: (id: string) => Promise<boolean>
+  /** Puts a trashed post back on the blog; `purgePost` erases it for good. */
+  restorePost: (id: string) => Promise<boolean>
+  purgePost: (id: string) => Promise<boolean>
+  emptyTrash: () => Promise<boolean>
   syncPost: (id: string) => Promise<boolean>
   batchPosts: (
     action: 'publish' | 'unpublish' | 'delete' | 'setCategory' | 'setFolder' | 'setPinned',

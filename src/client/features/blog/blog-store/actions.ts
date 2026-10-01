@@ -3,12 +3,15 @@ import { api } from '../../../lib/api'
 import { reportBlogMutationError, runBlogMutation } from './mutation'
 import type { BlogStoreState, SetBlogStoreState } from './types'
 
-export const blogActionsActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'batchToggleGroup' | 'batchMoveToFolder' | 'savePost' | 'updatePost' | 'deletePost' | 'syncPost' | 'batchPosts' | 'updateCommentStatus' | 'deleteComment' | 'batchComments' | 'createCategory' | 'updateCategory' | 'deleteCategory' | 'saveSettings'> => ({
+export const blogActionsActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'batchToggleGroup' | 'batchMoveToFolder' | 'savePost' | 'updatePost' | 'deletePost' | 'restorePost' | 'purgePost' | 'emptyTrash' | 'syncPost' | 'batchPosts' | 'updateCommentStatus' | 'deleteComment' | 'batchComments' | 'createCategory' | 'updateCategory' | 'deleteCategory' | 'saveSettings'> => ({
   batchToggleGroup: (type, target, enabled) => batchToggleGroupImpl(type, target, enabled, set, get),
   batchMoveToFolder: (postIds, folderId) => batchMoveToFolderImpl(postIds, folderId, set, get),
   savePost: (data) => savePostImpl(data, get),
   updatePost: (id, patch) => updatePostImpl(id, patch, set, get),
   deletePost: (id) => deletePostImpl(id, get),
+  restorePost: (id) => restorePostImpl(id, get),
+  purgePost: (id) => purgePostImpl(id, get),
+  emptyTrash: () => emptyTrashImpl(get),
   syncPost: (id) => syncPostImpl(id, get),
   batchPosts: (action, extraId, pinnedState) => batchPostsImpl(action, extraId, pinnedState, set, get),
   updateCommentStatus: (id, status) => updateCommentStatusImpl(id, status, get),
@@ -128,7 +131,8 @@ async function savePostImpl(
 ): Promise<{ ok: boolean; id: string; slug: string } | null> {
   try {
     const res = await api.blog.posts.create(data)
-    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags(), get().loadPostIndex()])
+    // Publishing a note whose post is in the bin revives that post, so the bin is re-read too.
+    await Promise.all([get().loadPosts(), get().loadStats(), get().loadTags(), get().loadPostIndex(), get().loadTrash()])
     return res
   } catch (error) {
     reportBlogMutationError(error)
@@ -164,7 +168,33 @@ async function deletePostImpl(id: string, get: () => BlogStoreState): Promise<bo
   // is exactly the case the tag list draws its count for once the split counts stop mentioning it.
   return runBlogMutation(
     () => api.blog.posts.remove(id),
-    () => Promise.all(postChangeReloads(['stats', 'tags'], get)),
+    () => Promise.all(postChangeReloads(['stats', 'tags', 'trash'], get)),
+  )
+}
+
+/**
+ * The recycle bin's three operations. A restore puts the post (and everything it owned) back on the
+ * blog, so it asks for the live list and the aggregates as well; a purge only erases what the bin
+ * already showed, so the bin and the badge are the whole answer.
+ */
+async function restorePostImpl(id: string, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(
+    () => api.blog.trash.restore(id),
+    () => Promise.all(postChangeReloads(['stats', 'tags', 'trash'], get)),
+  )
+}
+
+async function purgePostImpl(id: string, get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(
+    () => api.blog.trash.purge(id),
+    () => Promise.all(postChangeReloads(['stats', 'trash'], get)),
+  )
+}
+
+async function emptyTrashImpl(get: () => BlogStoreState): Promise<boolean> {
+  return runBlogMutation(
+    () => api.blog.trash.empty(),
+    () => Promise.all(postChangeReloads(['stats', 'trash'], get)),
   )
 }
 
@@ -200,7 +230,7 @@ async function batchPostsImpl(
 }
 
 /** The aggregates a post change can move; the list and the body-free index are always re-read. */
-type PostChangeScope = 'stats' | 'tags' | 'categories'
+type PostChangeScope = 'stats' | 'tags' | 'categories' | 'trash'
 
 /**
  * What a patch invalidates. The rows and the note index carry every field, so both are always
@@ -229,7 +259,7 @@ function batchPostScopes(action: Parameters<BlogStoreState['batchPosts']>[0]): P
     case 'setCategory':
       return ['categories']
     case 'delete':
-      return ['stats', 'tags']
+      return ['stats', 'tags', 'trash']
     case 'publish':
     case 'unpublish':
     case 'setPinned':
@@ -246,6 +276,7 @@ function postChangeReloads(scopes: PostChangeScope[], get: () => BlogStoreState)
     ...(scopes.includes('stats') ? [get().loadStats()] : []),
     ...(scopes.includes('tags') ? [get().loadTags()] : []),
     ...(scopes.includes('categories') ? [get().loadCategories()] : []),
+    ...(scopes.includes('trash') ? [get().loadTrash()] : []),
   ]
 }
 

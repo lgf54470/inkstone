@@ -44,7 +44,7 @@ function post(id: string, overrides: Partial<ReturnType<typeof postBuilder>> = {
 
 function stats(): BlogStats {
   return {
-    totalPosts: 1, publishedPosts: 1, draftPosts: 0, totalViews: 0, totalComments: 0,
+    totalPosts: 1, publishedPosts: 1, draftPosts: 0, trashedPosts: 0, totalViews: 0, totalComments: 0,
     pendingComments: 0, categoriesCount: 0, tagsCount: 0,
     folderCounts: { f1: { total: 1, published: 1 } },
   }

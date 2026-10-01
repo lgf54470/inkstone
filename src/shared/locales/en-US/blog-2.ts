@@ -203,4 +203,17 @@ export const messages = {
 'blog.link_check_untested': 'Untested',
 'blog.link_check_checking': 'Checking',
 'blog.link_check_error': 'Error',
+// FEA-04 recycle bin: a deleted post waits there until it is restored or erased for good.
+'blog.trash': 'Trash',
+'blog.trash_hint': 'Deleted posts stay here until you restore or erase them',
+'blog.trash_empty': 'Nothing in the trash',
+'blog.trash_deleted_at': 'Deleted {value0}',
+'blog.trash_restore': 'Restore',
+'blog.trash_restored': 'Restored to the blog',
+'blog.trash_purge': 'Delete forever',
+'blog.trash_purged': 'Erased for good',
+'blog.trash_empty_action': 'Empty trash',
+'blog.trash_emptied': 'Trash emptied',
+'blog.confirm_purge_post': 'Erase "{value0}" for good? This cannot be undone.',
+'blog.confirm_empty_trash': 'Erase all {value0} posts in the trash? This cannot be undone.',
 }

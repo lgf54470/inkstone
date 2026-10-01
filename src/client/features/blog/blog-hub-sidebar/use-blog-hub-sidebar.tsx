@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type Dispatch, type MouseEvent, type ReactNode, type SetStateAction } from 'react'
-import { FileEdit, FileText, LayoutDashboard, Link2, MessageSquare, Pin, PlayCircle } from 'lucide-react'
+import { FileEdit, FileText, LayoutDashboard, Link2, MessageSquare, Pin, PlayCircle, Trash2 } from 'lucide-react'
 import type { BlogStats, BlogTag, Tag } from '@shared/types'
 import { confirm, prompt } from '../../../components/overlay'
 import { HubFolderItem } from '../../../components/hub-folder-item'
@@ -212,6 +212,8 @@ interface NavCtx {
   pendingCommentsCount: number
   linksCount: number
   pendingLinksCount: number
+  /** How many posts wait in the recycle bin, from the same stats every tab loads. */
+  trashedPosts: number
   setActiveTab: (tab: BlogTab) => void
   setStatusFilter: (status: 'all' | 'published' | 'draft' | 'pinned') => void
 }
@@ -238,6 +240,7 @@ function buildSidebarNavItems(store: ReturnType<typeof useBlogHubSidebarStore>):
     pendingCommentsCount,
     linksCount: totalLinksCount,
     pendingLinksCount,
+    trashedPosts: store.stats?.trashedPosts ?? 0,
     setActiveTab: store.setActiveTab,
     setStatusFilter: store.setStatusFilter,
   })
@@ -274,6 +277,16 @@ function buildNavItems(ctx: NavCtx): SidebarNavItem[] {
       badgeTone: ctx.pendingLinksCount > 0 ? 'danger' : 'default',
       active: ctx.activeTab === 'links',
       onClick: () => ctx.setActiveTab('links'),
+    },
+    {
+      // The recycle bin (FEA-04). Its count comes from `stats`, which every tab loads, so the badge is
+      // right before the bin has ever been opened.
+      id: 'trash',
+      label: t('blog.trash'),
+      icon: <Trash2 size={14} />,
+      count: ctx.trashedPosts,
+      active: ctx.activeTab === 'trash',
+      onClick: () => ctx.setActiveTab('trash'),
     },
   ]
 }

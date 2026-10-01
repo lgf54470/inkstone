@@ -202,6 +202,10 @@ describe('blog posts routes (real D1)', () => {
     expect(deleted.status).toBe(200)
     const after = await request(app, '/api/blog/posts')
     expect((await after.json()).posts).toHaveLength(0)
+    // FEA-04: the row moved to the recycle bin instead of vanishing; its own view lists it.
+    const trashed = await (await request(app, '/api/blog/trash')).json()
+    expect(trashed.posts).toHaveLength(1)
+    expect(trashed.posts[0]).toMatchObject({ id, slug, title: 'Hello world v2' })
   })
 
   it('rejects a duplicate slug and missing note sources', async () => {
@@ -1095,7 +1099,9 @@ describe('blog visit log lifecycle (SH-05b)', () => {
     return counts
   }
 
-  it('deleting a post deletes its visit log rows', async () => {
+  // FEA-04: a trashed post waits in the bin with its history — a restore brings the visits back with
+  // it — and only the purge (or an emptied bin) really deletes them.
+  it('keeps the visit rows of a trashed post and erases them on purge', async () => {
     const db = await makeDb()
     await seedUser(db)
     const doomed = await seedBlogPost(db, { id: 'p-doomed', slug: 'doomed' })
@@ -1106,11 +1112,13 @@ describe('blog visit log lifecycle (SH-05b)', () => {
     const app = makeApp()
 
     expect((await request(app, `/api/blog/posts/${doomed.id}`, { method: 'DELETE' })).status).toBe(200)
+    expect(await visitCounts(db)).toEqual({ [doomed.id]: 2, [kept.id]: 1 })
 
+    expect((await request(app, `/api/blog/trash/${doomed.id}`, { method: 'DELETE' })).status).toBe(200)
     expect(await visitCounts(db)).toEqual({ [kept.id]: 1 })
   })
 
-  it('a batch delete removes the visit rows of every post it removed', async () => {
+  it('keeps a batch-deleted post visit rows until the bin is emptied', async () => {
     const db = await makeDb()
     await seedUser(db)
     const first = await seedBlogPost(db, { id: 'p-one', slug: 'one' })
@@ -1127,6 +1135,9 @@ describe('blog visit log lifecycle (SH-05b)', () => {
     })
 
     expect(res.status).toBe(200)
+    expect(await visitCounts(db)).toEqual({ [first.id]: 1, [second.id]: 1, [kept.id]: 1 })
+
+    expect((await postJson(app, '/api/blog/trash/empty', {})).status).toBe(200)
     expect(await visitCounts(db)).toEqual({ [kept.id]: 1 })
   })
 })
@@ -1237,23 +1248,28 @@ describe('blog comment cascade ownership (SH-41)', () => {
     expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 1 })
   })
 
-  it('a batch delete of an own post removes that post comment', async () => {
+  it('a batch delete moves an own post and its comment to the bin, and a purge erases both', async () => {
     const db = await makeDb()
     await seedTwoOwners(db)
     const app = makeApp()
 
     expect((await postJson(app, '/api/blog/posts/batch', { action: 'delete', postIds: ['p-mine'] })).status).toBe(200)
+    // The comment waits with its post (FEA-04), so a restore brings the discussion back.
+    expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 1 })
 
+    expect((await request(app, '/api/blog/trash/p-mine', { method: 'DELETE' })).status).toBe(200)
     expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 0 })
   })
 
-  it("deleting an own post still removes that post's comment", async () => {
+  it('deleting an own post keeps its comment until the post is purged', async () => {
     const db = await makeDb()
     await seedTwoOwners(db)
     const app = makeApp()
 
     expect((await request(app, '/api/blog/posts/p-mine', { method: 'DELETE' })).status).toBe(200)
+    expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 1 })
 
+    expect((await request(app, '/api/blog/trash/p-mine', { method: 'DELETE' })).status).toBe(200)
     expect(await foreignCommentState(db)).toEqual({ kept: 1, gone: 0 })
   })
 })
@@ -1336,7 +1352,7 @@ describe('blog batch statements stay inside the D1 bind limit (SH-42)', () => {
     return ids
   }
 
-  it('deletes more posts than one statement can bind', async () => {
+  it('moves more posts than one statement can bind to the bin, and empties it in the same way', async () => {
     const db = await makeDb()
     await seedUser(db)
     const ids = await seedManyPosts(db, 120)
@@ -1345,6 +1361,13 @@ describe('blog batch statements stay inside the D1 bind limit (SH-42)', () => {
     const res = await postJson(app, '/api/blog/posts/batch', { action: 'delete', postIds: ids })
 
     expect(res.status).toBe(200)
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_posts WHERE deleted_at IS NOT NULL'))
+      .toMatchObject({ n: 120 })
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_visits')).toMatchObject({ n: 120 })
+
+    const emptied = await postJson(app, '/api/blog/trash/empty', {})
+    expect(emptied.status).toBe(200)
+    expect(await emptied.json()).toMatchObject({ purged: 120 })
     expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_posts')).toMatchObject({ n: 0 })
     expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_visits')).toMatchObject({ n: 0 })
   })
@@ -1744,7 +1767,10 @@ describe('blog slug history (FEA-03)', () => {
     expect(await (await request(app, '/api/blog/public/resolve-slug/their-old-name')).json()).toEqual({ slug: null })
   })
 
-  it('forgets a post retired addresses once the post is gone', async () => {
+  // FEA-04: the retired addresses belong to the post, so the bin keeps them too. A trashed post is
+  // not a destination (the resolver already ignores unreadable targets), and a restore brings its
+  // redirects back; only the purge forgets them.
+  it('keeps the retired addresses of a trashed post, and forgets them once it is purged', async () => {
     const db = await makeDb()
     await seedUser(db)
     const app = makeApp()
@@ -1757,7 +1783,178 @@ describe('blog slug history (FEA-03)', () => {
 
     expect(await (await request(app, '/api/blog/public/resolve-slug/gone-one')).json()).toEqual({ slug: null })
     expect(await (await request(app, '/api/blog/public/resolve-slug/batch-one')).json()).toEqual({ slug: null })
+    const kept = await db.prepare('SELECT COUNT(*) AS n FROM blog_post_slugs').first<{ n: number }>()
+    expect(kept?.n).toBe(2)
+
+    expect((await request(app, `/api/blog/trash/${single}/restore`, { method: 'POST' })).status).toBe(200)
+    expect(await (await request(app, '/api/blog/public/resolve-slug/gone-one')).json()).toEqual({ slug: 'gone-two' })
+
+    // Back to the bin, and then erased for good: only now do the addresses go with it.
+    expect((await request(app, `/api/blog/posts/${single}`, { method: 'DELETE' })).status).toBe(200)
+    expect((await request(app, `/api/blog/trash/${single}`, { method: 'DELETE' })).status).toBe(200)
+    expect((await request(app, `/api/blog/trash/${batched}`, { method: 'DELETE' })).status).toBe(200)
     const left = await db.prepare('SELECT COUNT(*) AS n FROM blog_post_slugs').first<{ n: number }>()
     expect(left?.n).toBe(0)
+  })
+})
+
+/**
+ * FEA-04: deleting a post moves it to a recycle bin instead of erasing it. The bin is a place of its
+ * own — the post leaves every live view (the management list, the note index, the public site, the
+ * counts and the moderation list) but keeps what it owned, so a restore puts it back exactly as it
+ * was and a purge is the only thing that really deletes.
+ */
+describe('blog recycle bin (FEA-04)', () => {
+  async function trashPost(app: Hono<AppBindings>, id: string): Promise<void> {
+    const res = await request(app, `/api/blog/posts/${id}`, { method: 'DELETE' })
+    expect(res.status).toBe(200)
+  }
+
+  it('leaves every live view on delete and comes back on restore', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const post = await seedBlogPost(db, { id: 'p-live', slug: 'live', note_id: 'n-live', title: 'Live' })
+    const app = makeApp()
+
+    expect((await request(app, '/api/blog/public/posts/live')).status).toBe(200)
+    await trashPost(app, post.id)
+
+    expect((await (await request(app, '/api/blog/posts')).json()).posts).toHaveLength(0)
+    expect((await (await request(app, '/api/blog/post-index')).json()).posts).toHaveLength(0)
+    const stats = await (await request(app, '/api/blog/stats')).json()
+    expect(stats.stats).toMatchObject({ totalPosts: 0, trashedPosts: 1 })
+    expect((await request(app, '/api/blog/public/posts/live')).status).toBe(404)
+    expect((await (await request(app, '/api/blog/public/posts')).json()).posts).toHaveLength(0)
+
+    const trash = await (await request(app, '/api/blog/trash')).json()
+    expect(trash.posts).toHaveLength(1)
+    expect(trash.posts[0]).toMatchObject({ id: 'p-live', slug: 'live', title: 'Live' })
+    expect(typeof trash.posts[0].deletedAt).toBe('number')
+    // The bin draws list rows: the body is not one of them.
+    expect('content' in trash.posts[0]).toBe(false)
+
+    expect((await request(app, `/api/blog/trash/${post.id}/restore`, { method: 'POST' })).status).toBe(200)
+    expect((await (await request(app, '/api/blog/posts')).json()).posts).toHaveLength(1)
+    expect((await request(app, '/api/blog/public/posts/live')).status).toBe(200)
+    expect((await (await request(app, '/api/blog/trash')).json()).posts).toHaveLength(0)
+    const after = await (await request(app, '/api/blog/stats')).json()
+    expect(after.stats).toMatchObject({ totalPosts: 1, trashedPosts: 0 })
+  })
+
+  it('closes the author paths a trashed post could still be reached from', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const post = await seedBlogPost(db, { id: 'p-bin', slug: 'bin-post', note_id: 'n-bin' })
+    await runSql(
+      db,
+      `INSERT INTO blog_comments (id, post_id, author_name, author_email, content, status, created_at)
+       VALUES ('c-bin', 'p-bin', 'Reader', 'r@example.com', 'Waiting', 'pending', ?1)`,
+      H.now,
+    )
+    const app = makeApp()
+    await trashPost(app, post.id)
+
+    expect((await patchJson(app, `/api/blog/posts/${post.id}`, { isPinned: true })).status).toBe(404)
+    expect((await request(app, `/api/blog/posts/${post.id}/sync`, { method: 'POST' })).status).toBe(404)
+
+    // Moderation hides the comments with the post they belong to; the summary counts them out too.
+    const comments = await (await request(app, '/api/blog/comments')).json()
+    expect(comments.comments).toHaveLength(0)
+    expect(comments.counts.all).toBe(0)
+    expect((await (await request(app, '/api/blog/stats')).json()).stats.pendingComments).toBe(0)
+
+    // The address stays reserved: the post still owns it until it is purged.
+    expect(await (await request(app, '/api/blog/check-slug?slug=bin-post')).json()).toMatchObject({ available: false })
+    const conflict = await postJson(app, '/api/blog/posts', { noteId: 'n-other', title: 'Other', content: 'x', slug: 'bin-post' })
+    expect(conflict.status).toBe(409)
+  })
+
+  it('revives the note own post when the note is published again', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const app = makeApp()
+    const created = await postJson(app, '/api/blog/posts', {
+      noteId: 'n-revive', title: 'Revive me', content: 'First', slug: 'revive-me',
+    })
+    expect(created.status).toBe(200)
+    const { id } = await created.json()
+    await trashPost(app, id)
+
+    const again = await postJson(app, '/api/blog/posts', {
+      noteId: 'n-revive', title: 'Revived', content: 'Second', slug: 'revive-me',
+    })
+    expect(again.status).toBe(200)
+    expect((await again.json()).id).toBe(id)
+
+    const list = await (await request(app, '/api/blog/posts')).json()
+    expect(list.posts).toHaveLength(1)
+    expect(list.posts[0]).toMatchObject({ id, title: 'Revived' })
+    expect((await (await request(app, '/api/blog/trash')).json()).posts).toHaveLength(0)
+    expect((await request(app, '/api/blog/public/posts/revive-me')).status).toBe(200)
+  })
+
+  it('erases the post and everything that pointed at it on purge', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const post = await seedBlogPost(db, { id: 'p-purge', slug: 'purge-me', note_id: 'n-purge' })
+    await runSql(
+      db,
+      `INSERT INTO blog_comments (id, post_id, author_name, author_email, content, status, created_at)
+       VALUES ('c-purge', 'p-purge', 'Reader', 'r@example.com', 'Bye', 'approved', ?1)`,
+      H.now,
+    )
+    await seedVisitAt(db, post.id, post.slug, H.now - 1_000, 'fp-purge')
+    await runSql(
+      db,
+      `INSERT INTO blog_post_slugs (post_id, user_id, slug, created_at) VALUES ('p-purge', ?1, 'purge-old', ?2)`,
+      USER, H.now,
+    )
+    const app = makeApp()
+    await trashPost(app, post.id)
+
+    expect((await request(app, `/api/blog/trash/${post.id}`, { method: 'DELETE' })).status).toBe(200)
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_posts')).toMatchObject({ n: 0 })
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_comments')).toMatchObject({ n: 0 })
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_visits')).toMatchObject({ n: 0 })
+    expect(await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_post_slugs')).toMatchObject({ n: 0 })
+
+    // The address is free again once the row that reserved it is gone.
+    const reused = await postJson(app, '/api/blog/posts', { noteId: 'n-reuse', title: 'Reuse', content: 'x', slug: 'purge-me' })
+    expect(reused.status).toBe(200)
+  })
+
+  it('empties the bin, reports the count, and leaves live posts alone', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const first = await seedBlogPost(db, { id: 'p-bin-1', slug: 'bin-1' })
+    const second = await seedBlogPost(db, { id: 'p-bin-2', slug: 'bin-2' })
+    const kept = await seedBlogPost(db, { id: 'p-kept', slug: 'kept-one' })
+    const app = makeApp()
+    await trashPost(app, first.id)
+    await trashPost(app, second.id)
+
+    const emptied = await postJson(app, '/api/blog/trash/empty', {})
+    expect(emptied.status).toBe(200)
+    expect(await emptied.json()).toEqual({ purged: 2 })
+
+    expect((await (await request(app, '/api/blog/trash')).json()).posts).toHaveLength(0)
+    expect((await (await request(app, '/api/blog/posts')).json()).posts).toMatchObject([{ id: kept.id, slug: 'kept-one' }])
+    expect((await (await request(app, '/api/blog/stats')).json()).stats).toMatchObject({ totalPosts: 1, trashedPosts: 0 })
+  })
+
+  it('leaves another account bin out of every operation', async () => {
+    const db = await makeDb()
+    await seedUser(db)
+    const foreign = await seedBlogPost(db, { id: 'p-their-bin', slug: 'their-bin', user_id: 'user-2' })
+    await runSql(db, 'UPDATE blog_posts SET deleted_at = ?1 WHERE id = ?2', H.now, foreign.id)
+    const app = makeApp()
+
+    expect(await (await request(app, '/api/blog/trash')).json()).toEqual({ posts: [] })
+    expect((await request(app, `/api/blog/trash/${foreign.id}/restore`, { method: 'POST' })).status).toBe(404)
+    expect((await request(app, `/api/blog/trash/${foreign.id}`, { method: 'DELETE' })).status).toBe(404)
+    expect(await (await postJson(app, '/api/blog/trash/empty', {})).json()).toEqual({ purged: 0 })
+
+    const stillTrashed = await firstRow(db, 'SELECT COUNT(*) AS n FROM blog_posts WHERE id = ?1 AND deleted_at IS NOT NULL', foreign.id)
+    expect(stillTrashed).toMatchObject({ n: 1 })
   })
 })

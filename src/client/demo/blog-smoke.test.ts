@@ -51,6 +51,13 @@ const CLIENT_ROUTES: RouteProbe[] = [
   { path: '/api/blog/posts/batch', init: json({ action: 'setPinned', postIds: ['demo-post-2'], isPinned: false }) },
   { path: '/api/blog/posts/demo-post-4', init: { method: 'DELETE' } },
   { path: '/api/blog/posts/batch', init: json({ action: 'delete', postIds: ['demo-post-4'] }) },
+  { path: '/api/blog/trash' },
+  // The single delete above left demo-post-4 in the bin: purge it, then move another post in and back
+  // out, so every trash route answers on both an occupied and an emptying bin.
+  { path: '/api/blog/trash/demo-post-4', init: { method: 'DELETE' } },
+  { path: '/api/blog/posts/demo-post-1', init: { method: 'DELETE' } },
+  { path: '/api/blog/trash/demo-post-1/restore', init: { method: 'POST' } },
+  { path: '/api/blog/trash/empty', init: json({}) },
   { path: '/api/blog/folders' },
   { path: '/api/blog/folders', init: json({ name: '烟雾测试目录', parentId: null }) },
   { path: '/api/blog/folders/demo-folder-tech', init: { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: '技术文章改' }) } },

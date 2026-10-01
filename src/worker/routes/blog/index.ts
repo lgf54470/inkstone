@@ -8,6 +8,7 @@ import { registerBlogPostsRoutes } from './posts'
 import { registerBlogPublicRoutes } from './public'
 import { registerBlogSettingsRoutes } from './settings'
 import { registerBlogStatsRoutes } from './stats'
+import { registerBlogTrashRoutes } from './trash'
 
 export const blogManageRoutes = new Hono<AppBindings>()
 export const blogPublicRoutes = new Hono<AppBindings>()
@@ -20,6 +21,7 @@ blogManageRoutes.use('*', requireAuth)
 registerBlogStatsRoutes(blogManageRoutes)
 registerBlogSettingsRoutes(blogManageRoutes)
 registerBlogPostsRoutes(blogManageRoutes)
+registerBlogTrashRoutes(blogManageRoutes)
 registerBlogOrganizerRoutes(blogManageRoutes)
 registerBlogCommentsRoutes(blogManageRoutes)
 registerBlogLinksRoutes(blogManageRoutes)

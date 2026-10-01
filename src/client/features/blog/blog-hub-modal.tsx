@@ -11,6 +11,7 @@ import { BlogGridView } from './blog-grid-view'
 import { BlogBatchBar } from './blog-batch-bar'
 import { BlogCommentsView } from './blog-comments-view'
 import { BlogLinksView } from './blog-links-view'
+import { BlogTrashView } from './blog-trash-view'
 import { BlogPublishModal } from './blog-publish-modal'
 import { BlogCategoriesModal } from './blog-categories-modal'
 import { BlogSettingsModal } from './blog-settings-modal'
@@ -116,6 +117,8 @@ function BlogHubContent({ bundle }: { bundle: BlogHubModalBundle }) {
         <BlogCommentsView />
       ) : bundle.activeTab === 'links' ? (
         <BlogLinksView />
+      ) : bundle.activeTab === 'trash' ? (
+        <BlogTrashView />
       ) : (
         <>
           <BlogHubToolbar

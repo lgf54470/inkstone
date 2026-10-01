@@ -9,6 +9,7 @@ import type {
   BlogSettings,
   BlogStats,
   BlogTag,
+  BlogTrashEntry,
   BlogVisitLog,
   ShareBreakdownItem,
   ShareTimelinePoint,
@@ -21,9 +22,26 @@ const POST_IDS = ['demo-post-1', 'demo-post-2', 'demo-post-3', 'demo-post-4']
 const CATEGORY_IDS = ['demo-cat-guide', 'demo-cat-tech', 'demo-cat-essay']
 const FOLDER_IDS = ['demo-folder-tech', 'demo-folder-essay']
 
+/** One row of the demo's recycle bin: the post exactly as it was, plus when it was thrown away. */
+export interface DemoTrashRecord {
+  post: BlogPost
+  deletedAt: number
+}
+
+/** The recycle bin's answer shape, the same one the worker sends (`BlogTrashEntry`). */
+export function toDemoTrashEntry(record: DemoTrashRecord): BlogTrashEntry {
+  const { content: _body, ...summary } = record.post
+  return { ...summary, deletedAt: record.deletedAt }
+}
+
 export interface BlogDemoData {
   userId: string
   posts: BlogPost[]
+  /**
+   * The recycle bin (FEA-04): the demo moves a deleted post here rather than dropping it, so the
+   * trash tab has something real to restore and the post's comments wait with it.
+   */
+  trash: DemoTrashRecord[]
   folders: BlogFolder[]
   categories: BlogCategory[]
   tags: BlogTag[]
@@ -224,6 +242,7 @@ export function createBlogDemoData(userId: string): BlogDemoData {
   return {
     userId,
     posts,
+    trash: [],
     folders: seedFolders(),
     categories: seedCategories(),
     tags: seedTags(),
@@ -258,7 +277,7 @@ function countGroups(posts: BlogPost[]): { folders: Record<string, GroupCounts>;
   return { folders, tags }
 }
 
-export function buildStats(posts: BlogPost[], comments: BlogComment[], categories: BlogCategory[], tags: BlogTag[]): BlogStats {
+export function buildStats(posts: BlogPost[], comments: BlogComment[], categories: BlogCategory[], tags: BlogTag[], trashedPosts = 0): BlogStats {
   const published = posts.filter((post) => post.isPublished)
   const { folders, tags: tagCounts } = countGroups(posts)
   return {
@@ -266,6 +285,7 @@ export function buildStats(posts: BlogPost[], comments: BlogComment[], categorie
     publishedPosts: published.length,
     draftPosts: posts.length - published.length,
     pinnedPosts: posts.filter((post) => post.isPinned).length,
+    trashedPosts,
     totalViews: posts.reduce((total, post) => total + post.views, 0),
     totalComments: comments.length,
     pendingComments: comments.filter((comment) => comment.status === 'pending').length,

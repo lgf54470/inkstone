@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import type { DemoState } from '../../state'
 import type { BlogCategory, BlogFolder, BlogPost, BlogTag } from '@shared/types'
 import { apiError, jsonBody } from '../helpers/info'
-import { DAY, type BlogDemoData } from './blog-seed'
+import { DAY, toDemoTrashEntry, type BlogDemoData, type DemoTrashRecord } from './blog-seed'
 
 function slugFromTitle(title: string, seq: number): string {
   const base = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -42,38 +42,52 @@ function registerBlogPostWriteRoute(app: Hono, data: BlogDemoData): void {
       return c.json({ ok: true, id: existing.id, slug })
     }
 
-    const id = `demo-post-${++data.seq.post}`
-    const slug = (body.slug as string | undefined)?.trim() || slugFromTitle((body.title as string) ?? '', data.seq.post)
-    const isPublished = body.isPublished !== false
-    const post: BlogPost = {
-      id,
-      slug,
-      noteId: body.noteId as string,
-      userId: data.userId,
-      title: (body.title as string) ?? '',
-      excerpt: (body.excerpt as string) ?? '',
-      content: (body.content as string) ?? '',
-      coverUrl: (body.coverUrl as string) ?? '',
-      categoryId: (body.categoryId as string | null | undefined) ?? null,
-      folderId: (body.folderId as string | null | undefined) ?? null,
-      tags: (body.tags as string[] | undefined) ?? [],
-      isPublished,
-      allowComments: body.allowComments !== false,
-      isPinned: body.isPinned === true,
-      views: 0,
-      commentsCount: 0,
-      seoTitle: (body.seoTitle as string | undefined) ?? '',
-      seoDescription: (body.seoDescription as string | undefined) ?? '',
-      seoImageUrl: (body.seoImageUrl as string | undefined) ?? '',
-      seoCanonicalUrl: (body.seoCanonicalUrl as string | undefined) ?? '',
-      seoNoindex: body.seoNoindex === true,
-      publishedAt: isPublished ? now : 0,
-      createdAt: now,
-      updatedAt: now,
+    // The worker's rule (FEA-04): the note keeps its one post, so publishing a note whose post waits
+    // in the bin revives that post instead of creating a second one for the same note.
+    const trashed = takeTrashedPost(data, (record) => record.post.noteId === body.noteId)
+    if (trashed) {
+      const slug = (body.slug as string | undefined)?.trim() || trashed.slug
+      applyPostPatch(trashed, body, slug)
+      return c.json({ ok: true, id: trashed.id, slug })
     }
+
+    const post = createPostFromBody(data, body, now)
     data.posts.push(post)
-    return c.json({ ok: true, id, slug })
+    return c.json({ ok: true, id: post.id, slug: post.slug })
   })
+}
+
+function createPostFromBody(data: BlogDemoData, body: Record<string, unknown>, now: number): BlogPost {
+  const id = `demo-post-${++data.seq.post}`
+  const slug = (body.slug as string | undefined)?.trim() || slugFromTitle((body.title as string) ?? '', data.seq.post)
+  const isPublished = body.isPublished !== false
+  const post: BlogPost = {
+    id,
+    slug,
+    noteId: body.noteId as string,
+    userId: data.userId,
+    title: (body.title as string) ?? '',
+    excerpt: (body.excerpt as string) ?? '',
+    content: (body.content as string) ?? '',
+    coverUrl: (body.coverUrl as string) ?? '',
+    categoryId: (body.categoryId as string | null | undefined) ?? null,
+    folderId: (body.folderId as string | null | undefined) ?? null,
+    tags: (body.tags as string[] | undefined) ?? [],
+    isPublished,
+    allowComments: body.allowComments !== false,
+    isPinned: body.isPinned === true,
+    views: 0,
+    commentsCount: 0,
+    seoTitle: (body.seoTitle as string | undefined) ?? '',
+    seoDescription: (body.seoDescription as string | undefined) ?? '',
+    seoImageUrl: (body.seoImageUrl as string | undefined) ?? '',
+    seoCanonicalUrl: (body.seoCanonicalUrl as string | undefined) ?? '',
+    seoNoindex: body.seoNoindex === true,
+    publishedAt: isPublished ? now : 0,
+    createdAt: now,
+    updatedAt: now,
+  }
+  return post
 }
 
 function registerBlogPostItemRoutes(app: Hono, data: BlogDemoData, state: DemoState): void {
@@ -88,10 +102,7 @@ function registerBlogPostItemRoutes(app: Hono, data: BlogDemoData, state: DemoSt
 
   app.delete('/api/blog/posts/:id', (c) => {
     const id = c.req.param('id')
-    const index = data.posts.findIndex((item) => item.id === id)
-    if (index < 0) return apiError(404, 'not_found', 'Post not found')
-    data.posts.splice(index, 1)
-    data.comments = data.comments.filter((comment) => comment.postId !== id)
+    if (!movePostToTrash(data, id, Date.now())) return apiError(404, 'not_found', 'Post not found')
     return c.json({ ok: true })
   })
 
@@ -140,8 +151,7 @@ function registerBlogPostBatchRoute(app: Hono, data: BlogDemoData): void {
     const now = Date.now()
 
     if (action === 'delete') {
-      data.posts = data.posts.filter((post) => !postIds.includes(post.id))
-      data.comments = data.comments.filter((comment) => !postIds.includes(comment.postId))
+      for (const id of postIds) movePostToTrash(data, id, now)
       return c.json({ ok: true, count: postIds.length })
     }
 
@@ -149,6 +159,54 @@ function registerBlogPostBatchRoute(app: Hono, data: BlogDemoData): void {
       if (postIds.includes(post.id)) applyBatchAction(post, action, body, now)
     }
     return c.json({ ok: true, count: postIds.length })
+  })
+}
+
+/**
+ * The demo's own recycle bin: the post leaves `posts` for `trash`, and only its comments stay behind
+ * so a restore brings the post back with the discussion it had (the worker does the same).
+ */
+function movePostToTrash(data: BlogDemoData, id: string, now: number): boolean {
+  const index = data.posts.findIndex((post) => post.id === id)
+  if (index < 0) return false
+  const [post] = data.posts.splice(index, 1)
+  data.trash.unshift({ post: post!, deletedAt: now })
+  return true
+}
+
+function takeTrashedPost(data: BlogDemoData, match: (record: DemoTrashRecord) => boolean): BlogPost | null {
+  const index = data.trash.findIndex(match)
+  if (index < 0) return null
+  const [record] = data.trash.splice(index, 1)
+  data.posts.push(record!.post)
+  return record!.post
+}
+
+export function registerBlogTrashRoutes(app: Hono, data: BlogDemoData): void {
+  app.get('/api/blog/trash', (c) => c.json({ posts: data.trash.map(toDemoTrashEntry) }))
+
+  app.post('/api/blog/trash/:id/restore', (c) => {
+    const restored = takeTrashedPost(data, (record) => record.post.id === c.req.param('id'))
+    if (!restored) return apiError(404, 'not_found', 'Post not found in the trash')
+    return c.json({ ok: true })
+  })
+
+  app.delete('/api/blog/trash/:id', (c) => {
+    const id = c.req.param('id')
+    if (data.trash.every((record) => record.post.id !== id)) {
+      return apiError(404, 'not_found', 'Post not found in the trash')
+    }
+    data.trash = data.trash.filter((record) => record.post.id !== id)
+    data.comments = data.comments.filter((comment) => comment.postId !== id)
+    return c.json({ ok: true })
+  })
+
+  app.post('/api/blog/trash/empty', (c) => {
+    const purged = data.trash.length
+    const purgedIds = new Set(data.trash.map((record) => record.post.id))
+    data.trash = []
+    data.comments = data.comments.filter((comment) => !purgedIds.has(comment.postId))
+    return c.json({ purged })
   })
 }
 

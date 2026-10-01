@@ -9,7 +9,7 @@ function tag(name: string, count: number): Tag {
 
 function stats(tagCounts: Record<string, { total: number; published: number }>): BlogStats {
   return {
-    totalPosts: 0, publishedPosts: 0, draftPosts: 0, totalViews: 0, totalComments: 0,
+    totalPosts: 0, publishedPosts: 0, draftPosts: 0, trashedPosts: 0, totalViews: 0, totalComments: 0,
     pendingComments: 0, categoriesCount: 0, tagsCount: 0, tagCounts,
   }
 }

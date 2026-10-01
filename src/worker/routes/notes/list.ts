@@ -67,7 +67,9 @@ function buildListWhere(
   if (view === 'starred') where += ' AND n.is_starred = 1'
   if (view === 'pinned') where += ' AND n.is_pinned = 1'
   if (view === 'shared') where += ' AND EXISTS (SELECT 1 FROM shares s WHERE s.note_id = n.id AND (s.is_enabled = 1 OR s.is_enabled IS NULL))'
-  if (view === 'published') where += ' AND EXISTS (SELECT 1 FROM blog_posts bp WHERE bp.note_id = n.id AND bp.is_published = 1)'
+  // A note whose post is in the recycle bin is not published: the post is gone from the blog until
+  // it is restored, so the note must not wear a published badge for it.
+  if (view === 'published') where += ' AND EXISTS (SELECT 1 FROM blog_posts bp WHERE bp.note_id = n.id AND bp.is_published = 1 AND bp.deleted_at IS NULL)'
   if (view === 'unfiled') where += ' AND n.folder_id IS NULL'
   if (view === 'untagged') where += ' AND NOT EXISTS (SELECT 1 FROM note_tags nt WHERE nt.note_id = n.id)'
 

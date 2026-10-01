@@ -11,6 +11,7 @@ import {
   registerBlogPostWriteRoute,
   registerBlogTagRoutes,
   registerBlogToggleGroupRoute,
+  registerBlogTrashRoutes,
   registerBlogVisitsRoute,
 } from './blog-mutations'
 
@@ -38,7 +39,7 @@ function sortPosts(posts: BlogPost[], sort: string): BlogPost[] {
 }
 
 function registerBlogMetaRoutes(app: Hono, data: BlogDemoData): void {
-  app.get('/api/blog/stats', (c) => c.json({ stats: buildStats(data.posts, data.comments, data.categories, data.tags) }))
+  app.get('/api/blog/stats', (c) => c.json({ stats: buildStats(data.posts, data.comments, data.categories, data.tags, data.trash.length) }))
 
   app.get('/api/blog/check-slug', (c) => {
     const slug = c.req.query('slug') ?? ''
@@ -182,6 +183,7 @@ export function registerBlogRoutes(app: Hono, state: DemoState): void {
   registerBlogPostWriteRoute(app, data)
   registerBlogPostItemRoutes(app, data, state)
   registerBlogPostBatchRoute(app, data)
+  registerBlogTrashRoutes(app, data)
   registerBlogFolderRoutes(app, data)
   registerBlogTagRoutes(app, data)
   registerBlogCategoryRoutes(app, data)

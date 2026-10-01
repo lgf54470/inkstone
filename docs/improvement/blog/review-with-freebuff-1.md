@@ -463,7 +463,7 @@
 | FEA-01 | 发布时间可设 + 定时发布 | 创建即写 `published_at = now`（`posts.ts:265-283`），发布动作不更新它，`schemas.ts` 无该字段 | Ghost `published_at`、WordPress | **高**（FEA-02/03/08 的共同前置） |
 | FEA-02 | 文章级 SEO（metaTitle / description / ogImage / canonical / noindex） | 表无字段 | 全部主流 | 高 |
 | FEA-03 | slug 改名 301 重定向表 | 无 → 换 slug 必 404，直接损伤 SEO | Ghost redirects | 高 |
-| FEA-04 | 文章回收站（软删 + 还原） | 硬删（`posts.ts:361-378`） | WordPress / Ghost | 中 |
+| FEA-04 | 文章回收站（软删 + 还原） | **已落地（B5-04）**：删除改为软删（`deleted_at`），新增回收站视图与还原/彻底删除；活视图全部滤掉，只有回收站路由真正删行 | WordPress / Ghost | 中 |
 | FEA-05 | 版本历史 / 草稿恢复 | 无 `blog_revisions`；`/sync` 是单向覆盖 | WordPress revisions | 中 |
 | FEA-06 | 评论回复 + 通知（邮件/Webhook）+ 反垃圾 | 仅 status 人工 + IP/篇级限流；无 smtp/webhook 痕迹 | 全部主流 | 中 |
 | FEA-07 | 独立媒体库 / 封面选择器 | 只能粘贴 URL（`blog-publish-modal` 的 CoverField），无上传与裁切 | Ghost 媒体库 | 中 |
@@ -478,6 +478,8 @@
 **已落地（B5-01，FEA-01）**：写入侧新增 `publishedAt`（int，0..3000-01-01；非法值 400），规则集中在 `src/worker/routes/blog/publish-moment.ts`：显式时间优先（定时与回填），否则草稿发布盖「现在」、已发布行保持原时刻；单篇发布、`POST /posts` 的 upsert 与批量发布（列表批量与按文件夹/标签）都是同一规则。读取侧以 `publicPostVisibleSql(alias)` 统一公开可见性（已发布 **且** 时刻已到），公开列表/详情/相邻篇/分类计数/标签/时间轴/日历与评论读写全部改用它，因此定时中的文章对读者完全不存在。比较写进 SQL（`published_at < (strftime('%s','now') + 1) * 1000`——加一秒是因为 `strftime` 只到秒，否则刚发布的文章会被隐藏最多一秒，已有回归钉住）。客户端发布弹窗新增「发布时间」控件（本地时间 ↔ epoch 毫秒），从 `postIndex` 预填，留空即用服务端默认规则，未来时刻提示「将定时发布」。限制：作者侧计数仍把定时中的文章算作已发布；没有单独的「定时中」徽标；不靠 cron（到点可见靠查询时实时比较）；时间精度到分钟、无时区选择。
 
 **已落地（B5-02，FEA-02）**：`blog_posts` 追加 5 列（`seo_title`/`seo_description`/`seo_image_url`/`seo_canonical_url`/`seo_noindex`）：新库由声明的建表语句带出，老库由迁移 54 补列（`skipIfColumnExists` 守卫）——迁移 52 一个字未动，它的重建本来就从同一份声明出发生成表与拷贝列名。写入侧 5 个字段进 zod 契约（两个地址走共享 `safeUrl` 白名单，非法值 400），并在 upsert、补丁与插入三条路径上落库，补丁只在字段被显式给出时改写（空串=清空，缺省=保持）。读取侧带上管理列表、`/post-index`（发布弹窗的预填来源）与公开详情答案；**公开列表刻意不带**，由一个断言钉住这条边界。客户端发布弹窗新增「搜索与分享」分组（4 个 `Field` + 1 个 noindex `Switch`），全部从被编辑的文章预填、留空即「用文章自己的值」。前台文章页按同一优先级渲染标题/描述/OG 图/`canonical`/`robots`，规则收在纯函数 `blog-frontend/src/lib/seo.ts`（含 4 条单测），`Layout.astro` 的两个新属性缺省时行为与从前完全一致。限制：sitemap 仍不排除 noindex 文章、也无 `lastmod`（属 FEA-08/BF-6）；RSS 与 og:type/twitter:card 未加；后台列表没有「已 noindex」的徽标；SEO 描述与摘要共用同一上限。
+
+**已落地（B5-04，FEA-04）**：`blog_posts` 追加 `deleted_at INTEGER`（迁移 56，`skipIfColumnExists` 守卫；迁移 52 一字未改）。`DELETE /posts/:id` 与批量删除改为软删，新增 `trash.ts` 四条路由（列表 / 还原 / 彻底删除 / 清空）；真正的删除只在回收站路径发生：先按「仍在回收站」过滤 id，再一次 batch 清掉评论 → 访问 → 退役地址 → 文章本体。读取侧 `publicPostVisibleSql()` 增 `deleted_at IS NULL`，并给作者侧列表/索引/汇总/文件夹与标签计数/分类计数/评论列表与计数/批量发布/`stats` 全部加活行过滤；`stats` 新增 `trashedPosts` 给侧栏徽标。作者路径（补丁、同步）对回收站里的文章一律 404，但按 `noteId` 再发布会复活同一篇（不会给一条笔记留两篇）。客户端新增回收站 tab 与 `blog-trash-view`（三态 + 还原/彻底删除/清空，均带确认与成功提示），demo 后端同步。限制：无保留期与自动清理；清空是一次确认；purge 同步批处理。
 
 **已落地（B5-03，FEA-03）**：新表 `blog_post_slugs(post_id, user_id, slug, created_at)`（唯一索引 `(user_id, slug)`）记录**退役地址**，迁移 55 与声明形状同源。写入侧把「改名」拆成两句并和写本身同批：`claimSlugStatements()`（拿到一个 slug 就等于它又成了活地址，该地址上任何重定向行都要删——包括**新建文章直接占用一个退役地址**这种情形）与 `renameSlugStatements()`（退役旧地址）。三条写入路径（`POST /posts` 的 upsert、新建、`PATCH /posts/:id`）共用 `slugStatementsFor()`；删除路径（单篇与批量）一并清历史。读取侧新增公开的 `GET /api/blog/public/resolve-slug/:slug`：JOIN 文章并套用 B5-01 的可见性规则（目标未发布/定时中时不回答），按 `user_id` 限定博客。前台文章页在 404 前问一次 resolve，拿到不同地址就 `301`（规则收在纯函数 `blog-frontend/src/lib/post-redirect.ts`），拿不到就是真实 404——**真机验证过**：本地实例建文 `alpha`→改名 `beta`，`GET /posts/alpha` 返回 301 且 `location: /posts/beta`，`/posts/beta` 200，未知地址 404。限制：`/check-slug` 不会提醒作者「这个地址正指向另一篇」（占用后那条重定向会按设计消失）；历史只在改名/删除时维护，直接改库不受保护；分类与标签改名仍会 404。
 

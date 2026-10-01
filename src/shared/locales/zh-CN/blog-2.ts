@@ -203,4 +203,17 @@ export const messages = {
 'blog.link_check_untested': '未检测',
 'blog.link_check_checking': '检测中',
 'blog.link_check_error': '错误',
+// FEA-04 recycle bin: a deleted post waits there until it is restored or erased for good.
+'blog.trash': '回收站',
+'blog.trash_hint': '删除的博文会保留在这里，直到你还原或彻底删除',
+'blog.trash_empty': '回收站是空的',
+'blog.trash_deleted_at': '删除于 {value0}',
+'blog.trash_restore': '还原',
+'blog.trash_restored': '已还原到博客',
+'blog.trash_purge': '彻底删除',
+'blog.trash_purged': '已彻底删除',
+'blog.trash_empty_action': '清空回收站',
+'blog.trash_emptied': '回收站已清空',
+'blog.confirm_purge_post': '确定要彻底删除《{value0}》吗？此操作不可恢复。',
+'blog.confirm_empty_trash': '确定要彻底删除回收站里的 {value0} 篇博文吗？此操作不可恢复。',
 }

@@ -15,9 +15,14 @@ export function publishReachedSql(alias: string): string {
   return `${alias}.published_at < (CAST(strftime('%s','now') AS INTEGER) + 1) * 1000`
 }
 
-/** What a reader-facing query may select: published, and its moment has come. */
+/**
+ * What a reader-facing query may select: not in the trash, published, and its moment has come. The
+ * trash arm lives here rather than in each query for the same reason the scheduled arm does — every
+ * reader-facing path already carries this one predicate, so a deleted post cannot stay reachable
+ * through a route that forgot it.
+ */
 export function publicPostVisibleSql(alias: string): string {
-  return `${alias}.is_published = 1 AND ${publishReachedSql(alias)}`
+  return `${alias}.deleted_at IS NULL AND ${alias}.is_published = 1 AND ${publishReachedSql(alias)}`
 }
 
 /** The row a write reads its defaults from. */

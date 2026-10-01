@@ -29,6 +29,10 @@ const POST_INDEX_COLUMNS = `p.id, p.note_id, p.slug, p.title, p.excerpt, p.cover
   p.category_id, p.folder_id, p.tags, p.published_at, p.is_published, p.allow_comments, p.is_pinned,
   ${POST_SEO_COLUMNS}`
 
+// The recycle bin draws the list's columns plus the moment the post was deleted; the same rows are
+// the ones every live read filters out.
+const POST_TRASH_COLUMNS = `${POST_LIST_COLUMNS}, p.deleted_at`
+
 /**
  * One WHERE for the page query and the count query: if the two disagree about what the filter
  * selects, the pager offers a page the total does not know about.
@@ -36,7 +40,9 @@ const POST_INDEX_COLUMNS = `p.id, p.note_id, p.slug, p.title, p.excerpt, p.cover
 function blogPostsWhere(userId: string, filter: BlogPostsFilter): { clause: string; params: unknown[] } {
   const { status, categoryId, folderId, tag, search } = filter
 
-  let clause = `p.user_id = ?1`
+  // A trashed post is gone from every live view (FEA-04): the list, its count, the note index and
+  // the aggregate queries all start from the same "not in the bin" filter.
+  let clause = `p.user_id = ?1 AND p.deleted_at IS NULL`
   const params: unknown[] = [userId]
   let idx = 2
 
@@ -110,7 +116,24 @@ export function blogPostsCountQuery(userId: string, filter: BlogPostsFilter): { 
  */
 export function blogPostIndexQuery(userId: string): { sql: string; params: unknown[] } {
   return {
-    sql: `SELECT ${POST_INDEX_COLUMNS} FROM blog_posts p WHERE p.user_id = ?1 ORDER BY p.published_at DESC`,
+    sql: `SELECT ${POST_INDEX_COLUMNS} FROM blog_posts p
+           WHERE p.user_id = ?1 AND p.deleted_at IS NULL
+           ORDER BY p.published_at DESC`,
+    params: [userId],
+  }
+}
+
+/**
+ * The recycle bin, newest deletion first. Deleted posts are the account's own rows and the list is
+ * bounded by how many were thrown away, so it is answered in one query rather than paginated.
+ */
+export function blogTrashListQuery(userId: string): { sql: string; params: unknown[] } {
+  return {
+    sql: `SELECT ${POST_TRASH_COLUMNS},
+      (SELECT COUNT(*) FROM blog_comments c WHERE c.post_id = p.id) as comments_count
+    FROM blog_posts p
+    WHERE p.user_id = ?1 AND p.deleted_at IS NOT NULL
+    ORDER BY p.deleted_at DESC`,
     params: [userId],
   }
 }

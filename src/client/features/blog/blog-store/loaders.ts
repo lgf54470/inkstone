@@ -19,6 +19,9 @@ const BLOG_TAB_SCOPES: Record<BlogTab, BlogDataScope[]> = {
   links: ['folders', 'tags', 'categories', 'settings', 'stats', 'links'],
   categories: ['folders', 'tags', 'categories', 'settings', 'stats'],
   settings: ['folders', 'tags', 'categories', 'settings', 'stats'],
+  // The bin draws its own rows, but the sidebar (folders, tags, categories, settings) and the
+  // navigation counts are shared by every tab, so they are asked for alongside it.
+  trash: ['folders', 'tags', 'categories', 'settings', 'stats', 'trash'],
 }
 
 const BLOG_SCOPE_LOADERS: Record<BlogDataScope, (get: () => BlogStoreState) => Promise<void>> = {
@@ -31,12 +34,14 @@ const BLOG_SCOPE_LOADERS: Record<BlogDataScope, (get: () => BlogStoreState) => P
   stats: (get) => get().loadStats(),
   links: (get) => get().loadLinks(),
   settings: (get) => get().loadSettings(),
+  trash: (get) => get().loadTrash(),
 }
 
-export const blogLoadersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'loadHubData' | 'loadPosts' | 'loadPostIndex' | 'loadFolders' | 'loadTags' | 'loadCategories' | 'loadComments' | 'loadStats' | 'loadSettings'> => ({
+export const blogLoadersActions = (set: SetBlogStoreState, get: () => BlogStoreState): Pick<BlogStoreState, 'loadHubData' | 'loadPosts' | 'loadPostIndex' | 'loadTrash' | 'loadFolders' | 'loadTags' | 'loadCategories' | 'loadComments' | 'loadStats' | 'loadSettings'> => ({
   loadHubData: (options) => loadHubDataImpl(options?.force ?? false, set, get),
   loadPosts: () => loadPostsImpl(set, get),
   loadPostIndex: () => loadPostIndexImpl(set),
+  loadTrash: () => loadTrashImpl(set),
   loadFolders: () => loadFoldersImpl(set),
   loadTags: () => loadTagsImpl(set),
   loadCategories: () => loadCategoriesImpl(set),
@@ -120,6 +125,24 @@ async function loadPostIndexImpl(set: SetBlogStoreState): Promise<void> {
     // failure keeps the previous answer instead of clearing it, and is logged here rather than shown
     // as a broken note list: there is no surface that could render it without lying about the notes.
     console.error('Failed to load blog post index', err)
+  }
+}
+
+/**
+ * The recycle bin. Its failure flag is what the bin's own view draws instead of an empty list: a
+ * failed request must not read as "nothing was deleted".
+ */
+async function loadTrashImpl(set: SetBlogStoreState): Promise<void> {
+  try {
+    const res = await api.blog.trash.list()
+    set((s) => ({
+      trashPosts: res.posts || [],
+      loadErrors: markLoadSucceeded(s.loadErrors, 'trash'),
+      dataLoadedAt: markDataLoaded(s.dataLoadedAt, 'trash'),
+    }))
+  } catch (err) {
+    console.error('Failed to load blog trash', err)
+    set((s) => ({ loadErrors: markLoadFailed(s.loadErrors, 'trash') }))
   }
 }
 

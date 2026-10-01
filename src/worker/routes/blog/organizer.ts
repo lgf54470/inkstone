@@ -235,11 +235,11 @@ function registerBlogToggleGroupRoute(blogManageRoutes: Hono<AppBindings>): void
       const ids = expandFolderSubtree(allFolders || [], body.target)
       const placeholders = ids.map(() => '?').join(',')
       await c.env.DB.prepare(
-        `UPDATE blog_posts SET is_published = ?, updated_at = ?${stampMoment} WHERE user_id = ? AND folder_id IN (${placeholders})`,
+        `UPDATE blog_posts SET is_published = ?, updated_at = ?${stampMoment} WHERE user_id = ? AND deleted_at IS NULL AND folder_id IN (${placeholders})`,
       ).bind(isPublished, now, ...momentBinds, userId, ...ids).run()
     } else if (body.type === 'tag') {
       await c.env.DB.prepare(
-        `UPDATE blog_posts SET is_published = ?, updated_at = ?${stampMoment} WHERE user_id = ? AND (tags LIKE ? OR tags LIKE ?)`,
+        `UPDATE blog_posts SET is_published = ?, updated_at = ?${stampMoment} WHERE user_id = ? AND deleted_at IS NULL AND (tags LIKE ? OR tags LIKE ?)`,
       ).bind(isPublished, now, ...momentBinds, userId, `%\"${body.target}\"%`, `%\"${body.target}/%`).run()
     }
 
@@ -275,7 +275,8 @@ function registerBlogCategoriesListRoute(blogManageRoutes: Hono<AppBindings>): v
     const { results } = await c.env.DB
       .prepare(`
         SELECT c.*,
-          (SELECT COUNT(*) FROM blog_posts p WHERE p.category_id = c.id) as posts_count
+          (SELECT COUNT(*) FROM blog_posts p
+            WHERE p.category_id = c.id AND p.deleted_at IS NULL) as posts_count
         FROM blog_categories c
         WHERE c.user_id = ?1
         ORDER BY c.position ASC, c.created_at ASC

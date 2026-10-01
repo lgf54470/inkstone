@@ -1,6 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
-import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogTrashEntry, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -210,6 +210,16 @@ export const share = {
     /** The complete body-free post index the note list reads; not paginated by design. */
     postIndex: (signal?: AbortSignal) =>
       request<{ posts: BlogPostIndexEntry[] }>('/api/blog/post-index', { signal }),
+    trash: {
+      list: (signal?: AbortSignal) =>
+        request<{ posts: BlogTrashEntry[] }>('/api/blog/trash', { signal }),
+      restore: (id: string) =>
+        request<{ ok: true }>(`/api/blog/trash/${id}/restore`, { method: 'POST' }),
+      purge: (id: string) =>
+        request<{ ok: true }>(`/api/blog/trash/${id}`, { method: 'DELETE' }),
+      empty: () =>
+        request<{ purged: number }>('/api/blog/trash/empty', { method: 'POST' }),
+    },
     posts: {
       list: (params?: { status?: string; categoryId?: string; folderId?: string; tag?: string; search?: string; sort?: string; page?: number }, signal?: AbortSignal) =>
         request<{ posts: BlogPostSummary[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(`/api/blog/posts${toQuery(params ?? {})}`, { signal }),

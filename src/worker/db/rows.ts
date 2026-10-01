@@ -140,6 +140,7 @@ export interface BlogPostRow {
   seo_image_url: string
   seo_canonical_url: string
   seo_noindex: number
+  deleted_at: number | null
 }
 
 export interface BlogPostCountsRow extends BlogPostRow {
@@ -149,6 +150,11 @@ export interface BlogPostCountsRow extends BlogPostRow {
 /** A management-list row: the same columns minus the body, which the list never draws. */
 export interface BlogPostSummaryRow extends Omit<BlogPostRow, 'content'> {
   comments_count?: number
+}
+
+/** A recycle-bin row: the management-list columns plus the moment the post was moved to the trash. */
+export interface BlogTrashRow extends BlogPostSummaryRow {
+  deleted_at: number
 }
 
 /** The body-free index row the note list reads (id, note and what the publish dialog needs). */

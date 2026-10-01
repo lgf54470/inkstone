@@ -289,6 +289,36 @@ describe('schema migrations and convergence', () => {
     ])
   })
 
+  it('adds the recycle-bin column to an installation that predates it', async () => {
+    const db = createD1Database()
+    await initializeDatabase(makeEnv(db))
+
+    // The shape an installation had before FEA-04: every declared column but `deleted_at`. The
+    // column carries the bin's index, so the index has to go before the column it names.
+    await runSql(db, 'DROP INDEX IF EXISTS idx_blog_posts_user_deleted')
+    await runSql(db, 'ALTER TABLE blog_posts DROP COLUMN deleted_at')
+    await runSql(
+      db,
+      `INSERT INTO blog_posts (id, slug, note_id, user_id, title, content, published_at, created_at, updated_at)
+        VALUES ('p-live', 'live-post', 'n-live', 'u', 'Live post', 'body', 10, 10, 10)`,
+    )
+    await runSql(db, 'DELETE FROM schema_migrations WHERE version >= 56')
+    await runSql(db, 'DELETE FROM app_meta WHERE key = ?1', DATABASE_STATE_KEY)
+
+    await initializeDatabase(makeEnv({ ...db }))
+
+    const columns = (await queryRows(db, 'PRAGMA table_info(blog_posts)')).map((row) => row.name as string)
+    expect(columns).toContain('deleted_at')
+    // A post that already existed is live, not in the bin, and keeps its text.
+    expect(await queryRows(db, 'SELECT id, title, deleted_at FROM blog_posts')).toEqual([
+      { id: 'p-live', title: 'Live post', deleted_at: null },
+    ])
+    expect(await queryFirst(
+      db,
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_blog_posts_user_deleted'",
+    )).toBeTruthy()
+  })
+
   it('rejects an incompatible schema if a required column is missing', async () => {
     const db = createD1Database()
     const env = makeEnv(db)

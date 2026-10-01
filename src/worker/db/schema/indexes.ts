@@ -1,4 +1,4 @@
-import { BLOG_POSTS_INDEX_STATEMENTS, BLOG_POSTS_ORDER_INDEX_STATEMENTS } from './blog-posts'
+import { BLOG_POSTS_INDEX_STATEMENTS, BLOG_POSTS_ORDER_INDEX_STATEMENTS, BLOG_POSTS_TRASH_INDEX_STATEMENTS } from './blog-posts'
 import { MUSIC_INDEX_STATEMENTS } from './music'
 
 /**
@@ -9,6 +9,7 @@ import { MUSIC_INDEX_STATEMENTS } from './music'
  */
 export const BLOG_ORDER_INDEX_STATEMENTS: readonly string[] = [
   ...BLOG_POSTS_ORDER_INDEX_STATEMENTS,
+  ...BLOG_POSTS_TRASH_INDEX_STATEMENTS,
   `CREATE INDEX IF NOT EXISTS idx_blog_links_user_order ON blog_links(user_id, is_pinned DESC, pinned_order ASC, sort_order ASC, created_at DESC)`,
 ]
 

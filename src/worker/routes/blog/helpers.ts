@@ -1,5 +1,5 @@
-import type { BlogComment, BlogCommentStatus, BlogPost, BlogPostIndexEntry, BlogPostSummary } from '@shared/types'
-import type { BlogCommentModerationRow, BlogPostIndexRow, BlogPostRow, BlogPostSummaryRow } from '../../db/rows'
+import type { BlogComment, BlogCommentStatus, BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogTrashEntry } from '@shared/types'
+import type { BlogCommentModerationRow, BlogPostIndexRow, BlogPostRow, BlogPostSummaryRow, BlogTrashRow } from '../../db/rows'
 
 /** The body-free shape every list and index answer shares; `toBlogPost` adds the body on top of it. */
 export function toBlogPostSummary(row: BlogPostSummaryRow): BlogPostSummary {
@@ -45,6 +45,11 @@ export function toBlogSeoFields(row: {
     seoCanonicalUrl: row.seo_canonical_url || '',
     seoNoindex: Boolean(row.seo_noindex),
   }
+}
+
+/** A recycle-bin row: the list's own shape plus when the post was thrown away. */
+export function toBlogTrashEntry(row: BlogTrashRow): BlogTrashEntry {
+  return { ...toBlogPostSummary(row), deletedAt: row.deleted_at }
 }
 
 export function toBlogPostIndexEntry(row: BlogPostIndexRow): BlogPostIndexEntry {

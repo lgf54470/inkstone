@@ -38,7 +38,7 @@ export function registerBlogPublicVisitBeaconRoute(blogPublicRoutes: Hono<AppBin
 
     if (counted) {
       await db
-        .prepare('UPDATE blog_posts SET views = views + 1 WHERE id = ?1 AND user_id = ?2')
+        .prepare('UPDATE blog_posts SET views = views + 1 WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL')
         .bind(row.id, ownerId)
         .run()
     }

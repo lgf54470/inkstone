@@ -30,7 +30,7 @@ export function blogPostFolderCountsStatement(db: D1Database, userId: string): D
             COUNT(*) AS total,
             COUNT(CASE WHEN is_published = 1 THEN 1 END) AS published
        FROM blog_posts
-      WHERE user_id = ?1 AND folder_id IS NOT NULL AND folder_id <> ''
+      WHERE user_id = ?1 AND deleted_at IS NULL AND folder_id IS NOT NULL AND folder_id <> ''
       GROUP BY folder_id`,
   ).bind(userId)
 }
@@ -58,7 +58,7 @@ export function blogPostTagCountsStatement(db: D1Database, userId: string): D1Pr
                 p.is_published AS published
            FROM blog_posts p
            JOIN json_each(CASE WHEN json_valid(p.tags) THEN (CASE WHEN json_type(p.tags) = 'array' THEN p.tags ELSE '[]' END) ELSE '[]' END) AS je
-          WHERE p.user_id = ?1
+          WHERE p.user_id = ?1 AND p.deleted_at IS NULL
        )
       WHERE name <> ''
       GROUP BY name`,

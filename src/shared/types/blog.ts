@@ -49,6 +49,14 @@ export interface BlogPost {
 export type BlogPostSummary = Omit<BlogPost, 'content'>
 
 /**
+ * A post in the recycle bin (FEA-04): the list row plus the moment it was deleted. The entry is the
+ * same shape the management list draws, so the bin shows what is waiting to come back.
+ */
+export interface BlogTrashEntry extends BlogPostSummary {
+  deletedAt: number
+}
+
+/**
  * The complete body-free view of an account's posts, keyed by the note each was published from. The
  * note list both badges a note with the post it owns and pre-fills the publish dialog from it, and a
  * paginated row list cannot answer for a note that sits on another page.
@@ -171,6 +179,8 @@ export interface BlogStats {
   totalPosts: number
   publishedPosts: number
   draftPosts: number
+  /** How many posts wait in the recycle bin; the sidebar badges the trash tab with it. */
+  trashedPosts: number
   pinnedPosts?: number
   totalViews: number
   totalComments: number

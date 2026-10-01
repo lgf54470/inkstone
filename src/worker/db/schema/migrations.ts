@@ -1,5 +1,5 @@
 import { BOARD_LIBRARY_DEFAULT_NAME } from '@shared/constants'
-import { BLOG_POSTS_SLUG_REBUILD_STATEMENTS } from './blog-posts'
+import { BLOG_POSTS_SLUG_REBUILD_STATEMENTS, BLOG_POSTS_TRASH_INDEX_STATEMENTS } from './blog-posts'
 import { BOARD_LIBRARY_TABLE_STATEMENTS } from './board-library'
 import { BLOG_ORDER_INDEX_STATEMENTS } from './indexes'
 import { MUSIC_LEGACY_REBUILD_STATEMENTS, MUSIC_PLAYBACK_MIGRATION_STATEMENTS, MUSIC_SCHEMA_STATEMENTS, MUSIC_SOURCE_MIGRATION_STATEMENTS, MUSIC_TAG_ORDER_MIGRATION_STATEMENTS, MUSIC_TAG_PARENT_MIGRATION_STATEMENTS, MUSIC_TAG_SCOPE_MIGRATION_STATEMENTS } from './music'
@@ -837,6 +837,20 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
        )`,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_blog_post_slugs_user_slug ON blog_post_slugs(user_id, slug)`,
       `CREATE INDEX IF NOT EXISTS idx_blog_post_slugs_post ON blog_post_slugs(post_id)`,
+    ],
+  },
+  // FEA-04: deleting a post moves it to a recycle bin instead of erasing it, so the row (with its
+  // comments, retired addresses and visit history) can come back. The column is appended the same way
+  // the SEO fields were — migration 52 keeps running exactly what it ran, and a database that reaches
+  // the declared shape first simply has the column. The guard asks about the column alone; the index
+  // is re-created on every boot from the declared index list, so a skipped migration is not a
+  // schema that lacks it.
+  {
+    version: 56,
+    skipIfColumnExists: { table: 'blog_posts', column: 'deleted_at' },
+    statements: [
+      `ALTER TABLE blog_posts ADD COLUMN deleted_at INTEGER`,
+      ...BLOG_POSTS_TRASH_INDEX_STATEMENTS,
     ],
   },
 ]

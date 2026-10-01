@@ -29,7 +29,10 @@ export function blogBatchStatements(
   now: number,
 ): BlogBatchStatement[] {
   const placeholders = postIds.map(() => '?').join(',')
-  const withIds = ` WHERE user_id = ? AND id IN (${placeholders})`
+  // Every batch action works on live posts only: a selection cannot reach a row the author cannot
+  // see, so a stale id in a request (or one restored elsewhere meanwhile) is a no-op rather than a
+  // silent write to the recycle bin.
+  const withIds = ` WHERE user_id = ? AND deleted_at IS NULL AND id IN (${placeholders})`
 
   switch (action) {
     case 'publish':
@@ -42,19 +45,9 @@ export function blogBatchStatements(
     case 'unpublish':
       return [{ sql: `UPDATE blog_posts SET is_published = 0, updated_at = ?${withIds}`, binds: [now, userId, ...postIds] }]
     case 'delete':
-      return [
-        // Comments have no owner column: both child deletes must land before the post rows go.
-        {
-          sql: `DELETE FROM blog_comments WHERE post_id IN (
-                  SELECT id FROM blog_posts WHERE user_id = ? AND id IN (${placeholders}))`,
-          binds: [userId, ...postIds],
-        },
-        { sql: `DELETE FROM blog_visits WHERE user_id = ? AND post_id IN (${placeholders})`, binds: [userId, ...postIds] },
-        // The retired addresses go with the posts: a redirect to a row that is gone would resolve to
-        // nothing, and the rows would sit in the table forever.
-        { sql: `DELETE FROM blog_post_slugs WHERE user_id = ? AND post_id IN (${placeholders})`, binds: [userId, ...postIds] },
-        { sql: `DELETE FROM blog_posts${withIds}`, binds: [userId, ...postIds] },
-      ]
+      // FEA-04: a batch delete moves the selection to the recycle bin. Nothing is erased here; the
+      // trash routes are the only place that really deletes.
+      return [{ sql: `UPDATE blog_posts SET deleted_at = ?, updated_at = ?${withIds}`, binds: [now, now, userId, ...postIds] }]
     case 'setCategory':
       return [{ sql: `UPDATE blog_posts SET category_id = ?, updated_at = ?${withIds}`, binds: [body.categoryId || null, now, userId, ...postIds] }]
     case 'setFolder':
@@ -64,4 +57,26 @@ export function blogBatchStatements(
     default:
       return []
   }
+}
+
+/**
+ * The statements that really erase posts: the recycle bin's purge, which erases whatever the post
+ * owned before the row itself goes. Order matters — `blog_comments` has no owner column, so the
+ * delete has to ask `blog_posts` who owned the post while the row is still there.
+ */
+export function blogPurgeStatements(userId: string, postIds: string[]): BlogBatchStatement[] {
+  const placeholders = postIds.map(() => '?').join(',')
+  const withIds = ` WHERE user_id = ? AND id IN (${placeholders})`
+  return [
+    {
+      sql: `DELETE FROM blog_comments WHERE post_id IN (
+              SELECT id FROM blog_posts WHERE user_id = ? AND id IN (${placeholders}))`,
+      binds: [userId, ...postIds],
+    },
+    { sql: `DELETE FROM blog_visits WHERE user_id = ? AND post_id IN (${placeholders})`, binds: [userId, ...postIds] },
+    // The retired addresses go with the posts: a redirect to a row that is gone would resolve to
+    // nothing, and the rows would sit in the table forever.
+    { sql: `DELETE FROM blog_post_slugs WHERE user_id = ? AND post_id IN (${placeholders})`, binds: [userId, ...postIds] },
+    { sql: `DELETE FROM blog_posts${withIds}`, binds: [userId, ...postIds] },
+  ]
 }

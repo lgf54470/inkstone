@@ -51,7 +51,9 @@ interface BlogCommentsFilter {
  */
 function blogCommentsWhere(userId: string, filter: BlogCommentsFilter, includeStatus: boolean): { clause: string; params: unknown[] } {
   const { status, postId, search } = filter
-  let clause = 'p.user_id = ?1'
+  // Comments of a trashed post leave the moderation list with it: the comment is waiting on a post
+  // the author already put away, and the bin restores both together.
+  let clause = 'p.user_id = ?1 AND p.deleted_at IS NULL'
   const params: unknown[] = [userId]
   let idx = 2
 
@@ -146,7 +148,7 @@ function registerBlogCommentDeleteRoute(blogManageRoutes: Hono<AppBindings>): vo
 
 async function assertOwnedBlogComment(db: D1Database, id: string, userId: string): Promise<void> {
   const comment = await db
-    .prepare('SELECT c.id FROM blog_comments c JOIN blog_posts p ON c.post_id = p.id WHERE c.id = ?1 AND p.user_id = ?2')
+    .prepare('SELECT c.id FROM blog_comments c JOIN blog_posts p ON c.post_id = p.id WHERE c.id = ?1 AND p.user_id = ?2 AND p.deleted_at IS NULL')
     .bind(id, userId)
     .first()
   if (!comment) throw ApiError.notFound('Comment not found')
@@ -184,13 +186,13 @@ function registerBlogCommentsBatchRoute(blogManageRoutes: Hono<AppBindings>): vo
         ? c.env.DB.prepare(`
             DELETE FROM blog_comments
             WHERE id IN (${chunk.map((_, i) => `?${i + 2}`).join(',')})
-            AND post_id IN (SELECT id FROM blog_posts WHERE user_id = ?1)
+            AND post_id IN (SELECT id FROM blog_posts WHERE user_id = ?1 AND deleted_at IS NULL)
           `).bind(userId, ...chunk)
         : c.env.DB.prepare(`
             UPDATE blog_comments
             SET status = ?1
             WHERE id IN (${chunk.map((_, i) => `?${i + 3}`).join(',')})
-            AND post_id IN (SELECT id FROM blog_posts WHERE user_id = ?2)
+            AND post_id IN (SELECT id FROM blog_posts WHERE user_id = ?2 AND deleted_at IS NULL)
           `).bind(targetStatus, userId, ...chunk)
       await statement.run()
     }

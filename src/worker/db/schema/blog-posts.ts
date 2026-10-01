@@ -9,11 +9,11 @@
  * exactly the shape the running schema declares. Both therefore come from the constants below
  * rather than from a statement written twice.
  *
- * Columns added after the rebuild (the per-post SEO fields, FEA-02) are appended to the declared
- * shape and replicated by their own `ALTER TABLE` migration with a `skipIfColumnExists` guard: a
- * database that has not run the rebuild yet gets them from the declared shape here, one that has gets
- * them from the migration. The rebuild's `INSERT … SELECT` names the columns it copies, so appended
- * ones simply take their defaults.
+ * Columns added after the rebuild (the per-post SEO fields of FEA-02 and the `deleted_at` of
+ * FEA-04) are appended to the declared shape and replicated by their own `ALTER TABLE` migration with
+ * a `skipIfColumnExists` guard: a database that has not run the rebuild yet gets them from the
+ * declared shape here, one that has gets them from the migration. The rebuild's `INSERT … SELECT`
+ * names the columns it copies, so appended ones simply take their defaults.
  */
 export const BLOG_POSTS_TABLE_STATEMENT = `CREATE TABLE IF NOT EXISTS blog_posts (
       id TEXT PRIMARY KEY,
@@ -38,7 +38,8 @@ export const BLOG_POSTS_TABLE_STATEMENT = `CREATE TABLE IF NOT EXISTS blog_posts
       seo_description TEXT NOT NULL DEFAULT '',
       seo_image_url TEXT NOT NULL DEFAULT '',
       seo_canonical_url TEXT NOT NULL DEFAULT '',
-      seo_noindex INTEGER NOT NULL DEFAULT 0
+      seo_noindex INTEGER NOT NULL DEFAULT 0,
+      deleted_at INTEGER
     )`
 
 export const BLOG_POSTS_INDEX_STATEMENTS: readonly string[] = [
@@ -47,6 +48,15 @@ export const BLOG_POSTS_INDEX_STATEMENTS: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_blog_posts_note ON blog_posts(note_id)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_posts_category ON blog_posts(category_id)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_posts_folder ON blog_posts(user_id, folder_id)`,
+]
+
+/**
+ * The trash's own index (FEA-04): the recycle bin lists one account's deleted posts newest-first,
+ * and every live read filters `deleted_at IS NULL`, so both reach their rows through the account
+ * prefix instead of scanning it.
+ */
+export const BLOG_POSTS_TRASH_INDEX_STATEMENTS: readonly string[] = [
+  `CREATE INDEX IF NOT EXISTS idx_blog_posts_user_deleted ON blog_posts(user_id, deleted_at DESC)`,
 ]
 
 /**
