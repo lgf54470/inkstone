@@ -257,7 +257,7 @@ function publishPlan(slide: number, plan: SlidePlan, { deck, hostRef, cacheKeys,
   // The capture is markup the same blocks were drawn into, so it keeps the bodies those blocks
   // read from — the ones the canvas was rendering — rather than a string whose fences are empty.
   const markup = key === undefined ? undefined : readSlideHtml(key)
-  if (html && key && markup) rememberSlideHtml(key, { html, fences: markup.fences })
+  if (html && key && markup) rememberSlideHtml(key, { html, fences: markup.fences, layout: markup.layout })
   const source = deck[slide] ?? ''
   rememberSlidePlan(hashContent(source), plan)
   onPlan(slide, plan)

@@ -33,7 +33,10 @@ export function buildDeckPages(
     const markup = readSlideHtml(cacheKeys[entry.slide] ?? '') ?? slideMarkup(renderSlideSource(deck[entry.slide] ?? '', externalImages))
     const plan = plans[entry.slide]
     if (!plan) return markup
-    return { html: slicePageHtml(markup.html, plan, entry.sub, metrics.contentWidth, metrics.contentHeight), fences: markup.fences }
+    // The plan carries the layout: a slide the projector laid out as flow prints as flow, and one it
+    // kept as columns prints in its columns, because the page numbers both surfaces walk are the
+    // ones that plan measured.
+    return { html: slicePageHtml(markup.html, plan, entry.sub, metrics.contentWidth, metrics.contentHeight), fences: markup.fences, layout: plan.layout }
   })
 }
 
@@ -63,7 +66,7 @@ function DeckSheet({ sheetRef, pages, metrics, font }: DeckSheetProps & { sheetR
         // own blocks were rendered from, which the snapshot draw below looks up by walking up.
         <div key={index} className='deck-print-page' ref={(node) => { if (node) registerFenceBodies(node, page.fences) }}>
           <div className='deck-print-body ink-slide'>
-            <SlideProse html={page.html} contentWidth={metrics.contentWidth} font={font} />
+            <SlideProse html={page.html} contentWidth={metrics.contentWidth} contentHeight={metrics.contentHeight} font={font} layout={page.layout} />
           </div>
         </div>
       ))}

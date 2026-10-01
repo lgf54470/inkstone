@@ -72,6 +72,9 @@
   "src/client/features/presentation/slide-overview-grid.test.ts": {
     "longFns": 1
   },
+  "src/client/features/presentation/slides.test.ts": {
+    "longFns": 1
+  },
   "src/client/features/presentation/use-presentation-keys.test.ts": {
     "longFns": 1
   },

@@ -102,6 +102,31 @@ describe('buildDeckPages — the fence bodies a page carries', () => {
   })
 })
 
+describe('buildDeckPages — the layout a printed page keeps', () => {
+  it('prints a column slide in the columns the projector measured it in', () => {
+    const columns: SlidePlan = { pages: [{ from: 0, to: 4, top: 0 }], scales: [1, 1, 1, 1], layout: 'split' }
+    const pages = buildDeckPages(deck, cacheKeys, { 0: columns }, METRICS, false)
+    expect(pages[0]!.layout).toBe('split')
+    expect(pages[0]!.html).toBe(FIRST)
+  })
+
+  it('prints the flow layout the projector fell back to, not the switch the slide asked for', () => {
+    // The prepared markup carries `split` because that is what the author wrote; the plan carries
+    // nothing because that is what the projector measured. A page that printed the columns anyway
+    // would slice its pages out of a geometry the show never used.
+    rememberSlideHtml(cacheKeys[0], { html: FIRST, fences: FIRST_BODIES, layout: 'split' })
+    const pages = buildDeckPages(deck, cacheKeys, { 0: PAGINATED }, METRICS, false)
+    expect(pages[0]!.layout).toBeUndefined()
+    expect(pages[1]!.layout).toBeUndefined()
+  })
+
+  it('keeps the switch for a slide the show never measured', () => {
+    rememberSlideHtml(cacheKeys[1], { html: SECOND, fences: SECOND_BODIES, layout: 'cover' })
+    const pages = buildDeckPages(deck, cacheKeys, {}, METRICS, false)
+    expect(pages[1]!.layout).toBe('cover')
+  })
+})
+
 describe('saveDeckPages — streaming progress', () => {
   it('reports progress incrementally for each page', async () => {
     const root = document.createElement('div')
@@ -227,5 +252,36 @@ describe('DeckImageSheet — what the export leaves behind', () => {
     await flush(20)
     expect(deckImage.renderDeckPagePng).not.toHaveBeenCalled()
     expect(onDone).not.toHaveBeenCalled()
+  })
+})
+
+// The sheet is a portal on `document.body`, so the reads below go to the document, and each test
+// takes its own sheet back down: a sheet a failed assertion left up would be read by the next one.
+describe('DeckSheet — the layout a printed page is drawn in', () => {
+  it('draws the page in the layout the plan was measured with, not the switch the slide carries', async () => {
+    stubFonts()
+    rememberSlideHtml(cacheKeys[0], { html: FIRST, fences: FIRST_BODIES, layout: 'split' })
+    const columns: SlidePlan = { pages: [{ from: 0, to: 4, top: 0 }], scales: [1, 1, 1, 1], layout: 'split' }
+    const refused: SlidePlan = { pages: [{ from: 0, to: 4, top: 0 }], scales: [1, 1, 1, 1] }
+    const pages = buildDeckPages(deck, cacheKeys, { 0: columns }, METRICS, false)
+    const view = renderElement(createElement(DeckImageSheet, { pages, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone: vi.fn() }))
+    const drawn = await until(() => document.querySelectorAll('.deck-print-page').length === pages.length)
+    try {
+      expect(drawn).toBe(true)
+      expect(document.querySelector('.deck-print-page [data-slide-page]')?.className).toContain('ink-slide-split')
+    }
+    finally {
+      view.unmount()
+    }
+    const fell = buildDeckPages(deck, cacheKeys, { 0: refused }, METRICS, false)
+    const second = renderElement(createElement(DeckImageSheet, { pages: fell, metrics: METRICS, font: 'sans', dark: false, title: 'deck', onDone: vi.fn() }))
+    const redrawn = await until(() => document.querySelectorAll('.deck-print-page').length === fell.length)
+    try {
+      expect(redrawn).toBe(true)
+      expect(document.querySelector('.deck-print-page [data-slide-page]')?.className).not.toContain('ink-slide-split')
+    }
+    finally {
+      second.unmount()
+    }
   })
 })

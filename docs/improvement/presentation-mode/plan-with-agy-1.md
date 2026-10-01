@@ -20,7 +20,7 @@
 | **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
 | **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[x]` 已完成 (`bbe158b8` ~ `c6426131`) |
 | **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[x]` 已完成 (`5f02e2d4` ~ `decd0c8d`，B3-01 ~ B3-12) |
-| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 `6888b30f`；B4-02 `e7cf8aba`；B4-11 `3d163856`；B4-03 已提交，其哈希由下一提交回填；余 B4-04、B4-05 与台账 B4-06 ~ B4-12） |
+| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 `6888b30f`；B4-02 `e7cf8aba`；B4-11 `3d163856`；B4-03 `13997681`；B4-04 已提交，其哈希由下一提交回填；余 B4-05 与台账 B4-06 ~ B4-13） |
 
 ---
 
@@ -178,7 +178,7 @@
     - 静态门禁：`size:check`（抽出后 491 行 / 无长函数）、`comments:check`（重建白名单 12732 条 / 1340 文件，双向通过）、`style/escape/empty-catch/hardcoded/tokens/i18n/module-state/deep-imports/surfaces/vendor` 全绿。CSS 依既有政策不带注释，激光样式的读法（拖尾只差时长、离屏停靠不算状态、`pointer-events` 让出点击、reduce 下取消脉冲而非缩短）写在 `presentation-pointer.tsx` 头部注释里。
     - i18n：无新增用户可见文案（README 属文档，不是资源键），`i18n:check` 通过。
 
-- [x] **B4-03** `P-26 (FEAT-06)`: 全局幻灯片全览网格矩阵 (Overview Grid) — 已完成（哈希由下一提交回填）
+- [x] **B4-03** `P-26 (FEAT-06)`: 全局幻灯片全览网格矩阵 (Overview Grid) — 已完成 (`13997681`)
   - 涉及文件：新增 `src/client/features/presentation/slide-overview-grid.tsx` + `.test.ts`、`slide-thumb.tsx`、`use-presentation-session.ts`；改 `presentation-overlay.tsx`（489→131 行）、`presentation-stage.tsx`、`presentation-controls.tsx` + `.test.ts`、`presentation-keys.ts` + `.test.ts`、`presentation-state.ts` + `.test.ts`、`use-presentation-keys.ts` + `.test.ts`、`use-dialog-behavior.ts`、`slide-rail.tsx`（346→194 行）+ `.test.ts`、`slide-cache.test.ts`、`src/client/components/overlay/hooks.ts` + `.test.ts`、`src/client/styles/presentation.css`、`src/shared/locales/{en-US,zh-CN}/workspace.ts`、`scripts/e2e-visual.mjs`、`tests/fullscreen-policy.test.ts`、`README.md`、`README_ZH.md`、`scripts/check-comments.mjs`、`scripts/check-size.baseline.json`
   - 目标：按 `G` 或 `O` 在幻灯片之上铺开整份 deck 的页卡矩阵，方向键按行漫游、`Enter` 或单击跳页，问答阶段一眼定位；矩阵收起后键盘回到打开它的那个控件，`Esc` 阶梯先收矩阵而不代价整场放映。
   - 方案：
@@ -212,11 +212,36 @@
     - 整份 deck 的卡片共用的那**一个** IntersectionObserver 是从 `slide-rail.tsx`（提交 `9cc8bf05`）搬进 `slide-thumb.tsx` 的；本批只是让它同时服务侧栏与矩阵，「全场景只有一个 observer、退订后回调不再触发」至今没有单测钉住——记为 B4-12。
     - `presentation-stage.tsx` 的 `inert={occluded}` 只由浏览器行 `the slide and the pill are out of reach behind the matrix` 守着：jsdom 不做命中测试、也不让 `inert` 阻断聚焦，单测最远只能断言属性在。
     - `waitForRailFilled` 的两读诊断（`slide list never finished {"before":…,"after":…}`）是 B4-11 期间定位「导出页饿死量测」用的，随本批进入 `e2e-visual.mjs`。
-- [ ] **B4-04** `P-27 (FEAT-08)`: 封面居中与双栏排版模板
-  - 涉及文件：`src/client/features/presentation/slide-prose.tsx`、`src/client/styles/presentation.css`
-  - 目标：支持 `<!-- layout: cover -->` 首页垂直水平双向居中，以及 `::: two-columns` 双栏排版。
-  - 方案：识别版式元数据，向 `SlideProse` 容器注入对应的布局 CSS 类，丰富大屏视觉层级。
-  - 验证：单元测试验证包含封面与双栏标记的内容正确挂载对应 class，无样式冲突。
+- [x] **B4-04** `P-27 (FEAT-08)`: 封面居中与双栏排版模板 — 已完成（哈希由下一提交回填）
+  - 涉及文件：`src/client/features/presentation/slides.ts` + `.test.ts`、`slide-html.ts`、`slide-prose.tsx`、`slide-pagination.ts` + `.test.ts`、`slide-canvas.tsx`、`slide-thumb.tsx`、`slide-rail.tsx`、`slide-overview-grid.tsx`、`deck-print.tsx` + `.test.ts`、`use-slide-html.ts`、`slide-preflight.tsx`、新增 `slide-layout.test.ts`、`src/client/styles/presentation.css`、`README.md`、`README_ZH.md`、`scripts/e2e-visual.mjs`、`scripts/check-comments.mjs`、`scripts/check-size.baseline.json`
+  - 目标：`<!-- layout: cover -->` 把该页作封面垂直与水平双向居中，`<!-- layout: split -->` 把该页排成左右等宽两栏；侧栏卡、全览矩阵、打印页与 PNG 导出画的是放映**量出来**的同一种版式。
+  - 方案：
+    1. 开关在渲染时由 `takeLayoutDirective` 从 slide 源里取出并带走整行（连同它上面那个空行，否则原地留一个洞）。值表 `LAYOUT_VALUES` 认 `cover`/`split`/`two-columns`，允许 ≤3 空格缩进，只读该页第一条；栅栏内的开关原样留在正文。开关绝不进 markup——`renderer/index.ts` 的 `html: true` 会把认不得的开关原样发成注释节点，放映上就是一处源码泄漏，而"第二条开关不生效"正是这条规则的必然结果。
+    2. 版式沿 `SlideRender → SlideMarkup → SlidePlan` 一路带下去：缓存条目带 `layout`，量测把版式写进 plan，各表面读 plan 的版式而不是作者的开关。
+    3. 分页归 `planSlidePages(blocks, contentHeight, layout)`：`split` 一律整页——两栏靠"平衡"而不是"顺序流"装页，按页首去切会把并排的块隐掉；`cover` 与无版式照旧分页（封面正文超页时也得分页，否则裁掉）。
+    4. 两栏是"装得下"的手段，不是"慢一点溢出"的手段：`slideLayoutForFit` 在栏式下读 host 自身高度（即较高那栏），超过一页就把版式退回流式，交还给能走到每个块的分页那条路。
+    5. **量测自己强制几何**：`readSlideGeometries` 先摘掉 cover/split 读流式块位，再加上 split 读栏高，摘掉后才出 plan，最后由 plan 决定留哪个类。
+  - 与草案的偏差：
+    1. **不做"首页含一级标题就自动当 cover"**：草案把自动识别与显式开关并列。自动识别等于同一条排版在两处各判一次，且作者无法否决；只认显式开关。
+    2. **不做 `::: two-columns` 容器语法**：仓库没有 markdown-it-container，为一条排版加依赖要过供应链审查（铁律 8），`:::` 还要与既有代码栅栏、备注语法重定优先级。`<!-- layout: two-columns -->` 作为 `split` 的同义拼写把草案想要的名字覆盖了。
+    3. **类名走既有前缀** `ink-slide-cover`/`ink-slide-split`，不是草案的 `slide-layout-cover`（与 `.ink-slide-rail-thumb`、`.ink-slide-thumb` 同源）。
+    4. **版式是量出来的，不是写出来的**：比草案的"识别标记→挂类"多一层拒绝机制，因为两栏一旦超页，照草案挂类就是把内容裁掉。
+    5. **卡跟放映走**：`usePageHtml` 的版式取值定为 `plan ? plan.layout : markup.layout`——没量过的页按作者的话画，量过的页按放映真正画过的几何切片；打印侧 `deck-print.tsx` 早已取 `plan.layout`，本批把两处对齐。
+    6. **cover 的居中靠它自己那一页的高度**：flex 居中需要可分配空间，故 `SlideProse` 只在 cover 上写内联 `minHeight: contentHeight`（运行时几何值，符合铁律 12 的例外）；split 不写，因为它的块高正是量测要读的东西。
+  - 验证：
+    - 先红（红在放映自己身上）：把"读块之前先摘掉类"那行删掉（M9）后，同实例 `:7770` 探针在 20s 内 7 次采样读到 `data-slide-list-complete` 恒为 `false`、后台量测一直卡在最后一张；修复后同一 deck 约 2s 内翻真，页序读数 `[1,1,5,1]`。同张被拒两栏的 slide 在卡上画 4 个块、在放映那一页是 6 个块——两处不同幅，正是这条耦合的可观测后果。
+    - 先红（红在优先级上）：`usePageHtml` 的取值退回 `markup.layout` 后本目录单测 1 失败 / 13 通过（`follows the projector onto the flow layout when its columns were refused`），浏览器读到该页 `marked` 已是流式而 `cardMarked` 仍写 `ink-slide-split`。
+    - 先红（红在拒绝机制上）：把栏高读数钉成 0（M10，等于"永远接受两栏"）后探针读到那张页 `marked` 含 `ink-slide-split`、`pageFraction 3.333`、`pages 1`、`cardMarked` 含 split，整份 deck 的页数读数退回 `[1,1,1,1]`——正是 `layout: a slide whose columns overflow the page goes back to the flow layout`、`layout: the slide the columns could not hold is paged instead of cut off`、`layout: the slide list draws the layout the projector drew` 三行所拒绝的状态。
+    - 单元：新增 `slide-layout.test.ts` 14 例（开关进出、栅栏内不动、缓存条目带版式、列式页的卡切片、`usePageHtml` 三条优先级、cover 的类与 minHeight、split 的类）；`slide-pagination.test.ts` 19 例（split 整页、装不下则拒、无开关不受影响、`samePlan` 把版式变化算成新 plan）；`slides.test.ts` 65 例（含 `takeLayoutDirective` 13 例）；`deck-print.test.ts` 15 例（打印页与画页保留量测到的版式）。放映目录 + overlay 组件 **23 文件 / 283 例**通过（B4-03 时为 22 文件 / 246 例）；全量 `npm run test:unit` **612 文件 / 5499 通过 + 1 跳过 / 0 失败**（默认并发下 3~5 条与演示无关的重 jsdom 用例超 5s 阈值，逐条单跑全绿；`--maxWorkers=4 --testTimeout=20000` 全绿，见文末「全量单元测试基线说明」）；`npm run typecheck` 通过。
+    - 变异：单元 8 项全部被**具名用例**杀死（跑前基线 4 文件 / 113 例 rc=0，跑完按 `cmp` 校验 5 个源文件逐字节复原）——`slideLayoutForFit` 永不拒绝（M1）/ 把列式当 cover 那样整页打包（M2）/ `samePlan` 不比版式（M3）/ 栅栏内开关也算数（M4）/ 一切已知值都答 cover（M5）/ cover 不给它要居中的那一页（M6）/ 打印页丢掉量测版式（M7）/ 卡按作者的话画（M8）。浏览器 2 项（M9、M10）见上面三条先红；它们杀不掉任何单测，因为 jsdom 不做布局，`offsetTop/offsetHeight` 恒为 0——几何耦合只能由浏览器读出来。
+    - 浏览器：全新实例 `:7770`，先 `scripts/e2e.mjs` **177 通过 / 0 失败**（建出门禁登录用的 Owner-1），再 `scripts/e2e-visual.mjs` **722 通过 / 7 失败（729 行）**，B4-03 基线为 710/7（717 行），差值正是本批新增 12 行 `layout:`，7 条失败与本树 B4-09 清单逐条同名。新增读数：cover `columnCount auto`、`centredColumn true`、`gapTop=gapBottom=216`、`pageFraction 0.878`；装得下的 split `columnCount 2`、`lefts 2`、`pages 1`、`0.841`；被拒的 split `columnCount auto`、`pages 5`、`3.697` 且二次读数逐字段相同；无开关页 `pages 1`、`0.383`；四页 `straySwitch false`。
+    - 静态门禁：`typecheck` 与 13 项自定义门禁全绿；注释白名单 **1349 文件 / 12977 条**；size 基线新增 `slides.test.ts` 一项（`describe('takeLayoutDirective')` 回调 57 行，与本树既有 25 条同类测试豁免一致）。
+    - CSS 不带注释：`scripts/check-comments.mjs` 的 `scanCss` 对任何 CSS 注释一律拒绝且没有白名单通道，故三条排版规则的读法写在 `slide-prose.tsx` 与 `slide-pagination.ts` 的 TS 注释里。
+    - i18n：无新增用户可见文案（README 属文档，不是资源键），`i18n:check` 通过。
+  - 顺带记录：
+    - **本批的浏览器场景自己带过一个缺陷**：`assertSlideLayouts` 收尾只按一次 `Escape`。放映会取原生全屏，第一把 `Escape` 只把全屏交还浏览器、面板仍在，于是其后每个场景的"读 DOM"照旧通过（面板与笔记并列而非取而代之）、第一次真实指针点击被遮罩吃掉——实测两次运行都崩在下一个场景 `pickMindmapPalette` 等 `[role="menu"] [role="menuitemcheckbox"]`（15s 超时）。改为按两把并断言"面板确实没了、全屏确实退了"（新增第 12 行 `layout: the show is put away before the next scenario reaches for the pointer`），并用一次性探针读到 `after 1 Escape {dialog:"演示模式",canvas:true,fullscreen:null}`、`after 2 Escape {dialog:null,canvas:false}`、可点按钮覆盖数 0。结论：任何开过放映的场景都必须自己断言收尾，不能只按一下。
+    - `waitForRailFilled` 在量测永不收尾时是"整场门禁崩在这里"而不是"红一行"（它抛 `slide list never finished {"before":…,"after":…}`）。这条诊断（B4-11 加的）本批用它定位了 M9，值得保留，但它意味着任何让量测无法收尾的改动都会伪装成门禁崩溃。
+    - 本机默认并发下超 5s 的既有用例不止 blog 一条：本轮实测 `blog-comments-window`、`music-track-table`、`music-hub-modal`、`tests/radiogroup-names`、`tests/starter-deck-render` 五条按运行轮换超时，单跑 1.3~2.3s 全绿；对 `git archive HEAD` 快照单跑 `tests/starter-deck-render.test.ts` 得 1351ms，本树同法 1575ms，同量级，故与本批无关。文末基线说明按本轮更新。
 - [ ] **B4-05** `P-28 (FEAT-02)`: 独立双屏演讲者模式 (Presenter View)
   - 涉及文件：新增 `src/client/features/presentation/presenter-view/presenter-window.tsx`、`src/client/features/presentation/presenter-view/use-presenter-channel.ts`
   - 目标：双屏独立输出，讲者窗口独立展示当前页、下一页预览、私有小抄与时钟。
@@ -258,6 +283,10 @@
 - [ ] **B4-12** 测试缺口: 全缩略图共用那一个观察者无人钉
   - 现象：`slide-thumb.tsx` 的模块级 `sharedThumbObserver` + `thumbObserverCallbacks`（预取边距 `THUMB_PREFETCH_MARGIN = '320px'`）是提交 `9cc8bf05` 在 `slide-rail.tsx` 里建的，本批 B4-03 把它随缩略图一起提为共用，于是侧栏与矩阵**共用同一个**观察者。「一张列表一个观察者」与「列表全部卸载后回调不再触发、且 `thumbObserverCallbacks` 不留下已 detached 的元素」两条都只由实现读得出，没有任何断言守着；把它改回每卡一个 observer（正是当初要修掉的惊群）会静默通过现有全部测试。
   - 方案：把观察者的创建收进可注入的工厂（或暴露一个只读的创建计数），断言一整个挂载/卸载周期内创建数为 1、退订后回调不再触发、映射表随退订清空；侧栏与矩阵同场时仍为 1。属测试补强，不在功能提交里夹带（铁律 14）。
+- [ ] **B4-13** 待查: 缩略图预取的 rootMargin 够不到被侧栏裁掉的卡
+  - 由来：一条经远程频道转来的"缺陷确认"要求把 `slide-thumb.tsx` 的 `THUMB_PREFETCH_MARGIN = '320px'` 改成 `'0px 0px 320px 0px'`，理由是"四值简写在垂直滚动容器里不生效"。**该理由不成立**：`320px` 是合法简写，四边各扩 320px，已包含下方 320px；改成只留下边只是把上/左/右的预取收窄，不解决任何东西。该行也不在本批 diff 内（`git diff` 无 `THUMB_PREFETCH` 的 `+/-` 行，常量随 `13997681` 从 `slide-rail.tsx` 搬来、原建于 `9cc8bf05`）。
+  - 真实机制（读代码得出，未实测）：观察者建在 `root` 缺省（视口）上，而侧栏自己是 `overflow-y-auto` 的中间滚动容器（`slide-rail.tsx:115`）。IntersectionObserver 的相交矩形要按祖先滚动盒逐层裁剪，`rootMargin` 只扩根矩——被侧栏裁到零矩的卡永远不会 `isIntersecting`，四边扩 320px 也够不到它。于是"预取"实际只在卡进入侧栏可见框那一刻生效。
+  - 方案（若确要预取）：把观察者建时带上 `root: <侧栏滚动盒>` 并配下方 margin；同时给"共用一个观察者"补断言（B4-12），两者一起改才谈得上可验证。属独立项，不在功能提交里夹带（铁律 14）。
 
 ---
 
@@ -265,7 +294,8 @@
 
 `npm run test:unit` 在本工作机上存在**与演示模式无关**的负载敏感超时，非本分支引入：
 
-- `src/client/features/blog/blog-comments-window.test.ts` > `mounts one page of rows and grows on demand`：250 行渲染超 5000ms 阈值。
-- 已在纯净快照（`git archive HEAD | tar -x -C /tmp/snap-base` + 软链 `node_modules`）复现同一失败，故与本分支改动无关。
-- 处置：每批次提交仍跑全量套件并逐条比对失败清单，只判定「新增失败」；不夹带修复（AGENTS.md 铁律 14）。若后续需根治，应单独提交提高该用例超时或缩减 fixture 行数。
+- 本轮（B4-04，2026-10-01）默认并发四跑实测：第一跑 1 条、第二跑 5 条、第三跑 3 条、降并发跑 0 条，失败名单在各跑之间**轮换**而非固定，全为重 jsdom 渲染用例：`blog-comments-window`（`mounts one page of rows and grows on demand`）、`music-track-table`（`mounts one page of cards for a library nobody searched`）、`music-hub-modal`（`says how many matches the capped grid leaves out`）、`tests/radiogroup-names`（两条）、`tests/starter-deck-render`（一条）。
+- 五条同场单跑 **5 文件 / 51 例全绿**，最慢一条 2333ms（阈值 5000ms）；同机并发时它们报到 5161~14850ms。本机常驻第三方 GUI 进程（一次 `ps` 采样 `%CPU` Lifetime 均值 73.6 与 61.5）+ `vite`/`vitest` 自身把 16 核占满，是这些固定开销被放大的来源。
+- 与分支改动无关的对照：`git archive HEAD` 快照单跑 `tests/starter-deck-render.test.ts` 为 **1351ms**，本树同法 **1575ms**（同量级，未测出本批带来的额外开销）。
+- 处置：每批次提交仍跑全量套件并逐条比对失败清单，只判定「新增失败」；不夹带修复（AGENTS.md 铁律 14）。为拿到一次可读的全量结论，允许在同树同内容下降并发并放宽单例预算复跑一次，命令与结果须如实写明（本批为 `npx vitest --config vitest.config.ts run --maxWorkers=4 --testTimeout=20000` → 612 文件 / 5499 通过 + 1 跳过 / 0 失败）。若后续需根治，应单独提交提高这些用例的超时或缩减 fixture 行数。
 

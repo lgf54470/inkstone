@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findSlideIndexByOffset, splitIntoSlides, splitIntoSlidesWithNotes } from './slides'
+import { findSlideIndexByOffset, splitIntoSlides, splitIntoSlidesWithNotes, takeLayoutDirective } from './slides'
 
 describe('splitIntoSlides — separators and code fences', () => {
   it('returns the whole note as a single slide when there is no separator', () => {
@@ -297,3 +297,62 @@ describe('findSlideIndexByOffset — heading decks', () => {
     }
   })
 })
+
+describe('takeLayoutDirective', () => {
+  it('reads `<!-- layout: cover -->` as the slide’s switch and takes it out of the body', () => {
+    expect(takeLayoutDirective('<!-- layout: cover -->\n\n# Title')).toEqual({ body: '# Title', layout: 'cover' })
+  })
+
+  it('reads `split` as the switch the two-column layout is', () => {
+    expect(takeLayoutDirective('<!-- layout: split -->\n\n# A').layout).toBe('split')
+  })
+
+  it('reads `two-columns` as the same switch as `split`', () => {
+    expect(takeLayoutDirective('<!-- layout: two-columns -->\n\n# A').layout).toBe('split')
+  })
+
+  it('reads the switch whatever case the value is written in', () => {
+    expect(takeLayoutDirective('<!-- layout: COVER -->\n\n# A').layout).toBe('cover')
+  })
+
+  it('reads a switch written tight against the comment markers, with no spaces', () => {
+    expect(takeLayoutDirective('<!--layout:cover-->\n\n# A')).toEqual({ body: '# A', layout: 'cover' })
+  })
+
+  it('leaves a switch indented by four spaces in the body, since markdown reads it as code', () => {
+    expect(takeLayoutDirective('# A\n\n    <!-- layout: cover -->')).toEqual({ body: '# A\n\n    <!-- layout: cover -->', layout: undefined })
+  })
+
+  it('leaves a switch inside a code fence in the body, so the syntax can be demonstrated', () => {
+    const source = '# A\n\n```md\n<!-- layout: cover -->\n```\n\n# B'
+    expect(takeLayoutDirective(source)).toEqual({ body: source, layout: undefined })
+  })
+
+  it('consumes only the first switch, so a second one stays where it was written', () => {
+    expect(takeLayoutDirective('<!-- layout: cover -->\n\n# A\n\n<!-- layout: split -->')).toEqual({ body: '# A\n\n<!-- layout: split -->', layout: 'cover' })
+  })
+
+  it('takes the blank line above a switch with it, so the body keeps no hole', () => {
+    expect(takeLayoutDirective('# A\n\npoint\n\n<!-- layout: cover -->\n\nmore').body).toBe('# A\n\npoint\n\nmore')
+  })
+
+  it('leaves a layout value the projector does not know as the prose it is', () => {
+    const source = '# A\n\n<!-- layout: gallery -->'
+    expect(takeLayoutDirective(source)).toEqual({ body: source, layout: undefined })
+  })
+
+  it('leaves a line that carries prose after the closing marker as prose', () => {
+    const source = '# A\n\n<!-- layout: cover --> and the rest of the line'
+    expect(takeLayoutDirective(source)).toEqual({ body: source, layout: undefined })
+  })
+
+  it('does not read a front matter `layout:` key as a switch', () => {
+    const source = '---\nlayout: cover\n---\n\n# A'
+    expect(takeLayoutDirective(source)).toEqual({ body: source, layout: undefined })
+  })
+
+  it('leaves a slide that carries no switch alone', () => {
+    expect(takeLayoutDirective('# A\n\npoint')).toEqual({ body: '# A\n\npoint', layout: undefined })
+  })
+})
+

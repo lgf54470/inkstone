@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { planSlidePages, resolvePageIndex, type SlideBlock } from './slide-pagination'
+import { planSlidePages, resolvePageIndex, samePlan, slideLayoutForFit, type SlideBlock, type SlidePlan } from './slide-pagination'
 
 function stack(entries: [number, boolean?][]): SlideBlock[] {
   let top = 0
@@ -72,6 +72,44 @@ describe('planSlidePages — oversized blocks', () => {
     const plan = planSlidePages(stack([[10]]), 0)
     expect(plan.scales[0]).toBe(0.1)
     expect(plan.pages).toEqual([{ from: 0, to: 1, top: 0 }])
+  })
+})
+
+describe('planSlidePages — a column slide', () => {
+  it('keeps a column slide whole on one page rather than paging through its columns', () => {
+    // The same stack the flow walk splits over two pages. Two columns already put half of it
+    // beside the other half, and the tops of a column layout restart with each column, so a page
+    // picked out of them would hide blocks that sit side by side on the screen.
+    const plan = planSlidePages(stack([[300], [300], [300]]), 640, 'split')
+    expect(plan.pages).toEqual([{ from: 0, to: 3, top: 0 }])
+    expect(plan.scales).toEqual([1, 1, 1])
+  })
+
+  it('reports the layout it packed with, so every surface draws the geometry it measured', () => {
+    expect(planSlidePages(stack([[100]]), 640, 'split').layout).toBe('split')
+    expect(planSlidePages(stack([[100]]), 640, 'cover').layout).toBe('cover')
+    expect(planSlidePages([], 640, 'cover').layout).toBe('cover')
+    expect(planSlidePages(stack([[100]]), 640).layout).toBeUndefined()
+  })
+
+  it('keeps the columns of a slide whose balanced height fits the page', () => {
+    expect(slideLayoutForFit('split', 600, 640)).toBe('split')
+  })
+
+  it('refuses the columns of a slide that still overflows the page', () => {
+    expect(slideLayoutForFit('split', 641, 640)).toBeUndefined()
+  })
+
+  it('leaves a slide that asked for no columns alone however tall it is', () => {
+    expect(slideLayoutForFit('cover', 5000, 640)).toBe('cover')
+    expect(slideLayoutForFit(undefined, 5000, 640)).toBeUndefined()
+  })
+
+  it('counts a layout change as a new plan when the pages themselves did not move', () => {
+    const fitted: SlidePlan = { pages: [{ from: 0, to: 2, top: 0 }], scales: [1, 1], layout: 'split' }
+    const refused: SlidePlan = { pages: [{ from: 0, to: 2, top: 0 }], scales: [1, 1] }
+    expect(samePlan(fitted, refused)).toBe(false)
+    expect(samePlan(fitted, { ...fitted })).toBe(true)
   })
 })
 

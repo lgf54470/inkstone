@@ -33,6 +33,23 @@
   max-width: none;
 }
 
+.ink-slide .ink-slide-cover {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.ink-slide .ink-slide-split {
+  column-count: 2;
+  column-gap: var(--sp-6);
+  column-fill: balance;
+}
+
+.ink-slide .ink-slide-split > * {
+  break-inside: avoid;
+}
+
 .ink-slide-thumb .chartjs-block.loading::before,
 .ink-slide-thumb .mermaid-block.loading::before {
   display: none;

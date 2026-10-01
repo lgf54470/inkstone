@@ -1093,6 +1093,107 @@ async function assertPresentationOverview(page) {
   check('overview: the show still ends on the next Esc', await page.evaluate(() => !document.querySelector('[data-slide-canvas]')))
 }
 
+// What the projector is drawing for one slide, next to what the list drew for its card. The two are
+// read together on purpose: a template only counts as shipped if the card and the page agree, and a
+// switch that survived into the markup would show up as a stray comment on the projector.
+// `pageFraction` is the slide's own box against the canvas it is drawn on, so a cover that never got
+// its page height and a column slide that overflowed it both fail visibly rather than quietly.
+async function readSlideLayout(page, slide) {
+  const clicked = await page.evaluate((target) => {
+    const entry = document.querySelector(`[data-presentation-rail] [data-entry-index][data-slide-index="${target}"][data-slide-page="0"]`)
+    entry?.click()
+    return Boolean(entry)
+  }, slide)
+  if (!clicked) throw new Error(`layout: the list has no first page for slide ${slide + 1}`)
+  await sleep(900)
+  return page.evaluate((target) => {
+    const host = document.querySelector('[data-slide-canvas] [data-slide-page]')
+    const style = getComputedStyle(host)
+    const box = host.getBoundingClientRect()
+    const canvas = document.querySelector('[data-slide-canvas]').getBoundingClientRect()
+    const rects = [...host.children].map((child) => child.getBoundingClientRect())
+    const last = rects[rects.length - 1]
+    const card = document.querySelector(`[data-presentation-rail] [data-entry-index][data-slide-index="${target}"][data-slide-page="0"] .ink-slide-thumb [data-slide-page]`)
+    return {
+      marked: host.className,
+      columnCount: style.columnCount,
+      centredColumn: style.display === 'flex' && style.flexDirection === 'column' && style.justifyContent === 'center' && style.textAlign === 'center',
+      gapTop: rects[0] ? Math.round(rects[0].top - box.top) : -1,
+      gapBottom: last ? Math.round(box.bottom - last.bottom) : -1,
+      // Buckets of 4px, because a browser lays a column out on fractions and two columns still have
+      // to read as two edges rather than as forty of them.
+      lefts: new Set(rects.map((rect) => Math.round(rect.left / 4))).size,
+      straySwitch: host.innerHTML.includes('layout:') || [...host.childNodes].some((node) => node.nodeType === 8),
+      pageFraction: Number((box.height / canvas.height).toFixed(3)),
+      cardMarked: card?.className ?? '',
+      cardBlocks: card?.children.length ?? -1,
+      pages: document.querySelectorAll(`[data-presentation-rail] [data-entry-index][data-slide-index="${target}"]`).length,
+    }
+  }, slide)
+}
+
+async function assertSlideLayouts(page) {
+  await openLayoutDeckNote(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await waitForRailFilled(page)
+  await jumpToFirstPage(page)
+
+  const cover = await readSlideLayout(page, 0)
+  const fitted = await readSlideLayout(page, 1)
+  const overflowed = await readSlideLayout(page, 2)
+  const plain = await readSlideLayout(page, 3)
+  // Read the slide the columns could not hold a second time: the geometry it is drawn in comes out of
+  // its own measurement, so the answer must not depend on what the previous commit left on the host.
+  // While it did, this slide traded a column plan for a flow plan frame after frame and the background
+  // pass never reported the deck finished — it sat on that slide for the whole 20s the probe sampled.
+  const refound = await readSlideLayout(page, 2)
+
+  check('layout: the switch stays out of the markup every slide renders',
+    ![cover, fitted, overflowed, plain].some((read) => read.straySwitch),
+    JSON.stringify({ cover: cover.straySwitch, fitted: fitted.straySwitch, overflowed: overflowed.straySwitch, plain: plain.straySwitch }))
+  check('layout: a cover slide is a centred column', cover.marked.includes('ink-slide-cover') && cover.centredColumn, JSON.stringify(cover))
+  check('layout: a cover slide is given the page to centre in', cover.pageFraction >= 0.85 && cover.pageFraction <= 0.92, JSON.stringify(cover))
+  check('layout: the cover slide’s blocks sit in the middle of that page',
+    Math.abs(cover.gapTop - cover.gapBottom) <= 2, JSON.stringify({ gapTop: cover.gapTop, gapBottom: cover.gapBottom }))
+  check('layout: a split slide reads in two columns of equal width',
+    fitted.marked.includes('ink-slide-split') && fitted.columnCount === '2' && fitted.lefts === 2, JSON.stringify(fitted))
+  check('layout: the columns keep that slide on the one page it was measured with',
+    fitted.pages === 1 && fitted.pageFraction <= 0.9, JSON.stringify(fitted))
+  check('layout: a slide whose columns overflow the page goes back to the flow layout',
+    !overflowed.marked.includes('ink-slide-split') && overflowed.columnCount !== '2' && overflowed.pageFraction > 1,
+    JSON.stringify(overflowed))
+  check('layout: the slide the columns could not hold is paged instead of cut off',
+    overflowed.pages >= 2, JSON.stringify({ pages: overflowed.pages }))
+  check('layout: that slide settles on one geometry instead of trading two',
+    refound.marked === overflowed.marked && refound.pages === overflowed.pages && refound.pageFraction === overflowed.pageFraction,
+    JSON.stringify({ first: { marked: overflowed.marked, pages: overflowed.pages, fraction: overflowed.pageFraction }, second: { marked: refound.marked, pages: refound.pages, fraction: refound.pageFraction } }))
+  check('layout: the slide list draws the layout the projector drew',
+    cover.cardMarked.includes('ink-slide-cover') && fitted.cardMarked.includes('ink-slide-split')
+      && !overflowed.cardMarked.includes('ink-slide-split') && !plain.cardMarked.includes('ink-slide-cover'),
+    JSON.stringify({ cover: cover.cardMarked, fitted: fitted.cardMarked, overflowed: overflowed.cardMarked, plain: plain.cardMarked }))
+  check('layout: a slide that asked for nothing is drawn as it was',
+    !plain.marked.includes('ink-slide-split') && !plain.marked.includes('ink-slide-cover') && plain.columnCount !== '2' && plain.pages === 1,
+    JSON.stringify(plain))
+
+  // Put the show away and assert it went: presenting takes native fullscreen, so the first Escape only
+  // hands the browser back its chrome and leaves the panel covering the app. With one key press here,
+  // every scenario after this one reads the DOM fine (the panel is beside the note, not instead of it)
+  // and then finds its first real pointer click swallowed — which is how the mind map's palette menu
+  // stopped opening.
+  await page.keyboard.press('Escape')
+  await sleep(600)
+  await page.keyboard.press('Escape')
+  await sleep(600)
+  const left = await page.evaluate(() => ({
+    canvas: Boolean(document.querySelector('[data-slide-canvas]')),
+    dialog: document.querySelector('[role="dialog"]')?.getAttribute('aria-label') ?? null,
+    fullscreen: document.fullscreenElement ? document.fullscreenElement.tagName : null,
+  }))
+  check('layout: the show is put away before the next scenario reaches for the pointer',
+    !left.canvas && !left.fullscreen, JSON.stringify(left))
+}
+
 // The note export writes a document instead of printing one, and it turns every chart canvas in that
 // document into a PNG inside the same tick the chart was created — so the file it wrote carried fully
 // transparent chart pictures: on a four-bar chart, 0 of the 69246 pixels a drawn chart has were on the
@@ -1766,6 +1867,36 @@ async function openOverviewDeck(page) {
   await sleep(1_500)
   await page.waitForSelector('.cm-content', { timeout: 20_000 })
   await appendToNote(page, `${OVERVIEW_DECK}\n`)
+  await sleep(1_500)
+}
+
+// The deck the layout switches are measured on: a cover, a two-column slide the columns hold, the
+// same switch on a slide the columns cannot hold, and a plain slide that asked for nothing.
+// The third is what decides the shape of the template's rule: two columns are a way of fitting one
+// page, not a way of overflowing it more slowly, so past the page the slide has to go back to the
+// flow layout the page walk reads — and the list has to page it the way the projector did.
+const LAYOUT_FIT_BODY = Array.from(
+  { length: 8 },
+  (_, index) => `Column paragraph ${index + 1}: two columns are what a comparison slide asks for, and this one is short enough to fit the page in them.`,
+).join('\n\n')
+const LAYOUT_TALL_BODY = Array.from(
+  { length: 26 },
+  (_, index) => `Overflow paragraph ${index + 1} of a slide that is too long for its columns, which is the case the template has to hand back to the flow layout.`,
+).join('\n\n')
+const LAYOUT_DECK = [
+  '<!-- layout: cover -->\n\n# Inkstone Layout Cover\n\nA subtitle under a title, on a slide that asked to be centred.',
+  `<!-- layout: split -->\n\n## Layout two columns\n\n${LAYOUT_FIT_BODY}`,
+  `<!-- layout: split -->\n\n## Layout columns that overflow\n\n${LAYOUT_TALL_BODY}`,
+  '## Layout plain slide\n\nNothing was asked for on this slide.',
+].join('\n\n---\n\n')
+
+async function openLayoutDeckNote(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await appendToNote(page, `${LAYOUT_DECK}\n`)
   await sleep(1_500)
 }
 
@@ -8355,6 +8486,7 @@ async function main() {
     await assertDeckExport(page)
     await assertDeckImageExport(page)
     await assertPresentationOverview(page)
+    await assertSlideLayouts(page)
     await assertNoteExportCharts(page)
     await assertMindmapBlock(page)
     await assertMindmapSplitEditing(page)

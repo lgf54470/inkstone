@@ -46,6 +46,8 @@ A show follows the note it was started from, so an edit — including one arrivi
 
 A private cue stays off the projector. A line beginning with `<!-- note: ` or `<!-- speaker: ` (up to three spaces of indent) is read as that slide's speaker note, and every line the cue spans until its `-->` is removed from what the show paints; the note belongs to the slide the cue sits in, and the deck carries it next to the slide. A cue nobody closed stays private to the end of the note, the way the reader already drops an unclosed comment. A cue inside a fenced block is left as written, because a block that demos the syntax is there to be seen.
 
+A slide can ask for a layout. A line of its own reading `<!-- layout: cover -->` centres that slide as a title page, and `<!-- layout: split -->` (also spelled `<!-- layout: two-columns -->`) sets it in two balanced columns. Up to three spaces of indent are allowed, only the first switch on a slide is read, a switch inside a fenced block is left as written, and the switch itself never reaches the projector. A cover slide too tall for the canvas continues onto the next page like any other; a split slide does not continue — two columns have no page order to break — so a slide whose balanced columns still exceed the page has its switch refused and is laid out as a single column, which paginates. Whichever layout the show ends up measuring is the one its thumbnails, overview grid and exported pages draw, so no surface shows a geometry the projector never used.
+
 | Key | Action |
 | --- | --- |
 | `Ctrl/Cmd+Alt+P` | Start the show on the note you are editing, from anywhere — including inside the editor, where the caret decides which slide opens |

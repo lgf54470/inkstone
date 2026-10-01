@@ -156,7 +156,7 @@ function OverviewCard({ entry, item, cacheKey, source, plan, deckLength, present
   const thumbRef = useRef<HTMLSpanElement>(null)
   const near = useNearViewport(thumbRef)
   const cached = useCachedSlideHtml(cacheKey)
-  const html = usePageHtml({ near, cacheKey, cached, source, plan, sub: entry.sub, view })
+  const { html, layout } = usePageHtml({ near, cacheKey, cached, source, plan, sub: entry.sub, view })
   const heading = useMemo(() => extractSlideHeading(source), [source])
 
   return (
@@ -174,7 +174,7 @@ function OverviewCard({ entry, item, cacheKey, source, plan, deckLength, present
       }}
       className='flex w-full flex-col items-center gap-[var(--sp-2)] rounded-[var(--r-md)] p-[var(--sp-2)] text-left transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)]'
     >
-      <SlideThumb thumbRef={thumbRef} near={near} html={html} active={presenting} view={view} />
+      <SlideThumb thumbRef={thumbRef} near={near} html={html} layout={layout} active={presenting} view={view} />
       <span className='flex min-w-0 items-center gap-[var(--sp-2)]'>
         <span className={presenting ? 'tabular text-[length:var(--text-12)] font-medium text-[var(--accent)]' : 'tabular text-[length:var(--text-12)] text-[var(--text-tertiary)]'} aria-hidden='true'>
           {item + 1}

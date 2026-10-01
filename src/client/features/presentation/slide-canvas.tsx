@@ -3,8 +3,9 @@ import { useSession } from '../../store/session'
 import { destroyChartInstances, renderChartJs, renderPendingMermaid } from '../../lib/markdown/enhance'
 import { useIsDarkTheme } from './presentation-theme'
 import { readSlideHtml, renderSlideSource, subscribeSlideHtml } from './slide-html'
-import { planSlidePages, resolvePageIndex, samePlan, type SlideBlock, type SlidePlan } from './slide-pagination'
-import { SlideProse } from './slide-prose'
+import { planSlidePages, resolvePageIndex, samePlan, slideLayoutForFit, type SlideBlock, type SlidePlan } from './slide-pagination'
+import type { SlideLayout } from './slides'
+import { LAYOUT_CLASS, SlideProse } from './slide-prose'
 import { SLIDE_PAD_Y, type StageMetrics } from './slide-stage'
 import { registerFenceBodies, type FenceBodies } from '../../lib/markdown/fence-bodies'
 import {
@@ -84,9 +85,10 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   )
   const html = prepared?.html ?? fallbackRender.html
   const fences = prepared?.fences ?? fallbackRender.fences
+  const requestedLayout = prepared?.layout ?? fallbackRender.layout
   const [renderVersion, setRenderVersion] = useState(0)
   const markDiagramsRendered = useCallback(() => setRenderVersion((version) => version + 1), [])
-  const { plan, measured } = useSlideLayout(hostRef, html, subPage, contentWidth, contentHeight, renderVersion)
+  const { plan, measured } = useSlideLayout(hostRef, html, requestedLayout, subPage, contentWidth, contentHeight, renderVersion)
   const prefersMotion = prefersReducedMotion()
   const effectiveInstantCharts = instantCharts || prefersMotion
   useSlideDiagrams(hostRef, html, dark, markDiagramsRendered, effectiveInstantCharts)
@@ -110,7 +112,7 @@ export function SlideCanvas({ cacheKey, source, subPage, contentWidth, contentHe
   return (
     <div className='ink-slide relative h-full w-full overflow-hidden' onClick={handleLinkClick}>
       <div className='absolute inset-x-0' style={{ top: SLIDE_PAD_Y, transform: `translateY(-${page?.top ?? 0}px)` }}>
-        <SlideProse html={html} contentWidth={contentWidth} font={proseFont} hostRef={hostRef} />
+        <SlideProse html={html} contentWidth={contentWidth} contentHeight={contentHeight} font={proseFont} layout={plan.layout} hostRef={hostRef} />
       </div>
     </div>
   )
@@ -130,11 +132,11 @@ function useSlideLinkInterceptor() {
 // must never survive a re-measure that produced the same plan: the ResizeObserver
 // re-runs after every style write, and a plan-diffed effect would skip restoring
 // the shrink the reset step just cleared.
-function useSlideLayout(hostRef: RefObject<HTMLDivElement | null>, html: string, subPage: number, contentWidth: number, contentHeight: number, renderVersion: number): { plan: SlidePlan; measured: boolean } {
+function useSlideLayout(hostRef: RefObject<HTMLDivElement | null>, html: string, requestedLayout: SlideLayout | undefined, subPage: number, contentWidth: number, contentHeight: number, renderVersion: number): { plan: SlidePlan; measured: boolean } {
   // The plan is stored next to the markup it was measured from, so a plan that
   // describes a slide the canvas no longer shows is never handed out as current.
-  const [layout, setLayout] = useState<{ html: string; plan: SlidePlan } | null>(null)
-  const placeholder = useMemo(() => planSlidePages([], contentHeight), [contentHeight])
+  const [captured, setCaptured] = useState<{ html: string; plan: SlidePlan } | null>(null)
+  const placeholder = useMemo(() => planSlidePages([], contentHeight, requestedLayout), [contentHeight, requestedLayout])
   const subPageRef = useRef(subPage)
   subPageRef.current = subPage
   useLayoutEffect(() => {
@@ -142,16 +144,11 @@ function useSlideLayout(hostRef: RefObject<HTMLDivElement | null>, html: string,
     if (!host) return
     let frame = 0
     const measure = () => {
-      const children = [...host.children] as HTMLElement[]
-      resetBlockFit(children)
-      const blocks: SlideBlock[] = children.map((child) => ({
-        top: child.offsetTop,
-        height: child.offsetHeight,
-        heading: HEADING_TAG.test(child.tagName),
-      }))
-      const next = planSlidePages(blocks, contentHeight)
+      const { children, blocks, columnHeight } = readSlideGeometries(host)
+      const next = planSlidePages(blocks, contentHeight, slideLayoutForFit(requestedLayout, columnHeight, contentHeight))
       applySlidePage(children, next, subPageRef.current, contentWidth, contentHeight)
-      setLayout((current) => (current?.html === html && samePlan(current.plan, next) ? current : { html, plan: next }))
+      if (next.layout) host.classList.add(LAYOUT_CLASS[next.layout])
+      setCaptured((current) => (current?.html === html && samePlan(current.plan, next) ? current : { html, plan: next }))
     }
     const schedule = () => {
       window.cancelAnimationFrame(frame)
@@ -164,14 +161,36 @@ function useSlideLayout(hostRef: RefObject<HTMLDivElement | null>, html: string,
       window.cancelAnimationFrame(frame)
       observer.disconnect()
     }
-  }, [hostRef, html, contentWidth, contentHeight, renderVersion])
+  }, [hostRef, html, requestedLayout, contentWidth, contentHeight, renderVersion])
   useLayoutEffect(() => {
     const host = hostRef.current
     if (!host) return
-    applySlidePage([...host.children] as HTMLElement[], layout?.html === html ? layout.plan : placeholder, subPage, contentWidth, contentHeight)
-  }, [hostRef, layout, html, placeholder, subPage, contentWidth, contentHeight])
-  const current = layout?.html === html
-  return { plan: current ? layout.plan : placeholder, measured: current }
+    applySlidePage([...host.children] as HTMLElement[], captured?.html === html ? captured.plan : placeholder, subPage, contentWidth, contentHeight)
+  }, [hostRef, captured, html, placeholder, subPage, contentWidth, contentHeight])
+  const current = captured?.html === html
+  return { plan: current ? captured.plan : placeholder, measured: current }
+}
+
+// The two geometries a slide can be drawn in, read in one pass by a measurement that puts its own
+// classes on and takes them off again. Reading whatever the previous commit left on the host would
+// make the answer depend on the class the answer itself produces: on a slide whose columns overflow
+// the page the column plan and the flow plan trade places every frame, so the ResizeObserver never
+// settles and the background pass that lists the deck never reaches its end.
+function readSlideGeometries(host: HTMLElement): { children: HTMLElement[]; blocks: SlideBlock[]; columnHeight: number } {
+  const children = [...host.children] as HTMLElement[]
+  host.classList.remove(LAYOUT_CLASS.cover, LAYOUT_CLASS.split)
+  resetBlockFit(children)
+  const blocks: SlideBlock[] = children.map((child) => ({
+    top: child.offsetTop,
+    height: child.offsetHeight,
+    heading: HEADING_TAG.test(child.tagName),
+  }))
+  // Two columns are the one layout the page walk cannot page through, so a slide keeps them only while
+  // the taller column fits the page — and that height is only there with the columns drawn.
+  host.classList.add(LAYOUT_CLASS.split)
+  const columnHeight = host.offsetHeight
+  host.classList.remove(LAYOUT_CLASS.split)
+  return { children, blocks, columnHeight }
 }
 
 function resetBlockFit(children: HTMLElement[]): void {

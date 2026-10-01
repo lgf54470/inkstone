@@ -7,8 +7,9 @@ import type { ProseFont } from '@shared/types'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import type { RailEntry } from './presentation-state'
-import { readSlideHtml, renderSlideSource, slicePageHtml, subscribeSlideHtmlKey } from './slide-html'
+import { readSlideHtml, renderSlideSource, slicePageHtml, slideMarkup, subscribeSlideHtmlKey, type SlideMarkup } from './slide-html'
 import type { SlidePlan } from './slide-pagination'
+import type { SlideLayout } from './slides'
 import { SlideProse } from './slide-prose'
 import { SLIDE_PAD_X, SLIDE_PAD_Y } from './slide-stage'
 
@@ -102,32 +103,37 @@ export function extractSlideHeading(source: string): string {
 export function usePageHtml({ near, cacheKey, cached, source, plan, sub, view }: {
   near: boolean
   cacheKey: string
-  cached: string
+  cached: SlideMarkup | undefined
   source: string
   plan: SlidePlan | undefined
   sub: number
   view: ThumbView
-}): string {
+}): { html: string; layout: SlideLayout | undefined } {
   return useMemo(() => {
-    if (!near) return ''
-    const html = cached || renderSlideSource(source, view.externalImages).html
-    if (!plan) return html
-    return slicePageHtml(html, plan, sub, view.thumb.contentWidth, view.thumb.contentHeight)
+    if (!near) return { html: '', layout: undefined }
+    const markup = cached ?? slideMarkup(renderSlideSource(source, view.externalImages))
+    const html = plan ? slicePageHtml(markup.html, plan, sub, view.thumb.contentWidth, view.thumb.contentHeight) : markup.html
+    // The card draws the layout the canvas measured the page in, not the one the author asked for:
+    // a column slide the projector refused to keep as columns would slice its pages out of a
+    // geometry the projector never used. A measured plan answers even when it says nothing — only a
+    // slide nobody has measured yet is drawn on its author's word.
+    return { html, layout: plan ? plan.layout : markup.layout }
   }, [near, cacheKey, cached, source, plan, sub, view])
 }
 
 // Follows the prepared markup rather than reading it once: a theme flip or an edit replaces a
 // slide's markup under a card, and a single read left that card on an un-rendered placeholder
 // for the rest of the show.
-export function useCachedSlideHtml(cacheKey: string): string {
+export function useCachedSlideHtml(cacheKey: string): SlideMarkup | undefined {
   const subscribe = useCallback((cb: () => void) => subscribeSlideHtmlKey(cacheKey, cb), [cacheKey])
-  return useSyncExternalStore(subscribe, () => readSlideHtml(cacheKey)?.html ?? '', () => '')
+  return useSyncExternalStore(subscribe, () => readSlideHtml(cacheKey), () => undefined)
 }
 
-export function SlideThumb({ thumbRef, near, html, active, view, className }: {
+export function SlideThumb({ thumbRef, near, html, layout, active, view, className }: {
   thumbRef: RefObject<HTMLSpanElement | null>
   near: boolean
   html: string
+  layout: SlideLayout | undefined
   active: boolean
   view: ThumbView
   className?: string
@@ -145,7 +151,7 @@ export function SlideThumb({ thumbRef, near, html, active, view, className }: {
       {near && (
         <span className='ink-slide absolute top-0 left-0 block' style={{ width: view.designWidth, height: view.designHeight, transform: `scale(${view.thumb.scale})`, transformOrigin: 'top left' }}>
           <span className='absolute inset-x-0 block' style={{ top: SLIDE_PAD_Y }}>
-            <SlideProse html={html} contentWidth={view.thumb.contentWidth} font={view.proseFont} />
+            <SlideProse html={html} contentWidth={view.thumb.contentWidth} contentHeight={view.thumb.contentHeight} font={view.proseFont} layout={layout} />
           </span>
         </span>
       )}

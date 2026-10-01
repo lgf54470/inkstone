@@ -7,6 +7,14 @@ const LINE_PARTS = /(\r?\n)/
 const SLIDE_LEVEL_KEY = 'slide-level'
 const NOTE_OPEN = /^ {0,3}<!--[ \t]*(?:note|speaker):[ \t]*/i
 const NOTE_END = '-->'
+const LAYOUT_LINE = /^ {0,3}<!--[ \t]*layout[ \t]*:[ \t]*([a-z][a-z0-9_-]*)[ \t]*-->$/i
+
+/** How a slide is laid out on the projector, as its source asks for it. */
+export type SlideLayout = 'cover' | 'split'
+
+// `two-columns` is the name the review gives the split layout, and an author who reaches for it
+// means the same screen; a value nobody knows stays prose rather than silently becoming a switch.
+const LAYOUT_VALUES: Record<string, SlideLayout> = { cover: 'cover', split: 'split', 'two-columns': 'split' }
 
 interface FenceMarker {
   char: string
@@ -250,6 +258,37 @@ export function splitIntoSlides(source: string): string[] {
 export function splitIntoSlidesWithNotes(source: string): { slides: string[]; notes: string[] } {
   const { slides, notes } = buildDeck(source)
   return { slides, notes }
+}
+
+function readLayoutLine(text: string): SlideLayout | undefined {
+  const value = LAYOUT_LINE.exec(text)?.[1]?.toLowerCase()
+  return value ? LAYOUT_VALUES[value] : undefined
+}
+
+/**
+ * A slide's layout switch, lifted out of its source. The line itself must not reach the markup:
+ * the projector reads the switch off the entry the slide renders to, and every surface that
+ * renders that slide — the canvas, the slide list, the overview grid, the printed deck — then
+ * draws the same layout without one of them being told about it.
+ */
+export function takeLayoutDirective(source: string): { body: string; layout: SlideLayout | undefined } {
+  const lines = readLines(source)
+  let fence: FenceMarker | null = null
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index]!
+    const scan = classifyLine(line.text, fence, false)
+    fence = scan.fence
+    // A fenced block may demo the syntax itself, so nothing inside one switches the layout.
+    if (scan.kind === 'fence') continue
+    const layout = readLayoutLine(line.text)
+    if (!layout) continue
+    // A switch takes its own line out of the slide, so the blank above it goes with it — leaving
+    // it would open a hole where the switch was.
+    const blank = index > 0 && lines[index - 1]!.text.trim() === '' ? index - 1 : -1
+    const kept = lines.filter((_, at) => at !== index && at !== blank).map((item) => item.text)
+    return { body: trimBlankEdges(kept.join('\n')), layout }
+  }
+  return { body: source, layout: undefined }
 }
 
 export function findSlideIndexByOffset(source: string, offset: number): number {

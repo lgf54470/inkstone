@@ -1,5 +1,6 @@
 import { renderMarkdown, type RenderResult } from '../../lib/markdown/renderer'
 import type { FenceBodies } from '../../lib/markdown/fence-bodies'
+import { takeLayoutDirective, type SlideLayout } from './slides'
 import { resolvePageIndex, type SlidePlan } from './slide-pagination'
 
 /**
@@ -13,6 +14,13 @@ import { resolvePageIndex, type SlidePlan } from './slide-pagination'
 export interface SlideMarkup {
   html: string
   fences: FenceBodies
+  /** The layout the slide's own source asked for, taken out of the markup before it was rendered. */
+  layout?: SlideLayout
+}
+
+/** A slide rendered for a surface, with the layout its source switched on. */
+export interface SlideRender extends RenderResult {
+  layout?: SlideLayout
 }
 
 // Enhanced per-slide markup keyed by content fingerprint + theme + slide index,
@@ -83,8 +91,8 @@ export function readSlideHtml(key: string): SlideMarkup | undefined {
 }
 
 /** The entry a plain render makes, for a slide whose prepared markup never landed in the cache. */
-export function slideMarkup(rendered: RenderResult): SlideMarkup {
-  return { html: rendered.html, fences: rendered.fences }
+export function slideMarkup(rendered: SlideRender): SlideMarkup {
+  return { html: rendered.html, fences: rendered.fences, layout: rendered.layout }
 }
 
 const slideKeyListeners = new Map<string, Set<() => void>>()
@@ -173,8 +181,11 @@ function freezeChart(block: HTMLElement, source: HTMLElement): void {
 
 // The un-enhanced render is both the thumbnail source and the first paint of a
 // slide canvas, before diagrams finish rendering into the cache.
-export function renderSlideSource(source: string, externalImages: boolean): RenderResult {
-  return renderMarkdown(source, { externalImages, hideFrontMatter: true })
+// The layout switch is consumed here rather than at the surfaces: it is a property of what the
+// slide is drawn from, and a switch left in the text would paint as a stray comment on the page.
+export function renderSlideSource(source: string, externalImages: boolean): SlideRender {
+  const { body, layout } = takeLayoutDirective(source)
+  return { ...renderMarkdown(body, { externalImages, hideFrontMatter: true }), layout }
 }
 
 // One page of a measured slide, as markup. The canvas shows a page by translating

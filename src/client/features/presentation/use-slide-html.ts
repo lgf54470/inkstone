@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from '../../store/session'
 import { resolveNoteEmbeds } from '../../lib/markdown/embeds'
 import { enhancePreview } from '../../lib/markdown/enhance'
-import { readSlideHtml, rememberSlideHtml, renderSlideSource, slideCacheKey } from './slide-html'
+import { readSlideHtml, rememberSlideHtml, renderSlideSource, slideCacheKey, slideMarkup } from './slide-html'
 import type { StageMetrics } from './slide-stage'
 
 // Renders the enhanced markup for one slide off-DOM and caches it, so the canvas and
@@ -30,7 +30,7 @@ export function useSlideHtml(options: {
     if (readSlideHtml(key)) return
     let cancelled = false
     const rendered = renderSlideSource(deck[index] ?? '', preview.externalImages)
-    rememberSlideHtml(key, { html: rendered.html, fences: rendered.fences })
+    rememberSlideHtml(key, slideMarkup(rendered))
     setTick((tick) => tick + 1)
     const staging = document.createElement('div')
     staging.innerHTML = rendered.html
@@ -56,7 +56,7 @@ export function useSlideHtml(options: {
         mindmapBox: { width: contentWidth, height: contentHeight },
       })
       if (cancelled) return
-      rememberSlideHtml(key, { html: staging.innerHTML, fences: rendered.fences })
+      rememberSlideHtml(key, { html: staging.innerHTML, fences: rendered.fences, layout: rendered.layout })
       setTick((tick) => tick + 1)
     }
     void prepare()
