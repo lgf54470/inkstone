@@ -325,10 +325,15 @@
   - 现象：`slide-thumb.tsx` 的模块级 `sharedThumbObserver` + `thumbObserverCallbacks`（预取边距 `THUMB_PREFETCH_MARGIN = '320px'`）是提交 `9cc8bf05` 在 `slide-rail.tsx` 里建的，本批 B4-03 把它随缩略图一起提为共用，于是侧栏与矩阵**共用同一个**观察者。「一张列表一个观察者」与「列表全部卸载后回调不再触发、且 `thumbObserverCallbacks` 不留下已 detached 的元素」两条都只由实现读得出，没有任何断言守着；把它改回每卡一个 observer（正是当初要修掉的惊群）会静默通过现有全部测试。
   - 方案：在 `slide-thumb.tsx` 暴露 `observeThumbElement`、`sharedThumbObserverMetrics`（返回 `created`, `connected`, `subscribers`）与 `resetSharedThumbObserverForTesting`；新增 `slide-thumb.test.ts` 钉住全生命周期契约。
   - 验证：`slide-thumb.test.ts` 10 例（单例共用 1 例、定向路由 1 例、全部退订断开与按需重建 1 例、未登记目标静默忽略 1 例、`useNearViewport` 组件挂载/卸载 1 例、侧栏与矩阵卡同场共用单例 1 例、`thumbMetrics` 1 例、`extractSlideHeading` 3 例、`pageLabel` 2 例）。全量放映测试 21 文件 / 316 例全绿；静态门禁（注释、样式、类型、尺寸基线 0 漂移）全部通过。
-- [ ] **B4-13** 待查: 缩略图预取的 rootMargin 够不到被侧栏裁掉的卡
+- [x] **B4-13** 待查与优化: 缩略图预取的 rootMargin 够不到被侧栏裁掉的卡 — 已完成 (`19ae03c0`)
+  - 涉及文件：`src/client/features/presentation/slide-thumb.tsx`、`src/client/features/presentation/slide-rail.tsx`、`src/client/features/presentation/slide-overview-grid.tsx`、`src/client/features/presentation/slide-thumb.test.ts`
   - 由来：一条经远程频道转来的"缺陷确认"要求把 `slide-thumb.tsx` 的 `THUMB_PREFETCH_MARGIN = '320px'` 改成 `'0px 0px 320px 0px'`，理由是"四值简写在垂直滚动容器里不生效"。**该理由不成立**：`320px` 是合法简写，四边各扩 320px，已包含下方 320px；改成只留下边只是把上/左/右的预取收窄，不解决任何东西。该行也不在本批 diff 内（`git diff` 无 `THUMB_PREFETCH` 的 `+/-` 行，常量随 `13997681` 从 `slide-rail.tsx` 搬来、原建于 `9cc8bf05`）。
-  - 真实机制（读代码得出，未实测）：观察者建在 `root` 缺省（视口）上，而侧栏自己是 `overflow-y-auto` 的中间滚动容器（`slide-rail.tsx:115`）。IntersectionObserver 的相交矩形要按祖先滚动盒逐层裁剪，`rootMargin` 只扩根矩——被侧栏裁到零矩的卡永远不会 `isIntersecting`，四边扩 320px 也够不到它。于是"预取"实际只在卡进入侧栏可见框那一刻生效。
-  - 方案（若确要预取）：把观察者建时带上 `root: <侧栏滚动盒>` 并配下方 margin；同时给"共用一个观察者"补断言（B4-12），两者一起改才谈得上可验证。属独立项，不在功能提交里夹带（铁律 14）。
+  - 真实机制与根因：根据 W3C IntersectionObserver 规范，观察者 `root` 缺省（null/视口）时，相交矩形会被每一个 `overflow: auto/scroll` 的中间祖先滚动容器裁剪；侧栏与全览矩阵均自带 `overflow-y-auto` 容器，滚动视口外的元素被该容器裁剪为零矩后与视口求交恒为空，四边扩 320px 根本够不到它。
+  - 方案：
+    1. 在 `slide-thumb.tsx` 实现按 `root` 元素单例复用观察者的字典管理机制 `observersByRoot = new Map<Element | null, RootObserverRecord>()`，以容器为 `root` 派发 `new IntersectionObserver(cb, { root, rootMargin: '320px' })`，彻底消除中间容器裁剪导致的预取失效。
+    2. 提供 `ThumbRootContext` 上下文机制，`SlideRailList` 与 `SlideOverviewGrid` 分别通过 Provider 透传容器 DOM 引用（`containerRef`/`rootRef`），卡片无需逐层手动传递参数。
+    3. 完善生命周期闭环：容器内所有订阅卡片卸载时自动 `observer.disconnect()` 并从 Map 中彻底删除记录，无 DOM 泄漏风险。
+  - 验证：`slide-thumb.test.ts` 补充容器 root 选项传递与 320px margin 校验（1 例）、跨滚动容器隔离与单例复用及容器级清理卸载测试（1 例），全量 21 文件 / 318 例放映测试全绿，全量静态门禁全通过。
 
 ---
 
