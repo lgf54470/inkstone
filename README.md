@@ -46,13 +46,16 @@ A show follows the note it was started from, so an edit — including one arrivi
 
 | Key | Action |
 | --- | --- |
+| `Ctrl/Cmd+Alt+P` | Start the show on the note you are editing, from anywhere — including inside the editor, where the caret decides which slide opens |
 | `→` `↓` `PageDown` `Space` | Next slide (`Space` and `Enter` yield to a focused control) |
 | `←` `↑` `PageUp` | Previous slide |
 | `Home` / `End` | First / last slide |
 | `F` | Enter or leave fullscreen |
 | `S` | Show or hide the slide list |
 | `L` | Switch between following the note and the frozen snapshot |
-| `Esc` | Exit the show and return focus to the button that started it |
+| `B` / `.` | Black screen for a pause; a plain key or a click brings the slide back |
+| `W` / `,` | White screen for a pause, same way back |
+| `Esc` | While the show is fullscreen, leave fullscreen only — a second `Esc` exits the show and returns focus to the button that started it |
 
 The list on the left is a page list, not a slide list: every page gets an entry with a thumbnail of that page, and a click jumps straight to it. A `---` slide that paginates shows all of its pages, so a note written without any `---` still gets a full sidebar. The whole deck is measured in the background while the show is idle, so every page is listed from the start — including the slides the show has not reached yet. One slide per idle window is measured, and the pause before the next one follows what the last one cost and how the display is keeping up: a gap that dropped frames doubles the pause (up to four times), and two quiet gaps bring it back down. The list says how far the measuring has got while it is running and stops saying it once every page is there. During a show the controls fade out and come back on the next pointer move or key press.
 
