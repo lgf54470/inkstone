@@ -3,7 +3,7 @@
 > **文档地位**：本目录只有两份文档——问题台账 [`review-with-freebuff.md`](./review-with-freebuff.md)（`G-01…G-48`）与本执行计划。被取代的六份中间文档（`review-with-agy-1.md`、`plan-with-agy-1.md`、`review-with-qoder-1.md`、`plan-with-qoder-1.md`、`review-with-buffy-2.md`、`verify-with-buffy-1.md`）已清退；其中两份 agy 文档原为 git 跟踪文件，由一次 `docs(graph)` 提交删除。它们的有效结论已全部并入台账：29 项 agy 全部关闭并登记 7 处残留、qoder 30 项中 1 项撤下 / 6 项前提改写 / 23 项并入、buffy 20 项全部并入，去重后即 `G-01…G-48`。
 > **基线分支/提交**：`improvement/relationship-graph-agy` @ `ec916280480eb06d658cd4358ace9ba23b9c2806`。台账与本计划的行号、证据均以该树为准。
 > **工程规范**：[`AGENTS.md`](../../../AGENTS.md)、[`ADR-0002`](../../../ADR-0002-renderer-theme-following.md)。
-> **当前状态（如实说明）**：**已开工**。批次 1（P0）四项已全部落地并收尾：1.1 `d4d2e12e`、1.2 `b45dab64`、1.3 `24f2f22a`、1.4 `1358a374`；批次收尾门禁在同一棵树上实测——`test:unit` 620 文件 / 5452 通过 + 1 跳过、`budget:check` 退出码 0、`e2e` 177 passed / 0 failed、`e2e-visual` 682 passed / 0 failed、`check-contrast` 两套主题全绿（明细见 §4「批次 1 收尾门禁」）。批次 2 四项已全部落地：2.1（G-01）`17dc66de`、2.2（G-03）`023e1e7d`、2.3（G-04①）`6e3ed4c2`、2.4（G-09）`e21bde8c`，批次收尾门禁待跑；台账 §2 的 8 条失效条目仍禁止作为任务执行。任何 `[x]` 只由真实提交与真实门禁输出来填。
+> **当前状态（如实说明）**：**已开工**。批次 1（P0）四项已全部落地并收尾：1.1 `d4d2e12e`、1.2 `b45dab64`、1.3 `24f2f22a`、1.4 `1358a374`；批次收尾门禁在同一棵树上实测——`test:unit` 620 文件 / 5452 通过 + 1 跳过、`budget:check` 退出码 0、`e2e` 177 passed / 0 failed、`e2e-visual` 682 passed / 0 failed、`check-contrast` 两套主题全绿（明细见 §4「批次 1 收尾门禁」）。批次 2 四项已全部落地并收尾：2.1（G-01）`17dc66de`、2.2（G-03）`023e1e7d`、2.3（G-04①）`6e3ed4c2`、2.4（G-09）`e21bde8c`；批次收尾门禁在同一棵树上实测——`test:unit` 624 文件 / 5460 通过 + 1 跳过、`budget:check` 退出码 0、`e2e` 177 passed / 0 failed、`e2e-visual` 682 passed / 0 failed、`check-contrast` 两套主题全绿（明细见 §4「批次 2 收尾门禁」）。台账 §2 的 8 条失效条目仍禁止作为任务执行。任何 `[x]` 只由真实提交与真实门禁输出来填。
 > **核心原则**：一项一次原子提交，正文按 `- 路径: 改动` 逐文件写；先红后绿；每落地一项即在本文档登记提交哈希与实测输出；不伪造、不夹带（铁律 14）；不静默假设、不静默失败、不静默降级。
 
 **编号与优先级**：唯一编号 `G-01…G-48`；分布 P0 4 条（G-06 / G-07 / G-22 / G-02）、P1 24 条、P2 17 条、候选 3 条（G-43 / G-46 / G-48），以台账 §6 为唯一来源。本计划不新增编号；落地过程中发现的新问题写进 §8「新增发现」，另开条目。
@@ -27,7 +27,7 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **批次 0（前置）｜先量后改** | V-01…V-03（无 G 编号） | 新增 `scripts/measure-graph.mjs` + 合成大库样本，拿到布局帧成本、单请求读行数、degree 聚合耗时；三个 🔬 条目据此进入决策闸门 | — | ≈0.5–1 人日 | ⬜ 未开始 |
 | **批次 1｜P0 渲染连续性与红线** | G-06（含 G-07 步骤 1）、G-22、G-28、G-02、G-38 | 输入搜索词/切开关不再重建画布，拖过的坐标与 pin 存活；键盘可开节点菜单；标签边有预算；开启标签节点后截断读数不再自相矛盾 | 6 | ≈4–5 人日 | 🟢 6/6 已收尾（1.1 `d4d2e12e`、1.2 `b45dab64`、1.3 `24f2f22a`、1.4 `1358a374`；收尾门禁 test:unit 620 文件 / e2e 177 / e2e-visual 682 / contrast 全绿 / budget:check 退出码 0；G-07 步骤 2 属批次 6） |
-| **批次 2｜请求与开销边界** | G-01、G-03、G-04（①）、G-09 | 一次请求读多少有明确上界；读端点有超时与节流；MCP 与 UI 的归档口径一致；拖拽不再逐事件强制布局 | 4 | ≈2 人日 | 🟢 4/4 已落地（2.1 `17dc66de`、2.2 `023e1e7d`、2.3 `6e3ed4c2`、2.4 `e21bde8c`；收尾门禁待跑） |
+| **批次 2｜请求与开销边界** | G-01、G-03、G-04（①）、G-09 | 一次请求读多少有明确上界；读端点有超时与节流；MCP 与 UI 的归档口径一致；拖拽不再逐事件强制布局 | 4 | ≈2 人日 | 🟢 4/4 已收尾（2.1 `17dc66de`、2.2 `023e1e7d`、2.3 `6e3ed4c2`、2.4 `e21bde8c`；收尾门禁 test:unit 624 文件 / e2e 177 / e2e-visual 682 / contrast 全绿 / budget:check 退出码 0） |
 | **批次 3｜视觉、主题与门禁** | G-29、G-30、G-31、G-40、G-41（G-43① 顺手） | 调色板收敛为单一来源并达标；主题翻转预览卡同步；ADR/AGENTS 不再与代码相反且有像素断言；对比度门禁覆盖图谱表面 | 5 | ≈3.5–4 人日 | ⬜ 0/5 |
 | **批次 4｜无障碍关系与键盘语义** | G-23、G-24、G-25、G-26、G-27 | 方向键按空间序且选中可见；标签节点可辨、可操作；设置抽屉关系完整；色板热区达标；说明关联与取消播报补全 | 5 | ≈2 人日 | ⬜ 0/5 |
 | **批次 5｜交互与检索语义** | G-14、G-15、G-16、G-18、G-19、G-20、G-21 | 搜索是定位不是重查；空态有出口；拖拽期间不悬停预览；窄屏不重叠、触屏提示到位；伴随图谱复用偏好；上限/深度可调 | 7 | ≈6 人日 | ⬜ 0/7 |
@@ -35,7 +35,7 @@
 | **批次 7｜收尾与对标** | G-05 + G-45、G-12、G-13、G-17、G-34、G-42、G-44 | 导出有隐私选项；字体读取策略有据；绘制异常不静默停帧；滚轮非 passive；死键清零；单篇排除；方向过滤 | 8 | ≈4.5 人日 | ⬜ 0/8 |
 | **决策闸门** | G-08、G-10、G-47 | 按批次 0 的数字定 G-08/G-10；G-47 需归属决策而非数字；结论（含「不做」）必须登记为以证据关闭 | 3 | 由证据决定 | ⬜ 未开始 |
 | **不挂批次** | G-43 ②③、G-46、G-48 | 持久化契约变更 / 跨模块色板语义 / 候选清单 | 3 | 另立 | ⬜ 不排期 |
-| **总计** | **G-01…G-48** | 图谱本体 45 条（42 挂批次 + 3 决策闸门） | **48** | ≈25–28 人日 + 门禁 | **🟡 10/48（批次 1 已收尾，批次 2 四项已落地、收尾门禁待跑）** |
+| **总计** | **G-01…G-48** | 图谱本体 45 条（42 挂批次 + 3 决策闸门） | **48** | ≈25–28 人日 + 门禁 | **🟡 10/48（批次 1、2 已收尾，批次 3 待开工）** |
 
 > G-07 跨批次 1（步骤 1）与批次 6（步骤 2），编号只计一次（记在批次 1）。G-28 随 G-22 落地、不单独提交。G-04 的 ②（共享范围判定）与 G-43 的 ②③（`links` 增类型/附件节点）属**另立事项**，不进本计划排期。
 
@@ -222,6 +222,24 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
   - 依赖：1.1（同改 `CanvasState` 与 resizer，排在它之后少一次改写）
   - 代价：XS（本项实际约 0.3 人日 + 两个测试文件）｜提交建议：`perf(graph)`
   - 提交哈希：`e21bde8c`｜状态：✅ 已完成（2026-10-01）
+
+#### 批次 2 收尾门禁（已跑，2026-10-01）
+
+> 四项全部落地后在同一棵树（2.4 提交 `e21bde8c`）上跑完。起止同批次 1：`test:unit` 与 `budget:check` 直接在开发机跑；三个浏览器门禁先以 `setsid nohup env INKSTONE_EPHEMERAL_DEV=1 npm run dev:kv > /tmp/inkstone-graph-dev.log 2>&1 < /dev/null &` 新起 :7712 实例（`curl http://localhost:7712/api/health` 返回 `{"ok":true}`），门禁期间未改任何文件（避免 Tailwind 重扫跳页）；结束时停掉临时实例释放 :7712。
+
+| 门禁 | 命令 | 实测输出 | 结论 |
+| :--- | :--- | :--- | :--- |
+| 全量单元/集成 | `npm run test:unit` | **624 文件全部通过 / 5460 通过 + 1 跳过（5461），170.32s** | ✅ 无回归 |
+| 包体积预算（含构建） | `npm run budget:check` | 退出码 0；music 各 chunk ≤ 97.7 KiB，excalidraw 1081.8 KiB / 预算 1464.8 KiB | ✅ |
+| 端到端 | `node scripts/e2e.mjs` | **177 passed / 0 failed** | ✅ |
+| 视觉与交互 | `INKSTONE_CHROME_PATH=/usr/bin/google-chrome node scripts/e2e-visual.mjs` | **682 passed / 0 failed** | ✅ |
+| 对比度与外壳 a11y | `INKSTONE_CHROME_PATH=/usr/bin/google-chrome node scripts/check-contrast.mjs` | 全部 ✓，结尾 `contrast gate passed`（两套主题均达 AA） | ✅ |
+
+- 与批次 1 相比，`test:unit` 由 620 文件 / 5452 条增至 624 文件 / 5460 条：批次 2 新增了 `tests/graph-routes.test.ts` 的截断与读预算用例、`src/client/lib/api/vault.test.ts`、`src/client/features/graph/graph-panel/panel-throttle.test.ts`、`tests/mcp-graph.test.ts`、`src/client/features/graph/graph-panel/canvas-pointer-layout.test.ts` 这些文件与用例。
+- 三个浏览器门禁的条数与批次 1 完全相同（177 / 682）——批次 2 未改对外交互行为，符合预期；`e2e-visual` 末行 `console: no page errors` 说明 2.2 的客户端超时没有在正常路径上误触发。
+- `npm run build` 同样**未单独运行**：`budget:check` 内含构建且退出码 0，按批次 1 口径记为「由 `budget:check` 覆盖」。
+- 本轮无负载敏感 flake（首轮即全绿），故未触发 §3 的 flake 复核流程。
+- 运维备注（如实登记）：收尾时按 `pgrep -f "vite --mode kv"` 停进程，该模式同时命中了另一 worktree 在 `:7770` 上的 vite（同命令启动），已一并停掉；未触碰其工作区文件，重启由该 worktree 的负责人自行决定。
 
 ### 批次 3：视觉、主题与门禁（5 项 + G-43① 顺手）
 
@@ -580,7 +598,7 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
 3. **门禁**：统一命令 + 该项「验证命令」全绿；批次收尾跑 `test:unit`、`build`、`budget:check` 与三个浏览器门禁（全新实例）；负载 flake 按证据标注而不得写成「全绿」。
 4. **文档同步**：对外行为变化（键盘承诺、空态文案、可调上限、默认分组、导出选项）同步 `AGENTS.md` 相关条目、`ADR-0002`、`README.md` 设置表、locale 资源与本表；本表每落地一项即登记提交哈希。
 5. **不夹带**：过程中的新问题写进 §8 并另开条目，不在当前提交里顺手修（铁律 14）。
-6. **不伪造**：无法运行的验证必须在「状态」列写明「未验证 + 原因 + 风险」。首轮文档落地时 `typecheck` / `style:check` / `build` / 三个浏览器门禁均未运行；批次 1 开工后 `typecheck`、静态门禁与图谱聚合测试已按条登记实测输出，批次收尾门禁（`test:unit` / `budget:check` / `e2e` / `e2e-visual` / `check-contrast`）已在「批次 1 收尾门禁」登记实测数字。`build` 未单独运行，由 `budget:check` 内含的构建覆盖。
+6. **不伪造**：无法运行的验证必须在「状态」列写明「未验证 + 原因 + 风险」。首轮文档落地时 `typecheck` / `style:check` / `build` / 三个浏览器门禁均未运行；批次 1 开工后 `typecheck`、静态门禁与图谱聚合测试已按条登记实测输出，批次收尾门禁（`test:unit` / `budget:check` / `e2e` / `e2e-visual` / `check-contrast`）已在「批次 1 收尾门禁」与「批次 2 收尾门禁」登记实测数字。`build` 未单独运行，由 `budget:check` 内含的构建覆盖。
 
 ---
 
