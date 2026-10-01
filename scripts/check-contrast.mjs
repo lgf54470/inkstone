@@ -64,6 +64,10 @@ const PASSWORD = process.env.INKSTONE_VISUAL_PASSWORD ?? 'supersecret100'
 const THEMES = ['light', 'dark']
 const AA_NORMAL = 4.5
 const AA_LARGE = 3
+// Non-text marks — the graph's node dots, its tag rings and its edges — are judged by the graphical
+// rule rather than the text one: WCAG 1.4.11 asks 3:1 against whatever they are drawn on. The palette
+// G-29 replaced failed exactly here (the light fallback palette measured 1.81:1 on the light base).
+const AA_MARK = 3
 const VIEWPORT = { width: 1280, height: 900 }
 // The other width this gate reads. It is not a second taste of the same surfaces: the shell *is* a
 // drawer at this width and the share center takes its full screen variant, so the two of them are
@@ -200,6 +204,184 @@ async function closeMindmapFullscreen(page) {
   await page.keyboard.press('Escape')
   await page.waitForFunction((selector) => !document.querySelector(selector), { timeout: SETTLE_TIMEOUT }, MINDMAP_FULLSCREEN)
   await sleep(SETTLE_MS)
+}
+
+const GRAPH_SURFACE = '[data-surface="graph"]'
+
+/**
+ * The graph's panel, opened with the app's own shortcut. The hotkey map leaves a combo to the page
+ * while the editor has focus, and this gate arrives with a caret in the note it just typed, so the
+ * editor is handed back before the press — otherwise the pass would read "the panel never opened"
+ * for a keyboard rule that is working exactly as written.
+ */
+async function openGraphSurface(page) {
+  await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : null))
+  await pressCombo(page, ['Control', 'Shift', 'g'])
+  await page.waitForSelector(`${GRAPH_SURFACE} canvas`, { timeout: SETTLE_TIMEOUT })
+  await waitForPanelSettled(page, GRAPH_SURFACE)
+  await waitForTransitionsEnd(page)
+}
+
+/** The panel is a modal of its own; Escape is the way out the behaviour gate asserts too. */
+async function closeGraphSurface(page) {
+  await page.keyboard.press('Escape')
+  await page.waitForFunction((selector) => !document.querySelector(selector), { timeout: SETTLE_TIMEOUT }, GRAPH_SURFACE)
+  await waitForTransitionsEnd(page)
+}
+
+/**
+ * What the graph's canvas really painted, plus the palette its theme declares. The canvas is the one
+ * surface whose colours no reader had ever measured: a palette that reads well enough in the
+ * stylesheet can still be unreadable where it is drawn (the fallback palette G-29 replaced measured
+ * 1.81:1 on the light base and no gate noticed), so both halves are read here.
+ *
+ * The declarations come first, because they are what the review computed by hand: every
+ * `--graph-tag-*` the stylesheet carries is resolved in this theme, and a colour added to the
+ * palette is measured the day it is declared — whether or not this vault holds a tag that lands on
+ * it. The painted half is the bitmap's own flat colours, named back to the tokens they came from:
+ * a mark the palette declares is judged, a mark it does not name (the user's own tag colours) is
+ * reported without a verdict, the same split the board's reader uses.
+ *
+ * The canvas clears to transparent, so what sits behind it is the panel root's own background —
+ * read from the element rather than from the token, and required to name `--bg-base`, because a root
+ * that moved to another surface would otherwise be a silently different measurement.
+ */
+const GRAPH_MARKS = () => {
+  const root = document.querySelector('[data-surface="graph"]')
+  const canvas = root?.querySelector('canvas')
+  if (!root || !canvas) return null
+  // The rules are walked recursively, not read off the top level: the base token block carries an
+  // `@supports` for its color-mix values, and per CSS nesting every declaration written after a
+  // nested at-rule belongs to a nested-declarations rule of its own. The graph palette is declared
+  // below that point, so a flat loop over `sheet.cssRules` finds such a token in the stylesheet and
+  // none of it in the CSSOM.
+  const names = new Set()
+  const collect = (rules) => {
+    for (const rule of rules) {
+      if (rule.style) {
+        for (const name of rule.style) {
+          // The appearance tokens the canvas draws with (a node is a text tier, an edge a border) plus
+          // the graph's own palette. Lengths and the like share the prefixes but are not colours.
+          if (!/^--(text|accent|bg|border|graph-tag)/.test(name)) continue
+          if (!/^(#|rgb|hsl|hwb|lab|lch|oklab|oklch|color|color-mix)/i.test(rule.style.getPropertyValue(name).trim())) continue
+          names.add(name)
+        }
+      }
+      if (rule.cssRules) collect([...rule.cssRules])
+    }
+  }
+  for (const sheet of document.styleSheets) {
+    try { collect([...sheet.cssRules]) }
+    catch { continue }
+  }
+  const probe = document.createElement('div')
+  probe.style.position = 'absolute'
+  probe.style.pointerEvents = 'none'
+  probe.style.width = '1px'
+  probe.style.height = '1px'
+  document.body.append(probe)
+  const tokens = {}
+  for (const name of names) {
+    probe.style.backgroundColor = 'transparent'
+    probe.style.backgroundColor = `var(${name})`
+    tokens[name] = getComputedStyle(probe).backgroundColor
+  }
+  probe.remove()
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+  const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
+  const counts = new Map()
+  for (let index = 0; index < data.length; index += 4) {
+    // Opaque pixels only. The drawing fades most of what it paints (edges at 42%, labels at 72%, a
+    // neighbour's dot at 18%), and a faded pixel is a blend with whatever is under it rather than
+    // the token's own colour — naming it would be a guess. What stays opaque is a node's disc, which
+    // is the mark this pass is about.
+    if (data[index + 3] < 250) continue
+    const key = `${data[index]},${data[index + 1]},${data[index + 2]}`
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  // Flat areas only: a disc or a stroke is a run of identical pixels, while the blend around its
+  // edge is a spread of near-misses. The floor keeps those out of the report rather than guessing
+  // which colour they came from.
+  const marks = [...counts]
+    .filter(([, pixels]) => pixels >= 24)
+    .map(([rgb, pixels]) => ({ rgb, pixels }))
+    .sort((left, right) => right.pixels - left.pixels)
+  return { surface: getComputedStyle(root).backgroundColor, tokens, marks }
+}
+
+/**
+ * The canvas draws as soon as the response lands and the physics loop keeps moving the nodes after
+ * that: this waits for a frame with a flat mark in it. Motion does not change which colours are
+ * painted, so the histogram stays the answer while the nodes travel.
+ */
+async function settleGraphMarks(page) {
+  let sample = null
+  for (let attempt = 0; attempt < 24; attempt++) {
+    sample = await page.evaluate(GRAPH_MARKS)
+    if (sample && sample.marks.length > 0) return sample
+    await sleep(500)
+  }
+  return sample
+}
+
+function judgeGraphPalette(theme, sample) {
+  const label = `graph (${theme})`
+  if (!sample) throw new Error(`${label}: the panel held no canvas to read`)
+  const surface = parseColor(sample.surface)
+  if (!surface || surface.alpha !== 1) throw new Error(`${label}: the panel's surface is not an opaque colour (${sample.surface})`)
+  const resolved = Object.entries(sample.tokens)
+    .map(([name, value]) => ({ name, color: parseColor(value) }))
+    .filter((entry) => entry.color)
+  const namesFor = (rgb) => resolved
+    .filter((entry) => Math.abs(entry.color.alpha - 1) < 0.06 && near(entry.color.rgb, rgb))
+    .map((entry) => entry.name)
+  const surfaceNames = namesFor(surface.rgb)
+  if (!surfaceNames.includes('--bg-base'))
+    throw new Error(`${label}: measured a surface that is not --bg-base — ${surfaceNames.join(', ') || toHex(surface.rgb)}`)
+  const palette = resolved.filter((entry) => /^--graph-tag-\d+$/.test(entry.name))
+  if (palette.length === 0) throw new Error(`${label}: the stylesheet declares no --graph-tag-* colours to measure`)
+  const failures = []
+  const judged = new Set()
+  const judge = (name, rgb) => {
+    judged.add(name)
+    const ratio = contrastRatio(rgb, surface.rgb)
+    if (ratio < AA_MARK) failures.push({ name, ratio, rgb })
+  }
+  for (const entry of palette) judge(entry.name, entry.color.rgb)
+  const reported = []
+  let painted = 0
+  for (const mark of sample.marks) {
+    const rgb = mark.rgb.split(',').map(Number)
+    // The cleared canvas shows the surface itself, so a mark equal to it is the background arriving
+    // in the bitmap rather than something drawn on it.
+    if (near(rgb, surface.rgb)) continue
+    const names = namesFor(rgb)
+    if (names.length === 0) {
+      reported.push({ ...mark, rgb })
+      continue
+    }
+    painted++
+    for (const name of names) if (!judged.has(name)) judge(name, rgb)
+  }
+  const belowAA = failures.sort((left, right) => left.ratio - right.ratio)
+  console.log(`  ${belowAA.length === 0 && painted > 0 ? '✓' : '✗'} ${label}: ${palette.length} declared tag colours + ${painted} colours the canvas painted measured against --bg-base, ${belowAA.length} below ${AA_MARK}:1 (${reported.length} painted marks not declared by the palette, reported only)`)
+  for (const item of belowAA) console.log(`      ${item.ratio.toFixed(2)}:1 (needs ${AA_MARK}) ${item.name} on --bg-base — ${toHex(item.rgb)} on ${toHex(surface.rgb)}`)
+  for (const mark of reported) console.log(`      · ${contrastRatio(mark.rgb, surface.rgb).toFixed(2)}:1 ${toHex(mark.rgb)} (${mark.pixels}px) on --bg-base — not a declared colour, not judged`)
+  if (painted === 0) console.log('      the canvas painted no colour that resolves to a declared token: every opaque mark it drew is listed above')
+  return belowAA.length + (painted === 0 ? 1 : 0)
+}
+
+/**
+ * The graph pass, once per theme: the shared probe note puts notes in the vault (the global graph
+ * draws the whole vault), the panel is opened with the shortcut above, read, and closed again.
+ */
+async function readGraphPalette(page, theme, colors) {
+  await ensureProbeNote(page, colors)
+  await openGraphSurface(page)
+  const failures = judgeGraphPalette(theme, await settleGraphMarks(page))
+  await closeGraphSurface(page)
+  await sleep(SETTLE_MS)
+  return failures
 }
 
 // The two music panels are measured in the library's grid view on purpose: the duration badge
@@ -1090,6 +1272,10 @@ async function main() {
       for (const surface of SURFACES) {
         failures += await readSurface(page, theme, surface, accents, palette, declaredTags)
       }
+      // Last in the theme rather than among the surfaces: the graph is not one of the dialogs above
+      // (it has no axe reader here either — its own a11y pass belongs to the behaviour gate), and
+      // this reads colours its canvas paints, which is a reader no surface above has.
+      failures += await readGraphPalette(page, theme, declaredTags)
     }
     // Then the width only a phone draws, in its own pass after the desktop ones: the shell *is* a
     // drawer here and the share center covers the viewport instead of sitting in the shell, so these
