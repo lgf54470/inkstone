@@ -203,6 +203,16 @@ export function buildColorLegends(
   return [...map.entries()].slice(0, 10).map(([label, color]) => ({ label, color }))
 }
 
+export function graphNodeCounts(nodes: readonly GraphNode[]): { notes: number; tags: number; unresolved: number } {
+  let notes = 0, tags = 0, unresolved = 0
+  for (const node of nodes) {
+    if (node.kind === 'tag') tags++
+    else if (node.kind === 'unresolved') unresolved++
+    else notes++
+  }
+  return { notes, tags, unresolved }
+}
+
 /** Tag memberships are drawn like links but are not wiki links, so the stats line leaves them out. */
 export function countWikiLinkEdges(data: GraphResponse): number {
   const tagIds = new Set(data.nodes.filter((node) => node.kind === 'tag').map((node) => node.id))

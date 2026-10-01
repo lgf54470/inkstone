@@ -5,6 +5,7 @@ import {
   buildColorLegends,
   colorGroupsByNodeId,
   countWikiLinkEdges,
+  graphNodeCounts,
   graphPrefsStorageKey,
   graphScaleAfterWheel,
   loadPreferences,
@@ -201,5 +202,21 @@ describe('color group rules legend and storage (FEAT-04)', () => {
     }))
     localStorage.setItem(key, JSON.stringify({ colorGroups: many }))
     expect(loadPreferences('many-user').colorGroups).toHaveLength(GRAPH_COLOR_GROUP_LIMIT)
+  })
+})
+
+function countedNode(id: string, kind: GraphResponse['nodes'][number]['kind']): GraphResponse['nodes'][number] {
+  return { id, title: id, kind, degree: 0, inDegree: 0, outDegree: 0, folderId: null, folderName: null, folderColor: null, tags: [] }
+}
+
+describe('the node counts the header and the badge share (G-38)', () => {
+  it('splits a response into notes, tags and unresolved nodes', () => {
+    expect(graphNodeCounts([
+      countedNode('note-1', 'note'),
+      countedNode('note-2', 'note'),
+      countedNode('tag:work', 'tag'),
+      countedNode('ghost:zeta', 'unresolved'),
+    ])).toEqual({ notes: 2, tags: 1, unresolved: 1 })
+    expect(graphNodeCounts([])).toEqual({ notes: 0, tags: 0, unresolved: 0 })
   })
 })

@@ -23,7 +23,7 @@ import { useGraphCanvasRefs } from './canvas-hooks'
 import { GraphSettingsPanel } from './settings'
 import { useGraphExport } from './use-graph-export'
 import { DEFAULT_PREFERENCES } from './constants'
-import { countWikiLinkEdges, graphPrefsStorageKey, loadPreferences, normalizedResponse } from './helpers'
+import { countWikiLinkEdges, graphNodeCounts, graphPrefsStorageKey, loadPreferences, normalizedResponse } from './helpers'
 import type { GraphHeaderActionsProps, GraphHeaderProps } from './types'
 
 const TRACKING_TITLE = 'tracking-[var(--tracking-graph-title)]'
@@ -115,15 +115,13 @@ function useGraphData(request: GraphQuery) {
 }
 
 function GraphStats({ data }: { data: GraphResponse }) {
-  const noteCount = data.nodes.filter((node) => node.kind === 'note').length
-  const tagCount = data.nodes.filter((node) => node.kind === 'tag').length
+  const counts = graphNodeCounts(data.nodes)
   const linkCount = countWikiLinkEdges(data)
-  const unresolvedCount = data.nodes.filter((node) => node.kind === 'unresolved').length
   return (
     <span className="whitespace-nowrap text-[length:var(--text-11\.5)] text-[var(--text-quaternary)]">
-      {t('graph.stats_summary', { notes: noteCount, links: linkCount })}
-      {tagCount > 0 && ` · ${t('graph.stats_tags', { count: tagCount })}`}
-      {unresolvedCount > 0 && ` · ${t('graph.stats_unresolved', { count: unresolvedCount })}`}
+      {t('graph.stats_summary', { notes: counts.notes, links: linkCount })}
+      {counts.tags > 0 && ` · ${t('graph.stats_tags', { count: counts.tags })}`}
+      {counts.unresolved > 0 && ` · ${t('graph.stats_unresolved', { count: counts.unresolved })}`}
     </span>
   )
 }

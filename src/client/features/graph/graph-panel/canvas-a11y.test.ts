@@ -200,5 +200,6 @@ describe('the state a reader is left in', () => {
     const graph = mountGraphCanvas(truncated())
     expect(graph.container.querySelector('[role="status"]')?.textContent)
       .toBe(t('graph.showing_limit', { shown: 3, total: 9 }))
+    expect(t('graph.showing_limit', { shown: 3, total: 9 })).toContain('nodes')
   })
 })

@@ -60,7 +60,7 @@ export const messages = {
 'graph.show_labels': 'Show titles',
 'graph.show_orphans': 'Show orphan notes',
 'graph.show_unresolved': 'Show unresolved notes',
-'graph.showing_limit': 'Showing {shown} of {total}; add filters to narrow the graph',
+'graph.showing_limit': 'Showing {shown} of {total} nodes; add filters to narrow the graph',
 'graph.tag': 'Tag',
 'graph.unresolved_short': ' unresolved',
 'graph.reset': 'Reset',

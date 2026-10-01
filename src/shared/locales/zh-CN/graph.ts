@@ -60,7 +60,7 @@ export const messages = {
 'graph.show_labels': '显示标题',
 'graph.show_orphans': '显示孤立笔记',
 'graph.show_unresolved': '显示尚未创建的笔记',
-'graph.showing_limit': '显示 {shown} / {total} 篇；继续筛选可缩小范围',
+'graph.showing_limit': '显示 {shown} / {total} 个节点；继续筛选可缩小范围',
 'graph.tag': '标签',
 'graph.unresolved_short': '篇未创建',
 'graph.reset': '复位',
