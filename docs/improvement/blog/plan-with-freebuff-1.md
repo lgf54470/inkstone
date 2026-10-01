@@ -283,7 +283,7 @@
   - 实现（客户端）：API `blog.tags.merge`；store `mergeTag`（一次 merge + 重问 tags/posts/postIndex/stats，失败走共享 `runBlogMutation` 上报）；侧栏改名落在已存在的名称上时先确认「合并」，确认后调 merge 端点——与笔记侧同名合并的交互一致。
   - 复现测试：新增 `tests/blog-tag-membership.test.ts` 11 条（改名迁移含后代与公开筛选、撞名合并去重与目标元数据保留、拒绝改到自己路径、显式 merge 与派生目标物化、自合并/后代合并/未知目标、删除覆盖回收站、派生标签改名与删除、跨账号四操作皆 404 且不碰对方数据、`updated_at` 变而 `published_at` 不变、按标签批量发布的通配符按字面量）；`tag-rename.test.ts` 3 条（自由名直接 patch、撞名先确认再 merge、取消不动）；`tag-merge.test.ts` 2 条（merge 后重问四作用域、失败不重问）。实现前实测：把成员迁移变异成 no-op 后 7 failed；除实现外还先红并修掉两个真实缺陷——改名未拒绝自己的后代路径（会把 `a/b` 写成 `a/b/b`）、PATCH 未知引用会静默建行（应为 404）。
   - 限制：标签行仍可缺席（派生态是模型的一部分）；改名/删除不保留旧名（标签级历史不做）；公开标签页按名称派生，所以旧名地址会 404（ADR 已记录这是「名称即成员关系」的推论）。
-- [ ] B5-09 **FEA-11** 多作者归属修正
+- [-] B5-09 **FEA-11** 多作者归属修正 — 已证伪（B1-01/SEC-01 已修）：核验 `public-links.ts` 的三条路由（列表 / 申请 / 点击）现在全部用 `blogOwnerOf(c).userId`，全 worker 再无 `SELECT id FROM users ORDER BY created_at ASC LIMIT 1` 这类「最早注册用户」归属；`owner.ts` 里那一条按 `created_at, rowid` 的查询是**缺省寻址的过渡回退**（公开 API 未带 `?owner=` 时的默认博客，计划 §0 已记录到期删除），不是写入归属。证据：`tests/blog-public-owner.test.ts` 的友链申请用例（同一站点分别申请给 alice / bob，各自得到一条 `pending`），以及点击用例（跨博客点击只认归属方）在 B1-01 已随 SEC-01 落地；本条不产生代码改动。
 - [ ] B5-10 **FEA-05** 版本历史（需 ADR）
 - [ ] B5-11 **FEA-08** RSS 自动发现 / WebSub ping + sitemap 覆盖与 `lastmod`
 - [ ] B5-12 **FEA-12** 前台：相关文章 / 搜索页 / PWA / 嵌套评论
@@ -314,6 +314,7 @@
 
 | 日期 | 条目 | commit | 回归结果 | 已知限制 |
 | --- | --- | --- | --- | --- |
+| 2026-10-01 | B5-09 FEA-11 多作者归属（核验为已修） | （下一提交回填） | 无代码改动；核验 `public-links.ts` 全量走 `blogOwnerOf`、worker 无「最早用户」写入归属；证据 `tests/blog-public-owner.test.ts` 友链申请/点击两用例（B1-01 已覆盖） | `owner.ts` 的缺省寻址回退仍按 `created_at` 选默认博客（过渡窗口，到期删除） |
 | 2026-10-01 | B5-08 FEA-10 标签体系统一（ADR-0007 + 改名/合并/删除迁移成员关系） | （下一提交回填） | `tsc -b` 绿；新增 `tests/blog-tag-membership.test.ts` 11 条 + 客户端 5 条（rename 3 / merge 2）；迁移 no-op 变异 7 failed；blog 目标集 52 文件 313 通过（`blog-comments-window` 满负载 5s 超时，单独重跑通过）；`comments`/`style`/`size`/`deep-imports` 绿（comments 白名单 1377 文件 13065 条） | 标签行仍可缺席（派生态合法）；改名/删除不留旧名；公开标签页旧地址 404；回收站里的帖子成员一并迁移（刻意） |
 | 2026-10-01 | B5-07 FEA-09 分析导出 CSV + 单篇下钻 | （下一提交回填） | `tsc -b` 绿；`tests/blog-routes.test.ts` 89 条（新 3）；`blog-dashboard-export.test.ts` 12 条；demo `blog-smoke.test.ts` 4 条（目标 105 条全绿）；三处变异共 3 failed（去掉 `targetId` 作用域、放行回收站文章、去掉过滤陈述行）；`test:unit` 606 文件 5402 通过 / 2 failed / 1 skipped——2 条均为满负载 5s 超时（`blog-comments-window`、calendar activity fuzz），放宽到 30s 后两文件 12 条全绿；十二项静态门禁 + `surfaces` 绿（comments 白名单 1372 文件 13033 条）；e2e / 视觉 / 对比度留到批次收尾统一跑 | 下钻只覆盖排行榜里的活文章（回收站文章的历史不可从 UI 进入）；CSV 是屏幕窗口快照（非服务端全量）；三组环境分布不做区间对比 |
 | 2026-10-01 | BF-1 前台失败不再伪造（四个取数抛错、页面与 feed/sitemap 503 + no-store） | （下一提交回填） | `blog-frontend`：`npm test` 309 通过（新 7 条）、`astro check` 仅既有 3 条、`lint` 通过、根 `size:check:blog`/`deep-imports:check:blog` 绿；三处变异共 4 failed（getPosts 恢复回退、feed/sitemap 去掉失败分支）；根项目未动 | 站点身份默认回退保留（非内容）；列表类读取失败仍回空数组；`/503` 是 rewrite，URL 不变 |
