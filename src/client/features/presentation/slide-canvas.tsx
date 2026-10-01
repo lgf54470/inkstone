@@ -180,10 +180,15 @@ function readSlideGeometries(host: HTMLElement): { children: HTMLElement[]; bloc
   const children = [...host.children] as HTMLElement[]
   host.classList.remove(LAYOUT_CLASS.cover, LAYOUT_CLASS.split)
   resetBlockFit(children)
+  // The design canvas is scaled to the stage, so a rect is in device pixels while everything the
+  // walk packs with is design pixels; the host's own two readings give the ratio between them.
+  const hostRect = host.getBoundingClientRect().height
+  const devicePerDesign = host.offsetHeight > 0 && hostRect > 0 ? hostRect / host.offsetHeight : 1
   const blocks: SlideBlock[] = children.map((child) => ({
     top: child.offsetTop,
     height: child.offsetHeight,
     heading: HEADING_TAG.test(child.tagName),
+    breaks: slideBreakOffsets(child, devicePerDesign),
   }))
   // Two columns are the one layout the page walk cannot page through, so a slide keeps them only while
   // the taller column fits the page — and that height is only there with the columns drawn.
@@ -193,6 +198,38 @@ function readSlideGeometries(host: HTMLElement): { children: HTMLElement[]; bloc
   return { children, blocks, columnHeight }
 }
 
+/**
+ * Where a page may cut into this block, in design pixels from its own top.
+ *
+ * A table's rows and a list's items each carry their own box, and the walk reads their real tops: a
+ * row is as tall as its tallest cell, so an average of them would cut through one. A code block is a
+ * single text run with no markup per line, but `pre` never wraps, so its line boxes are uniform and
+ * its box divided by its line count lands on each of them.
+ */
+function slideBreakOffsets(child: HTMLElement, devicePerDesign: number): number[] {
+  const height = child.offsetHeight
+  const top = child.getBoundingClientRect().top
+  const units = breakUnits(child)
+  if (units.length > 1) {
+    return units
+      .map((unit) => (unit.getBoundingClientRect().top - top) / devicePerDesign)
+      .filter((offset) => offset > 0 && offset < height)
+  }
+  const code = child.querySelector<HTMLElement>(':scope > pre > code')
+  const lines = code ? (code.textContent ?? '').replace(/\n$/, '').split('\n').length : 0
+  if (!code || lines < 2) return []
+  const box = code.getBoundingClientRect()
+  const step = box.height / lines / devicePerDesign
+  const start = (box.top - top) / devicePerDesign
+  return Array.from({ length: lines - 1 }, (_, index) => start + step * (index + 1)).filter((offset) => offset < height)
+}
+
+/** The elements whose own top is somewhere a page can start: a table's rows, a list's items. */
+function breakUnits(child: HTMLElement): Element[] {
+  if (child.querySelector(':scope > table')) return [...child.querySelectorAll('tr')]
+  return child.matches('ul, ol') ? [...child.querySelectorAll('li')] : []
+}
+
 function resetBlockFit(children: HTMLElement[]): void {
   for (const child of children) {
     child.style.transform = ''
@@ -200,16 +237,23 @@ function resetBlockFit(children: HTMLElement[]): void {
     child.style.width = ''
     child.style.height = ''
     child.style.overflow = ''
+    child.style.clipPath = ''
   }
 }
 
 // Off-page blocks hide via visibility rather than display, so chart.js never
 // re-measures a diagram when the page changes; an oversized block is scaled down
-// so its whole content stays visible instead of being clipped or scrolled.
-function applySlidePage(children: HTMLElement[], plan: SlidePlan, subPage: number, contentWidth: number, contentHeight: number): void {
+// so its whole content stays visible instead of being clipped or scrolled, and a
+// block that continues over several pages is cut to the band this page owns.
+export function applySlidePage(children: HTMLElement[], plan: SlidePlan, subPage: number, contentWidth: number, contentHeight: number): void {
   const page = plan.pages[resolvePageIndex(plan, subPage)]
   children.forEach((child, index) => {
-    child.style.visibility = !page || (index >= page.from && index < page.to) ? '' : 'hidden'
+    const onPage = Boolean(page) && index >= page!.from && index < page!.to
+    child.style.visibility = !onPage ? 'hidden' : ''
+    // The canvas clips at its own design box, which is a slide's padding taller than a page, so the
+    // band a continued block shows on this page has to be cut by the plan rather than left to
+    // overflow: the rows below it belong to the next page and would be drawn twice.
+    child.style.clipPath = onPage && page!.clip ? `inset(${page!.clip.top}px 0 ${page!.clip.bottom}px 0)` : ''
     const scale = plan.scales[index] ?? 1
     if (scale >= 1) {
       child.style.transform = ''

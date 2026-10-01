@@ -1,24 +1,47 @@
 // Block-level pagination for a slide that does not fit its canvas. Kept as a pure
-// function because the packing rules (subsection-aligned breaks, oversized blocks
-// shrinking instead of clipping, a column slide staying whole) are the part worth
-// testing — the DOM hook only measures blocks and applies the plan.
+// function because the packing rules (subsection-aligned breaks, a block too tall for the
+// page either shrinking or continuing on its own units, a column slide staying whole) are
+// the part worth testing — the DOM hook only measures blocks and applies the plan.
 import type { SlideLayout } from './slides'
+
+/**
+ * The smallest factor a block may be shrunk to before its own units start a new page instead.
+ *
+ * The canvas lays its body out at 28 design px on a 720 px-tall page, and projected body copy is
+ * designed to stay at or above 18 px of that canvas, so the floor is 18/28. The numbers are read off
+ * a real show (`scripts/measure-slide-fit.mjs`, 1920×1080): a 200-row table is 11 672 px of block on
+ * a 632 px page, which fitting would shrink to 0.054 — the text arrives on the projector at 1.8 px.
+ */
+export const MIN_FIT_SCALE = 0.64
 
 export interface SlideBlock {
   top: number
   height: number
   heading: boolean
+  /**
+   * Where a page may cut into this block: ascending offsets from its own top, in design pixels, each
+   * one the start of a unit the renderer repeats — a table row, a list item, a line of code. A block
+   * with none of those (a paragraph, a diagram) has nothing to cut on and is only ever shrunk.
+   */
+  breaks?: number[]
 }
 
 export interface SlidePage {
   from: number
   to: number
   top: number
+  /**
+   * What this page cuts off the top and the bottom of the block it continues, in design pixels from
+   * that block's own edges. Only a page that carries on a block too tall for `MIN_FIT_SCALE` has one;
+   * the rest of the block belongs to the pages either side of it, and a surface that painted the
+   * whole box would show a page's rows twice.
+   */
+  clip?: { top: number; bottom: number }
 }
 
 export interface SlidePlan {
   pages: SlidePage[]
-  /** Per-block shrink factor for a block that alone exceeds one page. */
+  /** Per-block shrink factor for a block that alone exceeds one page and keeps shrinking. */
   scales: number[]
   /**
    * The layout the slide was measured under, which is the layout every surface then draws it in.
@@ -47,11 +70,43 @@ export function planSlidePages(blocks: SlideBlock[], contentHeight: number, layo
     while (to < blocks.length && blocks[to]!.top + blocks[to]!.height - pageTop <= limit) to++
     if (to < blocks.length) to = breakIndex(blocks, from, to)
     const first = blocks[from]!
-    if (first.height > limit) scales[from] = limit / first.height
-    pages.push({ from, to, top: pageTop })
+    // A block that exceeds the page on its own either continues on its units or shrinks. It continues
+    // when fitting it would take the body below `MIN_FIT_SCALE` and every one of its units still fits a
+    // page; it shrinks otherwise, because a cut through a unit taller than the page would lose it —
+    // and it shrinks when the page carries blocks below it too, since a negative margin put those
+    // there and no horizontal cut can pass between them.
+    const bands = first.height > limit && to === from + 1 ? continuationBands(first, limit) : null
+    if (bands) {
+      for (const band of bands) pages.push({ from, to, top: pageTop + band.start, clip: { top: band.start, bottom: first.height - band.end } })
+    } else {
+      if (first.height > limit) scales[from] = limit / first.height
+      pages.push({ from, to, top: pageTop })
+    }
     from = to
   }
   return { pages, scales, layout }
+}
+
+// The bands a block continues over, as offsets from its own top, or `null` when it keeps shrinking:
+// a block short enough to fit at a readable size, a block with no units to cut on, or a unit too
+// tall for a page. The greedy walk takes the last unit still inside the page, so no band wastes
+// more than one unit of the canvas.
+function continuationBands(block: SlideBlock, limit: number): { start: number; end: number }[] | null {
+  if (limit / block.height >= MIN_FIT_SCALE) return null
+  const units = (block.breaks ?? []).filter((offset) => offset > 0 && offset < block.height)
+  const edges = [0, ...units, block.height]
+  // One pass over the gaps also answers a block with no unit to cut on: its only gap is the block
+  // itself, which this branch was entered because it exceeds the page.
+  for (let index = 1; index < edges.length; index++) if (edges[index]! - edges[index - 1]! > limit) return null
+  const bands: { start: number; end: number }[] = []
+  let cursor = 0
+  while (cursor < edges.length - 1) {
+    let end = cursor + 1
+    while (end + 1 < edges.length && edges[end + 1]! - edges[cursor]! <= limit) end++
+    bands.push({ start: edges[cursor]!, end: edges[end]! })
+    cursor = end
+  }
+  return bands
 }
 
 // Two columns are a way of fitting the page, not a way of overflowing it more slowly: a slide whose
@@ -80,13 +135,18 @@ export function resolvePageIndex(plan: SlidePlan, subPage: number): number {
 // Plans are compared by value because a re-measure usually produces the same plan:
 // keeping the previous object identity is what lets consumers memoize on it. The
 // layout is part of the value — a slide that lost or gained its columns between two
-// measures with otherwise identical pages has to be republished.
+// measures with otherwise identical pages has to be republished, and so is where a
+// continued block is cut, because that is what every surface paints.
 export function samePlan(a: SlidePlan | undefined, b: SlidePlan): boolean {
   if (!a || a.pages.length !== b.pages.length || a.scales.length !== b.scales.length) return false
   if (a.layout !== b.layout) return false
   const pages = a.pages.every((page, index) => {
     const other = b.pages[index]
-    return Boolean(other) && page.from === other.from && page.to === other.to && page.top === other.top
+    return Boolean(other) && page.from === other.from && page.to === other.to && page.top === other.top && sameClip(page.clip, other.clip)
   })
   return pages && a.scales.every((scale, index) => scale === b.scales[index])
+}
+
+function sameClip(a: SlidePage['clip'], b: SlidePage['clip']): boolean {
+  return a?.top === b?.top && a?.bottom === b?.bottom
 }

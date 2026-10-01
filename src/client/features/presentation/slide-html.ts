@@ -1,7 +1,7 @@
 import { renderMarkdown, type RenderResult } from '../../lib/markdown/renderer'
 import type { FenceBodies } from '../../lib/markdown/fence-bodies'
 import { takeLayoutDirective, type SlideLayout } from './slides'
-import { resolvePageIndex, type SlidePlan } from './slide-pagination'
+import { resolvePageIndex, type SlidePage, type SlidePlan } from './slide-pagination'
 
 /**
  * A slide's prepared markup with the fence bodies it was rendered from (P-01).
@@ -192,7 +192,8 @@ export function renderSlideSource(source: string, externalImages: boolean): Slid
 // the whole slide and hiding the rest, which is what chart.js needs to measure its
 // canvas; a thumbnail only has to look right, so it gets just the page's own blocks
 // and skips the geometry — that keeps a 14-page slide from mounting 14 full copies
-// of its markup in the slide list. Blocks a page had to shrink keep their factor.
+// of its markup in the slide list. Blocks a page had to shrink keep their factor, and
+// a block that continues over several pages keeps the band this page owns.
 export function slicePageHtml(html: string, plan: SlidePlan, subPage: number, contentWidth: number, contentHeight: number): string {
   const page = plan.pages[resolvePageIndex(plan, subPage)]
   if (!page) return html
@@ -204,9 +205,21 @@ export function slicePageHtml(html: string, plan: SlidePlan, subPage: number, co
     // The canvas hides off-page blocks with an inline `visibility`; a thumbnail must not
     // inherit that from the markup it sliced out of, and owns its own layout anyway.
     if (child instanceof HTMLElement) child.style.visibility = ''
+    applySliceBand(child, page.clip)
     applySliceScale(child, plan.scales[page.from + offset] ?? 1, contentWidth, contentHeight)
   })
   return kept.map((child) => child.outerHTML).join('')
+}
+
+// The projector brings a continued block's band to the page by translating the whole slide; a slice
+// has no wrapper to move, and the block it kept starts at the top of its own page box, so the band
+// travels by itself. A detached `<template>` reports every offset as 0, so the band can only come
+// from the plan rather than be measured out of the markup here.
+function applySliceBand(child: Element, clip: SlidePage['clip']): void {
+  if (!clip || !(child instanceof HTMLElement)) return
+  child.style.clipPath = `inset(${clip.top}px 0 ${clip.bottom}px 0)`
+  // The projector's page already starts at this band, so a band that opens the block needs no lift.
+  if (clip.top > 0) child.style.transform = `translateY(${-clip.top}px)`
 }
 
 function applySliceScale(child: Element, scale: number, contentWidth: number, contentHeight: number): void {
