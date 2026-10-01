@@ -218,4 +218,11 @@ export const messages = {
 'blog.trash_emptied': 'Trash emptied',
 'blog.confirm_purge_post': 'Erase "{value0}" for good? This cannot be undone.',
 'blog.confirm_empty_trash': 'Erase all {value0} posts in the trash? This cannot be undone.',
+// FEA-05 revisions: every write of the text keeps the state it replaced.
+'blog.revisions_title': 'Version history',
+'blog.revisions_hint': 'Each save of the text keeps the state it replaced',
+'blog.revisions_empty': 'No earlier versions yet',
+'blog.revisions_restore': 'Restore this version',
+'blog.revisions_restored': 'Version restored',
+'blog.revisions_confirm': 'Restore the version from {value0}? The current content is kept as a version too.',
 }

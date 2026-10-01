@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { BarChart2, Check, Copy, ExternalLink, FolderClosed, FolderInput, PauseCircle, Pin, PlayCircle, Settings2, Trash2 } from 'lucide-react'
+import { BarChart2, Check, Copy, ExternalLink, FolderClosed, FolderInput, History, PauseCircle, Pin, PlayCircle, Settings2, Trash2 } from 'lucide-react'
 import type { BlogFolder, BlogPostSummary } from '@shared/types'
 import { confirm, useContextMenu, type MenuItem } from '../../../components/overlay'
 import { cn } from '../../../lib/cn'
@@ -14,12 +14,14 @@ export function useBlogPostSummaryCard({
   folders,
   frontendBase,
   onOpenEdit,
+  onOpenRevisions,
   deleteConfirmKey = 'blog.confirm_delete_post',
 }: {
   post: BlogPostSummary
   folders: BlogFolder[]
   frontendBase: string
   onOpenEdit: (post: BlogPostSummary) => void
+  onOpenRevisions: (post: BlogPostSummary) => void
   deleteConfirmKey?: DeleteConfirmKey
 }) {
   const toast = useUi((s) => s.toast)
@@ -48,10 +50,10 @@ export function useBlogPostSummaryCard({
   )
   const contextMenuItems = useMemo(
     () => (contextMenu.point ? buildCardContextMenuItems({
-      post, postUrl, folders, onOpenEdit, setActiveTab,
+      post, postUrl, folders, onOpenEdit, onOpenRevisions, setActiveTab,
       handleCopyLink, handleDelete, handleMoveToFolder, updatePost,
     }) : []),
-    [contextMenu.point, post, postUrl, folders, onOpenEdit, setActiveTab, handleCopyLink, handleDelete, handleMoveToFolder, updatePost],
+    [contextMenu.point, post, postUrl, folders, onOpenEdit, onOpenRevisions, setActiveTab, handleCopyLink, handleDelete, handleMoveToFolder, updatePost],
   )
 
   return {
@@ -133,6 +135,7 @@ interface CardMenuCtx {
   postUrl: string
   folders: BlogFolder[]
   onOpenEdit: (post: BlogPostSummary) => void
+  onOpenRevisions: (post: BlogPostSummary) => void
   setActiveTab: BlogStoreState['setActiveTab']
   handleCopyLink: (slug: string) => Promise<void>
   handleDelete: () => Promise<void>
@@ -145,6 +148,7 @@ function buildCardContextMenuItems(ctx: CardMenuCtx): MenuItem[] {
     { id: 'open_link', label: t('preview.open_in_new_tab'), icon: <ExternalLink size={13} />, onSelect: () => window.open(ctx.postUrl, '_blank') },
     { id: 'copy_link', label: t('blog.copy_link'), icon: <Copy size={13} />, onSelect: () => void ctx.handleCopyLink(ctx.post.slug) },
     { id: 'analytics', label: t('blog.view_note_analytics'), icon: <BarChart2 size={13} />, onSelect: () => ctx.setActiveTab('dashboard') },
+    { id: 'revisions', label: t('blog.revisions_title'), icon: <History size={13} />, onSelect: () => ctx.onOpenRevisions(ctx.post) },
     { id: 'settings', label: t('blog.post_settings'), icon: <Settings2 size={13} />, onSelect: () => ctx.onOpenEdit(ctx.post) },
     {
       id: 'move',

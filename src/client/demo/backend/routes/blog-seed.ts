@@ -29,6 +29,17 @@ export interface DemoTrashRecord {
   deletedAt: number
 }
 
+/**
+ * One stored version (FEA-05): the post as it stood, kept by the demo's own writes. The demo has no
+ * database, so this is the whole mechanism — the same rule the worker's `blog_revisions` rows follow.
+ */
+export interface DemoRevisionRecord {
+  id: string
+  postId: string
+  snapshot: BlogPost
+  createdAt: number
+}
+
 /** The recycle bin's answer shape, the same one the worker sends (`BlogTrashEntry`). */
 export function toDemoTrashEntry(record: DemoTrashRecord): BlogTrashEntry {
   const { content: _body, ...summary } = record.post
@@ -43,6 +54,7 @@ export interface BlogDemoData {
    * trash tab has something real to restore and the post's comments wait with it.
    */
   trash: DemoTrashRecord[]
+  revisions: DemoRevisionRecord[]
   folders: BlogFolder[]
   categories: BlogCategory[]
   tags: BlogTag[]
@@ -50,7 +62,7 @@ export interface BlogDemoData {
   settings: BlogSettings
   visits: BlogVisitLog[]
   groupEnabled: Record<string, boolean>
-  seq: { post: number; folder: number; tag: number; category: number; comment: number }
+  seq: { post: number; folder: number; tag: number; category: number; comment: number; revision: number }
 }
 
 type SeededPost = Omit<
@@ -246,6 +258,7 @@ export function createBlogDemoData(userId: string): BlogDemoData {
     userId,
     posts,
     trash: [],
+    revisions: [],
     folders: seedFolders(),
     categories: seedCategories(),
     tags: seedTags(),
@@ -253,7 +266,7 @@ export function createBlogDemoData(userId: string): BlogDemoData {
     settings: defaultBlogSettings(),
     visits: seedVisits(posts),
     groupEnabled: {},
-    seq: { post: 4, folder: 2, tag: 6, category: 3, comment: 5 },
+    seq: { post: 4, folder: 2, tag: 6, category: 3, comment: 5, revision: 0 },
   }
 }
 

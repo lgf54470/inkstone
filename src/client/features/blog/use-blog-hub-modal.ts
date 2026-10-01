@@ -15,6 +15,10 @@ export interface BlogHubModalBundle {
   onSwitchTab: (tab: BlogTab) => void
   onOpenNewPost: () => void
   onOpenEditPost: (post: BlogPostSummary) => void
+  onOpenRevisionsPost: (post: BlogPostSummary) => void
+  /** The post whose history panel is open, or null. */
+  revisionsPost: BlogPostSummary | null
+  onCloseRevisions: () => void
   onOpenSettings: () => void
   onClearSelection: () => void
   onSaved: () => Promise<void>
@@ -43,12 +47,13 @@ export function useBlogHubModal({
 
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [revisionsPost, setRevisionsPost] = useState<BlogPostSummary | null>(null)
   const publish = useBlogPublishModal(initialNoteId, activeNote)
 
   useBlogHubBootstrapEffect({
     open, loadHubData, hydrateTrafficFilters, clearPostSelection,
     setIsPublishModalOpen: publish.setIsPublishModalOpen, setEditingPost: publish.setEditingPost,
-    setIsCategoriesModalOpen, setIsSettingsModalOpen,
+    setIsCategoriesModalOpen, setIsSettingsModalOpen, setRevisionsPost,
   })
   useBlogHubTargetNoteEffect({ open, initialNoteId, activeNote, setTargetNoteId: publish.setTargetNoteId })
 
@@ -59,6 +64,8 @@ export function useBlogHubModal({
     selectedCount: selectedPostIds.size,
     onSwitchTab: setActiveTab, onOpenNewPost: publish.openNewPost,
     onOpenEditPost: publish.openEditPost,
+    onOpenRevisionsPost: setRevisionsPost,
+    revisionsPost, onCloseRevisions: () => setRevisionsPost(null),
     onOpenSettings: () => setIsSettingsModalOpen(true),
     onClearSelection: clearPostSelection, onSaved: () => loadHubData(),
     isPublishModalOpen: publish.isPublishModalOpen, setIsPublishModalOpen: publish.setIsPublishModalOpen,
@@ -109,6 +116,7 @@ function useBlogHubBootstrapEffect({
   setEditingPost,
   setIsCategoriesModalOpen,
   setIsSettingsModalOpen,
+  setRevisionsPost,
 }: {
   open: boolean
   loadHubData: () => Promise<void>
@@ -118,6 +126,7 @@ function useBlogHubBootstrapEffect({
   setEditingPost: (post: BlogPostIndexEntry | null) => void
   setIsCategoriesModalOpen: (open: boolean) => void
   setIsSettingsModalOpen: (open: boolean) => void
+  setRevisionsPost: (post: BlogPostSummary | null) => void
 }) {
   useEffect(() => {
     if (open) {
@@ -131,8 +140,11 @@ function useBlogHubBootstrapEffect({
       setEditingPost(null)
       setIsCategoriesModalOpen(false)
       setIsSettingsModalOpen(false)
+      // The history panel belongs to this session too: reopening the hub on another note must not
+      // find the previous post's panel still open.
+      setRevisionsPost(null)
     }
-  }, [open, loadHubData, hydrateTrafficFilters, clearPostSelection, setIsPublishModalOpen, setEditingPost, setIsCategoriesModalOpen, setIsSettingsModalOpen])
+  }, [open, loadHubData, hydrateTrafficFilters, clearPostSelection, setIsPublishModalOpen, setEditingPost, setIsCategoriesModalOpen, setIsSettingsModalOpen, setRevisionsPost])
 }
 
 /** The note the hub was opened from: applied once it is readable, not as a trigger to reload. */

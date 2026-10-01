@@ -51,6 +51,7 @@ function mount(onOpenEdit = vi.fn()) {
       frontendBase: 'https://blog.example.com',
       onToggleSelect: vi.fn(),
       onOpenEdit,
+      onOpenRevisions: vi.fn(),
     })),
     onOpenEdit,
   }

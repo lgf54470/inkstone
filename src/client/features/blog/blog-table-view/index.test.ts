@@ -50,7 +50,7 @@ function mount(onOpenEdit = vi.fn()) {
     stats: null,
     tags: [],
   })
-  return { ...renderElement(createElement(BlogTableView, { posts: [POST], onOpenEdit })), onOpenEdit }
+  return { ...renderElement(createElement(BlogTableView, { posts: [POST], onOpenEdit, onOpenRevisions: vi.fn() })), onOpenEdit }
 }
 
 describe('blog table semantics', () => {

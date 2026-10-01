@@ -1,6 +1,6 @@
 import type { MarkdownBackupManifest } from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
-import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogTrashEntry, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, BlogMediaItem, BlogPostAnalytics, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
+import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogFolder, BlogTag, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogGlobalAnalytics, BlogTrashEntry, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, BlogMediaItem, BlogPostAnalytics, BlogRevision, BlogRevisionSummary, CommunityTemplate, CommunityTemplateInput, ImportResult, PublicCollection, PublicNote, ShareAuditLogResponse, ShareCollectionListResponse, ShareFolder, ShareGlobalAnalytics, ShareInfo, ShareListResponse, ShareNoteAnalytics, ShareSessionsResponse, ShareStatsResponse, ShareSummaryResponse, ShareTag, ShareTimelineRange, ShareVisitsResponse } from '@shared/types'
 import { request, saveDownload, toQuery } from './transport'
 export const share = {
   share: {
@@ -271,6 +271,12 @@ export const share = {
         request<{ ok: true }>(`/api/blog/posts/${id}`, { method: 'DELETE' }),
       sync: (id: string) =>
         request<{ ok: true; syncedAt: number }>(`/api/blog/posts/${id}/sync`, { method: 'POST' }),
+      revisions: (postId: string, signal?: AbortSignal) =>
+        request<{ revisions: BlogRevisionSummary[] }>(`/api/blog/posts/${postId}/revisions`, { signal }),
+      revision: (postId: string, revisionId: string) =>
+        request<{ revision: BlogRevision }>(`/api/blog/posts/${postId}/revisions/${revisionId}`),
+      restoreRevision: (postId: string, revisionId: string) =>
+        request<{ ok: true }>(`/api/blog/posts/${postId}/revisions/${revisionId}/restore`, { method: 'POST' }),
       batch: (
         action: 'publish' | 'unpublish' | 'delete' | 'setCategory' | 'setFolder' | 'setPinned',
         postIds: string[],

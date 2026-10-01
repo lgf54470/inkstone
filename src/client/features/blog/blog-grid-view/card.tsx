@@ -23,6 +23,7 @@ export const BlogGridCard = memo(function BlogGridCard({
   frontendBase,
   onToggleSelect,
   onOpenEdit,
+  onOpenRevisions,
 }: {
   post: BlogPostSummary
   isSelected: boolean
@@ -32,11 +33,12 @@ export const BlogGridCard = memo(function BlogGridCard({
   frontendBase: string
   onToggleSelect: (postId: string) => void
   onOpenEdit: (post: BlogPostSummary) => void
+  onOpenRevisions: (post: BlogPostSummary) => void
 }) {
   // `memo` means a language switch never reaches this card through its props, and the date below is
   // formatted per render.
   useLocaleRepaint()
-  const card = useBlogPostSummaryCard({ post, folders, frontendBase, onOpenEdit })
+  const card = useBlogPostSummaryCard({ post, folders, frontendBase, onOpenEdit, onOpenRevisions })
 
   return (
     <div

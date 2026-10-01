@@ -12,7 +12,8 @@ import { blogBatchSchema } from './schemas'
 import { safeDecodeTagParam, toBlogPostIndexEntry, toBlogPostSummary } from './helpers'
 import { resolvedPublishedAt } from './publish-moment'
 import { blogBatchStatements, chunkPostIds } from './posts-batch'
-import { claimSlugStatements, renameSlugStatements } from './slug-history'
+import { assertSlugFree, claimSlugStatements, slugMoveStatements } from './slug-history'
+import { patchTouchesPostContent, registerBlogRevisionsRoutes, snapshotRevisionStatements } from './revisions'
 import { BLOG_POSTS_PAGE_SIZE, BLOG_POSTS_PAGE_SIZE_MAX, blogPostIndexQuery, blogPostsCountQuery, blogPostsListQuery } from './post-list-query'
 
 const SLUG_RE = /^[a-zA-Z0-9_-]{2,80}$/
@@ -25,6 +26,7 @@ export function registerBlogPostsRoutes(blogManageRoutes: Hono<AppBindings>): vo
   registerBlogPostsDeleteRoute(blogManageRoutes)
   registerBlogPostsSyncRoute(blogManageRoutes)
   registerBlogPostsBatchRoute(blogManageRoutes)
+  registerBlogRevisionsRoutes(blogManageRoutes)
 }
 
 function registerBlogPostsListRoute(blogManageRoutes: Hono<AppBindings>): void {
@@ -83,16 +85,20 @@ function registerBlogPostsWriteRoute(blogManageRoutes: Hono<AppBindings>): void 
     const postInput = postInputFromBody(body, note, slug)
 
     const existingPost = await c.env.DB
-      .prepare('SELECT id, slug, is_published, published_at FROM blog_posts WHERE note_id = ?1 AND user_id = ?2')
+      .prepare('SELECT * FROM blog_posts WHERE note_id = ?1 AND user_id = ?2')
       .bind(body.noteId, userId)
-      .first<{ id: string; slug: string; is_published: number; published_at: number }>()
+      .first<BlogPostRow>()
 
     if (existingPost) {
       const renamed = slug !== existingPost.slug
       if (renamed) await assertSlugFree(c.env.DB, userId, slug, existingPost.id)
       const now = Date.now()
-      const statements = [updateBlogPost(c.env.DB, existingPost.id, postInput, resolvedPublishedAt(body, existingPost, now))]
-      statements.push(...slugStatementsFor({ db: c.env.DB, userId, postId: existingPost.id, from: existingPost.slug, to: slug, now }))
+      const statements = [
+        // The publish dialog rewrites every field it owns, so the state it replaces is history.
+        ...snapshotRevisionStatements(c.env.DB, existingPost, now),
+        updateBlogPost(c.env.DB, existingPost.id, postInput, resolvedPublishedAt(body, existingPost, now)),
+        ...slugMoveStatements({ db: c.env.DB, userId, postId: existingPost.id, from: existingPost.slug, to: slug, now }),
+      ]
       await c.env.DB.batch(statements)
       return c.json({ ok: true, id: existingPost.id, slug })
     }
@@ -184,20 +190,6 @@ function postInputFromBody(
   }
 }
 
-/**
- * A slug only has to be free inside the account's own blog: another account publishing the same name
- * is a different post on a different site, and treating it as a conflict would both block that
- * account's publish and tell it what the other blog has published.
- */
-async function assertSlugFree(db: D1Database, userId: string, slug: string, excludeId?: string): Promise<void> {
-  const conflict = excludeId
-    ? await db.prepare('SELECT id FROM blog_posts WHERE user_id = ?1 AND slug = ?2 AND id != ?3')
-        .bind(userId, slug, excludeId).first()
-    : await db.prepare('SELECT id FROM blog_posts WHERE user_id = ?1 AND slug = ?2')
-        .bind(userId, slug).first()
-  if (conflict) throw ApiError.conflict('Slug already exists')
-}
-
 function updateBlogPost(db: D1Database, id: string, input: PostWriteInput, publishedAt: number): D1PreparedStatement {
   const now = Date.now()
   return db
@@ -245,25 +237,6 @@ function updateBlogPost(db: D1Database, id: string, input: PostWriteInput, publi
       input.seoNoindex,
       id,
     )
-}
-
-/**
- * What a write does to the slug it stores: nothing when the address did not move, and otherwise the
- * full take-and-retire pair. One function so the patch route, the upsert route and the create route
- * cannot disagree about which half of it applies.
- */
-function slugStatementsFor({
-  db, userId, postId, from, to, now,
-}: {
-  db: D1Database
-  userId: string
-  postId: string
-  from: string
-  to: string
-  now: number
-}): D1PreparedStatement[] {
-  if (from === to) return []
-  return renameSlugStatements({ db, userId, postId, previousSlug: from, nextSlug: to, now })
 }
 
 function insertBlogPost(
@@ -322,18 +295,24 @@ function registerBlogPostsPatchRoute(blogManageRoutes: Hono<AppBindings>): void 
     if (!current) throw ApiError.notFound('Post not found')
 
     const previousSlug = current.slug
+    const before = { ...current }
     if (body.slug && body.slug !== current.slug) {
       const slug = body.slug.trim().toLowerCase()
       if (!SLUG_RE.test(slug)) throw ApiError.badRequest('Invalid slug format')
-      await assertSlugFree(c.env.DB, slug, id)
+      await assertSlugFree(c.env.DB, userId, slug, id)
       current.slug = slug
     }
 
     if (body.content !== undefined) assertContentSize(body.content, 'Blog post')
 
     const now = Date.now()
-    const statements = [blogPostPatchStatement(c.env.DB, body, current, id, now)]
-    statements.push(...slugStatementsFor({ db: c.env.DB, userId, postId: id, from: previousSlug, to: current.slug, now }))
+    // A patch that only moves presentation (pin, publish, comments, publish moment) does not rewrite
+    // text, so it records no version; one that can change what the post says snapshots what it said.
+    const statements = patchTouchesPostContent(body)
+      ? snapshotRevisionStatements(c.env.DB, before, now)
+      : []
+    statements.push(blogPostPatchStatement(c.env.DB, body, current, id, now))
+    statements.push(...slugMoveStatements({ db: c.env.DB, userId, postId: id, from: previousSlug, to: current.slug, now }))
     await c.env.DB.batch(statements)
     return c.json({ ok: true })
   })
@@ -415,9 +394,9 @@ function registerBlogPostsSyncRoute(blogManageRoutes: Hono<AppBindings>): void {
     const userId = c.get('userId')!
 
     const post = await c.env.DB
-      .prepare('SELECT note_id FROM blog_posts WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL')
+      .prepare('SELECT * FROM blog_posts WHERE id = ?1 AND user_id = ?2 AND deleted_at IS NULL')
       .bind(id, userId)
-      .first<{ note_id: string }>()
+      .first<BlogPostRow>()
     if (!post) throw ApiError.notFound('Post not found')
 
     const note = await c.env.DB
@@ -429,8 +408,11 @@ function registerBlogPostsSyncRoute(blogManageRoutes: Hono<AppBindings>): void {
     const now = Date.now()
     const coverUrl = coverUrlFromNote(note.content)
 
-    await c.env.DB
-      .prepare(`
+    await c.env.DB.batch([
+      // Pulling the note's text into the post replaces what the post said, so the state it replaces
+      // is a version like any other patch.
+      ...snapshotRevisionStatements(c.env.DB, post, now),
+      c.env.DB.prepare(`
         UPDATE blog_posts SET
           title = ?1,
           content = ?2,
@@ -438,9 +420,8 @@ function registerBlogPostsSyncRoute(blogManageRoutes: Hono<AppBindings>): void {
           cover_url = COALESCE(?4, cover_url),
           updated_at = ?5
         WHERE id = ?6
-      `)
-      .bind(note.title, note.content, note.excerpt, coverUrl, now, id)
-      .run()
+      `).bind(note.title, note.content, note.excerpt, coverUrl, now, id),
+    ])
 
     return c.json({ ok: true, syncedAt: now })
   })

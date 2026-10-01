@@ -23,6 +23,7 @@ export const BlogTableRow = memo(function BlogTableRow({
   frontendBase,
   onToggleSelect,
   onOpenEdit,
+  onOpenRevisions,
 }: {
   post: BlogPostSummary
   isSelected: boolean
@@ -32,6 +33,7 @@ export const BlogTableRow = memo(function BlogTableRow({
   frontendBase: string
   onToggleSelect: (postId: string) => void
   onOpenEdit: (post: BlogPostSummary) => void
+  onOpenRevisions: (post: BlogPostSummary) => void
 }) {
   // `memo` means a language switch never reaches this row through its props, and the published date
   // below is formatted per render.
@@ -41,6 +43,7 @@ export const BlogTableRow = memo(function BlogTableRow({
     folders,
     frontendBase,
     onOpenEdit,
+    onOpenRevisions,
     deleteConfirmKey: 'blog.confirm_delete_post_detail',
   })
 

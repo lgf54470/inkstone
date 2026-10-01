@@ -1,3 +1,4 @@
+import { ApiError } from '../../lib/errors'
 import { publicPostVisibleSql } from './publish-moment'
 
 /**
@@ -13,6 +14,36 @@ import { publicPostVisibleSql } from './publish-moment'
  * The statements ride in the same batch as the write they belong to: a rename cannot land with its
  * history missing (a dead link) or with history pointing at an address that was never released.
  */
+
+/**
+ * The full take-and-retire pair for a write that moves a post's address, and nothing when the
+ * address did not move. Shared by the create/upsert/patch paths and the revision restore so none of
+ * them can apply half of it.
+ */
+export function slugMoveStatements({ db, userId, postId, from, to, now }: {
+  db: D1Database
+  userId: string
+  postId: string
+  from: string
+  to: string
+  now: number
+}): D1PreparedStatement[] {
+  if (from === to) return []
+  return renameSlugStatements({ db, userId, postId, previousSlug: from, nextSlug: to, now })
+}
+
+/**
+ * Whether a slug is free inside this account: another blog may publish the same name — that is a
+ * different site — so the question is scoped to the owner.
+ */
+export async function assertSlugFree(db: D1Database, userId: string, slug: string, excludeId?: string): Promise<void> {
+  const conflict = excludeId
+    ? await db.prepare('SELECT id FROM blog_posts WHERE user_id = ?1 AND slug = ?2 AND id != ?3')
+        .bind(userId, slug, excludeId).first()
+    : await db.prepare('SELECT id FROM blog_posts WHERE user_id = ?1 AND slug = ?2')
+        .bind(userId, slug).first()
+  if (conflict) throw ApiError.conflict('Slug already exists')
+}
 
 export interface TakenSlug {
   db: D1Database

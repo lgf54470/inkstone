@@ -9,9 +9,11 @@ import { BlogTableRow } from './row'
 export function BlogTableView({
   posts,
   onOpenEdit,
+  onOpenRevisions,
 }: {
   posts: BlogPostSummary[]
   onOpenEdit: (post: BlogPostSummary) => void
+  onOpenRevisions: (post: BlogPostSummary) => void
 }) {
   const categories = useBlogStore((s) => s.categories)
   const folders = useBlogStore((s) => s.folders)
@@ -53,6 +55,7 @@ export function BlogTableView({
                 frontendBase={frontendBase}
                 onToggleSelect={toggleSelectPost}
                 onOpenEdit={onOpenEdit}
+                onOpenRevisions={onOpenRevisions}
               />
             )
           })}

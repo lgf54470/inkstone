@@ -9,9 +9,11 @@ export { PostCoverImage } from './cover-image'
 export function BlogGridView({
   posts,
   onOpenEdit,
+  onOpenRevisions,
 }: {
   posts: BlogPostSummary[]
   onOpenEdit: (post: BlogPostSummary) => void
+  onOpenRevisions: (post: BlogPostSummary) => void
 }) {
   const categories = useBlogStore((s) => s.categories)
   const folders = useBlogStore((s) => s.folders)
@@ -42,6 +44,7 @@ export function BlogGridView({
             frontendBase={frontendBase}
             onToggleSelect={toggleSelectPost}
             onOpenEdit={onOpenEdit}
+            onOpenRevisions={onOpenRevisions}
           />
         )
       })}

@@ -1,4 +1,4 @@
-import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogTrashEntry, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats } from '@shared/types'
+import type { BlogPost, BlogPostIndexEntry, BlogPostSummary, BlogTrashEntry, BlogCategory, BlogComment, BlogCommentsCounts, BlogCommentStatus, BlogStats, BlogSettings, BlogFolder, BlogTag, BlogLink, BlogLinkCategory, BlogLinkStatus, BlogLinkStats, BlogRevisionSummary } from '@shared/types'
 import type { StoreApi } from 'zustand'
 
 export type SetBlogStoreState = StoreApi<BlogStoreState>['setState']
@@ -124,6 +124,14 @@ export interface BlogStoreState {
   loadLinks: () => Promise<void>
   loadStats: () => Promise<void>
   loadSettings: () => Promise<void>
+
+  /** The version history of the post the panel is open for; `null` while it is being asked for. */
+  revisions: BlogRevisionSummary[] | null
+  revisionsPostId: string | null
+  revisionsFailed: boolean
+  revisionsRequestSeq: number
+  loadRevisions: (postId: string) => Promise<void>
+  restoreRevision: (postId: string, revisionId: string) => Promise<boolean>
 
   /**
    * Everything below is a mutation: it reports its own failure (see `mutation.ts`), resolves to

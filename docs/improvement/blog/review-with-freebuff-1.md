@@ -464,7 +464,7 @@
 | FEA-02 | 文章级 SEO（metaTitle / description / ogImage / canonical / noindex） | 表无字段 | 全部主流 | 高 |
 | FEA-03 | slug 改名 301 重定向表 | 无 → 换 slug 必 404，直接损伤 SEO | Ghost redirects | 高 |
 | FEA-04 | 文章回收站（软删 + 还原） | **已落地（B5-04）**：删除改为软删（`deleted_at`），新增回收站视图与还原/彻底删除；活视图全部滤掉，只有回收站路由真正删行 | WordPress / Ghost | 中 |
-| FEA-05 | 版本历史 / 草稿恢复 | 无 `blog_revisions`；`/sync` 是单向覆盖 | WordPress revisions | 中 |
+| FEA-05 | 版本历史 / 草稿恢复 | **已落地（B5-10）**：`blog_revisions`（迁移 58）在 patch/upsert/sync 改写前存下被替换的状态，恢复是普通写入（也可再恢复）；每篇 20 版；卡片菜单进入历史面板 | WordPress revisions | 中 |
 | FEA-06 | 评论回复 + 通知（邮件/Webhook）+ 反垃圾 | **已落地（B5-05）**：博主可在审核列表行内回复；新评论向设置的 Webhook 发 JSON；链接数/黑名单/无文字三条规则给出分数，达阈值直接存 spam | 全部主流 | 中 |
 | FEA-07 | 独立媒体库 / 封面选择器 | **已落地（B5-06）**：媒体库就是 `attachments` 里的图片（不新建表），发布弹窗可打开选择器上传/挑选/删除并把公开地址写回封面；公开地址只在「有已发布文章仍引用它」时对读者可见 | Ghost 媒体库 | 中 |
 | FEA-08 | RSS 自动发现 / WebSub ping；sitemap 覆盖分类与标签 | 前台有 `feed.xml`/`sitemap.xml`，服务端无推送；sitemap 缺 `/links`、`/categories/*`、`/tags/*` 与 `lastmod` | 全部主流 | 中 |

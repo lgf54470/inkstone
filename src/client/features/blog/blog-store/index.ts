@@ -7,6 +7,7 @@ import { blogLoadersActions } from './loaders'
 import { blogContentActions } from './content'
 import { blogActionsActions } from './actions'
 import { blogLinksActions } from './links'
+import { blogRevisionsActions, blogRevisionsInitialState } from './revisions'
 import { getVisibilitySnapshot, pushVisibilitySnapshot } from '../../../store/visibility-sources'
 
 export const useBlogStore = create<BlogStoreState>((set, get) => ({
@@ -16,6 +17,7 @@ export const useBlogStore = create<BlogStoreState>((set, get) => ({
     ...blogContentActions(set, get),
     ...blogActionsActions(set, get),
     ...blogLinksActions(set, get),
+    ...blogRevisionsActions(set, get),
 }) as BlogStoreState)
 
 function initialBlogState(): Partial<BlogStoreState> {
@@ -65,6 +67,7 @@ function initialBlogState(): Partial<BlogStoreState> {
         excludeBots: DEFAULT_TRAFFIC_FILTERS.excludeBots,
         excludeSelfReferrers: DEFAULT_TRAFFIC_FILTERS.excludeSelfReferrers,
         excludeOwner: DEFAULT_TRAFFIC_FILTERS.excludeOwner,
+        ...blogRevisionsInitialState(),
     }
 }
 

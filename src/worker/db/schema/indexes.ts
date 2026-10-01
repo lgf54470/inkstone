@@ -1,4 +1,5 @@
 import { BLOG_POSTS_INDEX_STATEMENTS, BLOG_POSTS_ORDER_INDEX_STATEMENTS, BLOG_POSTS_TRASH_INDEX_STATEMENTS } from './blog-posts'
+import { BLOG_REVISIONS_INDEX_STATEMENTS } from './blog-revisions'
 import { MUSIC_INDEX_STATEMENTS } from './music'
 
 /**
@@ -118,5 +119,6 @@ export const INDEX_STATEMENTS: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_blog_links_fav ON blog_links(user_id, is_favorite DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_link_categories_user ON blog_link_categories(user_id, sort_order ASC)`,
   `CREATE INDEX IF NOT EXISTS idx_blog_link_categories_parent ON blog_link_categories(parent_id)`,
+  ...BLOG_REVISIONS_INDEX_STATEMENTS,
   ...MUSIC_INDEX_STATEMENTS,
 ]

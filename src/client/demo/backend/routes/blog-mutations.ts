@@ -2,7 +2,24 @@ import { Hono } from 'hono'
 import type { DemoState } from '../../state'
 import type { BlogCategory, BlogFolder, BlogPost, BlogTag } from '@shared/types'
 import { apiError, jsonBody } from '../helpers/info'
-import { DAY, toDemoTrashEntry, type BlogDemoData, type DemoTrashRecord } from './blog-seed'
+import { DAY, toDemoTrashEntry, type BlogDemoData, type DemoRevisionRecord, type DemoTrashRecord } from './blog-seed'
+
+/** The demo keeps the same twenty versions the worker keeps, moved and trimmed the same way. */
+const DEMO_REVISION_LIMIT = 20
+
+/** The fields a version preserves; the worker's snapshot list (ADR-0008) minus the state flags. */
+const REVISION_FIELDS = ['slug', 'title', 'excerpt', 'content', 'coverUrl', 'categoryId', 'folderId', 'tags',
+  'seoTitle', 'seoDescription', 'seoImageUrl', 'seoCanonicalUrl', 'seoNoindex'] as const
+
+function snapshotDemoRevision(data: BlogDemoData, post: BlogPost, now: number): void {
+  data.revisions.push({ id: `demo-revision-${++data.seq.revision}`, postId: post.id, snapshot: { ...post }, createdAt: now })
+  const kept = data.revisions.filter((record) => record.postId === post.id).slice(-DEMO_REVISION_LIMIT).map((record) => record.id)
+  data.revisions = data.revisions.filter((record) => record.postId !== post.id || kept.includes(record.id))
+}
+
+function revisionSummary(record: DemoRevisionRecord): { id: string; postId: string; title: string; size: number; createdAt: number } {
+  return { id: record.id, postId: record.postId, title: record.snapshot.title, size: record.snapshot.content.length, createdAt: record.createdAt }
+}
 
 function slugFromTitle(title: string, seq: number): string {
   const base = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -38,6 +55,7 @@ function registerBlogPostWriteRoute(app: Hono, data: BlogDemoData): void {
       if (slug !== existing.slug && data.posts.some((post) => post.slug === slug)) {
         return apiError(409, 'conflict', 'Slug already exists')
       }
+      snapshotDemoRevision(data, existing, now)
       applyPostPatch(existing, body, slug)
       return c.json({ ok: true, id: existing.id, slug })
     }
@@ -47,6 +65,7 @@ function registerBlogPostWriteRoute(app: Hono, data: BlogDemoData): void {
     const trashed = takeTrashedPost(data, (record) => record.post.noteId === body.noteId)
     if (trashed) {
       const slug = (body.slug as string | undefined)?.trim() || trashed.slug
+      snapshotDemoRevision(data, trashed, now)
       applyPostPatch(trashed, body, slug)
       return c.json({ ok: true, id: trashed.id, slug })
     }
@@ -96,6 +115,8 @@ function registerBlogPostItemRoutes(app: Hono, data: BlogDemoData, state: DemoSt
     if (!post) return apiError(404, 'not_found', 'Post not found')
     const body = await jsonBody(c.req.raw)
     const slug = (body.slug as string | undefined)?.trim() || post.slug
+    // A patch that only moves presentation records no version, like the worker's rule.
+    if (REVISION_FIELDS.some((key) => body[key] !== undefined)) snapshotDemoRevision(data, post, Date.now())
     applyPostPatch(post, body, slug)
     return c.json({ ok: true })
   })
@@ -109,6 +130,7 @@ function registerBlogPostItemRoutes(app: Hono, data: BlogDemoData, state: DemoSt
   app.post('/api/blog/posts/:id/sync', (c) => {
     const post = data.posts.find((item) => item.id === c.req.param('id'))
     if (!post) return apiError(404, 'not_found', 'Post not found')
+    snapshotDemoRevision(data, post, Date.now())
     const note = state.notes.get(post.noteId)
     if (note) {
       post.title = note.title
@@ -198,6 +220,8 @@ export function registerBlogTrashRoutes(app: Hono, data: BlogDemoData): void {
     }
     data.trash = data.trash.filter((record) => record.post.id !== id)
     data.comments = data.comments.filter((comment) => comment.postId !== id)
+    // A purge is the one place the demo really drops a post, so its history goes with it.
+    data.revisions = data.revisions.filter((record) => record.postId !== id)
     return c.json({ ok: true })
   })
 
@@ -206,6 +230,7 @@ export function registerBlogTrashRoutes(app: Hono, data: BlogDemoData): void {
     const purgedIds = new Set(data.trash.map((record) => record.post.id))
     data.trash = []
     data.comments = data.comments.filter((comment) => !purgedIds.has(comment.postId))
+    data.revisions = data.revisions.filter((record) => !purgedIds.has(record.postId))
     return c.json({ purged })
   })
 }
@@ -341,6 +366,54 @@ function registerBlogCategoryRoutes(app: Hono, data: BlogDemoData): void {
   })
 }
 
+/**
+ * The demo's own version-history routes (FEA-05), mirroring the worker's three answers. A post in the
+ * bin is not in `data.posts`, so its history answers 404 the same way the worker does.
+ */
+function registerBlogRevisionsRoutes(app: Hono, data: BlogDemoData): void {
+  app.get('/api/blog/posts/:id/revisions', (c) => {
+    const post = data.posts.find((item) => item.id === c.req.param('id'))
+    if (!post) return apiError(404, 'not_found', 'Post not found')
+    const revisions = data.revisions.filter((record) => record.postId === post.id)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map(revisionSummary)
+    return c.json({ revisions })
+  })
+
+  app.get('/api/blog/posts/:id/revisions/:revisionId', (c) => {
+    const record = data.revisions.find((item) => item.id === c.req.param('revisionId') && item.postId === c.req.param('id'))
+    if (!record) return apiError(404, 'not_found', 'Revision not found')
+    return c.json({ revision: { ...revisionSummary(record), content: record.snapshot.content } })
+  })
+
+  app.post('/api/blog/posts/:id/revisions/:revisionId/restore', (c) => {
+    const post = data.posts.find((item) => item.id === c.req.param('id'))
+    if (!post) return apiError(404, 'not_found', 'Post not found')
+    const record = data.revisions.find((item) => item.id === c.req.param('revisionId') && item.postId === post.id)
+    if (!record) return apiError(404, 'not_found', 'Revision not found')
+    const snapshot = record.snapshot
+    if (snapshot.slug !== post.slug && data.posts.some((item) => item.id !== post.id && item.slug === snapshot.slug)) {
+      return apiError(409, 'conflict', 'Slug already exists')
+    }
+    snapshotDemoRevision(data, post, Date.now())
+    post.slug = snapshot.slug
+    post.title = snapshot.title
+    post.excerpt = snapshot.excerpt
+    post.content = snapshot.content
+    post.coverUrl = snapshot.coverUrl
+    post.categoryId = snapshot.categoryId
+    post.folderId = snapshot.folderId
+    post.tags = [...snapshot.tags]
+    post.seoTitle = snapshot.seoTitle
+    post.seoDescription = snapshot.seoDescription
+    post.seoImageUrl = snapshot.seoImageUrl
+    post.seoCanonicalUrl = snapshot.seoCanonicalUrl
+    post.seoNoindex = snapshot.seoNoindex
+    post.updatedAt = Date.now()
+    return c.json({ ok: true })
+  })
+}
+
 function expandFolderSubtree(folders: BlogFolder[], root: string): Set<string> {
   const ids = new Set([root])
   let added = true
@@ -406,6 +479,7 @@ export {
   registerBlogPostBatchRoute,
   registerBlogPostItemRoutes,
   registerBlogPostWriteRoute,
+  registerBlogRevisionsRoutes,
   registerBlogTagRoutes,
   registerBlogToggleGroupRoute,
   registerBlogVisitsRoute,

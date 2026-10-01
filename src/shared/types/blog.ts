@@ -119,6 +119,31 @@ export interface BlogTag {
   createdAt?: number
 }
 
+/** A body-free version summary; the history list draws these. */
+export interface BlogRevisionSummary {
+  id: string
+  postId: string
+  title: string
+  size: number
+  createdAt: number
+}
+
+/** One stored version. `tags` is the JSON array as the column holds it. */
+export interface BlogRevision {
+  id: string
+  postId: string
+  slug: string
+  title: string
+  excerpt: string
+  content: string
+  coverUrl: string
+  categoryId: string | null
+  folderId: string | null
+  tags: string
+  size: number
+  createdAt: number
+}
+
 export type BlogCommentStatus = 'pending' | 'approved' | 'rejected' | 'spam'
 
 export type BlogLinkStatus = 'pending' | 'approved' | 'rejected'

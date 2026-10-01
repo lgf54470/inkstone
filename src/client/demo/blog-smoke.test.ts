@@ -45,6 +45,7 @@ const CLIENT_ROUTES: RouteProbe[] = [
     init: json({ noteId: 'demo-note-smoke', title: 'Smoke Post', slug: 'smoke-post', tags: ['测试'], isPublished: true }),
   },
   { path: '/api/blog/posts/demo-post-2', init: { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isPinned: true, excerpt: '改过了' }) } },
+  { path: '/api/blog/posts/demo-post-2/revisions' },
   { path: '/api/blog/posts/demo-post-2/sync', init: { method: 'POST' } },
   { path: '/api/blog/posts/batch', init: json({ action: 'publish', postIds: ['demo-post-4'] }) },
   { path: '/api/blog/posts/batch', init: json({ action: 'setCategory', postIds: ['demo-post-2'], categoryId: 'demo-cat-tech' }) },
@@ -97,6 +98,35 @@ async function botVisitCount(backend: DemoBackend): Promise<number> {
   const body = await (await call(backend, '/api/blog/analytics')).json()
   return body.analytics.filterStats.bots
 }
+
+// FEA-05: the panel needs a real history to draw, and a restore has to come back as a version too.
+describe('demo blog revision history', () => {
+  it('keeps what a content patch replaced and restores it', async () => {
+    const backend = await loggedInBackend()
+    const patch = await call(backend, '/api/blog/posts/demo-post-1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: '改后的标题' }),
+    })
+    expect(patch.status).toBe(200)
+
+    const list = await (await call(backend, '/api/blog/posts/demo-post-1/revisions')).json()
+    expect(list.revisions.length).toBeGreaterThan(0)
+    const revisionId = list.revisions[0].id
+
+    const one = await call(backend, `/api/blog/posts/demo-post-1/revisions/${revisionId}`)
+    expect(one.status).toBe(200)
+    expect((await one.json()).revision).toMatchObject({ title: '欢迎使用 Inkstone' })
+
+    const restore = await call(backend, `/api/blog/posts/demo-post-1/revisions/${revisionId}/restore`, { method: 'POST' })
+    expect(restore.status).toBe(200)
+    const posts = await (await call(backend, '/api/blog/posts')).json()
+    expect(posts.posts.find((post: { id: string }) => post.id === 'demo-post-1').title).toBe('欢迎使用 Inkstone')
+    // The restore itself left a version, so it can be undone the same way.
+    const afterRestore = await (await call(backend, '/api/blog/posts/demo-post-1/revisions')).json()
+    expect(afterRestore.revisions[0].title).toBe('改后的标题')
+  })
+})
 
 describe('demo blog route coverage', () => {
   it('answers 2xx for every /api/blog/* route the client calls', async () => {

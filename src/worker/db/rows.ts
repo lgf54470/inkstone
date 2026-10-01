@@ -143,6 +143,29 @@ export interface BlogPostRow {
   deleted_at: number | null
 }
 
+export interface BlogRevisionRow {
+  id: string
+  post_id: string
+  user_id: string
+  slug: string
+  title: string
+  excerpt: string
+  content: string
+  cover_url: string
+  category_id: string | null
+  folder_id: string | null
+  tags: string
+  is_published: number
+  allow_comments: number
+  is_pinned: number
+  seo_title: string
+  seo_description: string
+  seo_image_url: string
+  seo_canonical_url: string
+  seo_noindex: number
+  created_at: number
+}
+
 export interface BlogPostCountsRow extends BlogPostRow {
   comments_count: number
 }

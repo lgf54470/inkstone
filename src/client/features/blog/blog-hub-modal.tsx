@@ -15,6 +15,7 @@ import { BlogTrashView } from './blog-trash-view'
 import { BlogPublishModal } from './blog-publish-modal'
 import { BlogCategoriesModal } from './blog-categories-modal'
 import { BlogSettingsModal } from './blog-settings-modal'
+import { BlogRevisionsModal } from './blog-revisions-modal'
 import { BlogLoadFailure } from './blog-load-failure'
 import { BlogPostPager } from './blog-post-pager'
 
@@ -85,6 +86,10 @@ function HubSecondaryDialogs({ modal }: { modal: ReturnType<typeof useBlogHubMod
           onClose={() => modal.setIsSettingsModalOpen(false)}
         />
       )}
+
+      {modal.revisionsPost && (
+        <BlogRevisionsModal post={modal.revisionsPost} onClose={modal.onCloseRevisions} />
+      )}
     </>
   )
 }
@@ -138,9 +143,9 @@ function BlogHubContent({ bundle }: { bundle: BlogHubModalBundle }) {
                 <p>{t('blog.no_posts')}</p>
               </div>
             ) : bundle.viewMode === 'table' ? (
-              <BlogTableView posts={bundle.posts} onOpenEdit={bundle.onOpenEditPost} />
+              <BlogTableView posts={bundle.posts} onOpenEdit={bundle.onOpenEditPost} onOpenRevisions={bundle.onOpenRevisionsPost} />
             ) : (
-              <BlogGridView posts={bundle.posts} onOpenEdit={bundle.onOpenEditPost} />
+              <BlogGridView posts={bundle.posts} onOpenEdit={bundle.onOpenEditPost} onOpenRevisions={bundle.onOpenRevisionsPost} />
             )}
           </div>
 

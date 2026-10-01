@@ -10,6 +10,7 @@ import {
   registerBlogPostBatchRoute,
   registerBlogPostItemRoutes,
   registerBlogPostWriteRoute,
+  registerBlogRevisionsRoutes,
   registerBlogTagRoutes,
   registerBlogToggleGroupRoute,
   registerBlogTrashRoutes,
@@ -223,6 +224,7 @@ export function registerBlogRoutes(app: Hono, state: DemoState): void {
   registerBlogPostListRoute(app, data)
   registerBlogPostWriteRoute(app, data)
   registerBlogPostItemRoutes(app, data, state)
+  registerBlogRevisionsRoutes(app, data)
   registerBlogPostBatchRoute(app, data)
   registerBlogTrashRoutes(app, data)
   registerBlogMediaRoutes(app, state, data)

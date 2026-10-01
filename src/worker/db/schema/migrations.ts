@@ -1,5 +1,6 @@
 import { BOARD_LIBRARY_DEFAULT_NAME } from '@shared/constants'
 import { BLOG_POSTS_SLUG_REBUILD_STATEMENTS, BLOG_POSTS_TRASH_INDEX_STATEMENTS } from './blog-posts'
+import { BLOG_REVISIONS_INDEX_STATEMENTS, BLOG_REVISIONS_TABLE_STATEMENT } from './blog-revisions'
 import { BOARD_LIBRARY_TABLE_STATEMENTS } from './board-library'
 import { BLOG_ORDER_INDEX_STATEMENTS } from './indexes'
 import { MUSIC_LEGACY_REBUILD_STATEMENTS, MUSIC_PLAYBACK_MIGRATION_STATEMENTS, MUSIC_SCHEMA_STATEMENTS, MUSIC_SOURCE_MIGRATION_STATEMENTS, MUSIC_TAG_ORDER_MIGRATION_STATEMENTS, MUSIC_TAG_PARENT_MIGRATION_STATEMENTS, MUSIC_TAG_SCOPE_MIGRATION_STATEMENTS } from './music'
@@ -863,6 +864,16 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
     statements: [
       `ALTER TABLE blog_comments ADD COLUMN is_owner INTEGER NOT NULL DEFAULT 0`,
       `ALTER TABLE blog_comments ADD COLUMN spam_score INTEGER NOT NULL DEFAULT 0`,
+    ],
+  },
+  // FEA-05: a post keeps its own snapshots so a bad edit can be undone. One row per save of every
+  // field the publish form can rewrite; the restore path is a normal write, so the state it replaces
+  // is snapshotted too and a restore can itself be undone (ADR-0008).
+  {
+    version: 58,
+    statements: [
+      BLOG_REVISIONS_TABLE_STATEMENT,
+      ...BLOG_REVISIONS_INDEX_STATEMENTS,
     ],
   },
 ]

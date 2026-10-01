@@ -218,4 +218,11 @@ export const messages = {
 'blog.trash_emptied': '回收站已清空',
 'blog.confirm_purge_post': '确定要彻底删除《{value0}》吗？此操作不可恢复。',
 'blog.confirm_empty_trash': '确定要彻底删除回收站里的 {value0} 篇博文吗？此操作不可恢复。',
+// FEA-05 revisions: every write of the text keeps the state it replaced.
+'blog.revisions_title': '版本历史',
+'blog.revisions_hint': '每次保存正文都会留下被替换掉的那一版',
+'blog.revisions_empty': '还没有历史版本',
+'blog.revisions_restore': '恢复此版本',
+'blog.revisions_restored': '已恢复该版本',
+'blog.revisions_confirm': '恢复到 {value0} 的版本？当前内容也会留下一个版本。',
 }
