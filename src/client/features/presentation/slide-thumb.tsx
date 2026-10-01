@@ -161,13 +161,15 @@ export function SlideThumb({ thumbRef, near, html, layout, active, view, classNa
 
 // One observer for every card on screen, rather than one per page of the deck: a hundred-slide
 // note used to register a hundred listeners whose callbacks all fired in the same task.
-type ObserverCallback = (isIntersecting: boolean) => void
+export type ObserverCallback = (isIntersecting: boolean) => void
 
 let sharedThumbObserver: IntersectionObserver | null = null
+let sharedThumbObserverCreatedCount = 0
 const thumbObserverCallbacks = new Map<Element, ObserverCallback>()
 
 function getSharedThumbObserver(): IntersectionObserver {
   if (!sharedThumbObserver) {
+    sharedThumbObserverCreatedCount += 1
     sharedThumbObserver = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         const cb = thumbObserverCallbacks.get(entry.target)
@@ -178,7 +180,7 @@ function getSharedThumbObserver(): IntersectionObserver {
   return sharedThumbObserver
 }
 
-function observeThumbElement(element: Element, callback: ObserverCallback): () => void {
+export function observeThumbElement(element: Element, callback: ObserverCallback): () => void {
   const observer = getSharedThumbObserver()
   thumbObserverCallbacks.set(element, callback)
   observer.observe(element)
@@ -190,6 +192,23 @@ function observeThumbElement(element: Element, callback: ObserverCallback): () =
       sharedThumbObserver = null
     }
   }
+}
+
+export function sharedThumbObserverMetrics(): { created: number; connected: boolean; subscribers: number } {
+  return {
+    created: sharedThumbObserverCreatedCount,
+    connected: sharedThumbObserver !== null,
+    subscribers: thumbObserverCallbacks.size,
+  }
+}
+
+export function resetSharedThumbObserverForTesting(): void {
+  if (sharedThumbObserver) {
+    sharedThumbObserver.disconnect()
+    sharedThumbObserver = null
+  }
+  thumbObserverCallbacks.clear()
+  sharedThumbObserverCreatedCount = 0
 }
 
 export function useNearViewport(ref: RefObject<HTMLElement | null>): boolean {
