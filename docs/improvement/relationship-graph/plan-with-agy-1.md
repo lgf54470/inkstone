@@ -15,7 +15,7 @@
 | **准备工作** | 环境配置 | 创建 Worktree、软连 `node_modules`、编写深度审查报告与推进计划 | ✅ 已完成 |
 | **第一阶段 (Sprint 1)** | PERF-01, UX-01, UX-02, UX-03, UI-01 | 修复核心阻断 Bug：滑块白屏/请求风暴、单击强退、减少动画死锁、ESC 误杀、Canvas 主题跟随 | ✅ 已完成 |
 | **第二阶段 (Sprint 2)** | PERF-02, UI-02, UI-03, PERF-03, PERF-04, SEC-01, SEC-02, SEC-03, SEC-04, SPEC-01, SPEC-02, SPEC-03 | 消除 Layout Thrashing、邻居高亮矛盾、微光晕、D1 batch、冗余 COUNT、安全与隔离、规范重构与 i18n | ✅ 已完成 |
-| **第三阶段 (Sprint 3)** | FEAT-01, UX-04, UX-05, UX-06, UI-04, PERF-05, PERF-06, FEAT-02, FEAT-03, FEAT-04, FEAT-05, TEST-01 | 悬停预览卡片、移动端 Pinch 仿射补偿、光标增强、颜色图例、力导向优化、伴随图谱、标签节点、导出、自动化测试补齐 | 🔄 进行中：11 / 12 项已提交，剩 TEST-01 |
+| **第三阶段 (Sprint 3)** | FEAT-01, UX-04, UX-05, UX-06, UI-04, PERF-05, PERF-06, FEAT-02, FEAT-03, FEAT-04, FEAT-05, TEST-01 | 悬停预览卡片、移动端 Pinch 仿射补偿、光标增强、颜色图例、力导向优化、伴随图谱、标签节点、导出、自动化测试补齐 | ✅ 已完成：12 / 12 项已提交 |
 
 ---
 
@@ -28,8 +28,8 @@
 | **3. 交互与无障碍可用性 (UX & A11y)** | UX-01, UX-02, UX-03, UX-04, UX-05, UX-06 | 6 项 | ✅ 全部已提交 (`cec83ccb`, `83d212a9`, `7946bb73`, `24157e33`) |
 | **4. UI 视觉与工程规范 (UI & Standards)** | UI-01, UI-02, UI-03, UI-04, SPEC-01, SPEC-02, SPEC-03 | 7 项 | ✅ 全部已提交 (`75ff31a1`, `929c8cc5`, `3fe6ec27`, `24157e33`) |
 | **5. 主流功能对标 (Obsidian Gaps)** | FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05 | 5 项 | ✅ 全部已提交 (`24157e33`, `64be16a4`, `8d6b5542`, `ac3a7fb7` + `b1b8314b`, `d3bcaec0`) |
-| **6. 自动化测试与工程质量 (Testing)** | TEST-01 | 1 项 | ⏳ 持续编写回归测试，终态收敛（图谱相关 13 个测试文件 / 108 条用例随 `d3bcaec0` 全绿，`npx vitest run src/shared/graph-filter-expression.test.ts src/client/lib/graph-settings.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts src/client/features/graph`） |
-| **总计** | **全维度覆盖** | **29 项** | **28 项已提交完成，1 项待推进 (TEST-01)** |
+| **6. 自动化测试与工程质量 (Testing)** | TEST-01 | 1 项 | ✅ 已提交（`9fb2722e` 选中后重绘循环修复 + 复现用例，`9d5e1831` 回归套件补齐）：图谱相关 20 个测试文件 / 143 条用例全绿（`npx vitest run src/shared/graph-filter-expression.test.ts src/client/lib/graph-settings.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts src/client/features/graph`），补齐物理收敛、主题跟随、画布无障碍终态、ESC 逃逸栈、参数隔离五类此前只能人工复核的行为，并修掉测试暴露出的真实缺陷（一次选中让面板无限重绘） |
+| **总计** | **全维度覆盖** | **29 项** | **29 项已全部提交完成** |
 
 ---
 
@@ -239,7 +239,13 @@
   - **提交哈希**：`d3bcaec0`
   - **状态**：已完成并验证通过。新增 28 条用例（`graph-export.test.ts` 包围盒 / 矢量 / 栅格 / 文件交付 20 条、`use-graph-export.test.ts` 挂起态与两种 toast 4 条、`header-export.test.ts` 真实面板挂载按指针 2 条、`canvas-draw.test.ts` 箭头几何 2 条），图谱套件从 10 文件 80 条增至 13 文件 108 条；GE1–GE12、CD1–CD3、HP1–HP3、UG1–UG3、IX1–IX3 共 24 个变异全部由具名断言杀死、无存活（其中 GE7 专防「标题跟随读者当前缩放」、GE8 专防「空 PNG 静默成功」、IX1/IX3 专防「无图也能点」）。13 项静态门禁、`npm run typecheck`、`npm run build`、`npm run budget:check` 全绿；全量 `npm run test:unit` 为 5396 通过 / 2 条 5s 超时（`blog-comments-window.test.ts:44`、`calendar-tree.test/activity.test.ts:251`，两文件单跑 12 条全绿，属既有负载抖动，与本改动无导入交集）。
 
-- [ ] **18. 【TEST-01】图谱模块自动化单元与集成测试补齐**
-  - **涉及文件**：`src/client/features/graph/graph-panel/` 测试套件
-  - **修改要点**：编写 Vitest 测试覆盖物理计算收敛、主题跟随、无障碍终态、ESC 逃逸栈与参数隔离。
-  - **提交哈希**：`待提交`
+- [x] **18. 【TEST-01】图谱模块自动化单元与集成测试补齐**
+  - **涉及文件**：`src/client/features/graph/graph-panel/canvas-selection-loop.test.ts`, `canvas-a11y.test.ts`, `canvas-physics.test.ts`, `canvas-theme.test.ts`, `canvas-dynamic-prefs.test.ts`, `panel-escape-stack.test.ts`, `panel-parameter-isolation.test.ts`, `graph-canvas-mount.test-helpers.ts`, `graph-panel-mount.test-helpers.ts`, `preview-stub.test-helpers.ts`（回归中新发现的缺陷修复落在 `canvas.tsx`, `use-graph-preview.ts`）
+  - **修改要点**：
+    1. 先把只靠人工复核的行为变成断言：物理（收敛后不再索取帧、稳定后重绘不再扰动画面、斥力作用半径覆盖远端团簇、减少动画走静态布局且相机仍能适配、钉住与被指针按住的节点不被搬走）、主题（配色全部取自文档令牌、主题翻转重读令牌并把新颜色画进屏上已有像素）、无障碍终态（画布的 `role`/可访问名/进入 Tab 序、方向键逐帧播报进出边数、Enter 打开笔记或建笔记、Space 与缩放/Home 键归画布所有、截断提示）、ESC 逃逸栈（后开的设置抽屉先关、关掉后把 Escape 归还给图谱）、参数隔离（纯客户端偏好不触发第二次请求也不重建画布、`showTagNodes` 确实重新请求、偏好按账号写入存储）；
+    2. 挂载策略分两层：`graph-canvas-mount.test-helpers.ts` 按手搭的 `CanvasState` 直接挂画布（jsdom 无 2d 上下文，绘制打桩、状态求真），`graph-panel-mount.test-helpers.ts` 挂真实 `GraphPanel` 并按可访问名点控件、按读者方式派发 Escape，用于必须由 preferences effect 写状态的面板级行为；`*.test-helpers.ts` 不被 Vitest 收集，跨套件共用而不产重复用例；
+    3. 回归查出真实缺陷：一次选中让 `setLive`/预览写入的状态成为 effect 依赖，形成永不停止的重绘。按「修 bug 先写复现测试」补 `canvas-selection-loop.test.ts`（预览桩按单次选中的绘制次数计数，超上限即抛错，使套件变红而不是挂死），修复为依赖 `preview.showPreview`/`preview.onHoverNode` 具体方法，并让 `usePreviewTimers` 经 ref 读取内联回调，使 `armHover/armHide` 不随渲染重建（`9fb2722e`）；
+    4. 断言取「驱动是否生效」而非只取终态：动态偏好套件用同一个 `stateRef` 对象（每次渲染新建 ref 会让依赖本身看起来在变），并在挂载之后才标记画面已静止（唤醒 effect 在挂载时同样运行），据此区分「就地缩放节点半径」与「重建布局」，并保留读者拖过的坐标作为不可重建的证据。
+  - **验证命令**：`npm run typecheck && for g in style:check size:check comments:check escape:check empty-catch:check hardcoded:check tokens:check i18n:check module-state:check deep-imports:check surfaces:check vendor:check; do npm run $g; done && npx vitest run --config vitest.config.ts src/shared/graph-filter-expression.test.ts src/client/lib/graph-settings.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts src/client/features/graph && npm run build`
+  - **提交哈希**：`9fb2722e`（选中后重绘循环修复 + 复现用例 + 共用挂载脚手架）、`9d5e1831`（其余五类回归套件补齐）
+  - **状态**：已完成并验证通过。同一命令下图谱相关从 13 文件 108 条增至 20 文件 143 条（+7 文件 / +35 条，基线取 `git archive HEAD~2` 快照实测）。M1–M9 九个变异全部由具名断言杀死、无存活：M1 让 ESC 栈不再只作用最外层、M2 把斥力加回请求依赖、M3 偏好写成不按账号存储、M4 调参不唤醒物理、M5 链长脱离依赖、M6 忽略节点大小、M7 分组变化不重绘、M8/M9 把 `preview` 整对象放回依赖（即本次修掉的循环，M8 让两条用例同红）。12 项静态门禁、`npm run typecheck`、`npm run build`、`npm run budget:check` 全绿，两个提交各自的 pre-commit 钩子（工作区静态门禁 + 增量 `tsc -b` + `vitest related`）亦通过。全量 `npm run test:unit` 在本机负载敏感：改动后的干净一轮为 617 文件 / 5437 通过 + 1 跳过（303 s），此前两轮分别报 5 与 6 条失败，失败块读出来是 `Test timed out in 5000ms`（`tests/radiogroup-names` 两条、`tests/starter-deck-render`、`music/music-hub-modal`、`calendar-tree.test/activity`），另含一条 `music/music-store/eq.test.ts:164` 的取值断言差；这些文件与图谱无导入交集，七个文件按 `--testTimeout=30000` 单跑 6 文件 54 条全绿；改动前的 `git archive HEAD~2` 快照同样报出 `blog-comments-window` 超时（该快照另有一条 `merge-preflight-real-merge` 因无 `.git` 目录无法执行 `git cat-file`，属快照环境限制），故判定为既有抖动、非本次回归；`eq` 那条断言差属音乐模块的既有负载形态，按「不顺手修无关问题」另开事项跟踪，未在本批次改动。
