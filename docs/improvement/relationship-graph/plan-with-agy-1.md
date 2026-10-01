@@ -15,7 +15,7 @@
 | **准备工作** | 环境配置 | 创建 Worktree、软连 `node_modules`、编写深度审查报告与推进计划 | ✅ 已完成 |
 | **第一阶段 (Sprint 1)** | PERF-01, UX-01, UX-02, UX-03, UI-01 | 修复核心阻断 Bug：滑块白屏/请求风暴、单击强退、减少动画死锁、ESC 误杀、Canvas 主题跟随 | ✅ 已完成 |
 | **第二阶段 (Sprint 2)** | PERF-02, UI-02, UI-03, PERF-03, PERF-04, SEC-01, SEC-02, SEC-03, SEC-04, SPEC-01, SPEC-02, SPEC-03 | 消除 Layout Thrashing、邻居高亮矛盾、微光晕、D1 batch、冗余 COUNT、安全与隔离、规范重构与 i18n | ✅ 已完成 |
-| **第三阶段 (Sprint 3)** | FEAT-01, UX-04, UX-05, UX-06, UI-04, PERF-05, PERF-06, FEAT-02, FEAT-03, FEAT-04, FEAT-05, TEST-01 | 悬停预览卡片、移动端 Pinch 仿射补偿、光标增强、颜色图例、力导向优化、伴随图谱、标签节点、导出、自动化测试补齐 | ⏳ 待开始 |
+| **第三阶段 (Sprint 3)** | FEAT-01, UX-04, UX-05, UX-06, UI-04, PERF-05, PERF-06, FEAT-02, FEAT-03, FEAT-04, FEAT-05, TEST-01 | 悬停预览卡片、移动端 Pinch 仿射补偿、光标增强、颜色图例、力导向优化、伴随图谱、标签节点、导出、自动化测试补齐 | 🔄 进行中：9 / 12 项已提交，剩 FEAT-04、FEAT-05、TEST-01 |
 
 ---
 
@@ -24,12 +24,12 @@
 | 维度 | 包含问题编号 | 数量 | 状态汇总 |
 | :--- | :--- | :--- | :--- |
 | **1. 安全与数据一致性 (Security & Isolation)** | SEC-01, SEC-02, SEC-03, SEC-04 | 4 项 | ✅ 全部已修复并提交 (`b10e64bc`) |
-| **2. 性能与计算管线 (Performance Pipeline)** | PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06 | 6 项 | ✅ 4 项已提交 (`cef97815`, `2744cec7`, `029f252b`), ⏳ 2 项待推进 |
-| **3. 交互与无障碍可用性 (UX & A11y)** | UX-01, UX-02, UX-03, UX-04, UX-05, UX-06 | 6 项 | ✅ 3 项已提交 (`cec83ccb`, `83d212a9`, `7946bb73`), ⏳ 3 项待推进 |
-| **4. UI 视觉与工程规范 (UI & Standards)** | UI-01, UI-02, UI-03, UI-04, SPEC-01, SPEC-02, SPEC-03 | 7 项 | ✅ 6 项已提交 (`75ff31a1`, `929c8cc5`, `3fe6ec27`), ⏳ 1 项待推进 (UI-04) |
-| **5. 主流功能对标 (Obsidian Gaps)** | FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05 | 5 项 | ⏳ 5 项待推进 |
-| **6. 自动化测试与工程质量 (Testing)** | TEST-01 | 1 项 | ⏳ 持续编写回归测试，终态收敛 |
-| **总计** | **全维度覆盖** | **29 项** | **17 项已提交完成，12 项推进中** |
+| **2. 性能与计算管线 (Performance Pipeline)** | PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06 | 6 项 | ✅ 全部已提交 (`cef97815`, `2744cec7`, `029f252b`, `24157e33`) |
+| **3. 交互与无障碍可用性 (UX & A11y)** | UX-01, UX-02, UX-03, UX-04, UX-05, UX-06 | 6 项 | ✅ 全部已提交 (`cec83ccb`, `83d212a9`, `7946bb73`, `24157e33`) |
+| **4. UI 视觉与工程规范 (UI & Standards)** | UI-01, UI-02, UI-03, UI-04, SPEC-01, SPEC-02, SPEC-03 | 7 项 | ✅ 全部已提交 (`75ff31a1`, `929c8cc5`, `3fe6ec27`, `24157e33`) |
+| **5. 主流功能对标 (Obsidian Gaps)** | FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05 | 5 项 | ✅ 3 项已提交 (`24157e33`, `64be16a4`, `8d6b5542`), ⏳ 2 项待推进 (FEAT-04、FEAT-05) |
+| **6. 自动化测试与工程质量 (Testing)** | TEST-01 | 1 项 | ⏳ 持续编写回归测试，终态收敛（图谱侧 6 个测试文件 / 41 条断言随 `8d6b5542` 全绿） |
+| **总计** | **全维度覆盖** | **29 项** | **26 项已提交完成，3 项待推进 (FEAT-04, FEAT-05, TEST-01)** |
 
 ---
 
@@ -195,10 +195,17 @@
   - **提交哈希**：`64be16a4`
   - **状态**：已完成并验证通过
 
-- [ ] **15. 【FEAT-03】缺失“标签作为拓扑实体节点”能力 (Tags as Explicit Topology Nodes)**
-  - **涉及文件**：`src/worker/routes/search/graph.ts`, `src/client/features/graph/graph-panel/types.ts`, `canvas-draw.ts`
-  - **修改要点**：后端与前端支持将 `#tag` 转化为显式图节点拉扯聚类，通过标签将无直接互链的笔记拉入同一网络簇。
-  - **提交哈希**：`待提交`
+- [x] **15. 【FEAT-03】缺失“标签作为拓扑实体节点”能力 (Tags as Explicit Topology Nodes)**
+  - **涉及文件**：`src/shared/graph-tag-nodes.ts`, `src/shared/types/graph.ts`, `src/worker/routes/search/graph.ts`, `src/worker/routes/search/graph-nodes.ts`, `src/client/demo/backend/routes/search.ts`, `src/client/lib/api/vault.ts`, `src/client/lib/graph-settings.ts`, `src/client/features/graph/graph-panel/{helpers,canvas-draw,canvas-hooks,canvas,index,types,constants}.ts(x)`, `src/shared/locales/{en-US,zh-CN}/graph.ts`, `tests/graph-routes.test.ts`
+  - **修改要点**：
+    1. `GraphNode.kind` 扩展出 `tag`，服务端新增 `applyTagNodes()`（Worker 与 demo 共用同一实现），按标签名大小写归一聚类，为每个标签合成 `tag:<name>` 节点与「笔记 → 标签」成员边，最多 60 个簇，溢出计入 `truncated`；
+    2. 查询串新增 `tagNodes=1`（`GraphQuery.showTagNodes`），设置抽屉「显示」组新增开关并按用户作用域持久化；
+    3. 前端标签节点配色复用响应里笔记自带的标签色（`tagColorsByName` 在布局时写入 `CanvasNode.tagColor`），未设色走 Hash 色板，图例在 `groupBy='none'` 时也能列出标签簇；
+    4. 交互按 `kind` 分派：标签节点支持右键「按标签 {value} 筛选」与固定，双击/Enter/拖拽不再误建同名笔记；统计行改用 `countWikiLinkEdges()`，标签成员边不冒充 wiki 链接；
+    5. 顺带修正图例数据源：`canvas.tsx` 原先从物理态 ref 读取节点，图例会滞后一次响应，改由响应节点计算并补组件回归。
+  - **验证命令**：`node scripts/check-size.mjs && node scripts/check-comments.mjs && node scripts/check-i18n.mjs && node scripts/check-visual-labels.mjs && npm run typecheck && npx vitest run tests/graph-routes.test.ts src/client/features/graph src/client/lib/graph-settings.test.ts src/client/demo`
+  - **提交哈希**：`8d6b5542`
+  - **状态**：已完成并验证通过（pre-commit 钩子内 403 个测试文件 / 3409 条断言全绿；图例数据源与标签配色派生两条新行为各由具名断言在变异测试中杀死）
 
 - [ ] **16. 【FEAT-04】缺失高级排除过滤语法与自定义颜色规则 (Filter Exclusion Syntax & Color Rules)**
   - **涉及文件**：`src/worker/routes/search/graph.ts`, `src/client/features/graph/graph-panel/settings.tsx`, `helpers.ts`
