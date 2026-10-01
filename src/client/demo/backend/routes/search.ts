@@ -3,6 +3,7 @@ import type { DemoState } from '../../state'
 import { deriveExcerpt, extractWikiLinks, normalizeLinkKey, wikiNoteTarget } from '@shared/markdown-utils'
 import type { GraphResponse, Note, SearchResponse } from '@shared/types'
 import { applyTagNodes } from '@shared/graph-tag-nodes'
+import { graphFilterMatches, parseGraphFilter, type GraphFilterExpression } from '@shared/graph-filter-expression'
 import { listFolders, summarize } from '../../state'
 
 interface GraphLinkRecord {
@@ -89,24 +90,52 @@ function localNeighborhood(
   return result
 }
 
-function filterGraphNotes(
-  active: Note[],
-  needle: string,
-  folderId: string,
-  tags: string[],
-  tagsMatch: 'all' | 'any',
-  includeOrphans: boolean,
-  allowed: Set<string>,
-  degree: Map<string, number>,
-): Note[] {
+interface GraphNoteFilter {
+  expression: GraphFilterExpression
+  folderId: string
+  tags: string[]
+  tagsMatch: 'all' | 'any'
+  includeOrphans: boolean
+  allowed: Set<string>
+  degree: Map<string, number>
+  folderNames: Map<string, string>
+}
+
+function filterGraphNotes(active: Note[], options: GraphNoteFilter): Note[] {
+  const { allowed, degree, folderId, folderNames, includeOrphans, tags, tagsMatch, expression } = options
   return active.filter((note) => allowed.has(note.id)
-    && (!needle || note.title.toLocaleLowerCase().includes(needle))
+    && graphFilterMatches({
+      title: note.title,
+      folderName: note.folderId ? folderNames.get(note.folderId) ?? null : null,
+      tags: note.tags.map((name) => ({ name })),
+    }, expression)
     && (!folderId || note.folderId === folderId)
     && (!tags.length || (tagsMatch === 'all'
       ? tags.every((name) => note.tags.some((item) => item.toLocaleLowerCase() === name))
       : tags.some((name) => note.tags.some((item) => item.toLocaleLowerCase() === name))))
     && (includeOrphans || (degree.get(note.id) ?? 0) > 0))
     .sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) || b.updatedAt - a.updatedAt)
+}
+
+function graphNoteFilter(
+  c: Context,
+  state: DemoState,
+  allowed: Set<string>,
+  degree: Map<string, number>,
+): GraphNoteFilter {
+  const legacyTag = (c.req.query('tag') ?? '').trim().toLocaleLowerCase()
+  const tags = [...new Set((c.req.query('tags') ?? '').split(',').map((item) => item.trim().toLocaleLowerCase()).filter(Boolean))]
+  if (tags.length === 0 && legacyTag) tags.push(legacyTag)
+  return {
+    expression: parseGraphFilter(c.req.query('q') ?? ''),
+    folderId: c.req.query('folderId') ?? '',
+    tags,
+    tagsMatch: c.req.query('tagsMatch') === 'all' ? 'all' : 'any',
+    includeOrphans: c.req.query('includeOrphans') !== '0',
+    allowed,
+    degree,
+    folderNames: new Map([...state.folders.values()].map((folder) => [folder.id, folder.name])),
+  }
 }
 
 function buildGraphNodes(
@@ -160,13 +189,6 @@ function graphResponse(c: Context, state: DemoState): Response {
   const centerId = c.req.query('center') || null
   const depth = Math.max(1, Math.min(3, Number(c.req.query('depth')) || 1))
   const limit = Math.max(50, Math.min(600, Number(c.req.query('limit')) || 350))
-  const needle = (c.req.query('q') ?? '').trim().toLocaleLowerCase()
-  const folderId = c.req.query('folderId') ?? ''
-  const legacyTag = (c.req.query('tag') ?? '').trim().toLocaleLowerCase()
-  const tags = [...new Set((c.req.query('tags') ?? '').split(',').map((item) => item.trim().toLocaleLowerCase()).filter(Boolean))]
-  if (tags.length === 0 && legacyTag) tags.push(legacyTag)
-  const tagsMatch = c.req.query('tagsMatch') === 'all' ? 'all' : 'any'
-  const includeOrphans = c.req.query('includeOrphans') !== '0'
   const includeUnresolved = c.req.query('includeUnresolved') === '1'
   const showTagNodes = c.req.query('tagNodes') === '1'
 
@@ -176,7 +198,7 @@ function graphResponse(c: Context, state: DemoState): Response {
   if (mode === 'local' && centerId) {
     allowed = localNeighborhood(centerId, depth, uniqueEdges)
   }
-  const filtered = filterGraphNotes(active, needle, folderId, tags, tagsMatch, includeOrphans, allowed, degree)
+  const filtered = filterGraphNotes(active, graphNoteFilter(c, state, allowed, degree))
   const shown = filtered.slice(0, limit)
   const shownIds = new Set(shown.map((note) => note.id))
   const edges = uniqueEdges.filter((edge) => shownIds.has(edge.source) && shownIds.has(edge.target))

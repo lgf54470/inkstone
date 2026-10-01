@@ -13,6 +13,7 @@ export const messages = {
 'graph.graph_canvas_drag_to_pan_and_scroll_to_zoom_keyboard_users_can_open_note': 'Graph canvas: drag to pan and scroll to zoom; keyboard users can open notes with the selector above',
 'graph.links': ' links',
 'graph.filters': 'Filters',
+'graph.filter_syntax_hint': 'Use tag:name or path:name, and prefix either with - to exclude',
 'graph.fit': 'Fit to canvas',
 'graph.folder': 'Folder',
 'graph.forces': 'Forces',

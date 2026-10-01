@@ -156,6 +156,7 @@ function GraphSearchBox({ search, onSearchChange }: {
         onChange={(event) => onSearchChange(event.target.value)}
         placeholder={t('graph.search_notes')}
         aria-label={t('graph.search_notes')}
+        title={t('graph.filter_syntax_hint')}
         leading={<Search size={13} className='text-[var(--text-quaternary)]'/>}
         trailing={
           search ? (

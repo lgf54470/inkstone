@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono'
 import { LIMITS } from '@shared/constants'
 import { truncateText } from '@shared/text-utils'
 import { wikiNoteTarget } from '@shared/markdown-utils'
+import { parseGraphFilter, type GraphFilterTerm } from '@shared/graph-filter-expression'
 import type { GraphResponse } from '@shared/types'
 import type { AppBindings } from '../../env'
 import { ApiError } from '../../lib/errors'
@@ -163,10 +164,12 @@ function validateGraphParams(params: GraphParams): void {
 function buildGraphFilters(params: GraphParams): { filters: string[]; filterBinds: unknown[] } {
   const filters: string[] = ['n.user_id = ?', 'n.deleted_at IS NULL', 'n.is_archived = 0']
   const filterBinds: unknown[] = [params.userId]
-  if (params.query) {
+  const expression = parseGraphFilter(params.query)
+  if (expression.text) {
     filters.push(`n.title LIKE ? ESCAPE '\\' COLLATE NOCASE`)
-    filterBinds.push(`%${escapeLike(params.query)}%`)
+    filterBinds.push(`%${escapeLike(expression.text)}%`)
   }
+  for (const term of expression.terms) appendFilterTerm(filters, filterBinds, term)
   if (params.folderId) {
     filters.push('n.folder_id = ?')
     filterBinds.push(params.folderId)
@@ -200,6 +203,24 @@ function buildGraphFilters(params: GraphParams): { filters: string[]; filterBind
     )`)
   }
   return { filters, filterBinds }
+}
+
+/** One qualified term of the filter line: `tag:` / `path:` must match, `-tag:` / `-path:` must not. */
+function appendFilterTerm(filters: string[], filterBinds: unknown[], term: GraphFilterTerm): void {
+  if (term.kind === 'tag') {
+    filters.push(`${term.isExcluded ? 'NOT ' : ''}EXISTS (
+      SELECT 1 FROM note_tags nt_term
+      JOIN tags t_term ON t_term.id = nt_term.tag_id AND t_term.user_id = n.user_id
+      WHERE nt_term.note_id = n.id AND t_term.name = ? COLLATE NOCASE
+    )`)
+    filterBinds.push(term.value)
+    return
+  }
+  // A note without a folder has no path to exclude, so the negation reads the missing name as blank.
+  filters.push(term.isExcluded
+    ? `COALESCE(f.name, '') NOT LIKE ? ESCAPE '\\' COLLATE NOCASE`
+    : `f.name LIKE ? ESCAPE '\\' COLLATE NOCASE`)
+  filterBinds.push(`%${escapeLike(term.value)}%`)
 }
 
 async function runLocalGraphQuery(
@@ -237,7 +258,9 @@ async function runLocalGraphQuery(
     return { rows: result.results, totalNodes: result.results.length }
   }
   const count = await db.prepare(
+    // A `path:` term names the joined folder, so the count reads the same joins as the page.
     `${neighborhood} SELECT COUNT(*) AS count FROM nearby JOIN notes n ON n.id = nearby.id
+     LEFT JOIN folders f ON f.id = n.folder_id AND f.user_id = n.user_id
      WHERE ${filters.join(' AND ')}`,
   ).bind(...prefixBinds, ...filterBinds).first<{ count: number }>()
   return { rows: result.results, totalNodes: Number(count?.count ?? result.results.length) }
@@ -261,7 +284,9 @@ async function runGlobalGraphQuery(
     return { rows: result.results, totalNodes: result.results.length }
   }
   const count = await db.prepare(
-    `SELECT COUNT(*) AS count FROM notes n WHERE ${filters.join(' AND ')}`,
+    `SELECT COUNT(*) AS count FROM notes n
+     LEFT JOIN folders f ON f.id = n.folder_id AND f.user_id = n.user_id
+     WHERE ${filters.join(' AND ')}`,
   ).bind(...filterBinds).first<{ count: number }>()
   return { rows: result.results, totalNodes: Number(count?.count ?? result.results.length) }
 }

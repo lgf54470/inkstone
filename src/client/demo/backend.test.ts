@@ -136,3 +136,41 @@ describe('demo blog route mutations', () => {
     expect(notePost.post).toMatchObject({ slug: 'welcome-to-inkstone' })
   })
 })
+
+describe('demo graph route filter grammar', () => {
+  const json = (init: RequestInit) => ({ headers: { 'Content-Type': 'application/json' }, ...init })
+
+  async function titles(backend: DemoBackend, query: string): Promise<string[]> {
+    const body = await (await call(backend, `/api/graph?q=${encodeURIComponent(query)}`)).json()
+    return body.nodes.map((node: { title: string }) => node.title).sort()
+  }
+
+  async function seededBackend(): Promise<DemoBackend> {
+    const backend = await authedBackend()
+    const folder = await (await call(backend, '/api/folders',
+      json({ method: 'POST', body: JSON.stringify({ name: 'Reading Room' }) }))).json()
+    for (const body of [
+      { title: 'Note Alpha', content: 'Tags: #movies\n', folderId: folder.id },
+      { title: 'Note Beta', content: 'Tags: #movies\n' },
+      { title: 'Note Gamma', content: 'Plain body\n', folderId: folder.id },
+    ]) {
+      await call(backend, '/api/notes', json({ method: 'POST', body: JSON.stringify(body) }))
+    }
+    return backend
+  }
+
+  it('keeps only notes whose folder path matches a path: term', async () => {
+    const backend = await seededBackend()
+    expect(await titles(backend, 'path:"Reading Room" note')).toEqual(['Note Alpha', 'Note Gamma'])
+    expect(await titles(backend, 'path:shop note')).toEqual([])
+  })
+
+  it('matches tag: exactly and excludes with a leading dash', async () => {
+    const backend = await seededBackend()
+    expect(await titles(backend, 'tag:movies note')).toEqual(['Note Alpha', 'Note Beta'])
+    expect(await titles(backend, 'tag:movie note')).toEqual([])
+    expect(await titles(backend, '-tag:movies path:Reading note')).toEqual(['Note Gamma'])
+    // A note with no folder has no path to exclude, so the negation keeps it.
+    expect(await titles(backend, 'tag:movies -path:Reading note')).toEqual(['Note Beta'])
+  })
+})

@@ -402,3 +402,98 @@ describe('graph route tag nodes (FEAT-03, real D1)', () => {
     expect(body.meta).toMatchObject({ totalNodes: 122, truncated: true })
   })
 })
+
+async function seedFolder(userId: string, folderId: string, name: string): Promise<void> {
+  await runSql(
+    db,
+    `INSERT INTO folders (id, user_id, parent_id, name, position, created_at, updated_at, deleted_at)
+     VALUES (?1, ?2, NULL, ?3, 0, ?4, ?4, NULL)`,
+    folderId, userId, name, NOW,
+  )
+}
+
+function moveToFolder(noteId: string, folderId: string): Promise<unknown> {
+  return runSql(db, 'UPDATE notes SET folder_id = ?1 WHERE id = ?2', folderId, noteId)
+}
+
+function nodeIds(body: Record<string, never>): string[] {
+  return (body.nodes as TopologyNode[]).map((node) => node.id)
+}
+
+describe('graph route filter grammar (FEAT-04, real D1)', () => {
+  it('drops the notes carrying an excluded tag and keeps the rest of the graph', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('keep'), userId, NOW + 2)
+    await seedNote(vid('drop'), userId, NOW + 1)
+    await seedTag(userId, 'tag-project', 'project')
+    await seedTag(userId, 'tag-archive', 'archive')
+    await tagNote(vid('keep'), 'tag-project')
+    await tagNote(vid('drop'), 'tag-project')
+    await tagNote(vid('drop'), 'tag-archive')
+
+    const plain = await graphBody('/api/search/graph', userId)
+    expect(nodeIds(plain).sort()).toEqual([vid('drop'), vid('keep')].sort())
+
+    const excluded = await graphBody('/api/search/graph?q=-tag:archive', userId)
+    expect(nodeIds(excluded)).toEqual([vid('keep')])
+
+    const required = await graphBody('/api/search/graph?q=tag:archive', userId)
+    expect(nodeIds(required)).toEqual([vid('drop')])
+  })
+
+  it('matches a path term against the folder name and lets folderless notes through a negation', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    const workshop = vid('ws')
+    await seedFolder(userId, workshop, 'Work Shop')
+    await seedNote(vid('in'), userId, NOW + 3, workshop)
+    await seedNote(vid('loose'), userId, NOW + 2, null)
+
+    const required = await graphBody('/api/search/graph?q=path:shop', userId)
+    expect(nodeIds(required)).toEqual([vid('in')])
+
+    const excluded = await graphBody('/api/search/graph?q=-path:shop', userId)
+    expect(nodeIds(excluded)).toEqual([vid('loose')])
+  })
+
+  it('applies text and folder terms together in one filter line', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    const work = vid('wk')
+    await seedFolder(userId, work, 'Work')
+    await seedNote(vid('target'), userId, NOW + 4, work)
+    await seedNote(vid('other'), userId, NOW + 3, work)
+    await seedNote(vid('loose'), userId, NOW + 2, null)
+    await runSql(db, `UPDATE notes SET title = 'Target plan', title_key = 'target plan' WHERE id = ?1`, vid('target'))
+
+    const body = await graphBody('/api/search/graph?q=target%20path:work&limit=50', userId)
+    expect(nodeIds(body)).toEqual([vid('target')])
+  })
+
+  it('keeps exclusions inside the local neighborhood and inside the count fallback', async () => {
+    await makeDb()
+    const userId = await seedUser()
+    await seedNote(vid('c1'), userId, NOW)
+    await seedNote(vid('c2'), userId, NOW)
+    await seedNote(vid('c3'), userId, NOW)
+    await seedLink(userId, vid('c1'), vid('c2'))
+    await seedLink(userId, vid('c1'), vid('c3'))
+    await seedTag(userId, 'tag-later', 'later')
+    await tagNote(vid('c3'), 'tag-later')
+
+    const local = await graphBody(`/api/search/graph?mode=local&center=${vid('c1')}&depth=1&q=-tag:later`, userId)
+    expect(nodeIds(local).sort()).toEqual([vid('c1'), vid('c2')].sort())
+
+    // 55 notes plus the three above, 3 of them moved into the excluded folder: the page keeps 50 of the
+    // 55 that are left, and the count the overflow falls back to has to read the folder join too.
+    const work = vid('wf')
+    await seedFolder(userId, work, 'Depot')
+    const ids = await seedNotes(55, userId, 'm')
+    for (const id of ids.slice(0, 3)) await moveToFolder(id, work)
+    const overflow = await graphBody(`/api/search/graph?q=-path:depot&limit=50`, userId)
+    expect(nodeIds(overflow)).toHaveLength(50)
+    expect(overflow.meta).toMatchObject({ totalNodes: 55, truncated: true })
+    for (const id of ids.slice(0, 3)) expect(nodeIds(overflow)).not.toContain(id)
+  })
+})

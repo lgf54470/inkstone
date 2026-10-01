@@ -2683,6 +2683,9 @@ const allowed = new Map([
     '// imports the other shared types from this module, so owning the props here',
     '// keeps the pair free of an import cycle.',
   ]],
+  ['src/client/demo/backend.test.ts', [
+    '// A note with no folder has no path to exclude, so the negation keeps it.',
+  ]],
   ['src/client/demo/backend/helpers/info.ts', [
     '// The demo\'s visit fixtures carry fingerprints and a demo backend has no secret that could be',
     '// missing, so it reports the product\'s normal state rather than a zero nobody can explain.',
@@ -12579,6 +12582,12 @@ const allowed = new Map([
   ['src/shared/escape.ts', [
     '/**\n * HTML-escape untrusted text (all five metacharacters: & < > " \').\n * Single canonical implementation shared by client and worker so escaping\n * semantics never drift between layers.\n */',
   ]],
+  ['src/shared/graph-filter-expression.ts', [
+    '/** Free text matched against the note title. */',
+    '/** Qualified terms are capped so one filter cannot outgrow the bound-variable budget of the query. */',
+    '/**\n * Splits a graph filter line into free text plus `tag:` / `path:` terms, each optionally negated with a\n * leading `-`. A quoted value may contain a space. One unparseable qualifier is kept as text rather than\n * dropped, so a typo hides notes the way the old title-only search did instead of silently widening the\n * graph.\n */',
+    '/** Client-side evaluation of the same grammar, used by the color groups of the graph panel. */',
+  ]],
   ['src/shared/graph-tag-nodes.ts', [
     '/** Tag nodes are the densest source of edges, so only the widest clusters get one. */',
     '/**\n * Adds one node per tag plus an edge from every note carrying it, so notes that share a tag but link\n * to nothing of each other end up in the same cluster. The link degrees of the notes stay untouched:\n * a tag membership is not a wiki link, and the read-out counts links.\n *\n * Shared by the Worker route and the demo backend so both answer `tagNodes=1` the same way.\n */',
@@ -14283,6 +14292,9 @@ const allowed = new Map([
     '// Link degrees are aggregated once per user (single pass over links) and',
     '// joined by note id, instead of three correlated sub-probes per note row.',
     '// `tagsMatch=all` intersects the tag filters, otherwise any match qualifies.',
+    '/** One qualified term of the filter line: `tag:` / `path:` must match, `-tag:` / `-path:` must not. */',
+    '// A note without a folder has no path to exclude, so the negation reads the missing name as blank.',
+    '// A `path:` term names the joined folder, so the count reads the same joins as the page.',
     '// A chunk asks for the links leaving its own notes only: binding the page on the target side as',
     '// well would not fit a statement a second time. Which of those links stay in the page is decided',
     '// below instead, because a link that leaves the page and comes back in a later chunk would be',
@@ -14728,6 +14740,8 @@ const allowed = new Map([
     '// pre-aggregated pass over links rather than from the chunking.',
     '// A tag membership is not a wiki link, so it never moves a note\'s own link degrees.',
     '// 61 notes, 60 tag nodes, and the one tag that did not make the cut still counts as hidden.',
+    '// 55 notes plus the three above, 3 of them moved into the excluded folder: the page keeps 50 of the',
+    '// 55 that are left, and the count the overflow falls back to has to read the folder join too.',
   ]],
   ['tests/kanban-board-title.test.ts', [
     '/**\n * A board\'s name is in the fence body, and the markup a fence renders does not read that body — so\n * the block head drew its own type name instead: the type name in the head, and the same word again\n * as the tab of the board view. A reader who had named the board saw that name nowhere, and saw a\n * twice repeated type name where the name belonged (user report 2026-09-23).\n *\n * The name now comes from the two layers that hold it, each in the host where it has the room:\n *\n *  - the note, where the registry writes it into the block\'s own head. The head is a few hundred\n *    pixels wide and its two other children take 60 of them, so the name has room there; the board\'s\n *    own header does not — a name drawn in that bar took the room the view strip needs to scroll its\n *    own tab into (the visual gate read a 26px strip for an 8-tab board when it was drawn there).\n *  - the overlay, where the same header draws it, because there is no block head in an overlay.\n *\n * Nothing is drawn for an untitled board: a placeholder would have to be translated, and nothing\n * re-renders this block when the language changes. The strings that are translated and do live in\n * markup the host made — the canvas\'s landmark name — are pinned in\n * `src/client/lib/markdown/kanban/registry-locale.test.ts`.\n */',

@@ -13,6 +13,7 @@ export const messages = {
 'graph.graph_canvas_drag_to_pan_and_scroll_to_zoom_keyboard_users_can_open_note': '关系图谱画布：可拖动平移、滚轮缩放；键盘用户可用上方选择器打开笔记',
 'graph.links': '条链接',
 'graph.filters': '筛选',
+'graph.filter_syntax_hint': '可输入 tag:名称 或 path:名称，前面加 - 表示排除',
 'graph.fit': '适应画布',
 'graph.folder': '文件夹',
 'graph.forces': '布局力',
