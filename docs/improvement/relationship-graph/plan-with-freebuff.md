@@ -26,7 +26,7 @@
 | 批次 | 涵盖编号 | 目标与完成判据 | 编号数 | 估计代价 | 状态 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **批次 0（前置）｜先量后改** | V-01…V-03（无 G 编号） | 新增 `scripts/measure-graph.mjs` + 合成大库样本，拿到布局帧成本、单请求读行数、degree 聚合耗时；三个 🔬 条目据此进入决策闸门 | — | ≈0.5–1 人日 | ⬜ 未开始 |
-| **批次 1｜P0 渲染连续性与红线** | G-06（含 G-07 步骤 1）、G-22、G-28、G-02、G-38 | 输入搜索词/切开关不再重建画布，拖过的坐标与 pin 存活；键盘可开节点菜单；标签边有预算；开启标签节点后截断读数不再自相矛盾 | 6 | ≈4–5 人日 | 🟡 2/6（1.1 已提交 `d4d2e12e`；G-07 编号待批次 6 步骤 2） |
+| **批次 1｜P0 渲染连续性与红线** | G-06（含 G-07 步骤 1）、G-22、G-28、G-02、G-38 | 输入搜索词/切开关不再重建画布，拖过的坐标与 pin 存活；键盘可开节点菜单；标签边有预算；开启标签节点后截断读数不再自相矛盾 | 6 | ≈4–5 人日 | 🟡 4/6（1.1 `d4d2e12e`、1.2 `b45dab64`；G-07 编号待批次 6 步骤 2） |
 | **批次 2｜请求与开销边界** | G-01、G-03、G-04（①）、G-09 | 一次请求读多少有明确上界；读端点有超时与节流；MCP 与 UI 的归档口径一致；拖拽不再逐事件强制布局 | 4 | ≈2 人日 | ⬜ 0/4 |
 | **批次 3｜视觉、主题与门禁** | G-29、G-30、G-31、G-40、G-41（G-43① 顺手） | 调色板收敛为单一来源并达标；主题翻转预览卡同步；ADR/AGENTS 不再与代码相反且有像素断言；对比度门禁覆盖图谱表面 | 5 | ≈3.5–4 人日 | ⬜ 0/5 |
 | **批次 4｜无障碍关系与键盘语义** | G-23、G-24、G-25、G-26、G-27 | 方向键按空间序且选中可见；标签节点可辨、可操作；设置抽屉关系完整；色板热区达标；说明关联与取消播报补全 | 5 | ≈2 人日 | ⬜ 0/5 |
@@ -131,15 +131,15 @@ npm run typecheck && npm run style:check && npm run comments:check && npm run em
   - 代价：M（本项实际约 0.5 人日 + 用例）｜提交建议：`fix(graph)`
   - 提交哈希：`d4d2e12e`｜状态：✅ 已完成（2026-10-01）。注意：本项只交付 **G-07 步骤 1**（pin 随坐标继承、同会话存活），跨会话持久化（步骤 2）仍在批次 6，G-07 编号整体未完成
 
-- [ ] **1.2 G-22 + G-28｜节点菜单的键盘入口（WCAG 2.1.1 Level A）** ★P0
+- [x] **1.2 G-22 + G-28｜节点菜单的键盘入口（WCAG 2.1.1 Level A）** ★P0
   - 台账：§3.4 G-22 / G-28
-  - 文件：`canvas.tsx`、`canvas-hooks.tsx`、`use-graph-preview.ts`、`src/shared/locales/{en-US,zh-CN}/graph.ts`；`canvas-a11y.test.ts`
-  - 要点：① `handleCanvasKeyDown` 增 `ContextMenu` 键与 `Shift+F10` 分支，复用 `computeAnchor` 把选中节点换算成屏幕锚点后 `setContext`；② 无选中时不打开空菜单；③ 同步更新 `graph_canvas_accessible` 文案，把「菜单键/Shift+F10 打开节点操作」写进对外承诺（G-28 即此项的登记与快捷键清单同步，不单独提交）；④ 顺带在同批把四类动作在 `?` 快捷键参考里登记
-  - 先红后绿：`canvas-a11y.test.ts` 先补「菜单键打开节点菜单且焦点/菜单项可达」用例
-  - 验证命令：统一命令 + `npx vitest run src/client/features/graph/graph-panel/canvas-a11y.test.ts`
+  - 文件：`canvas.tsx`、`use-graph-preview.ts`、`canvas-a11y.test.ts`、`graph-canvas-mount.test-helpers.ts`（pressKey 支持修饰键）、`features/command/shortcuts-panel.tsx` + `shortcuts-panel.test.ts`、`src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - 要点（落地口径）：① `handleCanvasKeyDown` 增 `ContextMenu` 键与 `Shift+F10` 分支，复用导出的 `computeNodeAnchor` 把选中节点换算成屏幕锚点后 `setContext`；② 无选中时不打开空菜单；③ `graph_canvas_accessible` 补「菜单键或 Shift+F10 打开节点操作」承诺；④ G-28 的 `?` 面板登记落在 `shortcuts-panel.tsx` 新增图谱画布一节（移动/缩放/适应/打开/节点操作五行）+ 5 个双语键，不新开提交；菜单锚点与固定回调抽成 `useGraphNodeActions`（否则 `useGraphCanvasController` 越过 50 行）
+  - 先红后绿（已跑）：`canvas-a11y.test.ts` 4 条 + `shortcuts-panel.test.ts` 1 条，改动前分别红在菜单不存在 / aria-label 不含 `Shift+F10` / 图谱行不在面板里
+  - 验证命令（已跑）：图谱 + command + overlay 聚合 **30 文件 / 183 条全绿**；提交钩子的增量 `vitest related` 在同一工作区跑出 **410 文件 / 3411 条全绿**；typecheck 与 13 项静态门禁全绿（i18n 3905 键）
   - 依赖：无。G-24 与 G-07 步骤 2 依赖本项；G-41 的第三条断言随本提交落地
-  - 代价：S（0.5 人日 + 用例）｜提交建议：`fix(graph)`
-  - 提交哈希：待登记｜状态：⬜ 待开始
+  - 代价：S（本项实际约 0.3 人日 + 用例）｜提交建议：`fix(graph)`
+  - 提交哈希：`b45dab64`｜状态：✅ 已完成（2026-10-01）
 
 - [ ] **1.3 G-02｜标签边预算：`applyTagNodes` 不再无上限 push** ★P0
   - 台账：§3.1 G-02
