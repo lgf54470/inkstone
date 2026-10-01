@@ -15,7 +15,7 @@
 | **准备工作** | 环境配置 | 创建 Worktree、软连 `node_modules`、编写深度审查报告与推进计划 | ✅ 已完成 |
 | **第一阶段 (Sprint 1)** | PERF-01, UX-01, UX-02, UX-03, UI-01 | 修复核心阻断 Bug：滑块白屏/请求风暴、单击强退、减少动画死锁、ESC 误杀、Canvas 主题跟随 | ✅ 已完成 |
 | **第二阶段 (Sprint 2)** | PERF-02, UI-02, UI-03, PERF-03, PERF-04, SEC-01, SEC-02, SEC-03, SEC-04, SPEC-01, SPEC-02, SPEC-03 | 消除 Layout Thrashing、邻居高亮矛盾、微光晕、D1 batch、冗余 COUNT、安全与隔离、规范重构与 i18n | ✅ 已完成 |
-| **第三阶段 (Sprint 3)** | FEAT-01, UX-04, UX-05, UX-06, UI-04, PERF-05, PERF-06, FEAT-02, FEAT-03, FEAT-04, FEAT-05, TEST-01 | 悬停预览卡片、移动端 Pinch 仿射补偿、光标增强、颜色图例、力导向优化、伴随图谱、标签节点、导出、自动化测试补齐 | 🔄 进行中：10 / 12 项已提交，剩 FEAT-05、TEST-01 |
+| **第三阶段 (Sprint 3)** | FEAT-01, UX-04, UX-05, UX-06, UI-04, PERF-05, PERF-06, FEAT-02, FEAT-03, FEAT-04, FEAT-05, TEST-01 | 悬停预览卡片、移动端 Pinch 仿射补偿、光标增强、颜色图例、力导向优化、伴随图谱、标签节点、导出、自动化测试补齐 | 🔄 进行中：11 / 12 项已提交，剩 TEST-01 |
 
 ---
 
@@ -27,9 +27,9 @@
 | **2. 性能与计算管线 (Performance Pipeline)** | PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06 | 6 项 | ✅ 全部已提交 (`cef97815`, `2744cec7`, `029f252b`, `24157e33`) |
 | **3. 交互与无障碍可用性 (UX & A11y)** | UX-01, UX-02, UX-03, UX-04, UX-05, UX-06 | 6 项 | ✅ 全部已提交 (`cec83ccb`, `83d212a9`, `7946bb73`, `24157e33`) |
 | **4. UI 视觉与工程规范 (UI & Standards)** | UI-01, UI-02, UI-03, UI-04, SPEC-01, SPEC-02, SPEC-03 | 7 项 | ✅ 全部已提交 (`75ff31a1`, `929c8cc5`, `3fe6ec27`, `24157e33`) |
-| **5. 主流功能对标 (Obsidian Gaps)** | FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05 | 5 项 | ✅ 4 项已提交 (`24157e33`, `64be16a4`, `8d6b5542`, `ac3a7fb7` + `b1b8314b`), ⏳ 1 项待推进 (FEAT-05 节点固定已在 `8d6b5542` 落地，剩 PNG/SVG 导出) |
-| **6. 自动化测试与工程质量 (Testing)** | TEST-01 | 1 项 | ⏳ 持续编写回归测试，终态收敛（图谱相关 10 个测试文件 / 80 条用例随 `b1b8314b` 全绿，`npx vitest run src/shared/graph-filter-expression.test.ts src/client/lib/graph-settings.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts src/client/features/graph`） |
-| **总计** | **全维度覆盖** | **29 项** | **27 项已提交完成，2 项待推进 (FEAT-05, TEST-01)** |
+| **5. 主流功能对标 (Obsidian Gaps)** | FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05 | 5 项 | ✅ 全部已提交 (`24157e33`, `64be16a4`, `8d6b5542`, `ac3a7fb7` + `b1b8314b`, `d3bcaec0`) |
+| **6. 自动化测试与工程质量 (Testing)** | TEST-01 | 1 项 | ⏳ 持续编写回归测试，终态收敛（图谱相关 13 个测试文件 / 108 条用例随 `d3bcaec0` 全绿，`npx vitest run src/shared/graph-filter-expression.test.ts src/client/lib/graph-settings.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts src/client/features/graph`） |
+| **总计** | **全维度覆盖** | **29 项** | **28 项已提交完成，1 项待推进 (TEST-01)** |
 
 ---
 
@@ -226,10 +226,18 @@
   - **提交哈希**：`ac3a7fb7`（A：排除过滤语法）、`b1b8314b`（B：自定义颜色分组规则）
   - **状态**：A、B 均已完成并验证通过。A：新增真实 D1 语法分组 4 条 + demo 后端 2 条 + 解析/匹配单测 8 条；worker 侧 M1/M2/M3 与 demo 侧 M4/M5 五个变异各由具名断言杀死，其中 M3 专防 `COUNT` 回退缺失 `folders` 联表。B：新增 18 条用例（`helpers.test.ts` 规则命中/配色/图例/存储 6 条、`canvas-draw.test.ts` 建布局打戳 2 条、`canvas-color-groups.test.ts` 实时重绘且不重建布局 2 条、`settings-color-rules.test.ts` 面板写回与控件语义 6 条、`canvas-legend.test.ts` 规则图例 2 条）；B01–B24 共 24 个变异全部由具名断言杀死、无存活，其中 B12/B13 专防「改规则不重绘」、B24 专防图例 memo 漏掉 `colorGroups` 依赖；pre-commit 钩子内 402 个测试文件 / 3394 条用例全绿，`npm run build` 通过。
 
-- [ ] **17. 【FEAT-05】缺失节点坐标固定 (Pin) 与高清图片/矢量导出 (Pin Nodes & Export PNG/SVG)**
-  - **涉及文件**：`src/client/features/graph/graph-panel/canvas.tsx`, `index.tsx`, `canvas-draw.ts`
-  - **修改要点**：右键菜单支持“固定此节点”；顶栏新增“导出为 PNG / 矢量 SVG”操作。
-  - **提交哈希**：`待提交`
+- [x] **17. 【FEAT-05】缺失节点坐标固定 (Pin) 与高清图片/矢量导出 (Pin Nodes & Export PNG/SVG)**
+  - **涉及文件**：`src/client/features/graph/graph-panel/graph-export.ts`, `use-graph-export.ts`, `index.tsx`, `types.ts`, `canvas-draw.ts`, `constants.ts`, `helpers.ts`, `src/shared/locales/{en-US,zh-CN}/graph.ts`
+  - **修改要点**：
+    1. 节点坐标固定（Pin）已随标签节点在 `8d6b5542` 落地（右键「固定此节点」、`CanvasNode.pinned`、钉住环），本项补的是导出；
+    2. 新增 `graph-export.ts`：`graphExportBounds()` 按节点包围盒出图（半径 + 标题占位 + `GRAPH_EXPORT_PADDING`，空图也返回有限盒），`graphExportGeometry()` 以 `GRAPH_EXPORT_SCALE = 2` 超采样并用 `GRAPH_EXPORT_MAX_EDGE = 4000` 回缩（边长再大浏览器 `toBlob` 返回 null，即静默空文件）；SVG 由字符串发射（`viewBox` 就是包围盒，所有非数值插值过 `escapeHtml`），PNG 走离屏 canvas 复用面板的 `drawEdges/drawNodes/drawLabels`，两条出口画的是同一份 `CanvasState`；
+    3. 关键取舍：栅格图固定按世界缩放（`EXPORT_DRAW_SCALE = 1`）绘制，设备像素只进 `setTransform`——否则「适应窗口」后的小缩放会按 `graphLabelVisible` 的 `scale >= 1.1` 规则让标题在导出的图里凭空消失；离屏 `scene` 是新对象，读者屏幕上的缩放与尺寸不受导出影响；
+    4. `constants.ts` 抽出 `GRAPH_LABEL_MAX/FONT_SIZE/OFFSET/HALO`、`GRAPH_EDGE_ALPHA/LABEL_ALPHA/PIN_ALPHA/ARROW_SIZE`、`FALLBACK_FONT_FAMILY`，`helpers.ts` 抽出 `graphNodeLabel()`（tag 带 `#` 前缀、按 `GRAPH_LABEL_MAX` 截断）与 `graphLabelVisible()`，`canvas-draw.ts` 抽出 `arrowHeadPoints()` 并导出三个绘制函数——面板与导出不再各存一份视觉取值；
+    5. `use-graph-export.ts` 新增 `useGraphExport()`：导出期间 `isExporting` 锁住入口，成功给 `graph.export_done`、失败给 `graph.export_failed` + `errorMessage()`（不静默、不交空文件）；文件经 `saveImage()` 交付而非 `downloadBlob`（后者静态拉入 markdown 渲染链，会触碰 vendor/budget 门禁）；`index.tsx` 顶栏加两个 `IconButton`（无图或导出中 `disabled`，`Tooltip` + `aria-label`），`useGraphHeaderActions` 改对象传参、`canZoom` 更名 `hasGraph`；
+    6. 双语言补 `graph.export_done` / `graph.export_failed`（`graph.export_png` / `graph.export_svg` 两键早已存在，直接复用）。
+  - **验证命令**：`npm run typecheck && node scripts/check-size.mjs && node scripts/check-comments.mjs && node scripts/check-i18n.mjs && node scripts/check-visual-labels.mjs && node scripts/check-hardcoded.mjs && npm run style:check && npx vitest run src/shared/graph-filter-expression.test.ts src/client/lib/graph-settings.test.ts tests/graph-routes.test.ts src/client/demo/backend.test.ts src/client/features/graph && npm run build`
+  - **提交哈希**：`d3bcaec0`
+  - **状态**：已完成并验证通过。新增 28 条用例（`graph-export.test.ts` 包围盒 / 矢量 / 栅格 / 文件交付 20 条、`use-graph-export.test.ts` 挂起态与两种 toast 4 条、`header-export.test.ts` 真实面板挂载按指针 2 条、`canvas-draw.test.ts` 箭头几何 2 条），图谱套件从 10 文件 80 条增至 13 文件 108 条；GE1–GE12、CD1–CD3、HP1–HP3、UG1–UG3、IX1–IX3 共 24 个变异全部由具名断言杀死、无存活（其中 GE7 专防「标题跟随读者当前缩放」、GE8 专防「空 PNG 静默成功」、IX1/IX3 专防「无图也能点」）。13 项静态门禁、`npm run typecheck`、`npm run build`、`npm run budget:check` 全绿；全量 `npm run test:unit` 为 5396 通过 / 2 条 5s 超时（`blog-comments-window.test.ts:44`、`calendar-tree.test/activity.test.ts:251`，两文件单跑 12 条全绿，属既有负载抖动，与本改动无导入交集）。
 
 - [ ] **18. 【TEST-01】图谱模块自动化单元与集成测试补齐**
   - **涉及文件**：`src/client/features/graph/graph-panel/` 测试套件
