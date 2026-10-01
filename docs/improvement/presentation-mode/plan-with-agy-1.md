@@ -20,7 +20,7 @@
 | **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
 | **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[x]` 已完成 (`bbe158b8` ~ `c6426131`) |
 | **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[x]` 已完成 (`5f02e2d4` ~ `decd0c8d`，B3-01 ~ B3-12) |
-| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 `6888b30f`；B4-02 `e7cf8aba`；B4-11 `3d163856`；B4-03 `13997681`；B4-04 已提交，其哈希由下一提交回填；余 B4-05 与台账 B4-06 ~ B4-13） |
+| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 `6888b30f`；B4-02 `e7cf8aba`；B4-11 `3d163856`；B4-03 `13997681`；B4-04 `2c304cf1`；余 B4-05 与台账 B4-06 ~ B4-13） |
 
 ---
 
@@ -212,7 +212,7 @@
     - 整份 deck 的卡片共用的那**一个** IntersectionObserver 是从 `slide-rail.tsx`（提交 `9cc8bf05`）搬进 `slide-thumb.tsx` 的；本批只是让它同时服务侧栏与矩阵，「全场景只有一个 observer、退订后回调不再触发」至今没有单测钉住——记为 B4-12。
     - `presentation-stage.tsx` 的 `inert={occluded}` 只由浏览器行 `the slide and the pill are out of reach behind the matrix` 守着：jsdom 不做命中测试、也不让 `inert` 阻断聚焦，单测最远只能断言属性在。
     - `waitForRailFilled` 的两读诊断（`slide list never finished {"before":…,"after":…}`）是 B4-11 期间定位「导出页饿死量测」用的，随本批进入 `e2e-visual.mjs`。
-- [x] **B4-04** `P-27 (FEAT-08)`: 封面居中与双栏排版模板 — 已完成（哈希由下一提交回填）
+- [x] **B4-04** `P-27 (FEAT-08)`: 封面居中与双栏排版模板 — 已完成 (`2c304cf1`)
   - 涉及文件：`src/client/features/presentation/slides.ts` + `.test.ts`、`slide-html.ts`、`slide-prose.tsx`、`slide-pagination.ts` + `.test.ts`、`slide-canvas.tsx`、`slide-thumb.tsx`、`slide-rail.tsx`、`slide-overview-grid.tsx`、`deck-print.tsx` + `.test.ts`、`use-slide-html.ts`、`slide-preflight.tsx`、新增 `slide-layout.test.ts`、`src/client/styles/presentation.css`、`README.md`、`README_ZH.md`、`scripts/e2e-visual.mjs`、`scripts/check-comments.mjs`、`scripts/check-size.baseline.json`
   - 目标：`<!-- layout: cover -->` 把该页作封面垂直与水平双向居中，`<!-- layout: split -->` 把该页排成左右等宽两栏；侧栏卡、全览矩阵、打印页与 PNG 导出画的是放映**量出来**的同一种版式。
   - 方案：
