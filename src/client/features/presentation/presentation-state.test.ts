@@ -146,11 +146,16 @@ describe('railOpenFor', () => {
 
 describe('escapeAction', () => {
   it('exits fullscreen when presentation is fullscreen to prevent accidental dismissal', () => {
-    expect(escapeAction(true)).toBe('exitFullscreen')
+    expect(escapeAction(true, false)).toBe('exitFullscreen')
   })
 
   it('closes presentation overlay when presentation is in windowed mode', () => {
-    expect(escapeAction(false)).toBe('close')
+    expect(escapeAction(false, false)).toBe('close')
+  })
+
+  it('puts the laser out before it costs the talk a screen or the show', () => {
+    expect(escapeAction(true, true)).toBe('clearLaser')
+    expect(escapeAction(false, true)).toBe('clearLaser')
   })
 })
 

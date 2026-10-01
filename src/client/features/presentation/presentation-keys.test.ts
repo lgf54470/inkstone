@@ -74,6 +74,23 @@ describe('presentationCommand — toggles and focus ownership', () => {
   })
 })
 
+describe('presentationCommand — laser pointer', () => {
+  it('toggles the laser pointer on C', () => {
+    expect(presentationCommand('c', plain)).toBe('laser')
+    expect(presentationCommand('C', plain)).toBe('laser')
+  })
+
+  it('leaves C to the focused control so typing is not hijacked', () => {
+    expect(presentationCommand('c', onControl)).toBeNull()
+    expect(presentationCommand('C', onControl)).toBeNull()
+  })
+
+  it('keeps the pointer key off L, which has driven following since the first batch', () => {
+    expect(presentationCommand('l', plain)).toBe('follow')
+    expect(presentationCommand('L', plain)).toBe('follow')
+  })
+})
+
 describe('presentationCommand — blackout and whiteout', () => {
   it('toggles blackout and whiteout on B/W and period/comma', () => {
     expect(presentationCommand('b', plain)).toBe('blackout')

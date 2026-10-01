@@ -29,7 +29,10 @@ export function railOpenFor(choice: boolean | null, fitsViewport: boolean): bool
   return choice ?? fitsViewport
 }
 
-export function escapeAction(isFullscreen: boolean): 'exitFullscreen' | 'close' {
+// The ladder `Esc` walks: the transient tool first, so putting the laser out never costs a
+// screen, then the screen, then the show.
+export function escapeAction(isFullscreen: boolean, laserOn: boolean): 'clearLaser' | 'exitFullscreen' | 'close' {
+  if (laserOn) return 'clearLaser'
   return isFullscreen ? 'exitFullscreen' : 'close'
 }
 

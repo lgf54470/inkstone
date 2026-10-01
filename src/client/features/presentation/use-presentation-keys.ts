@@ -25,6 +25,18 @@ function useScreenCover(open: boolean) {
   return { screenCover, clearCover, toggleBlackout, toggleWhiteout }
 }
 
+// The pointer is a mode of the show rather than of the note, so it goes out with the show:
+// a talk that ends must not leave a red dot following whoever moves the mouse next.
+function useLaserMode(open: boolean) {
+  const [laser, setLaser] = useState(false)
+  const clearLaser = useCallback(() => setLaser(false), [])
+  const toggleLaser = useCallback(() => setLaser((on) => !on), [])
+  useEffect(() => {
+    if (!open) setLaser(false)
+  }, [open])
+  return { laser, clearLaser, toggleLaser }
+}
+
 // One runner per command keeps the listener itself short, and a command that is not
 // claimed leaves the event alone instead of swallowing it for the rest of the page.
 function usePresentationRunner(actions: {
@@ -37,6 +49,7 @@ function usePresentationRunner(actions: {
   toggleFollowing: () => void
   toggleBlackout: () => void
   toggleWhiteout: () => void
+  toggleLaser: () => void
 }) {
   return useCallback((command: PresentationCommand) => {
     switch (command) {
@@ -58,6 +71,8 @@ function usePresentationRunner(actions: {
         return actions.toggleBlackout()
       case 'whiteout':
         return actions.toggleWhiteout()
+      case 'laser':
+        return actions.toggleLaser()
     }
   }, [actions])
 }
@@ -65,10 +80,13 @@ function usePresentationRunner(actions: {
 export function usePresentationKeys(options: PresentationKeysOptions): {
   screenCover: ScreenCoverType
   clearCover: () => void
+  laser: boolean
+  clearLaser: () => void
 } {
   const { open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing } = options
   const { screenCover, clearCover, toggleBlackout, toggleWhiteout } = useScreenCover(open)
-  const run = usePresentationRunner({ goNext, goPrev, jumpTo, slideCount, toggleFullscreen, toggleRail, toggleFollowing, toggleBlackout, toggleWhiteout })
+  const { laser, clearLaser, toggleLaser } = useLaserMode(open)
+  const run = usePresentationRunner({ goNext, goPrev, jumpTo, slideCount, toggleFullscreen, toggleRail, toggleFollowing, toggleBlackout, toggleWhiteout, toggleLaser })
 
   const onKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
@@ -93,5 +111,5 @@ export function usePresentationKeys(options: PresentationKeysOptions): {
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [open, onKeyDown])
 
-  return { screenCover, clearCover }
+  return { screenCover, clearCover, laser, clearLaser }
 }

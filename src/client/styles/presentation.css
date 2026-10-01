@@ -96,3 +96,59 @@
     break-after: auto;
   }
 }
+
+
+.laser-pointer {
+  --laser-dot-size: 12px;
+
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover);
+  pointer-events: none;
+}
+
+.laser-pointer span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--laser-dot-size);
+  height: var(--laser-dot-size);
+  margin-top: calc(var(--laser-dot-size) / -2);
+  margin-left: calc(var(--laser-dot-size) / -2);
+  border-radius: var(--r-full);
+  background: var(--danger);
+  transform: translate3d(var(--laser-x, -100vw), var(--laser-y, -100vh), 0);
+}
+
+.laser-trail {
+  opacity: 0.25;
+  filter: blur(2px);
+  transition: transform var(--dur-fast) linear;
+}
+
+.laser-trail + .laser-trail {
+  opacity: 0.16;
+  transition-duration: var(--dur-base);
+}
+
+.laser-trail + .laser-trail + .laser-trail {
+  opacity: 0.08;
+  transition-duration: var(--dur-slow);
+}
+
+.laser-dot {
+  box-shadow: 0 0 0 calc(var(--laser-dot-size) * 0.35) color-mix(in oklab, var(--danger) 45%, transparent);
+  animation: laser-pulse calc(var(--dur-slow) * 4) ease-in-out infinite;
+}
+
+@keyframes laser-pulse {
+  50% {
+    box-shadow: 0 0 0 calc(var(--laser-dot-size) * 0.9) color-mix(in oklab, var(--danger) 12%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .laser-dot {
+    animation: none;
+  }
+}

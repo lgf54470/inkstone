@@ -2,17 +2,19 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { createPortal } from 'react-dom'
 import type { ProseFont } from '@shared/types'
 import { useBreakpoint, useDebounced } from '../../lib/hooks'
+import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
-import { useDialogFocus, useEscape, useLockScroll } from '../../components/overlay'
 import { DeckImageSheet, DeckPrintSheet } from './deck-print'
 import { useDeckExport, type DeckSheetPayload } from './deck-export'
 import { useNotes } from '../../store/notes'
 import { usePresentation } from '../../store/presentation'
 import { useSession } from '../../store/session'
-import { escapeAction, presentedNoteContent, railOpenFor } from './presentation-state'
+import { presentedNoteContent, railOpenFor } from './presentation-state'
+import { useDialogBehavior } from './use-dialog-behavior'
 import { useIsDarkTheme } from './presentation-theme'
 import { PresentationControls, SlideProgress, type PresentationControlsProps } from './presentation-controls'
 import { PresentationStage, ScreenCover, stageProps } from './presentation-stage'
+import { LaserPointer } from './presentation-pointer'
 import { buildIncrementalSlidePlans, hashContent, rememberSlidePlan, slideCacheKey } from './slide-html'
 import { samePlan, type SlidePlan } from './slide-pagination'
 import { SlidePreflight, type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
@@ -67,7 +69,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         aria-modal='true'
         aria-label={t('workspace.presentation_mode')}
         data-surface='presentation'
-        className='anim-fade fixed inset-0 z-[var(--z-modal)] flex overflow-hidden bg-[var(--bg-base)] outline-none'
+        className={cn('anim-fade fixed inset-0 z-[var(--z-modal)] flex overflow-hidden bg-[var(--bg-base)] outline-none', session.laser && 'cursor-none')}
       >
         {session.railOpen && (
           <SlideRail
@@ -89,6 +91,9 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         <PresentationStage {...stageProps(stageRef, session)} />
         <PresentationControls {...controlProps(session, onClose)} />
         <SlideProgress index={session.index} count={session.deck.length} />
+        {/* Inside the dialog rather than beside it: the panel owns the paint stack, and a pointer
+            drawn outside it would sit under the very slide it is meant to point at. */}
+        <LaserPointer active={session.laser} />
       </div>
       <PresentationSheets session={session} />
     </>
@@ -172,6 +177,8 @@ interface PresentationSession {
   preflight: SlidePreflightProps
   screenCover: 'black' | 'white' | null
   clearCover: () => void
+  /** Whether the show is drawing its own pointer. */
+  laser: boolean
 }
 
 function usePresentationSession({ open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose, initialSlideIndex = 0 }: {
@@ -200,9 +207,9 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
   const cacheKeys = useSlideCacheKeys(deck, dark, metrics)
   const exports = useDeckExport({ deck, cacheKeys, plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
-  useDialogBehavior(open, panelRef, isFullscreen, toggleFullscreen, onClose)
+  const { screenCover, clearCover, laser, clearLaser } = usePresentationKeys({ open, slideCount: deck.length, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing })
+  useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: laser, clearLaser })
   useSlideHtml({ open, deck, index, fingerprint: hashContent(deck[index] ?? ''), content: presentedContent, noteTitle, dark, metrics })
-  const { screenCover, clearCover } = usePresentationKeys({ open, slideCount: deck.length, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing })
   return {
     deck,
     cacheKeys,
@@ -231,6 +238,7 @@ function usePresentationSession({ open, noteId, snapshot, following, storedTitle
     listProgress,
     screenCover,
     clearCover,
+    laser,
   }
 }
 
@@ -297,24 +305,6 @@ function useSlideList(open: boolean): { railOpen: boolean; toggleRail: () => voi
   const railOpen = railOpenFor(choice, fitsViewport)
   const toggleRail = useCallback(() => setChoice(!railOpen), [railOpen])
   return { railOpen, toggleRail }
-}
-
-// The dialog's own browser contracts: Escape closes, the page behind stops scrolling,
-// and focus stays inside the dialog until it goes back to whatever opened it.
-function useDialogBehavior(
-  open: boolean,
-  panelRef: RefObject<HTMLDivElement | null>,
-  isFullscreen: boolean,
-  toggleFullscreen: () => void,
-  onClose: () => void,
-): void {
-  const handleEscape = useCallback(() => {
-    if (escapeAction(isFullscreen) === 'exitFullscreen') toggleFullscreen()
-    else onClose()
-  }, [isFullscreen, toggleFullscreen, onClose])
-  useEscape(open, handleEscape)
-  useLockScroll(open)
-  useDialogFocus(open, panelRef, panelRef)
 }
 
 // Presenting is a full-screen activity: the controls and the slide list fade out

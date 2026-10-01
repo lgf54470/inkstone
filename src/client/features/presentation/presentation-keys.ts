@@ -4,7 +4,7 @@
 // keyboard; Space/Enter yield to the focused control to avoid double actions, and the
 // slide list keeps the arrows it needs to walk its own items.
 
-export type PresentationCommand = 'next' | 'prev' | 'first' | 'last' | 'fullscreen' | 'slideList' | 'follow' | 'blackout' | 'whiteout'
+export type PresentationCommand = 'next' | 'prev' | 'first' | 'last' | 'fullscreen' | 'slideList' | 'follow' | 'blackout' | 'whiteout' | 'laser'
 
 export interface PresentationKeyContext {
   /** The event targets a button, link or editable control. */
@@ -40,6 +40,11 @@ export function presentationCommand(key: string, context: PresentationKeyContext
     case 'l':
     case 'L':
       return context.onControl ? null : 'follow'
+    // The pointer takes C because L already drives following, and moving a shipped key would
+    // cost more than the mnemonic it buys.
+    case 'c':
+    case 'C':
+      return context.onControl ? null : 'laser'
     case 's':
     case 'S':
       return context.onControl ? null : 'slideList'

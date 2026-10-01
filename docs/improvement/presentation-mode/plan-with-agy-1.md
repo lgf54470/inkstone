@@ -20,7 +20,7 @@
 | **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
 | **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[x]` 已完成 (`bbe158b8` ~ `c6426131`) |
 | **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[x]` 已完成 (`5f02e2d4` ~ `decd0c8d`，B3-01 ~ B3-12) |
-| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 已提交，其哈希由 B4-02 回填） |
+| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 `6888b30f`；B4-02 已提交，其哈希由下一提交回填） |
 
 ---
 
@@ -152,17 +152,32 @@
 
 ## 批次 4 · 阶段四：旗舰演说生态对齐 (P3)
 
-- [x] **B4-01** `P-24 (FEAT-03)`: 演讲私有备注语法支持 (`<!-- note: ... -->`) — 已完成（哈希由下一提交回填）
+- [x] **B4-01** `P-24 (FEAT-03)`: 演讲私有备注语法支持 (`<!-- note: ... -->`) — 已提交 (`6888b30f`)
   - 涉及文件：`src/client/features/presentation/slides.ts`、`src/client/features/presentation/slides.test.ts`、`README.md`、`README_ZH.md`
   - 目标：`<!-- note: ... -->` / `<!-- speaker: ... -->` 读作该页幻灯片的私有备注，放映与导出画面均不出现其内容，备注作为 Slide 元数据成对可取。
   - 方案：抽取放在分页**之前**（`buildDeck` 前置一步 `readSpeakerNotes` 逐行走查），而非评审草案提议的「对整篇源码跑 `[\s\S]*?` 正则再替换」——草案写法会把跨行备注在其中的 `---` 处截断，剩下半截作为正文投出去，反而是新的泄露面。逐行状态机同时避开三种误认：围栏之内（演示该语法的代码块原样保留、不当备注）、front matter 之内（元数据里的同类写法不是备注，且不参与栅栏状态推断）、行首 ≥4 空格（Markdown 读作代码块）。整行归备注时删该行并连带删掉它上面的那个空行（否则幻灯片里留一个空洞）；`-->` 之后的文字属作者正文，保留。未闭合的备注一路私有到文末，与 Markdown 阅读器丢弃未闭合注释的既有行为一致。备注按行号归页：`noteLimit` 让分割线自己的行归上一页、标题行归它开启的那一页；`placeCues` 把「吞掉尾部所有行」的备注落到正文最后的现存行，避免尾部空白页被裁掉时备注一并消失；末组的右界取 `Infinity`，因为该组可能已无任何行可站。
   - 与草案的偏差（实测纠偏）：评审前提「备忘内容会直接投射到大屏」**不成立**——渲染器 `html: true` 产出的注释节点在 DOMPurify 一道就被丢弃，投影里本来就看不见。评审点名的 `slide-html.ts` 因此不动：剔除发生在分页时而不是渲染时，`use-slide-html` / `slide-canvas` / `slide-rail` / `deck-print` 四条渲染入口自动同步，无需各改一处。本项的实际收益因此是：(1) 修掉草案正则的跨行截断面；(2) 把备注提为与 `splitIntoSlides` 同序的 Slide 元数据（`splitIntoSlidesWithNotes`），供 B4-05 演讲者窗口直接读取。草案中的「演讲备注面板 UI」不在本项交付，归 B4-05；本项只交付语法识别 + 剔除 + 元数据，`notes` 半边在 B4-05 之前无生产消费者（同一批次内两步走，不为尚未到来的面板预铺 plumbing）。
   - 验证：`slides.test.ts` 52 例（新增 `splitIntoSlides — private speaker cues` 一组 21 例：单行、多行合并、`speaker:` 别名、大小写、`<!--note:` 贴合写法、行首四空格不识别、围栏内保留、`---` 写在备注内不分页、`-->` 后正文保留、未闭合私有到文末、备注独占一页、整篇只有一条备注、备注与分割线同行、备注吞掉分页后的尾部、front matter 不当备注、front matter 不开栅栏、光标越过备注仍落对页）。既有笔记零回归由 184 条差分断言证明：60 条不含备注的输入下，新实现与 `HEAD` 旧实现的 slides 数组与逐字符偏移的 `findSlideIndexByOffset` 完全一致，且 notes 全为空串；21 条含备注输入再各自断言「围栏外无备注文本/备注正文完整/不留空白尾页」。25 项变异全部被具名用例杀死（`NOTE_OPEN` 的缩进、大小写、空格三档放宽或收紧，`takeNote` 的删行与不删行与错行，`placeCues` 的上界与整体移除，`noteLimit` 的 `+1`，末组 `Infinity` 退回 `lines.length`，front matter 跳过条件失效等）。无新增 UI 文案，i18n 资源无变化。
-- [ ] **B4-02** `P-25 (FEAT-04)`: 虚拟激光笔与聚光灯 (L)
-  - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx`、`src/client/features/presentation/presentation-stage.tsx`、`src/client/features/presentation/presentation-keys.ts`
-  - 目标：按 `L` 键激活虚拟红光激光笔，大屏投映时高亮引导视觉焦点。
-  - 方案：在 `presentation-keys.ts` 注册 `'laser'` 命令；在 `PresentationStage` 顶层叠加 `LaserCanvas` 跟踪指针绘制带发光脉冲与微光拖尾的激光粒子。
-  - 验证：单元测试验证激光笔模式开关状态切换与指针跟踪渲染事件。
+- [x] **B4-02** `P-25 (FEAT-04)`: 虚拟激光笔（评审标题里的「聚光灯」拆到 B4-06） — 已完成（哈希由下一提交回填）
+  - 涉及文件：新增 `src/client/features/presentation/presentation-pointer.tsx` + `.test.ts`、`use-presentation-keys.test.ts`、`use-dialog-behavior.ts`；改 `presentation-keys.ts` + `.test.ts`、`presentation-state.ts` + `.test.ts`、`use-presentation-keys.ts`、`presentation-overlay.tsx`、`src/client/styles/presentation.css`、`scripts/e2e-visual.mjs`、`scripts/check-comments.mjs`、`README.md`、`README_ZH.md`
+  - 目标：放映中按一个键在大屏画出跟随指针的红色激光点（带拖尾与呼吸脉冲），开启期间系统光标隐藏；`Esc` 先把激光笔收回去而不代价一屏；模式关闭、放映结束、层卸载三条路径都不留悬空监听器与残点；激光点不吞掉大屏本要收到的点击。
+  - 方案：`presentation-pointer.tsx` 在**对话框内部**渲染一层 `aria-hidden` 的 `.laser-pointer`，`pointermove` 经 `requestAnimationFrame` 合帧，一帧只写 `--laser-x/--laser-y` 两个 CSS 变量；点与三条拖尾读同一坐标、只差 `transition-duration`（`--dur-fast/base/slow`），于是「拖尾」是 CSS 的滞后而非每帧绘制的粒子；颜色取 `var(--danger)`，脉冲光晕用 `color-mix` 在同一令牌上稀释；`prefers-reduced-motion: reduce` 下脉冲写作 `animation: none`（时长令牌本身退化成 1ms，缩短会变成频闪）。键位在 `presentation-keys.ts` 注册 `'laser'`，`use-presentation-keys.ts` 的 `useLaserMode` 持有模式并以「放映关闭即退出」为效果，`escapeAction` 增加第一级 `clearLaser` 并由 `useDialogBehavior` 消费。
+  - 与草案的偏差（设计冲突自决，不回头问）：
+    1. **键位取 `C` 而非 `L`**：`l/L` 自首批即「跟随编辑」，`presentation-keys.test.ts` 既有用例钉住它（变异 M06「把 following 改写成 laser」正被 `keeps the pointer key off L…` 与 `toggles fullscreen, the slide list and following on F, S and L` 两条杀死，说明这条边界是被守住的而非碰巧）；`Alt+L` 不可行——浮层按键处理在 `metaKey || ctrlKey || altKey` 时直接早退，为激光笔放开修饰键等于削弱一条已发布的修饰键边界。README 两版快捷键表因此写 `C`，`presentation-keys.ts` 内注释记下表意。
+    2. **不做 `LaserCanvas`**：ADR-0002 规则 1「能走 CSS 就走 CSS」优先。canvas 每帧重绘要么把颜色冻在创建时刻（要么实现 `changeTheme`/重绘管道，要么「刷新页面才变色」即回归），要么就得在绘制循环里读 `getComputedStyle`（规则 5 禁止）。DOM+CSS 变体下主题切换由浏览器完成，`--danger` 自动随明暗，不需要主题接线代码，也不需要为「颜色是否跟随主题」新增浏览器场景；草案点名的 `presentation-stage.tsx` 因此不动。
+    3. **聚光灯不在本项交付**：评审对 P-25 的编号设计只描述了激光笔，聚光灯需要自己的设计（遮罩与层序、亮区令牌、与激光笔的互斥关系），拆为 B4-06，不为凑标题里的两个词预铺未设计的实现。
+    4. **激光层刻意挂在 `[role="dialog"]` 之内**：与 `ScreenCover` 一样并排在面板之外，会被不透明面板压住。本次实测顺带确认了浮层既有的层序缺陷（记为 B4-07），但不为「让幕布可见」在本提交顺手改黑屏。
+    5. **`useDialogBehavior` 抽出为 `use-dialog-behavior.ts`**：给它加两个参数后 `presentation-overlay.tsx` 到 514 行、越过 AGENTS.md 的 500 行预算；按「超限优先按职责拆分」把对话框的浏览器契约（Escape 阶梯 / 滚动锁 / 焦点陷阱）搬出，回到 491 行且无长函数。未用 `--update-baseline`——那会把新违规洗成存量。
+    6. **发现但未修**：`use-presentation-keys.ts` 读 `event.target?.closest(...)`，keydown 的 target 为 `document`/`window`（无 `closest`）时会抛 TypeError。单测因此把事件派发到 `document.body`（真实浏览器路径），不靠兜底把这条隐藏起来；记为 B4-08。
+  - 验证：
+    - 先红（红在断言自己身上，不在实现上）：门禁首轮报 `laser: the dot is drawn in the red the theme carries` 失败，且该行无 detail 可查。用一次性 Chrome 探针（`puppeteer-core` + `/usr/bin/google-chrome-stable`）实测：作者写作 `oklch(49% 0.19 22)` 的颜色，Chrome 的计算值原样回 `oklch(0.49 0.19 22)`，而 `rgb(160, 40, 40)` 才回 `rgb(...)`；同一颜色画进 1px canvas 解出像素 `[179, 16, 42]`。即断言里那个只认 `rgb(...)` 的正则永不命中、`isRed` 恒假——**断言写法错，实现没错**。改法：把点色与该元素自己的 `--danger` 两侧都经 canvas 解码成像素再比（与写法无关；「等于令牌」这一条能杀死「写死 `#ff0000`」的变异），并补 detail 输出；另加一条「激光点是读者看得见的图形」，按非文本 3:1 量它对面板底色的对比度，`contrastRatio` 复用 `scripts/lib/contrast.mjs`（不复制第三份亮度公式）。
+    - 单元：`presentation-pointer.test.ts` 7 例（关闭不画层 / 一点三尾且 `aria-hidden` / 坐标写进 `--laser-x`+`--laser-y` / 一串 move 只合帧一次并落在最新位置 / 下一帧继续跟踪 / 模式关闭后不再排帧 / 层随放映卸载后不再排帧），`use-presentation-keys.test.ts` 4 例（`c`/`C` 来回切换 / 焦点在控件上时把键交还控件 / 放映关闭模式随之退出 / 幕布升起时下一个键只收幕布），`presentation-keys.test.ts` 新增 3 例（含偏差 1 的 `l/L` 边界），`presentation-state.test.ts` 的 `escapeAction` 覆盖四态。放映目录 16 文件 / 184 例通过；全量 `npm run test:unit` **610 文件 / 5420 通过 + 1 跳过**（本工作机既有基线失败 `blog-comments-window.test.ts` 本轮未复现，仍按既有约定只判新增失败）；`npm run typecheck` 通过。
+    - 变异：14 项全部被**具名用例**杀死（先确认基线 rc=0，跑完按 sha256 校验工作树逐字节复原）——`escapeAction` 的激光级删掉 / 排到全屏之后；`c` 的 focus 守卫删掉 / 整条映射删掉 / 只留大写；`l` 被改写成 laser；`toggleLaser` 改成置真；`open` 复位改成反向；rAF 合帧守卫删掉；`removeEventListener` 删掉；`active` 守卫删掉；x 写成 y；少一条拖尾；`aria-hidden` 删掉。面板的 `cursor-none` 与颜色/对比度不在单测射程内，由浏览器门禁守。
+    - 浏览器门禁：全新 `INKSTONE_EPHEMERAL_DEV=1 --mode kv` 实例（`:7742`），先 `scripts/e2e.mjs` **177 通过 / 0 失败**（同时建出门禁登录用的 Owner-1），再 `scripts/e2e-visual.mjs` **687 通过 / 7 失败**，`laser:` 12 条全绿（含改正后的颜色断言与新增的对比度断言）；首轮该组为 685 通过 / 8 失败，唯一新增失败即上面那条断言写法。
+    - 对照基线（判定哪些红是我带来的）：同机同法对 `git archive HEAD` 快照（`:7743`，同样先跑 `e2e.mjs` 177/0）跑一次得 **675 通过 / 7 失败**，失败名与本树逐条一致：`presentation: canvas fills the stage`、`presentation session: the canvas refills the stage`、`presentation pages: a thumbnail renders the markup the projector prepared`、`presentation pages: the slide list shows the chart as a picture`、`presentation pages: the picture in the slide list was drawn, not an empty frame`、`presentation pages: a theme flip re-prepares the list instead of leaving placeholders`、`a11y: the presentation overlay has no axe violations`（`.bottom-4` 页码片 1.67:1）。七项因此是本工作机既有红、与 B4-02 无关，另记 B4-09，不在本提交夹带修复（AGENTS.md 铁律 14）。
+    - 静态门禁：`size:check`（抽出后 491 行 / 无长函数）、`comments:check`（重建白名单 12732 条 / 1340 文件，双向通过）、`style/escape/empty-catch/hardcoded/tokens/i18n/module-state/deep-imports/surfaces/vendor` 全绿。CSS 依既有政策不带注释，激光样式的读法（拖尾只差时长、离屏停靠不算状态、`pointer-events` 让出点击、reduce 下取消脉冲而非缩短）写在 `presentation-pointer.tsx` 头部注释里。
+    - i18n：无新增用户可见文案（README 属文档，不是资源键），`i18n:check` 通过。
+
 - [ ] **B4-03** `P-26 (FEAT-06)`: 全局幻灯片全览网格矩阵 (Overview Grid)
   - 涉及文件：新增 `src/client/features/presentation/slide-overview-grid.tsx`、联动 `src/client/features/presentation/presentation-overlay.tsx`
   - 目标：按 `G` 或 `O` 键全屏展开自适应响应式缩略图矩阵，便于问答阶段快速跳页。
@@ -178,6 +193,23 @@
   - 目标：双屏独立输出，讲者窗口独立展示当前页、下一页预览、私有小抄与时钟。
   - 方案：通过 `window.open` 弹出独立窗口作为第二屏控制台，主子窗口借助 `BroadcastChannel` 传输页码、时间戳与小抄，实现低延迟双向联动。
   - 验证：单元测试验证 BroadcastChannel 跨窗口消息同步协议与控制事件收发。
+
+- [ ] **B4-06** `P-25 (FEAT-04) 后半`: 聚光灯（Spotlight）
+  - 目标：把大屏其余部分压暗、只留一块跟随指针的亮区，与 B4-02 的激光笔共用同一套模式状态与 `Esc` 阶梯。
+  - 待设计：遮罩层与 `--bg-overlay` / `z-index` 的关系（不得重犯 B4-07 的层序错）、亮区尺寸的令牌化、`prefers-reduced-motion` 下不做缩放动画、两种指点模式是否互斥。
+  - 拆出原因：评审对 P-25 的编号设计只写了激光笔，聚光灯没有可直接照抄的方案。
+- [ ] **B4-07** 缺陷修复: 黑屏/白屏覆盖层压不住放映面板
+  - 现象：`ScreenCover` 与 `[role="dialog"]` 并排且 z 取 `--z-popover`(50)，而面板 `z-[var(--z-modal)]`(250) 自带不透明底色，同层上下文里覆盖层画在面板之下——按 `B`/`.` 后大屏可能仍是幻灯片。B4-02 的激光层因此刻意渲染在面板之内。
+  - 方案：把覆盖层层序提到面板之上（或作为面板子元素），并为「幕布确实盖住了幻灯片」补浏览器断言——该路径当前无门禁覆盖，属既有缺口。
+- [ ] **B4-08** 健壮性: 放映按键的 target 兜底
+  - 现象：`use-presentation-keys.ts` 用 `event.target?.closest(...)` 判定焦点归属，keydown 的 target 为 `document`/`window` 时（无 `closest`）抛 TypeError。单测目前按真实浏览器路径派发到 `document.body`，未掩盖该风险。
+  - 方案：只对 `Element` 取 `closest` 的显式守卫，并加一条「target 是 document 的按键不炸放映」的用例。
+- [ ] **B4-09** 门禁既有红: 本机浏览器门禁 7 项（HEAD 快照复现）
+  - 清单见 B4-02 验证段的对照基线条。判定依据：对同一 HEAD 快照以同法实跑，得到同样 7 个失败名。
+  - 待查方向：两条 `canvas fills the stage` 无 detail 输出（先给它补 detail 才谈得上定位）；缩略图那组读数为 `katex=0/charts=0/painted=0`、`pixels=-1`，即 rail 的静止帧没画出来（疑似本机字体或解码时序）；axe 那条是 `.bottom-4` 页码片的文字色在 `--bg-overlay` 上合成出 1.67:1，若 CI 不复现则说明底色合成随环境而变，需按令牌复测该色对。
+- [ ] **B4-10** 文档: `AGENTS.md` 的视觉门禁断言计数已过期
+  - 现象：`AGENTS.md` 写 `scripts/e2e-visual.mjs`「当前 380 条断言」，本分支 HEAD 快照实跑已是 682 条，B4-02 后为 694 条（687 通过 + 7 既有红）。
+  - 处置：`AGENTS.md` 自述「修改本文件需 PR 评审」，不在功能提交里改文档计数；单独提交或随批次收尾一并更新。（顺带核实：仓库根有 `.pre-commit-authors.json` 把 `AGENTS.md`/`scripts/e2e-visual.mjs`/`scripts/check-comments.mjs` 记给若干上游作者，但 `.githooks/pre-commit` 与本仓脚本都不读它，本检出中不生效——B4-01/B4-02 均按现状提交了这些文件。）
 
 ---
 

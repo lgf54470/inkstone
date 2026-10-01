@@ -45,6 +45,7 @@ import {
 } from './e2e-harness.mjs'
 
 import { PROVIDER_STUB_FULL_PAGE, PROVIDER_STUB_HITS, installMusicProviderStub } from './lib/music-provider-stub.mjs'
+import { contrastRatio } from './lib/contrast.mjs'
 
 const BASE = process.argv[2] ?? 'http://localhost:7712'
 // Credentials of an existing account to sign in as. CI runs this gate right
@@ -649,6 +650,126 @@ async function assertPresentationAccessibility(page) {
   check('a11y: the slide list walks its pages from the keyboard', walked.after !== '' && walked.after !== walked.before, JSON.stringify(walked))
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
+}
+
+// The pointer the show draws itself. A unit test can prove the mode turns on and the coordinates are
+// written; only a real browser can show what a talk actually needs — the dot landing under the cursor
+// at the size it paints, the layer never eating the click the slide was going to receive, the slide
+// giving up its own cursor while the pointer is on, and the dot carrying the theme's red rather than
+// a colour frozen at build time. The escape ladder is measured in the windowed state on purpose: in
+// real fullscreen the browser takes `Esc` for itself and the page never sees the key.
+async function assertPresentationLaser(page) {
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await waitForPanelSettled(page, '[role="dialog"]')
+  if (await page.evaluate(() => Boolean(document.fullscreenElement))) {
+    await page.keyboard.press('f')
+    await sleep(700)
+  }
+
+  const viewport = page.viewport() ?? DESKTOP_VIEWPORT
+  const point = { x: Math.round(viewport.width * 0.62), y: Math.round(viewport.height * 0.45) }
+  await page.keyboard.press('c')
+  await page.mouse.move(point.x, point.y)
+  await sleep(200)
+
+  const painted = await page.evaluate(({ x, y }) => {
+    const layer = document.querySelector('[data-laser-pointer]')
+    const dot = layer?.querySelector('.laser-dot')
+    const box = dot?.getBoundingClientRect()
+    // The tokens are authored in oklch and Chrome hands a computed colour back in that same
+    // notation, so the two are compared as the pixels a reader gets: a canvas decodes whichever
+    // notation each string is in, which is also what makes "is it red" a question about the paint
+    // rather than about the spelling of the token.
+    const decode = (value) => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 1
+      canvas.height = 1
+      const context = canvas.getContext('2d')
+      context.fillStyle = value
+      context.fillRect(0, 0, 1, 1)
+      const [r, g, b] = context.getImageData(0, 0, 1, 1).data
+      return [r, g, b]
+    }
+    const colour = dot ? getComputedStyle(dot).backgroundColor : ''
+    // Read on the dot, not on the root: that is the element whose `background` the token feeds, so
+    // a theme that is pinned further up the tree still resolves to the red it is actually drawing.
+    const token = dot ? getComputedStyle(dot).getPropertyValue('--danger').trim() : ''
+    // While pointing, the dot is the only cursor on the screen, which makes it a graphic the reader
+    // has to be able to see, so it is measured against the panel it is drawn on at 3:1 — the surface
+    // the show paints its slides onto, read as the browser resolves it rather than as a token name.
+    const surface = getComputedStyle(document.querySelector('[role="dialog"]')).backgroundColor
+    return {
+      on: Boolean(layer),
+      tracked: layer ? layer.style.getPropertyValue('--laser-x') : '',
+      center: box ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : null,
+      box: box ? { width: Math.round(box.width), height: Math.round(box.height) } : null,
+      hitIsLaser: Boolean(layer && document.elementFromPoint(x, y) && layer.contains(document.elementFromPoint(x, y))),
+      cursor: getComputedStyle(document.querySelector('[data-slide-canvas]')).cursor,
+      dotRgb: colour ? decode(colour) : [],
+      tokenRgb: token ? decode(token) : [],
+      surfaceRgb: decode(surface),
+      trails: layer ? layer.querySelectorAll('.laser-trail').length : 0,
+      named: layer ? layer.getAttribute('aria-hidden') : '',
+    }
+  }, point)
+
+  check('laser: C puts a pointer on the projector', painted.on && painted.trails === 3 && painted.named === 'true', JSON.stringify(painted))
+  check('laser: the layer holds the pointer position', painted.tracked === `${point.x}px`, `tracked=${painted.tracked} pointer=${point.x}`)
+  check(
+    'laser: the dot paints under the cursor',
+    Boolean(painted.center) && Math.abs(painted.center.x - point.x) <= 2 && Math.abs(painted.center.y - point.y) <= 2,
+    JSON.stringify({ dot: painted.center, pointer: point, box: painted.box }),
+  )
+  check('laser: the layer never takes a click the slide was to receive', !painted.hitIsLaser, `hit=${painted.hitIsLaser}`)
+  check('laser: the slide gives up its own cursor while pointing', painted.cursor === 'none', `cursor=${painted.cursor}`)
+  const sameAsTheme = painted.dotRgb.length === 3 && painted.dotRgb.join(',') === painted.tokenRgb.join(',')
+  const redDominant = painted.dotRgb[0] > painted.dotRgb[1] && painted.dotRgb[0] > painted.dotRgb[2]
+  check('laser: the dot is drawn in the red the theme carries', sameAsTheme && redDominant, JSON.stringify({ dot: painted.dotRgb, token: painted.tokenRgb }))
+  const dotContrast = contrastRatio(painted.dotRgb, painted.surfaceRgb)
+  check('laser: the pointer is a graphic a reader can see', dotContrast >= 3, `ratio=${dotContrast.toFixed(2)} ${JSON.stringify({ dot: painted.dotRgb, surface: painted.surfaceRgb })}`)
+
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+  await sleep(150)
+  const calmed = await page.evaluate(() => {
+    const dot = document.querySelector('[data-laser-pointer] .laser-dot')
+    const trail = document.querySelector('[data-laser-pointer] .laser-trail')
+    return {
+      still: Boolean(dot),
+      pulse: dot ? getComputedStyle(dot).animationName : '',
+      smear: trail ? Number.parseFloat(getComputedStyle(trail).transitionDuration) : Number.POSITIVE_INFINITY,
+    }
+  })
+  check('laser: reduced motion keeps the dot and stops the pulse', calmed.still && calmed.pulse === 'none', JSON.stringify(calmed))
+  check('laser: reduced motion collapses the smear onto the dot', calmed.smear <= 0.002, `duration=${calmed.smear}s`)
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }])
+
+  await page.keyboard.press('c')
+  await sleep(150)
+  const off = await page.evaluate(() => ({
+    layer: Boolean(document.querySelector('[data-laser-pointer]')),
+    cursor: getComputedStyle(document.querySelector('[data-slide-canvas]')).cursor,
+  }))
+  check('laser: a second C puts it out and gives the cursor back', !off.layer && off.cursor !== 'none', JSON.stringify(off))
+
+  await page.keyboard.press('c')
+  await page.mouse.move(point.x + 40, point.y + 40)
+  await sleep(150)
+  await page.keyboard.press('Escape')
+  await sleep(500)
+  const rung = await page.evaluate(() => ({
+    layer: Boolean(document.querySelector('[data-laser-pointer]')),
+    open: Boolean(document.querySelector('[data-slide-canvas]')),
+  }))
+  check('laser: Esc puts the pointer out before it costs the show', !rung.layer && rung.open, JSON.stringify(rung))
+
+  await page.keyboard.press('Escape')
+  await sleep(600)
+  const closed = await page.evaluate(() => ({
+    open: Boolean(document.querySelector('[data-slide-canvas]')),
+    layer: Boolean(document.querySelector('[data-laser-pointer]')),
+  }))
+  check('laser: the show still ends on the next Esc, and leaves no dot on the note', !closed.open && !closed.layer, JSON.stringify(closed))
 }
 
 // Exporting the deck runs through the browser's print pipeline, so this asserts what the promise
@@ -7936,6 +8057,7 @@ async function main() {
     await assertPresentationSession(page)
     await assertPresentationPages(page)
     await assertPresentationAccessibility(page)
+    await assertPresentationLaser(page)
     await assertDeckExport(page)
     await assertDeckImageExport(page)
     await assertNoteExportCharts(page)
