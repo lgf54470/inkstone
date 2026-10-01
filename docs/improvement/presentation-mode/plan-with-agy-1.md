@@ -358,14 +358,14 @@
     1. 顶层全面拦截：在 `PresentationDialog` 根节点监听 `onContextMenu` 调用 `preventDefault()`，彻底消除原生菜单泄漏；黑白屏覆盖层 `ScreenCover` 同样阻止右键原生菜单。
     2. 上下文命令构建：纯函数 `buildPresentationMenuItems` 派生选项，支持识别 `<a>` 标签抽取「在新标签页打开链接」与「复制链接地址」，以及上一页/下一页（边缘自动禁用）、大纲展开、全览网格、双屏演讲者视图、激光笔、聚光灯、黑屏/白屏、全屏与退出。
     3. 全屏 Top Layer 穿透解决：通用 `Menu` 组件扩展 `container?: HTMLElement | null` 属性，`PresentationContextMenu` 挂载至全屏容器 `panelRef.current`，杜绝被浏览器全屏 Top Layer 隐藏。
-    4. 键盘事件与切页防穿透：`PresentationKeyContext` 扩充 `onMenu`，当上下文菜单打开或焦点在菜单元素内时，阻断背景翻页与工具键；菜单底层透明遮罩拦截 `onMouseDown` 和 `onClick` 冒泡并 `preventDefault()`，杜绝背景穿透翻页。
+    4. 键盘事件与切页防穿透：`PresentationKeyContext` 扩充 `onMenu`，当上下文菜单打开或焦点在菜单元素内时，阻断背景翻页与工具键；菜单底层透明遮罩设置 `zIndex: Z_INDEX.menu`（260）严格覆盖全览网格、指针工具与黑白屏，拦截 `onMouseDown` 和 `onClick` 冒泡并 `preventDefault()`，杜绝背景穿透翻页；在右键点击遮罩时通过 `document.elementsFromPoint` 穿透解析下层真实元素链接。
     5. 指针可见性保障：激光笔激活时光标隐藏，菜单与遮罩显式声明 `cursor-default`，保证唤出右键菜单时鼠标光标清晰可见。
   - 验证：
-    - `presentation-context-menu.test.ts`：13 例单元测试覆盖菜单结构、外链动作、翻页禁用、选项状态、回调触发、遮罩防穿透与重新定位。
-    - `presentation-overlay.test.ts`：3 例单元测试验证右键原生拦截、菜单挂载、遮罩关闭防穿透与位置重定位。
+    - `presentation-context-menu.test.ts`：15 例单元测试覆盖菜单结构、外链动作、安全链接提取（含 SVG 锚点）、翻页禁用、选项状态、回调触发、遮罩层序与防穿透、及下层链接重新解析。
+    - `presentation-overlay.test.ts`：5 例单元测试验证右键原生拦截、菜单挂载、遮罩关闭防穿透、位置重定位、Escape 单独关闭上下文菜单（保持演示打开）以及幻灯片内超链接右键菜单抽取。
     - `presentation-keys.test.ts` 与 `use-presentation-keys.test.ts`：覆盖 `onMenu` 键盘隔离与辅助方法。
     - `slide-stage.test.ts`：验证覆盖层右键原生拦截。
-    - 23 个 presentation 测试文件全绿（341 例）。
+    - 23 个 presentation 测试文件全绿（346 例）。
     - 13 项门禁全部通过（`typecheck`, `vendor`, `i18n`, `escape`, `hardcoded`, `empty-catch`, `module-state`, `style`, `deep-imports`, `surfaces`, `size`, `tokens`, `comments`）。
 
 ---

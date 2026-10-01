@@ -200,6 +200,34 @@ export function buildPresentationMenuItems(options: PresentationMenuItemsOptions
   ]
 }
 
+export function extractLinkHref(anchor: Element | null | undefined): string | null {
+  if (!anchor) return null
+  const attr = anchor.getAttribute('href')
+  if (attr) return attr
+  const rawHref: unknown = Reflect.get(anchor, 'href')
+  if (typeof rawHref === 'string') return rawHref
+  if (rawHref && typeof rawHref === 'object' && 'baseVal' in rawHref) {
+    const baseVal = Reflect.get(rawHref, 'baseVal')
+    return typeof baseVal === 'string' && baseVal ? baseVal : null
+  }
+  return null
+}
+
+export function extractAnchorHrefFromPoint(x: number, y: number, fallbackTarget: Element | null): string | null {
+  if (typeof document !== 'undefined' && typeof document.elementsFromPoint === 'function') {
+    const elements = document.elementsFromPoint(x, y)
+    for (const el of elements) {
+      if (el.hasAttribute('data-presentation-menu-backdrop') || el.closest('[role="menu"]')) {
+        continue
+      }
+      const anchor = el.closest<HTMLAnchorElement>('a[href]')
+      if (anchor) return extractLinkHref(anchor)
+    }
+  }
+  const fallbackAnchor = fallbackTarget?.closest<HTMLAnchorElement>('a[href]')
+  return extractLinkHref(fallbackAnchor)
+}
+
 export interface PresentationContextMenuProps extends PresentationMenuItemsOptions {
   point: { x: number; y: number } | null
   onClose: () => void
@@ -221,7 +249,8 @@ export function PresentationContextMenu(props: PresentationContextMenuProps) {
         <div
           data-presentation-menu-backdrop
           tabIndex={-1}
-          className='fixed top-0 left-0 w-full h-full z-[var(--z-menu)] cursor-default select-none'
+          style={{ zIndex: Z_INDEX.menu }}
+          className='fixed top-0 left-0 w-full h-full z-[var(--z-pop)] cursor-default select-none'
           onMouseDown={(e) => {
             e.stopPropagation()
           }}
@@ -233,9 +262,8 @@ export function PresentationContextMenu(props: PresentationContextMenuProps) {
           onContextMenu={(e) => {
             e.preventDefault()
             e.stopPropagation()
-            const target = e.target as Element | null
-            const anchorEl = target?.closest<HTMLAnchorElement>('a[href]')
-            onReopen({ x: e.clientX, y: e.clientY }, anchorEl?.getAttribute('href') || anchorEl?.href || null)
+            const resolvedLink = extractAnchorHrefFromPoint(e.clientX, e.clientY, e.target as Element | null)
+            onReopen({ x: e.clientX, y: e.clientY }, resolvedLink)
           }}
         />,
         targetContainer

@@ -10,7 +10,7 @@ import { LaserPointer, Spotlight } from './presentation-pointer'
 import { SlidePreflight } from './slide-preflight'
 import { SlideOverviewGrid } from './slide-overview-grid'
 import { SlideRail } from './slide-rail'
-import { PresentationContextMenu, type PresentationContextMenuProps } from './presentation-context-menu'
+import { extractLinkHref, PresentationContextMenu, type PresentationContextMenuProps } from './presentation-context-menu'
 import { type PresentationSession, usePresentationSession } from './use-presentation-session'
 
 // The show reads its own store, which the shell hosts: that is what keeps a talk
@@ -45,7 +45,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
     if (session.screenCover) return
     const target = event.target as Element | null
     const anchorEl = target?.closest<HTMLAnchorElement>('a[href]')
-    const linkUrl = anchorEl?.getAttribute('href') || anchorEl?.href || null
+    const linkUrl = extractLinkHref(anchorEl)
     session.openContextMenu({ x: event.clientX, y: event.clientY }, linkUrl)
   }, [session])
 

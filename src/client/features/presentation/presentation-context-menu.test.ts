@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../lib/test-render'
 import {
   buildPresentationMenuItems,
+  extractLinkHref,
   PresentationContextMenu,
   type PresentationContextMenuProps,
   type PresentationMenuItemsOptions,
@@ -90,6 +91,20 @@ describe('buildPresentationMenuItems — link actions', () => {
     const linkCopy = items.find((i) => i.id === 'link-copy')
     linkCopy?.onSelect?.()
     expect(writeText).toHaveBeenCalledWith('https://example.com/copy-me')
+  })
+
+  it('extracts link href safely from DOM anchor, SVG anchor, or returns null', () => {
+    expect(extractLinkHref(null)).toBeNull()
+
+    const standardAnchor = document.createElement('a')
+    standardAnchor.setAttribute('href', 'https://inkstone.app/docs')
+    expect(extractLinkHref(standardAnchor)).toBe('https://inkstone.app/docs')
+
+    const svgAnchor = {
+      getAttribute: (attr: string) => (attr === 'href' ? 'https://svg.example.com' : null),
+      href: { baseVal: 'https://svg.example.com', animVal: 'https://svg.example.com' },
+    } as unknown as HTMLAnchorElement
+    expect(extractLinkHref(svgAnchor)).toBe('https://svg.example.com')
   })
 })
 
@@ -247,6 +262,55 @@ describe('PresentationContextMenu — backdrop interaction', () => {
     backdrop?.dispatchEvent(contextEvent)
     expect(contextEvent.defaultPrevented).toBe(true)
     expect(onReopen).toHaveBeenCalledWith({ x: 250, y: 320 }, null)
+    view.unmount()
+  })
+})
+
+describe('PresentationContextMenu — backdrop link and stacking', () => {
+  it('reopens menu with extracted link when right clicking over an underlying anchor via elementsFromPoint', () => {
+    const onReopen = vi.fn()
+    const props: PresentationContextMenuProps = {
+      ...baseOptions(),
+      point: { x: 100, y: 100 },
+      onClose: vi.fn(),
+      onReopen,
+    }
+    const view = renderElement(createElement(PresentationContextMenu, props))
+    const backdrop = document.querySelector('[data-presentation-menu-backdrop]')
+    expect(backdrop).toBeTruthy()
+
+    const anchor = document.createElement('a')
+    anchor.setAttribute('href', 'https://example.com/slide-link')
+    document.body.append(anchor)
+
+    const originalElementsFromPoint = document.elementsFromPoint
+    document.elementsFromPoint = vi.fn().mockReturnValue([backdrop, anchor])
+
+    const contextEvent = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 300,
+      clientY: 400,
+    })
+    backdrop?.dispatchEvent(contextEvent)
+    expect(contextEvent.defaultPrevented).toBe(true)
+    expect(onReopen).toHaveBeenCalledWith({ x: 300, y: 400 }, 'https://example.com/slide-link')
+
+    document.elementsFromPoint = originalElementsFromPoint
+    anchor.remove()
+    view.unmount()
+  })
+
+  it('sets backdrop z-index to Z_INDEX.menu to ensure it stacks above slide overlays and overview grid', () => {
+    const props: PresentationContextMenuProps = {
+      ...baseOptions(),
+      point: { x: 50, y: 50 },
+      onClose: vi.fn(),
+      onReopen: vi.fn(),
+    }
+    const view = renderElement(createElement(PresentationContextMenu, props))
+    const backdrop = document.querySelector<HTMLElement>('[data-presentation-menu-backdrop]')
+    expect(backdrop?.style.zIndex).toBe('260')
     view.unmount()
   })
 })
