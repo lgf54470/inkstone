@@ -59,6 +59,7 @@ function PresentationDialog({ panelRef, stageRef, session, onClose }: {
         <PresentationControls {...controlProps(session, onClose)} />
         <SlideProgress index={session.index} count={session.deck.length} />
         {session.overview && <SlideOverviewGrid {...slideSurfaceProps(session)} onClose={session.clearOverview} />}
+        {session.screenCover && <ScreenCover cover={session.screenCover} onClear={session.clearCover} />}
         {/* Inside the dialog rather than beside it: the panel owns the paint stack, and a pointer
             drawn outside it would sit under the very slide it is meant to point at. */}
         <LaserPointer active={session.laser} />
@@ -80,7 +81,6 @@ function PresentationSheets({ session }: { session: PresentationSession }) {
       {session.images && (
         <DeckImageSheet pages={session.images.pages} metrics={session.images.metrics} font={session.proseFont} dark={session.images.dark} title={session.images.title} onDone={session.images.done} />
       )}
-      {session.screenCover && <ScreenCover cover={session.screenCover} onClear={session.clearCover} />}
     </>
   )
 }

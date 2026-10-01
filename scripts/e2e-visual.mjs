@@ -781,6 +781,68 @@ async function assertPresentationLaser(page) {
   check('laser: the show still ends on the next Esc, and leaves no dot on the note', !closed.open && !closed.layer, JSON.stringify(closed))
 }
 
+async function assertPresentationScreenCover(page) {
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  await waitForPanelSettled(page, '[role="dialog"]')
+  if (await page.evaluate(() => Boolean(document.fullscreenElement))) {
+    await page.keyboard.press('f')
+    await sleep(700)
+  }
+
+  const viewport = page.viewport() ?? DESKTOP_VIEWPORT
+  const point = { x: Math.round(viewport.width * 0.5), y: Math.round(viewport.height * 0.5) }
+
+  await page.keyboard.press('b')
+  await sleep(200)
+  const blackout = await page.evaluate(({ x, y }) => {
+    const cover = document.querySelector('[data-screen-cover]')
+    const dialog = document.querySelector('[role="dialog"]')
+    const hit = document.elementFromPoint(x, y)
+    return {
+      active: cover?.getAttribute('data-screen-cover'),
+      insideDialog: Boolean(dialog && cover && dialog.contains(cover)),
+      hitIsCover: hit === cover,
+      bg: cover ? getComputedStyle(cover).backgroundColor : '',
+    }
+  }, point)
+  check('cover: B covers the projector in black', blackout.active === 'black' && blackout.insideDialog && blackout.hitIsCover, JSON.stringify(blackout))
+
+  await page.keyboard.press(' ')
+  await sleep(200)
+  const dismissedBlack = await page.evaluate(() => !document.querySelector('[data-screen-cover]'))
+  check('cover: pressing a key lifts the blackout', dismissedBlack)
+
+  await page.keyboard.press('w')
+  await sleep(200)
+  const whiteout = await page.evaluate(({ x, y }) => {
+    const cover = document.querySelector('[data-screen-cover]')
+    const dialog = document.querySelector('[role="dialog"]')
+    const hit = document.elementFromPoint(x, y)
+    return {
+      active: cover?.getAttribute('data-screen-cover'),
+      insideDialog: Boolean(dialog && cover && dialog.contains(cover)),
+      hitIsCover: hit === cover,
+      bg: cover ? getComputedStyle(cover).backgroundColor : '',
+    }
+  }, point)
+  check('cover: W covers the projector in white', whiteout.active === 'white' && whiteout.insideDialog && whiteout.hitIsCover, JSON.stringify(whiteout))
+
+  await page.mouse.click(point.x, point.y)
+  await sleep(200)
+  const dismissedWhite = await page.evaluate(() => !document.querySelector('[data-screen-cover]'))
+  check('cover: clicking lifts the whiteout', dismissedWhite)
+
+  await page.keyboard.press('Escape')
+  await sleep(400)
+  if (await page.evaluate(() => Boolean(document.querySelector('[data-slide-canvas]')))) {
+    await page.keyboard.press('Escape')
+    await sleep(600)
+  }
+  const closed = await page.evaluate(() => !document.querySelector('[data-slide-canvas]'))
+  check('cover: show ends cleanly after covers are dismissed', closed)
+}
+
 // Exporting the deck runs through the browser's print pipeline, so this asserts what the promise
 // rests on: the sheet it prints holds one page box per deck page (built from the same measured
 // plans the show walks), the pages are the slide at the stage's own scale rather than the reader's
@@ -8483,6 +8545,7 @@ async function main() {
     await assertPresentationPages(page)
     await assertPresentationAccessibility(page)
     await assertPresentationLaser(page)
+    await assertPresentationScreenCover(page)
     await assertDeckExport(page)
     await assertDeckImageExport(page)
     await assertPresentationOverview(page)

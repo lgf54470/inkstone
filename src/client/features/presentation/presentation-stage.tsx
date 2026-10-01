@@ -121,7 +121,7 @@ export function ScreenCover({ cover, onClear }: { cover: 'black' | 'white'; onCl
     <div
       onClick={onClear}
       data-screen-cover={cover}
-      className={cover === 'black' ? 'absolute inset-0 z-[var(--z-popover)] cursor-pointer select-none bg-[rgb(0_0_0)]' : 'absolute inset-0 z-[var(--z-popover)] cursor-pointer select-none bg-[rgb(255_255_255)]'}
+      className={cover === 'black' ? 'absolute inset-0 z-[var(--z-modal)] cursor-pointer select-none bg-[rgb(0_0_0)]' : 'absolute inset-0 z-[var(--z-modal)] cursor-pointer select-none bg-[rgb(255_255_255)]'}
       aria-label={cover === 'black' ? 'Blackout' : 'Whiteout'}
     />
   )

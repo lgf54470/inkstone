@@ -150,7 +150,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
     toggleRail,
     toggleFollowing,
     openPresenter,
-    occluded: mode.overview,
+    occluded: mode.overview || Boolean(mode.screenCover),
     ...nav,
     ...mode,
     ...exports,

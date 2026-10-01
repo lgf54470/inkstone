@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { createElement } from 'react'
+import { describe, expect, it, vi } from 'vitest'
+import { renderElement } from '../../lib/test-render'
+import { ScreenCover } from './presentation-stage'
 import { measureStage, SLIDE_DESIGN_HEIGHT, SLIDE_DESIGN_WIDTH, SLIDE_PAD_X, SLIDE_PAD_Y } from './slide-stage'
 
 describe('measureStage', () => {
@@ -37,5 +40,31 @@ describe('measureStage', () => {
     expect(beforeRail.contentWidth).toBe(afterRail.contentWidth)
     expect(beforeRail.contentHeight).toBe(afterRail.contentHeight)
     expect(afterRail.scale).toBe(1064 / 1280)
+  })
+})
+
+describe('ScreenCover', () => {
+  it('renders black cover with modal z-index and calls onClear on click', () => {
+    const onClear = vi.fn()
+    const view = renderElement(createElement(ScreenCover, { cover: 'black', onClear }))
+    const cover = view.container.querySelector('[data-screen-cover="black"]')
+    expect(cover).toBeTruthy()
+    expect(cover?.className).toContain('z-[var(--z-modal)]')
+    expect(cover?.className).toContain('bg-[rgb(0_0_0)]')
+    cover?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(onClear).toHaveBeenCalledTimes(1)
+    view.unmount()
+  })
+
+  it('renders white cover with modal z-index and calls onClear on click', () => {
+    const onClear = vi.fn()
+    const view = renderElement(createElement(ScreenCover, { cover: 'white', onClear }))
+    const cover = view.container.querySelector('[data-screen-cover="white"]')
+    expect(cover).toBeTruthy()
+    expect(cover?.className).toContain('z-[var(--z-modal)]')
+    expect(cover?.className).toContain('bg-[rgb(255_255_255)]')
+    cover?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(onClear).toHaveBeenCalledTimes(1)
+    view.unmount()
   })
 })
