@@ -20,7 +20,7 @@
 | 批次 | 主题 | 覆盖条目 | 代价 | 状态 |
 | :--- | :--- | :--- | :--- | :--- |
 | **R2-0** | 文档基线 | 本报告与执行计划 | 极低 | `[x]` 已提交 (`48e645b5`) |
-| **R2-1** | 分页语义正确性 | N-01, N-02, N-03 | 中 | `[~]` 进行中（N-01 `3f16c100`、N-02 `f8f2602d` 已提交；其余批次的页数断言以 N-01 为新基线，N-02 让超页单块的页数整体位移） |
+| **R2-1** | 分页语义正确性 | N-01, N-02, N-03 | 中 | `[~]` 三条均已提交（N-01 `3f16c100`、N-02 `f8f2602d`、N-03 `72b58681`），批次收尾门禁（`test:e2e` / `e2e-visual.mjs` / `contrast:check`）待跑；其余批次的页数断言以本批为新基线 |
 | **R2-2** | 安全与链接处理 | N-07, N-08, N-09, N-10 | 小-中 | `[ ]` 待办 |
 | **R2-3** | 演讲者模式完整交付 | N-04, N-05, N-06, N-26 | 中-高 | `[ ]` 待办 |
 | **R2-4** | 信息层 / a11y / 合规残留 | N-11, N-13, N-16, N-12, N-14, N-19, N-15, N-20, N-21, N-22, N-30 | 中 | `[ ]` 待办（顺带解 L-1 的 axe 红） |
@@ -46,8 +46,8 @@
   - 目标：给缩放设下限 `MIN_FIT_SCALE`（取投影可读的比值，落地前按报告 §十 实测确认）；低于下限改走「块内续页」——表格按 `<tr>`、代码块按行、列表按 `<li>` 断。
   - 验证：构造超界表格/代码块/列表三类各一例，断言不再出现低于下限的 scale，且续页后总页数与页序确定。
   - 代价：中 · 依赖：N-01
-- [ ] **N-03** 分割线分页与标题分页互斥、且无关闭自动分页的取值（`中`）
-  - 涉及文件：`slides.ts`（`buildDeck`、`dividerBoundaries`、`slideLevelOf`）、`slides.test.ts`、README 两版
+- [x] **N-03** 分割线分页与标题分页互斥、且无关闭自动分页的取值（`中`）— 已提交 `72b58681`
+  - 涉及文件：`slides.ts`（`slideBoundaries()` 取代 `dividerBoundaries()`、`DeclaredSlideLevel` 与 `slideLevelOf()` 认 `none`、`buildDeck()` 走页循环加 `blankRunBefore()` 去重）、`slides.test.ts`（新 describe 4 例 + declared-level describe 补 3 例 + 1 例改名）、`README.md`、`README_ZH.md`、`scripts/check-comments.mjs`
   - 目标：两种边界取并集去重后一起排序；front matter 支持 `slide-level: none` 显式关闭标题分页。
   - 验证：混写 `---` 与标题的 deck 断言页数 = 并集；`slide-level: none` 断言只按分隔线切。
   - 代价：小-中 · 依赖：N-01
@@ -272,3 +272,8 @@
   - 变异在案：13 项变异最终全部被具名用例杀死（红数 4/1/4/4/1/4/1/2/1/3/1/2/2，控制运行 47 例先绿）。**M2（去掉「本块独占一页」条件）首轮存活**——没有用例覆盖「块与块重叠且首块超页」，补 `keeps shrinking when a block sits inside the one that overflows` 一条后复跑才被杀死；电池跑完按字节还原（`restored-clean: true`）。顺带删掉 `continuationBands()` 里 `units.length === 0` 的早退：它已被「单元间隙比页高就回退缩放」那条判定包含，删除后 28 例仍全绿，即证明该判定承重（`铁律 5` 不留重复兜底）。
   - 门禁在案：`typecheck` 通过；13 项静态门禁全绿（`size:check` 先因新 describe 87 行 > 50 报红 → `rows()` 提到模块作用域并按「能续页 / 切不动」拆两个 describe 后转绿，**未动基线**；`i18n:check` 先因量测脚本里的双语控件名报红 → 按 `measure-kanban`/`measure-music` 既有先例把该脚本登记进 `check-i18n.mjs` 的 `localizedFixtureFiles` 并写明理由）；`npm run test:unit` 全量 **617 文件 / 5954 通过 + 1 跳过 / 0 失败**；演示目录 23 文件 **717** 例全绿（N-01 时 702，本条 +15）；提交钩子另跑 `vitest related` 16 文件 / 158 例全绿。
   - 落地取舍与残留：续页用 `clip-path` 内量而不是给每页加 `fit` 值，因为内量随 `outerHTML` 一起序列化，缩略图 / 打印 / 演讲者窗自动与放映同页；切不过去的三种情形（无单元可断、单元比页高、块与块重叠）退回整体缩放，不静默丢内容。`slideBreakOffsets()`/`breakUnits()` 读真实几何，jsdom 无布局故**没有** jsdom 用例，由量测脚本在浏览器里守住；切片面的 `clip-path` 渲染同样只能由真实浏览器验，留给 R2-1 批次收尾的 `e2e-visual.mjs`。本条**没有**跑 `test:e2e` / `e2e-visual.mjs` / `contrast:check`。`scripts/measure-slide-fit.mjs` 与同类手量表脚本一样不进 CI，它在 `AGENTS.md`「手动验收脚本」清单里的那一行，与 `AGENTS.md:372` 的断言数一起留给收尾 L-2 单独 `docs` 提交，不在功能提交里夹带。
+- 2026-10-02 · R2-1 / N-03（`72b58681`）：分隔线与标题从「互斥」改为「并集」，并给 front matter 一个关掉自动分页的取值。`slides.ts` 里 `dividerBoundaries()` 改名 `slideBoundaries()`：`scanBoundaries()` 的 `breaks` 与处于当前层级的 `headings` 拼成一个数组按行排序，不再有「写了分隔线就当没有标题」的早退；`slideLevelOf()` 增加 `SLIDE_LEVEL_NONE`（trim + 小写比较，返回 `DeclaredSlideLevel`），`none` 时只回 `breaks`；`buildDeck()` 的走页循环新增一条跳过——`blankRunBefore(lines, from, boundary.line)` 为真（该标题之上到上一次切页之间只有空行，含紧贴分隔线下一行的空区间）且 `boundary.level !== 0` 时不切，因为分隔线已经翻开了这一页。
+  - 红先在案：实现前先落 5 条红（`Tests 5 failed | 423 passed`）——`divides on both when a note mixes separators with heading sections`（报告 §N-03 的「2 条 `---` + 4 个 H1」夹具，旧码 3 页、并集语义 5 页）、`cuts no blank page where a heading falls on the slide a separator already opened`、`keeps a separator inside a heading section dividing as its own page does`、`applies a declared level to the headings a separator deck still carries`、`keeps headings out of the deck when the front matter turns slide-level off`；另 3 条是护栏（`still lets an authored separator keep its blank page above a heading`、`still divides on separators with slide-level turned off`、大小写 `NONE` 写法）改前改后都必须绿。实现后 428 例全绿，**既有期望值一条未改**：setext 折叠、围栏内标题、四空格缩进、cue 归属、`findSlideIndexByOffset` 与 deck 一致这些判定都没动，新分支只吃并集多出来的重复刀口。
+  - 变异在案：11 项变异，控制运行 428 例先绿，最终 10 项被具名用例杀死（红数 M1 4 / M2 16 / M3 16 / M4 1 / M5 1 / M7 4 / M8 3 / M9 22 / M10 17 / M11 16），跑完按字节还原（`restored-clean: true`，md5 与 `/tmp/n03-pristine.ts` 一致）。**M6（删掉 `none` 的早退）是等价变异**，运行结果与删前相同——`heading.level <= 'none'` 在 JS 里恒为假，等于「不取任何标题边界」；它由 `npm run typecheck` 守住：实跑该变异得 `slides.ts(294,87): error TS2365: Operator '<=' cannot be applied to types 'number' and 'string | number'`，随即按原字节还原。这里如实记成「typecheck 杀死」，不冒充测试杀死。首轮电池作废并重跑：`FAIL` 行匹配器写成 `^ FAIL \|`（实际是两个空格）导致全部误报 SURVIVED，而 M9 的锚点在 `autoSlideLevel()` 里也出现一次（`ANCHOR HITS 2`），换成长锚点后重跑；另注意电池跑动期间读 `slides.ts` 会读到 M1 的变异体（那条 `if (breaks.length) return breaks` 就是这么「回来」的），核验一律在还原之后做。
+  - 门禁在案：`typecheck` 通过；13 项静态门禁全绿（`size:check` 未动基线，新 describe 4 例；`comments:check` 由 `sync-comments-allowlist.mjs` 重建白名单 +11 条，工作区只有本条改动）；`npm run test:unit` 全量 **617 文件 / 5961 通过 + 1 跳过 / 0 失败**（N-02 时 5954，本条 +7）；演示目录 23 文件 **724** 例全绿；提交钩子另跑 `vitest related` 18 文件 / **570** 例全绿。
+  - 落地取舍与残留：去重只作用于标题，**分隔线永远照切**，所以「两条分隔线之间的空白页是有意义的一页」这条既有决定不动（`# A\n\n---\n\n---\n\n# B` 仍 3 页）；`blankRunBefore()` 对空区间 `[from, from)` 返回真，紧贴分隔线的标题因此靠同一条判定去掉，不需要特判；并集已按行排序，`to < from` 的区间不会出现，故不写额外防御。`slide-level` 的取值面仍是 `{1, 2, none}`，`off`/`false` 之类不认（认了就多一条没人写的别名）；报告建议的「逃生是整篇塞满 `---`」由此不再必要。本条**没有**跑 `test:e2e` / `e2e-visual.mjs` / `contrast:check`，页数基线在本批整体位移，三条重型门禁留到 R2-1 批次收尾一次跑完。
