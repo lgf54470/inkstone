@@ -1,6 +1,6 @@
-import { act, createElement, useRef, type ReactNode } from 'react'
-import { createRoot } from 'react-dom/client'
+import { act, createElement, useRef } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderElement } from '../../lib/test-render'
 import { initI18n } from '../../lib/i18n'
 import {
   extractSlideHeading,
@@ -43,24 +43,6 @@ class MockIntersectionObserver {
 
   trigger(entries: Array<{ target: Element; isIntersecting: boolean }>) {
     this.callback(entries)
-  }
-}
-
-function renderElement(element: ReactNode) {
-  const container = document.createElement('div')
-  document.body.appendChild(container)
-  const root = createRoot(container)
-  act(() => {
-    root.render(element)
-  })
-  return {
-    container,
-    unmount: () => {
-      act(() => {
-        root.unmount()
-      })
-      container.remove()
-    },
   }
 }
 
