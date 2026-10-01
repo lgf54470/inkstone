@@ -17,6 +17,9 @@ export const GRAPH_TAG_PALETTE_SIZE = 10
 /** A title is cut to this many characters, however it is drawn. */
 export const GRAPH_LABEL_MAX = 18
 export const GRAPH_LABEL_FONT_SIZE = 11
+/** How much of the viewport an arrow-keyed node keeps around itself when the camera follows it. */
+export const GRAPH_CAMERA_PADDING = 24
+
 export const GRAPH_LABEL_OFFSET = 12
 export const GRAPH_LABEL_HALO = 3
 export const GRAPH_EDGE_ALPHA = 0.42

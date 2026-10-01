@@ -2,7 +2,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { GraphResponse, GraphNode } from '@shared/types'
 import { initI18n, t } from '../../../lib/i18n'
 import { usePinnedWindows } from '../../../store/pinned-windows'
-import { mountGraphCanvas, pressKey, releaseGraphCanvases } from './graph-canvas-mount.test-helpers'
+import { previewProbe } from './preview-stub.test-helpers'
+import { mountGraphCanvas, pressKey, releaseGraphCanvases, type GraphCanvasMount } from './graph-canvas-mount.test-helpers'
 
 /**
  * A canvas is a picture to a screen reader unless the panel says otherwise, and every pointer gesture it
@@ -39,6 +40,28 @@ function liveRegion(container: HTMLElement): HTMLElement {
   return container.querySelector('[aria-live="polite"]') as HTMLElement
 }
 
+/**
+ * Puts the fixture's nodes where the case wants them. The arrow keys read the drawing's own layout
+ * (G-23), and the spiral the panel lays a response out on is not a layout a case can reason about —
+ * so a case says where its nodes are before it presses a key. Untouched nodes keep the panel's.
+ */
+function place(graph: GraphCanvasMount, byTitle: Record<string, [number, number]>): void {
+  for (const node of graph.state.nodes) {
+    const point = byTitle[node.title]
+    if (point) { node.x = point[0]; node.y = point[1] }
+  }
+}
+
+/**
+ * Walks the keyboard onto the node placed to the right of the first one: the first press enters at
+ * the first node of the response, the second steps right to the neighbour the case placed there.
+ */
+function walkRightTo(graph: GraphCanvasMount, byTitle: Record<string, [number, number]>): void {
+  place(graph, byTitle)
+  pressKey(graph.canvas, 'ArrowRight')
+  pressKey(graph.canvas, 'ArrowRight')
+}
+
 beforeAll(async () => {
   await initI18n()
   vi.stubGlobal('requestAnimationFrame', () => 1)
@@ -51,6 +74,10 @@ beforeAll(async () => {
 afterEach(() => {
   releaseGraphCanvases()
   vi.clearAllMocks()
+  // The stub's render budget is per selection, not per file: the cases here move the selection more
+  // than once, and a counter left running across them would report their total as one loop.
+  previewProbe.renders = 0
+  previewProbe.subscribes = 0
   usePinnedWindows.setState({ items: [] })
 })
 
@@ -64,7 +91,7 @@ describe('canvas made readable', () => {
 
   it('says the arrow-keyed node out loud, with the links running in and out of it', () => {
     const graph = mountGraphCanvas(trio)
-    pressKey(graph.canvas, 'ArrowRight')
+    walkRightTo(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
 
     const live = liveRegion(graph.container)
     expect(live.textContent).toBe(announcement('Beta', 0, 1))
@@ -74,29 +101,63 @@ describe('canvas made readable', () => {
 
   it('draws the same node the reader hears as a badge on screen', () => {
     const graph = mountGraphCanvas(trio)
-    pressKey(graph.canvas, 'ArrowRight')
+    walkRightTo(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
 
     const titled = [...graph.container.querySelectorAll('span')].find((element) => element.textContent === 'Beta')
     expect(titled?.parentElement?.textContent).toBe(`Beta${t('graph.direction_counts', { incoming: 0, outgoing: 1 })}`)
   })
+})
 
-  it('walks the whole graph with the arrow keys and wraps at the end', () => {
+describe('arrow keys that move by place (G-23)', () => {
+  it('moves the selection the way the arrow points, entering at an end when nothing is selected', () => {
     const graph = mountGraphCanvas(trio)
+    place(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
+
+    pressKey(graph.canvas, 'ArrowRight')
+    expect(liveRegion(graph.container).textContent).toContain('Alpha')
     pressKey(graph.canvas, 'ArrowRight')
     expect(liveRegion(graph.container).textContent).toContain('Beta')
-    pressKey(graph.canvas, 'ArrowRight')
+    pressKey(graph.canvas, 'ArrowUp')
     expect(liveRegion(graph.container).textContent).toContain('Gamma')
-    pressKey(graph.canvas, 'ArrowLeft')
-    expect(liveRegion(graph.container).textContent).toContain('Beta')
+    pressKey(graph.canvas, 'ArrowDown')
+    expect(liveRegion(graph.container).textContent).toContain('Alpha')
+    // Nothing lies to the left of Alpha (the other two are level with it or to its right), so the
+    // selection stays where it is rather than jumping to a node the arrow does not point at.
     pressKey(graph.canvas, 'ArrowLeft')
     expect(liveRegion(graph.container).textContent).toContain('Alpha')
+  })
+
+  it('enters at the last node when the first arrow points left', () => {
+    const graph = mountGraphCanvas(trio)
+    place(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
+    pressKey(graph.canvas, 'ArrowLeft')
+
+    expect(liveRegion(graph.container).textContent).toContain('Gamma')
+  })
+
+  it('brings the node the arrow reached into the viewport', () => {
+    const graph = mountGraphCanvas(trio)
+    place(graph, { Alpha: [0, 0], Beta: [2_400, 0], Gamma: [0, -120] })
+    // jsdom lays no canvas out, so the resizer leaves the viewport at zero: the case gives the state
+    // the box the camera math reads, the way a real mount measures one before any key arrives.
+    graph.state.width = 800
+    graph.state.height = 600
+    pressKey(graph.canvas, 'ArrowRight')
+    const before = graph.state.offsetX
+
+    pressKey(graph.canvas, 'ArrowRight')
+    const beta = graph.state.nodes.find((node) => node.title === 'Beta')!
+    const screenX = beta.x * graph.state.scale + graph.state.offsetX
+    expect(graph.state.offsetX).toBeLessThan(before)
+    expect(screenX).toBeLessThanOrEqual(graph.state.width)
+    expect(screenX).toBeGreaterThanOrEqual(0)
   })
 })
 
 describe('what the keyboard reaches from a node', () => {
   it('opens the selected note and leaves the graph when the reader presses Enter', () => {
     const graph = mountGraphCanvas(trio)
-    pressKey(graph.canvas, 'ArrowRight')
+    walkRightTo(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
     pressKey(graph.canvas, 'Enter')
 
     expect(graph.open).toHaveBeenCalledWith('note-2')
@@ -109,7 +170,7 @@ describe('what the keyboard reaches from a node', () => {
       nodes: [node('note-1', 'Alpha', 1, 0), node('ghost:Zeta', 'Zeta', 0, 0, 'unresolved')],
     }
     const graph = mountGraphCanvas(ghosts)
-    pressKey(graph.canvas, 'ArrowRight')
+    walkRightTo(graph, { Alpha: [0, 0], Zeta: [120, 0] })
     pressKey(graph.canvas, 'Enter')
 
     expect(graph.create).toHaveBeenCalledWith('Zeta')
@@ -120,7 +181,7 @@ describe('what the keyboard reaches from a node', () => {
   it('previews the note a reader selected from the keyboard', () => {
     const graph = mountGraphCanvas(trio)
     expect(graph.container.querySelector('[data-preview-card]')).toBeNull()
-    pressKey(graph.canvas, 'ArrowRight')
+    walkRightTo(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
 
     expect(graph.container.querySelector('[data-preview-card="Beta"]')).toBeTruthy()
   })
@@ -131,7 +192,7 @@ describe('what the keyboard reaches from a node', () => {
       nodes: [node('note-1', 'Alpha', 1, 0), node('tag:work', 'work', 1, 0, 'tag')],
     }
     const graph = mountGraphCanvas(tagged)
-    pressKey(graph.canvas, 'ArrowRight')
+    walkRightTo(graph, { Alpha: [0, 0], work: [120, 0] })
     pressKey(graph.canvas, 'Enter')
 
     expect(graph.filterByTag).not.toHaveBeenCalled()
@@ -165,7 +226,7 @@ describe('keys the canvas keeps for itself', () => {
 describe('the node actions menu without a pointer (G-22)', () => {
   it('opens the menu for the selected node with the dedicated menu key', () => {
     const graph = mountGraphCanvas(trio)
-    pressKey(graph.canvas, 'ArrowRight')
+    walkRightTo(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
     pressKey(graph.canvas, 'ContextMenu')
 
     const menu = document.body.querySelector('[role="menu"]')
@@ -175,7 +236,7 @@ describe('the node actions menu without a pointer (G-22)', () => {
 
   it('opens the same menu with Shift+F10 for keyboards without a menu key', () => {
     const graph = mountGraphCanvas(trio)
-    pressKey(graph.canvas, 'ArrowRight')
+    walkRightTo(graph, { Alpha: [0, 0], Beta: [120, 0], Gamma: [0, -120] })
     pressKey(graph.canvas, 'F10', { shiftKey: true })
 
     expect(document.body.querySelector('[role="menu"]')).toBeTruthy()

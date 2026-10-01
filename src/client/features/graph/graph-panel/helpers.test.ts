@@ -5,16 +5,18 @@ import {
   buildColorLegends,
   colorGroupsByNodeId,
   countWikiLinkEdges,
+  ensureNodeVisible,
   graphNodeCounts,
   graphPrefsStorageKey,
   graphScaleAfterWheel,
   loadPreferences,
   nodeColor,
+  pickNeighborInDirection,
   tagColorsByName,
   tagHashIndex,
 } from './helpers'
 import type { GraphResponse } from '@shared/types'
-import type { CanvasNode } from './types'
+import type { CanvasNode, CanvasState } from './types'
 
 /** Ten slots of the theme palette the canvas paints with; the values only label a slot here. */
 const tagPalette = ['#010101', '#020202', '#030303', '#040404', '#050505', '#060606', '#070707', '#080808', '#090909', '#0a0a0a']
@@ -229,5 +231,65 @@ describe('the node counts the header and the badge share (G-38)', () => {
       countedNode('ghost:zeta', 'unresolved'),
     ])).toEqual({ notes: 2, tags: 1, unresolved: 1 })
     expect(graphNodeCounts([])).toEqual({ notes: 0, tags: 0, unresolved: 0 })
+  })
+})
+
+/** A canvas state at a size and a camera the camera case can read; every other field stays inert. */
+function canvasState(): CanvasState {
+  return {
+    nodes: [], edges: [], scale: 1, offsetX: 0, offsetY: 0, width: 800, height: 600, viewLeft: 0, viewTop: 0,
+    dragging: null, pointers: new Map(), pinch: null, frame: 0, raf: 0, schedule: null,
+  }
+}
+
+function placed(id: string, x: number, y: number): CanvasNode {
+  return { ...createTestNode(), id, title: id, x, y, r: 10 }
+}
+
+describe('arrow keys that move by place rather than by response order (G-23)', () => {
+  it('picks the node the arrow points at, not the next one in the response', () => {
+    const nodes = [placed('a', 0, 0), placed('b', -120, 0), placed('c', 60, 0)]
+    expect(pickNeighborInDirection(nodes, 0, 'right')).toBe(2)
+    expect(pickNeighborInDirection(nodes, 0, 'left')).toBe(1)
+  })
+
+  it('prefers the node straight ahead over a nearer one off to the side', () => {
+    const nodes = [placed('a', 0, 0), placed('near', 40, 90), placed('ahead', 200, 10)]
+    expect(pickNeighborInDirection(nodes, 0, 'right')).toBe(2)
+    expect(pickNeighborInDirection(nodes, 0, 'down')).toBe(1)
+  })
+
+  it('answers -1 when nothing lies that way, so the selection can stay where it is', () => {
+    const nodes = [placed('a', 0, 0), placed('b', 120, 0)]
+    expect(pickNeighborInDirection(nodes, 0, 'left')).toBe(-1)
+    expect(pickNeighborInDirection(nodes, 0, 'up')).toBe(-1)
+    expect(pickNeighborInDirection(nodes, 9, 'right')).toBe(-1)
+  })
+
+  it('leaves a node already inside the viewport exactly where it is', () => {
+    const state = canvasState()
+    ensureNodeVisible(state, placed('inside', 300, 200))
+    expect({ x: state.offsetX, y: state.offsetY }).toEqual({ x: 0, y: 0 })
+  })
+
+  it('pans just far enough to bring a node back inside, on each edge', () => {
+    const right = canvasState()
+    ensureNodeVisible(right, placed('right', 900, 200))
+    expect(right.offsetX).toBe(-134)
+    const left = canvasState()
+    ensureNodeVisible(left, placed('left', -900, 200))
+    expect(left.offsetX).toBe(934)
+    const top = canvasState()
+    ensureNodeVisible(top, placed('top', 200, -900))
+    expect(top.offsetY).toBe(934)
+    const bottom = canvasState()
+    ensureNodeVisible(bottom, placed('bottom', 200, 900))
+    expect(bottom.offsetY).toBe(-334)
+  })
+
+  it('does nothing before the canvas has been measured', () => {
+    const state = { ...canvasState(), width: 0, height: 0 }
+    ensureNodeVisible(state, placed('far', 5_000, 5_000))
+    expect({ x: state.offsetX, y: state.offsetY }).toEqual({ x: 0, y: 0 })
   })
 })

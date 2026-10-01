@@ -3,12 +3,68 @@ import { organizerColorOrNull } from '@shared/organizer-colors'
 import { truncateText } from '@shared/text-utils'
 import { graphFilterMatches, parseGraphFilter } from '@shared/graph-filter-expression'
 import { GRAPH_COLOR_GROUP_LIMIT, type GraphColorGroup, type GraphPreferences, type GroupBy } from '../../../lib/graph-settings'
-import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_LABEL_MAX, GRAPH_PREFS_KEY, GRAPH_TAG_PALETTE_SIZE } from './constants'
-import type { CanvasNode } from './types'
+import { COLOR_GROUP_QUERY_MAX, DEFAULT_PREFERENCES, GRAPH_CAMERA_PADDING, GRAPH_LABEL_MAX, GRAPH_PREFS_KEY, GRAPH_TAG_PALETTE_SIZE } from './constants'
+import type { CanvasNode, CanvasState } from './types'
 
 export function graphScaleAfterWheel(scale: number, deltaY: number): number {
   if (!Number.isFinite(deltaY) || deltaY === 0) return scale
   return Math.min(4, Math.max(0.2, scale * (deltaY > 0 ? 0.92 : 1.08)))
+}
+
+export type GraphArrowDirection = 'up' | 'down' | 'left' | 'right'
+
+const ARROW_AXIS: Record<GraphArrowDirection, [number, number]> = {
+  right: [1, 0], left: [-1, 0], up: [0, -1], down: [0, 1],
+}
+
+/**
+ * The node an arrow key should land on: the one lying the way the key points, which is what a reader
+ * means by "right" and what the response order cannot answer — that order is degree and time, not
+ * place (G-23). A candidate in the arrow's half-plane is scored by its distance divided by how
+ * squarely it sits on the axis, so a node straight ahead beats a nearer one off to the side; the
+ * floor keeps a node barely past the axis from winning on distance alone. Returns -1 when nothing
+ * lies that way, so the caller can leave the selection where it is.
+ */
+export function pickNeighborInDirection(nodes: readonly CanvasNode[], fromIndex: number, direction: GraphArrowDirection): number {
+  const from = nodes[fromIndex]
+  if (!from) return -1
+  const [axisX, axisY] = ARROW_AXIS[direction]
+  let best = -1
+  let bestScore = Number.POSITIVE_INFINITY
+  let bestDistance = Number.POSITIVE_INFINITY
+  for (let index = 0; index < nodes.length; index++) {
+    if (index === fromIndex) continue
+    const node = nodes[index]!
+    const dx = node.x - from.x
+    const dy = node.y - from.y
+    const ahead = dx * axisX + dy * axisY
+    if (ahead <= 0) continue
+    const distance = Math.hypot(dx, dy)
+    const score = distance / Math.max(0.25, ahead / distance)
+    if (score < bestScore || (score === bestScore && distance < bestDistance)) {
+      best = index
+      bestScore = score
+      bestDistance = distance
+    }
+  }
+  return best
+}
+
+/**
+ * Pans the camera just far enough to hold the node the keyboard reached, so an arrow key never moves
+ * the selection off screen (G-23). Only the offset changes: the layout's own coordinates and the
+ * zoom the reader chose are theirs. Before the canvas has been measured there is no viewport to
+ * bring anything into, so the state is left alone.
+ */
+export function ensureNodeVisible(state: CanvasState, node: CanvasNode): void {
+  if (!state.width || !state.height) return
+  const margin = GRAPH_CAMERA_PADDING + node.r * state.scale
+  const screenX = node.x * state.scale + state.offsetX
+  const screenY = node.y * state.scale + state.offsetY
+  if (screenX < margin) state.offsetX += margin - screenX
+  else if (screenX > state.width - margin) state.offsetX -= screenX - (state.width - margin)
+  if (screenY < margin) state.offsetY += margin - screenY
+  else if (screenY > state.height - margin) state.offsetY -= screenY - (state.height - margin)
 }
 
 export function graphPrefsStorageKey(userId?: string | null): string {

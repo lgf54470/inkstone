@@ -4,7 +4,7 @@ import { Menu } from '../../../components/overlay'
 import { usePinnedWindows } from '../../../store/pinned-windows'
 import { t } from '../../../lib/i18n'
 import { getLinkHoverTarget, subscribeLinkHoverTarget } from '../../preview'
-import { buildColorLegends, graphScaleAfterWheel } from './helpers'
+import { buildColorLegends, ensureNodeVisible, graphScaleAfterWheel, pickNeighborInDirection, type GraphArrowDirection } from './helpers'
 import type { CanvasNode, CanvasState, GraphCanvasLoopOptions } from './types'
 import type { GraphPreferences } from '../../../lib/graph-settings'
 import type { WorkspacePane } from '../../../store/ui'
@@ -182,6 +182,10 @@ function handleCanvasWheel(event: React.WheelEvent<HTMLCanvasElement>, h: Canvas
   state.schedule?.()
 }
 
+const ARROW_DIRECTIONS: Record<string, GraphArrowDirection> = {
+  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+}
+
 function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLCanvasElement>, h: CanvasHandlers): void {
   const state = h.stateRef.current
   if (event.key === ' ') {
@@ -217,13 +221,30 @@ function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLCanvasElement>, h: C
     }
     event.preventDefault(); state.schedule?.(); return
   }
-  if (event.key.startsWith('Arrow')) {
-    const current = Math.max(0, state.nodes.findIndex((node) => node.id === h.selectedIdRef.current))
-    const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1
-    const next = state.nodes[(current + step + state.nodes.length) % state.nodes.length]
-    if (next) h.setSelectedId(next.id)
-    event.preventDefault(); state.schedule?.()
+  const direction = ARROW_DIRECTIONS[event.key]
+  if (direction) handleCanvasArrowKey(event, state, h, direction)
+}
+
+function handleCanvasArrowKey(
+  event: React.KeyboardEvent<HTMLCanvasElement>,
+  state: CanvasState,
+  h: CanvasHandlers,
+  direction: GraphArrowDirection,
+): void {
+  // Nothing selected yet: the arrows enter the graph at an end rather than at a neighbour, so the
+  // first press always selects a node and always selects the one the key points from.
+  const currentIndex = state.nodes.findIndex((node) => node.id === h.selectedIdRef.current)
+  const nextIndex = currentIndex < 0
+    ? (direction === 'left' || direction === 'up' ? state.nodes.length - 1 : 0)
+    : pickNeighborInDirection(state.nodes, currentIndex, direction)
+  const next = state.nodes[nextIndex]
+  // A direction nothing lies in leaves the selection alone rather than jumping somewhere the key
+  // does not point: the node the reader hears stays the node they were on.
+  if (next && next.id !== h.selectedIdRef.current) {
+    h.setSelectedId(next.id)
+    ensureNodeVisible(state, next)
   }
+  event.preventDefault(); state.schedule?.()
 }
 
 function GraphCanvasElement({ canvasRef, handlers }: {

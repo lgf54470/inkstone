@@ -46,9 +46,10 @@ describe('one selection, one paint', () => {
     const graph = mountGraphCanvas(pair)
     previewProbe.renders = 0
 
+    // The first arrow enters the graph at the first node (G-23), so one press is one selection.
     pressKey(graph.canvas, 'ArrowRight')
 
-    expect(graph.container.querySelector('[data-preview-card="Beta"]')).toBeTruthy()
+    expect(graph.container.querySelector('[data-preview-card="Alpha"]')).toBeTruthy()
     expect(previewProbe.renders).toBe(1)
   })
 

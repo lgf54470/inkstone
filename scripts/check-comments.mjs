@@ -3378,6 +3378,14 @@ const allowed = new Map([
     '/** Invokes the underlying command for registry-backed rows (command-palette parity). */',
   ]],
   ['src/client/features/graph/graph-panel/canvas-a11y.test.ts', [
+    '/**\n * Puts the fixture\'s nodes where the case wants them. The arrow keys read the drawing\'s own layout\n * (G-23), and the spiral the panel lays a response out on is not a layout a case can reason about —\n * so a case says where its nodes are before it presses a key. Untouched nodes keep the panel\'s.\n */',
+    '/**\n * Walks the keyboard onto the node placed to the right of the first one: the first press enters at\n * the first node of the response, the second steps right to the neighbour the case placed there.\n */',
+    '// The stub\'s render budget is per selection, not per file: the cases here move the selection more',
+    '// than once, and a counter left running across them would report their total as one loop.',
+    '// Nothing lies to the left of Alpha (the other two are level with it or to its right), so the',
+    '// selection stays where it is rather than jumping to a node the arrow does not point at.',
+    '// jsdom lays no canvas out, so the resizer leaves the viewport at zero: the case gives the state',
+    '// the box the camera math reads, the way a real mount measures one before any key arrives.',
     '/**\n * A canvas is a picture to a screen reader unless the panel says otherwise, and every pointer gesture it\n * answers to has a keyboard equivalent. These cases mount the real panel surface, drive it with keys\n * instead of a mouse, and read the end state a reader would hear: the canvas name, the announcement of\n * the node that got selected, the badge drawn for it, and the note opened from it.\n */',
   ]],
   ['src/client/features/graph/graph-panel/canvas-color-groups.test.ts', [
@@ -3422,6 +3430,7 @@ const allowed = new Map([
     '/**\n * A theme flip can reach the panel with nothing it is subscribed to: the account menu is out of reach\n * while the graph is open, so a "follow the system" flip only writes the document attribute, and another\n * tab\'s flip never touches this store at all. The preview card is React, not canvas, so the attribute has\n * to schedule a render — these cases flip it and read the flag the card was handed.\n */',
   ]],
   ['src/client/features/graph/graph-panel/canvas-selection-loop.test.ts', [
+    '// The first arrow enters the graph at the first node (G-23), so one press is one selection.',
     '/**\n * Selecting a node asks the panel for two things it holds in state: the announcement and the preview card.\n * Both used to be handed an object whose identity changed on every render, and because the effect that\n * writes them listed that object as a dependency, each write scheduled the next one: the panel never came\n * back. These cases count the paints one selection costs.\n */',
   ]],
   ['src/client/features/graph/graph-panel/canvas-theme.test.ts', [
@@ -3430,11 +3439,16 @@ const allowed = new Map([
     '/** A value per tag slot, so a misread token cannot pass for the right one. */',
   ]],
   ['src/client/features/graph/graph-panel/canvas.tsx', [
+    '// Nothing selected yet: the arrows enter the graph at an end rather than at a neighbour, so the',
+    '// first press always selects a node and always selects the one the key points from.',
+    '// A direction nothing lies in leaves the selection alone rather than jumping somewhere the key',
+    '// does not point: the node the reader hears stays the node they were on.',
     '// `preview` is a fresh object on every render: listing it as a dependency would make this effect write',
     '// the state that schedules the next render, and the panel would never stop painting.',
     '/** The legend describes the response, not the physics copy of it, so it must not read stateRef here. */',
   ]],
   ['src/client/features/graph/graph-panel/constants.ts', [
+    '/** How much of the viewport an arrow-keyed node keeps around itself when the camera follows it. */',
     '/** A title is cut to this many characters, however it is drawn. */',
     '/** Ten slots for tag colours, the width of the --graph-tag-* token block. */',
   ]],
@@ -3472,9 +3486,12 @@ const allowed = new Map([
     '/** jsdom hands back no 2d context, so the panel would never build a layout: the drawing is stubbed, the state it fills is real. */',
   ]],
   ['src/client/features/graph/graph-panel/helpers.test.ts', [
+    '/** A canvas state at a size and a camera the camera case can read; every other field stays inert. */',
     '/** Ten slots of the theme palette the canvas paints with; the values only label a slot here. */',
   ]],
   ['src/client/features/graph/graph-panel/helpers.ts', [
+    '/**\n * The node an arrow key should land on: the one lying the way the key points, which is what a reader\n * means by "right" and what the response order cannot answer — that order is degree and time, not\n * place (G-23). A candidate in the arrow\'s half-plane is scored by its distance divided by how\n * squarely it sits on the axis, so a node straight ahead beats a nearer one off to the side; the\n * floor keeps a node barely past the axis from winning on distance alone. Returns -1 when nothing\n * lies that way, so the caller can leave the selection where it is.\n */',
+    '/**\n * Pans the camera just far enough to hold the node the keyboard reached, so an arrow key never moves\n * the selection off screen (G-23). Only the offset changes: the layout\'s own coordinates and the\n * zoom the reader chose are theirs. Before the canvas has been measured there is no viewport to\n * bring anything into, so the state is left alone.\n */',
     '/** Anything can sit under this key in storage, so a rule survives only with a palette colour and a filter line. */',
     '/**\n * Which of the ten graph tag colours a name lands on. The slot is theme-independent, so a flip\n * changes the values behind the slots and never which tag wears which.\n */',
     '/** The token a slot\'s colour lives in, so the DOM legend can name it and let the theme paint it. */',
