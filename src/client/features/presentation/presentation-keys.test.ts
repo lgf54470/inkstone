@@ -91,6 +91,39 @@ describe('presentationCommand — laser pointer', () => {
   })
 })
 
+describe('presentationCommand — slide overview', () => {
+  it('opens the overview on O, and on G for the grid it is laid out as', () => {
+    expect(presentationCommand('o', plain)).toBe('overview')
+    expect(presentationCommand('O', plain)).toBe('overview')
+    expect(presentationCommand('g', plain)).toBe('overview')
+    expect(presentationCommand('G', plain)).toBe('overview')
+  })
+
+  it('leaves O and G to the focused control so typing is not hijacked', () => {
+    expect(presentationCommand('o', onControl)).toBeNull()
+    expect(presentationCommand('G', onControl)).toBeNull()
+  })
+
+  it('keeps the overview keys off the letters the show has already shipped', () => {
+    expect(presentationCommand('f', plain)).toBe('fullscreen')
+    expect(presentationCommand('s', plain)).toBe('slideList')
+    expect(presentationCommand('l', plain)).toBe('follow')
+    expect(presentationCommand('c', plain)).toBe('laser')
+    expect(presentationCommand('b', plain)).toBe('blackout')
+    expect(presentationCommand('w', plain)).toBe('whiteout')
+  })
+
+  it('lets the grid keep the arrows it roams its cards with, as the slide list does', () => {
+    expect(presentationCommand('ArrowRight', onSlideList)).toBeNull()
+    expect(presentationCommand('ArrowDown', onSlideList)).toBeNull()
+    expect(presentationCommand('Home', onSlideList)).toBeNull()
+  })
+
+  it('still turns pages with PageDown while the grid holds the arrows', () => {
+    expect(presentationCommand('PageDown', onSlideList)).toBe('next')
+  })
+})
+
 describe('presentationCommand — blackout and whiteout', () => {
   it('toggles blackout and whiteout on B/W and period/comma', () => {
     expect(presentationCommand('b', plain)).toBe('blackout')

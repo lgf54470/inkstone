@@ -16,6 +16,8 @@ export interface PresentationStageProps {
   onPlan: (plan: SlidePlan) => void
   onPrev: () => void
   onNext: () => void
+  /** The overview grid is drawn over the slide, so nothing in the slide can be reached. */
+  occluded: boolean
 }
 
 export interface StageSessionSource {
@@ -28,6 +30,7 @@ export interface StageSessionSource {
   handlePlan: (plan: SlidePlan) => void
   goPrev: () => void
   goNext: () => void
+  occluded: boolean
 }
 
 export function stageProps(stageRef: RefObject<HTMLDivElement | null>, session: StageSessionSource): PresentationStageProps {
@@ -43,6 +46,7 @@ export function stageProps(stageRef: RefObject<HTMLDivElement | null>, session: 
     onPlan: session.handlePlan,
     onPrev: session.goPrev,
     onNext: session.goNext,
+    occluded: session.occluded,
   }
 }
 
@@ -87,7 +91,7 @@ function useStageGestures({
 }
 
 export function PresentationStage(props: PresentationStageProps) {
-  const { stageRef, metrics, cacheKey, source, subPage, pageCount = 1, index, count, onPlan, onPrev, onNext } = props
+  const { stageRef, metrics, cacheKey, source, subPage, pageCount = 1, index, count, onPlan, onPrev, onNext, occluded } = props
   const { handleClick, handleTouchStart, handleTouchEnd } = useStageGestures({ stageRef, onPrev, onNext })
 
   return (
@@ -96,6 +100,7 @@ export function PresentationStage(props: PresentationStageProps) {
       onClick={handleClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      inert={occluded ? true : undefined}
       className='relative flex min-h-0 min-w-0 flex-1 select-none items-center justify-center overflow-hidden'
     >
       <SlideViewport metrics={metrics} cacheKey={cacheKey} source={source} subPage={subPage} onPlan={onPlan} />

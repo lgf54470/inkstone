@@ -20,7 +20,7 @@
 | **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
 | **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[x]` 已完成 (`bbe158b8` ~ `c6426131`) |
 | **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[x]` 已完成 (`5f02e2d4` ~ `decd0c8d`，B3-01 ~ B3-12) |
-| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 `6888b30f`；B4-02 `e7cf8aba`；B4-11 已提交，其哈希由下一提交回填） |
+| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 `6888b30f`；B4-02 `e7cf8aba`；B4-11 `3d163856`；B4-03 已提交，其哈希由下一提交回填；余 B4-04、B4-05 与台账 B4-06 ~ B4-12） |
 
 ---
 
@@ -178,11 +178,40 @@
     - 静态门禁：`size:check`（抽出后 491 行 / 无长函数）、`comments:check`（重建白名单 12732 条 / 1340 文件，双向通过）、`style/escape/empty-catch/hardcoded/tokens/i18n/module-state/deep-imports/surfaces/vendor` 全绿。CSS 依既有政策不带注释，激光样式的读法（拖尾只差时长、离屏停靠不算状态、`pointer-events` 让出点击、reduce 下取消脉冲而非缩短）写在 `presentation-pointer.tsx` 头部注释里。
     - i18n：无新增用户可见文案（README 属文档，不是资源键），`i18n:check` 通过。
 
-- [ ] **B4-03** `P-26 (FEAT-06)`: 全局幻灯片全览网格矩阵 (Overview Grid)
-  - 涉及文件：新增 `src/client/features/presentation/slide-overview-grid.tsx`、联动 `src/client/features/presentation/presentation-overlay.tsx`
-  - 目标：按 `G` 或 `O` 键全屏展开自适应响应式缩略图矩阵，便于问答阶段快速跳页。
-  - 方案：新增 `SlideOverviewGrid` 组件，以 4~5 列响应式网格全屏平铺所有幻灯片缩略图，支持键盘上下左右漫游选择与回车跳转。
-  - 验证：单元测试覆盖网格渲染、键盘焦点遍历与跳页回调触发。
+- [x] **B4-03** `P-26 (FEAT-06)`: 全局幻灯片全览网格矩阵 (Overview Grid) — 已完成（哈希由下一提交回填）
+  - 涉及文件：新增 `src/client/features/presentation/slide-overview-grid.tsx` + `.test.ts`、`slide-thumb.tsx`、`use-presentation-session.ts`；改 `presentation-overlay.tsx`（489→131 行）、`presentation-stage.tsx`、`presentation-controls.tsx` + `.test.ts`、`presentation-keys.ts` + `.test.ts`、`presentation-state.ts` + `.test.ts`、`use-presentation-keys.ts` + `.test.ts`、`use-dialog-behavior.ts`、`slide-rail.tsx`（346→194 行）+ `.test.ts`、`slide-cache.test.ts`、`src/client/components/overlay/hooks.ts` + `.test.ts`、`src/client/styles/presentation.css`、`src/shared/locales/{en-US,zh-CN}/workspace.ts`、`scripts/e2e-visual.mjs`、`tests/fullscreen-policy.test.ts`、`README.md`、`README_ZH.md`、`scripts/check-comments.mjs`、`scripts/check-size.baseline.json`
+  - 目标：按 `G` 或 `O` 在幻灯片之上铺开整份 deck 的页卡矩阵，方向键按行漫游、`Enter` 或单击跳页，问答阶段一眼定位；矩阵收起后键盘回到打开它的那个控件，`Esc` 阶梯先收矩阵而不代价整场放映。
+  - 方案：
+    - 矩阵是**放映面板之内**的 `absolute inset-0` 层（`z-[var(--z-popover)]`），不是自己的 dialog——浏览器只画全屏元素的子树，另开一层就画不出来（同 B4-02 偏差 4 的层序结论）。
+    - 网格归浏览器：`repeat(auto-fill, minmax(200px, 1fr))`，卡宽即缩略图宽。行宽不派生自索引，而在按键时读首行卡片的 `offsetTop` 实数（`columnsIn`）——唯一能改它的是视口变化，而 resize observer 会为「一次按键用一个数」重渲染整份 deck。
+    - 漫游位置 `roam` 是矩阵自己的状态，起点为当前页：放映可以在矩阵底下移动（点击投影、方向键跳页），键盘不把手从指针下抽走。roving tabIndex（焦点项 `0`，其余 `-1`）让一次 Tab 落在一张卡上。
+    - 键盘归 `useGridKeyboard`：先判「打开矩阵的那把键在矩阵内任何位置都收得回它」——window capture 上的放映处理器对卡上的 `Enter`/`Space` 本来让位（按钮 own 这两个键），矩阵必须自己接回来；其余走 `overviewMove(key, from, count, columns)`（左右 ±1、上下 ±行宽、`Home`/`End` 到首尾、边缘夹住、未知键返回 null 交还放映）。
+    - 焦点契约 `useOpenedFocus`：挂载时聚焦当前页卡，卸载时交还「打开者」；**打开者每个实例只记一次**。
+    - 遮住即不可达：矩阵升起时幻灯片（`presentation-stage.tsx`）、控制胶囊、侧栏各接一条 `occluded` 并置 `inert`；配套把 `isAvailableFocusTarget`（`components/overlay/hooks.ts`）过滤 `[inert]`——焦点陷阱否则会把盖住的控件当落点，dialog 静默地一个焦点都没有。
+    - 缩略图从 `slide-rail.tsx` 提为共用模块 `slide-thumb.tsx`（`thumbMetrics` / `useThumbView` / `pageLabel` / `extractSlideHeading` / `usePageHtml` / `useCachedSlideHtml` / `SlideThumb`）：矩阵与侧栏因此共用同一份量测、同一份内容缓存、同一套页标签与编号，从任一处跳页落点一致。CSS 类名随之从 `.ink-slide-rail-thumb` 改 `.ink-slide-thumb`。
+    - 键位表：八条只差字母的 case 收进 `TOOL_KEYS: Record<string, PresentationCommand>`，新增一把工具是一行。
+    - 会话状态机（哪篇笔记在放、如何分页、讲到第几页、五个模式）拆为 `use-presentation-session.ts`，overlay 只留渲染。
+  - 与草案的偏差：
+    1. **两把键而不是草案的一把**：`O` 是 reveal.js 的 deck overview 键、`G` 直读它铺成的 grid，讲者抓哪个都到同一屏；`opens the overview on O, and on G for the grid it is laid out as` 一条同时钉住两个字母，变异 M06（从表里删掉 `o` 那行）由它杀死。
+    2. **不写死 4~5 列**：草案的方案段把响应式写成常量列数，实现改由浏览器排、键盘按实测行宽走。写死列数在窄视口（矩阵一行 1~2 张）会把 `ArrowDown` 跳错行。
+    3. **不做拖拽重排、不做卡内编辑**：评审 P-26 只要「快速跳页」，其余是为凑标题预铺。
+    4. **「打开者只记一次」是实测逼出来的**：dev 下 StrictMode 会双跑挂载效果，第二次跑时键盘已在矩阵内，重读 `document.activeElement` 就把矩阵自己的一张卡记成打开者，关闭时它已 detached、交还整个不再发生。探针读数见验证段。
+    5. **不加延后重试**：探针同时证明关闭那一刻控制胶囊已不再 `inert`（`chromeInert:false`，且那次 `focus()` 真的生效），「等一等再还」是给不存在的问题写代码。
+    6. **会话拆分不在草案**：接完矩阵的 overlay 越 500 行预算，按 AGENTS.md「超限优先按职责拆分」处理；`tests/fullscreen-policy.test.ts` 的原生全屏归属名单因此改指 `use-presentation-session.ts`。
+    7. **jsdom 不实现 `inert` 的聚焦阻断**：浏览器会丢掉对 inert 元素的 `focus()`，jsdom 让它在。单测因此自带 `maskedOpener` 夹具（一个被遮住就不再接受键盘的按钮）复现这条语义，而不是把它留给浏览器门禁独守。
+  - 验证：
+    - 先红（红在浏览器里）：`:7750` 首跑该行 `✗ overview: the closed matrix hands the keyboard back to the control that opened it {"grid":false,"open":true,"position":"2 / 9","chromeInert":false,"backOnToggle":false,"active":"body"}`——矩阵确实收了、页码对，键盘落在 `body`。单测侧新增同名行为用例（`maskedOpener` + StrictMode），把「只记一次」退回「每次读」即红（变异 M10）。
+    - 探针读数（`HTMLElement.prototype.focus` 打桩，同实例 `:7754`，记 before/after/isConnected/inert 祖先链）：打开阶段 3 次调用——(1) 聚焦卡 0，此前 activeElement 是 opener；(2) 对 opener 的交还落在 `inertAncestor: DIV#`（控制胶囊当时被遮罩）且 `after` 未变，即浏览器把它丢了；(3) 第二次挂载再聚焦卡 0。关闭阶段 1 次调用 `before: BODY → after: BUTTON|显示幻灯片全览`，`FINAL {"isToggle":true,"toggleConnected":true,"chromeInert":false}`。故承重的是「只记一次」，不是「重试」。
+    - 单元：`slide-overview-grid.test.ts` 15 例（逐页卡片且页序与方向键一致 / 命名与编号 / 把投影备好的标记画进卡 / 行宽漫游 / 边缘夹住 / 空网格不动 / 交还不属于自己的键 / 从任意卡按打开它的键收回且不顺带跳页 / roving tabIndex / 单击取页并收起 / 焦点进出交接 / 被自己的 mount 移走过仍交还 / 被压小的页按 projector 量到的内容盒切片）；`presentation-state.test.ts` 补 `overviewMove` 全键位与新 Esc 阶梯；`presentation-keys.test.ts` 补 `TOOL_KEYS` 与 `o`/`g`；`use-presentation-keys.test.ts` 补「把方向键留给正在漫游的矩阵」「随放映收起」；`presentation-controls.test.ts` 补「矩阵升起时控制胶囊不可达」；`overlay/hooks.test.ts` 补「inert 控件不当焦点落点」；`slide-rail.test.ts`、`slide-cache.test.ts` 随共用缩略图调整。放映目录 + overlay hooks **22 文件 / 246 例**通过；全量 `npm run test:unit` **611 文件 / 5462 通过 + 1 跳过 / 0 失败**；`npm run typecheck` 通过。
+    - 变异：16 项，**15 项被具名用例杀死**（跑前基线 110 例 rc=0，跑完按 sha256 校验工作树逐字节复原）——`overviewMove` 的行宽退化成 ±1 / 不夹边 / `Home` 写错端点 / 删空网格早退；`escapeAction` 的矩阵与激光两级互换；`o` 从表里删掉 / 单字母工具不再让位聚焦控件；`onSlideList` 不含矩阵根 / `!open` 复位删掉；`useOpenedFocus` 的「只记一次」去掉 / 挂载聚焦删掉 / 收起时不 `preventDefault`；焦点过滤不再管 `inert`；控制条的 `occluded` 删掉。**M11 存活并如实记录**：删掉归还前的 `isConnected` 守卫后 110 例仍全绿——detached 元素的 `focus()` 在 jsdom 与 Chrome 都是 no-op，这是可证明的行为等价变异，不为它写假测试（守卫留着表达意图）。**M16 首轮存活**：`thumbMetrics` 的 `contentWidth` 减不掉左右内边距时，被压小的页会按整幅宽切片——补一条断言切片写的宽高恰为 `(1280-56*2)/0.5` 与 `(720-44*2)/0.5`（即 `SLIDE_PAD_X`/`SLIDE_PAD_Y` 那对内容盒）后复跑，该项由 `slices a shrunk page of the card at the content box the projector measured it in` 杀死。
+    - 浏览器：全新实例 `:7754`，先 `scripts/e2e.mjs` **177 通过 / 0 失败**（建出门禁用 Owner-1），再 `scripts/e2e-visual.mjs` **710 通过 / 7 失败**（717 行）。21 行 `overview:` 全绿，含那条归还断言；矩阵的 axe 两行也在内（`the matrix has no axe violations`、`no unexpected axe review items in the matrix`——开着矩阵跑，盖住幻灯片的层不新增放行项）。7 条失败与本树 B4-09 清单逐条同名，非本批带来。
+    - 静态门禁：`typecheck` 与 13 项自定义门禁全绿；注释白名单重建为 **1348 文件 / 12903 条**，size 基线 51 个豁免文件 + 本批新条目。
+    - i18n：新增 `workspace.presentation_overview` / `_show_overview` / `_hide_overview`（按钮名称随状态在「显示/隐藏」之间换），en-US 与 zh-CN 齐备，`i18n:check` 通过。
+    - 快照自证：`/tmp/snap-b403`（`git archive HEAD` + 本批暂存版本，`node_modules` 软链）内重生成注释白名单与 size 基线后，13 项静态门禁 + `tsc -b` + 放映目录测试通过 → 本提交单独可过 CI。
+  - 顺带记录：
+    - 整份 deck 的卡片共用的那**一个** IntersectionObserver 是从 `slide-rail.tsx`（提交 `9cc8bf05`）搬进 `slide-thumb.tsx` 的；本批只是让它同时服务侧栏与矩阵，「全场景只有一个 observer、退订后回调不再触发」至今没有单测钉住——记为 B4-12。
+    - `presentation-stage.tsx` 的 `inert={occluded}` 只由浏览器行 `the slide and the pill are out of reach behind the matrix` 守着：jsdom 不做命中测试、也不让 `inert` 阻断聚焦，单测最远只能断言属性在。
+    - `waitForRailFilled` 的两读诊断（`slide list never finished {"before":…,"after":…}`）是 B4-11 期间定位「导出页饿死量测」用的，随本批进入 `e2e-visual.mjs`。
 - [ ] **B4-04** `P-27 (FEAT-08)`: 封面居中与双栏排版模板
   - 涉及文件：`src/client/features/presentation/slide-prose.tsx`、`src/client/styles/presentation.css`
   - 目标：支持 `<!-- layout: cover -->` 首页垂直水平双向居中，以及 `::: two-columns` 双栏排版。
@@ -209,9 +238,9 @@
   - 待查方向：两条 `canvas fills the stage` 无 detail 输出（先给它补 detail 才谈得上定位）；缩略图那组读数为 `katex=0/charts=0/painted=0`、`pixels=-1`，即 rail 的静止帧没画出来（疑似本机字体或解码时序）；axe 那条是 `.bottom-4` 页码片的文字色在 `--bg-overlay` 上合成出 1.67:1，若 CI 不复现则说明底色合成随环境而变，需按令牌复测该色对。
 - [ ] **B4-10** 文档: `AGENTS.md` 的视觉门禁断言计数已过期
   - 现象：`AGENTS.md` 写 `scripts/e2e-visual.mjs`「当前 380 条断言」，本分支 HEAD 快照实跑已是 682 条，B4-02 后为 694 条（687 通过 + 7 既有红）。
-  - 处置：`AGENTS.md` 自述「修改本文件需 PR 评审」，不在功能提交里改文档计数；单独提交或随批次收尾一并更新。（顺带核实：仓库根有 `.pre-commit-authors.json` 把 `AGENTS.md`/`scripts/e2e-visual.mjs`/`scripts/check-comments.mjs` 记给若干上游作者，但 `.githooks/pre-commit` 与本仓脚本都不读它，本检出中不生效——B4-01/B4-02 均按现状提交了这些文件。）B4-11 后本树实跑为 717 条（709 通过 + 8 失败）。
+  - 处置：`AGENTS.md` 自述「修改本文件需 PR 评审」，不在功能提交里改文档计数；单独提交或随批次收尾一并更新。（顺带核实：仓库根有 `.pre-commit-authors.json` 把 `AGENTS.md`/`scripts/e2e-visual.mjs`/`scripts/check-comments.mjs` 记给若干上游作者，但 `.githooks/pre-commit` 与本仓脚本都不读它，本检出中不生效——B4-01/B4-02 均按现状提交了这些文件。）B4-11 后本树实跑为 717 条（709 通过 + 8 失败）；B4-03 后同为 717 条（**710 通过 + 7 既有红**）——那 8→7 是 B4-03 修掉了自己场景里的归还焦点那条，而 B4-03 新增的 21 行 `overview:` 断言本就在 B4-11 那次运行的工作树里（未提交），故总数不变；`HEAD`（`3d163856`）快照按减法推算为 696 条 = 717 − 21（**推算，未实跑**——B4-10 更新 `AGENTS.md` 时应按那次实跑为准）。
 
-- [x] **B4-11** 缺陷修复: 图片导出反复重跑且从不拆掉导出页 — 已完成（哈希由下一提交回填）
+- [x] **B4-11** 缺陷修复: 图片导出反复重跑且从不拆掉导出页 — 已完成 (`3d163856`)
   - 涉及文件：`src/client/features/presentation/deck-print.tsx`、`src/client/features/presentation/deck-print.test.ts`、`scripts/e2e-visual.mjs`、`scripts/check-comments.mjs`、`scripts/check-size.baseline.json`
   - 现象（由 B4-03 的浏览器场景暴露）：概览场景等一份 9 页 deck 的量测完成 >60s 不返回，而同样的 deck 在干净会话里约 5s 完成（一次性探针读到 `[data-slide-list-complete]` 在 t=4→5 之间翻真）。失败状态里 `aria-busy="true"` 且 `[data-deck-print]` 仍在文档中——是上一个场景的图片导出没结束，离屏导出页整场保留并持续布局，把下一页的空闲量测饿死。
   - 根因两条，都在 `useDeckSheetReady`：(1) 效果依赖内联的 `handOver`/`onDone`，而导出每画一页就 `setProgress` 重渲染一次，于是 `prepareDeckSheet` + 栅格化 + 存档整轮随每次渲染重启；修复前探针实测一次按压 `restarts=69`、约 18s 内完成 5 份存档（5 个下载）。(2) 图片路径只有 `afterprint` 会调 `onDone`，写完存档从不交还放映。
@@ -225,6 +254,10 @@
     - 快照自证：`/tmp/b411-snap`（`git archive HEAD` + 本批文件，其中 `e2e-visual.mjs` 只取导出场景改动）内重生成白名单（12774 条 / 1340 文件）与 size 基线（只多 `deck-print.test.ts` 一项），13 项静态门禁 + `tsc -b`（rc=0）+ `deck-print.test.ts` 11 例全绿 → 本提交单独可过 CI。
   - 与草案的偏差：本项不在评审/计划清单内，是 B4-03 的浏览器场景实测出来的缺陷，按铁律 14 单独成提交。`waitForRailFilled` 的诊断输出（两读相隔 2s、把 complete/busy/measuring/entries 写进错误消息）服务于概览场景的可读性，归 B4-03。
   - 顺带记录：`e2e-visual.mjs` 的图片导出场景原先「先 `waitForSelector` 就绪标记、再 `evaluate` 读页框」，在导出页随存档一起卸载之后这条读法必然踩空——本轮 `:7748` 的运行就在 `export: the printed PDF has the deck page count` 之后 `Waiting failed: 60000ms exceeded` 崩掉。改为按下控件**之前**挂 MutationObserver，采样 mount/teardown/最大页框数/最大 canvas 数/就绪值与拆页时的 `aria-busy`，并以 60s 有界 resolve（导出没发生时给出红行而不是崩掉门禁）。
+
+- [ ] **B4-12** 测试缺口: 全缩略图共用那一个观察者无人钉
+  - 现象：`slide-thumb.tsx` 的模块级 `sharedThumbObserver` + `thumbObserverCallbacks`（预取边距 `THUMB_PREFETCH_MARGIN = '320px'`）是提交 `9cc8bf05` 在 `slide-rail.tsx` 里建的，本批 B4-03 把它随缩略图一起提为共用，于是侧栏与矩阵**共用同一个**观察者。「一张列表一个观察者」与「列表全部卸载后回调不再触发、且 `thumbObserverCallbacks` 不留下已 detached 的元素」两条都只由实现读得出，没有任何断言守着；把它改回每卡一个 observer（正是当初要修掉的惊群）会静默通过现有全部测试。
+  - 方案：把观察者的创建收进可注入的工厂（或暴露一个只读的创建计数），断言一整个挂载/卸载周期内创建数为 1、退订后回调不再触发、映射表随退订清空；侧栏与矩阵同场时仍为 1。属测试补强，不在功能提交里夹带（铁律 14）。
 
 ---
 

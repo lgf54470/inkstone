@@ -54,13 +54,14 @@ A private cue stays off the projector. A line beginning with `<!-- note: ` or `<
 | `Home` / `End` | First / last slide |
 | `F` | Enter or leave fullscreen |
 | `S` | Show or hide the slide list |
+| `G` / `O` | Lay the whole deck out as a grid of page cards on top of the slide. The arrows walk the matrix — up and down by a row, `Home`/`End` to either end — and a card is opened by clicking it or by `Enter`; `G`/`O` again puts the grid away |
 | `L` | Switch between following the note and the frozen snapshot |
 | `C` | Point with a red laser dot that follows the cursor; the system cursor goes away while it is on |
 | `B` / `.` | Black screen for a pause; a plain key or a click brings the slide back |
 | `W` / `,` | White screen for a pause, same way back |
-| `Esc` | Puts the laser pointer away first; while the show is fullscreen, leave fullscreen only — a further `Esc` exits the show and returns focus to the button that started it |
+| `Esc` | Puts the deck overview away first, then the laser pointer; while the show is fullscreen, leave fullscreen only — a further `Esc` exits the show and returns focus to the button that started it |
 
-The list on the left is a page list, not a slide list: every page gets an entry with a thumbnail of that page, and a click jumps straight to it. A `---` slide that paginates shows all of its pages, so a note written without any `---` still gets a full sidebar. The whole deck is measured in the background while the show is idle, so every page is listed from the start — including the slides the show has not reached yet. One slide per idle window is measured, and the pause before the next one follows what the last one cost and how the display is keeping up: a gap that dropped frames doubles the pause (up to four times), and two quiet gaps bring it back down. The list says how far the measuring has got while it is running and stops saying it once every page is there. During a show the controls fade out and come back on the next pointer move or key press.
+The list on the left is a page list, not a slide list: every page gets an entry with a thumbnail of that page, and a click jumps straight to it. A `---` slide that paginates shows all of its pages, so a note written without any `---` still gets a full sidebar. The whole deck is measured in the background while the show is idle, so every page is listed from the start — including the slides the show has not reached yet. One slide per idle window is measured, and the pause before the next one follows what the last one cost and how the display is keeping up: a gap that dropped frames doubles the pause (up to four times), and two quiet gaps bring it back down. The list says how far the measuring has got while it is running and stops saying it once every page is there. During a show the controls fade out and come back on the next pointer move or key press. The overview grid is the same page list laid across the whole screen, and its cards are numbered the same way, so a jump from either lands on the same page; it is also the grid button in the control pill.
 
 There are two exports:
 

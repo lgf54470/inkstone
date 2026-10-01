@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Download, Images, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Radio, Snowflake, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Radio, Snowflake, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton } from '../../components/primitives'
@@ -11,11 +11,15 @@ export interface PresentationControlsProps {
   pageCount: number
   isFullscreen: boolean
   railOpen: boolean
+  overview: boolean
   following: boolean
   chromeHidden: boolean
+  /** The pill is under the overview grid, so it cannot be reached from behind it. */
+  occluded: boolean
   onPrev: () => void
   onNext: () => void
   onToggleRail: () => void
+  onToggleOverview: () => void
   onToggleFollowing: () => void
   onToggleFullscreen: () => void
   onExport: () => void
@@ -23,11 +27,11 @@ export interface PresentationControlsProps {
   onClose: () => void
 }
 
-export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, following, chromeHidden, onPrev, onNext, onToggleRail, onToggleFollowing, onToggleFullscreen, onExport, onExportImages, onClose }: PresentationControlsProps) {
+export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, chromeHidden, occluded, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onExport, onExportImages, onClose }: PresentationControlsProps) {
   return (
     <div
       data-presentation-chrome
-      inert={chromeHidden ? true : undefined}
+      inert={chromeHidden || occluded ? true : undefined}
       className={cn(
         'absolute bottom-[var(--sp-4)] left-1/2 flex -translate-x-1/2 items-center gap-[var(--sp-0\\.5)] rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] p-[var(--sp-1)] shadow-[var(--shadow-pop)]',
         'transition-opacity duration-[var(--dur-base)] ease-[var(--ease-out)]',
@@ -36,7 +40,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
     >
       <SlideStepper slideIndex={slideIndex} slideCount={slideCount} subPage={subPage} pageCount={pageCount} onPrev={onPrev} onNext={onNext} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
-      <ViewControls railOpen={railOpen} following={following} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} />
+      <ViewControls railOpen={railOpen} overview={overview} following={following} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <ExportControls onExport={onExport} onExportImages={onExportImages} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
@@ -49,22 +53,30 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
   )
 }
 
-function ViewControls({ railOpen, following, isFullscreen, onToggleRail, onToggleFollowing, onToggleFullscreen }: {
+function ViewControls({ railOpen, overview, following, isFullscreen, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen }: {
   railOpen: boolean
+  overview: boolean
   following: boolean
   isFullscreen: boolean
   onToggleRail: () => void
+  onToggleOverview: () => void
   onToggleFollowing: () => void
   onToggleFullscreen: () => void
 }) {
   const fullscreenLabel = isFullscreen ? t('workspace.presentation_exit_fullscreen') : t('workspace.presentation_fullscreen')
   const railLabel = railOpen ? t('workspace.presentation_hide_slides') : t('workspace.presentation_show_slides')
+  const overviewLabel = overview ? t('workspace.presentation_hide_overview') : t('workspace.presentation_show_overview')
   const followLabel = following ? t('workspace.presentation_freeze') : t('workspace.presentation_follow')
   return (
     <>
       <Tooltip label={railLabel} side='top'>
         <IconButton label={railLabel} size='sm' active={railOpen} onClick={onToggleRail}>
           {railOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+        </IconButton>
+      </Tooltip>
+      <Tooltip label={overviewLabel} side='top'>
+        <IconButton label={overviewLabel} size='sm' active={overview} onClick={onToggleOverview}>
+          <LayoutGrid size={14} />
         </IconButton>
       </Tooltip>
       <Tooltip label={followLabel} side='top'>

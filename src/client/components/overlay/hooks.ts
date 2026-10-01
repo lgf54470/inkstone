@@ -176,7 +176,10 @@ function restoreFocusAfterClose(previousFocus: HTMLElement | null, lastInPanel: 
 
 
 function isAvailableFocusTarget(element: HTMLElement): boolean {
-  return !element.matches(':disabled') && !element.closest('[hidden], [aria-hidden="true"]')
+  // `inert` is the occlusion a dialog uses for the part of itself it covers, and the browser
+  // will not focus anything inside it — offering such an element silently strands the dialog
+  // with no focus at all, so it must be filtered out here rather than only by the trap.
+  return !element.matches(':disabled') && !element.closest('[hidden], [aria-hidden="true"], [inert]')
 }
 
 /**

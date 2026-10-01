@@ -29,11 +29,40 @@ export function railOpenFor(choice: boolean | null, fitsViewport: boolean): bool
   return choice ?? fitsViewport
 }
 
-// The ladder `Esc` walks: the transient tool first, so putting the laser out never costs a
-// screen, then the screen, then the show.
-export function escapeAction(isFullscreen: boolean, laserOn: boolean): 'clearLaser' | 'exitFullscreen' | 'close' {
-  if (laserOn) return 'clearLaser'
-  return isFullscreen ? 'exitFullscreen' : 'close'
+// The ladder `Esc` walks: the screen the presenter is looking at first, so neither the overview
+// grid nor the laser ever costs a talk its show, then the tool, then the screen, then the show.
+// Named fields because three booleans in a row say nothing about which rung is which.
+export function escapeAction({ fullscreen, laser, overview }: { fullscreen: boolean; laser: boolean; overview: boolean }): 'closeOverview' | 'clearLaser' | 'exitFullscreen' | 'close' {
+  if (overview) return 'closeOverview'
+  if (laser) return 'clearLaser'
+  return fullscreen ? 'exitFullscreen' : 'close'
+}
+
+// Where the arrow puts the focus inside the overview grid. The grid is laid out by the browser, so
+// how many cards a row holds is only known once it is painted — which is why the row length comes
+// in as a measurement instead of being derived from the index. A key the grid does not roam returns
+// null so the show still gets it, and an empty grid has nowhere to go.
+export function overviewMove(key: string, from: number, count: number, columns: number): number | null {
+  if (count === 0) return null
+  const last = count - 1
+  const hold = (target: number) => Math.min(Math.max(target, 0), last)
+  const width = Math.max(columns, 1)
+  switch (key) {
+    case 'ArrowRight':
+      return hold(from + 1)
+    case 'ArrowLeft':
+      return hold(from - 1)
+    case 'ArrowDown':
+      return hold(from + width)
+    case 'ArrowUp':
+      return hold(from - width)
+    case 'Home':
+      return 0
+    case 'End':
+      return last
+    default:
+      return null
+  }
 }
 
 export function stageClickDirection(clickX: number, stageWidth: number): 'prev' | 'next' {

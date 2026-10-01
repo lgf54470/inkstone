@@ -140,6 +140,8 @@ const LABELS = {
   slidesPrint: localeLabel('preview.kanban_export_print', 'slides.tool_print'),
   slidesDuplicate: localeLabel('slides.duplicate_element'),
   presentRail: localeLabel('workspace.presentation_show_slides', 'workspace.presentation_hide_slides'),
+  presentOverview: localeLabel('workspace.presentation_show_overview', 'workspace.presentation_hide_overview'),
+  overviewGrid: localeLabel('workspace.presentation_overview'),
   presentFreeze: localeLabel('workspace.presentation_freeze'),
   presentFollow: localeLabel('workspace.presentation_follow'),
   outline: localeLabel('common.outline', 'preview.mindmap_mode_outline'),
@@ -760,6 +762,9 @@ async function assertPresentationLaser(page) {
   const rung = await page.evaluate(() => ({
     layer: Boolean(document.querySelector('[data-laser-pointer]')),
     open: Boolean(document.querySelector('[data-slide-canvas]')),
+    grid: Boolean(document.querySelector('[data-presentation-overview]')),
+    full: Boolean(document.fullscreenElement),
+    toggle: [...(document.querySelectorAll('[data-presentation-chrome] button') ?? [])].map((item) => item.getAttribute('aria-label')),
   }))
   check('laser: Esc puts the pointer out before it costs the show', !rung.layer && rung.open, JSON.stringify(rung))
 
@@ -768,6 +773,10 @@ async function assertPresentationLaser(page) {
   const closed = await page.evaluate(() => ({
     open: Boolean(document.querySelector('[data-slide-canvas]')),
     layer: Boolean(document.querySelector('[data-laser-pointer]')),
+    grid: Boolean(document.querySelector('[data-presentation-overview]')),
+    full: Boolean(document.fullscreenElement),
+    active: document.activeElement?.tagName?.toLowerCase() ?? 'nothing',
+    toggle: [...(document.querySelectorAll('[data-presentation-chrome] button') ?? [])].map((item) => item.getAttribute('aria-label')),
   }))
   check('laser: the show still ends on the next Esc, and leaves no dot on the note', !closed.open && !closed.layer, JSON.stringify(closed))
 }
@@ -900,6 +909,188 @@ async function assertDeckImageExport(page) {
   })))
   await clickPresentationControl(page, LABELS.presentExit)
   await sleep(600)
+}
+
+// The deck at a glance is a layer over the slide rather than a re-arrangement of it, and only a
+// browser can say so: the matrix has to cover the canvas, take the slide and the pill out of reach
+// while it is up, land the presenter on the page they pressed, roam by measured rows instead of by
+// the arrow keys' old meaning, and hand the keyboard back to the control that opened it. It runs on
+// its own deck note because the read needs more cards than a projector row holds: the pagination
+// note is the wrong shape for a matrix, and its chart is what the two exports above still measure.
+async function assertPresentationOverview(page) {
+  await openOverviewDeck(page)
+  await clickButton(page, LABELS.present)
+  await page.waitForSelector('[data-slide-canvas]', { timeout: 15_000 })
+  if (await page.evaluate(() => Boolean(document.fullscreenElement))) {
+    await page.keyboard.press('f')
+    await sleep(700)
+  }
+  // Read the deck before waiting on its list: a show that was left open by the scenario above would
+  // otherwise answer here as a 60s timeout on a list that never stops growing, and a failing row that
+  // names the deck the matrix opened on is what makes the next run readable.
+  const before = await readDeckSize(page)
+  check('overview: the matrix opens on the deck it was written for', before.slides === OVERVIEW_SLIDES, `slides=${before.slides} position=${before.position}`)
+  let deckPages
+  try {
+    deckPages = await waitForRailFilled(page)
+  } catch (error) {
+    // Every read below counts cards against the page list, so the scenario cannot run without a
+    // filled one. Report it on its own row and let the rest of the gate continue instead of ending
+    // the run at the first line of a scene that has not started asserting yet — which means putting
+    // the show back down first, since a show left open swallows every scene after this one.
+    check('overview: the slide list finishes filling the deck', false, String(error?.message ?? error).slice(0, 500))
+    if (await page.evaluate(() => Boolean(document.querySelector('[role="dialog"]')))) {
+      await clickPresentationControl(page, LABELS.presentExit)
+      await sleep(600)
+    }
+    return
+  }
+  await waitForPanelSettled(page, '[role="dialog"]')
+  await waitForPanelSettled(page, '[data-presentation-chrome]')
+
+  await clickButton(page, LABELS.presentOverview)
+  await page.waitForSelector('[data-presentation-overview]', { timeout: 15_000 })
+  await sleep(800)
+
+  const grid = await page.evaluate((pages) => {
+    const overlay = document.querySelector('[data-presentation-overview]')
+    const canvas = document.querySelector('[data-slide-canvas]')
+    const chrome = document.querySelector('[data-presentation-chrome]')
+    const cards = [...overlay.querySelectorAll('[data-overview-index]')]
+    const box = overlay.getBoundingClientRect()
+    const slide = canvas.getBoundingClientRect()
+    const pill = chrome.getBoundingClientRect()
+    const firstRow = cards[0]?.offsetTop ?? -1
+    // A card that never got near the viewport keeps its placeholder, so "the matrix paints the
+    // deck" is counted off the pages a presenter can actually see rather than off the deck.
+    const painted = cards.filter((card) => (card.querySelector('.ink-slide-thumb [data-slide-page]')?.children.length ?? 0) > 0)
+    return {
+      cards: cards.length,
+      pages,
+      columns: cards.filter((card) => card.offsetTop === firstRow).length,
+      rows: new Set(cards.map((card) => card.offsetTop)).size,
+      painted: painted.length,
+      named: overlay.getAttribute('aria-label') ?? '',
+      unnamed: cards.filter((card) => !(card.getAttribute('aria-label') ?? '').trim()).length,
+      currents: cards.filter((card) => card.getAttribute('aria-current') === 'true').length,
+      inDialog: Boolean(overlay.closest('[role="dialog"]')),
+      covers: box.top <= slide.top + 1 && box.bottom >= slide.bottom - 1 && box.left <= slide.left + 1 && box.right >= slide.right - 1,
+      slideInert: Boolean(canvas.closest('[inert]')),
+      chromeInert: chrome.hasAttribute('inert'),
+      // What a pointer would actually hit over the pill. This is the reachability read, not an
+      // attribute read: the pill is under the matrix, so the grid — not the pill — owns that point.
+      pillOwnedByGrid: Boolean(document.elementFromPoint(pill.x + pill.width / 2, pill.y + pill.height / 2)?.closest('[data-presentation-overview]')),
+      focusIsCard: document.activeElement?.closest('[data-presentation-overview]') === overlay,
+    }
+  }, deckPages)
+
+  check('overview: the matrix is a layer inside the show', grid.inDialog)
+  check('overview: the matrix covers the slide it is put over', grid.covers)
+  check('overview: the matrix lists every page of the deck, not only its slides',
+    grid.cards === grid.pages && grid.pages > before.slides, `cards=${grid.cards} pages=${grid.pages} slides=${before.slides}`)
+  check('overview: the deck is laid out in rows and columns', grid.columns >= 2 && grid.rows >= 2, `columns=${grid.columns} rows=${grid.rows}`)
+  check('overview: a visible card paints the page it stands for', grid.painted >= grid.columns, `painted=${grid.painted}/${grid.cards}`)
+  check('overview: the matrix names itself and every card', LABELS.overviewGrid.includes(grid.named) && grid.unnamed === 0, JSON.stringify({ named: grid.named, unnamed: grid.unnamed }))
+  check('overview: the page on the projector is the one marked in the matrix', grid.currents === 1, `currents=${grid.currents}`)
+  check('overview: the slide and the pill are out of reach behind the matrix',
+    grid.slideInert && grid.chromeInert && grid.pillOwnedByGrid, JSON.stringify(grid))
+  check('overview: the keyboard arrives inside the matrix', grid.focusIsCard)
+
+  await ensureAxe(page)
+  const report = await runAxe(page, '[data-presentation-overview]')
+  check('overview: the matrix has no axe violations', report.violations.length === 0, JSON.stringify(report.violations.slice(0, 3)))
+  const unexpected = report.incomplete.filter((item) => !isReviewedIncomplete(item))
+  check('overview: no unexpected axe review items in the matrix', unexpected.length === 0, JSON.stringify(unexpected))
+
+  const start = await readFocusCard(page)
+  await page.keyboard.press('ArrowRight')
+  await sleep(300)
+  const sideways = await readFocusCard(page)
+  check('overview: the arrows roam the matrix along its row instead of turning the page',
+    sideways.index === start.index + 1 && sideways.top === start.top && sideways.position === before.position,
+    JSON.stringify({ start, sideways }))
+
+  await page.keyboard.press('ArrowDown')
+  await sleep(300)
+  const downwards = await readFocusCard(page)
+  check('overview: a row down roams to the row below it', downwards.index > sideways.index && downwards.top > sideways.top, JSON.stringify({ sideways, downwards }))
+
+  // The show is still a show: a page turn from the projector's own key moves the deck while the
+  // presenter's place in the matrix stays where they left it. That is what the roam being its own
+  // state — rather than a mirror of the deck — is for.
+  await page.keyboard.press('PageDown')
+  await sleep(700)
+  const turned = await readFocusCard(page)
+  check('overview: the deck can move underneath while the keyboard stays put',
+    turned.position !== before.position && turned.index === downwards.index && turned.current !== turned.index,
+    JSON.stringify({ before: before.position, turned }))
+
+  await page.keyboard.press('g')
+  await sleep(500)
+  const handed = await page.evaluate((labels) => {
+    const chrome = document.querySelector('[data-presentation-chrome]')
+    const toggle = [...(chrome?.querySelectorAll('button') ?? [])].find((item) => labels.includes(item.getAttribute('aria-label') ?? ''))
+    return {
+      grid: Boolean(document.querySelector('[data-presentation-overview]')),
+      open: Boolean(document.querySelector('[data-slide-canvas]')),
+      position: document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? '',
+      chromeInert: Boolean(chrome?.hasAttribute('inert')),
+      backOnToggle: document.activeElement === toggle,
+      active: document.activeElement?.tagName?.toLowerCase() ?? 'nothing',
+    }
+  }, LABELS.presentOverview)
+  check('overview: the key that opened the matrix closes it from a card without moving the show',
+    !handed.grid && handed.open && handed.position === turned.position, JSON.stringify(handed))
+  check('overview: the closed matrix hands the keyboard back to the control that opened it',
+    handed.backOnToggle && !handed.chromeInert, JSON.stringify(handed))
+
+  const last = await page.evaluate(() => {
+    const card = [...document.querySelectorAll('[data-presentation-rail] [data-entry-index]')].at(-1)
+    card?.scrollIntoView({ block: 'center' })
+    return card?.getAttribute('data-slide-index') ?? ''
+  })
+  await clickButton(page, LABELS.presentOverview)
+  await page.waitForSelector('[data-presentation-overview]', { timeout: 15_000 })
+  await sleep(800)
+  const pressed = await page.evaluate((slide) => {
+    const card = [...document.querySelectorAll('[data-presentation-overview] [data-overview-index]')]
+      .find((item) => item.getAttribute('data-slide-index') === slide)
+    if (!card) return null
+    card.scrollIntoView({ block: 'center' })
+    const box = card.getBoundingClientRect()
+    return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2), slide: Number(slide) }
+  }, last)
+  if (!pressed) throw new Error('overview: the matrix never listed the last slide of the deck')
+  await sleep(300)
+  await page.mouse.click(pressed.x, pressed.y)
+  await sleep(800)
+  const jumped = await readDeckSize(page)
+  check('overview: pressing a card lands on that page and puts the matrix away',
+    jumped.current === pressed.slide + 1 && (await page.evaluate(() => !document.querySelector('[data-presentation-overview]'))),
+    `position=${jumped.position} wanted=${pressed.slide + 1}`)
+
+  // The letter is the other half of the control: either key a presenter reaches for opens the same
+  // screen. The pill's toggle holds the focus after the press above, and a letter typed into a
+  // focused control belongs to that control, so the keyboard is set down first.
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+  })
+  await sleep(200)
+  await page.keyboard.press('o')
+  await sleep(500)
+  check('overview: O opens the matrix from the deck', await page.evaluate(() => Boolean(document.querySelector('[data-presentation-overview]'))))
+
+  await page.keyboard.press('Escape')
+  await sleep(500)
+  const rung = await page.evaluate(() => ({
+    grid: Boolean(document.querySelector('[data-presentation-overview]')),
+    open: Boolean(document.querySelector('[data-slide-canvas]')),
+  }))
+  check('overview: Esc puts the matrix away before it costs the show', !rung.grid && rung.open, JSON.stringify(rung))
+
+  await page.keyboard.press('Escape')
+  await sleep(600)
+  check('overview: the show still ends on the next Esc', await page.evaluate(() => !document.querySelector('[data-slide-canvas]')))
 }
 
 // The note export writes a document instead of printing one, and it turns every chart canvas in that
@@ -1487,7 +1678,7 @@ async function readRenderedMarkup(page) {
     })
     const panel = document.querySelector('[role="dialog"]')
     const stage = panel?.querySelector('[data-slide-canvas] [data-slide-page]')
-    const active = panel?.querySelector('[data-presentation-rail] [data-entry-index][aria-current="true"] .ink-slide-rail-thumb .ink-prose')
+    const active = panel?.querySelector('[data-presentation-rail] [data-entry-index][aria-current="true"] .ink-slide-thumb .ink-prose')
     return {
       theme: document.documentElement.dataset.theme ?? '',
       stage: artifacts(stage),
@@ -1557,6 +1748,27 @@ async function openDeckNote(page) {
   await sleep(1_500)
 }
 
+// The deck the overview is measured on: nine slides, one of which cannot fit a page. Nine is more
+// cards than the matrix holds in a row at the gate's window, so "rows and columns" is a layout the
+// browser has to produce, and the paginating slide makes the card count differ from the slide
+// count — which is what separates "the grid is the page list" from "the grid is the slide list".
+const OVERVIEW_SLIDES = 9
+const OVERVIEW_DECK = [
+  ...Array.from({ length: 4 }, (_, index) => `## Overview opening ${index + 1}\n\nThe line that tells this slide from its neighbours.`),
+  `## Overview slide that paginates\n\n${Array.from({ length: 20 }, (_, index) => `Paragraph ${index + 1} of a slide that has to paginate.`).join('\n\n')}`,
+  ...Array.from({ length: OVERVIEW_SLIDES - 5 }, (_, index) => `## Overview closing ${index + 1}\n\nThe line after the long slide, number ${index + 1}.`),
+].join('\n\n---\n\n')
+
+async function openOverviewDeck(page) {
+  await page.keyboard.down('Control')
+  await page.keyboard.press('n')
+  await page.keyboard.up('Control')
+  await sleep(1_500)
+  await page.waitForSelector('.cm-content', { timeout: 20_000 })
+  await appendToNote(page, `${OVERVIEW_DECK}\n`)
+  await sleep(1_500)
+}
+
 // The deck the show is on, as the controls report it.
 async function readDeckSize(page) {
   return page.evaluate(() => {
@@ -1566,15 +1778,53 @@ async function readDeckSize(page) {
   })
 }
 
+// Where the presenter's cursor is inside the matrix, next to the page the projector is holding. The
+// two are separate states on purpose, so a read that only ever sees them agree proves nothing about
+// either of them.
+async function readFocusCard(page) {
+  return page.evaluate(() => {
+    const card = document.activeElement
+    const inGrid = Boolean(card?.closest('[data-presentation-overview]'))
+    const current = document.querySelector('[data-presentation-overview] [aria-current="true"]')
+    return {
+      index: inGrid ? Number(card.getAttribute('data-overview-index')) : -1,
+      top: card?.offsetTop ?? -1,
+      current: current ? Number(current.getAttribute('data-overview-index')) : -1,
+      position: document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? '',
+    }
+  })
+}
+
 // The list fills one slide per idle slice, so this waits for it to stop growing.
 // The pass reports its completeness on the dialog, so this waits for the state itself instead of
 // reading "the count has not changed lately" — a slice that is still measuring looks like that,
 // and the page assertions then ran against a list that had barely started.
 async function waitForRailFilled(page) {
-  await page.waitForFunction(
-    () => document.querySelector('[data-slide-list-complete="true"]') !== null,
-    { timeout: 60_000 },
-  )
+  const stalled = async () => page.evaluate(() => ({
+    complete: document.querySelector('[role="dialog"]')?.getAttribute('data-slide-list-complete') ?? 'absent',
+    busy: document.querySelector('[role="dialog"]')?.getAttribute('aria-busy') ?? '-',
+    preflight: Boolean(document.querySelector('[data-slide-preflight]')),
+    measuring: document.querySelector('[data-slide-list-measuring]')?.textContent?.trim() ?? '-',
+    entries: document.querySelectorAll('[data-presentation-rail] [data-entry-index]').length,
+    position: document.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? '',
+    rail: Boolean(document.querySelector('[data-presentation-rail]')),
+    grid: Boolean(document.querySelector('[data-presentation-overview]')),
+    editor: (document.querySelector('.cm-content')?.textContent ?? '').length,
+  }))
+  const first = await stalled()
+  try {
+    await page.waitForFunction(
+      () => document.querySelector('[data-slide-list-complete="true"]') !== null,
+      { timeout: 60_000 },
+    )
+  } catch {
+    // Read the pass twice, two seconds apart: a count that has gone backwards means the deck is
+    // being restarted under the show (a fingerprint that will not settle), while a count frozen
+    // short of the deck means one slide stopped reporting. The two need different fixes, and a
+    // bare "60000ms exceeded" names neither.
+    await sleep(2_000)
+    throw new Error(`slide list never finished {"before":${JSON.stringify(first)},"after":${JSON.stringify(await stalled())}}`)
+  }
   return page.evaluate(() => document.querySelectorAll('[data-presentation-rail] [data-entry-index]').length)
 }
 
@@ -2147,7 +2397,12 @@ async function clickToggle(page, toolbar, index, skipped = []) {
 async function dismissTransientLayers(page, root) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const layers = await page.evaluate((selector) => [...document.querySelectorAll('[role="dialog"], [role="menu"]')]
-      .filter((element) => !element.matches(selector) && !element.closest(selector)).length, root)
+      .filter((element) => !element.matches(selector) && !element.closest(selector)).length
+      // The show's overview is not a dialog but a layer inside it, and it makes the pill inert:
+      // left up, the sweep's next pointer press is swallowed by that layer and reports a toolbar
+      // that held still, which is the quiet no-op this helper exists to prevent. `Esc` is the app's
+      // own key for putting the matrix away (asserted in `assertPresentationOverview`).
+      + document.querySelectorAll('[data-presentation-overview]').length, root)
     if (layers === 0) return
     await page.keyboard.press('Escape')
     await sleep(240)
@@ -8099,6 +8354,7 @@ async function main() {
     await assertPresentationLaser(page)
     await assertDeckExport(page)
     await assertDeckImageExport(page)
+    await assertPresentationOverview(page)
     await assertNoteExportCharts(page)
     await assertMindmapBlock(page)
     await assertMindmapSplitEditing(page)

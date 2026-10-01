@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { entryIndexOf, escapeAction, formatMicroPage, interceptSlideLink, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
+import { entryIndexOf, escapeAction, formatMicroPage, interceptSlideLink, nextSliceGap, nextSlicePace, nextUnmeasuredSlide, overviewMove, presentedNoteContent, railEntries, railOpenFor, stageClickDirection, swipeDirection } from './presentation-state'
 import type { SlidePlan } from './slide-pagination'
 
 const planOf = (pages: number): SlidePlan => ({
@@ -146,16 +146,56 @@ describe('railOpenFor', () => {
 
 describe('escapeAction', () => {
   it('exits fullscreen when presentation is fullscreen to prevent accidental dismissal', () => {
-    expect(escapeAction(true, false)).toBe('exitFullscreen')
+    expect(escapeAction({ fullscreen: true, laser: false, overview: false })).toBe('exitFullscreen')
   })
 
   it('closes presentation overlay when presentation is in windowed mode', () => {
-    expect(escapeAction(false, false)).toBe('close')
+    expect(escapeAction({ fullscreen: false, laser: false, overview: false })).toBe('close')
   })
 
   it('puts the laser out before it costs the talk a screen or the show', () => {
-    expect(escapeAction(true, true)).toBe('clearLaser')
-    expect(escapeAction(false, true)).toBe('clearLaser')
+    expect(escapeAction({ fullscreen: true, laser: true, overview: false })).toBe('clearLaser')
+    expect(escapeAction({ fullscreen: false, laser: true, overview: false })).toBe('clearLaser')
+  })
+
+  // Three booleans read as nothing in a call, and the order of the ladder is the whole rule: the
+  // names are what keep a future rung from being inserted under the wrong one.
+  it('puts the overview away first, since it is the screen the presenter is looking at', () => {
+    expect(escapeAction({ fullscreen: true, laser: true, overview: true })).toBe('closeOverview')
+    expect(escapeAction({ fullscreen: false, laser: false, overview: true })).toBe('closeOverview')
+  })
+})
+
+describe('overviewMove', () => {
+  it('walks the row with the horizontal keys', () => {
+    expect(overviewMove('ArrowRight', 4, 12, 4)).toBe(5)
+    expect(overviewMove('ArrowLeft', 4, 12, 4)).toBe(3)
+  })
+
+  it('walks the column by the row length the grid was painted with', () => {
+    expect(overviewMove('ArrowDown', 1, 12, 4)).toBe(5)
+    expect(overviewMove('ArrowUp', 5, 12, 4)).toBe(1)
+  })
+
+  it('holds the edges instead of leaving the grid', () => {
+    expect(overviewMove('ArrowLeft', 0, 12, 4)).toBe(0)
+    expect(overviewMove('ArrowRight', 11, 12, 4)).toBe(11)
+    expect(overviewMove('ArrowUp', 1, 12, 4)).toBe(0)
+    expect(overviewMove('ArrowDown', 11, 12, 4)).toBe(11)
+  })
+
+  it('jumps to the deck ends with Home and End', () => {
+    expect(overviewMove('Home', 7, 12, 4)).toBe(0)
+    expect(overviewMove('End', 7, 12, 4)).toBe(11)
+  })
+
+  it('leaves a key the grid does not own to the show', () => {
+    expect(overviewMove('PageDown', 7, 12, 4)).toBeNull()
+    expect(overviewMove('Enter', 7, 12, 4)).toBeNull()
+  })
+
+  it('has nowhere to move in a grid with no cards', () => {
+    expect(overviewMove('ArrowRight', 0, 0, 4)).toBeNull()
   })
 })
 

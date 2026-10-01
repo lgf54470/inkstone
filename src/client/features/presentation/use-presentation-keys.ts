@@ -37,6 +37,18 @@ function useLaserMode(open: boolean) {
   return { laser, clearLaser, toggleLaser }
 }
 
+// The grid is the same kind of mode: it belongs to the screen, not to the note, and a show that
+// ends or a jump that lands has to take it down with it.
+function useOverviewMode(open: boolean) {
+  const [overview, setOverview] = useState(false)
+  const clearOverview = useCallback(() => setOverview(false), [])
+  const toggleOverview = useCallback(() => setOverview((on) => !on), [])
+  useEffect(() => {
+    if (!open) setOverview(false)
+  }, [open])
+  return { overview, clearOverview, toggleOverview }
+}
+
 // One runner per command keeps the listener itself short, and a command that is not
 // claimed leaves the event alone instead of swallowing it for the rest of the page.
 function usePresentationRunner(actions: {
@@ -50,6 +62,7 @@ function usePresentationRunner(actions: {
   toggleBlackout: () => void
   toggleWhiteout: () => void
   toggleLaser: () => void
+  toggleOverview: () => void
 }) {
   return useCallback((command: PresentationCommand) => {
     switch (command) {
@@ -73,6 +86,8 @@ function usePresentationRunner(actions: {
         return actions.toggleWhiteout()
       case 'laser':
         return actions.toggleLaser()
+      case 'overview':
+        return actions.toggleOverview()
     }
   }, [actions])
 }
@@ -82,11 +97,15 @@ export function usePresentationKeys(options: PresentationKeysOptions): {
   clearCover: () => void
   laser: boolean
   clearLaser: () => void
+  overview: boolean
+  clearOverview: () => void
+  toggleOverview: () => void
 } {
   const { open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing } = options
   const { screenCover, clearCover, toggleBlackout, toggleWhiteout } = useScreenCover(open)
   const { laser, clearLaser, toggleLaser } = useLaserMode(open)
-  const run = usePresentationRunner({ goNext, goPrev, jumpTo, slideCount, toggleFullscreen, toggleRail, toggleFollowing, toggleBlackout, toggleWhiteout, toggleLaser })
+  const { overview, clearOverview, toggleOverview } = useOverviewMode(open)
+  const run = usePresentationRunner({ goNext, goPrev, jumpTo, slideCount, toggleFullscreen, toggleRail, toggleFollowing, toggleBlackout, toggleWhiteout, toggleLaser, toggleOverview })
 
   const onKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
@@ -98,7 +117,8 @@ export function usePresentationKeys(options: PresentationKeysOptions): {
     const target = event.target as HTMLElement | null
     const command = presentationCommand(event.key, {
       onControl: Boolean(target?.closest('button, a, input, select, textarea, [contenteditable="true"]')),
-      onSlideList: Boolean(target?.closest('[data-presentation-rail]')),
+      // Both slide lists walk their own arrows: the rail vertically, the overview grid across rows.
+      onSlideList: Boolean(target?.closest('[data-presentation-rail], [data-presentation-overview]')),
     })
     if (!command) return
     event.preventDefault()
@@ -111,5 +131,5 @@ export function usePresentationKeys(options: PresentationKeysOptions): {
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [open, onKeyDown])
 
-  return { screenCover, clearCover, laser, clearLaser }
+  return { screenCover, clearCover, laser, clearLaser, overview, clearOverview, toggleOverview }
 }

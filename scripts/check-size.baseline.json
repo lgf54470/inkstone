@@ -66,6 +66,15 @@
   "src/client/features/presentation/deck-print.test.ts": {
     "longFns": 1
   },
+  "src/client/features/presentation/presentation-controls.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/presentation/slide-overview-grid.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/presentation/use-presentation-keys.test.ts": {
+    "longFns": 1
+  },
   "src/client/features/preview/kanban-fullscreen.test.ts": {
     "longFns": 1
   },

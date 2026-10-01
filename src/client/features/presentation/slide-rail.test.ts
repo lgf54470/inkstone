@@ -1,7 +1,8 @@
 import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderElement } from '../../lib/test-render'
-import { extractSlideHeading, SlideRail } from './slide-rail'
+import { extractSlideHeading } from './slide-thumb'
+import { SlideRail } from './slide-rail'
 
 describe('extractSlideHeading', () => {
   it('extracts H1 heading as the slide title', () => {
@@ -44,6 +45,7 @@ const defaultRailProps = {
   externalImages: false,
   proseFont: 'sans' as const,
   chromeHidden: false,
+  occluded: false,
   progress: { finished: true, measured: 3, slides: 3 },
   onSelectPage: vi.fn(),
 }
@@ -75,5 +77,17 @@ describe('SlideRail ARIA semantics', () => {
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('false')
     expect(tabs[1]?.getAttribute('aria-posinset')).toBe('2')
     expect(tabs[1]?.getAttribute('aria-selected')).toBe('true')
+  })
+
+  // The list is under the grid, and its active page is in the tab order; leaving it reachable
+  // would let Tab walk into a layer the presenter cannot see.
+  it('takes the list out of reach while the overview grid is up', () => {
+    const { container } = renderElement(createElement(SlideRail, { ...defaultRailProps, occluded: true }))
+    expect(container.querySelector('[data-presentation-rail]')?.hasAttribute('inert')).toBe(true)
+  })
+
+  it('takes the list out of reach once the chrome has faded', () => {
+    const { container } = renderElement(createElement(SlideRail, { ...defaultRailProps, chromeHidden: true }))
+    expect(container.querySelector('[data-presentation-rail]')?.hasAttribute('inert')).toBe(true)
   })
 })

@@ -9,13 +9,13 @@ import { renderElement } from '../../lib/test-render'
 import { usePresentationKeys, type PresentationKeysOptions } from './use-presentation-keys'
 
 function Host({ props }: { props: PresentationKeysOptions }) {
-  const { laser, screenCover } = usePresentationKeys(props)
-  return createElement('span', { 'data-laser': String(laser), 'data-cover': screenCover ?? 'none' })
+  const { laser, overview, screenCover } = usePresentationKeys(props)
+  return createElement('span', { 'data-laser': String(laser), 'data-overview': String(overview), 'data-cover': screenCover ?? 'none' })
 }
 
 function state(container: HTMLElement) {
   const marker = container.querySelector('span')
-  return { laser: marker?.getAttribute('data-laser'), cover: marker?.getAttribute('data-cover') }
+  return { laser: marker?.getAttribute('data-laser'), overview: marker?.getAttribute('data-overview'), cover: marker?.getAttribute('data-cover') }
 }
 
 // The key arrives the way a browser sends it: nothing focused, so the event lands on the body and
@@ -76,6 +76,66 @@ describe('usePresentationKeys — the laser pointer', () => {
     press('c')
     expect(state(view.container).cover).toBe('none')
     expect(state(view.container).laser).toBe('false')
+    view.unmount()
+  })
+})
+
+describe('usePresentationKeys — the slide overview', () => {
+  it('opens the grid on O and puts it away on the same key', () => {
+    const view = renderElement(createElement(Host, { props: options() }))
+    press('o')
+    expect(state(view.container).overview).toBe('true')
+    press('O')
+    expect(state(view.container).overview).toBe('false')
+    view.unmount()
+  })
+
+  it('opens the same grid on G, which is what the matrix reads as', () => {
+    const view = renderElement(createElement(Host, { props: options() }))
+    press('g')
+    expect(state(view.container).overview).toBe('true')
+    press('o')
+    expect(state(view.container).overview).toBe('false')
+    view.unmount()
+  })
+
+  it('hands O to a focused control instead of hijacking the keystroke', () => {
+    const input = document.createElement('input')
+    document.body.append(input)
+    const view = renderElement(createElement(Host, { props: options() }))
+    press('o', input)
+    expect(state(view.container).overview).toBe('false')
+    view.unmount()
+  })
+
+  it('goes out with the show, so a closed talk leaves no grid on the page', () => {
+    const view = renderElement(createElement(Host, { props: options() }))
+    press('o')
+    view.rerender(createElement(Host, { props: { ...options(), open: false } }))
+    expect(state(view.container).overview).toBe('false')
+    view.unmount()
+  })
+
+  it('leaves the arrows to the grid the presenter is roaming', () => {
+    const props = options()
+    const grid = document.createElement('div')
+    grid.setAttribute('data-presentation-overview', '')
+    const card = document.createElement('button')
+    grid.append(card)
+    document.body.append(grid)
+    const view = renderElement(createElement(Host, { props }))
+    press('ArrowRight', card)
+    expect(props.goNext).not.toHaveBeenCalled()
+    expect(props.goPrev).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('lets a screen cover take the key while the grid is up', () => {
+    const view = renderElement(createElement(Host, { props: options() }))
+    press('o')
+    press('b')
+    expect(state(view.container).cover).toBe('black')
+    expect(state(view.container).overview).toBe('true')
     view.unmount()
   })
 })
