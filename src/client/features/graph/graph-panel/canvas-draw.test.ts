@@ -7,6 +7,7 @@ import {
   createCanvasResizer,
   createGraphTicker,
   createThemeObserver,
+  drawNodes,
   getConnectedNeighborIds,
   readThemeColors,
 } from './canvas-draw'
@@ -261,6 +262,49 @@ describe('tag nodes (FEAT-03)', () => {
 
     expect(strokeTextCalls.map((call) => call[0])).toContain('#work')
     restoreContext()
+  })
+})
+
+const kindData: GraphResponse = {
+  nodes: [
+    { id: 'note-1', title: 'Note 1', kind: 'note', degree: 2, inDegree: 1, outDegree: 1, folderId: null, folderName: null, folderColor: null, tags: [] },
+    { id: 'tag:work', title: 'work', kind: 'tag', degree: 1, inDegree: 1, outDegree: 0, folderId: null, folderName: null, folderColor: null, tags: [] },
+    { id: 'unresolved:ghost', title: 'Ghost', kind: 'unresolved', degree: 1, inDegree: 0, outDegree: 1, folderId: null, folderName: null, folderColor: null, tags: [] },
+  ],
+  edges: [
+    { source: 'note-1', target: 'tag:work' },
+    { source: 'note-1', target: 'unresolved:ghost' },
+  ],
+  meta: { mode: 'global', centerId: null, depth: 1, totalNodes: 3, totalEdges: 2, truncated: false, limit: 350 },
+}
+
+describe('node shape coding (G-30)', () => {
+  it('rings a tag node so the three kinds read apart without their colours', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: false, media: query })))
+    const state = createInitialState()
+    buildInitialLayout(kindData, DEFAULT_PREFERENCES, state)
+    const arcs: Array<[number, number, number]> = []
+    let strokes = 0
+    let fills = 0
+    const ctx = {
+      beginPath: () => {}, closePath: () => {}, moveTo: () => {}, lineTo: () => {},
+      arc: (x: number, y: number, r: number) => { arcs.push([x, y, r]) },
+      fill: () => { fills++ }, stroke: () => { strokes++ },
+      fillStyle: '', strokeStyle: '', lineWidth: 0, globalAlpha: 1,
+    } as unknown as CanvasRenderingContext2D
+    drawNodes({
+      ctx, state, colors: readThemeColors(), emphasizedId: null, neighborIds: new Set(), groupBy: 'none',
+      selectedIdRef: { current: null }, activeNoteIdRef: { current: null },
+    })
+
+    const [note, tag] = state.nodes
+    expect(arcs).toHaveLength(4)
+    expect(arcs.filter(([x, y]) => x === note!.x && y === note!.y)).toHaveLength(1)
+    const tagArcs = arcs.filter(([x, y]) => x === tag!.x && y === tag!.y)
+    expect(tagArcs).toHaveLength(2)
+    expect(tagArcs[1]![2] - tagArcs[0]![2]).toBeCloseTo(2, 6)
+    expect(strokes).toBe(2)
+    expect(fills).toBe(2)
   })
 })
 

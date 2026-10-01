@@ -1,7 +1,7 @@
 import { escapeHtml } from '@shared/escape'
 import { saveImage } from '../../../lib/element-image'
 import { arrowHeadPoints, drawEdges, drawLabels, drawNodes, readThemeColors } from './canvas-draw'
-import { FALLBACK_FONT_FAMILY, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA } from './constants'
+import { FALLBACK_FONT_FAMILY, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA, GRAPH_TAG_RING_GAP, GRAPH_TAG_RING_WIDTH } from './constants'
 import { graphLabelVisible, graphNodeLabel, nodeColor } from './helpers'
 import type { CanvasNode, CanvasState, ThemeColors } from './types'
 import type { GraphPreferences } from '../../../lib/graph-settings'
@@ -148,9 +148,16 @@ function svgNode(node: CanvasNode, colors: ThemeColors, groupBy: GraphPreference
   const fill = attr(nodeColor(node, { groupBy, fallback: colors.node, tagPalette: colors.tagPalette }))
   const circle = `<circle cx="${num(node.x)}" cy="${num(node.y)}" r="${num(node.r)}"`
   if (node.kind === 'unresolved') return `${circle} fill="none" stroke="${fill}" stroke-width="1.5"/>`
-  if (!node.pinned) return `${circle} fill="${fill}"/>`
-  const ring = `<circle cx="${num(node.x)}" cy="${num(node.y)}" r="${num(node.r + 2.5)}" fill="none" stroke="${attr(colors.accent)}" stroke-width="1.5" opacity="${GRAPH_PIN_ALPHA}"/>`
-  return `${circle} fill="${fill}"/>\n${ring}`
+  const parts = [`${circle} fill="${fill}"/>`]
+  if (node.kind === 'tag') {
+    const tagRing = `<circle cx="${num(node.x)}" cy="${num(node.y)}" r="${num(node.r + GRAPH_TAG_RING_GAP)}" fill="none" stroke="${fill}" stroke-width="${GRAPH_TAG_RING_WIDTH}"/>`
+    parts.push(tagRing)
+  }
+  if (node.pinned) {
+    const pinRing = `<circle cx="${num(node.x)}" cy="${num(node.y)}" r="${num(node.r + 2.5)}" fill="none" stroke="${attr(colors.accent)}" stroke-width="1.5" opacity="${GRAPH_PIN_ALPHA}"/>`
+    parts.push(pinRing)
+  }
+  return parts.join('\n')
 }
 
 function svgLabel(node: CanvasNode, colors: ThemeColors, fontFamily: string): string {

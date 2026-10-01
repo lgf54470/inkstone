@@ -23,6 +23,8 @@ export const GRAPH_EDGE_ALPHA = 0.42
 export const GRAPH_LABEL_ALPHA = 0.72
 export const GRAPH_PIN_ALPHA = 0.8
 export const GRAPH_ARROW_SIZE = 5
+export const GRAPH_TAG_RING_GAP = 2
+export const GRAPH_TAG_RING_WIDTH = 1.5
 export const FALLBACK_FONT_FAMILY = 'sans-serif'
 
 export const DEFAULT_PREFERENCES: GraphPreferences = {

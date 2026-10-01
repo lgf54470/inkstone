@@ -3367,6 +3367,8 @@ const allowed = new Map([
     '// arrives in between would read the cached box as a zero offset.',
     '// A tag with no colour of its own reads one of these. With no stylesheet in reach (tests, the',
     '// first paint) the shared organizer palette stands in, so there is no third palette to drift.',
+    '// Colour says which group a node belongs to, so the ring says what the node is instead: a double',
+    '// ring reads apart from a plain note and a hollow ghost whatever palette the tagging is using.',
   ]],
   ['src/client/features/graph/graph-panel/canvas-dynamic-prefs.test.ts', [
     '/**\n * Forces are what a reader tunes against a graph that is already on screen, so changing one has to restart\n * the animation on the nodes that are already there — while a preference that only changes how the picture\n * looks must leave that animation alone. These cases drive the same hook the canvas uses, on a settled\n * layout whose third node the reader has dragged somewhere the physics never put it.\n */',

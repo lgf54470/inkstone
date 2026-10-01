@@ -1,7 +1,7 @@
 import type { MutableRefObject } from 'react'
 import { ORGANIZER_COLORS } from '@shared/organizer-colors'
 import type { GraphResponse } from '@shared/types'
-import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, GRAPH_ARROW_SIZE, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA, GRAPH_SETTLE_FRAME, GRAPH_TAG_PALETTE_SIZE, PHYSICS_FRAME_LIMIT } from './constants'
+import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, GRAPH_ARROW_SIZE, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA, GRAPH_SETTLE_FRAME, GRAPH_TAG_PALETTE_SIZE, GRAPH_TAG_RING_GAP, GRAPH_TAG_RING_WIDTH, PHYSICS_FRAME_LIMIT } from './constants'
 import { colorGroupsByNodeId, graphLabelVisible, graphNodeLabel, graphTagTokenName, nodeColor, tagColorsByName } from './helpers'
 import type {
   CanvasNode,
@@ -152,6 +152,15 @@ export function drawNodes({
       ctx.stroke()
     } else {
       ctx.fill()
+    }
+    if (node.kind === 'tag') {
+      // Colour says which group a node belongs to, so the ring says what the node is instead: a double
+      // ring reads apart from a plain note and a hollow ghost whatever palette the tagging is using.
+      ctx.strokeStyle = ctx.fillStyle
+      ctx.lineWidth = GRAPH_TAG_RING_WIDTH / state.scale
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, node.r + GRAPH_TAG_RING_GAP, 0, Math.PI * 2)
+      ctx.stroke()
     }
     if (active || selectedIdRef.current === node.id) {
       ctx.strokeStyle = colors.accent; ctx.globalAlpha = 0.42; ctx.lineWidth = 3 / state.scale

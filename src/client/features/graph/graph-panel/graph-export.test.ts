@@ -85,6 +85,13 @@ describe('graph vector nodes (FEAT-05)', () => {
     expect(file.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true)
   })
 
+  it('adds the ring the canvas draws around a tag node, so the kinds stay apart in a file too', () => {
+    const tag = node({ id: 'tag:work', title: 'work', kind: 'tag' as const, tagColor: '#059669' })
+    const file = svg([tag])
+    expect(file).toContain('<circle cx="0" cy="0" r="10" fill="#059669"/>')
+    expect(file).toContain('<circle cx="0" cy="0" r="12" fill="none" stroke="#059669" stroke-width="1.5"/>')
+  })
+
   it('writes each title the way the panel writes it: a tag carries its sigil, a long title is cut short', () => {
     const tag = node({ id: 'tag:work', title: 'work', kind: 'tag' as const })
     const long = node({ id: 'long', title: 'A quarterly review of the reading list' })
