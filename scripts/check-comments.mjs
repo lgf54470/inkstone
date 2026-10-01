@@ -14978,6 +14978,9 @@ const allowed = new Map([
     '// ignoring text: the root renderer emits i18n key literals without a provider in',
     '// tests, and both trees pin full output text via their own baseline snapshots.',
   ]],
+  ['tests/mcp-graph.test.ts', [
+    '/**\n * The app\'s own graph leaves archived notes out — they are not nodes, and links through them are not\n * edges — while the MCP tool used to answer with them, titles and excerpts included. The tool and the\n * surface have to agree about what the graph is: these cases read the tool\'s own answer and the words\n * it advertises, against the scope the app enforces.\n */',
+  ]],
   ['tests/merge-preflight-real-merge.test.ts', [
     '// The merge this tool was written for, pinned by commit rather than rebuilt. The two sides are',
     '// ordinary commits of this repository — a 115-commit branch (`ours`) merged into `dev` (`theirs`) —',

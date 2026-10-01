@@ -18,7 +18,8 @@ async function loadMcpNotesByIds(
     const chunk = ids.slice(index, index + MCP_GRAPH_QUERY_CHUNK)
     const { results } = await db.prepare(
       `SELECT id, title, excerpt FROM notes
-        WHERE user_id = ?1 AND deleted_at IS NULL AND id IN (${placeholders(chunk.length, 2)})`,
+        WHERE user_id = ?1 AND deleted_at IS NULL AND is_archived = 0
+          AND id IN (${placeholders(chunk.length, 2)})`,
     ).bind(userId, ...chunk).all<{ id: string; title: string; excerpt: string }>()
     rows.push(...results)
   }
