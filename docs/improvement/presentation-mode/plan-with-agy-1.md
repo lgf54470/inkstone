@@ -280,10 +280,14 @@
       - 静态门禁全部通过（`style`, `tokens`, `vendor`, `escape`, `empty-catch`, `module-state`, `deep-imports`, `surfaces`, `hardcoded`, `i18n`, `comments:check`, `size:check`）。
 
 
-- [ ] **B4-06** `P-25 (FEAT-04) 后半`: 聚光灯（Spotlight）
-  - 目标：把大屏其余部分压暗、只留一块跟随指针的亮区，与 B4-02 的激光笔共用同一套模式状态与 `Esc` 阶梯。
-  - 待设计：遮罩层与 `--bg-overlay` / `z-index` 的关系（不得重犯 B4-07 的层序错）、亮区尺寸的令牌化、`prefers-reduced-motion` 下不做缩放动画、两种指点模式是否互斥。
-  - 拆出原因：评审对 P-25 的编号设计只写了激光笔，聚光灯没有可直接照抄的方案。
+- [x] **B4-06** `P-25 (FEAT-04) 后半`: 聚光灯（Spotlight） — 已完成 (`ad9aaa05`)
+  - 涉及文件：`src/client/features/presentation/presentation-keys.ts`、`src/client/features/presentation/presentation-keys.test.ts`、`src/client/features/presentation/use-presentation-keys.ts`、`src/client/features/presentation/use-presentation-keys.test.ts`、`src/client/features/presentation/presentation-pointer.tsx`、`src/client/features/presentation/presentation-pointer.test.ts`、`src/client/features/presentation/presentation-state.ts`、`src/client/features/presentation/presentation-state.test.ts`、`src/client/features/presentation/use-dialog-behavior.ts`、`src/client/features/presentation/use-presentation-session.ts`、`src/client/features/presentation/presentation-overlay.tsx`、`src/client/styles/presentation.css`、`README.md`、`README_ZH.md`
+  - 目标：把大屏其余部分压暗、只留一块跟随指针的圆形亮区，与 B4-02 的激光笔共用同一套模式状态与 `Esc` 阶梯。
+  - 方案：
+    1. 键位分配与互斥：绑定 `T` (Torch) 与 `K` 键触发 `spotlight` 命令，表单获焦时让位输入；在 `usePointerTools` 中以统一判别状态 `'laser' | 'spotlight' | null` 保证聚光灯与激光笔互斥生效；放映结束自动收回。
+    2. 退出阶梯：`escapeAction` 与 `useDialogBehavior` 接入 `clearSpotlight` 优先退出聚光灯而不关闭演说。
+    3. CSS 与架构实现：遵循 ADR-0002「能走 CSS 就走 CSS」，在 `PresentationDialog` 内部渲染 `aria-hidden` 的 `.presentation-spotlight` 图层（`z-[var(--z-popover)]`），采用 `radial-gradient` 纯 CSS 构建圆形透明光圈透出清晰舞台内容，周边背景自然压暗；PointerEvent 坐标写入 `--spotlight-x` 与 `--spotlight-y` 并经 rAF 帧合并节流；`pointer-events: none` 杜绝吞掉下层点击；`prefers-reduced-motion: reduce` 禁用动画转换。
+  - 验证：`presentation-keys.test.ts`（23 例）、`presentation-pointer.test.ts`（11 例）、`presentation-state.test.ts`（48 例）、`use-presentation-keys.test.ts`（15 例）全量绿；静态门禁全部通过。
 - [x] **B4-07** 缺陷修复: 黑屏/白屏覆盖层压不住放映面板 — 已完成 (`fdb5a6b5`)
   - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx`、`src/client/features/presentation/presentation-stage.tsx`、`src/client/features/presentation/use-presentation-session.ts`、`src/client/features/presentation/slide-stage.test.ts`、`scripts/e2e-visual.mjs`
   - 现象：`ScreenCover` 与 `[role="dialog"]` 并排且 z 取 `--z-popover`(50)，而面板 `z-[var(--z-modal)]`(250) 自带不透明底色，同层上下文里覆盖层画在面板之下——按 `B`/`.` 后大屏可能仍是幻灯片。
