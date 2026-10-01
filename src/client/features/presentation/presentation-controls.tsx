@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Download, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Radio, Snowflake, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Images, LayoutGrid, Maximize, Minimize, PanelLeftClose, PanelLeftOpen, Presentation, Radio, Snowflake, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { t } from '../../lib/i18n'
 import { IconButton } from '../../components/primitives'
@@ -22,12 +22,13 @@ export interface PresentationControlsProps {
   onToggleOverview: () => void
   onToggleFollowing: () => void
   onToggleFullscreen: () => void
+  onOpenPresenter: () => void
   onExport: () => void
   onExportImages: () => void
   onClose: () => void
 }
 
-export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, chromeHidden, occluded, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onExport, onExportImages, onClose }: PresentationControlsProps) {
+export function PresentationControls({ slideIndex, slideCount, subPage, pageCount, isFullscreen, railOpen, overview, following, chromeHidden, occluded, onPrev, onNext, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter, onExport, onExportImages, onClose }: PresentationControlsProps) {
   return (
     <div
       data-presentation-chrome
@@ -40,7 +41,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
     >
       <SlideStepper slideIndex={slideIndex} slideCount={slideCount} subPage={subPage} pageCount={pageCount} onPrev={onPrev} onNext={onNext} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
-      <ViewControls railOpen={railOpen} overview={overview} following={following} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} />
+      <ViewControls railOpen={railOpen} overview={overview} following={following} isFullscreen={isFullscreen} onToggleRail={onToggleRail} onToggleOverview={onToggleOverview} onToggleFollowing={onToggleFollowing} onToggleFullscreen={onToggleFullscreen} onOpenPresenter={onOpenPresenter} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
       <ExportControls onExport={onExport} onExportImages={onExportImages} />
       <span className='mx-[var(--sp-1)] h-[var(--sp-4)] w-px bg-[var(--border-subtle)]' aria-hidden='true' />
@@ -53,7 +54,7 @@ export function PresentationControls({ slideIndex, slideCount, subPage, pageCoun
   )
 }
 
-function ViewControls({ railOpen, overview, following, isFullscreen, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen }: {
+function ViewControls({ railOpen, overview, following, isFullscreen, onToggleRail, onToggleOverview, onToggleFollowing, onToggleFullscreen, onOpenPresenter }: {
   railOpen: boolean
   overview: boolean
   following: boolean
@@ -62,11 +63,13 @@ function ViewControls({ railOpen, overview, following, isFullscreen, onToggleRai
   onToggleOverview: () => void
   onToggleFollowing: () => void
   onToggleFullscreen: () => void
+  onOpenPresenter: () => void
 }) {
   const fullscreenLabel = isFullscreen ? t('workspace.presentation_exit_fullscreen') : t('workspace.presentation_fullscreen')
   const railLabel = railOpen ? t('workspace.presentation_hide_slides') : t('workspace.presentation_show_slides')
   const overviewLabel = overview ? t('workspace.presentation_hide_overview') : t('workspace.presentation_show_overview')
   const followLabel = following ? t('workspace.presentation_freeze') : t('workspace.presentation_follow')
+  const presenterLabel = t('workspace.presentation_presenter')
   return (
     <>
       <Tooltip label={railLabel} side='top'>
@@ -77,6 +80,11 @@ function ViewControls({ railOpen, overview, following, isFullscreen, onToggleRai
       <Tooltip label={overviewLabel} side='top'>
         <IconButton label={overviewLabel} size='sm' active={overview} onClick={onToggleOverview}>
           <LayoutGrid size={14} />
+        </IconButton>
+      </Tooltip>
+      <Tooltip label={presenterLabel} side='top'>
+        <IconButton label={presenterLabel} size='sm' onClick={onOpenPresenter}>
+          <Presentation size={14} />
         </IconButton>
       </Tooltip>
       <Tooltip label={followLabel} side='top'>

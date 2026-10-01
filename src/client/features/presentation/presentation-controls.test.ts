@@ -31,10 +31,20 @@ describe('PresentationControls', () => {
     onToggleOverview: vi.fn(),
     onToggleFollowing: vi.fn(),
     onToggleFullscreen: vi.fn(),
+    onOpenPresenter: vi.fn(),
     onExport: vi.fn(),
     onExportImages: vi.fn(),
     onClose: vi.fn(),
   }
+
+  it('renders presenter console button and triggers onOpenPresenter when clicked', () => {
+    const onOpenPresenter = vi.fn()
+    const { container } = renderElement(createElement(PresentationControls, { ...defaultProps, onOpenPresenter }))
+    const button = container.querySelector<HTMLButtonElement>(`[aria-label="${t('workspace.presentation_presenter')}"]`)
+    expect(button).toBeTruthy()
+    button?.click()
+    expect(onOpenPresenter).toHaveBeenCalledTimes(1)
+  })
 
   it('renders control groups with isolating separators', () => {
     const { container } = renderElement(createElement(PresentationControls, defaultProps))

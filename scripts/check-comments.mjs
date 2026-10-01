@@ -6880,6 +6880,23 @@ const allowed = new Map([
     '// Theme flips must reach the slide canvas and its diagrams without going through',
     '// the store, because the canvas renders sanitized markup outside the editor tree.',
   ]],
+  ['src/client/features/presentation/presenter-view/presenter-window.test.ts', [
+    '// 1m 05s ago',
+  ]],
+  ['src/client/features/presentation/presenter-view/use-presenter-channel.test.ts', [
+    '// Broadcast to other channels with the same name',
+    '// Mount Broadcaster',
+    '// Mount Receiver',
+    '// Wait for microtask broadcast',
+    '// Receiver sends commands back to broadcaster',
+    '// Unmount broadcaster should send close signal',
+  ]],
+  ['src/client/features/presentation/presenter-view/use-presenter-channel.ts', [
+    '// Best-effort channel post',
+    '// Channel already closed',
+    '// Best-effort broadcast',
+    '// Channel initialization',
+  ]],
   ['src/client/features/presentation/slide-canvas.tsx', [
     '/**\n   * The measured plan, shared with the show so the slide list can list this\n   * slide\'s pages and the counter can name them. The canvas is the only place a\n   * plan is measured because it renders the same markup the projector shows.\n   */',
     '/**\n   * Whether charts are drawn with their entrance animation. Off by default, because the projector\'s\n   * canvas is looked at. The measuring pass turns it on: it is invisible, and its markup is captured\n   * for the slide list — the capture reads the canvas, and chart.js draws its first frame on a later\n   * one, so a pass that captured an animated chart shipped a picture of nothing (measured: 0 of\n   * 51604 pixels drawn at capture, the whole chart after the animation).\n   */',

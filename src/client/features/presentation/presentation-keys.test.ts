@@ -144,3 +144,15 @@ describe('presentationCommand — blackout and whiteout', () => {
   })
 })
 
+describe('presentationCommand — presenter view', () => {
+  it('opens presenter console on P', () => {
+    expect(presentationCommand('p', plain)).toBe('presenter')
+    expect(presentationCommand('P', plain)).toBe('presenter')
+  })
+
+  it('leaves P to the focused control so typing is not hijacked', () => {
+    expect(presentationCommand('p', onControl)).toBeNull()
+    expect(presentationCommand('P', onControl)).toBeNull()
+  })
+})
+

@@ -12,6 +12,7 @@ export interface PresentationKeysOptions {
   toggleFullscreen: () => void
   toggleRail: () => void
   toggleFollowing: () => void
+  openPresenter?: () => void
 }
 
 function useScreenCover(open: boolean) {
@@ -63,6 +64,7 @@ function usePresentationRunner(actions: {
   toggleWhiteout: () => void
   toggleLaser: () => void
   toggleOverview: () => void
+  openPresenter?: () => void
 }) {
   return useCallback((command: PresentationCommand) => {
     switch (command) {
@@ -88,6 +90,8 @@ function usePresentationRunner(actions: {
         return actions.toggleLaser()
       case 'overview':
         return actions.toggleOverview()
+      case 'presenter':
+        return actions.openPresenter?.()
     }
   }, [actions])
 }
@@ -101,11 +105,11 @@ export function usePresentationKeys(options: PresentationKeysOptions): {
   clearOverview: () => void
   toggleOverview: () => void
 } {
-  const { open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing } = options
+  const { open, slideCount, goNext, goPrev, jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter } = options
   const { screenCover, clearCover, toggleBlackout, toggleWhiteout } = useScreenCover(open)
   const { laser, clearLaser, toggleLaser } = useLaserMode(open)
   const { overview, clearOverview, toggleOverview } = useOverviewMode(open)
-  const run = usePresentationRunner({ goNext, goPrev, jumpTo, slideCount, toggleFullscreen, toggleRail, toggleFollowing, toggleBlackout, toggleWhiteout, toggleLaser, toggleOverview })
+  const run = usePresentationRunner({ goNext, goPrev, jumpTo, slideCount, toggleFullscreen, toggleRail, toggleFollowing, toggleBlackout, toggleWhiteout, toggleLaser, toggleOverview, openPresenter })
 
   const onKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return

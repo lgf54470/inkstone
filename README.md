@@ -59,6 +59,7 @@ A slide can ask for a layout. A line of its own reading `<!-- layout: cover -->`
 | `G` / `O` | Lay the whole deck out as a grid of page cards on top of the slide. The arrows walk the matrix — up and down by a row, `Home`/`End` to either end — and a card is opened by clicking it or by `Enter`; `G`/`O` again puts the grid away |
 | `L` | Switch between following the note and the frozen snapshot |
 | `C` | Point with a red laser dot that follows the cursor; the system cursor goes away while it is on |
+| `P` | Open presenter console in an independent second window with current slide, next slide preview, speaker notes, and timer |
 | `B` / `.` | Black screen for a pause; a plain key or a click brings the slide back |
 | `W` / `,` | White screen for a pause, same way back |
 | `Esc` | Puts the deck overview away first, then the laser pointer; while the show is fullscreen, leave fullscreen only — a further `Esc` exits the show and returns focus to the button that started it |

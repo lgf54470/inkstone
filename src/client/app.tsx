@@ -21,6 +21,9 @@ const MusicPlaylistSharePage = lazy(() =>
 const CollectionPage = lazy(() =>
   import('./features/share/collection-page').then((module) => ({ default: module.CollectionPage })),
 )
+const PresenterWindow = lazy(() =>
+  import('./features/presentation').then((module) => ({ default: module.PresenterWindow })),
+)
 
 function useShareSlug(): string | null {
   const [shareSlug] = useState(() => {
@@ -44,6 +47,13 @@ function usePlaylistShareSlug(): string | null {
     return match?.[1] ?? null
   })
   return playlistSlug
+}
+
+function useIsPresenter(): boolean {
+  const [isPresenter] = useState(() => {
+    return new URLSearchParams(location.search).has('presenter')
+  })
+  return isPresenter
 }
 
 function useAppBoot(shareSlug: string | null) {
@@ -127,6 +137,16 @@ function PlaylistShareRoute({ slug }: { slug: string }) {
   )
 }
 
+function PresenterRoute() {
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<PageFallback />}>
+        <PresenterWindow />
+      </Suspense>
+    </ErrorBoundary>
+  )
+}
+
 function AuthedShell() {
   const status = useSession((s) => s.status)
   return (
@@ -147,8 +167,10 @@ export function App() {
   const shareSlug = useShareSlug()
   const playlistSlug = usePlaylistShareSlug()
   const collectionSlug = useCollectionSlug()
-  useAppBoot(shareSlug ?? playlistSlug ?? collectionSlug)
+  const isPresenter = useIsPresenter()
+  useAppBoot(shareSlug ?? playlistSlug ?? collectionSlug ?? (isPresenter ? 'presenter' : null))
 
+  if (isPresenter) return <PresenterRoute />
   if (shareSlug) {
     return (
       <>

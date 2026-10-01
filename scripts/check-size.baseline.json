@@ -69,6 +69,12 @@
   "src/client/features/presentation/presentation-controls.test.ts": {
     "longFns": 1
   },
+  "src/client/features/presentation/presenter-view/presenter-window.test.ts": {
+    "longFns": 1
+  },
+  "src/client/features/presentation/presenter-view/use-presenter-channel.test.ts": {
+    "longFns": 2
+  },
   "src/client/features/presentation/slide-overview-grid.test.ts": {
     "longFns": 1
   },

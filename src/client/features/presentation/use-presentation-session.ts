@@ -12,7 +12,8 @@ import { buildIncrementalSlidePlans, hashContent, rememberSlidePlan, slideCacheK
 import { samePlan, type SlidePlan } from './slide-pagination'
 import { type PreflightProgress, type SlidePreflightProps } from './slide-preflight'
 import { type StageMetrics, useStageMetrics } from './slide-stage'
-import { splitIntoSlides } from './slides'
+import { splitIntoSlidesWithNotes } from './slides'
+import { openPresenterWindow, usePresenterBroadcaster } from './presenter-view/use-presenter-channel'
 import { usePresentationKeys } from './use-presentation-keys'
 import { useSlideHtml } from './use-slide-html'
 
@@ -83,12 +84,35 @@ export interface PresentationSession {
   toggleOverview: () => void
   /** Whether the layers under the grid are out of reach: focus, clicks and Tab all stop at it. */
   occluded: boolean
+  openPresenter: () => void
+  notes: string[]
+}
+
+function useSessionPresenter(open: boolean, noteTitle: string, nav: ReturnType<typeof usePresentationNav>, deck: string[], notes: string[]) {
+  const startedAt = useRef(Date.now()).current
+  const openPresenter = useCallback(() => openPresenterWindow(), [])
+  usePresenterBroadcaster({
+    open,
+    noteTitle,
+    slideIndex: nav.index,
+    subPage: nav.sub,
+    slideCount: deck.length,
+    pageCount: nav.pageCount,
+    deck,
+    notes,
+    plans: nav.plans,
+    startedAt,
+    goNext: nav.goNext,
+    goPrev: nav.goPrev,
+    jumpTo: nav.jumpTo,
+  })
+  return { openPresenter }
 }
 
 export function usePresentationSession(options: PresentationSessionOptions): PresentationSession {
   const { open, noteId, snapshot, following, storedTitle, panelRef, stageRef, onClose, initialSlideIndex = 0 } = options
   const { content: presentedContent, title: liveTitle } = usePresentedContent({ open, noteId, snapshot, following })
-  const { deck, fingerprint } = useShowDeck(presentedContent)
+  const { deck, notes, fingerprint } = useShowDeck(presentedContent)
   useCapturePresented(open, following, presentedContent)
   const { dark, externalImages, proseFont } = useShowSettings()
   const nav = usePresentationNav(deck, initialSlideIndex)
@@ -101,7 +125,8 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   const cacheKeys = useSlideCacheKeys(deck, dark, metrics)
   const exports = useDeckExport({ deck, cacheKeys, plans: nav.plans, metrics, externalImages, dark, title: noteTitle })
   const { listProgress, onProgress } = useListProgress()
-  const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing })
+  const { openPresenter } = useSessionPresenter(open, noteTitle, nav, deck, notes)
+  const mode = usePresentationKeys({ open, slideCount: deck.length, goNext: nav.goNext, goPrev: nav.goPrev, jumpTo: nav.jumpTo, toggleFullscreen, toggleRail, toggleFollowing, openPresenter })
   useDialogBehavior({ open, panelRef, isFullscreen, toggleFullscreen, onClose, laserOn: mode.laser, clearLaser: mode.clearLaser, overviewOn: mode.overview, clearOverview: mode.clearOverview })
   useSlideHtml({ open, deck, index: nav.index, fingerprint: hashContent(deck[nav.index] ?? ''), content: presentedContent, noteTitle, dark, metrics })
   // The session is the union of the pieces above, so each of them is spread rather than unpacked
@@ -109,6 +134,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
   // controls ask for. What stays explicit is what only the session decides.
   return {
     deck,
+    notes,
     cacheKeys,
     railOpen,
     following,
@@ -122,6 +148,7 @@ export function usePresentationSession(options: PresentationSessionOptions): Pre
     toggleFullscreen,
     toggleRail,
     toggleFollowing,
+    openPresenter,
     occluded: mode.overview,
     ...nav,
     ...mode,
@@ -229,9 +256,9 @@ function useChromeAutoHide(active: boolean): boolean {
 // re-splits it; a frozen snapshot is a plain string that cannot move under the
 // presenter.
 function useShowDeck(presentedContent: string) {
-  const deck = useMemo(() => splitIntoSlides(presentedContent), [presentedContent])
+  const { slides: deck, notes } = useMemo(() => splitIntoSlidesWithNotes(presentedContent), [presentedContent])
   const fingerprint = useMemo(() => hashContent(presentedContent), [presentedContent])
-  return { deck, fingerprint }
+  return { deck, notes, fingerprint }
 }
 
 // Following keeps the store's snapshot equal to what is on screen: freezing then
