@@ -18,8 +18,8 @@
 | :--- | :--- | :--- | :--- |
 | **批次 0** | 文档基线 | 审查报告与整改计划初始化 | `[x]` 已提交 (`d8aa7a00`) |
 | **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
-| **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[~]` 进行中 (已提交: `bbe158b8`, `52c2ab4a`, `332de745`, `100648a4`) |
-| **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[ ]` 待处理 |
+| **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[x]` 已完成 (`bbe158b8` ~ `c6426131`) |
+| **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[~]` 进行中 (已提交: `5f02e2d4` ~ `53b3c570`，B3-01 ~ B3-11；余 B3-12) |
 | **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[ ]` 待处理 |
 
 ---
@@ -127,21 +127,21 @@
   - 目标：消除 100 个 `IntersectionObserver` 实例并解决全量广播惊群效应。
   - 方案：在 `SlideRail` 顶层统一构建单例 `IntersectionObserver` 实例供各子项共享；重构 `subscribeSlideHtml` 为按 `cacheKey` 精准派发的订阅机制。
   - 验证：单元测试断言单张幻灯片完成预热时仅触发对应 key 的监听器，其余缩略图无虚假渲染。
-- [x] **B3-09** `P-20 (PERF-04)`: 导出图片流式分批与进度提示 — 已完成
+- [x] **B3-09** `P-20 (PERF-04)`: 导出图片流式分批与进度提示 — 已完成 (`882e034e`)
   - 涉及文件：`src/client/features/presentation/deck-print.tsx` (`saveDeckPages`, `DeckImageSheet`)
   - 目标：导出过程提供实时模态进度反馈，串行分批挂载和流式生成，防范浏览器 OOM 崩溃。
   - 方案：在 `saveDeckPages` 中引入进度回调驱动 UI 状态展示 `正在导出 (3/30)...`，每完成一张图片即时入流并释放 Canvas 与位图 Blob。
   - 验证：单元测试模拟多页导出，断言进度回调按预期每页递增且最终正确完成打包。
-- [x] **B3-10** `P-21 (SEC-03)`: 嵌套 Bento-Slides 优雅占位降级 — 已完成
+- [x] **B3-10** `P-21 (SEC-03)`: 嵌套 Bento-Slides 优雅占位降级 — 已完成 (`53b3c570`)
   - 涉及文件：`src/client/features/presentation/slide-canvas.tsx` (`useBentoSlidesFallback`)
   - 目标：全笔记演示模式中遇到 Bento-Slides 代码块不再永久停留于 "Loading slides..." 占位态。
   - 方案：在 `SlideCanvas` 中提供 `useBentoSlidesFallback`，解析围栏内的卡片结构并直接呈现为整洁的静态卡片网格预览，移除 `loading` 类并设置 `aria-busy="false"`。
   - 验证：单元测试验证包含 ` ```slides ` 的内容在 SlideCanvas 中被正确增强为静态卡片结构，无残留 loading 状态。
-- [ ] **B3-11** `P-22 (SEC-04)`: 命令面板注册“启动演示模式”命令
-  - 涉及文件：`src/client/features/command/command-palette/use-commands.tsx` (`currentNoteCommands`)
+- [x] **B3-11** `P-22 (SEC-04)`: 命令面板注册“启动演示模式”命令 — 已完成
+  - 涉及文件：`src/client/features/presentation/start-presentation.ts`（新增）、`src/client/features/presentation/presentation-hotkeys.ts`（新增）、`src/client/features/presentation/index.ts`、`src/client/features/command/command-palette/use-commands.tsx`（`currentNoteCommands`）、`src/client/features/shell/app-shell.tsx`、`src/client/features/workspace/workspace/use-workspace.ts`
   - 目标：`Cmd+K` 支持快速呼出演示模式。
-  - 方案：在 `currentNoteCommands` 中注册 `cmd-presentation-mode`，带有 `Play` 图标，快捷呼起当前笔记的全屏演说。
-  - 验证：单元测试断言当前笔记命令列表中包含该项，且调用 `run` 成功启动演示。
+  - 方案：抽出唯一启动路径 `startPresentationFromNote(noteId)`（按编辑器光标定位起始 Slide），命令面板注册 `cmd-presentation-mode`（`<Play>` 图标）；新增特性自有 `PRESENTATION_HOTKEYS`（`mod+alt+p`，`allowInInput`，放映中 `when` 让位）并由 `app-shell` 的 `registerAll` 挂载，使面板 `combo` 提示与真实绑定一致；`useStartPresentation` 改为委托该路径以消除重复实现。
+  - 验证：`start-presentation.test.ts`（5 例：正文/标题、光标就近、无编辑器、正文未加载、笔记已删除）＋ `presentation-hotkeys.test.ts`（7 例：编辑器内与 textarea 内触达、参考面板收录、放映中让位、无活动笔记、`mod+p` 不匹配）＋ `presentation-command.test.ts`（3 例：命令存在与文案/快捷键/分组、与 `cmd-slides-from-outline` 共存、`run` 委托）。四轮变异（`when` 门、`allowInInput`、光标偏移、面板项）均被具名用例杀死。
 - [ ] **B3-12** `P-23 (FEAT-01)`: 智能标题识别切分长笔记（H1/H2 分页）
   - 涉及文件：`src/client/features/presentation/slides.ts` (`splitIntoSlides`)、`src/client/features/presentation/slides.test.ts`
   - 目标：对于未显式插入 `---` 分割线的一般笔记，支持根据 H1/H2 智能切分幻灯片。
@@ -177,3 +177,14 @@
   - 目标：双屏独立输出，讲者窗口独立展示当前页、下一页预览、私有小抄与时钟。
   - 方案：通过 `window.open` 弹出独立窗口作为第二屏控制台，主子窗口借助 `BroadcastChannel` 传输页码、时间戳与小抄，实现低延迟双向联动。
   - 验证：单元测试验证 BroadcastChannel 跨窗口消息同步协议与控制事件收发。
+
+---
+
+## 全量单元测试基线说明
+
+`npm run test:unit` 在本工作机上存在**与演示模式无关**的负载敏感超时，非本分支引入：
+
+- `src/client/features/blog/blog-comments-window.test.ts` > `mounts one page of rows and grows on demand`：250 行渲染超 5000ms 阈值。
+- 已在纯净快照（`git archive HEAD | tar -x -C /tmp/snap-base` + 软链 `node_modules`）复现同一失败，故与本分支改动无关。
+- 处置：每批次提交仍跑全量套件并逐条比对失败清单，只判定「新增失败」；不夹带修复（AGENTS.md 铁律 14）。若后续需根治，应单独提交提高该用例超时或缩减 fixture 行数。
+

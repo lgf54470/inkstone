@@ -3330,6 +3330,9 @@ const allowed = new Map([
   ['src/client/features/command/command-palette/index.tsx', [
     '// Counts each note once per ancestor folder (its own folder and every parent).',
   ]],
+  ['src/client/features/command/command-palette/presentation-command.test.ts', [
+    '/**\n * The current note\'s palette items. What is pinned is the entry the review found missing: a reader\n * who typed "presentation" got the command that *writes a slides code block* and nothing that puts\n * the note on the projector — two different things wearing the same word.\n */',
+  ]],
   ['src/client/features/command/command-palette/use-commands.tsx', [
     '// Audio keeps playing with the hub closed, so the palette reaches the store directly.',
     '/**\n * What the board on screen can do, offered where every other action is. A board is a surface inside\n * the document rather than an app of its own, so this is how its cards and views become reachable by\n * name instead of by hunting for the right button — and how a keyboard reader gets to them at all.\n * The group carries the board\'s title, because a note may hold several boards and a command that ran\n * against the wrong one would be worse than no command.\n */',
@@ -6623,6 +6626,16 @@ const allowed = new Map([
     '// The deck position is the slide number; a slide that spans several pages shows',
     '// its sub-page as a separate chip so "3.2 / 14" can never be misread as a slide.',
   ]],
+  ['src/client/features/presentation/presentation-hotkeys.test.ts', [
+    '/**\n * The shortcut that puts the current note on the projector. These read the key as it actually\n * arrives — dispatched through the real registry, bound on `window` in the capture phase — because\n * what matters is who gets the key: the show when one is running, the note\'s editor cursor when the\n * keystroke lands inside the editor, and nobody at all when there is no note to present.\n */',
+    '// The key is dispatched on the editor itself, not on the body: whether the registry hands a',
+    '// keystroke over is decided by what the event targets, so pressing on plain ground would prove',
+    '// nothing about the field it is meant to reach into.',
+    '/**\n * The same key read from the other side: a running show, an absent note, and a shortcut that looks\n * like this one. Each of these would be a way for the shell to steal a keystroke from something\n * that already owns it.\n */',
+  ]],
+  ['src/client/features/presentation/presentation-hotkeys.ts', [
+    '/**\n * The show\'s app-level shortcut: present the note that is on screen, from wherever the keyboard\n * happens to be — including inside the editor, since the cursor\'s position is what decides which\n * slide the deck opens on.\n *\n * It stays quiet while a show is running. Re-running start() would rebuild the deck and jump the\n * projector back to the slide under the editor cursor, which is not what a presenter mid-talk means\n * by the key that opened the show; the overlay owns the screen and its own keys once it is up.\n */',
+  ]],
   ['src/client/features/presentation/presentation-keys.ts', [
     '// The show\'s keymap as a pure function so it can be tested without a browser: which',
     '// command a key press means, given whether a control or the slide list owns the event.',
@@ -6971,6 +6984,14 @@ const allowed = new Map([
     '// slide boundaries identical to how the preview renders horizontal rules.',
     '// Edge separators (e.g. an unclosed front matter opener) would otherwise yield',
     '// blank first/last slides; blank slides between two breaks stay as written.',
+  ]],
+  ['src/client/features/presentation/start-presentation.test.ts', [
+    '/**\n * Putting a note on the projector is one path now shared by the workspace button, the command\n * palette and the global shortcut, so what is pinned here is what that one path promises: the deck\n * is the note\'s own body under the note\'s own title, and the slide it opens on is the one the\n * editor cursor happens to sit on.\n */',
+    '// The overlay reads the live note while following, so a deck that begins before the body',
+    '// arrives fills itself in; the show opening at all is what this pins.',
+  ]],
+  ['src/client/features/presentation/start-presentation.ts', [
+    '/**\n * Puts the named note on the projector: the workspace button, the command palette and the\n * global shortcut all open the same show, so the slide the deck starts on is computed here\n * and nowhere else. The cursor decides it — a talk resumed from the middle of a long note\n * should not begin at its title slide.\n *\n * A note that is gone by the time the command runs is a no-op: the deck has no source to\n * show, and opening an empty one would look like a broken feature rather than a deleted note.\n */',
   ]],
   ['src/client/features/presentation/use-presentation-keys.ts', [
     '// One runner per command keeps the listener itself short, and a command that is not',

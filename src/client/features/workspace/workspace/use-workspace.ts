@@ -7,17 +7,16 @@ import { errorMessage } from '../../../lib/errors'
 import { exportNoteAsHtml, exportNoteAsMarkdown, exportNoteAsPdf } from '../../../lib/export-note'
 import { detectEditorContext, detectPreviewContext, type EditorContextData, type PreviewContextData } from '../context-menu-detect'
 import { useBreakpoint, useRelativeTime } from '../../../lib/hooks'
-import { getActiveEditorView, setActiveEditorView } from '../../../editor/commands'
+import { setActiveEditorView } from '../../../editor/commands'
 import { optimizeImageFile } from '../../../lib/image'
 import { useBlogStore } from '../../blog'
 import { isNoteShared, useShareStore } from '../../share'
-import { findSlideIndexByOffset } from '../../presentation'
+import { startPresentationFromNote } from '../../presentation'
 import { type Heading } from '../../../lib/markdown/renderer'
 import type { WorkspacePane, UiState } from '../../../store/ui'
 import { useUi } from '../../../store/ui'
 import { useSession } from '../../../store/session'
 import { useActiveNote, useNotes, type NotesState } from '../../../store/notes'
-import { usePresentation } from '../../../store/presentation'
 import { useSyncScroll } from '../sync-scroll'
 import { t, useLocale } from '../../../lib/i18n'
 import { preferredScrollBehavior } from '../../../lib/motion'
@@ -307,13 +306,10 @@ function buildWorkspaceSources(notes: NotesState['notes'], tags: NotesState['tag
 // Presenting is owned by the shell, which survives the mobile-breakpoint switch that
 // unmounts this workspace; a pane only names the note to present and the show then
 // follows it, so a pane-local copy of the buffer is never the deck's source.
-function useStartPresentation(note: NotesState['notes'][string] | null | undefined, content: string): () => void {
+function useStartPresentation(note: NotesState['notes'][string] | null | undefined): () => void {
   return useCallback(() => {
-    if (!note) return
-    const offset = getActiveEditorView()?.state.selection.main.head ?? 0
-    const initialSlideIndex = findSlideIndexByOffset(content, offset)
-    usePresentation.getState().start({ noteId: note.id, content, title: note.title, initialSlideIndex })
-  }, [note, content])
+    if (note) startPresentationFromNote(note.id)
+  }, [note])
 }
 
 function buildWorkspaceHandlers(note: NotesState['notes'][string] | null | undefined, toast: UiState['toast']) {
@@ -352,7 +348,7 @@ export function useWorkspace(pane: WorkspacePane | 'active', mobileLayout: 'edit
   const updatedTime = useRelativeTime(store.note?.updatedAt ?? 0, Boolean(store.note))
   const cmds = useWorkspaceCommands({ note: store.note, editContent: store.editContent, view: local.view, layout: derived.layout, grouped, pane, setWorkspacePaneLayout: store.setWorkspacePaneLayout, updateSettings: store.updateSettings, previewScrollerRef: refs.previewScrollerRef })
   const menu = useWorkspaceContextMenu()
-  const startPresentation = useStartPresentation(store.note, store.content)
+  const startPresentation = useStartPresentation(store.note)
   const exportNote = useCallback(async (format: 'md' | 'html' | 'pdf') => {
     local.setIsExportMenuOpen(false)
     if (!store.note) return

@@ -14,7 +14,7 @@ import { useNotes } from '../../store/notes'
 import { getActiveEditorView, insertNoteTemplate } from '../../editor/commands'
 import { useSession } from '../../store/session'
 import { useUpdate } from '../../store/update'
-import { PresentationOverlay } from '../presentation'
+import { PRESENTATION_HOTKEYS, PresentationOverlay } from '../presentation'
 import { NoteList, useGapIndicator, useRollingDateFilter } from '../list'
 import { Sidebar } from '../sidebar'
 import { MUSIC_HOTKEYS, MusicFloatingPlayer, MusicHubModal, MusicImmersiveOverlay, MusicSessionSync, MusicTrackMenuHost } from '../music'
@@ -284,7 +284,7 @@ function OverlayHost() {
 }
 
 function useGlobalHotkeys(): void {
-  useEffect(() => registerAll([...GLOBAL_HOTKEYS, ...MUSIC_HOTKEYS]), [])
+  useEffect(() => registerAll([...GLOBAL_HOTKEYS, ...MUSIC_HOTKEYS, ...PRESENTATION_HOTKEYS]), [])
 }
 
 const GLOBAL_HOTKEYS: Hotkey[] = [
