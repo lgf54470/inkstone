@@ -238,6 +238,7 @@ export function normalizeComment(value: unknown): BlogComment {
     authorUrl: asString(c.author_url) || asString(c.authorUrl) || undefined,
     content: asString(c.content),
     status: commentStatus(c.status),
+    isOwner: c.isOwner === true || c.is_owner === true,
     createdAt: toTimestamp(c.created_at) || toTimestamp(c.createdAt) || Date.now(),
     updatedAt: toTimestamp(c.updated_at) || toTimestamp(c.updatedAt) || Date.now(),
   }

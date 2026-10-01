@@ -13203,6 +13203,7 @@ const allowed = new Map([
     '/** A management-list row: the same columns minus the body, which the list never draws. */',
     '/** A recycle-bin row: the management-list columns plus the moment the post was moved to the trash. */',
     '/** The body-free index row the note list reads (id, note and what the publish dialog needs). */',
+    '/** What a related-posts answer needs: card fields plus nothing the relation itself is not made of. */',
   ]],
   ['src/worker/db/schema/blog-posts.ts', [
     '/**\n * `blog_posts` declares its own shape because the slug constraint is part of it, and changing that\n * constraint costs a table rebuild.\n *\n * A slug names a post inside one blog. Instance-wide uniqueness made the second account unable to\n * publish a name the first had used, and answered "is this taken?" for every blog at once, so the\n * uniqueness belongs on `(user_id, slug)`. SQLite cannot drop a UNIQUE the table declares, so the\n * move is a rebuild — rename, create the current shape, copy, drop — and the rebuild must create\n * exactly the shape the running schema declares. Both therefore come from the constants below\n * rather than from a statement written twice.\n *\n * Columns added after the rebuild (the per-post SEO fields of FEA-02 and the `deleted_at` of\n * FEA-04) are appended to the declared shape and replicated by their own `ALTER TABLE` migration with\n * a `skipIfColumnExists` guard: a database that has not run the rebuild yet gets them from the\n * declared shape here, one that has gets them from the migration. The rebuild\'s `INSERT … SELECT`\n * names the columns it copies, so appended ones simply take their defaults.\n */',
@@ -13920,6 +13921,13 @@ const allowed = new Map([
   ]],
   ['src/worker/routes/blog/public-post.ts', [
     '/**\n * One published post of one blog, by slug. Both readers of a post need the same row — the detail\n * response that renders it and the visit beacon that counts a view for it — and the owner is part of\n * the key in both, so a slug another account published is a different post.\n */',
+  ]],
+  ['src/worker/routes/blog/public-related.ts', [
+    '/**\n * What else to read after a post (FEA-12). The relation is stated — shared tags, then the same\n * category — and scored in SQL so the ceiling stays on the rows actually shown: a post related to\n * nothing answers with an empty list rather than the newest posts wearing a "related" label.\n */',
+    '/** How many of a post\'s tags take part in the match; the first ones are enough to rank by overlap. */',
+    '// A row whose tag column does not parse is a row about nothing: it contributes no overlaps.',
+    '// The outer select is what filters by score: a scalar subquery is not an aggregate, so the aliases',
+    '// cannot ride a HAVING, and filtering after LIMIT would rank rows the page never shows.',
   ]],
   ['src/worker/routes/blog/public.ts', [
     '// The blog player reads the owner\'s music library read-only, gated by the publish switch.',
@@ -15080,6 +15088,12 @@ const allowed = new Map([
     '// Alice reviews before publishing; Bob posts straight through.',
     '// The slug belongs to Alice\'s blog, so Bob\'s form cannot be answered with Alice\'s post.',
     '// The duplicate check is the blog\'s own directory, so the same site may apply to the other blog.',
+  ]],
+  ['tests/blog-related-posts.test.ts', [
+    '/**\n * FEA-12: a post page offers what else to read. The relation is stated, not guessed — shared tags\n * first, then the same category — and a post with neither gets no list rather than a "latest posts"\n * filler that pretends to be related.\n */',
+    '// Two shared tags beats one; the same category beats a post with neither; drafts, scheduled posts',
+    '// and another blog are not candidates at all.',
+    '// `%` is a tag here, not a wildcard that matches `_`.',
   ]],
   ['tests/blog-revisions.test.ts', [
     '// The restore snapshots what it replaced, so it is itself undoable.',

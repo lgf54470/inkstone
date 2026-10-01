@@ -1,0 +1,19 @@
+{
+  "name": "Inkstone Blog",
+  "short_name": "Inkstone",
+  "description": "Personal blog powered by Inkstone and Astro",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f5f1",
+  "theme_color": "#b03a2e",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/inkstone-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

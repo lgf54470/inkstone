@@ -9,6 +9,7 @@ import {
 import { Calendar, Tag, AlertCircle } from 'lucide-react'
 import SearchInput from './SearchInput'
 import { api } from '../lib/api'
+import { searchPageHref } from '../lib/search-page'
 import { useFocusTrap, useScrollLock } from '../lib/use-focus-trap'
 import type { BlogPost } from '../lib/types'
 import { SEARCH_RESULT_LIMIT, SEARCH_FOCUS_DELAY_MS, SEARCH_DEBOUNCE_MS } from '../lib/constants'
@@ -441,6 +442,11 @@ function SearchFooter({
           : t('search.footer_idle', {}, locale)}
       </span>
       <div className='flex items-center gap-3'>
+        {query.trim() !== '' && (
+          <a href={searchPageHref(query.trim(), 1)} className='hover:text-[var(--accent)]'>
+            {t('search.open_page', {}, locale)}
+          </a>
+        )}
         <span>{t('search.key_nav', {}, locale)}</span>
         <span>{t('search.key_open', {}, locale)}</span>
         <span>{t('search.key_esc', {}, locale)}</span>

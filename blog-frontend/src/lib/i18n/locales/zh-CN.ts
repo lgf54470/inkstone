@@ -49,6 +49,7 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'post.meta_reading': '约 {words} 字 / 阅读需 {minutes} 分钟',
   'post.views_count': '{views} 次浏览',
   'post.thanks_reading': '感谢阅读本文',
+  'post.related_title': '相关文章',
   'post.thanks_desc': '本文内容由 Inkstone 笔记系统发布并驱动，欢迎在下方发表交流与讨论。',
   'post.share_link': '分享链接',
   'post.link_copied': '文章链接已复制到剪贴板！',
@@ -142,6 +143,19 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'search.key_nav': '导航: ↑ ↓',
   'search.key_open': '打开: ↵',
   'search.key_esc': '退出: ESC',
+  // Shareable search page (FEA-12)
+  'search.page_title': '搜索',
+  'search.page_hint': '输入关键词开始搜索',
+  'search.page_input_placeholder': '搜索文章...',
+  'search.page_out_of_range': '这个页码没有结果',
+  'search.page_first': '回到第一页',
+  'search.page_back': '返回首页',
+  'search.open_page': '在搜索页查看全部结果',
+
+  // Offline fallback (FEA-12)
+  'offline.title': '当前离线',
+  'offline.hint': '网络恢复后刷新即可继续阅读。',
+  'offline.home': '返回首页',
 
   // Comments Section
   'comments.title': '评论与讨论 ({count})',
@@ -160,6 +174,8 @@ export const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   'comments.submitting': '提交中...',
   'comments.loading': '加载评论中...',
   'comments.empty': '暂无评论，来发表第一条评论吧！',
+  'comments.author_badge': '作者',
+  'comments.reply_indicator': '回复',
   'comments.success_approved': '评论发布成功！',
   'comments.success_moderated': '评论提交成功！博主开启了留言审核机制，审核通过后将公开显示。',
   'comments.error_required': '请填写称呼、邮箱与评论内容',

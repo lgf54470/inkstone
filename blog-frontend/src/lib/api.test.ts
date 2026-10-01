@@ -99,6 +99,35 @@ describe('api.getTimeline mapping', () => {
   })
 })
 
+// FEA-12: the post page asks for what else to read; the answer is a post list like any other.
+// FEA-12: the nesting the public list already carries (parent_id) and the author flag it added in
+// FEA-06 have to survive normalization, or the section has nothing to indent.
+describe('api.getComments', () => {
+  it('carries parent and author flags', async () => {
+    stubFetch({ comments: [
+      { id: 'c1', author_name: 'Reader', content: 'hi' },
+      { id: 'c2', parent_id: 'c1', author_name: 'Writer', content: 'thanks', is_owner: true },
+    ] })
+    const comments = await api.getComments('post-1')
+    expect(comments[0]).toMatchObject({ id: 'c1', parentId: null, isOwner: false })
+    expect(comments[1]).toMatchObject({ id: 'c2', parentId: 'c1', isOwner: true })
+  })
+})
+
+describe('api.getRelatedPosts', () => {
+  it('reads the related answer of one post and normalizes it', async () => {
+    stubFetch({ posts: [{ id: 'p2', slug: 'next-read', title: 'Next', excerpt: 'E' }] })
+    const posts = await api.getRelatedPosts('hello world')
+    expect(vi.mocked(fetch).mock.calls[0]![0] as string).toContain('/api/blog/public/posts/hello%20world/related')
+    expect(posts[0]).toMatchObject({ slug: 'next-read', title: 'Next', excerpt: 'E' })
+  })
+
+  it('rejects when the answer cannot be read, so the page can skip the section', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('down') }))
+    await expect(api.getRelatedPosts('hello')).rejects.toThrow('down')
+  })
+})
+
 describe('api failure propagation', () => {
   beforeEach(() => {
     clearApiMemoryCache()

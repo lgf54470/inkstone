@@ -1,0 +1,101 @@
+---
+import Layout from '../layouts/Layout.astro'
+import PostCard from '../components/PostCard.astro'
+import Pagination from '../components/Pagination.astro'
+import { api } from '../lib/api'
+import { loadSearchPage, parseSearchPage, parseSearchQuery, searchPageBase, searchPageHref, type SearchPageData } from '../lib/search-page'
+import { t, DEFAULT_LOCALE, type BlogLocale } from '../lib/i18n'
+
+const locale: BlogLocale = Astro.locals?.locale ?? DEFAULT_LOCALE
+// 可分享的搜索页（FEA-12）：查询与页码都在 URL 里，刷新、前进后退、贴给别人都是同一份结果。
+const query = parseSearchQuery(Astro.url)
+const page = parseSearchPage(Astro.url)
+
+const siteInfo = await api.getSiteInfo()
+let data: SearchPageData = { query, posts: [], total: 0, page: 1, totalPages: 0 }
+if (query) {
+  try {
+    data = await loadSearchPage(query, page, siteInfo.postsPerPage)
+  } catch (err) {
+    // 取数失败 ≠ 没有结果：503 让读者与爬虫稍后重试（BF-1）。
+    console.error(`[search] query failed for "${query}":`, err)
+    Astro.response.status = 503
+    Astro.response.headers.set('Cache-Control', 'no-store')
+    return Astro.rewrite('/503')
+  }
+}
+
+const categories = data.posts.length > 0 ? await api.getCategories() : []
+const categoryMap = new Map(categories.map((c) => [c.id, c]))
+// 手改的页码超出范围：说清是页码问题并给回第一页的路，而不是画一句「没有结果」。
+const outOfRange = data.total > 0 && data.posts.length === 0
+---
+
+<Layout
+  title={query ? `${t('search.page_title', {}, locale)}: ${query} - ${siteInfo.siteName}` : `${t('search.page_title', {}, locale)} - ${siteInfo.siteName}`}
+  description={t('search.page_hint', {}, locale)}
+  siteInfo={siteInfo}
+  locale={locale}
+  noindex
+>
+  <div class="max-w-4xl mx-auto space-y-6">
+    <header class="py-6 border-b border-[var(--border-subtle)] space-y-4">
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">
+        {t('search.page_title', {}, locale)}
+      </h1>
+      <form method="get" action="/search" role="search" class="flex items-stretch gap-2">
+        <label for="search-page-input" class="sr-only">{t('search.page_title', {}, locale)}</label>
+        <input
+          id="search-page-input"
+          type="search"
+          name="q"
+          value={query}
+          placeholder={t('search.page_input_placeholder', {}, locale)}
+          class="flex-1 px-3.5 py-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+        />
+        <button
+          type="submit"
+          class="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer shadow-[var(--shadow-xs)]"
+        >
+          {t('search.page_title', {}, locale)}
+        </button>
+      </form>
+      {query && (
+        <p class="text-xs text-[var(--text-tertiary)]" role="status">
+          {t('search.footer_matched', { total: data.total, count: data.posts.length }, locale)}
+        </p>
+      )}
+    </header>
+
+    {!query ? (
+      <div class="py-16 text-center text-xs text-[var(--text-tertiary)]">
+        {t('search.page_hint', {}, locale)}
+      </div>
+    ) : outOfRange ? (
+      <div class="py-16 text-center text-xs text-[var(--text-tertiary)] space-y-3">
+        <p>{t('search.page_out_of_range', {}, locale)}</p>
+        <a href={searchPageHref(query, 1)} class="inline-block text-[var(--accent)] hover:underline">
+          {t('search.page_first', {}, locale)}
+        </a>
+      </div>
+    ) : data.posts.length === 0 ? (
+      <div class="py-16 text-center text-xs text-[var(--text-tertiary)]">
+        {t('search.no_results', { query }, locale)}
+      </div>
+    ) : (
+      <div class="space-y-4">
+        {data.posts.map((post) => (
+          <PostCard post={post} category={post.categoryId ? categoryMap.get(post.categoryId) : undefined} locale={locale} />
+        ))}
+      </div>
+    )}
+
+    <Pagination currentPage={data.page} totalPages={data.totalPages} baseUrl={searchPageBase(query)} locale={locale} />
+
+    <div class="pb-4">
+      <a href="/" class="text-xs text-[var(--accent)] hover:underline">
+        {t('search.page_back', {}, locale)}
+      </a>
+    </div>
+  </div>
+</Layout>

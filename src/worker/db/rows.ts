@@ -290,6 +290,19 @@ export interface BlogTimelineRow {
   seo_noindex: number
 }
 
+/** What a related-posts answer needs: card fields plus nothing the relation itself is not made of. */
+export interface BlogRelatedRow {
+  id: string
+  slug: string
+  title: string
+  excerpt: string
+  cover_url: string
+  category_id: string | null
+  tags: string
+  published_at: number
+  updated_at: number
+}
+
 export interface BlogCalendarRow {
   slug: string
   title: string

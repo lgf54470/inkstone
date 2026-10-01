@@ -228,6 +228,15 @@ export const api = {
   },
 
   /**
+   * 读一篇文章的相关文章（FEA-12）。关系由服务端给出（共同标签优先、其次同分类），
+   * 拿不到就让错误向上走，页面把这一段当作可选模块跳过而不是拿最新文章顶替。
+   */
+  async getRelatedPosts(slug: string, signal?: AbortSignal): Promise<BlogPost[]> {
+    const data = asRecord(await requestJsonCached(`/api/blog/public/posts/${encodeURIComponent(slug)}/related`, 300, { signal }))
+    return asArray(data.posts).map(normalizePost)
+  },
+
+  /**
    * 某个已退役地址现在属于哪篇文章（FEA-03）。拿不到答案就返回 null，页面据此保持 404——
    * 这里绝不能猜一个目标：把读者送到一个不存在的地址比 404 更糟。
    */

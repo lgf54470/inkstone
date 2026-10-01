@@ -3,6 +3,7 @@ import type { AppBindings } from '../../env'
 import type { BlogCalendarRow, BlogPostPublicRow, BlogPublicCategoryRow, BlogTimelineRow } from '../../db/rows'
 import { escapeLike, likeAny } from '../../lib/like'
 import { loadPublicPostBySlug } from './public-post'
+import { registerBlogPublicRelatedRoute } from './public-related'
 import { registerBlogPublicVisitBeaconRoute } from './visit-beacon'
 import { safeDecodeTagParam, summarizePostTagCounts, toBlogSeoFields } from './helpers'
 import { blogTagFilterSql } from './tag-needles'
@@ -23,6 +24,7 @@ export function registerBlogPublicRoutes(blogPublicRoutes: Hono<AppBindings>): v
   registerBlogOwnerMiddleware(blogPublicRoutes)
   registerBlogSiteRoute(blogPublicRoutes)
   registerBlogPublicPostsRoutes(blogPublicRoutes)
+  registerBlogPublicRelatedRoute(blogPublicRoutes)
   registerBlogPublicRetiredSlugRoute(blogPublicRoutes)
   registerBlogPublicCategoriesRoute(blogPublicRoutes)
   registerBlogPublicTagsRoute(blogPublicRoutes)

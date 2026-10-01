@@ -7,10 +7,13 @@ import {
   Globe,
   CheckCircle2,
   AlertCircle,
+  CornerDownRight,
   Loader2,
+  BadgeCheck,
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
+import { buildCommentThreads } from '../lib/comment-threads'
 import { COMMENT_MAX_LENGTH } from '../lib/constants'
 import type { BlogComment } from '../lib/types'
 import { t, formatDate, useCurrentLocale, type BlogLocale } from '../lib/i18n'
@@ -376,7 +379,7 @@ function CommentFormActions({ submitting, locale }: { submitting: boolean; local
   )
 }
 
-function CommentList({
+export function CommentList({
   comments,
   loading,
   locale,
@@ -400,51 +403,87 @@ function CommentList({
       </div>
     )
   }
+  const threads = buildCommentThreads(comments)
   return (
     <div className='space-y-4'>
-      {comments.map((item) => (
-        <CommentItem key={item.id} item={item} locale={locale} />
+      {threads.map(({ comment, replies }) => (
+        <div key={comment.id} className='space-y-3'>
+          <CommentItem item={comment} locale={locale} />
+          {replies.length > 0 && (
+            <ul className='space-y-3 list-none p-0 pl-4 sm:pl-6 border-l-2 border-[var(--border-subtle)]'>
+              {replies.map((reply) => (
+                <li key={reply.id}>
+                  <CommentItem item={reply} locale={locale} isReply />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       ))}
     </div>
   )
 }
 
-function CommentItem({ item, locale }: { item: BlogComment; locale: BlogLocale }) {
+function CommentItem({ item, locale, isReply = false }: { item: BlogComment; locale: BlogLocale; isReply?: boolean }) {
   return (
     <div className='p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs space-y-2'>
-      <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-2'>
-          <div className='w-7 h-7 rounded-full bg-[var(--accent-softer)] text-[var(--accent)] font-bold flex items-center justify-center text-xs'>
-            {item.authorName.slice(0, 1).toUpperCase()}
-          </div>
-          <div>
-            {item.authorUrl ? (
-              <a
-                href={item.authorUrl}
-                target='_blank'
-                rel='noopener noreferrer'
-                className='font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]'
-              >
-                {item.authorName}
-              </a>
-            ) : (
-              <span className='font-semibold text-[var(--text-primary)]'>{item.authorName}</span>
-            )}
-          </div>
-        </div>
-        <time className='text-[length:var(--text-11)] text-[var(--text-quaternary)]'>
-          {formatDate(item.createdAt, locale, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </time>
+      <div className='flex items-center justify-between gap-3'>
+        <CommentAuthor item={item} locale={locale} isReply={isReply} />
+        <CommentTime createdAt={item.createdAt} locale={locale} />
       </div>
       <p className='text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed pl-9'>
         {item.content}
       </p>
     </div>
+  )
+}
+
+function CommentAuthor({ item, locale, isReply }: { item: BlogComment; locale: BlogLocale; isReply: boolean }) {
+  return (
+    <div className='flex items-center gap-2 min-w-0'>
+      <div className='w-7 h-7 rounded-full bg-[var(--accent-softer)] text-[var(--accent)] font-bold flex items-center justify-center text-xs shrink-0'>
+        {item.authorName.slice(0, 1).toUpperCase()}
+      </div>
+      <div className='flex items-center gap-1.5 min-w-0 flex-wrap'>
+        {item.authorUrl ? (
+          <a
+            href={item.authorUrl}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]'
+          >
+            {item.authorName}
+          </a>
+        ) : (
+          <span className='font-semibold text-[var(--text-primary)]'>{item.authorName}</span>
+        )}
+        {item.isOwner && (
+          <span className='inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[length:var(--text-10)] bg-[var(--accent-softer)] text-[var(--accent)]'>
+            <BadgeCheck className='w-2.5 h-2.5' />
+            {t('comments.author_badge', {}, locale)}
+          </span>
+        )}
+        {isReply && (
+          <span className='inline-flex items-center gap-0.5 text-[length:var(--text-10)] text-[var(--text-quaternary)]'>
+            <CornerDownRight className='w-2.5 h-2.5' />
+            {t('comments.reply_indicator', {}, locale)}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function CommentTime({ createdAt, locale }: { createdAt: number; locale: BlogLocale }) {
+  return (
+    <time className='text-[length:var(--text-11)] text-[var(--text-quaternary)] shrink-0'>
+      {formatDate(createdAt, locale, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}
+    </time>
   )
 }

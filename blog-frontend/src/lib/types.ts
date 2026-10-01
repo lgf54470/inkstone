@@ -56,6 +56,8 @@ export interface BlogComment {
   authorUrl?: string
   content: string
   status: 'pending' | 'approved' | 'rejected' | 'spam'
+  /** 博主的回复（FEA-06 写入，FEA-12 在列表里标出）。 */
+  isOwner?: boolean
   ip?: string
   userAgent?: string
   createdAt: number

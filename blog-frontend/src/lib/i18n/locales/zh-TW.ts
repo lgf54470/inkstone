@@ -49,6 +49,7 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'post.meta_reading': '約 {words} 字 / 閱讀需 {minutes} 分鐘',
   'post.views_count': '{views} 次瀏覽',
   'post.thanks_reading': '感謝閱讀本文',
+  'post.related_title': '相關文章',
   'post.thanks_desc': '本文內容由 Inkstone 筆記系統發布並驅動，歡迎在下方發表交流與討論。',
   'post.share_link': '分享連結',
   'post.link_copied': '文章連結已複製到剪貼簿！',
@@ -142,6 +143,19 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'search.key_nav': '導覽: ↑ ↓',
   'search.key_open': '開啟: ↵',
   'search.key_esc': '離開: ESC',
+  // Shareable search page (FEA-12)
+  'search.page_title': '搜尋',
+  'search.page_hint': '輸入關鍵字開始搜尋',
+  'search.page_input_placeholder': '搜尋文章...',
+  'search.page_out_of_range': '這個頁碼沒有結果',
+  'search.page_first': '回到第一頁',
+  'search.page_back': '返回首頁',
+  'search.open_page': '在搜尋頁查看全部結果',
+
+  // Offline fallback (FEA-12)
+  'offline.title': '目前離線',
+  'offline.hint': '網路恢復後重新整理即可繼續閱讀。',
+  'offline.home': '返回首頁',
 
   // Comments Section
   'comments.title': '評論與討論 ({count})',
@@ -160,6 +174,8 @@ export const ZH_TW_MESSAGES: Record<MessageKey, string> = {
   'comments.submitting': '送出中...',
   'comments.loading': '載入評論中...',
   'comments.empty': '暫無評論，來發表第一則評論吧！',
+  'comments.author_badge': '作者',
+  'comments.reply_indicator': '回覆',
   'comments.success_approved': '評論發布成功！',
   'comments.success_moderated': '評論送出成功！作者啟用了留言審核機制，審核通過後將公開顯示。',
   'comments.error_required': '請填寫稱呼、電子郵件與評論內容',

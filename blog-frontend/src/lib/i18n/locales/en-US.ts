@@ -49,6 +49,7 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'post.meta_reading': '~{words} words / {minutes} min read',
   'post.views_count': '{views} views',
   'post.thanks_reading': 'Thank you for reading',
+  'post.related_title': 'Related Posts',
   'post.thanks_desc': 'Published and powered by Inkstone note system. Join discussions and comment below.',
   'post.share_link': 'Share Link',
   'post.link_copied': 'Post link copied to clipboard!',
@@ -142,6 +143,19 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'search.key_nav': 'Navigate: ↑ ↓',
   'search.key_open': 'Open: ↵',
   'search.key_esc': 'Exit: ESC',
+  // Shareable search page (FEA-12)
+  'search.page_title': 'Search',
+  'search.page_hint': 'Type a keyword to search',
+  'search.page_input_placeholder': 'Search posts...',
+  'search.page_out_of_range': 'No results on this page number',
+  'search.page_first': 'Back to the first page',
+  'search.page_back': 'Back to home',
+  'search.open_page': 'See all results on the search page',
+
+  // Offline fallback (FEA-12)
+  'offline.title': 'You are offline',
+  'offline.hint': 'Refresh once the network is back to keep reading.',
+  'offline.home': 'Back to home',
 
   // Comments Section
   'comments.title': 'Comments & Discussions ({count})',
@@ -160,6 +174,8 @@ export const EN_US_MESSAGES: Record<MessageKey, string> = {
   'comments.submitting': 'Submitting...',
   'comments.loading': 'Loading comments...',
   'comments.empty': 'No comments yet. Be the first to comment!',
+  'comments.author_badge': 'Author',
+  'comments.reply_indicator': 'Reply',
   'comments.success_approved': 'Comment published successfully!',
   'comments.success_moderated': 'Comment submitted! The author has enabled comment moderation; it will appear after review.',
   'comments.error_required': 'Please fill in your name, email, and comment content',
