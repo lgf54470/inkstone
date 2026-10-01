@@ -20,7 +20,7 @@
 | 批次 | 主题 | 覆盖条目 | 代价 | 状态 |
 | :--- | :--- | :--- | :--- | :--- |
 | **R2-0** | 文档基线 | 本报告与执行计划 | 极低 | `[x]` 已提交 (`48e645b5`) |
-| **R2-1** | 分页语义正确性 | N-01, N-02, N-03 | 中 | `[~]` 进行中（N-01 已提交 `3f16c100`；其余批次的页数断言以 N-01 为新基线） |
+| **R2-1** | 分页语义正确性 | N-01, N-02, N-03 | 中 | `[~]` 进行中（N-01 `3f16c100`、N-02 `f8f2602d` 已提交；其余批次的页数断言以 N-01 为新基线，N-02 让超页单块的页数整体位移） |
 | **R2-2** | 安全与链接处理 | N-07, N-08, N-09, N-10 | 小-中 | `[ ]` 待办 |
 | **R2-3** | 演讲者模式完整交付 | N-04, N-05, N-06, N-26 | 中-高 | `[ ]` 待办 |
 | **R2-4** | 信息层 / a11y / 合规残留 | N-11, N-13, N-16, N-12, N-14, N-19, N-15, N-20, N-21, N-22, N-30 | 中 | `[ ]` 待办（顺带解 L-1 的 axe 红） |
@@ -41,8 +41,8 @@
   - 验证：表驱动差分基座 22 种写法 × 16 种上文（空行/段落/多行段落/ATX/列表/有序列表/嵌套列表/引用/表格/闭合围栏/图片/`<div>x</div>`/裸标签/独行内联标签/内联标记行/未闭合注释）共 352 例，切页期望**直接由 app 自己的 `renderMarkdown()` 是否输出 `<hr>` 推出**，不写死手抄表；同一 describe 再加四条具名断言（setext 短横线、setext 等号、缩进超段的惰性续行不成标题、HTML 块在空行处闭合）。本文件实测由 100 例增至 421 例，演示模式目录 23 个测试文件 702 例全绿。施工前先量旧实现：同一 352 组矩阵里旧分页器与渲染器判定**不一致 118 组**，新实现 **0 组**。变异 9 项全部被具名用例杀死（M1 只认连字符 49 红 · M2 需四符号 116 红 · M3 出格行仍折叠 18 红 · M4 空格分隔也折叠 8 红 · M5 空行不闭合 HTML 块 1 红 · M6 惰性行仍开块 13 红 · M7 块级标签不吞 12 红 · M8 制表符按 1 列 8 红 · M9 列表记号不记列 13 红）。
   - 代价：中（改动本身小，难在差分基线要重跑）
   - 落地取舍与残留：没有采纳报告方案 3「分页时向渲染器要一次 `hr` 判定」，因为 B3-12 刻意让分页保持不复用渲染器的独立逐行状态机（把 markdown-it 拉进分页等于让分页承担渲染管线的成本与耦合）；改为「分页器内一份谓词 + 以渲染器为或轴的差分基座」，漂移仍会被测试钉住。已知残留：空行之后嵌套列表的**再缩进**分隔线（`  - item` → 空行 → 四空格 `----`）仍判为惰性行不切页——本状态机只在段落开着时记容器列，不维护列表栈；该写法在真实 deck 里未见，留作记录，不另开条目。
-- [ ] **N-02** 超大单块整体缩排而不续页（`中`）
-  - 涉及文件：`slide-pagination.ts`、`slide-canvas.tsx`、`slide-pagination.test.ts`
+- [x] **N-02** 超大单块整体缩排而不续页（`中`）— 已提交 `f8f2602d`
+  - 涉及文件：`slide-pagination.ts`（新 `MIN_FIT_SCALE`、`continuationBands()`，`SlideBlock.breaks` 与 `SlidePage.clip`，`samePlan` 比 clip）、`slide-canvas.tsx`（`slideBreakOffsets()`/`breakUnits()` 读 `<tr>`/`<li>`/代码行的真实顶边，`applySlidePage()` 把内量写到块上）、`slide-html.ts`（`applySliceBand()`：缩略图/打印/演讲者窗走同一页）、`slide-pagination.test.ts`、`slide-canvas.test.ts`、`slide-slice.test.ts`、新 `scripts/measure-slide-fit.mjs`、`scripts/check-i18n.mjs`、`scripts/check-comments.mjs`
   - 目标：给缩放设下限 `MIN_FIT_SCALE`（取投影可读的比值，落地前按报告 §十 实测确认）；低于下限改走「块内续页」——表格按 `<tr>`、代码块按行、列表按 `<li>` 断。
   - 验证：构造超界表格/代码块/列表三类各一例，断言不再出现低于下限的 scale，且续页后总页数与页序确定。
   - 代价：中 · 依赖：N-01
@@ -267,3 +267,8 @@
   - 变异在案：9 项变异全部被具名用例杀死（红数 49/116/18/8/1/13/12/8/13），详见 N-01 验证行；跑完按字节还原（`md5sum` 与变异前一致 `1fe68356…`），临时脚本 `mutation-n01.mjs` 与探针 `probe-*.ts` 已删。
   - 门禁在案：`typecheck` 通过；静态门禁 13 项全绿（`style`/`size`/`escape`/`empty-catch`/`hardcoded`/`tokens`/`i18n`/`module-state`/`deep-imports`/`surfaces`/`vendor`/`budget`/`comments`，其中 `size:check` 先因新 describe 超 50 行报红，改为把表数据与 `parityNote()` 提到模块作用域后转绿，未动基线）；`npm run test:unit` 全量 **617 文件 / 5939 通过 + 1 跳过 / 0 失败**（本轮未出现台账记录的负载敏感超时）；提交钩子另跑 `vitest related` 18 文件 / 557 例全绿。
   - 未做：本条**没有**跑 `test:e2e` / `e2e-visual.mjs` / `contrast:check`（按计划约定重型门禁按批次跑，留待 R2-1 批次收尾，届时页数基线随 N-02/N-03 整体位移一起复测）；`README` 两版的分隔线说明已随本条改写，未另立 `features/presentation/README.md`。
+- 2026-10-02 · R2-1 / N-02（`f8f2602d`）：超页单块从「整体缩排」改为「按自带单元续页」。`slide-pagination.ts` 加 `MIN_FIT_SCALE` 与 `continuationBands()`——低于下限、且每个单元都装得下一页时，把该块切成若干 `[start, end]` 带，一页仍是 `{from, to: from + 1, top: pageTop + start}` 再加 `clip`；`slide-canvas.tsx` 的 `readSlideGeometries()` 用 host 的 `rect/offsetHeight` 比把 `<tr>`/`<li>` 的真实顶边（代码块按 `pre` 行均分）换算成设计 px 交给 `breaks`；放映面沿用「外层平移 + `visibility`」，只多写一条块上的 `clip-path`，切片面（缩略图 / 打印 / 演讲者窗）在 `slide-html.ts` 的 `applySliceBand()` 里带同一条内量并自平移，逐页与放映一致。
+  - 实测在案（补 §十 N-02 那条 `[需实测]`，先量后改）：新建 `scripts/measure-slide-fit.mjs`，在 `1920×1080` 真实放映里走页。改前三块 `scale` 与落地字号 = `0.054 / 1.84 css px`（表 11 672 设计 px）、`0.075 / 2.06`（代码 8 451）、`0.064 / 2.40`（列表 9 810），页 632，基准正文 28 设计 px，舞台 1.331。`MIN_FIT_SCALE = 0.64` 即「投影正文地板 18 设计 px ÷ 实测 28 设计 px」，不是拍的比值。改后同夹具重跑：51 页（表 21 / 代码 14 / 列表 16），每页 `scale=1.000` 且块上写了 `clip`，落地字号 `33.92 / 27.58 / 37.27 css px`；断点落在真实行/项顶边（表带 581.1 设计 px = 10 行，列表带 619.1 = 14 项，代码带 624.0），单元实测 57.6 / 32.3 / 44.2 设计 px。
+  - 变异在案：13 项变异最终全部被具名用例杀死（红数 4/1/4/4/1/4/1/2/1/3/1/2/2，控制运行 47 例先绿）。**M2（去掉「本块独占一页」条件）首轮存活**——没有用例覆盖「块与块重叠且首块超页」，补 `keeps shrinking when a block sits inside the one that overflows` 一条后复跑才被杀死；电池跑完按字节还原（`restored-clean: true`）。顺带删掉 `continuationBands()` 里 `units.length === 0` 的早退：它已被「单元间隙比页高就回退缩放」那条判定包含，删除后 28 例仍全绿，即证明该判定承重（`铁律 5` 不留重复兜底）。
+  - 门禁在案：`typecheck` 通过；13 项静态门禁全绿（`size:check` 先因新 describe 87 行 > 50 报红 → `rows()` 提到模块作用域并按「能续页 / 切不动」拆两个 describe 后转绿，**未动基线**；`i18n:check` 先因量测脚本里的双语控件名报红 → 按 `measure-kanban`/`measure-music` 既有先例把该脚本登记进 `check-i18n.mjs` 的 `localizedFixtureFiles` 并写明理由）；`npm run test:unit` 全量 **617 文件 / 5954 通过 + 1 跳过 / 0 失败**；演示目录 23 文件 **717** 例全绿（N-01 时 702，本条 +15）；提交钩子另跑 `vitest related` 16 文件 / 158 例全绿。
+  - 落地取舍与残留：续页用 `clip-path` 内量而不是给每页加 `fit` 值，因为内量随 `outerHTML` 一起序列化，缩略图 / 打印 / 演讲者窗自动与放映同页；切不过去的三种情形（无单元可断、单元比页高、块与块重叠）退回整体缩放，不静默丢内容。`slideBreakOffsets()`/`breakUnits()` 读真实几何，jsdom 无布局故**没有** jsdom 用例，由量测脚本在浏览器里守住；切片面的 `clip-path` 渲染同样只能由真实浏览器验，留给 R2-1 批次收尾的 `e2e-visual.mjs`。本条**没有**跑 `test:e2e` / `e2e-visual.mjs` / `contrast:check`。`scripts/measure-slide-fit.mjs` 与同类手量表脚本一样不进 CI，它在 `AGENTS.md`「手动验收脚本」清单里的那一行，与 `AGENTS.md:372` 的断言数一起留给收尾 L-2 单独 `docs` 提交，不在功能提交里夹带。

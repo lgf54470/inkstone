@@ -605,7 +605,7 @@
 
 | 条目 | 未证实的部分 | 建议测法 | 判定阈值来源 |
 | :-- | :-- | :-- | :-- |
-| N-02 | 「超大单块缩排后在 1080p  projector 上不可读」的实际缩放比 | 造一个 8000px 高的单块 slide，读 `scales[from]` 与最终 `transform` | 需要新阈值（正文最小可读字号） |
+| N-02 | 「超大单块缩排后在 1080p  projector 上不可读」的实际缩放比 | 造一个 8000px 高的单块 slide，读 `scales[from]` 与最终 `transform` | 需要新阈值（正文最小可读字号）→ **已实测（`f8f2602d`，`scripts/measure-slide-fit.mjs` @1920×1080）**：200 行表 11 672 设计 px 落在 632 px 页上得 `scale=0.054`、投影正文 1.84 css px；代码块 0.075 / 2.06、列表 0.064 / 2.40。阈值取「投影正文地板 18 设计 px ÷ 实测画布正文 28 设计 px」= `MIN_FIT_SCALE = 0.64` |
 | N-24 | PNG 导出的真实内存峰值与耗时量级 | `measure-deck-export.mjs`：对 20 / 60 / 150 页各跑一遍，记 `performance.memory` 峰值、总时长、最坏单帧 | 需要新预算 |
 | N-27 | 跟随模式一次击键的实际 JS 耗时与「4 遍全篇扫描」是否可在 60fps 内感知 | 复用 `measure-preflight.mjs` 的窗口法，对 200KB 笔记逐键输入 | 现有 `SLICE_BUDGET_MS` 可作对照 |
 | N-28 | 一次换页 / 一片量测让多少列表项重跑、单次提交实际多长 | React Profiler + `PerformanceObserver('longtask')`，同 `measure-kanban.mjs` 的 `WORST_TASK_MAX` 口径 | 该脚本已有 50ms 口径可沿用 |
