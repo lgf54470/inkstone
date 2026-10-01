@@ -44,6 +44,8 @@ Note bodies split into slides on `---` rules. A note written without any `---` s
 
 A show follows the note it was started from, so an edit — including one arriving from another tab, another device, or an MCP write — lands on the projector. "Freeze this snapshot" pins the deck to what is on screen for the actual talk.
 
+A private cue stays off the projector. A line beginning with `<!-- note: ` or `<!-- speaker: ` (up to three spaces of indent) is read as that slide's speaker note, and every line the cue spans until its `-->` is removed from what the show paints; the note belongs to the slide the cue sits in, and the deck carries it next to the slide. A cue nobody closed stays private to the end of the note, the way the reader already drops an unclosed comment. A cue inside a fenced block is left as written, because a block that demos the syntax is there to be seen.
+
 | Key | Action |
 | --- | --- |
 | `Ctrl/Cmd+Alt+P` | Start the show on the note you are editing, from anywhere — including inside the editor, where the caret decides which slide opens |

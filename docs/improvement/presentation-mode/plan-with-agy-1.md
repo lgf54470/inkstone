@@ -20,7 +20,7 @@
 | **批次 1** | 核心架构、安全守卫与 A11y 红线 (P0/P1) | P-01, P-02, P-03, P-06, P-07, P-08 | `[x]` 已完成 (`bfa28129` ~ `3250081d`) |
 | **批次 2** | 演说交互体验与视觉信息强化 (P1) | P-04, P-05, P-09, P-10, P-11 | `[x]` 已完成 (`bbe158b8` ~ `c6426131`) |
 | **批次 3** | 阶段三：导航强化、合规收尾与性能深度治理 (P2) | P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23 | `[x]` 已完成 (`5f02e2d4` ~ `decd0c8d`，B3-01 ~ B3-12) |
-| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[ ]` 待处理 |
+| **批次 4** | 阶段四：旗舰演说生态对齐 (P3) | P-24, P-25, P-26, P-27, P-28 | `[~]` 进行中（B4-01 已提交，其哈希由 B4-02 回填） |
 
 ---
 
@@ -152,11 +152,12 @@
 
 ## 批次 4 · 阶段四：旗舰演说生态对齐 (P3)
 
-- [ ] **B4-01** `P-24 (FEAT-03)`: 演讲私有备注语法支持 (`<!-- note: ... -->`)
-  - 涉及文件：`src/client/features/presentation/slide-html.ts`、`src/client/features/presentation/slides.ts`
-  - 目标：抽取 `<!-- note: ... -->` 作为 Slide 演说备注元数据，正文展示时剔除该块防止公屏泄露。
-  - 方案：在流水线中正则解析抽取备忘小抄，从投影 HTML 中安全剥离，并将备注内容保留在 Slide 元数据结构中。
-  - 验证：单元测试验证投影 HTML 纯净无备注注释，且返回数据中包含正确的私有备注文本。
+- [x] **B4-01** `P-24 (FEAT-03)`: 演讲私有备注语法支持 (`<!-- note: ... -->`) — 已完成（哈希由下一提交回填）
+  - 涉及文件：`src/client/features/presentation/slides.ts`、`src/client/features/presentation/slides.test.ts`、`README.md`、`README_ZH.md`
+  - 目标：`<!-- note: ... -->` / `<!-- speaker: ... -->` 读作该页幻灯片的私有备注，放映与导出画面均不出现其内容，备注作为 Slide 元数据成对可取。
+  - 方案：抽取放在分页**之前**（`buildDeck` 前置一步 `readSpeakerNotes` 逐行走查），而非评审草案提议的「对整篇源码跑 `[\s\S]*?` 正则再替换」——草案写法会把跨行备注在其中的 `---` 处截断，剩下半截作为正文投出去，反而是新的泄露面。逐行状态机同时避开三种误认：围栏之内（演示该语法的代码块原样保留、不当备注）、front matter 之内（元数据里的同类写法不是备注，且不参与栅栏状态推断）、行首 ≥4 空格（Markdown 读作代码块）。整行归备注时删该行并连带删掉它上面的那个空行（否则幻灯片里留一个空洞）；`-->` 之后的文字属作者正文，保留。未闭合的备注一路私有到文末，与 Markdown 阅读器丢弃未闭合注释的既有行为一致。备注按行号归页：`noteLimit` 让分割线自己的行归上一页、标题行归它开启的那一页；`placeCues` 把「吞掉尾部所有行」的备注落到正文最后的现存行，避免尾部空白页被裁掉时备注一并消失；末组的右界取 `Infinity`，因为该组可能已无任何行可站。
+  - 与草案的偏差（实测纠偏）：评审前提「备忘内容会直接投射到大屏」**不成立**——渲染器 `html: true` 产出的注释节点在 DOMPurify 一道就被丢弃，投影里本来就看不见。评审点名的 `slide-html.ts` 因此不动：剔除发生在分页时而不是渲染时，`use-slide-html` / `slide-canvas` / `slide-rail` / `deck-print` 四条渲染入口自动同步，无需各改一处。本项的实际收益因此是：(1) 修掉草案正则的跨行截断面；(2) 把备注提为与 `splitIntoSlides` 同序的 Slide 元数据（`splitIntoSlidesWithNotes`），供 B4-05 演讲者窗口直接读取。草案中的「演讲备注面板 UI」不在本项交付，归 B4-05；本项只交付语法识别 + 剔除 + 元数据，`notes` 半边在 B4-05 之前无生产消费者（同一批次内两步走，不为尚未到来的面板预铺 plumbing）。
+  - 验证：`slides.test.ts` 52 例（新增 `splitIntoSlides — private speaker cues` 一组 21 例：单行、多行合并、`speaker:` 别名、大小写、`<!--note:` 贴合写法、行首四空格不识别、围栏内保留、`---` 写在备注内不分页、`-->` 后正文保留、未闭合私有到文末、备注独占一页、整篇只有一条备注、备注与分割线同行、备注吞掉分页后的尾部、front matter 不当备注、front matter 不开栅栏、光标越过备注仍落对页）。既有笔记零回归由 184 条差分断言证明：60 条不含备注的输入下，新实现与 `HEAD` 旧实现的 slides 数组与逐字符偏移的 `findSlideIndexByOffset` 完全一致，且 notes 全为空串；21 条含备注输入再各自断言「围栏外无备注文本/备注正文完整/不留空白尾页」。25 项变异全部被具名用例杀死（`NOTE_OPEN` 的缩进、大小写、空格三档放宽或收紧，`takeNote` 的删行与不删行与错行，`placeCues` 的上界与整体移除，`noteLimit` 的 `+1`，末组 `Infinity` 退回 `lines.length`，front matter 跳过条件失效等）。无新增 UI 文案，i18n 资源无变化。
 - [ ] **B4-02** `P-25 (FEAT-04)`: 虚拟激光笔与聚光灯 (L)
   - 涉及文件：`src/client/features/presentation/presentation-overlay.tsx`、`src/client/features/presentation/presentation-stage.tsx`、`src/client/features/presentation/presentation-keys.ts`
   - 目标：按 `L` 键激活虚拟红光激光笔，大屏投映时高亮引导视觉焦点。

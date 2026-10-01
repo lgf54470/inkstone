@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findSlideIndexByOffset, splitIntoSlides } from './slides'
+import { findSlideIndexByOffset, splitIntoSlides, splitIntoSlidesWithNotes } from './slides'
 
 describe('splitIntoSlides — separators and code fences', () => {
   it('returns the whole note as a single slide when there is no separator', () => {
@@ -123,7 +123,125 @@ describe('splitIntoSlides — the declared slide-level property', () => {
   })
 })
 
+describe('splitIntoSlides — private speaker cues', () => {
+  it('keeps a one-line cue out of every slide and returns it as that slide’s note', () => {
+    const source = '# A\n\npoint\n\n<!-- note: pause here -->\n\n# B\n\npoint'
+    expect(splitIntoSlides(source)).toEqual(['# A\n\npoint', '# B\n\npoint'])
+    expect(splitIntoSlidesWithNotes(source).notes).toEqual(['pause here', ''])
+  })
+
+  it('joins a multi-line cue into one note and removes every line it spans', () => {
+    const source = '# A\n\n<!-- note:\npause here\nemphasise the number\n-->\n\npoint'
+    expect(splitIntoSlides(source)).toEqual(['# A\n\npoint'])
+    expect(splitIntoSlidesWithNotes(source).notes).toEqual(['pause here\nemphasise the number'])
+  })
+
+  it('reads a `speaker:` cue the same way as a `note:` one', () => {
+    expect(splitIntoSlidesWithNotes('# A\n\n<!-- speaker: bring up the chart -->\n\nx').notes).toEqual(['bring up the chart'])
+  })
+
+  it('reads a cue written tight against the comment markers, with no spaces', () => {
+    expect(splitIntoSlidesWithNotes('# A\n\n<!--note:tight -->\n\n# B')).toEqual({ slides: ['# A', '# B'], notes: ['tight', ''] })
+  })
+
+  it('reads an uppercased marker the same way as a lowercased one', () => {
+    expect(splitIntoSlidesWithNotes('# A\n\n<!-- NOTE: shout -->\n\n# B').notes).toEqual(['shout', ''])
+  })
+
+  it('leaves a cue line indented by four spaces alone, since markdown reads it as a code block', () => {
+    const source = '# A\n\n    <!-- note: shown -->\n\n# B'
+    expect(splitIntoSlidesWithNotes(source)).toEqual({ slides: ['# A\n\n    <!-- note: shown -->', '# B'], notes: ['', ''] })
+  })
+})
+
+describe('splitIntoSlides — what a cue takes out of the slide', () => {
+  it('keeps a fence written inside a cue private instead of opening a block', () => {
+    const source = '# A\n\n<!-- note:\n```\ncue\n-->\n\npoint'
+    expect(splitIntoSlidesWithNotes(source)).toEqual({ slides: ['# A\n\npoint'], notes: ['```\ncue'] })
+  })
+
+  it('keeps a blank line inside a cue, so a list written there stays a list', () => {
+    const source = '# A\n\n<!-- note:\nfirst\n\nsecond\n-->\n\npoint'
+    expect(splitIntoSlidesWithNotes(source).notes).toEqual(['first\n\nsecond'])
+  })
+
+  it('keeps prose written after the closing marker in the slide', () => {
+    const source = '# A\n\n<!-- note: cue --> visible\n\npoint'
+    expect(splitIntoSlides(source)).toEqual(['# A\n\n visible\n\npoint'])
+    expect(splitIntoSlidesWithNotes(source).notes).toEqual(['cue'])
+  })
+
+  it('keeps an unclosed cue private to the end of the note, the way the reader already drops it', () => {
+    const source = '# A\n\npoint\n\n<!-- note: forgot to close\n\n# B\n\nmore'
+    expect(splitIntoSlidesWithNotes(source)).toEqual({
+      slides: ['# A\n\npoint'],
+      notes: ['forgot to close\n\n# B\n\nmore'],
+    })
+  })
+})
+
+describe('splitIntoSlides — what is never a cue', () => {
+  it('leaves a cue inside a fenced block in the slide, since the block demos the syntax', () => {
+    const source = '# A\n\n```md\n<!-- note: not a cue -->\n```\n\npoint'
+    expect(splitIntoSlides(source)).toEqual(['# A\n\n```md\n<!-- note: not a cue -->\n```\n\npoint'])
+    expect(splitIntoSlidesWithNotes(source).notes).toEqual([''])
+  })
+
+  it('reads front matter as metadata, never as a cue', () => {
+    const source = '---\n<!-- note: hidden -->\ntitle: Deck\n---\nSome prose\n\nmore prose'
+    expect(splitIntoSlidesWithNotes(source)).toEqual({ slides: ['Some prose\n\nmore prose'], notes: [''] })
+  })
+
+  it('does not let front matter open a fenced block and hide the body', () => {
+    const source = '---\ndescription: |\n  ```\n---\n\n# A\n\n<!-- note: cue -->'
+    expect(splitIntoSlidesWithNotes(source)).toEqual({ slides: ['# A'], notes: ['cue'] })
+  })
+})
+
+describe('splitIntoSlides — which slide carries a cue', () => {
+  it('collects several cues of one slide in the order they are written', () => {
+    const source = '# A\n\n<!-- note: first -->\n\npoint\n\n<!-- note: second -->'
+    expect(splitIntoSlides(source)).toEqual(['# A\n\npoint'])
+    expect(splitIntoSlidesWithNotes(source).notes).toEqual(['first\n\nsecond'])
+  })
+
+  it('stops a rule written inside a cue from splitting the deck', () => {
+    const source = '# A\n\n<!-- note:\n---\n-->\n\n# B'
+    expect(splitIntoSlidesWithNotes(source)).toEqual({ slides: ['# A', '# B'], notes: ['---', ''] })
+  })
+
+  it('keeps a cue-only slide as a blank page that still carries its note', () => {
+    const source = '# A\n\n---\n\n<!-- note: breathe -->\n\n---\n\n# B'
+    expect(splitIntoSlidesWithNotes(source)).toEqual({ slides: ['# A', '', '# B'], notes: ['', 'breathe', ''] })
+  })
+
+  it('keeps the cue of a note whose whole body is one cue', () => {
+    expect(splitIntoSlidesWithNotes('<!-- note: breathe -->')).toEqual({ slides: [''], notes: ['breathe'] })
+  })
+
+  it('keeps a cue that starts the body and never closes, so it swallows the deck', () => {
+    const source = '---\ntitle: Deck\n---\n\n<!-- note: forgot to close\n\n# A'
+    expect(splitIntoSlidesWithNotes(source)).toEqual({ slides: [''], notes: ['forgot to close\n\n# A'] })
+  })
+
+  it('counts a cue typed on the same line as a separator toward the slide above', () => {
+    const source = '# A\n\n<!-- note: cue --> ---\n\n# B'
+    expect(splitIntoSlidesWithNotes(source)).toEqual({ slides: ['# A', '# B'], notes: ['cue', ''] })
+  })
+
+  it('keeps a cue that swallows the tail of a divided deck', () => {
+    const source = '# A\n\n---\n\n<!-- note: after the divider\n# B'
+    expect(splitIntoSlidesWithNotes(source)).toEqual({ slides: ['# A'], notes: ['after the divider\n# B'] })
+  })
+})
+
 describe('findSlideIndexByOffset', () => {
+  it('maps a caret past a cue onto the slide the cue belongs to', () => {
+    const source = '# A\n\npoint\n\n<!-- note: pause here -->\n\n# B\n\npoint'
+    expect(findSlideIndexByOffset(source, source.indexOf('pause here'))).toBe(0)
+    expect(findSlideIndexByOffset(source, source.indexOf('# B'))).toBe(1)
+  })
+
   it('returns 0 for negative or zero offset or single-slide note', () => {
     expect(findSlideIndexByOffset('# Single\n\nSlide', 0)).toBe(0)
     expect(findSlideIndexByOffset('# Single\n\nSlide', -5)).toBe(0)
