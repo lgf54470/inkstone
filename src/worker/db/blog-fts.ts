@@ -212,3 +212,92 @@ export async function drainAllBlogFtsQueues(db: D1Database, maxUsers = 20): Prom
   }
   return processed
 }
+
+// The rows an index may not keep: one whose post is gone. A post in the bin keeps its row — the bin
+// can restore it, and the public read filters it out anyway — so only a purge makes an orphan.
+const BLOG_FTS_ORPHAN_SQL = `NOT EXISTS (SELECT 1 FROM blog_posts p
+  WHERE p.id = blog_posts_fts.post_id AND p.user_id = ?1)`
+
+export interface BlogFtsIndexAudit {
+  posts: number
+  rows: number
+  indexed: number
+  duplicateRows: number
+  orphanRows: number
+}
+
+/** Counts what the index holds against what it should hold, per account. */
+export async function auditBlogFtsIndex(db: D1Database, userId: string): Promise<BlogFtsIndexAudit> {
+  const posts = await db
+    .prepare(`SELECT COUNT(*) AS n FROM blog_posts WHERE user_id = ?1`)
+    .bind(userId)
+    .first<{ n: number }>()
+  const rows = await db
+    .prepare(
+      `SELECT COUNT(*) AS rows, COUNT(DISTINCT post_id) AS indexed,
+              COUNT(*) - COUNT(DISTINCT post_id) AS duplicates
+         FROM blog_posts_fts WHERE user_id = ?1`,
+    )
+    .bind(userId)
+    .first<{ rows: number; indexed: number; duplicates: number }>()
+  const orphans = await db
+    .prepare(`SELECT COUNT(*) AS n FROM blog_posts_fts WHERE user_id = ?1 AND ${BLOG_FTS_ORPHAN_SQL}`)
+    .bind(userId)
+    .first<{ n: number }>()
+  return {
+    posts: posts?.n ?? 0,
+    rows: rows?.rows ?? 0,
+    indexed: rows?.indexed ?? 0,
+    duplicateRows: rows?.duplicates ?? 0,
+    orphanRows: orphans?.n ?? 0,
+  }
+}
+
+/** How many drain passes one rebuild makes before leaving the rest to the regular drains. */
+const BLOG_FTS_REBUILD_DRAIN_ROUNDS = 100
+
+/**
+ * The repair path. Every post of the account is re-enqueued — not only the ones that look stale,
+ * because an index that lost queue rows has nothing to tell a stale row from a fresh one — and the
+ * queue is drained without the write delay, so an operator does not wait out the ten seconds a
+ * just-queued write would normally sit. What no post owns is dropped, and the result is audited:
+ * reporting a finished rebuild over a drifted index is the silence this path exists to break.
+ */
+export async function rebuildBlogFtsIndex(db: D1Database, userId: string): Promise<number> {
+  const queued = await enqueueAllBlogPosts(db, userId)
+  for (let round = 0; round < BLOG_FTS_REBUILD_DRAIN_ROUNDS; round++) {
+    if (!(await drainBlogFtsQueue(db, userId, BLOG_FTS_DRAIN_ALL_BATCH, true))) break
+  }
+  await db.prepare(`DELETE FROM blog_posts_fts WHERE user_id = ?1 AND ${BLOG_FTS_ORPHAN_SQL}`).bind(userId).run()
+  const audit = await auditBlogFtsIndex(db, userId)
+  if (audit.duplicateRows || audit.orphanRows) {
+    throw new Error(
+      `The blog full text index did not converge: ${audit.duplicateRows} rows beyond the first for their post, ` +
+      `${audit.orphanRows} rows whose post is gone, ${audit.indexed} of ${audit.posts} posts indexed`,
+    )
+  }
+  return queued
+}
+
+/**
+ * Every row of `blog_posts`, trashed ones included: the bin can put a post back and a restore does
+ * not enqueue one, so the index keeps a row from the moment the post is written until the moment
+ * it is purged. The upsert is the monotonic one the write path uses, so a newer write keeps its
+ * version and the drain that entry feeds is the one that will win.
+ */
+async function enqueueAllBlogPosts(db: D1Database, userId: string): Promise<number> {
+  const result = await db
+    .prepare(
+      `INSERT INTO blog_fts_queue (user_id, post_id, kind, created_at)
+       SELECT user_id, id, 'upsert', ?2 FROM blog_posts WHERE user_id = ?1
+       ON CONFLICT(user_id, post_id) DO UPDATE SET
+         kind = excluded.kind,
+         created_at = CASE
+           WHEN excluded.created_at > blog_fts_queue.created_at THEN excluded.created_at
+           ELSE blog_fts_queue.created_at + 1
+         END`,
+    )
+    .bind(userId, Date.now())
+    .run()
+  return result.meta.changes ?? 0
+}

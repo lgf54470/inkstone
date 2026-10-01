@@ -188,6 +188,9 @@ export const share = {
   blog: {
     stats: (signal?: AbortSignal) =>
       request<{ stats: BlogStats }>('/api/blog/stats', { signal }),
+    /** The repair path for the public search index: re-enqueues every post and drains the queue now. */
+    reindexSearch: () =>
+      request<{ ok: true; indexed: number }>('/api/blog/search/reindex', { method: 'POST' }),
     analytics: (
       range: ShareTimelineRange = '7d',
       filters?: { excludeBots?: boolean; excludeSelf?: boolean; excludeOwner?: boolean },

@@ -7,6 +7,7 @@ import { registerBlogMediaRoutes } from './media'
 import { registerBlogOrganizerRoutes } from './organizer'
 import { registerBlogPostsRoutes } from './posts'
 import { registerBlogPublicRoutes } from './public'
+import { registerBlogReindexRoutes } from './reindex'
 import { registerBlogSettingsRoutes } from './settings'
 import { registerBlogStatsRoutes } from './stats'
 import { registerBlogTrashRoutes } from './trash'
@@ -24,6 +25,7 @@ registerBlogSettingsRoutes(blogManageRoutes)
 registerBlogPostsRoutes(blogManageRoutes)
 registerBlogTrashRoutes(blogManageRoutes)
 registerBlogOrganizerRoutes(blogManageRoutes)
+registerBlogReindexRoutes(blogManageRoutes)
 registerBlogCommentsRoutes(blogManageRoutes)
 registerBlogLinksRoutes(blogManageRoutes)
 registerBlogMediaRoutes(blogManageRoutes)

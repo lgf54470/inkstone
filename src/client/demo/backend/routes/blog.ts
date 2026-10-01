@@ -54,6 +54,10 @@ function registerBlogMetaRoutes(app: Hono, data: BlogDemoData): void {
     const post = data.posts.find((item) => item.noteId === c.req.param('noteId')) ?? null
     return c.json({ post })
   })
+
+  // The demo searches its own posts directly, so the repair path reports the count it would search:
+  // there is no separate index to rebuild.
+  app.post('/api/blog/search/reindex', (c) => c.json({ ok: true as const, indexed: data.posts.length }))
 }
 
 function registerBlogSettingsRoutes(app: Hono, data: BlogDemoData): void {

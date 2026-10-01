@@ -2722,6 +2722,8 @@ const allowed = new Map([
     '/**\n * The demo\'s single-post drilldown (FEA-09), derived from the same synthetic numbers the global\n * payload draws: the post\'s own views drive the totals and the timeline, the breakdown lists are the\n * demo\'s fixed audience, and the visit tail is the demo visits that landed on this post.\n */',
   ]],
   ['src/client/demo/backend/routes/blog.ts', [
+    '// The demo searches its own posts directly, so the repair path reports the count it would search:',
+    '// there is no separate index to rebuild.',
     '/** The same split the real route makes: the list carries no body, the index carries no statistics. */',
     '/** The demo backend hands the same SEO shape back that the real one stores (FEA-02). */',
     '/** The same split the real route makes: counts ignore the status tab so every tab\'s size is real. */',
@@ -8378,6 +8380,7 @@ const allowed = new Map([
     '/** `document.referrer`, when the visitor\'s browser sent one. */',
     '/** The `?ref=` marker from the visitor\'s own URL, forwarded so the worker can record it. */',
     '// A long document.referrer must not turn into a 400 for a legitimate viewer; the server caps at the same length.',
+    '/** The repair path for the public search index: re-enqueues every post and drains the queue now. */',
     '/** One post\'s own analytics, the same question the dashboard asks with one post in scope (FEA-09). */',
     '/** The complete body-free post index the note list reads; not paginated by design. */',
   ]],
@@ -13189,6 +13192,12 @@ const allowed = new Map([
     '/**\n * Removes the index row of a post that is gone or asked for deletion. The guard is the queue version:\n * a write that lands in between replaces the queue row, and then this drain no longer owns the index\n * row it was about to touch.\n */',
     '/** Removes the queue row this drain read; a newer write has replaced it and fails the match. */',
     '/**\n * Indexes one queued post. The guards are what make a drain safe to run twice from two requests: the\n * index row is written only while the post still carries the version that was read, and only while\n * the queue row is still the one that was read — a write that lands in between bumps its queue row\'s\n * `created_at`, so this drain no longer matches and the newer entry survives.\n */',
+    '// The rows an index may not keep: one whose post is gone. A post in the bin keeps its row — the bin',
+    '// can restore it, and the public read filters it out anyway — so only a purge makes an orphan.',
+    '/** Counts what the index holds against what it should hold, per account. */',
+    '/** How many drain passes one rebuild makes before leaving the rest to the regular drains. */',
+    '/**\n * The repair path. Every post of the account is re-enqueued — not only the ones that look stale,\n * because an index that lost queue rows has nothing to tell a stale row from a fresh one — and the\n * queue is drained without the write delay, so an operator does not wait out the ten seconds a\n * just-queued write would normally sit. What no post owns is dropped, and the result is audited:\n * reporting a finished rebuild over a drifted index is the silence this path exists to break.\n */',
+    '/**\n * Every row of `blog_posts`, trashed ones included: the bin can put a post back and a restore does\n * not enqueue one, so the index keeps a row from the moment the post is written until the moment\n * it is purged. The upsert is the monotonic one the write path uses, so a newer write keeps its\n * version and the drain that entry feeds is the one that will win.\n */',
   ]],
   ['src/worker/db/fts.ts', [
     '// The rows an index may not keep: one whose note is gone (or trashed), and any row beyond the first',
@@ -14004,6 +14013,9 @@ const allowed = new Map([
     '/**\n * What a reader-facing query may select: not in the trash, published, and its moment has come. The\n * trash arm lives here rather than in each query for the same reason the scheduled arm does — every\n * reader-facing path already carries this one predicate, so a deleted post cannot stay reachable\n * through a route that forgot it.\n */',
     '/** The row a write reads its defaults from. */',
     '/**\n * The moment a write stores. An explicit `publishedAt` wins — that is what scheduling and backdating\n * are — otherwise a draft being published stamps now, and every other write keeps the row\'s own\n * moment.\n */',
+  ]],
+  ['src/worker/routes/blog/reindex.ts', [
+    '/**\n * The operator\'s repair path for the blog search index, shaped like the note one: one run per\n * account at a time (a lease, so a second click cannot start a second drain over the same rows), a\n * small hourly budget, and an answer of how many posts were indexed.\n */',
   ]],
   ['src/worker/routes/blog/revisions.ts', [
     '/**\n * Post history (FEA-05, ADR-0008). The current post row is the newest state; `blog_revisions` holds\n * the states a write replaced. Three write paths snapshot the row they are about to rewrite (the\n * patch route, the `/posts` upsert, `/sync`) and the restore path snapshots what it replaces, so a\n * restore is itself restorable. A snapshot never moves `views`, `published_at`, `created_at` or the\n * recycle-bin column: history is about text.\n */',
@@ -15099,6 +15111,14 @@ const allowed = new Map([
     '// A scheduled post is not in the feed yet, so there is nothing for a subscriber to refetch.',
     '// The same write after the hub is cleared must not reach the network either.',
     '// The post is stored whatever the hub answered.',
+  ]],
+  ['tests/blog-fts-reindex.test.ts', [
+    '/**\n * The blog index has one writer — the queue — so a drifted index is one whose queue rows were lost\n * or whose post moved on without one. The repair path is operator-triggered: every post of the\n * account is re-enqueued, the queue is drained without waiting out the write delay, rows no post\n * owns are dropped, and the result is audited before the route reports success. Without it, an\n * index that lost its rows answers every search with nothing while LIKE would have found the post.\n */',
+    '// The drift a lost queue leaves: nothing is queued, so the search trusts the empty index.',
+    '// The index still holds the old text, so the new term is not there and the old one still is.',
+    '// Indexed but not public while it is in the bin.',
+    '// The repair has to detect a delete that reaches nothing: with `post_id` outside the index the',
+    '// rebuild\'s delete matches no row, so each pass over the post adds another one.',
   ]],
   ['tests/blog-links-routes.test.ts', [
     '/** One published post, so a comment submission has something to be filed under. */',

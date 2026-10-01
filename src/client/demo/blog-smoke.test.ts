@@ -26,6 +26,7 @@ interface RouteProbe {
 // as a silent 404 console flood in demo mode.
 const CLIENT_ROUTES: RouteProbe[] = [
   { path: '/api/blog/stats' },
+  { path: '/api/blog/search/reindex', init: { method: 'POST' } },
   { path: '/api/blog/analytics?range=7d' },
   { path: '/api/blog/analytics?range=7d&excludeBots=true&excludeSelf=true&excludeOwner=true' },
   { path: '/api/blog/analytics/posts/demo-post-1?range=7d' },

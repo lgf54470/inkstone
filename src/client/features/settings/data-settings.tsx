@@ -87,9 +87,10 @@ function useDataActions(store: DataStore, run: RunTask, loadStats: () => void) {
   const restoreBackup = (files: File[]) => run('restore-backup', () => restoreBackupFlow(files, store, loadStats))
   const importFiles = (files: File[]) => run('import', () => importFilesFlow(files, store, loadStats))
   const reindex = () => run('reindex', () => reindexFlow(store))
+  const reindexBlog = () => run('blog-reindex', () => reindexBlogFlow(store))
   const prune = () => run('prune', () => pruneFlow(store, loadStats))
   const trash = () => run('trash', () => trashFlow(store, loadStats))
-  return { exportData, restoreBackup, importFiles, reindex, prune, trash }
+  return { exportData, restoreBackup, importFiles, reindex, reindexBlog, prune, trash }
 }
 
 async function loadStatsFlow({ mountedRef, statsEpoch, setStats, setStatsError }: {
@@ -176,6 +177,16 @@ async function reindexFlow(store: DataStore) {
   try {
     const res = await api.reindex()
     store.toast({ title: t('settings.rebuilt_the_index_for_value0_notes', { value0: res.indexed }), tone: 'success' })
+  }
+  catch (err) {
+    store.toast({ title: t('settings.rebuild_failed'), description: errorMessage(err), tone: 'danger' })
+  }
+}
+
+async function reindexBlogFlow(store: DataStore) {
+  try {
+    const res = await api.blog.reindexSearch()
+    store.toast({ title: t('settings.rebuilt_the_index_for_value0_blog_posts', { value0: res.indexed }), tone: 'success' })
   }
   catch (err) {
     store.toast({ title: t('settings.rebuild_failed'), description: errorMessage(err), tone: 'danger' })
@@ -386,6 +397,9 @@ function MaintenanceSection({ d }: { d: DataState }) {
       <h3 className='mb-1 text-[length:var(--text-11)] font-semibold tracking-[var(--tracking-label)] text-[var(--text-quaternary)]'>{t('settings.maintenance')}</h3>
       <SettingRow title={t('settings.rebuild_search_index')} description={t('settings.try_this_when_your_search_results_don_t_look_right')}>
       <Button size='sm' variant='secondary' icon={<RefreshCw size={13}/>} loading={d.busy === 'reindex'} disabled={d.busy !== null} onClick={d.reindex}>{t('settings.rebuild_index')}</Button>
+      </SettingRow>
+      <SettingRow title={t('settings.rebuild_blog_search_index')} description={t('settings.try_this_when_your_blog_search_results_don_t_look_right')}>
+      <Button size='sm' variant='secondary' icon={<RefreshCw size={13}/>} loading={d.busy === 'blog-reindex'} disabled={d.busy !== null} onClick={d.reindexBlog}>{t('settings.rebuild_index')}</Button>
       </SettingRow>
       <SettingRow title={t('settings.clean_unreferenced_attachments')} description={t('settings.delete_pictures_and_files_that_no_longer_appear_in_any_notes')}>
       <Button size='sm' variant='secondary' icon={<Sparkles size={13}/>} loading={d.busy === 'prune'} disabled={d.busy !== null} onClick={d.prune}>{t('settings.clean_up')}</Button>
