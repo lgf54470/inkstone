@@ -1,6 +1,6 @@
 import type { MutableRefObject } from 'react'
 import type { GraphResponse } from '@shared/types'
-import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, GRAPH_ARROW_SIZE, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA, PHYSICS_FRAME_LIMIT } from './constants'
+import { FALLBACK_ACCENT_COLOR, FALLBACK_BG_COLOR, FALLBACK_EDGE_COLOR, FALLBACK_NODE_COLOR, FALLBACK_TEXT_COLOR, GRAPH_ARROW_SIZE, GRAPH_EDGE_ALPHA, GRAPH_LABEL_ALPHA, GRAPH_LABEL_FONT_SIZE, GRAPH_LABEL_HALO, GRAPH_LABEL_OFFSET, GRAPH_PIN_ALPHA, GRAPH_SETTLE_FRAME, PHYSICS_FRAME_LIMIT } from './constants'
 import { colorGroupsByNodeId, graphLabelVisible, graphNodeLabel, nodeColor, tagColorsByName } from './helpers'
 import type {
   CanvasNode,
@@ -238,37 +238,41 @@ export function createGraphTicker(
         style: style!,
       }
 
-  let settledFired = false
+  let previousFrame = 0
   const schedule = () => { if (!options.state.raf) options.state.raf = requestAnimationFrame(tick) }
   const tick = () => {
     options.state.raf = 0
     renderGraphScene(options)
-    if (!settledFired && (options.state.frame >= 70 || options.state.frame >= PHYSICS_FRAME_LIMIT)) {
-      settledFired = true
-      options.onSettled?.()
-    }
-    if (options.state.frame < PHYSICS_FRAME_LIMIT) schedule()
+    const frame = options.state.frame
+    if (frame >= GRAPH_SETTLE_FRAME && previousFrame < GRAPH_SETTLE_FRAME) options.onSettled?.()
+    previousFrame = frame
+    if (frame < PHYSICS_FRAME_LIMIT) schedule()
   }
   options.state.schedule = schedule
 }
 
 
-export function buildInitialLayout(data: GraphResponse, prefs: GraphPreferences, state: CanvasState): void {
+export function buildInitialLayout(data: GraphResponse, prefs: GraphPreferences, state: CanvasState, previous?: readonly CanvasNode[]): void {
+  const inherited = new Map<string, CanvasNode>()
+  for (const node of previous ?? []) inherited.set(node.id, node)
   const tagColors = tagColorsByName(data.nodes)
   const ruleColors = colorGroupsByNodeId(data.nodes, prefs.colorGroups)
   state.nodes = data.nodes.map((node, index) => {
+    const before = inherited.get(node.id)
     const angle = index * 2.399963
     const radius = 18 * Math.sqrt(index)
-    return {
+    const laidOut: CanvasNode = {
       ...node,
-      x: Math.cos(angle) * radius,
-      y: Math.sin(angle) * radius,
-      vx: 0,
-      vy: 0,
+      x: before?.x ?? Math.cos(angle) * radius,
+      y: before?.y ?? Math.sin(angle) * radius,
+      vx: before?.vx ?? 0,
+      vy: before?.vy ?? 0,
       r: (4 + Math.min(9, Math.sqrt(node.degree) * 2.4)) * prefs.nodeScale,
       tagColor: node.kind === 'tag' ? tagColors.get(node.title.toLowerCase()) ?? null : null,
       colorGroup: ruleColors.get(node.id)?.color ?? null,
     }
+    if (before?.pinned) laidOut.pinned = true
+    return laidOut
   })
   const byId = new Map(state.nodes.map((node) => [node.id, node]))
   state.edges = data.edges.flatMap((edge) => {
@@ -318,7 +322,7 @@ export function createCanvasResizer(canvas: HTMLCanvasElement, ctx: CanvasRender
     canvas.width = Math.max(1, Math.round(rect.width * dpr))
     canvas.height = Math.max(1, Math.round(rect.height * dpr))
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    if (!state.offsetX && !state.offsetY) {
+    if (state.nodes.length === 0) {
       state.offsetX = rect.width / 2
       state.offsetY = rect.height / 2
     }

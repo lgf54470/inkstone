@@ -65,16 +65,14 @@ interface CanvasHandlers {
 
 function useGraphCanvasLoop(options: GraphCanvasLoopOptions) {
   const { data, prefsRef, canvasRef, stateRef, hoverRef, selectedIdRef, activeNoteIdRef, setHover, setSelectedId, fitGraph } = options
+  const refitOnSettleRef = useRef(false)
+
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !data) return
+    if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     const state = stateRef.current
-    hoverRef.current = null
-    setHover(null)
-    setSelectedId((current) => data.nodes.some((node) => node.id === current) ? current : null)
-    buildInitialLayout(data, prefsRef.current, state)
     const colorsRef = { current: readThemeColors() }
     const themeObserver = createThemeObserver(colorsRef, () => state.schedule?.())
     const { resize, observer } = createCanvasResizer(canvas, ctx, state)
@@ -82,20 +80,36 @@ function useGraphCanvasLoop(options: GraphCanvasLoopOptions) {
     const style = getComputedStyle(document.documentElement)
     createGraphTicker({
       state, canvas, ctx, colorsRef, prefsRef, hoverRef, selectedIdRef, activeNoteIdRef, style,
-      onSettled: fitGraph,
+      onSettled: () => {
+        if (!refitOnSettleRef.current) return
+        refitOnSettleRef.current = false
+        fitGraph()
+      },
     })
-    const linkedTargetId = getLinkHoverTarget()
-    const linkedNode = linkedTargetId ? state.nodes.find((candidate) => candidate.id === linkedTargetId) ?? null : null
-    hoverRef.current = linkedNode
-    setHover(linkedNode)
-    state.schedule?.()
     return () => {
       cancelAnimationFrame(state.raf)
       state.raf = 0; state.schedule = null
       observer.disconnect()
       themeObserver.disconnect()
     }
-  }, [activeNoteIdRef, canvasRef, data, fitGraph, hoverRef, prefsRef, selectedIdRef, setHover, setSelectedId, stateRef])
+  }, [activeNoteIdRef, canvasRef, fitGraph, hoverRef, prefsRef, selectedIdRef, stateRef])
+
+  useEffect(() => {
+    const state = stateRef.current
+    const known = new Set(state.nodes.map((node) => node.id))
+    buildInitialLayout(data, prefsRef.current, state, state.nodes)
+    refitOnSettleRef.current = data.nodes.some((node) => !known.has(node.id))
+    hoverRef.current = null
+    setHover(null)
+    setSelectedId((current) => data.nodes.some((node) => node.id === current) ? current : null)
+    const linkedTargetId = getLinkHoverTarget()
+    const linkedNode = linkedTargetId ? state.nodes.find((candidate) => candidate.id === linkedTargetId) ?? null : null
+    if (linkedNode) {
+      hoverRef.current = linkedNode
+      setHover(linkedNode)
+    }
+    state.schedule?.()
+  }, [data, hoverRef, prefsRef, selectedIdRef, setHover, setSelectedId, stateRef])
 }
 
 function handleCanvasPointerDown(event: React.PointerEvent<HTMLCanvasElement>, h: CanvasHandlers): void {

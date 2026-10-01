@@ -82,6 +82,7 @@ function graphRequest(prefs: GraphPreferences, activeNoteId: string | null, quer
 function useGraphData(request: GraphQuery) {
   const [data, setData] = useState<GraphResponse | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const [reload, setReload] = useState(0)
   useEffect(() => {
     if (request.mode === 'local' && !request.center) {
@@ -91,8 +92,8 @@ function useGraphData(request: GraphQuery) {
     }
     const controller = new AbortController()
     let isCancelled = false
-    setData(null)
     setLoadError(null)
+    setIsLoading(true)
     void (async () => {
       try {
         const response = await api.graph(request, controller.signal)
@@ -101,6 +102,8 @@ function useGraphData(request: GraphQuery) {
         if (!isCancelled && (error as Error)?.name !== 'AbortError') {
           setLoadError(errorMessage(error))
         }
+      } finally {
+        if (!isCancelled) setIsLoading(false)
       }
     })()
     return () => {
@@ -108,7 +111,7 @@ function useGraphData(request: GraphQuery) {
       controller.abort()
     }
   }, [request, reload])
-  return { data, loadError, reload, setReload }
+  return { data, loadError, isLoading, reload, setReload }
 }
 
 function GraphStats({ data }: { data: GraphResponse }) {
@@ -245,6 +248,15 @@ function GraphBody({ data, loadError, onRetry, children }: {
   return children(data)
 }
 
+function GraphRefreshBadge({ visible }: { visible: boolean }) {
+  if (!visible) return null
+  return (
+    <div role='status' data-graph-refreshing='' className='pointer-events-none absolute top-3 right-4 rounded-full border border-[var(--border-default)] bg-[var(--bg-overlay)] px-3 py-1 text-[length:var(--text-11)] text-[var(--text-secondary)] shadow-[var(--shadow-sm)]'>
+      {t('graph.building_graph')}
+    </div>
+  )
+}
+
 function useGraphQueryRequest(prefs: GraphPreferences, activeNoteId: string | null, query: string, selectedTags: string[]): GraphQuery {
   return useMemo(() => graphRequest(prefs, activeNoteId, query, selectedTags), [
     activeNoteId,
@@ -294,7 +306,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
       setIsLimitOpen(false)
   }, [selectedTags.length])
   const request = useGraphQueryRequest(prefs, activeNoteId, query, selectedTags)
-  const { data, loadError, setReload } = useGraphData(request)
+  const { data, loadError, isLoading, setReload } = useGraphData(request)
   const changePref = <K extends keyof GraphPreferences>(key: K, value: GraphPreferences[K]) => {
     setPrefs((current) => ({ ...current, [key]: value }))
   }
@@ -314,6 +326,7 @@ export function GraphPanel({ onClose }: { onClose: () => void }) {
         <GraphBody data={data} loadError={loadError} onRetry={() => setReload((value) => value + 1)}>
           {(loaded) => <GraphCanvas data={loaded} prefs={prefs} activeNoteId={activeNoteId} canvasRef={refs.canvasRef} stateRef={refs.stateRef} hoverRef={refs.hoverRef} selectedIdRef={refs.selectedIdRef} activeNoteIdRef={refs.activeNoteIdRef} lastPointerEventAtRef={refs.lastPointerEventAtRef} onOpenNote={openNote} onCreateNote={createScopedNote} onClose={onClose} onMakeLocal={() => changePref('mode', 'local')} onFilterByTag={(tag) => changePref('tag', tag)} controlsRef={refs.controlsRef}/>}
         </GraphBody>
+        <GraphRefreshBadge visible={isLoading && Boolean(data)}/>
       </main>
       {isSettingsOpen && <GraphSettingsPanel prefs={prefs} onChange={(key, value) => changePref(key, value)} folders={folders} tags={tags} selectedTags={selectedTags} isLimitOpen={isLimitOpen} onToggleLimit={() => setIsLimitOpen((value) => !value)} onClose={() => setIsSettingsOpen(false)} onResetTagFilters={resetTagFilters} onRestoreDefaults={() => setPrefs((current) => ({ ...DEFAULT_PREFERENCES, mode: current.mode }))}/>}
     </div>

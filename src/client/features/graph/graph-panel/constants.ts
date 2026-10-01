@@ -7,6 +7,7 @@ export const FALLBACK_TEXT_COLOR = '#555'
 export const FALLBACK_BG_COLOR = '#18181b'
 
 export const PHYSICS_FRAME_LIMIT = 360
+export const GRAPH_SETTLE_FRAME = 70
 export const GRAPH_PREFS_KEY = 'inkstone.graph.preferences.v1'
 export const COLOR_GROUP_QUERY_MAX = 120
 
