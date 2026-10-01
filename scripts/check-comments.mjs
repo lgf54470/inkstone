@@ -3376,12 +3376,19 @@ const allowed = new Map([
     '// look like a changed preference.',
     '// The mount already anneals once; a reader tunes the forces after the picture has come to rest.',
   ]],
+  ['src/client/features/graph/graph-panel/canvas-hooks.tsx', [
+    '// Read off the document rather than the store: the account menu is out of reach while the graph is',
+    '// open, and a follow-the-system flip reaches the attribute without a store change.',
+  ]],
   ['src/client/features/graph/graph-panel/canvas-legend.test.ts', [
     '/** Mounts the canvas with the painting stubbed away, and hands back the legend it drew. */',
   ]],
   ['src/client/features/graph/graph-panel/canvas-physics.test.ts', [
     '/**\n * The force layout is the one part of the panel that runs on its own after the reader stops touching it,\n * so these cases drive the frame source by hand and read three promises: the layout converges and the\n * loop stops asking for frames, a node the reader pinned or is holding never drifts, and the camera is\n * fitted once the graph has spread out rather than on the frame that still holds the starting spiral.\n */',
     '/** A frame source the test drives one tick at a time, so a layout that never converges is counted instead of hanging the run. */',
+  ]],
+  ['src/client/features/graph/graph-panel/canvas-preview-theme.test.ts', [
+    '/**\n * A theme flip can reach the panel with nothing it is subscribed to: the account menu is out of reach\n * while the graph is open, so a "follow the system" flip only writes the document attribute, and another\n * tab\'s flip never touches this store at all. The preview card is React, not canvas, so the attribute has\n * to schedule a render — these cases flip it and read the flag the card was handed.\n */',
   ]],
   ['src/client/features/graph/graph-panel/canvas-selection-loop.test.ts', [
     '/**\n * Selecting a node asks the panel for two things it holds in state: the announcement and the preview card.\n * Both used to be handed an object whose identity changed on every render, and because the effect that\n * writes them listed that object as a dependency, each write scheduled the next one: the panel never came\n * back. These cases count the paints one selection costs.\n */',

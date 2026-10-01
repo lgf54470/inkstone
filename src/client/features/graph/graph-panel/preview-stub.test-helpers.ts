@@ -7,7 +7,7 @@ import { createElement } from 'react'
  */
 export const PREVIEW_RENDER_CAP = 24
 
-export const previewProbe = { renders: 0, subscribes: 0 }
+export const previewProbe = { renders: 0, subscribes: 0, dark: null as boolean | null }
 
 export function previewStubModule(): Record<string, unknown> {
   return {
@@ -19,8 +19,9 @@ export function previewStubModule(): Record<string, unknown> {
       }
       return () => {}
     },
-    WikiLinkHoverCard: ({ card }: { card: { title: string } }) => {
+    WikiLinkHoverCard: ({ card, dark }: { card: { title: string }, dark: boolean }) => {
       previewProbe.renders++
+      previewProbe.dark = dark
       if (previewProbe.renders > PREVIEW_RENDER_CAP) {
         throw new Error(`one selection painted the preview ${previewProbe.renders} times`)
       }

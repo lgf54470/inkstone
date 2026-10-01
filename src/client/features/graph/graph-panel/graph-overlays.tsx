@@ -17,7 +17,7 @@ export interface GraphOverlaysProps {
   previewCard?: WikiLinkHoverCardState | null
   anchorPos?: { x: number; y: number; size: number } | null
   anchorRef?: RefObject<HTMLDivElement | null>
-  isDark?: boolean
+  isDark: boolean
   onClosePreview?: () => void
   onEnterPreview?: () => void
   onLeavePreview?: () => void
@@ -72,7 +72,7 @@ export function GraphOverlays({
   previewCard,
   anchorPos,
   anchorRef,
-  isDark = true,
+  isDark,
   onClosePreview,
   onEnterPreview,
   onLeavePreview,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type MutableRefObject, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react'
 import { CircleDot, FolderOpen, PanelRightClose, Pin, Tag } from 'lucide-react'
 import { type MenuItem } from '../../../components/overlay'
 import { t } from '../../../lib/i18n'
@@ -28,6 +28,20 @@ export function useGraphCanvasRefs(activeNoteId: string | null = null) {
   })
   const controlsRef = useRef<GraphControls | null>(null)
   return { canvasRef, hoverRef, selectedIdRef, activeNoteIdRef, lastPointerEventAtRef, stateRef, controlsRef }
+}
+
+// Read off the document rather than the store: the account menu is out of reach while the graph is
+// open, and a follow-the-system flip reaches the attribute without a store change.
+export function useIsDarkTheme(): boolean {
+  const [dark, setDark] = useState(() => (document.documentElement.dataset.theme ?? 'dark') === 'dark')
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setDark((document.documentElement.dataset.theme ?? 'dark') === 'dark')
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => observer.disconnect()
+  }, [])
+  return dark
 }
 
 export function useGraphFit(canvasRef: RefObject<HTMLCanvasElement | null>, stateRef: RefObject<CanvasState>) {

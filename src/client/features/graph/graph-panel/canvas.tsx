@@ -19,6 +19,7 @@ import {
   useGraphDrag,
   useGraphFit,
   useGraphWorldMath,
+  useIsDarkTheme,
 } from './canvas-hooks'
 
 export type { GraphControls }
@@ -389,6 +390,7 @@ export function GraphCanvas(props: GraphCanvasProps) {
   const { data, canvasRef } = props
   const b = useGraphCanvasController(props)
   const selected = data.nodes.find((node) => node.id === b.selectedId) ?? null
+  const isDark = useIsDarkTheme()
 
   return (
     <>
@@ -401,7 +403,7 @@ export function GraphCanvas(props: GraphCanvasProps) {
         previewCard={b.preview.previewCard}
         anchorPos={b.preview.anchorPos}
         anchorRef={b.preview.anchorRef}
-        isDark={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark'}
+        isDark={isDark}
         onClosePreview={b.preview.closePreview}
         onEnterPreview={b.preview.pauseHide}
         onLeavePreview={b.preview.resumeHide}
